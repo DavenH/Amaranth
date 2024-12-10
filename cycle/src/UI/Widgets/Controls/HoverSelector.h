@@ -1,0 +1,125 @@
+#ifndef _hoverselector_h
+#define _hoverselector_h
+
+#include <vector>
+#include <iostream>
+#include <App/SingletonAccessor.h>
+#include <Obj/Ref.h>
+#include "JuceHeader.h"
+#include <Util/Util.h>
+#include <UI/MouseEventDelegator.h>
+
+using std::cout;
+using std::endl;
+using std::vector;
+
+class IconButton;
+class MouseListenerCallback;
+
+class HoverSelector  :
+		public Component
+	, 	public SingletonAccessor {
+public:
+	HoverSelector(SingletonRepo* repo, int x, int y, bool horz);
+	virtual ~HoverSelector();
+	bool menuActive;
+
+	void resized();
+
+	virtual void mouseEnter(const MouseEvent& e);
+	virtual void mouseExit(const MouseEvent& e);
+	virtual void mouseDown(const MouseEvent& e);
+
+	void showPopup();
+	void setSelectedId(int id);
+	void revertMesh();
+	void paintOverChildren(Graphics& g);
+
+	virtual void mouseOverItem(int itemIndex);
+	virtual void mouseLeftItem(int itemIndex);
+	virtual void populateMenu() = 0;
+	virtual void itemWasSelected(int id) = 0;
+	virtual bool itemIsSelection(int id) = 0;
+	virtual void revert() {}
+	virtual void prepareForPopup() {}
+
+	PopupMenu menu;
+	bool horizontal;
+
+protected:
+private:
+
+	ScopedPointer<IconButton> headerIcon;
+};
+
+class SelectorCallback :
+		public Component
+	,	public MouseEventDelegatee
+{
+private:
+	int fileIndex, itemIndex;
+
+	String filename;
+	Ref<HoverSelector> selector;
+	MouseEventDelegator delegator;
+
+	JUCE_LEAK_DETECTOR(SelectorCallback)
+
+public: 
+	SelectorCallback(int _itemIndex, const String& _filename, HoverSelector* _selector) :
+			itemIndex(_itemIndex)
+		,	filename(_filename)
+		,	selector(_selector)
+		,	delegator(this, this) {
+        setMouseCursor(MouseCursor::PointingHandCursor);
+    }
+
+    virtual ~SelectorCallback() {
+    }
+
+
+	void paint(Graphics& g) {
+        if (isMouseOver())
+			g.fillAll(Colours::black.withAlpha(0.7f));
+
+		g.setColour(Colour::greyLevel(isMouseOver() ? 0.8f : 0.65f));
+		g.setFont(Font(16));
+
+		String name = filename.substring(filename.lastIndexOf(File::separatorString) + 1, filename.lastIndexOf("."));
+		g.drawText(name, 30, 0, 3 * getWidth() / 4, getHeight(), Justification::centredLeft, true);
+	}
+
+
+    const String& getFilename() {
+        return filename;
+	}
+
+
+    void mouseEnter(const MouseEvent& e) {
+#ifndef JUCE_MAC
+//		if(e.originalComponent == this)
+        enterDlg();
+#endif
+    }
+
+
+    void mouseExit(const MouseEvent& e) {
+#ifndef JUCE_MAC
+//		if(e.originalComponent == this)
+        exitDlg();
+#endif
+    }
+
+
+    void enterDlg() {
+        selector->mouseOverItem(itemIndex);
+        repaint();
+    }
+
+    void exitDlg() {
+        selector->mouseLeftItem(itemIndex);
+        repaint();
+    }
+};
+
+#endif

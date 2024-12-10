@@ -1,0 +1,41 @@
+#include <UI/Widgets/Knob.h>
+#include <Util/StringFunction.h>
+
+#include "DelayUI.h"
+#include "../../Audio/SynthAudioSource.h"
+#include "../../Audio/Effects/Delay.h"
+
+DelayUI::DelayUI(SingletonRepo* repo, Effect* effect) :
+		GuilessEffect("DelayUI", "Delay", Delay::numDelayParams, repo, effect)
+{
+	Knob *spinItrKnob, *timeKnob;
+
+	paramGroup->addSlider(timeKnob = new Knob(repo, Delay::Time, "Delay time", 0.5f));
+	paramGroup->addSlider(new Knob(repo, Delay::Feedback, "Feedback", 0.5f));
+	paramGroup->addSlider(spinItrKnob = new Knob(repo, Delay::SpinIters, "Spin revolution length", 0.2f));
+	paramGroup->addSlider(new Knob(repo, Delay::Spin, "Spin Amount", 0.5f));
+	paramGroup->addSlider(new Knob(repo, Delay::Wet, "Wet Amount", 0.5f));
+
+	using namespace Ops;
+	StringFunction delayStr(StringFunction(1).chain(Max, 0.15).chain(Pow, 2.0).chain(Mul, 4.0));
+	spinItrKnob->setStringFunction(StringFunction(0).chain(Pow, 2.0).chain(Mul, 12).chain(Flr).chain(Max, 1.0));
+	timeKnob->setStringFunctions(delayStr, delayStr.withPostString(" beats"));
+}
+
+
+String DelayUI::getKnobName(int index) const
+{
+	bool little 	= getWidth() < 300;
+	bool superSmall = getWidth() < 200;
+
+	switch(index)
+	{
+		case Delay::Time: 		return superSmall ? "tm" 	: "Time";
+		case Delay::Feedback:	return superSmall ? "fb" 	: little ? "Fdbk" : "Feedbk";
+		case Delay::Spin:		return superSmall ? "spn" 	: "Spin";
+		case Delay::SpinIters:	return little ? 	"spn #" : "Spin Len";
+		case Delay::Wet:		return superSmall ? "wet" 	: "Wet";
+	}
+
+	return String::empty;
+}
