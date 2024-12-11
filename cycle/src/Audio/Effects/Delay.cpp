@@ -1,5 +1,4 @@
 #include <App/SingletonRepo.h>
-#include <Audio/PluginProcessor.h>
 #include <Util/Util.h>
 
 #include "Delay.h"
@@ -17,8 +16,7 @@ Delay::Delay(SingletonRepo* repo) :
 	,	pendingSpinIters(1)
 	,	pendingWetBufferUpdate(false)
 {
-	for(int i = 0; i < 2; ++i)
-	{
+	for(int i = 0; i < 2; ++i) {
 		inputBuffer[i].resize(delaySize);
 		readPosition[i] = 0;
 	}
@@ -26,11 +24,8 @@ Delay::Delay(SingletonRepo* repo) :
 	recalculateWetBuffers();
 }
 
-
-Delay::~Delay()
-{
-	for(int i = 0; i < 2; ++i)
-	{
+Delay::~Delay() {
+	for (int i = 0; i < 2; ++i) {
 		spinParams[i].clear();
 		inputBuffer[i].clear();
 		wetBuffer[i].clear();
@@ -38,10 +33,8 @@ Delay::~Delay()
 }
 
 
-void Delay::audioThreadUpdate()
-{
-	if(pendingWetBufferUpdate)
-	{
+void Delay::audioThreadUpdate() {
+	if (pendingWetBufferUpdate) {
 		recalculateWetBuffers();
 		pendingWetBufferUpdate = false;
 	}

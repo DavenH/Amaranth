@@ -1,5 +1,4 @@
-#ifndef _SYNTHUNISONVOICE_H_
-#define _SYNTHUNISONVOICE_H_
+#pragma once
 
 #include "CycleBasedVoice.h"
 
@@ -11,16 +10,13 @@ class SynthUnisonVoice :
 {
 public:
 	SynthUnisonVoice(SynthesizerVoice* parent, SingletonRepo* repo);
-	virtual ~SynthUnisonVoice();
+	~SynthUnisonVoice() override;
 
-	void calcCycle(VoiceParameterGroup& group);
+	void calcCycle(VoiceParameterGroup& group) override;
 	void testMeshConditions();
-	void initialiseNoteExtra(const int midiNoteNumber, const float velocity);
+	void initialiseNoteExtra(int midiNoteNumber, float velocity) override;
 	void prepNewVoice();
 
 private:
 	float lastPitchSemis;
 };
-
-#endif
-

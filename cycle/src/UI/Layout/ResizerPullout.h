@@ -22,12 +22,12 @@ public:
 	void updateHighlight(int windowSize);
 
 private:
-	ScopedPointer<PulloutComponent> pullout;
+	std::unique_ptr<PulloutComponent> pullout;
 
-	ScopedPointer<IconButton> smallIcon;
-	ScopedPointer<IconButton> medIcon;
-	ScopedPointer<IconButton> fullIcon;
-	ScopedPointer<IconButton> keybIcon;
+	std::unique_ptr<IconButton> smallIcon;
+	std::unique_ptr<IconButton> medIcon;
+	std::unique_ptr<IconButton> fullIcon;
+	std::unique_ptr<IconButton> keybIcon;
 
     JUCE_LEAK_DETECTOR(ResizerPullout)
 };

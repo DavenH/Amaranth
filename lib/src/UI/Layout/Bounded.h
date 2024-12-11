@@ -1,6 +1,4 @@
-#ifndef _Bounded_h
-#define _Bounded_h
-
+#pragma once
 #include "JuceHeader.h"
 
 class Bounded {
@@ -15,4 +13,3 @@ public:
 	virtual int getHeight() = 0;
 };
 
-#endif

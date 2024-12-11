@@ -1,22 +1,18 @@
-#ifndef _wave2Dinteractor_h
-#define _wave2Dinteractor_h
-
+#pragma once
 #include <Inter/Interactor2D.h>
 
 class WaveformInter2D :
 	public Interactor2D
 {
 public:
-	WaveformInter2D(SingletonRepo* mgr);
-	bool isCurrentMeshActive();
+	explicit WaveformInter2D(SingletonRepo* mgr);
+	bool isCurrentMeshActive() override;
 
-	void showCoordinates();
-	Interactor* getOppositeInteractor();
+	void showCoordinates() override;
+	Interactor* getOppositeInteractor() override;
 	void modelAudioCycle();
 
 private:
 	friend class Waveform2D;
 
 };
-
-#endif

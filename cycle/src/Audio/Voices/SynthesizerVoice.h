@@ -1,15 +1,11 @@
-#ifndef _synthesizervoice_h
-#define _synthesizervoice_h
-
+#pragma once
 #include <vector>
 
-#include "VoiceParameterGroup.h"
 #include "SynthUnisonVoice.h"
 #include "SynthFilterVoice.h"
 #include "SynthState.h"
 
 #include <App/SingletonAccessor.h>
-#include <Array/RingBuffer.h>
 #include <Array/ScopedAlloc.h>
 #include <Audio/SmoothedParameter.h>
 #include <Curve/EnvRasterizer.h>
@@ -33,7 +29,7 @@ class SynthesizerVoice:
 {
 public:
 	SynthesizerVoice(int voiceIndex, SingletonRepo* repo);
-	virtual ~SynthesizerVoice();
+	~SynthesizerVoice() override;
 
 	void initCycleBuffers();
 	void fetchEnvelopeMeshes();
@@ -46,25 +42,25 @@ public:
 	void startNote(int midiNoteNumber,
 				   float velocity,
 				   SynthesiserSound* sound,
-				   int currentPitchWheelPosition);
+				   int currentPitchWheelPosition) override;
 
 	void stop(bool allowTailoff)
 	{
 		stopNote(velocity, allowTailoff);
 	}
 
-	void stopNote(float velocity, bool allowTailOff);
+	void stopNote(float velocity, bool allowTailOff) override;
 
-	void pitchWheelMoved(int newValue);
-	void aftertouchChanged(int newValue);
+	void pitchWheelMoved(int newValue) override;
+	void aftertouchChanged(int newValue) override;
 	void handleSustainPedal (int midiChannel, bool isDown);
 
 	void controllerMoved(int controllerNumber,
-						 int newValue);
+						 int newValue) override;
 
 	/* Rendering */
 	void fillRemainingLatencySamples(StereoBuffer& outputBuffer, int numSamples, float mappedVelocity);
-	void renderNextBlock(AudioSampleBuffer& outputBuffer, int startSample, int numSamples);
+	void renderNextBlock(AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override;
 	void startLatencyFillingOrStopNote();
 
 
@@ -72,9 +68,9 @@ public:
 //	double 	getBlueMappedValue();
 	double	getPitchWheelValueSemitones() 			{ return pitchWheelValue; }
 	float 	getModWheelValue()						{ return (float) modValue.getCurrentValue(); }
-	int 	getVoiceIndex() 						{ return voiceIndex; }
+	int 	getVoiceIndex() const 					{ return voiceIndex; }
 	double 	getSampleRatePublic() 					{ return getSampleRate(); }
-	bool 	canPlaySound(SynthesiserSound* sound) 	{ return sound != 0; }
+	bool 	canPlaySound(SynthesiserSound* sound) override 	{ return sound != 0; }
 	void 	setModWheelValue(float value) 			{ modValue = value; }
 	int 	getCurrentOscillatorLatency();
 
@@ -121,7 +117,7 @@ private:
 
 	Random random;
 
-	// ———————————————————————————————————————————————————————————————— //
+	/* ----------------------------------------------------------------------------- */
 
 	friend class SynthFilterVoice;
 	friend class SynthUnisonVoice;
@@ -140,5 +136,3 @@ private:
 	void testMeshConditions();
 	float getEffectiveLevel();
 };
-
-#endif

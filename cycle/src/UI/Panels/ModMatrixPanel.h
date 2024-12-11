@@ -1,5 +1,4 @@
-#ifndef _modmatrixpanel_h
-#define _modmatrixpanel_h
+#pragma once
 
 #include <vector>
 #include <App/Doc/Savable.h>
@@ -7,10 +6,7 @@
 #include <App/SingletonAccessor.h>
 #include <Obj/Ref.h>
 #include <UI/ParameterGroup.h>
-#include <UI/Widgets/IconButton.h>
-#include <Util/CommonEnums.h>
 #include "JuceHeader.h"
-#include <Util/Util.h>
 #include "../TourGuide.h"
 
 using std::vector;
@@ -27,16 +23,16 @@ class ModMatrix :
 {
 public:
 	ModMatrix(SingletonRepo* repo, ModMatrixPanel* panel);
-	virtual ~ModMatrix();
-	void resized();
-	int getNumRows();
-	void cellClicked (int rowNumber, int columnId, const MouseEvent& e) {}
+	~ModMatrix() override;
+	void resized() override;
+	int getNumRows() override;
+	void cellClicked (int rowNumber, int columnId, const MouseEvent& e) override {}
 
 	Component* refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected,
-									   Component* existingComponentToUpdate);
+									   Component* existingComponentToUpdate) override;
 
-	void paintRowBackground (Graphics& g, int rowNumber, int width, int height, bool rowIsSelected);
-	void paintCell (Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected);
+	void paintRowBackground (Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) override;
+	void paintCell (Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
 	void cycleDimensionMapping(int row, int col);
 	int columnIdToIndex(int col);
 
@@ -53,20 +49,19 @@ public:
 			setMouseCursor(MouseCursor::PointingHandCursor);
 		}
 
-		void paint(Graphics& g);
+		void paint(Graphics& g) override;
 
-		void mouseDown(const MouseEvent& e)
-		{
-			if(e.mods.isLeftButtonDown())
+		void mouseDown(const MouseEvent &e) override {
+			if (e.mods.isLeftButtonDown()) {
 				modMatrix->cycleDimensionMapping(row, col);
-			else if(e.mods.isRightButtonDown())
+			} else if (e.mods.isRightButtonDown()) {
 				modMatrix->showDimensionsPopup(this);
+			}
 
 			repaint();
 		}
 
-		void mouseUp(const MouseEvent& e)
-		{
+		void mouseUp(const MouseEvent &e) override {
 			repaint();
 		}
 
@@ -79,11 +74,10 @@ public:
 	Ref<ModMatrixPanel> panel;
 
 private:
-	ScopedPointer<TableListBox> tableListBox;
+	std::unique_ptr<TableListBox> tableListBox;
 
 	JUCE_LEAK_DETECTOR(ModMatrix)
 };
-
 
 class ModMatrixPanel :
 		public Component
@@ -153,7 +147,7 @@ public:
 		,	HarmPhsLayers
 	};
 
-	// ———————————————————————————————————————————————————————————————— //
+	/* ----------------------------------------------------------------------------- */
 
 	struct Mapping
 	{
@@ -183,22 +177,22 @@ public:
 		int rowDim;
 	};
 
-	// ———————————————————————————————————————————————————————————————— //
+	/* ----------------------------------------------------------------------------- */
 
-	ModMatrixPanel(SingletonRepo* repo);
+	explicit ModMatrixPanel(SingletonRepo* repo);
 
 	bool isNotInInputs(int id);
 	bool isNotInOutputs(int id);
-	bool keyPressed(const KeyPress& press);
-	bool shouldTriggerGlobalUpdate(Slider* slider);
-	bool shouldTriggerLocalUpdate(Slider* slider);
-	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate);
+	bool keyPressed(const KeyPress& press) override;
+	bool shouldTriggerGlobalUpdate(Slider* slider) override;
+	bool shouldTriggerLocalUpdate(Slider* slider) override;
+	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
 
 	float getUtilityValue(int utilityIndex);
 	int getMappingOrder(int columnId);
 	int indexOfMapping(int inputId, int outputId);
 
-	Component* getComponent(int which);
+	Component* getComponent(int which) override;
 	ModMatrix& getModMatrix() { return modMatrix; }
 	PopupMenu getInputMenu();
 	PopupMenu getOutputMenu(int source);
@@ -208,33 +202,32 @@ public:
 	String getInputShortName(int id);
 	String getOutputName(int id);
 
-	void init();
+	void init() override;
 	void initializeDefaults();
-	void resized();
+	void resized() override;
 	void selfSize();
 
-	void paint(Graphics& g);
+	void paint(Graphics& g) override;
 	void addDestination(int id, bool update = true);
 	void addInput(int id, bool input = true);
 	void addToMenu(int id, PopupMenu& menu);
-	void buttonClicked(Button* button);
-	void comboBoxChanged(ComboBox* combobox);
+	void buttonClicked(Button* button) override;
+	void comboBoxChanged(ComboBox* combobox) override;
 	void cycleDimensionMapping(int row, int col);
 	void getIds(int row, int col, int& intputId, int& outputId);
-	void handleMessage (const Message& message);
-	void layerAdded(int type, int index);
-	void layerRemoved(int type, int index);
+	void handleMessage (const Message& message) override;
+	void layerAdded(int type, int index) override;
+	void layerRemoved(int type, int index) override;
 	void mappingChanged(int mappingIndex, int inputId, int outputId, int oldDim, int newDim);
 	void route(float value, int inputId, int voiceIndex = -1);
-	void scrollBarMoved(ScrollBar* bar, double newRange);
+	void scrollBarMoved(ScrollBar* bar, double newRange) override;
 	void setMatrixCell(int inputId, int outputId, int dim);
 	void setUtilityValue(int utilityIndex, float value);
 	MeshLibrary::GroupLayerPair toLayerIndex(int outputId);
 
-	void writeXML(XmlElement* element) const;
-	bool readXML(const XmlElement* element);
+	void writeXML(XmlElement* element) const override;
+	bool readXML(const XmlElement* element) override;
 
-//	void overrideValueOptionally(int number, double& value);
 	void setPendingFocusGrab(bool val);
 
 	Array<Mapping> mappings;
@@ -261,6 +254,3 @@ private:
 	Component utilityArea, sourceArea, destArea;
 	TextButton addInputBtn, addDestBtn, closeButton;
 };
-
-
-#endif

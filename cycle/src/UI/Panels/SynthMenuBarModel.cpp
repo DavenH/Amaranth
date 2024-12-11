@@ -246,7 +246,7 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 		{
 			const File& file = tutorials.getReference(i);
 			XmlDocument doc(file);
-			ScopedPointer<XmlElement> elem = doc.getDocumentElement(true);
+			std::unique_ptr<XmlElement> elem = doc.getDocumentElement(true);
 
 			String name = elem->getStringAttribute("title", file.getFileNameWithoutExtension());
 			tutMenu.addItem(Tutorials + i, name, true, false);
@@ -559,7 +559,7 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex)
 			File& file = tutorials.getReference(fileIndex);
 
 			XmlDocument doc(file.loadFileAsString());
-			ScopedPointer<XmlElement> top = doc.getDocumentElement();
+			std::unique_ptr<XmlElement> top = doc.getDocumentElement();
 
 			if(doc.getLastParseError().isEmpty())
 			{

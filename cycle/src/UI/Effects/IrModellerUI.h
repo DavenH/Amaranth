@@ -97,7 +97,7 @@ private:
 	bool isEnabled;
 
 	Ref<IrModeller> irModeller;
-	ScopedPointer<MeshSelector<Mesh> > selector;
+	std::unique_ptr<MeshSelector<Mesh> > selector;
 
 	String waveImpulsePath;
 	ColorGradient gradient;
@@ -122,13 +122,13 @@ private:
 
 	ClearSpacer spacer8, spacer2;
 
-	ScopedPointer<PulloutComponent> 	wavePO;
-	ScopedPointer<PulloutComponent> 	zoomPO;
-	ScopedPointer<PulloutComponent> 	modePO;
+	std::unique_ptr<PulloutComponent> 	wavePO;
+	std::unique_ptr<PulloutComponent> 	zoomPO;
+	std::unique_ptr<PulloutComponent> 	modePO;
 
-	ScopedPointer<RetractableCallout> 	waveCO;
-	ScopedPointer<RetractableCallout> 	zoomCO;
-	ScopedPointer<RetractableCallout> 	modeCO;
+	std::unique_ptr<RetractableCallout> 	waveCO;
+	std::unique_ptr<RetractableCallout> 	zoomCO;
+	std::unique_ptr<RetractableCallout> 	modeCO;
 
 	InsetLabel title;
 	TitleBacking titleBacking;

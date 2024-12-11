@@ -1,19 +1,19 @@
 #ifndef _tubemodel_h
 #define _tubemodel_h
 
-//#define _DEBUG_IPP 1
 
 #include <vector>
 #include <ipp.h>
 #include <ippdefs.h>
-#include <math.h>
+#include <cmath>
 
-#include <Algo/.h>
+#include <Algo/ConvReverb.h>
 #include <Algo/Oversampler.h>
+#include <App/Transforms.h>
 #include <Array/Buffer.h>
 #include <Array/ScopedAlloc.h>
 #include <Array/StereoBuffer.h>
-#include <Audio/SampleWrapper.h>
+#include <Audio/PitchedSample.h>
 #include <Audio/SmoothedParameter.h>
 #include <Curve/FXRasterizer.h>
 #include <Design/Updating/Updateable.h>
@@ -30,7 +30,6 @@ class IrModellerUI;
 class IrModeller:
 	public Effect
 {
-private:
 	class ConvState;
 
 public:
@@ -46,8 +45,8 @@ public:
 		prefilterChg
 	};
 
-	IrModeller(SingletonRepo* repo);
-	~IrModeller();
+	explicit IrModeller(SingletonRepo* repo);
+	~IrModeller() override;
 
 	void initGraphicVars();
 	void cleanUp();
@@ -55,8 +54,8 @@ public:
 	void doPostDeconvolve(int size);
 
 	void processVertexBuffer(Buffer<Ipp32f> buffer);
-	void processBuffer(AudioSampleBuffer& buffer);
-	void audioThreadUpdate();
+	void processBuffer(AudioSampleBuffer& buffer) override;
+	void audioThreadUpdate() override;
 	void resetIndices();
 
 	void trimWave();
@@ -71,23 +70,23 @@ public:
 
 	bool 			willBeEnabled() const;
 	void 			setUI(IrModellerUI* comp);
-	bool 			isEnabled() const				{ return enabled; 								}
+	bool 			isEnabled() const override		{ return enabled; 								}
 	bool 			isWavLoaded() const 			{ return waveLoaded; 							}
-	int 			getConvBufferSize()				{ return convBufferSize; 						}
-	int 			getLatencySamples()				{ return willBeEnabled() ? convBufferSize : 0; 	}
-	bool 			isUsingWave()					{ return usingWavFile; 							}
+	int 			getConvBufferSize() const		{ return convBufferSize; 						}
+	int 			getLatencySamples() const		{ return willBeEnabled() ? convBufferSize : 0; 	}
+	bool 			isUsingWave() const				{ return usingWavFile; 							}
 	int 			getImpulseLength()				{ return audio.impulse.size(); 					}
-	SampleWrapper& 	getWrapper() 					{ return wavImpulse; 							}
+	PitchedSample& 	getWrapper() 					{ return wavImpulse; 							}
 
 	Buffer<float> 	getMagnitudes() 				{ return graphic.fft.getMagnitudes();			}
 	Buffer<float> 	getGraphicImpulse() 			{ return graphic.impulse;						}
 
-	static int 		calcLength(double value)		{ return (int) pow(2, (double)int(7 + value * 7)); }
-	static double 	calcKnobValue(int length) 		{ return (log((double)length) / log(2.0) - 7.) / 7.; }
+	static int 		calcLength(double value)		{ return (int) pow(2, int(7 + value * 7)); }
+	static double 	calcKnobValue(int length) 		{ return (log(length) / log(2.0) - 7.) / 7.; }
 	static double 	calcPostamp(double value)		{ return exp(10 * value - 5); 					}
 	static double 	calcPrefilt(double value)		{ return value * value * value; 				}
 
-	bool doParamChange(int param, double value, bool doFurtherUpdate);
+	bool doParamChange(int param, double value, bool doFurtherUpdate) override;
 
 	void setGraphicImpulseLength(int length);
 	void rasterizeImpulseDirect();
@@ -117,7 +116,7 @@ private:
 		Buffer<float> levels;
 		Transform fft;
 
-		vector<::BlockConvolver*> convolvers;
+		vector<BlockConvolver*> convolvers{};
 	};
 
 	// params
@@ -138,12 +137,12 @@ private:
 
 	ConvState audio, graphic;
 
-	::BlockConvolver convolvers[2];
-	::BlockConvolver graphicConv;
+	BlockConvolver convolvers[2]{};
+	BlockConvolver graphicConv{};
 
 	Oversampler 	oversampler;
 	FXRasterizer 	audioThdRasterizer;
-	SampleWrapper 	wavImpulse;
+	PitchedSample 	wavImpulse{};
 
 	Ref<IrModellerUI> ui;
 	Array<PendingAction*> pendingActions;

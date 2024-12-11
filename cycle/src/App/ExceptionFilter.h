@@ -1,22 +1,22 @@
-#ifndef EXCEPTIONFILTER_H_
-#define EXCEPTIONFILTER_H_
+#pragma once
 
 #ifdef _MSC_VER
 
 #include <Util/WinHeader.h>
 #include <Dbghelp.h>
 
-void makeMinidump(EXCEPTION_POINTERS* e)
-{
+void makeMinidump(EXCEPTION_POINTERS* e) {
     auto hDbgHelp = LoadLibraryA("dbghelp");
 
-    if(hDbgHelp == nullptr)
+    if(hDbgHelp == nullptr) {
         return;
+    }
 
     auto pMiniDumpWriteDump = (decltype(&MiniDumpWriteDump))GetProcAddress(hDbgHelp, "MiniDumpWriteDump");
 
-    if(pMiniDumpWriteDump == nullptr)
+    if(pMiniDumpWriteDump == nullptr) {
         return;
+    }
 
     char name[MAX_PATH];
     {
@@ -57,7 +57,5 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e)
 
     return EXCEPTION_CONTINUE_SEARCH;
 }
-
-#endif
 
 #endif

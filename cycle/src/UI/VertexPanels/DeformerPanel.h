@@ -136,7 +136,7 @@ private:
 	Buffer<float> phaseMoveBuffer;
 	vector<GuideProps> guideTables;
 
-	ScopedPointer<MeshSelector<Mesh> > meshSelector;
+	std::unique_ptr<MeshSelector<Mesh> > meshSelector;
 
 	HSlider noise;
 	HSlider vertOffset;

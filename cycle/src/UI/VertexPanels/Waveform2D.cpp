@@ -3,7 +3,7 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Array/Buffer.h>
-#include <Audio/SampleWrapper.h>
+#include <Audio/PitchedSample.h>
 #include <Curve/Mesh.h>
 #include <Inter/Interactor.h>
 #include <Obj/ColorGradient.h>

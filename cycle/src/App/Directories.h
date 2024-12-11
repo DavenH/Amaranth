@@ -1,16 +1,14 @@
-#ifndef DIRECTORIES_H_
-#define DIRECTORIES_H_
+#pragma once
 
 #include <App/SingletonAccessor.h>
-#include <Obj/Ref.h>
 #include "JuceHeader.h"
 
 class Directories : public SingletonAccessor {
 public:
-	Directories(SingletonRepo* repo);
-	virtual ~Directories() {}
+	explicit Directories(SingletonRepo* repo);
+	~Directories() override = default;
 
-	void init();
+	void init() override;
 
 	String getMeshDir();
 	String getPresetDir();
@@ -18,9 +16,6 @@ public:
 	String getUserMeshDir();
 	String getTutorialDir();
 
-//	String getAudioTrackFilename();
-
-//	void setContentDir(const String& dir);
 	void setMeshDir(const String& dir) 			{ meshDir 	 = dir; 			}
 	void setHomeUrl(const String& url)			{ homeUrl 	 = url; 			}
 	const String& getHomeUrl() 					{ return homeUrl; 				}
@@ -29,9 +24,9 @@ public:
     void setLastWaveDirectory(const String& str){ lastWaveDirectory = str; 		}
     void setLoadedWave(const String& str) 		{ loadedWave = str; 			}
 
-	const String& getLoadedWavePath() const		{ return loadedWave; 			}
-    const String& getLastWaveDirectory() const 	{ return lastWaveDirectory; 	}
-	const String& getLastPresetDir() const		{ return lastPresetDirectory; 	}
+	[[nodiscard]] const String& getLoadedWavePath() const		{ return loadedWave; 			}
+    [[nodiscard]] const String& getLastWaveDirectory() const 	{ return lastWaveDirectory; 	}
+	[[nodiscard]] const String& getLastPresetDir() const		{ return lastPresetDirectory; 	}
 
 private:
 	String loadedWave;
@@ -43,5 +38,3 @@ private:
 	String homeUrl;
 	String contentDir;
 };
-
-#endif

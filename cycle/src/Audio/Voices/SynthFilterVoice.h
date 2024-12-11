@@ -1,13 +1,10 @@
-#ifndef _SYNTHFILTERVOICE_H_
-#define _SYNTHFILTERVOICE_H_
-
+#pragma once
 
 #include <ippdefs.h>
 #include <App/MeshLibrary.h>
 #include <Array/ScopedAlloc.h>
 #include <Algo/Convolver.h>
 #include <Obj/Ref.h>
-#include "SynthState.h"
 #include "CycleBasedVoice.h"
 #include "VoiceParameterGroup.h"
 
@@ -19,17 +16,18 @@ class SynthFilterVoice :
 {
 public:
 	SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo);
-	virtual ~SynthFilterVoice();
 
-	void calcCycle(VoiceParameterGroup& group);
+	~SynthFilterVoice() override;
+
+	void calcCycle(VoiceParameterGroup& group) override;
 	bool calcTimeDomain(VoiceParameterGroup& group, int samplingSize, int oversampleFactor);
 	void calcMagnitudeFilters(Buffer<Ipp32f> fftRamp);
 	void calcPhaseDomain(Buffer<float> fftRamp, bool didFwdFFT, bool rightPhasesAreSet, int& channelCount);
 
-	void initialiseNoteExtra(const int midiNoteNumber, const float velocity);
+	void initialiseNoteExtra(int midiNoteNumber, float velocity) override;
 	void testMeshConditions();
 	void updateCachedCycles();
-	void updateValue(int outputId, int dim, float value);
+	void updateValue(int outputId, int dim, float value) override;
 
 private:
 	MeshRasterizer freqRasterizer;
@@ -49,5 +47,3 @@ private:
 
 	friend class SynthesizerVoice;
 };
-
-#endif

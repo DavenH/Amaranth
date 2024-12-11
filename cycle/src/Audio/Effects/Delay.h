@@ -1,7 +1,4 @@
-#ifndef _delay_h
-#define _delay_h
-
-#include <ipp.h>
+#pragma once
 #include <Obj/Ref.h>
 #include <App/SingletonAccessor.h>
 
@@ -26,11 +23,11 @@ class Delay : public Effect
 public:
 	enum DelayParam { Time, Feedback, SpinIters, Spin, Wet, numDelayParams };
 
-	Delay(SingletonRepo* repo);
-	~Delay();
+	explicit Delay(SingletonRepo* repo);
+	~Delay() override;
 
-	void processBuffer(AudioSampleBuffer& buffer);
-	bool isEnabled() const;
+	void processBuffer(AudioSampleBuffer& buffer) override;
+	[[nodiscard]] bool isEnabled() const override;
 
 	void setWetLevel(double value);
 	bool setSpinAmount(double value);
@@ -40,14 +37,14 @@ public:
 	static int calcSpinIters(double value);
 	void recalculateWetBuffers(bool print = false);
 	void setUI(GuilessEffect* comp);
-	void audioThreadUpdate();
+	void audioThreadUpdate() override;
 	double calcDelayTime(double unitValue);
 
 protected:
-	bool doParamChange(int param, double value, bool doFurtherUpdate);
+	bool doParamChange(int param, double value, bool doFurtherUpdate) override;
 
 private:
-	static const int delaySize = 65536;
+	static constexpr int delaySize = 65536;
 
 	bool pendingWetBufferUpdate;
 
@@ -66,5 +63,3 @@ private:
 	ScopedAlloc<Ipp32f> inputBuffer[2];
 	ScopedAlloc<Ipp32f> wetBuffer[2];
 };
-
-#endif

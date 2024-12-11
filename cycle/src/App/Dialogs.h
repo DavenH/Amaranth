@@ -110,10 +110,10 @@ private:
 	Ref<EditWatcher> watcher;
 	stack<PostModalAction> pendingModalActions;
 
-	ScopedPointer<WildcardFileFilter> 	fileFilter;
-	ScopedPointer<FileChooserDialogBox> fileLoader;
-	ScopedPointer<FileBrowserComponent> fileBrowser;
-	ScopedPointer<FileChooser> 			nativeFileChooser;
+	std::unique_ptr<WildcardFileFilter> 	fileFilter;
+	std::unique_ptr<FileChooserDialogBox> fileLoader;
+	std::unique_ptr<FileBrowserComponent> fileBrowser;
+	std::unique_ptr<FileChooser> 			nativeFileChooser;
 };
 
 #endif

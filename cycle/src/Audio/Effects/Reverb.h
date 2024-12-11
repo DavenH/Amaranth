@@ -1,6 +1,4 @@
-#ifndef _reverb_h
-#define _reverb_h
-
+#pragma once
 #include "AudioEffect.h"
 #include <Obj/Ref.h>
 #include <Algo/Algo.h>
@@ -21,19 +19,19 @@ public:
 	enum Params { Size, Damp, Width, Highpass, Wet, numReverbParams };
 
 	ReverbEffect(SingletonRepo* repo);
-	void processBuffer(AudioSampleBuffer& buffer);
-	bool doParamChange(int index, double value, bool doFutherUpdate);
-	bool isEnabled() const;
+	void processBuffer(AudioSampleBuffer& buffer) override;
+	bool doParamChange(int index, double value, bool doFutherUpdate) override;
+	bool isEnabled() const override;
 	void setPendingAction(int action, int value);
 	void createKernel(int size);
-	void createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<float> ramp);
+	void createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<float> ramp) const;
 	void updateKernelSections();
-	void audioThreadUpdate();
+	void audioThreadUpdate() override;
 	void resetOutputBuffer();
 	void setBlockSize(int size);
 	void randomizePhase(Buffer<float> buffer);
 	void setUI(GuilessEffect* comp) { ui = comp; }
-	void timerCallback(int id);
+	void timerCallback(int id) override;
 
 private:
 	float roomSize, wetLevel, dryLevel, width, highpass;
@@ -66,5 +64,3 @@ private:
 
 	Transform fft;
 };
-
-#endif

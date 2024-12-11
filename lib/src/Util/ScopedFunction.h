@@ -28,12 +28,15 @@ class GlobalScopedFunction : public SingletonAccessor {
 public:
     typedef void (* FunctionType)(SingletonRepo*);
 
-    GlobalScopedFunction(FunctionType doNow, FunctionType doLater, SingletonRepo* repo) :
+    GlobalScopedFunction(
+        FunctionType doNow,
+        FunctionType doLater,
+        SingletonRepo* repo) :
             SingletonAccessor(repo, "GlobalScopedFunction"), doLater(doLater) {
         doNow(repo);
     }
 
-    ~GlobalScopedFunction() {
+    ~GlobalScopedFunction() override {
         doLater(repo);
     }
 

@@ -10,7 +10,6 @@ PresetWindow::PresetWindow()
 	setResizable(true, true);
 }
 
-
 void PresetWindow::show(SingletonRepo* repo, Component* toCentreAround)
 {
 	if(! JUCEApplication::isStandaloneApp())

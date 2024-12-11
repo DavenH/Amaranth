@@ -1,6 +1,8 @@
 #include "FileChooserContent.h"
 #include "FileChooser.h"
 
+#include <Definitions.h>
+
 ContentComponent::ContentComponent (const String& name,
 									const String& instructions_,
 									FileBrowserComponent& chooserComponent_)
@@ -9,13 +11,12 @@ ContentComponent::ContentComponent (const String& name,
 	,	okButton 		(chooserComponent_.getActionVerb())
 	,	cancelButton 	("Cancel")
 	,	newFolderButton ("New Folder")
-	,	presetDetails	(String::empty, "Preset Details")
-	,	authorLabel		(String::empty, "Author")
-	,	tagsLabel		(String::empty, "Tags")
-	, 	packLabel		(String::empty, "Pack")
-	, 	detailsLabel	(String::empty, "Comments")
-	, 	instructions 	(String::empty)
-{
+	,	presetDetails	({}, "Preset Details")
+	,	authorLabel		({}, "Author")
+	,	tagsLabel		({}, "Tags")
+	, 	packLabel		({}, "Pack")
+	, 	detailsLabel	({}, "Comments")
+	, 	instructions 	(instructions_) {
 	addAndMakeVisible(&chooserComponent);
 	addAndMakeVisible(&okButton);
 	addAndMakeVisible(&cancelButton);
@@ -26,8 +27,7 @@ ContentComponent::ContentComponent (const String& name,
 	TextEditor* editors[] = { &tagsBox, &authorBox, &packBox };
 	Label* labels[] = { &tagsLabel, &authorLabel, &packLabel };
 
-	for(int i = 0; i < numElementsInArray(editors); ++i)
-	{
+	for(int i = 0; i < numElementsInArray(editors); ++i) {
 		addAndMakeVisible(editors[i]);
 		editors[i]->setMultiLine(false);
 		editors[i]->setSelectAllWhenFocused(true);
@@ -37,16 +37,14 @@ ContentComponent::ContentComponent (const String& name,
 	}
 
     presetDetails.setJustificationType(Justification::centred);
-    presetDetails.setFont(Font(15, Font::bold));
+    presetDetails.setFont(FontOptions(15, Font::bold));
     addAndMakeVisible(&presetDetails);
 
 	addChildComponent(&newFolderButton);
 	setInterceptsMouseClicks (false, true);
 }
 
-
-void ContentComponent::paint (Graphics& g)
-{
+void ContentComponent::paint (Graphics& g) {
 	g.setColour (getLookAndFeel().findColour (FileChooserDialog::titleTextColourId));
 
 	text.draw (g, getLocalBounds().reduced (6).removeFromTop ((int) text.getHeight()).toFloat());
@@ -55,9 +53,7 @@ void ContentComponent::paint (Graphics& g)
 	g.fillRect(chooserComponent.getBounds().reduced(8, 30));
 }
 
-
-void ContentComponent::resized()
-{
+void ContentComponent::resized() {
 	const int buttonHeight 	= 26;
 	const int buttonWidth 	= 110;
 	const int detailsHeight = 200;
@@ -77,13 +73,12 @@ void ContentComponent::resized()
 
 	TextEditor* editors[] = { &tagsBox, &authorBox, &packBox, &detailsBox };
 
-	for(int i = 0; i < numElementsInArray(editors); ++i)
-	{
-		editors[i]->setBounds((getWidth() - boxWidth) / 2, detailsArea.getY(), boxWidth, buttonHeight);
+	for(auto& editor : editors) {
+		editor->setBounds((getWidth() - boxWidth) / 2, detailsArea.getY(), boxWidth, buttonHeight);
 		detailsArea.removeFromTop(30);
 	}
 
-	Rectangle<int> buttonArea (area.reduced (16, 10));
+	Rectangle buttonArea (area.reduced (16, 10));
 
 	okButton.setSize(buttonWidth, buttonHeight);
 	cancelButton.setSize(buttonWidth, buttonHeight);

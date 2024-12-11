@@ -137,12 +137,12 @@ private:
 	Ref<MeshLibrary> meshLib;
 	Ref<Spectrum2D> spect2D;
 
-	ScopedPointer<PulloutComponent> 	operPO;
-	ScopedPointer<RetractableCallout> 	operCO;
+	std::unique_ptr<PulloutComponent> 	operPO;
+	std::unique_ptr<RetractableCallout> 	operCO;
 
-	ScopedPointer<PulloutComponent> 	modePO;
-	ScopedPointer<RetractableCallout> 	modeCO;
-	ScopedPointer<MeshSelector<Mesh> > 	meshSelector;
+	std::unique_ptr<PulloutComponent> 	modePO;
+	std::unique_ptr<RetractableCallout> 	modeCO;
+	std::unique_ptr<MeshSelector<Mesh> > 	meshSelector;
 };
 
 #endif

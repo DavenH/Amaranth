@@ -1,5 +1,4 @@
-#ifndef _meshselectionclient3d_h
-#define _meshselectionclient3d_h
+#pragma once
 
 #include <App/SingletonAccessor.h>
 #include <App/EditWatcher.h>
@@ -17,145 +16,128 @@
 
 class MeshSelectionClient3D;
 
-class SelectionClientOwner
-{
+class SelectionClientOwner {
 public:
-	virtual void meshSelectionChanged(Mesh* mesh) {}
-	virtual void meshSelectionFinished() {}
-	virtual void enterClientLock(bool audioThreadApplicable) = 0;
-	virtual void exitClientLock(bool audioThreadApplicable) = 0;
+    virtual ~SelectionClientOwner() = default;
+    virtual void meshSelectionChanged(Mesh* mesh) {}
+    virtual void meshSelectionFinished() {}
+    virtual void enterClientLock(bool audioThreadApplicable) = 0;
+    virtual void exitClientLock(bool audioThreadApplicable) = 0;
 
-//	void setClient(MeshSelectionClient3D* client) 	{ selectionClient = client; }
-	Ref<MeshSelectionClient3D> getSelectionClient() { return Ref<MeshSelectionClient3D>(selectionClient); }
+    //	void setClient(MeshSelectionClient3D* client) 	{ selectionClient = client; }
+    Ref<MeshSelectionClient3D> getSelectionClient() { return selectionClient.get(); }
 
 protected:
-	ScopedPointer<MeshSelectionClient3D> selectionClient;
+    std::unique_ptr<MeshSelectionClient3D> selectionClient;
 };
 
 class MeshSelectionClient3D :
-		public MeshSelectionClient<Mesh>
-	,	public SingletonAccessor
-{
+        public MeshSelectionClient<Mesh>
+        , public SingletonAccessor {
 private:
-	Ref<EditWatcher> watcher;
-	Ref<MeshLibrary> meshLib;
-	Ref<SelectionClientOwner> owner;
+    Ref<EditWatcher> watcher;
+    Ref<MeshLibrary> meshLib;
+    Ref<SelectionClientOwner> owner;
 
-	Interactor* interactor;
-	MeshRasterizer* rasterizer;
+    Interactor* interactor {};
+    MeshRasterizer* rasterizer {};
 
-	bool usedToViewVertsOnHover;
-	int layerType;
+    bool usedToViewVertsOnHover;
+    int layerType {};
 
 public:
-	MeshSelectionClient3D(SelectionClientOwner* owner,
-						  SingletonRepo* repo,
-						  EditWatcher* watcher,
-						  MeshLibrary* meshLib) :
-			SingletonAccessor(repo, "MeshSelectionClient3D")
-		,	owner(owner)
-		,	watcher(watcher)
-		,	meshLib(meshLib)
-		,	usedToViewVertsOnHover(true)
-	{
-	}
+    MeshSelectionClient3D(SelectionClientOwner* owner,
+                          SingletonRepo* repo,
+                          EditWatcher* watcher,
+                          MeshLibrary* meshLib) : SingletonAccessor(repo, "MeshSelectionClient3D")
+                                                  , owner(owner)
+                                                  , watcher(watcher)
+                                                  , meshLib(meshLib)
+                                                  , usedToViewVertsOnHover(true) {
+    }
 
-	void enterClientLock() {}
-	void exitClientLock() {}
+    void enterClientLock() override {
+    }
 
-	void initialise(Interactor* itr, MeshRasterizer* rast, int layerType)
-	{
-		interactor = itr;
-		rasterizer = rast;
+    void exitClientLock() override {
+    }
 
-		this->layerType = layerType;
-	}
+    void initialise(Interactor* itr, MeshRasterizer* rast, int layerType) {
+        interactor = itr;
+        rasterizer = rast;
 
-	void doubleMesh()
-	{
-		interactor->getMesh()->twin(0, 0);
-		interactor->postUpdateMessage();
-	}
+        this->layerType = layerType;
+    }
 
-	void setCurrentMesh(Mesh* mesh)
-	{
-		owner->enterClientLock(true);
-		interactor->resetState();
+    void doubleMesh() override {
+        interactor->getMesh()->twin(0, 0);
+        interactor->postUpdateMessage();
+    }
 
-		Interactor* opposite = interactor->getOppositeInteractor();
-		if(opposite != nullptr)
-			opposite->resetState();
+    void setCurrentMesh(Mesh* mesh) override {
+        owner->enterClientLock(true);
+        interactor->resetState();
 
-//		meshLib->setCurrentMeshForLayer(layerType, mesh);
-		meshLib->setCurrentMesh(layerType, mesh);
-		interactor->clearSelectedAndCurrent();
+        Interactor* opposite = interactor->getOppositeInteractor();
+        if (opposite != nullptr)
+            opposite->resetState();
 
-		updateEverything(mesh);
-		owner->meshSelectionFinished();
+        //		meshLib->setCurrentMeshForLayer(layerType, mesh);
+        meshLib->setCurrentMesh(layerType, mesh);
+        interactor->clearSelectedAndCurrent();
 
-		getSetting(ViewVertsOnlyOnHover) = usedToViewVertsOnHover;
+        updateEverything(mesh);
+        owner->meshSelectionFinished();
 
-		watcher->setHaveEditedWithoutUndo(true);
-		interactor->triggerRefreshUpdate();
+        getSetting(ViewVertsOnlyOnHover) = usedToViewVertsOnHover;
 
-		owner->exitClientLock(true);
-	}
+        watcher->setHaveEditedWithoutUndo(true);
+        interactor->triggerRefreshUpdate();
 
+        owner->exitClientLock(true);
+    }
 
-	void previewMesh(Mesh* mesh)
-	{
-		owner->enterClientLock(false);
-		getSetting(ViewVertsOnlyOnHover) = false;
+    void previewMesh(Mesh* mesh) override {
+        owner->enterClientLock(false);
+        getSetting(ViewVertsOnlyOnHover) = false;
 
-		updateEverything(mesh);
-		owner->exitClientLock(false);
-	}
+        updateEverything(mesh);
+        owner->exitClientLock(false);
+    }
 
+    void previewMeshEnded(Mesh* originalMesh) override {
+        owner->enterClientLock(false);
+        getSetting(ViewVertsOnlyOnHover) = usedToViewVertsOnHover;
 
-	void previewMeshEnded(Mesh* originalMesh)
-	{
-		owner->enterClientLock(false);
-		getSetting(ViewVertsOnlyOnHover) = usedToViewVertsOnHover;
+        updateEverything(originalMesh);
+        owner->exitClientLock(false);
+    }
 
-		updateEverything(originalMesh);
-		owner->exitClientLock(false);
-	}
+    void updateEverything(Mesh* mesh) {
+        rasterizer->setMesh(mesh);
+        rasterizer->update((int) UpdateType::Update);
 
+        owner->meshSelectionChanged(mesh);
+    }
 
-	void updateEverything(Mesh* mesh)
-	{
-		rasterizer->setMesh(mesh);
-		rasterizer->update((int) UpdateType::Update);
+    Mesh* getCurrentMesh() override {
+        Mesh* mesh = rasterizer->getMesh();
 
-		owner->meshSelectionChanged(mesh);
-	}
+        return mesh;
+    }
 
+    CriticalSection& getClientLock() {
+        return getObj(SynthAudioSource).getLock();
+    }
 
-	Mesh* getCurrentMesh()
-	{
-		Mesh* mesh = rasterizer->getMesh();
+    void prepareForPopup() override {
+        MeshLibrary::LayerGroup& group = meshLib->getGroup(layerType);
+        group.selected.clear();
 
-		return mesh;
-	}
+        usedToViewVertsOnHover = getSetting(ViewVertsOnlyOnHover) == 1;
+    }
 
-
-	CriticalSection& getClientLock()
-	{
-		return getObj(SynthAudioSource).getLock();
-	}
-
-
-	void prepareForPopup()
-	{
-		MeshLibrary::LayerGroup& group = meshLib->getGroup(layerType);
-		group.selected.clear();
-
-		usedToViewVertsOnHover = getSetting(ViewVertsOnlyOnHover) == 1;
-	}
-
-	int getLayerType()
-	{
-		return layerType;
-	}
+    int getLayerType() override {
+        return layerType;
+    }
 };
-#endif

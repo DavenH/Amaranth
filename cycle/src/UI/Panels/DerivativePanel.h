@@ -38,7 +38,7 @@ private:
 	ScopedAlloc<Ipp32f> workMemory;
 	ScopedAlloc<Ipp16s> indices;
 	Buffer<float> exes;
-	ScopedPointer<FIR> fir;
+	std::unique_ptr<FIR> fir;
 };
 
 #endif

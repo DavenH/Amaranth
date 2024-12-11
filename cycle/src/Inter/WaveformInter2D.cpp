@@ -49,16 +49,13 @@ void WaveformInter2D::showCoordinates() {
     showMsg(coords);
 }
 
-
 bool WaveformInter2D::isCurrentMeshActive() {
     return getObj(WaveformInter3D).isCurrentMeshActive();
 }
 
-
 Interactor* WaveformInter2D::getOppositeInteractor() {
     return &getObj(WaveformInter3D);
 }
-
 
 void WaveformInter2D::modelAudioCycle() {
     if (!getSetting(WaveLoaded)) {
@@ -83,7 +80,8 @@ void WaveformInter2D::modelAudioCycle() {
     {
         ScopedLock sl(getObj(SynthAudioSource).getLock());
 
-        getObj(AutoModeller).model(columnCopy, this, true, 0, false, 0.3f);
+        AutoModeller modeller;
+        modeller.modelToInteractor(columnCopy, this, true, 0, 0.3f);
     }
 
     postUpdateMessage();

@@ -10,7 +10,7 @@ public:
 	Component* getControlsComponent() { return panelControls; }
 
 protected:
-	ScopedPointer<PanelControls> panelControls;
+	std::unique_ptr<PanelControls> panelControls;
 };
 
 

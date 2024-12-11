@@ -264,24 +264,22 @@ void Initializer::instantiate() {
 	repo->add(new Directories		(repo), -50);
 	repo->add(new FileManager		(repo));
 	repo->add(new KeyboardInputHandler(repo));
-	repo->add(new CsvFile			(repo));
 	repo->add(new VersionConsiliator(repo));
 
 	// AUDIO
 	repo->add(new SampleUtils		(repo));
 	repo->add(new AudioSourceRepo	(repo));
 	repo->add(new MidiKeyboard		(repo, getObj(AudioHub).getKeyboardState(), MidiKeyboardComponent::horizontalKeyboard));
-	repo->add(new PitchTracker		(repo));
-	repo->add(pitchRast = new EnvWavePitchRast(repo, "EnvWavePitchRast"));
+	repo->add(pitchRast = new EnvWavePitchRast("EnvWavePitchRast"));
 	repo->add(audioSource = new SynthAudioSource(repo));
 	repo->add(new Multisample(repo, pitchRast));
 
-	Delay* delay			= new Delay(repo);
-	Unison* unison 			= new Unison(repo);
-	ReverbEffect* reverb 	= new ReverbEffect(repo);
-	Equalizer* equalizer 	= new Equalizer(repo);
-	IrModeller* modeller 	= new IrModeller(repo);
-	Waveshaper* waveshaper 	= new Waveshaper(repo);
+	auto* delay			= new Delay(repo);
+	auto* unison 			= new Unison(repo);
+	auto* reverb 	= new ReverbEffect(repo);
+	auto* equalizer 	= new Equalizer(repo);
+	auto* modeller 	= new IrModeller(repo);
+	auto* waveshaper 	= new Waveshaper(repo);
 
 	repo->add(delay);
 	repo->add(unison);
@@ -409,7 +407,6 @@ Initializer::~Initializer() {
   #endif
 }
 
-
 void Initializer::resetAll() {
     progressMark
 
@@ -417,21 +414,20 @@ void Initializer::resetAll() {
 	doUpdate(SourceAll);
 }
 
-
 void Initializer::takeLocks(SingletonRepo* repo) {
-    for (int i = 0; i < lockingPanels.size(); ++i)
-		lockingPanels.getUnchecked(i).getRenderLock().enter();
+    for (int i = 0; i < lockingPanels.size(); ++i) {
+	    lockingPanels.getUnchecked(i).getRenderLock().enter();
+    }
 }
-
 
 void Initializer::releaseLocks(SingletonRepo* repo) {
-    for (int i = lockingPanels.size() - 1; i >= 0; --i)
-		lockingPanels.getUnchecked(i).getRenderLock().enter();
+    for (int i = lockingPanels.size() - 1; i >= 0; --i) {
+	    lockingPanels.getUnchecked(i).getRenderLock().enter();
+    }
 }
 
-
 void Initializer::freeUIResources() {
-    dout << "freeing UI resources\n";
+    std::cout << "freeing UI resources\n";
 
 	getObj(Waveform3D).deactivateContext();
 	getObj(Waveform2D).deactivateContext();

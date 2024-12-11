@@ -13,7 +13,7 @@
 #include "../Util/CycleEnums.h"
 
 
-VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) : MeshRasterizer(repo), state(nullptr) {
+VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) : state(nullptr) {
 	unsampleable 		= true;
 	overrideDim 		= true;
 	scalingType 		= Bipolar;
@@ -39,8 +39,7 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
     bool overlapsAll, overlapsOthers;
     needsResorting = false;
 
-    foreach(CubeIter, it, mesh->getCubes()) {
-        VertCube* cube = *it;
+	for(auto cube : mesh->getCubes()) {
         float voiceTime = jmin(1.f, morph.time + state->advancement);
 
 		cube->getInterceptsFast(Vertex::Time, reduct, MorphPosition(voiceTime, morph.red, morph.blue));
@@ -74,14 +73,16 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 
             float phase = vertex->values[Vertex::Phase] + oscPhase;
 
-            while (phase >= 1)
-                phase -= 1;
-            while (phase < 0)
-                phase += 1;
+            while (phase >= 1) {
+	            phase -= 1;
+            }
+            while (phase < 0) {
+	            phase += 1;
+            }
 
             jassert(phase >= 0 && phase < 1);
 
-            Intercept intercept(phase, 2.f * vertex->values[Vertex::Amp] - 1.f, *it, 0);
+            Intercept intercept(phase, 2.f * vertex->values[Vertex::Amp] - 1.f, cube, 0);
 
 			intercept.shp = vertex->values[Vertex::Curve];
 			intercept.adjustedX = intercept.x;

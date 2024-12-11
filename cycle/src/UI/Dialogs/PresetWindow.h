@@ -1,6 +1,4 @@
-#ifndef PRESETWINDOW_H_
-#define PRESETWINDOW_H_
-
+#pragma once
 #include "JuceHeader.h"
 
 class SingletonRepo;
@@ -15,5 +13,3 @@ public:
 private:
     JUCE_DECLARE_NON_COPYABLE (PresetWindow);
 };
-
-#endif

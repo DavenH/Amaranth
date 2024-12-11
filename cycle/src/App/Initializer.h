@@ -1,5 +1,4 @@
-#ifndef INITIALIZER_H_
-#define INITIALIZER_H_
+#pragma once
 
 #include <App/SingletonAccessor.h>
 #include "JuceHeader.h"
@@ -13,9 +12,9 @@ class Initializer : public SingletonAccessor
 {
 public:
 	Initializer();
-	virtual ~Initializer();
+	~Initializer() override;
 
-	void init();
+	void init() override;
 	void init2();
 	void initSingletons();
 	void resetAll();
@@ -25,7 +24,7 @@ public:
 //	void updateDllName();
 	void freeUIResources();
 
-	int getInstanceId() 						{ return instanceId; }
+	int getInstanceId() const 					{ return instanceId; }
 	void setCommandLine(const String& command) 	{ this->commandLine = command; }
 	const String& getCommandLine() 				{ return commandLine; }
 
@@ -41,7 +40,7 @@ private:
 	String commandLine;
 	String dllName;
 
-	ScopedPointer<SingletonRepo> singletonRepo;
+	std::unique_ptr<SingletonRepo> singletonRepo;
 	Array<Panel> lockingPanels;
 
 	static Atomic<int> numInstances;
@@ -51,5 +50,3 @@ typedef EnvRasterizer EnvVolumeRast;
 typedef EnvRasterizer EnvPitchRast;
 typedef EnvRasterizer EnvScratchRast;
 typedef FXRasterizer  EnvWavePitchRast;
-
-#endif

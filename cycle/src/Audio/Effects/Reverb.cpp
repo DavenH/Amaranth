@@ -8,7 +8,6 @@
 #include "../../UI/Effects/GuilessEffect.h"
 #include "../../UI/Effects/ReverbUI.h"
 
-
 ReverbEffect::ReverbEffect(SingletonRepo* repo) :
 		Effect			(repo, "ReverbEffect")
 	,	leftConv		(repo)
@@ -32,45 +31,38 @@ ReverbEffect::ReverbEffect(SingletonRepo* repo) :
 	seed = Time::currentTimeMillis();
 
 	memory.resize(256);
-	noiseArray = memory;
+	noiseArray = memory.place(256);
 	noiseArray.rand(seed);
 //	setPendingAction(kernelSize, 131072);
 }
 
-String numfill(int number)
-{
+String numfill(int number) {
 	return String(number) + (number < 1000 ? "\t\t" : "\t");
 }
 
-
-void ReverbEffect::processBuffer(AudioSampleBuffer& buffer)
-{
+void ReverbEffect::processBuffer(AudioSampleBuffer &buffer) {
 	StereoBuffer input(buffer);
 
-	if(outBuffer.left.empty())
+	if (outBuffer.left.empty())
 		return;
 
-//	if(calls == 0)
-//	{
-//		dout << "samp\tcume\tf.re\tf.wr\tp.re\tp.wr\t\n";
-//	}
+	//	if(calls == 0)
+	//	{
+	//		dout << "samp\tcume\tf.re\tf.wr\tp.re\tp.wr\t\n";
+	//	}
 
 	int numSamples = buffer.getNumSamples();
 
-	ConvReverb* convolvers[] = { &leftConv, &rightConv };
+	ConvReverb *convolvers[] = {&leftConv, &rightConv};
 
-	for(int i = 0; i < buffer.getNumChannels(); ++i)
-	{
+	for (int i = 0; i < buffer.getNumChannels(); ++i) {
 		Buffer<float> out = outBuffer[i].withSize(numSamples);
 		convolvers[i]->process(input[i], out);
 	}
 
-	if(buffer.getNumChannels() == 1)
-	{
+	if (buffer.getNumChannels() == 1) {
 		input.left.mul(1 - 0.25 * wetLevel).addProduct(outBuffer.left, wetLevel);
-	}
-	else
-	{
+	} else {
 		Buffer<float> merge = mergeBuffer.withSize(numSamples);
 		float level = 1 - 0.24f * wetLevel
 
@@ -91,15 +83,14 @@ bool ReverbEffect::doParamChange(int index, double value, bool doFutherUpdate)
 {
 	juce::Reverb::Parameters parameters = model.getParameters();
 
-	switch(index)
-	{
-		case Size:
-		{
+	switch (index) {
+		case Size: {
 			roomSize = value;
 
 			int length = NumberUtils::nextPower2((int) powf(2, 12 + 6 * roomSize));
-			if(length != kernel[0].size())
+			if (length != kernel[0].size()) {
 				setPendingAction(kernelSize, length);
+			}
 
 			break;
 		}
@@ -107,13 +98,11 @@ bool ReverbEffect::doParamChange(int index, double value, bool doFutherUpdate)
 		case Damp:
 			rolloffFactor = value * 0.7;
 			setPendingAction(filterAction, 0);
-//			parameters.damping 	= value;
 
 			break;
 
 		case Width:
 			width = value;
-//			parameters.width = value;
 			break;
 
 		case Highpass:
@@ -122,29 +111,25 @@ bool ReverbEffect::doParamChange(int index, double value, bool doFutherUpdate)
 			break;
 
 		case Wet:
-//			parameters.wetLevel = value;
+			//			parameters.wetLevel = value;
 			wetLevel = 0.25f * value;
 			break;
+		default:
+			throw std::invalid_argument("ReverbEffect::doParamChange, Invalid Parameter Index");
 	}
 
-//	model.setParameters(parameters);
+	//	model.setParameters(parameters);
 
 	return false;
 }
 
-
-bool ReverbEffect::isEnabled() const
-{
+bool ReverbEffect::isEnabled() const {
 	return ui->isEffectEnabled();
 }
 
-
-void ReverbEffect::setPendingAction(int action, int value)
-{
-	switch(action)
-	{
-		case blockSize:
-		{
+void ReverbEffect::setPendingAction(int action, int value) {
+	switch (action) {
+		case blockSize: {
 			blockSizeAction.setValueAndTrigger(value);
 			break;
 		}
@@ -153,15 +138,11 @@ void ReverbEffect::setPendingAction(int action, int value)
 			kernelSizeAction.setValueAndTrigger(value);
 			break;
 
-		case filterAction:
-		{
-			if(Time::currentTimeMillis() - timeSinceLastFilterAction >= 50)
-			{
+		case filterAction: {
+			if (Time::currentTimeMillis() - timeSinceLastFilterAction >= 50) {
 				timeSinceLastFilterAction = Time::currentTimeMillis();
 				kernelFilterAction.trigger();
-			}
-			else
-			{
+			} else {
 				kernelFilterAction.dismiss();
 
 				stopTimer(kernelSize);
@@ -169,14 +150,13 @@ void ReverbEffect::setPendingAction(int action, int value)
 			}
 			break;
 		}
+		default:
+			throw std::invalid_argument("ReverbEffect::setPendingAction, Invalid Parameter Index");
 	}
 }
 
-
-void ReverbEffect::timerCallback(int id)
-{
-	switch(id)
-	{
+void ReverbEffect::timerCallback(int id) {
+	switch (id) {
 		case blockSize:
 			setPendingAction(blockSize, blockSizeAction.getValue());
 			break;
@@ -184,30 +164,30 @@ void ReverbEffect::timerCallback(int id)
 		case kernelSize:
 			setPendingAction(filterAction, 0);
 			break;
+		default:
+			throw std::invalid_argument("ReverbEffect::timerCallback, Invalid Parameter Index");
 	}
 
 	stopTimer(id);
 }
 
-
-void ReverbEffect::createKernel(int size)
-{
+void ReverbEffect::createKernel(int size) {
 	jassert(size > 0);
 
 	int nextPow2 = NumberUtils::nextPower2(size);
 
-	if(nextPow2 < 256)
+	if (nextPow2 < 256) {
 		return;
+	}
 
 	kernelMemory.resize(nextPow2 * 2);
-	kernelMemory;
 
-	for(int c = 0; c < 2; ++c)
+	for (int c = 0; c < 2; ++c) {
 		kernel[c] = kernelMemory.section(c * nextPow2, nextPow2);
+	}
 
 	updateKernelSections();
 }
-
 
 void ReverbEffect::updateKernelSections()
 {
@@ -249,12 +229,10 @@ void ReverbEffect::updateKernelSections()
 
 	const int numBuffers  = kernel.left.size() / buffSize;
 
-	for(int c = 0; c < 2; ++c)
-	{
+	for(int c = 0; c < 2; ++c) {
 		cumeRoll.set(1.f);
 
-		for(int i = 0; i < numBuffers; ++i)
-		{
+		for(int i = 0; i < numBuffers; ++i) {
 			Buffer<float> section = kernel[c].section(i * buffSize, buffSize);
 
 			createVolumeRamp(i, numBuffers, buffSize, volRamp);
@@ -280,9 +258,8 @@ void ReverbEffect::updateKernelSections()
 	rightConv.init(rightConv.headBlockSize, rightConv.tailBlockSize, kernel.right);
 }
 
-
-void ReverbEffect::createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<float> ramp)
-{
+// TODO why is half of this commented out?
+void ReverbEffect::createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<float> ramp) const {
 	const int rampUpBuffs = jlimit(3, 20, int(roomSize * 0.03f * numBuffers));
 	float rampStart, rampEnd, rampDelta;
 
@@ -307,8 +284,7 @@ void ReverbEffect::createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<
 		rampDelta 	= (rampEnd - rampStart) / float(buffSize);
 //	}
 
-	if(i < rampUpBuffs)
-	{
+	if(i < rampUpBuffs) {
 		/*
 
 
@@ -356,13 +332,12 @@ void ReverbEffect::createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<
 
 	int silence = roomSize * 450 - i * buffSize;
 
-	if(silence > 0)
+	if(silence > 0) {
 		ramp.zero(jmin(buffSize, silence));
+	}
 }
 
-
-void ReverbEffect::setBlockSize(int size)
-{
+void ReverbEffect::setBlockSize(int size) {
 	int nextPow2 = NumberUtils::nextPower2(size);
 
 	blockMemory.ensureSize(size * 3);
@@ -371,8 +346,7 @@ void ReverbEffect::setBlockSize(int size)
 
 	ConvReverb* convolvers[] = { &leftConv, &rightConv };
 
-	for(int i = 0; i < 2; ++i)
-	{
+	for(int i = 0; i < 2; ++i) {
 		outBuffer[i] = blockMemory.place(size);
 		outBuffer[i].zero();
 
@@ -380,37 +354,27 @@ void ReverbEffect::setBlockSize(int size)
 	}
 }
 
-
-void ReverbEffect::audioThreadUpdate()
-{
-	if(blockSizeAction.isPending())
+void ReverbEffect::audioThreadUpdate() {
+	if(blockSizeAction.isPending()) {
 		setBlockSize(blockSizeAction.getValueAndDismiss());
+	}
 
-	if(kernelSizeAction.isPending())
+	if(kernelSizeAction.isPending()) {
 		createKernel(kernelSizeAction.getValueAndDismiss());
+	}
 
-	if(kernelFilterAction.isPending())
-	{
+	if(kernelFilterAction.isPending()) {
 		updateKernelSections();
 		kernelFilterAction.dismiss();
 	}
 }
 
-
-void ReverbEffect::resetOutputBuffer()
-{
+void ReverbEffect::resetOutputBuffer() {
 	outBuffer.left.zero();
 	outBuffer.right.zero();
-
-	/*
-	overlapBuffer[0].zero();
-	overlapBuffer[1].zero();
-	 */
 }
 
-
-void ReverbEffect::randomizePhase(Buffer<float> buffer)
-{
+void ReverbEffect::randomizePhase(Buffer<float> buffer) {
 	/*
 	fft.forward(buffer);
 	fft.getPhases().rand(seed);

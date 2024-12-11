@@ -1,29 +1,37 @@
 #include <Array/Buffer.h>
-#include <Audio/PluginProcessor.h>
-#include <Test/CsvFile.h>
-#include <Thread/LockTracer.h>
 #include <Util/StatusChecker.h>
 #include <Util/Util.h>
 #include "IrModeller.h"
 
 #include <Design/Updating/Updater.h>
 
-#include "../../Audio/AudioSourceRepo.h"
 #include "../../Audio/SynthAudioSource.h"
 #include "../../UI/Effects/IrModellerUI.h"
 #include "../../UI/VisualDsp.h"
 #include "../../UI/VertexPanels/EffectPanel.h"
-#include "../../UI/VertexPanels/Spectrum3D.h"
 #include "../../UI/Panels/MainPanel.h"
 #include "../../Util/CycleEnums.h"
 
 
 IrModeller::IrModeller(SingletonRepo *repo) :
-        Effect(repo, "IrModeller"), postamp(1.f), accumWritePos(512), convReadPos(512), convBufferSize(512), output(2),
-        enabled(false), waveLoaded(false), usingWavFile(false), unloadWavAction(unloadWav), convSizeAction(convSize),
-        impulseSizeAction(impulseSize), blockSizeAction(blockSize), prefiltAction(prefilterChg),
-        rasterizeAction(rasterize), audioThdRasterizer(repo, "ImpulseRasterizerAudioThd"), oversampler(repo, 8),
-        wavImpulse(repo) {
+        Effect(repo, "IrModeller")
+    ,   postamp(1.f)
+    ,   accumWritePos(512)
+    ,   convReadPos(512)
+    ,   convBufferSize(512)
+    ,   output(2)
+    ,   enabled(false)
+    ,   waveLoaded(false)
+    ,   usingWavFile(false)
+    ,   unloadWavAction(unloadWav)
+    ,   convSizeAction(convSize)
+    ,   impulseSizeAction(impulseSize)
+    ,   blockSizeAction(blockSize)
+    ,   prefiltAction(prefilterChg)
+    ,   rasterizeAction(rasterize)
+    ,   audioThdRasterizer("ImpulseRasterizerAudioThd")
+    ,   oversampler(repo, 8)
+    ,   wavImpulse(repo) {
     setConvBufferSize(convBufferSize);
     audioThdRasterizer.setScalingMode(MeshRasterizer::Bipolar);
 
@@ -49,7 +57,6 @@ IrModeller::~IrModeller() {
     wavImpulse.clear();
 }
 
-
 void IrModeller::doPostWaveLoad() {
     trimWave();
 
@@ -62,13 +69,11 @@ void IrModeller::doPostWaveLoad() {
     rasterizeAction.trigger();
 }
 
-
 void IrModeller::doPostDeconvolve(int size) {
     usingWavFile = false;
 
     rasterizeAction.trigger();
 }
-
 
 void IrModeller::trimWave() {
     int size = wavImpulse.buffer.getNumSamples();
@@ -103,7 +108,6 @@ void IrModeller::trimWave() {
         wavImpulse.buffer.setSize(wavImpulse.buffer.getNumChannels(), newSize, true, true);
 }
 
-
 void IrModeller::rasterizeImpulseDirect() {
     rasterizeImpulse(audio.rawImpulse, audioThdRasterizer, true);
     filterImpulse(audio);
@@ -113,7 +117,6 @@ void IrModeller::rasterizeImpulseDirect() {
         conv.init(conv.getBlockSize(), audio.impulse);
     }
 }
-
 
 void IrModeller::rasterizeGraphicImpulse() {
     Buffer<float> impulse = graphic.rawImpulse;
@@ -139,7 +142,6 @@ void IrModeller::rasterizeGraphicImpulse() {
     graphicConv.init(graphicConv.getBlockSize(), graphic.impulse);
 }
 
-
 void IrModeller::filterImpulse(ConvState &chan) {
     int size = chan.impulse.size();
     int halfSize = size / 2;
@@ -158,16 +160,17 @@ void IrModeller::filterImpulse(ConvState &chan) {
     }
 }
 
-
 void IrModeller::rasterizeImpulse(Buffer<float> impulse, FXRasterizer &rast, bool isAudioThread) {
-    if (impulse.empty())
+    if (impulse.empty()) {
         return;
+    }
 
     Ipp32f sum = 0;
 
     if (!usingWavFile) {
-        if (!rast.hasEnoughCubesForCrossSection())
+        if (!rast.hasEnoughCubesForCrossSection()) {
             return;
+        }
 
         rast.performUpdate(UpdateType::Update);
 
@@ -197,26 +200,27 @@ void IrModeller::rasterizeImpulse(Buffer<float> impulse, FXRasterizer &rast, boo
 
         wavBuff.copyTo(impulse);
 
-        if (maxSamples < impulse.size())
+        if (maxSamples < impulse.size()) {
             impulse.offset(maxSamples).zero();
+        }
     }
 }
-
 
 void IrModeller::audioThreadUpdate() {
     checkForPendingUpdates();
 }
 
-
 void IrModeller::processBuffer(AudioSampleBuffer &buffer) {
-    if (audio.impulse.empty()) // || convBufferSize <= 0
+    if (audio.impulse.empty()) {
         return;
+    }
 
     int numSamples = buffer.getNumSamples();
     jassert(numSamples <= audio.blockSize);
 
-    if (numSamples == 0)
+    if (numSamples == 0) {
         return;
+    }
 
     StereoBuffer input(buffer);
 
@@ -227,10 +231,8 @@ void IrModeller::processBuffer(AudioSampleBuffer &buffer) {
     }
 }
 
-
 void IrModeller::initGraphicVars() {
 }
-
 
 void IrModeller::checkForPendingUpdates() {
     bool oldEnabled = enabled;
@@ -270,13 +272,13 @@ void IrModeller::checkForPendingUpdates() {
                     convolvers[0].init(convolvers[0].getBlockSize(), audio.impulse);
                     convolvers[1].init(convolvers[1].getBlockSize(), audio.impulse);
                     break;
+                default: throw std::invalid_argument("Illegal IrModeller state: " + std::to_string(action->getId()));
             }
         }
 
         action->dismiss();
     }
 }
-
 
 void IrModeller::processVertexBuffer(Buffer <Ipp32f> inputBuffer) {
     if (!graphic.impulse.empty())
@@ -285,10 +287,8 @@ void IrModeller::processVertexBuffer(Buffer <Ipp32f> inputBuffer) {
     inputBuffer.mul((float) postamp.getTargetValue());
 }
 
-
 void IrModeller::cleanUp() {
 }
-
 
 void IrModeller::setImpulseLength(ConvState &state, int length) {
     if (length == 0)
@@ -309,26 +309,23 @@ void IrModeller::setImpulseLength(ConvState &state, int length) {
         calcPrefiltLevels(state.levels);
     }
 
-    if (&state == &audio)
+    if (&state == &audio) {
         rasterizeImpulseDirect();
-    else
+    } else {
         rasterizeGraphicImpulse();
+    }
 }
-
 
 void IrModeller::setAudioImpulseLength(int length) {
     setImpulseLength(audio, length);
 }
 
-
 void IrModeller::setGraphicImpulseLength(int length) {
     setImpulseLength(graphic, length);
 }
 
-
 void IrModeller::clearGraphicOverlaps() {
 }
-
 
 void IrModeller::setPendingAction(PendingUpdate type, int value) {
     switch (type) {
@@ -364,11 +361,9 @@ void IrModeller::setPendingAction(PendingUpdate type, int value) {
     }
 }
 
-
 void IrModeller::setMesh(Mesh *mesh) {
     audioThdRasterizer.setMesh(mesh);
 }
-
 
 void IrModeller::setUI(IrModellerUI *comp) {
     ui = comp;
@@ -376,7 +371,6 @@ void IrModeller::setUI(IrModellerUI *comp) {
 //	setMesh(ui->getRasterizer()->getMesh());
 //	setPendingRasterize();
 }
-
 
 void IrModeller::setConvBufferSize(int newConvBufSize) {
 //	if(! Util::assignAndWereDifferent(convBufferSize, newConvBufSize))
@@ -400,7 +394,6 @@ void IrModeller::setConvBufferSize(int newConvBufSize) {
 
 //	onlyPlug(getObj(PluginProcessor).updateLatency());
 }
-
 
 void IrModeller::setAudioBlockSize(int size) {
     if (Util::assignAndWereDifferent(audio.blockSize, size)) {
@@ -427,14 +420,12 @@ void IrModeller::setAudioBlockSize(int size) {
     }
 }
 
-
 void IrModeller::resetIndices() {
     /*
     accumWritePos = convBufferSize;
     convReadPos = convBufferSize;
     */
 }
-
 
 void IrModeller::unloadWave() {
     wavImpulse.clear();
@@ -447,7 +438,6 @@ void IrModeller::unloadWave() {
     filterImpulse(audio);
 }
 
-
 void IrModeller::updateGraphicConvState(int graphicRes, bool force) {
     if (graphicRes < 0)
         return;
@@ -459,11 +449,9 @@ void IrModeller::updateGraphicConvState(int graphicRes, bool force) {
     }
 }
 
-
 bool IrModeller::willBeEnabled() const {
     return ui->isEffectEnabled();
 }
-
 
 bool IrModeller::doParamChange(int param, double value, bool doFurtherUpdate) {
     switch (param) {
@@ -488,23 +476,22 @@ bool IrModeller::doParamChange(int param, double value, bool doFurtherUpdate) {
             if (changed)
                 setPendingAction(prefilterChg);
         }
+        default:
+            throw std::invalid_argument("Illegal param: " + std::to_string(param));
     }
 
     return true;
 }
 
-
 void IrModeller::updateSmoothedParameters(int deltaSamples) {
     postamp.update(deltaSamples);
 }
-
 
 void IrModeller::audioFileModelled() {
     usingWavFile = false;
     waveLoaded = true;
     rasterizeAction.trigger();
 }
-
 
 void IrModeller::calcPrefiltLevels(Buffer<float> buff) {
     double c = calcPrefilt(prefilt);

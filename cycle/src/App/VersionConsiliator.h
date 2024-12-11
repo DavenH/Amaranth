@@ -1,5 +1,4 @@
-#ifndef APP_VERSIONCONSILIATOR_H_
-#define APP_VERSIONCONSILIATOR_H_
+#pragma once
 
 #include <App/SingletonAccessor.h>
 
@@ -11,6 +10,3 @@ public:
 
 private:
 };
-
-
-#endif

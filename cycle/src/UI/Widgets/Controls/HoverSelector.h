@@ -49,7 +49,7 @@ public:
 protected:
 private:
 
-	ScopedPointer<IconButton> headerIcon;
+	std::unique_ptr<IconButton> headerIcon;
 };
 
 class SelectorCallback :

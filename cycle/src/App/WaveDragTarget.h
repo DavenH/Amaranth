@@ -1,6 +1,4 @@
-#ifndef WAVEDRAGTARGET_H_
-#define WAVEDRAGTARGET_H_
-
+#pragma once
 #include <Obj/Ref.h>
 #include <App/SingletonAccessor.h>
 #include "JuceHeader.h"
@@ -13,14 +11,16 @@ public:
 	class Listener
 	{
 	public:
+		virtual ~Listener() = default;
+
 		virtual void loadWave(const File& file) = 0;
 	};
 
-	WaveDragTarget(SingletonRepo* repo);
+	explicit WaveDragTarget(SingletonRepo* repo);
 
 	void setListener(Listener* listener) { this->listener = listener; }
 
-	bool isInterestedInFileDrag (const StringArray& files);
+	bool isInterestedInFileDrag (const StringArray& files) override;
 
 	/** Callback to indicate that some files are being dragged over this component.
 
@@ -33,7 +33,7 @@ public:
 			@param x            the mouse x position, relative to this component
 			@param y            the mouse y position, relative to this component
 	 */
-	void fileDragEnter (const StringArray& files, int x, int y);
+	void fileDragEnter (const StringArray& files, int x, int y) override;
 
 
 	/** Callback to indicate that the mouse has moved away from this component.
@@ -46,7 +46,7 @@ public:
 
 			@param files        the set of (absolute) pathnames of the files that the user is dragging
 	 */
-	void fileDragExit (const StringArray& files);
+	void fileDragExit (const StringArray& files) override;
 
 	/** Callback to indicate that the user has dropped the files onto this component.
 
@@ -60,11 +60,9 @@ public:
 			@param x            the mouse x position, relative to this component
 			@param y            the mouse y position, relative to this component
 	 */
-	void filesDropped (const StringArray& files, int x, int y);
+	void filesDropped (const StringArray& files, int x, int y) override;
 
 private:
 	Ref<Listener> listener;
 	bool isFileGood(const File& file);
 };
-
-#endif

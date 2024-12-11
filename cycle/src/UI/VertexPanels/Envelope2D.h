@@ -105,12 +105,12 @@ private:
 //	MeshLibrary::EnvProps pitchProps;
 //	Array<MeshLibrary::EnvProps> scratchProps;
 
-	ScopedPointer<MeshSelector<EnvelopeMesh> > meshSelector;
-	ScopedPointer<RetractableCallout> 	envSelectCO;
-	ScopedPointer<PulloutComponent> 	envSelectPO;
+	std::unique_ptr<MeshSelector<EnvelopeMesh> > meshSelector;
+	std::unique_ptr<RetractableCallout> 	envSelectCO;
+	std::unique_ptr<PulloutComponent> 	envSelectPO;
 
-	ScopedPointer<RetractableCallout> 	loopCO;
-	ScopedPointer<PulloutComponent> 	loopPO;
+	std::unique_ptr<RetractableCallout> 	loopCO;
+	std::unique_ptr<PulloutComponent> 	loopPO;
 
 	friend class ScrollListener;
 	friend class EnvelopeInter2D;

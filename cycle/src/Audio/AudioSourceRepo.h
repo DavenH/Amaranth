@@ -2,11 +2,7 @@
 
 #include <App/SingletonAccessor.h>
 #include <Audio/AudioHub.h>
-#include <Audio/AudioSourceProcessor.h>
-#include <Audio/PitchedSample.h>
-#include <Definitions.h>
 #include <Obj/Ref.h>
-#include <Util/Arithmetic.h>
 #include "JuceHeader.h"
 
 

@@ -3,39 +3,38 @@
 #include "IDeformer.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
-#include "../App/AppConstants.h"
 
 //#define ENV_VERBOSE
 
 #ifdef ENV_VERBOSE
 	#define info(X) { cout << X << "\n"; }
 #else
-	#define info(X)
+#define info(X)
 #endif
 
 EnvRasterizer::EnvRasterizer(IDeformer* deformer, const String& name) :
-		MeshRasterizer	(name)
-	,	envMesh			(nullptr)
-	,	sampleReleaseNextCall(false)
-	,	oneSamplePerCycle(false)
-	,	state			(NormalState)
-	,	loopIndex		(-1)
-	,	sustainIndex	(-1)
-	,	releaseScale	(1.f)
-	,	preallocated	(8192)
-	,	waveformMemory	(4096) {
-	cyclic = false;
-	xMaximum = 10.f;
+        MeshRasterizer	(name)
+    ,	envMesh			(nullptr)
+    ,	sampleReleaseNextCall(false)
+    ,	oneSamplePerCycle(false)
+    ,	state			(NormalState)
+    ,	loopIndex		(-1)
+    ,	sustainIndex	(-1)
+    ,	releaseScale	(1.f)
+    ,	preallocated	(8192)
+    ,	waveformMemory	(4096) {
+    cyclic = false;
+    xMaximum = 10.f;
 
-	// graphic params
-	params.emplace_back();
+    // graphic params
+    params.emplace_back();
 
-	// head unison index
-	params.emplace_back();
+    // head unison index
+    params.emplace_back();
 
-	paddingSize = 2;
+    paddingSize = 2;
 
-	setDeformer(deformer);
+    setDeformer(deformer);
 }
 
 EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
@@ -61,16 +60,16 @@ EnvRasterizer::EnvRasterizer(const EnvRasterizer& copy) : MeshRasterizer(copy) {
 }
 
 EnvRasterizer::~EnvRasterizer() {
-	preallocated.clear();
-	waveformMemory.clear();
+    preallocated.clear();
+    waveformMemory.clear();
 }
 
 void EnvRasterizer::setMesh(Mesh* mesh) {
-	jassertfalse;
+    jassertfalse;
 
-	MeshRasterizer::setMesh(mesh);
+    MeshRasterizer::setMesh(mesh);
 
-	envMesh = dynamic_cast<EnvelopeMesh*>(mesh);
+    envMesh = dynamic_cast<EnvelopeMesh*>(mesh);
 }
 
 void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
@@ -80,20 +79,20 @@ void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
 }
 
 bool EnvRasterizer::hasReleaseCurve() {
-    if(icpts.empty())
-		return false;
+    if (icpts.empty())
+        return false;
 
-	return sustainIndex != (int) icpts.size() - 1;
+    return sustainIndex != (int) icpts.size() - 1;
 }
 
 void EnvRasterizer::calcCrossPoints() {
     morph.time = 0;
-	MeshRasterizer::calcCrossPoints(envMesh);
+    MeshRasterizer::calcCrossPoints(envMesh);
 
-	// do this even if we can't loop right now just in case
-	// loopability changes by the time release curve is going
-	// to be recalculated
-	int size = waveX.size();
+    // do this even if we can't loop right now just in case
+    // loopability changes by the time release curve is going
+    // to be recalculated
+    int size = waveX.size();
 
     if (size > 0) {
         waveformMemory.ensureSize(3 * size);
@@ -106,12 +105,12 @@ void EnvRasterizer::calcCrossPoints() {
         waveY.copyTo(waveYCopy);
         slope.copyTo(slopeCopy);
     } else {
-		waveXCopy.nullify();
-		waveYCopy.nullify();
-		slopeCopy.nullify();
-	}
+        waveXCopy.nullify();
+        waveYCopy.nullify();
+        slopeCopy.nullify();
+    }
 
-//	evaluateLoopSustainIndices();
+    //	evaluateLoopSustainIndices();
 }
 
 void EnvRasterizer::processIntercepts(vector<Intercept>& intercepts) {
@@ -119,20 +118,20 @@ void EnvRasterizer::processIntercepts(vector<Intercept>& intercepts) {
 
     if (scalingType != Bipolar) {
         if (sustainIndex >= 0 && sustainIndex != intercepts.size() - 1) {
-			Intercept sustIcpt = intercepts[sustainIndex];
-			sustIcpt.cube = nullptr;
-			sustIcpt.x += 0.0001f;
+            Intercept sustIcpt = intercepts[sustainIndex];
+            sustIcpt.cube = nullptr;
+            sustIcpt.x += 0.0001f;
 
-			if(sustIcpt.y < 0.5f)
-				sustIcpt.y = 0.5f;
+            if (sustIcpt.y < 0.5f)
+                sustIcpt.y = 0.5f;
 
-			sustIcpt.shp = 1.f;
+            sustIcpt.shp = 1.f;
 
-			intercepts.emplace_back(sustIcpt);
+            intercepts.emplace_back(sustIcpt);
 
-			needsResorting = true;
-		}
-	}
+            needsResorting = true;
+        }
+    }
 }
 
 void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curve>& curves) {
@@ -140,191 +139,185 @@ void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curv
 
     if (end <= 0) {
         waveX.nullify();
-		waveY.nullify();
-		unsampleable = true;
+        waveY.nullify();
+        unsampleable = true;
 
-		return;
-	}
+        return;
+    }
 
-	Intercept loopBackIcptA, loopBackIcptB;
+    Intercept loopBackIcptA, loopBackIcptB;
 
-	int numLoopPoints = sustainIndex - loopIndex;
-	bool loopable 	  = state != Releasing && canLoop() && numLoopPoints > 1;
-	float loopLength  = loopable ? getLoopLength() : 0;
+    int numLoopPoints = sustainIndex - loopIndex;
+    bool loopable = state != Releasing && canLoop() && numLoopPoints > 1;
+    float loopLength = loopable ? getLoopLength() : 0;
 
     if (loopable) {
-		jassert(loopIndex + loopMinSizeIcpts <= sustainIndex);
+        jassert(loopIndex + loopMinSizeIcpts <= sustainIndex);
 
-		loopBackIcptA = Intercept(intercepts[loopIndex + 1]);
-		loopBackIcptA.x += loopLength;
+        loopBackIcptA = Intercept(intercepts[loopIndex + 1]);
+        loopBackIcptA.x += loopLength;
 
-		loopBackIcptB = Intercept(intercepts[loopIndex + 2]);
-		loopBackIcptB.x += loopLength;
-	}
+        loopBackIcptB = Intercept(intercepts[loopIndex + 2]);
+        loopBackIcptB.x += loopLength;
+    }
 
-	if(state == NormalState || state == Releasing) {
-		Intercept front1(-0.05f, 	intercepts[0].y);
-		Intercept front2(-0.075f, 	intercepts[0].y);
-		Intercept front3(-0.1f, 	intercepts[0].y);
-		Intercept back1, back2, back3;
+    if (state == NormalState || state == Releasing) {
+        Intercept front1(-0.05f, intercepts[0].y);
+        Intercept front2(-0.075f, intercepts[0].y);
+        Intercept front3(-0.1f, intercepts[0].y);
+        Intercept back1, back2, back3;
 
-		const Intercept& endIcpt = intercepts[end];
+        const Intercept& endIcpt = intercepts[end];
 
         if (state == NormalState) {
             if (loopable) {
-				back1 = loopBackIcptA;
-				back2 = numLoopPoints > 1 ? loopBackIcptB : loopBackIcptA;
-			} else {
-				back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y);
-				back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y);
-				back3 = Intercept(endIcpt.x + 2.5f, endIcpt.y);
-			}
-		} else {
-			back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y);
-			back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y);
-			back3 = Intercept(endIcpt.x + 0.003f, endIcpt.y);
-		}
+                back1 = loopBackIcptA;
+                back2 = numLoopPoints > 1 ? loopBackIcptB : loopBackIcptA;
+            } else {
+                back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y);
+                back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y);
+                back3 = Intercept(endIcpt.x + 2.5f, endIcpt.y);
+            }
+        } else {
+            back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y);
+            back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y);
+            back3 = Intercept(endIcpt.x + 0.003f, endIcpt.y);
+        }
 
-		curves.clear();
-		curves.reserve(icpts.size() + 6);
+        curves.clear();
+        curves.reserve(icpts.size() + 6);
 
-		curves.emplace_back(front3, front2, front1);
-		curves.emplace_back(front2, front1, intercepts[0]);
-		curves.emplace_back(front1, intercepts[0], intercepts[1]);
+        curves.emplace_back(front3, front2, front1);
+        curves.emplace_back(front2, front1, intercepts[0]);
+        curves.emplace_back(front1, intercepts[0], intercepts[1]);
 
-		for(int i = 0; i < (int) icpts.size() - 2; ++i)
-			curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
+        for (int i = 0; i < (int) icpts.size() - 2; ++i)
+            curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
 
-		curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
-		curves.emplace_back(intercepts[end], back1, back2);
+        curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
+        curves.emplace_back(intercepts[end], back1, back2);
 
-		if(state == Releasing || ! loopable)
-			curves.emplace_back(back1, back2, back3);
-	} else if (state == Looping && loopable) {
-		vector<Intercept> loopIcpts;
+        if (state == Releasing || !loopable)
+            curves.emplace_back(back1, back2, back3);
+    } else if (state == Looping && loopable) {
+        vector<Intercept> loopIcpts;
 
-		jassert(envMesh && ! envMesh->loopCubes.empty());
-		jassert(loopIndex >= 0);
-		jassert(loopLength > 0);
-		jassert(sustainIndex >= 2);
+        jassert(envMesh && ! envMesh->loopCubes.empty());
+        jassert(loopIndex >= 0);
+        jassert(loopLength > 0);
+        jassert(sustainIndex >= 2);
 
-		loopIcpts.emplace_back(intercepts[sustainIndex - 2]);
-		loopIcpts.emplace_back(intercepts[sustainIndex - 1]);
+        loopIcpts.emplace_back(intercepts[sustainIndex - 2]);
+        loopIcpts.emplace_back(intercepts[sustainIndex - 1]);
 
-		loopIcpts[0].x -= loopLength;
-		loopIcpts[1].x -= loopLength;
+        loopIcpts[0].x -= loopLength;
+        loopIcpts[1].x -= loopLength;
 
-		for(int i = loopIndex; i <= sustainIndex; ++i)
-			loopIcpts.emplace_back(intercepts[i]);
+        for (int i = loopIndex; i <= sustainIndex; ++i)
+            loopIcpts.emplace_back(intercepts[i]);
 
-		loopIcpts.emplace_back(loopBackIcptA);
-		loopIcpts.emplace_back(loopBackIcptB);
+        loopIcpts.emplace_back(loopBackIcptA);
+        loopIcpts.emplace_back(loopBackIcptB);
 
-		curves.clear();
-		curves.reserve(loopIcpts.size());
+        curves.clear();
+        curves.reserve(loopIcpts.size());
 
-		for(int i = 0; i < (int) loopIcpts.size() - 2; ++i)
-			curves.emplace_back(loopIcpts[i], loopIcpts[i + 1], loopIcpts[i + 2]);
-	} else {
+        for (int i = 0; i < (int) loopIcpts.size() - 2; ++i)
+            curves.emplace_back(loopIcpts[i], loopIcpts[i + 1], loopIcpts[i + 2]);
+    } else {
         MeshRasterizer::padIcpts(intercepts, curves);
-	}
+    }
 }
-
 
 void EnvRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
     int end = (int) icpts.size() - 1;
 
     if (end <= 0) {
-		waveX.nullify();
-		waveY.nullify();
-		unsampleable = true;
-		return;
-	}
+        waveX.nullify();
+        waveY.nullify();
+        unsampleable = true;
+        return;
+    }
 
-	Intercept& firstIcpt = icpts[0];
+    Intercept& firstIcpt = icpts[0];
 
-	Intercept front1(-0.05f, 	firstIcpt.y);
-	Intercept front2(-0.075f, 	firstIcpt.y);
-	Intercept front3(-0.1f, 	firstIcpt.y);
-	Intercept back1, back2, back3;
+    Intercept front1(-0.05f, firstIcpt.y);
+    Intercept front2(-0.075f, firstIcpt.y);
+    Intercept front3(-0.1f, firstIcpt.y);
+    Intercept back1, back2, back3;
 
-	const Intercept& endIcpt = icpts[end];
+    const Intercept& endIcpt = icpts[end];
 
-	bool loopable 	 = canLoop();
-	bool haveRelease = hasReleaseCurve();
+    bool loopable = canLoop();
+    bool haveRelease = hasReleaseCurve();
 
-	int numLoopPoints = sustainIndex - loopIndex;
-	if(loopable && !haveRelease && numLoopPoints >= 2) {
-		back1 = Intercept(icpts[loopIndex + 1]);
-		back2 = Intercept(icpts[loopIndex + 2]);
+    int numLoopPoints = sustainIndex - loopIndex;
+    if (loopable && !haveRelease && numLoopPoints >= 2) {
+        back1 = Intercept(icpts[loopIndex + 1]);
+        back2 = Intercept(icpts[loopIndex + 2]);
 
-		float loopLength = getLoopLength();
-		back1.x += loopLength;
-		back2.x += loopLength;
-	} else {
-		back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y, 0, 0);
-		back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y, 0, 0);
-	}
+        float loopLength = getLoopLength();
+        back1.x += loopLength;
+        back2.x += loopLength;
+    } else {
+        back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y, 0, 0);
+        back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y, 0, 0);
+    }
 
-	// further padding to ensure the endIcpt.x position is sampleable
-	back3 = Intercept(endIcpt.x + 0.003f, endIcpt.y, 0, 0);
+    // further padding to ensure the endIcpt.x position is sampleable
+    back3 = Intercept(endIcpt.x + 0.003f, endIcpt.y, 0, 0);
 
-	curves.clear();
-	curves.reserve(icpts.size() + 5);
+    curves.clear();
+    curves.reserve(icpts.size() + 5);
 
-	curves.emplace_back(front3, front2, front1);
-	curves.emplace_back(front2, front1, icpts[0]);
-	curves.emplace_back(front1, icpts[0], icpts[1]);
+    curves.emplace_back(front3, front2, front1);
+    curves.emplace_back(front2, front1, icpts[0]);
+    curves.emplace_back(front1, icpts[0], icpts[1]);
 
-	for(int i = 0; i < (int) icpts.size() - 2; ++i)
-		curves.emplace_back(icpts[i], icpts[i + 1], icpts[i + 2]);
+    for (int i = 0; i < (int) icpts.size() - 2; ++i)
+        curves.emplace_back(icpts[i], icpts[i + 1], icpts[i + 2]);
 
-	curves.emplace_back(icpts[end - 1], icpts[end], back1);
-	curves.emplace_back(icpts[end], back1, back2);
+    curves.emplace_back(icpts[end - 1], icpts[end], back1);
+    curves.emplace_back(icpts[end], back1, back2);
 
-	if(haveRelease || ! loopable)
-		curves.emplace_back(back1, back2, back3);
+    if (haveRelease || !loopable)
+        curves.emplace_back(back1, back2, back3);
 }
-
 
 void EnvRasterizer::getIndices(int& loopIdx, int& sustIdx) const {
-	loopIdx = loopIndex;
-	sustIdx = sustainIndex;
+    loopIdx = loopIndex;
+    sustIdx = sustainIndex;
 }
-
 
 void EnvRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
     if (oneSamplePerCycle) {
-		Random rand(Time::currentTimeMillis());
+        Random rand(Time::currentTimeMillis());
 
-		for(auto& param : params) {
-			DeformContext& context = param.deformContext;
-			context.phaseOffsetSeed = rand.nextInt(tableSize);
-			context.vertOffsetSeed  = rand.nextInt(tableSize);
-		}
-	} else {
-		MeshRasterizer::updateOffsetSeeds(layerSize, tableSize);
-	}
+        for (auto& param: params) {
+            DeformContext& context = param.deformContext;
+            context.phaseOffsetSeed = rand.nextInt(tableSize);
+            context.vertOffsetSeed = rand.nextInt(tableSize);
+        }
+    } else {
+        MeshRasterizer::updateOffsetSeeds(layerSize, tableSize);
+    }
 }
-
 
 void EnvRasterizer::setWantOneSamplePerCycle(bool does) {
     oneSamplePerCycle = does;
     decoupleComponentDfrms = does;
 }
 
-
 bool EnvRasterizer::canLoop() const {
     return loopIndex >= 0; // && sustainIndex - loopIndex >= loopMinSizeIcpts;
 }
 
-
 double EnvRasterizer::getLoopLength() const {
     if (loopIndex >= 0 && loopIndex < (icpts.size() - 1)
-			&& sustainIndex >= 0 && sustainIndex < icpts.size())
-		return icpts[sustainIndex].x - icpts[loopIndex].x;
+        && sustainIndex >= 0 && sustainIndex < icpts.size())
+        return icpts[sustainIndex].x - icpts[loopIndex].x;
 
-	return -1.;
+    return -1.;
 }
 
 void EnvRasterizer::setNoteOn() {
@@ -341,10 +334,10 @@ void EnvRasterizer::setNoteOn() {
 void EnvRasterizer::setNoteOff() {
     if (state != Releasing) {
         if (hasReleaseCurve()) {
-			state = Releasing;
-			sampleReleaseNextCall = true;
-		}
-	}
+            state = Releasing;
+            sampleReleaseNextCall = true;
+        }
+    }
 }
 
 void EnvRasterizer::resetGraphicParams() {
@@ -356,115 +349,114 @@ Mesh* EnvRasterizer::getCurrentMesh() {
 }
 
 bool EnvRasterizer::renderToBuffer(
-        const int numSamples,
-        const double deltaX,
-        int paramIndex,
-        const MeshLibrary::EnvProps& props,
-        float tempoScale) {
-	if(! props.active)
-		return false;
+    const int numSamples,
+    const double deltaX,
+    int paramIndex,
+    const MeshLibrary::EnvProps& props,
+    float tempoScale) {
+    if (!props.active)
+        return false;
 
-	jassert(deltaX > 0);
+    jassert(deltaX > 0);
 
-	double newDelta = deltaX;
+    double newDelta = deltaX;
 
-	if(props.tempoSync)
-		newDelta /= tempoScale;
+    if (props.tempoSync)
+        newDelta /= tempoScale;
 
-	if(props.scale != 1)
-		newDelta /= (double) props.getEffectiveScale();
+    if (props.scale != 1)
+        newDelta /= (double) props.getEffectiveScale();
 
-	if(! oneSamplePerCycle) {
+    if (!oneSamplePerCycle) {
         // should happen extremely rarely�only when buffer sizes > 8192
-		preallocated.ensureSize(numSamples);
-		renderBuffer = preallocated.withSize(numSamples);
-	}
-	
-	// todo adjust this according to loop length? must be less than loop length in time
-	// also depends on deltaX, if it's very large, the granularity must be increased
-	float loopLength 				= jmax(2 * newDelta, getLoopLength());	//88
-	float maxIterativeAdvancement 	= 0.5f;
-	int maxSamplesPerBuf 			= 512;
+        preallocated.ensureSize(numSamples);
+        renderBuffer = preallocated.withSize(numSamples);
+    }
 
-	if(loopLength > 2 * newDelta)
-		maxIterativeAdvancement = 0.9 * loopLength;		//130
+    // todo adjust this according to loop length? must be less than loop length in time
+    // also depends on deltaX, if it's very large, the granularity must be increased
+    float loopLength = jmax(2 * newDelta, getLoopLength()); //88
+    float maxIterativeAdvancement = 0.5f;
+    int maxSamplesPerBuf = 512;
 
-	maxSamplesPerBuf = jlimit(1, maxSamplesPerBuf, int(maxIterativeAdvancement / newDelta));
+    if (loopLength > 2 * newDelta)
+        maxIterativeAdvancement = 0.9 * loopLength; //130
 
-	int bufferPos 	= 0;
-	bool stillAlive = true;
+    maxSamplesPerBuf = jlimit(1, maxSamplesPerBuf, int(maxIterativeAdvancement / newDelta));
 
-	// partition buffers because state may change within buffer
-	while(numSamples - bufferPos > 0) {
-		int maxSamples = jmin(maxSamplesPerBuf, numSamples - bufferPos);
-		int samplesRendered = maxSamples;
+    int bufferPos = 0;
+    bool stillAlive = true;
 
-		Buffer<float> buffer;
-		if(! oneSamplePerCycle)
-			buffer = Buffer<float>(renderBuffer + bufferPos, maxSamples);
+    // partition buffers because state may change within buffer
+    while (numSamples - bufferPos > 0) {
+        int maxSamples = jmin(maxSamplesPerBuf, numSamples - bufferPos);
+        int samplesRendered = maxSamples;
+
+        Buffer<float> buffer;
+        if (!oneSamplePerCycle)
+            buffer = Buffer<float>(renderBuffer + bufferPos, maxSamples);
 
         if (stillAlive) {
-			samplesRendered = vectorizedRenderToBuffer(buffer, maxSamples, newDelta, paramIndex);
+            samplesRendered = vectorizedRenderToBuffer(buffer, maxSamples, newDelta, paramIndex);
 
-			stillAlive &= samplesRendered == maxSamples;
-		}
+            stillAlive &= samplesRendered == maxSamples;
+        }
 
-		bufferPos += samplesRendered;
+        bufferPos += samplesRendered;
 
         if (!stillAlive) {
             info("no longer alive");
 
-			if(oneSamplePerCycle)
-				break;
-			else
-			{
-				if(bufferPos < renderBuffer.size())
-					renderBuffer.offset(bufferPos).zero();
-			}
-		}
-	}
+            if (oneSamplePerCycle)
+                break;
+            else {
+                if (bufferPos < renderBuffer.size())
+                    renderBuffer.offset(bufferPos).zero();
+            }
+        }
+    }
 
     if (props.logarithmic && !oneSamplePerCycle) {
-		Arithmetic::applyInvLogMapping(renderBuffer, 30);
-	}
+        Arithmetic::applyInvLogMapping(renderBuffer, 30);
+    }
 
-	return stillAlive;
+    return stillAlive;
 }
 
 int EnvRasterizer::vectorizedRenderToBuffer(
-        Buffer<float> buffer,
-        const int numSamples,
-        const double deltaX,
-        int paramIndex) {
-	EnvParams& group = params[paramIndex];
+    Buffer<float> buffer,
+    const int numSamples,
+    const double deltaX,
+    int paramIndex) {
+    EnvParams& group = params[paramIndex];
 
-	info("\n\n" << name << "(" << this << ", " << paramIndex << ")");
+    info("\n\n" << name << "(" << this << ", " << paramIndex << ")");
 
-	double advancement 			= numSamples * deltaX;
-	double boundary 			= (state == Releasing) ? icpts.back().x : icpts[sustainIndex].x;
-	double nextPosition			= group.samplePosition + advancement;
-	bool overextends 			= nextPosition > boundary;
-	bool loopable				= canLoop();
-	bool willLoopBackNextCall 	= loopable && overextends && state == NormalState;
-	int samplesRendered			= numSamples;
+    double advancement = numSamples * deltaX;
+    double boundary = (state == Releasing) ? icpts.back().x : icpts[sustainIndex].x;
+    double nextPosition = group.samplePosition + advancement;
+    bool overextends = nextPosition > boundary;
+    bool loopable = canLoop();
+    bool willLoopBackNextCall = loopable && overextends && state == NormalState;
+    int samplesRendered = numSamples;
 
-	info("rendering to buffer\t" << buffer.size() << " with delta " << deltaX <<
-			", range " << group.samplePosition << " - " << nextPosition);
+    info("rendering to buffer\t" << buffer.size() << " with delta " << deltaX <<
+        ", range " << group.samplePosition << " - " << nextPosition);
 
-	if(willLoopBackNextCall) {
+    if (willLoopBackNextCall) {
         info("calculating loop curves, state = looping");
-		state = Looping;
+        state = Looping;
 
-		padIcptsForRender(icpts, curves);
-		updateCurves();
-	}
+        padIcptsForRender(icpts, curves);
+        updateCurves();
+    }
 
-	if(sampleReleaseNextCall) {
+    if (sampleReleaseNextCall) {
         sampleReleaseNextCall = false;
-		changedToRelease();
-	}
+        changedToRelease();
+    }
 
-	switch (state) {
+    switch (state) {
         case NormalState: {
             info("normal state");
 
@@ -483,12 +475,12 @@ int EnvRasterizer::vectorizedRenderToBuffer(
                 if (maxSamples < numSamples) {
                     buffer.offset(maxSamples).set(group.sustainLevel);
                     info("set " << (numSamples - maxSamples) << " samples to level " << group.sustainLevel);
-				}
-			}
+                }
+            }
 
-			group.samplePosition = jmin(boundary, group.samplePosition + advancement);
-			break;
-		}
+            group.samplePosition = jmin(boundary, group.samplePosition + advancement);
+            break;
+        }
 
         case Looping: {
             double loopLength = getLoopLength();
@@ -511,18 +503,18 @@ int EnvRasterizer::vectorizedRenderToBuffer(
                 group.sampleIndex = zeroIndex;
 
                 for (int i = 0; i < numSamples; ++i) {
-					buffer[i] = sampleAt(group.samplePosition, group.sampleIndex);
-					group.samplePosition += deltaX;
+                    buffer[i] = sampleAt(group.samplePosition, group.sampleIndex);
+                    group.samplePosition += deltaX;
 
-					if(group.samplePosition >= boundary)
-						group.samplePosition -= loopLength - deltaX;
-				}
+                    if (group.samplePosition >= boundary)
+                        group.samplePosition -= loopLength - deltaX;
+                }
 
-				group.sustainLevel = buffer[numSamples - 1];
-			}
+                group.sustainLevel = buffer[numSamples - 1];
+            }
 
-			break;
-		}
+            break;
+        }
 
         case Releasing: {
             info("release mode");
@@ -541,32 +533,31 @@ int EnvRasterizer::vectorizedRenderToBuffer(
             } else {
                 int maxSamples = jmin(numSamples, int((boundary - group.samplePosition) / deltaX));
 
-				// voice should have been stopped before violating this
-				jassert(group.samplePosition <= boundary);
+                // voice should have been stopped before violating this
+                jassert(group.samplePosition <= boundary);
 
-				Buffer<float> rendBuf(buffer, maxSamples);
-				sampleWithInterval(rendBuf, deltaX, group.samplePosition);
+                Buffer<float> rendBuf(buffer, maxSamples);
+                sampleWithInterval(rendBuf, deltaX, group.samplePosition);
 
-				rendBuf.mul(releaseScale);
+                rendBuf.mul(releaseScale);
 
-				info("sampled " << maxSamples << " samples");
+                info("sampled " << maxSamples << " samples");
 
-				if(maxSamples < numSamples)
-					buffer.offset(maxSamples).zero();
+                if (maxSamples < numSamples)
+                    buffer.offset(maxSamples).zero();
 
-				samplesRendered = maxSamples;
-			}
+                samplesRendered = maxSamples;
+            }
 
+            group.samplePosition = jmin(boundary, group.samplePosition + advancement);
 
-			group.samplePosition = jmin(boundary, group.samplePosition + advancement);
+            break;
+        }
+        default:
+            throw std::invalid_argument("invalid state");
+    }
 
-			break;
-		}
-		default:
-			throw std::invalid_argument("invalid state");
-	}
-
-	return samplesRendered;
+    return samplesRendered;
 }
 
 void EnvRasterizer::simulateStart(double& lastPosition) {
@@ -579,44 +570,44 @@ bool EnvRasterizer::simulateStop(double& lastPosition) {
     setNoteOff();
 
     if (hasReleaseCurve()) {
-		lastPosition = icpts[sustainIndex].x;
-		return true;
-	}
+        lastPosition = icpts[sustainIndex].x;
+        return true;
+    }
 
-	return false;
+    return false;
 }
 
 bool EnvRasterizer::simulateRender(
-        double advancement,
-        double& lastPosition,
-        const MeshLibrary::EnvProps& props,
-        float tempoScale) {
-	double newAdvancement = advancement;
+    double advancement,
+    double& lastPosition,
+    const MeshLibrary::EnvProps& props,
+    float tempoScale) {
+    double newAdvancement = advancement;
 
-	if(props.tempoSync)
-		newAdvancement /= tempoScale;
+    if (props.tempoSync)
+        newAdvancement /= tempoScale;
 
-	if(props.scale != 1)
-		newAdvancement /= (double) props.getEffectiveScale();
+    if (props.scale != 1)
+        newAdvancement /= (double) props.getEffectiveScale();
 
-	advancement = newAdvancement;
+    advancement = newAdvancement;
 
-	double boundary 			= (state == Releasing) ? icpts.back().x : icpts[sustainIndex].x;
-	double nextPosition			= lastPosition + advancement;
-	bool overextends 			= nextPosition > boundary;
-	bool loopable				= canLoop();
-	bool willLoopBackNextCall 	= loopable && overextends && state == NormalState;
+    double boundary = (state == Releasing) ? icpts.back().x : icpts[sustainIndex].x;
+    double nextPosition = lastPosition + advancement;
+    bool overextends = nextPosition > boundary;
+    bool loopable = canLoop();
+    bool willLoopBackNextCall = loopable && overextends && state == NormalState;
 
     if (willLoopBackNextCall) {
         state = Looping;
     }
 
     if (sampleReleaseNextCall) {
-        sampleReleaseNextCall 	= false;
-		int releaseIdx 			= scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
-		float releasePosX 		= icpts[releaseIdx].x;
-		lastPosition 			= releasePosX;
-	}
+        sampleReleaseNextCall = false;
+        int releaseIdx = scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
+        float releasePosX = icpts[releaseIdx].x;
+        lastPosition = releasePosX;
+    }
 
     switch (state) {
         case NormalState: {
@@ -655,73 +646,71 @@ bool EnvRasterizer::simulateRender(
 
             break;
         }
-	    default:
-	    	throw std::runtime_error("EnvRasterizer::simulateRender: invalid state");
+        default:
+            throw std::runtime_error("EnvRasterizer::simulateRender: invalid state");
     }
 
-	return true;
+    return true;
 }
 
 void EnvRasterizer::evaluateLoopSustainIndices() {
-//	progressMark
+    //	progressMark
 
-	int end = (int) icpts.size() - 1;
+    int end = (int) icpts.size() - 1;
 
-	loopIndex 		= -1;
-	sustainIndex 	= -1;
+    loopIndex = -1;
+    sustainIndex = -1;
 
-	if(icpts.empty())
-		return;
+    if (icpts.empty())
+        return;
 
-	set<VertCube*>& loopLines = envMesh->loopCubes;
-	set<VertCube*>& sustLines = envMesh->sustainCubes;
+    set<VertCube*>& loopLines = envMesh->loopCubes;
+    set<VertCube*>& sustLines = envMesh->sustainCubes;
 
-	for(int i = 0; i < (int) icpts.size(); ++i) {
+    for (int i = 0; i < (int) icpts.size(); ++i) {
         VertCube* cube = icpts[i].cube;
 
-		if(cube == nullptr)
-			continue;
+        if (cube == nullptr)
+            continue;
 
-		if(loopLines.find(cube) != loopLines.end())
-			loopIndex = i;
+        if (loopLines.find(cube) != loopLines.end())
+            loopIndex = i;
 
-		if(sustLines.find(cube) != sustLines.end())
-			sustainIndex = i;
-	}
+        if (sustLines.find(cube) != sustLines.end())
+            sustainIndex = i;
+    }
 
-	if(sustainIndex < 0)
-		sustainIndex = end;
+    if (sustainIndex < 0)
+        sustainIndex = end;
 
     if (loopIndex >= 0 && sustainIndex >= 0 && sustainIndex - loopIndex < loopMinSizeIcpts) {
-		// need at least 1 icpt padding to the right to loop
-		loopIndex = -1;
-	}
+        // need at least 1 icpt padding to the right to loop
+        loopIndex = -1;
+    }
 }
-
 
 void EnvRasterizer::changedToRelease() {
     jassert(state == Releasing);
 
-	info("recalculating release");
+    info("recalculating release");
 
-	if(canLoop())
-	{
-		waveX = waveXCopy;
-		waveY = waveYCopy;
-		slope = slopeCopy;
-	}
+    if (canLoop()) {
+        waveX = waveXCopy;
+        waveY = waveYCopy;
+        slope = slopeCopy;
+    }
 
-	float lastLevel 			= params[headUnisonIndex].sustainLevel;
-	int releaseIdx 				= scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
-	float releasePosX 			= icpts[releaseIdx].x;
-	float initialReleaseLevel 	= jmax(0.5f, sampleAt(releasePosX));
+    float lastLevel = params[headUnisonIndex].sustainLevel;
+    int releaseIdx = scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
+    float releasePosX = icpts[releaseIdx].x;
+    float initialReleaseLevel = jmax(0.5f, sampleAt(releasePosX));
 
-	releaseScale = lastLevel / initialReleaseLevel;
+    releaseScale = lastLevel / initialReleaseLevel;
 
-	info("release scale: " << releaseScale);
+    info("release scale: " << releaseScale);
 
-	for(int i = headUnisonIndex; i < (int) params.size(); ++i)
-		params[i].samplePosition = releasePosX;
+    for (int i = headUnisonIndex; i < (int) params.size(); ++i)
+        params[i].samplePosition = releasePosX;
 }
 
 void EnvRasterizer::validateState() {
@@ -729,7 +718,7 @@ void EnvRasterizer::validateState() {
         state = NormalState;
     }
 
-    for (auto & p : params) {
+    for (auto& p: params) {
         if (waveX.empty()) {
             p.samplePosition = 0;
             p.sampleIndex = 0;
@@ -778,4 +767,3 @@ void EnvRasterizer::ensureParamSize(int numUnisonVoices) {
     while (params.size() < numUnisonVoices + 1)
         params.emplace_back();
 }
-

@@ -1,8 +1,6 @@
-#ifndef QUALITYDIALOG_H_
-#define QUALITYDIALOG_H_
+#pragma once
 
 #include "JuceHeader.h"
-#include <Obj/Ref.h>
 #include <App/SingletonAccessor.h>
 
 class QualityDialog :
@@ -12,11 +10,11 @@ class QualityDialog :
 	, 	public SingletonAccessor
 {
 public:
-	QualityDialog(SingletonRepo* repo);
-	void comboBoxChanged(ComboBox* box);
-	void buttonClicked(Button* button);
+	explicit QualityDialog(SingletonRepo* repo);
+	void comboBoxChanged(ComboBox* box) override;
+	void buttonClicked(Button* button) override;
 	void updateSelections();
-	void resized();
+	void resized() override;
 	void triggerOversample(int which);
 
 	enum
@@ -55,6 +53,3 @@ private:
 	Label 			rltmTitle, rendTitle, rltmLabel, paramSmoothLbl, ctrlFreqLbl, rltmHqLabel;
 	ToggleButton 	useSmooth;
 };
-
-
-#endif

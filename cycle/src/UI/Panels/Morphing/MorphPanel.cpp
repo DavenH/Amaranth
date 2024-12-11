@@ -274,7 +274,7 @@ void MorphPanel::updateModPosition(int dim, float value) {
             triggerRefreshUpdate();
         else {
             Multisample& multi = getObj(Multisample);
-            SampleWrapper* existing = multi.getCurrentSample();
+            PitchedSample* existing = multi.getCurrentSample();
 
 			multi.performUpdate(UpdateType::Update);
 

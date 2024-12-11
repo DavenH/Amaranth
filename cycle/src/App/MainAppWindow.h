@@ -24,7 +24,7 @@ public:
 	void handleMessage (const Message& message);
 
 private:
-	ScopedPointer<Initializer> initializer;
+	std::unique_ptr<Initializer> initializer;
 };
 
 #endif

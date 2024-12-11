@@ -1,12 +1,10 @@
 #include "CleanupCrew.h"
 
 CleanupCrew::CleanupCrew()
-{
-}
+= default;
 
 CleanupCrew::~CleanupCrew()
-{
-}
+= default;
 
 /*
 void CleanupCrew::layerDeleted(LayerManager::LayerType type)

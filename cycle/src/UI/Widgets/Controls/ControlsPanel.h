@@ -33,8 +33,8 @@ public:
 	virtual void paint(Graphics& g);
 
 	void addRetractableCallout(
-			ScopedPointer<RetractableCallout>& callout,
-			ScopedPointer<PulloutComponent>& pullout,
+			std::unique_ptr<RetractableCallout>& callout,
+			std::unique_ptr<PulloutComponent>& pullout,
 			SingletonRepo* repo,
 			int posX, int posY,
 			Component** buttonArray, int numButtons, bool horz = false);

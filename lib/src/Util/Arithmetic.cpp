@@ -45,12 +45,12 @@ int Arithmetic::getNextPow2(float fperiod) {
 
 float Arithmetic::logMapping(float tension, float x, bool useOffset) {
     float leftOffset = useOffset ? (powf(tension + 1, 0.05f) - 1) / float(tension) : 0;
-    return log(tension * (x + leftOffset) + 1) / log(tension + 1);
+    return logf(tension * (x + leftOffset) + 1) / logf(tension + 1);
 }
 
 float Arithmetic::invLogMapping(float tension, float x, bool useOffset) {
     float leftOffset = useOffset ? (powf(tension + 1, 0.05f) - 1) / float(tension) : 0;
-    return (exp(x * log(tension + 1)) - 1) / tension - leftOffset;
+    return (expf(x * logf(tension + 1)) - 1) / tension - leftOffset;
 }
 
 float Arithmetic::calcAdditiveScaling(int numHarmonics) {

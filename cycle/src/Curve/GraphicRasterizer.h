@@ -1,5 +1,4 @@
-#ifndef GRAPHICRASTERIZER_H_
-#define GRAPHICRASTERIZER_H_
+#pragma once
 
 #include <Curve/MeshRasterizer.h>
 #include "../Updating/DynamicDetailUpdater.h"
@@ -7,6 +6,7 @@
 class GraphicRasterizer :
 		public MeshRasterizer
 	,	public DynamicDetailUpdateable
+	,	public SingletonAccessor
 {
 public:
 	GraphicRasterizer(SingletonRepo* repo,
@@ -14,10 +14,10 @@ public:
 					  const String& name, int layerGroup,
 					  bool cyclic, float margin);
 
-	virtual ~GraphicRasterizer();
+	~GraphicRasterizer() override;
 
-	float& getPrimaryDimensionVar();
-	void pullModPositionAndAdjust();
+	float& getPrimaryDimensionVar() override;
+	void pullModPositionAndAdjust() override;
 
 	Interactor* getInteractor() { return interactor; }
 
@@ -29,6 +29,3 @@ private:
 typedef GraphicRasterizer TimeRasterizer;
 typedef GraphicRasterizer SpectRasterizer;
 typedef GraphicRasterizer PhaseRasterizer;
-
-
-#endif

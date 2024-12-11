@@ -1,5 +1,4 @@
-#ifndef _FileChooserDialog_h
-#define _FileChooserDialog_h
+#pragma once
 
 #include <App/Doc/DocumentDetails.h>
 #include "FileChooserContent.h"
@@ -28,15 +27,15 @@ public:
     {
         titleTextColourId      = 0x1000850};
     /**< The colour to use to draw the box's title. */
-    void buttonClicked(Button *button);
+    void buttonClicked(Button *button) override;
     void closeButtonPressed();
-    void selectionChanged();
-    void browserRootChanged(const File& newRoot);
-    void fileClicked(const File & file, const MouseEvent & e);
-    void fileDoubleClicked(const File & file);
-    const String& getAuthorBoxContent() const { return authorBoxContent; }
-    const String& getTagsBoxContent() const { return tagsBoxContent; }
-    const String& getPackBoxContent() const { return packBoxContent; }
+    void selectionChanged() override;
+    void browserRootChanged(const File& newRoot) override;
+    void fileClicked(const File & file, const MouseEvent & e) override;
+    void fileDoubleClicked(const File & file) override;
+    [[nodiscard]] const String& getAuthorBoxContent() const { return authorBoxContent; }
+    [[nodiscard]] const String& getTagsBoxContent() const { return tagsBoxContent; }
+    [[nodiscard]] const String& getPackBoxContent() const { return packBoxContent; }
 //    const String& getCommentBoxContent() const { return commentBoxContent; }
 
 //    void paint(Graphics& g);
@@ -58,5 +57,3 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FileChooserDialog);
 };
-
-#endif

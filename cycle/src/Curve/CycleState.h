@@ -1,6 +1,4 @@
-#ifndef CYCLESTATE_H_
-#define CYCLESTATE_H_
-
+#pragma once
 #include <Curve/Intercept.h>
 
 class CycleState
@@ -34,7 +32,3 @@ public:
 		backIcpts.clear();
 	}
 };
-
-
-
-#endif

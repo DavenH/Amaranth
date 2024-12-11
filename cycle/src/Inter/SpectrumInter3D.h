@@ -1,8 +1,5 @@
-#ifndef _f3interactor
-#define _f3interactor
+#pragma once
 
-#include <math.h>
-#include "JuceHeader.h"
 #include <Inter/Interactor3D.h>
 #include "../UI/Widgets/Controls/MeshSelectionClient3D.h"
 
@@ -11,26 +8,23 @@ class SpectrumInter3D:
 	,	public SelectionClientOwner
 {
 public:
-	SpectrumInter3D(SingletonRepo* repo);
-	virtual ~SpectrumInter3D();
+	explicit SpectrumInter3D(SingletonRepo* repo);
 
-	bool isCurrentMeshActive();
-	int getTableIndexY(float y, int size);
+	bool isCurrentMeshActive() override;
+	int getTableIndexY(float y, int size) override;
 
-	Interactor* getOppositeInteractor();
-	String getYString(float yVal, int yIndex, const Column& col, float fundFreq);
-	String getZString(float tableValue, int xIndex);
+	Interactor* getOppositeInteractor() override;
+	String getYString(float yVal, int yIndex, const Column& col, float fundFreq) override;
+	String getZString(float tableValue, int xIndex) override;
 
-	void doExtraMouseUp();
-	void enterClientLock(bool audioThreadApplicable);
-	void exitClientLock(bool audioThreadApplicable);
+	void doExtraMouseUp() override;
+	void enterClientLock(bool audioThreadApplicable) override;
+	void exitClientLock(bool audioThreadApplicable) override;
 
-	void init();
+	void init() override;
 	void initSelectionClient();
-	void meshSelectionChanged(Mesh* mesh);
-	void meshSelectionFinished();
-	void updateRastDims();
+	void meshSelectionChanged(Mesh* mesh) override;
+	void meshSelectionFinished() override;
+	void updateRastDims() override;
 	void updateSelectionClient();
 };
-
-#endif

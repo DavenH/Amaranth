@@ -36,7 +36,6 @@ void AutoModeller::amplifyCloseVerts() {
 	}
 }
 
-
 float AutoModeller::performFitness(int curveIdx, const Intercept& icpt,
 								   int sampleStart, int sampleSize,
 								   float invLength, float left, bool doUpdate) {
@@ -52,7 +51,6 @@ float AutoModeller::performFitness(int curveIdx, const Intercept& icpt,
 
 	return error;
 }
-
 
 void AutoModeller::preparePoints() {
 	if(srcSamples.empty()) {
@@ -77,8 +75,9 @@ void AutoModeller::preparePoints() {
     if (useInflections) {
 		vector<int> inflections = PeakCounter::findInflections(filtered);
 
-		if(inflections.empty())
+		if(inflections.empty()) {
 			return;
+		}
 
 		points.clear();
 
@@ -141,8 +140,9 @@ void AutoModeller::modelToInteractor(
 		bool isCyclic,
 		float leftOffset,
 		float reduction) {
-	if(buffer.empty())
+	if(buffer.empty()) {
 		return;
+	}
 
 	leftSamplingOffset 	= leftOffset;
 	reductionLevel 		= reduction;
@@ -163,7 +163,7 @@ void AutoModeller::modelToInteractor(
         interactor->removeLinesInRange(Range(0.f, 1.f), interactor->getOffsetPosition(true));
 
         float y;
-        for (auto & point : points) {
+        for (auto& point : points) {
             y = point.y * 0.5f + 0.5f;
 			NumberUtils::constrain<float>(y, 0.f, 1.f);
 
@@ -199,10 +199,10 @@ void AutoModeller::removeUselessPoints() {
 	vector<Intercept> relevantPoints;
 	relevantPoints.push_back(points.front());
 
-	for(int i = 0; i < score.size(); ++i)
-	{
-		if(score[i] < reductionLevel)
+	for(int i = 0; i < score.size(); ++i) {
+		if(score[i] < reductionLevel) {
 			relevantPoints.push_back(points[i + 1]);
+		}
 	}
 
 	points = relevantPoints;
@@ -265,8 +265,7 @@ void AutoModeller::fit() {
 				icpt.x 			= jlimit(left, right, best.x + (2 * random.nextFloat() - 1) * variationX * deltaX);
 				fitness 		= performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
 
-				if(fitness < minFitness)
-				{
+				if(fitness < minFitness) {
 					best.x 		= icpt.x;
 					minFitness 	= fitness;
 				} else {
@@ -280,8 +279,7 @@ void AutoModeller::fit() {
 				icpt.shp 		= jlimit(0.f, 1.f, best.shp + (2 * random.nextFloat() - 1) * varSharp);
 				fitness 		= performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
 
-				if(fitness < minFitness)
-				{
+				if(fitness < minFitness) {
 					best.shp 	= icpt.shp;
 					minFitness 	= fitness;
 				} else {

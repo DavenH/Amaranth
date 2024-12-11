@@ -7,6 +7,11 @@
 #include "../Obj/MorphPosition.h"
 #include "../Util/CommonEnums.h"
 
+#include
+#include
+#include
+#include
+
 using std::vector;
 using std::map;
 
@@ -167,8 +172,6 @@ public:
 	vector<Vertex*>& getSelectedByType(int type) 	{ return layerGroups[type].selected; 	}
 
 	void addListener(Listener* listener) 			{ listeners.add(listener); }
-
-	/* ----------------------------------------------------------------------- */
 
 protected:
 	CriticalSection arrayLock;

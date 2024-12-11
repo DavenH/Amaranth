@@ -8,8 +8,8 @@
 class FileManager :
 		public SingletonAccessor {
 public:
-	FileManager(SingletonRepo* repo);
-	virtual ~FileManager();
+	explicit FileManager(SingletonRepo* repo);
+	~FileManager() override;
 
 	void unloadWav(bool);
 

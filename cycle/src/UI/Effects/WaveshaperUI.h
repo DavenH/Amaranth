@@ -92,7 +92,7 @@ private:
 	ComboBox 		oversampleBox;
 
 	Ref<Waveshaper> waveshaper;
-	ScopedPointer<MeshSelector<Mesh> > selector;
+	std::unique_ptr<MeshSelector<Mesh> > selector;
 
 
 	Label nameLabel;

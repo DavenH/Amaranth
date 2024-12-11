@@ -1,6 +1,4 @@
-#ifndef _voiceparametergroup_h
-#define _voiceparametergroup_h
-
+#pragma once
 #include <vector>
 #include <Algo/Resampler.h>
 #include <Array/RingBuffer.h>
@@ -17,16 +15,16 @@ public:
 		reset();
 	}
 
-	int samplesThisCycle;
-	int unisonIndex;
+	int samplesThisCycle{};
+	int unisonIndex{};
 
-	long sampledFrontier;
+	long sampledFrontier{};
 
-	double cumePos;
-	double angleDelta;
+	double cumePos{};
+	double angleDelta{};
 
-	float padding				[2][7];
-	double samplingSpillover	[2];
+	float padding				[2][7]{};
+	double samplingSpillover	[2]{};
 	Buffer<float> lastLerpHalf	[2];	// copy of first half of biased cycle for next round
 	ReadWriteBuffer cycleBuffer	[2];
 	Resampler resamplers		[2];
@@ -47,8 +45,7 @@ public:
 		unisonIndex				= group.unisonIndex;
 		samplesThisCycle		= group.samplesThisCycle;
 
-		for(int i = 0; i < 2; ++i)
-		{
+		for(int i = 0; i < 2; ++i) {
 			cycleBuffer[i] 		 = group.cycleBuffer[i];
 			lastLerpHalf[i] 	 = group.lastLerpHalf[i];
 			resamplers[i] 		 = group.resamplers[i];
@@ -63,13 +60,12 @@ public:
 		return *this;
 	}
 
-	void reset()
-	{
+	void reset() {
 		cycleBuffer[0].reset();
 		cycleBuffer[1].reset();
 
-		for(int i = 0; i < layerStates.size(); ++i)
-			layerStates[i].reset();
+		for(auto& layerState : layerStates)
+			layerState.reset();
 
 		cumePos 				= 0;
 		sampledFrontier 		= 0;
@@ -79,8 +75,5 @@ public:
 		samplingSpillover[1]	= 0;
 	}
 };
-
-
-#endif
 
 

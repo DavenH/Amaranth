@@ -8,7 +8,6 @@
 #include <App/SingletonRepo.h>
 #include <Audio/AudioHub.h>
 #include <Audio/Multisample.h>
-#include <Audio/PluginProcessor.h>
 #include <Design/Updating/Updater.h>
 #include <UI/Panels/Panel2D.h>
 #include <Util/ScopedFunction.h>
@@ -39,9 +38,7 @@
 #include "../UI/VertexPanels/Spectrum3D.h"
 #include "../UI/VertexPanels/Waveform3D.h"
 #include "../UI/VisualDsp.h"
-#include "../Updating/CycleUpdater.h"
 #include "../Util/CycleEnums.h"
-
 
 FileManager::FileManager(SingletonRepo* repo) :
 		SingletonAccessor(repo, "FileManager")
@@ -57,13 +54,8 @@ FileManager::FileManager(SingletonRepo* repo) :
   #endif
 }
 
-FileManager::~FileManager() {
-}
-
-
 void FileManager::loadPendingItem() {
 }
-
 
 void FileManager::openFactoryPreset(const String &presetName) {
 	File file(getObj(Directories).getPresetDir() + presetName + "." + getStrConstant(DocumentExt));
@@ -71,14 +63,12 @@ void FileManager::openFactoryPreset(const String &presetName) {
 	openPreset(file);
 }
 
-
 void FileManager::openPreset(const File &file) {
     currentPresetName = file.getFullPathName();
 
-    dout << "Opening preset: " << currentPresetName << "\n";
+    std::cout << "Opening preset: " << currentPresetName << "\n";
     openCurrentPreset();
 }
-
 
 void FileManager::saveCurrentPreset() {
     if (canSaveOverCurrentPreset()) {
@@ -212,7 +202,6 @@ bool FileManager::openWave(const File &file, Dialogs::OpenWaveInvoker invoker, i
 
 	getObj(GeneralControls).updateHighlights();
 	getObj(GeneralControls).repaint();
-	getObj(PitchTracker).reset();
 
     if (invoker == Dialogs::DialogSource) {
         getObj(SampleUtils).processWav(isMulti, true);

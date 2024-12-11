@@ -154,10 +154,10 @@ private:
 
 	float spinAngle;
 
-	ScopedPointer<TableListBox> tableListBox;
-	ScopedPointer<SearchField<DocumentDetails> > search;
-	ScopedPointer<Button> upButton;
-	ScopedPointer<IconButton> wavFolderButton;
+	std::unique_ptr<TableListBox> tableListBox;
+	std::unique_ptr<SearchField<DocumentDetails> > search;
+	std::unique_ptr<Button> upButton;
+	std::unique_ptr<IconButton> wavFolderButton;
 
 	DocumentDetails pendingDeetsToLoad;
 

@@ -32,7 +32,7 @@ private:
     bool haveFreedResources;
     bool doUpdateAfterResize;
 
-    ScopedPointer<ResizableCornerComponent> resizer;
+    std::unique_ptr<ResizableCornerComponent> resizer;
     ComponentBoundsConstrainer 				resizeLimits;
 };
 

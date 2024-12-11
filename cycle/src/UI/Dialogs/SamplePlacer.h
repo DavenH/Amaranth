@@ -1,5 +1,4 @@
-#ifndef SAMPLEPLACER_H_
-#define SAMPLEPLACER_H_
+#pragma once
 
 #include <vector>
 #include <UI/Widgets/IconButton.h>
@@ -19,20 +18,20 @@ public:
 	enum { border = 1 };
 
 	bool 			horz;
-	float 			portion;
+	float 			portion{};
 	File 			file;
 	Rectangle<int> 	rect;
 
 	Ref<SamplePlacer> placer;
 
-	ScopedPointer<SamplePair> a;
-	ScopedPointer<SamplePair> b;
-	ScopedPointer<SampleDragger> dragger;
+	std::unique_ptr<SamplePair> a;
+	std::unique_ptr<SamplePair> b;
+	std::unique_ptr<SampleDragger> dragger;
 
-	SamplePair(SamplePlacer* placer);
-	void paint(Graphics& g);
+	explicit SamplePair(SamplePlacer* placer);
+	void paint(Graphics& g) override;
 	void split(float portion, bool horz);
-	void resized();
+	void resized() override;
 	void setPortion(float portion) { this->portion = portion; }
 };
 
@@ -67,15 +66,15 @@ class SamplePlacer :
 	, 	public SingletonAccessor
 {
 public:
-	SamplePlacer(SingletonRepo* repo);
-	virtual ~SamplePlacer();
+	explicit SamplePlacer(SingletonRepo* repo);
+	~SamplePlacer() override;
 
 	void cut();
-	void mouseDown(const MouseEvent& e);
-	void mouseMove(const MouseEvent& e);
-    void buttonClicked (Button* button);
-	void paint(Graphics& g);
-	void resized();
+	void mouseDown(const MouseEvent& e) override;
+	void mouseMove(const MouseEvent& e) override;
+    void buttonClicked (Button* button) override;
+	void paint(Graphics& g) override;
+	void resized() override;
 
 	Image folderImage;
 private:
@@ -89,16 +88,12 @@ private:
 	Point<float> xy;
 };
 
-
 class SamplePlacerPanel : public Component, public SingletonAccessor
 {
 public:
-	SamplePlacerPanel(SingletonRepo* repo);
-	void resized();
+	explicit SamplePlacerPanel(SingletonRepo* repo);
+	void resized() override;
 
 private:
 	SamplePlacer samplePlacer;
 };
-
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef _e2interactor_h
-#define _e2interactor_h
+#pragma once
 
 #include <map>
 #include <Curve/EnvRasterizer.h>
@@ -19,7 +18,6 @@ class EnvelopeMesh;
 class Envelope2D;
 class EnvRasterizer;
 class SampleWrapper;
-
 
 class EnvelopeInter2D :
         public Interactor2D,
@@ -96,7 +94,7 @@ public:
     void triggerButton(int id);
     void updateHighlights();
     void updatePhaseLimit(float limit);
-    void validateMesh();
+    void validateMesh() override;
     void waveOverlayChanged();
 
     int getLayerType();
@@ -127,5 +125,3 @@ private:
     Mesh backupMesh;
     map<int, int> meshToSlider;
 };
-
-#endif

@@ -20,7 +20,7 @@ public:
     void releaseResources() override = 0;
     virtual void processBlock (AudioSampleBuffer& buffer, MidiBuffer& midiMessages) = 0;
 
-    virtual void doAudiothreadUpdates() {}
+    virtual void doAudioThreadUpdates() {}
 
     CriticalSection& getLock() { return audioLock; }
 };

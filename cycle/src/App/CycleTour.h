@@ -1,12 +1,11 @@
-#ifndef TUTORIALRUNNER_H_
-#define TUTORIALRUNNER_H_
+#pragma once
 
+#include <utility>
 #include <vector>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Curve/Vertex.h>
 #include <Curve/Vertex2.h>
-#include <Obj/Ref.h>
 #include "JuceHeader.h"
 #include <Util/CommonEnums.h>
 
@@ -429,13 +428,14 @@ public:
 		Comparable 	type;
 		String 		failMsg;
 
-		Condition() : value(0), type(NoCompare), oper(OperEquals) {}
+		Condition() : value(0), area(), type(NoCompare), oper(OperEquals) {
+		}
 	};
 
 	struct Item
 	{
 		int 		subArea;
-		int 		actionIndex;
+		int 		actionIndex{};
 
 		Area 		area;
 		Condition 	condition;
@@ -445,63 +445,56 @@ public:
 		String title;
 		String text;
 
-		Item() : subArea(-1)
-		{
+		Item() : subArea(-1), area() {
 		}
 
-		Rectangle<int> getArea(CycleTour* tour) const
-		{
-			if(subArea != TargNull)
-			{
-				TourGuide* t = tour->getTourGuide(area);
+		Rectangle<int> getArea(CycleTour *tour) const {
+			if (subArea != TargNull) {
+				TourGuide *t = tour->getTourGuide(area);
 
-				if(Component* c = t->getComponent(subArea))
+				if (Component *c = t->getComponent(subArea)) {
 					return c->getScreenBounds();
-			}
-			else
-			{
-				if(Component* c = tour->getComponent(area))
+				}
+			} else {
+				if (Component *c = tour->getComponent(area)) {
 					return c->getScreenBounds();
+				}
 			}
 
-			return Rectangle<int>();
+			return {};
 		}
 	};
 
-
-	class Highlighter : public Component
-	{
+	class Highlighter : public Component {
 	public:
-		Highlighter(CycleTour* tour);
+		explicit Highlighter(CycleTour *tour);
 
-		void paint(Graphics& g);
+		void paint(Graphics& g) override;
 		void update(const Rectangle<int>& r);
 
 		CycleTour* tour;
 	};
 
-	class ItemComponent : public Component
-	{
+	class ItemComponent : public Component {
 	public:
-		void paint(Graphics& g);
+		void paint(Graphics& g) override;
 		void setItem(const Item& item);
 
 		TextLayout layout;
 		Item item;
 	};
 
-	class ItemWrapper : public Component, public SingletonAccessor
-	{
+	class ItemWrapper : public Component, public SingletonAccessor {
 	public:
-		ItemWrapper(SingletonRepo* repo);
+		explicit ItemWrapper(SingletonRepo* repo);
 
-		void paint(Graphics& g);
-		void moved();
-		void resized();
-		void childBoundsChanged (Component*);
+		void paint(Graphics& g) override;
+		void moved() override;
+		void resized() override;
+		void childBoundsChanged (Component*) override;
 
 		void setItem(const Item& item);
-		bool keyPressed(const KeyPress& press);
+		bool keyPressed(const KeyPress& press) override;
 		void updatePosition (const Rectangle<int>& newAreaToPointTo,
 							 const Rectangle<int>& newAreaToFitIn);
 
@@ -517,22 +510,22 @@ public:
 		Image background;
 		Point<float> targetPoint;
 		Rectangle<int> availableArea, targetArea;
-		ScopedPointer<ItemComponent> content;
+		std::unique_ptr<ItemComponent> content;
 	};
 
-	CycleTour(SingletonRepo* repo);
-	virtual ~CycleTour();
+	explicit CycleTour(SingletonRepo* repo);
+	~CycleTour() override;
 
-	void init();
+	void init() override;
 	void exit();
 	void enter();
 	void showNext();
 	void showPrevious();
-	void handleAsyncUpdate();
-	void timerCallback(int id);
+	void handleAsyncUpdate() override;
+	void timerCallback(int id) override;
 	void performAction(Action& type);
 
-	bool isLive() { return live; }
+	bool isLive() const { return live; }
 	bool conditionPassed(const Condition& c);
 	bool compare(const Condition& cond, int value);
 	bool passesRequirements(const String& ignore, const String& require);
@@ -544,15 +537,16 @@ public:
 	Component* 	getComponent(int which);
 	TourGuide* 	getTourGuide(Area area);
 
-	class Tutorial
-	{
+	class Tutorial {
 	public:
-		Tutorial() {}
-		Tutorial(const String& name) : name(name) {}
+		Tutorial() = default;
+
+		explicit Tutorial(String name) : name(std::move(name)) {
+		}
+
 		String name;
 		vector<Item> items;
 	};
-
 
 private:
 	bool live, createdWaveshape;
@@ -568,5 +562,3 @@ private:
 	HashMap<String, ActionType> actionStrings;
 	HashMap<String, CondOper> 	condStrings;
 };
-
-#endif

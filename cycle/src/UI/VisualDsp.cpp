@@ -3,11 +3,10 @@
 #include <App/MeshLibrary.h>
 #include <Array/StereoBuffer.h>
 #include <Audio/Multisample.h>
-#include <Audio/SampleWrapper.h>
+#include <Audio/PitchedSample.h>
 #include <Curve/EnvelopeMesh.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
-#include <Test/CsvFile.h>
 #include <Thread/LockTracer.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegions.h>

@@ -1,5 +1,4 @@
-#ifndef COMMANDCLIENT_H_
-#define COMMANDCLIENT_H_
+#pragma once
 
 #include <App/SingletonAccessor.h>
 
@@ -8,7 +7,5 @@ class CommandClient :
 	,	public ApplicationCommandManager {
 public:
 	CommandClient(SingletonRepo* repo);
-	virtual ~CommandClient();
+	virtual ~CommandClient() = default;
 };
-
-#endif

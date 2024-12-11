@@ -116,15 +116,15 @@ private:
 
 	Component slidersArea;
 
-	ScopedPointer<CubeDisplay> cubeDisplay;
-	ScopedPointer<PulloutComponent> dimPO;
-	ScopedPointer<RetractableCallout> dimCO;
+	std::unique_ptr<CubeDisplay> cubeDisplay;
+	std::unique_ptr<PulloutComponent> dimPO;
+	std::unique_ptr<RetractableCallout> dimCO;
 
-	ScopedPointer<PulloutComponent> rangePO;
-	ScopedPointer<RetractableCallout> rangeCO;
+	std::unique_ptr<PulloutComponent> rangePO;
+	std::unique_ptr<RetractableCallout> rangeCO;
 
-	ScopedPointer<PulloutComponent> linkPO;
-	ScopedPointer<RetractableCallout> linkCO;
+	std::unique_ptr<PulloutComponent> linkPO;
+	std::unique_ptr<RetractableCallout> linkCO;
 
 	Rectangle<int> cubeBounds;
 	Range<int> midiRange;

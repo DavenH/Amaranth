@@ -1,7 +1,7 @@
 #include "PanelPair.h" 
 #include "../../App/SingletonRepo.h"
 
-PanelPair::PanelPair(SingletonRepo* repo, Bounded* a, Bounded* b,
+PanelPair::PanelPair(SingletonRepo* repo, Bounded& a, Bounded& b,
 					 bool sideBySide, float portion, const String& name,
 					 int border, int min1, int max1, int min2, int max2) :
 		SingletonAccessor(repo, name)
@@ -42,8 +42,8 @@ void PanelPair::setBounds(int x, int y, int width, int height) {
 	if (sideBySide) {
         int firstWidth, secondWidth;
 
-        firstWidth = int((width - border) * portion + 0.5f);
-        secondWidth = int((width - border) * (1 - portion) + 0.5f);
+        firstWidth = roundToInt((width - border) * portion);
+        secondWidth = roundToInt((width - border) * (1 - portion));
 
         if (minWidthOne > firstWidth) {
             firstWidth = minWidthOne;
@@ -61,11 +61,8 @@ void PanelPair::setBounds(int x, int y, int width, int height) {
             firstWidth = (width - border) - secondWidth;
         }
 
-        if (one)
-            one->setBounds(x, y, firstWidth, height);
-
-        if (two)
-            two->setBounds(x + firstWidth + border, y, secondWidth, height);
+        one.setBounds(x, y, firstWidth, height);
+        two.setBounds(x + firstWidth + border, y, secondWidth, height);
 
         if (dragger)
             dragger->setBounds(x + firstWidth, y - 2, border + 2, height + 4);
@@ -73,8 +70,8 @@ void PanelPair::setBounds(int x, int y, int width, int height) {
     } else {
         int firstHeight, secondHeight;
 
-        firstHeight = int((height - border) * portion + 0.5f);
-        secondHeight = int((height - border) * (1 - portion) + 0.5f);
+        firstHeight = roundToInt((height - border) * portion);
+        secondHeight = roundToInt((height - border) * (1 - portion));
 
         if (minHeightOne > firstHeight) {
             firstHeight = minHeightOne;
@@ -92,11 +89,8 @@ void PanelPair::setBounds(int x, int y, int width, int height) {
             firstHeight = (height - border) - secondHeight;
         }
 
-        if (one)
-			one->setBounds(x, y, width, firstHeight);
-
-		if (two)
-			two->setBounds(x, y + firstHeight + border, width, secondHeight);
+		one.setBounds(x, y, width, firstHeight);
+		two.setBounds(x, y + firstHeight + border, width, secondHeight);
 
 		if (dragger)
 			dragger->setBounds(x - 2, y + firstHeight, width + 4, border);
@@ -136,6 +130,6 @@ void PanelPair::setMaxHeight(int heightOfFirst, int heightOfSecond) {
 void PanelPair::setBounds(const Rectangle<int>& bounds) {
     setBounds(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight());
 
-    cout << name << "\t" << x << " " << y << " " << width << " " << height << "\n";
+    std::cout << name << "\t" << x << " " << y << " " << width << " " << height << "\n";
 }
 

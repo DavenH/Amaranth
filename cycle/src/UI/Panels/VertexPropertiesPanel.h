@@ -120,7 +120,7 @@ private:
 	vector<VertexProperties*> allProperties;
 	vector<VertexProperties*> gainProperties;
 
-	ScopedPointer<VertexProperties> ampVsPhaseProperties;
+	std::unique_ptr<VertexProperties> ampVsPhaseProperties;
 
 	InsetLabel title;
 };

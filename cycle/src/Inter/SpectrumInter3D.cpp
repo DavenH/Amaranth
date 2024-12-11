@@ -11,16 +11,13 @@
 #include "../UI/Panels/OscControlPanel.h"
 #include "../UI/VertexPanels/Spectrum3D.h"
 #include "../UI/VisualDsp.h"
-
+#include "../Util/CycleEnums.h"
+#include <Definitions.h>
 
 SpectrumInter3D::SpectrumInter3D(SingletonRepo* repo) :
         Interactor3D(repo, "SpectrumInter3D"), SingletonAccessor(repo, "SpectrumInter3D") {
     selectionClient = nullptr;
 }
-
-SpectrumInter3D::~SpectrumInter3D() {
-}
-
 
 void SpectrumInter3D::init() {
     jassert(selectionClient == nullptr);

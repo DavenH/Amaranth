@@ -109,7 +109,7 @@ private:
 	Ref<HSlider> layerFine;
 	Ref<HSlider> layerPan;
 	Ref<WaveformInter3D> surfInteractor;
-	ScopedPointer<MeshSelector<Mesh> > 	meshSelector;
+	std::unique_ptr<MeshSelector<Mesh> > 	meshSelector;
 };
 
 #endif

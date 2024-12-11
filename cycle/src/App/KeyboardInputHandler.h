@@ -1,6 +1,4 @@
-#ifndef _keyboardinputhandler_h
-#define _keyboardinputhandler_h
-
+#pragma once
 #include <Obj/Ref.h>
 #include "JuceHeader.h"
 #include <App/SingletonAccessor.h>
@@ -62,5 +60,3 @@ private:
 	bool isMeshInteractor;
 	Interactor* currentInteractor;
 };
-
-#endif

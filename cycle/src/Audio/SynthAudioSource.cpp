@@ -1,12 +1,10 @@
 #include <App/Doc/Document.h>
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
-#include <Audio/PluginProcessor.h>
 #include <Util/Arithmetic.h>
 
 #include "SynthAudioSource.h"
 #include "AudioSourceRepo.h"
-#include "Voices/CycleBasedVoice.h"
 #include "../UI/Effects/DelayUI.h"
 #include "../UI/Effects/EqualizerUI.h"
 #include "../UI/Effects/ReverbUI.h"
@@ -17,7 +15,6 @@
 #include "../UI/Panels/ModMatrixPanel.h"
 #include "../UI/VertexPanels/DeformerPanel.h"
 #include "../Util/CycleEnums.h"
-
 
 SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
 		SingletonAccessor	(repo, "SynthAudioSource")
@@ -63,14 +60,11 @@ SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
 
 		ffts[fftOrderIdx].setFFTScaleType(IPP_FFT_DIV_FWD_BY_N);
 		ffts[fftOrderIdx].allocate(size, true);
-
-//		ippsFFTInitAlloc_R_32f(&fftspecs[fftOrderIdx], fftOrder, IPP_FFT_DIV_FWD_BY_N, ippAlgHintFast);
 	}
 
 	getObj(Document).addListener(this);
 	getObj(AudioHub).addListener(this);
 }
-
 
 SynthAudioSource::~SynthAudioSource() {
     // for debugging
@@ -99,9 +93,9 @@ void SynthAudioSource::init() {
 	postProcessEffects.add(delay);
 	postProcessEffects.add(reverb);
 
-    for (int i = 0; i < 2; ++i) {
+    for (auto& i : resampleAccum) {
         // 2 = 44100.0/22050.0, the biggest ratio of input to output samplerate.
-        resampleAccum[i].allocate(getConstant(MaxBufferSize) * 2);
+        i.allocate(getConstant(MaxBufferSize) * 2);
     }
 
     calcFades();
@@ -116,19 +110,17 @@ void SynthAudioSource::init() {
 	synth.addSound(new SynthSound(repo));
 }
 
-
 void SynthAudioSource::prepareToPlay(int samplesPerBlockExpected, double sampleRate) {
-    calcDeclickEnvelope(sampleRate);
+	calcDeclickEnvelope(sampleRate);
 	synth.setCurrentPlaybackSampleRate(sampleRate);
 
-	for(int i = 0; i < voices.size(); ++i)
-		voices[i]->initCycleBuffers();
+	for (auto voice: voices) {
+		voice->initCycleBuffers();
+	}
 
 	updateTempoScale();
 
-	for(int i = 0; i < (int) globalScratch.size(); ++i)
-	{
-		EnvRenderContext& scratch = globalScratch[i];
+	for (auto& scratch: globalScratch) {
 		scratch.rast.setNoteOn();
 	}
 }
@@ -480,11 +472,8 @@ void SynthAudioSource::initResampler() {
 	}
 }
 
-
 void SynthAudioSource::doAudioThreadUpdates() {
-    for (int i = 0; i < pendingActions.size(); ++i) {
-        PendingAction* pendingAction = pendingActions[i];
-
+    for (auto pendingAction : pendingActions) {
         if (pendingAction->isPending()) {
             switch (pendingAction->getId()) {
 				case QualityChangeAction:							break;
@@ -510,12 +499,13 @@ void SynthAudioSource::doAudioThreadUpdates() {
 					int newRate = sampleRateAction.getValue();
 					break;
 
-			}
+				default:
+					break;
+            }
 
 			pendingAction->dismiss();
 		}
 	}
-
 
 	unison->audioThreadUpdate();
 }
@@ -523,17 +513,14 @@ void SynthAudioSource::doAudioThreadUpdates() {
 
 void SynthAudioSource::modulationChanged(float value, int voiceIndex, int outputId, int dim) {
     if (voiceIndex < 0) {
-        for (int i = 0; i < voices.size(); ++i) {
-            SynthesizerVoice* voice = voices[i];
+        for (auto voice : voices) {
             voice->modulationChanged(value, outputId, dim);
         }
 
         if (outputId >= ModMatrixPanel::ScratchEnvId) {
             int layerIndex = (outputId - ModMatrixPanel::ScratchEnvId) / numEnvelopeDims;
 
-            for (int i = 0; i < (int) globalScratch.size(); ++i) {
-                EnvRenderContext &scratchRast = globalScratch[i];
-
+            for (auto& scratchRast : globalScratch) {
                 if (scratchRast.layerIndex == layerIndex) {
                     MeshLibrary::EnvProps* props = getObj(MeshLibrary).getEnvProps(LayerGroups::GroupScratch,
                                                                                    scratchRast.layerIndex);
@@ -587,35 +574,32 @@ void SynthAudioSource::updateGlobality() {
         if (dynamic_cast<MeshLibrary::EnvProps*>(layer.props)->global) {
 			int size = globalScratch.size();
 
-			globalScratch.push_back(EnvRenderContext(EnvRasterizer(repo, &deformer, "GlobalScratch" + String(size)), i));
+			globalScratch.push_back(EnvRenderContext(EnvRasterizer(&deformer, "GlobalScratch" + String(size)), i));
 			globalScratch.back().rast.setMesh(layer.mesh);
 		}
 	}
 
 	rasterizeGlobalEnvs();
 
-	for(int i = 0; i < voices.size(); ++i)
-		voices[i]->envGlobalityChanged();
+	for(auto voice : voices)
+		voice->envGlobalityChanged();
 }
 
 
 Buffer<float> SynthAudioSource::getScratchBuffer(int layerIndex) {
-    for (int i = 0; i < globalScratch.size(); ++i) {
-        EnvRenderContext &scratchRast = globalScratch[i];
+    for (auto& scratchRast : globalScratch) {
         if (scratchRast.layerIndex == layerIndex) {
             return scratchRast.rast.getRenderBuffer();
-			break;
 		}
 	}
 
-	return Buffer<float>();
+	return {};
 }
 
 
 void SynthAudioSource::rasterizeGlobalEnvs() {
-    for (int i = 0; i < (int) globalScratch.size(); ++i) {
-        EnvRenderContext& scratchRast 	= globalScratch[i];
-		EnvRasterizer& rast 			= scratchRast.rast;
+    for (auto& scratchRast : globalScratch) {
+        EnvRasterizer& rast = scratchRast.rast;
 
 		rast.updateValue(Vertex::Red, 0);
 		rast.setWantOneSamplePerCycle(false);
@@ -625,14 +609,14 @@ void SynthAudioSource::rasterizeGlobalEnvs() {
 
 		scratchRast.sampleable = rast.isSampleable();
 
-		if(scratchRast.sampleable)
+		if(scratchRast.sampleable) {
 			rast.setNoteOn();
+		}
 	}
 }
 
 void SynthAudioSource::qualityChanged() {
 }
-
 
 SynthSound::SynthSound(SingletonRepo* repo) : SingletonAccessor(repo, "SynthSound") {}
 

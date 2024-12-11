@@ -253,7 +253,7 @@ void PresetPage::addFilesToArray(Array<DocumentDetails, CriticalSection>& list,
 
 		if(extension == getStrConstant(DocumentExt))
 		{
-			ScopedPointer<InputStream> stream(file.createInputStream());
+			std::unique_ptr<InputStream> stream(file.createInputStream());
 
 			if(Document::readHeader(stream, details, getConstant(DocMagicCode)))
 			{
@@ -825,7 +825,7 @@ IconButton* PresetPage::createIconButton(const DocumentDetails& details, int row
 				return nullptr;
 			}
 
-			ScopedPointer<IconButton> button = new IconButton(dismissImage, repo);
+			std::unique_ptr<IconButton> button = new IconButton(dismissImage, repo);
 			button->setMessages("Dismiss " + details.getName(), String::empty);
 			button->addListener(this);
 			button->getProperties().set("rowNumber", rowNumber);
@@ -1585,7 +1585,7 @@ void PresetPage::readPresetSettings()
 {
 	File settingsFile = getPresetSettingsFile();
 	XmlDocument presetDoc(settingsFile);
-	ScopedPointer<XmlElement> elem = presetDoc.getDocumentElement(false);
+	std::unique_ptr<XmlElement> elem = presetDoc.getDocumentElement(false);
 
 	if(! settingsFile.existsAsFile())
 	{
@@ -1681,14 +1681,14 @@ void PresetPage::writePresetSettings()
 			++it;
 		}
 
-		ScopedPointer<XmlElement> document = new XmlElement("PresetSettings");
+		std::unique_ptr<XmlElement> document = new XmlElement("PresetSettings");
 		document->addChildElement(ratingsElem);
 		document->addChildElement(dismissed);
 		document->addChildElement(downloaded);
 
 		if(settingsFile.deleteFile())
 		{
-			ScopedPointer<FileOutputStream> fileStream(settingsFile.createOutputStream());
+			std::unique_ptr<FileOutputStream> fileStream(settingsFile.createOutputStream());
 
 			if(fileStream != nullptr)
 			{

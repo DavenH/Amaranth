@@ -1,5 +1,4 @@
-#ifndef _voicemeshrasterizer_h
-#define _voicemeshrasterizer_h
+#pragma once
 
 #include <Curve/MeshRasterizer.h>
 #include <Obj/Ref.h>
@@ -26,5 +25,3 @@ public:
 	void orphanOldVerts();
 	void setState(CycleState* state) { this->state = state; }
 };
-
-#endif

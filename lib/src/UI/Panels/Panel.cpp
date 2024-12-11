@@ -610,7 +610,7 @@ bool Panel::createLinePath(Vertex2 first, Vertex2 second, VertCube* cube, int po
 	bool exHasPhase  	= adjustPhase && dims.x == Vertex::Phase;
 	bool whyHasAmp 	 	= adjustAmp   && dims.y == Vertex::Amp;
 
-	ScopedPointer<ScopedLock> sl;
+	std::unique_ptr<ScopedLock> sl;
 
 	if(adjustSpeed)
 		sl = new ScopedLock(getObj(PathRepo).getLock());

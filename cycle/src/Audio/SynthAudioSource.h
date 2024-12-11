@@ -1,5 +1,4 @@
-#ifndef _synthaudiosource_h
-#define _synthaudiosource_h
+#pragma once
 
 #include <map>
 
@@ -14,7 +13,6 @@
 #include <Audio/SmoothedParameter.h>
 #include <Array/RingBuffer.h>
 #include "JuceHeader.h"
-#include <Util/NumberUtils.h>
 
 #include "Synthesizer.h"
 
@@ -39,9 +37,9 @@ class SynthSound:
 	,	public SingletonAccessor
 {
 public:
-	SynthSound(SingletonRepo* repo);
-	bool appliesToNote(int midiNoteNumber);
-	bool appliesToChannel(int midiChannel);
+	explicit SynthSound(SingletonRepo* repo);
+	bool appliesToNote(int midiNoteNumber) override;
+	bool appliesToChannel(int midiChannel) override;
 };
 
 class SynthAudioSource:
@@ -51,10 +49,10 @@ class SynthAudioSource:
 	,	public AudioHub::SettingListener
 {
 public:
-	SynthAudioSource(SingletonRepo* repo);
-	~SynthAudioSource();
+	explicit SynthAudioSource(SingletonRepo* repo);
+	~SynthAudioSource() override;
 
-	void init();
+	void init() override;
 	void allNotesOff();
 	void calcDeclickEnvelope(double samplerate);
 	void calcFades();
@@ -62,21 +60,21 @@ public:
 	void enablementChanged();
 	void prepNewVoice();
 	void qualityChanged();
-	void releaseResources();
+	void releaseResources() override;
 	void paramChanged(int controller, float value);
-	void prepareToPlay(int samplesPerBlockExpected, double sampleRate);
-	void processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages);
+	void prepareToPlay(int samplesPerBlockExpected, double sampleRate) override;
+	void processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages) override;
 	void setEnvelopeMeshes(bool lock);
 	void setModValue(double value);
 	void unisonOrderChanged();
 
-	void documentAboutToLoad();
-	void documentHasLoaded();
+	void documentAboutToLoad() override;
+	void documentHasLoaded() override;
 
 	Effect* getDspEffect(int fxEnum);
 
 	float getModValue();
-	double getTempoScale()			{ return tempoScale; 		}
+	double getTempoScale() const	{ return tempoScale; 		}
 	Delay& getDelay() 				{ return *delay; 			}
 	Equalizer& getEqualizer()		{ return *equalizer; 		}
 	Waveshaper& getWaveshaper() 	{ return *waveshaper; 		}
@@ -84,10 +82,10 @@ public:
 	Unison& getUnison() 			{ return *unison; 			}
 	ReverbEffect& getReverb() 		{ return *reverb; 			}
 
-	int getNumEnvelopeDims() 		{ return numEnvelopeDims; 	}
+	int getNumEnvelopeDims() const 	{ return numEnvelopeDims; 	}
 
 	Buffer<float> getWorkBuffer() 	{ return workBuffer; 		}
-	float getLastAudioLevel() 		{ return lastAudioLevel;	}
+	float getLastAudioLevel() const { return lastAudioLevel;	}
 	float getLastModLevel() 		{ return modwRouteAction.getValue(); }
 	int getControlFreq() 			{ return controlFreqAction.getValue(); }
 	int getNumUnisonVoices() 		{ return unisonVoicesAction.getValue(); }
@@ -130,8 +128,7 @@ public:
 	void updateTempoScale();
 	void updateGlobality();
 	void rasterizeGlobalEnvs();
-	void doAudioThreadUpdates();
-
+	void doAudioThreadUpdates() override;
 
 private:
 	void convertMidiTo44k(const MidiBuffer& source, MidiBuffer& dest, int numSamples44k);
@@ -140,7 +137,7 @@ private:
 
 	enum
 	{
-		GlobalRasterAction = SettingListener::LastActionEnum
+		GlobalRasterAction = LastActionEnum
 	,	GlobalChangeAction
 	,	BufferSizeAction
 	,	SampleRateAction
@@ -211,6 +208,3 @@ private:
 	friend class SynthFilterVoice;
 	friend class WavAudioSource;
 };
-
-#endif
-

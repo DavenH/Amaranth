@@ -30,7 +30,7 @@ public:
 	enum CompositeAlgo { Chain, Interpolate, Overlap };
 
 	CycleBasedVoice(SynthesizerVoice* voice, SingletonRepo*);
-	virtual ~CycleBasedVoice();
+	~CycleBasedVoice() override;
 
 	void initCycleBuffers();
 	virtual void testNumLayersChanged();
@@ -39,7 +39,7 @@ public:
 	void testIfResamplingQualityChanged();
 
 	/* Rendering */
-	void initialiseNote(const int midiNoteNumber, const float velocity);
+	void initialiseNote(int midiNoteNumber, float velocity);
 	virtual void initialiseNoteExtra(const int midiNoteNumber, const float velocity) {}
 	virtual void calcCycle(VoiceParameterGroup& group) = 0;
 	void fillLatency(StereoBuffer& channelPair);
@@ -141,7 +141,7 @@ protected:
 	NoteState noteState;
 
 	vector<float> scratchTimes;
-	ScopedPointer<Oversampler> oversamplers[2];
+	OwnedArray<Oversampler> oversamplers;
 
 	StereoBuffer oversampleAccumBuf;
 	ScopedAlloc<Ipp32f> emergencyBuffer;

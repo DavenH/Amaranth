@@ -204,8 +204,8 @@ void ControlsPanel::addDynamicSizeComponent(IDynamicSizeComponent* component, bo
 }
 
 
-void ControlsPanel::addRetractableCallout(ScopedPointer<RetractableCallout>& callout,
-										  ScopedPointer<PulloutComponent>& pullout,
+void ControlsPanel::addRetractableCallout(std::unique_ptr<RetractableCallout>& callout,
+										  std::unique_ptr<PulloutComponent>& pullout,
 										  SingletonRepo* repo,
 										  int posX, int posY,
 										  Component** buttonArray,

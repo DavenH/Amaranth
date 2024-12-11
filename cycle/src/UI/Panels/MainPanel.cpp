@@ -54,7 +54,7 @@
 #include "../../Audio/Effects/WaveShaper.h"
 #include "../../Audio/SynthAudioSource.h"
 #include "../../Curve/GraphicRasterizer.h"
-#include "../../CycleDefs.h"
+#include "../CycleDefs.h"
 
 
 MainPanel::MainPanel(SingletonRepo* repo) : 
@@ -117,18 +117,15 @@ void MainPanel::init() {
 	initialisePanels();
 }
 
-
 void MainPanel::tabSelected(TabbedSelector* selector, Bounded* callbackComponent) {
-    if (selector == bottomTabs) {
-        toggleEffectsWaveform2DPresets(
-                callbackComponent == wave2DPair ? 0 : callbackComponent == ev_bottomRight ? 1 : 2);
-    } else if (selector == topTabs) {
-        toggleF2DGuide(callbackComponent == dfrmPair);
-    } else if (selector == topRightTabs) {
+    if (selector == bottomTabs.get()) {
+        toggleEffectsWaveform2DPresets(callbackComponent == wave2DPair.get() ? 0 : callbackComponent == ev_bottomRight.get() ? 1 : 2);
+    } else if (selector == topTabs.get()) {
+        toggleF2DGuide(callbackComponent == dfrmPair.get());
+    } else if (selector == topRightTabs.get()) {
         toggleEnvPanel(callbackComponent == envelope3D->getZoomPanel());
     }
 }
-
 
 void MainPanel::initialisePanels() {
     keyboard->setLowestVisibleKey(2 * 12);
@@ -141,43 +138,43 @@ void MainPanel::initialisePanels() {
 	Component* irmodCtrls 	= irModelUI	->getControlsComponent();
 	Component* wshpCtrls 	= waveshaperUI->getControlsPanel();
 
-	bottomTabs			= new TabbedSelector(repo);
-	topTabs				= new TabbedSelector(repo);
-	topRightTabs		= new TabbedSelector(repo);
+	bottomTabs			= std::make_unique<TabbedSelector>(repo);
+	topTabs				= std::make_unique<TabbedSelector>(repo);
+	topRightTabs		= std::make_unique<TabbedSelector>(repo);
 
-	oscCtrlBounds	 	= new BoundWrapper(&getObj(OscControlPanel));
-	menuBar 			= new MenuBarComponent(&getObj(SynthMenuBarModel));
-	bannerPanel			= new BannerPanel(repo);
+	oscCtrlBounds	 	= std::make_unique<BoundWrapper>(&getObj(OscControlPanel));
+	menuBar 			= std::make_unique<MenuBarComponent>(&getObj(SynthMenuBarModel));
+	bannerPanel			= std::make_unique<BannerPanel>(repo);
 
-	cv_middleDragger 	= new Dragger(repo, Dragger::ReduceNothing);
-	cv_envSpectDragger 	= new Dragger(repo, Dragger::ReduceF3dDetail);
-	cv_wholeDragger 	= new Dragger(repo, Dragger::ReduceSurfDetail | Dragger::ReduceF3dDetail);
-	cv_spectSurfDragger = new Dragger(repo, Dragger::ReduceSurfDetail | Dragger::ReduceF3dDetail);
+	cv_middleDragger 	= std::make_unique<Dragger>(repo, Dragger::ReduceNothing);
+	cv_envSpectDragger 	= std::make_unique<Dragger>(repo, Dragger::ReduceF3dDetail);
+	cv_wholeDragger 	= std::make_unique<Dragger>(repo, Dragger::ReduceSurfDetail | Dragger::ReduceF3dDetail);
+	cv_spectSurfDragger = std::make_unique<Dragger>(repo, Dragger::ReduceSurfDetail | Dragger::ReduceF3dDetail);
 
-	consBounds 			= new BoundWrapper(console);
-	modBounds 			= new BoundWrapper(morphPanel);
-	keybBounds 			= new BoundWrapper(keyboard);
-	playbackBounds 		= new BoundWrapper(playbackPanel);
-	genBounds 			= new BoundWrapper(generalControls);
+	consBounds 			= std::make_unique<BoundWrapper>(console);
+	modBounds 			= std::make_unique<BoundWrapper>(morphPanel);
+	keybBounds 			= std::make_unique<BoundWrapper>(keyboard);
+	playbackBounds 		= std::make_unique<BoundWrapper>(playbackPanel);
+	genBounds 			= std::make_unique<BoundWrapper>(generalControls);
 
-	surfCtrlBounds		= new BoundWrapper(surfCtrls);
-	spectCtrlBounds		= new BoundWrapper(spectCtrls);
-	guideCtrlBounds		= new BoundWrapper(dfrmCtrls);
-	tubeCtrlBoundsB		= new BoundWrapper(irmodCtrls);
-	envCtrlBounds		= new BoundWrapper(envCtrls);
-	wsCtrlBounds		= new BoundWrapper(wshpCtrls);
+	surfCtrlBounds		= std::make_unique<BoundWrapper>(surfCtrls);
+	spectCtrlBounds		= std::make_unique<BoundWrapper>(spectCtrls);
+	guideCtrlBounds		= std::make_unique<BoundWrapper>(dfrmCtrls);
+	tubeCtrlBoundsB		= std::make_unique<BoundWrapper>(irmodCtrls);
+	envCtrlBounds		= std::make_unique<BoundWrapper>(envCtrls);
+	wsCtrlBounds		= std::make_unique<BoundWrapper>(wshpCtrls);
 
-	derivBounds 		= new BoundWrapper(derivPanel);
-	propsBounds 		= new BoundWrapper(vtxPropsPanel);
-	unisonBounds 		= new BoundWrapper(unisonUI);
-	reverbBounds		= new BoundWrapper(reverbUI);
-	delayBounds			= new BoundWrapper(delayUI);
-	eqBounds			= new BoundWrapper(eqUI);
-	bnrBounds 			= new BoundWrapper(bannerPanel);
-	menuBounds 			= new BoundWrapper(menuBar);
-	presetPageBounds	= new BoundWrapper(presetPage);
-	cv_botTabBounds		= new BoundWrapper(bottomTabs);
-	cv_topTabBounds		= new BoundWrapper(topTabs);
+	derivBounds 		= std::make_unique<BoundWrapper>(derivPanel);
+	propsBounds 		= std::make_unique<BoundWrapper>(vtxPropsPanel);
+	unisonBounds 		= std::make_unique<BoundWrapper>(unisonUI);
+	reverbBounds		= std::make_unique<BoundWrapper>(reverbUI);
+	delayBounds			= std::make_unique<BoundWrapper>(delayUI);
+	eqBounds			= std::make_unique<BoundWrapper>(eqUI);
+	bnrBounds 			= std::make_unique<BoundWrapper>(bannerPanel.get());
+	menuBounds 			= std::make_unique<BoundWrapper>(menuBar.get());
+	presetPageBounds	= std::make_unique<BoundWrapper>(presetPage);
+	cv_botTabBounds		= std::make_unique<BoundWrapper>(bottomTabs.get());
+	cv_topTabBounds		= std::make_unique<BoundWrapper>(topTabs.get());
 
 	Bounded* envBounds = getSetting(CurrentMorphAxis) == Vertex::Time ? envelope2D->getZoomPanel() : envelope3D->getZoomPanel();
 
@@ -291,7 +288,7 @@ void MainPanel::initialiseExtendedView() {
 	xv_TRT_pair 	= new PanelPair(repo, propsBounds, 	xv_TRTR_pair, 	true, 	0.20f, 					"xv_trt_pair",  	mBord, 	180, 	220						);
 	xv_TRB_pair 	= new PanelPair(repo, xv_TRBL_pair, xv_TRBR_pair, 	true, 	0.75f, 					"xv_trb_pair",		mBord, 	0, 		INT_MAX, 	255, 	450	);
 	xv_TR_pair 		= new PanelPair(repo, xv_TRT_pair, 	xv_TRB_pair, 	false, 	0.25f, 					"xv_tr_pair",		mBord,  180, 	300						);
-	xv_spectSurf	= new PanelPair(repo, spectPair,		wavePair,		false,	xv_spectSurfPortion, 	"xv_spectSurf",		lBord									);
+	xv_spectSurf	= new PanelPair(repo, spectPair,		wavePair,	false,	xv_spectSurfPortion,	"xv_spectSurf",		lBord									);
 	xv_playbackLeft	= new PanelPair(repo, playbackBounds, xv_spectSurf,	false,	0.02f, 					"xv_playbackLeft", 	mBord,	24, 	INT_MAX, 	28			);
 	xv_topPair 		= new PanelPair(repo, xv_playbackLeft,xv_TR_pair, 	true, 	xv_wholePortion, 		"xv_top_pair",		lBord, 	360, 	720						);
 	xv_whole 		= new PanelPair(repo, xv_topPair, 	xv_envDfmImp, 	false, 	xv_topBttmPortion, 		"xv_whole", 		lBord, 	0, 		INT_MAX, 	165, 	350	);
@@ -711,7 +708,6 @@ void MainPanel::childBoundsChanged(Component* child) {
     needsRepaint = true;
 }
 
-
 void MainPanel::addCorePanels() {
     Component* spectCtrls  	= spectrum3D->getControlsComponent();
 	Component* surfCtrls 	= waveform3D->getControlsComponent();
@@ -757,17 +753,14 @@ void MainPanel::addCorePanels() {
 	addAndMakeVisible(presetPage);
 }
 
-
 void MainPanel::setPlayerComponents() {
     addAndMakeVisible(console);
     addAndMakeVisible(keyboard);
 }
 
-
 void MainPanel::triggerTabClick(int tab) {
     bottomTabs->selectTab(tab);
 }
-
 
 void MainPanel::toggleDraggers(bool showCollapsed) {
     if (showCollapsed) {

@@ -1,7 +1,4 @@
-#ifndef SAMPLEUTILS_H_
-#define SAMPLEUTILS_H_
-
-
+#pragma once
 #include <vector>
 #include <App/SingletonAccessor.h>
 
@@ -9,25 +6,25 @@ using std::vector;
 
 class Multisample;
 class PitchTracker;
-class SampleWrapper;
+class PitchedSample;
 class AudioSourceRepo;
 
 class SampleUtils :
 	public SingletonAccessor
 {
 public:
-	SampleUtils(SingletonRepo* repo);
-	virtual ~SampleUtils();
+	explicit SampleUtils(SingletonRepo* repo);
+	~SampleUtils() override;
 
 	int calcFundDelta();
-	void init();
+	void init() override;
 
 	void unloadWav();
 	void processWav(bool isMulti, bool invokerIsDialog);
 	void resetWavOffset();
 	void shiftWaveNoteOctave(bool up);
 	float getWavLengthSeconds();
-	void waveNoteChanged(SampleWrapper*, bool isMulti, bool invokerIsDialog = true);
+	void waveNoteChanged(PitchedSample*, bool isMulti, bool invokerIsDialog = true);
 	void waveOverlayChanged(bool shouldDrawWave);
 	void updateMidiNoteNumber(int note);
 
@@ -36,5 +33,3 @@ private:
 	Ref<PitchTracker> tracker;
 	Ref<AudioSourceRepo> audioRepo;
 };
-
-#endif

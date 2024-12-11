@@ -76,21 +76,21 @@ private:
 	friend class EnvelopeInter2D;
 	friend class Envelope2D;
 
-	ScopedPointer<RetractableCallout> waveCO;
-	ScopedPointer<RetractableCallout> envSelectCO;
-	ScopedPointer<RetractableCallout> transCO;
-	ScopedPointer<RetractableCallout> stageCO;
-	ScopedPointer<RetractableCallout> toolCO;
-	ScopedPointer<RetractableCallout> linkCO;
-	ScopedPointer<RetractableCallout> prstCO;
+	std::unique_ptr<RetractableCallout> waveCO;
+	std::unique_ptr<RetractableCallout> envSelectCO;
+	std::unique_ptr<RetractableCallout> transCO;
+	std::unique_ptr<RetractableCallout> stageCO;
+	std::unique_ptr<RetractableCallout> toolCO;
+	std::unique_ptr<RetractableCallout> linkCO;
+	std::unique_ptr<RetractableCallout> prstCO;
 
-	ScopedPointer<PulloutComponent> prstPO;
-	ScopedPointer<PulloutComponent> wavePO;
-	ScopedPointer<PulloutComponent> envSelectPO;
-	ScopedPointer<PulloutComponent> transPO;
-	ScopedPointer<PulloutComponent> stagePO;
-	ScopedPointer<PulloutComponent> toolPO;
-	ScopedPointer<PulloutComponent> linkPO;
+	std::unique_ptr<PulloutComponent> prstPO;
+	std::unique_ptr<PulloutComponent> wavePO;
+	std::unique_ptr<PulloutComponent> envSelectPO;
+	std::unique_ptr<PulloutComponent> transPO;
+	std::unique_ptr<PulloutComponent> stagePO;
+	std::unique_ptr<PulloutComponent> toolPO;
+	std::unique_ptr<PulloutComponent> linkPO;
 
 	Ref<PlaybackPanel> 	position;
 	Ref<Dialogs> 		dialogs;

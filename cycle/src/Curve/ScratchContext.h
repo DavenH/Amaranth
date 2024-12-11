@@ -1,6 +1,4 @@
-#ifndef CURVE_SCRATCHCONTEXT_H_
-#define CURVE_SCRATCHCONTEXT_H_
-
+#pragma once
 struct ScratchInflection
 {
 	Range<float> range;
@@ -14,5 +12,3 @@ struct ScratchContext
 
 	vector<ScratchInflection> inflections;
 };
-
-#endif

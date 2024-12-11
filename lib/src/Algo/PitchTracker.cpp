@@ -295,7 +295,7 @@ vector<PitchTracker::FrequencyBin>& PitchTracker::getFrequencyBins() {
 }
 
 void PitchTracker::reset() {
-    sample = 0;
+    sample = nullptr;
     data.reset();
 }
 

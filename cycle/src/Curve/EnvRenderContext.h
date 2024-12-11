@@ -30,7 +30,7 @@ struct EnvRastGroup
 	int size() { return (int) envGroup.size(); }
 	EnvRenderContext& operator[] (const int index) { return envGroup[index]; }
 
-	EnvRastGroup(int layerGroup) : layerGroup(layerGroup) {}
+	explicit EnvRastGroup(int layerGroup) : layerGroup(layerGroup) {}
 };
 
 typedef vector<EnvRenderContext>::iterator RenderIter;

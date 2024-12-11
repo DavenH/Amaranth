@@ -1,5 +1,4 @@
-#ifndef _enveloperasterizer3d_h
-#define _enveloperasterizer3d_h
+#pragma once
 
 #include <App/SingletonAccessor.h>
 #include <App/SingletonRepo.h>
@@ -34,5 +33,3 @@ private:
 
 	CriticalSection arrayLock;
 };
-
-#endif

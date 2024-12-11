@@ -2,28 +2,20 @@
 #include <UI/MiscGraphics.h>
 #include "SamplePlacer.h"
 #include "../CycleGraphicsUtils.h"
+#include <Definitions.h>
 
 SamplePlacer::SamplePlacer(SingletonRepo* repo) :
 		SingletonAccessor(repo, "SamplePlacer")
 	,	horzCut(false)
 	,	horzButton(2, 0, this, repo, "Cut Horizontally")
 	,	vertButton(2, 0, this, repo, "Cut Vertically")
-	,	pair(this)
-
-{
+	,	pair(this) {
 	addAndMakeVisible(&horzButton);
 	addAndMakeVisible(&vertButton);
 	addAndMakeVisible(&pair);
 }
 
-
-SamplePlacer::~SamplePlacer()
-{
-}
-
-
-void SamplePlacer::paint(Graphics& g)
-{
+void SamplePlacer::paint(Graphics& g) {
 	getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
 	g.setColour(Colours::grey);
@@ -33,73 +25,55 @@ void SamplePlacer::paint(Graphics& g)
 		g.drawVerticalLine(xy.getX(), 0, getHeight());
 }
 
-
-void SamplePlacer::mouseDown(const MouseEvent& e)
-{
+void SamplePlacer::mouseDown(const MouseEvent& e) {
 	cut();
 }
 
-
-void SamplePlacer::mouseMove(const MouseEvent& e)
-{
+void SamplePlacer::mouseMove(const MouseEvent& e) {
 	xy = e.getPosition().toFloat() * float(1 / getWidth());
 
 	repaint();
 }
 
-
-void SamplePlacer::cut()
-{
+void SamplePlacer::cut() {
 }
 
-
-void SamplePlacer::buttonClicked(Button* button)
-{
+void SamplePlacer::buttonClicked(Button* button) {
 	horzCut = button == &horzButton;
 	repaint();
 }
 
-
-void SamplePlacer::resized()
-{
+void SamplePlacer::resized() {
 	Rectangle<int> r = getLocalBounds();
 	pair.setBounds(r);
 }
 
-
-SamplePlacerPanel::SamplePlacerPanel(SingletonRepo* repo) :
-		SingletonAccessor(repo, "SamplePlacerPanel")
-	,	samplePlacer(repo)
-{
+SamplePlacerPanel::SamplePlacerPanel(SingletonRepo* repo) : SingletonAccessor(repo, "SamplePlacerPanel")
+                                                            , samplePlacer(repo) {
 	addAndMakeVisible(&samplePlacer);
 }
 
-
-void SamplePlacerPanel::resized()
-{
+void SamplePlacerPanel::resized() {
 	Rectangle<int> r = getLocalBounds();
 	r.reduce(40, 40);
 
 	samplePlacer.setBounds(r.removeFromLeft(300));
 }
 
-
-
-SamplePair::SamplePair(SamplePlacer* placer) : placer(placer), horz(false)
-{
+SamplePair::SamplePair(SamplePlacer* placer) :
+	placer(placer),
+	horz(false) {
 }
 
-
-void SamplePair::split(float portion, bool horz)
-{
-	this->portion   = portion;
-	this->horz 		= horz;
+void SamplePair::split(float portion, bool horz) {
+	this->portion = portion;
+	this->horz = horz;
 
 	jassert(a == nullptr);
 	jassert(b == nullptr);
 
-	addAndMakeVisible(a 	  = new SamplePair(placer));
-	addAndMakeVisible(b 	  = new SamplePair(placer));
+	addAndMakeVisible(a = new SamplePair(placer));
+	addAndMakeVisible(b = new SamplePair(placer));
 	addAndMakeVisible(dragger = new SampleDragger(this, horz));
 
 	SamplePair* bigger = portion > 0.5 ? b : a;
@@ -110,9 +84,7 @@ void SamplePair::split(float portion, bool horz)
 	resized();
 }
 
-
-void SamplePair::paint(Graphics& g)
-{
+void SamplePair::paint(Graphics& g) {
 	Rectangle<int> r = getLocalBounds();
 
 	g.setColour(Colour::greyLevel(0.2f));
@@ -121,34 +93,29 @@ void SamplePair::paint(Graphics& g)
 	g.setColour(Colour::greyLevel(0.3f));
 	g.drawRect(r);
 
-	if(file.getFullPathName().isEmpty())
+	if (file.getFullPathName().isEmpty())
 		g.drawImageWithin(placer->folderImage, 0, 0, getWidth(), getHeight(), RectanglePlacement::centred);
-	else
-	{
+	else {
 		Font font(15);
 
 		g.setFont(font);
 
 		placer->getObj(MiscGraphics).drawCentredText(g, getBounds(), file.getFileName());
 	}
-
 }
 
-
-void SamplePair::resized()
-{
+void SamplePair::resized() {
 	Rectangle<int> r = getLocalBounds();
 
-	int x 	   = r.getX();
-	int y 	   = r.getY();
-	int width  = r.getWidth();
+	int x = r.getX();
+	int y = r.getY();
+	int width = r.getWidth();
 	int height = r.getHeight();
 
-	if (horz)
-	{
+	if (horz) {
 		int firstWidth, secondWidth;
 
-		firstWidth 	= int((width - border) * portion + 0.5f);
+		firstWidth = int((width - border) * portion + 0.5f);
 		secondWidth = int((width - border) * (1 - portion) + 0.5f);
 
 		if (a != nullptr)
@@ -159,13 +126,10 @@ void SamplePair::resized()
 
 		if (dragger)
 			dragger->setBounds(x + firstWidth, y - 2, border + 2, height + 4);
-
-	}
-	else
-	{
+	} else {
 		int firstHeight, secondHeight;
 
-		firstHeight  = int((height - border) * portion + 0.5f);
+		firstHeight = int((height - border) * portion + 0.5f);
 		secondHeight = int((height - border) * (1 - portion) + 0.5f);
 
 		if (a != nullptr)

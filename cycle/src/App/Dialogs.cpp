@@ -9,18 +9,10 @@
 #include <Algo/PitchTracker.h>
 #include <App/AppConstants.h>
 #include <App/EditWatcher.h>
-#include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Audio/AudioHub.h>
-#include <Audio/Multisample.h>
-#include <Audio/PluginProcessor.h>
-#include <Design/Updating/Updater.h>
-#include <Test/CsvFile.h>
-#include <UI/Panels/Panel2D.h>
 #include <UI/Widgets/IconButton.h>
-#include <Util/ScopedBooleanSwitcher.h>
-#include <Util/StringFunction.h>
 #include <Util/Util.h>
 #include <App/Doc/Document.h>
 #include <App/Doc/DocumentDetails.h>
@@ -30,22 +22,15 @@
 #include "Directories.h"
 #include "FileManager.h"
 
-#include "../CycleDefs.h"
-#include "../Audio/AudioSourceRepo.h"
 #include "../Audio/SampleUtils.h"
 #include "../Audio/SynthAudioSource.h"
-#include "../Inter/EnvelopeInter2D.h"
-#include "../Inter/SpectrumInter2D.h"
 #include "../UI/Dialogs/FileChooser.h"
 #include "../UI/Dialogs/PresetPage.h"
 #include "../UI/Dialogs/HelpDialog.h"
 #include "../UI/Panels/PlayerComponent.h"
 #include "../UI/Effects/IrModellerUI.h"
-#include "../UI/Panels/GeneralControls.h"
 #include "../UI/Panels/MainPanel.h"
 #include "../UI/Panels/ModMatrixPanel.h"
-#include "../UI/VertexPanels/Waveform3D.h"
-#include "../UI/VisualDsp.h"
 #include "../Util/CycleEnums.h"
 
 #define _registryRoot "HKEY_CURRENT_USER\\Software\\Amaranth Audio\\Cycle\\"
@@ -153,12 +138,13 @@ void Dialogs::showPresetSaveAsDialog() {
 
             getObj(FileManager).setCurrentPresetName(filename);
 
-            const String &tagsString = dialogBox.getTagsBoxContent();
-            tagsString.removeCharacters("\t. ");
-            tagsString.toLowerCase();
+            const String &tagsString = dialogBox
+                .getTagsBoxContent()
+                .removeCharacters("\t. ")
+                .toLowerCase();
 
             StringArray strings;
-            strings.addTokens(tagsString, ",", String::empty);
+            strings.addTokens(tagsString, ",", {});
             strings.trim();
 
             deets.setTags(strings);
@@ -168,8 +154,9 @@ void Dialogs::showPresetSaveAsDialog() {
             getObj(Document).getDetails() = deets;
             getObj(Document).save(filename);
 
-            if (!existsBefore)
+            if (!existsBefore) {
                 getObj(PresetPage).addItem(deets);
+            }
 
             watcher->reset();
             watcher->update();
@@ -178,7 +165,6 @@ void Dialogs::showPresetSaveAsDialog() {
 
     handleNextPendingModalAction();
 }
-
 
 void Dialogs::showDeviceErrorApplicably() {
     String deviceError = getObj(AudioHub).getDeviceErrorAndReset();
@@ -241,7 +227,6 @@ void Dialogs::showOpenWaveDialog(SampleWrapper* dstWav, const String &subDir,
     }
 }
 
-
 void Dialogs::showOpenPresetDialog() {
     String lastPresetDirectory = getObj(Directories).getLastPresetDir();
 
@@ -275,7 +260,6 @@ void Dialogs::showOpenPresetDialog() {
     }
 }
 
-
 #if !PLUGIN_MODE
 void Dialogs::showAudioSettings() {
     AudioDeviceSelectorComponent audioSettingsComp(
@@ -288,7 +272,6 @@ void Dialogs::showAudioSettings() {
 }
 #endif
 
-
 void Dialogs::showQualityOptions() {
     if (QualityDialog* qd = &getObj(QualityDialog)) {
         qd->updateSelections();
@@ -296,9 +279,8 @@ void Dialogs::showQualityOptions() {
     }
 }
 
-
 void Dialogs::showModMatrix() {
-    ModMatrixPanel &matrix = getObj(ModMatrixPanel);
+    auto &matrix = getObj(ModMatrixPanel);
     matrix.selfSize();
     matrix.setPendingFocusGrab(true);
 
@@ -312,7 +294,6 @@ void Dialogs::showModMatrix() {
     matrix.setVisible(true);
 }
 
-
 void Dialogs::showSamplePlacer() {
 //	getObj(SamplePlacer).setSize(600, 800);
 //	DialogWindow::showDialog("Sample Placer", &getObj(SamplePlacer), mainPanel, Colour::greyLevel(0.1f), true);
@@ -321,7 +302,6 @@ void Dialogs::showSamplePlacer() {
 void Dialogs::showOutputPopup() {}
 void Dialogs::showDebugPopup() {}
 
-
 void Dialogs::launchHelp() {
     const String &homeUrl = getObj(Directories).getHomeUrl();
     URL url(homeUrl + "/help/");
@@ -329,9 +309,8 @@ void Dialogs::launchHelp() {
     url.launchInDefaultBrowser();
 }
 
-
 void Dialogs::showAboutDialog() {
-    HelpDialog* help = new HelpDialog(repo);
+    auto* help = new HelpDialog(repo);
 
     help->setSize(350, 300);
     help->addToDesktop(ComponentPeer::windowIsTemporary);
@@ -370,10 +349,12 @@ bool Dialogs::promptForSaveModally() {
 
             case DialogDontSave:    // don't save
                 return true;
+
+            default:
+                throw std::invalid_argument("Dialogs::promptForSaveModally");
         }
     }
-
-    return true;
+    return false;
 }
 
 
@@ -387,7 +368,7 @@ void Dialogs::promptForSaveApplicably(PostModalAction action) {
 #endif
 
     if (watcher->getHaveEdited()) {
-        AlertWindow* window = new AlertWindow("Save Current Preset",
+        auto* window = new AlertWindow("Save Current Preset",
                                               "Do you want to save your work?",
                                               AlertWindow::QuestionIcon, mainPanel);
         window->setAlwaysOnTop(true);
@@ -406,7 +387,7 @@ void Dialogs::promptForSaveApplicably(PostModalAction action) {
 
 
 void Dialogs::showPresetBrowserModal() {
-    dout << "Showing preset browser\n";
+    cout << "Showing preset browser\n";
     bool playerView = false;
 
 #if PLUGIN_MODE
@@ -449,7 +430,7 @@ void Dialogs::getSizeFromSetting(int sizeEnum, int &width, int &height) {
         }
     }
 
-    Rectangle<int> screenArea = Desktop::getInstance().getDisplays().getMainDisplay().userArea;
+    Rectangle<int> screenArea = Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;
 
 #if !PLUGIN_MODE
     screenArea.removeFromBottom(25);

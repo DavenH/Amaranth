@@ -38,7 +38,7 @@ void AudioSourceRepo::init() {
 
 void AudioSourceRepo::setAudioProcessor(AudioSourceEnum source) {
     AudioSourceProcessor* proc = audioHub->getAudioSourceProcessor();
-	ScopedPointer<ScopedLock> sl;
+	std::unique_ptr<ScopedLock> sl;
 
 	if(proc != nullptr)
 		sl = new ScopedLock(proc->getLock());

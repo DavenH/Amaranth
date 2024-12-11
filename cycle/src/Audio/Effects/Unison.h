@@ -1,5 +1,4 @@
-#ifndef _unison_h
-#define _unison_h
+#pragma once
 
 #include <vector>
 #include <Design/Updating/Updateable.h>
@@ -54,15 +53,15 @@ public:
 //		int destOrder;
 	};
 
-	Unison(SingletonRepo* repo);
+	explicit Unison(SingletonRepo* repo);
 
 	enum Param { Width, PanSpread, Phase, Order, Jitter, Pan, Fine,
 				 numParams };
 
 	// dummy function, not to be used
-	void processBuffer(AudioSampleBuffer& buffer);
+	void processBuffer(AudioSampleBuffer& buffer) override;
 
-	void audioThreadUpdate();
+	void audioThreadUpdate() override;
 	void updateTunings(bool isAudio, bool force = false);
 	void updatePanning(bool isAudio, bool force = false);
 	void updatePhases(bool isAudio, bool force = false);
@@ -78,20 +77,20 @@ public:
 	void setVoiceData(int voiceIndex, float fine, float pan, float phase);
 	void setVoices(vector<UnivoiceData>& data);
 	void modeChanged();
-	void reset();
+	void reset() override;
 	bool removeVoice(int unisonIdx);
 	bool addVoice(const UnivoiceData& data, bool async = true);
 
 	bool isStereo();
 	bool isPhased();
-	bool isEnabled() const;
+	bool isEnabled() const override;
 	bool changeOrderFromValue(bool isAudio, double orderValue);
 	bool changeOrderTo(bool isAudio, int newOrder);
 
 	void changeAllOrdersImplicit();
 	void trimVoicesToOrder();
 
-	const ParamGroup& getGraphicParams() const	{ return graphicParams; }
+	[[nodiscard]] const ParamGroup& getGraphicParams() const	{ return graphicParams; }
 	ParamGroup& getGraphicParams() 				{ return graphicParams; }
 
 	static int calcOrder(double value);
@@ -105,7 +104,7 @@ public:
 		,	SetVoices
 	};
 protected:
-	bool doParamChange(int index, double value, bool doFutherUpdate);
+	bool doParamChange(int index, double value, bool doFutherUpdate) override;
 
 private:
 	PendingActionValue<bool> updateAllAction;
@@ -122,5 +121,3 @@ private:
 
 	double jitters[maxUnisonOrder - 1][maxUnisonOrder];
 };
-
-#endif

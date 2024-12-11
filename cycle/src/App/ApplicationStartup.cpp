@@ -14,7 +14,7 @@ namespace ProjectInfo
 
 
 class AppClass : public JUCEApplication {
-    ScopedPointer <MainAppWindow> mainWindow;
+    std::unique_ptr <MainAppWindow> mainWindow;
 
 public:
     AppClass()

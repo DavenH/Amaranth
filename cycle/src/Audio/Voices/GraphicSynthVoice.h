@@ -1,5 +1,4 @@
-#ifndef _graphicsynthvoice_h
-#define _graphicsynthvoice_h
+#pragma once
 
 #include <vector>
 #include <ippdefs.h>
@@ -18,8 +17,8 @@ class GraphicSynthSound :
 	public SynthesiserSound
 {
 public:
-	bool appliesToNote(int midiNoteNumber) { return true; }
-	bool appliesToChannel(int midiChannel) { return true; }
+	bool appliesToNote(int midiNoteNumber) override { return true; }
+	bool appliesToChannel(int midiChannel) override { return true; }
 };
 
 class GraphicSynthVoice :
@@ -28,29 +27,26 @@ class GraphicSynthVoice :
 {
 
 public:
-	GraphicSynthVoice(SingletonRepo* repo);
+	explicit GraphicSynthVoice(SingletonRepo* repo);
 
 	void startNote(int midiNoteNumber,
 				   float velocity,
 				   SynthesiserSound* sound,
-				   int currentPitchWheelPosition);
+				   int currentPitchWheelPosition) override;
 
-	void stop(bool allowTailoff)
-	{
+	void stop(bool allowTailoff) {
 		stopNote(1.f, allowTailoff);
 	}
 
-	void stopNote(float velocity, bool allowTailOff);
+	void stopNote(float velocity, bool allowTailOff) override;
+	bool canPlaySound(SynthesiserSound* sound) override;
 
-	bool canPlaySound(SynthesiserSound* sound);
+	void aftertouchChanged (int newValue) override {}
+	void pitchWheelMoved(int newValue) override;
+	void controllerMoved(int controllerNumber, int newValue) override;
+	void renderNextBlock(AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override;
+	void calcCycle(VoiceParameterGroup& group) override;
 
-	void aftertouchChanged (int newValue) {}
-	void pitchWheelMoved(int newValue);
-	void controllerMoved(int controllerNumber,
-						 int newValue);
-
-	void renderNextBlock(AudioSampleBuffer& outputBuffer, int startSample, int numSamples);
-	void calcCycle(VoiceParameterGroup& group);
 	void incrementCurrentX();
 	void updateCycleVariables(int groupIndex, int numSamples);
 
@@ -64,5 +60,3 @@ private:
 	float increment;
 	double currentAngle;
 };
-
-#endif

@@ -376,7 +376,7 @@ public:
     void itemWasSelected(int itemId) override {
         switch (itemId) {
             case MeshSave: {
-                ScopedPointer<SaveItem<MeshType> > saveItem = new SaveItem<MeshType>(repo, extension, this);
+                std::unique_ptr<SaveItem<MeshType> > saveItem = new SaveItem<MeshType>(repo, extension, this);
 				saveItem->setFolder(client->getDefaultFolder());
 				saveItem->setSize(180, 50);
 

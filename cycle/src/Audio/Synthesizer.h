@@ -1,10 +1,7 @@
-#ifndef _synthesizer_h
-#define _synthesizer_h
+#pragma once
 
-#include <Obj/Ref.h>
 #include <App/SingletonAccessor.h>
 #include "JuceHeader.h"
-
 
 class Synthesizer :
 		public Synthesiser
@@ -22,8 +19,6 @@ public:
 		SpeedParam,
 	};
 
-	Synthesizer(SingletonRepo* repo) : SingletonAccessor(repo, "Synthesizer") {}
-	void handleController (int midiChannel, int controllerNumber, int controllerValue);
+	explicit Synthesizer(SingletonRepo* repo) : SingletonAccessor(repo, "Synthesizer") {}
+	void handleController (int midiChannel, int controllerNumber, int controllerValue) override;
 };
-
-#endif
