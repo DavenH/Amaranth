@@ -3,7 +3,6 @@
 #include "Synthesizer.h"
 #include "../Audio/SynthAudioSource.h"
 #include "../UI/Panels/ModMatrixPanel.h"
-#include "../UI/Panels/Morphing/MorphPanel.h"
 
 void Synthesizer::handleController(int midiChannel,
                                    int controllerNumber,

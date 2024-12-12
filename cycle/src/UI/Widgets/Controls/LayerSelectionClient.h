@@ -1,7 +1,4 @@
-#ifndef _LAYERSELECTIONCLIENT_H_
-#define _LAYERSELECTIONCLIENT_H_
-
-#include "LayerSelectorPanel.h"
+#pragma once
 #include <App/MeshLibrary.h>
 
 class LayerSelectionClient {
@@ -18,5 +15,3 @@ protected:
 
 	friend class LayerSelectorPanel;
 };
-
-#endif

@@ -1,7 +1,5 @@
-#ifndef _fourier2d_h
-#define _fourier2d_h
+#pragma once
 
-#include <iostream>
 #include <Array/ScopedAlloc.h>
 #include <Obj/Ref.h>
 #include <UI/Panels/Panel2D.h>
@@ -38,5 +36,3 @@ private:
 
 //	void doPostZoomRatioChange(const MouseEvent& e, float oldZoom);
 };
-
-#endif

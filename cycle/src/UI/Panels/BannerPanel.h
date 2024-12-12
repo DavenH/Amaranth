@@ -29,7 +29,7 @@ public:
 	void timerCallback();
 
 private:
-	float secondsSinceStart;
+	float secondsSinceStart{};
 
 	Image logo;
 	MicroTimer timer;

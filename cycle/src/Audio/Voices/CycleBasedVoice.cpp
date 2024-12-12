@@ -94,6 +94,7 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
         spectrum3D->setLayerParameterSmoothing(parent->voiceIndex, false);
     }
 
+    // TODO
     timeRasterizer.updateOffsetSeeds();
 
     EnvRasterizer& pitchRast = parent->pitchGroup[0].rast;

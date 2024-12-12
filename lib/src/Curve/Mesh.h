@@ -7,15 +7,6 @@ using std::vector;
 class VertCube;
 class Vertex;
 
-typedef vector<Vertex*> 	VertList;
-typedef vector<VertCube*>	CubeList;
-
-typedef VertList::const_iterator 	ConstVertIter;
-typedef CubeList::const_iterator 	ConstCubeIter;
-
-typedef VertList::iterator 	VertIter;
-typedef CubeList::iterator CubeIter;
-
 class Mesh : public Savable {
 public:
 
@@ -62,7 +53,7 @@ public:
         return removeVert(std::find(verts.begin(), verts.end(), vert));
     }
 
-    bool removeVert(VertIter vert) {
+    bool removeVert(vector<Vertex*>::iterator vert) {
 		if(vert == verts.end())
 			return false;
 
@@ -70,33 +61,21 @@ public:
 		return true;
 	}
 
-	void copyElements(CubeList& copyCubesTo) const	{ copyCubesTo = cubes; }
-	void copyElements(VertList& copyVertsTo) const 	{ copyVertsTo = verts; }
+	void copyElements(vector<VertCube*>& copyCubesTo) const	{ copyCubesTo = cubes; }
+	void copyElements(vector<Vertex*>& copyVertsTo) const	{ copyVertsTo = verts; }
 
-	void copyElements(VertList& copyVertsTo, CubeList& copyCubesTo) const
+	void copyElements(vector<VertCube*>& copyVertsTo, vector<VertCube*>& copyCubesTo) const
 	{
 		copyElements(copyVertsTo);
 		copyElements(copyCubesTo);
 	}
 
-	CubeIter getCubeStart() 				{ return cubes.begin(); }
-	CubeIter getCubeEnd() 					{ return cubes.end(); 	}
-
-	ConstCubeIter getConstCubeStart() const { return cubes.begin(); }
-	ConstCubeIter getConstCubeEnd() const	{ return cubes.end(); 	}
-
-	VertIter getVertStart() 				{ return verts.begin(); }
-	VertIter getVertEnd() 					{ return verts.end(); 	}
-
-	ConstVertIter getConstVertStart() const	{ return verts.begin(); }
-	ConstVertIter getConstVertEnd() const	{ return verts.end(); 	}
-
 protected:
-	double version;
+	int version;
 	String name;
 
-	VertList verts;
-	CubeList cubes;
+	vector<Vertex*> verts;
+	vector<VertCube*> cubes;
 
 	JUCE_LEAK_DETECTOR(Mesh)
 };

@@ -1,9 +1,6 @@
-#ifndef RESIZERPULLOUT_H_
-#define RESIZERPULLOUT_H_
+#pragma once
 
 #include <App/SingletonAccessor.h>
-#include <Definitions.h>
-#include <Obj/Ref.h>
 #include <UI/Widgets/PulloutComponent.h>
 #include "JuceHeader.h"
 
@@ -15,10 +12,10 @@ class ResizerPullout :
 	, 	public SingletonAccessor
 {
 public:
-	ResizerPullout(SingletonRepo* repo);
+	explicit ResizerPullout(SingletonRepo* repo);
 
-	void buttonClicked(Button* button);
-	void resized();
+	void buttonClicked(Button* button) override;
+	void resized() override;
 	void updateHighlight(int windowSize);
 
 private:
@@ -31,6 +28,3 @@ private:
 
     JUCE_LEAK_DETECTOR(ResizerPullout)
 };
-
-
-#endif

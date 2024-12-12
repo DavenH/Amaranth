@@ -9,11 +9,11 @@ class MorphSlider :
 public:
 	int dim;
 	MorphSlider(SingletonRepo* repo, const String& name, const String& message, bool horizontal = true);
-	void paint(Graphics& g);
+	void paint(Graphics& g) override;
 	void paintSpecial(Graphics& g);
-	void mouseDrag(const MouseEvent& e);
-	void mouseDown(const MouseEvent& e);
-	void mouseEnter(const MouseEvent& e);
+	void mouseDrag(const MouseEvent& e) override;
+	void mouseDown(const MouseEvent& e) override;
+	void mouseEnter(const MouseEvent& e) override;
 
 	void setDepth(const MouseEvent& e);
 

@@ -1,9 +1,7 @@
-#ifndef _fourier3d_h
-#define _fourier3d_h
+#pragma once
 
 #include <list>
 #include <vector>
-#include <iostream>
 
 #include <App/MeshLibrary.h>
 #include <Audio/SmoothedParameter.h>
@@ -12,14 +10,11 @@
 #include <UI/AsyncUIUpdater.h>
 #include <UI/Panels/Panel3D.h>
 #include <UI/ParameterGroup.h>
-#include <UI/Widgets/DynamicLabel.h>
 #include <UI/Widgets/IconButton.h>
 
 #include "../TourGuide.h"
 #include "../Widgets/Controls/ControlsClient.h"
-#include "../Widgets/Controls/LayerAddRemover.h"
 #include "../Widgets/Controls/LayerSelectionClient.h"
-#include "../Widgets/Controls/LayerUpDownMover.h"
 #include "../Widgets/Controls/PanelControls.h"
 #include "../Widgets/Controls/Spacers.h"
 
@@ -76,11 +71,11 @@ public:
 	void sliderValueChanged(Slider* slider);
 
 	/* Knob Events */
-	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate);
-	bool shouldTriggerGlobalUpdate(Slider* slider);
-	void restoreDetail();
-	void reduceDetail();
-	void doGlobalUIUpdate(bool force);
+	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
+	bool shouldTriggerGlobalUpdate(Slider* slider) override;
+	void restoreDetail() override;
+	void reduceDetail() override;
+	void doGlobalUIUpdate(bool force) override;
 	void updateKnobValue();
 	void updateSmoothedParameters(int deltaSamples);
 	void updateScratchComboBox();
@@ -89,8 +84,8 @@ public:
 	void setLayerParameterSmoothing(int voiceIndex, bool smooth);
 
 	/* Persistence */
-	void writeXML(XmlElement* element) const;
-	bool readXML(const XmlElement* element);
+	void writeXML(XmlElement* element) const override;
+	bool readXML(const XmlElement* element) override;
 
 	/* Accessors */
 	void setPan(int layerIdx, bool isFreq, float value);
@@ -109,7 +104,7 @@ public:
 	vector<Color>& 		getGradientColours();
 	int 				getLayerType();
 
-	PanelControls* 		getPanelControls() 	{ return panelControls; }
+	PanelControls* 		getPanelControls() 	{ return panelControls.get(); }
 	int& 				getScaleFactor() 	{ return scaleFactor; 	}
 	CriticalSection& 	getLayerLock() 		{ return layerLock; 	}
 
@@ -144,5 +139,3 @@ private:
 	std::unique_ptr<RetractableCallout> 	modeCO;
 	std::unique_ptr<MeshSelector<Mesh> > 	meshSelector;
 };
-
-#endif

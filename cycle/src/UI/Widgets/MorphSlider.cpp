@@ -6,9 +6,11 @@
 
 #include "../Panels/Morphing/MorphPanel.h"
 #include "../Panels/PlaybackPanel.h"
-#include "../Inter/WaveformInter3D.h"
+#include "../../Inter/WaveformInter3D.h"
 #include "../VertexPanels/Waveform2D.h"
 #include "../VertexPanels/Spectrum2D.h"
+
+#include <Definitions.h>
 
 MorphSlider::MorphSlider(
 		SingletonRepo* repo
@@ -19,7 +21,6 @@ MorphSlider::MorphSlider(
 	eye = getObj(MiscGraphics).getIcon(3, 7);
 	usesRightClick = true;
 }
-
 
 void MorphSlider::paintSpecial(Graphics& g) {
     int width = getWidth();
@@ -58,13 +59,11 @@ void MorphSlider::paintSpecial(Graphics& g) {
 	}
 }
 
-
 void MorphSlider::paint(Graphics& g) {
     paintFirst(g);
     paintSpecial(g);
     paintSecond(g);
 }
-
 
 void MorphSlider::mouseDown(const MouseEvent& e) {
     if (e.mods.isRightButtonDown())
@@ -72,7 +71,6 @@ void MorphSlider::mouseDown(const MouseEvent& e) {
 	else
 		HSlider::mouseDown(e);
 }
-
 
 void MorphSlider::mouseDrag(const MouseEvent& e) {
     if (e.mods.isRightButtonDown())
@@ -83,7 +81,6 @@ void MorphSlider::mouseDrag(const MouseEvent& e) {
 //		getObj(MorphPanel).showMessage(e.x / float(getWidth()), this);
     }
 }
-
 
 void MorphSlider::mouseEnter(const MouseEvent& e) {
     HSlider::mouseEnter(e);

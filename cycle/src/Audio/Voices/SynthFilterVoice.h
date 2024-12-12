@@ -17,7 +17,7 @@ class SynthFilterVoice :
 public:
 	SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo);
 
-	~SynthFilterVoice() override;
+	~SynthFilterVoice() override = default;
 
 	void calcCycle(VoiceParameterGroup& group) override;
 	bool calcTimeDomain(VoiceParameterGroup& group, int samplingSize, int oversampleFactor);

@@ -1,17 +1,11 @@
-#include <math.h>
-
 #include <Algo/AutoModeller.h>
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Audio/PluginProcessor.h>
 #include <Curve/EnvelopeMesh.h>
 #include <Obj/ColorPos.h>
-#include <Thread/LockTracer.h>
-#include <UI/IConsole.h>
 #include <UI/MiscGraphics.h>
-#include <UI/Panels/ScopedGL.h>
 #include <UI/Panels/Texture.h>
 #include <UI/Panels/ZoomPanel.h>
 #include <UI/Widgets/CalloutUtils.h>
@@ -20,23 +14,16 @@
 #include "Spectrum3D.h"
 #include "Algo/Resampling.h"
 
-#include "../App/CycleTour.h"
 #include "../CycleGraphicsUtils.h"
-#include "../Panels/GeneralControls.h"
-#include "../Panels/MainPanel.h"
-#include "../Panels/Morphing/MorphPanel.h"
 #include "../Panels/OscControlPanel.h"
-#include "../Panels/VertexPropertiesPanel.h"
-#include "../Widgets/Controls/ControlsPanel.h"
 #include "../Widgets/Controls/MeshSelector.h"
-#include "../Widgets/Controls/Spacers.h"
 
 #include "../../Audio/SynthAudioSource.h"
+#include "../../App/CycleTour.h"
 #include "../../Curve/E3Rasterizer.h"
 #include "../../Inter/EnvelopeInter2D.h"
 #include "../../Inter/EnvelopeInter3D.h"
 #include "../../UI/Panels/PlaybackPanel.h"
-
 
 Envelope2D::Envelope2D(SingletonRepo* repo) :
 		SingletonAccessor(repo, "Envelope2D")
@@ -50,14 +37,11 @@ Envelope2D::Envelope2D(SingletonRepo* repo) :
 {
 }
 
-
-Envelope2D::~Envelope2D()
-{
+Envelope2D::~Envelope2D() {
 	controls.destroy();
 
 	meshSelector = 0;
 }
-
 
 void Envelope2D::init()
 {
@@ -78,7 +62,7 @@ void Envelope2D::init()
 
 	createNameImage("Envelopes");
 
-	meshSelector = new MeshSelector<EnvelopeMesh>(repo, e2Interactor, "env", true, false, false, false);
+	meshSelector = std::make_unique<MeshSelector<EnvelopeMesh>>(repo, e2Interactor, "env", true, false, false, false);
 
 	EnvelopeInter2D* e2 = e2Interactor;
 
@@ -97,37 +81,29 @@ void Envelope2D::init()
 	setSelectorVisibility(false, false);
 }
 
-
-void Envelope2D::ScrollListener::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel)
-{
+void Envelope2D::ScrollListener::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
 	float yInc = wheel.deltaY;
 
-	if(panel->envSelectCO->isParentOf(e.eventComponent))
-	{
+	if (panel->envSelectCO->isParentOf(e.eventComponent)) {
 		int env = panel->getSetting(CurrentEnvGroup);
 
-		int meshes[] = { LayerGroups::GroupVolume, LayerGroups::GroupScratch,
-						 LayerGroups::GroupPitch, LayerGroups::GroupWavePitch};
+		int meshes[] = {
+			LayerGroups::GroupVolume, LayerGroups::GroupScratch,
+			LayerGroups::GroupPitch, LayerGroups::GroupWavePitch
+		};
 
-		if(yInc > 0)
-		{
-			for(int i = 1; i < numElementsInArray(meshes); ++i)
-			{
-				if(env == meshes[i])
-				{
+		if (yInc > 0) {
+			for (int i = 1; i < numElementsInArray(meshes); ++i) {
+				if (env == meshes[i]) {
 					panel->e2Interactor->switchedEnvelope(meshes[i - 1], true);
 					break;
 				}
 			}
-		}
-
-		else if(yInc < 0)
-		{
-			for(int i = 0; i < numElementsInArray(meshes) - 1; ++i)
-			{
-				if(env == meshes[i])
-				{
-					if(meshes[i + 1] == LayerGroups::GroupWavePitch && ! panel->e2Interactor->wavePitchIcon.isApplicable())
+		} else if (yInc < 0) {
+			for (int i = 0; i < numElementsInArray(meshes) - 1; ++i) {
+				if (env == meshes[i]) {
+					if (meshes[i + 1] == LayerGroups::GroupWavePitch && !panel->e2Interactor->wavePitchIcon.
+					    isApplicable())
 						break;
 
 					panel->e2Interactor->switchedEnvelope(meshes[i + 1], true);
@@ -138,16 +114,13 @@ void Envelope2D::ScrollListener::mouseWheelMove(const MouseEvent& e, const Mouse
 	}
 }
 
-
-void Envelope2D::drawBackground(bool fill)
-{
+void Envelope2D::drawBackground(bool fill) {
 	Panel::drawBackground();
 
 	float one = sx(1) - 1;
 	float end = sxnz(1);
 
-	if(end > one)
-	{
+	if (end > one) {
 		float top = sy(0);
 		float bot = sy(1);
 
@@ -156,59 +129,44 @@ void Envelope2D::drawBackground(bool fill)
 	}
 }
 
-
-void Envelope2D::updateBackground(bool verticalOnly)
-{
+void Envelope2D::updateBackground(bool verticalOnly) {
 	int currentEnv = getSetting(CurrentEnvGroup);
 	MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(currentEnv);
 
-	if(props == nullptr)
+	if (props == nullptr)
 		return;
 
-	if(props->logarithmic)
-	{
+	if (props->logarithmic) {
 		Panel::updateBackground(true);
 
 		horzMinorLines.resize(16);
 		float value = 1.f;
 
-		for(int i = 0; i < 16; ++i)
-		{
+		for (int i = 0; i < 16; ++i) {
 			float level = (value *= 0.5);
 			horzMinorLines[i] = Arithmetic::logMapping(30, level);
 		}
-	}
-	else
-	{
+	} else {
 		Panel::updateBackground(false);
 	}
 
 	repaint();
 }
 
-
-void Envelope2D::drawRatioLines()
-{
+void Envelope2D::drawRatioLines() {
 }
 
-
-void Envelope2D::panelResized()
-{
+void Envelope2D::panelResized() {
 	Panel::panelResized();
 }
 
-
-void Envelope2D::dimensionsChanged()
-{
+void Envelope2D::dimensionsChanged() {
 }
 
-
-void Envelope2D::drawCurvesAndSurfaces()
-{
+void Envelope2D::drawCurvesAndSurfaces() {
 	EnvRasterizer* rast = e2Interactor->getEnvRasterizer();
 
-	if(rast == nullptr)
-	{
+	if (rast == nullptr) {
 		Panel2D::drawCurvesAndSurfaces();
 		return;
 	}
@@ -268,19 +226,22 @@ void Envelope2D::drawCurvesAndSurfaces()
 	getLoopPoints(loopStart, sustain);
 
 	// fixes transition if there's no loop
-	if(loopStart < 0)
+	if(loopStart < 0) {
 		topColors[1] = color1;
+	}
 
 	float changePoints[] = { sx(loopStart), sx(sustain) };
 
 	int size = xy.size();
 	int i = 0;
-	while(i < size - 1 && xy.x[i + 1] < 0)
+	while(i < size - 1 && xy.x[i + 1] < 0) {
 		++i;
+	}
 
 	int cp = 0;
-	while(xy.x[i] > changePoints[cp] && cp < numElementsInArray(changePoints))
+	while(xy.x[i] > changePoints[cp] && cp < numElementsInArray(changePoints)) {
 		++cp;
+	}
 
 	sectionClr = topColors[cp];
 
@@ -289,28 +250,24 @@ void Envelope2D::drawCurvesAndSurfaces()
 
 	gfx->setCurrentLineWidth(interactor->mouseFlag(WithinReshapeThresh) ? 2.f : 1.f);
 
-	for(; i < size; ++i)
-	{
-		isLast 				= i == size - 1;
-		samplesAreBipolar 	= curveIsBipolar && ! isLast && (xy.y[i] - baseY) * (xy.y[i + 1] - baseY) < 0;
+	for (; i < size; ++i) {
+		isLast = i == size - 1;
+		samplesAreBipolar = curveIsBipolar && !isLast && (xy.y[i] - baseY) * (xy.y[i + 1] - baseY) < 0;
 
 		curr.update(xy[i], sectionClr.withAlpha(a[i]));
 		positions.push_back(curr);
 
-		for(int j = 0; ! isLast && j < numElementsInArray(changePoints); ++j)
-		{
+		for (int j = 0; !isLast && j < numElementsInArray(changePoints); ++j) {
 			float val = changePoints[j];
 
-			if(NumberUtils::within(val, xy.x[i], xy.x[i + 1]))
-			{
+			if (NumberUtils::within(val, xy.x[i], xy.x[i + 1])) {
 				Color& top1 	= topColors[j];
 				Color& top2 	= topColors[j + 1];
 
 				float lerpY 	= Resampling::lerp(xy[i], xy[i + 1], val);
 				float righter 	= val + 0.0001f;
 
-				if(j < 1)
-				{
+				if (j < 1) {
 					curr.update(val, lerpY, top1.withAlpha(a[i]));
 					positions.push_back(curr);
 				}
@@ -322,8 +279,7 @@ void Envelope2D::drawCurvesAndSurfaces()
 			}
 		}
 
-		if(! isLast && NumberUtils::within(stopPosition, xy.x[i], xy.x[i + 1]))
-		{
+		if (!isLast && NumberUtils::within(stopPosition, xy.x[i], xy.x[i + 1])) {
 			float lerpY = Resampling::lerp(xy[i], xy[i + 1], stopPosition);
 
 			curr.update(stopPosition, lerpY, sectionClr.withAlpha(a[i]));
@@ -333,8 +289,7 @@ void Envelope2D::drawCurvesAndSurfaces()
 		}
 
 		//zero wave2Ding
-		if(samplesAreBipolar)
-		{
+		if (samplesAreBipolar) {
 			float m 	= (xy.y[i + 1] - xy.y[i]) / (xy.x[i + 1] - xy.x[i]);
 			float icptX = (m * xy.x[i] - xy.y[i] + baseY) / m;
 
@@ -343,29 +298,23 @@ void Envelope2D::drawCurvesAndSurfaces()
 		}
 	}
 
-	if(! positions.empty())
-		gfx->fillAndOutlineColoured(positions, baseY, baseAlpha);
+	if(! positions.empty()) {
+		gfx->fillAndOutlineColoured(positions, baseY, baseAlpha, true, true);
+	}
 
 	gfx->setCurrentLineWidth(1.f);
 }
 
-
-void Envelope2D::componentChanged()
-{
+void Envelope2D::componentChanged() {
 	Panel::componentChanged();
 }
 
-
-void Envelope2D::drawMouseHint()
-{
+void Envelope2D::drawMouseHint() {
 	drawVerticalLine();
 }
 
-
-void Envelope2D::getLoopPoints(float& loopStart, float& sustain)
-{
-	if(EnvRasterizer* rast = e2Interactor->getEnvRasterizer())
-	{
+void Envelope2D::getLoopPoints(float& loopStart, float& sustain) {
+	if (EnvRasterizer* rast = e2Interactor->getEnvRasterizer()) {
 		int loopIdx, sustIdx;
 		rast->getIndices(loopIdx, sustIdx);
 
@@ -385,17 +334,13 @@ void Envelope2D::getLoopPoints(float& loopStart, float& sustain)
 	}
 }
 
-
-void Envelope2D::zoomAndRepaint()
-{
+void Envelope2D::zoomAndRepaint() {
 	contractToRange(true);
 	zoomPanel->panelZoomChanged(false);
 	repaint();
 }
 
-
-void Envelope2D::setSelectorVisibility(bool isVisible, bool doRepaint)
-{
+void Envelope2D::setSelectorVisibility(bool isVisible, bool doRepaint) {
 	controls.setSelectorVisibility(isVisible, doRepaint);
 }
 
@@ -407,53 +352,43 @@ Envelope2D::Controls::Controls(SingletonRepo* repo, Envelope2D* panel) :
 {
 }
 
-void Envelope2D::Controls::paintOverChildren(Graphics& g)
-{
+void Envelope2D::Controls::paintOverChildren(Graphics& g) {
 	Image pullout = getObj(MiscGraphics).getIcon(7, 6);
 	Component& icon = getObj(EnvelopeInter2D).configIcon;
 
 	g.drawImageAt(pullout, icon.getX(), icon.getY());
 }
 
-void Envelope2D::Controls::setSelectorVisibility(bool isVisible, bool doRepaint)
-{
+void Envelope2D::Controls::setSelectorVisibility(bool isVisible, bool doRepaint) {
 	showLayerSelector = isVisible;
 	EnvelopeInter2D* e2 = panel->e2Interactor;
 
-	if(isVisible)
-	{
+	if (isVisible) {
 		addAndMakeVisible(&e2->addRemover);
 		addAndMakeVisible(&e2->layerSelector);
-	}
-	else
-	{
+	} else {
 		removeChildComponent(&e2->addRemover);
 		removeChildComponent(&e2->layerSelector);
 	}
 
 	resized();
 
-	if(doRepaint)
+	if (doRepaint)
 		repaint();
 }
 
-
-void Envelope2D::Controls::destroy()
-{
+void Envelope2D::Controls::destroy() {
 	removeChildComponent(&panel->e2Interactor->addRemover);
 	removeChildComponent(&panel->e2Interactor->layerSelector);
-	removeChildComponent(panel->meshSelector);
+	removeChildComponent(panel->meshSelector.get());
 }
 
-
-void Envelope2D::Controls::init()
-{
+void Envelope2D::Controls::init() {
 	EnvelopeInter2D* e2 = panel->e2Interactor;
 
-	addAndMakeVisible(panel->meshSelector);
+	addAndMakeVisible(panel->meshSelector.get());
 	addAndMakeVisible(e2->getEnableButton());
 }
-
 
 void Envelope2D::Controls::paint(Graphics& g)
 {
@@ -466,16 +401,12 @@ void Envelope2D::Controls::paint(Graphics& g)
 	rects.add(panel->loopCO->getBoundsInParentDelegate().translated(0, -1));
 	rects.add(e2->getEnableButton()->getBoundsInParent().expanded(0, 1));
 
-	if(showLayerSelector)
-	{
+	if(showLayerSelector) {
 		rects.add(e2->addRemover.getBoundsInParentDelegate());
 		rects.add(e2->layerSelector.getBoundsInParentDelegate());
 	}
 
-	for(int i = 0; i < rects.size(); ++i)
-	{
-		Rectangle<int> rect = rects[i];
-
+	for (auto rect: rects) {
 		Path strokePath;
 		strokePath.addRoundedRectangle(rect.getX(), rect.getY() + 1, rect.getWidth() + 1,
 									   rect.getHeight() - 2, 2.f);
@@ -485,7 +416,6 @@ void Envelope2D::Controls::paint(Graphics& g)
 		g.strokePath(strokePath, PathStrokeType(1.f));
 	}
 }
-
 
 void Envelope2D::Controls::resized()
 {
@@ -504,10 +434,6 @@ void Envelope2D::Controls::resized()
 
 	panel->envSelectCO->setBounds(leftSide.removeFromTop(panel->envSelectCO->getExpandedSize()));
 
-  #ifdef BEAT_EDITION
-	leftSide.removeFromTop(4);
-	panel->loopCO->setBounds(leftSide.removeFromTop(panel->loopCO->getExpandedSize()));
-  #else
 	panel->loopCO->setBounds(rightSide.removeFromTop(panel->loopCO->getExpandedSize()));
 
 	if(showLayerSelector)
@@ -518,7 +444,6 @@ void Envelope2D::Controls::resized()
 
 		e2->layerSelector.setBounds(rightSide.removeFromTop(e2->layerSelector.getExpandedSize()));
 	}
-  #endif
 
 	int leftHeight 	= layerBounds.getHeight() - leftSide.getHeight();
 	int rightHeight = layerBounds.getHeight() - rightSide.getHeight();
@@ -527,22 +452,21 @@ void Envelope2D::Controls::resized()
 	if(bounds.getHeight() > 40)
 		bounds.removeFromTop(8);
 
-  #ifndef BEAT_EDITION
 	panel->meshSelector->setBounds(bounds.removeFromLeft(24).removeFromTop(24));
 	e2->configIcon.setBounds(bounds.removeFromRight(24).removeFromTop(24));
-  #endif
 }
 
 
 void Envelope2D::createScales()
 {
-	dout << "creating scales for " << panelName << "\n";
+	std::cout << "creating scales for " << panelName << "\n";
 
 	int currentGroup = getSetting(CurrentEnvGroup);
 	MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(currentGroup);
 
-	if(props == nullptr)
+	if(props == nullptr) {
 		return;
+	}
 
 	vector<Rectangle<float> > newScales;
 
@@ -560,13 +484,9 @@ void Envelope2D::createScales()
 	beats = info.timeSigNumerator;
   #endif
 
-	if(props->tempoSync)
-	{
+	if (props->tempoSync) {
 		lengthSecs = beats / props->getEffectiveScale();
-	}
-
-	else if(props->scale != 1)
-	{
+	} else if (props->scale != 1) {
 		lengthSecs *= props->getEffectiveScale();
 	}
 
@@ -574,22 +494,21 @@ void Envelope2D::createScales()
 	Graphics g(scalesImage);
 	g.setFont(font);
 
-	for(int i = 0; i < vertMajorLines.size(); ++i)
-	{
+	for (int i = 0; i < vertMajorLines.size(); ++i) {
 		float seconds = vertMajorLines[i] * lengthSecs;
 		String text;
 
 		int decimals = jlimit(1, 4, int(-logf(seconds)));
 
-		if(seconds == 0)
+		if(seconds == 0) {
 			text = String("0");
-		else if(seconds < 1.f)
+		} else if(seconds < 1.f) {
 			text = String(seconds, decimals + 1);
-		else if(seconds < 2.5f)
+		} else if(seconds < 2.5f) {
 			text = String(seconds, decimals);
-		else
+		} else {
 			text = String(roundToInt(seconds));
-
+		}
 
 		int oldPos = position;
 		int width = font.getStringWidth(text);
@@ -604,14 +523,12 @@ void Envelope2D::createScales()
 	scales = newScales;
 }
 
-
 void Envelope2D::drawScales()
 {
 	gfx->setCurrentColour(Color(1));
 	float fontOffset = 3 - getSetting(PointSizeScale) * 1.5f;
 
-	for(int i = 0; i < (int) scales.size(); ++i)
-	{
+	for (int i = 0; i < (int) scales.size(); ++i) {
 		Rectangle<float>& rect = scales[i];
 		float x = vertMajorLines[i];
 
@@ -620,7 +537,6 @@ void Envelope2D::drawScales()
 	}
 }
 
-
 void Envelope2D::postCurveDraw()
 {
 	float currentPos = getObj(PlaybackPanel).getEnvelopePos();
@@ -628,9 +544,8 @@ void Envelope2D::postCurveDraw()
 	gfx->setCurrentLineWidth(1.f);
 	gfx->setCurrentColour(0.3f, 0.3f, 0.3f);
 	gfx->setOpacity(1.f);
-	gfx->drawLine(currentPos, 0, currentPos, 1);
+	gfx->drawLine(currentPos, 0, currentPos, 1, true);
 }
-
 
 Component* Envelope2D::getComponent(int which)
 {
@@ -641,7 +556,8 @@ Component* Envelope2D::getComponent(int which)
 		case CycleTour::TargPitch:		return &e2Interactor->pitchIcon; 		break;
 		case CycleTour::TargWavPitch:	return &e2Interactor->wavePitchIcon; 	break;
 		case CycleTour::TargScratchLyr:	return &e2Interactor->layerSelector; 	break;
-		case CycleTour::TargSustLoop:	return loopCO; 							break;
+		case CycleTour::TargSustLoop:	return loopCO.get(); 					break;
+		default: break;
 	}
 
 	return nullptr;

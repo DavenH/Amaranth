@@ -21,8 +21,7 @@
 #include "../../CycleDefs.h"
 #include "../../Util/CycleEnums.h"
 
-
-DeformerPanel::DeformerPanel(SingletonRepo* repo) : 
+DeformerPanel::DeformerPanel(SingletonRepo* repo) :
 		EffectPanel	(repo, "DeformerPanel", false)
 	,	LayerSelectionClient(repo)
 	,	SingletonAccessor(repo, "DeformerPanel")
@@ -34,10 +33,6 @@ DeformerPanel::DeformerPanel(SingletonRepo* repo) :
 {
 }
 
-
-DeformerPanel::~DeformerPanel()
-{
-}
 
 void DeformerPanel::init()
 {
@@ -112,8 +107,6 @@ void DeformerPanel::updateDspSync()
 
 void DeformerPanel::rasterizeAllTables()
 {
-	onlyBeat(return);
-
 	enterClientLock();
 
 	MeshLibrary::LayerGroup& dfrmGroup = meshLib->getGroup(LayerGroups::GroupDeformer);
@@ -141,8 +134,6 @@ void DeformerPanel::rasterizeAllTables()
 
 void DeformerPanel::rasterizeTable()
 {
-	onlyBeat(return);
-
 	ScopedLock sl(renderLock);
 
 	int currentLayer = meshLib->getGroup(LayerGroups::GroupDeformer).current;
@@ -404,50 +395,41 @@ void DeformerPanel::previewMeshEnded(Mesh* oldMesh)
 
 void DeformerPanel::setMeshAndUpdate(Mesh *mesh)
 {
-	mesh->updateToVersion(repo);
+	mesh->updateToVersion(ProjectInfo::versionNumber);
 
 	rasterizer->cleanUp();
 	rasterizer->setMesh(mesh);
-	rasterizer->performUpdate(UpdateType::Update);
+	rasterizer->performUpdate(Update);
 	repaint();
 }
 
-
-void DeformerPanel::enterClientLock()
-{
+void DeformerPanel::enterClientLock() {
 	getObj(SynthAudioSource).getLock().enter();
 	renderLock.enter();
 }
 
-
-void DeformerPanel::exitClientLock()
-{
+void DeformerPanel::exitClientLock() {
 	renderLock.exit();
 	getObj(SynthAudioSource).getLock().exit();
 }
 
-
-Mesh* DeformerPanel::getCurrentMesh()
-{
+Mesh* DeformerPanel::getCurrentMesh() {
 	return Interactor::getMesh();
 }
 
-
-bool DeformerPanel::setGuideBuffers()
-{
+bool DeformerPanel::setGuideBuffers() {
 	// XXX causes deadlock
 	enterClientLock();
 
 	bool changed = dynMemory.ensureSize(guideTables.size() * tableSize);
 
-	for(int i = 0; i < (int) guideTables.size(); ++i)
+	for (int i = 0; i < (int) guideTables.size(); ++i)
 		guideTables[i].table = dynMemory.place(tableSize);
 
 	exitClientLock();
 
 	return changed;
 }
-
 
 bool DeformerPanel::readXML(const XmlElement* element)
 {
@@ -456,14 +438,11 @@ bool DeformerPanel::readXML(const XmlElement* element)
 	guideTables.clear();
 	int index = 0;
 
-  #ifndef BEAT_EDITION
 	int numMeshes = meshLib->getGroup(layerType).size();
 
-	if(deformerElem != nullptr)
-	{
-		forEachXmlChildElementWithTagName(*deformerElem, propsElem, "Properties")
-		{
-			if(guideTables.size() >= numMeshes)
+	if (deformerElem != nullptr) {
+		forEachXmlChildElementWithTagName(*deformerElem, propsElem, "Properties") {
+			if (guideTables.size() >= numMeshes)
 				break;
 
 			float noiseLevel 	= propsElem->getDoubleAttribute ("noiseLevel",  0);
@@ -478,9 +457,7 @@ bool DeformerPanel::readXML(const XmlElement* element)
 		}
 	}
 
-
-	while((int) guideTables.size() < numMeshes)
-	{
+	while ((int) guideTables.size() < numMeshes) {
 		guideTables.push_back(GuideProps(this, index++, 0, 0, 0, random.nextInt(tableSize)));
 	}
 
@@ -490,7 +467,6 @@ bool DeformerPanel::readXML(const XmlElement* element)
 	setGuideBuffers();
 	rasterizeAllTables();
 
-  #endif
 	return true;
 }
 
@@ -567,50 +543,41 @@ void DeformerPanel::sampleDownAddNoise(int index,
 	}
 }
 
-
-void DeformerPanel::reset()
-{
-//	panelControls->resetLayerBox();
+void DeformerPanel::reset() {
+	//	panelControls->resetLayerBox();
 
 	panelControls->layerSelector->reset();
 }
 
-
-void DeformerPanel::doubleMesh()
-{
+void DeformerPanel::doubleMesh() {
 	getCurrentMesh()->twin(getConstant(DeformerPadding), getConstant(DeformerPadding));
 	postUpdateMessage();
 }
 
-
-Component* DeformerPanel::getComponent(int which)
-{
+Component* DeformerPanel::getComponent(int which) {
 	switch(which)
 	{
 		case CycleTour::TargDfrmNoise: 		return &noise;
 		case CycleTour::TargDfrmOffset: 	return &vertOffset;
 		case CycleTour::TargDfrmPhase: 		return &phaseOffset;
-		case CycleTour::TargDfrmMeshSlct: 	return meshSelector;
+		case CycleTour::TargDfrmMeshSlct: 	return meshSelector.get();
 		case CycleTour::TargDfrmLayerAdd:	return &panelControls->addRemover;
-		case CycleTour::TargDfrmLayerSlct:	return panelControls->layerSelector;
+		case CycleTour::TargDfrmLayerSlct:	return panelControls->layerSelector.get();
 	}
 
 	return nullptr;
 }
 
-
-void DeformerPanel::triggerButton(int id)
-{
-	switch(id)
-	{
-		case CycleTour::IdBttnAdd:		buttonClicked(&panelControls->addRemover.add); 		break;
-		case CycleTour::IdBttnRemove:	buttonClicked(&panelControls->addRemover.remove); 	break;
+void DeformerPanel::triggerButton(int id) {
+	switch (id) {
+		case CycleTour::IdBttnAdd: buttonClicked(&panelControls->addRemover.add);
+			break;
+		case CycleTour::IdBttnRemove: buttonClicked(&panelControls->addRemover.remove);
+			break;
 	}
 }
 
-
-void DeformerPanel::showCoordinates()
-{
+void DeformerPanel::showCoordinates() {
 	float invSize 	= 1.f / float(1.f - 2.f * getConstant(DeformerPadding));
 	float xformX 	= (state.currentMouse.x - getConstant(DeformerPadding)) * invSize;
 

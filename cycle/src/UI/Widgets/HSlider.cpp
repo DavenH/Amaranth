@@ -26,10 +26,6 @@ HSlider::HSlider(SingletonRepo* repo, const String& name, const String& message,
     colour = Color(1.f, 0.75f, 0.26f).toColour();
 }
 
-HSlider::~HSlider() {
-}
-
-
 void HSlider::setColour(Colour c) {
     colour = c;
 }

@@ -1,5 +1,4 @@
-#ifndef _tubemodelcomponent_h
-#define _tubemodelcomponent_h
+#pragma once
 
 #include <App/Doc/Savable.h>
 #include <Obj/Ref.h>
@@ -7,11 +6,9 @@
 #include <UI/ParameterGroup.h>
 #include <UI/Widgets/IconButton.h>
 #include <UI/Widgets/InsetLabel.h>
-#include <Util/StringFunction.h>
 
 #include "../TourGuide.h"
 #include "../Widgets/Controls/ControlsClient.h"
-#include "../Widgets/Controls/ControlsPanel.h"
 #include "../Widgets/Controls/Spacers.h"
 #include "../Widgets/Controls/TitleBackingCont.h"
 #include "../Widgets/Controls/PanelControls.h"
@@ -37,67 +34,67 @@ class IrModellerUI:
 	,	public MeshSelectionClient<Mesh>
 {
 public:
-	IrModellerUI(SingletonRepo* repo);
-	~IrModellerUI();
+	explicit IrModellerUI(SingletonRepo* repo);
+	~IrModellerUI() override;
 
-	void init();
+	void init() override;
 	void initControls();
 
 	/* Accessors */
 	String getKnobName(int index) const;
-	bool isEffectEnabled() const { return isEnabled; }
-	bool isCurrentMeshActive()	 { return isEnabled; }
-	int getLayerType() 			 { return layerType; }
+	bool isEffectEnabled() const override { return isEnabled; }
+	bool isCurrentMeshActive() override	 { return isEnabled; }
+	int getLayerType() override 			 { return layerType; }
 	void setEffectEnabled(bool is);
 
 	/* UI */
-	void preDraw();
-	void postCurveDraw();
-	void panelResized();
-	void showCoordinates();
-	void doGlobalUIUpdate(bool force);
-	void doLocalUIUpdate();
-	void reduceDetail();
-	void restoreDetail();
-	void updateDspSync();
-	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate);
-	bool shouldTriggerGlobalUpdate(Slider* slider);
+	void preDraw() override;
+	void postCurveDraw() override;
+	void panelResized() override;
+	void showCoordinates() override;
+	void doGlobalUIUpdate(bool force) override;
+	void doLocalUIUpdate() override;
+	void reduceDetail() override;
+	void restoreDetail() override;
+	void updateDspSync() override;
+	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
+	bool shouldTriggerGlobalUpdate(Slider* slider) override;
 	bool paramTriggersAggregateUpdate(int knobIndex);
 
 	/* Events */
-	void buttonClicked(Button* button);
+	void buttonClicked(Button* button) override;
     void setWaveImpulsePath(const String& filename) { waveImpulsePath = filename; }
 	void modelLoadedWave();
 	void loadWaveFile();
 	void deconvolve();
 
 	/* Persistence */
-	void writeXML(XmlElement* element) const;
-	bool readXML(const XmlElement* element);
+	void writeXML(XmlElement* element) const override;
+	bool readXML(const XmlElement* element) override;
 
 	/* Mesh selection */
-	Mesh* getCurrentMesh();
-	void setCurrentMesh(Mesh* mesh);
-	void previewMesh(Mesh* mesh);
-	void previewMeshEnded(Mesh* oldMesh);
+	Mesh* getCurrentMesh() override;
+	void setCurrentMesh(Mesh* mesh) override;
+	void previewMesh(Mesh* mesh) override;
+	void previewMeshEnded(Mesh* oldMesh) override;
 	void setMeshAndUpdate(Mesh* mesh, bool repaint = true);
 	void setMeshAndUpdateNoRepaint(Mesh* mesh);
-	void exitClientLock();
-	void enterClientLock();
-	void doubleMesh();
+	void exitClientLock() override;
+	void enterClientLock() override;
+	void doubleMesh() override;
 	void doZoomAction(int action);
 
-	void createScales();
-	void drawScales();
+	void createScales() override;
+	void drawScales() override;
 
 	/* Tutorial */
-	Component* getComponent(int which);
+	Component* getComponent(int which) override;
 
 private:
 	bool isEnabled;
 
 	Ref<IrModeller> irModeller;
-	std::unique_ptr<MeshSelector<Mesh> > selector;
+	std::unique_ptr<MeshSelector<Mesh>> selector;
 
 	String waveImpulsePath;
 	ColorGradient gradient;
@@ -136,5 +133,3 @@ private:
 	friend class ConvTest;
 
 };
-
-#endif

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <Inter/Interactor2D.h>
 
 class WaveformInter2D :

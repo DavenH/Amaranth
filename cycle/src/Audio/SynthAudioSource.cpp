@@ -164,13 +164,13 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
 	MeshLibrary& meshLib = getObj(MeshLibrary);
 
 	float deltaPerSample = 1.0 / 44100.0 / getObj(OscControlPanel).getLengthInSeconds();
-	for(int i = 0; i < (int) globalScratch.size(); ++i)
-	{
+	for(int i = 0; i < (int) globalScratch.size(); ++i) {
 		EnvRenderContext& scratchRast 	 = globalScratch[i];
 		MeshLibrary::EnvProps* props = meshLib.getEnvProps(LayerGroups::GroupScratch, scratchRast.layerIndex);
 
-		if(props->active && scratchRast.sampleable)
+		if(props->active && scratchRast.sampleable) {
 			scratchRast.rast.renderToBuffer(numSamples, deltaPerSample, 0, *props, 1.f);
+		}
 	}
 
 	float* channels[] = { rendBuffer.left.get(), rendBuffer.right.get() };
@@ -179,8 +179,7 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
 	MidiBuffer* midiBuff = &midiMessages;
 	MidiBuffer midi44k;
 
-	if(needToResample)
-	{
+    if (needToResample) {
 //		jassert(numSamples44k > 0 || midiMessages.isEmpty());
 
 		convertMidiTo44k(midiMessages, midi44k, numSamples44k);
@@ -197,20 +196,22 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
 		getObj(Waveform3D).updateSmoothedParameters(numSamples44k);
 		getObj(Spectrum3D).updateSmoothedParameters(numSamples44k);
 
-		for(int i = 0; i < voices.size(); ++i)
-		{
-			if(voices[i]->getCurrentlyPlayingNote() < 0)
+		for (int i = 0; i < voices.size(); ++i) {
+			if(voices[i]->getCurrentlyPlayingNote() < 0) {
 				voices[i]->updateSmoothedParameters(numSamples44k);
+			}
 		}
 
-		for(int i = 0; i < postProcessEffects.size(); ++i)
+		for(int i = 0; i < postProcessEffects.size(); ++i) {
 			postProcessEffects[i]->process(buffer44k);
+		}
 
 		volumeScale.update(numSamples44k);
 
-		for(int i = 0; i < buffer.getNumChannels(); ++i)
+		for(int i = 0; i < buffer.getNumChannels(); ++i) {
 			volumeScale.applyRampOrMultiplyApplicably(workBuffer.withSize(numSamples44k),
 													  Buffer<float>(buffer44k, i));
+		}
 	}
 
     if (needToResample) {
@@ -236,12 +237,12 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
 
 	float audioLevel = 0;
 
-	for(int i = 0; i < rendBuffer.numChannels; ++i)
+	for(int i = 0; i < rendBuffer.numChannels; ++i) {
 		audioLevel = jmax(audioLevel, outBuffer[i].max());
+	}
 
 	lastAudioLevel = audioLevel;
 }
-
 
 void SynthAudioSource::paramChanged(int controller, float value) {
     if (controller == Synthesizer::VolumeParam) {
@@ -252,16 +253,13 @@ void SynthAudioSource::paramChanged(int controller, float value) {
 	}
 }
 
-
 void SynthAudioSource::controlFreqChanged() {
     controlFreqAction.setValueAndTrigger(1 << getDocSetting(ControlFreq));
 }
 
-
 void SynthAudioSource::unisonOrderChanged() {
     unisonVoicesAction.setValueAndTrigger(unison->getOrder(false));
 }
-
 
 void SynthAudioSource::setEnvelopeMeshes(bool lock) {
 //	progressMark
@@ -269,14 +267,15 @@ void SynthAudioSource::setEnvelopeMeshes(bool lock) {
     if (lock) {
         ScopedLock lock(audioLock);
 
-        for (int i = 0; i < voices.size(); ++i)
-            voices[i]->fetchEnvelopeMeshes();
+        for (int i = 0; i < voices.size(); ++i) {
+	        voices[i]->fetchEnvelopeMeshes();
+        }
     } else {
-        for(int i = 0; i < voices.size(); ++i)
-			voices[i]->fetchEnvelopeMeshes();
+        for(int i = 0; i < voices.size(); ++i) {
+	        voices[i]->fetchEnvelopeMeshes();
+        }
 	}
 }
-
 
 void SynthAudioSource::enablementChanged() {
     ScopedLock sl(audioLock);
@@ -285,33 +284,31 @@ void SynthAudioSource::enablementChanged() {
         voices[i]->enablementChanged();
 }
 
-
 void SynthAudioSource::prepNewVoice() {
     ScopedLock sl(audioLock);
 
-    for (int i = 0; i < voices.size(); ++i)
-        voices[i]->prepNewVoice();
+    for (int i = 0; i < voices.size(); ++i) {
+	    voices[i]->prepNewVoice();
+    }
 }
-
 
 float SynthAudioSource::getModValue() {
     return voices.getUnchecked(0)->getModWheelValue();
 }
 
-
 void SynthAudioSource::setModValue(double value) {
-    for (int i = 0; i < voices.size(); ++i)
-        voices[i]->setModWheelValue((float) value);
+    for (int i = 0; i < voices.size(); ++i) {
+	    voices[i]->setModWheelValue((float) value);
+    }
 }
-
 
 void SynthAudioSource::allNotesOff() {
     ScopedLock sl(audioLock);
 
-    for (int i = 0; i < voices.size(); ++i)
-        voices[i]->stop(false);
+    for (int i = 0; i < voices.size(); ++i) {
+	    voices[i]->stop(false);
+    }
 }
-
 
 Effect* SynthAudioSource::getDspEffect(int fxEnum) {
     switch (fxEnum) {
@@ -321,9 +318,8 @@ Effect* SynthAudioSource::getDspEffect(int fxEnum) {
 		case EffectTypes::TypeUnison: 		return unison;
 		case EffectTypes::TypeIrModeller: 	return tubeModel;
 		case EffectTypes::TypeReverb: 		return reverb;
+    	default: throw std::out_of_range("Unsupported effect " + fxEnum);
 	}
-
-	return 0;
 }
 
 void SynthAudioSource::calcDeclickEnvelope(double /*samplerate*/) {
@@ -377,16 +373,16 @@ void SynthAudioSource::calcFades() {
 		out.subCRev(1.f, in);
 	}
 
-	Range<int> range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+	Range range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
 	angleDeltas.resize(range.getLength());
 
-	for(int i = 0; i < range.getLength(); ++i)
+	for(int i = 0; i < range.getLength(); ++i) {
 		angleDeltas[i] = NumberUtils::noteToFrequency(i + getConstant(LowestMidiNote), 0.0);
+	}
 }
 
-
-void SynthAudioSource::convertMidiTo44k(const MidiBuffer &source, MidiBuffer &dest, int numSamples44k) {
-    MidiBuffer::Iterator iter(source);
+void SynthAudioSource::convertMidiTo44k(const MidiBuffer& source, MidiBuffer& dest, int numSamples44k) {
+	MidiBuffer::Iterator iter(source);
 
     if (numSamples44k == 0) {
         MidiMessage message;
@@ -419,7 +415,6 @@ void SynthAudioSource::convertMidiTo44k(const MidiBuffer &source, MidiBuffer &de
 		dest.addEvent(currMsg, position44k);
 	}
 }
-
 
 void SynthAudioSource::initResampler() {
     double sampleRateReal = getObj(AudioHub).getSampleRate();
@@ -542,7 +537,6 @@ void SynthAudioSource::modulationChanged(float value, int voiceIndex, int output
 	}
 }
 
-
 void SynthAudioSource::updateTempoScale() {
     tempoScale = 1.;
     int beatsPerMeasure = 4;
@@ -559,7 +553,6 @@ void SynthAudioSource::updateTempoScale() {
 	double measureSecs 	= beatsPerMeasure / beatsPerSecond;
 	tempoScale			= measureSecs / lengthSecs;
 }
-
 
 void SynthAudioSource::updateGlobality() {
     MeshLibrary::LayerGroup& scratchGroup 	= getObj(MeshLibrary).getGroup(LayerGroups::GroupScratch);
@@ -581,10 +574,10 @@ void SynthAudioSource::updateGlobality() {
 
 	rasterizeGlobalEnvs();
 
-	for(auto voice : voices)
+	for(auto voice : voices) {
 		voice->envGlobalityChanged();
+	}
 }
-
 
 Buffer<float> SynthAudioSource::getScratchBuffer(int layerIndex) {
     for (auto& scratchRast : globalScratch) {
@@ -595,7 +588,6 @@ Buffer<float> SynthAudioSource::getScratchBuffer(int layerIndex) {
 
 	return {};
 }
-
 
 void SynthAudioSource::rasterizeGlobalEnvs() {
     for (auto& scratchRast : globalScratch) {

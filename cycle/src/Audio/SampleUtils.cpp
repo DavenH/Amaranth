@@ -203,8 +203,9 @@ void SampleUtils::shiftWaveNoteOctave(bool up) {
 }
 
 void SampleUtils::updateMidiNoteNumber(int note) {
-    if (!getSetting(WaveLoaded))
-        return;
+    if (!getSetting(WaveLoaded)) {
+	    return;
+    }
 
     double period = 44100.0 / NumberUtils::noteToFrequency(note, 0);
 
@@ -213,10 +214,9 @@ void SampleUtils::updateMidiNoteNumber(int note) {
 		frames.clear();
 
 		float increment = sample->size() * 0.01f;
-		float cume 		= 0;
+		float cume = 0;
 
-		for(int i = 0; i < 100; ++i)
-		{
+		for(int i = 0; i < 100; ++i) {
 			PitchFrame frame;
 			frame.sampleOffset 	= roundToInt(cume);
 			frame.period 		= period;
@@ -227,7 +227,7 @@ void SampleUtils::updateMidiNoteNumber(int note) {
 
 		sample->fundNote = note;
 		tracker->setSample(sample);
-		tracker->refineFrames();
+		tracker->refineFrames(sample, period);
 
 		waveNoteChanged(sample, false, false);
 
@@ -266,8 +266,9 @@ void SampleUtils::waveOverlayChanged(bool shouldDrawWave) {
         getObj(SpectrumInter2D).setClosestHarmonic(0);
 		getObj(EnvelopeInter2D).waveOverlayChanged();
 
-		if(shouldDrawWave)
+		if(shouldDrawWave) {
 			showImportant(getObj(Directories).getLoadedWavePath());
+		}
 
         if (getSetting(DrawWave) && getSetting(WaveLoaded)) {
             if (getSetting(ViewStage) < ViewStages::PostEnvelopes) {

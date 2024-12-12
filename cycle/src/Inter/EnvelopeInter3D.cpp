@@ -1,5 +1,6 @@
 #include "EnvelopeInter3D.h"
 #include "../Inter/EnvelopeInter2D.h"
+#include "../Util/CycleEnums.h"
 
 EnvelopeInter3D::EnvelopeInter3D(SingletonRepo* repo) :
         Interactor3D(repo, "EnvelopeInter3D", Dimensions(Vertex::Red, Vertex::Phase, Vertex::Blue)),
@@ -17,7 +18,7 @@ void EnvelopeInter3D::init() {
     vertexProps.ampVsPhaseApplicable = true;
     vertexProps.sliderApplicable[Vertex::Time] = false;
     vertexProps.dimensionNames.set(Vertex::Phase, "Time");
-    vertexProps.dimensionNames.set(Vertex::Time, String::empty);
+    vertexProps.dimensionNames.set(Vertex::Time, {});
 }
 
 void EnvelopeInter3D::transferLineProperties(VertCube* from, VertCube* to1, VertCube* to2) {

@@ -62,13 +62,13 @@ public:
 	void addPulloutIcon(Image& image, bool horz = true);
 	void applyMouseoverHighlight(Graphics& g, Image copy, bool mouseOver, bool buttonDown, bool pending);
 
-	void drawCorneredRectangle(Graphics& g, const Rectangle<int>& r, int cornerSize = 0);
+	static void drawCorneredRectangle(Graphics& g, const Rectangle<int>& r, int cornerSize = 0);
 	void drawHighlight(Graphics& g, Component* c, int shiftX = 0, int shiftY = 0);
 	void drawHighlight(Graphics& g, const Rectangle<float>& r);
 	void drawJustifiedText(Graphics& g, const String& text, Component& topLeft, Component& botRight, bool above, Component* parent = 0);
 	void drawJustifiedText(Graphics& g, const String& text, const Rectangle<int>& rect, bool above = true, Component* parent = 0);
 	void drawPowerSymbol(Graphics& g, Rectangle<int> bounds) const;
-	static void drawShadowedText(Graphics& g, String text, int x, int y, const Font& font, float alpha = 0.65f);
+	static void drawShadowedText(Graphics& g, const String& text, int x, int y, const Font& font, float alpha = 0.65f);
 
 	static void drawTransformedText(Graphics& g, const String& text, const AffineTransform& transform)
 	{

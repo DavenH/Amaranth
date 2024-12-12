@@ -35,17 +35,14 @@ public:
 	void setPortion(float portion) { this->portion = portion; }
 };
 
-class SampleDragger : public Component
-{
+class SampleDragger : public Component {
 public:
-	SampleDragger(SamplePair* pair, bool horz) :
-		pair(pair),
-		horz(horz),
-		startHeightA(0), startHeightB(0), startWidthA(0), startWidthB(0)
-	{}
+	SampleDragger(SamplePair* pair, bool horz) : pair(pair),
+	                                             horz(horz),
+	                                             startHeightA(0), startHeightB(0), startWidthA(0), startWidthB(0) {
+	}
 
-	void update(int diff)
-	{
+	void update(int diff) {
 		float newRatio = horz ?
 				(startHeightA + diff) / float(startHeightA + startHeightB) :
 				(startWidthA + diff) / float(startWidthA + startWidthB);

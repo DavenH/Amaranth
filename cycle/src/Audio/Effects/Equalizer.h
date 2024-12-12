@@ -1,17 +1,12 @@
-#ifndef _EQUALIZER_H_
-#define _EQUALIZER_H_
-
+#pragma once
 #include "JuceHeader.h"
 #include <vector>
-#include <cmath>
 
 #include <Array/ScopedAlloc.h>
 #include <Audio/Filters/Butterworth.h>
 #include <Audio/Filters/Filter.h>
 #include <Audio/SmoothedParameter.h>
 #include <Obj/Ref.h>
-#include <Test/Testable.h>
-#include <Util/Arithmetic.h>
 #include "AudioEffect.h"
 
 using std::vector;
@@ -21,7 +16,6 @@ class EqualizerUI;
 
 class Equalizer :
 		public Effect
-	,	public Testable
 {
 public:
 	static const int numPartitions = 5;
@@ -46,36 +40,36 @@ private:
 		,	centreFreq(100.)
 		,	numCascades(1)
 		{
-			for(int i = 0; i < numEqChannels; ++i)
-				states[i] = 0;
+			for(auto& state : states)
+				state = nullptr;
 		}
 
-		IppsIIRState64f_32f* states[numEqChannels];
+		IppsIIRState64f_32f* states[numEqChannels]{};
 		Buffer<Ipp64f> delayLine[numEqChannels];
 		Buffer<Ipp64f> taps[numEqChannels];
 
-		Dsp::Cascade* cascade;
+		Dsp::Cascade* cascade{};
 		int numCascades;
 		SmoothedParameter gainDB;
 		SmoothedParameter centreFreq;
 	};
 
 public:
-	Equalizer(SingletonRepo* repo);
-	~Equalizer();
+	explicit Equalizer(SingletonRepo* repo);
+	~Equalizer() override;
 
 	/* Rendering */
 	void clearGraphicBuffer();
-	void processBuffer(AudioSampleBuffer& buffer);
+	void processBuffer(AudioSampleBuffer& buffer) override;
 	void processVertexBuffer(Buffer<Ipp32f> inputBuffer);
 
 	/* Updating */
 	void updatePartition(int idx, bool canUpdateTaps);
-	bool doParamChange(int index, double value, bool doFurtherUpdate);
+	bool doParamChange(int index, double value, bool doFurtherUpdate) override;
 	void updateSmoothedParameters(int deltaSamples);
 
 	/* Accessors */
-	bool isEnabled() const;
+	bool isEnabled() const override;
 	double getFrequencyTarget(int idx) const	{ return partitions[idx].centreFreq.getTargetValue(); 	}
 	double getGainTarget(int idx) const			{ return partitions[idx].gainDB.getTargetValue(); 		}
 	double getFrequency(int idx) const			{ return partitions[idx].centreFreq.getCurrentValue(); 	}
@@ -106,9 +100,9 @@ private:
 
 	EqPartition partitions[numPartitions];
 
-	Dsp::SimpleFilter <Dsp::Butterworth::LowShelf<2> > lsFilter;
-	Dsp::SimpleFilter <Dsp::Butterworth::BandShelf<2> > bsFilter[numPartitions - 2];
-	Dsp::SimpleFilter <Dsp::Butterworth::HighShelf<2> > hsFilter;
+	Dsp::SimpleFilter <Dsp::Butterworth::LowShelf<2>> lsFilter;
+	Dsp::SimpleFilter <Dsp::Butterworth::BandShelf<2>> bsFilter[numPartitions - 2];
+	Dsp::SimpleFilter <Dsp::Butterworth::HighShelf<2>> hsFilter;
 
 	ScopedAlloc<Ipp32f> overflowBuffer;
 	ScopedAlloc<Ipp64f> tapsBuffer;
@@ -117,6 +111,3 @@ private:
 
 
 };
-
-
-#endif

@@ -1,7 +1,5 @@
-#ifndef _EQUALIZERCOMPONENT_H_
-#define _EQUALIZERCOMPONENT_H_
+#pragma once
 
-#include <App/SingletonAccessor.h>
 #include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
 
@@ -14,19 +12,15 @@ class EqualizerUI :
 		public GuilessEffect
 	,	public Updateable
 {
-private:
 	Ref<Equalizer> equalizer;
 
 public:
 	EqualizerUI(SingletonRepo* repo, Effect* effect);
-	void init();
+	void init() override;
 	bool paramTriggersAggregateUpdate(int knobIndex);
-	void layoutKnobs(Rectangle<int> rect, Array<int>& knobIdcs, int knobSize, int knobSpacing);
-	String getKnobName(int index) const;
-	void finishedUpdatingAllSliders();
-	void doLocalUIUpdate();
-	void performUpdate(int updateType);
+	void layoutKnobs(Rectangle<int> rect, Array<int>& knobIdcs, int knobSize, int knobSpacing) override;
+	[[nodiscard]] String getKnobName(int index) const override;
+	void finishedUpdatingAllSliders() override;
+	void doLocalUIUpdate() override;
+	void performUpdate(int updateType) override;
 };
-
-#endif
-

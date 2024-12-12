@@ -1,6 +1,5 @@
 #pragma once
 #include <App/SingletonAccessor.h>
-#include <Curve/MeshRasterizer.h>
 #include "JuceHeader.h"
 
 class Effect :

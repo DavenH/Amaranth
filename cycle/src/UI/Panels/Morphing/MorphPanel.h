@@ -1,14 +1,11 @@
-#ifndef _MorphPanel_h
-#define _MorphPanel_h
+#pragma once
 
 #include <App/Doc/Savable.h>
 #include <App/SingletonAccessor.h>
-#include <Definitions.h>
 #include <Inter/MorphPositioner.h>
 #include <Obj/MorphPosition.h>
 #include <UI/AsyncUIUpdater.h>
 #include <UI/Widgets/IconButton.h>
-#include <UI/Widgets/TwoStateButton.h>
 
 #include "../../TourGuide.h"
 #include "../../Widgets/HSlider.h"
@@ -29,30 +26,30 @@ class MorphPanel :
 	,	public SingletonAccessor
 	,	public MorphPositioner {
 public:
-	MorphPanel(SingletonRepo* repo);
-	virtual ~MorphPanel();
-	void init();
+	explicit MorphPanel(SingletonRepo* repo);
+	~MorphPanel() override;
+	void init() override;
 
 	/* UI */
-	void paint(Graphics& g);
-	void resized();
+	void paint(Graphics& g) override;
+	void resized() override;
 	void showMessage(float value, MorphSlider* slider);
 
-	void reduceDetail();
-	void restoreDetail();
-	void doGlobalUIUpdate(bool force);
+	void reduceDetail() override;
+	void restoreDetail() override;
+	void doGlobalUIUpdate(bool force) override;
 
 	/*Events */
-	void buttonClicked(Button* button);
-	void sliderDragEnded(Slider* slider);
-	void sliderDragStarted(Slider* slider);
-	void sliderValueChanged(Slider* slider);
+	void buttonClicked(Button* button) override;
+	void sliderDragEnded(Slider* slider) override;
+	void sliderDragStarted(Slider* slider) override;
+	void sliderValueChanged(Slider* slider) override;
 	void setSelectedCube(Vertex* vert, VertCube* cube, int scratchChannel, bool isEnvelope);
 	void setRedBlueStrings(const String& redStr, const String& blueStr);
 	void updateModPosition(int dim, float value);
 	void updateCurrentSliderNoCallback(float value);
 	void updateHighlights();
-	void updateCube();
+	void updateCube() const;
 	void triggerValue(int dim, float value);
 	void triggerClick(int button);
 
@@ -65,33 +62,33 @@ public:
 	void 	setViewDepth(int dim, float depth);
 	void 	setValue(int dim, float value);
 
-	bool 	usesLineDepthFor(int dim);
+	bool 	usesLineDepthFor(int dim) override;
 
-	int 	getPrimaryDimension();
+	int 	getPrimaryDimension() override;
 	int 	getCurrentMidiKey();
 
-	float 	getValue(int index);
+	float 	getValue(int index) override;
 	float 	getPrimaryViewDepth();
-	float 	getDepth(int dim);
-	float 	getDistortedTime(int chan);
+	float 	getDepth(int dim) override;
+	float 	getDistortedTime(int chan) override;
 
-	float 	getYellow() 		{ return yllwSlider.getValue(); }
-	float 	getRed() 			{ return redSlider.getValue();  }
-	float 	getBlue() 			{ return blueSlider.getValue(); }
+	float 	getYellow() override { return yllwSlider.getValue(); }
+	float 	getRed() override 	 { return redSlider.getValue();  }
+	float 	getBlue() override 	 { return blueSlider.getValue(); }
 
 	Slider* getPanSlider() 		{ return &panSlider;  }
 	Slider* getMorphSlider()	{ return &blueSlider; }
 	Slider* getKeySlider() 		{ return &redSlider;  }
 	Slider* getTimeSlider() 	{ return &yllwSlider; }
 
-	Component* getComponent(int which);
+	Component* getComponent(int which) override;
 
-	MorphPosition getMorphPosition();
-	MorphPosition getOffsetPosition(bool includeDepths);
+	MorphPosition getMorphPosition() override;
+	MorphPosition getOffsetPosition(bool includeDepths) override;
 
 	/* Persistence */
-	void writeXML(XmlElement* element) const;
-	bool readXML(const XmlElement* element);
+	void writeXML(XmlElement* element) const override;
+	bool readXML(const XmlElement* element) override;
 
 private:
 	bool ignoreNextEditMessage;
@@ -132,5 +129,3 @@ private:
 	float viewDepth[5];
 	float insertDepth[5];
 };
-
-#endif

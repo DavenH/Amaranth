@@ -4,10 +4,8 @@
 #include <App/SingletonRepo.h>
 #include <Array/Buffer.h>
 #include <Audio/PitchedSample.h>
-#include <Curve/Mesh.h>
 #include <Inter/Interactor.h>
 #include <Obj/ColorGradient.h>
-#include <Thread/LockTracer.h>
 #include <UI/Panels/CommonGfx.h>
 #include <UI/Panels/Panel2D.h>
 #include <UI/Panels/ScopedGL.h>
@@ -16,11 +14,11 @@
 #include "Waveform2D.h"
 #include "../Panels/Morphing/MorphPanel.h"
 #include "../VertexPanels/Waveform3D.h"
-#include "../../Audio/Effects/AudioEffect.h"
 #include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VisualDsp.h"
 #include "../../Util/CycleEnums.h"
 
+using namespace gl;
 
 Waveform2D::Waveform2D(SingletonRepo* repo) :
 		SingletonAccessor(repo, "Waveform2D")
@@ -45,48 +43,42 @@ void Waveform2D::init() {
     position = &getObj(PlaybackPanel);
 }
 
-
 void Waveform2D::preDraw() {
-    if (getSetting(Waterfall))
+	if (getSetting(Waterfall))
 		drawHistory();
 }
 
-
 void Waveform2D::drawCurvesAndSurfaces() {
-    if ((getSetting(DrawWave) || getSetting(ViewStage) > ViewStages::PreProcessing) && !getSetting(Waterfall)) {
-        fillCurveFromGrid();
-    }
+	if ((getSetting(DrawWave) || getSetting(ViewStage) > ViewStages::PreProcessing) && !getSetting(Waterfall)) {
+		fillCurveFromGrid();
+	}
 
 	// fills curve from mesh
 	Panel2D::drawCurvesAndSurfaces();
 
-	if(getSetting(ViewStage) > ViewStages::PreProcessing || getSetting(DrawWave))
+	if (getSetting(ViewStage) > ViewStages::PreProcessing || getSetting(DrawWave))
 		drawIfftCycle();
 }
 
-
 void Waveform2D::drawBackground(bool fillBackground) {
-    Panel::drawBackground();
+	Panel::drawBackground();
 
 	gfx->setCurrentColour(0.28f, 0.28f, 0.32f, 0.2f);
-	gfx->fillRect(0, 0, 1.f, 0.25f);
-	gfx->fillRect(0, 0.75f, 1.f, 1.f);
+	gfx->fillRect(0, 0, 1.f, 0.25f, true);
+	gfx->fillRect(0, 0.75f, 1.f, 1.f, true);
 }
-
 
 void Waveform2D::postCurveDraw() {
 }
 
-
 void Waveform2D::fillCurveFromGrid() {
 	const vector<Column>& timeColumns = getObj(VisualDsp).getTimeColumns();
 
-	if(timeColumns.size() < 2 || ! getObj(Waveform3D).shouldDrawGrid())
+	if (timeColumns.size() < 2 || !getObj(Waveform3D).shouldDrawGrid())
 		return;
 
 	Color c = colorA.withAlpha(getSetting(DrawWave) ? 0.2f : isMeshEnabled() ? 0.5f : 0.3f);
 	float baseAlpha = c.alpha() * 0.2f;
-
 
 	int numCols 	= timeColumns.size() - 1;
 	float fIndex 	= position->getX() * (numCols);
@@ -118,9 +110,8 @@ void Waveform2D::fillCurveFromGrid() {
 		positions.push_back(curr);
 	}
 
-	gfx->fillAndOutlineColoured(positions, baseY, baseAlpha);
+	gfx->fillAndOutlineColoured(positions, baseY, baseAlpha, true, true);
 }
-
 
 int Waveform2D::initXYArrays(Buffer<float> one, Buffer<float> two, float portion) {
     Buffer<float>& smaller = one.size() < two.size() ? one : two;
@@ -157,12 +148,12 @@ int Waveform2D::initXYArrays(Buffer<float> one, Buffer<float> two, float portion
 	return size;
 }
 
-
 void Waveform2D::drawIfftCycle() {
     const vector<Column>& ifftColumns = getObj(VisualDsp).getTimeColumns();
 
-	if(ifftColumns.empty())
+	if(ifftColumns.empty()) {
 		return;
+	}
 
 	int maxRow 		= (int) ifftColumns.size() - 1;
 	float fIndex 	= position->getProgress() * maxRow;
@@ -171,15 +162,15 @@ void Waveform2D::drawIfftCycle() {
 	int secondCol 	= jmin(maxRow, iIndex + 1);
 	int size 		= initXYArrays(ifftColumns[iIndex], ifftColumns[secondCol], remainder);
 
-	if(! size)
+	if(! size) {
 		return;
+	}
 
 	bool reduceAlpha = getSetting(DrawWave) == false && interactor->mouseFlag(MouseOver);
 	gfx->enableSmoothing();
 	gfx->setCurrentColour(colorA.withAlpha(reduceAlpha ? 0.5f : 1.f));
-	gfx->drawLineStrip(xy);
+	gfx->drawLineStrip(xy, true, true);
 }
-
 
 void Waveform2D::drawHistory() {
 	Panel3D::Renderer* renderer = getObj(Waveform3D).getRenderer();
@@ -224,16 +215,14 @@ void Waveform2D::drawHistory() {
 			float diffCol 	= columns[columnIndex].x - columns[firstCol].x;
 			float portion 	= diffX / diffCol;
 
-			int size = jmin(columns[firstCol].size(), columns[columnIndex].size());
 			initXYArrays(columns[firstCol], columns[columnIndex], portion);
 
-			gfx->drawLineStrip(xy, false);
+			gfx->drawLineStrip(xy, false, true);
 
 			cume -= xInc;
 		}
 	}
 }
-
 
 void Waveform2D::drawMouseHint() {
     if (interactor->state.actionState != PanelState::BoxSelecting
@@ -243,23 +232,19 @@ void Waveform2D::drawMouseHint() {
 	}
 }
 
-
 bool Waveform2D::shouldDrawCurve() {
     return true; //getSetting(ViewStage) == ViewStages::PreProcessing;
 //			interactor->mouseFlag(MouseOver) || ;
 }
 
-
 int Waveform2D::getLayerScratchChannel() {
     return getObj(Waveform3D).getLayerScratchChannel();
 }
-
 
 void Waveform2D::componentChanged() {
     Panel::componentChanged();
     comp->setMouseCursor(MouseCursor::CrosshairCursor);
 }
-
 
 void Waveform2D::doZoomExtra(bool commandDown) {
     if (commandDown) {

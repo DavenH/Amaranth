@@ -1,5 +1,4 @@
-#ifndef _presetpage_h
-#define _presetpage_h
+#pragma once
 
 #include <set>
 #include <vector>
@@ -110,11 +109,10 @@ public:
 	void writePresetSettings();
 
 private:
-
-	class UploadThread : public Thread, public SingletonAccessor
-	{
+	class UploadThread : public Thread, public SingletonAccessor {
 	public:
-		UploadThread(SingletonRepo* repo) : Thread("UploadThread"), SingletonAccessor(repo, "UploadThread") {}
+		UploadThread(SingletonRepo* repo) : Thread("UploadThread"), SingletonAccessor(repo, "UploadThread") {
+		}
 
 		void run();
 		void setFile(const File& file) { uploadFile = file; }
@@ -155,7 +153,7 @@ private:
 	float spinAngle;
 
 	std::unique_ptr<TableListBox> tableListBox;
-	std::unique_ptr<SearchField<DocumentDetails> > search;
+	std::unique_ptr<SearchField<DocumentDetails>> search;
 	std::unique_ptr<Button> upButton;
 	std::unique_ptr<IconButton> wavFolderButton;
 
@@ -199,5 +197,3 @@ private:
 
 	friend class DownloadDetailsThread;
 };
-
-#endif

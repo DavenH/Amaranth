@@ -64,10 +64,10 @@ void CycleUpdater::createUpdateGraph() {
 	unison		= new Node();
 	ctrlNode	= new Node();
 
-	envDlg		= new Node(envelopeDelegate);
-	spectDlg	= new Node(spectDelegate);
-	scratchRast	= new Node(scratchUpdate);
-	morphNode   = new Node(morphUpdate);
+	envDlg		= new Node(envelopeDelegate.get());
+	spectDlg	= new Node(spectDelegate.get());
+	scratchRast	= new Node(scratchUpdate.get());
+	morphNode   = new Node(morphUpdate.get());
 	synthNode   = new Node();
 
 	timeUIs 	= new Node();
@@ -149,7 +149,6 @@ void CycleUpdater::createUpdateGraph() {
 	updater->setStartingNode(UpdateSources::SourceWaveshaper, 	wshpItr);
 }
 
-
 void CycleUpdater::envelopeVisibilityChanged() {
     if (getSetting(CurrentMorphAxis) == Vertex::Time) {
         env2Itr->updatesAfter(envDlg);
@@ -159,7 +158,6 @@ void CycleUpdater::envelopeVisibilityChanged() {
 		env3Itr->updatesAfter(envDlg);
 	}
 }
-
 
 void CycleUpdater::moveTimeUIs(int viewStage, int lastViewStage) {
 //	jassert(viewStage != lastViewStage);
@@ -188,14 +186,12 @@ void CycleUpdater::moveTimeUIs(int viewStage, int lastViewStage) {
 	timeUIs->updatesAfter(toNode);
 }
 
-
 void CycleUpdater::removeDspFXConnections() {
 	effectsProc	->doesntUpdateAfter(irModelRast);
 	effectsProc	->doesntUpdateAfter(wshpRast);
 	eqlzerUI	->doesntUpdateAfter(effectsProc);
 	envProc		->doesntUpdateAfter(unison);
 }
-
 
 void CycleUpdater::setDspFXConnections() {
 	effectsProc	->updatesAfter(irModelRast);
@@ -204,20 +200,16 @@ void CycleUpdater::setDspFXConnections() {
 	envProc		->updatesAfter(unison);
 }
 
-
 void CycleUpdater::setTimeFreqParents() {
 	layerChanged(LayerGroups::GroupScratch, -1);
 	layerChanged(LayerGroups::GroupDeformer, -1);
 }
 
-
 void CycleUpdater::setTimeFreqChildren(bool toFFT) {
-    if (toFFT) {
+	if (toFFT) {
 		spectProc->updatesAfter(timeProc);
 		spectProc->updatesAfter(spectDlg);
-	}
-	else
-	{
+	} else {
 		envProc->updatesAfter(timeProc);
 		envProc->updatesAfter(spectDlg);
 	}
@@ -233,12 +225,10 @@ void CycleUpdater::removeTimeFreqChildren(bool fromFFT) {
 	}
 }
 
-
 void CycleUpdater::removeTimeFreqParents() {
     timeProc->doesntUpdateAfter(scratchRast);
     spectDlg->doesntUpdateAfter(scratchRast);
 }
-
 
 void CycleUpdater::viewStageChanged(bool force) {
 	int viewStage = getSetting(ViewStage);
@@ -291,14 +281,12 @@ void CycleUpdater::viewStageChanged(bool force) {
 	lastViewStage = viewStage;
 }
 
-
 void CycleUpdater::layerChanged(int layerGroup, int index) {
 	Node* srcNode = layerGroup == LayerGroups::GroupScratch ? scratchRast : dfrmRast;
 
 	Array<int> types = getObj(MeshLibrary).getMeshTypesAffectedByCurrent(layerGroup);
 	refreshConnections(srcNode, types);
 }
-
 
 void CycleUpdater::refreshConnections(Node* destNode, const Array<int>& meshTypes) {
     /// xxx is it timeProc or timeRast ?? these ought to be symmetrical...
@@ -330,8 +318,9 @@ void CycleUpdater::refreshConnections(Node* destNode, const Array<int>& meshType
 			case GroupScratch:
 				envDlg->updatesAfter(destNode);
 
-				if(meshTypes[i] == GroupScratch)
+				if(meshTypes[i] == GroupScratch) {
 					scratchRast->updatesAfter(destNode);
+				}
 				break;
 		}
 	}

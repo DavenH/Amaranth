@@ -12,23 +12,23 @@ public:
 		,	translateUp1(false)
 		,	width(24) {}
 
-	virtual ~IDynamicSizeComponent() {}
+	virtual ~IDynamicSizeComponent() = default;
 
-	bool isNeverCollapsed()		{ return neverCollapsed;	}
-	bool isAlwaysCollapsed() 	{ return alwaysCollapsed; 	}
-	int getDynWidth() 			{ return width; 			}
+	[[nodiscard]] bool isNeverCollapsed() const	{ return neverCollapsed;	}
+	[[nodiscard]] bool isAlwaysCollapsed() const 	{ return alwaysCollapsed; 	}
+	[[nodiscard]] int getDynWidth() const 		{ return width; 			}
 
-	void setCurrentlyCollapsed(bool isIt) {
+	virtual void setCurrentlyCollapsed(bool isIt) {
         isCurrentCollapsed = isIt && !neverCollapsed;
     }
 
-    bool isCurrentlyCollapsed() {
+	virtual bool isCurrentlyCollapsed() {
         return isCurrentCollapsed || alwaysCollapsed;
     }
 
     /* ----------------------------------------------------------------------------- */
 
-	virtual bool isVisibleDlg() const 			{ return true; 	}
+	[[nodiscard]] virtual bool isVisibleDlg() const 			{ return true; 	}
 	virtual int getMinorSize() 					{ return 24; 	}
 	virtual void setVisibleDlg(bool isVisible) 	{}
 

@@ -1,4 +1,6 @@
 #include "EffectPanel.h"
+
+#include <Definitions.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <App/Doc/Document.h>
@@ -9,7 +11,6 @@
 #include <Thread/LockTracer.h>
 
 #include "../../Audio/Effects/IrModeller.h"
-
 
 EffectPanel::EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZoom) :
 		Panel2D			 (repo, name, true, haveVertZoom)
@@ -36,30 +37,23 @@ EffectPanel::EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZ
 	vertexProps.sliderApplicable[Vertex::Blue] 	= false;
 	vertexProps.ampVsPhaseApplicable 			= false;
 
-	for(int i = 0; i < numElementsInArray(vertexProps.deformApplicable); ++i)
-		vertexProps.deformApplicable[i] = false;
+	for(auto& flag : vertexProps.deformApplicable) {
+		flag = false;
+	}
 
-	vertexProps.dimensionNames.set(Vertex::Time, 	String::empty);
-	vertexProps.dimensionNames.set(Vertex::Red, 	String::empty);
-	vertexProps.dimensionNames.set(Vertex::Blue, 	String::empty);
+	vertexProps.dimensionNames.set(Vertex::Time, 	{});
+	vertexProps.dimensionNames.set(Vertex::Red, 	{});
+	vertexProps.dimensionNames.set(Vertex::Blue, 	{});
 	vertexProps.dimensionNames.set(Vertex::Phase,	"x");
 	vertexProps.dimensionNames.set(Vertex::Amp, 	"y");
 }
 
-
-EffectPanel::~EffectPanel()
-{
-}
-
-
-bool EffectPanel::doCreateVertex()
-{
+bool EffectPanel::doCreateVertex() {
 	bool succeeded = addNewCube(0, state.currentMouse.x, state.currentMouse.y);
 
 	vector<Vertex*>& selected = getSelected();
 
-	if(state.currentVertex != nullptr)
-	{
+	if (state.currentVertex != nullptr) {
 		selected.clear();
 		selected.push_back(state.currentVertex);
 		updateSelectionFrames();
@@ -70,28 +64,23 @@ bool EffectPanel::doCreateVertex()
 	return succeeded;
 }
 
-
-float EffectPanel::getDragMovementScale()
-{
+float EffectPanel::getDragMovementScale() {
 	return 1.f;
 }
 
-
-void EffectPanel::performUpdate(int updateType)
-{
+void EffectPanel::performUpdate(int updateType) {
 	repaint();
 }
 
-
-bool EffectPanel::addNewCube(float startTime, float x, float y, float curve)
-{
+bool EffectPanel::addNewCube(float startTime, float x, float y, float curve) {
 	ScopedLock sl(vertexLock);
 
-	VertList& verts = getMesh()->getVerts();
-	VertList beforeVerts;
+	vector<Vertex*>& verts = getMesh()->getVerts();
+	vector<Vertex*> beforeVerts;
 
-	if(! suspendUndo)
+	if(! suspendUndo) {
 		beforeVerts = verts;
+	}
 
 	Vertex* vertex = new Vertex(x, y);
 	vertex->values[Vertex::Curve] = curve;
@@ -99,15 +88,13 @@ bool EffectPanel::addNewCube(float startTime, float x, float y, float curve)
 
 	verts.push_back(vertex);
 
-	if(! suspendUndo)
-	{
+	if(!suspendUndo) {
 		vector<Vertex*>& afterVerts = verts;
 		getObj(EditWatcher).addAction(new UpdateVertexVectorAction(this, &verts, beforeVerts, afterVerts, true));
 	}
 
 	return true;
 }
-
 
 bool EffectPanel::isMeshEnabled() const
 {

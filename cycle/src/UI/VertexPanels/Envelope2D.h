@@ -1,13 +1,10 @@
-#ifndef _envelopepanel_h
-#define _envelopepanel_h
+#pragma once
 
 #include <App/SingletonAccessor.h>
-#include <App/Doc/Savable.h>
-#include <Curve/EnvRasterizer.h>
 #include <Obj/Ref.h>
 
 #include <UI/Panels/Panel2D.h>
-#include "../UI/TourGuide.h"
+#include "../../UI/TourGuide.h"
 
 class Waveform3D;
 class E3Rasterizer;
@@ -24,7 +21,6 @@ template<class EnvelopeMesh> class MeshSelector;
 class Envelope2D:
 		public Panel2D
 	,	public TourGuide
-//	,	public Savable
 {
 	friend class EnvelopeInter3D;
 

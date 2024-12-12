@@ -5,6 +5,8 @@
 
 #include "SelectorPanel.h"
 
+#include <Definitions.h>
+
 SelectorPanel::SelectorPanel(SingletonRepo* repo) :
 		currentIndex(0)
 	,	indexDragged(0)
@@ -16,11 +18,6 @@ SelectorPanel::SelectorPanel(SingletonRepo* repo) :
 	neverCollapsed 	= true;
 	arrowImg 		= getObj(MiscGraphics).getIcon(6, 6);
 }
-
-
-SelectorPanel::~SelectorPanel() {
-}
-
 
 int SelectorPanel::getExpandedSize() {
     return 36;

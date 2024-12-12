@@ -7,6 +7,7 @@ class EnvelopeDelegate :
 	,	public Updateable {
 public:
 	EnvelopeDelegate(SingletonRepo* repo);
-	void performUpdate(int updateType);
-	virtual ~EnvelopeDelegate();
+	void performUpdate(int updateType) override;
+
+	~EnvelopeDelegate() override;
 };

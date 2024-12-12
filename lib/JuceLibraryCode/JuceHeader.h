@@ -43,14 +43,3 @@
  */
  #error "This project was last saved using an outdated version of the Projucer! Re-save this project with the latest version to fix this error."
 #endif
-
-
-#if ! JUCE_DONT_DECLARE_PROJECTINFO
-namespace ProjectInfo
-{
-    const char* const  projectName    = "AmaranLib";
-    const char* const  companyName    = "Amaranth Audio";
-    const char* const  versionString  = "1.8.0";
-    const int          versionNumber  = 0x10800;
-}
-#endif

@@ -3,12 +3,10 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Audio/Multisample.h>
-#include <Binary/Images.h>
 #include <Curve/VertCube.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <Inter/Interactor.h>
-#include <Thread/LockTracer.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/Widgets/IconButton.h>
 #include <Util/Arithmetic.h>
@@ -16,6 +14,7 @@
 #include "CubeDisplay.h"
 #include "MorphPanel.h"
 
+#include "../CycleDefs.h"
 #include "../GeneralControls.h"
 #include "../MainPanel.h"
 #include "../ModMatrixPanel.h"
@@ -26,11 +25,9 @@
 #include "../../Widgets/MorphSlider.h"
 #include "../../Widgets/MidiKeyboard.h"
 #include "../../../App/CycleTour.h"
-#include "../../../CycleDefs.h"
 #include "../../VisualDsp.h"
 
-
-MorphPanel::MorphPanel(SingletonRepo* repo) : 
+MorphPanel::MorphPanel(SingletonRepo* repo) :
 		SingletonAccessor(repo, "MorphPanel")
 	,	primeYllw(	1, 1, this, repo, "Set time range as primary axis", "1")
 	,	primeRed(	0, 1, this, repo, "Set key scale range as primary axis", "2")
@@ -58,13 +55,13 @@ MorphPanel::MorphPanel(SingletonRepo* repo) :
 
 	Colour yellow = Color(1.f, 0.8f, 0.27f).toColour();
 
-    for (int i = 0; i < numElementsInArray(sliders); ++i) {
-		sliders[i]->addListener(this);
-		sliders[i]->setRange(0, 1);
-		sliders[i]->setValue(0, dontSendNotification);
-		sliders[i]->setColour(yellow);
+    for (auto & slider : sliders) {
+		slider->addListener(this);
+		slider->setRange(0, 1);
+		slider->setValue(0, dontSendNotification);
+		slider->setColour(yellow);
 
-		addAndMakeVisible(sliders[i]);
+		addAndMakeVisible(slider);
 	}
 
 	StringFunction simpleRounder = StringFunction(2);
@@ -102,16 +99,10 @@ MorphPanel::MorphPanel(SingletonRepo* repo) :
 	setWantsKeyboardFocus(false);
 }
 
-
 void MorphPanel::setDepth(int dim, float depth) {
     viewDepth[dim] = depth;
     insertDepth[dim] = depth;
 }
-
-
-MorphPanel::~MorphPanel() {
-}
-
 
 void MorphPanel::init() {
 //	mappingBox.setSelectedId(ModMappingId, true);
@@ -120,7 +111,6 @@ void MorphPanel::init() {
     updateHighlights();
 }
 
-
 void MorphPanel::paint(Graphics& g) {
     getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
@@ -128,7 +118,7 @@ void MorphPanel::paint(Graphics& g) {
 	g.setColour(Colour::greyLevel(0.6f));
 
 
-	Rectangle<int> gradBounds(getLocalBounds().removeFromRight(140).removeFromTop(120));
+	Rectangle gradBounds(getLocalBounds().removeFromRight(140).removeFromTop(120));
 
 	{
 		g.setGradientFill(ColourGradient(Colour::greyLevel(0.05f),
@@ -173,7 +163,6 @@ void MorphPanel::paint(Graphics& g) {
 	getObj(MiscGraphics).drawJustifiedText(g, "cube range", rangeYllw, 	rangeBlue, 	true, rangeCO);
 }
 
-
 float MorphPanel::getValue(int index) {
     switch (index) {
         case Vertex::Time: 	return yllwSlider.getValue();
@@ -184,11 +173,9 @@ float MorphPanel::getValue(int index) {
 	}
 }
 
-
 MorphPosition MorphPanel::getMorphPosition() {
     return MorphPosition(yllwSlider.getValue(), redSlider.getValue(), blueSlider.getValue());
 }
-
 
 MorphPosition MorphPanel::getOffsetPosition(bool includingDepths) {
     MorphPosition m;
@@ -220,11 +207,11 @@ void MorphPanel::resized() {
 
 	Slider* sliders[] 	= { &yllwSlider, &redSlider, &blueSlider, &panSlider };
 
-	int numSliders 		= numElementsInArray(sliders);
-	int sliderHeight 	= int((sliderBounds.getHeight() - (numSliders - 1) * 3) / float(numSliders));
+	int numSliders = numElementsInArray(sliders);
+	int sliderHeight = int((sliderBounds.getHeight() - (numSliders - 1) * 3) / float(numSliders));
 
     for (int i = 0; i < numSliders; ++i) {
-        Rectangle<int> sb(sliderBounds.removeFromTop(sliderHeight));
+        Rectangle sb(sliderBounds.removeFromTop(sliderHeight));
 		sb.removeFromRight(8);
 
 		sliders[i]->setBounds(sb);
@@ -239,10 +226,9 @@ void MorphPanel::resized() {
 	iconBounds.reduce((iconBounds.getWidth() - rangeCO->getExpandedSize()) / 2, 0);
 	rangeCO->setBounds(iconBounds);
 
-	slidersArea.setBounds(Rectangle<int>(yllwSlider.getPosition(), blueSlider.getBounds().getBottomRight()));
+	slidersArea.setBounds(Rectangle(yllwSlider.getPosition(), blueSlider.getBounds().getBottomRight()));
 	slidersArea.toBack();
 }
-
 
 void MorphPanel::sliderValueChanged(Slider* slider) {
     if (slider == &panSlider) {
@@ -252,12 +238,11 @@ void MorphPanel::sliderValueChanged(Slider* slider) {
 		return;
 	}
 
-	MorphSlider* mslider = dynamic_cast<MorphSlider*>(slider);
+	auto* mslider = dynamic_cast<MorphSlider*>(slider);
 
 	if(mslider != nullptr)
 		updateModPosition(mslider->dim, slider->getValue());
 }
-
 
 void MorphPanel::updateModPosition(int dim, float value) {
     if (dim == Vertex::Red) {
@@ -273,7 +258,7 @@ void MorphPanel::updateModPosition(int dim, float value) {
         if (!getSetting(DrawWave))
             triggerRefreshUpdate();
         else {
-            Multisample& multi = getObj(Multisample);
+            auto& multi = getObj(Multisample);
             PitchedSample* existing = multi.getCurrentSample();
 
 			multi.performUpdate(UpdateType::Update);
@@ -289,12 +274,11 @@ void MorphPanel::updateModPosition(int dim, float value) {
 	}
 }
 
-
 void MorphPanel::sliderDragEnded(Slider* slider) {
     if (getSetting(DrawWave))
         return;
 
-    MorphSlider* mslider = dynamic_cast<MorphSlider*>(slider);
+    auto* mslider = dynamic_cast<MorphSlider*>(slider);
 
     if (mslider || slider == &panSlider) {
         if (slider == &panSlider || mslider->dim != getSetting(CurrentMorphAxis))
@@ -304,12 +288,12 @@ void MorphPanel::sliderDragEnded(Slider* slider) {
 	}
 }
 
-
 void MorphPanel::sliderDragStarted(Slider* slider) {
-    if (getSetting(DrawWave))
-        return;
+    if (getSetting(DrawWave)) {
+	    return;
+    }
 
-    MorphSlider* mslider = dynamic_cast<MorphSlider*>(slider);
+    auto* mslider = dynamic_cast<MorphSlider*>(slider);
 
     if (mslider || slider == &panSlider) {
         if (slider == &panSlider || mslider->dim != getSetting(CurrentMorphAxis)) {
@@ -318,19 +302,19 @@ void MorphPanel::sliderDragStarted(Slider* slider) {
 	}
 }
 
-
 void MorphPanel::updateCurrentSliderNoCallback(float value) {
     int dim = getSetting(CurrentMorphAxis);
-	if(yllwSlider.dim == dim)
+
+	if(yllwSlider.dim == dim) {
 		yllwSlider.setValue(value, dontSendNotification);
-	 else if(blueSlider.dim == dim)
+	} else if(blueSlider.dim == dim) {
 		blueSlider.setValue(value, dontSendNotification);
-	else if(redSlider.dim == dim)
+	} else if(redSlider.dim == dim) {
 		redSlider.setValue(value, dontSendNotification);
+	}
 
 	cubeDisplay->triggerAsyncUpdate();
 }
-
 
 void MorphPanel::showMessage(float value, MorphSlider* slider) {
     if (slider == &redSlider) {
@@ -345,29 +329,24 @@ void MorphPanel::showMessage(float value, MorphSlider* slider) {
 	}
 }
 
-
 void MorphPanel::reduceDetail() {
-    getObj(Updater).update(UpdateSources::SourceMorph, (int) UpdateType::ReduceDetail);
+	getObj(Updater).update(UpdateSources::SourceMorph, ReduceDetail);
 }
-
 
 void MorphPanel::restoreDetail() {
-    getObj(Updater).update(UpdateSources::SourceMorph, (int) UpdateType::RestoreDetail);
+	getObj(Updater).update(UpdateSources::SourceMorph, RestoreDetail);
 }
-
 
 void MorphPanel::doGlobalUIUpdate(bool force) {
-    getObj(Updater).update(UpdateSources::SourceMorph, (int) UpdateType::Update);
+	getObj(Updater).update(UpdateSources::SourceMorph, Update);
 }
-
 
 int MorphPanel::getCurrentMidiKey() {
-    return Arithmetic::getGraphicNoteForValue(redSlider.getValue(), midiRange);
+	return Arithmetic::getGraphicNoteForValue(redSlider.getValue(), midiRange);
 }
 
-
 void MorphPanel::setKeyValueForNote(int midiNote) {
-    redSlider.setValue(Arithmetic::getUnitValueForGraphicNote(midiNote, midiRange), dontSendNotification);
+	redSlider.setValue(Arithmetic::getUnitValueForGraphicNote(midiNote, midiRange), dontSendNotification);
 }
 
 
@@ -398,8 +377,9 @@ void MorphPanel::buttonClicked(Button* button) {
     if (changedLinking) {
 		Interactor* itr = getObj(VertexPropertiesPanel).getCurrentInteractor();
 
-		if(itr != nullptr)
+		if(itr != nullptr) {
 			itr->setMovingVertsFromSelected();
+		}
 
 		cubeDisplay->linkingChanged();
 	}
@@ -407,11 +387,8 @@ void MorphPanel::buttonClicked(Button* button) {
 	updateHighlights();
 }
 
-
 void MorphPanel::updateHighlights() {
 	int dim = getSetting(CurrentMorphAxis);
-	int dims[] = { Vertex::Time, Vertex::Red, Vertex::Blue };
-
 
 	primeYllw.setHighlit(dim == Vertex::Time);
 	primeRed .setHighlit(dim == Vertex::Red);
@@ -478,7 +455,8 @@ void MorphPanel::setValue(int dim, float value) {
 		case Vertex::Time:	yllwSlider.setValue(value, dontSendNotification); 	break;
 		case Vertex::Red: 	redSlider.setValue(value, dontSendNotification);	break;
 		case Vertex::Blue: 	blueSlider.setValue(value, dontSendNotification);	break;
-	}
+	    default: break;
+    }
 }
 
 
@@ -487,6 +465,7 @@ void MorphPanel::triggerValue(int dim, float value) {
 		case Vertex::Time:	yllwSlider.setValue(value, sendNotificationAsync);	break;
 		case Vertex::Red: 	redSlider.setValue(value, sendNotificationAsync);	break;
 		case Vertex::Blue: 	blueSlider.setValue(value, sendNotificationAsync);	break;
+    	default: break;
 	}
 }
 
@@ -504,26 +483,24 @@ void MorphPanel::triggerClick(int button) {
 		case CycleTour::IdBttnPrimeY: 	buttonClicked(&primeYllw); 	break;
 		case CycleTour::IdBttnPrimeR: 	buttonClicked(&primeRed); 	break;
 		case CycleTour::IdBttnPrimeB: 	buttonClicked(&primeBlue); 	break;
+    	default: break;
 	}
 }
 
 
 bool MorphPanel::readXML(const XmlElement* element) {
-    /*
-    XmlElement* modElem = element->getChildByName("ModMapping");
+    // XmlElement* modElem = element->getChildByName("ModMapping");
+    //
+    // if(! modElem) {
+	   //  return false;
+    // }
+    //
+    // int id = modElem->getIntAttribute("modMappingId", ModMappingId);
+    //
+    // ignoreNextEditMessage 	= true;
+    // setCurrentModMapping(id);
+    // updateHighlights();
 
-    if(! modElem)
-        return false;
-
-    int id = modElem->getIntAttribute("modMappingId", ModMappingId);
-
-    ignoreNextEditMessage 	= true;
-    setCurrentModMapping(id);
-    updateHighlights();
-
-    onlyBeat(getObj(GeneralControls).setLinkHighlight(getSetting(LinkYellow) == 1));
-
-*/
 	return true;
 }
 
@@ -535,53 +512,47 @@ void MorphPanel::writeXML(XmlElement* element) const {
   #endif
 }
 
-
 //bool MorphPanel::isCurrentModMappingVelocity()
 //{
 //	return currentModMapping == VelocityMappingId || currentModMapping == InvVelocityMappingId;
 //}
 
-
 void MorphPanel::redDimUpdated(float value) {
-    redSlider.setCurrentValue(value);
+	redSlider.setCurrentValue(value);
 }
-
 
 void MorphPanel::blueDimUpdated(float value) {
-    blueSlider.setCurrentValue(value);
+	blueSlider.setCurrentValue(value);
 }
-
 
 void MorphPanel::setSelectedCube(Vertex* vert, VertCube* cube, int scratchChannel, bool isEnvelope) {
-    int selectedIdx = cube == nullptr ? -1 : cube->indexOf(vert);
+	int selectedIdx = cube == nullptr ? -1 : cube->indexOf(vert);
 
-    cubeDisplay->update(cube, selectedIdx, scratchChannel, isEnvelope);
+	cubeDisplay->update(cube, selectedIdx, scratchChannel, isEnvelope);
 }
 
-
-void MorphPanel::updateCube() {
-    cubeDisplay->triggerAsyncUpdate();
+void MorphPanel::updateCube() const {
+	cubeDisplay->triggerAsyncUpdate();
 }
-
 
 void MorphPanel::setRedBlueStrings(const String& redStr, const String& blueStr) {
-    redSlider.name = redStr;
-    blueSlider.name = blueStr;
+	redSlider.name = redStr;
+	blueSlider.name = blueStr;
 
-    redSlider.repaint();
-    blueSlider.repaint();
+	redSlider.repaint();
+	blueSlider.repaint();
 }
 
 
 Component* MorphPanel::getComponent(int which) {
     switch (which) {
-		case CycleTour::TargVertCube:	return cubeDisplay;
-		case CycleTour::TargLinkArea:	return linkCO;
+		case CycleTour::TargVertCube:	return cubeDisplay.get();
+		case CycleTour::TargLinkArea:	return linkCO.get();
 		case CycleTour::TargLinkY:		return &linkYllw;
 		case CycleTour::TargLinkR:		return &linkRed;
 		case CycleTour::TargLinkB:		return &linkBlue;
 
-		case CycleTour::TargPrimeArea:	return dimCO;
+		case CycleTour::TargPrimeArea:	return dimCO.get();
 		case CycleTour::TargPrimeY:		return &primeYllw;
 		case CycleTour::TargPrimeR:		return &primeRed;
 		case CycleTour::TargPrimeB:		return &primeBlue;
@@ -592,11 +563,12 @@ Component* MorphPanel::getComponent(int which) {
 		case CycleTour::TargSliderB:	return &blueSlider;
 		case CycleTour::TargSliderPan:	return &panSlider;
 
-		case CycleTour::TargRangeArea:	return rangeCO;
+		case CycleTour::TargRangeArea:	return rangeCO.get();
 		case CycleTour::TargRangeY:		return &rangeYllw;
 		case CycleTour::TargRangeR:		return &rangeRed;
 		case CycleTour::TargRangeB:		return &rangeBlue;
-	}
+	    default: break;
+    }
 
 	return nullptr;
 }
@@ -613,11 +585,11 @@ bool MorphPanel::usesLineDepthFor(int dim) {
             return getSetting(UseRedDepth) == 1;
         case Vertex::Blue:
             return getSetting(UseBlueDepth) == 1;
+		default: break;
     }
 
     return false;
 }
-
 
 float MorphPanel::getDistortedTime(int chan) {
     return getObj(VisualDsp).getScratchPosition(chan);

@@ -1,6 +1,5 @@
 #pragma once
 #include "Panel3D.h"
-#include "OpenGL.h"
 #include "OpenGLBase.h"
 #include "PanelOwner.h"
 #include "Texture.h"

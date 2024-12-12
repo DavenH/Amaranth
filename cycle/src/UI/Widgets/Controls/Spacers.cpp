@@ -39,7 +39,7 @@ void Separator::setBoundsDelegate(int x, int y, int w, int h) {
 }
 
 const Rectangle<int> Separator::getBoundsInParentDelegate() {
-    return Rectangle<int>(getX(), getY(), isHorz ? 2 : 24, isHorz ? 24 : 2);
+    return Rectangle(getX(), getY(), isHorz ? 2 : 24, isHorz ? 24 : 2);
 }
 
 int Separator::getYDelegate() {

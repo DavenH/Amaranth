@@ -1,9 +1,7 @@
-#ifndef _guilesseffect_h
-#define _guilesseffect_h
+#pragma once
 
 #include <App/Doc/Savable.h>
 #include <App/SingletonAccessor.h>
-#include <Design/Updating/Updater.h>
 #include <Obj/Ref.h>
 #include <UI/ParameterGroup.h>
 #include <UI/Widgets/IconButton.h>
@@ -28,16 +26,17 @@ public:
 	GuilessEffect(const String& name, const String& displayName, int numParams,
 				  SingletonRepo* repo, Effect* effect, int source = UpdateSources::SourceNull);
 
-	virtual ~GuilessEffect() {}
-	virtual void init();
+	~GuilessEffect() override = default;
+
+	void init() override;
 
 	/* UI */
-	virtual void paint(Graphics& g);
+	void paint(Graphics& g) override;
 	virtual void layoutKnobs(Rectangle<int> rect, Array<int>& knobIdcs, int knobSize, int knobSpacing);
 
 	/* Updating */
-	bool shouldTriggerGlobalUpdate(Slider* slider);
-	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate);
+	bool shouldTriggerGlobalUpdate(Slider* slider) override;
+	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
 	void doGlobalUIUpdate(bool force);
 	void makeKnobsVisibleAndListen();
 	void reduceDetail();
@@ -46,21 +45,21 @@ public:
 	/* Events */
 	virtual Array<Rectangle<int> > getOutlinableRects();
 	virtual Array<int> getApplicableKnobs();
-	virtual void resized();
+	void resized() override;
 
-	virtual String getKnobName(int index) const;
-	virtual Component* getComponent(int which);
-    virtual void buttonClicked (Button* button);
+	[[nodiscard]] virtual String getKnobName(int index) const;
+	Component* getComponent(int which) override;
+    void buttonClicked (Button* button) override;
 	virtual void effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdate);
 	virtual void setExtraTitleElements(Rectangle<int>& r) {}
 	virtual void setExtraRightElements(Rectangle<int>& r) {}
 	virtual void setEffectEnabled(bool enabled, bool sendUIUpdate, bool sendDspUpdate);
 
-	virtual void writeXML(XmlElement* element) const;
-	virtual bool readXML(const XmlElement* element);
+	void writeXML(XmlElement* element) const override;
+	bool readXML(const XmlElement* element) override;
 
-	bool isEffectEnabled() const 		{ return enabled; 	}
-	const String& getEffectName() const { return name; 		}
+	[[nodiscard]] bool isEffectEnabled() const 		{ return enabled; 	}
+	[[nodiscard]] const String& getEffectName() const { return name; 		}
 
 protected:
 	int fxEnum;
@@ -75,5 +74,3 @@ protected:
 	InsetLabel 	title;
 	IconButton enableButton;
 };
-
-#endif

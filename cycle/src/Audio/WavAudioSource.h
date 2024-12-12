@@ -7,7 +7,6 @@
 #include <Audio/AudioSourceProcessor.h>
 #include "JuceHeader.h"
 
-
 class WavAudioSource:
 		public AudioSourceProcessor
 	,	public SingletonAccessor

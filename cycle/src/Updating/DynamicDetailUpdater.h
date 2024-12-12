@@ -1,5 +1,4 @@
-#ifndef UPDATING_DYNAMICDETAILUPDATER_H_
-#define UPDATING_DYNAMICDETAILUPDATER_H_
+#pragma once
 
 #include <Design/Updating/Updateable.h>
 #include <Design/Updating/Updater.h>
@@ -21,6 +20,3 @@ protected:
 
 	bool detailIsReduced;
 };
-
-
-#endif

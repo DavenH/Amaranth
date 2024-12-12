@@ -14,14 +14,15 @@ public:
 	CycleState* state;
 
 	VoiceMeshRasterizer(SingletonRepo* repo);
-	virtual ~VoiceMeshRasterizer();
+
+	~VoiceMeshRasterizer() override;
 
 	/*
 	 * Chains the minimum necessary number of points from previous call to head of the subsequent call
 	 * This provides 100% continuity between cycles
 	 */
 	void calcCrossPointsChaining(float phase);
-	void updateCurves();
+	void updateCurves() override;
 	void orphanOldVerts();
 	void setState(CycleState* state) { this->state = state; }
 };

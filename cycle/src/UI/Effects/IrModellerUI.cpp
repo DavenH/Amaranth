@@ -5,19 +5,12 @@
 #include <Algo/AutoModeller.h>
 #include <Binary/Gradients.h>
 #include <Audio/Multisample.h>
-#include <Audio/PluginProcessor.h>
-#include <Audio/SampleWrapper.h>
-#include <Binary/Images.h>
-#include <Design/Updating/Updater.h>
+#include <Audio/PitchedSample.h>
 #include <Obj/Ref.h>
-#include <Thread/LockTracer.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/MiscGraphics.h>
-#include <UI/Panels/ScopedGL.h>
 #include <UI/Panels/Texture.h>
 #include <UI/Panels/ZoomPanel.h>
-#include <UI/Widgets/Knob.h>
-#include <UI/Widgets/PulloutComponent.h>
 #include <Util/Arithmetic.h>
 #include <Util/Util.h>
 
@@ -27,7 +20,7 @@
 #include "../VertexPanels/DeformerPanel.h"
 #include "../VertexPanels/Waveform3D.h"
 
-#include "../../CycleDefs.h"
+#include "../CycleDefs.h"
 #include "../../App/CycleTour.h"
 #include "../../App/Dialogs.h"
 #include "../../Audio/SynthAudioSource.h"
@@ -46,9 +39,8 @@ IrModellerUI::IrModellerUI(SingletonRepo* repo) :
 	,	freqMode		(5, 5, this, repo, "Filter Mode")
 	,	attkZoomIcon	(6, 2, this, repo, "Zoom to zero")
 	,	zoomOutIcon		(6, 3, this, repo, "Zoom out")
-	,	waveImpulsePath	(String::empty)
 	,	title			(repo, "IMPULSE MODELLER")
-	,	bufSizeLabel	(String::empty, "Buf size")
+	,	bufSizeLabel	({}, "Buf size")
 	,	isEnabled		(false)
 	,	spacer2(2)
 	,	spacer8(8)
@@ -76,19 +68,18 @@ IrModellerUI::IrModellerUI(SingletonRepo* repo) :
 	Slider* sliders[] 	= { lengthSlider, gainSlider, hpSlider };
 
 	using namespace Ops;
-	StringFunction delayStr(StringFunction(1).chain(Max, 0.15).chain(Pow, 2.0).chain(Mul, 4.0));
-	StringFunction decibel30(StringFunction(0).chain(Mul, 2.0).chain(Add, -1.).chain(Mul, 30.0));
+	StringFunction delayStr(StringFunction(1).max(0.15).pow(2.0).mul(4.0));
+	StringFunction decibel30(StringFunction(0).mul(2.0).sub(1.).mul(30.0));
 
-	lengthSlider->setStringFunctions(StringFunction(0).chain(Mul, 7.f).chain(Add, 7.f),
-	                                 StringFunction(0).chain(Mul, 7.f).chain(Add, 7.f).chain(Flr).chain(Pow, 2.f).withPostString(" samples"));
+	lengthSlider->setStringFunctions(StringFunction(0).mul(7.f).add(7.f),
+	                                 StringFunction(0).mul(7.f).add(7.f).flr().pow(2.f).withPostString(" samples"));
 
 	// StringFunction::MulAddFlrPow).setArgs(7.f, 7.f, 2.f).withPostString(" samples"));
 
 	gainSlider->setStringFunctions(decibel30, decibel30.withPostString(" dB"));
 
-	for(int i = 0; i < numElementsInArray(sliders); ++i)
-	{
-		paramGroup->addSlider(sliders[i]);
+	for(auto& slider : sliders)	{
+		paramGroup->addSlider(slider);
 	}
 
 	this->interactor = this;
@@ -98,22 +89,16 @@ IrModellerUI::IrModellerUI(SingletonRepo* repo) :
 	createNameImage("IR Modeller");
 }
 
-
-IrModellerUI::~IrModellerUI()
-{
-}
-
-
 void IrModellerUI::init()
 {
 	irModeller = &getObj(SynthAudioSource).getIrModeller();
 
-	selector = new MeshSelector<Mesh>(repo, this, "ir", true, false, true);
+	selector = std::make_unique<MeshSelector<Mesh>>(repo.get(), this, String("ir"), true, false, true);
 
-	Component* wavArr[] 	= { &openWave, 		&removeWave, &modelWave };
-	Component* zoomArr[]	= { &attkZoomIcon, 	&zoomOutIcon };
+	Component* wavArr[] = { &openWave, 		&removeWave, &modelWave };
+	Component* zoomArr[]= { &attkZoomIcon, 	&zoomOutIcon };
 
-	panelControls = new PanelControls(repo, this, this, nullptr, "Impulse Modeller");
+	panelControls = std::make_unique<PanelControls>(repo, this, this, nullptr, "Impulse Modeller");
 	panelControls->addEnablementIcon();
 
 	CalloutUtils::addRetractableCallout(zoomCO, zoomPO, repo, 6, 2, zoomArr, numElementsInArray(zoomArr), panelControls, false);
@@ -135,11 +120,9 @@ void IrModellerUI::init()
 	bufSizeLabel.setBorderSize(BorderSize<int>());
 }
 
-
 void IrModellerUI::initControls()
 {
 }
-
 
 void IrModellerUI::setCurrentMesh(Mesh* mesh)
 {

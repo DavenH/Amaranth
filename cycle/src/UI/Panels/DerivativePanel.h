@@ -1,5 +1,4 @@
-#ifndef _derivativepanel_h
-#define _derivativepanel_h
+#pragma once
 
 #include <vector>
 #include <iostream>
@@ -40,5 +39,3 @@ private:
 	Buffer<float> exes;
 	std::unique_ptr<FIR> fir;
 };
-
-#endif

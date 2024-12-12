@@ -213,14 +213,12 @@ void Initializer::setConstants() {
 	constants.setConstant(IrModellerPadding, 	0.0625);
 	constants.setConstant(DocMagicCode, 	 	(int) 0xc0dedbad);
 	constants.setConstant(DocumentExt, 	 		"cyc");
-	constants.setConstant(ProductName, 	 		"Cycle");
 	constants.setConstant(NumVoices, 	 		12);
 	constants.setConstant(MaxUnisonOrder, 		10);
 	constants.setConstant(MaxCyclePeriod, 		4096);
 	constants.setConstant(FFTLogTensionAmp, 	500);
 	constants.setConstant(EnvResolution, 		128);
 	constants.setConstant(ResamplerLatency, 	32);
-	constants.setConstant(ProductVersion, 		2.0);
 	constants.setConstant(MinLineLength, 		0.001);
 }
 
@@ -270,16 +268,16 @@ void Initializer::instantiate() {
 	repo->add(new SampleUtils		(repo));
 	repo->add(new AudioSourceRepo	(repo));
 	repo->add(new MidiKeyboard		(repo, getObj(AudioHub).getKeyboardState(), MidiKeyboardComponent::horizontalKeyboard));
-	repo->add(pitchRast = new EnvWavePitchRast("EnvWavePitchRast"));
+	repo->add(pitchRast = new EnvWavePitchRast(repo, "EnvWavePitchRast"));
 	repo->add(audioSource = new SynthAudioSource(repo));
 	repo->add(new Multisample(repo, pitchRast));
 
-	auto* delay			= new Delay(repo);
-	auto* unison 			= new Unison(repo);
+	auto* delay		= new Delay(repo);
+	auto* unison 	= new Unison(repo);
 	auto* reverb 	= new ReverbEffect(repo);
-	auto* equalizer 	= new Equalizer(repo);
+	auto* equalizer = new Equalizer(repo);
 	auto* modeller 	= new IrModeller(repo);
-	auto* waveshaper 	= new Waveshaper(repo);
+	auto* waveshaper= new Waveshaper(repo);
 
 	repo->add(delay);
 	repo->add(unison);
@@ -322,12 +320,12 @@ void Initializer::instantiate() {
 	repo->add(playback 		= new PlaybackPanel	(repo));
 	repo->add(matrixPanel 	= new ModMatrixPanel(repo));
 
-	DelayUI* delayUI 		= new DelayUI(repo, delay);
-	UnisonUI* unisonUI 		= new UnisonUI(repo, unison);
-	ReverbUI* reverbUI 		= new ReverbUI(repo, reverb);
-	EqualizerUI* equalizerUI= new EqualizerUI(repo, equalizer);
-	IrModellerUI* modellerUI= new IrModellerUI(repo);
-	WaveshaperUI* wshpUI	= new WaveshaperUI(repo);
+	auto* delayUI 		= new DelayUI(repo, delay);
+	auto* unisonUI 		= new UnisonUI(repo, unison);
+	auto* reverbUI 		= new ReverbUI(repo, reverb);
+	auto* equalizerUI	= new EqualizerUI(repo, equalizer);
+	auto* modellerUI	= new IrModellerUI(repo);
+	auto* wshpUI		= new WaveshaperUI(repo);
 
 	delay		->setUI(delayUI);
 	unison		->setUI(unisonUI);

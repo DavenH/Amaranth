@@ -151,22 +151,16 @@ void Delay::processBuffer(AudioSampleBuffer& buffer)
 	}
 }
 
-
-int Delay::calcSpinIters(double value)
-{
+int Delay::calcSpinIters(double value) {
 	int iters = jmax(1, int(12 * value * value));
 	return iters;
 }
 
-
-bool Delay::isEnabled() const
-{
+bool Delay::isEnabled() const {
 	return ui->isEffectEnabled();
 }
 
-
-void Delay::setWetLevel(double value)
-{
+void Delay::setWetLevel(double value) {
 	wetLevel = value;
 }
 
@@ -191,18 +185,16 @@ double Delay::calcDelayTime(double unitValue)
 	return beatsPerMeasure * unitValue * unitValue * secondsPerBeat;
 }
 
-
-bool Delay::doParamChange(int param, double value, bool doFurtherUpdate)
-{
+bool Delay::doParamChange(int param, double value, bool doFurtherUpdate) {
 	bool changed = false;
 
-	switch(param)
-	{
+	switch (param) {
 		case Time: 		changed = setDelayTime(value); 					break;
 		case Feedback: 	changed = setFeedback(value);					break;
 		case SpinIters:	changed = setSpinIters(value); 					break;
 		case Spin:		changed = setSpinAmount(value); 				break;
 		case Wet:		changed = doFurtherUpdate; setWetLevel(value);	break;
+		throw std::out_of_range("Delay::doParamChange");
 	}
 
 	if(doFurtherUpdate && changed)

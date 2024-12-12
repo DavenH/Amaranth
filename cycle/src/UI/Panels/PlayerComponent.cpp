@@ -1,5 +1,3 @@
-#include <UI/Widgets/CalloutUtils.h>
-#include <UI/MiscGraphics.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <App/Doc/Document.h>
@@ -10,7 +8,6 @@
 #include "../PluginWindow.h"
 #include "../CycleGraphicsUtils.h"
 #include "../Layout/ResizerPullout.h"
-#include "../../Audio/AudioSourceRepo.h"
 #include "../../App/Dialogs.h"
 #include "../../Util/CycleEnums.h"
 
@@ -32,36 +29,22 @@ PlayerComponent::PlayerComponent(SingletonRepo* repo) :
 	setMouseClickGrabsKeyboardFocus(false);
 }
 
-
-PlayerComponent::~PlayerComponent()
-{
-}
-
-
-void PlayerComponent::init()
-{
+void PlayerComponent::init() {
 	keyboard = &getObj(MidiKeyboard);
 	pullout = &getObj(ResizerPullout);
 }
 
-
-void PlayerComponent::setComponents(bool add)
-{
-	if(add)
-	{
+void PlayerComponent::setComponents(bool add) {
+	if (add) {
 		addAndMakeVisible(keyboard);
 		addAndMakeVisible(pullout);
-	}
-	else
-	{
+	} else {
 		removeChildComponent(pullout);
 		removeChildComponent(keyboard);
 	}
 }
 
-
-void PlayerComponent::paint(Graphics& g)
-{
+void PlayerComponent::paint(Graphics& g) {
 	getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
 	Font font(16);
@@ -72,8 +55,9 @@ void PlayerComponent::paint(Graphics& g)
 	Rectangle<int> textBounds(5, 0, getWidth() - 100, 28);
 
 	String nameStr = name;
-	if(getObj(EditWatcher).getHaveEdited())
+	if(getObj(EditWatcher).getHaveEdited()) {
 		nameStr += "*";
+	}
 
 	Rectangle<int> r = textBounds.removeFromLeft(font.getStringWidth(nameStr));
 	g.drawFittedText(nameStr, r.getX(), r.getY(), r.getWidth(), r.getHeight(), Justification::centredLeft, 1);
@@ -87,23 +71,15 @@ void PlayerComponent::paint(Graphics& g)
 	g.drawFittedText(authStr, r.getX(), r.getY(), r.getWidth(), r.getHeight(), Justification::centredLeft, 1);
 }
 
-
-void PlayerComponent::buttonClicked(Button* button)
-{
-	if(button == &prevIcon)
-	{
+void PlayerComponent::buttonClicked(Button* button) {
+	if (button == &prevIcon) {
 		getObj(PresetPage).triggerButtonClick(PresetPage::PrevButton);
-	}
-	else if(button == &nextIcon)
-	{
+	} else if (button == &nextIcon) {
 		getObj(PresetPage).triggerButtonClick(PresetPage::NextButton);
-	}
-	else if(button == &tableIcon)
-	{
+	} else if (button == &tableIcon) {
 		getObj(Dialogs).showPresetBrowserModal();
 	}
 }
-
 
 void PlayerComponent::resized()
 {
@@ -125,7 +101,6 @@ void PlayerComponent::resized()
 	keyboard->setBounds(bounds.removeFromTop(82));
 }
 
-
 void PlayerComponent::updateTitle()
 {
 	 DocumentDetails& deets = getObj(Document).getDetails();
@@ -135,4 +110,3 @@ void PlayerComponent::updateTitle()
 
 	 repaint();
 }
-

@@ -1,12 +1,10 @@
-#ifndef _hoverselector_h
-#define _hoverselector_h
+#pragma once
 
 #include <vector>
 #include <iostream>
 #include <App/SingletonAccessor.h>
 #include <Obj/Ref.h>
 #include "JuceHeader.h"
-#include <Util/Util.h>
 #include <UI/MouseEventDelegator.h>
 
 using std::cout;
@@ -21,19 +19,19 @@ class HoverSelector  :
 	, 	public SingletonAccessor {
 public:
 	HoverSelector(SingletonRepo* repo, int x, int y, bool horz);
-	virtual ~HoverSelector();
+	virtual ~HoverSelector() = default;
 	bool menuActive;
 
 	void resized();
 
-	virtual void mouseEnter(const MouseEvent& e);
-	virtual void mouseExit(const MouseEvent& e);
-	virtual void mouseDown(const MouseEvent& e);
+	void mouseEnter(const MouseEvent& e) override;
+	void mouseExit(const MouseEvent& e) override;
+	void mouseDown(const MouseEvent& e) override;
 
 	void showPopup();
 	void setSelectedId(int id);
 	void revertMesh();
-	void paintOverChildren(Graphics& g);
+	void paintOverChildren(Graphics& g) override;
 
 	virtual void mouseOverItem(int itemIndex);
 	virtual void mouseLeftItem(int itemIndex);
@@ -46,7 +44,6 @@ public:
 	PopupMenu menu;
 	bool horizontal;
 
-protected:
 private:
 
 	std::unique_ptr<IconButton> headerIcon;
@@ -83,9 +80,9 @@ public:
 			g.fillAll(Colours::black.withAlpha(0.7f));
 
 		g.setColour(Colour::greyLevel(isMouseOver() ? 0.8f : 0.65f));
-		g.setFont(Font(16));
+		g.setFont(FontOptions(16));
 
-		String name = filename.substring(filename.lastIndexOf(File::separatorString) + 1, filename.lastIndexOf("."));
+		String name = filename.substring(filename.lastIndexOf(File::getSeparatorString()) + 1, filename.lastIndexOf("."));
 		g.drawText(name, 30, 0, 3 * getWidth() / 4, getHeight(), Justification::centredLeft, true);
 	}
 
@@ -121,5 +118,3 @@ public:
         repaint();
     }
 };
-
-#endif

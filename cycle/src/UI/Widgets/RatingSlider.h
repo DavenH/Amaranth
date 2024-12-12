@@ -9,14 +9,15 @@ class RatingSlider :
 	public Component {
 public:
 	RatingSlider(float, int row, PresetPage* page);
-	virtual ~RatingSlider();
-	void paint(Graphics& g);
-	void resized();
+
+	~RatingSlider() override = default;
+	void paint(Graphics& g) override;
+	void resized() override;
 	void setRating(float rating);
 	void setRow(int row);
-	void mouseDown(const MouseEvent& e);
-	void mouseDrag(const MouseEvent& e);
-	void mouseUp(const MouseEvent& e);
+	void mouseDown(const MouseEvent& e) override;
+	void mouseDrag(const MouseEvent& e) override;
+	void mouseUp(const MouseEvent& e) override;
 
 private:
 	float rating;

@@ -288,6 +288,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
 
     for (auto& envRasterizer: envRasterizers) {
         envRasterizer->setNoiseSeed(random.nextInt());
+        // TODO
         envRasterizer->updateOffsetSeeds();
     }
 }

@@ -1,5 +1,4 @@
-#ifndef _envelope3dpanel_h
-#define _envelope3dpanel_h
+#pragma once
 
 #include <UI/Panels/Panel3D.h>
 #include <UI/Panels/OpenGLPanel3D.h>
@@ -20,8 +19,4 @@ public:
 
 	Buffer<float> getColumnArray();
 	const vector<Column>& getColumns();
-private:
-
 };
-
-#endif

@@ -15,14 +15,12 @@ LayerAddRemover::LayerAddRemover(Button::Listener* listener, SingletonRepo* repo
 	remove.setCollapsedSize(16);
 }
 
-
 void LayerAddRemover::resized() {
     add.setBounds(0, 0, getWidth(), getHeight() / 2);
     remove.setBounds(0, getHeight() / 2, getWidth(), getHeight() / 2);
 }
 
-
 void LayerAddRemover::setLayerString(const String& layerString) {
-	add.setMessages("Add " + layerString, String::empty);
-	remove.setMessages("Remove " + layerString, String::empty);
+	add.setMessages("Add " + layerString, {});
+	remove.setMessages("Remove " + layerString, {});
 }

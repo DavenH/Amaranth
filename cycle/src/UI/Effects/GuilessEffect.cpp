@@ -5,14 +5,16 @@
 #include <Util/ScopedBooleanSwitcher.h>
 
 #include "GuilessEffect.h"
+
+#include <Util/Util.h>
+
 #include "../../Audio/Effects/AudioEffect.h"
-#include "../../Util/CycleEnums.h"
 #include "../CycleGraphicsUtils.h"
 
 GuilessEffect::GuilessEffect(const String& name, const String& displayName, int numParams,
 							 SingletonRepo* repo, Effect* effect, int source) :
 		SingletonAccessor(repo, name)
-	,	ParameterGroup::Worker(repo, name)
+	,	Worker(repo, name)
 	, 	effect			(effect)
 	,	fxEnum			(fxEnum)
 	,	enabled			(false)
@@ -39,7 +41,7 @@ void GuilessEffect::paint(Graphics & g)
 {
 	getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
-	MiscGraphics& mg = getObj(MiscGraphics);
+	auto& mg = getObj(MiscGraphics);
 	Font* silkscreen = mg.getSilkscreen();
 
 	Rectangle<int> gradBounds(getLocalBounds().removeFromRight(100));
@@ -56,10 +58,7 @@ void GuilessEffect::paint(Graphics & g)
 	Array<int> knobIdcs = getApplicableKnobs();
 
 	g.setColour(Colour::greyLevel(0.235f));
-	for(int i = 0; i < (int) knobIdcs.size(); ++i)
-	{
-		int idx = knobIdcs[i];
-
+	for(int idx : knobIdcs) {
 		Slider* knob = paramGroup->getKnob<Knob>(idx);
 		String text  = getKnobName(idx);
 
@@ -68,16 +67,13 @@ void GuilessEffect::paint(Graphics & g)
 		int x 		 = knob->getX() + (width - strWidth) / 2;
 		int y 		 = knob->getBottom() + 2;
 
-		mg.drawShadowedText(g, text, x, y, *silkscreen);
+		MiscGraphics::drawShadowedText(g, text, x, y, *silkscreen);
 	}
 
 	Array<Rectangle<int> > rects = getOutlinableRects();
 
 	g.setColour(Colour::greyLevel(0.05f));
-	for(int i = 0; i < rects.size(); ++i)
-	{
-		Rectangle<int> rect = rects[i];
-
+	for(auto rect : rects) {
 		Path strokePath;
 		strokePath.addRoundedRectangle(rect.getX(), rect.getY(), rect.getWidth() + 1, rect.getHeight() + 1, 2.f);
 		strokePath.applyTransform(AffineTransform::translation(-0.5f, -0.5f));
@@ -86,102 +82,81 @@ void GuilessEffect::paint(Graphics & g)
 	}
 }
 
-Array<Rectangle<int> > GuilessEffect::getOutlinableRects()
-{
-	return Array<Rectangle<int> >();
+Array<Rectangle<int> > GuilessEffect::getOutlinableRects() {
+	return {};
 }
 
-
-Array<int> GuilessEffect::getApplicableKnobs()
-{
+Array<int> GuilessEffect::getApplicableKnobs() {
 	Array<int> a;
 
-	for(int i = 0; i < paramGroup->getNumParams(); ++i)
+	for (int i = 0; i < paramGroup->getNumParams(); ++i)
 		a.add(i);
 
 	return a;
 }
 
-void GuilessEffect::setEffectEnabled(bool enabled, bool sendUIUpdate, bool sendDspUpdate)
-{
-	if(! Util::assignAndWereDifferent(this->enabled, (int) enabled))
+void GuilessEffect::setEffectEnabled(bool enabled, bool sendUIUpdate, bool sendDspUpdate) {
+	if (!Util::assignAndWereDifferent(this->enabled, (int) enabled)) {
 		return;
+	}
 
 	effectEnablementChanged(sendUIUpdate, sendDspUpdate);
 	enableButton.setHighlit(this->enabled);
 }
 
-
-void GuilessEffect::buttonClicked(Button* button)
-{
-	if(button == &enableButton)
-	{
-		setEffectEnabled(! enabled, true, true);
+void GuilessEffect::buttonClicked(Button* button) {
+	if (button == &enableButton) {
+		setEffectEnabled(!enabled, true, true);
 	}
 }
 
-
-void GuilessEffect::restoreDetail()
-{
-	getObj(Updater).update(updateSource, UpdateType::RestoreDetail);
+void GuilessEffect::restoreDetail() {
+	getObj(Updater).update(updateSource, RestoreDetail);
 }
 
-
-void GuilessEffect::reduceDetail()
-{
-	getObj(Updater).update(updateSource, UpdateType::ReduceDetail);
+void GuilessEffect::reduceDetail() {
+	getObj(Updater).update(updateSource, ReduceDetail);
 }
 
-
-void GuilessEffect::doGlobalUIUpdate(bool force)
-{
+void GuilessEffect::doGlobalUIUpdate(bool force) {
 	getObj(Updater).update(updateSource);
 }
 
-
-void GuilessEffect::writeXML(XmlElement* registryElem) const
-{
-  #ifndef DEMO_VERSION
-	XmlElement* effectElem = new XmlElement(getEffectName());
+void GuilessEffect::writeXML(XmlElement* registryElem) const {
+#ifndef DEMO_VERSION
+	auto* effectElem = new XmlElement(getEffectName());
 
 	paramGroup->writeKnobXML(effectElem);
 
 	effectElem->setAttribute("enabled", enabled);
 	registryElem->addChildElement(effectElem);
-  #endif
+#endif
 }
 
-
-bool GuilessEffect::readXML(const XmlElement* element)
-{
+bool GuilessEffect::readXML(const XmlElement* element) {
 	XmlElement* effectElem = element->getChildByName(getEffectName());
 
-	if(effectElem != nullptr)
-	{
+	if (effectElem != nullptr) {
 		paramGroup->readKnobXML(effectElem);
 		setEffectEnabled(effectElem->getBoolAttribute("enabled"), false, true);
 		repaint();
-	}
-	else
-	{
+	} else {
 		ScopedBooleanSwitcher sbs(paramGroup->updatingAllSliders);
 
-		for(int i = 0; i < paramGroup->getNumParams(); ++i)
+		for (int i = 0; i < paramGroup->getNumParams(); ++i)
 			paramGroup->setKnobValue(i, 0.5, false);
 	}
 
 	return true;
 }
 
-
-void GuilessEffect::resized()
-{
-	bool tiny 	= getWidth() < 250;
-	bool big 	= getWidth() > 400;
+void GuilessEffect::resized() {
+	bool tiny = getWidth() < 250;
+	bool big = getWidth() > 400;
 	int vertPad = (getHeight() - 36) / 3;
 	int rightSize = jmax(minTitleSize, 5 + title.getFullSize());
 
-	Rectangle<int> r 	 = getLocalBounds();
+	Rectangle<int> r = getLocalBounds();
 	Rectangle<int> right = r.removeFromRight(rightSize);
 	right.removeFromRight(5);
 	right.removeFromLeft(-5);
@@ -198,58 +173,44 @@ void GuilessEffect::resized()
 
 	Array<int> knobIdcs = getApplicableKnobs();
 
-	int minSize		= jmin(getWidth(), getHeight());
-	int num 		= knobIdcs.size();
-	int knobSize 	= jmin(int(minSize * 0.7f), (r.getWidth() - (big ? 30 : ! tiny ? 20 : 5)) / num);
+	int minSize = jmin(getWidth(), getHeight());
+	int num = knobIdcs.size();
+	int knobSize = jmin(int(minSize * 0.7f), (r.getWidth() - (big ? 30 : !tiny ? 20 : 5)) / num);
 	int knobSpacing = (r.getWidth() - num * knobSize) / (num + 1);
 
 	r.reduce(0, jmax(0, (r.getHeight() - knobSize) / 2));
 	layoutKnobs(r, knobIdcs, knobSize, knobSpacing);
 }
 
-
-void GuilessEffect::layoutKnobs(Rectangle<int> rect, Array<int>& knobIdcs, int knobSize, int knobSpacing)
-{
-	for(int i = 0; i < knobIdcs.size(); ++i)
-	{
-		paramGroup->getKnob<Slider>(knobIdcs[i])->setBounds(rect.removeFromLeft(knobSize));
+void GuilessEffect::layoutKnobs(Rectangle<int> rect, Array<int>& knobIdcs, int knobSize, int knobSpacing) {
+	for (int knobIdc : knobIdcs) {
+		paramGroup->getKnob<Slider>(knobIdc)->setBounds(rect.removeFromLeft(knobSize));
 		rect.removeFromLeft(knobSpacing);
 	}
 }
 
-
-void GuilessEffect::effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdate)
-{
-	if(sendUIUpdate)
-	{
+void GuilessEffect::effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdate) {
+	if (sendUIUpdate) {
 		paramGroup->forceNextUIUpdate = true;
 		paramGroup->triggerRefreshUpdate();
 	}
 }
 
-
-bool GuilessEffect::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate)
-{
+bool GuilessEffect::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) {
 	return effect->paramChanged(knobIndex, knobValue, doFurtherUpdate);
 }
 
-
-bool GuilessEffect::shouldTriggerGlobalUpdate(Slider* slider)
-{
+bool GuilessEffect::shouldTriggerGlobalUpdate(Slider* slider) {
 	return enabled;
 }
 
-
-Component* GuilessEffect::getComponent(int which)
-{
-	if(isPositiveAndBelow(which, paramGroup->getNumParams()))
+Component* GuilessEffect::getComponent(int which) {
+	if (isPositiveAndBelow(which, paramGroup->getNumParams()))
 		return paramGroup->getKnob<Slider>(which);
 
 	return nullptr;
 }
 
-
-String GuilessEffect::getKnobName(int index) const
-{
-	return String::empty;
+String GuilessEffect::getKnobName(int index) const {
+	return {};
 }

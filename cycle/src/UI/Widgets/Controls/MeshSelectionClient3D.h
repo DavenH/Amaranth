@@ -79,8 +79,9 @@ public:
         interactor->resetState();
 
         Interactor* opposite = interactor->getOppositeInteractor();
-        if (opposite != nullptr)
+        if (opposite != nullptr) {
             opposite->resetState();
+        }
 
         //		meshLib->setCurrentMeshForLayer(layerType, mesh);
         meshLib->setCurrentMesh(layerType, mesh);

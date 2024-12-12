@@ -1,11 +1,12 @@
-#ifndef _meshselectionclient_h
-#define _meshselectionclient_h
+#pragma once
 
 class Mesh;
 
 template<class MeshType>
 class MeshSelectionClient {
 public:
+	virtual ~MeshSelectionClient() = default;
+
 	virtual void setCurrentMesh(MeshType* mesh) 	= 0;
 	virtual void previewMesh(MeshType* mesh) 		= 0;
 	virtual void previewMeshEnded(MeshType* mesh) 	= 0;
@@ -14,9 +15,7 @@ public:
 	virtual void enterClientLock() 					= 0;
 	virtual void exitClientLock() 					= 0;
 
-	virtual String getDefaultFolder() 				{ return String::empty; }
+	virtual String getDefaultFolder() 				{ return {}; }
 	virtual void prepareForPopup() 					{}
 	virtual void doubleMesh()						{}
 };
-
-#endif

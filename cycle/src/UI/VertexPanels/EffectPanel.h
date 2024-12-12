@@ -1,7 +1,4 @@
-#ifndef _effectvertexpanel_h
-#define _effectvertexpanel_h
-
-#include <algorithm>
+#pragma once
 #include <Curve/FXRasterizer.h>
 #include <UI/Panels/OpenGLPanel.h>
 #include <UI/Panels/Panel2D.h>
@@ -13,11 +10,11 @@ class EffectPanel :
 {
 public:
 	EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZoom);
-	virtual ~EffectPanel();
+	~EffectPanel() override = default;
 
-	void performUpdate(int updateType);
+	void performUpdate(int updateType) override;
 	bool isMeshEnabled() const;
-	bool doCreateVertex();
+	bool doCreateVertex() override;
 	bool addNewCube(float startTime, float x, float y, float curve = 0);
 
 	float getDragMovementScale();
@@ -30,5 +27,3 @@ protected:
 
 private:
 };
-
-#endif

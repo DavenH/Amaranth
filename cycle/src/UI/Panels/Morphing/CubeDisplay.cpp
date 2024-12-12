@@ -154,7 +154,6 @@ void CubeDisplay::paint(Graphics& g) {
 	}
 }
 
-
 void CubeDisplay::resized() {
     float size = jmin(getWidth(), getHeight()) * 0.65;
 
@@ -192,15 +191,13 @@ void CubeDisplay::resized() {
 	refreshCube();
 }
 
-
 void CubeDisplay::update(VertCube* cube, int selectedIdx, int scratchChannel, bool isEnvelope) {
     this->isEnvelope = isEnvelope;
 	this->lastScratchChannel = scratchChannel;
 
-	if(cube == nullptr)
-	{
-		for(int i = 0; i < VertCube::numVerts; ++i)
-			cubeVerts[i] = Vertex2(-1, -1);
+	if(cube == nullptr)	{
+		for(auto & cubeVert : cubeVerts)
+			cubeVert = Vertex2(-1, -1);
 
 		this->selectedIdx = -1;
 	} else {
@@ -233,28 +230,31 @@ void CubeDisplay::update(VertCube* cube, int selectedIdx, int scratchChannel, bo
 	repaint();
 }
 
-
 void CubeDisplay::linkingChanged() {
     bool LinkYellow = getSetting(LinkYellow) == 1;
 	bool LinkRed 	= getSetting(LinkRed) == 1;
 	bool LinkBlue 	= getSetting(LinkBlue) == 1;
 
-	int numLinks 	= int(LinkYellow) + int(LinkRed) + int(LinkBlue);
+	int numLinks = int(LinkYellow) + int(LinkRed) + int(LinkBlue);
 
-	for(int i = 0; i < 8; ++i)
-		selected[i] = false;
+	for(bool& i : selected) {
+		i = false;
+	}
 
-	if(selectedIdx < 0)
+	if(selectedIdx < 0) {
 		return;
+	}
 
 	int idx = selectedIdx;
 
-	if(idx >= 0)
+	if(idx >= 0) {
 		selected[idx] = true;
+	}
 
     if (numLinks == 3) {
-        for (int i = 0; i < 8; ++i)
-            selected[i] = true;
+        for (bool& i : selected) {
+	        i = true;
+        }
     } else if (numLinks == 2) {
         if (!LinkBlue) {
             int addand = (idx == VertCube::y0r0b0 || idx == VertCube::y0r1b0 || idx == VertCube::y1r0b0 || idx == VertCube::y1r1b0) ? 0 : 1;
@@ -291,7 +291,6 @@ void CubeDisplay::linkingChanged() {
 	repaint();
 }
 
-
 void CubeDisplay::refreshCube() {
     float size = jmin(getWidth(), getHeight()) * 0.65;
 
@@ -299,7 +298,6 @@ void CubeDisplay::refreshCube() {
 		scaledCube[i] = cubeVerts[i] * size;
 	}
 }
-
 
 void CubeDisplay::handleAsyncUpdate() {
     pos = getObj(MorphPanel).getMorphPosition();

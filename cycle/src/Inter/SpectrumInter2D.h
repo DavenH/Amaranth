@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Inter/Interactor2D.h>
-#include <Inter/Interactor2D.h>
 #include <Obj/Ref.h>
 
 class Spectrum2D;

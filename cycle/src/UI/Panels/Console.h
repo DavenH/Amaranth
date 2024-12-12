@@ -1,16 +1,10 @@
-#ifndef _console_h
-#define _console_h
-
+#pragma once
 #include <string>
-#include <time.h>
 
 #include <App/SingletonAccessor.h>
-#include <Definitions.h>
 #include <Obj/Ref.h>
 #include <UI/IConsole.h>
 #include "JuceHeader.h"
-
-#include "../TourGuide.h"
 
 using std::string;
 
@@ -23,19 +17,19 @@ class Console:
 	,	public Timer
 	,	public IConsole {
 public:
-	Console(SingletonRepo* repo);
-	virtual ~Console();
+	explicit Console(SingletonRepo* repo);
+	~Console() override;
 
-	void timerCallback();
-	void paint(Graphics& g);
-	void setKeys(const String& keys);
-	void write(const String& str, int priority);
-	void setMouseUsage(const MouseUsage& usage);
-	void setMouseUsage(bool left, bool scroll, bool middle, bool right);
+	void timerCallback() override;
+	void paint(Graphics& g) override;
+	void setKeys(const String& keys) override;
+	void write(const String& str, int priority) override;
+	void setMouseUsage(const MouseUsage& usage) override;
+	void setMouseUsage(bool left, bool scroll, bool middle, bool right) override;
 
-	void init();
-	void reset();
-	void resized();
+	void init() override;
+	void reset() override;
+	void resized() override;
 	void addPullout();
 
 private:
@@ -46,11 +40,9 @@ private:
 
 	String 	text;
 	String 	shortcut;
-	String 	keys;
+	String 	keys{};
 	Image 	mouseparts;
 	MouseUsage usage;
 
 	Ref<ResizerPullout> pullout;
 };
-
-#endif

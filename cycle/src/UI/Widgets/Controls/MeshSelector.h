@@ -1,11 +1,8 @@
 #pragma once
 
 #include <App/Doc/Document.h>
-#include <App/Settings.h>
 #include <App/SingletonAccessor.h>
 #include <App/SingletonRepo.h>
-#include <Curve/EnvelopeMesh.h>
-#include <Curve/Mesh.h>
 #include <Definitions.h>
 #include <UI/Layout/IDynamicSizeComponent.h>
 #include <UI/MiscGraphics.h>
@@ -45,9 +42,10 @@ public:
 		addAndMakeVisible(&folderEditor);
 
 		Label* editors[] = { &nameEditor, &folderEditor };
+
 		for(auto& editor : editors) {
-            editor->setColour(Label::textColourId, 			Colour::greyLevel(0.95f));
-			editor->setColour(Label::outlineColourId, 		Colour(180, 190, 240));
+            editor->setColour(Label::textColourId, 		Colour::greyLevel(0.95f));
+			editor->setColour(Label::outlineColourId, 	Colour(180, 190, 240));
 			editor->setWantsKeyboardFocus(true);
 		}
 
@@ -59,7 +57,7 @@ public:
 		folderEditor.setEditable(true);
 		folderEditor.setInterceptsMouseClicks(true, false);
 
-		savePath = getObj(Directories).getUserMeshDir() + extension + File::separator;
+		savePath = getObj(Directories).getUserMeshDir() + extension + File::getSeparatorChar();
 	}
 
 	void paint(Graphics& g) override {
@@ -76,7 +74,7 @@ public:
 	}
 
     void resized() override {
-        Rectangle<int> r(getLocalBounds());
+        Rectangle r(getLocalBounds());
         r.reduce(2, 8);
         Rectangle<int> r2 = r.removeFromRight(50);
 
@@ -98,8 +96,7 @@ public:
     void buttonClicked(Button* button) override {
 		jassert(button == &saveButton);
 
-		if(! nameEditor.getText().containsNonWhitespaceChars())
-		{
+		if(! nameEditor.getText().containsNonWhitespaceChars()) {
 			showImportant("Please enter a name");
 			return;
 		}
@@ -115,8 +112,9 @@ public:
 		}
 
 		const String& filename(folderPath + getCurrentFilename());
-		if(! Util::saveXml(File(filename), selector->getCurrentClientMesh(), "MeshPreset"))
+		if(! Util::saveXml(File(filename), selector->getCurrentClientMesh(), "MeshPreset")) {
 			showCritical("Problem saving mesh");
+		}
 
 		Util::removeModalParent<CallOutBox>(this);
 	}
@@ -134,12 +132,12 @@ public:
         const String& folderText = folderEditor.getText();
 
 		String folder = folderText.isNotEmpty() ?
-				folderText.endsWithChar(File::getSeparatorChar()) ? folderText : folderText + File::getSeparatorChar():
-				{};
+				(folderText.endsWithChar(File::getSeparatorChar()) ?
+					folderText :
+					folderText + File::getSeparatorChar()) : String();
 
 		return folder;
 	}
-
 
     void labelTextChanged(Label* editor) override {
         const String& currentFolder = getCurrentFolder();
@@ -165,8 +163,9 @@ public:
 	}
 
 	void timerCallback() override {
-        if (overwriteMessage.isNotEmpty())
-			showImportant(overwriteMessage);
+        if (overwriteMessage.isNotEmpty()) {
+	        showImportant(overwriteMessage);
+        }
 
 		stopTimer();
 	}
@@ -233,8 +232,8 @@ public:
         itemCount = 1;
 		oldMesh 	= nullptr;
 
-		String parentPath 		= getObj(Directories).getMeshDir() 	+ extension + File::separator;
-		String parentUserPath 	= getObj(Directories).getUserMeshDir() + extension + File::separator;
+		String parentPath 		= getObj(Directories).getMeshDir() 	+ extension + File::getSeparatorChar();
+		String parentUserPath 	= getObj(Directories).getUserMeshDir() + extension + File::getSeparatorChar();
 
 		File parentFile 		= File(parentPath);
 		File parentUserFile 	= File(parentUserPath);
@@ -262,14 +261,15 @@ public:
 		addFilesInDirectory(parentUserFile, menu);
 
 		for (const auto& category : uniqueCategs) {
-            	File categ		(parentPath + category);
-			File userCateg	(parentUserPath + category);
+            File categ(parentPath + category);
+			File userCateg(parentUserPath + category);
 
 			PopupMenu subMenu;
 			bool containsAny = addFilesInDirectory(userCateg, subMenu);
 
-			if(containsAny)
+			if(containsAny) {
 				subMenu.addSeparator();
+			}
 
 			containsAny |= addFilesInDirectory(categ, subMenu);
 
@@ -414,22 +414,24 @@ public:
 			default: {
                 jassert(itemId > 0);
 
-				if(itemId <= 0)
+				if(itemId <= 0) {
 					return;
+				}
 
-				const String& filename 	   = callbacks[itemId - 1]->getFilename();
+				const String& filename = callbacks[itemId - 1]->getFilename();
 
-				File 						file(filename);
+				File file(filename);
 				std::unique_ptr<InputStream> stream = file.createInputStream();
 				GZIPDecompressorInputStream gzipStream(stream.release(), true);
-				XmlDocument 				xmlDoc(gzipStream.readEntireStreamAsString());
+
+				XmlDocument xmlDoc(gzipStream.readEntireStreamAsString());
 				std::unique_ptr meshElem = xmlDoc.getDocumentElement();
+
 				auto* mesh = new MeshType(file.getFileNameWithoutExtension() + "Mesh");
 
 				mesh->readXML(meshElem);
 
-				if(updateMeshVersion)
-				{
+				if(updateMeshVersion) {
 					mesh->updateToVersion(repo);
 				}
 
@@ -495,16 +497,16 @@ public:
 		}
 	}
 
-	void setBoundsDelegate(int x, int y, int w, int h) 	{ setBounds(x, y, w, h); 			}
-	MeshType* getCurrentClientMesh()					{ return client->getCurrentMesh(); 	}
-	void setOriginalMesh(MeshType* oldMesh)				{ this->oldMesh = oldMesh; 			}
-	const Rectangle<int> getBoundsInParentDelegate()	{ return Rectangle<int>(getX(), getY(), 25, 25); }
-	int getExpandedSize()								{ return 22; 						}
-	int getCollapsedSize()								{ return 22; 						}
-	int getYDelegate()									{ return getY(); 					}
-	int getXDelegate()									{ return getX(); 					}
-	bool isVisibleDlg() const 							{ return isVisible(); 				}
-	void setVisibleDlg(bool isVisible) 					{ setVisible(isVisible); 			}
+	void setBoundsDelegate(int x, int y, int w, int h) override { setBounds(x, y, w, h); 			}
+	MeshType* getCurrentClientMesh()							{ return client->getCurrentMesh(); 	}
+	void setOriginalMesh(MeshType* oldMesh)						{ this->oldMesh = oldMesh; 			}
+	const Rectangle<int> getBoundsInParentDelegate() override	{ return Rectangle<int>(getX(), getY(), 25, 25); }
+	int getExpandedSize() override								{ return 22; 						}
+	int getCollapsedSize() override								{ return 22; 						}
+	int getYDelegate() override									{ return getY(); 					}
+	int getXDelegate() override									{ return getX(); 					}
+	bool isVisibleDlg() const override 							{ return isVisible(); 				}
+	void setVisibleDlg(bool isVisible) override 				{ setVisible(isVisible); 			}
 
 private:
 	int itemCount;
@@ -516,7 +518,7 @@ private:
 	String extension;
 	OwnedArray<SelectorCallback> callbacks;
 
-	Ref<MeshSelectionClient<MeshType> > client;
+	Ref<MeshSelectionClient<MeshType>> client;
 	Array<MeshType*> meshes;
 	MeshType* oldMesh;
 

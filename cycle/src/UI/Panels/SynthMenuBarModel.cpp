@@ -1,12 +1,10 @@
 #include <App/EditWatcher.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Audio/PluginProcessor.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <Inter/Interactor.h>
 #include <Inter/Interactor3D.h>
-#include <Inter/UndoableMeshProcess.h>
 #include <UI/IConsole.h>
 #include <UI/MiscGraphics.h>
 #include <Util/Util.h>
@@ -16,29 +14,25 @@
 #include "SynthMenuBarModel.h"
 #include "VertexPropertiesPanel.h"
 
+#include "../CycleDefs.h"
 #include "../Dialogs/QualityDialog.h"
-#include "../Panels/MainPanel.h"
-#include "../App/CycleTour.h"
 #include "../VertexPanels/Waveform2D.h"
 
+#include "../../App/CycleTour.h"
 #include "../../App/MainAppWindow.h"
 #include "../../App/Dialogs.h"
 #include "../../App/Directories.h"
 #include "../../App/FileManager.h"
 #include "../../Audio/SampleUtils.h"
 #include "../../Audio/SynthAudioSource.h"
-#include "../../CycleDefs.h"
 #include "../../UI/VisualDsp.h"
 #include "../../Util/CycleEnums.h"
 
-
-SynthMenuBarModel::SynthMenuBarModel(SingletonRepo* repo) : SingletonAccessor(repo, "SynthMenuBarModel")
-{
+SynthMenuBarModel::SynthMenuBarModel(SingletonRepo* repo) : SingletonAccessor(repo, "SynthMenuBarModel") {
 }
 
 /** This method must return a list of the names of the menus. */
-StringArray SynthMenuBarModel::getMenuBarNames()
-{
+StringArray SynthMenuBarModel::getMenuBarNames() {
 	StringArray array;
 
 	array.add("File");

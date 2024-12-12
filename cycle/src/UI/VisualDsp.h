@@ -1,11 +1,8 @@
-#ifndef _VisualDsp_h
-#define _VisualDsp_h
+#pragma once
 
 #include <Algo/FFT.h>
-#include <math.h>
 #include <map>
 
-#include <ipp.h>
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
 #include <App/Settings.h>
@@ -16,7 +13,6 @@
 #include "../Updating/DynamicDetailUpdater.h"
 #include "../Curve/GraphicRasterizer.h"
 #include "../Curve/ScratchContext.h"
-
 
 class EnvRasterizer;
 class Spectrum3D;
@@ -84,20 +80,19 @@ public:
     	Ref<VisualDsp> processor;
 
     	GraphicProcessor(VisualDsp* processor, SingletonRepo* repo, StageType stage);
-    	void performUpdate(int updateType);
+    	void performUpdate(int updateType) override;
 
     private:
     	StageType stage;
     };
 
+	/* ----------------------------------------------------------------------------- */
 
-    /* ����������������������������������������������������������������������������� */
+    explicit VisualDsp(SingletonRepo* repo);
+    ~VisualDsp() override;
 
-    VisualDsp(SingletonRepo* repo);
-    ~VisualDsp();
-
-    void init();
-    void reset();
+    void init() override;
+    void reset() override;
     void destroyArrays();
 	void surfaceResized();
     void calcWaveSpectrogram(int numColumns);
@@ -142,7 +137,7 @@ public:
 private:
     GraphicProcessor envProcessor, fftProcessor, fxProcessor, timeProcessor;
 
-    void timerCallback();
+    void timerCallback() override;
 	void calcTimeDomain(int numColumns);
     void calcSpectrogram(int numColumns);
 	void processThroughEffects(int numColumns);
@@ -166,7 +161,7 @@ private:
 	bool areAnyFXActive();
 	void updateScratchContexts(int numColumns);
 
-	/* ����������������������������������������������������������������������������� */
+	/* ----------------------------------------------------------------------------- */
 
 	Random random;
 	ScratchContext defaultScratchContext;
@@ -203,5 +198,3 @@ private:
 	vector<Column> fftPreFXCols, fftPostFXCols;
 	vector<Column> phasePreFXCols, phasePostFXCols;
 };
-
-#endif

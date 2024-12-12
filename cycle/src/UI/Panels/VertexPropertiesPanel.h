@@ -1,14 +1,13 @@
-#ifndef _vertexpropertiespanel_h
-#define _vertexpropertiespanel_h
+#pragma once
 
 #include <App/SingletonAccessor.h>
 #include <Obj/Ref.h>
 #include <UI/MouseOverMessager.h>
 #include <UI/Widgets/InsetLabel.h>
-#include <UI/IConsole.h>
 #include "JuceHeader.h"
 #include <set>
 #include <vector>
+#include <UI/TourGuide.h>
 
 #include "../UI/TourGuide.h"
 
@@ -124,5 +123,3 @@ private:
 
 	InsetLabel title;
 };
-
-#endif

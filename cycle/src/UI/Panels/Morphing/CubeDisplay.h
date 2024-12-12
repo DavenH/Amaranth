@@ -1,11 +1,9 @@
-#ifndef CUBEDISPLAY_H_
-#define CUBEDISPLAY_H_
+#pragma once
 
 #include <App/SingletonAccessor.h>
 #include <Curve/Vertex.h>
 #include <Curve/Vertex2.h>
 #include <Obj/MorphPosition.h>
-#include <Obj/Ref.h>
 
 class VertCube;
 
@@ -14,12 +12,12 @@ class CubeDisplay :
 	,	public AsyncUpdater
 	, 	public SingletonAccessor {
 public:
-	CubeDisplay(SingletonRepo* repo);
-	void paint(Graphics& g);
+	explicit CubeDisplay(SingletonRepo* repo);
+	void paint(Graphics& g) override;
 	void update(VertCube* cube, int selectedIdx, int scratchChannel, bool isEnvelope);
 	void convolve(int i, Vertex2& vert, float zFactor);
-	void resized();
-	void handleAsyncUpdate();
+	void resized() override;
+	void handleAsyncUpdate() override;
 	void linkingChanged();
 
 private:
@@ -45,6 +43,3 @@ private:
 
 	Image backImage;
 };
-
-
-#endif

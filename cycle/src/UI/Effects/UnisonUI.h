@@ -1,5 +1,4 @@
-#ifndef _unisoneffect_h
-#define _unisoneffect_h
+#pragma once
 
 #include <App/SingletonAccessor.h>
 #include <Design/Updating/Updateable.h>
@@ -8,7 +7,6 @@
 #include "GuilessEffect.h"
 #include "../Widgets/Controls/LayerAddRemover.h"
 #include "../Widgets/Controls/SelectorPanel.h"
-#include "../TourGuide.h"
 
 class Unison;
 class Effect;
@@ -27,10 +25,10 @@ public:
 			,	numVoices	(1)
 		{}
 
-		int getSize();
-		int getCurrentIndexExternal();
-		void selectionChanged();
-		void rowClicked(int row);
+		int getSize() override;
+		int getCurrentIndexExternal() override;
+		void selectionChanged() override;
+		void rowClicked(int row) override;
 
 		Ref<UnisonUI> panel;
 
@@ -38,30 +36,31 @@ public:
 	};
 
 	UnisonUI(SingletonRepo* repo, Effect* effect);
-	virtual ~UnisonUI() {}
 
-	Array<Rectangle<int> > getOutlinableRects();
-	Array<int> getApplicableKnobs();
-	bool isGroupMode() const;
+	~UnisonUI() override = default;
+
+	Array<Rectangle<int> > getOutlinableRects() override;
+	Array<int> getApplicableKnobs() override;
+	[[nodiscard]] bool isGroupMode() const;
 	int getCurrentIndex() { return voiceSelector.getCurrentIndex(); }
 	void modeChanged(bool updateAudio, bool graphicUpdate);
 	void orderChangedTo(int order);
 	void updateSelection();
 
-	void setExtraTitleElements(Rectangle<int>& r);
-	void setExtraRightElements(Rectangle<int>& r);
+	void setExtraTitleElements(Rectangle<int>& r) override;
+	void setExtraRightElements(Rectangle<int>& r) override;
 
-	void effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdate);
-	void comboBoxChanged (ComboBox* box);
-	void buttonClicked(Button* button);
+	void effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdate) override;
+	void comboBoxChanged (ComboBox* box) override;
+	void buttonClicked(Button* button) override;
 	void triggerModeChanged(bool isGroup);
 
-	String getKnobName(int index) const;
-	Component* getComponent(int which);
+	[[nodiscard]] String getKnobName(int index) const override;
+	Component* getComponent(int which) override;
 
-	void init();
-	void writeXML(XmlElement* registryElem) const;
-	bool readXML(const XmlElement* element);
+	void init() override;
+	void writeXML(XmlElement* registryElem) const override;
+	bool readXML(const XmlElement* element) override;
 
 	enum UniMode
 	{
@@ -76,5 +75,3 @@ private:
 	VoiceSelector voiceSelector;
 	LayerAddRemover addRemover;
 };
-
-#endif

@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <ipp.h>
 
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
@@ -7,6 +6,7 @@
 #include <Curve/Mesh.h>
 #include <Curve/VertCube.h>
 #include <Obj/MorphPosition.h>
+#include <Definitions.h>
 
 #include "VoiceMeshRasterizer.h"
 #include "CycleState.h"
@@ -14,18 +14,13 @@
 
 
 VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) : state(nullptr) {
-	unsampleable 		= true;
-	overrideDim 		= true;
-	scalingType 		= Bipolar;
+	unsampleable = true;
+	overrideDim = true;
+	scalingType = Bipolar;
 	calcDepthDims = false;
 
 	oversamplingChanged();
 }
-
-
-VoiceMeshRasterizer::~VoiceMeshRasterizer() {
-}
-
 
 void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
     if (mesh->getNumCubes() == 0 || state == nullptr)
@@ -112,8 +107,9 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 		return;
 	}
 
-    if (state->callCount == 0)
-        state->advancement = getConstant(MinLineLength) * 1.1f;
+    if (state->callCount == 0) {
+	    state->advancement = getConstant(MinLineLength) * 1.1f;
+    }
 
     // the first call is just padding for curves
     if (state->callCount > 0) {
@@ -136,11 +132,13 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 		curves.clear();
 		curves.reserve(icpts.size() + 5 + int(extraPadFront) + int(padFront) + int(padBack) + int(extraPadBack));
 
-		if(extraPadFront)
+		if(extraPadFront) {
 			curves.push_back(Curve(state->frontE, state->frontD, state->frontC));
+		}
 
-		if(padFront)
+		if(padFront) {
 			curves.push_back(Curve(state->frontD, state->frontC, state->frontB));
+		}
 
 		curves.push_back(Curve(state->frontC, state->frontB, state->frontA));
 		curves.push_back(Curve(state->frontB, state->frontA, icpts[0]));
@@ -153,11 +151,13 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 		curves.push_back(Curve(icpts[end], back1, back2));
 		curves.push_back(Curve(back1, back2, back3));
 
-		if(padBack)
+		if(padBack) {
 			curves.push_back(Curve(back2, back3, back4));
+		}
 
-		if(extraPadBack)
+		if(extraPadBack) {
 			curves.push_back(Curve(back3, back4, back5));
+		}
 
 		// update front
 		{
@@ -176,7 +176,6 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 
 	++state->callCount;
 }
-
 
 void VoiceMeshRasterizer::updateCurves() {
     if (icpts.size() < 2) {

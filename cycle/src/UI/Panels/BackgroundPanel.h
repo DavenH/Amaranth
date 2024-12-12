@@ -1,7 +1,8 @@
-#ifndef _BACKGROUNDPANEL_H_
-#define _BACKGROUNDPANEL_H_
+#pragma once
 
-#include <UI/MiscGraphics.h>
+#include "JuceHeader.h"
+
+using namespace juce;
 
 class BackgroundPanel : public Component {
 public:
@@ -9,6 +10,3 @@ public:
         getObj(CycleGraphicsUtils).fillBlackground(this, g);
     }
 };
-
-
-#endif

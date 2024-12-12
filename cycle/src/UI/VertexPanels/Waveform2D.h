@@ -1,5 +1,4 @@
-#ifndef _wave2D_h
-#define _wave2D_h
+#pragma once
 
 #include <Obj/Ref.h>
 #include <UI/Panels/Panel2D.h>
@@ -33,6 +32,3 @@ private:
 	void drawHistory();
 	void drawIfftCycle();
 };
-
-
-#endif

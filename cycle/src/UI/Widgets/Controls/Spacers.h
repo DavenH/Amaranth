@@ -22,18 +22,17 @@ public:
 		,	y(0) {
     }
 
-    ~ClearSpacer() {
-    }
+    ~ClearSpacer() override = default;
 
-    int getExpandedSize() {
+    int getExpandedSize() override {
         return space;
     }
 
-    int getCollapsedSize() {
+    int getCollapsedSize() override {
         return reducible ? 2 : space;
     }
 
-    void setBoundsDelegate(int x, int y, int /*w*/, int /*h*/) {
+    void setBoundsDelegate(int x, int y, int /*w*/, int /*h*/) override {
         this->x = x;
         this->y = y;
     }
@@ -42,16 +41,16 @@ public:
         return Rectangle<int>(x, y, space, space);
     }
 
-    int getYDelegate() {
+    int getYDelegate() override {
         return y;
     }
 
-    int getXDelegate() {
+    int getXDelegate() override {
         return x;
     }
 
-	bool isVisibleDlg() const 			{ return isVisible; }
-	void setVisibleDlg(bool isVisible) 	{ this->isVisible = isVisible; }
+	bool isVisibleDlg() const override { return isVisible; }
+	void setVisibleDlg(bool isVisible) override { this->isVisible = isVisible; }
 };
 
 class Separator :

@@ -1,10 +1,6 @@
-#ifndef SELECTORPANEL_H_
-#define SELECTORPANEL_H_
+#pragma once
 
-#include <App/Settings.h>
 #include <App/SingletonAccessor.h>
-#include <App/SingletonRepo.h>
-#include <Obj/Ref.h>
 #include <UI/Layout/IDynamicSizeComponent.h>
 #include "JuceHeader.h"
 
@@ -13,34 +9,35 @@ class SelectorPanel :
 	,	public Component
 	, 	public SingletonAccessor {
 public:
-	SelectorPanel(SingletonRepo* repo);
-	virtual ~SelectorPanel();
+	explicit SelectorPanel(SingletonRepo* repo);
 
-	int getExpandedSize();
-	int getCollapsedSize();
-	void paint(Graphics& g);
-	void resized();
+	~SelectorPanel() override = default;
+
+	int getExpandedSize() override;
+	int getCollapsedSize() override;
+	void paint(Graphics& g) override;
+	void resized() override;
 	void clickedOnRow(int row);
-	void setBoundsDelegate(int x, int y, int w, int h);
-	const Rectangle<int> getBoundsInParentDelegate();
-	int getYDelegate();
-	int getXDelegate();
+	void setBoundsDelegate(int x, int y, int w, int h) override;
+	const Rectangle<int> getBoundsInParentDelegate() override;
+	int getYDelegate() override;
+	int getXDelegate() override;
 
-	void mouseDrag(const MouseEvent& e);
-	void mouseUp(const MouseEvent& e);
-	void mouseEnter(const MouseEvent& e);
-	void mouseDown(const MouseEvent& e);
-	void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel);
+	void mouseDrag(const MouseEvent& e) override;
+	void mouseUp(const MouseEvent& e) override;
+	void mouseEnter(const MouseEvent& e) override;
+	void mouseDown(const MouseEvent& e) override;
+	void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
 	void constrainIndex(int& num);
 	void draggedListIndex(int index);
 
 	void refresh(bool forceUpdate = false);
-	bool isVisibleDlg() const { return isVisible(); }
-	void setVisibleDlg(bool isVisible) { setVisible(isVisible); }
+	bool isVisibleDlg() const override { return isVisible(); }
+	void setVisibleDlg(bool isVisible) override { setVisible(isVisible); }
 	void doSelectionChange();
-	void reset();
+	void reset() override;
 	void setItemName(const String& name) { itemName = name; }
-	int getCurrentIndex() { return currentIndex; }
+	int getCurrentIndex() const { return currentIndex; }
 
 	virtual int getSize() = 0;
 	virtual int getCurrentIndexExternal() = 0;
@@ -66,6 +63,3 @@ private:
 
 	Image arrowImg;
 };
-
-
-#endif

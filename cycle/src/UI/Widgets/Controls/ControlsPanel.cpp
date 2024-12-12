@@ -15,12 +15,11 @@
 
 using std::ostream;
 
-ControlsPanel::ControlsPanel(Button::Listener* parent, SingletonRepo* repo, bool fillBackground) :
-		SingletonAccessor(repo, "ControlsPanel")
-	,	parent(parent)
-	,	fillBackground(fillBackground) {
+ControlsPanel::ControlsPanel(Button::Listener* parent, SingletonRepo* repo, bool fillBackground) : SingletonAccessor(
+		repo, "ControlsPanel")
+	, isHorz(false), parent(parent)
+	, fillBackground(fillBackground) {
 }
-
 
 ControlsPanel::~ControlsPanel() {
     removeAllChildren();
@@ -30,7 +29,6 @@ ControlsPanel::~ControlsPanel() {
 		componentsToDelete.set(i, 0);
 	}
 }
-
 
 void ControlsPanel::paint(Graphics& g) {
     if (fillBackground)

@@ -10,9 +10,9 @@ SamplePlacer::SamplePlacer(SingletonRepo* repo) :
 	,	horzButton(2, 0, this, repo, "Cut Horizontally")
 	,	vertButton(2, 0, this, repo, "Cut Vertically")
 	,	pair(this) {
-	addAndMakeVisible(&horzButton);
-	addAndMakeVisible(&vertButton);
-	addAndMakeVisible(&pair);
+	addAndMakeVisible(horzButton);
+	addAndMakeVisible(vertButton);
+	addAndMakeVisible(pair);
 }
 
 void SamplePlacer::paint(Graphics& g) {
@@ -72,20 +72,23 @@ void SamplePair::split(float portion, bool horz) {
 	jassert(a == nullptr);
 	jassert(b == nullptr);
 
-	addAndMakeVisible(a = new SamplePair(placer));
-	addAndMakeVisible(b = new SamplePair(placer));
-	addAndMakeVisible(dragger = new SampleDragger(this, horz));
+	a = std::make_unique<SamplePair>(placer.get());
+	b = std::make_unique<SamplePair>(placer.get());
+	dragger = std::make_unique<SampleDragger>(this, horz);
 
-	SamplePair* bigger = portion > 0.5 ? b : a;
+	addAndMakeVisible(*a);
+	addAndMakeVisible(*b);
+	addAndMakeVisible(*dragger);
+
+	SamplePair* bigger = (portion > 0.5 ? b : a).get();
 	bigger->file = file;
-
 	file = File();
 
 	resized();
 }
 
 void SamplePair::paint(Graphics& g) {
-	Rectangle<int> r = getLocalBounds();
+	const Rectangle<int> r = getLocalBounds();
 
 	g.setColour(Colour::greyLevel(0.2f));
 	g.fillRect(r);
@@ -93,9 +96,9 @@ void SamplePair::paint(Graphics& g) {
 	g.setColour(Colour::greyLevel(0.3f));
 	g.drawRect(r);
 
-	if (file.getFullPathName().isEmpty())
+	if (file.getFullPathName().isEmpty()) {
 		g.drawImageWithin(placer->folderImage, 0, 0, getWidth(), getHeight(), RectanglePlacement::centred);
-	else {
+	} else {
 		Font font(15);
 
 		g.setFont(font);
@@ -115,30 +118,36 @@ void SamplePair::resized() {
 	if (horz) {
 		int firstWidth, secondWidth;
 
-		firstWidth = int((width - border) * portion + 0.5f);
-		secondWidth = int((width - border) * (1 - portion) + 0.5f);
+		firstWidth = roundToInt((width - border) * portion);
+		secondWidth = roundToInt((width - border) * (1 - portion));
 
-		if (a != nullptr)
+		if (a != nullptr) {
 			a->setBounds(x, y, firstWidth, height);
+		}
 
-		if (b != nullptr)
+		if (b != nullptr) {
 			b->setBounds(x + firstWidth + border, y, secondWidth, height);
+		}
 
-		if (dragger)
+		if (dragger) {
 			dragger->setBounds(x + firstWidth, y - 2, border + 2, height + 4);
+		}
 	} else {
 		int firstHeight, secondHeight;
 
-		firstHeight = int((height - border) * portion + 0.5f);
-		secondHeight = int((height - border) * (1 - portion) + 0.5f);
+		firstHeight = roundToInt((height - border) * portion);
+		secondHeight = roundToInt((height - border) * (1 - portion));
 
-		if (a != nullptr)
+		if (a != nullptr) {
 			a->setBounds(x, y, width, firstHeight);
+		}
 
-		if (b != nullptr)
+		if (b != nullptr) {
 			b->setBounds(x, y + firstHeight + border, width, secondHeight);
+		}
 
-		if (dragger != nullptr)
+		if (dragger != nullptr) {
 			dragger->setBounds(x - 2, y + firstHeight, width + 4, border);
+		}
 	}
 }

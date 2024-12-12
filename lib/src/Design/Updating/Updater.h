@@ -45,8 +45,8 @@ public:
 		void markPath();
 		void performUpdate(String& path, int updateType);
 
-		bool isDirty() const   { return dirty; 	}
-		bool isUpdated() const { return updated; 	}
+		[[nodiscard]] bool isDirty() const   { return dirty; 	}
+		[[nodiscard]] bool isUpdated() const { return updated; 	}
 		void markDirty() { dirty = true; 	}
 
 		virtual void executeUpdate(int updateType);

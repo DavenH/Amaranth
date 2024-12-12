@@ -1,7 +1,4 @@
-#ifndef _layerselectorpanel_h
-#define _layerselectorpanel_h
-
-#include "JuceHeader.h"
+#pragma once
 #include <Obj/Ref.h>
 #include "SelectorPanel.h"
 
@@ -25,5 +22,3 @@ protected:
 	Ref<LayerSelectionClient> client;
 
 };
-
-#endif

@@ -8,7 +8,8 @@ class MorphUpdate :
 	, 	public Updateable {
 public:
 	MorphUpdate(SingletonRepo* repo);
-	virtual ~MorphUpdate();
 
-	void performUpdate(int updateType);
+	~MorphUpdate() override;
+
+	void performUpdate(int updateType) override;
 };

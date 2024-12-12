@@ -1,19 +1,26 @@
-#ifndef UI_CYCLEGRAPHICSUTILS_H_
-#define UI_CYCLEGRAPHICSUTILS_H_
+#pragma once
 
 #include <App/SingletonAccessor.h>
+#include <Binary/CycleImages.h>
 
 class CycleGraphicsUtils :
 		public SingletonAccessor {
 public:
-	CycleGraphicsUtils(SingletonRepo* repo);
-	virtual ~CycleGraphicsUtils();
+	explicit CycleGraphicsUtils(SingletonRepo* repo) : SingletonAccessor(repo, "CycleGraphicsUtils"),
+	                                                   blackground(PNGImageFormat::loadFrom(
+		                                                   CycleImages::blackground_png,
+		                                                   CycleImages::blackground_pngSize))
+{
+}
 
-	void fillBlackground(Component* component, Graphics& g);
+	~CycleGraphicsUtils() override;
+
+	void fillBlackground(Component* component, Graphics& g) {
+		g.drawImage(blackground, 0, 0, component->getWidth(), component->getHeight(),
+			0, 0, blackground.getWidth(), blackground.getHeight(), false);
+	}
 
 private:
 
 	Image blackground;
 };
-
-#endif

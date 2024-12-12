@@ -1,13 +1,14 @@
 #pragma once
 
+#include <App/SingletonAccessor.h>
+
 #include "MeshRasterizer.h"
 
-class FXRasterizer: public MeshRasterizer {
-private:
+class FXRasterizer: public MeshRasterizer, SingletonAccessor {
 	JUCE_LEAK_DETECTOR(FXRasterizer)
 
 public:
-	explicit FXRasterizer(const String& name = String());
+	explicit FXRasterizer(SingletonRepo* repo, const String& name = String());
 	bool hasEnoughCubesForCrossSection() override;
 	int  getNumDims() override;
 	void calcCrossPoints() override;

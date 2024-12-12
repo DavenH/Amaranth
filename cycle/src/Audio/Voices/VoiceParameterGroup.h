@@ -2,7 +2,6 @@
 #include <vector>
 #include <Algo/Resampler.h>
 #include <Array/RingBuffer.h>
-#include "../Curve/VoiceMeshRasterizer.h"
 #include "../Curve/CycleState.h"
 
 using std::vector;

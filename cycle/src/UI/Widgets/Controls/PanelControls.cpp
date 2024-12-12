@@ -17,7 +17,6 @@
 #include "../../Panels/MainPanel.h"
 #include "../../CycleGraphicsUtils.h"
 
-
 PanelControls::PanelControls(
 		SingletonRepo* 			repo
 	,	Interactor* 			interactor
@@ -42,10 +41,6 @@ PanelControls::PanelControls(
 		, 	spacer6			(6)
 		, 	spacer8			(8) {
 }
-
-PanelControls::~PanelControls() {
-}
-
 
 void PanelControls::paint(Graphics& g) {
     getObj(CycleGraphicsUtils).fillBlackground(this, g);
@@ -95,7 +90,6 @@ void PanelControls::paint(Graphics& g) {
         g.drawImageAt(icon, iconBounds.getX(), iconBounds.getY());
 	}
 }
-
 
 void PanelControls::resized() {
     Rectangle<int> bounds = getLocalBounds().reduced(4, 4);
@@ -157,16 +151,13 @@ void PanelControls::resized() {
 	}
 }
 
-
 void PanelControls::addSlider(HSlider* slider) {
     sliders.add(slider);
     addAndMakeVisible(slider);
 }
 
-
 void PanelControls::initialise() {
 }
-
 
 void PanelControls::populateScratchSelector() {
     scratchSelector.clear(dontSendNotification);
@@ -176,16 +167,15 @@ void PanelControls::populateScratchSelector() {
 
 	int size = getObj(MeshLibrary).getGroup(LayerGroups::GroupScratch).size();
 
-	for(int i = 0; i < size; ++i)
+	for(int i = 0; i < size; ++i) {
 		scratchSelector.addItem(String(i + 1), i + 1);
+	}
 }
-
 
 void PanelControls::setScratchSelector(int channel) {
     int id = channel == CommonEnums::Null ? PanelControls::NullScratchChannel : channel + 1;
     scratchSelector.setSelectedId(id, dontSendNotification);
 }
-
 
 void PanelControls::comboBoxChanged(ComboBox* box) {
     if (box == &scratchSelector) {
@@ -228,30 +218,28 @@ void PanelControls::addEnablementIcon() {
 	enableContainer->translateUp1 = true;
 
 	leftItems.add(&spacer1);
-	leftItems.add(enableContainer);
+	leftItems.add(enableContainer.get());
 	leftItems.add(&spacer6);
 	addAndMakeVisible(&enableCurrent);
 
 	haveEnablement = true;
 }
 
-
 void PanelControls::addMeshSelector(Component* selector) {
     this->meshSelector = selector;
     addAndMakeVisible(selector);
 }
-
 
 void PanelControls::addScratchSelector() {
     scratchSelector.setColour(ComboBox::outlineColourId, Colours::black);
 	scratchSelector.addListener(this);
 	scratchSelector.setWantsKeyboardFocus(false);
 
-	scratchContainer = new DynamicSizeContainer(&scratchSelector, 26, 26);
-	scratchListener = new MouseOverMessager(repo, "Set scratch channel", &scratchSelector);
+	scratchContainer = std::make_unique<DynamicSizeContainer>(&scratchSelector, 26, 26);
+	scratchListener = std::make_unique<MouseOverMessager>(repo, "Set scratch channel", &scratchSelector);
 
 	scratchContainer->width = 26;
-	leftItems.add(scratchContainer);
+	leftItems.add(scratchContainer.get());
 	leftItems.add(&spacer2);
 	leftItems.add(&scratchLabel);
 
@@ -261,9 +249,8 @@ void PanelControls::addScratchSelector() {
 	scratchSelector.addListener(this);
 }
 
-
 void PanelControls::addLayerItems(LayerSelectionClient* client, bool includeMover, bool separate) {
-    layerSelector = new LayerSelectorPanel(repo, client);
+    layerSelector = std::make_unique<LayerSelectorPanel>(repo, client);
     layerSelector->outline = true;
 
 	addAndMakeVisible(&addRemover);
@@ -277,24 +264,21 @@ void PanelControls::addLayerItems(LayerSelectionClient* client, bool includeMove
 	}
 
 	Array<IDynamicSizeComponent*>& arr = separate ? leftItems : rightItems;
-	arr.add(layerSelector);
+	arr.add(layerSelector.get());
 	arr.add(&spacer2);
 
-	addAndMakeVisible(layerSelector);
+	addAndMakeVisible(layerSelector.get());
 }
-
 
 void PanelControls::addLeftItem(IDynamicSizeComponent* item, bool outline) {
     item->outline = outline;
     leftItems.add(item);
 }
 
-
 void PanelControls::addRightItem(IDynamicSizeComponent* item, bool outline) {
     item->outline = outline;
     rightItems.add(item);
 }
-
 
 void PanelControls::addDomainItems(RetractableCallout* domainCO) {
     haveDomains = true;
@@ -302,17 +286,20 @@ void PanelControls::addDomainItems(RetractableCallout* domainCO) {
 }
 
 void PanelControls::resetSelector() {
-    if (layerSelector != nullptr)
-        layerSelector->reset();
+    if (layerSelector != nullptr) {
+	    layerSelector->reset();
+    }
 }
 
 void PanelControls::refreshSelector(bool update) {
-    if (layerSelector != nullptr)
-        layerSelector->refresh(update);
+    if (layerSelector != nullptr) {
+	    layerSelector->refresh(update);
+    }
 }
 
 void PanelControls::moveLayer(bool up) {
-    if (layerSelector != nullptr)
-        layerSelector->moveCurrentLayer(up);
+    if (layerSelector != nullptr) {
+	    layerSelector->moveCurrentLayer(up);
+    }
 }
 

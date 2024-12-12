@@ -1,5 +1,4 @@
-#ifndef _generalcontrols_h
-#define _generalcontrols_h
+#pragma once
 
 #include "JuceHeader.h"
 #include <vector>
@@ -32,23 +31,23 @@ public:
 	enum Stages { AStage, BStage, CStage, DStage };
 	enum { CompSelector, CompPencil, CompAxe, CompNudge, CompWaveVerts, CompVerts, CompLinkYellow };
 
-	void buttonClicked(Button* button);
-	void init();
-	void resized();
-	void paint(Graphics& g);
-	void paintOverChildren(Graphics& g);
+	void buttonClicked(Button* button) override;
+	void init() override;
+	void resized() override;
+	void paint(Graphics& g) override;
+	void paintOverChildren(Graphics& g) override;
 	void setNumCommunityPresets(int num);
 	void setPlayStopped();
 	void setPlayStarted();
-	void sliderValueChanged(Slider* slider);
-	void mouseEnter(const MouseEvent& e);
+	void sliderValueChanged(Slider* slider) override;
+	void mouseEnter(const MouseEvent& e) override;
 	void updateHighlights();
 	void triggerClick(int stage);
 	void setLinkHighlight(bool highlit) { linkYellow.setHighlit(highlit); }
-	Component* getComponent(int which);
+	Component* getComponent(int which) override;
 
-	GeneralControls(SingletonRepo* repo);
-	virtual ~GeneralControls();
+	explicit GeneralControls(SingletonRepo* repo);
+	~GeneralControls() override;
 
 private:
 	static const int bSize = 24;
@@ -104,5 +103,3 @@ private:
 
 	friend class GlobalOperations;
 };
-
-#endif

@@ -2,28 +2,18 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Binary/Images.h>
-#include <Thread/LockTracer.h>
 #include <UI/Widgets/CalloutUtils.h>
-#include <UI/MiscGraphics.h>
 #include <UI/Layout/DynamicSizeContainer.h>
-#include <UI/Panels/OpenGLPanel3D.h>
-#include <UI/Panels/ScopedGL.h>
-#include <UI/Widgets/DynamicLabel.h>
-#include <UI/Widgets/Knob.h>
-#include <Util/StringFunction.h>
 #include <Binary/Gradients.h>
 
 #include "Waveform3D.h"
+#include "../CycleDefs.h"
 #include "../Panels/Morphing/MorphPanel.h"
 #include "../Panels/VertexPropertiesPanel.h"
-#include "../App/CycleTour.h"
 #include "../Widgets/Controls/MeshSelector.h"
 #include "../Widgets/Controls/Spacers.h"
-#include "../../Audio/AudioSourceRepo.h"
-#include "../../Audio/Effects/AudioEffect.h"
+#include "../../App/CycleTour.h"
 #include "../../Audio/SynthAudioSource.h"
-#include "../../CycleDefs.h"
 #include "../../Inter/WaveformInter2D.h"
 #include "../../Inter/WaveformInter3D.h"
 #include "../../UI/Effects/IrModellerUI.h"
@@ -42,11 +32,9 @@ Waveform3D::Waveform3D(SingletonRepo* repo) :
 	,	spacer8(8) {
 }
 
-
 Waveform3D::~Waveform3D() {
-    meshSelector = 0;
+	meshSelector = nullptr;
 }
-
 
 void Waveform3D::init() {
 	Image blue 		= PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
@@ -55,7 +43,7 @@ void Waveform3D::init() {
 	interactor		= interactor3D;
 
 	zoomPanel->tendZoomToCentre = false;
-	zoomPanel->panelComponentChanged(openGL);
+	zoomPanel->panelComponentChanged(openGL, nullptr);
 
 	gradient.read(blue, true, false);
 	paramGroup->addSlider(layerPan  = new HSlider(repo, "pan", "Layer pan", true));
@@ -66,7 +54,7 @@ void Waveform3D::init() {
 	deconvolve.setExpandedSize(26);
 	model.setExpandedSize(26);
 
-	panelControls = new PanelControls(repo, interactor3D, this, this, "Waveshape Layer");
+	panelControls = std::make_unique<PanelControls>(repo, interactor3D, this, this, "Waveshape Layer");
 	panelControls->addLayerItems(this, false);
 	panelControls->addEnablementIcon();
 	panelControls->addLeftItem(&deconvolve, true);
@@ -79,8 +67,8 @@ void Waveform3D::init() {
 	panelControls->addSlider(layerPan);
 	panelControls->drawLabel = true;
 
-	meshSelector = new MeshSelector<Mesh>(repo, surfInteractor->getSelectionClient(), "surf", true, true);
-	panelControls->addMeshSelector(meshSelector);
+	meshSelector = std::make_unique<MeshSelector<Mesh>>(repo, surfInteractor->getSelectionClient(), "surf", true, true);
+	panelControls->addMeshSelector(meshSelector.get());
 
 	layerFine->setRange(0, 1, 0.025);
 	layerFine->addListener(this);
@@ -89,13 +77,11 @@ void Waveform3D::init() {
 	layerPan->setVelocityModeParameters();
 }
 
-
 void Waveform3D::panelResized() {
     Panel::panelResized();
 
 	getObj(VisualDsp).surfaceResized();
 }
-
 
 void Waveform3D::buttonClicked(Button* button) {
 	getObj(EditWatcher).setHaveEditedWithoutUndo(true);
@@ -154,11 +140,9 @@ void Waveform3D::buttonClicked(Button* button) {
 		getObj(SynthAudioSource).enablementChanged();
 }
 
-
 void Waveform3D::reset() {
     panelControls->resetSelector();
 }
-
 
 void Waveform3D::layerChanged() {
 	progressMark
@@ -188,18 +172,17 @@ void Waveform3D::setKnobValuesImplicit() {
 	layerFine->setValue(props->fineTune, dontSendNotification);
 }
 
-
 bool Waveform3D::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) {
 	MeshLibrary::Properties* props = getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime);
 
     switch (knobIndex) {
 		case Pan:	props->pan 		= knobValue; break;
 		case Fine: 	props->fineTune = knobValue; break;
+    	default: break;
 	}
 
 	return knobIndex == Pan;
 }
-
 
 bool Waveform3D::shouldTriggerGlobalUpdate(Slider* slider) {
 	bool layerEnabled = panelControls->enableCurrent.isHighlit();
@@ -207,17 +190,15 @@ bool Waveform3D::shouldTriggerGlobalUpdate(Slider* slider) {
 	return (getSetting(ViewStage) >= ViewStages::PostEnvelopes && layerEnabled);
 }
 
-
 void Waveform3D::restoreDetail() {
     interactor->restoreDetail();
 }
 
-
 void Waveform3D::reduceDetail() {
-	if(getSetting(DrawWave) == 0)
+	if(getSetting(DrawWave) == 0) {
 		interactor->reduceDetail();
+	}
 }
-
 
 void Waveform3D::doGlobalUIUpdate(bool force) {
     interactor->doGlobalUIUpdate(force);
@@ -261,36 +242,29 @@ bool Waveform3D::readXML(const XmlElement* element) {
 	return true;
 }
 
-
 void Waveform3D::writeXML(XmlElement* element) const {
 }
 
-
 int Waveform3D::getLayerType() {
-    return interactor->layerType;
+	return interactor->layerType;
 }
-
 
 int Waveform3D::getWindowWidthPixels() {
-    return int(sxnz(1.f) - sxnz(0.f));
+	return int(sxnz(1.f) - sxnz(0.f));
 }
-
 
 MeshLibrary::Properties* Waveform3D::getCurrentProperties() {
-    return getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime);
+	return getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime);
 }
-
 
 void Waveform3D::scratchChannelSelected(int channel) {
     getCurrentProperties()->scratchChan = channel;
 }
 
-
 void Waveform3D::updateScratchComboBox() {
     int scratchChannel = getCurrentProperties()->scratchChan;
     panelControls->setScratchSelector(scratchChannel);
 }
-
 
 bool Waveform3D::validateScratchChannels() {
     panelControls->populateScratchSelector();
@@ -314,16 +288,13 @@ bool Waveform3D::validateScratchChannels() {
 	return changed;
 }
 
-
 void Waveform3D::populateLayerBox() {
 //	panelControls->populateLayerBox();
 }
 
-
 int Waveform3D::getLayerScratchChannel() {
     return getCurrentProperties()->scratchChan;
 }
-
 
 int Waveform3D::getNumActiveLayers() {
     MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
@@ -337,7 +308,6 @@ int Waveform3D::getNumActiveLayers() {
 	return numActiveLayers;
 }
 
-
 bool Waveform3D::shouldDrawGrid() {
     if (getSetting(ViewStage) >= ViewStages::PostSpectrum) {
         return true;
@@ -345,7 +315,6 @@ bool Waveform3D::shouldDrawGrid() {
 
     return getNumActiveLayers() > 0;
 }
-
 
 void Waveform3D::updateSmoothParametersToTarget(int voiceIndex) {
     MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
@@ -358,7 +327,6 @@ void Waveform3D::updateSmoothParametersToTarget(int voiceIndex) {
 	}
 }
 
-
 void Waveform3D::updateLayerSmoothedParameters(int voiceIndex, int deltaSamples) {
     MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
 
@@ -368,7 +336,6 @@ void Waveform3D::updateLayerSmoothedParameters(int voiceIndex, int deltaSamples)
 //		layer.props->pos[voiceIndex].blue.update(deltaSamples);
 	}
 }
-
 
 void Waveform3D::updateSmoothedParameters(int deltaSamples) {
     MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
@@ -381,7 +348,6 @@ void Waveform3D::updateSmoothedParameters(int deltaSamples) {
     }
 }
 
-
 void Waveform3D::setLayerParameterSmoothing(int voiceIndex, bool smooth) {
     MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
 
@@ -393,23 +359,22 @@ void Waveform3D::setLayerParameterSmoothing(int voiceIndex, bool smooth) {
 	}
 }
 
-
 Component* Waveform3D::getComponent(int which) {
     switch (which) {
 		case CycleTour::TargLayerEnable: 	return &panelControls->enableCurrent;
 		case CycleTour::TargLayerAdder: 	return &panelControls->addRemover;
 		case CycleTour::TargScratchBox: 	return &panelControls->scratchSelector;
-		case CycleTour::TargLayerSlct: 		return panelControls->layerSelector;
+		case CycleTour::TargLayerSlct: 		return panelControls->layerSelector.get();
 		case CycleTour::TargPan:			return layerPan;
 		case CycleTour::TargDeconv:			return &deconvolve;
 		case CycleTour::TargModelCycle:		return &model;
 		case CycleTour::TargPhaseUp:		return nullptr;
-		case CycleTour::TargMeshSelector:	return meshSelector;
+		case CycleTour::TargMeshSelector:	return meshSelector.get();
+    	default: break;
 	}
 
 	return nullptr;
 }
-
 
 void Waveform3D::triggerButton(int button) {
     switch (button) {
@@ -418,9 +383,9 @@ void Waveform3D::triggerButton(int button) {
 		case CycleTour::IdBttnRemove: 	buttonClicked(&panelControls->addRemover.remove); 	break;
 		case CycleTour::IdBttnDeconv: 	buttonClicked(&deconvolve); 						break;
 		case CycleTour::IdBttnModel: 	buttonClicked(&model); 								break;
+    	default: break;
 	}
 }
-
 
 void Waveform3D::sliderValueChanged(Slider* slider) {
     MeshLibrary::Properties* props = getCurrentProperties();
@@ -431,7 +396,6 @@ void Waveform3D::sliderValueChanged(Slider* slider) {
         props->pan = slider->getValue();
 	}
 }
-
 
 void Waveform3D::doZoomExtra(bool commandDown) {
 }

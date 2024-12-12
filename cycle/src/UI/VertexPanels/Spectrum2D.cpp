@@ -1,7 +1,6 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Array/ScopedAlloc.h>
-#include <Test/CsvFile.h>
 #include <Thread/LockTracer.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Panels/ScopedGL.h>
@@ -18,11 +17,11 @@
 #include "../../Curve/GraphicRasterizer.h"
 #include "../../Inter/SpectrumInter2D.h"
 #include "../../UI/Panels/Console.h"
-#include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VertexPanels/Waveform2D.h"
 #include "../../UI/VisualDsp.h"
 #include "../../Util/CycleEnums.h"
 
+using namespace gl;
 
 Spectrum2D::Spectrum2D(SingletonRepo* repo) : 
 		SingletonAccessor(repo, "Spectrum2D")
@@ -57,18 +56,17 @@ void Spectrum2D::init() {
 
 	double value = 1.f;
 
-	for(int i = 0; i < (int) decibelLines.size(); ++i)
+	for(int i = 0; i < decibelLines.size(); ++i) {
 		decibelLines[i] = (value *= 0.5);
+	}
 
 	Arithmetic::applyLogMapping(decibelLines, getRealConstant(FFTLogTensionAmp));
 }
-
 
 void Spectrum2D::preDraw() {
     drawThres();
     drawPartials();
 }
-
 
 void Spectrum2D::drawBackground(bool fillBackground) {
     const vector <Column>& columns = getObj(VisualDsp).getFreqColumns();
@@ -220,7 +218,6 @@ void Spectrum2D::drawBackground(bool fillBackground) {
 	}
 }
 
-
 void Spectrum2D::drawPartials() {
     if (getWidth() == 0 || getHeight() == 0)
         return;
@@ -270,27 +267,32 @@ void Spectrum2D::drawPartials() {
 		start--;
 
 	int end = minSize - 1;
-	while(ramp[end] > zoomPanel->rect.w + zoomPanel->rect.x && end > 0)
+	while(ramp[end] > zoomPanel->rect.w + zoomPanel->rect.x && end > 0) {
 		end--;
+	}
 
 	end = jmin(minSize - 1, end + 1);
 	int widthMostOne = end;
 
-	while(widthMostOne > 1 && scaledRamp[widthMostOne] - scaledRamp[widthMostOne - 1] < 2)
+	while(widthMostOne > 1 && scaledRamp[widthMostOne] - scaledRamp[widthMostOne - 1] < 2) {
 		--widthMostOne;
+	}
 
-	if(widthMostOne <= 2)
+	if(widthMostOne <= 2) {
 		return;
+	}
 
 	int widthMostThree = widthMostOne;
 
-	while(widthMostThree > 1 && scaledRamp[widthMostThree] - scaledRamp[widthMostThree - 1] < 4)
+	while(widthMostThree > 1 && scaledRamp[widthMostThree] - scaledRamp[widthMostThree - 1] < 4) {
 		--widthMostThree;
+	}
 
 	int widthMostSix = widthMostThree;
 
-	while(widthMostSix > 1 && scaledRamp[widthMostSix] - scaledRamp[widthMostSix - 1] < 7)
+	while(widthMostSix > 1 && scaledRamp[widthMostSix] - scaledRamp[widthMostSix - 1] < 7) {
 		--widthMostSix;
+	}
 
 	NumberUtils::constrain<int>(start, 0, end);
 
@@ -420,14 +422,12 @@ void Spectrum2D::drawPartials() {
 	}
 }
 
-
 void Spectrum2D::drawThres() {
     gfx->disableSmoothing();
 	gfx->setCurrentLineWidth(1.f);
 	gfx->setCurrentColour(0.15f, 0.15f, 0.15f);
-	gfx->drawLine(0, 0.5f, 1, 0.5f);
+	gfx->drawLine(0, 0.5f, 1, 0.5f, true);
 }
-
 
 void Spectrum2D::drawHistory() {
     int midiKey = getObj(MorphPanel).getCurrentMidiKey();
@@ -456,7 +456,7 @@ void Spectrum2D::drawHistory() {
 		blueAlpha 	= (historySize - 0.6f * std::abs(playbackIndex - col)) / float(historySize);
 		blueAlpha 	= blueAlpha * blueAlpha * 0.89f + 0.11f;
 
-		glColor4f(0.8f * alphaA, 0.9f * alphaA, blueAlpha, alphaA);
+        glColor4f(0.8f * alphaA, 0.9f * alphaA, blueAlpha, alphaA);
 
 		ScopedElement gl(GL_LINE_STRIP);
 
@@ -470,14 +470,12 @@ void Spectrum2D::drawHistory() {
 	gfx->checkErrors();
 }
 
-
 int Spectrum2D::getLayerScratchChannel() {
     return spectrum3D->getLayerScratchChannel();
 }
 
-
 void Spectrum2D::createScales() {
-    dout << "creating scales for Spectrum2D\n";
+    std::cout << "creating scales for Spectrum2D\n";
 
 	vector<Rectangle<float> > newScales;
 
@@ -514,10 +512,11 @@ void Spectrum2D::createScales() {
         while (rampIndex < ramp.size() / 2) {
             int val = rampIndex * 2;
 			String text;
-			if(val > 1000)
+			if(val > 1000) {
 				text = String(val / 1000) + "k";
-			else
+			} else {
 				text = String(val);
+			}
 
 			int width = font.getStringWidth(text) + 1;
 			mg.drawShadowedText(g, text, position + 1, font.getHeight(), font, alpha);
@@ -552,7 +551,6 @@ void Spectrum2D::drawScales() {
 
 			++count;
 		}
-
 
         const vector <Column>& columns = getObj(VisualDsp).getFreqColumns();
         int index = (columns.size() - 1) * getObj(PlaybackPanel).getProgress();

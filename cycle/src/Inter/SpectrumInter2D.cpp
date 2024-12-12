@@ -1,14 +1,12 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Audio/Multisample.h>
-#include <Audio/SampleWrapper.h>
+#include <Audio/PitchedSample.h>
 #include <math.h>
-#include <Thread/LockTracer.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegions.h>
 
 #include "SpectrumInter2D.h"
-#include "../Audio/AudioSourceRepo.h"
 #include "../Audio/SynthAudioSource.h"
 #include "../Inter/SpectrumInter3D.h"
 #include "../UI/Panels/Console.h"
@@ -23,7 +21,6 @@ SpectrumInter2D::SpectrumInter2D(SingletonRepo* repo) :
                      Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Time, Vertex::Red, Vertex::Blue)),
         SingletonAccessor(repo, "SpectrumInter2D") {
 }
-
 
 void SpectrumInter2D::init() {
     spectrum3D = &getObj(Spectrum3D);
@@ -41,7 +38,6 @@ void SpectrumInter2D::init() {
     vertexLimits[Vertex::Phase].setEnd(1.f + freqMargin);
     vertexLimits[Vertex::Phase].setStart(-freqMargin);
 }
-
 
 bool SpectrumInter2D::locateClosestElement() {
     bool changedElement = Interactor2D::locateClosestElement();
@@ -65,18 +61,18 @@ bool SpectrumInter2D::locateClosestElement() {
 
     jassert(closestHarmonic >= 0 && closestHarmonic < ramp.size());
 
-    if (oldHarmonic != closestHarmonic)
+    if (oldHarmonic != closestHarmonic) {
         flag(SimpleRepaint) = true;
+    }
 
     return changedElement;
 }
 
-
 void SpectrumInter2D::doExtraMouseUp() {
-    if (getMesh()->getNumCubes() < 6)
+    if (getMesh()->getNumCubes() < 6) {
         getObj(SynthAudioSource).enablementChanged();
+    }
 }
-
 
 void SpectrumInter2D::showCoordinates() {
     const vector <Column> &columns = getObj(VisualDsp).getFreqColumns();
@@ -93,9 +89,8 @@ void SpectrumInter2D::showCoordinates() {
         return;
     }
 
-
     int index = (columns.size() - 1) * getObj(PlaybackPanel).getProgress();
-    const Column &col = columns[index];
+    const Column& col = columns[index];
 
     bool isMagnitudeMode = getSetting(MagnitudeDrawMode) == 1;
 
@@ -110,7 +105,6 @@ void SpectrumInter2D::showCoordinates() {
     }
 
     int displayKey = col.midiKey - 12;
-
     float fundFreq = MidiMessage::getMidiNoteInHertz(displayKey);
 
     String message =
@@ -119,11 +113,9 @@ void SpectrumInter2D::showCoordinates() {
     showMsg(message);
 }
 
-
 bool SpectrumInter2D::isCurrentMeshActive() {
     return getObj(SpectrumInter3D).isCurrentMeshActive();
 }
-
 
 Interactor* SpectrumInter2D::getOppositeInteractor() {
     return &getObj(SpectrumInter3D);

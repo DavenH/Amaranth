@@ -6,13 +6,16 @@
 
 #include "SynthesizerVoice.h"
 #include "SynthUnisonVoice.h"
+
 #include "../../Audio/Effects/Unison.h"
 #include "../../Audio/SynthAudioSource.h"
+#include "../../Curve/CycleState.h"
 #include "../../Curve/EnvRenderContext.h"
 #include "../../UI/VertexPanels/DeformerPanel.h"
 #include "../../UI/VertexPanels/Waveform3D.h"
 
-SynthUnisonVoice::SynthUnisonVoice(SynthesizerVoice* parent, SingletonRepo* repo) : CycleBasedVoice(parent, repo) {
+SynthUnisonVoice::SynthUnisonVoice(SynthesizerVoice* parent, SingletonRepo* repo) :
+    CycleBasedVoice(parent, repo) {
     noteState.isStereo = true;
 }
 

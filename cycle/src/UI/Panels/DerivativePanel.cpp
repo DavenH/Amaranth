@@ -1,3 +1,4 @@
+#include <climits>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Binary/Gradients.h>
@@ -8,7 +9,6 @@
 #include "DerivativePanel.h"
 #include "../VertexPanels/Waveform2D.h"
 #include "../../Audio/AudioSourceRepo.h"
-#include "../../Binary/CycleImages.h"
 #include "../../Curve/GraphicRasterizer.h"
 #include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VisualDsp.h"
@@ -21,9 +21,8 @@ DerivativePanel::DerivativePanel(SingletonRepo* repo) :
 	jassert(! magenta.isNull());
 
 	gradient.read(magenta, false, false);
-	fir = new FIR(0.3f, 10, true);
+	fir = std::make_unique<FIR>(0.3f, 10, true);
 }
-
 
 void DerivativePanel::paint(Graphics& g) {
     vector <Color>& grd = gradient.getColours();
@@ -45,8 +44,9 @@ void DerivativePanel::paint(Graphics& g) {
 
     for (int i = 0; i < (int) exes.size(); ++i) {
         float x = wave2D->sx(exes[i]) / float(rightX); //(derivativeX[i] - r.x) / (r.w);
-        if (x < 0 || x > 1)
-            continue;
+        if (x < 0 || x > 1) {
+	        continue;
+        }
 
         if (firstPoint) {
             x = 0;
@@ -66,14 +66,12 @@ void DerivativePanel::paint(Graphics& g) {
 	g.fillRect(Rectangle<int>(right, 0, getWidth() - right, getHeight()));
 }
 
-
 void DerivativePanel::mouseEnter(const MouseEvent& e) {
     showMsg("Brightest peaks show the sharpest points in the waveshape.");
 }
 
-
 void DerivativePanel::calcDerivative() {
-    TimeRasterizer& timeRast = getObj(TimeRasterizer);
+    auto& timeRast = getObj(TimeRasterizer);
 	RasterizerData& data = timeRast.getRastData();
 
 	Buffer<float> waveX = data.waveX;
@@ -175,7 +173,6 @@ void DerivativePanel::calcDerivative() {
 	// scales the [0 1] ranged derivativeY into a [0 511] range index array for the colour gradient
 	ippsConvert_32f16s_Sfs(num, indices, num.size(), ippRndZero, -9);
 }
-
 
 void DerivativePanel::performUpdate(int updateType) {
     calcDerivative();

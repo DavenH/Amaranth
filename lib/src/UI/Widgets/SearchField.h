@@ -3,7 +3,6 @@
 #include <vector>
 #include "../IConsole.h"
 #include "../MiscGraphics.h"
-#include "../../App/Doc/DocumentDetails.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Binary/Images.h"
 #include "../../Obj/Ref.h"
@@ -62,8 +61,9 @@ public:
     }
 
     bool keyPressed(const KeyPress& k) {
-        if (!focused)
-			return false;
+        if (!focused) {
+	        return false;
+        }
 
 		stopTimer(RefreshTimerId);
 
@@ -199,6 +199,7 @@ public:
                 stopTimer(RefreshTimerId);
 
                 break;
+			default: break;
         }
     }
 

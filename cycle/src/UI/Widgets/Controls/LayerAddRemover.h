@@ -1,5 +1,4 @@
-#ifndef _layeraddremover_h
-#define _layeraddremover_h
+#pragma once
 
 #include "JuceHeader.h"
 #include <UI/Layout/ConstantSizeComponent.h>
@@ -17,5 +16,3 @@ public:
 private:
 	JUCE_LEAK_DETECTOR(LayerAddRemover)
 };
-
-#endif

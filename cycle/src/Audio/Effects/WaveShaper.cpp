@@ -1,5 +1,4 @@
 #include <App/SingletonRepo.h>
-#include <Thread/LockTracer.h>
 
 #include "WaveShaper.h"
 #include "../../Audio/SynthAudioSource.h"

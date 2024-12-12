@@ -12,6 +12,13 @@
 
 #pragma once
 
+#define JUCE_USE_MP3AUDIOFORMAT 1
+#define JUCE_WASAPI 		1
+#define JUCE_ASIO 			1
+#define JUCE_USE_FLAC 		1
+#define JUCE_USE_OGGVORBIS 	1
+#define JUCE_DIRECTSOUND 	1
+#define JUCE_OPENGL 		1
 
 #include <juce_animation/juce_animation.h>
 #include <juce_audio_basics/juce_audio_basics.h>
@@ -19,6 +26,7 @@
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_audio_plugin_client/juce_audio_plugin_client.h>
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_core/juce_core.h>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_dsp/juce_dsp.h>

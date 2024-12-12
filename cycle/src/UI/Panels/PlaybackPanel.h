@@ -1,9 +1,6 @@
-#ifndef _playbackpanel_h
-#define _playbackpanel_h
+#pragma once
 
 #include <App/SingletonAccessor.h>
-#include <Curve/Vertex.h>
-#include <Inter/Dimensions.h>
 #include <Obj/Ref.h>
 #include <UI/Widgets/IconButton.h>
 #include "JuceHeader.h"
@@ -29,22 +26,22 @@ public:
 	,	ReleaseTimerId
 	};
 
-	PlaybackPanel(SingletonRepo* repo);
-	~PlaybackPanel();
+	explicit PlaybackPanel(SingletonRepo* repo);
+	~PlaybackPanel() override;
 
-	void paint(Graphics& g);
-	void resized();
-	void mouseEnter(const MouseEvent& e);
-	void mouseDrag(const MouseEvent& e);
-	void mouseDown(const MouseEvent& e);
-	void mouseUp(const MouseEvent& e);
+	void paint(Graphics& g) override;
+	void resized() override;
+	void mouseEnter(const MouseEvent& e) override;
+	void mouseDrag(const MouseEvent& e) override;
+	void mouseDown(const MouseEvent& e) override;
+	void mouseUp(const MouseEvent& e) override;
 
 	void update(const MouseEvent& e);
 	void getRange(float& lower, float& upper);
 	void primaryDimensionChanged();
-	void buttonClicked(Button* button);
+	void buttonClicked(Button* button) override;
 
-	void init();
+	void init() override;
 	float getProgress();
 	void setProgress(float unitX, bool updateMorphPanel = true);
 
@@ -63,9 +60,9 @@ public:
 	void setXAndUpdate(float pos);
 	float getX();
 	void togglePlayback();
-	void timerCallback(int id);
+	void timerCallback(int id) override;
 	float getScratchPosition(int scratchChannel);
-	double getEnvelopePos() { return envPos; }
+	double getEnvelopePos() const { return envPos; }
 
 private:
 	static const int timeDelay = 10;
@@ -98,6 +95,3 @@ private:
 	Image scrollCursor;
 	Image eye;
 };
-
-
-#endif

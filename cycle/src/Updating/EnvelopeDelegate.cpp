@@ -18,26 +18,22 @@ EnvelopeDelegate::EnvelopeDelegate(SingletonRepo* repo) :
 	updateName = name;
 }
 
-
-EnvelopeDelegate::~EnvelopeDelegate() {
-}
-
 void EnvelopeDelegate::performUpdate(int performUpdateType) {
     switch (performUpdateType) {
-		case UpdateType::Null: break;
-		case UpdateType::Repaint: break;
-		case UpdateType::ReduceDetail: {
+		case Null: break;
+		case Repaint: break;
+		case ReduceDetail: {
 			if(getObj(Envelope3D).isVisible() && getSetting(CurrentMorphAxis) != Vertex::Time)
 					getObj(E3Rasterizer).performUpdate(performUpdateType);
 			break;
 		}
 
-		case UpdateType::RestoreDetail: {
+		case RestoreDetail: {
 			getObj(E3Rasterizer).performUpdate(performUpdateType);
 			break;
 		}
 
-        case UpdateType::Update: {
+        case Update: {
 			if(getObj(Envelope3D).isVisible() && getSetting(CurrentMorphAxis) != Vertex::Time)
 				getObj(E3Rasterizer).performUpdate(performUpdateType);
             else {

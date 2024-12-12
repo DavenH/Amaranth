@@ -17,7 +17,7 @@ public:
 					   const Colour& backgroundColour,
 					   const DocumentDetails& details);
 
-    ~FileChooserDialog();
+    ~FileChooserDialog() override;
 
     bool show (int width = 0, int height = 0);
     bool showAt (int x, int y, int width, int height);

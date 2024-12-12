@@ -41,36 +41,40 @@ MiscGraphics::MiscGraphics(SingletonRepo* repo) : SingletonAccessor(repo, "MiscG
 
 void MiscGraphics::drawCorneredRectangle(Graphics& g, const Rectangle<int>& r, int cornerSize) {
     Path path;
-	if(cornerSize)
+	if(cornerSize) {
 		path.addRoundedRectangle(r.getX(), r.getY(), r.getWidth(), r.getHeight(), cornerSize);
-	else
+	} else {
 		path.addRectangle(r);
+	}
 
 	g.strokePath(path, PathStrokeType(1.f), AffineTransform::translation(0.5f, 0.5f));
 }
 
 const MouseCursor& MiscGraphics::getCursor(int cursor) const {
-	if(NumberUtils::within<int>(cursor, 0, NudgeCursorHorz))
+	if(NumberUtils::within<int>(cursor, 0, NudgeCursorHorz)) {
 		return *cursors[cursor];
+	}
 
-	if(extension != nullptr)
+	if(extension != nullptr) {
 		return extension->getCursor(cursor);
+	}
 
 	return *cursors[CrossCursor];
 }
 
 void MiscGraphics::applyMouseoverHighlight(Graphics& g, Image copy, bool mouseOver, bool buttonDown, bool pending) {
-	if(mouseOver && ! buttonDown)
+	if(mouseOver && ! buttonDown) {
 		redGlow.applyEffect(copy, g, 1.f, 0.5f);
-	else if(buttonDown)
+	} else if(buttonDown) {
 		yllwGlow.applyEffect(copy, g, 1.f, 0.7f);
-	else if(pending)
+	} else if(pending) {
 		blueGlow.applyEffect(copy, g, 1.f, 0.7f);
-	else
+	} else {
 		shadow.applyEffect(copy, g, 1.f, 1.f);
+	}
 }
 
-void MiscGraphics::drawShadowedText(Graphics& g, String text, int x, int y, const Font& font, float alpha) {
+void MiscGraphics::drawShadowedText(Graphics& g, const String& text, int x, int y, const Font& font, float alpha) {
 	g.setFont	(font);
 	g.setColour	(Colour::greyLevel(0.04f));
 	g.drawSingleLineText(text, x + 1, y + 1);
@@ -83,12 +87,12 @@ Font* MiscGraphics::getAppropriateFont(int scaleSize) {
     switch (scaleSize) {
 		case ScaleSizes::ScaleSmall: 	return silkscreen;
 		case ScaleSizes::ScaleMed: 		return verdana12;
-		case ScaleSizes::ScaleLarge:
-            return verdana16;
+		case ScaleSizes::ScaleLarge:    return verdana16;
 
         default: {
-			if(extension != nullptr)
+			if(extension != nullptr) {
 				return extension->getAppropriateFont(scaleSize);
+			}
 		}
 	}
 
@@ -98,23 +102,20 @@ Font* MiscGraphics::getAppropriateFont(int scaleSize) {
 Image& MiscGraphics::getImage(int imageEnum) {
     using namespace AppImages;
 
-    switch (imageEnum) {
-        case iconsImg:
-            return icons;
-        default: {
-			if(extension != nullptr)
-				return extension->getImage(imageEnum);
-		}
+    if (imageEnum == iconsImg) {
+	    return icons;
+    }
+
+	if(extension != nullptr) {
+		return extension->getImage(imageEnum);
 	}
     throw std::out_of_range("MiscGraphics::getImage()");
 }
-
 
 void MiscGraphics::drawHighlight(Graphics& g, Component* c, int shiftX, int shiftY) {
 	Rectangle<float> r(c->getX() + shiftX, c->getY() + shiftY, c->getWidth(), c->getHeight());
 	drawHighlight(g, r);
 }
-
 
 void MiscGraphics::drawHighlight(Graphics& g, const Rectangle<float>& r) {
 	g.setGradientFill(ColourGradient(Colour::greyLevel(0.7f), r.getX() + 5,
@@ -142,14 +143,14 @@ void MiscGraphics::drawPowerSymbol(Graphics& g, Rectangle<int> bounds) const {
 }
 
 void MiscGraphics::drawJustifiedText(Graphics& g, const String& text, const Rectangle<int>& rect,
-									 bool above, Component* parent) {
-	int width 		= rect.getRight() - rect.getX();
-	int strWidth 	= silkscreen->getStringWidth(text);
+                                     bool above, Component* parent) {
+	int width = rect.getRight() - rect.getX();
+	int strWidth = silkscreen->getStringWidth(text);
 
-	int x 			= rect.getX() + (width - strWidth) / 2;
-	int y 			= rect.getY() + 4;
+	int x = rect.getX() + (width - strWidth) / 2;
+	int y = rect.getY() + 4;
 
-	if(parent != nullptr) {
+	if (parent != nullptr) {
 		int parentY = parent->getY();
 		y = above ? (rect.getY() - 5 + parentY) : (rect.getBottom() + 8 + parentY);
 		x += parent->getX();
@@ -159,11 +160,11 @@ void MiscGraphics::drawJustifiedText(Graphics& g, const String& text, const Rect
 }
 
 void MiscGraphics::drawJustifiedText(Graphics& g, const String& text,
-									 Component& topLeft, Component& botRight,
-									 bool above, Component* parent) {
-    drawJustifiedText(g, text,
+                                     Component& topLeft, Component& botRight,
+                                     bool above, Component* parent) {
+	drawJustifiedText(g, text,
 	                  Rectangle<int>(topLeft.getBounds().getTopLeft(),
 	                                 botRight.getBounds().getBottomRight()),
-					  above, parent);
+	                  above, parent);
 }
 

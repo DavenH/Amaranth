@@ -5,12 +5,10 @@
 #include <App/EditWatcher.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Audio/PluginProcessor.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <Util/Arithmetic.h>
 #include <Util/MicroTimer.h>
-#include <UI/Widgets/PulloutComponent.h>
 #include <UI/Widgets/SearchField.h>
 
 #include "PresetPage.h"
@@ -21,7 +19,6 @@
 #include "../../App/Dialogs.h"
 #include "../../App/Directories.h"
 #include "../../App/FileManager.h"
-#include "../../CycleDefs.h"
 #include "../../Util/CycleEnums.h"
 
 
@@ -35,7 +32,7 @@ PresetPage::PresetPage(SingletonRepo* repo) :
 	,	prevIcon			(2, 8, this, repo, "Previous Preset")
 	,	nextIcon			(3, 8, this, repo, "Next Preset")
 
-	,	tagsField			(String::empty, String::empty)
+	,	tagsField			({}, {})
 
 	,	uploadThread		(repo)
 	,	downloadDeetsThread	(repo)
@@ -46,12 +43,12 @@ PresetPage::PresetPage(SingletonRepo* repo) :
 	,	spinAnimating		(false)
 	,	pendingSettings		(false)
 	,	spinAngle			(0.f)
-	,	wavLabel			(String::empty, "Dir: ")
-	,	subfolderLabel		(String::empty, "Subfolder: ")
+	,	wavLabel			({}, "Dir: ")
+	,	subfolderLabel		({}, "Subfolder: ")
 {
-	tableListBox = new TableListBox("Presets", this);
+	tableListBox = std::make_unique<TableListBox>("Presets", this);
 
-	setListBox(tableListBox);
+	setListBox(tableListBox.get());
 	tableListBox->setRowHeight(21);
 
 	MiscGraphics& mg = getObj(MiscGraphics);
@@ -71,22 +68,20 @@ PresetPage::PresetPage(SingletonRepo* repo) :
 	header.addColumn("Ver.", 		DocumentDetails::Version, 	40,  35,  50, 	invisibleFlag);
 	header.addColumn("Size", 		DocumentDetails::Size, 	 	80,  60,  100, 	invisibleFlag);
 	header.addColumn("Rating", 		DocumentDetails::Rating, 	125, 100, 200);
-
-  #ifndef BEAT_EDITION
 	header.addColumn("Shr", 		DocumentDetails::UploadCol, 30,  30,  30, 	TableHeaderComponent::notResizableOrSortable);
 	header.addColumn("Rmv", 		DocumentDetails::DismissCol,30,  30,  30, 	TableHeaderComponent::notResizableOrSortable);
-  #endif
 
 	header.setStretchToFitActive(true);
 
-	addAndMakeVisible(tableListBox);
-	addAndMakeVisible(search = new SearchField<DocumentDetails>(this, repo, String::empty));
+	search = std::make_unique<SearchField<DocumentDetails>>(this, repo, String());
+	addAndMakeVisible(tableListBox.get());
+	addAndMakeVisible(search.get());
 	addAndMakeVisible(&tagsField);
 	addChildComponent(&wavControls);
 
 	folderImage 	= PNGImageFormat::loadFrom(Images::folder_png, Images::folder_pngSize);
-	wavFolderButton = new IconButton(folderImage, repo);
-	upButton		= getLookAndFeel().createFileBrowserGoUpButton();
+	wavFolderButton = std::make_unique<IconButton>(folderImage, repo);
+	upButton.reset(getLookAndFeel().createFileBrowserGoUpButton());
 
 	dismissImage 	= Image(Image::ARGB, 24, 24, true);
 	Graphics g(dismissImage);
@@ -95,8 +90,8 @@ PresetPage::PresetPage(SingletonRepo* repo) :
 	g.drawImageTransformed(getObj(MiscGraphics).getIcon(0, 6),
 	                       AffineTransform::rotation(IPP_PI4).translated(12, -6));
 
-	wavControls.addAndMakeVisible(wavFolderButton);
-	wavControls.addAndMakeVisible(upButton);
+	wavControls.addAndMakeVisible(wavFolderButton.get());
+	wavControls.addAndMakeVisible(upButton.get());
 	wavControls.addAndMakeVisible(&subfolderBox);
 	wavControls.addAndMakeVisible(&wavDirectory);
 	wavControls.addAndMakeVisible(&wavLabel);
@@ -119,11 +114,7 @@ PresetPage::PresetPage(SingletonRepo* repo) :
 		labels[i]->addListener(this);
 	}
 
-	Component* selectTemp[] = { &wave, &verts
-	  #ifndef BEAT_EDITION
-		, &netIcon
-	  #endif
-	};
+	Component* selectTemp[] = { &wave, &verts, &netIcon };
 
 	CalloutUtils::addRetractableCallout(selectCO, selectPO, repo, 0, 5, selectTemp,
 										numElementsInArray(selectTemp), this, true);
@@ -136,49 +127,39 @@ PresetPage::PresetPage(SingletonRepo* repo) :
 	verts.setHighlit(true);
 }
 
-
-void PresetPage::init()
-{
+void PresetPage::init() {
 	presetDirUpdated();
 	readPresetSettings();
 }
 
-void PresetPage::addToRevisionMap(const Array<DocumentDetails, CriticalSection>& array)
-{
-	for(int i = 0; i < (int) array.size(); ++i)
-	{
-		DocumentDetails& deets = array.getReference(i);
+void PresetPage::addToRevisionMap(const Array<DocumentDetails, CriticalSection>& array) {
+	for (int i = 0; i < (int) array.size(); ++i) {
+		DocumentDetails deets = array.getReference(i);
 
 		int code = deets.getKey().hashCode();
 		dldedRevisionMap.set(code, deets.getRevision());
 	}
 }
 
-
-void PresetPage::addToRevisionMap(const DocumentDetails& deets)
-{
+void PresetPage::addToRevisionMap(const DocumentDetails& deets) {
 	int code = deets.getKey().hashCode();
 	dldedRevisionMap.set(code, deets.getRevision());
 
 	tableListBox->updateContent();
 }
 
-
 /*
  * Populate downloaded deets array to avoid showing
  */
-void PresetPage::presetDirUpdated()
-{
+void PresetPage::presetDirUpdated() {
 	localDetails.clear();
 
-	addFilesToArray(localDetails, getObj(Directories).getPresetDir(), 	  getStrConstant(DocumentExt));
+	addFilesToArray(localDetails, getObj(Directories).getPresetDir(), getStrConstant(DocumentExt));
 	addFilesToArray(localDetails, getObj(Directories).getUserPresetDir(), getStrConstant(DocumentExt));
 	addToRevisionMap(localDetails);
 }
 
-
-PresetPage::~PresetPage()
-{
+PresetPage::~PresetPage() {
 	killThreads();
 
 	deleteAndZero(selectPO);
@@ -188,27 +169,22 @@ PresetPage::~PresetPage()
 	deleteAndZero(navCO);
 }
 
-
-void PresetPage::refresh()
-{
+void PresetPage::refresh() {
 	allItems.clear();
 
-	if(verts.isHighlit())
-	{
-		addFilesToDefaultArray(getObj(Directories).getPresetDir(), 	   getStrConstant(DocumentExt));
+	if (verts.isHighlit()) {
+		addFilesToDefaultArray(getObj(Directories).getPresetDir(), getStrConstant(DocumentExt));
 		addFilesToDefaultArray(getObj(Directories).getUserPresetDir(), getStrConstant(DocumentExt));
 	}
 
-	if(wave.isHighlit())
-	{
+	if (wave.isHighlit()) {
 		String exts[] = { "wav", "ogg", "aif", "aiff", "flac" };
 
-		for(int i = 0; i < numElementsInArray(exts); ++i)
+		for (int i = 0; i < numElementsInArray(exts); ++i)
 			addFilesToDefaultArray(wavDirectory.getText(false), exts[i]);
 	}
 
-	if(netIcon.isHighlit())
-	{
+	if (netIcon.isHighlit()) {
 	  #ifndef DEMO_VERSION
 		resetList();
 		addItems(remoteDetails);
@@ -220,29 +196,23 @@ void PresetPage::refresh()
 	search->refresh();
 }
 
-
-void PresetPage::addFilesToDefaultArray(const String& path, const String& pattern)
-{
+void PresetPage::addFilesToDefaultArray(const String& path, const String& pattern) {
 	addFilesToArray(allItems, path, pattern);
 }
 
-
 void PresetPage::addFilesToArray(Array<DocumentDetails, CriticalSection>& list,
-								 const String& path, const String& extension)
-{
+                                 const String& path, const String& extension) {
 	bool isWave = false;
 
-	if(String("wav.flac.mp3.aiff.ogg").containsIgnoreCase(extension))
+	if (String("wav.flac.mp3.aiff.ogg").containsIgnoreCase(extension))
 		isWave = true;
 
-	File file(path);
+	File dir(path);
 
 	Array<File> allResults;
-	file.findChildFiles(allResults, File::findFiles, false, "*." + extension);
+	dir.findChildFiles(allResults, File::findFiles, false, "*." + extension);
 
-	for (int i = 0; i < (int) allResults.size(); ++i)
-	{
-		const File& file = allResults.getReference(i);
+	for(auto& file : allResults) {
 		DocumentDetails details;
 
 		details.setName(file.getFileNameWithoutExtension());
@@ -251,25 +221,23 @@ void PresetPage::addFilesToArray(Array<DocumentDetails, CriticalSection>& list,
 		int64 millis = file.getCreationTime().toMilliseconds();
 		details.setDateMillis(millis);
 
-		if(extension == getStrConstant(DocumentExt))
-		{
+		if (extension == getStrConstant(DocumentExt)) {
 			std::unique_ptr<InputStream> stream(file.createInputStream());
 
-			if(Document::readHeader(stream, details, getConstant(DocMagicCode)))
-			{
+			if (Document::readHeader(stream.get(), details, getConstant(DocMagicCode))) {
 				int code = details.getKey().hashCode();
 
-				if(dismissedSet.find(code) != dismissedSet.end())
+				if (dismissedSet.find(code) != dismissedSet.end()) {
 					continue;
+				}
 
-				if(ratingsMap.contains(code))
+				if (ratingsMap.contains(code)) {
 					details.setRating(ratingsMap[code]);
-			}
-			else
+				}
+			} else {
 				continue;
-		}
-		else if(isWave)
-		{
+			}
+		} else if (isWave) {
 			details.setIsWave(true);
 		}
 
@@ -281,25 +249,20 @@ void PresetPage::addFilesToArray(Array<DocumentDetails, CriticalSection>& list,
 
 	resetList();
 
-	if(getNumRows() > 0)
+	if (getNumRows() > 0) {
 		currPresetFiltIndex = 0;
+	}
 }
 
-
-int PresetPage::getNumRows()
-{
+int PresetPage::getNumRows() {
 	return getFilteredItems().size();
 }
 
-
-void PresetPage::setWavDirectory(const String& dir)
-{
+void PresetPage::setWavDirectory(const String& dir) {
 	wavDirectory.setText(dir, dontSendNotification);
 }
 
-
-void PresetPage::paintRowBackground(Graphics& g, int rowNumber, int width, int height, bool rowIsSelected)
-{
+void PresetPage::paintRowBackground(Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) {
 	const DocumentDetails& details = getFilteredItems().getReference(rowNumber);
 
 	ColourGradient gradient;
@@ -334,9 +297,7 @@ void PresetPage::paintRowBackground(Graphics& g, int rowNumber, int width, int h
 	g.fillAll();
 }
 
-
-void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected)
-{
+void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) {
 	const DocumentDetails& details = getFilteredItems().getReference(rowNumber);
 
 	g.setColour(Colour::greyLevel(0.64f));
@@ -345,10 +306,9 @@ void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, 
 
 	String text = columnId == DocumentDetails::Name ? details.getName() :
 				  columnId == DocumentDetails::Pack ? details.getPack() :
-				  columnId == DocumentDetails::Tag ? (tags.size() == 0 ? String::empty : tags[0]) : details.getAuthor();
+				  columnId == DocumentDetails::Tag ? (tags.size() == 0 ? String() : tags[0]) : details.getAuthor();
 
-	switch(columnId)
-	{
+	switch(columnId) {
 		case DocumentDetails::Name:
 		case DocumentDetails::Pack:
 		case DocumentDetails::Author:
@@ -359,26 +319,22 @@ void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, 
 
 			g.setFont(14);
 
-			getObj(MiscGraphics).drawShadowedText(g, text, 5, 15, Font(14), 0.65f);
+			getObj(MiscGraphics).drawShadowedText(g, text, 5, 15, FontOptions(14), 0.65f);
 			break;
 		}
 
-		case DocumentDetails::Size:
-		{
+		case DocumentDetails::Size: {
 			float bytes = details.getSizeBytes() / 1024.f;
 			String multStr;
 			int precision = 2;
 
-			if(bytes > 1024.f)
-			{
+			if (bytes > 1024.f) {
 				bytes /= 1024.f;
 				multStr = "MB";
-			}
-			else
-			{
+			} else {
 				multStr = "KB";
 
-				if(bytes > 10.f)
+				if (bytes > 10.f)
 					precision = 1;
 			}
 
@@ -390,42 +346,37 @@ void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, 
 			break;
 		}
 
-		case DocumentDetails::Rating:
-		{
+		case DocumentDetails::Rating: {
 			break;
 		}
 
-		case DocumentDetails::Revision:
-		{
+		case DocumentDetails::Revision: {
 			int revision = details.getRevision();
 
 			g.setFont(12);
-			if(revision >= 0)
+			if(revision >= 0) {
 				g.drawText(String(details.getRevision()), 10, 0, width, height, Justification::centredLeft, true);
+			}
 
 			break;
 		}
 
 		case DocumentDetails::Date:
-		case DocumentDetails::Modified:
-		{
+		case DocumentDetails::Modified: {
 			g.setFont(10);
 
-			juce::Time time(columnId == DocumentDetails::Date ? details.getDateMillis() : details.getModifMillis());
+			Time time(columnId == DocumentDetails::Date ? details.getDateMillis() : details.getModifMillis());
 			getObj(MiscGraphics).drawShadowedText(g, time.formatted(L"%d \u00b7 %m \u00b7 %y"), 5, 13, Font(10), 0.65f);
 
-//			g.drawText(time.formatted(L"%d \u00b7 %m \u00b7 %y"), 5, 0, width, height, Justification::centredLeft, true);
 			break;
 		}
 
-		case DocumentDetails::Version:
-		{
+		case DocumentDetails::Version: {
 			g.setFont(12);
 			g.drawText(String(details.getProductVersion(), 1), 5, 0, width, height, Justification::centredLeft, true);
 		}
 
-		case DocumentDetails::UploadCol:
-		{
+		case DocumentDetails::UploadCol: {
 			break;
 		}
 	}
@@ -434,14 +385,12 @@ void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, 
 	g.drawVerticalLine(width - 1, 0.f, height);
 }
 
-
 void PresetPage::cellClicked(int rowNumber, int columnId, const MouseEvent & e)
 {
 	currPresetFiltIndex = rowNumber;
 
 	updateTags(rowNumber);
 }
-
 
 void PresetPage::cellDoubleClicked(int rowNumber, int columnId, const MouseEvent & e)
 {
@@ -455,10 +404,9 @@ void PresetPage::cellDoubleClicked(int rowNumber, int columnId, const MouseEvent
 	cleanup();
 }
 
-
 void PresetPage::loadItem(int itemIndex, bool ignoreSave)
 {
-	dout << "loading preset item" << itemIndex << ", ignore save: " << ignoreSave << "\n";
+	std::cout << "loading preset item" << itemIndex << ", ignore save: " << ignoreSave << "\n";
 
 	jassert(isPositiveAndBelow(itemIndex, getNumRows()));
 
@@ -472,61 +420,46 @@ void PresetPage::loadItem(int itemIndex, bool ignoreSave)
 	loadItem(details);
 }
 
-
-void PresetPage::loadItem(const DocumentDetails& details, bool ignoreSave)
-{
+void PresetPage::loadItem(const DocumentDetails& details, bool ignoreSave) {
 	const String& filename = details.getFilename();
 	const File file(filename);
 
-	if(filename.endsWith(getStrConstant(DocumentExt)))
-	{
+	if (filename.endsWith(getStrConstant(DocumentExt))) {
 		jassert(file.existsAsFile());
 
-		if(ignoreSave || ! getObj(EditWatcher).getHaveEdited())
-		{
+		if (ignoreSave || !getObj(EditWatcher).getHaveEdited()) {
 			getObj(FileManager).openPreset(file);
 
 			showImportant(details.getName());
 			getObj(IConsole).setKeys(details.getAuthor());
 
-		  #if PLUGIN_MODE
+	#if PLUGIN_MODE
 			getObj(PluginProcessor).updateHostDisplay();
-		  #endif
-		}
-		else
-		{
+	#endif
+		} else {
 			pendingDeetsToLoad = details;
 			getObj(Dialogs).promptForSaveApplicably(Dialogs::LoadPresetItem);
 		}
 	}
 
-  #ifndef BEAT_EDITION
-	else if(String(".wav.ogg.flac.aif.aiff").containsIgnoreCase(file.getFileExtension()))
+	else if (String(".wav.ogg.flac.aif.aiff").containsIgnoreCase(file.getFileExtension())) {
 		getObj(FileManager).openWave(file, Dialogs::DialogSource);
-  #endif
+	}
 }
 
-
-void PresetPage::loadPendingItem()
-{
+void PresetPage::loadPendingItem() {
 	loadItem(pendingDeetsToLoad, true);
 }
 
-
-void PresetPage::resetListAndLoadItem(int itemIndex)
-{
+void PresetPage::resetListAndLoadItem(int itemIndex) {
 	clearSearch();
 	loadItem(itemIndex);
 }
 
-
-void PresetPage::backgroundClicked(const MouseEvent& e)
-{
+void PresetPage::backgroundClicked(const MouseEvent& e) {
 }
 
-
-void PresetPage::sortOrderChanged(int newSortColumnId, bool isForwards)
-{
+void PresetPage::sortOrderChanged(int newSortColumnId, bool isForwards) {
 	DocumentDetails::sortColumn = newSortColumnId;
 
 	setSortDirection(isForwards);
@@ -537,29 +470,21 @@ void PresetPage::sortOrderChanged(int newSortColumnId, bool isForwards)
 	tableListBox->updateContent();
 }
 
-
-int PresetPage::getColumnAutoSizeWidth(int columnId)
-{
+int PresetPage::getColumnAutoSizeWidth(int columnId) {
 	return 150;
 }
 
-
-void PresetPage::returnKeyPressed(int lastRowSelected)
-{
-	if(currPresetFiltIndex >= 0 && currPresetFiltIndex < getNumRows())
-	{
+void PresetPage::returnKeyPressed(int lastRowSelected) {
+	if (currPresetFiltIndex >= 0 && currPresetFiltIndex < getNumRows()) {
 		loadItem(currPresetFiltIndex);
 		cleanup();
 	}
 }
 
-
-void PresetPage::paint(Graphics & g)
-{
+void PresetPage::paint(Graphics& g) {
 	g.fillAll(Colour::greyLevel(0.14f));
 
-	if(spinAnimating)
-	{
+	if (spinAnimating) {
 		Point<int> r = selectCO->getPosition();
 		r.addXY(selectCO->getExpandedSize() + 15, 12);
 
@@ -575,9 +500,7 @@ void PresetPage::paint(Graphics & g)
 	getObj(MiscGraphics).drawJustifiedText(g, "TAGS", 	Rectangle<int>(0, 0, tagsField.getWidth(), 0), true, &tagsField);
 }
 
-
-void PresetPage::resized()
-{
+void PresetPage::resized() {
 	Rectangle<int> bounds 	 = getLocalBounds().reduced(4, 8);
 	Rectangle<int> topBounds = bounds.removeFromTop(40).reduced(0, 5);
 
@@ -595,8 +518,7 @@ void PresetPage::resized()
 	topBounds.removeFromRight(getWidth() * spacePortion);
 	search->setBounds(topBounds.removeFromRight(getWidth() * searchPortion));
 
-	if(wave.isHighlit())
-	{
+	if (wave.isHighlit()) {
 		Rectangle<int> r = bounds.removeFromTop(32);
 		wavControls.setBounds(r);
 
@@ -622,38 +544,38 @@ void PresetPage::resized()
 	tableListBox->getHeader().resizeAllColumnsToFit(bounds.getWidth() - scrollbarWidth);
 }
 
-
-bool PresetPage::containsString(DocumentDetails& details, const String& str)
-{
-	if(details.getName().containsIgnoreCase(str))
+bool PresetPage::containsString(DocumentDetails& details, const String& str) {
+	if(details.getName().containsIgnoreCase(str)) {
 		return true;
+	}
 
-	if(details.getAuthor().containsIgnoreCase(str))
+	if(details.getAuthor().containsIgnoreCase(str)) {
 		return true;
+	}
 
-	if(details.getPack().containsIgnoreCase(str))
+	if(details.getPack().containsIgnoreCase(str)) {
 		return true;
+	}
 
 	const StringArray& tags = details.getTags();
-	for(int i = 0; i < (int) tags.size(); ++i)
-	{
-		if(tags[i].containsIgnoreCase(str))
+	for(int i = 0; i < tags.size(); ++i) {
+		if (tags[i].containsIgnoreCase(str)) {
 			return true;
+		}
 	}
 
 	return false;
 }
 
-
 void PresetPage::updateTags(int index)
 {
-	if(index < 0)
+	if(index < 0) {
 		return;
+	}
 
 	const Array<DocumentDetails, CriticalSection>& filtered = getFilteredItems();
 
-	if(! filtered.size() == 0 && index < filtered.size())
-	{
+	if (!filtered.size() == 0 && index < filtered.size()) {
 		const DocumentDetails& details = filtered[index];
 		const StringArray& tags = details.getTags();
 
@@ -661,24 +583,19 @@ void PresetPage::updateTags(int index)
 	}
 }
 
-
 void PresetPage::doChangeUpdate()
 {
 	repaint();
 
 	int size = getFilteredItems().size();
 
-	if(size > 0)
-	{
+	if (size > 0) {
 		currPresetFiltIndex = jmin(currPresetFiltIndex, size - 1);
 		updateTags(currPresetFiltIndex);
-	}
-	else
-	{
+	} else {
 		currPresetFiltIndex = -1;
 	}
 }
-
 
 void PresetPage::selectedRowsChanged(int lastRowSelected)
 {
@@ -687,77 +604,61 @@ void PresetPage::selectedRowsChanged(int lastRowSelected)
 	currPresetFiltIndex = lastRowSelected;
 }
 
-
 Component* PresetPage::refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected,
-											   Component *existingComponentToUpdate)
-{
-	if(rowNumber >= getFilteredItems().size())
-	{
+                                               Component* existingComponentToUpdate) {
+	if (rowNumber >= getFilteredItems().size()) {
 		jassertfalse;
 		return 0;
 	}
 
 	const DocumentDetails& details = getFilteredItems().getReference(rowNumber);
 
-	if(details.isWave())
-	{
+	if (details.isWave()) {
 		delete existingComponentToUpdate;
 		existingComponentToUpdate = 0;
 	}
 
-	if(existingComponentToUpdate != 0)
-	{
-		if(columnId == DocumentDetails::Rating)
-		{
+	if (existingComponentToUpdate != 0) {
+		if (columnId == DocumentDetails::Rating) {
 			RatingSlider* slider = dynamic_cast<RatingSlider*>(existingComponentToUpdate);
 
-			if(slider)
-			{
+			if (slider) {
 				int code = details.getKey().hashCode();
 
 				slider->setRating(ratingsMap[code]);
 				slider->setRow(rowNumber);
-			}
-			else
-			{
+			} else {
 				jassertfalse;
 			}
 
 			return existingComponentToUpdate;
 		}
-		else if(columnId == DocumentDetails::UploadCol)
-		{
+		if (columnId == DocumentDetails::UploadCol) {
 			delete existingComponentToUpdate;
 
 			return createIconButton(details, rowNumber, columnId);
 		}
 
-		else if(columnId == DocumentDetails::DismissCol)
-		{
+		if (columnId == DocumentDetails::DismissCol) {
 			delete existingComponentToUpdate;
 
 			return createIconButton(details, rowNumber, columnId);
 		}
-	}
-	else
-	{
+	} else {
 		bool isPreset = details.getFilename().endsWith(getStrConstant(DocumentExt));
 
-		if(isPreset)
-		{
+		if (isPreset) {
 			int code = details.getKey().hashCode();
 
-			if(columnId == DocumentDetails::Rating)
+			if (columnId == DocumentDetails::Rating) {
 				return new RatingSlider(ratingsMap[code], rowNumber, this);
-
-			else if(columnId == DocumentDetails::UploadCol)
-			{
-				noBeat(return createIconButton(details, rowNumber, columnId));
 			}
 
-			else if(columnId == DocumentDetails::DismissCol)
-			{
-				noBeat(return createIconButton(details, rowNumber, columnId));
+			if (columnId == DocumentDetails::UploadCol) {
+				return createIconButton(details, rowNumber, columnId);
+			}
+			if (columnId == DocumentDetails::DismissCol) {
+				return createIconButton(details, rowNumber, columnId);
 			}
 		}
 	}
@@ -765,45 +666,33 @@ Component* PresetPage::refreshComponentForCell(int rowNumber, int columnId, bool
 	return 0;
 }
 
-
-IconButton* PresetPage::createIconButton(const DocumentDetails& details, int rowNumber, int column)
-{
+IconButton* PresetPage::createIconButton(const DocumentDetails& details, int rowNumber, int column) {
 	int code = details.getKey().hashCode();
 	bool isDownloaded = downloadedSet.find(code) != downloadedSet.end();
 
-	String alias = getObj(Settings).getProperty("AuthorAlias", String::empty);
+	String alias = getObj(Settings).getProperty("AuthorAlias", {});
 
-	switch(column)
-	{
-		case DocumentDetails::UploadCol:
-		{
+	switch (column) {
+		case DocumentDetails::UploadCol: {
 			String hoverMsg;
 			bool isAtLatestRevision = false;
 
-			if(details.getPack().equalsIgnoreCase("Factory") || isDownloaded)
-			{
+			if (details.getPack().equalsIgnoreCase("Factory") || isDownloaded) {
 				return nullptr;
 			}
 
-			if(details.isRemote())
-			{
-				if(dldedRevisionMap.contains(code))
-				{
-					if(dldedRevisionMap[code] < details.getRevision())
+			if (details.isRemote()) {
+				if (dldedRevisionMap.contains(code)) {
+					if (dldedRevisionMap[code] < details.getRevision())
 						hoverMsg = "Update " + details.getName() + " to revision " + String(details.getRevision());
-					else
-					{
+					else {
 						hoverMsg = details.getName() + " already at latest revision";
 						isAtLatestRevision = true;
 					}
-				}
-				else
-				{
+				} else {
 					hoverMsg = "Download " + details.getName();
 				}
-			}
-			else
-			{
+			} else {
 				hoverMsg = "Upload " + details.getName();
 			}
 
@@ -818,40 +707,34 @@ IconButton* PresetPage::createIconButton(const DocumentDetails& details, int row
 			return button;
 		}
 
-		case DocumentDetails::DismissCol:
-		{
-			if(! details.isRemote() && ! isDownloaded)
-			{
+		case DocumentDetails::DismissCol: {
+			if (!details.isRemote() && !isDownloaded) {
 				return nullptr;
 			}
 
-			std::unique_ptr<IconButton> button = new IconButton(dismissImage, repo);
-			button->setMessages("Dismiss " + details.getName(), String::empty);
+			std::unique_ptr<IconButton> button = std::make_unique<IconButton>(dismissImage, repo);
+			button->setMessages("Dismiss " + details.getName(), {});
 			button->addListener(this);
 			button->getProperties().set("rowNumber", rowNumber);
 			button->getProperties().set("column", DocumentDetails::DismissCol);
 
 			return button.release();
 		}
-
+		default: break;
 	}
 
 	return nullptr;
 }
 
-
-void PresetPage::ratingChanged(float rating, int row)
-{
+void PresetPage::ratingChanged(float rating, int row) {
 	Array<DocumentDetails, CriticalSection>& detailsList = getFilteredItemsMutable();
 	const String& currentlyLoadedPreset = getObj(FileManager).getCurrentPresetName();
 
-	if(row < detailsList.size())
-	{
+	if (row < detailsList.size()) {
 		DocumentDetails& details = detailsList.getReference(row);
 
 		int globalDeetsIndex = allItems.indexOf(details);
-		if(globalDeetsIndex == -1)
-		{
+		if (globalDeetsIndex == -1) {
 			jassertfalse;
 			return;
 		}
@@ -885,16 +768,12 @@ void PresetPage::ratingChanged(float rating, int row)
 	}
 }
 
-
-void PresetPage::updateNetItems(const Array<DocumentDetails, CriticalSection>& deets)
-{
+void PresetPage::updateNetItems(const Array<DocumentDetails, CriticalSection>& deets) {
 	netIcon.setPendingItems(remoteDetails.size());
 	getObj(GeneralControls).setNumCommunityPresets(remoteDetails.size());
 }
 
-
-void PresetPage::addItems(const Array<DocumentDetails, CriticalSection>& deets)
-{
+void PresetPage::addItems(const Array<DocumentDetails, CriticalSection>& deets) {
 	allItems.addArray(deets);
 
 	resetList();
@@ -903,80 +782,65 @@ void PresetPage::addItems(const Array<DocumentDetails, CriticalSection>& deets)
 	listBox->selectRow(0, false, true);
 }
 
-
-void PresetPage::addItem(const DocumentDetails& details)
-{
+void PresetPage::addItem(const DocumentDetails& details) {
 	allItems.add(details);
 
 	resetList();
 
 	currPresetFiltIndex = getFilteredItems().indexOf(details);
 
-	if(currPresetFiltIndex < 0)
-	{
+	if (currPresetFiltIndex < 0) {
 		jassertfalse;
 		currPresetFiltIndex = 0;
 	}
 }
 
-
-int PresetPage::getIndexOfSelected()
-{
+int PresetPage::getIndexOfSelected() {
 	return currPresetFiltIndex;
 }
 
-
-String PresetPage::getProgramName(int index) const
-{
+String PresetPage::getProgramName(int index) const {
 	const Array<DocumentDetails, CriticalSection>& detailsList = getFilteredItems();
 
-	if(isPositiveAndBelow(index, detailsList.size()))
-	{
+	if (isPositiveAndBelow(index, detailsList.size())) {
 		return detailsList.getReference(index).getName();
 	}
 
-	return String::empty;
+	return {};
 }
 
-
-void PresetPage::labelTextChanged(Label* label)
-{
-	if(label == &tagsField)
-	{
+void PresetPage::labelTextChanged(Label* label) {
+	if (label == &tagsField) {
 		Array<DocumentDetails, CriticalSection>& detailsList = getFilteredItemsMutable();
 		const String& currentlyLoadedPreset = getObj(FileManager).getCurrentPresetName();
 
-		if(! isPositiveAndBelow(currPresetFiltIndex, detailsList.size()))
+		if (!isPositiveAndBelow(currPresetFiltIndex, detailsList.size()))
 			return;
 
 		DocumentDetails& details = detailsList.getReference(currPresetFiltIndex);
 
 		int globalDeetsIndex = allItems.indexOf(details);
 
-		if(globalDeetsIndex == -1)
-		{
+		if (globalDeetsIndex == -1) {
 			jassertfalse;
 			return;
 		}
 
 		DocumentDetails& deets = allItems.getReference(globalDeetsIndex);
 
-		const String& tagsString = label->getText(true);
-		tagsString.removeCharacters("\t. ?");
+		String tagsString = label->getText(true);
+		tagsString = tagsString.removeCharacters("\t. ?");
 
 		StringArray strings;
-		strings.addTokens(tagsString, ",", String::empty);
+		strings.addTokens(tagsString, ",", {});
 
-		deets.setTags(strings);		// update the underlying data
-		details.setTags(strings); 	// update the viewed details
+		deets.setTags(strings); // update the underlying data
+		details.setTags(strings); // update the viewed details
 
-		if(deets.getFilename().equalsIgnoreCase(currentlyLoadedPreset))
-		{
+		if (deets.getFilename().equalsIgnoreCase(currentlyLoadedPreset)) {
 			getObj(Document).getDetails() = deets;
 			getObj(EditWatcher).setHaveEditedWithoutUndo(true);
-		}
-		else
-		{
+		} else {
 			int previousRevision = deets.getRevision();
 			deets.setRevision(previousRevision - 1);
 
@@ -984,10 +848,7 @@ void PresetPage::labelTextChanged(Label* label)
 			getObj(Document).saveHeaderValidated(deets);
 			deets.setRevision(previousRevision);
 		}
-	}
-
-	else if(label == &wavDirectory)
-	{
+	} else if (label == &wavDirectory) {
 		subfolders.clear();
 
 		File dir(label->getText(false));
@@ -995,24 +856,20 @@ void PresetPage::labelTextChanged(Label* label)
 
 		subfolderBox.clear(dontSendNotification);
 
-		for(int i = 0; i < subfolders.size(); ++i)
+		for (int i = 0; i < subfolders.size(); ++i)
 			subfolderBox.addItem(subfolders[i].getFileName(), i + 1);
 
 		refresh();
 	}
 }
 
-
-void PresetPage::updateCurrentPreset(const String& name)
-{
+void PresetPage::updateCurrentPreset(const String& name) {
 	const Array<DocumentDetails, CriticalSection>& detailsList = getFilteredItems();
 
-	for(int i = 0; i < detailsList.size(); ++i)
-	{
+	for (int i = 0; i < detailsList.size(); ++i) {
 		const DocumentDetails& deets = detailsList.getUnchecked(i);
 
-		if(! deets.isWave() && deets.getName().equalsIgnoreCase(name))
-		{
+		if (!deets.isWave() && deets.getName().equalsIgnoreCase(name)) {
 			currPresetFiltIndex = i;
 			listBox->selectRow(currPresetFiltIndex);
 			break;
@@ -1020,35 +877,25 @@ void PresetPage::updateCurrentPreset(const String& name)
 	}
 }
 
-
-void PresetPage::setUploadResponse(const String& response)
-{
+void PresetPage::setUploadResponse(const String& response) {
 	showMsg(response);
 }
 
-
-void PresetPage::stopSpinAnimation()
-{
+void PresetPage::stopSpinAnimation() {
 	spinAnimating = false;
 	stopTimer(SpinAnimId);
 	repaint();
 }
 
-
-void PresetPage::startSpinAnimation()
-{
+void PresetPage::startSpinAnimation() {
 	spinAnimating = true;
 	spinAngle = 0.f;
 	startTimer(SpinAnimId, 40);
 }
 
-
-void PresetPage::timerCallback(int id)
-{
-	switch(id)
-	{
-		case SpinAnimId:
-		{
+void PresetPage::timerCallback(int id) {
+	switch (id) {
+		case SpinAnimId: {
 			Rectangle<int> r = selectCO->getBounds().translated(50, 0);
 
 			spinAngle += 0.3f;
@@ -1057,15 +904,13 @@ void PresetPage::timerCallback(int id)
 			break;
 		}
 
-		case DownloadPresetsId:
-		{
-			downloadDeetsThread.startThread(3);
+		case DownloadPresetsId: {
+			downloadDeetsThread.startThread(Thread::Priority::low);
 			stopTimer(id);
 			break;
 		}
 
-		case DelayLoadId:
-		{
+		case DelayLoadId: {
 			resetListAndLoadItem(pendingPresetIndex);
 			stopTimer(id);
 			break;
@@ -1076,19 +921,20 @@ void PresetPage::timerCallback(int id)
 	}
 }
 
-
 void PresetPage::killThreads()
 {
-	if(downloadDeetsThread.isThreadRunning())
+	if(downloadDeetsThread.isThreadRunning()) {
 		downloadDeetsThread.stopThread(10);
+	}
 
-	if(uploadThread.isThreadRunning())
+	if(uploadThread.isThreadRunning()) {
 		uploadThread.stopThread(10);
+	}
 
-	if(downloadPresetThread.isThreadRunning())
+	if(downloadPresetThread.isThreadRunning()) {
 		downloadPresetThread.stopThread(10);
+	}
 }
-
 
 String PresetPage::downloadPreset(DocumentDetails& deets)
 {
@@ -1096,7 +942,7 @@ String PresetPage::downloadPreset(DocumentDetails& deets)
 	String serial = getObj(Settings).getProperty("Serial");
 
 	url = url.withParameter("serial", 		serial);
-	url = url.withParameter("product_name", getStrConstant(ProductName));
+	url = url.withParameter("product_name", String(ProjectInfo::projectName));
 	url = url.withParameter("product_code", getStrConstant(ProductCode));
 	url = url.withParameter("preset_name", 	deets.getName());
 	url = url.withParameter("author", 		deets.getAuthor());
@@ -1107,8 +953,7 @@ String PresetPage::downloadPreset(DocumentDetails& deets)
 	bool succeeded = url.readEntireBinaryStream(block, true);
 
 	MemoryInputStream mis(block, false);
-	if(! succeeded || mis.readInt() != getConstant(DocMagicCode))
-	{
+	if (!succeeded || mis.readInt() != getConstant(DocMagicCode)) {
 		return "Couldn't download preset " + deets.getName();
 	}
 
@@ -1116,14 +961,12 @@ String PresetPage::downloadPreset(DocumentDetails& deets)
 	File saveFile(filenameWithoutExt + "." + getStrConstant(DocumentExt));
 
 	int code = deets.getKey().hashCode();
-	if(haveKeyAndEqualRevision(code, deets.getRevision()))
-	{
+	if (haveKeyAndEqualRevision(code, deets.getRevision())) {
 		return "Latest revision already downloaded";
 	}
 
 	int redundancyCount = 2;
-	while(saveFile.existsAsFile())
-	{
+	while (saveFile.existsAsFile()) {
 		saveFile = filenameWithoutExt + "_" + String(redundancyCount) + "." + getStrConstant(DocumentExt);
 		++redundancyCount;
 	}
@@ -1149,53 +992,39 @@ String PresetPage::downloadPreset(DocumentDetails& deets)
 	return "Downloaded " + deets.getName() + " successfully";
 }
 
-
-void PresetPage::triggerLoadItem()
-{
-	if(currPresetFiltIndex >= 0)
-	{
+void PresetPage::triggerLoadItem() {
+	if (currPresetFiltIndex >= 0) {
 		loadItem(currPresetFiltIndex);
 		cleanup();
 	}
 }
 
-void PresetPage::clearSearch()
-{
-	search->setText(String::empty);
+void PresetPage::clearSearch() {
+	search->setText({});
 	resetList();
 }
 
-
-void PresetPage::updatePresetIndex()
-{
+void PresetPage::updatePresetIndex() {
 	DocumentDetails& deets = getObj(Document).getDetails();
 
 	currPresetFiltIndex = getFilteredItems().indexOf(deets);
 }
 
-
-void PresetPage::componentVisibilityChanged()
-{
+void PresetPage::componentVisibilityChanged() {
 	listBox->scrollToEnsureRowIsOnscreen(currPresetFiltIndex);
 }
 
-
-bool PresetPage::haveKeyAndEqualRevision(int code, int revision)
-{
+bool PresetPage::haveKeyAndEqualRevision(int code, int revision) {
 	return dldedRevisionMap.contains(code) ? dldedRevisionMap[code] >= revision : false;
 }
 
-
-bool PresetPage::removeDetailsFrom(Array<DocumentDetails, CriticalSection>& list, int code)
-{
+bool PresetPage::removeDetailsFrom(Array<DocumentDetails, CriticalSection>& list, int code) {
 	bool found = false;
-	for(int i = 0; i < list.size(); ++i)
-	{
+	for (int i = 0; i < list.size(); ++i) {
 		DocumentDetails& deets = list.getReference(i);
 		int deetsCode = deets.getKey().hashCode();
 
-		if(deetsCode == code)
-		{
+		if (deetsCode == code) {
 			list.remove(i);
 			found = true;
 			break;
@@ -1205,21 +1034,17 @@ bool PresetPage::removeDetailsFrom(Array<DocumentDetails, CriticalSection>& list
 	return found;
 }
 
-
-void PresetPage::triggerButtonClick(ButtonEnum button)
-{
-	switch(button)
-	{
-		case PrevButton: buttonClicked(&prevIcon); 	break;
-		case NextButton: buttonClicked(&nextIcon); 	break;
+void PresetPage::triggerButtonClick(ButtonEnum button) {
+	switch (button) {
+		case PrevButton: buttonClicked(&prevIcon);
+			break;
+		case NextButton: buttonClicked(&nextIcon);
+			break;
 	}
 }
 
-
-void PresetPage::buttonClicked(Button* button)
-{
-	if(button == &wave || button == &verts || button == &netIcon)
-	{
+void PresetPage::buttonClicked(Button* button) {
+	if(button == &wave || button == &verts || button == &netIcon) {
 		bool didAnything = false;
 		didAnything |= wave.setHighlit(button == &wave);
 		didAnything |= verts.setHighlit(button == &verts);
@@ -1239,23 +1064,21 @@ void PresetPage::buttonClicked(Button* button)
 		header.setColumnVisible(DocumentDetails::Tag, 		 ! isNowWave);
 		header.setColumnVisible(DocumentDetails::DismissCol, ! isNowWave);
 
-		if(isNowWave)
-		{
-			if(wavDirectory.getText(false).isEmpty())
+		if (isNowWave) {
+			if (wavDirectory.getText(false).isEmpty())
 				wavDirectory.setText(getObj(Directories).getPresetDir(), dontSendNotification);
 
 			wavControls.setVisible(true);
 
 			resized();
-		}
-		else
-		{
+		} else {
 			wavControls.setVisible(false);
 			resized();
 		}
 
-		if(didAnything)
+		if (didAnything) {
 			refresh();
+		}
 	}
 
 	else if(button == &nextIcon || button == &prevIcon)
@@ -1263,37 +1086,28 @@ void PresetPage::buttonClicked(Button* button)
 		int oldIndex = currPresetFiltIndex;
 		int numRows = getNumRows();
 
-		if(numRows > 0)
-		{
-			if(button == &nextIcon)
+		if (numRows > 0) {
+			if (button == &nextIcon) {
 				++currPresetFiltIndex;
-			else if(button == &prevIcon)
+			} else if (button == &prevIcon) {
 				--currPresetFiltIndex;
+			}
 
 			currPresetFiltIndex = (numRows + currPresetFiltIndex) % numRows;
 
-			if(oldIndex != currPresetFiltIndex)
-			{
-				dout << "Attempting to load preset index : " << currPresetFiltIndex << "\n";
+			if (oldIndex != currPresetFiltIndex) {
+				std::cout << "Attempting to load preset index : " << currPresetFiltIndex << "\n";
 
 				tableListBox->selectRow(currPresetFiltIndex);
 				loadItem(currPresetFiltIndex);
 			}
 		}
-	}
-
-	else if(button == upButton)
-	{
-		wavDirectory.setText(File(wavDirectory.getText()).getParentDirectory().getFullPathName(), sendNotificationAsync);
-	}
-
-	else if(button == wavFolderButton)
-	{
-		getObj(Dialogs).showOpenWaveDialog(nullptr, String::empty, DialogActions::TrackPitchAction);
-	}
-
-	else
-	{
+	} else if (button == upButton.get()) {
+		wavDirectory.setText(File(wavDirectory.getText()).getParentDirectory().getFullPathName(),
+		                     sendNotificationAsync);
+	} else if (button == wavFolderButton.get()) {
+		getObj(Dialogs).showOpenWaveDialog(nullptr, {}, DialogActions::TrackPitchAction);
+	} else {
 	  #ifndef DEMO_VERSION
 		int rowNumber = button->getProperties()["rowNumber"];
 		bool isLatest = button->getProperties()["isAtLatest"];
@@ -1302,13 +1116,11 @@ void PresetPage::buttonClicked(Button* button)
 		jassert(isPositiveAndBelow(rowNumber, getNumRows()));
 		const DocumentDetails& deets = getFilteredItemsMutable()[rowNumber];
 
-		if(column == DocumentDetails::DismissCol)
-		{
+		if (column == DocumentDetails::DismissCol) {
 			int code = deets.getKey().hashCode();
 			dismissedSet.insert(code);
 
-			if(netIcon.isHighlit())
-			{
+			if (netIcon.isHighlit()) {
 				removeDetailsFrom(remoteDetails, code);
 				updateNetItems(remoteDetails);
 			}
@@ -1316,23 +1128,18 @@ void PresetPage::buttonClicked(Button* button)
 			refresh();
 
 			pendingSettings = true;
-		}
-		else if(column == DocumentDetails::UploadCol)
-		{
-			if(deets.isRemote())
-			{
-				String alias = getObj(Settings).getProperty("AuthorAlias", String::empty);
+		} else if (column == DocumentDetails::UploadCol) {
+			if (deets.isRemote()) {
+				String alias = getObj(Settings).getProperty("AuthorAlias", {});
 
-				if(alias.equalsIgnoreCase(deets.getAuthor()))
+				if (alias.equalsIgnoreCase(deets.getAuthor())) {
 					return;
-
-				if(! isLatest)
-				{
-					downloadPresetThread.setDetails(deets);
-					downloadPresetThread.startThread(3);
 				}
-				else
-				{
+
+				if (!isLatest) {
+					downloadPresetThread.setDetails(deets);
+					downloadPresetThread.startThread(Thread::Priority::low);
+				} else {
 					showMsg("Preset already downloaded!");
 				}
 			}
@@ -1341,7 +1148,7 @@ void PresetPage::buttonClicked(Button* button)
 				File uploadFile(deets.getFilename());
 
 				uploadThread.setFile(uploadFile);
-				uploadThread.startThread(3);
+				uploadThread.startThread(Thread::Priority::low);
 			}
 		}
 
@@ -1351,15 +1158,13 @@ void PresetPage::buttonClicked(Button* button)
 	}
 }
 
-
-String PresetPage::populateRemoteNames()
-{
+String PresetPage::populateRemoteNames() {
 	URL url(getObj(Directories).getHomeUrl() + "/php/presetList.php");
 
 	String serial = getObj(Settings).getProperty("Serial");
 
 	url = url.withParameter("serial", 		serial);
-	url = url.withParameter("product_name", getStrConstant(ProductName));
+	url = url.withParameter("product_name", ProjectInfo::projectName);
 
 	String page = url.readEntireTextStream(true);
 	StringArray presetNames;
@@ -1369,14 +1174,12 @@ String PresetPage::populateRemoteNames()
 
 	remoteDetails.clear();
 
-	for(int i = 0; i < (int) presetNames.size(); ++i)
-	{
-		String& str = presetNames.getReference(i);
+	for(auto& presetName : presetNames) {
 
 		StringArray tokens;
 		DocumentDetails deets;
 
-		tokens.addTokens(str, ";", String::empty);
+		tokens.addTokens(presetName, ";", {});
 
 		deets.setFilename(	tokens[0]);
 		deets.setName(		tokens[1]);
@@ -1386,21 +1189,20 @@ String PresetPage::populateRemoteNames()
 		deets.setDateMillis(tokens[5].getLargeIntValue());
 
 		int code = deets.getKey().hashCode();
-		if(dldedRevisionMap.contains(code))
-		{
-//			if(deets.getRevision() <= dldedRevisionMap[code])
-//			{
-				continue;
-//			}
+		if (dldedRevisionMap.contains(code)) {
+			//			if(deets.getRevision() <= dldedRevisionMap[code])
+			//			{
+			continue;
+			//			}
 		}
-		else if(dismissedSet.find(code) != dismissedSet.end())
-		{
+
+		if (dismissedSet.find(code) != dismissedSet.end()) {
 			continue;
 		}
 
 		String tags = tokens[6];
 		StringArray tagsArr;
-		tagsArr.addTokens(tags, ",", String::empty);
+		tagsArr.addTokens(tags, ",", {});
 
 		deets.setTags(tagsArr);
 		deets.setRating(0);
@@ -1417,12 +1219,12 @@ String PresetPage::populateRemoteNames()
 		updateNetItems(remoteDetails);
 	}
 
-	if(remoteDetails.size() == 0)
+	if (remoteDetails.size() == 0) {
 		return "No new presets or revisions";
+	}
 
-	return String::empty;
+	return {};
 }
-
 
 void PresetPage::UploadThread::run()
 {
@@ -1431,50 +1233,38 @@ void PresetPage::UploadThread::run()
 	URL uploadUrl(getObj(Directories).getHomeUrl() + "/php/uploadPreset.php");
 
 	uploadUrl = uploadUrl.withParameter(	"serial", 		serial);
-	uploadUrl = uploadUrl.withParameter(	"product_code", getStrConstant(ProductName));
+	uploadUrl = uploadUrl.withParameter(	"product_code", ProjectInfo::projectName);
 	uploadUrl = uploadUrl.withFileToUpload(	"presets", 		uploadFile, "application/octet-stream");
 
 	String response = uploadUrl.readEntireTextStream(true);
 
-	if(response.isEmpty())
-		response = "Could not connect to server";
-
-	{
+	if (response.isEmpty())
+		response = "Could not connect to server"; {
 		MessageManagerLock lock;
 		showMsg(response);
 	}
 }
 
-
-void PresetPage::downloadCommunityDocumentDetails()
-{
+void PresetPage::downloadCommunityDocumentDetails() {
 	startTimer(DownloadPresetsId, 1000);
 }
 
-
-void PresetPage::DownloadDetailsThread::run()
-{
+void PresetPage::DownloadDetailsThread::run() {
 	PresetPage* page = &getObj(PresetPage);
 	page->startSpinAnimation();
 
-	String response = page->populateRemoteNames();
-
-	{
+	String response = page->populateRemoteNames(); {
 		MessageManagerLock lock;
 		showMsg(response);
 		page->stopSpinAnimation();
 	}
 }
 
-
-void PresetPage::DownloadPresetThread::run()
-{
+void PresetPage::DownloadPresetThread::run() {
 	PresetPage* page = &getObj(PresetPage);
 	page->startSpinAnimation();
 
-	String response = page->downloadPreset(deets);
-
-	{
+	String response = page->downloadPreset(deets); {
 		MessageManagerLock lock;
 		showMsg(response);
 
@@ -1483,174 +1273,138 @@ void PresetPage::DownloadPresetThread::run()
 	}
 }
 
-
-void PresetPage::handleAsyncUpdate()
-{
+void PresetPage::handleAsyncUpdate() {
 	DocumentDetails& deets = downloadPresetThread.getDetails();
 
 	loadItem(deets);
 }
 
-
-Array<DocumentDetails, CriticalSection>& PresetPage::getAllItems()
-{
+Array<DocumentDetails, CriticalSection>& PresetPage::getAllItems() {
 	return allItems;
 }
 
-
-void PresetPage::grabSearchFocus()
-{
+void PresetPage::grabSearchFocus() {
 	search->grabKeyboardFocus();
 	search->repaint();
 }
 
-
-bool PresetPage::keyPressed(const KeyPress& key)
-{
+bool PresetPage::keyPressed(const KeyPress& key) {
 	int code = key.getKeyCode();
 	juce_wchar ch = key.getTextCharacter();
 
-	if(ch >= '1' && ch <= '9')
-	{
+	if (ch >= '1' && ch <= '9') {
 		int num = ch - '1';
-		if(num < getFilteredItems().size())
-		{
+		if (num < getFilteredItems().size()) {
 			listBox->selectRow(num, true, true);
 			listBox->scrollToEnsureRowIsOnscreen(num);
 		}
 	}
 
-	if(code == KeyPress::returnKey)
-	{
+	if (code == KeyPress::returnKey) {
 		returnKeyPressed(currPresetFiltIndex);
-	}
-
-	else if(code == KeyPress::escapeKey)
-	{
+	} else if (code == KeyPress::escapeKey) {
 		cleanup();
 	}
 
 	return true;
 }
 
-
-void PresetPage::cleanup()
-{
+void PresetPage::cleanup() {
 	getParentComponent()->exitModalState(1);
 	getObj(MainPanel).resetTabToWaveform();
 }
 
-
-void PresetPage::comboBoxChanged(ComboBox* box)
-{
-	if(box == &subfolderBox)
-	{
+void PresetPage::comboBoxChanged(ComboBox* box) {
+	if (box == &subfolderBox) {
 		int id = box->getSelectedId();
 		int index = id - 1;
 
-		if(isPositiveAndBelow(index, subfolders.size()))
-		{
+		if (isPositiveAndBelow(index, subfolders.size())) {
 			File file = subfolders[index];
 			wavDirectory.setText(file.getFullPathName(), sendNotificationAsync);
 		}
 	}
 }
 
-
-void PresetPage::triggerAsyncLoad(int index)
-{
+void PresetPage::triggerAsyncLoad(int index) {
 	pendingPresetIndex = index;
 
 	startTimer(DelayLoadId, 20);
 }
 
-#define _productName "Cycle"
 #include <Util/Util.h>
 
 File PresetPage::getPresetSettingsFile()
 {
 	String appDataDir = File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName();
 
+	// TODO use Directories?
   #ifdef JUCE_WINDOWS
-	String settingsPath = appDataDir + "/Amaranth Audio/" _productName "/presets.xml";
+	String settingsPath = appDataDir + "/Amaranth Audio/" +ProjectInfo::projectName +"/presets.xml";
   #else
-	String settingsPath = appDataDir + "/Preferences/com.amaranthaudio." _productName ".presets.xml";
+	String settingsPath = appDataDir + "/Preferences/com.amaranthaudio." + ProjectInfo::projectName + ".presets.xml";
   #endif
 
 	return File(settingsPath);
 }
 
-
-void PresetPage::readPresetSettings()
-{
+void PresetPage::readPresetSettings() {
 	File settingsFile = getPresetSettingsFile();
 	XmlDocument presetDoc(settingsFile);
 	std::unique_ptr<XmlElement> elem = presetDoc.getDocumentElement(false);
 
-	if(! settingsFile.existsAsFile())
-	{
-		for(int i = 0; i < allItems.size(); ++i)
-		{
+	if (!settingsFile.existsAsFile()) {
+		for (int i = 0; i < allItems.size(); ++i) {
 			DocumentDetails& deets = allItems.getReference(i);
 			int code = deets.getKey().hashCode();
 
-			if(deets.getRating() > 0.f)
+			if (deets.getRating() > 0.f) {
 				ratingsMap.set(code, deets.getRating());
+			}
 		}
 
 		pendingSettings = true;
 	}
 
-	if(elem != nullptr)
-	{
-		if(XmlElement* ratingsElem = elem->getChildByName("Ratings"))
-		{
-			forEachXmlChildElementWithTagName(*ratingsElem, ratingElem, "Rating")
-			{
-				int code 	= ratingElem->getIntAttribute("code", 0);
+	if (elem != nullptr) {
+		if (XmlElement* ratingsElem = elem->getChildByName("Ratings")) {
+			forEachXmlChildElementWithTagName(*ratingsElem, ratingElem, "Rating") {
+				int code = ratingElem->getIntAttribute("code", 0);
 				float value = ratingElem->getDoubleAttribute("value", 0);
 
-				if(code != 0)
+				if (code != 0)
 					ratingsMap.set(code, value);
 			}
 		}
 
-		if(XmlElement* dismissed = elem->getChildByName("Dismissed"))
-		{
-			forEachXmlChildElementWithTagName(*dismissed, dissedElem, "Dismissal")
-			{
+		if (XmlElement* dismissed = elem->getChildByName("Dismissed")) {
+			forEachXmlChildElementWithTagName(*dismissed, dissedElem, "Dismissal") {
 				int code = dissedElem->getIntAttribute("code", 0);
 
-				if(code != 0)
+				if (code != 0)
 					dismissedSet.insert(code);
 			}
 		}
 
-		if(XmlElement* downloaded = elem->getChildByName("DownloadedPresets"))
-		{
-			forEachXmlChildElementWithTagName(*downloaded, dldElem, "Download")
-			{
+		if (XmlElement* downloaded = elem->getChildByName("DownloadedPresets")) {
+			forEachXmlChildElementWithTagName(*downloaded, dldElem, "Download") {
 				int code = dldElem->getIntAttribute("code", 0);
 
-				if(code != 0)
+				if (code != 0)
 					downloadedSet.insert(code);
 			}
 		}
 	}
 }
 
-
-void PresetPage::writePresetSettings()
-{
-	if(Util::assignAndWereDifferent(pendingSettings, false))
-	{
+void PresetPage::writePresetSettings() {
+	if (Util::assignAndWereDifferent(pendingSettings, false)) {
 		File settingsFile = getPresetSettingsFile();
 
 		XmlElement* ratingsElem = new XmlElement("Ratings");
 
 		HashMap<int, float>::Iterator iter(ratingsMap);
-		while(iter.next())
-		{
+		while(iter.next()) {
 			XmlElement* rating = new XmlElement("Rating");
 			rating->setAttribute("code",  iter.getKey());
 			rating->setAttribute("value", iter.getValue());
@@ -1661,8 +1415,7 @@ void PresetPage::writePresetSettings()
 		XmlElement* dismissed = new XmlElement("Dismissed");
 
 		std::set<int>::iterator it = dismissedSet.begin();
-		while(it != dismissedSet.end())
-		{
+		while(it != dismissedSet.end()) {
 			XmlElement* dissed = new XmlElement("Dismissal");
 			dissed->setAttribute("code", *it);
 
@@ -1672,8 +1425,8 @@ void PresetPage::writePresetSettings()
 
 		XmlElement* downloaded = new XmlElement("DownloadedPresets");
 		it = downloadedSet.begin();
-		while(it != downloadedSet.end())
-		{
+
+		while(it != downloadedSet.end()) {
 			XmlElement* dldElem = new XmlElement("Download");
 			dldElem->setAttribute("code", *it);
 
@@ -1681,18 +1434,16 @@ void PresetPage::writePresetSettings()
 			++it;
 		}
 
-		std::unique_ptr<XmlElement> document = new XmlElement("PresetSettings");
-		document->addChildElement(ratingsElem);
-		document->addChildElement(dismissed);
-		document->addChildElement(downloaded);
+		XmlElement document("PresetSettings");
+		document.addChildElement(ratingsElem);
+		document.addChildElement(dismissed);
+		document.addChildElement(downloaded);
 
-		if(settingsFile.deleteFile())
-		{
-			std::unique_ptr<FileOutputStream> fileStream(settingsFile.createOutputStream());
+		if (settingsFile.deleteFile()) {
+			std::unique_ptr fileStream(settingsFile.createOutputStream());
 
-			if(fileStream != nullptr)
-			{
-				String docString = document->createDocument(String::empty);
+			if (fileStream != nullptr) {
+				String docString = document.toString();
 				fileStream->writeString(docString);
 				fileStream->flush();
 			}

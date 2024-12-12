@@ -1,11 +1,9 @@
-#include <ipp.h>
 #include <Obj/Ref.h>
 #include <Algo/FFT.h>
 #include <App/AppConstants.h>
 #include <App/SingletonRepo.h>
 #include "Equalizer.h"
 #include "../../UI/Effects/GuilessEffect.h"
-#include "../../UI/Effects/EqualizerUI.h"
 
 Equalizer::Equalizer(SingletonRepo *repo) : Effect(repo, "Equalizer")
                                             , samplerate(44100)
@@ -34,9 +32,9 @@ Equalizer::~Equalizer() {
 void Equalizer::freeStates() {
     ScopedLock sl(stateLock);
 
-    for (int i = 0; i < numPartitions; ++i) {
+    for (auto& partition : partitions) {
         for (int c = 0; c < numEqChannels; ++c) {
-            IppsIIRState64f_32f **state = &partitions[i].states[c];
+            IppsIIRState64f_32f **state = &partition.states[c];
 
             if (*state != 0) {
                 //				status(ippsIIRFree64f_32f(*state));

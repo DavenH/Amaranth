@@ -39,6 +39,8 @@ double StringFunction::Op::eval(double arg) {
 		case Pow: 	return powf(arg, arg1);
 		case Log: 	return logf(arg);
 		case PowRev: return powf(arg1, arg);
-		case Np2: 	return 2 << (int) ceil(logf(arg1));
+		case Np2: 	return 2 << (int) ceil(log(arg1));
 	}
+
+	throw std::invalid_argument("Invalid operator " + (code));
 }

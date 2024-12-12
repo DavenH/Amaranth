@@ -50,11 +50,6 @@ Spectrum3D::Spectrum3D(SingletonRepo* repo) :
 	,	spacer6(6) {
 }
 
-
-Spectrum3D::~Spectrum3D() {
-}
-
-
 void Spectrum3D::init() {
 	Image alum 		= PNGImageFormat::loadFrom(Gradients::burntalum_png, Gradients::burntalum_pngSize);
 

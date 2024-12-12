@@ -1,5 +1,4 @@
-#ifndef TOURGUIDE_H_
-#define TOURGUIDE_H_
+#pragma once
 
 class TourGuide
 {
@@ -7,5 +6,3 @@ public:
 	virtual Component* getComponent(int) = 0;
 };
 
-
-#endif

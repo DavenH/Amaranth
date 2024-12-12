@@ -1,7 +1,8 @@
 #include <algorithm>
 #include "FXRasterizer.h"
 
-FXRasterizer::FXRasterizer(const String& name) :
+FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
+		SingletonAccessor(repo, name),
 		MeshRasterizer(name) {
     cyclic = false;
 	calcDepthDims = false;
@@ -58,22 +59,24 @@ void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
 	Intercept back1(1.5f, icpts[end].y);
 	Intercept back2(2.0f, icpts[end].y);
 
-	for(int i = 0; i < (int) curves.size(); ++i)
-		curves[i].destruct();
+	for(auto& curve : curves) {
+		curve.destruct();
+	}
 
 	curves.clear();
 	curves.reserve(icpts.size() + 2);
-	curves.push_back(Curve(front1, front2, icpts[0]));
-	curves.push_back(Curve(front2, icpts[0], icpts[1]));
+	curves.emplace_back(front1, front2, icpts[0]);
+	curves.emplace_back(front2, icpts[0], icpts[1]);
 
-	for(int i = 0; i < (int) icpts.size() - 2; ++i)
-		curves.push_back(Curve(icpts[i], icpts[i + 1], icpts[i + 2]));
+	for(int i = 0; i < (int) icpts.size() - 2; ++i) {
+		curves.emplace_back(icpts[i], icpts[i + 1], icpts[i + 2]);
+	}
 
-	curves.push_back(Curve(icpts[end - 1], icpts[end], back1));
-	curves.push_back(Curve(icpts[end], back1, back2));
+	curves.emplace_back(icpts[end - 1], icpts[end], back1);
+	curves.emplace_back(icpts[end], back1, back2);
 
-	for(int i = 0; i < (int) curves.size(); ++i) {
-		curves[i].construct();
+	for(auto& curve : curves) {
+		curve.construct();
 	}
 }
 

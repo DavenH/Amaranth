@@ -1,15 +1,11 @@
-#ifndef LAYERUPDOWNMOVER_H_
-#define LAYERUPDOWNMOVER_H_
+#pragma once
 
 #include "JuceHeader.h"
 #include <UI/Layout/ConstantSizeComponent.h>
-#include <UI/MiscGraphics.h>
 #include <UI/Widgets/IconButton.h>
-
 
 class LayerUpDownMover :
         public ConstantSizeComponent {
-private:
 	JUCE_LEAK_DETECTOR(LayerAddRemover)
 
 public:
@@ -35,5 +31,3 @@ public:
 		down.setBounds(0, getHeight() / 2, getWidth(), getHeight() / 2);
 	}
 };
-
-#endif

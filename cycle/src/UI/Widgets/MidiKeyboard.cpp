@@ -1,11 +1,13 @@
 #include <string>
 #include <Binary/Images.h>
 #include <App/Settings.h>
-#include <App/SingletonRepo.h>
 #include <App/AppConstants.h>
+#include <App/SingletonRepo.h>
 #include <UI/IConsole.h>
+#include <Definitions.h>
 
 #include "MidiKeyboard.h"
+
 #include "../../Audio/SampleUtils.h"
 #include "../../Inter/EnvelopeInter2D.h"
 
@@ -26,11 +28,6 @@ MidiKeyboard::MidiKeyboard(
 	keys = PNGImageFormat::loadFrom(Images::keys2_png, Images::keys2_pngSize);
 }
 
-
-MidiKeyboard::~MidiKeyboard() {
-}
-
-
 void MidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, int x, int y,
 								 int w, int h, bool isDown, bool isOver,
 								 const Colour& noteFillColour) {
@@ -45,7 +42,7 @@ void MidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, int x, int y,
 		g.drawImage(keys, x, y, w, h, offset, keys.getHeight() - h, w, h, false);
 	}
 
-	Range<int> range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+	Range<int> range(Constants::LowestMidiNote, Constants::HighestMidiNote);
 
     if (midiRange.contains(midiNoteNumber) && midiRange != range) {
         g.setOpacity(0.3);
@@ -54,8 +51,9 @@ void MidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, int x, int y,
 
 	g.setOpacity(1.f);
 
-	if(isOver)
+	if(isOver) {
 		showMsg(getText(midiNoteNumber));
+	}
 }
 
 
@@ -82,10 +80,10 @@ void MidiKeyboard::drawWhiteNote(int midiNoteNumber, Graphics& g, int x, int y,
 
 	g.setOpacity(1.f);
 
-	if(isOver)
+	if(isOver) {
 		showMsg(getText(midiNoteNumber));
+	}
 }
-
 
 void MidiKeyboard::drawUpDownButton(Graphics& g, int w, int h,
 									const bool isMouseOver,
@@ -100,18 +98,18 @@ void MidiKeyboard::drawUpDownButton(Graphics& g, int w, int h,
 	path.lineTo(0.0f, 1.0f);
 	path.lineTo(1.0f, 0.5f);
 	path.closeSubPath();
-	path.applyTransform(AffineTransform::rotation(float_Pi * 2.0f * angle, 0.5f, 0.5f));
+	path.applyTransform(AffineTransform::rotation(MathConstants<float>::pi * 2.0f * angle, 0.5f, 0.5f));
 
 	g.setColour(Colour::greyLevel(0.5f).withAlpha(isButtonPressed ? 1.0f : (isMouseOver ? 0.6f : 0.25f)));
 	g.fillPath(path, path.getTransformToScaleToFit(3.0f, 16.0f, w - 6.0f, h - 32.0f, false));
 }
 
-
 String MidiKeyboard::getText(int note) {
     note -= 12;
 
-	if(note < 0)
-		return String::empty;
+	if(note < 0) {
+		return {};
+	}
 
 	int letterIdx = note % 12;
 
@@ -124,7 +122,6 @@ String MidiKeyboard::getText(int note) {
 
 	return letter[letterIdx] << String(note / 12 - 1);
 }
-
 
 void MidiKeyboard::getKeyPosition(int midiNoteNumber, float keyWidth, int& x, int& w) const {
     jassert(midiNoteNumber >= 0 && midiNoteNumber < 128);
@@ -153,14 +150,12 @@ void MidiKeyboard::getKeyPosition(int midiNoteNumber, float keyWidth, int& x, in
     w = int(widths [note] * keyWidth + 0.5f);
 }
 
-
 void MidiKeyboard::mouseEnter(const MouseEvent& e) {
     getObj(IConsole).setMouseUsage(true, true, false, true);
-	getObj(IConsole).setKeys(String::empty);
+	getObj(IConsole).setKeys({});
 
 	MidiKeyboardComponent::mouseEnter(e);
 }
-
 
 void MidiKeyboard::mouseMove(const MouseEvent& e) {
     setVelocity(e.y / float(getHeight()), true);
@@ -180,13 +175,11 @@ void MidiKeyboard::mouseMove(const MouseEvent& e) {
 	showMsg(message);
 }
 
-
 void MidiKeyboard::mouseExit(const MouseEvent& e) {
     setVelocity(1.f, false);
 
 	MidiKeyboardComponent::mouseExit(e);
 }
-
 
 bool MidiKeyboard::mouseDownOnKey(int midiNoteNumber, const MouseEvent& e) {
     if (e.mods.isRightButtonDown()) {
@@ -206,12 +199,10 @@ bool MidiKeyboard::mouseDownOnKey(int midiNoteNumber, const MouseEvent& e) {
 	return false;
 }
 
-
 void MidiKeyboard::mouseDraggedToKey(int midiNoteNumber, const MouseEvent& e) {
     setVelocity(e.y / float(getHeight()), true);
     updateNote(e.getPosition());
 }
-
 
 void MidiKeyboard::setAuditionKey(int key) {
     int oldAuditionKey = auditionKey;
@@ -219,17 +210,16 @@ void MidiKeyboard::setAuditionKey(int key) {
 
 	repaintNote (auditionKey);
 
-	if(oldAuditionKey != auditionKey)
+	if(oldAuditionKey != auditionKey) {
 		repaintNote (oldAuditionKey);
+	}
 }
-
 
 void MidiKeyboard::resized() {
     MidiKeyboardComponent::resized();
 }
 
-
-void MidiKeyboard::updateNote(const Point<int>& point) {
+void MidiKeyboard::updateNote(const Point<float>& point) {
     updateNoteUnderMouse(point, true, 0);
 }
 
@@ -237,13 +227,11 @@ float MidiKeyboard::getVelocityA() {
     return getVelocity();
 }
 
-
 bool MidiKeyboard::shouldDrawAuditionKey(int note) {
     bool drawAuditionKey = note == auditionKey;
 
     return drawAuditionKey;
 }
-
 
 int MidiKeyboard::getMouseNote() {
     if (mouseOverNotes.size() == 0)
@@ -251,7 +239,6 @@ int MidiKeyboard::getMouseNote() {
 
     return mouseOverNotes.getFirst();
 }
-
 
 void MidiKeyboard::setMouseNote(int note) {
 }

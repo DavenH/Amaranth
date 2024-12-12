@@ -5,7 +5,6 @@
 #include <Obj/Ref.h>
 #include "JuceHeader.h"
 
-
 class WavAudioSource;
 class SynthAudioSource;
 class GraphicTableAudioSource;

@@ -5,21 +5,20 @@
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
 #include <Curve/MeshRasterizer.h>
-#include <Obj/Ref.h>
 #include <vector>
 
 using std::vector;
 
 class E3Rasterizer	:
-		public MeshRasterizer
+	public SingletonAccessor, public MeshRasterizer
 {
 public:
-	E3Rasterizer(SingletonRepo* repo);
-	virtual ~E3Rasterizer();
+	explicit E3Rasterizer(SingletonRepo* repo);
+	~E3Rasterizer() override = default;
 	int getIncrement();
-	void init();
-	void performUpdate(int updateType);
-	float& getPrimaryDimensionVar();
+	void init() override;
+	void performUpdate(int updateType) override;
+	float& getPrimaryDimensionVar() override;
 
 	vector<Column>& getColumns() { return columns; }
 	Buffer<float> getArray() { return columnArray; }

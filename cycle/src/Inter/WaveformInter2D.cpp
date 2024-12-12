@@ -1,7 +1,6 @@
 #include <Algo/AutoModeller.h>
 #include <App/SingletonRepo.h>
 #include <App/Settings.h>
-#include <Design/Updating/Updater.h>
 
 #include "WaveformInter2D.h"
 #include "Algo/Resampling.h"

@@ -1,11 +1,9 @@
-#ifndef _midikeyboard_h
-#define _midikeyboard_h
+#pragma once
 
 #include "JuceHeader.h"
-#include <Definitions.h>
-#include <Obj/Ref.h>
 #include <App/SingletonAccessor.h>
 
+using namespace juce;
 class SingletonRepo;
 
 class MidiKeyboard :
@@ -14,17 +12,17 @@ class MidiKeyboard :
 public:
 	friend class MidiKeyboardComponent;
 
-	MidiKeyboard(SingletonRepo* repo, MidiKeyboardState& state, const Orientation orientation);
-	~MidiKeyboard();
+	MidiKeyboard(SingletonRepo* repo, MidiKeyboardState& state, Orientation orientation);
+	~MidiKeyboard() override;
 
-	void mouseExit(const MouseEvent& e);
-	void mouseEnter(const MouseEvent& e);
-	void mouseMove(const MouseEvent& e);
+	void mouseExit(const MouseEvent& e) override;
+	void mouseEnter(const MouseEvent& e) override;
+	void mouseMove(const MouseEvent& e) override;
 	static String getText(int note);
 
 	float getVelocityA();
-	int getAuditionKey() { return auditionKey; }
-	void resized();
+	[[nodiscard]] int getAuditionKey() const { return auditionKey; }
+	void resized() override;
 	void setAuditionKey(int key);
 	void setMidiRange(const Range<int>& range);
 
@@ -36,13 +34,13 @@ protected:
 			bool isOver, const Colour& lineColourDefault,
 			const Colour &textColour);
 
-	void drawUpDownButton(Graphics& g, int w, int h, const bool isMouseOver, const bool isButtonPressed,
-			const bool movesOctavesUp);
+	void drawUpDownButton(Graphics& g, int w, int h, bool isMouseOver, bool isButtonPressed,
+			bool movesOctavesUp) override;
 
 	void getKeyPosition(int midiNoteNumber, float keyWidth, int& x, int& w) const;
-	bool mouseDownOnKey(int midiNoteNumber, const MouseEvent& e);
-	void mouseDraggedToKey(int midiNoteNumber, const MouseEvent& e);
-	void updateNote(const Point<int>&);
+	bool mouseDownOnKey(int midiNoteNumber, const MouseEvent& e) override;
+	bool mouseDraggedToKey(int midiNoteNumber, const MouseEvent& e) override;
+	void updateNote(const Point<float>&);
 
 private:
     enum {
@@ -66,5 +64,3 @@ private:
 
 	JUCE_LEAK_DETECTOR(MidiKeyboard)
 };
-
-#endif

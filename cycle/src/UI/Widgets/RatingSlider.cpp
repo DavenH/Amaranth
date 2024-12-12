@@ -8,12 +8,6 @@ RatingSlider::RatingSlider(float rating, int row, PresetPage* page) : rating(rat
     setRepaintsOnMouseActivity(true);
 }
 
-
-RatingSlider::~RatingSlider() {
-    // TODO Auto-generated destructor stub
-}
-
-
 void RatingSlider::paint(Graphics& g) {
     int yOffset = 1;
 	int height = getHeight() - 2 * yOffset;
@@ -34,31 +28,25 @@ void RatingSlider::paint(Graphics& g) {
 //	g.fillRect(0, yOffset, start - 1, height);
 }
 
-
 void RatingSlider::resized() {
 }
-
 
 void RatingSlider::setRating(float rating) {
     this->rating = rating;
 }
 
-
 void RatingSlider::setRow(int row) {
     this->row = row;
 }
-
 
 void RatingSlider::mouseDown(const MouseEvent& e) {
     rating = jlimit(0.f, 10.f, 10.f * e.x / float(getWidth()));
 }
 
-
 void RatingSlider::mouseDrag(const MouseEvent& e) {
     rating = jlimit(0.f, 10.f, 10.f * e.x / float(getWidth()));
     repaint();
 }
-
 
 void RatingSlider::mouseUp(const MouseEvent& e) {
     page->ratingChanged(rating, row);

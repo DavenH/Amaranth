@@ -1,5 +1,4 @@
 #include <App/EditWatcher.h>
-#include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Obj/Ref.h>
 #include <UI/Widgets/Knob.h>
@@ -7,13 +6,16 @@
 #include <Util/Util.h>
 
 #include "UnisonUI.h"
+
+#include <climits>
+#include <Design/Updating/Updater.h>
+
 #include "../../App/CycleTour.h"
 #include "../../Audio/Effects/Unison.h"
 #include "../../Audio/SynthAudioSource.h"
 #include "../../Audio/Effects/AudioEffect.h"
 #include "../../Util/CycleEnums.h"
-#include "../../CycleDefs.h"
-
+#include "../CycleDefs.h"
 
 UnisonUI::UnisonUI(SingletonRepo* repo, Effect* effect) :
 		GuilessEffect("UnisonUI", "Unison", Unison::numParams, repo, effect, UpdateSources::SourceUnison)
@@ -28,9 +30,9 @@ UnisonUI::UnisonUI(SingletonRepo* repo, Effect* effect) :
 	int maxDetune = getConstant(MaxDetune);
 
 	using namespace Ops;
-	StringFunction ordString(StringFunction(0).chain(Mul, maxOrder).chain(Add, 1).chain(Max, maxOrder));
-	StringFunction fineString(StringFunction(1).chain(Mul, 2.f).chain(Add, -1.f));
-	StringFunction detString(StringFunction(1).chain(Mul, maxDetune));
+	StringFunction ordString(StringFunction(0).mul(maxOrder).add(1).max(maxOrder));
+	StringFunction fineString(StringFunction(1).mul(2.f).sub(1.f));
+	StringFunction detString(StringFunction(1).mul(maxDetune));
 
 	detuneKnob->setStringFunctions(detString, detString.withPostString(" cents"));
 	orderKnob->setStringFunctions(ordString, ordString.withPostString(" voice(s)"));
@@ -54,30 +56,20 @@ UnisonUI::UnisonUI(SingletonRepo* repo, Effect* effect) :
 	modeBox.setWantsKeyboardFocus(false);
 
 	voiceSelector.setItemName("Unison voice");
-
-	noBeat(addChildComponent(&voiceSelector));
-	noBeat(addChildComponent(&addRemover));
-	noBeat(addAndMakeVisible(&modeBox));
 }
 
-
-void UnisonUI::init()
-{
+void UnisonUI::init() {
 	GuilessEffect::init();
 
 	unison = dynamic_cast<Unison*>(effect.get());
 	jassert(unison != nullptr);
 }
 
-
-String UnisonUI::getKnobName(int index) const
-{
+String UnisonUI::getKnobName(int index) const {
 	bool little 	= getWidth() < 300;
 	bool superSmall = getWidth() < 250;
-	bool mode		= isGroupMode();
 
-	switch(index)
-	{
+	switch(index) {
 		case Unison::Width: 	return superSmall ? "wth"	:  little ? 	"wdth" 	: "Width";
 		case Unison::Order: 	return little ? 	"ord" 	: "Order";
 		case Unison::PanSpread: return superSmall ? "pn" 	: "Pan";
@@ -85,35 +77,28 @@ String UnisonUI::getKnobName(int index) const
 		case Unison::Jitter: 	return superSmall ? "jtr" 	: little ? "jttr" : "Jitter";
 		case Unison::Fine: 		return superSmall ? "dtn%"	: little ? 	"dtn %" : "dtune %";
 		case Unison::Pan: 		return "pan";
+		default: throw std::out_of_range("UnisonUI::getKnobName");
+	}
+}
+
+void UnisonUI::effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdate) {
+	if (sendDspUpdate) {
+		unison->changeAllOrdersImplicit();
 	}
 
-	return String::empty;
-}
-
-
-void UnisonUI::effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdate)
-{
-	if(sendDspUpdate)
-		unison->changeAllOrdersImplicit();
-
-	if(sendUIUpdate)
+	if (sendUIUpdate) {
 		GuilessEffect::effectEnablementChanged(sendUIUpdate, sendDspUpdate);
+	}
 }
 
-
-void UnisonUI::comboBoxChanged(ComboBox* box)
-{
-	if(box == &modeBox)
-	{
+void UnisonUI::comboBoxChanged(ComboBox* box) {
+	if (box == &modeBox) {
 		getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 		modeChanged(true, true);
 	}
 }
 
-
-void UnisonUI::modeChanged(bool updateAudio, bool graphicUpdate)
-{
-  #ifndef BEAT_EDITION
+void UnisonUI::modeChanged(bool updateAudio, bool graphicUpdate) {
 	int id = modeBox.getSelectedId();
 
 	bool falseIfGroupMode = id != Group;
@@ -135,27 +120,23 @@ void UnisonUI::modeChanged(bool updateAudio, bool graphicUpdate)
 	// phase knob is reused
 	paramGroup->getKnob<Slider>(Unison::Phase)->setValue(trueIfGroupMode ? group.phaseScale : data.phase, dontSendNotification);
 
-	if(updateAudio)
+	if(updateAudio) {
 		unison->modeChanged();
+	}
 
-	if(graphicUpdate)
+	if(graphicUpdate) {
 		doUpdate(SourceUnison);
+	}
 
 	resized();
 	repaint();
-  #endif
 }
 
-
-void UnisonUI::orderChangedTo(int order)
-{
-	if(isGroupMode())
-	{
+void UnisonUI::orderChangedTo(int order) {
+	if (isGroupMode()) {
 		double value = order / double(getConstant(MaxUnisonOrder) + 0.5f);
 		paramGroup->getKnob<Slider>(Unison::Order)->setValue(value, dontSendNotification);
-	}
-	else
-	{
+	} else {
 		voiceSelector.numVoices = order;
 		voiceSelector.currentIndex = jmin(voiceSelector.numVoices - 1,
 		                                  voiceSelector.currentIndex);
@@ -164,49 +145,36 @@ void UnisonUI::orderChangedTo(int order)
 	}
 }
 
-
-void UnisonUI::buttonClicked(Button* button)
-{
-	if(button == &enableButton)
-	{
+void UnisonUI::buttonClicked(Button* button) {
+	if (button == &enableButton) {
 		GuilessEffect::buttonClicked(button);
 		return;
 	}
 
 	bool changed = true;
 
-	if(button == &addRemover.add)
-	{
-		if(unison->addVoice(Unison::UnivoiceData(0.5f, 0.5f, 0.f)))
-		{
+	if (button == &addRemover.add) {
+		if (unison->addVoice(Unison::UnivoiceData(0.5f, 0.5f, 0.f))) {
 			++voiceSelector.numVoices;
 			voiceSelector.currentIndex = voiceSelector.numVoices - 1;
 		}
-	}
-	else if(button == &addRemover.remove)
-	{
-		if(voiceSelector.numVoices > 1)
-		{
-			if(unison->removeVoice(voiceSelector.currentIndex))
-			{
+	} else if (button == &addRemover.remove) {
+		if (voiceSelector.numVoices > 1) {
+			if (unison->removeVoice(voiceSelector.currentIndex)) {
 				--voiceSelector.numVoices;
 
 				voiceSelector.currentIndex = jmin(voiceSelector.numVoices - 1,
 				                                  voiceSelector.currentIndex);
 			}
-		}
-		else
-		{
+		} else {
 			changed = false;
 		}
 	}
 
-	if(changed)
-	{
+	if (changed) {
 		voiceSelector.selectionChanged();
 
-		if(enabled)
-		{
+		if (enabled) {
 			paramGroup->triggerRefreshUpdate();
 		}
 	}
@@ -216,19 +184,14 @@ void UnisonUI::buttonClicked(Button* button)
 	voiceSelector.repaint();
 }
 
-
-void UnisonUI::setExtraTitleElements(Rectangle<int>& right)
-{
+void UnisonUI::setExtraTitleElements(Rectangle<int>& right) {
 	modeBox.setBounds(right.removeFromBottom(24));
 }
 
-
-void UnisonUI::setExtraRightElements(Rectangle<int>& r)
-{
+void UnisonUI::setExtraRightElements(Rectangle<int>& r) {
 	r.reduce(0, jmax(0, r.getHeight() - 36) / 2);
 
-	if(! isGroupMode())
-	{
+	if (!isGroupMode()) {
 		r.removeFromRight(11);
 		addRemover.setBounds(r.removeFromRight(24));
 
@@ -239,21 +202,15 @@ void UnisonUI::setExtraRightElements(Rectangle<int>& r)
 	}
 }
 
-
-int UnisonUI::VoiceSelector::getSize()
-{
+int UnisonUI::VoiceSelector::getSize() {
 	return numVoices;
 }
 
-
-int UnisonUI::VoiceSelector::getCurrentIndexExternal()
-{
+int UnisonUI::VoiceSelector::getCurrentIndexExternal() {
 	return currentIndex;
 }
 
-
-void UnisonUI::VoiceSelector::selectionChanged()
-{
+void UnisonUI::VoiceSelector::selectionChanged() {
 	Unison::ParamGroup& group = panel->unison->getGraphicParams();
 	Unison::UnivoiceData& data = group.voices[currentIndex];
 
@@ -262,23 +219,19 @@ void UnisonUI::VoiceSelector::selectionChanged()
 	panel->paramGroup->setKnobValue(Unison::Fine, data.finePct, false);
 }
 
-
-void UnisonUI::VoiceSelector::rowClicked(int row)
-{
-	if(Util::assignAndWereDifferent(currentIndex, row))
+void UnisonUI::VoiceSelector::rowClicked(int row) {
+	if (Util::assignAndWereDifferent(currentIndex, row)) {
 		selectionChanged();
+	}
 }
 
-
-void UnisonUI::writeXML(XmlElement* registryElem) const
-{
+void UnisonUI::writeXML(XmlElement* registryElem) const {
   #ifndef DEMO_VERSION
-	XmlElement* effectElem = new XmlElement(getEffectName());
-	XmlElement* knobsElem = new XmlElement("Knobs");
+	auto* effectElem = new XmlElement(getEffectName());
+	auto* knobsElem = new XmlElement("Knobs");
 
-	for(int knobIdx = 0; knobIdx <= Unison::Jitter; ++knobIdx)
-	{
-		XmlElement* knob = new XmlElement("Knob");
+	for(int knobIdx = 0; knobIdx <= Unison::Jitter; ++knobIdx) {
+		auto* knob = new XmlElement("Knob");
 
 		knob->setAttribute("value", paramGroup->getKnob<Slider>(knobIdx)->getValue());
 		knob->setAttribute("number", knobIdx);
@@ -288,14 +241,12 @@ void UnisonUI::writeXML(XmlElement* registryElem) const
 
 	effectElem->addChildElement(knobsElem);
 
-	XmlElement* voiceDataElem = new XmlElement("VoiceData");
+	auto* voiceDataElem = new XmlElement("VoiceData");
 	const Unison::ParamGroup& group = unison->getGraphicParams();
 
-	for(int i = 0; i < group.voices.size(); ++i)
+	for(auto data : group.voices)
 	{
-		const Unison::UnivoiceData& data = group.voices[i];
-
-		XmlElement* dataElem = new XmlElement("data");
+		auto* dataElem = new XmlElement("data");
 
 		dataElem->setAttribute("fine", 	data.finePct);
 		dataElem->setAttribute("pan", 	data.pan);
@@ -312,21 +263,15 @@ void UnisonUI::writeXML(XmlElement* registryElem) const
   #endif
 }
 
-
-void UnisonUI::updateSelection()
-{
+void UnisonUI::updateSelection() {
 	voiceSelector.selectionChanged();
 }
 
-bool UnisonUI::isGroupMode() const
-{
-	onlyBeat(return true);
-
+bool UnisonUI::isGroupMode() const {
 	return modeBox.getSelectedId() == Group;
 }
 
-bool UnisonUI::readXML(const XmlElement* element)
-{
+bool UnisonUI::readXML(const XmlElement* element) {
 	XmlElement* effectElem = element->getChildByName(getEffectName());
 
 	if(effectElem != nullptr)
@@ -334,28 +279,24 @@ bool UnisonUI::readXML(const XmlElement* element)
 		bool oldWasGroup = modeBox.getSelectedId() == Group;
 		bool isGroup 	 = effectElem->getBoolAttribute("mode", true);
 
-		onlyBeat(isGroup = true);
-
 		unison->reset();
 
 		setEffectEnabled(effectElem->getBoolAttribute("enabled"), false, true);
 
 		// so that group knobs get set
-		noBeat(modeBox.setSelectedId(Group, dontSendNotification));
+		modeBox.setSelectedId(Group, dontSendNotification);
 		paramGroup->readKnobXML(effectElem);
 
-		noBeat(modeBox.setSelectedId(isGroup ? Group : Single, dontSendNotification));
+		modeBox.setSelectedId(isGroup ? Group : Single, dontSendNotification);
 
 		XmlElement* voiceDataElem = effectElem->getChildByName("VoiceData");
-		if(voiceDataElem != nullptr)
-		{
+		if(voiceDataElem != nullptr) {
 			int count = 0;
 
 			int limit = INT_MAX;
 
 			vector<Unison::UnivoiceData> data;
-			forEachXmlChildElementWithTagName(*voiceDataElem, dataElem, "data")
-			{
+			forEachXmlChildElementWithTagName(*voiceDataElem, dataElem, "data") {
 				if(count++ >= limit)
 					break;
 
@@ -363,36 +304,36 @@ bool UnisonUI::readXML(const XmlElement* element)
 				float pan 	  = dataElem->getDoubleAttribute("pan", 	0.5);
 				float phase   = dataElem->getDoubleAttribute("phase", 	0.5);
 
-				data.push_back(Unison::UnivoiceData(pan, finePct, phase));
+				data.emplace_back(pan, finePct, phase);
 			}
 
-			if(! data.empty() && ! isGroup)
+			if (!data.empty() && !isGroup) {
 				unison->setVoices(data);
-		}
-		else
-		{
+			}
+		} else {
 			// previous presets may have enlarged the voices array
-			if(isGroup)
+			if (isGroup) {
 				unison->trimVoicesToOrder();
-			else
+			} else {
 				unison->setVoiceData(0, 0.5, 0.5, 0.5);
+			}
 		}
 
 		voiceSelector.currentIndex = 0;
 
-		if(! isGroup)
+		if (!isGroup) {
 			voiceSelector.selectionChanged();
+		}
 
-		if(oldWasGroup != isGroup)
+		if (oldWasGroup != isGroup) {
 			modeChanged(false, false);
+		}
 
 		repaint();
-	}
-	else if(isGroupMode())
-	{
+	} else if (isGroupMode()) {
 		ScopedBooleanSwitcher sbs(paramGroup->updatingAllSliders);
 
-		for(int i = 0; i <= Unison::Jitter; ++i)
+		for (int i = 0; i <= Unison::Jitter; ++i)
 			paramGroup->setKnobValue(i, 0.5, false);
 	}
 
@@ -403,12 +344,10 @@ bool UnisonUI::readXML(const XmlElement* element)
 Array<Rectangle<int> > UnisonUI::getOutlinableRects()
 {
 	Array<Rectangle<int> > a;
-	onlyBeat(return a);
 
 	a.add(enableButton.getBounds());
 
-	if(! isGroupMode())
-	{
+	if (!isGroupMode()) {
 		a.add(voiceSelector.getBounds());
 		a.add(addRemover.getBounds());
 	}
@@ -416,18 +355,13 @@ Array<Rectangle<int> > UnisonUI::getOutlinableRects()
 	return a;
 }
 
-
-Array<int> UnisonUI::getApplicableKnobs()
-{
+Array<int> UnisonUI::getApplicableKnobs() {
 	Array<int> k;
-	if(isGroupMode())
-	{
-		int idx[] = { Unison::Width, Unison::PanSpread, Unison::Phase, 	Unison::Order, Unison::Jitter };
+	if (isGroupMode()) {
+		int idx[] = { Unison::Width, Unison::PanSpread, Unison::Phase, Unison::Order, Unison::Jitter };
 
 		k = Array<int>(idx, numElementsInArray(idx));
-	}
-	else
-	{
+	} else {
 		int idx[] = { Unison::Width, Unison::Fine, Unison::Pan, Unison::Phase };
 		k = Array<int>(idx, numElementsInArray(idx));
 	}
@@ -435,24 +369,20 @@ Array<int> UnisonUI::getApplicableKnobs()
 	return k;
 }
 
-
-Component* UnisonUI::getComponent(int which)
-{
-	if(which <= Unison::Fine)
+Component* UnisonUI::getComponent(int which) {
+	if (which <= Unison::Fine)
 		return paramGroup->getKnob<Slider>(which);
 
-	switch(which)
-	{
-		case CycleTour::TargUniVoiceSlct:	return &voiceSelector;
-		case CycleTour::TargUniMode: 		return &modeBox;
-		case CycleTour::TargUniAddRemove: 	return &addRemover;
+	switch (which) {
+		case CycleTour::TargUniVoiceSlct: return &voiceSelector;
+		case CycleTour::TargUniMode: return &modeBox;
+		case CycleTour::TargUniAddRemove: return &addRemover;
+		default: break;
 	}
 
 	return nullptr;
 }
 
-
-void UnisonUI::triggerModeChanged(bool isGroup)
-{
+void UnisonUI::triggerModeChanged(bool isGroup) {
 	modeBox.setSelectedId(isGroup ? Group : Single);
 }

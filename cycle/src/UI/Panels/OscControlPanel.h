@@ -1,18 +1,14 @@
-#ifndef _osccontrolpanel_h
-#define _osccontrolpanel_h
+#pragma once
 
 #include <App/Doc/EditSource.h>
 #include <App/Doc/Savable.h>
 #include <App/SingletonAccessor.h>
 #include <map>
 #include <Obj/Ref.h>
-#include <UI/AsyncUIUpdater.h>
 #include <UI/ParameterGroup.h>
-#include <Util/Arithmetic.h>
 #include "JuceHeader.h"
 #include "../TourGuide.h"
 #include "../Widgets/HSlider.h"
-
 
 using std::map;
 
@@ -36,30 +32,30 @@ public:
 	,	numSliders
 	};
 
-	OscControlPanel(SingletonRepo* repo);
+	explicit OscControlPanel(SingletonRepo* repo);
 
 	/* UI */
-	void paint(Graphics& g);
-	void resized();
-	void init();
+	void paint(Graphics& g) override;
+	void resized() override;
+	void init() override;
 
 	/* Persistence */
-	void writeXML(XmlElement* element) const;
-	bool readXML(const XmlElement* element);
+	void writeXML(XmlElement* element) const override;
+	bool readXML(const XmlElement* element) override;
 
 	/* Events */
-	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate);
-	bool shouldTriggerGlobalUpdate(Slider* slider);
+	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
+	bool shouldTriggerGlobalUpdate(Slider* slider) override;
 	void restoreDetail();
 	void reduceDetail();
 	void doGlobalUIUpdate(bool force);
 	void sliderValueChanged (Slider* slider);
 	void setLengthInSeconds(float value);
-	void timerCallback();
-	Component* getComponent(int);
+	void timerCallback() override;
+	Component* getComponent(int) override;
 
-	float getVolumeScale() 				{ return scaleVolume((float) volume->getValue()); }
-	float getLengthInSeconds() const 	{ return scaleSpeed((float) speed->getValue()); }
+	float getVolumeScale() { return scaleVolume((float) volume->getValue()); }
+	[[nodiscard]] float getLengthInSeconds() const 	{ return scaleSpeed((float) speed->getValue()); }
 
 	static float scaleVolume	(float val) { return expf(6 * val - 3); }
 	static float scaleOctave	(float val) { return (float) ::roundToInt(4 * (val - 0.5f) + 0.5f); }
@@ -81,5 +77,3 @@ private:
 
 	HSlider* hSliders[numSliders];
 };
-
-#endif

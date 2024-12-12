@@ -11,9 +11,9 @@
 #include "../UI/VertexPanels/Waveform3D.h"
 #include "../UI/VisualDsp.h"
 
-
-E3Rasterizer::E3Rasterizer(SingletonRepo* repo)
-	: 	MeshRasterizer(repo, "E3Rasterizer") {
+E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
+		SingletonAccessor(repo, "E3Rasterizer")
+	,	MeshRasterizer("E3Rasterizer") {
 	lowResCurves 	= true;
 	cyclic 			= false;
 	calcDepthDims 	= false;
@@ -21,30 +21,22 @@ E3Rasterizer::E3Rasterizer(SingletonRepo* repo)
 	xMaximum 		= 10.f;
 }
 
-
-E3Rasterizer::~E3Rasterizer() {
-}
-
-
 void E3Rasterizer::init() {
 }
-
 
 int E3Rasterizer::getIncrement() {
     return getObj(EnvelopeInter3D).isDetailReduced() ? 6 : 1;
 }
 
-
-float &E3Rasterizer::getPrimaryDimensionVar() {
+float& E3Rasterizer::getPrimaryDimensionVar() {
     int dim = getSetting(CurrentMorphAxis);
     jassert(dim != Vertex::Time);
 
 	return morph[dim];
 }
 
-
 void E3Rasterizer::performUpdate(int updateType) {
-    if (updateType != UpdateType::Update)
+    if (updateType != Update)
         return;
 
     int increment = getIncrement();
@@ -64,11 +56,11 @@ void E3Rasterizer::performUpdate(int updateType) {
 	ScopedAlloc<Ipp32f> zoomProgress(gridSize);
 	zoomProgress.ramp();
 
-	int res = getConstant(EnvResolution);
+	int res = CycleConstants::EnvResolution;
 	float invCol = 1 / float(res);
 	float invGrid = 1 / float(gridSize - 1);
 
-	ResizeParams params(gridSize, &columnArray, &columns, 0, 0, 0, 0, 0);
+	ResizeParams params(gridSize, &columnArray, &columns, nullptr, nullptr, nullptr, nullptr, nullptr);
 	params.setExtraParams(res, -1, -1, true);
 
 	ScopedLock sl(arrayLock);
@@ -81,9 +73,11 @@ void E3Rasterizer::performUpdate(int updateType) {
 		indie = colIdx * invGrid;
 		calcCrossPoints(mesh);
 
-		if (isSampleable())
+		if (isSampleable()) {
 			sampleWithInterval(col, invCol, 0.f);
-		else
+		}
+		else {
 			col.zero();
+		}
 	}
 }

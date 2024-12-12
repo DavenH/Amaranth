@@ -2,10 +2,9 @@
 #include <App/EditWatcher.h>
 #include "QualityDialog.h"
 #include <App/Settings.h>
-#include <Audio/PluginProcessor.h>
 #include <Util/Util.h>
 #include "../../Audio/SynthAudioSource.h"
-#include "../../CycleDefs.h"
+#include "../CycleDefs.h"
 #include "../../Util/CycleEnums.h"
 #include "Algo/Resampling.h"
 
@@ -73,20 +72,15 @@ QualityDialog::QualityDialog(SingletonRepo* repo) :
 	setSize(500, 350);
 }
 
-
-void QualityDialog::comboBoxChanged(ComboBox* box)
-{
+void QualityDialog::comboBoxChanged(ComboBox* box) {
 	int item = box->getSelectedId();
-		
-	if(item >= OversampRltm1x && item <= OversampRend16x)
-	{
-		if(item >= OversampRltm1x && item <= OversampRltm16x)
-		{
+
+	if (item >= OversampRltm1x && item <= OversampRend16x) {
+		if (item >= OversampRltm1x && item <= OversampRltm16x) {
 			int oldFactor = getDocSetting(OversampleFactorRltm);
 
 			int factor = -1;
-			switch(item)
-			{
+			switch (item) {
 				case OversampRltm1x: 	factor = 1; 	break;
 				case OversampRltm2x: 	factor = 2; 	break;
 				case OversampRltm4x: 	factor = 4; 	break;
@@ -97,31 +91,26 @@ void QualityDialog::comboBoxChanged(ComboBox* box)
 			getDocSetting(SubsampleRltm) 		= (factor > 1);
 
 			int& rendFactor = getDocSetting(OversampleFactorRend);
-			if(rendFactor < factor)
-			{
+			if (rendFactor < factor) {
 				rendFactor = factor;
 				getDocSetting(SubsampleRend) = (factor > 1);
 			}
 
-			if(oldFactor == 1 != factor == 1)
-			{
+			if (oldFactor == 1 != factor == 1) {
 				onlyPlug(getObj(PluginProcessor).updateLatency());
 			}
 		}
 
-		if(item >= OversampRend1x && item <= OversampRend16x)
-		{
+		if (item >= OversampRend1x && item <= OversampRend16x) {
 			char factor = -1;
-			switch(item)
-			{
+			switch (item) {
 				case OversampRend1x: 	factor = 1; 	break;
 				case OversampRend2x: 	factor = 2; 	break;
 				case OversampRend4x: 	factor = 4; 	break;
 				case OversampRend16x: 	factor = 16; 	break;
 			}
 
-			if(Util::assignAndWereDifferent(getDocSetting(OversampleFactorRend), factor))
-			{
+			if(Util::assignAndWereDifferent(getDocSetting(OversampleFactorRend), factor)) {
 				getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 			}
 
@@ -144,14 +133,11 @@ void QualityDialog::comboBoxChanged(ComboBox* box)
 			default:				jassertfalse;
 		}
 
-		if(Util::assignAndWereDifferent(getDocSetting(ControlFreq), newFreqOrder))
-		{
+		if (Util::assignAndWereDifferent(getDocSetting(ControlFreq), newFreqOrder)) {
 			getObj(SynthAudioSource).controlFreqChanged();
 			getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 		}
-	}
-	else if(item >= ResampAlgoRltmLinear && item <= ResampAlgoRltmSinc)
-	{
+	} else if (item >= ResampAlgoRltmLinear && item <= ResampAlgoRltmSinc) {
 		char newAlgo = Resampling::Linear;
 
 		switch(item)
@@ -162,32 +148,26 @@ void QualityDialog::comboBoxChanged(ComboBox* box)
 			case ResampAlgoRltmSinc: 	newAlgo = Resampling::Sinc;		break;
 		}
 
-		if(Util::assignAndWereDifferent(getDocSetting(ResamplingAlgoRltm), newAlgo))
-		{
+		if (Util::assignAndWereDifferent(getDocSetting(ResamplingAlgoRltm), newAlgo)) {
 			getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 		}
-	}
-	else if(item >= ResampAlgoRendLinear && item <= ResampAlgoRendSinc)
-	{
+	} else if (item >= ResampAlgoRendLinear && item <= ResampAlgoRendSinc) {
 		int newAlgo = Resampling::Linear;
 
-		switch(item)
-		{
+		switch(item) {
 			case ResampAlgoRendLinear: 	newAlgo = Resampling::Linear;	break;
 			case ResampAlgoRendHermite: newAlgo = Resampling::Hermite;	break;
 			case ResampAlgoRendBspline: newAlgo = Resampling::BSpline;	break;
 			case ResampAlgoRendSinc: 	newAlgo = Resampling::Sinc;		break;
 		}
 
-		if(Util::assignAndWereDifferent(getDocSetting(ResamplingAlgoRend), newAlgo))
-		{
+		if(Util::assignAndWereDifferent(getDocSetting(ResamplingAlgoRend), newAlgo)) {
 			getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 		}
 	}
 
 	updateSelections();
 }
-
 
 void QualityDialog::updateSelections()
 {
@@ -249,20 +229,15 @@ void QualityDialog::updateSelections()
 	useSmooth.setToggleState(getDocSetting(ParameterSmoothing) == 1, dontSendNotification);
 }
 
-
-void QualityDialog::buttonClicked(Button* button)
-{
-	if(button == &useSmooth)
-	{
+void QualityDialog::buttonClicked(Button* button) {
+	if (button == &useSmooth) {
 		getDocSetting(ParameterSmoothing) ^= true;
 	}
 
 	updateSelections();
 }
 
-
-void QualityDialog::resized()
-{
+void QualityDialog::resized() {
 	Rectangle<int> bounds = getBounds().withPosition(0, 0);
 	bounds.reduce(50, 30);
 

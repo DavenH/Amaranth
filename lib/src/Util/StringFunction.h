@@ -26,7 +26,7 @@ class StringFunction {
 public:
 	struct Op {
 		int code;
-		double arg1;
+		double arg1{};
 
 		Op() : code(Ops::Add) {}
 		Op(int code) : code(code) {}
@@ -34,18 +34,66 @@ public:
 		double eval(double arg);
 	};
 
-	StringFunction(int prec) : precision(prec) {}
+	explicit StringFunction(int prec) : precision(prec) {}
 	StringFunction() : precision(1) {}
 
-    StringFunction& chain(int code, double value) {
-        ops.add(Op(code, value));
-        return *this;
-    }
+	StringFunction& mul(double value) {
+		ops.add(Op(Ops::Mul, value));
+		return *this;
+	}
+	StringFunction& div(double value) {
+		ops.add(Op(Ops::Div, value));
+		return *this;
+	}
+	StringFunction& add(double value) {
+		ops.add(Op(Ops::Add, value));
+		return *this;
+	}
+	StringFunction& sub(double value) {
+		ops.add(Op(Ops::Sub, value));
+		return *this;
+	}
+	StringFunction& max(double value) {
+		ops.add(Op(Ops::Max, value));
+		return *this;
+	}
+	StringFunction& min(double value) {
+		ops.add(Op(Ops::Min, value));
+		return *this;
+	}
+	StringFunction& rnd(double value) {
+		ops.add(Op(Ops::Rnd, value));
+		return *this;
+	}
+	StringFunction& flr() {
+		ops.add(Op(Ops::Flr));
+		return *this;
+	}
+	StringFunction& ceil() {
+		ops.add(Op(Ops::Ceil));
+		return *this;
+	}
+	StringFunction& abs(double value) {
+		ops.add(Op(Ops::Abs, value));
+		return *this;
+	}
+	StringFunction& log(double value) {
+		ops.add(Op(Ops::Log, value));
+		return *this;
+	}
+	StringFunction& pow(double value) {
+		ops.add(Op(Ops::Pow, value));
+		return *this;
+	}
+	StringFunction& powRev(double value) {
+		ops.add(Op(Ops::PowRev, value));
+		return *this;
+	}
+	StringFunction& np2(double value) {
+		ops.add(Op(Ops::Np2, value));
+		return *this;
+	}
 
-    StringFunction& chain(int code) {
-        ops.add(Op(code));
-        return *this;
-    }
 
     StringFunction clone() {
         return *this;
@@ -61,7 +109,7 @@ public:
 	StringFunction setPreString(const String& str)
 	{ preString = str; return *this; }
 
-    StringFunction withPostString(const String& str) const {
+    [[nodiscard]] StringFunction withPostString(const String& str) const {
 		StringFunction copy = *this;
 		copy.postString = str;
 

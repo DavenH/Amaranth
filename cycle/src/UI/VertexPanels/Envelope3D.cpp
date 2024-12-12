@@ -14,30 +14,20 @@ Envelope3D::Envelope3D(SingletonRepo* repo) :
 	createNameImage("Envelopes 3D");
 }
 
-
-Envelope3D::~Envelope3D()
-{
+Envelope3D::~Envelope3D() {
 }
 
-
-void Envelope3D::buttonClicked(Button *button)
-{
+void Envelope3D::buttonClicked(Button* button) {
 }
 
-
-Buffer<float> Envelope3D::getColumnArray()
-{
-	return Buffer<float>(getObj(E3Rasterizer).getArray());
+Buffer<float> Envelope3D::getColumnArray() {
+    return Buffer<float>(getObj(E3Rasterizer).getArray());
 }
 
-
-const vector<Column>& Envelope3D::getColumns()
-{
-	return getObj(E3Rasterizer).getColumns();
+const vector<Column>& Envelope3D::getColumns() {
+    return getObj(E3Rasterizer).getColumns();
 }
 
-
-void Envelope3D::init()
-{
-	interactor3D = &getObj(EnvelopeInter3D);
+void Envelope3D::init() {
+    interactor3D = &getObj(EnvelopeInter3D);
 }

@@ -1,17 +1,11 @@
 #include <UI/IConsole.h>
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
-#include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Audio/PluginProcessor.h>
 #include <Curve/IDeformer.h>
 #include <Design/Updating/Updater.h>
-#include <Thread/LockTracer.h>
 #include <UI/MiscGraphics.h>
-#include <UI/Panels/Texture.h>
-#include <UI/Widgets/CalloutUtils.h>
 #include <UI/Widgets/Knob.h>
-#include <UI/Widgets/PulloutComponent.h>
 
 #include "WaveshaperUI.h"
 #include "../Dialogs/PresetPage.h"
@@ -21,13 +15,12 @@
 #include "../../Audio/SynthAudioSource.h"
 #include "../../UI/VertexPanels/DeformerPanel.h"
 
-
 const int WaveshaperUI::oversampFactors[5] = { 1, 1, 2, 4, 8 };
 
 WaveshaperUI::WaveshaperUI(SingletonRepo* repo) : 
 		EffectPanel		(repo, "WaveshaperUI", true)
 	,	SingletonAccessor(repo, "WaveshaperUI")
-	,	ParameterGroup::Worker(repo, "WaveshaperUI")
+	,	Worker			(repo, "WaveshaperUI")
 	,	title			(repo, "WAVESHAPER")
 	,	enabledButton	(5, 5, this, repo, "Enable effect")
 	,	controls		(this, repo, true)

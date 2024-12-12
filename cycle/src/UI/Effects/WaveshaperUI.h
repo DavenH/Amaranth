@@ -1,5 +1,4 @@
-#ifndef _waveshapercomponent_h
-#define _waveshapercomponent_h
+#pragma once
 
 #include <App/Doc/Savable.h>
 #include <App/SingletonAccessor.h>
@@ -7,7 +6,6 @@
 #include <UI/ParameterGroup.h>
 #include <UI/Widgets/IconButton.h>
 #include <UI/Widgets/InsetLabel.h>
-#include <Util/StringFunction.h>
 
 #include "../TourGuide.h"
 #include "../Widgets/Controls/ControlsPanel.h"
@@ -29,56 +27,55 @@ class WaveshaperUI :
 	,	public TourGuide
 {
 public:
-	WaveshaperUI(SingletonRepo* repo);
-	~WaveshaperUI();
+	explicit WaveshaperUI(SingletonRepo* repo);
+	~WaveshaperUI() override;
 
-	void init();
+	void init() override;
 
 	/* Accessors */
 	String getKnobName(int index) const;
 	void setEffectEnabled(bool enabled);
-	bool isEffectEnabled() const 		{ return isEnabled; }
-	bool isCurrentMeshActive() 			{ return isEnabled; }
+	bool isEffectEnabled() const override { return isEnabled; }
+	bool isCurrentMeshActive() override { return isEnabled; }
 	ControlsPanel* getControlsPanel() 	{ return &controls; }
 
 	/* UI */
-	void preDraw();
-	void postCurveDraw();
-	void showCoordinates();
-	void panelResized();
+	void preDraw() override;
+	void postCurveDraw() override;
+	void showCoordinates() override;
+	void panelResized() override;
 
-
-	void doGlobalUIUpdate(bool force);
-	void reduceDetail();
-	void restoreDetail();
-	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate);
-	void updateDspSync();
-	void doLocalUIUpdate();
-	bool shouldTriggerGlobalUpdate(Slider* slider);
+	void doGlobalUIUpdate(bool force) override;
+	void reduceDetail() override;
+	void restoreDetail() override;
+	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
+	void updateDspSync() override;
+	void doLocalUIUpdate() override;
+	bool shouldTriggerGlobalUpdate(Slider* slider) override;
 
 	/* Events */
-	void buttonClicked(Button* button);
-	void comboBoxChanged(ComboBox* box);
-	void exitClientLock();
-	void enterClientLock();
+	void buttonClicked(Button* button) override;
+	void comboBoxChanged(ComboBox* box) override;
+	void exitClientLock() override;
+	void enterClientLock() override;
 
 	/* Persistence */
-	void writeXML(XmlElement* element) const;
-	bool readXML(const XmlElement* element);
+	void writeXML(XmlElement* element) const override;
+	bool readXML(const XmlElement* element) override;
 
 	/* Mesh selection */
 	void setMeshAndUpdate	(Mesh* mesh);
-	void setCurrentMesh		(Mesh* mesh);
-	void previewMesh		(Mesh* mesh);
-	void previewMeshEnded	(Mesh* oldMesh);
-	void doubleMesh();
+	void setCurrentMesh		(Mesh* mesh) override;
+	void previewMesh		(Mesh* mesh) override;
+	void previewMeshEnded	(Mesh* oldMesh) override;
+	void doubleMesh() override;
 
-	Mesh* getCurrentMesh();
-	Component* getComponent(int which);
+	Mesh* getCurrentMesh() override;
+	Component* getComponent(int which) override;
 	CriticalSection& getClientLock();
 
-	int getUpdateSource() 			{ return UpdateSources::SourceWaveshaper; }
-	int getLayerType() 				{ return layerType; }
+	int getUpdateSource() override { return UpdateSources::SourceWaveshaper; }
+	int getLayerType() override { return layerType; }
 
 private:
 	static const int oversampFactors[5];
@@ -94,12 +91,9 @@ private:
 	Ref<Waveshaper> waveshaper;
 	std::unique_ptr<MeshSelector<Mesh> > selector;
 
-
 	Label nameLabel;
 	Label nameLabelA;
 	Label oversampLabel;
 	Label labels[Waveshaper::numWaveshaperParams];
 
 };
-
-#endif

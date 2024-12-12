@@ -43,8 +43,9 @@ String numfill(int number) {
 void ReverbEffect::processBuffer(AudioSampleBuffer &buffer) {
 	StereoBuffer input(buffer);
 
-	if (outBuffer.left.empty())
+	if (outBuffer.left.empty()) {
 		return;
+	}
 
 	//	if(calls == 0)
 	//	{

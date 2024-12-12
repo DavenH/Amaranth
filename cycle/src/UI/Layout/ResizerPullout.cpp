@@ -1,11 +1,9 @@
-#include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Audio/PluginProcessor.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/Widgets/IconButton.h>
+#include <Definitions.h>
 
 #include "ResizerPullout.h"
-#include "../PluginWindow.h"
 
 #if PLUGIN_MODE
   using namespace WindowSizes;
@@ -17,19 +15,15 @@ ResizerPullout::ResizerPullout(SingletonRepo* repo) :
 	,	medIcon(	new IconButton(8, 2, this, repo, "70% size"))
 	,	fullIcon( 	new IconButton(8, 3, this, repo, "100% size"))
 	,	keybIcon( 	new IconButton(8, 4, this, repo, "Player Mode")) {
-    Component* icons[] = {keybIcon, smallIcon, medIcon, fullIcon};
-
     medIcon->setHighlit(true);
 
-    vector < Component * > buttons;
-    std::copy(icons, icons + numElementsInArray(icons), inserter(buttons, buttons.begin()));
+    vector<Component*> buttons{ keybIcon.get(), smallIcon.get(), medIcon.get(), fullIcon.get() };
 
-	pullout = new PulloutComponent(getObj(MiscGraphics).getIcon(8, 0), buttons, repo, false);
+	pullout = std::make_unique<PulloutComponent>(getObj(MiscGraphics).getIcon(8, 0), buttons, repo, false);
 	pullout->setBackgroundOpacity(1.f);
 	pullout->setBounds(0, 0, 24, 24);
-	addAndMakeVisible(pullout);
+	addAndMakeVisible(pullout.get());
 }
-
 
 void ResizerPullout::buttonClicked(Button* button) {
 #if PLUGIN_MODE
@@ -52,10 +46,8 @@ void ResizerPullout::buttonClicked(Button* button) {
 #endif
 }
 
-
 void ResizerPullout::resized() {
 }
-
 
 void ResizerPullout::updateHighlight(int windowSize) {
 #if PLUGIN_MODE

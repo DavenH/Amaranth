@@ -1,5 +1,4 @@
-#ifndef _guidepanel_h
-#define _guidepanel_h
+#pragma once
 
 #include <ippdefs.h>
 #include <Curve/IDeformer.h>
@@ -10,13 +9,10 @@
 #include "EffectPanel.h"
 #include "../TourGuide.h"
 #include "../Widgets/Controls/ControlsClient.h"
-#include "../Widgets/Controls/ControlsPanel.h"
-#include "../Widgets/Controls/LayerAddRemover.h"
 #include "../Widgets/Controls/LayerSelectionClient.h"
 #include "../Widgets/Controls/LayerSelectorPanel.h"
 #include "../Widgets/Controls/MeshSelectionClient.h"
 #include "../Widgets/Controls/MeshSelector.h"
-#include "../Widgets/Controls/PanelControls.h"
 #include "../Widgets/HSlider.h"
 
 class MeshLibrary;
@@ -36,20 +32,20 @@ public:
 	enum { tableSize = 8192, tableModulo = tableSize - 1 };
 
 	DeformerPanel(SingletonRepo* repo);
-	~DeformerPanel();
+	~DeformerPanel() override;
 
-	bool isEffectEnabled() const;
+	bool isEffectEnabled() const override;
 	bool setGuideBuffers();
 	int getNumGuides();
-	int getTableDensity(int index);
+	int getTableDensity(int index) override;
 
 	Mesh* getCurrentMesh();
 	Component* getComponent(int which);
 
 	void addNewLayer(bool doUpdate);
-	void buttonClicked(Button* button);
-	void doubleMesh();
-	void enterClientLock();
+	void buttonClicked(Button* button) override;
+	void doubleMesh() override;
+	void enterClientLock() override;
 	void exitClientLock();
 	void init();
 	void layerChanged();
@@ -142,5 +138,3 @@ private:
 	HSlider vertOffset;
 	HSlider phaseOffset;
 };
-
-#endif

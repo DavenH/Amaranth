@@ -1,20 +1,17 @@
-#ifndef _EFFECTGUIREGISTRY_H_
-#define _EFFECTGUIREGISTRY_H_
+#pragma once
 
 #include <App/SingletonAccessor.h>
 #include <App/Doc/Savable.h>
-#include <Obj/Ref.h>
 
 class EffectGuiRegistry :
 	public Savable,
 	public SingletonAccessor
 {
 public:
-	EffectGuiRegistry(SingletonRepo* main);
-	virtual ~EffectGuiRegistry();
+	explicit EffectGuiRegistry(SingletonRepo* main);
 
-	bool readXML(const XmlElement* topElement);
-	void writeXML(XmlElement* topElement) const;
+	~EffectGuiRegistry() override;
+
+	bool readXML(const XmlElement* topElement) override;
+	void writeXML(XmlElement* topElement) const override;
 };
-
-#endif

@@ -1,9 +1,7 @@
-#ifndef _synthmenubarmodel_h
-#define _synthmenubarmodel_h
+#pragma once
 
 #include "JuceHeader.h"
 #include <Obj/Ref.h>
-#include <Definitions.h>
 #include <App/SingletonAccessor.h>
 
 class MiscGraphics;
@@ -18,9 +16,9 @@ class EditableItem :
 {
 public:
 	EditableItem(const String& name);
-	void resized();
-	void buttonClicked(Button* button);
-	void getIdealSize (int& idealWidth, int& idealHeight);
+	void resized() override;
+	void buttonClicked(Button* button) override;
+	void getIdealSize (int& idealWidth, int& idealHeight) override;
 
 private:
 	TextButton saveButton;
@@ -179,5 +177,3 @@ private:
 
 	Array<File> tutorials;
 };
-
-#endif

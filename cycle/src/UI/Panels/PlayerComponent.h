@@ -1,5 +1,4 @@
-#ifndef PLAYERCOMPONENT_H_
-#define PLAYERCOMPONENT_H_
+#pragma once
 
 #include <Obj/Ref.h>
 #include <UI/Widgets/IconButton.h>
@@ -17,13 +16,13 @@ class PlayerComponent :
 	,	public SingletonAccessor
 {
 public:
-	PlayerComponent(SingletonRepo* repo);
-	~PlayerComponent();
-	void init();
+	explicit PlayerComponent(SingletonRepo* repo);
+	~PlayerComponent() override;
+	void init() override;
 	void setComponents(bool add);
-	void buttonClicked(Button* button);
-	void paint(Graphics& g);
-	void resized();
+	void buttonClicked(Button* button) override;
+	void paint(Graphics& g) override;
+	void resized() override;
 
 	void updateTitle();
 

@@ -23,7 +23,7 @@ class ModMatrix :
 {
 public:
 	ModMatrix(SingletonRepo* repo, ModMatrixPanel* panel);
-	~ModMatrix() override;
+	~ModMatrix() override = default;
 	void resized() override;
 	int getNumRows() override;
 	void cellClicked (int rowNumber, int columnId, const MouseEvent& e) override {}
@@ -149,27 +149,26 @@ public:
 
 	/* ----------------------------------------------------------------------------- */
 
-	struct Mapping
-	{
+	struct Mapping {
 		int in, out, dim;
 
 		Mapping() : in(-1), out(-1), dim(-1) {}
 		Mapping(int in, int out, int dim) : in(in), out(out), dim(dim) {}
 
-		bool operator<(const Mapping& other)
-		{
+		bool operator<(const Mapping& other) const {
 			return in * 1000000 + out * 1000 + dim < other.in * 1000000 + other.out * 1000 + other.dim;
 		}
 
-		bool operator==(const Mapping& other)
-		{
+		bool operator==(const Mapping& other) const {
 			return in == other.in && out == other.out && dim == other.dim;
 		}
 	};
 
 	struct HeaderElement
 	{
-		HeaderElement() {}
+		HeaderElement(): id(0), rowDim(0) {
+		}
+
 		HeaderElement(const String& name, int id) : name(name), id(id), rowDim(-1) {}
 		String name;
 		String shortName;

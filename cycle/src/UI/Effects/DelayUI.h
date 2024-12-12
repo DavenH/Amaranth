@@ -1,9 +1,6 @@
-#ifndef _delaycomponent_h
-#define _delaycomponent_h
+#pragma once
 
-#include <Obj/Ref.h>
 #include <UI/IConsole.h>
-#include <Util/StringFunction.h>
 
 #include "../../Audio/Effects/AudioEffect.h"
 #include "GuilessEffect.h"
@@ -15,9 +12,6 @@ class DelayUI :
 {
 public:
 	DelayUI(SingletonRepo* repo, Effect* effect);
-	String getKnobName(int index) const;
+	String getKnobName(int index) const override;
 
-private:
 };
-
-#endif

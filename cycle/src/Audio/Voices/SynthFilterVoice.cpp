@@ -3,12 +3,11 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Definitions.h>
-#include <Test/CsvFile.h>
 #include <Util/LogRegions.h>
 
 #include "SynthesizerVoice.h"
 #include "SynthFilterVoice.h"
-#include "../../CycleDefs.h"
+#include "../../Util/CycleEnums.h"
 #include "../../Audio/SynthAudioSource.h"
 #include "../../UI/Panels/ModMatrixPanel.h"
 #include "../../UI/VertexPanels/DeformerPanel.h"
@@ -18,8 +17,6 @@
 
 SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo) :
 		CycleBasedVoice(parent, repo)
-	,	freqRasterizer(repo)
-	,	phaseRasterizer(repo)
 {
 	timeLayers	= &getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
 	freqLayers	= &getObj(MeshLibrary).getGroup(LayerGroups::GroupSpect);
@@ -55,23 +52,18 @@ SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo
 	cycleCompositeAlgo = Interpolate;
 }
 
-SynthFilterVoice::~SynthFilterVoice()
-{
-}
-
-
 void SynthFilterVoice::initialiseNoteExtra(const int midiNoteNumber, const float velocity)
 {
+	// TODO
 	freqRasterizer.updateOffsetSeeds();
 	phaseRasterizer.updateOffsetSeeds();
 
-	if(parent->flags.haveFFTPhase)
+	if(parent->flags.haveFFTPhase) {
 		phaseScaleRamp.withSize(noteState.numHarmonics).ramp(1.f, 1.f).sqrt();
+	}
 }
 
-
-void SynthFilterVoice::calcCycle(VoiceParameterGroup& group)
-{
+void SynthFilterVoice::calcCycle(VoiceParameterGroup& group) {
 	bool doFwdFFT 		= false;
 	int oversampleFactor= oversamplers[0]->getOversampleFactor();
 	int samplingSize 	= oversampleFactor * noteState.nextPow2;
@@ -80,8 +72,7 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group)
 	noteState.isStereo  = false;
 	rastBuf		 	 	= rastBuffer.withSize(noteState.nextPow2);
 
-	for(int i = 0; i < 2; ++i)
-	{
+	for (int i = 0; i < 2; ++i) {
 		samplingBufs[i] = layerAccumBuffer[i].withSize(samplingSize);
 		accumBufs[i] 	= layerAccumBuffer[i].withSize(noteState.nextPow2);
 		magBufs[i] 	 	= magnitudes[i].withSize(noteState.numHarmonics);
@@ -90,15 +81,12 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group)
 		samplingBufs[i].zero();
 	}
 
-	if(parent->flags.haveTime)
-	{
+	if (parent->flags.haveTime) {
 		doFwdFFT = calcTimeDomain(group, samplingSize, oversampleFactor);
 		channelCount = noteState.isStereo ? 2 : 1;
 
-		if(doFwdFFT && oversampleFactor > 1)
-		{
-			for(int i = 0; i < channelCount; ++i)
-			{
+		if (doFwdFFT && oversampleFactor > 1) {
+			for (int i = 0; i < channelCount; ++i) {
 				// FFT voices are cyclical, so only continuous with self, so instead of
 				// previous cycle's tail we need to wrap our own
 				oversamplers[i]->resetDelayLine();
@@ -109,29 +97,20 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group)
 		}
 	}
 
-
 	bool rightPhasesAreSet = false;
 
 	// forward fft for time-domain cycle
-	if(doFwdFFT)
-	{
-		for(int c = 0; c < channelCount; ++c)
-		{
+	if (doFwdFFT) {
+		for (int c = 0; c < channelCount; ++c) {
 			Transform& fft = audioSource->getFFT(noteState.nextPow2);
 			fft.forward(accumBufs[c]);
 			fft.getMagnitudes().copyTo(magBufs[c]);
 			fft.getPhases().copyTo(phaseBufs[c]);
-
-//			ippsFFTFwd_RToCCS_32f_I(accumBufs[c], audioSource->getFftSpec(noteState.nextPow2), 0);
-//			ippsCartToPolar_32fc((Ipp32fc*)accumBufs[c].get() + 1, magBufs[c], phaseBufs[c], noteState.numHarmonics);
 		}
 
 		rightPhasesAreSet = noteState.isStereo;
-	}
-	else
-	{
-		for(int i = 0; i < 2; ++i)
-		{
+	} else {
+		for (int i = 0; i < 2; ++i) {
 			magBufs[i].zero();
 			phaseBufs[i].zero();
 		}
@@ -145,47 +124,35 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group)
 	calcPhaseDomain(fftRamp, doFwdFFT, rightPhasesAreSet, channelCount);
 
 	// inverse FFT
-	for(int c = 0; c < channelCount; ++c)
-	{
-//		accumBufs[c][0] = 0;
-//		accumBufs[c][1] = 0;
-
+	for(int c = 0; c < channelCount; ++c) {
 		Transform& fft = audioSource->getFFT(noteState.nextPow2);
 
 		magBufs[c].copyTo(fft.getMagnitudes());
 		phaseBufs[c].copyTo(fft.getPhases());
 		fft.inverse(accumBufs[c]);
-
-//		ippsPolarToCart_32fc	(magBufs[c], phaseBufs[c], (Ipp32fc*) accumBufs[c].get() + 1, noteState.numHarmonics);
-//		ippsZero_32fc			((Ipp32fc*)accumBufs[c].get() + noteState.numHarmonics + 1,
-//								 noteState.nextPow2 / 2 - noteState.numHarmonics);
-//		ippsFFTInv_CCSToR_32f_I	(accumBufs[c], audioSource->getFftSpec(noteState.nextPow2), 0);
 	}
 
-	if(! noteState.isStereo)
+	if(! noteState.isStereo) {
 		accumBufs[Left].copyTo(accumBufs[Right]);
+	}
 
 	jassert(fabsf(accumBufs[0].front()) < 1000);
 	jassert(fabsf(accumBufs[1].front()) < 1000);
 }
 
+bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSize, int oversampleFactor) {
+	double deltaPow2 = 1 / double(noteState.nextPow2);
+	bool requireFwdFFT = false;
 
-bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSize, int oversampleFactor)
-{
-	double deltaPow2 	= 1 / double(noteState.nextPow2);
-	bool requireFwdFFT 	= false;
-
-	Buffer<float> timeBuf(rastBuffer, samplingSize);
+	Buffer timeBuf(rastBuffer, samplingSize);
 
 	int layerSize = timeLayers->size();
-	onlyBeat(layerSize = 1);
 
-	for(int layerIdx = 0; layerIdx < layerSize; ++layerIdx)
-	{
+	for (int layerIdx = 0; layerIdx < layerSize; ++layerIdx) {
 		MeshLibrary::Layer& layer = parent->meshLib->getLayer(LayerGroups::GroupTime, layerIdx);
 		MeshLibrary::Properties& props = *layer.props;
 
-		if(! props.active || ! layer.mesh->hasEnoughCubesForCrossSection())
+		if (!props.active || !layer.mesh->hasEnoughCubesForCrossSection())
 			continue;
 
 		double samplingDelta = oversampleFactor == 1 ? deltaPow2 : deltaPow2 / double(oversampleFactor);
@@ -198,8 +165,7 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
 		timeRasterizer.setInterceptPadding((float) samplingDelta * 2);
 		timeRasterizer.calcCrossPoints(layer.mesh);
 
-		if(timeRasterizer.isSampleable())
-		{
+		if (timeRasterizer.isSampleable()) {
 			timeRasterizer.doesIntegralSampling() ?
 					timeRasterizer.samplePerfectly(samplingDelta, timeBuf, 0.) :
 					timeRasterizer.sampleWithInterval(timeBuf, samplingDelta, 0.);
@@ -220,23 +186,19 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
 	return requireFwdFFT;
 }
 
-
 void SynthFilterVoice::calcMagnitudeFilters(Buffer<Ipp32f> fftRamp)
 {
 	bool wasStereoBeforeLayer 	= noteState.isStereo;
 	float additiveScale 		= Arithmetic::calcAdditiveScaling(noteState.numHarmonics);
 
-	Buffer<float> harmRast(rastBuffer.withSize(noteState.numHarmonics));
+	Buffer harmRast(rastBuffer.withSize(noteState.numHarmonics));
 
-	onlyBeat(layerSize = 1);
+	for(auto& layer : freqLayers->layers) {
+		MeshLibrary::Properties& props = *layer.props;
 
-	for(int i = 0; i < freqLayers->size(); ++i)
-	{
-		MeshLibrary::Layer& layer 		= freqLayers->layers[i];
-		MeshLibrary::Properties& props 	= *layer.props;
-
-		if(! props.active || ! layer.mesh->hasEnoughCubesForCrossSection())
+		if (!props.active || !layer.mesh->hasEnoughCubesForCrossSection()) {
 			continue;
+		}
 
 		float progress = getScratchTime(props.scratchChan, frame.frontier);
 
@@ -244,8 +206,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Ipp32f> fftRamp)
 		freqRasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
 		freqRasterizer.calcCrossPoints(layer.mesh);
 
-		if(freqRasterizer.isSampleable())
-		{
+		if (freqRasterizer.isSampleable()) {
 			freqRasterizer.sampleAtIntervals(fftRamp, harmRast);
 
 			wasStereoBeforeLayer |= noteState.isStereo;
@@ -254,8 +215,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Ipp32f> fftRamp)
 			noteState.isStereo |= (fabsf(layerPan - 0.5f) > 0.03f);
 
 			// sound is newly stereo, copy left to the empty right buffer
-			if(noteState.isStereo && ! wasStereoBeforeLayer)
-			{
+			if (noteState.isStereo && !wasStereoBeforeLayer) {
 				magBufs[Left].copyTo(magBufs[Right]);
 				wasStereoBeforeLayer = true;
 			}
@@ -267,57 +227,51 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Ipp32f> fftRamp)
 
 			ippsSqrt_32f_I(&dynamicRange, 1);
 
-			float multiplicand 	= powf(2.f, dynamicRange);
-			float thresh 		= powf(1e-19f, 1.f / dynamicRange);
+			float multiplicand = powf(2.f, dynamicRange);
+			float thresh = powf(1e-19f, 1.f / dynamicRange);
 
 			// denorm prevention
 			harmRast.threshLT(thresh).pow(dynamicRange);
 
-			if(props.mode == Spectrum3D::Additive)
+			if (props.mode == Spectrum3D::Additive) {
 				multiplicand *= additiveScale;
+			}
 
 			harmRast.mul(multiplicand);
 
-			if(props.mode == Spectrum3D::Subtractive)
-			{
-				Buffer<float> rightBuffer(phaseAccumBuffer[Left].withSize(noteState.numHarmonics));
+			if (props.mode == Spectrum3D::Subtractive) {
+				Buffer rightBuffer(phaseAccumBuffer[Left].withSize(noteState.numHarmonics));
 
-				if(noteState.isStereo)
-				{
+				if (noteState.isStereo) {
 					harmRast.copyTo(rightBuffer);
 
-					if(leftPan > 0.f)
-					{
-						if(leftPan != 1.f)
+					if (leftPan > 0.f) {
+						if (leftPan != 1.f) {
 							harmRast.add(-1.f).mul(leftPan).add(1.f);
+						}
 
 						magBufs[Left].mul(harmRast);
 					}
 
-					if(rightPan > 0.f)
-					{
-						if(rightPan != 1.f)
+					if (rightPan > 0.f) {
+						if (rightPan != 1.f) {
 							rightBuffer.add(-1.f).mul(rightPan).add(1.f);
+						}
 
 						magBufs[Right].mul(rightBuffer);
 					}
-				}
-				else
-				{
+				} else {
 					magBufs[Left].mul(harmRast);
 				}
-			}
-			else
-			{
+			} else {
 				magBufs[Left].addProduct(harmRast, leftPan);
 
-				if(noteState.isStereo)
+				if (noteState.isStereo)
 					magBufs[Right].addProduct(harmRast, rightPan);
 			}
 		}
 	}
 }
-
 
 void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 									   bool didFwdFFT,
@@ -327,23 +281,19 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 	bool wasStereo = noteState.isStereo;
 
 	Buffer<float> phaseAccBufs[] = { phaseAccumBuffer[Left].withSize(noteState.numHarmonics), phaseAccumBuffer[Right].withSize(noteState.numHarmonics) };
-	Buffer<float> harmRast(rastBuffer.withSize(noteState.numHarmonics));
+	Buffer harmRast(rastBuffer.withSize(noteState.numHarmonics));
 
-	if(! phaseLayers->size() == 0)
-	{
+	if (!phaseLayers->size() == 0) {
 		phaseAccBufs[Left].zero();
 		phaseAccBufs[Right].zero();
 	}
 
 	bool haveAnyValidPhaseLayers = false;
 
-	for(int i = 0; i < phaseLayers->size(); ++i)
-	{
-		MeshLibrary::Layer& layer = phaseLayers->layers[i];
+	for(auto& layer : phaseLayers) {
 		MeshLibrary::Properties& props = *layer.props;
 
-		if(props.active && layer.mesh->hasEnoughCubesForCrossSection())
-		{
+		if (props.active && layer.mesh->hasEnoughCubesForCrossSection()) {
 			float layerPan 			= props.pan;
 			noteState.isStereo     |= (fabsf(layerPan - 0.5f) > 0.03f);
 			haveAnyValidPhaseLayers = true;
@@ -352,35 +302,30 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 
 	channelCount = noteState.isStereo ? 2 : 1;
 
-	if(haveAnyValidPhaseLayers && parent->flags.haveFFTPhase)
-	{
+	if (haveAnyValidPhaseLayers && parent->flags.haveFFTPhase) {
 		// need to copy some stuff if we've got stereo phases up ahead and not already stereo
-		if(noteState.isStereo != wasStereo)
-		{
+		if (noteState.isStereo != wasStereo) {
 			magBufs[Left].copyTo(magBufs[Right]);
 
-			if(didFwdFFT)
-			{
+			if (didFwdFFT) {
 				phaseBufs[Left].copyTo(phaseBufs[Right]);
 				rightPhasesAreSet = true;
 			}
 		}
 
-		if(! rightPhasesAreSet)
-		{
+		if (!rightPhasesAreSet) {
 			phaseBufs[Left].copyTo(phaseBufs[Right]);
 		}
 
 		int layerSize = phaseLayers->size();
-		onlyBeat(layerSize = 1);
 
-		for(int i = 0; i < layerSize; ++i)
-		{
+		for (int i = 0; i < layerSize; ++i) {
 			MeshLibrary::Layer& layer 		= phaseLayers->layers[i];
 			MeshLibrary::Properties& props 	= *layer.props;
 
-			if(! props.active || ! layer.mesh->hasEnoughCubesForCrossSection())
+			if(! props.active || ! layer.mesh->hasEnoughCubesForCrossSection()) {
 				continue;
+			}
 
 			float progress = getScratchTime(props.scratchChan, frame.frontier);
 
@@ -388,8 +333,7 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 			phaseRasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
 			phaseRasterizer.calcCrossPoints(layer.mesh);
 
-			if(phaseRasterizer.isSampleable())
-			{
+			if (phaseRasterizer.isSampleable()) {
 				phaseRasterizer.sampleAtIntervals(fftRamp, harmRast);
 
 				float pans[2];
@@ -399,13 +343,13 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 
 				harmRast.mul(phaseAmpScale * IPP_2PI);
 
-				for(int c = 0; c < channelCount; ++c)
+				for(int c = 0; c < channelCount; ++c) {
 					phaseAccBufs[c].addProduct(harmRast, pans[c]);
+				}
 			}
 		}
 
-		for(int c = 0; c < channelCount; ++c)
-		{
+		for(int c = 0; c < channelCount; ++c) {
 			phaseAccBufs[c].mul(phaseScaleRamp.withSize(noteState.numHarmonics));
 			phases[c].add(phaseAccBufs[c]);		// phases[1] has to be copied or zeroed at this point!
 		}
@@ -418,8 +362,7 @@ void SynthFilterVoice::updateValue(int outputId, int dim, float value)
 	CycleBasedVoice::updateValue(outputId, dim, value);
 	MeshLibrary::GroupLayerPair pair = getObj(ModMatrixPanel).toLayerIndex(outputId);
 
-	if(pair.isNotNull())
-	{
+	if (pair.isNotNull()) {
 		parent->meshLib->getProps(pair.groupId, pair.layerIdx)->setDimValue(parent->voiceIndex, dim, value);
 	}
 }

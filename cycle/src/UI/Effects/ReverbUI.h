@@ -1,5 +1,4 @@
-#ifndef _reverbcomponent_h
-#define _reverbcomponent_h
+#pragma once
 
 #include <App/EditWatcher.h>
 #include <App/Doc/Document.h>
@@ -9,7 +8,6 @@
 #include "GuilessEffect.h"
 #include "../../Audio/Effects/AudioEffect.h"
 #include "../../Audio/Effects/Reverb.h"
-#include "../../Audio/SynthAudioSource.h"
 #include "../../Util/CycleEnums.h"
 
 class ReverbUI :
@@ -24,34 +22,30 @@ public:
 
 //				StringFunction(StringFunction::MulAddPowMul).setArgs(6.f, 12.f, 2.f, 1.f / 44100.f).setRounds(false);
 		using namespace Ops;
-		StringFunction sizeShort = StringFunction().chain(Mul, 6.f).chain(Add, 12.f).chain(Pow, 2.f).chain(Mul, 1.f / 44100.f);
+		StringFunction sizeShort = StringFunction().mul(6.f).add(12.f).pow(2.f).mul(1.f / 44100.f);
 		size->setStringFunctions(sizeShort, sizeShort.withPostString(" seconds").withPrecision(2));
 
-		paramGroup->addSlider(new Knob(repo, ReverbEffect::Damp, 	"Damp", 		0.2));
-		paramGroup->addSlider(new Knob(repo, ReverbEffect::Width, 	"Stereo Width", 1.0));
-		paramGroup->addSlider(new Knob(repo, ReverbEffect::Highpass, "Highpass", 	0.05));
-		paramGroup->addSlider(new Knob(repo, ReverbEffect::Wet, 	"Wet Amount", 	0.4));
+		paramGroup->addSlider(new Knob(repo, ReverbEffect::Damp, 	 "Damp", 		 0.2));
+		paramGroup->addSlider(new Knob(repo, ReverbEffect::Width, 	 "Stereo Width", 1.0));
+		paramGroup->addSlider(new Knob(repo, ReverbEffect::Highpass, "Highpass", 	 0.05));
+		paramGroup->addSlider(new Knob(repo, ReverbEffect::Wet, 	 "Wet Amount", 	 0.4));
 	}
 
-
-	String getKnobName(int index) const
-	{
+	[[nodiscard]] String getKnobName(int index) const override {
 		bool little = getWidth() < 300;
 		bool superSmall = getWidth() < 200;
 
-		switch(index)
-		{
+		switch (index) {
 			case ReverbEffect::Size: 	return little 	  ? "sz" : "Size";
 			case ReverbEffect::Damp:	return superSmall ? "dmp" : "Damp";
 			case ReverbEffect::Width:	return little 	  ? "wdth" : "Width";
 			case ReverbEffect::Highpass:return "HP";
 			case ReverbEffect::Wet:		return "Wet";
+			default: throw std::out_of_range("ReverbUI::getKnobName");
 		}
-
-		return String::empty;
 	}
 
-	void overrideValueOptionally(int number, double& value)
+	void overrideValueOptionally(int number, double& value) override
 	{
 		// used to be the 'dry' parameter
 		if(number == ReverbEffect::Highpass && getObj(Document).getVersionValue() < 1.5)
@@ -60,5 +54,3 @@ public:
 		}
 	}
 };
-
-#endif
