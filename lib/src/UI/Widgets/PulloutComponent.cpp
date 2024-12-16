@@ -1,7 +1,10 @@
 #include <iostream>
 #include "PulloutComponent.h"
+
+#include <Definitions.h>
+#include <App/SingletonRepo.h>
+
 #include "../MiscGraphics.h"
-#include "../../App/SingletonRepo.h"
 #include "../../Util/Util.h"
 
 using std::cout;
@@ -12,14 +15,9 @@ BoxComp::BoxComp() :
     setMouseCursor(MouseCursor::PointingHandCursor);
 }
 
-BoxComp::~BoxComp() {
-}
-
-
 void BoxComp::setPulloutComponent(PulloutComponent* pullout) {
     this->pullout = pullout;
 }
-
 
 void BoxComp::paint(Graphics& g) {
     g.fillAll(Colours::black.withAlpha(backgroundOpacity));
@@ -37,11 +35,9 @@ void BoxComp::paint(Graphics& g) {
     }
 }
 
-
 void BoxComp::setHorizontal(bool isHorizontal) {
     horz = isHorizontal;
 }
-
 
 void BoxComp::mouseEnter(const MouseEvent& e) {
 #ifndef JUCE_MAC
@@ -50,7 +46,6 @@ void BoxComp::mouseEnter(const MouseEvent& e) {
 #endif
 }
 
-
 void BoxComp::mouseExit(const MouseEvent& e) {
 #ifndef JUCE_MAC
 //	if(e.originalComponent == this)
@@ -58,63 +53,60 @@ void BoxComp::mouseExit(const MouseEvent& e) {
 #endif
 }
 
-
 void BoxComp::enterDlg() {
     setMouseCursor(MouseCursor::PointingHandCursor);
     stopTimer();
 }
 
-
 void BoxComp::exitDlg() {
     startTimer(menuDelayMillis);
 }
-
 
 void BoxComp::addAll(vector<Component*>& _buttons) {
     this->buttons = _buttons;
     int left = -24;
     int right = -24;
 
-    for (vector<Component*>::iterator it = buttons.begin(); it != buttons.end(); ++it) {
-        addAndMakeVisible(*it);
-        (*it)->addMouseListener(this, true);
-        (*it)->setBounds(horz ? left += 25 : 1, horz ? 0 : right += 25, 24, 24);
+    for (auto & button : buttons) {
+        addAndMakeVisible(button);
+        button->addMouseListener(this, true);
+        button->setBounds(horz ? left += 25 : 1, horz ? 0 : right += 25, 24, 24);
     }
 }
-
 
 void BoxComp::visibilityChanged() {
     int left = -24;
     int right = -24;
 
     if (isVisible()) {
-        for (vector<Component*>::iterator it = buttons.begin(); it != buttons.end(); ++it) {
-            if (!isParentOf(*it))
-                addAndMakeVisible(*it);
+        for (auto& button : buttons) {
+            if (!isParentOf(button))
+                addAndMakeVisible(button);
 
-            (*it)->setBounds(horz ? left += 25 : 1, horz ? 0 : right += 25, 24, 24);
+            button->setBounds(horz ? left += 25 : 1, horz ? 0 : right += 25, 24, 24);
         }
     } else {
-        for (vector<Component*>::iterator it = buttons.begin(); it != buttons.end(); ++it) {
-            if (isParentOf(*it))
-                removeChildComponent(*it);
+        for (auto& button : buttons) {
+            if (isParentOf(button))
+                removeChildComponent(button);
         }
     }
 }
-
 
 void BoxComp::timerCallback() {
     pullout->removeBoxFromDesktop();
     pullout->removedFromDesktop();
 }
 
-
 PulloutComponent::PulloutComponent(
-        Image image, vector<Component*>& buttons, SingletonRepo* repo, bool horz) :
-        SingletonAccessor(repo, "PulloutComponent"), img(image), horz(horz) {
+        Image image,
+        vector<Component*>& buttons,
+        SingletonRepo* repo,
+        bool horz) :
+        SingletonAccessor(repo, "PulloutComponent")
+    ,   img(image)
+    ,   horz(horz) {
     popup.setPulloutComponent(this);
-//	img.duplicateIfShared();
-
     miscGraphics = &getObj(MiscGraphics);
     miscGraphics->addPulloutIcon(img, horz);
 
@@ -125,7 +117,6 @@ PulloutComponent::PulloutComponent(
     horz ? popup.setSize(buttons.size() * 26, 26) : popup.setSize(26, buttons.size() * 26);
 }
 
-
 void PulloutComponent::paint(Graphics& g) {
     g.setOpacity(1.f);
     g.drawImageAt(img, 0, 0);
@@ -134,7 +125,6 @@ void PulloutComponent::paint(Graphics& g) {
 
     g.drawImageAt(pullout, 0, 0);
 }
-
 
 void PulloutComponent::mouseEnter(const MouseEvent& e) {
     int screenX = getScreenX();
@@ -146,20 +136,16 @@ void PulloutComponent::mouseEnter(const MouseEvent& e) {
     popup.stopTimer();
 }
 
-
 void PulloutComponent::mouseExit(const MouseEvent& e) {
     popup.startTimer(menuDelayMillis);
 }
-
 
 Image& PulloutComponent::getImage() {
     return img;
 }
 
-
 void PulloutComponent::removedFromDesktop() {
 }
-
 
 void PulloutComponent::resized() {
     int screenX = getScreenX();
@@ -169,10 +155,8 @@ void PulloutComponent::resized() {
                              horz ? 2 + screenY : 26 + screenY);
 }
 
-
 void PulloutComponent::moved() {
 }
-
 
 void PulloutComponent::removeBoxFromDesktop() {
     popup.setVisible(false);

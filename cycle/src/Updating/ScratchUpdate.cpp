@@ -1,4 +1,5 @@
 #include <App/MeshLibrary.h>
+#include <App/SingletonRepo.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 
@@ -16,16 +17,13 @@ ScratchUpdate::ScratchUpdate(SingletonRepo* repo) : SingletonAccessor(repo, "Scr
     updateName = name;
 }
 
-ScratchUpdate::~ScratchUpdate() {
-}
-
 void ScratchUpdate::performUpdate(int updateType) {
     switch (updateType) {
-		case UpdateType::Null:
-		case UpdateType::Repaint:
+		case Null:
+		case Repaint:
 			break;
 
-		case UpdateType::Update: {
+		case Update: {
 			getObj(EnvScratchRast).performUpdate(updateType);
 			getObj(VisualDsp).rasterizeEnv(LayerGroups::GroupScratch,
 			                               getObj(Waveform3D).getWindowWidthPixels());
@@ -39,8 +37,9 @@ void ScratchUpdate::performUpdate(int updateType) {
 			getObj(SynthAudioSource).setPendingGlobalRaster();
 		}
 
-		case UpdateType::RestoreDetail:
-		case UpdateType::ReduceDetail:
+		case RestoreDetail:
+		case ReduceDetail:
 			break;
+    	default: break;
 	}
 }

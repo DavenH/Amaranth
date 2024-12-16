@@ -9,7 +9,6 @@ EditWatcher::EditWatcher(SingletonRepo* repo) :
 	,	editedWithoutUndo(false) {
 }
 
-
 void EditWatcher::update(bool justUpdateTitle) {
 	String currPreset 	= getStrConstant(DocumentName);
 	String prodName 	= getStrConstant(ProductName);
@@ -21,21 +20,21 @@ void EditWatcher::update(bool justUpdateTitle) {
 	String titleBar = (prodName + " - ") + currPreset;
 
   #ifndef DEMO_VERSION
-	if(undoManager.canUndo() || editedWithoutUndo)
+	if(undoManager.canUndo() || editedWithoutUndo) {
 		titleBar += String("*");
+	}
   #endif
 
 	clients.call(&Client::updateTitle, titleBar);
 
-	if(! justUpdateTitle)
+	if(! justUpdateTitle) {
 		clients.call(&Client::notifyChange);
+	}
 }
-
 
 bool EditWatcher::getHaveEdited() {
     return undoManager.canUndo() || editedWithoutUndo;
 }
-
 
 void EditWatcher::reset() {
 	undoManager.clearUndoHistory();
@@ -43,7 +42,6 @@ void EditWatcher::reset() {
 
 	update(true);
 }
-
 
 bool EditWatcher::addAction(NamedUndoableAction* action, bool startNewTransaction) {
     if (startNewTransaction)
@@ -53,7 +51,6 @@ bool EditWatcher::addAction(NamedUndoableAction* action, bool startNewTransactio
 	return undoManager.perform(action, description);
 }
 
-
 bool EditWatcher::addAction(UndoableAction* action, bool startNewTransaction) {
 	if(startNewTransaction)
 		undoManager.beginNewTransaction();
@@ -61,12 +58,10 @@ bool EditWatcher::addAction(UndoableAction* action, bool startNewTransaction) {
 	return undoManager.perform(action);
 }
 
-
 void EditWatcher::setHaveEditedWithoutUndo(bool have) {
     editedWithoutUndo = have;
     triggerAsyncUpdate();
 }
-
 
 void EditWatcher::undo() {
     if (undoManager.undo()) {
@@ -75,7 +70,6 @@ void EditWatcher::undo() {
         showCritical("No undo available");
     }
 }
-
 
 void EditWatcher::redo() {
     if (undoManager.redo()) {

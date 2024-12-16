@@ -1,5 +1,5 @@
-#ifndef INSETLABEL_H_
-#define INSETLABEL_H_
+#pragma once
+
 
 #include "../MiscGraphics.h"
 #include "../../App/SingletonRepo.h"
@@ -26,7 +26,7 @@ public:
 	  #endif
 	}
 
-    void setTitle(const String& name) {
+    void setLabelTitle(const String& name) {
         this->name = name;
     }
 
@@ -40,7 +40,7 @@ public:
         dimColor = Colour::fromHSV(0.6f, saturation, 0.0f, 1.f);
     }
 
-    void paint(Graphics& g) {
+    void paint(Graphics& g) override {
 		g.setFont(font);
 
 		Graphics::ScopedSaveState sss(g);
@@ -63,6 +63,3 @@ private:
 	String name;
 	Font font;
 };
-
-
-#endif

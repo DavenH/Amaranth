@@ -13,19 +13,19 @@ class PlaybackPanel;
 class Spectrum2D :
         public Panel2D {
 public:
-	void init();
+	void init() override;
 
-	void preDraw();
-	void drawBackground(bool fillBackground);
+	void preDraw() override;
+	void drawBackground(bool fillBackground) override;
 	void drawPartials();
 	void drawThres();
 	void drawHistory();
-	void drawScales();
-	void createScales();
-	int getLayerScratchChannel();
+	void drawScales() override;
+	void createScales() override;
+	int getLayerScratchChannel() override;
 
-	Spectrum2D(SingletonRepo* repo);
-	virtual ~Spectrum2D();
+	explicit Spectrum2D(SingletonRepo* repo);
+	~Spectrum2D() override = default;
 
 private:
 	Ref<PlaybackPanel> 		position;

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <iostream>
 #include <vector>
 #include "CommonGfx.h"
@@ -65,7 +66,7 @@ public:
 	void doZoomExtra(bool commandDown) override;
 	void zoomUpdated(int updateSource) override;
 
-	bool createLinePath(Vertex2 start, Vertex2 end, VertCube* cube, int pointDim, bool haveSpeed);
+	bool createLinePath(const Vertex2& start, const Vertex2& end, VertCube* cube, int pointDim, bool haveSpeed);
 	void createNameImage(const String& displayName, bool isSecondImage = false, bool dark = false);
 
     /* ----------------------------------------------------------------------------- */

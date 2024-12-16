@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 #include <iterator>
 #include <algorithm>
@@ -25,7 +26,7 @@ public:
 
 		vector<Component*> buttons;
 		std::copy(buttonArray, buttonArray + numButtons, inserter(buttons, buttons.begin()));
-		MiscGraphics& mg = getObj(MiscGraphics);
+		auto& mg = getObj(MiscGraphics);
 		pullout = new PulloutComponent(mg.getIcon(posX, posY), buttons, repo, !horz);
 		callout = new RetractableCallout(buttons, pullout, horz);
 
@@ -45,11 +46,11 @@ public:
 		vector<Component*> buttons;
 		std::copy(buttonArray, buttonArray + numButtons, inserter(buttons, buttons.begin()));
 
-		MiscGraphics& mg = getObj(MiscGraphics);
-		pullout = new PulloutComponent(mg.getIcon(posX, posY), buttons, repo, !horz);
-		callout = new RetractableCallout(buttons, pullout, horz);
+		auto& mg = getObj(MiscGraphics);
+		pullout = std::make_unique<PulloutComponent>(mg.getIcon(posX, posY), buttons, repo, !horz);
+		callout = std::make_unique<RetractableCallout>(buttons, pullout.get(), horz);
 
-		parent->addAndMakeVisible(callout);
+		parent->addAndMakeVisible(callout.get());
 	}
 
 };

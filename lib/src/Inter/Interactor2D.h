@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Interactor.h"
 #include "../Obj/MorphPosition.h"
 
@@ -23,6 +24,4 @@ public:
 	void doReshapeCurve(const MouseEvent& e) override;
 	void mouseDoubleClick (const MouseEvent& e) override;
 	virtual void setExtraElements(float x);
-
-protected:
 };

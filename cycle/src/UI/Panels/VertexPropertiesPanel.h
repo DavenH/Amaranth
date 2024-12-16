@@ -9,8 +9,6 @@
 #include <vector>
 #include <UI/TourGuide.h>
 
-#include "../UI/TourGuide.h"
-
 using std::vector;
 using std::set;
 

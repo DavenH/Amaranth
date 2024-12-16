@@ -15,7 +15,7 @@ namespace AppImages {
 
 using namespace juce;
 
-class MiscGraphics : SingletonAccessor {
+class MiscGraphics : public SingletonAccessor {
 public:
     enum FontEnum {
 		Silkscreen,

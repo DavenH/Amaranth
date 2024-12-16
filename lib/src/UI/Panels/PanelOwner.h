@@ -1,5 +1,4 @@
-#ifndef PANEL2DOWNER_H_
-#define PANEL2DOWNER_H_
+#pragma once
 
 #include "../../Obj/Ref.h"
 
@@ -14,6 +13,3 @@ public:
 protected:
     Ref<T> panel;
 };
-
-
-#endif

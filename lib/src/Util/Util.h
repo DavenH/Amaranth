@@ -13,8 +13,9 @@ public:
     static bool assignAndWereDifferent(T& a, S b) {
 		T castedB(static_cast<T>(b));
 
-		if(a == castedB)
+		if(a == castedB) {
 			return false;
+		}
 
 		a = castedB;
 		return true;

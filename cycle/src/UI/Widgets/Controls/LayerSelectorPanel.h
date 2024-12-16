@@ -9,14 +9,15 @@ class LayerSelectorPanel :
 	public SelectorPanel {
 public:
 	LayerSelectorPanel(SingletonRepo* repo, LayerSelectionClient* client);
-	virtual ~LayerSelectorPanel();
+
+	~LayerSelectorPanel() override = default;
 
 	void moveCurrentLayer(bool up);
 
-	int getSize();
-	int getCurrentIndexExternal();
-	void selectionChanged();
-	void rowClicked(int row);
+	int getSize() override;
+	int getCurrentIndexExternal() override;
+	void selectionChanged() override;
+	void rowClicked(int row) override;
 
 protected:
 	Ref<LayerSelectionClient> client;

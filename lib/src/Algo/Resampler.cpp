@@ -219,8 +219,9 @@ Buffer<float> Resampler::resample(Buffer<float> input) {
 	lastread -= (int)time - history;
 	time -= (int)time - history;
 
-	if(sourceSize == 0)
+	if(sourceSize == 0) {
 		outLen = 0;
+	}
 
 	return dest.withSize(outLen);
 }

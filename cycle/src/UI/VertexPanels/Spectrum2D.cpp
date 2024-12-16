@@ -29,11 +29,6 @@ Spectrum2D::Spectrum2D(SingletonRepo* repo) :
 	,	decibelLines(24) {
 }
 
-
-Spectrum2D::~Spectrum2D() {
-}
-
-
 void Spectrum2D::init() {
     position 		= &getObj(PlaybackPanel);
 	spectrum3D 		= &getObj(Spectrum3D);
@@ -56,8 +51,8 @@ void Spectrum2D::init() {
 
 	double value = 1.f;
 
-	for(int i = 0; i < decibelLines.size(); ++i) {
-		decibelLines[i] = (value *= 0.5);
+	for(float& decibelLine : decibelLines) {
+		decibelLine = (value *= 0.5);
 	}
 
 	Arithmetic::applyLogMapping(decibelLines, getRealConstant(FFTLogTensionAmp));
@@ -78,8 +73,9 @@ void Spectrum2D::drawBackground(bool fillBackground) {
 	const Column& column = columns[index];
 
 	int midiKey = column.midiKey;
-	if(midiKey < 0)
+	if(midiKey < 0) {
 		midiKey = getObj(MorphPanel).getCurrentMidiKey();
+	}
 
 	Buffer<float> ramp = getObj(LogRegions).getRegion(midiKey);
 
@@ -150,7 +146,7 @@ void Spectrum2D::drawBackground(bool fillBackground) {
 			sProgress = cBuffer.withSize(decibelLines.size());
 			sProgress.ramp(1.f, -1 / float(sProgress.size()));
 
-            for (int i = 0; i < (int) sProgress.size(); ++i) {
+            for (int i = 0; i < sProgress.size(); ++i) {
                 progress = sProgress[i];
 				colorOne 	= 0.16f - 0.06f * progress;
 				c1 			= Color(colorOne);
@@ -183,8 +179,9 @@ void Spectrum2D::drawBackground(bool fillBackground) {
 
 		gfx->setCurrentColour(0.07f, 0.07f, 0.07f);
 
-		for (int i = 0; i < rampReduced.size(); ++i)
-			gfx->drawLine(rampReduced[i], y0, rampReduced[i], y1, false);
+		for (float i : rampReduced) {
+			gfx->drawLine(i, y0, i, y1, false);
+		}
 
 		phaseLines.ramp(1.f, 1.f).sqrt().divCRev(0.5f).mul(powScale).add(0.5f);
 
@@ -219,8 +216,9 @@ void Spectrum2D::drawBackground(bool fillBackground) {
 }
 
 void Spectrum2D::drawPartials() {
-    if (getWidth() == 0 || getHeight() == 0)
-        return;
+    if (getWidth() == 0 || getHeight() == 0) {
+	    return;
+    }
 
     Buffer<float> ramp, scaledCol;
     int minSize;
@@ -237,8 +235,9 @@ void Spectrum2D::drawPartials() {
 		const Column& column = columns[index];
 
 		int midiKey = column.midiKey;
-		if(midiKey < 0)
+		if(midiKey < 0) {
 			midiKey = getObj(MorphPanel).getCurrentMidiKey();
+		}
 
 		ramp 	= getObj(LogRegions).getRegion(midiKey);
 		minSize = jmin(ramp.size(), column.size());
@@ -260,11 +259,13 @@ void Spectrum2D::drawPartials() {
 
 	int i = 0, start = 0;
 
-	while(ramp[start] < zoomPanel->rect.x)
+	while(ramp[start] < zoomPanel->rect.x) {
 		start++;
+	}
 
-	if(start > 0)
+	if(start > 0) {
 		start--;
+	}
 
 	int end = minSize - 1;
 	while(ramp[end] > zoomPanel->rect.w + zoomPanel->rect.x && end > 0) {
@@ -323,7 +324,7 @@ void Spectrum2D::drawPartials() {
         float top = sy(1.f);
 
 		x 	= scaledRamp[closestHarmonic];
-		dx 	= (int) scaledRamp[jmin(size - 1, closestHarmonic + 1)] - x - 2;
+		dx 	= scaledRamp[jmin(size - 1, closestHarmonic + 1)] - x - 2;
 		y 	= scaledCol[closestHarmonic] - 1;
 
 		gfx->fillRect(x, top, x + dx, y, highlitTop, highlitBot);
@@ -339,7 +340,7 @@ void Spectrum2D::drawPartials() {
     for (i = start; i < widthMostSix; ++i) {
         x = scaledRamp[i];
         dx = (scaledRamp[i + 1] - x) - 2;
-		y 	= (int) scaledCol[i];
+		y 	= scaledCol[i];
 
 		gfx->fillRect(x, y, x + dx, base, greyLight, greyDark);
 	}
@@ -347,7 +348,7 @@ void Spectrum2D::drawPartials() {
     for (; i < widthMostOne; ++i) {
         x = scaledRamp[i] - 1;
         dx = scaledRamp[i + 1] - scaledRamp[i];
-		y = (int) scaledCol[i];
+		y = scaledCol[i];
 
 		gfx->fillRect(x, y, x + dx, base, greyLight, greyDark);
 	}
@@ -356,7 +357,7 @@ void Spectrum2D::drawPartials() {
     for (; i < end + 1; ++i) {
         ColorPos pos;
         pos.x = scaledRamp[i] - 1;
-		pos.y = (int) scaledCol[i];
+		pos.y = scaledCol[i];
 		pos.c = greyLight;
 
 		positions.push_back(pos);

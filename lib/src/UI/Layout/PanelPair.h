@@ -11,7 +11,7 @@ class PanelPair :
 		public Bounded
 	, 	public SingletonAccessor {
 public:
-	PanelPair(SingletonRepo* repo, Bounded& a, Bounded& b,
+	PanelPair(SingletonRepo* repo, Bounded* a, Bounded* b,
 			  bool sideBySide, float portion, const String& name,
 			  int border = 6, int min1 = 0, int max1 = INT_MAX,
 			  int min2 = 0,  int max2 = INT_MAX);
@@ -37,8 +37,8 @@ public:
 	float getPortion() const	{ return portion; 	}
 	const Rectangle<int> getBounds() override { return Rectangle(x, y, width, height); }
 
-	void setFirst(Bounded&& component) 	{ one = component; }
-	void setSecond(Bounded&& component)	{ two = component; }
+	void setFirst(Bounded* component) 	{ one = component; }
+	void setSecond(Bounded* component)	{ two = component; }
 	void setPortion(float value) 		{ portion = value; }
 	void resized() 						{ setBounds(x, y, width, height); }
 
@@ -47,8 +47,8 @@ public:
 	int minWidthOne, minHeightOne, minWidthTwo, minHeightTwo;
 	int maxWidthOne, maxHeightOne, maxWidthTwo, maxHeightTwo;
 
-	Bounded& one;
-	Bounded& two;
+	Bounded* one;
+	Bounded* two;
 
 protected:
 	bool childrenEnabled;

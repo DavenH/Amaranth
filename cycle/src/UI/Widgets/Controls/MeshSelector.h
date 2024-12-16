@@ -223,9 +223,7 @@ public:
 		,	updateMeshVersion(updateMeshVersions) {
 		jassert(client != nullptr);
 
-	  #ifndef BEAT_EDITION
 		startTimer(PopulateTimer, 1000);
-	  #endif
 	}
 
 	void populateMenu() override {

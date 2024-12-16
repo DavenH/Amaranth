@@ -1,11 +1,11 @@
 #include "StringFunction.h"
 #include "../Util/NumberUtils.h"
 
-String StringFunction::paddedString(double value) {
+String StringFunction::paddedString(double value) const {
     return preString + roundedString(value) + postString;
 }
 
-String StringFunction::roundedString(double value) {
+String StringFunction::roundedString(double value) const {
     return precision == 0 ?
            String(int(value)) :
            String(value, precision);
@@ -22,7 +22,7 @@ String StringFunction::toString(double value) {
     return paddedString(evaluate(ops.size() - 1, value));
 }
 
-double StringFunction::Op::eval(double arg) {
+double StringFunction::Op::eval(double arg) const {
     using namespace Ops;
 
     switch (code) {
@@ -39,7 +39,8 @@ double StringFunction::Op::eval(double arg) {
 		case Pow: 	return powf(arg, arg1);
 		case Log: 	return logf(arg);
 		case PowRev: return powf(arg1, arg);
-		case Np2: 	return 2 << (int) ceil(log(arg1));
+		case Np2: 	return 2 << static_cast<int>(ceilf(logf(arg)));
+    	default: break;
 	}
 
 	throw std::invalid_argument("Invalid operator " + (code));

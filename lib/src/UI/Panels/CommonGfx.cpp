@@ -30,8 +30,9 @@ void CommonGfx::scaleIfNecessary(bool scale, float& x1, float& y1, float& x2, fl
 }
 
 void CommonGfx::drawBackground(const Rectangle<int>& bounds, bool fillBackground) {
-    if (bounds.getWidth() == 0 || bounds.getHeight() == 0)
+    if (bounds.getWidth() == 0 || bounds.getHeight() == 0) {
         return;
+    }
 
     if (fillBackground) {
         Interactor* itr = panel->interactor;
@@ -55,8 +56,6 @@ void CommonGfx::drawBackground(const Rectangle<int>& bounds, bool fillBackground
     }
 
     {
-        SingletonRepo* repo = panel->interactor->getSingletonRepo();
-
         float minorLevel = panel->minorBrightness;
         setCurrentColour(minorLevel, minorLevel, minorLevel);
         disableSmoothing();
@@ -105,7 +104,7 @@ void CommonGfx::drawBackground(const Rectangle<int>& bounds, bool fillBackground
 
         if (!xMajor.empty()) {
             panel->xBuffer.ensureSize(xMajor.size());
-            Buffer<float> xMajScaled(panel->xBuffer.withSize(xMajor.size()));
+            Buffer xMajScaled(panel->xBuffer.withSize(xMajor.size()));
             xMajor.copyTo(xMajScaled);
             panel->applyScaleX(xMajScaled);
 
@@ -122,15 +121,17 @@ void CommonGfx::drawBackground(const Rectangle<int>& bounds, bool fillBackground
 }
 
 void CommonGfx::drawFinalSelection() {
-    if (panel->interactor->getSelected().empty())
+    if (panel->interactor->getSelected().empty()) {
         return;
+    }
 
     PanelState& state = panel->interactor->state;
 
     vector<Vertex2>& corners = panel->interactor->selectionCorners;
 
-    if (corners.empty())
+    if (corners.empty()) {
         return;
+    }
 
     setCurrentColour(0.4f, 0.4f, 0.4f, 0.25f);
     fillRect(corners[0].x, corners[0].y, corners[2].x, corners[2].y, false);
@@ -162,7 +163,7 @@ void CommonGfx::drawFinalSelection() {
             d[2] = Vertex2(1, -1);
             d[3] = Vertex2(-1, -1);
 
-#if USE_CORNERS
+        #if USE_CORNERS
             }
             else if(corner % 4 == 1)
             {
@@ -177,7 +178,7 @@ void CommonGfx::drawFinalSelection() {
                 d[1] = Vertex2(-1.6f, 0);
                 d[2] = Vertex2(1.6f, 0);
                 d[3] = Vertex2(0, 1.6f);
-#endif
+        #endif
         }
 
         setCurrentLineWidth(1.f);

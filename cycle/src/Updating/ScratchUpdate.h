@@ -7,8 +7,9 @@ class ScratchUpdate :
 		public SingletonAccessor
 	, 	public Updateable {
 public:
-	ScratchUpdate(SingletonRepo* repo);
-	virtual ~ScratchUpdate();
+	explicit ScratchUpdate(SingletonRepo* repo);
 
-	void performUpdate(int updateType);
+	~ScratchUpdate() override;
+
+	void performUpdate(int updateType) override;
 };

@@ -10,16 +10,15 @@ PresetWindow::PresetWindow()
 	setResizable(true, true);
 }
 
-void PresetWindow::show(SingletonRepo* repo, Component* toCentreAround)
-{
-	if(! JUCEApplication::isStandaloneApp())
+void PresetWindow::show(SingletonRepo* repo, Component* toCentreAround) {
+	if (!JUCEApplication::isStandaloneApp()) {
 		setAlwaysOnTop(true);
+	}
 
 	setContentNonOwned(&getObj(PresetPage), true);
 	centreAroundComponent(toCentreAround, getWidth(), getHeight());
 	setVisible(true);
 }
-
 
 void PresetWindow::closeButtonPressed()
 {

@@ -3,7 +3,7 @@
 
 class LayerSelectionClient {
 public:
-	LayerSelectionClient(SingletonRepo* repo);
+	explicit LayerSelectionClient(SingletonRepo* repo);
 	virtual ~LayerSelectionClient();
 
 	virtual void layerChanged() = 0;

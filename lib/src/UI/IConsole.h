@@ -10,8 +10,8 @@ public:
 	bool middle;
 	bool right;
 
-	MouseUsage() : left(0), scroll(0), middle(0), right(0) {}
-	MouseUsage(bool l, bool r = false, bool s = false, bool m = false) : left(l), scroll(s), middle(m), right(r) {}
+	MouseUsage() : left(false), scroll(false), middle(false), right(false) {}
+	explicit MouseUsage(bool l, bool r = false, bool s = false, bool m = false) : left(l), scroll(s), middle(m), right(r) {}
 };
 
 class IConsole : public SingletonAccessor {
@@ -25,12 +25,13 @@ public:
 
 	void write(const String& str) { write(str, DefaultPriority); }
 
-	IConsole(SingletonRepo* repo) : SingletonAccessor(repo, "IConsole") {}
+	explicit IConsole(SingletonRepo* repo) : SingletonAccessor(repo, "IConsole") {}
 
 	virtual void write(const String& str, int priority) = 0;
 	virtual void setKeys(const String& str) = 0;
 	virtual void setMouseUsage(const MouseUsage& usage) = 0;
-	virtual void reset() = 0;
+
+	void reset() override = 0;
 
     virtual void setMouseUsage(bool left, bool right, bool scroll, bool middle) {
         setMouseUsage(MouseUsage(left, right, scroll, middle));
@@ -44,10 +45,10 @@ public:
 };
 
 class DummyConsole : public IConsole {
-	DummyConsole(SingletonRepo* repo) : IConsole(repo) {}
+	explicit DummyConsole(SingletonRepo* repo) : IConsole(repo) {}
 
-	void write(const String& str, int priority) {}
-	void setKeys(const String& str) {}
-	void setMouseUsage(const MouseUsage& usage) {}
-	void reset() {}
+	void write(const String& str, int priority) override {}
+	void setKeys(const String& str) override {}
+	void setMouseUsage(const MouseUsage& usage) override {}
+	void reset() override {}
 };

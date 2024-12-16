@@ -1,9 +1,11 @@
 #include "IconButton.h"
+
+#include <Definitions.h>
+
 #include "../MiscGraphics.h"
 #include "../IConsole.h"
 #include "../../Util/Util.h"
 #include "../../App/SingletonRepo.h"
-
 
 IconButton::IconButton(int x, int y,
 					   Button::Listener* listener,
@@ -40,15 +42,13 @@ IconButton::IconButton(Image image, SingletonRepo* repo)
 	,	pendingNumber	(0)
 	,	collapsedSize	(24)
 	,	expandedSize	(24)
-	,	neut			(image) {
+	,	neut			(std::move(image)) {
 	setMouseCursor(MouseCursor::PointingHandCursor);
 }
-
 
 IconButton::~IconButton() {
     neut = Image();
 }
-
 
 bool IconButton::setHighlit(bool highlit) {
     if (Util::assignAndWereDifferent(this->highlit, highlit)) {
@@ -59,12 +59,10 @@ bool IconButton::setHighlit(bool highlit) {
 	return false;
 }
 
-
 void IconButton::setMessages(String mouseOverMessage, String keys) {
     message = mouseOverMessage;
     this->keys = keys;
 }
-
 
 void IconButton::paintButton(Graphics& g, bool mouseOver, bool buttonDown) {
 	Image copy = neut;
@@ -90,13 +88,11 @@ void IconButton::paintButton(Graphics& g, bool mouseOver, bool buttonDown) {
 	}
 }
 
-
 void IconButton::paintOutline(Graphics& g, bool mouseOver, bool buttonDown) {
 	g.setColour(Colours::black);
 	Rectangle<int> r(0.f, 0.f, float(getWidth() - 1), float(getHeight() - 1));
 	getObj(MiscGraphics).drawCorneredRectangle(g, r, 4);
 }
-
 
 void IconButton::mouseEnter(const MouseEvent& e) {
     repo->getConsole().updateAll(keys, applicable ? message : naMessage,
@@ -104,7 +100,6 @@ void IconButton::mouseEnter(const MouseEvent& e) {
 
     Button::mouseEnter(e);
 }
-
 
 void IconButton::mouseDrag(const MouseEvent& e) {
     if (e.mods.isRightButtonDown())
@@ -117,10 +112,10 @@ void IconButton::mouseDrag(const MouseEvent& e) {
 	}
 }
 
-
 void IconButton::mouseDown(const MouseEvent& e) {
-    if (!e.mods.isLeftButtonDown())
-        return;
+    if (!e.mods.isLeftButtonDown()) {
+	    return;
+    }
 
     if (applicable) {
         Button::mouseDown(e);
@@ -128,7 +123,6 @@ void IconButton::mouseDown(const MouseEvent& e) {
 		showMsg(naMessage);
 	}
 }
-
 
 void IconButton::setApplicable(bool applicable) {
     if (applicable == this->applicable)

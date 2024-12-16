@@ -1,8 +1,8 @@
 #pragma once
+
 #include "../Util/NumberUtils.h"
 #include "../Curve/Vertex2.h"
 
-[[nodiscard]]
 class CurveLine {
 public:
     CurveLine() : bounded(false), nan(false), one(0, 0), two(1, 0), slope(0) {

@@ -3,9 +3,6 @@
 LockRegistry::LockRegistry(SingletonRepo* repo) : SingletonAccessor(repo, "LockRegistry") {
 }
 
-LockRegistry::~LockRegistry() {
-}
-
 // want to detect T1 takes L1, T2 takes L2, T1 tries to take L2, T2 tries to take L1
 
 // T		L

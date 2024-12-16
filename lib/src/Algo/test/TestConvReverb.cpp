@@ -4,7 +4,7 @@
 #include "../../Array/ScopedAlloc.h"
 
 class TestConvReverb {
-private:
+public:
     // Helper method to verify convolution results
     static bool verifyConvolution(const Buffer<float>& output, 
                                 const Buffer<float>& reference,
@@ -20,8 +20,9 @@ private:
                 float absError = fabsf(actual - expected);
                 float relError = absError / expected;
 
-                if (relError > relTolerance && absError > absTolerance)
+                if (relError > relTolerance && absError > absTolerance) {
                     ++diffSamples;
+                }
             }
         }
         
@@ -41,15 +42,12 @@ private:
         buffer.ramp(0.01f, 0.1f).inv().sin();
     }
 
-public:
-    static SingletonRepo* createTestRepo() {
-        return new SingletonRepo();
-    }
 };
 
 TEST_CASE("ConvReverb Basic Operation", "[ConvReverb]") {
-    auto repo = TestConvReverb::createTestRepo();
-    ConvReverb reverb(repo);
+    SingletonRepo repo;
+
+    ConvReverb reverb(&repo);
 
     SECTION("Initialization with valid parameters") {
         const int headSize = 512;
@@ -58,7 +56,7 @@ TEST_CASE("ConvReverb Basic Operation", "[ConvReverb]") {
         
         ScopedAlloc<float> kernelAlloc(kernelSize);
         Buffer<float> kernel(kernelAlloc.get(), kernelSize);
-        generateTestIR(kernel);
+        TestConvReverb::generateTestIR(kernel);
 
         REQUIRE_NOTHROW(reverb.init(headSize, tailSize, kernel));
     }
@@ -71,13 +69,11 @@ TEST_CASE("ConvReverb Basic Operation", "[ConvReverb]") {
         CHECK(reverb.precalcPos == 0);
         CHECK(reverb.tailInputPos == 0);
     }
-
-    delete repo;
 }
 
 TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
-    auto repo = TestConvReverb::createTestRepo();
-    ConvReverb reverb(repo);
+    SingletonRepo repo;
+    ConvReverb reverb(&repo);
 
     SECTION("Single-stage convolution accuracy") {
         const int inputSize = 44100;
@@ -92,14 +88,14 @@ TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
         Buffer<float> reference = memory.place(inputSize + irSize - 1);
 
         // Generate test signals
-        generateTestSignal(input);
-        generateTestIR(ir);
+        TestConvReverb::generateTestSignal(input);
+        TestConvReverb::generateTestIR(ir);
 
         // Generate reference result
-        reverb.basicConvolve(input, ir, reference);
+        ConvReverb::basicConvolve(input, ir, reference);
 
         // Test single-stage convolution
-        ConvReverb::BlockConvolver convolver;
+        BlockConvolver convolver;
         convolver.init(bufferSize, ir);
 
         int processedIn = 0, processedOut = 0;
@@ -120,7 +116,7 @@ TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
         float absTolerance = 0.001f * float(ir.size());
         float relTolerance = 0.0001f * logf(float(ir.size()));
         
-        CHECK(verifyConvolution(output, reference, absTolerance, relTolerance));
+        CHECK(TestConvReverb::verifyConvolution(output, reference, absTolerance, relTolerance));
     }
 
     SECTION("Two-stage convolution accuracy") {
@@ -138,11 +134,11 @@ TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
         Buffer<float> reference = memory.place(inputSize + irSize - 1);
 
         // Generate test signals
-        generateTestSignal(input);
-        generateTestIR(ir);
+        TestConvReverb::generateTestSignal(input);
+        TestConvReverb::generateTestIR(ir);
 
         // Generate reference result
-        reverb.basicConvolve(input, ir, reference);
+        ConvReverb::basicConvolve(input, ir, reference);
 
         // Initialize two-stage convolution
         reverb.init(headSize, tailSize, ir);
@@ -165,15 +161,13 @@ TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
         float absTolerance = 0.001f * float(ir.size());
         float relTolerance = 0.0001f * logf(float(ir.size()));
         
-        CHECK(verifyConvolution(output, reference, absTolerance, relTolerance));
+        CHECK(TestConvReverb::verifyConvolution(output, reference, absTolerance, relTolerance));
     }
-
-    delete repo;
 }
 
 TEST_CASE("ConvReverb Edge Cases", "[ConvReverb]") {
-    auto repo = TestConvReverb::createTestRepo();
-    ConvReverb reverb(repo);
+    SingletonRepo repo;
+    ConvReverb reverb(&repo);
 
     SECTION("Empty input handling") {
         const int bufferSize = 512;
@@ -196,7 +190,7 @@ TEST_CASE("ConvReverb Edge Cases", "[ConvReverb]") {
         const int kernelSize = 1024;
         ScopedAlloc<float> kernelAlloc(kernelSize);
         Buffer<float> kernel(kernelAlloc.get(), kernelSize);
-        generateTestIR(kernel);
+        TestConvReverb::generateTestIR(kernel);
 
         // Test with zero head size
         REQUIRE_NOTHROW(reverb.init(0, 8192, kernel));
@@ -207,6 +201,4 @@ TEST_CASE("ConvReverb Edge Cases", "[ConvReverb]") {
         // Test with head size larger than tail size
         REQUIRE_NOTHROW(reverb.init(8192, 512, kernel));
     }
-
-    delete repo;
 }

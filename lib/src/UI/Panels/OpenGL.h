@@ -1,5 +1,5 @@
-#ifndef OPENGL_H_
-#define OPENGL_H_
+#pragma once
+
 
   #ifdef _WIN32
 	#include "../../Util/WinHeader.h"
@@ -15,4 +15,3 @@
 	#include <OpenGL/gl3ext.h>
   #endif
 
-#endif

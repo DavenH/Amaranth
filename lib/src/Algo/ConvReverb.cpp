@@ -29,20 +29,23 @@ void ConvReverb::reset() {
 void ConvReverb::init(int headSize, int tailSize, const Buffer<float>& kernel) {
     reset();
 
-	if(headSize == 0 || tailSize == 0)
+	if(headSize == 0 || tailSize == 0) {
 		return;
+	}
 
 	headSize = jmax(1, headSize);
 
-	if(headSize > tailSize)
+	if(headSize > tailSize) {
 		std::swap(headSize, tailSize);
+	}
 
 	headBlockSize = NumberUtils::nextPower2(headSize);
 	tailBlockSize = NumberUtils::nextPower2(tailSize);
 
 	// test after setting vars
-	if(kernel.empty())
+	if(kernel.empty()) {
 		return;
+	}
 
     while (tailBlockSize > kernel.size() / 2) {
 		tailBlockSize /= 2;
@@ -170,7 +173,7 @@ void ConvReverb::process(
 	}
 }
 
-void ConvReverb::BlockConvolver::reset() {
+void BlockConvolver::reset() {
 	blockSize 		= 0;
 	numBlocks 		= 0;
 	currSegment		= 0;
@@ -186,11 +189,11 @@ void ConvReverb::BlockConvolver::reset() {
 	fft.setFFTScaleType(IPP_FFT_DIV_INV_BY_N);
 }
 
-void ConvReverb::BlockConvolver::init(int sizeOfBlock, const Buffer<float>& kernel) {
+void BlockConvolver::init(int sizeOfBlock, const Buffer<float>& kernel) {
     init(sizeOfBlock, kernel, false);
 }
 
-void ConvReverb::BlockConvolver::init(int sizeOfBlock, int kernelSize, float decay) {
+void BlockConvolver::init(int sizeOfBlock, int kernelSize, float decay) {
 	init(sizeOfBlock, Buffer<float>(nullptr, kernelSize), true);
 
 	baseNoiseLevel.im = 0.f;
@@ -199,7 +202,7 @@ void ConvReverb::BlockConvolver::init(int sizeOfBlock, int kernelSize, float dec
 	noiseDecay = decay;
 }
 
-ConvReverb::BlockConvolver::BlockConvolver() :
+BlockConvolver::BlockConvolver() :
 		useNoise(false)
 	,	active(true)
 	,	numBlocks(0)
@@ -207,10 +210,11 @@ ConvReverb::BlockConvolver::BlockConvolver() :
 	,	inputBufferPos(0)
 	,	seed(0)
 	,	blockSize(0)
+	,	baseNoiseLevel{}
 	,	noiseDecay(0) {
 }
 
-void ConvReverb::BlockConvolver::init(
+void BlockConvolver::init(
         int sizeOfBlock,
         const Buffer<float>& kernel,
         bool usesNoise) {
@@ -264,7 +268,7 @@ void ConvReverb::BlockConvolver::init(
 	}
 }
 
-void ConvReverb::BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
+void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
     if (numBlocks == 0) {
 		output.zero();
 		return;
@@ -322,8 +326,10 @@ Buffer<float> ConvReverb::convolve(const Buffer<float>& inputFrq, Buffer<float> 
 
 	Transform& fft = getObj(Transforms).chooseFFT(paddedSize);
 	Buffer<float> workBuffer 	= getObj(MemoryPool).getAudioPool();
-	Buffer<float> kernelFrqPad 	= workBuffer.section(cume, complexSize); cume += complexSize;
-	Buffer<float> inputFrqPad  	= workBuffer.section(cume, complexSize); cume += complexSize;
+	Buffer<float> kernelFrqPad 	= workBuffer.section(cume, complexSize);
+	cume += complexSize;
+	Buffer<float> inputFrqPad  	= workBuffer.section(cume, complexSize);
+	cume += complexSize;
 
 	kernelFrq.copyTo(kernelFrqPad + 2);
 	kernelFrqPad.offset(2 + kernelFrq.size()).zero();
@@ -349,17 +355,23 @@ void ConvReverb::basicConvolve(
 		std::swap(input, response);
 
 	output.zero();
-	for(int i = 0; i < response.size(); ++i)
-		for(int j = 0; j <= i; ++j)
+	for(int i = 0; i < response.size(); ++i) {
+		for(int j = 0; j <= i; ++j) {
 			output[i] += response[j] * input[i - j];
+		}
+	}
 
-	for(int i = response.size(); i < input.size(); ++i)
-		for(int j = 0; j < response.size(); ++j)
+	for(int i = response.size(); i < input.size(); ++i) {
+		for(int j = 0; j < response.size(); ++j) {
 			output[i] += response[j] * input[i - j];
+		}
+	}
 
-	for(int i = input.size(); i < input.size() + response.size() - 1; ++i)
-		for(int j = i - input.size() + 1; j < response.size(); ++j)
+	for(int i = input.size(); i < input.size() + response.size() - 1; ++i){
+		for(int j = i - input.size() + 1; j < response.size(); ++j) {
 			output[i] += response[j] * input[i - j];
+		}
+	}
 }
 
 void ConvReverb::test() {

@@ -47,14 +47,12 @@
 #include "../UI/VertexPanels/Waveform3D.h"
 #include "../Util/CycleEnums.h"
 
-
 #define A(X) areaStrings.set(#X, X)
 #define B(X) subareaStrings.set(#X, X)
 #define C(X) condStrings.set(#X, X)
 #define P(X) compareStrings.set(#X, X)
 #define N(X) actionStrings.set(#X, X)
 #define I(X) idStrings.set(#X, X)
-
 
 CycleTour::CycleTour(SingletonRepo* repo) :
 		SingletonAccessor(repo, "CycleTour")
@@ -151,15 +149,9 @@ CycleTour::CycleTour(SingletonRepo* repo) :
 	I(IdViewStageA), 	I(IdViewStageB),	I(IdViewStageC), 	I(IdViewStageD);
 }
 
-CycleTour::~CycleTour()
-{
-}
-
-
 void CycleTour::init()
 {
 }
-
 
 void CycleTour::handleAsyncUpdate()
 {
@@ -225,14 +217,14 @@ void CycleTour::handleAsyncUpdate()
 	}
 }
 
-
 void CycleTour::showNext() {
 	if(! current.items.empty()) {
 		Item& item = current.items[currentItem];
 
 		// animation not complete
-		if(item.actionIndex < item.actions.size())
+		if(item.actionIndex < item.actions.size()) {
 			return;
+		}
 	}
 
 	lastItem = currentItem;
@@ -240,14 +232,12 @@ void CycleTour::showNext() {
 	triggerAsyncUpdate();
 }
 
-
 void CycleTour::showPrevious() {
 	if(Util::assignAndWereDifferent(currentItem, jmax(0, currentItem - 1))){
 		lastItem = currentItem;
 		triggerAsyncUpdate();
 	}
 }
-
 
 void CycleTour::enter() {
 	getObj(FileManager).openFactoryPreset("empty");
@@ -261,7 +251,6 @@ void CycleTour::enter() {
 	getObj(MainPanel).addAndMakeVisible(&highlighter);
 	triggerAsyncUpdate();
 }
-
 
 void CycleTour::exit() {
 	wrapper.removeFromDesktop();
@@ -277,7 +266,6 @@ void CycleTour::exit() {
 	live = false;
 }
 
-
 bool CycleTour::compare(const Condition& cond, int value)
 {
 	switch(cond.oper)
@@ -288,11 +276,12 @@ bool CycleTour::compare(const Condition& cond, int value)
 		case OperEquals: 		return value == cond.value;
 		case OperMoreThan: 		return value > 	cond.value;
 		case OperMoreThanEQ: 	return value >= cond.value;
+		default:
+			break;
 	}
 
 	return false;
 }
-
 
 bool CycleTour::conditionPassed(const Condition& c){
 	jassert(c.oper != OperNull);
@@ -303,21 +292,23 @@ bool CycleTour::conditionPassed(const Condition& c){
 			return true;
 
 		case NumLines:{
-			if(Interactor* itr = areaToInteractor(c.area))
+			if(Interactor* itr = areaToInteractor(c.area)) {
 				return compare(c, itr->getMesh()->getNumCubes());
+			}
 
 			break;
 		}
 
 		case NumPoints: {
-			if(Interactor* itr = areaToInteractor(c.area))
+			if(Interactor* itr = areaToInteractor(c.area)) {
 				return compare(c, itr->getMesh()->getNumVerts());
+			}
 
 			break;
 		}
 
 		case CurrentLayer:{
-			MeshLibrary& lib = getObj(MeshLibrary);
+			auto& lib = getObj(MeshLibrary);
 
 			switch(c.area) {
 				case AreaWshpEditor:
@@ -331,7 +322,7 @@ bool CycleTour::conditionPassed(const Condition& c){
 				case AreaScratch:
 					return compare(c, lib.getCurrentIndex(LayerGroups::GroupScratch));
 				default:
-					return 0;
+					return false;
 			}
 		}
 
@@ -347,9 +338,9 @@ bool CycleTour::conditionPassed(const Condition& c){
 			if(Interactor* itr = areaToInteractor(c.area)) {
 				Mesh* mesh = itr->getMesh();
 
-				foreach(CubeIter, it, mesh->getCubes()) {
+				for (auto* cube : mesh->getCubes()) {
 					for(int j = 0; j <= Vertex::Curve; ++j)
-						num += int((*it)->deformerAt(j) >= 0);
+						num += int(cube->deformerAt(j) >= 0);
 				}
 
 				return compare(c, num);
@@ -361,7 +352,6 @@ bool CycleTour::conditionPassed(const Condition& c){
 
 	return true;
 }
-
 
 void CycleTour::performAction(Action& action) {
 	Interactor* itr = areaToInteractor(action.area);
@@ -379,7 +369,7 @@ void CycleTour::performAction(Action& action) {
 		}
 
 		case SetNoteOff: {
-			getObj(AudioHub).getKeyboardState().noteOff(1, action.data1);
+			getObj(AudioHub).getKeyboardState().noteOff(1, action.data1, 0.8f);
 
 			break;
 		}
@@ -435,7 +425,6 @@ void CycleTour::performAction(Action& action) {
 			break;
 		}
 
-
 		case SetDeclick: {
 			getDocSetting(Declick) = action.id == IdOn;
 			break;
@@ -457,6 +446,8 @@ void CycleTour::performAction(Action& action) {
 				case AreaUnison:
 					getObj(UnisonUI).triggerModeChanged(action.id == IdModeUniGroup);
 					break;
+				default:
+					break;
 			}
 			break;
 		}
@@ -465,7 +456,6 @@ void CycleTour::performAction(Action& action) {
 			getObj(PlaybackPanel).setProgress(action.value, true);
 			break;
 		}
-
 
 		case SetLayerMode: {
 			jassert(action.area == AreaSpectrum || action.area == AreaSpectrogram);
@@ -484,50 +474,48 @@ void CycleTour::performAction(Action& action) {
 		}
 
 		case Zoom: {
-			if(Panel* panel = dynamic_cast<Panel*>(getTourGuide(action.area)))
+			if(auto* panel = dynamic_cast<Panel*>(getTourGuide(action.area))) {
 				panel->triggerZoom(action.id == IdZoomIn);
+			}
 
 			break;
 		}
 
-
 		case LinkRange: {
-			if(action.id == IdYellow && ! getSetting(LinkYellow))
+			if(action.id == IdYellow && ! getSetting(LinkYellow)) {
 				getObj(MorphPanel).triggerClick(IdBttnLinkY);
-
-			else if(action.id == IdRed && ! getSetting(LinkRed))
+			} else if(action.id == IdRed && ! getSetting(LinkRed)) {
 				getObj(MorphPanel).triggerClick(IdBttnLinkR);
-
-			else if(action.id == IdBlue && ! getSetting(LinkBlue))
+			} else if(action.id == IdBlue && ! getSetting(LinkBlue)) {
 				getObj(MorphPanel).triggerClick(IdBttnLinkB);
+			}
 
 			break;
 		}
 
 		case UnlinkRange: {
-			if(action.id == IdYellow && getSetting(LinkYellow))
+			if(action.id == IdYellow && getSetting(LinkYellow)) {
 				getObj(MorphPanel).triggerClick(IdBttnLinkY);
-
-			else if(action.id == IdRed && getSetting(LinkRed))
+			} else if(action.id == IdRed && getSetting(LinkRed)) {
 				getObj(MorphPanel).triggerClick(IdBttnLinkR);
-
-			else if(action.id == IdBlue && getSetting(LinkBlue))
+			} else if(action.id == IdBlue && getSetting(LinkBlue)) {
 				getObj(MorphPanel).triggerClick(IdBttnLinkB);
+			}
 
 			break;
 		}
 
-
 		case DeformLine: {
-			if(action.hasExecuted)
+			if(action.hasExecuted) {
 				return;
+			}
 
 			if(itr) {
 				Mesh* mesh = itr->getMesh();
 
-				if(isPositiveAndBelow(action.data1, (int) mesh->getNumCubes()))
+				if(isPositiveAndBelow(action.data1, mesh->getNumCubes()))
 				{
-					VertCube* cube = *(mesh->getCubeStart() + action.data1);
+					VertCube* cube = mesh->getCubes()[action.data1];
 
 					cube->deformerAt(action.id) = action.data2;
 					getObj(VertexPropertiesPanel).setSelectedAndCaller(itr);
@@ -569,6 +557,8 @@ void CycleTour::performAction(Action& action) {
 				case AreaEQ:			getObj(EqualizerUI).setEffectEnabled(true, true, true);	break;
 				case AreaReverb:		getObj(ReverbUI).setEffectEnabled(true, true, true);	break;
 				case AreaDelay:			getObj(DelayUI).setEffectEnabled(true, true, true);		break;
+				default:
+					break;
 			}
 			break;
 		}
@@ -599,6 +589,8 @@ void CycleTour::performAction(Action& action) {
 				case AreaEQ:			getObj(EqualizerUI).setEffectEnabled(false, true, true);	break;
 				case AreaReverb:		getObj(ReverbUI).setEffectEnabled(false, true, true);		break;
 				case AreaDelay:			getObj(DelayUI).setEffectEnabled(false, true, true);		break;
+				default:
+					break;
 			}
 			break;
 		}
@@ -616,6 +608,8 @@ void CycleTour::performAction(Action& action) {
 
 				case AreaDeformers:		getObj(DeformerPanel).triggerButton(action.id);		break;
 				case AreaScratch:		getObj(EnvelopeInter2D).triggerButton(action.id);	break;
+				default:
+					break;
 			}
 
 			action.hasExecuted = true;
@@ -641,6 +635,9 @@ void CycleTour::performAction(Action& action) {
 				case AreaScratch:
 					getObj(EnvelopeInter2D).getScratchSelector()->clickedOnRow(action.data1);
 					break;
+
+				default:
+					break;
 			}
 			break;
 		}
@@ -658,13 +655,12 @@ void CycleTour::performAction(Action& action) {
 			if(action.hasExecuted)
 				return;
 
-			if(itr) {
+			if (itr) {
 				ScopedBooleanSwitcher sbs(itr->suspendUndo);
 
 				itr->addNewCube(0, action.point.x, action.point.y, action.value);
 
-				if(action.triggersUpdate)
-				{
+				if (action.triggersUpdate) {
 					itr->postUpdateMessage();
 					itr->doExtraMouseUp();
 				}
@@ -682,11 +678,12 @@ void CycleTour::performAction(Action& action) {
 			if(itr) {
 				Mesh* mesh = itr->getMesh();
 
-				if(isPositiveAndBelow(action.data1, (int) mesh->getNumVerts())) {
+				if(isPositiveAndBelow(action.data1, mesh->getNumVerts())) {
 					vector<Vertex*>& selected = itr->getSelected();
 					selected.clear();
 
-					Vertex* vert = *(mesh->getVertStart() + action.data1);
+					Vertex* vert = mesh->getVerts()[action.data1];
+
 					selected.push_back(vert);
 					itr->eraseSelected();
 
@@ -713,7 +710,7 @@ void CycleTour::performAction(Action& action) {
 					vector<Vertex*>& selected = itr->getSelected();
 					selected.clear();
 
-					Vertex* vert = *(mesh->getVertStart() + action.data1);
+					Vertex* vert = mesh->getVerts()[action.data1];
 					selected.push_back(vert);
 
 					itr->updateSelectionFrames();
@@ -731,19 +728,18 @@ void CycleTour::performAction(Action& action) {
 			break;
 		}
 
-		case SetVertexParam:
-		{
-			if(itr)
-			{
+		case SetVertexParam: {
+			if (itr) {
 				Mesh* mesh = itr->getMesh();
 
-				if(isPositiveAndBelow(action.data1, (int) mesh->getNumVerts()) &&
+				if(isPositiveAndBelow(action.data1, mesh->getNumVerts()) &&
 						NumberUtils::within<int>(action.id, IdParamTime, IdParamSharp)) {
-					Vertex* vert = *(mesh->getVertStart() + action.data1);
+					Vertex* vert = mesh->getVerts()[action.data1];
 					Array<Vertex*> movingVerts = itr->getVerticesToMove(vert->owners.getFirst(), vert);
 
-					for(int i = 0; i < movingVerts.size(); ++i)
-						movingVerts[i]->values[action.id] = action.value;
+					for(auto movingVert : movingVerts) {
+						movingVert->values[action.id] = action.value;
+					}
 
 					if(action.triggersUpdate) {
 						getObj(VertexPropertiesPanel).setSelectedAndCaller(itr);
@@ -763,8 +759,8 @@ void CycleTour::performAction(Action& action) {
 					Vertex* vert = *(mesh->getVertStart() + action.data1);
 
 					bool contained = false;
-					for(int i = 0; i < selected.size(); ++i) {
-						if(selected[i] == vert) {
+					for(auto& i : selected) {
+						if(i == vert) {
 							contained = true;
 							break;
 						}
@@ -807,6 +803,7 @@ void CycleTour::performAction(Action& action) {
 				case AreaImpulse: 		getObj(IrModellerUI).getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
 				case AreaWaveshaper: 	getObj(WaveshaperUI).getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
 				case AreaMasterCtrls: 	getObj(OscControlPanel).getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
+				default: break;
 			}
 
 			break;
@@ -834,6 +831,7 @@ void CycleTour::performAction(Action& action) {
 				case IdYellow:	getSetting(UseYellowDepth) 	= action.data1 > 0; break;
 				case IdRed:		getSetting(UseRedDepth) 	= action.data1 > 0; break;
 				case IdBlue:	getSetting(UseBlueDepth) 	= action.data1 > 0; break;
+				default: break;
 			}
 			break;
 
@@ -893,9 +891,7 @@ void CycleTour::performAction(Action& action) {
 
 					action.hasExecuted = true;
 				}
-			}
-			else
-			{
+			} else {
 				jassertfalse;
 			}
 			break;
@@ -921,29 +917,25 @@ void CycleTour::performAction(Action& action) {
 	}
 }
 
-
-void CycleTour::Highlighter::paint(Graphics &g) {
-    Rectangle<int> r = getLocalBounds();
+void CycleTour::Highlighter::paint(Graphics& g) {
+	Rectangle<int> r = getLocalBounds();
 
     g.setColour(Colour::fromHSV(0.6f, 0.5f, 1.0f, 0.55f));
     g.drawRect(r.expanded(1, 1), 3);
 }
 
-
 CycleTour::Highlighter::Highlighter(CycleTour* tour) : tour(tour) {
     setInterceptsMouseClicks(false, false);
 }
 
-
-void CycleTour::Highlighter::update(const Rectangle<int> &r) {
-    setBounds(r);
-    repaint();
+void CycleTour::Highlighter::update(const Rectangle<int>& r) {
+	setBounds(r);
+	repaint();
 }
 
-
-void CycleTour::ItemComponent::paint(Graphics &g) {
-    g.setColour(Colour::greyLevel(0.75));
-    g.setFont(Font(18, Font::bold));
+void CycleTour::ItemComponent::paint(Graphics& g) {
+	g.setColour(Colour::greyLevel(0.75));
+    g.setFont(FontOptions(18, Font::bold));
 
 	Util::drawTextLine(g, item.title, 10, 15, Justification::left);
 
@@ -953,27 +945,23 @@ void CycleTour::ItemComponent::paint(Graphics &g) {
 	layout.draw(g, textBounds.toFloat());
 }
 
-
 CycleTour::ItemWrapper::ItemWrapper(SingletonRepo* repo) :
 		SingletonAccessor(repo, "ItemWrapper")
 	,	borderSpace (20)
 	,	arrowSize (16.0f) {
-	content = new ItemComponent();
 	addAndMakeVisible(content);
 	setAlwaysOnTop (true);
-	addToDesktop (ComponentPeer::windowIsTemporary);
+	Component::addToDesktop (ComponentPeer::windowIsTemporary);
 }
 
-
 void CycleTour::ItemWrapper::setItem(const Item &item) {
-    content->setItem(item);
+    content.setItem(item);
 
     Rectangle<int> area = item.getArea(&getObj(CycleTour));
 
-    Rectangle<int> desktopArea = Desktop::getInstance().getDisplays().getDisplayContaining(area.getCentre()).userArea;
+    Rectangle<int> desktopArea = Desktop::getInstance().getDisplays().getDisplayForPoint(area.getCentre())->userArea;
     updatePosition(area, desktopArea);
 }
-
 
 void CycleTour::ItemComponent::setItem(const Item &item) {
     this->item = item;
@@ -987,7 +975,7 @@ void CycleTour::ItemComponent::setItem(const Item &item) {
     }
 
     AttributedString string;
-    string.append(item.text, Font(18));
+    string.append(item.text, FontOptions(18));
     string.setColour(Colour::greyLevel(0.75f));
 	layout.createLayout(string, width - 10);
 
@@ -995,11 +983,10 @@ void CycleTour::ItemComponent::setItem(const Item &item) {
 	repaint();
 }
 
-
 bool CycleTour::ItemWrapper::keyPressed(const KeyPress &press) {
-    CycleTour &tour = getObj(CycleTour);
-	int code 		= press.getKeyCode();
-	juce_wchar c 	= press.getTextCharacter();
+    auto& tour = getObj(CycleTour);
+	int code = press.getKeyCode();
+	juce_wchar c = press.getTextCharacter();
 
     if (tour.isLive()) {
         if (code == KeyPress::escapeKey)
@@ -1019,12 +1006,11 @@ bool CycleTour::ItemWrapper::keyPressed(const KeyPress &press) {
 
 void CycleTour::ItemWrapper::updatePosition (
 		const Rectangle<int>& newAreaToPointTo,
-		const Rectangle<int>& newAreaToFitIn)
-{
+		const Rectangle<int>& newAreaToFitIn) {
     targetArea = newAreaToPointTo;
     availableArea = newAreaToFitIn;
 
-    Rectangle<int> newBounds (content->getWidth()  + borderSpace * 2,
+    Rectangle newBounds (content->getWidth()  + borderSpace * 2,
                               content->getHeight() + borderSpace * 2);
 
     const int hw = newBounds.getWidth() / 2;
@@ -1033,18 +1019,18 @@ void CycleTour::ItemWrapper::updatePosition (
     const float hhReduced = (float) (hh - borderSpace * 2);
     const float arrowIndent = borderSpace - arrowSize;
 
-    Point<float> targets[4] = { Point<float> ((float) targetArea.getCentreX(), (float) targetArea.getBottom()),
-                                Point<float> ((float) targetArea.getRight(),   (float) targetArea.getCentreY()),
-                                Point<float> ((float) targetArea.getX(),       (float) targetArea.getCentreY()),
-                                Point<float> ((float) targetArea.getCentreX(), (float) targetArea.getY()) };
+    Point targets[4] = { Point ((float) targetArea.getCentreX(), (float) targetArea.getBottom()),
+                                Point ((float) targetArea.getRight(),   (float) targetArea.getCentreY()),
+                                Point ((float) targetArea.getX(),       (float) targetArea.getCentreY()),
+                                Point ((float) targetArea.getCentreX(), (float) targetArea.getY()) };
 
-    Line<float> lines[4] = { Line<float> (targets[0].translated (-hwReduced, hh - arrowIndent),    targets[0].translated (hwReduced, hh - arrowIndent)),
-                             Line<float> (targets[1].translated (hw - arrowIndent, -hhReduced),    targets[1].translated (hw - arrowIndent, hhReduced)),
-                             Line<float> (targets[2].translated (-(hw - arrowIndent), -hhReduced), targets[2].translated (-(hw - arrowIndent), hhReduced)),
-                             Line<float> (targets[3].translated (-hwReduced, -(hh - arrowIndent)), targets[3].translated (hwReduced, -(hh - arrowIndent))) };
+    Line lines[4] = { Line (targets[0].translated (-hwReduced, hh - arrowIndent),    targets[0].translated (hwReduced, hh - arrowIndent)),
+                             Line (targets[1].translated (hw - arrowIndent, -hhReduced),    targets[1].translated (hw - arrowIndent, hhReduced)),
+                             Line (targets[2].translated (-(hw - arrowIndent), -hhReduced), targets[2].translated (-(hw - arrowIndent), hhReduced)),
+                             Line (targets[3].translated (-hwReduced, -(hh - arrowIndent)), targets[3].translated (hwReduced, -(hh - arrowIndent))) };
 
-    const Rectangle<float> centrePointArea (newAreaToFitIn.reduced (hw, hh).toFloat());
-    const Point<float> targetCentre (targetArea.getCentre().toFloat());
+    const Rectangle centrePointArea (newAreaToFitIn.reduced (hw, hh).toFloat());
+    const Point targetCentre (targetArea.getCentre().toFloat());
 
     float nearest = 1.0e9f;
 
@@ -1070,20 +1056,18 @@ void CycleTour::ItemWrapper::updatePosition (
     setBounds (newBounds);
 }
 
-
 bool CycleTour::ItemWrapper::intersects(const Rectangle<float> &r, const Line<float> &l) {
     Point<float> ignored;
 	return r.contains (l.getStart()) || r.contains (l.getEnd())
-			|| l.intersects (Line<float> (r.getTopLeft(),     r.getTopRight()), 	ignored)
-			|| l.intersects (Line<float> (r.getTopRight(),    r.getBottomRight()), 	ignored)
-			|| l.intersects (Line<float> (r.getBottomRight(), r.getBottomLeft()), 	ignored)
-			|| l.intersects (Line<float> (r.getBottomLeft(),  r.getTopLeft()), 		ignored);
+			|| l.intersects (Line (r.getTopLeft(),     r.getTopRight()), 	ignored)
+			|| l.intersects (Line (r.getTopRight(),    r.getBottomRight()), ignored)
+			|| l.intersects (Line (r.getBottomRight(), r.getBottomLeft()), 	ignored)
+			|| l.intersects (Line (r.getBottomLeft(),  r.getTopLeft()), 	ignored);
 }
-
 
 void CycleTour::ItemWrapper::refreshPath() {
     repaint();
-    background = Image::null;
+    background = Image();
     outline.clear();
 
     const float gap 			= 4.5f;
@@ -1236,12 +1220,12 @@ Component* CycleTour::getComponent(int which) {
 		case AreaDelay:			return &getObj(DelayUI);
 		case AreaEQ:			return &getObj(EqualizerUI);
 		case AreaConsole:		return dynamic_cast<Console*>(&getObj(IConsole));
+		default: break;
 	}
 
 	jassertfalse;
 	return nullptr;
 }
-
 
 Panel* CycleTour::areaToPanel(int which) {
 	switch(which) {
@@ -1249,54 +1233,57 @@ Panel* CycleTour::areaToPanel(int which) {
 		case AreaWfrmWaveform3D:return &getObj(Waveform3D);
 		case AreaSpectrum:		return &getObj(Spectrum2D);
 		case AreaSpectrogram:	return &getObj(Spectrum3D);
-		case AreaEnvelopes:		return &getObj(Envelope2D);
-		case AreaVolume:		return &getObj(Envelope2D);
-		case AreaPitch:			return &getObj(Envelope2D);
+		case AreaEnvelopes:		
+		case AreaVolume:		
+		case AreaPitch:			
 		case AreaScratch:		return &getObj(Envelope2D);
 		case AreaWaveshaper:	return &getObj(WaveshaperUI);
 		case AreaImpulse:		return &getObj(IrModellerUI);
 		case AreaDeformers:		return &getObj(DeformerPanel);
+		default: break;
+
 	}
 
 	return nullptr;
 }
 
-
 Interactor* CycleTour::areaToInteractor(int which) {
 	Panel* panel = areaToPanel(which);
 
-	if(panel != nullptr)
+	if(panel != nullptr) {
 		return panel->getInteractor();
+	}
 
 	return nullptr;
 }
 
-
 bool CycleTour::passesRequirements(const String& ignore, const String& require) {
-	if(ignore.isEmpty() && require.isEmpty())
+	if(ignore.isEmpty() && require.isEmpty()) {
 		return true;
+	}
 
-	if(editionSplit(require.containsIgnoreCase("beat"), ignore.containsIgnoreCase("beat")))
+	if(demoSplit(require.containsIgnoreCase("demo"), ignore.containsIgnoreCase("demo"))) {
 		return false;
+	}
 
-	if(demoSplit(require.containsIgnoreCase("demo"), ignore.containsIgnoreCase("demo")))
+	if(platformSplit( require.containsIgnoreCase("mac"), ignore.containsIgnoreCase("mac"))) {
 		return false;
+	}
 
-	if(platformSplit( require.containsIgnoreCase("mac"), ignore.containsIgnoreCase("mac")))
+	if(platformSplit( ignore.containsIgnoreCase("windows"), require.containsIgnoreCase("windows"))) {
 		return false;
+	}
 
-	if(platformSplit( ignore.containsIgnoreCase("windows"), require.containsIgnoreCase("windows")))
+	if(formatSplit( require.containsIgnoreCase("plugin"), ignore.containsIgnoreCase("plugin"))) {
 		return false;
+	}
 
-	if(formatSplit( require.containsIgnoreCase("plugin"), ignore.containsIgnoreCase("plugin")))
+	if(getSetting(FirstLaunch) ? ignore.containsIgnoreCase("first-launch") : require.containsIgnoreCase("first-launch")) {
 		return false;
-
-	if(getSetting(FirstLaunch) ? ignore.containsIgnoreCase("first-launch") : require.containsIgnoreCase("first-launch"))
-		return false;
+	}
 
 	return true;
 }
-
 
 void CycleTour::readAction(Action& action, XmlElement* actionElem) {
 	String actionStr = actionElem->getStringAttribute("type", "NullAction");
@@ -1307,7 +1294,7 @@ void CycleTour::readAction(Action& action, XmlElement* actionElem) {
 	String idString  = actionElem->getStringAttribute("id", "IdNull");
 	jassert(idStrings.contains(idString));
 
-	String actionArea = actionElem->getStringAttribute("area", String::empty);
+	String actionArea = actionElem->getStringAttribute("area", {});
 
 	if(actionArea.isNotEmpty() && areaStrings.contains(actionArea))
 		action.area = areaStrings[actionArea];
@@ -1319,7 +1306,7 @@ void CycleTour::readAction(Action& action, XmlElement* actionElem) {
 	action.data2	= actionElem->getIntAttribute	("data2",		 0);
 	action.data3	= actionElem->getIntAttribute	("data3", 		 0);
 	action.value	= actionElem->getDoubleAttribute("value", 		 0);
-	action.str		= actionElem->getStringAttribute("str", 		 String::empty);
+	action.str		= actionElem->getStringAttribute("str", 		 {});
 	action.delayMillis = actionElem->getIntAttribute("delay-millis", 100);
 	action.triggersUpdate = actionElem->getBoolAttribute("updates",  true);
 
@@ -1353,10 +1340,10 @@ bool CycleTour::readXML(const XmlElement* element) {
 		item.subArea 		= subareaStrings[targStr];
 
 		item.title			= itemElem->getStringAttribute("name", 		"Untitled");
-		item.text			= itemElem->getStringAttribute("text", 		String::empty);
+		item.text			= itemElem->getStringAttribute("text", 		{});
 
-		String ignoreStr 	= itemElem->getStringAttribute("ignore", 	String::empty);
-		String requireStr	= itemElem->getStringAttribute("require", 	String::empty);
+		String ignoreStr 	= itemElem->getStringAttribute("ignore", 	{});
+		String requireStr	= itemElem->getStringAttribute("require", 	{});
 
 		if(! passesRequirements(ignoreStr, requireStr))
 			continue;

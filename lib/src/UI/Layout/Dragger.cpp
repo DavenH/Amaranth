@@ -6,11 +6,9 @@
 #include "../../App/SingletonRepo.h"
 #include "../../Definitions.h"
 
-
 Dragger::Dragger(SingletonRepo* repo, int bitfield) : SingletonAccessor(repo, "Dragger") {
     this->bitfield = bitfield;
 }
-
 
 void Dragger::mouseDown(const MouseEvent& e) {
     listeners.call(&Listener::dragStarted);
@@ -28,21 +26,17 @@ void Dragger::mouseDown(const MouseEvent& e) {
     }
 }
 
-
 void Dragger::mouseEnter(const MouseEvent& e) {
     repo->getConsole().updateAll(String(), String(), MouseUsage(true));
 }
-
 
 void Dragger::mouseDrag(const MouseEvent& e) {
     update(type == Horz ? e.getDistanceFromDragStartY() : e.getDistanceFromDragStartX());
 }
 
-
 void Dragger::mouseUp(const MouseEvent& e) {
     listeners.call(&Listener::dragEnded);
 }
-
 
 void Dragger::paint(Graphics& g) {
     g.setColour(Colour::greyLevel(0.1f));
@@ -55,7 +49,6 @@ void Dragger::paint(Graphics& g) {
     }
 }
 
-
 void Dragger::update(int diff) {
     float newRatio;
     newRatio = (type == Horz) ?
@@ -65,7 +58,6 @@ void Dragger::update(int diff) {
     pair->setPortion(newRatio);
     pair->resized();
 }
-
 
 void Dragger::resized() {
     dots = type == Horz ? Image(Image::RGB, 80, 1, true) : Image(Image::RGB, 1, 80, true);
@@ -90,7 +82,6 @@ void Dragger::resized() {
         }
     }
 }
-
 
 void Dragger::setPanelPair(PanelPair* pair) {
     this->pair = pair;

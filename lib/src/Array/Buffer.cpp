@@ -132,6 +132,15 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::add(Ipp##T c)							\
 	return *this;														\
 }
 
+#define constructSubC(T)												\
+template<>																\
+Buffer<Ipp##T>& Buffer<Ipp##T>::sub(Ipp##T c)							\
+{																		\
+	if(c != Ipp##T())													\
+		ippsAddC_##T##_I(c, ptr, sz);									\
+	return *this;														\
+}
+
 #define constructAddBuffC(T)											\
 template<>																\
 Buffer<Ipp##T>& Buffer<Ipp##T>::add(Buffer<Ipp##T> buff, Ipp##T c)		\
@@ -216,6 +225,15 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::mul(Ipp##T c)					\
 {																\
 	if(c != 1)													\
 		ippsMulC_##T##_I(c, ptr, sz);							\
+	return *this;												\
+}
+
+#define constructDivC(T)										\
+template<>														\
+Buffer<Ipp##T>& Buffer<Ipp##T>::div(Ipp##T c)					\
+{																\
+	if(c != 0)													\
+		ippsDivC_##T##_I(c, ptr, sz);							\
 	return *this;												\
 }
 
@@ -630,7 +648,9 @@ declareForReal(constructAddC);
 declareForReal(constructAddBuffC);
 declareForReal(constructMul);
 declareForReal(constructMulC);
+declareForReal(constructDivC);
 declareForReal(constructMulComb);
+declareForReal(constructSubC);
 declareForReal(constructSubCRev);
 declareForReal(constructRamp);
 declareForReal(constructRampOffset);
@@ -649,7 +669,7 @@ constructSqrt(32f);
 constructDot(32f);
 constructCombineC(32f);
 constructDivCRev(32f);
-//constructDiv(32f);
+// constructDiv(32f);
 constructSqr(32f);
 constructSin(32f);
 constructExp(32f);

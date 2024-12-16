@@ -82,7 +82,7 @@ public:
 	TransformVerticesAction(
 			SingletonRepo* repo
 		,	int updateCode
-		,	VertList* vertices
+		,	vector<Vertex*>* vertices
 		,	const vector<Vertex>& original
 		,	const vector<Vertex>& future);
 
@@ -90,7 +90,7 @@ public:
 	void undoDelegate() override;
 
 private:
-	VertList* vertices;
+	vector<Vertex*>* vertices;
 	vector<Vertex> before;
 	vector<Vertex> after;
 };
@@ -103,9 +103,9 @@ public:
 
 	UpdateVertexVectorAction(
 			Interactor* interactor
-		,	VertList* vertices
-		,	const VertList& before
-		,	const VertList& after
+		,	vector<Vertex*>* vertices
+		,	const vector<Vertex*>& before
+		,	const vector<Vertex*>& after
 		,	bool doUpdate);
 
 	void doPreUpdateCheck() override;
@@ -113,9 +113,9 @@ public:
 	void undoDelegate() override;
 
 private:
-	VertList* vertices;
-	VertList before;
-	VertList after;
+	vector<Vertex*>* vertices;
+	vector<Vertex*> before;
+	vector<Vertex*> after;
 	Interactor* itr;
 
 	VertexAction action;
@@ -127,9 +127,9 @@ class UpdateCubeVectorAction : public ResponsiveUndoableAction {
 public:
 	UpdateCubeVectorAction(
 			Interactor* interactor
-		, 	CubeList* elements
-		,	const CubeList& before
-		, 	const CubeList& after
+		, 	vector<VertCube*>* elements
+		,	const vector<VertCube*>& before
+		, 	const vector<VertCube*>& after
 		,	bool shouldClearLines = true);
 
 	void doPreUpdateCheck() override;
@@ -140,9 +140,9 @@ private:
 	bool shouldClearLines;
 
 	Interactor* itr;
-	CubeList* elements;
-	CubeList before;
-	CubeList after;
+	vector<VertCube*>* elements;
+	vector<VertCube*> before;
+	vector<VertCube*> after;
 };
 
 /* ----------------------------------------------------------------------------- */

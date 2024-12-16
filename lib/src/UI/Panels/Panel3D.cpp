@@ -54,25 +54,22 @@ Panel3D::~Panel3D() {
 	colours 	.clear();
 }
 
-
 void Panel3D::bakeTextures() {
     shouldBakeTextures = false;
 
-    ScopedFunction<Panel3D::Renderer> sf(
-            renderer,
-            &Panel3D::Renderer::textureBakeBeginning,
-            &Panel3D::Renderer::textureBakeFinished);
+    ScopedFunction sf(
+            renderer.get(),
+            &Renderer::textureBakeBeginning,
+            &Renderer::textureBakeFinished);
     drawSurface();
 }
-
 
 void Panel3D::drawDepthLinesAndVerts() {
     // just don't draw them
 }
 
-
 void Panel3D::drawInterceptLines() {
-    Interactor3D* itr3D = dynamic_cast<Interactor3D*>(interactor.get());
+    auto* itr3D = dynamic_cast<Interactor3D*>(interactor.get());
 	vector<SimpleIcpt> interceptPairs;
 
 	{
@@ -80,8 +77,9 @@ void Panel3D::drawInterceptLines() {
 		interceptPairs = itr3D->getInterceptPairs();
 	}
 
-	if(interceptPairs.empty())
+	if(interceptPairs.empty()) {
 		return;
+	}
 
 	bool haveSpeed 		= false;
 	int scratchChannel 	= getLayerScratchChannel();
@@ -101,8 +99,8 @@ void Panel3D::drawInterceptLines() {
 
     for (int i = 0; i < (int) interceptPairs.size() - 1; i += 2) {
         VertCube* cube = interceptPairs[i].parent;
-        Vertex2 first = interceptPairs[i];
-        Vertex2 second = interceptPairs[i + 1];
+        const Vertex2& first = Vertex2(interceptPairs[i]);
+        Vertex2 second = Vertex2(interceptPairs[i + 1]);
 
         if (createLinePath(first, second, cube, dim, haveSpeed)) {
             xy.x = xBuffer.withSize(linestripRes);
@@ -135,8 +133,9 @@ void Panel3D::drawInterceptLines() {
 			gfx->drawLineStrip(xy, true, false);
 			gfx->setCurrentColour(0.7f, 0.7f, 0.7f, 0.5f);
 
-			if(revertWidth)
+			if(revertWidth) {
 				gfx->setCurrentLineWidth(1.f);
+			}
 
 			gfx->disableSmoothing();
 			gfx->drawLine(first, realFirst, true);
@@ -171,7 +170,7 @@ void Panel3D::drawInterceptsAndHighlightClosest() {
     // it's a bigger circle, so do it first
     highlightCurrentIntercept();
 
-	Interactor3D* itr3D = dynamic_cast<Interactor3D*>(interactor.get());
+	auto* itr3D = dynamic_cast<Interactor3D*>(interactor.get());
 
 	vector<SimpleIcpt> interceptPairs;
 
@@ -189,7 +188,6 @@ void Panel3D::drawInterceptsAndHighlightClosest() {
 	drawScaledInterceptPoints(size);
 }
 
-
 void Panel3D::drawAxe() {
     Vertex2 curr = interactor->state.currentMouse;
 	float length = interactor->realValue(PencilRadius);
@@ -197,7 +195,6 @@ void Panel3D::drawAxe() {
 	gfx->setCurrentColour(1, 1, 1);
 	gfx->drawLine(Vertex2(curr.x, curr.y - length), Vertex2(curr.x, curr.y + length));
 }
-
 
 /*
  * Code path:
@@ -219,25 +216,24 @@ void Panel3D::drawLogSurface(const vector<Column>& grid) {
 	}
 }
 
-
 void Panel3D::drawLinSurface(const vector<Column>& grid) {
     downsampBuf.resize(jmin(maxHorzLines, draw.colSourceSizeY));
 
     Buffer<Ipp8u> pxBuf 	= gradient.getPixels();
 	Buffer<float> floatBuf 	= gradient.getFloatPixels();
 
-	for (int i = 0; i < draw.sizeX; ++i)
-	{
+	for (int i = 0; i < draw.sizeX; ++i) {
 		Buffer<float> gridBuf = grid[i];
 		draw.colSourceSizeY = draw.sizeY = gridBuf.size();
 
-		if(draw.sizeY <= maxHorzLines)
+		if(draw.sizeY <= maxHorzLines) {
 			gridBuf.copyTo(downsampAcc);
-		else
-			downsampleColumn(gridBuf);		// nb this can adjust sizey
+		} else {
+			// nb this can adjust size-y
+			downsampleColumn(gridBuf);
+		}
 
-		if(draw.lastSizeY != draw.sizeY)
-		{
+		if (draw.lastSizeY != draw.sizeY) {
 			Buffer<float> y = scaledY.withSize(draw.sizeY);
 
 			applyScaleY(y.ramp());
@@ -249,12 +245,11 @@ void Panel3D::drawLinSurface(const vector<Column>& grid) {
 	}
 }
 
-
 void Panel3D::doColumnDraw(Buffer<Ipp8u> pxBuf, Buffer<float> grd32f, int i) {
     resizeArrays();
     setColumnColourIndices();
 
-    Buffer<float> fdest = fDestColours;
+    Buffer fdest = fDestColours;
 
     if (!useVertices) {
         doColourLookup32f(grd32f, fColours);
@@ -269,14 +264,14 @@ void Panel3D::doColumnDraw(Buffer<Ipp8u> pxBuf, Buffer<float> grd32f, int i) {
 		setVertices(i, vertices);
 	}
 
-	if(i > 0 || ! useVertices)
+	if(i > 0 || ! useVertices) {
 		renderer->drawSurfaceColumn(i);
+	}
 
   #ifdef JUCE_DEBUG
 	gfx->checkErrors();
   #endif
 }
-
 
 void Panel3D::adjustLogColumnAndScale(int key, bool firstColumn) {
     if (draw.adjustColumns || firstColumn) {
@@ -295,7 +290,6 @@ void Panel3D::adjustLogColumnAndScale(int key, bool firstColumn) {
 	}
 }
 
-
 void Panel3D::downsampleColumn(Buffer<float> column) {
 	int downsampleFactor 	= 1;
 	downsampleFactor 		= draw.colSourceSizeY / maxHorzLines;
@@ -304,7 +298,7 @@ void Panel3D::downsampleColumn(Buffer<float> column) {
 	jassert(downsampAcc.size() >= draw.sizeY);
 
 	Buffer<float> downsampAcc(downsampAcc.withSize(draw.sizeY));
-	Buffer<float> downsampBuff(downsampBuf.withSize(draw.sizeY));
+	Buffer downsampBuff(downsampBuf.withSize(draw.sizeY));
 
 	downsampAcc.zero();
 
@@ -320,7 +314,6 @@ void Panel3D::downsampleColumn(Buffer<float> column) {
 		downsampAcc.mul(1 / float(buffsToMerge));
 }
 
-
 void Panel3D::setColumnColourIndices() {
 	ippsCopy_16s(clrIndicesB, clrIndicesA, draw.sizeY);
 
@@ -333,7 +326,6 @@ void Panel3D::setColumnColourIndices() {
 	ippsMulC_16s_I(draw.stride, clrIndicesB, draw.sizeY);
 }
 
-
 void Panel3D::setVertices(int column, Buffer<float> vertices) {
     jassert(4 * (draw.sizeY + 1) <= vertices.size());
 
@@ -344,7 +336,7 @@ void Panel3D::setVertices(int column, Buffer<float> vertices) {
 
 	// fill in bottom
 	*vertexPtr++ = *x0;
-	*vertexPtr++ = *y0 + 15;
+	*vertexPtr++ = *y0 + 15; // good lord what is 15 bytes?
 	*vertexPtr++ = *x1;
 	*vertexPtr++ = *y0 + 15;
 
@@ -356,11 +348,10 @@ void Panel3D::setVertices(int column, Buffer<float> vertices) {
 	}
 }
 
-
 void Panel3D::doColourLookup8u(Buffer<Ipp8u> grd, Buffer<Ipp8u> colors) {
-	Ipp8u* grd8u 	= grd;
+	Ipp8u* grd8u = grd;
 	Ipp8u* colorPtr = colors;
-	int bytes 		= draw.stride;
+	int bytes = draw.stride;
 
 	jassert(2 * bytes * (draw.sizeY + 1) <= colors.size());
 
@@ -378,7 +369,6 @@ void Panel3D::doColourLookup8u(Buffer<Ipp8u> grd, Buffer<Ipp8u> colors) {
 	}
 }
 
-
 void Panel3D::doColourLookup32f(Buffer<float> grd, Buffer<float> colors) {
 	Ipp32f* grd32f = grd;
 	Ipp32f* colorPtr = colors;
@@ -392,7 +382,6 @@ void Panel3D::doColourLookup32f(Buffer<float> grd, Buffer<float> colors) {
 	}
 }
 
-
 void Panel3D::resizeArrays() {
     if (useVertices) {
         colours.resize(vertsPerQuad * (draw.colSourceSizeY + 1) * draw.stride);
@@ -403,7 +392,6 @@ void Panel3D::resizeArrays() {
 		texColours	.resize(draw.texHeight * draw.stride);
 	}
 }
-
 
 /*
  * reduce log scale y:
@@ -500,15 +488,16 @@ vector<Color>& Panel3D::getGradientColours() {
     return gradient.getColours();
 }
 
-
 void Panel3D::drawSurface() {
-	if(! renderer->shouldDrawGrid())
+	if(! renderer->shouldDrawGrid()) {
 		return;
+	}
 
 	const vector<Column>& grid = renderer->getColumns();
 
-	if(grid.empty())
+	if(grid.empty()) {
 		return;
+	}
 
 	CriticalSection dummy;
 	CriticalSection& arrayLock = renderer->getGridLock();
@@ -539,26 +528,25 @@ void Panel3D::drawSurface() {
 	scaledX.ramp(0, slope);
 	applyScaleX(scaledX);
 
-	ScopedFunction<Panel3D::Renderer> sf(
-	        renderer,
-	        &Panel3D::Renderer::gridDrawBeginning,
-	        &Panel3D::Renderer::gridDrawFinished);
+	ScopedFunction sf(
+		renderer.get(),
+		&Renderer::gridDrawBeginning,
+		&Renderer::gridDrawFinished);
 
 	haveLogarithmicY ?
 		drawLogSurface(grid) :
 		drawLinSurface(grid);
 }
 
-
 void Panel3D::postVertsDraw() {
     PanelState& state = interactor->state;
 
-	if (getSetting(Tool) == Tools::Axe && mouseFlag(MouseOver))
+	if (getSetting(Tool) == Tools::Axe && mouseFlag(MouseOver)) {
 		drawAxe();
+	}
 
 	renderer->postVertsDraw();
 }
-
 
 void Panel3D::highlightCurrentIntercept() {
     Vertex2 point;
@@ -569,8 +557,9 @@ void Panel3D::highlightCurrentIntercept() {
 		const int icptIdx = interactor->state.currentIcpt;
 		const int freeIdx = interactor->state.currentFreeVert;
 
-		if(icptIdx == -1 && freeIdx == -1)
+		if(icptIdx == -1 && freeIdx == -1) {
 			return;
+		}
 
 		bool useFreeVert = icptIdx == -1;
 
@@ -583,7 +572,7 @@ void Panel3D::highlightCurrentIntercept() {
 			point.x = verts[freeIdx].x;
 			point.y = verts[freeIdx].y;
 		} else {
-			Interactor3D* itr3D = dynamic_cast<Interactor3D*>(interactor.get());
+			auto* itr3D = dynamic_cast<Interactor3D*>(interactor.get());
 			const vector<SimpleIcpt>& interceptPairs = itr3D->getInterceptPairs();
 
 			if(! isPositiveAndBelow(icptIdx, (int) interceptPairs.size()))
@@ -595,14 +584,12 @@ void Panel3D::highlightCurrentIntercept() {
 	}
 
 	gfx->setCurrentColour(1.f, 0.8f, 0.0f);
-	gfx->drawPoint(vertexHighlightRadius, point);
+	gfx->drawPoint(vertexHighlightRadius, point, true);
 }
-
 
 void Panel3D::doExtraResized() {
     shouldBakeTextures = true;
 }
-
 
 void Panel3D::freeResources() {
 	vertices	.clear();
@@ -611,7 +598,6 @@ void Panel3D::freeResources() {
 	fDestColours.clear();
 	texColours	.clear();
 }
-
 
 void Panel3D::drawDeformerTags() {
     vector<SimpleIcpt> interceptPairs;
@@ -632,8 +618,8 @@ void Panel3D::drawDeformerTags() {
     for (int i = 0; i < (int) interceptPairs.size() - 1; i += 2) {
         VertCube* cube = interceptPairs[i].parent;
 
-        Vertex2 first = interceptPairs[i];
-        Vertex2 second = interceptPairs[i + 1];
+        Vertex2 first = Vertex2(interceptPairs[i]);
+        Vertex2 second = Vertex2(interceptPairs[i + 1]);
 
         if (cube != nullptr && cube->isDeformed()) {
 			Vertex2 b(sx(first.x), 	sy(first.y));
@@ -642,6 +628,7 @@ void Panel3D::drawDeformerTags() {
 
 			int cumeWidth = 0;
 			int numTags = 0;
+
 			for(int j = 0; j < Vertex::numElements; ++j) {
                 int chan = cube->deformerAt(j);
 
@@ -650,7 +637,7 @@ void Panel3D::drawDeformerTags() {
 
 					float x = e.x + cumeWidth - 2;
 					float y = jmin(getHeight() - 16.f, e.y + 2.f + (numTags & 1 ? 1 : 0)); //  + 5
-					dfrmTex->rect = Rectangle<float>(roundToInt(x), roundToInt(y), rect.getWidth(), rect.getHeight());
+					dfrmTex->rect = Rectangle(roundf(x), roundf(y), rect.getWidth(), rect.getHeight());
 
 					gfx->setCurrentColour(colors[j]);
 					gfx->drawSubTexture(dfrmTex, rect);
@@ -662,7 +649,6 @@ void Panel3D::drawDeformerTags() {
 		}
 	}
 }
-
 
 void Panel3D::zoomUpdated(int updateSource) {
     if (updateSource == interactor->getUpdateSource()) {

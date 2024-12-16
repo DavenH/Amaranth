@@ -3,7 +3,6 @@
 #include "../../App/SingletonRepo.h"
 #include "../../Definitions.h"
 
-
 Updater::Updater(SingletonRepo* repo) :
 		SingletonAccessor	(repo, "Updater")
 	,	graph				(this, repo)
@@ -11,7 +10,6 @@ Updater::Updater(SingletonRepo* repo) :
 	,	millisThresh		(10)
 	,	throttleUpdates 	(true) {
 }
-
 
 void Updater::update(int code, int type) {
 	Node* node = startingNodes[code];
@@ -25,8 +23,9 @@ void Updater::update(int code, int type) {
         if (lastUpdateMillis > 0 && millis - lastUpdateMillis < millisThresh) {
             PendingUpdate newUpdate(code, type);
 
-            if (pendingUpdates.empty() || pendingUpdates.back() != newUpdate)
-                pendingUpdates.push_back(newUpdate);
+            if (pendingUpdates.empty() || pendingUpdates.back() != newUpdate) {
+	            pendingUpdates.push_back(newUpdate);
+            }
 
             triggerAsyncUpdate();
 
@@ -60,10 +59,9 @@ void Updater::handleAsyncUpdate() {
 
 Updater::Graph::Graph(Updater* updater, SingletonRepo* repo) :
 		SingletonAccessor(repo, "UpdateGraph")
-	,	updateType(UpdateType::Update)
+	,	updateType(Update)
 	,	printsPath(false) {
 }
-
 
 void Updater::Graph::update(Node* startingNode) {
     reset();
@@ -71,16 +69,16 @@ void Updater::Graph::update(Node* startingNode) {
 
 	String path = String();
 
-    for (int i = 0; i < headNodes.size(); ++i) {
-		if(headNodes[i]->isDirty())
-			headNodes[i]->performUpdate(path, updateType);
+    for (auto headNode : headNodes) {
+		if(headNode->isDirty())
+			headNode->performUpdate(path, updateType);
 	}
 
 	if(printsPath) {
 		String action = getUpdateString();
 
 		path = "Update: " + action + "\t" + path;
-		dout << path << "\n";
+		std::cout << path << "\n";
 
 		lastPath = path;
 	}
@@ -99,18 +97,16 @@ void Updater::Graph::removeHeadNode(Node* node) {
 }
 
 void Updater::Graph::reset() {
-    for (int i = 0; i < headNodes.size(); ++i)
-        headNodes[i]->reset();
+    for (auto headNode : headNodes)
+        headNode->reset();
 }
 
 /* ----------------------------------------------------------------------------- */
-
 
 Updater::Node::Node() :
 		updated(false)
 	,	dirty(false)
 	,	toUpdate(nullptr) {}
-
 
 Updater::Node::Node(Updateable* objectToUpdate) :
 		updated(false)
@@ -124,8 +120,9 @@ void Updater::Node::updatesAfter(Node* parent) {
 }
 
 void Updater::Node::marks(Array<Node*> nodes) {
-    for (int i = 0; i < nodes.size(); ++i)
-        nodesToMark.addIfNotAlreadyThere(nodes.getUnchecked(i));
+    for (int i = 0; i < nodes.size(); ++i) {
+	    nodesToMark.addIfNotAlreadyThere(nodes.getUnchecked(i));
+    }
 }
 
 void Updater::Node::marks(Node* headNode) {
@@ -147,11 +144,13 @@ void Updater::Node::doesntMark(Node* node) {
 }
 
 void Updater::Node::performUpdate(String& updatePath, int updateType) {
-	if(updated || ! dirty)
+	if(updated || ! dirty) {
 		return;
+	}
 
-	for(auto i : children)
+	for(auto i : children) {
 		i->markDirty();
+	}
 
 	for(auto parent : parents)
 		if(parent->isDirty())
@@ -159,55 +158,53 @@ void Updater::Node::performUpdate(String& updatePath, int updateType) {
 
     // we can get here by a parent updating this
     if (!updated) {
-        if(updater->graph.doesPrintPath() && toUpdate != nullptr)
-			updatePath << toUpdate->getUpdateName() << " ";
+        if(updater->graph.doesPrintPath() && toUpdate != nullptr) {
+	        updatePath << toUpdate->getUpdateName() << " ";
+        }
 
 		executeUpdate(updateType);
 
 		updated = true;
 		dirty 	= false;
 
-		for(auto i : children)
+		for(auto i : children) {
 			i->performUpdate(updatePath, updateType);
+		}
 	}
 }
 
-void Updater::Node::executeUpdate(int updateType)
-{
-	if(toUpdate != nullptr)
+void Updater::Node::executeUpdate(int updateType) {
+	if (toUpdate != nullptr) {
 		toUpdate->update(updateType);
+	}
 }
 
-void Updater::Node::reset()
-{
+void Updater::Node::reset() {
 	updated = false;
-	dirty 	= false;
+	dirty = false;
 
-	for(auto i : children)
+	for (auto i: children) {
 		i->reset();
+	}
 }
 
-void Updater::Node::markPath()
-{
-	for(auto i : nodesToMark)
+void Updater::Node::markPath() {
+	for (auto i: nodesToMark) {
 		i->markDirty();
+	}
 }
 
-void Updater::Node::marksAll(const Array<Node*>& nodes)
-{
+void Updater::Node::marksAll(const Array<Node*>& nodes) {
 	nodesToMark.addArray(nodes);
 }
 
-void Updater::Node::updatesAfterAll(const Array<Node*>& nodes)
-{
-	for(int i = 0; i < parents.size(); ++i)
-	{
+void Updater::Node::updatesAfterAll(const Array<Node*>& nodes) {
+	for (int i = 0; i < parents.size(); ++i) {
 		nodes[i]->children.addIfNotAlreadyThere(this);
 		parents.addIfNotAlreadyThere(nodes[i]);
 	}
 }
 
-void Updater::setStartingNode(int code, Node* node)
-{
+void Updater::setStartingNode(int code, Node* node) {
 	startingNodes[code] = node;
 }

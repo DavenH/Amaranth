@@ -64,7 +64,6 @@ public:
 class VisualDsp :
 		public Timer
 	,	public SingletonAccessor {
-private:
     friend class PhaseTrackingTest;
 
 public:
@@ -182,7 +181,6 @@ private:
 	Ref<SpectRasterizer> spectRasterizer;
 	Ref<PhaseRasterizer> phaseRasterizer;
 
-//	ScopedAlloc<Ipp32f> magnitudes, phases,  fftBuffer;
 	ScopedAlloc<Ipp32f> zoomProgress;
 	ScopedAlloc<Ipp32f> fftPreFXArray, fftPostFXArray;			// fft
 	ScopedAlloc<Ipp32f> preEnvArray, postEnvArray, postFXArray;	// time

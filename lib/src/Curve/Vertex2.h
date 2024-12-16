@@ -1,5 +1,4 @@
-#ifndef _vertex2_h
-#define _vertex2_h
+#pragma once
 
 #include <cmath>
 #include "SimpleIcpt.h"
@@ -102,5 +101,3 @@ public:
         return x != 0.f || y != 0.f;
     }
 };
-
-#endif

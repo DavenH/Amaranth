@@ -14,12 +14,12 @@ public:
 				   const String& msgA, const String& keyA,
 				   const String& msgB, const String& keyB);
 
-	~TwoStateButton();
+	~TwoStateButton() override;
 	void paintButton(Graphics& g, bool mouseOver, bool buttonDown) override;
 	void setState(int state);
 	void toggle();
 	void setMessages(String one, String key1, String two, String key2);
-	bool isFirstState();
+	bool isFirstState() const;
 	void mouseDown(const MouseEvent& e) override;
 
 protected:

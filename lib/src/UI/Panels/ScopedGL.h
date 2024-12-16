@@ -1,5 +1,4 @@
-#ifndef SCOPEDLINESMOOTH_H_
-#define SCOPEDLINESMOOTH_H_
+#pragma once
 
 class ScopedDisable {
 public:
@@ -40,6 +39,3 @@ public:
 private:
     int glElement;
 };
-
-
-#endif

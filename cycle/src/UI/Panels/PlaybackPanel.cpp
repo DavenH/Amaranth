@@ -33,8 +33,7 @@
 #include "../../Util/CycleEnums.h"
 #include "../CycleDefs.h"
 
-
-PlaybackPanel::PlaybackPanel(SingletonRepo* repo) : 
+PlaybackPanel::PlaybackPanel(SingletonRepo* repo) :
 		SingletonAccessor(repo, "PlaybackPanel")
 	,	attkZoomIcon(6, 2, this, repo, "Zoom to attack")
 	,	zoomOutIcon( 6, 3, this, repo, "Zoom out to sustain region")
@@ -146,23 +145,16 @@ void PlaybackPanel::update(const MouseEvent& e) {
 
 	int dim = getSetting(CurrentMorphAxis);
 
-	if (e.mods.isLeftButtonDown())
-	{
+	if (e.mods.isLeftButtonDown()) {
 		getObj(PlaybackPanel).setProgress(x, true);
-	}
-
-	else if (e.mods.isRightButtonDown())
-	{
+	} else if (e.mods.isRightButtonDown()) {
 		float pos = getObj(PlaybackPanel).getX();
 		getObj(MorphPanel).setViewDepth(dim, jmax(0.f, x - pos));
 
 		getObj(Waveform2D).repaint();
 		getObj(Spectrum2D).repaint();
 		getObj(MorphPanel).repaint();
-	}
-
-	else if (e.mods.isMiddleButtonDown())
-	{
+	} else if (e.mods.isMiddleButtonDown()) {
 		if (getObj(MorphPanel).getDepth(dim) == 0)
 			return;
 
@@ -229,20 +221,20 @@ void PlaybackPanel::doPostCallback() {
 
 	timeRasterizer->pullModPositionAndAdjust();
 	timeRasterizer->setNoiseSeed(int(timeRasterizer->getMorphPosition().time * 12541));
-	timeRasterizer->performUpdate(UpdateType::Update);
+	timeRasterizer->performUpdate(Update);
 
 	freqRasterizer->pullModPositionAndAdjust();
 	freqRasterizer->setNoiseSeed(int(freqRasterizer->getMorphPosition().time * 33947));
-	freqRasterizer->performUpdate(UpdateType::Update);
+	freqRasterizer->performUpdate(Update);
 
 	phaseRasterizer->pullModPositionAndAdjust();
 	phaseRasterizer->setNoiseSeed(int(phaseRasterizer->getMorphPosition().time * 94121));
-	phaseRasterizer->performUpdate(UpdateType::Update);
+	phaseRasterizer->performUpdate(Update);
 
 	getObj(DerivativePanel).calcDerivative();
 }
 
-float PlaybackPanel::getProgress() {
+float PlaybackPanel::getProgress() const {
 	return x;
 }
 
@@ -276,10 +268,8 @@ void PlaybackPanel::setXAndUpdate(float pos) {
 void PlaybackPanel::stopPlayback() {
 	stopTimer(MainTimerId);
 
-	if(playing)
-	{
-		if(EnvRasterizer* envRast = getObj(EnvelopeInter2D).getEnvRasterizer())
-		{
+	if (playing) {
+		if (EnvRasterizer* envRast = getObj(EnvelopeInter2D).getEnvRasterizer()) {
 			if(envRast->simulateStop(envPos))
 				startTimer(ReleaseTimerId, timeDelay);
 		}
@@ -341,8 +331,9 @@ void PlaybackPanel::resetPlayback(bool doUpdate) {
 	if (getSetting(DrawWave)) {
 		WavAudioSource* waveSource = getObj(AudioSourceRepo).getWavAudioSource();
 
-		if(waveSource != nullptr)
+		if(waveSource != nullptr) {
 			waveSource->positionChanged();
+		}
 	}
 
 	if (doUpdate)
@@ -384,9 +375,7 @@ void PlaybackPanel::togglePlayback() {
 	if (playing) {
 		stopPlayback();
 		resetPlayback(true);
-	}
-	else
-	{
+	} else {
 		stopTimer(ReleaseTimerId);
 		resetPlayback(x > 0.999f);
 		startPlayback();
@@ -415,23 +404,23 @@ void PlaybackPanel::timerCallback(int id) {
 	}
 
 	EnvRasterizer* envRast = getObj(EnvelopeInter2D).getEnvRasterizer();
-	if(envRast == nullptr)
-	{
+	if (envRast == nullptr) {
 		stopTimer(ReleaseTimerId);
-	}
-	else
-	{
+	} else {
 		MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(getSetting(CurrentEnvGroup));
 		bool isAlive = props->active;
 
-		if(isAlive)
-			isAlive = envRast->simulateRender(inc, envPos, *props, 1.f); // TODO
+		if(isAlive) {
+			isAlive = envRast->simulateRender(inc, envPos, *props, 1.f);
+		}
 
-		if(! isAlive)
+		if(! isAlive) {
 			stopTimer(ReleaseTimerId);
+		}
 
-		if(id == ReleaseTimerId)
+		if(id == ReleaseTimerId) {
 			getObj(Envelope2D).repaint();
+		}
 	}
 }
 

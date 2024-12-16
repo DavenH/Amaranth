@@ -85,9 +85,9 @@ bool EnvRasterizer::hasReleaseCurve() {
     return sustainIndex != (int) icpts.size() - 1;
 }
 
-void EnvRasterizer::calcCrossPoints() {
+void EnvRasterizer::calcCrossPoints(int currentDim) {
     morph.time = 0;
-    MeshRasterizer::calcCrossPoints(envMesh);
+    MeshRasterizer::calcCrossPoints(envMesh, 0.f, currentDim);
 
     // do this even if we can't loop right now just in case
     // loopability changes by the time release curve is going
@@ -393,8 +393,9 @@ bool EnvRasterizer::renderToBuffer(
         int samplesRendered = maxSamples;
 
         Buffer<float> buffer;
-        if (!oneSamplePerCycle)
+        if (!oneSamplePerCycle) {
             buffer = Buffer<float>(renderBuffer + bufferPos, maxSamples);
+        }
 
         if (stillAlive) {
             samplesRendered = vectorizedRenderToBuffer(buffer, maxSamples, newDelta, paramIndex);
@@ -407,11 +408,12 @@ bool EnvRasterizer::renderToBuffer(
         if (!stillAlive) {
             info("no longer alive");
 
-            if (oneSamplePerCycle)
+            if (oneSamplePerCycle) {
                 break;
-            else {
-                if (bufferPos < renderBuffer.size())
-                    renderBuffer.offset(bufferPos).zero();
+            }
+
+            if (bufferPos < renderBuffer.size()) {
+                renderBuffer.offset(bufferPos).zero();
             }
         }
     }
@@ -506,8 +508,9 @@ int EnvRasterizer::vectorizedRenderToBuffer(
                     buffer[i] = sampleAt(group.samplePosition, group.sampleIndex);
                     group.samplePosition += deltaX;
 
-                    if (group.samplePosition >= boundary)
+                    if (group.samplePosition >= boundary) {
                         group.samplePosition -= loopLength - deltaX;
+                    }
                 }
 
                 group.sustainLevel = buffer[numSamples - 1];
@@ -528,8 +531,9 @@ int EnvRasterizer::vectorizedRenderToBuffer(
             if (oneSamplePerCycle) {
                 jassert(isSampleableAt(boundary));
 
-                if (group.samplePosition <= boundary)
+                if (group.samplePosition <= boundary) {
                     group.sustainLevel = releaseScale * sampleAtDecoupled(group.samplePosition, group.deformContext);
+                }
             } else {
                 int maxSamples = jmin(numSamples, int((boundary - group.samplePosition) / deltaX));
 
@@ -543,8 +547,9 @@ int EnvRasterizer::vectorizedRenderToBuffer(
 
                 info("sampled " << maxSamples << " samples");
 
-                if (maxSamples < numSamples)
+                if (maxSamples < numSamples) {
                     buffer.offset(maxSamples).zero();
+                }
 
                 samplesRendered = maxSamples;
             }
@@ -584,11 +589,13 @@ bool EnvRasterizer::simulateRender(
     float tempoScale) {
     double newAdvancement = advancement;
 
-    if (props.tempoSync)
+    if (props.tempoSync) {
         newAdvancement /= tempoScale;
+    }
 
-    if (props.scale != 1)
+    if (props.scale != 1) {
         newAdvancement /= (double) props.getEffectiveScale();
+    }
 
     advancement = newAdvancement;
 
@@ -641,8 +648,9 @@ bool EnvRasterizer::simulateRender(
 
             lastPosition = jmin(boundary, lastPosition + advancement);
 
-            if (lastPosition == boundary)
+            if (lastPosition == boundary) {
                 return false;
+            }
 
             break;
         }
@@ -661,8 +669,9 @@ void EnvRasterizer::evaluateLoopSustainIndices() {
     loopIndex = -1;
     sustainIndex = -1;
 
-    if (icpts.empty())
+    if (icpts.empty()) {
         return;
+    }
 
     set<VertCube*>& loopLines = envMesh->loopCubes;
     set<VertCube*>& sustLines = envMesh->sustainCubes;
@@ -670,18 +679,21 @@ void EnvRasterizer::evaluateLoopSustainIndices() {
     for (int i = 0; i < (int) icpts.size(); ++i) {
         VertCube* cube = icpts[i].cube;
 
-        if (cube == nullptr)
+        if (cube == nullptr) {
             continue;
+        }
 
         if (loopLines.find(cube) != loopLines.end())
             loopIndex = i;
 
-        if (sustLines.find(cube) != sustLines.end())
+        if (sustLines.find(cube) != sustLines.end()) {
             sustainIndex = i;
+        }
     }
 
-    if (sustainIndex < 0)
+    if (sustainIndex < 0) {
         sustainIndex = end;
+    }
 
     if (loopIndex >= 0 && sustainIndex >= 0 && sustainIndex - loopIndex < loopMinSizeIcpts) {
         // need at least 1 icpt padding to the right to loop
@@ -709,8 +721,9 @@ void EnvRasterizer::changedToRelease() {
 
     info("release scale: " << releaseScale);
 
-    for (int i = headUnisonIndex; i < (int) params.size(); ++i)
+    for (int i = headUnisonIndex; i < (int) params.size(); ++i) {
         params[i].samplePosition = releasePosX;
+    }
 }
 
 void EnvRasterizer::validateState() {
@@ -733,20 +746,22 @@ void EnvRasterizer::validateState() {
     if (state == Looping) {
         float loopLength = getLoopLength();
 
-        if (loopLength <= 0)
+        if (loopLength <= 0) {
             state = NormalState;
-        else {
+        } else {
             for (int i = headUnisonIndex; i < params.size(); ++i) {
                 double low = icpts[loopIndex].x;
                 double high = icpts[sustainIndex].x;
 
                 double& pos = params[i].samplePosition;
 
-                if (pos > high)
+                if (pos > high) {
                     pos = jmax(low, pos - loopLength);
+                }
 
-                else if (pos < low)
+                else if (pos < low) {
                     pos = jmin(high, pos + loopLength);
+                }
             }
         }
     } else if (state == NormalState) {
@@ -754,16 +769,19 @@ void EnvRasterizer::validateState() {
 
         if (length > 0) {
             if (NumberUtils::within((float) params[headUnisonIndex].samplePosition,
-                                    icpts[loopIndex].x, icpts[sustainIndex].x))
+                                    icpts[loopIndex].x, icpts[sustainIndex].x)) {
                 state = Looping;
+            }
         }
     }
 }
 
 void EnvRasterizer::ensureParamSize(int numUnisonVoices) {
-    if (params.size() == numUnisonVoices + 1)
+    if (params.size() == numUnisonVoices + 1) {
         return;
+    }
 
-    while (params.size() < numUnisonVoices + 1)
+    while (params.size() < numUnisonVoices + 1) {
         params.emplace_back();
+    }
 }

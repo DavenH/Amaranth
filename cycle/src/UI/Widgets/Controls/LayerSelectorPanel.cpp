@@ -1,9 +1,6 @@
-#include <xutility>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <UI/IConsole.h>
-#include <UI/MiscGraphics.h>
 #include <Util/Arithmetic.h>
 
 #include "LayerSelectionClient.h"
@@ -13,9 +10,6 @@
 
 LayerSelectorPanel::LayerSelectorPanel(SingletonRepo* repo, LayerSelectionClient* client) : SelectorPanel(repo),
     client(client) {
-}
-
-LayerSelectorPanel::~LayerSelectorPanel() {
 }
 
 void LayerSelectorPanel::rowClicked(int row) {
@@ -39,8 +33,9 @@ void LayerSelectorPanel::moveCurrentLayer(bool up) {
     MeshLibrary::LayerGroup& group = getObj(MeshLibrary).getGroup(client->getLayerType());
     int size = group.size();
 
-    if (currentIndex == 0 && !up || currentIndex == size - 1 && up)
+    if (currentIndex == 0 && !up || currentIndex == size - 1 && up) {
         return;
+    }
 
     int movement = up ? 1 : -1;
 

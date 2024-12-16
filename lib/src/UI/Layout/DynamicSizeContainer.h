@@ -12,18 +12,14 @@ public:
 		,	collapsedSize(collapsedSize) {
 	}
 
-	void setBoundsDelegate(int x, int y, int w, int h)
-										{ return comp->setBounds(x, y, w, h); }
-
-	const Rectangle<int> getBoundsInParentDelegate()
-										{ return comp->getBoundsInParent(); }
-
-	int getYDelegate() 					{ return comp->getY(); 				}
-	int getXDelegate() 					{ return comp->getX(); 				}
-	int getExpandedSize() 				{ return expandedSize; 				}
-	int getCollapsedSize() 				{ return collapsedSize; 			}
-	bool isVisibleDlg() const 			{ return comp->isVisible(); 		}
-	void setVisibleDlg(bool isVisible) 	{ comp->setVisible(isVisible); 		}
+	void setBoundsDelegate(int x, int y, int w, int h) override { return comp->setBounds(x, y, w, h); }
+	const Rectangle<int> getBoundsInParentDelegate() override { return comp->getBoundsInParent(); }
+	int getYDelegate() override 					{ return comp->getY(); 				}
+	int getXDelegate() override 					{ return comp->getX(); 				}
+	int getExpandedSize() override					{ return expandedSize; 				}
+	int getCollapsedSize() override 				{ return collapsedSize; 			}
+	bool isVisibleDlg() const override				{ return comp->isVisible(); 		}
+	void setVisibleDlg(bool isVisible) override		{ comp->setVisible(isVisible); 		}
 
 	Ref<Component> comp;
 	int collapsedSize;

@@ -53,7 +53,7 @@ public:
     /* ----------------------------------------------------------------------------- */
 
 	ZoomPanel(SingletonRepo* repo, ZoomContext panel);
-	virtual ~ZoomPanel();
+	~ZoomPanel() override = default;
 
 	const Rectangle<int> getBounds() override;
 	void mouseEnter(const MouseEvent& e) override;

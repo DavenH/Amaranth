@@ -11,7 +11,7 @@ public:
         unsampleable = false;
     }
 
-    void calcCrossPoints() override {
+    void calcCrossPoints(int currentMorphAxis) override {
         if (verts.empty()) {
             cleanUp();
             return;

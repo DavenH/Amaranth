@@ -9,11 +9,9 @@ Transform::Transform() :
 	,	removeOffset(false) {
 }
 
-
 Transform::~Transform() {
 	clear();
 }
-
 
 void Transform::clear() {
     if (spec != nullptr) {
@@ -28,15 +26,15 @@ void Transform::clear() {
 	}
 }
 
-
 void Transform::allocate(int bufferSize, bool convertsToCart) {
 	convertToCart = convertsToCart;
 
 	jassert(! (bufferSize & (bufferSize - 1)));
 
 	int newOrder = NumberUtils::log2i(bufferSize);
-	if(order == newOrder)
+	if(order == newOrder) {
 		return;
+	}
 
 	clear();
 
@@ -66,10 +64,10 @@ void Transform::allocate(int bufferSize, bool convertsToCart) {
 	}
 }
 
-
 void Transform::forward(Buffer<float> src) {
-	if(spec == nullptr)
+	if(spec == nullptr) {
 		return;
+	}
 
 	jassert(order > 0);
 	jassert(src.size() >= 1 << order);
@@ -78,25 +76,26 @@ void Transform::forward(Buffer<float> src) {
 
 	ippsFFTFwd_RToCCS_32f(src, fftBuffer, spec, workBuff);
 
-	if(convertToCart)
-		ippsCartToPolar_32fc((Ipp32fc*)fftBuffer.get() + 1, magnitudes, phases, 1 << (order - 1));
+	if(convertToCart) {
+		ippsCartToPolar_32fc(reinterpret_cast<Ipp32fc*>(fftBuffer.get()) + 1, magnitudes, phases, 1 << (order - 1));
+	}
 }
 
-
 void Transform::inverse(Buffer<float> dest) {
-	if(spec == nullptr)
+	if(spec == nullptr) {
 		return;
+	}
 
 	ScopedLock sl(lock);
 
 	jassert(dest.size() >= 1 << order);
 
-	if(convertToCart)
+	if(convertToCart) {
 		ippsPolarToCart_32fc(magnitudes, phases, (Ipp32fc*)fftBuffer.get() + 1, 1 << (order - 1));
+	}
 
 	ippsFFTInv_CCSToR_32f(fftBuffer, dest, spec, workBuff);
 }
-
 
 void Transform::inverse(const Buffer<Ipp32fc>& fftInput, const Buffer<float>& dest) {
 	Buffer<float> oldBuffer = fftBuffer;
@@ -108,7 +107,6 @@ void Transform::inverse(const Buffer<Ipp32fc>& fftInput, const Buffer<float>& de
 	inverse(dest);
 	fftBuffer = oldBuffer;
 }
-
 
 Buffer<Ipp32fc> Transform::getComplex() const {
 	int size = 1 << (order - 1);

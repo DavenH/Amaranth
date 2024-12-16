@@ -21,17 +21,13 @@ MorphUpdate::MorphUpdate(SingletonRepo* repo) : SingletonAccessor(repo, "MorphUp
 }
 
 
-MorphUpdate::~MorphUpdate() {
-}
-
-
 void MorphUpdate::performUpdate(int updateType) {
     switch (updateType) {
-		case UpdateType::Null:
-		case UpdateType::Repaint:
+		case Null:
+		case Repaint:
 			break;
 
-        case UpdateType::Update: {
+        case Update: {
 			getObj(Spectrum3D).updateBackground(true);
 			getObj(Spectrum2D).triggerPendingScaleUpdate();
 
@@ -52,5 +48,7 @@ void MorphUpdate::performUpdate(int updateType) {
 			getObj(VisualDsp).rasterizeAllEnvs(getObj(Waveform3D).getWindowWidthPixels());
 			break;
 		}
+    	default:
+    		break;
 	}
 }

@@ -38,8 +38,9 @@ public:
     }
 
     int resample(Buffer<float> src, Buffer<float> dst) {
-        if (src.empty())
+        if (src.empty()) {
             return 0;
+        }
 
         for (int i = 0; i < src.size(); ++i) {
             write(src[i]);

@@ -80,7 +80,7 @@ void TransformVertexAction::undoDelegate() {
 TransformVerticesAction::TransformVerticesAction(
 		SingletonRepo* repo
 	, 	int updateCode
-	,	VertList* verts
+	,	vector<Vertex*>* verts
 	,	const vector<Vertex>& _before
 	,	const vector<Vertex>& _after) :
 			ResponsiveUndoableAction(repo, updateCode)

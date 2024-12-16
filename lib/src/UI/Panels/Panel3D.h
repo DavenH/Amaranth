@@ -14,9 +14,9 @@ class Panel3D : public Panel {
 public:
     class Renderer : public Panel::Renderer {
 	public:
-		virtual void deactivate() 	= 0;
-		virtual void activate() 	= 0;
-		virtual void clear() 		= 0;
+		void deactivate() 	override = 0;
+		void activate() 	override = 0;
+		void clear() 		override = 0;
 
 		virtual void drawBakedTextures() 	{}
 		virtual void gridDrawBeginning() 	{}	// enable client arrays
@@ -50,30 +50,31 @@ public:
 			DataRetriever* dataRetriever,
 			bool isTransparent, bool haveHorzZoom);
 
-	virtual ~Panel3D();
+	~Panel3D() override;
 
-	void bakeTextures();
-	void doExtraResized();
+	void bakeTextures() override;
+	void doExtraResized() override;
 	void drawAxe();
-	void drawDeformerTags();
-	void drawDepthLinesAndVerts();
-	void drawInterceptLines();
-	void drawInterceptsAndHighlightClosest();
+	void drawDeformerTags() override;
+	void drawDepthLinesAndVerts() override;
+	void drawInterceptLines() override;
+	void drawInterceptsAndHighlightClosest() override;
 	void drawLinSurface(const vector<Column>& grid);
 	void drawLogSurface(const vector<Column>& grid);
 	void drawSurface();
 	void freeResources();
-	void highlightCurrentIntercept();
-	vector<Color>& getGradientColours();
-	void zoomUpdated(int updateSource);
+	void highlightCurrentIntercept() override;
 
-	void drawCurvesAndSurfaces() 					{ renderer->drawBakedTextures(); }
-	void setGraphicsRenderer(Renderer* renderer) 	{ this->renderer = renderer; }
-	Renderer* getRenderer() 						{ return renderer; }
+    virtual vector<Color>& getGradientColours();
+	void zoomUpdated(int updateSource) override;
+
+	void drawCurvesAndSurfaces() override 			{ renderer->drawBakedTextures(); }
+	void setGraphicsRenderer(Renderer* renderer) 	{ this->renderer.reset(renderer); }
+	Renderer* getRenderer() 						{ return renderer.get(); }
 	void setUseVertices(bool doso) 					{ useVertices = doso; }
-	OpenGLPanel3D* getOpenglPanel() 				{ return openGL; }
+	OpenGLPanel3D* getOpenglPanel() 				{ return openGL.get(); }
 
-	virtual void postVertsDraw();
+	void postVertsDraw() override;
 
 protected:
 	struct RenderParams {

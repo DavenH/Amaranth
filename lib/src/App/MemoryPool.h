@@ -8,7 +8,7 @@ class MemoryPool : public SingletonAccessor {
 public:
 	explicit MemoryPool(SingletonRepo* repo);
 
-	~MemoryPool() override;
+	~MemoryPool() override = default;
 
 	Buffer<float> getAudioPool() 	{ return audioPool; }
 	Buffer<float> getMainPool() 	{ return mainPool; 	}

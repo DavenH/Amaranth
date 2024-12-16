@@ -1,5 +1,4 @@
-#ifndef MOUSEEVENTDELEGATOR_H_
-#define MOUSEEVENTDELEGATOR_H_
+#pragma once
 
 #include "JuceHeader.h"
 #include "../Util/Util.h"
@@ -89,7 +88,4 @@ public:
     MouseEventDelegator(Component* comp, MouseEventDelegatee* delegatee) {
 	}
 };
-#endif
-
-
 #endif

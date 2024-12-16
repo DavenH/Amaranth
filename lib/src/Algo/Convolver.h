@@ -1,5 +1,4 @@
-#ifndef CONVOLVER_H_
-#define CONVOLVER_H_
+#pragma once
 
 #include "../App/SingletonAccessor.h"
 #include "../Array/Buffer.h"
@@ -7,8 +6,8 @@
 
 class Convolver : public SingletonAccessor {
 public:
-	Convolver(SingletonRepo* repo);
-	~Convolver() {}
+	explicit Convolver(SingletonRepo* repo);
+	~Convolver() override = default;
 	void setKernel(Buffer<float> kernel);
 
 	Buffer<float> processBuffer(Buffer<float> buffer);
@@ -19,5 +18,3 @@ private:
 	ScopedAlloc<float> paddedKernel;
 	ScopedAlloc<float> paddedInput;
 };
-
-#endif

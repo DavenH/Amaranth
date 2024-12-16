@@ -1,5 +1,9 @@
 #include "VersionConsiliator.h"
 
+VersionConsiliator::VersionConsiliator(SingletonRepo* repo): SingletonAccessor(repo, "VersionConsiliator"){
+
+}
+
 void VersionConsiliator::transform(XmlElement* element) {
     XmlElement* meshesElement = element->getChildByName("AllMeshes");
 
@@ -42,7 +46,8 @@ void VersionConsiliator::transform(XmlElement* element) {
 
 */
 
-void read(XmlElement* element) {
+/*
+void VersionConsiliator::transform(XmlElement* element) {
     // src
     String names[] = {
             "Time", "Freq", "Phase", "Guide",
@@ -110,7 +115,6 @@ void read(XmlElement* element) {
 			dstLayerElem = currentMeshElem;
 
 			Mesh* mesh = createMesh(i);
-
 			mesh->readXML(currentMeshElem);
 			mesh->writeXML(dstLayerElem);
 
@@ -130,8 +134,6 @@ void read(XmlElement* element) {
 	}
 
 	element->replaceChildElement(allMeshesElem, meshLibraryElem);
-
-
 	return true;
 }
 
@@ -202,3 +204,4 @@ void VersionConsiliator::fixScratchMeshes() {
 		}
 	}
 }
+*/

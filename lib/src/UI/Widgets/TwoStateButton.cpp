@@ -4,7 +4,7 @@
 #include "../../App/SingletonRepo.h"
 
 TwoStateButton::TwoStateButton(int x1, int y1, int x2, int y2,
-							   Button::Listener* listener,
+							   Listener* listener,
 							   SingletonRepo* repo,
 							   const String& msgA, const String& keyA,
 							   const String& msgB, const String& keyB) :
@@ -42,7 +42,7 @@ void TwoStateButton::mouseDown(const MouseEvent& e) {
 
 	toggle();
 
-	Button::mouseDown(e);
+	IconButton::mouseDown(e);
 }
 
 void TwoStateButton::toggle() {

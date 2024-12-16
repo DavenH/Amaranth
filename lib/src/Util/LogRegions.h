@@ -14,12 +14,13 @@ using std::vector;
 
 class LogRegions : public SingletonAccessor {
 public:
-    LogRegions(SingletonRepo* repo) :
+    explicit LogRegions(SingletonRepo* repo) :
             SingletonAccessor(repo, "LogRegions") {
     }
-    virtual ~LogRegions() {}
 
-    void init() {
+    ~LogRegions() override = default;
+
+    void init() override {
         const double samplerate = 44100.0;
 
         float ampTension = getConstant(LogTension);
@@ -54,8 +55,8 @@ public:
 	}
 
     void clear() {
-        for (int i = 0; i < (int) frequencyRamps.size(); ++i)
-            frequencyRamps[i].nullify();
+        for (auto& frequencyRamp : frequencyRamps)
+            frequencyRamp.nullify();
 
         memory.clear();
     }

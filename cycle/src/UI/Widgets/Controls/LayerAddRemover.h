@@ -9,7 +9,7 @@ class LayerAddRemover :
 public:
 	LayerAddRemover(Button::Listener* listener, SingletonRepo* repo, const String& layerString);
 	void setLayerString(const String& layerString);
-	void resized();
+	void resized() override;
 
 	IconButton add;
 	IconButton remove;

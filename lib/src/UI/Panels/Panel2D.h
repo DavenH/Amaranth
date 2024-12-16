@@ -8,15 +8,15 @@ class BoundWrapper;
 class Panel2D : public Panel {
 public:
 	Panel2D(SingletonRepo* repo, const String& name, bool curveIsBipolar, bool haveVertZoom);
-	virtual ~Panel2D() {}
+	~Panel2D() override = default;
 
 	void contractToRange(bool includeX = false);
 	void drawCurvesFrom(BufferXY& buff, Buffer<float> alpha, const Color& colourA, const Color& colourB);
 	static void prepareAlpha(const Buffer<float>& y, Buffer<float> alpha, float baseAlpha);
-	void drawDeformerTags();
-	void drawDepthLinesAndVerts();
-	void highlightCurrentIntercept();
-	void zoomUpdated(int updateSource);
+	void drawDeformerTags() override;
+	void drawDepthLinesAndVerts() override;
+	void highlightCurrentIntercept() override;
+	void zoomUpdated(int updateSource) override;
 
 	bool isCurveBipolar() const 							 { return curveIsBipolar; 			 }
 	void setCurveBipolar(bool bipolar) 						 { curveIsBipolar = bipolar; 		 }

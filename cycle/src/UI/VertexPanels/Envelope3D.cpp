@@ -14,9 +14,6 @@ Envelope3D::Envelope3D(SingletonRepo* repo) :
 	createNameImage("Envelopes 3D");
 }
 
-Envelope3D::~Envelope3D() {
-}
-
 void Envelope3D::buttonClicked(Button* button) {
 }
 

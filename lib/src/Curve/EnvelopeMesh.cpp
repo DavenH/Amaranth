@@ -9,42 +9,45 @@ EnvelopeMesh::EnvelopeMesh(const String& name) :
 }
 
 float EnvelopeMesh::getPositionOfCubeAt(VertCube* line, MorphPosition pos) {
-	if(line == nullptr)
+	if(line == nullptr) {
 		return -1.f;
+	}
 
 	pos.time = 0;
 	VertCube::ReductionData reduce;
 	line->getFinalIntercept(reduce, pos);
 
-	if(reduce.pointOverlaps)
+	if(reduce.pointOverlaps) {
 		return reduce.v[Vertex::Phase];
+	}
 
 	return -1.f;
 }
 
 void EnvelopeMesh::writeXML(XmlElement* envLayersElem) const {
   #ifndef DEMO_VERSION
-	XmlElement* envMeshElem 	= new XmlElement("EnvelopeMesh");
-	XmlElement* mainMeshElem 	= new XmlElement("MainMesh");
-	XmlElement* loopIndicesElem	= new XmlElement("LoopIndices");
-	XmlElement* sustIndicesElem	= new XmlElement("SustIndices");
+	auto* envMeshElem = new XmlElement("EnvelopeMesh");
+	auto* mainMeshElem = new XmlElement("MainMesh");
+	auto* loopIndicesElem = new XmlElement("LoopIndices");
+	auto* sustIndicesElem = new XmlElement("SustIndices");
 
 	Mesh::writeXML(mainMeshElem);
 
     for (int i = 0; i < cubes.size(); ++i) {
         VertCube* line = cubes[i];
 
-        if (line == nullptr)
-            continue;
+        if (line == nullptr) {
+	        continue;
+        }
 
         if (loopCubes.find(line) != loopCubes.end()) {
-			XmlElement* loopIndexElem = new XmlElement("LoopIndex");
+			auto* loopIndexElem = new XmlElement("LoopIndex");
 			loopIndexElem->setAttribute("index", i);
 			loopIndicesElem->addChildElement(loopIndexElem);
 		}
 
         if (sustainCubes.find(line) != sustainCubes.end()) {
-			XmlElement* sustIndexElem = new XmlElement("SustIndex");
+			auto* sustIndexElem = new XmlElement("SustIndex");
 			sustIndexElem->setAttribute("index", i);
 			sustIndicesElem->addChildElement(sustIndexElem);
 		}
@@ -58,7 +61,6 @@ void EnvelopeMesh::writeXML(XmlElement* envLayersElem) const {
   #endif
 }
 
-
 bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
 	XmlElement* envMeshElem = envLayersElem->getChildByName("EnvelopeMesh");
 	if(envMeshElem == nullptr)
@@ -66,27 +68,27 @@ bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
 
 	XmlElement* mainMeshElem 	= envMeshElem->getChildByName("MainMesh");
 
-	if(mainMeshElem != nullptr)
+	if(mainMeshElem != nullptr) {
 		Mesh::readXML(mainMeshElem);
+	}
 
 	XmlElement* sustIndicesElem = envMeshElem->getChildByName("SustIndices");
 	XmlElement* loopIndicesElem = envMeshElem->getChildByName("LoopIndices");
 
-    if (loopIndicesElem != nullptr) {
-        loopCubes.clear();
-        forEachXmlChildElementWithTagName(*loopIndicesElem, loopIndexElem, "LoopIndex")
-        {
-            int index = loopIndexElem->getIntAttribute("index", -1);
+	if (loopIndicesElem != nullptr) {
+		loopCubes.clear();
+		forEachXmlChildElementWithTagName(*loopIndicesElem, loopIndexElem, "LoopIndex") {
+			int index = loopIndexElem->getIntAttribute("index", -1);
 
-            if (isPositiveAndBelow(index, (int) cubes.size())) {
+			if (isPositiveAndBelow(index, (int) cubes.size())) {
 				clampSharpness(cubes[index]);
 				loopCubes.insert(cubes[index]);
 			}
-        }
-    } else {
-        int loopIndex = envMeshElem->getIntAttribute("sustainIndex", -1);
+		}
+	} else {
+		int loopIndex = envMeshElem->getIntAttribute("sustainIndex", -1);
 
-        if (isPositiveAndBelow(loopIndex, (int) cubes.size())) {
+		if (isPositiveAndBelow(loopIndex, (int) cubes.size())) {
 			clampSharpness(cubes[loopIndex]);
 			loopCubes.insert(cubes[loopIndex]);
 		}
@@ -164,11 +166,10 @@ void EnvelopeMesh::setSustainToRightmost() {
 
             VertCube* maxLine = nullptr;
 
-            foreach(CubeIter, cit, cubes) {
-                VertCube* line = *cit;
-
-                if (line == nullptr)
-                    continue;
+			for(auto& line : cubes) {
+                if (line == nullptr) {
+	                continue;
+                }
 
                 line->getFinalIntercept(reduce, MorphPosition(0, redSlice, blueSlice));
 

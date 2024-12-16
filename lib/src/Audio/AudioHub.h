@@ -60,12 +60,19 @@ public:
 	~AudioHub() override;
 
   #if ! PLUGIN_MODE
-	void audioDeviceIOCallback(const float** inputChannelData, int totalNumInputChannels,
-							   float** outputChannelData, int totalNumOutputChannels, int numSamples);
+	void audioDeviceIOCallbackWithContext(
+		const float* const* inputChannelData,
+		int totalNumInputChannels,
+		float* const* outputChannelData,
+		int totalNumOutputChannels,
+		int numSamples,
+		const AudioIODeviceCallbackContext& context) override;
 
 	void audioDeviceAboutToStart(AudioIODevice* device) override;
 	void audioDeviceStopped() override;
 	void resumeAudio();
+
+
 	void stopAudio();
 	void suspendAudio();
 

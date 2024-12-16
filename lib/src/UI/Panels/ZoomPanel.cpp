@@ -1,5 +1,8 @@
 #include "Panel.h"
 #include "ZoomPanel.h"
+
+#include <Definitions.h>
+
 #include "../IConsole.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Inter/Interactor.h"
@@ -41,7 +44,6 @@ ZoomPanel::ZoomPanel(SingletonRepo* repo, ZoomContext context) :
 	}
 }
 
-
 void ZoomPanel::setBounds(int x, int y, int width, int height) {
     jassert(context.panel != nullptr);
 
@@ -51,16 +53,17 @@ void ZoomPanel::setBounds(int x, int y, int width, int height) {
 	int panelHeight = height - (context.haveHorz ? scrollbarWidth : 0);
 	context.bounded->setBounds(0, 0, panelWidth, panelHeight);
 
-	if(context.haveHorz)
+	if(context.haveHorz) {
 		horz.setBounds(0, height - scrollbarWidth, panelWidth, scrollbarWidth);
+	}
 
-	if(context.haveVert)
+	if(context.haveVert) {
 		vert.setBounds(width - scrollbarWidth, 0, scrollbarWidth, height);
+	}
 }
 
-
 void ZoomPanel::mouseEnter(const MouseEvent& e) {
-	IConsole& console = getObj(IConsole);
+	auto& console = getObj(IConsole);
 
 	if(e.originalComponent == &horz) {
 		console.setMouseUsage(false, false, true, false);
@@ -82,7 +85,6 @@ void ZoomPanel::mouseEnter(const MouseEvent& e) {
 	console.write(String());
 }
 
-
 void ZoomPanel::scrollBarMoved(ScrollBar* bar, double newRangeStart) {
     if (bar == &horz) {
 		rect.x = newRangeStart;
@@ -96,20 +98,14 @@ void ZoomPanel::scrollBarMoved(ScrollBar* bar, double newRangeStart) {
 	listeners.call(&ZoomListener::zoomUpdated, updateSource);
 }
 
-
 const Rectangle<int> ZoomPanel::getBounds() {
     return Component::getBounds();
 }
-
 
 int ZoomPanel::getX() 		{ return Component::getX();			}
 int ZoomPanel::getY()		{ return Component::getY();			}
 int ZoomPanel::getWidth()	{ return Component::getWidth();		}
 int ZoomPanel::getHeight()	{ return Component::getHeight(); 	}
-
-
-ZoomPanel::~ZoomPanel() {
-}
 
 
 void ZoomPanel::panelZoomChanged(bool commandDown) {
@@ -131,23 +127,21 @@ void ZoomPanel::panelZoomChanged(bool commandDown) {
 	}
 }
 
-
 void ZoomPanel::updateRange(double newLimit) {
     horz.setCurrentRange(0, newLimit);
 
 	panelZoomChanged(false);
 }
 
-
 void ZoomPanel::panelComponentChanged(Component* newComponent, Component* oldComponent) {
     jassert(newComponent != nullptr);
 
-	if(oldComponent != nullptr)
+	if(oldComponent != nullptr) {
 		removeChildComponent(oldComponent);
+	}
 
 	addAndMakeVisible(newComponent);
 }
-
 
 void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
     float oldZoom;
@@ -190,7 +184,6 @@ void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
 
 	panelZoomChanged(cmdDown);
 }
-
 
 void ZoomPanel::zoomOut(bool cmdDown, int mouseX, int mouseY) {
     float oldZoom;
@@ -243,7 +236,6 @@ void ZoomPanel::contractToRange(Buffer<float> y) {
 	panelZoomChanged(false);
 }
 
-
 void ZoomPanel::zoomToAttack() {
     doZoomAction(ZoomToAttack);
 }
@@ -251,7 +243,6 @@ void ZoomPanel::zoomToAttack() {
 void ZoomPanel::zoomToFull() {
     doZoomAction(ZoomToFull);
 }
-
 
 void ZoomPanel::doZoomAction(int action) {
 	if(action == ZoomToAttack) {
@@ -264,8 +255,6 @@ void ZoomPanel::doZoomAction(int action) {
 
 	panelZoomChanged(false);
 }
-
-
 
 /*
  * void Updater::zoomUpdated(UpdateSource source)

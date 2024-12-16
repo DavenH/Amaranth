@@ -7,8 +7,9 @@
 
 bool Util::saveXml(const File& file, const Savable* savable, const String& name) {
   #ifndef DEMO_VERSION
-	if(file.existsAsFile())
+	if(file.existsAsFile()) {
 		(void) file.deleteFile();
+	}
 
 	std::unique_ptr<XmlElement> topelem(new XmlElement(name));
 	savable->writeXML(topelem.get());
@@ -149,7 +150,6 @@ int Util::extractPitchFromFilename(const String& str, bool useWeakMatch) {
 
 	return midiNote;
 }
-
 
 int Util::pitchAwareComparison(const String& a, const String& b) {
     StringArray tokensA, tokensB;

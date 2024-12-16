@@ -1,5 +1,4 @@
-#ifndef THREADCHAIN_H_
-#define THREADCHAIN_H_
+#pragma once
 
 #include "JuceHeader.h"
 
@@ -67,4 +66,3 @@ public:
 	}
 };
 
-#endif

@@ -24,6 +24,11 @@ PitchedSample::PitchedSample() :
 	mesh = std::make_unique<Mesh>();
 }
 
+PitchedSample::PitchedSample(const Buffer<float>& sample) :
+		PitchedSample() {
+	audio = StereoBuffer(sample);
+}
+
 void PitchedSample::writeXML(XmlElement* sampleElem) const {
 	sampleElem->setAttribute("path", 		lastLoadedFilePath);
 	sampleElem->setAttribute("fund-note", 	fundNote);
@@ -130,15 +135,16 @@ void PitchedSample::createPeriodsFromEnv(MeshRasterizer* rast) {
 	jassert(fundNote > 0);
 	progressMark
 
-	if(fundNote < 0)
+	if(fundNote < 0) {
 		return;
+	}
 
 	int currentIndex 	= 0;
 	float position 		= 0;
 	float defaultFreq 	= NumberUtils::noteToFrequency(fundNote, 0);
 
 	rast->setMesh(mesh.get());
-	rast->calcCrossPoints();
+	rast->calcCrossPoints(0);
 	rast->makeCopy();
 
 	if(rast->isSampleable())

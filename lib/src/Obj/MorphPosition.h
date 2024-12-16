@@ -1,4 +1,5 @@
 #pragma once
+
 #include "../Curve/Vertex.h"
 
 class MorphPosition {

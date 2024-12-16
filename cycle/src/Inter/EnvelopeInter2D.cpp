@@ -214,12 +214,11 @@ void EnvelopeInter2D::previewMesh(EnvelopeMesh* mesh) {
     }
 }
 
-
 void EnvelopeInter2D::previewMeshEnded(EnvelopeMesh* originalMesh) {
     ScopedLock sl(panel->getRenderLock());
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
-        int updateType = (int) UpdateType::Update;
+        int updateType = Update;
         envRast->setMesh(originalMesh);
         envRast->performUpdate(updateType);
 
@@ -227,18 +226,15 @@ void EnvelopeInter2D::previewMeshEnded(EnvelopeMesh* originalMesh) {
     }
 }
 
-
 bool EnvelopeInter2D::isPitchEnvelope() {
     int currentEnv = getSetting(CurrentEnvGroup);
 
     return currentEnv == LayerGroups::GroupPitch || currentEnv == LayerGroups::GroupWavePitch;
 }
 
-
 EnvelopeMesh* EnvelopeInter2D::getCurrentMesh() {
     return dynamic_cast<EnvelopeMesh*>(Interactor::getMesh());
 }
-
 
 void EnvelopeInter2D::showCoordinates() {
     int envEnum = getSetting(CurrentEnvGroup);
@@ -304,17 +300,20 @@ void EnvelopeInter2D::showCoordinates() {
 
             break;
         }
+
+        default:
+            break;
     }
 
     String xString = props->tempoSync ? String(time, 2) + " beats, " : String(time, 4) + "s, ";
     String message = xString + yString;
 
-    if (state.currentMouse.x > 1)
+    if (state.currentMouse.x > 1) {
         message += " (release region)";
+    }
 
     showMsg(message);
 }
-
 
 // movingStart, as opposed to moving the sustain vertex which also wants synchronization
 bool EnvelopeInter2D::synchronizeEnvPoints(Vertex* vertex, bool vertexIsLoopVert) {
@@ -340,17 +339,20 @@ bool EnvelopeInter2D::synchronizeEnvPoints(Vertex* vertex, bool vertexIsLoopVert
 
                 // if an component curve deformer is set, the sharpness is treated as its gain
                 // plus, deformers aren't smooth so disconts don't matter
-                if (toMove->getCompDfrm() < 0)
+                if (toMove->getCompDfrm() < 0) {
                     toMove->getVertex(i)->setMaxSharpness();
+                }
 
-                if (toCopyFrom->getCompDfrm() < 0)
+                if (toCopyFrom->getCompDfrm() < 0) {
                     toCopyFrom->getVertex(i)->setMaxSharpness();
+                }
             }
 
             didAnything = true;
         } else if (sustainCube != nullptr && sustainCube->deformerAt(Vertex::Time) < 0) {
-            for (int i = 0; i < VertCube::numVerts; ++i)
+            for (int i = 0; i < VertCube::numVerts; ++i) {
                 sustainCube->getVertex(i)->setMaxSharpness();
+            }
         }
     }
 
@@ -367,9 +369,9 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
     else if (button == &scratchIcon) switchedEnvelope(LayerGroups::GroupScratch);
 
     else if (button == &contractIcon || button == &expandIcon) {
-        if (button == &contractIcon)
+        if (button == &contractIcon) {
             envPanel->zoomAndRepaint();
-        else {
+        } else {
             ZoomRect &rect = envPanel->getZoomPanel()->getZoomRect();
             rect.w = rect.xMaximum;
             rect.x = 0;
@@ -398,8 +400,9 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
 //				int layerIdx = getSetting(CurrentScratchLayer);
 //				envPanel->removeScratchProps(layerIdx);
 
-                if (!isLast)
+                if (!isLast) {
                     getObj(ModMatrixPanel).layerRemoved(LayerGroups::GroupScratch, group.current);
+                }
 
                 forceUpdate = true;
                 globalUpdate |= group.current == 0;
@@ -425,16 +428,19 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
 
         PopupMenu menu;
 
-        if (envEnum != LayerGroups::GroupVolume)
+        if (envEnum != LayerGroups::GroupVolume) {
             menu.addItem(CfgDynamic, "Dynamic while live", true, props->dynamic);
-        else
+        } else {
             menu.addItem(CfgLogarithmic, "Logarithmic", true, props->logarithmic);
+        }
 
-        if (envEnum == LayerGroups::GroupScratch)
+        if (envEnum == LayerGroups::GroupScratch) {
             menu.addItem(CfgGlobal, "Globally triggered", envEnum == LayerGroups::GroupScratch, props->global);
+        }
 
-        if (isPlugin)
+        if (isPlugin) {
             menu.addItem(CfgSyncTempo, "Sync to host tempo", isPlugin, props->tempoSync);
+        }
 
         PopupMenu scaleMenu;
         scaleMenu.addItem(CfgScale1_16x, "1/16x", true, props->scale == -16);
@@ -479,6 +485,8 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
                 case CfgScale16x:
                     newScale = 16;
                     break;
+                default:
+                    break;
             }
 
             if (Util::assignAndWereDifferent(props->scale, newScale)) {
@@ -508,14 +516,18 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
                     envPanel->updateBackground(true);
                     triggerRefreshUpdate();
                     break;
+
+                default:
+                    break;
             }
 
             editChange = true;
             configIcon.setPowered(props->isOperating());
         }
 
-        if (editChange)
+        if (editChange) {
             getObj(EditWatcher).setHaveEditedWithoutUndo(true);
+        }
     } else if (button == &enableButton) {
         if (EnvRasterizer* envRast = getEnvRasterizer()) {
             int envEnum = getSetting(CurrentEnvGroup);
@@ -542,12 +554,16 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
                     MeshLibrary::Properties* currFreqProps = getObj(MeshLibrary).getCurrentProps(
                             LayerGroups::GroupSpect);
 
-                    if (currTimeProps != nullptr && currTimeProps->scratchChan == scratchChan)
+                    if (currTimeProps != nullptr && currTimeProps->scratchChan == scratchChan) {
                         getObj(Waveform3D).setSpeedApplicable(isNowEnabled);
+                    }
 
-                    if (currFreqProps != nullptr && currFreqProps->scratchChan == scratchChan)
+                    if (currFreqProps != nullptr && currFreqProps->scratchChan == scratchChan) {
                         getObj(Spectrum3D).setSpeedApplicable(isNowEnabled);
+                    }
 
+                    break;
+                default:
                     break;
                 }
             }
@@ -562,7 +578,6 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
     }
 }
 
-
 void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
     bool isLoop = button == &loopIcon;
 
@@ -573,8 +588,9 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
     } else {
         EnvelopeMesh* currentMesh = getCurrentMesh();
 
-        if (currentMesh == nullptr)
+        if (currentMesh == nullptr) {
             return;
+        }
 
         bool onlyShallowUpdate = true;
 
@@ -589,20 +605,22 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
                 VertCube* cube = nullptr;
 
                 const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
-                for (int i = 0; i < (int) icpts.size(); ++i) {
+                for (const auto& icpt : icpts) {
                     for (int j = 0; j < vert->getNumOwners(); ++j) {
                         VertCube* vertCube = vert->owners[j];
 
-                        if (icpts[i].cube == vertCube && vertCube != nullptr)
+                        if (icpt.cube == vertCube && vertCube != nullptr) {
                             cube = vertCube;
+                        }
                         break;
                     }
                 }
 
                 jassert(cube != nullptr);
 
-                if (cube == nullptr)
+                if (cube == nullptr) {
                     return;
+                }
 
                 set < VertCube * > &envLines = isLoop ? currentMesh->loopCubes : currentMesh->sustainCubes;
 
@@ -611,8 +629,9 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
 
                 removeCurrentEnvLine(isLoop);
 
-                if (!wasAlreadySet)
+                if (!wasAlreadySet) {
                     envLines.insert(cube);
+                }
 
                 getEnvRasterizer()->evaluateLoopSustainIndices();
                 didAnything |= synchronizeEnvPoints(vert, true);
@@ -624,7 +643,7 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
                 bttn.setHighlit(isNowSet);
 
                 if (onlyShallowUpdate) {
-                    performUpdate(UpdateType::Update);
+                    performUpdate(Update);
                 } else {
                     getObj(EditWatcher).setHaveEditedWithoutUndo(true);
                     flag(DidMeshChange) = true;
@@ -636,14 +655,14 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
     }
 }
 
-
 void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool force) {
     progressMark
 
     int oldEnvEnum = getSetting(CurrentEnvGroup);
 
-    if (!force && envEnum == oldEnvEnum)
+    if (!force && envEnum == oldEnvEnum) {
         return;
+    }
 
     getSetting(CurrentEnvGroup) = envEnum;
     bool changedToOrFromVol = (envEnum == LayerGroups::GroupVolume) != (oldEnvEnum == LayerGroups::GroupVolume);
@@ -661,8 +680,9 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
         envPanel->updateBackground(false);
 
     if (envEnum == LayerGroups::GroupWavePitch) {
-        if (SampleWrapper* current = getObj(Multisample).getCurrentSample())
-            rast->setMesh(current->mesh);
+        if (PitchedSample* current = getObj(Multisample).getCurrentSample()) {
+            rast->setMesh(current->mesh.get());
+        }
     } else if (envEnum == LayerGroups::GroupPitch) {
         if (EnvRasterizer* envRast = getEnvRasterizer())
             envRast->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(LayerGroups::GroupPitch));
@@ -672,7 +692,7 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
 
     if ((oldEnvEnum == LayerGroups::GroupScratch) != (envEnum == LayerGroups::GroupScratch)) {
         if (envEnum == LayerGroups::GroupScratch) {
-            noBeat(envPanel->setSelectorVisibility(true));
+            envPanel->setSelectorVisibility(true);
         } else {
             envPanel->setSelectorVisibility(false);
         }
@@ -690,7 +710,6 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
     delegateUpdate(performUpdate);
 }
 
-
 void EnvelopeInter2D::adjustAddedLine(VertCube* addedLine) {
     VertCube::Face lowFace = addedLine->getFace(Vertex::Time, VertCube::LowPole);
     VertCube::Face highFace = addedLine->getFace(Vertex::Time, VertCube::HighPole);
@@ -701,15 +720,12 @@ void EnvelopeInter2D::adjustAddedLine(VertCube* addedLine) {
     }
 }
 
-
 void EnvelopeInter2D::doSustainReleaseChange(bool isSustain) {
 }
 
-
-void EnvelopeInter2D::performUpdate(int updateType) {
+void EnvelopeInter2D::performUpdate(UpdateType updateType) {
     Interactor::performUpdate(updateType);
 }
-
 
 void EnvelopeInter2D::doExtraMouseDrag(const MouseEvent &e) {
     Interactor2D::doExtraMouseDrag(e);

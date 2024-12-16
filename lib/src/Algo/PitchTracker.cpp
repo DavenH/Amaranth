@@ -13,8 +13,9 @@ PitchTracker::PitchTracker() :
 }
 
 void PitchTracker::yin() {
-	if(sample == nullptr)
+	if(sample == nullptr) {
 		return;
+	}
 
 	data.maxFrequency 		 = 1500;
 	data.octaveRatioThres 	 = 0.5;
@@ -32,7 +33,7 @@ void PitchTracker::yin() {
 
 	ScopedAlloc<float> memory(sample->size() + numSamples16k + data.step + lagSize * 2);
 
-	Buffer<float> wavBuff(sample->buffer, 0);
+	Buffer<float> wavBuff = sample->audio.left;
 	Buffer<float> wavCopy 	= memory.place(sample->size());
 	Buffer<float> resamp16k	= memory.place(numSamples16k);
 	Buffer<float> diff		= memory.place(data.step);
@@ -64,7 +65,7 @@ void PitchTracker::yin() {
 			}
 		}
 
-		norms.mul(static_cast<float>(lagSize / norms.normL1()).add(ramp);
+		norms.mul(lagSize / norms.normL1()).add(ramp);
 
 		int troughIndex 	= getTrough(norms, minlag);
 		float scaledPeriod 	= (float) (troughIndex + minlag) / rateRatio;
@@ -80,7 +81,6 @@ void PitchTracker::yin() {
 	fillFrequencyBins();
 	confidence = refineFrames(sample, getAveragePeriod());
 }
-
 
 float PitchTracker::refineFrames(PitchedSample* sample, float averagePeriod) {
 	if(sample->periods.empty()) {
@@ -109,8 +109,9 @@ float PitchTracker::refineFrames(PitchedSample* sample, float averagePeriod) {
     for (auto & frame : sample->periods) {
         int offset = frame.sampleOffset;
 
-        if (frame.sampleOffset >= audio.size())
-            continue;
+        if (frame.sampleOffset >= audio.size()) {
+	        continue;
+        }
 
         subnorms.zero();
 
@@ -123,10 +124,10 @@ float PitchTracker::refineFrames(PitchedSample* sample, float averagePeriod) {
 
             for (int k = 0; k < lookahead; ++k) {
                 float delay = period * (float(k) * 1 + 1);
-                int roundedDelay 	= lround(delay);
+                int roundedDelay = lround(delay);
 
-				waveBuff 			= audio.sectionAtMost(offset, lround(period));
-				float power 		= waveBuff.normL2() + 0.0001f;
+				waveBuff = audio.sectionAtMost(offset, lround(period));
+				float power = waveBuff.normL2() + 0.0001f;
 
 				Buffer<float> diff = diffBuff.withSize(waveBuff.size());
 
@@ -168,8 +169,9 @@ float PitchTracker::refineFrames(PitchedSample* sample, float averagePeriod) {
 }
 
 float PitchTracker::interpIndexQuadratic(const Buffer<float>& norms, int troughIndex, int minlag) {
-	if(troughIndex >= norms.size())
+	if(troughIndex >= norms.size()) {
 		return float (troughIndex + minlag);
+	}
 
 	float y1, y2, y3;
 
@@ -178,16 +180,15 @@ float PitchTracker::interpIndexQuadratic(const Buffer<float>& norms, int troughI
 	return (float) troughIndex + minlag + Resampling::interpIndexQuadratic(y1, y2, y3);
 }
 
-
 float PitchTracker::interpValueQuadratic(const Buffer<float>& norms, int troughIndex) {
-	if(troughIndex >= norms.size() || norms.empty())
+	if(troughIndex >= norms.size() || norms.empty()) {
 		return 0;
+	}
 
 	float y1, y2, y3;
 	getAdjacentValues(norms, troughIndex, y1, y2, y3);
 	return Resampling::interpValueQuadratic(y1, y2, y3);
 }
-
 
 void PitchTracker::getAdjacentValues(Buffer<float> buff, int index, float& y1, float& y2, float& y3) {
     y2 = buff[index];
@@ -195,9 +196,9 @@ void PitchTracker::getAdjacentValues(Buffer<float> buff, int index, float& y1, f
 	y3 = index < buff.size() - 1 ? buff[index + 1] : y2;
 }
 
-
 int PitchTracker::getTrough(Buffer<float> norms, int minlag) {
     int troughIndex = -1;
+
     for (int i = 0; i < norms.size(); ++i) {
         if (norms[i] < aperiodicityThresh) {
             troughIndex = i;
@@ -217,8 +218,7 @@ int PitchTracker::getTrough(Buffer<float> norms, int minlag) {
 		}
 	}
 
-	if(troughIndex < 0)
-	{
+	if(troughIndex < 0) {
         float minval;
         norms.getMin(minval, troughIndex);
 
@@ -240,7 +240,6 @@ int PitchTracker::getTrough(Buffer<float> norms, int minlag) {
 
     return troughIndex;
 }
-
 
 void PitchTracker::fillFrequencyBins() {
     bins.clear();
@@ -265,14 +264,15 @@ void PitchTracker::fillFrequencyBins() {
 		}
 	}
 
-    if (bins.empty())
-        return;
+    if (bins.empty()) {
+	    return;
+    }
 
     std::sort(bins.begin(), bins.end());
 
     float baseAverage = bins.back().averagePeriod;
 
-    for (auto & frame : sample->periods) {
+    for (auto& frame : sample->periods) {
         float avgToCurrRatio = baseAverage / frame.period;
         auto intRatio = float(int(avgToCurrRatio + 0.12f));
 
@@ -280,12 +280,13 @@ void PitchTracker::fillFrequencyBins() {
             frame.period *= intRatio;
         } else {
 			float currToAvgRatio = 1 / avgToCurrRatio;
-			intRatio			 = float(int(currToAvgRatio + 0.12f));
+			intRatio = float(int(currToAvgRatio + 0.12f));
 
-			if(fabsf(float(intRatio) - currToAvgRatio) < 0.06f && intRatio > 0)
+			if(fabsf(float(intRatio) - currToAvgRatio) < 0.06f && intRatio > 0) {
 				frame.period /= intRatio;
-			else
+			} else {
 				frame.period = baseAverage;
+			}
 		}
 	}
 }
@@ -309,16 +310,13 @@ float PitchTracker::logTwo(float x) {
     return logf(x) * invLog2;
 }
 
-
 float PitchTracker::erbsToHertz(float x) {
     return (powf(10.f, x / 21.4f) - 1.f) * 229;
 }
 
-
 float PitchTracker::hertzToErbs(float x) {
     return 21.4f * log10f(1 + x / 229);
 }
-
 
 void PitchTracker::createKernels(
         vector<Buffer<float>>& kernels,
@@ -386,8 +384,9 @@ void PitchTracker::createKernels(
                         ++k;
                     }
 
-                    if (!firstTrough)
-                        break;
+                    if (!firstTrough) {
+	                    break;
+                    }
 
                     firstTrough = false;
 				}
@@ -401,7 +400,6 @@ void PitchTracker::createKernels(
 	}
 }
 
-
 void PitchTracker::setErbLimits(Window& window, Buffer<float> realErbIdx, bool isFirst, bool isLast) {
     for (int realIdx = 0; realIdx < realErbIdx.size(); ++realIdx) {
         if (isFirst && realErbIdx[realIdx] + window.erbOffset < 1 ||
@@ -412,14 +410,17 @@ void PitchTracker::setErbLimits(Window& window, Buffer<float> realErbIdx, bool i
             int i = realIdx;
 
             if (isFirst) {
-                while (i < realErbIdx.size() && realErbIdx[i] + window.erbOffset < 1)
-                    ++i;
+                while (i < realErbIdx.size() && realErbIdx[i] + window.erbOffset < 1) {
+	                ++i;
+                }
             } else if (isLast) {
-                while (i < realErbIdx.size() && realErbIdx[i] + window.erbOffset > -1)
-                    ++i;
+                while (i < realErbIdx.size() && realErbIdx[i] + window.erbOffset > -1) {
+	                ++i;
+                }
             } else {
-                while (i < realErbIdx.size() && fabsf(realErbIdx[i] + window.erbOffset) < 1)
-                    ++i;
+                while (i < realErbIdx.size() && fabsf(realErbIdx[i] + window.erbOffset) < 1) {
+	                ++i;
+                }
             }
 
             window.erbEndJ = i;
@@ -439,13 +440,15 @@ void PitchTracker::setErbLimits(Window& window, Buffer<float> realErbIdx, bool i
                 window.erbStartK = i;
 
                 if (isFirst) {
-                    while (j < window.erbEndJ && realErbIdx[j] + window.erbOffset > 0)
-                        ++j;
+                    while (j < window.erbEndJ && realErbIdx[j] + window.erbOffset > 0) {
+	                    ++j;
+                    }
 
                     window.erbEndK = j;
                 } else if (isLast) {
-					while(j < window.erbEndJ && realErbIdx[j] + window.erbOffset < 0)
+					while(j < window.erbEndJ && realErbIdx[j] + window.erbOffset < 0) {
 						++j;
+					}
 
 					window.erbEndK = j;
 				}
@@ -456,9 +459,7 @@ void PitchTracker::setErbLimits(Window& window, Buffer<float> realErbIdx, bool i
 	}
 }
 
-
-void PitchTracker::calcLambda(Window& window,
-                              const Buffer<float>& realErbIdx) {
+void PitchTracker::calcLambda(Window& window, const Buffer<float>& realErbIdx) {
 	int start 	= window.erbStartK;
 	int end 	= window.erbEndK;
 	int size 	= end - start;
@@ -475,7 +476,6 @@ void PitchTracker::calcLambda(Window& window,
 	lambda.abs();
 	mu.subCRev(1.f, lambda).copyTo(lambda);
 }
-
 
 void PitchTracker::swipe() {
 	int pitchLimits[] 		= { 28, 3000 };
@@ -532,8 +532,9 @@ void PitchTracker::swipe() {
 
 	erbFreqs.ramp(erbLow, deltaERBs);
 
-	for(int i = 0; i < numERBs; ++i)
+	for(int i = 0; i < numERBs; ++i) {
 		erbFreqs[i] = erbsToHertz(erbFreqs[i]);
+	}
 
 	/// calculate kernels
 	ScopedAlloc<int> 		kernelSizes(numCandidates);
@@ -584,8 +585,9 @@ void PitchTracker::swipe() {
 
 		setErbLimits(window, realErbIdx, i == 0, i == numWindows - 1);
 
-		if(window.erbSize == 0)
+		if(window.erbSize == 0) {
 			continue;
+		}
 
 		window.lambda = lambdaMemory.place(window.erbSize);
 		calcLambda(window, realErbIdx);
@@ -622,11 +624,13 @@ void PitchTracker::swipe() {
 
 			window.offsetSamples += window.overlapSamples;
 
-			if(paddingBack >= window.size || (timeSlicesThisWindow == 0 && totalSliceIndex == numTimes))
+			if(paddingBack >= window.size || (timeSlicesThisWindow == 0 && totalSliceIndex == numTimes)) {
 				break;
+			}
 
-			if(timeSlicesThisWindow == 0)
+			if(timeSlicesThisWindow == 0) {
 				continue;
+			}
 
 			winMemory.resetPlacement();
 			Buffer<float> paddedSignal 	= winMemory.place(window.size);
@@ -665,8 +669,9 @@ void PitchTracker::swipe() {
 			for(int k = 0; k < numERBs; ++k) {
                 float candFreq = erbFreqs[k];
 
-                while (window.spectFreqs[specIdx] < candFreq)
-                    ++specIdx;
+                while (window.spectFreqs[specIdx] < candFreq) {
+	                ++specIdx;
+                }
 
                 float interpMagn;
 
@@ -691,20 +696,23 @@ void PitchTracker::swipe() {
 
 			erbSpectrum.threshLT(0.f).sqrt();
 
-			if(lastOffset > 0)
+			if(lastOffset > 0) {
 				windowStrengths.copyTo(lastStrengths);
+			}
 
-			for(int c = 0; c < window.erbSize; ++c)
+			for(int c = 0; c < window.erbSize; ++c) {
 				windowStrengths[c] = kernels[c + window.erbStartJ].dot(erbSpectrum);
+			}
 
-			if(lastOffset == 0)
+			if(lastOffset == 0) {
 				windowStrengths.copyTo(lastStrengths);
+			}
 
 			ScopedAlloc<float> weightedLoudness(window.erbSize);
 
 			float prevWindowTime = float(lastOffset) / samplerate;
 			float thisWindowTime = float(window.offsetSamples) / samplerate;
-			float diffTime 		 = thisWindowTime - prevWindowTime;
+			float diffTime = thisWindowTime - prevWindowTime;
 
             for (int s = 0; s < timeSlicesThisWindow; ++s) {
                 StrengthColumn& sc = strengthColumns[startingSlice + s];
@@ -713,11 +721,13 @@ void PitchTracker::swipe() {
 
 				weightedLoudness.zero();
 
-				if(portion < 1.f)
+				if(portion < 1.f) {
 					weightedLoudness.addProduct(lastStrengths, 1 - portion);
+				}
 
-				if(portion > 0.f)
+				if(portion > 0.f) {
 					weightedLoudness.addProduct(windowStrengths, portion);
+				}
 
 				weightedLoudness.mul(window.lambda);
 				sc.column.section(window.erbStartJ, window.erbSize).add(weightedLoudness);
@@ -770,11 +780,13 @@ void PitchTracker::swipe() {
         if (ratio > 1.4f || ratio < 0.7f) {
             regions.back().endIdx = i - 1;
 
-            if (pitches[i] > 0.f)
-                regions.emplace_back(i);
+            if (pitches[i] > 0.f) {
+	            regions.emplace_back(i);
+            }
         } else {
-            if (pitches[i] > 0.f)
-				++regions.back().population;
+            if (pitches[i] > 0.f) {
+	            ++regions.back().population;
+            }
 		}
 	}
 
@@ -785,8 +797,9 @@ void PitchTracker::swipe() {
 
 	float startPitch = pitches[bestRegion.startIdx];
 
-	if(startPitch < 0)
+	if(startPitch < 0) {
 		startPitch = backupPitch;
+	}
 
     int starts[] = {0, bestRegion.endIdx};
     int ends[] = {bestRegion.startIdx, numTimes - 1};
@@ -797,7 +810,7 @@ void PitchTracker::swipe() {
 
             if (pitch > 0) {
 				float avgToCurrRatio = pitch / startPitch;
-				float intRatio 		 = float(int(avgToCurrRatio + 0.12f));
+				auto intRatio = float(int(avgToCurrRatio + 0.12f));
 
                 if (fabsf(intRatio - avgToCurrRatio) < 0.06f && intRatio > 0) {
                     pitch /= intRatio;
@@ -805,10 +818,11 @@ void PitchTracker::swipe() {
                     float currToAvgRatio = 1 / avgToCurrRatio;
                     intRatio = float(int(currToAvgRatio + 0.12f));
 
-                    if (fabsf(float(intRatio) - currToAvgRatio) < 0.06f && intRatio > 0)
-                        pitch *= intRatio;
-                    else
-                        pitch = startPitch;
+                    if (fabsf(float(intRatio) - currToAvgRatio) < 0.06f && intRatio > 0) {
+	                    pitch *= intRatio;
+                    } else {
+	                    pitch = startPitch;
+                    }
                 }
 			} else {
                 pitch = startPitch;
@@ -826,8 +840,9 @@ void PitchTracker::swipe() {
 		frame.period = pitches[i] < 0 ? prevPeriod : samplerate / pitches[i];
 		frame.sampleOffset = roundToInt(jmax(0.f, strengthColumns[i].time) * samplerate);
 
-		if(frame.sampleOffset == 0)
+		if(frame.sampleOffset == 0) {
 			continue;
+		}
 
 		prevPeriod = frame.period;
 		sample->addFrame(frame);
@@ -850,10 +865,11 @@ void PitchTracker::swipe() {
 		}
 	}
 
-	if(numGood == 0)
+	if(numGood == 0) {
 		averagePitch = backupPitch;
-	else
+	} else {
 		averagePitch /= float(numGood);
+	}
 
 	float averagePeriod = samplerate / averagePitch;
 
@@ -867,18 +883,19 @@ void PitchTracker::swipe() {
 }
 
 void PitchTracker::trackPitch() {
-	if(algo == AlgoSwipe || sample->size() < 8192)
+	if (algo == AlgoSwipe || sample->size() < 8192) {
 		swipe();
-	else if(algo == AlgoYin)
+	} else if (algo == AlgoYin) {
 		yin();
-	else {
+	} else {
 		yin();
 
 		float yinAtonicity = 0;
 		vector<PitchFrame> yinFrames = sample->periods;
 
-		for(auto& yinFrame : yinFrames)
+		for(auto& yinFrame : yinFrames) {
 			yinAtonicity += yinFrame.atonal;
+		}
 
 		yinAtonicity /= float(yinFrames.size());
 
@@ -888,13 +905,15 @@ void PitchTracker::trackPitch() {
 
 			float swipeAtonicity = 0;
 
-			for(auto& swipeFrame : swipeFrames)
+			for(auto& swipeFrame : swipeFrames) {
 				swipeAtonicity += swipeFrame.atonal;
+			}
 
 			swipeAtonicity /= float(swipeFrames.size());
 
-			if(yinAtonicity < swipeAtonicity)
+			if(yinAtonicity < swipeAtonicity) {
 				sample->periods = yinFrames;
+			}
 		}
 	}
 }

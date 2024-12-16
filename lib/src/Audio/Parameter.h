@@ -2,6 +2,8 @@
 
 #include "JuceHeader.h"
 
+using namespace juce;
+
 class Parameter
 {
 public:
@@ -11,35 +13,36 @@ public:
         virtual float getParameterValue(int id) = 0;
     };
 
-    Parameter(int id)
+    explicit Parameter(int id)
             : id(id), isAutomable(true), listener(nullptr) {
     }
 
-    Parameter(const String& name, int id, bool isAutomable, Listener* listener)
-            : name(name), id(id), isAutomable(isAutomable), listener(listener) {
+    explicit Parameter(const String& name, int id, bool isAutomable, Listener* listener)
+        : name(name), id(id), value(0), isAutomable(isAutomable), listener(listener) {
     }
 
     virtual ~Parameter() {
         listener = nullptr;
     }
 
-    void setValue(float value) {
-        if (listener != nullptr)
+    void setValue(float value) const {
+        if (listener != nullptr) {
             listener->setParameterValue(id, value);
+        }
     }
 
-    float getValue() {
-        if (listener != nullptr)
+    [[nodiscard]] float getValue() const {
+        if (listener != nullptr) {
             return listener->getParameterValue(id);
+        }
 
         return 0;
     }
 
-
 	bool isAutomable;
 	int id;
-	double value;
-	juce::String name;
+	double value{};
+	String name;
 
 	Listener* listener;
 };

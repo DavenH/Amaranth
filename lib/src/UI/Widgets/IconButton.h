@@ -20,27 +20,27 @@ public:
     		   const String& cmdMsg = String(),
     		   const String& naMsg = String());
 
-    virtual ~IconButton();
-    virtual void paintButton(Graphics & g, bool mouseOver, bool buttonDown);
+    ~IconButton() override;
+    void paintButton(Graphics & g, bool mouseOver, bool buttonDown) override;
 
     void paintOutline(Graphics & g, bool mouseOver, bool buttonDown);
-    void mouseEnter(const MouseEvent & e);
-    void mouseDown(const MouseEvent& e);
-    void mouseDrag(const MouseEvent& e);
+    void mouseEnter(const MouseEvent & e) override;
+    void mouseDown(const MouseEvent& e) override;
+    void mouseDrag(const MouseEvent& e) override;
 
-    bool getIsPowered()										{ return isPowered; 			}
-    bool isApplicable() const    							{ return applicable;    		}
-    bool isHighlit() const       							{ return highlit;    			}
-    bool isVisibleDlg() const								{ return isVisible();			}
+    [[nodiscard]] bool getIsPowered() const						{ return isPowered; 			}
+    [[nodiscard]] bool isApplicable() const    					{ return applicable;    		}
+    [[nodiscard]] bool isHighlit() const       					{ return highlit;    			}
+    [[nodiscard]] bool isVisibleDlg() const override			{ return isVisible();			}
 
-    const Rectangle<int> getBoundsInParentDelegate() 		{ return getBoundsInParent();	}
-    int getCollapsedSize()       							{ return collapsedSize;    		}
-    int getExpandedSize()       							{ return expandedSize;    		}
-    int getPendingItems()									{ return pendingNumber; 		}
-    int getXDelegate()    									{ return getX();    			}
-    int getYDelegate()   					 				{ return getY();    			}
+    const Rectangle<int> getBoundsInParentDelegate() override 	{ return getBoundsInParent();	}
+    int getCollapsedSize() override       						{ return collapsedSize;    		}
+    int getExpandedSize() override       						{ return expandedSize;    		}
+    [[nodiscard]] int getPendingItems() const					{ return pendingNumber; 		}
+    int getXDelegate() override    								{ return getX();    			}
+    int getYDelegate() override   					 			{ return getY();    			}
+    void setBoundsDelegate(int x, int y, int w, int h) override	{ setBounds(x, y, w, h);		}
 
-    void setBoundsDelegate(int x, int y, int w, int h)		{ setBounds(x, y, w, h);		}
     void setCollapsedSize(int size)    						{ collapsedSize = size;    		}
     void setExpandedSize(int size)    						{ expandedSize = size;    		}
     void setMouseScrollApplicable(bool is) 					{ mouseScrollApplicable = is; 	}

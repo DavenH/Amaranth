@@ -23,8 +23,10 @@ void RatingSlider::paint(Graphics& g) {
 
 	g.setColour(Colour(255, 190, 0).withAlpha(0.3f));
 
-	for(int i = 0; i < height / 2; ++i)
-		g.drawHorizontalLine(i * 2 + 1, 0, start - 1);
+	for(int i = 0; i < height / 2; ++i) {
+	    g.drawHorizontalLine(i * 2 + 1, 0, start - 1);
+	}
+
 //	g.fillRect(0, yOffset, start - 1, height);
 }
 

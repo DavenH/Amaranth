@@ -167,131 +167,131 @@ private:
 		Bounded* bounds;
 	};
 
-	std::unique_ptr<Bounded> presetPageBounds;
-//	std::unique_ptr<PanelPair> wave2DTabs;
+	Bounded* presetPageBounds;
+//	PanelPair* wave2DTabs;
 
 	// these fuckers always stick together
-	std::unique_ptr<PanelPair> wavePair;
-	std::unique_ptr<PanelPair> spectPair;
-	std::unique_ptr<PanelPair> envPair;
+	PanelPair* wavePair;
+	PanelPair* spectPair;
+	PanelPair* envPair;
 
-	std::unique_ptr<PanelPair> ev_bottomRight;
-	std::unique_ptr<PanelPair> ev_reverbUni;
-	std::unique_ptr<PanelPair> ev_delayEQ;
-	std::unique_ptr<PanelPair> ev_paramFX;
-	std::unique_ptr<PanelPair> ev_tubeParamFX;
-	std::unique_ptr<PanelPair> cv_bottomPair;
-	std::unique_ptr<PanelPair> cv_middlePair;
+	PanelPair* ev_bottomRight;
+	PanelPair* ev_reverbUni;
+	PanelPair* ev_delayEQ;
+	PanelPair* ev_paramFX;
+	PanelPair* ev_tubeParamFX;
+	PanelPair* cv_bottomPair;
+	PanelPair* cv_middlePair;
 
-	std::unique_ptr<PanelPair> wave2DPair;
-	std::unique_ptr<PanelPair> dfrmPair;
-	std::unique_ptr<PanelPair> irmodPair;
-	std::unique_ptr<PanelPair> wshpPair;
+	PanelPair* wave2DPair;
+	PanelPair* dfrmPair;
+	PanelPair* irmodPair;
+	PanelPair* wshpPair;
 
 	// main view mode
-	std::unique_ptr<PanelPair> cv_bnrOscCtrls;
-	std::unique_ptr<PanelPair> cv_genKeyBnr;
-	std::unique_ptr<PanelPair> cv_leftTriple;
-//	std::unique_ptr<PanelPair> cv_keyBnr;
-//	std::unique_ptr<PanelPair> cv_f2dKeyGen;
-//	std::unique_ptr<PanelPair> cv_topRight;
-//	std::unique_ptr<PanelPair> cv_propsMod;
-	std::unique_ptr<PanelPair> cv_menuCons;
-	std::unique_ptr<PanelPair> cv_playbackLeft;
-	std::unique_ptr<PanelPair> cv_right;
-	std::unique_ptr<PanelPair> cv_rt_pair;
-	std::unique_ptr<PanelPair> cv_rtb_pair;
-	std::unique_ptr<PanelPair> cv_rtt_pair;
-	std::unique_ptr<PanelPair> cv_rttb_pair;
-	std::unique_ptr<PanelPair> cv_spectSurf;
-	std::unique_ptr<PanelPair> cv_whole;
+	PanelPair* cv_bnrOscCtrls;
+	PanelPair* cv_genKeyBnr;
+	PanelPair* cv_leftTriple;
+//	PanelPair* cv_keyBnr;
+//	PanelPair* cv_f2dKeyGen;
+//	PanelPair* cv_topRight;
+//	PanelPair* cv_propsMod;
+	PanelPair* cv_menuCons;
+	PanelPair* cv_playbackLeft;
+	PanelPair* cv_right;
+	PanelPair* cv_rt_pair;
+	PanelPair* cv_rtb_pair;
+	PanelPair* cv_rtt_pair;
+	PanelPair* cv_rttb_pair;
+	PanelPair* cv_spectSurf;
+	PanelPair* cv_whole;
 
-	std::unique_ptr<PanelPair> xv_ctrl_key;
-	std::unique_ptr<PanelPair> xv_envDfmImp;
-	std::unique_ptr<PanelPair> xv_dfrm_imp;
-	std::unique_ptr<PanelPair> xv_FX_pair_1;
-	std::unique_ptr<PanelPair> xv_FX_Pair_2;
-	std::unique_ptr<PanelPair> xv_FX_pair_A;
-	std::unique_ptr<PanelPair> xv_TRTRBR_pair;
-	std::unique_ptr<PanelPair> xv_TRTRB_pair;
-	std::unique_ptr<PanelPair> xv_TRTR_pair;
-	std::unique_ptr<PanelPair> xv_TRBR_pair;
-	std::unique_ptr<PanelPair> xv_TRBL_pair;
-	std::unique_ptr<PanelPair> xv_TRT_pair;
-	std::unique_ptr<PanelPair> xv_TRB_pair;
-	std::unique_ptr<PanelPair> xv_TR_pair;
-	std::unique_ptr<PanelPair> xv_topPair;
-	std::unique_ptr<PanelPair> xv_whole;
-	std::unique_ptr<PanelPair> xv_spectSurf;
-	std::unique_ptr<PanelPair> xv_playbackLeft;
+	PanelPair* xv_ctrl_key;
+	PanelPair* xv_envDfmImp;
+	PanelPair* xv_dfrm_imp;
+	PanelPair* xv_FX_pair_1;
+	PanelPair* xv_FX_Pair_2;
+	PanelPair* xv_FX_pair_A;
+	PanelPair* xv_TRTRBR_pair;
+	PanelPair* xv_TRTRB_pair;
+	PanelPair* xv_TRTR_pair;
+	PanelPair* xv_TRBR_pair;
+	PanelPair* xv_TRBL_pair;
+	PanelPair* xv_TRT_pair;
+	PanelPair* xv_TRB_pair;
+	PanelPair* xv_TR_pair;
+	PanelPair* xv_topPair;
+	PanelPair* xv_whole;
+	PanelPair* xv_spectSurf;
+	PanelPair* xv_playbackLeft;
 
-//	std::unique_ptr<PanelPair> bv_dfrm_imp;
-//	std::unique_ptr<PanelPair> bv_envDfmImp;
-//	std::unique_ptr<PanelPair> bv_FX_pair_1;
-//	std::unique_ptr<PanelPair> bv_FX_Pair_2;
-//	std::unique_ptr<PanelPair> bv_FX_pair_A;
-//	std::unique_ptr<PanelPair> bv_FX_pair;
-//	std::unique_ptr<PanelPair> bv_gen_key;
-//	std::unique_ptr<PanelPair> bv_left;
-//	std::unique_ptr<PanelPair> bv_playbackLeft;
-//	std::unique_ptr<PanelPair> bv_props_bnr;
-//	std::unique_ptr<PanelPair> bv_right;
-//	std::unique_ptr<PanelPair> bv_RT_pair;
-//	std::unique_ptr<PanelPair> bv_RTL_pair;
-//	std::unique_ptr<PanelPair> bv_RTLT_pair;
-//	std::unique_ptr<PanelPair> bv_RTLTB_pair;
-//	std::unique_ptr<PanelPair> bv_RTLTBL_pair;
-//	std::unique_ptr<PanelPair> bv_spectSurf;
-//	std::unique_ptr<PanelPair> bv_topPair;
-//	std::unique_ptr<PanelPair> bv_whole;
+//	PanelPair* bv_dfrm_imp;
+//	PanelPair* bv_envDfmImp;
+//	PanelPair* bv_FX_pair_1;
+//	PanelPair* bv_FX_Pair_2;
+//	PanelPair* bv_FX_pair_A;
+//	PanelPair* bv_FX_pair;
+//	PanelPair* bv_gen_key;
+//	PanelPair* bv_left;
+//	PanelPair* bv_playbackLeft;
+//	PanelPair* bv_props_bnr;
+//	PanelPair* bv_right;
+//	PanelPair* bv_RT_pair;
+//	PanelPair* bv_RTL_pair;
+//	PanelPair* bv_RTLT_pair;
+//	PanelPair* bv_RTLTB_pair;
+//	PanelPair* bv_RTLTBL_pair;
+//	PanelPair* bv_spectSurf;
+//	PanelPair* bv_topPair;
+//	PanelPair* bv_whole;
 
-	std::unique_ptr<Bounded> envCtrlBounds;
+	Bounded* envCtrlBounds;
 
-	std::unique_ptr<TabbedSelector> topRightTabs;
-	std::unique_ptr<TabbedSelector> bottomTabs;
-	std::unique_ptr<TabbedSelector> topTabs;
+	TabbedSelector* topRightTabs;
+	TabbedSelector* bottomTabs;
+	TabbedSelector* topTabs;
 
-	std::unique_ptr<BannerPanel> bannerPanel;
+	BannerPanel* bannerPanel;
 
-	std::unique_ptr<Bounded> keybBounds;
-	std::unique_ptr<Bounded> genBounds;
-	std::unique_ptr<Bounded> consBounds;
-	std::unique_ptr<Bounded> modBounds;
-	std::unique_ptr<Bounded> playbackBounds;
+	Bounded* keybBounds;
+	Bounded* genBounds;
+	Bounded* consBounds;
+	Bounded* modBounds;
+	Bounded* playbackBounds;
 
-	std::unique_ptr<Bounded> spectCtrlBounds;
-	std::unique_ptr<Bounded> surfCtrlBounds;
-	std::unique_ptr<Bounded> guideCtrlBounds;
-	std::unique_ptr<Bounded> tubeCtrlBoundsB;
+	Bounded* spectCtrlBounds;
+	Bounded* surfCtrlBounds;
+	Bounded* guideCtrlBounds;
+	Bounded* tubeCtrlBoundsB;
 
-//	std::unique_ptr<Bounded> tubeCtrlBounds;
-//	std::unique_ptr<Bounded> envCtrlABounds;
-//	std::unique_ptr<Bounded> envCtrlBBounds;
+//	Bounded* tubeCtrlBounds;
+//	Bounded* envCtrlABounds;
+//	Bounded* envCtrlBBounds;
 
-//	std::unique_ptr<ZoomPanel> spectZoomPanel;
-//	std::unique_ptr<ZoomPanel> e3dZoomPanel;
-//	std::unique_ptr<ZoomPanel> envZoomPanel;
-//	std::unique_ptr<ZoomPanel> f2dZoomPanel;
-//	std::unique_ptr<ZoomPanel> wave3DZoomPanel;
-//	std::unique_ptr<ZoomPanel> wave2DZoomPanel;
-//	std::unique_ptr<ZoomPanel> tubeZoomPanel;
-//	std::unique_ptr<ZoomPanel> wsZoomPanel;
-//	std::unique_ptr<ZoomPanel> dfrmZoomPanel;
+	ZoomPanel* spectZoomPanel;
+	ZoomPanel* e3dZoomPanel;
+	ZoomPanel* envZoomPanel;
+	ZoomPanel* f2dZoomPanel;
+	ZoomPanel* wave3DZoomPanel;
+	ZoomPanel* wave2DZoomPanel;
+	ZoomPanel* tubeZoomPanel;
+	ZoomPanel* wsZoomPanel;
+	ZoomPanel* dfrmZoomPanel;
 
-	std::unique_ptr<Bounded> derivBounds;
-	std::unique_ptr<Bounded> propsBounds;
-	std::unique_ptr<Bounded> unisonBounds;
-	std::unique_ptr<Bounded> bnrBounds;
-	std::unique_ptr<Bounded> menuBounds;
-	std::unique_ptr<Bounded> oscCtrlBounds;
-//	std::unique_ptr<Bounded> bottomCtrlBounds;
-	std::unique_ptr<Bounded> reverbBounds;
-	std::unique_ptr<Bounded> delayBounds;
-	std::unique_ptr<Bounded> eqBounds;
-	std::unique_ptr<Bounded> wsCtrlBounds;
-//	std::unique_ptr<Bounded> wave2DCtrlBounds;
-	std::unique_ptr<Bounded> cv_botTabBounds;
-	std::unique_ptr<Bounded> cv_topTabBounds;
+	Bounded* derivBounds;
+	Bounded* propsBounds;
+	Bounded* unisonBounds;
+	Bounded* bnrBounds;
+	Bounded* menuBounds;
+	Bounded* oscCtrlBounds;
+//	Bounded* bottomCtrlBounds;
+	Bounded* reverbBounds;
+	Bounded* delayBounds;
+	Bounded* eqBounds;
+	Bounded* wsCtrlBounds;
+//	Bounded* wave2DCtrlBounds;
+	Bounded* cv_botTabBounds;
+	Bounded* cv_topTabBounds;
 
 	// singleton references
 	Ref<VertexPropertiesPanel> vtxPropsPanel;
@@ -319,33 +319,34 @@ private:
 	Ref<EqualizerUI> 	eqUI;
 	Ref<MidiKeyboard> 	keyboard;
 
-	std::unique_ptr<MenuBarComponent> menuBar;
+	MenuBarComponent* menuBar;
 
-	std::unique_ptr<Dragger> xv_topBotDragger;
-	std::unique_ptr<Dragger> xv_spectSurfDragger;
-	std::unique_ptr<Dragger> xv_envDfmImpDragger;
-	std::unique_ptr<Dragger> xv_dfmImpDragger;
-	std::unique_ptr<Dragger> xv_wholeDragger;
+	Dragger* xv_topBotDragger;
+	Dragger* xv_spectSurfDragger;
+	Dragger* xv_envDfmImpDragger;
+	Dragger* xv_dfmImpDragger;
+	Dragger* xv_wholeDragger;
 
-	std::unique_ptr<Dragger> cv_wholeDragger;
-	std::unique_ptr<Dragger> cv_middleDragger;
+	Dragger* cv_wholeDragger;
+	Dragger* cv_middleDragger;
 
-	std::unique_ptr<Dragger> cv_envSpectDragger;
-	std::unique_ptr<Dragger> cv_spectSurfDragger;
+	Dragger* cv_envSpectDragger;
+	Dragger* cv_spectSurfDragger;
 
-//	std::unique_ptr<OpenGLPanel> crsGL;
-//	std::unique_ptr<OpenGLPanel> f2GL;
-//	std::unique_ptr<OpenGLPanel> e2GL;
-//	std::unique_ptr<OpenGLPanel> dfmGL;
-//	std::unique_ptr<OpenGLPanel> wsGL;
-//	std::unique_ptr<OpenGLPanel> tmGL;
-//
-//	std::unique_ptr<OpenGLPanel3D> surfGL;
-//	std::unique_ptr<OpenGLPanel3D> f3GL;
-//	std::unique_ptr<OpenGLPanel3D> e3GL;
+	OpenGLPanel* crsGL;
+	OpenGLPanel* f2GL;
+	OpenGLPanel* e2GL;
+	OpenGLPanel* dfmGL;
+	OpenGLPanel* wsGL;
+	OpenGLPanel* tmGL;
+	OpenGLPanel3D* surfGL;
+	OpenGLPanel3D* f3GL;
+	OpenGLPanel3D* e3GL;
 
 	PanelGroup wave2DGroup, surfGroup, spectGroup2, spectGroup3, envGroup2, envGroup3, wshpGroup, irGroup, dfrmGroup;
 	Array<PanelGroup*> panelGroups;
+
+	OwnedArray<void*> deletable;
 
 	set<Bounded*> toOutline;
 

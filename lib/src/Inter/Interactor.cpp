@@ -152,16 +152,19 @@ void Interactor::mouseDown(const MouseEvent& e) {
         }
 	}
 
-	else if(getSetting(Tool) == Tools::Nudge)
+	else if(getSetting(Tool) == Tools::Nudge) {
 		action = PanelState::Nudging;
+	}
 
 	bool createSucceeded = false;
 
-	if(actionIs(CreatingVertex))
+	if(actionIs(CreatingVertex)) {
 		createSucceeded = doCreateVertex();
+	}
 
-	if (actionIs(ClickSelecting))
+	if (actionIs(ClickSelecting)) {
 		doClickSelect(e);
+	}
 
 	panel->setCursor();
 	doExtraMouseDown(e);
@@ -433,12 +436,6 @@ void Interactor::eraseSelected() {
 
 	UndoableMeshProcess eraseProcess(this, "Erase selected");
 
-	auto cubeStart 	= mesh->getCubeStart();
-	auto cubeEnd 	= mesh->getCubeEnd();
-
-	auto vertStart 	= mesh->getVertStart();
-	auto vertEnd 	= mesh->getVertEnd();
-
     if (dims.numHidden() > 0) {
         set<VertCube*> linesToDelete;
 
@@ -472,13 +469,15 @@ void Interactor::eraseSelected() {
 		mesh->validate();
 
 		// remove selected free verts
-    	for (auto& it : selected)
-			mesh->removeVert(it);
+    	for (auto& it : selected) {
+    		mesh->removeVert(it);
+    	}
 
 		selected.clear();
 	} else {
-		for (auto& it : selected)
+		for (auto& it : selected) {
 			mesh->removeVert(it);
+		}
 
 		selected.clear();
 	}
@@ -1367,8 +1366,7 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
 
 		passed = true;
 
-		for (int i = 0; i < refiningIterations; ++i)
-		{
+		for (int i = 0; i < refiningIterations; ++i) {
 			Vertex2 targetValue 	= passed ? bestNew : bestOld;
 			Vertex2& valueToUpdate 	= passed ? bestOld : bestNew;
 
@@ -1445,8 +1443,9 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
 }
 
 void Interactor::updateLastValid(vector<VertexFrame>& verts) const {
-    foreach(FrameIter, it, verts)
-        it->lastValid = Vertex2(it->vert->values[dims.x], it->vert->values[dims.y]);
+	for(auto& frame : verts) {
+		frame.lastValid = Vertex2(frame.vert->values[dims.x], frame.vert->values[dims.y]);
+	}
 }
 
 void Interactor::translateVerts(vector<VertexFrame>& verts, const Vertex2& diff) {
@@ -1528,10 +1527,9 @@ void Interactor::doClickSelect(const MouseEvent& e) {
 	updateSelectionFrames();
 
 	if(Interactor* opposite = getOppositeInteractor()) {
-		opposite->performUpdate(UpdateType::Update);
+		opposite->performUpdate(Update);
 	}
 }
-
 
 bool Interactor::doCreateVertex() {
     auto* vertex = new Vertex();
@@ -1589,7 +1587,7 @@ bool Interactor::doCreateVertex() {
 }
 
 MouseUsage Interactor::getMouseUsage() {
-    return {true, true, true, true};
+    return MouseUsage(true, true, true, true);
 }
 
 float Interactor::getVertexClickProximityThres() {
@@ -1619,8 +1617,9 @@ void Interactor::refresh() {
 }
 
 bool Interactor::doesMeshChangeWarrantGlobalUpdate() {
-    if (!isCurrentMeshActive())
-        return false;
+    if (!isCurrentMeshActive()) {
+	    return false;
+    }
 
     return true;
 }
@@ -1630,14 +1629,14 @@ vector<Vertex*>& Interactor::getSelected() {
 }
 
 bool Interactor::commitCubeAdditionIfValid(VertCube*& addedCube,
-										   const CubeList& beforeCubes,
-										   const VertList& beforeVerts) {
+										   const vector<VertCube*>& beforeCubes,
+										   const vector<Vertex*>& beforeVerts) {
 	Mesh* mesh = getMesh();
 
 	// use reference because these will be deep copied in the
 	// UpdateVertexVectorAction ctor, so no need to deep copy them here
-	CubeList& afterCubes = mesh->getCubes();
-	VertList& afterVerts = mesh->getVerts();
+	vector<VertCube*>& afterCubes = mesh->getCubes();
+	vector<Vertex*>& afterVerts = mesh->getVerts();
 
 	afterCubes.push_back(addedCube);
 
@@ -1780,11 +1779,12 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
 		return false;
 	}
 
-	VertList beforeVerts;
-	CubeList beforeCubes;
+	vector<Vertex*> beforeVerts;
+	vector<VertCube*> beforeCubes;
 
-	if(! suspendUndo)
+	if(! suspendUndo) {
 		mesh->copyElements(beforeVerts, beforeCubes);
+	}
 
 	auto* addedLine = new VertCube(mesh);
 
@@ -1866,7 +1866,7 @@ void Interactor::addNewCubeForOneIntercept(
 
     jassert(!mesh->getNumCubes() > 0);
 
-    VertCube* meshLine = *mesh->getCubeStart();
+    VertCube* meshLine = *mesh->getCubes().begin();
 
     // get difference from the line's interpolated mod position to our click point
     // used then to shift all the copied verts, from that line, by the difference

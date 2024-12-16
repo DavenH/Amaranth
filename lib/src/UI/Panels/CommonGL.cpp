@@ -1,12 +1,15 @@
-#include <stdio.h>
+#include <cstdio>
 #include "CommonGL.h"
 #include "OpenGLBase.h"
 #include "Panel.h"
 #include "ScopedGL.h"
 #include "Texture.h"
+#include "OpenGL.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Inter/Interactor.h"
 #include "../../Curve/Vertex2.h"
+
+using namespace gl;
 
 CommonGL::CommonGL(Panel* panel, OpenGLBase* parent) :
         CommonGfx(panel),
@@ -43,10 +46,11 @@ void CommonGL::drawPoint(float size, Vertex2 point, bool scale) {
 
     ScopedElement glPoint(GL_POINTS);
 
-    if (scale)
+    if (scale) {
         glVertex2f(panel->sx(point.x), panel->sy(point.y));
-    else
+    } else {
         glVertex2f(point.x, point.y);
+    }
 }
 
 void CommonGL::drawPoints(float pointSize, BufferXY& xy, bool scale) {
@@ -87,7 +91,7 @@ void CommonGL::drawPoints(float pointSize, BufferXY& xy, Buffer<float> c, bool s
             glVertex2f(xy.x[i], xy.y[i]);
         }
     } else if (pixelStride == 3) {
-        for (int i = 0; i < (int) xy.size(); ++i) {
+        for (int i = 0; i < xy.size(); ++i) {
             glColor3fv(c.get() + 3 * i);
             glVertex2f(xy.x[i], xy.y[i]);
         }
@@ -130,8 +134,9 @@ void CommonGL::initLineParams() {
     glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
     glLineWidth(1);
 
-    if (parent->smoothLines)
+    if (parent->smoothLines) {
         glEnable(GL_LINE_SMOOTH);
+    }
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -140,7 +145,6 @@ void CommonGL::initLineParams() {
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 }
-
 
 void CommonGL::drawRect(float leftX, float topY, float rightX, float botY, bool scale) {
     scaleIfNecessary(scale, leftX, topY, rightX, botY);
@@ -165,7 +169,6 @@ void CommonGL::fillRect(float leftX, float topY, float rightX, float botY, bool 
     glVertex2f(leftX, botY);
 }
 
-
 void CommonGL::fillAndOutlineColoured(const vector<ColorPos>& positions,
                                       float baseY, float baseAlpha,
                                       bool fill, bool outline) {
@@ -174,9 +177,7 @@ void CommonGL::fillAndOutlineColoured(const vector<ColorPos>& positions,
     if (fill) {
         ScopedElement quads(GL_QUAD_STRIP);
 
-        for (int i = 0; i < (int) positions.size(); ++i) {
-            const ColorPos& pos = positions[i];
-
+        for (const auto & pos : positions) {
             glColor4fv(pos.c.v);
             glVertex2f(pos.x, pos.y);
 
@@ -188,27 +189,24 @@ void CommonGL::fillAndOutlineColoured(const vector<ColorPos>& positions,
     if (outline) {
         ScopedElement lineStrip(GL_LINE_STRIP);
 
-        for (int i = 0; i < (int) positions.size(); ++i) {
-            const ColorPos& pos = positions[i];
-
+        for (const auto & pos : positions) {
             glColor4fv(pos.c.withAlpha(1.f).v);
             glVertex2f(pos.x, pos.y);
         }
     }
 }
 
-
 void CommonGL::drawTexture(Texture* texture) {
-    if (TextureGL* tex = dynamic_cast<TextureGL*>(texture))
+    if (auto* tex = dynamic_cast<TextureGL*>(texture)) {
         tex->draw();
+    }
 }
-
 
 void CommonGL::drawSubTexture(Texture* texture, const Rectangle<float>& pos) {
-    if (TextureGL* tex = dynamic_cast<TextureGL*>(texture))
+    if (auto* tex = dynamic_cast<TextureGL*>(texture)) {
         tex->drawSubImage(pos);
+    }
 }
-
 
 void CommonGL::fillRect(float x1, float y1, float x2, float y2,
                         const Color& c1, const Color& c2) {
@@ -225,7 +223,6 @@ void CommonGL::fillRect(float x1, float y1, float x2, float y2,
     glVertex2f(x2, y1);
 }
 
-
 void CommonGL::drawVerticalGradient(float left, float right, Buffer<float> y, const vector<Color>& colors) {
     ScopedElement quadStrip(GL_QUAD_STRIP);
 
@@ -238,7 +235,6 @@ void CommonGL::drawVerticalGradient(float left, float right, Buffer<float> y, co
     }
 }
 
-
 void CommonGL::checkErrors() {
     parent->printErrors(panel->getSingletonRepo());
 }
@@ -248,10 +244,8 @@ void CommonGL::updateTexture(Texture* tex) {
     tex->bind();
 }
 
-
 void CommonGL::initializeTextures() {
-    SingletonRepo* repo = panel->getSingletonRepo();
-    dout << panel->panelName << " initializing textures\n";
+    std::cout << panel->panelName << " initializing textures\n";
 
     OwnedArray <Texture>& textures = panel->textures;
     TextureGL* nameA, * nameB, * grab, * scales, * dfrm;
@@ -268,8 +262,9 @@ void CommonGL::initializeTextures() {
 
     grab->src = Rectangle<float>(0, 0, 24.f, 24.f);
 
-    for (auto texture : textures)
+    for (auto texture : textures) {
         texture->bind();
+    }
 
     panel->grabTex = grab;
     panel->nameTexA = nameA;

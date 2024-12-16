@@ -1,7 +1,9 @@
 #include "OpenGLBase.h"
 #include "Panel.h"
+#include "OpenGL.h"
 #include "../../App/SingletonRepo.h"
 
+using namespace gl;
 
 OpenGLBase::OpenGLBase(OpenGLRenderer* renderer, Component* component) :
 		smoothLines		(true)
@@ -9,21 +11,16 @@ OpenGLBase::OpenGLBase(OpenGLRenderer* renderer, Component* component) :
 	,	component		(component) {
 }
 
-OpenGLBase::~OpenGLBase() {
-}
-
-
 void OpenGLBase::printErrors(SingletonRepo* repo) {
-#ifdef _DEBUG
+  #ifdef _DEBUG
     int errorCode;
     if((errorCode = glGetError()) != GL_NO_ERROR)
     {
         const char* error = (char*)(gluErrorString(errorCode));
-        dout << "OpenGL error " << errorCode << ": " << error << "\n";
+        std::cout << "OpenGL error " << errorCode << ": " << error << "\n";
     }
-#endif
+  #endif
 }
-
 
 void OpenGLBase::clearAndOrtho(int width, int height) {
     glClearColor(0.f, 0.f, 0.f, 1.0f);
@@ -33,11 +30,9 @@ void OpenGLBase::clearAndOrtho(int width, int height) {
     glColor3f(1, 1, 1);
 }
 
-
 void OpenGLBase::detach() {
     context.detach();
 }
-
 
 void OpenGLBase::attach() {
     if (!context.isAttached()) {

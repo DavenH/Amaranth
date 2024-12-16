@@ -37,17 +37,20 @@ bool Interactor2D::locateClosestElement() {
 	int icptIdx = -1;
 	int freeIdx = -1;
 
-	foreach(ConstIcptIter, it, icpts) {
-        if (fabsf(it->x - x) < dist) {
-			dist = fabsf(it->x - x);
-			icptIdx = it - icpts.begin();
+	int i = 0;
+	for(auto& icpt : icpts) {
+        if (fabsf(icpt.x - x) < dist) {
+			dist = fabsf(icpt.x - x);
+			icptIdx = i;
 		}
+		++i;
 	}
 
-    foreach(DepthIter, it, depthVerts) {
-        if (fabsf(it->x - x) < dist) {
-			dist = fabsf(it->x - x);
-			freeIdx = it - depthVerts.begin();
+	i = 0;
+	for(auto& vert : depthVerts) {
+        if (fabsf(vert.x - x) < dist) {
+			dist = fabsf(vert.x - x);
+			freeIdx = i;
 		}
 	}
 
@@ -72,8 +75,8 @@ bool Interactor2D::locateClosestElement() {
 		if(state.currentCube == nullptr) {
             Mesh* mesh = getMesh();
 
-            foreach(VertIter, it, mesh->getVerts()) {
-                if (fabsf((*it)->values[dims.x] - icpts[state.currentIcpt].x) < 0.0001f) {
+			for(auto& vert : mesh->getVerts()) {
+                if (fabsf(vert->values[dims.x] - icpts[state.currentIcpt].x) < 0.0001f) {
 					// when does this ever happen???
 					state.currentVertex = *it;
 					break;
@@ -86,15 +89,15 @@ bool Interactor2D::locateClosestElement() {
 		getStateValue(CurrentCurve) = icptIdx + rasterizer->getPaddingSize();
 	}
 
-	if(icptIdx != oldIcptIdx || freeIdx != oldFreeIdx)
+	if(icptIdx != oldIcptIdx || freeIdx != oldFreeIdx) {
 		flag(SimpleRepaint) = true;
+	}
 
 	// call virtual function that subclasses can use if wanted
 	setExtraElements(x);
 
 	return state.currentVertex != lastCurrent;
 }
-
 
 void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 	ScopedLock sl(vertexLock);
@@ -107,8 +110,9 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 	Buffer<Ipp32f> waveY = rastData.waveY;
 	bool inSelection 	 = finalSelection.contains(e.getPosition());
 
-	if(inSelection || waveX.empty() || waveY.empty())
+	if(inSelection || waveX.empty() || waveY.empty()) {
 		return;
+	}
 
 	Vertex2 scaledMouse(panel->sx(state.currentMouse.x), panel->sy(state.currentMouse.y));
 
@@ -177,12 +181,10 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 //	progressMark
 }
 
-
 void Interactor2D::doExtraMouseDrag(const MouseEvent& e) {
 	if(actionIs(PaintingEdit))
 		commitPath(e);
 }
-
 
 // needed to resolve case when an objectively closer vertex to the mouse belongs to
 // another line, yet the mouse is closer yet to the a line's intercept in the 2D panel.
@@ -196,15 +198,15 @@ void Interactor2D::setExtraElements(float /*x*/) {
 	}
 }
 
-
 void Interactor2D::commitPath(const MouseEvent& e) {
     MorphPosition morphPos = getModPosition();
 
     if (actionIs(PaintingCreate)) {
 		vector<Intercept> reducedPath = getObj(AutoModeller).modelToPath(pencilPath, 1.f, false);
 
-		if(reducedPath.size() < 2)
+		if(reducedPath.size() < 2) {
 			return;
+		}
 
 		UndoableMeshProcess commitPathProcess(this, "Pencil Draw");
 		ScopedBooleanSwitcher sbs(suspendUndo);
@@ -213,8 +215,8 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 
 		float startTime = getYellow();
 
-		for (IcptIter it = reducedPath.begin(); it != reducedPath.end(); ++it) {
-			addNewCube(startTime, it->x, it->y, it->shp);
+		for (auto& it : reducedPath) {
+			addNewCube(startTime, it.x, it.y, it.shp);
 		}
 
 		flag(DidMeshChange) = true;
@@ -223,8 +225,9 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 
 		float diff;
 
-		if(pencilPath.size() < 2)
+		if(pencilPath.size() < 2) {
 			return;
+		}
 
 		Vertex pos;
 		pos[Vertex::Time] 	= morphPos.time;
@@ -245,21 +248,20 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 		bool useLines = shouldDoDimensionCheck();
 
         if (useLines) {
-        	for (ConstIcptIter it = icpts.begin(); it != icpts.end(); ++it) {
-				if(! NumberUtils::within(it->x, a.x, b.x))
+        	for (const auto & icpt : icpts) {
+				if(! NumberUtils::within(icpt.x, a.x, b.x))
 					continue;
 
-				float curveY = Resampling::lerp(a.x, a.y, b.x, b.y, it->x);
-				diff = curveY - it->y;
+				float curveY = Resampling::lerp(a.x, a.y, b.x, b.y, icpt.x);
+				diff = curveY - icpt.y;
 
-				VertCube* cube = it->cube;
+				VertCube* cube = icpt.cube;
 
                 if (cube != nullptr) {
 					Vertex* vNear = findLinesClosestVertex(cube, state.currentMouse, pos);
 					Array<Vertex*> innerMovingVerts = getVerticesToMove(cube, vNear);
 
-                    foreach(Vertex**, vit, innerMovingVerts) {
-						Vertex* vert = *vit;
+                	for(auto* vert : innerMovingVerts) {
 						vert->values[dims.y] += diff;
 
 						NumberUtils::constrain(vert->values[dims.y], vertexLimits[dims.y]);
@@ -285,8 +287,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 			if(a.x == b.x)
 				return;
 
-            foreach(VertIter, it, mesh->getVerts()) {
-				Vertex* vert = *it;
+        	for(auto& vert : mesh->getVerts()) {
 				Vertex2 icpt(vert->values[dims.x], vert->values[dims.y]);
 
                 if (NumberUtils::within(icpt.x, a.x, b.x)) {
@@ -302,7 +303,6 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 		flag(DidMeshChange) |= haveChanged;
 	}
 }
-
 
 void Interactor2D::doReshapeCurve(const MouseEvent& e) {
     RasterizerData& data = rasterizer->getRastData();
@@ -335,8 +335,8 @@ void Interactor2D::doReshapeCurve(const MouseEvent& e) {
 	float diff 		= diffY * dragScale / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
 	int pole 		= curves[getStateValue(CurrentCurve)].tp.ypole;
 
-	foreach(Vertex**, it, movingVerts) {
-		float& weight 	= (*it)->values[Vertex::Curve];
+	for(auto& vert : movingVerts) {
+		float& weight 	= vert->values[Vertex::Curve];
 		weight 			+= diff * pole;
 
 		NumberUtils::constrain(weight, 0.f, 1.f);
@@ -358,9 +358,7 @@ void Interactor2D::removeLinesInRange(Range<float> phsRange, const MorphPosition
 
 		vector<VertCube*> linesToDelete;
 
-        foreach(CubeIter, it, mesh->getCubes()) {
-            VertCube* cube = *it;
-
+    	for(auto& cube : mesh->getCubes()) {
 			cube->getFinalIntercept(reduceData, pos);
 
 			if(reduceData.pointOverlaps && phsRange.contains(reduceData.v.values[dims.x]))
@@ -369,9 +367,7 @@ void Interactor2D::removeLinesInRange(Range<float> phsRange, const MorphPosition
 
 		listeners.call(&InteractorListener::cubesRemoved, linesToDelete);
 
-        foreach(CubeIter, it, linesToDelete) {
-            VertCube* cube = *it;
-
+    	for(auto& cube : linesToDelete) {
             if (mesh->removeCube(cube)) {
                 for (int j = 0; j < VertCube::numVerts; ++j) {
 					Vertex* vert = cube->lineVerts[j];
@@ -382,13 +378,13 @@ void Interactor2D::removeLinesInRange(Range<float> phsRange, const MorphPosition
 			}
 		}
 	} else {
-        foreach(VertIter, it, mesh->getVerts()) {
-			if(phsRange.contains((*it)->values[dims.x]))
-				mesh->removeVert(*it);
+		for(auto& vert : mesh->getVerts()) {
+			if(phsRange.contains(vert->values[dims.x])) {
+				mesh->removeVert(vert);
+			}
 		}
 	}
 }
-
 
 bool Interactor2D::doCreateVertex() {
 	progressMark
@@ -399,7 +395,8 @@ bool Interactor2D::doCreateVertex() {
 	selected.clear();
 
 	float startTime = getYellow();
-	bool succeeded = addNewCube(startTime, state.currentMouse.x, state.currentMouse.y);
+	// todo what is the curve shape?
+	bool succeeded = addNewCube(startTime, state.currentMouse.x, state.currentMouse.y, 0.f);
 
     if (state.currentVertex != nullptr) {
 		selected.push_back(state.currentVertex);
@@ -442,8 +439,9 @@ Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
                     int j = i + 1;
 
                     while (j + 1 < icpts.size()) {
-                        if (icpts[j].cube != nullptr)
-							break;
+                        if (icpts[j].cube != nullptr) {
+	                        break;
+                        }
 
 						++j;
 					}
@@ -454,8 +452,9 @@ Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
                 if (i > 0) {
                     int j = i - 1;
                     while (j - 1 > 0) {
-                        if (icpts[j].cube != nullptr)
-                            break;
+                        if (icpts[j].cube != nullptr) {
+	                        break;
+                        }
 
                         --j;
                     }
@@ -463,11 +462,16 @@ Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
                 }
 
                 return limits;
-            } else if (vert->getNumOwners() == 0 && fabsf(icpt.x - vert->values[dims.x]) < 0.0001f) {
-                if (i < icpts.size() - 1)
-                    limits.setEnd(icpts[i + 1].x - 0.0005f);
-                if (i > 0)
-                    limits.setStart(icpts[i - 1].x + 0.0005f);
+            }
+
+        	if (vert->getNumOwners() == 0 && fabsf(icpt.x - vert->values[dims.x]) < 0.0001f) {
+                if (i < icpts.size() - 1) {
+	                limits.setEnd(icpts[i + 1].x - 0.0005f);
+                }
+
+        		if (i > 0) {
+	                limits.setStart(icpts[i - 1].x + 0.0005f);
+                }
 
                 return limits;
 			}

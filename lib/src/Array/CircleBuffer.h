@@ -1,5 +1,4 @@
-#ifndef CIRCLEBUFFER_H_
-#define CIRCLEBUFFER_H_
+#pragma once
 
 #include "Buffer.h"
 
@@ -9,7 +8,7 @@ public:
         init();
     }
 
-    CircleBuffer(const Buffer<float>& buff) : Buffer<float>(buff) {
+    explicit CircleBuffer(const Buffer<float>& buff) : Buffer<float>(buff) {
         jassert(!(sz & (sz - 1)));
         init();
     }
@@ -21,7 +20,7 @@ public:
         zero();
     }
 
-    virtual ~CircleBuffer() {}
+    ~CircleBuffer() override = default;
 
     void write(float value) {
         ptr[writePosition++ & (sz - 1)] = value;
@@ -30,7 +29,6 @@ public:
     float read(int delay) {
         return ptr[(readPosition - delay) & (sz - 1)];
     }
-
 
     float read() {
         jassert(readPosition < writePosition);
@@ -47,16 +45,16 @@ public:
 
         section(moddedRead, jmin(serialReadSize, maxTotal)).copyTo(dest);
 
-        if (serialReadSize < maxTotal)
+        if (serialReadSize < maxTotal) {
             section(0, maxTotal - serialReadSize).copyTo(dest + serialReadSize);
+        }
 
         readPosition += maxTotal;
         return maxTotal;
     }
 
 private:
-    unsigned int writePosition, readPosition;
+    unsigned int writePosition{}, readPosition{};
 
 };
 
-#endif

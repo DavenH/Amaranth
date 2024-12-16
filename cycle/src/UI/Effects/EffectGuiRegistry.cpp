@@ -10,7 +10,6 @@
 EffectGuiRegistry::EffectGuiRegistry(SingletonRepo* repo) : SingletonAccessor(repo, "EffectGuiRegistry") {
 }
 
-
 bool EffectGuiRegistry::readXML(const XmlElement* topElement) {
     XmlElement* effectsElem = topElement->getChildByName("Effects");
 

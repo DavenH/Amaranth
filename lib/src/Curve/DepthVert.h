@@ -1,5 +1,4 @@
-#ifndef _depthvert_h
-#define _depthvert_h
+#pragma once
 
 class Vertex;
 
@@ -23,6 +22,3 @@ public:
         return x == other.x && y == other.y && vert == other.vert;
     }
 };
-
-
-#endif

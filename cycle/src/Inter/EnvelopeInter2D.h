@@ -41,51 +41,51 @@ public:
         CfgScale16x,
     };
 
-    EnvelopeInter2D(SingletonRepo* repo);
-    virtual ~EnvelopeInter2D();
+    explicit EnvelopeInter2D(SingletonRepo* repo);
+    ~EnvelopeInter2D() override;
 
-    void init();
-    void performUpdate(int updateType);
-    bool doesMeshChangeWarrantGlobalUpdate();
+    void init() override;
+    void performUpdate(int updateType) override;
+    bool doesMeshChangeWarrantGlobalUpdate() override;
 
-    void showCoordinates();
-    int getUpdateSource();
+    void showCoordinates() override;
+    int getUpdateSource() override;
 
     /* envelope functions */
 
     /* callbacks */
-    void buttonClicked(Button* button);
+    void buttonClicked(Button* button) override;
 
     /* selection client */
-    String getDefaultFolder();
+    String getDefaultFolder() override;
 
-    Mesh* getMesh();
-    EnvelopeMesh* getCurrentMesh();
+    Mesh* getMesh() override;
+    EnvelopeMesh* getCurrentMesh() override;
     MeshRasterizer* getRast(int envEnum);
     EnvRasterizer* getEnvRasterizer();
-    vector<VertCube*> getLinesToSlideOnSingleSelect();
+    vector<VertCube*> getLinesToSlideOnSingleSelect() override;
     Button* getEnableButton() { return &enableButton; }
 
-    bool addNewCube(float startTime, float x, float y, float curve);
-    bool isCurrentMeshActive();
+    bool addNewCube(float startTime, float x, float y, float curve) override;
+    bool isCurrentMeshActive() override;
     bool isPitchEnvelope();
-    bool shouldDoDimensionCheck();
+    bool shouldDoDimensionCheck() override;
     bool synchronizeEnvPoints(Vertex* startVertex, bool vertexIsLoopVert);
-    Range<float> getVertexPhaseLimits(Vertex* vert);
-    void adjustAddedLine(VertCube* addedLine);
+    Range<float> getVertexPhaseLimits(Vertex* vert) override;
+    void adjustAddedLine(VertCube* addedLine) override;
     void delegateUpdate(bool performUpdate);
-    void doExtraMouseDrag(const MouseEvent& e);
-    void doExtraMouseUp();
+    void doExtraMouseDrag(const MouseEvent& e) override;
+    void doExtraMouseUp() override;
     void doSustainReleaseChange(bool isSustain);
     void enablementsChanged();
-    void enterClientLock();
-    void exitClientLock();
-    void layerChanged();
-    void previewMesh(EnvelopeMesh* mesh);
-    void previewMeshEnded(EnvelopeMesh* oldMesh);
+    void enterClientLock() override;
+    void exitClientLock() override;
+    void layerChanged() override;
+    void previewMesh(EnvelopeMesh* mesh) override;
+    void previewMeshEnded(EnvelopeMesh* oldMesh) override;
     void removeCurrentEnvLine(bool isLoop);
-    void reset();
-    void setCurrentMesh(EnvelopeMesh* mesh);
+    void reset() override;
+    void setCurrentMesh(EnvelopeMesh* mesh) override;
     void setEnabledHighlight(bool highlit);
     void switchedEnvelope(int envMesh, bool doUpdate = true, bool force = false);
     void syncEnvPointsImplicit();
@@ -97,7 +97,7 @@ public:
     void validateMesh() override;
     void waveOverlayChanged();
 
-    int getLayerType();
+    int getLayerType() override;
     LayerSelectorPanel* getScratchSelector() { return &layerSelector; }
 
 private:

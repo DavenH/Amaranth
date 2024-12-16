@@ -1,7 +1,5 @@
-#ifndef FFT_H_
-#define FFT_H_
+#pragma once
 
-#include <ipps.h>
 #include "../Array/ScopedAlloc.h"
 #include "../Array/Buffer.h"
 
@@ -40,5 +38,3 @@ private:
 
 	IppsFFTSpec_R_32f* spec;
 };
-
-#endif

@@ -346,8 +346,7 @@ void Interactor3D::mergeVertices(
 	ScopedLock sl(vertexLock);
 
 	Mesh* mesh = getMesh();
-	VertList& verts = mesh->getVerts();
-	CubeList& lines = mesh->getCubes();
+	vector<Vertex*>& verts = mesh->getVerts();
 
 	if(! firstSelected || ! secondSelected) return;
 	if(firstSelected == secondSelected) 	return;
@@ -520,8 +519,8 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
 	MorphPosition pos 	= positioner->getOffsetPosition(true);
 	Mesh* mesh 			= getMesh();
 
-	VertList beforeVerts = mesh->getVerts();
-	CubeList beforeCubes = mesh->getCubes();
+	vector<Vertex*> beforeVerts = mesh->getVerts();
+	vector<VertCube*> beforeCubes = mesh->getCubes();
 
 	vector<Vertex*> vertsToDeleteOnFailure;
 	vector<Vertex*> vertsToRemoveOnSuccess;
@@ -830,19 +829,20 @@ void Interactor3D::sliceLines(const Vertex2& start, const Vertex2& end) {
 }
 
 void Interactor3D::removeDuplicateVerts(
-        VertList& affectedVerts,
-        CubeList& affectedCubes,
+        vector<Vertex*>& affectedVerts,
+        vector<VertCube*>& affectedCubes,
         bool deleteDupes) {
-    VertList duplicates;
-    VertList originals;
+    vector<Vertex*> duplicates;
+    vector<Vertex*> originals;
 
     EditWatcher* editWatcher = &getObj(EditWatcher);
     Mesh* mesh = getMesh();
 
 	for(auto v1 : affectedVerts) {
 		for(auto v2 : affectedVerts) {
-            if (v1 == v2)
-                continue;
+            if (v1 == v2) {
+	            continue;
+            }
 
             if (*v1 == *v2) {
                 if (std::find(duplicates.begin(), duplicates.end(), *v1) == duplicates.end()) {
@@ -1005,7 +1005,6 @@ void Interactor3D::mergeSelectedVerts() {
         showMsg("Must select two vertices to merge");
 }
 
-
 bool Interactor3D::doCreateVertex() {
     ScopedLock sl(vertexLock);
 
@@ -1019,7 +1018,6 @@ bool Interactor3D::doCreateVertex() {
 
     return succeeded;
 }
-
 
 void Interactor3D::doAxe(const MouseEvent& e) {
     ScopedLock sl(vertexLock);

@@ -1,5 +1,4 @@
-#ifndef MULTISAMPLE_H_
-#define MULTISAMPLE_H_
+#pragma once
 
 #include <set>
 #include "../App/Doc/Savable.h"
@@ -73,7 +72,3 @@ private:
 	ListenerList<Listener> listeners;
 	OwnedArray<PitchedSample, CriticalSection> samples;
 };
-
-
-
-#endif

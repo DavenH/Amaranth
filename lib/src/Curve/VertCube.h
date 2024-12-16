@@ -1,4 +1,5 @@
 #pragma once
+
 #include <algorithm>
 #include "JuceHeader.h"
 #include "Vertex.h"
@@ -34,25 +35,25 @@ public:
 		int dim;
 		Vertex *v00, *v01, *v10, *v11;
 
-		Face(int dim) 						: dim(dim), v00(nullptr),   v01(nullptr),   v10(nullptr),   v11(nullptr)   {}
+		explicit Face(int dim) : dim(dim), v00(nullptr),   v01(nullptr),   v10(nullptr),   v11(nullptr)   {}
 		Face(ReductionData& data, int dim) 	: dim(dim), v00(&data.v00), v01(&data.v01), v10(&data.v10), v11(&data.v11) {}
 
 		bool merge(VertCube const* cube, float pos);
 		void removeOwner(VertCube* cube);
 		void set(int index, Vertex* vert);
-		Array<Vertex*> toArray() const;
+		[[nodiscard]] Array<Vertex*> toArray() const;
 		Vertex* operator[] (const int index) const;
-		int size() { return VertCube::numVerts / 2; }
+		int size() { return numVerts / 2; }
 	};
 
     struct Edge {
-		int dim;
+		int dim{};
 		Vertex *v0, *v1;
 
 		Edge() : v0(nullptr), v1(nullptr) {}
 		Edge(Vertex* a, Vertex* b) : v0(a), v1(b) {}
 		Vertex* operator[] (const int index) const { return index == 0 ? v0 : v1; }
-		int size() { return VertCube::numVerts / 2; }
+		int size() { return numVerts / 2; }
 	};
 
     /* ----------------------------------------------------------------------------- */
@@ -83,22 +84,21 @@ public:
 	bool containsEdge(const Edge& edge) 					const;
 
 	Array<VertCube*> getAllAdjacentCubes(int dim, const MorphPosition& pos);
-	VertCube* getAdjacentCube(int dim, bool pole) const;
+	[[nodiscard]] VertCube* getAdjacentCube(int dim, bool pole) const;
 
 	int indexOf(Vertex const* vertex) const;
 	float deformerAbsGain(int dim) const;
 	float getPortionAlong(int dim, const MorphPosition& morph) const;
 
-	VertCube::Face getFace	(int xDim, bool pole) 	 const;
-	VertCube::Face getFace	(int xDim, Vertex const* pole) const;
-	MorphPosition  getCentroid(bool isEnv = false) 	 const;
+	Face getFace	(int xDim, bool pole) 	 const;
+	Face getFace	(int xDim, Vertex const* pole) const;
+	[[nodiscard]] MorphPosition  getCentroid(bool isEnv = false) 	 const;
 
-	Vertex* findClosestVertex(const MorphPosition& pos) const;
-	Vertex* getVertex(int index) const;
-	Vertex* getOtherVertexAlong(int dim, Vertex const* vert) const;
-	Vertex* getVertWithPolarities(bool time, bool red, bool blue) const;
-
-	Array<Vertex*> toArray() const;
+	[[nodiscard]] Vertex* findClosestVertex(const MorphPosition& pos) const;
+	[[nodiscard]] Vertex* getVertex(int index) const;
+	[[nodiscard]] Vertex* getOtherVertexAlong(int dim, Vertex const* vert) const;
+	[[nodiscard]] Vertex* getVertWithPolarities(bool time, bool red, bool blue) const;
+	[[nodiscard]] Array<Vertex*> toArray() const;
 
 	void getMultidimIntercept(Vertex* a1, Vertex* a2,
 							  Vertex* b1, Vertex* b2,
@@ -140,10 +140,10 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-	char dfrmChans[Vertex::numElements];
-	float dfrmGains[Vertex::numElements];
+	char dfrmChans[Vertex::numElements]{};
+	float dfrmGains[Vertex::numElements]{};
 
-	Vertex* lineVerts[numVerts];
+	Vertex* lineVerts[numVerts]{};
 
 	JUCE_LEAK_DETECTOR(VertCube);
 

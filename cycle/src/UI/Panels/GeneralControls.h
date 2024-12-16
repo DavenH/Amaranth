@@ -47,7 +47,7 @@ public:
 	Component* getComponent(int which) override;
 
 	explicit GeneralControls(SingletonRepo* repo);
-	~GeneralControls() override;
+	~GeneralControls() override = default;
 
 private:
 	static const int bSize = 24;
@@ -100,6 +100,4 @@ private:
 	vector<RetractableCallout*> botCallouts;
 
 	static const int consoleHeight = 23;
-
-	friend class GlobalOperations;
 };

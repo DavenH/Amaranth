@@ -24,7 +24,9 @@ protected:
     };
 
 public:
-    FilterableList() : sortForwards(false) {
+    virtual ~FilterableList() = default;
+
+    FilterableList() : sortForwards(false), listBox(nullptr) {
     }
 
     virtual void doChangeUpdate() = 0;
@@ -43,24 +45,27 @@ public:
             for (int i = 0; i < (int) allItems.size(); ++i) {
                 bool containsAll = true;
 
-                for (int j = 0; j < searchStrings.size(); ++j) {
-                    containsAll &= containsString(allItems.getReference(i), searchStrings[j]);
+                for (const auto& searchString : searchStrings) {
+                    containsAll &= containsString(allItems.getReference(i), searchString);
                 }
 
-                if (containsAll)
+                if (containsAll) {
                     filteredItems.add(allItems.getReference(i));
+                }
             }
         }
 
-        if (sortForwards)
+        if (sortForwards) {
             filteredItems.sort(reverseComparator);
-        else
+        } else {
             filteredItems.sort(defaultComparator);
+        }
 
         listBox->updateContent();
 
-        if (!filteredItems.size() == 0)
+        if (!filteredItems.size() == 0) {
             listBox->selectRow(0);
+        }
 
         doChangeUpdate();
     }

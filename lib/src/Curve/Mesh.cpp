@@ -88,8 +88,8 @@ void Mesh::print(bool printLines, bool printVerts) {
                                       index, vert->values[0], vert->values[1], vert->values[2], vert->values[3],
                                       vert->values[4]);
 
-            foreach(VertCube**, cit, vert->owners) {
-                std::cout << "\t" << (int64) *cit;
+    		for(auto& cube : vert->owners) {
+                std::cout << "\t" << (int64) cube;
             }
 
             std::cout << "\n";
@@ -103,7 +103,7 @@ void Mesh::print(bool printLines, bool printVerts) {
 
 void Mesh::writeXML(XmlElement* parentElem) const {
 #ifndef DEMO_VERSION
-    XmlElement* meshElem = new XmlElement("Mesh");
+    auto* meshElem = new XmlElement("Mesh");
     parentElem->addChildElement(meshElem);
 
     meshElem->setAttribute("name", 		name);
@@ -112,7 +112,7 @@ void Mesh::writeXML(XmlElement* parentElem) const {
     int count = 0;
     map<Vertex*, int> idMap;
 	for(auto* vert : verts) {
-        XmlElement* vertElem = new XmlElement("Vertex");
+        auto* vertElem = new XmlElement("Vertex");
 
         vertElem->setAttribute("time", 	 vert->values[Vertex::Time]	);
         vertElem->setAttribute("phase",  vert->values[Vertex::Phase]	);
@@ -130,10 +130,10 @@ void Mesh::writeXML(XmlElement* parentElem) const {
     }
 
 	for(auto* cube : cubes) {
-        XmlElement* cubeElem = new XmlElement("VertCube");
+        auto* cubeElem = new XmlElement("VertCube");
 
         for (int i = 0; i < VertCube::numVerts; ++i) {
-            XmlElement* vertElem = new XmlElement("Vertex");
+            auto* vertElem = new XmlElement("Vertex");
             vertElem->setAttribute("lineVertexNumber", i);
             vertElem->setAttribute("vertexId", idMap[cube->getVertex(i)]);
 
@@ -183,7 +183,7 @@ bool Mesh::readXML(const XmlElement* repoElem) {
 			return false;
 		}
 
-		Vertex* vert = new Vertex();
+		auto* vert = new Vertex();
 		vert->values[Vertex::Time] 	= currentVert->getDoubleAttribute("time"	);
 		vert->values[Vertex::Phase] = currentVert->getDoubleAttribute("phase"	);
 		vert->values[Vertex::Amp] 	= currentVert->getDoubleAttribute("amp"		);
@@ -201,7 +201,7 @@ bool Mesh::readXML(const XmlElement* repoElem) {
 	vector<VertCube*> failedLines;
 
     forEachXmlChildElementWithTagName(*meshElem, currentCube, "VertCube") {
-		VertCube* cube = new VertCube();
+		auto* cube = new VertCube();
 
 		cube->dfrmGains[Vertex::Amp]   = currentCube->getDoubleAttribute("ampGain", 	0.5);
 		cube->dfrmGains[Vertex::Blue]  = currentCube->getDoubleAttribute("modGain", 	0.5);
@@ -217,8 +217,9 @@ bool Mesh::readXML(const XmlElement* repoElem) {
 		cube->dfrmChans[Vertex::Red]   = currentCube->getIntAttribute("keyGuide",   -1);
 		cube->dfrmChans[Vertex::Time]  = currentCube->getIntAttribute("avpGuide",   -1);
 
-		if(cube->getCompDfrm() < 0)
+		if(cube->getCompDfrm() < 0) {
 			cube->getCompDfrm() = currentCube->getIntAttribute("timeGuide",  -1);
+		}
 
 		int numVertsSet = 0;
 		bool failed = false;
@@ -278,8 +279,8 @@ void Mesh::validate() {
 	}
 
 	for(auto* cube : cubes) {
-		for(int j = 0; j < VertCube::numVerts; ++j) {
-			cube->lineVerts[j]->addOwner(cube);
+		for(auto& lineVert : cube->lineVerts) {
+			lineVert->addOwner(cube);
 		}
 
 		cube->validate();

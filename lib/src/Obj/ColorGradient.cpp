@@ -60,8 +60,9 @@ void ColorGradient::read(Image& image, bool softerAlpha, bool isTransparent) {
 void ColorGradient::multiplyAlpha(float alpha) {
     jassert(pixelStride == 4);
 
-	if(pixelStride != 4)
+	if(pixelStride != 4) {
 		return;
+	}
 
 	for (vector<Color>::iterator it = colours.begin(); it != colours.end(); ++it)
 		it->v[3] = jlimit<float>(0, 1.f, alpha * it->v[3]);

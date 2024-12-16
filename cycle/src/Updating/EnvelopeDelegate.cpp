@@ -23,8 +23,9 @@ void EnvelopeDelegate::performUpdate(int performUpdateType) {
 		case Null: break;
 		case Repaint: break;
 		case ReduceDetail: {
-			if(getObj(Envelope3D).isVisible() && getSetting(CurrentMorphAxis) != Vertex::Time)
-					getObj(E3Rasterizer).performUpdate(performUpdateType);
+			if(getObj(Envelope3D).isVisible() && getSetting(CurrentMorphAxis) != Vertex::Time) {
+				getObj(E3Rasterizer).performUpdate(performUpdateType);
+			}
 			break;
 		}
 
@@ -34,9 +35,9 @@ void EnvelopeDelegate::performUpdate(int performUpdateType) {
 		}
 
         case Update: {
-			if(getObj(Envelope3D).isVisible() && getSetting(CurrentMorphAxis) != Vertex::Time)
+			if(getObj(Envelope3D).isVisible() && getSetting(CurrentMorphAxis) != Vertex::Time) {
 				getObj(E3Rasterizer).performUpdate(performUpdateType);
-            else {
+			} else {
 				getObj(EnvelopeInter2D).getRasterizer()->performUpdate(performUpdateType);
 			}
 
@@ -46,5 +47,7 @@ void EnvelopeDelegate::performUpdate(int performUpdateType) {
 			break;
 		}
 
+    	default:
+    		break;
 	}
 }

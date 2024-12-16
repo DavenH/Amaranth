@@ -1,20 +1,16 @@
 #pragma once
-#include "../Definitions.h"
 
 #if PLUGIN_MODE
 
-#ifndef _pluginprocessor_h
-#define _pluginprocessor_h
-
-
 #include <vector>
 #include "Parameter.h"
-#include "../App/Vst/juce_PluginHostType.h"
 #include "../Obj/Ref.h"
 #include "JuceHeader.h"
-#include <PluginCharacteristics.h>
+#include "../App/Doc/Document.h"
 
+class AudioHub;
 using std::vector;
+using namespace juce;
 
 class SingletonRepo;
 
@@ -23,67 +19,68 @@ class PluginProcessor :
 	,	public Document::Listener
 {
 public:
-	class Listener
-	{
+	class Listener {
 	public:
+		virtual ~Listener() = default;
+
 		virtual void tempoChanged(double bpm) = 0;
 	};
 
-	class LatencyAdder
-	{
+	class LatencyAdder {
 	public:
+		virtual ~LatencyAdder() = default;
+
 		virtual int getLatency(bool isRealtime) = 0;
 	};
 
     /* ----------------------------------------------------------------------------- */
 
     PluginProcessor();
-    virtual ~PluginProcessor();
+    ~PluginProcessor() override;
 
-    void releaseResources();
-    void prepareToPlay (double sampleRate, int samplesPerBlock);
-    void processBlock (AudioSampleBuffer& buffer, MidiBuffer& midiMessages);
-    void documentAboutToLoad() {}
-    void documentHasLoaded();
+    void releaseResources() override;
+    void prepareToPlay (double sampleRate, int samplesPerBlock) override;
+    void processBlock (AudioSampleBuffer& buffer, MidiBuffer& midiMessages) override;
+    void documentAboutToLoad() override {}
+    void documentHasLoaded() override;
     void updateLatency();
 
-    void setParameter (int index, float newValue);
+    void setParameter (int index, float newValue) override;
     void addParameter(const Parameter& param);
-    int getNumParameters();
-    bool isParameterAutomatable 	(int parameterIndex) const;
-    float getParameter 				(int index);
-    const String getParameterName 	(int index);
-    const String getParameterText 	(int index);
+    int getNumPrograms() override;
+    bool isParameterAutomatable 	(int parameterIndex) const override;
+    float getParameter 				(int index) override;
+    const String getParameterName 	(int index) override;
+    const String getParameterText 	(int index) override;
 
-    void changeProgramName (int index, const String& newName) {}
-    void setCurrentProgram (int index);
-    const String getProgramName (int index);
-    int getCurrentProgram();
+    void changeProgramName (int index, const String& newName) override {}
+    void setCurrentProgram (int index) override;
+    const String getProgramName (int index) override;
+    int getCurrentProgram() override;
 
-    void getCurrentProgramStateInformation (MemoryBlock& destData);
-    void getStateInformation (MemoryBlock& destData);
-    void setCurrentProgramStateInformation (const void* data, int sizeInBytes);
-    void setStateInformation (const void* data, int sizeInBytes);
+    void getCurrentProgramStateInformation (MemoryBlock& destData) override;
+    void getStateInformation (MemoryBlock& destData) override;
+    void setCurrentProgramStateInformation (const void* data, int sizeInBytes) override;
+    void setStateInformation (const void* data, int sizeInBytes) override;
 
-    /* ����������������������������������������������������������������������������� */
+	/* ----------------------------------------------------------------------------- */
 
-    bool acceptsMidi() const									{ return true; 						}
-    bool hasEditor() const                  					{ return true; 						}
-    bool isInputChannelStereoPair (int index) const				{ return true; 						}
-    bool isOutputChannelStereoPair (int index) const			{ return true; 						}
-    bool silenceInProducesSilenceOut() const 					{ return false; 					}
-    bool producesMidi() const									{ return true; 						}
-    int getNumPrograms()										{ return parameters.size(); 		}
-    double getTailLengthSeconds() const    						{ return 0; 			   			}
-    AudioPlayHead::CurrentPositionInfo getCurrentPosition() 	{ return lastPosInfo; 				}
+    bool acceptsMidi() const override							{ return true; 				}
+    bool hasEditor() const override                  			{ return true; 				}
+    bool isInputChannelStereoPair (int index) const override	{ return true; 				}
+    bool isOutputChannelStereoPair (int index) const override	{ return true; 				}
+    bool silenceInProducesSilenceOut() const override 			{ return false; 			}
+    bool producesMidi() const override							{ return true; 				}
+    double getTailLengthSeconds() const override    			{ return 0; 			   	}
+    AudioPlayHead::CurrentPositionInfo getCurrentPosition() 	{ return lastPosInfo; 		}
+	void setSuspendStateRead(bool suspend) 						{ suspendStateRead = suspend; }
+    int getNumParameters() override								{ return parameters.size(); }
 
-    const String getInputChannelName (int channelIndex) const 	{ return String (channelIndex + 1); }
-    const String getOutputChannelName (int channelIndex) const	{ return String (channelIndex + 1); }
-    const String getName() const            					{ return String (JucePlugin_Name); 	}
+    const String getInputChannelName (int channelIndex) const override 	{ return String (channelIndex + 1); }
+    const String getOutputChannelName (int channelIndex) const override	{ return String (channelIndex + 1); }
+    const String getName() const override;
 
-    void setSuspendStateRead(bool suspend) 						{ suspendStateRead = suspend; 		}
-
-    virtual AudioProcessorEditor* createEditor() = 0;
+    AudioProcessorEditor* createEditor() override = 0;
 
 private:
     bool suspendStateRead;
@@ -97,7 +94,7 @@ private:
 
     vector<Parameter> 	 parameters;
     Array<LatencyAdder*> latencies;
-    ListenerList 	 	 listeners;
+    ListenerList<Listener> listeners;
 
     PluginHostType hostType;
 
@@ -108,4 +105,4 @@ private:
 
 #endif
 
-#endif // PLUGIN_MODE
+// #endif // PLUGIN_MODE

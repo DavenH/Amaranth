@@ -13,16 +13,18 @@ public:
 
     explicit StereoBuffer(AudioBuffer<float>& audioBuffer) :
             numChannels(audioBuffer.getNumChannels()) {
-        for (int i = 0; i < numChannels; ++i)
+        for (int i = 0; i < numChannels; ++i) {
             (*this)[i] = Buffer<float>(audioBuffer, i);
+        }
     }
 
     StereoBuffer(AudioBuffer<float>& audioBuffer, int start, int size) :
             numChannels(audioBuffer.getNumChannels()) {
         left = Buffer(audioBuffer.getWritePointer(0, start), size);
 
-        if (numChannels > 1)
+        if (numChannels > 1) {
             right = Buffer(audioBuffer.getWritePointer(1, start), size);
+        }
     }
 
     explicit StereoBuffer(const Buffer<float>& source) : numChannels(1) {
@@ -43,12 +45,11 @@ public:
 
     Buffer<float>& operator[](const int index) {
         switch (index) {
-            case 0:
-                return left;
-            case 1:
-                return right;
+            case 0: return left;
+            case 1: return right;
             default:
                 jassertfalse;
+                break;
         }
         return left;
     }
@@ -57,8 +58,9 @@ public:
         StereoBuffer buffer(numChannels);
         buffer.left = left.sectionAtMost(start, size);
 
-        if (numChannels > 1)
+        if (numChannels > 1) {
             buffer.right = right.sectionAtMost(start, size);
+        }
 
         return buffer;
     }
@@ -66,12 +68,13 @@ public:
     StereoBuffer& add(const StereoBuffer& sb) {
         left.add(sb.left);
 
-        if (numChannels > 1 && sb.numChannels > 1)
+        if (numChannels > 1 && sb.numChannels > 1) {
             right.add(sb.right);
-        else if (numChannels > 1)
+        } else if (numChannels > 1) {
             right.add(sb.left);
-        else if (sb.numChannels)
+        } else if (sb.numChannels) {
             left.add(sb.right);
+        }
 
         return *this;
     }
@@ -79,8 +82,9 @@ public:
     StereoBuffer& mul(float factor) {
         left.mul(factor);
 
-        if (numChannels > 1)
+        if (numChannels > 1) {
             right.mul(factor);
+        }
 
         return *this;
     }
@@ -88,8 +92,9 @@ public:
     StereoBuffer& mul(const Buffer<float>& buff) {
         left.mul(buff);
 
-        if (numChannels > 1)
+        if (numChannels > 1) {
             right.mul(buff);
+        }
 
         return *this;
     }
@@ -97,11 +102,11 @@ public:
     StereoBuffer& mul(StereoBuffer& buff) {
         left.mul(buff.left);
 
-        if (numChannels > 1 && buff.numChannels > 1)
+        if (numChannels > 1 && buff.numChannels > 1) {
             right.mul(buff.right);
-        else if (numChannels > 1)
+        } else if (numChannels > 1) {
             right.mul(buff.left);
-
+        }
 
         return *this;
     }

@@ -17,7 +17,7 @@ E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
 	lowResCurves 	= true;
 	cyclic 			= false;
 	calcDepthDims 	= false;
-	scalingType		= MeshRasterizer::HalfBipolar;
+	scalingType		= HalfBipolar;
 	xMaximum 		= 10.f;
 }
 
@@ -36,8 +36,9 @@ float& E3Rasterizer::getPrimaryDimensionVar() {
 }
 
 void E3Rasterizer::performUpdate(int updateType) {
-    if (updateType != Update)
-        return;
+    if (updateType != Update) {
+	    return;
+    }
 
     int increment = getIncrement();
     int numPixels = getObj(Waveform3D).getWindowWidthPixels();

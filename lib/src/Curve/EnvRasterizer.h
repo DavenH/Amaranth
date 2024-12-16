@@ -19,25 +19,22 @@ public:
 	// one per unison voice
 	class EnvParams {
 	public:
-		EnvParams() :
-			sustainLevel(1.f),
-			samplePosition(0.),
-			sampleIndex(0)
-		{}
+		EnvParams() : sustainLevel(1.f),
+		              samplePosition(0.),
+		              sampleIndex(0) {
+		}
 
-		void reset()
-		{
-			samplePosition 	= 0;
-			sampleIndex 	= 0;
+		void reset() {
+			samplePosition = 0;
+			sampleIndex = 0;
 			deformContext.currentIndex = 0;
 		}
 
-	public:
 		int sampleIndex;
 		float sustainLevel;
 		double samplePosition;
 
-		MeshRasterizer::DeformContext deformContext;
+		DeformContext deformContext;
 	};
 
     /* ----------------------------------------------------------------------------- */
@@ -47,7 +44,7 @@ public:
 	EnvRasterizer(const EnvRasterizer& copy);
 	~EnvRasterizer() override;
 
-	void calcCrossPoints() override;
+	void calcCrossPoints(int currentDim) override;
 	void ensureParamSize(int numUnisonVoices);
 	void evaluateLoopSustainIndices();
 	void getIndices(int& loopIdx, int& sustIdx) const;

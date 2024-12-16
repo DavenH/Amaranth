@@ -6,30 +6,22 @@
 #include <UI/MiscGraphics.h>
 #include <UI/Widgets/CalloutUtils.h>
 
-
 #include "GeneralControls.h"
-#include "SynthMenuBarModel.h"
 #include "VertexPropertiesPanel.h"
 #include "PlaybackPanel.h"
 
-#include "../App/CycleTour.h"
+#include "../CycleDefs.h"
 #include "../Dialogs/PresetPage.h"
-#include "../Panels/MainPanel.h"
 #include "../Panels/Morphing/MorphPanel.h"
-#include "../Panels/OscControlPanel.h"
-#include "../UI/VisualDsp.h"
-#include "../VertexPanels/Envelope2D.h"
 #include "../VertexPanels/Spectrum2D.h"
 #include "../VertexPanels/Spectrum3D.h"
-#include "../VertexPanels/Waveform2D.h"
-#include "../VertexPanels/Waveform3D.h"
 
+#include "../../App/CycleTour.h"
 #include "../../App/Dialogs.h"
 #include "../../App/FileManager.h"
+#include "../../UI/VisualDsp.h"
 #include "../../Audio/AudioSourceRepo.h"
 #include "../../Audio/SampleUtils.h"
-#include "../../CycleDefs.h"
-#include "../../Inter/EnvelopeInter2D.h"
 #include "../../Inter/SpectrumInter3D.h"
 #include "../CycleGraphicsUtils.h"
 
@@ -59,13 +51,8 @@ GeneralControls::GeneralControls(SingletonRepo* repo) :
 	,	tableIcon(	8, 5, this, repo, "Presets") {
 }
 
-
-GeneralControls::~GeneralControls() {
-}
-
-
 void GeneralControls::init() {
-    dialogs = &getObj(Dialogs);
+    dialogs		 = &getObj(Dialogs);
 	position 	 = &getObj(PlaybackPanel);
 	audioManager = &getObj(AudioSourceRepo);
 	fileManager	 = &getObj(FileManager);
@@ -75,15 +62,15 @@ void GeneralControls::init() {
 	Component* prstTemp[] =  { &save, 		&tableIcon, &prev, 	&next	};
 	Component* toolTemp[] =  { &pointer, 	&pencil, 	&axe, 	&nudge	};
 
-	CalloutUtils::addRetractableCallout(waveCO, 	wavePO, 	repo, 0, 5, waveTemp,  numElementsInArray(waveTemp), 	this, true);
-	CalloutUtils::addRetractableCallout(transCO, 	transPO, 	repo, 0, 0, transTemp, numElementsInArray(transTemp), 	this, true);
-	CalloutUtils::addRetractableCallout(prstCO, 	prstPO, 	repo, 2, 3, prstTemp,  numElementsInArray(prstTemp), 	this, true);
-	CalloutUtils::addRetractableCallout(toolCO, 	toolPO, 	repo, 1, 7, toolTemp,  numElementsInArray(toolTemp), 	this, true);
+	CalloutUtils::addRetractableCallout(waveCO,  wavePO,  repo, 0, 5, waveTemp,  numElementsInArray(waveTemp), 	this, true);
+	CalloutUtils::addRetractableCallout(transCO, transPO, repo, 0, 0, transTemp, numElementsInArray(transTemp), this, true);
+	CalloutUtils::addRetractableCallout(prstCO,  prstPO,  repo, 2, 3, prstTemp,  numElementsInArray(prstTemp), 	this, true);
+	CalloutUtils::addRetractableCallout(toolCO,  toolPO,  repo, 1, 7, toolTemp,  numElementsInArray(toolTemp), 	this, true);
 
-	topCallouts.push_back(toolCO);
-	topCallouts.push_back(prstCO);
-	topCallouts.push_back(transCO);
-	topCallouts.push_back(waveCO);
+	topCallouts.push_back(toolCO.get());
+	topCallouts.push_back(prstCO.get());
+	topCallouts.push_back(transCO.get());
+	topCallouts.push_back(waveCO.get());
 
   #ifdef DEMO_VERSION
     save.setApplicable(false);

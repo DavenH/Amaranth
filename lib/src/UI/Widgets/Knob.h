@@ -14,43 +14,43 @@ class Knob:
 public:
 	int id;
 
-	Knob(SingletonRepo* repo);
+	explicit Knob(SingletonRepo* repo);
 	Knob(SingletonRepo* repo, float defaultValue);
 	Knob(SingletonRepo* repo, int id, String hint, float defaultValue);
-	~Knob();
+	~Knob() override;
 
-	void resized();
-	void paint(Graphics & g);
-	void mouseEnter(const MouseEvent& e);
-	void mouseDrag(const MouseEvent& e);
-	virtual void mouseDown(const MouseEvent& e);
-	void mouseUp(const MouseEvent& e);
+	void resized() override;
+	void paint(Graphics & g) override;
+	void mouseEnter(const MouseEvent& e) override;
+	void mouseDrag(const MouseEvent& e) override;
+	void mouseDown(const MouseEvent& e) override;
+	void mouseUp(const MouseEvent& e) override;
 
-	int getId()							{ return id; }
-	int getYDelegate() 					{ return getY(); }
-	int getXDelegate() 					{ return getX(); }
-	int getExpandedSize() 				{ return expandedSize; }
-	int getCollapsedSize() 				{ return collapsedSize;	}
-	int getMinorSize() 					{ return isCurrentCollapsed ? getCollapsedSize() : getExpandedSize(); }
+	int getId() const							{ return id; }
+	int getYDelegate() override 				{ return getY(); }
+	int getXDelegate() override 				{ return getX(); }
+	int getExpandedSize() override { return expandedSize; }
+	int getCollapsedSize() override { return collapsedSize;	}
+	int getMinorSize() override 				{ return isCurrentCollapsed ? getCollapsedSize() : getExpandedSize(); }
 
-	void setBoundsDelegate(int x, int y, int w, int h) { setBounds(x, y, w, h); }
+	void setBoundsDelegate(int x, int y, int w, int h) override { setBounds(x, y, w, h); }
 	void setCollapsedSize(int size) 	{ collapsedSize = size; }
 	void setColour(Colour color)		{ this->colour = color; }
 	void setDefaultValue(float value)	{ this->defaultValue = value; }
 	void setDrawValueText(bool doit)	{ this->drawValueText = doit; }
 	void setHint(String hint)			{ this->hint = hint; }
 	void setId(int id)					{ this->id = id; }
-	void setName(const String& name) 	{ this->name = name; }
+	void setName(const String& name) override 	{ this->name = name; }
 
 	void setDefaults();
 	void setStringFunction(const StringFunction& toBoth);
 	void setStringFunctions(const StringFunction& toString,
 							const StringFunction& toConsole);
 
-	const Rectangle<int> getBoundsInParentDelegate();
+	const Rectangle<int> getBoundsInParentDelegate() override;
 
-	bool isVisibleDlg() const 			{ return isVisible(); }
-	void setVisibleDlg(bool isVisible) 	{ setVisible(isVisible); }
+	bool isVisibleDlg() const override 			{ return isVisible(); }
+	void setVisibleDlg(bool isVisible) override { setVisible(isVisible); }
 
 private:
 	float theta;

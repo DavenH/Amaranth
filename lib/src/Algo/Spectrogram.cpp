@@ -6,6 +6,7 @@
 #include "../Array/Buffer.h"
 #include "../Array/IterableBuffer.h"
 #include "../Util/Arithmetic.h"
+#include <Definitions.h>
 
 Spectrogram::Spectrogram(SingletonRepo* repo) :
         SingletonAccessor(repo, "Spectrogram") {
@@ -59,8 +60,9 @@ void Spectrogram::calculate(IterableBuffer* iterable, int flags) {
 		}
 	}
 
-	if(flags & CalcPhases && flags & UnwrapPhases)
+	if(flags & CalcPhases && flags & UnwrapPhases) {
 		unwrapPhaseColumns();
+	}
 }
 
 void Spectrogram::unwrapPhaseColumns() {
@@ -76,8 +78,9 @@ void Spectrogram::unwrapPhaseColumns() {
 	float phaseMin, phaseMax;
 
 	for (int harmIdx = 0; harmIdx < numHarmonics; ++harmIdx) {
-		for (int col = 0; col < unwrapped.size(); ++col)
+		for (int col = 0; col < unwrapped.size(); ++col) {
 			unwrapped[col] = phaseColumns[col][harmIdx];
+		}
 
 		unwrapped.minmax(phaseMin, phaseMax);
 
@@ -86,11 +89,13 @@ void Spectrogram::unwrapPhaseColumns() {
 			diff = unwrapped[col] - unwrapped[col - 1];
 			diff *= invConst;
 
-			if(diff > 0.50001f)
+			if(diff > 0.50001f) {
 				unwrapped[col] -= IPP_2PI * int(diff + 0.499989999f);
+			}
 
-			if(diff < -0.50001f)
+			if(diff < -0.50001f) {
 				unwrapped[col] += IPP_2PI * int(-diff + 0.499989999f);
+			}
 		}
 
 		float scaling = 1 / sqrtf(jmax(0.f, float(harmIdx + 1)));

@@ -47,7 +47,8 @@ MorphPanel::MorphPanel(SingletonRepo* repo) :
 	redSlider.dim  = Vertex::Red;
 	blueSlider.dim = Vertex::Blue;
 
-	addAndMakeVisible(cubeDisplay = new CubeDisplay(repo));
+	cubeDisplay = std::make_unique<CubeDisplay>(repo);
+	addAndMakeVisible(cubeDisplay.get());
 
 //	cube = PNGImageFormat().loadFrom(CycleImages::cube_png, CycleImages::cube_pngSize);
 
@@ -158,23 +159,23 @@ void MorphPanel::paint(Graphics& g) {
 		g.drawRect(rects[i]);
 	}
 
-	getObj(MiscGraphics).drawJustifiedText(g, "x axis", 	primeYllw, 	primeBlue, 	true, dimCO);
-	getObj(MiscGraphics).drawJustifiedText(g, "link", 		linkYllw, linkBlue, 	true, linkCO);
-	getObj(MiscGraphics).drawJustifiedText(g, "cube range", rangeYllw, 	rangeBlue, 	true, rangeCO);
+	getObj(MiscGraphics).drawJustifiedText(g, "x axis", 	primeYllw, 	primeBlue, 	true, dimCO.get());
+	getObj(MiscGraphics).drawJustifiedText(g, "link", 		linkYllw, linkBlue, 	true, linkCO.get());
+	getObj(MiscGraphics).drawJustifiedText(g, "cube range", rangeYllw, 	rangeBlue, 	true, rangeCO.get());
 }
 
 float MorphPanel::getValue(int index) {
     switch (index) {
-        case Vertex::Time: 	return yllwSlider.getValue();
-		case Vertex::Red: 	return redSlider.getValue();
-		case Vertex::Blue: 	return blueSlider.getValue();
+        case Vertex::Time: 	return (float) yllwSlider.getValue();
+		case Vertex::Red: 	return (float) redSlider.getValue();
+		case Vertex::Blue: 	return (float) blueSlider.getValue();
 
 		default: return 0;
 	}
 }
 
 MorphPosition MorphPanel::getMorphPosition() {
-    return MorphPosition(yllwSlider.getValue(), redSlider.getValue(), blueSlider.getValue());
+    return {(float) yllwSlider.getValue(), (float) redSlider.getValue(), (float) blueSlider.getValue()};
 }
 
 MorphPosition MorphPanel::getOffsetPosition(bool includingDepths) {

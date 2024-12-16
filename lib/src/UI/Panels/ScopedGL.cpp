@@ -6,43 +6,47 @@ ScopedElement::ScopedElement(int glConstant)
     glBegin(glConstant);
 }
 
-
 ScopedElement::~ScopedElement() {
     glEnd();
 }
 
-
 ScopedDisable::ScopedDisable(int glConstant, bool active)
         : active(active), glConstant(glConstant) {
-    if (active)
+    if (active) {
         glDisable(glConstant);
+    }
 }
 
 ScopedDisable::~ScopedDisable() {
-    if (active)
+    if (active) {
         glEnable(glConstant);
+    }
 }
 
 ScopedEnable::ScopedEnable(int glConstant, bool active)
         : active(active), glConstant(glConstant) {
-    if (active)
+    if (active) {
         glEnable(glConstant);
+    }
 }
 
 ScopedEnable::~ScopedEnable() {
-    if (active)
+    if (active) {
         glDisable(glConstant);
+    }
 }
 
 
 ScopedEnableClientState::ScopedEnableClientState(int glElement, bool active) : glElement(glElement), active(active) {
-    if (active)
+    if (active) {
         glEnableClientState(glElement);
+    }
 }
 
 
 ScopedEnableClientState::~ScopedEnableClientState() {
-    if (active)
+    if (active) {
         glDisableClientState(glElement);
+    }
 }
 

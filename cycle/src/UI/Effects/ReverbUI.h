@@ -20,7 +20,6 @@ public:
 		Knob* size = new Knob(repo, ReverbEffect::Size, "Reverb Length", 0.5);
 		paramGroup->addSlider(size);
 
-//				StringFunction(StringFunction::MulAddPowMul).setArgs(6.f, 12.f, 2.f, 1.f / 44100.f).setRounds(false);
 		using namespace Ops;
 		StringFunction sizeShort = StringFunction().mul(6.f).add(12.f).pow(2.f).mul(1.f / 44100.f);
 		size->setStringFunctions(sizeShort, sizeShort.withPostString(" seconds").withPrecision(2));
@@ -45,11 +44,9 @@ public:
 		}
 	}
 
-	void overrideValueOptionally(int number, double& value) override
-	{
+	void overrideValueOptionally(int number, double& value) override {
 		// used to be the 'dry' parameter
-		if(number == ReverbEffect::Highpass && getObj(Document).getVersionValue() < 1.5)
-		{
+		if (number == ReverbEffect::Highpass && getObj(Document).getVersionValue() < 1.5) {
 			value = 0.05;
 		}
 	}

@@ -5,7 +5,6 @@
 #include <Audio/Multisample.h>
 #include <Design/Updating/Updater.h>
 #include <Inter/Interactor.h>
-#include <Test/CsvFile.h>
 #include <UI/Panels/Panel.h>
 #include <UI/Panels/Panel3D.h>
 
@@ -74,26 +73,19 @@ Initializer::Initializer() :
 	, 	haveInitDsp			(false)
 	, 	haveInitGfx			(false)
 	, 	haveFreedResources	(false) {
-	singletonRepo = new SingletonRepo();
-	repo = singletonRepo;
+	singletonRepo = std::make_unique<SingletonRepo>();
+	repo = singletonRepo.get();
 }
 
-
 void Initializer::init() {
-    if (haveInitDsp)
-        return;
+    if (haveInitDsp) {
+	    return;
+    }
 
 	haveInitDsp = true;
 
-	if(numInstances.get() == 0)
-	{
-		++numInstances;
-
-//		updateDllName();
-//
-//	  #if PLUGIN_MODE && defined(JUCE_WINDOWS)
-//		(FARPROC) LoadLibrary(dllName.toUTF8());
-//	  #endif
+    if (numInstances.get() == 0) {
+	    ++numInstances;
 
 		ippInit();
 		Curve::calcTable();
@@ -120,7 +112,6 @@ void Initializer::init() {
 
 	getObj(Dialogs).showDeviceErrorApplicably();
 }
-
 
 void Initializer::init2() {
     KeyboardInputHandler* handler 	= &getObj(KeyboardInputHandler);
@@ -201,17 +192,16 @@ void Initializer::init2() {
 
 }
 
-
 void Initializer::initSingletons() {
 }
 
-
 void Initializer::setConstants() {
     using namespace Constants;
-    AppConstants &constants = getObj(AppConstants);
+    auto &constants = getObj(AppConstants);
     constants.setConstant(WaveshaperPadding, 	0.0625);
 	constants.setConstant(IrModellerPadding, 	0.0625);
 	constants.setConstant(DocMagicCode, 	 	(int) 0xc0dedbad);
+	constants.setConstant(ProductName, 	 		String(ProjectInfo::projectName));
 	constants.setConstant(DocumentExt, 	 		"cyc");
 	constants.setConstant(NumVoices, 	 		12);
 	constants.setConstant(MaxUnisonOrder, 		10);
@@ -221,7 +211,6 @@ void Initializer::setConstants() {
 	constants.setConstant(ResamplerLatency, 	32);
 	constants.setConstant(MinLineLength, 		0.001);
 }
-
 
 void Initializer::setDefaultSettings() {
     getSetting(IgnoringMessages) 		= true;
@@ -256,7 +245,7 @@ void Initializer::instantiate() {
 	DeformerPanel* deformer;
 	ModMatrixPanel* matrixPanel;
 	SynthAudioSource* audioSource;
-	EnvWavePitchRast* pitchRast;
+	EnvWavePitchRast* pitchRast = std::make_unique<EnvWavePitchRast>(repo, "EnvWavePitchRast");
 
 	// APP
 	repo->add(new Directories		(repo), -50);
@@ -268,7 +257,7 @@ void Initializer::instantiate() {
 	repo->add(new SampleUtils		(repo));
 	repo->add(new AudioSourceRepo	(repo));
 	repo->add(new MidiKeyboard		(repo, getObj(AudioHub).getKeyboardState(), MidiKeyboardComponent::horizontalKeyboard));
-	repo->add(pitchRast = new EnvWavePitchRast(repo, "EnvWavePitchRast"));
+	repo->add(pitchRast);
 	repo->add(audioSource = new SynthAudioSource(repo));
 	repo->add(new Multisample(repo, pitchRast));
 

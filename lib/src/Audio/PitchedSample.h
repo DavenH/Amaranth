@@ -31,6 +31,7 @@ typedef vector<PitchFrame>::iterator PitchIter;
 class PitchedSample : public Savable {
 public:
 	PitchedSample();
+	explicit PitchedSample(const Buffer<float>& source);
 	~PitchedSample() override;
 
     void clear() {

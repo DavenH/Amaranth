@@ -19,13 +19,13 @@ class DerivativePanel :
 	, 	public Updateable
 	, 	public SingletonAccessor {
 public:
-	DerivativePanel(SingletonRepo* repo);
+	explicit DerivativePanel(SingletonRepo* repo);
 
 	void calcDerivative();
 	void calcRasterDerivative();
-	void mouseEnter(const MouseEvent& e);
-	void paint(Graphics& g);
-	void performUpdate(int updateType);
+	void mouseEnter(const MouseEvent& e) override;
+	void paint(Graphics& g) override;
+	void performUpdate(int updateType) override;
 
 private:
 	bool haveDrawn;

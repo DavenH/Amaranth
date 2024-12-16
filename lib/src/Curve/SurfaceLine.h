@@ -1,4 +1,5 @@
 #pragma once
+
 #include <iostream>
 #include "Vertex.h"
 #include "../Util/Arithmetic.h"
@@ -13,7 +14,7 @@ public:
     float product;
 
     SurfaceLine(Vertex* v1, Vertex* v2, int axis = Vertex::Time); //bool isSplit = false
-    ~SurfaceLine();
+    ~SurfaceLine() = default;
 
     float at(float x);
     float at(int dim, float x);
@@ -28,7 +29,7 @@ public:
     bool operator<(const SurfaceLine& other) const;
     void operator=(const SurfaceLine& other);
     Vertex2 getCrossPoint(Vertex* start, Vertex* end, int dimA, int dimB) const;
-    Vertex2 getCrossPoint(const Vertex2 start, const Vertex2 end, int xDim, int yDim) const;
+    [[nodiscard]] Vertex2 getCrossPoint(Vertex2 start, Vertex2 end, int xDim, int yDim) const;
     Vertex* getOtherVertex(Vertex* v);
     Vertex* getMinAlongAxis(int dim);
     bool containsVertex(Vertex* vert);

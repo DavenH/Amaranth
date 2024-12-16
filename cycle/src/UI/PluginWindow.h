@@ -1,13 +1,10 @@
+#pragma once
 #include <Definitions.h>
+#include "../Incl/PluginCharacteristics.h"
 
 #if PLUGIN_MODE
 
-#ifndef _plugineditor_h
-#define _plugineditor_h
-
 #include "JuceHeader.h"
-#include <PluginCharacteristics.h>
-#include <Obj/Ref.h>
 #include <App/SingletonAccessor.h>
 
 class PluginProcessor;
@@ -17,15 +14,15 @@ class PluginWindow  :
 	,	public SingletonAccessor
 {
 public:
-    PluginWindow (PluginProcessor* ownerFilter);
-    ~PluginWindow();
+    explicit PluginWindow (PluginProcessor* ownerFilter);
+    ~PluginWindow() override;
 
-    void paint (Graphics& g);
-    void resized();
-    void focusLost (FocusChangeType cause);
-    void focusGained (FocusChangeType cause);
+    void paint (Graphics& g) override;
+    void resized() override;
+    void focusLost (FocusChangeType cause) override;
+    void focusGained (FocusChangeType cause) override;
     void changeSizeAndSet(int sizeEnum);
-    void moved();
+    void moved() override;
     void freeUIResources();
 
 private:
@@ -35,8 +32,5 @@ private:
     std::unique_ptr<ResizableCornerComponent> resizer;
     ComponentBoundsConstrainer 				resizeLimits;
 };
-
-
-#endif
 
 #endif

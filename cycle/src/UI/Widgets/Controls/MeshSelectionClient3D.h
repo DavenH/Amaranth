@@ -116,7 +116,7 @@ public:
 
     void updateEverything(Mesh* mesh) {
         rasterizer->setMesh(mesh);
-        rasterizer->update((int) UpdateType::Update);
+        rasterizer->update(Update);
 
         owner->meshSelectionChanged(mesh);
     }

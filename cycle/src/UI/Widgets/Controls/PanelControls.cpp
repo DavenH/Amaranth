@@ -45,29 +45,23 @@ PanelControls::PanelControls(
 void PanelControls::paint(Graphics& g) {
     getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
-	MiscGraphics& mg = getObj(MiscGraphics);
+	auto& mg = getObj(MiscGraphics);
 	g.setFont(*mg.getSilkscreen());
 	g.setColour(Colour::greyLevel(0.64f));
 
     if (haveDomains) {
-//		Rectangle<int> r = domainCO->getBoundsInParentDelegate();
         mg.drawJustifiedText(g, "domain", domainBounds);
     }
 
     if (drawLabel) {
 		mg.drawJustifiedText(g, "layer", layerLblBounds);
-//		getObj(MiscGraphics).drawCentredText(g, layerLblBounds, "layer");
 	}
-
-	Colour base = Colour::greyLevel(0.11f);
 
 	Array<Rectangle<int> > rects;
 	Array<IDynamicSizeComponent*>* arrs[] = { &leftItems, &rightItems };
 
-    for (int a = 0; a < numElementsInArray(arrs); ++a) {
-        for (int i = 0; i < arrs[a]->size(); ++i) {
-            IDynamicSizeComponent* c = arrs[a]->getUnchecked(i);
-
+    for (auto& arr : arrs) {
+    	for(auto* c : *arr) {
             if (c->outline && !c->isCurrentlyCollapsed()) {
                 Rectangle<int> r = c->getBoundsInParentDelegate().translated(0, c->translateUp1 ? -1 : 0);
 				rects.add(r);
@@ -75,9 +69,7 @@ void PanelControls::paint(Graphics& g) {
 		}
 	}
 
-    for (int i = 0; i < rects.size(); ++i) {
-        Rectangle<int> rect = rects[i];
-
+    for (auto rect : rects) {
         Path strokePath;
         strokePath.addRoundedRectangle(rect.getX(), rect.getY() + 1, rect.getWidth() + 1, rect.getHeight() - 2, 2.f);
         strokePath.applyTransform(AffineTransform::translation(-0.5f, -0.5f));
@@ -111,9 +103,8 @@ void PanelControls::resized() {
 	Rectangle<int> leftSide 	= layerBounds.removeFromLeft(24);
 	Rectangle<int> rightSide 	= layerBounds.removeFromRight(24);
 
-    for (int i = 0; i < leftItems.size(); ++i) {
-        IDynamicSizeComponent* item = leftItems[i];
-		Rectangle<int> r(leftSide.removeFromTop(item->getExpandedSize()));
+    for (auto item : leftItems) {
+        Rectangle<int> r(leftSide.removeFromTop(item->getExpandedSize()));
 
 		if(item->getDynWidth() > 24)
 			r.expand((item->getDynWidth() - 24) / 2, 0);
@@ -121,12 +112,12 @@ void PanelControls::resized() {
 		item->setBoundsDelegate(r.getX(), r.getY(), r.getWidth(), r.getHeight());
 	}
 
-    for (int i = 0; i < rightItems.size(); ++i) {
-        IDynamicSizeComponent* item = rightItems[i];
-		Rectangle<int> r(rightSide.removeFromTop(item->getExpandedSize()));
+    for (auto item : rightItems) {
+        Rectangle<int> r(rightSide.removeFromTop(item->getExpandedSize()));
 
-		if(item->getDynWidth() > 24)
+		if(item->getDynWidth() > 24) {
 			r.expand((item->getDynWidth() - 24) / 2, 0);
+		}
 
 		item->setBoundsDelegate(r.getX(), r.getY(), r.getWidth(), r.getHeight());
 	}
@@ -137,10 +128,8 @@ void PanelControls::resized() {
 	bounds.removeFromTop(jmax(leftHeight, rightHeight));
 	bounds.removeFromTop(6);
 
-	for (int i = 0; i < sliders.size(); ++i) {
-        HSlider* slider = sliders[i];
-
-		slider->setBounds(bounds.removeFromTop(13));
+	for (auto slider : sliders) {
+        slider->setBounds(bounds.removeFromTop(13));
 		bounds.removeFromTop(4);
 	}
 
@@ -173,7 +162,7 @@ void PanelControls::populateScratchSelector() {
 }
 
 void PanelControls::setScratchSelector(int channel) {
-    int id = channel == CommonEnums::Null ? PanelControls::NullScratchChannel : channel + 1;
+    int id = channel == CommonEnums::Null ? NullScratchChannel : channel + 1;
     scratchSelector.setSelectedId(id, dontSendNotification);
 }
 
@@ -211,9 +200,8 @@ void PanelControls::handleAsyncUpdate() {
     getObj(MainPanel).grabKeyboardFocus();
 }
 
-
 void PanelControls::addEnablementIcon() {
-    enableContainer = new DynamicSizeContainer(&enableCurrent, 27, 25);
+    enableContainer = std::make_unique<DynamicSizeContainer>(&enableCurrent, 27, 25);
     enableContainer->outline = true;
 	enableContainer->translateUp1 = true;
 

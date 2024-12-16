@@ -27,15 +27,15 @@ public:
 	OutputStream& getDebugStream();
 	OutputStream& getStatStream();
 
-	void setPluginProcessor(PluginProcessor* proc)  	 	{ plugin = proc; 					}
-	void setDebugStream(OutputStream* output) 			 	{ this->debugStream.reset(output); 	}
-	void setMorphPositioner(MorphPositioner* positioner) 	{ this->positioner = positioner; 	}
-	void setConsole(IConsole* console) 					 	{ this->console = console; 			}
+	void setPluginProcessor(PluginProcessor* proc)  	{ plugin = proc; 					}
+	void setDebugStream(OutputStream* output) 			{ this->debugStream.reset(output); 	}
+	void setMorphPositioner(MorphPositioner* positioner){ this->positioner = positioner; 	}
+	void setConsole(IConsole* console) 					{ this->console = console; 			}
 	void setDeformer(IDeformer* deformer);
 
-	MorphPositioner& getMorphPosition() 				 	{ return *positioner; 	}
-	IConsole& getConsole() 									{ return *console; 		}
-	IDeformer& getDeformer()								{ return *deformer; 	}
+	MorphPositioner& getMorphPosition() 				{ return *positioner; 	}
+	IConsole& getConsole() 								{ return *console; 		}
+	IDeformer& getDeformer()							{ return *deformer; 	}
 
     /* ----------------------------------------------------------------------------- */
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <utility>
 #include <vector>
 #include "../IConsole.h"
 #include "../MiscGraphics.h"
@@ -7,7 +8,6 @@
 #include "../../Binary/Images.h"
 #include "../../Obj/Ref.h"
 #include "../../Util/FilterableList.h"
-#include "JuceHeader.h"
 #include "../../Definitions.h"
 
 using std::vector;
@@ -28,7 +28,7 @@ public:
 		,	focused		  (false)
 		,	selectingAll  (false)
 		,	filterableList(list)
-		,	defaultString (defaultString)
+		,	defaultString (std::move(defaultString))
 		,	caretPosition (0)
 		,	allowableChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ -_") {
         startTimer(BlinkTimerId, 400);
@@ -38,8 +38,7 @@ public:
 		setMouseCursor(MouseCursor::IBeamCursor);
 	}
 
-    ~SearchField() {
-    }
+    ~SearchField() override = default;
 
     void setText(const String& text) {
         searchString = text;
@@ -60,7 +59,7 @@ public:
         setText(searchString);
     }
 
-    bool keyPressed(const KeyPress& k) {
+    bool keyPressed(const KeyPress& k) override {
         if (!focused) {
 	        return false;
         }
@@ -84,9 +83,7 @@ public:
 				} else {
                     if (code == KeyPress::deleteKey) {
 						searchString = searchString.substring(0, caretPosition) + searchString.substring(caretPosition + 1);
-					}
-
-					else if (code == KeyPress::backspaceKey) {
+					} else if (code == KeyPress::backspaceKey) {
                         if (ModifierKeys::getCurrentModifiers().isCommandDown()) {
                             searchString = String();
 							caretPosition = 0;
@@ -133,7 +130,7 @@ public:
 		return true;
 	}
 
-    void paint(Graphics& g) {
+    void paint(Graphics& g) override {
         Font sansSerif(Font::getDefaultSansSerifFontName(), 15, Font::plain);
         g.setFont(sansSerif);
 
@@ -157,10 +154,11 @@ public:
 		g.setColour(selectingAll ? Colours::grey : Colours::lightgrey);
 
 		if (searchString.length() > 0 || focused) {
-            if (strWidth > getWidth() - 5)
-				g.drawSingleLineText(searchString, 8 - (strWidth - getWidth()), getHeight() / 2 + 4);
-			else
+            if (strWidth > getWidth() - 5) {
+	            g.drawSingleLineText(searchString, 8 - (strWidth - getWidth()), getHeight() / 2 + 4);
+            } else {
 				g.drawSingleLineText(searchString, 8, getHeight() / 2 + 4);
+			}
 		}
 
 		g.setColour(Colours::lightgrey);
@@ -171,20 +169,20 @@ public:
 		}
 	}
 
-    void focusGained(FocusChangeType cause) {
+    void focusGained(FocusChangeType cause) override {
         focused = true;
 
         repaint();
     }
 
-    void focusLost(FocusChangeType cause) {
+    void focusLost(FocusChangeType cause) override {
         focused = false;
 		selectingAll = false;
 
 		repaint();
 	}
 
-    void timerCallback(int id) {
+    void timerCallback(int id) override {
         switch (id) {
             case BlinkTimerId:
                 if (!selectingAll) {
@@ -203,24 +201,25 @@ public:
         }
     }
 
-    void mouseDoubleClick(const MouseEvent& e) {
+    void mouseDoubleClick(const MouseEvent& e) override {
         selectingAll = true;
         blink = false;
 
         repaint();
     }
 
-    void mouseEnter(const MouseEvent& e) {
+    void mouseEnter(const MouseEvent& e) override {
 		repo->getConsole().updateAll("*", "Multi-keyword search all fields & tags",
 		                             MouseUsage(true, false, true, true));
 	}
 
-    void mouseDown(const MouseEvent& e) {
+    void mouseDown(const MouseEvent& e) override {
         setWantsKeyboardFocus(true);
 		grabKeyboardFocus();
 
-		if (searchString.length() > 0)
+		if (searchString.length() > 0) {
 			selectingAll ^= 1;
+		}
 
 		blink = ! selectingAll;
 

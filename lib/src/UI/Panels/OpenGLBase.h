@@ -1,6 +1,5 @@
 #pragma once
 #include <vector>
-#include "OpenGL.h"
 #include "JuceHeader.h"
 #include "../../Obj/Ref.h"
 using namespace juce;

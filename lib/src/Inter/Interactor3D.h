@@ -73,7 +73,7 @@ public:
 	const vector<SimpleIcpt>& getInterceptPairs() { return interceptPairs; }
 
 protected:
-	void removeDuplicateVerts(VertList& affectedVerts, CubeList& affectedCubes, bool deleteDupes);
+	void removeDuplicateVerts(vector<Vertex*>& affectedVerts, vector<VertCube*>& affectedCubes, bool deleteDupes);
 	void moveVertsAndTest(const Array<Vertex*>& arr, float diff);
 	void mergeVerticesOneOwner(Vertex* firstSelected, Vertex* secondSelected, MergeActionType mergeAction);
 	void mergeVerticesBothOneOwner(Vertex* firstSelected, Vertex* secondSelected, MergeActionType mergeAction);

@@ -1,5 +1,8 @@
 #include <utility>
 #include "Panel.h"
+
+#include <Definitions.h>
+
 #include "CommonGfx.h"
 #include "Texture.h"
 #include "CursorHelper.h"
@@ -18,7 +21,6 @@
 #include "../../Util/Util.h"
 
 int panelCount = 0;
-
 
 Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
 		SingletonAccessor		(repo, name)
@@ -96,7 +98,6 @@ Panel::~Panel() {
     gfx = nullptr;
 }
 
-
 void Panel::render() {
 	// should only be held on mesh deletions
 	ScopedLock sl(renderLock);
@@ -109,8 +110,9 @@ void Panel::render() {
 	clear();
 	drawBackground();
 
-	if(shouldBakeTextures)
+	if(shouldBakeTextures) {
 		bakeTextures();
+	}
 
 	bool drawVerts = ! getSetting(ViewVertsOnlyOnHover) || mouseFlag(MouseOver);
 
@@ -121,8 +123,9 @@ void Panel::render() {
 
 	drawCurvesAndSurfaces();
 
-	if(drawLinesAfterFill && drawVerts)
+	if(drawLinesAfterFill && drawVerts) {
 		drawInterceptLines();
+	}
 
     drawOutline();
     postCurveDraw();
@@ -144,17 +147,18 @@ void Panel::render() {
         drawDeformerTags();
     }
 
-    if (mouseFlag(MouseOver))
-        drawFinalSelection();
+    if (mouseFlag(MouseOver)) {
+	    drawFinalSelection();
+    }
 
 	drawPencilPath();
 
-	if(actionIs(BoxSelecting))
+	if(actionIs(BoxSelecting)) {
 		drawSelectionRectangle();
+	}
 
 	CHECK_ERRORS
 }
-
 
 void Panel::constrainZoom() {
 	ZoomRect& rect = zoomPanel->rect;
@@ -170,25 +174,24 @@ void Panel::constrainZoom() {
 		rect.x = rect.xMaximum - rect.w;
 }
 
-
 void Panel::drawBackground(bool fillBackground) {
     drawBackground(comp->getBounds(), fillBackground);
 }
 
-
 void Panel::panelResized() {
-    if (interactor)
-        interactor->resizeFinalBoxSelection();
+    if (interactor) {
+	    interactor->resizeFinalBoxSelection();
+    }
 
 	updateNameTexturePos();
 	updateBackground();
 	doExtraResized();
 }
 
-
 void Panel::updateNameTexturePos() {
-    if (nameTexA == nullptr)
-        return;
+    if (nameTexA == nullptr) {
+	    return;
+    }
 
 	bool fromBottom = nameCornerPos.getY() < 0;
 	int w = nameImage.getWidth();
@@ -202,7 +205,6 @@ void Panel::updateNameTexturePos() {
 	nameTexA->rect.translate(offset.getX(), offset.getY());
 	nameTexB->rect = nameTexA->rect;
 }
-
 
 void Panel::updateBackground(bool onlyVerticalBackground) {
     ScopedLock sl(renderLock);
@@ -285,7 +287,6 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
 	pendingScaleUpdate = true;
 }
 
-
 void Panel::applyScale(BufferXY& buff) {
     applyScaleX(buff.x);
     applyScaleY(buff.y);
@@ -298,7 +299,6 @@ void Panel::applyScaleX(Buffer<Ipp32f> array) {
     array.add(sumX).mul(multX).add(paddingLeft);
 }
 
-
 void Panel::applyScaleY(Buffer<Ipp32f> array) {
 	float multY = (comp->getHeight() - 2 * vertPadding) / zoomPanel->rect.h;
 	float sumY = 1 - zoomPanel->rect.y;
@@ -306,17 +306,16 @@ void Panel::applyScaleY(Buffer<Ipp32f> array) {
 	array.mul(-1).add(sumY).mul(multY).add(vertPadding);
 }
 
-
 void Panel::applyNoZoomScaleX(Buffer<Ipp32f> array) {
     float multX = (comp->getWidth() - (paddingLeft + paddingRight));
 
     array.mul(multX).add(paddingLeft);
 }
 
-
 void Panel::drawViewableVerts() {
-    if (interactor->depthVerts.empty())
-        return;
+    if (interactor->depthVerts.empty()) {
+	    return;
+    }
 
     int size = 0;
 
@@ -336,7 +335,6 @@ void Panel::drawViewableVerts() {
 	gfx->drawPoints(vertexWhiteRadius, xy, false);
 }
 
-
 void Panel::highlightSelectedVerts() {
     int size = 0;
     {
@@ -344,8 +342,9 @@ void Panel::highlightSelectedVerts() {
 
 		vector<Vertex*>& selected = interactor->getSelected();
 
-		if(selected.empty())
+		if(selected.empty()) {
 			return;
+		}
 
 		bool wrapsVerts = interactor->getRasterizer()->wrapsVertices();
 
@@ -370,9 +369,8 @@ void Panel::highlightSelectedVerts() {
 	}
 
 	gfx->setCurrentColour(0.8f, 0.0f, 0.55f);
-	gfx->drawPoints(vertexSelectedRadius, xy);
+	gfx->drawPoints(vertexSelectedRadius, xy, true, true);
 }
-
 
 void Panel::handlePendingUpdates() {
     if (Util::assignAndWereDifferent(pendingScaleUpdate, false)) {
@@ -402,41 +400,37 @@ void Panel::drawInterceptsAndHighlightClosest() {
     const vector<Intercept>& intercepts = data.intercepts;
 
 	int size = 0;
-	if(intercepts.empty() && interactor->depthVerts.empty())
+	if(intercepts.empty() && interactor->depthVerts.empty()) {
 		return;
+	}
 
 	// it's a bigger circle, so do it first
-	highlightCurrentIntercept();
+	highlightCurrentIntercept(); {
+	    ScopedLock dataLock(data.lock);
+	    size = intercepts.size();
 
-	{
-		ScopedLock dataLock(data.lock);
-		size = intercepts.size();
+    	//  && getSetting(DrawWave) == false
+	    if (interactor->dims.numHidden() > 0) {
+		    prepareBuffers(size);
 
-		if(interactor->dims.numHidden() > 0) //  && getSetting(DrawWave) == false
-        {
-            prepareBuffers(size);
+		    int numGood = 0;
+		    for (auto& icpt: intercepts) {
+			    if (icpt.cube != nullptr) {
+				    xBuffer[numGood] = icpt.x;
+				    yBuffer[numGood] = icpt.y;
 
-            int numGood = 0;
-            foreach(ConstIcptIter, it, intercepts) {
-                if (it->cube != nullptr) {
-                    xBuffer[numGood] = it->x;
-					yBuffer[numGood] = it->y;
-
-					++numGood;
+				    ++numGood;
 				}
 			}
 
-			size = numGood;
-		}
-		else
-		{
+            size = numGood;
+        } else {
 			prepareAndCopy<Intercept>(intercepts);
 		}
 	}
 
 	drawScaledInterceptPoints(size);
 }
-
 
 void Panel::updateVertexSizes() {
 	vertexWhiteRadius		= 2.f;
@@ -455,7 +449,6 @@ void Panel::updateVertexSizes() {
 	}
 }
 
-
 void Panel::drawScaledInterceptPoints(int size) {
     applyScale(xy);
 
@@ -466,7 +459,6 @@ void Panel::drawScaledInterceptPoints(int size) {
 	gfx->drawPoints(vertexWhiteRadius, xy, false);
 }
 
-
 void Panel::drawPencilPath() {
     Vertex2 last;
 	int size = 0;
@@ -475,8 +467,9 @@ void Panel::drawPencilPath() {
 		ScopedLock sl(interactor->getLock());
 		vector<Vertex2>& path = interactor->pencilPath;
 
-		if(path.empty())
+		if(path.empty()) {
 			return;
+		}
 
 		last = interactor->pencilPath.back();
 		size = path.size();
@@ -487,9 +480,8 @@ void Panel::drawPencilPath() {
 	gfx->drawLine(last, interactor->state.currentMouse);
 	gfx->enableSmoothing();
 	gfx->setCurrentColour(1.0f, 0.71f, 0.1f);
-	gfx->drawLineStrip(xy);
+	gfx->drawLineStrip(xy, true, true);
 }
-
 
 void Panel::drawOutline() {
     float right = (float) comp->getWidth();
@@ -515,19 +507,17 @@ void Panel::drawOutline() {
     if (paddingRight + paddingLeft + vertPadding > 0) {
 		gfx->disableSmoothing();
 		gfx->setCurrentColour(0.2f, 0.2f, 0.2f);
-		gfx->drawRect(x1, y1, x2, y2);
+		gfx->drawRect(x1, y1, x2, y2, true);
 		gfx->enableSmoothing();
 	}
 }
-
 
 void Panel::drawFinalSelection() {
     gfx->drawFinalSelection();
 }
 
-
 void Panel::drawSelectionRectangle() {
-    if (interactor == 0)
+    if (interactor == nullptr)
         return;
 
     Rectangle<float> selection = interactor->selection.toFloat();
@@ -547,12 +537,10 @@ void Panel::drawSelectionRectangle() {
 	gfx->enableSmoothing();
 }
 
-
 void Panel::drawBackground(const Rectangle<int>& bounds, bool fillBackground) {
     gfx->drawBackground(bounds, fillBackground);
     gfx->checkErrors();
 }
-
 
 void Panel::applyNoZoomScaleY(Buffer<float> array) {
     float multY = (comp->getHeight() - 2.f * (float) vertPadding);
@@ -561,11 +549,9 @@ void Panel::applyNoZoomScaleY(Buffer<float> array) {
 	array.mul(-1.f).add(sumY).mul(multY).add(vertPadding);
 }
 
-
 void Panel::bakeTexturesNextRepaint() {
     shouldBakeTextures = true;
 }
-
 
 void Panel::setCursor() {
     jassert(comp != nullptr);
@@ -574,9 +560,10 @@ void Panel::setCursor() {
 }
 
 
-bool Panel::createLinePath(Vertex2 first, Vertex2 second, VertCube* cube, int pointDim, bool haveSpeed) {
-    if (cube == nullptr || ! (deformApplicable || speedApplicable))
-		return false;
+bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube* cube, int pointDim, bool haveSpeed) {
+    if (cube == nullptr || ! (deformApplicable || speedApplicable)) {
+	    return false;
+    }
 
 	int phsVsTimeChan 	= cube->deformerAt(Vertex::Time);
 	int ampChan 		= cube->deformerAt(Vertex::Amp);

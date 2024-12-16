@@ -1,4 +1,7 @@
 #include "MeshLibrary.h"
+
+#include <Definitions.h>
+
 #include "EditWatcher.h"
 #include "SingletonRepo.h"
 #include "../Curve/Mesh.h"
@@ -6,8 +9,11 @@
 #include "../Util/CommonEnums.h"
 #include "../UI/IConsole.h"
 
-MeshLibrary::MeshLibrary(SingletonRepo* repo) : SingletonAccessor(repo, "MeshLibrary"),
-                                                dummyGroup(TypeMesh), dummyLayer() {
+MeshLibrary::MeshLibrary(SingletonRepo* repo) :
+        SingletonAccessor(repo, "MeshLibrary")
+    ,   clipboardMesh()
+    ,   dummyGroup(TypeMesh)
+    ,   dummyLayer() {
 }
 
 MeshLibrary::~MeshLibrary() {
@@ -33,9 +39,11 @@ void MeshLibrary::destroyLayer(Layer& layer) {
 void MeshLibrary::destroy() {
     ScopedLock sl(arrayLock);
 
-    for (auto& layerGroup : layerGroups)
-        for (auto& layer : layerGroup.layers)
+    for (auto& layerGroup : layerGroups) {
+        for (auto& layer : layerGroup.layers) {
             destroyLayer(layer);
+        }
+    }
 
     layerGroups.clear();
 }
@@ -58,8 +66,9 @@ void MeshLibrary::moveLayer(int groupId, int fromIndex, int toIndex) {
 }
 
 MeshLibrary::LayerGroup& MeshLibrary::getGroup(int group) {
-    if (group == CommonEnums::Null || group >= layerGroups.size())
+    if (group == CommonEnums::Null || group >= layerGroups.size()) {
         return dummyGroup;
+    }
 
     return layerGroups[group];
 }
@@ -83,18 +92,20 @@ void MeshLibrary::setCurrentMesh(int groupId, Mesh* mesh) {
 MeshLibrary::Layer& MeshLibrary::getCurrentLayer(int groupId) {
     LayerGroup& group = getGroup(groupId);
 
-    if (isPositiveAndBelow(group.current, (int) group.layers.size()))
+    if (isPositiveAndBelow(group.current, (int) group.layers.size())) {
         return group.layers[group.current];
+    }
 
     return dummyLayer;
 }
 
 void MeshLibrary::copyToClipboard(Mesh* mesh, int type) {
     EnvelopeMesh* envMesh;
-    if ((envMesh = dynamic_cast<EnvelopeMesh*>(mesh)) != nullptr)
+    if ((envMesh = dynamic_cast<EnvelopeMesh*>(mesh)) != nullptr) {
         clipboardMesh.envMesh->deepCopy(envMesh);
-    else
+    } else {
         clipboardMesh.mesh->deepCopy(mesh);
+    }
 
     clipboardMesh.type = type;
 }
@@ -126,8 +137,9 @@ bool MeshLibrary::removeLayerKeepingOne(int groupId, int layer) {
 
     LayerGroup& group = getGroup(groupId);
 
-    if (isPositiveAndBelow(layer, (int) group.layers.size()))
+    if (isPositiveAndBelow(layer, (int) group.layers.size())) {
         destroyLayer(group.layers[layer]);
+    }
 
     if (group.layers.size() == 1) {
         group.layers.front() = instantiateLayer(nullptr, group.meshType);
@@ -173,7 +185,6 @@ MeshLibrary::Layer MeshLibrary::instantiateLayer(XmlElement* layerElem, int mesh
     return layer;
 }
 
-
 void MeshLibrary::writeXML(XmlElement* element) const {
     auto* repoElem = new XmlElement("MeshLibrary");
 
@@ -188,8 +199,9 @@ void MeshLibrary::writeXML(XmlElement* element) const {
 
             layer.mesh->writeXML(layerElem);
 
-            if (layer.props != nullptr)
+            if (layer.props != nullptr) {
                 layer.props->writeXML(layerElem);
+            }
 
             groupElem->addChildElement(layerElem);
         }
@@ -200,12 +212,12 @@ void MeshLibrary::writeXML(XmlElement* element) const {
     element->addChildElement(repoElem);
 }
 
-
 bool MeshLibrary::readXML(const XmlElement* element) {
     XmlElement* repoElem = element->getChildByName("MeshLibrary");
 
-    if (repoElem == nullptr)
+    if (repoElem == nullptr) {
         return false;
+    }
 
     ScopedLock sl(arrayLock);
 
@@ -213,12 +225,10 @@ bool MeshLibrary::readXML(const XmlElement* element) {
     listeners.call(&Listener::allLayersDeleted);
     layerGroups.clear();
 
-    forEachXmlChildElementWithTagName(*repoElem, groupElem, "Group")
-    {
+    forEachXmlChildElementWithTagName(*repoElem, groupElem, "Group") {
         LayerGroup group(groupElem->getIntAttribute("mesh-type", TypeMesh));
 
-        forEachXmlChildElementWithTagName(*groupElem, layerElem, "Layer")
-        {
+        forEachXmlChildElementWithTagName(*groupElem, layerElem, "Layer") {
             Layer layer = instantiateLayer(layerElem, group.meshType);
             group.layers.push_back(layer);
         }
@@ -228,7 +238,6 @@ bool MeshLibrary::readXML(const XmlElement* element) {
 
     return true;
 }
-
 
 bool MeshLibrary::Properties::readXML(const XmlElement* layerElem) {
     active = layerElem->getBoolAttribute("active", active);
@@ -243,7 +252,7 @@ bool MeshLibrary::Properties::readXML(const XmlElement* layerElem) {
 }
 
 bool MeshLibrary::EnvProps::readXML(const XmlElement* layerElem) {
-    MeshLibrary::Properties::readXML(layerElem);
+    Properties::readXML(layerElem);
 
     dynamic = layerElem->getBoolAttribute("dynamic", dynamic);
     global = layerElem->getBoolAttribute("global", global);
@@ -314,9 +323,9 @@ bool MeshLibrary::layerRemoved(int layerGroup, int index) {
                 for (int j = 0; j < group.size(); ++j) {
                     Layer& layer = group.layers[j];
 
-                    foreach(CubeIter, it, layer.mesh->getCubes()) {
+                    for(auto& cube : layer.mesh->getCubes()) {
                         for (int k = Vertex::Time; k <= Vertex::Curve; ++k) {
-                            char& chan = (*it)->deformerAt(k);
+                            char& chan = cube->deformerAt(k);
 
                             if (chan > index) {
                                 --chan;
@@ -334,6 +343,9 @@ bool MeshLibrary::layerRemoved(int layerGroup, int index) {
         }
 
         case LayerGroups::GroupScratch:
+            break;
+
+        default:
             break;
     }
 
@@ -379,18 +391,20 @@ bool MeshLibrary::layerChanged(int layerGroup, int index) {
             srcGroup.sources.clear();
 
             for (int i = 0; i < numElementsInArray(types); ++i) {
-                if (i == LayerGroups::GroupDeformer)
+                if (i == LayerGroups::GroupDeformer) {
                     continue;
+                }
 
                 LayerGroup& group = layerGroups[i];
 
                 for (int j = 0; j < group.size(); ++j) {
-                    foreach(CubeIter, it, group[j].mesh->getCubes()) {
+                    for(auto& cube : group[j].mesh->getCubes()) {
                         for (int d = 0; d <= Vertex::Curve; ++d) {
-                            char& deformChan = (*it)->deformerAt(d);
+                            char& deformChan = cube->deformerAt(d);
 
-                            if (deformChan >= 0)
+                            if (deformChan >= 0) {
                                 group.sources[deformChan].add(types[i]);
+                            }
                         }
                     }
                 }

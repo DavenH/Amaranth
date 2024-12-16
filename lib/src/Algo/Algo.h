@@ -1,8 +1,6 @@
-#ifndef ALGO_H_
-#define ALGO_H_
+#pragma once
 
 #include "AutoModeller.h"
-#include "CiliumTransform.h"
 #include "Convolver.h"
 #include "ConvReverb.h"
 #include "FFT.h"
@@ -15,5 +13,3 @@
 #include "Resampling.h"
 #include "Spectrogram.h"
 
-
-#endif

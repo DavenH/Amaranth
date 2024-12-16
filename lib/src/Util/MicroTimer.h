@@ -1,11 +1,9 @@
 #pragma once
 #include "JuceHeader.h"
 
-#include <stdio.h>
 #include <ipp.h>
 
 class MicroTimer {
-private:
     Ipp64u startTicks, endTicks;
     double iticks;
     Ipp64u startTick, endTick;

@@ -14,9 +14,7 @@ VertCube::VertCube() {
 VertCube::VertCube(Mesh* mesh) {
     init();
 
-    for (int i = 0; i < numVerts; ++i) {
-		Vertex*& vert = lineVerts[i];
-
+    for (auto & vert : lineVerts) {
 		vert = new Vertex();
 		vert->addOwner(this);
 		mesh->addVertex(vert);
@@ -33,15 +31,17 @@ VertCube::VertCube(VertCube& cube) {
 VertCube::~VertCube() {
     init();
 
-	for(int i = 0; i < numVerts; ++i)
-		lineVerts[i] = nullptr;
+	for(auto& lineVert : lineVerts) {
+		lineVert = nullptr;
+	}
 }
 
 void VertCube::init() {
     float defaultComp = 0.5f + NumberUtils::toDecibels(1.5) / 60.f;
 
-	for(int i = 0; i < Vertex::numElements; ++i)
-		dfrmGains[i] = 0.5;
+	for(float& dfrmGain : dfrmGains) {
+		dfrmGain = 0.5;
+	}
 
 	dfrmGains[Vertex::Time] = defaultComp;
 
@@ -507,8 +507,8 @@ bool VertCube::poleOf(int dim, Vertex const* poleVert) const {
 }
 
 void VertCube::orphanVerts() {
-    for (int i = 0; i < numVerts; ++i)
-		lineVerts[i]->removeOwner(this);
+    for (auto& lineVert : lineVerts)
+		lineVert->removeOwner(this);
 }
 
 void VertCube::setPropertiesFrom(VertCube const* other) {
@@ -519,28 +519,29 @@ void VertCube::setPropertiesFrom(VertCube const* other) {
 }
 
 void VertCube::resetProperties() {
-    for (int i = 0; i < Vertex::numElements; ++i)
-		dfrmChans[i] = CommonEnums::Null;
+    for (char& dfrmChan : dfrmChans) {
+	    dfrmChan = CommonEnums::Null;
+    }
 }
 
 void VertCube::validate() {
-    for (int i = 0; i < numVerts; ++i) {
-        Vertex* vert = lineVerts[i];
-
-		jassert(vert != nullptr);
+    for (auto vert : lineVerts) {
+       	jassert(vert != nullptr);
 		jassert(vert != reinterpret_cast<Vertex*>(0xcdcdcdcd));
 		jassert(vert->isOwnedBy(this));
 	}
 }
 
 float VertCube::deformerAbsGain(int dim) const {
-    if (dim < 0)
-        return CommonEnums::Null;
+    if (dim < 0) {
+	    return CommonEnums::Null;
+    }
 
 	float value = dfrmGainAt(dim);
 
-	if(value == 0.5)
+	if(value == 0.5) {
 		return 1;
+	}
 
 	return NumberUtils::fromDecibels(60 * (value - 0.5));
 }
@@ -550,8 +551,9 @@ bool VertCube::hasCommonEdgeAlong(int dim, VertCube const* cube) const {
 	Face highFace = getFace(dim, HighPole);
 
     for (int i = 0; i < numVerts / 2; ++i) {
-		if(cube->containsEdge(Edge(lowFace[i], highFace[i])))
+		if(cube->containsEdge(Edge(lowFace[i], highFace[i]))) {
 			return true;
+		}
 	}
 
 	return false;
@@ -572,8 +574,9 @@ bool VertCube::dimensionsAt(float x, int axis, Vertex const* one, Vertex const* 
 
 	float mult = (x - one->values[axis]) / diff;
 
-	if(mult < 0.f || mult > 1.f)
+	if(mult < 0.f || mult > 1.f) {
 		return false;
+	}
 
 	NumberUtils::constrain(mult, 0.f, 1.f);
 
@@ -624,8 +627,9 @@ void VertCube::getAdjacentCubes(int dim, Array<VertCube*>& cubes, ReductionData&
 	newCubes.add(getAdjacentCube(dimY, HighPole));
 
 	for(auto cube : newCubes) {
-		if(cube != nullptr && ! cubes.contains(cube))
+		if(cube != nullptr && ! cubes.contains(cube)) {
 			cube->getAdjacentCubes(dim, cubes, data, pos);
+		}
 	}
 }
 
@@ -708,9 +712,11 @@ float VertCube::getPortionAlong(int dim, const MorphPosition& morph) const {
 }
 
 bool VertCube::isDeformed() const {
-	for(int i = 0; i < Vertex::numElements; ++i)
-		if(deformerAt(i) >= 0)
+	for(int i = 0; i < Vertex::numElements; ++i) {
+		if(deformerAt(i) >= 0) {
 			return true;
+		}
+	}
 
 	return false;
 }
@@ -728,7 +734,7 @@ void VertCube::Face::set(int index, Vertex* vert) {
 Array<Vertex*> VertCube::Face::toArray() const {
 	Vertex* verts[] = { v00, v01, v10, v11 };
 
-	return Array<Vertex*>(verts, 4);
+	return {verts, 4};
 }
 
 bool VertCube::Face::merge(VertCube const* cube, float pos) {
@@ -755,6 +761,7 @@ Vertex* VertCube::Face::operator[](const int index) const {
 }
 
 void VertCube::Face::removeOwner(VertCube* cube) {
-    for(int i = 0; i < size(); ++i)
-		(*this)[i]->removeOwner(cube);
+    for(int i = 0; i < size(); ++i) {
+	    (*this)[i]->removeOwner(cube);
+    }
 }

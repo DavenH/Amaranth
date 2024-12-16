@@ -1,148 +1,140 @@
 #include <iostream>
 #include "Document.h"
+
+#include <Util/ScopedFunction.h>
+
 #include "Savable.h"
-#include "../Settings.h"
 #include "../AppConstants.h"
 #include "../SingletonRepo.h"
 #include "../../Util/Util.h"
 #include "../../UI/IConsole.h"
 #include "../../Definitions.h"
 
-
 bool Document::open(const String& filename) {
     File file(filename);
 
-	dout << "opening " << file.getFileName() << "\n";
+    std::cout << "opening " << file.getFileName() << "\n";
 
-	if(! file.existsAsFile())
-	{
-		dout << "file " << filename << " does not exist\n";
-		return false;
-	}
+    if (!file.existsAsFile()) {
+        std::cout << "file " << filename << " does not exist\n";
+        return false;
+    }
 
     std::unique_ptr<InputStream> stream(file.createInputStream());
-	return open(stream.get());
+    return open(stream.get());
 }
 
-
 bool Document::validate() {
-    if (validator == nullptr)
-		return true;
+    if (validator == nullptr) {
+        return true;
+    }
 
-	if(validator->isDemoMode())
-	{
-		showMsg("Saving presets is disabled in this demo");
-		return false;
-	}
+    if (validator->isDemoMode()) {
+        showMsg("Saving presets is disabled in this demo");
+        return false;
+    }
 
-	if(validator->isBetaMode())
-	{
-		int64 smallTime = Time::currentTimeMillis() / 1000;
-		if(smallTime > Constants::BetaExpirySecs)
-		{
-			showMsg("Beta expired, please update to the latest");
-			return false;
-		}
-	}
-
-	return true;
+    return true;
 }
 
 void Document::save(const String& filename) {
-    if (!validate())
+    if (!validate()) {
         return;
+    }
 
-	File saveFile(filename);
+    File saveFile(filename);
 
-	if(saveFile.existsAsFile())
-		(void) saveFile.deleteFile();
+    if (saveFile.existsAsFile()) {
+        (void) saveFile.deleteFile();
+    }
 
     std::unique_ptr outStream(saveFile.createOutputStream());
 
-	save(outStream.get());
+    save(outStream.get());
 }
 
-
 void Document::save(OutputStream* outStream) {
-    if (!validate())
-		return;
+    if (!validate()) {
+        return;
+    }
 
   #ifndef DEMO_VERSION
     if (outStream == nullptr) {
-		showMsg("Problem saving preset");
-		return;
-	}
+        showMsg("Problem saving preset");
+        return;
+    }
 
-	std::unique_ptr<XmlElement> topelem(new XmlElement("Preset"));
-	topelem->setAttribute("VersionValue", getRealConstant(ProductVersion));
+    std::unique_ptr<XmlElement> topelem(new XmlElement("Preset"));
+    topelem->setAttribute("VersionValue", getRealConstant(ProductVersion));
 
-	for(auto savableItem : savableItems)
-		savableItem->writeXML(topelem.get());
+    for (auto savableItem: savableItems) {
+        savableItem->writeXML(topelem.get());
+    }
 
-	saveHeader(outStream, details, Constants::DocMagicCode);
+    saveHeader(outStream, details, getConstant(DocMagicCode));
 
-	String docString = topelem->toString();
-	CharPointer_UTF8 utf8Data = docString.toUTF8();
+    String docString = topelem->toString();
+    CharPointer_UTF8 utf8Data = docString.toUTF8();
 
-	GZIPCompressorOutputStream gzipStream(outStream, 5);
-	gzipStream.write(utf8Data, utf8Data.sizeInBytes());
-	gzipStream.flush();
+    GZIPCompressorOutputStream gzipStream(outStream, 5);
+    gzipStream.write(utf8Data, utf8Data.sizeInBytes());
+    gzipStream.flush();
   #endif
 }
 
 #ifdef JUCE_DEBUG
-String Document::getPresetString()
-{
-	std::unique_ptr<XmlElement> topelem(new XmlElement("Preset"));
-	topelem->setAttribute("VersionValue", getRealConstant(ProductVersion));
+String Document::getPresetString() {
+    std::unique_ptr<XmlElement> topelem(new XmlElement("Preset"));
+    topelem->setAttribute("VersionValue", getRealConstant(ProductVersion));
 
-	for(auto savableItem : savableItems)
-		savableItem->writeXML(topelem);
+    for (auto savableItem: savableItems) {
+        savableItem->writeXML(topelem.get());
+    }
 
-	return topelem->toString();
+    return topelem->toString();
 }
 #endif
 
-
 bool Document::open(InputStream* stream) {
     // stream can have additional header info
-	// from plugin's config settings
-	int64 startPosition = stream->getPosition();
+    // from plugin's config settings
+    int64 startPosition = stream->getPosition();
 
-	if(! readHeader(stream, details, Constants::DocMagicCode))
-		return false;
-		
-	listeners.call(&Listener::documentAboutToLoad);
+    if (!readHeader(stream, details, Constants::DocMagicCode)) {
+        return false;
+    }
 
-	stream->setPosition(startPosition + (int64) headerSizeBytes);
+    ScopedLambda loadToggle(
+        [this] { listeners.call(&Listener::documentAboutToLoad); },
+        [this] { listeners.call(&Listener::documentHasLoaded); }
+    );
 
-	GZIPDecompressorInputStream decompStream(stream, false);
-	String presetDocString(decompStream.readEntireStreamAsString());
+    stream->setPosition(startPosition + (int64) headerSizeBytes);
 
-	XmlDocument presetDoc(presetDocString);
-	std::unique_ptr topelem(presetDoc.getDocumentElement());
+    GZIPDecompressorInputStream decompStream(stream, false);
+    String presetDocString(decompStream.readEntireStreamAsString());
 
-	jassert(topelem != nullptr);
+    XmlDocument presetDoc(presetDocString);
+    std::unique_ptr topelem(presetDoc.getDocumentElement());
+
+    jassert(topelem != nullptr);
 
     if (topelem) {
-        for (auto savableItem : savableItems) {
-            if (!savableItem->readXML(topelem.get()))
-				continue;
-		}
-	}
+        for (auto savableItem: savableItems) {
+            (void) savableItem->readXML(topelem.get());
+        }
+    }
 
-	listeners.call(&Listener::documentHasLoaded);
-
-	return true;
+    return true;
 }
 
-
 bool Document::saveHeaderValidated(DocumentDetails& updatedDetails) {
-	if(! validate())
-		return false;
+    if (!validate()) {
+        return false;
+    }
 
-	File file(updatedDetails.getFilename());
-    std::unique_ptr<FileOutputStream> out(file.createOutputStream());
+    File file(updatedDetails.getFilename());
+    std::unique_ptr out(file.createOutputStream());
 
-	return saveHeader(out.get(), updatedDetails, getConstant(DocMagicCode), true, true);
+    return saveHeader(out.get(), updatedDetails, getConstant(DocMagicCode), true, true);
 }

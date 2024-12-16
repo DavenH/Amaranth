@@ -7,11 +7,6 @@
 #include "../Obj/MorphPosition.h"
 #include "../Util/CommonEnums.h"
 
-#include
-#include
-#include
-#include
-
 using std::vector;
 using std::map;
 
@@ -44,7 +39,7 @@ public:
     /* ----------------------------------------------------------------------------- */
 
 	struct Properties : Savable {
-		virtual ~Properties() = default;
+		~Properties() override = default;
 		bool readXML(const XmlElement* element) override;
 		void writeXML(XmlElement* element) const override;
 
@@ -64,7 +59,7 @@ public:
 		void writeXML(XmlElement* element) const override;
 
 		float getEffectiveScale() const { return scale < 0 ? 1.f / -scale : scale; }
-		bool isOperating()				{ return dynamic || global || scale != 1 || tempoSync || logarithmic; }
+		bool isOperating() const		{ return dynamic || global || scale != 1 || tempoSync || logarithmic; }
 
 		bool  dynamic, tempoSync, global, logarithmic;
 		int   scale;

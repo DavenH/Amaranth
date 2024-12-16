@@ -176,7 +176,7 @@ void Multisample::parseRanges() {
         vector<NumberCode> codeSets;
 
     	for (auto sample : samples) {
-            String name = sample->file.getFileNameWithoutExtension();
+            String name = sample->lastLoadedFilePath;
 
             vector<int> ints = Util::getIntegersInString(sample->uniqueName);
 

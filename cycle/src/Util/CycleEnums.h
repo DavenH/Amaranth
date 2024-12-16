@@ -93,6 +93,7 @@ namespace AppSettings {
         NativeDialogs,
         FilterEnabled,
         PhaseEnabled,
+        PlayerSize,
         TimeEnabled,
         UseYellowDepth,
         UseRedDepth,

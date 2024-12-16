@@ -22,12 +22,12 @@ public:
 	void envelopeVisibilityChanged();
 	void moveTimeUIs(int viewStage, int lastViewStage);
 	void viewStageChanged(bool force);
-	void setDspFXConnections();
-	void setTimeFreqChildren(bool toFFT);
+	void setDspFXConnections() const;
+	void setTimeFreqChildren(bool toFFT) const;
 	void setTimeFreqParents();
-	void removeTimeFreqChildren(bool fromFFT);
-	void removeTimeFreqParents();
-	void removeDspFXConnections();
+	void removeTimeFreqChildren(bool fromFFT) const;
+	void removeTimeFreqParents() const;
+	void removeDspFXConnections() const;
 	void refreshConnections(Node* destNode, const Array<int>& meshTypes);
 	void layerChanged(int layerGroup, int index) override;
 

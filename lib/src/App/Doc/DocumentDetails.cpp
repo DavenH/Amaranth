@@ -19,13 +19,10 @@ DocumentDetails::DocumentDetails() :
 	,	newlyDownloaded	(false) {
 }
 
-DocumentDetails::~DocumentDetails() {
-}
-
-
 bool DocumentDetails::readXML(const XmlElement* element) {
-	if(element == nullptr)
+	if(element == nullptr) {
 		return false;
+	}
 
 	const XmlElement* detailsElem = element->getChildByName("PresetDetails");
 
@@ -39,14 +36,17 @@ bool DocumentDetails::readXML(const XmlElement* element) {
 	pack			= detailsElem->getStringAttribute("pack", 			"none");
 	productVersion	= detailsElem->getDoubleAttribute("productVersion", productVersion);
 
-	if(pack.isEmpty())
+	if(pack.isEmpty()) {
 		pack = "none";
+	}
 
-	if(author.isEmpty())
+	if(author.isEmpty()) {
 		author = "Anonymous";
+	}
 
-	if(name.isEmpty())
+	if(name.isEmpty()) {
 		name = "Untitled";
+	}
 
 	String dateString = detailsElem->getStringAttribute("date", String(Time::currentTimeMillis()));
 	dateMillis 		  = dateString.getLargeIntValue();
@@ -57,8 +57,9 @@ bool DocumentDetails::readXML(const XmlElement* element) {
 	tags.clear();
 
     forEachXmlChildElementWithTagName(*detailsElem, tagElem, "Tag") {
-        if (tagElem == nullptr)
-			return false;
+        if (tagElem == nullptr) {
+	        return false;
+        }
 
 		String tag = tagElem->getStringAttribute("value", String());
 
@@ -96,7 +97,6 @@ void DocumentDetails::writeXML(XmlElement* detailsElem) const {
 //	element->addChildElement(detailsElem);
 }
 
-
 void DocumentDetails::reset() {
 	name 			= "Untitled";
 	author 			= "Anonymous";
@@ -112,7 +112,6 @@ void DocumentDetails::reset() {
 	isWav 			= false;
 	newlyDownloaded = false;
 }
-
 
 bool DocumentDetails::operator<(const DocumentDetails& details) const {
     if (isWav && sortColumn == Name) {
@@ -130,19 +129,22 @@ bool DocumentDetails::operator<(const DocumentDetails& details) const {
 		case Size:		return sizeBytes 		< details.getSizeBytes();
 		case Version:	return productVersion 	< details.getProductVersion();
 		case Tag: {
-			if(tags.size() == 0 && details.tags.size() == 0)
+			if(tags.size() == 0 && details.tags.size() == 0) {
 				return name.compareIgnoreCase(details.getName()) < 0;
+			}
 
-			if(tags.size() > 0 && details.tags.size() > 0)
+			if(tags.size() > 0 && details.tags.size() > 0) {
 				return tags[0].compareIgnoreCase(details.tags[0]) < 0;
-			else
-				return tags.size() > details.tags.size();
+			}
+			return tags.size() > details.tags.size();
 		}
+
+    	default:
+    		break;
 	}
 
 	return false;
 }
-
 
 DocumentDetails& DocumentDetails::operator=(const DocumentDetails& other) {
 	author 			= other.author;
@@ -162,7 +164,6 @@ DocumentDetails& DocumentDetails::operator=(const DocumentDetails& other) {
 
 	return *this;
 }
-
 
 bool DocumentDetails::operator==(const DocumentDetails& deets) const {
 	return 	name 	== deets.name 	&&

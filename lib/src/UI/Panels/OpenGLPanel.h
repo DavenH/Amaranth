@@ -2,7 +2,6 @@
 #include <vector>
 
 #include "Panel2D.h"
-#include "OpenGL.h"
 #include "OpenGLBase.h"
 #include "PanelOwner.h"
 #include "../../App/SingletonAccessor.h"
@@ -23,20 +22,20 @@ class OpenGLPanel :
 	,	public PanelOwner<Panel2D> {
 public:
 	OpenGLPanel(SingletonRepo* repo, Panel2D* panel);
-	virtual ~OpenGLPanel();
+	~OpenGLPanel() override;
 
 	/* Opengl basics */
-	void openGLContextClosing();
-	void clear();
-	void renderOpenGL();
-	void newOpenGLContextCreated();
+	void openGLContextClosing() override;
+	void clear() override;
+	void renderOpenGL() override;
+	void newOpenGLContextCreated() override;
 	void deactivateContext();
 	void activateContext();
-	void resized();
+	void resized() override;
 	void initRender();
 
-	void activate() { activateContext(); }
-	void deactivate() { deactivateContext(); }
+	void activate() override { activateContext(); }
+	void deactivate() override { deactivateContext(); }
 
 protected:
 	JUCE_LEAK_DETECTOR(OpenGLPanel)

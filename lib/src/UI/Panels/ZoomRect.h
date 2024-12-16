@@ -1,5 +1,4 @@
-#ifndef _zoomrect_h
-#define _zoomrect_h
+#pragma once
 
 class ZoomRect {
 public:
@@ -17,7 +16,7 @@ public:
               yMinimum(0.f), yMaximum(1.f) {
     }
 
-    bool operator==(const ZoomRect& other) {
+    bool operator==(const ZoomRect& other) const {
         return x == other.x && y == other.y && w == other.w && h == other.h;
     }
 
@@ -25,9 +24,7 @@ public:
         return !this->operator==(other);
     }
 
-    bool isIdentity() {
+    bool isIdentity() const {
         return x == 0 && y == 0 && w == 1 && h == 1;
     }
 };
-
-#endif

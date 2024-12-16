@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Color.h"
 #include "../Curve/Vertex2.h"
 

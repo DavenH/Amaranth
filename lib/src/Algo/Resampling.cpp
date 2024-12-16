@@ -4,24 +4,29 @@
 Resampling::Resampling() = default;
 
 float Resampling::at(float x, const vector<Vertex2>& points, int& currentIndex) {
-	if (points.empty())
+	if (points.empty()) {
 		return 0;
+	}
 
 	if(points.size() == 2)
 		return lerp(points[0].x, points[0].y, points[1].x, points[1].y, x);
 
-	if(x == points.front().x)
+	if(x == points.front().x) {
 		return points.front().y;
+	}
 
-	if(x == points.back().x)
+	if(x == points.back().x) {
 		return points.back().y;
+	}
 
-	while (currentIndex > 0 && x < points[currentIndex].x)
+	while (currentIndex > 0 && x < points[currentIndex].x) {
 		--currentIndex;
+	}
 
 	int limit = points.size() - 1;
-	while (currentIndex < limit && x > points[currentIndex].x)
+	while (currentIndex < limit && x > points[currentIndex].x) {
 		++currentIndex;
+	}
 
 	const Vertex2& one = points[currentIndex - 1];
 	const Vertex2& two = points[currentIndex];
@@ -32,7 +37,7 @@ float Resampling::at(float x, const vector<Vertex2>& points, int& currentIndex) 
 
 void Resampling::linResample(
         const Buffer<float>& source,
-        const Buffer<float>& dest,
+        Buffer<float> dest,
         double sourceToDestRatio,
         double& phase) {
 	int srcSizeSub1 = source.size() - 1;
@@ -104,7 +109,6 @@ void Resampling::linResample2(
 	padB = source[source.size() - 1];
 }
 
-
 float Resampling::hermite6_3(float x, float yn2, float yn1, float y0, float y1, float y2, float y3) {
 	float c0 = y0;
 	float c1 = 1/12.f * (yn2 - y2) + 2/3.f  * (y1 - yn1);
@@ -113,7 +117,6 @@ float Resampling::hermite6_3(float x, float yn2, float yn1, float y0, float y1, 
 
 	return ((c3 * x + c2) * x + c1) * x + c0;
 }
-
 
 float Resampling::bspline6_5(float x, float yn2, float yn1, float y0, float y1, float y2, float y3) {
 	float c0, c1, c2, c3, c4, c5;
@@ -134,7 +137,6 @@ float Resampling::bspline6_5(float x, float yn2, float yn1, float y0, float y1, 
 
 	return 0.73170767f * (((((c5 * x + c4) * x + c3) * x + c2) * x + c1) * x + c0);
 }
-
 
 void Resampling::resample(
         const Buffer<float>& source,
@@ -168,7 +170,7 @@ void Resampling::resample(
         trunc = jmax(-2, (int) floorf(phase));
 		jassert(trunc >= -2);
 
-		x 			= jmax(0., phase - trunc);
+		x = jmax(0., phase - trunc);
 		float** p 	= pads[trunc + 2];
 
 		switch(algo) {
@@ -182,6 +184,9 @@ void Resampling::resample(
 
 			case BSpline:
 				dest[start++] = bspline6_5(x, *p[0], *p[1], *p[2], *p[3], *p[4], *p[5]);
+				break;
+
+			default:
 				break;
 		}
 

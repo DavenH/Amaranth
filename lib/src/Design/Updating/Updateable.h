@@ -1,6 +1,8 @@
 #pragma once
 #include "JuceHeader.h"
 
+using namespace juce;
+
 class Updateable {
 public:
     virtual ~Updateable() = default;

@@ -1,6 +1,8 @@
-#include <limits.h>
+#include <climits>
 #include "Texture.h"
 #include "ScopedGL.h"
+
+using namespace gl;
 
 TextureGL::TextureGL() :
 		id			(UINT_MAX)
@@ -11,13 +13,13 @@ TextureGL::TextureGL(Image& image, int blendFunc) :
 		Texture		(image)
 	,	id			(UINT_MAX)
 	, 	blendFunc	(blendFunc) {
-    create();
+	TextureGL::create();
 }
 
-
 void TextureGL::bind() {
-    if (image.isNull())
-        return;
+    if (image.isNull()) {
+	    return;
+    }
 
 	jassert(id != UINT_MAX);
 
@@ -45,11 +47,9 @@ void TextureGL::bind() {
 	        pixels);
 }
 
-
 void TextureGL::create() {
     glGenTextures(1, &id);
 }
-
 
 void TextureGL::clear() {
     if (id != UINT_MAX) {
@@ -57,7 +57,6 @@ void TextureGL::clear() {
         id = UINT_MAX;
     }
 }
-
 
 void TextureGL::draw() {
     if (blendFunc != GL_SRC_ALPHA)
@@ -97,7 +96,6 @@ void TextureGL::draw() {
 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
-
 
 void TextureGL::drawSubImage(const Rectangle<float>& pos) {
     src = pos;

@@ -41,19 +41,19 @@ public:
 
 	Array<DocumentDetails, CriticalSection>& getAllItems();
 	bool containsString(DocumentDetails& details, const String& str);
-	bool keyPressed(const KeyPress& key);
+	bool keyPressed(const KeyPress& key) override;
 	bool removeDetailsFrom(Array<DocumentDetails, CriticalSection>& list, int code);
-	Component* refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected, Component* existingComponentToUpdate);
+	Component* refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected, Component* existingComponentToUpdate) override;
 	File getPresetSettingsFile();
 	IconButton* createIconButton(const DocumentDetails& details, int rowNumber, int columnId);
 
-	int getColumnAutoSizeWidth (int columnId);
-	int getIndexOfSelected();
-	int getNumRows();
+	int getColumnAutoSizeWidth (int columnId) override;
+	int getIndexOfSelected() const;
+	int getNumRows() override;
 
 	String downloadPreset(DocumentDetails& deets);
 	String getProgramName(int index) const;
-	String getWavDirectory() { return wavDirectory.getText(); }
+	String getWavDirectory() const { return wavDirectory.getText(); }
 	String populateRemoteNames();
 
 	void addFilesToArray(Array<DocumentDetails, CriticalSection>& list, const String& path, const String& extension);
@@ -63,17 +63,17 @@ public:
 	void addToRevisionMap(const Array<DocumentDetails, CriticalSection>& array);
 	void addToRevisionMap(const DocumentDetails& deets);
 
-	void backgroundClicked(const MouseEvent&);
-	void buttonClicked(Button* button);
-	void cellClicked (int rowNumber, int columnId, const MouseEvent& e);
-	void cellDoubleClicked (int rowNumber, int columnId, const MouseEvent& e);
+	void backgroundClicked(const MouseEvent&) override;
+	void buttonClicked(Button* button) override;
+	void cellClicked (int rowNumber, int columnId, const MouseEvent& e) override;
+	void cellDoubleClicked (int rowNumber, int columnId, const MouseEvent& e) override;
 	void cleanup();
 	void clearSearch();
 	void comboBoxChanged (ComboBox* comboBoxThatHasChanged);
-    void componentMovedOrResized (bool wasMoved, bool wasResized) {}
-    void componentPeerChanged() {}
-    void componentVisibilityChanged();
-	void doChangeUpdate();
+    void componentMovedOrResized (bool wasMoved, bool wasResized) override {}
+    void componentPeerChanged() override {}
+    void componentVisibilityChanged() override;
+	void doChangeUpdate() override;
 	void downloadCommunityDocumentDetails();
 	void grabSearchFocus();
 	void handleAsyncUpdate();
@@ -83,25 +83,25 @@ public:
 	void loadItem(int itemIndex, bool ignoreSave = false);
 	void loadPendingItem();
 	void paint(Graphics& g);
-	void paintCell(Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected);
-	void paintRowBackground(Graphics& g, int rowNumber, int width, int height, bool rowIsSelected);
+	void paintCell(Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
+	void paintRowBackground(Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) override;
 	void presetDirUpdated();
 	void ratingChanged(float rating, int row);
 	void readPresetSettings();
 	void refresh();
 	void resetListAndLoadItem(int itemIndex);
-	void resized();
-	void returnKeyPressed (int lastRowSelected);
-	void selectedRowsChanged (int lastRowSelected);
+	void resized() override;
+	void returnKeyPressed (int lastRowSelected) override;
+	void selectedRowsChanged (int lastRowSelected) override;
 	void setUploadResponse(const String& response);
 	void setWavDirectory(const String& dir);
-	void sortOrderChanged (int newSortColumnId, bool isForwards);
+	void sortOrderChanged (int newSortColumnId, bool isForwards) override;
 	void startSpinAnimation();
 	void stopSpinAnimation();
-	void timerCallback(int id);
+	void timerCallback(int id) override;
 	void triggerAsyncLoad(int index);
 	void triggerButtonClick(ButtonEnum button);
-	void triggerLoadItem();
+	void triggerLoadItem() override;
 	void updateCurrentPreset(const String& name);
 	void updateNetItems(const Array<DocumentDetails, CriticalSection>& deets);
 	void updatePresetIndex();
@@ -115,29 +115,35 @@ private:
 		}
 
 		void run();
+
 		void setFile(const File& file) { uploadFile = file; }
 
 	private:
 		File uploadFile;
 	};
 
-	class DownloadDetailsThread : public Thread, public SingletonAccessor
-	{
+	class DownloadDetailsThread : public Thread, public SingletonAccessor {
 	public:
-		DownloadDetailsThread(SingletonRepo* repo) : Thread("DownloadDetailsThread"), SingletonAccessor(repo, "DownloadDetailsThread") {}
+		DownloadDetailsThread(SingletonRepo* repo) : Thread("DownloadDetailsThread"),
+		                                             SingletonAccessor(repo, "DownloadDetailsThread") {
+		}
 
 		void run();
 
 	private:
 	};
 
-	class DownloadPresetThread : public Thread, public SingletonAccessor
-	{
+	class DownloadPresetThread : public Thread, public SingletonAccessor {
 	public:
-		DownloadPresetThread(SingletonRepo* repo) : Thread("DownloadPresetThread"), SingletonAccessor(repo, "DownloadPresetThread") {}
+		DownloadPresetThread(SingletonRepo* repo) : Thread("DownloadPresetThread"),
+		                                            SingletonAccessor(repo, "DownloadPresetThread") {
+		}
+
 		void run();
+
 		void setDetails(const DocumentDetails& deets) { this->deets = deets; }
 		DocumentDetails& getDetails() { return deets; }
+
 	private:
 		DocumentDetails deets;
 	};

@@ -170,6 +170,7 @@ void CycleUpdater::moveTimeUIs(int viewStage, int lastViewStage) {
 		case ViewStages::PostEnvelopes: fromNode = envProc; 	break;
 		case ViewStages::PostSpectrum: 	fromNode = spectProc; 	break;
 		case ViewStages::PostFX: 		fromNode = effectsProc; break;
+    	default: break;
 	}
 
     switch (viewStage) {
@@ -177,6 +178,7 @@ void CycleUpdater::moveTimeUIs(int viewStage, int lastViewStage) {
 		case ViewStages::PostEnvelopes: toNode = envProc; 		break;
 		case ViewStages::PostSpectrum: 	toNode = spectProc; 	break;
 		case ViewStages::PostFX: 		toNode = effectsProc; 	break;
+    	default: break;
 	}
 
 	jassert(fromNode != nullptr);
@@ -186,14 +188,14 @@ void CycleUpdater::moveTimeUIs(int viewStage, int lastViewStage) {
 	timeUIs->updatesAfter(toNode);
 }
 
-void CycleUpdater::removeDspFXConnections() {
+void CycleUpdater::removeDspFXConnections() const {
 	effectsProc	->doesntUpdateAfter(irModelRast);
 	effectsProc	->doesntUpdateAfter(wshpRast);
 	eqlzerUI	->doesntUpdateAfter(effectsProc);
 	envProc		->doesntUpdateAfter(unison);
 }
 
-void CycleUpdater::setDspFXConnections() {
+void CycleUpdater::setDspFXConnections() const {
 	effectsProc	->updatesAfter(irModelRast);
 	effectsProc	->updatesAfter(wshpRast);
 	eqlzerUI	->updatesAfter(effectsProc);
@@ -205,7 +207,7 @@ void CycleUpdater::setTimeFreqParents() {
 	layerChanged(LayerGroups::GroupDeformer, -1);
 }
 
-void CycleUpdater::setTimeFreqChildren(bool toFFT) {
+void CycleUpdater::setTimeFreqChildren(bool toFFT) const {
 	if (toFFT) {
 		spectProc->updatesAfter(timeProc);
 		spectProc->updatesAfter(spectDlg);
@@ -215,7 +217,7 @@ void CycleUpdater::setTimeFreqChildren(bool toFFT) {
 	}
 }
 
-void CycleUpdater::removeTimeFreqChildren(bool fromFFT) {
+void CycleUpdater::removeTimeFreqChildren(bool fromFFT) const {
     if (fromFFT) {
 		spectProc->doesntUpdateAfter(timeProc);
         spectProc->doesntUpdateAfter(spectDlg);
@@ -225,7 +227,7 @@ void CycleUpdater::removeTimeFreqChildren(bool fromFFT) {
 	}
 }
 
-void CycleUpdater::removeTimeFreqParents() {
+void CycleUpdater::removeTimeFreqParents() const {
     timeProc->doesntUpdateAfter(scratchRast);
     spectDlg->doesntUpdateAfter(scratchRast);
 }
@@ -301,8 +303,8 @@ void CycleUpdater::refreshConnections(Node* destNode, const Array<int>& meshType
 
     using namespace LayerGroups;
 
-    for (int i = 0; i < meshTypes.size(); ++i) {
-        switch (meshTypes[i]) {
+    for (int meshType : meshTypes) {
+        switch (meshType) {
 			case GroupTime:
 				time2Rast->updatesAfter(destNode);
 				break;
@@ -318,10 +320,11 @@ void CycleUpdater::refreshConnections(Node* destNode, const Array<int>& meshType
 			case GroupScratch:
 				envDlg->updatesAfter(destNode);
 
-				if(meshTypes[i] == GroupScratch) {
+				if(meshType == GroupScratch) {
 					scratchRast->updatesAfter(destNode);
 				}
 				break;
+        	default: break;
 		}
 	}
 }

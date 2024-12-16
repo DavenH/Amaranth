@@ -1,7 +1,7 @@
 #include "PanelPair.h" 
 #include "../../App/SingletonRepo.h"
 
-PanelPair::PanelPair(SingletonRepo* repo, Bounded& a, Bounded& b,
+PanelPair::PanelPair(SingletonRepo* repo, Bounded* a, Bounded* b,
 					 bool sideBySide, float portion, const String& name,
 					 int border, int min1, int max1, int min2, int max2) :
 		SingletonAccessor(repo, name)
@@ -61,11 +61,12 @@ void PanelPair::setBounds(int x, int y, int width, int height) {
             firstWidth = (width - border) - secondWidth;
         }
 
-        one.setBounds(x, y, firstWidth, height);
-        two.setBounds(x + firstWidth + border, y, secondWidth, height);
+        one->setBounds(x, y, firstWidth, height);
+        two->setBounds(x + firstWidth + border, y, secondWidth, height);
 
-        if (dragger)
+        if (dragger) {
             dragger->setBounds(x + firstWidth, y - 2, border + 2, height + 4);
+        }
 
     } else {
         int firstHeight, secondHeight;

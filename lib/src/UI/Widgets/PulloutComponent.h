@@ -23,19 +23,19 @@ public:
 	vector<Component*> buttons;
 
 	BoxComp();
-	~BoxComp();
-	void paint(Graphics& g);
+	~BoxComp() override = default;
+	void paint(Graphics& g) override;
 	void setHorizontal(bool isHorizontal);
-	void mouseEnter(const MouseEvent& e);
-	void mouseExit(const MouseEvent& e);
+	void mouseEnter(const MouseEvent& e) override;
+	void mouseExit(const MouseEvent& e) override;
 	void addAll(vector<Component*>& _buttons);
 
-	void timerCallback();
-	void visibilityChanged();
+	void timerCallback() override;
+	void visibilityChanged() override;
 	void setPulloutComponent(PulloutComponent* pullout);
 
-	void enterDlg();
-	void exitDlg();
+	void enterDlg() override;
+	void exitDlg() override;
 
 	void setBackgroundOpacity(float opacity) { backgroundOpacity = opacity; }
 
@@ -52,7 +52,6 @@ class PulloutComponent :
 		public IDynamicSizeComponent
 	,	public Component
 	,	public SingletonAccessor {
-private:
 	Image img;
 	BoxComp popup;
 
@@ -64,21 +63,21 @@ private:
 public:
 	PulloutComponent(Image image, vector<Component*>& buttons, SingletonRepo* repo, bool horz = true);
 	Image& getImage();
-	void mouseEnter(const MouseEvent& e);
-	void mouseExit(const MouseEvent& e);
-	void moved();
-	void paint(Graphics& g);
+	void mouseEnter(const MouseEvent& e) override;
+	void mouseExit(const MouseEvent& e) override;
+	void moved() override;
+	void paint(Graphics& g) override;
 	void removeBoxFromDesktop();
 	void removedFromDesktop();
-	void resized();
+	void resized() override;
 	void setBackgroundOpacity(float opacity) { popup.setBackgroundOpacity(opacity); }
 
-	int getExpandedSize() 				{ return 0; }
-	int getCollapsedSize() 				{ return 0; }
-	void setBoundsDelegate(int x, int y, int w, int h) {}
-	const Rectangle<int> getBoundsInParentDelegate() { return getBounds(); }
-	int getYDelegate() 					{ return 0; }
-	int getXDelegate() 					{ return 0; }
-	bool isVisibleDlg() const 			{ return isVisible(); }
-	void setVisibleDlg(bool isVisible) 	{ setVisible(isVisible); }
+	int getExpandedSize() override 				{ return 0; }
+	int getCollapsedSize() override 			{ return 0; }
+	void setBoundsDelegate(int x, int y, int w, int h) override {}
+	const Rectangle<int> getBoundsInParentDelegate() override { return getBounds(); }
+	int getYDelegate() override 				{ return 0; }
+	int getXDelegate() override 				{ return 0; }
+	bool isVisibleDlg() const override 			{ return isVisible(); }
+	void setVisibleDlg(bool isVisible) override { setVisible(isVisible); }
 };

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <map>
 #include <vector>
 #include "../App/Doc/Document.h"
@@ -33,7 +34,7 @@ public:
     /* ----------------------------------------------------------------------------- */
 
 	explicit PathRepo(SingletonRepo* repo);
-	~PathRepo() {}
+	~PathRepo() override = default;
 
 	void init() override;
 	void performUpdate(int updateType) override;
@@ -43,11 +44,11 @@ public:
 	const ScratchContext& getScratchContext(int scratchChannel);
 	PathCache& getPathCache(VertCube* cube);
 
-	void documentAboutToLoad();
-	void documentHasLoaded();
+	void documentAboutToLoad() override;
+	void documentHasLoaded() override;
 
-	void cubesRemoved(const vector<VertCube*>& cube);
-	void cubesAdded(const vector<VertCube*>& cube);
+	void cubesRemoved(const vector<VertCube*>& cube) override;
+	void cubesAdded(const vector<VertCube*>& cube) override;
 
 	CriticalSection& getLock() { return calcLock; }
 

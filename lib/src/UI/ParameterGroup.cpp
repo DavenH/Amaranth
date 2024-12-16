@@ -1,4 +1,7 @@
 #include "ParameterGroup.h"
+
+#include <Definitions.h>
+
 #include "../App/EditWatcher.h"
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
@@ -14,9 +17,8 @@ ParameterGroup::ParameterGroup(SingletonRepo* repo, const String& name, Worker* 
 {
 }
 
-bool ParameterGroup::paramTriggersAggregateUpdate(int knobIndex)
-{
-	return ! updatingAllSliders || (updatingAllSliders && knobIndex == knobs.size() - 1);
+bool ParameterGroup::paramTriggersAggregateUpdate(int knobIndex) {
+	return !updatingAllSliders || (updatingAllSliders && knobIndex == knobs.size() - 1);
 }
 
 /*
@@ -54,7 +56,7 @@ void ParameterGroup::sliderDragStarted(Slider* slider) {
 
 
 void ParameterGroup::sliderDragEnded(Slider* slider) {
-	SliderValueChangedAction* action = new SliderValueChangedAction(repo, worker->getUpdateSource(),
+	auto* action = new SliderValueChangedAction(repo, worker->getUpdateSource(),
 																	slider, sliderStartingValue);
 	getObj(EditWatcher).addAction(action, true);
 
@@ -117,10 +119,10 @@ bool ParameterGroup::readKnobXML(const XmlElement* effectElem) {
 
 void ParameterGroup::writeKnobXML(XmlElement* effectElem) const {
   #ifndef DEMO_VERSION
-	XmlElement* knobsElem = new XmlElement("Knobs");
+	auto* knobsElem = new XmlElement("Knobs");
 
 	for(int knobIdx = 0; knobIdx < knobs.size(); ++knobIdx)	{
-		XmlElement* knob = new XmlElement("Knob");
+		auto* knob = new XmlElement("Knob");
 
 		knob->setAttribute("value", knobs[knobIdx]->getValue());
 		knob->setAttribute("number", knobIdx);

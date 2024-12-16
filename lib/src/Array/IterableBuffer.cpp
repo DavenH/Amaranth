@@ -4,12 +4,13 @@
 #include "../Algo/Resampling.h"
 #include "../Audio/PitchedSample.h"
 
-SyncedSampleIterator::SyncedSampleIterator(PitchedSample* wrapper, Buffer<float> pitchBuffer) :
-		wav(wrapper)
-	, 	pitchBuffer(pitchBuffer)
-	,	hasReset(false) {
-	float average  	= pitchBuffer.mean();
-	sizePow2		= nextPowerOfTwo(roundToInt(average));
+SyncedSampleIterator::SyncedSampleIterator(PitchedSample* wrapper, Buffer<float> pitchBuffer) : wav(wrapper)
+	,	pitchBuffer(pitchBuffer)
+	,	hasReset(false)
+	,	cycle(0)
+	,	realPosition(0) {
+	float average = pitchBuffer.mean();
+	sizePow2 = nextPowerOfTwo(roundToInt(average));
 }
 
 bool SyncedSampleIterator::hasNext()
@@ -66,7 +67,6 @@ bool BlockIterator::hasNext() {
     return index < columns.size();
 }
 
-
 void BlockIterator::reset() {
     index = 0;
 }
@@ -120,8 +120,9 @@ void WindowedSampleIterator::reset() {
 }
 
 int WindowedSampleIterator::getTotalSize() {
-    if (buffer.empty())
-        return 0;
+    if (buffer.empty()) {
+	    return 0;
+    }
 
     return overlapFactor * buffer.size();
 }

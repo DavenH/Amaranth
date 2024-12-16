@@ -19,7 +19,7 @@ public:
 	};
 
     explicit Document(SingletonRepo* repo);
-	~Document() override {}
+	~Document() override = default;
 
 	bool open(const String& filename);
 	bool open(InputStream* stream);
@@ -48,7 +48,7 @@ public:
 
 			String detailsString(stream->readString());
 			XmlDocument deetsDoc(detailsString);
-			std::unique_ptr<XmlElement> deetsElem(deetsDoc.getDocumentElement());
+			std::unique_ptr deetsElem(deetsDoc.getDocumentElement());
 
 			jassert(deetsDoc.getLastParseError().isEmpty());
 			jassert(deetsElem != nullptr);
@@ -94,7 +94,7 @@ public:
 		String detailsString = detailsElem->toString();
 		int deetsSize = detailsString.getNumBytesAsUTF8() + 1;
 
-        std::unique_ptr<FileOutputStream> out(file.createOutputStream());
+        std::unique_ptr out(file.createOutputStream());
 
 		bool didSet = out->setPosition(0);
 		jassert(didSet);

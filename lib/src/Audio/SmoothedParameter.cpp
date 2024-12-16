@@ -73,8 +73,9 @@ bool SmoothedParameter::setTargetValue(double value) {
 	double lastVal = targetValue;
 	targetValue = value;
 
-	if(! smoothingActive)
+	if(! smoothingActive) {
 		currentValue = targetValue;
+	}
 
 	return lastVal != targetValue;
 }

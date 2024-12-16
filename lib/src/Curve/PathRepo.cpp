@@ -27,15 +27,17 @@ float PathRepo::getScratchPosition(int scratchChannel, float defaultPos) {
     const ScratchContext& context = getScratchContext(scratchChannel);
 	Buffer<float> buffer = context.gridBuffer;
 
-	if(buffer.empty() || scratchChannel == CommonEnums::Null)
+	if(buffer.empty() || scratchChannel == CommonEnums::Null) {
 		return defaultPos;
+	}
 
 	MeshLibrary::Layer& layer = meshes->getLayer(LayerGroups::GroupScratch, scratchChannel);
 	auto* scratchMesh = dynamic_cast<EnvelopeMesh*>(layer.mesh);
 	MeshLibrary::Properties* props = layer.props;
 
-	if(scratchChannel >= (int) contexts.size() || scratchMesh == nullptr || props == nullptr)
+	if(scratchChannel >= (int) contexts.size() || scratchMesh == nullptr || props == nullptr) {
 		return defaultPos;
+	}
 
 	jassert(scratchChannel < (int) contexts.size());
 
@@ -60,7 +62,6 @@ void PathRepo::updateCache(int groupId, int layer) {
 	}
 
 	for(auto cube : lyr.mesh->getCubes()) {
-
     	// TODO what is the rest of this?
 	}
 }

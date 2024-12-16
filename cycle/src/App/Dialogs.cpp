@@ -567,8 +567,9 @@ void Dialogs::openPresetCallback(int returnId, const File &currentFile, Dialogs*
     SingletonRepo* repo = ops->getSingletonRepo();
     getObj(Directories).setLastPresetDir(parentFile.getFullPathName());
 
-    if (ops->fileLoader != nullptr)
-        getObj(MainPanel).removeChildComponent(ops->fileLoader);
+    if (ops->fileLoader != nullptr) {
+        getObj(MainPanel).removeChildComponent(ops->fileLoader.get());
+    }
 
     if (filename.isNotEmpty()) {
         getObj(FileManager).openPreset(currentFile);

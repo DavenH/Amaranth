@@ -1,5 +1,4 @@
-#ifndef _synthlookandfeel_h
-#define _synthlookandfeel_h
+#pragma once
 
 #include "JuceHeader.h"
 #include <UI/AmaranthLookAndFeel.h>
@@ -12,5 +11,3 @@ public:
 private:
 	JUCE_LEAK_DETECTOR(SynthLookAndFeel)
 };
-
-#endif

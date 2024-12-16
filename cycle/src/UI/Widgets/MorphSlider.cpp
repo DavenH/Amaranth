@@ -98,6 +98,8 @@ void MorphSlider::mouseEnter(const MouseEvent& e) {
 		case Vertex::Blue:
 			keys = "(Cmd +) PgUp, PgDn, Home, End";
 			break;
+
+    	default: break;
 	}
 
 	getObj(IConsole).setKeys(keys);

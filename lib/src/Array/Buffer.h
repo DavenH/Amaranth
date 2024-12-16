@@ -51,6 +51,7 @@ public:
 	Buffer& zero();
 	Buffer& diff(Buffer buff);
 	Buffer& pow(T val);
+	Buffer& sub(T c);
 	Buffer& sub(Buffer buff);
 	Buffer& sub(Buffer src1, Buffer src2);
 	Buffer& subCRev(T c);
@@ -64,6 +65,7 @@ public:
 	Buffer& mul(Buffer buff, T c);
 	Buffer& mul(Buffer src1, Buffer src2);
 	Buffer& div(Buffer buff);
+	Buffer& div(T c);
 	Buffer& divCRev(T c);
 	Buffer& flip();
 	Buffer& flip(Buffer buff);
@@ -139,13 +141,13 @@ public:
 	}
 
 	void operator+=(const Buffer& other)	{ add(other);	}
-	void operator+=(T val)				{ add(val);		}
+	void operator+=(T val)					{ add(val);		}
 	void operator-=(const Buffer& other)	{ sub(other);	}
-	void operator-=(T val)				{ sub(val);		}
+	void operator-=(T val)					{ sub(val);		}
 	void operator*=(const Buffer& other)	{ mul(other);	}
-	void operator*=(T val)				{ mul(val);		}
+	void operator*=(T val)					{ mul(val);		}
 	void operator/=(const Buffer& other)	{ div(other);	}
-	void operator/=(T val)				{ div(val);		}
+	void operator/=(T val)					{ div(val);		}
 
     void operator<<(const Buffer& other) {
         other.copyTo(*this);
@@ -155,7 +157,7 @@ public:
 		copyTo(other);
 	}
 
-	virtual Buffer& operator=(const Buffer& other) = default;
+	Buffer& operator=(const Buffer& other) = default;
 
 	virtual bool resize(int newSize) { sz = newSize; return true; }
 

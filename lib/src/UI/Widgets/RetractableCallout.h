@@ -13,22 +13,23 @@ class RetractableCallout :
 	public Component {
 public:
 	RetractableCallout(const vector<Component*>& _icons, PulloutComponent* _pullout, bool _horz);
-	virtual ~RetractableCallout();
-	void paint(Graphics& g);
-	void paintOverChildren(Graphics& g);
-	void resized();
-	void moved();
+
+	~RetractableCallout() override = default;
+	void paint(Graphics& g) override;
+	void paintOverChildren(Graphics& g) override;
+	void resized() override;
+	void moved() override;
 	bool isCollapsed();
 	void setAlwaysCollapsed(bool shouldBe);
 
-	int getExpandedSize();
-	int getCollapsedSize();
-	void setBoundsDelegate(int x, int y, int w, int h);
-	const Rectangle<int> getBoundsInParentDelegate();
-	int getYDelegate();
-	int getXDelegate();
-	bool isVisibleDlg() const { return isVisible(); }
-	void setVisibleDlg(bool isVisible) { setVisible(isVisible); }
+	int getExpandedSize() override;
+	int getCollapsedSize() override;
+	void setBoundsDelegate(int x, int y, int w, int h) override;
+	const Rectangle<int> getBoundsInParentDelegate() override;
+	int getYDelegate() override;
+	int getXDelegate() override;
+	[[nodiscard]] bool isVisibleDlg() const override { return isVisible(); }
+	void setVisibleDlg(bool isVisible) override { setVisible(isVisible); }
 
 private:
 	bool horz;

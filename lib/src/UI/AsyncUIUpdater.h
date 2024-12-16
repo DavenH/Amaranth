@@ -2,18 +2,19 @@
 
 #include "JuceHeader.h"
 
-class AsyncUIUpdater : public juce::AsyncUpdater {
+class AsyncUIUpdater : public AsyncUpdater {
 public:
 	AsyncUIUpdater();
-	virtual ~AsyncUIUpdater();
 
-	void handleAsyncUpdate();
+	virtual ~AsyncUIUpdater() override;
+
+	void handleAsyncUpdate() override;
 
 	virtual void doGlobalUIUpdate(bool force);
 	virtual void reduceDetail();
 	virtual void restoreDetail();
 
-	bool isDetailReduced();
+	[[nodiscard]] bool isDetailReduced() const;
 	void triggerRestoreUpdate();
 	void triggerRefreshUpdate();
 	void triggerReduceUpdate();

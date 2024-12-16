@@ -58,7 +58,7 @@ public:
 		}
 	}
 
-	static void linResample(const Buffer<float>& source, const Buffer<float>& dest, double sourceToDestRatio, double& phase);
+	static void linResample(const Buffer<float>& source, Buffer<float> dest, double sourceToDestRatio, double& phase);
 	static void linResample2(const Buffer<float>& source, Buffer<float> dest,
 							 double sourceToDestRatio, float& padA, float& padB, double& phase);
 

@@ -19,7 +19,7 @@ void BannerPanel::paint(Graphics& g) {
 }
 
 void BannerPanel::mouseEnter(const MouseEvent& e) {
-    String line("Cycle v" + String(getRealConstant(ProductVersion), 1) + " build " + String(getConstant(BuildNumber)));
+    String line("Cycle v" + String(ProjectInfo::versionString));
 
     getObj(IConsole).reset();
     getObj(IConsole).write(line, IConsole::DefaultPriority);

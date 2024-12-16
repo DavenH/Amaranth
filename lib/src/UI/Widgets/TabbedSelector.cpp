@@ -2,6 +2,7 @@
 #include "../IConsole.h"
 #include "../Widgets/InsetLabel.h"
 #include "../../App/SingletonRepo.h"
+#include <ippbase.h>
 
 
 TabbedSelector::TabbedSelector(SingletonRepo* repo) :
@@ -12,15 +13,13 @@ TabbedSelector::TabbedSelector(SingletonRepo* repo) :
 	,	tabWidth(30) {
 }
 
-
 void TabbedSelector::paint(Graphics& g) {
 	g.fillAll(Colours::black);
 
 	float halfPi = 0.5f * float(IPP_PI);
 	float rad = radius;
 
-	for (int i = 0; i < (int) tabs.size(); ++i)
-	{
+	for (int i = 0; i < (int) tabs.size(); ++i) {
 		float startY = vertSpace + i * tabHeight;
 		float endY = startY + tabHeight - 2;
 		float startX = 0;
@@ -53,8 +52,9 @@ void TabbedSelector::paint(Graphics& g) {
 
 		path.startNewSubPath(startX, startY);
 
-		if (selectedTab > 0)
+		if (selectedTab > 0) {
 			path.addCentredArc(startX + rad, startY - 2.f * rad, rad, 2 * rad, 0, 3.f * halfPi, 2 * halfPi, false);
+		}
 
 		path.lineTo(endX - rad, startY);
 		path.addCentredArc(endX - rad - 1, startY + rad, rad, rad, 0, 0, halfPi, false);
@@ -62,10 +62,11 @@ void TabbedSelector::paint(Graphics& g) {
 		path.addCentredArc(endX - rad - 1, endY - rad, rad, rad, 0, halfPi, 2 * halfPi, false);
 		path.lineTo(startX + rad, endY);
 
-		if (selectedTab < tabs.size() - 1)
+		if (selectedTab < tabs.size() - 1) {
 			path.addCentredArc(startX + rad, endY + 2 * rad, rad, 2 * rad, 0, 4 * halfPi, 3 * halfPi, false);
-		else
+		} else {
 			path.lineTo(startX, endY);
+		}
 
 		path.lineTo(startX, getHeight());
 		path.closeSubPath();
@@ -121,7 +122,6 @@ void TabbedSelector::paint(Graphics& g) {
  	 #else
 		transform = transform.translated(0, (tabHeight - actualLength) / 2);
 
-	  #ifdef JUCE_V2
 		g.saveState();
 		{
 			g.setColour(backColour);
@@ -134,23 +134,14 @@ void TabbedSelector::paint(Graphics& g) {
 		}
 		g.restoreState();
 
-	  #else
-		g.setColour(backColour);
-		g.drawTextAsPath(name, transform.translated(inset, inset));
-
-		g.setColour(Colours::black);
-		g.drawTextAsPath(name, transform.translated(-inset, -inset));
-	  #endif
 	#endif
 	}
 }
-
 
 void TabbedSelector::mouseExit(const MouseEvent& e) {
 	hoveredTab = -1;
 	repaint();
 }
-
 
 void TabbedSelector::mouseMove(const MouseEvent& e) {
 	int lastHover = hoveredTab;
@@ -167,12 +158,11 @@ void TabbedSelector::mouseMove(const MouseEvent& e) {
 	}
 }
 
-
 void TabbedSelector::updateTabUnderMouse(const MouseEvent& e) {
     hoveredTab = -1;
 
     for (int i = 0; i < (int) tabs.size(); ++i) {
-		const Rectangle<int> r(0, i * tabHeight, getWidth(), tabHeight);
+		const Rectangle r(0, i * tabHeight, getWidth(), tabHeight);
 
 		if (r.contains(e.x, e.y)) {
 			hoveredTab = i;
@@ -181,26 +171,27 @@ void TabbedSelector::updateTabUnderMouse(const MouseEvent& e) {
 	}
 }
 
-
 void TabbedSelector::mouseDown(const MouseEvent& e) {
-	if(! e.mods.isLeftButtonDown())
+	if(! e.mods.isLeftButtonDown()) {
 		return;
+	}
 
 	updateTabUnderMouse(e);
 
 	selectedTab = hoveredTab;
 
-	if(! isPositiveAndBelow(selectedTab, (int) tabs.size()))
+	if(! isPositiveAndBelow(selectedTab, (int) tabs.size())) {
 		return;
+	}
 
 	callListeners(tabs[selectedTab].callbackComponent);
 	repaint();
 }
 
-
 void TabbedSelector::selectTab(int tab) {
-	if(! isPositiveAndBelow(tab, (int) tabs.size()))
+	if(! isPositiveAndBelow(tab, (int) tabs.size())) {
 		return;
+	}
 
 	selectedTab = tab;
 
@@ -208,12 +199,10 @@ void TabbedSelector::selectTab(int tab) {
 	repaint();
 }
 
-
 void TabbedSelector::callListeners(Bounded* selected) {
-	for(int i = 0; i < (int) listeners.size(); ++i)
-		listeners[i]->tabSelected(this, selected);
+	for(auto listener : listeners)
+		listener->tabSelected(this, selected);
 }
-
 
 void TabbedSelector::addTab(const String& name, Bounded* callbackComponent, const String& keys) {
 	Tab tab;
@@ -227,17 +216,14 @@ void TabbedSelector::addTab(const String& name, Bounded* callbackComponent, cons
 	tabs.push_back(tab);
 }
 
-
 void TabbedSelector::resized() {
 	tabWidth = 0.85 * getWidth() + 0.5f;
 	tabHeight = tabs.empty() ? 1 : (getHeight() - vertSpace * 2) / (float)tabs.size() - 0.5f;
 }
 
-
 void TabbedSelector::addListener(Listener* listener) {
 	listeners.add(listener);
 }
-
 
 void TabbedSelector::setSelectedTab(int tab) {
 	jassert(isPositiveAndBelow(tab, (int) tabs.size()));

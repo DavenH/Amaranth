@@ -3,7 +3,6 @@
 #include "JuceHeader.h"
 #include "../App/SingletonAccessor.h"
 
-
 class AmaranthLookAndFeel :
 		public SingletonAccessor
 	,	public LookAndFeel_V3 {

@@ -1,5 +1,4 @@
-#ifndef _bannerpanel_h
-#define _bannerpanel_h
+#pragma once
 
 #include <Definitions.h>
 #include <App/Settings.h>
@@ -21,12 +20,12 @@ class BannerPanel:
 	,	public Timer {
 public:
 	BannerPanel(SingletonRepo* repo);
-	~BannerPanel() {}
+	~BannerPanel() override {}
 
-	void paint(Graphics& g);
-	void mouseEnter(const MouseEvent& e);
+	void paint(Graphics& g) override;
+	void mouseEnter(const MouseEvent& e) override;
 	void mouseDown(const MouseEvent& e);
-	void timerCallback();
+	void timerCallback() override;
 
 private:
 	float secondsSinceStart{};
@@ -35,4 +34,3 @@ private:
 	MicroTimer timer;
 
 };
-#endif

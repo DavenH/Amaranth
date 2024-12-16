@@ -510,7 +510,7 @@ public:
 		Image background;
 		Point<float> targetPoint;
 		Rectangle<int> availableArea, targetArea;
-		std::unique_ptr<ItemComponent> content;
+		ItemComponent content;
 	};
 
 	explicit CycleTour(SingletonRepo* repo);

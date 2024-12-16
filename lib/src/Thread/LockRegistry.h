@@ -1,5 +1,5 @@
-#ifndef LOCKREGISTRY_H_
-#define LOCKREGISTRY_H_
+#pragma once
+
 
 #include <vector>
 #include <map>
@@ -13,7 +13,7 @@ class LockRegistry :
 	public SingletonAccessor {
 public:
 	LockRegistry(SingletonRepo* repo);
-	virtual ~LockRegistry();
+	~LockRegistry() override = default;
 
 	void lockEntered(void* address);
 	void lockExited(void* address);
@@ -30,5 +30,3 @@ private:
 
 	vector<LockEvent> events;
 };
-
-#endif

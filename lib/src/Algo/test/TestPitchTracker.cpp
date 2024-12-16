@@ -44,7 +44,7 @@ TEST_CASE("PitchTracker basic functionality", "[pitch][dsp]") {
     SECTION("Handle silence") {
         ScopedAlloc<float> testAudio(44100);
         testAudio.zero();
-        PitchedSample sample{Buffer(testAudio)};
+        PitchedSample sample;
 
         tracker.setSample(&sample);
         tracker.setAlgo(PitchTracker::AlgoAuto);

@@ -1,31 +1,32 @@
 #include "Interactor.h"
 #include "UndoableActions.h"
 #include "VertexTransformUndo.h"
+
+#include <Definitions.h>
+
 #include "../App/EditWatcher.h"
 #include "../Curve/Mesh.h"
 #include "../App/SingletonRepo.h"
-
 
 VertexTransformUndo::VertexTransformUndo(Interactor* itr) :
 		interactor(itr)
 	,	pending(false) {
 }
 
-
 void VertexTransformUndo::start() {
 	Mesh* itrMesh = interactor->getMesh();
-	if(itrMesh == nullptr)
+	if(itrMesh == nullptr) {
 		return;
+	}
 
 	mesh = itrMesh;
 	beforeVerts.clear();
 
-	foreach(VertIter, it, mesh->getVerts())
-		beforeVerts.push_back(**it);
+	for(auto& vert : mesh->getVerts())
+		beforeVerts.push_back(*vert);
 
 	pending = true;
 }
-
 
 void VertexTransformUndo::commitIfPending() {
 	if(! pending)
@@ -39,19 +40,20 @@ void VertexTransformUndo::commitIfPending() {
 	vector<Vertex> afterVerts;
 
 	bool areIdentical = true;
-	foreach(VertIter, it, mesh->getVerts()) {
-		Vertex* vert = *it;
+	int i = 0;
+	for(auto& vert : mesh->getVerts()) {
 		afterVerts.push_back(*vert);
 
-		int index = it - mesh->getVertStart();
-
-		if(areIdentical && ! (beforeVerts[index] == *vert))
+		if(areIdentical && ! (beforeVerts[i] == *vert)) {
 			areIdentical = false;
+		}
+
+		++i;
 	}
 
     if (!areIdentical) {
 		SingletonRepo* repo = interactor->getSingletonRepo();
-		TransformVerticesAction* action = new TransformVerticesAction(
+		auto* action = new TransformVerticesAction(
 				repo, interactor->getUpdateSource(),
 				&mesh->getVerts(), beforeVerts, afterVerts);
 

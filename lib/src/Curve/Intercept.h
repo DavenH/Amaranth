@@ -7,9 +7,7 @@ using std::vector;
 
 struct Intercept {
     ~Intercept() = default;
-
-    Intercept() {
-    }
+    Intercept() = default;
 
     Intercept(float xx, float yy, VertCube* cube = 0, float sharpness = 0) :
             x(xx), y(yy), cube(cube), shp(sharpness) {

@@ -43,19 +43,19 @@ class Spectrum3D:
 public:
 	enum LayerMode { Additive, Subtractive };
 
-	Spectrum3D(SingletonRepo* repo);
-	~Spectrum3D();
-	void init();
+	explicit Spectrum3D(SingletonRepo* repo);
+	~Spectrum3D() override;
+	void init() override;
 
 	/* UI */
 	void drawPlaybackLine();
 
-	void reset();
-	void panelResized();
+	void reset() override;
+	void panelResized() override;
 	bool haveAnyValidLayers(bool isMags, bool haveAnyValidTimeLayers);
 
 	/* Events */
-	void layerChanged();
+	void layerChanged() override;
 	void updateColours();
 	void populateLayerBox();
 	void enablementsChanged();
@@ -64,11 +64,11 @@ public:
 	void changedToOrFromTimeDimension();
 	void triggerButton(int button);
 	void scratchChannelSelected(int channel);
-	void updateBackground(bool onlyVerticalBackground);
+	void updateBackground(bool onlyVerticalBackground) override;
 	void modeChanged(bool isMags, bool updateInteractors);
 
-	void buttonClicked(Button* button);
-	void sliderValueChanged(Slider* slider);
+	void buttonClicked(Button* button) override;
+	void sliderValueChanged(Slider* slider) override;
 
 	/* Knob Events */
 	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
@@ -90,21 +90,20 @@ public:
 	/* Accessors */
 	void setPan(int layerIdx, bool isFreq, float value);
 	void setDynRange(int layerIdx, bool isFreq, float value);
-	int getLayerScratchChannel();
+	int getLayerScratchChannel() override;
 	int getNumActiveLayers();
 
-	Buffer<float> getColumnArray();
-	const vector<Column>& getColumns();
+	Buffer<float> getColumnArray() override;
+	const vector<Column>& getColumns() override;
 
 	MeshLibrary::Properties* getPropertiesForLayer(int layerIdx, bool isFreq);
 	MeshLibrary::Properties* getCurrentProperties();
 	MeshLibrary::LayerGroup& getCurrentGroup();
 
-	Component* 			getComponent(int which);
-	vector<Color>& 		getGradientColours();
-	int 				getLayerType();
+	Component* 			getComponent(int which) override;
+	vector<Color>& 		getGradientColours() override;
+	int 				getLayerType() override;
 
-	PanelControls* 		getPanelControls() 	{ return panelControls.get(); }
 	int& 				getScaleFactor() 	{ return scaleFactor; 	}
 	CriticalSection& 	getLayerLock() 		{ return layerLock; 	}
 
@@ -133,9 +132,8 @@ private:
 	Ref<Spectrum2D> spect2D;
 
 	std::unique_ptr<PulloutComponent> 	operPO;
-	std::unique_ptr<RetractableCallout> 	operCO;
-
 	std::unique_ptr<PulloutComponent> 	modePO;
-	std::unique_ptr<RetractableCallout> 	modeCO;
-	std::unique_ptr<MeshSelector<Mesh> > 	meshSelector;
+	std::unique_ptr<RetractableCallout> operCO;
+	std::unique_ptr<RetractableCallout> modeCO;
+	std::unique_ptr<MeshSelector<Mesh>> meshSelector;
 };

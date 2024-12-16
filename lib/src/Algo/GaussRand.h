@@ -1,5 +1,4 @@
-#ifndef RANDGAUSS_H_
-#define RANDGAUSS_H_
+#pragma once
 
 #include <ipps.h>
 #include "JuceHeader.h"
@@ -36,6 +35,3 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GaussRand);
 };
-
-
-#endif

@@ -3,7 +3,6 @@
 #include <vector>
 #include "../IConsole.h"
 #include "../../App/SingletonAccessor.h"
-#include "JuceHeader.h"
 
 using std::vector;
 

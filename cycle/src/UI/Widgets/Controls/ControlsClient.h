@@ -1,17 +1,13 @@
-#ifndef CONTROLSCLIENT_H_
-#define CONTROLSCLIENT_H_
+#pragma once
 
 #include "PanelControls.h"
 
 class ControlsClient
 {
 public:
-	PanelControls* getPanelControls() { return panelControls; }
-	Component* getControlsComponent() { return panelControls; }
+	PanelControls* getPanelControls() { return panelControls.get(); }
+	Component* getControlsComponent() { return panelControls.get(); }
 
 protected:
 	std::unique_ptr<PanelControls> panelControls;
 };
-
-
-#endif

@@ -49,7 +49,7 @@ void SamplePlacer::resized() {
 }
 
 SamplePlacerPanel::SamplePlacerPanel(SingletonRepo* repo) : SingletonAccessor(repo, "SamplePlacerPanel")
-                                                            , samplePlacer(repo) {
+    ,	samplePlacer(repo) {
 	addAndMakeVisible(&samplePlacer);
 }
 

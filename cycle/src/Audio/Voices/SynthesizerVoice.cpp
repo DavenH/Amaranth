@@ -496,9 +496,7 @@ void SynthesizerVoice::enablementChanged() {
 }
 
 void SynthesizerVoice::modulationChanged(float value, int outputId, int dim) {
-#ifndef BEAT_EDITION
     currentVoice->updateValue(outputId, dim, value);
-#endif
 }
 
 void SynthesizerVoice::handleSustainPedal(int midiChannel, bool isDown) {

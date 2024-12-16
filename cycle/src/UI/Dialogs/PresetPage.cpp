@@ -105,8 +105,7 @@ PresetPage::PresetPage(SingletonRepo* repo) :
 	wavDirectory.setColour(Label::outlineColourId, Colour::greyLevel(0.14));
 
 	Label* labels[] = { &tagsField, /* &commentLabel */ };
-	for(int i = 0; i < numElementsInArray(labels); ++i)
-	{
+	for(int i = 0; i < numElementsInArray(labels); ++i) {
 		labels[i]->setColour(Label::textColourId, Colour::greyLevel(0.65f));
 		labels[i]->setJustificationType(Justification::centredRight);
 		labels[i]->setColour(Label::backgroundColourId, Colour::greyLevel(0.1f));
@@ -180,8 +179,9 @@ void PresetPage::refresh() {
 	if (wave.isHighlit()) {
 		String exts[] = { "wav", "ogg", "aif", "aiff", "flac" };
 
-		for (int i = 0; i < numElementsInArray(exts); ++i)
-			addFilesToDefaultArray(wavDirectory.getText(false), exts[i]);
+		for (const auto & ext : exts) {
+			addFilesToDefaultArray(wavDirectory.getText(false), ext);
+		}
 	}
 
 	if (netIcon.isHighlit()) {
@@ -379,6 +379,8 @@ void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, 
 		case DocumentDetails::UploadCol: {
 			break;
 		}
+
+		default: break;
 	}
 
 	g.setColour(Colour::greyLevel(0.f).withAlpha(0.25f));
@@ -558,8 +560,8 @@ bool PresetPage::containsString(DocumentDetails& details, const String& str) {
 	}
 
 	const StringArray& tags = details.getTags();
-	for(int i = 0; i < tags.size(); ++i) {
-		if (tags[i].containsIgnoreCase(str)) {
+	for(const auto & tag : tags) {
+		if (tag.containsIgnoreCase(str)) {
 			return true;
 		}
 	}
@@ -608,19 +610,19 @@ Component* PresetPage::refreshComponentForCell(int rowNumber, int columnId, bool
                                                Component* existingComponentToUpdate) {
 	if (rowNumber >= getFilteredItems().size()) {
 		jassertfalse;
-		return 0;
+		return nullptr;
 	}
 
 	const DocumentDetails& details = getFilteredItems().getReference(rowNumber);
 
 	if (details.isWave()) {
 		delete existingComponentToUpdate;
-		existingComponentToUpdate = 0;
+		existingComponentToUpdate = nullptr;
 	}
 
-	if (existingComponentToUpdate != 0) {
+	if (existingComponentToUpdate != nullptr) {
 		if (columnId == DocumentDetails::Rating) {
-			RatingSlider* slider = dynamic_cast<RatingSlider*>(existingComponentToUpdate);
+			auto* slider = dynamic_cast<RatingSlider*>(existingComponentToUpdate);
 
 			if (slider) {
 				int code = details.getKey().hashCode();
@@ -663,7 +665,7 @@ Component* PresetPage::refreshComponentForCell(int rowNumber, int columnId, bool
 		}
 	}
 
-	return 0;
+	return nullptr;
 }
 
 IconButton* PresetPage::createIconButton(const DocumentDetails& details, int rowNumber, int column) {
@@ -698,7 +700,7 @@ IconButton* PresetPage::createIconButton(const DocumentDetails& details, int row
 
 			int iconY = isAtLatestRevision ? 7 : 8;
 			int iconX = isAtLatestRevision ? 5 : details.isRemote() || details.getAuthor().equalsIgnoreCase(alias) ?  1 : 0;
-			IconButton* button = new IconButton(iconX, iconY, this, repo, hoverMsg);
+			auto* button = new IconButton(iconX, iconY, this, repo, hoverMsg);
 
 			button->getProperties().set("isAtLatest", isAtLatestRevision);
 			button->getProperties().set("rowNumber", rowNumber);
@@ -795,7 +797,7 @@ void PresetPage::addItem(const DocumentDetails& details) {
 	}
 }
 
-int PresetPage::getIndexOfSelected() {
+int PresetPage::getIndexOfSelected() const {
 	return currPresetFiltIndex;
 }
 
@@ -918,6 +920,7 @@ void PresetPage::timerCallback(int id) {
 
 		default:
 			jassertfalse;
+			break;
 	}
 }
 
@@ -1081,8 +1084,7 @@ void PresetPage::buttonClicked(Button* button) {
 		}
 	}
 
-	else if(button == &nextIcon || button == &prevIcon)
-	{
+	else if(button == &nextIcon || button == &prevIcon) {
 		int oldIndex = currPresetFiltIndex;
 		int numRows = getNumRows();
 
@@ -1175,7 +1177,6 @@ String PresetPage::populateRemoteNames() {
 	remoteDetails.clear();
 
 	for(auto& presetName : presetNames) {
-
 		StringArray tokens;
 		DocumentDetails deets;
 
@@ -1401,33 +1402,33 @@ void PresetPage::writePresetSettings() {
 	if (Util::assignAndWereDifferent(pendingSettings, false)) {
 		File settingsFile = getPresetSettingsFile();
 
-		XmlElement* ratingsElem = new XmlElement("Ratings");
+		auto* ratingsElem = new XmlElement("Ratings");
 
 		HashMap<int, float>::Iterator iter(ratingsMap);
 		while(iter.next()) {
-			XmlElement* rating = new XmlElement("Rating");
+			auto* rating = new XmlElement("Rating");
 			rating->setAttribute("code",  iter.getKey());
 			rating->setAttribute("value", iter.getValue());
 
 			ratingsElem->addChildElement(rating);
 		}
 
-		XmlElement* dismissed = new XmlElement("Dismissed");
+		auto* dismissed = new XmlElement("Dismissed");
 
-		std::set<int>::iterator it = dismissedSet.begin();
+		auto it = dismissedSet.begin();
 		while(it != dismissedSet.end()) {
-			XmlElement* dissed = new XmlElement("Dismissal");
+			auto* dissed = new XmlElement("Dismissal");
 			dissed->setAttribute("code", *it);
 
 			dismissed->addChildElement(dissed);
 			++it;
 		}
 
-		XmlElement* downloaded = new XmlElement("DownloadedPresets");
+		auto* downloaded = new XmlElement("DownloadedPresets");
 		it = downloadedSet.begin();
 
 		while(it != downloadedSet.end()) {
-			XmlElement* dldElem = new XmlElement("Download");
+			auto* dldElem = new XmlElement("Download");
 			dldElem->setAttribute("code", *it);
 
 			downloaded->addChildElement(dldElem);

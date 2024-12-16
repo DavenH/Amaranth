@@ -37,36 +37,16 @@ VisualDsp::VisualDsp(SingletonRepo* repo) :
 	,	fftProcessor 	(this, repo, FFTStage)
 	,	fxProcessor	 	(this, repo, FXStage)
 	,	scratchEnvPanel	(Panel::linestripRes)
-	,	random			(Time::currentTimeMillis())
-{
-	for(int fftOrderIdx = 0; fftOrderIdx < numFFTOrders; ++fftOrderIdx)
-	{
+	,	random			(Time::currentTimeMillis()) {
+	for (int fftOrderIdx = 0; fftOrderIdx < numFFTOrders; ++fftOrderIdx) {
 		int size = 8 << fftOrderIdx;
 		sizeToIndex[size] = fftOrderIdx;
 		ffts[fftOrderIdx].setFFTScaleType(IPP_FFT_DIV_FWD_BY_N);
 		ffts[fftOrderIdx].allocate(size, true);
-//		status(ippsFFTInitAlloc_R_32f(&fftspecs[fftOrderIdx], fftOrderIdx + 3, IPP_FFT_DIV_FWD_BY_N, ippAlgHintFast));
 	}
-
-	int largestSize = 8 << (numFFTOrders - 1);
-
-//	fftBuffer 	.resize(largestSize + 2);
-//	magnitudes 	.resize(largestSize / 2);
-//	phases 		.resize(largestSize / 2);
-//
-//	fftBuffer.zero();
 }
 
-
-VisualDsp::~VisualDsp()
-{
-//	for(int fftOrderIdx = 0; fftOrderIdx < numFFTOrders; ++fftOrderIdx)
-//		status(ippsFFTFree_R_32f(fftspecs[fftOrderIdx]));
-}
-
-
-void VisualDsp::init()
-{
+void VisualDsp::init() {
 	spectRasterizer = &getObj(SpectRasterizer);
 	phaseRasterizer = &getObj(PhaseRasterizer);
 	timeRasterizer 	= &getObj(TimeRasterizer);
@@ -76,12 +56,9 @@ void VisualDsp::init()
 	meshLib			= &getObj(MeshLibrary);
 }
 
-
-CriticalSection& VisualDsp::getCalculationLock()
-{
-    return calculationLock;
+CriticalSection& VisualDsp::getCalculationLock() {
+	return calculationLock;
 }
-
 
 void VisualDsp::rasterizeEnv(Buffer<Ipp32f> env,
 							 Buffer<Ipp32f> zoomArray,
@@ -90,27 +67,24 @@ void VisualDsp::rasterizeEnv(Buffer<Ipp32f> env,
 							 bool doRestore)
 {
 	MeshLibrary::EnvProps* props = meshLib->getCurrentEnvProps(layerGroup);
-	Envelope2D& envPanel = getObj(Envelope2D);
 
-	if(props == nullptr)
+	if(props == nullptr) {
 		return;
+	}
 
 	int dim = getSetting(CurrentMorphAxis);
 
-	if(dim == Vertex::Time)
-	{
-		if(props->active)
-		{
+	if (dim == Vertex::Time) {
+		if (props->active) {
 			// degrade curve for surface rendering (accuracy not important)
-			rasterizer.updateOffsetSeeds();
+			rasterizer.updateOffsetSeeds(1, DeformerPanel::tableSize);
 			rasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
 			rasterizer.setLowresCurves(layerGroup != ScratchType && layerGroup != ScratchPanelType);
 			rasterizer.setCalcDepthDimensions(false);
 			rasterizer.setMode(EnvRasterizer::NormalState);
 			rasterizer.calcCrossPoints();
 
-			if(rasterizer.isSampleable())
-			{
+			if (rasterizer.isSampleable()) {
 				double delta = 1 / float(env.size());
 
 				float tempoScale = 1.0; // TODO
@@ -122,30 +96,22 @@ void VisualDsp::rasterizeEnv(Buffer<Ipp32f> env,
 				rasterizer.getRenderBuffer().copyTo(env);
 				ippsThreshold_LTValGTVal_32f_I(env, env.size(), 0.f, 0.f, 1.f, 1.f);
 			}
-		}
-		else
-		{
-			if(layerGroup == ScratchType)
-			{
+		} else {
+			if (layerGroup == ScratchType) {
 				zoomArray.copyTo(env);
-			}
-			else if(layerGroup == ScratchPanelType)
-			{
+			} else if (layerGroup == ScratchPanelType) {
 				env.ramp(0, 1.f / float(Panel::linestripRes));
-			}
-			else
-			{
+			} else {
 				env.set((layerGroup == PitchType) ? 0.5f : 1.f);
 			}
 		}
 
 		// restore curve for viewing
-		if(doRestore)
-		{
+		if (doRestore) {
 			rasterizer.setMode(EnvRasterizer::NormalState);
 			rasterizer.setLowresCurves(false);
 			rasterizer.setCalcDepthDimensions(true);
-			rasterizer.update(UpdateType::Update);
+			rasterizer.update(Update);
 		}
 	}
 	else
@@ -154,15 +120,13 @@ void VisualDsp::rasterizeEnv(Buffer<Ipp32f> env,
 		float originalPos 	= dimVar;
 		float time 			= getObj(MorphPanel).getValue(Vertex::Time);
 
-		if(props->active)
-		{
+		if(props->active) {
 			rasterizer.setLowresCurves(true);
 			rasterizer.setCalcDepthDimensions(false);
 			rasterizer.setMode(EnvRasterizer::NormalState);
 
 			int index = 0;
-			for(int i = 0; i < (int) env.size(); ++i)
-			{
+			for(int i = 0; i < env.size(); ++i) {
 				dimVar = zoomArray[i];
 				rasterizer.calcCrossPoints();
 
@@ -175,73 +139,66 @@ void VisualDsp::rasterizeEnv(Buffer<Ipp32f> env,
 			// reset the rasterizer
 			dimVar = originalPos;
 
-			if(doRestore)
-			{
+			if (doRestore) {
 				rasterizer.setLowresCurves(false);
 				rasterizer.setCalcDepthDimensions(true);
-				rasterizer.update(UpdateType::Update);
+				rasterizer.update(Update);
 			}
 		}
 	}
 }
 
-
-void VisualDsp::rasterizeAllEnvs(int numColumns)
-{
-	if(numColumns < 1)
+void VisualDsp::rasterizeAllEnvs(int numColumns) {
+	if (numColumns < 1) {
 		return;
+	}
 
 	zoomProgress.resize(numColumns);
 	zoomProgress.ramp();
 
 	int types[] = { LayerGroups::GroupVolume, LayerGroups::GroupPitch, LayerGroups::GroupScratch };
 
-	for(int i = 0; i < numElementsInArray(types); ++i)
-		rasterizeEnv(types[i], numColumns);
+	for (int type: types) {
+		rasterizeEnv(type, numColumns);
+	}
 }
-
 
 void VisualDsp::rasterizeEnv(int envEnum, int numColumns)
 {
 //	dout << "Rasterizing envelope " << envEnum << " with size: " << numColumns << "\n";
 
-	if(envEnum == LayerGroups::GroupWavePitch)
+	if(envEnum == LayerGroups::GroupWavePitch) {
 		return;
+	}
 
 	ScopedAlloc<Ipp32f>* buff;
 	EnvRasterizer* rast;
 	EnvType type;
 
-	if(envEnum == LayerGroups::GroupVolume)
-	{
+	if (envEnum == LayerGroups::GroupVolume) {
 		volumeEnv.resize(numColumns);
 		rasterizeEnv(volumeEnv, zoomProgress, LayerGroups::GroupVolume, getObj(EnvVolumeRast));
 		MeshLibrary::EnvProps* volumeProps = meshLib->getCurrentEnvProps(LayerGroups::GroupVolume);
 
-		if(volumeProps->logarithmic)
+		if(volumeProps->logarithmic) {
 			Arithmetic::applyInvLogMapping(volumeEnv, 30);
-	}
-
-	else if(envEnum == LayerGroups::GroupPitch)
-	{
+		}
+	} else if (envEnum == LayerGroups::GroupPitch) {
 		rast = &getObj(EnvPitchRast);
 
 		// calculates graphic curve (update() makes a copy)
 		rast->setNoteOn();
-		rast->updateOffsetSeeds();
+		rast->updateOffsetSeeds(1, DeformerPanel::tableSize);
 		rast->setWantOneSamplePerCycle(false);
 		rast->setCalcDepthDimensions(true);
 		rast->setDecoupleComponentDfrm(false);
 		rast->setLowresCurves(false);
-		rast->update(UpdateType::Update);
-	}
-
-	else if(envEnum == LayerGroups::GroupScratch)
-	{
+		rast->update(Update);
+	} else if (envEnum == LayerGroups::GroupScratch) {
 		rast = &getObj(EnvScratchRast);
 		type = ScratchType;
 
-		MeshLibrary& meshLib = getObj(MeshLibrary);
+		auto& meshLib = getObj(MeshLibrary);
 		MeshLibrary::LayerGroup& scratchGroup = meshLib.getGroup(LayerGroups::GroupScratch);
 
 		int numScratchLayers = scratchGroup.size();
@@ -250,8 +207,7 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns)
 
 		scratchEnvPanel.ensureSize(numScratchLayers * Panel::linestripRes);
 
-		for(int i = 0; i < numScratchLayers; ++i)
-		{
+		for (int i = 0; i < numScratchLayers; ++i) {
 			rast->setMesh(dynamic_cast<EnvelopeMesh*>(scratchGroup.layers[i].mesh));
 			rasterizeEnv(scratchEnv.section(i * numColumns, numColumns), zoomProgress, LayerGroups::GroupScratch, *rast, false);
 		}
@@ -267,14 +223,15 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns)
 	}
 }
 
-
-void VisualDsp::copyArrayOrParts(const vector<Column>& srcColumns, vector<Column>& destColumns)
-{
+void VisualDsp::copyArrayOrParts(
+	const vector<Column>& srcColumns,
+	vector<Column>& destColumns) {
 	int numDstColumns = destColumns.size();
 	int numSrcColumns = srcColumns.size();
 
-	if(numSrcColumns == 0 || numDstColumns == 0)
+	if(numSrcColumns == 0 || numDstColumns == 0) {
 		return;
+	}
 
 	int minLength = jmin(numDstColumns, numSrcColumns);
 	int srcColInc = (int) (numSrcColumns / double(minLength) + 0.5);
@@ -286,51 +243,39 @@ void VisualDsp::copyArrayOrParts(const vector<Column>& srcColumns, vector<Column
 	jassert(srcSize == dstSize);
   #endif
 
-	for(int i = 0, dstColIdx = 0, srcColIdx = 0;
-			i < minLength; ++i, dstColIdx += dstColInc, srcColIdx += srcColInc)
-	{
+	for (int i = 0, dstColIdx = 0, srcColIdx = 0;
+	     i < minLength; ++i, dstColIdx += dstColInc, srcColIdx += srcColInc) {
 		NumberUtils::constrain(srcColIdx, 0, numSrcColumns - 1);
 		NumberUtils::constrain(dstColIdx, 0, numDstColumns - 1);
 
 		const Column& source = srcColumns[srcColIdx];
-		Column& dest 		 = destColumns[dstColIdx];
+		Column& dest = destColumns[dstColIdx];
 
-		if(source.size() != dest.size())
-		{
-			float sizeRatio 	= source.size() / float(dest.size());
-			int intRatio 		= int(sizeRatio + 0.5f);
+		if (source.size() != dest.size()) {
+			float sizeRatio = source.size() / float(dest.size());
+			int intRatio = roundToInt(sizeRatio);
 			bool isCloseDivisor = fabsf(sizeRatio - (float) intRatio) < 0.00001f;
 
-			if(isCloseDivisor)
-			{
-				if(source.size() > dest.size())
-				{
+			if (isCloseDivisor) {
+				if (source.size() > dest.size()) {
 					dest.downsampleFrom(source, intRatio);
-				}
-				else
-				{
+				} else {
 					dest.upsampleFrom(source, intRatio);
 				}
-			}
-			else
-			{
+			} else {
 				source.copyTo(dest);
 			}
-		}
-		else
-		{
+		} else {
 			source.copyTo(dest);
 		}
 	}
 }
 
-
-void VisualDsp::calcTimeDomain(int numColumns)
-{
+void VisualDsp::calcTimeDomain(int numColumns) {
 	checkTimeColumns(numColumns);
 
 	MeshLibrary::LayerGroup& timeGroup = meshLib->getGroup(LayerGroups::GroupTime);
-	MorphPanel& morphPanel = getObj(MorphPanel);
+	auto& morphPanel = getObj(MorphPanel);
 
 	int nextPow2 		= preEnvCols.front().size();
 	int memorySize 		= nextPow2 * (timeGroup.size() + 2);
@@ -365,42 +310,40 @@ void VisualDsp::calcTimeDomain(int numColumns)
 
 	int numActiveLayers = surface->getNumActiveLayers();
 
-	if(numActiveLayers == 0)
-	{
+	if (numActiveLayers == 0) {
 		ScopedLock sl(timeColumnLock);
 		preEnvCols.clear();
 		return;
 	}
 
 	int timeColIdx = 0;
-	for(int colIdx = 0; colIdx < numColumns; ++colIdx)
-	{
+	for (int colIdx = 0; colIdx < numColumns; ++colIdx) {
 		timeColIdx = jmin(zoomProgress.size() - 1, colIdx * timeInc);
 
 		Column& column = preEnvCols[colIdx];
 
-		if(primeDim == Vertex::Red)
-		{
-			nextPow2 	= column.size();
-			delta 		= 1.0 / double(nextPow2);
+		if (primeDim == Vertex::Red) {
+			nextPow2 = column.size();
+			delta = 1.0 / double(nextPow2);
 		}
 
 		timeRasterizer->getPrimaryDimensionVar() = zoomProgress[timeColIdx];
 
-		if(numActiveLayers > 1)
+		if (numActiveLayers > 1)
 			sumBuffer.zero();
 
-		for(int i = 0; i < (int) timeGroup.size(); ++i)
-		{
-			Buffer<float> localBuffer 	= numActiveLayers == 1 ? sumBuffer.withSize(nextPow2) :
-																 Buffer<float>(timeBuffer + i * nextPow2, nextPow2);
+		for (int i = 0; i < timeGroup.size(); ++i) {
+			Buffer<float> localBuffer = numActiveLayers == 1
+				                            ? sumBuffer.withSize(nextPow2)
+				                            : Buffer(timeBuffer + i * nextPow2, nextPow2);
 
 			MeshLibrary::Layer& layer = timeGroup.layers[i];
 			Mesh* mesh = layer.mesh;
 			MeshLibrary::Properties* props = layer.props;
 
-			if(! props->active || ! mesh->hasEnoughCubesForCrossSection())
+			if(! props->active || ! mesh->hasEnoughCubesForCrossSection()) {
 				continue;
+			}
 
 			float scratchTime =
 					primeDim != Vertex::Time ? modTime :
@@ -411,8 +354,7 @@ void VisualDsp::calcTimeDomain(int numColumns)
 			rasterizer.setYellow(scratchTime);
 			rasterizer.calcCrossPoints(mesh);
 
-			if(! rasterizer.isSampleable())
-			{
+			if (!rasterizer.isSampleable()) {
 				localBuffer.zero();
 				continue;
 			}
@@ -431,7 +373,6 @@ void VisualDsp::calcTimeDomain(int numColumns)
 	}
 }
 
-
 void VisualDsp::calcSpectrogram(int numColumns)
 {
 	checkFFTColumns(numColumns);
@@ -442,7 +383,7 @@ void VisualDsp::calcSpectrogram(int numColumns)
 	int reductionFactor = getSetting(ReductionFactor);
 
 	vector<Column>& timeColumns = stage == ViewStages::PreProcessing ? preEnvCols : postEnvCols;
-	MorphPanel& morphPanel 		= getObj(MorphPanel);
+	auto& morphPanel 		= getObj(MorphPanel);
 
 	int nextPow2, numHarmonics;
 
@@ -453,7 +394,7 @@ void VisualDsp::calcSpectrogram(int numColumns)
 	int magSize 				= numPixels / spectInc;
 	int phaseSize 				= numPixels / phaseInc;
 
-	MeshLibrary& meshLib 		= getObj(MeshLibrary);
+	auto& meshLib = getObj(MeshLibrary);
 
 	int numTimeColumns 			= timeColumns.size();
 	int timeColInc 				= (int) (numTimeColumns / double(numColumns) + 0.5);
@@ -510,17 +451,12 @@ void VisualDsp::calcSpectrogram(int numColumns)
 	phaseRasterizer->updateOffsetSeeds();
 	spectRasterizer->updateOffsetSeeds();
 
-//	Buffer<float> fftBuf(fftBuffer, nextPow2);
+	Buffer magBuf(fft.getMagnitudes(), numHarmonics);
+	Buffer phaseBuf(fft.getPhases(), numHarmonics);
 
-	Buffer<float> magBuf(fft.getMagnitudes(), numHarmonics);
-	Buffer<float> phaseBuf(fft.getPhases(), numHarmonics);
-
-	for (int colIdx = 0, timeColIdx = 0; colIdx < numColumns; ++colIdx, timeColIdx += timeColInc)
-	{
-		if(primeDim == Vertex::Red)
-		{
+	for (int colIdx = 0, timeColIdx = 0; colIdx < numColumns; ++colIdx, timeColIdx += timeColInc) {
+		if (primeDim == Vertex::Red) {
 			int lastNumHarmonics = numHarmonics;
-			int lastPow2		= nextPow2;
 
 			midiKey 		= fftPreFXCols[colIdx].midiKey;
 			numHarmonics 	= fftPreFXCols[colIdx].size();
@@ -529,8 +465,7 @@ void VisualDsp::calcSpectrogram(int numColumns)
 			sizeIndex 		= sizeToIndex[nextPow2];
 			halfPow2		= nextPow2 / 2;
 
-			if(lastNumHarmonics != numHarmonics)
-			{
+			if(lastNumHarmonics != numHarmonics) {
 				additiveScale 	= Arithmetic::calcAdditiveScaling(numHarmonics);
 				magBuf 			= ffts[sizeIndex].getMagnitudes().withSize(numHarmonics);
 				phaseBuf 		= ffts[sizeIndex].getPhases().withSize(numHarmonics);
@@ -540,43 +475,28 @@ void VisualDsp::calcSpectrogram(int numColumns)
 				phaseBuffer		= phaseBuffer	.withSize(phaseGroup.size() * numHarmonics);
 				phaseScaleRamp	= phaseScaleRamp.withSize(numHarmonics);
 			}
-
-//			if(lastPow2 != nextPow2)
-//			{
-//				fftBuf = fftBuffer.withSize(nextPow2);
-//			}
 		}
 
-		if(timeColIdx >= numTimeColumns)
+		if(timeColIdx >= numTimeColumns) {
 			timeColIdx = numTimeColumns - 1;
-
-		if(doForwardFFT)
-		{
-//			timeColumns[timeColIdx].copyTo(fftBuf);
-//			fftBuf.mul(2.f);
-
-			ffts[sizeIndex].forward(timeColumns[timeColIdx]);
-//			ippsFFTFwd_RToCCS_32f_I(fftBuf, fftspecs[sizeIndex], 0);
-//			ippsCartToPolar_32fc((Ipp32fc*)fftBuf.get() + 1, magBuf, phaseBuf, numHarmonics);
-
-			phaseBuf.add((float) IPP_PI2);
 		}
-		else
-		{
+
+		if (doForwardFFT) {
+			ffts[sizeIndex].forward(timeColumns[timeColIdx]);
+			phaseBuf.add(IPP_PI2);
+		} else {
 			magBuf.zero();
 			phaseBuf.zero();
 		}
 
-		if (isFilterEnabled)
-		{
+		if (isFilterEnabled) {
 			int fftIdx = jmin(zoomProgress.size() - 1, colIdx * fftProcInc);
 
 			MeshRasterizer& rasterizer = *spectRasterizer;
 			spectRasterizer->getPrimaryDimensionVar() = zoomProgress[fftIdx];
 
-			for(int i = 0; i < (int) magnGroup.size(); ++i)
-			{
-				Buffer<float> localBuffer(freqBuffer + i * numHarmonics, numHarmonics);
+			for (int i = 0; i < magnGroup.size(); ++i) {
+				Buffer localBuffer(freqBuffer + i * numHarmonics, numHarmonics);
 				MeshLibrary::Layer& spectLayer = magnGroup[i];
 
 				if(! spectLayer.props->active || ! spectLayer.mesh->hasEnoughCubesForCrossSection())
@@ -589,17 +509,16 @@ void VisualDsp::calcSpectrogram(int numColumns)
 
 				float relativePan = Arithmetic::getRelativePan(spectLayer.props->pan, modPan);
 
-				if(relativePan == 0.f)
+				if(relativePan == 0.f) {
 					continue;
+				}
 
-				if(colIdx % colMagRatio == 0)
-				{
+				if (colIdx % colMagRatio == 0) {
 					rasterizer.setNoiseSeed(colIdx * 1997);
 					rasterizer.setYellow(scratchTime);
 					rasterizer.calcCrossPoints(spectLayer.mesh);
 
-					if(! rasterizer.isSampleable())
-					{
+					if (!rasterizer.isSampleable()) {
 						localBuffer.zero();
 						continue;
 					}
@@ -615,8 +534,9 @@ void VisualDsp::calcSpectrogram(int numColumns)
 
 					multiplicand *= powf(2.f, dynamicRange);
 
-					if(spectLayer.props->mode == Spectrum3D::Additive)
+					if(spectLayer.props->mode == Spectrum3D::Additive) {
 						multiplicand *= additiveScale * volumeEnv[colIdx * fftProcInc];
+					}
 
 					localBuffer.mul(multiplicand);
 				}
@@ -625,21 +545,20 @@ void VisualDsp::calcSpectrogram(int numColumns)
 				// sparsity mismatches, localbuffer can be larger than magbuf
 				Buffer<float> localBuffer2(localBuffer, numHarmonics);
 
-				if(spectLayer.props->mode == Spectrum3D::Additive)
+				if(spectLayer.props->mode == Spectrum3D::Additive) {
 					magBuf.add(localBuffer2);
-				else
-				{
+				} else {
 					// todo relative panning oddity here with magnitudes
-					if(relativePan < 1.f)
+					if(relativePan < 1.f) {
 						localBuffer2.add(-1.f).mul(relativePan).add(1.f);
+					}
 
 					magBuf.mul(localBuffer2);
 				}
 			}
 		}
 
-		if (isPhaseEnabled)
-		{
+		if (isPhaseEnabled) {
 			int fftIdx = jmin(zoomProgress.size() - 1, colIdx * fftProcInc);
 
 			phaseRasterizer->getPrimaryDimensionVar() = zoomProgress[fftIdx];
@@ -647,28 +566,26 @@ void VisualDsp::calcSpectrogram(int numColumns)
 			MeshRasterizer& rasterizer = *phaseRasterizer;
 			workBuffer.zero();
 
-			for(int i = 0; i < (int) phaseGroup.size(); ++i)
-			{
-				Buffer<float> localBuffer(phaseBuffer + i * numHarmonics, numHarmonics);
+			for (int i = 0; i < phaseGroup.size(); ++i) {
+				Buffer localBuffer(phaseBuffer + i * numHarmonics, numHarmonics);
 
 				MeshLibrary::Layer& layer = phaseGroup[i];
 
-				if(! layer.props->active || ! layer.mesh->hasEnoughCubesForCrossSection())
+				if(! layer.props->active || ! layer.mesh->hasEnoughCubesForCrossSection()) {
 					continue;
+				}
 
 				float scratchTime = primeDim != Vertex::Time ? modTime :
 									layer.props->scratchChan == CommonEnums::Null || stage < ViewStages::PostEnvelopes ?
 									zoomProgress[colIdx * fftProcInc] :
 									scratchContexts[layer.props->scratchChan].gridBuffer[fftIdx];
 
-				if(colIdx % colPhaseRatio == 0)
-				{
+				if(colIdx % colPhaseRatio == 0) {
 					rasterizer.setNoiseSeed(colIdx * 671);
 					rasterizer.setYellow(scratchTime);
 					rasterizer.calcCrossPoints(layer.mesh);
 
-					if(rasterizer.isSampleable())
-					{
+					if(rasterizer.isSampleable()) {
 						rasterizer.sampleAtIntervals(fftRamp, localBuffer);
 
 						double relativePan 	= Arithmetic::getRelativePan(layer.props->pan, modPan);
@@ -676,9 +593,7 @@ void VisualDsp::calcSpectrogram(int numColumns)
 						float multiplicand 	= relativePan * phaseAmpScale * IPP_2PI;
 
 						localBuffer.mul(multiplicand);
-					}
-					else
-					{
+					} else {
 						localBuffer.zero();
 					}
 				}
@@ -692,7 +607,7 @@ void VisualDsp::calcSpectrogram(int numColumns)
 
 		// remove dc offset
 
-		Buffer<float> fftCol = fftPreFXCols[colIdx];
+		Buffer fftCol = fftPreFXCols[colIdx];
 
 		// todo do we need to store this data if stage >= postfx ? ? ?
 		magBuf.copyTo(fftCol);
@@ -708,11 +623,6 @@ void VisualDsp::calcSpectrogram(int numColumns)
 			phaseBuf.add((float) -IPP_PI2);
 			ffts[sizeIndex].inverse(timeColumns[timeColIdx]);
 
-//			ippsZero_32fc((Ipp32fc*)fftBuffer.get() + numHarmonics + 1, nextPow2 / 2 - numHarmonics);
-//			status(ippsPolarToCart_32fc(magBuf, phases, (Ipp32fc*)fftBuffer.get() + 1, numHarmonics));
-//			status(ippsFFTInv_CCSToR_32f_I(fftBuffer, fftspecs[sizeIndex], 0));
-//			fftBuffer.copyTo(timeColumns[timeColIdx]);
-
 			jassert(timeColumns[timeColIdx].front() == timeColumns[timeColIdx].front());
 		}
 	}
@@ -723,20 +633,14 @@ void VisualDsp::calcSpectrogram(int numColumns)
 
 	end = ippGetCpuClocks();
 
-//  #ifndef BEAT_EDITION
-	// phases will be unwrapped if processed through fx
-	if(getSetting(ViewStage) < ViewStages::PostFX)
-	{
-		if(primeDim == Vertex::Time)
+	if (getSetting(ViewStage) < ViewStages::PostFX) {
+		if (primeDim == Vertex::Time)
 			unwrapPhaseColumns(phasePreFXCols);
-		else
-		{
+		else {
 			phasePreFXArray.mul((float) IPP_RPI * 0.5f).add(0.5f);
 		}
 	}
-//  #endif
 }
-
 
 void VisualDsp::updateScratchContexts(int numColumns)
 {
@@ -745,30 +649,27 @@ void VisualDsp::updateScratchContexts(int numColumns)
 
 	int numScratchLayers = meshLib->getGroup(LayerGroups::GroupScratch).size();
 
-	for(int i = 0; i < numScratchLayers; ++i)
-	{
+	for (int i = 0; i < numScratchLayers; ++i) {
 		ScratchContext context;
 
-		context.gridBuffer 	= scratchEnv	 .section(i * numColumns, numColumns);
+		context.gridBuffer = scratchEnv.section(i * numColumns, numColumns);
 		context.panelBuffer = scratchEnvPanel.section(i * Panel::linestripRes, Panel::linestripRes);
-		Buffer<float>& buf 	= context.gridBuffer;
+		Buffer<float>& buf = context.gridBuffer;
 
-		if(buf.size() < 2)
+		if (buf.size() < 2)
 			continue;
 
-		bool isAscending 	= buf[0] < buf[1];
-		bool wasAscending 	= isAscending;
+		bool isAscending = buf[0] < buf[1];
+		bool wasAscending = isAscending;
 
 		ScratchInflection first;
 		first.startIndex = 0;
 		context.inflections.push_back(first);
 
-		for(int j = 0; j < buf.size() - 1; ++j)
-		{
+		for (int j = 0; j < buf.size() - 1; ++j) {
 			isAscending = buf[j + 1] > buf[j];
 
-			if(Util::assignAndWereDifferent(wasAscending, isAscending))
-			{
+			if (Util::assignAndWereDifferent(wasAscending, isAscending)) {
 				ScratchInflection inflection;
 				inflection.startIndex = j;
 
@@ -776,15 +677,13 @@ void VisualDsp::updateScratchContexts(int numColumns)
 			}
 		}
 
-		if(context.inflections.back().startIndex < buf.size() - 1)
-		{
+		if (context.inflections.back().startIndex < buf.size() - 1) {
 			ScratchInflection last;
 			last.startIndex = buf.size() - 1;
 			context.inflections.push_back(last);
 		}
 
-		for(int j = 0; j < (int) context.inflections.size() - 1; ++j)
-		{
+		for (int j = 0; j < (int) context.inflections.size() - 1; ++j) {
 			ScratchInflection& curr = context.inflections[j];
 
 			int idxA = curr.startIndex;
@@ -800,10 +699,11 @@ void VisualDsp::updateScratchContexts(int numColumns)
 
 void VisualDsp::calcWaveSpectrogram(int numColumns)
 {
-	SampleWrapper* wav = getObj(Multisample).getCurrentSample();
+	PitchedSample* wav = getObj(Multisample).getCurrentSample();
 
-	if (wav == nullptr || wav->periods.empty())
+	if (wav == nullptr || wav->periods.empty()) {
 		return;
+	}
 
 	int numHarmonics, nextPow2;
 	int wavLength 		= wav->size();
@@ -829,14 +729,12 @@ void VisualDsp::calcWaveSpectrogram(int numColumns)
 	Buffer<float> veryFirstCycle= waveMemory.place(nextPow2);
 	Buffer<float> quarterBuf	= waveMemory.place(quarter);
 
-
 	double modPan = getObj(MorphPanel).getPanSlider()->getValue();
 	float pans[2];
 
-	if(wav->audio.numChannels == 1)
+	if(wav->audio.numChannels == 1) {
 		pans[0] = 1;
-	else
-	{
+	} else {
 		pans[0]	= (1 - modPan);
 		pans[1]	= modPan;
 	}
@@ -876,17 +774,16 @@ void VisualDsp::calcWaveSpectrogram(int numColumns)
 
 	vector<PitchFrame>& periods = wav->periods;
 
-	for(int i = 0; i < numColumns; ++i)
-	{
+	for (int i = 0; i < numColumns; ++i) {
 		position = i * xInc;
 
-		while(nextCycle < (int) periods.size() - 1 && (periods[nextCycle].sampleOffset - offsetSamples) * invWavLength < position)
+		while(nextCycle < (int) periods.size() - 1 && (periods[nextCycle].sampleOffset - offsetSamples) * invWavLength < position) {
 			++nextCycle;
+		}
 
 		PitchFrame& nextFrame = periods[nextCycle];
 
-		if(nextCycle < periods.size() && nextFrame.period < 10)
-		{
+		if (nextCycle < periods.size() && nextFrame.period < 10) {
 			postEnvCols[i] 	 .zero();
 			fftPreFXCols[i]	 .zero();
 			phasePreFXCols[i].zero();
@@ -894,8 +791,7 @@ void VisualDsp::calcWaveSpectrogram(int numColumns)
 			continue;
 		}
 
-		if(oldCycle != nextCycle)
-		{
+		if (oldCycle != nextCycle) {
 			int prevCycle = jmax(0, nextCycle - 1);
 			PitchFrame& prevFrame = periods[prevCycle];
 
@@ -906,12 +802,10 @@ void VisualDsp::calcWaveSpectrogram(int numColumns)
 
 			prevPosX	= jmin(1.f, prevOffset * invWavLength);
 
-			if(oldCycle == 0)
-			{
-				if(nextOffset + nextLength < wavLength)
-				{
-					Buffer<float> wavPrev(wavCombined + prevOffset, prevLength);
-					Buffer<float> wavNext(wavCombined + nextOffset, nextLength);
+			if(oldCycle == 0) {
+				if (nextOffset + nextLength < wavLength) {
+					Buffer wavPrev(wavCombined + prevOffset, prevLength);
+					Buffer wavNext(wavCombined + nextOffset, nextLength);
 
 					Resampling::linResample(wavPrev, resampledPrev);
 					Resampling::linResample(wavNext, resampledNext);
@@ -920,31 +814,25 @@ void VisualDsp::calcWaveSpectrogram(int numColumns)
 					resampledPrev.copyTo(veryFirstCycle);
 
 					// wrap quarter at end to front of this cycle to eliminate click
-					if(wrapCycles)
-					{
+					if (wrapCycles) {
 						resampledPrev.mul(fadeInUp);
 						quarterBuf.mul(resampledPrev + nextPow2, fadeInDown);
 						resampledPrev.add(quarterBuf);
 					}
-				}
-				else
-				{
+				} else {
 					resampledPrev.zero(nextPow2);
 					resampledNext.zero(nextPow2);
 				}
-			}
-			else
-			{
+			} else {
 				resampledNext.copyTo(resampledPrev.withSize(nextPow2));
 			}
 
 			Buffer<float> wavSection = wavCombined.sectionAtMost(nextOffset, nextLength);
 
-			if(! wavSection.empty())
-			{
+			if (!wavSection.empty()) {
 				Buffer<float> source = wavSection;
-				if(wavSection.size() < nextLength)
-				{
+
+				if (wavSection.size() < nextLength) {
 					paddedCyc.zero();
 					wavSection.copyTo(paddedCyc);
 					source = paddedCyc;
@@ -972,33 +860,25 @@ void VisualDsp::calcWaveSpectrogram(int numColumns)
 //		Ipp32f* timePtr = postEnvCols[i];
 		Buffer<float> col = postEnvCols[i];
 
-		if(nextOffset + nextLength >= wavLength)
-		{
+		if(nextOffset + nextLength >= wavLength) {
 			col.zero();
-//			resampledPrev.copyTo(col);
-		}
-		else
-		{
+			//			resampledPrev.copyTo(col);
+		} else {
 			// attack-preserved first cycle
-			if(i == 0)
-			{
+			if (i == 0) {
 				veryFirstCycle.copyTo(col);
-			}
-			else
-			{
-				if(interpCycles)
-				{
-					if(portion == 0.f)
+			} else {
+				if (interpCycles) {
+					if (portion == 0.f)
 						resampledPrev.copyTo(col);
 					else
 						col.mul(resampledPrev, 1 - portion).addProduct(resampledNext, portion);
-				}
-				else
-				{
-					if(portion < 0.9)
+				} else {
+					if(portion < 0.9) {
 						resampledPrev.copyTo(col);
-					else
+					} else {
 						resampledNext.copyTo(col);
+					}
 				}
 			}
 		}
@@ -1011,20 +891,14 @@ void VisualDsp::calcWaveSpectrogram(int numColumns)
 
 	for(int i = 0; i < numColumns; ++i)
 	{
-		Buffer<float> col = postEnvCols[i];
+		Buffer col = postEnvCols[i];
 
 		Column prefxMag(fftPreFXCols[i]);
 		Column prefxPhs(phasePreFXCols[i]);
 
-//		col.copyTo(magBuffer);
-//		col.mul(0.5f);
-
-//		ippsFFTFwd_RToCCS_32f_I(fftBuffer, fftspecs[sizeIndex], 0);
-//		ippsCartToPolar_32fc((Ipp32fc*)fftBuffer.get() + 1, magBuf, phaseBuf, numHarmonics);
-
 		ffts[sizeIndex].forward(col);
-		Buffer<float> magBuf(fft.getMagnitudes(), numHarmonics);
-		Buffer<float> phaseBuf(fft.getPhases(), numHarmonics);
+		Buffer magBuf(fft.getMagnitudes(), numHarmonics);
+		Buffer phaseBuf(fft.getPhases(), numHarmonics);
 
 		Arithmetic::applyLogMapping(fft.getMagnitudes(), getConstant(FFTLogTensionAmp));
 
@@ -1038,13 +912,12 @@ void VisualDsp::calcWaveSpectrogram(int numColumns)
 		prefxPhs.offset(numHarmonics - 1).zero();
 	}
 
-	if(getSetting(CurrentMorphAxis) == Vertex::Time)
+	if(getSetting(CurrentMorphAxis) == Vertex::Time) {
 		unwrapPhaseColumns(phasePreFXCols);
-	else
+	} else {
 		phasePreFXArray.mul((float) IPP_RPI * 0.5f).add(0.5f);
-
+	}
 }
-
 
 void VisualDsp::unwrapPhaseColumns(vector<Column>& phaseColumns)
 {
@@ -1065,24 +938,25 @@ void VisualDsp::unwrapPhaseColumns(vector<Column>& phaseColumns)
 
 	float phaseMin, phaseMax;
 
-	for (int harmIdx = 0; harmIdx < numHarmonics; ++harmIdx)
-	{
-		for (int col = 0; col < unwrapped.size(); ++col)
+	for (int harmIdx = 0; harmIdx < numHarmonics; ++harmIdx) {
+		for (int col = 0; col < unwrapped.size(); ++col) {
 			unwrapped[col] = phaseColumns[col][harmIdx];
+		}
 
 		unwrapped.minmax(phaseMin, phaseMax);
 
 		float diff;
-		for (int col = 1; col < unwrapped.size(); ++col)
-		{
+		for (int col = 1; col < unwrapped.size(); ++col) {
 			diff = unwrapped[col] - unwrapped[col - 1];
 			diff *= invConst;
 
-			if(diff > 0.50001f)
+			if(diff > 0.50001f) {
 				unwrapped[col] -= IPP_2PI * int(diff + 0.499989999f);
+			}
 
-			if(diff < -0.50001f)
+			if(diff < -0.50001f) {
 				unwrapped[col] += IPP_2PI * int(-diff + 0.499989999f);
+			}
 		}
 
 		float scaling = 1 / sqrtf(jmax(0.f, float(harmIdx + 1)));
@@ -1102,13 +976,11 @@ void VisualDsp::unwrapPhaseColumns(vector<Column>& phaseColumns)
 	scaleFactor 		= ceilf(logf(realMax) / logf(2.f) + 0.5f);
 	float invPhaseScale = powf(2, -scaleFactor);
 
-	for (int i = 0; i < (int) phaseColumns.size(); ++i)
-	{
-		Buffer<float> buf = phaseColumns[i];
+	for (const auto& phaseColumn : phaseColumns) {
+		Buffer buf = phaseColumn;
 		buf.mul(invPhaseScale).add(0.5f);
 	}
 }
-
 
 void VisualDsp::processThroughEnvelopes(int numColumns)
 {
@@ -1121,7 +993,7 @@ void VisualDsp::processThroughEnvelopes(int numColumns)
 
 	int stage = getSetting(ViewStage);
 	ScopedAlloc<Ipp32f> phaseMoveMem(postEnvCols.front().size());
-	Buffer<Ipp32f> phaseMoveBuffer(phaseMoveMem);
+	Buffer phaseMoveBuffer(phaseMoveMem);
 
 	// volume changes appear as if it occurred after all processing
 	bool areBeforeFX = stage < ViewStages::PostFX;
@@ -1166,10 +1038,9 @@ void VisualDsp::processThroughEnvelopes(int numColumns)
 			float volumeScale = areBeforeFX ? getObj(OscControlPanel).getVolumeScale() : 1;
 			int start = 0;
 
-			EnvRasterizer& volRast = getObj(EnvVolumeRast);
+			auto& volRast = getObj(EnvVolumeRast);
 
-			if(volRast.isSampleable() && getSetting(CurrentMorphAxis) == Vertex::Time)
-			{
+			if (volRast.isSampleable() && getSetting(CurrentMorphAxis) == Vertex::Time) {
 				int size = postEnvCols[0].size();
 				double delta = 1 / (double) volumeEnv.size() / double(size);
 				volRast.sampleWithInterval(phaseMoveBuffer, delta, 0.);
@@ -1179,37 +1050,31 @@ void VisualDsp::processThroughEnvelopes(int numColumns)
 				start = 1;
 			}
 
-			for(int colIdx = start; colIdx < numColumns; ++colIdx)
-			{
+			for(int colIdx = start; colIdx < numColumns; ++colIdx) {
 				int idx = envInc * colIdx;
 				float envScale = idx >= volumeEnv.size() ? volumeEnv.back() : volumeEnv[idx];
 
 				postEnvCols[colIdx].mul(volumeScale * envScale);
 			}
 		}
-	}
-	else
-	{
+	} else {
 		float volumeScale = areBeforeFX ? getObj(OscControlPanel).getVolumeScale() : 1;
 
-		for(int colIdx = 0; colIdx < numColumns; ++colIdx)
+		for(int colIdx = 0; colIdx < numColumns; ++colIdx) {
 			postEnvCols[colIdx].mul(volumeScale);
+		}
 	}
 
-	if(stage == ViewStages::PostEnvelopes)
+	if(stage == ViewStages::PostEnvelopes) {
 		processFrequency(postEnvCols, false);
-
-//	processOscPitch(postEnvCols);
+	}
 }
 
-
-float VisualDsp::getVoiceFrequencyCents(int unisonIndex)
-{
+float VisualDsp::getVoiceFrequencyCents(int unisonIndex) {
 	// possibly updated by parameter smoothing
-	double pitchEnvVal 	= 0.5;
+	double pitchEnvVal = 0.5;
 
-	if(meshLib->getCurrentProps(LayerGroups::GroupPitch))
-	{
+	if (meshLib->getCurrentProps(LayerGroups::GroupPitch)) {
 		float y = getObj(EnvPitchRast).getSustainLevel(EnvRasterizer::headUnisonIndex + unisonIndex);
 
 		NumberUtils::constrain(y, 0.01f, 0.99f);
@@ -1219,11 +1084,10 @@ float VisualDsp::getVoiceFrequencyCents(int unisonIndex)
 	return NumberUtils::unitPitchToSemis(pitchEnvVal) * 100;
 }
 
-
-void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison)
-{
-	if(columns.size() < 2)
+void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
+	if(columns.size() < 2) {
 		return;
+	}
 
 	static const float invSqrtHalf = 1 / sqrtf(0.5f);
 
@@ -1250,11 +1114,11 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison)
 	ScopedAlloc<double> cumePhases(unisonOrder);
 	cumePhases.zero();
 
-	EnvRasterizer& pitch = getObj(EnvPitchRast);
+	auto& pitch = getObj(EnvPitchRast);
 
 	// calculates curve for deferred sampleAt calls in processing
 	// do this second to preserve deform contexts.
-	pitch.updateOffsetSeeds();
+	pitch.updateOffsetSeeds(1, DeformerPanel::tableSize);
 	pitch.ensureParamSize(unisonOrder);
 	pitch.setCalcDepthDimensions(false);
 	pitch.setWantOneSamplePerCycle(true);
@@ -1269,13 +1133,10 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison)
 	float timePerColEnv	= 1.f / float(columns.size() - 1);
 	float timePerColUni	= timePerColEnv * lengthSecs;
 
-	int samplesPerCol	= int(44100.f * timePerColEnv + 0.5);
+	int samplesPerCol	= roundToInt(44100.f * timePerColEnv);
 	double unitPortionPerSample= timePerColEnv / (float) samplesPerCol;
 
-	for(int colIdx = 0; colIdx < columns.size(); ++colIdx)
-	{
-		Column& col = columns[colIdx];
-
+	for(auto& col : columns) {
 		columnSize 	= col.size();
 		unitKey 	= Arithmetic::getUnitValueForGraphicNote(col.midiKey, midiRange);
 		xVal 		= isTimeDimension ? col.x : time;
@@ -1290,12 +1151,12 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison)
 		col.copyTo(columnBuf);
 		col.zero();
 
-		for(int i = 0; i < unisonOrder; ++i)
-		{
+		for (int i = 0; i < unisonOrder; ++i) {
 			MeshLibrary::EnvProps* pitchProps = meshLib->getCurrentEnvProps(LayerGroups::GroupPitch);
 
-			if(pitchProps == nullptr)
+			if(pitchProps == nullptr) {
 				continue;
+			}
 
 			if(pitchProps->active)
 				getObj(EnvPitchRast).renderToBuffer(samplesPerCol, unitPortionPerSample,
@@ -1303,8 +1164,7 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison)
 
 			float relativePan = 1.f, unisonCents = 0, uniPhase = 0;
 
-			if(processUnison)
-			{
+			if(processUnison) {
 				relativePan 	= Arithmetic::getRelativePan(unison->getPan(i, false), modPan) * unisonScale;
 				unisonCents		= unison->getDetune(i, false);
 				uniPhase 		= unison->getPhase(i, false);
@@ -1326,50 +1186,35 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison)
 
 			jassert(remainder >= 0 && remainder <= 1);
 
-			if(interpolate)
-			{
-				if(phase != 0 || remainder != 0)
-				{
-					if(phase != 0)
-					{
+			if(interpolate) {
+				if (phase != 0 || remainder != 0) {
+					if (phase != 0) {
 						columnBuf.offset(phase).copyTo(phaseMoveBuffer);
-						columnBuf.copyTo(phaseMoveBuffer + (int) (columnSize - phase));
-					}
-					else
-					{
+						columnBuf.copyTo(phaseMoveBuffer + (columnSize - phase));
+					} else {
 						columnBuf.copyTo(phaseMoveBuffer);
 					}
-
 
 					phaseMoveBuffer2.mul(phaseMoveBuffer, 1 - remainder).addProduct(phaseMoveBuffer + 1, remainder);
 					phaseMoveBuffer2[columnSize - 1] = (1 - remainder) * phaseMoveBuffer[columnSize - 1] + remainder * phaseMoveBuffer[0];
 
 					col.addProduct(phaseMoveBuffer2, relativePan);
-				}
-				else
-				{
+				} else {
 					col.addProduct(columnBuf, relativePan);
 				}
-			}
-
-			else
-			{
-				if(phase != 0)
-				{
+			} else {
+				if (phase != 0) {
 					columnBuf.offset(phase).copyTo(phaseMoveBuffer);
 					columnBuf.copyTo(phaseMoveBuffer.offset(columnSize - (int) phase));
 
 					col.addProduct(phaseMoveBuffer, relativePan);
-				}
-				else
-				{
+				} else {
 					col.addProduct(columnBuf, relativePan);
 				}
 			}
 		}
 	}
 }
-
 
 void VisualDsp::trackWavePhaseEnvelope()
 {
@@ -1454,9 +1299,7 @@ void VisualDsp::trackWavePhaseEnvelope()
 */
 }
 
-
-Buffer<float> VisualDsp::getFreqColumn(float position, bool isMags)
-{
+Buffer<float> VisualDsp::getFreqColumn(float position, bool isMags) {
 	bool postFX = getSetting(ViewStage) >= ViewStages::PostFX;
 
 	vector<Column>& cols = isMags ?
@@ -1465,92 +1308,70 @@ Buffer<float> VisualDsp::getFreqColumn(float position, bool isMags)
 
 	int index = jmin((int) cols.size() - 1, int(position * (cols.size() - 0.5)));
 
-	if(index < 0)
-		return Buffer<float>();
+	if(index < 0) {
+		return {};
+	}
 
 	jassert(isPositiveAndBelow(index, (int) cols.size()));
 
 	return cols[index];
 }
 
-
-const vector<Column>& VisualDsp::getFreqColumns()
-{
+const vector<Column>& VisualDsp::getFreqColumns() {
 	bool postFX = getSetting(ViewStage) >= ViewStages::PostFX;
 
-	if(postFX)
-	{
+	if (postFX) {
 		return getSetting(MagnitudeDrawMode) ? fftPostFXCols : phasePostFXCols;
 	}
-	else
-	{
-		return getSetting(MagnitudeDrawMode) ? fftPreFXCols : phasePreFXCols;
-	}
+	return getSetting(MagnitudeDrawMode) ? fftPreFXCols : phasePreFXCols;
 }
 
-
-const vector<Column>& VisualDsp::getTimeColumns()
-{
+const vector<Column>& VisualDsp::getTimeColumns() {
 	int stage = getSetting(ViewStage);
 
-	if(stage == ViewStages::PostFX)
-	{
+	if (stage == ViewStages::PostFX) {
 		return postFXCols;
 	}
-	else if(stage == ViewStages::PreProcessing)
-	{
+	if (stage == ViewStages::PreProcessing) {
 		return preEnvCols;
 	}
-	else
-	{
-		return postEnvCols;
-	}
+
+	return postEnvCols;
 }
 
-
-Buffer<Ipp32f> VisualDsp::getTimeArray()
-{
+Buffer<Ipp32f> VisualDsp::getTimeArray() {
 	int stage = getSetting(ViewStage);
 
-	return stage == ViewStages::PostFX ? postFXArray :
-		   stage == ViewStages::PreProcessing ? preEnvArray : postEnvArray;
+	return stage == ViewStages::PostFX ?
+		postFXArray : stage == ViewStages::PreProcessing ?
+			preEnvArray : postEnvArray;
 }
 
-
-Buffer<Ipp32f> VisualDsp::getFreqArray()
-{
+Buffer<Ipp32f> VisualDsp::getFreqArray() {
 	bool postFX = getSetting(ViewStage) >= ViewStages::PostFX;
 
-	return getSetting(MagnitudeDrawMode) ?
-			(postFX ? fftPostFXArray : fftPreFXArray) :
-			(postFX ? phasePostFXArray : phasePreFXArray);
+	return getSetting(MagnitudeDrawMode)
+		       ? (postFX ? fftPostFXArray : fftPreFXArray)
+		       : (postFX ? phasePostFXArray : phasePreFXArray);
 }
 
-
-void VisualDsp::processThroughEffects(int numColumns)
-{
+void VisualDsp::processThroughEffects(int numColumns) {
 	jassert(getSetting(ViewStage) >= ViewStages::PostFX);
 
-	if(getSetting(DrawWave))
-	{
+	if (getSetting(DrawWave)) {
 		int nextPow2 	= postEnvCols.front().size();
 		int key 		= postEnvCols.front().midiKey;
 
 		checkEffectsWavColumns(numColumns, nextPow2, fftPreFXCols.front().size(), key);
 		copyArrayOrParts(fftPreFXCols, fftPostFXCols);
-
-//	  #ifndef BEAT_EDITION
 		copyArrayOrParts(phasePreFXCols, phasePostFXCols);
-//	  #endif
 
 		return;
 	}
-	else
-	{
-		checkEffectsColumns(numColumns);
-	}
 
-	SynthAudioSource& synth = getObj(SynthAudioSource);
+	checkEffectsColumns(numColumns);
+
+	auto& synth = getObj(SynthAudioSource);
 	Waveshaper& waveshaper 	= synth.getWaveshaper();
 	IrModeller& tubeModel 	= synth.getIrModeller();
 	Equalizer& equalizer 	= synth.getEqualizer();
@@ -1561,30 +1382,25 @@ void VisualDsp::processThroughEffects(int numColumns)
 	bool haveUnison 		= unison->getOrder(false) > 1;
 	float volumeScale 		= getObj(OscControlPanel).getVolumeScale();
 
-	onlyBeat(haveIrModeller = false);
-
-	for (int i = 0; i < (int) postFXCols.size(); ++i)
-		postFXCols[i].latency = 0;
+	for (auto & postFXCol : postFXCols) {
+		postFXCol.latency = 0;
+	}
 
 	ScopedLock sl(fxColumnLock);
 
-	if(haveWaveshaper)
-	{
+	if (haveWaveshaper) {
 		waveshaper.clearGraphicDelayLine();
 
 		int latency = waveshaper.doesGraphicOversample() ? waveshaper.getLatencySamples() : 0;
 
-		for (int i = 0; i < (int) postFXCols.size(); ++i)
-		{
-			Column& col = postFXCols[i];
+		for (auto& col: postFXCols) {
 			waveshaper.processVertexBuffer(col);
 
 			col.latency += latency;
 		}
 	}
 
-	if(haveIrModeller)
-	{
+	if (haveIrModeller) {
 		tubeModel.clearGraphicOverlaps();
 
 		int currSize = postFXCols.front().size();
@@ -1592,13 +1408,11 @@ void VisualDsp::processThroughEffects(int numColumns)
 
 		tubeModel.updateGraphicConvState(currSize, false);
 
-		for (int i = 0; i < (int) postFXCols.size(); ++i)
-		{
-			Column& col = postFXCols[i];
-
+		for (auto& col: postFXCols) {
 			currSize = col.size();
-			if(currSize != lastSize)
+			if (currSize != lastSize) {
 				tubeModel.updateGraphicConvState(currSize, false);
+			}
 
 			tubeModel.processVertexBuffer(col);
 
@@ -1606,18 +1420,17 @@ void VisualDsp::processThroughEffects(int numColumns)
 		}
 	}
 
-	if(haveEqualizer)
-	{
+	if (haveEqualizer) {
 		equalizer.clearGraphicBuffer();
 
-		for(int i = 0; i < (int) postFXCols.size(); ++i)
-			equalizer.processVertexBuffer(postFXCols[i]);
+		for (const auto& postFXCol: postFXCols) {
+			equalizer.processVertexBuffer(postFXCol);
+		}
 	}
 
 	postFXArray.mul(volumeScale);
 
-	if(! haveWaveshaper && ! haveIrModeller && ! haveUnison && ! haveEqualizer)
-	{
+	if(!haveWaveshaper && !haveIrModeller && !haveUnison && !haveEqualizer) {
 		// prefXcols are copied in checkColumns()
 
 		copyArrayOrParts(fftPreFXCols, fftPostFXCols);
@@ -1626,31 +1439,25 @@ void VisualDsp::processThroughEffects(int numColumns)
 		int tension = getConstant(LogTension);
 
 		// need to first unmap amplitudes to apply volume scaling appropriately
-		for(int i = 0; i < (int) fftPostFXCols.size(); ++i)
-		{
-			Arithmetic::applyInvLogMapping(fftPostFXCols[i], tension);
-			fftPostFXCols[i].mul(volumeScale);
-			Arithmetic::applyLogMapping(fftPostFXCols[i], tension);
+		for (auto& fftPostFXCol: fftPostFXCols) {
+			Arithmetic::applyInvLogMapping(fftPostFXCol, tension);
+			fftPostFXCol.mul(volumeScale);
+			Arithmetic::applyLogMapping(fftPostFXCol, tension);
 		}
-	}
-	else
-	{
+	} else {
 		int numHarmonics;
 
 		ScopedAlloc<float> mem(postFXCols.front().size());
-		Buffer<float> moveBuffer(mem);
+		Buffer moveBuffer(mem);
 
-		for (int i = 0; i < (int) postFXCols.size(); ++i)
-		{
+		for (int i = 0; i < (int) postFXCols.size(); ++i) {
 			Column& col 	= postFXCols[i];
 			numHarmonics 	= fftPostFXCols[i].size();
 			int sizeIndex 	= sizeToIndex[col.size()];
 			Transform& fft 	= ffts[sizeIndex];
-//			Buffer<float> phaseBuf(phases, numHarmonics);
 
 			col.latency &= (col.size() - 1);
-			if(col.latency > 0)
-			{
+			if(col.latency > 0) {
 				ippsCopy_32f(col + col.latency, moveBuffer, col.size() - col.latency);
 				ippsCopy_32f(col, moveBuffer.offset(col.size() - col.latency),  col.latency);
 				moveBuffer.copyTo(col);
@@ -1658,9 +1465,6 @@ void VisualDsp::processThroughEffects(int numColumns)
 			}
 
 			fft.forward(col);
-//			col.copyTo(fftBuffer);
-//			status(ippsFFTFwd_RToCCS_32f_I(fftBuffer, fftspecs[sizeIndex], 0));
-//			status(ippsCartToPolar_32fc((Ipp32fc*)fftBuffer.get() + 1, magBuf, phaseBuf, numHarmonics));
 
 			// undenormalize
 			Buffer<float> magBuf(fft.getMagnitudes(), numHarmonics);
@@ -1675,16 +1479,12 @@ void VisualDsp::processThroughEffects(int numColumns)
 		phasePostFXArray.add((float) IPP_PI2);
 	}
 
-	if(getSetting(CurrentMorphAxis) == Vertex::Time)
-	{
+	if (getSetting(CurrentMorphAxis) == Vertex::Time) {
 		unwrapPhaseColumns(phasePostFXCols);
-	}
-	else
-	{
+	} else {
 		phasePostFXArray.mul((float) IPP_RPI * 0.5f).add(0.5f);
 	}
 }
-
 
 void VisualDsp::reset()
 {

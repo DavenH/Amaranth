@@ -15,9 +15,9 @@
 #include "../Curve/PathRepo.h"
 #include "../Design/Updating/Updater.h"
 #include "../UI/Panels/Panel.h"
-#include "../UI/MasterRenderer.h"
 #include "../UI/MiscGraphics.h"
 #include "../Util/LogRegions.h"
+#include "../Util/DummyOutputStream.h"
 
 
 SingletonRepo::SingletonRepo() :
@@ -39,9 +39,9 @@ SingletonRepo::~SingletonRepo() {
 }
 
 void SingletonRepo::instantiate() {
-	if(hasInstantiated)
+	if(hasInstantiated) {
 		return;
-
+	}
 	dummyStream = std::make_unique<DummyOutputStream>();
 
 	Settings::ClientPaths paths;
@@ -62,7 +62,6 @@ void SingletonRepo::instantiate() {
 	add(new MemoryPool		(this),  	   -100);
 	add(new Updater			(this),    		 -1);
 	add(new LogRegions		(this),    		 -1);
-	add(new MasterRenderer	(this));
 	add(new Document		(this));
 	add(new PathRepo		(this));
 	add(new EditWatcher		(this));
@@ -123,7 +122,7 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
 }
 
 OutputStream& SingletonRepo::getDebugStream() {
-  #ifdef _DEBUG
+  #ifdef JUCE_DEBUG
 	if(debugStream == nullptr)
 		return *dummyStream;
 

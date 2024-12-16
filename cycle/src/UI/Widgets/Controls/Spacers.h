@@ -7,7 +7,6 @@ using namespace juce;
 
 class ClearSpacer : public IDynamicSizeComponent
 {
-private:
 	bool reducible;
 	bool isVisible;
 	int space, x, y;
@@ -56,7 +55,6 @@ public:
 class Separator :
 	public IDynamicSizeComponent,
 	public Component {
-private:
     bool isHorz;
     int x, y;
 

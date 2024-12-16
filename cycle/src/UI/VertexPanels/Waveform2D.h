@@ -9,20 +9,20 @@ class PlaybackPanel;
 class Waveform2D :
 		public Panel2D {
 public:
-	Waveform2D(SingletonRepo* repo);
+	explicit Waveform2D(SingletonRepo* repo);
 
-	bool shouldDrawCurve();
-	int getLayerScratchChannel();
-	void componentChanged();
-	void drawBackground(bool fillBackground);
-	void drawCurvesAndSurfaces();
+	bool shouldDrawCurve() override;
+	int getLayerScratchChannel() override;
+	void componentChanged() override;
+	void drawBackground(bool fillBackground) override;
+	void drawCurvesAndSurfaces() override;
 	void drawMouseHint();
 	void fillCurveFromGrid();
-	void init();
-	void postCurveDraw();
-	void preDraw();
+	void init() override;
+	void postCurveDraw() override;
+	void preDraw() override;
 
-	void doZoomExtra(bool commandDown);
+	void doZoomExtra(bool commandDown) override;
 	int initXYArrays(Buffer<float> one, Buffer<float> two, float portion);
 
 private:

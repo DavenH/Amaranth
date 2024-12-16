@@ -1,11 +1,9 @@
 #include "CommonGL.h"
 #include "OpenGLPanel.h"
 #include "Panel.h"
-#include "ScopedGL.h"
 #include "Texture.h"
 #include "../MasterRenderer.h"
 #include "../../App/SingletonRepo.h"
-
 
 OpenGLPanel::OpenGLPanel(SingletonRepo* repo, Panel2D* panel2D) :
 		PanelOwner(panel2D)
@@ -25,14 +23,15 @@ OpenGLPanel::~OpenGLPanel() {
 }
 
 void OpenGLPanel::clear() {
-    if (getWidth() == 0)
+    if (getWidth() == 0) {
         return;
+    }
 
     clearAndOrtho(getWidth(), getHeight());
 }
 
 void OpenGLPanel::newOpenGLContextCreated() {
-    dout << panel->getName() << " new context created\n";
+    std::cout << panel->getName() << " new context created\n";
 
     commonGL->initializeTextures();
     commonGL->initLineParams();
@@ -43,7 +42,7 @@ void OpenGLPanel::newOpenGLContextCreated() {
 }
 
 void OpenGLPanel::openGLContextClosing() {
-    dout << panel->getName() << " context closing, clearing textures\n";
+    std::cout << panel->getName() << " context closing, clearing textures\n";
 
     printErrors(repo);
 }

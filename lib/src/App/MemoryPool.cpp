@@ -8,7 +8,3 @@ MemoryPool::MemoryPool(SingletonRepo* repo) :
 	, 	gfxPool		(16384) {
 }
 
-
-MemoryPool::~MemoryPool() {
-}
-

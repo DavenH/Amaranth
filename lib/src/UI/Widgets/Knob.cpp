@@ -30,7 +30,6 @@ Knob::Knob(SingletonRepo* repo, int id, String hint, float defaultValue) :
 	setValue(defaultValue, dontSendNotification);
 }
 
-
 Knob::Knob(SingletonRepo* repo, float defaultValue) :
 		Slider(String())
 	, 	defaultValue(defaultValue)
@@ -63,8 +62,7 @@ void Knob::setDefaults() {
 }
 
 void Knob::setStringFunctions(const StringFunction& toString,
-                              const StringFunction& toConsole)
-{
+                              const StringFunction& toConsole) {
 	valueString  = toString;
 	consoleString = toConsole;
 }
@@ -177,7 +175,7 @@ void Knob::setStringFunction(const StringFunction& toBoth) {
 }
 
 void Knob::resized() {
-	float size = (float) jmin(getWidth(), getHeight());
+	auto size = (float) jmin(getWidth(), getHeight());
 
 	r1 = 0.57f;
 	r2 = jmax(4.f / size, 0.22f);

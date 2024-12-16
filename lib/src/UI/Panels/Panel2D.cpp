@@ -1,18 +1,17 @@
 #include "CommonGfx.h"
 #include "Panel2D.h"
 
+#include <Definitions.h>
 #include <memory>
 
 #include "OpenGLPanel.h"
 #include "Panel3D.h"
 #include "Texture.h"
-#include "../../App/Settings.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Array/Buffer.h"
 #include "../../Curve/Intercept.h"
 #include "../../Curve/MeshRasterizer.h"
 #include "../../Inter/Interactor.h"
-#include "../../Thread/LockTracer.h"
 #include "../../Util/Arithmetic.h"
 #include "../../Util/Geometry.h"
 #include "../../UI/Layout/BoundWrapper.h"
@@ -44,8 +43,9 @@ void Panel2D::contractToRange(bool includeX) {
 }
 
 void Panel2D::drawCurvesAndSurfaces() {
-    if (!shouldDrawCurve())
-        return;
+    if (!shouldDrawCurve()) {
+	    return;
+    }
 
 	Range<float> xLimit = interactor->vertexLimits[interactor->dims.x];
 	bool extendsX 		= xLimit.getLength() > 1.f;
@@ -64,14 +64,16 @@ void Panel2D::drawCurvesAndSurfaces() {
 		waveX = data.waveX;
 		waveY = data.waveY;
 
-		if(waveX.size() < 2)
+		if(waveX.size() < 2) {
 			return;
+		}
 
 		int istart 	= extendsX ? Arithmetic::binarySearch(xLimit.getStart(), waveX) : data.zeroIndex;
 		int iend 	= extendsX ? Arithmetic::binarySearch(xLimit.getEnd(), waveX) : jmin((int) waveX.size() - 1, data.oneIndex + 4);
 
-		if(istart > 4)
+		if(istart > 4) {
 			istart -= 4;
+		}
 
 		NumberUtils::constrain(istart, 0, iend);
 
@@ -106,8 +108,9 @@ void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
 	positions.reserve(size + 10);
 	
 	int i = 0;
-	while(i < size - 1 && xy.x[i + 1] < 0)
+	while(i < size - 1 && xy.x[i + 1] < 0) {
 		++i;
+	}
 
 	sectionClr = xy.y[i] < baseY ? colourA : colourB; // after scaling graphic coords flipped
 	curr.update(xy.x[i] - 5, xy.y[i], sectionClr.withAlpha(alpha.front()));
@@ -143,14 +146,14 @@ void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
 }
 
 void Panel2D::drawInterceptLines() {
-    RasterizerData& rastData = interactor->getRasterizer()->getRastData();
-
-    {
+	{
+		RasterizerData& rastData = interactor->getRasterizer()->getRastData();
 		ScopedLock sl(rastData.lock);
 		const vector<Intercept>& intercepts = rastData.intercepts;
 
-		if(intercepts.empty())
+		if(intercepts.empty()) {
 			return;
+		}
 
 		int size = intercepts.size() + (cyclicLines ? 2 : 0);
 
@@ -175,7 +178,7 @@ void Panel2D::drawInterceptLines() {
 	gfx->setCurrentLineWidth(1.f);
 	gfx->setCurrentColour(0.2f, 0.2f, 0.2f, 0.9f);
 	gfx->enableSmoothing();
-	gfx->drawLineStrip(xy);
+	gfx->drawLineStrip(xy, true, true);
 }
 
 void Panel2D::highlightCurrentIntercept()
@@ -205,11 +208,13 @@ void Panel2D::highlightCurrentIntercept()
 
 		const vector<Intercept>& icpts = data.intercepts;
 
-		if(! isPositiveAndBelow(icptIdx, (int) icpts.size()))
+		if(! isPositiveAndBelow(icptIdx, (int) icpts.size())) {
 			return;
+		}
 
-		if(interactor->dims.numHidden() > 0 && icpts[icptIdx].cube == nullptr && icptIdx > 0)
+		if(interactor->dims.numHidden() > 0 && icpts[icptIdx].cube == nullptr && icptIdx > 0) {
 			--icptIdx;
+		}
 
 		point.x = icpts[icptIdx].x;
 		point.y = icpts[icptIdx].y;
@@ -294,8 +299,9 @@ void Panel2D::drawDeformerTags() {
 
 	gfx->setCurrentColour(Color(1));
 
-	if(dfrmTags.empty())
+	if(dfrmTags.empty()) {
 		return;
+	}
 
 	float h = dfrmTags.front().getHeight();
 
@@ -303,8 +309,9 @@ void Panel2D::drawDeformerTags() {
         Intercept& icpt = curve.b;
 
         if (VertCube* cube = icpt.cube) {
-            if (!cube->isDeformed())
-                continue;
+            if (!cube->isDeformed()) {
+	            continue;
+            }
 
 			Vertex2 b(sx(curve.b.x), sy(curve.b.y));
 			Vertex2 d(sx(curve.tp.d.x), sy(curve.tp.d.y));
@@ -312,9 +319,8 @@ void Panel2D::drawDeformerTags() {
 
 			int cumeWidth = 0;
 			int numTags = 0;
-			for(int j = 0; j < Vertex::numElements; ++j)
-			{
-				int chan = cube->deformerAt(j);
+            for (int j = 0; j < Vertex::numElements; ++j) {
+	            int chan = cube->deformerAt(j);
 
                 if (isPositiveAndBelow(chan, (int) dfrmTags.size())) {
                     Rectangle<float> rect = dfrmTags[chan];
@@ -342,9 +348,10 @@ void Panel2D::zoomUpdated(int updateSource) {
     if (updateSource == interactor->getUpdateSource()) {
     } else {
         Interactor* opposite = interactor->getOppositeInteractor();
+
         if (opposite != nullptr) {
             if (updateSource == opposite->getUpdateSource()) {
-                Panel3D* panel3D = dynamic_cast<Panel3D*>(opposite->panel.get());
+                auto* panel3D = dynamic_cast<Panel3D*>(opposite->panel.get());
 
                 if (panel3D != nullptr) {
 					ZoomRect& rectSrc = panel3D->getZoomPanel()->rect;

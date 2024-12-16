@@ -126,7 +126,7 @@ void FileChooserDialog::browserRootChanged(const File& newRoot) {
 }
 
 void FileChooserDialog::createNewFolderCallback(int result, FileChooserDialog* box,
-                                                Component::SafePointer<AlertWindow> alert) {
+                                                SafePointer<AlertWindow> alert) {
     if (result != 0 && alert != nullptr && box != nullptr) {
         alert->setVisible(false);
         box->createNewFolderConfirmed(alert->getTextEditorContents("name"));
@@ -137,14 +137,13 @@ void FileChooserDialog::createNewFolder() {
     File parent(content->chooserComponent.getRoot());
 
     if (parent.isDirectory()) {
-        AlertWindow* alertWindow = new AlertWindow("New Folder", "Please enter the name for the folder",
+        auto* alertWindow = new AlertWindow("New Folder", "Please enter the name for the folder",
                                                    AlertWindow::NoIcon, this);
 
         ModalComponentManager::Callback* callback =
-                ModalCallbackFunction::forComponent(createNewFolderCallback, this,
-                                                    Component::SafePointer<AlertWindow>(alertWindow));
+                ModalCallbackFunction::forComponent(createNewFolderCallback, this, SafePointer(alertWindow));
 
-        alertWindow->addTextEditor("name", String::empty, String::empty, false);
+        alertWindow->addTextEditor("name", String(), String(), false);
 
         alertWindow->addButton("Ok", 1, KeyPress(KeyPress::returnKey));
         alertWindow->addButton("Cancel", 1, KeyPress(KeyPress::escapeKey));

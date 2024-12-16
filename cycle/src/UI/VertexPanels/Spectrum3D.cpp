@@ -1,42 +1,34 @@
-#include <math.h>
+#include <cmath>
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Binary/Gradients.h>
-#include <Binary/Images.h>
 #include <Curve/Mesh.h>
-#include <Thread/LockTracer.h>
-#include <UI/IConsole.h>
-#include <UI/Layout/DynamicSizeContainer.h>
-#include <UI/MiscGraphics.h>
-#include <UI/Panels/OpenGLPanel3D.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/Widgets/IconButton.h>
 #include <UI/Widgets/Knob.h>
 #include <Util/LogRegions.h>
-#include <Util/ScopedBooleanSwitcher.h>
 #include <Util/StringFunction.h>
 
 #include "Spectrum2D.h"
 #include "Spectrum3D.h"
-#include "../App/CycleTour.h"
+#include "../CycleDefs.h"
 #include "../Panels/Morphing/MorphPanel.h"
 #include "../Panels/VertexPropertiesPanel.h"
 #include "../VertexPanels/Waveform3D.h"
 #include "../Widgets/Controls/LayerAddRemover.h"
 #include "../Widgets/Controls/MeshSelector.h"
 #include "../Widgets/Controls/Spacers.h"
-#include "../../Audio/AudioSourceRepo.h"
+#include "../../App/CycleTour.h"
 #include "../../Audio/SynthAudioSource.h"
 #include "../../Curve/GraphicRasterizer.h"
-#include "../../CycleDefs.h"
 #include "../../Inter/SpectrumInter2D.h"
 #include "../../Inter/SpectrumInter3D.h"
 #include "../../UI/Panels/ModMatrixPanel.h"
-#include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VisualDsp.h"
 #include "../../Util/CycleEnums.h"
+
 
 Spectrum3D::Spectrum3D(SingletonRepo* repo) : 
 		Panel3D				(repo, "Spectrum3D", this, true, false)
@@ -63,7 +55,6 @@ void Spectrum3D::init() {
 	volumeScale		= 1.25f;
 	volumeTrans		= 0.f;
 	haveLogarithmicY= true;
-
 
 	gradient.read(alum, false, true);
 	phaseGradient.read(alum, false, true);
@@ -94,12 +85,12 @@ void Spectrum3D::init() {
 	Component* tempMode[] = { &magsIcon, 	 &phaseIcon };
 	Component* tempOper[] = { &additiveIcon, &subtractiveIcon };
 
-	CalloutUtils::addRetractableCallout(operCO, operPO, repo, 4, 8, tempOper,
+	CalloutUtils::addRetractableCallout(operCO.get(), operPO.get(), repo, 4, 8, tempOper,
 										numElementsInArray(tempOper), panelControls, false);
 
 	operCO->translateUp1 = true;
 
-	CalloutUtils::addRetractableCallout(modeCO, modePO, repo, 3, 7, tempMode,
+	CalloutUtils::addRetractableCallout(modeCO.get(), modePO.get(), repo, 3, 7, tempMode,
 										numElementsInArray(tempMode), panelControls, true);
 
 	panelControls->addDomainItems(modeCO);
@@ -124,10 +115,8 @@ void Spectrum3D::init() {
 	magsIcon.setHighlit(true);
 }
 
-
 void Spectrum3D::drawPlaybackLine() {
 }
-
 
 void Spectrum3D::updateBackground(bool onlyVerticalBackground) {
     Panel::updateBackground(true);
@@ -147,28 +136,23 @@ void Spectrum3D::updateBackground(bool onlyVerticalBackground) {
 	}
 }
 
-
 void Spectrum3D::panelResized() {
     Panel::panelResized();
 }
-
 
 vector <Color>& Spectrum3D::getGradientColours() {
     return getSetting(MagnitudeDrawMode) ? gradient.getColours() : phaseGradient.getColours();
 }
 
-
 void Spectrum3D::reset() {
     panelControls->resetSelector();
 }
 
-
 void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
-//#ifndef BEAT_EDITION
 	interactor->layerType = isMags ? LayerGroups::GroupSpect : LayerGroups::GroupPhase;
 
-	SpectrumInter2D& f2 = getObj(SpectrumInter2D);
-	SpectrumInter3D& f3 = getObj(SpectrumInter3D);
+	auto& f2 = getObj(SpectrumInter2D);
+	auto& f3 = getObj(SpectrumInter3D);
 
 	f2.layerType 		= interactor->layerType;
 	f3.layerType 		= interactor->layerType;
@@ -180,7 +164,7 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
 			(MeshRasterizer*) &getObj(SpectRasterizer) :
 			(MeshRasterizer*) &getObj(PhaseRasterizer);
 
-	StringFunction shortStr = isMags ? dynStr : StringFunction().chain(Ops::Mul, 5.f).chain(Ops::Pow, IPP_E);
+	StringFunction shortStr = isMags ? dynStr : StringFunction().mul(5.f).pow(IPP_E);
 	StringFunction longStr = isMags ? shortStr.withPostString(" dB") : shortStr.withPostString(L" \u03c0");
 
 	dynRangeKnob->setStringFunctions(shortStr, longStr);
@@ -189,8 +173,8 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
 	updateColours();
 
 	panelControls->enableCurrent.setHighlit(getCurrentProperties()->active);
-	panelControls->addRemover.setLayerString(isMags ? editionSplit("Magnitude Spectrum Layer", "Magnitude Spectrum") :
-													  editionSplit("Phase Spectrum Layer", "Phase Spectrum"));
+	panelControls->addRemover.setLayerString(isMags ? "Magnitude Spectrum Layer" :
+													  "Phase Spectrum Layer");
 
 	int nameTex = isMags ? NameTexture : NameTextureB;
 	setNameTextureId(nameTex);
@@ -205,13 +189,12 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
 	panelControls->refreshSelector();
 
     if (updateInteractors) {
-        f3.update(UpdateType::Update);
+        f3.update(Update);
 		f2.updateDspSync();
-		f2.update(UpdateType::Update);
+		f2.update(Update);
 	}
 //#endif
 }
-
 
 void Spectrum3D::buttonClicked(Button* button) {
 	Mesh* mesh 			= interactor->getMesh();
@@ -265,8 +248,9 @@ void Spectrum3D::buttonClicked(Button* button) {
 
 		panelControls->refreshSelector(forceUpdate);
 
-		if(forceUpdate)
+		if(forceUpdate) {
 			triggerRefreshUpdate();
+		}
 
 		getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 	} else if (button == &panelControls->upDownMover.up ||
@@ -299,10 +283,10 @@ void Spectrum3D::buttonClicked(Button* button) {
 		setIconHighlightImplicit();
 	}
 
-	if(button == &magsIcon || button == &phaseIcon)
+	if(button == &magsIcon || button == &phaseIcon) {
 		updateKnobValue();
+	}
 }
-
 
 void Spectrum3D::layerChanged() {
     progressMark
@@ -325,21 +309,17 @@ void Spectrum3D::layerChanged() {
 	getObj(SpectrumInter3D).shallowUpdate();
 }
 
-
 int Spectrum3D::getLayerType() {
     return interactor->layerType;
 }
-
 
 void Spectrum3D::setDynRange(int layerIdx, bool isFreq, float value) {
     getPropertiesForLayer(layerIdx, isFreq)->range = value;
 }
 
-
 void Spectrum3D::setPan(int layerIdx, bool isFreq, float value) {
     getPropertiesForLayer(layerIdx, isFreq)->pan = value;
 }
-
 
 void Spectrum3D::setIconHighlightImplicit() {
     bool isMags = getSetting(MagnitudeDrawMode) == 1;
@@ -359,14 +339,12 @@ void Spectrum3D::setIconHighlightImplicit() {
 	}
 }
 
-
 void Spectrum3D::updateKnobValue() {
     MeshLibrary::Properties* props = getCurrentProperties();
 
     layerPan->setValue(props->pan, dontSendNotification);
     dynRangeKnob->setValue(props->range, dontSendNotification);
 }
-
 
 void Spectrum3D::updateColours() {
     MeshLibrary::Properties* props = getCurrentProperties();
@@ -381,10 +359,8 @@ void Spectrum3D::updateColours() {
 	spect2D->setColors(yellow, polar ? blue : yellow);
 }
 
-
 void Spectrum3D::writeXML(XmlElement* element) const {
 }
-
 
 bool Spectrum3D::readXML(const XmlElement* element) {
     ScopedLock sl2(layerLock);
@@ -440,40 +416,36 @@ bool Spectrum3D::readXML(const XmlElement* element) {
 	return true;
 }
 
-
 bool Spectrum3D::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) {
     MeshLibrary::Properties* props = getCurrentProperties();
 
     switch (knobIndex) {
         case Pan:		props->pan 	 = knobValue; break;
 		case DynRange: 	props->range = knobValue; break;
+    	default: break;
 	}
 
 	return true;
 }
-
 
 bool Spectrum3D::shouldTriggerGlobalUpdate(Slider* slider) {
     bool layerEnabled = panelControls->enableCurrent.isHighlit();
     return (getSetting(ViewStage) >= ViewStages::PostSpectrum) && layerEnabled;
 }
 
-
 void Spectrum3D::restoreDetail() {
     interactor->restoreDetail();
 }
 
-
 void Spectrum3D::reduceDetail() {
-    if (getSetting(DrawWave) == 0)
-        interactor->reduceDetail();
+    if (getSetting(DrawWave) == 0) {
+	    interactor->reduceDetail();
+    }
 }
-
 
 void Spectrum3D::doGlobalUIUpdate(bool force) {
     interactor->doGlobalUIUpdate(force);
 }
-
 
 MeshLibrary::Properties* Spectrum3D::getPropertiesForLayer(int layerIdx, bool isFreq) {
     ScopedLock sl(layerLock);
@@ -481,7 +453,6 @@ MeshLibrary::Properties* Spectrum3D::getPropertiesForLayer(int layerIdx, bool is
     int groupIdx = isFreq ? LayerGroups::GroupSpect : LayerGroups::GroupPhase;
     return meshLib->getProps(groupIdx, layerIdx);
 }
-
 
 MeshLibrary::LayerGroup& Spectrum3D::getCurrentGroup() {
     int groupIdx = getSetting(MagnitudeDrawMode) == 1 ? LayerGroups::GroupSpect : LayerGroups::GroupPhase;
@@ -494,7 +465,6 @@ MeshLibrary::Properties* Spectrum3D::getCurrentProperties() {
 
     return meshLib->getCurrentProps(groupIdx);
 }
-
 
 void Spectrum3D::updateSmoothedParameters(int deltaSamples) {
     ScopedLock sl(layerLock);
@@ -518,7 +488,6 @@ void Spectrum3D::changedToOrFromTimeDimension() {
 //	phaseIcon.setApplicable(getSetting(CurrentMorphAxis) == Vertex::Time);
 }
 
-
 void Spectrum3D::populateLayerBox() {
 //	panelControls->selectorPanel->populateLayerBox();
 }
@@ -541,14 +510,12 @@ void Spectrum3D::scratchChannelSelected(int channel) {
         props->scratchChan = channel;
 }
 
-
 void Spectrum3D::updateScratchComboBox() {
     MeshLibrary::LayerGroup& group = getCurrentGroup();
 
     int scratchChannel = group.layers[group.current].props->scratchChan;
     panelControls->setScratchSelector(scratchChannel);
 }
-
 
 bool Spectrum3D::validateScratchChannels() {
     panelControls->populateScratchSelector();
@@ -582,7 +549,6 @@ bool Spectrum3D::validateScratchChannels() {
 	return changed;
 }
 
-
 void Spectrum3D::sliderValueChanged(Slider* slider) {
     MeshLibrary::Properties* props = getCurrentProperties();
 
@@ -592,7 +558,6 @@ void Spectrum3D::sliderValueChanged(Slider* slider) {
         props->pan = slider->getValue();
 	}
 }
-
 
 int Spectrum3D::getLayerScratchChannel() {
     return getCurrentProperties()->scratchChan;
@@ -610,7 +575,6 @@ int Spectrum3D::getNumActiveLayers() {
 
 	return numActiveLayers;
 }
-
 
 void Spectrum3D::setLayerParameterSmoothing(int voiceIndex, bool smooth) {
     MeshLibrary::LayerGroup& spectGroup = meshLib->getGroup(LayerGroups::GroupSpect);
@@ -631,7 +595,6 @@ void Spectrum3D::setLayerParameterSmoothing(int voiceIndex, bool smooth) {
 	}
 }
 
-
 void Spectrum3D::updateSmoothParametersToTarget(int voiceIndex) {
     MeshLibrary::LayerGroup& spectGroup = meshLib->getGroup(LayerGroups::GroupSpect);
     MeshLibrary::LayerGroup& phaseGroup = meshLib->getGroup(LayerGroups::GroupPhase);
@@ -650,7 +613,6 @@ void Spectrum3D::updateSmoothParametersToTarget(int voiceIndex) {
 //		layer.props->pos[voiceIndex].blue.updateToTarget();
 	}
 }
-
 
 void Spectrum3D::updateLayerSmoothedParameters(int voiceIndex, int deltaSamples) {
     MeshLibrary::LayerGroup& spectGroup = meshLib->getGroup(LayerGroups::GroupSpect);
@@ -671,7 +633,6 @@ void Spectrum3D::updateLayerSmoothedParameters(int voiceIndex, int deltaSamples)
 	}
 }
 
-
 bool Spectrum3D::haveAnyValidLayers(bool isMags, bool haveAnyValidTimeLayers) {
     MeshLibrary::LayerGroup& group = getCurrentGroup();
 
@@ -686,14 +647,12 @@ bool Spectrum3D::haveAnyValidLayers(bool isMags, bool haveAnyValidTimeLayers) {
 	return false;
 }
 
-
 void Spectrum3D::enablementsChanged() {
     bool haveTime = meshLib->hasAnyValidLayers(LayerGroups::GroupTime);
 
     phaseIcon.setPowered(haveAnyValidLayers(false, haveTime));
     magsIcon.setPowered(haveAnyValidLayers(true, haveTime));
 }
-
 
 Component* Spectrum3D::getComponent(int which) {
     switch (which) {
@@ -707,11 +666,11 @@ Component* Spectrum3D::getComponent(int which) {
 		case CycleTour::TargLayerMover:		return &panelControls->upDownMover;
 		case CycleTour::TargLayerSlct:		return panelControls->layerSelector;
 		case CycleTour::TargMeshSelector:	return meshSelector;
+    	default: break;
 	}
 
 	return nullptr;
 }
-
 
 void Spectrum3D::triggerButton(int button) {
     switch (button) {
@@ -722,9 +681,9 @@ void Spectrum3D::triggerButton(int button) {
 		case CycleTour::IdBttnMoveDown: 		buttonClicked(&panelControls->upDownMover.down); 	break;
 		case CycleTour::IdBttnModeAdditive: 	buttonClicked(&additiveIcon); 						break;
 		case CycleTour::IdBttnModeFilter: 		buttonClicked(&subtractiveIcon); 					break;
+    	default: break;
 	}
 }
-
 
 Buffer<float> Spectrum3D::getColumnArray() {
     return getObj(VisualDsp).getFreqArray();

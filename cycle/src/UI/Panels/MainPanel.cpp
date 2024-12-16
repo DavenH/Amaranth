@@ -22,6 +22,7 @@
 #include "SynthMenuBarModel.h"
 #include "VertexPropertiesPanel.h"
 
+#include "../CycleDefs.h"
 #include "../Dialogs/PresetPage.h"
 #include "../Effects/DelayUI.h"
 #include "../Effects/EqualizerUI.h"
@@ -30,7 +31,6 @@
 #include "../Effects/ReverbUI.h"
 #include "../Effects/UnisonUI.h"
 #include "../Effects/WaveshaperUI.h"
-#include "../SynthLookAndFeel.h"
 #include "../VertexPanels/DeformerPanel.h"
 #include "../VertexPanels/EffectPanel.h"
 #include "../VertexPanels/Envelope2D.h"
@@ -54,8 +54,6 @@
 #include "../../Audio/Effects/WaveShaper.h"
 #include "../../Audio/SynthAudioSource.h"
 #include "../../Curve/GraphicRasterizer.h"
-#include "../CycleDefs.h"
-
 
 MainPanel::MainPanel(SingletonRepo* repo) : 
 		ComponentMovementWatcher(this)
@@ -82,14 +80,12 @@ MainPanel::MainPanel(SingletonRepo* repo) :
 	,	xv_envDfmImpPortion	(0.4) {
 }
 
-
 MainPanel::~MainPanel() {
     stopTimer(BoundsCheckId);
 	stopTimer(DelayedRepaint);
 
 	removeListeners();
 }
-
 
 void MainPanel::init() {
 	delayUI			= &getObj(DelayUI);
@@ -118,11 +114,11 @@ void MainPanel::init() {
 }
 
 void MainPanel::tabSelected(TabbedSelector* selector, Bounded* callbackComponent) {
-    if (selector == bottomTabs.get()) {
-        toggleEffectsWaveform2DPresets(callbackComponent == wave2DPair.get() ? 0 : callbackComponent == ev_bottomRight.get() ? 1 : 2);
-    } else if (selector == topTabs.get()) {
-        toggleF2DGuide(callbackComponent == dfrmPair.get());
-    } else if (selector == topRightTabs.get()) {
+    if (selector == bottomTabs) {
+        toggleEffectsWaveform2DPresets(callbackComponent == wave2DPair ? 0 : callbackComponent == ev_bottomRight ? 1 : 2);
+    } else if (selector == topTabs) {
+        toggleF2DGuide(callbackComponent == dfrmPair);
+    } else if (selector == topRightTabs) {
         toggleEnvPanel(callbackComponent == envelope3D->getZoomPanel());
     }
 }
@@ -138,56 +134,91 @@ void MainPanel::initialisePanels() {
 	Component* irmodCtrls 	= irModelUI	->getControlsComponent();
 	Component* wshpCtrls 	= waveshaperUI->getControlsPanel();
 
-	bottomTabs			= std::make_unique<TabbedSelector>(repo);
-	topTabs				= std::make_unique<TabbedSelector>(repo);
-	topRightTabs		= std::make_unique<TabbedSelector>(repo);
+	bottomTabs			= new TabbedSelector(repo);
+	topTabs				= new TabbedSelector(repo);
+	topRightTabs		= new TabbedSelector(repo);
 
-	oscCtrlBounds	 	= std::make_unique<BoundWrapper>(&getObj(OscControlPanel));
-	menuBar 			= std::make_unique<MenuBarComponent>(&getObj(SynthMenuBarModel));
-	bannerPanel			= std::make_unique<BannerPanel>(repo);
+	oscCtrlBounds	 	= new BoundWrapper(&getObj(OscControlPanel));
+	menuBar 			= new MenuBarComponent(&getObj(SynthMenuBarModel));
+	bannerPanel			= new BannerPanel(repo);
 
-	cv_middleDragger 	= std::make_unique<Dragger>(repo, Dragger::ReduceNothing);
-	cv_envSpectDragger 	= std::make_unique<Dragger>(repo, Dragger::ReduceF3dDetail);
-	cv_wholeDragger 	= std::make_unique<Dragger>(repo, Dragger::ReduceSurfDetail | Dragger::ReduceF3dDetail);
-	cv_spectSurfDragger = std::make_unique<Dragger>(repo, Dragger::ReduceSurfDetail | Dragger::ReduceF3dDetail);
+	cv_middleDragger 	= new Dragger(repo, Dragger::ReduceNothing);
+	cv_envSpectDragger 	= new Dragger(repo, Dragger::ReduceF3dDetail);
+	cv_wholeDragger 	= new Dragger(repo, Dragger::ReduceSurfDetail | Dragger::ReduceF3dDetail);
+	cv_spectSurfDragger = new Dragger(repo, Dragger::ReduceSurfDetail | Dragger::ReduceF3dDetail);
 
-	consBounds 			= std::make_unique<BoundWrapper>(console);
-	modBounds 			= std::make_unique<BoundWrapper>(morphPanel);
-	keybBounds 			= std::make_unique<BoundWrapper>(keyboard);
-	playbackBounds 		= std::make_unique<BoundWrapper>(playbackPanel);
-	genBounds 			= std::make_unique<BoundWrapper>(generalControls);
+	consBounds 			= new BoundWrapper(console);
+	modBounds 			= new BoundWrapper(morphPanel);
+	keybBounds 			= new BoundWrapper(keyboard);
+	playbackBounds 		= new BoundWrapper(playbackPanel);
+	genBounds 			= new BoundWrapper(generalControls);
 
-	surfCtrlBounds		= std::make_unique<BoundWrapper>(surfCtrls);
-	spectCtrlBounds		= std::make_unique<BoundWrapper>(spectCtrls);
-	guideCtrlBounds		= std::make_unique<BoundWrapper>(dfrmCtrls);
-	tubeCtrlBoundsB		= std::make_unique<BoundWrapper>(irmodCtrls);
-	envCtrlBounds		= std::make_unique<BoundWrapper>(envCtrls);
-	wsCtrlBounds		= std::make_unique<BoundWrapper>(wshpCtrls);
+	surfCtrlBounds		= new BoundWrapper(surfCtrls);
+	spectCtrlBounds		= new BoundWrapper(spectCtrls);
+	guideCtrlBounds		= new BoundWrapper(dfrmCtrls);
+	tubeCtrlBoundsB		= new BoundWrapper(irmodCtrls);
+	envCtrlBounds		= new BoundWrapper(envCtrls);
+	wsCtrlBounds		= new BoundWrapper(wshpCtrls);
 
-	derivBounds 		= std::make_unique<BoundWrapper>(derivPanel);
-	propsBounds 		= std::make_unique<BoundWrapper>(vtxPropsPanel);
-	unisonBounds 		= std::make_unique<BoundWrapper>(unisonUI);
-	reverbBounds		= std::make_unique<BoundWrapper>(reverbUI);
-	delayBounds			= std::make_unique<BoundWrapper>(delayUI);
-	eqBounds			= std::make_unique<BoundWrapper>(eqUI);
-	bnrBounds 			= std::make_unique<BoundWrapper>(bannerPanel.get());
-	menuBounds 			= std::make_unique<BoundWrapper>(menuBar.get());
-	presetPageBounds	= std::make_unique<BoundWrapper>(presetPage);
-	cv_botTabBounds		= std::make_unique<BoundWrapper>(bottomTabs.get());
-	cv_topTabBounds		= std::make_unique<BoundWrapper>(topTabs.get());
+	derivBounds 		= new BoundWrapper(derivPanel);
+	propsBounds 		= new BoundWrapper(vtxPropsPanel);
+	unisonBounds 		= new BoundWrapper(unisonUI);
+	reverbBounds		= new BoundWrapper(reverbUI);
+	delayBounds			= new BoundWrapper(delayUI);
+	eqBounds			= new BoundWrapper(eqUI);
+	bnrBounds 			= new BoundWrapper(bannerPanel);
+	menuBounds 			= new BoundWrapper(menuBar);
+	presetPageBounds	= new BoundWrapper(presetPage);
+	cv_botTabBounds		= new BoundWrapper(bottomTabs);
+	cv_topTabBounds		= new BoundWrapper(topTabs);
 
 	Bounded* envBounds = getSetting(CurrentMorphAxis) == Vertex::Time ? envelope2D->getZoomPanel() : envelope3D->getZoomPanel();
 
 	int cpWidth   = 64;
 	int tubeWidth = 64;
 
-	wave2DPair	= new PanelPair(repo, derivBounds, 		waveform2D->getZoomPanel(),		false, 	0.01f, 	"wave2Dpair", 	xsBord, 5, 5);
-	spectPair	= new PanelPair(repo, spectCtrlBounds,	spectrum3D->getZoomPanel(),		true, 	0.06f, 	"spectpair", 	xsBord, cpWidth, cpWidth);
-	wavePair	= new PanelPair(repo, surfCtrlBounds, 	waveform3D->getZoomPanel(),		true, 	0.06f, 	"surfpair",  	xsBord, cpWidth, cpWidth);
-	envPair		= new PanelPair(repo, envCtrlBounds, 	envBounds,  					true, 	0.06f, 	"envpair", 	 	xsBord, cpWidth, cpWidth);
-	dfrmPair	= new PanelPair(repo, guideCtrlBounds,	dfrmPanel->getZoomPanel(),		true, 	0.03f, 	"guidepair", 	xsBord, cpWidth, cpWidth);
-	irmodPair	= new PanelPair(repo, tubeCtrlBoundsB,	irModelUI->getZoomPanel(), 		true, 	0.03f, 	"tubepairb",	xsBord, tubeWidth, tubeWidth);
-	wshpPair	= new PanelPair(repo, wsCtrlBounds, 	waveshaperUI->getZoomPanel(), 	false, 	0.03f, 	"wavepair",  	xsBord, 36, 36);
+    wave2DPair = new PanelPair(
+    	repo, derivBounds, waveform2D->getZoomPanel(),
+    	false, 0.01f, "wave2Dpair",
+    	xsBord, 5, 5
+    );
+
+    spectPair = new PanelPair(
+    	repo, spectCtrlBounds, spectrum3D->getZoomPanel(),
+    	true, 0.06f, "spectpair",
+    	xsBord, cpWidth, cpWidth
+    );
+
+    wavePair = new PanelPair(
+    	repo, surfCtrlBounds, waveform3D->getZoomPanel(),
+    	true, 0.06f, "surfpair",
+    	xsBord, cpWidth, cpWidth
+    );
+
+    envPair = new PanelPair(
+    	repo, envCtrlBounds, envBounds,
+    	true, 0.06f, "envpair",
+    	xsBord, cpWidth, cpWidth
+    );
+
+    dfrmPair = new PanelPair(
+    	repo, guideCtrlBounds, dfrmPanel->getZoomPanel(),
+    	true, 0.03f, "guidepair",
+    	xsBord, cpWidth, cpWidth
+    );
+
+    irmodPair = new PanelPair(
+    	repo, tubeCtrlBoundsB, irModelUI->getZoomPanel(),
+    	true, 0.03f, "tubepairb",
+    	xsBord, tubeWidth, tubeWidth
+    );
+
+
+    wshpPair = new PanelPair(
+    	repo, wsCtrlBounds, waveshaperUI->getZoomPanel(),
+    	false, 0.03f, "wavepair",
+    	xsBord, 36, 36
+    );
 
 	panelGroups.add(&wave2DGroup);
 	panelGroups.add(&surfGroup);
@@ -211,12 +242,12 @@ void MainPanel::initialisePanels() {
 
 	bottomTabs->addTab("Waveform", 	wave2DPair, 		cmdStr + "-r");
 	bottomTabs->addTab("Effects", 	ev_bottomRight, 	cmdStr + "-f");
-	bottomTabs->addTab("Presets", 	presetPageBounds, 	"p");
+	bottomTabs->addTab("Presets", 	presetPageBounds, "p");
 	bottomTabs->setSelectedTab(TabWaveform);
 	bottomTabs->addListener(this);
 
-	topTabs->addTab("Spectrum", 	spectrum2D->getZoomPanel());
-	topTabs->addTab("Deformers", 	dfrmPair);
+	topTabs->addTab("Spectrum", spectrum2D->getZoomPanel());
+	topTabs->addTab("Deformers", dfrmPair);
 	topTabs->setSelectedTab(TabSpectrum);
 	topTabs->addListener(this);
 
@@ -228,23 +259,21 @@ void MainPanel::initialisePanels() {
 		spectPair, 	keybBounds, 	consBounds,
 		genBounds, 	propsBounds, 	modBounds,
 		bnrBounds, 	oscCtrlBounds, 	playbackBounds,
-		menuBounds,	wave2DPair, 	dfrmPair
+		menuBounds,	wave2DPair, 	dfrmPair,
+		wshpPair,	irmodPair,		unisonBounds,
+		delayBounds,reverbBounds,	eqBounds
 	};
 
-	for(int i = 0; i < numElementsInArray(temp); ++i)
-		toOutline.insert(temp[i]);
+	for(auto i : temp) {
+		toOutline.insert(i);
+	}
 
 	toOutline.insert(spectrum2D->getZoomPanel());
-	toOutline.insert(wshpPair);
-	toOutline.insert(irmodPair);
-	toOutline.insert(unisonBounds);
-	toOutline.insert(delayBounds);
-	toOutline.insert(reverbBounds);
-	toOutline.insert(eqBounds);
+
+	deletable.addArray();
 
 	initialized = true;
 }
-
 
 void MainPanel::initialiseMainView() {
     //								a					b				sbs		portion					name				border	min1	max1		min2	max2
@@ -269,7 +298,6 @@ void MainPanel::initialiseMainView() {
 	cv_whole->setDragger(cv_wholeDragger);
 	cv_right->setDragger(cv_middleDragger);
 }
-
 
 void MainPanel::initialiseExtendedView() {
     ZoomPanel* spectZoom = spectrum2D->getZoomPanel();
@@ -306,31 +334,26 @@ void MainPanel::initialiseExtendedView() {
 	xv_spectSurf->setDragger(xv_spectSurfDragger);
 }
 
-
 void MainPanel::initialiseFXView() {
     ev_reverbUni	= new PanelPair(repo, reverbBounds, unisonBounds,	true, 	0.47f,	"ev_reverbUni");
 	ev_delayEQ 		= new PanelPair(repo, delayBounds,	eqBounds, 		true,	0.47f,	"ev_delayEQ"	);
 	ev_paramFX		= new PanelPair(repo, ev_reverbUni,	ev_delayEQ,		false,	0.5f, 	"ev_paramfx"	);
 	ev_tubeParamFX	= new PanelPair(repo, ev_paramFX, 	irmodPair, 		false,	0.3f, 	"ev_tubeparamfx", mBord, 104, 124);
-	ev_bottomRight	= new PanelPair(repo, wshpPair, 		ev_tubeParamFX, true, 	0.35f,	"ev_bottomright");
+	ev_bottomRight	= new PanelPair(repo, wshpPair, 	ev_tubeParamFX, true, 	0.35f,	"ev_bottomright");
 }
 
-
 void MainPanel::viewModeSwitched() {
-    dout << "view mode switched to: " << viewMode << "\n";
+    std::cout << "view mode switched to: " << viewMode << "\n";
 
 	bool showingWaveform 	= bottomTabs->getSelectedId() == TabWaveform;
 	bool showingDeformers 	= topTabs->getSelectedId() == TabDeformers;
 
     if (viewMode == CollapsedView) {
-#ifndef BEAT_EDITION
         addAndMakeVisible(bottomTabs);
         addAndMakeVisible(topTabs);
-#endif
-
         addAndMakeVisible(bannerPanel);
 
-        toOutline.insert(bnrBounds);
+    	toOutline.insert(bnrBounds);
 
         showingWaveform ?
         toggleEffectComponents(false) :
@@ -345,11 +368,8 @@ void MainPanel::viewModeSwitched() {
 
         toggleDraggers(true);
     } else {
-#ifndef BEAT_EDITION
         removeChildComponent(topTabs);
         removeChildComponent(bottomTabs);
-#endif
-
         removeChildComponent(bannerPanel);
 
         toOutline.erase(bnrBounds);
@@ -433,19 +453,16 @@ void MainPanel::attachComponent(PanelGroup& group) {
 
 
 void MainPanel::attachVisibleComponents() {
-    dout << "Attaching visible components\n";
+    std::cout << "Attaching visible components\n";
 
-    for (int i = 0; i < panelGroups.size(); ++i) {
-        PanelGroup* group = panelGroups[i];
+    for (auto group : panelGroups) {
         attachComponent(*group);
 	}
 }
 
-
 void MainPanel::detachVisibleComponents() {
     return;
 }
-
 
 void MainPanel::paint(Graphics& g) {
     if (!gainedFocus && !hasKeyboardFocus(true)) {
@@ -461,15 +478,15 @@ void MainPanel::paint(Graphics& g) {
 
 	g.setColour(Colour(150, 150, 180));
 
-	for(set<Bounded*>::const_iterator it = toOutline.begin();
-        it != toOutline.end(); ++it) {
-        if ((*it)->getWidth() == 0)
-            continue;
+	for(auto it : toOutline) {
+        if (it->getWidth() == 0) {
+	        continue;
+        }
 
-		float x = float((*it)->getX() - mBord / 3);
-		float y = float((*it)->getY() - mBord / 3);
-		float w = float((*it)->getWidth() + 2 * mBord / 3 - 1);
-		float h = float((*it)->getHeight() + 2 * mBord / 3 - 1);
+		float x = float(it->getX() - mBord / 3);
+		float y = float(it->getY() - mBord / 3);
+		float w = float(it->getWidth() + 2 * mBord / 3 - 1);
+		float h = float(it->getHeight() + 2 * mBord / 3 - 1);
 
 		Rectangle<int> rr(x, y, w, h);
 
@@ -497,11 +514,9 @@ void MainPanel::paint(Graphics& g) {
 	needsRepaint = false;
 }
 
-
 bool MainPanel::keyPressed(const KeyPress& key) {
     return getObj(KeyboardInputHandler).keyPressed(key, this);
 }
-
 
 void MainPanel::toggleWaveform2DComponents(bool add) {
     if (add) {
@@ -512,7 +527,6 @@ void MainPanel::toggleWaveform2DComponents(bool add) {
         removeChildComponent(derivPanel);
     }
 }
-
 
 void MainPanel::toggleEffectComponents(bool add) {
     if (add) {
@@ -550,10 +564,8 @@ void MainPanel::toggleEffectComponents(bool add) {
 	}
 }
 
-
 void MainPanel::togglePresetPage(bool add) {
 }
-
 
 void MainPanel::toggleEffectsWaveform2DPresets(int toShow) {
     if (toShow == TabWaveform) {
@@ -582,18 +594,17 @@ void MainPanel::toggleEffectsWaveform2DPresets(int toShow) {
 	repaint();
 }
 
-
 void MainPanel::toggleDeformers(bool add) {
     if (add) {
         addAndMakeVisible(dfrmPanel->getZoomPanel());
         addAndMakeVisible(dfrmPanel->getControlsComponent());
 
-        noBeat(toOutline.insert(dfrmPair));
+        toOutline.insert(dfrmPair);
     } else {
         removeChildComponent(dfrmPanel->getZoomPanel());
         removeChildComponent(dfrmPanel->getControlsComponent());
 
-        noBeat(toOutline.erase(dfrmPair));
+        toOutline.erase(dfrmPair);
     }
 }
 
@@ -606,7 +617,6 @@ void MainPanel::toggleF2D(bool add) {
         toOutline.erase(spectrum2D->getZoomPanel());
     }
 }
-
 
 void MainPanel::toggleF2DGuide(bool wantToShowDeformers) {
     if (wantToShowDeformers) {
@@ -631,7 +641,6 @@ void MainPanel::toggleF2DGuide(bool wantToShowDeformers) {
 	repaint();
 }
 
-
 void MainPanel::toggleEnvPanel(bool wantToShow3D) {
     if (wantToShow3D) {
         removeChildComponent(envelope2D->getZoomPanel());
@@ -652,16 +661,14 @@ void MainPanel::toggleEnvPanel(bool wantToShow3D) {
 	envelopeVisibilityChanged();
 
 	envelope2D->updateBackground(false);
-	focusedPanel = 0;
+	focusedPanel = nullptr;
 	needsRepaint = true;
 
 	repaint();
 }
 
-
 void MainPanel::mouseEnter(const MouseEvent& e) {
 }
-
 
 void MainPanel::mouseDown(const MouseEvent& e) {
     grabKeyboardFocus();
@@ -669,11 +676,10 @@ void MainPanel::mouseDown(const MouseEvent& e) {
     Component* origin = e.eventComponent;
 	Bounded* oldFocusComp = focusedPanel;
 
-    for (int i = 0; i < panelGroups.size(); ++i) {
-        PanelGroup* group = panelGroups[i];
-
-        if (group == nullptr)
-            continue;
+    for (auto group : panelGroups) {
+        if (group == nullptr) {
+	        continue;
+        }
 
         if (group->panel->getComponent() == origin) {
             focusedPanel = group->bounds;
@@ -687,22 +693,19 @@ void MainPanel::mouseDown(const MouseEvent& e) {
     }
 }
 
-
 Bounded* MainPanel::getFocusedComponent() {
     return focusedPanel;
 }
 
-
 void MainPanel::removeListeners() {
-    if (menuBar != nullptr)
-        menuBar->setModel(0);
+    if (menuBar != nullptr) {
+	    menuBar->setModel(nullptr);
+    }
 }
-
 
 void MainPanel::childrenChanged() {
     needsRepaint = true;
 }
-
 
 void MainPanel::childBoundsChanged(Component* child) {
     needsRepaint = true;
@@ -717,10 +720,11 @@ void MainPanel::addCorePanels() {
 	addAndMakeVisible(spectrum3D->getZoomPanel());
 	addAndMakeVisible(spectrum2D->getZoomPanel());
 
-	if(getSetting(CurrentMorphAxis) == Vertex::Time)
-		addAndMakeVisible(envelope2D->getZoomPanel());
-	else
-		addAndMakeVisible(envelope3D->getZoomPanel());
+    if (getSetting(CurrentMorphAxis) == Vertex::Time) {
+	    addAndMakeVisible(envelope2D->getZoomPanel());
+    } else {
+	    addAndMakeVisible(envelope3D->getZoomPanel());
+    }
 
 	addAndMakeVisible(playbackPanel);
 	addAndMakeVisible(waveform2D->getZoomPanel());
@@ -795,15 +799,15 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
 //	jassert(crsGL == 0);
 
 	// needs to be resized first
-//	crsGL 	= new OpenGLPanel	(repo, waveform2D);
-//	f2GL 	= new OpenGLPanel	(repo, spectrum2D);
-//	dfmGL	= new OpenGLPanel	(repo, dfrmPanel);
-//	e2GL 	= new OpenGLPanel	(repo, envelope2D);
-//	wsGL 	= new OpenGLPanel	(repo, waveshaperUI);
-//	tmGL 	= new OpenGLPanel	(repo, irModelUI);
-//	f3GL	= new OglSpectrum3D (repo, spectrum3D);
-//	e3GL	= new OglEnvelope3D	(repo, envelope3D);
-//	surfGL 	= new OglWaveform3D	(repo, waveform3D);
+	crsGL 	= new OpenGLPanel	(repo, waveform2D);
+	f2GL 	= new OpenGLPanel	(repo, spectrum2D);
+	dfmGL	= new OpenGLPanel	(repo, dfrmPanel);
+	e2GL 	= new OpenGLPanel	(repo, envelope2D);
+	wsGL 	= new OpenGLPanel	(repo, waveshaperUI);
+	tmGL 	= new OpenGLPanel	(repo, irModelUI);
+	f3GL	= new OglSpectrum3D (repo, spectrum3D);
+	e3GL	= new OglEnvelope3D	(repo, envelope3D);
+	surfGL 	= new OglWaveform3D	(repo, waveform3D);
 
 //	wave2DZoomPanel	->panelComponentChanged(crsGL);
 //	spectZoomPanel	->panelComponentChanged(f3GL);
@@ -841,15 +845,14 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
         ScopedBooleanSwitcher sbs(forceResize);
 
 		resized();
-		getObj(Updater).update(UpdateSources::SourceAll, (int) UpdateType::Repaint);
+		getObj(Updater).update(UpdateSources::SourceAll, Repaint);
 
 		repaint();
 	}
 }
 
-
 void MainPanel::componentVisibilityChanged() {
-    dout << "Main component visibility changed: " << (isShowing() ? "showing" : "not showing") << "\n";
+    std::cout << "Main component visibility changed: " << (isShowing() ? "showing" : "not showing") << "\n";
 
 //	if(isVisible())
 //	{
@@ -870,100 +873,97 @@ void MainPanel::componentVisibilityChanged() {
 //	}
 }
 
-
 void MainPanel::repaintAll() {
-    for (int i = 0; i < panelGroups.size(); ++i) {
-        PanelGroup* group = panelGroups[i];
-
+    for (auto group : panelGroups) {
         if (Component * c = group->panel->getComponent()) {
-            if (c->isVisible())
-				c->repaint();
+            if (c->isVisible()) {
+	            c->repaint();
+            }
 		}
 	}
 }
 
 void MainPanel::componentPeerChanged() {
-    dout << "Main Panel component peer changed\n";
+    std::cout << "Main Panel component peer changed\n";
 }
 
 
 void MainPanel::focusGained(FocusChangeType type) {
-    dout << "Main panel focus gained: " << (int) type << "\n";
+    std::cout << "Main panel focus gained: " << (int) type << "\n";
 }
 
 
 void MainPanel::componentMovedOrResized(bool wasMoved, bool wasResized) {
-    dout << "Main panel moved or resized, repainting all\n";
+    std::cout << "Main panel moved or resized, repainting all\n";
 
-#ifdef SINGLE_OPENGL_THREAD
-    if(isVisible())
-        getObj(MasterRenderer).repaintAll();
-#else
+  #ifdef SINGLE_OPENGL_THREAD
+    if(isVisible()) {
+	    getObj(MasterRenderer).repaintAll();
+    }
+  #else
     repaintAll();
-#endif
+  #endif
 }
 
-
 void MainPanel::writeXML(XmlElement* element) const {
-    XmlElement* mainXml = new XmlElement("MainPanel");
+    auto* mainXml = new XmlElement("MainPanel");
 
-	mainXml->setAttribute("CV_WholeDragger", 	(double) cv_wholeDragger	->getPair()->getPortion());
-	mainXml->setAttribute("CV_MiddleDragger", 	(double) cv_middleDragger	->getPair()->getPortion());
-	mainXml->setAttribute("CV_EnvSpectDragger", (double) cv_envSpectDragger	->getPair()->getPortion());
-	mainXml->setAttribute("CV_SpectSurfDragger",(double) cv_spectSurfDragger->getPair()->getPortion());
+	mainXml->setAttribute("CV_WholeDragger", 	cv_wholeDragger	->getPair()->getPortion());
+	mainXml->setAttribute("CV_MiddleDragger", 	cv_middleDragger	->getPair()->getPortion());
+	mainXml->setAttribute("CV_EnvSpectDragger", cv_envSpectDragger	->getPair()->getPortion());
+	mainXml->setAttribute("CV_SpectSurfDragger",cv_spectSurfDragger->getPair()->getPortion());
 
-	mainXml->setAttribute("XV_WholeDragger", 	(double) xv_wholeDragger	->getPair()->getPortion());
-	mainXml->setAttribute("XV_TopBttmDragger", 	(double) xv_topBotDragger	->getPair()->getPortion());
-	mainXml->setAttribute("XV_SpectSurfDragger",(double) xv_spectSurfDragger->getPair()->getPortion());
-	mainXml->setAttribute("XV_EnvDfmImpDragger",(double) xv_envDfmImpDragger->getPair()->getPortion());
-	mainXml->setAttribute("XV_DfrmImpDragger", 	(double) xv_dfmImpDragger	->getPair()->getPortion());
+	mainXml->setAttribute("XV_WholeDragger", 	xv_wholeDragger	->getPair()->getPortion());
+	mainXml->setAttribute("XV_TopBttmDragger", 	xv_topBotDragger	->getPair()->getPortion());
+	mainXml->setAttribute("XV_SpectSurfDragger",xv_spectSurfDragger->getPair()->getPortion());
+	mainXml->setAttribute("XV_EnvDfmImpDragger",xv_envDfmImpDragger->getPair()->getPortion());
+	mainXml->setAttribute("XV_DfrmImpDragger", 	xv_dfmImpDragger	->getPair()->getPortion());
 
 	element->addChildElement(mainXml);
 }
 
-
 bool MainPanel::readXML(const XmlElement* element) {
-    if (element == nullptr)
-        return false;
+    if (element == nullptr) {
+	    return false;
+    }
 
 	XmlElement* mainXml = element->getChildByName("MainPanel");
 
-	if(mainXml == nullptr)
+	if(mainXml == nullptr) {
 		return false;
+	}
 
-	cv_wholePortion 	= mainXml->getDoubleAttribute("CV_WholeDragger", 		cv_wholePortion);
-	cv_middlePortion 	= mainXml->getDoubleAttribute("CV_MiddleDragger", 		cv_middlePortion);
-	cv_spectSurfPortion = mainXml->getDoubleAttribute("CV_SpectSurfDragger",	cv_spectSurfPortion);
-	cv_surfEnvPortion	= mainXml->getDoubleAttribute("CV_SurfEnvDragger",  	cv_surfEnvPortion);
+	cv_wholePortion 	= mainXml->getDoubleAttribute("CV_WholeDragger", 	 cv_wholePortion);
+	cv_middlePortion 	= mainXml->getDoubleAttribute("CV_MiddleDragger", 	 cv_middlePortion);
+	cv_spectSurfPortion = mainXml->getDoubleAttribute("CV_SpectSurfDragger", cv_spectSurfPortion);
+	cv_surfEnvPortion	= mainXml->getDoubleAttribute("CV_SurfEnvDragger",   cv_surfEnvPortion);
 
-	xv_wholePortion 	= mainXml->getDoubleAttribute("XV_WholeDragger", 		xv_wholePortion);
-	xv_topBttmPortion 	= mainXml->getDoubleAttribute("XV_TopBttmDragger", 		xv_topBttmPortion);
-	xv_spectSurfPortion = mainXml->getDoubleAttribute("XV_SpectSurfDragger",	xv_spectSurfPortion);
-	xv_dfrmImpPortion	= mainXml->getDoubleAttribute("XV_DfrmImpDragger",  	xv_dfrmImpPortion);
-	xv_envDfmImpPortion	= mainXml->getDoubleAttribute("XV_EnvDfmImpDragger", 	xv_envDfmImpPortion);
+	xv_wholePortion 	= mainXml->getDoubleAttribute("XV_WholeDragger", 	 xv_wholePortion);
+	xv_topBttmPortion 	= mainXml->getDoubleAttribute("XV_TopBttmDragger", 	 xv_topBttmPortion);
+	xv_spectSurfPortion = mainXml->getDoubleAttribute("XV_SpectSurfDragger", xv_spectSurfPortion);
+	xv_dfrmImpPortion	= mainXml->getDoubleAttribute("XV_DfrmImpDragger",   xv_dfrmImpPortion);
+	xv_envDfmImpPortion	= mainXml->getDoubleAttribute("XV_EnvDfmImpDragger", xv_envDfmImpPortion);
 
 	return true;
 }
 
-
 void MainPanel::timerCallback(int timerId) {
     if (timerId == BoundsCheckId) {
-		Panel* panels[] =
-		{
+		Panel* panels[] = {
 			spectrum2D, spectrum3D, waveform3D, waveform2D, dfrmPanel,
 			irModelUI, waveshaperUI, envelope2D, envelope3D
 		};
 
 		const Desktop& desktop = Desktop::getInstance();
 
-		for(int panelIdx = 0; panelIdx < numElementsInArray(panels); ++panelIdx) {
-            Panel* panel = panels[panelIdx];
+		for(auto panel : panels) {
             if (Component * c = panel->getComponent()) {
                 if (c->isShowing()) {
                     Rectangle<int> bounds = c->getScreenBounds().reduced(5, 5);
 
-                    if (bounds.isEmpty())
-                        continue;
+                    if (bounds.isEmpty()) {
+	                    continue;
+                    }
 
 					Point<int> points[] = { bounds.getTopLeft(),
 											bounds.getBottomLeft(),
@@ -971,8 +971,8 @@ void MainPanel::timerCallback(int timerId) {
 											bounds.getBottomRight() };
 
 					int numCornersOverlapped = 0;
-                    for (int pointIdx = 0; pointIdx < numElementsInArray(points); ++pointIdx) {
-                        if (desktop.findComponentAt(points[pointIdx]) != c) {
+                    for (auto point : points) {
+                        if (desktop.findComponentAt(point) != c) {
                             ++numCornersOverlapped;
                         }
                     }
@@ -987,39 +987,35 @@ void MainPanel::timerCallback(int timerId) {
 
 		stopTimer(BoundsCheckId);
     } else if (timerId == DelayedRepaint) {
-#ifdef JUCE_MAC
+	  #ifdef JUCE_MAC
         doUpdate(SourceMorph);
-#endif
+	  #endif
 
         repaintAll();
         stopTimer(DelayedRepaint);
 	}
 }
 
-
 void MainPanel::resetTabToWaveform() {
     bottomTabs->setSelectedTab(TabWaveform);
 }
-
 
 void MainPanel::triggerDelayedRepaint() {
     startTimer(DelayedRepaint, 200);
 }
 
-
 Component* MainPanel::getComponent(int which) {
     switch (which) {
         case CompWaveform2DZoomH:
             return waveform2D->getZoomPanel()->getComponent(true);
-            break;
         case CompWaveform2DZoomW:
             return waveform2D->getZoomPanel()->getComponent(false);
-            break;
+    	default:
+    		break;
     }
 
     return nullptr;
 }
-
 
 void MainPanel::setPrimaryDimension(int view, bool performUpdate) {}
 
@@ -1027,7 +1023,6 @@ void MainPanel::setPrimaryDimension(int view, bool performUpdate) {}
 void MainPanel::envelopeVisibilityChanged() {
     // XXX
 }
-
 
 void MainPanel::panelComponentsChanged() {
 

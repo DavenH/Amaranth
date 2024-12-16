@@ -32,7 +32,7 @@ public:
 	};
 
 	DocumentDetails();
-	virtual ~DocumentDetails();
+	~DocumentDetails() override = default;
 
     void setAuthor(const String& author)		{ this->author 			= author; 		}
     void setPack(const String& pack)			{ this->pack 			= pack; 		}

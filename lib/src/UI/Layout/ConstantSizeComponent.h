@@ -13,7 +13,7 @@ private:
 
 public:
     ConstantSizeComponent(int size)
-            : size(size) {
+        : isCurrentCollapsed(false), size(size) {
     }
 
     int getExpandedSize() {

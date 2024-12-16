@@ -1,4 +1,5 @@
 #pragma once
+
 #include <set>
 #include <ippdefs.h>
 #include "VertCube.h"
@@ -19,7 +20,7 @@ public:
 	enum CollisionDim { Time, Key, Mod, Phase, nDims };
 
 	CollisionDetector(SingletonRepo* repo, CollisionDim nonIntersectingDim);
-	~CollisionDetector() override {}
+	~CollisionDetector() override = default;
 
 	void setCurrentSelection(Mesh* mesh, Vertex* vertex);
 	void setCurrentSelection(Mesh* mesh, VertCube* lineCube);
@@ -70,8 +71,9 @@ private:
 
     static void addLinesToSet(set<VertCube*>& selected, Vertex* vert) {
     	for (auto& owner : vert->owners) {
-			if(owner != nullptr)
+			if(owner != nullptr) {
 				selected.insert(owner);
+			}
 		}
 	}
 

@@ -104,7 +104,9 @@ public:
 	void doBoxSelect	(const MouseEvent& e);
 
 	bool addNewCube(float startTime, float phase, float amp, float curveShape, const MorphPosition& cube);
-	bool commitCubeAdditionIfValid(VertCube*& addedLine, const CubeList& beforeLines, const VertList& beforeVerts);
+	bool commitCubeAdditionIfValid(VertCube*& addedLine,
+		const vector<VertCube*>& beforeLines,
+		const vector<Vertex*>& beforeVerts);
 
 	Array<Vertex*> 	 	getVerticesToMove(VertCube* cube, Vertex* startVertex);
 	VertCube* 		 	getClosestLine(Vertex* vert);

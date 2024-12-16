@@ -30,7 +30,6 @@ public:
     }
 
 private:
-    SingletonRepo* repo;
     int lockId, threadId;
     String lockStr;
 };

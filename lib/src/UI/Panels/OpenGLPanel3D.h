@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Panel3D.h"
 #include "OpenGLBase.h"
 #include "PanelOwner.h"
@@ -19,11 +20,11 @@ class OpenGLPanel3D :
 	, 	public virtual SingletonAccessor {
 public:
 	OpenGLPanel3D(SingletonRepo* repo, Panel3D* panel3D, Panel3D::DataRetriever* retriever);
-	virtual ~OpenGLPanel3D();
+	~OpenGLPanel3D() override;
 
-	void drawSurfaceColumn(int x);
+	void drawSurfaceColumn(int x) override;
 	void drawCurvesAndSurfaces();
-	void resized();
+	void resized() override;
 	void drawCircle();
 	void initRender();
 
@@ -31,21 +32,21 @@ public:
 	void activateContext();
 	void deactivateContext();
 
-	void disableClientArrays();
-	void enableClientArrays();
-	void newOpenGLContextCreated();
-	void openGLContextClosing();
-	void renderOpenGL();
-	void textureBakeFinished();
+	static void disableClientArrays();
+	static void enableClientArrays();
+	void newOpenGLContextCreated() override;
+	void openGLContextClosing() override;
+	void renderOpenGL() override;
+	void textureBakeFinished() override;
 
 	// panel3d renderer
-	void clear();
-	void activate() { activateContext(); }
-	void deactivate() { deactivateContext(); }
+	void clear() override;
+	void activate() override { activateContext(); }
+	void deactivate() override { deactivateContext(); }
 
-	CriticalSection& getGridLock() 		{ return columnLock; }
-	Buffer<float> getColumnArray() 		{ return dataRetriever->getColumnArray(); }
-	const vector<Column>& getColumns() 	{ return dataRetriever->getColumns(); }
+	CriticalSection& getGridLock() override 		{ return columnLock; }
+	Buffer<float> getColumnArray() override 		{ return dataRetriever->getColumnArray(); }
+	const vector<Column>& getColumns() override 	{ return dataRetriever->getColumns(); }
 
 protected:
 
@@ -60,7 +61,7 @@ protected:
 	Ref<Panel3D::DataRetriever> dataRetriever;
 
 	void populateExtensions();
-	bool isSupported(String extension);
+	bool isSupported(const String& extension);
 
 	JUCE_LEAK_DETECTOR(OpenGLPanel3D);
 };

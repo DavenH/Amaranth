@@ -1,6 +1,6 @@
 #include <Definitions.h>
 
-#if PLUGIN_MODE
+// #if PLUGIN_MODE
 
 #include <App/SingletonRepo.h>
 #include <App/Settings.h>
@@ -10,14 +10,17 @@
 #include <Util/ScopedBooleanSwitcher.h>
 
 #include "PluginWindow.h"
+
+#include <App/Dialogs.h>
+
 #include "VisualDsp.h"
 #include "SynthLookAndFeel.h"
 
 #include "Panels/MainPanel.h"
 #include "Panels/PlayerComponent.h"
-#include "../App/GlobalOperations.h"
 #include "../Util/CycleEnums.h"
-
+#include "../Incl/PluginCharacteristics.h"
+#include "../CycleDefs.h"
 
 PluginWindow::PluginWindow (PluginProcessor* proc) :
 		SingletonAccessor(proc->repo, "PluginWindow")
@@ -25,24 +28,23 @@ PluginWindow::PluginWindow (PluginProcessor* proc) :
 	,	doUpdateAfterResize(false)
 	,	haveFreedResources(false)
 {
-	dout << "Created plugin window\n";
+	std::cout << "Created plugin window\n";
 
 	setLookAndFeel(&getObj(SynthLookAndFeel));
 	changeSizeAndSet(getSetting(WindowSize));
 
-	Ref<MainPanel> mainPanel = &getObj(MainPanel);
+	Ref mainPanel = &getObj(MainPanel);
 
 	using namespace WindowSizes;
 
-	if(getSetting(WindowSize) != PlayerSize)
-	{
+	if(getSetting(WindowSize) != PlayerSize) {
 		addAndMakeVisible(mainPanel);
 		mainPanel->grabKeyboardFocus();
 
-		if(haveFreedResources)
-		{
-			dout << "have freed UI, so activating contexts\n";
-			repo->activateContexts();
+		if(haveFreedResources) {
+			std::cout << "have freed UI, so activating contexts\n";
+			// TODO, this is an opengl thing -- not sure if still needed
+			// repo->activateContexts();
 
 		  #ifndef JUCE_MAC
 			doUpdate(SourceMorph);
@@ -55,32 +57,25 @@ PluginWindow::PluginWindow (PluginProcessor* proc) :
 	}
 }
 
-
-PluginWindow::~PluginWindow()
-{
+PluginWindow::~PluginWindow() {
 	freeUIResources();
 	resizer = nullptr;
 }
 
-
-void PluginWindow::paint (Graphics& g)
-{
+void PluginWindow::paint(Graphics& g) {
 }
 
-
-void PluginWindow::resized()
-{
+void PluginWindow::resized() {
 	ScopedBooleanSwitcher sbs(getObj(MainPanel).getForceResizeFlag());
-	MainPanel& mp = getObj(MainPanel);
+	auto& mp = getObj(MainPanel);
 
-	if(doUpdateAfterResize)
-	{
+	if(doUpdateAfterResize)	{
 		doUpdateAfterResize = false;
 		mp.setAttachNextResize(true);
 		addAndMakeVisible(&mp);
 
 	  #ifndef JUCE_MAC
-		doUpdate(ModUpdate);
+		doUpdate(SourceMorph);
 	  #endif
 	}
 
@@ -88,41 +83,38 @@ void PluginWindow::resized()
 
 	bool willResize = mp.getWidth() != getWidth() || mp.getHeight() != getHeight();
 
-	(getSetting(WindowSize) == Settings::PlayerSize) ?
+	(getSetting(WindowSize) == AppSettings::PlayerSize) ?
 		getObj(PlayerComponent).setBounds(0, 0, getWidth(), getHeight()) :
 		mp.setBounds(0, 0, getWidth(), getHeight());
 
-	if(! willResize)
+	if(! willResize) {
 		mp.resized();
+	}
 }
-
 
 void PluginWindow::focusLost (FocusChangeType cause)
 {
 }
-
 
 void PluginWindow::focusGained (FocusChangeType cause)
 {
 	jassertfalse;
 }
 
-
 void PluginWindow::changeSizeAndSet(int sizeEnum)
 {
-	Ref<MainPanel> mainPanel 				= &getObj(MainPanel);
-	Ref<PlayerComponent> playerComponent 	= &getObj(PlayerComponent);
+	Ref mainPanel 				= &getObj(MainPanel);
+	Ref playerComponent 	= &getObj(PlayerComponent);
 
 	int oldSize = getSetting(WindowSize);
 	getSetting(WindowSize) = sizeEnum;
 
 	int width, height;
-	GlobalOperations::getSizeFromSetting(sizeEnum, width, height);
+	Dialogs::getSizeFromSetting(sizeEnum, width, height);
 
 	doUpdateAfterResize = false;
 
-	if(sizeEnum == Settings::PlayerSize)
-	{
+	if(sizeEnum == AppSettings::PlayerSize) {
 		removeChildComponent(mainPanel);
 		playerComponent->setComponents(true);
 		playerComponent->resized();
@@ -131,8 +123,7 @@ void PluginWindow::changeSizeAndSet(int sizeEnum)
 		freeUIResources();
 	}
 
-	else if(oldSize == Settings::PlayerSize)
-	{
+	else if(oldSize == AppSettings::PlayerSize) {
 		playerComponent->setComponents(false);
 		removeChildComponent(playerComponent);
 
@@ -157,4 +148,4 @@ void PluginWindow::moved()
 {
 }
 
-#endif
+// #endif

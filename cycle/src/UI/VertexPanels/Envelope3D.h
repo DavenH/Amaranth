@@ -10,13 +10,13 @@ class Envelope3D :
 	,	public Panel3D::DataRetriever
 {
 public:
-	Envelope3D(SingletonRepo* repo);
-	virtual ~Envelope3D();
+	explicit Envelope3D(SingletonRepo* repo);
+	~Envelope3D() override;
 
-	void init();
+	void init() override;
 	void buttonClicked(Button* button);
-	Component* getControlsComponent() { return nullptr; }
+	static Component* getControlsComponent() { return nullptr; }
 
-	Buffer<float> getColumnArray();
-	const vector<Column>& getColumns();
+	Buffer<float> getColumnArray() override;
+	const vector<Column>& getColumns() override;
 };

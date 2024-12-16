@@ -52,6 +52,14 @@ public:
 		}
 	};
 
+	struct Window {
+		int index, size, paddedSignalSize;
+		int erbStartJ, erbEndJ, erbSize, erbStartK, erbEndK;
+		int offsetSamples, lastOffset, overlapSamples;
+		float erbOffset, optimalFreq;
+
+		Buffer<float> hannWindow, lambda, spectFreqs;
+	};
 
     /* ----------------------------------------------------------------------------- */
 
@@ -74,15 +82,6 @@ public:
 	void setSample(PitchedSample* wrapper) 	{ sample = wrapper;  }
 
 private:
-    struct Window {
-		int index, size, paddedSignalSize;
-		int erbStartJ, erbEndJ, erbSize, erbStartK, erbEndK;
-		int offsetSamples, lastOffset, overlapSamples;
-		float erbOffset, optimalFreq;
-
-		Buffer<float> hannWindow, lambda, spectFreqs;
-	};
-
     struct StrengthColumn {
 		float time;
 		Buffer<float> column;
@@ -99,11 +98,23 @@ private:
 
 	void fillFrequencyBins();
 	static void calcLambda(Window& window, const Buffer<float>& realErbIdx);
-	static void getAdjacentValues(Buffer<float> buff, int index, float& y1, float& y2, float& y3);
-	static void createKernels(vector<Buffer<float> >& kernels, ScopedAlloc<float>& kernelMemory,
-		const Buffer<int>& kernelSizes, Buffer<float> erbFreqs, Buffer<float> pitchCandidates);
+	static void getAdjacentValues(
+		Buffer<float> buff, int index, float& y1, float& y2, float& y3);
 
-	static static void setErbLimits(Window& window, Buffer<float> realErbIdx, bool isFirst, bool isLast);
+	static void createKernels(
+		vector<Buffer<float> >& kernels,
+		ScopedAlloc<float>& kernelMemory,
+		const Buffer<int>& kernelSizes,
+		Buffer<float> erbFreqs,
+		Buffer<float> pitchCandidates
+	);
+
+	static void setErbLimits(
+		Window& window,
+		Buffer<float> realErbIdx,
+		bool isFirst,
+		bool isLast
+	);
 	static float erbsToHertz(float x);
 	static float hertzToErbs(float x);
 	static float logTwo(float x);

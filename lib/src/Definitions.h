@@ -1,5 +1,4 @@
-#ifndef DEFINITIONS_H_
-#define DEFINITIONS_H_
+#pragma once
 
 #define productSplit(X, Y) Y
 
@@ -49,9 +48,4 @@
   #define formatSplit(X, Y) X
 #else
   #define formatSplit(X, Y) Y
-#endif
-
-#define foreach(T, I, L) \
-	for(T I = L.begin(); I != L.end(); ++I)
-
 #endif

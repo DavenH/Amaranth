@@ -7,9 +7,6 @@ SurfaceLine::SurfaceLine(Vertex* v1, Vertex* v2, int axis) :
 	one(v1), two(v2), varyingAxis(axis), product(1) {
 }
 
-SurfaceLine::~SurfaceLine() {
-}
-
 float SurfaceLine::at(float x) {
     return at(Vertex::Time, x);
 }

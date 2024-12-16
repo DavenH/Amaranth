@@ -167,10 +167,9 @@ void MidiKeyboard::mouseMove(const MouseEvent& e) {
 
 	String message = getText(mouseNote);
 
-//#if ! PLUGIN_MODE
-	if(mouseNote == auditionKey)
+	if(mouseNote == auditionKey) {
 		message = message + " (audition key)";
-//#endif
+	}
 
 	showMsg(message);
 }
@@ -195,13 +194,15 @@ bool MidiKeyboard::mouseDownOnKey(int midiNoteNumber, const MouseEvent& e) {
 	repaintNote (mouseNote);
 	setMouseNote(-1);
 
-	updateNote(e.getPosition());
+	updateNote(e.getPosition().toFloat());
 	return false;
 }
 
-void MidiKeyboard::mouseDraggedToKey(int midiNoteNumber, const MouseEvent& e) {
+bool MidiKeyboard::mouseDraggedToKey(int midiNoteNumber, const MouseEvent& e) {
     setVelocity(e.y / float(getHeight()), true);
-    updateNote(e.getPosition());
+    updateNote(e.getPosition().toFloat());
+	//Return true if you want the drag to trigger the new note, or false if you want to handle it yourself
+	return false;
 }
 
 void MidiKeyboard::setAuditionKey(int key) {
@@ -224,16 +225,16 @@ void MidiKeyboard::updateNote(const Point<float>& point) {
 }
 
 float MidiKeyboard::getVelocityA() {
-    return getVelocity();
+    return 0.8; // don't know where `getVelocity()` went - must have come from midi keyboard? Did I edit that file?
 }
 
-bool MidiKeyboard::shouldDrawAuditionKey(int note) {
+bool MidiKeyboard::shouldDrawAuditionKey(int note) const {
     bool drawAuditionKey = note == auditionKey;
 
     return drawAuditionKey;
 }
 
-int MidiKeyboard::getMouseNote() {
+int MidiKeyboard::getMouseNote() const {
     if (mouseOverNotes.size() == 0)
         return -1;
 

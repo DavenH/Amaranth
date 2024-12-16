@@ -11,18 +11,13 @@ SpectDelegate::SpectDelegate(SingletonRepo* repo) :
 		SingletonAccessor(repo, "SpectDelegate") {
 }
 
-
-SpectDelegate::~SpectDelegate() {
-}
-
-
 void SpectDelegate::performUpdate(int updateType) {
     bool isMagnitudesMode = getSetting(MagnitudeDrawMode) == 1;
 
     switch (updateType) {
-		case UpdateType::Repaint: break;
-		case UpdateType::ReduceDetail:
-		case UpdateType::RestoreDetail:
+		case Repaint: break;
+		case ReduceDetail:
+		case RestoreDetail:
 		{
 			bool isPostFFT = getSetting(ViewStage) >= ViewStages::PostSpectrum;
 
@@ -35,7 +30,7 @@ void SpectDelegate::performUpdate(int updateType) {
 			break;
 		}
 
-        case UpdateType::Update: {
+        case Update: {
 			getSetting(MagnitudeDrawMode) ?
 				getObj(SpectRasterizer).performUpdate(updateType) :
 				getObj(PhaseRasterizer).performUpdate(updateType);

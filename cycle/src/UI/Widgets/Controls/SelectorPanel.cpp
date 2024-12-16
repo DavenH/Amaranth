@@ -4,8 +4,8 @@
 #include <App/SingletonAccessor.h>
 
 #include "SelectorPanel.h"
-
 #include <Definitions.h>
+#include <App/SingletonRepo.h>
 
 SelectorPanel::SelectorPanel(SingletonRepo* repo) :
 		currentIndex(0)
@@ -23,11 +23,9 @@ int SelectorPanel::getExpandedSize() {
     return 36;
 }
 
-
 int SelectorPanel::getCollapsedSize() {
     return getExpandedSize();
 }
-
 
 void SelectorPanel::paint(Graphics& g) {
 	Image topImg 	= arrowImg.getClippedImage(Rectangle<int>(0, 0, 11, 7));
@@ -58,14 +56,12 @@ void SelectorPanel::paint(Graphics& g) {
 	g.drawImageAt(botImg, (getWidth() - topImg.getWidth()) / 2, nextRect.getY());
 }
 
-
 void SelectorPanel::mouseEnter(const MouseEvent& e) {
 	int listSize 	= getSize();
 	String message 	= itemName + " " + String(currentIndex + 1) + " of " + String(listSize);
 
-	getObj(IConsole).updateAll(message, String::empty, MouseUsage(true, true, false, false));
+	getObj(IConsole).updateAll(message, String(), MouseUsage(true, true, false, false));
 }
-
 
 void SelectorPanel::mouseDrag(const MouseEvent& e) {
     if (e.mods.isLeftButtonDown()) {
@@ -76,7 +72,6 @@ void SelectorPanel::mouseDrag(const MouseEvent& e) {
 	}
 }
 
-
 void SelectorPanel::mouseDown(const MouseEvent& e) {
     if (e.mods.isLeftButtonDown()) {
         currentIndex = getCurrentIndexExternal();
@@ -86,8 +81,9 @@ void SelectorPanel::mouseDown(const MouseEvent& e) {
 		for(int i = 0; i < getSize(); ++i)
 			menu.addItem(i + 1, String(i + 1), true, false);
 
-		int id = menu.show();
-
+    	// TODO what happened to menu.show()?
+		menu.showMenuAsync(PopupMenu::Options());
+    	int id = 0;
 		if(id > 0)
 		{
 			currentIndex = id - 1;
@@ -112,48 +108,41 @@ void SelectorPanel::clickedOnRow(int row) {
 	repaint();
 }
 
-
 void SelectorPanel::resized() {
     prevRect = Rectangle<int>(1, 1, getWidth() - 1, getHeight() / 4);
     nextRect = Rectangle<int>(1, 3 * getHeight() / 4 - 2, getWidth() - 1, getHeight() / 4);
 }
 
-
 void SelectorPanel::setBoundsDelegate(int x, int y, int w, int h) {
     setBounds(x, y, w, h);
 }
-
 
 const Rectangle<int> SelectorPanel::getBoundsInParentDelegate() {
     return getBoundsInParent();
 }
 
-
 int SelectorPanel::getXDelegate() {
     return getX();
 }
 
-
 int SelectorPanel::getYDelegate() {
     return getY();
 }
-
 
 void SelectorPanel::refresh(bool forceUpdate) {
     int oldCurrent = currentIndex;
 	currentIndex = getCurrentIndexExternal();
 	repaint();
 
-	if(oldCurrent != currentIndex || forceUpdate)
+	if(oldCurrent != currentIndex || forceUpdate) {
 		selectionChanged();
+	}
 }
-
 
 void SelectorPanel::constrainIndex(int& num) {
     int maxIndex = getSize() - 1;
     NumberUtils::constrain(num, 0, maxIndex);
 }
-
 
 void SelectorPanel::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
     float yInc = wheel.deltaY;
@@ -161,7 +150,6 @@ void SelectorPanel::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails&
 	draggedListIndex(yInc > 0 ? 1 : -1);
 	doSelectionChange();
 }
-
 
 void SelectorPanel::draggedListIndex(int index) {
     indexDragged = index;
@@ -178,11 +166,10 @@ void SelectorPanel::draggedListIndex(int index) {
 	repaint();
 }
 
-
-
 void SelectorPanel::doSelectionChange() {
-    if (indexDragged == 0)
-        return;
+    if (indexDragged == 0) {
+	    return;
+    }
 
     currentIndex += indexDragged;
     constrainIndex(currentIndex);
@@ -191,7 +178,6 @@ void SelectorPanel::doSelectionChange() {
 
     selectionChanged();
 }
-
 
 void SelectorPanel::reset() {
 	currentIndex = 0;

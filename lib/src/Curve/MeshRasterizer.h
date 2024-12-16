@@ -12,7 +12,6 @@
 #include "../Obj/ColorPoint.h"
 #include "../Obj/MorphPosition.h"
 #include "../Util/MicroTimer.h"
-#include "../Util/StatusChecker.h"
 
 using std::vector;
 
@@ -81,8 +80,8 @@ public:
 
 	void adjustDeformingSharpness();
 	void applyDeformers(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds = false);
-	void calcCrossPoints(Mesh* usedmesh, float oscPhase = 0.f);
-	void calcIntercepts();
+	void calcCrossPoints(Mesh* usedmesh, float oscPhase, int currentDim);
+	void calcIntercepts(int currentDim);
 	void calcWaveformFrom(vector<Intercept>& icpts);
 	void initialise();
 	void makeCopy();
@@ -99,7 +98,7 @@ public:
 
 	bool isSampleable();
 	bool isSampleableAt(float x);
-	bool wasCleanedUp() const { return wasCleanedUp; }
+	bool wasCleanedUp() const { return unsampleable; }
 
 	float sampleAt(double angle);
 	float sampleAt(double angle, int& currentIndex);
@@ -161,8 +160,8 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-	virtual void calcCrossPoints();
-	virtual void calcCrossPointsAtTime(float x);
+	virtual void calcCrossPoints(int currentDim);
+	virtual void calcCrossPointsAtTime(float x, int currentDim);
 	virtual void cleanUp();
 	virtual void handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube);
 	virtual void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);
@@ -189,10 +188,10 @@ public:
 
     MorphPosition& getMorphPosition()				{ return morph; 					}
 
-    Buffer<float> getWaveX()						{ return waveX;					}
-	Buffer<float> getWaveY()						{ return waveY;					}
-	Buffer<float> getSlopes()						{ return slope;					}
-	Buffer<float> getDiffX()						{ return diffX;					}
+    Buffer<float> getWaveX()						{ return waveX;						}
+	Buffer<float> getWaveY()						{ return waveY;						}
+	Buffer<float> getSlopes()						{ return slope;						}
+	Buffer<float> getDiffX()						{ return diffX;						}
 
     const String& getName() const 					{ return name; 						}
 	int getPaddingSize() const 						{ return paddingSize;				}
@@ -237,7 +236,7 @@ protected:
     void updateBuffers(int size);
     void calcWaveform();
     void setResolutionIndices(float base);
-    void calcTransferTable();
+    static void calcTransferTable();
 
     /* ----------------------------------------------------------------------------- */
 

@@ -35,14 +35,14 @@ public:
 	ParameterGroup(SingletonRepo* repo, const String& name, Worker* worker);
 	~ParameterGroup() override = default;
 
-	void sliderValueChanged (Slider* slider);
-	void sliderDragStarted 	(Slider* slider);
-	void sliderDragEnded 	(Slider* slider);
+	void sliderValueChanged (Slider* slider) override;
+	void sliderDragStarted 	(Slider* slider) override;
+	void sliderDragEnded 	(Slider* slider) override;
 
-	int getNumParams() const { return knobs.size(); }
+	[[nodiscard]] int getNumParams() const { return knobs.size(); }
 	void addKnobsTo(Component* component);
 	void listenToKnobs();
-	double getKnobValue(int knobIdx) const;
+	[[nodiscard]] double getKnobValue(int knobIdx) const;
 	void setKnobValue(int knobIndex, double knobValue, bool doGlobalUIUpdate, bool isAutomation = false);
 
 	bool readKnobXML(const XmlElement* effectElem);
@@ -68,8 +68,8 @@ protected:
 
 	class KnobUpdater : public AsyncUpdater {
 	public:
-        bool pending[20];
-        double knobValues[20];
+        bool pending[20]{};
+        double knobValues[20]{};
 		ParameterGroup* group;
 
         KnobUpdater(ParameterGroup* group) : group(group) {

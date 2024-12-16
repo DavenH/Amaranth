@@ -1,4 +1,5 @@
 #pragma once
+
 #include "JuceHeader.h"
 
 using namespace juce;
@@ -22,7 +23,6 @@ class TextureGL : public Texture {
 public:
 	GLuint id;
 	int blendFunc;
-//	float scale;
 	Rectangle<float> src;
 
 	TextureGL();

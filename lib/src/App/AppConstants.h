@@ -12,15 +12,18 @@ namespace Constants {
 	,	HighestMidiNote		= 127
 	};
 
-	static const String DocMagicCode = "Juce";
-	static const String DocumentExt = "cyc";
-
 	enum {
 		DocSettingsDir
 	,	DocumentName
+	,	ProductVersion
+	,	DocumentExt
+	,	DocMagicCode
+	,	ProductName
 	,	DocumentsDir
+
 	,	numAppConstants
 	};
+
 }
 
 class AppConstants  {
@@ -32,9 +35,9 @@ public:
 	void setConstant(int key, double value) 		{ realValues.set(key, value); 	}
 	void setConstant(int key, const String& value) 	{ strValues	.set(key, value); 	}
 
-	int getAppConstant(int key);
-	double getRealAppConstant(int key);
-	String getStringAppConstant(int key);
+	[[nodiscard]] int getAppConstant(int key) const;
+	[[nodiscard]] double getRealAppConstant(int key) const;
+	[[nodiscard]] String getStringAppConstant(int key) const;
 
 protected:
 

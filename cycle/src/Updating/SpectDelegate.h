@@ -7,8 +7,8 @@ class SpectDelegate :
 		public SingletonAccessor
 	,	public Updateable {
 public:
-	void performUpdate(int updateType);
+	void performUpdate(int updateType) override;
 
 	SpectDelegate(SingletonRepo* repo);
-	virtual ~SpectDelegate();
+	~SpectDelegate() override;
 };

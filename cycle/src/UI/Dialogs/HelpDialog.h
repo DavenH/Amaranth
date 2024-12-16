@@ -1,5 +1,4 @@
-#ifndef _HELPDIALOG_H_
-#define _HELPDIALOG_H_
+#pragma once
 
 #include <App/AppConstants.h>
 #include <App/SingletonAccessor.h>
@@ -44,14 +43,10 @@ public:
 		g.drawImageWithin(logo, r2.getX(), r2.getY(), r2.getWidth(), r2.getHeight(),
 		                  RectanglePlacement::centred | RectanglePlacement::doNotResize, false);
 
-//	  #ifdef BEAT_EDITION
-//		g.drawImageWithin(beatLogo, r2.getCentreX() - 20, r2.getCentreY() + 15, logo.getWidth() - 40, 30, RectanglePlacement::xLeft, false);
-//	  #endif
-
 		r.reduce(20, 0);
 
 		String name("Cycle");
-		String version(getRealConstant(ProductVersion), 1);
+		String version(ProjectInfo::projectName);
 		String line(name + " v" + version + " build " + String(getConstant(BuildNumber)));
 		getObj(MiscGraphics).drawCentredText(g, r.removeFromTop(25), line, Justification::centred);
 
@@ -62,7 +57,7 @@ public:
 		g.drawImageTransformed(bert, AffineTransform::rotation(-0.5).translated(getWidth() * 0.65, getHeight() * 0.7));
 	}
 
-	void resized()
+	void resized() override
 	{
 		Rectangle<int> r = getLocalBounds();
 
@@ -73,7 +68,7 @@ public:
 
 	}
 
-	void buttonClicked(Button* button)
+	void buttonClicked(Button* button) override
 	{
 		removeFromDesktop();
 		setVisible(false);
@@ -84,5 +79,3 @@ public:
 	Image logo, beatLogo, bert;
 	TextButton closeButton;
 };
-
-#endif

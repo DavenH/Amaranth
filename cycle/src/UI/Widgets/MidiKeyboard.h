@@ -20,7 +20,7 @@ public:
 	void mouseMove(const MouseEvent& e) override;
 	static String getText(int note);
 
-	float getVelocityA();
+	static float getVelocityA();
 	[[nodiscard]] int getAuditionKey() const { return auditionKey; }
 	void resized() override;
 	void setAuditionKey(int key);
@@ -52,9 +52,10 @@ private:
 		pxOrangeWhite 	= 48,
 	};
 
-	int getMouseNote();
-	void setMouseNote(int note);
-	bool shouldDrawAuditionKey(int note);
+	int getMouseNote() const;
+
+	static void setMouseNote(int note);
+	bool shouldDrawAuditionKey(int note) const;
 
 	GlowEffect glow;
 	Image keys;

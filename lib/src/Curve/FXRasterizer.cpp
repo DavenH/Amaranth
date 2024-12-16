@@ -11,7 +11,7 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 	dims.y = Vertex::Amp;
 }
 
-void FXRasterizer::calcCrossPoints() {
+void FXRasterizer::calcCrossPoints(int currentDim) {
 	if (mesh == nullptr || mesh->getNumVerts() == 0) {
         cleanUp();
 		return;

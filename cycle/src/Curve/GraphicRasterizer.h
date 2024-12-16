@@ -19,7 +19,7 @@ public:
 	float& getPrimaryDimensionVar() override;
 	void pullModPositionAndAdjust() override;
 
-	Interactor* getInteractor() { return interactor; }
+	Interactor* getInteractor() const { return interactor; }
 
 private:
 	int layerGroup;

@@ -36,7 +36,7 @@ public:
 
     ~Column() override = default;
 
-    Column& operator=(const Buffer& buff) override {
+    Column& operator=(const Buffer& buff) {
         this->ptr = buff.get();
         this->sz = buff.size();
         return *this;

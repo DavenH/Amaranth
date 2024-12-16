@@ -1,11 +1,4 @@
-#ifndef plugincharacteristics_h
-#define plugincharacteristics_h
-
-#ifdef BEAT_EDITION
-  #define JuceResId 1001
-#else
-  #define JuceResId 1000
-#endif
+#pragma once
 
 #ifdef VST_PLUGIN_MODE
   #define JucePlugin_Build_VST    	1
@@ -66,11 +59,7 @@
 #define JucePlugin_Desc                 "Spectral Synthesizer"
 #define JucePlugin_Manufacturer         "Amaranth Audio Inc"
 #define JucePlugin_ManufacturerCode     'Amrn'
-#ifdef BEAT_EDITION
-  #define JucePlugin_PluginCode         'Cycb'
-#else
-  #define JucePlugin_PluginCode         'Cycl'
-#endif
+#define JucePlugin_PluginCode         'Cycl'
 
 #ifdef AAX_PLUGIN_MODE
   #define JucePlugin_AAXIdentifier 			com.amaranthaudio.cycle
@@ -95,31 +84,22 @@
 #define JucePlugin_TailLengthSeconds    		0
 #define JucePlugin_EditorRequiresKeyboardFocus  1
 
-#define JucePlugin_ManufacturerWebsite    		"www.amaranthaudio.com"
-#define JucePlugin_ManufacturerEmail      		"daven@amaranthaudio.com"
+#define JucePlugin_ManufacturerWebsite  "www.amaranthaudio.com"
+#define JucePlugin_ManufacturerEmail    "daven@amaranthaudio.com"
 
-
-#ifdef BEAT_EDITION
-  #ifndef  JucePlugin_Version
-    #define JucePlugin_Version 					1.0.0.2603
-  #endif
-  #define JucePlugin_VersionString        		"1.0.0.2603"
-  #define JucePlugin_VersionCode          		0x10800
-#else
-  #ifndef  JucePlugin_Version
-    #define JucePlugin_Version 					1.9.0.2603
-  #endif
-  #define JucePlugin_VersionString        		"1.9.0.2603"
-  #define JucePlugin_VersionCode          		0x10900
+#ifndef  JucePlugin_Version
+  #define JucePlugin_Version 					1.9.0.2603
 #endif
-#define JucePlugin_VSTUniqueID          		JucePlugin_PluginCode
+#define JucePlugin_VersionString      "1.9.0.2603"
+#define JucePlugin_VersionCode        0x10900
+#define JucePlugin_VSTUniqueID          JucePlugin_PluginCode
 
 #if JucePlugin_IsSynth
-  #define JucePlugin_VSTCategory            	kPlugCategSynth
-  #define JucePlugin_AUMainType             	kAudioUnitType_MusicDevice
+  #define JucePlugin_VSTCategory        kPlugCategSynth
+  #define JucePlugin_AUMainType         kAudioUnitType_MusicDevice
 #else
-  #define JucePlugin_VSTCategory            	kPlugCategEffect
-  #define JucePlugin_AUMainType             	kAudioUnitType_Effect
+  #define JucePlugin_VSTCategory        kPlugCategEffect
+  #define JucePlugin_AUMainType         kAudioUnitType_Effect
 #endif
 
 #define JucePlugin_AUSubType            		JucePlugin_PluginCode
@@ -154,6 +134,3 @@
 #define JucePlugin_RTASManufacturerCode 		JucePlugin_ManufacturerCode
 #define JucePlugin_RTASProductId        		JucePlugin_PluginCode
 #define JUCE_USE_VSTSDK_2_4             		1
-
-#endif
-

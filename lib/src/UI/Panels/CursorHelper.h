@@ -1,5 +1,4 @@
-#ifndef CURSORHELPER_H_
-#define CURSORHELPER_H_
+#pragma once
 
 #include "../MiscGraphics.h"
 #include "../../Inter/Interactor.h"
@@ -11,8 +10,9 @@ public:
     static void setCursor(SingletonRepo* repo, Component* c, Interactor* i) {
         PanelState& state = i->state;
 
-        if (!i)
+        if (!i) {
             return;
+        }
 
         bool is3D = i->is3DInteractor();
         int tool = getSetting(Tool);
@@ -61,6 +61,3 @@ public:
             c->setMouseCursor(getObj(MiscGraphics).getCursor(MiscGraphics::CrossCursor));
     }
 };
-
-
-#endif

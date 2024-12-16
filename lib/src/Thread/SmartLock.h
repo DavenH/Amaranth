@@ -1,4 +1,5 @@
 #pragma once
+
 #include "../App/SingletonAccessor.h"
 #include "JuceHeader.h"
 

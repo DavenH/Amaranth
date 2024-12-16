@@ -26,13 +26,12 @@ public:
 	void writeXML(XmlElement* element) const override;
 	bool readXML(const XmlElement* element) override;
 
-	const String& getName() const { return name; }
+	vector<Vertex*>& getVerts()   { return verts; }
+	vector<VertCube*>& getCubes() { return cubes; }
 
-	VertList& getVerts() 		 { return verts; }
-	CubeList& getCubes() 		 { return cubes; }
-
-	int getNumCubes() const 	 { return (int) cubes.size(); }
-	int getNumVerts() const 	 { return (int) verts.size(); }
+	[[nodiscard]] const String& getName() const { return name; }
+	[[nodiscard]] int getNumCubes() const 	 { return (int) cubes.size(); }
+	[[nodiscard]] int getNumVerts() const 	 { return (int) verts.size(); }
 
 	void addCube(VertCube* cube) { cubes.insert(cubes.end(), cube); }
 	void addVertex(Vertex* vert) { verts.insert(verts.end(), vert); }
@@ -41,7 +40,7 @@ public:
         return removeCube(std::find(cubes.begin(), cubes.end(), cube));
     }
 
-    bool removeCube(CubeIter cube) {
+    bool removeCube(vector<VertCube*>::iterator cube) {
 		if(cube == cubes.end())
 			return false;
 
@@ -64,7 +63,7 @@ public:
 	void copyElements(vector<VertCube*>& copyCubesTo) const	{ copyCubesTo = cubes; }
 	void copyElements(vector<Vertex*>& copyVertsTo) const	{ copyVertsTo = verts; }
 
-	void copyElements(vector<VertCube*>& copyVertsTo, vector<VertCube*>& copyCubesTo) const
+	void copyElements(vector<Vertex*>& copyVertsTo, vector<VertCube*>& copyCubesTo) const
 	{
 		copyElements(copyVertsTo);
 		copyElements(copyCubesTo);
