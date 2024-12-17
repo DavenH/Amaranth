@@ -22,8 +22,9 @@ CollisionDetector::CollisionDetector(SingletonRepo* repo, CollisionDim nonInters
 }
 
 void CollisionDetector::update(Mesh* mesh) {
-	if(! enabled)
+	if(! enabled) {
 		return;
+	}
 
 	numMeshCubes = mesh->getNumCubes();
 	int numSelectedLines = selectedLines.size();
@@ -32,13 +33,15 @@ void CollisionDetector::update(Mesh* mesh) {
 	uniqueMeshCubes.reserve(numMeshCubes);
 
 	for (auto& it : mesh->getCubes()) {
-        if(selectedLines.find(it) != selectedLines.end())
-			uniqueMeshCubes.push_back(it);
+        if(selectedLines.find(it) != selectedLines.end()) {
+	        uniqueMeshCubes.push_back(it);
+        }
 	}
 
 	// nothing to collide with
-	if(numSelectedLines == 0 || uniqueMeshCubes.size() <= 1)
+	if(numSelectedLines == 0 || uniqueMeshCubes.size() <= 1) {
 		return;
+	}
 
 	Vertex* currVert;
 
@@ -76,8 +79,9 @@ void CollisionDetector::update(Mesh* mesh) {
 		++index;
 	}
 
-	for(int i = 0; i < numIndepDims; ++i)
+	for(int i = 0; i < numIndepDims; ++i) {
 		sliceSpacings[i] = sliceSpacing * (selectMaxima[i] - selectMinima[i]);
+	}
 
     int lineIdx = 0;
 	for (auto cube : uniqueMeshCubes) {
@@ -125,8 +129,9 @@ void CollisionDetector::setCurrentSelection(Mesh* mesh, const vector<Vertex*>& v
 void CollisionDetector::setCurrentSelection(Mesh* mesh, const Array<Vertex*>& verts) {
     selectedLines.clear();
 
-	for (auto vert : verts)
+	for (auto vert : verts) {
 		addLinesToSet(selectedLines, vert);
+	}
 
     update(mesh);
 }
@@ -134,8 +139,9 @@ void CollisionDetector::setCurrentSelection(Mesh* mesh, const Array<Vertex*>& ve
 void CollisionDetector::setCurrentSelection(Mesh* mesh, const vector<VertexFrame>& frames) {
     selectedLines.clear();
 
-	for (auto frame : frames)
+	for (const auto& frame : frames) {
 		addLinesToSet(selectedLines, frame.vert);
+	}
 
 	update(mesh);
 }
@@ -152,8 +158,9 @@ void CollisionDetector::setNonintersectingDimension(CollisionDim dim) {
  * iteratively checking divisions of the two non-primary dimensions
  */
 bool CollisionDetector::validate() {
-    if (!enabled)
-        return true;
+    if (!enabled) {
+	    return true;
+    }
 
 	bool meshLineIsInSlice, selectedLineIsInSlice;
 	float axes[numIndepDims];
@@ -212,8 +219,9 @@ bool CollisionDetector::validate() {
                     meshLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     meshLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
-                    if(! meshLineIsInSlice)
-                        continue;
+                    if(! meshLineIsInSlice) {
+	                    continue;
+                    }
 
                     nnx = meshVerts[baseIndexL + nDims * 4 + dimAfter];
                     nny = meshVerts[baseIndexL + nDims * 4 + dim2After];
@@ -232,8 +240,9 @@ bool CollisionDetector::validate() {
                     meshLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     meshLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
-                    if(! meshLineIsInSlice)
-                        continue;
+                    if(! meshLineIsInSlice) {
+	                    continue;
+                    }
 
                     nnx = selectedVerts[baseIndexM + nDims * 0 + dimAfter];
                     nny = selectedVerts[baseIndexM + nDims * 0 + dim2After];
@@ -252,8 +261,9 @@ bool CollisionDetector::validate() {
                     selectedLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     selectedLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
-                    if(! selectedLineIsInSlice)
-                        continue;
+                    if(! selectedLineIsInSlice) {
+	                    continue;
+                    }
 
                     nnx = selectedVerts[baseIndexM + nDims * 4 + dimAfter];
                     nny = selectedVerts[baseIndexM + nDims * 4 + dim2After];
@@ -272,8 +282,9 @@ bool CollisionDetector::validate() {
                     selectedLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     selectedLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
-                    if(! selectedLineIsInSlice)
-                        continue;
+                    if(! selectedLineIsInSlice) {
+	                    continue;
+                    }
 
                     if (timeIsApplicable) {
                     // lerp the 4 pairs along first dimension

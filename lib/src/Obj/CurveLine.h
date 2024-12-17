@@ -22,7 +22,7 @@ public:
         two = Vertex2(one.x + 1, at(one.x + 1));
     }
 
-    bool isBounded() const {
+    [[nodiscard]] bool isBounded() const {
         return bounded;
     }
 

@@ -18,6 +18,7 @@ public:
 
 	float& getPrimaryDimensionVar() override;
 	void pullModPositionAndAdjust() override;
+	int getPrimaryViewDimension() override;
 
 	Interactor* getInteractor() const { return interactor; }
 

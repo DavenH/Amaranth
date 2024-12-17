@@ -2,6 +2,8 @@
 
 #include "JuceHeader.h"
 
+using namespace juce;
+
 class Real {
 public:
     Real() : val(0.f) {}

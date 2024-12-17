@@ -2,17 +2,19 @@
 
 #include <Definitions.h>
 
+#include <utility>
+
 #include "../MiscGraphics.h"
 #include "../IConsole.h"
 #include "../../Util/Util.h"
 #include "../../App/SingletonRepo.h"
 
 IconButton::IconButton(int x, int y,
-					   Button::Listener* listener,
+					   Listener* listener,
 					   SingletonRepo* repo,
-					   const String& overMsg,
-					   const String& cmdMsg,
-					   const String& naMsg)
+					   String overMsg,
+					   String cmdMsg,
+					   String naMsg)
 	: 	Button(String())
 	,	SingletonAccessor(repo, String())
 	,	mouseScrollApplicable(false)
@@ -22,16 +24,15 @@ IconButton::IconButton(int x, int y,
 	,	pendingNumber	(0)
 	,	collapsedSize	(24)
 	,	expandedSize	(24)
-	,	message			(overMsg)
-	,	keys			(cmdMsg)
-	,	naMessage		(naMsg) {
+	,	message			(std::move(overMsg))
+	,	keys			(std::move(cmdMsg))
+	,	naMessage		(std::move(naMsg)) {
 	neut = getObj(MiscGraphics).getIcon(x, y);
 
 	addListener(listener);
 	setMouseCursor(MouseCursor::PointingHandCursor);
 	setWantsKeyboardFocus(false);
 }
-
 
 IconButton::IconButton(Image image, SingletonRepo* repo)
 	: 	Button(String())
@@ -60,22 +61,24 @@ bool IconButton::setHighlit(bool highlit) {
 }
 
 void IconButton::setMessages(String mouseOverMessage, String keys) {
-    message = mouseOverMessage;
-    this->keys = keys;
+    message = std::move(mouseOverMessage);
+    this->keys = std::move(keys);
 }
 
 void IconButton::paintButton(Graphics& g, bool mouseOver, bool buttonDown) {
 	Image copy = neut;
 
     if (applicable) {
-		if(highlit)
+		if(highlit) {
 			getObj(MiscGraphics).drawHighlight(g, Rectangle<float>(0, 0, 24, 24));
+		}
 
 		getObj(MiscGraphics).applyMouseoverHighlight(g, copy, mouseOver, buttonDown, pendingNumber > 0);
 	}
 
-	if(! applicable)
+	if(! applicable) {
 		g.setOpacity(0.4f);
+	}
 
 	g.drawImage(copy, (buttonSize - neut.getWidth()) / 2, (buttonSize - neut.getHeight()) / 2,
 	            neut.getWidth(), neut.getHeight(), 0, 0, neut.getWidth(), neut.getHeight());
@@ -90,7 +93,7 @@ void IconButton::paintButton(Graphics& g, bool mouseOver, bool buttonDown) {
 
 void IconButton::paintOutline(Graphics& g, bool mouseOver, bool buttonDown) {
 	g.setColour(Colours::black);
-	Rectangle<int> r(0.f, 0.f, float(getWidth() - 1), float(getHeight() - 1));
+	Rectangle r(0, 0, getWidth() - 1, getHeight() - 1);
 	getObj(MiscGraphics).drawCorneredRectangle(g, r, 4);
 }
 

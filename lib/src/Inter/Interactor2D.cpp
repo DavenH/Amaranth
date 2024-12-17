@@ -66,8 +66,9 @@ bool Interactor2D::locateClosestElement() {
 	} else if (icptIdx != -1) {
 		state.currentCube 		= icpts[icptIdx].cube;
 
-		if(state.currentCube == nullptr && icptIdx > 0)
+		if(state.currentCube == nullptr && icptIdx > 0) {
 			state.currentCube = icpts[icptIdx - 1].cube;
+		}
 
 		state.currentFreeVert 	= -1;
 		state.currentIcpt		= icptIdx;
@@ -126,7 +127,7 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 
 	if(endIndex - startIndex < 10) {
 		startIndex 	= jmax(0, startIndex - 5);
-		endIndex 	= jmin((int) waveX.size() - 1, endIndex + 5);
+		endIndex 	= jmin(waveX.size() - 1, endIndex + 5);
 	}
 
 	int size = endIndex - startIndex;
@@ -146,7 +147,7 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 
 	mouseFlag(WithinReshapeThresh) = false;
 
-	const Vertex2 c(scaledMouse);
+	const Vertex2& c(scaledMouse);
 
     for (int i = 0; i < size - 1; ++i) {
 		Vertex2 a(xy[i]);
@@ -211,7 +212,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 		UndoableMeshProcess commitPathProcess(this, "Pencil Draw");
 		ScopedBooleanSwitcher sbs(suspendUndo);
 
-		removeLinesInRange(Range<float>(reducedPath.front().x, reducedPath.back().x), morphPos);
+		removeLinesInRange(Range(reducedPath.front().x, reducedPath.back().x), morphPos);
 
 		float startTime = getYellow();
 
@@ -241,16 +242,18 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 		Vertex2 a(pencilPath[end - 1]);
 		Vertex2 b(pencilPath[end]);
 
-		if(a.x > b.x)
+		if(a.x > b.x) {
 			std::swap(a, b);
+		}
 
 		bool haveChanged = false;
 		bool useLines = shouldDoDimensionCheck();
 
         if (useLines) {
         	for (const auto & icpt : icpts) {
-				if(! NumberUtils::within(icpt.x, a.x, b.x))
+				if(! NumberUtils::within(icpt.x, a.x, b.x)) {
 					continue;
+				}
 
 				float curveY = Resampling::lerp(a.x, a.y, b.x, b.y, icpt.x);
 				diff = curveY - icpt.y;
@@ -273,8 +276,9 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 				}
 			}
         } else if (Mesh* mesh = getMesh()) {
-			if(pencilPath.size() < 2)
+			if(pencilPath.size() < 2) {
 				return;
+			}
 
 			// only use the last line segment of path each update
 			int size  = (int) pencilPath.size();
@@ -284,8 +288,9 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 			if(a.x > b.x)
 				std::swap(a, b);
 
-			if(a.x == b.x)
+			if(a.x == b.x) {
 				return;
+			}
 
         	for(auto& vert : mesh->getVerts()) {
 				Vertex2 icpt(vert->values[dims.x], vert->values[dims.y]);
@@ -307,8 +312,9 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 void Interactor2D::doReshapeCurve(const MouseEvent& e) {
     RasterizerData& data = rasterizer->getRastData();
 
-    if (data.curves.empty())
-        return;
+    if (data.curves.empty()) {
+	    return;
+    }
 
     flag(LoweredRes) = true;
 
@@ -347,7 +353,6 @@ void Interactor2D::doReshapeCurve(const MouseEvent& e) {
 	flag(DidMeshChange) |= fabs(diff) > 0;
 }
 
-
 void Interactor2D::removeLinesInRange(Range<float> phsRange, const MorphPosition& pos) {
     Mesh* mesh = getMesh();
 	vector<Vertex*> vertsToDelete;
@@ -372,8 +377,9 @@ void Interactor2D::removeLinesInRange(Range<float> phsRange, const MorphPosition
                 for (int j = 0; j < VertCube::numVerts; ++j) {
 					Vertex* vert = cube->lineVerts[j];
 
-					if(vert->getNumOwners() == 1)
+					if(vert->getNumOwners() == 1) {
 						mesh->removeVert(vert);
+					}
 				}
 			}
 		}
@@ -408,15 +414,12 @@ bool Interactor2D::doCreateVertex() {
 	return succeeded;
 }
 
-
 void Interactor2D::mouseDoubleClick(const MouseEvent& e) {
 }
-
 
 float Interactor2D::getVertexClickProximityThres() {
     return 0.15f;
 }
-
 
 Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
     vector<Vertex*>& selected 	= getSelected();

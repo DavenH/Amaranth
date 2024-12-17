@@ -112,9 +112,9 @@ void TransformVerticesAction::undoDelegate() {
 
 UpdateVertexVectorAction::UpdateVertexVectorAction(
 		Interactor* itr
-	,	VertList* 		_elements
-	,	const VertList& _before
-	,	const VertList& _after
+	,	vector<Vertex*>* 		_elements
+	,	const vector<Vertex*>& _before
+	,	const vector<Vertex*>& _after
 	,	bool doUpdate) :
 			ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())
 		,	itr(itr)
@@ -163,10 +163,10 @@ void UpdateVertexVectorAction::undoDelegate() {
 }
 
 UpdateCubeVectorAction::UpdateCubeVectorAction(
-		Interactor* 	itr
-	,	CubeList* 		_elements
-	,	const CubeList& _before
-	,	const CubeList& _after
+		Interactor* itr
+	,	vector<VertCube*>* _elements
+	,	const vector<VertCube*>& _before
+	,	const vector<VertCube*>& _after
 	,	bool						_shouldClearLines) :
 			ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())
 		,	itr				(itr)
@@ -221,7 +221,7 @@ void SliderValueChangedAction::undoDelegate() {
 DeformerAssignment::DeformerAssignment(
 		Interactor* itr
 	, 	Mesh* mesh
-	,	const CubeList& selectedLines
+	,	const vector<VertCube*>& selectedLines
 	,	const vector<int> previousMappings
 	,	int thisMapping
 	, 	int channel) :
@@ -235,20 +235,20 @@ DeformerAssignment::DeformerAssignment(
 }
 
 void DeformerAssignment::performDelegate() {
-	CubeIter start 	= mesh->getCubeStart();
-	CubeIter end 	= mesh->getCubeEnd();
+	auto start 	= mesh->getCubes().begin();
+	auto end 	= mesh->getCubes().end();
 
 	for(auto line : affectedLines) {
 
         // check if line is still good
         if (line != nullptr && std::find(start, end, line) != end) {
-            line->deformerAt(channel) = currentMapping;
+            line->deformerAt(channel) = (char) currentMapping;
 
             // component curve assignment changes the sharpness / dfrm-gain
             if (channel == Vertex::Time) {
                 bool doAdjustment = true;
-                for (int i = 0; i < VertCube::numVerts; ++i) {
-                    float& curve = line->lineVerts[i]->values[Vertex::Curve];
+                for (auto& lineVert : line->lineVerts) {
+                    float& curve = lineVert->values[Vertex::Curve];
 
                     if (curve > 0.01f) {
 	                    doAdjustment = false;
@@ -256,8 +256,9 @@ void DeformerAssignment::performDelegate() {
                 }
 
                 if (doAdjustment) {
-                    for (int i = 0; i < VertCube::numVerts; ++i)
-                        line->lineVerts[i]->setMaxSharpness();
+                    for (auto& lineVert : line->lineVerts) {
+	                    lineVert->setMaxSharpness();
+                    }
                 }
             }
 		}
@@ -267,11 +268,15 @@ void DeformerAssignment::performDelegate() {
 void DeformerAssignment::undoDelegate() {
     jassert(affectedLines.size() == previousMappings.size());
 
+	auto start 	= mesh->getCubes().begin();
+	auto end 	= mesh->getCubes().end();
+
     for (int i = 0; i < affectedLines.size(); ++i) {
         VertCube* cube = affectedLines[i];
 
-        if (cube != nullptr && std::find(mesh->getCubeStart(), mesh->getCubeEnd(), cube) != mesh->getCubeEnd())
-            cube->deformerAt(channel) = previousMappings[i];
+        if (cube != nullptr && std::find(start, end, cube) != end) {
+	        cube->deformerAt(channel) = previousMappings[i];
+        }
 	}
 }
 

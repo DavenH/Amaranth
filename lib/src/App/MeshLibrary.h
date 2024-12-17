@@ -58,7 +58,7 @@ public:
 		bool readXML(const XmlElement* element) override;
 		void writeXML(XmlElement* element) const override;
 
-		float getEffectiveScale() const { return scale < 0 ? 1.f / -scale : scale; }
+		[[nodiscard]] float getEffectiveScale() const { return scale < 0 ? 1.f / -scale : scale; }
 		bool isOperating() const		{ return dynamic || global || scale != 1 || tempoSync || logarithmic; }
 
 		bool  dynamic, tempoSync, global, logarithmic;
@@ -132,7 +132,7 @@ public:
 	bool removeLayerKeepingOne(int group, int layer);
 	bool hasAnyValidLayers(int groupId);
 
-	bool canPasteTo(int type);
+	bool canPasteTo(int type) const;
 	void copyToClipboard(Mesh* mesh, int type);
 	void pasteFromClipboardTo(Mesh* mesh, int type);
 

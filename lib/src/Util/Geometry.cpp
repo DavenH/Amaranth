@@ -65,13 +65,11 @@ int Geometry::doLineSegmentsIntersect(double x1, double x2, double x3, double x4
 			|| (d4 == 0 && isOnSegment(x1, y1, x2, y2, x4, y4))) ? Intersect : DoNotIntersect;
 }
 
-
 bool Geometry::withinBoundingBox(Vertex2& v, Vertex2& one, Vertex2& two) {
     return ((v.x >= one.x && v.x < two.x) ||
 			((v.x < one.x && v.x >= two.x) && (v.y >= one.y && v.y < two.y)) ||
 			(v.y < one.y && v.y >= two.y));
 }
-
 
 Vertex2 Geometry::getSpacedVertex(int dist, Vertex2& a, Vertex2& b) {
     Vertex2 diff = b - a;

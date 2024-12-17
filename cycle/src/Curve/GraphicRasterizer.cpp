@@ -5,6 +5,8 @@
 
 #include "GraphicRasterizer.h"
 
+#include <Definitions.h>
+
 #include "../UI/Panels/Morphing/MorphPanel.h"
 #include "../UI/VisualDsp.h"
 
@@ -24,11 +26,16 @@ void GraphicRasterizer::pullModPositionAndAdjust() {
 
     MeshLibrary::Properties* props = getObj(MeshLibrary).getCurrentProps(layerGroup);
 
-    if (props->scratchChan != CommonEnums::Null)
+    if (props->scratchChan != CommonEnums::Null) {
         morph.time = getObj(VisualDsp).getScratchPosition(props->scratchChan);
+    }
 }
 
 float& GraphicRasterizer::getPrimaryDimensionVar() {
     int xDim = getSetting(CurrentMorphAxis);
     return morph[xDim];
+}
+
+int GraphicRasterizer::getPrimaryViewDimension() {
+    return getSetting(CurrentMorphAxis);
 }

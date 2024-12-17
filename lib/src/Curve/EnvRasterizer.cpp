@@ -79,8 +79,9 @@ void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
 }
 
 bool EnvRasterizer::hasReleaseCurve() {
-    if (icpts.empty())
+    if (icpts.empty()) {
         return false;
+    }
 
     return sustainIndex != (int) icpts.size() - 1;
 }
@@ -122,8 +123,9 @@ void EnvRasterizer::processIntercepts(vector<Intercept>& intercepts) {
             sustIcpt.cube = nullptr;
             sustIcpt.x += 0.0001f;
 
-            if (sustIcpt.y < 0.5f)
+            if (sustIcpt.y < 0.5f) {
                 sustIcpt.y = 0.5f;
+            }
 
             sustIcpt.shp = 1.f;
 
@@ -191,8 +193,9 @@ void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curv
         curves.emplace_back(front2, front1, intercepts[0]);
         curves.emplace_back(front1, intercepts[0], intercepts[1]);
 
-        for (int i = 0; i < (int) icpts.size() - 2; ++i)
+        for (int i = 0; i < (int) icpts.size() - 2; ++i) {
             curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
+        }
 
         curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
         curves.emplace_back(intercepts[end], back1, back2);
@@ -213,8 +216,9 @@ void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curv
         loopIcpts[0].x -= loopLength;
         loopIcpts[1].x -= loopLength;
 
-        for (int i = loopIndex; i <= sustainIndex; ++i)
+        for (int i = loopIndex; i <= sustainIndex; ++i) {
             loopIcpts.emplace_back(intercepts[i]);
+        }
 
         loopIcpts.emplace_back(loopBackIcptA);
         loopIcpts.emplace_back(loopBackIcptB);
@@ -222,8 +226,9 @@ void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curv
         curves.clear();
         curves.reserve(loopIcpts.size());
 
-        for (int i = 0; i < (int) loopIcpts.size() - 2; ++i)
+        for (int i = 0; i < (int) loopIcpts.size() - 2; ++i) {
             curves.emplace_back(loopIcpts[i], loopIcpts[i + 1], loopIcpts[i + 2]);
+        }
     } else {
         MeshRasterizer::padIcpts(intercepts, curves);
     }
@@ -280,8 +285,9 @@ void EnvRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
     curves.emplace_back(icpts[end - 1], icpts[end], back1);
     curves.emplace_back(icpts[end], back1, back2);
 
-    if (haveRelease || !loopable)
+    if (haveRelease || !loopable) {
         curves.emplace_back(back1, back2, back3);
+    }
 }
 
 void EnvRasterizer::getIndices(int& loopIdx, int& sustIdx) const {
@@ -314,8 +320,9 @@ bool EnvRasterizer::canLoop() const {
 
 double EnvRasterizer::getLoopLength() const {
     if (loopIndex >= 0 && loopIndex < (icpts.size() - 1)
-        && sustainIndex >= 0 && sustainIndex < icpts.size())
+        && sustainIndex >= 0 && sustainIndex < icpts.size()) {
         return icpts[sustainIndex].x - icpts[loopIndex].x;
+    }
 
     return -1.;
 }
@@ -327,8 +334,9 @@ void EnvRasterizer::setNoteOn() {
 
     sampleReleaseNextCall = false;
 
-    for (int i = headUnisonIndex; i < (int) params.size(); ++i)
+    for (int i = headUnisonIndex; i < (int) params.size(); ++i) {
         params[i].reset();
+    }
 }
 
 void EnvRasterizer::setNoteOff() {
@@ -354,8 +362,9 @@ bool EnvRasterizer::renderToBuffer(
     int paramIndex,
     const MeshLibrary::EnvProps& props,
     float tempoScale) {
-    if (!props.active)
+    if (!props.active) {
         return false;
+    }
 
     jassert(deltaX > 0);
 
@@ -394,7 +403,7 @@ bool EnvRasterizer::renderToBuffer(
 
         Buffer<float> buffer;
         if (!oneSamplePerCycle) {
-            buffer = Buffer<float>(renderBuffer + bufferPos, maxSamples);
+            buffer = Buffer(renderBuffer + bufferPos, maxSamples);
         }
 
         if (stillAlive) {
@@ -635,16 +644,18 @@ bool EnvRasterizer::simulateRender(
             } else {
                 lastPosition += advancement;
 
-                while (lastPosition >= boundary)
+                while (lastPosition >= boundary) {
                     lastPosition -= loopLength;
+                }
             }
 
             break;
         }
 
         case Releasing: {
-            if (!hasReleaseCurve())
+            if (!hasReleaseCurve()) {
                 return false;
+            }
 
             lastPosition = jmin(boundary, lastPosition + advancement);
 

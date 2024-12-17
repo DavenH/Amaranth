@@ -70,8 +70,9 @@ void Updater::Graph::update(Node* startingNode) {
 	String path = String();
 
     for (auto headNode : headNodes) {
-		if(headNode->isDirty())
+		if(headNode->isDirty()) {
 			headNode->performUpdate(path, updateType);
+		}
 	}
 
 	if(printsPath) {
@@ -97,8 +98,9 @@ void Updater::Graph::removeHeadNode(Node* node) {
 }
 
 void Updater::Graph::reset() {
-    for (auto headNode : headNodes)
-        headNode->reset();
+    for (auto headNode : headNodes) {
+	    headNode->reset();
+    }
 }
 
 /* ----------------------------------------------------------------------------- */
@@ -152,9 +154,11 @@ void Updater::Node::performUpdate(String& updatePath, int updateType) {
 		i->markDirty();
 	}
 
-	for(auto parent : parents)
-		if(parent->isDirty())
+	for(auto parent : parents) {
+		if(parent->isDirty()) {
 			parent->performUpdate(updatePath, updateType);
+		}
+	}
 
     // we can get here by a parent updating this
     if (!updated) {
@@ -164,11 +168,11 @@ void Updater::Node::performUpdate(String& updatePath, int updateType) {
 
 		executeUpdate(updateType);
 
-		updated = true;
-		dirty 	= false;
+        updated = true;
+        dirty = false;
 
-		for(auto i : children) {
-			i->performUpdate(updatePath, updateType);
+		for(auto node : children) {
+			node->performUpdate(updatePath, updateType);
 		}
 	}
 }
@@ -183,8 +187,8 @@ void Updater::Node::reset() {
 	updated = false;
 	dirty = false;
 
-	for (auto i: children) {
-		i->reset();
+	for (auto node: children) {
+		node->reset();
 	}
 }
 

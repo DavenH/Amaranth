@@ -71,17 +71,16 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-	const float sx(float x) 	const;
-	const float sxnz(float x) const;
-	const float invertScaleX(int x) 	const;
-	const float invertScaleXNoZoom(int x) 	const;
-	const float sy(float y) 	const;
-	const float synz(float y) const;
-	const float invertScaleY(int y) 	const;
-	const float invertScaleYNoZoom(int y) 	const;
-
-	const float invScaleXNoDisp(int x) const;
-	const float invScaleYNoDisp(int y) const;
+	float sx(float x) 	const;
+	float sxnz(float x) const;
+	float invertScaleX(int x) 	const;
+	float invertScaleXNoZoom(int x) 	const;
+	float sy(float y) 	const;
+	float synz(float y) const;
+	float invertScaleY(int y) 	const;
+	float invertScaleYNoZoom(int y) 	const;
+	float invScaleXNoDisp(int x) const;
+	float invScaleYNoDisp(int y) const;
 
 	void clear() 							{ renderHelper->clear(); 		}
 	void deactivateContext() 				{ renderHelper->deactivate(); 	}

@@ -6,7 +6,6 @@
 #include "JuceHeader.h"
 #include "../../Util/StringFunction.h"
 
-
 class Knob:
 		public Slider
 	,	public IDynamicSizeComponent

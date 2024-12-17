@@ -166,9 +166,9 @@ void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
 		if(usualZoom)
             rect.y = y + (rect.y - y) / zoomRatio;
     } else {
-		oldZoom 		= rect.w;
-		float x 		= context.panel->invertScaleX(mouseX);
-		float noZoomX 	= context.panel->invertScaleXNoZoom(mouseX);
+	    oldZoom = rect.w;
+	    float x = context.panel->invertScaleX(mouseX);
+	    float noZoomX = context.panel->invertScaleXNoZoom(mouseX);
 
 		rect.w /= zoomRatio;
 
@@ -205,7 +205,6 @@ void ZoomPanel::zoomOut(bool cmdDown, int mouseX, int mouseY) {
 	panelZoomChanged(cmdDown);
 }
 
-
 void ZoomPanel::contractToRange(Buffer<float> y) {
 	float minY = 1, maxY = 0;
 
@@ -219,8 +218,9 @@ void ZoomPanel::contractToRange(Buffer<float> y) {
 	y.minmax(minY, maxY);
 
 	float diff = jmax(0.02f, maxY - minY);
-	if(diff > 0.25f)
+	if(diff > 0.25f) {
 		diff = 1.f;
+	}
 
 	const float padRatio = 1.4f;
 

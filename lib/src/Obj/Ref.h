@@ -8,7 +8,7 @@ class Ref {
 public:
 	Ref() : object(0)			{}
 	Ref(T* t) : object(t) 		{}
-	~Ref() 						{}
+	~Ref() 						= default;
 	Ref(const Ref& ref)			{ object = ref.object; }
 
 	bool isNull()				{ return object == 0; }

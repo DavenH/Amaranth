@@ -72,7 +72,7 @@ protected:
         double knobValues[20]{};
 		ParameterGroup* group;
 
-        KnobUpdater(ParameterGroup* group) : group(group) {
+        explicit KnobUpdater(ParameterGroup* group) : group(group) {
             for (int i = 0; i < numElementsInArray(knobValues); ++i) {
 				knobValues[i] = 0;
 				pending[i] = false;

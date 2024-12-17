@@ -16,9 +16,9 @@ public:
     IconButton(Image image, SingletonRepo* repo);
     IconButton(int x, int y, Listener* listener,
     		   SingletonRepo* repo,
-    		   const String& overMsg = String(),
-    		   const String& cmdMsg = String(),
-    		   const String& naMsg = String());
+    		   String overMsg = String(),
+    		   String cmdMsg = String(),
+    		   String naMsg = String());
 
     ~IconButton() override;
     void paintButton(Graphics & g, bool mouseOver, bool buttonDown) override;

@@ -139,12 +139,12 @@ void PitchedSample::createPeriodsFromEnv(MeshRasterizer* rast) {
 		return;
 	}
 
-	int currentIndex 	= 0;
-	float position 		= 0;
-	float defaultFreq 	= NumberUtils::noteToFrequency(fundNote, 0);
+	int currentIndex = 0;
+	float position = 0;
+	float defaultFreq = NumberUtils::noteToFrequency(fundNote, 0);
 
 	rast->setMesh(mesh.get());
-	rast->calcCrossPoints(0);
+	rast->calcCrossPoints();
 	rast->makeCopy();
 
 	if(rast->isSampleable())

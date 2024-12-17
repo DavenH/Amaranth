@@ -6,7 +6,6 @@
 #include "Panel.h"
 #include "CommonGL.h"
 #include "CursorHelper.h"
-#include "../MasterRenderer.h"
 #include "../../UI/Panels/ScopedGL.h"
 
 #define GL_BGRA 0x80E1

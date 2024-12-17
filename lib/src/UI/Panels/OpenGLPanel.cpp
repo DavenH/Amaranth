@@ -2,8 +2,9 @@
 #include "OpenGLPanel.h"
 #include "Panel.h"
 #include "Texture.h"
-#include "../MasterRenderer.h"
 #include "../../App/SingletonRepo.h"
+
+using namespace gl;
 
 OpenGLPanel::OpenGLPanel(SingletonRepo* repo, Panel2D* panel2D) :
 		PanelOwner(panel2D)

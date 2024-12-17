@@ -11,7 +11,7 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 	dims.y = Vertex::Amp;
 }
 
-void FXRasterizer::calcCrossPoints(int currentDim) {
+void FXRasterizer::calcCrossPoints() {
 	if (mesh == nullptr || mesh->getNumVerts() == 0) {
         cleanUp();
 		return;
@@ -22,8 +22,9 @@ void FXRasterizer::calcCrossPoints(int currentDim) {
         float* values = vert->values;
 		Intercept icpt(values[dims.x], values[dims.y], 0, values[Vertex::Curve]);
 
-		if(scalingType)
+		if(scalingType) {
 			icpt.y = 2.f * icpt.y - 1.f;
+		}
 
 		// time and phase are x and y in this context
 		icpts.push_back(icpt);

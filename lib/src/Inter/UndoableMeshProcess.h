@@ -28,8 +28,8 @@ public:
     ~UndoableMeshProcess() {
 		// these will be copied in the UpdateVertexVectorAction ctor,
 		// but no need to copy them here
-		CubeList& afterLines = mesh->getCubes();
-		VertList& afterVerts = mesh->getVerts();
+		vector<VertCube*>& afterLines = mesh->getCubes();
+		vector<Vertex*>& afterVerts = mesh->getVerts();
 
 		bool haveLines = interactor->dims.numHidden() > 0;
 
@@ -47,8 +47,8 @@ public:
 	}
 
 private:
-	CubeList beforeCubes;
-	VertList beforeVerts;
+	vector<VertCube*> beforeCubes;
+	vector<Vertex*> beforeVerts;
 
 	Ref<Interactor> interactor;
 	Ref<Mesh> mesh;
@@ -75,7 +75,7 @@ public:
 	}
 
 private:
-	VertList beforeVerts;
+	vector<Vertex*> beforeVerts;
 
 	Ref<Interactor> interactor;
 	Ref<Mesh> mesh;

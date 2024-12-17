@@ -369,7 +369,7 @@ void Panel::highlightSelectedVerts() {
 	}
 
 	gfx->setCurrentColour(0.8f, 0.0f, 0.55f);
-	gfx->drawPoints(vertexSelectedRadius, xy, true, true);
+	gfx->drawPoints(vertexSelectedRadius, xy, true);
 }
 
 void Panel::handlePendingUpdates() {
@@ -484,8 +484,8 @@ void Panel::drawPencilPath() {
 }
 
 void Panel::drawOutline() {
-    float right = (float) comp->getWidth();
-    float low = (float) comp->getHeight();
+    auto right = (float) comp->getWidth();
+    auto low = (float) comp->getHeight();
 
     float y1 = synz(0);
     float y2 = synz(1);
@@ -517,8 +517,9 @@ void Panel::drawFinalSelection() {
 }
 
 void Panel::drawSelectionRectangle() {
-    if (interactor == nullptr)
-        return;
+    if (interactor == nullptr) {
+	    return;
+    }
 
     Rectangle<float> selection = interactor->selection.toFloat();
 
@@ -559,7 +560,6 @@ void Panel::setCursor() {
     CursorHelper::setCursor(repo, comp, interactor);
 }
 
-
 bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube* cube, int pointDim, bool haveSpeed) {
     if (cube == nullptr || ! (deformApplicable || speedApplicable)) {
 	    return false;
@@ -582,8 +582,9 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
 	bool anyDfrmAdjustments = (adjustPhase || adjustAmp) && deformApplicable;
 	const Dimensions& dims 	= interactor->dims;
 
-	if(! anyDfrmAdjustments && (! adjustSpeed || dims.x == Vertex::Phase))
+	if(! anyDfrmAdjustments && (! adjustSpeed || dims.x == Vertex::Phase)) {
 		return false;
+	}
 
 	prepareBuffers(linestripRes, linestripRes);
 
@@ -599,8 +600,9 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
 
 	std::unique_ptr<ScopedLock> sl;
 
-	if(adjustSpeed)
-		sl = new ScopedLock(getObj(PathRepo).getLock());
+	if(adjustSpeed) {
+		getObj(PathRepo).getLock().enter();
+	}
 
 	const PathRepo::ScratchContext& scratchContext = getObj(PathRepo).getScratchContext(scratchChan);
 
@@ -614,7 +616,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
 	}
 
 	if(speedEnv.empty()) {
-        sl = nullptr;
+		getObj(PathRepo).getLock().exit();
         adjustSpeed = false;
 	}
 
@@ -721,15 +723,14 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
 			xy.y.add(ramp.ramp(first.y, ySlope));
 		}
 	}
+	getObj(PathRepo).getLock().exit();
 
 	return true;
 }
 
-
 void Panel::componentChanged() {
     comp->setName(panelName);
 }
-
 
 void Panel::createNameImage(const String& displayName, bool isSecondImage, bool brighter) {
 	Font font("Verdana", 20, Font::plain);
@@ -741,7 +742,7 @@ void Panel::createNameImage(const String& displayName, bool isSecondImage, bool 
 	Image tempImg	= Image(Image::ARGB, pow2, 64, true);
 
 	Graphics tempG(tempImg);
-	Rectangle<int> r(0, 0, pow2 - 2, 64);
+	Rectangle r(0, 0, pow2 - 2, 64);
 
 	tempG.setFont(font);
 	tempG.setColour(Colours::black);
@@ -761,12 +762,11 @@ void Panel::createNameImage(const String& displayName, bool isSecondImage, bool 
 	g.drawText(lcName, r, Justification::topRight, false);
 }
 
-
 void Panel::createDeformerTags() {
-	int position 	 = 0;
-	int fontScale 	 = getSetting(PointSizeScale);
-	MiscGraphics& mg = getObj(MiscGraphics);
-	Font& font 	 	 = *mg.getAppropriateFont(fontScale);
+	int position = 0;
+	int fontScale = getSetting(PointSizeScale);
+	auto& mg = getObj(MiscGraphics);
+	Font& font = *mg.getAppropriateFont(fontScale);
 
 	Image tempImage(Image::ARGB, 512, 16, true);
 	Graphics tempG(tempImage);
@@ -777,7 +777,6 @@ void Panel::createDeformerTags() {
     for (int i = 0; i < 32; ++i) {
 		String number(i + 1);
 		int width = font.getStringWidth(number) + 1;
-		Rectangle<int> r(position, 0, width, (int) font.getHeight());
 		tempG.drawSingleLineText(number, position, (int) font.getHeight());
 
 		position += width;
@@ -796,7 +795,7 @@ void Panel::createDeformerTags() {
 	for(int i = 0; i < 32; ++i) {
 		String number(i + 1);
 		int width = font.getStringWidth(number) + 1;
-		Rectangle<int> r(position, 0, width, (int) font.getHeight());
+		Rectangle r(position, 0, width, (int) font.getHeight());
 		g.drawSingleLineText(number, position, (int) font.getHeight());
 
 		dfrmTags.push_back(r.toFloat());
@@ -804,32 +803,45 @@ void Panel::createDeformerTags() {
 	}
 }
 
-
 void Panel::triggerZoom(bool in) {
 	in ? zoomPanel->zoomIn(false, getWidth() / 2, getHeight() / 2) :
 		 zoomPanel->zoomOut(false, getWidth() / 2, getHeight() / 2);
 }
 
+float Panel::sx(const float x) const {
+	return (x - zoomPanel->rect.x) / (zoomPanel->rect.w) *
+	       (comp->getWidth() - (paddingLeft + paddingRight)) + paddingLeft;
+}
 
-const float Panel::sx(const float x) const 				{ return (x - zoomPanel->rect.x) / (zoomPanel->rect.w) * (comp->getWidth() - (paddingLeft + paddingRight)) + paddingLeft; 		}
-const float Panel::sxnz(const float x) 	const 			{ return x * (comp->getWidth() - (paddingLeft + paddingRight)) + paddingLeft; 											}
-const float Panel::invertScaleX(const int x) const 		{ return (x - paddingLeft) / (float(comp->getWidth() - (paddingLeft + paddingRight))) * zoomPanel->rect.w + zoomPanel->rect.x;	}
-const float Panel::invertScaleXNoZoom(const int x) const{ return x / (float(comp->getWidth()));																					}
-const float Panel::sy(const float y) const 				{ return (1 - zoomPanel->rect.y - y) / (zoomPanel->rect.h) * (comp->getHeight()  - 2 * vertPadding) + vertPadding;				}
-const float Panel::synz(const float y) const 			{ return (1 - y) * (comp->getHeight() - 2 * vertPadding) + vertPadding;													}
-const float Panel::invertScaleY(const int y) 	const 	{ return 1 - zoomPanel->rect.y + zoomPanel->rect.h * (y - vertPadding) / (2 * vertPadding - comp->getHeight());					}
-const float Panel::invertScaleYNoZoom(const int y) const{ return (comp->getHeight() - y) / float(comp->getHeight());															}
+float Panel::sxnz(const float x) const {
+	return x * (comp->getWidth() - (paddingLeft + paddingRight)) + paddingLeft;
+}
 
-const float Panel::invScaleXNoDisp(const int x) const 	{ return x / (float(comp->getWidth())) * zoomPanel->rect.w; 	 }
-const float Panel::invScaleYNoDisp(const int y) const 	{ return (-y) / (float(comp->getHeight())) * zoomPanel->rect.h; }
+float Panel::invertScaleX(const int x) const {
+	return (x - paddingLeft) / (float(comp->getWidth() - (paddingLeft + paddingRight))) *
+	       zoomPanel->rect.w + zoomPanel->rect.x;
+}
 
+float Panel::invertScaleXNoZoom(const int x) const { return x / (float(comp->getWidth())); }
 
-void Panel::doZoomExtra(bool commandDown)
-{
+float Panel::sy(const float y) const {
+	return (1 - zoomPanel->rect.y - y) / (zoomPanel->rect.h) * (comp->getHeight() - 2 * vertPadding) + vertPadding;
+}
+
+float Panel::synz(const float y) const { return (1 - y) * (comp->getHeight() - 2 * vertPadding) + vertPadding; }
+
+float Panel::invertScaleY(const int y) const {
+	return 1 - zoomPanel->rect.y + zoomPanel->rect.h * (y - vertPadding) / (2 * vertPadding - comp->getHeight());
+}
+
+float Panel::invertScaleYNoZoom(const int y) const { return (comp->getHeight() - y) / float(comp->getHeight()); }
+float Panel::invScaleXNoDisp(const int x) const { return x / (float(comp->getWidth())) * zoomPanel->rect.w; }
+float Panel::invScaleYNoDisp(const int y) const { return (-y) / (float(comp->getHeight())) * zoomPanel->rect.h; }
+
+void Panel::doZoomExtra(bool commandDown) {
 	interactor->doZoomExtra(commandDown);
 }
 
-void Panel::zoomUpdated(int updateSource)
-{
+void Panel::zoomUpdated(int updateSource) {
 	repaint();
 }

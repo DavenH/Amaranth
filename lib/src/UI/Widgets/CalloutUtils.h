@@ -7,8 +7,6 @@
 #include "../../Definitions.h"
 
 #include "RetractableCallout.h"
-#include "IconButton.h"
-#include "TwoStateButton.h"
 #include "../MiscGraphics.h"
 #include "../../App/SingletonRepo.h"
 

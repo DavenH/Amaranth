@@ -78,7 +78,7 @@ public:
 		void removeHeadNode	(Node* node);
 		void update			(Node* node);
 
-		bool doesPrintPath() const 		{ return printsPath; }
+		[[nodiscard]] bool doesPrintPath() const { return printsPath; }
 		void setUpdateType(int type) 	{ updateType = type; }
 		void setPrintsPath(bool does) 	{ printsPath = does; }
 

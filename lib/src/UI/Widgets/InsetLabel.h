@@ -1,6 +1,8 @@
 #pragma once
 
 
+#include <utility>
+
 #include "../MiscGraphics.h"
 #include "../../App/SingletonRepo.h"
 #include "../../App/SingletonAccessor.h"
@@ -11,9 +13,9 @@ class InsetLabel :
 		public Component
 	, 	public SingletonAccessor {
 public:
-	InsetLabel(SingletonRepo* repo, const String& name, float saturation = 0.f) :
+	InsetLabel(SingletonRepo* repo, String name, float saturation = 0.f) :
 			SingletonAccessor(repo, "InsetLabel")
-		,	name	(name)
+		,	name	(std::move(name))
 		,	offsetA	(-0.8f)
 		,	offsetB	(-0.8f)
 		,	font	(15, Font::bold) {

@@ -68,13 +68,13 @@ MeshRasterizer::~MeshRasterizer() {
 	makeCopy();
 }
 
-void MeshRasterizer::calcCrossPointsAtTime(float x, int currentDim) {
+void MeshRasterizer::calcCrossPointsAtTime(float x) {
 	morph.time = x;
-	calcCrossPoints(currentDim);
+	calcCrossPoints();
 }
 
-void MeshRasterizer::calcCrossPoints(int currentDim) {
-    calcCrossPoints(mesh, 0.f, currentDim);
+void MeshRasterizer::calcCrossPoints() {
+    calcCrossPoints(mesh, 0.f);
 }
 
 void MeshRasterizer::calcWaveformFrom(vector<Intercept>& icpts) {
@@ -85,7 +85,7 @@ void MeshRasterizer::calcWaveformFrom(vector<Intercept>& icpts) {
 	makeCopy();
 }
 
-void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase, int currentDim) {
+void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
     if (!usedMesh || usedMesh->getNumCubes() == 0) {
 		cleanUp();
 		return;
@@ -154,6 +154,7 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase, int current
 			jassert(intercept.y == intercept.y);
 			jassert(intercept.x == intercept.x);
 
+        	// can be NaN, short circuit here so it doesn't propagate
 			if(!(intercept.y == intercept.y))
 				intercept.y = 0.5f;
 
@@ -175,6 +176,7 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase, int current
 			applyDeformers(intercept, morph);
 			icpts.emplace_back(intercept);
 
+        	int currentlyVisibleRYBDim = getPrimaryDimensionVar();
             if (calcDepthDims) {
                 midIcpt.cube = cube;
 				midIcpt.adjustedX = midIcpt.x;
@@ -194,13 +196,13 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase, int current
 					cube->getFinalIntercept(reduct, posA);
 					Intercept beforeIcpt(reduct.v.values[dims.x], reduct.v.values[dims.y], cube);
 					beforeIcpt.adjustedX = beforeIcpt.x;
-					applyDeformers(beforeIcpt, posA, hiddenDim == currentDim);
+					applyDeformers(beforeIcpt, posA, hiddenDim == currentlyVisibleRYBDim);
 
 					MorphPosition posB(poleB[0], poleB[1], poleB[2]);
 					cube->getFinalIntercept(reduct, posB);
 					Intercept afterIcpt(reduct.v.values[dims.x], reduct.v.values[dims.y], cube);
 					afterIcpt.adjustedX = afterIcpt.x;
-					applyDeformers(afterIcpt, posB, hiddenDim == currentDim);
+					applyDeformers(afterIcpt, posB, hiddenDim == currentlyVisibleRYBDim);
 
 					Vertex2 before(beforeIcpt.adjustedX, beforeIcpt.y);
 					Vertex2 after(afterIcpt.adjustedX, afterIcpt.y);
@@ -267,11 +269,6 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase, int current
 		curr.padBefore 	= pad;
 		next.padAfter 	= pad;
 
-        if (pad) {
-//			curr.sharpness = 1.f;
-//			next.sharpness = 1.f;
-		}
-
 		padAny |= pad;
 	}
 
@@ -308,10 +305,10 @@ float& MeshRasterizer::getPrimaryDimensionVar() {
     return morph.time;
 }
 
-void MeshRasterizer::calcIntercepts(int currentDim) {
-	ScopedValueSetter<bool> calcIcptsFlag(calcInterceptsOnly, true, calcInterceptsOnly);
+void MeshRasterizer::calcIntercepts() {
+	ScopedValueSetter calcIcptsFlag(calcInterceptsOnly, true, calcInterceptsOnly);
 
-	calcCrossPoints(currentDim);
+	calcCrossPoints();
 	makeCopy();
 }
 
@@ -657,7 +654,6 @@ float MeshRasterizer::sampleAtDecoupled(double angle, DeformContext& context) {
 	return val;
 }
 
-
 // make damn sure that the last element in waveX is greater than 1 before calling this
 float MeshRasterizer::sampleAt(double angle, int& currentIndex) {
     if (unsampleable || (float) angle >= waveX.back() || (float) angle < waveX.front()) {
@@ -665,8 +661,9 @@ float MeshRasterizer::sampleAt(double angle, int& currentIndex) {
         return angle;
     }
 
-    if (currentIndex >= (int) waveX.size())
-        currentIndex = 0;
+    if (currentIndex >= (int) waveX.size()) {
+	    currentIndex = 0;
+    }
 
     if (currentIndex > 0) {
         while (angle < waveX[currentIndex - 1]) {
@@ -679,12 +676,14 @@ float MeshRasterizer::sampleAt(double angle, int& currentIndex) {
 	while (angle >= waveX[currentIndex]) {
         ++currentIndex;
 
-		if(currentIndex >= (int) waveX.size())
+		if(currentIndex >= (int) waveX.size()) {
 			currentIndex = 0;
+		}
 	}
 
-	if(currentIndex == 0)
+	if(currentIndex == 0) {
 		return waveY[0];
+	}
 
 	return (angle - waveX[currentIndex - 1]) * slope[currentIndex - 1] + waveY[currentIndex - 1];
 }
@@ -707,8 +706,9 @@ void MeshRasterizer::sampleAtIntervals(Buffer<float> intervals, Buffer<float> de
     int currentIndex = zeroIndex;
 
     for (int i = 0; i < (int) dest.size(); ++i) {
-		while (intervalsPtr[i] >= waveX[currentIndex])
+		while (intervalsPtr[i] >= waveX[currentIndex]) {
 			currentIndex++;
+		}
 
 		destPtr[i] = (intervalsPtr[i] - waveX[currentIndex - 1]) * slope[currentIndex - 1] + waveY[currentIndex - 1];
 	}
@@ -728,10 +728,12 @@ float MeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double
 
 	int currentIndex = zeroIndex;
 
-	while(accum < waveX[currentIndex] && currentIndex > 0)
+	while(accum < waveX[currentIndex] && currentIndex > 0) {
 		--currentIndex;
-	while(accum >= waveX[currentIndex + 1] && currentIndex < waveX.size())
+	}
+	while(accum >= waveX[currentIndex + 1] && currentIndex < waveX.size()) {
 		++currentIndex;
+	}
 
 	jassert(waveX[currentIndex] <= accum && waveX[currentIndex + 1] >= accum);
 
@@ -747,23 +749,22 @@ float MeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double
 		prevIdx = currentIndex;
 		accum += delta;
 
-		while(accum >= waveX[currentIndex])
+		while(accum >= waveX[currentIndex]) {
 			++currentIndex;
+		}
 
 		--currentIndex;
 		diffIdx = currentIndex - prevIdx;
 
 		if(diffIdx == 0) {
 			dest[i] = ((accum - halfDiff - waveX[currentIndex]) * slope[currentIndex] + waveY[currentIndex]);
-		}
-
-		else
-		{
+		} else {
 			x = accum - delta;
 			dest[i] = 0.5f * (slope[prevIdx] * (x - waveX[prevIdx]) + waveY[prevIdx] + waveY[prevIdx + 1]) * (waveX[prevIdx + 1] - x);
 
-			for(int j = 0; j < diffIdx - 1; ++j)
+			for(int j = 0; j < diffIdx - 1; ++j) {
 				dest[i] += area[prevIdx + j + 1];
+			}
 
 			diffX = accum - waveX[currentIndex];
 			dest[i] += (0.5f * slope[currentIndex] * diffX + waveY[currentIndex]) * diffX;
@@ -795,8 +796,8 @@ void MeshRasterizer::reset() {
 }
 
 void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves) {
-	int size 	= intercepts.size();
-	int end 	= size - 1;
+	int size = intercepts.size();
+	int end = size - 1;
 
 	if(end < 1) {
 		return;
@@ -818,8 +819,9 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
 			break;
 		}
 
-		if(frontier < -interceptPadding)
+		if(frontier < -interceptPadding) {
 			--remainingIters;
+		}
 
 		frontier 			= intercepts[idx].x + offset;
 		Intercept padIcpt 	= intercepts[idx];
@@ -843,11 +845,13 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
 	backIcpts.emplace_back(intercepts[end]);
 
 	for(;;) {
-		if(remainingIters <= 0)
+		if(remainingIters <= 0) {
 			break;
+		}
 
-		if(frontier > 1.f + interceptPadding)
+		if(frontier > 1.f + interceptPadding) {
 			--remainingIters;
+		}
 
 		frontier 			= intercepts[idx].x + offset;
 		Intercept padIcpt 	= intercepts[idx];
@@ -858,7 +862,7 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
 
         if (idx > end) {
 			idx = 0;
-			offset 			+= 1.f;
+			offset += 1.f;
 		}
 	}
 
@@ -919,8 +923,9 @@ void MeshRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curv
 	curves.emplace_back(front1, intercepts[0], intercepts[1]);
 
 	jassert(intercepts[0].y == intercepts[0].y);
-	for(int i = 0; i < (int) intercepts.size() - 2; ++i)
+	for(int i = 0; i < (int) intercepts.size() - 2; ++i) {
 		curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
+	}
 
 	curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
 	curves.emplace_back(intercepts[end], back1, back2);
@@ -969,8 +974,9 @@ void MeshRasterizer::applyDeformers(Intercept& icpt, const MorphPosition& morph,
 	float timeMin = reduct.v0.values[Vertex::Time];
 	float timeMax = reduct.v1.values[Vertex::Time];
 
-	if(timeMin > timeMax)
+	if(timeMin > timeMax) {
 		std::swap(timeMin, timeMax);
+	}
 
 	float diffTime = timeMax - timeMin;
 	float progress = diffTime == 0.f ? 0.f : fabsf(reduct.v.values[Vertex::Time] - timeMin) / diffTime;

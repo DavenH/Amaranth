@@ -41,7 +41,7 @@ public:
         hidden = dims.hidden;
     }
 
-    int numHidden() const {
+    [[nodiscard]] int numHidden() const {
         return (int) hidden.size();
     }
 

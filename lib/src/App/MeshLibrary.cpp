@@ -110,7 +110,7 @@ void MeshLibrary::copyToClipboard(Mesh* mesh, int type) {
     clipboardMesh.type = type;
 }
 
-bool MeshLibrary::canPasteTo(int type) {
+bool MeshLibrary::canPasteTo(int type) const {
     return type == clipboardMesh.type;
 }
 

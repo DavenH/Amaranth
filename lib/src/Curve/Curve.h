@@ -60,7 +60,7 @@ public:
 	}
 
 	bool operator==(const Curve& other);
-	double function(const double x, const double t);
+	double function(double x, double t);
 	float getCentreX();
 	static void calcTable();
 	static void deleteTable();

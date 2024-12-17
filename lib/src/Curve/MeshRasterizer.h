@@ -80,8 +80,8 @@ public:
 
 	void adjustDeformingSharpness();
 	void applyDeformers(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds = false);
-	void calcCrossPoints(Mesh* usedmesh, float oscPhase, int currentDim);
-	void calcIntercepts(int currentDim);
+	void calcCrossPoints(Mesh* usedmesh, float oscPhase);
+	void calcIntercepts();
 	void calcWaveformFrom(vector<Intercept>& icpts);
 	void initialise();
 	void makeCopy();
@@ -160,8 +160,8 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-	virtual void calcCrossPoints(int currentDim);
-	virtual void calcCrossPointsAtTime(float x, int currentDim);
+	virtual void calcCrossPoints();
+	virtual void calcCrossPointsAtTime(float x);
 	virtual void cleanUp();
 	virtual void handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube);
 	virtual void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);

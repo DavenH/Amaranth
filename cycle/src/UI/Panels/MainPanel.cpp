@@ -5,7 +5,6 @@
 #include <UI/Layout/BoundWrapper.h>
 #include <UI/Layout/Dragger.h>
 #include <UI/Layout/PanelPair.h>
-#include <UI/MasterRenderer.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Panels/OpenGLPanel.h>
 #include <UI/Panels/OpenGLPanel3D.h>
@@ -26,13 +25,11 @@
 #include "../Dialogs/PresetPage.h"
 #include "../Effects/DelayUI.h"
 #include "../Effects/EqualizerUI.h"
-#include "../Effects/EqualizerUI.h"
 #include "../Effects/IrModellerUI.h"
 #include "../Effects/ReverbUI.h"
 #include "../Effects/UnisonUI.h"
 #include "../Effects/WaveshaperUI.h"
 #include "../VertexPanels/DeformerPanel.h"
-#include "../VertexPanels/EffectPanel.h"
 #include "../VertexPanels/Envelope2D.h"
 #include "../VertexPanels/Envelope3D.h"
 #include "../VertexPanels/Spectrum2D.h"
@@ -400,19 +397,15 @@ void MainPanel::resized() {
 	ViewMode oldView = viewMode;
 	viewMode = height < 720 ? CollapsedView : UnifiedView;
 
-#ifndef BEAT_EDITION
-    if (oldView != viewMode)
-        viewModeSwitched();
-#endif
+    if (oldView != viewMode) {
+	    viewModeSwitched();
+    }
 
     Rectangle<int> wholeBounds(addand, addand, width, height);
     PanelPair* pair = viewMode == CollapsedView ? cv_whole : xv_whole;
 
     if (width != pair->getWidth() || height != pair->getHeight() || forceResize || oldView != viewMode) {
-        {
-            ScopedLock sl(getObj(MasterRenderer).getRenderLock());
-            pair->setBounds(wholeBounds);
-        }
+        pair->setBounds(wholeBounds);
 
         if (Util::assignAndWereDifferent(attachNextResize, false))
             attachVisibleComponents();
@@ -444,13 +437,8 @@ void MainPanel::attachComponent(PanelGroup& group) {
     OpenGLBase* parent = group.gl;
     if (parent != nullptr) {
         parent->attach();
-
-	  #ifdef SINGLE_OPENGL_THREAD
-		getObj(MasterRenderer).addContext(parent, group.panel->getName());
-	  #endif
 	}
 }
-
 
 void MainPanel::attachVisibleComponents() {
     std::cout << "Attaching visible components\n";
@@ -588,7 +576,7 @@ void MainPanel::toggleEffectsWaveform2DPresets(int toShow) {
         getObj(Dialogs).showPresetBrowserModal();
     }
 
-	focusedPanel = 0;
+	focusedPanel = nullptr;
 	needsRepaint = true;
 
 	repaint();
@@ -805,9 +793,9 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
 	e2GL 	= new OpenGLPanel	(repo, envelope2D);
 	wsGL 	= new OpenGLPanel	(repo, waveshaperUI);
 	tmGL 	= new OpenGLPanel	(repo, irModelUI);
-	f3GL	= new OglSpectrum3D (repo, spectrum3D);
-	e3GL	= new OglEnvelope3D	(repo, envelope3D);
-	surfGL 	= new OglWaveform3D	(repo, waveform3D);
+	f3GL	= new OpenGLPanel3D (repo, spectrum3D, retriever);
+	e3GL	= new OpenGLPanel3D	(repo, envelope3D);
+	surfGL 	= new OpenGLPanel3D	(repo, waveform3D);
 
 //	wave2DZoomPanel	->panelComponentChanged(crsGL);
 //	spectZoomPanel	->panelComponentChanged(f3GL);
@@ -887,11 +875,9 @@ void MainPanel::componentPeerChanged() {
     std::cout << "Main Panel component peer changed\n";
 }
 
-
 void MainPanel::focusGained(FocusChangeType type) {
     std::cout << "Main panel focus gained: " << (int) type << "\n";
 }
-
 
 void MainPanel::componentMovedOrResized(bool wasMoved, bool wasResized) {
     std::cout << "Main panel moved or resized, repainting all\n";

@@ -34,12 +34,6 @@
   #else
 	#define JucePlugin_Name             "CycleDemo"
   #endif
-#elif defined(BEAT_EDITION)
-  #if USE_NAME64
-	#define JucePlugin_Name             "CycleBE64"
-  #else
-	#define JucePlugin_Name             "CycleBE"
-  #endif
 #else
   #ifdef _DEBUG
 	#if USE_NAME64

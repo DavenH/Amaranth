@@ -37,7 +37,6 @@ public:
 		virtual void drawSurfaceColumn(int index) 	= 0;
 	};
 
-
 	class DataRetriever {
 	public:
 		virtual Buffer<float> getColumnArray() = 0;

@@ -4,7 +4,6 @@
 #include "../../App/SingletonRepo.h"
 #include <ippbase.h>
 
-
 TabbedSelector::TabbedSelector(SingletonRepo* repo) :
 		SingletonAccessor(repo, "TabbedSelector")
 	,	selectedTab(0)
