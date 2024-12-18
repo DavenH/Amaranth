@@ -2,20 +2,21 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Inter/Interactor.h>
-
 #include "GraphicRasterizer.h"
-
-#include <Definitions.h>
-
 #include "../UI/Panels/Morphing/MorphPanel.h"
 #include "../UI/VisualDsp.h"
+#include <Definitions.h>
 
-GraphicRasterizer::GraphicRasterizer(SingletonRepo* repo, Interactor* interactor,
-                                     const String& name, int layerGroup,
-                                     bool isCyclic, float margin) : SingletonAccessor(repo, "GraphicRasterizer"),
-                                                                    MeshRasterizer(name)
-                                                                    , layerGroup(layerGroup)
-                                                                    , interactor(interactor) {
+GraphicRasterizer::GraphicRasterizer(
+            SingletonRepo* repo
+        ,   Interactor* interactor
+        ,   const String& name
+        ,   int layerGroup
+        ,   bool isCyclic
+        ,   float margin) : SingletonAccessor(repo, "GraphicRasterizer")
+    ,   MeshRasterizer(name)
+    ,   layerGroup(layerGroup)
+    ,   interactor(interactor) {
     cyclic = isCyclic;
     addListener(this);
     setLimits(-margin, 1 + margin);

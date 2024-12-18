@@ -18,7 +18,7 @@ void AsyncUIUpdater::triggerReduceUpdate() {
     jassert(reductionLevel == 0);
 	--reductionLevel;
 
-	AsyncUpdater::triggerAsyncUpdate();
+	triggerAsyncUpdate();
 }
 
 void AsyncUIUpdater::triggerRestoreUpdate() {
@@ -27,13 +27,13 @@ void AsyncUIUpdater::triggerRestoreUpdate() {
 	++reductionLevel;
 	doRefresh = true;
 
-	AsyncUpdater::triggerAsyncUpdate();
+	triggerAsyncUpdate();
 }
 
 void AsyncUIUpdater::triggerRefreshUpdate() {
     doRefresh = true;
 
-	AsyncUpdater::triggerAsyncUpdate();
+	triggerAsyncUpdate();
 }
 
 void AsyncUIUpdater::handleAsyncUpdate() {

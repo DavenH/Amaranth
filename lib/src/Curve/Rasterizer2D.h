@@ -1,4 +1,5 @@
 #pragma once
+
 #include <algorithm>
 #include "Intercept.h"
 #include "Curve.h"
@@ -11,7 +12,7 @@ public:
         unsampleable = false;
     }
 
-    void calcCrossPoints(int currentMorphAxis) override {
+    void calcCrossPoints() override {
         if (verts.empty()) {
             cleanUp();
             return;

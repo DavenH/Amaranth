@@ -1,5 +1,6 @@
 #pragma once
 #include "JuceHeader.h"
+#include "UpdateType.h"
 
 using namespace juce;
 
@@ -15,13 +16,13 @@ public:
         virtual void postUpdateHook(int updateType) {}
     };
 
-    void update(int updateType) {
+    void update(UpdateType updateType) {
         listeners.call(&Listener::preUpdateHook, updateType);
         performUpdate(updateType);
         listeners.call(&Listener::postUpdateHook, updateType);
     }
 
-    virtual void performUpdate(int updateType) = 0;
+    virtual void performUpdate(UpdateType updateType) = 0;
 
     String getUpdateName() { return updateName; }
     void setUpdateName(const String& name) { updateName = name; }

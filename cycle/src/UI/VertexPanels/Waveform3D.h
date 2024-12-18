@@ -1,9 +1,7 @@
-#ifndef _surface_h
-#define _surface_h
+#pragma once
 
 #include <iostream>
 #include <App/Doc/Savable.h>
-#include <Audio/SmoothedParameter.h>
 #include <UI/AsyncUIUpdater.h>
 #include <UI/Panels/Panel3D.h>
 #include <UI/Panels/ZoomPanel.h>
@@ -12,7 +10,6 @@
 #include <UI/Widgets/Knob.h>
 #include "../TourGuide.h"
 #include "../Widgets/Controls/ControlsClient.h"
-#include "../Widgets/Controls/LayerAddRemover.h"
 #include "../Widgets/Controls/LayerSelectionClient.h"
 #include "../Widgets/Controls/Spacers.h"
 #include "../Widgets/Controls/PanelControls.h"
@@ -41,31 +38,31 @@ class Waveform3D:
 	,	public TourGuide
 	,	public Savable {
 public:
-	Waveform3D(SingletonRepo*);
-	virtual ~Waveform3D();
+	explicit Waveform3D(SingletonRepo*);
+	~Waveform3D() override;
 
-	void init();
+	void init() override;
 
 	/* UI */
-	void panelResized();
-	void reset();
+	void panelResized() override;
+	void reset() override;
 
 	/* Events */
 	bool shouldDrawGrid();
-	bool shouldTriggerGlobalUpdate(Slider* slider);
-	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate);
+	bool shouldTriggerGlobalUpdate(Slider* slider) override;
+	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
 	bool validateScratchChannels();
 
-	Component* getComponent(int which);
+	Component* getComponent(int which) override;
 
-	int getLayerScratchChannel();
+	int getLayerScratchChannel() override;
 	int getNumActiveLayers();
 
-	void doGlobalUIUpdate(bool force);
-	void layerChanged();
+	void doGlobalUIUpdate(bool force) override;
+	void layerChanged() override;
 	void populateLayerBox();
-	void reduceDetail();
-	void restoreDetail();
+	void reduceDetail() override;
+	void restoreDetail() override;
 	void scratchChannelSelected(int channel);
 	void setLayerParameterSmoothing(int voiceIndex, bool smooth);
 	void triggerButton(int button);
@@ -74,17 +71,17 @@ public:
 	void updateSmoothedParameters(int deltaSamples);
 	void updateSmoothParametersToTarget(int voiceIndex);
 	void zoomUpdated();
-	void doZoomExtra(bool commandDown);
+	void doZoomExtra(bool commandDown) override;
 
-	void buttonClicked(Button* button);
-	void sliderValueChanged (Slider* slider);
+	void buttonClicked(Button* button) override;
+	void sliderValueChanged (Slider* slider) override;
 
-	Buffer<float> getColumnArray();
-	const vector<Column>& getColumns();
+	Buffer<float> getColumnArray() override;
+	const vector<Column>& getColumns() override;
 
 	/* Accessors */
-	int 				getLayerType();
-	int 				getWindowWidthPixels();
+	int getLayerType() override;
+	int getWindowWidthPixels();
 
 	CriticalSection& 	getLayerLock() { return layerLock; }
 
@@ -92,8 +89,8 @@ public:
 	void setKnobValuesImplicit();
 
 	/* Persistence */
-	bool readXML(const XmlElement* element);
-	void writeXML(XmlElement* element) const;
+	bool readXML(const XmlElement* element) override;
+	void writeXML(XmlElement* element) const override;
 
 private:
 	MeshLibrary::Properties* getCurrentProperties();
@@ -111,5 +108,3 @@ private:
 	Ref<WaveformInter3D> surfInteractor;
 	std::unique_ptr<MeshSelector<Mesh> > 	meshSelector;
 };
-
-#endif

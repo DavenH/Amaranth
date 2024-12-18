@@ -1,5 +1,4 @@
-#ifndef cycle_definitions_h
-#define cycle_definitions_h
+#pragma once
 
 #include "JuceHeader.h"
 #include <Definitions.h>
@@ -44,6 +43,4 @@
   #define platformSplit(X, Y) Y
 #else
   #define platformSplit(X, Y) X
-#endif
-
 #endif

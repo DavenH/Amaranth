@@ -12,8 +12,9 @@
 #define info(X)
 #endif
 
-EnvRasterizer::EnvRasterizer(IDeformer* deformer, const String& name) :
-        MeshRasterizer	(name)
+EnvRasterizer::EnvRasterizer(SingletonRepo* repo, IDeformer* deformer, const String& name) :
+        SingletonAccessor(repo, name)
+    ,   MeshRasterizer	(name)
     ,	envMesh			(nullptr)
     ,	sampleReleaseNextCall(false)
     ,	oneSamplePerCycle(false)
@@ -54,7 +55,7 @@ EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
     return *this;
 }
 
-EnvRasterizer::EnvRasterizer(const EnvRasterizer& copy) : MeshRasterizer(copy) {
+EnvRasterizer::EnvRasterizer(const EnvRasterizer& copy) : SingletonAccessor(copy), MeshRasterizer(copy) {
     initialise();
     operator=(copy);
 }
@@ -86,9 +87,9 @@ bool EnvRasterizer::hasReleaseCurve() {
     return sustainIndex != (int) icpts.size() - 1;
 }
 
-void EnvRasterizer::calcCrossPoints(int currentDim) {
+void EnvRasterizer::calcCrossPoints() {
     morph.time = 0;
-    MeshRasterizer::calcCrossPoints(envMesh, 0.f, currentDim);
+    MeshRasterizer::calcCrossPoints(envMesh, 0.f);
 
     // do this even if we can't loop right now just in case
     // loopability changes by the time release curve is going

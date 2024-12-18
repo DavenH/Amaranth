@@ -1,5 +1,4 @@
-#ifndef _scratchrasterizer_h
-#define _scratchrasterizer_h
+#pragma once
 
 #include <Curve/EnvRasterizer.h>
 
@@ -35,4 +34,3 @@ struct EnvRastGroup
 
 typedef vector<EnvRenderContext>::iterator RenderIter;
 
-#endif

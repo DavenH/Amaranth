@@ -12,7 +12,6 @@
 #include "../UI/VertexPanels/Waveform3D.h"
 #include "../Util/CycleEnums.h"
 
-
 WaveformInter2D::WaveformInter2D(SingletonRepo* repo) :
         Interactor2D(repo, "WaveformInter2D",
                      Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Time, Vertex::Red, Vertex::Blue)),
@@ -26,7 +25,6 @@ WaveformInter2D::WaveformInter2D(SingletonRepo* repo) :
 
     vertexProps.ampVsPhaseApplicable = true;
 }
-
 
 void WaveformInter2D::showCoordinates() {
     int lockId = -1;

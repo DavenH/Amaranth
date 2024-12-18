@@ -44,7 +44,7 @@ public:
 	void updatePlaybackPosition();
 	float getGreatestLengthSeconds();
 
-	void performUpdate(int updateType) override;
+	void performUpdate(UpdateType updateType) override;
 	void writeXML(XmlElement* element) const override;
 	bool readXML(const XmlElement* element) override;
 

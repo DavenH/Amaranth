@@ -1,6 +1,7 @@
 #pragma once
 
 #include "JuceHeader.h"
+using namespace juce;
 
 class Color {
 public:
@@ -23,11 +24,11 @@ public:
         v[3] = 1.f;
     }
 
-    bool isSameHueTo(const Color& c) const {
+    [[nodiscard]] bool isSameHueTo(const Color& c) const {
         return v[0] == c.v[0] && v[1] == c.v[1] && v[2] == c.v[2];
     }
 
-    float alpha() const {
+    [[nodiscard]] float alpha() const {
         return v[3];
     }
 
@@ -49,19 +50,19 @@ public:
     }
 
     Color operator+(const Color& other) {
-        return Color(v[0] + other.v[0], v[1] + other.v[1], v[2] + other.v[2], v[3] + other.alpha());
+        return {v[0] + other.v[0], v[1] + other.v[1], v[2] + other.v[2], v[3] + other.alpha()};
     }
 
     Color operator*(const float factor) const {
-        return Color(v[0] * factor, v[1] * factor, v[2] * factor, v[3] * factor);
+        return {v[0] * factor, v[1] * factor, v[2] * factor, v[3] * factor};
     }
 
-    Color withAlpha(float alpha) const {
-        return Color(v[0], v[1], v[2], alpha);
+    [[nodiscard]] Color withAlpha(float alpha) const {
+        return {v[0], v[1], v[2], alpha};
     }
 
     Colour toColour() const {
-        return Colour(uint8(v[0] * 255), uint8(v[1] * 255), uint8(v[2] * 255), v[3]);
+        return {uint8(v[0] * 255), uint8(v[1] * 255), uint8(v[2] * 255), v[3]};
     }
 
     /* ----------------------------------------------------------------------------- */

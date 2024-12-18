@@ -7,6 +7,7 @@
 
 using std::cout;
 using std::endl;
+using namespace juce;
 
 class IconButton :
 		public Button
@@ -33,9 +34,9 @@ public:
     [[nodiscard]] bool isHighlit() const       					{ return highlit;    			}
     [[nodiscard]] bool isVisibleDlg() const override			{ return isVisible();			}
 
-    const Rectangle<int> getBoundsInParentDelegate() override 	{ return getBoundsInParent();	}
-    int getCollapsedSize() override       						{ return collapsedSize;    		}
-    int getExpandedSize() override       						{ return expandedSize;    		}
+    [[nodiscard]] Rectangle<int> getBoundsInParentDelegate() const override	{ return getBoundsInParent();	}
+    [[nodiscard]] int getCollapsedSize() const override       	{ return collapsedSize;    		}
+    [[nodiscard]] int getExpandedSize() const override       	{ return expandedSize;    		}
     [[nodiscard]] int getPendingItems() const					{ return pendingNumber; 		}
     int getXDelegate() override    								{ return getX();    			}
     int getYDelegate() override   					 			{ return getY();    			}

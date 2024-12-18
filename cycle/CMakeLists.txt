@@ -28,6 +28,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_include_directories(${PROJECT_NAME}_tests PRIVATE "/usr/local/include")
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+    JUCE_PLUGIN_DEFINES_H="${CMAKE_CURRENT_SOURCE_DIR}/Incl/JucePluginDefines.h"
+)
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
     LINUX=1
     JUCE_PROJUCER_VERSION=0x80004
     JUCE_MODULE_AVAILABLE_juce_animation=1

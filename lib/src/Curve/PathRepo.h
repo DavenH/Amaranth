@@ -37,7 +37,7 @@ public:
 	~PathRepo() override = default;
 
 	void init() override;
-	void performUpdate(int updateType) override;
+	void performUpdate(UpdateType updateType) override;
 	void updateCache(int group, int layer);
 	void resetCaches();
 	float getScratchPosition(int scratchChannel, float defaultPos = 0.f);

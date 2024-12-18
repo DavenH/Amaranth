@@ -90,8 +90,8 @@ void PanelPair::setBounds(int x, int y, int width, int height) {
             firstHeight = (height - border) - secondHeight;
         }
 
-		one.setBounds(x, y, width, firstHeight);
-		two.setBounds(x, y + firstHeight + border, width, secondHeight);
+		one->setBounds(x, y, width, firstHeight);
+		two->setBounds(x, y + firstHeight + border, width, secondHeight);
 
 		if (dragger)
 			dragger->setBounds(x - 2, y + firstHeight, width + 4, border);
@@ -127,10 +127,3 @@ void PanelPair::setMaxHeight(int heightOfFirst, int heightOfSecond) {
     if (heightOfFirst > 0) maxHeightOne = heightOfFirst;
     if (heightOfSecond > 0) maxHeightTwo = heightOfSecond;
 }
-
-void PanelPair::setBounds(const Rectangle<int>& bounds) {
-    setBounds(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight());
-
-    std::cout << name << "\t" << x << " " << y << " " << width << " " << height << "\n";
-}
-

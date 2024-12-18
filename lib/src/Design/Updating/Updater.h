@@ -10,14 +10,6 @@
 using std::map;
 using std::deque;
 
-enum UpdateType {
-	    Null = -1
-	,	Update= 0
-	,	ReduceDetail
-	,	RestoreDetail
-	,	Repaint
-};
-
 class Updater :
 		public SingletonAccessor
 	,	public AsyncUpdater
@@ -43,13 +35,13 @@ public:
 
 		void reset();
 		void markPath();
-		void performUpdate(String& path, int updateType);
+		void performUpdate(String& path, UpdateType updateType);
 
 		[[nodiscard]] bool isDirty() const   { return dirty; 	}
 		[[nodiscard]] bool isUpdated() const { return updated; 	}
 		void markDirty() { dirty = true; 	}
 
-		virtual void executeUpdate(int updateType);
+		virtual void executeUpdate(UpdateType updateType);
 
 	private:
 		bool updated;
@@ -79,14 +71,14 @@ public:
 		void update			(Node* node);
 
 		[[nodiscard]] bool doesPrintPath() const { return printsPath; }
-		void setUpdateType(int type) 	{ updateType = type; }
+		void setUpdateType(UpdateType type) 	{ updateType = type; }
 		void setPrintsPath(bool does) 	{ printsPath = does; }
 
 		virtual String getUpdateString() { return {}; }
 
 	private:
 		bool printsPath;
-		int updateType;
+		UpdateType updateType;
 		String lastPath;
 
 		Ref<Updater> updater;
@@ -98,9 +90,10 @@ public:
 	};
 
 	struct PendingUpdate {
-		PendingUpdate(int source, int type) : type(type), source(source) {}
+		PendingUpdate(int source, UpdateType type) : type(type), source(source) {}
 
-		int type, source;
+		int source;
+		UpdateType type;
 		bool operator==(const PendingUpdate& that) const { return type == that.type && source == that.source; }
 		bool operator!=(const PendingUpdate& that) const { return ! operator==(that); }
 	};
@@ -111,7 +104,7 @@ public:
 	~Updater() override = default;
 
 	void setThrottling(bool doThrottle, int threshMillis);
-	void update(int code, int type = Update);
+	void update(int code, UpdateType type = Update);
 	void handleAsyncUpdate() override;
 	void addListener(ChangeListener* listener) { listeners.add(listener); }
 	void setStartingNode(int code, Node* node);

@@ -50,11 +50,13 @@ public:
 			dimensionNames.add("Blue");
 			dimensionNames.add("Curve");
 
-			for(int i = 0; i < numElementsInArray(sliderApplicable); ++i)
+			for(int i = 0; i < numElementsInArray(sliderApplicable); ++i) {
 				sliderApplicable[i] = true;
+			}
 
-			for(int i = 0; i < numElementsInArray(deformApplicable); ++i)
+			for(int i = 0; i < numElementsInArray(deformApplicable); ++i) {
 				deformApplicable[i] = true;
+			}
 		}
 
 		StringArray dimensionNames;
@@ -127,7 +129,8 @@ public:
     /* ----------------------------------------------------------------------------- */
 
 	virtual void transferLineProperties(VertCube const* from, VertCube* to1,  VertCube* to2);
-	virtual void performUpdate(UpdateType updateType);
+
+    virtual void performUpdate(UpdateType updateType) override;
 	virtual void updateDepthVerts();
 	virtual void updateDspSync();
 	virtual bool doesMeshChangeWarrantGlobalUpdate();

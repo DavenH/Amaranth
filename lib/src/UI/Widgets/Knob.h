@@ -6,6 +6,8 @@
 #include "JuceHeader.h"
 #include "../../Util/StringFunction.h"
 
+using namespace juce;
+
 class Knob:
 		public Slider
 	,	public IDynamicSizeComponent
@@ -25,12 +27,12 @@ public:
 	void mouseDown(const MouseEvent& e) override;
 	void mouseUp(const MouseEvent& e) override;
 
-	int getId() const							{ return id; }
-	int getYDelegate() override 				{ return getY(); }
-	int getXDelegate() override 				{ return getX(); }
-	int getExpandedSize() override { return expandedSize; }
-	int getCollapsedSize() override { return collapsedSize;	}
-	int getMinorSize() override 				{ return isCurrentCollapsed ? getCollapsedSize() : getExpandedSize(); }
+	int getId() const					{ return id; }
+	int getYDelegate() override 		{ return getY(); }
+	int getXDelegate() override 		{ return getX(); }
+	[[nodiscard]] int getExpandedSize() const override		{ return expandedSize; }
+	[[nodiscard]] int getCollapsedSize() const override		{ return collapsedSize;	}
+	int getMinorSize() override 		{ return isCurrentCollapsed ? getCollapsedSize() : getExpandedSize(); }
 
 	void setBoundsDelegate(int x, int y, int w, int h) override { setBounds(x, y, w, h); }
 	void setCollapsedSize(int size) 	{ collapsedSize = size; }
@@ -46,7 +48,7 @@ public:
 	void setStringFunctions(const StringFunction& toString,
 							const StringFunction& toConsole);
 
-	const Rectangle<int> getBoundsInParentDelegate() override;
+	[[nodiscard]] Rectangle<int> getBoundsInParentDelegate() const override;
 
 	bool isVisibleDlg() const override 			{ return isVisible(); }
 	void setVisibleDlg(bool isVisible) override { setVisible(isVisible); }

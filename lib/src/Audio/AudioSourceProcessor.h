@@ -1,5 +1,7 @@
 #pragma once
 
+#include "JuceHeader.h"
+
 using namespace juce;
 
 class AudioSourceProcessor : public AudioSource {

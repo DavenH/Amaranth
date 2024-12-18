@@ -845,7 +845,7 @@ void Interactor3D::removeDuplicateVerts(
             }
 
             if (*v1 == *v2) {
-                if (std::find(duplicates.begin(), duplicates.end(), *v1) == duplicates.end()) {
+                if (std::find(duplicates.begin(), duplicates.end(), v1) == duplicates.end()) {
                     originals.push_back(v1);
                     duplicates.push_back(v2);
                 }

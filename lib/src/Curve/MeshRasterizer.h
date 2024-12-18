@@ -1,4 +1,5 @@
 #pragma once
+
 #include <vector>
 #include <ippdefs.h>
 #include "Curve.h"
@@ -110,8 +111,9 @@ public:
 
 	void sampleEvenlyTo(const Buffer<float>& dest)
 	{
-		if(dest.empty())
+		if(dest.empty()) {
 			return;
+		}
 
 		sampleWithInterval<float>(dest, 1.f / float(dest.size() - 1), 0);
 	}
@@ -143,8 +145,9 @@ public:
 			jassert(phase > waveX[currentIndex]);
 
 			for(int i = 0; i < size; ++i) {
-				while (phase >= waveX[currentIndex + 1])
+				while (phase >= waveX[currentIndex + 1]) {
 					currentIndex++;
+				}
 
 				dest[i] = ((float) phase - waveX[currentIndex]) * slope[currentIndex] + waveY[currentIndex];
 
@@ -152,8 +155,9 @@ public:
 			}
 		}
 
-		if(phase > 0.5)
+		if(phase > 0.5) {
 			phase -= 1;
+		}
 
 		return phase;
 	}
@@ -170,7 +174,7 @@ public:
 	virtual void processIntercepts(vector<Intercept>& intercepts) {}
 	virtual void pullModPositionAndAdjust() {}
 	virtual void reset();
-	void performUpdate(int updateType) override;
+	void performUpdate(UpdateType updateType) override;
 	virtual void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
 	virtual	void updateCurves();
 

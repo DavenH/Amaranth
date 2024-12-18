@@ -1,7 +1,10 @@
 #include "RetractableCallout.h"
 #include "../MiscGraphics.h"
 
-RetractableCallout::RetractableCallout(const vector<Component*>& _icons, PulloutComponent* _pullout, bool _horz) {
+RetractableCallout::RetractableCallout(
+    const vector<Component*>& _icons,
+    PulloutComponent* _pullout,
+    bool _horz) {
     horz = _horz;
     icons = _icons;
     pullout = _pullout;
@@ -49,20 +52,19 @@ void RetractableCallout::resized() {
     }
 }
 
-
 void RetractableCallout::moved() {
     pullout->moved();
 }
 
-
-int RetractableCallout::getExpandedSize() {
-    if (isAlwaysCollapsed())
+int RetractableCallout::getExpandedSize() const {
+    if (isAlwaysCollapsed()) {
         return getCollapsedSize();
+    }
 
     return icons.size() * 25 + 1;
 }
 
-int RetractableCallout::getCollapsedSize() {
+int RetractableCallout::getCollapsedSize() const {
     return 25;
 }
 
@@ -78,7 +80,7 @@ void RetractableCallout::setBoundsDelegate(int x, int y, int w, int h) {
     setBounds(x, y, w, h);
 }
 
-const Rectangle<int> RetractableCallout::getBoundsInParentDelegate() {
+Rectangle<int> RetractableCallout::getBoundsInParentDelegate() const {
     return getBoundsInParent();
 }
 

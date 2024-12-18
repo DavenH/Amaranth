@@ -79,7 +79,7 @@ bool Interactor2D::locateClosestElement() {
 			for(auto& vert : mesh->getVerts()) {
                 if (fabsf(vert->values[dims.x] - icpts[state.currentIcpt].x) < 0.0001f) {
 					// when does this ever happen???
-					state.currentVertex = *it;
+					state.currentVertex = vert;
 					break;
 				}
 			}

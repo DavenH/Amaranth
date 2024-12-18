@@ -12,20 +12,20 @@ LockRegistry::LockRegistry(SingletonRepo* repo) : SingletonAccessor(repo, "LockR
 // 0x2		0x123  <--- deny lock.
 
 void LockRegistry::lockEntered(void* address) {
-    LockEvent event;
-    event.lockId = (int) address;
-    event.threadId = (int) Thread::getCurrentThreadId();
-    event.isEnter = true;
+    // LockEvent event;
+    // event.lockId = reinterpret_cast<int>(address);
+    // event.threadId = reinterpret_cast<int>(Thread::getCurrentThreadId());
+    // event.isEnter = true;
 
     // todo
 }
 
 void LockRegistry::lockExited(void* address) {
-    LockEvent event;
-
-	event.lockId 	= (int) address;
-	event.threadId 	= (int) Thread::getCurrentThreadId();
-	event.isEnter 	= false;
+ //    LockEvent event;
+ //
+	// event.lockId 	= reinterpret_cast<int>(address);
+	// event.threadId 	= reinterpret_cast<int>(Thread::getCurrentThreadId());
+	// event.isEnter 	= false;
 
 	// todo
 }

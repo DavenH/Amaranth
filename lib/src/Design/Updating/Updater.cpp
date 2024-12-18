@@ -11,7 +11,7 @@ Updater::Updater(SingletonRepo* repo) :
 	,	throttleUpdates 	(true) {
 }
 
-void Updater::update(int code, int type) {
+void Updater::update(int code, UpdateType type) {
 	Node* node = startingNodes[code];
 
 	if(getSetting(IgnoringEditMessages))
@@ -145,7 +145,7 @@ void Updater::Node::doesntMark(Node* node) {
     nodesToMark.removeFirstMatchingValue(node);
 }
 
-void Updater::Node::performUpdate(String& updatePath, int updateType) {
+void Updater::Node::performUpdate(String& updatePath, UpdateType updateType) {
 	if(updated || ! dirty) {
 		return;
 	}
@@ -177,7 +177,7 @@ void Updater::Node::performUpdate(String& updatePath, int updateType) {
 	}
 }
 
-void Updater::Node::executeUpdate(int updateType) {
+void Updater::Node::executeUpdate(UpdateType updateType) {
 	if (toUpdate != nullptr) {
 		toUpdate->update(updateType);
 	}

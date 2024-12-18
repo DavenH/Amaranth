@@ -72,10 +72,10 @@ public:
 	void resized() override;
 	void setBackgroundOpacity(float opacity) { popup.setBackgroundOpacity(opacity); }
 
-	int getExpandedSize() override 				{ return 0; }
-	int getCollapsedSize() override 			{ return 0; }
+	[[nodiscard]] int getExpandedSize() const override 		{ return 0; }
+	[[nodiscard]] int getCollapsedSize() const override 		{ return 0; }
 	void setBoundsDelegate(int x, int y, int w, int h) override {}
-	const Rectangle<int> getBoundsInParentDelegate() override { return getBounds(); }
+	Rectangle<int> getBoundsInParentDelegate() const override { return getBounds(); }
 	int getYDelegate() override 				{ return 0; }
 	int getXDelegate() override 				{ return 0; }
 	bool isVisibleDlg() const override 			{ return isVisible(); }

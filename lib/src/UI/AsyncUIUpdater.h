@@ -2,11 +2,11 @@
 
 #include "JuceHeader.h"
 
-class AsyncUIUpdater : public AsyncUpdater {
+class AsyncUIUpdater : public juce::AsyncUpdater {
 public:
 	AsyncUIUpdater();
 
-	virtual ~AsyncUIUpdater() override;
+	~AsyncUIUpdater() override;
 
 	void handleAsyncUpdate() override;
 

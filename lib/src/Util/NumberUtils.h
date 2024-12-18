@@ -2,6 +2,8 @@
 #include <cmath>
 #include "JuceHeader.h"
 
+using namespace juce;
+
 class NumberUtils {
 public:
     template<typename type>

@@ -42,15 +42,8 @@
 
 #include "../../App/Dialogs.h"
 #include "../../App/KeyboardInputHandler.h"
-#include "../../Audio/AudioSourceRepo.h"
-#include "../../Audio/Effects/Delay.h"
-#include "../../Audio/Effects/Equalizer.h"
-#include "../../Audio/Effects/IrModeller.h"
 #include "../../Audio/Effects/Reverb.h"
-#include "../../Audio/Effects/Unison.h"
 #include "../../Audio/Effects/WaveShaper.h"
-#include "../../Audio/SynthAudioSource.h"
-#include "../../Curve/GraphicRasterizer.h"
 
 MainPanel::MainPanel(SingletonRepo* repo) : 
 		ComponentMovementWatcher(this)
@@ -105,7 +98,7 @@ void MainPanel::init() {
 	waveform2D 		= &getObj(Waveform2D);
 	waveform3D 		= &getObj(Waveform3D);
 	waveshaperUI	= &getObj(WaveshaperUI);
-	console 		= dynamic_cast<Console*>(&getObj(IConsole));
+	console 		= &getObj(Console);
 
 	initialisePanels();
 }
@@ -267,7 +260,25 @@ void MainPanel::initialisePanels() {
 
 	toOutline.insert(spectrum2D->getZoomPanel());
 
-	deletable.addArray();
+    void* deleteMe[] = {
+	    wavePair, spectPair, envPair, ev_bottomRight, ev_reverbUni, ev_delayEQ,
+	    ev_paramFX, ev_tubeParamFX, cv_bottomPair, cv_middlePair, wave2DPair, dfrmPair,
+	    irmodPair, wshpPair, cv_bnrOscCtrls, cv_genKeyBnr, cv_leftTriple, cv_menuCons,
+	    cv_playbackLeft, cv_right, cv_rt_pair, cv_rtb_pair, cv_rtt_pair, cv_rttb_pair,
+	    cv_spectSurf, cv_whole, xv_ctrl_key, xv_envDfmImp, xv_dfrm_imp, xv_FX_pair_1,
+	    xv_FX_Pair_2, xv_FX_pair_A, xv_TRTRBR_pair, xv_TRTRB_pair, xv_TRTR_pair, xv_TRBR_pair,
+	    xv_TRBL_pair, xv_TRT_pair, xv_TRB_pair, xv_TR_pair, xv_topPair, xv_whole,
+	    xv_spectSurf, xv_playbackLeft, envCtrlBounds, topRightTabs, bottomTabs, topTabs,
+	    bannerPanel, keybBounds, genBounds, consBounds, modBounds, playbackBounds, spectCtrlBounds,
+	    surfCtrlBounds, guideCtrlBounds, tubeCtrlBoundsB, spectZoomPanel, e3dZoomPanel, envZoomPanel,
+	    f2dZoomPanel, wave3DZoomPanel, wave2DZoomPanel, tubeZoomPanel, wsZoomPanel, dfrmZoomPanel,
+	    derivBounds, propsBounds, unisonBounds, bnrBounds, menuBounds, oscCtrlBounds, reverbBounds,
+	    delayBounds, eqBounds, wsCtrlBounds, cv_botTabBounds, cv_topTabBounds, menuBar, xv_topBotDragger,
+	    xv_spectSurfDragger, xv_envDfmImpDragger, xv_dfmImpDragger, xv_wholeDragger, cv_wholeDragger, cv_middleDragger,
+	    cv_envSpectDragger, cv_spectSurfDragger, crsGL, f2GL, e2GL, dfmGL,
+	    wsGL, tmGL, surfGL, f3GL, e3GL, nullptr
+    };
+	deletable.addArray(deleteMe);
 
 	initialized = true;
 }
@@ -780,7 +791,6 @@ void MainPanel::toggleDraggers(bool showCollapsed) {
 	}
 }
 
-
 void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
     attachNextResize = true;
 
@@ -793,19 +803,19 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
 	e2GL 	= new OpenGLPanel	(repo, envelope2D);
 	wsGL 	= new OpenGLPanel	(repo, waveshaperUI);
 	tmGL 	= new OpenGLPanel	(repo, irModelUI);
-	f3GL	= new OpenGLPanel3D (repo, spectrum3D, retriever);
-	e3GL	= new OpenGLPanel3D	(repo, envelope3D);
-	surfGL 	= new OpenGLPanel3D	(repo, waveform3D);
+	f3GL	= new OpenGLPanel3D (repo, spectrum3D, spectrum3D);
+	e3GL	= new OpenGLPanel3D	(repo, envelope3D, envelope3D);
+	surfGL 	= new OpenGLPanel3D	(repo, waveform3D, waveform3D);
 
-//	wave2DZoomPanel	->panelComponentChanged(crsGL);
-//	spectZoomPanel	->panelComponentChanged(f3GL);
-//	envZoomPanel	->panelComponentChanged(e2GL);
-//	e3dZoomPanel	->panelComponentChanged(e3GL);
-//	f2dZoomPanel	->panelComponentChanged(f2GL);
-//	wave3DZoomPanel	->panelComponentChanged(surfGL);
-//	tubeZoomPanel	->panelComponentChanged(tmGL);
-//	wsZoomPanel		->panelComponentChanged(wsGL);
-//	dfrmZoomPanel	->panelComponentChanged(dfmGL);
+	wave2DZoomPanel	->panelComponentChanged(crsGL);
+	spectZoomPanel	->panelComponentChanged(f3GL);
+	envZoomPanel	->panelComponentChanged(e2GL);
+	e3dZoomPanel	->panelComponentChanged(e3GL);
+	f2dZoomPanel	->panelComponentChanged(f2GL);
+	wave3DZoomPanel	->panelComponentChanged(surfGL);
+	tubeZoomPanel	->panelComponentChanged(tmGL);
+	wsZoomPanel		->panelComponentChanged(wsGL);
+	dfrmZoomPanel	->panelComponentChanged(dfmGL);
 
 	wave2DGroup = PanelGroup(waveform2D, 	wave2DPair, waveform2D->getOpenglPanel());
 	surfGroup 	= PanelGroup(waveform3D, 	wavePair, 	waveform3D->getOpenglPanel());

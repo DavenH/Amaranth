@@ -1186,7 +1186,7 @@ void MeshRasterizer::initialise() {
 
 #pragma pop_macro("new")
 
-void MeshRasterizer::performUpdate(int updateType) {
+void MeshRasterizer::performUpdate(UpdateType updateType) {
     if (updateType == Update) {
         calcCrossPoints();
         makeCopy();

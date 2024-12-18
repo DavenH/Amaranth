@@ -16,7 +16,8 @@ file(GLOB_RECURSE LIB_TEST_SOURCES
 )
 
 # Create library target
-add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
+add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES}
+        src/Design/Updating/UpdateType.h)
 add_executable(${PROJECT_NAME}_tests ${LIB_TEST_SOURCES} ${LIB_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC

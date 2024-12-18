@@ -422,7 +422,6 @@ void VisualDsp::calcSpectrogram(int numColumns)
 	bool isPhaseEnabled  		= getSetting(PhaseEnabled);
 	bool doInverseFFT 			= stage >= ViewStages::PostSpectrum && ! timeColumns.empty();
 
-//	onlyBeat(isPhaseEnabled = false);
 //	jassert(fftBuffer.size() >= nextPow2 + 2);
 	jassert(volumeEnv.size() >= numColumns);
 

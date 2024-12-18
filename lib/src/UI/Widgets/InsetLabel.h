@@ -18,7 +18,7 @@ public:
 		,	name	(std::move(name))
 		,	offsetA	(-0.8f)
 		,	offsetB	(-0.8f)
-		,	font	(15, Font::bold) {
+		,	font	(FontOptions(15, Font::bold)) {
 		brightColor = Colour::greyLevel(0.28f);
 		dimColor	= Colour::greyLevel(0.f);
 

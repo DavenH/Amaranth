@@ -165,9 +165,9 @@ void Knob::mouseUp(const MouseEvent& e) {
     Slider::mouseUp(e);
 }
 
-const Rectangle<int> Knob::getBoundsInParentDelegate() {
+Rectangle<int> Knob::getBoundsInParentDelegate() const {
     int size = isCurrentCollapsed ? getCollapsedSize() : getExpandedSize();
-	return Rectangle<int>(getX(), getY(), size, size);
+	return {getX(), getY(), size, size};
 }
 
 void Knob::setStringFunction(const StringFunction& toBoth) {

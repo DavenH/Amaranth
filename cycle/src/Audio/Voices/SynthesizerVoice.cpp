@@ -50,7 +50,7 @@ SynthesizerVoice::SynthesizerVoice(int voiceIndex, SingletonRepo* repo) :
     auto& deformer = getObj(DeformerPanel);
 
     for (auto group: envGroups) {
-        group->envGroup.emplace_back(EnvRasterizer(&deformer, "EnvRasterizer" + String(group->layerGroup) + "_0"), 0);
+        group->envGroup.emplace_back(EnvRasterizer(repo, &deformer, "EnvRasterizer" + String(group->layerGroup) + "_0"), 0);
 
         EnvRenderContext& last = group->envGroup.back();
         last.rast.setWantOneSamplePerCycle(true);
@@ -289,7 +289,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
     for (auto& envRasterizer: envRasterizers) {
         envRasterizer->setNoiseSeed(random.nextInt());
         // TODO
-        envRasterizer->updateOffsetSeeds();
+        envRasterizer->updateOffsetSeeds(1, DeformerPanel::tableSize);
     }
 }
 
@@ -439,7 +439,7 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
 
                 if (!dynamic_cast<MeshLibrary::EnvProps*>(layer.props)->global) {
                     String name = "EnvRasterizer" + String(groupIndex) + "_" + String(layerIndex);
-                    group.envGroup.emplace_back(EnvRasterizer(&deformer, name), layerIndex);
+                    group.envGroup.emplace_back(EnvRasterizer(repo, &deformer, name), layerIndex);
 
                     EnvRasterizer& rast = group.envGroup.back().rast;
                     envRasterizers.push_back(&rast);

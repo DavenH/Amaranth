@@ -1,6 +1,9 @@
 #pragma once
+
 #include "MeshRasterizer.h"
 #include "../App/MeshLibrary.h"
+
+class SingletonRepo;
 
 /**
  * Policies:
@@ -11,7 +14,8 @@
  *
  */
 class EnvRasterizer :
-		public MeshRasterizer {
+		public MeshRasterizer,
+		public SingletonAccessor {
 public:
 	enum { loopMinSizeIcpts = 1, graphicIndex = 0, headUnisonIndex };
 	enum { NormalState, Looping, Releasing };
@@ -39,12 +43,12 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-	explicit EnvRasterizer(IDeformer* deformer, const String& name = String());
+	explicit EnvRasterizer(SingletonRepo* repo, IDeformer* deformer, const String& name = String());
 	EnvRasterizer& operator =(const EnvRasterizer& copy);
 	EnvRasterizer(const EnvRasterizer& copy);
 	~EnvRasterizer() override;
 
-	void calcCrossPoints(int currentDim) override;
+	void calcCrossPoints() override;
 	void ensureParamSize(int numUnisonVoices);
 	void evaluateLoopSustainIndices();
 	void getIndices(int& loopIdx, int& sustIdx) const;

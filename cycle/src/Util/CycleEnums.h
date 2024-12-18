@@ -54,6 +54,7 @@ namespace Constants {
     enum {
         WaveshaperPadding = numAppConstants + 1,
         MaxDetune,
+        BuildNumber,
         NumVoices,
         BetaExpiry,
         ProductCode,

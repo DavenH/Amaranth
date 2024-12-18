@@ -10,7 +10,6 @@
 #include "../TourGuide.h"
 #include "../Widgets/Controls/ControlsClient.h"
 #include "../Widgets/Controls/LayerSelectionClient.h"
-#include "../Widgets/Controls/LayerSelectorPanel.h"
 #include "../Widgets/Controls/MeshSelectionClient.h"
 #include "../Widgets/Controls/MeshSelector.h"
 #include "../Widgets/HSlider.h"
@@ -31,7 +30,7 @@ class DeformerPanel :
 public:
 	enum { tableSize = 8192, tableModulo = tableSize - 1 };
 
-	DeformerPanel(SingletonRepo* repo);
+	explicit DeformerPanel(SingletonRepo* repo);
 	~DeformerPanel() override;
 
 	bool isEffectEnabled() const override;
@@ -39,39 +38,39 @@ public:
 	int getNumGuides();
 	int getTableDensity(int index) override;
 
-	Mesh* getCurrentMesh();
-	Component* getComponent(int which);
+	Mesh* getCurrentMesh() override;
+	Component* getComponent(int which) override;
 
 	void addNewLayer(bool doUpdate);
 	void buttonClicked(Button* button) override;
 	void doubleMesh() override;
 	void enterClientLock() override;
-	void exitClientLock();
-	void init();
-	void layerChanged();
-	void panelResized();
-	void preDraw();
-	void previewMesh(Mesh* mesh);
-	void previewMeshEnded(Mesh* mesh);
+	void exitClientLock() override;
+	void init() override;
+	void layerChanged() override;
+	void panelResized() override;
+	void preDraw() override;
+	void previewMesh(Mesh* mesh) override;
+	void previewMeshEnded(Mesh* mesh) override;
 	void rasterizeAllTables();
 	void rasterizeTable();
-	void reset();
-	void setCurrentMesh(Mesh* mesh);
+	void reset() override;
+	void setCurrentMesh(Mesh* mesh) override;
 	void setMeshAndUpdate(Mesh *mesh);
-	void showCoordinates();
-	void sliderDragEnded(Slider* slider);
-	void sliderDragStarted(Slider* slider);
-	void sliderValueChanged(Slider* slider);
+	void showCoordinates() override;
+	void sliderDragEnded(Slider* slider) override;
+	void sliderDragStarted(Slider* slider) override;
+	void sliderValueChanged(Slider* slider) override;
 	void triggerButton(int id);
-	void updateDspSync();
+	void updateDspSync() override;
 	void updateKnobsImplicit();
 
-	int getLayerType() { return layerType; }
+	int getLayerType() override { return layerType; }
 
-	bool readXML(const XmlElement* element);
-	void writeXML(XmlElement* element) const;
+	bool readXML(const XmlElement* element) override;
+	void writeXML(XmlElement* element) const override;
 
-	float getTableValue(int guideIndex, float progress, const IDeformer::NoiseContext& context)
+	float getTableValue(int guideIndex, float progress, const IDeformer::NoiseContext& context) override
 	{
 		jassert(guideIndex < guideTables.size());
 		if(guideIndex >= guideTables.size())

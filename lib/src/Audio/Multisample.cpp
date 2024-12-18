@@ -346,7 +346,7 @@ bool Multisample::readXML(const XmlElement* element) {
 	return true;
 }
 
-void Multisample::performUpdate(int updateType) {
+void Multisample::performUpdate(UpdateType updateType) {
     if (updateType == Update) {
 		MorphPosition pos = repo->getMorphPosition().getMorphPosition();
 		float midiNote = Arithmetic::getNoteForValue(pos.red, Range(getConstant(LowestMidiNote), getConstant(HighestMidiNote)));

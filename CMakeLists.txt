@@ -5,6 +5,7 @@ project(Amaranth VERSION 1.0.0)
 # Global settings
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(_NO_FLOAT_16 1)
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH "/usr/local/lib/cmake/Catch2")

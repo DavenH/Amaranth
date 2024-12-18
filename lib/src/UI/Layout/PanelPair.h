@@ -18,7 +18,6 @@ public:
 
 	~PanelPair() override = default;
 
-	void setBounds(const Rectangle<int>& bounds) override;
 	void setBounds(int x, int y, int width, int height) override;
 	void setDragger(Dragger* dragger);
 

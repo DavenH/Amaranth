@@ -1,19 +1,14 @@
-#include <ipp.h>
 #include "CommonGfx.h"
 #include "Panel3D.h"
-#include "ScopedGL.h"
 #include "Texture.h"
 #include "ZoomPanel.h"
 #include "OpenGLPanel3D.h"
-#include "../../App/AppConstants.h"
 #include "../../App/MeshLibrary.h"
 #include "../../App/Settings.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Curve/DepthVert.h"
 #include "../../Inter/Interactor3D.h"
-#include "../../Thread/LockTracer.h"
 #include "../../UI/Layout/BoundWrapper.h"
-#include "../../Util/Arithmetic.h"
 #include "../../Util/CommonEnums.h"
 #include "../../Util/Geometry.h"
 #include "../../Util/LogRegions.h"
@@ -31,9 +26,9 @@ Panel3D::Panel3D(SingletonRepo* repo,
 	,	volumeTrans			(0.5f)
 	,	haveLogarithmicY	(false)
 	,	useVertices			(useVertices) {
-	openGL 		= new OpenGLPanel3D(repo, this, retriever);
-	wrapper 	= new BoundWrapper(openGL);
-	zoomPanel 	= new ZoomPanel(repo, ZoomContext(this, wrapper, haveHorzZoom, true));
+	openGL 		= std::make_unique<OpenGLPanel3D>(repo, this, retriever);
+	wrapper 	= std::make_unique<BoundWrapper>(openGL.get());
+	zoomPanel 	= std::make_unique<ZoomPanel>(repo, ZoomContext(this, wrapper.get(), haveHorzZoom, true));
 	zoomPanel->addListener(this);
 
 	drawLinesAfterFill = true;
@@ -86,8 +81,9 @@ void Panel3D::drawInterceptLines() {
 	int dim = getSetting(CurrentMorphAxis);
 
     if (scratchChannel != CommonEnums::Null && isScratchApplicable()) {
-        if (MeshLibrary::Properties* props = getLayerProps(GroupScratch, scratchChannel))
-			haveSpeed = props->active;
+        if (MeshLibrary::Properties* props = getLayerProps(GroupScratch, scratchChannel)) {
+	        haveSpeed = props->active;
+        }
 	}
 
 	Vertex* currVert = nullptr;
@@ -165,7 +161,6 @@ void Panel3D::drawInterceptLines() {
 	}
 }
 
-
 void Panel3D::drawInterceptsAndHighlightClosest() {
     // it's a bigger circle, so do it first
     highlightCurrentIntercept();
@@ -179,8 +174,9 @@ void Panel3D::drawInterceptsAndHighlightClosest() {
 		interceptPairs = itr3D->getInterceptPairs();
 	}
 
-	if(interceptPairs.empty())
+	if(interceptPairs.empty()) {
 		return;
+	}
 
 	int size = interceptPairs.size();
 
@@ -223,7 +219,7 @@ void Panel3D::drawLinSurface(const vector<Column>& grid) {
 	Buffer<float> floatBuf 	= gradient.getFloatPixels();
 
 	for (int i = 0; i < draw.sizeX; ++i) {
-		Buffer<float> gridBuf = grid[i];
+		Buffer gridBuf = grid[i];
 		draw.colSourceSizeY = draw.sizeY = gridBuf.size();
 
 		if(draw.sizeY <= maxHorzLines) {
@@ -310,8 +306,9 @@ void Panel3D::downsampleColumn(Buffer<float> column) {
 		downsampAcc.add(downsampBuff);
 	}
 
-	if(buffsToMerge > 1)
+	if(buffsToMerge > 1) {
 		downsampAcc.mul(1 / float(buffsToMerge));
+	}
 }
 
 void Panel3D::setColumnColourIndices() {
@@ -403,7 +400,6 @@ void Panel3D::resizeArrays() {
  * 			c++
  * 		pos++
  */
-
 void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf) {
 	Ipp32f* colorPtr 	= srcColors;
 	Ipp32f* dstColors 	= dstColorBuf;
@@ -466,9 +462,9 @@ void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf
 		double sourceToDestRatio = (double) draw.sizeY / draw.texHeight;
 
         while (i < subsampleIdx - 1) {
-            trunc 		= (int) phase;
-			remainder 	= phase - trunc;
-			truncStride = draw.stride * trunc;
+	        trunc = (int) phase;
+	        remainder = phase - trunc;
+	        truncStride = draw.stride * trunc;
 
 			ippsMulC_32f		(colorPtr + truncStride, 				1 - remainder, 	dstColors + draw.stride * i, draw.stride);
 			ippsAddProductC_32f	(colorPtr + truncStride + draw.stride, 	remainder, 		dstColors + draw.stride * i, draw.stride);
@@ -566,8 +562,9 @@ void Panel3D::highlightCurrentIntercept() {
 		if(useFreeVert) {
 			vector<DepthVert>& verts = interactor->depthVerts;
 
-			if(! isPositiveAndBelow(freeIdx, (int) verts.size()))
+			if(! isPositiveAndBelow(freeIdx, (int) verts.size())) {
 				return;
+			}
 
 			point.x = verts[freeIdx].x;
 			point.y = verts[freeIdx].y;

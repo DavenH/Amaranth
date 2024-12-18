@@ -2,7 +2,6 @@
 #include "../IConsole.h"
 #include "../Widgets/InsetLabel.h"
 #include "../../App/SingletonRepo.h"
-#include <ippbase.h>
 
 TabbedSelector::TabbedSelector(SingletonRepo* repo) :
 		SingletonAccessor(repo, "TabbedSelector")
@@ -15,7 +14,7 @@ TabbedSelector::TabbedSelector(SingletonRepo* repo) :
 void TabbedSelector::paint(Graphics& g) {
 	g.fillAll(Colours::black);
 
-	float halfPi = 0.5f * float(IPP_PI);
+	float halfPi = 0.5f * 3.1415926535f;
 	float rad = radius;
 
 	for (int i = 0; i < (int) tabs.size(); ++i) {
@@ -77,7 +76,7 @@ void TabbedSelector::paint(Graphics& g) {
 		g.strokePath(path, PathStrokeType(1.0f), AffineTransform::translation(-0.5f, -0.5f));
 	}
 
-	Font font(14, Font::bold);
+	Font font(FontOptions(14, Font::bold));
 	g.setFont(font);
 
 	float inset = 0.45f;
@@ -108,7 +107,7 @@ void TabbedSelector::paint(Graphics& g) {
 		Image positive(Image::ARGB, tabHeight, getWidth(), true);
 		Graphics temp(positive);
 
-		Rectangle<int> r(0, 0, tabHeight, getWidth());
+		Rectangle r(0, 0, tabHeight, getWidth());
 
 		float baseBrightness = 0.3f;
 		tab.label->setColorHSV(i == selectedTab ? 0.45f : 0.f,
@@ -146,8 +145,9 @@ void TabbedSelector::mouseMove(const MouseEvent& e) {
 	int lastHover = hoveredTab;
 	updateTabUnderMouse(e);
 
-	if(hoveredTab < 0)
+	if(hoveredTab < 0) {
 		return;
+	}
 
 	if(lastHover != hoveredTab) {
 		repo->getConsole().updateAll(tabs[hoveredTab].shortcutKey,

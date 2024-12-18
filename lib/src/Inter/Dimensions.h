@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include "JuceHeader.h"
 
 using std::vector;
 

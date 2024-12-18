@@ -1,6 +1,8 @@
 #pragma once
 #include "JuceHeader.h"
 
+using namespace juce;
+
 class IDynamicSizeComponent
 {
 public:
@@ -15,8 +17,8 @@ public:
 	virtual ~IDynamicSizeComponent() = default;
 
 	[[nodiscard]] bool isNeverCollapsed() const	{ return neverCollapsed;	}
-	[[nodiscard]] bool isAlwaysCollapsed() const 	{ return alwaysCollapsed; 	}
-	[[nodiscard]] int getDynWidth() const 		{ return width; 			}
+	[[nodiscard]] bool isAlwaysCollapsed() const { return alwaysCollapsed; 	}
+	[[nodiscard]] int getDynWidth() const { return width; 			}
 
 	virtual void setCurrentlyCollapsed(bool isIt) {
         isCurrentCollapsed = isIt && !neverCollapsed;
@@ -28,15 +30,14 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-	[[nodiscard]] virtual bool isVisibleDlg() const 			{ return true; 	}
-	virtual int getMinorSize() 					{ return 24; 	}
-	virtual void setVisibleDlg(bool isVisible) 	{}
-
-	virtual const Rectangle<int> getBoundsInParentDelegate() = 0;
-	virtual int getCollapsedSize() 	= 0;
-	virtual int getExpandedSize() 	= 0;
-	virtual int getXDelegate() 		= 0;
-	virtual int getYDelegate() 		= 0;
+	virtual int getMinorSize() { return 24; }
+	virtual void setVisibleDlg(bool isVisible) {}
+	[[nodiscard]] virtual bool isVisibleDlg() const { return true; }
+	[[nodiscard]] virtual Rectangle<int> getBoundsInParentDelegate() const = 0;
+	[[nodiscard]] virtual int getCollapsedSize() const = 0;
+	[[nodiscard]] virtual int getExpandedSize() const = 0;
+	virtual int getXDelegate() = 0;
+	virtual int getYDelegate() = 0;
 	virtual void setBoundsDelegate(int x, int y, int w, int h) = 0;
 
 	bool outline, translateUp1;

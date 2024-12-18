@@ -46,12 +46,12 @@ public:
 		r.reduce(20, 0);
 
 		String name("Cycle");
-		String version(ProjectInfo::projectName);
+		String version(ProjectInfo::versionString);
 		String line(name + " v" + version + " build " + String(getConstant(BuildNumber)));
 		getObj(MiscGraphics).drawCentredText(g, r.removeFromTop(25), line, Justification::centred);
 
 		r.removeFromTop(20);
-		getObj(MiscGraphics).drawCentredText(g, r.removeFromTop(25), "by Amaranth Audio, 2010-2014", Justification::centred);
+		getObj(MiscGraphics).drawCentredText(g, r.removeFromTop(25), "by Amaranth Audio, 2024", Justification::centred);
 
 //		g.drawImageAt(bert, 0, 0);
 		g.drawImageTransformed(bert, AffineTransform::rotation(-0.5).translated(getWidth() * 0.65, getHeight() * 0.7));
@@ -76,6 +76,6 @@ public:
 		delete this;
 	}
 
-	Image logo, beatLogo, bert;
+	Image logo, bert;
 	TextButton closeButton;
 };

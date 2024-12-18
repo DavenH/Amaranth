@@ -22,10 +22,10 @@ public:
 	bool isCollapsed();
 	void setAlwaysCollapsed(bool shouldBe);
 
-	int getExpandedSize() override;
-	int getCollapsedSize() override;
+	[[nodiscard]] int getExpandedSize() const override;
+	[[nodiscard]] int getCollapsedSize() const override;
 	void setBoundsDelegate(int x, int y, int w, int h) override;
-	const Rectangle<int> getBoundsInParentDelegate() override;
+	[[nodiscard]] Rectangle<int> getBoundsInParentDelegate() const override;
 	int getYDelegate() override;
 	int getXDelegate() override;
 	[[nodiscard]] bool isVisibleDlg() const override { return isVisible(); }
@@ -33,7 +33,7 @@ public:
 
 private:
 	bool horz;
-	bool showHeader;
+	bool showHeader{};
 
 	String name;
 	vector<Component*> icons;

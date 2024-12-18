@@ -45,7 +45,7 @@ float PathRepo::getScratchPosition(int scratchChannel, float defaultPos) {
 	return haveScratch ? Resampling::lerpC(buffer, defaultPos) : defaultPos;
 }
 
-void PathRepo::performUpdate(int updateType) {
+void PathRepo::performUpdate(UpdateType updateType) {
 }
 
 void PathRepo::updateCache(int groupId, int layer) {
