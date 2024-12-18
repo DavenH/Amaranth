@@ -3,6 +3,9 @@
 #include <App/AppConstants.h>
 #include <App/SingletonRepo.h>
 #include "Equalizer.h"
+
+#include <Util/StatusChecker.h>
+
 #include "../../UI/Effects/GuilessEffect.h"
 
 Equalizer::Equalizer(SingletonRepo *repo) : Effect(repo, "Equalizer")

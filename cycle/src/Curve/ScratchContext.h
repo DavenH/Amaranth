@@ -1,14 +1,14 @@
 #pragma once
 struct ScratchInflection
 {
-	Range<float> range;
-	int startIndex;
+    Range<float> range;
+    int startIndex;
 };
 
 struct ScratchContext
 {
-	Buffer<float> gridBuffer;
-	Buffer<float> panelBuffer;
+    Buffer<float> gridBuffer;
+    Buffer<float> panelBuffer;
 
-	vector<ScratchInflection> inflections;
+    vector<ScratchInflection> inflections;
 };

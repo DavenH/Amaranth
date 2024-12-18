@@ -12,6 +12,9 @@
 #include <Util/NumberUtils.h>
 
 #include "SampleUtils.h"
+
+#include <App/Directories.h>
+
 #include "WavAudioSource.h"
 #include "../App/Initializer.h"
 #include "../Audio/AudioSourceRepo.h"
@@ -31,214 +34,210 @@
 #include "../Util/CycleEnums.h"
 
 SampleUtils::SampleUtils(SingletonRepo* repo) :
-		SingletonAccessor(repo, "SampleUtils") {
+        SingletonAccessor(repo, "SampleUtils") {
 }
-
-SampleUtils::~SampleUtils() {
-}
-
 
 void SampleUtils::init() {
     multisample = &getObj(Multisample);
-	audioRepo = &getObj(AudioSourceRepo);
+    audioRepo = &getObj(AudioSourceRepo);
 }
 
 int SampleUtils::calcFundDelta() {
     int fundDiff = 0;
-	int numSamples 	= multisample->size();
+    int numSamples 	= multisample->size();
 
-	if(numSamples > 3) {
+    if(numSamples > 3) {
         PitchedSample* testSamples[] = {
-			multisample->getSampleAt(numSamples / 4),
-			multisample->getSampleAt(numSamples / 2),
-			multisample->getSampleAt(jmin(numSamples - 1, 3 * numSamples / 4))
-		};
+            multisample->getSampleAt(numSamples / 4),
+            multisample->getSampleAt(numSamples / 2),
+            multisample->getSampleAt(jmin(numSamples - 1, 3 * numSamples / 4))
+        };
 
-		int diffs[] = { 0, 0, 0 };
-		int numGood = 0;
+        int diffs[] = { 0, 0, 0 };
+        int numGood = 0;
 
         for (int i = 0; i < numElementsInArray(testSamples); ++i) {
             PitchedSample* sample = testSamples[i];
 
-			if(sample == nullptr || sample->fundNote < 10)
-				continue;
+            if(sample == nullptr || sample->fundNote < 10)
+                continue;
 
-			tracker->setSample(sample);
-			tracker->trackPitch();
+            tracker->setSample(sample);
+            tracker->trackPitch();
 
             if (tracker->getConfidence() < 10) {
                 float wavFrequency = sample->samplerate / sample->getAveragePeriod();
-				int fundCalced = roundToInt(NumberUtils::frequencyToNote(wavFrequency));
+                int fundCalced = roundToInt(NumberUtils::frequencyToNote(wavFrequency));
 
-				++numGood;
-				diffs[i] = fundCalced - sample->fundNote;
-			}
-		}
+                ++numGood;
+                diffs[i] = fundCalced - sample->fundNote;
+            }
+        }
 
-		float avg = numGood > 0 ? (diffs[0] + diffs[1] + diffs[2]) / numGood : 0;
-		fundDiff = roundToInt(avg / 12.f) * 12;
-	}
+        float avg = numGood > 0 ? (diffs[0] + diffs[1] + diffs[2]) / numGood : 0;
+        fundDiff = roundToInt(avg / 12.f) * 12;
+    }
 
-	return fundDiff;
+    return fundDiff;
 }
 
 
 void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
 //	ScopedLock sl(wavSource->getLock());
 
-	vector<PitchedSample*> samples;
+    vector<PitchedSample*> samples;
 
     if (isMulti) {
         int index = 0;
         PitchedSample* sample = nullptr;
 
         while ((sample = multisample->getSampleAt(index++)) != nullptr) {
-			samples.push_back(sample);
+            samples.push_back(sample);
 
-			jassert(sample->mesh != nullptr);
-		}
-	} else {
-		samples.push_back(multisample->getCurrentSample());
-	}
+            jassert(sample->mesh != nullptr);
+        }
+    } else {
+        samples.push_back(multisample->getCurrentSample());
+    }
 
-	int fundDiff = 0;
-	bool noteRangesChanged = false;
+    int fundDiff = 0;
+    bool noteRangesChanged = false;
 
-	if(isMulti)
-		fundDiff = calcFundDelta();
+    if(isMulti)
+        fundDiff = calcFundDelta();
 
-	Range midiRange(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    Range midiRange(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
 
     for (auto & i : samples) {
         PitchedSample* sample = i;
 
         if (sample == nullptr || sample->size() == 0) {
-			if(! isMulti) {
-				showMsg("Wave too short or empty");
-			}
+            if(! isMulti) {
+                showMsg("Wave too short or empty");
+            }
 
-			continue;
-		}
+            continue;
+        }
 
-		tracker->setSample(sample);
+        tracker->setSample(sample);
 
         if (isMulti && NumberUtils::within(sample->fundNote, midiRange)) {
             // check actual frequency to see if fundamental note derived from filename is accurate
             if (fundDiff != 0) {
                 sample->fundNote += fundDiff;
-				sample->midiRange += fundDiff;
+                sample->midiRange += fundDiff;
 
-				noteRangesChanged = true;
-			}
+                noteRangesChanged = true;
+            }
 
-			sample->createDefaultPeriods();
-			PitchTracker::refineFrames(sample, sample->getAveragePeriod());
+            sample->createDefaultPeriods();
+            PitchTracker::refineFrames(sample, sample->getAveragePeriod());
         } else {
             tracker->trackPitch();
-		}
+        }
 
-		float insecurity = tracker->getConfidence();
+        float insecurity = tracker->getConfidence();
 
         if (sample->periods.empty()) {
             if (!isMulti)
-				showMsg("Wave too short or empty");
+                showMsg("Wave too short or empty");
 
-			continue;
+            continue;
         }
 
         if (insecurity > 50) {
             sample->createDefaultPeriods();
 
-			if(sample->fundNote < 10)
+            if(sample->fundNote < 10)
                 sample->fundNote = 41;
         } else {
             if (!NumberUtils::within<int>(sample->fundNote, midiRange)) {
                 float wavFrequency 	= sample->samplerate / sample->getAveragePeriod();
 
-				sample->fundNote = roundToInt(NumberUtils::frequencyToNote(wavFrequency));
-			}
-		}
+                sample->fundNote = roundToInt(NumberUtils::frequencyToNote(wavFrequency));
+            }
+        }
 
-		waveNoteChanged(sample, isMulti, invokerIsDialog);
-	}
+        waveNoteChanged(sample, isMulti, invokerIsDialog);
+    }
 
     if (isMulti) {
         if (noteRangesChanged) {
-	        multisample->fillRanges();
+            multisample->fillRanges();
         }
 
-		multisample->performUpdate(UpdateType::Update);
+        multisample->performUpdate(UpdateType::Update);
 
-		if(PitchedSample* current = multisample->getCurrentSample()) {
-			getObj(MidiKeyboard).setAuditionKey(current->fundNote);
-		}
-	}
+        if(PitchedSample* current = multisample->getCurrentSample()) {
+            getObj(MidiKeyboard).setAuditionKey(current->fundNote);
+        }
+    }
 
-	if(invokerIsDialog)
-		getObj(OscControlPanel).setLengthInSeconds(getWavLengthSeconds());
+    if(invokerIsDialog)
+        getObj(OscControlPanel).setLengthInSeconds(getWavLengthSeconds());
 }
 
 void SampleUtils::waveNoteChanged(PitchedSample* sample, bool isMulti, bool invokerIsDialog) {
     if (!getSetting(WaveLoaded) || sample == nullptr) {
         showImportant("No audio file loaded.");
-		return;
-	}
+        return;
+    }
 
     if (!isMulti && invokerIsDialog) {
         getObj(MidiKeyboard).setAuditionKey(sample->fundNote);
-		getObj(MorphPanel).setKeyValueForNote(sample->fundNote);
-	}
+        getObj(MorphPanel).setKeyValueForNote(sample->fundNote);
+    }
 
-	EnvRasterizer& pitchRast = getObj(EnvPitchRast);
+    EnvRasterizer& pitchRast = getObj(EnvPitchRast);
 
-	sample->createEnvFromPeriods(isMulti);
-	sample->createPeriodsFromEnv(static_cast<MeshRasterizer*>(&pitchRast));
+    sample->createEnvFromPeriods(isMulti);
+    sample->createPeriodsFromEnv(static_cast<MeshRasterizer*>(&pitchRast));
 }
 
 
 void SampleUtils::shiftWaveNoteOctave(bool up) {
     multisample->shiftAllByOctave(up);
 
-	getObj(Updater).update(UpdateSources::SourceMorph);
+    getObj(Updater).update(UpdateSources::SourceMorph);
 }
 
 void SampleUtils::updateMidiNoteNumber(int note) {
     if (!getSetting(WaveLoaded)) {
-	    return;
+        return;
     }
 
     double period = 44100.0 / NumberUtils::noteToFrequency(note, 0);
 
     if (PitchedSample* sample = multisample->getCurrentSample()) {
         vector<PitchFrame>& frames = sample->periods;
-		frames.clear();
+        frames.clear();
 
-		float increment = sample->size() * 0.01f;
-		float cume = 0;
+        float increment = sample->size() * 0.01f;
+        float cume = 0;
 
-		for(int i = 0; i < 100; ++i) {
-			PitchFrame frame;
-			frame.sampleOffset 	= roundToInt(cume);
-			frame.period 		= period;
+        for(int i = 0; i < 100; ++i) {
+            PitchFrame frame;
+            frame.sampleOffset 	= roundToInt(cume);
+            frame.period 		= period;
 
-			frames.push_back(frame);
-			cume += increment;
-		}
+            frames.push_back(frame);
+            cume += increment;
+        }
 
-		sample->fundNote = note;
-		tracker->setSample(sample);
-		tracker->refineFrames(sample, period);
+        sample->fundNote = note;
+        tracker->setSample(sample);
+        tracker->refineFrames(sample, period);
 
-		waveNoteChanged(sample, false, false);
+        waveNoteChanged(sample, false, false);
 
-		getObj(Updater).update(UpdateSources::SourceMorph);
-	}
+        getObj(Updater).update(UpdateSources::SourceMorph);
+    }
 }
 
 void SampleUtils::unloadWav() {
     audioRepo->setAudioProcessor(AudioSourceRepo::SynthSource);
 
-	multisample->clear();
+    multisample->clear();
 }
 
 void SampleUtils::resetWavOffset() {
@@ -255,20 +254,20 @@ void SampleUtils::waveOverlayChanged(bool shouldDrawWave) {
         audioRepo->setAudioProcessor(AudioSourceRepo::WavSource);
 
         if (PitchedSample* sample = multisample->getCurrentSample()) {
-	        getObj(MidiKeyboard).setAuditionKey(sample->fundNote);
+            getObj(MidiKeyboard).setAuditionKey(sample->fundNote);
         }
     } else {
         audioRepo->getWavAudioSource()->allNotesOff();
         audioRepo->setAudioProcessor(AudioSourceRepo::SynthSource);
-	}
+    }
 
     if (Util::assignAndWereDifferent(getSetting(DrawWave), shouldDrawWave)) {
         getObj(SpectrumInter2D).setClosestHarmonic(0);
-		getObj(EnvelopeInter2D).waveOverlayChanged();
+        getObj(EnvelopeInter2D).waveOverlayChanged();
 
-		if(shouldDrawWave) {
-			showImportant(getObj(Directories).getLoadedWavePath());
-		}
+        if(shouldDrawWave) {
+            showImportant(getObj(Directories).getLoadedWavePath());
+        }
 
         if (getSetting(DrawWave) && getSetting(WaveLoaded)) {
             if (getSetting(ViewStage) < ViewStages::PostEnvelopes) {
@@ -281,9 +280,9 @@ void SampleUtils::waveOverlayChanged(bool shouldDrawWave) {
         }
 
         getObj(GeneralControls).updateHighlights();
-		int numCols = getObj(Waveform3D).getWindowWidthPixels();
-		getObj(VisualDsp).rasterizeEnv(LayerGroups::GroupPitch, numCols);
-	}
+        int numCols = getObj(Waveform3D).getWindowWidthPixels();
+        getObj(VisualDsp).rasterizeEnv(LayerGroups::GroupPitch, numCols);
+    }
 }
 
 float SampleUtils::getWavLengthSeconds() {

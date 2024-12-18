@@ -122,8 +122,8 @@ void GraphicSynthVoice::calcCycle(VoiceParameterGroup& group) {
 
         currentAngle += groups[0].angleDelta;
 
-		float columnAVal = (1 - sampleRem) * (*columns)[columnIndexA][sampIndex] + sampleRem * (*columns)[columnIndexA][nextSampIndex];
-		float columnBVal = (1 - sampleRem) * (*columns)[columnIndexB][sampIndex] + sampleRem * (*columns)[columnIndexB][nextSampIndex];
+        float columnAVal = (1 - sampleRem) * (*columns)[columnIndexA][sampIndex] + sampleRem * (*columns)[columnIndexA][nextSampIndex];
+        float columnBVal = (1 - sampleRem) * (*columns)[columnIndexB][sampIndex] + sampleRem * (*columns)[columnIndexB][nextSampIndex];
 
         columnProgress = i / float(samplesThisCycle);
         layerAccumBuffer[Left][i] = (1 - columnProgress) * columnAVal + columnProgress * columnBVal;

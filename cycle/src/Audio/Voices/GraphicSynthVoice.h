@@ -14,49 +14,49 @@ class Column;
 using std::vector;
 
 class GraphicSynthSound :
-	public SynthesiserSound
+    public SynthesiserSound
 {
 public:
-	bool appliesToNote(int midiNoteNumber) override { return true; }
-	bool appliesToChannel(int midiChannel) override { return true; }
+    bool appliesToNote(int midiNoteNumber) override { return true; }
+    bool appliesToChannel(int midiChannel) override { return true; }
 };
 
 class GraphicSynthVoice :
-	public SynthesiserVoice,
-	public CycleBasedVoice
+    public SynthesiserVoice,
+    public CycleBasedVoice
 {
 
 public:
-	explicit GraphicSynthVoice(SingletonRepo* repo);
+    explicit GraphicSynthVoice(SingletonRepo* repo);
 
-	void startNote(int midiNoteNumber,
-				   float velocity,
-				   SynthesiserSound* sound,
-				   int currentPitchWheelPosition) override;
+    void startNote(int midiNoteNumber,
+                   float velocity,
+                   SynthesiserSound* sound,
+                   int currentPitchWheelPosition) override;
 
-	void stop(bool allowTailoff) {
-		stopNote(1.f, allowTailoff);
-	}
+    void stop(bool allowTailoff) {
+        stopNote(1.f, allowTailoff);
+    }
 
-	void stopNote(float velocity, bool allowTailOff) override;
-	bool canPlaySound(SynthesiserSound* sound) override;
+    void stopNote(float velocity, bool allowTailOff) override;
+    bool canPlaySound(SynthesiserSound* sound) override;
 
-	void aftertouchChanged (int newValue) override {}
-	void pitchWheelMoved(int newValue) override;
-	void controllerMoved(int controllerNumber, int newValue) override;
-	void renderNextBlock(AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override;
-	void calcCycle(VoiceParameterGroup& group) override;
+    void aftertouchChanged (int newValue) override {}
+    void pitchWheelMoved(int newValue) override;
+    void controllerMoved(int controllerNumber, int newValue) override;
+    void renderNextBlock(AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override;
+    void calcCycle(VoiceParameterGroup& group) override;
 
-	void incrementCurrentX();
-	void updateCycleVariables(int groupIndex, int numSamples);
+    void incrementCurrentX();
+    void updateCycleVariables(int groupIndex, int numSamples);
 
 private:
-	const vector<Column>* columns;
+    const vector<Column>* columns;
 
-	StereoBuffer renderBuffer;
-	ScopedAlloc<Ipp32f> leftMemory, rightMemory;
+    StereoBuffer renderBuffer;
+    ScopedAlloc<Ipp32f> leftMemory, rightMemory;
 
-	bool playing;
-	float increment;
-	double currentAngle;
+    bool playing;
+    float increment;
+    double currentAngle;
 };

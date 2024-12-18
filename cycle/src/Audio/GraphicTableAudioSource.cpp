@@ -17,8 +17,9 @@ GraphicTableAudioSource::GraphicTableAudioSource(SingletonRepo* repo) : Singleto
 void GraphicTableAudioSource::initVoices() {
     synth.addSound(new GraphicSynthSound());
 
-    for (int i = 0; i < numTableVoices; ++i)
+    for (int i = 0; i < numTableVoices; ++i) {
         synth.addVoice(new GraphicSynthVoice(repo));
+    }
 }
 
 void GraphicTableAudioSource::releaseResources() {

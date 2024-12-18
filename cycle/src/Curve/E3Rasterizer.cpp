@@ -12,13 +12,13 @@
 #include "../UI/VisualDsp.h"
 
 E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
-		SingletonAccessor(repo, "E3Rasterizer")
-	,	MeshRasterizer("E3Rasterizer") {
-	lowResCurves 	= true;
-	cyclic 			= false;
-	calcDepthDims 	= false;
-	scalingType		= HalfBipolar;
-	xMaximum 		= 10.f;
+        SingletonAccessor(repo, "E3Rasterizer")
+    ,	MeshRasterizer("E3Rasterizer") {
+    lowResCurves 	= true;
+    cyclic 			= false;
+    calcDepthDims 	= false;
+    scalingType		= HalfBipolar;
+    xMaximum 		= 10.f;
 }
 
 void E3Rasterizer::init() {
@@ -32,53 +32,53 @@ float& E3Rasterizer::getPrimaryDimensionVar() {
     int dim = getSetting(CurrentMorphAxis);
     jassert(dim != Vertex::Time);
 
-	return morph[dim];
+    return morph[dim];
 }
 
 void E3Rasterizer::performUpdate(int updateType) {
     if (updateType != Update) {
-	    return;
+        return;
     }
 
     int increment = getIncrement();
     int numPixels = getObj(Waveform3D).getWindowWidthPixels();
     int gridSize = numPixels / increment;
 
-	float& indie = getPrimaryDimensionVar();
+    float& indie = getPrimaryDimensionVar();
 
     if (numPixels <= 0) {
         ScopedLock sl(arrayLock);
-		columnArray.clear();
-		columns.clear();
+        columnArray.clear();
+        columns.clear();
 
-		return;
-	}
+        return;
+    }
 
-	ScopedAlloc<Ipp32f> zoomProgress(gridSize);
-	zoomProgress.ramp();
+    ScopedAlloc<Ipp32f> zoomProgress(gridSize);
+    zoomProgress.ramp();
 
-	int res = CycleConstants::EnvResolution;
-	float invCol = 1 / float(res);
-	float invGrid = 1 / float(gridSize - 1);
+    int res = CycleConstants::EnvResolution;
+    float invCol = 1 / float(res);
+    float invGrid = 1 / float(gridSize - 1);
 
-	ResizeParams params(gridSize, &columnArray, &columns, nullptr, nullptr, nullptr, nullptr, nullptr);
-	params.setExtraParams(res, -1, -1, true);
+    ResizeParams params(gridSize, &columnArray, &columns, nullptr, nullptr, nullptr, nullptr, nullptr);
+    params.setExtraParams(res, -1, -1, true);
 
-	ScopedLock sl(arrayLock);
-	mesh = getObj(MeshLibrary).getCurrentMesh(getObj(EnvelopeInter2D).layerType);
-	getObj(VisualDsp).resizeArrays(params);
+    ScopedLock sl(arrayLock);
+    mesh = getObj(MeshLibrary).getCurrentMesh(getObj(EnvelopeInter2D).layerType);
+    getObj(VisualDsp).resizeArrays(params);
 
     for (int colIdx = 0; colIdx < gridSize; ++colIdx) {
         Column& col = columns[colIdx];
 
-		indie = colIdx * invGrid;
-		calcCrossPoints(mesh);
+        indie = colIdx * invGrid;
+        calcCrossPoints(mesh);
 
-		if (isSampleable()) {
-			sampleWithInterval(col, invCol, 0.f);
-		}
-		else {
-			col.zero();
-		}
-	}
+        if (isSampleable()) {
+            sampleWithInterval(col, invCol, 0.f);
+        }
+        else {
+            col.zero();
+        }
+    }
 }

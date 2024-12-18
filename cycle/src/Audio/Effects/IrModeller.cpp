@@ -29,9 +29,8 @@ IrModeller::IrModeller(SingletonRepo *repo) :
     ,   blockSizeAction(blockSize)
     ,   prefiltAction(prefilterChg)
     ,   rasterizeAction(rasterize)
-    ,   audioThdRasterizer("ImpulseRasterizerAudioThd")
-    ,   oversampler(repo, 8)
-    ,   wavImpulse(repo) {
+    ,   audioThdRasterizer(repo, "ImpulseRasterizerAudioThd")
+    ,   oversampler(repo, 8) {
     setConvBufferSize(convBufferSize);
     audioThdRasterizer.setScalingMode(MeshRasterizer::Bipolar);
 
@@ -76,7 +75,7 @@ void IrModeller::doPostDeconvolve(int size) {
 }
 
 void IrModeller::trimWave() {
-    int size = wavImpulse.buffer.getNumSamples();
+    int size = wavImpulse.audio.size();
 
     if (size < 64)
         return;
@@ -87,14 +86,15 @@ void IrModeller::trimWave() {
 
     int threshIdx = size - 1;
 
-    Buffer<float> channel(wavImpulse.buffer, 0);
+    Buffer<float> channel = wavImpulse.audio.left;
 
     for (int i = 0; i < size; ++i) {
         threshIdx = size - i - 1;
         movingAverage = 0.95f * movingAverage + 0.05f * fabsf(channel[threshIdx]);
 
-        if (movingAverage > trimThres)
+        if (movingAverage > trimThres) {
             break;
+        }
     }
 
     if (threshIdx == 0)
@@ -104,16 +104,17 @@ void IrModeller::trimWave() {
     NumberUtils::constrain(newSize, 64, 16384);
     int diff = size - newSize;
 
-    if (diff > 0)
-        wavImpulse.buffer.setSize(wavImpulse.buffer.getNumChannels(), newSize, true, true);
+    if (diff > 0) {
+        wavImpulse.audio.left.resize(newSize);
+        wavImpulse.audio.right.resize(newSize);
+    }
 }
 
 void IrModeller::rasterizeImpulseDirect() {
     rasterizeImpulse(audio.rawImpulse, audioThdRasterizer, true);
     filterImpulse(audio);
 
-    for (int i = 0; i < 2; ++i) {
-        ::BlockConvolver &conv = convolvers[i];
+    for (auto & conv : convolvers) {
         conv.init(conv.getBlockSize(), audio.impulse);
     }
 }
@@ -125,10 +126,10 @@ void IrModeller::rasterizeGraphicImpulse() {
         return;
 
     if (usingWavFile) {
-        int wavSize = wavImpulse.buffer.getNumSamples();
+        int wavSize = wavImpulse.audio.size();
         int maxSamples = jmin(wavSize, impulse.size());
 
-        Buffer<float> channel(wavImpulse.buffer, 0);
+        Buffer<float> channel = wavImpulse.audio.left;
         channel.copyTo(impulse);
 
         if (maxSamples < impulse.size())
@@ -172,7 +173,7 @@ void IrModeller::rasterizeImpulse(Buffer<float> impulse, FXRasterizer &rast, boo
             return;
         }
 
-        rast.performUpdate(UpdateType::Update);
+        rast.performUpdate(Update);
 
         double delta = (1.f - getRealConstant(IrModellerPadding)) / double(impulse.size() - 1);
         double phase = getRealConstant(IrModellerPadding);
@@ -195,7 +196,7 @@ void IrModeller::rasterizeImpulse(Buffer<float> impulse, FXRasterizer &rast, boo
 
 //		sum = impulse.sum();
     } else {
-        Buffer<float> wavBuff(wavImpulse.buffer, 0);
+        Buffer<float> wavBuff = wavImpulse.audio.left;
         int maxSamples = jmin(wavBuff.size(), impulse.size());
 
         wavBuff.copyTo(impulse);
@@ -402,8 +403,8 @@ void IrModeller::setAudioBlockSize(int size) {
         output.left = outputMem.place(size);
         output.right = outputMem.place(size);
 
-        for (int i = 0; i < 2; ++i)
-            convolvers[i].init(size, audio.impulse);
+        for (auto & convolver : convolvers)
+            convolver.init(size, audio.impulse);
 
         /*
         if(convBufferSize > 0)

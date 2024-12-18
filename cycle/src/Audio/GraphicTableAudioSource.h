@@ -6,23 +6,23 @@
 #include "Effects/AudioEffect.h"
 
 class GraphicTableAudioSource :
-		public AudioSourceProcessor
-	,	public SingletonAccessor
+        public AudioSourceProcessor
+    ,	public SingletonAccessor
 {
 private:
-	Effect* delay;
-	Effect* reverb;
+    Effect* delay;
+    Effect* reverb;
 
-	enum { numTableVoices = 1 };
+    enum { numTableVoices = 1 };
 
 public:
-	explicit GraphicTableAudioSource(SingletonRepo* repo);
-	GraphicTableAudioSource(const GraphicTableAudioSource& GraphicTableAudioSource);
+    explicit GraphicTableAudioSource(SingletonRepo* repo);
+    GraphicTableAudioSource(const GraphicTableAudioSource& GraphicTableAudioSource);
 
-	Synthesiser synth;
+    Synthesiser synth;
 
-	void initVoices();
-	void releaseResources() override;
-	void prepareToPlay(int samplesPerBlockExpected, double sampleRate) override;
-	void processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages) override;
+    void initVoices();
+    void releaseResources() override;
+    void prepareToPlay(int samplesPerBlockExpected, double sampleRate) override;
+    void processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages) override;
 };

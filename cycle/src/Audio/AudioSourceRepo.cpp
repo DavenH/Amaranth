@@ -21,42 +21,38 @@
 
 
 AudioSourceRepo::AudioSourceRepo(SingletonRepo* repo) :
-		SingletonAccessor(repo, "AudioSourceRepo") {
-	getObj(AudioHub).addListener(this);
-}
-
-
-AudioSourceRepo::~AudioSourceRepo() {
+        SingletonAccessor(repo, "AudioSourceRepo") {
+    getObj(AudioHub).addListener(this);
 }
 
 void AudioSourceRepo::init() {
-	synthSource = &getObj(SynthAudioSource);
-	audioHub 	= &getObj(AudioHub);
-	wavSource 	= new WavAudioSource(repo);
+    synthSource = &getObj(SynthAudioSource);
+    audioHub 	= &getObj(AudioHub);
+    wavSource 	= new WavAudioSource(repo);
 }
 
 
 void AudioSourceRepo::setAudioProcessor(AudioSourceEnum source) {
     AudioSourceProcessor* proc = audioHub->getAudioSourceProcessor();
-	std::unique_ptr<ScopedLock> sl;
+    std::unique_ptr<ScopedLock> sl;
 
-	if(proc != nullptr)
-		sl = new ScopedLock(proc->getLock());
+    if(proc != nullptr)
+        sl = std::make_unique<ScopedLock>(proc->getLock());
 
     switch (source) {
         case WavSource: {
-			audioHub->setAudioSourceProcessor(wavSource);
-			wavSource->reset();
-			break;
-		}
+            audioHub->setAudioSourceProcessor(wavSource.get());
+            wavSource->reset();
+            break;
+        }
         case SynthSource: {
-			audioHub->setAudioSourceProcessor(synthSource);
-			synthSource->doAudioThreadUpdates();
-			break;
-		}
-		case NullSource:
-		default:
-			audioHub->setAudioSourceProcessor(nullptr);
-	}
+            audioHub->setAudioSourceProcessor(synthSource);
+            synthSource->doAudioThreadUpdates();
+            break;
+        }
+        case NullSource:
+        default:
+            audioHub->setAudioSourceProcessor(nullptr);
+    }
 }
 

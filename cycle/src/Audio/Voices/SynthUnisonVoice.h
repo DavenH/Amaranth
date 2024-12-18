@@ -6,17 +6,17 @@ class SynthesizerVoice;
 class Unison;
 
 class SynthUnisonVoice :
-	public CycleBasedVoice
+    public CycleBasedVoice
 {
 public:
-	SynthUnisonVoice(SynthesizerVoice* parent, SingletonRepo* repo);
-	~SynthUnisonVoice() override;
+    SynthUnisonVoice(SynthesizerVoice* parent, SingletonRepo* repo);
+    ~SynthUnisonVoice() override;
 
-	void calcCycle(VoiceParameterGroup& group) override;
-	void testMeshConditions();
-	void initialiseNoteExtra(int midiNoteNumber, float velocity) override;
-	void prepNewVoice();
+    void calcCycle(VoiceParameterGroup& group) override;
+    void testMeshConditions();
+    void initialiseNoteExtra(int midiNoteNumber, float velocity) override;
+    void prepNewVoice();
 
 private:
-	float lastPitchSemis;
+    float lastPitchSemis;
 };

@@ -5,31 +5,31 @@
 class EnvRenderContext
 {
 public:
-	EnvRenderContext(const EnvRasterizer& env, int layerIndex) :
-			rast(env)
-		,	scratchTime(0)
-		,	layerIndex(layerIndex)
-		, 	sampleable(false)
-	{
-	}
+    EnvRenderContext(const EnvRasterizer& env, int layerIndex) :
+            rast(env)
+        ,	scratchTime(0)
+        ,	layerIndex(layerIndex)
+        , 	sampleable(false)
+    {
+    }
 
-	bool sampleable;
-	int layerIndex;
-	float scratchTime;
+    bool sampleable;
+    int layerIndex;
+    float scratchTime;
 
-	EnvRasterizer rast;
-	Buffer<float> rendBuffer;
+    EnvRasterizer rast;
+    Buffer<float> rendBuffer;
 };
 
 struct EnvRastGroup
 {
-	vector<EnvRenderContext> envGroup;
-	int layerGroup;
+    vector<EnvRenderContext> envGroup;
+    int layerGroup;
 
-	int size() { return (int) envGroup.size(); }
-	EnvRenderContext& operator[] (const int index) { return envGroup[index]; }
+    int size() { return (int) envGroup.size(); }
+    EnvRenderContext& operator[] (const int index) { return envGroup[index]; }
 
-	explicit EnvRastGroup(int layerGroup) : layerGroup(layerGroup) {}
+    explicit EnvRastGroup(int layerGroup) : layerGroup(layerGroup) {}
 };
 
 typedef vector<EnvRenderContext>::iterator RenderIter;

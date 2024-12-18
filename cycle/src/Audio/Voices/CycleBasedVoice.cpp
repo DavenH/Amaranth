@@ -9,6 +9,7 @@
 #include "CycleBasedVoice.h"
 
 #include <climits>
+#include <Util/StatusChecker.h>
 
 #include "SynthesizerVoice.h"
 #include "Algo/Resampling.h"
@@ -363,58 +364,58 @@ void CycleBasedVoice::renderOverlappedCycles(int numSamples) {
 
 while(futureFrame.frontier < last)
 {
-	bool isSaturated = singleFrame ?
-			midFrame.cycleCount == futureFrame.cycleCount :
-			midFrame.cumePos >= futureFrame.cumePos;
+    bool isSaturated = singleFrame ?
+            midFrame.cycleCount == futureFrame.cycleCount :
+            midFrame.cumePos >= futureFrame.cumePos;
 
-	if(isSaturated || futureFrame.cycleCount < 0)
-	{
-		futureFrame.period = 1 / getAngle(x, 0);
+    if(isSaturated || futureFrame.cycleCount < 0)
+    {
+        futureFrame.period = 1 / getAngle(x, 0);
 
-		long pastPos = futureFrame.cumePos;
+        long pastPos = futureFrame.cumePos;
 
-		if(futureFrame.cycleCount > 0)
-			futureFrame.cumePos += futureFrame.period * stride;
+        if(futureFrame.cycleCount > 0)
+            futureFrame.cumePos += futureFrame.period * stride;
 
-		long samplesAdvanced = (long) futureFrame.cumePos - pastPos;
+        long samplesAdvanced = (long) futureFrame.cumePos - pastPos;
 
-		x = jmin(1., futureFrame.cumePos / 44100.0);
+        x = jmin(1., futureFrame.cumePos / 44100.0);
 
-		dout 	<< "refreshing, " << futureFrame.cumePos << ", " << x << ", "
-				<< futureFrame.cycleCount << ", " << samplesAdvanced << "\n";
+        dout 	<< "refreshing, " << futureFrame.cumePos << ", " << x << ", "
+                << futureFrame.cycleCount << ", " << samplesAdvanced << "\n";
 
-		refresh();
+        refresh();
 
-		futureFrame.cycleCount += stride;
-		futureFrame.frontier 	= (long) futureFrame.cumePos;
-	}
+        futureFrame.cycleCount += stride;
+        futureFrame.frontier 	= (long) futureFrame.cumePos;
+    }
 
-	for(int i = 0; i < unisonCount; ++i)
-	{
-		RenderFrame& frame = frames[i];
+    for(int i = 0; i < unisonCount; ++i)
+    {
+        RenderFrame& frame = frames[i];
 
-		bool condition = singleFrame ? frame.cycleCount < futureFrame.cycleCount :
-									   frame.cumePos < futureFrame.cumePos;
+        bool condition = singleFrame ? frame.cycleCount < futureFrame.cycleCount :
+                                       frame.cumePos < futureFrame.cumePos;
 
-		while(condition && frame.frontier < last)
-		{
-			int rem 		= frame.cycleCount % stride;
-			float portion 	= singleFrame ? rem / float(stride) :
-							  1 - (futureFrame.cumePos - frame.cumePos) / float(stride * futureFrame.period);
+        while(condition && frame.frontier < last)
+        {
+            int rem 		= frame.cycleCount % stride;
+            float portion 	= singleFrame ? rem / float(stride) :
+                              1 - (futureFrame.cumePos - frame.cumePos) / float(stride * futureFrame.period);
 
-			frame.period	= 1 / getAngle(x, 2 - i);
-			frame.cumePos  += frame.period;
-			frame.frontier 	= (long) frame.cumePos;
+            frame.period	= 1 / getAngle(x, 2 - i);
+            frame.cumePos  += frame.period;
+            frame.frontier 	= (long) frame.cumePos;
 
-			dout << "cycle: " << i << ", " << portion << ", " << frame.cumePos << ", " << frame.frontier << "\n";
+            dout << "cycle: " << i << ", " << portion << ", " << frame.cumePos << ", " << frame.frontier << "\n";
 
-			++frame.cycleCount;
+            ++frame.cycleCount;
 
-			combine();
-		}
-	}
+            combine();
+        }
+    }
 
-	futureFrame.frontier = midFrame.frontier;
+    futureFrame.frontier = midFrame.frontier;
 }
 */
 
@@ -764,9 +765,9 @@ void CycleBasedVoice::testIfOversamplingChanged() {
     int factor = -1;
 
 #if PLUGIN_MODE
-	PluginProcessor& proc = getObj(PluginProcessor);
+    PluginProcessor& proc = getObj(PluginProcessor);
 
-	factor = (proc.isNonRealtime()) ? getDocSetting(OversampleFactorRend) : getDocSetting(OversampleFactorRltm);
+    factor = (proc.isNonRealtime()) ? getDocSetting(OversampleFactorRend) : getDocSetting(OversampleFactorRltm);
 #else
     factor = getDocSetting(OversampleFactorRltm);
 #endif

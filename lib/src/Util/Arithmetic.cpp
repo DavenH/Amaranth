@@ -4,13 +4,13 @@
 #include <ippdefs.h>
 
 void Arithmetic::applyLogMapping(Buffer<Ipp32f> array, float tension) {
-    float iln = 1 / logf(IPP_2PI * tension + 1.000001f);
+    float iln = 1 / logf(MathConstants<float>::twoPi * tension + 1.000001f);
 
-    array.mul(tension * IPP_2PI).add(1.000001).ln().mul(iln);
+    array.mul(tension * MathConstants<float>::twoPi).add(1.000001).ln().mul(iln);
 }
 
 void Arithmetic::applyInvLogMapping(Buffer<Ipp32f> array, float tension) {
-    float lntens = logf(IPP_2PI * tension + 1.000001f);
+    float lntens = logf(MathConstants<float>::twoPi * tension + 1.000001f);
 
     array.mul(lntens).exp().add(-1.000001).mul(IPP_RPI * 0.5f / float(tension));
 }

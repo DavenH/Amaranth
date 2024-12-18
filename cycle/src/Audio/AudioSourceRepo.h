@@ -10,26 +10,26 @@ class SynthAudioSource;
 class GraphicTableAudioSource;
 
 class AudioSourceRepo:
-		public SingletonAccessor
-	,	public AudioHub::SettingListener
+        public SingletonAccessor
+    ,	public AudioHub::SettingListener
 {
 public:
-	enum AudioSourceEnum { WavSource, SynthSource, TableSource, NullSource };
+    enum AudioSourceEnum { WavSource, SynthSource, TableSource, NullSource };
 
-	void init() override;
+    void init() override;
 
-	~AudioSourceRepo() override;
-	explicit AudioSourceRepo(SingletonRepo* repo);
+    ~AudioSourceRepo() override = default;
+    explicit AudioSourceRepo(SingletonRepo* repo);
 
-	Ref<GraphicTableAudioSource> getTableAudioSource() 	{ return tableSource.get(); }
-	Ref<WavAudioSource> getWavAudioSource()				{ return wavSource.get(); }
+    [[nodiscard]] Ref<GraphicTableAudioSource> getTableAudioSource() const { return tableSource.get(); }
+    [[nodiscard]] Ref<WavAudioSource> getWavAudioSource() const { return wavSource.get(); }
 
-	void setAudioProcessor(AudioSourceEnum source);
+    void setAudioProcessor(AudioSourceEnum source);
 
 private:
-	Ref<AudioHub> audioHub;
-	Ref<SynthAudioSource> synthSource;
+    Ref<AudioHub> audioHub;
+    Ref<SynthAudioSource> synthSource;
 
-	std::unique_ptr<GraphicTableAudioSource> tableSource;
-	std::unique_ptr<WavAudioSource> wavSource;
+    std::unique_ptr<GraphicTableAudioSource> tableSource;
+    std::unique_ptr<WavAudioSource> wavSource;
 };

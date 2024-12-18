@@ -97,7 +97,7 @@ void SynthesizerVoice::startNote(const int midiNoteNumber,
     attackSamplePos = 0;
     releaseSamplePos = 0;
 
-    OscControlPanel& oscPanel = getObj(OscControlPanel);
+    auto& oscPanel = getObj(OscControlPanel);
 
     speedScale = 1. / oscPanel.getLengthInSeconds();
     float key = normalizeKey(adjustedMidiNote);
@@ -114,8 +114,9 @@ void SynthesizerVoice::startNote(const int midiNoteNumber,
 
     testMeshConditions();
 
-    if (adjustedMidiNote < 0)
+    if (adjustedMidiNote < 0) {
         return;
+    }
 
     currentVoice->initialiseNote(adjustedMidiNote, velocity);
     currentLatencySamples = getCurrentOscillatorLatency();
@@ -308,7 +309,7 @@ int SynthesizerVoice::getCurrentOscillatorLatency() {
     bool isRealtime = true;
 
 #if PLUGIN_MODE
-	isRealtime = ! repo->getPluginProcessor().isNonRealtime();
+    isRealtime = ! repo->getPluginProcessor().isNonRealtime();
 #endif
 
     if (isRealtime && getDocSetting(OversampleFactorRend) > 1 ||
