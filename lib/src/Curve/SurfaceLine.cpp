@@ -4,7 +4,7 @@
 #include "../Util/Arithmetic.h"
 
 SurfaceLine::SurfaceLine(Vertex* v1, Vertex* v2, int axis) :
-	one(v1), two(v2), varyingAxis(axis), product(1) {
+    one(v1), two(v2), varyingAxis(axis), product(1) {
 }
 
 float SurfaceLine::at(float x) {
@@ -13,14 +13,14 @@ float SurfaceLine::at(float x) {
 
 float SurfaceLine::atProgress(int dim, float percent) {
     float xMax = jmax(one->values[dim], two->values[dim]);
-	float xMin = jmin(one->values[dim], two->values[dim]);
-	return at(dim, (xMax - xMin) * percent + xMin);
+    float xMin = jmin(one->values[dim], two->values[dim]);
+    return at(dim, (xMax - xMin) * percent + xMin);
 }
 
 float SurfaceLine::at(int dim, float x) {
-	return one->values[dim]
-			+ (x - one->values[varyingAxis]) * (two->values[dim] - one->values[dim])
-				/ (two->values[varyingAxis] - one->values[varyingAxis]);
+    return one->values[dim]
+            + (x - one->values[varyingAxis]) * (two->values[dim] - one->values[dim])
+                / (two->values[varyingAxis] - one->values[varyingAxis]);
 }
 
 float SurfaceLine::yAt(float y) {
@@ -29,15 +29,15 @@ float SurfaceLine::yAt(float y) {
 
 float SurfaceLine::yAt(int dim, float y) {
     return one->values[varyingAxis]
-			+ (y - one->values[dim]) * (two->values[varyingAxis] - one->values[varyingAxis])
-				/ (two->values[dim] - one->values[dim]);
+            + (y - one->values[dim]) * (two->values[varyingAxis] - one->values[varyingAxis])
+                / (two->values[dim] - one->values[dim]);
 }
 
 bool SurfaceLine::overlaps(float x, int dim) const {
-	if(one->values[dim] < two->values[dim])
-		return one->values[dim] <= x && two->values[dim] >= x;
-	else
-		return two->values[dim] <= x && one->values[dim] >= x;
+    if(one->values[dim] < two->values[dim])
+        return one->values[dim] <= x && two->values[dim] >= x;
+    else
+        return two->values[dim] <= x && one->values[dim] >= x;
 }
 
 

@@ -12,20 +12,20 @@
 using std::vector;
 
 Console::Console(SingletonRepo* repo) :
-		IConsole(repo)
-	,	firstCallback	(true)
-	,	fading			(false)
-	,	opacity			(1.f)
-	,	currentPriority	(10) {
-	mouseparts = PNGImageFormat::loadFrom(CycleImages::mouseparts2_png, CycleImages::mouseparts2_pngSize);
+        IConsole(repo)
+    ,	firstCallback	(true)
+    ,	fading			(false)
+    ,	opacity			(1.f)
+    ,	currentPriority	(10) {
+    mouseparts = PNGImageFormat::loadFrom(CycleImages::mouseparts2_png, CycleImages::mouseparts2_pngSize);
 }
 
 void Console::init() {
-#if PLUGIN_MODE
+  #if PLUGIN_MODE
     pullout = &getObj(ResizerPullout);
 
     addAndMakeVisible(pullout);
-#endif
+  #endif
 }
 
 void Console::timerCallback() {
@@ -42,30 +42,30 @@ void Console::timerCallback() {
         if (opacity < 0.1f)
             fading = false;
     } else {
-		const DocumentDetails& deets = getObj(Document).getDetails();
+        const DocumentDetails& deets = getObj(Document).getDetails();
 
-		text 			= deets.getName();
-		keys			= "by " + deets.getAuthor();
-		currentPriority = 10;
-		opacity 		= 1.f;
-	}
+        text 			= deets.getName();
+        keys			= "by " + deets.getAuthor();
+        currentPriority = 10;
+        opacity 		= 1.f;
+    }
 
-	repaint();
+    repaint();
 }
 
 void Console::paint(Graphics& g) {
     g.setFont(FontOptions(15));
-	g.setColour(Colour::greyLevel(0.09f));
-	g.fillAll();
+    g.setColour(Colour::greyLevel(0.09f));
+    g.fillAll();
 
-	for(int i = 0; i < getWidth() / 2 + 1; ++i)
-		g.drawVerticalLine(i * 2, 0, getHeight());
+    for(int i = 0; i < getWidth() / 2 + 1; ++i)
+        g.drawVerticalLine(i * 2, 0, getHeight());
 
-	int width = getWidth();
+    int width = getWidth();
 
   #if PLUGIN_MODE
-	width -= 28;
-#endif
+    width -= 28;
+  #endif
 
     g.setColour(Colour(1.f, 0.f, 0.8f, opacity));
     g.drawFittedText(text, 5, 0, width - 120, getHeight(), Justification::centredLeft, 1);
@@ -80,78 +80,79 @@ void Console::paint(Graphics& g) {
     g.setOpacity(0.3f);
 
     if (usage.left)
-	    g.drawImage(mouseparts, width - 31, -1, 11, 25, 37, 0, 11, 25, false);
+        g.drawImage(mouseparts, width - 31, -1, 11, 25, 37, 0, 11, 25, false);
 
     if (usage.scroll) {
-	    g.drawImage(mouseparts, width - 20, 0, 6, 6, 48, 0, 6, 6, false);
-	    g.drawImage(mouseparts, width - 20, 15, 6, 6, 48, 15, 6, 6, false);
+        g.drawImage(mouseparts, width - 20, 0, 6, 6, 48, 0, 6, 6, false);
+        g.drawImage(mouseparts, width - 20, 15, 6, 6, 48, 15, 6, 6, false);
     }
 
     if (usage.middle) {
-	    g.drawImage(mouseparts, width - 20,  7, 6, 8, 48, 7, 6, 8, false);
-	}
+        g.drawImage(mouseparts, width - 20,  7, 6, 8, 48, 7, 6, 8, false);
+    }
 
-	if(usage.right) {
-		g.drawImage(mouseparts, width - 14, -1, 11, 25, 54, 0, 11, 25, false);
-	}
+    if(usage.right) {
+        g.drawImage(mouseparts, width - 14, -1, 11, 25, 54, 0, 11, 25, false);
+    }
 }
 
 void Console::write(const String& str, int priority) {
     if (currentPriority > priority) {
-	    currentPriority = priority;
+        currentPriority = priority;
     }
 
     //ignore messages of lower priority than current
     else if (currentPriority != priority) {
-		return;
-	}
+        return;
+    }
 
-	text 			= str;
-	firstCallback 	= true;
-	opacity 		= 1.f;
+    text 			= str;
+    firstCallback 	= true;
+    opacity 		= 1.f;
 
-	stopTimer();
-	startTimer(3000);
-	repaint();
+    stopTimer();
+    startTimer(3000);
+    repaint();
 
     if (priority <= 3) {
         if (this->getPeer()) {
-	        this->getPeer()->performAnyPendingRepaintsNow();
+            this->getPeer()->performAnyPendingRepaintsNow();
         }
-	}
+    }
 }
 
 void Console::setMouseUsage(const MouseUsage& usage) {
-	this->usage = usage;
+    this->usage = usage;
 }
 
 void Console::setMouseUsage(bool left, bool scroll, bool middle, bool right) {
-	this->usage = MouseUsage(left, scroll, middle, right);
+    this->usage = MouseUsage(left, scroll, middle, right);
 }
 
 void Console::setKeys(const String& keys) {
-	this->keys = keys;
+    this->keys = keys;
 }
 
 void Console::reset() {
-	if (currentPriority > DefaultPriority)
-		return;
+    if (currentPriority > DefaultPriority) {
+        return;
+    }
 
-	const DocumentDetails& deets = getObj(Document).getDetails();
+    const DocumentDetails& deets = getObj(Document).getDetails();
 
-	text = deets.getName();
-	keys = "by " + deets.getAuthor();
-	usage = MouseUsage(false, false, false, false);
+    text = deets.getName();
+    keys = "by " + deets.getAuthor();
+    usage = MouseUsage(false, false, false, false);
 
-	write({}, DefaultPriority);
+    write({}, DefaultPriority);
 }
 
 void Console::resized() {
-#if PLUGIN_MODE
+  #if PLUGIN_MODE
     Rectangle<int> bounds = getBounds().withPosition(0, -1);
     bounds.removeFromRight(2);
     pullout->setBounds(bounds.removeFromRight(24));
-#endif
+  #endif
 }
 
 void Console::addPullout() {

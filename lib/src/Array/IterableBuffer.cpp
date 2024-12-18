@@ -5,58 +5,58 @@
 #include "../Audio/PitchedSample.h"
 
 SyncedSampleIterator::SyncedSampleIterator(PitchedSample* wrapper, Buffer<float> pitchBuffer) : wav(wrapper)
-	,	pitchBuffer(pitchBuffer)
-	,	hasReset(false)
-	,	cycle(0)
-	,	realPosition(0) {
-	float average = pitchBuffer.mean();
-	sizePow2 = nextPowerOfTwo(roundToInt(average));
+    ,	pitchBuffer(pitchBuffer)
+    ,	hasReset(false)
+    ,	cycle(0)
+    ,	realPosition(0) {
+    float average = pitchBuffer.mean();
+    sizePow2 = nextPowerOfTwo(roundToInt(average));
 }
 
 bool SyncedSampleIterator::hasNext()
 {
-	return cycle < periods.size();
+    return cycle < periods.size();
 }
 
 void SyncedSampleIterator::reset() {
-	cycle 		 	= 0;
-	realPosition 	= 0;
-	double offset 	= 0;
+    cycle 		 	= 0;
+    realPosition 	= 0;
+    double offset 	= 0;
 
-	int numSamples 	 = wav->audio.size();
+    int numSamples 	 = wav->audio.size();
 
-	periods.clear();
+    periods.clear();
 
-	while(true) {
-		double progress = offset / double(numSamples);
-		double period 	= wav->samplerate / Resampling::lerpC(pitchBuffer, progress);
+    while(true) {
+        double progress = offset / double(numSamples);
+        double period 	= wav->samplerate / Resampling::lerpC(pitchBuffer, progress);
 
-		periods.push_back(period);
-		offset += period;
+        periods.push_back(period);
+        offset += period;
 
-		if((int) offset >= wav->audio.size()) {
-			break;
-		}
-	}
+        if((int) offset >= wav->audio.size()) {
+            break;
+        }
+    }
 
-	hasReset = true;
+    hasReset = true;
 }
 
 Buffer<float> SyncedSampleIterator::getNext() {
-	float position = realPosition / wav->samplerate;
+    float position = realPosition / wav->samplerate;
 
-	int floorOffset	= roundToInt(realPosition);
-	int size		= roundToInt(realPosition + periods[cycle]) - floorOffset;
+    int floorOffset	= roundToInt(realPosition);
+    int size		= roundToInt(realPosition + periods[cycle]) - floorOffset;
 
-	realPosition += periods[cycle++];
+    realPosition += periods[cycle++];
 
-	return wav->audio.left.sectionAtMost(floorOffset, size);
+    return wav->audio.left.sectionAtMost(floorOffset, size);
 }
 
 int SyncedSampleIterator::getTotalSize() {
-	jassert(hasReset);
+    jassert(hasReset);
 
-	return periods.size() * sizePow2;
+    return periods.size() * sizePow2;
 }
 
 BlockIterator::BlockIterator(vector<Column>& columns)
@@ -85,20 +85,20 @@ int BlockIterator::getTotalSize() {
 }
 
 WindowedSampleIterator::WindowedSampleIterator(Buffer<float> buffer, int bufferSize, int overlapFactor) :
-		buffer(buffer)
-	, 	bufferSize(bufferSize)
-	, 	overlapFactor(overlapFactor) {
-	numHarmonics = bufferSize / 2;
-	numColumns 	= overlapFactor * buffer.size() / bufferSize;
+        buffer(buffer)
+    , 	bufferSize(bufferSize)
+    , 	overlapFactor(overlapFactor) {
+    numHarmonics = bufferSize / 2;
+    numColumns 	= overlapFactor * buffer.size() / bufferSize;
 
-	memory.resize(bufferSize * 2);
-	window = memory.place(bufferSize);
-	block = memory.place(bufferSize);
+    memory.resize(bufferSize * 2);
+    window = memory.place(bufferSize);
+    block = memory.place(bufferSize);
 
-	window.ramp();
-	ippsWinHann_32f_I(window, window.size());
+    window.ramp();
+    ippsWinHann_32f_I(window, window.size());
 
-	jassert(overlapFactor > 0);
+    jassert(overlapFactor > 0);
 }
 
 bool WindowedSampleIterator::hasNext() {
@@ -121,7 +121,7 @@ void WindowedSampleIterator::reset() {
 
 int WindowedSampleIterator::getTotalSize() {
     if (buffer.empty()) {
-	    return 0;
+        return 0;
     }
 
     return overlapFactor * buffer.size();

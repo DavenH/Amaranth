@@ -16,68 +16,68 @@ class SingletonRepo;
 class MiscGraphics;
 
 class BoxComp :
-		public Component
-	,	public MouseEventDelegatee
-	,	public Timer {
+        public Component
+    ,	public MouseEventDelegatee
+    ,	public Timer {
 public:
-	vector<Component*> buttons;
+    vector<Component*> buttons;
 
-	BoxComp();
-	~BoxComp() override = default;
-	void paint(Graphics& g) override;
-	void setHorizontal(bool isHorizontal);
-	void mouseEnter(const MouseEvent& e) override;
-	void mouseExit(const MouseEvent& e) override;
-	void addAll(vector<Component*>& _buttons);
+    BoxComp();
+    ~BoxComp() override = default;
+    void paint(Graphics& g) override;
+    void setHorizontal(bool isHorizontal);
+    void mouseEnter(const MouseEvent& e) override;
+    void mouseExit(const MouseEvent& e) override;
+    void addAll(vector<Component*>& _buttons);
 
-	void timerCallback() override;
-	void visibilityChanged() override;
-	void setPulloutComponent(PulloutComponent* pullout);
+    void timerCallback() override;
+    void visibilityChanged() override;
+    void setPulloutComponent(PulloutComponent* pullout);
 
-	void enterDlg() override;
-	void exitDlg() override;
+    void enterDlg() override;
+    void exitDlg() override;
 
-	void setBackgroundOpacity(float opacity) { backgroundOpacity = opacity; }
+    void setBackgroundOpacity(float opacity) { backgroundOpacity = opacity; }
 
 private:
-	bool horz;
-	float backgroundOpacity;
-	Ref<PulloutComponent> pullout;
-	MouseEventDelegator delegator;
+    bool horz;
+    float backgroundOpacity;
+    Ref<PulloutComponent> pullout;
+    MouseEventDelegator delegator;
 
-	JUCE_LEAK_DETECTOR(BoxComp)
+    JUCE_LEAK_DETECTOR(BoxComp)
 };
 
 class PulloutComponent :
-		public IDynamicSizeComponent
-	,	public Component
-	,	public SingletonAccessor {
-	Image img;
-	BoxComp popup;
+        public IDynamicSizeComponent
+    ,	public Component
+    ,	public SingletonAccessor {
+    Image img;
+    BoxComp popup;
 
-	Ref<MiscGraphics> miscGraphics;
-	bool horz;
+    Ref<MiscGraphics> miscGraphics;
+    bool horz;
 
-	JUCE_LEAK_DETECTOR(PulloutComponent)
+    JUCE_LEAK_DETECTOR(PulloutComponent)
 
 public:
-	PulloutComponent(Image image, vector<Component*>& buttons, SingletonRepo* repo, bool horz = true);
-	Image& getImage();
-	void mouseEnter(const MouseEvent& e) override;
-	void mouseExit(const MouseEvent& e) override;
-	void moved() override;
-	void paint(Graphics& g) override;
-	void removeBoxFromDesktop();
-	void removedFromDesktop();
-	void resized() override;
-	void setBackgroundOpacity(float opacity) { popup.setBackgroundOpacity(opacity); }
+    PulloutComponent(Image image, vector<Component*>& buttons, SingletonRepo* repo, bool horz = true);
+    Image& getImage();
+    void mouseEnter(const MouseEvent& e) override;
+    void mouseExit(const MouseEvent& e) override;
+    void moved() override;
+    void paint(Graphics& g) override;
+    void removeBoxFromDesktop();
+    void removedFromDesktop();
+    void resized() override;
+    void setBackgroundOpacity(float opacity) { popup.setBackgroundOpacity(opacity); }
 
-	[[nodiscard]] int getExpandedSize() const override 		{ return 0; }
-	[[nodiscard]] int getCollapsedSize() const override 		{ return 0; }
-	void setBoundsDelegate(int x, int y, int w, int h) override {}
-	Rectangle<int> getBoundsInParentDelegate() const override { return getBounds(); }
-	int getYDelegate() override 				{ return 0; }
-	int getXDelegate() override 				{ return 0; }
-	bool isVisibleDlg() const override 			{ return isVisible(); }
-	void setVisibleDlg(bool isVisible) override { setVisible(isVisible); }
+    [[nodiscard]] int getExpandedSize() const override 		{ return 0; }
+    [[nodiscard]] int getCollapsedSize() const override 		{ return 0; }
+    void setBoundsDelegate(int x, int y, int w, int h) override {}
+    Rectangle<int> getBoundsInParentDelegate() const override { return getBounds(); }
+    int getYDelegate() override 				{ return 0; }
+    int getXDelegate() override 				{ return 0; }
+    bool isVisibleDlg() const override 			{ return isVisible(); }
+    void setVisibleDlg(bool isVisible) override { setVisible(isVisible); }
 };

@@ -10,25 +10,25 @@ class SingletonRepo;
 
 class SingletonAccessor {
 public:
-	virtual ~SingletonAccessor() = default;
+    virtual ~SingletonAccessor() = default;
 
-	SingletonAccessor(SingletonRepo* repo, String name)
-			: initOrder(-1), name(std::move(name)), repo(repo) {
-	}
+    SingletonAccessor(SingletonRepo* repo, String name)
+            : initOrder(-1), name(std::move(name)), repo(repo) {
+    }
 
-	SingletonAccessor& operator=(const SingletonAccessor& other) = default;
+    SingletonAccessor& operator=(const SingletonAccessor& other) = default;
 
-	SingletonAccessor(const SingletonAccessor& client)	{ operator=(client); }
-	SingletonRepo* getSingletonRepo() 					{ return repo;	 }
-	[[nodiscard]] int getInitOrder() const 				{ return initOrder;  }
-	void setInitOrder(int order)						{ initOrder = order; }
-	virtual const String& getName() 					{ return name;		 }
+    SingletonAccessor(const SingletonAccessor& client)	{ operator=(client); }
+    SingletonRepo* getSingletonRepo() 					{ return repo;	 }
+    [[nodiscard]] int getInitOrder() const 				{ return initOrder;  }
+    void setInitOrder(int order)						{ initOrder = order; }
+    virtual const String& getName() 					{ return name;		 }
 
-	virtual void init() {}
-	virtual void reset() {}
+    virtual void init() {}
+    virtual void reset() {}
 
 protected:
-	int initOrder{};
-	String name;
-	Ref<SingletonRepo> repo;
+    int initOrder{};
+    String name;
+    Ref<SingletonRepo> repo;
 };

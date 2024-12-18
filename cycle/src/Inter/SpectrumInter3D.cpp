@@ -22,7 +22,6 @@ SpectrumInter3D::SpectrumInter3D(SingletonRepo* repo) :
 void SpectrumInter3D::init() {
     jassert(selectionClient == nullptr);
 
-
     updateSource = UpdateSources::SourceSpectrum3D;
     layerType = LayerGroups::GroupSpect;
     scratchesTime = true;
@@ -36,7 +35,7 @@ void SpectrumInter3D::init() {
 
     vertsAreWaveApplicable = true;
 
-    selectionClient = new MeshSelectionClient3D(this, repo, &getObj(EditWatcher), &getObj(MeshLibrary));
+    selectionClient = std::make_unique<MeshSelectionClient3D>(this, repo, &getObj(EditWatcher), &getObj(MeshLibrary));
 
     // by this point the rasterizer better be set!
     selectionClient->initialise(this, rasterizer, layerType);
@@ -45,11 +44,9 @@ void SpectrumInter3D::init() {
 void SpectrumInter3D::initSelectionClient() {
 }
 
-
 void SpectrumInter3D::updateSelectionClient() {
     selectionClient->initialise(this, rasterizer, layerType);
 }
-
 
 void SpectrumInter3D::doExtraMouseUp() {
     Interactor3D::doExtraMouseUp();
@@ -57,13 +54,11 @@ void SpectrumInter3D::doExtraMouseUp() {
     getObj(SynthAudioSource).enablementChanged();
 }
 
-
 void SpectrumInter3D::meshSelectionChanged(Mesh* mesh) {
     updateInterceptsWithMesh(mesh);
     display->repaint();
-    getObj(SpectrumInter2D).update((int) UpdateType::Update);
+    getObj(SpectrumInter2D).update(Update);
 }
-
 
 bool SpectrumInter3D::isCurrentMeshActive() {
     int currentGroup = getSetting(MagnitudeDrawMode) == 1 ? LayerGroups::GroupSpect : LayerGroups::GroupPhase;
@@ -71,7 +66,6 @@ bool SpectrumInter3D::isCurrentMeshActive() {
 
     return props != nullptr && props->active;
 }
-
 
 String SpectrumInter3D::getZString(float tableValue, int xIndex) {
     String zString;
@@ -88,7 +82,6 @@ String SpectrumInter3D::getZString(float tableValue, int xIndex) {
     return zString;
 }
 
-
 int SpectrumInter3D::getTableIndexY(float y, int size) {
     float freqTens = size * getRealConstant(FreqTensionScale);
     int yIndex = jmax(0, int(Arithmetic::invLogMapping(freqTens, y, true) * (size - 1)));
@@ -96,30 +89,28 @@ int SpectrumInter3D::getTableIndexY(float y, int size) {
     return yIndex;
 }
 
-
 String SpectrumInter3D::getYString(float yVal, int yIndex, const Column &col, float fundFreq) {
-    if (yIndex < 0)
+    if (yIndex < 0) {
         return String(yVal, 3);
+    }
 
     int harmonicNum = yIndex + 1;
 
     return "#" + String(harmonicNum) + " (" + String(int(fundFreq * harmonicNum)) + "Hz)";
 }
 
-
 void SpectrumInter3D::updateRastDims() {
     rasterizer->setDims(getObj(SpectrumInter2D).dims);
 }
-
 
 Interactor* SpectrumInter3D::getOppositeInteractor() {
     return &getObj(SpectrumInter2D);
 }
 
-
 void SpectrumInter3D::enterClientLock(bool audioThreadApplicable) {
-    if (audioThreadApplicable)
+    if (audioThreadApplicable) {
         getObj(SynthAudioSource).getLock().enter();
+    }
 
     panel->getRenderLock().enter();
 }
@@ -131,7 +122,8 @@ void SpectrumInter3D::meshSelectionFinished() {
 void SpectrumInter3D::exitClientLock(bool audioThreadApplicable) {
     panel->getRenderLock().exit();
 
-    if (audioThreadApplicable)
+    if (audioThreadApplicable) {
         getObj(SynthAudioSource).getLock().exit();
+    }
 }
 

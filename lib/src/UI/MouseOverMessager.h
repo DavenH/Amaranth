@@ -7,19 +7,19 @@
 #include <UI/IConsole.h>
 
 class MouseOverMessager :
-		public MouseListener
-	, 	public SingletonAccessor {
+        public MouseListener
+    , 	public SingletonAccessor {
 public:
 
-	MouseOverMessager(SingletonRepo* repo, const String& message, Component* comp) :
-			SingletonAccessor(repo, "MouseOverMessager"), message(message) {
-		comp->addMouseListener(this, true);
-	}
+    MouseOverMessager(SingletonRepo* repo, const String& message, Component* comp) :
+            SingletonAccessor(repo, "MouseOverMessager"), message(message) {
+        comp->addMouseListener(this, true);
+    }
 
-	void mouseEnter(const MouseEvent& e) {
+    void mouseEnter(const MouseEvent& e) override {
         repo->getConsole().write(message);
     }
 
 
-	String message;
+    String message;
 };

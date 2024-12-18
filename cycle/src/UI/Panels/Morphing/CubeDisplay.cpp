@@ -3,6 +3,9 @@
 #include <Curve/VertCube.h>
 
 #include "CubeDisplay.h"
+
+#include <Definitions.h>
+
 #include "MorphPanel.h"
 #include "Util/CommonEnums.h"
 #include "../../VisualDsp.h"
@@ -196,8 +199,9 @@ void CubeDisplay::update(VertCube* cube, int selectedIdx, int scratchChannel, bo
 	this->lastScratchChannel = scratchChannel;
 
 	if(cube == nullptr)	{
-		for(auto & cubeVert : cubeVerts)
+		for(auto & cubeVert : cubeVerts) {
 			cubeVert = Vertex2(-1, -1);
+		}
 
 		this->selectedIdx = -1;
 	} else {

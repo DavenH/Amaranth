@@ -17,11 +17,10 @@ DelayUI::DelayUI(SingletonRepo* repo, Effect* effect) :
 	paramGroup->addSlider(new Knob(repo, Delay::Wet, "Wet Amount", 0.5f));
 
 	using namespace Ops;
-	StringFunction delayStr(StringFunction(1).chain(Max, 0.15).chain(Pow, 2.0).chain(Mul, 4.0));
-	spinItrKnob->setStringFunction(StringFunction(0).chain(Pow, 2.0).chain(Mul, 12).chain(Flr).chain(Max, 1.0));
+	StringFunction delayStr(StringFunction(1).max(0.15).pow(2.0).mul(4.0));
+	spinItrKnob->setStringFunction(StringFunction(0).pow(2.0).mul(12).flr().max(1.0));
 	timeKnob->setStringFunctions(delayStr, delayStr.withPostString(" beats"));
 }
-
 
 String DelayUI::getKnobName(int index) const
 {
@@ -35,7 +34,9 @@ String DelayUI::getKnobName(int index) const
 		case Delay::Spin:		return superSmall ? "spn" 	: "Spin";
 		case Delay::SpinIters:	return little ? 	"spn #" : "Spin Len";
 		case Delay::Wet:		return superSmall ? "wet" 	: "Wet";
+		default:
+			break;
 	}
 
-	return String::empty;
+	return {};
 }

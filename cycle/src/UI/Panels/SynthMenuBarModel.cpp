@@ -10,6 +10,8 @@
 #include <Util/Util.h>
 #include <Util/CommonEnums.h>
 
+#include <utility>
+
 #include "GeneralControls.h"
 #include "SynthMenuBarModel.h"
 #include "VertexPropertiesPanel.h"
@@ -49,15 +51,13 @@ StringArray SynthMenuBarModel::getMenuBarNames() {
  @param topLevelMenuIndex	the index of the top-level menu to show
  @param menuName		 the name of the top-level menu item to show
  */
-PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String& menuName)
-{
+PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String& menuName) {
 	getSetting(LastPopupClickedHorz) 	= false;
-	getSetting(LastPopupClickedTransp)		= false;
+	getSetting(LastPopupClickedTransp)	= false;
 
 	PopupMenu menu;
 
-	if(topLevelMenuIndex == FileMenu)
-	{
+	if (topLevelMenuIndex == FileMenu) {
 		bool haveEdited = getObj(EditWatcher).getHaveEdited();
 		bool canSaveAs = true;
 
@@ -85,10 +85,7 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 	  #if ! PLUGIN_MODE
 		menu.addItem(ExitProgram, 	"Exit", 			true, 		false);
 	  #endif
-	}
-
-	else if(topLevelMenuIndex == EditMenu)
-	{
+	} else if (topLevelMenuIndex == EditMenu) {
 		UndoManager& undoManager = editWatcher->getUndoManager();
 
 		bool canUndo = undoManager.canUndo();
@@ -145,10 +142,7 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 		pitchMenu.addSubMenu("Set Pitch", setPitchMenu);
 
 		menu.addSubMenu("Pitch Tracking", pitchMenu);
-	}
-
-	else if(topLevelMenuIndex == GraphicsMenu)
-	{
+	} else if (topLevelMenuIndex == GraphicsMenu) {
 		menu.addItem(WaveformWaterfall, "Waveform waterfall", 		true, getSetting(Waterfall) == 1);
 		menu.addItem(DrawScales, 		"Draw scales and tags", 	true, getSetting(DrawScales) == 1);
 		menu.addItem(VertsOnHover, 		"Draw verts only on hover",	true, getSetting(ViewVertsOnlyOnHover) == 1);
@@ -191,10 +185,7 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 		sampleMenu.addItem(InterpWaveCycles, 	"Interpolate", true, getSetting(InterpWaveCycles) == 1);
 		sampleMenu.addItem(WrapWaveCycles, 		"Wrap cycles", true, getSetting(WrapWaveCycles) == 1);
 		menu.addSubMenu("Sample Display", sampleMenu, true);
-	}
-
-	else if(topLevelMenuIndex == AudioMenu)
-	{
+	} else if (topLevelMenuIndex == AudioMenu) {
 		menu.addItem(Declick, "Declick", true, getDocSetting(Declick) == 1);
 
 //		menu.addItem(DynamicEnvs, "Dynamic Envelopes", true, getDocSetting(DynamicEnvelopes) == 1);
@@ -278,7 +269,7 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 
 			getObj(GeneralControls).updateHighlights();
 
-			getObj(Updater).update(UpdateSources::SourceAllButFX, (int) UpdateType::Repaint);
+			getObj(Updater).update(UpdateSources::SourceAllButFX, Repaint);
 		} else if (item == SaveAudioMeta) {
 			//			fileMgr->saveWavePitchEnvelope();
 		}
@@ -337,7 +328,7 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 	} else if (topLevelMenuIndex == GraphicsMenu) {
 		if (item == VertsOnHover) {
 			getSetting(ViewVertsOnlyOnHover) ^= true;
-			getObj(Updater).update(UpdateSources::SourceAll, (int) UpdateType::Repaint);
+			getObj(Updater).update(UpdateSources::SourceAll, Repaint);
 		} else if (item >= ViewStageA && item <= ViewStageD) {
 			int newViewStage = ViewStages::PreProcessing;
 
@@ -380,7 +371,7 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 			}
 
 			if (Util::assignAndWereDifferent(size, newSize)) {
-				getObj(Updater).update(UpdateSources::SourceAll, (int) UpdateType::Repaint);
+				getObj(Updater).update(UpdateSources::SourceAll, Repaint);
 			}
 		} else if (item >= Reduction1x && item <= Reduction5x) {
 			int& factor = getSetting(ReductionFactor);
@@ -459,8 +450,9 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 		}
 	}
 
-	if (editedSomething)
+	if (editedSomething) {
 		getObj(EditWatcher).setHaveEditedWithoutUndo(true);
+	}
 }
 
 void SynthMenuBarModel::init() {
@@ -481,7 +473,7 @@ void SynthMenuBarModel::triggerClick(int stage) {
 	}
 }
 
-EditableItem::EditableItem(const String& name) : name(name) {
+EditableItem::EditableItem(String  name) : name(std::move(name)) {
 }
 
 void EditableItem::resized() {

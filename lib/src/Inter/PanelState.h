@@ -8,15 +8,15 @@ using std::vector;
 
 class VertexFrame {
 public:
-	VertexFrame(Vertex* vert, const Vertex2& o) : vert(vert), origin(o), lastValid(o) {}
+    VertexFrame(Vertex* vert, const Vertex2& o) : vert(vert), origin(o), lastValid(o) {}
 
-	Vertex* vert;
-	Vertex2 origin, lastValid;
+    Vertex* vert;
+    Vertex2 origin, lastValid;
 };
 
 class CoordFrame {
-	Vertex2 origin, lastValid;
-	Vertex2 pos;
+    Vertex2 origin, lastValid;
+    Vertex2 pos;
 };
 
 typedef vector<VertexFrame>::iterator FrameIter;
@@ -24,154 +24,154 @@ typedef vector<VertexFrame>::iterator FrameIter;
 class PanelState {
 private:
 public:
-	virtual ~PanelState() = default;
+    virtual ~PanelState() = default;
 
-	vector<VertexFrame> singleHorz, singleXY, singleAll;
-	vector<VertexFrame> selectedFrame;
+    vector<VertexFrame> singleHorz, singleXY, singleAll;
+    vector<VertexFrame> selectedFrame;
 
-	vector<Vertex> positions;
+    vector<Vertex> positions;
 
 //	vector<CoordFrame> selectionCorners;
-	vector<Vertex2> cornersStart;
-	vector<Vertex2> pivots;
+    vector<Vertex2> cornersStart;
+    vector<Vertex2> pivots;
 
-	enum Flags {
-		DidMeshChange,
-		DidIncrementalMeshChange,
+    enum Flags {
+        DidMeshChange,
+        DidIncrementalMeshChange,
 
-		LoweredRes,
-		SimpleRepaint,
+        LoweredRes,
+        SimpleRepaint,
 
-		numFlags
-	};
+        numFlags
+    };
 
-	enum MouseFlags {
-		FirstMove,
-		MouseOver,
-		WithinReshapeThresh,
+    enum MouseFlags {
+        FirstMove,
+        MouseOver,
+        WithinReshapeThresh,
 
-		numMouseFlags
-	};
+        numMouseFlags
+    };
 
-	enum PanelValues {
-		HighlitCorner,
-		CurrentCurve,
-		CurrentPivot,
+    enum PanelValues {
+        HighlitCorner,
+        CurrentCurve,
+        CurrentPivot,
 
-		numValues
-	};
+        numValues
+    };
 
-	enum RealValues {
-		PencilSmooth,
-		PencilRadius,
+    enum RealValues {
+        PencilSmooth,
+        PencilRadius,
 
-		numRealValues
-	};
+        numRealValues
+    };
 
     enum ActionState {
-		Idle,
+        Idle,
 
-		ClickSelecting,
-		DraggingVertex,
-		CreatingVertex,
-		ReshapingCurve,
-		BoxSelecting,
-		DraggingCorner,
-		SelectingConnected,
+        ClickSelecting,
+        DraggingVertex,
+        CreatingVertex,
+        ReshapingCurve,
+        BoxSelecting,
+        DraggingCorner,
+        SelectingConnected,
 
-		Rotating,
-		Extruding,
-		Copying,
-		Cutting,
-		Stretching,
+        Rotating,
+        Extruding,
+        Copying,
+        Cutting,
+        Stretching,
 
-		PaintingCreate,
-		PaintingEdit,
-		Nudging,
+        PaintingCreate,
+        PaintingEdit,
+        Nudging,
 
-		MiddleZooming,
+        MiddleZooming,
 
-		// keep these mouse-related states grouped
-		// these, we wish to carry over from the mousemove event to the mousedown
-		numPanelStates
-	};
+        // keep these mouse-related states grouped
+        // these, we wish to carry over from the mousemove event to the mousedown
+        numPanelStates
+    };
 
-	enum Position {
-		LeftPivot,
-		TopPivot,
-		RightPivot,
-		BottomPivot,
-		CentrePivot,
+    enum Position {
+        LeftPivot,
+        TopPivot,
+        RightPivot,
+        BottomPivot,
+        CentrePivot,
 
-		numSelectionPositions
-	};
+        numSelectionPositions
+    };
 
-	enum Corners {
-		Left, Top, Right, Bot, MoveHandle, RotateHandle
-	};
+    enum Corners {
+        Left, Top, Right, Bot, MoveHandle, RotateHandle
+    };
 
-	enum CornerTypes {
-		LeftRightCorner, DiagCorner, TopBottomCorner,
-	};
+    enum CornerTypes {
+        LeftRightCorner, DiagCorner, TopBottomCorner,
+    };
 
-	bool flags[numFlags]{};
-	bool mouseFlags[numMouseFlags]{};
-	int values[numValues]{};
-	float realValues[numRealValues]{};
+    bool flags[numFlags]{};
+    bool mouseFlags[numMouseFlags]{};
+    int values[numValues]{};
+    float realValues[numRealValues]{};
 
-	ActionState actionState;
+    ActionState actionState;
 //	char states[numPanelStates];
 
-	VertCube* currentCube;
-	Vertex* currentVertex;
+    VertCube* currentCube;
+    Vertex* currentVertex;
 
     // 3d-specific
     int currentIcpt{};
     int currentFreeVert{};
 
     // mouse position
-	Vertex2 start;
-	Vertex2 currentMouse;
-	Vertex2 lastMouse;
+    Vertex2 start;
+    Vertex2 currentMouse;
+    Vertex2 lastMouse;
 
-	PanelState() {
-		for(int i = 0; i < numSelectionPositions; ++i) {
-			pivots.emplace_back();
-		}
+    PanelState() {
+        for(int i = 0; i < numSelectionPositions; ++i) {
+            pivots.emplace_back();
+        }
 
-		currentVertex = nullptr;
-		currentCube = nullptr;
+        currentVertex = nullptr;
+        currentCube = nullptr;
 
-		realValues[PencilSmooth] = 0.2f;
-		realValues[PencilRadius] = 0.04f;
+        realValues[PencilSmooth] = 0.2f;
+        realValues[PencilRadius] = 0.04f;
 
-		PanelState::reset();
-	}
+        PanelState::reset();
+    }
 
-	virtual void reset() {
-		resetFlags();
-		resetMouseFlags();
-		resetActionState();
-		resetValues();
+    virtual void reset() {
+        resetFlags();
+        resetMouseFlags();
+        resetActionState();
+        resetValues();
 
-		currentVertex 	= nullptr;
-		currentCube 	= nullptr;
-	}
+        currentVertex 	= nullptr;
+        currentCube 	= nullptr;
+    }
 
     void resetValues() {
-		values[CurrentPivot] = CentrePivot;
-		values[HighlitCorner] = -1;
-	}
+        values[CurrentPivot] = CentrePivot;
+        values[HighlitCorner] = -1;
+    }
 
-	void resetFlags() {
-		for(bool& i : flags) {
-			i = false;
-		}
-	}
+    void resetFlags() {
+        for(bool& i : flags) {
+            i = false;
+        }
+    }
 
     void resetMouseFlags() {
         for (bool& i : mouseFlags) {
-	        i = false;
+            i = false;
         }
 
         mouseFlags[FirstMove] = true;

@@ -8,36 +8,27 @@
 #include <Audio/AudioSourceProcessor.h>
 #include <Audio/Multisample.h>
 #include <Audio/PluginProcessor.h>
-#include <Audio/SampleWrapper.h>
+#include <Audio/PitchedSample.h>
 #include <Curve/EnvelopeMesh.h>
 #include <Curve/EnvRasterizer.h>
 #include <Curve/Intercept.h>
-#include <Thread/LockTracer.h>
 #include <UI/Panels/ZoomPanel.h>
 #include <UI/Widgets/IconButton.h>
-#include <Util/Arithmetic.h>
-#include <Util/ScopedBooleanSwitcher.h>
 
 #include "EnvelopeInter2D.h"
 #include "../App/CycleTour.h"
 #include "../App/Initializer.h"
-#include "../Audio/AudioSourceRepo.h"
 #include "../Audio/SynthAudioSource.h"
-#include "../Inter/SpectrumInter3D.h"
 #include "../Inter/WaveformInter3D.h"
-#include "../Curve/E3Rasterizer.h"
 #include "../CycleDefs.h"
 #include "../UI/Panels/MainPanel.h"
 #include "../UI/Panels/Morphing/MorphPanel.h"
 #include "../UI/Panels/OscControlPanel.h"
 #include "../UI/Panels/VertexPropertiesPanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
-#include "../UI/VertexPanels/Envelope3D.h"
 #include "../UI/VertexPanels/Spectrum3D.h"
 #include "../UI/VertexPanels/Waveform2D.h"
 #include "../UI/VertexPanels/Waveform3D.h"
-#include "../UI/VisualDsp.h"
-
 
 EnvelopeInter2D::EnvelopeInter2D(SingletonRepo* repo) : 
 		Interactor2D		(repo, "EnvelopeInter2D", Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Red, Vertex::Blue))
@@ -46,8 +37,8 @@ EnvelopeInter2D::EnvelopeInter2D(SingletonRepo* repo) :
 
 	,	layerSelector(repo, this)
 	,	addRemover(			  this, repo, "Scratch Channel")
-	,	loopIcon(		4, 3, this, repo, "Toggle selected vertex as loop start", String::empty, "Toggle vertex as loop start (select one, at least 2 behind sustain)")
-	,	sustainIcon(	5, 3, this, repo, "Toggle selected vertex as sustain", 	 String::empty, "Toggle vertex as sustain (select exactly one)")
+	,	loopIcon(		4, 3, this, repo, "Toggle selected vertex as loop start", String(), "Toggle vertex as loop start (select one, at least 2 behind sustain)")
+	,	sustainIcon(	5, 3, this, repo, "Toggle selected vertex as sustain", 	 String(), "Toggle vertex as sustain (select exactly one)")
 	,	enableButton(	5, 5, this, repo, "Enable envelope")
 
 	,	contractIcon(   6, 0, this, repo, "Contract to range")
@@ -57,7 +48,7 @@ EnvelopeInter2D::EnvelopeInter2D(SingletonRepo* repo) :
 	,	volumeIcon( 	7, 0, this, repo, "Volume Envelope")
 	,	pitchIcon(		7, 1, this, repo, "Pitch Envelope")
 	,	scratchIcon(	7, 2, this, repo, "Scratch Envelopes")
-	,	wavePitchIcon(  7, 3, this, repo, "Wave Pitch Envelope", String::empty, "Wave pitch envelope - applicable when sample is loaded")
+	,	wavePitchIcon(  7, 3, this, repo, "Wave Pitch Envelope", String(), "Wave pitch envelope - applicable when sample is loaded")
 {
 	updateSource 	= UpdateSources::SourceEnvelope2D;
 	layerType 		= LayerGroups::GroupVolume;
@@ -80,14 +71,9 @@ EnvelopeInter2D::EnvelopeInter2D(SingletonRepo* repo) :
 	vertexProps.ampVsPhaseApplicable = true;
 
 	vertexProps.dimensionNames.set(Vertex::Phase, "Time");
-	vertexProps.dimensionNames.set(Vertex::Time, String::empty);
+	vertexProps.dimensionNames.set(Vertex::Time, String());
 	vertexProps.isEnvelope = true;
 }
-
-
-EnvelopeInter2D::~EnvelopeInter2D() {
-}
-
 
 void EnvelopeInter2D::init() {
     envPanel = &getObj(Envelope2D);
@@ -103,7 +89,6 @@ void EnvelopeInter2D::init() {
     vertexLimits[Vertex::Phase].setEnd(IPP_SQRT2); //envPanel->zoom.wLimit;
 }
 
-
 void EnvelopeInter2D::doExtraMouseUp() {
     vector < Vertex * > &selected = getSelected();
     EnvRasterizer* rast = getEnvRasterizer();
@@ -114,8 +99,9 @@ void EnvelopeInter2D::doExtraMouseUp() {
          * Little bit of a hack (not going through the updater)
          */
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
-            if (SampleWrapper* sample = getObj(Multisample).getCurrentSample())
+            if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
                 sample->createPeriodsFromEnv(&getObj(EnvPitchRast));
+            }
 
             doUpdate(SourceSpectrum3D);
         }
@@ -195,7 +181,7 @@ void EnvelopeInter2D::setCurrentMesh(EnvelopeMesh* mesh) {
             triggerRefreshUpdate();
         else {
             updateDspSync();
-            performUpdate((int) UpdateType::Update);
+            performUpdate(Update);
         }
     }
 }
@@ -205,12 +191,10 @@ void EnvelopeInter2D::previewMesh(EnvelopeMesh* mesh) {
     ScopedLock sl(panel->getRenderLock());
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
-        int updateType = (int) UpdateType::Update;
-
         envRast->setMesh(mesh);
-        envRast->performUpdate(updateType);
+        envRast->performUpdate(Update);
 
-        performUpdate(updateType);
+        performUpdate(Update);
     }
 }
 
@@ -218,11 +202,10 @@ void EnvelopeInter2D::previewMeshEnded(EnvelopeMesh* originalMesh) {
     ScopedLock sl(panel->getRenderLock());
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
-        int updateType = Update;
         envRast->setMesh(originalMesh);
-        envRast->performUpdate(updateType);
+        envRast->performUpdate(Update);
 
-        performUpdate(updateType);
+        performUpdate(Update);
     }
 }
 
@@ -249,8 +232,9 @@ void EnvelopeInter2D::showCoordinates() {
     beats = info.timeSigNumerator;
 #endif
 
-    if (props->tempoSync)
+    if (props->tempoSync) {
         length = beats * props->getEffectiveScale();
+    }
 
     float time = length * state.currentMouse.x;
     bool sampleable = rasterizer->isSampleableAt(state.currentMouse.x);
@@ -282,7 +266,7 @@ void EnvelopeInter2D::showCoordinates() {
             if (envY == 0 || envY == 1) {
                 yString = "undefined";
             } else {
-                if (SampleWrapper* sample = getObj(Multisample).getCurrentSample()) {
+                if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
                     double envSemis = NumberUtils::unitPitchToSemis(envY);
                     float key = sample->fundNote;
                     float value = NumberUtils::noteToFrequency(key, envSemis * 100);
@@ -417,8 +401,7 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
         layerSelector.refresh(forceUpdate);
         getObj(MeshLibrary).layerChanged(LayerGroups::GroupScratch, -1);
 
-        globalUpdate ?
-        doUpdate(SourceMorph) : doUpdate(SourceScratch);
+        globalUpdate ? doUpdate(SourceMorph) : doUpdate(SourceScratch);
     } else if (button == &configIcon) {
         int envEnum = getSetting(CurrentEnvGroup);
 
@@ -464,27 +447,13 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
             int newScale = -1;
 
             switch (result) {
-                case CfgScale1_16x:
-                    newScale = -16;
-                    break;
-                case CfgScale1_4x:
-                    newScale = -4;
-                    break;
-                case CfgScale1_2x:
-                    newScale = -2;
-                    break;
-                case CfgScale1x:
-                    newScale = 1;
-                    break;
-                case CfgScale2x:
-                    newScale = 2;
-                    break;
-                case CfgScale4x:
-                    newScale = 4;
-                    break;
-                case CfgScale16x:
-                    newScale = 16;
-                    break;
+                case CfgScale1_16x: newScale = -16; break;
+                case CfgScale1_4x:  newScale = -4;  break;
+                case CfgScale1_2x:  newScale = -2;  break;
+                case CfgScale1x:    newScale = 1;   break;
+                case CfgScale2x:    newScale = 2;   break;
+                case CfgScale4x:    newScale = 4;   break;
+                case CfgScale16x:   newScale = 16;  break;
                 default:
                     break;
             }
@@ -732,14 +701,14 @@ void EnvelopeInter2D::doExtraMouseDrag(const MouseEvent &e) {
 
     if (actionIs(DraggingVertex) || actionIs(ReshapingCurve) || actionIs(DraggingCorner)) {
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
-            if (SampleWrapper* sample = getObj(Multisample).getCurrentSample())
+            if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
                 sample->createPeriodsFromEnv(&getObj(EnvPitchRast));
+            }
         }
 
         syncEnvPointsImplicit();
     }
 }
-
 
 int EnvelopeInter2D::getUpdateSource() {
     if (getSetting(CurrentEnvGroup) == LayerGroups::GroupScratch)
@@ -748,25 +717,22 @@ int EnvelopeInter2D::getUpdateSource() {
     return updateSource;
 }
 
-
 Mesh* EnvelopeInter2D::getMesh() {
-    if (EnvRasterizer* envRast = dynamic_cast<EnvRasterizer*>(getRasterizer())) {
+    if (auto* envRast = dynamic_cast<EnvRasterizer*>(getRasterizer())) {
         return envRast->getCurrentMesh();
     }
 
-    if (SampleWrapper* current = getObj(Multisample).getCurrentSample()) {
-        return current->mesh;
+    if (PitchedSample* current = getObj(Multisample).getCurrentSample()) {
+        return current->mesh.get();
     }
 
     jassertfalse;
     return &backupMesh;
 }
 
-
 void EnvelopeInter2D::setEnabledHighlight(bool highlit) {
     enableButton.setHighlit(highlit);
 }
-
 
 void EnvelopeInter2D::updateHighlights() {
     int envMesh = getSetting(CurrentEnvGroup);
@@ -781,23 +747,19 @@ void EnvelopeInter2D::updateHighlights() {
     jassert(!(wavePitchIcon.isHighlit() && !wavePitchIcon.isApplicable()));
 }
 
-
 void EnvelopeInter2D::enterClientLock() {
     getObj(SynthAudioSource).getLock().enter();
     panel->getRenderLock().enter();
 }
-
 
 void EnvelopeInter2D::exitClientLock() {
     panel->getRenderLock().exit();
     getObj(SynthAudioSource).getLock().exit();
 }
 
-
 bool EnvelopeInter2D::doesMeshChangeWarrantGlobalUpdate() {
     return Interactor::doesMeshChangeWarrantGlobalUpdate();
 }
-
 
 bool EnvelopeInter2D::isCurrentMeshActive() {
     int envType = getSetting(CurrentEnvGroup);
@@ -808,7 +770,6 @@ bool EnvelopeInter2D::isCurrentMeshActive() {
 
     return getObj(Multisample).getCurrentSample() != nullptr;
 }
-
 
 void EnvelopeInter2D::validateMesh() {
     Interactor::validateMesh();
@@ -854,21 +815,18 @@ void EnvelopeInter2D::validateMesh() {
 //	}
 }
 
-
 String EnvelopeInter2D::getDefaultFolder() {
     int mesh = getSetting(CurrentEnvGroup);
     switch (mesh) {
-        case LayerGroups::GroupVolume:
-            return "volume";
-        case LayerGroups::GroupPitch:
-            return "pitch";
-        case LayerGroups::GroupScratch:
-            return "scratch";
+        case LayerGroups::GroupVolume:  return "volume";
+        case LayerGroups::GroupPitch:   return "pitch";
+        case LayerGroups::GroupScratch: return "scratch";
+        default:
+            break;
     }
 
-    return String::empty;
+    return {};
 }
-
 
 Range<float> EnvelopeInter2D::getVertexPhaseLimits(Vertex* vert) {
     // we want to disallow moving verts that are NOT after the sustain line
@@ -878,32 +836,35 @@ Range<float> EnvelopeInter2D::getVertexPhaseLimits(Vertex* vert) {
     Range<float> minRange = Interactor2D::getVertexPhaseLimits(vert);
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
-        const vector <Intercept> &icpts = envRast->getRastData().intercepts;
+        const vector <Intercept>& icpts = envRast->getRastData().intercepts;
 
-        if (icpts.empty() || vert == nullptr)
+        if (icpts.empty() || vert == nullptr) {
             return Interactor2D::getVertexPhaseLimits(vert);
+        }
 
         int icptIndex = -1;
         int sustIdx, loopIdx;
         envRast->getIndices(loopIdx, sustIdx);
 
         for (int i = 0; i < (int) icpts.size(); ++i) {
-            if (vert->isOwnedBy(icpts[i].cube))
+            if (vert->isOwnedBy(icpts[i].cube)) {
                 icptIndex = i;
+            }
         }
 
         if (icptIndex >= 0) {
-            if (icptIndex == sustIdx)
+            if (icptIndex == sustIdx) {
                 range.setEnd(1.f);
+            }
 
-            if (icptIndex == loopIdx && sustIdx > 0)
+            if (icptIndex == loopIdx && sustIdx > 0) {
                 range.setEnd(icpts[sustIdx].x - 0.001f);
+            }
         }
     }
 
     return range.getIntersectionWith(minRange);
 }
-
 
 void EnvelopeInter2D::waveOverlayChanged() {
     progressMark
@@ -923,7 +884,6 @@ void EnvelopeInter2D::waveOverlayChanged() {
     updateHighlights();
 }
 
-
 void EnvelopeInter2D::updatePhaseLimit(float limit) {
     limit = jmax(1.f, limit);
     float oldZoomLimit = envPanel->getZoomPanel()->rect.xMaximum;
@@ -935,11 +895,9 @@ void EnvelopeInter2D::updatePhaseLimit(float limit) {
     }
 }
 
-
 EnvRasterizer* EnvelopeInter2D::getEnvRasterizer() {
     return dynamic_cast<EnvRasterizer*>(rasterizer);
 }
-
 
 void EnvelopeInter2D::transferLineProperties(VertCube* from, VertCube* to1, VertCube* to2) {
     Interactor::transferLineProperties(from, to1, to2);
@@ -965,34 +923,36 @@ void EnvelopeInter2D::transferLineProperties(VertCube* from, VertCube* to1, Vert
     }
 }
 
-
 void EnvelopeInter2D::removeCurrentEnvLine(bool isLoop) {
     const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
     EnvelopeMesh* envMesh = getCurrentMesh();
 
-    if (envMesh == nullptr)
+    if (envMesh == nullptr) {
         return;
+    }
 
-    set < VertCube * > &loopLines = envMesh->loopCubes;
-    set < VertCube * > &sustLines = envMesh->sustainCubes;
+    set<VertCube*>& loopLines = envMesh->loopCubes;
+    set<VertCube*>& sustLines = envMesh->sustainCubes;
 
-    for (int i = 0; i < (int) icpts.size(); ++i) {
-        VertCube* cube = icpts[i].cube;
+    for (const auto& icpt : icpts) {
+        VertCube* cube = icpt.cube;
 
-        if (isLoop && loopLines.find(cube) != loopLines.end())
+        if (isLoop && loopLines.find(cube) != loopLines.end()) {
             loopLines.erase(cube);
+        }
 
-        if (!isLoop && sustLines.find(cube) != sustLines.end())
+        if (!isLoop && sustLines.find(cube) != sustLines.end()) {
             sustLines.erase(cube);
+        }
     }
 }
-
 
 void EnvelopeInter2D::syncEnvPointsImplicit() {
     EnvRasterizer* envRast = getEnvRasterizer();
 
-    if (envRast == nullptr)
+    if (envRast == nullptr) {
         return;
+    }
 
     const EnvelopeMesh* envMesh = envRast->getEnvMesh();
 
@@ -1005,11 +965,10 @@ void EnvelopeInter2D::syncEnvPointsImplicit() {
         const set<VertCube*> &sustLines = envMesh->sustainCubes;
 
         if (!selected.empty()) {
-            for (int i = 0; i < (int) selected.size(); ++i) {
-                Vertex* vert = selected[i];
-
+            for (auto vert : selected) {
                 for (int j = 0; j < vert->getNumOwners(); ++j) {
                     VertCube* vertCube = vert->owners[j];
+
                     if (vertCube != nullptr && loopLines.find(vertCube) != loopLines.end()) {
                         areMovingLoopLine = true;
                         vertToSyncFrom = vert;
@@ -1019,6 +978,7 @@ void EnvelopeInter2D::syncEnvPointsImplicit() {
 
                 for (int j = 0; j < vert->getNumOwners(); ++j) {
                     VertCube* vertCube = vert->owners[j];
+
                     if (vertCube != nullptr && sustLines.find(vertCube) != sustLines.end()) {
                         areMovingSustainLine = true;
                         vertToSyncFrom = vert;
@@ -1039,7 +999,6 @@ void EnvelopeInter2D::syncEnvPointsImplicit() {
     }
 }
 
-
 void EnvelopeInter2D::layerChanged() {
     state.reset();
     clearSelectedAndCurrent();
@@ -1054,40 +1013,37 @@ void EnvelopeInter2D::layerChanged() {
     delegateUpdate(true);
 }
 
-
 int EnvelopeInter2D::getLayerType() {
     return getSetting(CurrentEnvGroup);
 }
 
-
 void EnvelopeInter2D::delegateUpdate(bool shouldDoUpdate) {
     if (getSetting(CurrentMorphAxis) != Vertex::Time) {
-        if (shouldDoUpdate)
+        if (shouldDoUpdate) {
             doUpdate(SourceEnvelope3D);
+        }
     } else {
         if (shouldDoUpdate) {
             jassert(rasterizer == getRasterizer());
 
-            if (EnvRasterizer* envRast = getEnvRasterizer())
+            if (EnvRasterizer* envRast = getEnvRasterizer()) {
                 envRast->setWantOneSamplePerCycle(false);
+            }
 
-            int updateType = UpdateType::Update;
-            rasterizer->performUpdate(updateType);
-            performUpdate(updateType);
+            rasterizer->performUpdate(Update);
+            performUpdate(Update);
         }
 
         envPanel->zoomAndRepaint();
     }
 }
 
-
 void EnvelopeInter2D::reset() {
     layerSelector.reset();
 }
 
-
 void EnvelopeInter2D::enablementsChanged() {
-    MeshLibrary &meshLib = getObj(MeshLibrary);
+    auto& meshLib = getObj(MeshLibrary);
 
     bool anyScratchActive = false;
     bool anyVolumeActive = false;
@@ -1097,14 +1053,17 @@ void EnvelopeInter2D::enablementsChanged() {
     MeshLibrary::LayerGroup& volumeGroup = meshLib.getGroup(LayerGroups::GroupVolume);
     MeshLibrary::LayerGroup& pitchGroup = meshLib.getGroup(LayerGroups::GroupPitch);
 
-    for (int i = 0; i < (int) scratchGroup.layers.size(); ++i)
+    for (int i = 0; i < (int) scratchGroup.layers.size(); ++i) {
         anyScratchActive |= meshLib.getCurrentProps(i)->active;
+    }
 
-    for (int i = 0; i < (int) volumeGroup.layers.size(); ++i)
+    for (int i = 0; i < (int) volumeGroup.layers.size(); ++i) {
         anyVolumeActive |= meshLib.getCurrentProps(i)->active;
+    }
 
-    for (int i = 0; i < (int) pitchGroup.layers.size(); ++i)
+    for (int i = 0; i < (int) pitchGroup.layers.size(); ++i) {
         anyPitchActive |= meshLib.getCurrentProps(i)->active;
+    }
 
     scratchIcon.setPowered(anyScratchActive);
     volumeIcon.setPowered(anyVolumeActive);
@@ -1124,9 +1083,10 @@ void EnvelopeInter2D::triggerButton(int id) {
         case CycleTour::IdBttnEnable:  buttonClicked(&enableButton);      break;
         case CycleTour::IdBttnLoop:    buttonClicked(&loopIcon);          break;
         case CycleTour::IdBttnSustain: buttonClicked(&sustainIcon);       break;
+        default:
+            break;
     }
 }
-
 
 MeshRasterizer* EnvelopeInter2D::getRast(int envEnum) {
     switch (envEnum) {
@@ -1134,30 +1094,30 @@ MeshRasterizer* EnvelopeInter2D::getRast(int envEnum) {
         case LayerGroups::GroupPitch:     return &getObj(EnvPitchRast);
         case LayerGroups::GroupScratch:   return &getObj(EnvScratchRast);
         case LayerGroups::GroupWavePitch: return &getObj(EnvWavePitchRast);
+        default:
+            break;
     }
 
     return nullptr;
 }
 
-
 bool EnvelopeInter2D::shouldDoDimensionCheck() {
-    if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch)
+    if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch) {
         return false;
+    }
 
     return Interactor::shouldDoDimensionCheck();
 }
 
-
 bool EnvelopeInter2D::addNewCube(float startTime, float x, float y, float curve) {
-    if (getSetting(CurrentEnvGroup) != LayerGroups::GroupWavePitch)
+    if (getSetting(CurrentEnvGroup) != LayerGroups::GroupWavePitch) {
         return Interactor::addNewCube(startTime, x, y, curve);
-    else {
-        Interactor::doCreateVertex();
     }
+
+    Interactor2D::doCreateVertex();
 
     return true;
 }
-
 
 vector<VertCube*> EnvelopeInter2D::getLinesToSlideOnSingleSelect() {
     vector <VertCube*> cubes;
@@ -1169,8 +1129,9 @@ vector<VertCube*> EnvelopeInter2D::getLinesToSlideOnSingleSelect() {
             int sustIdx, loopIdx;
             envRast->getIndices(loopIdx, sustIdx);
 
-            if (sustIdx < 0 && loopIdx < 0)
+            if (sustIdx < 0 && loopIdx < 0) {
                 return cubes;
+            }
 
             VertCube* lastCube = nullptr;
             bool startMoving = false;
@@ -1187,10 +1148,11 @@ vector<VertCube*> EnvelopeInter2D::getLinesToSlideOnSingleSelect() {
                     }
 
                     if (icpt.cube == state.currentCube) {
-                        if (i == sustIdx || i == loopIdx)
+                        if (i == sustIdx || i == loopIdx) {
                             startMoving = true;
-                        else
+                        } else {
                             break;
+                        }
                     }
                 }
             }

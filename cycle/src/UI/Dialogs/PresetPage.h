@@ -35,12 +35,13 @@ public:
 	enum TimerIds 	{ SpinAnimId, DownloadPresetsId, DelayLoadId };
 
 	PresetPage(SingletonRepo* repo);
-	virtual ~PresetPage();
 
-	void init();
+	~PresetPage() override;
+
+	void init() override;
 
 	Array<DocumentDetails, CriticalSection>& getAllItems();
-	bool containsString(DocumentDetails& details, const String& str);
+	bool containsString(DocumentDetails& details, const String& str) override;
 	bool keyPressed(const KeyPress& key) override;
 	bool removeDetailsFrom(Array<DocumentDetails, CriticalSection>& list, int code);
 	Component* refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected, Component* existingComponentToUpdate) override;
@@ -69,20 +70,20 @@ public:
 	void cellDoubleClicked (int rowNumber, int columnId, const MouseEvent& e) override;
 	void cleanup();
 	void clearSearch();
-	void comboBoxChanged (ComboBox* comboBoxThatHasChanged);
+	void comboBoxChanged (ComboBox* comboBoxThatHasChanged) override;
     void componentMovedOrResized (bool wasMoved, bool wasResized) override {}
     void componentPeerChanged() override {}
     void componentVisibilityChanged() override;
 	void doChangeUpdate() override;
 	void downloadCommunityDocumentDetails();
 	void grabSearchFocus();
-	void handleAsyncUpdate();
+	void handleAsyncUpdate() override;
 	void killThreads();
-	void labelTextChanged (Label* labelThatHasChanged);
+	void labelTextChanged (Label* labelThatHasChanged) override;
 	void loadItem(const DocumentDetails& details, bool ignoreSave = false);
 	void loadItem(int itemIndex, bool ignoreSave = false);
 	void loadPendingItem();
-	void paint(Graphics& g);
+	void paint(Graphics& g) override;
 	void paintCell(Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
 	void paintRowBackground(Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) override;
 	void presetDirUpdated();
@@ -111,10 +112,10 @@ public:
 private:
 	class UploadThread : public Thread, public SingletonAccessor {
 	public:
-		UploadThread(SingletonRepo* repo) : Thread("UploadThread"), SingletonAccessor(repo, "UploadThread") {
+		explicit UploadThread(SingletonRepo* repo) : Thread("UploadThread"), SingletonAccessor(repo, "UploadThread") {
 		}
 
-		void run();
+		void run() override;
 
 		void setFile(const File& file) { uploadFile = file; }
 
@@ -124,22 +125,22 @@ private:
 
 	class DownloadDetailsThread : public Thread, public SingletonAccessor {
 	public:
-		DownloadDetailsThread(SingletonRepo* repo) : Thread("DownloadDetailsThread"),
+		explicit DownloadDetailsThread(SingletonRepo* repo) : Thread("DownloadDetailsThread"),
 		                                             SingletonAccessor(repo, "DownloadDetailsThread") {
 		}
 
-		void run();
+		void run() override;
 
 	private:
 	};
 
 	class DownloadPresetThread : public Thread, public SingletonAccessor {
 	public:
-		DownloadPresetThread(SingletonRepo* repo) : Thread("DownloadPresetThread"),
+		explicit DownloadPresetThread(SingletonRepo* repo) : Thread("DownloadPresetThread"),
 		                                            SingletonAccessor(repo, "DownloadPresetThread") {
 		}
 
-		void run();
+		void run() override;
 
 		void setDetails(const DocumentDetails& deets) { this->deets = deets; }
 		DocumentDetails& getDetails() { return deets; }

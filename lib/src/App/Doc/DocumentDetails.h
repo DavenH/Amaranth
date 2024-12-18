@@ -9,30 +9,30 @@ using namespace juce;
 
 [[nodiscard]]
 class DocumentDetails :
-		public Savable
+        public Savable
 {
 public:
-	static int sortColumn;
+    static int sortColumn;
 
     enum DocumentColumn {
-		Name = 1,
-		Author,
-		Pack,
-		Revision,
-		Date,
-		Modified,
-		Rating,
-		Size,
-		Version,
-		Tag,
-		UploadCol,
-		DismissCol,
+        Name = 1,
+        Author,
+        Pack,
+        Revision,
+        Date,
+        Modified,
+        Rating,
+        Size,
+        Version,
+        Tag,
+        UploadCol,
+        DismissCol,
 
-		NumColumns
-	};
+        NumColumns
+    };
 
-	DocumentDetails();
-	~DocumentDetails() override = default;
+    DocumentDetails();
+    ~DocumentDetails() override = default;
 
     void setAuthor(const String& author)		{ this->author 			= author; 		}
     void setPack(const String& pack)			{ this->pack 			= pack; 		}
@@ -56,7 +56,7 @@ public:
     int 				getSizeBytes() const	{ return sizeBytes; 		}
     int64 				getDateMillis() const	{ return dateMillis; 		}
     int64 				getModifMillis() const	{ return modifiedMillis; 	}
-	const String& 		getAuthor() const		{ return author; 			}
+    const String& 		getAuthor() const		{ return author; 			}
     const String& 		getPack() const			{ return pack; 				}
     const String& 		getName() const			{ return name; 				}
     const String& 		getFilename() const		{ return filename; 			}
@@ -77,15 +77,15 @@ public:
     static void setSortColumn(DocumentColumn column) { sortColumn = column; }
 
 private:
-	bool remote, isWav, newlyDownloaded;
-	bool suppressDate, suppressRevision;
+    bool remote, isWav, newlyDownloaded;
+    bool suppressDate, suppressRevision;
 
-	int sizeBytes, revision;
-	int64 dateMillis, modifiedMillis;
-	double rating, productVersion;
+    int sizeBytes, revision;
+    int64 dateMillis, modifiedMillis;
+    double rating, productVersion;
 
-	String name, author, pack, filename;
-	StringArray tags;
+    String name, author, pack, filename;
+    StringArray tags;
 
     JUCE_LEAK_DETECTOR(DocumentDetails)
 };

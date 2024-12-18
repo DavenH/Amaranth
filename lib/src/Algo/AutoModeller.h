@@ -11,34 +11,34 @@ class Interactor2D;
 
 class AutoModeller {
 public:
-	AutoModeller();
-	virtual ~AutoModeller() = default;
+    AutoModeller();
+    virtual ~AutoModeller() = default;
 
-	void modelToInteractor(
-		const Buffer<float> &buffer,
-		Interactor2D *interactor,
-		bool cyclic,
-		float leftSamplingOffset,
-		float reduction
-	);
-
-	vector<Intercept> modelToPath(
-	        vector<Vertex2>& path,
-	        float reductionLevel,
-	        bool useInflections
+    void modelToInteractor(
+        const Buffer<float> &buffer,
+        Interactor2D *interactor,
+        bool cyclic,
+        float leftSamplingOffset,
+        float reduction
     );
 
-	template<class T>
+    vector<Intercept> modelToPath(
+            vector<Vertex2>& path,
+            float reductionLevel,
+            bool useInflections
+    );
+
+    template<class T>
     static vector<T> reducePath(const vector<T>& path, float tolerance) {
-		vector<T> decimated;
+        vector<T> decimated;
 
-		if(path.size() < 2)
-			return decimated;
+        if(path.size() < 2)
+            return decimated;
 
-		float diff 		 = path[1].x - path[0].x;
-		float areaThresh = tolerance * diff;
+        float diff 		 = path[1].x - path[0].x;
+        float areaThresh = tolerance * diff;
 
-		decimated.push_back(path[0]);
+        decimated.push_back(path[0]);
 
         for (int i = 1; i < (int) path.size() - 1;) {
             int end = i;
@@ -50,47 +50,50 @@ public:
                 float area = Geometry::getTriangleArea(path[i - 1], path[middle], path[end + 1]);
 
                 if (area >= areaThresh) {
-					areaAboveThresh = true;
-					break;
-				}
+                    areaAboveThresh = true;
+                    break;
+                }
 
-				++end;
-			}
+                ++end;
+            }
 
-			if(areaAboveThresh)
-				decimated.push_back(path[middle]);
+            if(areaAboveThresh) {
+                decimated.push_back(path[middle]);
+            }
 
-			if(middle > i)
-				i = middle;
-			else
-				++i;
-		}
+            if (middle > i) {
+                i = middle;
+            } else {
+                ++i;
+            }
+        }
 
-		if(! (decimated.back() == path.back()))
-			decimated.push_back(path.back());
+        if(! (decimated.back() == path.back())) {
+            decimated.push_back(path.back());
+        }
 
-		return decimated;
-	}
+        return decimated;
+    }
 
 private:
-	bool useInflections;
-	float leftSamplingOffset, rightSamplingOffset, reductionLevel;
+    bool useInflections;
+    float leftSamplingOffset, rightSamplingOffset, reductionLevel;
 
-	Random random;
-	Rasterizer2D rasterizer;
+    Random random;
+    Rasterizer2D rasterizer;
 
-	ScopedAlloc<Ipp32f> rastMem;
-	ScopedAlloc<Ipp32f> srcSamples;
+    ScopedAlloc<Ipp32f> rastMem;
+    ScopedAlloc<Ipp32f> srcSamples;
 
-	vector<Intercept> points;
+    vector<Intercept> points;
 
-	void amplifyCloseVerts();
-	void fit();
-	void preparePoints();
-	void removeUselessPoints();
+    void amplifyCloseVerts();
+    void fit();
+    void preparePoints();
+    void removeUselessPoints();
 
-	float performFitness(int curveIdx, const Intercept& icpt, int sampleStart,
-						 int sampleSize, float invLength, float left, bool doUpdate = true);
+    float performFitness(int curveIdx, const Intercept& icpt, int sampleStart,
+                         int sampleSize, float invLength, float left, bool doUpdate = true);
 
-	JUCE_DECLARE_NON_COPYABLE(AutoModeller);
+    JUCE_DECLARE_NON_COPYABLE(AutoModeller);
 };

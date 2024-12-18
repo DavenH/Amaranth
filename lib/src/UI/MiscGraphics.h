@@ -49,7 +49,7 @@ public:
 	~MiscGraphics() override = default;
 
 	Font* getAppropriateFont(int scaleSize);
-	Font* getSilkscreen() 	{ return silkscreen; }
+	Font* getSilkscreen() const	{ return silkscreen; }
 	Font* getVerdana12() 	{ return verdana12;  }
 	Font* getVerdana16() 	{ return verdana16;  }
 

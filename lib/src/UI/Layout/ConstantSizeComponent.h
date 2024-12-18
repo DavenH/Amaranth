@@ -7,47 +7,46 @@ using namespace juce;
 class ConstantSizeComponent :
         public IDynamicSizeComponent,
         public Component {
-private:
     bool isCurrentCollapsed;
     int size;
 
 public:
-    ConstantSizeComponent(int size)
+    explicit ConstantSizeComponent(int size)
         : isCurrentCollapsed(false), size(size) {
     }
 
-    int getExpandedSize() {
+    [[nodiscard]] int getExpandedSize() const override {
         return size;
     }
 
-    int getCollapsedSize() {
+    [[nodiscard]] int getCollapsedSize() const override {
         return getExpandedSize();
     }
 
-    void setBoundsDelegate(int x, int y, int w, int h) {
+    void setBoundsDelegate(int x, int y, int w, int h) override {
         setBounds(x, y, w, h);
     }
 
-    const Rectangle<int> getBoundsInParentDelegate() {
+    [[nodiscard]] Rectangle<int> getBoundsInParentDelegate() const override {
         return getBoundsInParent();
     }
 
-    int getYDelegate() {
+    int getYDelegate() override {
         return getY();
     }
 
-    int getXDelegate() {
+    int getXDelegate() override {
         return getX();
     }
 
-    void setCurrentlyCollapsed(bool isIt) {
+    void setCurrentlyCollapsed(bool isIt) override {
         isCurrentCollapsed = isIt;
     }
 
-    bool isCurrentlyCollapsed() {
+    bool isCurrentlyCollapsed() override {
         return isCurrentCollapsed;
     }
 
-    bool isVisibleDlg() const { return isVisible(); }
-    void setVisibleDlg(bool isVisible) { setVisible(isVisible); }
+    [[nodiscard]] bool isVisibleDlg() const override { return isVisible(); }
+    void setVisibleDlg(bool isVisible) override { setVisible(isVisible); }
 };

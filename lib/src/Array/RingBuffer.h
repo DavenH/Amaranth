@@ -4,18 +4,18 @@
 
 class ReadWriteBuffer {
 public:
-	ReadWriteBuffer() :
-			readPosition		(0)
-		, 	writePosition		(0)
-		,	totalSamplesWritten	(0)
-		,	totalSamplesRead	(0) {
+    ReadWriteBuffer() :
+            readPosition		(0)
+        , 	writePosition		(0)
+        ,	totalSamplesWritten	(0)
+        ,	totalSamplesRead	(0) {
     }
 
-	ReadWriteBuffer(Buffer<float> buff) :
-			readPosition		(0)
-		, 	writePosition		(0)
-		,	totalSamplesWritten	(0)
-		,	totalSamplesRead	(0) {
+    explicit ReadWriteBuffer(Buffer<float> buff) :
+            readPosition		(0)
+        , 	writePosition		(0)
+        ,	totalSamplesWritten	(0)
+        ,	totalSamplesRead	(0) {
         workBuffer = buff;
     }
 
@@ -56,11 +56,11 @@ public:
         return workBuffer[readPosition];
     }
 
-    bool hasRoomFor(int size) {
+    bool hasRoomFor(int size) const {
         return writePosition + size <= workBuffer.size();
     }
 
-    bool hasDataFor(int size) {
+    bool hasDataFor(int size) const {
         return writePosition - readPosition >= size;
     }
 
@@ -76,41 +76,43 @@ public:
             retract();
         }
 
-		workBuffer[writePosition] = value;
+        workBuffer[writePosition] = value;
 
-		++writePosition;
-		++totalSamplesWritten;
-	}
+        ++writePosition;
+        ++totalSamplesWritten;
+    }
 
     Buffer<float> write(Buffer<float> input) {
         if (input.empty())
-            return Buffer<float>();
+            return {};
 
-		jassert(input.size() <= workBuffer.size());
+        jassert(input.size() <= workBuffer.size());
 
         if (writePosition + input.size() > workBuffer.size()) {
             retract();
         }
 
-		Buffer<float> output(workBuffer + writePosition, input.size());
-		input.copyTo(output);
+        Buffer output(workBuffer + writePosition, input.size());
+        input.copyTo(output);
 
-		totalSamplesWritten += input.size();
-		writePosition 		+= input.size();
+        totalSamplesWritten += input.size();
+        writePosition 		+= input.size();
 
-		return output;
-	}
+        return output;
+    }
 
     float fromHistory(const int indicesBack) {
-        if (writePosition - indicesBack < 0)
-			return 0.f;
+        if (writePosition - indicesBack < 0) {
+            return 0.f;
+        }
 
-		return workBuffer[writePosition - indicesBack];
-	}
+        return workBuffer[writePosition - indicesBack];
+    }
 
-	void retract(int amount) {
-        if (writePosition < amount)
+    void retract(int amount) {
+        if (writePosition < amount) {
             return;
+        }
 
         ippsMove_32f(workBuffer + amount, workBuffer, writePosition);
 
@@ -118,36 +120,37 @@ public:
     }
 
     void retract() {
-        if (readPosition == 0)
+        if (readPosition == 0) {
             return;
+        }
 
         if (writePosition > readPosition) {
             ippsMove_32f(workBuffer + readPosition, workBuffer, writePosition - readPosition);
-		    writePosition -= readPosition;
-		    readPosition = 0;
+            writePosition -= readPosition;
+            readPosition = 0;
         }
-	}
+    }
 
     ReadWriteBuffer& operator=(const ReadWriteBuffer& copy) {
         jassert(memory.empty());
         jassert(copy.memory.empty());
 
-		totalSamplesRead 	= copy.totalSamplesRead;
-		totalSamplesWritten = copy.totalSamplesWritten;
-		readPosition 		= copy.readPosition;
-		writePosition 		= copy.writePosition;
-		workBuffer			= copy.workBuffer;
+        totalSamplesRead 	= copy.totalSamplesRead;
+        totalSamplesWritten = copy.totalSamplesWritten;
+        readPosition 		= copy.readPosition;
+        writePosition 		= copy.writePosition;
+        workBuffer			= copy.workBuffer;
 
-		jassert(writePosition < workBuffer.size() || workBuffer.empty());
+        jassert(writePosition < workBuffer.size() || workBuffer.empty());
 
-		return *this;
-	}
+        return *this;
+    }
 
-	int readPosition;
-	int writePosition;
+    int readPosition;
+    int writePosition;
 
-	int64 totalSamplesWritten, totalSamplesRead;
+    int64 totalSamplesWritten, totalSamplesRead;
 
-	Buffer<float> workBuffer;
-	ScopedAlloc<float> memory;
+    Buffer<float> workBuffer;
+    ScopedAlloc<float> memory;
 };

@@ -15,8 +15,9 @@ void RatingSlider::paint(Graphics& g) {
 
 	g.setColour(Colours::black.withAlpha(0.4f));
 
-	for(int i = 0; i < height / 2; ++i)
-		g.drawHorizontalLine(i * 2 + 1, 0, width);
+	for(int i = 0; i < height / 2; ++i) {
+	    g.drawHorizontalLine(i * 2 + 1, 0, width);
+	}
 
 	int start = width * (rating / 10.0);
 	NumberUtils::constrain<int>(start, 0, width - 1);

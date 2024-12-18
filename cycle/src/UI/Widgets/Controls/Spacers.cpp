@@ -6,11 +6,11 @@ Separator::Separator(bool layout)
 	, 	y(0) {
 }
 
-int Separator::getExpandedSize() {
+int Separator::getExpandedSize() const {
     return 2;
 }
 
-int Separator::getCollapsedSize() {
+int Separator::getCollapsedSize() const {
     return 2;
 }
 
@@ -38,8 +38,8 @@ void Separator::setBoundsDelegate(int x, int y, int w, int h) {
     setBounds(x, y, w, h);
 }
 
-const Rectangle<int> Separator::getBoundsInParentDelegate() {
-    return Rectangle(getX(), getY(), isHorz ? 2 : 24, isHorz ? 24 : 2);
+Rectangle<int> Separator::getBoundsInParentDelegate() const {
+    return {getX(), getY(), isHorz ? 2 : 24, isHorz ? 24 : 2};
 }
 
 int Separator::getYDelegate() {

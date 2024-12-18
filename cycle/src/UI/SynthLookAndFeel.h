@@ -4,10 +4,10 @@
 #include <UI/AmaranthLookAndFeel.h>
 
 class SynthLookAndFeel :
-		public AmaranthLookAndFeel {
+        public AmaranthLookAndFeel {
 public:
-	SynthLookAndFeel(SingletonRepo* repo);
+    SynthLookAndFeel(SingletonRepo* repo);
 
 private:
-	JUCE_LEAK_DETECTOR(SynthLookAndFeel)
+    JUCE_LEAK_DETECTOR(SynthLookAndFeel)
 };

@@ -9,7 +9,6 @@
 #include <Obj/Ref.h>
 #include "JuceHeader.h"
 #include <Definitions.h>
-#include <Design/Updating/Updater.h>
 
 #include "MeshSelectionClient.h"
 #include "../Audio/SynthAudioSource.h"
@@ -24,8 +23,7 @@ public:
     virtual void enterClientLock(bool audioThreadApplicable) = 0;
     virtual void exitClientLock(bool audioThreadApplicable) = 0;
 
-    //	void setClient(MeshSelectionClient3D* client) 	{ selectionClient = client; }
-    Ref<MeshSelectionClient3D> getSelectionClient() { return selectionClient.get(); }
+    Ref<MeshSelectionClient3D> getSelectionClient() const { return selectionClient.get(); }
 
 protected:
     std::unique_ptr<MeshSelectionClient3D> selectionClient;

@@ -19,97 +19,95 @@ class EnvelopeMesh;
 template<class EnvelopeMesh> class MeshSelector;
 
 class Envelope2D:
-		public Panel2D
-	,	public TourGuide
+        public Panel2D
+    ,	public TourGuide
 {
-	friend class EnvelopeInter3D;
+    friend class EnvelopeInter3D;
 
 public:
-	class ScrollListener : public MouseListener
-	{
-	public:
-		Envelope2D* panel;
+    class ScrollListener : public MouseListener
+    {
+    public:
+        Envelope2D* panel;
 
-		ScrollListener(Envelope2D* panel) : panel(panel) {}
-		void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel);
-	};
+        explicit ScrollListener(Envelope2D* panel) : panel(panel) {}
+        void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
+    };
 
 
-	class Controls : public Component, public SingletonAccessor
-	{
-	public:
-		Controls(SingletonRepo* repo, Envelope2D* panel);
+    class Controls : public Component, public SingletonAccessor
+    {
+    public:
+        Controls(SingletonRepo* repo, Envelope2D* panel);
 
-		void init();
-		void destroy();
-		void resized();
-		void paint(Graphics& g);
-		void paintOverChildren(Graphics& g);
-		void setSelectorVisibility(bool isVisible, bool doRepaint);
+        void init() override;
+        void destroy();
+        void resized() override;
+        void paint(Graphics& g) override;
+        void paintOverChildren(Graphics& g) override;
+        void setSelectorVisibility(bool isVisible, bool doRepaint);
 
-		bool				showLayerSelector;
-		Ref<Envelope2D> 	panel;
-	};
+        bool				showLayerSelector;
+        Ref<Envelope2D> 	panel;
+    };
 
-	Envelope2D(SingletonRepo* repo);
-	~Envelope2D();
+    explicit Envelope2D(SingletonRepo* repo);
+    ~Envelope2D() override;
 
-	/* */
-	void init();
-	void panelResized();
-	void setZoomLimit(float limit) { zoomPanel->rect.xMaximum = limit; }
+    /* */
+    void init() override;
+    void panelResized() override;
+    void setZoomLimit(float limit) { zoomPanel->rect.xMaximum = limit; }
 
-	/* drawing */
-	void drawCurvesAndSurfaces();
-	void setListenersForEditWatcher(EditWatcher* watcher);
+    /* drawing */
+    void drawCurvesAndSurfaces() override;
+    void setListenersForEditWatcher(EditWatcher* watcher);
 
-	/* callbacks */
+    /* callbacks */
 //	bool readXML(const XmlElement* element);
-	Component* getComponent(int which);
-	Component* getControlsComponent() { return &controls; }
+    Component* getComponent(int which) override;
+    Component* getControlsComponent() { return &controls; }
 
-	float getLoopStart();
+    float getLoopStart();
 
-	void componentChanged();
-	void createScales();
-	void dimensionsChanged();
-	void drawBackground(bool fill);
-	void drawMouseHint();
-	void drawRatioLines();
-	void drawScales();
-	void getLoopPoints(float& loopStart, float& sustain);
-	void postCurveDraw();
+    void componentChanged() override;
+    void createScales() override;
+    void dimensionsChanged();
+    void drawBackground(bool fill) override;
+    void drawMouseHint();
+    void drawRatioLines();
+    void drawScales() override;
+    void getLoopPoints(float& loopStart, float& sustain);
+    void postCurveDraw() override;
 //	void removeScratchProps(int index);
-	void setSelectorVisibility(bool isVisible, bool doRepaint = true);
-	void updateBackground(bool verticalOnly);
-	void zoomAndRepaint();
+    void setSelectorVisibility(bool isVisible, bool doRepaint = true);
+    void updateBackground(bool verticalOnly) override;
+    void zoomAndRepaint();
 
-	friend class Controls;
+    friend class Controls;
 
-	enum { nullEnvIndex = -1 };
+    enum { nullEnvIndex = -1 };
 
 private:
-	ScrollListener scrollListener;
+    ScrollListener scrollListener;
 
-	Ref<EnvelopeInter2D> e2Interactor;
-	Ref<Waveform3D> surface;
+    Ref<EnvelopeInter2D> e2Interactor;
+    Ref<Waveform3D> surface;
 
-	Controls controls;
+    Controls controls;
 
 //	MeshLibrary::EnvProps defaultProps;
 //	MeshLibrary::EnvProps volumeProps;
 //	MeshLibrary::EnvProps pitchProps;
 //	Array<MeshLibrary::EnvProps> scratchProps;
 
-	std::unique_ptr<MeshSelector<EnvelopeMesh> > meshSelector;
-	std::unique_ptr<RetractableCallout> 	envSelectCO;
-	std::unique_ptr<PulloutComponent> 	envSelectPO;
+    std::unique_ptr<MeshSelector<EnvelopeMesh> > meshSelector;
+    std::unique_ptr<RetractableCallout> 	envSelectCO;
+    std::unique_ptr<PulloutComponent> 	envSelectPO;
 
-	std::unique_ptr<RetractableCallout> 	loopCO;
-	std::unique_ptr<PulloutComponent> 	loopPO;
+    std::unique_ptr<RetractableCallout> 	loopCO;
+    std::unique_ptr<PulloutComponent> 	loopPO;
 
-	friend class ScrollListener;
-	friend class EnvelopeInter2D;
+    friend class ScrollListener;
+    friend class EnvelopeInter2D;
 };
-
-#endif

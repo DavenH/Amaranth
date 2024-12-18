@@ -13,7 +13,7 @@ class ClearSpacer : public IDynamicSizeComponent
 	JUCE_LEAK_DETECTOR(ClearSpacer)
 
 public:
-	ClearSpacer(int space, bool _reducible = true) :
+	explicit ClearSpacer(int space, bool _reducible = true) :
 			reducible(_reducible)
 		, 	space(space)
 		, 	isVisible(true)
@@ -23,11 +23,11 @@ public:
 
     ~ClearSpacer() override = default;
 
-    int getExpandedSize() override {
+    [[nodiscard]] int getExpandedSize() const override {
         return space;
     }
 
-    int getCollapsedSize() override {
+    [[nodiscard]] int getCollapsedSize() const override {
         return reducible ? 2 : space;
     }
 
@@ -36,8 +36,8 @@ public:
         this->y = y;
     }
 
-    const Rectangle<int> getBoundsInParentDelegate() {
-        return Rectangle<int>(x, y, space, space);
+    [[nodiscard]] Rectangle<int> getBoundsInParentDelegate() const override {
+        return {x, y, space, space};
     }
 
     int getYDelegate() override {
@@ -48,7 +48,7 @@ public:
         return x;
     }
 
-	bool isVisibleDlg() const override { return isVisible; }
+	[[nodiscard]] bool isVisibleDlg() const override { return isVisible; }
 	void setVisibleDlg(bool isVisible) override { this->isVisible = isVisible; }
 };
 
@@ -61,12 +61,12 @@ class Separator :
     JUCE_LEAK_DETECTOR(Separator)
 
 public:
-    Separator(bool layout);
-    int getExpandedSize();
-	int getCollapsedSize();
-	void paint(Graphics& g);
-	void setBoundsDelegate(int x, int y, int w, int h);
+    explicit Separator(bool layout);
+    [[nodiscard]] int getExpandedSize() const override;
+	[[nodiscard]] int getCollapsedSize() const override;
+	void paint(Graphics& g) override;
+	void setBoundsDelegate(int x, int y, int w, int h) override;
 	const Rectangle<int> getBoundsInParentDelegate();
-	int getYDelegate();
-	int getXDelegate();
+	int getYDelegate() override;
+	int getXDelegate() override;
 };

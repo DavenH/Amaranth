@@ -26,7 +26,6 @@
 #include "../../Audio/SynthAudioSource.h"
 #include "../../Curve/GraphicRasterizer.h"
 
-
 IrModellerUI::IrModellerUI(SingletonRepo* repo) :
 		EffectPanel(repo, "IrModellerUI", true)
 	,	SingletonAccessor(repo, "IrModellerUI")

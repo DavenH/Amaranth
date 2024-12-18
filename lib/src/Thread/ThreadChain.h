@@ -6,51 +6,52 @@
 
 using std::cout;
 using std::endl;
+using namespace juce;
 
 template<class Clazz>
 class FunctionThread : public Thread {
 public:
-	FunctionThread(int waitMillisPerIter, int num, Clazz& clazz, void(Clazz::*func)()) :
-			Thread("FunctionThread_" + String(num))
-		,	waitMillis(waitMillisPerIter)
-		,	recursions(num)
-		, 	instance(clazz)
-		, 	child(nullptr)
-		, 	func(func) {
-	}
+    FunctionThread(int waitMillisPerIter, int num, Clazz& clazz, void(Clazz::*func)()) :
+            Thread("FunctionThread_" + String(num))
+        ,	waitMillis(waitMillisPerIter)
+        ,	recursions(num)
+        , 	instance(clazz)
+        , 	child(nullptr)
+        , 	func(func) {
+    }
 
     virtual ~FunctionThread() {
-		cout << "Exiting thread" << getThreadName() << "\n";
-	}
+        cout << "Exiting thread" << getThreadName() << "\n";
+    }
 
-	void run() {
+    void run() {
         if (recursions > 0) {
             wait(waitMillis);
 
-			child = new FunctionThread(waitMillis, recursions - 1, instance, func);
-			child->startThread();
+            child = new FunctionThread(waitMillis, recursions - 1, instance, func);
+            child->startThread();
 
-			stopThread(10);
+            stopThread(10);
 
-			delete this;
-			return;
+            delete this;
+            return;
         } else {
             wait(waitMillis);
-			(instance.*func)();
-			stopThread(0);
+            (instance.*func)();
+            stopThread(0);
 
-			delete this;
-		}
-	}
+            delete this;
+        }
+    }
 
 private:
-	std::unique_ptr<FunctionThread> child;
-	void(Clazz::*func)(void);
-	Clazz& instance;
-	int recursions;
-	int waitMillis;
+    std::unique_ptr<FunctionThread> child;
+    void(Clazz::*func)(void);
+    Clazz& instance;
+    int recursions;
+    int waitMillis;
 
-	JUCE_LEAK_DETECTOR(FunctionThread);
+    JUCE_LEAK_DETECTOR(FunctionThread);
 };
 
 class ThreadChain
@@ -62,7 +63,7 @@ public:
     template<class Clazz>
     void runFunction(int waitMillis, Clazz& clazz, void(Clazz::*func)(void)) {
         FunctionThread<Clazz>* thread = new FunctionThread<Clazz>(waitMillis, 5, clazz, func);
-		thread->startThread();
-	}
+        thread->startThread();
+    }
 };
 

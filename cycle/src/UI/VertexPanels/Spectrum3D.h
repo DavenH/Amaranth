@@ -30,110 +30,110 @@ class HSlider;
 template<class Mesh> class MeshSelector;
 
 class Spectrum3D:
-		public Panel3D
-	,	public Panel3D::DataRetriever
-	,	public Button::Listener
-	,	public Slider::Listener
-	,	public ParameterGroup::Worker
-	,	public LayerSelectionClient
-	,	public ControlsClient
-	,	public AsyncUIUpdater
-	,	public TourGuide
-	,	public Savable {
+        public Panel3D
+    ,	public Panel3D::DataRetriever
+    ,	public Button::Listener
+    ,	public Slider::Listener
+    ,	public ParameterGroup::Worker
+    ,	public LayerSelectionClient
+    ,	public ControlsClient
+    ,	public AsyncUIUpdater
+    ,	public TourGuide
+    ,	public Savable {
 public:
-	enum LayerMode { Additive, Subtractive };
+    enum LayerMode { Additive, Subtractive };
 
-	explicit Spectrum3D(SingletonRepo* repo);
-	~Spectrum3D() override;
-	void init() override;
+    explicit Spectrum3D(SingletonRepo* repo);
+    ~Spectrum3D() override;
+    void init() override;
 
-	/* UI */
-	void drawPlaybackLine();
+    /* UI */
+    void drawPlaybackLine();
 
-	void reset() override;
-	void panelResized() override;
-	bool haveAnyValidLayers(bool isMags, bool haveAnyValidTimeLayers);
+    void reset() override;
+    void panelResized() override;
+    bool haveAnyValidLayers(bool isMags, bool haveAnyValidTimeLayers);
 
-	/* Events */
-	void layerChanged() override;
-	void updateColours();
-	void populateLayerBox();
-	void enablementsChanged();
-	bool validateScratchChannels();
-	void setIconHighlightImplicit();
-	void changedToOrFromTimeDimension();
-	void triggerButton(int button);
-	void scratchChannelSelected(int channel);
-	void updateBackground(bool onlyVerticalBackground) override;
-	void modeChanged(bool isMags, bool updateInteractors);
+    /* Events */
+    void layerChanged() override;
+    void updateColours();
+    void populateLayerBox();
+    void enablementsChanged();
+    bool validateScratchChannels();
+    void setIconHighlightImplicit();
+    void changedToOrFromTimeDimension();
+    void triggerButton(int button);
+    void scratchChannelSelected(int channel);
+    void updateBackground(bool onlyVerticalBackground) override;
+    void modeChanged(bool isMags, bool updateInteractors);
 
-	void buttonClicked(Button* button) override;
-	void sliderValueChanged(Slider* slider) override;
+    void buttonClicked(Button* button) override;
+    void sliderValueChanged(Slider* slider) override;
 
-	/* Knob Events */
-	bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
-	bool shouldTriggerGlobalUpdate(Slider* slider) override;
-	void restoreDetail() override;
-	void reduceDetail() override;
-	void doGlobalUIUpdate(bool force) override;
-	void updateKnobValue();
-	void updateSmoothedParameters(int deltaSamples);
-	void updateScratchComboBox();
-	void updateLayerSmoothedParameters(int voiceIndex, int deltaSamples);
-	void updateSmoothParametersToTarget(int voiceIndex);
-	void setLayerParameterSmoothing(int voiceIndex, bool smooth);
+    /* Knob Events */
+    bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
+    bool shouldTriggerGlobalUpdate(Slider* slider) override;
+    void restoreDetail() override;
+    void reduceDetail() override;
+    void doGlobalUIUpdate(bool force) override;
+    void updateKnobValue();
+    void updateSmoothedParameters(int deltaSamples);
+    void updateScratchComboBox();
+    void updateLayerSmoothedParameters(int voiceIndex, int deltaSamples);
+    void updateSmoothParametersToTarget(int voiceIndex);
+    void setLayerParameterSmoothing(int voiceIndex, bool smooth);
 
-	/* Persistence */
-	void writeXML(XmlElement* element) const override;
-	bool readXML(const XmlElement* element) override;
+    /* Persistence */
+    void writeXML(XmlElement* element) const override;
+    bool readXML(const XmlElement* element) override;
 
-	/* Accessors */
-	void setPan(int layerIdx, bool isFreq, float value);
-	void setDynRange(int layerIdx, bool isFreq, float value);
-	int getLayerScratchChannel() override;
-	int getNumActiveLayers();
+    /* Accessors */
+    void setPan(int layerIdx, bool isFreq, float value);
+    void setDynRange(int layerIdx, bool isFreq, float value);
+    int getLayerScratchChannel() override;
+    int getNumActiveLayers();
 
-	Buffer<float> getColumnArray() override;
-	const vector<Column>& getColumns() override;
+    Buffer<float> getColumnArray() override;
+    const vector<Column>& getColumns() override;
 
-	MeshLibrary::Properties* getPropertiesForLayer(int layerIdx, bool isFreq);
-	MeshLibrary::Properties* getCurrentProperties();
-	MeshLibrary::LayerGroup& getCurrentGroup();
+    MeshLibrary::Properties* getPropertiesForLayer(int layerIdx, bool isFreq);
+    MeshLibrary::Properties* getCurrentProperties();
+    MeshLibrary::LayerGroup& getCurrentGroup();
 
-	Component* 			getComponent(int which) override;
-	vector<Color>& 		getGradientColours() override;
-	int 				getLayerType() override;
+    Component* 			getComponent(int which) override;
+    vector<Color>& 		getGradientColours() override;
+    int 				getLayerType() override;
 
-	int& 				getScaleFactor() 	{ return scaleFactor; 	}
-	CriticalSection& 	getLayerLock() 		{ return layerLock; 	}
+    int& 				getScaleFactor() 	{ return scaleFactor; 	}
+    CriticalSection& 	getLayerLock() 		{ return layerLock; 	}
 
-	static float calcPhaseOffsetScale(float value) 	{ return expf(5.f * value); }
-	static float calcDynamicRangeScale(float value) { return powf(2, 12 * value - 4); }
+    static float calcPhaseOffsetScale(float value) 	{ return expf(5.f * value); }
+    static float calcDynamicRangeScale(float value) { return powf(2, 12 * value - 4); }
 
 private:
-	enum Knobs { Pan, DynRange };
+    enum Knobs { Pan, DynRange };
 
-	int scaleFactor;
+    int scaleFactor;
 
-	ClearSpacer spacer6;
-	CriticalSection layerLock;
-	ColorGradient 	phaseGradient;
+    ClearSpacer spacer6;
+    CriticalSection layerLock;
+    ColorGradient 	phaseGradient;
 
-	IconButton phaseIcon;
-	IconButton magsIcon;
-	IconButton additiveIcon;
-	IconButton subtractiveIcon;
+    IconButton phaseIcon;
+    IconButton magsIcon;
+    IconButton additiveIcon;
+    IconButton subtractiveIcon;
 
-	StringFunction dynStr;
+    StringFunction dynStr;
 
-	Ref<HSlider> dynRangeKnob;
-	Ref<HSlider> layerPan;
-	Ref<MeshLibrary> meshLib;
-	Ref<Spectrum2D> spect2D;
+    Ref<HSlider> dynRangeKnob;
+    Ref<HSlider> layerPan;
+    Ref<MeshLibrary> meshLib;
+    Ref<Spectrum2D> spect2D;
 
-	std::unique_ptr<PulloutComponent> 	operPO;
-	std::unique_ptr<PulloutComponent> 	modePO;
-	std::unique_ptr<RetractableCallout> operCO;
-	std::unique_ptr<RetractableCallout> modeCO;
-	std::unique_ptr<MeshSelector<Mesh>> meshSelector;
+    std::unique_ptr<PulloutComponent> 	operPO;
+    std::unique_ptr<PulloutComponent> 	modePO;
+    std::unique_ptr<RetractableCallout> operCO;
+    std::unique_ptr<RetractableCallout> modeCO;
+    std::unique_ptr<MeshSelector<Mesh>> meshSelector;
 };

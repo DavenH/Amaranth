@@ -22,56 +22,56 @@ template<class MeshType> class MeshSelector;
 
 template<class MeshType>
 class SaveItem :
-		public Component
-	,	public Button::Listener
-	,	public Label::Listener
-	,	public Timer
-	, 	public SingletonAccessor {
+        public Component
+    ,	public Button::Listener
+    ,	public Label::Listener
+    ,	public Timer
+    , 	public SingletonAccessor {
 public:
-	SaveItem(SingletonRepo* repo, String  extension, MeshSelector<MeshType>* selector) :
-			SingletonAccessor(repo, "SaveItem")
-		,	extension	(std::move(extension))
-		,	selector	(selector)
-		,	saveButton	("Save")
-		,	nameEditor	("Save editor")
-		,	folderEditor("Folder editor") {
+    SaveItem(SingletonRepo* repo, String  extension, MeshSelector<MeshType>* selector) :
+            SingletonAccessor(repo, "SaveItem")
+        ,	extension	(std::move(extension))
+        ,	selector	(selector)
+        ,	saveButton	("Save")
+        ,	nameEditor	("Save editor")
+        ,	folderEditor("Folder editor") {
         saveButton.addListener(this);
 
-		addAndMakeVisible(&saveButton);
-		addAndMakeVisible(&nameEditor);
-		addAndMakeVisible(&folderEditor);
+        addAndMakeVisible(&saveButton);
+        addAndMakeVisible(&nameEditor);
+        addAndMakeVisible(&folderEditor);
 
-		Label* editors[] = { &nameEditor, &folderEditor };
+        Label* editors[] = { &nameEditor, &folderEditor };
 
-		for(auto& editor : editors) {
+        for(auto& editor : editors) {
             editor->setColour(Label::textColourId, 		Colour::greyLevel(0.95f));
-			editor->setColour(Label::outlineColourId, 	Colour(180, 190, 240));
-			editor->setWantsKeyboardFocus(true);
-		}
+            editor->setColour(Label::outlineColourId, 	Colour(180, 190, 240));
+            editor->setWantsKeyboardFocus(true);
+        }
 
-		nameEditor.addListener(this);
-		nameEditor.setEditable(true);
-		nameEditor.setInterceptsMouseClicks(true, false);
+        nameEditor.addListener(this);
+        nameEditor.setEditable(true);
+        nameEditor.setInterceptsMouseClicks(true, false);
 
-		folderEditor.addListener(this);
-		folderEditor.setEditable(true);
-		folderEditor.setInterceptsMouseClicks(true, false);
+        folderEditor.addListener(this);
+        folderEditor.setEditable(true);
+        folderEditor.setInterceptsMouseClicks(true, false);
 
-		savePath = getObj(Directories).getUserMeshDir() + extension + File::getSeparatorChar();
-	}
+        savePath = getObj(Directories).getUserMeshDir() + extension + File::getSeparatorChar();
+    }
 
-	void paint(Graphics& g) override {
-		MiscGraphics& mg = getObj(MiscGraphics);
-		Font font(*mg.getSilkscreen());
-		g.setFont(font);
+    void paint(Graphics& g) override {
+        MiscGraphics& mg = getObj(MiscGraphics);
+        Font font(*mg.getSilkscreen());
+        g.setFont(font);
 
-		getObj(MiscGraphics).drawShadowedText(g, "folder",	folderBounds.getX(), folderBounds.getY() + 2, font, 0.75f);
-		getObj(MiscGraphics).drawShadowedText(g, "name", 	nameBounds.getX(), nameBounds.getY() + 2, font, 0.75f);
-	}
+        getObj(MiscGraphics).drawShadowedText(g, "folder",	folderBounds.getX(), folderBounds.getY() + 2, font, 0.75f);
+        getObj(MiscGraphics).drawShadowedText(g, "name", 	nameBounds.getX(), nameBounds.getY() + 2, font, 0.75f);
+    }
 
-	void setFolder(const String& str) {
+    void setFolder(const String& str) {
         folderEditor.setText(str, dontSendNotification);
-	}
+    }
 
     void resized() override {
         Rectangle r(getLocalBounds());
@@ -94,265 +94,265 @@ public:
     }
 
     void buttonClicked(Button* button) override {
-		jassert(button == &saveButton);
+        jassert(button == &saveButton);
 
-		if(! nameEditor.getText().containsNonWhitespaceChars()) {
-			showImportant("Please enter a name");
-			return;
-		}
+        if(! nameEditor.getText().containsNonWhitespaceChars()) {
+            showImportant("Please enter a name");
+            return;
+        }
 
-		String folderPath = savePath + getCurrentFolder();
-		File folderFile(folderPath);
+        String folderPath = savePath + getCurrentFolder();
+        File folderFile(folderPath);
 
-		if(! folderFile.exists()) {
+        if(! folderFile.exists()) {
             if (folderFile.createDirectory().failed()) {
-				showCritical("Problem creating directory");
-				return;
-			}
-		}
+                showCritical("Problem creating directory");
+                return;
+            }
+        }
 
-		const String& filename(folderPath + getCurrentFilename());
-		if(! Util::saveXml(File(filename), selector->getCurrentClientMesh(), "MeshPreset")) {
-			showCritical("Problem saving mesh");
-		}
+        const String& filename(folderPath + getCurrentFilename());
+        if(! Util::saveXml(File(filename), selector->getCurrentClientMesh(), "MeshPreset")) {
+            showCritical("Problem saving mesh");
+        }
 
-		Util::removeModalParent<CallOutBox>(this);
-	}
+        Util::removeModalParent<CallOutBox>(this);
+    }
 
     String getCurrentFilename() {
-		String editorText = nameEditor.getText();
+        String editorText = nameEditor.getText();
 
-		if(! editorText.endsWith(extension))
-			editorText += String(".") + extension;
+        if(! editorText.endsWith(extension))
+            editorText += String(".") + extension;
 
-		return editorText;
-	}
+        return editorText;
+    }
 
     String getCurrentFolder() {
         const String& folderText = folderEditor.getText();
 
-		String folder = folderText.isNotEmpty() ?
-				(folderText.endsWithChar(File::getSeparatorChar()) ?
-					folderText :
-					folderText + File::getSeparatorChar()) : String();
+        String folder = folderText.isNotEmpty() ?
+                (folderText.endsWithChar(File::getSeparatorChar()) ?
+                    folderText :
+                    folderText + File::getSeparatorChar()) : String();
 
-		return folder;
-	}
+        return folder;
+    }
 
     void labelTextChanged(Label* editor) override {
         const String& currentFolder = getCurrentFolder();
 
-		stopTimer();
-		getObj(IConsole).write({}, IConsole::DefaultPriority);
+        stopTimer();
+        getObj(IConsole).write({}, IConsole::DefaultPriority);
 
-		overwriteMessage = {};
+        overwriteMessage = {};
 
         if (editor == &folderEditor) {
             if (!File(savePath + currentFolder).exists()) {
-				startTimer(300);
-				overwriteMessage = "Will create directory " + currentFolder;
-			}
+                startTimer(300);
+                overwriteMessage = "Will create directory " + currentFolder;
+            }
         } else if (editor == &nameEditor) {
             const String& currentFile = getCurrentFilename();
 
             if (File(savePath + currentFolder + currentFile).existsAsFile()) {
-				startTimer(300);
-				overwriteMessage = "Will overwrite " + currentFolder + currentFile;
-			}
-		}
-	}
+                startTimer(300);
+                overwriteMessage = "Will overwrite " + currentFolder + currentFile;
+            }
+        }
+    }
 
-	void timerCallback() override {
+    void timerCallback() override {
         if (overwriteMessage.isNotEmpty()) {
-	        showImportant(overwriteMessage);
+            showImportant(overwriteMessage);
         }
 
-		stopTimer();
-	}
+        stopTimer();
+    }
 
 private:
-	TextButton saveButton;
-	Label nameEditor;
-	Label folderEditor;
-	Label folderLabel, nameLabel;
-	Rectangle<int> folderBounds, nameBounds;
-	Ref<MeshSelector<MeshType> > selector;
+    TextButton saveButton;
+    Label nameEditor;
+    Label folderEditor;
+    Label folderLabel, nameLabel;
+    Rectangle<int> folderBounds, nameBounds;
+    Ref<MeshSelector<MeshType> > selector;
 
-	String overwriteMessage;
-	String savePath;
-	String extension;
+    String overwriteMessage;
+    String savePath;
+    String extension;
 };
 
 template<class MeshType>
 class MeshSelector :
-		public HoverSelector
-	,	public IDynamicSizeComponent
-	,	public MultiTimer {
+        public HoverSelector
+    ,	public IDynamicSizeComponent
+    ,	public MultiTimer {
 public:
-	enum
-	{
-		MeshSave = 100,
-		MeshOpen,
-		MeshCopy,
-		MeshPaste,
-		MeshDouble,
-		Cancel
-	};
+    enum
+    {
+        MeshSave = 100,
+        MeshOpen,
+        MeshCopy,
+        MeshPaste,
+        MeshDouble,
+        Cancel
+    };
 
-	enum
-	{
-		PopulateTimer = 1,
-		RevertTimer
-	};
+    enum
+    {
+        PopulateTimer = 1,
+        RevertTimer
+    };
 
-	MeshSelector(SingletonRepo* repo,
-				 MeshSelectionClient<MeshType>* client,
-				 String extension,
-				 bool horz,
-				 bool saveAtTop,
-				 bool updateMeshVersions = false,
-				 bool meshDoubleApplic = true) :
-			HoverSelector	(repo, 4, 0, horz)
-		,	itemCount		(1)
-		,	ignoreMouseExit	(false)
-		,	meshDoubleApplic(meshDoubleApplic)
-		,	oldMesh			(nullptr)
-		,	client			(client)
-		,	extension		(std::move(extension))
-		,	saveAtTop		(saveAtTop)
-		,	updateMeshVersion(updateMeshVersions) {
-		jassert(client != nullptr);
+    MeshSelector(SingletonRepo* repo,
+                 MeshSelectionClient<MeshType>* client,
+                 String extension,
+                 bool horz,
+                 bool saveAtTop,
+                 bool updateMeshVersions = false,
+                 bool meshDoubleApplic = true) :
+            HoverSelector	(repo, 4, 0, horz)
+        ,	itemCount		(1)
+        ,	ignoreMouseExit	(false)
+        ,	meshDoubleApplic(meshDoubleApplic)
+        ,	oldMesh			(nullptr)
+        ,	client			(client)
+        ,	extension		(std::move(extension))
+        ,	saveAtTop		(saveAtTop)
+        ,	updateMeshVersion(updateMeshVersions) {
+        jassert(client != nullptr);
 
-		startTimer(PopulateTimer, 1000);
-	}
+        startTimer(PopulateTimer, 1000);
+    }
 
-	void populateMenu() override {
+    void populateMenu() override {
         itemCount = 1;
-		oldMesh 	= nullptr;
+        oldMesh 	= nullptr;
 
-		String parentPath 		= getObj(Directories).getMeshDir() 	+ extension + File::getSeparatorChar();
-		String parentUserPath 	= getObj(Directories).getUserMeshDir() + extension + File::getSeparatorChar();
+        String parentPath 		= getObj(Directories).getMeshDir() 	+ extension + File::getSeparatorChar();
+        String parentUserPath 	= getObj(Directories).getUserMeshDir() + extension + File::getSeparatorChar();
 
-		File parentFile 		= File(parentPath);
-		File parentUserFile 	= File(parentUserPath);
+        File parentFile 		= File(parentPath);
+        File parentUserFile 	= File(parentUserPath);
 
-		Array<File> categories;
-		parentFile.findChildFiles(categories, File::findDirectories, false, "*");
-		parentUserFile.findChildFiles(categories, File::findDirectories, false, "*");
+        Array<File> categories;
+        parentFile.findChildFiles(categories, File::findDirectories, false, "*");
+        parentUserFile.findChildFiles(categories, File::findDirectories, false, "*");
 
-		StringArray uniqueCategs;
-		for(auto&& categorie : categories) {
-			uniqueCategs.addIfNotAlreadyThere(categorie.getFileName());
-		}
+        StringArray uniqueCategs;
+        for(auto&& categorie : categories) {
+            uniqueCategs.addIfNotAlreadyThere(categorie.getFileName());
+        }
 
-		uniqueCategs.sort(true);
+        uniqueCategs.sort(true);
 
-		menu.clear();
-		if(saveAtTop) {
-			addNonSelectionItems(menu, saveAtTop);
-		}
+        menu.clear();
+        if(saveAtTop) {
+            addNonSelectionItems(menu, saveAtTop);
+        }
 
-		destroyMeshes();
-		callbacks.clear();
+        destroyMeshes();
+        callbacks.clear();
 
-		addFilesInDirectory(parentFile, menu);
-		addFilesInDirectory(parentUserFile, menu);
+        addFilesInDirectory(parentFile, menu);
+        addFilesInDirectory(parentUserFile, menu);
 
-		for (const auto& category : uniqueCategs) {
+        for (const auto& category : uniqueCategs) {
             File categ(parentPath + category);
-			File userCateg(parentUserPath + category);
+            File userCateg(parentUserPath + category);
 
-			PopupMenu subMenu;
-			bool containsAny = addFilesInDirectory(userCateg, subMenu);
+            PopupMenu subMenu;
+            bool containsAny = addFilesInDirectory(userCateg, subMenu);
 
-			if(containsAny) {
-				subMenu.addSeparator();
-			}
+            if(containsAny) {
+                subMenu.addSeparator();
+            }
 
-			containsAny |= addFilesInDirectory(categ, subMenu);
+            containsAny |= addFilesInDirectory(categ, subMenu);
 
-			if(containsAny) {
-				menu.addSubMenu(category, subMenu, true, Image(), false);
-			}
-		}
+            if(containsAny) {
+                menu.addSubMenu(category, subMenu, true, Image(), false);
+            }
+        }
 
-		if(! saveAtTop) {
-			addNonSelectionItems(menu, saveAtTop);
-		}
-	}
+        if(! saveAtTop) {
+            addNonSelectionItems(menu, saveAtTop);
+        }
+    }
 
-	void addNonSelectionItems(PopupMenu& menu, bool atTop)
-	{
-		if(! atTop)
-			menu.addSeparator();
+    void addNonSelectionItems(PopupMenu& menu, bool atTop)
+    {
+        if(! atTop)
+            menu.addSeparator();
 
-		menu.addItem(MeshSave, "Save as...");
+        menu.addItem(MeshSave, "Save as...");
 
 //		bool canCopyMesh = getObj(LayerManager).canPasteTo(client->getLayerType());
 
-		menu.addItem(MeshCopy, 	"Copy",  true, false, Image());
-		menu.addItem(MeshPaste, "Paste", true, false, Image());
+        menu.addItem(MeshCopy, 	"Copy",  true, false, Image());
+        menu.addItem(MeshPaste, "Paste", true, false, Image());
 
-		if(meshDoubleApplic) {
-			menu.addItem(MeshDouble, "Double", true, false, Image());
-		}
+        if(meshDoubleApplic) {
+            menu.addItem(MeshDouble, "Double", true, false, Image());
+        }
 
-		if(atTop) {
-			menu.addSeparator();
-		}
-	}
+        if(atTop) {
+            menu.addSeparator();
+        }
+    }
 
-	bool addFilesInDirectory(const File& child, PopupMenu& subMenu) {
+    bool addFilesInDirectory(const File& child, PopupMenu& subMenu) {
         if (!child.exists())
-			return false;
+            return false;
 
-		Array<File> results;
-		child.findChildFiles(results, File::findFiles, false, String("*.") + extension);
+        Array<File> results;
+        child.findChildFiles(results, File::findFiles, false, String("*.") + extension);
 
-		if(results.size() == 0)
-			return false;
+        if(results.size() == 0)
+            return false;
 
         for (int i = 0; i < (int) results.size(); ++i) {
-			File& file 					= results.getReference(i);
-			std::unique_ptr<InputStream> stream = file.createInputStream();
+            File& file 					= results.getReference(i);
+            std::unique_ptr<InputStream> stream = file.createInputStream();
 
-			jassert(file.existsAsFile() && stream != nullptr);
+            jassert(file.existsAsFile() && stream != nullptr);
 
-			GZIPDecompressorInputStream gzipStream(stream.get(), false);
-			XmlDocument 				xmlDoc(gzipStream.readEntireStreamAsString());
-			std::unique_ptr meshElem = xmlDoc.getDocumentElement();
+            GZIPDecompressorInputStream gzipStream(stream.get(), false);
+            XmlDocument 				xmlDoc(gzipStream.readEntireStreamAsString());
+            std::unique_ptr meshElem = xmlDoc.getDocumentElement();
 
             if (meshElem == nullptr) {
-				std::cout << "bad mesh\n";
+                std::cout << "bad mesh\n";
 
-				jassertfalse;
-				continue;
-			}
+                jassertfalse;
+                continue;
+            }
 
-			auto* mesh = new MeshType(file.getFileNameWithoutExtension() + "Mesh");
+            auto* mesh = new MeshType(file.getFileNameWithoutExtension() + "Mesh");
 
-			mesh->readXML(meshElem);
+            mesh->readXML(meshElem);
 
-			if(updateMeshVersion) {
+            if(updateMeshVersion) {
                 mesh->updateToVersion(repo);
-			}
+            }
 
-        	for(auto& cube : mesh->getCubes()) {
-        		cube->resetProperties();
-        	}
+            for(auto& cube : mesh->getCubes()) {
+                cube->resetProperties();
+            }
 
-			meshes.add(mesh);
+            meshes.add(mesh);
 
-			auto* callback = new SelectorCallback(itemCount, file.getFullPathName(), this);
-			callbacks.add(callback);
+            auto* callback = new SelectorCallback(itemCount, file.getFullPathName(), this);
+            callbacks.add(callback);
 
-			subMenu.addCustomItem(itemCount, callback, 200, 30, true);
+            subMenu.addCustomItem(itemCount, callback, 200, 30, true);
 
-			++itemCount;
-		}
+            ++itemCount;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
     ~MeshSelector() override {
         destroyMeshes();
@@ -362,116 +362,116 @@ public:
         for (int i = 0; i < (int) meshes.size(); ++i) {
             if (meshes[i]) {
                 meshes[i]->destroy();
-				delete meshes[i];
+                delete meshes[i];
 
-				meshes.set(i, nullptr);
-			}
-		}
+                meshes.set(i, nullptr);
+            }
+        }
 
-		meshes.clear();
-	}
+        meshes.clear();
+    }
 
     void itemWasSelected(int itemId) override {
         switch (itemId) {
             case MeshSave: {
                 std::unique_ptr<SaveItem<MeshType> > saveItem = new SaveItem<MeshType>(repo, extension, this);
-				saveItem->setFolder(client->getDefaultFolder());
-				saveItem->setSize(180, 50);
+                saveItem->setFolder(client->getDefaultFolder());
+                saveItem->setSize(180, 50);
 
-				CallOutBox& box = CallOutBox::launchAsynchronously(saveItem.release(), getScreenBounds(), nullptr);
-				box.setArrowSize(8.f);
+                CallOutBox& box = CallOutBox::launchAsynchronously(saveItem.release(), getScreenBounds(), nullptr);
+                box.setArrowSize(8.f);
 
-				break;
+                break;
             }
             case MeshCopy: {
-				getObj(MeshLibrary).copyToClipboard(client->getCurrentMesh(), client->getLayerType());
-				break;
-			}
-			case MeshPaste: {
+                getObj(MeshLibrary).copyToClipboard(client->getCurrentMesh(), client->getLayerType());
+                break;
+            }
+            case MeshPaste: {
                 client->enterClientLock();
 
-				MeshType* mesh = client->getCurrentMesh();
-				getObj(MeshLibrary).pasteFromClipboardTo(mesh, client->getLayerType());
+                MeshType* mesh = client->getCurrentMesh();
+                getObj(MeshLibrary).pasteFromClipboardTo(mesh, client->getLayerType());
 
-				client->setCurrentMesh(mesh);
-				client->exitClientLock();
+                client->setCurrentMesh(mesh);
+                client->exitClientLock();
 
-				break;
-			}
+                break;
+            }
 
             case MeshDouble: {
                 client->enterClientLock();
-				client->doubleMesh();
-				client->exitClientLock();
-			}
+                client->doubleMesh();
+                client->exitClientLock();
+            }
 
             case Cancel: {
                 revert();
-				break;
-			}
-			default: {
+                break;
+            }
+            default: {
                 jassert(itemId > 0);
 
-				if(itemId <= 0) {
-					return;
-				}
+                if(itemId <= 0) {
+                    return;
+                }
 
-				const String& filename = callbacks[itemId - 1]->getFilename();
+                const String& filename = callbacks[itemId - 1]->getFilename();
 
-				File file(filename);
-				std::unique_ptr<InputStream> stream = file.createInputStream();
-				GZIPDecompressorInputStream gzipStream(stream.release(), true);
+                File file(filename);
+                std::unique_ptr<InputStream> stream = file.createInputStream();
+                GZIPDecompressorInputStream gzipStream(stream.release(), true);
 
-				XmlDocument xmlDoc(gzipStream.readEntireStreamAsString());
-				std::unique_ptr meshElem = xmlDoc.getDocumentElement();
+                XmlDocument xmlDoc(gzipStream.readEntireStreamAsString());
+                std::unique_ptr meshElem = xmlDoc.getDocumentElement();
 
-				auto* mesh = new MeshType(file.getFileNameWithoutExtension() + "Mesh");
+                auto* mesh = new MeshType(file.getFileNameWithoutExtension() + "Mesh");
 
-				mesh->readXML(meshElem);
+                mesh->readXML(meshElem);
 
-				if(updateMeshVersion) {
-					mesh->updateToVersion(repo);
-				}
+                if(updateMeshVersion) {
+                    mesh->updateToVersion(repo);
+                }
 
-            	for(auto& cube : mesh->getCubes()) {
-            		cube->resetProperties();
-            	}
+                for(auto& cube : mesh->getCubes()) {
+                    cube->resetProperties();
+                }
 
-				client->enterClientLock();
-				client->setCurrentMesh(mesh);
-				client->exitClientLock();
+                client->enterClientLock();
+                client->setCurrentMesh(mesh);
+                client->exitClientLock();
 
                 if (oldMesh != nullptr) {
                     oldMesh->destroy();
 
-					delete oldMesh;
-					oldMesh = nullptr;
-				}
+                    delete oldMesh;
+                    oldMesh = nullptr;
+                }
 
-				ignoreMouseExit = true;
-			}
-		}
-	}
+                ignoreMouseExit = true;
+            }
+        }
+    }
 
     bool itemIsSelection(int id) override {
-		return ! (id == MeshSave || id == MeshOpen || id == MeshCopy || id == Cancel || id == MeshPaste);
-	}
+        return ! (id == MeshSave || id == MeshOpen || id == MeshCopy || id == Cancel || id == MeshPaste);
+    }
 
     void prepareForPopup() override {
         client->prepareForPopup();
 
-		setOriginalMesh(client->getCurrentMesh());
+        setOriginalMesh(client->getCurrentMesh());
 
-		jassert(oldMesh != nullptr);
-	}
+        jassert(oldMesh != nullptr);
+    }
 
     void revert() override {
         if (oldMesh != nullptr) {
-			client->previewMeshEnded(oldMesh);
-		}
-	}
+            client->previewMeshEnded(oldMesh);
+        }
+    }
 
-	void mouseOverItem(int itemIndex) override {
+    void mouseOverItem(int itemIndex) override {
         ignoreMouseExit = false;
         stopTimer(RevertTimer);
 
@@ -483,42 +483,42 @@ public:
     void mouseLeftItem(int itemIndex) override {
         if (!ignoreMouseExit)
             startTimer(RevertTimer, 50);
-	}
+    }
 
-	void timerCallback(int id) override {
+    void timerCallback(int id) override {
         if (id == RevertTimer) {
             stopTimer(RevertTimer);
             revert();
         } else if (id == PopulateTimer) {
             stopTimer(PopulateTimer);
-			populateMenu();
-		}
-	}
+            populateMenu();
+        }
+    }
 
-	void setBoundsDelegate(int x, int y, int w, int h) override { setBounds(x, y, w, h); 			}
-	MeshType* getCurrentClientMesh()							{ return client->getCurrentMesh(); 	}
-	void setOriginalMesh(MeshType* oldMesh)						{ this->oldMesh = oldMesh; 			}
-	const Rectangle<int> getBoundsInParentDelegate() override	{ return Rectangle<int>(getX(), getY(), 25, 25); }
-	int getExpandedSize() override								{ return 22; 						}
-	int getCollapsedSize() override								{ return 22; 						}
-	int getYDelegate() override									{ return getY(); 					}
-	int getXDelegate() override									{ return getX(); 					}
-	bool isVisibleDlg() const override 							{ return isVisible(); 				}
-	void setVisibleDlg(bool isVisible) override 				{ setVisible(isVisible); 			}
+    void setBoundsDelegate(int x, int y, int w, int h) override { setBounds(x, y, w, h); 			}
+    MeshType* getCurrentClientMesh()							{ return client->getCurrentMesh(); 	}
+    void setOriginalMesh(MeshType* oldMesh)						{ this->oldMesh = oldMesh; 			}
+    Rectangle<int> getBoundsInParentDelegate() const override	{ return Rectangle<int>(getX(), getY(), 25, 25); }
+    int getExpandedSize() const override						{ return 22; 						}
+    int getCollapsedSize() const override						{ return 22; 						}
+    int getYDelegate() override									{ return getY(); 					}
+    int getXDelegate() override									{ return getX(); 					}
+    bool isVisibleDlg() const override 							{ return isVisible(); 				}
+    void setVisibleDlg(bool isVisible) override 				{ setVisible(isVisible); 			}
 
 private:
-	int itemCount;
-	bool ignoreMouseExit;
-	bool saveAtTop;
-	bool updateMeshVersion;
-	bool meshDoubleApplic;
+    int itemCount;
+    bool ignoreMouseExit;
+    bool saveAtTop;
+    bool updateMeshVersion;
+    bool meshDoubleApplic;
 
-	String extension;
-	OwnedArray<SelectorCallback> callbacks;
+    String extension;
+    OwnedArray<SelectorCallback> callbacks;
 
-	Ref<MeshSelectionClient<MeshType>> client;
-	Array<MeshType*> meshes;
-	MeshType* oldMesh;
+    Ref<MeshSelectionClient<MeshType>> client;
+    Array<MeshType*> meshes;
+    MeshType* oldMesh;
 
-	JUCE_LEAK_DETECTOR(MeshSelector)
+    JUCE_LEAK_DETECTOR(MeshSelector)
 };

@@ -71,23 +71,23 @@ void Arithmetic::unpolarize(Buffer<float> x) {
 }
 
 void Arithmetic::polarize(Buffer<float> x) {
-	x.mul(2.f).add(-1.f);
+    x.mul(2.f).add(-1.f);
 }
 
 void Arithmetic::getInputOutputRates(int& inRate, int& outRate, double sampleRateReal) {
     int sampleRate = (int) (sampleRateReal + 0.0001);
 
     switch (sampleRate) {
-		case 192000:	inRate 	= 147;		outRate = 640;		break;
-		case 176400:	inRate 	= 1;		outRate = 4;		break;
-		case 96000:		inRate 	= 147;		outRate = 320;		break;
-		case 88200:		inRate 	= 1;		outRate = 2;		break;
-		case 44100:		inRate 	= 1;		outRate = 1;		break;
-		case 48000:		inRate 	= 147;		outRate = 160;		break;
-		case 32000:		inRate 	= 441;		outRate = 320;		break;
-		case 22050:		inRate 	= 2;		outRate = 1;		break;
-		case 11025:		inRate 	= 4;		outRate = 1;		break;
-		default:		inRate 	= 1;		outRate = 1;
-	}
+        case 192000:	inRate 	= 147;		outRate = 640;		break;
+        case 176400:	inRate 	= 1;		outRate = 4;		break;
+        case 96000:		inRate 	= 147;		outRate = 320;		break;
+        case 88200:		inRate 	= 1;		outRate = 2;		break;
+        case 44100:		inRate 	= 1;		outRate = 1;		break;
+        case 48000:		inRate 	= 147;		outRate = 160;		break;
+        case 32000:		inRate 	= 441;		outRate = 320;		break;
+        case 22050:		inRate 	= 2;		outRate = 1;		break;
+        case 11025:		inRate 	= 4;		outRate = 1;		break;
+        default:		inRate 	= 1;		outRate = 1;
+    }
 }
 

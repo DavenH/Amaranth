@@ -5,9 +5,9 @@
 class ControlsClient
 {
 public:
-	PanelControls* getPanelControls() { return panelControls.get(); }
-	Component* getControlsComponent() { return panelControls.get(); }
+    [[nodiscard]] PanelControls* getPanelControls() const { return panelControls.get(); }
+    [[nodiscard]] Component* getControlsComponent() const { return panelControls.get(); }
 
 protected:
-	std::unique_ptr<PanelControls> panelControls;
+    std::unique_ptr<PanelControls> panelControls;
 };

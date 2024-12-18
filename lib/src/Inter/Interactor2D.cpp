@@ -13,178 +13,176 @@
 #include "../Definitions.h"
 
 Interactor2D::Interactor2D(SingletonRepo* repo, const String& name, const Dimensions& d) :
-		Interactor(repo, name, d)
-	,	SingletonAccessor(repo, name) {
+        Interactor(repo, name, d)
+    ,	SingletonAccessor(repo, name) {
 }
 
 bool Interactor2D::locateClosestElement() {
-	RasterizerData& rastData = getRasterizer()->getRastData();
+    RasterizerData& rastData = getRasterizer()->getRastData();
 
-//	progressMark
-	if (rastData.intercepts.empty() && depthVerts.empty())
-	{
-		return Interactor::locateClosestElement();
-	}
+    if (rastData.intercepts.empty() && depthVerts.empty()) {
+        return Interactor::locateClosestElement();
+    }
 
-	const vector<Intercept>& icpts = rastData.intercepts;
+    const vector<Intercept>& icpts = rastData.intercepts;
 
-	float dist = 1e7f;
-	float x = state.currentMouse.x;
+    float dist = 1e7f;
+    float x = state.currentMouse.x;
 
-	int oldIcptIdx = state.currentIcpt;
-	int oldFreeIdx = state.currentFreeVert;
+    int oldIcptIdx = state.currentIcpt;
+    int oldFreeIdx = state.currentFreeVert;
 
-	int icptIdx = -1;
-	int freeIdx = -1;
+    int icptIdx = -1;
+    int freeIdx = -1;
 
-	int i = 0;
-	for(auto& icpt : icpts) {
+    int i = 0;
+    for(auto& icpt : icpts) {
         if (fabsf(icpt.x - x) < dist) {
-			dist = fabsf(icpt.x - x);
-			icptIdx = i;
-		}
-		++i;
-	}
+            dist = fabsf(icpt.x - x);
+            icptIdx = i;
+        }
+        ++i;
+    }
 
-	i = 0;
-	for(auto& vert : depthVerts) {
+    i = 0;
+    for(auto& vert : depthVerts) {
         if (fabsf(vert.x - x) < dist) {
-			dist = fabsf(vert.x - x);
-			freeIdx = i;
-		}
-	}
+            dist = fabsf(vert.x - x);
+            freeIdx = i;
+        }
+    }
 
-	ScopedLock sl(vertexLock);
+    ScopedLock sl(vertexLock);
 
-	Vertex* lastCurrent = state.currentVertex;
-	state.currentCube = nullptr;
+    Vertex* lastCurrent = state.currentVertex;
+    state.currentCube = nullptr;
 
-	if(freeIdx != -1) {
-		state.currentVertex 	= depthVerts[freeIdx].vert;
-		state.currentFreeVert 	= freeIdx;
-		state.currentIcpt 		= -1;
-	} else if (icptIdx != -1) {
-		state.currentCube 		= icpts[icptIdx].cube;
+    if(freeIdx != -1) {
+        state.currentVertex 	= depthVerts[freeIdx].vert;
+        state.currentFreeVert 	= freeIdx;
+        state.currentIcpt 		= -1;
+    } else if (icptIdx != -1) {
+        state.currentCube 		= icpts[icptIdx].cube;
 
-		if(state.currentCube == nullptr && icptIdx > 0) {
-			state.currentCube = icpts[icptIdx - 1].cube;
-		}
+        if(state.currentCube == nullptr && icptIdx > 0) {
+            state.currentCube = icpts[icptIdx - 1].cube;
+        }
 
-		state.currentFreeVert 	= -1;
-		state.currentIcpt		= icptIdx;
+        state.currentFreeVert 	= -1;
+        state.currentIcpt		= icptIdx;
 
-		if(state.currentCube == nullptr) {
+        if(state.currentCube == nullptr) {
             Mesh* mesh = getMesh();
 
-			for(auto& vert : mesh->getVerts()) {
+            for(auto& vert : mesh->getVerts()) {
                 if (fabsf(vert->values[dims.x] - icpts[state.currentIcpt].x) < 0.0001f) {
-					// when does this ever happen???
-					state.currentVertex = vert;
-					break;
-				}
-			}
-		}
-	}
+                    // when does this ever happen???
+                    state.currentVertex = vert;
+                    break;
+                }
+            }
+        }
+    }
 
     if (icptIdx != -1) {
-		getStateValue(CurrentCurve) = icptIdx + rasterizer->getPaddingSize();
-	}
+        getStateValue(CurrentCurve) = icptIdx + rasterizer->getPaddingSize();
+    }
 
-	if(icptIdx != oldIcptIdx || freeIdx != oldFreeIdx) {
-		flag(SimpleRepaint) = true;
-	}
+    if(icptIdx != oldIcptIdx || freeIdx != oldFreeIdx) {
+        flag(SimpleRepaint) = true;
+    }
 
-	// call virtual function that subclasses can use if wanted
-	setExtraElements(x);
+    // call virtual function that subclasses can use if wanted
+    setExtraElements(x);
 
-	return state.currentVertex != lastCurrent;
+    return state.currentVertex != lastCurrent;
 }
 
 void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
-	ScopedLock sl(vertexLock);
+    ScopedLock sl(vertexLock);
 
-	const float distThresPX = 7.f;
+    const float distThresPX = 7.f;
 
-	RasterizerData& rastData = rasterizer->getRastData();
+    RasterizerData& rastData = rasterizer->getRastData();
 
-	Buffer<Ipp32f> waveX = rastData.waveX;
-	Buffer<Ipp32f> waveY = rastData.waveY;
-	bool inSelection 	 = finalSelection.contains(e.getPosition());
+    Buffer<Ipp32f> waveX = rastData.waveX;
+    Buffer<Ipp32f> waveY = rastData.waveY;
+    bool inSelection 	 = finalSelection.contains(e.getPosition());
 
-	if(inSelection || waveX.empty() || waveY.empty()) {
-		return;
-	}
+    if(inSelection || waveX.empty() || waveY.empty()) {
+        return;
+    }
 
-	Vertex2 scaledMouse(panel->sx(state.currentMouse.x), panel->sy(state.currentMouse.y));
+    Vertex2 scaledMouse(panel->sx(state.currentMouse.x), panel->sy(state.currentMouse.y));
 
-	int startIndex 	= 0;
-	int endIndex 	= 0;
-	float lowBound 	= jlimit(waveX.front(), waveX.back(), panel->invertScaleX(scaledMouse.x - 3 * distThresPX));
-	float highBound = jlimit(waveX.front(), waveX.back(), panel->invertScaleX(scaledMouse.x + 3 * distThresPX));
+    int startIndex 	= 0;
+    int endIndex 	= 0;
+    float lowBound 	= jlimit(waveX.front(), waveX.back(), panel->invertScaleX(scaledMouse.x - 3 * distThresPX));
+    float highBound = jlimit(waveX.front(), waveX.back(), panel->invertScaleX(scaledMouse.x + 3 * distThresPX));
 
-	startIndex 		= Arithmetic::binarySearch(lowBound, waveX);
-	endIndex 		= Arithmetic::binarySearch(highBound, waveX);
+    startIndex 		= Arithmetic::binarySearch(lowBound, waveX);
+    endIndex 		= Arithmetic::binarySearch(highBound, waveX);
 
-	if(endIndex - startIndex < 10) {
-		startIndex 	= jmax(0, startIndex - 5);
-		endIndex 	= jmin(waveX.size() - 1, endIndex + 5);
-	}
+    if(endIndex - startIndex < 10) {
+        startIndex 	= jmax(0, startIndex - 5);
+        endIndex 	= jmin(waveX.size() - 1, endIndex + 5);
+    }
 
-	int size = endIndex - startIndex;
-	ScopedAlloc<Ipp32f> scaleMem(2 * size);
+    int size = endIndex - startIndex;
+    ScopedAlloc<Ipp32f> scaleMem(2 * size);
 
-	BufferXY xy;
-	xy.x = scaleMem.place(size);
-	xy.y = scaleMem.place(size);
+    BufferXY xy;
+    xy.x = scaleMem.place(size);
+    xy.y = scaleMem.place(size);
 
-	waveX.offset(startIndex).copyTo(xy.x);
-	waveY.offset(startIndex).copyTo(xy.y);
+    waveX.offset(startIndex).copyTo(xy.x);
+    waveY.offset(startIndex).copyTo(xy.y);
 
-	panel->applyScaleX(xy.x);
-	panel->applyScaleY(xy.y);
+    panel->applyScaleX(xy.x);
+    panel->applyScaleY(xy.y);
 
-	float distToCurve;
+    float distToCurve;
 
-	mouseFlag(WithinReshapeThresh) = false;
+    mouseFlag(WithinReshapeThresh) = false;
 
-	const Vertex2& c(scaledMouse);
+    const Vertex2& c(scaledMouse);
 
     for (int i = 0; i < size - 1; ++i) {
-		Vertex2 a(xy[i]);
-		Vertex2 b(xy[i + 1]);
+        Vertex2 a(xy[i]);
+        Vertex2 b(xy[i + 1]);
 
-		float diff = a.dist2(b);
-		if(diff == 0) {
-			distToCurve = b.dist2(c);
-		} else {
-			float t = (c - a).dot(b - a) / diff;
-			if(t < 0)
-				distToCurve = c.dist2(a);
-			else if(t > 1)
-				distToCurve = c.dist2(b);
-			else {
-				Vertex2 vec = a + (b - a) * t;
+        float diff = a.dist2(b);
+        if(diff == 0) {
+            distToCurve = b.dist2(c);
+        } else {
+            float t = (c - a).dot(b - a) / diff;
+            if(t < 0)
+                distToCurve = c.dist2(a);
+            else if(t > 1)
+                distToCurve = c.dist2(b);
+            else {
+                Vertex2 vec = a + (b - a) * t;
 
-				distToCurve = c.dist2(vec);
-			}
-		}
+                distToCurve = c.dist2(vec);
+            }
+        }
 
-		distToCurve = sqrtf(distToCurve);
+        distToCurve = sqrtf(distToCurve);
 
-		if(distToCurve < distThresPX) {
-			mouseFlag(WithinReshapeThresh) = true;
-			break;
-		}
-	}
+        if(distToCurve < distThresPX) {
+            mouseFlag(WithinReshapeThresh) = true;
+            break;
+        }
+    }
 
-	flag(SimpleRepaint) = true;
+    flag(SimpleRepaint) = true;
 
 //	progressMark
 }
 
 void Interactor2D::doExtraMouseDrag(const MouseEvent& e) {
-	if(actionIs(PaintingEdit))
-		commitPath(e);
+    if(actionIs(PaintingEdit))
+        commitPath(e);
 }
 
 // needed to resolve case when an objectively closer vertex to the mouse belongs to
@@ -194,126 +192,126 @@ void Interactor2D::setExtraElements(float /*x*/) {
     ScopedLock sl(vertexLock);
 
     if (state.currentCube) {
-		state.currentVertex = findLinesClosestVertex(state.currentCube, state.currentMouse);
-		jassert(state.currentVertex->owners.contains(state.currentCube));
-	}
+        state.currentVertex = findLinesClosestVertex(state.currentCube, state.currentMouse);
+        jassert(state.currentVertex->owners.contains(state.currentCube));
+    }
 }
 
 void Interactor2D::commitPath(const MouseEvent& e) {
     MorphPosition morphPos = getModPosition();
 
     if (actionIs(PaintingCreate)) {
-		vector<Intercept> reducedPath = getObj(AutoModeller).modelToPath(pencilPath, 1.f, false);
+        vector<Intercept> reducedPath = getObj(AutoModeller).modelToPath(pencilPath, 1.f, false);
 
-		if(reducedPath.size() < 2) {
-			return;
-		}
+        if(reducedPath.size() < 2) {
+            return;
+        }
 
-		UndoableMeshProcess commitPathProcess(this, "Pencil Draw");
-		ScopedBooleanSwitcher sbs(suspendUndo);
+        UndoableMeshProcess commitPathProcess(this, "Pencil Draw");
+        ScopedBooleanSwitcher sbs(suspendUndo);
 
-		removeLinesInRange(Range(reducedPath.front().x, reducedPath.back().x), morphPos);
+        removeLinesInRange(Range(reducedPath.front().x, reducedPath.back().x), morphPos);
 
-		float startTime = getYellow();
+        float startTime = getYellow();
 
-		for (auto& it : reducedPath) {
-			addNewCube(startTime, it.x, it.y, it.shp);
-		}
+        for (auto& it : reducedPath) {
+            addNewCube(startTime, it.x, it.y, it.shp);
+        }
 
-		flag(DidMeshChange) = true;
-	} else if (actionIs(PaintingEdit)) {
-		const vector<Intercept>& icpts = rasterizer->getRastData().intercepts;
+        flag(DidMeshChange) = true;
+    } else if (actionIs(PaintingEdit)) {
+        const vector<Intercept>& icpts = rasterizer->getRastData().intercepts;
 
-		float diff;
+        float diff;
 
-		if(pencilPath.size() < 2) {
-			return;
-		}
+        if(pencilPath.size() < 2) {
+            return;
+        }
 
-		Vertex pos;
-		pos[Vertex::Time] 	= morphPos.time;
-		pos[Vertex::Red] 	= morphPos.red;
-		pos[Vertex::Blue]	= morphPos.blue;
-		pos[Vertex::Amp] 	= -1;
-		pos[Vertex::Phase] 	= -1;
+        Vertex pos;
+        pos[Vertex::Time] 	= morphPos.time;
+        pos[Vertex::Red] 	= morphPos.red;
+        pos[Vertex::Blue]	= morphPos.blue;
+        pos[Vertex::Amp] 	= -1;
+        pos[Vertex::Phase] 	= -1;
 
-		// just use the last two
-		int end = pencilPath.size() - 1;
-		Vertex2 a(pencilPath[end - 1]);
-		Vertex2 b(pencilPath[end]);
+        // just use the last two
+        int end = pencilPath.size() - 1;
+        Vertex2 a(pencilPath[end - 1]);
+        Vertex2 b(pencilPath[end]);
 
-		if(a.x > b.x) {
-			std::swap(a, b);
-		}
+        if(a.x > b.x) {
+            std::swap(a, b);
+        }
 
-		bool haveChanged = false;
-		bool useLines = shouldDoDimensionCheck();
+        bool haveChanged = false;
+        bool useLines = shouldDoDimensionCheck();
 
         if (useLines) {
-        	for (const auto & icpt : icpts) {
-				if(! NumberUtils::within(icpt.x, a.x, b.x)) {
-					continue;
-				}
+            for (const auto & icpt : icpts) {
+                if(! NumberUtils::within(icpt.x, a.x, b.x)) {
+                    continue;
+                }
 
-				float curveY = Resampling::lerp(a.x, a.y, b.x, b.y, icpt.x);
-				diff = curveY - icpt.y;
+                float curveY = Resampling::lerp(a.x, a.y, b.x, b.y, icpt.x);
+                diff = curveY - icpt.y;
 
-				VertCube* cube = icpt.cube;
+                VertCube* cube = icpt.cube;
 
                 if (cube != nullptr) {
-					Vertex* vNear = findLinesClosestVertex(cube, state.currentMouse, pos);
-					Array<Vertex*> innerMovingVerts = getVerticesToMove(cube, vNear);
+                    Vertex* vNear = findLinesClosestVertex(cube, state.currentMouse, pos);
+                    Array<Vertex*> innerMovingVerts = getVerticesToMove(cube, vNear);
 
-                	for(auto* vert : innerMovingVerts) {
-						vert->values[dims.y] += diff;
+                    for(auto* vert : innerMovingVerts) {
+                        vert->values[dims.y] += diff;
 
-						NumberUtils::constrain(vert->values[dims.y], vertexLimits[dims.y]);
-					}
+                        NumberUtils::constrain(vert->values[dims.y], vertexLimits[dims.y]);
+                    }
 
-					haveChanged = true;
-				} else {
-					cout << "don't know which cube to use for pencil edit" << "\n";
-				}
-			}
+                    haveChanged = true;
+                } else {
+                    cout << "don't know which cube to use for pencil edit" << "\n";
+                }
+            }
         } else if (Mesh* mesh = getMesh()) {
-			if(pencilPath.size() < 2) {
-				return;
-			}
+            if(pencilPath.size() < 2) {
+                return;
+            }
 
-			// only use the last line segment of path each update
-			int size  = (int) pencilPath.size();
-			Vertex2 a = pencilPath[size - 2];
-			Vertex2 b = pencilPath[size - 1];
+            // only use the last line segment of path each update
+            int size  = (int) pencilPath.size();
+            Vertex2 a = pencilPath[size - 2];
+            Vertex2 b = pencilPath[size - 1];
 
-			if(a.x > b.x)
-				std::swap(a, b);
+            if(a.x > b.x)
+                std::swap(a, b);
 
-			if(a.x == b.x) {
-				return;
-			}
+            if(a.x == b.x) {
+                return;
+            }
 
-        	for(auto& vert : mesh->getVerts()) {
-				Vertex2 icpt(vert->values[dims.x], vert->values[dims.y]);
+            for(auto& vert : mesh->getVerts()) {
+                Vertex2 icpt(vert->values[dims.x], vert->values[dims.y]);
 
                 if (NumberUtils::within(icpt.x, a.x, b.x)) {
-					float curveY = Resampling::lerp(a.x, a.y, b.x, b.y, icpt.x);
-					NumberUtils::constrain(curveY, 0.f, 1.f);
+                    float curveY = Resampling::lerp(a.x, a.y, b.x, b.y, icpt.x);
+                    NumberUtils::constrain(curveY, 0.f, 1.f);
 
-					vert->values[dims.y] = curveY;
-					haveChanged = true;
-				}
-			}
-		}
+                    vert->values[dims.y] = curveY;
+                    haveChanged = true;
+                }
+            }
+        }
 
-		flag(DidMeshChange) |= haveChanged;
-	}
+        flag(DidMeshChange) |= haveChanged;
+    }
 }
 
 void Interactor2D::doReshapeCurve(const MouseEvent& e) {
     RasterizerData& data = rasterizer->getRastData();
 
     if (data.curves.empty()) {
-	    return;
+        return;
     }
 
     flag(LoweredRes) = true;
@@ -327,91 +325,91 @@ void Interactor2D::doReshapeCurve(const MouseEvent& e) {
         selected.clear();
 
         if (state.currentVertex != nullptr) {
-			selected.push_back(state.currentVertex);
-			updateSelectionFrames();
-		}
-	}
+            selected.push_back(state.currentVertex);
+            updateSelectionFrames();
+        }
+    }
 
-	resetFinalSelection();
+    resetFinalSelection();
 
-	Array<Vertex*> movingVerts = getVerticesToMove(state.currentCube, state.currentVertex);
+    Array<Vertex*> movingVerts = getVerticesToMove(state.currentCube, state.currentVertex);
 
-	float dragScale = getDragMovementScale(state.currentCube);
-	float diffY 	= (state.currentMouse.y - state.lastMouse.y) / sqrtf(panel->getZoomPanel()->rect.h);
-	float diff 		= diffY * dragScale / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
-	int pole 		= curves[getStateValue(CurrentCurve)].tp.ypole;
+    float dragScale = getDragMovementScale(state.currentCube);
+    float diffY 	= (state.currentMouse.y - state.lastMouse.y) / sqrtf(panel->getZoomPanel()->rect.h);
+    float diff 		= diffY * dragScale / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
+    int pole 		= curves[getStateValue(CurrentCurve)].tp.ypole;
 
-	for(auto& vert : movingVerts) {
-		float& weight 	= vert->values[Vertex::Curve];
-		weight 			+= diff * pole;
+    for(auto& vert : movingVerts) {
+        float& weight 	= vert->values[Vertex::Curve];
+        weight 			+= diff * pole;
 
-		NumberUtils::constrain(weight, 0.f, 1.f);
-	}
+        NumberUtils::constrain(weight, 0.f, 1.f);
+    }
 
-	listeners.call(&InteractorListener::selectionChanged, getMesh(), state.selectedFrame);
+    listeners.call(&InteractorListener::selectionChanged, getMesh(), state.selectedFrame);
 
-	flag(DidMeshChange) |= fabs(diff) > 0;
+    flag(DidMeshChange) |= fabs(diff) > 0;
 }
 
 void Interactor2D::removeLinesInRange(Range<float> phsRange, const MorphPosition& pos) {
     Mesh* mesh = getMesh();
-	vector<Vertex*> vertsToDelete;
+    vector<Vertex*> vertsToDelete;
 
-	// remove interfering lines
+    // remove interfering lines
     if (dims.numHidden() > 0) {
         bool overlapsAll;
 
-		vector<VertCube*> linesToDelete;
+        vector<VertCube*> linesToDelete;
 
-    	for(auto& cube : mesh->getCubes()) {
-			cube->getFinalIntercept(reduceData, pos);
+        for(auto& cube : mesh->getCubes()) {
+            cube->getFinalIntercept(reduceData, pos);
 
-			if(reduceData.pointOverlaps && phsRange.contains(reduceData.v.values[dims.x]))
-				linesToDelete.push_back(cube);
-		}
+            if(reduceData.pointOverlaps && phsRange.contains(reduceData.v.values[dims.x]))
+                linesToDelete.push_back(cube);
+        }
 
-		listeners.call(&InteractorListener::cubesRemoved, linesToDelete);
+        listeners.call(&InteractorListener::cubesRemoved, linesToDelete);
 
-    	for(auto& cube : linesToDelete) {
+        for(auto& cube : linesToDelete) {
             if (mesh->removeCube(cube)) {
                 for (int j = 0; j < VertCube::numVerts; ++j) {
-					Vertex* vert = cube->lineVerts[j];
+                    Vertex* vert = cube->lineVerts[j];
 
-					if(vert->getNumOwners() == 1) {
-						mesh->removeVert(vert);
-					}
-				}
-			}
-		}
-	} else {
-		for(auto& vert : mesh->getVerts()) {
-			if(phsRange.contains(vert->values[dims.x])) {
-				mesh->removeVert(vert);
-			}
-		}
-	}
+                    if(vert->getNumOwners() == 1) {
+                        mesh->removeVert(vert);
+                    }
+                }
+            }
+        }
+    } else {
+        for(auto& vert : mesh->getVerts()) {
+            if(phsRange.contains(vert->values[dims.x])) {
+                mesh->removeVert(vert);
+            }
+        }
+    }
 }
 
 bool Interactor2D::doCreateVertex() {
-	progressMark
+    progressMark
 
-	ScopedLock sl(vertexLock);
+    ScopedLock sl(vertexLock);
 
-	vector<Vertex*>& selected = getSelected();
-	selected.clear();
+    vector<Vertex*>& selected = getSelected();
+    selected.clear();
 
-	float startTime = getYellow();
-	// todo what is the curve shape?
-	bool succeeded = addNewCube(startTime, state.currentMouse.x, state.currentMouse.y, 0.f);
+    float startTime = getYellow();
+    // todo what is the curve shape?
+    bool succeeded = addNewCube(startTime, state.currentMouse.x, state.currentMouse.y, 0.f);
 
     if (state.currentVertex != nullptr) {
-		selected.push_back(state.currentVertex);
-		flag(SimpleRepaint) = true;
-	}
+        selected.push_back(state.currentVertex);
+        flag(SimpleRepaint) = true;
+    }
 
-	updateSelectionFrames();
+    updateSelectionFrames();
 
-	return succeeded;
+    return succeeded;
 }
 
 void Interactor2D::mouseDoubleClick(const MouseEvent& e) {
@@ -423,10 +421,10 @@ float Interactor2D::getVertexClickProximityThres() {
 
 Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
     vector<Vertex*>& selected 	= getSelected();
-	RasterizerData& rastData 	= getRasterizer()->getRastData();
-	ModifierKeys keys 			= ModifierKeys::getCurrentModifiers();
+    RasterizerData& rastData 	= getRasterizer()->getRastData();
+    ModifierKeys keys 			= ModifierKeys::getCurrentModifiers();
 
-	bool testAdjacent = keys.isAltDown() && selected.size() == 1 && ! rastData.intercepts.empty();
+    bool testAdjacent = keys.isAltDown() && selected.size() == 1 && ! rastData.intercepts.empty();
 
     if (testAdjacent) {
         float maximum = panel->getZoomPanel()->rect.xMaximum;
@@ -443,20 +441,20 @@ Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
 
                     while (j + 1 < icpts.size()) {
                         if (icpts[j].cube != nullptr) {
-	                        break;
+                            break;
                         }
 
-						++j;
-					}
+                        ++j;
+                    }
 
-					limits.setEnd(icpts[j].x - 0.0005f);
-				}
+                    limits.setEnd(icpts[j].x - 0.0005f);
+                }
 
                 if (i > 0) {
                     int j = i - 1;
                     while (j - 1 > 0) {
                         if (icpts[j].cube != nullptr) {
-	                        break;
+                            break;
                         }
 
                         --j;
@@ -467,19 +465,19 @@ Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
                 return limits;
             }
 
-        	if (vert->getNumOwners() == 0 && fabsf(icpt.x - vert->values[dims.x]) < 0.0001f) {
+            if (vert->getNumOwners() == 0 && fabsf(icpt.x - vert->values[dims.x]) < 0.0001f) {
                 if (i < icpts.size() - 1) {
-	                limits.setEnd(icpts[i + 1].x - 0.0005f);
+                    limits.setEnd(icpts[i + 1].x - 0.0005f);
                 }
 
-        		if (i > 0) {
-	                limits.setStart(icpts[i - 1].x + 0.0005f);
+                if (i > 0) {
+                    limits.setStart(icpts[i - 1].x + 0.0005f);
                 }
 
                 return limits;
-			}
-		}
-	}
+            }
+        }
+    }
 
-	return Interactor::getVertexPhaseLimits(vert);
+    return Interactor::getVertexPhaseLimits(vert);
 }

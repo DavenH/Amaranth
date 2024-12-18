@@ -15,7 +15,7 @@ class HelpDialog :
 	, 	public SingletonAccessor
 {
 public:
-	HelpDialog(SingletonRepo* repo) :
+	explicit HelpDialog(SingletonRepo* repo) :
 			SingletonAccessor(repo, "HelpDialog")
 		,	closeButton	("Close")
 	{
@@ -27,8 +27,7 @@ public:
 		bert 		= PNGImageFormat::loadFrom(CycleImages::cyclebert_png, CycleImages::cyclebert_pngSize);
 	}
 
-	void paint(Graphics& g)
-	{
+	void paint(Graphics& g) override {
 		getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
 		Font font(16);
@@ -65,7 +64,6 @@ public:
 		bottom.reduce(bottom.getWidth() / 2 - 60, 12);
 
 		closeButton.setBounds(bottom);
-
 	}
 
 	void buttonClicked(Button* button) override

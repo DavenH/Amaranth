@@ -5,22 +5,22 @@
 #include "PresetPage.h"
 
 PresetWindow::PresetWindow()
-		: DialogWindow("Preset Browser", Colour::greyLevel(0.08f), true, false)
+        : DialogWindow("Preset Browser", Colour::greyLevel(0.08f), true, false)
 {
-	setResizable(true, true);
+    setResizable(true, true);
 }
 
 void PresetWindow::show(SingletonRepo* repo, Component* toCentreAround) {
-	if (!JUCEApplication::isStandaloneApp()) {
-		setAlwaysOnTop(true);
-	}
+    if (!JUCEApplication::isStandaloneApp()) {
+        setAlwaysOnTop(true);
+    }
 
-	setContentNonOwned(&getObj(PresetPage), true);
-	centreAroundComponent(toCentreAround, getWidth(), getHeight());
-	setVisible(true);
+    setContentNonOwned(&getObj(PresetPage), true);
+    centreAroundComponent(toCentreAround, getWidth(), getHeight());
+    setVisible(true);
 }
 
 void PresetWindow::closeButtonPressed()
 {
-	setVisible(false);
+    setVisible(false);
 }

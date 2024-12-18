@@ -3,15 +3,16 @@
 
 class LayerSelectionClient {
 public:
-	explicit LayerSelectionClient(SingletonRepo* repo);
-	virtual ~LayerSelectionClient();
+    explicit LayerSelectionClient(SingletonRepo* repo);
 
-	virtual void layerChanged() = 0;
-	virtual int getLayerType() = 0;
-	virtual void moveLayerProperties(int fromIndex, int toIndex) {}
+    virtual ~LayerSelectionClient() = default;
+
+    virtual void layerChanged() = 0;
+    virtual int getLayerType() = 0;
+    virtual void moveLayerProperties(int fromIndex, int toIndex) {}
 
 protected:
 //	LayerSelectorPanel layerSelector;
 
-	friend class LayerSelectorPanel;
+    friend class LayerSelectorPanel;
 };

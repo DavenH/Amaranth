@@ -9,8 +9,8 @@
 #define addSetting(X, Y) globalSettingsMap[X] = Setting(#X, Y)
 
 Settings::Settings(SingletonRepo* repo, ClientPaths paths) :
-    	SingletonAccessor	(repo, "Settings")
-	,	paths				(std::move(paths)) {
+        SingletonAccessor	(repo, "Settings")
+    ,	paths				(std::move(paths)) {
 }
 
 Settings::~Settings() {
@@ -21,32 +21,32 @@ Settings::~Settings() {
 }
 
 void Settings::init() {
-	initialiseSettings();
-	createPropertiesFile();
-	createSettingsFile();
+    initialiseSettings();
+    createPropertiesFile();
+    createSettingsFile();
 
-	// TODO need to decouple this with a listener
+    // TODO need to decouple this with a listener
     XmlElement* midiSettings = settingsFileElem ? settingsFileElem->getChildByName("DEVICESETUP") : 0;
     getObj(AudioHub).initialiseAudioDevice(midiSettings);
 }
 
 void Settings::initialiseSettings() {
-	using namespace AppSettings;
+    using namespace AppSettings;
 
-	addSetting(CurrentMorphAxis, 		Vertex::Time);
-	addSetting(DrawScales, 				true);
-	addSetting(FirstLaunch, 			true);
-	addSetting(IgnoringEditMessages, 	false);
-	addSetting(LastPopupClickedHorz, 	false);
-	addSetting(LastPopupClickedTransp, 	false);
-	addSetting(LinkBlue, 				true);
-	addSetting(LinkRed, 				true);
-	addSetting(LinkYellow, 				true);
-	addSetting(PointSizeScale, 			ScaleSizes::ScaleSmall);
-	addSetting(SelectWithRight, 		false);
-	addSetting(Tool, 					Tools::Selector);
-	addSetting(UpdateGfxRealtime, 	 	true);
-	addSetting(ViewVertsOnlyOnHover, 	false);
+    addSetting(CurrentMorphAxis, 		Vertex::Time);
+    addSetting(DrawScales, 				true);
+    addSetting(FirstLaunch, 			true);
+    addSetting(IgnoringEditMessages, 	false);
+    addSetting(LastPopupClickedHorz, 	false);
+    addSetting(LastPopupClickedTransp, 	false);
+    addSetting(LinkBlue, 				true);
+    addSetting(LinkRed, 				true);
+    addSetting(LinkYellow, 				true);
+    addSetting(PointSizeScale, 			ScaleSizes::ScaleSmall);
+    addSetting(SelectWithRight, 		false);
+    addSetting(Tool, 					Tools::Selector);
+    addSetting(UpdateGfxRealtime, 	 	true);
+    addSetting(ViewVertsOnlyOnHover, 	false);
 }
 
 void Settings::readGlobalSettings(XmlElement* settingsDocElem) {
@@ -56,54 +56,54 @@ void Settings::readGlobalSettings(XmlElement* settingsDocElem) {
 
     if (settingsElem != nullptr) {
         for (auto & settingPair : globalSettingsMap) {
-        	Setting& setting = settingPair.second;
-			setting.value = settingsElem->getIntAttribute(setting.key, setting.value);
-		}
-	}
+            Setting& setting = settingPair.second;
+            setting.value = settingsElem->getIntAttribute(setting.key, setting.value);
+        }
+    }
 }
 
 void Settings::saveGlobalSettings(XmlElement* pluginElem) {
-	auto* settingsElem = new XmlElement("Settings");
+    auto* settingsElem = new XmlElement("Settings");
 
     for (auto& settingPair : globalSettingsMap) {
-    	const Setting& setting = settingPair.second;
+        const Setting& setting = settingPair.second;
 
-		settingsElem->setAttribute(setting.key, setting.value);
-	}
+        settingsElem->setAttribute(setting.key, setting.value);
+    }
 
     std::unique_ptr<XmlElement> settingsDocElem(new XmlElement("SettingsDocument"));
-	settingsDocElem->addChildElement(settingsElem);
+    settingsDocElem->addChildElement(settingsElem);
 
   #if PLUGIN_MODE
-	pluginElem->addChildElement(settingsDocElem);
+    pluginElem->addChildElement(settingsDocElem);
   #else
 
-	if(settingsFile.existsAsFile()) {
-		settingsFile.deleteFile();
-	}
+    if(settingsFile.existsAsFile()) {
+        (void) settingsFile.deleteFile();
+    }
 
     std::unique_ptr outStream(settingsFile.createOutputStream());
 
     if (outStream == nullptr) {
-		showMsg("Problem saving settings file");
-		return;
-	}
+        showMsg("Problem saving settings file");
+        return;
+    }
 
-	String filedata = settingsDocElem->toString();
-	outStream->writeString(filedata);
+    String filedata = settingsDocElem->toString();
+    outStream->writeString(filedata);
   #endif
 }
 
 void Settings::writeXML(XmlElement* topElement) const {
   #ifndef DEMO_VERSION
-	auto* prstElem = new XmlElement("Settings");
+    auto* prstElem = new XmlElement("Settings");
 
     for (const auto& settingPair : documentSettingsMap) {
-    	const Setting& setting = settingPair.second;
-		prstElem->setAttribute(setting.key, setting.value);
-	}
+        const Setting& setting = settingPair.second;
+        prstElem->setAttribute(setting.key, setting.value);
+    }
 
-	topElement->addChildElement(prstElem);
+    topElement->addChildElement(prstElem);
   #endif
 }
 
@@ -111,16 +111,16 @@ bool Settings::readXML(const XmlElement* element) {
     XmlElement* prstElem = element->getChildByName("Settings");
 
     if (prstElem == nullptr) {
-	    return false;
+        return false;
     }
 
     for (auto& settingPair : documentSettingsMap) {
-    	Setting& setting = settingPair.second;
+        Setting& setting = settingPair.second;
 
-		setting.value = prstElem->getIntAttribute(setting.key, setting.value);
-	}
+        setting.value = prstElem->getIntAttribute(setting.key, setting.value);
+    }
 
-	return true;
+    return true;
 }
 
 String Settings::getProperty(const String& key, const String& defaultStr) {
@@ -132,25 +132,25 @@ String Settings::getProperty(const String& key, const String& defaultStr) {
 void Settings::setProperty(const String& key,
                            const String& value) {
     if (propsElem != nullptr)
-		propsElem->setAttribute(key, value);
+        propsElem->setAttribute(key, value);
 }
 
 void Settings::createSettingsFile() {
     settingsFile = File(paths.propertiesPath);
 
-	if(! settingsFile.existsAsFile())
-		return;
+    if(! settingsFile.existsAsFile())
+        return;
 
     std::unique_ptr stream(settingsFile.createInputStream());
-	XmlDocument xmlDoc(stream->readEntireStreamAsString());
-	settingsFileElem = xmlDoc.getDocumentElement();
+    XmlDocument xmlDoc(stream->readEntireStreamAsString());
+    settingsFileElem = xmlDoc.getDocumentElement();
 }
 
 void Settings::createPropertiesFile() {
     propertiesFile = File(paths.propertiesPath);
 
     if (!propertiesFile.existsAsFile()) {
-	    propertiesFile.create();
+        (void) propertiesFile.create();
     }
 
     std::unique_ptr fileStream(propertiesFile.createInputStream());
@@ -161,7 +161,7 @@ void Settings::createPropertiesFile() {
     }
 
     if (propsElem == nullptr) {
-	    propsElem = std::make_unique<XmlElement>("Properties");
+        propsElem = std::make_unique<XmlElement>("Properties");
     }
 }
 

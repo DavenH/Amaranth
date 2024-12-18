@@ -7,16 +7,16 @@
 using namespace gl;
 
 OpenGLPanel::OpenGLPanel(SingletonRepo* repo, Panel2D* panel2D) :
-		PanelOwner(panel2D)
-	,	SingletonAccessor(repo, "OpenGLPanel")
-	,	OpenGLBase(this, this) {
-	commonGL = new CommonGL(panel2D, this);
+        PanelOwner(panel2D)
+    ,	SingletonAccessor(repo, "OpenGLPanel")
+    ,	OpenGLBase(this, this) {
+    commonGL = new CommonGL(panel2D, this);
 
-	panel2D->setComponent(this);
-	panel2D->setGraphicsHelper(commonGL);
-	panel2D->setRenderHelper(this);
+    panel2D->setComponent(this);
+    panel2D->setGraphicsHelper(commonGL);
+    panel2D->setRenderHelper(this);
 
-	attach();
+    attach();
 }
 
 OpenGLPanel::~OpenGLPanel() {
@@ -61,17 +61,17 @@ void OpenGLPanel::activateContext()
 {
 //	dout << panel->getName() << " attaching context\n";
 
-	attach();
+    attach();
 }
 
 void OpenGLPanel::deactivateContext()
 {
 //	dout << panel->getName() << " detaching context\n";
 
-	context.detach();
+    context.detach();
 }
 
 void OpenGLPanel::initRender()
 {
-	commonGL->initLineParams();
+    commonGL->initLineParams();
 }

@@ -7,53 +7,53 @@ class PanelPair;
 class SingletonRepo;
 
 class Dragger :
-		public Component
-	, 	public SingletonAccessor {
+        public Component
+    , 	public SingletonAccessor {
 public:
-	enum { Horz, Vert };
+    enum { Horz, Vert };
 
-	enum WhatToReduceInDetail {
-		ReduceNothing 		= 0,
-		ReduceF3dDetail 	= 1,
-		ReduceSurfDetail 	= 2,
-		ReduceE3DDetail 	= 4,
-	};
+    enum WhatToReduceInDetail {
+        ReduceNothing 		= 0,
+        ReduceF3dDetail 	= 1,
+        ReduceSurfDetail 	= 2,
+        ReduceE3DDetail 	= 4,
+    };
 
-	class Listener {
-	public:
-		virtual ~Listener() = default;
+    class Listener {
+    public:
+        virtual ~Listener() = default;
 
-		virtual void dragStarted() = 0;
-		virtual void dragEnded() = 0;
-	};
+        virtual void dragStarted() = 0;
+        virtual void dragEnded() = 0;
+    };
 
     /* ----------------------------------------------------------------------------- */
 
-	Dragger(SingletonRepo* repo, int bitfield);
+    Dragger(SingletonRepo* repo, int bitfield);
 
-	void mouseDrag(const MouseEvent& e) override;
-	void mouseEnter(const MouseEvent& e) override;
-	void mouseUp(const MouseEvent& e) override;
-	void paint(Graphics& g) override;
-	void reduceDetailOfPanels();
-	void resized() override;
-	void restoreDetailOfPanels();
-	void setPanelPair(PanelPair* pair);
+    void mouseDrag(const MouseEvent& e) override;
+    void mouseEnter(const MouseEvent& e) override;
+    void mouseUp(const MouseEvent& e) override;
+    void paint(Graphics& g) override;
+    void reduceDetailOfPanels();
+    void resized() override;
+    void restoreDetailOfPanels();
+    void setPanelPair(PanelPair* pair);
 
-	void addListener(Listener* listener) 	{ listeners.add(listener); }
-	PanelPair* getPair() 					{ return pair; }
+    void addListener(Listener* listener) 	{ listeners.add(listener); }
+    PanelPair* getPair() 					{ return pair; }
 
-	void mouseDown(const MouseEvent& e) override;
-	virtual void update(int diff);
+    void mouseDown(const MouseEvent& e) override;
+    virtual void update(int diff);
 
 protected:
-	int type, bitfield;
-	int startY, startAH, startBH, startBY;
-	int startX, startAW, startBW, startBX;
+    int type, bitfield;
+    int startY, startAH, startBH, startBY;
+    int startX, startAW, startBW, startBX;
 
-	Ref<PanelPair> pair;
+    Ref<PanelPair> pair;
 
-	Image dots;
-	ListenerList<Listener> listeners;
+    Image dots;
+    ListenerList<Listener> listeners;
 
 };

@@ -33,7 +33,7 @@ public:
 		values[4] = m;
 	}
 
-	~Vertex() {}
+	~Vertex() = default;
 
 	void addOwner(VertCube* cube);
 

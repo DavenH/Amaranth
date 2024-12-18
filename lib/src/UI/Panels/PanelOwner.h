@@ -5,7 +5,7 @@
 template<class T>
 class PanelOwner {
 public:
-    PanelOwner(T* panel) : panel(panel) {
+    explicit PanelOwner(T* panel) : panel(panel) {
     }
 
     T* getPanel() { return panel; }

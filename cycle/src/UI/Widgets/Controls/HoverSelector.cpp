@@ -115,7 +115,7 @@ public:
 private:
     Component::SafePointer<HoverSelector> panel;
 
-    HoverSelectorCallback(const HoverSelectorCallback&);
+    HoverSelectorCallback(const HoverSelectorCallback&) = delete;
 
     HoverSelectorCallback& operator=(const HoverSelectorCallback&);
 };

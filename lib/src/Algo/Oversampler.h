@@ -23,7 +23,7 @@ public:
 	Buffer<float> getTail();
 
 	void setMemoryBuf(const Buffer<float>& buffer) { memoryBuf = buffer; }
-	int getOversampleFactor() const			{ return oversampleFactor; }
+	int getOversampleFactor() const	{ return oversampleFactor; }
 
 private:
 	void updateTaps();

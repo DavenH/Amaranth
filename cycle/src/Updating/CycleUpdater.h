@@ -9,77 +9,77 @@ class MorphUpdate;
 class ScratchUpdate;
 
 class CycleUpdater :
-		public SingletonAccessor
-	,	public MeshLibrary::Listener {
+        public SingletonAccessor
+    ,	public MeshLibrary::Listener {
 public:
-	typedef Updater::Node Node;
+    typedef Updater::Node Node;
 
-	explicit CycleUpdater(SingletonRepo* repo);
-	~CycleUpdater() override = default;
+    explicit CycleUpdater(SingletonRepo* repo);
+    ~CycleUpdater() override = default;
 
-	void init() override;
-	void createUpdateGraph();
-	void envelopeVisibilityChanged();
-	void moveTimeUIs(int viewStage, int lastViewStage);
-	void viewStageChanged(bool force);
-	void setDspFXConnections() const;
-	void setTimeFreqChildren(bool toFFT) const;
-	void setTimeFreqParents();
-	void removeTimeFreqChildren(bool fromFFT) const;
-	void removeTimeFreqParents() const;
-	void removeDspFXConnections() const;
-	void refreshConnections(Node* destNode, const Array<int>& meshTypes);
-	void layerChanged(int layerGroup, int index) override;
+    void init() override;
+    void createUpdateGraph();
+    void envelopeVisibilityChanged();
+    void moveTimeUIs(int viewStage, int lastViewStage);
+    void viewStageChanged(bool force);
+    void setDspFXConnections() const;
+    void setTimeFreqChildren(bool toFFT) const;
+    void setTimeFreqParents();
+    void removeTimeFreqChildren(bool fromFFT) const;
+    void removeTimeFreqParents() const;
+    void removeDspFXConnections() const;
+    void refreshConnections(Node* destNode, const Array<int>& meshTypes);
+    void layerChanged(int layerGroup, int index) override;
 
 private:
-	Node* time2Itr;
-	Node* time3Itr;
-	Node* spect2Itr;
-	Node* spect3Itr;
-	Node* env2Itr;
-	Node* env3Itr;
-	Node* irModelItr;
-	Node* wshpItr;
-	Node* dfrmItr;
-	Node* derivUI;
+    Node* time2Itr;
+    Node* time3Itr;
+    Node* spect2Itr;
+    Node* spect3Itr;
+    Node* env2Itr;
+    Node* env3Itr;
+    Node* irModelItr;
+    Node* wshpItr;
+    Node* dfrmItr;
+    Node* derivUI;
 
-	Node* time2Rast;
-	Node* dfrmRast;
-	Node* irModelRast;
-	Node* wshpRast;
+    Node* time2Rast;
+    Node* dfrmRast;
+    Node* irModelRast;
+    Node* wshpRast;
 
-	Node* envProc;
-	Node* timeProc;
-	Node* spectProc;
-	Node* effectsProc;
+    Node* envProc;
+    Node* timeProc;
+    Node* spectProc;
+    Node* effectsProc;
 
-	Node* univNode;
-	Node* allButFX;
+    Node* univNode;
+    Node* allButFX;
 
-	Node* wshpDsp;
-	Node* irModelDsp;
+    Node* wshpDsp;
+    Node* irModelDsp;
 
-	Node* unisonItr;
-	Node* unison;
+    Node* unisonItr;
+    Node* unison;
 
-	Node* ctrlNode;
+    Node* ctrlNode;
 
-	Node* envDlg;
-	Node* spectDlg;
-	Node* scratchRast;
-	Node* morphNode;
-	Node* synthNode;
+    Node* envDlg;
+    Node* spectDlg;
+    Node* scratchRast;
+    Node* morphNode;
+    Node* synthNode;
 
-	Node* eqlzerUI;
-	Node* timeUIs;
-	Node* spectUIs;
+    Node* eqlzerUI;
+    Node* timeUIs;
+    Node* spectUIs;
 
-	Ref<Updater> updater;
+    Ref<Updater> updater;
 
-	int lastViewStage;
+    int lastViewStage;
 
-	std::unique_ptr<EnvelopeDelegate> envelopeDelegate;
-	std::unique_ptr<SpectDelegate> spectDelegate;
-	std::unique_ptr<MorphUpdate> morphUpdate;
-	std::unique_ptr<ScratchUpdate> scratchUpdate;
+    std::unique_ptr<EnvelopeDelegate> envelopeDelegate;
+    std::unique_ptr<SpectDelegate> spectDelegate;
+    std::unique_ptr<MorphUpdate> morphUpdate;
+    std::unique_ptr<ScratchUpdate> scratchUpdate;
 };

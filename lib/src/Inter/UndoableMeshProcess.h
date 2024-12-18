@@ -8,75 +8,75 @@
 
 class UndoableMeshProcess {
 public:
-	UndoableMeshProcess(Interactor* itr, const String& name) :
-			interactor(itr)
-		, 	mesh(itr->getMesh()) {
-		Mesh* mesh = itr->getMesh();
-		if(mesh == nullptr)
-			return;
+    UndoableMeshProcess(Interactor* itr, const String& name) :
+            interactor(itr)
+        , 	mesh(itr->getMesh()) {
+        Mesh* mesh = itr->getMesh();
+        if(mesh == nullptr)
+            return;
 
-		// these need to be copies because the vectors
-		// will change, so no using references
-		beforeCubes = mesh->getCubes();
-		beforeVerts = mesh->getVerts();
+        // these need to be copies because the vectors
+        // will change, so no using references
+        beforeCubes = mesh->getCubes();
+        beforeVerts = mesh->getVerts();
 
-		SingletonRepo* repo = interactor->getSingletonRepo();
+        SingletonRepo* repo = interactor->getSingletonRepo();
 
-		getObj(EditWatcher).beginNewTransaction(name);
-	}
+        getObj(EditWatcher).beginNewTransaction(name);
+    }
 
     ~UndoableMeshProcess() {
-		// these will be copied in the UpdateVertexVectorAction ctor,
-		// but no need to copy them here
-		vector<VertCube*>& afterLines = mesh->getCubes();
-		vector<Vertex*>& afterVerts = mesh->getVerts();
+        // these will be copied in the UpdateVertexVectorAction ctor,
+        // but no need to copy them here
+        vector<VertCube*>& afterLines = mesh->getCubes();
+        vector<Vertex*>& afterVerts = mesh->getVerts();
 
-		bool haveLines = interactor->dims.numHidden() > 0;
+        bool haveLines = interactor->dims.numHidden() > 0;
 
-		// if lines are unchanged, do update with first action, otherwise skip to avoid duplicating updates
-		// OR, if we have no lines, obviously do it
-		const bool doUpdateWithVertexAction = beforeCubes.size() == afterLines.size() || ! haveLines;
+        // if lines are unchanged, do update with first action, otherwise skip to avoid duplicating updates
+        // OR, if we have no lines, obviously do it
+        const bool doUpdateWithVertexAction = beforeCubes.size() == afterLines.size() || ! haveLines;
 
-		SingletonRepo* repo = interactor->getSingletonRepo();
-		getObj(EditWatcher).addAction(
-				new UpdateVertexVectorAction(interactor, &mesh->getVerts(), beforeVerts, afterVerts, doUpdateWithVertexAction), false);
+        SingletonRepo* repo = interactor->getSingletonRepo();
+        getObj(EditWatcher).addAction(
+                new UpdateVertexVectorAction(interactor, &mesh->getVerts(), beforeVerts, afterVerts, doUpdateWithVertexAction), false);
 
-		if(haveLines)
-			getObj(EditWatcher).addAction(
-					new UpdateCubeVectorAction(interactor, &mesh->getCubes(), beforeCubes, afterLines), false);
-	}
+        if(haveLines)
+            getObj(EditWatcher).addAction(
+                    new UpdateCubeVectorAction(interactor, &mesh->getCubes(), beforeCubes, afterLines), false);
+    }
 
 private:
-	vector<VertCube*> beforeCubes;
-	vector<Vertex*> beforeVerts;
+    vector<VertCube*> beforeCubes;
+    vector<Vertex*> beforeVerts;
 
-	Ref<Interactor> interactor;
-	Ref<Mesh> mesh;
+    Ref<Interactor> interactor;
+    Ref<Mesh> mesh;
 };
 
 
 class UndoableVertexProcess {
 public:
-	UndoableVertexProcess(Interactor* itr) :
-			interactor(itr)
-		, 	mesh(itr->getMesh()) {
-		Mesh* mesh = itr->getMesh();
-		if(mesh == nullptr)
-			return;
+    UndoableVertexProcess(Interactor* itr) :
+            interactor(itr)
+        , 	mesh(itr->getMesh()) {
+        Mesh* mesh = itr->getMesh();
+        if(mesh == nullptr)
+            return;
 
-		beforeVerts = mesh->getVerts();
-	}
+        beforeVerts = mesh->getVerts();
+    }
 
     ~UndoableVertexProcess() {
-		SingletonRepo* repo = interactor->getSingletonRepo();
+        SingletonRepo* repo = interactor->getSingletonRepo();
 
-		getObj(EditWatcher).addAction(
-				new UpdateVertexVectorAction(interactor, &mesh->getVerts(), beforeVerts, mesh->getVerts(), true));
-	}
+        getObj(EditWatcher).addAction(
+                new UpdateVertexVectorAction(interactor, &mesh->getVerts(), beforeVerts, mesh->getVerts(), true));
+    }
 
 private:
-	vector<Vertex*> beforeVerts;
+    vector<Vertex*> beforeVerts;
 
-	Ref<Interactor> interactor;
-	Ref<Mesh> mesh;
+    Ref<Interactor> interactor;
+    Ref<Mesh> mesh;
 };

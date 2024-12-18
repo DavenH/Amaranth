@@ -7,61 +7,61 @@ using namespace juce;
 class SingletonRepo;
 
 class MidiKeyboard :
-		public MidiKeyboardComponent
-	,	public SingletonAccessor {
+        public MidiKeyboardComponent
+    ,	public SingletonAccessor {
 public:
-	friend class MidiKeyboardComponent;
+    friend class MidiKeyboardComponent;
 
-	MidiKeyboard(SingletonRepo* repo, MidiKeyboardState& state, Orientation orientation);
-	~MidiKeyboard() override;
+    MidiKeyboard(SingletonRepo* repo, MidiKeyboardState& state, Orientation orientation);
+    ~MidiKeyboard() override;
 
-	void mouseExit(const MouseEvent& e) override;
-	void mouseEnter(const MouseEvent& e) override;
-	void mouseMove(const MouseEvent& e) override;
-	static String getText(int note);
+    void mouseExit(const MouseEvent& e) override;
+    void mouseEnter(const MouseEvent& e) override;
+    void mouseMove(const MouseEvent& e) override;
+    static String getText(int note);
 
-	static float getVelocityA();
-	[[nodiscard]] int getAuditionKey() const { return auditionKey; }
-	void resized() override;
-	void setAuditionKey(int key);
-	void setMidiRange(const Range<int>& range);
+    static float getVelocityA();
+    [[nodiscard]] int getAuditionKey() const { return auditionKey; }
+    void resized() override;
+    void setAuditionKey(int key);
+    void setMidiRange(const Range<int>& range);
 
 protected:
-	void drawBlackNote(int midiNoteNumber, Graphics &g, int x, int y, int w, int h, bool isDown,
-			bool isOver, const Colour& noteFillColour);
+    void drawBlackNote(int midiNoteNumber, Graphics &g, int x, int y, int w, int h, bool isDown,
+            bool isOver, const Colour& noteFillColour);
 
-	void drawWhiteNote(int midiNoteNumber, Graphics &g, int x, int y, int w, int h, bool isDown,
-			bool isOver, const Colour& lineColourDefault,
-			const Colour &textColour);
+    void drawWhiteNote(int midiNoteNumber, Graphics &g, int x, int y, int w, int h, bool isDown,
+            bool isOver, const Colour& lineColourDefault,
+            const Colour &textColour);
 
-	void drawUpDownButton(Graphics& g, int w, int h, bool isMouseOver, bool isButtonPressed,
-			bool movesOctavesUp) override;
+    void drawUpDownButton(Graphics& g, int w, int h, bool isMouseOver, bool isButtonPressed,
+            bool movesOctavesUp) override;
 
-	void getKeyPosition(int midiNoteNumber, float keyWidth, int& x, int& w) const;
-	bool mouseDownOnKey(int midiNoteNumber, const MouseEvent& e) override;
-	bool mouseDraggedToKey(int midiNoteNumber, const MouseEvent& e) override;
-	void updateNote(const Point<float>&);
+    void getKeyPosition(int midiNoteNumber, float keyWidth, int& x, int& w) const;
+    bool mouseDownOnKey(int midiNoteNumber, const MouseEvent& e) override;
+    bool mouseDraggedToKey(int midiNoteNumber, const MouseEvent& e) override;
+    void updateNote(const Point<float>&);
 
 private:
     enum {
         pxGreyBlack 	= 0,
-		pxGreyWhite 	= 8,
-		pxBlueBlack 	= 20,
-		pxBlueWhite 	= 28,
-		pxOrangeBlack 	= 40,
-		pxOrangeWhite 	= 48,
-	};
+        pxGreyWhite 	= 8,
+        pxBlueBlack 	= 20,
+        pxBlueWhite 	= 28,
+        pxOrangeBlack 	= 40,
+        pxOrangeWhite 	= 48,
+    };
 
-	int getMouseNote() const;
+    int getMouseNote() const;
 
-	static void setMouseNote(int note);
-	bool shouldDrawAuditionKey(int note) const;
+    static void setMouseNote(int note);
+    bool shouldDrawAuditionKey(int note) const;
 
-	GlowEffect glow;
-	Image keys;
+    GlowEffect glow;
+    Image keys;
 
-	Range<int> midiRange;
-	int auditionKey;
+    Range<int> midiRange;
+    int auditionKey;
 
-	JUCE_LEAK_DETECTOR(MidiKeyboard)
+    JUCE_LEAK_DETECTOR(MidiKeyboard)
 };

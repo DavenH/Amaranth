@@ -18,8 +18,9 @@ bool NamedUndoableAction::undo() {
 }
 
 bool NamedUndoableAction::perform() {
-    if (!haveUndone)
+    if (!haveUndone) {
         return true;
+    }
 
     performDelegate();
     performExtra();
@@ -28,10 +29,10 @@ bool NamedUndoableAction::perform() {
 }
 
 ResponsiveUndoableAction::ResponsiveUndoableAction(
-		SingletonRepo* repo
-	, 	int updateCode) :
-			SingletonAccessor(repo, "ResponsiveUndoableAction" + String(updateCode))
-		,	updateCode(updateCode) {
+        SingletonRepo* repo
+    , 	int updateCode) :
+            SingletonAccessor(repo, "ResponsiveUndoableAction" + String(updateCode))
+        ,	updateCode(updateCode) {
 }
 
 void ResponsiveUndoableAction::undoExtra() {
@@ -47,26 +48,26 @@ void ResponsiveUndoableAction::performExtra() {
         showMsg(description);
     }
 
-	triggerAsyncUpdate();
+    triggerAsyncUpdate();
 }
 
 void ResponsiveUndoableAction::handleAsyncUpdate() {
-	doPreUpdateCheck();
-	getObj(Updater).update(updateCode, UpdateType::Update);
-	doPostUpdateCheck();
+    doPreUpdateCheck();
+    getObj(Updater).update(updateCode, UpdateType::Update);
+    doPostUpdateCheck();
 }
 
 TransformVertexAction::TransformVertexAction(
-		SingletonRepo* repo
-	,	int updateCode
-	,	Vertex* vertex
-	,	Vertex before
-	,	Vertex after) :
-			ResponsiveUndoableAction(repo, updateCode)
-		,	vertex(vertex)
-		,	before(before)
-		,	after(after) {
-	description = "Transform Vertex";
+        SingletonRepo* repo
+    ,	int updateCode
+    ,	Vertex* vertex
+    ,	Vertex before
+    ,	Vertex after) :
+            ResponsiveUndoableAction(repo, updateCode)
+        ,	vertex(vertex)
+        ,	before(before)
+        ,	after(after) {
+    description = "Transform Vertex";
 }
 
 void TransformVertexAction::performDelegate() {
@@ -78,20 +79,20 @@ void TransformVertexAction::undoDelegate() {
 }
 
 TransformVerticesAction::TransformVerticesAction(
-		SingletonRepo* repo
-	, 	int updateCode
-	,	vector<Vertex*>* verts
-	,	const vector<Vertex>& _before
-	,	const vector<Vertex>& _after) :
-			ResponsiveUndoableAction(repo, updateCode)
-		,	vertices(verts) {
-	before = _before;
-	after  = _after;
+        SingletonRepo* repo
+    , 	int updateCode
+    ,	vector<Vertex*>* verts
+    ,	const vector<Vertex>& _before
+    ,	const vector<Vertex>& _after) :
+            ResponsiveUndoableAction(repo, updateCode)
+        ,	vertices(verts) {
+    before = _before;
+    after  = _after;
 
-	jassert(before.size() == after.size());
-	jassert(vertices->size() == before.size());
+    jassert(before.size() == after.size());
+    jassert(vertices->size() == before.size());
 
-	description = "Transform Vertices";
+    description = "Transform Vertices";
 }
 
 void TransformVerticesAction::performDelegate() {
@@ -111,40 +112,40 @@ void TransformVerticesAction::undoDelegate() {
 }
 
 UpdateVertexVectorAction::UpdateVertexVectorAction(
-		Interactor* itr
-	,	vector<Vertex*>* 		_elements
-	,	const vector<Vertex*>& _before
-	,	const vector<Vertex*>& _after
-	,	bool doUpdate) :
-			ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())
-		,	itr(itr)
-		,	vertices(_elements)
-		,	before(_before)
-		,	after(_after) {
-	updateCode = doUpdate ? itr->getUpdateSource() : CommonEnums::Null;
+        Interactor* itr
+    ,	vector<Vertex*>* 		_elements
+    ,	const vector<Vertex*>& _before
+    ,	const vector<Vertex*>& _after
+    ,	bool doUpdate) :
+            ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())
+        ,	itr(itr)
+        ,	vertices(_elements)
+        ,	before(_before)
+        ,	after(_after) {
+    updateCode = doUpdate ? itr->getUpdateSource() : CommonEnums::Null;
 
-	int beforeSize 	 = _before.size();
-	int afterSize 	 = _after.size();
-	int difference 	 = afterSize - beforeSize;
+    int beforeSize 	 = _before.size();
+    int afterSize 	 = _after.size();
+    int difference 	 = afterSize - beforeSize;
 
-	action = afterSize < beforeSize ? Deletion : Addition;
+    action = afterSize < beforeSize ? Deletion : Addition;
 
-	int selectedSize = itr->getSelected().size();
-	int numberDescribed = difference > 0 ? difference
-			: difference < 0 ? -difference
-			: selectedSize;
+    int selectedSize = itr->getSelected().size();
+    int numberDescribed = difference > 0 ? difference
+            : difference < 0 ? -difference
+            : selectedSize;
 
-	String vertexStr = numberDescribed == 1 ? " vertex" : " vertices";
-	String actionDesc = difference > 0 ? "Add "
-			: difference < 0 ? "Remove "
-			: "Transform ";
+    String vertexStr = numberDescribed == 1 ? " vertex" : " vertices";
+    String actionDesc = difference > 0 ? "Add "
+            : difference < 0 ? "Remove "
+            : "Transform ";
 
-	description = actionDesc + String(numberDescribed) + vertexStr;
+    description = actionDesc + String(numberDescribed) + vertexStr;
 }
 
 void UpdateVertexVectorAction::doPreUpdateCheck() {
     if (action == Deletion) {
-	    itr->clearSelectedAndRepaint();
+        itr->clearSelectedAndRepaint();
     }
 
     itr->updateDspSync();
@@ -163,17 +164,17 @@ void UpdateVertexVectorAction::undoDelegate() {
 }
 
 UpdateCubeVectorAction::UpdateCubeVectorAction(
-		Interactor* itr
-	,	vector<VertCube*>* _elements
-	,	const vector<VertCube*>& _before
-	,	const vector<VertCube*>& _after
-	,	bool						_shouldClearLines) :
-			ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())
-		,	itr				(itr)
-		,	elements		(_elements)
-		,	before			(_before)
-		,	after			(_after)
-		,	shouldClearLines(_shouldClearLines) {
+        Interactor* itr
+    ,	vector<VertCube*>* _elements
+    ,	const vector<VertCube*>& _before
+    ,	const vector<VertCube*>& _after
+    ,	bool						_shouldClearLines) :
+            ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())
+        ,	itr				(itr)
+        ,	elements		(_elements)
+        ,	before			(_before)
+        ,	after			(_after)
+        ,	shouldClearLines(_shouldClearLines) {
     description = String("Line ") + (before.size() < after.size() ? "addition" : "deletion");
 }
 
@@ -185,7 +186,7 @@ void UpdateCubeVectorAction::performDelegate() {
 
 void UpdateCubeVectorAction::doPreUpdateCheck() {
     if (shouldClearLines) {
-	    itr->clearSelectedAndRepaint();
+        itr->clearSelectedAndRepaint();
     }
 
     itr->validateMesh();
@@ -198,16 +199,16 @@ void UpdateCubeVectorAction::undoDelegate() {
 }
 
 SliderValueChangedAction::SliderValueChangedAction(
-		SingletonRepo* repo
-	,	int updateCode
-	,	Slider* slider
-	,	double startingValue) :
-			ResponsiveUndoableAction(repo, updateCode)
-		,	slider(slider) {
-	before = startingValue;
-	after = slider->getValue();
+        SingletonRepo* repo
+    ,	int updateCode
+    ,	Slider* slider
+    ,	double startingValue) :
+            ResponsiveUndoableAction(repo, updateCode)
+        ,	slider(slider) {
+    before = startingValue;
+    after = slider->getValue();
 
-	description = "Slider adjustment";
+    description = "Slider adjustment";
 }
 
 void SliderValueChangedAction::performDelegate() {
@@ -219,26 +220,26 @@ void SliderValueChangedAction::undoDelegate() {
 }
 
 DeformerAssignment::DeformerAssignment(
-		Interactor* itr
-	, 	Mesh* mesh
-	,	const vector<VertCube*>& selectedLines
-	,	const vector<int> previousMappings
-	,	int thisMapping
-	, 	int channel) :
-			ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())
-		, 	affectedLines	(selectedLines)
-		,	previousMappings(previousMappings)
-		, 	currentMapping	(thisMapping)
-		, 	channel			(channel)
-		, 	mesh			(mesh) {
+        Interactor* itr
+    , 	Mesh* mesh
+    ,	const vector<VertCube*>& selectedLines
+    ,	const vector<int> previousMappings
+    ,	int thisMapping
+    , 	int channel) :
+            ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())
+        , 	affectedLines	(selectedLines)
+        ,	previousMappings(previousMappings)
+        , 	currentMapping	(thisMapping)
+        , 	channel			(channel)
+        , 	mesh			(mesh) {
     description = "Line deformation";
 }
 
 void DeformerAssignment::performDelegate() {
-	auto start 	= mesh->getCubes().begin();
-	auto end 	= mesh->getCubes().end();
+    auto start 	= mesh->getCubes().begin();
+    auto end 	= mesh->getCubes().end();
 
-	for(auto line : affectedLines) {
+    for(auto line : affectedLines) {
 
         // check if line is still good
         if (line != nullptr && std::find(start, end, line) != end) {
@@ -251,33 +252,33 @@ void DeformerAssignment::performDelegate() {
                     float& curve = lineVert->values[Vertex::Curve];
 
                     if (curve > 0.01f) {
-	                    doAdjustment = false;
+                        doAdjustment = false;
                     }
                 }
 
                 if (doAdjustment) {
                     for (auto& lineVert : line->lineVerts) {
-	                    lineVert->setMaxSharpness();
+                        lineVert->setMaxSharpness();
                     }
                 }
             }
-		}
-	}
+        }
+    }
 }
 
 void DeformerAssignment::undoDelegate() {
     jassert(affectedLines.size() == previousMappings.size());
 
-	auto start 	= mesh->getCubes().begin();
-	auto end 	= mesh->getCubes().end();
+    auto start 	= mesh->getCubes().begin();
+    auto end 	= mesh->getCubes().end();
 
     for (int i = 0; i < affectedLines.size(); ++i) {
         VertCube* cube = affectedLines[i];
 
         if (cube != nullptr && std::find(start, end, cube) != end) {
-	        cube->deformerAt(channel) = previousMappings[i];
+            cube->deformerAt(channel) = previousMappings[i];
         }
-	}
+    }
 }
 
 void DeformerAssignment::doPostUpdateCheck() {
@@ -286,21 +287,21 @@ void DeformerAssignment::doPostUpdateCheck() {
 }
 
 ComboboxChangeAction::ComboboxChangeAction(ComboBox* box, int previousId) :
-		box(box)
-	, 	previousId(previousId) {
-	currentId = box->getSelectedId();
+        box(box)
+    , 	previousId(previousId) {
+    currentId = box->getSelectedId();
 
-	description = "Combo box selection";
+    description = "Combo box selection";
 }
 
 void ComboboxChangeAction::performDelegate() {
-	box->setSelectedId(currentId, haveUndone ? sendNotificationSync :
-											   dontSendNotification);
+    box->setSelectedId(currentId, haveUndone ? sendNotificationSync :
+                                               dontSendNotification);
 }
 
 void ComboboxChangeAction::undoDelegate() {
-	box->setSelectedId(previousId, sendNotificationSync);
-	haveUndone = true;
+    box->setSelectedId(previousId, sendNotificationSync);
+    haveUndone = true;
 }
 
 void LayerMoveAction::performDelegate() {
@@ -312,35 +313,35 @@ void LayerMoveAction::undoDelegate() {
 }
 
 VertexOwnershipAction::VertexOwnershipAction(
-		VertCube* cube
-	, 	bool undoRemoves
-	, 	const Array<Vertex*>& toChange) :
-			cube(cube)
-		, 	undoRemoves(undoRemoves)
-		, 	toChange(toChange) {
-	description = "Vertex Ownership";
+        VertCube* cube
+    , 	bool undoRemoves
+    , 	const Array<Vertex*>& toChange) :
+            cube(cube)
+        , 	undoRemoves(undoRemoves)
+        , 	toChange(toChange) {
+    description = "Vertex Ownership";
 }
 
 void VertexOwnershipAction::undoDelegate() {
-	for(auto it : toChange) {
-		undoRemoves ? it->removeOwner(cube) : it->addOwner(cube);
-	}
+    for(auto it : toChange) {
+        undoRemoves ? it->removeOwner(cube) : it->addOwner(cube);
+    }
 }
 
 void VertexOwnershipAction::performDelegate() {
-	for(auto it : toChange) {
-		undoRemoves ? it->addOwner(cube) : it->removeOwner(cube);
-	}
+    for(auto it : toChange) {
+        undoRemoves ? it->addOwner(cube) : it->removeOwner(cube);
+    }
 }
 
 VertexCubePropertyAction::VertexCubePropertyAction(
-		VertCube* cube
-	, 	const VertCube& oldProps
-	, 	const VertCube& newProps) :
-			cube(cube)
-		, 	oldProps(oldProps)
-		, 	newProps(newProps) {
-	description = "Cube Property Change";
+        VertCube* cube
+    , 	const VertCube& oldProps
+    , 	const VertCube& newProps) :
+            cube(cube)
+        , 	oldProps(oldProps)
+        , 	newProps(newProps) {
+    description = "Cube Property Change";
 }
 
 void VertexCubePropertyAction::undoDelegate() {

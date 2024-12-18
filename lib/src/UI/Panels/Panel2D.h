@@ -7,34 +7,34 @@ class BoundWrapper;
 
 class Panel2D : public Panel {
 public:
-	Panel2D(SingletonRepo* repo, const String& name, bool curveIsBipolar, bool haveVertZoom);
-	~Panel2D() override = default;
+    Panel2D(SingletonRepo* repo, const String& name, bool curveIsBipolar, bool haveVertZoom);
+    ~Panel2D() override = default;
 
-	void contractToRange(bool includeX = false);
-	void drawCurvesFrom(BufferXY& buff, Buffer<float> alpha, const Color& colourA, const Color& colourB);
-	static void prepareAlpha(const Buffer<float>& y, Buffer<float> alpha, float baseAlpha);
-	void drawDeformerTags() override;
-	void drawDepthLinesAndVerts() override;
-	void highlightCurrentIntercept() override;
-	void zoomUpdated(int updateSource) override;
+    void contractToRange(bool includeX = false);
+    void drawCurvesFrom(BufferXY& buff, Buffer<float> alpha, const Color& colourA, const Color& colourB);
+    static void prepareAlpha(const Buffer<float>& y, Buffer<float> alpha, float baseAlpha);
+    void drawDeformerTags() override;
+    void drawDepthLinesAndVerts() override;
+    void highlightCurrentIntercept() override;
+    void zoomUpdated(int updateSource) override;
 
-	bool isCurveBipolar() const 							 { return curveIsBipolar; 			 }
-	void setCurveBipolar(bool bipolar) 						 { curveIsBipolar = bipolar; 		 }
-	void setColors(const Color& color1, const Color& color2) { colorA = color1; colorB = color2; }
+    bool isCurveBipolar() const 							 { return curveIsBipolar; 			 }
+    void setCurveBipolar(bool bipolar) 						 { curveIsBipolar = bipolar; 		 }
+    void setColors(const Color& color1, const Color& color2) { colorA = color1; colorB = color2; }
 
-	OpenGLPanel* getOpenglPanel() 							 { return openGL.get(); }
-	virtual bool shouldDrawCurve() 							 { return true; }
+    OpenGLPanel* getOpenglPanel() 							 { return openGL.get(); }
+    virtual bool shouldDrawCurve() 							 { return true; }
 
-	virtual bool isMeshEnabled();
-	void drawCurvesAndSurfaces() override;
-	void drawInterceptLines() override;
+    virtual bool isMeshEnabled();
+    void drawCurvesAndSurfaces() override;
+    void drawInterceptLines() override;
 
 protected:
-	bool curveIsBipolar;
-	bool cyclicLines;
+    bool curveIsBipolar;
+    bool cyclicLines;
 
-	Color colorA, colorB;
+    Color colorA, colorB;
 
-	std::unique_ptr<BoundWrapper> wrapper;
-	std::unique_ptr<OpenGLPanel> openGL;
+    std::unique_ptr<BoundWrapper> wrapper;
+    std::unique_ptr<OpenGLPanel> openGL;
 };

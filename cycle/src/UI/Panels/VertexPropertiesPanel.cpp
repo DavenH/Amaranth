@@ -41,8 +41,7 @@ VertexPropertiesPanel::VertexPropertiesPanel(SingletonRepo* repo) :
 }
 
 VertexPropertiesPanel::~VertexPropertiesPanel() {
-	for (int i = 0; i < (int) allProperties.size(); ++i) {
-		VertexProperties* p = allProperties[i];
+	for (auto p : allProperties) {
 		delete p->dfrmChanBox;
 		delete p->gain;
 		delete p->messager;
@@ -51,12 +50,12 @@ VertexPropertiesPanel::~VertexPropertiesPanel() {
 }
 
 void VertexPropertiesPanel::init() {
-	properties.push_back(VertexProperties(this, "time", 	"Time", 				Vertex::Time));
-	properties.push_back(VertexProperties(this, "phase", 	"Phase", 				Vertex::Phase));
-	properties.push_back(VertexProperties(this, "amp", 		"Amplitude", 			Vertex::Amp));
-	properties.push_back(VertexProperties(this, "red", 		"Red-range value", 		Vertex::Red));
-	properties.push_back(VertexProperties(this, "blue", 	"Blue-range Value", 	Vertex::Blue));
-	properties.push_back(VertexProperties(this, "curve", 	"Curve Sharpness", 		Vertex::Curve));
+	properties.emplace_back(this, "time", 	"Time", 				Vertex::Time);
+	properties.emplace_back(this, "phase", 	"Phase", 				Vertex::Phase);
+	properties.emplace_back(this, "amp", 	"Amplitude", 			Vertex::Amp);
+	properties.emplace_back(this, "red", 	"Red-range value", 		Vertex::Red);
+	properties.emplace_back(this, "blue", 	"Blue-range Value", 	Vertex::Blue);
+	properties.emplace_back(this, "curve", 	"Curve Sharpness", 		Vertex::Curve);
 	ampVsPhaseProperties = std::make_unique<VertexProperties>(this, String(), String(), Vertex::Time);
 
 	gainProperties.push_back(ampVsPhaseProperties.get());
@@ -66,8 +65,9 @@ void VertexPropertiesPanel::init() {
 
 	allProperties.push_back(ampVsPhaseProperties.get());
 
-	for(int i = 0; i < (int) properties.size(); ++i)
-		allProperties.push_back(&properties[i]);
+	for(auto& prop : properties) {
+		allProperties.push_back(&prop);
+	}
 
 	goldfish = getObj(MiscGraphics).getVerdana12();
 	silkscreen = getObj(MiscGraphics).getSilkscreen();
@@ -142,14 +142,12 @@ void VertexPropertiesPanel::resized() {
 
 	bounds.removeFromRight(4);
 
-	for (int i = 0; i < (int) displayOrder.size(); ++i) {
-		VertexProperties* props = displayOrder[i];
+	for (auto props : displayOrder) {
 		props->slider->setBounds(bounds.removeFromTop(knobWidth));
 
 		Rectangle<int> deformBounds = labelBounds.removeFromTop(knobWidth);
 
-		if(props->id != Vertex::Time)
-		{
+		if(props->id != Vertex::Time) {
 			props->dfrmChanBox->setBounds(deformBounds.removeFromLeft(jmax(24, knobWidth)));
 
 			deformBounds.removeFromLeft(2);
@@ -175,7 +173,6 @@ void VertexPropertiesPanel::resized() {
 	int size = jmin(deformBounds.getWidth(), deformBounds.getHeight());
 	ampVsPhaseProperties->gain->setBounds(Rectangle(deformBounds.getX(), deformBounds.getY(), size, size));
 
-
 	gainArea.toBack();
 	gainArea.setBounds(Rectangle(properties[Vertex::Red].gain->getPosition(),
 	                                  ampVsPhaseProperties->gain->getBounds().getBottomRight()));
@@ -197,8 +194,9 @@ void VertexPropertiesPanel::mouseUp(const MouseEvent& e) {
 }
 
 void VertexPropertiesPanel::sliderValueChanged(Slider* slider) {
-	if(! currentInteractor)
+	if(! currentInteractor) {
 		return;
+	}
 
 	Interactor::VertexProps& itrProps = currentInteractor->vertexProps;
 
@@ -213,9 +211,9 @@ void VertexPropertiesPanel::sliderValueChanged(Slider* slider) {
 
 	VertexProperties* props = nullptr;
 
-	for (int i = 0; i < (int) properties.size(); ++i) {
-		if (properties[i].slider == slider) {
-			props = &properties[i];
+	for (auto& prop : properties) {
+		if (prop.slider == slider) {
+			props = &prop;
 			break;
 		}
 	}
@@ -253,7 +251,7 @@ void VertexPropertiesPanel::sliderValueChanged(Slider* slider) {
 			set<VertCube*> lines;
 
 			vector<Vertex*>& selected = currentInteractor->getSelected();
-			for (vector<Vertex*>::iterator it = selected.begin(); it != selected.end(); ++it) {
+			for (auto it = selected.begin(); it != selected.end(); ++it) {
 				Vertex* vert = *it;
 
 				if (it == selected.begin()) {
@@ -270,8 +268,9 @@ void VertexPropertiesPanel::sliderValueChanged(Slider* slider) {
 			currentInteractor->triggerRefreshUpdate();
 		}
 	} else {
-		for (int i = 0; i < movableVerts.size(); ++i)
+		for (int i = 0; i < movableVerts.size(); ++i) {
 			movableVerts[i].vert->values[id] -= diffs[i];
+		}
 
 		props->setValueToCurrent(false);
 		showMsg("Could not move without overlapping lines");
@@ -291,7 +290,7 @@ void VertexPropertiesPanel::setSelectedAndCaller(Interactor* interactor)
 }
 
 void VertexPropertiesPanel::updateComboBoxes() {
-	MeshLibrary& meshLib = getObj(MeshLibrary);
+	auto& meshLib = getObj(MeshLibrary);
 
 	int numDeformLayers = meshLib.getGroup(LayerGroups::GroupDeformer).size();
 
@@ -303,13 +302,13 @@ void VertexPropertiesPanel::updateComboBoxes() {
 
 	boxes.push_back(ampVsPhaseProperties->dfrmChanBox);
 
-	for (int i = 0; i < (int) boxes.size(); ++i) {
-		ComboBox* box = boxes[i];
+	for (auto box : boxes) {
 		box->clear(dontSendNotification);
 		box->addItem(String(L"\u2013"), NullDfrmId);
 
-		for (int j = 0; j < numDeformLayers; ++j)
+		for (int j = 0; j < numDeformLayers; ++j) {
 			box->addItem(String(j + 1), j + 2);
+		}
 	}
 
 	refreshValueBoxesFromSelected();
@@ -422,7 +421,7 @@ void VertexPropertiesPanel::refreshCube(set<VertCube*>& lines)
 
 	int scratchChannel = CommonEnums::Null;
 	if(lines.size() == 1 && selected.size() == 1) {
-		Interactor3D* itr3 = dynamic_cast<Interactor3D*>(currentInteractor);
+		auto* itr3 = dynamic_cast<Interactor3D*>(currentInteractor);
 
 		if (itr3 == nullptr) {
 			Interactor* opposite = currentInteractor->getOppositeInteractor();
@@ -430,7 +429,7 @@ void VertexPropertiesPanel::refreshCube(set<VertCube*>& lines)
 		}
 
 		if (itr3 != nullptr) {
-			Panel3D* panel3 = static_cast<Panel3D*>(itr3->panel.get());
+			auto* panel3 = dynamic_cast<Panel3D*>(itr3->panel.get());
 			scratchChannel = panel3->getLayerScratchChannel();
 		}
 
@@ -610,9 +609,9 @@ void VertexPropertiesPanel::gainChanged(Slider* slider, int changeType)
 		return;
 	}
 
-	int id 				= props->id;
-	bool deformEnabled 	= currentInteractor->vertexProps.deformApplicable[id];
-	deformEnabled 	   &= props->dfrmChanBox->getSelectedId() != NullDfrmId;
+	int id = props->id;
+	bool deformEnabled = currentInteractor->vertexProps.deformApplicable[id];
+	deformEnabled &= props->dfrmChanBox->getSelectedId() != NullDfrmId;
 
 	if(deformEnabled) {
 		if (changeType == ValueChanged) {
@@ -755,7 +754,6 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 	}
 
 	SingletonRepo* repo  = panel->repo;
-	EditWatcher& watcher = getObj(EditWatcher);
 
 	if (name.isNotEmpty()) {
 		panel->addAndMakeVisible(slider = new HSlider(repo, name, text, true));
@@ -851,75 +849,61 @@ void VertexPropertiesPanel::updateSliderProperties() {
 
 		getSourceDestDimensionIds(id, srcId, destId);
 
-		if(props.messager != nullptr)
-		{
+		if (props.messager != nullptr) {
 			props.messager->message =
-					itrProps.deformApplicable[i] ? "Set deform channel for " + names[srcId] + " versus " + names[destId] : {};
+					itrProps.deformApplicable[i]
+						? "Set deform channel for " + names[srcId] + " versus " + names[destId]
+						: String();
 		}
 
-		if(props.dfrmChanBox != nullptr)
-		{
-			if(! itrProps.deformApplicable[i])
+		if (props.dfrmChanBox != nullptr) {
+			if (!itrProps.deformApplicable[i]) {
 				props.dfrmChanBox->setSelectedId(NullDfrmId, dontSendNotification);
+			}
 
 			props.dfrmChanBox->setEnabled(itrProps.deformApplicable[i]);
 
-			if(! itrProps.deformApplicable[i])
+			if(! itrProps.deformApplicable[i]) {
 				props.gain->setValue(0.5, dontSendNotification);
+			}
 
 			props.gain->setEnabled(itrProps.deformApplicable[i]);
 		}
 		++i;
 	}
 
-
-  #ifndef BEAT_EDITION
-	if(! itrProps.ampVsPhaseApplicable)
-	{
+	if (!itrProps.ampVsPhaseApplicable) {
 		ampVsPhaseProperties->dfrmChanBox->setSelectedId(NullDfrmId, dontSendNotification);
 		ampVsPhaseProperties->gain->setValue(0.5, dontSendNotification);
 		ampVsPhaseProperties->messager->message = {};
 		ampVsPhaseStr = "--";
-	}
-	else
-	{
-		ampVsPhaseProperties->messager->message = "Set deform channel for component curve"; // names[Vertex::Amp] + " versus " + names[Vertex::Phase];
+	} else {
+		ampVsPhaseProperties->messager->message = "Set deform channel for component curve";
+		// names[Vertex::Amp] + " versus " + names[Vertex::Phase];
 		ampVsPhaseStr = "component curve"; // "(" + names[Vertex::Amp] + " versus " + names[Vertex::Phase] + ")";
 	}
 
 	ampVsPhaseProperties->dfrmChanBox->setEnabled(itrProps.ampVsPhaseApplicable);
 	ampVsPhaseProperties->gain->setEnabled(itrProps.ampVsPhaseApplicable);
-  #endif
 }
 
-
-void VertexPropertiesPanel::handleAsyncUpdate()
-{
+void VertexPropertiesPanel::handleAsyncUpdate() {
 	getObj(MainPanel).grabKeyboardFocus();
 }
 
-
-void VertexPropertiesPanel::triggerSliderChange(int dim, float value)
-{
+void VertexPropertiesPanel::triggerSliderChange(int dim, float value) {
 	properties[dim].slider->setValue(value);
 }
 
-
-void VertexPropertiesPanel::getSourceDestDimensionIds(int id, int& srcId, int& destId)
-{
+void VertexPropertiesPanel::getSourceDestDimensionIds(int id, int& srcId, int& destId) {
 	// avp
-	if(id == Vertex::Time)
-	{
+	if (id == Vertex::Time) {
 		destId = Vertex::Phase;
 		srcId = Vertex::Amp;
-	}
-	else if(id == Vertex::Red || id == Vertex::Blue)
-	{
+	} else if (id == Vertex::Red || id == Vertex::Blue) {
 		srcId = Vertex::Phase;
 		destId = id;
-	}
-	else
-	{
+	} else {
 		destId = Vertex::Time;
 		srcId = id;
 	}

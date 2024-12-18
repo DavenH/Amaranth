@@ -7,7 +7,7 @@ class BoundWrapper : public Bounded {
     Ref<Component> component;
 
 public:
-    BoundWrapper(Component* component) : component(component) {
+    explicit BoundWrapper(Component* component) : component(component) {
     }
 
     void setBounds(int x, int y, int width, int height) override {

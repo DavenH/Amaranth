@@ -11,22 +11,22 @@ class SingletonRepo;
 
 class OpenGLBase {
 public:
-	OpenGLBase(OpenGLRenderer* renderer, Component* component);
-	virtual ~OpenGLBase();
-	void detach();
-	void attach();
-	void printErrors(SingletonRepo* repo);
+    OpenGLBase(OpenGLRenderer* renderer, Component* component);
+    virtual ~OpenGLBase();
+    void detach();
+    void attach();
+    void printErrors(SingletonRepo* repo);
 
-	OpenGLContext context;
+    OpenGLContext context;
 
 protected:
-	void clearAndOrtho(int width, int height);
+    void clearAndOrtho(int width, int height);
 
-	bool smoothLines;
-	Ref<CommonGL> commonGL;
+    bool smoothLines;
+    Ref<CommonGL> commonGL;
 
-	friend class CommonGL;
+    friend class CommonGL;
 private:
-	Ref<Component> component;
-	Ref<OpenGLRenderer> renderer;
+    Ref<Component> component;
+    Ref<OpenGLRenderer> renderer;
 };

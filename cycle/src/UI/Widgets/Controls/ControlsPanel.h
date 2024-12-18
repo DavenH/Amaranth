@@ -1,5 +1,4 @@
-#ifndef _controlspanel_h
-#define _controlspanel_h
+#pragma once
 
 #include <set>
 #include <algorithm>
@@ -29,8 +28,8 @@ class ControlsPanel :
 	,	public SingletonAccessor {
 public:
 	ControlsPanel(Button::Listener* parent, SingletonRepo* repo, bool fillBackground = false);
-	virtual ~ControlsPanel();
-	virtual void paint(Graphics& g);
+	~ControlsPanel() override;
+	void paint(Graphics& g) override;
 
 	void addRetractableCallout(
 			std::unique_ptr<RetractableCallout>& callout,
@@ -39,7 +38,7 @@ public:
 			int posX, int posY,
 			Component** buttonArray, int numButtons, bool horz = false);
 
-	void resized();
+	void resized() override;
 	void addBand(IDynamicSizeComponent* end);
 	void addDividedBand(IDynamicSizeComponent* start, IDynamicSizeComponent* end);
 	void addDynamicSizeComponent(IDynamicSizeComponent* component, bool manage = true);
@@ -63,7 +62,4 @@ protected:
 	Array<IDynamicSizeComponent*> bands;
 	Array<pair<IDynamicSizeComponent*, IDynamicSizeComponent*> > dividedBands;
 	map<IDynamicSizeComponent*, int> bandCount;
-
 };
-
-#endif

@@ -5,7 +5,7 @@
 class TitleBacking : public Component
 {
 public:
-	void paint(Graphics& g) {
+    void paint(Graphics& g) override {
         Rectangle<int> bnds(getLocalBounds());
 
         g.setGradientFill(ColourGradient(Colour::greyLevel(0.17f),

@@ -10,23 +10,23 @@
 #include "../../Definitions.h"
 
 class InsetLabel :
-		public Component
-	, 	public SingletonAccessor {
+        public Component
+    , 	public SingletonAccessor {
 public:
-	InsetLabel(SingletonRepo* repo, String name, float saturation = 0.f) :
-			SingletonAccessor(repo, "InsetLabel")
-		,	name	(std::move(name))
-		,	offsetA	(-0.8f)
-		,	offsetB	(-0.8f)
-		,	font	(FontOptions(15, Font::bold)) {
-		brightColor = Colour::greyLevel(0.28f);
-		dimColor	= Colour::greyLevel(0.f);
+    InsetLabel(SingletonRepo* repo, String name, float saturation = 0.f) :
+            SingletonAccessor(repo, "InsetLabel")
+        ,	name	(std::move(name))
+        ,	offsetA	(-0.8f)
+        ,	offsetB	(-0.8f)
+        ,	font	(FontOptions(15, Font::bold)) {
+        brightColor = Colour::greyLevel(0.28f);
+        dimColor	= Colour::greyLevel(0.f);
 
-	  #ifdef JUCE_MAC
-		offsetA	-= 0.2f;
-		offsetB	-= 0.2f;
-	  #endif
-	}
+      #ifdef JUCE_MAC
+        offsetA	-= 0.2f;
+        offsetB	-= 0.2f;
+      #endif
+    }
 
     void setLabelTitle(const String& name) {
         this->name = name;
@@ -43,25 +43,25 @@ public:
     }
 
     void paint(Graphics& g) override {
-		g.setFont(font);
+        g.setFont(font);
 
-		Graphics::ScopedSaveState sss(g);
+        Graphics::ScopedSaveState sss(g);
 
-		g.setColour	(brightColor);
-		getObj(MiscGraphics).drawCentredText(g, getLocalBounds(), name);
+        g.setColour	(brightColor);
+        getObj(MiscGraphics).drawCentredText(g, getLocalBounds(), name);
 
-		g.addTransform(AffineTransform::translation(offsetA, offsetB));
-		g.setColour	(dimColor);
-		getObj(MiscGraphics).drawCentredText(g, getLocalBounds(), name);
-	}
+        g.addTransform(AffineTransform::translation(offsetA, offsetB));
+        g.setColour	(dimColor);
+        getObj(MiscGraphics).drawCentredText(g, getLocalBounds(), name);
+    }
 
     int getFullSize() {
-		return font.getStringWidth(name);
-	}
+        return font.getStringWidth(name);
+    }
 
 private:
-	Colour brightColor, dimColor;
-	float offsetA, offsetB;
-	String name;
-	Font font;
+    Colour brightColor, dimColor;
+    float offsetA, offsetB;
+    String name;
+    Font font;
 };

@@ -5,31 +5,31 @@
 #include "../UI/IConsole.h"
 
 EditWatcher::EditWatcher(SingletonRepo* repo) :
-		SingletonAccessor(repo, "EditWatcher")
-	,	editedWithoutUndo(false) {
+        SingletonAccessor(repo, "EditWatcher")
+    ,	editedWithoutUndo(false) {
 }
 
 void EditWatcher::update(bool justUpdateTitle) {
-	String currPreset 	= getStrConstant(DocumentName);
-	String prodName 	= getStrConstant(ProductName);
+    String currPreset 	= getStrConstant(DocumentName);
+    String prodName 	= getStrConstant(ProductName);
 
   #ifdef DEMO_VERSION
-	prodName += " demo";
+    prodName += " demo";
   #endif
 
-	String titleBar = (prodName + " - ") + currPreset;
+    String titleBar = (prodName + " - ") + currPreset;
 
   #ifndef DEMO_VERSION
-	if(undoManager.canUndo() || editedWithoutUndo) {
-		titleBar += String("*");
-	}
+    if(undoManager.canUndo() || editedWithoutUndo) {
+        titleBar += String("*");
+    }
   #endif
 
-	clients.call(&Client::updateTitle, titleBar);
+    clients.call(&Client::updateTitle, titleBar);
 
-	if(! justUpdateTitle) {
-		clients.call(&Client::notifyChange);
-	}
+    if(! justUpdateTitle) {
+        clients.call(&Client::notifyChange);
+    }
 }
 
 bool EditWatcher::getHaveEdited() {
@@ -37,25 +37,26 @@ bool EditWatcher::getHaveEdited() {
 }
 
 void EditWatcher::reset() {
-	undoManager.clearUndoHistory();
-	editedWithoutUndo = false;
+    undoManager.clearUndoHistory();
+    editedWithoutUndo = false;
 
-	update(true);
+    update(true);
 }
 
 bool EditWatcher::addAction(NamedUndoableAction* action, bool startNewTransaction) {
-    if (startNewTransaction)
+    if (startNewTransaction) {
         undoManager.beginNewTransaction();
+    }
 
-	const String& description = action->getDescription();
-	return undoManager.perform(action, description);
+    const String& description = action->getDescription();
+    return undoManager.perform(action, description);
 }
 
 bool EditWatcher::addAction(UndoableAction* action, bool startNewTransaction) {
-	if(startNewTransaction)
-		undoManager.beginNewTransaction();
+    if(startNewTransaction)
+        undoManager.beginNewTransaction();
 
-	return undoManager.perform(action);
+    return undoManager.perform(action);
 }
 
 void EditWatcher::setHaveEditedWithoutUndo(bool have) {

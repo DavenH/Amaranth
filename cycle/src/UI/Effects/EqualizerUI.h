@@ -22,5 +22,5 @@ public:
 	[[nodiscard]] String getKnobName(int index) const override;
 	void finishedUpdatingAllSliders() override;
 	void doLocalUIUpdate() override;
-	void performUpdate(int updateType) override;
+	void performUpdate(UpdateType updateType) override;
 };

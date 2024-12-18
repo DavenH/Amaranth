@@ -39,10 +39,10 @@ public:
         return 0;
     }
 
-	bool isAutomable;
-	int id;
-	double value{};
-	String name;
+    bool isAutomable;
+    int id;
+    double value{};
+    String name;
 
-	Listener* listener;
+    Listener* listener;
 };

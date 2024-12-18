@@ -26,7 +26,7 @@ ResizerPullout::ResizerPullout(SingletonRepo* repo) :
 }
 
 void ResizerPullout::buttonClicked(Button* button) {
-#if PLUGIN_MODE
+  #if PLUGIN_MODE
     PluginWindow* window = dynamic_cast<PluginWindow*>(getObj(PluginProcessor).getActiveEditor());
 
     int oldSize = getSetting(WindowSize);
@@ -41,20 +41,21 @@ void ResizerPullout::buttonClicked(Button* button) {
 
     pullout->removeBoxFromDesktop();
 
-    if(oldSize != size)
-        window->changeSizeAndSet(size);
-#endif
+    if(oldSize != size) {
+	    window->changeSizeAndSet(size);
+    }
+  #endif
 }
 
 void ResizerPullout::resized() {
 }
 
 void ResizerPullout::updateHighlight(int windowSize) {
-#if PLUGIN_MODE
+  #if PLUGIN_MODE
     smallIcon->setHighlit(windowSize == SmallSize);
     medIcon	 ->setHighlit(windowSize == MedSize	);
     fullIcon ->setHighlit(windowSize == FullSize);
     keybIcon ->setHighlit(windowSize == PlayerSize);
-#endif
+  #endif
 }
 

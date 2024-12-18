@@ -4,12 +4,12 @@
 #include <Design/Updating/Updateable.h>
 
 class ScratchUpdate :
-		public SingletonAccessor
-	, 	public Updateable {
+        public SingletonAccessor
+    , 	public Updateable {
 public:
-	explicit ScratchUpdate(SingletonRepo* repo);
+    explicit ScratchUpdate(SingletonRepo* repo);
 
-	~ScratchUpdate() override;
+    ~ScratchUpdate() override;
 
-	void performUpdate(int updateType) override;
+    void performUpdate(UpdateType updateType) override;
 };

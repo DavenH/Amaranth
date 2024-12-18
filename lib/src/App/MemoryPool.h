@@ -6,14 +6,14 @@
 
 class MemoryPool : public SingletonAccessor {
 public:
-	explicit MemoryPool(SingletonRepo* repo);
+    explicit MemoryPool(SingletonRepo* repo);
 
-	~MemoryPool() override = default;
+    ~MemoryPool() override = default;
 
-	Buffer<float> getAudioPool() 	{ return audioPool; }
-	Buffer<float> getMainPool() 	{ return mainPool; 	}
-	Buffer<float> getGraphicsPool() { return gfxPool; 	}
+    Buffer<float> getAudioPool() 	{ return audioPool; }
+    Buffer<float> getMainPool() 	{ return mainPool; 	}
+    Buffer<float> getGraphicsPool() { return gfxPool; 	}
 
 private:
-	ScopedAlloc<float> audioPool, gfxPool, mainPool;
+    ScopedAlloc<float> audioPool, gfxPool, mainPool;
 };

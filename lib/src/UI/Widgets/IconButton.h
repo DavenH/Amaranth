@@ -10,16 +10,16 @@ using std::endl;
 using namespace juce;
 
 class IconButton :
-		public Button
-	,	public IDynamicSizeComponent
-	,	public SingletonAccessor {
+        public Button
+    ,	public IDynamicSizeComponent
+    ,	public SingletonAccessor {
 public:
     IconButton(Image image, SingletonRepo* repo);
     IconButton(int x, int y, Listener* listener,
-    		   SingletonRepo* repo,
-    		   String overMsg = String(),
-    		   String cmdMsg = String(),
-    		   String naMsg = String());
+               SingletonRepo* repo,
+               String overMsg = String(),
+               String cmdMsg = String(),
+               String naMsg = String());
 
     ~IconButton() override;
     void paintButton(Graphics & g, bool mouseOver, bool buttonDown) override;

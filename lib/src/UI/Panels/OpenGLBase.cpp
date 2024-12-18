@@ -6,9 +6,9 @@
 using namespace gl;
 
 OpenGLBase::OpenGLBase(OpenGLRenderer* renderer, Component* component) :
-		smoothLines		(true)
-	,	renderer		(renderer)
-	,	component		(component) {
+        smoothLines		(true)
+    ,	renderer		(renderer)
+    ,	component		(component) {
 }
 
 void OpenGLBase::printErrors(SingletonRepo* repo) {

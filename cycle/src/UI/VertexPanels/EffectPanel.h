@@ -5,25 +5,25 @@
 #include <Inter/Interactor2D.h>
 
 class EffectPanel :
-		public Panel2D
-	,	public Interactor2D
+        public Panel2D
+    ,	public Interactor2D
 {
 public:
-	EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZoom);
-	~EffectPanel() override = default;
+    EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZoom);
+    ~EffectPanel() override = default;
 
-	void performUpdate(int updateType) override;
-	bool isMeshEnabled() const;
-	bool doCreateVertex() override;
-	bool addNewCube(float startTime, float x, float y, float curve = 0);
+    void performUpdate(int updateType) override;
+    bool isMeshEnabled() const;
+    bool doCreateVertex() override;
+    bool addNewCube(float startTime, float x, float y, float curve = 0);
 
-	float getDragMovementScale();
+    float getDragMovementScale();
 
-	/* Effect callbacks */
-	virtual bool isEffectEnabled() const = 0;
+    /* Effect callbacks */
+    virtual bool isEffectEnabled() const = 0;
 
 protected:
-	FXRasterizer localRasterizer;
+    FXRasterizer localRasterizer;
 
 private:
 };

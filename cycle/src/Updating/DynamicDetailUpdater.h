@@ -7,9 +7,9 @@ class DynamicDetailUpdateable : public Updateable::Listener
 {
 public:
     void preUpdateHook(int updateType) {
-        if (updateType == UpdateType::ReduceDetail) {
+        if (updateType == ReduceDetail) {
             detailIsReduced = true;
-        } else if (updateType == UpdateType::RestoreDetail) {
+        } else if (updateType == RestoreDetail) {
             detailIsReduced = false;
         }
     }
@@ -18,5 +18,5 @@ public:
 
 protected:
 
-	bool detailIsReduced;
+    bool detailIsReduced;
 };

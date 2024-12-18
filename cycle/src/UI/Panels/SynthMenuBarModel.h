@@ -11,130 +11,122 @@ class SynthAudioSource;
 class EditWatcher;
 
 class EditableItem :
-	public PopupMenu::CustomComponent,
-	public Button::Listener
+    public PopupMenu::CustomComponent,
+    public Button::Listener
 {
 public:
-	EditableItem(const String& name);
-	void resized() override;
-	void buttonClicked(Button* button) override;
-	void getIdealSize (int& idealWidth, int& idealHeight) override;
+    explicit EditableItem(String name);
+    void resized() override;
+    void buttonClicked(Button* button) override;
+    void getIdealSize (int& idealWidth, int& idealHeight) override;
 
 private:
-	TextButton saveButton;
-	Label editor;
+    TextButton saveButton;
+    Label editor;
 
-	String name;
+    String name;
 };
 
 class SynthMenuBarModel :
-		public MenuBarModel
-	,	public SingletonAccessor
+        public MenuBarModel
+    ,	public SingletonAccessor
 {
 public:
-	SynthMenuBarModel(SingletonRepo* repo);
+    explicit SynthMenuBarModel(SingletonRepo* repo);
 
-	virtual ~SynthMenuBarModel()
-	{
-	}
+    ~SynthMenuBarModel() override = default;
 
-	enum Menus
-	{
-		FileMenu,
-		EditMenu,
-		GraphicsMenu,
-		AudioMenu,
-		HelpMenu
-	};
+    enum Menus {
+        FileMenu,
+        EditMenu,
+        GraphicsMenu,
+        AudioMenu,
+        HelpMenu
+    };
 
-	enum FileItem
-	{
-		NewFile = 1,
-		OpenFile,
-		SaveFile,
-		SaveAsFile,
-		RevertToSaved,
-		LoadSample,
-		LoadMultiSample,
-		UnloadSample,
-		SaveAudioMeta,
+    enum FileItem {
+        NewFile = 1,
+        OpenFile,
+        SaveFile,
+        SaveAsFile,
+        RevertToSaved,
+        LoadSample,
+        LoadMultiSample,
+        UnloadSample,
+        SaveAudioMeta,
 
-		ExitProgram
-	};
+        ExitProgram
+    };
 
-	enum GraphicsItem
-	{
-		ShowSynth = 1,
-		ShowBoth,
-		ShowWave,
+    enum GraphicsItem {
+        ShowSynth = 1,
+        ShowBoth,
+        ShowWave,
 
-		VertsOnHover,
-		VertsAlways,
+        VertsOnHover,
+        VertsAlways,
 
-		DepthCurrDim,
-		DepthAllDim,
-		DrawScales,
+        DepthCurrDim,
+        DepthAllDim,
+        DrawScales,
 
-		ViewStageA,
-		ViewStageB,
-		ViewStageC,
-		ViewStageD,
+        ViewStageA,
+        ViewStageB,
+        ViewStageC,
+        ViewStageD,
 
-		WaveformWaterfall,
+        WaveformWaterfall,
 
-		UseOpenGL,
-		UseLargerPoints,
+        UseOpenGL,
+        UseLargerPoints,
 
-		PointSize1x,
-		PointSize2x,
-		PointSize4x,
+        PointSize1x,
+        PointSize2x,
+        PointSize4x,
 
-		Reduction1x,
-		Reduction3x,
-		Reduction5x,
+        Reduction1x,
+        Reduction3x,
+        Reduction5x,
 
-		InterpWaveCycles,
-		WrapWaveCycles
-	};
+        InterpWaveCycles,
+        WrapWaveCycles
+    };
 
-	enum EditItem
-	{
-		UndoEdit = 1,
-		RedoEdit,
-		EraseVerts,
-		ExtrudeVerts,
+    enum EditItem {
+        UndoEdit = 1,
+        RedoEdit,
+        EraseVerts,
+        ExtrudeVerts,
 
-		AudioConfigEdit,
-		SnapEdit,
+        AudioConfigEdit,
+        SnapEdit,
 
-		CollisionDetection,
-		SelectWithRight,
-		NativeDialogs,
-		PitchOctaveUp,
-		PitchOctaveDown,
-		PitchAlgorithmAuto,
-		PitchAlgorithmYin,
-		PitchAlgorithmSwipe,
+        CollisionDetection,
+        SelectWithRight,
+        NativeDialogs,
+        PitchOctaveUp,
+        PitchOctaveDown,
+        PitchAlgorithmAuto,
+        PitchAlgorithmYin,
+        PitchAlgorithmSwipe,
 
-		UpdateRealtime,
-		UpdateOnRelease,
+        UpdateRealtime,
+        UpdateOnRelease,
 
-		DebugLogging,
-	};
+        DebugLogging,
+    };
 
-	enum
-	{
-		NoteStart = 0x10000
-	};
+    enum {
+        NoteStart = 0x10000
+    };
 
-	enum AudioItem
-	{
-		QualityOptions = 1,
-		ModMatrix,
-		Declick,
-		BendRange2,
-		BendRange6,
-		BendRange12,
+    enum AudioItem {
+        QualityOptions = 1,
+        ModMatrix,
+        Declick,
+        BendRange2,
+        BendRange6,
+        BendRange12,
 
 //		MapNull,
 //		MapMod,
@@ -142,38 +134,37 @@ public:
 //		MapVelInv,
 //		MapVel,
 
-		DynamicEnvs,
+        DynamicEnvs,
 
-		OversampRltm1x,
-		OversampRltm2x,
-		OversampRltm4x,
-		OversampRltm16x,
-	};
+        OversampRltm1x,
+        OversampRltm2x,
+        OversampRltm4x,
+        OversampRltm16x,
+    };
 
-	enum HelpItem
-	{
-		About = 1,
-		Help,
-		Tour,
-		Cheatsheet,
-		Tutorials = 10,
-	};
+    enum HelpItem {
+        About = 1,
+        Help,
+        Tour,
+        Cheatsheet,
+        Tutorials = 10,
+    };
 
-	/** This method must return a list of the names of the menus. */
-	StringArray getMenuBarNames();
-	PopupMenu getMenuForIndex(int topLevelMenuIndex, const String& menuName);
-	void menuItemSelected(int item, int topLevelMenuIndex);
-	void triggerClick(int stage);
-	void init();
+    /** This method must return a list of the names of the menus. */
+    StringArray getMenuBarNames() override;
+    PopupMenu getMenuForIndex(int topLevelMenuIndex, const String& menuName) override;
+    void menuItemSelected(int item, int topLevelMenuIndex) override;
+    void triggerClick(int stage);
+    void init() override;
 
 private:
-	JUCE_LEAK_DETECTOR(SynthMenuBarModel)
+    JUCE_LEAK_DETECTOR(SynthMenuBarModel)
 
-	Ref<MiscGraphics> 		miscGfx;
-	Ref<Dialogs>			dialogs;
-	Ref<FileManager>		fileMgr;
-	Ref<SynthAudioSource> 	source;
-	Ref<EditWatcher>		editWatcher;
+    Ref<MiscGraphics> 		miscGfx;
+    Ref<Dialogs>			dialogs;
+    Ref<FileManager>		fileMgr;
+    Ref<SynthAudioSource> 	source;
+    Ref<EditWatcher>		editWatcher;
 
-	Array<File> tutorials;
+    Array<File> tutorials;
 };

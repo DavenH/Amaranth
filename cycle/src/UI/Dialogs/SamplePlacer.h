@@ -15,82 +15,82 @@ class SampleDragger;
 class SamplePair : public Component
 {
 public:
-	enum { border = 1 };
+    enum { border = 1 };
 
-	bool 			horz;
-	float 			portion{};
-	File 			file;
-	Rectangle<int> 	rect;
+    bool 			horz;
+    float 			portion{};
+    File 			file;
+    Rectangle<int> 	rect;
 
-	Ref<SamplePlacer> placer;
+    Ref<SamplePlacer> placer;
 
-	std::unique_ptr<SamplePair> a;
-	std::unique_ptr<SamplePair> b;
-	std::unique_ptr<SampleDragger> dragger;
+    std::unique_ptr<SamplePair> a;
+    std::unique_ptr<SamplePair> b;
+    std::unique_ptr<SampleDragger> dragger;
 
-	explicit SamplePair(SamplePlacer* placer);
-	void paint(Graphics& g) override;
-	void split(float portion, bool horz);
-	void resized() override;
-	void setPortion(float portion) { this->portion = portion; }
+    explicit SamplePair(SamplePlacer* placer);
+    void paint(Graphics& g) override;
+    void split(float portion, bool horz);
+    void resized() override;
+    void setPortion(float portion) { this->portion = portion; }
 };
 
 class SampleDragger : public Component {
 public:
-	SampleDragger(SamplePair* pair, bool horz) : pair(pair),
-	                                             horz(horz),
-	                                             startHeightA(0), startHeightB(0), startWidthA(0), startWidthB(0) {
-	}
+    SampleDragger(SamplePair* pair, bool horz) : pair(pair),
+                                                 horz(horz),
+                                                 startHeightA(0), startHeightB(0), startWidthA(0), startWidthB(0) {
+    }
 
-	void update(int diff) {
-		float newRatio = horz ?
-				(startHeightA + diff) / float(startHeightA + startHeightB) :
-				(startWidthA + diff) / float(startWidthA + startWidthB);
+    void update(int diff) {
+        float newRatio = horz ?
+                (startHeightA + diff) / float(startHeightA + startHeightB) :
+                (startWidthA + diff) / float(startWidthA + startWidthB);
 
-		pair->setPortion(newRatio);
-		pair->resized();
-	}
+        pair->setPortion(newRatio);
+        pair->resized();
+    }
 
-	bool horz;
-	Ref<SamplePair> pair;
-	float startHeightA, startHeightB, startWidthA, startWidthB;
+    bool horz;
+    Ref<SamplePair> pair;
+    float startHeightA, startHeightB, startWidthA, startWidthB;
 };
 
 
 class SamplePlacer :
-		public Component
-	,	public Button::Listener
-	, 	public SingletonAccessor
+        public Component
+    ,	public Button::Listener
+    , 	public SingletonAccessor
 {
 public:
-	explicit SamplePlacer(SingletonRepo* repo);
-	~SamplePlacer() override;
+    explicit SamplePlacer(SingletonRepo* repo);
+    ~SamplePlacer() override;
 
-	void cut();
-	void mouseDown(const MouseEvent& e) override;
-	void mouseMove(const MouseEvent& e) override;
+    void cut();
+    void mouseDown(const MouseEvent& e) override;
+    void mouseMove(const MouseEvent& e) override;
     void buttonClicked (Button* button) override;
-	void paint(Graphics& g) override;
-	void resized() override;
+    void paint(Graphics& g) override;
+    void resized() override;
 
-	Image folderImage;
+    Image folderImage;
 private:
-	friend class SamplePair;
+    friend class SamplePair;
 
-	bool horzCut;
+    bool horzCut;
 
-	IconButton horzButton, vertButton;
+    IconButton horzButton, vertButton;
 
-	SamplePair pair;
-	Point<float> xy;
+    SamplePair pair;
+    Point<float> xy;
 };
 
 class SamplePlacerPanel : public Component, public SingletonAccessor
 {
 public:
-	explicit SamplePlacerPanel(SingletonRepo* repo);
-	void resized() override;
+    explicit SamplePlacerPanel(SingletonRepo* repo);
+    void resized() override;
 
 private:
-	SamplePlacer samplePlacer;
+    SamplePlacer samplePlacer;
 };

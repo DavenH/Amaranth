@@ -7,100 +7,100 @@
 #include "../Util/Geometry.h"
 
 CollisionDetector::CollisionDetector(SingletonRepo* repo, CollisionDim nonIntersectingDim) :
-		SingletonAccessor	(repo, "CollisionDetector")
-	,	nonIntersectingDim	(nonIntersectingDim)
-	,	timeIsApplicable	(nonIntersectingDim != Key)
-	,	dimSlices			(11)
-	,	enabled				(true)
-	,	numMeshCubes		(0) {
-	sliceSpacing = 1 / float(dimSlices);
+        SingletonAccessor	(repo, "CollisionDetector")
+    ,	nonIntersectingDim	(nonIntersectingDim)
+    ,	timeIsApplicable	(nonIntersectingDim != Key)
+    ,	dimSlices			(11)
+    ,	enabled				(true)
+    ,	numMeshCubes		(0) {
+    sliceSpacing = 1 / float(dimSlices);
 
-	dims[Time] 	= Time;
-	dims[Key] 	= Key;
-	dims[Mod] 	= Mod;
-	dims[Phase] = Phase;
+    dims[Time] 	= Time;
+    dims[Key] 	= Key;
+    dims[Mod] 	= Mod;
+    dims[Phase] = Phase;
 }
 
 void CollisionDetector::update(Mesh* mesh) {
-	if(! enabled) {
-		return;
-	}
+    if(! enabled) {
+        return;
+    }
 
-	numMeshCubes = mesh->getNumCubes();
-	int numSelectedLines = selectedLines.size();
+    numMeshCubes = mesh->getNumCubes();
+    int numSelectedLines = selectedLines.size();
 
-	vector<VertCube*> uniqueMeshCubes;
-	uniqueMeshCubes.reserve(numMeshCubes);
+    vector<VertCube*> uniqueMeshCubes;
+    uniqueMeshCubes.reserve(numMeshCubes);
 
-	for (auto& it : mesh->getCubes()) {
+    for (auto& it : mesh->getCubes()) {
         if(selectedLines.find(it) != selectedLines.end()) {
-	        uniqueMeshCubes.push_back(it);
+            uniqueMeshCubes.push_back(it);
         }
-	}
+    }
 
-	// nothing to collide with
-	if(numSelectedLines == 0 || uniqueMeshCubes.size() <= 1) {
-		return;
-	}
+    // nothing to collide with
+    if(numSelectedLines == 0 || uniqueMeshCubes.size() <= 1) {
+        return;
+    }
 
-	Vertex* currVert;
+    Vertex* currVert;
 
-	meshVerts.resize(uniqueMeshCubes.size() * nVerts * nDims);
-	selectedVerts.resize(numSelectedLines * nVerts * nDims);
+    meshVerts.resize(uniqueMeshCubes.size() * nVerts * nDims);
+    selectedVerts.resize(numSelectedLines * nVerts * nDims);
 
-	int index = 0;
+    int index = 0;
 
     for (int i = 0; i < numIndepDims; ++i) {
-		selectMinima[i] = 1;
-		selectMaxima[i] = 0;
-	}
+        selectMinima[i] = 1;
+        selectMaxima[i] = 0;
+    }
 
-	for (auto cube : selectedLines) {
+    for (auto cube : selectedLines) {
         int baseIndex;
 
         for (int i = 0; i < nVerts; ++i) {
-			currVert = cube->getVertex(i);
+            currVert = cube->getVertex(i);
 
-			baseIndex = index * nVerts * nDims + i * nDims;
-			selectedVerts[baseIndex + Time ] = currVert->values[Vertex::Time];
-			selectedVerts[baseIndex + Key  ] = currVert->values[Vertex::Red];
-			selectedVerts[baseIndex + Mod  ] = currVert->values[Vertex::Blue];
-			selectedVerts[baseIndex + Phase] = currVert->values[Vertex::Phase];
+            baseIndex = index * nVerts * nDims + i * nDims;
+            selectedVerts[baseIndex + Time ] = currVert->values[Vertex::Time];
+            selectedVerts[baseIndex + Key  ] = currVert->values[Vertex::Red];
+            selectedVerts[baseIndex + Mod  ] = currVert->values[Vertex::Blue];
+            selectedVerts[baseIndex + Phase] = currVert->values[Vertex::Phase];
 
-			selectMinima[0] = jmin(selectMinima[0], selectedVerts[baseIndex + 0]);
-			selectMinima[1] = jmin(selectMinima[1], selectedVerts[baseIndex + 1]);
-			selectMinima[2] = jmin(selectMinima[2], selectedVerts[baseIndex + 2]);
+            selectMinima[0] = jmin(selectMinima[0], selectedVerts[baseIndex + 0]);
+            selectMinima[1] = jmin(selectMinima[1], selectedVerts[baseIndex + 1]);
+            selectMinima[2] = jmin(selectMinima[2], selectedVerts[baseIndex + 2]);
 
-			selectMaxima[0] = jmax(selectMaxima[0], selectedVerts[baseIndex + 0]);
-			selectMaxima[1] = jmax(selectMaxima[1], selectedVerts[baseIndex + 1]);
-			selectMaxima[2] = jmax(selectMaxima[2], selectedVerts[baseIndex + 2]);
-		}
+            selectMaxima[0] = jmax(selectMaxima[0], selectedVerts[baseIndex + 0]);
+            selectMaxima[1] = jmax(selectMaxima[1], selectedVerts[baseIndex + 1]);
+            selectMaxima[2] = jmax(selectMaxima[2], selectedVerts[baseIndex + 2]);
+        }
 
-		++index;
-	}
+        ++index;
+    }
 
-	for(int i = 0; i < numIndepDims; ++i) {
-		sliceSpacings[i] = sliceSpacing * (selectMaxima[i] - selectMinima[i]);
-	}
+    for(int i = 0; i < numIndepDims; ++i) {
+        sliceSpacings[i] = sliceSpacing * (selectMaxima[i] - selectMinima[i]);
+    }
 
     int lineIdx = 0;
-	for (auto cube : uniqueMeshCubes) {
+    for (auto cube : uniqueMeshCubes) {
         int baseIndex;
         for (int i = 0; i < nVerts; ++i) {
-			currVert = cube->getVertex(i);
+            currVert = cube->getVertex(i);
 
-			baseIndex = lineIdx * nVerts * nDims + i * nDims;
-			meshVerts[baseIndex + Time ] = currVert->values[Vertex::Time];
-			meshVerts[baseIndex + Key  ] = currVert->values[Vertex::Red];
-			meshVerts[baseIndex + Mod  ] = currVert->values[Vertex::Blue];
-			meshVerts[baseIndex + Phase] = currVert->values[Vertex::Phase];
-		}
+            baseIndex = lineIdx * nVerts * nDims + i * nDims;
+            meshVerts[baseIndex + Time ] = currVert->values[Vertex::Time];
+            meshVerts[baseIndex + Key  ] = currVert->values[Vertex::Red];
+            meshVerts[baseIndex + Mod  ] = currVert->values[Vertex::Blue];
+            meshVerts[baseIndex + Phase] = currVert->values[Vertex::Phase];
+        }
 
-		// todo
-		// create phantom verts where the line splices
+        // todo
+        // create phantom verts where the line splices
 
-		++lineIdx;
-	}
+        ++lineIdx;
+    }
 }
 
 void CollisionDetector::setCurrentSelection(Mesh* mesh, Vertex* vertex) {
@@ -118,20 +118,20 @@ void CollisionDetector::setCurrentSelection(Mesh* mesh, VertCube* lineCube) {
 }
 
 void CollisionDetector::setCurrentSelection(Mesh* mesh, const vector<Vertex*>& verts) {
-	selectedLines.clear();
+    selectedLines.clear();
 
-	for (auto vert : verts)
-		addLinesToSet(selectedLines, vert);
+    for (auto vert : verts)
+        addLinesToSet(selectedLines, vert);
 
-	update(mesh);
+    update(mesh);
 }
 
 void CollisionDetector::setCurrentSelection(Mesh* mesh, const Array<Vertex*>& verts) {
     selectedLines.clear();
 
-	for (auto vert : verts) {
-		addLinesToSet(selectedLines, vert);
-	}
+    for (auto vert : verts) {
+        addLinesToSet(selectedLines, vert);
+    }
 
     update(mesh);
 }
@@ -139,11 +139,11 @@ void CollisionDetector::setCurrentSelection(Mesh* mesh, const Array<Vertex*>& ve
 void CollisionDetector::setCurrentSelection(Mesh* mesh, const vector<VertexFrame>& frames) {
     selectedLines.clear();
 
-	for (const auto& frame : frames) {
-		addLinesToSet(selectedLines, frame.vert);
-	}
+    for (const auto& frame : frames) {
+        addLinesToSet(selectedLines, frame.vert);
+    }
 
-	update(mesh);
+    update(mesh);
 }
 
 void CollisionDetector::setNonintersectingDimension(CollisionDim dim) {
@@ -159,27 +159,27 @@ void CollisionDetector::setNonintersectingDimension(CollisionDim dim) {
  */
 bool CollisionDetector::validate() {
     if (!enabled) {
-	    return true;
+        return true;
     }
 
-	bool meshLineIsInSlice, selectedLineIsInSlice;
-	float axes[numIndepDims];
+    bool meshLineIsInSlice, selectedLineIsInSlice;
+    float axes[numIndepDims];
 
   #ifdef CD_VERBOSE
-	dout << "Collision Detection debug" << "\n";
-	dout << "___________" << "\n";
-	dout << "All lines size: " << numMeshLines << "\n";
-	dout << "Selected lines size: " << numSelectedLines << "\n";
-	dout << "\n";
+    dout << "Collision Detection debug" << "\n";
+    dout << "___________" << "\n";
+    dout << "All lines size: " << numMeshLines << "\n";
+    dout << "Selected lines size: " << numSelectedLines << "\n";
+    dout << "\n";
   #endif
 
-	bool sameLines 	= true;
-	int dimAfter 	= 0;
-	int dim2After 	= 0;
-	int baseIndexL 	= 0;
-	int baseIndexM 	= 0;
-	int numDim2Slices = timeIsApplicable ? dimSlices : 1;
-	int dimIdx 		= nonIntersectingDim;
+    bool sameLines 	= true;
+    int dimAfter 	= 0;
+    int dim2After 	= 0;
+    int baseIndexL 	= 0;
+    int baseIndexM 	= 0;
+    int numDim2Slices = timeIsApplicable ? dimSlices : 1;
+    int dimIdx 		= nonIntersectingDim;
 
 //	for(int dimIdx = 0; dimIdx < numIndepDims; ++dimIdx)
 //	{
@@ -220,7 +220,7 @@ bool CollisionDetector::validate() {
                     meshLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
                     if(! meshLineIsInSlice) {
-	                    continue;
+                        continue;
                     }
 
                     nnx = meshVerts[baseIndexL + nDims * 4 + dimAfter];
@@ -241,7 +241,7 @@ bool CollisionDetector::validate() {
                     meshLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
                     if(! meshLineIsInSlice) {
-	                    continue;
+                        continue;
                     }
 
                     nnx = selectedVerts[baseIndexM + nDims * 0 + dimAfter];
@@ -262,7 +262,7 @@ bool CollisionDetector::validate() {
                     selectedLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
                     if(! selectedLineIsInSlice) {
-	                    continue;
+                        continue;
                     }
 
                     nnx = selectedVerts[baseIndexM + nDims * 4 + dimAfter];
@@ -283,7 +283,7 @@ bool CollisionDetector::validate() {
                     selectedLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
                     if(! selectedLineIsInSlice) {
-	                    continue;
+                        continue;
                     }
 
                     if (timeIsApplicable) {
@@ -369,7 +369,7 @@ bool CollisionDetector::validate() {
         }
     }
 
-	return true;
+    return true;
 }
 
 void CollisionDetector::selectionChanged(Mesh* mesh, const vector<VertexFrame>& frames) {

@@ -17,23 +17,23 @@ public:
 class Spectrogram : public SingletonAccessor {
 public:
     enum {
-		CalcPhases		= 1
-	,	UnwrapPhases	= 2
-	,	SaveTime		= 4
-	,	LogScale		= 8
-	};
+        CalcPhases		= 1
+    ,	UnwrapPhases	= 2
+    ,	SaveTime		= 4
+    ,	LogScale		= 8
+    };
 
-	explicit Spectrogram(SingletonRepo* repo);
-	~Spectrogram() override;
+    explicit Spectrogram(SingletonRepo* repo);
+    ~Spectrogram() override;
 
-	void calculate(IterableBuffer*, int flags = 0);
-	void unwrapPhaseColumns();
+    void calculate(IterableBuffer*, int flags = 0);
+    void unwrapPhaseColumns();
 
     vector<Column>& getMagColumns()   { return magColumns; }
     vector<Column>& getPhaseColumns() { return phaseColumns; }
     vector<Column>& getTimeColumns()  { return timeColumns; }
 
 private:
-	vector<Column> 		magColumns, phaseColumns, 	timeColumns;
-	ScopedAlloc<float> 	magMemory, 	phaseMemory, 	timeMemory;
+    vector<Column> 		magColumns, phaseColumns, 	timeColumns;
+    ScopedAlloc<float> 	magMemory, 	phaseMemory, 	timeMemory;
 };

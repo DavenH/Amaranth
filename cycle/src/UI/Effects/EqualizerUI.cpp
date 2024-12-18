@@ -38,8 +38,9 @@ void EqualizerUI::init() {
 
     equalizer = &getObj(SynthAudioSource).getEqualizer();
 
-    for (int i = 0; i < Equalizer::Band1Freq; ++i)
+    for (int i = 0; i < Equalizer::Band1Freq; ++i) {
         paramGroup->setKnobValue(i, equalizer->getFrequencyTarget(i), false, false);
+    }
 }
 
 bool EqualizerUI::paramTriggersAggregateUpdate(int knobIndex) {
@@ -76,7 +77,7 @@ String EqualizerUI::getKnobName(int index) const {
 
     if (index < Equalizer::Band1Freq) {
         int gain = (int) equalizer->getGainTarget(index);
-        String prepend = gain > 0 ? "+" : String::empty;
+        String prepend = gain > 0 ? "+" : String();
         return prepend << gain;
     }
 
@@ -98,6 +99,6 @@ void EqualizerUI::doLocalUIUpdate() {
     repaint();
 }
 
-void EqualizerUI::performUpdate(int updateType) {
+void EqualizerUI::performUpdate(UpdateType updateType) {
     repaint();
 }

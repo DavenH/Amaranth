@@ -3,11 +3,11 @@
 #include <Design/Updating/Updateable.h>
 
 class EnvelopeDelegate :
-		public SingletonAccessor
-	,	public Updateable {
+        public SingletonAccessor
+    ,	public Updateable {
 public:
-	EnvelopeDelegate(SingletonRepo* repo);
-	void performUpdate(int updateType) override;
+    EnvelopeDelegate(SingletonRepo* repo);
+    void performUpdate(UpdateType updateType) override;
 
-	~EnvelopeDelegate() override;
+    ~EnvelopeDelegate() override;
 };

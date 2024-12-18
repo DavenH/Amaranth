@@ -19,11 +19,11 @@ SelectorPanel::SelectorPanel(SingletonRepo* repo) :
 	arrowImg 		= getObj(MiscGraphics).getIcon(6, 6);
 }
 
-int SelectorPanel::getExpandedSize() {
+int SelectorPanel::getExpandedSize() const {
     return 36;
 }
 
-int SelectorPanel::getCollapsedSize() {
+int SelectorPanel::getCollapsedSize() const {
     return getExpandedSize();
 }
 
@@ -117,7 +117,7 @@ void SelectorPanel::setBoundsDelegate(int x, int y, int w, int h) {
     setBounds(x, y, w, h);
 }
 
-const Rectangle<int> SelectorPanel::getBoundsInParentDelegate() {
+Rectangle<int> SelectorPanel::getBoundsInParentDelegate() const {
     return getBoundsInParent();
 }
 

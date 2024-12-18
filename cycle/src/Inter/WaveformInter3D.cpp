@@ -104,7 +104,7 @@ void WaveformInter3D::initSelectionClient() {
 void WaveformInter3D::meshSelectionChanged(Mesh* mesh) {
     updateInterceptsWithMesh(mesh);
 
-    getObj(WaveformInter2D).update((int) UpdateType::Update);
+    getObj(WaveformInter2D).update(Update);
     display->repaint();
 }
 
@@ -128,8 +128,9 @@ Interactor* WaveformInter3D::getOppositeInteractor() {
 }
 
 void WaveformInter3D::enterClientLock(bool audioThreadApplicable) {
-    if (audioThreadApplicable)
+    if (audioThreadApplicable) {
         getObj(SynthAudioSource).getLock().enter();
+    }
 
     panel->getRenderLock().enter();
 }
@@ -141,8 +142,9 @@ void WaveformInter3D::meshSelectionFinished() {
 void WaveformInter3D::exitClientLock(bool audioThreadApplicable) {
     panel->getRenderLock().exit();
 
-    if (audioThreadApplicable)
+    if (audioThreadApplicable) {
         getObj(SynthAudioSource).getLock().exit();
+    }
 }
 
 String WaveformInter3D::getYString(float yVal, int yIndex, const Column& col, float fundFreq) {

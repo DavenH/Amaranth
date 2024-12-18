@@ -13,101 +13,104 @@ Spectrogram::Spectrogram(SingletonRepo* repo) :
 }
 
 Spectrogram::~Spectrogram() {
-	magMemory  	.clear();
-	phaseMemory	.clear();
-	timeMemory 	.clear();
+    magMemory  	.clear();
+    phaseMemory	.clear();
+    timeMemory 	.clear();
 }
 
 void Spectrogram::calculate(IterableBuffer* iterable, int flags) {
 
-	if(flags & CalcPhases)
-		phaseMemory.ensureSize(iterable->getTotalSize() / 2);
+    if(flags & CalcPhases) {
+        phaseMemory.ensureSize(iterable->getTotalSize() / 2);
+    }
 
-	if(flags & SaveTime)
-		timeMemory.ensureSize(iterable->getTotalSize());
+    if(flags & SaveTime) {
+        timeMemory.ensureSize(iterable->getTotalSize());
+    }
 
-	magMemory.ensureSize(iterable->getTotalSize() / 2);
+    magMemory.ensureSize(iterable->getTotalSize() / 2);
 
-	iterable->reset();
+    iterable->reset();
 
     while (iterable->hasNext()) {
-		Buffer<float> source = iterable->getNext();
+        Buffer<float> source = iterable->getNext();
 
-		Transform& fft = getObj(Transforms).chooseFFT(source.size());
-		fft.forward(source);
+        Transform& fft = getObj(Transforms).chooseFFT(source.size());
+        fft.forward(source);
 
-		Buffer<float> mags 	 = fft.getMagnitudes();
-		Buffer<float> phases = fft.getPhases();
+        Buffer<float> mags 	 = fft.getMagnitudes();
+        Buffer<float> phases = fft.getPhases();
 
         if (flags & LogScale) {
-			mags.mul(1 / float(mags.size() - 1));
-			Arithmetic::applyLogMapping(mags, 50);
-		}
+            mags.mul(1 / float(mags.size() - 1));
+            Arithmetic::applyLogMapping(mags, 50);
+        }
 
         if (flags & SaveTime) {
-			Column timeBuf(timeMemory.place(source.size()));
-			timeColumns.push_back(timeBuf);
-		}
+            Column timeBuf(timeMemory.place(source.size()));
+            timeColumns.push_back(timeBuf);
+        }
 
-		Column magColumn(magMemory.place(source.size() / 2));
-		mags.copyTo(magColumn);
-		magColumns.push_back(magColumn);
+        Column magColumn(magMemory.place(source.size() / 2));
+        mags.copyTo(magColumn);
+        magColumns.push_back(magColumn);
 
         if (flags & CalcPhases) {
-			Column phaseCol(phaseMemory.place(source.size() / 2));
-			phases.copyTo(phaseCol);
-			phaseColumns.push_back(phaseCol);
-		}
-	}
+            Column phaseCol(phaseMemory.place(source.size() / 2));
+            phases.copyTo(phaseCol);
+            phaseColumns.push_back(phaseCol);
+        }
+    }
 
-	if(flags & CalcPhases && flags & UnwrapPhases) {
-		unwrapPhaseColumns();
-	}
+    if(flags & CalcPhases && flags & UnwrapPhases) {
+        unwrapPhaseColumns();
+    }
 }
 
 void Spectrogram::unwrapPhaseColumns() {
-	int numHarmonics = phaseColumns.front().size();
-	ScopedAlloc<float> memory(phaseColumns.size() + 2 * numHarmonics);
+    int numHarmonics = phaseColumns.front().size();
+    ScopedAlloc<float> memory(phaseColumns.size() + 2 * numHarmonics);
 
-	Buffer<float> unwrapped = memory.place(phaseColumns.size());
-	Buffer<float> maxima 	= memory.place(numHarmonics);
-	Buffer<float> minima	= memory.place(numHarmonics);
+    Buffer<float> unwrapped = memory.place(phaseColumns.size());
+    Buffer<float> maxima 	= memory.place(numHarmonics);
+    Buffer<float> minima	= memory.place(numHarmonics);
 
-	const float invConst = IPP_RPI * 0.5f;
+    const float invConst = 1/3.1415926535 * 0.5f;
 
-	float phaseMin, phaseMax;
+    float phaseMin, phaseMax;
 
-	for (int harmIdx = 0; harmIdx < numHarmonics; ++harmIdx) {
-		for (int col = 0; col < unwrapped.size(); ++col) {
-			unwrapped[col] = phaseColumns[col][harmIdx];
-		}
+    for (int harmIdx = 0; harmIdx < numHarmonics; ++harmIdx) {
+        for (int col = 0; col < unwrapped.size(); ++col) {
+            unwrapped[col] = phaseColumns[col][harmIdx];
+        }
 
-		unwrapped.minmax(phaseMin, phaseMax);
+        unwrapped.minmax(phaseMin, phaseMax);
 
-		float diff;
+        float diff;
         for (int col = 1; col < unwrapped.size(); ++col) {
-			diff = unwrapped[col] - unwrapped[col - 1];
-			diff *= invConst;
+            diff = unwrapped[col] - unwrapped[col - 1];
+            diff *= invConst;
 
-			if(diff > 0.50001f) {
-				unwrapped[col] -= IPP_2PI * int(diff + 0.499989999f);
-			}
+            if(diff > 0.50001f) {
+                unwrapped[col] -= 2*3.1415926535 * int(diff + 0.499989999f);
+            }
 
-			if(diff < -0.50001f) {
-				unwrapped[col] += IPP_2PI * int(-diff + 0.499989999f);
-			}
-		}
+            if(diff < -0.50001f) {
+                unwrapped[col] += 2*3.1415926535 * int(-diff + 0.499989999f);
+            }
+        }
 
-		float scaling = 1 / sqrtf(jmax(0.f, float(harmIdx + 1)));
-		unwrapped.mul(scaling);
+        float scaling = 1 / sqrtf(jmax(0.f, float(harmIdx + 1)));
+        unwrapped.mul(scaling);
 
-		for (int col = 0; col < unwrapped.size(); ++col)
-			phaseColumns[col][harmIdx] = unwrapped[col];
+        for (int col = 0; col < unwrapped.size(); ++col) {
+            phaseColumns[col][harmIdx] = unwrapped[col];
+        }
 
-		unwrapped.minmax(minima[harmIdx], maxima[harmIdx]);
-	}
+        unwrapped.minmax(minima[harmIdx], maxima[harmIdx]);
+    }
 
-	float maximum = maxima.max();
-	float minimum = minima.min();
-	float realMax = jmax(fabsf(maximum), fabsf(minimum));
+    float maximum = maxima.max();
+    float minimum = minima.min();
+    float realMax = jmax(fabsf(maximum), fabsf(minimum));
 }

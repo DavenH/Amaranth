@@ -43,8 +43,9 @@ Component* ModMatrix::refreshComponentForCell(int row,
                                               Component* component) {
     int column = columnIdToIndex(columnId);
 
-    if (column < 0)
-        return nullptr;
+    if (column < 0) {
+	    return nullptr;
+    }
 
     if (component == nullptr) {
         auto* box = new ColourCheckbox(this, row, column);
@@ -78,11 +79,20 @@ void ModMatrix::showDimensionsPopup(ColourCheckbox* checkbox) {
 	menu.addItem(3, "Red", 	active, oldDim == ModMatrixPanel::RedDim);
 	menu.addItem(4, "Blue", active, oldDim == ModMatrixPanel::BlueDim);
 
-	int result = menu.showMenuAsync(checkbox, 0, 80, 1, 24);
-	int newDim = result - 2;
+	// checkbox, 0, 80, 1, 24;
+	auto options = PopupMenu::Options()
+		.withStandardItemHeight(24)
+		.withTargetComponent(checkbox)
+	;
 
-	if(result != 0 && oldDim != newDim)
-		panel->mappingChanged(mappingIndex, inputId, outputId, oldDim, newDim);
+	menu.showMenuAsync(options, [this, oldDim,mappingIndex,inputId,outputId](int result) {
+		int newDim = result - 2;
+			if(result != 0 && oldDim != newDim) {
+				panel->mappingChanged(mappingIndex, inputId, outputId, oldDim, newDim);
+			}
+		}
+	);
+
 }
 
 

@@ -15,23 +15,23 @@ using namespace juce;
 class SingletonRepo;
 
 class PluginProcessor :
-		public AudioProcessor
-	,	public Document::Listener
+        public AudioProcessor
+    ,	public Document::Listener
 {
 public:
-	class Listener {
-	public:
-		virtual ~Listener() = default;
+    class Listener {
+    public:
+        virtual ~Listener() = default;
 
-		virtual void tempoChanged(double bpm) = 0;
-	};
+        virtual void tempoChanged(double bpm) = 0;
+    };
 
-	class LatencyAdder {
-	public:
-		virtual ~LatencyAdder() = default;
+    class LatencyAdder {
+    public:
+        virtual ~LatencyAdder() = default;
 
-		virtual int getLatency(bool isRealtime) = 0;
-	};
+        virtual int getLatency(bool isRealtime) = 0;
+    };
 
     /* ----------------------------------------------------------------------------- */
 
@@ -63,7 +63,7 @@ public:
     void setCurrentProgramStateInformation (const void* data, int sizeInBytes) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-	/* ----------------------------------------------------------------------------- */
+    /* ----------------------------------------------------------------------------- */
 
     bool acceptsMidi() const override							{ return true; 				}
     bool hasEditor() const override                  			{ return true; 				}
@@ -73,7 +73,7 @@ public:
     bool producesMidi() const override							{ return true; 				}
     double getTailLengthSeconds() const override    			{ return 0; 			   	}
     AudioPlayHead::CurrentPositionInfo getCurrentPosition() 	{ return lastPosInfo; 		}
-	void setSuspendStateRead(bool suspend) 						{ suspendStateRead = suspend; }
+    void setSuspendStateRead(bool suspend) 						{ suspendStateRead = suspend; }
     int getNumParameters() override								{ return parameters.size(); }
 
     const String getInputChannelName (int channelIndex) const override 	{ return String (channelIndex + 1); }
@@ -89,8 +89,8 @@ private:
 
     AudioPlayHead::CurrentPositionInfo lastPosInfo;
 
-	Ref<SingletonRepo>	 repo;
-	Ref<AudioHub>		 audioHub;
+    Ref<SingletonRepo>	 repo;
+    Ref<AudioHub>		 audioHub;
 
     vector<Parameter> 	 parameters;
     Array<LatencyAdder*> latencies;
@@ -98,7 +98,7 @@ private:
 
     PluginHostType hostType;
 
-	friend class PluginWindow;
+    friend class PluginWindow;
 
     JUCE_DECLARE_NON_COPYABLE(PluginProcessor);
 };

@@ -7,7 +7,7 @@
 //#define ENV_VERBOSE
 
 #ifdef ENV_VERBOSE
-	#define info(X) { cout << X << "\n"; }
+    #define info(X) { cout << X << "\n"; }
 #else
 #define info(X)
 #endif

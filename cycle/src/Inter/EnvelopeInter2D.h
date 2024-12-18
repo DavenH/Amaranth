@@ -42,10 +42,10 @@ public:
     };
 
     explicit EnvelopeInter2D(SingletonRepo* repo);
-    ~EnvelopeInter2D() override;
+    ~EnvelopeInter2D() override = default;
 
     void init() override;
-    void performUpdate(int updateType) override;
+    void performUpdate(UpdateType updateType) override;
     bool doesMeshChangeWarrantGlobalUpdate() override;
 
     void showCoordinates() override;
@@ -104,7 +104,7 @@ private:
     friend class Envelope2D;
     friend class Updater;
 
-    Ref <Envelope2D> envPanel;
+    Ref<Envelope2D> envPanel;
 
     IconButton volumeIcon;
     IconButton pitchIcon;

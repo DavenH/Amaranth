@@ -2,30 +2,30 @@
 #include "../../App/SingletonRepo.h"
 
 PanelPair::PanelPair(SingletonRepo* repo, Bounded* a, Bounded* b,
-					 bool sideBySide, float portion, const String& name,
-					 int border, int min1, int max1, int min2, int max2) :
-		SingletonAccessor(repo, name)
-	,	one			(a)
-	,	two			(b)
-	,	portion		(portion)
-	,	border		(border)
-	,	sideBySide	(sideBySide) {
-	childrenEnabled = false;
-	dragger 		= nullptr;
+                     bool sideBySide, float portion, const String& name,
+                     int border, int min1, int max1, int min2, int max2) :
+        SingletonAccessor(repo, name)
+    ,	one			(a)
+    ,	two			(b)
+    ,	portion		(portion)
+    ,	border		(border)
+    ,	sideBySide	(sideBySide) {
+    childrenEnabled = false;
+    dragger 		= nullptr;
 
-	minWidthOne 	= sideBySide ? min1 	: 0;
-	minHeightOne 	= sideBySide ? 0 		: min1;
-	minWidthTwo 	= sideBySide ? min2 	: 0;
-	minHeightTwo 	= sideBySide ? 0 		: min2;
-	maxWidthOne 	= sideBySide ? max1 	: INT_MAX;
-	maxHeightOne 	= sideBySide ? INT_MAX 	: max1;
-	maxWidthTwo 	= sideBySide ? max2 	: INT_MAX;
-	maxHeightTwo 	= sideBySide ? INT_MAX 	: max2;
+    minWidthOne 	= sideBySide ? min1 	: 0;
+    minHeightOne 	= sideBySide ? 0 		: min1;
+    minWidthTwo 	= sideBySide ? min2 	: 0;
+    minHeightTwo 	= sideBySide ? 0 		: min2;
+    maxWidthOne 	= sideBySide ? max1 	: INT_MAX;
+    maxHeightOne 	= sideBySide ? INT_MAX 	: max1;
+    maxWidthTwo 	= sideBySide ? max2 	: INT_MAX;
+    maxHeightTwo 	= sideBySide ? INT_MAX 	: max2;
 
-	x 				= 0;
-	y 				= 0;
-	width 			= 0;
-	height 			= 0;
+    x 				= 0;
+    y 				= 0;
+    width 			= 0;
+    height 			= 0;
 }
 
 void PanelPair::setDragger(Dragger* dragger) {
@@ -36,10 +36,10 @@ void PanelPair::setDragger(Dragger* dragger) {
 void PanelPair::setBounds(int x, int y, int width, int height) {
     this->x = x;
     this->y = y;
-	this->width = width;
-	this->height = height;
+    this->width = width;
+    this->height = height;
 
-	if (sideBySide) {
+    if (sideBySide) {
         int firstWidth, secondWidth;
 
         firstWidth = roundToInt((width - border) * portion);
@@ -90,12 +90,12 @@ void PanelPair::setBounds(int x, int y, int width, int height) {
             firstHeight = (height - border) - secondHeight;
         }
 
-		one->setBounds(x, y, width, firstHeight);
-		two->setBounds(x, y + firstHeight + border, width, secondHeight);
+        one->setBounds(x, y, width, firstHeight);
+        two->setBounds(x, y + firstHeight + border, width, secondHeight);
 
-		if (dragger)
-			dragger->setBounds(x - 2, y + firstHeight, width + 4, border);
-	}
+        if (dragger)
+            dragger->setBounds(x - 2, y + firstHeight, width + 4, border);
+    }
 }
 
 void PanelPair::setExactWidth(int widthOfFirst, int widthOfSecond) {

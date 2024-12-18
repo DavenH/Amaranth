@@ -38,19 +38,22 @@ bool FileChooserDialog::showAt(int x, int y, int w, int h) {
     if (w <= 0) {
         Component* const previewComp = content->chooserComponent.getPreviewComponent();
 
-        if (previewComp != nullptr)
+        if (previewComp != nullptr) {
             w = 400 + previewComp->getWidth();
-        else
+        } else {
             w = 600;
+        }
     }
 
-    if (h <= 0)
+    if (h <= 0) {
         h = 500;
+    }
 
-    if (x < 0 || y < 0)
+    if (x < 0 || y < 0) {
         centreWithSize(w, h);
-    else
+    } else {
         setBounds(x, y, w, h);
+    }
 
     const bool ok = (runModalLoop() != 0);
     setVisible(false);

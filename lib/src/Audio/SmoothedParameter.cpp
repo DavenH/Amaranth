@@ -2,18 +2,18 @@
 #include "SmoothedParameter.h"
 
 SmoothedParameter::SmoothedParameter() :
-		halflifeSamples(128)
-	,	targetValue(0)
-	,	currentValue(0)
-	,	pastCurrentValue(0)
-	,	smoothingActive(true) {
+        halflifeSamples(128)
+    ,	targetValue(0)
+    ,	currentValue(0)
+    ,	pastCurrentValue(0)
+    ,	smoothingActive(true) {
 }
 
 SmoothedParameter::SmoothedParameter(double initialValue) :
-		halflifeSamples(128)
-	,	targetValue(initialValue)
-	,	currentValue(initialValue)
-	,	smoothingActive(true) {
+        halflifeSamples(128)
+    ,	targetValue(initialValue)
+    ,	currentValue(initialValue)
+    ,	smoothingActive(true) {
 }
 
 void SmoothedParameter::update(int deltaSamples) {
@@ -42,13 +42,13 @@ void SmoothedParameter::update(int deltaSamples) {
     if (fabs(currentValue - targetValue) < 0.0001) {
         currentValue = targetValue;
         pastCurrentValue = targetValue;
-	}
+    }
 }
 
 void SmoothedParameter::setValueDirect(double value) {
-	this->targetValue 		= value;
-	currentValue 			= value;
-	pastCurrentValue 		= value;
+    this->targetValue 		= value;
+    currentValue 			= value;
+    pastCurrentValue 		= value;
 }
 
 void SmoothedParameter::applyRampOrMultiplyApplicably(
@@ -58,31 +58,31 @@ void SmoothedParameter::applyRampOrMultiplyApplicably(
     jassert(workBuffer.size() == dest.size());
 
     if (hasRamp()) {
-		double startValue = pastCurrentValue * multiplicand;
-		double endVal = currentValue * multiplicand;
-		double slope = (endVal - startValue) / double(workBuffer.size());
+        double startValue = pastCurrentValue * multiplicand;
+        double endVal = currentValue * multiplicand;
+        double slope = (endVal - startValue) / double(workBuffer.size());
 
-		workBuffer.ramp(startValue, slope);
+        workBuffer.ramp(startValue, slope);
         dest.mul(workBuffer);
     } else {
-		dest.mul(float(currentValue * multiplicand));
-	}
+        dest.mul(float(currentValue * multiplicand));
+    }
 }
 
 bool SmoothedParameter::setTargetValue(double value) {
-	double lastVal = targetValue;
-	targetValue = value;
+    double lastVal = targetValue;
+    targetValue = value;
 
-	if(! smoothingActive) {
-		currentValue = targetValue;
-	}
+    if(! smoothingActive) {
+        currentValue = targetValue;
+    }
 
-	return lastVal != targetValue;
+    return lastVal != targetValue;
 }
 
 void SmoothedParameter::updateToTarget() {
-	currentValue = targetValue;
-	pastCurrentValue = targetValue;
+    currentValue = targetValue;
+    pastCurrentValue = targetValue;
 }
 
 bool SmoothedParameter::hasRamp() const {

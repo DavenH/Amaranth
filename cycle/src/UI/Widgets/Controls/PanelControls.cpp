@@ -273,19 +273,19 @@ void PanelControls::addDomainItems(RetractableCallout* domainCO) {
     this->domainCO = domainCO;
 }
 
-void PanelControls::resetSelector() {
+void PanelControls::resetSelector() const {
     if (layerSelector != nullptr) {
 	    layerSelector->reset();
     }
 }
 
-void PanelControls::refreshSelector(bool update) {
+void PanelControls::refreshSelector(bool update) const {
     if (layerSelector != nullptr) {
 	    layerSelector->refresh(update);
     }
 }
 
-void PanelControls::moveLayer(bool up) {
+void PanelControls::moveLayer(bool up) const {
     if (layerSelector != nullptr) {
 	    layerSelector->moveCurrentLayer(up);
     }

@@ -14,40 +14,40 @@
 #include "../Util/CycleEnums.h"
 
 EnvelopeDelegate::EnvelopeDelegate(SingletonRepo* repo) :
-		SingletonAccessor(repo, "EnvelopeDelegate") {
-	updateName = name;
+        SingletonAccessor(repo, "EnvelopeDelegate") {
+    updateName = name;
 }
 
-void EnvelopeDelegate::performUpdate(int performUpdateType) {
+void EnvelopeDelegate::performUpdate(UpdateType performUpdateType) {
     switch (performUpdateType) {
-		case Null: break;
-		case Repaint: break;
-		case ReduceDetail: {
-			if(getObj(Envelope3D).isVisible() && getSetting(CurrentMorphAxis) != Vertex::Time) {
-				getObj(E3Rasterizer).performUpdate(performUpdateType);
-			}
-			break;
-		}
+        case Null: break;
+        case Repaint: break;
+        case ReduceDetail: {
+            if(getObj(Envelope3D).isVisible() && getSetting(CurrentMorphAxis) != Vertex::Time) {
+                getObj(E3Rasterizer).performUpdate(performUpdateType);
+            }
+            break;
+        }
 
-		case RestoreDetail: {
-			getObj(E3Rasterizer).performUpdate(performUpdateType);
-			break;
-		}
+        case RestoreDetail: {
+            getObj(E3Rasterizer).performUpdate(performUpdateType);
+            break;
+        }
 
         case Update: {
-			if(getObj(Envelope3D).isVisible() && getSetting(CurrentMorphAxis) != Vertex::Time) {
-				getObj(E3Rasterizer).performUpdate(performUpdateType);
-			} else {
-				getObj(EnvelopeInter2D).getRasterizer()->performUpdate(performUpdateType);
-			}
+            if(getObj(Envelope3D).isVisible() && getSetting(CurrentMorphAxis) != Vertex::Time) {
+                getObj(E3Rasterizer).performUpdate(performUpdateType);
+            } else {
+                getObj(EnvelopeInter2D).getRasterizer()->performUpdate(performUpdateType);
+            }
 
-			getObj(VisualDsp).rasterizeEnv(getSetting(CurrentEnvGroup),
-										   getObj(Waveform3D).getWindowWidthPixels());
+            getObj(VisualDsp).rasterizeEnv(getSetting(CurrentEnvGroup),
+                                           getObj(Waveform3D).getWindowWidthPixels());
 
-			break;
-		}
+            break;
+        }
 
-    	default:
-    		break;
-	}
+        default:
+            break;
+    }
 }

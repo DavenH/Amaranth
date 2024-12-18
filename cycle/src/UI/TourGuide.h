@@ -3,6 +3,6 @@
 class TourGuide
 {
 public:
-	virtual Component* getComponent(int) = 0;
+    virtual Component* getComponent(int) = 0;
 };
 

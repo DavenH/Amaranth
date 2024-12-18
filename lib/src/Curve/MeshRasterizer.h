@@ -23,182 +23,180 @@ typedef vector<Intercept>::iterator IcptIter;
 typedef vector<Intercept>::const_iterator ConstIcptIter;
 
 class MeshRasterizer :
-		public Updateable {
+        public Updateable {
 public:
-	enum ScalingType { Unipolar, Bipolar, HalfBipolar };
+    enum ScalingType { Unipolar, Bipolar, HalfBipolar };
 
     struct DeformContext {
-    	int phaseOffsetSeed;
-    	int vertOffsetSeed;
-    	int currentIndex;
+        int phaseOffsetSeed;
+        int vertOffsetSeed;
+        int currentIndex;
 
-    	DeformContext() : phaseOffsetSeed(0), vertOffsetSeed(0), currentIndex(0) {}
+        DeformContext() : phaseOffsetSeed(0), vertOffsetSeed(0), currentIndex(0) {}
     };
 
     struct DeformRegion {
-    	int deformChan;
-    	float amplitude;
-    	Intercept start, end;
+        int deformChan;
+        float amplitude;
+        Intercept start, end;
     };
 
     struct RenderState {
-    	bool batchMode;
-    	bool lowResCurves;
-    	bool calcDepthDims;
-    	ScalingType scalingType;
-    	MorphPosition pos;
+        bool batchMode;
+        bool lowResCurves;
+        bool calcDepthDims;
+        ScalingType scalingType;
+        MorphPosition pos;
 
-    	RenderState() : batchMode(false), lowResCurves(false), calcDepthDims(false), scalingType(Bipolar) {}
-    	RenderState(bool batch, bool lowres, bool calcDepth, ScalingType scaling, const MorphPosition& pos) :
-    		batchMode(batch), lowResCurves(lowres), calcDepthDims(calcDepth), scalingType(scaling), pos(pos) {}
+        RenderState() : batchMode(false), lowResCurves(false), calcDepthDims(false), scalingType(Bipolar) {}
+        RenderState(bool batch, bool lowres, bool calcDepth, ScalingType scaling, const MorphPosition& pos) :
+            batchMode(batch), lowResCurves(lowres), calcDepthDims(calcDepth), scalingType(scaling), pos(pos) {}
     };
 
     class ScopedRenderState {
     public:
-    	MeshRasterizer* rasterizer;
-    	RenderState* state;
+        MeshRasterizer* rasterizer;
+        RenderState* state;
 
-    	ScopedRenderState(MeshRasterizer* rast, RenderState* state) :
-    		rasterizer(rast), state(state)
-    	{
-    		rasterizer->saveStateTo(*state);
-    	}
+        ScopedRenderState(MeshRasterizer* rast, RenderState* state) :
+            rasterizer(rast), state(state) {
+            rasterizer->saveStateTo(*state);
+        }
 
-    	~ScopedRenderState()
-    	{
-    		rasterizer->restoreStateFrom(*state);
-    	}
+        ~ScopedRenderState() {
+            rasterizer->restoreStateFrom(*state);
+        }
     };
 
     typedef vector<DeformRegion>::iterator DeformIter;
 
     /* ----------------------------------------------------------------------------- */
 
-	explicit MeshRasterizer(const String& name = String());
-	MeshRasterizer(const MeshRasterizer& copy);
-	MeshRasterizer& operator=(const MeshRasterizer& copy);
-	~MeshRasterizer() override;
+    explicit MeshRasterizer(const String& name = String());
+    MeshRasterizer(const MeshRasterizer& copy);
+    MeshRasterizer& operator=(const MeshRasterizer& copy);
+    ~MeshRasterizer() override;
 
-	void adjustDeformingSharpness();
-	void applyDeformers(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds = false);
-	void calcCrossPoints(Mesh* usedmesh, float oscPhase);
-	void calcIntercepts();
-	void calcWaveformFrom(vector<Intercept>& icpts);
-	void initialise();
-	void makeCopy();
-	void oversamplingChanged();
-	void print(OutputStream& stream);
-	void restrictIntercepts(vector<Intercept>& intercepts);
-	void separateIntercepts(vector<Intercept>& intercepts, float minDx);
-	void updateIndependentVariable(float value);
-	void updateValue(int dim, float value);
-	void validateCurves();
+    void adjustDeformingSharpness();
+    void applyDeformers(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds = false);
+    void calcCrossPoints(Mesh* usedmesh, float oscPhase);
+    void calcIntercepts();
+    void calcWaveformFrom(vector<Intercept>& icpts);
+    void initialise();
+    void makeCopy();
+    void oversamplingChanged();
+    void print(OutputStream& stream);
+    void restrictIntercepts(vector<Intercept>& intercepts);
+    void separateIntercepts(vector<Intercept>& intercepts, float minDx);
+    void updateIndependentVariable(float value);
+    void updateValue(int dim, float value);
+    void validateCurves();
 
     void restoreStateFrom(RenderState& src);
     void saveStateTo(RenderState& src);
 
-	bool isSampleable();
-	bool isSampleableAt(float x);
-	bool wasCleanedUp() const { return unsampleable; }
+    bool isSampleable();
+    bool isSampleableAt(float x);
+    bool wasCleanedUp() const { return unsampleable; }
 
-	float sampleAt(double angle);
-	float sampleAt(double angle, int& currentIndex);
-	float sampleAtDecoupled(double angle, DeformContext& context);
-	float samplePerfectly(double delta, Buffer<float> buffer, double phase);
-	void sampleAtIntervals(Buffer<float> deltas, Buffer<float> dest);
+    float sampleAt(double angle);
+    float sampleAt(double angle, int& currentIndex);
+    float sampleAtDecoupled(double angle, DeformContext& context);
+    float samplePerfectly(double delta, Buffer<float> buffer, double phase);
+    void sampleAtIntervals(Buffer<float> deltas, Buffer<float> dest);
 
     /* ----------------------------------------------------------------------------- */
 
-	void sampleEvenlyTo(const Buffer<float>& dest)
-	{
-		if(dest.empty()) {
-			return;
-		}
+    void sampleEvenlyTo(const Buffer<float>& dest)
+    {
+        if(dest.empty()) {
+            return;
+        }
 
-		sampleWithInterval<float>(dest, 1.f / float(dest.size() - 1), 0);
-	}
+        sampleWithInterval<float>(dest, 1.f / float(dest.size() - 1), 0);
+    }
 
-	template<typename T>
-	T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
-		float* dest = buffer.get();
-		int size = buffer.size();
+    template<typename T>
+    T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
+        float* dest = buffer.get();
+        int size = buffer.size();
 
-		if(waveX.empty()) {
-			ippsSet_32f(0.5f, dest, size);
+        if(waveX.empty()) {
+            ippsSet_32f(0.5f, dest, size);
 
-			return 0;
-		}
+            return 0;
+        }
 
-		auto lastAngle = (float) (size * delta + phase);
+        auto lastAngle = (float) (size * delta + phase);
 
-		jassert(waveX.front() < phase && waveX.back() > lastAngle);
+        jassert(waveX.front() < phase && waveX.back() > lastAngle);
 
         if (waveX.front() > phase || waveX.back() < lastAngle) {
-			ippsSet_32f(0.f, buffer, buffer.size());
-			phase += delta * size;
-		} else {
-			int currentIndex = jmax(0, zeroIndex - 1);
+            ippsSet_32f(0.f, buffer, buffer.size());
+            phase += delta * size;
+        } else {
+            int currentIndex = jmax(0, zeroIndex - 1);
 
-			while(phase < waveX[currentIndex] && currentIndex > 0)
-				currentIndex--;
+            while(phase < waveX[currentIndex] && currentIndex > 0)
+                currentIndex--;
 
-			jassert(phase > waveX[currentIndex]);
+            jassert(phase > waveX[currentIndex]);
 
-			for(int i = 0; i < size; ++i) {
-				while (phase >= waveX[currentIndex + 1]) {
-					currentIndex++;
-				}
+            for(int i = 0; i < size; ++i) {
+                while (phase >= waveX[currentIndex + 1]) {
+                    currentIndex++;
+                }
 
-				dest[i] = ((float) phase - waveX[currentIndex]) * slope[currentIndex] + waveY[currentIndex];
+                dest[i] = ((float) phase - waveX[currentIndex]) * slope[currentIndex] + waveY[currentIndex];
 
-				phase += delta;
-			}
-		}
+                phase += delta;
+            }
+        }
 
-		if(phase > 0.5) {
-			phase -= 1;
-		}
+        if(phase > 0.5) {
+            phase -= 1;
+        }
 
-		return phase;
-	}
-
-    /* ----------------------------------------------------------------------------- */
-
-	virtual void calcCrossPoints();
-	virtual void calcCrossPointsAtTime(float x);
-	virtual void cleanUp();
-	virtual void handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube);
-	virtual void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);
-	virtual void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
-	virtual void preCleanup();
-	virtual void processIntercepts(vector<Intercept>& intercepts) {}
-	virtual void pullModPositionAndAdjust() {}
-	virtual void reset();
-	void performUpdate(UpdateType updateType) override;
-	virtual void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
-	virtual	void updateCurves();
-
-	virtual bool hasEnoughCubesForCrossSection();
-	virtual float& getPrimaryDimensionVar();
-	virtual int getNumDims();
-	virtual int getPrimaryViewDimension();
-	virtual Mesh* getCrossPointsMesh();
+        return phase;
+    }
 
     /* ----------------------------------------------------------------------------- */
 
-	bool isBipolar() const							{ return scalingType == Bipolar || scalingType == HalfBipolar; 	}
+    virtual void calcCrossPoints();
+    virtual void calcCrossPointsAtTime(float x);
+    virtual void cleanUp();
+    virtual void handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube);
+    virtual void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);
+    virtual void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
+    virtual void preCleanup();
+    virtual void processIntercepts(vector<Intercept>& intercepts) {}
+    virtual void pullModPositionAndAdjust() {}
+    virtual void reset();
+    void performUpdate(UpdateType updateType) override;
+    virtual void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
+    virtual	void updateCurves();
+
+    virtual bool hasEnoughCubesForCrossSection();
+    virtual float& getPrimaryDimensionVar();
+    virtual int getNumDims();
+    virtual int getPrimaryViewDimension();
+    virtual Mesh* getCrossPointsMesh();
+
+    /* ----------------------------------------------------------------------------- */
+
+    bool isBipolar() const							{ return scalingType == Bipolar || scalingType == HalfBipolar; 	}
     bool doesIntegralSampling() const				{ return integralSampling; 			}
     bool doesCalcDepthDimensions() const 			{ return calcDepthDims; 			}
 
     MorphPosition& getMorphPosition()				{ return morph; 					}
 
     Buffer<float> getWaveX()						{ return waveX;						}
-	Buffer<float> getWaveY()						{ return waveY;						}
-	Buffer<float> getSlopes()						{ return slope;						}
-	Buffer<float> getDiffX()						{ return diffX;						}
+    Buffer<float> getWaveY()						{ return waveY;						}
+    Buffer<float> getSlopes()						{ return slope;						}
+    Buffer<float> getDiffX()						{ return diffX;						}
 
     const String& getName() const 					{ return name; 						}
-	int getPaddingSize() const 						{ return paddingSize;				}
+    int getPaddingSize() const 						{ return paddingSize;				}
     int getOneIndex() const						    { return oneIndex;					}
     int getZeroIndex() const						{ return zeroIndex;					}
 
@@ -227,13 +225,13 @@ public:
     void setYellow(float yellow)					{ morph.time 	= yellow;			}
     void setBlue(float blue)					    { morph.blue 	= blue;				}
     virtual void setRed(float red) 					{ morph.red 	= red;				}
-	void setMorphPosition(const MorphPosition& m) 	{ morph 		= m; 				}
-	void setDeformer(IDeformer* panel)				{ deformer		= panel; 			}
+    void setMorphPosition(const MorphPosition& m) 	{ morph 		= m; 				}
+    void setDeformer(IDeformer* panel)				{ deformer		= panel; 			}
 
     virtual Mesh* getMesh() 						{ return mesh; 						}
     virtual void setMesh(Mesh* mesh)				{ this->mesh = mesh;				}
-	virtual bool wrapsVertices() const 				{ return cyclic; 					}
-	virtual void updateOffsetSeeds(int layerSize, int tableSize);
+    virtual bool wrapsVertices() const 				{ return cyclic; 					}
+    virtual void updateOffsetSeeds(int layerSize, int tableSize);
 
 
 protected:
@@ -244,9 +242,9 @@ protected:
 
     /* ----------------------------------------------------------------------------- */
 
-	static float transferTable[Curve::resolution];
+    static float transferTable[Curve::resolution];
 
-	// flags
+    // flags
 
     bool batchMode;
     bool calcDepthDims;
@@ -273,11 +271,11 @@ protected:
     float xMaximum, xMinimum;
 
     ScalingType scalingType;
-	String name;
+    String name;
 
     Dimensions dims;
     MicroTimer timer;
-	MorphPosition morph;
+    MorphPosition morph;
     RasterizerData rastArrays;
 
     vector<Intercept> frontIcpts, backIcpts, icpts;

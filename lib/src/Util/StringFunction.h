@@ -67,8 +67,8 @@ public:
 		return *this;
 	}
 
-	StringFunction& rnd(double value) {
-		ops.add(Op(Ops::Rnd, value));
+	StringFunction& rnd() {
+		ops.add(Op(Ops::Rnd));
 		return *this;
 	}
 
@@ -87,8 +87,8 @@ public:
 		return *this;
 	}
 
-	StringFunction& log(double value) {
-		ops.add(Op(Ops::Log, value));
+	StringFunction& log() {
+		ops.add(Op(Ops::Log));
 		return *this;
 	}
 

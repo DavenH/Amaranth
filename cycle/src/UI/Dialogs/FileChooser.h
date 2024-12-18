@@ -5,23 +5,23 @@
 #include "JuceHeader.h"
 
 class FileChooserDialog :
-		public ResizableWindow
-	,	public Button::Listener
-	,	public FileBrowserListener
+        public ResizableWindow
+    ,	public Button::Listener
+    ,	public FileBrowserListener
 {
 public:
-	FileChooserDialog (const String& title,
-					   const String& instructions,
-					   FileBrowserComponent& browserComponent,
-					   bool warnAboutOverwritingExistingFiles,
-					   const Colour& backgroundColour,
-					   const DocumentDetails& details);
+    FileChooserDialog (const String& title,
+                       const String& instructions,
+                       FileBrowserComponent& browserComponent,
+                       bool warnAboutOverwritingExistingFiles,
+                       const Colour& backgroundColour,
+                       const DocumentDetails& details);
 
     ~FileChooserDialog() override;
 
     bool show (int width = 0, int height = 0);
     bool showAt (int x, int y, int width, int height);
-    void centreWithDefaultSize (Component* componentToCentreAround = 0);
+    void centreWithDefaultSize (Component* componentToCentreAround = nullptr);
 
     enum ColourIds
     {

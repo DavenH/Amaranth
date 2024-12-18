@@ -15,27 +15,27 @@ using std::endl;
 using std::vector;
 
 class DerivativePanel :
-		public Component
-	, 	public Updateable
-	, 	public SingletonAccessor {
+        public Component
+    , 	public Updateable
+    , 	public SingletonAccessor {
 public:
-	explicit DerivativePanel(SingletonRepo* repo);
+    explicit DerivativePanel(SingletonRepo* repo);
 
-	void calcDerivative();
-	void calcRasterDerivative();
-	void mouseEnter(const MouseEvent& e) override;
-	void paint(Graphics& g) override;
-	void performUpdate(int updateType) override;
+    void calcDerivative();
+    void calcRasterDerivative();
+    void mouseEnter(const MouseEvent& e) override;
+    void paint(Graphics& g) override;
+    void performUpdate(UpdateType updateType) override;
 
 private:
-	bool haveDrawn;
-	size_t frameIndex;
+    bool haveDrawn;
+    size_t frameIndex;
 
-	ColorGradient gradient;
-	CriticalSection cSection;
+    ColorGradient gradient;
+    CriticalSection cSection;
 
-	ScopedAlloc<Ipp32f> workMemory;
-	ScopedAlloc<Ipp16s> indices;
-	Buffer<float> exes;
-	std::unique_ptr<FIR> fir;
+    ScopedAlloc<Ipp32f> workMemory;
+    ScopedAlloc<Ipp16s> indices;
+    Buffer<float> exes;
+    std::unique_ptr<FIR> fir;
 };

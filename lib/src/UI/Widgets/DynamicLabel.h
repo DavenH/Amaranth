@@ -7,23 +7,23 @@
 #include "../../Obj/Ref.h"
 
 class DynamicLabel :
-	public Component,
-	public IDynamicSizeComponent
+    public Component,
+    public IDynamicSizeComponent
 {
 public:
-	DynamicLabel(MiscGraphics& mg, String  text)
-		: 	text(std::move(text))
-		,	miscGfx(&mg) {
-		setColour(Label::textColourId, Colour::greyLevel(0.55f));
-	}
+    DynamicLabel(MiscGraphics& mg, String  text)
+        : 	text(std::move(text))
+        ,	miscGfx(&mg) {
+        setColour(Label::textColourId, Colour::greyLevel(0.55f));
+    }
 
     void paint(Graphics& g) override {
-		int x = 0;
-		int y = 5;
-		MiscGraphics::drawShadowedText(g, text, x, y, *miscGfx->getSilkscreen());
-	}
+        int x = 0;
+        int y = 5;
+        MiscGraphics::drawShadowedText(g, text, x, y, *miscGfx->getSilkscreen());
+    }
 
-    int getExpandedSize() override {
+    [[nodiscard]] int getExpandedSize() const override {
         return 7;
     }
 
@@ -31,7 +31,7 @@ public:
         return miscGfx->getSilkscreen()->getStringWidth(text);
     }
 
-    int getCollapsedSize() override {
+    [[nodiscard]] int getCollapsedSize() const override {
         return miscGfx->getSilkscreen()->getStringWidth(text);
     }
 
@@ -39,7 +39,7 @@ public:
         setBounds(x, y, w, h);
     }
 
-    const Rectangle<int> getBoundsInParentDelegate() override {
+    [[nodiscard]] Rectangle<int> getBoundsInParentDelegate() const override {
         return getBoundsInParent();
     }
 
@@ -57,6 +57,6 @@ public:
     }
 
 private:
-	Ref<MiscGraphics> miscGfx;
-	String text;
+    Ref<MiscGraphics> miscGfx;
+    String text;
 };

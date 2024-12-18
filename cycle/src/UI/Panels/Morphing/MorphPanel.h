@@ -17,115 +17,115 @@ class CubeDisplay;
 class VertCube;
 
 class MorphPanel :
-		public Component
-	,	public Slider::Listener
-	,	public Button::Listener
-	,	public AsyncUIUpdater
-	,	public Savable
-	,	public TourGuide
-	,	public SingletonAccessor
-	,	public MorphPositioner {
+        public Component
+    ,	public Slider::Listener
+    ,	public Button::Listener
+    ,	public AsyncUIUpdater
+    ,	public Savable
+    ,	public TourGuide
+    ,	public SingletonAccessor
+    ,	public MorphPositioner {
 public:
-	explicit MorphPanel(SingletonRepo* repo);
-	~MorphPanel() override;
-	void init() override;
+    explicit MorphPanel(SingletonRepo* repo);
+    ~MorphPanel() override;
+    void init() override;
 
-	/* UI */
-	void paint(Graphics& g) override;
-	void resized() override;
-	void showMessage(float value, MorphSlider* slider);
+    /* UI */
+    void paint(Graphics& g) override;
+    void resized() override;
+    void showMessage(float value, MorphSlider* slider);
 
-	void reduceDetail() override;
-	void restoreDetail() override;
-	void doGlobalUIUpdate(bool force) override;
+    void reduceDetail() override;
+    void restoreDetail() override;
+    void doGlobalUIUpdate(bool force) override;
 
-	/*Events */
-	void buttonClicked(Button* button) override;
-	void sliderDragEnded(Slider* slider) override;
-	void sliderDragStarted(Slider* slider) override;
-	void sliderValueChanged(Slider* slider) override;
-	void setSelectedCube(Vertex* vert, VertCube* cube, int scratchChannel, bool isEnvelope);
-	void setRedBlueStrings(const String& redStr, const String& blueStr);
-	void updateModPosition(int dim, float value);
-	void updateCurrentSliderNoCallback(float value);
-	void updateHighlights();
-	void updateCube() const;
-	void triggerValue(int dim, float value);
-	void triggerClick(int button);
+    /*Events */
+    void buttonClicked(Button* button) override;
+    void sliderDragEnded(Slider* slider) override;
+    void sliderDragStarted(Slider* slider) override;
+    void sliderValueChanged(Slider* slider) override;
+    void setSelectedCube(Vertex* vert, VertCube* cube, int scratchChannel, bool isEnvelope);
+    void setRedBlueStrings(const String& redStr, const String& blueStr);
+    void updateModPosition(int dim, float value);
+    void updateCurrentSliderNoCallback(float value);
+    void updateHighlights();
+    void updateCube() const;
+    void triggerValue(int dim, float value);
+    void triggerClick(int button);
 
-	/* Accessors */
-	void 	redDimUpdated(float value);
-	void 	blueDimUpdated(float value);
+    /* Accessors */
+    void 	redDimUpdated(float value);
+    void 	blueDimUpdated(float value);
 
-	void 	setDepth(int dim, float depth);
-	void 	setKeyValueForNote(int midiNote);
-	void 	setViewDepth(int dim, float depth);
-	void 	setValue(int dim, float value);
+    void 	setDepth(int dim, float depth);
+    void 	setKeyValueForNote(int midiNote);
+    void 	setViewDepth(int dim, float depth);
+    void 	setValue(int dim, float value);
 
-	bool 	usesLineDepthFor(int dim) override;
+    bool 	usesLineDepthFor(int dim) override;
 
-	int 	getPrimaryDimension() override;
-	int 	getCurrentMidiKey();
+    int 	getPrimaryDimension() override;
+    int 	getCurrentMidiKey();
 
-	float 	getValue(int index) override;
-	float 	getPrimaryViewDepth();
-	float 	getDepth(int dim) override;
-	float 	getDistortedTime(int chan) override;
+    float 	getValue(int index) override;
+    float 	getPrimaryViewDepth();
+    float 	getDepth(int dim) override;
+    float 	getDistortedTime(int chan) override;
 
-	float 	getYellow() override { return yllwSlider.getValue(); }
-	float 	getRed() override 	 { return redSlider.getValue();  }
-	float 	getBlue() override 	 { return blueSlider.getValue(); }
+    float 	getYellow() override { return yllwSlider.getValue(); }
+    float 	getRed() override 	 { return redSlider.getValue();  }
+    float 	getBlue() override 	 { return blueSlider.getValue(); }
 
-	Slider* getPanSlider() 		{ return &panSlider;  }
-	Slider* getMorphSlider()	{ return &blueSlider; }
-	Slider* getKeySlider() 		{ return &redSlider;  }
-	Slider* getTimeSlider() 	{ return &yllwSlider; }
+    Slider* getPanSlider() 		{ return &panSlider;  }
+    Slider* getMorphSlider()	{ return &blueSlider; }
+    Slider* getKeySlider() 		{ return &redSlider;  }
+    Slider* getTimeSlider() 	{ return &yllwSlider; }
 
-	Component* getComponent(int which) override;
+    Component* getComponent(int which) override;
 
-	MorphPosition getMorphPosition() override;
-	MorphPosition getOffsetPosition(bool includeDepths) override;
+    MorphPosition getMorphPosition() override;
+    MorphPosition getOffsetPosition(bool includeDepths) override;
 
-	/* Persistence */
-	void writeXML(XmlElement* element) const override;
-	bool readXML(const XmlElement* element) override;
+    /* Persistence */
+    void writeXML(XmlElement* element) const override;
+    bool readXML(const XmlElement* element) override;
 
 private:
-	bool ignoreNextEditMessage;
+    bool ignoreNextEditMessage;
 
-	HSlider 	panSlider;
-	MorphSlider yllwSlider;
-	MorphSlider redSlider;
-	MorphSlider blueSlider;
+    HSlider 	panSlider;
+    MorphSlider yllwSlider;
+    MorphSlider redSlider;
+    MorphSlider blueSlider;
 
-	// dim buttons
-	IconButton primeYllw;
-	IconButton primeRed;
-	IconButton primeBlue;
+    // dim buttons
+    IconButton primeYllw;
+    IconButton primeRed;
+    IconButton primeBlue;
 
-	IconButton linkYllw;
-	IconButton linkRed;
-	IconButton linkBlue;
+    IconButton linkYllw;
+    IconButton linkRed;
+    IconButton linkBlue;
 
-	IconButton rangeYllw;
-	IconButton rangeRed;
-	IconButton rangeBlue;
+    IconButton rangeYllw;
+    IconButton rangeRed;
+    IconButton rangeBlue;
 
-	Component slidersArea;
+    Component slidersArea;
 
-	std::unique_ptr<CubeDisplay> cubeDisplay;
-	std::unique_ptr<PulloutComponent> dimPO;
-	std::unique_ptr<RetractableCallout> dimCO;
+    std::unique_ptr<CubeDisplay> cubeDisplay;
+    std::unique_ptr<PulloutComponent> dimPO;
+    std::unique_ptr<RetractableCallout> dimCO;
 
-	std::unique_ptr<PulloutComponent> rangePO;
-	std::unique_ptr<RetractableCallout> rangeCO;
+    std::unique_ptr<PulloutComponent> rangePO;
+    std::unique_ptr<RetractableCallout> rangeCO;
 
-	std::unique_ptr<PulloutComponent> linkPO;
-	std::unique_ptr<RetractableCallout> linkCO;
+    std::unique_ptr<PulloutComponent> linkPO;
+    std::unique_ptr<RetractableCallout> linkCO;
 
-	Rectangle<int> cubeBounds;
-	Range<int> midiRange;
+    Rectangle<int> cubeBounds;
+    Range<int> midiRange;
 
-	float viewDepth[5];
-	float insertDepth[5];
+    float viewDepth[5];
+    float insertDepth[5];
 };

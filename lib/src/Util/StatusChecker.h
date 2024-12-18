@@ -15,6 +15,6 @@ class StatusChecker {
     }
 public:
 
-	static void report(SingletonRepo* repo, IppStatus status, int line, const char* function, const char* file);
-	static void breakOnError(IppStatus status, int line, const char* function, const char* file);
+    static void report(SingletonRepo* repo, IppStatus status, int line, const char* function, const char* file);
+    static void breakOnError(IppStatus status, int line, const char* function, const char* file);
 };

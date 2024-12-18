@@ -10,71 +10,71 @@ using std::map;
 
 namespace AppSettings {
     enum {
-		UpdateGfxRealtime
-	,	IgnoringEditMessages
-	,	SelectWithRight
-	,	ViewVertsOnlyOnHover
-	,	Tool
-	,	SnapMode
-	,	PointSizeScale
-	,	DrawScales
-	,	CurrentMorphAxis
-	,	FirstLaunch
-	,	LinkYellow
-	,	LinkRed
-	,	LinkBlue
-	,	LastPopupClickedTransp
-	,	LastPopupClickedHorz
+        UpdateGfxRealtime
+    ,	IgnoringEditMessages
+    ,	SelectWithRight
+    ,	ViewVertsOnlyOnHover
+    ,	Tool
+    ,	SnapMode
+    ,	PointSizeScale
+    ,	DrawScales
+    ,	CurrentMorphAxis
+    ,	FirstLaunch
+    ,	LinkYellow
+    ,	LinkRed
+    ,	LinkBlue
+    ,	LastPopupClickedTransp
+    ,	LastPopupClickedHorz
 
-	,	numSettings
-	};
+    ,	numSettings
+    };
 }
 
 class Settings :
-		public Savable
-	,	public SingletonAccessor {
+        public Savable
+    ,	public SingletonAccessor {
 public:
     struct ClientPaths {
-		String propertiesPath;
-	};
+        String propertiesPath;
+    };
 
-	Settings(SingletonRepo* repo, ClientPaths paths);
-	~Settings() override;
+    Settings(SingletonRepo* repo, ClientPaths paths);
+    ~Settings() override;
 
-	void readGlobalSettings(XmlElement* parentElem);
-	void saveGlobalSettings(XmlElement* parentElem);
-	bool readXML(const XmlElement* element) override;
-	void writeXML(XmlElement* element) const override;
-	XmlElement* getMidiSettingsElement();
+    void readGlobalSettings(XmlElement* parentElem);
+    void saveGlobalSettings(XmlElement* parentElem);
+    bool readXML(const XmlElement* element) override;
+    void writeXML(XmlElement* element) const override;
+    XmlElement* getMidiSettingsElement();
 
-	void init() override;
-	void createPropertiesFile();
-	void createSettingsFile();
-	void initialiseSettings();
-	void writePropertiesFile();
+    void init() override;
+    void createPropertiesFile();
+    void createSettingsFile();
+    void initialiseSettings();
+    void writePropertiesFile();
 
-	String getProperty(const String& key, const String& defaultStr = String());
-	void setProperty(const String& key, const String& value);
+    String getProperty(const String& key, const String& defaultStr = String());
+    void setProperty(const String& key, const String& value);
 
-	int& getGlobalSetting(int setting) 		{ return globalSettingsMap[setting].value;		}
- 	int& getDocumentSetting(int setting) 	{ return documentSettingsMap[setting].value; 	}
+    int& getGlobalSetting(int setting) 		{ return globalSettingsMap[setting].value;		}
+    int& getDocumentSetting(int setting) 	{ return documentSettingsMap[setting].value; 	}
 
 protected:
-	class Setting {
-	public:
-		Setting() : value(0) {}
-		Setting(String  key, int value) : key(std::move(key)), value(value) {}
+    class Setting {
+    public:
+        Setting() : value(0) {}
+        Setting(String  key, int value) : key(std::move(key)), value(value) {}
 
-		String key;
-		int value;
-	};
+        String key;
+        int value;
+    };
 
     /* ----------------------------------------------------------------------------- */
 
-	ClientPaths paths;
-	File settingsFile, propertiesFile;
-	std::map<int, Setting> globalSettingsMap, documentSettingsMap;
+    ClientPaths paths;
+    File settingsFile, propertiesFile;
+    std::map<int, Setting> globalSettingsMap, documentSettingsMap;
 
     std::unique_ptr<XmlElement> propsElem;
-	std::unique_ptr<XmlElement> settingsFileElem;
+    std::unique_ptr<XmlElement> settingsFileElem;
 };

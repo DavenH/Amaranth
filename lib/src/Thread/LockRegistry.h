@@ -10,23 +10,23 @@ using std::map;
 using std::vector;
 
 class LockRegistry :
-	public SingletonAccessor {
+    public SingletonAccessor {
 public:
-	LockRegistry(SingletonRepo* repo);
-	~LockRegistry() override = default;
+    explicit LockRegistry(SingletonRepo* repo);
+    ~LockRegistry() override = default;
 
-	void lockEntered(void* address);
-	void lockExited(void* address);
+    void lockEntered(void* address);
+    void lockExited(void* address);
 
-	class LockEvent {
-	public:
-		int lockId;
-		int threadId;
-		bool isEnter;
-	};
+    class LockEvent {
+    public:
+        int lockId;
+        int threadId;
+        bool isEnter;
+    };
 private:
-	map<int, int> entries;
-	map<int, int> exits;
+    map<int, int> entries;
+    map<int, int> exits;
 
-	vector<LockEvent> events;
+    vector<LockEvent> events;
 };

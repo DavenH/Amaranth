@@ -6,12 +6,12 @@
 #include "../../Curve/E3Rasterizer.h"
 
 Envelope3D::Envelope3D(SingletonRepo* repo) :
-		Panel3D(repo, "Envelope3D", this, false, true)
-	,	SingletonAccessor(repo, "Envelope3D")
+        Panel3D(repo, "Envelope3D", this, false, true)
+    ,	SingletonAccessor(repo, "Envelope3D")
 {
-	Image blue = PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
-	gradient.read(blue);
-	createNameImage("Envelopes 3D");
+    Image blue = PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
+    gradient.read(blue);
+    createNameImage("Envelopes 3D");
 }
 
 void Envelope3D::buttonClicked(Button* button) {

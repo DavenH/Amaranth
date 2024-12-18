@@ -1,6 +1,6 @@
 #include <Definitions.h>
 
-// #if PLUGIN_MODE
+#if PLUGIN_MODE
 
 #include <App/SingletonRepo.h>
 #include <App/Settings.h>
@@ -12,6 +12,7 @@
 #include "PluginWindow.h"
 
 #include <App/Dialogs.h>
+#include <Vst/PluginWindow.h>
 
 #include "VisualDsp.h"
 #include "SynthLookAndFeel.h"
@@ -19,8 +20,10 @@
 #include "Panels/MainPanel.h"
 #include "Panels/PlayerComponent.h"
 #include "../Util/CycleEnums.h"
-#include "../Incl/PluginCharacteristics.h"
+#include "../Incl/JucePluginDefines.h"
 #include "../CycleDefs.h"
+
+using namespace juce;
 
 PluginWindow::PluginWindow (PluginProcessor* proc) :
 		SingletonAccessor(proc->repo, "PluginWindow")
@@ -137,15 +140,12 @@ void PluginWindow::changeSizeAndSet(int sizeEnum)
 	setSize(width, height);
 }
 
-
 void PluginWindow::freeUIResources()
 {
-
 }
-
 
 void PluginWindow::moved()
 {
 }
 
-// #endif
+#endif

@@ -13,18 +13,17 @@ class TabbedSelector :
 		public Component
 	,	public SingletonAccessor {
 public:
-
-	TabbedSelector(SingletonRepo* repo);
-	void paint(Graphics& g);
-	void mouseExit(const MouseEvent& e);
-	void mouseMove(const MouseEvent& e);
-	void mouseDown(const MouseEvent& e);
+	explicit TabbedSelector(SingletonRepo* repo);
+	void paint(Graphics& g) override;
+	void mouseExit(const MouseEvent& e) override;
+	void mouseMove(const MouseEvent& e) override;
+	void mouseDown(const MouseEvent& e) override;
 	void selectTab(int tab);
 	void setSelectedTab(int tab);
 	void callListeners(Bounded* selected);
 	void addTab(const String& name, Bounded* callbackComponent, const String& keys = String());
-	void resized();
-	int getSelectedId() { return selectedTab; }
+	void resized() override;
+	int getSelectedId() const { return selectedTab; }
 
     class Listener {
 	public:

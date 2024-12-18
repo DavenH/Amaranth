@@ -1,6 +1,6 @@
 #pragma once
 #include <Definitions.h>
-#include "../Incl/PluginCharacteristics.h"
+#include "../Incl/JucePluginDefines.h"
 
 #if PLUGIN_MODE
 

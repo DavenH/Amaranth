@@ -18,71 +18,71 @@
 const int WaveshaperUI::oversampFactors[5] = { 1, 1, 2, 4, 8 };
 
 WaveshaperUI::WaveshaperUI(SingletonRepo* repo) :
-		EffectPanel		(repo, "WaveshaperUI", true)
-	,	SingletonAccessor(repo, "WaveshaperUI")
-	,	Worker			(repo, "WaveshaperUI")
-	,	title			(repo, "WAVESHAPER")
-	,	enabledButton	(5, 5, this, repo, "Enable effect")
-	,	controls		(this, repo, true)
-	,	isEnabled		(false)
+        EffectPanel		(repo, "WaveshaperUI", true)
+    ,	SingletonAccessor(repo, "WaveshaperUI")
+    ,	Worker			(repo, "WaveshaperUI")
+    ,	title			(repo, "WAVESHAPER")
+    ,	enabledButton	(5, 5, this, repo, "Enable effect")
+    ,	controls		(this, repo, true)
+    ,	isEnabled		(false)
 {
-	updateSource			= UpdateSources::SourceWaveshaper;
-	layerType 				= LayerGroups::GroupWaveshaper;
-	curveIsBipolar 			= false;
-	vertsAreWaveApplicable 	= true;
-	nameCornerPos			= Point<float>(-25, 25);
+    updateSource			= UpdateSources::SourceWaveshaper;
+    layerType 				= LayerGroups::GroupWaveshaper;
+    curveIsBipolar 			= false;
+    vertsAreWaveApplicable 	= true;
+    nameCornerPos			= Point<float>(-25, 25);
 
-	float pad = getRealConstant(WaveshaperPadding);
+    float pad = getRealConstant(WaveshaperPadding);
 
-	bgPaddingRight 	= pad;
-	bgPaddingLeft 	= pad;
-	bgPaddingTop 	= pad;
-	bgPaddingBttm 	= pad;
+    bgPaddingRight 	= pad;
+    bgPaddingLeft 	= pad;
+    bgPaddingTop 	= pad;
+    bgPaddingBttm 	= pad;
 
-	zoomPanel->rect.x = 0.5f * pad;
-	zoomPanel->rect.w = 1.0f - pad;
-	zoomPanel->rect.y = 0.5f * pad;
-	zoomPanel->rect.h = 1.0f - pad;
+    zoomPanel->rect.x = 0.5f * pad;
+    zoomPanel->rect.w = 1.0f - pad;
+    zoomPanel->rect.y = 0.5f * pad;
+    zoomPanel->rect.h = 1.0f - pad;
 
-	oversampLabel.setText		("AA factor", dontSendNotification);
-	oversampLabel.setEditable	(false, false);
-	oversampLabel.setColour		(Label::textColourId, Colour::greyLevel(0.65f));
-	oversampLabel.setFont		(*getObj(MiscGraphics).getSilkscreen());
-	oversampLabel.setBorderSize(BorderSize<int>());
+    oversampLabel.setText		("AA factor", dontSendNotification);
+    oversampLabel.setEditable	(false, false);
+    oversampLabel.setColour		(Label::textColourId, Colour::greyLevel(0.65f));
+    oversampLabel.setFont		(*getObj(MiscGraphics).getSilkscreen());
+    oversampLabel.setBorderSize(BorderSize<int>());
 
-	oversampleBox.addItem("1", 1);
-	oversampleBox.addItem("2", 2);
-	oversampleBox.addItem("4", 3);
-	oversampleBox.addItem("8", 4);
-	oversampleBox.addListener(this);
-	oversampleBox.setSelectedId(1, dontSendNotification);
+    oversampleBox.addItem("1", 1);
+    oversampleBox.addItem("2", 2);
+    oversampleBox.addItem("4", 3);
+    oversampleBox.addItem("8", 4);
+    oversampleBox.addListener(this);
+    oversampleBox.setSelectedId(1, dontSendNotification);
 
-	String names[] = { "Pre", "Post" };
-	Knob* preampKnob, *postampKnob;
+    String names[] = { "Pre", "Post" };
+    Knob* preampKnob, *postampKnob;
 
-	paramGroup->addSlider(preampKnob = new Knob(repo, Waveshaper::Preamp, "Preamp", 0.5f));
-	paramGroup->addSlider(postampKnob = new Knob(repo, Waveshaper::Postamp, "Postamp", 0.5f));
+    paramGroup->addSlider(preampKnob = new Knob(repo, Waveshaper::Preamp, "Preamp", 0.5f));
+    paramGroup->addSlider(postampKnob = new Knob(repo, Waveshaper::Postamp, "Postamp", 0.5f));
 
-	using namespace Ops;
-	StringFunction decibel30 = StringFunction(0).mul(2.f).sub(1.f).mul(30.f);
-	StringFunction decibel45 = StringFunction(0).mul(2.f).sub(1.f).mul(45.f);
+    using namespace Ops;
+    StringFunction decibel30 = StringFunction(0).mul(2.f).sub(1.f).mul(30.f);
+    StringFunction decibel45 = StringFunction(0).mul(2.f).sub(1.f).mul(45.f);
 
-	preampKnob->setStringFunctions(decibel45,  decibel45.withPostString(" dB"));
-	postampKnob->setStringFunctions(decibel30, decibel30.withPostString(" dB"));
+    preampKnob->setStringFunctions(decibel45,  decibel45.withPostString(" dB"));
+    postampKnob->setStringFunctions(decibel30, decibel30.withPostString(" dB"));
 
     int i = 0;
     for(auto& label : labels) {
-		label.setText		(names[i], dontSendNotification);
-		label.setEditable	(false, false);
-		label.setFont		(*getObj(MiscGraphics).getSilkscreen());
-		label.setColour		(Label::textColourId, Colour::greyLevel(0.55f));
-		label.setMinimumHorizontalScale(1.f);
-		label.setBorderSize(BorderSize<int>());
+        label.setText		(names[i], dontSendNotification);
+        label.setEditable	(false, false);
+        label.setFont		(*getObj(MiscGraphics).getSilkscreen());
+        label.setColour		(Label::textColourId, Colour::greyLevel(0.55f));
+        label.setMinimumHorizontalScale(1.f);
+        label.setBorderSize(BorderSize<int>());
         ++i;
-	}
+    }
 
-	paramGroup->listenToKnobs();
-	createNameImage("Waveshaper", false, true);
+    paramGroup->listenToKnobs();
+    createNameImage("Waveshaper", false, true);
 }
 
 void WaveshaperUI::init() {
@@ -139,16 +139,16 @@ void WaveshaperUI::postCurveDraw() {
     gfx->setCurrentLineWidth(1.f);
     gfx->disableSmoothing();
 
-    gfx->drawRect((int) innerLeft, (int) high, (int) innerRight, (int) low, false);
+    gfx->drawRect(innerLeft, high, innerRight, low, false);
     gfx->enableSmoothing();
 }
 
 void WaveshaperUI::setMeshAndUpdate(Mesh* mesh) {
-    mesh->updateToVersion(repo);
+    mesh->updateToVersion(ProjectInfo::versionNumber);
 
     rasterizer->cleanUp();
     rasterizer->setMesh(mesh);
-    rasterizer->performUpdate(UpdateType::Update);
+    rasterizer->performUpdate(Update);
     waveshaper->rasterizeTable();
 
     repaint();
@@ -190,9 +190,10 @@ String WaveshaperUI::getKnobName(int index) const {
     switch (index) {
         case Waveshaper::Postamp: return "Post";
         case Waveshaper::Preamp: return "Pre";
+        default: break;
     }
 
-    return String::empty;
+    return String();
 }
 
 void WaveshaperUI::doGlobalUIUpdate(bool force) {
@@ -212,7 +213,7 @@ bool WaveshaperUI::updateDsp(int knobIndex, double knobValue, bool doFurtherUpda
 }
 
 void WaveshaperUI::updateDspSync() {
-    rasterizer->performUpdate(UpdateType::Update);
+    rasterizer->performUpdate(Update);
 
     if (isEffectEnabled())
         waveshaper->rasterizeTable();
@@ -223,16 +224,16 @@ Mesh* WaveshaperUI::getCurrentMesh() {
 }
 
 void WaveshaperUI::writeXML(XmlElement* registryElem) const {
-#ifndef DEMO_VERSION
-    XmlElement* waveshaperElem = new XmlElement(panelName);
+  #ifndef DEMO_VERSION
+    auto* waveshaperElem = new XmlElement(panelName);
 
     paramGroup->writeKnobXML(waveshaperElem);
 
-    waveshaperElem->setAttribute("enabled", (int) isEffectEnabled());
+    waveshaperElem->setAttribute("enabled", isEffectEnabled());
     waveshaperElem->setAttribute("oversampleFactor", waveshaper->getOversampleFactor());
 
     registryElem->addChildElement(waveshaperElem);
-#endif
+  #endif
 }
 
 bool WaveshaperUI::readXML(const XmlElement* registryElem) {
@@ -240,8 +241,9 @@ bool WaveshaperUI::readXML(const XmlElement* registryElem) {
 
     XmlElement* waveshaperElem = registryElem->getChildByName(panelName);
 
-    if (waveshaperElem == nullptr)
+    if (waveshaperElem == nullptr) {
         return false;
+    }
 
     isEnabled = waveshaperElem->getBoolAttribute("enabled", false);
     int factor = waveshaperElem->getIntAttribute("oversampleFactor", 1);
@@ -250,8 +252,9 @@ bool WaveshaperUI::readXML(const XmlElement* registryElem) {
     waveshaper->setPendingOversampleFactor(factor);
 
     for (int i = 1; i < 5; ++i) {
-        if (oversampFactors[i] == factor)
+        if (oversampFactors[i] == factor) {
             oversampleBox.setSelectedId(i, dontSendNotification);
+        }
     }
 
     paramGroup->readKnobXML(waveshaperElem);
@@ -340,9 +343,9 @@ void WaveshaperUI::comboBoxChanged(ComboBox* box) {
         waveshaper->setPendingOversampleFactor(oversampFactors[id]);
         getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 
-#if PLUGIN_MODE
-		getObj(PluginProcessor).updateLatency();
-#endif
+      #if PLUGIN_MODE
+        getObj(PluginProcessor).updateLatency();
+      #endif
 
         triggerRefreshUpdate();
     }
@@ -360,7 +363,9 @@ Component* WaveshaperUI::getComponent(int which) {
         case CycleTour::TargWaveshaperOvsp: return &oversampleBox;
         case CycleTour::TargWaveshaperPre: return paramGroup->getKnob<Knob>(Waveshaper::Preamp);
         case CycleTour::TargWaveshaperPost: return paramGroup->getKnob<Knob>(Waveshaper::Postamp);
-        case CycleTour::TargWaveshaperSlct: return selector;
+        case CycleTour::TargWaveshaperSlct: return selector.get();
+        default:
+            break;
     }
 
     return nullptr;

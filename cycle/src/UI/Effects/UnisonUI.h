@@ -12,66 +12,66 @@ class Unison;
 class Effect;
 
 class UnisonUI :
-		public GuilessEffect
-	,	public ComboBox::Listener
+        public GuilessEffect
+    ,	public ComboBox::Listener
 {
 public:
-	class VoiceSelector : public SelectorPanel
-	{
-	public:
-		VoiceSelector(SingletonRepo* repo, UnisonUI* panel) :
-				SelectorPanel(repo)
-			,	panel		(panel)
-			,	numVoices	(1)
-		{}
+    class VoiceSelector : public SelectorPanel
+    {
+    public:
+        VoiceSelector(SingletonRepo* repo, UnisonUI* panel) :
+                SelectorPanel(repo)
+            ,	panel		(panel)
+            ,	numVoices	(1)
+        {}
 
-		int getSize() override;
-		int getCurrentIndexExternal() override;
-		void selectionChanged() override;
-		void rowClicked(int row) override;
+        int getSize() override;
+        int getCurrentIndexExternal() override;
+        void selectionChanged() override;
+        void rowClicked(int row) override;
 
-		Ref<UnisonUI> panel;
+        Ref<UnisonUI> panel;
 
-		int numVoices;
-	};
+        int numVoices;
+    };
 
-	UnisonUI(SingletonRepo* repo, Effect* effect);
+    UnisonUI(SingletonRepo* repo, Effect* effect);
 
-	~UnisonUI() override = default;
+    ~UnisonUI() override = default;
 
-	Array<Rectangle<int> > getOutlinableRects() override;
-	Array<int> getApplicableKnobs() override;
-	[[nodiscard]] bool isGroupMode() const;
-	int getCurrentIndex() { return voiceSelector.getCurrentIndex(); }
-	void modeChanged(bool updateAudio, bool graphicUpdate);
-	void orderChangedTo(int order);
-	void updateSelection();
+    Array<Rectangle<int> > getOutlinableRects() override;
+    Array<int> getApplicableKnobs() override;
+    [[nodiscard]] bool isGroupMode() const;
+    int getCurrentIndex() { return voiceSelector.getCurrentIndex(); }
+    void modeChanged(bool updateAudio, bool graphicUpdate);
+    void orderChangedTo(int order);
+    void updateSelection();
 
-	void setExtraTitleElements(Rectangle<int>& r) override;
-	void setExtraRightElements(Rectangle<int>& r) override;
+    void setExtraTitleElements(Rectangle<int>& r) override;
+    void setExtraRightElements(Rectangle<int>& r) override;
 
-	void effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdate) override;
-	void comboBoxChanged (ComboBox* box) override;
-	void buttonClicked(Button* button) override;
-	void triggerModeChanged(bool isGroup);
+    void effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdate) override;
+    void comboBoxChanged (ComboBox* box) override;
+    void buttonClicked(Button* button) override;
+    void triggerModeChanged(bool isGroup);
 
-	[[nodiscard]] String getKnobName(int index) const override;
-	Component* getComponent(int which) override;
+    [[nodiscard]] String getKnobName(int index) const override;
+    Component* getComponent(int which) override;
 
-	void init() override;
-	void writeXML(XmlElement* registryElem) const override;
-	bool readXML(const XmlElement* element) override;
+    void init() override;
+    void writeXML(XmlElement* registryElem) const override;
+    bool readXML(const XmlElement* element) override;
 
-	enum UniMode
-	{
-		Group = 1, Single
-	};
+    enum UniMode
+    {
+        Group = 1, Single
+    };
 
-	friend class VoiceSelector;
+    friend class VoiceSelector;
 
 private:
-	Unison* unison;
-	ComboBox modeBox;
-	VoiceSelector voiceSelector;
-	LayerAddRemover addRemover;
+    Unison* unison;
+    ComboBox modeBox;
+    VoiceSelector voiceSelector;
+    LayerAddRemover addRemover;
 };

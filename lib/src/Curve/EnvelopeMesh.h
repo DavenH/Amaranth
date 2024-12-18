@@ -9,14 +9,14 @@ using std::set;
 class EnvelopeMesh :
         public Mesh {
 public:
-    EnvelopeMesh(const String& name);
+    explicit EnvelopeMesh(const String& name);
     float getPositionOfCubeAt(VertCube* line, MorphPosition pos);
     void setSustainToRightmost();
     void setSustainToLast();
-    void destroy();
+    void destroy() override;
 
-    void writeXML(XmlElement* element) const;
-    bool readXML(const XmlElement* element);
+    void writeXML(XmlElement* element) const override;
+    bool readXML(const XmlElement* element) override;
 
     set<VertCube*> loopCubes;
     set<VertCube*> sustainCubes;

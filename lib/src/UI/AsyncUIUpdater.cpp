@@ -3,9 +3,9 @@
 using namespace juce;
 
 AsyncUIUpdater::AsyncUIUpdater() :
-		doRefresh(false)
-	,	forceNextUIUpdate(false)
-	,	reductionLevel(0) {
+        doRefresh(false)
+    ,	forceNextUIUpdate(false)
+    ,	reductionLevel(0) {
 }
 
 void AsyncUIUpdater::doGlobalUIUpdate(bool force) {}
@@ -16,40 +16,40 @@ void AsyncUIUpdater::restoreDetail() {}
 
 void AsyncUIUpdater::triggerReduceUpdate() {
     jassert(reductionLevel == 0);
-	--reductionLevel;
+    --reductionLevel;
 
-	triggerAsyncUpdate();
+    triggerAsyncUpdate();
 }
 
 void AsyncUIUpdater::triggerRestoreUpdate() {
 //	jassert(reductionLevel < 0);
 
-	++reductionLevel;
-	doRefresh = true;
+    ++reductionLevel;
+    doRefresh = true;
 
-	triggerAsyncUpdate();
+    triggerAsyncUpdate();
 }
 
 void AsyncUIUpdater::triggerRefreshUpdate() {
     doRefresh = true;
 
-	triggerAsyncUpdate();
+    triggerAsyncUpdate();
 }
 
 void AsyncUIUpdater::handleAsyncUpdate() {
     if (reductionLevel < 0) {
-	    reduceDetail();
+        reduceDetail();
     } else if (reductionLevel > 0) {
-	    restoreDetail();
+        restoreDetail();
     }
 
     reductionLevel = 0;
 
     if (doRefresh) {
-	    doGlobalUIUpdate(forceNextUIUpdate);
+        doGlobalUIUpdate(forceNextUIUpdate);
     }
 
-	forceNextUIUpdate = false;
+    forceNextUIUpdate = false;
 }
 
 bool AsyncUIUpdater::isDetailReduced() const {

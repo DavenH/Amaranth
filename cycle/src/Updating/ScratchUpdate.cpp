@@ -17,29 +17,29 @@ ScratchUpdate::ScratchUpdate(SingletonRepo* repo) : SingletonAccessor(repo, "Scr
     updateName = name;
 }
 
-void ScratchUpdate::performUpdate(int updateType) {
+void ScratchUpdate::performUpdate(UpdateType updateType) {
     switch (updateType) {
-		case Null:
-		case Repaint:
-			break;
+        case Null:
+        case Repaint:
+            break;
 
-		case Update: {
-			getObj(EnvScratchRast).performUpdate(updateType);
-			getObj(VisualDsp).rasterizeEnv(LayerGroups::GroupScratch,
-			                               getObj(Waveform3D).getWindowWidthPixels());
+        case Update: {
+            getObj(EnvScratchRast).performUpdate(updateType);
+            getObj(VisualDsp).rasterizeEnv(LayerGroups::GroupScratch,
+                                           getObj(Waveform3D).getWindowWidthPixels());
 
-			getObj(TimeRasterizer).pullModPositionAndAdjust();
-			getObj(SpectRasterizer).pullModPositionAndAdjust();
-			getObj(PhaseRasterizer).pullModPositionAndAdjust();
+            getObj(TimeRasterizer).pullModPositionAndAdjust();
+            getObj(SpectRasterizer).pullModPositionAndAdjust();
+            getObj(PhaseRasterizer).pullModPositionAndAdjust();
 
-			getObj(MorphPanel).updateCube();
-			getObj(EnvelopeInter2D).performUpdate(updateType);
-			getObj(SynthAudioSource).setPendingGlobalRaster();
-		}
+            getObj(MorphPanel).updateCube();
+            getObj(EnvelopeInter2D).performUpdate(updateType);
+            getObj(SynthAudioSource).setPendingGlobalRaster();
+        }
 
-		case RestoreDetail:
-		case ReduceDetail:
-			break;
-    	default: break;
-	}
+        case RestoreDetail:
+        case ReduceDetail:
+            break;
+        default: break;
+    }
 }

@@ -20,70 +20,70 @@ class Mesh;
 class MouseOverMessager;
 
 class PanelControls :
-		public ComboBox::Listener
-	,	public Component
-	, 	public SingletonAccessor
-	, 	public AsyncUpdater {
+        public ComboBox::Listener
+    ,	public Component
+    , 	public SingletonAccessor
+    , 	public AsyncUpdater {
 public:
-	enum { NullScratchChannel = 1000 };
+    enum { NullScratchChannel = 1000 };
 
-	PanelControls(SingletonRepo* 		repo,
-				  Interactor*			itr,
-				  Button::Listener* 	listener,
-				  LayerSelectionClient* client 		= nullptr,
-				  const String& 		layerString = {});
+    PanelControls(SingletonRepo* 		repo,
+                  Interactor*			itr,
+                  Button::Listener* 	listener,
+                  LayerSelectionClient* client 		= nullptr,
+                  const String& 		layerString = {});
 
-	~PanelControls() override;
+    ~PanelControls() override;
 
-	void paint(Graphics& g) override;
-	void addSlider(HSlider* slider);
-	void comboBoxChanged(ComboBox* box) override;
-	void setScratchSelector(int channel);
+    void paint(Graphics& g) override;
+    void addSlider(HSlider* slider);
+    void comboBoxChanged(ComboBox* box) override;
+    void setScratchSelector(int channel);
 
-	void resized() override;
-	void initialise();
+    void resized() override;
+    void initialise();
 
-	void populateScratchSelector();
-	void addScratchSelector();
-	void addMeshSelector(Component* selector);
-	void addEnablementIcon();
-	void addLayerItems(LayerSelectionClient* client, bool includeMover, bool separate = false);
-	void addDomainItems(RetractableCallout* domainCO);
+    void populateScratchSelector();
+    void addScratchSelector();
+    void addMeshSelector(Component* selector);
+    void addEnablementIcon();
+    void addLayerItems(LayerSelectionClient* client, bool includeMover, bool separate = false);
+    void addDomainItems(RetractableCallout* domainCO);
 
-	void addLeftItem(IDynamicSizeComponent* item, bool outline = false);
-	void addRightItem(IDynamicSizeComponent* item, bool outline = false);
+    void addLeftItem(IDynamicSizeComponent* item, bool outline = false);
+    void addRightItem(IDynamicSizeComponent* item, bool outline = false);
 
-	void resetSelector();
-	void refreshSelector(bool update = false);
-	void moveLayer(bool up);
-	void handleAsyncUpdate() override;
+    void resetSelector();
+    void refreshSelector(bool update = false);
+    void moveLayer(bool up);
+    void handleAsyncUpdate() override;
 
-	bool haveEnablement, drawLabel, haveDomains;
+    bool haveEnablement, drawLabel, haveDomains;
 
-	Image 			icon;
-	ComboBox 		scratchSelector;
-	DynamicLabel 	scratchLabel;
-	IconButton 		enableCurrent;
-	Component* 		meshSelector;
+    Image 			icon;
+    ComboBox 		scratchSelector;
+    DynamicLabel 	scratchLabel;
+    IconButton 		enableCurrent;
+    Component* 		meshSelector;
 
-	ClearSpacer spacer1, spacer2, spacer4, spacer6, spacer8;
-	Rectangle<int> iconBounds, layerLblBounds, domainBounds;
+    ClearSpacer spacer1, spacer2, spacer4, spacer6, spacer8;
+    Rectangle<int> iconBounds, layerLblBounds, domainBounds;
 
-	Array<HSlider*> sliders;
+    Array<HSlider*> sliders;
 
-	LayerAddRemover addRemover;
-	LayerUpDownMover upDownMover;
+    LayerAddRemover addRemover;
+    LayerUpDownMover upDownMover;
 
-	Ref<Interactor> 				interactor;
-	Ref<LayerSelectionClient> 		layerClient;
-	Ref<RetractableCallout>			domainCO;
+    Ref<Interactor> 				interactor;
+    Ref<LayerSelectionClient> 		layerClient;
+    Ref<RetractableCallout>			domainCO;
 
-	Array<IDynamicSizeComponent*> 	leftItems;
-	Array<IDynamicSizeComponent*> 	rightItems;
+    Array<IDynamicSizeComponent*> 	leftItems;
+    Array<IDynamicSizeComponent*> 	rightItems;
 
-	std::unique_ptr<MouseOverMessager> 	scratchListener;
-	std::unique_ptr<MouseOverMessager> 	layerListener;
-	std::unique_ptr<LayerSelectorPanel>	layerSelector;
-	std::unique_ptr<DynamicSizeContainer> enableContainer;
-	std::unique_ptr<DynamicSizeContainer> scratchContainer;
+    std::unique_ptr<MouseOverMessager> 	scratchListener;
+    std::unique_ptr<MouseOverMessager> 	layerListener;
+    std::unique_ptr<LayerSelectorPanel>	layerSelector;
+    std::unique_ptr<DynamicSizeContainer> enableContainer;
+    std::unique_ptr<DynamicSizeContainer> scratchContainer;
 };

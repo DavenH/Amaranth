@@ -5,14 +5,14 @@
 #include <UI/Widgets/IconButton.h>
 
 class LayerAddRemover :
-	public ConstantSizeComponent {
+    public ConstantSizeComponent {
 public:
-	LayerAddRemover(Button::Listener* listener, SingletonRepo* repo, const String& layerString);
-	void setLayerString(const String& layerString);
-	void resized() override;
+    LayerAddRemover(Button::Listener* listener, SingletonRepo* repo, const String& layerString);
+    void setLayerString(const String& layerString);
+    void resized() override;
 
-	IconButton add;
-	IconButton remove;
+    IconButton add;
+    IconButton remove;
 private:
-	JUCE_LEAK_DETECTOR(LayerAddRemover)
+    JUCE_LEAK_DETECTOR(LayerAddRemover)
 };

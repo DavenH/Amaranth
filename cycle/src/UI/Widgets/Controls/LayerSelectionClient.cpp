@@ -5,6 +5,3 @@ LayerSelectionClient::LayerSelectionClient(SingletonRepo* repo)
 {
 }
 
-LayerSelectionClient::~LayerSelectionClient() {
-}
-

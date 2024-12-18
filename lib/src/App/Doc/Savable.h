@@ -5,8 +5,8 @@ using namespace juce;
 
 class Savable {
 public:
-	virtual ~Savable() = default;
+    virtual ~Savable() = default;
 
-	virtual void writeXML(XmlElement* element) const = 0;
-	virtual bool readXML(const XmlElement* element) = 0;
+    virtual void writeXML(XmlElement* element) const = 0;
+    virtual bool readXML(const XmlElement* element) = 0;
 };

@@ -21,125 +21,126 @@
 
 
 SingletonRepo::SingletonRepo() :
-		hasInstantiated	(false)
-	,	hasInitialized	(false)
-	,	debugStream		(nullptr)
-	,	statStream		(nullptr)
-	,	dummyStream		(nullptr)
-	,	lastDebugTime	(0) {
-	repo = this;
+        hasInstantiated	(false)
+    ,	hasInitialized	(false)
+    ,	debugStream		(nullptr)
+    ,	statStream		(nullptr)
+    ,	dummyStream		(nullptr)
+    ,	lastDebugTime	(0) {
+    repo = this;
 }
 
 SingletonRepo::~SingletonRepo() {
-	getObj(Settings).writePropertiesFile();
-	getObj(DocumentLibrary).writeSettingsFile();
+    getObj(Settings).writePropertiesFile();
+    getObj(DocumentLibrary).writeSettingsFile();
 
-	if(hasInstantiated)
-		clearSingletons();
+    if(hasInstantiated)
+        clearSingletons();
 }
 
 void SingletonRepo::instantiate() {
-	if(hasInstantiated) {
-		return;
-	}
-	dummyStream = std::make_unique<DummyOutputStream>();
+    if(hasInstantiated) {
+        return;
+    }
+    dummyStream = std::make_unique<DummyOutputStream>();
 
-	Settings::ClientPaths paths;
-	String appDir(File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName());
+    Settings::ClientPaths paths;
+    String appDir(File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName());
 
   #ifdef JUCE_WINDOWS
-	paths.propertiesPath = appDir + String("/Amaranth Audio/Cycle/install.xml");
+    paths.propertiesPath = appDir + String("/Amaranth Audio/Cycle/install.xml");
   #elif defined(__APPLE__)
-	paths.propertiesPath = appDir + String("/Preferences/com.amaranthaudio.Cycle.xml");
+    paths.propertiesPath = appDir + String("/Preferences/com.amaranthaudio.Cycle.xml");
   #else
-	paths.propertiesPath = appDir + String("/");
+    paths.propertiesPath = appDir + String("/");
   #endif
 
-	add(new MiscGraphics	(this),  	   -500);
-	add(new AudioHub		(this),  	   -300);
-	add(new Settings		(this, paths), -200);
-	add(new MeshLibrary		(this),  	   -100);
-	add(new MemoryPool		(this),  	   -100);
-	add(new Updater			(this),    		 -1);
-	add(new LogRegions		(this),    		 -1);
-	add(new Document		(this));
-	add(new PathRepo		(this));
-	add(new EditWatcher		(this));
-	add(new DocumentLibrary	(this));
+    add(new MiscGraphics	(this),  	   -500);
+    add(new AudioHub		(this),  	   -300);
+    add(new Settings		(this, paths), -200);
+    add(new MeshLibrary		(this),  	   -100);
+    add(new MemoryPool		(this),  	   -100);
+    add(new Updater			(this),    		 -1);
+    add(new LogRegions		(this),    		 -1);
+    add(new Document		(this));
+    add(new PathRepo		(this));
+    add(new EditWatcher		(this));
+    add(new DocumentLibrary	(this));
 
-	hasInstantiated = true;
+    hasInstantiated = true;
 }
 
 void SingletonRepo::init() {
-	if(hasInitialized)
-		return;
+    if(hasInitialized) {
+        return;
+    }
 
-	hasInitialized = true;
+    hasInitialized = true;
 
     struct Comparator {
         static int compareElements(SingletonAccessor* a, SingletonAccessor* b) {
-			return a->getInitOrder() - b->getInitOrder();
-		}
-	};
+            return a->getInitOrder() - b->getInitOrder();
+        }
+    };
 
-	Comparator c;
-	objects.sort(c);
+    Comparator c;
+    objects.sort(c);
 
-	ScopedLock sl(initLock);
+    ScopedLock sl(initLock);
 
     for (auto object : objects) {
-		std::cout << object->getName() << std::endl;
-		object->init();
-	}
+        std::cout << object->getName() << std::endl;
+        object->init();
+    }
 
-	auto& document = getObj(Document);
+    auto& document = getObj(Document);
 
-	for(auto saveSource : saveSources)
-		document.registerSavable(saveSource);
+    for(auto saveSource : saveSources)
+        document.registerSavable(saveSource);
 
   #ifdef RUN_UNIT_TESTS
-	for(int i = 0; i < testables.size(); ++i)
-		testables[i]->test();
+    for(int i = 0; i < testables.size(); ++i)
+        testables[i]->test();
   #endif
 }
 
 void SingletonRepo::add(SingletonAccessor* accessor, int order) {
-	accessor->setInitOrder(order);
-	objects.add(accessor);
-	hashes.set(accessor->getName(), accessor);
+    accessor->setInitOrder(order);
+    objects.add(accessor);
+    hashes.set(accessor->getName(), accessor);
 
-	if(auto* savable = dynamic_cast<Savable*>(accessor)) {
-		saveSources.add(savable);
-	}
+    if(auto* savable = dynamic_cast<Savable*>(accessor)) {
+        saveSources.add(savable);
+    }
 
-	if(auto* panel = dynamic_cast<Panel*>(accessor)) {
-		panels.add(panel);
-	}
+    if(auto* panel = dynamic_cast<Panel*>(accessor)) {
+        panels.add(panel);
+    }
 
-	if(auto* rasterizer = dynamic_cast<MeshRasterizer*>(accessor)) {
-		rasterizers.add(rasterizer);
-	}
+    if(auto* rasterizer = dynamic_cast<MeshRasterizer*>(accessor)) {
+        rasterizers.add(rasterizer);
+    }
 }
 
 OutputStream& SingletonRepo::getDebugStream() {
   #ifdef JUCE_DEBUG
-	if(debugStream == nullptr)
-		return *dummyStream;
+    if(debugStream == nullptr)
+        return *dummyStream;
 
-	int64 curr = Time::currentTimeMillis();
+    int64 curr = Time::currentTimeMillis();
 
-	if(curr - lastDebugTime > 50)
-		*debugStream << "\n";
+    if(curr - lastDebugTime > 50)
+        *debugStream << "\n";
 
-	lastDebugTime 	= curr;
-	Thread* thread 	= Thread::getCurrentThread();
-	String name 	= (thread == nullptr) ? "MainThrd" : thread->getThreadName().substring(0, 8);
+    lastDebugTime 	= curr;
+    Thread* thread 	= Thread::getCurrentThread();
+    String name 	= (thread == nullptr) ? "MainThrd" : thread->getThreadName().substring(0, 8);
 
-	*debugStream << "[" << (curr & 0xfffff) << "][" << name << "] ";
+    *debugStream << "[" << (curr & 0xfffff) << "][" << name << "] ";
 
-	return *debugStream;
+    return *debugStream;
   #else
-	return *dummyStream;
+    return *dummyStream;
   #endif
 }
 
@@ -157,8 +158,8 @@ void SingletonRepo::clearSingletons() {
 }
 
 void SingletonRepo::setDeformer(IDeformer* deformer) {
-	this->deformer = deformer;
+    this->deformer = deformer;
 
-	for(auto rasterizer : rasterizers)
-		rasterizer->setDeformer(deformer);
+    for(auto rasterizer : rasterizers)
+        rasterizer->setDeformer(deformer);
 }

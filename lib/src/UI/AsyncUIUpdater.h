@@ -4,23 +4,23 @@
 
 class AsyncUIUpdater : public juce::AsyncUpdater {
 public:
-	AsyncUIUpdater();
+    AsyncUIUpdater();
 
-	~AsyncUIUpdater() override;
+    ~AsyncUIUpdater() override;
 
-	void handleAsyncUpdate() override;
+    void handleAsyncUpdate() override;
 
-	virtual void doGlobalUIUpdate(bool force);
-	virtual void reduceDetail();
-	virtual void restoreDetail();
+    virtual void doGlobalUIUpdate(bool force);
+    virtual void reduceDetail();
+    virtual void restoreDetail();
 
-	[[nodiscard]] bool isDetailReduced() const;
-	void triggerRestoreUpdate();
-	void triggerRefreshUpdate();
-	void triggerReduceUpdate();
+    [[nodiscard]] bool isDetailReduced() const;
+    void triggerRestoreUpdate();
+    void triggerRefreshUpdate();
+    void triggerReduceUpdate();
 
-	bool forceNextUIUpdate;
+    bool forceNextUIUpdate;
 private:
-	bool doRefresh;
-	int reductionLevel;
+    bool doRefresh;
+    int reductionLevel;
 };
