@@ -22,6 +22,7 @@ add_executable(${PROJECT_NAME}_tests ${LIB_TEST_SOURCES} ${LIB_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${VST3_DIR}
     ${JUCE_DIR}
     ${JUCE_MODULES_DIR}
     ${IPP_DIR}/include/ipp

@@ -756,7 +756,7 @@ void CycleTour::performAction(Action& action) {
 
 				if(isPositiveAndBelow(action.data1, (int) mesh->getNumVerts())) {
 					vector<Vertex*>& selected = itr->getSelected();
-					Vertex* vert = *(mesh->getVertStart() + action.data1);
+					Vertex* vert = mesh->getVerts()[action.data1];
 
 					bool contained = false;
 					for(auto& i : selected) {
@@ -881,7 +881,7 @@ void CycleTour::performAction(Action& action) {
 			if(itr && ! action.hasExecuted &&
 					(action.area == AreaSpectrogram || action.area == AreaWfrmWaveform3D) &&
 					action.id != IdNull) {
-				if(Interactor3D* i3d = dynamic_cast<Interactor3D*>(itr)) {
+				if(auto* i3d = dynamic_cast<Interactor3D*>(itr)) {
 					jassert(action.value > 0);
 
 					/*
@@ -1010,8 +1010,8 @@ void CycleTour::ItemWrapper::updatePosition (
     targetArea = newAreaToPointTo;
     availableArea = newAreaToFitIn;
 
-    Rectangle newBounds (content->getWidth()  + borderSpace * 2,
-                              content->getHeight() + borderSpace * 2);
+    Rectangle newBounds (content.getWidth()  + borderSpace * 2,
+                              content.getHeight() + borderSpace * 2);
 
     const int hw = newBounds.getWidth() / 2;
     const int hh = newBounds.getHeight() / 2;
@@ -1074,7 +1074,8 @@ void CycleTour::ItemWrapper::refreshPath() {
     const float cornerSize 		= 9.0f;
     const float cornerSize2 	= 2.0f * cornerSize;
     const float arrowBaseWidth 	= arrowSize * 0.7f;
-    const float left 			= content->getX() - gap, top = content->getY() - gap, right = content->getRight() + gap, bottom = content->getBottom() + gap;
+    const float left 			= content.getX() - gap, top = content.getY() - gap;
+	const float right			= content.getRight() + gap, bottom = content.getBottom() + gap;
     const float targetX 		= targetPoint.getX() - getX(), targetY = targetPoint.getY() - getY();
 
     outline.startNewSubPath (left + cornerSize, top);
@@ -1086,7 +1087,7 @@ void CycleTour::ItemWrapper::refreshPath() {
     }
 
     outline.lineTo(right - cornerSize, top);
-    outline.addArc(right - cornerSize2, top, cornerSize2, cornerSize2, 0, float_Pi * 0.5f);
+    outline.addArc(right - cornerSize2, top, cornerSize2, cornerSize2, 0, MathConstants<float>::pi * 0.5f);
 
     if (targetX >= right) {
         outline.lineTo(right, targetY - arrowBaseWidth);
@@ -1095,7 +1096,7 @@ void CycleTour::ItemWrapper::refreshPath() {
     }
 
     outline.lineTo(right, bottom - cornerSize);
-    outline.addArc(right - cornerSize2, bottom - cornerSize2, cornerSize2, cornerSize2, float_Pi * 0.5f, float_Pi);
+    outline.addArc(right - cornerSize2, bottom - cornerSize2, cornerSize2, cornerSize2, MathConstants<float>::pi * 0.5f, MathConstants<float>::pi);
 
     if (targetY >= bottom) {
         outline.lineTo(targetX + arrowBaseWidth, bottom);
@@ -1104,7 +1105,7 @@ void CycleTour::ItemWrapper::refreshPath() {
     }
 
     outline.lineTo(left + cornerSize, bottom);
-    outline.addArc(left, bottom - cornerSize2, cornerSize2, cornerSize2, float_Pi, float_Pi * 1.5f);
+    outline.addArc(left, bottom - cornerSize2, cornerSize2, cornerSize2, MathConstants<float>::pi, MathConstants<float>::pi * 1.5f);
 
     if (targetX <= left) {
         outline.lineTo(left, targetY + arrowBaseWidth);
@@ -1113,13 +1114,12 @@ void CycleTour::ItemWrapper::refreshPath() {
     }
 
     outline.lineTo(left, top + cornerSize);
-    outline.addArc(left, top, cornerSize2, cornerSize2, float_Pi * 1.5f, float_Pi * 2.0f - 0.05f);
+    outline.addArc(left, top, cornerSize2, cornerSize2, MathConstants<float>::pi * 1.5f, MathConstants<float>::pi * 2.0f - 0.05f);
 
     outline.closeSubPath();
 }
 
-
-void CycleTour::ItemWrapper::paint(Graphics &g) {
+void CycleTour::ItemWrapper::paint(Graphics& g) {
     if (background.isNull()) {
         background = Image(Image::ARGB, getWidth(), getHeight(), true);
         Graphics g2(background);
@@ -1130,22 +1130,18 @@ void CycleTour::ItemWrapper::paint(Graphics &g) {
     g.drawImageAt(background, 0, 0);
 }
 
-
 void CycleTour::ItemWrapper::resized() {
-    content->setTopLeftPosition(borderSpace, borderSpace);
+    content.setTopLeftPosition(borderSpace, borderSpace);
     refreshPath();
 }
-
 
 void CycleTour::ItemWrapper::moved() {
     refreshPath();
 }
 
-
 void CycleTour::ItemWrapper::childBoundsChanged(Component*) {
     updatePosition(targetArea, availableArea);
 }
-
 
 void CycleTour::timerCallback(int id) {
     if (id == ToFrontId) {
@@ -1156,8 +1152,9 @@ void CycleTour::timerCallback(int id) {
 
     vector <Item> &items = current.items;
 
-    if (!isPositiveAndBelow(currentItem, (int) items.size()))
-        return;
+    if (!isPositiveAndBelow(currentItem, (int) items.size())) {
+	    return;
+    }
 
     Item &item = current.items[currentItem];
 
@@ -1193,18 +1190,19 @@ TourGuide* CycleTour::getTourGuide(Area area) {
 		case AreaUnison:			return &getObj(UnisonUI);
 		case AreaModMatrix:			return &getObj(ModMatrixPanel);
 		case AreaMasterCtrls:		return &getObj(OscControlPanel);
+		default: break;
 	}
 
 	jassertfalse;
 	return nullptr;
 }
 
-
 Component* CycleTour::getComponent(int which) {
 	Panel* panel = areaToPanel(which);
 
-	if(panel != nullptr)
+	if(panel != nullptr) {
 		return panel->getComponent();
+	}
 
 	switch(which) {
 		case AreaMain:			return &getObj(MainPanel);
@@ -1241,7 +1239,6 @@ Panel* CycleTour::areaToPanel(int which) {
 		case AreaImpulse:		return &getObj(IrModellerUI);
 		case AreaDeformers:		return &getObj(DeformerPanel);
 		default: break;
-
 	}
 
 	return nullptr;
@@ -1316,7 +1313,6 @@ void CycleTour::readAction(Action& action, XmlElement* actionElem) {
 	}
 }
 
-
 bool CycleTour::readXML(const XmlElement* element) {
 	if(element == nullptr)
 		return false;
@@ -1345,14 +1341,17 @@ bool CycleTour::readXML(const XmlElement* element) {
 		String ignoreStr 	= itemElem->getStringAttribute("ignore", 	{});
 		String requireStr	= itemElem->getStringAttribute("require", 	{});
 
-		if(! passesRequirements(ignoreStr, requireStr))
+		if(! passesRequirements(ignoreStr, requireStr)) {
 			continue;
+		}
 
-		if(item.text.contains("\\n"))
+		if(item.text.contains("\\n")) {
 			item.text = item.text.replace("\\n", "\n");
+		}
 
-		if(item.text.contains("%CMD"))
+		if(item.text.contains("%CMD")) {
 			item.text = item.text.replace("%CMD", cmdString);
+		}
 
 		if(XmlElement* condElem = itemElem->getChildByName("Condition")) {
 			Condition cond;

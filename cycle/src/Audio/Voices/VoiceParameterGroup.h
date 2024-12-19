@@ -2,15 +2,14 @@
 #include <vector>
 #include <Algo/Resampler.h>
 #include <Array/RingBuffer.h>
-#include "../Curve/CycleState.h"
+#include "../../Curve/CycleState.h"
 
 using std::vector;
 
 class VoiceParameterGroup
 {
 public:
-    VoiceParameterGroup()
-    {
+    VoiceParameterGroup() {
         reset();
     }
 
@@ -50,8 +49,9 @@ public:
             resamplers[i] 		 = group.resamplers[i];
             samplingSpillover[i] = group.samplingSpillover[i];
 
-            for(int j = 0; j < 7; ++j)
+            for(int j = 0; j < 7; ++j) {
                 padding[i][j] = group.padding[i][j];
+            }
         }
 
         layerStates = group.layerStates;
@@ -63,8 +63,9 @@ public:
         cycleBuffer[0].reset();
         cycleBuffer[1].reset();
 
-        for(auto& layerState : layerStates)
+        for(auto& layerState : layerStates) {
             layerState.reset();
+        }
 
         cumePos 				= 0;
         sampledFrontier 		= 0;

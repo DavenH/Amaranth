@@ -13,7 +13,7 @@
 #include "../Util/CycleEnums.h"
 
 
-VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) : state(nullptr) {
+VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) : SingletonAccessor(repo, "VoiceMeshRasterizer"), state(nullptr) {
 	unsampleable = true;
 	overrideDim = true;
 	scalingType = Bipolar;
@@ -23,15 +23,15 @@ VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) : state(nullptr) {
 }
 
 void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
-    if (mesh->getNumCubes() == 0 || state == nullptr)
-        return;
+    if (mesh->getNumCubes() == 0 || state == nullptr) {
+	    return;
+    }
 
     if (state->callCount > 0) {
         std::swap(state->backIcpts, icpts);
 		state->backIcpts.clear();
 	}
 
-    bool overlapsAll, overlapsOthers;
     needsResorting = false;
 
 	for(auto cube : mesh->getCubes()) {
@@ -44,7 +44,8 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 		Vertex* vertex = &reduct.v;
 
         // the points contain x
-        if (overlapsAll) {
+		// todo wtf does 'the point contain x' mean. Overlaps all what?
+        if (reduct.pointOverlaps) {
             jassert(a->values[Vertex::Phase] >= 0);
 
             // rules are that both cannot be > 1, and both are always positive
@@ -78,7 +79,6 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
             jassert(phase >= 0 && phase < 1);
 
             Intercept intercept(phase, 2.f * vertex->values[Vertex::Amp] - 1.f, cube, 0);
-
 			intercept.shp = vertex->values[Vertex::Curve];
 			intercept.adjustedX = intercept.x;
 
@@ -133,30 +133,31 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 		curves.reserve(icpts.size() + 5 + int(extraPadFront) + int(padFront) + int(padBack) + int(extraPadBack));
 
 		if(extraPadFront) {
-			curves.push_back(Curve(state->frontE, state->frontD, state->frontC));
+			curves.emplace_back(state->frontE, state->frontD, state->frontC);
 		}
 
 		if(padFront) {
-			curves.push_back(Curve(state->frontD, state->frontC, state->frontB));
+			curves.emplace_back(state->frontD, state->frontC, state->frontB);
 		}
 
-		curves.push_back(Curve(state->frontC, state->frontB, state->frontA));
-		curves.push_back(Curve(state->frontB, state->frontA, icpts[0]));
-		curves.push_back(Curve(state->frontA, icpts[0], icpts[1]));
+		curves.emplace_back(state->frontC, state->frontB, state->frontA);
+		curves.emplace_back(state->frontB, state->frontA, icpts[0]);
+		curves.emplace_back(state->frontA, icpts[0], icpts[1]);
 
-		for(int i = 0; i < (int) icpts.size() - 2; ++i)
-			curves.push_back(Curve(icpts[i], icpts[i + 1], icpts[i + 2]));
+		for(int i = 0; i < (int) icpts.size() - 2; ++i) {
+			curves.emplace_back(icpts[i], icpts[i + 1], icpts[i + 2]);
+		}
 
-		curves.push_back(Curve(icpts[end - 1], icpts[end], back1));
-		curves.push_back(Curve(icpts[end], back1, back2));
-		curves.push_back(Curve(back1, back2, back3));
+		curves.emplace_back(icpts[end - 1], icpts[end], back1);
+		curves.emplace_back(icpts[end], back1, back2);
+		curves.emplace_back(back1, back2, back3);
 
 		if(padBack) {
-			curves.push_back(Curve(back2, back3, back4));
+			curves.emplace_back(back2, back3, back4);
 		}
 
 		if(extraPadBack) {
-			curves.push_back(Curve(back3, back4, back5));
+			curves.emplace_back(back3, back4, back5);
 		}
 
 		// update front
@@ -194,14 +195,14 @@ void VoiceMeshRasterizer::updateCurves() {
 
 	adjustDeformingSharpness();
 
-	for(int i = 0; i < (int) curves.size(); ++i)
-		curves[i].recalculateCurve();
+	for(auto& curve : curves) {
+		curve.recalculateCurve();
+	}
 
 	calcWaveform();
 
 	unsampleable = false;
 }
-
 
 void VoiceMeshRasterizer::orphanOldVerts() {
     icpts.clear();

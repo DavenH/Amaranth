@@ -30,7 +30,7 @@ public:
 	void paint(Graphics& g) override {
 		getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
-		Font font(16);
+		Font font(FontOptions(16));
 		g.setFont(font);
 
 		g.setColour(Colour::greyLevel(0.75f));
@@ -56,8 +56,7 @@ public:
 		g.drawImageTransformed(bert, AffineTransform::rotation(-0.5).translated(getWidth() * 0.65, getHeight() * 0.7));
 	}
 
-	void resized() override
-	{
+	void resized() override {
 		Rectangle<int> r = getLocalBounds();
 
 		Rectangle<int> bottom = r.removeFromBottom(60);
@@ -66,8 +65,7 @@ public:
 		closeButton.setBounds(bottom);
 	}
 
-	void buttonClicked(Button* button) override
-	{
+	void buttonClicked(Button* button) override {
 		removeFromDesktop();
 		setVisible(false);
 

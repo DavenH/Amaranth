@@ -1,8 +1,10 @@
-#include <App/AppConstants.h>
-#include "BannerPanel.h"
-
-#include "../CycleGraphicsUtils.h"
 #include "Console.h"
+#include "BannerPanel.h"
+#include "../CycleGraphicsUtils.h"
+
+#include <Definitions.h>
+#include <App/SingletonRepo.h>
+
 
 BannerPanel::BannerPanel(SingletonRepo* repo) : SingletonAccessor(repo, "BannerPanel") {
 }
@@ -19,11 +21,11 @@ void BannerPanel::paint(Graphics& g) {
 }
 
 void BannerPanel::mouseEnter(const MouseEvent& e) {
-    String line("Cycle v" + String(ProjectInfo::versionString));
+    String line = String(ProjectInfo::projectName) + " v" + String(ProjectInfo::versionString);
 
     getObj(IConsole).reset();
     getObj(IConsole).write(line, IConsole::DefaultPriority);
-    getObj(IConsole).setKeys("by Amaranth Audio");
+    getObj(IConsole).setKeys("by " + String(ProjectInfo::companyName));
 }
 
 void BannerPanel::mouseDown(const MouseEvent& e) {

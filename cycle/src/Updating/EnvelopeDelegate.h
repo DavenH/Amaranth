@@ -6,7 +6,7 @@ class EnvelopeDelegate :
         public SingletonAccessor
     ,	public Updateable {
 public:
-    EnvelopeDelegate(SingletonRepo* repo);
+    explicit EnvelopeDelegate(SingletonRepo* repo);
     void performUpdate(UpdateType updateType) override;
 
     ~EnvelopeDelegate() override;

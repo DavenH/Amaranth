@@ -34,7 +34,6 @@ Panel3D::Panel3D(SingletonRepo* repo,
     drawLinesAfterFill = true;
 }
 
-
 Panel3D::~Panel3D() {
     clrIndicesA	.clear();
     clrIndicesB	.clear();
@@ -113,8 +112,7 @@ void Panel3D::drawInterceptLines() {
             gfx->enableSmoothing();
 
             bool revertWidth = false;
-            if(currVert != nullptr && currVert->isOwnedBy(cube))
-            {
+            if (currVert != nullptr && currVert->isOwnedBy(cube)) {
                 gfx->setCurrentLineWidth(2.f);
                 revertWidth = true;
             }
@@ -219,7 +217,7 @@ void Panel3D::drawLinSurface(const vector<Column>& grid) {
     Buffer<float> floatBuf 	= gradient.getFloatPixels();
 
     for (int i = 0; i < draw.sizeX; ++i) {
-        Buffer gridBuf = grid[i];
+        const Buffer<float>& gridBuf = grid[i];
         draw.colSourceSizeY = draw.sizeY = gridBuf.size();
 
         if(draw.sizeY <= maxHorzLines) {
@@ -286,9 +284,8 @@ void Panel3D::adjustLogColumnAndScale(int key, bool firstColumn) {
     }
 }
 
-void Panel3D::downsampleColumn(Buffer<float> column) {
-    int downsampleFactor 	= 1;
-    downsampleFactor 		= draw.colSourceSizeY / maxHorzLines;
+void Panel3D::downsampleColumn(const Buffer<float>& column) {
+    int downsampleFactor    = draw.colSourceSizeY / maxHorzLines;
     draw.sizeY 				= maxHorzLines;
 
     jassert(downsampAcc.size() >= draw.sizeY);
@@ -323,7 +320,7 @@ void Panel3D::setColumnColourIndices() {
     ippsMulC_16s_I(draw.stride, clrIndicesB, draw.sizeY);
 }
 
-void Panel3D::setVertices(int column, Buffer<float> vertices) {
+void Panel3D::setVertices(int column, Buffer<float> vertices) const {
     jassert(4 * (draw.sizeY + 1) <= vertices.size());
 
     Ipp32f* vertexPtr = vertices;

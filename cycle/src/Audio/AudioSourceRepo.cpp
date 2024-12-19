@@ -28,9 +28,8 @@ AudioSourceRepo::AudioSourceRepo(SingletonRepo* repo) :
 void AudioSourceRepo::init() {
     synthSource = &getObj(SynthAudioSource);
     audioHub 	= &getObj(AudioHub);
-    wavSource 	= new WavAudioSource(repo);
+    wavSource 	= std::make_unique<WavAudioSource>(repo);
 }
-
 
 void AudioSourceRepo::setAudioProcessor(AudioSourceEnum source) {
     AudioSourceProcessor* proc = audioHub->getAudioSourceProcessor();

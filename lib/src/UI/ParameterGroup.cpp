@@ -54,10 +54,9 @@ void ParameterGroup::sliderDragStarted(Slider* slider) {
     }
 }
 
-
 void ParameterGroup::sliderDragEnded(Slider* slider) {
     auto* action = new SliderValueChangedAction(repo, worker->getUpdateSource(),
-                                                                    slider, sliderStartingValue);
+                                                slider, sliderStartingValue);
     getObj(EditWatcher).addAction(action, true);
 
     if(worker->shouldTriggerGlobalUpdate(slider)) {
@@ -92,8 +91,9 @@ double ParameterGroup::getKnobValue(int knobIdx) const {
 bool ParameterGroup::readKnobXML(const XmlElement* effectElem) {
     XmlElement* knobsElem = effectElem->getChildByName("Knobs");
 
-    if(knobsElem == nullptr)
+    if(knobsElem == nullptr) {
         return false;
+    }
 
     ScopedBooleanSwitcher sbs(updatingAllSliders);
 
@@ -103,8 +103,9 @@ bool ParameterGroup::readKnobXML(const XmlElement* effectElem) {
         }
 
         int number = currentKnob->getIntAttribute("number");
-        if(number >= knobs.size())
+        if(number >= knobs.size()) {
             continue;
+        }
 
         double value = currentKnob->getDoubleAttribute("value", knobs[number]->getValue());
 
@@ -134,9 +135,6 @@ void ParameterGroup::writeKnobXML(XmlElement* effectElem) const {
 }
 
 void ParameterGroup::listenToKnobs() {
-    // TODO
-    EditWatcher* watcher = &getObj(EditWatcher);
-
     for(int i = 0; i < knobs.size(); ++i) {
         Slider* knob = knobs.getUnchecked(i);
         knob->addListener(this);
@@ -152,6 +150,5 @@ void ParameterGroup::addKnobsTo(Component* component) {
 }
 
 ParameterGroup::Worker::Worker(SingletonRepo* repo, const String& name) :
-    paramGroup(new ParameterGroup(repo, name, this))
-{
+    paramGroup(new ParameterGroup(repo, name, this)) {
 }

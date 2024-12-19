@@ -161,11 +161,10 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
 
     StereoBuffer outBuffer(buffer);
     StereoBuffer& rendBuffer = needToResample ? tempRendBuffer : outBuffer;
-    MeshLibrary& meshLib = getObj(MeshLibrary);
+    auto& meshLib = getObj(MeshLibrary);
 
     float deltaPerSample = 1.0 / 44100.0 / getObj(OscControlPanel).getLengthInSeconds();
-    for(int i = 0; i < (int) globalScratch.size(); ++i) {
-        EnvRenderContext& scratchRast 	 = globalScratch[i];
+    for(auto& scratchRast : globalScratch) {
         MeshLibrary::EnvProps* props = meshLib.getEnvProps(LayerGroups::GroupScratch, scratchRast.layerIndex);
 
         if(props->active && scratchRast.sampleable) {

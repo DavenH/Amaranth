@@ -33,19 +33,6 @@
 #include "../UI/Panels/ModMatrixPanel.h"
 #include "../Util/CycleEnums.h"
 
-#define _registryRoot "HKEY_CURRENT_USER\\Software\\Amaranth Audio\\Cycle\\"
-
-#ifndef JUCE_MAC
-#undef _ippString
-
-#ifndef _X64_
-#define _ippString    "ipp_cyc.dll"
-#else
-#define _ippString	"ipp_cyc64.dll"
-#endif
-#endif
-
-
 Dialogs::Dialogs(SingletonRepo* repo) :
         SingletonAccessor(repo, "Dialogs") {
 }
@@ -59,22 +46,17 @@ public:
             : DocumentWindow(title, colour, requiredButtons, addToDesktop) {
     }
 
-    void closeButtonPressed() {
+    void closeButtonPressed() override {
         this->removeFromDesktop();
         delete this;
     }
 
-    int getDesktopWindowStyleFlags() {
+    static int getDesktopWindowStyleFlags() {
         return ComponentPeer::windowIsTemporary |
                ComponentPeer::windowHasTitleBar |
                ComponentPeer::windowHasCloseButton;
     }
 };
-
-
-Dialogs::~Dialogs() {
-}
-
 
 void Dialogs::init() {
     watcher = &getObj(EditWatcher);
@@ -106,14 +88,14 @@ void Dialogs::showPresetSaveAsDialog() {
     }
 
     String presetsStr("Presets");
-    WildcardFileFilter filter(presetStr, String::empty, presetsStr);
+    WildcardFileFilter filter(presetStr, String(), presetsStr);
     String filename = getObj(Directories).getUserPresetDir() + deets.getName();
     File absfile = File::getCurrentWorkingDirectory().getChildFile(filename);
 
     FileBrowserComponent browser(FileBrowserComponent::saveMode | FileBrowserComponent::canSelectFiles |
-                                 FileBrowserComponent::warnAboutOverwriting, absfile, &filter, 0);
+                                 FileBrowserComponent::warnAboutOverwriting, absfile, &filter, nullptr);
 
-    FileChooserDialog dialogBox("Save Preset", String::empty, browser,
+    FileChooserDialog dialogBox("Save Preset", String(), browser,
                                 true, Colour::greyLevel(0.08f), deets);
 
     if (dialogBox.show()) {
@@ -170,7 +152,7 @@ void Dialogs::showDeviceErrorApplicably() {
     String deviceError = getObj(AudioHub).getDeviceErrorAndReset();
 
     if (deviceError.isNotEmpty()) {
-        AlertWindow* window = new AlertWindow("Problem Opening Audio Device",
+        auto* window = new AlertWindow("Problem Opening Audio Device",
                                               "Another application is probably using the audio driver -- "
                                               "select a different audio driver (Edit > audio settings) "
                                               "or close the other audio application.\n",
@@ -181,11 +163,11 @@ void Dialogs::showDeviceErrorApplicably() {
     }
 }
 
-void Dialogs::showOpenWaveDialog(SampleWrapper* dstWav, const String &subDir,
+void Dialogs::showOpenWaveDialog(PitchedSample* dstWav, const String &subDir,
                                  int actionContext, PostModalAction postAction,
                                  bool forDirectory) {
     WaveOpenData data(this, dstWav, actionContext, postAction);
-    String filter("*.wav;*.aiff;*.aif;*.ogg;*.flac");
+    String filter("*.wav;*.aiff;*.aif;*.ogg;*.flac;*.mp3");
 
     String lastWaveDirectory = getObj(Directories).getLastWaveDirectory();
 
@@ -193,31 +175,33 @@ void Dialogs::showOpenWaveDialog(SampleWrapper* dstWav, const String &subDir,
         lastWaveDirectory = getObj(PresetPage).getWavDirectory();
 
     if (getSetting(NativeDialogs) == 1 || forDirectory) {
-        nativeFileChooser = new FileChooser("Open Audio File", lastWaveDirectory, filter, true);
+        nativeFileChooser = std::make_unique<FileChooser>("Open Audio File", lastWaveDirectory, filter, true);
 
-        if (int result = (forDirectory ? nativeFileChooser->browseForDirectory() :
-                          nativeFileChooser->browseForFileToOpen())) {
+        if (int result = (forDirectory
+                              ? nativeFileChooser->browseForDirectory()
+                              : nativeFileChooser->browseForFileToOpen())) {
             data.audioFile = nativeFileChooser->getResult();
             openWaveCallback(result, data);
         }
     } else {
-        String instructions = actionContext == DialogActions::TrackPitchAction ?
-                              "The best reference sound files are short (1 - 10s), single note, with few applied effects."
-                                                                               :
-                              "Load a short cabinet / amplifier impulse response wave file. Reverb impulses are not supported.";
+        String instructions = actionContext == DialogActions::TrackPitchAction
+                                  ? "The best reference sound files are short (1 - 10s), single note, with few applied effects."
+                                  : "Load a short cabinet / amplifier impulse response wave file. Reverb impulses are not supported.";
 
-        if (!forDirectory)
-            fileFilter = new WildcardFileFilter(filter, String::empty, "Audio files");
+        if (!forDirectory) {
+            fileFilter = std::make_unique<WildcardFileFilter>(filter, String(), "Audio files");
+        }
 
-        int openFlags = forDirectory ? FileBrowserComponent::useTreeView |
-                                       FileBrowserComponent::canSelectDirectories :
-                        FileBrowserComponent::canSelectFiles;
+        int openFlags = forDirectory
+                            ? FileBrowserComponent::useTreeView |
+                              FileBrowserComponent::canSelectDirectories
+                            : FileBrowserComponent::canSelectFiles;
 
-        fileBrowser = new FileBrowserComponent(FileBrowserComponent::openMode | openFlags,
-                                               lastWaveDirectory, fileFilter, 0);
+        fileBrowser = std::make_unique<FileBrowserComponent>(FileBrowserComponent::openMode | openFlags,
+                                                             lastWaveDirectory, fileFilter.get(), 0);
 
-        fileLoader = new FileChooserDialogBox("Open Audio File", instructions, *fileBrowser,
-                                              true, Colour::greyLevel(0.08f));
+        fileLoader = std::make_unique<FileChooserDialogBox>("Open Audio File", instructions, *fileBrowser,
+                                                            true, Colour::greyLevel(0.08f));
         fileLoader->setAlwaysOnTop(true);
 
         if (int result = fileLoader->show()) {
@@ -235,21 +219,21 @@ void Dialogs::showOpenPresetDialog() {
     }
 
     if (getSetting(NativeDialogs) == 1) {
-        nativeFileChooser = new FileChooser("Open " + getStrConstant(ProductName) + " Preset",
+        nativeFileChooser = std::make_unique<FileChooser>("Open " + getStrConstant(ProductName) + " Preset",
                                             lastPresetDirectory, "*." + getStrConstant(DocumentExt), true);
 
         if (int result = nativeFileChooser->browseForFileToOpen()) {
             openPresetCallback(result, nativeFileChooser->getResult(), this);
         }
     } else {
-        fileFilter = new WildcardFileFilter("*." + getStrConstant(DocumentExt),
-                                            String::empty, "Preset files");
-        fileBrowser = new FileBrowserComponent(FileBrowserComponent::openMode |
+        fileFilter = std::make_unique<WildcardFileFilter>("*." + getStrConstant(DocumentExt),
+                                            String(), "Preset files");
+        fileBrowser = std::make_unique<FileBrowserComponent>(FileBrowserComponent::openMode |
                                                FileBrowserComponent::canSelectFiles,
-                                               lastPresetDirectory, fileFilter, 0);
+                                               lastPresetDirectory, fileFilter.get(), 0);
 
-        fileLoader = new FileChooserDialogBox("Open " + getStrConstant(ProductName) +
-                                              " Preset", String::empty, *fileBrowser,
+        fileLoader = std::make_unique<FileChooserDialogBox>("Open " + getStrConstant(ProductName) +
+                                              " Preset", String(), *fileBrowser,
                                               true, Colour::greyLevel(0.08f));
 
         fileLoader->setAlwaysOnTop(true);
@@ -323,54 +307,43 @@ void Dialogs::showAboutDialog() {
     help->setVisible(true);
 }
 
-
 String Dialogs::getPresetSaveAction() {
     return getObj(FileManager).canSaveOverCurrentPreset() ? "Save" : "Save As...";
 }
 
-
-bool Dialogs::promptForSaveModally() {
+void Dialogs::promptForSaveModally(const std::function<void(bool)>& completionCallback) {
     progressMark
 
-    if (watcher->getHaveEdited()) {
-        String saveAction(getPresetSaveAction());
-
-        int result = AlertWindow::showYesNoCancelBox(AlertWindow::QuestionIcon,
-                                                     "Save Current Preset",
-                                                     "Do you want to save your work?",
-                                                     saveAction, "Don't Save", "Cancel", mainPanel);
-        switch (result) {
-            case DialogCancel:        // cancel
-                return false;
-
-            case DialogSave:        // save
-                getObj(FileManager).saveCurrentPreset();
-                return true;
-
-            case DialogDontSave:    // don't save
-                return true;
-
-            default:
-                throw std::invalid_argument("Dialogs::promptForSaveModally");
-        }
+    if (! watcher->getHaveEdited()) {
+        completionCallback(false);
+        return;
     }
-    return false;
-}
 
+    String saveAction(getPresetSaveAction());
+
+
+    AlertWindow::showYesNoCancelBox(
+        AlertWindow::QuestionIcon,
+        "Save Current Preset",
+        "Do you want to save your work?",
+        saveAction, "Don't Save", "Cancel",
+        mainPanel,
+        ModalCallbackFunction::create(completionCallback));
+}
 
 void Dialogs::promptForSaveApplicably(PostModalAction action) {
     pendingModalActions.push(action);
 
     // don't prompt for save when saving is impossible!
-#ifdef DEMO_VERSION
+  #ifdef DEMO_VERSION
     handleNextPendingModalAction();
     return;
-#endif
+  #endif
 
     if (watcher->getHaveEdited()) {
         auto* window = new AlertWindow("Save Current Preset",
-                                              "Do you want to save your work?",
-                                              AlertWindow::QuestionIcon, mainPanel);
+                                       "Do you want to save your work?",
+                                       AlertWindow::QuestionIcon, mainPanel);
         window->setAlwaysOnTop(true);
 
         String saveAction(getPresetSaveAction());
@@ -385,7 +358,6 @@ void Dialogs::promptForSaveApplicably(PostModalAction action) {
     }
 }
 
-
 void Dialogs::showPresetBrowserModal() {
     cout << "Showing preset browser\n";
     bool playerView = false;
@@ -397,8 +369,9 @@ void Dialogs::showPresetBrowserModal() {
     getObj(PresetPage).setSize(800, 600);
 
     Component* c = mainPanel;
-    if (playerView)
+    if (playerView) {
         c = &getObj(PlayerComponent);
+    }
 
     startTimer(30);
     DialogWindow::showDialog("Preset Browser", &getObj(PresetPage), c,
@@ -406,7 +379,6 @@ void Dialogs::showPresetBrowserModal() {
 
     getObj(MainPanel).resetTabToWaveform();
 }
-
 
 void Dialogs::getSizeFromSetting(int sizeEnum, int &width, int &height) {
     float factor = 1.f;
@@ -428,20 +400,21 @@ void Dialogs::getSizeFromSetting(int sizeEnum, int &width, int &height) {
 
             return;
         }
+        default:
+            break;
     }
 
     Rectangle<int> screenArea = Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;
 
-#if !PLUGIN_MODE
+  #if !PLUGIN_MODE
     screenArea.removeFromBottom(25);
-#endif
+  #endif
 
     float aspect = screenArea.getHeight() / float(screenArea.getWidth());
 
     width = jlimit(960, 1920, int(factor * screenArea.getWidth()));
     height = jlimit(720, 1200, int(factor * aspect * screenArea.getWidth()));
 }
-
 
 void Dialogs::saveCallback(int returnId, SingletonRepo* repo) {
     bool operationCanceled = false;
@@ -460,6 +433,7 @@ void Dialogs::saveCallback(int returnId, SingletonRepo* repo) {
             break;
 
         case DialogDontSave:
+        default:
             break;
     }
 
@@ -468,16 +442,15 @@ void Dialogs::saveCallback(int returnId, SingletonRepo* repo) {
     }
 }
 
-
 struct AsyncPresetDialog : public CallbackMessage {
-    AsyncPresetDialog(Dialogs* ops) : ops(ops) { post(); }
-    void messageCallback() { ops->showOpenPresetDialog(); }
+    explicit AsyncPresetDialog(Dialogs* ops) : ops(ops) { post(); }
+    void messageCallback() override { ops->showOpenPresetDialog(); }
     Dialogs* ops;
 };
 
 struct AsyncSaveasDialog : public CallbackMessage {
-    AsyncSaveasDialog(Dialogs* ops) : ops(ops) { post(); }
-    void messageCallback() { ops->showPresetSaveAsDialog(); }
+    explicit AsyncSaveasDialog(Dialogs* ops) : ops(ops) { post(); }
+    void messageCallback() override { ops->showPresetSaveAsDialog(); }
     Dialogs* ops;
 };
 
@@ -505,14 +478,15 @@ void Dialogs::handleNextPendingModalAction() {
             break;
 
         case DoNothing:
+        default:
             break;
     }
 }
 
-
 void Dialogs::openWaveCallback(int returnId, WaveOpenData data) {
-    if (returnId == DialogCancel)
+    if (returnId == DialogCancel) {
         return;
+    }
 
     Dialogs* ops = data.ops;
     SingletonRepo* repo = ops->getSingletonRepo();
@@ -521,8 +495,9 @@ void Dialogs::openWaveCallback(int returnId, WaveOpenData data) {
     File parentFile = currentFile.getParentDirectory();
     String filename = currentFile.getFullPathName();
 
-    if (ops->fileLoader != nullptr)
-        getObj(MainPanel).removeChildComponent(ops->fileLoader);
+    if (ops->fileLoader != nullptr) {
+        getObj(MainPanel).removeChildComponent(ops->fileLoader.get());
+    }
 
     if (data.actionContext == DialogActions::TrackPitchAction) {
         getObj(PresetPage).setWavDirectory(parentFile.getFullPathName());
@@ -537,16 +512,17 @@ void Dialogs::openWaveCallback(int returnId, WaveOpenData data) {
             getObj(Directories).setLoadedWave(filename);
             getObj(FileManager).openWave(currentFile, DialogSource);
         } else if (data.actionContext == DialogActions::LoadImpulse) {
-            bool succeeded = Util::load(*data.wrapper, filename) >= 0;
+
+            bool succeeded = data.wrapper->load(filename) >= 0;
 
             if (succeeded) {
                 getObj(IrModellerUI).setWaveImpulsePath(filename);
 
-                if (data.postAction == LoadIRWave)
+                if (data.postAction == LoadIRWave) {
                     getObj(IrModellerUI).loadWaveFile();
-
-                else if (data.postAction == ModelIRWave)
+                } else if (data.postAction == ModelIRWave) {
                     getObj(IrModellerUI).modelLoadedWave();
+                }
             } else {
                 getObj(IConsole).write("Failed to load audio file", IConsole::DefaultPriority);
             }
@@ -558,7 +534,6 @@ void Dialogs::openWaveCallback(int returnId, WaveOpenData data) {
     ops->nativeFileChooser = nullptr;
     ops->fileBrowser = nullptr;
 }
-
 
 void Dialogs::openPresetCallback(int returnId, const File &currentFile, Dialogs* ops) {
     File parentFile = currentFile.getParentDirectory();
@@ -581,6 +556,23 @@ void Dialogs::openPresetCallback(int returnId, const File &currentFile, Dialogs*
     ops->fileBrowser = nullptr;
 }
 
+bool Dialogs::handleSaveAction(int menuResult) {
+    switch (menuResult) {
+        // cancel
+        case DialogCancel:
+            return false;
+
+        case DialogSave:
+            getObj(FileManager).saveCurrentPreset();
+            return true;
+
+        case DialogDontSave:    // don't save
+            return true;
+
+        default:
+            throw std::invalid_argument("Dialogs::promptForSaveModally");
+    }
+}
 
 void Dialogs::timerCallback() {
     getObj(PresetPage).grabSearchFocus();

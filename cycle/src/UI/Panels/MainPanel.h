@@ -224,26 +224,6 @@ private:
     PanelPair* xv_spectSurf;
     PanelPair* xv_playbackLeft;
 
-//	PanelPair* bv_dfrm_imp;
-//	PanelPair* bv_envDfmImp;
-//	PanelPair* bv_FX_pair_1;
-//	PanelPair* bv_FX_Pair_2;
-//	PanelPair* bv_FX_pair_A;
-//	PanelPair* bv_FX_pair;
-//	PanelPair* bv_gen_key;
-//	PanelPair* bv_left;
-//	PanelPair* bv_playbackLeft;
-//	PanelPair* bv_props_bnr;
-//	PanelPair* bv_right;
-//	PanelPair* bv_RT_pair;
-//	PanelPair* bv_RTL_pair;
-//	PanelPair* bv_RTLT_pair;
-//	PanelPair* bv_RTLTB_pair;
-//	PanelPair* bv_RTLTBL_pair;
-//	PanelPair* bv_spectSurf;
-//	PanelPair* bv_topPair;
-//	PanelPair* bv_whole;
-
     Bounded* envCtrlBounds;
 
     TabbedSelector* topRightTabs;
@@ -283,12 +263,10 @@ private:
     Bounded* bnrBounds;
     Bounded* menuBounds;
     Bounded* oscCtrlBounds;
-//	Bounded* bottomCtrlBounds;
     Bounded* reverbBounds;
     Bounded* delayBounds;
     Bounded* eqBounds;
     Bounded* wsCtrlBounds;
-//	Bounded* wave2DCtrlBounds;
     Bounded* cv_botTabBounds;
     Bounded* cv_topTabBounds;
 

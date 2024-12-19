@@ -303,16 +303,15 @@ void VertCube::getInterceptsFast(int dim, ReductionData& data, const MorphPositi
 
     Face lowFace = getFace(dim, LowPole);
 
-    float nnx = lowFace.v00->values[dimX];
-    float nny = lowFace.v00->values[dimY];
-    float xxx = lowFace.v11->values[dimX];
-    float xxy = lowFace.v11->values[dimY];
+    float nx = lowFace.v00->values[dimX];
+    float ny = lowFace.v00->values[dimY];
+    float xx = lowFace.v11->values[dimX];
+    float xy = lowFace.v11->values[dimY];
 
-    float x1, y1, x2, y2;
-    x1 = jmin(nnx, xxx);
-    y1 = jmin(nny, xxy);
-    x2 = jmax(nnx, xxx);
-    y2 = jmax(nny, xxy);
+    float x1 = jmin(nx, xx);
+    float y1 = jmin(ny, xy);
+    float x2 = jmax(nx, xx);
+    float y2 = jmax(ny, xy);
 
     // only want upper inclusivity at the unit boundaries
     if(x2 == 1.f) { x2 += 0.000001f; }

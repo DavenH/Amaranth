@@ -82,7 +82,6 @@ void GeneralControls::init() {
     updateHighlights();
 }
 
-
 void GeneralControls::buttonClicked(Button* button) {
     if (button == &waveVerts || button == &verts) {
         if (button != &verts && !getSetting(WaveLoaded)) {

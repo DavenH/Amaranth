@@ -4,8 +4,7 @@
 
 class HermiteState {
 public:
-    void init(Buffer<float> memory) {
-        ring = memory;
+    void init(const Buffer<float>& memory) : ring(memory) {
         reset(1.);
     }
 

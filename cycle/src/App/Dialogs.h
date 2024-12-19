@@ -1,18 +1,11 @@
-#ifndef _Dialogs_h
-#define _Dialogs_h
+#pragma once
 
 #include <vector>
 #include <stack>
 
-#include <App/Doc/DocumentDetails.h>
-#include <App/Doc/Savable.h>
-#include <Audio/SampleWrapper.h>
-#include <Inter/Dimensions.h>
 #include <Obj/Ref.h>
 #include "JuceHeader.h"
-#include <Util/StatusChecker.h>
 #include "../UI/Dialogs/QualityDialog.h"
-
 
 using std::vector;
 using std::stack;
@@ -50,16 +43,17 @@ public:
 	};
 
 
-	Dialogs(SingletonRepo* repo);
-	virtual ~Dialogs();
+	explicit Dialogs(SingletonRepo* repo);
 
-#if ! PLUGIN_MODE
+	~Dialogs() override = default;
+
+  #if ! PLUGIN_MODE
 	void showAudioSettings();
-#endif
+  #endif
 
-	void init();
+	void init() override;
 	void launchHelp();
-	bool promptForSaveModally();
+	void promptForSaveModally(const std::function<void(bool)>& completionCallback);
 	void promptForSaveApplicably(PostModalAction action);
     void handleNextPendingModalAction();
 	void showAboutDialog();
@@ -72,9 +66,9 @@ public:
 	void showPresetSaveAsDialog();
 	void showQualityOptions();
 	void showSamplePlacer();
-	void timerCallback();
+	void timerCallback() override;
 	void addPendingAction(PostModalAction action) { pendingModalActions.push(action); }
-	void showOpenWaveDialog(SampleWrapper* dstWav, const String& subDir, int actionContext,
+	void showOpenWaveDialog(PitchedSample* dstWav, const String& subDir, int actionContext,
 							PostModalAction postAction = DoNothing, bool forDirectory = false);
 
     static void getSizeFromSetting(int sizeEnum, int& width, int& height);
@@ -84,10 +78,10 @@ public:
 		int actionContext;
 		File audioFile;
 		Dialogs* ops;
-		SampleWrapper* wrapper;
+		PitchedSample* wrapper;
 		PostModalAction postAction;
 
-		WaveOpenData(Dialogs* ops, SampleWrapper* wrapper,
+		WaveOpenData(Dialogs* ops, PitchedSample* wrapper,
 					 int actionContext, PostModalAction postAction) :
 				ops(ops)
 			,	wrapper(wrapper)
@@ -103,6 +97,7 @@ public:
 	static void openPresetCallback(int returnId, const File& currentFile, Dialogs* ops);
 
 private:
+	bool handleSaveAction(int menuResult);
 	void createAlertSaveWindow();
 	String getPresetSaveAction();
 
@@ -110,11 +105,8 @@ private:
 	Ref<EditWatcher> watcher;
 	stack<PostModalAction> pendingModalActions;
 
-	std::unique_ptr<WildcardFileFilter> 	fileFilter;
+	std::unique_ptr<WildcardFileFilter> fileFilter;
 	std::unique_ptr<FileChooserDialogBox> fileLoader;
 	std::unique_ptr<FileBrowserComponent> fileBrowser;
-	std::unique_ptr<FileChooser> 			nativeFileChooser;
+	std::unique_ptr<FileChooser> nativeFileChooser;
 };
-
-#endif
-

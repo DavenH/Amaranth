@@ -1,15 +1,13 @@
 #include <App/MeshLibrary.h>
 #include <Curve/EnvelopeMesh.h>
-
-#include "E3Rasterizer.h"
-
 #include <Design/Updating/Updater.h>
 
+#include "E3Rasterizer.h"
 #include "../Inter/EnvelopeInter2D.h"
 #include "../Inter/EnvelopeInter3D.h"
-#include "../UI/VertexPanels/Envelope3D.h"
 #include "../UI/VertexPanels/Waveform3D.h"
 #include "../UI/VisualDsp.h"
+#include "../Util/CycleEnums.h"
 
 E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
         SingletonAccessor(repo, "E3Rasterizer")
@@ -57,7 +55,7 @@ void E3Rasterizer::performUpdate(int updateType) {
     ScopedAlloc<Ipp32f> zoomProgress(gridSize);
     zoomProgress.ramp();
 
-    int res = CycleConstants::EnvResolution;
+    int res = getConstant(EnvResolution);
     float invCol = 1 / float(res);
     float invGrid = 1 / float(gridSize - 1);
 
@@ -72,12 +70,11 @@ void E3Rasterizer::performUpdate(int updateType) {
         Column& col = columns[colIdx];
 
         indie = colIdx * invGrid;
-        calcCrossPoints(mesh);
+        calcCrossPoints(mesh, 0.f);
 
         if (isSampleable()) {
             sampleWithInterval(col, invCol, 0.f);
-        }
-        else {
+        } else {
             col.zero();
         }
     }

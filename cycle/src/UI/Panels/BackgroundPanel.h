@@ -1,6 +1,8 @@
 #pragma once
 
 #include "JuceHeader.h"
+#include "../CycleGraphicsUtils.h"
+#include <Definitions.h>
 
 using namespace juce;
 

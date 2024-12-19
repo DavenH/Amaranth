@@ -6,7 +6,7 @@
 class DynamicDetailUpdateable : public Updateable::Listener
 {
 public:
-    void preUpdateHook(int updateType) {
+    void preUpdateHook(int updateType) override {
         if (updateType == ReduceDetail) {
             detailIsReduced = true;
         } else if (updateType == RestoreDetail) {
@@ -14,7 +14,7 @@ public:
         }
     }
 
-    bool isDetailReduced() { return detailIsReduced; }
+    [[nodiscard]] bool isDetailReduced() const { return detailIsReduced; }
 
 protected:
 

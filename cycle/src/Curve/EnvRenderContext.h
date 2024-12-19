@@ -26,7 +26,7 @@ struct EnvRastGroup
     vector<EnvRenderContext> envGroup;
     int layerGroup;
 
-    int size() { return (int) envGroup.size(); }
+    int size() const { return (int) envGroup.size(); }
     EnvRenderContext& operator[] (const int index) { return envGroup[index]; }
 
     explicit EnvRastGroup(int layerGroup) : layerGroup(layerGroup) {}

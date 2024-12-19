@@ -30,8 +30,9 @@ void SynthUnisonVoice::testMeshConditions() {
         }
     }
 
-    if (!haveAnyValidTimeLayers)
+    if (!haveAnyValidTimeLayers) {
         parent->stop(false);
+    }
 }
 
 void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float velocity) {
@@ -63,13 +64,12 @@ void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float
             timeRasterizer.setInterceptPadding(group.angleDelta);
             timeRasterizer.setState(&state);
             timeRasterizer.setMorphPosition(pos);
+            timeRasterizer.setWrapsEnds(true);
 
             if (cycleCompositeAlgo == Interpolate) {
-                timeRasterizer.setWrapsEnds(true);
                 timeRasterizer.calcCrossPoints(layer.mesh, oscPhase);
             } else {
                 // prime rasterizer
-                timeRasterizer.setWrapsEnds(true);
                 timeRasterizer.setMesh(layer.mesh);
                 timeRasterizer.calcCrossPointsChaining(oscPhase);
             }
@@ -97,8 +97,9 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
         MeshLibrary::Layer layer = parent->meshLib->getLayer(LayerGroups::GroupTime, meshIdx);
         CycleState& state = group.layerStates[meshIdx];
 
-        if (!layer.props->active || !layer.mesh->hasEnoughCubesForCrossSection())
+        if (!layer.props->active || !layer.mesh->hasEnoughCubesForCrossSection()) {
             continue;
+        }
 
         totalPhase = unison->getPhase(group.unisonIndex);
         if (totalPhase < 0.f) totalPhase += 1.f;
@@ -140,8 +141,9 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
             double& spillover = state.spillover; //group.samplingSpillover[0];
             spillover += samplingSize * delta;
 
-            if (spillover > 0.5)
+            if (spillover > 0.5) {
                 spillover -= 1;
+            }
         }
 
         float totalPan = layer.props->pan;
@@ -161,14 +163,10 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
 }
 
 void SynthUnisonVoice::prepNewVoice() {
-    for (int i = 0; i < (int) groups.size(); ++i) {
-        VoiceParameterGroup& group = groups[i];
-
-        for (int j = 0; j < (int) group.layerStates.size(); ++j) {
-            CycleState& state = group.layerStates[j];
-
-            for (int k = 0; k < (int) state.backIcpts.size(); ++k) {
-                state.backIcpts[k].cube = nullptr;
+    for (auto& group : groups) {
+        for (auto& state : group.layerStates) {
+            for (auto& backIcpt : state.backIcpts) {
+                backIcpt.cube = nullptr;
             }
 
             state.frontA.cube = nullptr;

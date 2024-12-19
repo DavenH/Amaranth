@@ -7,7 +7,7 @@ class MorphUpdate :
         public SingletonAccessor
     , 	public Updateable {
 public:
-    MorphUpdate(SingletonRepo* repo);
+    explicit MorphUpdate(SingletonRepo* repo);
 
     ~MorphUpdate() override;
 

@@ -26,6 +26,7 @@ endif()
 
 # Common paths
 set(JUCE_MODULES_DIR "/home/daven/SDKs/JUCE/modules")
+set(VST3_DIR "/home/daven/SDKs/vst3sdk")
 set(IPP_DIR "/opt/intel/oneapi/ipp/latest")
 set(IPP_TL_VARIANT "OpenMP")
 set(IPP_LIBRARIES ippcore ipps ippi ippvm ippm)

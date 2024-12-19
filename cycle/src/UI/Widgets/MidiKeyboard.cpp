@@ -115,8 +115,7 @@ String MidiKeyboard::getText(int note) {
 
     jassert(letterIdx >= 0 && letterIdx < 12);
 
-    String letter[] =
-    {
+    String letter[] = {
         "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
     };
 
@@ -235,8 +234,9 @@ bool MidiKeyboard::shouldDrawAuditionKey(int note) const {
 }
 
 int MidiKeyboard::getMouseNote() const {
-    if (mouseOverNotes.size() == 0)
+    if (mouseOverNotes.size() == 0) {
         return -1;
+    }
 
     return mouseOverNotes.getFirst();
 }

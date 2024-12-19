@@ -75,9 +75,9 @@ void ZoomPanel::mouseEnter(const MouseEvent& e) {
         console.setMouseUsage(false, false, true, false);
 
         String cmdStr("ctrl");
-       #ifdef JUCE_MAC
+      #ifdef JUCE_MAC
         cmdStr = L"\u2318";
-       #endif
+      #endif
 
         console.setKeys(cmdStr);
     }
@@ -163,8 +163,9 @@ void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
             y = 0.5f;
         }
 
-        if(usualZoom)
+        if(usualZoom) {
             rect.y = y + (rect.y - y) / zoomRatio;
+        }
     } else {
         oldZoom = rect.w;
         float x = context.panel->invertScaleX(mouseX);

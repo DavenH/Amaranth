@@ -1,11 +1,8 @@
-#include <Definitions.h>
+#pragma once
 
 #if ! PLUGIN_MODE
 
-#ifndef _mainappwindow_h
-#define _mainappwindow_h
-
-#include <iostream>
+#include <Definitions.h>
 #include <App/SingletonAccessor.h>
 
 class Initializer;
@@ -16,17 +13,15 @@ class MainAppWindow:
 	,	public SingletonAccessor
 {
 public:
-	MainAppWindow(const String& commandLine);
+	explicit MainAppWindow(const String& commandLine);
 	void openFile(const String& commandLine);
-	~MainAppWindow();
-	void closeButtonPressed();
-	void maximiseButtonPressed();
-	void handleMessage (const Message& message);
+	~MainAppWindow() override;
+	void closeButtonPressed() override;
+	void maximiseButtonPressed() override;
+	void handleMessage (const Message& message) override;
 
 private:
 	std::unique_ptr<Initializer> initializer;
 };
-
-#endif
 
 #endif

@@ -239,7 +239,6 @@ void CommonGL::checkErrors() {
     parent->printErrors(panel->getSingletonRepo());
 }
 
-
 void CommonGL::updateTexture(Texture* tex) {
     tex->bind();
 }
@@ -250,8 +249,9 @@ void CommonGL::initializeTextures() {
     OwnedArray <Texture>& textures = panel->textures;
     TextureGL* nameA, * nameB, * grab, * scales, * dfrm;
 
-    for (auto texture : textures)
+    for (auto texture : textures) {
         texture->clear();
+    }
 
     textures.clear();
     textures.add(nameA = new TextureGL(panel->nameImage, GL_ONE));

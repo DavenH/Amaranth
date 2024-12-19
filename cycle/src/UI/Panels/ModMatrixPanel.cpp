@@ -6,6 +6,8 @@
 
 #include "ModMatrixPanel.h"
 
+#include <UI/IConsole.h>
+
 #include "../CycleDefs.h"
 #include "../CycleGraphicsUtils.h"
 #include "../Panels/Morphing/MorphPanel.h"
@@ -85,7 +87,7 @@ void ModMatrix::showDimensionsPopup(ColourCheckbox* checkbox) {
 		.withTargetComponent(checkbox)
 	;
 
-	menu.showMenuAsync(options, [this, oldDim,mappingIndex,inputId,outputId](int result) {
+	menu.showMenuAsync(options, [this,oldDim,mappingIndex,inputId,outputId](int result) {
 		int newDim = result - 2;
 			if(result != 0 && oldDim != newDim) {
 				panel->mappingChanged(mappingIndex, inputId, outputId, oldDim, newDim);
@@ -94,7 +96,6 @@ void ModMatrix::showDimensionsPopup(ColourCheckbox* checkbox) {
 	);
 
 }
-
 
 ModMatrixPanel::ModMatrixPanel(SingletonRepo* repo) :
 		SingletonAccessor(repo, "ModMatrixPanel")
@@ -228,21 +229,39 @@ void ModMatrixPanel::comboBoxChanged(ComboBox* combobox) {
 void ModMatrixPanel::buttonClicked(Button* button) {
     if (button == &addInputBtn) {
         PopupMenu menu(getInputMenu());
-		int id = menu.showAt(addInputBtn.getScreenBounds(), 1, 0, 0, 24); //.translated(24, -24)
+    	/*
+        @see show()
+		int showAt (const Rectangle<int>& screenAreaToAttachTo,
+                int itemIDThatMustBeVisible = 0,
+                int minimumWidth = 0,
+                int maximumNumColumns = 0,
+                int standardItemHeight = 0,
+                ModalComponentManager::Callback* callback = nullptr);
+    	 */
 
-        if (id != 0) {
-			addInput(id);
-			selfSize();
-		}
+    	auto options = PopupMenu::Options()
+    		.withTargetScreenArea(addInputBtn.getScreenBounds())
+    		.withItemThatMustBeVisible(1)
+    		.withStandardItemHeight(24);
+    	menu.showMenuAsync(options, [this](int id) {
+    		if (id != 0) {
+				addInput(id);
+				selfSize();
+			}
+    	});
 	} else if(button == &addDestBtn) {
         PopupMenu menu(getOutputMenu(MeshTypes));
 
-        int id = menu.showAt(addDestBtn.getScreenBounds(), 1, 0, 0, 24);
-
-        if (id != 0) {
-			addDestination(id);
-			selfSize();
-		}
+		auto options = PopupMenu::Options()
+			.withTargetScreenArea(addDestBtn.getScreenBounds())
+			.withItemThatMustBeVisible(1)
+			.withStandardItemHeight(24);
+		menu.showMenuAsync(options, [this](int id) {
+			if (id != 0) {
+				addDestination(id);
+				selfSize();
+			}
+		});
 	} else if(button == &closeButton) {
         removeFromDesktop();
 		setVisible(false);

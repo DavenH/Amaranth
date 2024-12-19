@@ -274,8 +274,8 @@ void MainPanel::initialisePanels() {
         f2dZoomPanel, wave3DZoomPanel, wave2DZoomPanel, tubeZoomPanel, wsZoomPanel, dfrmZoomPanel,
         derivBounds, propsBounds, unisonBounds, bnrBounds, menuBounds, oscCtrlBounds, reverbBounds,
         delayBounds, eqBounds, wsCtrlBounds, cv_botTabBounds, cv_topTabBounds, menuBar, xv_topBotDragger,
-        xv_spectSurfDragger, xv_envDfmImpDragger, xv_dfmImpDragger, xv_wholeDragger, cv_wholeDragger, cv_middleDragger,
-        cv_envSpectDragger, cv_spectSurfDragger, crsGL, f2GL, e2GL, dfmGL,
+        xv_spectSurfDragger, xv_envDfmImpDragger, xv_dfmImpDragger, xv_wholeDragger, cv_wholeDragger,
+        cv_middleDragger, cv_envSpectDragger, cv_spectSurfDragger, crsGL, f2GL, e2GL, dfmGL,
         wsGL, tmGL, surfGL, f3GL, e3GL, nullptr
     };
     deletable.addArray(deleteMe);

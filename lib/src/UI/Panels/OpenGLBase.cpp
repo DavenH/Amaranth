@@ -14,8 +14,7 @@ OpenGLBase::OpenGLBase(OpenGLRenderer* renderer, Component* component) :
 void OpenGLBase::printErrors(SingletonRepo* repo) {
   #ifdef _DEBUG
     int errorCode;
-    if((errorCode = glGetError()) != GL_NO_ERROR)
-    {
+    if((errorCode = glGetError()) != GL_NO_ERROR) {
         const char* error = (char*)(gluErrorString(errorCode));
         std::cout << "OpenGL error " << errorCode << ": " << error << "\n";
     }

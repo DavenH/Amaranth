@@ -100,6 +100,8 @@ public:
     int getLayerType() override;
     LayerSelectorPanel* getScratchSelector() { return &layerSelector; }
 
+    void chooseConfigScale(int result, MeshLibrary::EnvProps* props);
+
 private:
     friend class Envelope2D;
     friend class Updater;

@@ -42,7 +42,7 @@ public:
         void removeOwner(VertCube* cube);
         void set(int index, Vertex* vert);
         [[nodiscard]] Array<Vertex*> toArray() const;
-        Vertex* operator[] (const int index) const;
+        Vertex* operator[] (int index) const;
         int size() { return numVerts / 2; }
     };
 
@@ -79,21 +79,17 @@ public:
 
     [[nodiscard]] bool isDeformed() const;
     bool poleOf(int dim, Vertex const* poleVert) const;
-    bool hasCommonVertsWith(VertCube const* cube) 			const;
-    bool hasCommonEdgeAlong(int dim, VertCube const* cube) 	const;
-    [[nodiscard]] bool containsEdge(const Edge& edge) 					const;
-
+    bool hasCommonVertsWith(VertCube const* cube) const;
+    bool hasCommonEdgeAlong(int dim, VertCube const* cube) const;
+    [[nodiscard]] bool containsEdge(const Edge& edge) const;
     Array<VertCube*> getAllAdjacentCubes(int dim, const MorphPosition& pos);
     [[nodiscard]] VertCube* getAdjacentCube(int dim, bool pole) const;
-
     int indexOf(Vertex const* vertex) const;
     [[nodiscard]] float deformerAbsGain(int dim) const;
     [[nodiscard]] float getPortionAlong(int dim, const MorphPosition& morph) const;
-
-    Face getFace	(int xDim, bool pole) 	 const;
-    Face getFace	(int xDim, Vertex const* pole) const;
-    [[nodiscard]] MorphPosition  getCentroid(bool isEnv = false) 	 const;
-
+    [[nodiscard]] Face getFace(int xDim, bool pole) const;
+    Face getFace(int xDim, Vertex const* pole) const;
+    [[nodiscard]] MorphPosition getCentroid(bool isEnv = false) const;
     [[nodiscard]] Vertex* findClosestVertex(const MorphPosition& pos) const;
     [[nodiscard]] Vertex* getVertex(int index) const;
     [[nodiscard]] Vertex* getOtherVertexAlong(int dim, Vertex const* vert) const;
@@ -111,8 +107,8 @@ public:
             ReductionData& data,
             const MorphPosition& pos) const;
 
-    char& deformerAt(int dim)				{ return dfrmChans[dim]; }
-    float& dfrmGainAt(int dim)				{ return dfrmGains[dim]; }
+    char& deformerAt(int dim) { return dfrmChans[dim]; }
+    float& dfrmGainAt(int dim) { return dfrmGains[dim]; }
 
     [[nodiscard]] const char& deformerAt(int dim) const 	{ return dfrmChans[dim]; }
     [[nodiscard]] const float& dfrmGainAt(int dim) const 	{ return dfrmGains[dim]; }

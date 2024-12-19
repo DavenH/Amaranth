@@ -273,8 +273,9 @@ void PresetPage::paintRowBackground(Graphics& g, int rowNumber, int width, int h
     bool isNew 	= false;
     int code = details.getKey().hashCode();
 
-    if(newlyDownloaded.contains(code))
+    if(newlyDownloaded.contains(code)) {
         isNew = true;
+    }
 
     bool isOdd 			= rowNumber & 1;
     float selectedLevel = 0.4f;

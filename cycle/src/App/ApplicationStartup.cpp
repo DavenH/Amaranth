@@ -1,52 +1,40 @@
-#include <Definitions.h>
 
+#include <Definitions.h>
 #if !PLUGIN_MODE
 
 #include "MainAppWindow.h"
-
-namespace ProjectInfo
-{
-    const char* const  projectName    = "Cycle";
-    const char* const  companyName    = "Amaranth Audio";
-    const char* const  versionString  = "1.9.0";
-    const int          versionNumber  = 0x10000;
-}
-
 
 class AppClass : public JUCEApplication {
     std::unique_ptr <MainAppWindow> mainWindow;
 
 public:
-    AppClass()
-            : mainWindow(0) {
-    }
+    AppClass() = default;
 
-    ~AppClass() {
-    }
+    ~AppClass() override = default;
 
-    void initialise(const String &commandLine) {
-        mainWindow = new MainAppWindow(commandLine);
+    void initialise(const String &commandLine) override {
+        mainWindow = std::make_unique<MainAppWindow>(commandLine);
         mainWindow->maximiseButtonPressed();
         mainWindow->setVisible(true);
     }
 
-    void shutdown() {
-        mainWindow = 0;
+    void shutdown() override {
+        mainWindow = nullptr;
     }
 
-    const String getApplicationName() {
+    const String getApplicationName() override {
         return ProjectInfo::projectName;
     }
 
-    const String getApplicationVersion() {
+    const String getApplicationVersion() override {
         return String(ProjectInfo::versionString);
     }
 
-    bool moreThanOneInstanceAllowed() {
+    bool moreThanOneInstanceAllowed() override {
         return false;
     }
 
-    void anotherInstanceStarted(const String &commandLine) {
+    void anotherInstanceStarted(const String &commandLine) override {
         mainWindow->openFile(commandLine);
     }
 };

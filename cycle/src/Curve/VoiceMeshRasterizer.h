@@ -3,9 +3,12 @@
 #include <Curve/MeshRasterizer.h>
 #include <Obj/Ref.h>
 
+class SingletonAccessor;
 class CycleState;
 
-class VoiceMeshRasterizer : public MeshRasterizer
+class VoiceMeshRasterizer :
+	public MeshRasterizer,
+	public SingletonAccessor
 {
 private:
 	JUCE_LEAK_DETECTOR(VoiceMeshRasterizer)
@@ -13,7 +16,7 @@ private:
 public:
 	CycleState* state;
 
-	VoiceMeshRasterizer(SingletonRepo* repo);
+	explicit VoiceMeshRasterizer(SingletonRepo* repo);
 
 	~VoiceMeshRasterizer() override;
 

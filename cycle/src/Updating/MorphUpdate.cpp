@@ -20,7 +20,7 @@ MorphUpdate::MorphUpdate(SingletonRepo* repo) : SingletonAccessor(repo, "MorphUp
     updateName = name;
 }
 
-void MorphUpdate::performUpdate(int updateType) {
+void MorphUpdate::performUpdate(UpdateType updateType) {
     switch (updateType) {
         case Null:
         case Repaint:

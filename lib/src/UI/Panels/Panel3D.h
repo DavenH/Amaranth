@@ -69,9 +69,9 @@ public:
 
     void drawCurvesAndSurfaces() override 			{ renderer->drawBakedTextures(); }
     void setGraphicsRenderer(Renderer* renderer) 	{ this->renderer.reset(renderer); }
-    Renderer* getRenderer() 						{ return renderer.get(); }
-    void setUseVertices(bool doso) 					{ useVertices = doso; }
-    OpenGLPanel3D* getOpenglPanel() 				{ return openGL.get(); }
+    Renderer* getRenderer() const { return renderer.get(); }
+    void setUseVertices(bool doso) { useVertices = doso; }
+    OpenGLPanel3D* getOpenglPanel() const { return openGL.get(); }
 
     void postVertsDraw() override;
 
@@ -93,9 +93,9 @@ protected:
     void doColourLookup32f		(Buffer<float> grd, Buffer<float> colors);
     void doColourLookup8u		(Buffer<Ipp8u> grd, Buffer<Ipp8u> colors);
     void doColumnDraw			(Buffer<Ipp8u> grd8u, Buffer<float> grd32f, int i);
-    void downsampleColumn		(Buffer<float> column);
+    void downsampleColumn		(const Buffer<float>& column);
     void resampleColours		(Buffer<float> srcColors, Buffer<float> dstColors);
-    void setVertices			(int column, Buffer<float> verts);
+    void setVertices			(int column, Buffer<float> verts) const;
     void resizeArrays			();
     void setColumnColourIndices	();
 

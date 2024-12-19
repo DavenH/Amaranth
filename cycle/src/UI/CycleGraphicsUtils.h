@@ -12,10 +12,9 @@ public:
                                                            CycleImages::blackground_pngSize))
 {
 }
-
     ~CycleGraphicsUtils() override;
 
-    void fillBlackground(Component* component, Graphics& g) {
+    void fillBlackground(Component* component, Graphics& g) const {
         g.drawImage(blackground, 0, 0, component->getWidth(), component->getHeight(),
             0, 0, blackground.getWidth(), blackground.getHeight(), false);
     }

@@ -19,12 +19,12 @@
 #include "../UI/VertexPanels/Envelope2D.h"
 
 MainAppWindow::MainAppWindow(const String& commandLine) :
-		DocumentWindow("Cycle", Colours::black, DocumentWindow::allButtons, true)
+		DocumentWindow("Cycle", Colours::black, allButtons, true)
 	,	SingletonAccessor(repo, "MainAppWindow") {
     setResizable(platformSplit(true, false), false);
-	setTitleBarHeight(25); //getConstant(TitleBarHeight)
+	setTitleBarHeight(25);
 
-	initializer = new Initializer();
+	initializer = std::make_unique<Initializer>();
 	repo = initializer->getSingletonRepo();
 	repo->add(this);
 
@@ -35,25 +35,18 @@ MainAppWindow::MainAppWindow(const String& commandLine) :
 	setResizeLimits(960, 650, 1920, 1200);
 }
 
-
 void MainAppWindow::openFile(const String &commandLine) {
 	initializer->setCommandLine(commandLine);
 	getObj(FileManager).openDefaultPreset();
 }
 
-MainAppWindow::~MainAppWindow()
-{
-}
-
 void MainAppWindow::closeButtonPressed() {
-    if (!getObj(Dialogs).promptForSaveModally())
-		return;
-
-//		getObj(Settings).setShutdownSettings(0);
-
-	JUCEApplication::getInstance()->systemRequestedQuit();
+	getObj(Dialogs).promptForSaveModally([this](bool shouldContinue) {
+		if (shouldContinue) {
+			JUCEApplication::getInstance()->systemRequestedQuit();
+		}
+	});
 }
-
 
 void MainAppWindow::maximiseButtonPressed() {
     static int presses = 0;
@@ -78,13 +71,13 @@ void MainAppWindow::maximiseButtonPressed() {
 }
 
 void MainAppWindow::handleMessage(const Message &message) {
-#if JUCE_MAC
+  #if JUCE_MAC
     if(! getObj(MainPanel).hasKeyboardFocus(false))
     {
         postMessage(new Message());
     }
     getObj(MainPanel).grabKeyboardFocus();
-#endif
+  #endif
 }
 
 #endif

@@ -174,7 +174,7 @@ void DerivativePanel::calcDerivative() {
     ippsConvert_32f16s_Sfs(num, indices, num.size(), ippRndZero, -9);
 }
 
-void DerivativePanel::performUpdate(int updateType) {
+void DerivativePanel::performUpdate(UpdateType updateType) {
     calcDerivative();
     repaint();
 }

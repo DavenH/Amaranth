@@ -6,7 +6,7 @@
 class GraphicRasterizer :
         public MeshRasterizer
     ,	public DynamicDetailUpdateable
-    ,	public SingletonAccessor
+    ,	public virtual SingletonAccessor
 {
 public:
     GraphicRasterizer(SingletonRepo* repo,

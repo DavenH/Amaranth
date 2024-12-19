@@ -98,8 +98,9 @@ void FileChooserDialog::fileDoubleClicked(const File&) {
 }
 
 void FileChooserDialog::okToOverwriteFileCallback(int result, FileChooserDialog* box) {
-    if (result != 0 && box != nullptr)
+    if (result != 0 && box != nullptr) {
         box->exitModalState(1);
+    }
 }
 
 void FileChooserDialog::okButtonPressed() {

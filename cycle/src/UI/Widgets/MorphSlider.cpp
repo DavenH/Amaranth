@@ -12,6 +12,7 @@
 
 #include <Definitions.h>
 
+
 MorphSlider::MorphSlider(
         SingletonRepo* repo
     ,	const String& name
@@ -74,9 +75,9 @@ void MorphSlider::mouseDown(const MouseEvent& e) {
 }
 
 void MorphSlider::mouseDrag(const MouseEvent& e) {
-    if (e.mods.isRightButtonDown())
+    if (e.mods.isRightButtonDown()) {
         setDepth(e);
-    else {
+    } else {
         if (!e.mods.isRightButtonDown())
             HSlider::mouseDrag(e);
 //		getObj(MorphPanel).showMessage(e.x / float(getWidth()), this);
@@ -105,8 +106,9 @@ void MorphSlider::setDepth(const MouseEvent& e) {
 
     repaint();
 
-    if(dim == getSetting(CurrentMorphAxis))
+    if(dim == getSetting(CurrentMorphAxis)) {
         getObj(PlaybackPanel).repaint();
+    }
 
     getObj(Waveform2D).repaint();
     getObj(Spectrum2D).repaint();

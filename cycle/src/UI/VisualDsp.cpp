@@ -38,6 +38,7 @@ VisualDsp::VisualDsp(SingletonRepo* repo) :
     ,	fxProcessor	 	(this, repo, FXStage)
     ,	scratchEnvPanel	(Panel::linestripRes)
     ,	random			(Time::currentTimeMillis()) {
+
     for (int fftOrderIdx = 0; fftOrderIdx < numFFTOrders; ++fftOrderIdx) {
         int size = 8 << fftOrderIdx;
         sizeToIndex[size] = fftOrderIdx;
@@ -375,8 +376,7 @@ void VisualDsp::calcTimeDomain(int numColumns) {
     }
 }
 
-void VisualDsp::calcSpectrogram(int numColumns)
-{
+void VisualDsp::calcSpectrogram(int numColumns) {
     checkFFTColumns(numColumns);
 
     static const float invSqrtHalf = 1 / sqrtf(0.5f);
@@ -621,9 +621,8 @@ void VisualDsp::calcSpectrogram(int numColumns)
 
         phaseBuf.copyTo(phasePreFXCols[colIdx]);
 
-        if(doInverseFFT)
-        {
-            phaseBuf.add((float) -IPP_PI2);
+        if (doInverseFFT) {
+            phaseBuf.add(-MathConstants<float>::twoPi);
             ffts[sizeIndex].inverse(timeColumns[timeColIdx]);
 
             jassert(timeColumns[timeColIdx].front() == timeColumns[timeColIdx].front());
@@ -645,8 +644,7 @@ void VisualDsp::calcSpectrogram(int numColumns)
     }
 }
 
-void VisualDsp::updateScratchContexts(int numColumns)
-{
+void VisualDsp::updateScratchContexts(int numColumns) {
     ScopedLock sl(graphicEnvLock);
     scratchContexts.clear();
 
@@ -692,13 +690,12 @@ void VisualDsp::updateScratchContexts(int numColumns)
             int idxA = curr.startIndex;
             int idxB = context.inflections[j + 1].startIndex;
 
-            curr.range = Range<float>(buf[idxA], buf[idxB]);
+            curr.range = Range(buf[idxA], buf[idxB]);
         }
 
         scratchContexts.push_back(context);
     }
 }
-
 
 void VisualDsp::calcWaveSpectrogram(int numColumns)
 {
@@ -800,8 +797,8 @@ void VisualDsp::calcWaveSpectrogram(int numColumns)
 
             prevLength 	= roundToInt(prevFrame.period * 5.f / 4.f);
             nextLength 	= roundToInt(nextFrame.period * 5.f / 4.f);
-            prevOffset 	= jmax(0, (int) prevFrame.sampleOffset - offsetSamples);
-            nextOffset 	= jmax(0, (int) nextFrame.sampleOffset - offsetSamples);
+            prevOffset 	= jmax(0, prevFrame.sampleOffset - offsetSamples);
+            nextOffset 	= jmax(0, nextFrame.sampleOffset - offsetSamples);
 
             prevPosX	= jmin(1.f, prevOffset * invWavLength);
 
@@ -892,8 +889,7 @@ void VisualDsp::calcWaveSpectrogram(int numColumns)
 
     ScopedAlloc<Ipp32f> magBuffer(nextPow2);
 
-    for(int i = 0; i < numColumns; ++i)
-    {
+    for (int i = 0; i < numColumns; ++i) {
         Buffer col = postEnvCols[i];
 
         Column prefxMag(fftPreFXCols[i]);
@@ -922,11 +918,9 @@ void VisualDsp::calcWaveSpectrogram(int numColumns)
     }
 }
 
-void VisualDsp::unwrapPhaseColumns(vector<Column>& phaseColumns)
-{
-    if(getSetting(MagnitudeDrawMode)
-            && (fftProcessor.isDetailReduced() || fxProcessor.isDetailReduced()))
-    {
+void VisualDsp::unwrapPhaseColumns(vector<Column>& phaseColumns) {
+    if (getSetting(MagnitudeDrawMode)
+        && (fftProcessor.isDetailReduced() || fxProcessor.isDetailReduced())) {
         return;
     }
 
@@ -937,7 +931,7 @@ void VisualDsp::unwrapPhaseColumns(vector<Column>& phaseColumns)
     Buffer<Ipp32f> maxima 	 = memory.place(numHarmonics);
     Buffer<Ipp32f> minima	 = memory.place(numHarmonics);
 
-    const float invConst = IPP_RPI * 0.5f;
+    const float invConst = 0.5f / 3.14159265;
 
     float phaseMin, phaseMax;
 
@@ -965,8 +959,9 @@ void VisualDsp::unwrapPhaseColumns(vector<Column>& phaseColumns)
         float scaling = 1 / sqrtf(jmax(0.f, float(harmIdx + 1)));
         unwrapped.mul(scaling);
 
-        for (int col = 0; col < unwrapped.size(); ++col)
+        for (int col = 0; col < unwrapped.size(); ++col) {
             phaseColumns[col][harmIdx] = unwrapped[col];
+        }
 
         unwrapped.minmax(minima[harmIdx], maxima[harmIdx]);
     }
@@ -1531,11 +1526,8 @@ VisualDsp::GraphicProcessor::GraphicProcessor(VisualDsp* processor, SingletonRep
 {
 }
 
-
-void VisualDsp::GraphicProcessor::performUpdate(int update)
-{
-    if(update == UpdateType::Update)
-    {
+void VisualDsp::GraphicProcessor::performUpdate(UpdateType update) {
+    if (update == Update) {
         ScopedLock lock(processor->calculationLock);
 
         int reductionFactor = getSetting(ReductionFactor);
@@ -1544,21 +1536,18 @@ void VisualDsp::GraphicProcessor::performUpdate(int update)
 
         jassert(numColumns > 0);
 
-        bool drawWave 	= getSetting(DrawWave) == 1;
+        bool drawWave = getSetting(DrawWave) == 1;
         bool waveLoaded = getSetting(WaveLoaded) == 1;
 
-        switch(stage)
-        {
+        switch (stage) {
             case TimeStage:	processor->calcTimeDomain(numColumns); break;
             case EnvStage:	processor->processThroughEnvelopes(numColumns);	break;
             case FFTStage:
-                if(drawWave)
-                {
-                    if(waveLoaded)
+                if (drawWave) {
+                    if (waveLoaded) {
                         processor->calcWaveSpectrogram(numColumns);
-                }
-                else
-                {
+                    }
+                } else {
                     processor->calcSpectrogram(numColumns);
                 }
                 break;
@@ -1569,35 +1558,30 @@ void VisualDsp::GraphicProcessor::performUpdate(int update)
     }
 }
 
-
-void VisualDsp::checkTimeColumns(int numColumns)
-{
+void VisualDsp::checkTimeColumns(int numColumns) {
     ScopedLock sl(timeColumnLock);
 
-    ResizeParams params(numColumns, &preEnvArray, &preEnvCols, 0, 0, 0, 0, 0);
+    ResizeParams params(numColumns, &preEnvArray, &preEnvCols, nullptr, nullptr, nullptr, nullptr, nullptr);
     resizeArrays(params);
 }
 
-void VisualDsp::checkEnvelopeColumns(int numColumns)
-{
+void VisualDsp::checkEnvelopeColumns(int numColumns) {
     ScopedLock sl(envColumnLock);
 
-    ResizeParams params(numColumns, &postEnvArray, &postEnvCols, 0, 0, 0, 0, &preEnvCols);
+    ResizeParams params(numColumns, &postEnvArray, &postEnvCols, nullptr, nullptr, nullptr, nullptr, &preEnvCols);
     resizeArrays(params);
 }
 
-void VisualDsp::checkFFTColumns(int numColumns)
-{
+void VisualDsp::checkFFTColumns(int numColumns) {
     ScopedLock sl(fftColumnLock);
 
-    ResizeParams params(numColumns, 0, 0, &fftPreFXArray, &fftPreFXCols,
-                        &phasePreFXArray, &phasePreFXCols, 0);
+    ResizeParams params(numColumns, nullptr, nullptr, &fftPreFXArray, &fftPreFXCols,
+                        &phasePreFXArray, &phasePreFXCols, nullptr);
 
     resizeArrays(params);
 }
 
-void VisualDsp::checkEffectsColumns(int numColumns)
-{
+void VisualDsp::checkEffectsColumns(int numColumns) {
     ScopedLock sl(fxColumnLock);
 
     ResizeParams params(numColumns, &postFXArray, &postFXCols, &fftPostFXArray,
@@ -1605,20 +1589,16 @@ void VisualDsp::checkEffectsColumns(int numColumns)
     resizeArrays(params);
 }
 
-
 /// Wave arrays
-void VisualDsp::checkEnvWavColumns(int numColumns, int nextPow2, int overrideKey)
-{
+void VisualDsp::checkEnvWavColumns(int numColumns, int nextPow2, int overrideKey) {
     ScopedLock sl(envColumnLock);
 
-    ResizeParams params(numColumns, &postEnvArray, &postEnvCols, 0, 0, 0, 0, 0);
+    ResizeParams params(numColumns, &postEnvArray, &postEnvCols, nullptr, nullptr, nullptr, nullptr, nullptr);
     params.setExtraParams(nextPow2, -1, overrideKey, false);
     resizeArrays(params);
 }
 
-
-void VisualDsp::checkFFTWavColumns(int numColumns, int numHarms, int overrideKey)
-{
+void VisualDsp::checkFFTWavColumns(int numColumns, int numHarms, int overrideKey) {
     ScopedLock sl(fftColumnLock);
 
     ResizeParams params(numColumns, 0, 0, &fftPreFXArray, &fftPreFXCols, &phasePreFXArray, &phasePreFXCols, 0);
@@ -1627,9 +1607,7 @@ void VisualDsp::checkFFTWavColumns(int numColumns, int numHarms, int overrideKey
     resizeArrays(params);
 }
 
-
-void VisualDsp::checkEffectsWavColumns(int numColumns, int nextPow2, int numHarms, int overrideKey)
-{
+void VisualDsp::checkEffectsWavColumns(int numColumns, int nextPow2, int numHarms, int overrideKey) {
     ScopedLock sl(fxColumnLock);
 
     ResizeParams params(numColumns, &postFXArray, &postFXCols, &fftPostFXArray,
@@ -1639,7 +1617,6 @@ void VisualDsp::checkEffectsWavColumns(int numColumns, int nextPow2, int numHarm
     resizeArrays(params);
 }
 
-
 void VisualDsp::resizeArrays(const ResizeParams& params)
 {
     bool adjustColumnSizes = ! params.isEnvelope && ! getSetting(DrawWave) && getSetting(CurrentMorphAxis) == Vertex::Red;
@@ -1647,16 +1624,16 @@ void VisualDsp::resizeArrays(const ResizeParams& params)
     int fftGridSize = 0, fullGridSize = 0;
     int numColumns = params.numColumns;
 
-    if(! adjustColumnSizes)
-    {
-        if(params.overridePow2 > 0)
+    if (!adjustColumnSizes) {
+        if (params.overridePow2 > 0) {
             nextPow2 = params.overridePow2;
+        }
 
-        if(params.overrideHarms > 0)
+        if (params.overrideHarms > 0) {
             numHarmonics = params.overrideHarms;
+        }
 
-        if(params.overridePow2 < 0 && params.overrideHarms < 0)
-        {
+        if (params.overridePow2 < 0 && params.overrideHarms < 0) {
             getNumHarmonicsAndNextPower(numHarmonics, nextPow2);
             jassert(numHarmonics > 0 && nextPow2 > 0);
         }
@@ -1676,13 +1653,11 @@ void VisualDsp::resizeArrays(const ResizeParams& params)
 
     int key = params.overrideKey >= 0 ? params.overrideKey : getObj(MorphPanel).getCurrentMidiKey();
 
-    if(adjustColumnSizes)
-    {
+    if (adjustColumnSizes) {
         fullGridSize = 0;
         fftGridSize = 0;
 
-        for(int i = 0; i < numColumns; ++i)
-        {
+        for (int i = 0; i < numColumns; ++i) {
             key = i * (getConstant(HighestMidiNote) - getConstant(LowestMidiNote)) / numColumns + getConstant(LowestMidiNote);
             getNumHarmonicsAndNextPower(numHarmonics, nextPow2, key);
 
@@ -1696,58 +1671,55 @@ void VisualDsp::resizeArrays(const ResizeParams& params)
     }
 
     // for e3 panel's benefit -- we still want the key values to span the range without adjusting column sizes
-    else if(params.isEnvelope)
-    {
-        for(int i = 0; i < numColumns; ++i)
-            keys[i] = i * (getConstant(HighestMidiNote) - getConstant(LowestMidiNote)) / numColumns + getConstant(LowestMidiNote);
-    }
-
-    else
-    {
+    else if (params.isEnvelope) {
+        for (int i = 0; i < numColumns; ++i) {
+            keys[i] = i * (getConstant(HighestMidiNote) - getConstant(LowestMidiNote)) / numColumns + getConstant(
+                          LowestMidiNote);
+        }
+    } else {
         keys.set(key);
     }
 
     if(params.freqArray) 	params.freqArray->resize(fftGridSize);
     if(params.timeArray) 	params.timeArray->resize(fullGridSize);
-    if(params.phaseArray)
-    {
+    if (params.phaseArray) {
         params.phaseArray->resize(fftGridSize);
         params.phaseArray->withSize(fftGridSize).zero();
     }
 
     int timeOffset = 0, freqOffset = 0;
 
-    for(int i = 0; i < numColumns; ++i)
-    {
-        if(adjustColumnSizes)
-        {
+    for (int i = 0; i < numColumns; ++i) {
+        if (adjustColumnSizes) {
             nextPow2 	= timeSizes[i];
             numHarmonics= freqSizes[i];
         }
 
-        key 	= keys[i];
+        key = keys[i];
         float x = i / float(numColumns - 1);
 
-        if(params.freqColumns)
-            (*params.freqColumns)[i] 	= Column(*params.freqArray + freqOffset, numHarmonics, x, key);
+        if(params.freqColumns) {
+            (*params.freqColumns)[i] = Column(*params.freqArray + freqOffset, numHarmonics, x, key);
+        }
 
-        if(params.phaseColumns)
-            (*params.phaseColumns)[i] 	= Column(*params.phaseArray + freqOffset, numHarmonics, x, key);
+        if(params.phaseColumns) {
+            (*params.phaseColumns)[i] = Column(*params.phaseArray + freqOffset, numHarmonics, x, key);
+        }
 
-        if(params.timeColumns)
-            (*params.timeColumns)[i] 	= Column(*params.timeArray + timeOffset, nextPow2, x, key);
+        if(params.timeColumns) {
+            (*params.timeColumns)[i] = Column(*params.timeArray + timeOffset, nextPow2, x, key);
+        }
 
         timeOffset 		+= nextPow2;
         freqOffset 		+= numHarmonics;
     }
 
-    if(params.timeColumnsToCopy != 0 && params.timeColumns != 0)
+    if(params.timeColumnsToCopy != nullptr && params.timeColumns != nullptr) {
         copyArrayOrParts((*params.timeColumnsToCopy), (*params.timeColumns));
+    }
 }
 
-
-void VisualDsp::getNumHarmonicsAndNextPower(int& numHarmonics, int& nextPow2, int key)
-{
+void VisualDsp::getNumHarmonicsAndNextPower(int& numHarmonics, int& nextPow2, int key) {
     int midiKey 	= key >= 0 ? key : getObj(MorphPanel).getCurrentMidiKey();
     numHarmonics	= getObj(LogRegions).getRegion(midiKey).size();
     nextPow2 		= NumberUtils::nextPower2(numHarmonics * 2);
@@ -1758,27 +1730,20 @@ void VisualDsp::getNumHarmonicsAndNextPower(int& numHarmonics, int& nextPow2, in
     jassert(nextPow2 <= 4096);
 }
 
-
-int VisualDsp::getTimeSamplingResolution()
-{
+int VisualDsp::getTimeSamplingResolution() {
     int numHarmonics, nextPow2;
     getNumHarmonicsAndNextPower(numHarmonics, nextPow2);
 
     return nextPow2;
 }
 
-
-void VisualDsp::surfaceResized()
-{
+void VisualDsp::surfaceResized() {
     stopTimer();
     startTimer(200);
 }
 
-
-CriticalSection& VisualDsp::getColumnLock(int type)
-{
-    switch(type)
-    {
+CriticalSection& VisualDsp::getColumnLock(int type) {
+    switch (type) {
         case TimeColType: 	return timeColumnLock;
         case EnvColType: 	return envColumnLock;
         case FreqColType: 	return fftColumnLock;
@@ -1789,12 +1754,11 @@ CriticalSection& VisualDsp::getColumnLock(int type)
     }
 }
 
-
 bool VisualDsp::areAnyFXActive()
 {
     bool active = false;
 
-    SynthAudioSource& synth = getObj(SynthAudioSource);
+    auto& synth = getObj(SynthAudioSource);
     active |= synth.getWaveshaper().isEnabled();
     active |= synth.getIrModeller().willBeEnabled();
     active |= synth.getEqualizer().isEnabled();
@@ -1803,42 +1767,32 @@ bool VisualDsp::areAnyFXActive()
     return active;
 }
 
-
-void VisualDsp::timerCallback()
-{
+void VisualDsp::timerCallback() {
     int widthPixels = surface->getWindowWidthPixels();
 
-    if(widthPixels == volumeEnv.size())
-    {
+    if (widthPixels == volumeEnv.size()) {
         stopTimer();
-    }
-    else
-    {
+    } else {
         doUpdate(SourceMorph);
     }
 }
 
-
 const ScratchContext& VisualDsp::getScratchContext(int scratchChannel)
 {
-    if(scratchChannel == CommonEnums::Null || scratchChannel >= (int) scratchContexts.size())
-    {
+    if (scratchChannel == CommonEnums::Null || scratchChannel >= (int) scratchContexts.size()) {
         return defaultScratchContext;
     }
 
     return scratchContexts[scratchChannel];
 }
 
-
-float VisualDsp::getScratchPosition(int scratchChannel)
-{
+float VisualDsp::getScratchPosition(int scratchChannel) {
     float unitPos = getObj(MorphPanel).getValue(getSetting(CurrentMorphAxis));
 
     const ScratchContext& context = getScratchContext(scratchChannel);
     Buffer<float> buffer = context.gridBuffer;
 
-    if(buffer.empty() || scratchChannel == CommonEnums::Null)
-    {
+    if (buffer.empty() || scratchChannel == CommonEnums::Null) {
         return unitPos;
     }
 

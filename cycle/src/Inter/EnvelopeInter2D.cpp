@@ -436,69 +436,18 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
 
         menu.addSubMenu("Duration scale", scaleMenu, true);
 
-        int result = menu.showAt(configIcon.getScreenBounds(), 0, 100, 1, 22, nullptr);
+        auto options = PopupMenu::Options()
+            .withTargetScreenArea(configIcon.getScreenBounds())
+            .withItemThatMustBeVisible(0)
+            .withMinimumNumColumns(1)
+            .withMinimumWidth(100)
+            .withStandardItemHeight(22);
 
-        if (result == 0)
-            return;
-
-        bool editChange = false;
-
-        if (result >= CfgScale1_16x && result <= CfgScale16x) {
-            int newScale = -1;
-
-            switch (result) {
-                case CfgScale1_16x: newScale = -16; break;
-                case CfgScale1_4x:  newScale = -4;  break;
-                case CfgScale1_2x:  newScale = -2;  break;
-                case CfgScale1x:    newScale = 1;   break;
-                case CfgScale2x:    newScale = 2;   break;
-                case CfgScale4x:    newScale = 4;   break;
-                case CfgScale16x:   newScale = 16;  break;
-                default:
-                    break;
-            }
-
-            if (Util::assignAndWereDifferent(props->scale, newScale)) {
-                editChange = true;
-                doGlobalUIUpdate(true);
-            }
-        } else {
-            switch (result) {
-                case CfgDynamic:
-                    props->dynamic = !props->dynamic;
-                    break;
-
-                case CfgSyncTempo:
-                    props->tempoSync = !props->tempoSync;
-                    envPanel->backgroundTempoSynced = props->tempoSync;
-
-                    break;
-
-                case CfgGlobal: {
-                    props->global = !props->global;
-                    getObj(SynthAudioSource).setPendingGlobalChange();
-                    break;
-                }
-
-                case CfgLogarithmic:
-                    props->logarithmic = !props->logarithmic;
-                    envPanel->updateBackground(true);
-                    triggerRefreshUpdate();
-                    break;
-
-                default:
-                    break;
-            }
-
-            editChange = true;
-            configIcon.setPowered(props->isOperating());
-        }
-
-        if (editChange) {
-            getObj(EditWatcher).setHaveEditedWithoutUndo(true);
-        }
+        menu.showMenuAsync(options, [this, props](int result) {
+            chooseConfigScale(result, props);
+        });
     } else if (button == &enableButton) {
-        if (EnvRasterizer* envRast = getEnvRasterizer()) {
+        if (getEnvRasterizer()) {
             int envEnum = getSetting(CurrentEnvGroup);
             MeshLibrary::EnvProps* envProps = getObj(MeshLibrary).getCurrentEnvProps(envEnum);
 
@@ -532,6 +481,7 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
                     }
 
                     break;
+
                 default:
                     break;
                 }
@@ -645,16 +595,18 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
     MeshRasterizer* rast = getRast(envEnum);
     setRasterizer(rast);
 
-    if (getSetting(CurrentMorphAxis) == Vertex::Time && changedToOrFromVol)
+    if (getSetting(CurrentMorphAxis) == Vertex::Time && changedToOrFromVol) {
         envPanel->updateBackground(false);
+    }
 
     if (envEnum == LayerGroups::GroupWavePitch) {
         if (PitchedSample* current = getObj(Multisample).getCurrentSample()) {
             rast->setMesh(current->mesh.get());
         }
     } else if (envEnum == LayerGroups::GroupPitch) {
-        if (EnvRasterizer* envRast = getEnvRasterizer())
+        if (EnvRasterizer* envRast = getEnvRasterizer()) {
             envRast->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(LayerGroups::GroupPitch));
+        }
     }
 
     enableButton.setHighlit(isCurrentMeshActive());
@@ -711,8 +663,9 @@ void EnvelopeInter2D::doExtraMouseDrag(const MouseEvent &e) {
 }
 
 int EnvelopeInter2D::getUpdateSource() {
-    if (getSetting(CurrentEnvGroup) == LayerGroups::GroupScratch)
+    if (getSetting(CurrentEnvGroup) == LayerGroups::GroupScratch) {
         return UpdateSources::SourceScratch;
+    }
 
     return updateSource;
 }
@@ -1015,6 +968,68 @@ void EnvelopeInter2D::layerChanged() {
 
 int EnvelopeInter2D::getLayerType() {
     return getSetting(CurrentEnvGroup);
+}
+
+void EnvelopeInter2D::chooseConfigScale(int result, MeshLibrary::EnvProps* props) {
+    if (result == 0) {
+        return;
+    }
+
+    bool editChange = false;
+
+    if (result >= CfgScale1_16x && result <= CfgScale16x) {
+        int newScale = -1;
+
+        switch (result) {
+            case CfgScale1_16x: newScale = -16; break;
+            case CfgScale1_4x:  newScale = -4;  break;
+            case CfgScale1_2x:  newScale = -2;  break;
+            case CfgScale1x:    newScale = 1;   break;
+            case CfgScale2x:    newScale = 2;   break;
+            case CfgScale4x:    newScale = 4;   break;
+            case CfgScale16x:   newScale = 16;  break;
+            default:
+                break;
+        }
+
+        if (Util::assignAndWereDifferent(props->scale, newScale)) {
+            editChange = true;
+            doGlobalUIUpdate(true);
+        }
+    } else {
+        switch (result) {
+            case CfgDynamic:
+                props->dynamic = !props->dynamic;
+                break;
+
+            case CfgSyncTempo:
+                props->tempoSync = !props->tempoSync;
+                envPanel->backgroundTempoSynced = props->tempoSync;
+
+                break;
+
+            case CfgGlobal: {
+                props->global = !props->global;
+                getObj(SynthAudioSource).setPendingGlobalChange();
+                break;
+            }
+
+            case CfgLogarithmic:
+                props->logarithmic = !props->logarithmic;
+                envPanel->updateBackground(true);
+                triggerRefreshUpdate();
+                break;
+
+            default:
+                break;
+        }
+
+        editChange = true;
+        configIcon.setPowered(props->isOperating());
+    }
+    if (editChange) {
+        getObj(EditWatcher).setHaveEditedWithoutUndo(true);
+    }
 }
 
 void EnvelopeInter2D::delegateUpdate(bool shouldDoUpdate) {
