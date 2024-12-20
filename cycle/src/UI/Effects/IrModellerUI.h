@@ -44,7 +44,7 @@ public:
     String getKnobName(int index) const;
     bool isEffectEnabled() const override { return isEnabled; }
     bool isCurrentMeshActive() override	 { return isEnabled; }
-    int getLayerType() override 			 { return layerType; }
+    int getLayerType() override { return layerType; }
     void setEffectEnabled(bool is);
 
     /* UI */
@@ -119,13 +119,13 @@ private:
 
     ClearSpacer spacer8, spacer2;
 
-    std::unique_ptr<PulloutComponent> 	wavePO;
-    std::unique_ptr<PulloutComponent> 	zoomPO;
-    std::unique_ptr<PulloutComponent> 	modePO;
+    std::unique_ptr<PulloutComponent> wavePO;
+    std::unique_ptr<PulloutComponent> zoomPO;
+    std::unique_ptr<PulloutComponent> modePO;
 
-    std::unique_ptr<RetractableCallout> 	waveCO;
-    std::unique_ptr<RetractableCallout> 	zoomCO;
-    std::unique_ptr<RetractableCallout> 	modeCO;
+    std::unique_ptr<RetractableCallout> waveCO;
+    std::unique_ptr<RetractableCallout> zoomCO;
+    std::unique_ptr<RetractableCallout> modeCO;
 
     InsetLabel title;
     TitleBacking titleBacking;

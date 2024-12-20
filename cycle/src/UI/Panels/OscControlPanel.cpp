@@ -132,15 +132,11 @@ void OscControlPanel::resized() {
         hSliders[i]->setBounds(sliderWidth * i + (i + 1) * space, space + topSpacer, sliderWidth, sliderHeight);
 }
 
-
-void OscControlPanel::writeXML(XmlElement* element) const
-{
-  #ifndef DEMO_VERSION
+void OscControlPanel::writeXML(XmlElement* element) const {
     XmlElement* ctrlsElem = new XmlElement("OscControls");
     paramGroup->writeKnobXML(ctrlsElem);
 
     element->addChildElement(ctrlsElem);
-  #endif
 }
 
 bool OscControlPanel::readXML(const XmlElement* element) {

@@ -78,7 +78,6 @@ public:
             return false;
         }
 
-      #ifndef DEMO_VERSION
         std::unique_ptr<InputStream> in(file.createInputStream());
 
         int firstByte = in->readInt();
@@ -108,7 +107,6 @@ public:
 
         out->writeRepeatedByte(0, remainder);
         jassert(out->getPosition() == headerSizeBytes);
-      #endif
 
         return true;
     }

@@ -334,12 +334,6 @@ void Dialogs::promptForSaveModally(const std::function<void(bool)>& completionCa
 void Dialogs::promptForSaveApplicably(PostModalAction action) {
     pendingModalActions.push(action);
 
-    // don't prompt for save when saving is impossible!
-  #ifdef DEMO_VERSION
-    handleNextPendingModalAction();
-    return;
-  #endif
-
     if (watcher->getHaveEdited()) {
         auto* window = new AlertWindow("Save Current Preset",
                                        "Do you want to save your work?",

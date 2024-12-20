@@ -6,7 +6,6 @@
 
 
 bool Util::saveXml(const File& file, const Savable* savable, const String& name) {
-  #ifndef DEMO_VERSION
     if(file.existsAsFile()) {
         (void) file.deleteFile();
     }
@@ -26,9 +25,6 @@ bool Util::saveXml(const File& file, const Savable* savable, const String& name)
 
     gzipStream.write(utf8Data.getAddress(), utf8Data.sizeInBytes());
     gzipStream.flush();
-  #else
-    return false;
-  #endif
 
     return true;
 }

@@ -13,17 +13,11 @@ void EditWatcher::update(bool justUpdateTitle) {
     String currPreset 	= getStrConstant(DocumentName);
     String prodName 	= getStrConstant(ProductName);
 
-  #ifdef DEMO_VERSION
-    prodName += " demo";
-  #endif
-
     String titleBar = (prodName + " - ") + currPreset;
 
-  #ifndef DEMO_VERSION
     if(undoManager.canUndo() || editedWithoutUndo) {
         titleBar += String("*");
     }
-  #endif
 
     clients.call(&Client::updateTitle, titleBar);
 

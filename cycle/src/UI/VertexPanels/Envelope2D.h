@@ -20,13 +20,12 @@ template<class EnvelopeMesh> class MeshSelector;
 
 class Envelope2D:
         public Panel2D
-    ,	public TourGuide
-{
-    friend class EnvelopeInter3D;
+    ,   public Savable
+    ,	public TourGuide {
+friend class EnvelopeInter3D;
 
 public:
-    class ScrollListener : public MouseListener
-    {
+    class ScrollListener : public MouseListener {
     public:
         Envelope2D* panel;
 
@@ -34,9 +33,7 @@ public:
         void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
     };
 
-
-    class Controls : public Component, public SingletonAccessor
-    {
+    class Controls : public Component, public SingletonAccessor {
     public:
         Controls(SingletonRepo* repo, Envelope2D* panel);
 
@@ -47,8 +44,8 @@ public:
         void paintOverChildren(Graphics& g) override;
         void setSelectorVisibility(bool isVisible, bool doRepaint);
 
-        bool				showLayerSelector;
-        Ref<Envelope2D> 	panel;
+        bool showLayerSelector;
+        Ref<Envelope2D> panel;
     };
 
     explicit Envelope2D(SingletonRepo* repo);
@@ -57,14 +54,16 @@ public:
     /* */
     void init() override;
     void panelResized() override;
-    void setZoomLimit(float limit) { zoomPanel->rect.xMaximum = limit; }
+    void setZoomLimit(float limit) const { zoomPanel->rect.xMaximum = limit; }
 
     /* drawing */
     void drawCurvesAndSurfaces() override;
     void setListenersForEditWatcher(EditWatcher* watcher);
 
     /* callbacks */
-//	bool readXML(const XmlElement* element);
+	bool readXML(const XmlElement* element) override;
+    void writeXML(XmlElement* element) const override;
+
     Component* getComponent(int which) override;
     Component* getControlsComponent() { return &controls; }
 
@@ -102,11 +101,11 @@ private:
 //	Array<MeshLibrary::EnvProps> scratchProps;
 
     std::unique_ptr<MeshSelector<EnvelopeMesh> > meshSelector;
-    std::unique_ptr<RetractableCallout> 	envSelectCO;
-    std::unique_ptr<PulloutComponent> 	envSelectPO;
+    std::unique_ptr<RetractableCallout> envSelectCO;
+    std::unique_ptr<PulloutComponent> envSelectPO;
 
-    std::unique_ptr<RetractableCallout> 	loopCO;
-    std::unique_ptr<PulloutComponent> 	loopPO;
+    std::unique_ptr<RetractableCallout> loopCO;
+    std::unique_ptr<PulloutComponent> loopPO;
 
     friend class ScrollListener;
     friend class EnvelopeInter2D;

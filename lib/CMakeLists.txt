@@ -3,6 +3,11 @@ project(AmaranthLib VERSION 1.0.0)
 
 set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode")
 
+#message(STATUS ${CMAKE_CURRENT_SOURCE_DIR})
+message(STATUS ${JUCE_DIR})
+message(STATUS ${JUCE_MODULES_DIR})
+
+
 file(GLOB_RECURSE LIB_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
     "${JUCE_DIR}/*.cpp"
@@ -16,8 +21,7 @@ file(GLOB_RECURSE LIB_TEST_SOURCES
 )
 
 # Create library target
-add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES}
-        src/Design/Updating/UpdateType.h)
+add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
 add_executable(${PROJECT_NAME}_tests ${LIB_TEST_SOURCES} ${LIB_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC

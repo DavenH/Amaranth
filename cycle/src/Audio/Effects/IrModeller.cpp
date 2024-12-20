@@ -122,8 +122,9 @@ void IrModeller::rasterizeImpulseDirect() {
 void IrModeller::rasterizeGraphicImpulse() {
     Buffer<float> impulse = graphic.rawImpulse;
 
-    if (impulse.empty())
+    if (impulse.empty()) {
         return;
+    }
 
     if (usingWavFile) {
         int wavSize = wavImpulse.audio.size();
@@ -143,7 +144,7 @@ void IrModeller::rasterizeGraphicImpulse() {
     graphicConv.init(graphicConv.getBlockSize(), graphic.impulse);
 }
 
-void IrModeller::filterImpulse(ConvState &chan) {
+void IrModeller::filterImpulse(ConvState& chan) {
     int size = chan.impulse.size();
     int halfSize = size / 2;
     bool isGraphic = (&chan == &graphic);
@@ -440,8 +441,9 @@ void IrModeller::unloadWave() {
 }
 
 void IrModeller::updateGraphicConvState(int graphicRes, bool force) {
-    if (graphicRes < 0)
+    if (graphicRes < 0) {
         return;
+    }
 
     if (Util::assignAndWereDifferent(graphic.blockSize, graphicRes) || force) {
         graphicConv.init(graphicRes, graphic.impulse);

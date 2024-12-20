@@ -130,9 +130,9 @@ void DerivativePanel::calcDerivative() {
             return;
         }
 
-        int start 	= data.zeroIndex;
-        int end 	= data.oneIndex;
-        size 		= end - start;
+        int start = data.zeroIndex;
+        int end = data.oneIndex;
+        size = end - start;
 
         if (size < 3 || end == INT_MAX) {
             workMemory.clear();

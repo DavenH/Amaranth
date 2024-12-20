@@ -226,7 +226,6 @@ void UnisonUI::VoiceSelector::rowClicked(int row) {
 }
 
 void UnisonUI::writeXML(XmlElement* registryElem) const {
-  #ifndef DEMO_VERSION
     auto* effectElem = new XmlElement(getEffectName());
     auto* knobsElem = new XmlElement("Knobs");
 
@@ -260,7 +259,6 @@ void UnisonUI::writeXML(XmlElement* registryElem) const {
     effectElem->setAttribute("enabled", enabled);
 
     registryElem->addChildElement(effectElem);
-  #endif
 }
 
 void UnisonUI::updateSelection() {
@@ -274,8 +272,7 @@ bool UnisonUI::isGroupMode() const {
 bool UnisonUI::readXML(const XmlElement* element) {
     XmlElement* effectElem = element->getChildByName(getEffectName());
 
-    if(effectElem != nullptr)
-    {
+    if(effectElem != nullptr) {
         bool oldWasGroup = modeBox.getSelectedId() == Group;
         bool isGroup 	 = effectElem->getBoolAttribute("mode", true);
 
@@ -340,9 +337,7 @@ bool UnisonUI::readXML(const XmlElement* element) {
     return true;
 }
 
-
-Array<Rectangle<int> > UnisonUI::getOutlinableRects()
-{
+Array<Rectangle<int> > UnisonUI::getOutlinableRects() {
     Array<Rectangle<int> > a;
 
     a.add(enableButton.getBounds());
@@ -375,7 +370,7 @@ Component* UnisonUI::getComponent(int which) {
 
     switch (which) {
         case CycleTour::TargUniVoiceSlct: return &voiceSelector;
-        case CycleTour::TargUniMode: return &modeBox;
+        case CycleTour::TargUniMode:      return &modeBox;
         case CycleTour::TargUniAddRemove: return &addRemover;
         default: break;
     }

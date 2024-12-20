@@ -224,7 +224,6 @@ Mesh* WaveshaperUI::getCurrentMesh() {
 }
 
 void WaveshaperUI::writeXML(XmlElement* registryElem) const {
-  #ifndef DEMO_VERSION
     auto* waveshaperElem = new XmlElement(panelName);
 
     paramGroup->writeKnobXML(waveshaperElem);
@@ -233,7 +232,6 @@ void WaveshaperUI::writeXML(XmlElement* registryElem) const {
     waveshaperElem->setAttribute("oversampleFactor", waveshaper->getOversampleFactor());
 
     registryElem->addChildElement(waveshaperElem);
-  #endif
 }
 
 bool WaveshaperUI::readXML(const XmlElement* registryElem) {

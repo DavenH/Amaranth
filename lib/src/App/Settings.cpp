@@ -75,7 +75,7 @@ void Settings::saveGlobalSettings(XmlElement* pluginElem) {
     settingsDocElem->addChildElement(settingsElem);
 
   #if PLUGIN_MODE
-    pluginElem->addChildElement(settingsDocElem);
+    pluginElem->addChildElement(settingsDocElem.get());
   #else
 
     if(settingsFile.existsAsFile()) {
@@ -95,7 +95,6 @@ void Settings::saveGlobalSettings(XmlElement* pluginElem) {
 }
 
 void Settings::writeXML(XmlElement* topElement) const {
-  #ifndef DEMO_VERSION
     auto* prstElem = new XmlElement("Settings");
 
     for (const auto& settingPair : documentSettingsMap) {
@@ -104,7 +103,6 @@ void Settings::writeXML(XmlElement* topElement) const {
     }
 
     topElement->addChildElement(prstElem);
-  #endif
 }
 
 bool Settings::readXML(const XmlElement* element) {

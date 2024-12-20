@@ -52,7 +52,7 @@ PresetPage::PresetPage(SingletonRepo* repo) :
     tableListBox->setRowHeight(21);
 
     auto& mg = getObj(MiscGraphics);
-    progressImage 	 = mg.getIcon(8, 6);
+    progressImage = mg.getIcon(8, 6);
 
     TableHeaderComponent& header = tableListBox->getHeader();
 
@@ -79,11 +79,11 @@ PresetPage::PresetPage(SingletonRepo* repo) :
     addAndMakeVisible(&tagsField);
     addChildComponent(&wavControls);
 
-    folderImage 	= PNGImageFormat::loadFrom(Images::folder_png, Images::folder_pngSize);
+    folderImage = PNGImageFormat::loadFrom(Images::folder_png, Images::folder_pngSize);
     wavFolderButton = std::make_unique<IconButton>(folderImage, repo);
     upButton.reset(getLookAndFeel().createFileBrowserGoUpButton());
 
-    dismissImage 	= Image(Image::ARGB, 24, 24, true);
+    dismissImage = Image(Image::ARGB, 24, 24, true);
     Graphics g(dismissImage);
 
     g.setOpacity(0.5f);
@@ -183,12 +183,8 @@ void PresetPage::refresh() {
     }
 
     if (netIcon.isHighlit()) {
-      #ifndef DEMO_VERSION
         resetList();
         addItems(remoteDetails);
-      #else
-        showMsg("Sharing presets is not a feature of this demo");
-      #endif
     }
 
     search->refresh();
@@ -335,8 +331,9 @@ void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, 
             } else {
                 multStr = "KB";
 
-                if (bytes > 10.f)
+                if (bytes > 10.f) {
                     precision = 1;
+                }
             }
 
             g.setFont(12);
@@ -388,16 +385,14 @@ void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, 
     g.drawVerticalLine(width - 1, 0.f, height);
 }
 
-void PresetPage::cellClicked(int rowNumber, int columnId, const MouseEvent & e)
-{
+void PresetPage::cellClicked(int rowNumber, int columnId, const MouseEvent& e) {
     currPresetFiltIndex = rowNumber;
 
     updateTags(rowNumber);
 }
 
-void PresetPage::cellDoubleClicked(int rowNumber, int columnId, const MouseEvent & e)
-{
-    if(columnId == 6) {
+void PresetPage::cellDoubleClicked(int rowNumber, int columnId, const MouseEvent& e) {
+    if (columnId == 6) {
         return;
     }
 
@@ -409,8 +404,7 @@ void PresetPage::cellDoubleClicked(int rowNumber, int columnId, const MouseEvent
     cleanup();
 }
 
-void PresetPage::loadItem(int itemIndex, bool ignoreSave)
-{
+void PresetPage::loadItem(int itemIndex, bool ignoreSave) {
     std::cout << "loading preset item" << itemIndex << ", ignore save: " << ignoreSave << "\n";
 
     jassert(isPositiveAndBelow(itemIndex, getNumRows()));
@@ -586,8 +580,7 @@ void PresetPage::updateTags(int index) {
     }
 }
 
-void PresetPage::doChangeUpdate()
-{
+void PresetPage::doChangeUpdate() {
     repaint();
 
     int size = getFilteredItems().size();
@@ -854,8 +847,9 @@ void PresetPage::labelTextChanged(Label* label) {
 
         subfolderBox.clear(dontSendNotification);
 
-        for (int i = 0; i < subfolders.size(); ++i)
+        for (int i = 0; i < subfolders.size(); ++i) {
             subfolderBox.addItem(subfolders[i].getFileName(), i + 1);
+        }
 
         refresh();
     }
@@ -1106,7 +1100,6 @@ void PresetPage::buttonClicked(Button* button) {
     } else if (button == wavFolderButton.get()) {
         getObj(Dialogs).showOpenWaveDialog(nullptr, {}, DialogActions::TrackPitchAction);
     } else {
-      #ifndef DEMO_VERSION
         int rowNumber = button->getProperties()["rowNumber"];
         bool isLatest = button->getProperties()["isAtLatest"];
         int column 	  = button->getProperties()["column"];
@@ -1140,19 +1133,13 @@ void PresetPage::buttonClicked(Button* button) {
                 } else {
                     showMsg("Preset already downloaded!");
                 }
-            }
-            else
-            {
+            } else {
                 File uploadFile(deets.getFilename());
 
                 uploadThread.setFile(uploadFile);
                 uploadThread.startThread(Thread::Priority::low);
             }
         }
-
-      #else
-        showMsg("Sharing presets is not a feature of this demo");
-      #endif
     }
 }
 

@@ -81,7 +81,6 @@ int SampleUtils::calcFundDelta() {
     return fundDiff;
 }
 
-
 void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
 //	ScopedLock sl(wavSource->getLock());
 
@@ -166,15 +165,16 @@ void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
             multisample->fillRanges();
         }
 
-        multisample->performUpdate(UpdateType::Update);
+        multisample->performUpdate(Update);
 
         if(PitchedSample* current = multisample->getCurrentSample()) {
             getObj(MidiKeyboard).setAuditionKey(current->fundNote);
         }
     }
 
-    if(invokerIsDialog)
+    if(invokerIsDialog) {
         getObj(OscControlPanel).setLengthInSeconds(getWavLengthSeconds());
+    }
 }
 
 void SampleUtils::waveNoteChanged(PitchedSample* sample, bool isMulti, bool invokerIsDialog) {
@@ -188,7 +188,7 @@ void SampleUtils::waveNoteChanged(PitchedSample* sample, bool isMulti, bool invo
         getObj(MorphPanel).setKeyValueForNote(sample->fundNote);
     }
 
-    EnvRasterizer& pitchRast = getObj(EnvPitchRast);
+    auto& pitchRast = getObj(EnvPitchRast);
 
     sample->createEnvFromPeriods(isMulti);
     sample->createPeriodsFromEnv(static_cast<MeshRasterizer*>(&pitchRast));
@@ -226,7 +226,7 @@ void SampleUtils::updateMidiNoteNumber(int note) {
 
         sample->fundNote = note;
         tracker->setSample(sample);
-        tracker->refineFrames(sample, period);
+        PitchTracker::refineFrames(sample, period);
 
         waveNoteChanged(sample, false, false);
 

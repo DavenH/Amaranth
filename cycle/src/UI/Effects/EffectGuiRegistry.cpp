@@ -35,7 +35,6 @@ bool EffectGuiRegistry::readXML(const XmlElement* topElement) {
 }
 
 void EffectGuiRegistry::writeXML(XmlElement* topElement) const {
-#ifndef DEMO_VERSION
     auto* effectsElem = new XmlElement("Effects");
 
     const Savable* effects[] = {
@@ -52,5 +51,4 @@ void EffectGuiRegistry::writeXML(XmlElement* topElement) const {
     }
 
     topElement->addChildElement(effectsElem);
-#endif
 }

@@ -33,18 +33,16 @@ Envelope2D::Envelope2D(SingletonRepo* repo) :
     ,	envSelectPO	(nullptr)
     ,	loopCO		(nullptr)
     ,	loopPO		(nullptr)
-    ,	scrollListener(this)
-{
+    ,	scrollListener(this) {
 }
 
 Envelope2D::~Envelope2D() {
     controls.destroy();
 
-    meshSelector = 0;
+    meshSelector = nullptr;
 }
 
-void Envelope2D::init()
-{
+void Envelope2D::init() {
     vertPadding 		= 2;
     doesDrawMouseHint 	= true;
     curveIsBipolar 		= false;
@@ -133,8 +131,9 @@ void Envelope2D::updateBackground(bool verticalOnly) {
     int currentEnv = getSetting(CurrentEnvGroup);
     MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(currentEnv);
 
-    if (props == nullptr)
+    if (props == nullptr) {
         return;
+    }
 
     if (props->logarithmic) {
         Panel::updateBackground(true);
@@ -326,11 +325,13 @@ void Envelope2D::getLoopPoints(float& loopStart, float& sustain) {
         loopStart = -1;
         sustain = -1;
 
-        if(isPositiveAndBelow(loopIdx, (int) icpts.size()))
+        if(isPositiveAndBelow(loopIdx, (int) icpts.size())) {
             loopStart = icpts[loopIdx].x;
+        }
 
-        if(isPositiveAndBelow(sustIdx, (int) icpts.size()))
+        if(isPositiveAndBelow(sustIdx, (int) icpts.size())) {
             sustain = icpts[sustIdx].x;
+        }
     }
 }
 
@@ -373,8 +374,9 @@ void Envelope2D::Controls::setSelectorVisibility(bool isVisible, bool doRepaint)
 
     resized();
 
-    if (doRepaint)
+    if (doRepaint) {
         repaint();
+    }
 }
 
 void Envelope2D::Controls::destroy() {
@@ -436,8 +438,7 @@ void Envelope2D::Controls::resized()
 
     panel->loopCO->setBounds(rightSide.removeFromTop(panel->loopCO->getExpandedSize()));
 
-    if(showLayerSelector)
-    {
+    if (showLayerSelector) {
         rightSide.removeFromTop(8);
         e2->addRemover.setBounds(rightSide.removeFromTop(e2->addRemover.getExpandedSize()));
         rightSide.removeFromTop(4);
@@ -449,8 +450,9 @@ void Envelope2D::Controls::resized()
     int rightHeight = layerBounds.getHeight() - rightSide.getHeight();
 
     bounds.removeFromTop(jmax(leftHeight, rightHeight));
-    if(bounds.getHeight() > 40)
+    if(bounds.getHeight() > 40) {
         bounds.removeFromTop(8);
+    }
 
     panel->meshSelector->setBounds(bounds.removeFromLeft(24).removeFromTop(24));
     e2->configIcon.setBounds(bounds.removeFromRight(24).removeFromTop(24));
@@ -471,7 +473,7 @@ void Envelope2D::createScales()
     vector<Rectangle<float> > newScales;
 
     int fontScale 	 = getSetting(PointSizeScale);
-    MiscGraphics& mg = getObj(MiscGraphics);
+    auto& mg         = getObj(MiscGraphics);
     Font& font 		 = *mg.getAppropriateFont(fontScale);
     float lengthSecs = getObj(OscControlPanel).getLengthInSeconds();
     float tempoScale = getObj(SynthAudioSource).getTempoScale();
@@ -537,8 +539,7 @@ void Envelope2D::drawScales()
     }
 }
 
-void Envelope2D::postCurveDraw()
-{
+void Envelope2D::postCurveDraw() {
     float currentPos = getObj(PlaybackPanel).getEnvelopePos();
 
     gfx->setCurrentLineWidth(1.f);
@@ -547,51 +548,45 @@ void Envelope2D::postCurveDraw()
     gfx->drawLine(currentPos, 0, currentPos, 1, true);
 }
 
-Component* Envelope2D::getComponent(int which)
-{
-    switch(which)
-    {
-        case CycleTour::TargVol: 		return &e2Interactor->volumeIcon; 		break;
-        case CycleTour::TargScratch:	return &e2Interactor->scratchIcon; 		break;
-        case CycleTour::TargPitch:		return &e2Interactor->pitchIcon; 		break;
-        case CycleTour::TargWavPitch:	return &e2Interactor->wavePitchIcon; 	break;
-        case CycleTour::TargScratchLyr:	return &e2Interactor->layerSelector; 	break;
-        case CycleTour::TargSustLoop:	return loopCO.get(); 					break;
+Component* Envelope2D::getComponent(int which) {
+    switch (which) {
+        case CycleTour::TargVol: 		return &e2Interactor->volumeIcon;
+        case CycleTour::TargScratch:	return &e2Interactor->scratchIcon;
+        case CycleTour::TargPitch:		return &e2Interactor->pitchIcon;
+        case CycleTour::TargWavPitch:	return &e2Interactor->wavePitchIcon;
+        case CycleTour::TargScratchLyr:	return &e2Interactor->layerSelector;
+        case CycleTour::TargSustLoop:	return loopCO.get();
         default: break;
     }
 
     return nullptr;
 }
 
-/*
-EnvRasterizer::LayerProps& Envelope2D::getScratchProps(int index)
-{
+EnvRasterizer::LayerProps& Envelope2D::getScratchProps(int index) {
     int scratchEnv = index;
 
-    if(index < 0)
+    if (index < 0) {
         scratchEnv = getObj(MeshLibrary).getCurrentIndex(LayerGroups::GroupScratch);
+    }
 
-    if(isPositiveAndBelow(scratchEnv, scratchProps.size()))
+    if (isPositiveAndBelow(scratchEnv, scratchProps.size()))
         return scratchProps.getReference(scratchEnv);
 
     return defaultProps;
 }
 
-
-void Envelope2D::removeScratchProps(int index)
-{
-    if(isPositiveAndBelow(index, scratchProps.size()))
-    {
+void Envelope2D::removeScratchProps(int index) {
+    if (isPositiveAndBelow(index, scratchProps.size())) {
         scratchProps.remove(index);
 
-        if(scratchProps.size() == 1)
+        if (scratchProps.size() == 1) {
             scratchProps.add(defaultProps);
+        }
     }
-}*/
+}
 
-/*
-bool Envelope2D::readXML(const XmlElement* element)
-{
+
+bool Envelope2D::readXML(const XmlElement* element) {
     struct EnvClass {
         int type;
         String name;
@@ -599,29 +594,26 @@ bool Envelope2D::readXML(const XmlElement* element)
         EnvClass(int type, String name) : type(type), name(name) {}
     };
 
-    EnvClass types[] =
-    {
-            EnvClass((int) LayerGroups::GroupVolume,  "Volume")
-        ,	EnvClass((int) LayerGroups::GroupPitch,   "Pitch")
-        ,	EnvClass((int) LayerGroups::GroupScratch, "Scratch")
+    EnvClass types[] = {
+            EnvClass(LayerGroups::GroupVolume,  "Volume")
+        ,	EnvClass(LayerGroups::GroupPitch,   "Pitch")
+        ,	EnvClass(LayerGroups::GroupScratch, "Scratch")
     };
 
     XmlElement* envProps = element->getChildByName("EnvelopeProps");
-    for(int i = 0; i < 3; ++i)
-    {
-        EnvClass& type = types[i];
-        MeshLibrary::LayerGroup& group = getObj(MeshLibrary).getGroup(LayerGroups::GroupScratch);
+    for(auto& envTypes: types) {
+        MeshLibrary::LayerGroup& group = getObj(MeshLibrary).getGroup(envTypes.type);
 
         group.layers.clear();
 
-        forEachXmlChildElementWithTagName(*envProps, elem, type.name + "Props")
-        {
-            if(elem == nullptr)
+        forEachXmlChildElementWithTagName(*envProps, elem, envTypes.name + "Props") {
+            if(elem == nullptr) {
                 continue;
+            }
             bool defaultDynamic = false;
             bool defaultActivity = false; 	// i == 0 ? lyr.getEnvMesh(LayerSources::GroupVolume)->active :
                                             // 		    lyr.getEnvMesh(LayerSources::GroupPitch)->active;
-            MeshLibrary::Layer layer = getObj(MeshLibrary).instantiateLayer(elem, type.type);
+            MeshLibrary::Layer layer = getObj(MeshLibrary).instantiateLayer(elem, envTypes.type);
             group.layers.push_back(layer);
         }
     }
@@ -630,4 +622,7 @@ bool Envelope2D::readXML(const XmlElement* element)
 
     return true;
 }
-*/
+
+void Envelope2D::writeXML(XmlElement* element) const {
+    // TODO
+}

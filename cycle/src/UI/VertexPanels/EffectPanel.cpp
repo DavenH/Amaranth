@@ -68,7 +68,7 @@ float EffectPanel::getDragMovementScale() {
     return 1.f;
 }
 
-void EffectPanel::performUpdate(int updateType) {
+void EffectPanel::performUpdate(UpdateType updateType) {
     repaint();
 }
 

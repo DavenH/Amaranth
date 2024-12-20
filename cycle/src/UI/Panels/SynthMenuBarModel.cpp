@@ -14,6 +14,9 @@
 
 #include "GeneralControls.h"
 #include "SynthMenuBarModel.h"
+
+#include <Updating/MorphUpdate.h>
+
 #include "VertexPropertiesPanel.h"
 
 #include "../CycleDefs.h"
@@ -60,11 +63,6 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 	if (topLevelMenuIndex == FileMenu) {
 		bool haveEdited = getObj(EditWatcher).getHaveEdited();
 		bool canSaveAs = true;
-
-	  #ifdef DEMO_VERSION
-		haveEdited = false;
-		canSaveAs = false;
-	  #endif
 
 		menu.addItem(NewFile, 		"New");
 		menu.addItem(OpenFile, 		"Open");
@@ -250,7 +248,6 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 		} else if (item == SaveFile) fileMgr->saveCurrentPreset();
 		else if (item == SaveAsFile) dialogs->showPresetSaveAsDialog();
 		else if (item == RevertToSaved) fileMgr->revertCurrentPreset();
-
 		else if (item == LoadSample) {
 			dialogs->showOpenWaveDialog(nullptr, String(), DialogActions::TrackPitchAction);
 		} else if (item == LoadMultiSample) {
@@ -384,10 +381,9 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 			}
 
 			// XXX
-			/*
-			if(Util::assignAndWereDifferent(factor, newFactor))
-				getObj(Updater).reductionFactorChanged();
-			*/
+			if(Util::assignAndWereDifferent(factor, newFactor)) {
+				getObj(Updater).update(UpdateSources::SourceMorph, RestoreDetail);
+			}
 		} else if (item == InterpWaveCycles || item == WrapWaveCycles) {
 			if (item == InterpWaveCycles)
 				getSetting(InterpWaveCycles) ^= true;

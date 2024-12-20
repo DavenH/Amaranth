@@ -18,7 +18,7 @@ void Envelope3D::buttonClicked(Button* button) {
 }
 
 Buffer<float> Envelope3D::getColumnArray() {
-    return Buffer<float>(getObj(E3Rasterizer).getArray());
+    return Buffer(getObj(E3Rasterizer).getArray());
 }
 
 const vector<Column>& Envelope3D::getColumns() {

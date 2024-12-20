@@ -119,7 +119,6 @@ bool ParameterGroup::readKnobXML(const XmlElement* effectElem) {
 }
 
 void ParameterGroup::writeKnobXML(XmlElement* effectElem) const {
-  #ifndef DEMO_VERSION
     auto* knobsElem = new XmlElement("Knobs");
 
     for(int knobIdx = 0; knobIdx < knobs.size(); ++knobIdx)	{
@@ -131,7 +130,6 @@ void ParameterGroup::writeKnobXML(XmlElement* effectElem) const {
     }
 
     effectElem->addChildElement(knobsElem);
-  #endif
 }
 
 void ParameterGroup::listenToKnobs() {

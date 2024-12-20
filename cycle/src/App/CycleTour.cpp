@@ -1020,14 +1020,14 @@ void CycleTour::ItemWrapper::updatePosition (
     const float arrowIndent = borderSpace - arrowSize;
 
     Point targets[4] = { Point ((float) targetArea.getCentreX(), (float) targetArea.getBottom()),
-                                Point ((float) targetArea.getRight(),   (float) targetArea.getCentreY()),
-                                Point ((float) targetArea.getX(),       (float) targetArea.getCentreY()),
-                                Point ((float) targetArea.getCentreX(), (float) targetArea.getY()) };
+                         Point ((float) targetArea.getRight(),   (float) targetArea.getCentreY()),
+                         Point ((float) targetArea.getX(),       (float) targetArea.getCentreY()),
+                         Point ((float) targetArea.getCentreX(), (float) targetArea.getY()) };
 
     Line lines[4] = { Line (targets[0].translated (-hwReduced, hh - arrowIndent),    targets[0].translated (hwReduced, hh - arrowIndent)),
-                             Line (targets[1].translated (hw - arrowIndent, -hhReduced),    targets[1].translated (hw - arrowIndent, hhReduced)),
-                             Line (targets[2].translated (-(hw - arrowIndent), -hhReduced), targets[2].translated (-(hw - arrowIndent), hhReduced)),
-                             Line (targets[3].translated (-hwReduced, -(hh - arrowIndent)), targets[3].translated (hwReduced, -(hh - arrowIndent))) };
+                      Line (targets[1].translated (hw - arrowIndent, -hhReduced),    targets[1].translated (hw - arrowIndent, hhReduced)),
+                      Line (targets[2].translated (-(hw - arrowIndent), -hhReduced), targets[2].translated (-(hw - arrowIndent), hhReduced)),
+                      Line (targets[3].translated (-hwReduced, -(hh - arrowIndent)), targets[3].translated (hwReduced, -(hh - arrowIndent))) };
 
     const Rectangle centrePointArea (newAreaToFitIn.reduced (hw, hh).toFloat());
     const Point targetCentre (targetArea.getCentre().toFloat());
@@ -1038,11 +1038,12 @@ void CycleTour::ItemWrapper::updatePosition (
         Line<float> constrainedLine(centrePointArea.getConstrainedPoint(lines[i].getStart()),
                                     centrePointArea.getConstrainedPoint(lines[i].getEnd()));
 
-        const Point<float> centre(constrainedLine.findNearestPointTo(targetCentre));
+        const Point centre(constrainedLine.findNearestPointTo(targetCentre));
         float distanceFromCentre = centre.getDistanceFrom(targets[i]);
 
-        if (!intersects(centrePointArea, lines[i]))
-            distanceFromCentre += 1000.0f;
+        if (!intersects(centrePointArea, lines[i])) {
+	        distanceFromCentre += 1000.0f;
+        }
 
         if (distanceFromCentre < nearest) {
             nearest = distanceFromCentre;
@@ -1171,8 +1172,9 @@ void CycleTour::timerCallback(int id) {
 
     stopTimer(item.area);
 
-    if (item.actionIndex < item.actions.size())
-        startTimer(item.area, action.delayMillis);
+    if (item.actionIndex < item.actions.size()) {
+	    startTimer(item.area, action.delayMillis);
+    }
 }
 
 
@@ -1257,10 +1259,6 @@ Interactor* CycleTour::areaToInteractor(int which) {
 bool CycleTour::passesRequirements(const String& ignore, const String& require) {
 	if(ignore.isEmpty() && require.isEmpty()) {
 		return true;
-	}
-
-	if(demoSplit(require.containsIgnoreCase("demo"), ignore.containsIgnoreCase("demo"))) {
-		return false;
 	}
 
 	if(platformSplit( require.containsIgnoreCase("mac"), ignore.containsIgnoreCase("mac"))) {

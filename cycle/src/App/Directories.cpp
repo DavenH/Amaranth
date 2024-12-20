@@ -45,25 +45,34 @@ void Directories::init() {
     jassert(! contentDir.isEmpty());
 }
 
-String Directories::getPresetDir() {
-    return contentDir + (contentDir.endsWithChar(File::getSeparatorChar()) ? String() : File::getSeparatorString()) +
-           "presets" + File::getSeparatorString();
+String Directories::getPresetDir() const {
+    String path = contentDir;
+    if (!path.endsWithChar(File::getSeparatorChar())) {
+        path += File::getSeparatorString();
+    }
+    return path + "presets" + File::getSeparatorString();
 }
 
-String Directories::getUserPresetDir() {
+String Directories::getUserPresetDir() const {
     return getPresetDir() + "user" + File::getSeparatorString();
 }
 
-String Directories::getMeshDir() {
-    return contentDir + (contentDir.endsWithChar(File::getSeparatorChar()) ? String() : File::getSeparatorString()) +
-           "mesh" + File::getSeparatorString();
+String Directories::getMeshDir() const {
+    String path = contentDir;
+    if (!path.endsWithChar(File::getSeparatorChar())) {
+        path += File::getSeparatorString();
+    }
+    return path + "mesh" + File::getSeparatorString();
 }
 
-String Directories::getUserMeshDir() {
+String Directories::getUserMeshDir() const {
     return getMeshDir() + "user" + File::getSeparatorString();
 }
 
-String Directories::getTutorialDir() {
-    return contentDir + (contentDir.endsWithChar(File::getSeparatorChar()) ? String() : File::getSeparatorString()) +
-           "tutorials";
+String Directories::getTutorialDir() const {
+    String path = contentDir;
+    if (!path.endsWithChar(File::getSeparatorChar())) {
+        path += File::getSeparatorString();
+    }
+    return path + "tutorials" + File::getSeparatorString();
 }

@@ -686,10 +686,9 @@ void ModMatrix::ColourCheckbox::paint(Graphics& g) {
 
 
 void ModMatrixPanel::writeXML(XmlElement* element) const {
-#ifndef DEMO_VERSION
-    auto* matrixElem 		= new XmlElement("ModMatrix");
-	auto* outputsElem 	= new XmlElement("Outputs");
-	auto* inputsElem 		= new XmlElement("Inputs");
+    auto* matrixElem = new XmlElement("ModMatrix");
+	auto* outputsElem = new XmlElement("Outputs");
+	auto* inputsElem = new XmlElement("Inputs");
 	auto* mappingsElem = new XmlElement("Mappings");
 
 	for (auto& elem : inputs) {
@@ -722,7 +721,6 @@ void ModMatrixPanel::writeXML(XmlElement* element) const {
 
     matrixElem->addChildElement(mappingsElem);
     element->addChildElement(matrixElem);
-#endif
 }
 
 void ModMatrixPanel::layerAdded(int type, int index) {

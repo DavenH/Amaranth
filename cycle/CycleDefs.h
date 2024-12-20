@@ -15,16 +15,6 @@
 #define doOnce(X) { static int times = 0; if(times++ < 1) { X } }
 #define do10X(X) { static int times = 0; if(times++ < 10) { X } }
 
-#ifdef DEMO_VERSION
-  #define onlyDemo(X) X
-  #define noDemo(X)
-  #define demoSplit(X, Y) Y
-#else
-  #define onlyDemo(X)
-  #define noDemo(X) X
-  #define demoSplit(X, Y) X
-#endif
-
 #if PLUGIN_MODE
   #define onlyPlug(X) X
   #define noPlug(X)

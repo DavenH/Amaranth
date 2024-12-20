@@ -10,12 +10,6 @@ public:
 
 	void init() override;
 
-	String getMeshDir();
-	String getPresetDir();
-	String getUserPresetDir();
-	String getUserMeshDir();
-	String getTutorialDir();
-
 	void setMeshDir(const String& dir) 			{ meshDir 	 = dir; 			}
 	void setHomeUrl(const String& url)			{ homeUrl 	 = url; 			}
 	const String& getHomeUrl() 					{ return homeUrl; 				}
@@ -24,9 +18,15 @@ public:
     void setLastWaveDirectory(const String& str){ lastWaveDirectory = str; 		}
     void setLoadedWave(const String& str) 		{ loadedWave = str; 			}
 
-	[[nodiscard]] const String& getLoadedWavePath() const		{ return loadedWave; 			}
-    [[nodiscard]] const String& getLastWaveDirectory() const 	{ return lastWaveDirectory; 	}
-	[[nodiscard]] const String& getLastPresetDir() const		{ return lastPresetDirectory; 	}
+	[[nodiscard]] const String& getLoadedWavePath() const	 { return loadedWave; 			}
+    [[nodiscard]] const String& getLastWaveDirectory() const { return lastWaveDirectory; 	}
+	[[nodiscard]] const String& getLastPresetDir() const	 { return lastPresetDirectory; 	}
+
+	[[nodiscard]] String getMeshDir() const;
+	[[nodiscard]] String getPresetDir() const;
+	[[nodiscard]] String getUserPresetDir() const;
+	[[nodiscard]] String getUserMeshDir() const;
+	[[nodiscard]] String getTutorialDir() const;
 
 private:
 	String loadedWave;

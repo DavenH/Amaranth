@@ -1,4 +1,3 @@
-# app/CMakeLists.txt
 project(Cycle VERSION 1.9.0)
 
 set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode")
@@ -15,7 +14,16 @@ file(GLOB_RECURSE APP_TEST_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/**/tests/*.cpp"
 )
 
-add_executable(${PROJECT_NAME} ${APP_SOURCES})
+# Define different targets based on build type
+if(BUILD_TYPE STREQUAL "Standalone")
+    add_executable(${PROJECT_NAME} ${APP_SOURCES})
+    set(TARGET_TYPE "Standalone")
+else()
+    add_library(${PROJECT_NAME} MODULE ${APP_SOURCES})
+    set(TARGET_TYPE "Plugin")
+endif()
+
+# Add test executable regardless of build type
 add_executable(${PROJECT_NAME}_tests ${APP_TEST_SOURCES} ${APP_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -31,7 +39,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/Incl/JucePluginDefines.h"
 )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE
+# Base definitions for both builds
+set(BASE_DEFINITIONS
     LINUX=1
     JUCE_PROJUCER_VERSION=0x80004
     JUCE_MODULE_AVAILABLE_juce_animation=1
@@ -51,14 +60,11 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     JUCE_MODULE_AVAILABLE_juce_osc=1
     JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
     JUCE_STRICT_REFCOUNTEDPOINTER=1
-    JUCE_STANDALONE_APPLICATION=1
     JUCE_MODAL_LOOPS_PERMITTED=1
     JucePlugin_Build_VST=0
-    JucePlugin_Build_VST3=1
     JucePlugin_Build_AU=0
     JucePlugin_Build_AUv3=0
     JucePlugin_Build_AAX=0
-    JucePlugin_Build_Standalone=1
     JucePlugin_Build_Unity=0
     JucePlugin_Build_LV2=0
 )
@@ -90,5 +96,6 @@ include(Catch)
 catch_discover_tests(${PROJECT_NAME}_tests)
 
 install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
 )

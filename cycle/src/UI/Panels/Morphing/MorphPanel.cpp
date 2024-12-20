@@ -505,10 +505,8 @@ bool MorphPanel::readXML(const XmlElement* element) {
 }
 
 void MorphPanel::writeXML(XmlElement* element) const {
-  #ifndef DEMO_VERSION
 //	jassert(element);
 //	int id = mappingBox.getSelectedId();
-  #endif
 }
 
 //bool MorphPanel::isCurrentModMappingVelocity()

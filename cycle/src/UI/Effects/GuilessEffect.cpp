@@ -23,23 +23,19 @@ GuilessEffect::GuilessEffect(const String& name, const String& displayName, int 
     ,	minTitleSize	(50)
     ,	font			(15, Font::bold)
     ,	enableButton	(5, 5, this, repo, "Enable effect")
-    ,	title			(repo, displayName.toUpperCase())
-{
+    ,	title			(repo, displayName.toUpperCase()) {
     addAndMakeVisible(&enableButton);
     addAndMakeVisible(&title);
 
     title.setColorHSV(0, 0.35f);
 }
 
-void GuilessEffect::init()
-{
+void GuilessEffect::init() {
     paramGroup->listenToKnobs();
     paramGroup->addKnobsTo(this);
 }
 
-
-void GuilessEffect::paint(Graphics & g)
-{
+void GuilessEffect::paint(Graphics& g) {
     getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
     auto& mg = getObj(MiscGraphics);
@@ -124,14 +120,12 @@ void GuilessEffect::doGlobalUIUpdate(bool force) {
 }
 
 void GuilessEffect::writeXML(XmlElement* registryElem) const {
-  #ifndef DEMO_VERSION
     auto* effectElem = new XmlElement(getEffectName());
 
     paramGroup->writeKnobXML(effectElem);
 
     effectElem->setAttribute("enabled", enabled);
     registryElem->addChildElement(effectElem);
-  #endif
 }
 
 bool GuilessEffect::readXML(const XmlElement* element) {
@@ -144,8 +138,9 @@ bool GuilessEffect::readXML(const XmlElement* element) {
     } else {
         ScopedBooleanSwitcher sbs(paramGroup->updatingAllSliders);
 
-        for (int i = 0; i < paramGroup->getNumParams(); ++i)
+        for (int i = 0; i < paramGroup->getNumParams(); ++i) {
             paramGroup->setKnobValue(i, 0.5, false);
+        }
     }
 
     return true;

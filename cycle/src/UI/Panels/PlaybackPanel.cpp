@@ -165,7 +165,6 @@ void PlaybackPanel::update(const MouseEvent& e) {
 	}
 }
 
-
 //void PlaybackPanel::primaryDimensionChanged()
 //{
 //	repaint();
@@ -173,21 +172,17 @@ void PlaybackPanel::update(const MouseEvent& e) {
 
 
 /*
-
 PlaybackPanel::GlobalPlaybackPosition(SingletonRepo* repo) :
 		SingletonAccessor(repo, "")
 	,	x(0)
 	,	envPos(0)
 	,	playing(false)
-	,	incrementScale(1.f)
-{
+	,	incrementScale(1.f) {
 	midiKeyPlaying = 64;
 }
 */
 
-
-void PlaybackPanel::init()
-{
+void PlaybackPanel::init() {
 	main 			 = &getObj(MainPanel);
 	timeRasterizer 	 = &getObj(TimeRasterizer);
 	freqRasterizer 	 = &getObj(SpectRasterizer);
@@ -336,8 +331,7 @@ void PlaybackPanel::resetPlayback(bool doUpdate) {
 		}
 	}
 
-	if (doUpdate)
-	{
+	if (doUpdate) {
 		doPostCallback();
 		updateView();
 	}

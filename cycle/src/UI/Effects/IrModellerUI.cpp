@@ -15,6 +15,9 @@
 #include <Util/Util.h>
 
 #include "IrModellerUI.h"
+
+#include <Util/StatusChecker.h>
+
 #include "../Dialogs/PresetPage.h"
 #include "../Panels/PlaybackPanel.h"
 #include "../VertexPanels/DeformerPanel.h"
@@ -88,8 +91,7 @@ IrModellerUI::IrModellerUI(SingletonRepo* repo) :
 	createNameImage("IR Modeller");
 }
 
-void IrModellerUI::init()
-{
+void IrModellerUI::init() {
 	irModeller = &getObj(SynthAudioSource).getIrModeller();
 
 	selector = std::make_unique<MeshSelector<Mesh>>(repo.get(), this, String("ir"), true, false, true);
@@ -100,15 +102,15 @@ void IrModellerUI::init()
 	panelControls = std::make_unique<PanelControls>(repo, this, this, nullptr, "Impulse Modeller");
 	panelControls->addEnablementIcon();
 
-	CalloutUtils::addRetractableCallout(zoomCO, zoomPO, repo, 6, 2, zoomArr, numElementsInArray(zoomArr), panelControls, false);
-	CalloutUtils::addRetractableCallout(waveCO, wavePO, repo, 0, 5, wavArr, numElementsInArray(wavArr), panelControls, false);
+	CalloutUtils::addRetractableCallout(zoomCO, zoomPO, repo, 6, 2, zoomArr, numElementsInArray(zoomArr), panelControls.get(), false);
+	CalloutUtils::addRetractableCallout(waveCO, wavePO, repo, 0, 5, wavArr, numElementsInArray(wavArr), panelControls.get(), false);
 
-	panelControls->addLeftItem(zoomCO, true);
-	panelControls->addRightItem(waveCO, true);
+	panelControls->addLeftItem(zoomCO.get(), true);
+	panelControls->addRightItem(waveCO.get(), true);
 	panelControls->addSlider(lengthSlider);
 	panelControls->addSlider(gainSlider);
 	panelControls->addSlider(hpSlider);
-	panelControls->addMeshSelector(selector);
+	panelControls->addMeshSelector(selector.get());
 
 	rasterizer->setMesh(getMesh());
 	irModeller->setMesh(rasterizer->getMesh());
@@ -119,12 +121,10 @@ void IrModellerUI::init()
 	bufSizeLabel.setBorderSize(BorderSize<int>());
 }
 
-void IrModellerUI::initControls()
-{
+void IrModellerUI::initControls() {
 }
 
-void IrModellerUI::setCurrentMesh(Mesh* mesh)
-{
+void IrModellerUI::setCurrentMesh(Mesh* mesh) {
 	panelControls->enableCurrent.setHighlit(isEnabled);
 
 	rasterizer->cleanUp();
@@ -138,89 +138,71 @@ void IrModellerUI::setCurrentMesh(Mesh* mesh)
 	triggerRefreshUpdate();
 }
 
-
-void IrModellerUI::previewMesh(Mesh* mesh)
-{
+void IrModellerUI::previewMesh(Mesh* mesh) {
 	ScopedLock sl(renderLock);
 
 	setMeshAndUpdate(mesh);
 }
 
-
-void IrModellerUI::previewMeshEnded(Mesh* oldMesh)
-{
+void IrModellerUI::previewMeshEnded(Mesh* oldMesh) {
 	ScopedLock sl(renderLock);
 
 	setMeshAndUpdate(oldMesh);
 }
 
-
-void IrModellerUI::doGlobalUIUpdate(bool force)
-{
+void IrModellerUI::doGlobalUIUpdate(bool force) {
 	Interactor::doGlobalUIUpdate(force);
 }
 
-
-void IrModellerUI::reduceDetail()
-{
+void IrModellerUI::reduceDetail() {
 	Interactor::reduceDetail();
 }
 
-
-void IrModellerUI::restoreDetail()
-{
+void IrModellerUI::restoreDetail() {
 	Interactor::restoreDetail();
 }
 
-
-bool IrModellerUI::paramTriggersAggregateUpdate(int knobIndex)
-{
-	return ! paramGroup->updatingAllSliders;
+bool IrModellerUI::paramTriggersAggregateUpdate(int knobIndex) {
+	return !paramGroup->updatingAllSliders;
 }
 
-
-void IrModellerUI::setMeshAndUpdate(Mesh *mesh, bool doRepaint)
-{
+void IrModellerUI::setMeshAndUpdate(Mesh* mesh, bool doRepaint) {
 	rasterizer->cleanUp();
 	rasterizer->setMesh(mesh);
 	irModeller->setMesh(mesh);
 	irModeller->setPendingAction(IrModeller::rasterize);
 
-	if(doRepaint)
+	if(doRepaint) {
 		repaint();
+	}
 }
 
-
-Mesh* IrModellerUI::getCurrentMesh()
-{
+Mesh* IrModellerUI::getCurrentMesh() {
 	return Interactor::getMesh();
 }
 
-
-void IrModellerUI::preDraw()
-{
+void IrModellerUI::preDraw() {
 	Buffer<float> mags 		= irModeller->getMagnitudes();
 	Buffer<float> impulse 	= irModeller->getGraphicImpulse();
 
-	if(mags.size() == 0)
+	if(mags.size() == 0) {
 		return;
+	}
 
 	vector<Color>& grd = gradient.getColours();
 
 	ScopedAlloc<Ipp32f> reducedMags, accum;
 
-	if(mags.size() > 512)
-	{
+	if (mags.size() > 512) {
 		accum.resize(512);
 		reducedMags.resize(512);
 		int ratio = mags.size() / reducedMags.size();
 
-		Buffer<float> a = accum;
-		Buffer<float> reduced = reducedMags;
+		Buffer a = accum;
+		Buffer reduced = reducedMags;
 		a.zero();
 
-		for(int i = 0; i < ratio; ++i)
-		{
+		for (int i = 0; i < ratio; ++i) {
 			reduced.downsampleFrom(mags, -1, i);
 			a.add(reduced);
 		}
@@ -262,8 +244,9 @@ void IrModellerUI::preDraw()
 
 	vector<Color> colors;
 
-	for(int i = 0; i < yScale.size(); ++i)
+	for(int i = 0; i < yScale.size(); ++i) {
 		colors.push_back(grd[indices[i]]);
+	}
 
 	gfx->drawVerticalGradient(firstX, lastX, yScale, colors);
 
@@ -277,17 +260,14 @@ void IrModellerUI::preDraw()
 
 	gfx->enableSmoothing();
 	gfx->setCurrentColour(0.8f, 0.4f, 0.5f, 0.4f);
-	gfx->drawLineStrip(xy, true);
+	gfx->drawLineStrip(xy, true, true);
 }
 
+void IrModellerUI::postCurveDraw() {
+	if (irModeller->isWavLoaded()) {
+		PitchedSample& wav = irModeller->getWrapper();
 
-void IrModellerUI::postCurveDraw()
-{
-	if (irModeller->isWavLoaded())
-	{
-		SampleWrapper& wav = irModeller->getWrapper();
-
-		Buffer<float> channel(wav.buffer, 0);
+		Buffer<float> channel = wav.audio.left;
 
 		int chanSize = channel.size();
 		int nextPow2 = Arithmetic::getNextPow2((float) chanSize);
@@ -310,26 +290,24 @@ void IrModellerUI::postCurveDraw()
 		drawCurvesFrom(xy, alpha, red, red);
 	}
 
-	int left 		= 0;
-	int innerLeft 	= sx(getConstant(IrModellerPadding));
-	int bottom 		= 0;
-	int top 		= getHeight();
+	int left = 0;
+	int innerLeft = sx(getConstant(IrModellerPadding));
+	int bottom = 0;
+	int top = getHeight();
 
 	gfx->setCurrentColour(0.1f, 0.1f, 0.1f, 0.5f);
 	gfx->drawRect(left, top, innerLeft, bottom, false);
 }
 
-
-bool IrModellerUI::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate)
-{
+bool IrModellerUI::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) {
 	bool didChange = irModeller->doParamChange(knobIndex, knobValue, doFurtherUpdate);
 
 	didChange &= doFurtherUpdate;
 
-	if(didChange)
-	{
-		if(knobIndex == IrModeller::Length)
+	if (didChange) {
+		if(knobIndex == IrModeller::Length) {
 			pendingScaleUpdate = true;
+		}
 
 		irModeller->setPendingAction(IrModeller::rasterize);
 	}
@@ -337,89 +315,70 @@ bool IrModellerUI::updateDsp(int knobIndex, double knobValue, bool doFurtherUpda
 	return didChange;
 }
 
-
-void IrModellerUI::updateDspSync()
-{
+void IrModellerUI::updateDspSync() {
 	irModeller->setMesh(rasterizer->getMesh());
 	irModeller->setPendingAction(IrModeller::rasterize);
 }
 
-
-void IrModellerUI::buttonClicked(Button* button)
-{
+void IrModellerUI::buttonClicked(Button* button) {
 
 	progressMark
 
-	if (button == &openWave)
-	{
+	if (button == &openWave) {
 		getObj(Dialogs).showOpenWaveDialog(&irModeller->getWrapper(), "impulses",
-										   DialogActions::LoadImpulse, Dialogs::LoadIRWave);
-	}
-	else if (button == &modelWave)
-	{
+		                                   DialogActions::LoadImpulse, Dialogs::LoadIRWave);
+	} else if (button == &modelWave) {
 		getObj(Dialogs).showOpenWaveDialog(&irModeller->getWrapper(), "impulses",
-										   DialogActions::LoadImpulse, Dialogs::ModelIRWave);
-	}
-	else if (button == &removeWave)
-	{
+		                                   DialogActions::LoadImpulse, Dialogs::ModelIRWave);
+	} else if (button == &removeWave) {
 		irModeller->setPendingAction(IrModeller::unloadWav);
 	}
 
-	if (button == &attkZoomIcon)
+	if (button == &attkZoomIcon) {
 		panel->getZoomPanel()->zoomToAttack();
+	}
 
-	else if (button == &zoomOutIcon)
+	else if (button == &zoomOutIcon) {
 		panel->getZoomPanel()->zoomToFull();
-
-	else if(button == &panelControls->enableCurrent)
-	{
+	} else if (button == &panelControls->enableCurrent) {
 		isEnabled ^= true;
 		panelControls->enableCurrent.setHighlit(isEnabled);
 
-		if(isEnabled)
+		if (isEnabled) {
 			irModeller->setPendingAction(IrModeller::rasterize);
+		}
 
 		forceNextUIUpdate = true;
 		triggerRefreshUpdate();
-	}
-
-	else if(button == &impulseMode || button == &freqMode)
-	{
-		if(button == &impulseMode)
-		{
-
+	} else if (button == &impulseMode || button == &freqMode) {
+		if (button == &impulseMode) {
 		}
 	}
 
-	if(button != &panelControls->enableCurrent)
+	if(button != &panelControls->enableCurrent) {
 		repaint();
+	}
 }
 
-
-void IrModellerUI::panelResized()
-{
-//	progressMark
+void IrModellerUI::panelResized() {
+	//	progressMark
 
 	Panel::panelResized();
 }
 
-
-String IrModellerUI::getKnobName(int index) const
-{
-	switch(index)
-	{
-		case IrModeller::Length: 	return "Size"; 		break;
-		case IrModeller::Postamp: 	return "Post"; 		break;
-
-		case IrModeller::Highpass: 	return "HighPass"; 	break;
+String IrModellerUI::getKnobName(int index) const {
+	switch (index) {
+		case IrModeller::Length: 	return "Size";
+		case IrModeller::Postamp: 	return "Post";
+		case IrModeller::Highpass: 	return "HighPass";
+		default:
+			break;
 	}
 
-	return String::empty;
+	return {};
 }
 
-
-void IrModellerUI::showCoordinates()
-{
+void IrModellerUI::showCoordinates() {
 	float x = (state.currentMouse.x - getConstant(IrModellerPadding)) / (1.f - getConstant(IrModellerPadding));
 	int sampleNum = IrModeller::calcLength(paramGroup->getKnobValue(IrModeller::Length)) * x;
 
@@ -431,50 +390,41 @@ void IrModellerUI::showCoordinates()
 	showMsg(coords);
 }
 
-
-void IrModellerUI::writeXML(XmlElement* registryElem) const
-{
-  #ifndef DEMO_VERSION
-	XmlElement* tubeElem = new XmlElement(panelName);
+void IrModellerUI::writeXML(XmlElement* registryElem) const {
+	auto* tubeElem = new XmlElement(panelName);
 
 	paramGroup->writeKnobXML(tubeElem);
-	tubeElem->setAttribute("enabled", 			(int) isEffectEnabled());
-	tubeElem->setAttribute("waveLoaded", 		(int) irModeller->isWavLoaded());
-	tubeElem->setAttribute("wavePath",			waveImpulsePath);
+	tubeElem->setAttribute("enabled", isEffectEnabled());
+	tubeElem->setAttribute("waveLoaded", irModeller->isWavLoaded());
+	tubeElem->setAttribute("wavePath", waveImpulsePath);
 
 	registryElem->addChildElement(tubeElem);
-  #endif
 }
 
-
-bool IrModellerUI::readXML(const XmlElement* registryElem)
-{
+bool IrModellerUI::readXML(const XmlElement* registryElem) {
 //	ScopedLock sl(renderLock);
 
 	XmlElement* tubeElem = registryElem->getChildByName(panelName);
 
-	if(tubeElem)
-	{
+	if (tubeElem) {
 		paramGroup->setKnobValue(IrModeller::Highpass, 0, false, false);
 		isEnabled = tubeElem->getBoolAttribute("enabled");
 
 		paramGroup->readKnobXML(tubeElem);
 
 		bool waveLoaded = tubeElem->getBoolAttribute("waveLoaded", false);
-		if(waveLoaded)
-		{
+		if (waveLoaded) {
 			String path = tubeElem->getStringAttribute("wavePath");
 
-			if(File(path).existsAsFile())
-			{
-				int result = Util::load(irModeller->getWrapper(), path);
-
-				if(result >= 0)
+			if (File(path).existsAsFile()) {
+				int result = irModeller->getWrapper().load(path);
+				if (result >= 0) {
 					irModeller->doPostWaveLoad();
-			}
-			else
-			{
-				dout << "Failed to load impulse response file: " << path << "\n";
+				} else {
+					std::cout << "Failed to load impulse response file: " << path << "\n";
+				}
+			} else {
+				std::cout << "Failed to load impulse response file: " << path << "\n";
 			}
 		}
 	}
@@ -484,65 +434,54 @@ bool IrModellerUI::readXML(const XmlElement* registryElem)
 	return true;
 }
 
-
-bool IrModellerUI::shouldTriggerGlobalUpdate(Slider* slider)
-{
+bool IrModellerUI::shouldTriggerGlobalUpdate(Slider* slider) {
 	return isEffectEnabled();
 }
 
-
-void IrModellerUI::setEffectEnabled(bool is)
-{
-	if(Util::assignAndWereDifferent(isEnabled, is))
-	{
+void IrModellerUI::setEffectEnabled(bool is) {
+	if (Util::assignAndWereDifferent(isEnabled, is)) {
 		panelControls->enableCurrent.setHighlit(isEnabled);
 		triggerRefreshUpdate();
 	}
 }
 
-
-void IrModellerUI::doLocalUIUpdate()
-{
+void IrModellerUI::doLocalUIUpdate() {
 	repaint();
 }
 
-
-void IrModellerUI::enterClientLock()
-{
+void IrModellerUI::enterClientLock() {
 	getObj(SynthAudioSource).getLock().enter();
 	renderLock.enter();
 }
 
-
-void IrModellerUI::exitClientLock()
-{
+void IrModellerUI::exitClientLock() {
 	renderLock.exit();
 	getObj(SynthAudioSource).getLock().exit();
 }
 
-
 void IrModellerUI::modelLoadedWave()
 {
-	SampleWrapper& wav = irModeller->getWrapper();
+	PitchedSample& wav = irModeller->getWrapper();
 
-	if(wav.buffer.getNumSamples() < 64)
-			return;
+	if(wav.audio.size() < 64) {
+		return;
+	}
 
 	irModeller->trimWave();
 
-	Buffer<float> channel(wav.buffer, 0);
+	Buffer<float> channel = wav.audio.left;
 
 	int size = channel.size();
 	channel.mul(0.7f);
 
-	int greaterPow2 			= Arithmetic::getNextPow2((float) size);
-	float scaleRatio 			= size / float(greaterPow2);
-	CriticalSection& audioLock 	= getObj(SynthAudioSource).getLock();
-	Mesh* mesh 					= getMesh();
+	int greaterPow2 = Arithmetic::getNextPow2((float) size);
+	float scaleRatio = size / float(greaterPow2);
+	CriticalSection& audioLock = getObj(SynthAudioSource).getLock();
+	Mesh* mesh = getMesh();
 
 	float padding = getRealConstant(IrModellerPadding);
-
-	getObj(AutoModeller).model(channel, this, false, padding, true, 0.1f);
+	AutoModeller modeller;
+	modeller.modelToInteractor(channel, this, false, padding, 0.1f);
 
 	{
 		ScopedLock sl(audioLock);
@@ -551,10 +490,9 @@ void IrModellerUI::modelLoadedWave()
 		mesh->getVerts().push_back(new Vertex(padding - 0.0001f, 0.5f));
 		mesh->getVerts().push_back(new Vertex(padding - 0.01f, 	0.5f));
 
-		foreach(VertIter, it, mesh->getVerts())
-		{
-			float& val 	= (*it)->values[dims.x];
-			val 		= (val - getRealConstant(IrModellerPadding)) * scaleRatio + getRealConstant(IrModellerPadding);
+		for (auto& vert: mesh->getVerts()) {
+			float& val = vert->values[dims.x];
+			val = (val - getRealConstant(IrModellerPadding)) * scaleRatio + getRealConstant(IrModellerPadding);
 		}
 	}
 
@@ -570,54 +508,49 @@ void IrModellerUI::modelLoadedWave()
 	getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 }
 
-
-void IrModellerUI::loadWaveFile()
-{
+void IrModellerUI::loadWaveFile() {
 	irModeller->doPostWaveLoad();
 
 	getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 }
 
-
 void IrModellerUI::deconvolve()
 {
-	SampleWrapper* wav = getObj(Multisample).getCurrentSample();
+	PitchedSample* wav = getObj(Multisample).getCurrentSample();
 
-	if(wav == nullptr)
+	if(wav == nullptr) {
 		return;
+	}
 
 	float position = getObj(PlaybackPanel).getProgress();
 
-	if(wav->periods.size() < 2)
+	if(wav->periods.size() < 2) {
 		return;
+	}
 
 	Buffer<float> waveSource;
-	Buffer<float> wavBuffer(wav->buffer, 0);
+	Buffer<float> wavBuffer = wav->audio.left;
 
 	int cycSize = 512;
 
 	float invSize = 1 / float(wav->size());
 
 	int i = 1;
-	for(; i < (int) wav->periods.size(); ++i)
-	{
-		if(wav->periods[i].sampleOffset * invSize > position)
-		{
-			cycSize    = wav->periods[i].sampleOffset - wav->periods[i - 1].sampleOffset;
+	for (; i < (int) wav->periods.size(); ++i) {
+		if (wav->periods[i].sampleOffset * invSize > position) {
+			cycSize = wav->periods[i].sampleOffset - wav->periods[i - 1].sampleOffset;
 			waveSource = wavBuffer.section(wav->periods[i - 1].sampleOffset, cycSize + cycSize / 4);
 
 			break;
 		}
 	}
 
-	if(waveSource.empty())
-	{
+	if (waveSource.empty()) {
 		showImportant("Audio file is too short");
 		return;
 	}
 
-	if(waveSource.max() < 0.005)
-	{
+	if (waveSource.max() < 0.005) {
 		showImportant("Audio file is silent at this position");
 		return;
 	}
@@ -709,14 +642,14 @@ void IrModellerUI::deconvolve()
 		clearSelectedAndCurrent();
 	}
 
-	getObj(AutoModeller).model(impSignal, this, false, getConstant(IrModellerPadding), true, 0.1f);
+	AutoModeller modeller;
+	modeller.modelToInteractor(impSignal, this, false, getConstant(IrModellerPadding), 0.1f);
 
 	float scaleFactor = pow2Size / float(cycSize);
 	Mesh* mesh = getMesh();
 
-	foreach(VertIter, it, mesh->getVerts())
-	{
-		float& phase = (*it)->values[Vertex::Phase];
+	for(auto& vert : mesh->getVerts()) {
+		float& phase = vert->values[Vertex::Phase];
 		phase = (phase - getConstant(IrModellerPadding)) * scaleFactor + getConstant(IrModellerPadding);
 	}
 
@@ -729,19 +662,13 @@ void IrModellerUI::deconvolve()
 	getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 }
 
-
-void IrModellerUI::doZoomAction(int action)
-{
+void IrModellerUI::doZoomAction(int action) {
 	ZoomPanel* zoomPanel = getZoomPanel();
 
-	if(action == ZoomPanel::ZoomToAttack)
-	{
+	if (action == ZoomPanel::ZoomToAttack) {
 		zoomPanel->rect.x = getConstant(IrModellerPadding);
 		zoomPanel->rect.w *= 0.2f;
-	}
-
-	else if(action == ZoomPanel::ZoomToFull)
-	{
+	} else if (action == ZoomPanel::ZoomToFull) {
 		zoomPanel->rect.x = 0;
 		zoomPanel->rect.w = 1.f;
 	}
@@ -749,39 +676,33 @@ void IrModellerUI::doZoomAction(int action)
 	zoomPanel->panelZoomChanged(false);
 }
 
-
-void IrModellerUI::doubleMesh()
-{
+void IrModellerUI::doubleMesh() {
 	getCurrentMesh()->twin(getConstant(IrModellerPadding), 0);
 	postUpdateMessage();
 }
 
-
-Component* IrModellerUI::getComponent(int which)
-{
-	switch(which)
-	{
+Component* IrModellerUI::getComponent(int which) {
+	switch (which) {
 		case CycleTour::TargImpLength: 		return lengthSlider;
 		case CycleTour::TargImpGain:		return gainSlider;
 
 		case CycleTour::TargImpHP:			return hpSlider;
-		case CycleTour::TargImpZoom:		return zoomCO;
+		case CycleTour::TargImpZoom:		return zoomCO.get();
 
 		case CycleTour::TargImpLoadWav:		return &openWave;
 		case CycleTour::TargImpUnloadWav:	return &removeWave;
 		case CycleTour::TargImpModelWav:	return &modelWave;
+		default:
+			break;
 	}
 
 	return nullptr;
 }
 
-
-
-void IrModellerUI::createScales()
-{
+void IrModellerUI::createScales() {
 	vector<Rectangle<float> > newScales;
 
-	MiscGraphics& mg = getObj(MiscGraphics);
+	auto& mg = getObj(MiscGraphics);
 	int fontScale 	 = getSetting(PointSizeScale);
 	Font& font 		 = *mg.getAppropriateFont(fontScale);
 	float alpha 	 = fontScale == ScaleSizes::ScaleSmall ? 0.5f : 0.65f;
@@ -793,19 +714,19 @@ void IrModellerUI::createScales()
 	int position = 0;
 	int size = IrModeller::calcLength(paramGroup->getKnobValue(IrModeller::Length));
 
-	for(int i = 0; i < vertMajorLines.size(); ++i)
-	{
-		float x = (vertMajorLines[i] - getConstant(IrModellerPadding)) / (1.f - getConstant(IrModellerPadding));
+	for (float vertMajorLine: vertMajorLines) {
+		float x = (vertMajorLine - getConstant(IrModellerPadding)) / (1.f - getConstant(IrModellerPadding));
 		int samples = roundToInt(size * x);
 
 		String text;
-		if(samples > 800)
+		if(samples > 800) {
 			text = String(roundToInt(samples * 0.001f)) + "k";
-		else
+		} else {
 			text = String(samples);
+		}
 
 		int width = font.getStringWidth(text) + 1;
-		mg.drawShadowedText(g, text, position + 1, font.getHeight(), font, alpha);
+		MiscGraphics::drawShadowedText(g, text, position + 1, font.getHeight(), font, alpha);
 		newScales.push_back(Rectangle<float>(position, 0, width, font.getHeight()));
 
 		position += width + 2;
@@ -815,14 +736,11 @@ void IrModellerUI::createScales()
 	scales = newScales;
 }
 
-
-void IrModellerUI::drawScales()
-{
+void IrModellerUI::drawScales() {
 	float fontOffset = 7 + jmin(11.f, getSetting(PointSizeScale) * 4.f);
 	gfx->setCurrentColour(Color(1));
 
-	for(int i = 0; i < (int) scales.size(); ++i)
-	{
+	for (int i = 0; i < (int) scales.size(); ++i) {
 		Rectangle<float>& rect = scales[i];
 		float x = vertMajorLines[i];
 

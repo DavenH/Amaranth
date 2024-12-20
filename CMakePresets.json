@@ -1,0 +1,79 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 29,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "17",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_CXX_EXTENSIONS": "OFF"
+      }
+    },
+    {
+      "name": "standalone-debug",
+      "displayName": "Standalone Debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TYPE": "Standalone",
+        "CMAKE_CXX_FLAGS": "-DDEBUG=1 -DJUCE_STANDALONE_APPLICATION=1 -DJUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1 -DJucePlugin_Build_VST3=0"
+      }
+    },
+    {
+      "name": "standalone-release",
+      "displayName": "Standalone Release",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TYPE": "Standalone",
+        "CMAKE_CXX_FLAGS": "-DJUCE_STANDALONE_APPLICATION=1 -DJUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1 -DJucePlugin_Build_VST3=0"
+      }
+    },
+    {
+      "name": "plugin-debug",
+      "displayName": "Plugin Debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TYPE": "Plugin",
+        "CMAKE_CXX_FLAGS": "-DDEBUG=1 -DJUCE_STANDALONE_APPLICATION=0 -DJucePlugin_Build_VST3=1"
+      }
+    },
+    {
+      "name": "plugin-release",
+      "displayName": "Plugin Release",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TYPE": "Plugin",
+        "CMAKE_CXX_FLAGS": "-DJUCE_STANDALONE_APPLICATION=0 -DJucePlugin_Build_VST3=1"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "standalone-debug",
+      "configurePreset": "standalone-debug"
+    },
+    {
+      "name": "standalone-release",
+      "configurePreset": "standalone-release"
+    },
+    {
+      "name": "plugin-debug",
+      "configurePreset": "plugin-debug"
+    },
+    {
+      "name": "plugin-release",
+      "configurePreset": "plugin-release"
+    }
+  ]
+}

@@ -22,13 +22,11 @@ DelayUI::DelayUI(SingletonRepo* repo, Effect* effect) :
 	timeKnob->setStringFunctions(delayStr, delayStr.withPostString(" beats"));
 }
 
-String DelayUI::getKnobName(int index) const
-{
+String DelayUI::getKnobName(int index) const {
 	bool little 	= getWidth() < 300;
 	bool superSmall = getWidth() < 200;
 
-	switch(index)
-	{
+	switch (index) {
 		case Delay::Time: 		return superSmall ? "tm" 	: "Time";
 		case Delay::Feedback:	return superSmall ? "fb" 	: little ? "Fdbk" : "Feedbk";
 		case Delay::Spin:		return superSmall ? "spn" 	: "Spin";

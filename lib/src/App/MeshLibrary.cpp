@@ -152,7 +152,7 @@ bool MeshLibrary::removeLayerKeepingOne(int groupId, int layer) {
 }
 
 MeshLibrary::Layer MeshLibrary::instantiateLayer(XmlElement* layerElem, int meshType) {
-    Layer layer;
+    Layer layer{};
 
     switch (meshType) {
         case TypeMesh:
@@ -178,8 +178,9 @@ MeshLibrary::Layer MeshLibrary::instantiateLayer(XmlElement* layerElem, int mesh
     if (layerElem != nullptr) {
         layer.mesh->readXML(layerElem);
 
-        if (layer.props != nullptr)
+        if (layer.props != nullptr) {
             layer.props->readXML(layerElem);
+        }
     }
 
     return layer;

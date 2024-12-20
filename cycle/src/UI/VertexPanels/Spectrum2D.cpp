@@ -84,9 +84,9 @@ void Spectrum2D::drawBackground(bool fillBackground) {
     yBuffer.ensureSize(decibelLines.size());
     cBuffer.ensureSize(ramp.size());
 
-    Buffer<float> scaledRamp 	= xBuffer.withSize(ramp.size());
-    Buffer<float> scaledDB 		= yBuffer.withSize(decibelLines.size());
-    Buffer<float> sProgress 	= cBuffer.withSize(ramp.size());
+    Buffer<float> scaledRamp = xBuffer.withSize(ramp.size());
+    Buffer<float> scaledDB = yBuffer.withSize(decibelLines.size());
+    Buffer<float> sProgress = cBuffer.withSize(ramp.size());
 
     ramp.copyTo(scaledRamp);
     decibelLines.copyTo(scaledDB);
@@ -125,8 +125,7 @@ void Spectrum2D::drawBackground(bool fillBackground) {
         float colorOne, colorTwo, progress;
         Color c1, c2;
 
-        gfx->setCurrentLineWidth(1.f);
-        {
+        gfx->setCurrentLineWidth(1.f); {
             for (int i = 0; i < (int) sProgress.size() - 7; i += 4) {
                 float base 	= i % 16 == 0 ? 0.165f : 0.14f;
                 progress 	= sProgress[i];
@@ -197,10 +196,11 @@ void Spectrum2D::drawBackground(bool fillBackground) {
             phaseLines.copyTo(copyBuf);
             applyScaleY(copyBuf);
 
-            if(j % 8 == 7)
+            if (j % 8 == 7) {
                 gfx->setCurrentColour(0.12f, 0.12f, 0.12f);
-            else
+            } else {
                 gfx->setCurrentColour(0.09f, 0.09f, 0.09f);
+            }
 
             gfx->drawLineStrip(tempXY, true, false);
 
@@ -230,8 +230,9 @@ void Spectrum2D::drawPartials() {
         const vector<Column>& columns = getObj(VisualDsp).getFreqColumns();
         int index = position->getProgress() * (columns.size() - 1);
 
-        if(index >= columns.size())
+        if(index >= columns.size()) {
             return;
+        }
 
         const Column& column = columns[index];
 
@@ -336,7 +337,6 @@ void Spectrum2D::drawPartials() {
         gfx->drawLine(x + xOffset, 	scaledCol[closestHarmonic], x + xOffset, 	base, false);
         gfx->drawLine(x + dx, 		scaledCol[closestHarmonic], x + dx, 		base, false);
     }
-
 
     for (i = start; i < widthMostSix; ++i) {
         x = scaledRamp[i];
@@ -448,8 +448,9 @@ void Spectrum2D::drawHistory() {
     historySize 		= jmin(end - start, historySize);
     int decrement 		= jmax((int)1, historySize / 60);
 
-    if(size == 0 || end == 0)
+    if(size == 0 || end == 0) {
         return;
+    }
 
     // do in reverse due to transparency
     for (int col = end - 1; col > start + decrement; col -= decrement) {
@@ -569,7 +570,7 @@ void Spectrum2D::drawScales() {
                     Rectangle<float>& rect = scales[count];
                     float x = sx(ramp[rampIndex * 2]) - rect.getWidth() - 2;
 
-                    scalesTex->rect = Rectangle<float>(x, fontOffset, rect.getWidth(), rect.getHeight());
+                    scalesTex->rect = Rectangle(x, fontOffset, rect.getWidth(), rect.getHeight());
                     gfx->drawSubTexture(scalesTex, rect);
 
                     ++count;

@@ -148,8 +148,9 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
 
         float totalPan = layer.props->pan;
 
-        if (cycleCompositeAlgo == Chain)
+        if (cycleCompositeAlgo == Chain) {
             totalPan += unison->getPan(group.unisonIndex) - 0.5f;
+        }
 
         NumberUtils::constrain(totalPan, 0.f, 1.f);
         Arithmetic::getPans(totalPan, pans[Left], pans[Right]);

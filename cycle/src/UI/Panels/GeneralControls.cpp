@@ -72,11 +72,6 @@ void GeneralControls::init() {
     topCallouts.push_back(transCO.get());
     topCallouts.push_back(waveCO.get());
 
-  #ifdef DEMO_VERSION
-    save.setApplicable(false);
-    save.setNotApplicableMessage("Saving is disabled in this demo.");
-  #endif
-
     waveVerts.setNotApplicableMessage("Load a wave file first to see the sample view");
 
     updateHighlights();

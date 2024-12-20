@@ -110,8 +110,7 @@ void QualityDialog::comboBoxChanged(ComboBox* box) {
                 case OversampRend2x: 	factor = 2; 	break;
                 case OversampRend4x: 	factor = 4; 	break;
                 case OversampRend16x: 	factor = 16; 	break;
-                default:
-                    break;
+                default: break;
             }
 
             if(Util::assignAndWereDifferent(getDocSetting(OversampleFactorRend), factor)) {
@@ -124,12 +123,10 @@ void QualityDialog::comboBoxChanged(ComboBox* box) {
         onlyPlug(getObj(PluginProcessor).updateLatency());
     }
 
-    else if(item >= ControlFreq16 && item <= ControlFreq1024)
-    {
+    else if (item >= ControlFreq16 && item <= ControlFreq1024) {
         char newFreqOrder = -1;
 
-        switch(item)
-        {
+        switch (item) {
             case ControlFreq16: 	newFreqOrder = 4; 	break;
             case ControlFreq64: 	newFreqOrder = 6; 	break;
             case ControlFreq256:	newFreqOrder = 8;	break;
@@ -177,8 +174,7 @@ void QualityDialog::comboBoxChanged(ComboBox* box) {
     updateSelections();
 }
 
-void QualityDialog::updateSelections()
-{
+void QualityDialog::updateSelections() {
     int ovspRltmId;
     switch(getDocSetting(OversampleFactorRltm))
     {
@@ -190,8 +186,7 @@ void QualityDialog::updateSelections()
     }
 
     int ovspRendId;
-    switch(getDocSetting(OversampleFactorRend))
-    {
+    switch (getDocSetting(OversampleFactorRend)) {
         case 1:		ovspRendId = OversampRend1x;	break;
         case 2:		ovspRendId = OversampRend2x;	break;
         case 4:		ovspRendId = OversampRend4x;	break;

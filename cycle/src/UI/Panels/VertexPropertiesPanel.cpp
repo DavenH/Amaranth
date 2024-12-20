@@ -779,7 +779,7 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 		panel->addAndMakeVisible(gain = new Knob(panel->repo));
 
 		using namespace Ops;
-		StringFunction decibel30 = StringFunction(1).chain(Mul, 2.f).chain(Add, -1.f).chain(Mul, 30.f);
+		StringFunction decibel30 = StringFunction(1).mul(2.f).sub(1.f).mul(30.f);
 
 		gain->setRange(0, 1);
 		gain->addListener(&panel->gainListener);
@@ -788,24 +788,21 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 		gain->setStringFunctions(decibel30, decibel30.withPostString(" dB"));
 		gain->setDrawValueText(false);
 
-		if(id == Vertex::Red || id == Vertex::Blue)
-		{
+		if (id == Vertex::Red || id == Vertex::Blue) {
 //			dfrmChanBox->setEnabled(false);
 //			gain->setEnabled(false);
 		}
 	}
 }
 
-void VertexPropertiesPanel::VertexProperties::setValueToCurrent(bool sendChangeMessage)
-{
-	if(slider != nullptr) {
+void VertexPropertiesPanel::VertexProperties::setValueToCurrent(bool sendChangeMessage) {
+	if (slider != nullptr) {
 		slider->setValue(previousValue, sendChangeMessage ? sendNotificationAsync : dontSendNotification);
 	}
 }
 
-void VertexPropertiesPanel::VertexProperties::setGainValueToCurrent(bool sendChangeMessage)
-{
-	if(gain != nullptr) {
+void VertexPropertiesPanel::VertexProperties::setGainValueToCurrent(bool sendChangeMessage) {
+	if (gain != nullptr) {
 		gain->setValue(previousGain, sendChangeMessage ? sendNotificationAsync : dontSendNotification);
 	}
 }

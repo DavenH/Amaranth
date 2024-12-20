@@ -295,8 +295,8 @@ void SynthesizerVoice::initialiseEnvMeshes() {
 }
 
 void SynthesizerVoice::updateCycleCaches() {
-    //	if(currentVoice->getCompositeAlgo() != CycleBasedVoice::Chain)
-    //		currentVoice->updateCachedCycles();
+    	// if(currentVoice->getCompositeAlgo() != CycleBasedVoice::Chain)
+    	// 	currentVoice->updateCachedCycles();
 }
 
 void SynthesizerVoice::initCycleBuffers() {

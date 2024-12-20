@@ -102,7 +102,6 @@ void Mesh::print(bool printLines, bool printVerts) {
 
 
 void Mesh::writeXML(XmlElement* parentElem) const {
-#ifndef DEMO_VERSION
     auto* meshElem = new XmlElement("Mesh");
     parentElem->addChildElement(meshElem);
 
@@ -158,7 +157,6 @@ void Mesh::writeXML(XmlElement* parentElem) const {
 
         meshElem->addChildElement(cubeElem);
     }
-#endif
 }
 
 bool Mesh::readXML(const XmlElement* repoElem) {

@@ -347,10 +347,10 @@ bool EnvelopeInter2D::synchronizeEnvPoints(Vertex* vertex, bool vertexIsLoopVert
 void EnvelopeInter2D::buttonClicked(Button* button) {
     progressMark
 
-    if (button == &volumeIcon) switchedEnvelope(LayerGroups::GroupVolume);
-    else if (button == &pitchIcon) switchedEnvelope(LayerGroups::GroupPitch);
-    else if (button == &wavePitchIcon) switchedEnvelope(LayerGroups::GroupWavePitch);
-    else if (button == &scratchIcon) switchedEnvelope(LayerGroups::GroupScratch);
+    if (button == &volumeIcon)          switchedEnvelope(LayerGroups::GroupVolume);
+    else if (button == &pitchIcon)      switchedEnvelope(LayerGroups::GroupPitch);
+    else if (button == &wavePitchIcon)  switchedEnvelope(LayerGroups::GroupWavePitch);
+    else if (button == &scratchIcon)    switchedEnvelope(LayerGroups::GroupScratch);
 
     else if (button == &contractIcon || button == &expandIcon) {
         if (button == &contractIcon) {

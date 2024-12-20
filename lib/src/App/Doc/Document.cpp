@@ -58,7 +58,6 @@ void Document::save(OutputStream* outStream) {
         return;
     }
 
-  #ifndef DEMO_VERSION
     if (outStream == nullptr) {
         showMsg("Problem saving preset");
         return;
@@ -79,7 +78,6 @@ void Document::save(OutputStream* outStream) {
     GZIPCompressorOutputStream gzipStream(outStream, 5);
     gzipStream.write(utf8Data, utf8Data.sizeInBytes());
     gzipStream.flush();
-  #endif
 }
 
 #ifdef JUCE_DEBUG

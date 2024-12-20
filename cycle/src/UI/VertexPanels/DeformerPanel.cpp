@@ -430,7 +430,6 @@ int DeformerPanel::getTableDensity(int index) {
 
 void DeformerPanel::writeXML(XmlElement* element) const
 {
-  #ifndef DEMO_VERSION
     auto* deformerElem = new XmlElement("DeformerProps");
 
     for (const auto& props: guideTables) {
@@ -444,7 +443,6 @@ void DeformerPanel::writeXML(XmlElement* element) const
     }
 
     element->addChildElement(deformerElem);
-  #endif
 }
 
 void DeformerPanel::sampleDownAddNoise(int index,

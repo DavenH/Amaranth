@@ -54,12 +54,12 @@ public:
         MorphPosition pos[12];
     };
 
-    struct EnvProps : public Properties {
+    struct EnvProps : Properties {
         bool readXML(const XmlElement* element) override;
         void writeXML(XmlElement* element) const override;
 
         [[nodiscard]] float getEffectiveScale() const { return scale < 0 ? 1.f / -scale : scale; }
-        bool isOperating() const		{ return dynamic || global || scale != 1 || tempoSync || logarithmic; }
+        [[nodiscard]] bool isOperating() const { return dynamic || global || scale != 1 || tempoSync || logarithmic; }
 
         bool  dynamic, tempoSync, global, logarithmic;
         int   scale;

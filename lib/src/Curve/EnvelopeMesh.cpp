@@ -25,7 +25,6 @@ float EnvelopeMesh::getPositionOfCubeAt(VertCube* line, MorphPosition pos) {
 }
 
 void EnvelopeMesh::writeXML(XmlElement* envLayersElem) const {
-  #ifndef DEMO_VERSION
     auto* envMeshElem = new XmlElement("EnvelopeMesh");
     auto* mainMeshElem = new XmlElement("MainMesh");
     auto* loopIndicesElem = new XmlElement("LoopIndices");
@@ -58,7 +57,6 @@ void EnvelopeMesh::writeXML(XmlElement* envLayersElem) const {
     envMeshElem->addChildElement(loopIndicesElem);
     envMeshElem->addChildElement(sustIndicesElem);
     envLayersElem->addChildElement(envMeshElem);
-  #endif
 }
 
 bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {

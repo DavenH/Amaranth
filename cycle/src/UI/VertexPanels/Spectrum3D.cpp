@@ -133,9 +133,7 @@ void Spectrum3D::updateBackground(bool onlyVerticalBackground) {
     if (minorSize > 0) {
         jassert(minorSize <= maxMinorSize);
         horzMinorLines.resize(minorSize);
-
         horzMinorLines.downsampleFrom(ramp.offset(factor), factor);
-//		ippsSampleDown_32f(ramp + factor, ramp.size() - factor, horzMinorLines, &minorSize, factor, &phase);
     }
 }
 
@@ -157,8 +155,8 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
     auto& f2 = getObj(SpectrumInter2D);
     auto& f3 = getObj(SpectrumInter3D);
 
-    f2.layerType 		= interactor->layerType;
-    f3.layerType 		= interactor->layerType;
+    f2.layerType = interactor->layerType;
+    f3.layerType = interactor->layerType;
 
     f2.vertexProps.dimensionNames.set(Vertex::Amp, isMags ? "Magn" : "Phase");
     f3.vertexProps.dimensionNames = f2.vertexProps.dimensionNames;
@@ -196,7 +194,6 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
         f2.updateDspSync();
         f2.update(Update);
     }
-//#endif
 }
 
 void Spectrum3D::buttonClicked(Button* button) {
@@ -210,8 +207,9 @@ void Spectrum3D::buttonClicked(Button* button) {
     if (button == &magsIcon || button == &phaseIcon) {
         bool isMags = button == &magsIcon;
 
-        if (isMags == (getSetting(MagnitudeDrawMode) == 1))
+        if (isMags == (getSetting(MagnitudeDrawMode) == 1)) {
             return;
+        }
 
         modeChanged(isMags, true);
 
@@ -244,8 +242,9 @@ void Spectrum3D::buttonClicked(Button* button) {
                 // takes care of decrementing current layer
                 forceUpdate = meshLib->removeLayerKeepingOne(interactor->layerType, index);
 
-                if(group.size() > 1)
+                if(group.size() > 1) {
                     getObj(ModMatrixPanel).layerRemoved(interactor->layerType, index);
+                }
             }
         }
 
@@ -363,6 +362,7 @@ void Spectrum3D::updateColours() {
 }
 
 void Spectrum3D::writeXML(XmlElement* element) const {
+    // TODO
 }
 
 bool Spectrum3D::readXML(const XmlElement* element) {
@@ -472,19 +472,19 @@ MeshLibrary::Properties* Spectrum3D::getCurrentProperties() {
 void Spectrum3D::updateSmoothedParameters(int deltaSamples) {
     ScopedLock sl(layerLock);
 
-//	for(int i = 0; i < (int) magnProperties.size(); ++i)
-//	{
-//		LayerProps& props = magnProperties.getReference(i);
-//		props.pan.update(deltaSamples);
-//		props.dynamicRange.update(deltaSamples);
-//	}
-//
-//	for(int i = 0; i < (int) phaseProperties.size(); ++i)
-//	{
-//		LayerProps& props = phaseProperties.getReference(i);
-//		props.pan.update(deltaSamples);
-//		props.dynamicRange.update(deltaSamples);
-//	}
+	for(int i = 0; i < (int) magnProperties.size(); ++i)
+	{
+		LayerProps& props = magnProperties.getReference(i);
+		props.pan.update(deltaSamples);
+		props.dynamicRange.update(deltaSamples);
+	}
+
+	for(int i = 0; i < (int) phaseProperties.size(); ++i)
+	{
+		LayerProps& props = phaseProperties.getReference(i);
+		props.pan.update(deltaSamples);
+		props.dynamicRange.update(deltaSamples);
+	}
 }
 
 void Spectrum3D::changedToOrFromTimeDimension() {
