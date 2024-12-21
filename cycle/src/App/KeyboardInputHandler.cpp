@@ -39,81 +39,81 @@ KeyboardInputHandler::KeyboardInputHandler(SingletonRepo* repo) :
 
 void KeyboardInputHandler::init() {
     position = &getObj(PlaybackPanel);
-	waveInter3D 	= &getObj(WaveformInter3D);
-	main			= &getObj(MainPanel);
-	console 		= dynamic_cast<Console*>(&getObj(IConsole));
+    waveInter3D 	= &getObj(WaveformInter3D);
+    main			= &getObj(MainPanel);
+    console 		= dynamic_cast<Console*>(&getObj(IConsole));
 
-	currentInteractor 	= waveInter3D;
+    currentInteractor 	= waveInter3D;
 }
 
 bool KeyboardInputHandler::keyPressed(const KeyPress &key, Component* component) {
-	char c 					= key.getTextCharacter();
-	int code 				= key.getKeyCode();
-	bool cmdDown			= key.getModifiers().isCommandDown();
-	bool shftDown			= key.getModifiers().isShiftDown();
-	bool altDown			= key.getModifiers().isAltDown();
-	bool editedSomething 	= false;
-	bool updateBlue			= false;
+    char c 					= key.getTextCharacter();
+    int code 				= key.getKeyCode();
+    bool cmdDown			= key.getModifiers().isCommandDown();
+    bool shftDown			= key.getModifiers().isShiftDown();
+    bool altDown			= key.getModifiers().isAltDown();
+    bool editedSomething 	= false;
+    bool updateBlue			= false;
 
-	auto* itr3D 	 = dynamic_cast<Interactor3D*>(currentInteractor);
-	auto& morphPanel = getObj(MorphPanel);
+    auto* itr3D 	 = dynamic_cast<Interactor3D*>(currentInteractor);
+    auto& morphPanel = getObj(MorphPanel);
 
-	if(currentInteractor) {
-		currentInteractor->flag(DidMeshChange) = false;
-		currentInteractor->flag(SimpleRepaint) = false;
-	}
+    if(currentInteractor) {
+        currentInteractor->flag(DidMeshChange) = false;
+        currentInteractor->flag(SimpleRepaint) = false;
+    }
 
-	std::cout << "key down: " << c << ", " << code << "\n";
+    std::cout << "key down: " << c << ", " << code << "\n";
 
     if (c == ' ' || code == KeyPress::returnKey) {
 //#if PLUGIN_MODE
 //		return false;
 //#else
-		position->togglePlayback();
+        position->togglePlayback();
 //#endif
-	} else if (code == KeyPress::endKey) {
+    } else if (code == KeyPress::endKey) {
 
-		if(cmdDown) {
-			morphPanel.triggerValue(Vertex::Blue, 1.f);
-		} else if(shftDown) {
-			morphPanel.triggerValue(Vertex::Red, 1.f);
-		} else {
-			position->setProgress(1.0f);
-		}
-	} else if (code == KeyPress::homeKey) {
-		if(cmdDown) {
-			morphPanel.triggerValue(Vertex::Blue, 0.f);
-		} else if(shftDown) {
-			morphPanel.triggerValue(Vertex::Red, 0.f);
-		} else {
-			position->resetPlayback(true);
-		}
-	} else if (code == KeyPress::pageUpKey
+        if(cmdDown) {
+            morphPanel.triggerValue(Vertex::Blue, 1.f);
+        } else if(shftDown) {
+            morphPanel.triggerValue(Vertex::Red, 1.f);
+        } else {
+            position->setProgress(1.0f);
+        }
+    } else if (code == KeyPress::homeKey) {
+        if(cmdDown) {
+            morphPanel.triggerValue(Vertex::Blue, 0.f);
+        } else if(shftDown) {
+            morphPanel.triggerValue(Vertex::Red, 0.f);
+        } else {
+            position->resetPlayback(true);
+        }
+    } else if (code == KeyPress::pageUpKey
                || code == KeyPress::pageDownKey
                || code == KeyPress::leftKey
                   || code == KeyPress::rightKey) {
         if (getObj(CycleTour).isLive() && (code == KeyPress::leftKey || code == KeyPress::rightKey)) {
-			code == KeyPress::leftKey ?
-					getObj(CycleTour).showPrevious() :
-					getObj(CycleTour).showNext();
-		} else {
-			int dim = cmdDown ? Vertex::Blue : shftDown ? Vertex::Red : Vertex::Time;
+            code == KeyPress::leftKey ?
+                    getObj(CycleTour).showPrevious() :
+                    getObj(CycleTour).showNext();
+        } else {
+            int dim = cmdDown ? Vertex::Blue : shftDown ? Vertex::Red : Vertex::Time;
 
-			float value 		= getObj(MorphPanel).getValue(dim);
-			float windowSize 	= getObj(Waveform3D).getZoomPanel()->rect.w;
-			float increment  	= (code == KeyPress::pageUpKey || code == KeyPress::pageDownKey) ? 0.15f * windowSize : 0.005f * windowSize;
-			float direction  	= (code == KeyPress::pageUpKey || code == KeyPress::leftKey) 	 ? -1.f : 1.f;
-			float newPosition 	= value + direction * increment;
+            float value 		= getObj(MorphPanel).getValue(dim);
+            float windowSize 	= getObj(Waveform3D).getZoomPanel()->rect.w;
+            float increment  	= (code == KeyPress::pageUpKey || code == KeyPress::pageDownKey) ? 0.15f * windowSize : 0.005f * windowSize;
+            float direction  	= (code == KeyPress::pageUpKey || code == KeyPress::leftKey) 	 ? -1.f : 1.f;
+            float newPosition 	= value + direction * increment;
 
-			NumberUtils::constrain(newPosition, 0.f, 1.f);
+            NumberUtils::constrain(newPosition, 0.f, 1.f);
 
-			getObj(MorphPanel).triggerValue(dim, newPosition);
+            getObj(MorphPanel).triggerValue(dim, newPosition);
 
-			if(dim == getSetting(CurrentMorphAxis)) {
-				position->setProgress(newPosition);
-			}
-		}
-	} else if (code == KeyPress::fastForwardKey) {
+            if(dim == getSetting(CurrentMorphAxis)) {
+                position->setProgress(newPosition);
+            }
+        }
+    } else if (code == KeyPress::fastForwardKey) {
         getObj(PresetPage).triggerButtonClick(PresetPage::NextButton);
     } else if (code == KeyPress::rewindKey) {
         getObj(PresetPage).triggerButtonClick(PresetPage::PrevButton);
@@ -123,24 +123,23 @@ bool KeyboardInputHandler::keyPressed(const KeyPress &key, Component* component)
         main->triggerTabClick(0);
     } else if (c == '[' || c == ']') {
         if (getObj(CycleTour).isLive()) {
-            c == '[' ?
-            getObj(CycleTour).showPrevious() :
-            getObj(CycleTour).showNext();
+            c == '[' ? getObj(CycleTour).showPrevious() :
+                       getObj(CycleTour).showNext();
         }
     } else if (c == '+' || c == '-') {
         getObj(Spectrum3D).triggerButton(c == '+' ? CycleTour::IdBttnModeAdditive : CycleTour::IdBttnModeFilter);
     } else if (c == 'p') {
         getObj(Dialogs).showPresetBrowserModal();
     } else if (c == 'a') {
-	    currentInteractor->deselectAll();
+        currentInteractor->deselectAll();
     } else if (c == 'c') {
         if (itr3D) {
-            bool succeeded = itr3D->connectSelected();
-            editedSomething = succeeded;
+            editedSomething = itr3D->connectSelected();
         }
     } else if (code == KeyPress::deleteKey || code == KeyPress::backspaceKey) {
-        if (currentInteractor == nullptr)
+        if (currentInteractor == nullptr) {
             return false;
+        }
 
         currentInteractor->eraseSelected();
 
@@ -178,43 +177,43 @@ bool KeyboardInputHandler::keyPressed(const KeyPress &key, Component* component)
             getObj(EditWatcher).undo();
         }
     } else if (code == CtrlS && cmdDown) {
-		if (shftDown) {
-			getObj(Dialogs).showPresetSaveAsDialog();
-		} else {
-			getObj(FileManager).saveCurrentPreset();
-		}
-	} else if(c == 'q')	{
-	  #ifdef JUCE_DEBUG
-		String detailsString = getObj(Document).getPresetString();
-		std::cout << detailsString << "\n";
-	  #endif
-	} else if (c == 'h' || c == '/') {
-		getSetting(MagnitudeDrawMode) ^= 1;
+        if (shftDown) {
+            getObj(Dialogs).showPresetSaveAsDialog();
+        } else {
+            getObj(FileManager).saveCurrentPreset();
+        }
+    } else if(c == 'q')	{
+      #ifdef JUCE_DEBUG
+        String detailsString = getObj(Document).getPresetString();
+        std::cout << detailsString << "\n";
+      #endif
+    } else if (c == 'h' || c == '/') {
+        getSetting(MagnitudeDrawMode) ^= 1;
 
-		Spectrum3D* f = &getObj(Spectrum3D);
+        Spectrum3D* f = &getObj(Spectrum3D);
 
-		f->modeChanged(getSetting(MagnitudeDrawMode) == 1, true);
-		f->updateKnobValue();
-		f->setIconHighlightImplicit();
+        f->modeChanged(getSetting(MagnitudeDrawMode) == 1, true);
+        f->updateKnobValue();
+        f->setIconHighlightImplicit();
     } else if (c == 'w' || c == '\\') {
         if (getSetting(WaveLoaded)) {
             bool isWave = !getSetting(DrawWave);
             getObj(SampleUtils).waveOverlayChanged(isWave);
         } else {
             showMsg("Load a wave file first!");
-		}
-	} else if (code == KeyPress::escapeKey) {
+        }
+    } else if (code == KeyPress::escapeKey) {
         if (getObj(CycleTour).isLive()) {
-	        getObj(CycleTour).exit();
+            getObj(CycleTour).exit();
         } else {
-			currentInteractor->deselectAll(true);
-		}
-	}
+            currentInteractor->deselectAll(true);
+        }
+    }
 
   #ifdef _DEBUG
-	else if (c == 'v') {
-		currentInteractor->getMesh()->print(true, false);
-	}
+    else if (c == 'v') {
+        currentInteractor->getMesh()->print(true, false);
+    }
   #endif
 
     else if (c == 'l') {
@@ -222,31 +221,31 @@ bool KeyboardInputHandler::keyPressed(const KeyPress &key, Component* component)
         tool++;
 
         if (tool > Tools::Axe) {
-	        tool = Tools::Selector;
+            tool = Tools::Selector;
         }
     } else if (code == CtrlN) {
         getObj(Dialogs).promptForSaveApplicably(Dialogs::LoadEmptyPreset);
     } else {
         return false;
-	}
+    }
 
     if (updateBlue) {
         getObj(MorphPanel).updateHighlights();
 
-		getObj(WaveformInter3D).setMovingVertsFromSelected();
-		getObj(WaveformInter2D).setMovingVertsFromSelected();
-		getObj(SpectrumInter2D).setMovingVertsFromSelected();
-		getObj(SpectrumInter3D).setMovingVertsFromSelected();
-		getObj(EnvelopeInter2D).setMovingVertsFromSelected();
-		getObj(EnvelopeInter3D).setMovingVertsFromSelected();
-	}
+        getObj(WaveformInter3D).setMovingVertsFromSelected();
+        getObj(WaveformInter2D).setMovingVertsFromSelected();
+        getObj(SpectrumInter2D).setMovingVertsFromSelected();
+        getObj(SpectrumInter3D).setMovingVertsFromSelected();
+        getObj(EnvelopeInter2D).setMovingVertsFromSelected();
+        getObj(EnvelopeInter3D).setMovingVertsFromSelected();
+    }
 
-	return true;
+    return true;
 }
 
 void KeyboardInputHandler::setFocusedInteractor(Interactor* interactor, bool isMeshInteractor) {
     currentInteractor = interactor;
-	this->isMeshInteractor = isMeshInteractor;
+    this->isMeshInteractor = isMeshInteractor;
 }
 
 Interactor* KeyboardInputHandler::getCurrentInteractor() {

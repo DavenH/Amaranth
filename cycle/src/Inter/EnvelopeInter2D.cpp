@@ -481,10 +481,9 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
                     }
 
                     break;
-
+                }
                 default:
                     break;
-                }
             }
 
             // don't use 'postupdatemessage' because it checks if mesh is active

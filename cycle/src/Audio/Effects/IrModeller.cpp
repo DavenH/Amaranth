@@ -59,7 +59,7 @@ IrModeller::~IrModeller() {
 void IrModeller::doPostWaveLoad() {
     trimWave();
 
-    int greaterPow2 = Arithmetic::getNextPow2((float) wavImpulse.buffer.getNumSamples());
+    int greaterPow2 = Arithmetic::getNextPow2((float) wavImpulse.size());
     ui->getParamGroup().setKnobValue(Length, calcKnobValue(greaterPow2), false);
 
     usingWavFile = true;

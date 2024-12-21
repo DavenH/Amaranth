@@ -33,7 +33,7 @@ float& E3Rasterizer::getPrimaryDimensionVar() {
     return morph[dim];
 }
 
-void E3Rasterizer::performUpdate(int updateType) {
+void E3Rasterizer::performUpdate(UpdateType updateType) {
     if (updateType != Update) {
         return;
     }

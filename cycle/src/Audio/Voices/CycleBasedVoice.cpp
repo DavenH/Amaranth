@@ -96,7 +96,7 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
     }
 
     // TODO
-    timeRasterizer.updateOffsetSeeds();
+    timeRasterizer.updateOffsetSeeds(1, DeformerPanel::tableSize);
 
     EnvRasterizer& pitchRast = parent->pitchGroup[0].rast;
     float pitchEnvVal = parent->flags.havePitch ? pitchRast.sampleAt(0) : 0.5;
@@ -751,8 +751,9 @@ void CycleBasedVoice::fillLatency(StereoBuffer& channelPair) {
 double CycleBasedVoice::getAngleDelta(int midiNumber, float detuneCents, double pitchEnvVal) {
     double pitchWheelSemis = parent ? parent->getPitchWheelValueSemitones() : 0;
 
-    if (detuneCents == 0.f && pitchEnvVal == 0.5 && pitchWheelSemis == 0.)
+    if (detuneCents == 0.f && pitchEnvVal == 0.5 && pitchWheelSemis == 0.) {
         return audioSource->angleDeltas[midiNumber - getConstant(LowestMidiNote)] / 44100.0;
+    }
 
     double pitchEnvSemis = NumberUtils::unitPitchToSemis(pitchEnvVal);
     double fineTune = NumberUtils::noteToFrequency(midiNumber, detuneCents + (pitchEnvSemis + pitchWheelSemis) * 100);
@@ -774,8 +775,9 @@ void CycleBasedVoice::testIfOversamplingChanged() {
 
     jassert(factor >= 1 && factor <= 16);
 
-    if (oldFactor == factor)
+    if (oldFactor == factor) {
         return;
+    }
 
     bool subsample = getDocSetting(SubsampleRltm) || factor > 1;
     int maxBufferSize = getConstant(MaxCyclePeriod) * factor;
@@ -805,8 +807,9 @@ void CycleBasedVoice::stealNoteFrom(CycleBasedVoice* oldVoice) {
 }
 
 void CycleBasedVoice::ensureOversampleBufferSize(int numSamples) {
-    if (parent == nullptr)
+    if (parent == nullptr) {
         return;
+    }
 
     Buffer<float> workBuffer = parent->audioSource->getWorkBuffer();
     int ovspNumSamples = oversamplers[0]->getOversampleFactor() * numSamples;
@@ -815,7 +818,7 @@ void CycleBasedVoice::ensureOversampleBufferSize(int numSamples) {
         emergencyBuffer.ensureSize(ovspNumSamples * 2);
 
         oversampleAccumBuf.left = emergencyBuffer.withSize(ovspNumSamples);
-        oversampleAccumBuf.right = Buffer<float>(emergencyBuffer + ovspNumSamples, ovspNumSamples);
+        oversampleAccumBuf.right = Buffer(emergencyBuffer + ovspNumSamples, ovspNumSamples);
     } else {
         oversampleAccumBuf.left = workBuffer.withSize(ovspNumSamples);
         oversampleAccumBuf.right = (workBuffer + ovspNumSamples).withSize(ovspNumSamples);
@@ -892,8 +895,9 @@ void CycleBasedVoice::updateValue(int outputId, int dim, float value) {
 
         int realIndex = CommonEnums::Null;
         for (int i = 0; i < group.size(); ++i) {
-            if (group.envGroup[i].layerIndex == groupPair.layerIdx)
+            if (group.envGroup[i].layerIndex == groupPair.layerIdx) {
                 realIndex = i;
+            }
         }
 
         bool valid = realIndex != CommonEnums::Null;
@@ -969,8 +973,9 @@ float CycleBasedVoice::getScratchTime(int layerIndex, double cumePos) {
     float blockOffset = double(parent->blockStartOffset - noteState.totalSamplesPlayed) + cumePos;
     MeshLibrary::EnvProps& props = *parent->meshLib->getEnvProps(LayerGroups::GroupScratch, layerIndex);
 
-    if (!props.active)
+    if (!props.active) {
         return noteState.absVoiceTime;
+    }
 
     if (props.global) {
         Buffer<float> scratchBuffer = audioSource->getScratchBuffer(layerIndex);
@@ -979,9 +984,10 @@ float CycleBasedVoice::getScratchTime(int layerIndex, double cumePos) {
         return Resampling::lerpC(scratchBuffer, blockOffset);
     }
 
-    for (auto& scratch: parent->scratchGroup) {
-        if (scratch.layerIndex == layerIndex)
+    for (auto& scratch: parent->scratchGroup.envGroup) {
+        if (scratch.layerIndex == layerIndex) {
             return scratch.scratchTime;
+        }
     }
 
     return 0;

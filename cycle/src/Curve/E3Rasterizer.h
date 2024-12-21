@@ -17,7 +17,7 @@ public:
     ~E3Rasterizer() override = default;
     int getIncrement();
     void init() override;
-    void performUpdate(int updateType) override;
+    void performUpdate(UpdateType updateType) override;
     float& getPrimaryDimensionVar() override;
 
     vector<Column>& getColumns() { return columns; }

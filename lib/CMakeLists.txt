@@ -66,14 +66,6 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
     JUCER_LINUX_MAKE_6D53C8B4=1
     JUCE_APP_VERSION=1.0.0
     JUCE_APP_VERSION_HEX=0x10000
-    JucePlugin_Build_VST=0
-    JucePlugin_Build_VST3=0
-    JucePlugin_Build_AU=0
-    JucePlugin_Build_AUv3=0
-    JucePlugin_Build_AAX=0
-    JucePlugin_Build_Standalone=0
-    JucePlugin_Build_Unity=0
-    JucePlugin_Build_LV2=0
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC

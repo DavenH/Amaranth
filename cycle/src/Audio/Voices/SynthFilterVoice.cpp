@@ -290,7 +290,7 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 
     bool haveAnyValidPhaseLayers = false;
 
-    for(auto& layer : phaseLayers) {
+    for(auto& layer : phaseLayers->layers) {
         MeshLibrary::Properties& props = *layer.props;
 
         if (props.active && layer.mesh->hasEnoughCubesForCrossSection()) {

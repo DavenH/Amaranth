@@ -92,11 +92,11 @@ void HoverSelector::paintOverChildren(Graphics& g) {
 
 class HoverSelectorCallback : public ModalComponentManager::Callback {
 public:
-    HoverSelectorCallback(HoverSelector* const _panel) : panel(_panel) {
+    explicit HoverSelectorCallback(HoverSelector* const _panel) : panel(_panel) {
     }
 
-    void modalStateFinished(int returnValue) {
-        if (panel != 0) {
+    void modalStateFinished(int returnValue) override{
+        if (panel != nullptr) {
             panel->menuActive = false;
 
             //			static int previousReturn = -1;
@@ -114,9 +114,7 @@ public:
 
 private:
     Component::SafePointer<HoverSelector> panel;
-
     HoverSelectorCallback(const HoverSelectorCallback&) = delete;
-
     HoverSelectorCallback& operator=(const HoverSelectorCallback&);
 };
 

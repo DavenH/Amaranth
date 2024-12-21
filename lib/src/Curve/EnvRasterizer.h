@@ -94,7 +94,7 @@ private:
 
     bool canLoop() const;
     int vectorizedRenderToBuffer(Buffer<float> buffer, int numSamples, double deltaX, int unisonIdx);
-    double getLoopLength() const;
+    float getLoopLength() const;
 
     /* ----------------------------------------------------------------------------- */
 

@@ -37,9 +37,6 @@ Dialogs::Dialogs(SingletonRepo* repo) :
         SingletonAccessor(repo, "Dialogs") {
 }
 
-// TODO
-#define _productName "Cycle"
-
 class LightPopup : public DocumentWindow {
 public:
     LightPopup(const String &title, const Colour &colour, int requiredButtons, bool addToDesktop)
@@ -51,7 +48,7 @@ public:
         delete this;
     }
 
-    static int getDesktopWindowStyleFlags() {
+    [[nodiscard]] int getDesktopWindowStyleFlags() const override {
         return ComponentPeer::windowIsTemporary |
                ComponentPeer::windowHasTitleBar |
                ComponentPeer::windowHasCloseButton;
@@ -83,8 +80,9 @@ void Dialogs::showPresetSaveAsDialog() {
         else if (!originalAuthor.containsIgnoreCase(presetAlias))
             deets.setAuthor(originalAuthor + ", " + presetAlias);
 
-        if (deets.getPack().equalsIgnoreCase("Factory"))
+        if (deets.getPack().equalsIgnoreCase("Factory")) {
             deets.setPack("none");
+        }
     }
 
     String presetsStr("Presets");
@@ -193,12 +191,15 @@ void Dialogs::showOpenWaveDialog(PitchedSample* dstWav, const String &subDir,
         }
 
         int openFlags = forDirectory
-                            ? FileBrowserComponent::useTreeView |
-                              FileBrowserComponent::canSelectDirectories
+                            ? FileBrowserComponent::useTreeView | FileBrowserComponent::canSelectDirectories
                             : FileBrowserComponent::canSelectFiles;
-
+        //
+        // FileBrowserComponent (int flags,
+        //               const File& initialFileOrDirectory,
+        //               const FileFilter* fileFilter,
+        //               FilePreviewComponent* previewComp);
         fileBrowser = std::make_unique<FileBrowserComponent>(FileBrowserComponent::openMode | openFlags,
-                                                             lastWaveDirectory, fileFilter.get(), 0);
+                                                             lastWaveDirectory, fileFilter.get(), nullptr);
 
         fileLoader = std::make_unique<FileChooserDialogBox>("Open Audio File", instructions, *fileBrowser,
                                                             true, Colour::greyLevel(0.08f));
@@ -230,7 +231,7 @@ void Dialogs::showOpenPresetDialog() {
                                             String(), "Preset files");
         fileBrowser = std::make_unique<FileBrowserComponent>(FileBrowserComponent::openMode |
                                                FileBrowserComponent::canSelectFiles,
-                                               lastPresetDirectory, fileFilter.get(), 0);
+                                               lastPresetDirectory, fileFilter.get(), nullptr);
 
         fileLoader = std::make_unique<FileChooserDialogBox>("Open " + getStrConstant(ProductName) +
                                               " Preset", String(), *fileBrowser,

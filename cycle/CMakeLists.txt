@@ -61,12 +61,9 @@ set(BASE_DEFINITIONS
     JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
     JUCE_STRICT_REFCOUNTEDPOINTER=1
     JUCE_MODAL_LOOPS_PERMITTED=1
-    JucePlugin_Build_VST=0
-    JucePlugin_Build_AU=0
-    JucePlugin_Build_AUv3=0
-    JucePlugin_Build_AAX=0
-    JucePlugin_Build_Unity=0
-    JucePlugin_Build_LV2=0
+    JUCE_STANDALONE_APPLICATION=1
+    JucePlugin_Build_Standalone=1
+    JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

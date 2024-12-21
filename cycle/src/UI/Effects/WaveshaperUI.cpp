@@ -3,7 +3,6 @@
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
 #include <Curve/IDeformer.h>
-#include <Design/Updating/Updater.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Widgets/Knob.h>
 

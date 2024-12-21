@@ -283,8 +283,9 @@ public:
 
     void addNonSelectionItems(PopupMenu& menu, bool atTop)
     {
-        if(! atTop)
+        if(! atTop) {
             menu.addSeparator();
+        }
 
         menu.addItem(MeshSave, "Save as...");
 
@@ -303,16 +304,18 @@ public:
     }
 
     bool addFilesInDirectory(const File& child, PopupMenu& subMenu) {
-        if (!child.exists())
+        if (!child.exists()) {
             return false;
+        }
 
         Array<File> results;
         child.findChildFiles(results, File::findFiles, false, String("*.") + extension);
 
-        if(results.size() == 0)
+        if(results.size() == 0) {
             return false;
+        }
 
-        for (int i = 0; i < (int) results.size(); ++i) {
+        for (int i = 0; i < results.size(); ++i) {
             File& file 					= results.getReference(i);
             std::unique_ptr<InputStream> stream = file.createInputStream();
 
@@ -346,7 +349,7 @@ public:
             auto* callback = new SelectorCallback(itemCount, file.getFullPathName(), this);
             callbacks.add(callback);
 
-            subMenu.addCustomItem(itemCount, callback, 200, 30, true);
+            subMenu.addCustomItem(itemCount, *callback, 200, 30, true);
 
             ++itemCount;
         }
@@ -374,11 +377,11 @@ public:
     void itemWasSelected(int itemId) override {
         switch (itemId) {
             case MeshSave: {
-                std::unique_ptr<SaveItem<MeshType> > saveItem = new SaveItem<MeshType>(repo, extension, this);
+                auto saveItem = std::make_unique<SaveItem<MeshType>>(repo, extension, this);
                 saveItem->setFolder(client->getDefaultFolder());
                 saveItem->setSize(180, 50);
 
-                CallOutBox& box = CallOutBox::launchAsynchronously(saveItem.release(), getScreenBounds(), nullptr);
+                CallOutBox& box = CallOutBox::launchAsynchronously(saveItem, getScreenBounds(), nullptr);
                 box.setArrowSize(8.f);
 
                 break;

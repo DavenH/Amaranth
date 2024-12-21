@@ -1,7 +1,9 @@
 #include <App/SingletonRepo.h>
+#include <UI/Panels/MainPanel.h>
 
 #include <cmath>
 #include "Phaser.h"
+
 #include "../../UI/Effects/PhaserUI.h"
 
 Phaser::Phaser(SingletonRepo* repo) :
@@ -40,16 +42,13 @@ void Phaser::setMin(float min) {
     dmin = min / (samplerate / 2.f);
 }
 
-
 void Phaser::setMax(float max) {
     dmax = max / (samplerate / 2.f);
 }
 
-
 void Phaser::setRate(float rate) {
     lfoInc = 2.f * IPP_PI * (rate / samplerate);
 }
-
 
 void Phaser::setFeedback(float feedback) {
     this->feedback = feedback;
@@ -60,7 +59,8 @@ void Phaser::setDepth(float depth) {
 }
 
 bool Phaser::isEnabled() const {
-    return getObj(MainPanel).getPhaserCmpt()->isEffectEnabled();
+    return false;
+    // return getObj(MainPanel).getPhaserCmpt()->isEffectEnabled();
 }
 
 void Phaser::update(float& inSamp) {

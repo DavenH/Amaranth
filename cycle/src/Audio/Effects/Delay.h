@@ -1,7 +1,8 @@
 #pragma once
 #include <Obj/Ref.h>
 #include <App/SingletonAccessor.h>
-
+#include <Array/Buffer.h>
+#include <Array/ScopedAlloc.h>
 #include "AudioEffect.h"
 
 class GuilessEffect;
@@ -15,7 +16,7 @@ public:
 	int inputDelaySamples;
 	int spinDelaySamples;
 
-	Buffer<Ipp32f> buffer;
+	Buffer<float> buffer;
 };
 
 class Delay : public Effect
@@ -60,6 +61,6 @@ private:
 
 	Ref<GuilessEffect> ui;
 	vector<SpinParams> spinParams[2];
-	ScopedAlloc<Ipp32f> inputBuffer[2];
-	ScopedAlloc<Ipp32f> wetBuffer[2];
+	ScopedAlloc<float> inputBuffer[2];
+	ScopedAlloc<float> wetBuffer[2];
 };

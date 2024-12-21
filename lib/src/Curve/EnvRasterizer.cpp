@@ -319,13 +319,13 @@ bool EnvRasterizer::canLoop() const {
     return loopIndex >= 0; // && sustainIndex - loopIndex >= loopMinSizeIcpts;
 }
 
-double EnvRasterizer::getLoopLength() const {
+float EnvRasterizer::getLoopLength() const {
     if (loopIndex >= 0 && loopIndex < (icpts.size() - 1)
         && sustainIndex >= 0 && sustainIndex < icpts.size()) {
         return icpts[sustainIndex].x - icpts[loopIndex].x;
     }
 
-    return -1.;
+    return -1.f;
 }
 
 void EnvRasterizer::setNoteOn() {
@@ -371,11 +371,13 @@ bool EnvRasterizer::renderToBuffer(
 
     double newDelta = deltaX;
 
-    if (props.tempoSync)
+    if (props.tempoSync) {
         newDelta /= tempoScale;
+    }
 
-    if (props.scale != 1)
+    if (props.scale != 1) {
         newDelta /= (double) props.getEffectiveScale();
+    }
 
     if (!oneSamplePerCycle) {
         // should happen extremely rarely�only when buffer sizes > 8192
@@ -385,12 +387,13 @@ bool EnvRasterizer::renderToBuffer(
 
     // todo adjust this according to loop length? must be less than loop length in time
     // also depends on deltaX, if it's very large, the granularity must be increased
-    float loopLength = jmax(2 * newDelta, getLoopLength()); //88
+    float loopLength = jmax<float>(2.f * newDelta, getLoopLength()); //88
     float maxIterativeAdvancement = 0.5f;
     int maxSamplesPerBuf = 512;
 
-    if (loopLength > 2 * newDelta)
-        maxIterativeAdvancement = 0.9 * loopLength; //130
+    if (loopLength > 2 * newDelta){
+        maxIterativeAdvancement = 0.9f * loopLength; //130
+    }
 
     maxSamplesPerBuf = jlimit(1, maxSamplesPerBuf, int(maxIterativeAdvancement / newDelta));
 

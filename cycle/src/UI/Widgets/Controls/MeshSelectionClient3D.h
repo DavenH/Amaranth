@@ -11,7 +11,7 @@
 #include <Definitions.h>
 
 #include "MeshSelectionClient.h"
-#include "../Audio/SynthAudioSource.h"
+#include "../../../Audio/SynthAudioSource.h"
 
 class MeshSelectionClient3D;
 
@@ -23,7 +23,7 @@ public:
     virtual void enterClientLock(bool audioThreadApplicable) = 0;
     virtual void exitClientLock(bool audioThreadApplicable) = 0;
 
-    Ref<MeshSelectionClient3D> getSelectionClient() const { return selectionClient.get(); }
+    [[nodiscard]] Ref<MeshSelectionClient3D> getSelectionClient() const { return selectionClient.get(); }
 
 protected:
     std::unique_ptr<MeshSelectionClient3D> selectionClient;

@@ -11,39 +11,38 @@ class Panel;
 class Initializer : public SingletonAccessor
 {
 public:
-	Initializer();
-	~Initializer() override;
+    Initializer();
+    ~Initializer() override;
 
-	void init() override;
-	void init2();
-	void initSingletons();
-	void resetAll();
-	void setConstants();
-	void setDefaultSettings();
-	void instantiate();
-//	void updateDllName();
-	void freeUIResources();
+    void init() override;
+    void init2();
+    void initSingletons();
+    void resetAll();
+    void setConstants();
+    void setDefaultSettings();
+    void instantiate();
+    void freeUIResources();
 
-	int getInstanceId() const 					{ return instanceId; }
-	void setCommandLine(const String& command) 	{ this->commandLine = command; }
-	const String& getCommandLine() 				{ return commandLine; }
+    int getInstanceId() const 					{ return instanceId; }
+    void setCommandLine(const String& command) 	{ this->commandLine = command; }
+    const String& getCommandLine() 				{ return commandLine; }
 
-	void takeLocks(SingletonRepo* repo);
-	void releaseLocks(SingletonRepo* repo);
+    void takeLocks();
+    void releaseLocks();
 
 private:
-	bool haveInitDsp;
-	bool haveInitGfx;
-	bool haveFreedResources;
-	int instanceId;
+    bool haveInitDsp;
+    bool haveInitGfx;
+    bool haveFreedResources;
+    int instanceId;
 
-	String commandLine;
-	String dllName;
+    String commandLine;
+    String dllName;
 
-	std::unique_ptr<SingletonRepo> singletonRepo;
-	Array<Panel> lockingPanels;
+    std::unique_ptr<SingletonRepo> singletonRepo;
+    Array<Panel*> lockingPanels;
 
-	static Atomic<int> numInstances;
+    static Atomic<int> numInstances;
 };
 
 typedef EnvRasterizer EnvVolumeRast;

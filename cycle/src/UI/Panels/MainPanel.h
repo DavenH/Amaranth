@@ -296,29 +296,27 @@ private:
 
     // singleton references
     Ref<VertexPropertiesPanel> vtxPropsPanel;
-    Ref<GeneralControls> 	generalControls;
-    Ref<Console> 			console;
-    Ref<MorphPanel>			morphPanel;
-    Ref<PlaybackPanel>		playbackPanel;
-    Ref<Waveform3D> 		waveform3D;
-    Ref<Waveform2D> 		waveform2D;
-    Ref<PresetPage> 		presetPage;
-    Ref<Spectrum2D> 		spectrum2D;
-    Ref<Spectrum3D> 		spectrum3D;
-    Ref<Envelope2D> 		envelope2D;
-    Ref<Envelope3D> 		envelope3D;
-    //	Ref<KeyboardInputHandler> inputHandler;
-    //	Ref<AudioSourceRepo> 	audioManager;
-    Ref<DerivativePanel> 	derivPanel;
-    Ref<DeformerPanel> 		dfrmPanel;
+    Ref<GeneralControls> generalControls;
+    Ref<Console> console;
+    Ref<MorphPanel> morphPanel;
+    Ref<PlaybackPanel> playbackPanel;
+    Ref<Waveform3D> waveform3D;
+    Ref<Waveform2D> waveform2D;
+    Ref<PresetPage> presetPage;
+    Ref<Spectrum2D> spectrum2D;
+    Ref<Spectrum3D> spectrum3D;
+    Ref<Envelope2D> envelope2D;
+    Ref<Envelope3D> envelope3D;
+    Ref<DerivativePanel> derivPanel;
+    Ref<DeformerPanel> dfrmPanel;
 
-    Ref<IrModellerUI> 	irModelUI;
-    Ref<WaveshaperUI> 	waveshaperUI;
-    Ref<UnisonUI> 		unisonUI;
-    Ref<ReverbUI> 		reverbUI;
-    Ref<DelayUI> 		delayUI;
-    Ref<EqualizerUI> 	eqUI;
-    Ref<MidiKeyboard> 	keyboard;
+    Ref<IrModellerUI> irModelUI;
+    Ref<WaveshaperUI> waveshaperUI;
+    Ref<UnisonUI> unisonUI;
+    Ref<ReverbUI> reverbUI;
+    Ref<DelayUI> delayUI;
+    Ref<EqualizerUI> eqUI;
+    Ref<MidiKeyboard> keyboard;
 
     PanelGroup wave2DGroup, surfGroup, spectGroup2, spectGroup3, envGroup2, envGroup3, wshpGroup, irGroup, dfrmGroup;
     Array<PanelGroup*> panelGroups;

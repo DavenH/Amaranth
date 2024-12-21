@@ -12,6 +12,7 @@ using std::stack;
 
 class MainPanel;
 class EditWatcher;
+class PitchedSample;
 
 class Dialogs :
 		public SingletonAccessor
