@@ -1,10 +1,11 @@
 #pragma once
 
 #include <App/SingletonAccessor.h>
+#include <App/Doc/Savable.h>
 #include <Obj/Ref.h>
 
 #include <UI/Panels/Panel2D.h>
-#include "../../UI/TourGuide.h"
+#include "../TourGuide.h"
 
 class Waveform3D;
 class E3Rasterizer;

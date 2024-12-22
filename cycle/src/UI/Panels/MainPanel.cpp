@@ -276,10 +276,11 @@ void MainPanel::initialisePanels() {
         delayBounds, eqBounds, wsCtrlBounds, cv_botTabBounds, cv_topTabBounds, menuBar, xv_topBotDragger,
         xv_spectSurfDragger, xv_envDfmImpDragger, xv_dfmImpDragger, xv_wholeDragger, cv_wholeDragger,
         cv_middleDragger, cv_envSpectDragger, cv_spectSurfDragger, crsGL, f2GL, e2GL, dfmGL,
-        wsGL, tmGL, surfGL, f3GL, e3GL, nullptr
+        wsGL, tmGL, surfGL, f3GL, e3GL
     };
-    deletable.addArray(deleteMe);
-
+    for (auto ptr : deleteMe) {
+        deletable.add(ptr);
+    }
     initialized = true;
 }
 

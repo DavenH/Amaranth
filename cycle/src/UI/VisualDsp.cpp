@@ -1484,18 +1484,15 @@ void VisualDsp::processThroughEffects(int numColumns) {
     }
 }
 
-void VisualDsp::reset()
-{
+void VisualDsp::reset() {
     destroyArrays();
 
-    timeRasterizer->reset();
-    spectRasterizer->reset();
-    phaseRasterizer->reset();
+    ((MeshRasterizer*)timeRasterizer)->reset();
+    ((MeshRasterizer*)spectRasterizer)->reset();
+    ((MeshRasterizer*)phaseRasterizer)->reset();
 }
 
-
-void VisualDsp::destroyArrays()
-{
+void VisualDsp::destroyArrays() {
     ScopedLock sl1(timeColumnLock);
     ScopedLock sl2(envColumnLock);
     ScopedLock sl3(fftColumnLock);
@@ -1517,7 +1514,6 @@ void VisualDsp::destroyArrays()
     phasePreFXCols	.clear();
     phasePostFXCols	.clear();
 }
-
 
 VisualDsp::GraphicProcessor::GraphicProcessor(VisualDsp* processor, SingletonRepo* repo, VisualDsp::StageType stage)
         : SingletonAccessor(repo, "GraphicProcessor")
@@ -1601,7 +1597,7 @@ void VisualDsp::checkEnvWavColumns(int numColumns, int nextPow2, int overrideKey
 void VisualDsp::checkFFTWavColumns(int numColumns, int numHarms, int overrideKey) {
     ScopedLock sl(fftColumnLock);
 
-    ResizeParams params(numColumns, 0, 0, &fftPreFXArray, &fftPreFXCols, &phasePreFXArray, &phasePreFXCols, 0);
+    ResizeParams params(numColumns, nullptr, nullptr, &fftPreFXArray, &fftPreFXCols, &phasePreFXArray, &phasePreFXCols, nullptr);
 
     params.setExtraParams(-1, numHarms, overrideKey, false);
     resizeArrays(params);
@@ -1617,8 +1613,7 @@ void VisualDsp::checkEffectsWavColumns(int numColumns, int nextPow2, int numHarm
     resizeArrays(params);
 }
 
-void VisualDsp::resizeArrays(const ResizeParams& params)
-{
+void VisualDsp::resizeArrays(const ResizeParams& params) {
     bool adjustColumnSizes = ! params.isEnvelope && ! getSetting(DrawWave) && getSetting(CurrentMorphAxis) == Vertex::Red;
     int numHarmonics = 0, nextPow2 = 0;
     int fftGridSize = 0, fullGridSize = 0;
@@ -1680,8 +1675,12 @@ void VisualDsp::resizeArrays(const ResizeParams& params)
         keys.set(key);
     }
 
-    if(params.freqArray) 	params.freqArray->resize(fftGridSize);
-    if(params.timeArray) 	params.timeArray->resize(fullGridSize);
+    if(params.freqArray) {
+        params.freqArray->resize(fftGridSize);
+    }
+    if(params.timeArray) {
+        params.timeArray->resize(fullGridSize);
+    }
     if (params.phaseArray) {
         params.phaseArray->resize(fftGridSize);
         params.phaseArray->withSize(fftGridSize).zero();
@@ -1710,8 +1709,8 @@ void VisualDsp::resizeArrays(const ResizeParams& params)
             (*params.timeColumns)[i] = Column(*params.timeArray + timeOffset, nextPow2, x, key);
         }
 
-        timeOffset 		+= nextPow2;
-        freqOffset 		+= numHarmonics;
+        timeOffset += nextPow2;
+        freqOffset += numHarmonics;
     }
 
     if(params.timeColumnsToCopy != nullptr && params.timeColumns != nullptr) {
@@ -1754,8 +1753,7 @@ CriticalSection& VisualDsp::getColumnLock(int type) {
     }
 }
 
-bool VisualDsp::areAnyFXActive()
-{
+bool VisualDsp::areAnyFXActive() {
     bool active = false;
 
     auto& synth = getObj(SynthAudioSource);
@@ -1777,8 +1775,7 @@ void VisualDsp::timerCallback() {
     }
 }
 
-const ScratchContext& VisualDsp::getScratchContext(int scratchChannel)
-{
+const ScratchContext& VisualDsp::getScratchContext(int scratchChannel) {
     if (scratchChannel == CommonEnums::Null || scratchChannel >= (int) scratchContexts.size()) {
         return defaultScratchContext;
     }
@@ -1798,8 +1795,9 @@ float VisualDsp::getScratchPosition(int scratchChannel) {
 
     EnvelopeMesh* scratchMesh = meshLib->getEnvMesh(LayerGroups::GroupScratch, scratchChannel);
 
-    if(scratchChannel >= (int) scratchContexts.size())
+    if(scratchChannel >= (int) scratchContexts.size()) {
         return unitPos;
+    }
 
     jassert(scratchChannel < (int) scratchContexts.size());
 

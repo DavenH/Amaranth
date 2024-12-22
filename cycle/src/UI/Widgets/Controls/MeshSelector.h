@@ -1,7 +1,7 @@
 #pragma once
 
-#include <App/Doc/Document.h>
 #include <App/SingletonAccessor.h>
+#include <App/AppConstants.h>
 #include <App/SingletonRepo.h>
 #include <Definitions.h>
 #include <UI/Layout/IDynamicSizeComponent.h>
@@ -322,8 +322,8 @@ public:
             jassert(file.existsAsFile() && stream != nullptr);
 
             GZIPDecompressorInputStream gzipStream(stream.get(), false);
-            XmlDocument 				xmlDoc(gzipStream.readEntireStreamAsString());
-            std::unique_ptr meshElem = xmlDoc.getDocumentElement();
+            XmlDocument xmlDoc(gzipStream.readEntireStreamAsString());
+            std::unique_ptr<XmlElement> meshElem = xmlDoc.getDocumentElement();
 
             if (meshElem == nullptr) {
                 std::cout << "bad mesh\n";
@@ -334,10 +334,10 @@ public:
 
             auto* mesh = new MeshType(file.getFileNameWithoutExtension() + "Mesh");
 
-            mesh->readXML(meshElem);
+            mesh->readXML(meshElem.get());
 
             if(updateMeshVersion) {
-                mesh->updateToVersion(repo);
+                mesh->updateToVersion(getRealConstant(ProductVersion));
             }
 
             for(auto& cube : mesh->getCubes()) {
@@ -381,7 +381,11 @@ public:
                 saveItem->setFolder(client->getDefaultFolder());
                 saveItem->setSize(180, 50);
 
-                CallOutBox& box = CallOutBox::launchAsynchronously(saveItem, getScreenBounds(), nullptr);
+                CallOutBox& box = CallOutBox::launchAsynchronously(
+                    std::unique_ptr<Component>(std::move(saveItem)),
+                    getScreenBounds(),
+                    nullptr
+                );
                 box.setArrowSize(8.f);
 
                 break;
@@ -426,14 +430,14 @@ public:
                 GZIPDecompressorInputStream gzipStream(stream.release(), true);
 
                 XmlDocument xmlDoc(gzipStream.readEntireStreamAsString());
-                std::unique_ptr meshElem = xmlDoc.getDocumentElement();
+                std::unique_ptr<XmlElement> meshElem = xmlDoc.getDocumentElement();
 
                 auto* mesh = new MeshType(file.getFileNameWithoutExtension() + "Mesh");
 
-                mesh->readXML(meshElem);
+                mesh->readXML(meshElem.get());
 
                 if(updateMeshVersion) {
-                    mesh->updateToVersion(repo);
+                    mesh->updateToVersion(getRealConstant(ProductVersion));
                 }
 
                 for(auto& cube : mesh->getCubes()) {

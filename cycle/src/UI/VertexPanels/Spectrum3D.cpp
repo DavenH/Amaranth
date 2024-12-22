@@ -389,7 +389,9 @@ bool Spectrum3D::readXML(const XmlElement* element) {
                 props.active 		= magPropsElem->getBoolAttribute("isEnabled", true);
                 props.scratchChan 	= magPropsElem->getIntAttribute("scratchChannel", 0);
 
-                // XXX add props to new layer?
+                // meshLib->getGroup(LayerGroups::GroupSpect).layers.push_back(MeshLibrary::Layer);
+                // TODO set props to mesh library
+
             }
         }
 
@@ -402,7 +404,7 @@ bool Spectrum3D::readXML(const XmlElement* element) {
                 props.active 		= phasePropsElem->getBoolAttribute("isEnabled", true);
                 props.scratchChan 	= phasePropsElem->getIntAttribute("scratchChannel", CommonEnums::Null);
 
-                // XXX add props to new layer?
+                // TODO set props to mesh library
             }
         }
     }
@@ -472,19 +474,21 @@ MeshLibrary::Properties* Spectrum3D::getCurrentProperties() {
 void Spectrum3D::updateSmoothedParameters(int deltaSamples) {
     ScopedLock sl(layerLock);
 
-	for(int i = 0; i < (int) magnProperties.size(); ++i)
-	{
-		LayerProps& props = magnProperties.getReference(i);
-		props.pan.update(deltaSamples);
-		props.dynamicRange.update(deltaSamples);
-	}
+    // getObj(MeshLibrary).getGroup(Spectrogram).layers;
 
-	for(int i = 0; i < (int) phaseProperties.size(); ++i)
-	{
-		LayerProps& props = phaseProperties.getReference(i);
-		props.pan.update(deltaSamples);
-		props.dynamicRange.update(deltaSamples);
-	}
+	// for(int i = 0; i < (int) magnProperties.size(); ++i)
+	// {
+	// 	LayerProps& props = magnProperties.getReference(i);
+	// 	props.pan.update(deltaSamples);
+	// 	props.dynamicRange.update(deltaSamples);
+	// }
+	//
+	// for(int i = 0; i < (int) phaseProperties.size(); ++i)
+	// {
+	// 	LayerProps& props = phaseProperties.getReference(i);
+	// 	props.pan.update(deltaSamples);
+	// 	props.dynamicRange.update(deltaSamples);
+	// }
 }
 
 void Spectrum3D::changedToOrFromTimeDimension() {

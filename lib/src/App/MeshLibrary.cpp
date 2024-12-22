@@ -116,7 +116,7 @@ bool MeshLibrary::canPasteTo(int type) const {
 
 void MeshLibrary::pasteFromClipboardTo(Mesh* mesh, int type) {
     Mesh* sourceClipboardMesh = (type == TypeEnvelope) ? (Mesh*) clipboardMesh.envMesh.get()
-                                                       : (Mesh*) clipboardMesh.mesh.get();
+                                                       : clipboardMesh.mesh.get();
 
     if (sourceClipboardMesh->getNumVerts() == 0) {
         showMsg("Clipboard's mesh is empty.");
@@ -193,7 +193,7 @@ void MeshLibrary::writeXML(XmlElement* element) const {
 
     for (const auto& layerGroup : layerGroups) {
         auto* groupElem = new XmlElement("Group");
-        groupElem->setAttribute("mesh-type", (int) layerGroup.meshType);
+        groupElem->setAttribute("mesh-type", layerGroup.meshType);
 
         for (auto layer : layerGroup.layers) {
             auto* layerElem = new XmlElement("Layer");

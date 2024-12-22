@@ -35,6 +35,8 @@ Panel2D::Panel2D(SingletonRepo* repo,
     zoomPanel->addListener(this);
 }
 
+Panel2D::~Panel2D() = default;
+
 void Panel2D::contractToRange(bool includeX) {
     RasterizerData& data = interactor->getRasterizer()->getRastData();
     ScopedLock dataLock(data.lock);

@@ -5,6 +5,9 @@
 #include <UI/IConsole.h>
 
 #include "DeformerPanel.h"
+
+#include <Util/ScopedFunction.h>
+
 #include "../Panels/VertexPropertiesPanel.h"
 #include "../Widgets/Controls/LayerAddRemover.h"
 #include "../Widgets/Controls/MeshSelector.h"
@@ -365,15 +368,14 @@ Mesh* DeformerPanel::getCurrentMesh() {
 }
 
 bool DeformerPanel::setGuideBuffers() {
-    // XXX causes deadlock
-    enterClientLock();
+    ScopedLambda locker(
+        [this]{enterClientLock();},
+        [this]{exitClientLock();});
 
     bool changed = dynMemory.ensureSize(guideTables.size() * tableSize);
 
     for (auto& guideTable : guideTables)
         guideTable.table = dynMemory.place(tableSize);
-
-    exitClientLock();
 
     return changed;
 }

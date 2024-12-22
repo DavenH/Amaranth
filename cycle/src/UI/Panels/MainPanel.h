@@ -321,7 +321,7 @@ private:
     PanelGroup wave2DGroup, surfGroup, spectGroup2, spectGroup3, envGroup2, envGroup3, wshpGroup, irGroup, dfrmGroup;
     Array<PanelGroup*> panelGroups;
 
-    OwnedArray<void*> deletable;
+    OwnedArray<void> deletable;
 
     set<Bounded*> toOutline;
 

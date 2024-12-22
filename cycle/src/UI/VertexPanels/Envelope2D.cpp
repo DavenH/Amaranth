@@ -516,7 +516,7 @@ void Envelope2D::createScales()
         int width = font.getStringWidth(text);
 
         MiscGraphics::drawShadowedText(g, text, position, font.getHeight(), font, alpha);
-        newScales.push_back(Rectangle<float>(position, 0, width, font.getHeight()));
+        newScales.emplace_back(position, 0, width, font.getHeight());
 
         position += width + 2;
     }
@@ -562,29 +562,28 @@ Component* Envelope2D::getComponent(int which) {
     return nullptr;
 }
 
-EnvRasterizer::LayerProps& Envelope2D::getScratchProps(int index) {
-    int scratchEnv = index;
-
-    if (index < 0) {
-        scratchEnv = getObj(MeshLibrary).getCurrentIndex(LayerGroups::GroupScratch);
-    }
-
-    if (isPositiveAndBelow(scratchEnv, scratchProps.size()))
-        return scratchProps.getReference(scratchEnv);
-
-    return defaultProps;
-}
-
-void Envelope2D::removeScratchProps(int index) {
-    if (isPositiveAndBelow(index, scratchProps.size())) {
-        scratchProps.remove(index);
-
-        if (scratchProps.size() == 1) {
-            scratchProps.add(defaultProps);
-        }
-    }
-}
-
+// EnvRasterizer::LayerProps& Envelope2D::getScratchProps(int index) {
+//     int scratchEnv = index;
+//
+//     if (index < 0) {
+//         scratchEnv = getObj(MeshLibrary).getCurrentIndex(LayerGroups::GroupScratch);
+//     }
+//
+//     if (isPositiveAndBelow(scratchEnv, scratchProps.size()))
+//         return scratchProps.getReference(scratchEnv);
+//
+//     return defaultProps;
+// }
+//
+// void Envelope2D::removeScratchProps(int index) {
+//     if (isPositiveAndBelow(index, scratchProps.size())) {
+//         scratchProps.remove(index);
+//
+//         if (scratchProps.size() == 1) {
+//             scratchProps.add(defaultProps);
+//         }
+//     }
+// }
 
 bool Envelope2D::readXML(const XmlElement* element) {
     struct EnvClass {

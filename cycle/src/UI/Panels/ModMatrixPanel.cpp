@@ -139,10 +139,8 @@ ModMatrixPanel::ModMatrixPanel(SingletonRepo* repo) :
 	closeButton.addListener(this);
 
     for (int i = 0; i < 20; ++i) {
-        HSlider* knob;
-        paramGroup->addSlider(
-                knob = new HSlider(repo, "#" + String(i + 1), "Utility parameter " + String(i + 1), true));
-
+        auto* knob = new HSlider(repo, "#" + String(i + 1), "Utility parameter " + String(i + 1), true);
+        paramGroup->addSlider(knob);
 		addAndMakeVisible(knob);
 	}
 
@@ -292,17 +290,17 @@ void ModMatrixPanel::resized() {
 		right.removeFromTop(4);
 	}
 
-	Rectangle<int> utilityRect(paramGroup->getKnob<Slider>(0)->getPosition(),
-							   paramGroup->getKnob<Slider>(paramGroup->getNumParams() - 1)->getBounds().getBottomRight());
+	Rectangle utilityRect(paramGroup->getKnob<Slider>(0)->getPosition(),
+						  paramGroup->getKnob<Slider>(paramGroup->getNumParams() - 1)->getBounds().getBottomRight());
 
 	utilityArea.toBack();
 	utilityArea.setBounds(utilityRect);
 
 	sourceArea.toBack();
-	sourceArea.setBounds(Rectangle<int>(Point<int>(20, bounds.getY()), bounds.getBottomLeft()));
+	sourceArea.setBounds(Rectangle(Point(20, bounds.getY()), bounds.getBottomLeft()));
 
 	destArea.toBack();
-	destArea.setBounds(Rectangle<int>(Point<int>(bounds.getX(), 20), bounds.getTopRight()));
+	destArea.setBounds(Rectangle(Point(bounds.getX(), 20), bounds.getTopRight()));
 
 	bottom.reduce(bottom.getWidth() / 2 - 60, 12);
 	closeButton.setBounds(bottom);

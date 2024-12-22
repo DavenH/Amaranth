@@ -8,7 +8,7 @@ class BoundWrapper;
 class Panel2D : public Panel {
 public:
     Panel2D(SingletonRepo* repo, const String& name, bool curveIsBipolar, bool haveVertZoom);
-    ~Panel2D() override = default;
+    ~Panel2D() override;
 
     void contractToRange(bool includeX = false);
     void drawCurvesFrom(BufferXY& buff, Buffer<float> alpha, const Color& colourA, const Color& colourB);

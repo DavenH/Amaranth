@@ -73,13 +73,13 @@ public:
 
     struct LayerGroup {
         explicit LayerGroup(int type) : meshType(type), current(0) {}
-        int size() const { return layers.size(); }
+        [[nodiscard]] int size() const { return layers.size(); }
         Layer& operator[] (const int idx) { return layers[idx]; }
 
-        Mesh* getCurrentMesh()
-        {
-            if(current < 0)
+        [[nodiscard]] Mesh* getCurrentMesh() const {
+            if(current < 0) {
                 return nullptr;
+            }
 
             return layers[current].mesh;
         }
@@ -87,7 +87,7 @@ public:
         int current;
         int meshType;
 
-        map<int, Array<int> > sources;
+        map<int, Array<int>> sources;
         vector<Layer> layers;
         vector<Vertex*> selected;
     };
@@ -103,7 +103,6 @@ public:
         GroupLayerPair(int id, int idx) : groupId(id), layerIdx(idx) {}
         [[nodiscard]] bool isNotNull() const { return groupId != CommonEnums::Null && layerIdx != CommonEnums::Null; }
     };
-
 
     class Listener {
     public:
