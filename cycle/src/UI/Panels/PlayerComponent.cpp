@@ -46,7 +46,7 @@ void PlayerComponent::setComponents(bool add) {
 void PlayerComponent::paint(Graphics& g) {
     getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
-    Font font(16);
+    Font font(FontOptions(16));
     g.setFont(font);
     g.setColour(Colour::greyLevel(0.64f));
     g.setOpacity(1.f);
@@ -58,14 +58,14 @@ void PlayerComponent::paint(Graphics& g) {
         nameStr += "*";
     }
 
-    Rectangle<int> r = textBounds.removeFromLeft(font.getStringWidth(nameStr));
+    Rectangle<int> r = textBounds.removeFromLeft(Util::getStringWidth(font, nameStr));
     g.drawFittedText(nameStr, r.getX(), r.getY(), r.getWidth(), r.getHeight(), Justification::centredLeft, 1);
 
     textBounds.removeFromLeft(5);
 
     g.setOpacity(0.4f);
     String authStr = "by " + author;
-    r = textBounds.removeFromLeft(font.getStringWidth(authStr));
+    r = textBounds.removeFromLeft(Util::getStringWidth(font, authStr));
 
     g.drawFittedText(authStr, r.getX(), r.getY(), r.getWidth(), r.getHeight(), Justification::centredLeft, 1);
 }

@@ -498,7 +498,7 @@ void Spectrum2D::createScales() {
         int oldPos 	 = position;
         float absAmp = 2 * Arithmetic::invLogMapping(getConstant(FFTLogTensionAmp) * IPP_2PI, decibelLine);
         String text  = String(roundToInt(NumberUtils::toDecibels(absAmp)));
-        int width 	 = font.getStringWidth(text) + 1;
+        int width 	 = Util::getStringWidth(font, text) + 1;
 
         MiscGraphics::drawShadowedText(g, text, position + 1, font.getHeight(), font, alpha);
         newScales.emplace_back(position, 0, width, font.getHeight());
@@ -521,7 +521,7 @@ void Spectrum2D::createScales() {
                 text = String(val);
             }
 
-            int width = font.getStringWidth(text) + 1;
+            int width = Util::getStringWidth(font, text) + 1;
             MiscGraphics::drawShadowedText(g, text, position + 1, font.getHeight(), font, alpha);
             newScales.emplace_back(position, 0, width, font.getHeight());
 

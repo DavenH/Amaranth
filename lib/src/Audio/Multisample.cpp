@@ -336,7 +336,7 @@ bool Multisample::readXML(const XmlElement* element) {
         samples.clear();
     }
 
-    forEachXmlChildElementWithTagName(*element, sampleElem, "Sample") {
+    for(auto sampleElem : element->getChildWithTagNameIterator("Sample")) {
         std::unique_ptr<PitchedSample> sample(new PitchedSample());
         sample->readXML(sampleElem);
         sample->createPeriodsFromEnv(waveRasterizer);

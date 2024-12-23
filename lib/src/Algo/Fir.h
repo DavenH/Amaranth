@@ -1,7 +1,7 @@
 #ifndef _FIR_H_
 #define _FIR_H_
 
-#include <ipps.h>
+#include <ipp.h>
 #include "../Array/Buffer.h"
 #include "../Array/ScopedAlloc.h"
 #include "../Obj/CurveLine.h"

@@ -2,7 +2,7 @@
 
 #include <cmath>
 #include <vector>
-#include <ippdefs.h>
+#include <ipp.h>
 #include <iostream>
 #include "Vertex.h"
 #include "Vertex2.h"

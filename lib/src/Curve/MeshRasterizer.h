@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <ippdefs.h>
+#include <ipp.h>
 #include "Curve.h"
 #include "Mesh.h"
 #include "RasterizerData.h"

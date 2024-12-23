@@ -7,7 +7,6 @@
 using std::vector;
 using namespace juce;
 
-[[nodiscard]]
 class DocumentDetails :
         public Savable
 {
@@ -49,23 +48,23 @@ public:
     void setProductVersion(double v)			{ this->productVersion 	= v; 			}
     void setNewlyDownloaded(bool is)			{ this->newlyDownloaded = is; 			}
 
-    bool 				isRemote() const 		{ return remote; 			}
-    bool 				isWave() const			{ return isWav; 			}
-    bool				isNew() const			{ return newlyDownloaded; 	}
-    int 				getRevision() const		{ return revision; 			}
-    int 				getSizeBytes() const	{ return sizeBytes; 		}
-    int64 				getDateMillis() const	{ return dateMillis; 		}
-    int64 				getModifMillis() const	{ return modifiedMillis; 	}
-    const String& 		getAuthor() const		{ return author; 			}
-    const String& 		getPack() const			{ return pack; 				}
-    const String& 		getName() const			{ return name; 				}
-    const String& 		getFilename() const		{ return filename; 			}
-    const StringArray& 	getTags() const			{ return tags; 				}
-    float 				getRating() const		{ return static_cast<float>(rating); }
-    double 				getProductVersion() const { return productVersion; 	}
-    String getKey() const 						{ return name + "." + author + "." + pack; }
-    bool& getSuppressDateFlag() 				{ return suppressDate; 		}
-    bool& getSuppressRevFlag() 					{ return suppressRevision; 	}
+    [[nodiscard]] bool 				    isRemote() const 		{ return remote; 			}
+    [[nodiscard]] bool 				    isWave() const			{ return isWav; 			}
+    [[nodiscard]] bool				    isNew() const			{ return newlyDownloaded; 	}
+    [[nodiscard]] int 				    getRevision() const		{ return revision; 			}
+    [[nodiscard]] int 				    getSizeBytes() const	{ return sizeBytes; 		}
+    [[nodiscard]] int64 				getDateMillis() const	{ return dateMillis; 		}
+    [[nodiscard]] int64 				getModifMillis() const	{ return modifiedMillis; 	}
+    [[nodiscard]] const String& 		getAuthor() const		{ return author; 			}
+    [[nodiscard]] const String& 		getPack() const			{ return pack; 				}
+    [[nodiscard]] const String& 		getName() const			{ return name; 				}
+    [[nodiscard]] const String& 		getFilename() const		{ return filename; 			}
+    [[nodiscard]] const StringArray& 	getTags() const			{ return tags; 				}
+    [[nodiscard]] float 				getRating() const		{ return static_cast<float>(rating); }
+    [[nodiscard]] double 				getProductVersion() const { return productVersion; 	}
+    [[nodiscard]] String getKey() const { return name + "." + author + "." + pack; }
+    bool& getSuppressDateFlag() 		{ return suppressDate; 		}
+    bool& getSuppressRevFlag() 			{ return suppressRevision; 	}
 
     void reset();
     bool readXML(const XmlElement* element) override;

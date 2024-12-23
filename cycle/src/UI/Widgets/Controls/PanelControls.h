@@ -5,6 +5,8 @@
 #include <UI/Widgets/DynamicLabel.h>
 #include <UI/Widgets/IconButton.h>
 #include <UI/Widgets/RetractableCallout.h>
+#include <UI/Layout/DynamicSizeContainer.h>
+#include <UI/MouseOverMessager.h>
 
 #include "LayerAddRemover.h"
 #include "LayerSelectorPanel.h"
@@ -12,12 +14,10 @@
 #include "Spacers.h"
 #include "../HSlider.h"
 
-class DynamicSizeContainer;
 class EnvelopeMesh;
-class IDynamicSizeComponent;
 class LayerSelectorPanel;
+class IDynamicSizeComponent;
 class Mesh;
-class MouseOverMessager;
 
 class PanelControls :
         public ComboBox::Listener
@@ -32,8 +32,6 @@ public:
                   Button::Listener* 	listener,
                   LayerSelectionClient* client 		= nullptr,
                   const String& 		layerString = {});
-
-    ~PanelControls() override;
 
     void paint(Graphics& g) override;
     void addSlider(HSlider* slider);
@@ -53,9 +51,9 @@ public:
     void addLeftItem(IDynamicSizeComponent* item, bool outline = false);
     void addRightItem(IDynamicSizeComponent* item, bool outline = false);
 
-    void resetSelector();
-    void refreshSelector(bool update = false);
-    void moveLayer(bool up);
+    void resetSelector() const;
+    void refreshSelector(bool update = false) const;
+    void moveLayer(bool up) const;
     void handleAsyncUpdate() override;
 
     bool haveEnablement, drawLabel, haveDomains;

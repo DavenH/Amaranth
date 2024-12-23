@@ -51,8 +51,7 @@ public:
     virtual bool paramTriggersAggregateUpdate(int knobIndex);
 
     template<class T>
-    T* getKnob(int index) const
-    {
+    T* getKnob(int index) const {
         return dynamic_cast<T*>(knobs[index]);
     }
 

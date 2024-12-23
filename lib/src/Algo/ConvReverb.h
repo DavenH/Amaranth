@@ -64,7 +64,6 @@ public:
     int headBlockSize, tailBlockSize;
 
     explicit ConvReverb(SingletonRepo* repo);
-    ~ConvReverb() override;
 
     void init(int headSize, int tailSize, const Buffer<float>& kernel);
     void process(const Buffer<float>& input, Buffer<float> output);

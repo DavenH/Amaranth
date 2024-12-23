@@ -1351,7 +1351,7 @@ void PresetPage::readPresetSettings() {
 
     if (elem != nullptr) {
         if (XmlElement* ratingsElem = elem->getChildByName("Ratings")) {
-            forEachXmlChildElementWithTagName(*ratingsElem, ratingElem, "Rating") {
+            for(auto ratingElem : ratingsElem->getChildWithTagNameIterator("Rating")) {
                 int code = ratingElem->getIntAttribute("code", 0);
                 float value = ratingElem->getDoubleAttribute("value", 0);
 
@@ -1362,7 +1362,7 @@ void PresetPage::readPresetSettings() {
         }
 
         if (XmlElement* dismissed = elem->getChildByName("Dismissed")) {
-            forEachXmlChildElementWithTagName(*dismissed, dissedElem, "Dismissal") {
+            for(auto dissedElem : dismissed->getChildWithTagNameIterator("Dismissal")) {
                 int code = dissedElem->getIntAttribute("code", 0);
 
                 if (code != 0) {
@@ -1372,7 +1372,7 @@ void PresetPage::readPresetSettings() {
         }
 
         if (XmlElement* downloaded = elem->getChildByName("DownloadedPresets")) {
-            forEachXmlChildElementWithTagName(*downloaded, dldElem, "Download") {
+            for(auto dldElem : downloaded->getChildWithTagNameIterator("Download")) {
                 int code = dldElem->getIntAttribute("code", 0);
 
                 if (code != 0) {

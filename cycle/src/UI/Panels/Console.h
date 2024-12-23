@@ -18,7 +18,6 @@ class Console:
     ,	public IConsole {
 public:
     explicit Console(SingletonRepo* repo);
-    ~Console() override;
 
     void timerCallback() override;
     void paint(Graphics& g) override;

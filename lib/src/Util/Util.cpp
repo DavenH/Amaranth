@@ -219,3 +219,11 @@ vector<int> Util::getIntegersInString(const String& str) {
     return ints;
 }
 
+float Util::getStringWidth(const Font& font, const String& text) {
+    if (auto typeface = font.getTypefacePtr()) {
+        const auto w = typeface->getStringWidth (font.getMetricsKind(), text, font.getHeight(), font.getHorizontalScale());
+        return w + (font.getHeight() * font.getHorizontalScale() * font.getExtraKerningFactor() * (float) text.length());
+    }
+    return 0;
+}
+

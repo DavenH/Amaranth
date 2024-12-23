@@ -1,8 +1,6 @@
 #pragma once
 
-#include <algorithm>
-#include <ippdefs.h>
-#include "../App/SingletonAccessor.h"
+#include <ipp.h>
 #include "../Array/ScopedAlloc.h"
 #include "../Curve/Rasterizer2D.h"
 #include "../Util/Geometry.h"
@@ -12,7 +10,6 @@ class Interactor2D;
 class AutoModeller {
 public:
     AutoModeller();
-    virtual ~AutoModeller() = default;
 
     void modelToInteractor(
         const Buffer<float> &buffer,

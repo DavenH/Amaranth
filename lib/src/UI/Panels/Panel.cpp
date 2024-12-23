@@ -737,7 +737,7 @@ void Panel::createNameImage(const String& displayName, bool isSecondImage, bool 
     font.setExtraKerningFactor(-0.02);
 
     String lcName 	= displayName.toLowerCase();
-    int width 		= font.getStringWidth(lcName);
+    int width 		= roundToInt(Util::getStringWidth(font, lcName));
     int pow2 		= NumberUtils::nextPower2(width + 3);
     Image tempImg	= Image(Image::ARGB, pow2, 64, true);
 
@@ -776,7 +776,7 @@ void Panel::createDeformerTags() {
 
     for (int i = 0; i < 32; ++i) {
         String number(i + 1);
-        int width = font.getStringWidth(number) + 1;
+        int width = roundToInt(Util::getStringWidth(font, number)) + 1;
         tempG.drawSingleLineText(number, position, (int) font.getHeight());
 
         position += width;
@@ -794,7 +794,7 @@ void Panel::createDeformerTags() {
 
     for(int i = 0; i < 32; ++i) {
         String number(i + 1);
-        int width = font.getStringWidth(number) + 1;
+        int width = roundToInt(Util::getStringWidth(font, number)) + 1;
         Rectangle r(position, 0, width, (int) font.getHeight());
         g.drawSingleLineText(number, position, (int) font.getHeight());
 

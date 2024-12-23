@@ -14,8 +14,6 @@ public:
                       const String& name, int layerGroup,
                       bool cyclic, float margin);
 
-    ~GraphicRasterizer() override;
-
     float& getPrimaryDimensionVar() override;
     void pullModPositionAndAdjust() override;
     int getPrimaryViewDimension() override;

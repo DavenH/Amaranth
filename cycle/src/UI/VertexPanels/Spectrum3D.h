@@ -44,7 +44,6 @@ public:
     enum LayerMode { Additive, Subtractive };
 
     explicit Spectrum3D(SingletonRepo* repo);
-    ~Spectrum3D() override;
     void init() override;
 
     /* UI */

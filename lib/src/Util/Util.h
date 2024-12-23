@@ -71,4 +71,5 @@ public:
     static int findKey(HashMap<String, int>& map, const String& str);
     static int pitchAwareComparison(const String& a, const String& b);
     static vector<int> getIntegersInString(const String& str);
+    static float getStringWidth(const Font& font, const String& text);
 };

@@ -99,11 +99,11 @@ void SamplePair::paint(Graphics& g) {
     if (file.getFullPathName().isEmpty()) {
         g.drawImageWithin(placer->folderImage, 0, 0, getWidth(), getHeight(), RectanglePlacement::centred);
     } else {
-        Font font(15);
+        Font font(FontOptions(15));
 
         g.setFont(font);
 
-        placer->getObj(MiscGraphics).drawCentredText(g, getBounds(), file.getFileName());
+        MiscGraphics::drawCentredText(g, getBounds(), file.getFileName());
     }
 }
 

@@ -5,6 +5,7 @@
 #include "../Layout/IDynamicSizeComponent.h"
 #include "../MiscGraphics.h"
 #include "../../Obj/Ref.h"
+#include "../../Util/Util.h"
 
 class DynamicLabel :
     public Component,
@@ -24,15 +25,16 @@ public:
     }
 
     [[nodiscard]] int getExpandedSize() const override {
-        return 7;
+        return jmax(7, getMinorSize());
     }
 
-    int getMinorSize() override {
-        return miscGfx->getSilkscreen()->getStringWidth(text);
+    [[nodiscard]] int getMinorSize() const override {
+        return roundToInt(Util::getStringWidth(*miscGfx->getSilkscreen(), text));
     }
 
     [[nodiscard]] int getCollapsedSize() const override {
-        return miscGfx->getSilkscreen()->getStringWidth(text);
+        return 7;
+        // return miscGfx->getSilkscreen()->getStringWidth(text);
     }
 
     void setBoundsDelegate(int x, int y, int w, int h) override {

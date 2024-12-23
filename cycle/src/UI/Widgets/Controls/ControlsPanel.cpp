@@ -1,7 +1,7 @@
 #include <iostream>
 #include <iterator>
 #include <algorithm>
-#include <ippdefs.h>
+#include <ipp.h>
 #include <Definitions.h>
 #include <App/SingletonRepo.h>
 #include <UI/Layout/IDynamicSizeComponent.h>
@@ -240,7 +240,7 @@ void ControlsPanel::resized() {
     dout << "controls size: " << getBounds() << "\n";
   #endif
 
-    for (int i = 0; i < (int) expandableComponents.size(); ++i) {
+    for (int i = 0; i < expandableComponents.size(); ++i) {
         IDynamicSizeComponent* dsc = expandableComponents[i];
 
         if(! dsc->isVisibleDlg()) {

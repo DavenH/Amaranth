@@ -1,5 +1,5 @@
 #pragma once
-#include <ippdefs.h>
+#include <ipp.h>
 #include <iostream>
 #include <string>
 #include "JuceHeader.h"

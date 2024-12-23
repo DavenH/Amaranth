@@ -513,7 +513,7 @@ void Envelope2D::createScales()
         }
 
         int oldPos = position;
-        int width = font.getStringWidth(text);
+        int width = Util::getStringWidth(font, text);
 
         MiscGraphics::drawShadowedText(g, text, position, font.getHeight(), font, alpha);
         newScales.emplace_back(position, 0, width, font.getHeight());
@@ -605,7 +605,7 @@ bool Envelope2D::readXML(const XmlElement* element) {
 
         group.layers.clear();
 
-        forEachXmlChildElementWithTagName(*envProps, elem, envTypes.name + "Props") {
+        for(auto elem : envProps->getChildWithTagNameIterator(envTypes.name + "Props")) {
             if(elem == nullptr) {
                 continue;
             }

@@ -34,8 +34,9 @@ SingletonRepo::~SingletonRepo() {
     getObj(Settings).writePropertiesFile();
     getObj(DocumentLibrary).writeSettingsFile();
 
-    if(hasInstantiated)
+    if(hasInstantiated) {
         clearSingletons();
+    }
 }
 
 void SingletonRepo::instantiate() {
@@ -95,13 +96,9 @@ void SingletonRepo::init() {
 
     auto& document = getObj(Document);
 
-    for(auto saveSource : saveSources)
+    for(auto saveSource : saveSources) {
         document.registerSavable(saveSource);
-
-  #ifdef RUN_UNIT_TESTS
-    for(int i = 0; i < testables.size(); ++i)
-        testables[i]->test();
-  #endif
+    }
 }
 
 void SingletonRepo::add(SingletonAccessor* accessor, int order) {
@@ -149,8 +146,9 @@ OutputStream& SingletonRepo::getStatStream() {
 }
 
 void SingletonRepo::resetSingletons() {
-    for (auto object : objects)
+    for (auto object : objects) {
         object->reset();
+    }
 }
 
 void SingletonRepo::clearSingletons() {
@@ -160,6 +158,7 @@ void SingletonRepo::clearSingletons() {
 void SingletonRepo::setDeformer(IDeformer* deformer) {
     this->deformer = deformer;
 
-    for(auto rasterizer : rasterizers)
+    for(auto rasterizer : rasterizers) {
         rasterizer->setDeformer(deformer);
+    }
 }

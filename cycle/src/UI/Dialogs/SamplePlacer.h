@@ -12,9 +12,14 @@ class SingletonRepo;
 class SamplePlacer;
 class SampleDragger;
 
-class SamplePair : public Component
-{
+class SamplePair : public Component {
 public:
+    explicit SamplePair(SamplePlacer* placer);
+    void paint(Graphics& g) override;
+    void split(float portion, bool horz);
+    void resized() override;
+    void setPortion(float portion) { this->portion = portion; }
+
     enum { border = 1 };
 
     bool 			horz;
@@ -27,12 +32,6 @@ public:
     std::unique_ptr<SamplePair> a;
     std::unique_ptr<SamplePair> b;
     std::unique_ptr<SampleDragger> dragger;
-
-    explicit SamplePair(SamplePlacer* placer);
-    void paint(Graphics& g) override;
-    void split(float portion, bool horz);
-    void resized() override;
-    void setPortion(float portion) { this->portion = portion; }
 };
 
 class SampleDragger : public Component {
@@ -64,7 +63,6 @@ class SamplePlacer :
 {
 public:
     explicit SamplePlacer(SingletonRepo* repo);
-    ~SamplePlacer() override;
 
     void cut();
     void mouseDown(const MouseEvent& e) override;

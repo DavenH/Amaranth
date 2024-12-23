@@ -27,7 +27,6 @@ class MorphPanel :
     ,	public MorphPositioner {
 public:
     explicit MorphPanel(SingletonRepo* repo);
-    ~MorphPanel() override;
     void init() override;
 
     /* UI */

@@ -2,7 +2,7 @@
 #include <App/SingletonRepo.h>
 #include <Audio/Multisample.h>
 #include <Audio/PitchedSample.h>
-#include <math.h>
+#include <cmath>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegions.h>
 

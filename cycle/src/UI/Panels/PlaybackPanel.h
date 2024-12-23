@@ -27,7 +27,6 @@ public:
     };
 
     explicit PlaybackPanel(SingletonRepo* repo);
-    ~PlaybackPanel() override;
 
     void paint(Graphics& g) override;
     void resized() override;

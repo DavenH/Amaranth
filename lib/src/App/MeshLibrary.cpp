@@ -226,10 +226,10 @@ bool MeshLibrary::readXML(const XmlElement* element) {
     listeners.call(&Listener::allLayersDeleted);
     layerGroups.clear();
 
-    forEachXmlChildElementWithTagName(*repoElem, groupElem, "Group") {
+    for(auto groupElem : repoElem->getChildWithTagNameIterator("Group")) {
         LayerGroup group(groupElem->getIntAttribute("mesh-type", TypeMesh));
 
-        forEachXmlChildElementWithTagName(*groupElem, layerElem, "Layer") {
+        for(auto layerElem : groupElem->getChildWithTagNameIterator("Layer")) {
             Layer layer = instantiateLayer(layerElem, group.meshType);
             group.layers.push_back(layer);
         }

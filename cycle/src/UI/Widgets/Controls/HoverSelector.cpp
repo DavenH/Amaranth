@@ -11,7 +11,8 @@ HoverSelector::HoverSelector(SingletonRepo* repo, int x, int y, bool horz) :
 		SingletonAccessor(repo, "HoverSelector")
 	,	horizontal(horz) {
 	Image img = getObj(MiscGraphics).getIcon(x, y);
-	addAndMakeVisible(headerIcon = new IconButton(img, repo));
+    headerIcon = std::make_unique<IconButton>(img, repo);
+	addAndMakeVisible(*headerIcon);
 
     headerIcon->addMouseListener(this, true);
     headerIcon->setMessages("Select mesh preset", {});

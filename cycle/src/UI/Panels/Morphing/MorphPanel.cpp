@@ -133,7 +133,7 @@ void MorphPanel::paint(Graphics& g) {
     String positionStr("morph Position");
 
     Font* silkscreen = getObj(MiscGraphics).getSilkscreen();
-    int positionX 	 = (yllwSlider.getWidth() - silkscreen->getStringWidth(positionStr)) / 2;
+    int positionX 	 = (yllwSlider.getWidth() - Util::getStringWidth(*silkscreen, positionStr)) / 2;
 
     g.setColour(Colour::greyLevel(0.55f));
     g.setFont(*silkscreen);

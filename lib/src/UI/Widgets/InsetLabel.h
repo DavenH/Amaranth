@@ -1,7 +1,7 @@
 #pragma once
 
-
 #include <utility>
+#include <Util/Util.h>
 
 #include "../MiscGraphics.h"
 #include "../../App/SingletonRepo.h"
@@ -56,7 +56,7 @@ public:
     }
 
     int getFullSize() {
-        return font.getStringWidth(name);
+        return Util::getStringWidth(font, name);
     }
 
 private:

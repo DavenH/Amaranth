@@ -28,7 +28,6 @@ class WaveshaperUI :
 {
 public:
     explicit WaveshaperUI(SingletonRepo* repo);
-    ~WaveshaperUI() override;
 
     void init() override;
 

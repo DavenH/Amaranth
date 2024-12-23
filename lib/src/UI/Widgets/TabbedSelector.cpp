@@ -87,7 +87,7 @@ void TabbedSelector::paint(Graphics& g) {
         Tab& tab 			= tabs[i];
 
         const String& name 	= tab.name.toUpperCase();
-        int strLength 		= font.getStringWidth(name);
+        int strLength 		= Util::getStringWidth(font, name);
         int y 				= vertSpace + i * tabHeight;
         float scale 		= jmin(tabHeight - 20, strLength) / float(strLength);
 

@@ -66,7 +66,7 @@ public:
 	[[nodiscard]] int getCollapsedSize() const override;
 	void paint(Graphics& g) override;
 	void setBoundsDelegate(int x, int y, int w, int h) override;
-	const Rectangle<int> getBoundsInParentDelegate();
+	Rectangle<int> getBoundsInParentDelegate() const override;
 	int getYDelegate() override;
 	int getXDelegate() override;
 };

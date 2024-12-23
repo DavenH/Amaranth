@@ -175,7 +175,7 @@ bool Mesh::readXML(const XmlElement* repoElem) {
 
     map<int, Vertex*> idMap;
 
-    forEachXmlChildElementWithTagName(*meshElem, currentVert, "Vertex") {
+    for(auto currentVert : meshElem->getChildWithTagNameIterator("Vertex")) {
         if (currentVert == nullptr) {
             jassertfalse;
             return false;
@@ -198,7 +198,7 @@ bool Mesh::readXML(const XmlElement* repoElem) {
     vector<Vertex*> failedVerts;
     vector<VertCube*> failedLines;
 
-    forEachXmlChildElementWithTagName(*meshElem, currentCube, "VertCube") {
+    for(auto currentCube : meshElem->getChildWithTagNameIterator("VertCube")) {
         auto* cube = new VertCube();
 
         cube->dfrmGains[Vertex::Amp]   = currentCube->getDoubleAttribute("ampGain", 	0.5);
@@ -222,7 +222,7 @@ bool Mesh::readXML(const XmlElement* repoElem) {
         int numVertsSet = 0;
         bool failed = false;
 
-        forEachXmlChildElementWithTagName(*currentCube, currentVert, "Vertex") {
+        for(auto currentVert : currentCube->getChildWithTagNameIterator("Vertex")) {
             if (currentVert == nullptr) {
                 jassertfalse;
                 return false;

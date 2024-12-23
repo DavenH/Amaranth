@@ -11,7 +11,6 @@ class Envelope3D :
 {
 public:
     explicit Envelope3D(SingletonRepo* repo);
-    ~Envelope3D() override;
 
     void init() override;
     void buttonClicked(Button* button);

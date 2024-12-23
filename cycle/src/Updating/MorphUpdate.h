@@ -9,7 +9,5 @@ class MorphUpdate :
 public:
     explicit MorphUpdate(SingletonRepo* repo);
 
-    ~MorphUpdate() override;
-
     void performUpdate(UpdateType updateType) override;
 };

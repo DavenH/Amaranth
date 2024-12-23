@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ipps.h>
+#include <ipp.h>
 #include "Buffer.h"
 #include "../Curve/Vertex2.h"
 

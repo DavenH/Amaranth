@@ -18,7 +18,6 @@ public:
     explicit Knob(SingletonRepo* repo);
     Knob(SingletonRepo* repo, float defaultValue);
     Knob(SingletonRepo* repo, int id, String hint, float defaultValue);
-    ~Knob() override;
 
     void resized() override;
     void paint(Graphics & g) override;
@@ -32,7 +31,7 @@ public:
     int getXDelegate() override 		{ return getX(); }
     [[nodiscard]] int getExpandedSize() const override		{ return expandedSize; }
     [[nodiscard]] int getCollapsedSize() const override		{ return collapsedSize;	}
-    int getMinorSize() override 		{ return isCurrentCollapsed ? getCollapsedSize() : getExpandedSize(); }
+    [[nodiscard]] int getMinorSize() const override 		{ return isCurrentCollapsed ? getCollapsedSize() : getExpandedSize(); }
 
     void setBoundsDelegate(int x, int y, int w, int h) override { setBounds(x, y, w, h); }
     void setCollapsedSize(int size) 	{ collapsedSize = size; }
@@ -50,7 +49,7 @@ public:
 
     [[nodiscard]] Rectangle<int> getBoundsInParentDelegate() const override;
 
-    bool isVisibleDlg() const override 			{ return isVisible(); }
+    [[nodiscard]] bool isVisibleDlg() const override 			{ return isVisible(); }
     void setVisibleDlg(bool isVisible) override { setVisible(isVisible); }
 
 private:

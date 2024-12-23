@@ -514,7 +514,6 @@ public:
 	};
 
 	explicit CycleTour(SingletonRepo* repo);
-	~CycleTour() override;
 
 	void init() override;
 	void exit();

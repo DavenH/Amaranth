@@ -42,7 +42,6 @@ public:
     };
 
     explicit EnvelopeInter2D(SingletonRepo* repo);
-    ~EnvelopeInter2D() override = default;
 
     void init() override;
     void performUpdate(UpdateType updateType) override;

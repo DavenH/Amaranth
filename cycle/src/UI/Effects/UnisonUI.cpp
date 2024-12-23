@@ -293,7 +293,7 @@ bool UnisonUI::readXML(const XmlElement* element) {
             int limit = INT_MAX;
 
             vector<Unison::UnivoiceData> data;
-            forEachXmlChildElementWithTagName(*voiceDataElem, dataElem, "data") {
+            for(auto dataElem : voiceDataElem->getChildWithTagNameIterator("data")) {
                 if(count++ >= limit)
                     break;
 

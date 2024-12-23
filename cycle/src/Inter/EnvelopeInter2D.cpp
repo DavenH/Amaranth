@@ -155,10 +155,10 @@ void EnvelopeInter2D::doExtraMouseUp() {
     sustainIcon.setHighlit(selectedVertIsSustain);
 }
 
-
 void EnvelopeInter2D::setCurrentMesh(EnvelopeMesh* mesh) {
-    if (mesh == nullptr)
+    if (mesh == nullptr) {
         return;
+    }
 
     bool enabled = enableButton.isHighlit();
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
@@ -177,15 +177,14 @@ void EnvelopeInter2D::setCurrentMesh(EnvelopeMesh* mesh) {
         // It's already locked by the mesh selector calling this function
         getObj(SynthAudioSource).setEnvelopeMeshes(true);
 
-        if (isCurrentMeshActive())
+        if (isCurrentMeshActive()) {
             triggerRefreshUpdate();
-        else {
+        } else {
             updateDspSync();
             performUpdate(Update);
         }
     }
 }
-
 
 void EnvelopeInter2D::previewMesh(EnvelopeMesh* mesh) {
     ScopedLock sl(panel->getRenderLock());
@@ -227,10 +226,10 @@ void EnvelopeInter2D::showCoordinates() {
     float length = getObj(OscControlPanel).getLengthInSeconds();
     float tempoScale = getObj(SynthAudioSource).getTempoScale();
 
-#if PLUGIN_MODE
+  #if PLUGIN_MODE
     AudioPlayHead::CurrentPositionInfo info = getObj(PluginProcessor).getCurrentPosition();
     beats = info.timeSigNumerator;
-#endif
+  #endif
 
     if (props->tempoSync) {
         length = beats * props->getEffectiveScale();

@@ -131,7 +131,7 @@ public:
     }
 
     void paint(Graphics& g) override {
-        Font sansSerif(Font::getDefaultSansSerifFontName(), 15, Font::plain);
+        Font sansSerif(FontOptions(Font::getDefaultSansSerifFontName(), 15, Font::plain));
         g.setFont(sansSerif);
 
         Rectangle<float> r(1, 1, getWidth() - 1, getHeight() - 1);
@@ -141,7 +141,7 @@ public:
         g.setColour(focused ? Colours::orange : Colour::greyLevel(0.25f));
         getObj(MiscGraphics).drawRoundedRectangle(g, r, 1.f);
 
-        int strWidth = sansSerif.getStringWidth(searchString);
+        int strWidth = Util::getStringWidth(sansSerif, searchString);
 
         if (selectingAll) {
             g.setColour(Colour(180, 190, 240));

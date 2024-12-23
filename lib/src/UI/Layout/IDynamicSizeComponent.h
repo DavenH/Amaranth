@@ -16,9 +16,9 @@ public:
 
     virtual ~IDynamicSizeComponent() = default;
 
-    [[nodiscard]] bool isNeverCollapsed() const	{ return neverCollapsed;	}
+    [[nodiscard]] bool isNeverCollapsed() const	 { return neverCollapsed;	}
     [[nodiscard]] bool isAlwaysCollapsed() const { return alwaysCollapsed; 	}
-    [[nodiscard]] int getDynWidth() const { return width; 			}
+    [[nodiscard]] int getDynWidth() const        { return width; 			}
 
     virtual void setCurrentlyCollapsed(bool isIt) {
         isCurrentCollapsed = isIt && !neverCollapsed;
@@ -30,7 +30,7 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-    virtual int getMinorSize() { return 24; }
+    [[nodiscard]] virtual int getMinorSize() const { return 24; }
     virtual void setVisibleDlg(bool isVisible) {}
     [[nodiscard]] virtual bool isVisibleDlg() const { return true; }
     [[nodiscard]] virtual Rectangle<int> getBoundsInParentDelegate() const = 0;

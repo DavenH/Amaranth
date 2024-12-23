@@ -1,6 +1,9 @@
-#include <ippdefs.h>
+#include <ipp.h>
 
 #include "Knob.h"
+
+#include <Util/Util.h>
+
 #include "../IConsole.h"
 #include "../MiscGraphics.h"
 #include "../../App/SingletonRepo.h"
@@ -129,7 +132,7 @@ void Knob::paint(Graphics& g) {
         String text = valueString.toString(getValue());
         g.setFont(*font);
 
-        int width = font->getStringWidth(text);
+        int width = Util::getStringWidth(*font, text);
         g.setColour(Colour::greyLevel(0.6f));
         g.drawSingleLineText(text, (getWidth() - width) / 2, getHeight() / 2 + 3);
     }

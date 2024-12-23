@@ -10,8 +10,6 @@ class EffectGuiRegistry :
 public:
     explicit EffectGuiRegistry(SingletonRepo* main);
 
-    ~EffectGuiRegistry() override;
-
     bool readXML(const XmlElement* topElement) override;
     void writeXML(XmlElement* topElement) const override;
 };

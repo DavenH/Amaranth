@@ -271,7 +271,7 @@ void WaveshaperUI::panelResized() {
         knob->setTopLeftPosition(knob->getX(), 1);
 
         const Rectangle<int>& b = knob->getBounds();
-        int width = labels[i].getFont().getStringWidth(labels[i].getText(false));
+        int width = roundToInt(Util::getStringWidth(labels[i].getFont(), labels[i].getText(false)));
 
         labels[i].setBounds(b.getX() + (b.getWidth() - width) / 2, b.getBottom(), width, 6);
     }

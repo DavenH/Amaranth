@@ -6,7 +6,7 @@ class AsyncUIUpdater : public juce::AsyncUpdater {
 public:
     AsyncUIUpdater();
 
-    ~AsyncUIUpdater() override;
+    ~AsyncUIUpdater() override = default;
 
     void handleAsyncUpdate() override;
 

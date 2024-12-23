@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ippdefs.h>
+#include <ipp.h>
 #include <App/MeshLibrary.h>
 #include <Array/ScopedAlloc.h>
 #include <Algo/Convolver.h>

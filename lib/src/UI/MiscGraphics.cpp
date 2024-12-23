@@ -1,4 +1,7 @@
 #include "MiscGraphics.h"
+
+#include <Util/Util.h>
+
 #include "Widgets/IconButton.h"
 #include "../Binary/Images.h"
 #include "../Binary/Silkscreen.h"
@@ -22,7 +25,7 @@ MiscGraphics::MiscGraphics(SingletonRepo* repo) : SingletonAccessor(repo, "MiscG
     MemoryInputStream fontStream(Silkscreen::output, Silkscreen::outputSize, false);
     auto typeface = Typeface::createSystemTypefaceFor(Silkscreen::output, Silkscreen::outputSize);
 
-    silkscreen = new Font(typeface);
+    silkscreen = new Font(FontOptions(typeface));
     verdana12 = new Font(FontOptions("Verdana", 12.f, Font::plain));
     verdana16 = new Font(FontOptions("Verdana", 16.f, Font::plain));
     silkscreen->setHeight(7.4f);
@@ -145,7 +148,7 @@ void MiscGraphics::drawPowerSymbol(Graphics& g, Rectangle<int> bounds) const {
 void MiscGraphics::drawJustifiedText(Graphics& g, const String& text, const Rectangle<int>& rect,
                                      bool above, Component* parent) {
     int width = rect.getRight() - rect.getX();
-    int strWidth = silkscreen->getStringWidth(text);
+    int strWidth = roundToInt(Util::getStringWidth(*silkscreen, text));
 
     int x = rect.getX() + (width - strWidth) / 2;
     int y = rect.getY() + 4;
@@ -163,8 +166,7 @@ void MiscGraphics::drawJustifiedText(Graphics& g, const String& text,
                                      Component& topLeft, Component& botRight,
                                      bool above, Component* parent) {
     drawJustifiedText(g, text,
-                      Rectangle<int>(topLeft.getBounds().getTopLeft(),
-                                     botRight.getBounds().getBottomRight()),
+                      Rectangle(topLeft.getBounds().getTopLeft(), botRight.getBounds().getBottomRight()),
                       above, parent);
 }
 

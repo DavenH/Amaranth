@@ -64,11 +64,16 @@ set(BASE_DEFINITIONS
     JUCE_STANDALONE_APPLICATION=1
     JucePlugin_Build_Standalone=1
     JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1
+    JUCE_USE_MP3AUDIOFORMAT=1
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     AmaranthLib
-    ${IPP_LIBRARIES}
+    IPP::ippcore
+    IPP::ipps
+    IPP::ippi
+    IPP::ippcv
+    IPP::ippvm
     pthread
     rt
     dl

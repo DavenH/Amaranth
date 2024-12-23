@@ -1,6 +1,8 @@
 #include "AmaranthLookAndFeel.h"
 
 #include <utility>
+#include <Util/Util.h>
+
 #include "MiscGraphics.h"
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
@@ -99,8 +101,6 @@ void AmaranthLookAndFeel::drawScrollbar(
         gy1 = (float) y;
         gy2 = y + height;
     }
-
-    const Colour thumbColour(Colour::greyLevel(0.16f));
 
     g.setColour(Colour::greyLevel(0.09f));
     g.fillPath(slotPath);
@@ -657,7 +657,7 @@ void AmaranthLookAndFeel::drawPopupMenuItem(Graphics& g,
             iconArea = iconArea.reduced(2, 5);
             const Path tick(getTickShape(jmin(iconArea.getWidth(), iconArea.getHeight())));
 
-            g.fillPath(tick, AffineTransform::identity);
+            g.fillPath(tick, AffineTransform());
 //					tick.getTransformToScaleToFit(iconArea.getX(), iconArea.getY(), iconArea.getWidth(), iconArea.getHeight(), true));
         }
 
@@ -689,7 +689,6 @@ void AmaranthLookAndFeel::drawPopupMenuItem(Graphics& g,
 
     }
 }
-
 
 //==============================================================================
 void AmaranthLookAndFeel::drawComboBox(Graphics& g, int width, int height,
@@ -773,7 +772,7 @@ void AmaranthLookAndFeel::drawAlertBox(Graphics& g, AlertWindow& alert, const Re
         }
 
         GlyphArrangement ga;
-        ga.addFittedText(Font(iconRect.getHeight() * 0.9f, Font::bold),
+        ga.addFittedText(Font(FontOptions(iconRect.getHeight() * 0.9f, Font::bold)),
                          String::charToString(character),
                          (float) iconRect.getX(), (float) iconRect.getY(),
                          (float) iconRect.getWidth(), (float) iconRect.getHeight(),
@@ -895,11 +894,9 @@ void AmaranthLookAndFeel::layoutFileBrowserComponent(FileBrowserComponent& brows
 }
 
 int AmaranthLookAndFeel::getMenuBarItemWidth(MenuBarComponent& menuBar, int itemIndex, const String& itemText) {
-    return getMenuBarFont(menuBar, itemIndex, itemText)
-                   .getStringWidth(itemText) + menuBar.getHeight() -
+    return Util::getStringWidth(getMenuBarFont(menuBar, itemIndex, itemText), itemText) + menuBar.getHeight() -
            (menuBar.getWidth() <= 250 ? menuBar.getHeight() / 2 : 0);
 }
-
 
 Path AmaranthLookAndFeel::getTickShape(float height) {
     float half = height * 0.5f;

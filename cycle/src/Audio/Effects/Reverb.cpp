@@ -1,4 +1,4 @@
-#include <ipps.h>
+#include <ipp.h>
 #include <Algo/ConvReverb.h>
 #include <App/SingletonRepo.h>
 #include <Util/Arithmetic.h>

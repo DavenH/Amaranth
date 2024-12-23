@@ -33,8 +33,9 @@ set(JUCE_MODULES_DIR $ENV{JUCE_MODULES_DIR})
 set(VST3_DIR $ENV{VST3_SDK_DIR})
 set(IPP_DIR $ENV{IPP_DIR})
 set(IPP_TL_VARIANT "OpenMP")
-set(IPP_LIBRARIES ippcore ipps ippi ippvm ippm)
 set(IPP_ARCH intel64)
+
+find_package(IPP REQUIRED)
 
 enable_testing()
 

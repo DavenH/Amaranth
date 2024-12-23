@@ -85,7 +85,7 @@ void VertexPropertiesPanel::paint(Graphics& g) {
 
 	String titleText	= "vertex params";
 	Font& font 			= *getObj(MiscGraphics).getSilkscreen();
-	int titleTextX		= timeSlider.getBounds().getCentreX() - font.getStringWidth(titleText) / 2;
+	int titleTextX		= timeSlider.getBounds().getCentreX() - Util::getStringWidth(font, titleText) / 2;
 	getObj(MiscGraphics).drawShadowedText(g, titleText, 	titleTextX, timeSlider.getY() - 5, font);
 
 	Knob& gainKnob		= *properties[Vertex::Red].gain;
@@ -96,7 +96,7 @@ void VertexPropertiesPanel::paint(Graphics& g) {
 	g.setColour(Colour::greyLevel(0.55f));
 	g.setFont(font);
 
-	int avpWidth = font.getStringWidth(ampVsPhaseStr);
+	int avpWidth = Util::getStringWidth(font, ampVsPhaseStr);
 
 	g.drawSingleLineText(ampVsPhaseStr,
 	                     curveSlider.getX() + (curveSlider.getWidth() - avpWidth - 5),
@@ -107,8 +107,8 @@ void VertexPropertiesPanel::paint(Graphics& g) {
 	String dfrmTextA 	= isSmall ? "DFM" 	: "DFRM";
 	String dfrmTextB 	= isSmall ? "CH" 	: "CHAN";
 
-	int guideTextX 		= timeSlider.getRight() + 1 + (dfrmBox.getWidth() - font.getStringWidth(dfrmTextA)) / 2;
-	int gainTextX 		= dfrmBox.getRight() + 1 + (gainKnob.getWidth() - font.getStringWidth(gainText)) / 2;
+	int guideTextX 		= timeSlider.getRight() + 1 + (dfrmBox.getWidth() - Util::getStringWidth(font, dfrmTextA)) / 2;
+	int gainTextX 		= dfrmBox.getRight() + 1 + (gainKnob.getWidth() - Util::getStringWidth(font, gainText)) / 2;
 
 	float alpha = 0.65f;
 	getObj(MiscGraphics).drawShadowedText(g, dfrmTextA, guideTextX + 14, timeSlider.getY() - 7, font, alpha);
@@ -485,7 +485,7 @@ void VertexPropertiesPanel::sliderDragStarted(Slider* slider) {
 
 void VertexPropertiesPanel::drawJustifiedText(Graphics& g, String text, Component* component, int y) {
 	int width 	 = component->getWidth();
-	int strWidth = silkscreen->getStringWidth(text);
+	int strWidth = Util::getStringWidth(*silkscreen, text);
 	int x 		 = component->getX() + (width - strWidth) / 2;
 
 	g.setColour(Colour(15, 15, 15));
@@ -500,7 +500,7 @@ void VertexPropertiesPanel::drawSidewaysTextAndLines(Graphics& g, String text, C
 {
 	/*
 	int height 		= (bottom->getBottom() - top->getY());
-	int strWidth 	= silkscreen->getStringWidth(text);
+	int strWidth 	= Util::getStringWidth(*silkscreen, text);
 	int y 			= top->getY() + (height - strWidth) / 2;
 	int x 			= 4 * getWidth() / 5;
 

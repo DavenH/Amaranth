@@ -17,7 +17,6 @@ class PlayerComponent :
 {
 public:
     explicit PlayerComponent(SingletonRepo* repo);
-    ~PlayerComponent() override;
     void init() override;
     void setComponents(bool add);
     void buttonClicked(Button* button) override;

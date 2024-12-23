@@ -13,7 +13,6 @@ public:
     friend class MidiKeyboardComponent;
 
     MidiKeyboard(SingletonRepo* repo, MidiKeyboardState& state, Orientation orientation);
-    ~MidiKeyboard() override;
 
     void mouseExit(const MouseEvent& e) override;
     void mouseEnter(const MouseEvent& e) override;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <ippdefs.h>
+#include <ipp.h>
 #include <App/MeshLibrary.h>
 #include <Array/ScopedAlloc.h>
 #include <Array/StereoBuffer.h>

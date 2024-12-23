@@ -12,7 +12,6 @@
 
 #pragma once
 
-#define JUCE_USE_MP3AUDIOFORMAT 1
 #define JUCE_WASAPI 		1
 #define JUCE_ASIO 			1
 #define JUCE_USE_FLAC 		1

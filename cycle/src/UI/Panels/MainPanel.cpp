@@ -428,7 +428,6 @@ void MainPanel::resized() {
     keyboard->setLowestVisibleKey(36);
 }
 
-
 void MainPanel::detachComponent(PanelGroup& group) {
     return;
 //	GLParent* parent = group.gl;
@@ -442,7 +441,6 @@ void MainPanel::detachComponent(PanelGroup& group) {
 //	  #endif
 //	}
 }
-
 
 void MainPanel::attachComponent(PanelGroup& group) {
     OpenGLBase* parent = group.gl;

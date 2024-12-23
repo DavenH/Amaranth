@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ippdefs.h>
+#include <ipp.h>
 #include <Curve/IDeformer.h>
 #include <Curve/Mesh.h>
 #include <Obj/Ref.h>
@@ -31,7 +31,6 @@ public:
     enum { tableSize = 8192, tableModulo = tableSize - 1 };
 
     explicit DeformerPanel(SingletonRepo* repo);
-    ~DeformerPanel() override;
 
     bool isEffectEnabled() const override;
     bool setGuideBuffers();

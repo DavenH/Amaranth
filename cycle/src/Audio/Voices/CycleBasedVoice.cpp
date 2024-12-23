@@ -140,8 +140,9 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
 
     for (int i = 0; i < noteState.numUnisonVoices; ++i) {
         for (auto& c: groups[i].padding) {
-            for (int j = 0; j < 7; ++j)
-                c[j] = 0;
+            for (float& j : c) {
+                j = 0;
+            }
         }
     }
 

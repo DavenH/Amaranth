@@ -73,13 +73,13 @@ void CycleUpdater::createUpdateGraph() {
     timeUIs 	= new Node();
     spectUIs 	= new Node();
 
-    Node* timeNodes[] = { timeProc, time2Rast, synthNode, nullptr };
+    Node* timeNodes[] = { timeProc, time2Rast, synthNode };
 
     spect2Itr	->marks(spectDlg);
     spect3Itr	->marks(spectDlg);
     spect3Itr	->marks(synthNode);
-    time2Itr	->marks(Array<Node*>(timeNodes));
-    time3Itr	->marks(Array<Node*>(timeNodes));
+    time2Itr	->marks(Array<Node*>(timeNodes, 3));
+    time3Itr	->marks(Array<Node*>(timeNodes, 3));
     dfrmItr		->marks(synthNode);
     scratchRast	->marks(synthNode);
     scratchRast	->marks(scratchRast);
@@ -90,13 +90,13 @@ void CycleUpdater::createUpdateGraph() {
     env3Itr		->marks(envDlg);
 
     Node* universalNodes[] 	= { morphNode, spectDlg, envDlg, dfrmRast, wshpRast, irModelRast,
-                                scratchRast, irModelDsp, unison, timeProc, time2Rast, synthNode, nullptr };
+                                scratchRast, irModelDsp, unison, timeProc, time2Rast, synthNode };
 
     Node* allButFxNodes[] 	= { morphNode, spectDlg, envDlg, dfrmRast, scratchRast, timeProc,
-                                time2Rast, synthNode, nullptr };
+                                time2Rast, synthNode };
 
-    univNode	->marks(Array<Node*>(universalNodes));
-    allButFX	->marks(Array<Node*>(allButFxNodes));
+    univNode	->marks(Array<Node*>(universalNodes, numElementsInArray(universalNodes)));
+    allButFX	->marks(Array<Node*>(allButFxNodes, numElementsInArray(allButFxNodes)));
 
     spectDlg	->updatesAfter(scratchRast);
     time2Rast	->updatesAfter(scratchRast);
@@ -116,9 +116,9 @@ void CycleUpdater::createUpdateGraph() {
     envDlg		->updatesAfter(morphNode);
 
     Node* startingNodes[]	= { morphNode, time2Rast, envDlg, irModelDsp, wshpDsp, effectsProc, timeProc,
-                                unisonItr, synthNode, irModelRast, dfrmRast, scratchRast, spectDlg, nullptr };
+                                unisonItr, synthNode, irModelRast, dfrmRast, scratchRast, spectDlg };
 
-    updater->getGraph().addHeadNodes(Array<Node*>(startingNodes));
+    updater->getGraph().addHeadNodes(Array<Node*>(startingNodes, numElementsInArray(startingNodes)));
 
     // TODO envelopevisibilitychange
 

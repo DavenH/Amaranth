@@ -10,7 +10,7 @@ class SynthUnisonVoice :
 {
 public:
     SynthUnisonVoice(SynthesizerVoice* parent, SingletonRepo* repo);
-    ~SynthUnisonVoice() override;
+    ~SynthUnisonVoice() override = default;
 
     void calcCycle(VoiceParameterGroup& group) override;
     void testMeshConditions();

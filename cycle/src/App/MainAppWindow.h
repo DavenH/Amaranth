@@ -15,7 +15,6 @@ class MainAppWindow:
 public:
 	explicit MainAppWindow(const String& commandLine);
 	void openFile(const String& commandLine);
-	~MainAppWindow() override;
 	void closeButtonPressed() override;
 	void maximiseButtonPressed() override;
 	void handleMessage (const Message& message) override;

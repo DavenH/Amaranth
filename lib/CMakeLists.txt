@@ -76,7 +76,11 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     ${CURL_LIBRARIES}
     ${GTK3_LIBRARIES}
     ${WEBKIT_LIBRARIES}
-    ${IPP_LIBRARIES}
+    IPP::ippcore
+    IPP::ipps
+    IPP::ippcv
+    IPP::ippi
+    IPP::ippvm
     pthread
     rt
     dl

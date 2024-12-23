@@ -378,7 +378,7 @@ bool Spectrum3D::readXML(const XmlElement* element) {
         XmlElement* phaseElem = freqDomainElem->getChildByName("PhasePropertiesSet");
 
         if (magsElem) {
-            forEachXmlChildElementWithTagName(*magsElem, magPropsElem, "MagnitudeProperties") {
+            for(auto magPropsElem : magsElem->getChildWithTagNameIterator("MagnitudeProperties")) {
                 MeshLibrary::Properties props;
 
                 bool isAdditive 	= magPropsElem->getBoolAttribute("additive", true);
@@ -396,7 +396,7 @@ bool Spectrum3D::readXML(const XmlElement* element) {
         }
 
         if (phaseElem) {
-            forEachXmlChildElementWithTagName(*phaseElem, phasePropsElem, "PhaseProperties") {
+            for(auto phasePropsElem : phaseElem->getChildWithTagNameIterator("PhaseProperties")) {
                 MeshLibrary::Properties props;
 
                 props.pan 			= phasePropsElem->getDoubleAttribute("pan", 0.5);

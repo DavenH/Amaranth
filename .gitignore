@@ -11,6 +11,7 @@ CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
 .idea
+.env
 cmake-build-debug/*
 cmake-build-release/*
 build/*

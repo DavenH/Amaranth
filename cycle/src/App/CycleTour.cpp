@@ -52,105 +52,104 @@
 #define I(X) idStrings.set(#X, X)
 
 CycleTour::CycleTour(SingletonRepo* repo) :
-        SingletonAccessor(repo, "CycleTour")
-    , 	wrapper			(repo)
-    , 	live			(false)
-    , 	createdWaveshape(false)
-    ,	highlighter		(this)
-    , 	currentItem		(0)
-    , 	lastItem		(0)
-    , 	currentTutorial	(0) {
-    A(AreaNull), 		A(AreaWshpEditor),	A(AreaSharpBand), 	A(AreaWfrmWaveform3D);
-    A(AreaSpectrum),	A(AreaSpectrogram),	A(AreaEnvelopes),	A(AreaVolume);
-    A(AreaPitch),		A(AreaScratch),		A(AreaWaveshaper),	A(AreaDeformers);
-    A(AreaImpulse),		A(AreaMorphPanel),	A(AreaVertexProps),	A(AreaGenControls);
-    A(AreaConsole),		A(AreaPlayback),	A(AreaUnison),		A(AreaReverb);
-    A(AreaDelay),		A(AreaEQ),			A(AreaMain),		A(AreaModMatrix);
+        Component("CycleTour")
+    ,   SingletonAccessor(repo, "CycleTour")
+    ,   wrapper          (repo)
+    ,   live             (false)
+    ,   createdWaveshape (false)
+    ,   highlighter      (this)
+    ,   currentItem      (0)
+    ,   lastItem         (0)
+    ,   currentTutorial  (0) {
+    A(AreaNull),           A(AreaWshpEditor),    A(AreaSharpBand),      A(AreaWfrmWaveform3D);
+    A(AreaSpectrum),       A(AreaSpectrogram),   A(AreaEnvelopes),      A(AreaVolume);
+    A(AreaPitch),          A(AreaScratch),       A(AreaWaveshaper),     A(AreaDeformers);
+    A(AreaImpulse),        A(AreaMorphPanel),    A(AreaVertexProps),    A(AreaGenControls);
+    A(AreaConsole),        A(AreaPlayback),      A(AreaUnison),         A(AreaReverb);
+    A(AreaDelay),          A(AreaEQ),            A(AreaMain),           A(AreaModMatrix);
     A(AreaMasterCtrls);
 
-    B(TargNull), 		B(TargMatrixGrid),	B(TargMatrixUtility), B(TargMatrixSource);
-    B(TargMatrixDest), 	B(TargMatrixAddDest),B(TargMatrixAddSource);
+    B(TargNull),           B(TargMatrixGrid),    B(TargMatrixUtility),  B(TargMatrixSource);
+    B(TargMatrixDest),     B(TargMatrixAddDest), B(TargMatrixAddSource);
 
-    B(TargUniMode),		B(TargUniVoiceSlct), B(TargUniAddRemove);
+    B(TargUniMode),        B(TargUniVoiceSlct),  B(TargUniAddRemove);
 
-    B(TargDfrmNoise), 	B(TargDfrmOffset), 	B(TargDfrmPhase), 	B(TargDfrmMeshSlct);
-    B(TargDfrmLayerAdd),B(TargDfrmLayerSlct);
+    B(TargDfrmNoise),      B(TargDfrmOffset),    B(TargDfrmPhase),      B(TargDfrmMeshSlct);
+    B(TargDfrmLayerAdd),   B(TargDfrmLayerSlct);
 
-    B(TargImpLength), 	B(TargImpGain), 	B(TargImpHP),		B(TargImpZoom);
-    B(TargImpLoadWav), 	B(TargImpUnloadWav),B(TargImpModelWav);
+    B(TargImpLength),      B(TargImpGain),       B(TargImpHP),          B(TargImpZoom);
+    B(TargImpLoadWav),     B(TargImpUnloadWav),  B(TargImpModelWav);
 
-    B(TargWaveshaperOvsp), B(TargWaveshaperPre), B(TargWaveshaperPost),	B(TargWaveshaperSlct);
+    B(TargWaveshaperOvsp), B(TargWaveshaperPre), B(TargWaveshaperPost), B(TargWaveshaperSlct);
 
-    B(TargSliderArea),	B(TargTimeSlider),	B(TargPhsSlider),	B(TargAmpSlider);
-    B(TargKeySlider),	B(TargMorphSlider),	B(TargCrvSlider);
+    B(TargSliderArea),     B(TargTimeSlider),    B(TargPhsSlider),      B(TargAmpSlider);
+    B(TargKeySlider),      B(TargMorphSlider),   B(TargCrvSlider);
 
-    B(TargBoxArea),		B(TargPhsBox),		B(TargAmpBox),		B(TargKeyBox);
-    B(TargModBox), 		B(TargCrvBox),		B(TargAvpBox);
+    B(TargBoxArea),        B(TargPhsBox),        B(TargAmpBox),         B(TargKeyBox);
+    B(TargModBox),         B(TargCrvBox),        B(TargAvpBox);
 
-    B(TargGainArea), 	B(TargPhsGain), 	B(TargAmpGain), 	B(TargKeyGain);
-    B(TargModGain),		B(TargCrvGain),		B(TargAvpGain);
+    B(TargGainArea),       B(TargPhsGain),       B(TargAmpGain),        B(TargKeyGain);
+    B(TargModGain),        B(TargCrvGain),       B(TargAvpGain);
 
-    B(TargVol),			B(TargScratch),		B(TargPitch), 		B(TargWavPitch);
-    B(TargScratchLyr), 	B(TargSustLoop);
+    B(TargVol),            B(TargScratch),       B(TargPitch),          B(TargWavPitch);
+    B(TargScratchLyr),     B(TargSustLoop);
 
-    B(TargDomains),		B(TargLayerEnable),	B(TargLayerMode), 	B(TargLayerAdder);
-    B(TargLayerMover), 	B(TargLayerSlct), 	B(TargScratchBox),	B(TargDeconv);
-    B(TargPhaseUp),		B(TargPan),			B(TargRange),		B(TargMeshSelector);
+    B(TargDomains),        B(TargLayerEnable),   B(TargLayerMode),      B(TargLayerAdder);
+    B(TargLayerMover),     B(TargLayerSlct),     B(TargScratchBox),     B(TargDeconv);
+    B(TargPhaseUp),        B(TargPan),           B(TargRange),          B(TargMeshSelector);
     B(TargModelCycle);
 
-    B(TargSelector), 	B(TargPencil), 		B(TargAxe),			B(TargNudge);
-    B(TargWaveVerts),	B(TargVerts), 		B(TargLinkYellow),	B(TargVertCube);
-
-    B(TargPrimeArea), 	B(TargPrimeY), 		B(TargPrimeB),		B(TargPrimeR);
-    B(TargLinkArea), 	B(TargLinkY), 		B(TargLinkB), 		B(TargLinkR);
-    B(TargRangeArea), 	B(TargRangeY), 		B(TargRangeB), 		B(TargRangeR);
-    B(TargSlidersArea), B(TargSliderY),		B(TargSliderB),		B(TargSliderR);
+    B(TargSelector),       B(TargPencil),        B(TargAxe),            B(TargNudge);
+    B(TargWaveVerts),      B(TargVerts),         B(TargLinkYellow),     B(TargVertCube);
+ 
+    B(TargPrimeArea),      B(TargPrimeY),        B(TargPrimeB),         B(TargPrimeR);
+    B(TargLinkArea),       B(TargLinkY),         B(TargLinkB),          B(TargLinkR);
+    B(TargRangeArea),      B(TargRangeY),        B(TargRangeB),         B(TargRangeR);
+    B(TargSlidersArea),    B(TargSliderY),       B(TargSliderB),        B(TargSliderR);
     B(TargSliderPan);
 
-    B(TargMasterVol), 	B(TargMasterOct),	B(TargMasterLen);
+    B(TargMasterVol),      B(TargMasterOct),     B(TargMasterLen);
 
-    N(NullAction), 		N(OpenFactoryPreset);
-    N(LinkRange),		N(UnlinkRange),		N(TriggerButton),	N(SetVertexSize);
-    N(SetUseRange),		N(SetViewStage),	N(ImpLoadWave),		N(ImpModelWave);
-    N(ImpUnloadWave),	N(SwitchMode),		N(SwitchToEnv),		N(SwitchToTool);
-    N(ShowArea),		N(HideArea),		N(Zoom),			N(DeformLine);
-    N(SetNoteOn),		N(SetNoteOff),		N(SetMorphRange),	N(SetLayerMode);
-    N(SetLayer),		N(AddPoint),		N(DeletePoint),		N(MovePoint);
-    N(SelectPoint),		N(DeselectPoints),	N(SetVertexParam),	N(SetPlaybackPos);
-    N(SetDeclick),		N(SetMatrixCell),	N(Enable),			N(Disable);
-    N(SetKnobValue),	N(SetPropsValue),	N(LoadRefSample),	N(UnloadSample);
-    N(ChangeViewMode),	N(SelectVertAtPos), N(ChopLines), 		N(SetAxeSize);
+    N(NullAction),         N(OpenFactoryPreset);
+    N(LinkRange),          N(UnlinkRange),       N(TriggerButton),     N(SetVertexSize);
+    N(SetUseRange),        N(SetViewStage),      N(ImpLoadWave),       N(ImpModelWave);
+    N(ImpUnloadWave),      N(SwitchMode),        N(SwitchToEnv),       N(SwitchToTool);
+    N(ShowArea),           N(HideArea),          N(Zoom),              N(DeformLine);
+    N(SetNoteOn),          N(SetNoteOff),        N(SetMorphRange),     N(SetLayerMode);
+    N(SetLayer),           N(AddPoint),          N(DeletePoint),       N(MovePoint);
+    N(SelectPoint),        N(DeselectPoints),    N(SetVertexParam),    N(SetPlaybackPos);
+    N(SetDeclick),         N(SetMatrixCell),     N(Enable),            N(Disable);
+    N(SetKnobValue),       N(SetPropsValue),     N(LoadRefSample),     N(UnloadSample);
+    N(ChangeViewMode),     N(SelectVertAtPos),   N(ChopLines),         N(SetAxeSize);
     N(StartPlayback);
 
-    C(OperNull),		C(OperMoreThanEQ),	C(OperEquals);
-    C(OperLessThan),	C(OperLessThanEQ), 	C(OperMoreThan);
+    C(OperNull),           C(OperMoreThanEQ),    C(OperEquals);
+    C(OperLessThan),       C(OperLessThanEQ),    C(OperMoreThan);
 
-    P(NoCompare), 		P(NumPoints), 	 	P(NumLines);
-    P(NumLayers), 		P(CurrentLayer), 	P(DfrmAssignments);
+    P(NoCompare),          P(NumPoints),         P(NumLines);
+    P(NumLayers),          P(CurrentLayer),      P(DfrmAssignments);
 
-    I(IdYellow), 		I(IdRed), 			I(IdBlue);
-    I(IdMeshVol), 		I(IdMeshPitch), 	I(IdMeshScratch);
-    I(IdToolSelector), 	I(IdToolPencil),	I(IdToolAxe);
-    I(IdBttnMoveDown), 	I(IdBttnModeAdditive), I(IdBttnModeFilter);
+    I(IdYellow),           I(IdRed),             I(IdBlue);
+    I(IdMeshVol),          I(IdMeshPitch),       I(IdMeshScratch);
+    I(IdToolSelector),     I(IdToolPencil),      I(IdToolAxe);
+    I(IdBttnMoveDown),     I(IdBttnModeAdditive), I(IdBttnModeFilter);
 
-    I(IdOn), 			I(IdOff),			I(IdZoomIn), 		I(IdZoomOut);
-    I(IdModeUniGroup), 	I(IdModeUniSingle),	I(IdViewWave), 		I(IdViewSynth);
-    I(IdNull), 			I(IdModeMagn), 		I(IdModePhase);
-
-    I(IdBttnDeconv), 	I(IdBttnPhaseUp),	I(IdBttnLoop), 		I(IdBttnSustain);
-    I(IdBttnEnable), 	I(IdBttnAdd), 		I(IdBttnRemove), 	I(IdBttnMoveUp);
+    I(IdOn),               I(IdOff),             I(IdZoomIn),         I(IdZoomOut);
+    I(IdModeUniGroup),     I(IdModeUniSingle),   I(IdViewWave),       I(IdViewSynth);
+    I(IdNull),             I(IdModeMagn),        I(IdModePhase);
+    I(IdBttnDeconv),       I(IdBttnPhaseUp),     I(IdBttnLoop),       I(IdBttnSustain);
+    I(IdBttnEnable),       I(IdBttnAdd),         I(IdBttnRemove),     I(IdBttnMoveUp);
     I(IdBttnModel);
 
-    I(IdParamBlue), 	I(IdParamRed), 		I(IdParamSharp);
-    I(IdParamTime), 	I(IdParamAvp), 		I(IdParamPhase), 	I(IdParamAmp);
-    I(IdViewStageA), 	I(IdViewStageB),	I(IdViewStageC), 	I(IdViewStageD);
+    I(IdParamBlue),        I(IdParamRed),        I(IdParamSharp);
+    I(IdParamTime),        I(IdParamAvp),        I(IdParamPhase),     I(IdParamAmp);
+    I(IdViewStageA),       I(IdViewStageB),      I(IdViewStageC),     I(IdViewStageD);
 }
 
 void CycleTour::init() {
 }
 
-void CycleTour::handleAsyncUpdate()
-{
+void CycleTour::handleAsyncUpdate() {
     vector<Item>& items = current.items;
 
     if(currentItem >= (int) items.size()) {
@@ -177,11 +176,11 @@ void CycleTour::handleAsyncUpdate()
         startTimer(item.area, first.delayMillis);
     }
 
-//	if(! item.animation.actions.empty() && ! item.animation.hasExecuted)
-//	{
-//		item.animation.currentIndex = 0;
-//		performAction(item.animation.actions.front());
-//	}
+//    if(! item.animation.actions.empty() && ! item.animation.hasExecuted)
+//    {
+//        item.animation.currentIndex = 0;
+//        performAction(item.animation.actions.front());
+//    }
 
     Rectangle<int> screenBounds = item.getArea(this);
 
@@ -195,7 +194,7 @@ void CycleTour::handleAsyncUpdate()
         else if(item.area != AreaModMatrix && last.area == AreaModMatrix) {
             getObj(ModMatrix).removeChildComponent(&highlighter);
             getObj(MainPanel).addAndMakeVisible(&highlighter);
-//			wrapper.toFront(true);
+//            wrapper.toFront(true);
         }
 
         xy = (item.area == AreaModMatrix) ?
@@ -264,12 +263,12 @@ void CycleTour::exit() {
 
 bool CycleTour::compare(const Condition& cond, int value) {
     switch (cond.oper) {
-        case OperNull:			return true;
-        case OperLessThan: 		return value < 	cond.value;
-        case OperLessThanEQ: 	return value <= cond.value;
-        case OperEquals: 		return value == cond.value;
-        case OperMoreThan: 		return value > 	cond.value;
-        case OperMoreThanEQ: 	return value >= cond.value;
+        case OperNull:        return true;
+        case OperLessThan:    return value <  cond.value;
+        case OperLessThanEQ:  return value <= cond.value;
+        case OperEquals:      return value == cond.value;
+        case OperMoreThan:    return value >  cond.value;
+        case OperMoreThanEQ:  return value >= cond.value;
         default:
             break;
     }
@@ -413,8 +412,8 @@ void CycleTour::performAction(Action& action) {
         case SetMorphRange: {
             getObj(MorphPanel).updateModPosition(action.id, action.value);
 
-//			if(action.id != getSetting(CurrentMorphAxis))
-//				doUpdate(ModUpdate);
+//            if(action.id != getSetting(CurrentMorphAxis))
+//                doUpdate(ModUpdate);
 
             break;
         }
@@ -527,30 +526,33 @@ void CycleTour::performAction(Action& action) {
             switch(action.area) {
                 case AreaWfrmWaveform3D:
                 case AreaWshpEditor:
-                    if(! getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime)->active)
+                    if(! getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime)->active) {
                         getObj(Waveform3D).triggerButton(IdBttnEnable);
+                    }
 
                     break;
 
                 case AreaSpectrum:
                 case AreaSpectrogram:
-                    if(! getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupSpect)->active)
+                    if(! getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupSpect)->active) {
                         getObj(Spectrum3D).triggerButton(IdBttnEnable);
+                    }
 
                     break;
 
                 case AreaEnvelopes:
-                    if(! getObj(MeshLibrary).getCurrentEnvProps(getSetting(CurrentEnvGroup))->active)
+                    if(! getObj(MeshLibrary).getCurrentEnvProps(getSetting(CurrentEnvGroup))->active) {
                         getObj(EnvelopeInter2D).triggerButton(IdBttnEnable);
+                    }
 
                     break;
 
-                case AreaWaveshaper:	getObj(WaveshaperUI).setEffectEnabled(true); 			break;
-                case AreaImpulse:		getObj(IrModellerUI).setEffectEnabled(true);			break;
-                case AreaUnison:		getObj(UnisonUI).setEffectEnabled(true, true, true);	break;
-                case AreaEQ:			getObj(EqualizerUI).setEffectEnabled(true, true, true);	break;
-                case AreaReverb:		getObj(ReverbUI).setEffectEnabled(true, true, true);	break;
-                case AreaDelay:			getObj(DelayUI).setEffectEnabled(true, true, true);		break;
+                case AreaWaveshaper:    getObj(WaveshaperUI).setEffectEnabled(true);            break;
+                case AreaImpulse:       getObj(IrModellerUI).setEffectEnabled(true);            break;
+                case AreaUnison:        getObj(UnisonUI).setEffectEnabled(true, true, true);    break;
+                case AreaEQ:            getObj(EqualizerUI).setEffectEnabled(true, true, true); break;
+                case AreaReverb:        getObj(ReverbUI).setEffectEnabled(true, true, true);    break;
+                case AreaDelay:         getObj(DelayUI).setEffectEnabled(true, true, true);     break;
                 default:
                     break;
             }
@@ -561,28 +563,31 @@ void CycleTour::performAction(Action& action) {
             switch(action.area) {
                 case AreaWfrmWaveform3D:
                 case AreaWshpEditor:
-                    if(getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime)->active)
+                    if(getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime)->active) {
                         getObj(Waveform3D).triggerButton(IdBttnEnable);
+                    }
 
                     break;
 
                 case AreaSpectrum:
                 case AreaSpectrogram:
-                    if(getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupSpect)->active)
+                    if(getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupSpect)->active) {
                         getObj(Spectrum3D).triggerButton(IdBttnEnable);
+                    }
                     break;
 
                 case AreaEnvelopes:
-                    if(getObj(MeshLibrary).getCurrentProps(getSetting(CurrentEnvGroup))->active)
+                    if(getObj(MeshLibrary).getCurrentProps(getSetting(CurrentEnvGroup))->active) {
                         getObj(EnvelopeInter2D).triggerButton(IdBttnEnable);
+                    }
                     break;
 
-                case AreaWaveshaper:	getObj(WaveshaperUI).setEffectEnabled(false); 				break;
-                case AreaImpulse:		getObj(IrModellerUI).setEffectEnabled(false);				break;
-                case AreaUnison:		getObj(UnisonUI).setEffectEnabled(false, true, true);		break;
-                case AreaEQ:			getObj(EqualizerUI).setEffectEnabled(false, true, true);	break;
-                case AreaReverb:		getObj(ReverbUI).setEffectEnabled(false, true, true);		break;
-                case AreaDelay:			getObj(DelayUI).setEffectEnabled(false, true, true);		break;
+                case AreaWaveshaper:  getObj(WaveshaperUI).setEffectEnabled(false);            break;
+                case AreaImpulse:     getObj(IrModellerUI).setEffectEnabled(false);            break;
+                case AreaUnison:      getObj(UnisonUI).setEffectEnabled(false, true, true);    break;
+                case AreaEQ:          getObj(EqualizerUI).setEffectEnabled(false, true, true); break;
+                case AreaReverb:      getObj(ReverbUI).setEffectEnabled(false, true, true);    break;
+                case AreaDelay:       getObj(DelayUI).setEffectEnabled(false, true, true);     break;
                 default:
                     break;
             }
@@ -595,13 +600,13 @@ void CycleTour::performAction(Action& action) {
 
             switch(action.area) {
                 case AreaSpectrum:
-                case AreaSpectrogram:	getObj(Spectrum3D).triggerButton(action.id);		break;
+                case AreaSpectrogram:    getObj(Spectrum3D).triggerButton(action.id);      break;
 
                 case AreaWshpEditor:
-                case AreaWfrmWaveform3D:getObj(Waveform3D).triggerButton(action.id);		break;
+                case AreaWfrmWaveform3D: getObj(Waveform3D).triggerButton(action.id);      break;
 
-                case AreaDeformers:		getObj(DeformerPanel).triggerButton(action.id);		break;
-                case AreaScratch:		getObj(EnvelopeInter2D).triggerButton(action.id);	break;
+                case AreaDeformers:      getObj(DeformerPanel).triggerButton(action.id);   break;
+                case AreaScratch:        getObj(EnvelopeInter2D).triggerButton(action.id); break;
                 default:
                     break;
             }
@@ -700,7 +705,7 @@ void CycleTour::performAction(Action& action) {
             if(itr) {
                 Mesh* mesh = itr->getMesh();
 
-                if(isPositiveAndBelow(action.data1, (int) mesh->getNumVerts())) {
+                if(isPositiveAndBelow(action.data1, mesh->getNumVerts())) {
                     vector<Vertex*>& selected = itr->getSelected();
                     selected.clear();
 
@@ -748,7 +753,7 @@ void CycleTour::performAction(Action& action) {
             if(itr) {
                 Mesh* mesh = itr->getMesh();
 
-                if(isPositiveAndBelow(action.data1, (int) mesh->getNumVerts())) {
+                if(isPositiveAndBelow(action.data1, mesh->getNumVerts())) {
                     vector<Vertex*>& selected = itr->getSelected();
                     Vertex* vert = mesh->getVerts()[action.data1];
 
@@ -766,7 +771,7 @@ void CycleTour::performAction(Action& action) {
                     itr->setMovingVertsFromSelected();
                     getObj(VertexPropertiesPanel).setSelectedAndCaller(itr);
                     itr->resizeFinalBoxSelection(true);
-                    itr->update(UpdateType::Update);
+                    itr->update(Update);
                 }
             }
 
@@ -780,7 +785,7 @@ void CycleTour::performAction(Action& action) {
 
                 if(action.triggersUpdate) {
                     itr->resizeFinalBoxSelection(true);
-                    itr->update(UpdateType::Update);
+                    itr->update(Update);
                     getObj(VertexPropertiesPanel).setSelectedAndCaller(itr);
                 }
             }
@@ -790,13 +795,13 @@ void CycleTour::performAction(Action& action) {
 
         case SetKnobValue: {
             switch(action.area) {
-                case AreaUnison: 		getObj(UnisonUI)	.getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
-                case AreaReverb:		getObj(ReverbUI)	.getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
-                case AreaEQ: 			getObj(EqualizerUI) .getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
-                case AreaDelay: 		getObj(DelayUI)	  	.getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
-                case AreaImpulse: 		getObj(IrModellerUI).getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
-                case AreaWaveshaper: 	getObj(WaveshaperUI).getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
-                case AreaMasterCtrls: 	getObj(OscControlPanel).getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
+                case AreaUnison:       getObj(UnisonUI)    .getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
+                case AreaReverb:       getObj(ReverbUI)    .getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
+                case AreaEQ:           getObj(EqualizerUI) .getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
+                case AreaDelay:        getObj(DelayUI)     .getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
+                case AreaImpulse:      getObj(IrModellerUI).getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
+                case AreaWaveshaper:   getObj(WaveshaperUI).getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
+                case AreaMasterCtrls:  getObj(OscControlPanel).getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
                 default: break;
             }
 
@@ -822,9 +827,9 @@ void CycleTour::performAction(Action& action) {
 
         case SetUseRange:
             switch(action.id) {
-                case IdYellow:	getSetting(UseYellowDepth) 	= action.data1 > 0; break;
-                case IdRed:		getSetting(UseRedDepth) 	= action.data1 > 0; break;
-                case IdBlue:	getSetting(UseBlueDepth) 	= action.data1 > 0; break;
+                case IdYellow: getSetting(UseYellowDepth) = action.data1 > 0; break;
+                case IdRed:    getSetting(UseRedDepth)    = action.data1 > 0; break;
+                case IdBlue:   getSetting(UseBlueDepth)   = action.data1 > 0; break;
                 default: break;
             }
             break;
@@ -838,7 +843,7 @@ void CycleTour::performAction(Action& action) {
                                        &getObj(SynthAudioSource).getIrModeller().getWrapper(),
                                        DialogActions::LoadImpulse, Dialogs::LoadIRWave);
 
-            data.audioFile 	= File(action.str);
+            data.audioFile     = File(action.str);
             Dialogs::openWaveCallback(1, data);
             break;
         }
@@ -902,7 +907,7 @@ void CycleTour::performAction(Action& action) {
                 if(action.triggersUpdate) {
                     itr->setMovingVertsFromSelected();
                     itr->resizeFinalBoxSelection(true);
-                    itr->update(UpdateType::Update);
+                    itr->update(Update);
 
                     getObj(VertexPropertiesPanel).setSelectedAndCaller(itr);
                 }
@@ -941,8 +946,8 @@ void CycleTour::ItemComponent::paint(Graphics& g) {
 
 CycleTour::ItemWrapper::ItemWrapper(SingletonRepo* repo) :
         SingletonAccessor(repo, "ItemWrapper")
-    ,	borderSpace (20)
-    ,	arrowSize (16.0f) {
+    ,    borderSpace (20)
+    ,    arrowSize (16.0f) {
     addAndMakeVisible(content);
     setAlwaysOnTop (true);
     Component::addToDesktop (ComponentPeer::windowIsTemporary);
@@ -1054,10 +1059,10 @@ void CycleTour::ItemWrapper::updatePosition (
 bool CycleTour::ItemWrapper::intersects(const Rectangle<float> &r, const Line<float> &l) {
     Point<float> ignored;
     return r.contains (l.getStart()) || r.contains (l.getEnd())
-            || l.intersects (Line (r.getTopLeft(),     r.getTopRight()), 	ignored)
+            || l.intersects (Line (r.getTopLeft(),     r.getTopRight()),     ignored)
             || l.intersects (Line (r.getTopRight(),    r.getBottomRight()), ignored)
-            || l.intersects (Line (r.getBottomRight(), r.getBottomLeft()), 	ignored)
-            || l.intersects (Line (r.getBottomLeft(),  r.getTopLeft()), 	ignored);
+            || l.intersects (Line (r.getBottomRight(), r.getBottomLeft()),     ignored)
+            || l.intersects (Line (r.getBottomLeft(),  r.getTopLeft()),     ignored);
 }
 
 void CycleTour::ItemWrapper::refreshPath() {
@@ -1065,13 +1070,13 @@ void CycleTour::ItemWrapper::refreshPath() {
     background = Image();
     outline.clear();
 
-    const float gap 			= 4.5f;
-    const float cornerSize 		= 9.0f;
-    const float cornerSize2 	= 2.0f * cornerSize;
-    const float arrowBaseWidth 	= arrowSize * 0.7f;
-    const float left 			= content.getX() - gap, top = content.getY() - gap;
-    const float right			= content.getRight() + gap, bottom = content.getBottom() + gap;
-    const float targetX 		= targetPoint.getX() - getX(), targetY = targetPoint.getY() - getY();
+    const float gap             = 4.5f;
+    const float cornerSize      = 9.0f;
+    const float cornerSize2     = 2.0f * cornerSize;
+    const float arrowBaseWidth  = arrowSize * 0.7f;
+    const float left            = content.getX() - gap, top = content.getY() - gap;
+    const float right           = content.getRight() + gap, bottom = content.getBottom() + gap;
+    const float targetX         = targetPoint.getX() - getX(), targetY = targetPoint.getY() - getY();
 
     outline.startNewSubPath (left + cornerSize, top);
 
@@ -1173,18 +1178,18 @@ void CycleTour::timerCallback(int id) {
 
 TourGuide* CycleTour::getTourGuide(Area area) {
     switch(area) {
-        case AreaWfrmWaveform3D:	return &getObj(Waveform3D);
-        case AreaMorphPanel:		return &getObj(MorphPanel);
-        case AreaVertexProps:		return &getObj(VertexPropertiesPanel);
-        case AreaSpectrogram:		return &getObj(Spectrum3D);
-        case AreaEnvelopes:			return &getObj(Envelope2D);
-        case AreaGenControls:		return &getObj(GeneralControls);
-        case AreaImpulse:			return &getObj(IrModellerUI);
-        case AreaWaveshaper:		return &getObj(WaveshaperUI);
-        case AreaDeformers:			return &getObj(DeformerPanel);
-        case AreaUnison:			return &getObj(UnisonUI);
-        case AreaModMatrix:			return &getObj(ModMatrixPanel);
-        case AreaMasterCtrls:		return &getObj(OscControlPanel);
+        case AreaWfrmWaveform3D: return &getObj(Waveform3D);
+        case AreaMorphPanel:     return &getObj(MorphPanel);
+        case AreaVertexProps:    return &getObj(VertexPropertiesPanel);
+        case AreaSpectrogram:    return &getObj(Spectrum3D);
+        case AreaEnvelopes:      return &getObj(Envelope2D);
+        case AreaGenControls:    return &getObj(GeneralControls);
+        case AreaImpulse:        return &getObj(IrModellerUI);
+        case AreaWaveshaper:     return &getObj(WaveshaperUI);
+        case AreaDeformers:      return &getObj(DeformerPanel);
+        case AreaUnison:         return &getObj(UnisonUI);
+        case AreaModMatrix:      return &getObj(ModMatrixPanel);
+        case AreaMasterCtrls:    return &getObj(OscControlPanel);
         default: break;
     }
 
@@ -1200,19 +1205,19 @@ Component* CycleTour::getComponent(int which) {
     }
 
     switch(which) {
-        case AreaMain:			return &getObj(MainPanel);
-        case AreaMorphPanel:	return &getObj(MorphPanel);
-        case AreaModMatrix:		return &getObj(ModMatrixPanel);
-        case AreaPlayback:		return &getObj(PlaybackPanel);
-        case AreaVertexProps:	return &getObj(VertexPropertiesPanel);
-        case AreaGenControls:	return &getObj(GeneralControls);
-        case AreaMasterCtrls:	return &getObj(OscControlPanel);
-        case AreaSharpBand: 	return &getObj(DerivativePanel);
-        case AreaUnison:		return &getObj(UnisonUI);
-        case AreaReverb:		return &getObj(ReverbUI);
-        case AreaDelay:			return &getObj(DelayUI);
-        case AreaEQ:			return &getObj(EqualizerUI);
-        case AreaConsole:		return dynamic_cast<Console*>(&getObj(IConsole));
+        case AreaMain:          return &getObj(MainPanel);
+        case AreaMorphPanel:    return &getObj(MorphPanel);
+        case AreaModMatrix:     return &getObj(ModMatrixPanel);
+        case AreaPlayback:      return &getObj(PlaybackPanel);
+        case AreaVertexProps:   return &getObj(VertexPropertiesPanel);
+        case AreaGenControls:   return &getObj(GeneralControls);
+        case AreaMasterCtrls:   return &getObj(OscControlPanel);
+        case AreaSharpBand:     return &getObj(DerivativePanel);
+        case AreaUnison:        return &getObj(UnisonUI);
+        case AreaReverb:        return &getObj(ReverbUI);
+        case AreaDelay:         return &getObj(DelayUI);
+        case AreaEQ:            return &getObj(EqualizerUI);
+        case AreaConsole:       return dynamic_cast<Console*>(&getObj(IConsole));
         default: break;
     }
 
@@ -1222,17 +1227,17 @@ Component* CycleTour::getComponent(int which) {
 
 Panel* CycleTour::areaToPanel(int which) {
     switch(which) {
-        case AreaWshpEditor: 	return &getObj(Waveform2D);
-        case AreaWfrmWaveform3D:return &getObj(Waveform3D);
-        case AreaSpectrum:		return &getObj(Spectrum2D);
-        case AreaSpectrogram:	return &getObj(Spectrum3D);
+        case AreaWshpEditor:     return &getObj(Waveform2D);
+        case AreaWfrmWaveform3D: return &getObj(Waveform3D);
+        case AreaSpectrum:       return &getObj(Spectrum2D);
+        case AreaSpectrogram:    return &getObj(Spectrum3D);
         case AreaEnvelopes:
         case AreaVolume:
         case AreaPitch:
-        case AreaScratch:		return &getObj(Envelope2D);
-        case AreaWaveshaper:	return &getObj(WaveshaperUI);
-        case AreaImpulse:		return &getObj(IrModellerUI);
-        case AreaDeformers:		return &getObj(DeformerPanel);
+        case AreaScratch:        return &getObj(Envelope2D);
+        case AreaWaveshaper:     return &getObj(WaveshaperUI);
+        case AreaImpulse:        return &getObj(IrModellerUI);
+        case AreaDeformers:      return &getObj(DeformerPanel);
         default: break;
     }
 
@@ -1277,7 +1282,7 @@ void CycleTour::readAction(Action& action, XmlElement* actionElem) {
     String actionStr = actionElem->getStringAttribute("type", "NullAction");
     jassert(actionStrings.contains(actionStr));
 
-    action.type		 = actionStrings[actionStr];
+    action.type         = actionStrings[actionStr];
 
     String idString  = actionElem->getStringAttribute("id", "IdNull");
     jassert(idStrings.contains(idString));
@@ -1287,16 +1292,16 @@ void CycleTour::readAction(Action& action, XmlElement* actionElem) {
     if(actionArea.isNotEmpty() && areaStrings.contains(actionArea))
         action.area = areaStrings[actionArea];
 
-    action.id		= idStrings[idString];
-    action.point.x	= actionElem->getDoubleAttribute("point-x", 	 0.5);
-    action.point.y	= actionElem->getDoubleAttribute("point-y", 	 0.0);
-    action.data1	= actionElem->getIntAttribute	("data1", 		 0);
-    action.data2	= actionElem->getIntAttribute	("data2",		 0);
-    action.data3	= actionElem->getIntAttribute	("data3", 		 0);
-    action.value	= actionElem->getDoubleAttribute("value", 		 0);
-    action.str		= actionElem->getStringAttribute("str", 		 {});
-    action.delayMillis = actionElem->getIntAttribute("delay-millis", 100);
-    action.triggersUpdate = actionElem->getBoolAttribute("updates",  true);
+    action.id         = idStrings[idString];
+    action.point.x    = actionElem->getDoubleAttribute("point-x",      0.5);
+    action.point.y    = actionElem->getDoubleAttribute("point-y",      0.0);
+    action.data1      = actionElem->getIntAttribute    ("data1",       0);
+    action.data2      = actionElem->getIntAttribute    ("data2",       0);
+    action.data3      = actionElem->getIntAttribute    ("data3",       0);
+    action.value      = actionElem->getDoubleAttribute("value",        0);
+    action.str        = actionElem->getStringAttribute("str",          {});
+    action.delayMillis = actionElem->getIntAttribute("delay-millis",   100);
+    action.triggersUpdate = actionElem->getBoolAttribute("updates",    true);
 
     if(action.str.contains("%TUT")) {
         String tutDir = getObj(Directories).getTutorialDir();
@@ -1310,27 +1315,27 @@ bool CycleTour::readXML(const XmlElement* element) {
 
     String cmdString(platformSplit("CTRL", "CMD"));
 
-//	Tutorial tutorial;
+//    Tutorial tutorial;
     current.items.clear();
     current.name = element->getStringAttribute("title", "Untitled");
 
-    forEachXmlChildElementWithTagName(*element, itemElem, "Item") {
+    for(auto itemElem : element->getChildWithTagNameIterator("Item")) {
         Item item;
 
-        String areaStr = itemElem->getStringAttribute("area", 	 "AreaNull");
+        String areaStr = itemElem->getStringAttribute("area",    "AreaNull");
         String targStr = itemElem->getStringAttribute("subArea", "TargNull");
 
         jassert(areaStrings.contains(areaStr));
         jassert(subareaStrings.contains(targStr));
 
-        item.area 			= areaStrings	[areaStr];
-        item.subArea 		= subareaStrings[targStr];
+        item.area            = areaStrings    [areaStr];
+        item.subArea         = subareaStrings[targStr];
 
-        item.title			= itemElem->getStringAttribute("name", 		"Untitled");
-        item.text			= itemElem->getStringAttribute("text", 		{});
+        item.title           = itemElem->getStringAttribute("name",     "Untitled");
+        item.text            = itemElem->getStringAttribute("text",     {});
 
-        String ignoreStr 	= itemElem->getStringAttribute("ignore", 	{});
-        String requireStr	= itemElem->getStringAttribute("require", 	{});
+        String ignoreStr     = itemElem->getStringAttribute("ignore",   {});
+        String requireStr    = itemElem->getStringAttribute("require",  {});
 
         if(! passesRequirements(ignoreStr, requireStr)) {
             continue;
@@ -1346,11 +1351,11 @@ bool CycleTour::readXML(const XmlElement* element) {
 
         if(XmlElement* condElem = itemElem->getChildByName("Condition")) {
             Condition cond;
-            cond.area 		= item.area;
-            cond.oper 		= condStrings	[condElem->getStringAttribute("operation", 	"OperNull")];
-            cond.type 		= compareStrings[condElem->getStringAttribute("comparable", "NoCompare")];
-            cond.value 		= condElem->getIntAttribute("value", 0);
-            cond.failMsg 	= condElem->getStringAttribute("failMsg", "Condition failed, please retry.");
+            cond.area        = item.area;
+            cond.oper        = condStrings[condElem->getStringAttribute("operation", "OperNull")];
+            cond.type        = compareStrings[condElem->getStringAttribute("comparable", "NoCompare")];
+            cond.value       = condElem->getIntAttribute("value", 0);
+            cond.failMsg     = condElem->getStringAttribute("failMsg", "Condition failed, please retry.");
 
             jassert(cond.oper != OperNull);
             jassert(cond.type != NoCompare);
@@ -1358,7 +1363,7 @@ bool CycleTour::readXML(const XmlElement* element) {
             item.condition = cond;
         }
 
-        forEachXmlChildElementWithTagName(*itemElem, actionElem, "Action") {
+        for(auto actionElem : itemElem->getChildWithTagNameIterator("Action")) {
             Action animAction;
             animAction.area = item.area;
             readAction(animAction, actionElem);

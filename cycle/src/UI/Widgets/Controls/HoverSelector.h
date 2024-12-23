@@ -80,7 +80,7 @@ public:
         }
 
         g.setColour(Colour::greyLevel(isMouseOver() ? 0.8f : 0.65f));
-        g.setFont(FontOptions(16));
+        g.setFont(16);
 
         String name = filename.substring(filename.lastIndexOf(File::getSeparatorString()) + 1, filename.lastIndexOf("."));
         g.drawText(name, 30, 0, 3 * getWidth() / 4, getHeight(), Justification::centredLeft, true);

@@ -13,7 +13,8 @@
 #include "../Util/CycleEnums.h"
 
 
-VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) : SingletonAccessor(repo, "VoiceMeshRasterizer"), state(nullptr) {
+VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
+		SingletonAccessor(repo, "VoiceMeshRasterizer"), state(nullptr) {
 	unsampleable = true;
 	overrideDim = true;
 	scalingType = Bipolar;

@@ -1,9 +1,7 @@
 #include "Buffer.h"
 #include "ScopedAlloc.h"
 
-#include "ippcv.h"
-#include "ipps.h"
-#include "ippvm.h"
+#include "ipp.h"
 
 #pragma warning(disable: 4661)
 

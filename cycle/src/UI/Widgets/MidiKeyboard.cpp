@@ -56,7 +56,6 @@ void MidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, int x, int y,
     }
 }
 
-
 void MidiKeyboard::drawWhiteNote(int midiNoteNumber, Graphics& g, int x, int y,
                                  int w, int h, bool isDown, bool isOver,
                                  const Colour& lineColourDefault,

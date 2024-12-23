@@ -29,7 +29,6 @@ class SynthesizerVoice:
 {
 public:
 	SynthesizerVoice(int voiceIndex, SingletonRepo* repo);
-	~SynthesizerVoice() override;
 
 	void initCycleBuffers();
 	void fetchEnvelopeMeshes();

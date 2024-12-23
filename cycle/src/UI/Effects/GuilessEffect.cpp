@@ -21,7 +21,7 @@ GuilessEffect::GuilessEffect(const String& name, const String& displayName, int 
     ,	enabled			(false)
     ,	updateSource	(source)
     ,	minTitleSize	(50)
-    ,	font			(15, Font::bold)
+    ,	font			(FontOptions(15, Font::bold))
     ,	enableButton	(5, 5, this, repo, "Enable effect")
     ,	title			(repo, displayName.toUpperCase()) {
     addAndMakeVisible(&enableButton);
@@ -60,7 +60,7 @@ void GuilessEffect::paint(Graphics& g) {
         String text  = getKnobName(idx);
 
         int width 	 = knob->getRight() - knob->getX();
-        int strWidth = silkscreen->getStringWidth(text);
+        int strWidth = Util::getStringWidth(*silkscreen, text);
         int x 		 = knob->getX() + (width - strWidth) / 2;
         int y 		 = knob->getBottom() + 2;
 

@@ -389,7 +389,7 @@ bool DeformerPanel::readXML(const XmlElement* element) {
     int numMeshes = meshLib->getGroup(layerType).size();
 
     if (deformerElem != nullptr) {
-        forEachXmlChildElementWithTagName(*deformerElem, propsElem, "Properties") {
+        for(auto propsElem : deformerElem->getChildWithTagNameIterator("Properties")) {
             if (guideTables.size() >= numMeshes) {
                 break;
             }

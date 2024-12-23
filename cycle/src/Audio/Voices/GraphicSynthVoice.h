@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <ippdefs.h>
+#include <ipp.h>
 
 //#define _DEBUG_IPP 1
 

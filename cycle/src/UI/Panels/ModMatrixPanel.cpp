@@ -843,7 +843,7 @@ bool ModMatrixPanel::readXML(const XmlElement* element) {
 
     // inputs
 
-    forEachXmlChildElementWithTagName(*inputsElem, inputElem, "input") {
+    for(auto inputElem : inputsElem->getChildWithTagNameIterator("input")) {
 	    int id = inputElem->getIntAttribute("id", -1);
 
 	    HeaderElement elem(getInputName(id), id);
@@ -860,7 +860,7 @@ bool ModMatrixPanel::readXML(const XmlElement* element) {
 
     //	header.addColumn("Set All", SetAllId, gridSize, gridSize, gridSize, flags);
 
-    forEachXmlChildElementWithTagName(*outputsElem, outputElem, "output") {
+    for(auto outputElem : outputsElem->getChildWithTagNameIterator("output")) {
 	    int id = outputElem->getIntAttribute("id", -1);
 
 	    HeaderElement elem(getOutputName(id), id);
@@ -871,7 +871,7 @@ bool ModMatrixPanel::readXML(const XmlElement* element) {
 
     // mappings
 
-    forEachXmlChildElementWithTagName(*mappingsElem, mappingElem, "mapping") {
+    for(auto mappingElem : mappingsElem->getChildWithTagNameIterator("mapping")) {
 	    Mapping m;
 	    m.in = mappingElem->getIntAttribute("in", -1);
 	    m.out = mappingElem->getIntAttribute("out", -1);

@@ -75,7 +75,7 @@ bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
 
     if (loopIndicesElem != nullptr) {
         loopCubes.clear();
-        forEachXmlChildElementWithTagName(*loopIndicesElem, loopIndexElem, "LoopIndex") {
+        for(auto loopIndexElem : loopIndicesElem->getChildWithTagNameIterator("LoopIndex")) {
             int index = loopIndexElem->getIntAttribute("index", -1);
 
             if (isPositiveAndBelow(index, (int) cubes.size())) {
@@ -94,7 +94,7 @@ bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
 
     if (sustIndicesElem != nullptr) {
         sustainCubes.clear();
-        forEachXmlChildElementWithTagName(*sustIndicesElem, sustIndexElem, "SustIndex") {
+        for(auto sustIndexElem : sustIndicesElem->getChildWithTagNameIterator("SustIndex")) {
             int index = sustIndexElem->getIntAttribute("index", -1);
 
             if (isPositiveAndBelow(index, (int) cubes.size())) {

@@ -56,7 +56,7 @@ bool DocumentDetails::readXML(const XmlElement* element) {
 
     tags.clear();
 
-    forEachXmlChildElementWithTagName(*detailsElem, tagElem, "Tag") {
+    for(auto tagElem : detailsElem->getChildWithTagNameIterator("Tag")) {
         if (tagElem == nullptr) {
             return false;
         }

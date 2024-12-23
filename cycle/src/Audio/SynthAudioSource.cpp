@@ -379,7 +379,10 @@ void SynthAudioSource::calcFades() {
     }
 }
 
-void SynthAudioSource::convertMidiTo44k(const MidiBuffer& source, MidiBuffer& dest, int numSamples44k) {
+void SynthAudioSource::convertMidiTo44k(
+    const MidiBuffer& source,
+    MidiBuffer& dest,
+    int numSamples44k) {
     MidiBuffer::Iterator iter(source);
 
     if (numSamples44k == 0) {

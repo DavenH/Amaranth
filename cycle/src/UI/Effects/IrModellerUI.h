@@ -35,7 +35,6 @@ class IrModellerUI:
 {
 public:
     explicit IrModellerUI(SingletonRepo* repo);
-    ~IrModellerUI() override;
 
     void init() override;
     void initControls();

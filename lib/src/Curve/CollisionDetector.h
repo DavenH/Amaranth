@@ -1,7 +1,7 @@
 #pragma once
 
 #include <set>
-#include <ippdefs.h>
+#include <ipp.h>
 #include "VertCube.h"
 #include "Mesh.h"
 #include "../App/SingletonAccessor.h"

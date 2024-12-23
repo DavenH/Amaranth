@@ -54,7 +54,7 @@ void Console::timerCallback() {
 }
 
 void Console::paint(Graphics& g) {
-    g.setFont(FontOptions(15));
+    g.setFont(15);
     g.setColour(Colour::greyLevel(0.09f));
     g.fillAll();
 

@@ -10,6 +10,7 @@
 #include <Definitions.h>
 
 #include <utility>
+#include <Util/Util.h>
 
 #include "../CycleGraphicsUtils.h"
 HSlider::HSlider(SingletonRepo* repo, const String& name, String  message, bool horizontal) :
@@ -77,7 +78,7 @@ void HSlider::paintSecond(Graphics& g) {
     g.setColour(Colour::greyLevel(hztl ? 0.6f : 0.65f));
 
     if(hztl) {
-        int width = silkscreen->getStringWidth(name);
+        int width = Util::getStringWidth(*silkscreen, name);
         g.drawSingleLineText(name, getWidth() - width - 4, getHeight() / 2 + 3);
     } else {
         AffineTransform transform(AffineTransform::rotation(2*3.1415926535).translated(getWidth() / 2 - 2, 5));

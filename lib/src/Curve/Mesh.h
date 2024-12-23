@@ -12,7 +12,6 @@ public:
 
     Mesh();
     explicit Mesh(String  name);
-    ~Mesh() override;
 
     bool hasEnoughCubesForCrossSection();
     void print(bool printCubes = true, bool printVerts = true);
@@ -63,8 +62,7 @@ public:
     void copyElements(vector<VertCube*>& copyCubesTo) const	{ copyCubesTo = cubes; }
     void copyElements(vector<Vertex*>& copyVertsTo) const	{ copyVertsTo = verts; }
 
-    void copyElements(vector<Vertex*>& copyVertsTo, vector<VertCube*>& copyCubesTo) const
-    {
+    void copyElements(vector<Vertex*>& copyVertsTo, vector<VertCube*>& copyCubesTo) const {
         copyElements(copyVertsTo);
         copyElements(copyCubesTo);
     }

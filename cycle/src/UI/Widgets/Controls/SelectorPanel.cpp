@@ -6,6 +6,7 @@
 #include "SelectorPanel.h"
 #include <Definitions.h>
 #include <App/SingletonRepo.h>
+#include <Util/Util.h>
 
 SelectorPanel::SelectorPanel(SingletonRepo* repo) :
 		currentIndex(0)
@@ -40,8 +41,8 @@ void SelectorPanel::paint(Graphics& g) {
 	String text 	 = String(candidate + 1);
 	String totalText = String(listSize);
 
-	Font font(smallCnd ? 11 : 13);
-	int width = font.getStringWidth(text);
+	Font font(FontOptions(smallCnd ? 11 : 13));
+	int width = Util::getStringWidth(font, text);
 
 	g.setFont(font);
 	g.setColour(Colour::greyLevel(smallCnd ? 0.8f : 0.74f));

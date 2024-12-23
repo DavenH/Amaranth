@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <ipp.h>
-#include <ippdefs.h>
+#include <ipp.h>
 #include <cmath>
 
 #include <Algo/ConvReverb.h>

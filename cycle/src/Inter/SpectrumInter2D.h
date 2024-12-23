@@ -11,7 +11,6 @@ class SpectrumInter2D :
 public:
 
     explicit SpectrumInter2D(SingletonRepo* repo);
-    SpectrumInter2D(const SpectrumInter2D& SpectrumInter2D);
 
     void init() override;
     bool locateClosestElement() override;
@@ -24,6 +23,6 @@ public:
     void setClosestHarmonic(int num) { closestHarmonic = num; }
 
 private:
-    int closestHarmonic;
+    int closestHarmonic{};
     Ref <Spectrum3D> spectrum3D;
 };
