@@ -8,10 +8,6 @@ class AppClass : public JUCEApplication {
     std::unique_ptr <MainAppWindow> mainWindow;
 
 public:
-    AppClass() = default;
-
-    ~AppClass() override = default;
-
     void initialise(const String &commandLine) override {
         mainWindow = std::make_unique<MainAppWindow>(commandLine);
         mainWindow->maximiseButtonPressed();

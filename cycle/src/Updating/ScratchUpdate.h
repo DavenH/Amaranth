@@ -9,7 +9,5 @@ class ScratchUpdate :
 public:
     explicit ScratchUpdate(SingletonRepo* repo);
 
-    ~ScratchUpdate() override;
-
     void performUpdate(UpdateType updateType) override;
 };

@@ -20,6 +20,7 @@ class OpenGLPanel3D :
     , 	public virtual SingletonAccessor {
 public:
     OpenGLPanel3D(SingletonRepo* repo, Panel3D* panel3D, Panel3D::DataRetriever* retriever);
+    ~OpenGLPanel3D() override;
 
     void drawSurfaceColumn(int x) override;
     void drawCurvesAndSurfaces();

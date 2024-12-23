@@ -114,9 +114,7 @@ void VisualDsp::rasterizeEnv(Buffer<Ipp32f> env,
             rasterizer.setCalcDepthDimensions(true);
             rasterizer.update(Update);
         }
-    }
-    else
-    {
+    } else {
         float& dimVar 		= rasterizer.getPrimaryDimensionVar();
         float originalPos 	= dimVar;
         float time 			= getObj(MorphPanel).getValue(Vertex::Time);
@@ -368,8 +366,9 @@ void VisualDsp::calcTimeDomain(int numColumns) {
 
             localBuffer.mul(relativePan);
 
-            if(numActiveLayers > 1)
+            if(numActiveLayers > 1) {
                 sumBuffer.add(localBuffer);
+            }
         }
 
         sumBuffer.copyTo(column);
@@ -980,8 +979,7 @@ void VisualDsp::unwrapPhaseColumns(vector<Column>& phaseColumns) {
     }
 }
 
-void VisualDsp::processThroughEnvelopes(int numColumns)
-{
+void VisualDsp::processThroughEnvelopes(int numColumns) {
     checkEnvelopeColumns(numColumns);
 
     // do not clear postEnvCols becase it's used as dest time array in

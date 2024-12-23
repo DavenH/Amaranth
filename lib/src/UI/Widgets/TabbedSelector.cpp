@@ -14,7 +14,7 @@ TabbedSelector::TabbedSelector(SingletonRepo* repo) :
 void TabbedSelector::paint(Graphics& g) {
     g.fillAll(Colours::black);
 
-    float halfPi = 0.5f * 3.1415926535f;
+    float halfPi = MathConstants<float>::halfPi;
     float rad = radius;
 
     for (int i = 0; i < (int) tabs.size(); ++i) {
@@ -87,7 +87,7 @@ void TabbedSelector::paint(Graphics& g) {
         Tab& tab 			= tabs[i];
 
         const String& name 	= tab.name.toUpperCase();
-        int strLength 		= Util::getStringWidth(font, name);
+        int strLength 		= roundToInt(Util::getStringWidth(font, name));
         int y 				= vertSpace + i * tabHeight;
         float scale 		= jmin(tabHeight - 20, strLength) / float(strLength);
 
@@ -199,8 +199,9 @@ void TabbedSelector::selectTab(int tab) {
 }
 
 void TabbedSelector::callListeners(Bounded* selected) {
-    for(auto listener : listeners)
+    for(auto listener : listeners) {
         listener->tabSelected(this, selected);
+    }
 }
 
 void TabbedSelector::addTab(const String& name, Bounded* callbackComponent, const String& keys) {

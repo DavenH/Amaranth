@@ -22,6 +22,12 @@
 	T(64f)	\
 	T(32fc)
 
+#define declareFor32Plus(T)	\
+	T(32s)	\
+	T(32f)	\
+	T(64f)	\
+	T(32fc)
+
 #define declareForFloatAndCplx(T)	\
 	T(32f)	\
 	T(32fc)
@@ -33,7 +39,6 @@ template class Buffer<Ipp32s>;
 template class Buffer<Ipp32f>;
 template class Buffer<Ipp64f>;
 template class Buffer<Ipp32fc>;
-
 
 template<>
 bool Buffer<float>::isProbablyEmpty() const {

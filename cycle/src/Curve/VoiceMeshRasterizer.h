@@ -18,8 +18,6 @@ public:
 
 	explicit VoiceMeshRasterizer(SingletonRepo* repo);
 
-	~VoiceMeshRasterizer() override;
-
 	/*
 	 * Chains the minimum necessary number of points from previous call to head of the subsequent call
 	 * This provides 100% continuity between cycles

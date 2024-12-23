@@ -260,7 +260,7 @@ void AmaranthLookAndFeel::drawButtonText(Graphics& g,
                                          TextButton& button,
                                          bool isMouseOverButton,
                                          bool isButtonDown) {
-    g.setFont(Font(16));
+    g.setFont(Font(FontOptions(16)));
     g.setColour(button.isEnabled() ? Colours::lightgrey : Colours::grey);
     g.drawFittedText(button.getButtonText(), 0, 0, button.getWidth(),
                      button.getHeight(), Justification::centred, 1);
@@ -302,31 +302,32 @@ void AmaranthLookAndFeel::createRoundedPath(Path& p,
                                             const bool curveTopLeft, const bool curveTopRight,
                                             const bool curveBottomLeft, const bool curveBottomRight) noexcept {
     const float cs2 = 2.0f * cs;
+    const float pi = MathConstants<float>::pi;
 
     if (curveTopLeft) {
         p.startNewSubPath(x, y + cs);
-        p.addArc(x, y, cs2, cs2, float_Pi * 1.5f, float_Pi * 2.0f);
+        p.addArc(x, y, cs2, cs2, pi * 1.5f, pi * 2.0f);
     } else {
         p.startNewSubPath(x, y);
     }
 
     if (curveTopRight) {
         p.lineTo(x + w - cs, y);
-        p.addArc(x + w - cs2, y, cs2, cs2, 0.0f, float_Pi * 0.5f);
+        p.addArc(x + w - cs2, y, cs2, cs2, 0.0f, pi * 0.5f);
     } else {
         p.lineTo(x + w, y);
     }
 
     if (curveBottomRight) {
         p.lineTo(x + w, y + h - cs);
-        p.addArc(x + w - cs2, y + h - cs2, cs2, cs2, float_Pi * 0.5f, float_Pi);
+        p.addArc(x + w - cs2, y + h - cs2, cs2, cs2, pi * 0.5f, pi);
     } else {
         p.lineTo(x + w, y + h);
     }
 
     if (curveBottomLeft) {
         p.lineTo(x + cs, y + h);
-        p.addArc(x, y + h - cs2, cs2, cs2, float_Pi, float_Pi * 1.5f);
+        p.addArc(x, y + h - cs2, cs2, cs2, pi, pi * 1.5f);
     } else {
         p.lineTo(x, y + h);
     }

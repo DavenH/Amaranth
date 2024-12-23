@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iterator>
 #include <algorithm>
+#include <memory>
 #include <ipp.h>
 #include <Definitions.h>
 #include <App/SingletonRepo.h>
@@ -43,14 +44,15 @@ void ControlsPanel::paint(Graphics& g) {
 
     int span = 26;
     Colour base = Colour::greyLevel(0.11f);
+    const float pi = MathConstants<float>::pi;
 
-    static const float zero 		= 0.0 * IPP_PI;
-    static const float quarter 		= 0.5 * IPP_PI;
-    static const float half			= 1.0 * IPP_PI;
-    static const float thrQrtr 		= 1.5 * IPP_PI;
-    static const float full 		= 2.0 * IPP_PI;
-    static const float oneAndQrtr 	= 2.5 * IPP_PI;
-    static const float oneAndHalf 	= 3.0 * IPP_PI;
+    static const float zero 		= 0.0 * pi;
+    static const float quarter 		= 0.5 * pi;
+    static const float half			= 1.0 * pi;
+    static const float thrQrtr 		= 1.5 * pi;
+    static const float full 		= 2.0 * pi;
+    static const float oneAndQrtr 	= 2.5 * pi;
+    static const float oneAndHalf 	= 3.0 * pi;
     static const float arcRadius 	= 3.f;
     static const float separation 	= 3.f;
 
@@ -72,13 +74,13 @@ void ControlsPanel::paint(Graphics& g) {
             g.strokePath(strokePath, PathStrokeType(1.f));
         }
 
-        for (int i = 0; i < (int) dividedBands.size(); ++i) {
-            if (!dividedBands[i].first->isVisibleDlg() || !dividedBands[i].second->isVisibleDlg()) {
+        for (auto&& dividedBand : dividedBands) {
+            if (!dividedBand.first->isVisibleDlg() || !dividedBand.second->isVisibleDlg()) {
                 continue;
              }
 
-            const Rectangle<int>& first = dividedBands[i].first->getBoundsInParentDelegate();
-            const Rectangle<int>& second = dividedBands[i].second->getBoundsInParentDelegate();
+            const Rectangle<int>& first = dividedBand.first->getBoundsInParentDelegate();
+            const Rectangle<int>& second = dividedBand.second->getBoundsInParentDelegate();
 
             int middleX 			= first.getX() + first.getWidth();
             int middleY 			= getHeight() / 2;
@@ -214,8 +216,8 @@ void ControlsPanel::addRetractableCallout(std::unique_ptr<RetractableCallout>& c
     std::copy(buttonArray, buttonArray + numButtons,
               inserter(buttons, buttons.begin()));
 
-    pullout.reset(new PulloutComponent(getObj(MiscGraphics).getIcon(posX, posY), buttons, repo, ! horz));
-    callout.reset(new RetractableCallout(buttons, pullout.get(), horz));
+    pullout = std::make_unique<PulloutComponent>(getObj(MiscGraphics).getIcon(posX, posY), buttons, repo, ! horz);
+    callout = std::make_unique<RetractableCallout>(buttons, pullout.get(), horz);
 
     addAndMakeVisible(callout.get());
     expandableComponents.add(callout.get());
@@ -284,19 +286,21 @@ void ControlsPanel::resized() {
         dsc->setCurrentlyCollapsed(!shouldAddExpandedSize);
 
         if (shouldAddExpandedSize) {
-            if (isHorz)
+            if (isHorz) {
                 dsc->setBoundsDelegate(pos, excess, expandedSize + 1, minorSize);
-            else
+            } else {
                 dsc->setBoundsDelegate(excess, pos, minorSize, expandedSize + 1);
+            }
 
             pos += expandedSize;
         } else {
             int collapsedSize = dsc->getCollapsedSize();
 
-            if(isHorz)
+            if(isHorz) {
                 dsc->setBoundsDelegate(pos, excess, collapsedSize + 1, minorSize);
-            else
+            } else {
                 dsc->setBoundsDelegate(excess, pos, minorSize, collapsedSize + 1);
+            }
 
             pos += collapsedSize;
         }

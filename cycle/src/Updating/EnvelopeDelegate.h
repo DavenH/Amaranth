@@ -8,6 +8,4 @@ class EnvelopeDelegate :
 public:
     explicit EnvelopeDelegate(SingletonRepo* repo);
     void performUpdate(UpdateType updateType) override;
-
-    ~EnvelopeDelegate() override;
 };

@@ -34,10 +34,11 @@ Curve::Curve(Vertex2& one, Vertex2& two, Vertex2& thr) {
     update();
 }
 
-Curve::Curve(const Curve& curve):
-transformX{},
-transformY{},
-tp(), curveRes(0) {
+Curve::Curve(const Curve& curve) :
+        transformX{},
+        transformY{},
+        tp(),
+        curveRes(0) {
     this->a = curve.a;
     this->b = curve.b;
     this->c = curve.c;
@@ -55,18 +56,17 @@ void Curve::validate() {
     jassert(b.x <= c.x);
     jassert(a.x < c.x);
 
-    if(a.x >= c.x)
-    {
+    if (a.x >= c.x) {
         a.x -= 0.0002f;
         b.x -= 0.0001f;
-    }
-    else
-    {
-        if(b.x > c.x)
+    } else {
+        if (b.x > c.x) {
             b.x = c.x - 0.0001f;
+        }
 
-        if(a.x > b.x)
+        if(a.x > b.x) {
             a.x = b.x - 0.0001f;
+        }
     }
   #endif
 }
@@ -83,6 +83,11 @@ void Curve::construct() {
   #endif
 }
 
+void Curve::destruct() {
+
+}
+
+
 void Curve::calcTable() {
     table = new float** [resolutions];
     for (int r = 0; r < resolutions; ++r) {
@@ -94,18 +99,19 @@ void Curve::calcTable() {
 
     float tn, temp, x, y, value, sx;
     int res;
+    const float pi = MathConstants<float>::pi;
 
     for (int r = 0; r < resolutions; ++r) {
         for (int i = 0; i < numCurvelets; ++i) {
             x = double(i) / numCurvelets;
-            sx = IPP_PI2 * (2 * x - x * x);
+            sx = 2 * pi * (2 * x - x * x);
             tn = ::tan(sx);
             res = resolution >> r;
 
             for (int j = 0; j < res / 2; ++j) {
                 y = yValue(i, j, res);
-                temp = tn - y * tn + 2.0 / IPP_PI;
-                value = 0.5f * ::acosf(y / temp) * temp / (1 + tn * IPP_PI2) + 0.5f;
+                temp = tn - y * tn + 2.0 / pi;
+                value = 0.5f * ::acosf(y / temp) * temp / (1 + tn * pi / 2) + 0.5f;
 
                 table[r][i][res - 1 - j] = value;
                 table[r][i][res - 1 - j + res] = y;
@@ -119,18 +125,19 @@ void Curve::calcTable() {
     }
 }
 
-
 double Curve::function(const double x, const double t) {
     double tant = tanf(t);
     double tantz = tant + 1 - x;
-    return 2.0 / IPP_PI * acos(tant * x / tantz) * tantz / (tant + 1);
+    const float pi = MathConstants<float>::pi;
+    return 2.0 / pi * acos(tant * x / tantz) * tantz / (tant + 1);
 }
 
 float Curve::yValue(int theta, int index, int res) {
+    const float pi = MathConstants<float>::pi;
     double tan, root, x, xx, ret;
     xx 		= double(theta) / numCurvelets;
-    tan 	= ::tan(IPP_PI2 * (2 * xx - xx * xx));
-    root 	= (2.0 / IPP_PI + tan) / (1 + tan);
+    tan 	= ::tan(pi / 2 * (2 * xx - xx * xx));
+    root 	= (2.0 / pi + tan) / (1 + tan);
     x 		= 2 * double(index) / (res - 0.9999);
     ret 	= (1 - (x - 1) * (x - 1)) * root;
     return ret;
@@ -139,8 +146,9 @@ float Curve::yValue(int theta, int index, int res) {
 void Curve::deleteTable() {
     if (table) {
         for (int r = 0; r < resolutions; r++) {
-            for (int j = 0; j < numCurvelets; ++j)
+            for (int j = 0; j < numCurvelets; ++j) {
                 ippsFree(table[r][j]);
+            }
 
             delete[] table[r];
         }

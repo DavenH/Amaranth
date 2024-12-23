@@ -314,17 +314,20 @@ void MeshRasterizer::calcIntercepts() {
 
 void MeshRasterizer::calcTransferTable() {
     static bool alreadyCalculated = false;
-    if(alreadyCalculated)
+    if(alreadyCalculated) {
         return;
+    }
+
+    const float pi = MathConstants<float>::pi;
 
     double isize = 1 / double(Curve::resolution);
     double x;
     for (int i = 0; i < Curve::resolution; ++i) {
         x = i * isize;
         transferTable[i] = x -
-                0.2180285f * sinf(2.f * IPP_PI * x) +
-                0.0322599f * sinf(4.f * IPP_PI * x) -
-                0.0018794f * sinf(6.f * IPP_PI * x);
+                0.2180285f * sinf(2.f * pi * x) +
+                0.0322599f * sinf(4.f * pi * x) -
+                0.0018794f * sinf(6.f * pi * x);
     }
 
     alreadyCalculated = true;

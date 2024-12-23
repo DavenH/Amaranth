@@ -164,7 +164,7 @@ public:
         g.setColour(Colours::lightgrey);
 
         if (focused && blink) {
-            int subWidth = sansSerif.getStringWidth(searchString.substring(0, caretPosition));
+            int subWidth = Util::getStringWidth(sansSerif, searchString.substring(0, caretPosition));
             g.drawVerticalLine(subWidth + 8, 3, getHeight() - 3);
         }
     }

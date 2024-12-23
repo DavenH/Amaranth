@@ -46,9 +46,6 @@ public:
     virtual void doPreUpdateCheck()  {}
     virtual void doPostUpdateCheck() {}
 
-    void performDelegate() 	override = 0;
-    void undoDelegate() 	override = 0;
-
     void undoExtra() override;
     void performExtra() override;
 protected:

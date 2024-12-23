@@ -733,7 +733,7 @@ void Panel::componentChanged() {
 }
 
 void Panel::createNameImage(const String& displayName, bool isSecondImage, bool brighter) {
-    Font font("Verdana", 20, Font::plain);
+    Font font(FontOptions("Verdana", 20, Font::plain));
     font.setExtraKerningFactor(-0.02);
 
     String lcName 	= displayName.toLowerCase();

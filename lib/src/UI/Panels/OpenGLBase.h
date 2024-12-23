@@ -12,7 +12,6 @@ class SingletonRepo;
 class OpenGLBase {
 public:
     OpenGLBase(OpenGLRenderer* renderer, Component* component);
-    virtual ~OpenGLBase();
     void detach();
     void attach();
     void printErrors(SingletonRepo* repo);

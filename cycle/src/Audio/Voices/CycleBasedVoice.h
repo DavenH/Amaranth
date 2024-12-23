@@ -31,7 +31,6 @@ public:
     enum CompositeAlgo { Chain, Interpolate, Overlap };
 
     CycleBasedVoice(SynthesizerVoice* voice, SingletonRepo*);
-    ~CycleBasedVoice() override;
 
     void initCycleBuffers();
     virtual void testNumLayersChanged();

@@ -97,7 +97,7 @@ bool ParameterGroup::readKnobXML(const XmlElement* effectElem) {
 
     ScopedBooleanSwitcher sbs(updatingAllSliders);
 
-    forEachXmlChildElementWithTagName(*knobsElem, currentKnob, "Knob"){
+    for(auto currentKnob : knobsElem->getChildWithTagNameIterator("Knob")) {
         if(currentKnob == nullptr) {
             continue;
         }

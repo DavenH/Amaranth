@@ -49,7 +49,6 @@ public:
     Curve(const Intercept& one, Intercept two, Intercept thr);
     Curve(Vertex2& one, Vertex2& two, Vertex2& thr);
     Curve(const Curve& curve);
-    ~Curve();
 
     void nullify() {
         waveIdx 		= 0;

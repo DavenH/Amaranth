@@ -1,5 +1,4 @@
-#ifndef PRESETMANAGER_H_
-#define PRESETMANAGER_H_
+#pragma once
 
 #include "JuceHeader.h"
 #include <App/SingletonAccessor.h>
@@ -9,10 +8,7 @@ class FileManager :
 		public SingletonAccessor {
 public:
 	explicit FileManager(SingletonRepo* repo);
-	~FileManager() override;
-
 	void unloadWav(bool);
-
 	void loadPendingItem();
 	void saveCurrentPreset();
 	void openCurrentPreset();
@@ -41,5 +37,3 @@ private:
 	String currentPresetName;
 	String defaultPresetName;
 };
-
-#endif

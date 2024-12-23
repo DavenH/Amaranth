@@ -73,7 +73,7 @@ void OpenGLPanel3D::drawCircle() {
     float cy = interactor->state.currentMouse.y;
     float r  = interactor->realValue(PencilRadius);
 
-    float theta 			= 2 * IPP_PI / float(numSegments);
+    float theta 			= MathConstants<float>::twoPi / float(numSegments);
     float tangentialFactor 	= tanf(theta);
     float radialFactor 		= cosf(theta);
 

@@ -10,6 +10,9 @@
 #include "../../UI/IConsole.h"
 #include "../../Definitions.h"
 
+Document::Document(SingletonRepo* repo) : SingletonAccessor(repo, "Document"), validator(nullptr) {
+}
+
 bool Document::open(const String& filename) {
     File file(filename);
 

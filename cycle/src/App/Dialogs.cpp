@@ -5,7 +5,6 @@
 #include "../Util/WinHeader.h"
 #endif
 
-#include <Algo/AutoModeller.h>
 #include <Algo/PitchTracker.h>
 #include <App/AppConstants.h>
 #include <App/EditWatcher.h>
@@ -17,12 +16,10 @@
 #include <App/Doc/Document.h>
 #include <App/Doc/DocumentDetails.h>
 
-#include "CycleTour.h"
 #include "Dialogs.h"
 #include "Directories.h"
 #include "FileManager.h"
 
-#include "../Audio/SampleUtils.h"
 #include "../Audio/SynthAudioSource.h"
 #include "../UI/Dialogs/FileChooser.h"
 #include "../UI/Dialogs/PresetPage.h"
@@ -59,9 +56,8 @@ void Dialogs::init() {
     watcher = &getObj(EditWatcher);
 
     int width = -1, height = -1;
-    Dialogs::getSizeFromSetting(getSetting(WindowSize), width, height);
+    getSizeFromSetting(getSetting(WindowSize), width, height);
 }
-
 
 void Dialogs::showPresetSaveAsDialog() {
     String presetStr("*.");
@@ -102,13 +98,15 @@ void Dialogs::showPresetSaveAsDialog() {
 
         bool existsBefore = currentFile.existsAsFile();
 
-        if (!filename.endsWith(ext))
+        if (!filename.endsWith(ext)) {
             filename += String(".") + ext;
+        }
 
         String author = dialogBox.getAuthorBoxContent();
 
-        if (author.isEmpty())
+        if (author.isEmpty()) {
             author = String("Anonymous");
+        }
 
         if (filename.length() > 4) {
             deets.setRevision(0);
@@ -169,8 +167,9 @@ void Dialogs::showOpenWaveDialog(PitchedSample* dstWav, const String &subDir,
 
     String lastWaveDirectory = getObj(Directories).getLastWaveDirectory();
 
-    if (lastWaveDirectory.isEmpty())
+    if (lastWaveDirectory.isEmpty()) {
         lastWaveDirectory = getObj(PresetPage).getWavDirectory();
+    }
 
     if (getSetting(NativeDialogs) == 1 || forDirectory) {
         nativeFileChooser = std::make_unique<FileChooser>("Open Audio File", lastWaveDirectory, filter, true);
@@ -553,7 +552,6 @@ void Dialogs::openPresetCallback(int returnId, const File &currentFile, Dialogs*
 
 bool Dialogs::handleSaveAction(int menuResult) {
     switch (menuResult) {
-        // cancel
         case DialogCancel:
             return false;
 
@@ -561,7 +559,7 @@ bool Dialogs::handleSaveAction(int menuResult) {
             getObj(FileManager).saveCurrentPreset();
             return true;
 
-        case DialogDontSave:    // don't save
+        case DialogDontSave:
             return true;
 
         default:

@@ -223,7 +223,7 @@ DeformerAssignment::DeformerAssignment(
         Interactor* itr
     , 	Mesh* mesh
     ,	const vector<VertCube*>& selectedLines
-    ,	const vector<int> previousMappings
+    ,	vector<int> previousMappings
     ,	int thisMapping
     , 	int channel) :
             ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())

@@ -88,7 +88,7 @@ PresetPage::PresetPage(SingletonRepo* repo) :
 
     g.setOpacity(0.5f);
     g.drawImageTransformed(getObj(MiscGraphics).getIcon(0, 6),
-                           AffineTransform::rotation(IPP_PI4).translated(12, -6));
+                           AffineTransform::rotation(MathConstants<float>::pi / 4).translated(12, -6));
 
     wavControls.addAndMakeVisible(wavFolderButton.get());
     wavControls.addAndMakeVisible(upButton.get());

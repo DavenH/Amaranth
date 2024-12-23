@@ -65,8 +65,8 @@ QualityDialog::QualityDialog(SingletonRepo* repo) :
 //	useCache	.addListener(this);
     useSmooth	.addListener(this);
 
-    rltmTitle	.setFont(18);
-    rendTitle	.setFont(18);
+    rltmTitle	.setFont(FontOptions(18));
+    rendTitle	.setFont(FontOptions(18));
     rltmHqLabel	.setMinimumHorizontalScale(0.9f);
 
     setSize(500, 350);
@@ -141,8 +141,7 @@ void QualityDialog::comboBoxChanged(ComboBox* box) {
     } else if (item >= ResampAlgoRltmLinear && item <= ResampAlgoRltmSinc) {
         char newAlgo = Resampling::Linear;
 
-        switch(item)
-        {
+        switch(item) {
             case ResampAlgoRltmLinear: 	newAlgo = Resampling::Linear;	break;
             case ResampAlgoRltmHermite: newAlgo = Resampling::Hermite;	break;
             case ResampAlgoRltmBspline: newAlgo = Resampling::BSpline;	break;

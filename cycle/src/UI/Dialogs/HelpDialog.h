@@ -8,6 +8,7 @@
 
 #include "../../Binary/CycleImages.h"
 #include "../CycleGraphicsUtils.h"
+#include "../../Util/CycleEnums.h"
 
 class HelpDialog :
 		public Component

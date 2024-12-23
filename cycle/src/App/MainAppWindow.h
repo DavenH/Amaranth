@@ -1,11 +1,10 @@
 #pragma once
+#include "Initializer.h"
 
 #if ! PLUGIN_MODE
 
 #include <Definitions.h>
 #include <App/SingletonAccessor.h>
-
-class Initializer;
 
 class MainAppWindow:
 		public DocumentWindow

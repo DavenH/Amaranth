@@ -75,7 +75,8 @@ void Spectrogram::unwrapPhaseColumns() {
     Buffer<float> maxima 	= memory.place(numHarmonics);
     Buffer<float> minima	= memory.place(numHarmonics);
 
-    const float invConst = 1/3.1415926535 * 0.5f;
+    const float pi = MathConstants<float>::pi;
+    const float invConst = 1 / pi * 0.5f;
 
     float phaseMin, phaseMax;
 
@@ -92,11 +93,11 @@ void Spectrogram::unwrapPhaseColumns() {
             diff *= invConst;
 
             if(diff > 0.50001f) {
-                unwrapped[col] -= 2*3.1415926535 * int(diff + 0.499989999f);
+                unwrapped[col] -= 2 * pi * int(diff + 0.499989999f);
             }
 
             if(diff < -0.50001f) {
-                unwrapped[col] += 2*3.1415926535 * int(-diff + 0.499989999f);
+                unwrapped[col] += 2 * pi * int(-diff + 0.499989999f);
             }
         }
 

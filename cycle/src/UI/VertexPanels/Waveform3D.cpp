@@ -89,11 +89,10 @@ void Waveform3D::panelResized() {
 void Waveform3D::buttonClicked(Button* button) {
     getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 
-    MeshLibrary& meshLib = getObj(MeshLibrary);
+    auto& meshLib = getObj(MeshLibrary);
     MeshLibrary::LayerGroup& timeGroup = meshLib.getGroup(LayerGroups::GroupTime);
 
-    if(button == &panelControls->addRemover.add || button == &panelControls->addRemover.remove)
-    {
+    if(button == &panelControls->addRemover.add || button == &panelControls->addRemover.remove) {
         bool forceUpdate = false;
 
         {
@@ -108,15 +107,17 @@ void Waveform3D::buttonClicked(Button* button) {
 
                 forceUpdate = meshLib.removeLayerKeepingOne(LayerGroups::GroupTime, layerIdx);
 
-                if(! isLast)
+                if(! isLast) {
                     getObj(ModMatrixPanel).layerRemoved(interactor->layerType, layerIdx);
+                }
             }
         }
 
         panelControls->refreshSelector(forceUpdate);
 
-        if(forceUpdate)
+        if(forceUpdate) {
             triggerRefreshUpdate();
+        }
 
         getObj(EditWatcher).setHaveEditedWithoutUndo(true);
     } else if (button == &panelControls->enableCurrent) {
@@ -125,22 +126,26 @@ void Waveform3D::buttonClicked(Button* button) {
         props->active ^= true;
         panelControls->enableCurrent.setHighlit(props->active);
 
-        if(getSetting(TimeEnabled))
+        if(getSetting(TimeEnabled)) {
             doUpdate(SourceWaveform3D);
+        }
     } else if (button == &deconvolve) {
-        if(getSetting(WaveLoaded) && getSetting(DrawWave))
+        if(getSetting(WaveLoaded) && getSetting(DrawWave)) {
             getObj(IrModellerUI).deconvolve();
-        else
+        } else {
             showMsg("You must first be in sample view ('w').");
+        }
     } else if (button == &model) {
-        if(getSetting(WaveLoaded) && getSetting(DrawWave))
+        if(getSetting(WaveLoaded) && getSetting(DrawWave)) {
             getObj(WaveformInter2D).modelAudioCycle();
-        else
+        } else {
             showMsg("You must first be in sample view ('w').");
+        }
     }
 
-    if(button != &deconvolve)
+    if(button != &deconvolve) {
         getObj(SynthAudioSource).enablementChanged();
+    }
 }
 
 void Waveform3D::reset() {
@@ -162,11 +167,10 @@ void Waveform3D::layerChanged() {
     setKnobValuesImplicit();
 
     getObj(TimeRasterizer).setMesh(interactor->getMesh());
-    getObj(TimeRasterizer).update(UpdateType::Update);
-    getObj(WaveformInter2D).update(UpdateType::Update);
+    getObj(TimeRasterizer).update(Update);
+    getObj(WaveformInter2D).update(Update);
     getObj(WaveformInter3D).shallowUpdate();
 }
-
 
 void Waveform3D::setKnobValuesImplicit() {
     MeshLibrary::Properties* props = getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime);
@@ -214,14 +218,13 @@ bool Waveform3D::readXML(const XmlElement* element) {
 
     XmlElement* timeDomainElem = element->getChildByName("TimeDomainProperties");
 
-    MeshLibrary& meshLib = getObj(MeshLibrary);
+    auto& meshLib = getObj(MeshLibrary);
     int layerSize = meshLib.getGroup(LayerGroups::GroupTime).size();
 
     if (timeDomainElem) {
         bool first = false;
 
-        forEachXmlChildElementWithTagName(*timeDomainElem, timePropsElem, "TimeProperties")
-        {
+        for(auto timePropsElem : timeDomainElem->getChildWithTagNameIterator("TimeProperties")) {
             MeshLibrary::Properties props;
 
             props.pan 			= timePropsElem->getDoubleAttribute("pan", 0.5);
@@ -229,8 +232,7 @@ bool Waveform3D::readXML(const XmlElement* element) {
             props.scratchChan 	= timePropsElem->getIntAttribute("scratchChannel", 0);
             props.active 		= timePropsElem->getBoolAttribute("isEnabled", true);
 
-            if(first)
-            {
+            if(first) {
                 panelControls->enableCurrent.setHighlit(props.active);
                 first = false;
             }
@@ -304,8 +306,9 @@ int Waveform3D::getNumActiveLayers() {
 
     int numActiveLayers = 0;
     for (int i = 0; i < timeGroup.size(); ++i) {
-        if(timeGroup[i].props->active && timeGroup[i].mesh->hasEnoughCubesForCrossSection())
+        if(timeGroup[i].props->active && timeGroup[i].mesh->hasEnoughCubesForCrossSection()) {
             ++numActiveLayers;
+        }
     }
 
     return numActiveLayers;

@@ -9,6 +9,5 @@ class SpectDelegate :
 public:
     void performUpdate(UpdateType updateType) override;
 
-    SpectDelegate(SingletonRepo* repo);
-    ~SpectDelegate() override;
+    explicit SpectDelegate(SingletonRepo* repo);
 };

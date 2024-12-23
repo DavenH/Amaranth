@@ -19,7 +19,6 @@ public:
     };
 
     explicit Document(SingletonRepo* repo);
-    ~Document() override = default;
 
     bool open(const String& filename);
     bool open(InputStream* stream);
@@ -56,7 +55,7 @@ public:
             if(deetsElem == nullptr)
                 return false;
 
-            stream->setPosition((int64) headerSizeBytes);
+            stream->setPosition(headerSizeBytes);
 
             deets.readXML(deetsElem.get());
             return true;

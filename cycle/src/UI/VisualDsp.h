@@ -88,7 +88,6 @@ public:
     /* ----------------------------------------------------------------------------- */
 
     explicit VisualDsp(SingletonRepo* repo);
-    ~VisualDsp() override;
 
     void init() override;
     void reset() override;

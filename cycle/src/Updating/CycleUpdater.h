@@ -3,10 +3,10 @@
 #include <App/SingletonAccessor.h>
 #include <Design/Updating/Updater.h>
 
-class EnvelopeDelegate;
-class SpectDelegate;
-class MorphUpdate;
-class ScratchUpdate;
+#include "EnvelopeDelegate.h"
+#include "MorphUpdate.h"
+#include "ScratchUpdate.h"
+#include "SpectDelegate.h"
 
 class CycleUpdater :
         public SingletonAccessor
@@ -15,7 +15,6 @@ public:
     typedef Updater::Node Node;
 
     explicit CycleUpdater(SingletonRepo* repo);
-    ~CycleUpdater() override = default;
 
     void init() override;
     void createUpdateGraph();
