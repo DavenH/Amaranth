@@ -15,7 +15,7 @@ using std::vector;
 class NamedUndoableAction : public UndoableAction {
 public:
     NamedUndoableAction() : haveUndone(false) {}
-
+    ~NamedUndoableAction() override = default;
     bool undo() override;
     bool perform() override;
 

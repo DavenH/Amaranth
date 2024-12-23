@@ -140,22 +140,24 @@ public:
         return Buffer(ptr - num, sz + num);
     }
 
-    void operator+=(const Buffer& other)	{ add(other);	}
-    void operator+=(T val)					{ add(val);		}
-    void operator-=(const Buffer& other)	{ sub(other);	}
-    void operator-=(T val)					{ sub(val);		}
-    void operator*=(const Buffer& other)	{ mul(other);	}
-    void operator*=(T val)					{ mul(val);		}
-    void operator/=(const Buffer& other)	{ div(other);	}
-    void operator/=(T val)					{ div(val);		}
+    void operator+=(const Buffer& other); //	{ add(other);	}
+    void operator+=(T val); //					{ add(val);		}
+    void operator-=(const Buffer& other); //	{ sub(other);	}
+    void operator-=(T val); // 					{ sub(val);		}
+    void operator*=(const Buffer& other); //	{ mul(other);	}
+    void operator*=(T val); //					{ mul(val);		}
+    void operator/=(const Buffer& other); //	{ div(other);	}
+    void operator/=(T val); //					{ div(val);		}
 
-    void operator<<(const Buffer& other) {
-        other.copyTo(*this);
-    }
+    void operator<<(const Buffer& other);
+    // {
+    //     other.copyTo(*this);
+    // }
 
-    void operator>>(Buffer other) const {
-        copyTo(other);
-    }
+    void operator>>(Buffer other) const;
+    // {
+    //     copyTo(other);
+    // }
 
     Buffer& operator=(const Buffer& other) = default;
 

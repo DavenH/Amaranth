@@ -1,5 +1,6 @@
 #include <iterator>
 #include <algorithm>
+#include <utility>
 #include "UndoableActions.h"
 #include "Interactor.h"
 #include "../App/MeshLibrary.h"
@@ -53,7 +54,7 @@ void ResponsiveUndoableAction::performExtra() {
 
 void ResponsiveUndoableAction::handleAsyncUpdate() {
     doPreUpdateCheck();
-    getObj(Updater).update(updateCode, UpdateType::Update);
+    getObj(Updater).update(updateCode, Update);
     doPostUpdateCheck();
 }
 
@@ -96,19 +97,23 @@ TransformVerticesAction::TransformVerticesAction(
 }
 
 void TransformVerticesAction::performDelegate() {
-    if (vertices->size() != after.size())
+    if (vertices->size() != after.size()) {
         return;
+    }
 
-    for (int i = 0; i < vertices->size(); ++i)
+    for (int i = 0; i < vertices->size(); ++i) {
         *(*vertices)[i] = after[i];
+    }
 }
 
 void TransformVerticesAction::undoDelegate() {
-    if (vertices->size() != before.size())
+    if (vertices->size() != before.size()) {
         return;
+    }
 
-    for (int i = 0; i < vertices->size(); ++i)
+    for (int i = 0; i < vertices->size(); ++i) {
         *(*vertices)[i] = before[i];
+    }
 }
 
 UpdateVertexVectorAction::UpdateVertexVectorAction(
@@ -228,7 +233,7 @@ DeformerAssignment::DeformerAssignment(
     , 	int channel) :
             ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())
         , 	affectedLines	(selectedLines)
-        ,	previousMappings(previousMappings)
+        ,	previousMappings(std::move(previousMappings))
         , 	currentMapping	(thisMapping)
         , 	channel			(channel)
         , 	mesh			(mesh) {
