@@ -6,6 +6,7 @@
 #include "../App/MeshLibrary.h"
 #include "../App/SingletonRepo.h"
 #include "../Definitions.h"
+#include "../../../cycle/src/Util/CycleEnums.h"
 #include "../Design/Updating/Updater.h"
 #include "../UI/Widgets/IconButton.h"
 #include "../Util/CommonEnums.h"
@@ -225,13 +226,14 @@ void SliderValueChangedAction::undoDelegate() {
 }
 
 DeformerAssignment::DeformerAssignment(
-        Interactor* itr
+        SingletonRepo* repo
+    ,   int updateSource
     , 	Mesh* mesh
     ,	const vector<VertCube*>& selectedLines
     ,	vector<int> previousMappings
     ,	int thisMapping
     , 	int channel) :
-            ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())
+            ResponsiveUndoableAction(repo, updateSource)
         , 	affectedLines	(selectedLines)
         ,	previousMappings(std::move(previousMappings))
         , 	currentMapping	(thisMapping)
@@ -287,7 +289,6 @@ void DeformerAssignment::undoDelegate() {
 }
 
 void DeformerAssignment::doPostUpdateCheck() {
-    SingletonRepo* repo = itr->getSingletonRepo();
     getObj(MeshLibrary).layerChanged(LayerGroups::GroupDeformer, -1);
 }
 

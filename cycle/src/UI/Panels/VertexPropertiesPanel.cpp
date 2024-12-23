@@ -485,7 +485,7 @@ void VertexPropertiesPanel::sliderDragStarted(Slider* slider) {
 
 void VertexPropertiesPanel::drawJustifiedText(Graphics& g, String text, Component* component, int y) {
 	int width 	 = component->getWidth();
-	int strWidth = Util::getStringWidth(*silkscreen, text);
+	int strWidth = roundToInt(Util::getStringWidth(*silkscreen, text));
 	int x 		 = component->getX() + (width - strWidth) / 2;
 
 	g.setColour(Colour(15, 15, 15));
@@ -586,8 +586,11 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 	}
 
 	getObj(EditWatcher).addAction(
-			new DeformerAssignment(currentInteractor, currentInteractor->getMesh(),
-			                       affectedLines, previousMappings, guideIndex, dim), true);
+			new DeformerAssignment(
+				currentInteractor->getSingletonRepo(),
+				currentInteractor->getUpdateSource(),
+				currentInteractor->getMesh(),
+				affectedLines, previousMappings, guideIndex, dim), true);
 
 	triggerAsyncUpdate();
 }

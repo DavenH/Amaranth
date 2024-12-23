@@ -370,8 +370,9 @@ bool MeshLibrary::layerChanged(int layerGroup, int index) {
                 for (int j = 0; j < group.size(); ++j) {
                     int chan = group[j].props->scratchChan;
 
-                    if (chan != CommonEnums::Null)
+                    if (chan != CommonEnums::Null) {
                         srcGroup.sources[chan].add(types[i]);
+                    }
                 }
             }
 

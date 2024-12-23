@@ -818,12 +818,12 @@ Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Buffer<Ipp32fc> buff, Ipp32fc c) {
 }
 
 
-implementOperators(8u)
-implementOperators(16s)
-implementOperators(32s)
+// implementOperators(8u)
+// implementOperators(16s)
+// implementOperators(32s)
 implementOperators(32f)
 implementOperators(64f)
-implementOperators(32fc)
+// implementOperators(32fc)
 
 // template<>
 // Buffer<Ipp32f>& Buffer<Ipp32f>::conv(

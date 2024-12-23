@@ -165,20 +165,20 @@ private:
 class DeformerAssignment : public ResponsiveUndoableAction {
 public:
     DeformerAssignment(
-            Interactor* itr
+            SingletonRepo* repo
+        ,   int updateSource
         ,	Mesh* mesh
         ,	const vector<VertCube*>& lines
         ,	vector<int> previousMappings
         , 	int thisMapping, int channel);
 
-    void doPreUpdateCheck() override;
     void doPostUpdateCheck() override;
     void performDelegate() override;
     void undoDelegate() override;
 
 private:
     int currentMapping, channel;
-    Interactor* itr;
+    // Interactor* itr;
     Mesh* mesh;
     vector<VertCube*> affectedLines;
     vector<int> previousMappings;
