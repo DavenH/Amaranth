@@ -7,17 +7,17 @@
 #include "../Util/Geometry.h"
 
 CollisionDetector::CollisionDetector(SingletonRepo* repo, CollisionDim nonIntersectingDim) :
-        SingletonAccessor	(repo, "CollisionDetector")
-    ,	nonIntersectingDim	(nonIntersectingDim)
-    ,	timeIsApplicable	(nonIntersectingDim != Key)
-    ,	dimSlices			(11)
-    ,	enabled				(true)
-    ,	numMeshCubes		(0) {
+        SingletonAccessor   (repo, "CollisionDetector")
+    ,    nonIntersectingDim (nonIntersectingDim)
+    ,    timeIsApplicable   (nonIntersectingDim != Key)
+    ,    dimSlices          (11)
+    ,    enabled            (true)
+    ,    numMeshCubes       (0) {
     sliceSpacing = 1 / float(dimSlices);
 
-    dims[Time] 	= Time;
-    dims[Key] 	= Key;
-    dims[Mod] 	= Mod;
+    dims[Time]  = Time;
+    dims[Key]   = Key;
+    dims[Mod]   = Mod;
     dims[Phase] = Phase;
 }
 
@@ -173,16 +173,16 @@ bool CollisionDetector::validate() {
     dout << "\n";
   #endif
 
-    bool sameLines 	= true;
-    int dimAfter 	= 0;
-    int dim2After 	= 0;
-    int baseIndexL 	= 0;
-    int baseIndexM 	= 0;
+    bool sameLines     = true;
+    int dimAfter     = 0;
+    int dim2After     = 0;
+    int baseIndexL     = 0;
+    int baseIndexM     = 0;
     int numDim2Slices = timeIsApplicable ? dimSlices : 1;
-    int dimIdx 		= nonIntersectingDim;
+    int dimIdx         = nonIntersectingDim;
 
-//	for(int dimIdx = 0; dimIdx < numIndepDims; ++dimIdx)
-//	{
+//    for(int dimIdx = 0; dimIdx < numIndepDims; ++dimIdx)
+//    {
     axes[dimIdx] = 0; //???
 
     for (int l = 0; l < numMeshCubes; ++l) {
@@ -195,7 +195,7 @@ bool CollisionDetector::validate() {
                 axes[dimAfter] = selectMinima[dimAfter] + dim1SliceIdx * sliceSpacings[dimAfter];
 
                 for (int dim2SliceIdx = 0; dim2SliceIdx < numDim2Slices; ++dim2SliceIdx) {
-                    dim2After 		= dims[(dimIdx + 2) % numIndepDims];
+                    dim2After         = dims[(dimIdx + 2) % numIndepDims];
                     axes[dim2After] = timeIsApplicable ? selectMinima[dim2After] + dim2SliceIdx * sliceSpacings[dim2After] : 0;
 
                     float xDimValue = axes[dimAfter];
@@ -207,14 +207,14 @@ bool CollisionDetector::validate() {
                     float xxx = meshVerts[baseIndexL + nDims * 3 + dimAfter];
                     float xxy = meshVerts[baseIndexL + nDims * 3 + dim2After];
 
-                    if(nnx < xxx) 	{ x1 = nnx; x2 = xxx; 	}
-                    else 			{ x1 = xxx; x2 = nnx; 	}
+                    if(nnx < xxx)    { x1 = nnx; x2 = xxx; }
+                    else             { x1 = xxx; x2 = nnx; }
 
-                    if(nny < xxy) 	{ y1 = nny; y2 = xxy; 	}
-                    else 			{ y1 = xxy; y2 = nny; 	}
+                    if(nny < xxy)    { y1 = nny; y2 = xxy; }
+                    else             { y1 = xxy; y2 = nny; }
 
-                    if(x2 == 1.f) 	{ x2 += 0.000001f; 		}
-                    if(y2 == 1.f) 	{ y2 += 0.000001f; 		}
+                    if(x2 == 1.f)    { x2 += 0.000001f;    }
+                    if(y2 == 1.f)    { y2 += 0.000001f;    }
 
                     meshLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     meshLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
@@ -228,14 +228,14 @@ bool CollisionDetector::validate() {
                     xxx = meshVerts[baseIndexL + nDims * 7 + dimAfter];
                     xxy = meshVerts[baseIndexL + nDims * 7 + dim2After];
 
-                    if(nnx < xxx) 	{ x1 = nnx; x2 = xxx; 	}
-                    else 			{ x1 = xxx; x2 = nnx; 	}
+                    if(nnx < xxx)    { x1 = nnx; x2 = xxx; }
+                    else             { x1 = xxx; x2 = nnx; }
 
-                    if(nny < xxy) 	{ y1 = nny; y2 = xxy; 	}
-                    else 			{ y1 = xxy; y2 = nny; 	}
+                    if(nny < xxy)    { y1 = nny; y2 = xxy; }
+                    else             { y1 = xxy; y2 = nny; }
 
-                    if(x2 == 1.f) 	{ x2 += 0.000001f; 		}
-                    if(y2 == 1.f) 	{ y2 += 0.000001f; 		}
+                    if(x2 == 1.f)    { x2 += 0.000001f;    }
+                    if(y2 == 1.f)    { y2 += 0.000001f;    }
 
                     meshLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     meshLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
@@ -249,14 +249,14 @@ bool CollisionDetector::validate() {
                     xxx = selectedVerts[baseIndexM + nDims * 3 + dimAfter];
                     xxy = selectedVerts[baseIndexM + nDims * 3 + dim2After];
 
-                    if(nnx < xxx) 	{ x1 = nnx; x2 = xxx; 	}
-                    else 			{ x1 = xxx; x2 = nnx; 	}
+                    if(nnx < xxx)    { x1 = nnx; x2 = xxx; }
+                    else             { x1 = xxx; x2 = nnx; }
 
-                    if(nny < xxy) 	{ y1 = nny; y2 = xxy; 	}
-                    else 			{ y1 = xxy; y2 = nny; 	}
+                    if(nny < xxy)    { y1 = nny; y2 = xxy; }
+                    else             { y1 = xxy; y2 = nny; }
 
-                    if(x2 == 1.f) 	{ x2 += 0.000001f; 		}
-                    if(y2 == 1.f) 	{ y2 += 0.000001f; 		}
+                    if(x2 == 1.f)    { x2 += 0.000001f;    }
+                    if(y2 == 1.f)    { y2 += 0.000001f;    }
 
                     selectedLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     selectedLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
@@ -270,14 +270,14 @@ bool CollisionDetector::validate() {
                     xxx = selectedVerts[baseIndexM + nDims * 7 + dimAfter];
                     xxy = selectedVerts[baseIndexM + nDims * 7 + dim2After];
 
-                    if(nnx < xxx) 	{ x1 = nnx; x2 = xxx; 	}
-                    else 			{ x1 = xxx; x2 = nnx; 	}
+                    if(nnx < xxx)    { x1 = nnx; x2 = xxx; }
+                    else             { x1 = xxx; x2 = nnx; }
 
-                    if(nny < xxy) 	{ y1 = nny; y2 = xxy; 	}
-                    else 			{ y1 = xxy; y2 = nny; 	}
+                    if(nny < xxy)    { y1 = nny; y2 = xxy; }
+                    else             { y1 = xxy; y2 = nny; }
 
-                    if(x2 == 1.f) 	{ x2 += 0.000001f; 		}
-                    if(y2 == 1.f) 	{ y2 += 0.000001f; 		}
+                    if(x2 == 1.f)    { x2 += 0.000001f;    }
+                    if(y2 == 1.f)    { y2 += 0.000001f;    }
 
                     selectedLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     selectedLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
@@ -288,52 +288,52 @@ bool CollisionDetector::validate() {
 
                     if (timeIsApplicable) {
                     // lerp the 4 pairs along first dimension
-                        ippsMulC_32f		(&meshVerts[baseIndexL + nDims * 0], 1 - xDimValue, minV, 4);
-                        ippsAddProductC_32f	(&meshVerts[baseIndexL + nDims * 1],		xDimValue, minV, 4);
-                        ippsMulC_32f		(&meshVerts[baseIndexL + nDims * 2], 1 - xDimValue, maxV, 4);
-                        ippsAddProductC_32f	(&meshVerts[baseIndexL + nDims * 3],		xDimValue, maxV, 4);
+                        ippsMulC_32f        (&meshVerts[baseIndexL + nDims * 0], 1 - xDimValue, minV, 4);
+                        ippsAddProductC_32f (&meshVerts[baseIndexL + nDims * 1],     xDimValue, minV, 4);
+                        ippsMulC_32f        (&meshVerts[baseIndexL + nDims * 2], 1 - xDimValue, maxV, 4);
+                        ippsAddProductC_32f (&meshVerts[baseIndexL + nDims * 3],     xDimValue, maxV, 4);
 
-                        ippsMulC_32f		(minV, 1 - 	yDimValue, a, 4);
-                        ippsAddProductC_32f	(maxV, 		yDimValue, a, 4);
-
-
-                        ippsMulC_32f		(&meshVerts[baseIndexL + nDims * 4], 1 - xDimValue, minV, 4);
-                        ippsAddProductC_32f	(&meshVerts[baseIndexL + nDims * 5],		xDimValue, minV, 4);
-                        ippsMulC_32f		(&meshVerts[baseIndexL + nDims * 6], 1 - xDimValue, maxV, 4);
-                        ippsAddProductC_32f	(&meshVerts[baseIndexL + nDims * 7],		xDimValue, maxV, 4);
-
-                        ippsMulC_32f		(minV, 1 - 	yDimValue, b, 4);
-                        ippsAddProductC_32f	(maxV, 		yDimValue, b, 4);
+                        ippsMulC_32f        (minV, 1 - yDimValue, a, 4);
+                        ippsAddProductC_32f (maxV,     yDimValue, a, 4);
 
 
-                        ippsMulC_32f		(&meshVerts[baseIndexM + nDims * 0], 1 - xDimValue, minV, 4);
-                        ippsAddProductC_32f	(&meshVerts[baseIndexM + nDims * 1], xDimValue, 	minV, 4);
-                        ippsMulC_32f		(&meshVerts[baseIndexM + nDims * 2], 1 - xDimValue, maxV, 4);
-                        ippsAddProductC_32f	(&meshVerts[baseIndexM + nDims * 3], xDimValue, 	maxV, 4);
+                        ippsMulC_32f        (&meshVerts[baseIndexL + nDims * 4], 1 - xDimValue, minV, 4);
+                        ippsAddProductC_32f (&meshVerts[baseIndexL + nDims * 5],     xDimValue, minV, 4);
+                        ippsMulC_32f        (&meshVerts[baseIndexL + nDims * 6], 1 - xDimValue, maxV, 4);
+                        ippsAddProductC_32f (&meshVerts[baseIndexL + nDims * 7],     xDimValue, maxV, 4);
 
-                        ippsMulC_32f		(minV, 1 - 	yDimValue, c, 4);
-                        ippsAddProductC_32f	(maxV, 		yDimValue, c, 4);
+                        ippsMulC_32f        (minV, 1 - yDimValue, b, 4);
+                        ippsAddProductC_32f (maxV,     yDimValue, b, 4);
 
 
-                        ippsMulC_32f		(&meshVerts[baseIndexM + nDims * 4], 1 - xDimValue, minV, 4);
-                        ippsAddProductC_32f	(&meshVerts[baseIndexM + nDims * 5], xDimValue, 	minV, 4);
-                        ippsMulC_32f		(&meshVerts[baseIndexM + nDims * 6], 1 - xDimValue, maxV, 4);
-                        ippsAddProductC_32f	(&meshVerts[baseIndexM + nDims * 7], xDimValue, 	maxV, 4);
+                        ippsMulC_32f        (&meshVerts[baseIndexM + nDims * 0], 1 - xDimValue, minV, 4);
+                        ippsAddProductC_32f (&meshVerts[baseIndexM + nDims * 1],     xDimValue, minV, 4);
+                        ippsMulC_32f        (&meshVerts[baseIndexM + nDims * 2], 1 - xDimValue, maxV, 4);
+                        ippsAddProductC_32f (&meshVerts[baseIndexM + nDims * 3],     xDimValue, maxV, 4);
 
-                        ippsMulC_32f		(minV, 1 - 	yDimValue, d, 4);
-                        ippsAddProductC_32f	(maxV, 		yDimValue, d, 4);
+                        ippsMulC_32f        (minV, 1 - yDimValue, c, 4);
+                        ippsAddProductC_32f (maxV,     yDimValue, c, 4);
+
+
+                        ippsMulC_32f        (&meshVerts[baseIndexM + nDims * 4], 1 - xDimValue, minV, 4);
+                        ippsAddProductC_32f (&meshVerts[baseIndexM + nDims * 5],     xDimValue, minV, 4);
+                        ippsMulC_32f        (&meshVerts[baseIndexM + nDims * 6], 1 - xDimValue, maxV, 4);
+                        ippsAddProductC_32f (&meshVerts[baseIndexM + nDims * 7],     xDimValue, maxV, 4);
+
+                        ippsMulC_32f        (minV, 1 - yDimValue, d, 4);
+                        ippsAddProductC_32f (maxV,     yDimValue, d, 4);
                     } else {
-                        ippsMulC_32f		(&meshVerts[baseIndexL + nDims * 0], 1 - xDimValue, a, 4);
-                        ippsAddProductC_32f	(&meshVerts[baseIndexL + nDims * 1], xDimValue, 	a, 4);
+                        ippsMulC_32f        (&meshVerts[baseIndexL + nDims * 0], 1 - xDimValue, a, 4);
+                        ippsAddProductC_32f (&meshVerts[baseIndexL + nDims * 1],     xDimValue, a, 4);
 
-                        ippsMulC_32f		(&meshVerts[baseIndexL + nDims * 0], 1 - xDimValue, b, 4);
-                        ippsAddProductC_32f	(&meshVerts[baseIndexL + nDims * 1], xDimValue, 	b, 4);
+                        ippsMulC_32f        (&meshVerts[baseIndexL + nDims * 0], 1 - xDimValue, b, 4);
+                        ippsAddProductC_32f (&meshVerts[baseIndexL + nDims * 1],     xDimValue, b, 4);
 
-                        ippsMulC_32f		(&selectedVerts[baseIndexM + nDims * 0], 1 - xDimValue, c, 4);
-                        ippsAddProductC_32f	(&selectedVerts[baseIndexM + nDims * 1], xDimValue, 	c, 4);
+                        ippsMulC_32f        (&selectedVerts[baseIndexM + nDims * 0], 1 - xDimValue, c, 4);
+                        ippsAddProductC_32f (&selectedVerts[baseIndexM + nDims * 1],     xDimValue, c, 4);
 
-                        ippsMulC_32f		(&selectedVerts[baseIndexM + nDims * 2], 1 - xDimValue, d, 4);
-                        ippsAddProductC_32f	(&selectedVerts[baseIndexM + nDims * 3], xDimValue, 	d, 4);
+                        ippsMulC_32f        (&selectedVerts[baseIndexM + nDims * 2], 1 - xDimValue, d, 4);
+                        ippsAddProductC_32f (&selectedVerts[baseIndexM + nDims * 3],     xDimValue, d, 4);
                     }
 
                     int isctMode = Geometry::doLineSegmentsIntersect(

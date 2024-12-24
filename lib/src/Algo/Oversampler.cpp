@@ -6,12 +6,12 @@
 
 
 Oversampler::Oversampler(SingletonRepo* repo, int kernelSize) :
-        memoryBuf		(getObj(MemoryPool).getAudioPool())
-    ,	oversampleFactor(1)
-    ,	filterDownState	(nullptr)
-    ,	filterUpState	(nullptr)
-    ,	oversampBuf		(nullptr)
-    ,	phase			(0) {
+        memoryBuf        (getObj(MemoryPool).getAudioPool())
+    ,   oversampleFactor (1)
+    ,   filterDownState  (nullptr)
+    ,   filterUpState    (nullptr)
+    ,   oversampBuf      (nullptr)
+    ,   phase            (0) {
     setKernelSize(2 * kernelSize);
 }
 
@@ -45,7 +45,7 @@ void Oversampler::start(Buffer<float>& buffer) {
             partitionPos += stepSize;
         }
 
-        buffer 		= memoryBuf.withSize(destSize); // Buffer<Ipp32f>(memoryBuf, destSize);
+        buffer = memoryBuf.withSize(destSize); // Buffer<Ipp32f>(memoryBuf, destSize);
         oversampBuf = &buffer;
     } else {
         oversampBuf = nullptr;
@@ -53,9 +53,9 @@ void Oversampler::start(Buffer<float>& buffer) {
 }
 
 void Oversampler::stop() {
-    if (oversampleFactor > 1 && oversampBuf != 0 && oversampBuf->size() > 0 && audioBuf.size() > 0) {
+    if (oversampleFactor > 1 && oversampBuf != nullptr && !oversampBuf->empty() && !audioBuf.empty()) {
         jassert(filterDownState);
-        jassert(oversampBuf->size() > 0 && audioBuf.size() > 0);
+        jassert(!oversampBuf->empty() && !audioBuf.empty());
 
         sampleDown(*oversampBuf, audioBuf);
 
@@ -70,22 +70,22 @@ void Oversampler::sampleDown(Buffer<float> src, Buffer<float> dest, bool wrapTai
         return;
     }
 
-    int partitionPos 	= 0;
-    int destPos 		= 0;
+    int partitionPos = 0;
+    int destPos      = 0;
 
     while(partitionPos < src.size()) {
-        int srcStep 	= jmin((int) src.size() - partitionPos, 1024);
-        int destStep 	= srcStep / oversampleFactor;
-        int destSize 	= destStep;
+        int srcStep  = jmin(src.size() - partitionPos, 1024);
+        int destStep = srcStep / oversampleFactor;
+        int destSize = destStep;
 
         Buffer partition(src + partitionPos, srcStep);
         Buffer destPart(dest + destPos, destStep);
 
-        ippsFIRSR_32f		(partition, partition, srcStep, filterDownState, firDownDly, firDownDly, workBuffDown);
-        ippsSampleDown_32f	(partition, srcStep, destPart, &destSize, oversampleFactor, &phase);
+        ippsFIRSR_32f      (partition, partition, srcStep, filterDownState, firDownDly, firDownDly, workBuffDown);
+        ippsSampleDown_32f (partition, srcStep, destPart, &destSize, oversampleFactor, &phase);
 
-        partitionPos 	+= srcStep;
-        destPos 		+= destStep;
+        partitionPos += srcStep;
+        destPos      += destStep;
 
         jassert(destSize == destStep);
     }
@@ -97,8 +97,8 @@ void Oversampler::sampleDown(Buffer<float> src, Buffer<float> dest, bool wrapTai
 
         tail.zero();
 
-        ippsFIRSR_32f		(tail, tail, tail.size(), filterDownState, firDownDly, firDownDly, workBuffDown);
-        ippsSampleDown_32f	(tail, tail.size(), temp, &destSize, oversampleFactor, &phase);
+        ippsFIRSR_32f      (tail, tail, tail.size(), filterDownState, firDownDly, firDownDly, workBuffDown);
+        ippsSampleDown_32f (tail, tail.size(), temp, &destSize, oversampleFactor, &phase);
 
         dest.add(temp.withSize(destSize));
     }
@@ -111,9 +111,9 @@ void Oversampler::setOversampleFactor(int factor) {
 }
 
 void Oversampler::setKernelSize(int size) {
-    firTaps		.resize(size);
-    firUpDly	.resize(size);
-    firDownDly	.resize(size);
+    firTaps        .resize(size);
+    firUpDly    .resize(size);
+    firDownDly    .resize(size);
 
     firDownDly.zero();
     firUpDly.zero();
@@ -144,8 +144,9 @@ void Oversampler::resetDelayLine() {
 }
 
 void Oversampler::updateTaps() {
-    if(oversampleFactor == 1)
+    if(oversampleFactor == 1) {
         return;
+    }
 
     double relativeFreq = 0.5 / (double) oversampleFactor;
 
@@ -155,11 +156,11 @@ void Oversampler::updateTaps() {
     ippsFIRGenGetBufferSize(firTaps.size(), &buffSize);
     ScopedAlloc<Ipp8u> buffer(buffSize);
 
-    ippsFIRGenLowpass_64f(relativeFreq, tempTaps, (int)firTaps.size(), ippWinBlackman, ippTrue, buffer);
-    ippsConvert_64f32f	 (tempTaps, firTaps, firTaps.size());
+    ippsFIRGenLowpass_64f(relativeFreq, tempTaps, firTaps.size(), ippWinBlackman, ippTrue, buffer);
+    ippsConvert_64f32f   (tempTaps, firTaps, firTaps.size());
 
-    ippsFIRSRInit_32f(firTaps, firTaps.size(), IppAlgType::ippAlgAuto, filterUpState);
-    ippsFIRSRInit_32f(firTaps, firTaps.size(), IppAlgType::ippAlgAuto, filterDownState);
+    ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterUpState);
+    ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterDownState);
 }
 
 Buffer<float> Oversampler::getMemoryBuffer(int size) {

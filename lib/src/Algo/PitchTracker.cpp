@@ -8,7 +8,7 @@
 
 PitchTracker::PitchTracker() :
         algo(AlgoAuto)
-    ,	aperiodicityThresh(0.3f) {
+    ,   aperiodicityThresh(0.3f) {
     reset();
 }
 
@@ -17,28 +17,28 @@ void PitchTracker::yin() {
         return;
     }
 
-    data.maxFrequency 		 = 1500;
-    data.octaveRatioThres 	 = 0.5;
+    data.maxFrequency        = 1500;
+    data.octaveRatioThres    = 0.5;
     const int downsampleRate = 16000;
 
-    float rateRatio = float(downsampleRate) / sample->samplerate;
+    float rateRatio  = float(downsampleRate) / sample->samplerate;
     int numSamples16k = rateRatio * sample->size();
-    int length 		= numSamples16k - data.offsetSamples;
-    int maxlag 		= (int)(downsampleRate / data.minFrequency);
-    data.step 		= int(maxlag * 1.25f + jmax(0, (length - downsampleRate * 5) / 20));
-    int inc 		= data.step / data.overlap;
-    int minlag 		= downsampleRate / data.maxFrequency;
-    int lagSize 	= maxlag - minlag;
-    int offset 		= 0;
+    int length       = numSamples16k - data.offsetSamples;
+    int maxlag       = (int)(downsampleRate / data.minFrequency);
+    data.step        = int(maxlag * 1.25f + jmax(0, (length - downsampleRate * 5) / 20));
+    int inc          = data.step / data.overlap;
+    int minlag       = downsampleRate / data.maxFrequency;
+    int lagSize      = maxlag - minlag;
+    int offset       = 0;
 
     ScopedAlloc<float> memory(sample->size() + numSamples16k + data.step + lagSize * 2);
 
-    Buffer<float> wavBuff = sample->audio.left;
-    Buffer<float> wavCopy 	= memory.place(sample->size());
-    Buffer<float> resamp16k	= memory.place(numSamples16k);
-    Buffer<float> diff		= memory.place(data.step);
-    Buffer<float> ramp		= memory.place(lagSize);
-    Buffer<float> norms		= memory.place(lagSize);
+    Buffer<float> wavBuff   = sample->audio.left;
+    Buffer<float> wavCopy   = memory.place(sample->size());
+    Buffer<float> resamp16k = memory.place(numSamples16k);
+    Buffer<float> diff      = memory.place(data.step);
+    Buffer<float> ramp      = memory.place(lagSize);
+    Buffer<float> norms     = memory.place(lagSize);
 
     ramp.ramp(0, 0.3f / float(lagSize));
 
@@ -67,9 +67,9 @@ void PitchTracker::yin() {
 
         norms.mul(lagSize / norms.normL1()).add(ramp);
 
-        int troughIndex 	= getTrough(norms, minlag);
-        float scaledPeriod 	= (float) (troughIndex + minlag) / rateRatio;
-        float confidence 	= norms[troughIndex];
+        int troughIndex    = getTrough(norms, minlag);
+        float scaledPeriod = (float) (troughIndex + minlag) / rateRatio;
+        float confidence   = norms[troughIndex];
 
         PitchFrame frame((int) ((float) offset / rateRatio), scaledPeriod, confidence);
 
@@ -90,10 +90,10 @@ float PitchTracker::refineFrames(PitchedSample* sample, float averagePeriod) {
     Buffer audio(sample->audio.left);
 
     int refineIters = 30;
-    int numSamples 	= audio.size();
-    int lookahead 	= jmax(2, roundToInt(2048.f / averagePeriod));
+    int numSamples  = audio.size();
+    int lookahead   = jmax(2, roundToInt(2048.f / averagePeriod));
 
-    float spread 	= 0.0015;
+    float spread    = 0.0015;
     float lowRatio  = 1 - float(refineIters) * spread * 0.5f;
 
     ScopedAlloc<float> subnorms(refineIters);
@@ -103,8 +103,8 @@ float PitchTracker::refineFrames(PitchedSample* sample, float averagePeriod) {
     Buffer offsetBuff(memory.place(4096));
 
     float currentPeriod = sample->periods.front().period;
-    float bestNorm 		= 1000;
-    float cumeBest 		= 0;
+    float bestNorm      = 1000;
+    float cumeBest      = 0;
 
     for (auto & frame : sample->periods) {
         int offset = frame.sampleOffset;
@@ -124,9 +124,9 @@ float PitchTracker::refineFrames(PitchedSample* sample, float averagePeriod) {
 
             for (int k = 0; k < lookahead; ++k) {
                 float delay = period * (float(k) * 1 + 1);
-                int roundedDelay = lround(delay);
+                int roundedDelay = roundToInt(delay);
 
-                waveBuff = audio.sectionAtMost(offset, lround(period));
+                waveBuff = audio.sectionAtMost(offset, roundToInt(period));
                 float power = waveBuff.normL2() + 0.0001f;
 
                 Buffer<float> diff = diffBuff.withSize(waveBuff.size());
@@ -159,10 +159,10 @@ float PitchTracker::refineFrames(PitchedSample* sample, float averagePeriod) {
 
         subnorms.mul(-1.f);
 
-        bestNorm 		= jmin(bestNorm, subnorms[maxIdx]);
-        frame.atonal 	= 10.f * interpValueQuadratic(subnorms, maxIdx) / frame.period;
-        frame.period 	= interpPeriod;
-        cumeBest 		+= bestNorm;
+        bestNorm     = jmin(bestNorm, subnorms[maxIdx]);
+        frame.atonal = 10.f * interpValueQuadratic(subnorms, maxIdx) / frame.period;
+        frame.period = interpPeriod;
+        cumeBest     += bestNorm;
     }
 
     return cumeBest / float(sample->periods.size());
@@ -258,8 +258,8 @@ void PitchTracker::fillFrequencyBins() {
 
         if (!contained) {
             FrequencyBin bin{};
-            bin.averagePeriod 	= frame.period;
-            bin.population 		= 1;
+            bin.averagePeriod = frame.period;
+            bin.population    = 1;
             bins.emplace_back(bin);
         }
     }
@@ -326,17 +326,17 @@ void PitchTracker::createKernels(
         Buffer<float> pitchCandidates) {
     int primes[] = {   1,    2,    3,    5,    7,   11,   13,   17,   19,   23,   29,   31,   37,   41,   43,   47,   53,
                       59,   61,   67,   71,   73,   79,   83,   89,   97,  101,  103,  107,  109,  113,  127,  131,  137,
-                     139,  149,  151,  157,  163,  167,  173,  179,  181,  191,  193,  197,  199,  211,	 223,  227,  229,
+                     139,  149,  151,  157,  163,  167,  173,  179,  181,  191,  193,  197,  199,  211,  223,  227,  229,
                      233,  239,  241,  251,  257,  263,  269,  271,  277,  281,  283,  293,  307,  311,  313,  317,  331,
-                     337,  347,  349,  353,	 359,  367,  373,  379,  383,  389,  397,  401,  409,  419,  421,  431,  433,
+                     337,  347,  349,  353,  359,  367,  373,  379,  383,  389,  397,  401,  409,  419,  421,  431,  433,
                      439,  443,  449,  457,  461,  463,  467,  479,  487,  491,  499,  503,  509,  521,  523,  541,  547,
                      557,  563,  569,  571,  577,  587,  593,  599,  601,  607,  613,  617,  619,  631,  641,  643,  647,
                      653,  659,  661,  673,  677,  683,  691,  701,  709,  719,  727,  733,  739,  743,  751,  757,  761,
-                     769,  773,  787,  797,  809,  811,  821,  823,	 827,  829,  839,  853,  857,  859,  863,  877,  881,
+                     769,  773,  787,  797,  809,  811,  821,  823,  827,  829,  839,  853,  857,  859,  863,  877,  881,
                      883,  887,  907,  911,  919,  929,  937,  941,  947,  953,  967,  971,  977,  983,  991,  997, 1009,
                     1013, 1019, 1021, 1031, 1033, 1039, 1049, 1051, 1061, 1063, 1069, 1087, 1091, 1093, 1097, 1103, 1109 };
 
-    int numERBs 	  = erbFreqs.size();
+    int numERBs       = erbFreqs.size();
     int numCandidates = kernelSizes.size();
 
     ScopedAlloc<float> erbScale(numERBs);
@@ -367,6 +367,7 @@ void PitchTracker::createKernels(
             for (int k = startIdxA; k < numERBs; ++k) {
                 if (a[k] < 0.25f) {
                     startIdxA = k;
+
                     while (a[k] < 0.25f) {
                         kernels[i][k] = cosf(IPP_2PI * a[k]);
                         ++k;
@@ -379,6 +380,7 @@ void PitchTracker::createKernels(
             for (int k = startIdxB; k < numERBs; ++k) {
                 if (a[k] >= 0.25f && a[k] < 0.75f) {
                     startIdxB = k;
+
                     while (a[k] >= 0.25f && a[k] < 0.75f) {
                         kernels[i][k] += cosf(IPP_2PI * q[k]) / 2;
                         ++k;
@@ -431,7 +433,7 @@ void PitchTracker::setErbLimits(Window& window, Buffer<float> realErbIdx, bool i
 
     if (!isFirst && !isLast) {
         window.erbStartK = window.erbStartJ;
-        window.erbEndK 	 = window.erbEndJ;
+        window.erbEndK      = window.erbEndJ;
     } else {
         for (int i = window.erbStartJ; i <= window.erbEndJ; ++i) {
             if (isFirst && realErbIdx[i] + window.erbOffset > 0 ||
@@ -460,9 +462,9 @@ void PitchTracker::setErbLimits(Window& window, Buffer<float> realErbIdx, bool i
 }
 
 void PitchTracker::calcLambda(Window& window, const Buffer<float>& realErbIdx) {
-    int start 	= window.erbStartK;
-    int end 	= window.erbEndK;
-    int size 	= end - start;
+    int start     = window.erbStartK;
+    int end     = window.erbEndK;
+    int size     = end - start;
     int metaStart = window.erbStartK - window.erbStartJ;
 
     window.lambda.zero();
@@ -478,57 +480,57 @@ void PitchTracker::calcLambda(Window& window, const Buffer<float>& realErbIdx) {
 }
 
 void PitchTracker::swipe() {
-    int pitchLimits[] 		= { 28, 3000 };
-    int hopCycles 			= 4;
-    float hannK				= 2.;
-    float deltaPitchLog2 	= 1 / 96.f;
-    float deltaERBs 		= 0.1f;				// ERB = equivalent rectangular bandwidth
-    float strengthThresh 	= 1.f;
-    float lowLimitLog2 		= logTwo((float) pitchLimits[0]);
-    float highLimitLog2 	= logTwo((float) pitchLimits[1]);
-    int numCandidates		= int((highLimitLog2 - lowLimitLog2) / deltaPitchLog2 + 1);
-    float samplerate		= sample->samplerate;
-    float cumeTime			= 0;
+    int pitchLimits[]     = { 28, 3000 };
+    int hopCycles         = 4;
+    float hannK           = 2.;
+    float deltaPitchLog2  = 1 / 96.f;
+    float deltaERBs       = 0.1f;                // ERB = equivalent rectangular bandwidth
+    float strengthThresh  = 1.f;
+    float lowLimitLog2    = logTwo((float) pitchLimits[0]);
+    float highLimitLog2   = logTwo((float) pitchLimits[1]);
+    int numCandidates     = int((highLimitLog2 - lowLimitLog2) / deltaPitchLog2 + 1);
+    float samplerate      = sample->samplerate;
+    float cumeTime        = 0;
 
-    float sampleSeconds 	= sample->audio.size() / samplerate;
-    float deltaTime 		= jmax(0.005f, 0.01f * sampleSeconds);
-    int numTimes			= int(sampleSeconds / deltaTime) + 1;
-    int logWinSizeHigh		= roundToInt(logTwo(4.f * hannK * samplerate / (float) pitchLimits[0]));
-    int logWinSizeLow		= roundToInt(logTwo(4.f * hannK * samplerate / (float) pitchLimits[1]));
-    int numWindows			= int(logWinSizeHigh - logWinSizeLow) + 1;
+    float sampleSeconds   = sample->audio.size() / samplerate;
+    float deltaTime       = jmax(0.005f, 0.01f * sampleSeconds);
+    int numTimes          = int(sampleSeconds / deltaTime) + 1;
+    int logWinSizeHigh    = roundToInt(logTwo(4.f * hannK * samplerate / (float) pitchLimits[0]));
+    int logWinSizeLow     = roundToInt(logTwo(4.f * hannK * samplerate / (float) pitchLimits[1]));
+    int numWindows        = int(logWinSizeHigh - logWinSizeLow) + 1;
 
     ScopedAlloc<float> memory(numWindows * 2 + numCandidates * 7 + numTimes);
-    Buffer<float> twos				= memory.place(numCandidates);
-    Buffer<float> pitchCandLog2  	= memory.place(numCandidates);
-    Buffer<float> pitchCandidates  	= memory.place(numCandidates);
-    Buffer<float> candLoudness 		= memory.place(numCandidates);
-    Buffer<float> realErbIdx		= memory.place(numCandidates);
-    Buffer<float> relativeFreqs		= memory.place(numCandidates);
-    Buffer<float> optimalFreqs		= memory.place(numWindows);
-    Buffer<float> windowSizes		= memory.place(numWindows);
-    Buffer<float> pitches			= memory.place(numTimes);
+    Buffer<float> twos            = memory.place(numCandidates);
+    Buffer<float> pitchCandLog2   = memory.place(numCandidates);
+    Buffer<float> pitchCandidates = memory.place(numCandidates);
+    Buffer<float> candLoudness    = memory.place(numCandidates);
+    Buffer<float> realErbIdx      = memory.place(numCandidates);
+    Buffer<float> relativeFreqs   = memory.place(numCandidates);
+    Buffer<float> optimalFreqs    = memory.place(numWindows);
+    Buffer<float> windowSizes     = memory.place(numWindows);
+    Buffer<float> pitches         = memory.place(numTimes);
 
     /// calculate candidate frequencies
     twos.set(2.f);
     pitchCandLog2.ramp(lowLimitLog2, deltaPitchLog2);
     windowSizes.ramp((float) logWinSizeHigh, -1);
 
-    ippsPow_32f_A11	(twos, pitchCandLog2, pitchCandidates, numCandidates);
-    ippsPow_32f_A11	(twos, windowSizes, windowSizes, numWindows);
-    ippsDivCRev_32f	(windowSizes, 4 * hannK * samplerate, optimalFreqs, numWindows);
+    ippsPow_32f_A11(twos, pitchCandLog2, pitchCandidates, numCandidates);
+    ippsPow_32f_A11(twos, windowSizes, windowSizes, numWindows);
+    ippsDivCRev_32f(windowSizes, 4 * hannK * samplerate, optimalFreqs, numWindows);
 
     realErbIdx.set(logTwo(4 * hannK * samplerate / windowSizes.front()));
     realErbIdx.subCRev(1.f);
     realErbIdx.add(pitchCandLog2);
 
-    float erbLow 	= hertzToErbs(pitchCandidates.front() * 0.25f);
-    float erbHigh 	= hertzToErbs(samplerate * 0.5f);
-    int numERBs 	= int((erbHigh - erbLow) / deltaERBs + 1);
+    float erbLow  = hertzToErbs(pitchCandidates.front() * 0.25f);
+    float erbHigh = hertzToErbs(samplerate * 0.5f);
+    int numERBs   = int((erbHigh - erbLow) / deltaERBs + 1);
 
     /// calculate ERBs
     ScopedAlloc<float> erbMem(numERBs * 2);
-    Buffer<float> erbFreqs 		= erbMem.place(numERBs);
-    Buffer<float> erbSpectrum 	= erbMem.place(numERBs);
+    Buffer<float> erbFreqs    = erbMem.place(numERBs);
+    Buffer<float> erbSpectrum = erbMem.place(numERBs);
 
     erbFreqs.ramp(erbLow, deltaERBs);
 
@@ -537,13 +539,13 @@ void PitchTracker::swipe() {
     }
 
     /// calculate kernels
-    ScopedAlloc<int> 		kernelSizes(numCandidates);
-    ScopedAlloc<float> 		kernelMemory(numCandidates * numERBs);
-    vector<Buffer<float> > 	kernels(numCandidates);
+    ScopedAlloc<int>      kernelSizes(numCandidates);
+    ScopedAlloc<float>    kernelMemory(numCandidates * numERBs);
+    vector<Buffer<float>> kernels(numCandidates);
 
     createKernels(kernels, kernelMemory, kernelSizes, erbFreqs, pitchCandidates);
 
-    ScopedAlloc<float> 		winMemory(8192 * 3 + numERBs);
+    ScopedAlloc<float> winMemory(8192 * 3 + numERBs);
 
     Buffer<float> signal = sample->audio.left;
 
@@ -552,8 +554,8 @@ void PitchTracker::swipe() {
 
     for(int i = 0; i < numTimes; ++i) {
         StrengthColumn sc;
-        sc.column 	= strengthMatrix.section(i * numCandidates, numCandidates);
-        sc.time 	= i * deltaTime;
+        sc.column = strengthMatrix.section(i * numCandidates, numCandidates);
+        sc.time   = i * deltaTime;
 
         strengthColumns.emplace_back(sc);
     }
@@ -569,16 +571,16 @@ void PitchTracker::swipe() {
     vector<Window> windows(numWindows);
 
     for (int i = 0; i < numWindows; ++i) {
-        Window& window 			= windows[i];
-        window.index			= i;
-        window.size				= (int) windowSizes[i];
-        window.optimalFreq		= optimalFreqs[i];
-        window.erbOffset		= -(1 + i);
+        Window& window        = windows[i];
+        window.index          = i;
+        window.size           = (int) windowSizes[i];
+        window.optimalFreq    = optimalFreqs[i];
+        window.erbOffset      = -(1 + i);
 
-        int hopSize 			= roundToInt(hopCycles * samplerate / window.optimalFreq);
-        window.overlapSamples 	= jmax(0, window.size - hopSize);
-        window.offsetSamples	= 0;
-        window.hannWindow		= hannMemory.place(window.size);
+        int hopSize           = roundToInt(hopCycles * samplerate / window.optimalFreq);
+        window.overlapSamples = jmax(0, window.size - hopSize);
+        window.offsetSamples  = 0;
+        window.hannWindow     = hannMemory.place(window.size);
         window.hannWindow.set(1.f);
 
         ippsWinHann_32f_I(window.hannWindow, window.size);
@@ -606,14 +608,14 @@ void PitchTracker::swipe() {
         windowStrengths.zero();
 
         while (true) {
-            int lastOffset 		= window.offsetSamples;
-            int signalPosStart	= jmin(signal.size(), window.offsetSamples - window.size / 2);
-            int signalPosEnd	= jmin(signal.size(), window.offsetSamples + window.size / 2);
-            int paddingFront	= window.size / 2 - window.offsetSamples;
-            int paddingBack		= window.size - jmin(window.size, signal.size() - window.offsetSamples);
+            int lastOffset      = window.offsetSamples;
+            int signalPosStart  = jmin(signal.size(), window.offsetSamples - window.size / 2);
+            int signalPosEnd    = jmin(signal.size(), window.offsetSamples + window.size / 2);
+            int paddingFront    = window.size / 2 - window.offsetSamples;
+            int paddingBack     = window.size - jmin(window.size, signal.size() - window.offsetSamples);
 
             int timeSlicesThisWindow = 0;
-            int startingSlice 	= totalSliceIndex;
+            int startingSlice   = totalSliceIndex;
 
             float prevTime = cumeTime;
             while((cumeTime) * samplerate < signalPosEnd && totalSliceIndex < numTimes - 1) {
@@ -633,8 +635,8 @@ void PitchTracker::swipe() {
             }
 
             winMemory.resetPlacement();
-            Buffer<float> paddedSignal 	= winMemory.place(window.size);
-            Buffer<float> lastStrengths	= winMemory.place(window.erbSize);
+            Buffer<float> paddedSignal  = winMemory.place(window.size);
+            Buffer<float> lastStrengths = winMemory.place(window.erbSize);
             Buffer<float> source;
 
             if (paddingFront > 0) {
@@ -752,7 +754,7 @@ void PitchTracker::swipe() {
 
             if (maxIndex > 0 && maxIndex < sc.column.size() - 1) {
                 float y1 = sc.column[maxIndex - 1];
-                float y2 = sc.column[maxIndex];
+                float y2 = sc.column[maxIndex    ];
                 float y3 = sc.column[maxIndex + 1];
 
                 float d = (y1 - 2 * y2 + y3);

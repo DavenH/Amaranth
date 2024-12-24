@@ -147,14 +147,14 @@ void Resampling::resample(
     float* src = source.get();
 
     float* pads[][6] = {
-            //	0	1		2		3		4		5
-            { &p0,	&p1,	&p2, 	&p3, 	&p4, 	&p5, 	},
-            { &p1, 	&p2, 	&p3, 	&p4, 	&p5, 	&p6, 	},
-            { &p2, 	&p3, 	&p4, 	&p5,	&p6, 	src, 	},
-            { &p3, 	&p4, 	&p5,	&p6, 	src,	src+1,	},
-            { &p4, 	&p5,	&p6, 	src,	src+1,	src+2,	},
-            { &p5,	&p6, 	src,	src+1,	src+2,	src+3,	},
-            { &p6, 	src,	src+1,	src+2,	src+3,	src+4,	}
+            //	0	1	 2		3		4		5
+            { &p0,	&p1, &p2, 	&p3, 	&p4, 	&p5, 	},
+            { &p1, 	&p2, &p3, 	&p4, 	&p5, 	&p6, 	},
+            { &p2, 	&p3, &p4, 	&p5,	&p6, 	src, 	},
+            { &p3, 	&p4, &p5,	&p6, 	src,	src+1,	},
+            { &p4, 	&p5, &p6, 	src,	src+1,	src+2,	},
+            { &p5,	&p6, src,	src+1,	src+2,	src+3,	},
+            { &p6, 	src, src+1,	src+2,	src+3,	src+4,	}
     };
 
     float x;
@@ -294,10 +294,12 @@ float Resampling::lerp(float a, float b, float pos) {
 }
 
 float Resampling::lerp(float x1, float y1, float x2, float y2, float pos) {
-    if (pos == 0)
+    if (pos == 0) {
         return y1;
-    if(pos == 1.f)
+    }
+    if(pos == 1.f) {
         return y2;
+    }
 
     float remainder = pos - x1;
     float diffX = x2 - x1;
@@ -316,8 +318,9 @@ float Resampling::lerpC(Buffer<float> buff, float unitPos) {
     float findex 	= size * unitPos;
     int iindex 		= (int) findex;
 
-    if(iindex >= size - 1)
+    if(iindex >= size - 1) {
         return buff.back();
+    }
 
     float remainder = findex - (float) iindex;
     return buff[iindex] * (1 - remainder) + buff[iindex + 1] * remainder;
@@ -326,8 +329,7 @@ float Resampling::lerpC(Buffer<float> buff, float unitPos) {
 float Resampling::interpValueQuadratic(float y1, float y2, float y3) {
     float d = (y1 - 2 * y2 + y3);
 
-    if(d != 0.f)
-    {
+    if (d != 0.f) {
         float peak = 0.5 * (y1 - y3) / d;
         return y2 - 0.25f * (y1 - y3) * peak;
     }
@@ -339,8 +341,9 @@ float Resampling::interpIndexQuadratic(float y1, float y2, float y3) {
     float peak = 0;
     float d = (y1 - 2 * y2 + y3);
 
-    if(d != 0.f)
+    if(d != 0.f) {
         peak = 0.5 * (y1 - y3) / d;
+    }
 
     return peak;
 }

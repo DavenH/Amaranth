@@ -10,16 +10,16 @@
 
 EnvRasterizer::EnvRasterizer(SingletonRepo* repo, IDeformer* deformer, const String& name) :
         SingletonAccessor(repo, name)
-    ,   MeshRasterizer	(name)
-    ,	envMesh			(nullptr)
-    ,	sampleReleaseNextCall(false)
-    ,	oneSamplePerCycle(false)
-    ,	state			(NormalState)
-    ,	loopIndex		(-1)
-    ,	sustainIndex	(-1)
-    ,	releaseScale	(1.f)
-    ,	preallocated	(8192)
-    ,	waveformMemory	(4096) {
+    ,   MeshRasterizer   (name)
+    ,    envMesh         (nullptr)
+    ,    sampleReleaseNextCall(false)
+    ,    oneSamplePerCycle(false)
+    ,    state           (NormalState)
+    ,    loopIndex       (-1)
+    ,    sustainIndex    (-1)
+    ,    releaseScale    (1.f)
+    ,    preallocated    (8192)
+    ,    waveformMemory  (4096) {
     cyclic = false;
     xMaximum = 10.f;
 
@@ -38,12 +38,12 @@ EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
     MeshRasterizer::operator =(copy);
 
     this->sampleReleaseNextCall = copy.sampleReleaseNextCall;
-    this->envMesh 				= copy.envMesh;
-    this->oneSamplePerCycle 	= copy.oneSamplePerCycle;
-    this->loopIndex 		  	= copy.loopIndex;
-    this->sustainIndex 			= copy.sustainIndex;
-    this->state 				= copy.state;
-    this->releaseScale 			= copy.releaseScale;
+    this->envMesh               = copy.envMesh;
+    this->oneSamplePerCycle     = copy.oneSamplePerCycle;
+    this->loopIndex             = copy.loopIndex;
+    this->sustainIndex          = copy.sustainIndex;
+    this->state                 = copy.state;
+    this->releaseScale          = copy.releaseScale;
 
     params = copy.params;
 
@@ -108,7 +108,7 @@ void EnvRasterizer::calcCrossPoints() {
         slopeCopy.nullify();
     }
 
-    //	evaluateLoopSustainIndices();
+    //    evaluateLoopSustainIndices();
 }
 
 void EnvRasterizer::processIntercepts(vector<Intercept>& intercepts) {
@@ -674,7 +674,7 @@ bool EnvRasterizer::simulateRender(
 }
 
 void EnvRasterizer::evaluateLoopSustainIndices() {
-    //	progressMark
+    //    progressMark
 
     int end = (int) icpts.size() - 1;
 
