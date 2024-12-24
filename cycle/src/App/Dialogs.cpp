@@ -1,4 +1,3 @@
-#include <Definitions.h>
 #include <UI/IConsole.h>
 
 #if PLUGIN_MODE && defined(JUCE_WINDOWS)
@@ -29,6 +28,7 @@
 #include "../UI/Panels/MainPanel.h"
 #include "../UI/Panels/ModMatrixPanel.h"
 #include "../Util/CycleEnums.h"
+#include <Definitions.h>
 
 Dialogs::Dialogs(SingletonRepo* repo) :
         SingletonAccessor(repo, "Dialogs") {

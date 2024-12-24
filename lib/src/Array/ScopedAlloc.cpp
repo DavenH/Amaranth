@@ -10,7 +10,6 @@ ScopedAlloc<Ipp##T>::ScopedAlloc(int size) :	\
     alive 			= true;						\
 }
 
-
 #define resizeIpp(T) 							\
 template<> 										\
 bool ScopedAlloc<Ipp##T>::resize(int size) { 	\

@@ -1,4 +1,7 @@
 #include "OpenGLBase.h"
+
+#include <Definitions.h>
+
 #include "Panel.h"
 #include "OpenGL.h"
 #include "../../App/SingletonRepo.h"
@@ -26,7 +29,7 @@ void OpenGLBase::printErrors(SingletonRepo* repo) {
             default:
                 error = "Unknown error";
         }
-        std::cout << "OpenGL error " << errorCode << ": " << error << "\n";
+        info("OpenGL error " << errorCode << ": " << error << "\n");
     }
   #endif
 }

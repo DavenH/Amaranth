@@ -326,7 +326,7 @@ public:
             std::unique_ptr<XmlElement> meshElem = xmlDoc.getDocumentElement();
 
             if (meshElem == nullptr) {
-                std::cout << "bad mesh\n";
+                info("bad mesh\n");
 
                 jassertfalse;
                 continue;

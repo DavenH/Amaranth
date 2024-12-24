@@ -1,16 +1,12 @@
 #include "EnvRasterizer.h"
+
+#include <Definitions.h>
+
 #include "EnvelopeMesh.h"
 #include "IDeformer.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
 
-//#define ENV_VERBOSE
-
-#ifdef ENV_VERBOSE
-    #define info(X) { cout << X << "\n"; }
-#else
-#define info(X)
-#endif
 
 EnvRasterizer::EnvRasterizer(SingletonRepo* repo, IDeformer* deformer, const String& name) :
         SingletonAccessor(repo, name)
@@ -280,8 +276,9 @@ void EnvRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
     curves.emplace_back(front2, front1, icpts[0]);
     curves.emplace_back(front1, icpts[0], icpts[1]);
 
-    for (int i = 0; i < (int) icpts.size() - 2; ++i)
+    for (int i = 0; i < (int) icpts.size() - 2; ++i) {
         curves.emplace_back(icpts[i], icpts[i + 1], icpts[i + 2]);
+    }
 
     curves.emplace_back(icpts[end - 1], icpts[end], back1);
     curves.emplace_back(icpts[end], back1, back2);
@@ -331,7 +328,7 @@ float EnvRasterizer::getLoopLength() const {
 void EnvRasterizer::setNoteOn() {
     state = NormalState;
 
-    info(this << "\tnote on for " << name);
+    dbg("\tnote on for " << MeshRasterizer::name);
 
     sampleReleaseNextCall = false;
 
@@ -387,7 +384,7 @@ bool EnvRasterizer::renderToBuffer(
 
     // todo adjust this according to loop length? must be less than loop length in time
     // also depends on deltaX, if it's very large, the granularity must be increased
-    float loopLength = jmax<float>(2.f * newDelta, getLoopLength()); //88
+    auto loopLength = jmax<float>(2.f * newDelta, getLoopLength()); //88
     float maxIterativeAdvancement = 0.5f;
     int maxSamplesPerBuf = 512;
 
@@ -419,7 +416,7 @@ bool EnvRasterizer::renderToBuffer(
         bufferPos += samplesRendered;
 
         if (!stillAlive) {
-            info("no longer alive");
+            dbg("no longer alive");
 
             if (oneSamplePerCycle) {
                 break;
@@ -445,7 +442,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
     int paramIndex) {
     EnvParams& group = params[paramIndex];
 
-    info("\n\n" << name << "(" << this << ", " << paramIndex << ")");
+    dbg("\n\n" << MeshRasterizer::name << "(" << paramIndex << ")");
 
     double advancement = numSamples * deltaX;
     double boundary = (state == Releasing) ? icpts.back().x : icpts[sustainIndex].x;
@@ -455,11 +452,11 @@ int EnvRasterizer::vectorizedRenderToBuffer(
     bool willLoopBackNextCall = loopable && overextends && state == NormalState;
     int samplesRendered = numSamples;
 
-    info("rendering to buffer\t" << buffer.size() << " with delta " << deltaX <<
+    dbg("rendering to buffer\t" << buffer.size() << " with delta " << deltaX <<
         ", range " << group.samplePosition << " - " << nextPosition);
 
     if (willLoopBackNextCall) {
-        info("calculating loop curves, state = looping");
+        dbg("calculating loop curves, state = looping");
         state = Looping;
 
         padIcptsForRender(icpts, curves);
@@ -473,7 +470,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
 
     switch (state) {
         case NormalState: {
-            info("normal state");
+            dbg("normal state");
 
             if (oneSamplePerCycle) {
                 group.sustainLevel = sampleAtDecoupled(group.samplePosition, group.deformContext);
@@ -484,12 +481,12 @@ int EnvRasterizer::vectorizedRenderToBuffer(
                     sampleWithInterval(buffer.withSize(maxSamples), deltaX, group.samplePosition);
 
                     group.sustainLevel = buffer[maxSamples - 1];
-                    info("sampled " << maxSamples);
+                    dbg("sampled " << maxSamples);
                 }
 
                 if (maxSamples < numSamples) {
                     buffer.offset(maxSamples).set(group.sustainLevel);
-                    info("set " << (numSamples - maxSamples) << " samples to level " << group.sustainLevel);
+                    dbg("set " << (numSamples - maxSamples) << " samples to level " << group.sustainLevel);
                 }
             }
 
@@ -501,7 +498,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
             double loopLength = getLoopLength();
             jassert(loopLength > 0);
 
-            info("looping state, loop length " << loopLength);
+            dbg("looping state, loop length " << loopLength);
 
             if (oneSamplePerCycle) {
                 group.sustainLevel = sampleAtDecoupled(group.samplePosition, group.deformContext);
@@ -533,10 +530,10 @@ int EnvRasterizer::vectorizedRenderToBuffer(
         }
 
         case Releasing: {
-            info("release mode");
+            dbg("release mode");
 
             if (!hasReleaseCurve()) {
-                info("no release mesh... returning");
+                dbg("no release mesh... returning");
 
                 return 0;
             }
@@ -558,7 +555,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
 
                 rendBuf.mul(releaseScale);
 
-                info("sampled " << maxSamples << " samples");
+                dbg("sampled " << maxSamples << " samples");
 
                 if (maxSamples < numSamples) {
                     buffer.offset(maxSamples).zero();
@@ -719,7 +716,7 @@ void EnvRasterizer::evaluateLoopSustainIndices() {
 void EnvRasterizer::changedToRelease() {
     jassert(state == Releasing);
 
-    info("recalculating release");
+    dbg("recalculating release");
 
     if (canLoop()) {
         waveX = waveXCopy;
@@ -734,7 +731,7 @@ void EnvRasterizer::changedToRelease() {
 
     releaseScale = lastLevel / initialReleaseLevel;
 
-    info("release scale: " << releaseScale);
+    dbg("release scale: " << releaseScale);
 
     for (int i = headUnisonIndex; i < (int) params.size(); ++i) {
         params[i].samplePosition = releasePosX;

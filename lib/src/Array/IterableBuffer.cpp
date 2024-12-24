@@ -13,8 +13,7 @@ SyncedSampleIterator::SyncedSampleIterator(PitchedSample* wrapper, Buffer<float>
     sizePow2 = nextPowerOfTwo(roundToInt(average));
 }
 
-bool SyncedSampleIterator::hasNext()
-{
+bool SyncedSampleIterator::hasNext() {
     return cycle < periods.size();
 }
 

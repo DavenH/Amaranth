@@ -2,6 +2,17 @@
 
 #define productSplit(X, Y) Y
 
+#if (defined(JUCE_WINDOWS) && (JUCE_WINDOWS == 1))
+  #define platformSplit(X, Y, Z) X
+#elif (defined(JUCE_MAC) && (JUCE_MAC == 1))
+  #define platformSplit(X, Y, Z) Y
+#elif (defined(JUCE_LINUX) && (JUCE_LINUX == 1))
+  #define platformSplit(X, Y, Z) Z
+#else
+  #error "Include JuceHeader.h"
+  // #define platformSplit(X, Y, Z) ""
+#endif
+
 #undef getObj
 #define getObj(T) repo->get<T>(#T)
 
@@ -14,7 +25,7 @@
 #define getLayerMesh(T, S) 	getObj(MeshLibrary).getLayer(LayerGroups::T, S)
 #define getLayerProps(T, S) getObj(MeshLibrary).getProps(LayerGroups::T, S)
 
-#define showMsg(T)			  repo->getConsole().write(T)
+#define showConsoleMsg(T)			  repo->getConsole().write(T)
 #define showImportant(T)	repo->getConsole().write(T, IConsole::ImportantPriority)
 #define showCritical(T)		repo->getConsole().write(T, IConsole::CriticalPriority)
 
@@ -53,3 +64,17 @@
 #else
   #define formatSplit(X, Y) Y
 #endif
+
+#if (LOG_LEVEL >= 1)
+  #define dbg(X) repo->getDebugStream() << X << '\n';
+#else
+  #define dbg(X) ;
+#endif
+
+#if (LOG_LEVEL >= 2)
+  #define info(X) repo->getDebugStream() << X << '\n';
+#else
+  #define info(X) ;
+#endif
+
+#define err(X) std::cerr << X << '\n';

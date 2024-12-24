@@ -1,6 +1,8 @@
 #pragma once
 
 #include "JuceHeader.h"
+#include "SingletonAccessor.h"
+
 using namespace juce;
 
 namespace Constants {
@@ -18,18 +20,20 @@ namespace Constants {
     ,	ProductVersion
     ,	DocumentExt
     ,	DocMagicCode
+    ,	FontFace
     ,	ProductName
     ,	DocumentsDir
+    ,	PropertiesPath
 
     ,	numAppConstants
     };
 
 }
 
-class AppConstants  {
+class AppConstants: public SingletonAccessor  {
 public:
-    explicit AppConstants();
-    ~AppConstants() = default;
+    explicit AppConstants(SingletonRepo* repo);
+    ~AppConstants() override = default;
 
     void setConstant(int key, int value) 			{ values	.set(key, value); 	}
     void setConstant(int key, double value) 		{ realValues.set(key, value); 	}

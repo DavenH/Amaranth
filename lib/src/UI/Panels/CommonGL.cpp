@@ -1,5 +1,8 @@
 #include <cstdio>
 #include "CommonGL.h"
+
+#include <Definitions.h>
+
 #include "OpenGLBase.h"
 #include "Panel.h"
 #include "ScopedGL.h"
@@ -244,7 +247,7 @@ void CommonGL::updateTexture(Texture* tex) {
 }
 
 void CommonGL::initializeTextures() {
-    std::cout << panel->panelName << " initializing textures\n";
+    info(panel->panelName << " initializing textures\n");
 
     OwnedArray <Texture>& textures = panel->textures;
     TextureGL* nameA, * nameB, * grab, * scales, * dfrm;

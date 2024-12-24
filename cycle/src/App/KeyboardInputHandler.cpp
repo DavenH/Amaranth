@@ -63,7 +63,7 @@ bool KeyboardInputHandler::keyPressed(const KeyPress &key, Component* component)
         currentInteractor->flag(SimpleRepaint) = false;
     }
 
-    std::cout << "key down: " << c << ", " << code << "\n";
+    info("key down: " << c << ", " << code << "\n");
 
     if (c == ' ' || code == KeyPress::returnKey) {
 //#if PLUGIN_MODE
@@ -185,7 +185,7 @@ bool KeyboardInputHandler::keyPressed(const KeyPress &key, Component* component)
     } else if(c == 'q')	{
       #ifdef JUCE_DEBUG
         String detailsString = getObj(Document).getPresetString();
-        std::cout << detailsString << "\n";
+        info(detailsString << "\n");
       #endif
     } else if (c == 'h' || c == '/') {
         getSetting(MagnitudeDrawMode) ^= 1;
@@ -200,7 +200,7 @@ bool KeyboardInputHandler::keyPressed(const KeyPress &key, Component* component)
             bool isWave = !getSetting(DrawWave);
             getObj(SampleUtils).waveOverlayChanged(isWave);
         } else {
-            showMsg("Load a wave file first!");
+            showConsoleMsg("Load a wave file first!");
         }
     } else if (code == KeyPress::escapeKey) {
         if (getObj(CycleTour).isLive()) {

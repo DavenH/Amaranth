@@ -22,8 +22,9 @@ void VertexTransformUndo::start() {
     mesh = itrMesh;
     beforeVerts.clear();
 
-    for(auto& vert : mesh->getVerts())
+    for(auto& vert : mesh->getVerts()) {
         beforeVerts.push_back(*vert);
+    }
 
     pending = true;
 }

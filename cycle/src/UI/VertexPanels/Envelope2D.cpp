@@ -461,7 +461,7 @@ void Envelope2D::Controls::resized()
 
 void Envelope2D::createScales()
 {
-    std::cout << "creating scales for " << panelName << "\n";
+    info("creating scales for " << panelName << "\n");
 
     int currentGroup = getSetting(CurrentEnvGroup);
     MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(currentGroup);

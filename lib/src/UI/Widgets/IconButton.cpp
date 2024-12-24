@@ -111,7 +111,7 @@ void IconButton::mouseDrag(const MouseEvent& e) {
     if (applicable) {
         Button::mouseDrag(e);
     } else {
-        showMsg(naMessage);
+        showConsoleMsg(naMessage);
     }
 }
 
@@ -123,7 +123,7 @@ void IconButton::mouseDown(const MouseEvent& e) {
     if (applicable) {
         Button::mouseDown(e);
     } else {
-        showMsg(naMessage);
+        showConsoleMsg(naMessage);
     }
 }
 

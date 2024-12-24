@@ -43,7 +43,7 @@ void Mesh::destroy() {
 void Mesh::print(bool printLines, bool printVerts) {
 #ifndef ORGANIZER
     if (printLines) {
-        std::cout << "Lines: " << (int) cubes.size() << "\n";
+        info("Lines: " << (int) cubes.size() << "\n");
 
         for(auto it : cubes) {
             VertCube& cube = *it;
@@ -74,14 +74,14 @@ void Mesh::print(bool printLines, bool printVerts) {
                    );
             }
 
-            std::cout << "\n";
+            info("\n");
         }
 
-        std::cout << "\n";
+        info("\n");
     }
 
     if (printVerts) {
-        std::cout << "Verts: " << (int) verts.size() << "\n";
+        info("Verts: " << (int) verts.size() << "\n");
         int index = 1;
         for(auto* vert : verts) {
             std::cout << String::formatted("%d.\t%3.6f\t%3.6f\t%3.6f\t%3.6f\t%3.6f",
@@ -89,13 +89,13 @@ void Mesh::print(bool printLines, bool printVerts) {
                                       vert->values[4]);
 
             for(auto& cube : vert->owners) {
-                std::cout << "\t" << (int64) cube;
+                info("\t" << (int64) cube);
             }
 
-            std::cout << "\n";
+            info("\n");
             ++index;
         }
-        std::cout << "\n";
+        info("\n");
     }
 #endif
 }

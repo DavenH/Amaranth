@@ -1,4 +1,3 @@
-#include <Definitions.h>
 #include <Algo/PitchTracker.h>
 #include <App/AppConstants.h>
 #include <App/Doc/Document.h>
@@ -39,6 +38,7 @@
 #include "../UI/VertexPanels/Waveform3D.h"
 #include "../UI/VisualDsp.h"
 #include "../Util/CycleEnums.h"
+#include <Definitions.h>
 
 FileManager::FileManager(SingletonRepo* repo) :
         SingletonAccessor(repo, "FileManager")
@@ -66,7 +66,7 @@ void FileManager::openFactoryPreset(const String &presetName) {
 void FileManager::openPreset(const File &file) {
     currentPresetName = file.getFullPathName();
 
-    std::cout << "Opening preset: " << currentPresetName << "\n";
+    info("Opening preset: " << currentPresetName << "\n");
     openCurrentPreset();
 }
 
@@ -245,7 +245,7 @@ void FileManager::openDefaultPreset() {
                         cmdUnquoted.endsWithIgnoreCase(getStrConstant(DocumentExt));
 
         if (cmdUnquoted.isNotEmpty()) {
-            std::cout << "Command line: " << cmdUnquoted << "\n";
+            info("Command line: " << cmdUnquoted << "\n");
         }
 
         if (commandLineIsPreset) {

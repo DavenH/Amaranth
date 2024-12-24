@@ -181,8 +181,9 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 }
 
 void Interactor2D::doExtraMouseDrag(const MouseEvent& e) {
-    if(actionIs(PaintingEdit))
+    if(actionIs(PaintingEdit)) {
         commitPath(e);
+    }
 }
 
 // needed to resolve case when an objectively closer vertex to the mouse belongs to
@@ -340,8 +341,8 @@ void Interactor2D::doReshapeCurve(const MouseEvent& e) {
     int pole 		= curves[getStateValue(CurrentCurve)].tp.ypole;
 
     for(auto& vert : movingVerts) {
-        float& weight 	= vert->values[Vertex::Curve];
-        weight 			+= diff * pole;
+        float& weight = vert->values[Vertex::Curve];
+        weight += diff * pole;
 
         NumberUtils::constrain(weight, 0.f, 1.f);
     }
@@ -372,9 +373,7 @@ void Interactor2D::removeLinesInRange(Range<float> phsRange, const MorphPosition
 
         for(auto& cube : linesToDelete) {
             if (mesh->removeCube(cube)) {
-                for (int j = 0; j < VertCube::numVerts; ++j) {
-                    Vertex* vert = cube->lineVerts[j];
-
+                for (auto vert : cube->lineVerts) {
                     if(vert->getNumOwners() == 1) {
                         mesh->removeVert(vert);
                     }

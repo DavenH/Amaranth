@@ -199,6 +199,9 @@ void Initializer::initSingletons() {
 
 void Initializer::setConstants() {
     using namespace Constants;
+
+    const String fontFace = platformSplit("Verdana", "Helvetica", "Noto Sans");
+
     auto &constants = getObj(AppConstants);
     constants.setConstant(WaveshaperPadding, 	0.0625);
     constants.setConstant(IrModellerPadding, 	0.0625);
@@ -212,9 +215,17 @@ void Initializer::setConstants() {
     constants.setConstant(EnvResolution, 		128);
     constants.setConstant(ResamplerLatency, 	32);
     constants.setConstant(MinLineLength, 		0.001);
+    constants.setConstant(FontFace,             fontFace);
 }
 
 void Initializer::setDefaultSettings() {
+    const String path = platformSplit(
+        "/Amaranth Audio/Cycle/install.xml",
+        "/Preferences/com.amaranthaudio.Cycle.xml",
+        ""
+    );
+    getObj(Settings).setPropertiesPath(path);
+
     getSetting(IgnoringMessages) 		= true;
     getSetting(MagnitudeDrawMode) 		= true;
     getSetting(InterpWaveCycles) 		= true;
@@ -244,25 +255,25 @@ void Initializer::instantiate() {
     auto* pitchRast = new EnvWavePitchRast(repo, "EnvWavePitchRast");
 
     // APP
-    repo->add(new Directories		(repo), -50);
-    repo->add(new FileManager		(repo));
+    repo->add(new Directories(repo), -50);
+    repo->add(new FileManager(repo));
     repo->add(new KeyboardInputHandler(repo));
     repo->add(new VersionConsiliator(repo));
 
     // AUDIO
-    repo->add(new SampleUtils		(repo));
-    repo->add(new AudioSourceRepo	(repo));
-    repo->add(new MidiKeyboard		(repo, getObj(AudioHub).getKeyboardState(), MidiKeyboardComponent::horizontalKeyboard));
+    repo->add(new SampleUtils(repo));
+    repo->add(new AudioSourceRepo(repo));
+    repo->add(new MidiKeyboard(repo, getObj(AudioHub).getKeyboardState(), MidiKeyboardComponent::horizontalKeyboard));
     repo->add(pitchRast);
     repo->add(audioSource = new SynthAudioSource(repo));
     repo->add(new Multisample(repo, pitchRast));
 
-    auto* delay		= new Delay(repo);
-    auto* unison 	= new Unison(repo);
-    auto* reverb 	= new ReverbEffect(repo);
-    auto* equalizer = new Equalizer(repo);
-    auto* modeller 	= new IrModeller(repo);
-    auto* waveshaper= new Waveshaper(repo);
+    auto* delay		 = new Delay(repo);
+    auto* unison 	 = new Unison(repo);
+    auto* reverb 	 = new ReverbEffect(repo);
+    auto* equalizer  = new Equalizer(repo);
+    auto* modeller 	 = new IrModeller(repo);
+    auto* waveshaper = new Waveshaper(repo);
 
     repo->add(delay);
     repo->add(unison);
@@ -311,12 +322,12 @@ void Initializer::instantiate() {
     auto* modellerUI	= new IrModellerUI(repo);
     auto* wshpUI		= new WaveshaperUI(repo);
 
-    delay		->setUI(delayUI);
-    unison		->setUI(unisonUI);
-    reverb		->setUI(reverbUI);
-    equalizer	->setUI(equalizerUI);
-    modeller	->setUI(modellerUI);
-    waveshaper	->setUI(wshpUI);
+    delay->setUI(delayUI);
+    unison->setUI(unisonUI);
+    reverb->setUI(reverbUI);
+    equalizer->setUI(equalizerUI);
+    modeller->setUI(modellerUI);
+    waveshaper->setUI(wshpUI);
 
     repo->add(delayUI);
     repo->add(reverbUI);
@@ -324,7 +335,6 @@ void Initializer::instantiate() {
     repo->add(equalizerUI);
     repo->add(modellerUI);
     repo->add(wshpUI);
-
 
     // GRAPHIC DSP
     repo->add(new VisualDsp(repo));
@@ -408,7 +418,7 @@ void Initializer::releaseLocks() {
 }
 
 void Initializer::freeUIResources() {
-    std::cout << "freeing UI resources\n";
+    info("freeing UI resources\n");
 
     getObj(Waveform3D).deactivateContext();
     getObj(Waveform2D).deactivateContext();

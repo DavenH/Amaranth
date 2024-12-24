@@ -45,17 +45,18 @@ void DocumentLibrary::readDocuments(const String& dir) {
         if (Document::readHeader(stream.get(), details, getConstant(DocMagicCode))) {
             int code = details.getKey().hashCode();
 
-            if (dismissedSet.find(code) != dismissedSet.end())
+            if (dismissedSet.find(code) != dismissedSet.end()) {
                 continue;
+            }
 
-            if(ratingsMap.contains(code))
+            if(ratingsMap.contains(code)) {
                 details.setRating(ratingsMap[code]);
+            }
 
             allDocs.add(details);
         }
     }
 }
-
 
 void DocumentLibrary::load(int index) {
     if (isPositiveAndBelow(index, allDocs.size())) {
@@ -91,8 +92,9 @@ bool DocumentLibrary::readSettingsFile() {
         for (auto &allDoc : allDocs) {
             int code = allDoc.getKey().hashCode();
 
-            if(allDoc.getRating() > 0.f)
+            if(allDoc.getRating() > 0.f) {
                 ratingsMap.set(code, allDoc.getRating());
+            }
         }
 
         settingsArePending = true;
@@ -102,8 +104,9 @@ bool DocumentLibrary::readSettingsFile() {
                 int code 	= ratingElem->getIntAttribute("code", 0);
                 float value = ratingElem->getDoubleAttribute("value", 0);
 
-                if(code != 0)
+                if(code != 0) {
                     ratingsMap.set(code, value);
+                }
             }
         }
 
@@ -111,8 +114,9 @@ bool DocumentLibrary::readSettingsFile() {
             for(auto dissedElem : dismissed->getChildWithTagNameIterator("Dismissal")) {
                 int code = dissedElem->getIntAttribute("code", 0);
 
-                if(code != 0)
+                if(code != 0) {
                     dismissedSet.insert(code);
+                }
             }
         }
 
@@ -120,8 +124,9 @@ bool DocumentLibrary::readSettingsFile() {
             for(auto dldElem : downloaded->getChildWithTagNameIterator("Download")) {
                 int code = dldElem->getIntAttribute("code", 0);
 
-                if(code != 0)
+                if(code != 0) {
                     downloadedSet.insert(code);
+                }
             }
         }
     }

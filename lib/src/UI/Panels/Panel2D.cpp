@@ -119,8 +119,9 @@ void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
     positions.push_back(curr);
 
     for (; i < size; ++i) {
-        if (i > 0 && xy.x[i - 1] > comp->getWidth())
+        if (i > 0 && xy.x[i - 1] > comp->getWidth()) {
             continue;
+        }
 
         isLast = i == size - 1;
         samplesAreBipolar = curveIsBipolar && ! isLast && (xy.y[i] - baseY) * (xy.y[i + 1] - baseY) < 0;
@@ -190,8 +191,9 @@ void Panel2D::highlightCurrentIntercept()
     int icptIdx = interactor->state.currentIcpt;
     const int freeIdx = interactor->state.currentFreeVert;
 
-    if(icptIdx == -1 && freeIdx == -1)
+    if(icptIdx == -1 && freeIdx == -1) {
         return;
+    }
 
     bool useFreeVert = icptIdx == -1;
 
@@ -199,8 +201,9 @@ void Panel2D::highlightCurrentIntercept()
         ScopedLock sl(interactor->getLock());
         vector<DepthVert>& verts = interactor->depthVerts;
 
-        if(! isPositiveAndBelow(freeIdx, (int) verts.size()))
+        if(! isPositiveAndBelow(freeIdx, (int) verts.size())) {
             return;
+        }
 
         point.x = verts[freeIdx].x;
         point.y = verts[freeIdx].y;
@@ -241,8 +244,9 @@ void Panel2D::prepareAlpha(const Buffer<float>& y, Buffer<float> alpha, float ba
 void Panel2D::drawDepthLinesAndVerts() {
     RasterizerData& data = interactor->getRasterizer()->getRastData();
 
-    if(data.colorPoints.empty())
+    if(data.colorPoints.empty()) {
         return;
+    }
 
     vector<ColorPoint> points;
 

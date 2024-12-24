@@ -45,24 +45,14 @@ void SingletonRepo::instantiate() {
     }
     dummyStream = std::make_unique<DummyOutputStream>();
 
-    Settings::ClientPaths paths;
-    String appDir(File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName());
-
-  #ifdef JUCE_WINDOWS
-    paths.propertiesPath = appDir + String("/Amaranth Audio/Cycle/install.xml");
-  #elif defined(__APPLE__)
-    paths.propertiesPath = appDir + String("/Preferences/com.amaranthaudio.Cycle.xml");
-  #else
-    paths.propertiesPath = appDir + String("/");
-  #endif
-
-    add(new MiscGraphics	(this),  	   -500);
-    add(new AudioHub		(this),  	   -300);
-    add(new Settings		(this, paths), -200);
-    add(new MeshLibrary		(this),  	   -100);
-    add(new MemoryPool		(this),  	   -100);
-    add(new Updater			(this),    		 -1);
-    add(new LogRegions		(this),    		 -1);
+    add(new MiscGraphics	(this), -500);
+    add(new AppConstants	(this), -400);
+    add(new AudioHub		(this), -300);
+    add(new Settings		(this), -200);
+    add(new MeshLibrary		(this), -100);
+    add(new MemoryPool		(this), -100);
+    add(new Updater			(this), -1);
+    add(new LogRegions		(this), -1);
     add(new Document		(this));
     add(new PathRepo		(this));
     add(new EditWatcher		(this));
@@ -90,7 +80,7 @@ void SingletonRepo::init() {
     ScopedLock sl(initLock);
 
     for (auto object : objects) {
-        std::cout << object->getName() << std::endl;
+        info(object->getName() << std::endl);
         object->init();
     }
 
@@ -121,17 +111,19 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
 
 OutputStream& SingletonRepo::getDebugStream() {
   #ifdef JUCE_DEBUG
-    if(debugStream == nullptr)
+    if(debugStream == nullptr) {
         return *dummyStream;
+    }
 
     int64 curr = Time::currentTimeMillis();
 
-    if(curr - lastDebugTime > 50)
+    if(curr - lastDebugTime > 50) {
         *debugStream << "\n";
+    }
 
-    lastDebugTime 	= curr;
-    Thread* thread 	= Thread::getCurrentThread();
-    String name 	= (thread == nullptr) ? "MainThrd" : thread->getThreadName().substring(0, 8);
+    lastDebugTime = curr;
+    Thread* thread = Thread::getCurrentThread();
+    String name = (thread == nullptr) ? "MainThrd" : thread->getThreadName().substring(0, 8);
 
     *debugStream << "[" << (curr & 0xfffff) << "][" << name << "] ";
 

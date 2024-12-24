@@ -1,5 +1,7 @@
 #include "MiscGraphics.h"
 
+#include <Definitions.h>
+#include <App/SingletonRepo.h>
 #include <Util/Util.h>
 
 #include "Widgets/IconButton.h"
@@ -7,35 +9,42 @@
 #include "../Binary/Silkscreen.h"
 #include "../Util/NumberUtils.h"
 #include "../Util/CommonEnums.h"
+#include "../App/AppConstants.h"
 
 MiscGraphics::MiscGraphics(SingletonRepo* repo) : SingletonAccessor(repo, "MiscGraphics") {
+}
+
+void MiscGraphics::init() {
     icons = PNGImageFormat::loadFrom(Images::icons_png, Images::icons_pngSize);
     jassert(! icons.isNull());
 
     powerIcon = getIcon(5, 5);
     powerIcon.duplicateIfShared();
 
-    cursors.add(new MouseCursor(getIcon(1, 2), 0,  0)); 	// pencil
-    cursors.add(new MouseCursor(getIcon(2, 2), 0,  0)); 	// pencil edit
-    cursors.add(new MouseCursor(getIcon(0, 2), 11, 11)); 	// cross cursor
-    cursors.add(new MouseCursor(getIcon(5, 6), 11, 11));	// cross add cursor
-    cursors.add(new MouseCursor(getIcon(4, 6), 11, 11));	// cross sub cursor
-    cursors.add(new MouseCursor(getIcon(8, 7), 0,  0));	// cancel cursor
+    cursors.add(new MouseCursor(getIcon(1, 2), 0,  0));  // pencil
+    cursors.add(new MouseCursor(getIcon(2, 2), 0,  0));  // pencil edit
+    cursors.add(new MouseCursor(getIcon(0, 2), 11, 11)); // cross cursor
+    cursors.add(new MouseCursor(getIcon(5, 6), 11, 11)); // cross add cursor
+    cursors.add(new MouseCursor(getIcon(4, 6), 11, 11)); // cross sub cursor
+    cursors.add(new MouseCursor(getIcon(8, 7), 0,  0));	 // cancel cursor
 
-    MemoryInputStream fontStream(Silkscreen::output, Silkscreen::outputSize, false);
-    auto typeface = Typeface::createSystemTypefaceFor(Silkscreen::output, Silkscreen::outputSize);
+    // MemoryInputStream fontStream(Silkscreen::output, Silkscreen::outputSize, false);
+    // auto typeface = Typeface::createSystemTypefaceFor(Silkscreen::output, Silkscreen::outputSize);
+    // silkscreen = new Font(FontOptions(typeface));
 
-    silkscreen = new Font(FontOptions(typeface));
-    verdana12 = new Font(FontOptions("Verdana", 12.f, Font::plain));
-    verdana16 = new Font(FontOptions("Verdana", 16.f, Font::plain));
+    String fontface = getStrConstant(FontFace);
+
+    silkscreen = new Font(FontOptions(fontface, 9.f, Font::plain));
+    verdana12 = new Font(FontOptions(fontface, 12.f, Font::plain));
+    verdana16 = new Font(FontOptions(fontface, 16.f, Font::plain));
     silkscreen->setHeight(7.4f);
 
     blueGlow.setGlowProperties(3, Colour(90, 180, 240));
     yllwGlow.setGlowProperties(3, Colour(240, 180, 0));
     redGlow.setGlowProperties(2, Colours::lightblue.withAlpha(0.5f));
 
-    shadow.setShadowProperties(DropShadow(Colours::black, 2, Point<int>(2, 1)));
-    insetUp.setShadowProperties(DropShadow(Colours::black, 1.f, Point<int>(-1, -1)));
+    shadow.setShadowProperties(DropShadow(Colours::black, 2, Point(2, 1)));
+    insetUp.setShadowProperties(DropShadow(Colours::black, 1.f, Point(-1, -1)));
 
     fonts.add(silkscreen);
     fonts.add(verdana12);

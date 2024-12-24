@@ -34,11 +34,7 @@ class Settings :
         public Savable
     ,	public SingletonAccessor {
 public:
-    struct ClientPaths {
-        String propertiesPath;
-    };
-
-    Settings(SingletonRepo* repo, ClientPaths paths);
+    explicit Settings(SingletonRepo* repo);
     ~Settings() override;
 
     void readGlobalSettings(XmlElement* parentElem);
@@ -48,16 +44,17 @@ public:
     XmlElement* getMidiSettingsElement();
 
     void init() override;
-    void createPropertiesFile();
-    void createSettingsFile();
+    void createPropertiesFile(const String& path);
+    void createSettingsFile(const String& path);
     void initialiseSettings();
     void writePropertiesFile();
 
     String getProperty(const String& key, const String& defaultStr = String());
     void setProperty(const String& key, const String& value);
 
-    int& getGlobalSetting(int setting) 		{ return globalSettingsMap[setting].value;		}
-    int& getDocumentSetting(int setting) 	{ return documentSettingsMap[setting].value; 	}
+    int& getGlobalSetting(int setting) { return globalSettingsMap[setting].value;		}
+    int& getDocumentSetting(int setting) { return documentSettingsMap[setting].value; 	}
+    void setPropertiesPath(const String& path) { this->propertiesPath = path; }
 
 protected:
     class Setting {
@@ -71,7 +68,8 @@ protected:
 
     /* ----------------------------------------------------------------------------- */
 
-    ClientPaths paths;
+    String propertiesPath;
+
     File settingsFile, propertiesFile;
     std::map<int, Setting> globalSettingsMap, documentSettingsMap;
 

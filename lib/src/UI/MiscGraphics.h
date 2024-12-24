@@ -48,6 +48,7 @@ public:
 	explicit MiscGraphics(SingletonRepo* repo);
 	~MiscGraphics() override = default;
 
+	void init() override;
 	Font* getAppropriateFont(int scaleSize);
 	Font* getSilkscreen() const	{ return silkscreen; }
 	Font* getVerdana12() 	{ return verdana12;  }
@@ -78,15 +79,18 @@ public:
 	}
 
 	template<class T>
-	void drawRoundedRectangle(Graphics& g, const Rectangle<T>& r, float cornerSize = 3.f)
-	{
+	void drawRoundedRectangle(Graphics& g, const Rectangle<T>& r, float cornerSize = 3.f) {
 		Path path;
 		path.addRoundedRectangle(r.getX(), r.getY(), r.getWidth(), r.getHeight(), cornerSize);
 		g.strokePath(path, PathStrokeType(1.f), AffineTransform::translation(-0.5f, -0.5f));
 	}
 
-	static void drawCentredText(Graphics& g, const Rectangle<int>& r, const String& text, Justification j11n = Justification::centred)
-	{
+	static void drawCentredText(
+		Graphics& g,
+		const Rectangle<int>& r,
+		const String& text,
+		Justification j11n = Justification::centred
+	) {
 		g.drawText(text, r, j11n, false);
 	}
 

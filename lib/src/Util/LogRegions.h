@@ -70,5 +70,5 @@ public:
 private:
 	Range<int> midiRange;
 	ScopedAlloc<float> memory;
-	vector<Buffer<float> > frequencyRamps;
+	vector<Buffer<float>> frequencyRamps;
 };

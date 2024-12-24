@@ -523,5 +523,5 @@ void DeformerPanel::showCoordinates() {
     float xformX 	= (state.currentMouse.x - getConstant(DeformerPadding)) * invSize;
 
     String message 	= String(xformX, 2) + ", " + String(state.currentMouse.y, 2);
-    showMsg(message);
+    showConsoleMsg(message);
 }

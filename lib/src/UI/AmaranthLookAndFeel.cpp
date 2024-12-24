@@ -79,8 +79,6 @@ void AmaranthLookAndFeel::drawScrollbar(
 
     float gx1 = 0.0f, gy1 = 0.0f, gx2 = 0.0f, gy2 = 0.0f;
 
-    //float cornerSize = ((isScrollbarVertical ? width : height) - slotIndentx2) * 0.3f;
-
     if (isScrollbarVertical) {
         slotPath.addRectangle(x + slotIndent, y + slotIndent,
                               width - slotIndentx2, height - slotIndentx2);
@@ -111,7 +109,6 @@ void AmaranthLookAndFeel::drawScrollbar(
     g.setColour(Colours::black);
     g.strokePath(thumbPath, PathStrokeType(1.f));
 }
-
 
 void AmaranthLookAndFeel::drawScrollbarButton(
         Graphics& g, ScrollBar& scrollbar,
@@ -275,8 +272,9 @@ void AmaranthLookAndFeel::drawGlassLozenge(Graphics& g,
                                            bool flatOnLeft, bool flatOnRight,
                                            bool flatOnTop, bool flatOnBottom) noexcept {
 
-    if (width <= outlineThickness || height <= outlineThickness)
+    if (width <= outlineThickness || height <= outlineThickness) {
         return;
+    }
 
     const float cs = cornerSize < 0 ? jmin(width * 0.3f, height * 0.3f) : cornerSize;
 
@@ -293,7 +291,6 @@ void AmaranthLookAndFeel::drawGlassLozenge(Graphics& g,
     g.setColour(Colour::greyLevel(0.64f));
     g.strokePath(outline, PathStrokeType(outlineThickness));
 }
-
 
 void AmaranthLookAndFeel::createRoundedPath(Path& p,
                                             const float x, const float y,
@@ -339,7 +336,6 @@ class DocumentWindowButton :
         public Button,
         public SingletonAccessor {
 public:
-
     DocumentWindowButton(SingletonRepo* repo,
                          const String& name, const Colour& col,
                          Path normalShape_,
@@ -356,8 +352,9 @@ public:
     void paintButton(Graphics& g, bool isMouseOverButton, bool isButtonDown) override {
         float alpha = isMouseOverButton ? (isButtonDown ? 1.0f : 0.8f) : 0.55f;
 
-        if (!isEnabled())
+        if (!isEnabled()) {
             alpha *= 0.5f;
+        }
 
         Rectangle<float> r(1, 0, getWidth() - 2, getHeight());
 
@@ -429,6 +426,7 @@ Button* AmaranthLookAndFeel::createDocumentWindowButton(int buttonType) {
     jassertfalse;
     return nullptr;
 }
+
 void AmaranthLookAndFeel::positionDocumentWindowButtons(DocumentWindow&,
                                                         int titleBarX,
                                                         int titleBarY,
@@ -441,8 +439,9 @@ void AmaranthLookAndFeel::positionDocumentWindowButtons(DocumentWindow&,
     const int buttonW = 24.f;
     const int closeButtonW = 35.f;
 
-    int x = positionTitleBarButtonsOnLeft ? titleBarX
-                                          : titleBarX + titleBarW - closeButtonW;
+    int x = positionTitleBarButtonsOnLeft
+                ? titleBarX
+                : titleBarX + titleBarW - closeButtonW;
 
     if (closeButton != nullptr) {
         closeButton->setBounds(x, titleBarY, closeButtonW, titleBarH);
@@ -555,8 +554,9 @@ void AmaranthLookAndFeel::drawPopupMenuBackground(Graphics& g, int width, int he
     g.fillAll(background);
 
     g.setColour(Colour::greyLevel(0.06f).withAlpha(alpha));
-    for (int i = 0; i < height; i += 2)
+    for (int i = 0; i < height; i += 2) {
         g.drawHorizontalLine(i, 0, width);
+    }
 
     bool horz = getSetting(LastPopupClickedHorz) == 1;
 
@@ -609,7 +609,7 @@ void AmaranthLookAndFeel::drawPopupMenuItem(Graphics& g,
                                             const Drawable* image,
                                             const Colour* textColourToUse) {
     if (isSeparator) {
-        Rectangle<int> r(area.reduced(5, 0));
+        Rectangle r(area.reduced(5, 0));
         r.removeFromTop(r.getHeight() / 2 - 1);
 
         g.setColour(Colour(0x33000000));
@@ -624,7 +624,7 @@ void AmaranthLookAndFeel::drawPopupMenuItem(Graphics& g,
             textColour = *textColourToUse;
         }
 
-        Rectangle<int> r(area.reduced(1, 1));
+        Rectangle r(area.reduced(1, 1));
 
         if (isHighlighted) {
             g.setColour(findColour(PopupMenu::highlightedBackgroundColourId));
@@ -748,7 +748,7 @@ void AmaranthLookAndFeel::drawAlertBox(Graphics& g, AlertWindow& alert, const Re
     if (alert.containsAnyExtraComponents() || alert.getNumButtons() > 2)
         iconSize = jmin(iconSize, textArea.getHeight() + 50);
 
-    const Rectangle<int> iconRect(30, 30, iconSize, iconSize);
+    const Rectangle iconRect(30, 30, iconSize, iconSize);
 
     if (alert.getAlertType() != AlertWindow::NoIcon) {
         Path icon;
@@ -812,7 +812,7 @@ void AmaranthLookAndFeel::drawLabel(Graphics& g, Label& label) {
         g.setColour(label.findColour(Label::textColourId).withMultipliedAlpha(alpha));
         g.setFont(font);
 
-        Rectangle<int> textArea(label.getBorderSize().subtractedFrom(label.getLocalBounds()));
+        Rectangle textArea(label.getBorderSize().subtractedFrom(label.getLocalBounds()));
 
         g.drawFittedText(label.getText(), textArea, label.getJustificationType(),
                          jmax(1, (int) (textArea.getHeight() / font.getHeight())),
@@ -863,8 +863,9 @@ void AmaranthLookAndFeel::drawTickBox(Graphics& g, Component& component,
     g.setColour(Colour::greyLevel(0.64f));
     g.drawRoundedRectangle(floatRect, 2.f, 1.f);
 
-    if (ticked)
+    if (ticked) {
         g.fillRect(floatRect.getSmallestIntegerContainer().reduced(2, 2));
+    }
 }
 
 void AmaranthLookAndFeel::drawBevelA(Graphics& g, int width, int height, int border, const Colour& shadowColour) {

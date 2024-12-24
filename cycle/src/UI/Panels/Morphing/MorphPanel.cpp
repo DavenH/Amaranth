@@ -322,11 +322,11 @@ void MorphPanel::showMessage(float value, MorphSlider* slider) {
         int midiKey = Arithmetic::getNoteForValue(value, midiRange);
         String keyStr = MidiMessage::getMidiNoteName(midiKey, true, true, 3);
 
-        showMsg(keyStr);
+        showConsoleMsg(keyStr);
     } else if (slider == &blueSlider) {
-        showMsg(String(value, 2));
+        showConsoleMsg(String(value, 2));
     } else if (slider == &yllwSlider) {
-        showMsg(String(value, 2));
+        showConsoleMsg(String(value, 2));
     }
 }
 

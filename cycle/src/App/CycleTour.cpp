@@ -1,4 +1,3 @@
-#include <Definitions.h>
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
 #include <Curve/VertCube.h>
@@ -43,6 +42,7 @@
 #include "../UI/VertexPanels/Waveform2D.h"
 #include "../UI/VertexPanels/Waveform3D.h"
 #include "../Util/CycleEnums.h"
+#include <Definitions.h>
 
 #define A(X) areaStrings.set(#X, X)
 #define B(X) subareaStrings.set(#X, X)
@@ -163,7 +163,7 @@ void CycleTour::handleAsyncUpdate() {
     if(last.condition.type != NoCompare) {
         if(! conditionPassed(last.condition)) {
             currentItem = lastItem;
-            showMsg(last.condition.failMsg);
+            showConsoleMsg(last.condition.failMsg);
             return;
         }
     }
@@ -208,7 +208,7 @@ void CycleTour::handleAsyncUpdate() {
     else {
         jassertfalse;
 
-        showMsg("Could not find tutorial target");
+        showConsoleMsg("Could not find tutorial target");
     }
 }
 
@@ -1259,15 +1259,23 @@ bool CycleTour::passesRequirements(const String& ignore, const String& require) 
         return true;
     }
 
-    if(platformSplit( require.containsIgnoreCase("mac"), ignore.containsIgnoreCase("mac"))) {
+    if (platformSplit(
+        ignore.containsIgnoreCase("windows"),
+        ignore.containsIgnoreCase("mac"),
+        ignore.containsIgnoreCase("linux")
+    )) {
         return false;
     }
 
-    if(platformSplit( ignore.containsIgnoreCase("windows"), require.containsIgnoreCase("windows"))) {
+    if (platformSplit(
+        require.containsIgnoreCase("mac")     || require.containsIgnoreCase("linux"),
+        require.containsIgnoreCase("windows") || require.containsIgnoreCase("linux"),
+        require.containsIgnoreCase("mac")     || require.containsIgnoreCase("windows")
+    )) {
         return false;
     }
 
-    if(formatSplit( require.containsIgnoreCase("plugin"), ignore.containsIgnoreCase("plugin"))) {
+    if(formatSplit(require.containsIgnoreCase("plugin"), ignore.containsIgnoreCase("plugin"))) {
         return false;
     }
 
@@ -1282,15 +1290,16 @@ void CycleTour::readAction(Action& action, XmlElement* actionElem) {
     String actionStr = actionElem->getStringAttribute("type", "NullAction");
     jassert(actionStrings.contains(actionStr));
 
-    action.type         = actionStrings[actionStr];
+    action.type      = actionStrings[actionStr];
 
     String idString  = actionElem->getStringAttribute("id", "IdNull");
     jassert(idStrings.contains(idString));
 
     String actionArea = actionElem->getStringAttribute("area", {});
 
-    if(actionArea.isNotEmpty() && areaStrings.contains(actionArea))
+    if(actionArea.isNotEmpty() && areaStrings.contains(actionArea)) {
         action.area = areaStrings[actionArea];
+    }
 
     action.id         = idStrings[idString];
     action.point.x    = actionElem->getDoubleAttribute("point-x",      0.5);
@@ -1310,10 +1319,11 @@ void CycleTour::readAction(Action& action, XmlElement* actionElem) {
 }
 
 bool CycleTour::readXML(const XmlElement* element) {
-    if(element == nullptr)
+    if(element == nullptr) {
         return false;
+    }
 
-    String cmdString(platformSplit("CTRL", "CMD"));
+    String cmdString(platformSplit("CTRL", "CMD", "CTRL"));
 
 //    Tutorial tutorial;
     current.items.clear();
@@ -1328,7 +1338,7 @@ bool CycleTour::readXML(const XmlElement* element) {
         jassert(areaStrings.contains(areaStr));
         jassert(subareaStrings.contains(targStr));
 
-        item.area            = areaStrings    [areaStr];
+        item.area            = areaStrings[areaStr];
         item.subArea         = subareaStrings[targStr];
 
         item.title           = itemElem->getStringAttribute("name",     "Untitled");

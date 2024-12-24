@@ -138,7 +138,7 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
 
             suspendProcessing(false);
         } else {
-            showMsg("Error Opening preset");
+            showConsoleMsg("Error Opening preset");
         }
     }
 }

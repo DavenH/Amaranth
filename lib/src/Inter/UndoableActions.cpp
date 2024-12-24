@@ -39,7 +39,7 @@ ResponsiveUndoableAction::ResponsiveUndoableAction(
 
 void ResponsiveUndoableAction::undoExtra() {
     if (description.isNotEmpty()) {
-        showMsg(String("Undoing ") + description);
+        showConsoleMsg(String("Undoing ") + description);
     }
 
     triggerAsyncUpdate();
@@ -47,7 +47,7 @@ void ResponsiveUndoableAction::undoExtra() {
 
 void ResponsiveUndoableAction::performExtra() {
     if (description.isNotEmpty()) {
-        showMsg(description);
+        showConsoleMsg(description);
     }
 
     triggerAsyncUpdate();

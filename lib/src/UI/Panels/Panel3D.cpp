@@ -510,11 +510,11 @@ void Panel3D::drawSurface() {
     draw.adjustColumns 	= renderer->willAdjustColumns();
     draw.ramp			= Buffer<float>();
 
-    downsampAcc.resize (draw.colSourceSizeY);
-    clrIndicesA.resize	 (draw.colSourceSizeY);
-    clrIndicesB.resize	 (draw.colSourceSizeY);
-    scaledY.resize		 (draw.colSourceSizeY);
-    scaledX.resize		 (draw.sizeX);
+    downsampAcc.resize(draw.colSourceSizeY);
+    clrIndicesA.resize(draw.colSourceSizeY);
+    clrIndicesB.resize(draw.colSourceSizeY);
+    scaledY.resize(draw.colSourceSizeY);
+    scaledX.resize(draw.sizeX);
 
     float slope = (grid.back().x - grid.front().x) / float(draw.sizeX - 1);
 
@@ -569,8 +569,9 @@ void Panel3D::highlightCurrentIntercept() {
             auto* itr3D = dynamic_cast<Interactor3D*>(interactor.get());
             const vector<SimpleIcpt>& interceptPairs = itr3D->getInterceptPairs();
 
-            if(! isPositiveAndBelow(icptIdx, (int) interceptPairs.size()))
+            if(! isPositiveAndBelow(icptIdx, (int) interceptPairs.size())) {
                 return;
+            }
 
             point.x = interceptPairs[icptIdx].x;
             point.y = interceptPairs[icptIdx].y;

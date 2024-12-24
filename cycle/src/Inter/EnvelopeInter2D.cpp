@@ -295,7 +295,7 @@ void EnvelopeInter2D::showCoordinates() {
         message += " (release region)";
     }
 
-    showMsg(message);
+    showConsoleMsg(message);
 }
 
 // movingStart, as opposed to moving the sustain vertex which also wants synchronization
@@ -501,7 +501,7 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
     vector < Vertex * > &selected = getSelected();
 
     if (selected.size() != 1) {
-        showMsg("Select a single vertex");
+        showConsoleMsg("Select a single vertex");
     } else {
         EnvelopeMesh* currentMesh = getCurrentMesh();
 
@@ -515,7 +515,7 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
             jassertfalse;
         } else {
             if (getSetting(DrawWave)) {
-                showMsg("Cannot set loop in wave draw mode");
+                showConsoleMsg("Cannot set loop in wave draw mode");
             } else {
                 IconButton &bttn = isLoop ? loopIcon : sustainIcon;
                 Vertex* vert = selected.front();

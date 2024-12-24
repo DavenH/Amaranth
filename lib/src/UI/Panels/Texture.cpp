@@ -36,15 +36,16 @@ void TextureGL::bind() {
     const void* pixels = pixelData.data;
 
     glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RGBA,
-            rect.getWidth(),
-            rect.getHeight(),
-            0,
-            GL_RGBA,
-            GL_UNSIGNED_BYTE,
-            pixels);
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA,
+        rect.getWidth(),
+        rect.getHeight(),
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        pixels
+    );
 }
 
 void TextureGL::create() {

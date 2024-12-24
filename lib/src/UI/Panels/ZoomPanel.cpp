@@ -68,10 +68,7 @@ void ZoomPanel::mouseEnter(const MouseEvent& e) {
     if(e.originalComponent == &horz) {
         console.setMouseUsage(false, false, true, false);
         console.setKeys(String());
-    }
-
-    else if(e.originalComponent == &vert)
-    {
+    } else if (e.originalComponent == &vert) {
         console.setMouseUsage(false, false, true, false);
 
         String cmdStr("ctrl");
@@ -231,8 +228,9 @@ void ZoomPanel::contractToRange(Buffer<float> y) {
     float zy = 1.f - 0.5f * (minY + maxY + rect.h);
     rect.y = jmax(0.f, zy);
 
-    if(rect.y + rect.h > 1.f)
+    if(rect.y + rect.h > 1.f) {
         rect.y = 1.f - rect.h;
+    }
 
     panelZoomChanged(false);
 }

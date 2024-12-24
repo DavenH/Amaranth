@@ -294,7 +294,7 @@ void Interactor::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wh
     if (tool == Tools::Axe) {
         realValue(PencilRadius) *= yInc < 0 ? 1.5f : 0.667f;
 
-        showMsg(String("Axe size: ") + String(realValue(PencilRadius), 1));
+        showConsoleMsg(String("Axe size: ") + String(realValue(PencilRadius), 1));
     } else {
         state.currentMouse = Vertex2(-1, 0);
 
@@ -621,7 +621,7 @@ void Interactor::resetState() {
 }
 
 void Interactor::showCoordinates() {
-    showMsg(String::formatted("%3.2f, %3.2f", state.currentMouse.x, state.currentMouse.y));
+    showConsoleMsg(String::formatted("%3.2f, %3.2f", state.currentMouse.x, state.currentMouse.y));
 }
 
 void Interactor::resizeFinalBoxSelection(bool recalculateFromVerts) {

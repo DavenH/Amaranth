@@ -119,7 +119,7 @@ void MeshLibrary::pasteFromClipboardTo(Mesh* mesh, int type) {
                                                        : clipboardMesh.mesh.get();
 
     if (sourceClipboardMesh->getNumVerts() == 0) {
-        showMsg("Clipboard's mesh is empty.");
+        showConsoleMsg("Clipboard's mesh is empty.");
         return;
     }
 
@@ -128,7 +128,7 @@ void MeshLibrary::pasteFromClipboardTo(Mesh* mesh, int type) {
 
         // anything to change about deformers here?
     } else {
-        showMsg("Cannot paste between incompatible mesh types");
+        showConsoleMsg("Cannot paste between incompatible mesh types");
     }
 }
 

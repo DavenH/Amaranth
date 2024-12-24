@@ -1,3 +1,4 @@
+#include "JuceHeader.h"
 #include <iostream>
 #include <iterator>
 #include <algorithm>

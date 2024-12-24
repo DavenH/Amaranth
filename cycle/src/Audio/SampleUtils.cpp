@@ -112,7 +112,7 @@ void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
 
         if (sample == nullptr || sample->size() == 0) {
             if(! isMulti) {
-                showMsg("Wave too short or empty");
+                showConsoleMsg("Wave too short or empty");
             }
 
             continue;
@@ -139,7 +139,7 @@ void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
 
         if (sample->periods.empty()) {
             if (!isMulti)
-                showMsg("Wave too short or empty");
+                showConsoleMsg("Wave too short or empty");
 
             continue;
         }

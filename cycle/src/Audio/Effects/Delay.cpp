@@ -34,7 +34,6 @@ Delay::~Delay() {
     }
 }
 
-
 void Delay::audioThreadUpdate() {
     if (pendingWetBufferUpdate) {
         recalculateWetBuffers();
@@ -42,9 +41,7 @@ void Delay::audioThreadUpdate() {
     }
 }
 
-
-void Delay::processBuffer(AudioSampleBuffer& buffer)
-{
+void Delay::processBuffer(AudioSampleBuffer& buffer) {
 //	int delaySamples = delayTime * sampleRate;
 //	int spinSamples = spinTime * sampleRate;
 //
@@ -85,8 +82,9 @@ void Delay::processBuffer(AudioSampleBuffer& buffer)
 
     jassert(modulo > 0);
 
-    if(modulo < 1)
+    if(modulo < 1) {
         return;
+    }
 
     // feedback exponentiated by spin delay : delay ratio
     float pownFeedback = powf(feedback, (int) spinParams[0].size()) + 1e-17f;
@@ -94,17 +92,17 @@ void Delay::processBuffer(AudioSampleBuffer& buffer)
     jassert(! (modulo & (modulo + 1)));
     jassert(! (inputModulo & (inputModulo + 1)));
 
-for (int ch = 0; ch < jmin(2, buffer.getNumChannels()); ++ch) {
-    int numSamples = buffer.getNumSamples();
+    for (int ch = 0; ch < jmin(2, buffer.getNumChannels()); ++ch) {
+        int numSamples = buffer.getNumSamples();
 
-    for (int i = 0; i < numSamples; ++i) {
-        wetSum = 0;
-        readPos = readPosition[ch] & modulo;
-        float& sample = *buffer.getWritePointer(ch, i);
+        for (int i = 0; i < numSamples; ++i) {
+            wetSum = 0;
+            readPos = readPosition[ch] & modulo;
+            float& sample = *buffer.getWritePointer(ch, i);
 
-        inputBuffer[ch][int(readPosition[ch]) & inputModulo] = sample;
+            inputBuffer[ch][int(readPosition[ch]) & inputModulo] = sample;
 
-        for (int k = 0; k < (int) spinParams[ch].size(); ++k) {
+            for (int k = 0; k < (int) spinParams[ch].size(); ++k) {
                 SpinParams* params = &spinParams[ch][k];
                 float& readSample = params->buffer[readPos];
 
@@ -122,12 +120,12 @@ for (int ch = 0; ch < jmin(2, buffer.getNumChannels()); ++ch) {
                 // pan the wet sample AFTER it's recursed, add to sum
                 wetSum += params->pan * params->startingLevel * readSample;
 
-#ifdef JUCE_DEBUG
+              #ifdef JUCE_DEBUG
 //				if(wetSum < 1e-24f && wetSum > -1e-24f)
 //				{
 //					jassertfalse;
 //				}
-#endif
+              #endif
 
 //				if(i == 0)
 //					std::cout << "idx:\t" << readPosition[i] << "\tbuffer pos\t" << bufferReadPos << "\tself pos\t" << selfReadPos << "\tdly input\t" << inputBuffer[i][bufferReadPos] <<
@@ -135,16 +133,16 @@ for (int ch = 0; ch < jmin(2, buffer.getNumChannels()); ++ch) {
             }
 
 //			if(i == 0)
-//				std::cout << "\n";
+//				info("\n");
 
             sample = sample + wetLevel * wetSum + 1e-19f;
 
-#ifdef JUCE_DEBUG
+          #ifdef JUCE_DEBUG
 //			if(sample < 1e-24f && sample > -1e-24f)
 //			{
 //				jassertfalse;
 //			}
-#endif
+          #endif
 
             ++readPosition[ch];
         }
@@ -229,7 +227,6 @@ bool Delay::setSpinIters(double value) {
     return true;
 }
 
-
 //void Delay::setSampleRate(double value)
 //{
 //	if(sampleRate == value)
@@ -240,19 +237,16 @@ bool Delay::setSpinIters(double value) {
 //	pendingWetBufferUpdate = true;
 //}
 
-
-void Delay::setUI(GuilessEffect* comp)
-{
+void Delay::setUI(GuilessEffect* comp) {
     ui = comp;
 }
-
 
 void Delay::recalculateWetBuffers(bool print) {
     spinIters = pendingSpinIters;
 
     if (print) {
-        std::cout << "Wet buffers" << "\n";
-        std::cout << "original spin iters: " << spinIters << "\n";
+        info("Wet buffers" << "\n");
+        info("original spin iters: " << spinIters << "\n");
     }
 
     int singleSize = spinIters * delayTime * sampleRate;
@@ -260,12 +254,12 @@ void Delay::recalculateWetBuffers(bool print) {
     int wetBufferSize = spinIters * pow2BufferSize;
 
     if (print) {
-        std::cout << "delay time: " << delayTime << "\n";
-        std::cout << "delay samples: " << int(delayTime * sampleRate) << "\n";
-        std::cout << "spin iters : " << spinIters << "\n";
-        std::cout << "single size: " << singleSize << "\n";
-        std::cout << "pow2 size: " << pow2BufferSize << "\n";
-        std::cout << "totalsize: " << wetBufferSize << "\n";
+        info("delay time: " << delayTime << "\n");
+        info("delay samples: " << int(delayTime * sampleRate) << "\n");
+        info("spin iters : " << spinIters << "\n");
+        info("single size: " << singleSize << "\n");
+        info("pow2 size: " << pow2BufferSize << "\n");
+        info("totalsize: " << wetBufferSize << "\n");
     }
 
     for (int ch = 0; ch < 2; ++ch) {
@@ -277,8 +271,9 @@ void Delay::recalculateWetBuffers(bool print) {
         ippsZero_32f(inputBuffer[ch], pow2BufferSize);
     }
 
-    if (print)
-        std::cout << "\n";
+    if (print) {
+        info("\n");
+    }
 
     for (int spinIdx = 0; spinIdx < spinIters; ++spinIdx) {
         float pan 				= 0.5f + 0.49999f * spinAmount * sinf(spinIdx / float(spinIters) * MathConstants<float>::twoPi);
@@ -289,30 +284,30 @@ void Delay::recalculateWetBuffers(bool print) {
         SpinParams& left 		= spinParams[0][spinIdx];
         left.inputDelaySamples 	= inputDelaySamples;
         left.spinDelaySamples 	= spinDelaySamples;
-        left.buffer 			= Buffer<float>(wetBuffer[0] + spinIdx * pow2BufferSize, pow2BufferSize);
+        left.buffer 			= Buffer(wetBuffer[0] + spinIdx * pow2BufferSize, pow2BufferSize);
         left.startingLevel		= startingLevel;
 
         SpinParams& right 		= spinParams[1][spinIdx];
         right.inputDelaySamples = inputDelaySamples;
         right.spinDelaySamples 	= spinDelaySamples;
-        right.buffer 			= Buffer<float>(wetBuffer[1] + spinIdx * pow2BufferSize, pow2BufferSize);
+        right.buffer 			= Buffer(wetBuffer[1] + spinIdx * pow2BufferSize, pow2BufferSize);
         right.startingLevel		= startingLevel;
         Arithmetic::getPans(pan, left.pan, right.pan);
 
-        if(print)
-        {
-            std::cout << "i: " 			<< spinIdx 			 		<< "\n";
-            std::cout << "pan: " 		<< pan 				 		<< "\n";
-            std::cout << "level: " 		<< startingLevel 	 		<< "\n";
-            std::cout << "input delay: " << (int) inputDelaySamples 	<< "\n";
-            std::cout << "spin delay: " 	<< (int) spinDelaySamples  	<< "\n";
+        if(print) {
+            info("i: " 			<< spinIdx 			 		<< "\n");
+            info("pan: " 		<< pan 				 		<< "\n");
+            info("level: " 		<< startingLevel 	 		<< "\n");
+            info("input delay: " << (int) inputDelaySamples 	<< "\n");
+            info("spin delay: " 	<< (int) spinDelaySamples  	<< "\n");
 
-//			std::cout << "left buffer:\t " 	<< left.buffer.get() 	<< "\tend:\t" << (left.buffer.get()  + pow2BufferSize) << "\n";
-//			std::cout << "right buffer:\t " 	<< right.buffer.get() 	<< "\tend:\t" << (right.buffer.get() + pow2BufferSize) << "\n";
+//			info("left buffer:\t " 	<< left.buffer.get() 	<< "\tend:\t" << (left.buffer.get()  + pow2BufferSize) << "\n");
+//			info("right buffer:\t " 	<< right.buffer.get() 	<< "\tend:\t" << (right.buffer.get() + pow2BufferSize) << "\n");
         }
     }
 
-    if(print)
-        std::cout << "\n" << "\n";
+    if(print) {
+        info("\n" << "\n");
+    }
 }
 

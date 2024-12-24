@@ -364,7 +364,7 @@ void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, 
             g.setFont(10);
 
             Time time(columnId == DocumentDetails::Date ? details.getDateMillis() : details.getModifMillis());
-            getObj(MiscGraphics).drawShadowedText(g, time.formatted(L"%d \u00b7 %m \u00b7 %y"), 5, 13, Font(10), 0.65f);
+            getObj(MiscGraphics).drawShadowedText(g, time.formatted(L"%d \u00b7 %m \u00b7 %y"), 5, 13, Font(FontOptions(10)), 0.65f);
 
             break;
         }
@@ -405,7 +405,7 @@ void PresetPage::cellDoubleClicked(int rowNumber, int columnId, const MouseEvent
 }
 
 void PresetPage::loadItem(int itemIndex, bool ignoreSave) {
-    std::cout << "loading preset item" << itemIndex << ", ignore save: " << ignoreSave << "\n";
+    info("loading preset item" << itemIndex << ", ignore save: " << ignoreSave << "\n");
 
     jassert(isPositiveAndBelow(itemIndex, getNumRows()));
 
@@ -870,7 +870,7 @@ void PresetPage::updateCurrentPreset(const String& name) {
 }
 
 void PresetPage::setUploadResponse(const String& response) {
-    showMsg(response);
+    showConsoleMsg(response);
 }
 
 void PresetPage::stopSpinAnimation() {
@@ -1088,7 +1088,7 @@ void PresetPage::buttonClicked(Button* button) {
             currPresetFiltIndex = (numRows + currPresetFiltIndex) % numRows;
 
             if (oldIndex != currPresetFiltIndex) {
-                std::cout << "Attempting to load preset index : " << currPresetFiltIndex << "\n";
+                info("Attempting to load preset index : " << currPresetFiltIndex << "\n");
 
                 tableListBox->selectRow(currPresetFiltIndex);
                 loadItem(currPresetFiltIndex);
@@ -1131,7 +1131,7 @@ void PresetPage::buttonClicked(Button* button) {
                     downloadPresetThread.setDetails(deets);
                     downloadPresetThread.startThread(Thread::Priority::low);
                 } else {
-                    showMsg("Preset already downloaded!");
+                    showConsoleMsg("Preset already downloaded!");
                 }
             } else {
                 File uploadFile(deets.getFilename());
@@ -1225,7 +1225,7 @@ void PresetPage::UploadThread::run()
     if (response.isEmpty())
         response = "Could not connect to server"; {
         MessageManagerLock lock;
-        showMsg(response);
+        showConsoleMsg(response);
     }
 }
 
@@ -1239,7 +1239,7 @@ void PresetPage::DownloadDetailsThread::run() {
 
     String response = page->populateRemoteNames(); {
         MessageManagerLock lock;
-        showMsg(response);
+        showConsoleMsg(response);
         page->stopSpinAnimation();
     }
 }
@@ -1250,7 +1250,7 @@ void PresetPage::DownloadPresetThread::run() {
 
     String response = page->downloadPreset(deets); {
         MessageManagerLock lock;
-        showMsg(response);
+        showConsoleMsg(response);
 
         page->stopSpinAnimation();
         page->triggerAsyncUpdate();

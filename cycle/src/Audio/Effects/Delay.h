@@ -51,7 +51,7 @@ private:
 
 	int spinIters;
 	int pendingSpinIters;
-	long readPosition[2];
+	long readPosition[2]{};
 
 	double delayTime;
 	double feedback;

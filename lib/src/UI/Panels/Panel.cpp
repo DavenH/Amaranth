@@ -118,8 +118,9 @@ void Panel::render() {
 
     preDraw();
 
-    if(! drawLinesAfterFill && drawVerts)
+    if(! drawLinesAfterFill && drawVerts) {
         drawInterceptLines();
+    }
 
     drawCurvesAndSurfaces();
 
@@ -167,11 +168,13 @@ void Panel::constrainZoom() {
     NumberUtils::constrain<float>(rect.x, interactor->vertexLimits[interactor->dims.x]);
     NumberUtils::constrain<float>(rect.y, 0, 1);
 
-    if(rect.y + rect.h > 1)
+    if(rect.y + rect.h > 1) {
         rect.y = 1 - rect.h;
+    }
 
-    if(rect.x + rect.w > rect.xMaximum)
+    if(rect.x + rect.w > rect.xMaximum) {
         rect.x = rect.xMaximum - rect.w;
+    }
 }
 
 void Panel::drawBackground(bool fillBackground) {
@@ -358,8 +361,9 @@ void Panel::highlightSelectedVerts() {
 
             if (wrapsVerts) {
                 for (int j = 0; j < numElementsInArray(vals); ++j) {
-                    if(vals[j] > 1 && dimArr[j] == Vertex::Phase)
+                    if(vals[j] > 1 && dimArr[j] == Vertex::Phase) {
                         vals[j] -= 1;
+                    }
                 }
             }
 
@@ -498,11 +502,13 @@ void Panel::drawOutline() {
         gfx->fillRect(0, y1, right, low, false);
     }
 
-    if (paddingLeft != 0)
+    if (paddingLeft != 0) {
         gfx->fillRect(0, y1, x1, y2, false);
+    }
 
-    if (paddingRight != 0)
+    if (paddingRight != 0) {
         gfx->fillRect(x2, y1, right, y2, false);
+    }
 
     if (paddingRight + paddingLeft + vertPadding > 0) {
         gfx->disableSmoothing();
@@ -674,8 +680,8 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
 
             if (exHasPhase || whyHasAmp) {
                 for (int i = 0; i < speedEnv.size(); ++i) {
-                    speed 		= speedEnv[i];
-                    idx 		= int((IDeformer::tableSize - 1) * speed);
+                    speed = speedEnv[i];
+                    idx = int((IDeformer::tableSize - 1) * speed);
 
                     if(exHasPhase)
                         xy.x[i] = phaseGain * phaseTable[idx] + speed * (second.x - first.x);

@@ -1,3 +1,4 @@
+#include "JuceHeader.h"
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <App/Settings.h>

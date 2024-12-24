@@ -1,4 +1,5 @@
 
+#include "JuceHeader.h"
 #include <Definitions.h>
 #if !PLUGIN_MODE
 

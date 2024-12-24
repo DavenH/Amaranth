@@ -1,3 +1,4 @@
+#include "JuceHeader.h"
 #include <Definitions.h>
 
 #if PLUGIN_MODE
@@ -31,7 +32,7 @@ PluginWindow::PluginWindow (PluginProcessor* proc) :
 	,	doUpdateAfterResize(false)
 	,	haveFreedResources(false)
 {
-	std::cout << "Created plugin window\n";
+	info("Created plugin window\n");
 
 	setLookAndFeel(&getObj(SynthLookAndFeel));
 	changeSizeAndSet(getSetting(WindowSize));
@@ -45,7 +46,7 @@ PluginWindow::PluginWindow (PluginProcessor* proc) :
 		mainPanel->grabKeyboardFocus();
 
 		if(haveFreedResources) {
-			std::cout << "have freed UI, so activating contexts\n";
+			info("have freed UI, so activating contexts\n");
 			// TODO, this is an opengl thing -- not sure if still needed
 			// repo->activateContexts();
 

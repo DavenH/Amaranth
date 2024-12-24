@@ -61,10 +61,11 @@ void EnvelopeMesh::writeXML(XmlElement* envLayersElem) const {
 
 bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
     XmlElement* envMeshElem = envLayersElem->getChildByName("EnvelopeMesh");
-    if(envMeshElem == nullptr)
+    if(envMeshElem == nullptr) {
         return false;
+    }
 
-    XmlElement* mainMeshElem 	= envMeshElem->getChildByName("MainMesh");
+    XmlElement* mainMeshElem = envMeshElem->getChildByName("MainMesh");
 
     if(mainMeshElem != nullptr) {
         Mesh::readXML(mainMeshElem);

@@ -1,5 +1,8 @@
 #include "CommonGL.h"
 #include "OpenGLPanel.h"
+
+#include <Definitions.h>
+
 #include "Panel.h"
 #include "Texture.h"
 #include "../../App/SingletonRepo.h"
@@ -32,7 +35,7 @@ void OpenGLPanel::clear() {
 }
 
 void OpenGLPanel::newOpenGLContextCreated() {
-    std::cout << panel->getName() << " new context created\n";
+    info(panel->getName() << " new context created\n");
 
     commonGL->initializeTextures();
     commonGL->initLineParams();
@@ -43,7 +46,7 @@ void OpenGLPanel::newOpenGLContextCreated() {
 }
 
 void OpenGLPanel::openGLContextClosing() {
-    std::cout << panel->getName() << " context closing, clearing textures\n";
+    info(panel->getName() << " context closing, clearing textures\n");
 
     printErrors(repo);
 }

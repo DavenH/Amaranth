@@ -110,7 +110,7 @@ void SpectrumInter2D::showCoordinates() {
     String message =
             "#" + String(currHarmonic + 1) + " (" + String(int(fundFreq * (currHarmonic + 1))) + "Hz), " + yString;
 
-    showMsg(message);
+    showConsoleMsg(message);
 }
 
 bool SpectrumInter2D::isCurrentMeshActive() {

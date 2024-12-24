@@ -389,7 +389,7 @@ void IrModellerUI::showCoordinates() {
                                  String(NumberUtils::toDecibels(y), 2) + String(" dB");
 
     String coords = String("smp: ") + String(sampleNum) + String(", ") + dbString;
-    showMsg(coords);
+    showConsoleMsg(coords);
 }
 
 void IrModellerUI::writeXML(XmlElement* registryElem) const {
@@ -423,10 +423,10 @@ bool IrModellerUI::readXML(const XmlElement* registryElem) {
                 if (result >= 0) {
                     irModeller->doPostWaveLoad();
                 } else {
-                    std::cout << "Failed to load impulse response file: " << path << "\n";
+                    info("Failed to load impulse response file: " << path << "\n");
                 }
             } else {
-                std::cout << "Failed to load impulse response file: " << path << "\n";
+                info("Failed to load impulse response file: " << path << "\n");
             }
         }
     }
@@ -614,7 +614,7 @@ void IrModellerUI::deconvolve()
 
     if(! timeRast.isSampleable())
     {
-        showMsg("A waveshape must be defined");
+        showConsoleMsg("A waveshape must be defined");
         return;
     }
 

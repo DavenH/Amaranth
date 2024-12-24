@@ -133,13 +133,13 @@ void Waveform3D::buttonClicked(Button* button) {
         if(getSetting(WaveLoaded) && getSetting(DrawWave)) {
             getObj(IrModellerUI).deconvolve();
         } else {
-            showMsg("You must first be in sample view ('w').");
+            showConsoleMsg("You must first be in sample view ('w').");
         }
     } else if (button == &model) {
         if(getSetting(WaveLoaded) && getSetting(DrawWave)) {
             getObj(WaveformInter2D).modelAudioCycle();
         } else {
-            showMsg("You must first be in sample view ('w').");
+            showConsoleMsg("You must first be in sample view ('w').");
         }
     }
 

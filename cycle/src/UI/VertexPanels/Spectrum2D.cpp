@@ -478,7 +478,7 @@ int Spectrum2D::getLayerScratchChannel() {
 }
 
 void Spectrum2D::createScales() {
-    std::cout << "creating scales for Spectrum2D\n";
+    info("creating scales for Spectrum2D\n");
 
     vector<Rectangle<float> > newScales;
 

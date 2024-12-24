@@ -203,7 +203,7 @@ void VertexPropertiesPanel::sliderValueChanged(Slider* slider) {
 	for(int i = 0; i < numSliders; ++i) {
 		if (slider == properties[i].slider) {
 			if (!itrProps.sliderApplicable[i]) {
-				showMsg("Dimension not applicable in this context");
+				showConsoleMsg("Dimension not applicable in this context");
 				return;
 			}
 		}
@@ -273,7 +273,7 @@ void VertexPropertiesPanel::sliderValueChanged(Slider* slider) {
 		}
 
 		props->setValueToCurrent(false);
-		showMsg("Could not move without overlapping lines");
+		showConsoleMsg("Could not move without overlapping lines");
 	}
 
 	if (itrProps.isEnvelope) {
@@ -542,7 +542,7 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 
 	if (dim < 0) {
 		if (!currentInteractor->vertexProps.ampVsPhaseApplicable) {
-			showMsg("This dimension is not applicable in this context");
+			showConsoleMsg("This dimension is not applicable in this context");
 			return;
 		}
 
@@ -550,7 +550,7 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 		jassert(box == ampVsPhaseProperties->dfrmChanBox);
 	} else {
 		if (!currentInteractor->vertexProps.sliderApplicable[dim]) {
-			showMsg("This dimension is not applicable in this context");
+			showConsoleMsg("This dimension is not applicable in this context");
 			return;
 		}
 	}
@@ -560,7 +560,7 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 	if (selected.empty()) {
 		box->setSelectedId(NullDfrmId, dontSendNotification);
 
-		showMsg("Select a vertex first!");
+		showConsoleMsg("Select a vertex first!");
 		return;
 	}
 
@@ -573,7 +573,7 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 		guideIndex = id - NullDfrmId - 1;
 	}
 
-	std::cout << "set guide dim to " << dim << "\n";
+	info("set guide dim to " << dim << "\n");
 
 	vector<VertCube*> affectedLines;
 	vector<int> previousMappings;

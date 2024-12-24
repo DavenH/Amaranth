@@ -29,8 +29,3 @@
   #define bitsSplit(X, Y) X
 #endif
 
-#ifdef JUCE_MAC
-  #define platformSplit(X, Y) Y
-#else
-  #define platformSplit(X, Y) X
-#endif

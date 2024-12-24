@@ -295,17 +295,17 @@ void Equalizer::test() {
     for (int i = 0; i < numPartitions; ++i) {
         EqPartition &part = partitions[i];
 
-        std::cout << "Eq partition " << String(i) << "\n";
-        std::cout << "Gain: " << String(part.gainDB.getCurrentValue(), 2) << "\n";
-        std::cout << "Freq: " << String(part.centreFreq.getCurrentValue(), 2) << "\n";
+        info("Eq partition " << String(i) << "\n");
+        info("Gain: " << String(part.gainDB.getCurrentValue(), 2) << "\n");
+        info("Freq: " << String(part.centreFreq.getCurrentValue(), 2) << "\n");
 
         //		for(int j = 0; j < 2; ++j)
         //		{
-        //			std::cout << "State: " << part.states[j] << "\n";
+        //			info("State: " << part.states[j] << "\n");
         //			std::cout << ""
         //		}
 
-        std::cout << "\n";
+        info("\n");
     }
 
     for (int i = 0; i < 2; ++i) {

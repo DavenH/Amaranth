@@ -1,5 +1,8 @@
 #include "AppConstants.h"
 
+AppConstants::AppConstants(SingletonRepo* repo) : SingletonAccessor(repo, "AppConstants"){
+}
+
 int AppConstants::getAppConstant(int key) const {
     if(values.contains(key)) {
         return values[key];

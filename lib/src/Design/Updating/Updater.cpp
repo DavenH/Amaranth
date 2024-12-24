@@ -80,7 +80,7 @@ void Updater::Graph::update(Node* startingNode) {
         String action = getUpdateString();
 
         path = "Update: " + action + "\t" + path;
-        std::cout << path << "\n";
+        info(path << "\n");
 
         lastPath = path;
     }

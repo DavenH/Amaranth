@@ -8,9 +8,7 @@
 
 #define addSetting(X, Y) globalSettingsMap[X] = Setting(#X, Y)
 
-Settings::Settings(SingletonRepo* repo, ClientPaths paths) :
-        SingletonAccessor	(repo, "Settings")
-    ,	paths				(std::move(paths)) {
+Settings::Settings(SingletonRepo* repo) : SingletonAccessor(repo, "Settings") {
 }
 
 Settings::~Settings() {
@@ -22,11 +20,14 @@ Settings::~Settings() {
 
 void Settings::init() {
     initialiseSettings();
-    createPropertiesFile();
-    createSettingsFile();
+
+    String appDir(File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName());
+    const String path = appDir + propertiesPath + "/settings.json";
+    createPropertiesFile(path);
+    createSettingsFile(path);
 
     // TODO need to decouple this with a listener
-    XmlElement* midiSettings = settingsFileElem ? settingsFileElem->getChildByName("DEVICESETUP") : 0;
+    XmlElement* midiSettings = settingsFileElem ? settingsFileElem->getChildByName("DEVICESETUP") : nullptr;
     getObj(AudioHub).initialiseAudioDevice(midiSettings);
 }
 
@@ -85,7 +86,7 @@ void Settings::saveGlobalSettings(XmlElement* pluginElem) {
     std::unique_ptr outStream(settingsFile.createOutputStream());
 
     if (outStream == nullptr) {
-        showMsg("Problem saving settings file");
+        showConsoleMsg("Problem saving settings file");
         return;
     }
 
@@ -129,23 +130,32 @@ String Settings::getProperty(const String& key, const String& defaultStr) {
 
 void Settings::setProperty(const String& key,
                            const String& value) {
-    if (propsElem != nullptr)
+    if (propsElem != nullptr) {
         propsElem->setAttribute(key, value);
+    }
 }
 
-void Settings::createSettingsFile() {
-    settingsFile = File(paths.propertiesPath);
+void Settings::createSettingsFile(const String& path) {
+    if(path.isEmpty()) {
+        throw std::runtime_error("No properties file specified");
+    }
+    settingsFile = File(path);
 
-    if(! settingsFile.existsAsFile())
+    if(! settingsFile.existsAsFile()) {
         return;
+    }
 
     std::unique_ptr stream(settingsFile.createInputStream());
     XmlDocument xmlDoc(stream->readEntireStreamAsString());
     settingsFileElem = xmlDoc.getDocumentElement();
 }
 
-void Settings::createPropertiesFile() {
-    propertiesFile = File(paths.propertiesPath);
+void Settings::createPropertiesFile(const String& path) {
+    if(path.isEmpty()) {
+        throw std::runtime_error("No properties file specified");
+    }
+
+    propertiesFile = File(path);
 
     if (!propertiesFile.existsAsFile()) {
         (void) propertiesFile.create();

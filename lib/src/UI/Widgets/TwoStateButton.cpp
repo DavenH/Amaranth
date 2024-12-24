@@ -7,11 +7,10 @@ TwoStateButton::TwoStateButton(int x1, int y1, int x2, int y2,
                                Listener* listener,
                                SingletonRepo* repo,
                                const String& msgA, const String& keyA,
-                               const String& msgB, const String& keyB) :
-   IconButton(x1, y1, listener, repo, msgA, keyA),
-   state(First),
-   secondMessage(msgB),
-   secondKey(keyB) {
+                               const String& msgB, const String& keyB) : IconButton(x1, y1, listener, repo, msgA, keyA),
+                                                                         state(First),
+                                                                         secondMessage(msgB),
+                                                                         secondKey(keyB) {
     second = getObj(MiscGraphics).getIcon(x2, y2);
 }
 

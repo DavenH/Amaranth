@@ -1,3 +1,4 @@
+#include "JuceHeader.h"
 #include <Definitions.h>
 #include <App/SingletonRepo.h>
 #include <UI/IConsole.h>
@@ -8,9 +9,10 @@ WaveDragTarget::WaveDragTarget(SingletonRepo* repo) : SingletonAccessor(repo, "W
 }
 
 bool WaveDragTarget::isInterestedInFileDrag(const StringArray &files) {
-    for (int i = 0; i < files.size(); ++i) {
-        if (isFileGood(files[i]))
+    for (const auto& file : files) {
+        if (isFileGood(file)) {
             return true;
+        }
     }
 
     return false;
@@ -18,7 +20,7 @@ bool WaveDragTarget::isInterestedInFileDrag(const StringArray &files) {
 
 void WaveDragTarget::fileDragEnter(const StringArray &files, int x, int y) {
     if (isInterestedInFileDrag(files)) {
-        showMsg("Drop audio file to analyse");
+        showConsoleMsg("Drop audio file to analyse");
     }
 }
 
@@ -29,8 +31,8 @@ void WaveDragTarget::filesDropped(const StringArray &files, int x, int y) {
     if (listener == nullptr)
         return;
 
-    for (int i = 0; i < files.size(); ++i) {
-        File file(files[i]);
+    for (const auto& i : files) {
+        File file(i);
         if (isFileGood(file)) {
             listener->loadWave(file);
             return;

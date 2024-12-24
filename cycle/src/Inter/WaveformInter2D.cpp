@@ -43,7 +43,7 @@ void WaveformInter2D::showCoordinates() {
     float bipolarVal = 2 * columnVal;
     String coords = String(state.currentMouse.x * 2, 2) + String(L" \u03c0") + ", " + String(bipolarVal, 2);
 
-    showMsg(coords);
+    showConsoleMsg(coords);
 }
 
 bool WaveformInter2D::isCurrentMeshActive() {
@@ -56,7 +56,7 @@ Interactor* WaveformInter2D::getOppositeInteractor() {
 
 void WaveformInter2D::modelAudioCycle() {
     if (!getSetting(WaveLoaded)) {
-        showMsg("Load a wave file first!");
+        showConsoleMsg("Load a wave file first!");
         return;
     }
 

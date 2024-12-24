@@ -162,7 +162,7 @@ void SelectorPanel::draggedListIndex(int index) {
 	if(currentIndex + indexDragged < 0)
 		indexDragged = -currentIndex;
 
-	showMsg(String("Current ") + itemName + " " + String(currentIndex + indexDragged + 1));
+	showConsoleMsg(String("Current ") + itemName + " " + String(currentIndex + indexDragged + 1));
 
 	repaint();
 }

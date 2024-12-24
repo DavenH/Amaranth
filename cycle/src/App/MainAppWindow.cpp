@@ -1,3 +1,4 @@
+#include "JuceHeader.h"
 #include <Definitions.h>
 
 #if ! PLUGIN_MODE
@@ -15,7 +16,7 @@
 MainAppWindow::MainAppWindow(const String& commandLine) :
         DocumentWindow("Cycle", Colours::black, allButtons, true)
     ,	SingletonAccessor(repo, "MainAppWindow") {
-    setResizable(platformSplit(true, false), false);
+    setResizable(platformSplit(true, false, true), false);
     setTitleBarHeight(25);
 
     initializer = std::make_unique<Initializer>();

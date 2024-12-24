@@ -52,7 +52,7 @@ void MidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, int x, int y,
     g.setOpacity(1.f);
 
     if(isOver) {
-        showMsg(getText(midiNoteNumber));
+        showConsoleMsg(getText(midiNoteNumber));
     }
 }
 
@@ -80,7 +80,7 @@ void MidiKeyboard::drawWhiteNote(int midiNoteNumber, Graphics& g, int x, int y,
     g.setOpacity(1.f);
 
     if(isOver) {
-        showMsg(getText(midiNoteNumber));
+        showConsoleMsg(getText(midiNoteNumber));
     }
 }
 
@@ -169,7 +169,7 @@ void MidiKeyboard::mouseMove(const MouseEvent& e) {
         message = message + " (audition key)";
     }
 
-    showMsg(message);
+    showConsoleMsg(message);
 }
 
 void MidiKeyboard::mouseExit(const MouseEvent& e) {

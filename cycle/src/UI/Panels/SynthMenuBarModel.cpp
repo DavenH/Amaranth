@@ -255,7 +255,7 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 			                            Dialogs::DoNothing, true);
 		} else if (item == UnloadSample) {
 			if (!getSetting(WaveLoaded)) {
-				showMsg("No wave file loaded!");
+				showConsoleMsg("No wave file loaded!");
 				return;
 			}
 
@@ -335,7 +335,7 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 			else if (item == ViewStageD) newViewStage = ViewStages::PostFX;
 
 			if (Util::assignAndWereDifferent(getSetting(ViewStage), newViewStage)) {
-				std::cout << "view stage set to " << String((int) getSetting(ViewStage)) << "\n";
+				info("view stage set to " << String((int) getSetting(ViewStage)) << "\n");
 
 				// XXX
 				//				getObj(Updater).viewStageChanged();

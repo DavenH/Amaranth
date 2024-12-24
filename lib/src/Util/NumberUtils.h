@@ -16,10 +16,12 @@ public:
 
     template<typename T>
     static void constrain(T& n, const Range <T>& range) {
-        if (n < range.getStart())
+        if (n < range.getStart()) {
             n = range.getStart();
-        if (n > range.getEnd())
+        }
+        if (n > range.getEnd()) {
             n = range.getEnd();
+        }
     }
 
     template<typename T>
@@ -43,20 +45,25 @@ public:
     }
 
     static int log2i(unsigned x) {
-        if (x == 0)
+        if (x == 0) {
             return 0;
+        }
 
         unsigned count = 32;
-        while (!(x & (1 << --count)));
+        while (!(x & (1 << --count)))
+            ;
         return count;
     }
 
     static int nextPower2(unsigned x) {
-        if (x == 0)
+        if (x == 0) {
             return 0;
+        }
 
         unsigned result = 1;
-        while (result < x) result <<= 1;
+        while (result < x) {
+            result <<= 1;
+        }
 
         return result;
     }

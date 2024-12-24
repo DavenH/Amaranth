@@ -1,3 +1,4 @@
+#include "JuceHeader.h"
 #include <Definitions.h>
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
@@ -309,7 +310,7 @@ void ModMatrixPanel::resized() {
 void ModMatrixPanel::addDestination(int id, bool update) {
     for (int i = 0; i < outputs.size(); ++i) {
         if (outputs.getReference(i).id == id) {
-			showMsg("Output already available");
+			showConsoleMsg("Output already available");
 			return;
 		}
 	}
@@ -341,7 +342,7 @@ void ModMatrixPanel::addDestination(int id, bool update) {
 void ModMatrixPanel::addInput(int id, bool update) {
     for (int i = 0; i < inputs.size(); ++i) {
         if (inputs.getReference(i).id == id) {
-            showMsg("Input already available");
+            showConsoleMsg("Input already available");
             return;
         }
     }

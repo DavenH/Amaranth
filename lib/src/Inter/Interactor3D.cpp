@@ -474,7 +474,7 @@ void Interactor3D::moveVertsAndTest(const Array<Vertex*>& arr, float diff) {
             it->values[dims.x] -= diff;
         }
 
-        showMsg("Cannot merge due to line collision");
+        showConsoleMsg("Cannot merge due to line collision");
     }
 }
 
@@ -645,7 +645,7 @@ bool Interactor3D::connectSelected() {
             resetFinalSelection();
         }
     } else {
-        showMsg("Select exactly two vertices to connect");
+        showConsoleMsg("Select exactly two vertices to connect");
     }
 
     {
@@ -1002,7 +1002,7 @@ void Interactor3D::mergeSelectedVerts() {
     if (selected.size() == 2)
         mergeVertices(selected[0], selected[1], MergeAtCentre);
     else
-        showMsg("Must select two vertices to merge");
+        showConsoleMsg("Must select two vertices to merge");
 }
 
 bool Interactor3D::doCreateVertex() {

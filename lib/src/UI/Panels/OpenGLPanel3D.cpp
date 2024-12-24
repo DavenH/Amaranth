@@ -152,7 +152,7 @@ void OpenGLPanel3D::renderOpenGL() {
 }
 
 void OpenGLPanel3D::newOpenGLContextCreated() {
-    std::cout << panel->getName() << " new context created\n";
+    info(panel->getName() << " new context created\n");
 
     commonGL->initializeTextures();
 
@@ -189,7 +189,7 @@ void OpenGLPanel3D::deactivateContext() {
 }
 
 void OpenGLPanel3D::openGLContextClosing() {
-    std::cout << panel->getName() << " context closing, clearing textures \n";
+    info(panel->getName() << " context closing, clearing textures \n");
 //	HGLRC cc = wglGetCurrentContext();
 
     /*

@@ -352,7 +352,7 @@ void MainPanel::initialiseFXView() {
 }
 
 void MainPanel::viewModeSwitched() {
-    std::cout << "view mode switched to: " << viewMode << "\n";
+    info("view mode switched to: " << viewMode << "\n");
 
     bool showingWaveform 	= bottomTabs->getSelectedId() == TabWaveform;
     bool showingDeformers 	= topTabs->getSelectedId() == TabDeformers;
@@ -450,7 +450,7 @@ void MainPanel::attachComponent(PanelGroup& group) {
 }
 
 void MainPanel::attachVisibleComponents() {
-    std::cout << "Attaching visible components\n";
+    info("Attaching visible components\n");
 
     for (auto group : panelGroups) {
         attachComponent(*group);
@@ -846,7 +846,7 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
 }
 
 void MainPanel::componentVisibilityChanged() {
-    std::cout << "Main component visibility changed: " << (isShowing() ? "showing" : "not showing") << "\n";
+    info("Main component visibility changed: " << (isShowing() ? "showing" : "not showing") << "\n");
 
 //	if(isVisible())
 //	{
@@ -878,15 +878,15 @@ void MainPanel::repaintAll() {
 }
 
 void MainPanel::componentPeerChanged() {
-    std::cout << "Main Panel component peer changed\n";
+    info("Main Panel component peer changed\n");
 }
 
 void MainPanel::focusGained(FocusChangeType type) {
-    std::cout << "Main panel focus gained: " << (int) type << "\n";
+    info("Main panel focus gained: " << (int) type << "\n");
 }
 
 void MainPanel::componentMovedOrResized(bool wasMoved, bool wasResized) {
-    std::cout << "Main panel moved or resized, repainting all\n";
+    info("Main panel moved or resized, repainting all\n");
 
   #ifdef SINGLE_OPENGL_THREAD
     if(isVisible()) {

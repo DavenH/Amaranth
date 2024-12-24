@@ -67,7 +67,7 @@ void DerivativePanel::paint(Graphics& g) {
 }
 
 void DerivativePanel::mouseEnter(const MouseEvent& e) {
-    showMsg("Brightest peaks show the sharpest points in the waveshape.");
+    showConsoleMsg("Brightest peaks show the sharpest points in the waveshape.");
 }
 
 void DerivativePanel::calcDerivative() {

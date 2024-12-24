@@ -16,10 +16,10 @@ Document::Document(SingletonRepo* repo) : SingletonAccessor(repo, "Document"), v
 bool Document::open(const String& filename) {
     File file(filename);
 
-    std::cout << "opening " << file.getFileName() << "\n";
+    info("opening " << file.getFileName() << "\n");
 
     if (!file.existsAsFile()) {
-        std::cout << "file " << filename << " does not exist\n";
+        info("file " << filename << " does not exist\n");
         return false;
     }
 
@@ -33,7 +33,7 @@ bool Document::validate() {
     }
 
     if (validator->isDemoMode()) {
-        showMsg("Saving presets is disabled in this demo");
+        showConsoleMsg("Saving presets is disabled in this demo");
         return false;
     }
 
@@ -62,7 +62,7 @@ void Document::save(OutputStream* outStream) {
     }
 
     if (outStream == nullptr) {
-        showMsg("Problem saving preset");
+        showConsoleMsg("Problem saving preset");
         return;
     }
 

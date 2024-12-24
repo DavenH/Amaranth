@@ -171,8 +171,9 @@ void VertCube::getFinalIntercept(ReductionData& data, const MorphPosition& pos) 
 
     getInterceptsFast(arbitraryDimToUse, data, pos);
 
-    if(! data.pointOverlaps)
+    if(! data.pointOverlaps) {
         return;
+    }
 
     vertexAt(pos.time, arbitraryDimToUse, &data.v0, &data.v1, &data.v);
 }
@@ -405,9 +406,11 @@ bool VertCube::hasCommonVertsWith(const VertCube* cube) const {
 }
 
 int VertCube::indexOf(Vertex const* vertex) const {
-    for (int i = 0; i < numVerts; ++i)
-        if (vertex == lineVerts[i])
+    for (int i = 0; i < numVerts; ++i) {
+        if (vertex == lineVerts[i]) {
             return i;
+        }
+    }
 
     return CommonEnums::Null;
 }
@@ -419,7 +422,7 @@ Vertex* VertCube::getVertex(int index) const {
 }
 
 Array<Vertex*> VertCube::toArray() const {
-    return Array<Vertex*>(lineVerts, numVerts);
+    return {lineVerts, numVerts};
 }
 
 bool VertCube::setVertex(Vertex* vertex, int index) {
@@ -427,7 +430,7 @@ bool VertCube::setVertex(Vertex* vertex, int index) {
 
     for (int i = 0; i < numVerts; ++i) {
         if (vertex == lineVerts[i] && i != index) {
-            lineVerts[index] = 0;
+            lineVerts[index] = nullptr;
             return false;
         }
     }
@@ -461,16 +464,16 @@ Vertex* VertCube::findClosestVertex(const MorphPosition& pos) const {
     float minDist = 1000, dist;
     Vertex* closest;
 
-    for (int vertIdx = 0; vertIdx < numVerts; ++vertIdx) {
+    for (auto lineVert : lineVerts) {
         dist = 0;
 
-        dist += fabsf(pos.time - lineVerts[vertIdx]->values[Vertex::Time]);
-        dist += fabsf(pos.red  - lineVerts[vertIdx]->values[Vertex::Red] );
-        dist += fabsf(pos.blue - lineVerts[vertIdx]->values[Vertex::Blue]);
+        dist += fabsf(pos.time - lineVert->values[Vertex::Time]);
+        dist += fabsf(pos.red  - lineVert->values[Vertex::Red] );
+        dist += fabsf(pos.blue - lineVert->values[Vertex::Blue]);
 
         if (dist < minDist) {
             minDist = dist;
-            closest = lineVerts[vertIdx];
+            closest = lineVert;
         }
     }
 

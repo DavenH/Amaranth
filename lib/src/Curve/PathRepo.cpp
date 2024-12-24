@@ -52,8 +52,9 @@ void PathRepo::updateCache(int groupId, int layer) {
     int numGroups = meshes->getNumGroups();
 
     MeshLibrary::LayerGroup& group = meshes->getGroup(groupId);
-    if(group.meshType == LayerGroups::GroupScratch)
+    if(group.meshType == LayerGroups::GroupScratch) {
         return;
+    }
 
     MeshLibrary::Layer& lyr = group.layers[layer];
 
