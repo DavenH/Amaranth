@@ -7,8 +7,6 @@
 #include "Panel.h"
 #include "ScopedGL.h"
 #include "Texture.h"
-#include "OpenGL.h"
-#include "../../App/SingletonRepo.h"
 #include "../../Inter/Interactor.h"
 #include "../../Curve/Vertex2.h"
 

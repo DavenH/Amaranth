@@ -7,40 +7,40 @@ class SmoothedParameter
 {
 public:
     SmoothedParameter();
-    SmoothedParameter(double initialValue);
+    explicit SmoothedParameter(float initialValue);
 
-    virtual ~SmoothedParameter() {}
+    virtual ~SmoothedParameter() = default;
 
     void update(int sampleDelta);
-    void setValueDirect(double value);
-    void applyRampOrMultiplyApplicably(Buffer<float> workBuffer, Buffer<float> dest, double multiplicand = 1);
+    void setValueDirect(float value);
+    void maybeApplyRamp(Buffer<float> workBuffer, Buffer<float> dest, float multiplicand = 1.f);
 
     void updateToTarget();
     void setConvergeSpeed(int halflifeSamples)	{ this->halflifeSamples = halflifeSamples; }
     void setSmoothingActivity(bool doesSmooth) 	{ this->smoothingActive = doesSmooth; }
 
-    bool setTargetValue(double value);
-    double getTargetValue() const				{ return targetValue; }
-    double getCurrentValue() const				{ return currentValue; }
-    double getPastCurrentValue() const			{ return pastCurrentValue; }
-    bool hasRamp() const;
+    bool setTargetValue(float value);
+    [[nodiscard]] float getTargetValue() const		{ return targetValue; }
+    [[nodiscard]] float getCurrentValue() const		{ return currentValue; }
+    [[nodiscard]] float getPastCurrentValue() const	{ return pastCurrentValue; }
+    [[nodiscard]] bool hasRamp() const;
 
-    double operator*(double value) const		{ return currentValue * value; }
-    double operator+(double value) const		{ return currentValue + value; }
-    double operator-(double value) const		{ return currentValue - value; }
-    double operator/(double value) const		{ return value == 0.f ? 100.f : currentValue / value; };
+    float operator*(float value) const { return currentValue * value; }
+    float operator+(float value) const { return currentValue + value; }
+    float operator-(float value) const { return currentValue - value; }
+    float operator/(float value) const { return value == 0.f ? 100.f : currentValue / value; };
 
-    SmoothedParameter& operator=(double value)	{ targetValue = value; return *this;	}
-    bool operator!=(double value) const			{ return currentValue != value; 		}
+    SmoothedParameter& operator=(float value)	{ targetValue = value; return *this;	}
+    bool operator!=(float value) const			{ return currentValue != value; 		}
 
-    operator double() const						{ return smoothingActive ? currentValue : targetValue; }
+    operator float() const						{ return smoothingActive ? currentValue : targetValue; }
 
 private:
-    bool 	smoothingActive;
-    int 	halflifeSamples;
-    double 	targetValue;
-    double 	currentValue;
-    double 	pastCurrentValue;
+    bool  smoothingActive;
+    int   halflifeSamples;
+    float targetValue;
+    float currentValue;
+    float pastCurrentValue;
 
     JUCE_LEAK_DETECTOR(SmoothedParameter)
 };

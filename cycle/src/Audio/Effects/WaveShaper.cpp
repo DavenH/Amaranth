@@ -57,7 +57,7 @@ void Waveshaper::processBuffer(AudioSampleBuffer& audioBuffer) {
 
         oversamplers[i]->start(buffer);
 
-        preamp.applyRampOrMultiplyApplicably(rampBuffer.withSize(buffer.size()), buffer, 0.5);
+        preamp.maybeApplyRamp(rampBuffer.withSize(buffer.size()), buffer, 0.5);
         buffer.add(0.5f);
 
         ippsThreshold_LTValGTVal_32f_I(buffer, buffer.size(), 0.f, 0.f, 1.f, 1.f);
@@ -67,7 +67,7 @@ void Waveshaper::processBuffer(AudioSampleBuffer& audioBuffer) {
         }
 
         oversamplers[i]->stop();
-        postamp.applyRampOrMultiplyApplicably(rampBuffer.withSize(buffer.size()), buffer);
+        postamp.maybeApplyRamp(rampBuffer.withSize(buffer.size()), buffer);
     }
 }
 

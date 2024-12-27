@@ -15,6 +15,9 @@
 #include "DerivativePanel.h"
 #include "GeneralControls.h"
 #include "MainPanel.h"
+
+#include <Updating/CycleUpdater.h>
+
 #include "Morphing/MorphPanel.h"
 #include "OscControlPanel.h"
 #include "PlaybackPanel.h"
@@ -117,12 +120,14 @@ void MainPanel::initialisePanels() {
     keyboard->setLowestVisibleKey(2 * 12);
     this->setWantsKeyboardFocus(true);
 
-    Component* spectCtrls  	= spectrum3D->getControlsComponent();
-    Component* surfCtrls 	= waveform3D->getControlsComponent();
-    Component* envCtrls  	= envelope2D->getControlsComponent();
-    Component* dfrmCtrls	= dfrmPanel	->getControlsComponent();
-    Component* irmodCtrls 	= irModelUI	->getControlsComponent();
-    Component* wshpCtrls 	= waveshaperUI->getControlsPanel();
+    Component* spectCtrls = spectrum3D->getControlsComponent();
+    Component* surfCtrls  = waveform3D->getControlsComponent();
+    Component* envCtrls   = envelope2D->getControlsComponent();
+    Component* dfrmCtrls  = dfrmPanel->getControlsComponent();
+    Component* irmodCtrls = irModelUI->getControlsComponent();
+    Component* wshpCtrls  = waveshaperUI->getControlsPanel();
+
+    auto& updater = getObj(CycleUpdater);
 
     bottomTabs			= new TabbedSelector(repo);
     topTabs				= new TabbedSelector(repo);
@@ -132,10 +137,16 @@ void MainPanel::initialisePanels() {
     menuBar 			= new MenuBarComponent(&getObj(SynthMenuBarModel));
     bannerPanel			= new BannerPanel(repo);
 
-    cv_middleDragger 	= new Dragger(repo, Dragger::ReduceNothing);
-    cv_envSpectDragger 	= new Dragger(repo, Dragger::ReduceF3dDetail);
-    cv_wholeDragger 	= new Dragger(repo, Dragger::ReduceSurfDetail | Dragger::ReduceF3dDetail);
-    cv_spectSurfDragger = new Dragger(repo, Dragger::ReduceSurfDetail | Dragger::ReduceF3dDetail);
+    cv_middleDragger 	= new Dragger(repo);
+    cv_envSpectDragger 	= new Dragger(repo);
+    cv_wholeDragger 	= new Dragger(repo);
+    cv_spectSurfDragger = new Dragger(repo);
+
+    cv_envSpectDragger->addListener(spectrum3D);
+    cv_wholeDragger->addListener(spectrum3D);
+    cv_wholeDragger->addListener(waveform3D);
+    cv_spectSurfDragger->addListener(spectrum3D);
+    cv_spectSurfDragger->addListener(waveform3D);
 
     consBounds 			= new BoundWrapper(console);
     modBounds 			= new BoundWrapper(morphPanel);
@@ -260,7 +271,8 @@ void MainPanel::initialisePanels() {
 
     toOutline.insert(spectrum2D->getZoomPanel());
 
-    void* deleteMe[] = {
+
+    Deletable* deleteMe[] = {
         wavePair, spectPair, envPair, ev_bottomRight, ev_reverbUni, ev_delayEQ,
         ev_paramFX, ev_tubeParamFX, cv_bottomPair, cv_middlePair, wave2DPair, dfrmPair,
         irmodPair, wshpPair, cv_bnrOscCtrls, cv_genKeyBnr, cv_leftTriple, cv_menuCons,
@@ -268,19 +280,19 @@ void MainPanel::initialisePanels() {
         cv_spectSurf, cv_whole, xv_ctrl_key, xv_envDfmImp, xv_dfrm_imp, xv_FX_pair_1,
         xv_FX_Pair_2, xv_FX_pair_A, xv_TRTRBR_pair, xv_TRTRB_pair, xv_TRTR_pair, xv_TRBR_pair,
         xv_TRBL_pair, xv_TRT_pair, xv_TRB_pair, xv_TR_pair, xv_topPair, xv_whole,
-        xv_spectSurf, xv_playbackLeft, envCtrlBounds, topRightTabs, bottomTabs, topTabs,
-        bannerPanel, keybBounds, genBounds, consBounds, modBounds, playbackBounds, spectCtrlBounds,
+        xv_spectSurf, xv_playbackLeft, topRightTabs, bottomTabs, topTabs,
+        bannerPanel, envCtrlBounds, keybBounds, genBounds, consBounds, modBounds, playbackBounds, spectCtrlBounds,
         surfCtrlBounds, guideCtrlBounds, tubeCtrlBoundsB, spectZoomPanel, e3dZoomPanel, envZoomPanel,
         f2dZoomPanel, wave3DZoomPanel, wave2DZoomPanel, tubeZoomPanel, wsZoomPanel, dfrmZoomPanel,
         derivBounds, propsBounds, unisonBounds, bnrBounds, menuBounds, oscCtrlBounds, reverbBounds,
-        delayBounds, eqBounds, wsCtrlBounds, cv_botTabBounds, cv_topTabBounds, menuBar, xv_topBotDragger,
+        delayBounds, eqBounds, wsCtrlBounds, cv_botTabBounds, cv_topTabBounds, xv_topBotDragger,
         xv_spectSurfDragger, xv_envDfmImpDragger, xv_dfmImpDragger, xv_wholeDragger, cv_wholeDragger,
-        cv_middleDragger, cv_envSpectDragger, cv_spectSurfDragger, crsGL, f2GL, e2GL, dfmGL,
-        wsGL, tmGL, surfGL, f3GL, e3GL
+        cv_middleDragger, cv_envSpectDragger, cv_spectSurfDragger,
     };
     for (auto ptr : deleteMe) {
         deletable.add(ptr);
     }
+    deletableComponents.add(menuBar);
     initialized = true;
 }
 
@@ -325,16 +337,24 @@ void MainPanel::initialiseExtendedView() {
     xv_TRT_pair 	= new PanelPair(repo, propsBounds, 	xv_TRTR_pair, 	true, 	0.20f, 					"xv_trt_pair",  	mBord, 	180, 	220						);
     xv_TRB_pair 	= new PanelPair(repo, xv_TRBL_pair, xv_TRBR_pair, 	true, 	0.75f, 					"xv_trb_pair",		mBord, 	0, 		INT_MAX, 	255, 	450	);
     xv_TR_pair 		= new PanelPair(repo, xv_TRT_pair, 	xv_TRB_pair, 	false, 	0.25f, 					"xv_tr_pair",		mBord,  180, 	300						);
-    xv_spectSurf	= new PanelPair(repo, spectPair,		wavePair,	false,	xv_spectSurfPortion,	"xv_spectSurf",		lBord									);
+    xv_spectSurf	= new PanelPair(repo, spectPair,	wavePair,	    false,	xv_spectSurfPortion,	"xv_spectSurf",		lBord									);
     xv_playbackLeft	= new PanelPair(repo, playbackBounds, xv_spectSurf,	false,	0.02f, 					"xv_playbackLeft", 	mBord,	24, 	INT_MAX, 	28			);
     xv_topPair 		= new PanelPair(repo, xv_playbackLeft,xv_TR_pair, 	true, 	xv_wholePortion, 		"xv_top_pair",		lBord, 	360, 	720						);
     xv_whole 		= new PanelPair(repo, xv_topPair, 	xv_envDfmImp, 	false, 	xv_topBttmPortion, 		"xv_whole", 		lBord, 	0, 		INT_MAX, 	165, 	350	);
 
-    xv_spectSurfDragger	= new Dragger(repo, Dragger::ReduceF3dDetail  | Dragger::ReduceSurfDetail);
-    xv_topBotDragger	= new Dragger(repo, Dragger::ReduceE3DDetail  | Dragger::ReduceF3dDetail | Dragger::ReduceSurfDetail);
-    xv_wholeDragger 	= new Dragger(repo, Dragger::ReduceSurfDetail | Dragger::ReduceF3dDetail);
-    xv_envDfmImpDragger	= new Dragger(repo, Dragger::ReduceNothing);
-    xv_dfmImpDragger	= new Dragger(repo, Dragger::ReduceNothing);
+    xv_spectSurfDragger	= new Dragger(repo);
+    xv_topBotDragger	= new Dragger(repo);
+    xv_wholeDragger 	= new Dragger(repo);
+    xv_envDfmImpDragger	= new Dragger(repo);
+    xv_dfmImpDragger	= new Dragger(repo);
+
+    xv_spectSurfDragger->addListener(spectrum3D);
+    xv_spectSurfDragger->addListener(waveform3D);
+    xv_topBotDragger->addListener(spectrum3D);
+    xv_topBotDragger->addListener(waveform3D);
+    xv_topBotDragger->addListener(envelope3D);
+    xv_wholeDragger->addListener(spectrum3D);
+    xv_wholeDragger->addListener(waveform3D);
 
     xv_dfrm_imp	->setDragger(xv_dfmImpDragger	);
     xv_topPair	->setDragger(xv_wholeDragger	);
@@ -793,25 +813,25 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
 //	jassert(crsGL == 0);
 
     // needs to be resized first
-    crsGL 	= new OpenGLPanel	(repo, waveform2D);
-    f2GL 	= new OpenGLPanel	(repo, spectrum2D);
-    dfmGL	= new OpenGLPanel	(repo, dfrmPanel);
-    e2GL 	= new OpenGLPanel	(repo, envelope2D);
-    wsGL 	= new OpenGLPanel	(repo, waveshaperUI);
-    tmGL 	= new OpenGLPanel	(repo, irModelUI);
-    f3GL	= new OpenGLPanel3D (repo, spectrum3D, spectrum3D);
-    e3GL	= new OpenGLPanel3D	(repo, envelope3D, envelope3D);
-    surfGL 	= new OpenGLPanel3D	(repo, waveform3D, waveform3D);
-
-    wave2DZoomPanel	->panelComponentChanged(crsGL);
-    spectZoomPanel	->panelComponentChanged(f3GL);
-    envZoomPanel	->panelComponentChanged(e2GL);
-    e3dZoomPanel	->panelComponentChanged(e3GL);
-    f2dZoomPanel	->panelComponentChanged(f2GL);
-    wave3DZoomPanel	->panelComponentChanged(surfGL);
-    tubeZoomPanel	->panelComponentChanged(tmGL);
-    wsZoomPanel		->panelComponentChanged(wsGL);
-    dfrmZoomPanel	->panelComponentChanged(dfmGL);
+    // crsGL 	= new OpenGLPanel	(repo, waveform2D);
+    // f2GL 	= new OpenGLPanel	(repo, spectrum2D);
+    // dfmGL	= new OpenGLPanel	(repo, dfrmPanel);
+    // e2GL 	= new OpenGLPanel	(repo, envelope2D);
+    // wsGL 	= new OpenGLPanel	(repo, waveshaperUI);
+    // tmGL 	= new OpenGLPanel	(repo, irModelUI);
+    // f3GL	= new OpenGLPanel3D (repo, spectrum3D, spectrum3D);
+    // e3GL	= new OpenGLPanel3D	(repo, envelope3D, envelope3D);
+    // surfGL 	= new OpenGLPanel3D	(repo, waveform3D, waveform3D);
+    //
+    // wave2DZoomPanel	->panelComponentChanged(crsGL);
+    // spectZoomPanel	->panelComponentChanged(f3GL);
+    // envZoomPanel	->panelComponentChanged(e2GL);
+    // e3dZoomPanel	->panelComponentChanged(e3GL);
+    // f2dZoomPanel	->panelComponentChanged(f2GL);
+    // wave3DZoomPanel	->panelComponentChanged(surfGL);
+    // tubeZoomPanel	->panelComponentChanged(tmGL);
+    // wsZoomPanel		->panelComponentChanged(wsGL);
+    // dfrmZoomPanel	->panelComponentChanged(dfmGL);
 
     wave2DGroup = PanelGroup(waveform2D, 	wave2DPair, waveform2D->getOpenglPanel());
     surfGroup 	= PanelGroup(waveform3D, 	wavePair, 	waveform3D->getOpenglPanel());

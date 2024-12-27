@@ -18,9 +18,9 @@
 SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo) :
         CycleBasedVoice(parent, repo)
 {
-    timeLayers	= &getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
-    freqLayers	= &getObj(MeshLibrary).getGroup(LayerGroups::GroupSpect);
-    phaseLayers	= &getObj(MeshLibrary).getGroup(LayerGroups::GroupPhase);
+    timeLayers	= &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupTime);
+    freqLayers	= &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupSpect);
+    phaseLayers	= &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupPhase);
 
     const int maxPartials    = getConstant(MaxCyclePeriod) / 2;
     const double spectMargin = getRealConstant(SpectralMargin);
@@ -52,8 +52,16 @@ SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo
     cycleCompositeAlgo = Interpolate;
 }
 
-void SynthFilterVoice::initialiseNoteExtra(const int midiNoteNumber, const float velocity)
-{
+void SynthFilterVoice::initialiseNoteExtra(const int midiNoteNumber, const float velocity) {
+
+    const bool smooth = getDocSetting(ParameterSmoothing);
+    auto* props = getObj(MeshLibrary).getProps(LayerGroups::GroupTime, parent->voiceIndex);
+    jassert(props != nullptr);
+
+    if(props != nullptr) {
+        props->updateParameterSmoothing(smooth);
+    }
+
     // TODO
     freqRasterizer.updateOffsetSeeds(1, DeformerPanel::tableSize);
     phaseRasterizer.updateOffsetSeeds(1, DeformerPanel::tableSize);
@@ -152,8 +160,9 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
         MeshLibrary::Layer& layer = parent->meshLib->getLayer(LayerGroups::GroupTime, layerIdx);
         MeshLibrary::Properties& props = *layer.props;
 
-        if (!props.active || !layer.mesh->hasEnoughCubesForCrossSection())
+        if (!props.active || !layer.mesh->hasEnoughCubesForCrossSection()) {
             continue;
+        }
 
         double samplingDelta = oversampleFactor == 1 ? deltaPow2 : deltaPow2 / double(oversampleFactor);
 
@@ -280,7 +289,11 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 {
     bool wasStereo = noteState.isStereo;
 
-    Buffer<float> phaseAccBufs[] = { phaseAccumBuffer[Left].withSize(noteState.numHarmonics), phaseAccumBuffer[Right].withSize(noteState.numHarmonics) };
+    Buffer<float> phaseAccBufs[] = {
+        // stereo buffer?
+        phaseAccumBuffer[Left].withSize(noteState.numHarmonics),
+        phaseAccumBuffer[Right].withSize(noteState.numHarmonics)
+    };
     Buffer harmRast(rastBuffer.withSize(noteState.numHarmonics));
 
     if (!phaseLayers->size() == 0) {
@@ -339,7 +352,7 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
                 float pans[2];
                 Arithmetic::getPans(props.pan, pans[0], pans[1]);
 
-                float phaseAmpScale = spectrum3D->calcPhaseOffsetScale(props.range);
+                float phaseAmpScale = Spectrum3D::calcPhaseOffsetScale(props.range);
 
                 harmRast.mul(phaseAmpScale * MathConstants<float>::twoPi);
 
@@ -356,9 +369,7 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
     }
 }
 
-
-void SynthFilterVoice::updateValue(int outputId, int dim, float value)
-{
+void SynthFilterVoice::updateValue(int outputId, int dim, float value) {
     CycleBasedVoice::updateValue(outputId, dim, value);
     MeshLibrary::GroupLayerPair pair = getObj(ModMatrixPanel).toLayerIndex(outputId);
 

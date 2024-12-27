@@ -281,21 +281,22 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 
             // only use the last line segment of path each update
             int size  = (int) pencilPath.size();
-            Vertex2 a = pencilPath[size - 2];
-            Vertex2 b = pencilPath[size - 1];
+            Vertex2 c = pencilPath[size - 2];
+            Vertex2 d = pencilPath[size - 1];
 
-            if(a.x > b.x)
-                std::swap(a, b);
+            if(c.x > d.x) {
+                std::swap(c, d);
+            }
 
-            if(a.x == b.x) {
+            if(c.x == d.x) {
                 return;
             }
 
             for(auto& vert : mesh->getVerts()) {
                 Vertex2 icpt(vert->values[dims.x], vert->values[dims.y]);
 
-                if (NumberUtils::within(icpt.x, a.x, b.x)) {
-                    float curveY = Resampling::lerp(a.x, a.y, b.x, b.y, icpt.x);
+                if (NumberUtils::within(icpt.x, c.x, d.x)) {
+                    float curveY = Resampling::lerp(c.x, c.y, d.x, d.y, icpt.x);
                     NumberUtils::constrain(curveY, 0.f, 1.f);
 
                     vert->values[dims.y] = curveY;

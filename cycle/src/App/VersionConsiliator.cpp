@@ -22,6 +22,35 @@ void VersionConsiliator::transform(XmlElement* element) {
 	}
 }
 
+
+/*
+
+XmlElement* timeDomainElem = element->getChildByName("TimeDomainProperties");
+
+	auto& meshLib = getObj(MeshLibrary);
+	int layerSize = meshLib.getLayerGroup(LayerGroups::GroupTime).size();
+
+	if (timeDomainElem) {
+		bool first = false;
+
+		for(auto timePropsElem : timeDomainElem->getChildWithTagNameIterator("TimeProperties")) {
+			MeshLibrary::Properties props;
+
+			props.pan 			= timePropsElem->getDoubleAttribute("pan", 0.5);
+			props.fineTune 		= timePropsElem->getDoubleAttribute("fine", 0.5);
+			props.scratchChan 	= timePropsElem->getIntAttribute("scratchChannel", 0);
+			props.active 		= timePropsElem->getBoolAttribute("isEnabled", true);
+
+			if(first) {
+				panelControls->enableCurrent.setHighlit(props.active);
+				first = false;
+			}
+//			props.pan.setValueDirect(		timePropsElem->getDoubleAttribute("pan", 	0.5));
+//			props.fineTune.setValueDirect(	timePropsElem->getDoubleAttribute("fine", 	0.5));
+		}
+	}
+
+ */
 /*
 	<AllMeshes>
 	 	<TimeLayer TimeLayerSize=4>

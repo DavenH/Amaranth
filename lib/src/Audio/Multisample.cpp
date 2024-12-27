@@ -17,15 +17,17 @@ Multisample::Multisample(SingletonRepo* repo, MeshRasterizer* rasterizer) :
 }
 
 PitchedSample* Multisample::getSampleForNote(int midiNote, float velocity) {
-    if (midiNote < 0 && velocity < 0)
+    if (midiNote < 0 && velocity < 0) {
         return samples.getFirst();
+    }
 
     NumberUtils::constrain(velocity, 0.00001f, 0.99999f);
 
     for (auto& sample : samples) {
-        if(sample->midiRange.contains(midiNote) && sample->veloRange.contains(velocity))
+        if(sample->midiRange.contains(midiNote) && sample->veloRange.contains(velocity)) {
             return sample;
         }
+    }
 
     return nullptr;
 }
@@ -106,7 +108,6 @@ void Multisample::fillRanges() {
     for (auto& velocity : velocities)
         velocity->midiRange.setEnd(nextNote);
     }
-
 
     // extend lowest note to bottom
     if (samples.size() > 0) {
@@ -201,8 +202,9 @@ void Multisample::parseRanges() {
             NumberCode& codeSet = codeSets[i];
             codeSet.average = 0;
 
-            for(auto it = codeSet.numbers.begin(); it != codeSet.numbers.end(); ++it)
+            for(auto it = codeSet.numbers.begin(); it != codeSet.numbers.end(); ++it) {
                 codeSet.average += *it;
+            }
 
             codeSet.average /= codeSet.numbers.size();
 
@@ -275,24 +277,27 @@ PitchedSample* Multisample::addSample(const File& file, int defaultNote) {
 
     std::unique_ptr<PitchedSample> sample(new PitchedSample());
 
-    sample->midiRange 	= noteRange;
-    sample->veloRange 	= velRange;
+    sample->midiRange = noteRange;
+    sample->veloRange = velRange;
 
     if(sample->load(file.getFullPathName()) >= 0) {
-        if(defaultNote >= Constants::LowestMidiNote)
+        if(defaultNote >= Constants::LowestMidiNote) {
             sample->fundNote = defaultNote;
+        }
 
         current = sample.release();
 
         vector<PitchedSample*> toRemove;
 
         for (auto cand : samples) {
-            if(sample->midiRange.intersects(cand->midiRange) && sample->veloRange.intersects(cand->veloRange))
+            if(sample->midiRange.intersects(cand->midiRange) && sample->veloRange.intersects(cand->veloRange)) {
                 toRemove.push_back(cand);
+            }
         }
 
-        for(auto& i : toRemove)
+        for(auto& i : toRemove) {
             samples.removeObject(i, true);
+        }
 
         samples.add(current);
         fillRanges();

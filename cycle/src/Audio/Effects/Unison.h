@@ -32,11 +32,10 @@ public:
         float phase;
     };
 
-    // each voice has it's own parameter group that is gauranteed to
+    // each voice has it's own parameter group that is guaranteed to
     // be consistent from beginning to end of the calculation phases of
     // the voice
-    class ParamGroup
-    {
+    class ParamGroup {
     public:
         ParamGroup()
                 : panScale(0.5f), phaseScale(0.5f), jitterScale(0.8f), width(0.f), groupModeOrder(1)

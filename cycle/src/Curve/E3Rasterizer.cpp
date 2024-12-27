@@ -26,11 +26,8 @@ int E3Rasterizer::getIncrement() {
     return getObj(EnvelopeInter3D).isDetailReduced() ? 6 : 1;
 }
 
-float& E3Rasterizer::getPrimaryDimensionVar() {
-    int dim = getSetting(CurrentMorphAxis);
-    jassert(dim != Vertex::Time);
-
-    return morph[dim];
+int E3Rasterizer::getPrimaryViewDimension() {
+    return getSetting(CurrentMorphAxis);
 }
 
 void E3Rasterizer::performUpdate(UpdateType updateType) {
@@ -41,8 +38,6 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
     int increment = getIncrement();
     int numPixels = getObj(Waveform3D).getWindowWidthPixels();
     int gridSize = numPixels / increment;
-
-    float& indie = getPrimaryDimensionVar();
 
     if (numPixels <= 0) {
         ScopedLock sl(arrayLock);
@@ -65,11 +60,13 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
     ScopedLock sl(arrayLock);
     mesh = getObj(MeshLibrary).getCurrentMesh(getObj(EnvelopeInter2D).layerType);
     getObj(VisualDsp).resizeArrays(params);
+    int dependentAxis = getSetting(CurrentMorphAxis);
 
     for (int colIdx = 0; colIdx < gridSize; ++colIdx) {
         Column& col = columns[colIdx];
 
-        indie = colIdx * invGrid;
+        MorphPosition& p = getMorphPosition();
+        p[dependentAxis].setValueDirect(colIdx * invGrid);
         calcCrossPoints(mesh, 0.f);
 
         if (isSampleable()) {

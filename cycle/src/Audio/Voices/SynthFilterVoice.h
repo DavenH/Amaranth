@@ -34,6 +34,7 @@ private:
 	MeshRasterizer freqRasterizer;
 	MeshRasterizer phaseRasterizer;
 
+	// TODO use stereo buffers, use some workbuffer for allocation
 	ScopedAlloc<Ipp32f> magnitudes[2];
 	ScopedAlloc<Ipp32f> phases[2];
 	ScopedAlloc<Ipp32f> phaseAccumBuffer[2];

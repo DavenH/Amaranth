@@ -5,8 +5,8 @@
 
 #include <App/MeshLibrary.h>
 #include <Audio/SmoothedParameter.h>
-#include <Obj/ColorGradient.h>
 #include <Obj/Ref.h>
+#include <UI/ColorGradient.h>
 #include <UI/AsyncUIUpdater.h>
 #include <UI/Panels/Panel3D.h>
 #include <UI/ParameterGroup.h>
@@ -34,12 +34,12 @@ class Spectrum3D:
     ,	public Panel3D::DataRetriever
     ,	public Button::Listener
     ,	public Slider::Listener
+    ,	public MeshLibrary::Listener
     ,	public ParameterGroup::Worker
     ,	public LayerSelectionClient
     ,	public ControlsClient
     ,	public AsyncUIUpdater
-    ,	public TourGuide
-    ,	public Savable {
+    ,	public TourGuide {
 public:
     enum LayerMode { Additive, Subtractive };
 
@@ -82,9 +82,7 @@ public:
     void updateSmoothParametersToTarget(int voiceIndex);
     void setLayerParameterSmoothing(int voiceIndex, bool smooth);
 
-    /* Persistence */
-    void writeXML(XmlElement* element) const override;
-    bool readXML(const XmlElement* element) override;
+    void layerChanged(int layerGroup, int index) override;
 
     /* Accessors */
     void setPan(int layerIdx, bool isFreq, float value);
@@ -116,7 +114,7 @@ private:
 
     ClearSpacer spacer6;
     CriticalSection layerLock;
-    ColorGradient 	phaseGradient;
+    ColorGradient phaseGradient;
 
     IconButton phaseIcon;
     IconButton magsIcon;

@@ -68,9 +68,7 @@ void SelectorPanel::mouseDrag(const MouseEvent& e) {
     if (e.mods.isLeftButtonDown()) {
         int listSize = getSize();
 		draggedListIndex(-(e.getDistanceFromDragStartY() * listSize) / 60);
-    } else if (e.mods.isRightButtonDown()) {
-		return;
-	}
+    }
 }
 
 void SelectorPanel::mouseDown(const MouseEvent& e) {
@@ -79,14 +77,14 @@ void SelectorPanel::mouseDown(const MouseEvent& e) {
     } else if (e.mods.isRightButtonDown()) {
         menu.clear();
 
-		for(int i = 0; i < getSize(); ++i)
+		for(int i = 0; i < getSize(); ++i) {
 			menu.addItem(i + 1, String(i + 1), true, false);
+		}
 
     	// TODO what happened to menu.show()?
 		menu.showMenuAsync(PopupMenu::Options());
     	int id = 0;
-		if(id > 0)
-		{
+        if (id > 0) {
 			currentIndex = id - 1;
 			selectionChanged();
 			repaint();
@@ -94,11 +92,9 @@ void SelectorPanel::mouseDown(const MouseEvent& e) {
 	}
 }
 
-
 void SelectorPanel::mouseUp(const MouseEvent& e) {
     doSelectionChange();
 }
-
 
 void SelectorPanel::clickedOnRow(int row) {
     constrainIndex(row);
@@ -110,8 +106,8 @@ void SelectorPanel::clickedOnRow(int row) {
 }
 
 void SelectorPanel::resized() {
-    prevRect = Rectangle<int>(1, 1, getWidth() - 1, getHeight() / 4);
-    nextRect = Rectangle<int>(1, 3 * getHeight() / 4 - 2, getWidth() - 1, getHeight() / 4);
+    prevRect = Rectangle(1, 1, getWidth() - 1, getHeight() / 4);
+    nextRect = Rectangle(1, 3 * getHeight() / 4 - 2, getWidth() - 1, getHeight() / 4);
 }
 
 void SelectorPanel::setBoundsDelegate(int x, int y, int w, int h) {
@@ -157,10 +153,13 @@ void SelectorPanel::draggedListIndex(int index) {
 
 	int listSize = getSize();
 
-	if(currentIndex + indexDragged > listSize - 1)
+	if(currentIndex + indexDragged > listSize - 1) {
 		indexDragged = listSize - 1 - currentIndex;
-	if(currentIndex + indexDragged < 0)
+	}
+
+	if(currentIndex + indexDragged < 0) {
 		indexDragged = -currentIndex;
+	}
 
 	showConsoleMsg(String("Current ") + itemName + " " + String(currentIndex + indexDragged + 1));
 

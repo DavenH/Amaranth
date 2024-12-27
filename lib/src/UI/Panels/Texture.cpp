@@ -6,13 +6,15 @@ using namespace gl;
 
 TextureGL::TextureGL() :
         id			(UINT_MAX)
-    , 	blendFunc	(GL_SRC_ALPHA) {
+    , 	blendFunc	(GL_SRC_ALPHA)
+{
 }
 
 TextureGL::TextureGL(Image& image, int blendFunc) :
         Texture		(image)
     ,	id			(UINT_MAX)
-    , 	blendFunc	(blendFunc) {
+    , 	blendFunc	(blendFunc)
+{
     TextureGL::create();
 }
 

@@ -2,19 +2,24 @@
 
 #include "Bounded.h"
 #include "../../Obj/Ref.h"
+#include "../../Obj/Deletable.h"
 
-class BoundWrapper : public Bounded {
+class BoundWrapper
+        : public Bounded
+        , public Deletable {
     Ref<Component> component;
 
 public:
-    explicit BoundWrapper(Component* component) : component(component) {
+    explicit BoundWrapper(Component* component)
+        : Bounded(),
+          component(component) {
     }
 
     void setBounds(int x, int y, int width, int height) override {
         component->setBounds(x, y, width, height);
     }
 
-    const Rectangle<int> getBounds() override {
+    [[nodiscard]] Rectangle<int> getBounds() const override {
         return component->getBounds();
     }
 

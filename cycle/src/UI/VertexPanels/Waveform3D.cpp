@@ -25,11 +25,14 @@
 #include "../../UI/VisualDsp.h"
 #include "../../Util/CycleEnums.h"
 
+#define panelName "Waveform3D"
+
+
 Waveform3D::Waveform3D(SingletonRepo* repo) : 
-        Panel3D				(repo, "Waveform3D", this, false, true)
-    ,	SingletonAccessor	(repo, "Waveform3D")
+        Panel3D				(repo, panelName, this, UpdateSources::SourceWaveform3D, false, true)
+    ,	SingletonAccessor	(repo, panelName)
     ,	LayerSelectionClient(repo)
-    ,	Worker				(repo, "Waveform3D")
+    ,	Worker				(repo, panelName)
     ,	model				(5, 1, this, repo, "Auto-model sample waveshape")
     ,	deconvolve			(3, 4, this, repo, "Deconvolve sample waveshape to impulse response")
     ,	spacer8(8) {
@@ -40,6 +43,8 @@ Waveform3D::~Waveform3D() {
 }
 
 void Waveform3D::init() {
+    Panel3D::init();
+
     Image blue 		= PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
     surfInteractor 	= &getObj(WaveformInter3D);
     interactor3D  	= surfInteractor;
@@ -90,7 +95,7 @@ void Waveform3D::buttonClicked(Button* button) {
     getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 
     auto& meshLib = getObj(MeshLibrary);
-    MeshLibrary::LayerGroup& timeGroup = meshLib.getGroup(LayerGroups::GroupTime);
+    MeshLibrary::LayerGroup& timeGroup = meshLib.getLayerGroup(LayerGroups::GroupTime);
 
     if(button == &panelControls->addRemover.add || button == &panelControls->addRemover.remove) {
         bool forceUpdate = false;
@@ -183,11 +188,12 @@ bool Waveform3D::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate
     MeshLibrary::Properties* props = getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime);
 
     switch (knobIndex) {
-        case Pan:	props->pan 		= knobValue; break;
-        case Fine: 	props->fineTune = knobValue; break;
+        case Pan:	props->pan.setTargetValue(knobValue); break;
+        case Fine: 	props->fineTune.setTargetValue(knobValue); break;
         default: break;
     }
 
+    // did anything significant
     return knobIndex == Pan;
 }
 
@@ -211,43 +217,13 @@ void Waveform3D::doGlobalUIUpdate(bool force) {
     interactor->doGlobalUIUpdate(force);
 }
 
-//// compatibility code
-bool Waveform3D::readXML(const XmlElement* element) {
-    // TODO replace with mesh library hookin
-    ScopedLock sl2(layerLock);
-
-    XmlElement* timeDomainElem = element->getChildByName("TimeDomainProperties");
-
-    auto& meshLib = getObj(MeshLibrary);
-    int layerSize = meshLib.getGroup(LayerGroups::GroupTime).size();
-
-    if (timeDomainElem) {
-        bool first = false;
-
-        for(auto timePropsElem : timeDomainElem->getChildWithTagNameIterator("TimeProperties")) {
-            MeshLibrary::Properties props;
-
-            props.pan 			= timePropsElem->getDoubleAttribute("pan", 0.5);
-            props.fineTune 		= timePropsElem->getDoubleAttribute("fine", 0.5);
-            props.scratchChan 	= timePropsElem->getIntAttribute("scratchChannel", 0);
-            props.active 		= timePropsElem->getBoolAttribute("isEnabled", true);
-
-            if(first) {
-                panelControls->enableCurrent.setHighlit(props.active);
-                first = false;
-            }
-//			props.pan.setValueDirect(		timePropsElem->getDoubleAttribute("pan", 	0.5));
-//			props.fineTune.setValueDirect(	timePropsElem->getDoubleAttribute("fine", 	0.5));
-        }
-    }
-
+void Waveform3D::layerChanged(int layerGroup, int index) {
     panelControls->resetSelector();
     setKnobValuesImplicit();
-
-    return true;
 }
 
-void Waveform3D::writeXML(XmlElement* element) const {
+void Waveform3D::layerGroupAdded(int layerGroup) {
+    layerChanged(layerGroup, -1);
 }
 
 int Waveform3D::getLayerType() {
@@ -274,10 +250,10 @@ void Waveform3D::updateScratchComboBox() {
 bool Waveform3D::validateScratchChannels() {
     panelControls->populateScratchSelector();
 
-    int numChannels = getObj(MeshLibrary).getGroup(LayerGroups::GroupScratch).size();
+    int numChannels = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch).size();
     bool changed = false;
 
-    MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
+    MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupTime);
 
     for (int i = 0; i < timeGroup.size(); ++i) {
         MeshLibrary::Layer& layer = timeGroup[i];
@@ -302,7 +278,7 @@ int Waveform3D::getLayerScratchChannel() {
 }
 
 int Waveform3D::getNumActiveLayers() {
-    MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
+    MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupTime);
 
     int numActiveLayers = 0;
     for (int i = 0; i < timeGroup.size(); ++i) {
@@ -320,49 +296,6 @@ bool Waveform3D::shouldDrawGrid() {
     }
 
     return getNumActiveLayers() > 0;
-}
-
-void Waveform3D::updateSmoothParametersToTarget(int voiceIndex) {
-    MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
-
-    for (int i = 0; i < timeGroup.size(); ++i) {
-        MeshLibrary::Layer& layer = timeGroup[i];
-
-//		layer.props->pos[voiceIndex].red.updateToTarget();
-//		layer.props->pos[voiceIndex].blue.updateToTarget();
-    }
-}
-
-void Waveform3D::updateLayerSmoothedParameters(int voiceIndex, int deltaSamples) {
-    MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
-
-    for (int i = 0; i < timeGroup.size(); ++i) {
-        MeshLibrary::Layer& layer = timeGroup[i];
-//		layer.props->pos[voiceIndex].red.update(deltaSamples);
-//		layer.props->pos[voiceIndex].blue.update(deltaSamples);
-    }
-}
-
-void Waveform3D::updateSmoothedParameters(int deltaSamples) {
-    MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
-
-    for (int i = 0; i < timeGroup.size(); ++i) {
-        MeshLibrary::Layer& layer = timeGroup[i];
-
-//		layer.props->pan.update(deltaSamples);
-//		layer.props->fineTune.update(deltaSamples);
-    }
-}
-
-void Waveform3D::setLayerParameterSmoothing(int voiceIndex, bool smooth) {
-    MeshLibrary::LayerGroup& timeGroup = getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
-
-    for (int i = 0; i < timeGroup.size(); ++i) {
-        MeshLibrary::Layer& layer = timeGroup[i];
-
-//		layer.props->pos[voiceIndex].red.setSmoothingActivity(smooth);
-//		layer.props->pos[voiceIndex].blue.setSmoothingActivity(smooth);
-    }
 }
 
 Component* Waveform3D::getComponent(int which) {

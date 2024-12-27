@@ -23,19 +23,26 @@ Panel2D::Panel2D(SingletonRepo* repo,
         SingletonAccessor	(repo, name)
     ,	Panel				(repo, name)
     ,	curveIsBipolar		(curveIsBipolar)
-    ,	cyclicLines			(false) {
+    ,	haveVertZoom		(haveVertZoom)
+    ,	cyclicLines			(false)
+    ,   colorA              (0.6f, 0.6f, 0.6f)
+    ,   colorB              (0.5f, 0.5f, 0.5f, 0.7f)
+{
     alwaysDrawDepthLines = true;
-
-    colorA 		= Color(0.6f, 0.6f, 0.6f);
-    colorB 		= Color(0.5f, 0.5f, 0.5f, 0.7f);
-    openGL		= std::make_unique<OpenGLPanel>(repo, this);
-    wrapper		= std::make_unique<BoundWrapper>(openGL.get());
-    zoomPanel 	= std::make_unique<ZoomPanel>(repo, ZoomContext(this, wrapper.get(), true, true));
-    zoomPanel->panelComponentChanged(openGL.get());
-    zoomPanel->addListener(this);
 }
 
 Panel2D::~Panel2D() = default;
+
+void Panel2D::init() {
+    Panel::init();
+    openGL    = std::make_unique<OpenGLPanel>(repo, this);
+    wrapper   = std::make_unique<BoundWrapper>(openGL.get());
+    zoomPanel = std::make_unique<ZoomPanel>(repo, ZoomContext(this, wrapper.get(), true, haveVertZoom));
+    zoomPanel->panelComponentChanged(openGL.get());
+    zoomPanel->addListener(this);
+
+    openGL->attach();
+}
 
 void Panel2D::contractToRange(bool includeX) {
     RasterizerData& data = interactor->getRasterizer()->getRastData();
@@ -49,11 +56,11 @@ void Panel2D::drawCurvesAndSurfaces() {
         return;
     }
 
-    Range<float> xLimit = interactor->vertexLimits[interactor->dims.x];
-    bool extendsX 		= xLimit.getLength() > 1.f;
-    bool reduceAlpha 	= ! isMeshEnabled();
-    Color colourA 		= colorA.withAlpha(reduceAlpha ? 0.55f : 1.f);
-    Color colourB 		= colorB.withAlpha(reduceAlpha ? 0.55f : 1.f);
+    Range<float> xLimit  = interactor->vertexLimits[interactor->dims.x];
+    bool extendsX        = xLimit.getLength() > 1.f;
+    bool reduceAlpha     = !isMeshEnabled();
+    Color colourA        = colorA.withAlpha(reduceAlpha ? 0.55f : 1.f);
+    Color colourB        = colorB.withAlpha(reduceAlpha ? 0.55f : 1.f);
     RasterizerData& data = interactor->getRasterizer()->getRastData();
 
     Buffer<float> a;
@@ -71,7 +78,7 @@ void Panel2D::drawCurvesAndSurfaces() {
         }
 
         int istart 	= extendsX ? Arithmetic::binarySearch(xLimit.getStart(), waveX) : data.zeroIndex;
-        int iend 	= extendsX ? Arithmetic::binarySearch(xLimit.getEnd(), waveX) : jmin((int) waveX.size() - 1, data.oneIndex + 4);
+        int iend 	= extendsX ? Arithmetic::binarySearch(xLimit.getEnd(), waveX) : jmin(waveX.size() - 1, data.oneIndex + 4);
 
         if(istart > 4) {
             istart -= 4;
@@ -97,20 +104,20 @@ void Panel2D::drawCurvesAndSurfaces() {
 
 void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
                              const Color& colourA, const Color& colourB) {
-    float baseAlpha			= colourA.alpha() * 0.2f;
-    float baseY 			= sy(curveIsBipolar ? 0.5f : 0.f);
-    bool samplesAreBipolar 	= false;
+    float baseAlpha        = colourA.alpha() * 0.2f;
+    float baseY            = sy(curveIsBipolar ? 0.5f : 0.f);
+    bool samplesAreBipolar = false;
 
     Color sectionClr = colourA;
-    bool isLast = false;
-    int size 	= xy.size();
+    bool isLast      = false;
+    int size         = xy.size();
 
     ColorPos curr;
     vector<ColorPos> positions;
     positions.reserve(size + 10);
 
     int i = 0;
-    while(i < size - 1 && xy.x[i + 1] < 0) {
+    while (i < size - 1 && xy.x[i + 1] < 0) {
         ++i;
     }
 
@@ -290,7 +297,7 @@ void Panel2D::drawDepthLinesAndVerts() {
 }
 
 void Panel2D::drawDeformerTags() {
-    RasterizerData& data = interactor->getRasterizer()->getRastData();
+    RasterizerData& data  = interactor->getRasterizer()->getRastData();
     vector<Curve>& curves = data.curves;
 
     Color colors[Vertex::numElements];
@@ -305,7 +312,7 @@ void Panel2D::drawDeformerTags() {
 
     gfx->setCurrentColour(Color(1));
 
-    if(dfrmTags.empty()) {
+    if (dfrmTags.empty()) {
         return;
     }
 
@@ -331,9 +338,11 @@ void Panel2D::drawDeformerTags() {
                 if (isPositiveAndBelow(chan, (int) dfrmTags.size())) {
                     Rectangle<float> rect = dfrmTags[chan];
 
-                    float x 	  = e.x + cumeWidth - 2;
-                    float y 	  = jmin(getHeight() - rect.getHeight(), e.y - rect.getHeight() / 2 + (numTags & 1 ? 1 : 0)); //  + 5
-                    dfrmTex->rect = Rectangle<float>((float) roundToInt(x), (float) roundToInt(y), rect.getWidth(), rect.getHeight());
+                    float x = e.x + cumeWidth - 2;
+                    float y = jmin(getHeight() - rect.getHeight()
+                                 , e.y - rect.getHeight() / 2 + (numTags & 1 ? 1 : 0)); //  + 5
+                    dfrmTex->rect = Rectangle((float) roundToInt(x), (float) roundToInt(y), rect.getWidth()
+                                            , rect.getHeight());
 
                     gfx->setCurrentColour(colors[j]);
                     gfx->drawSubTexture(dfrmTex, rect);

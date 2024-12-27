@@ -1,5 +1,6 @@
 #pragma once
 
+#include <App/MeshLibrary.h>
 #include <App/SingletonAccessor.h>
 #include <Design/Updating/Updater.h>
 

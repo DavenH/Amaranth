@@ -15,23 +15,24 @@
 #include "../../Util/ScopedFunction.h"
 
 
-Panel3D::Panel3D(SingletonRepo* repo,
-                 const String& name,
-                 DataRetriever* retriever,
-                 bool isTransparent,
-                 bool haveHorzZoom) :
+Panel3D::Panel3D(
+    SingletonRepo* repo,
+    const String& name,
+    DataRetriever* retriever,
+    int updateSource,
+    bool isTransparent,
+    bool haveHorzZoom
+) :
         Panel				(repo, name, isTransparent)
     ,	SingletonAccessor	(repo, name)
     ,	volumeScale			(1.f)
     ,	volumeTrans			(0.5f)
     ,	haveLogarithmicY	(false)
-    ,	useVertices			(useVertices) {
-    openGL 		= std::make_unique<OpenGLPanel3D>(repo, this, retriever);
-    wrapper 	= std::make_unique<BoundWrapper>(openGL.get());
-    zoomPanel 	= std::make_unique<ZoomPanel>(repo, ZoomContext(this, wrapper.get(), haveHorzZoom, true));
-    zoomPanel->addListener(this);
-
-    drawLinesAfterFill = true;
+    ,	updateSource	    (updateSource)
+    ,	useVertices			(useVertices)
+    ,	haveHorzZoom	    (haveHorzZoom)
+    ,	dataRetriever		(retriever)
+{
 }
 
 Panel3D::~Panel3D() {
@@ -46,6 +47,17 @@ Panel3D::~Panel3D() {
     fDestColours.clear();
     texColours 	.clear();
     colours 	.clear();
+}
+
+void Panel3D::init() {
+    Panel::init();
+
+    openGL 		= std::make_unique<OpenGLPanel3D>(repo, this, dataRetriever);
+    wrapper 	= std::make_unique<BoundWrapper>(openGL.get());
+    zoomPanel 	= std::make_unique<ZoomPanel>(repo, ZoomContext(this, wrapper.get(), haveHorzZoom, true));
+    zoomPanel->addListener(this);
+
+    drawLinesAfterFill = true;
 }
 
 void Panel3D::bakeTextures() {
@@ -666,4 +678,12 @@ void Panel3D::zoomUpdated(int updateSource) {
         bakeTexturesNextRepaint();
         repaint();
     }
+}
+
+void Panel3D::dragStarted() {
+    getObj(Updater).update(updateSource, ReduceDetail);
+}
+
+void Panel3D::dragEnded() {
+    getObj(Updater).update(updateSource, RestoreDetail);
 }

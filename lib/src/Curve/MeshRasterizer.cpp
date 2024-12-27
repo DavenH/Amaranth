@@ -176,7 +176,7 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
             applyDeformers(intercept, morph);
             icpts.emplace_back(intercept);
 
-            int currentlyVisibleRYBDim = getPrimaryDimensionVar();
+            int currentlyVisibleRYBDim = getPrimaryViewDimension();
             if (calcDepthDims) {
                 midIcpt.cube = cube;
                 midIcpt.adjustedX = midIcpt.x;
@@ -295,14 +295,6 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
 
 int MeshRasterizer::getPrimaryViewDimension() {
     return Vertex::Time;
-}
-
-void MeshRasterizer::updateIndependentVariable(float value) {
-    getPrimaryDimensionVar() = value;
-}
-
-float& MeshRasterizer::getPrimaryDimensionVar() {
-    return morph.time;
 }
 
 void MeshRasterizer::calcIntercepts() {

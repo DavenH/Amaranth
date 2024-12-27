@@ -1,6 +1,8 @@
 #pragma once
 #include "JuceHeader.h"
 #include <vector>
+#include <cxxabi.h>
+#include <typeinfo>
 
 using namespace juce;
 using std::vector;
@@ -72,4 +74,13 @@ public:
     static int pitchAwareComparison(const String& a, const String& b);
     static vector<int> getIntegersInString(const String& str);
     static float getStringWidth(const Font& font, const String& text);
+
+    template<typename T>
+    static std::string className(const T *ptr) {
+        int status;
+        char *demangled    = abi::__cxa_demangle(typeid(*ptr).name(), nullptr, nullptr, &status);
+        std::string result = (status == 0) ? demangled : typeid(*ptr).name();
+        free(demangled);
+        return result;
+    }
 };

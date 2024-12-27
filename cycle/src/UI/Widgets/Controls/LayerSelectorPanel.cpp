@@ -1,7 +1,6 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Util/Arithmetic.h>
 
 #include "LayerSelectionClient.h"
 #include "LayerSelectorPanel.h"
@@ -13,24 +12,23 @@ LayerSelectorPanel::LayerSelectorPanel(SingletonRepo* repo, LayerSelectionClient
 }
 
 void LayerSelectorPanel::rowClicked(int row) {
-    getObj(MeshLibrary).getGroup(client->getLayerType()).current = row;
+    getObj(MeshLibrary).getLayerGroup(client->getLayerType()).current = row;
 }
 
 void LayerSelectorPanel::selectionChanged() {
-    getObj(MeshLibrary).getLayer(client->getLayerType(), currentIndex);
     client->layerChanged();
 }
 
 int LayerSelectorPanel::getCurrentIndexExternal() {
-    return getObj(MeshLibrary).getGroup(client->getLayerType()).current;
+    return getObj(MeshLibrary).getLayerGroup(client->getLayerType()).current;
 }
 
 int LayerSelectorPanel::getSize() {
-    return getObj(MeshLibrary).getGroup(client->getLayerType()).size();
+    return getObj(MeshLibrary).getLayerGroup(client->getLayerType()).size();
 }
 
 void LayerSelectorPanel::moveCurrentLayer(bool up) {
-    MeshLibrary::LayerGroup& group = getObj(MeshLibrary).getGroup(client->getLayerType());
+    MeshLibrary::LayerGroup& group = getObj(MeshLibrary).getLayerGroup(client->getLayerType());
     int size = group.size();
 
     if (currentIndex == 0 && !up || currentIndex == size - 1 && up) {
@@ -38,13 +36,12 @@ void LayerSelectorPanel::moveCurrentLayer(bool up) {
     }
 
     int movement = up ? 1 : -1;
-
-    iter_swap(group.layers.begin() + currentIndex, group.layers.begin() + currentIndex + movement);
+    int originalIndex = currentIndex;
     currentIndex += movement;
 
     rowClicked(currentIndex);
     repaint();
 
-    client->moveLayerProperties(currentIndex - movement, currentIndex);
+    getObj(MeshLibrary).moveLayer(client->getLayerType(), originalIndex, currentIndex);
     client->layerChanged();
 }

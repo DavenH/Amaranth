@@ -374,7 +374,7 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
             if (button == &addRemover.add) {
                 getObj(MeshLibrary).addLayer(layerType);
             } else if (button == &addRemover.remove) {
-                MeshLibrary::LayerGroup &group = getObj(MeshLibrary).getGroup(LayerGroups::GroupScratch);
+                MeshLibrary::LayerGroup &group = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch);
                 bool isLast = group.size() == 1;
 
                 // also adjusts current layer
@@ -1062,9 +1062,9 @@ void EnvelopeInter2D::enablementsChanged() {
     bool anyVolumeActive = false;
     bool anyPitchActive = false;
 
-    MeshLibrary::LayerGroup& scratchGroup = meshLib.getGroup(LayerGroups::GroupScratch);
-    MeshLibrary::LayerGroup& volumeGroup = meshLib.getGroup(LayerGroups::GroupVolume);
-    MeshLibrary::LayerGroup& pitchGroup = meshLib.getGroup(LayerGroups::GroupPitch);
+    MeshLibrary::LayerGroup& scratchGroup = meshLib.getLayerGroup(LayerGroups::GroupScratch);
+    MeshLibrary::LayerGroup& volumeGroup = meshLib.getLayerGroup(LayerGroups::GroupVolume);
+    MeshLibrary::LayerGroup& pitchGroup = meshLib.getLayerGroup(LayerGroups::GroupPitch);
 
     for (int i = 0; i < (int) scratchGroup.layers.size(); ++i) {
         anyScratchActive |= meshLib.getCurrentProps(i)->active;

@@ -6,8 +6,7 @@
 #include "../../App/SingletonRepo.h"
 #include "../../Definitions.h"
 
-Dragger::Dragger(SingletonRepo* repo, int bitfield) : SingletonAccessor(repo, "Dragger") {
-    this->bitfield = bitfield;
+Dragger::Dragger(SingletonRepo* repo) : SingletonAccessor(repo, "Dragger") {
 }
 
 void Dragger::mouseDown(const MouseEvent& e) {

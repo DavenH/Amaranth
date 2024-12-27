@@ -292,7 +292,7 @@ void VertexPropertiesPanel::setSelectedAndCaller(Interactor* interactor)
 void VertexPropertiesPanel::updateComboBoxes() {
 	auto& meshLib = getObj(MeshLibrary);
 
-	int numDeformLayers = meshLib.getGroup(LayerGroups::GroupDeformer).size();
+	int numDeformLayers = meshLib.getLayerGroup(LayerGroups::GroupDeformer).size();
 
 	vector<ComboBox*> boxes;
 

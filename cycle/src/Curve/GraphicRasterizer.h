@@ -14,7 +14,6 @@ public:
                       const String& name, int layerGroup,
                       bool cyclic, float margin);
 
-    float& getPrimaryDimensionVar() override;
     void pullModPositionAndAdjust() override;
     int getPrimaryViewDimension() override;
 

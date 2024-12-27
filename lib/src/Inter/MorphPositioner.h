@@ -6,8 +6,8 @@ class MorphPositioner {
 public:
     virtual ~MorphPositioner() = default;
 
-    virtual MorphPosition getMorphPosition()  	{ return MorphPosition(); }
-    virtual MorphPosition getOffsetPosition(bool withDepths) { return MorphPosition(); }
+    virtual MorphPosition getMorphPosition()  	{ return {}; }
+    virtual MorphPosition getOffsetPosition(bool withDepths) { return {}; }
 
     virtual int getPrimaryDimension() 			{ return 0; }
     virtual bool usesLineDepthFor(int dim) 		{ return false; }

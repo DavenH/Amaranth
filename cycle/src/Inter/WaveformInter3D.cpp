@@ -92,6 +92,7 @@ void WaveformInter3D::doCommitPencilEditPath() {
 }
 
 void WaveformInter3D::init() {
+    Interactor3D::init();
     selectionClient = std::make_unique<MeshSelectionClient3D>(this, repo, &getObj(EditWatcher), &getObj(MeshLibrary));
 
     // by this point the rasterizer better be set!

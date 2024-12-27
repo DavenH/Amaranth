@@ -18,7 +18,7 @@ public:
     int getIncrement();
     void init() override;
     void performUpdate(UpdateType updateType) override;
-    float& getPrimaryDimensionVar() override;
+    int getPrimaryViewDimension() override;
 
     vector<Column>& getColumns() { return columns; }
     Buffer<float> getArray() { return columnArray; }

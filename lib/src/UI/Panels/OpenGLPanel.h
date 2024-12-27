@@ -23,6 +23,7 @@ class OpenGLPanel :
 public:
     OpenGLPanel(SingletonRepo* repo, Panel2D* panel);
     ~OpenGLPanel() override;
+    void init() override;
 
     /* Opengl basics */
     void openGLContextClosing() override;

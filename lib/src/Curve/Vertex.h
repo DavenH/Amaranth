@@ -24,13 +24,13 @@ public:
 		values[Amp]   = y;
 	}
 
-	Vertex(float x, float y, float z, float k, float m) {
+	Vertex(float x, float y, float z, float r, float b) {
 		initValues();
-		values[0] = x;
-		values[1] = y;
-		values[2] = z;
-		values[3] = k;
-		values[4] = m;
+		values[Time] = x;
+		values[Phase] = y;
+		values[Amp] = z;
+		values[Red] = r;
+		values[Blue] = b;
 	}
 
 	~Vertex() = default;

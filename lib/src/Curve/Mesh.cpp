@@ -4,18 +4,21 @@
 #include "Vertex.h"
 #include "VertCube.h"
 #include "Mesh.h"
+
+#include <App/AppConstants.h>
+
 #include "../Definitions.h"
 
 using std::map;
 
 Mesh::Mesh() :
         name("unnamed")
-    , 	version(2.0) {
+    , 	version(Constants::MeshFormatVersion) {
 }
 
 Mesh::Mesh(String  name) :
         name(std::move(name))
-    , 	version(2.0) {
+    , 	version(Constants::MeshFormatVersion) {
 }
 
 void Mesh::destroy() {
@@ -106,7 +109,7 @@ void Mesh::writeXML(XmlElement* parentElem) const {
     parentElem->addChildElement(meshElem);
 
     meshElem->setAttribute("name", 		name);
-    meshElem->setAttribute("version", 	2.0);
+    meshElem->setAttribute("version",   Constants::MeshFormatVersion);
 
     int count = 0;
     map<Vertex*, int> idMap;
@@ -114,11 +117,11 @@ void Mesh::writeXML(XmlElement* parentElem) const {
         auto* vertElem = new XmlElement("Vertex");
 
         vertElem->setAttribute("time", 	 vert->values[Vertex::Time]	);
-        vertElem->setAttribute("phase",  vert->values[Vertex::Phase]	);
+        vertElem->setAttribute("phase",  vert->values[Vertex::Phase]);
         vertElem->setAttribute("amp", 	 vert->values[Vertex::Amp]	);
         vertElem->setAttribute("key", 	 vert->values[Vertex::Red]	);
         vertElem->setAttribute("mod", 	 vert->values[Vertex::Blue]	);
-        vertElem->setAttribute("weight", vert->values[Vertex::Curve]	);
+        vertElem->setAttribute("weight", vert->values[Vertex::Curve]);
 
         vertElem->setAttribute("id", count);
 

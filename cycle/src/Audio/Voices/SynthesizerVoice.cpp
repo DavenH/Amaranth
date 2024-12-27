@@ -78,14 +78,14 @@ void SynthesizerVoice::startNote(const int midiNoteNumber,
                                  const int currentPitchWheelPosition) {
     adjustedMidiNote = midiNoteNumber + octave * 12;
 
-    Range<int> midiRange(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    Range midiRange(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
     if (!NumberUtils::within(adjustedMidiNote, midiRange)) {
         stop(false);
         return;
     }
 
-    flags.playing = true;
-    flags.fadingIn = true;
+    flags.playing   = true;
+    flags.fadingIn  = true;
     flags.fadingOut = false;
 
     for (auto& envRasterizer: envRasterizers) {
@@ -93,13 +93,13 @@ void SynthesizerVoice::startNote(const int midiNoteNumber,
         envRasterizer->setNoteOn();
     }
 
-    velocity = velocityPrm;
-    attackSamplePos = 0;
+    velocity         = velocityPrm;
+    attackSamplePos  = 0;
     releaseSamplePos = 0;
 
     auto& oscPanel = getObj(OscControlPanel);
 
-    speedScale = 1. / oscPanel.getLengthInSeconds();
+    speedScale = 1.f / oscPanel.getLengthInSeconds();
     float key = normalizeKey(adjustedMidiNote);
 
     modMatrix->route(key, ModMatrixPanel::KeyScale, voiceIndex);
@@ -120,6 +120,8 @@ void SynthesizerVoice::startNote(const int midiNoteNumber,
 
     currentVoice->initialiseNote(adjustedMidiNote, velocity);
     currentLatencySamples = getCurrentOscillatorLatency();
+
+    getObj(MeshLibrary).updateAllSmoothedParamsToTarget(voiceIndex);
 }
 
 void SynthesizerVoice::stopNote(float velocity, bool allowTailOff) {
@@ -221,8 +223,9 @@ void SynthesizerVoice::renderNextBlock(AudioSampleBuffer& audioBuffer, int start
         }
     }
 
-    for (int i = 0; i < outputBuffer.numChannels; ++i)
+    for (int i = 0; i < outputBuffer.numChannels; ++i) {
         outputBuffer[i].add(renderBuffer[i]);
+    }
 }
 
 void SynthesizerVoice::fillRemainingLatencySamples(StereoBuffer& outputBuffer, int numSamples, float mappedVelocity) {
@@ -308,16 +311,18 @@ int SynthesizerVoice::getCurrentOscillatorLatency() {
     int oscLatency = 0;
     bool isRealtime = true;
 
-#if PLUGIN_MODE
+  #if PLUGIN_MODE
     isRealtime = ! repo->getPluginProcessor().isNonRealtime();
-#endif
+  #endif
 
     if (isRealtime && getDocSetting(OversampleFactorRend) > 1 ||
-        !isRealtime && getDocSetting(OversampleFactorRend) > 1)
+        !isRealtime && getDocSetting(OversampleFactorRend) > 1) {
         oscLatency = currentVoice->getOscillatorLatencySamples();
+    }
 
-    if (getDocSetting(ResamplingAlgoRltm) && (flags.haveFilter || flags.haveFFTPhase))
+    if (getDocSetting(ResamplingAlgoRltm) && (flags.haveFilter || flags.haveFFTPhase)) {
         oscLatency += getConstant(ResamplerLatency);
+    }
 
     return oscLatency;
 }
@@ -395,7 +400,7 @@ void SynthesizerVoice::resetNote() {
 
 void SynthesizerVoice::calcEnvelopeBuffers(int numSamples) {
     speedScale.update(numSamples);
-    double deltaX = speedScale / 44100.0; //getSampleRate();
+    double deltaX = speedScale.getCurrentValue() / 44100.0; //getSampleRate();
 
     bool anyActive = false;
 
@@ -414,7 +419,6 @@ void SynthesizerVoice::calcEnvelopeBuffers(int numSamples) {
 
     if (!anyActive) {
         resetNote();
-        return;
     }
 }
 
@@ -424,12 +428,13 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
 
     for (int groupIndex = 0; groupIndex < numElementsInArray(envGroups); ++groupIndex) {
         EnvRastGroup& group = *envGroups[groupIndex];
-        int size = meshLib->getGroup(group.layerGroup).size();
+        int size = meshLib->getLayerGroup(group.layerGroup).size();
 
         int numLocalEnvelopes = 0;
         for (int layerIndex = 0; layerIndex < size; ++layerIndex) {
-            if (!meshLib->getEnvProps(group.layerGroup, layerIndex)->global)
+            if (!meshLib->getEnvProps(group.layerGroup, layerIndex)->global) {
                 ++numLocalEnvelopes;
+            }
         }
 
         if (numLocalEnvelopes != group.size()) {
@@ -517,23 +522,23 @@ float SynthesizerVoice::getEffectiveLevel() {
 }
 
 void SynthesizerVoice::testMeshConditions() {
-    Ref surface = &getObj(Waveform3D);
+    Ref surface    = &getObj(Waveform3D);
     Ref spectrum3D = &getObj(Spectrum3D);
 
     flags.haveFFTPhase = true;
-    flags.haveFilter = true;
-    flags.haveTime = true;
+    flags.haveFilter   = true;
+    flags.haveTime     = true;
 
     ScopedLock sl1(surface->getLayerLock());
     ScopedLock sl2(spectrum3D->getLayerLock());
 
-    bool haveAnyValidTimeLayers = meshLib->hasAnyValidLayers((int) LayerGroups::GroupTime);
+    bool haveAnyValidTimeLayers = meshLib->hasAnyValidLayers(LayerGroups::GroupTime);
     bool haveAnyValidFreqLayers = spectrum3D->haveAnyValidLayers(true, haveAnyValidTimeLayers);
     bool haveAnyValidPhaseLayers = spectrum3D->haveAnyValidLayers(false, haveAnyValidTimeLayers);
 
-    flags.haveFFTPhase &= haveAnyValidPhaseLayers;
-    flags.haveTime &= haveAnyValidTimeLayers;
-    flags.haveFilter &= haveAnyValidFreqLayers;
+    flags.haveFFTPhase  &= haveAnyValidPhaseLayers;
+    flags.haveTime      &= haveAnyValidTimeLayers;
+    flags.haveFilter    &= haveAnyValidFreqLayers;
 
     if (!haveAnyValidFreqLayers && !haveAnyValidTimeLayers) {
         stop(false);

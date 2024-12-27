@@ -80,8 +80,9 @@ void ParameterGroup::setKnobValue(int knobIndex, double knobValue,
         knobs[knobIndex]->setValue(knobValue, dontSendNotification);
     }
 
-    if(doGlobalUIUpdate	&& didAnythingSignificant && worker->shouldTriggerGlobalUpdate(knobs[knobIndex]))
+    if(doGlobalUIUpdate	&& didAnythingSignificant && worker->shouldTriggerGlobalUpdate(knobs[knobIndex])) {
         triggerRefreshUpdate();
+    }
 }
 
 double ParameterGroup::getKnobValue(int knobIdx) const {

@@ -18,13 +18,13 @@ EffectPanel::EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZ
     ,	SingletonAccessor(repo, name)
     ,	localRasterizer	 (repo, name + "Rasterizer")
 {
-    vertPadding 	= 0;
-    paddingLeft 	= 0;
-    paddingRight 	= 0;
+    vertPadding  = 0;
+    paddingLeft  = 0;
+    paddingRight = 0;
 
-    backgroundTimeRelevant 	= false;
-    speedApplicable			= false;
-    deformApplicable		= false;
+    backgroundTimeRelevant = false;
+    speedApplicable        = false;
+    deformApplicable       = false;
 
     colorA = Color(0.8f, 0.8, 0.9f);
     colorB = Color(0.8f, 0.8, 0.9f);
@@ -41,15 +41,15 @@ EffectPanel::EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZ
         flag = false;
     }
 
-    vertexProps.dimensionNames.set(Vertex::Time, 	{});
-    vertexProps.dimensionNames.set(Vertex::Red, 	{});
-    vertexProps.dimensionNames.set(Vertex::Blue, 	{});
-    vertexProps.dimensionNames.set(Vertex::Phase,	"x");
-    vertexProps.dimensionNames.set(Vertex::Amp, 	"y");
+    vertexProps.dimensionNames.set(Vertex::Time,  {});
+    vertexProps.dimensionNames.set(Vertex::Red,   {});
+    vertexProps.dimensionNames.set(Vertex::Blue,  {});
+    vertexProps.dimensionNames.set(Vertex::Phase, "x");
+    vertexProps.dimensionNames.set(Vertex::Amp,   "y");
 }
 
 bool EffectPanel::doCreateVertex() {
-    bool succeeded = addNewCube(0, state.currentMouse.x, state.currentMouse.y);
+    bool succeeded = addNewCube(0, state.currentMouse.x, state.currentMouse.y, 0.f);
 
     vector<Vertex*>& selected = getSelected();
 
@@ -62,6 +62,11 @@ bool EffectPanel::doCreateVertex() {
     flag(DidMeshChange) = succeeded;
 
     return succeeded;
+}
+
+void EffectPanel::init() {
+    Panel2D::init();
+    Interactor2D::init();
 }
 
 float EffectPanel::getDragMovementScale() {
@@ -82,7 +87,7 @@ bool EffectPanel::addNewCube(float startTime, float x, float y, float curve) {
         beforeVerts = verts;
     }
 
-    Vertex* vertex = new Vertex(x, y);
+    auto* vertex = new Vertex(x, y);
     vertex->values[Vertex::Curve] = curve;
     state.currentVertex = vertex;
 
@@ -96,8 +101,7 @@ bool EffectPanel::addNewCube(float startTime, float x, float y, float curve) {
     return true;
 }
 
-bool EffectPanel::isMeshEnabled() const
-{
+bool EffectPanel::isMeshEnabled() const {
     return isEffectEnabled();
 }
 

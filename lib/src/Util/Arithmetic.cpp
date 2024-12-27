@@ -12,7 +12,7 @@ void Arithmetic::applyLogMapping(Buffer<Ipp32f> array, float tension) {
 void Arithmetic::applyInvLogMapping(Buffer<Ipp32f> array, float tension) {
     float lntens = logf(MathConstants<float>::twoPi * tension + 1.000001f);
 
-    array.mul(lntens).exp().add(-1.000001).mul(IPP_RPI * 0.5f / float(tension));
+    array.mul(lntens).exp().add(-1.000001).mul(0.5f / float(tension * MathConstants<float>::pi));
 }
 
 int Arithmetic::getNoteForValue(float value, const Range<int>& range) {

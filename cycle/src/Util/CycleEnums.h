@@ -6,7 +6,9 @@
 
 namespace LayerGroups {
     enum {
-        GroupWavePitch = numDefaultGroups, GroupWaveshaper, GroupIrModeller
+        GroupWavePitch = numDefaultGroups,
+        GroupWaveshaper,
+        GroupIrModeller
     };
 }
 
@@ -52,26 +54,27 @@ namespace WindowSizes {
 
 namespace Constants {
     enum {
-        WaveshaperPadding = numAppConstants + 1,
-        MaxDetune,
-        BuildNumber,
-        NumVoices,
-        BetaExpiry,
-        ProductCode,
-        AmpTensionScale,
-        FreqTensionScale,
-        FreqMargin,
-        EnvResolution,
-        MaxBufferSize,
-        SpectralMargin,
-        MaxCyclePeriod,
-        MaxUnisonOrder,
-        MinLineLength,
-        DeformerPadding,
-        FFTLogTensionAmp,
-        ResamplerLatency,
-        IrModellerPadding,
-        ControllerValueSaturation
+        // keys
+        WaveshaperPadding = numAppConstants + 1
+    ,   MaxDetune
+    ,   BuildNumber
+    ,   MaxNumVoices
+    ,   BetaExpiry
+    ,   ProductCode
+    ,   AmpTensionScale
+    ,   FreqTensionScale
+    ,   FreqMargin
+    ,   EnvResolution
+    ,   MaxBufferSize
+    ,   SpectralMargin
+    ,   MaxCyclePeriod
+    ,   MaxUnisonOrder
+    ,   DeformerPadding
+    ,   FFTLogTensionAmp
+    ,   ResamplerLatency
+    ,   IrModellerPadding
+    ,   ControllerValueSaturation
+    ,   numCycleConstants
     };
 }
 

@@ -43,6 +43,11 @@ MorphPanel::MorphPanel(SingletonRepo* repo) :
     ,	blueSlider(	repo, "Blue","Blue range view position", true)
     ,	panSlider(	repo, "PAN",  "Pan view position (0 = left, 1 = right)", true)
     ,	ignoreNextEditMessage(false) {
+}
+
+void MorphPanel::init() {
+//	mappingBox.setSelectedId(ModMappingId, true);
+
     yllwSlider.dim = Vertex::Time;
     redSlider.dim  = Vertex::Red;
     blueSlider.dim = Vertex::Blue;
@@ -98,6 +103,9 @@ MorphPanel::MorphPanel(SingletonRepo* repo) :
                                         numElementsInArray(linkTemp), this, true);
 
     setWantsKeyboardFocus(false);
+
+    midiRange = Range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    updateHighlights();
 }
 
 void MorphPanel::setDepth(int dim, float depth) {
@@ -105,19 +113,11 @@ void MorphPanel::setDepth(int dim, float depth) {
     insertDepth[dim] = depth;
 }
 
-void MorphPanel::init() {
-//	mappingBox.setSelectedId(ModMappingId, true);
-
-    midiRange = Range<int>(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
-    updateHighlights();
-}
-
 void MorphPanel::paint(Graphics& g) {
     getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
     g.setFont(*getObj(MiscGraphics).getVerdana12());
     g.setColour(Colour::greyLevel(0.6f));
-
 
     Rectangle gradBounds(getLocalBounds().removeFromRight(140).removeFromTop(120));
 
@@ -141,9 +141,9 @@ void MorphPanel::paint(Graphics& g) {
     getObj(MiscGraphics).drawShadowedText(g, positionStr, positionX, yllwSlider.getY() - 5, *silkscreen);
 
     Rectangle<int> rects[] = {
-            Rectangle<int>(redSlider.getRight()  + 2, redSlider.getY(),  4, redSlider.getHeight()),
-            Rectangle<int>(yllwSlider.getRight() + 2, yllwSlider.getY(), 4, yllwSlider.getHeight()),
-            Rectangle<int>(blueSlider.getRight()  + 2, blueSlider.getY(),  4, blueSlider.getHeight())
+            Rectangle(redSlider.getRight()  + 2, redSlider.getY(),  4, redSlider.getHeight()),
+            Rectangle(yllwSlider.getRight() + 2, yllwSlider.getY(), 4, yllwSlider.getHeight()),
+            Rectangle(blueSlider.getRight()  + 2, blueSlider.getY(),  4, blueSlider.getHeight())
     };
 
     Colour colours[] = {
@@ -160,7 +160,7 @@ void MorphPanel::paint(Graphics& g) {
     }
 
     getObj(MiscGraphics).drawJustifiedText(g, "x axis", 	primeYllw, 	primeBlue, 	true, dimCO.get());
-    getObj(MiscGraphics).drawJustifiedText(g, "link", 		linkYllw, linkBlue, 	true, linkCO.get());
+    getObj(MiscGraphics).drawJustifiedText(g, "link", 		linkYllw,   linkBlue, 	true, linkCO.get());
     getObj(MiscGraphics).drawJustifiedText(g, "cube range", rangeYllw, 	rangeBlue, 	true, rangeCO.get());
 }
 
@@ -175,7 +175,11 @@ float MorphPanel::getValue(int index) {
 }
 
 MorphPosition MorphPanel::getMorphPosition() {
-    return {(float) yllwSlider.getValue(), (float) redSlider.getValue(), (float) blueSlider.getValue()};
+    return {
+        (float) yllwSlider.getValue(),
+        (float) redSlider.getValue(),
+        (float) blueSlider.getValue()
+    };
 }
 
 MorphPosition MorphPanel::getOffsetPosition(bool includingDepths) {
@@ -199,8 +203,8 @@ void MorphPanel::resized() {
     bounds.reduce(5, 5);
 
     Rectangle<int> sliderBounds = bounds;
-
     Rectangle<int> iconBounds = sliderBounds.removeFromBottom(45);
+
     cubeBounds = sliderBounds.removeFromRight(130).expanded(10, 10);
     cubeBounds.removeFromLeft(15);
     cubeDisplay->setBounds(cubeBounds);
@@ -233,16 +237,18 @@ void MorphPanel::resized() {
 
 void MorphPanel::sliderValueChanged(Slider* slider) {
     if (slider == &panSlider) {
-        if(getSetting(ViewStage) >= ViewStages::PostEnvelopes)
+        if(getSetting(ViewStage) >= ViewStages::PostEnvelopes) {
             triggerRefreshUpdate();
+        }
 
         return;
     }
 
     auto* mslider = dynamic_cast<MorphSlider*>(slider);
 
-    if(mslider != nullptr)
+    if(mslider != nullptr) {
         updateModPosition(mslider->dim, slider->getValue());
+    }
 }
 
 void MorphPanel::updateModPosition(int dim, float value) {
@@ -256,19 +262,21 @@ void MorphPanel::updateModPosition(int dim, float value) {
     setValue(dim, value);
 
     if (dim != getSetting(CurrentMorphAxis)) {
-        if (!getSetting(DrawWave))
+        if (!getSetting(DrawWave)) {
             triggerRefreshUpdate();
-        else {
+        } else {
             auto& multi = getObj(Multisample);
             PitchedSample* existing = multi.getCurrentSample();
 
-            multi.performUpdate(UpdateType::Update);
+            multi.performUpdate(Update);
 
-            if(existing != multi.getCurrentSample())
+            if(existing != multi.getCurrentSample()) {
                 triggerRefreshUpdate();
+            }
         }
-    } else
+    } else {
         getObj(PlaybackPanel).setProgress(value, false);
+    }
 
     if (dim == Vertex::Blue) {
         getObj(ModMatrixPanel).route(value, ModMatrixPanel::MidiController + 1);
@@ -276,14 +284,14 @@ void MorphPanel::updateModPosition(int dim, float value) {
 }
 
 void MorphPanel::sliderDragEnded(Slider* slider) {
-    if (getSetting(DrawWave))
+    if (getSetting(DrawWave)) {
         return;
+    }
 
     auto* mslider = dynamic_cast<MorphSlider*>(slider);
 
     if (mslider || slider == &panSlider) {
-        if (slider == &panSlider || mslider->dim != getSetting(CurrentMorphAxis))
-        {
+        if (slider == &panSlider || mslider->dim != getSetting(CurrentMorphAxis)) {
             triggerRestoreUpdate();
         }
     }
@@ -323,9 +331,7 @@ void MorphPanel::showMessage(float value, MorphSlider* slider) {
         String keyStr = MidiMessage::getMidiNoteName(midiKey, true, true, 3);
 
         showConsoleMsg(keyStr);
-    } else if (slider == &blueSlider) {
-        showConsoleMsg(String(value, 2));
-    } else if (slider == &yllwSlider) {
+    } else if (slider == &blueSlider || slider == &yllwSlider) {
         showConsoleMsg(String(value, 2));
     }
 }
@@ -349,7 +355,6 @@ int MorphPanel::getCurrentMidiKey() {
 void MorphPanel::setKeyValueForNote(int midiNote) {
     redSlider.setValue(Arithmetic::getUnitValueForGraphicNote(midiNote, midiRange), dontSendNotification);
 }
-
 
 void MorphPanel::buttonClicked(Button* button) {
     bool changedLinking = false;
@@ -435,21 +440,17 @@ void MorphPanel::comboBoxChanged(ComboBox* box)
 }
 */
 
-
 float MorphPanel::getPrimaryViewDepth() {
     return viewDepth[getSetting(CurrentMorphAxis)];
 }
-
 
 float MorphPanel::getDepth(int dim) {
     return viewDepth[dim];
 }
 
-
 void MorphPanel::setViewDepth(int dim, float depth) {
     viewDepth[dim] = depth;
 }
-
 
 void MorphPanel::setValue(int dim, float value) {
     switch (dim) {
@@ -460,7 +461,6 @@ void MorphPanel::setValue(int dim, float value) {
     }
 }
 
-
 void MorphPanel::triggerValue(int dim, float value) {
     switch (dim) {
         case Vertex::Time:	yllwSlider.setValue(value, sendNotificationAsync);	break;
@@ -469,7 +469,6 @@ void MorphPanel::triggerValue(int dim, float value) {
         default: break;
     }
 }
-
 
 void MorphPanel::triggerClick(int button) {
     switch (button) {

@@ -13,7 +13,7 @@ class ResizerPullout :
 {
 public:
     explicit ResizerPullout(SingletonRepo* repo);
-
+    void init() override;
     void buttonClicked(Button* button) override;
     void resized() override;
     void updateHighlight(int windowSize);

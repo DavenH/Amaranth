@@ -12,10 +12,11 @@ public:
     EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZoom);
     ~EffectPanel() override = default;
 
+    void init() override;
     void performUpdate(UpdateType updateType) override;
     bool isMeshEnabled() const;
     bool doCreateVertex() override;
-    bool addNewCube(float startTime, float x, float y, float curve = 0) override;
+    bool addNewCube(float startTime, float x, float y, float curve) override;
 
     float getDragMovementScale();
 

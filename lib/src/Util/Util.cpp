@@ -78,11 +78,11 @@ int Util::extractVelocityFromFilename(const String& str) {
     if (!havePopulated) {
         havePopulated = true;
 
-        strings.emplace_back("soft", 	57);
-        strings.emplace_back("med", 	93);
-        strings.emplace_back("mell", 	93);
-        strings.emplace_back("hard", 	127);
-        strings.emplace_back("loud", 	127);
+        strings.emplace_back("soft", 57);
+        strings.emplace_back("med",  93);
+        strings.emplace_back("mell", 93);
+        strings.emplace_back("hard", 127);
+        strings.emplace_back("loud", 127);
 
         strings.emplace_back("mp", 	57);
         strings.emplace_back("mf", 	93);

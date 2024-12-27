@@ -16,22 +16,26 @@ OpenGLPanel3D::OpenGLPanel3D(SingletonRepo* repo, Panel3D* panel3D, Panel3D::Dat
         PanelOwner          (panel3D)
     ,	SingletonAccessor	(repo, panel3D->getName())
     ,	OpenGLBase			(this, this)
-    ,	dataRetriever		(retriever) {
-    backTex.rect.setSize(1024, 1024);
-
-    commonGL = new CommonGL(panel3D, this);
-
-    panel3D->setComponent(this);
-    panel3D->setUseVertices(true);
-    panel3D->setGraphicsHelper(commonGL);
-    panel3D->setGraphicsRenderer(this);
-    panel3D->setRenderHelper(this);
-
-    attach();
+    ,	dataRetriever		(retriever)
+{
 }
 
 OpenGLPanel3D::~OpenGLPanel3D() {
     detach();
+}
+
+void OpenGLPanel3D::init() {
+    backTex.rect.setSize(1024, 1024);
+
+    commonGL = new CommonGL(panel, this);
+
+    panel->setComponent(this);
+    panel->setUseVertices(true);
+    panel->setGraphicsHelper(commonGL);
+    panel->setGraphicsRenderer(this);
+    panel->setRenderHelper(this);
+
+    attach();
 }
 
 void OpenGLPanel3D::drawCurvesAndSurfaces() {
@@ -120,8 +124,9 @@ void OpenGLPanel3D::drawSurfaceColumn(int x) {
 void OpenGLPanel3D::populateExtensions() {
     String str((char*) glGetString(GL_EXTENSIONS));
 
-    if (str.isEmpty())
+    if (str.isEmpty()) {
         return;
+    }
 
     extensions.addTokens(str, " ");
 }
@@ -163,7 +168,7 @@ void OpenGLPanel3D::newOpenGLContextCreated() {
 
     glBindTexture(GL_TEXTURE_2D, backTex.id);
     glTexImage2D(GL_TEXTURE_2D, 0, format, r.getWidth(), r.getHeight(),
-                 0, format, GL_UNSIGNED_BYTE, 0);
+                 0, format, GL_UNSIGNED_BYTE, nullptr);
 
     commonGL->initLineParams();
 

@@ -28,7 +28,15 @@ class CycleBasedVoice :	public SingletonAccessor
 {
 public:
     enum { Left, Right };
-    enum CompositeAlgo { Chain, Interpolate, Overlap };
+    enum CompositeAlgo {
+        // compositing via chaining has perfect contiguity between cycles, but can only
+        // be currently done by
+        Chain,
+
+        // Interpolate
+        Interpolate,
+        Overlap
+    };
 
     CycleBasedVoice(SynthesizerVoice* voice, SingletonRepo*);
 
@@ -130,8 +138,8 @@ protected:
 
     Ref<Unison> 			unison;
     Ref<SynthesizerVoice> 	parent;
-    Ref<Waveform3D> 		surface;
     Ref<ModMatrixPanel>		modMatrix;
+    Ref<Waveform3D> 		waveform3D;
     Ref<Spectrum3D> 		spectrum3D;
     Ref<Envelope2D>			envelope2D;
     Ref<SynthAudioSource> 	audioSource;
@@ -161,6 +169,4 @@ protected:
 
     VoiceMeshRasterizer timeRasterizer;
     vector<VoiceParameterGroup> groups;
-
-private:
 };

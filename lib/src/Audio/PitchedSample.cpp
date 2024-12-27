@@ -56,8 +56,9 @@ bool PitchedSample::readXML(const XmlElement* sampleElem) {
 
     mesh->readXML(sampleElem);
 
-    if(load(file.getFullPathName()) < 0)
+    if(load(file.getFullPathName()) < 0) {
         return false;
+    }
 
     return true;
 }
@@ -93,8 +94,9 @@ void PitchedSample::createDefaultPeriods() {
 
 
 void PitchedSample::createEnvFromPeriods(bool isMulti) {
-    if (periods.size() < 3 || size() < 2048)
+    if (periods.size() < 3 || size() < 2048) {
         return;
+    }
 
     const int maxLines 	= 300;
     float isamples 		= 1.f / (float) size();
@@ -197,11 +199,10 @@ void PitchedSample::shiftOctave(bool up) {
 }
 
 MorphPosition PitchedSample::getAveragePosition() const {
-    float avgNote 	= (midiRange.getStart() + midiRange.getEnd()) * 0.5f;
-    float red 		= Arithmetic::getUnitValueForNote(roundToInt(avgNote), midiRange);
-
-    float avgVel 	= (veloRange.getStart() + veloRange.getEnd()) * 0.5f;
-    float blue 		= 1 - avgVel;
+    float avgNote = (midiRange.getStart() + midiRange.getEnd()) * 0.5f;
+    float red     = Arithmetic::getUnitValueForNote(roundToInt(avgNote), midiRange);
+    float avgVel  = (veloRange.getStart() + veloRange.getEnd()) * 0.5f;
+    float blue    = 1 - avgVel;
 
     return {0, red, blue};
 }
@@ -223,8 +224,9 @@ MorphPosition PitchedSample::getBox() {
 float PitchedSample::getAveragePeriod() {
     float average = 0;
 
-    for (auto& period : periods)
+    for (auto& period : periods) {
         average += period.period;
+    }
 
     if (periods.empty()) {
         if(fundNote > 10) {
@@ -240,8 +242,9 @@ float PitchedSample::getAveragePeriod() {
 int PitchedSample::load(const String& filename) {
     File audioFile(File::getCurrentWorkingDirectory().getChildFile(filename).getFullPathName());
 
-    if(! audioFile.existsAsFile())
+    if(! audioFile.existsAsFile()) {
         return -3;
+    }
 
     std::unique_ptr<AudioFormatReader> reader;
     std::unique_ptr stream(audioFile.createInputStream());

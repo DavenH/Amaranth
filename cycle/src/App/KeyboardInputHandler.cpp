@@ -41,7 +41,7 @@ void KeyboardInputHandler::init() {
     position = &getObj(PlaybackPanel);
     waveInter3D 	= &getObj(WaveformInter3D);
     main			= &getObj(MainPanel);
-    console 		= dynamic_cast<Console*>(&getObj(IConsole));
+    console 		= &getObj(Console);
 
     currentInteractor 	= waveInter3D;
 }

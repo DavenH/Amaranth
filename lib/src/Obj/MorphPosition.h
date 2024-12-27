@@ -1,10 +1,12 @@
 #pragma once
 
+#include <Audio/SmoothedParameter.h>
+
 #include "../Curve/Vertex.h"
 
 class MorphPosition {
 public:
-    float time, red, blue;
+    SmoothedParameter time, red, blue;
     float timeDepth, redDepth, blueDepth;
 
     MorphPosition()
@@ -15,13 +17,13 @@ public:
             : time(t), red(r), blue(b), timeDepth(1.f), redDepth(1.f), blueDepth(1.f) {
     }
 
-    MorphPosition withTime(float t) {
-        return MorphPosition(t, red, blue);
+    [[nodiscard]] MorphPosition withTime(float t) const {
+        return {t, red, blue};
     }
 
-    float timeEnd() const { return jmin(1.f, time + timeDepth); }
-    float redEnd()  const { return jmin(1.f, red  + redDepth ); }
-    float blueEnd() const { return jmin(1.f, blue + blueDepth); }
+    [[nodiscard]] float timeEnd() const { return jmin(1.f, time.getCurrentValue() + timeDepth); }
+    [[nodiscard]] float redEnd()  const { return jmin(1.f, red.getCurrentValue()  + redDepth ); }
+    [[nodiscard]] float blueEnd() const { return jmin(1.f, blue.getCurrentValue() + blueDepth); }
 
     void resetTime() 	  { time = 0; }
 
@@ -30,19 +32,18 @@ public:
         case Vertex::Time:
             dimX = Vertex::Red;
             dimY = Vertex::Blue;
-
             break;
 
         case Vertex::Red:
             dimX = Vertex::Time;
             dimY = Vertex::Blue;
-
             break;
 
         case Vertex::Blue:
             dimX = Vertex::Red;
             dimY = Vertex::Time;
             break;
+
         default:
             break;
         }
@@ -52,8 +53,8 @@ public:
         int dimX, dimY;
         getOtherDims(fromDim, dimX, dimY);
 
-        val1 = operator [](dimX);
-        val2 = operator [](dimY);
+        val1 = operator [](dimX).getCurrentValue();
+        val2 = operator [](dimY).getCurrentValue();
     }
 
     void getOtherDepths(int fromDim, float& val1, float& val2) const {
@@ -64,7 +65,7 @@ public:
         val2 = depthAt(dimY);
     }
 
-    float distanceTo(const MorphPosition& pos) const {
+    [[nodiscard]] float distanceTo(const MorphPosition& pos) const {
         float dist = 0;
 
         dist += (time - pos.time) * (time - pos.time);
@@ -74,37 +75,31 @@ public:
         return sqrtf(dist);
     }
 
-    float operator[](const int index) const {
+    const SmoothedParameter& operator[](const int index) const {
         switch (index) {
             case Vertex::Time: 	return time;
             case Vertex::Red: 	return red;
             case Vertex::Blue: 	return blue;
-
-            default:
-                jassertfalse;
+            default: throw std::out_of_range("MorphPosition::operator[&]");
         }
-
-        return time;
     }
 
-    float& operator[](const int index) {
+    SmoothedParameter& operator[](const int index) {
         switch (index) {
             case Vertex::Time: 	return time;
             case Vertex::Red: 	return red;
             case Vertex::Blue: 	return blue;
+            default: throw std::out_of_range("MorphPosition::operator[&]");
         }
-
-        return time;
     }
 
-    float depthAt(const int index) const {
+    [[nodiscard]] float depthAt(const int index) const {
         switch (index) {
             case Vertex::Time: 	return timeDepth;
             case Vertex::Red: 	return redDepth;
             case Vertex::Blue: 	return blueDepth;
+            default: throw std::out_of_range("MorphPosition::depthAt");
         }
-
-        return time;
     }
 
     float& depthAt(const int index) {
@@ -112,16 +107,27 @@ public:
             case Vertex::Time: 	return timeDepth;
             case Vertex::Red: 	return redDepth;
             case Vertex::Blue: 	return blueDepth;
+            default: throw std::out_of_range("MorphPosition::depthAt&");
         }
-
-        return time;
     }
 
-    Rectangle<float> toRect(int dim) const {
+    [[nodiscard]] Rectangle<float> toRect(int dim) const {
         float x, y, w, h;
         getOtherPos(dim, x, y);
         getOtherDepths(dim, w, h);
 
-        return Rectangle<float>(x, y, w, h);
+        return {x, y, w, h};
+    }
+
+    void update(int numSamples44k) {
+        time.update(numSamples44k);
+        red.update(numSamples44k);
+        blue.update(numSamples44k);
+    }
+
+    void updateToTarget() {
+        time.updateToTarget();
+        red.updateToTarget();
+        blue.updateToTarget();
     }
 };

@@ -2,7 +2,7 @@
 
 #include <App/Doc/Savable.h>
 #include <Obj/Ref.h>
-#include <Obj/ColorGradient.h>
+#include <UI/ColorGradient.h>
 #include <UI/ParameterGroup.h>
 #include <UI/Widgets/IconButton.h>
 #include <UI/Widgets/InsetLabel.h>

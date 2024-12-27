@@ -520,7 +520,7 @@ PopupMenu ModMatrixPanel::getOutputMenu(int source) {
 		}
 
         case WaveshapeLayers: {
-            for (int i = 0; i < meshLib.getGroup(LayerGroups::GroupTime).size(); ++i) {
+            for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupTime).size(); ++i) {
                 int id = TimeSurfId + i * 3;
 
 				if(isNotInOutputs(id)) {
@@ -531,7 +531,7 @@ PopupMenu ModMatrixPanel::getOutputMenu(int source) {
 			break;
 		}
         case HarmMagLayers: {
-            for (int i = 0; i < meshLib.getGroup(LayerGroups::GroupSpect).size(); ++i) {
+            for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupSpect).size(); ++i) {
                 int id = HarmMagId + i * 3;
 
 				if(isNotInOutputs(id))
@@ -541,7 +541,7 @@ PopupMenu ModMatrixPanel::getOutputMenu(int source) {
 			break;
 		}
         case HarmPhsLayers: {
-            for (int i = 0; i < meshLib.getGroup(LayerGroups::GroupPhase).size(); ++i) {
+            for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupPhase).size(); ++i) {
                 int id = HarmPhsId + i * 3;
 
 				if(isNotInOutputs(id)) {
@@ -553,7 +553,7 @@ PopupMenu ModMatrixPanel::getOutputMenu(int source) {
 		}
 
 		case VolumeEnvLayers: {
-            for (int i = 0; i < meshLib.getGroup(LayerGroups::GroupVolume).size(); ++i) {
+            for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupVolume).size(); ++i) {
                 int id = VolEnvId + i * 3;
 
 				if(isNotInOutputs(id)) {
@@ -563,7 +563,7 @@ PopupMenu ModMatrixPanel::getOutputMenu(int source) {
 		}
 
         case PitchEnvLayers: {
-            for (int i = 0; i < meshLib.getGroup(LayerGroups::GroupPitch).size(); ++i) {
+            for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupPitch).size(); ++i) {
                 int id = PitchEnvId + i * 3;
 
 				if(isNotInOutputs(id)) {
@@ -573,7 +573,7 @@ PopupMenu ModMatrixPanel::getOutputMenu(int source) {
 		}
 
         case ScratchLayers: {
-            for (int i = 0; i < meshLib.getGroup(LayerGroups::GroupScratch).size(); ++i) {
+            for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupScratch).size(); ++i) {
                 int id = ScratchEnvId + i * 3;
 
                 if (isNotInOutputs(id)) {
@@ -1023,7 +1023,7 @@ void ModMatrixPanel::initializeDefaults() {
 	int ids[] 	 = { TimeSurfId, HarmMagId,  HarmPhsId,  VolEnvId, 	  PitchEnvId, ScratchEnvId };
 
     for (int i = 0; i < numElementsInArray(groups); ++i) {
-        for (int j = 0; j < lib.getGroup(groups[i]).size(); ++j)
+        for (int j = 0; j < lib.getLayerGroup(groups[i]).size(); ++j)
             addDestination(ids[j] + 3 * i, false);
     }
 

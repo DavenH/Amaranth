@@ -2,6 +2,7 @@
 #include "Panel.h"
 
 #include <Definitions.h>
+#include <App/AppConstants.h>
 
 #include "CommonGfx.h"
 #include "Texture.h"
@@ -437,17 +438,17 @@ void Panel::drawInterceptsAndHighlightClosest() {
 }
 
 void Panel::updateVertexSizes() {
-    vertexWhiteRadius		= 2.f;
-    vertexSelectedRadius	= 3.f;
-    vertexBlackRadius		= 5.f;
-    vertexHighlightRadius	= 7.f;
+    vertexWhiteRadius     = 2.f;
+    vertexSelectedRadius  = 3.f;
+    vertexBlackRadius     = 5.f;
+    vertexHighlightRadius = 7.f;
 
     int scaleSize = getSetting(PointSizeScale);
     while (scaleSize >= ScaleSizes::ScaleMed) {
-        vertexWhiteRadius		+= 2.f;
-        vertexSelectedRadius	+= 2.f;
-        vertexBlackRadius		+= 3.f;
-        vertexHighlightRadius	+= 4.f;
+        vertexWhiteRadius       += 2.f;
+        vertexSelectedRadius    += 2.f;
+        vertexBlackRadius       += 3.f;
+        vertexHighlightRadius   += 4.f;
 
         scaleSize /= 2;
     }
@@ -571,22 +572,22 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
         return false;
     }
 
-    int phsVsTimeChan 	= cube->deformerAt(Vertex::Time);
-    int ampChan 		= cube->deformerAt(Vertex::Amp);
-    int phsVsRedChan	= cube->deformerAt(Vertex::Red);
-    int phsVsBlueChan	= cube->deformerAt(Vertex::Blue);
+    int phsVsTimeChan = cube->deformerAt(Vertex::Time);
+    int ampChan       = cube->deformerAt(Vertex::Amp);
+    int phsVsRedChan  = cube->deformerAt(Vertex::Red);
+    int phsVsBlueChan = cube->deformerAt(Vertex::Blue);
 
-    bool isTime 		= pointDim == Vertex::Time;
-    bool isRed			= pointDim == Vertex::Red;
+    bool isTime = pointDim == Vertex::Time;
+    bool isRed  = pointDim == Vertex::Red;
 
-    int phaseDim		= isTime ? Vertex::Phase : isRed ? Vertex::Red : Vertex::Blue;
-    int phaseSrcDim		= isTime ? Vertex::Time : phaseDim;
-    int phaseChan		= isTime ? phsVsTimeChan : isRed ? phsVsRedChan : phsVsBlueChan;
-    bool adjustSpeed 	= haveSpeed 	&& speedApplicable && isTime;
-    bool adjustPhase	= phaseSrcDim 	== pointDim && phaseChan >= 0;
-    bool adjustAmp		= ampChan >= 0 	&& isTime;
+    int phaseDim            = isTime ? Vertex::Phase : isRed ? Vertex::Red : Vertex::Blue;
+    int phaseSrcDim         = isTime ? Vertex::Time : phaseDim;
+    int phaseChan           = isTime ? phsVsTimeChan : isRed ? phsVsRedChan : phsVsBlueChan;
+    bool adjustSpeed        = haveSpeed && speedApplicable && isTime;
+    bool adjustPhase        = phaseSrcDim == pointDim && phaseChan >= 0;
+    bool adjustAmp          = ampChan >= 0 && isTime;
     bool anyDfrmAdjustments = (adjustPhase || adjustAmp) && deformApplicable;
-    const Dimensions& dims 	= interactor->dims;
+    const Dimensions& dims  = interactor->dims;
 
     if(! anyDfrmAdjustments && (! adjustSpeed || dims.x == Vertex::Phase)) {
         return false;
@@ -594,15 +595,15 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
 
     prepareBuffers(linestripRes, linestripRes);
 
-    float 	redOffset 	= 0;
-    float 	blueOffset	= 0;
-    int 	scratchChan = getLayerScratchChannel();
-    float 	invSize 	= 1 / float(linestripRes - 0.5);
-    float 	phaseGain 	= cube->deformerAbsGain(phaseDim);
-    float 	ampGain 	= cube->deformerAbsGain(Vertex::Amp);
+    float redOffset  = 0;
+    float blueOffset = 0;
+    int scratchChan  = getLayerScratchChannel();
+    float invSize    = 1 / float(linestripRes - 0.5);
+    float phaseGain  = cube->deformerAbsGain(phaseDim);
+    float ampGain    = cube->deformerAbsGain(Vertex::Amp);
 
-    bool exHasPhase  	= adjustPhase && dims.x == Vertex::Phase;
-    bool whyHasAmp 	 	= adjustAmp   && dims.y == Vertex::Amp;
+    bool exHasPhase = adjustPhase && dims.x == Vertex::Phase;
+    bool whyHasAmp  = adjustAmp && dims.y == Vertex::Amp;
 
     std::unique_ptr<ScopedLock> sl;
 
@@ -739,7 +740,7 @@ void Panel::componentChanged() {
 }
 
 void Panel::createNameImage(const String& displayName, bool isSecondImage, bool brighter) {
-    Font font(FontOptions("Verdana", 20, Font::plain));
+    Font font(FontOptions(getStrConstant(FontFace), 20, Font::plain));
     font.setExtraKerningFactor(-0.02);
 
     String lcName 	= displayName.toLowerCase();

@@ -10,6 +10,8 @@ public:
     Panel2D(SingletonRepo* repo, const String& name, bool curveIsBipolar, bool haveVertZoom);
     ~Panel2D() override;
 
+    void init() override;
+
     void contractToRange(bool includeX = false);
     void drawCurvesFrom(BufferXY& buff, Buffer<float> alpha, const Color& colourA, const Color& colourB);
     static void prepareAlpha(const Buffer<float>& y, Buffer<float> alpha, float baseAlpha);
@@ -30,8 +32,7 @@ public:
     void drawInterceptLines() override;
 
 protected:
-    bool curveIsBipolar;
-    bool cyclicLines;
+    bool curveIsBipolar, cyclicLines, haveVertZoom;
 
     Color colorA, colorB;
 

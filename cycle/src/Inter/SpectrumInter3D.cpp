@@ -20,6 +20,8 @@ SpectrumInter3D::SpectrumInter3D(SingletonRepo* repo) :
 }
 
 void SpectrumInter3D::init() {
+    Interactor3D::init();
+
     jassert(selectionClient == nullptr);
 
     updateSource = UpdateSources::SourceSpectrum3D;

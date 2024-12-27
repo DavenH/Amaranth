@@ -62,17 +62,15 @@ public:
 	void renderNextBlock(AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override;
 	void startLatencyFillingOrStopNote();
 
-
 	/* Accessors */
 //	double 	getBlueMappedValue();
 	double	getPitchWheelValueSemitones() 			{ return pitchWheelValue; }
-	float 	getModWheelValue()						{ return (float) modValue.getCurrentValue(); }
+	float 	getModWheelValue()						{ return modValue.getCurrentValue(); }
 	int 	getVoiceIndex() const 					{ return voiceIndex; }
 	double 	getSampleRatePublic() 					{ return getSampleRate(); }
-	bool 	canPlaySound(SynthesiserSound* sound) override 	{ return sound != 0; }
+	bool 	canPlaySound(SynthesiserSound* sound) override 	{ return sound != nullptr; }
 	void 	setModWheelValue(float value) 			{ modValue = value; }
 	int 	getCurrentOscillatorLatency();
-
 
 	/* Misc */
 	void updateSmoothedParameters(int deltaSamples);
@@ -113,7 +111,6 @@ private:
 	CycleBasedVoice* currentVoice;
 	SynthUnisonVoice unisonVoice;
 	SynthFilterVoice filterVoice;
-
 	Random random;
 
 	/* ----------------------------------------------------------------------------- */

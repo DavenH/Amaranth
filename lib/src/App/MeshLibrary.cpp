@@ -58,14 +58,20 @@ void MeshLibrary::addGroup(int meshType) {
 }
 
 void MeshLibrary::moveLayer(int groupId, int fromIndex, int toIndex) {
-    if (!isPositiveAndBelow(groupId, (int) layerGroups.size()) || fromIndex == toIndex)
+    if (!isPositiveAndBelow(groupId, (int) layerGroups.size()) || fromIndex == toIndex) {
         return;
+    }
 
     LayerGroup& group = layerGroups[groupId];
     std::swap(group.layers[fromIndex], group.layers[toIndex]);
+
+    listeners.call(&Listener::layerChanged, groupId, toIndex);
+    // todo does that work?
+    // if not, can try
+    // iter_swap(group.layers.begin() + currentIndex, group.layers.begin() + currentIndex + movement);
 }
 
-MeshLibrary::LayerGroup& MeshLibrary::getGroup(int group) {
+MeshLibrary::LayerGroup& MeshLibrary::getLayerGroup(int group) {
     if (group == CommonEnums::Null || group >= layerGroups.size()) {
         return dummyGroup;
     }
@@ -74,7 +80,7 @@ MeshLibrary::LayerGroup& MeshLibrary::getGroup(int group) {
 }
 
 void MeshLibrary::addLayer(int groupId) {
-    LayerGroup& group = getGroup(groupId);
+    LayerGroup& group = getLayerGroup(groupId);
 
     ScopedLock sl(arrayLock);
     group.layers.push_back(instantiateLayer(nullptr, group.meshType));
@@ -90,7 +96,7 @@ void MeshLibrary::setCurrentMesh(int groupId, Mesh* mesh) {
 }
 
 MeshLibrary::Layer& MeshLibrary::getCurrentLayer(int groupId) {
-    LayerGroup& group = getGroup(groupId);
+    LayerGroup& group = getLayerGroup(groupId);
 
     if (isPositiveAndBelow(group.current, (int) group.layers.size())) {
         return group.layers[group.current];
@@ -135,7 +141,7 @@ void MeshLibrary::pasteFromClipboardTo(Mesh* mesh, int type) {
 bool MeshLibrary::removeLayerKeepingOne(int groupId, int layer) {
     ScopedLock sl(arrayLock);
 
-    LayerGroup& group = getGroup(groupId);
+    LayerGroup& group = getLayerGroup(groupId);
 
     if (isPositiveAndBelow(layer, (int) group.layers.size())) {
         destroyLayer(group.layers[layer]);
@@ -171,7 +177,7 @@ MeshLibrary::Layer MeshLibrary::instantiateLayer(XmlElement* layerElem, int mesh
             break;
 
         default: {
-            listeners.call(&Listener::instantiateLayer, layerElem, meshType);
+            throw std::runtime_error("Unsupported mesh type");
         }
     }
 
@@ -223,7 +229,9 @@ bool MeshLibrary::readXML(const XmlElement* element) {
     ScopedLock sl(arrayLock);
 
     destroy();
-    listeners.call(&Listener::allLayersDeleted);
+    for(auto& layerGroup : layerGroups) {
+        listeners.call(&Listener::layerGroupDeleted, layerGroup.meshType);
+    }
     layerGroups.clear();
 
     for(auto groupElem : repoElem->getChildWithTagNameIterator("Group")) {
@@ -236,18 +244,32 @@ bool MeshLibrary::readXML(const XmlElement* element) {
 
         layerGroups.push_back(group);
     }
-
+    for(auto& layerGroup : layerGroups) {
+        listeners.call(&Listener::layerGroupAdded, layerGroup.meshType);
+    }
     return true;
 }
 
+MeshLibrary::Properties::Properties() {
+    smoothedParameters.emplace_back(&pan);
+    smoothedParameters.emplace_back(&fineTune);
+
+    for(auto& p : pos) {
+        smoothedParameters.emplace_back(&p.time);
+        smoothedParameters.emplace_back(&p.red);
+        smoothedParameters.emplace_back(&p.blue);
+    }
+}
+
 bool MeshLibrary::Properties::readXML(const XmlElement* layerElem) {
-    active = layerElem->getBoolAttribute("active", active);
-    gain = layerElem->getDoubleAttribute("gain", gain);
-    mode = layerElem->getIntAttribute("mode", mode);
-    pan = layerElem->getDoubleAttribute("pan", pan);
-    range = layerElem->getDoubleAttribute("range", range);
-    fineTune = layerElem->getDoubleAttribute("fine-tune", fineTune);
+    active      = layerElem->getBoolAttribute("active", active);
+    gain        = layerElem->getDoubleAttribute("gain", gain);
+    mode        = layerElem->getIntAttribute("mode", mode);
+    range       = layerElem->getDoubleAttribute("range", range);
     scratchChan = layerElem->getIntAttribute("scratch-chan", scratchChan);
+
+    fineTune.setTargetValue(layerElem->getDoubleAttribute("fine-tune", fineTune.getTargetValue()));
+    pan.setTargetValue(layerElem->getDoubleAttribute("pan", pan.getTargetValue()));
 
     return true;
 }
@@ -255,23 +277,55 @@ bool MeshLibrary::Properties::readXML(const XmlElement* layerElem) {
 bool MeshLibrary::EnvProps::readXML(const XmlElement* layerElem) {
     Properties::readXML(layerElem);
 
-    dynamic = layerElem->getBoolAttribute("dynamic", dynamic);
-    global = layerElem->getBoolAttribute("global", global);
+    dynamic     = layerElem->getBoolAttribute("dynamic", dynamic);
+    global      = layerElem->getBoolAttribute("global", global);
     logarithmic = layerElem->getBoolAttribute("logarithmic", logarithmic);
-    scale = layerElem->getIntAttribute("scale", scale);
-    tempoSync = layerElem->getBoolAttribute("tempo-sync", tempoSync);
+    scale       = layerElem->getIntAttribute("scale", scale);
+    tempoSync   = layerElem->getBoolAttribute("tempo-sync", tempoSync);
 
     return true;
 }
 
 void MeshLibrary::Properties::writeXML(XmlElement* layerElem) const {
     layerElem->setAttribute("active", active);
-    layerElem->setAttribute("fine-tune", fineTune);
     layerElem->setAttribute("gain", gain);
-    layerElem->setAttribute("pan", pan);
     layerElem->setAttribute("range", range);
     layerElem->setAttribute("mode", mode);
     layerElem->setAttribute("scratch-chan", scratchChan);
+
+    layerElem->setAttribute("fine-tune", fineTune.getTargetValue());
+    layerElem->setAttribute("pan", pan.getTargetValue());
+}
+
+void MeshLibrary::Properties::setDimValue(int index, int dim, float value) {
+    if(dim == Vertex::Time) {
+        pos[index][dim].setValueDirect(value);
+    } else {
+        pos[index][dim].setTargetValue(value);
+    }
+}
+
+void MeshLibrary::Properties::updateSmoothedParameters(int sampleCount44k) {
+    for(auto* p : smoothedParameters) {
+        p->update(sampleCount44k);
+    }
+}
+
+void MeshLibrary::Properties::updateToTarget(int voiceIndex) {
+    pos[voiceIndex].time.updateToTarget();
+    pos[voiceIndex].red.updateToTarget();
+    pos[voiceIndex].blue.updateToTarget();
+}
+
+void MeshLibrary::Properties::updateParameterSmoothing(bool smooth) {
+    for(auto* p : smoothedParameters) {
+        p->setSmoothingActivity(smooth);
+    }
+    if(smooth) {
+        for(auto* p : smoothedParameters) {
+            p->updateToTarget();
+        }
+    }
 }
 
 void MeshLibrary::EnvProps::writeXML(XmlElement* layerElem) const {
@@ -285,7 +339,7 @@ void MeshLibrary::EnvProps::writeXML(XmlElement* layerElem) const {
 }
 
 bool MeshLibrary::hasAnyValidLayers(int groupId) {
-    LayerGroup& group = getGroup(groupId);
+    LayerGroup& group = getLayerGroup(groupId);
 
     bool haveAnyValidTimeLayers = false;
 
@@ -360,7 +414,11 @@ bool MeshLibrary::layerChanged(int layerGroup, int index) {
 
     switch (layerGroup) {
         case LayerGroups::GroupScratch: {
-            int types[] = {LayerGroups::GroupTime, LayerGroups::GroupSpect, LayerGroups::GroupPhase};
+            int types[] = {
+                LayerGroups::GroupTime,
+                LayerGroups::GroupSpect,
+                LayerGroups::GroupPhase
+            };
 
             srcGroup.sources.clear();
 
@@ -426,4 +484,24 @@ Array<int> MeshLibrary::getMeshTypesAffectedByCurrent(int layerGroup) {
     LayerGroup& group = layerGroups[layerGroup];
 
     return group.sources[group.current];
+}
+
+void MeshLibrary::updateSmoothedParameters(int voiceIndex, int numSamples44k) const {
+    for(auto& group : layerGroups) {
+        for(auto& layer : group.layers) {
+            if(layer.props) {
+                layer.props->pos[voiceIndex].update(numSamples44k);
+            }
+        }
+    }
+}
+
+void MeshLibrary::updateAllSmoothedParamsToTarget(int voiceIndex) const {
+    for(auto& group : layerGroups) {
+        for(auto& layer : group.layers) {
+            if(layer.props) {
+                layer.props->pos[voiceIndex].updateToTarget();
+            }
+        }
+    }
 }

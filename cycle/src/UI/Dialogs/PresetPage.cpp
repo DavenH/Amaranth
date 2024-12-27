@@ -46,7 +46,10 @@ PresetPage::PresetPage(SingletonRepo* repo) :
     ,	wavLabel			({}, "Dir: ")
     ,	subfolderLabel		({}, "Subfolder: ")
 {
-    tableListBox = std::make_unique<TableListBox>("Presets", this);
+}
+
+void PresetPage::init() {
+tableListBox = std::make_unique<TableListBox>("Presets", this);
 
     setListBox(tableListBox.get());
     tableListBox->setRowHeight(21);
@@ -124,9 +127,7 @@ PresetPage::PresetPage(SingletonRepo* repo) :
                                         numElementsInArray(navTemp), this, true);
 
     verts.setHighlit(true);
-}
 
-void PresetPage::init() {
     presetDirUpdated();
     readPresetSettings();
 }

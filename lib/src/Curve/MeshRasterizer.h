@@ -88,7 +88,6 @@ public:
     void print(OutputStream& stream);
     void restrictIntercepts(vector<Intercept>& intercepts);
     void separateIntercepts(vector<Intercept>& intercepts, float minDx);
-    void updateIndependentVariable(float value);
     void updateValue(int dim, float value);
     void validateCurves();
 
@@ -177,7 +176,6 @@ public:
     virtual	void updateCurves();
 
     virtual bool hasEnoughCubesForCrossSection();
-    virtual float& getPrimaryDimensionVar();
     virtual int getNumDims();
     virtual int getPrimaryViewDimension();
     virtual Mesh* getCrossPointsMesh();

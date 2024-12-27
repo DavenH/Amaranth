@@ -9,7 +9,6 @@ public:
 
     virtual void layerChanged() = 0;
     virtual int getLayerType() = 0;
-    virtual void moveLayerProperties(int fromIndex, int toIndex) {}
 
 protected:
 //	LayerSelectorPanel layerSelector;

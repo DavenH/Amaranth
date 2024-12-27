@@ -4,17 +4,20 @@
 #include "JuceHeader.h"
 #include <Util/MicroTimer.h>
 
+#include "Obj/Deletable.h"
+
 class BannerPanel:
         public Component
     , 	public SingletonAccessor
+    ,   public Deletable
     ,	public Timer {
 public:
-    BannerPanel(SingletonRepo* repo);
-    ~BannerPanel() override {}
+    explicit BannerPanel(SingletonRepo* repo);
+    ~BannerPanel() override = default;
 
     void paint(Graphics& g) override;
     void mouseEnter(const MouseEvent& e) override;
-    void mouseDown(const MouseEvent& e);
+    void mouseDown(const MouseEvent& e) override;
     void timerCallback() override;
 
 private:

@@ -720,8 +720,8 @@ void Interactor3D::extrudeVertices() {
     // to the mouse cursor so that it is selected over it's dupe on right-click drag
 
     for (auto vert : selectedCopy) {
-        Vertex2 offset 	= (state.currentMouse - Vertex2(vert->values[dims.x], vert->values[dims.y])) * 0.02f;
-        auto* fv 		= new Vertex(*vert);
+        Vertex2 offset = (state.currentMouse - Vertex2(vert->values[dims.x], vert->values[dims.y])) * 0.02f;
+        auto* fv = new Vertex(*vert);
 
         fv->values[dims.x] = vert->values[dims.x] + offset.x;
         fv->values[dims.y] = vert->values[dims.y] + offset.y;
@@ -817,11 +817,13 @@ void Interactor3D::sliceLines(const Vertex2& start, const Vertex2& end) {
     }
 
     // don't delete line from memory yet because undo might reclaim it
-    for (auto& it : toRemove)
+    for (auto& it : toRemove) {
         mesh->removeCube(it);
+    }
 
-    for (auto& it : mesh->getCubes())
+    for (auto& it : mesh->getCubes()) {
         it->validate();
+    }
 
     updateSelectionFrames();
 
@@ -938,7 +940,7 @@ void Interactor3D::commitPath(const MouseEvent& e) {
         vector<Vertex*> addedVerts;
 
         {
-            ScopedValueSetter<bool> setter(suspendUndo, true);
+            ScopedValueSetter setter(suspendUndo, true);
             UndoableMeshProcess commitPathProcess(this, "Pencil Path Created");
 
             for (auto & it : pencilPath) {
@@ -957,8 +959,9 @@ void Interactor3D::commitPath(const MouseEvent& e) {
                 mesh->addVertex(vert);
             }
 
-            for(int i = 0; i < (int) addedVerts.size() - 1; ++i)
+            for(int i = 0; i < (int) addedVerts.size() - 1; ++i) {
                 connectVertices(addedVerts[i], addedVerts[i + 1]);
+            }
         }
 
         flag(DidMeshChange) = true;
@@ -999,10 +1002,11 @@ VertCube* Interactor3D::getLineContaining(Vertex* a, Vertex* b) {
 void Interactor3D::mergeSelectedVerts() {
     vector<Vertex*>& selected = getSelected();
 
-    if (selected.size() == 2)
+    if (selected.size() == 2) {
         mergeVertices(selected[0], selected[1], MergeAtCentre);
-    else
+    } else {
         showConsoleMsg("Must select two vertices to merge");
+    }
 }
 
 bool Interactor3D::doCreateVertex() {
@@ -1025,8 +1029,9 @@ void Interactor3D::doAxe(const MouseEvent& e) {
     Vertex2 start 	= state.currentMouse + Vertex2(0, realValue(PencilRadius));
     Vertex2 end 	= state.currentMouse - Vertex2(0, realValue(PencilRadius));
 
-    if(! getMesh())
+    if(! getMesh()) {
         return;
+    }
 
     {
         UndoableMeshProcess axeProcess(this, "Axe");

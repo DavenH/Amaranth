@@ -11,7 +11,8 @@
 float ZoomPanel::zoomRatio = 1.259921f; // 2^0.25
 
 ZoomPanel::ZoomPanel(SingletonRepo* repo, ZoomContext context) :
-        SingletonAccessor(repo, "ZoomPanel")
+        Bounded()
+    ,   SingletonAccessor(repo, "ZoomPanel")
     ,	context			(context)
     ,	horz			(false)
     ,	vert			(true)
@@ -95,15 +96,10 @@ void ZoomPanel::scrollBarMoved(ScrollBar* bar, double newRangeStart) {
     listeners.call(&ZoomListener::zoomUpdated, updateSource);
 }
 
-const Rectangle<int> ZoomPanel::getBounds() {
-    return Component::getBounds();
-}
-
 int ZoomPanel::getX() 		{ return Component::getX();			}
 int ZoomPanel::getY()		{ return Component::getY();			}
 int ZoomPanel::getWidth()	{ return Component::getWidth();		}
 int ZoomPanel::getHeight()	{ return Component::getHeight(); 	}
-
 
 void ZoomPanel::panelZoomChanged(bool commandDown) {
     listeners.call(&ZoomListener::constrainZoom);

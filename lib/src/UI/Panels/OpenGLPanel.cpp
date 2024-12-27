@@ -13,17 +13,18 @@ OpenGLPanel::OpenGLPanel(SingletonRepo* repo, Panel2D* panel2D) :
         PanelOwner(panel2D)
     ,	SingletonAccessor(repo, "OpenGLPanel")
     ,	OpenGLBase(this, this) {
-    commonGL = new CommonGL(panel2D, this);
-
-    panel2D->setComponent(this);
-    panel2D->setGraphicsHelper(commonGL);
-    panel2D->setRenderHelper(this);
-
-    attach();
 }
 
 OpenGLPanel::~OpenGLPanel() {
     detach();
+}
+
+void OpenGLPanel::init() {
+    commonGL = new CommonGL(panel, this);
+
+    panel->setComponent(this);
+    panel->setGraphicsHelper(commonGL);
+    panel->setRenderHelper(this);
 }
 
 void OpenGLPanel::clear() {

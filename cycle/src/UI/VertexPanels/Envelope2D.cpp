@@ -601,7 +601,7 @@ bool Envelope2D::readXML(const XmlElement* element) {
 
     XmlElement* envProps = element->getChildByName("EnvelopeProps");
     for(auto& envTypes: types) {
-        MeshLibrary::LayerGroup& group = getObj(MeshLibrary).getGroup(envTypes.type);
+        MeshLibrary::LayerGroup& group = getObj(MeshLibrary).getLayerGroup(envTypes.type);
 
         group.layers.clear();
 

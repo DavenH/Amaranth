@@ -5,7 +5,7 @@
 #include <Array/Buffer.h>
 #include <Audio/PitchedSample.h>
 #include <Inter/Interactor.h>
-#include <Obj/ColorGradient.h>
+#include <UI/ColorGradient.h>
 #include <UI/Panels/CommonGfx.h>
 #include <UI/Panels/Panel2D.h>
 #include <UI/Panels/ScopedGL.h>

@@ -116,10 +116,10 @@ void Initializer::init() {
 }
 
 void Initializer::init2() {
-    KeyboardInputHandler* handler 	= &getObj(KeyboardInputHandler);
-    MainPanel* main 				= &getObj(MainPanel);
-    MorphPanel* morph 				= &getObj(MorphPanel);
-    MeshLibrary* meshLib			= &getObj(MeshLibrary);
+    KeyboardInputHandler* handler = &getObj(KeyboardInputHandler);
+    MainPanel* main               = &getObj(MainPanel);
+    MorphPanel* morph             = &getObj(MorphPanel);
+    MeshLibrary* meshLib          = &getObj(MeshLibrary);
 
     main->addKeyListener(handler);
     morph->addKeyListener(handler);
@@ -129,7 +129,7 @@ void Initializer::init2() {
     getObj(VertexPropertiesPanel).addKeyListener(handler);
 
     repo->setMorphPositioner(morph);
-    repo->setConsole(&getObj(IConsole));
+    repo->setConsole(&getObj(Console));
     repo->setDeformer(&getObj(DeformerPanel));
 
     int width, height;
@@ -139,6 +139,8 @@ void Initializer::init2() {
     meshLib->addListener(&getObj(CycleUpdater));
     meshLib->addListener(&getObj(ModMatrixPanel));
     meshLib->addListener(&getObj(VersionConsiliator));
+    meshLib->addListener(&getObj(Spectrum3D));
+    meshLib->addListener(&getObj(Waveform3D));
 
     meshLib->addGroup(LayerGroups::GroupVolume);
     meshLib->addGroup(LayerGroups::GroupPitch);
@@ -189,7 +191,6 @@ void Initializer::init2() {
     modPanel->updateCube();
     operations->openDefaultPreset();
     operations->getUndoManager().clearUndoHistory();
-//	operations->openWave(File("G:\\samples\\modelling\\95238__corsica-s__oh-yeah.wav"), GlobalOperations::DialogSource);
  */
 
 }
@@ -200,7 +201,7 @@ void Initializer::initSingletons() {
 void Initializer::setConstants() {
     using namespace Constants;
 
-    const String fontFace = platformSplit("Verdana", "Helvetica", "Noto Sans");
+    const String fontFace = platformSplit("Verdana", "Helvetica", "Ubuntu");
 
     auto &constants = getObj(AppConstants);
     constants.setConstant(WaveshaperPadding, 	0.0625);
@@ -208,7 +209,7 @@ void Initializer::setConstants() {
     constants.setConstant(DocMagicCode, 	 	(int) 0xc0dedbad);
     constants.setConstant(ProductName, 	 		String(ProjectInfo::projectName));
     constants.setConstant(DocumentExt, 	 		"cyc");
-    constants.setConstant(NumVoices, 	 		12);
+    constants.setConstant(MaxNumVoices, 	 	12);
     constants.setConstant(MaxUnisonOrder, 		10);
     constants.setConstant(MaxCyclePeriod, 		4096);
     constants.setConstant(FFTLogTensionAmp, 	500);
@@ -219,6 +220,7 @@ void Initializer::setConstants() {
 }
 
 void Initializer::setDefaultSettings() {
+    // TODO linux, where to put config?
     const String path = platformSplit(
         "/Amaranth Audio/Cycle/install.xml",
         "/Preferences/com.amaranthaudio.Cycle.xml",

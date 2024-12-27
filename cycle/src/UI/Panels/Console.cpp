@@ -12,7 +12,7 @@
 using std::vector;
 
 Console::Console(SingletonRepo* repo) :
-        IConsole(repo)
+        IConsole        (repo, "Console")
     ,	firstCallback	(true)
     ,	fading			(false)
     ,	opacity			(1.f)
@@ -39,8 +39,9 @@ void Console::timerCallback() {
     } else if (fading) {
         opacity *= 0.6f;
 
-        if (opacity < 0.1f)
+        if (opacity < 0.1f) {
             fading = false;
+        }
     } else {
         const DocumentDetails& deets = getObj(Document).getDetails();
 
@@ -58,8 +59,9 @@ void Console::paint(Graphics& g) {
     g.setColour(Colour::greyLevel(0.09f));
     g.fillAll();
 
-    for(int i = 0; i < getWidth() / 2 + 1; ++i)
+    for(int i = 0; i < getWidth() / 2 + 1; ++i) {
         g.drawVerticalLine(i * 2, 0, getHeight());
+    }
 
     int width = getWidth();
 

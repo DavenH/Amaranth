@@ -3,6 +3,7 @@
 #include <vector>
 #include "../IConsole.h"
 #include "../../App/SingletonAccessor.h"
+#include "Obj/Deletable.h"
 
 using std::vector;
 
@@ -11,6 +12,7 @@ class InsetLabel;
 
 class TabbedSelector :
 		public Component
+	,	public Deletable
 	,	public SingletonAccessor {
 public:
 	explicit TabbedSelector(SingletonRepo* repo);
@@ -23,7 +25,7 @@ public:
 	void callListeners(Bounded* selected);
 	void addTab(const String& name, Bounded* callbackComponent, const String& keys = String());
 	void resized() override;
-	int getSelectedId() const { return selectedTab; }
+	[[nodiscard]] int getSelectedId() const { return selectedTab; }
 
     class Listener {
 	public:

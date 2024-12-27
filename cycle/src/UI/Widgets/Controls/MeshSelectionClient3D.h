@@ -130,7 +130,7 @@ public:
     }
 
     void prepareForPopup() override {
-        MeshLibrary::LayerGroup& group = meshLib->getGroup(layerType);
+        MeshLibrary::LayerGroup& group = meshLib->getLayerGroup(layerType);
         group.selected.clear();
 
         usedToViewVertsOnHover = getSetting(ViewVertsOnlyOnHover) == 1;

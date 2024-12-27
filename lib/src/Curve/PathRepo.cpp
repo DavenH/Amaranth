@@ -51,7 +51,7 @@ void PathRepo::performUpdate(UpdateType updateType) {
 void PathRepo::updateCache(int groupId, int layer) {
     int numGroups = meshes->getNumGroups();
 
-    MeshLibrary::LayerGroup& group = meshes->getGroup(groupId);
+    MeshLibrary::LayerGroup& group = meshes->getLayerGroup(groupId);
     if(group.meshType == LayerGroups::GroupScratch) {
         return;
     }

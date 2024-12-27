@@ -33,13 +33,13 @@ CycleBasedVoice::CycleBasedVoice(SynthesizerVoice* parent, SingletonRepo* repo) 
     , 	cycleCompositeAlgo	(Chain)
     , 	resamplingAlgo		(Resampling::Hermite)
     ,	timeRasterizer		(repo) {
-    surface = &getObj(Waveform3D);
+    waveform3D = &getObj(Waveform3D);
     spectrum3D = &getObj(Spectrum3D);
     envelope2D = &getObj(Envelope2D);
     audioSource = &getObj(SynthAudioSource);
 
     unison = &audioSource->getUnison();
-    timeLayers = &getObj(MeshLibrary).getGroup(LayerGroups::GroupTime);
+    timeLayers = &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupTime);
 
     int unisonVoices = unison->getOrder(true);
     noteState.numUnisonVoices = unisonVoices;
@@ -84,19 +84,8 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
         unisonVoiceCountChanged();
     }
 
-    if (getDocSetting(ParameterSmoothing)) {
-        surface->setLayerParameterSmoothing(parent->voiceIndex, true);
-        spectrum3D->setLayerParameterSmoothing(parent->voiceIndex, true);
-
-        surface->updateSmoothParametersToTarget(parent->voiceIndex);
-        spectrum3D->updateSmoothParametersToTarget(parent->voiceIndex);
-    } else {
-        surface->setLayerParameterSmoothing(parent->voiceIndex, false);
-        spectrum3D->setLayerParameterSmoothing(parent->voiceIndex, false);
-    }
-
-    // TODO
-    timeRasterizer.updateOffsetSeeds(1, DeformerPanel::tableSize);
+    const int timeLayerSize = timeLayers->size();
+    timeRasterizer.updateOffsetSeeds(timeLayerSize, DeformerPanel::tableSize);
 
     EnvRasterizer& pitchRast = parent->pitchGroup[0].rast;
     float pitchEnvVal = parent->flags.havePitch ? pitchRast.sampleAt(0) : 0.5;
@@ -121,11 +110,13 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
     // this power of two is unaffected by pitch and unison detune
     noteState.nextPow2 = Arithmetic::getNextPow2(middlePeriod);
 
-    if (noteState.nextPow2 == 0)
+    if (noteState.nextPow2 == 0) {
         noteState.nextPow2 = Arithmetic::getNextPow2(middlePeriod);
+    }
 
-    for (int i = 0; i < 2; ++i)
+    for (int i = 0; i < 2; ++i) {
         oversamplers[i]->resetDelayLine();
+    }
 
     noteState.stride = jmax(1, (int) (controlFreq / futureFrame.period + 0.5));
     futureFrame.cycleCount = -noteState.stride;
@@ -133,7 +124,7 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
 
     if (parent != nullptr) {
         // remember envelopes are unaffected by speed mesh distortion
-        noteState.timePerOutputSample = parent->speedScale / 44100.0;
+        noteState.timePerOutputSample = parent->speedScale.getCurrentValue() / 44100.0;
     }
 
     initialiseNoteExtra(midiNoteNumber, velocity);
@@ -244,8 +235,9 @@ void CycleBasedVoice::render(StereoBuffer& channelPair) {
     int srcChanCount = noteState.isStereo ? 2 : 1;
 
     if (downSample) {
-        for (int c = 0; c < srcChanCount; ++c)
+        for (int c = 0; c < srcChanCount; ++c) {
             oversampleAccumBuf[c].zero();
+        }
     }
 
     StereoBuffer& sterBufToUse = downSample ? oversampleAccumBuf : channelPair;
@@ -437,8 +429,9 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
             futureFrame.period = 1 / getAngleDelta(noteState.lastNoteNumber, 0, 0.5f);
             long pastPos = futureFrame.cumePos;
 
-            if (futureFrame.cycleCount >= 0)
+            if (futureFrame.cycleCount >= 0) {
                 futureFrame.cumePos += futureFrame.period * noteState.stride;
+            }
 
             long samplesAdvanced = jmax(1L, (long) futureFrame.cumePos - pastPos);
 
@@ -512,13 +505,13 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
                 ++frame.cycleCount;
 
                 Buffer<float> destBuffer;
-                Buffer<float> halfBuff(halfBuf.withSize(half));
+                Buffer halfBuff(halfBuf.withSize(half));
 
                 for (int c = 0; c < (noteState.isStereo ? 2 : 1); ++c) {
                     Buffer<float> srcBuffer;
-                    Buffer<float> biasedCyc(biasedCycle[c].withSize(noteState.nextPow2));
-                    Buffer<float> lerpHalf(group.lastLerpHalf[c].withSize(half));
-                    Buffer<float> pastCyc(pastCycle[c].withSize(noteState.nextPow2));
+                    Buffer biasedCyc(biasedCycle[c].withSize(noteState.nextPow2));
+                    Buffer lerpHalf(group.lastLerpHalf[c].withSize(half));
+                    Buffer pastCyc(pastCycle[c].withSize(noteState.nextPow2));
 
                     // no fading needed on first cycle
                     if (isFirstCycle && !doPhaseShift) {
@@ -558,6 +551,7 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
                             cyclePrevBuf = pastCyc;
                         }
 
+                        // first cycle given special treatment when it comes to compositing
                         if (!isFirstCycle) {
                             if (portionOfNext == 0.f) {
                                 cyclePrevBuf.copyTo(biasedCyc);
@@ -851,15 +845,11 @@ inline void CycleBasedVoice::updateChainAngleDelta(VoiceParameterGroup& group,
 }
 
 inline void CycleBasedVoice::updateEnvelopes(int paramIndex, int deltaSamples) {
-    for (int i = 0; i < parent->scratchGroup.size(); ++i)
+    for (int i = 0; i < parent->scratchGroup.size(); ++i) {
         parent->scratchGroup[i].scratchTime = noteState.absVoiceTime;
+    }
 
     parent->updateSmoothedParameters(deltaSamples);
-
-    if (getDocSetting(ParameterSmoothing)) {
-        surface->updateLayerSmoothedParameters(parent->voiceIndex, deltaSamples);
-        spectrum3D->updateLayerSmoothedParameters(parent->voiceIndex, deltaSamples);
-    }
 
     for (int e = 0; e < numElementsInArray(parent->envGroups); ++e) {
         EnvRastGroup& group = *parent->envGroups[e];
@@ -947,7 +937,7 @@ void CycleBasedVoice::unisonVoiceCountChanged() {
 void CycleBasedVoice::testNumLayersChanged() {
     // TODO replace these locks with meshlibrary->arraylock
 
-    ScopedLock sl(surface->getLayerLock());
+    ScopedLock sl(waveform3D->getLayerLock());
 
     for (int unisonIdx = 0; unisonIdx < noteState.numUnisonVoices; ++unisonIdx) {
         VoiceParameterGroup& group = groups[unisonIdx];

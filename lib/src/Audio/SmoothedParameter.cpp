@@ -3,13 +3,13 @@
 
 SmoothedParameter::SmoothedParameter() :
         halflifeSamples(128)
-    ,	targetValue(0)
-    ,	currentValue(0)
-    ,	pastCurrentValue(0)
+    ,	targetValue(0.f)
+    ,	currentValue(0.f)
+    ,	pastCurrentValue(0.f)
     ,	smoothingActive(true) {
 }
 
-SmoothedParameter::SmoothedParameter(double initialValue) :
+SmoothedParameter::SmoothedParameter(float initialValue) :
         halflifeSamples(128)
     ,	targetValue(initialValue)
     ,	currentValue(initialValue)
@@ -29,38 +29,38 @@ void SmoothedParameter::update(int deltaSamples) {
 
     pastCurrentValue = currentValue;
 
-    double product = 0;
-    double base = 0.5;
-    double expt = deltaSamples / (double) halflifeSamples;
+    float product = 0.f;
+    float base = 0.5f;
+    float expt = deltaSamples / (double) halflifeSamples;
 
-    ippsPow_64f_A26(&base, &expt, &product, 1);
+    ippsPow_32f_A24(&base, &expt, &product, 1);
 
     jassert(product <= 1);
 
     currentValue += (1 - product) * (targetValue - currentValue);
 
-    if (fabs(currentValue - targetValue) < 0.0001) {
+    if (fabsf(currentValue - targetValue) < 0.0001f) {
         currentValue = targetValue;
         pastCurrentValue = targetValue;
     }
 }
 
-void SmoothedParameter::setValueDirect(double value) {
-    this->targetValue 		= value;
-    currentValue 			= value;
-    pastCurrentValue 		= value;
+void SmoothedParameter::setValueDirect(float value) {
+    this->targetValue = value;
+    currentValue      = value;
+    pastCurrentValue  = value;
 }
 
-void SmoothedParameter::applyRampOrMultiplyApplicably(
+void SmoothedParameter::maybeApplyRamp(
         Buffer<float> workBuffer,
         Buffer<float> dest,
-        double multiplicand) {
+        float multiplicand) {
     jassert(workBuffer.size() == dest.size());
 
     if (hasRamp()) {
-        double startValue = pastCurrentValue * multiplicand;
-        double endVal = currentValue * multiplicand;
-        double slope = (endVal - startValue) / double(workBuffer.size());
+        float startValue = pastCurrentValue * multiplicand;
+        float endVal = currentValue * multiplicand;
+        float slope = (endVal - startValue) / float(workBuffer.size());
 
         workBuffer.ramp(startValue, slope);
         dest.mul(workBuffer);
@@ -69,8 +69,8 @@ void SmoothedParameter::applyRampOrMultiplyApplicably(
     }
 }
 
-bool SmoothedParameter::setTargetValue(double value) {
-    double lastVal = targetValue;
+bool SmoothedParameter::setTargetValue(float value) {
+    float lastVal = targetValue;
     targetValue = value;
 
     if(! smoothingActive) {
@@ -86,6 +86,6 @@ void SmoothedParameter::updateToTarget() {
 }
 
 bool SmoothedParameter::hasRamp() const {
-    return smoothingActive ? fabs(pastCurrentValue - currentValue) > 0.001 : false;
+    return smoothingActive ? fabsf(pastCurrentValue - currentValue) > 0.001f : false;
 }
 

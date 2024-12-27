@@ -38,20 +38,39 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
+    class Listener {
+    public:
+        virtual ~Listener() = default;
+
+        virtual void layerGroupAdded(int layerGroup) {}
+        virtual void layerGroupDeleted(int layerGroup) {}
+        virtual void layerAdded(int layerGroup, int index) {}
+        virtual void layerRemoved(int layerGroup, int index) {}
+        virtual void layerChanged(int layerGroup, int index) {}
+        virtual void instantiateLayer(XmlElement* layerElem, int meshType) {}
+    };
+
+    /* ----------------------------------------------------------------------------- */
+
     struct Properties : Savable {
+        Properties();
         ~Properties() override = default;
         bool readXML(const XmlElement* element) override;
         void writeXML(XmlElement* element) const override;
 
-        void setDimValue(int index, int dim, float value) {
-            pos[index][dim] = value;
-        }
+        // this is the result of mod matrix value automation
+        void setDimValue(int index, int dim, float value);
+        virtual void updateSmoothedParameters(int sampleCount44k);
+        void updateParameterSmoothing(bool smooth);
+        void updateToTarget(int voiceIndex);
 
-        bool active;
-        int  scratchChan, mode;
-        float gain, pan, fineTune, range;
+        bool active{};
+        int  scratchChan{}, mode{};
+        float gain{}, range{};
 
         MorphPosition pos[12];
+        SmoothedParameter pan, fineTune;
+        vector<SmoothedParameter*> smoothedParameters;
     };
 
     struct EnvProps : Properties {
@@ -72,12 +91,16 @@ public:
     };
 
     struct LayerGroup {
-        explicit LayerGroup(int type) : meshType(type), current(0) {}
+        explicit LayerGroup(int type)
+            : meshType(type),
+              current(0) {
+        }
+
         [[nodiscard]] int size() const { return layers.size(); }
-        Layer& operator[] (const int idx) { return layers[idx]; }
+        Layer& operator[](const int idx) { return layers[idx]; }
 
         [[nodiscard]] Mesh* getCurrentMesh() const {
-            if(current < 0) {
+            if (current < 0) {
                 return nullptr;
             }
 
@@ -104,17 +127,6 @@ public:
         [[nodiscard]] bool isNotNull() const { return groupId != CommonEnums::Null && layerIdx != CommonEnums::Null; }
     };
 
-    class Listener {
-    public:
-        virtual ~Listener() = default;
-
-        virtual void layerAdded(int layerGroup, int index) {}
-        virtual void layerRemoved(int layerGroup, int index) {}
-        virtual void layerChanged(int layerGroup, int index) {}
-        virtual void allLayersDeleted() {}
-        virtual void instantiateLayer(XmlElement* layerElem, int meshType) {}
-    };
-
     /* ----------------------------------------------------------------------------- */
 
     explicit MeshLibrary(SingletonRepo* repo);
@@ -130,42 +142,40 @@ public:
     void moveLayer(int layerId, int fromIndex, int toIndex);
     bool removeLayerKeepingOne(int group, int layer);
     bool hasAnyValidLayers(int groupId);
-
     bool canPasteTo(int type) const;
     void copyToClipboard(Mesh* mesh, int type);
     void pasteFromClipboardTo(Mesh* mesh, int type);
-
-
     bool layerRemoved(int layerGroup, int index);
     bool layerChanged(int layerGroup, int index);
+
     Array<int> getMeshTypesAffectedByCurrent(int layerGroup);
-
     Layer instantiateLayer(XmlElement* meshElem, int meshType);
-
-    Layer& 			getCurrentLayer(int group);
-    LayerGroup& 	getGroup(int group);
-
-    EnvProps* 		getEnvProps(const GroupLayerPair& pair) { return getEnvProps(pair.groupId, pair.layerIdx); }
-    EnvelopeMesh* 	getEnvMesh(const GroupLayerPair& pair) { return getEnvMesh(pair.groupId, pair.layerIdx); }
-    EnvProps* 		getEnvProps(int group, int index);
-    EnvelopeMesh* 	getEnvMesh(int group, int index);
-
-    int 			getNumGroups() 					{ return (int) layerGroups.size(); 		}
-    int				getCurrentIndex(int group) 		{ return getGroup(group).current; 		}
-    Mesh* 			getMesh(int group, int index) 	{ return getLayer(group, index).mesh;   }
-    Mesh* 			getCurrentMesh(int group) 		{ return getCurrentLayer(group).mesh; 	}
-    Layer& 			getLayer(int group, int index) 	{ return getGroup(group).layers[index]; }
-    Properties* 	getProps(int group, int index) 	{ return getLayer(group, index).props;  }
-    Properties* 	getCurrentProps(int group) 		{ return getCurrentLayer(group).props; 	}
-    EnvProps* 		getCurrentEnvProps(int group) 	{ return dynamic_cast<EnvProps*>(getCurrentLayer(group).props); }
-    EnvelopeMesh* 	getCurrentEnvMesh(int group);
-
     void setCurrentMesh(int groupId, Mesh* mesh);
 
-    CriticalSection& getLock() 						{ return arrayLock; 				 	}
-    vector<Vertex*>& getSelectedByType(int type) 	{ return layerGroups[type].selected; 	}
+    [[nodiscard]] Layer& 		getCurrentLayer(int layerGroup);
+    [[nodiscard]] LayerGroup& 	getLayerGroup(int layerGroup);
 
-    void addListener(Listener* listener) 			{ listeners.add(listener); }
+    [[nodiscard]] EnvProps* 	getEnvProps(const GroupLayerPair& pair) { return getEnvProps(pair.groupId, pair.layerIdx); }
+    [[nodiscard]] EnvelopeMesh* getEnvMesh(const GroupLayerPair& pair) { return getEnvMesh(pair.groupId, pair.layerIdx); }
+    [[nodiscard]] EnvProps* 	getEnvProps(int group, int index);
+    [[nodiscard]] EnvelopeMesh* getEnvMesh(int group, int index);
+
+    [[nodiscard]] int 			getNumGroups() 					{ return (int) layerGroups.size(); 		}
+    [[nodiscard]] int			getCurrentIndex(int group) 		{ return getLayerGroup(group).current; 	}
+    [[nodiscard]] Mesh* 		getMesh(int group, int index) 	{ return getLayer(group, index).mesh;   }
+    [[nodiscard]] Mesh* 		getCurrentMesh(int group) 		{ return getCurrentLayer(group).mesh; 	}
+    [[nodiscard]] Layer& 		getLayer(int group, int index) 	{ return getLayerGroup(group).layers[index]; }
+    [[nodiscard]] Properties* 	getProps(int group, int index) 	{ return getLayer(group, index).props;  }
+    [[nodiscard]] Properties* 	getCurrentProps(int group) 		{ return getCurrentLayer(group).props; 	}
+    [[nodiscard]] EnvProps* 	getCurrentEnvProps(int group) 	{ return dynamic_cast<EnvProps*>(getCurrentLayer(group).props); }
+    [[nodiscard]] EnvelopeMesh* getCurrentEnvMesh(int group);
+
+    [[nodiscard]] CriticalSection& getLock() 					{ return arrayLock; 				 	}
+    [[nodiscard]] vector<Vertex*>& getSelectedByType(int type) 	{ return layerGroups[type].selected; 	}
+
+    void addListener(Listener* listener) { listeners.add(listener); }
+    void updateSmoothedParameters(int voiceIndex, int numSamples44k) const;
+    void updateAllSmoothedParamsToTarget(int voiceIndex) const;
 
 protected:
     CriticalSection arrayLock;
@@ -175,7 +185,4 @@ protected:
     LayerGroup dummyGroup;
     vector<LayerGroup> layerGroups;
     ListenerList<Listener> listeners;
-
-    typedef vector<LayerGroup>::iterator GroupIter;
-    typedef vector<Layer>::iterator LayerIter;
 };

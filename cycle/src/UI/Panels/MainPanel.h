@@ -13,6 +13,7 @@ using std::set;
 class AudioSourceRepo;
 class BannerPanel;
 class Bounded;
+class BoundWrapper;
 class ConfigPanel;
 class Console;
 class DeformerPanel;
@@ -224,24 +225,23 @@ private:
     PanelPair* xv_spectSurf;
     PanelPair* xv_playbackLeft;
 
-    Bounded* envCtrlBounds;
-
     TabbedSelector* topRightTabs;
     TabbedSelector* bottomTabs;
     TabbedSelector* topTabs;
 
+    BoundWrapper* envCtrlBounds;
     BannerPanel* bannerPanel;
 
-    Bounded* keybBounds;
-    Bounded* genBounds;
-    Bounded* consBounds;
-    Bounded* modBounds;
-    Bounded* playbackBounds;
+    BoundWrapper* keybBounds;
+    BoundWrapper* genBounds;
+    BoundWrapper* consBounds;
+    BoundWrapper* modBounds;
+    BoundWrapper* playbackBounds;
 
-    Bounded* spectCtrlBounds;
-    Bounded* surfCtrlBounds;
-    Bounded* guideCtrlBounds;
-    Bounded* tubeCtrlBoundsB;
+    BoundWrapper* spectCtrlBounds;
+    BoundWrapper* surfCtrlBounds;
+    BoundWrapper* guideCtrlBounds;
+    BoundWrapper* tubeCtrlBoundsB;
 
 //	Bounded* tubeCtrlBounds;
 //	Bounded* envCtrlABounds;
@@ -257,18 +257,18 @@ private:
     ZoomPanel* wsZoomPanel;
     ZoomPanel* dfrmZoomPanel;
 
-    Bounded* derivBounds;
-    Bounded* propsBounds;
-    Bounded* unisonBounds;
-    Bounded* bnrBounds;
-    Bounded* menuBounds;
-    Bounded* oscCtrlBounds;
-    Bounded* reverbBounds;
-    Bounded* delayBounds;
-    Bounded* eqBounds;
-    Bounded* wsCtrlBounds;
-    Bounded* cv_botTabBounds;
-    Bounded* cv_topTabBounds;
+    BoundWrapper* derivBounds;
+    BoundWrapper* propsBounds;
+    BoundWrapper* unisonBounds;
+    BoundWrapper* bnrBounds;
+    BoundWrapper* menuBounds;
+    BoundWrapper* oscCtrlBounds;
+    BoundWrapper* reverbBounds;
+    BoundWrapper* delayBounds;
+    BoundWrapper* eqBounds;
+    BoundWrapper* wsCtrlBounds;
+    BoundWrapper* cv_botTabBounds;
+    BoundWrapper* cv_topTabBounds;
 
     MenuBarComponent* menuBar;
 
@@ -283,16 +283,6 @@ private:
 
     Dragger* cv_envSpectDragger;
     Dragger* cv_spectSurfDragger;
-
-    OpenGLPanel* crsGL;
-    OpenGLPanel* f2GL;
-    OpenGLPanel* e2GL;
-    OpenGLPanel* dfmGL;
-    OpenGLPanel* wsGL;
-    OpenGLPanel* tmGL;
-    OpenGLPanel3D* surfGL;
-    OpenGLPanel3D* f3GL;
-    OpenGLPanel3D* e3GL;
 
     // singleton references
     Ref<VertexPropertiesPanel> vtxPropsPanel;
@@ -321,7 +311,8 @@ private:
     PanelGroup wave2DGroup, surfGroup, spectGroup2, spectGroup3, envGroup2, envGroup3, wshpGroup, irGroup, dfrmGroup;
     Array<PanelGroup*> panelGroups;
 
-    OwnedArray<void> deletable;
+    OwnedArray<Deletable> deletable;
+    OwnedArray<Component> deletableComponents;
 
     set<Bounded*> toOutline;
 

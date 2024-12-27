@@ -678,9 +678,9 @@ MorphPosition VertCube::getCentroid(bool isEnv) const {
     float invLimit = 1 / float(limit);
 
     for (int i = 0; i < limit; ++i) {
-        pos.time += lineVerts[i]->values[Vertex::Time] * invLimit;
-        pos.red  += lineVerts[i]->values[Vertex::Red]  * invLimit;
-        pos.blue += lineVerts[i]->values[Vertex::Blue] * invLimit;
+        pos.time.setValueDirect(pos.time.getTargetValue() + lineVerts[i]->values[Vertex::Time] * invLimit);
+        pos.red.setValueDirect(pos.time.getTargetValue() + lineVerts[i]->values[Vertex::Red] * invLimit);
+        pos.blue.setValueDirect(pos.time.getTargetValue() + lineVerts[i]->values[Vertex::Blue] * invLimit);
     }
 
     return pos;

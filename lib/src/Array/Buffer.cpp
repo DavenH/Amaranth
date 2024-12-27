@@ -22,12 +22,6 @@
     T(64f)    \
     T(32fc)
 
-#define declareFor32Plus(T) \
-    T(32s)    \
-    T(32f)    \
-    T(64f)    \
-    T(32fc)
-
 #define declareForFloatAndCplx(T) \
     T(32f)    \
     T(32fc)
@@ -411,7 +405,9 @@ Buffer<Ipp##T>&  Buffer<Ipp##T>::rand(unsigned& seed)           \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::ramp(Ipp##T offset, Ipp##T delta) \
 {                                                               \
-    if(sz > 0)                                                  \
+    if(delta <= 0.00001f && delta >= -0.00001f)                 \
+        ippsSet_##T(offset, ptr, sz);                           \
+    else if(sz > 0)                                             \
         ippsVectorSlope_##T(ptr, sz, offset, delta);            \
     return *this;                                               \
 }
@@ -664,10 +660,10 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::op(Buffer<Ipp##T> src1, Buffer<Ipp##T> src2) { \
 
 #define unsupportedIntegerTypes(m, op) \
     m(32s, op)
-    // macro(8u, op) \
-    // macro(8s, op) \
-    // macro(16s, op) \
-    // macro(32s, op)
+    // m(8u, op) \
+    // m(8s, op) \
+    // m(16s, op) \
+    // m(32s, op)
 
 
 #define defineUnsupportedOps(T) \

@@ -13,7 +13,7 @@ GraphicRasterizer::GraphicRasterizer(
         ,   const String& name
         ,   int layerGroup
         ,   bool isCyclic
-        ,   float margin) : SingletonAccessor(repo, "GraphicRasterizer")
+        ,   float margin) : SingletonAccessor(repo, name)
     ,   MeshRasterizer(name)
     ,   layerGroup(layerGroup)
     ,   interactor(interactor) {
@@ -30,11 +30,6 @@ void GraphicRasterizer::pullModPositionAndAdjust() {
     if (props->scratchChan != CommonEnums::Null) {
         morph.time = getObj(VisualDsp).getScratchPosition(props->scratchChan);
     }
-}
-
-float& GraphicRasterizer::getPrimaryDimensionVar() {
-    int xDim = getSetting(CurrentMorphAxis);
-    return morph[xDim];
 }
 
 int GraphicRasterizer::getPrimaryViewDimension() {

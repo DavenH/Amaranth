@@ -30,13 +30,11 @@ public:
     // one for each mesh layer
     vector<CycleState> layerStates;
 
-    VoiceParameterGroup(const VoiceParameterGroup& group)
-    {
+    VoiceParameterGroup(const VoiceParameterGroup& group) {
         this->operator =(group);
     }
 
-    VoiceParameterGroup& operator=(const VoiceParameterGroup& group)
-    {
+    VoiceParameterGroup& operator=(const VoiceParameterGroup& group) {
         cumePos 				= group.cumePos;
         sampledFrontier 		= group.sampledFrontier;
         angleDelta 				= group.angleDelta;

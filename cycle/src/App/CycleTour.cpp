@@ -321,7 +321,7 @@ bool CycleTour::conditionPassed(const Condition& c){
 
         case NumLayers: {
             if(Interactor* itr = areaToInteractor(c.area))
-                return compare(c, getObj(MeshLibrary).getGroup(itr->layerType).size());
+                return compare(c, getObj(MeshLibrary).getLayerGroup(itr->layerType).size());
 
             break;
         }

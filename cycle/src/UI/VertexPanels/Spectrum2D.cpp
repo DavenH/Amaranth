@@ -33,7 +33,7 @@ void Spectrum2D::init() {
     position 		= &getObj(PlaybackPanel);
     spectrum3D 		= &getObj(Spectrum3D);
     f2Interactor 	= &getObj(SpectrumInter2D);
-    console 		= dynamic_cast<Console*>(&getObj(IConsole));
+    console 		= &getObj(Console);
     interactor 		= f2Interactor;
 
     float margin = getRealConstant(SpectralMargin);

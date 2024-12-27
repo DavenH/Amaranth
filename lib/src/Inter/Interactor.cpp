@@ -1,5 +1,8 @@
 #include <iterator>
 #include "Interactor.h"
+
+#include <App/AppConstants.h>
+
 #include "Interactor3D.h"
 #include "UndoableActions.h"
 #include "UndoableMeshProcess.h"
@@ -9,12 +12,10 @@
 #include "../App/MeshLibrary.h"
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
-#include "../Curve/DepthVert.h"
 #include "../Curve/MeshRasterizer.h"
 #include "../Curve/Vertex.h"
 #include "../Design/Updating/Updater.h"
 #include "../Obj/CurveLine.h"
-#include "../Thread/LockTracer.h"
 #include "../UI/Panels/Panel.h"
 #include "../UI/Panels/Texture.h"
 #include "../UI/Panels/ZoomRect.h"
@@ -2019,11 +2020,11 @@ void Interactor::initVertsWithDepthDims(
 MorphPosition Interactor::getCube() {
     MorphPosition pos = getOffsetPosition(true);
 
-    const float minLength = 0.001f;
+    const float minLength = getConstant(MinLineLength);
 
-    NumberUtils::constrain(pos.time,        0.f, 1.f - minLength);
-    NumberUtils::constrain(pos.red,         0.f, 1.f - minLength);
-    NumberUtils::constrain(pos.blue,        0.f, 1.f - minLength);
+    pos.time.setValueDirect(jlimit(pos.time.getTargetValue(), 0.f, 1.f - minLength));
+    pos.red.setValueDirect(jlimit(pos.red.getTargetValue(),   0.f, 1.f - minLength));
+    pos.blue.setValueDirect(jlimit(pos.blue.getTargetValue(), 0.f, 1.f - minLength));
     NumberUtils::constrain(pos.timeDepth,   minLength, 1.f - pos.time);
     NumberUtils::constrain(pos.redDepth,    minLength, 1.f - pos.red);
     NumberUtils::constrain(pos.blueDepth,   minLength, 1.f - pos.blue);

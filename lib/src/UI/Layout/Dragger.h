@@ -2,22 +2,17 @@
 #include "JuceHeader.h"
 #include "../../Obj/Ref.h"
 #include "../../App/SingletonAccessor.h"
+#include "Obj/Deletable.h"
 
 class PanelPair;
 class SingletonRepo;
 
 class Dragger :
         public Component
+    ,   public Deletable
     , 	public SingletonAccessor {
 public:
     enum { Horz, Vert };
-
-    enum WhatToReduceInDetail {
-        ReduceNothing 		= 0,
-        ReduceF3dDetail 	= 1,
-        ReduceSurfDetail 	= 2,
-        ReduceE3DDetail 	= 4,
-    };
 
     class Listener {
     public:
@@ -29,15 +24,14 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-    Dragger(SingletonRepo* repo, int bitfield);
+    explicit Dragger(SingletonRepo* repo);
+    // ~Dragger() override = default;
 
     void mouseDrag(const MouseEvent& e) override;
     void mouseEnter(const MouseEvent& e) override;
     void mouseUp(const MouseEvent& e) override;
     void paint(Graphics& g) override;
-    void reduceDetailOfPanels();
     void resized() override;
-    void restoreDetailOfPanels();
     void setPanelPair(PanelPair* pair);
 
     void addListener(Listener* listener) 	{ listeners.add(listener); }
@@ -47,7 +41,7 @@ public:
     virtual void update(int diff);
 
 protected:
-    int type, bitfield;
+    int type;
     int startY, startAH, startBH, startBY;
     int startX, startAW, startBW, startBX;
 

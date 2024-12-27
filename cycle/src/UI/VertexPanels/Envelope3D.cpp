@@ -1,12 +1,15 @@
 #include <Binary/Gradients.h>
 
 #include "Envelope3D.h"
+
+#include <Util/CycleEnums.h>
+
 #include "Envelope2D.h"
 #include "../../Inter/EnvelopeInter3D.h"
 #include "../../Curve/E3Rasterizer.h"
 
 Envelope3D::Envelope3D(SingletonRepo* repo) :
-        Panel3D(repo, "Envelope3D", this, false, true)
+        Panel3D(repo, "Envelope3D", this, UpdateSources::SourceEnvelope3D, false, true)
     ,	SingletonAccessor(repo, "Envelope3D")
 {
     Image blue = PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);

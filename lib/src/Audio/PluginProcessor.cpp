@@ -88,7 +88,7 @@ void PluginProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
             listeners.call(&Listener::tempoChanged, lastPosInfo.bpm);
         }
     } else {
-        // If the host fails to fill-in the current time, we'll just clear it to a default..
+        // If the host fails to fill-in the current time, we'll just clear it to a default.
         lastPosInfo.resetToDefault();
     }
 

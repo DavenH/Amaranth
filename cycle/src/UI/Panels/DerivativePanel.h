@@ -6,7 +6,7 @@
 #include <Algo/Fir.h>
 #include <App/SingletonAccessor.h>
 #include <Design/Updating/Updateable.h>
-#include <Obj/ColorGradient.h>
+#include <UI/ColorGradient.h>
 #include <UI/Panels/Panel.h>
 #include "JuceHeader.h"
 

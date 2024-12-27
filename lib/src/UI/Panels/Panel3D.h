@@ -1,7 +1,9 @@
 #pragma once
+#include <UI/Layout/Dragger.h>
+
 #include "Panel.h"
 
-#include "../../Obj/ColorGradient.h"
+#include "../../UI/ColorGradient.h"
 #include "../../Array/Column.h"
 
 using std::vector;
@@ -10,7 +12,10 @@ class Interactor3D;
 class OpenGLPanel3D;
 class BoundWrapper;
 
-class Panel3D : public Panel {
+class Panel3D :
+        public Panel
+    ,	public Dragger::Listener
+{
 public:
     class Renderer : public Panel::Renderer {
     public:
@@ -45,12 +50,21 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-    Panel3D(SingletonRepo* repo, const String& name,
-            DataRetriever* dataRetriever,
-            bool isTransparent, bool haveHorzZoom);
+    Panel3D(
+        SingletonRepo* repo,
+        const String& name,
+        DataRetriever* dataRetriever,
+        int updateSource,
+        bool isTransparent,
+        bool haveHorzZoom
+    );
 
     ~Panel3D() override;
+    void init() override;
 
+    void dragStarted() override;
+    void dragEnded() override;
+    void zoomUpdated(int updateSource) override;
     void bakeTextures() override;
     void doExtraResized() override;
     void drawAxe();
@@ -65,13 +79,13 @@ public:
     void highlightCurrentIntercept() override;
 
     virtual vector<Color>& getGradientColours();
-    void zoomUpdated(int updateSource) override;
 
     void drawCurvesAndSurfaces() override 			{ renderer->drawBakedTextures(); }
     void setGraphicsRenderer(Renderer* renderer) 	{ this->renderer.reset(renderer); }
-    Renderer* getRenderer() const { return renderer.get(); }
-    void setUseVertices(bool doso) { useVertices = doso; }
-    OpenGLPanel3D* getOpenglPanel() const { return openGL.get(); }
+
+    void setUseVertices(bool doso)          { useVertices = doso; }
+    Renderer* getRenderer() const           { return renderer.get(); }
+    OpenGLPanel3D* getOpenglPanel() const   { return openGL.get(); }
 
     void postVertsDraw() override;
 
@@ -107,9 +121,11 @@ protected:
     static const int coordsPerVert	 = 2;
     static const int gradientWidth	 = 512;
 
-    bool useVertices, haveLogarithmicY;
+    bool useVertices, haveLogarithmicY, haveHorzZoom;
+    int updateSource;
     float volumeScale, volumeTrans;
 
+    DataRetriever* dataRetriever;
     Ref<Interactor3D> interactor3D;
     std::unique_ptr<Renderer> renderer;
     std::unique_ptr<OpenGLPanel3D> openGL;
@@ -126,7 +142,6 @@ protected:
     /* ----------------------------------------------------------------------------- */
 
     friend class OpenGLPanel3D;
-    friend class JPanel3D;
 
     JUCE_LEAK_DETECTOR(Panel3D);
 };

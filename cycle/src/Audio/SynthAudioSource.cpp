@@ -100,7 +100,7 @@ void SynthAudioSource::init() {
 
     calcFades();
 
-    for (int i = 0; i < getConstant(NumVoices); ++i) {
+    for (int i = 0; i < getConstant(MaxNumVoices); ++i) {
         SynthesizerVoice* voice;
 
         voices.add(voice = new SynthesizerVoice(i, repo));
@@ -140,20 +140,20 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
     int numSamples 		= buffer.getNumSamples();
     double sampleRate 	= getObj(AudioHub).getSampleRate();
     bool needToResample = sampleRate != 44100.0;
-    int numSamples44k = numSamples;
+    int numSamples44k   = numSamples;
 
     if (needToResample) {
         double ratio = 44100.0 / sampleRate;
-        numSamples44k 	= (int) (ratio * (samplesProcessed + numSamples) + 0.999999999) -
-                          (int) (ratio * samplesProcessed + 0.999999999);
+        numSamples44k = (int) (ratio * (samplesProcessed + numSamples) + 0.999999999) -
+                        (int) (ratio * samplesProcessed + 0.999999999);
 
-        for(int i = 0; i < buffer.getNumChannels(); ++i)
-        {
+        for (int i = 0; i < buffer.getNumChannels(); ++i) {
             tempMemory[i].ensureSize(numSamples44k);
             tempRendBuffer[i] = tempMemory[i].withSize(numSamples44k);
 
-            if(numSamples44k > 0)
+            if(numSamples44k > 0) {
                 ippsZero_32f(tempRendBuffer[i], numSamples44k);
+            }
         }
 
         tempRendBuffer.numChannels = buffer.getNumChannels();
@@ -179,8 +179,6 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
     MidiBuffer midi44k;
 
     if (needToResample) {
-//		jassert(numSamples44k > 0 || midiMessages.isEmpty());
-
         convertMidiTo44k(midiMessages, midi44k, numSamples44k);
         midiBuff = &midi44k;
     }
@@ -192,12 +190,12 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
         waveshaper-> updateSmoothedParameters(numSamples44k);
         tubeModel->	 updateSmoothedParameters(numSamples44k);
         equalizer->	 updateSmoothedParameters(numSamples44k);
-        getObj(Waveform3D).updateSmoothedParameters(numSamples44k);
-        getObj(Spectrum3D).updateSmoothedParameters(numSamples44k);
 
         for (auto voice : voices) {
-            if(voice->getCurrentlyPlayingNote() < 0) {
+            // todo why is this condition necessary? Makes more sense to invert it.
+            if(voice->getCurrentlyPlayingNote() >= 0) {
                 voice->updateSmoothedParameters(numSamples44k);
+                getObj(MeshLibrary).updateSmoothedParameters(voice->getVoiceIndex(), numSamples44k);
             }
         }
 
@@ -208,8 +206,10 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
         volumeScale.update(numSamples44k);
 
         for(int i = 0; i < buffer.getNumChannels(); ++i) {
-            volumeScale.applyRampOrMultiplyApplicably(workBuffer.withSize(numSamples44k),
-                                                      Buffer<float>(buffer44k, i));
+            volumeScale.maybeApplyRamp(
+                workBuffer.withSize(numSamples44k),
+                Buffer<float>(buffer44k, i)
+            );
         }
     }
 
@@ -263,24 +263,23 @@ void SynthAudioSource::unisonOrderChanged() {
 void SynthAudioSource::setEnvelopeMeshes(bool lock) {
 //	progressMark
 
-    if (lock) {
-        ScopedLock lock(audioLock);
+    std::unique_ptr<ScopedLock> sl;
 
-        for (auto voice : voices) {
-            voice->fetchEnvelopeMeshes();
-        }
-    } else {
-        for(auto voice : voices) {
-            voice->fetchEnvelopeMeshes();
-        }
+    if (lock) {
+        sl = std::make_unique<ScopedLock>(audioLock);
+    }
+
+    for (auto voice : voices) {
+        voice->fetchEnvelopeMeshes();
     }
 }
 
 void SynthAudioSource::enablementChanged() {
     ScopedLock sl(audioLock);
 
-    for (auto voice : voices)
+    for (auto voice : voices) {
         voice->enablementChanged();
+    }
 }
 
 void SynthAudioSource::prepNewVoice() {
@@ -327,11 +326,12 @@ void SynthAudioSource::calcDeclickEnvelope(double /*samplerate*/) {
     int attackLength 	= (int) ceil(0.00145 * samplerate);
     int releaseLength 	= (int) ceil(0.01 * samplerate);
 
-    if(attackDeclick.size() == attackLength)
+    if(attackDeclick.size() == attackLength) {
         return;
+    }
 
     ScopedAlloc<Ipp32f> buff(attackLength);
-    Buffer<float> ramp = buff;
+    Buffer ramp = buff;
 
     attackDeclick.resize(attackLength);
 
@@ -350,25 +350,25 @@ void SynthAudioSource::calcDeclickEnvelope(double /*samplerate*/) {
 void SynthAudioSource::calcFades() {
     int totalSize = 0;
 
-    for (int i = 0; i < numOctaves; ++i)
+    for (int i = 0; i < numOctaves; ++i) {
         totalSize += 8 << i;
+    }
 
     fadeMemory.resize(totalSize);
 
+    const float pi = MathConstants<float>::pi;
     for (int i = 0; i < numOctaves; ++i) {
-        int size 	= 8 << i;
-        int half 	= size / 2;
+        int size = 8 << i;
+        int half = size / 2;
 
         fadeIns[i]  = fadeMemory.place(half);
         fadeOuts[i] = fadeMemory.place(half);
 
-        Buffer<float> in = fadeIns[i];
-        Buffer<float> out = fadeOuts[i];
+        Buffer<float> in  = fadeIns[i];
 
-        in.ramp(-0.5f * IPP_PI, IPP_PI / float(half - 1));
-        in.sin().add(1.f).mul(0.5f);
+        in.ramp(-0.5f * pi, pi / float(half - 1)).sin().add(1.f).mul(0.5f);
 
-        out.subCRev(1.f, in);
+        fadeOuts[i].subCRev(1.f, in);
     }
 
     Range range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
@@ -557,9 +557,8 @@ void SynthAudioSource::updateTempoScale() {
 }
 
 void SynthAudioSource::updateGlobality() {
-    MeshLibrary::LayerGroup& scratchGroup 	= getObj(MeshLibrary).getGroup(LayerGroups::GroupScratch);
-    auto& panel 						= getObj(Envelope2D);
-    IDeformer& deformer 				= getObj(DeformerPanel);
+    MeshLibrary::LayerGroup& scratchGroup = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch);
+    IDeformer& deformer                   = getObj(DeformerPanel);
 
     globalScratch.clear();
 

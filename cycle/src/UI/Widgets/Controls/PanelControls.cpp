@@ -154,7 +154,7 @@ void PanelControls::populateScratchSelector() {
 	String dash(L"\u2013");
 	scratchSelector.addItem(dash, NullScratchChannel);
 
-	int size = getObj(MeshLibrary).getGroup(LayerGroups::GroupScratch).size();
+	int size = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch).size();
 
 	for(int i = 0; i < size; ++i) {
 		scratchSelector.addItem(String(i + 1), i + 1);

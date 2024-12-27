@@ -4,6 +4,7 @@
 #include "../Layout/Bounded.h"
 #include "JuceHeader.h"
 #include "../../App/SingletonAccessor.h"
+#include "../../Obj/Deletable.h"
 
 class Panel;
 
@@ -23,6 +24,7 @@ public:
 class ZoomPanel :
         public Component
     ,	public Bounded
+    ,	public Deletable
     ,	public SingletonAccessor
     ,	public ScrollBar::Listener {
 public:
@@ -53,9 +55,14 @@ public:
     /* ----------------------------------------------------------------------------- */
 
     ZoomPanel(SingletonRepo* repo, ZoomContext panel);
-    ~ZoomPanel() override = default;
+    ~ZoomPanel() override {
+        Component::~Component();
+    }
 
-    const Rectangle<int> getBounds() override;
+    [[nodiscard]] Rectangle<int> getBounds() const override {
+        return Component::getBounds();
+    }
+
     void mouseEnter(const MouseEvent& e) override;
     void panelComponentChanged(Component* newComponent, Component* oldComponent = nullptr);
     void panelZoomChanged(bool cmdDown);

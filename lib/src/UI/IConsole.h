@@ -25,7 +25,7 @@ public:
 
 	void write(const String& str) { write(str, DefaultPriority); }
 
-	explicit IConsole(SingletonRepo* repo) : SingletonAccessor(repo, "IConsole") {}
+	explicit IConsole(SingletonRepo* repo, const String& name) : SingletonAccessor(repo, name) {}
 
 	virtual void write(const String& str, int priority) = 0;
 	virtual void setKeys(const String& str) = 0;
@@ -45,7 +45,7 @@ public:
 };
 
 class DummyConsole : public IConsole {
-	explicit DummyConsole(SingletonRepo* repo) : IConsole(repo) {}
+	explicit DummyConsole(SingletonRepo* repo) : IConsole(repo, "DummyConsole") {}
 
 	void write(const String& str, int priority) override {}
 	void setKeys(const String& str) override {}

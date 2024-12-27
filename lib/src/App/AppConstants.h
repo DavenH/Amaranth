@@ -12,6 +12,7 @@ namespace Constants {
     ,	LowestMidiNote		= 20
     ,	TitleBarHeight		= 24
     ,	HighestMidiNote		= 127
+    ,	MeshFormatVersion	= 2
     };
 
     enum {
@@ -21,6 +22,7 @@ namespace Constants {
     ,	DocumentExt
     ,	DocMagicCode
     ,	FontFace
+    ,   MinLineLength
     ,	ProductName
     ,	DocumentsDir
     ,	PropertiesPath

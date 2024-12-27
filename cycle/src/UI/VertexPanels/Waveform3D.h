@@ -30,12 +30,12 @@ class Waveform3D:
     ,	public Panel3D::DataRetriever
     ,	public Slider::Listener
     ,	public Button::Listener
+    ,	public MeshLibrary::Listener
     ,	public ParameterGroup::Worker
     ,	public LayerSelectionClient
     ,	public ControlsClient
     ,	public AsyncUIUpdater
-    ,	public TourGuide
-    ,	public Savable {
+    ,	public TourGuide {
 public:
     explicit Waveform3D(SingletonRepo*);
     ~Waveform3D() override;
@@ -75,6 +75,9 @@ public:
     void buttonClicked(Button* button) override;
     void sliderValueChanged (Slider* slider) override;
 
+    void layerGroupAdded(int layerGroup) override;
+    void layerChanged(int layerGroup, int index) override;
+
     Buffer<float> getColumnArray() override;
     const vector<Column>& getColumns() override;
 
@@ -86,10 +89,6 @@ public:
 
     void setPan(int layerIdx, float unitValue);
     void setKnobValuesImplicit();
-
-    /* Persistence */
-    bool readXML(const XmlElement* element) override;
-    void writeXML(XmlElement* element) const override;
 
 private:
     MeshLibrary::Properties* getCurrentProperties();
@@ -105,5 +104,5 @@ private:
     Ref<HSlider> layerFine;
     Ref<HSlider> layerPan;
     Ref<WaveformInter3D> surfInteractor;
-    std::unique_ptr<MeshSelector<Mesh> > 	meshSelector;
+    std::unique_ptr<MeshSelector<Mesh>> meshSelector;
 };

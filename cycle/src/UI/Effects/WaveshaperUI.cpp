@@ -25,6 +25,9 @@ WaveshaperUI::WaveshaperUI(SingletonRepo* repo) :
     ,	controls		(this, repo, true)
     ,	isEnabled		(false)
 {
+}
+
+void WaveshaperUI::init() {
     updateSource			= UpdateSources::SourceWaveshaper;
     layerType 				= LayerGroups::GroupWaveshaper;
     curveIsBipolar 			= false;
@@ -82,9 +85,7 @@ WaveshaperUI::WaveshaperUI(SingletonRepo* repo) :
 
     paramGroup->listenToKnobs();
     createNameImage("Waveshaper", false, true);
-}
 
-void WaveshaperUI::init() {
     waveshaper = &getObj(SynthAudioSource).getWaveshaper();
     waveshaper->setRasterizer(rasterizer);
 
