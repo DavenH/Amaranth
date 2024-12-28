@@ -405,10 +405,11 @@ Buffer<Ipp##T>&  Buffer<Ipp##T>::rand(unsigned& seed)           \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::ramp(Ipp##T offset, Ipp##T delta) \
 {                                                               \
-    if(delta <= 0.00001f && delta >= -0.00001f)                 \
-        ippsSet_##T(offset, ptr, sz);                           \
-    else if(sz > 0)                                             \
-        ippsVectorSlope_##T(ptr, sz, offset, delta);            \
+    if(sz > 0)                                                  \
+        if(delta <= 0.000001f && delta >= -0.000001f)           \
+            ippsSet_##T(offset, ptr, sz);                       \
+        else                                                    \
+            ippsVectorSlope_##T(ptr, sz, offset, delta);        \
     return *this;                                               \
 }
 

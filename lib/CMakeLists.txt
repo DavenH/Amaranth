@@ -4,12 +4,10 @@ project(AmaranthLib VERSION 1.0.0)
 set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode")
 
 file(GLOB_RECURSE LIB_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-    "${JUCE_DIR}/*.cpp"
-    "${JUCE_DIR}/*.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+        "${JUCE_DIR}/*.cpp"
+        "${JUCE_DIR}/*.c"
 )
-
-list(FILTER LIB_SOURCES EXCLUDE REGEX ".*tests/.*\\.cpp$")
 
 add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -29,8 +27,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${WEBKIT_INCLUDE_DIRS}
 )
 
-
-# Library compile definitions
 target_compile_definitions(${PROJECT_NAME} PUBLIC
     LINUX=1
     $<$<CONFIG:Debug>:DEBUG=1>
@@ -82,33 +78,54 @@ target_link_directories(${PROJECT_NAME} PUBLIC
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -g -ggdb -O0)
 
-    file(GLOB_RECURSE TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/**/tests/*.cpp")
-    add_executable(${PROJECT_NAME}_tests ${TEST_SOURCES})
-    target_include_directories(${PROJECT_NAME}_tests PUBLIC
-            ${CMAKE_CURRENT_SOURCE_DIR}/src
-            ${VST3_DIR}
-            ${JUCE_DIR}
-            ${JUCE_MODULES_DIR}
-            ${IPP_DIR}/include/ipp
-            ${ALSA_INCLUDE_DIRS}
-            ${FREETYPE_INCLUDE_DIRS}
-            ${FONTCONFIG_INCLUDE_DIRS}
-            ${OPENGL_INCLUDE_DIRS}
-            ${CURL_INCLUDE_DIRS}
-            ${GTK3_INCLUDE_DIRS}
-            ${WEBKIT_INCLUDE_DIRS}
-            PRIVATE "/usr/local/include" # catch2's include dirs
-    )
-    target_link_libraries(${PROJECT_NAME}_tests
-        PRIVATE
-        ${PROJECT_NAME}
-        Catch2::Catch2WithMain
-    )
+    if(BUILD_TESTING)
+        file(GLOB_RECURSE TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp")
 
-    # Register tests with CTest
-    include(CTest)
-    include(Catch)
-    catch_discover_tests(${PROJECT_NAME}_tests)
+        file(GLOB IMGUI_SOURCES
+                "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/*.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends/imgui_impl_glfw.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends/imgui_impl_opengl3.cpp"
+        )
+        file(GLOB IMPLOT_SOURCES
+                "${CMAKE_CURRENT_SOURCE_DIR}/external/implot/*.cpp"
+        )
+
+        list(APPEND TEST_SOURCES ${IMGUI_SOURCES} ${IMPLOT_SOURCES})
+        add_executable(${PROJECT_NAME}_tests ${TEST_SOURCES})
+        target_include_directories(${PROJECT_NAME}_tests PUBLIC
+                ${CMAKE_CURRENT_SOURCE_DIR}/src
+                ${VST3_DIR}
+                ${JUCE_DIR}
+                ${JUCE_MODULES_DIR}
+                ${IPP_DIR}/include/ipp
+                ${ALSA_INCLUDE_DIRS}
+                ${FREETYPE_INCLUDE_DIRS}
+                ${FONTCONFIG_INCLUDE_DIRS}
+                ${OPENGL_INCLUDE_DIRS}
+                ${CURL_INCLUDE_DIRS}
+                ${GTK3_INCLUDE_DIRS}
+                ${WEBKIT_INCLUDE_DIRS}
+        )
+        target_include_directories(${PROJECT_NAME}_tests PRIVATE
+                "/usr/local/include" # catch2's include dirs
+                "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui"
+                "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends"
+                "${CMAKE_CURRENT_SOURCE_DIR}/external/implot"
+        )
+        find_package(glfw3 REQUIRED)
+
+        target_link_libraries(${PROJECT_NAME}_tests
+                PRIVATE
+                # link all the stuff built in the main project library, saves us from having to build all of it again
+                ${PROJECT_NAME}
+                Catch2::Catch2WithMain
+                glfw
+        )
+
+        include(CTest)
+        include(Catch)
+        catch_discover_tests(${PROJECT_NAME}_tests)
+    endif()
 else()
     target_compile_options(${PROJECT_NAME} PRIVATE -O3)
 endif()

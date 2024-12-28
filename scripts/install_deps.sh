@@ -109,8 +109,30 @@ install_ipp() {
     fi
 }
 
+# if running tests -- helps visualize arrays and such
+install_glfw() {
+    if confirm "Install GLFW?"; then
+        echo -e "${BLUE}Installing GLFW...${NC}"
+
+        # Ubuntu/Debian
+        if command_exists apt; then
+            sudo apt update
+            sudo apt install -y libglfw3-dev
+        # Fedora
+        elif command_exists dnf; then
+            sudo dnf install -y glfw-devel
+        else
+            echo -e "${RED}Unsupported package manager. Please install GLFW manually.${NC}"
+            return 1
+        fi
+
+        echo -e "${GREEN}GLFW installed successfully${NC}"
+    fi
+}
+
 install_gcc11
 install_catch2
 install_juce
 install_vst3
 install_ipp
+install_glfw

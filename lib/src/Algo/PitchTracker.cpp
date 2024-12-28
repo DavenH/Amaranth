@@ -24,15 +24,15 @@ void PitchTracker::yin() {
     data.octaveRatioThres    = 0.5;
     const int downsampleRate = 16000;
 
-    float rateRatio  = float(downsampleRate) / sample->samplerate;
+    float rateRatio   = float(downsampleRate) / sample->samplerate;
     int numSamples16k = rateRatio * sample->size();
-    int length       = numSamples16k - data.offsetSamples;
-    int maxlag       = (int)(downsampleRate / data.minFrequency);
-    data.step        = int(maxlag * 1.25f + jmax(0, (length - downsampleRate * 5) / 20));
-    int inc          = data.step / data.overlap;
-    int minlag       = downsampleRate / data.maxFrequency;
-    int lagSize      = maxlag - minlag;
-    int offset       = 0;
+    int length        = numSamples16k - data.offsetSamples;
+    int maxlag        = (downsampleRate / data.minFrequency);
+    data.step         = int(maxlag * 1.25f + jmax(0, (length - downsampleRate * 5) / 20));
+    int inc           = data.step / data.overlap;
+    int minlag        = downsampleRate / data.maxFrequency;
+    int lagSize       = maxlag - minlag;
+    int offset        = 0;
 
     ScopedAlloc<float> memory(sample->size() + numSamples16k + data.step + lagSize * 2);
 
