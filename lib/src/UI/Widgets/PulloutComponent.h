@@ -17,8 +17,8 @@ class MiscGraphics;
 
 class BoxComp :
         public Component
-    ,	public MouseEventDelegatee
-    ,	public Timer {
+    ,   public MouseEventDelegatee
+    ,   public Timer {
 public:
     vector<Component*> buttons;
 
@@ -50,8 +50,8 @@ private:
 
 class PulloutComponent :
         public IDynamicSizeComponent
-    ,	public Component
-    ,	public SingletonAccessor {
+    ,   public Component
+    ,   public SingletonAccessor {
     Image img;
     BoxComp popup;
 
@@ -72,12 +72,12 @@ public:
     void resized() override;
     void setBackgroundOpacity(float opacity) { popup.setBackgroundOpacity(opacity); }
 
-    [[nodiscard]] int getExpandedSize() const override 		{ return 0; }
-    [[nodiscard]] int getCollapsedSize() const override 		{ return 0; }
+    [[nodiscard]] int getExpandedSize() const override      { return 0; }
+    [[nodiscard]] int getCollapsedSize() const override         { return 0; }
     void setBoundsDelegate(int x, int y, int w, int h) override {}
     Rectangle<int> getBoundsInParentDelegate() const override { return getBounds(); }
-    int getYDelegate() override 				{ return 0; }
-    int getXDelegate() override 				{ return 0; }
-    bool isVisibleDlg() const override 			{ return isVisible(); }
+    int getYDelegate() override                 { return 0; }
+    int getXDelegate() override                 { return 0; }
+    bool isVisibleDlg() const override          { return isVisible(); }
     void setVisibleDlg(bool isVisible) override { setVisible(isVisible); }
 };

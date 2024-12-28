@@ -13,11 +13,11 @@ class FunctionThread : public Thread {
 public:
     FunctionThread(int waitMillisPerIter, int num, Clazz& clazz, void(Clazz::*func)()) :
             Thread("FunctionThread_" + String(num))
-        ,	waitMillis(waitMillisPerIter)
-        ,	recursions(num)
-        , 	instance(clazz)
-        , 	child(nullptr)
-        , 	func(func) {
+        ,   waitMillis(waitMillisPerIter)
+        ,   recursions(num)
+        ,   instance(clazz)
+        ,   child(nullptr)
+        ,   func(func) {
     }
 
     virtual ~FunctionThread() {

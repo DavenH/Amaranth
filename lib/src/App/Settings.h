@@ -11,28 +11,28 @@ using std::map;
 namespace AppSettings {
     enum {
         UpdateGfxRealtime
-    ,	IgnoringEditMessages
-    ,	SelectWithRight
-    ,	ViewVertsOnlyOnHover
-    ,	Tool
-    ,	SnapMode
-    ,	PointSizeScale
-    ,	DrawScales
-    ,	CurrentMorphAxis
-    ,	FirstLaunch
-    ,	LinkYellow
-    ,	LinkRed
-    ,	LinkBlue
-    ,	LastPopupClickedTransp
-    ,	LastPopupClickedHorz
+    ,   IgnoringEditMessages
+    ,   SelectWithRight
+    ,   ViewVertsOnlyOnHover
+    ,   Tool
+    ,   SnapMode
+    ,   PointSizeScale
+    ,   DrawScales
+    ,   CurrentMorphAxis
+    ,   FirstLaunch
+    ,   LinkYellow
+    ,   LinkRed
+    ,   LinkBlue
+    ,   LastPopupClickedTransp
+    ,   LastPopupClickedHorz
 
-    ,	numSettings
+    ,   numSettings
     };
 }
 
 class Settings :
         public Savable
-    ,	public SingletonAccessor {
+    ,   public SingletonAccessor {
 public:
     explicit Settings(SingletonRepo* repo);
     ~Settings() override;
@@ -52,8 +52,8 @@ public:
     String getProperty(const String& key, const String& defaultStr = String());
     void setProperty(const String& key, const String& value);
 
-    int& getGlobalSetting(int setting) { return globalSettingsMap[setting].value;		}
-    int& getDocumentSetting(int setting) { return documentSettingsMap[setting].value; 	}
+    int& getGlobalSetting(int setting) { return globalSettingsMap[setting].value;       }
+    int& getDocumentSetting(int setting) { return documentSettingsMap[setting].value;   }
     void setPropertiesPath(const String& path) { this->propertiesPath = path; }
 
 protected:

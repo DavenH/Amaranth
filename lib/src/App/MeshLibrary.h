@@ -17,23 +17,23 @@ class Vertex;
 namespace LayerGroups {
     enum {
         GroupVolume
-    ,	GroupPitch
-    ,	GroupScratch
-    ,	GroupDeformer
-    ,	GroupTime
-    ,	GroupSpect
-    ,	GroupPhase
-    ,	numDefaultGroups
+    ,   GroupPitch
+    ,   GroupScratch
+    ,   GroupDeformer
+    ,   GroupTime
+    ,   GroupSpect
+    ,   GroupPhase
+    ,   numDefaultGroups
     };
 }
 class MeshLibrary :
         public SingletonAccessor
-    ,	public Savable {
+    ,   public Savable {
 public:
     enum {
         TypeMesh
-    ,	TypeMesh2D
-    ,	TypeEnvelope
+    ,   TypeMesh2D
+    ,   TypeEnvelope
     };
 
     /* ----------------------------------------------------------------------------- */
@@ -152,26 +152,26 @@ public:
     Layer instantiateLayer(XmlElement* meshElem, int meshType);
     void setCurrentMesh(int groupId, Mesh* mesh);
 
-    [[nodiscard]] Layer& 		getCurrentLayer(int layerGroup);
-    [[nodiscard]] LayerGroup& 	getLayerGroup(int layerGroup);
+    [[nodiscard]] Layer&        getCurrentLayer(int layerGroup);
+    [[nodiscard]] LayerGroup&   getLayerGroup(int layerGroup);
 
-    [[nodiscard]] EnvProps* 	getEnvProps(const GroupLayerPair& pair) { return getEnvProps(pair.groupId, pair.layerIdx); }
+    [[nodiscard]] EnvProps*     getEnvProps(const GroupLayerPair& pair) { return getEnvProps(pair.groupId, pair.layerIdx); }
     [[nodiscard]] EnvelopeMesh* getEnvMesh(const GroupLayerPair& pair) { return getEnvMesh(pair.groupId, pair.layerIdx); }
-    [[nodiscard]] EnvProps* 	getEnvProps(int group, int index);
+    [[nodiscard]] EnvProps*     getEnvProps(int group, int index);
     [[nodiscard]] EnvelopeMesh* getEnvMesh(int group, int index);
 
-    [[nodiscard]] int 			getNumGroups() 					{ return (int) layerGroups.size(); 		}
-    [[nodiscard]] int			getCurrentIndex(int group) 		{ return getLayerGroup(group).current; 	}
-    [[nodiscard]] Mesh* 		getMesh(int group, int index) 	{ return getLayer(group, index).mesh;   }
-    [[nodiscard]] Mesh* 		getCurrentMesh(int group) 		{ return getCurrentLayer(group).mesh; 	}
-    [[nodiscard]] Layer& 		getLayer(int group, int index) 	{ return getLayerGroup(group).layers[index]; }
-    [[nodiscard]] Properties* 	getProps(int group, int index) 	{ return getLayer(group, index).props;  }
-    [[nodiscard]] Properties* 	getCurrentProps(int group) 		{ return getCurrentLayer(group).props; 	}
-    [[nodiscard]] EnvProps* 	getCurrentEnvProps(int group) 	{ return dynamic_cast<EnvProps*>(getCurrentLayer(group).props); }
+    [[nodiscard]] int           getNumGroups()                  { return (int) layerGroups.size();      }
+    [[nodiscard]] int           getCurrentIndex(int group)      { return getLayerGroup(group).current;  }
+    [[nodiscard]] Mesh*         getMesh(int group, int index)   { return getLayer(group, index).mesh;   }
+    [[nodiscard]] Mesh*         getCurrentMesh(int group)       { return getCurrentLayer(group).mesh;   }
+    [[nodiscard]] Layer&        getLayer(int group, int index)  { return getLayerGroup(group).layers[index]; }
+    [[nodiscard]] Properties*   getProps(int group, int index)  { return getLayer(group, index).props;  }
+    [[nodiscard]] Properties*   getCurrentProps(int group)      { return getCurrentLayer(group).props;  }
+    [[nodiscard]] EnvProps*     getCurrentEnvProps(int group)   { return dynamic_cast<EnvProps*>(getCurrentLayer(group).props); }
     [[nodiscard]] EnvelopeMesh* getCurrentEnvMesh(int group);
 
-    [[nodiscard]] CriticalSection& getLock() 					{ return arrayLock; 				 	}
-    [[nodiscard]] vector<Vertex*>& getSelectedByType(int type) 	{ return layerGroups[type].selected; 	}
+    [[nodiscard]] CriticalSection& getLock()                    { return arrayLock;                     }
+    [[nodiscard]] vector<Vertex*>& getSelectedByType(int type)  { return layerGroups[type].selected;    }
 
     void addListener(Listener* listener) { listeners.add(listener); }
     void updateSmoothedParameters(int voiceIndex, int numSamples44k) const;

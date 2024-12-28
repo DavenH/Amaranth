@@ -13,8 +13,8 @@ class DynamicLabel :
 {
 public:
     DynamicLabel(MiscGraphics& mg, String  text)
-        : 	text(std::move(text))
-        ,	miscGfx(&mg) {
+        :   text(std::move(text))
+        ,   miscGfx(&mg) {
         setColour(Label::textColourId, Colour::greyLevel(0.55f));
     }
 

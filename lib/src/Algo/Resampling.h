@@ -50,9 +50,9 @@ public:
         float ratio = (source.size() - 1) / float(dest.size() - 1);
 
         for (int i = 1; i < dest.size() - 1; ++i) {
-            realPosition 	= i * ratio;
-            trunc 			= (int) realPosition;
-            remainder 		= realPosition - trunc;
+            realPosition    = i * ratio;
+            trunc           = (int) realPosition;
+            remainder       = realPosition - trunc;
 
             dest[i] = (1 - remainder) * source[trunc] + remainder * source[trunc + 1];
         }
@@ -69,7 +69,7 @@ public:
     static float lerp(float a, float b, float pos);
     static float lerp(float x1, float y1, float x2, float y2, float pos);
     static float lerpC(Buffer<float> buff, float unitPos);
-    static float lerp(const Vertex2& a, const Vertex2& b, float pos) {	return lerp(a.x, a.y, b.x, b.y, pos); }
+    static float lerp(const Vertex2& a, const Vertex2& b, float pos) {  return lerp(a.x, a.y, b.x, b.y, pos); }
 
     static float interpValueQuadratic(float y1, float y2, float y3);
     static float interpIndexQuadratic(float y1, float y2, float y3);

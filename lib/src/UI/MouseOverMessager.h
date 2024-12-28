@@ -8,7 +8,7 @@
 
 class MouseOverMessager :
         public MouseListener
-    , 	public SingletonAccessor {
+    ,   public SingletonAccessor {
 public:
 
     MouseOverMessager(SingletonRepo* repo, const String& message, Component* comp) :

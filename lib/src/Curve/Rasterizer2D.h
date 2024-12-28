@@ -72,27 +72,27 @@ public:
     }
 
     void updateWaveform(int index) {
-        int res 		= Curve::resolution / 2;
-        int startIdx 	= jmax(0, index - 1);
-        int endIdx 		= jmin((int) curves.size() - 1, index + 2);
-        int waveIdx 	= curves[startIdx].waveIdx;
+        int res         = Curve::resolution / 2;
+        int startIdx    = jmax(0, index - 1);
+        int endIdx      = jmin((int) curves.size() - 1, index + 2);
+        int waveIdx     = curves[startIdx].waveIdx;
 
         for (int c = startIdx; c < endIdx; ++c) {
-            Curve& thisCurve 	= curves[c];
-            Curve& nextCurve 	= curves[c + 1];
+            Curve& thisCurve    = curves[c];
+            Curve& nextCurve    = curves[c + 1];
 
             jassert(waveIdx == curves[c].waveIdx);
 
-            waveIdx 			= curves[c].waveIdx;
+            waveIdx             = curves[c].waveIdx;
 
-            int indexA 			= 0;
-            int indexB 			= 0;
-            int minCurveRes 	= jmin(res >> thisCurve.resIndex, res >> nextCurve.resIndex);
-            int offset 			= res >> thisCurve.resIndex;
-            int xferInc 		= Curve::resolution / minCurveRes;
+            int indexA          = 0;
+            int indexB          = 0;
+            int minCurveRes     = jmin(res >> thisCurve.resIndex, res >> nextCurve.resIndex);
+            int offset          = res >> thisCurve.resIndex;
+            int xferInc         = Curve::resolution / minCurveRes;
 
-            int thisShift 		= jmax(0, (nextCurve.resIndex - thisCurve.resIndex));
-            int nextShift 		= jmax(0, (thisCurve.resIndex - nextCurve.resIndex));
+            int thisShift       = jmax(0, (nextCurve.resIndex - thisCurve.resIndex));
+            int nextShift       = jmax(0, (thisCurve.resIndex - nextCurve.resIndex));
 
             float xferValue;
             float t1x = 0, t1y = 0;
@@ -116,18 +116,18 @@ public:
             }
         }
 
-        int waveStart 	= curves[startIdx].waveIdx;
-        int waveEnd 	= waveIdx;
-        int size 		= waveEnd - waveStart;
+        int waveStart   = curves[startIdx].waveIdx;
+        int waveEnd     = waveIdx;
+        int size        = waveEnd - waveStart;
 
         if(waveEnd == waveX.size()) {
             --size;
         }
 
-        Buffer<Ipp32f> ex 	= waveX.section(waveStart, size);
-        Buffer<float> why 	= waveY.section(waveStart, size);
+        Buffer<Ipp32f> ex   = waveX.section(waveStart, size);
+        Buffer<float> why   = waveY.section(waveStart, size);
         Buffer<float> diffx = diffX.section(waveStart, size);
-        Buffer<float> slp 	= slope.section(waveStart, size);
+        Buffer<float> slp   = slope.section(waveStart, size);
 
         ippsSub_32f(ex, ex + 1, diffx, size);
         ippsThreshold_LT_32f_I(diffx, size, 1e-06f);
@@ -135,9 +135,9 @@ public:
         ippsDiv_32f_I(diffx, slp, size);
     }
 
-    void setCyclicity(bool isCyclic)	{ cyclic = isCyclic;	}
-    bool isCyclic() const				{ return cyclic;		}
-    static int getPaddingSize()			{ return 2;				}
+    void setCyclicity(bool isCyclic)    { cyclic = isCyclic;    }
+    bool isCyclic() const               { return cyclic;        }
+    static int getPaddingSize()         { return 2;             }
 
 protected:
     bool cyclic;

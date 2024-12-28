@@ -62,7 +62,7 @@ void AmaranthLookAndFeel::drawScrollbar(
         int thumbStartPosition,
         int thumbSize, bool /*isMouseOver*/, bool /*isMouseDown*/) {
     g.fillAll(Colours::black);
-//	g.setColour(Colour::greyLevel(0.07f));
+//  g.setColour(Colour::greyLevel(0.07f));
 
     Path slotPath, thumbPath;
 
@@ -191,7 +191,7 @@ void AmaranthLookAndFeel::drawFileBrowserRow(
 
         getObj(MiscGraphics).drawCentredText(g, Rectangle<int>(x, 0, sizeX - x, height), filename,
                                              Justification::centredLeft);
-//		g.drawFittedText(filename, x, 0, sizeX - x, height, Justification::centredLeft, 1);
+//      g.drawFittedText(filename, x, 0, sizeX - x, height, Justification::centredLeft, 1);
         g.setFont(*getObj(MiscGraphics).getSilkscreen());
         g.setColour(Colours::grey);
 
@@ -480,16 +480,16 @@ Button* AmaranthLookAndFeel::createFileBrowserGoUpButton() {
 void AmaranthLookAndFeel::fillResizableWindowBackground(Graphics& g, int w, int h,
                                                         const BorderSize<int>& border,
                                                         ResizableWindow& window) {
-//	if(w > 700 || h > 700)
-//	{
+//  if(w > 700 || h > 700)
+//  {
     g.fillAll(Colours::black);
-//		return;
-//	}
+//      return;
+//  }
 //
-//	Image& bg = getObj(MiscGraphics).getImage(MiscGraphics::blackgroundImg);
-//	g.drawImage(bg, 0, 0, w, h, 0, 0, bg.getWidth(), bg.getHeight(), false);
-//	g.setColour(Colours::black);
-//	g.drawRect(0, 0, w, h, 1);
+//  Image& bg = getObj(MiscGraphics).getImage(MiscGraphics::blackgroundImg);
+//  g.drawImage(bg, 0, 0, w, h, 0, 0, bg.getWidth(), bg.getHeight(), false);
+//  g.setColour(Colours::black);
+//  g.drawRect(0, 0, w, h, 1);
 }
 
 
@@ -539,8 +539,8 @@ void AmaranthLookAndFeel::drawMenuBarBackground(Graphics& g,
                                                 int width, int height, bool isMouseOverBar,
                                                 MenuBarComponent& menuBar) {
     g.fillAll(Colour::greyLevel(0.1f));
-//	Image& bg = getObj(MiscGraphics).getImage(MiscGraphics::blackgroundImg);
-//	g.drawImage(bg, 0, 0, width, height, 0, 0, bg.getWidth(), bg.getHeight?());
+//  Image& bg = getObj(MiscGraphics).getImage(MiscGraphics::blackgroundImg);
+//  g.drawImage(bg, 0, 0, width, height, 0, 0, bg.getWidth(), bg.getHeight?());
 }
 
 Font AmaranthLookAndFeel::getMenuBarFont(MenuBarComponent& menuBar, int itemIndex, const String& itemText) {
@@ -648,7 +648,7 @@ void AmaranthLookAndFeel::drawPopupMenuItem(Graphics& g,
 
         g.setFont(font);
 
-//		Rectangle<float> iconArea (r.removeFromLeft ((r.getHeight() * 5) / 4).reduced (3).toFloat());
+//      Rectangle<float> iconArea (r.removeFromLeft ((r.getHeight() * 5) / 4).reduced (3).toFloat());
         Rectangle<float> iconArea(1, (r.getHeight() - 24) / 2, 24, 24);
         r.removeFromLeft(r.getHeight() * 5 / 4);
 
@@ -659,7 +659,7 @@ void AmaranthLookAndFeel::drawPopupMenuItem(Graphics& g,
             const Path tick(getTickShape(jmin(iconArea.getWidth(), iconArea.getHeight())));
 
             g.fillPath(tick, AffineTransform());
-//					tick.getTransformToScaleToFit(iconArea.getX(), iconArea.getY(), iconArea.getWidth(), iconArea.getHeight(), true));
+//                  tick.getTransformToScaleToFit(iconArea.getX(), iconArea.getY(), iconArea.getWidth(), iconArea.getHeight(), true));
         }
 
         if (hasSubMenu) {
@@ -736,8 +736,8 @@ int AmaranthLookAndFeel::getMenuWindowFlags() {
 
 void AmaranthLookAndFeel::drawAlertBox(Graphics& g, AlertWindow& alert, const Rectangle<int>& textArea,
                                        TextLayout& textLayout) {
-//	getObj(MiscGraphics).fillBlackground(&alert, g);
-//	g.fillAll (alert.findColour (AlertWindow::backgroundColourId));
+//  getObj(MiscGraphics).fillBlackground(&alert, g);
+//  g.fillAll (alert.findColour (AlertWindow::backgroundColourId));
 
     int iconSpaceUsed = 0;
     Justification alignment(Justification::horizontallyCentred);

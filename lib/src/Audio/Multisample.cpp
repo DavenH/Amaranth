@@ -12,8 +12,8 @@
 
 Multisample::Multisample(SingletonRepo* repo, MeshRasterizer* rasterizer) :
         SingletonAccessor(repo, "Multisample")
-    ,	current(nullptr)
-    ,	waveRasterizer(rasterizer) {
+    ,   current(nullptr)
+    ,   waveRasterizer(rasterizer) {
 }
 
 PitchedSample* Multisample::getSampleForNote(int midiNote, float velocity) {
@@ -147,7 +147,7 @@ void Multisample::parseRanges() {
 
     for (auto sample : samples) {
         String name = File(sample->lastLoadedFilePath).getFileNameWithoutExtension();
-        int index 	= name.indexOfWholeWord(common);
+        int index   = name.indexOfWholeWord(common);
 
         if (index >= 0) {
             String composite = name.substring(0, index) + name.substring(index + common.length());
@@ -156,7 +156,7 @@ void Multisample::parseRanges() {
             sample->uniqueName = name;
         }
 
-        int midiNote = Util::extractPitchFromFilename	(sample->uniqueName, false);
+        int midiNote = Util::extractPitchFromFilename   (sample->uniqueName, false);
         float veloc = Util::extractVelocityFromFilename(sample->uniqueName) / 127.f;
 
         if (veloc >= 0) {
@@ -250,7 +250,7 @@ void Multisample::getModRanges(Range<int>& noteRange, Range<float>& velRange) {
     }
 
     if (m.blueDepth < 1.f) {
-        bttmVel	= jmax(0.f, 1.f - m.blueEnd());
+        bttmVel = jmax(0.f, 1.f - m.blueEnd());
         topVel = jmin(1.f, 1.f - m.blue);
     }
 
@@ -376,8 +376,8 @@ void Multisample::performUpdate(UpdateType updateType) {
 }
 
 void Multisample::updatePlaybackPosition() {
-    float progress 	= repo->getMorphPosition().getYellow();
-    float seconds  	= getGreatestLengthSeconds();
+    float progress  = repo->getMorphPosition().getYellow();
+    float seconds   = getGreatestLengthSeconds();
     int newPosition = roundToInt(progress * seconds * 44100.f);
 
     for(auto sample : samples) {

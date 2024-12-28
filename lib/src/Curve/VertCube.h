@@ -12,16 +12,16 @@ public:
     static const size_t numVerts = 8;
 
     /* nb: poles do not necessarily correspond with low or high values
-     *	   but are merely an objective distinction between to sides of
+     *     but are merely an objective distinction between to sides of
      *     the line cube along a particular dimension
      */
     enum Pole { LowPole, HighPole };
 
     enum {
-        y0r0b0,	y0r0b1,
-        y0r1b0,	y0r1b1,
-        y1r0b0,	y1r0b1,
-        y1r1b0,	y1r1b1,
+        y0r0b0, y0r0b1,
+        y0r1b0, y0r1b1,
+        y1r0b0, y1r0b1,
+        y1r1b0, y1r1b1,
     };
 
     struct ReductionData {
@@ -36,7 +36,7 @@ public:
         Vertex *v00, *v01, *v10, *v11;
 
         explicit Face(int dim) : dim(dim), v00(nullptr),   v01(nullptr),   v10(nullptr),   v11(nullptr)   {}
-        Face(ReductionData& data, int dim) 	: dim(dim), v00(&data.v00), v01(&data.v01), v10(&data.v10), v11(&data.v11) {}
+        Face(ReductionData& data, int dim)  : dim(dim), v00(&data.v00), v01(&data.v01), v10(&data.v10), v11(&data.v11) {}
 
         bool merge(VertCube const* cube, float pos);
         void removeOwner(VertCube* cube);
@@ -63,10 +63,10 @@ public:
     VertCube(VertCube& cube);
     ~VertCube();
 
-    bool intersectsMorphRect(int dim, ReductionData& data, const MorphPosition& pos) 	const;
-    void getFinalIntercept	(ReductionData& data, const MorphPosition& pos) 			const;
-    void getInterceptsFast	(int xDim, ReductionData& data, const MorphPosition& pos) 	const;
-    void getPoles			(Vertex const* vert, bool& time, bool& red, bool& blue) 	const;
+    bool intersectsMorphRect(int dim, ReductionData& data, const MorphPosition& pos)    const;
+    void getFinalIntercept  (ReductionData& data, const MorphPosition& pos)             const;
+    void getInterceptsFast  (int xDim, ReductionData& data, const MorphPosition& pos)   const;
+    void getPoles           (Vertex const* vert, bool& time, bool& red, bool& blue)     const;
 
     void init();
     void initVerts(const MorphPosition& pos);
@@ -110,8 +110,8 @@ public:
     char& deformerAt(int dim) { return dfrmChans[dim]; }
     float& dfrmGainAt(int dim) { return dfrmGains[dim]; }
 
-    [[nodiscard]] const char& deformerAt(int dim) const 	{ return dfrmChans[dim]; }
-    [[nodiscard]] const float& dfrmGainAt(int dim) const 	{ return dfrmGains[dim]; }
+    [[nodiscard]] const char& deformerAt(int dim) const     { return dfrmChans[dim]; }
+    [[nodiscard]] const float& dfrmGainAt(int dim) const    { return dfrmGains[dim]; }
 
     char& getCompDfrm() { return deformerAt(Vertex::Time); }
     float getCompGain() { return dfrmGainAt(Vertex::Time); }

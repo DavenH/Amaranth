@@ -6,7 +6,7 @@
 
 class FXRasterizer:
         public MeshRasterizer
-    ,	public SingletonAccessor {
+    ,   public SingletonAccessor {
     JUCE_LEAK_DETECTOR(FXRasterizer)
 
 public:

@@ -56,24 +56,43 @@
         "BUILD_TYPE": "Plugin",
         "CMAKE_CXX_FLAGS": "-DJUCE_STANDALONE_APPLICATION=0 -DJucePlugin_Build_VST3=1"
       }
+    },
+    {
+      "name": "tests",
+      "displayName": "Tests",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTING": "ON",
+        "CMAKE_CXX_FLAGS": "-DJUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1 -DJUCE_STANDALONE_APPLICATION=1 -DJucePlugin_Build_Standalone=1 -DJUCE_MODAL_LOOPS_PERMITTED=1"
+      }
     }
   ],
   "buildPresets": [
     {
       "name": "standalone-debug",
-      "configurePreset": "standalone-debug"
+      "configurePreset": "standalone-debug",
+      "jobs": 5
     },
     {
       "name": "standalone-release",
-      "configurePreset": "standalone-release"
+      "configurePreset": "standalone-release",
+      "jobs": 5
     },
     {
       "name": "plugin-debug",
-      "configurePreset": "plugin-debug"
+      "configurePreset": "plugin-debug",
+      "jobs": 5
     },
     {
       "name": "plugin-release",
-      "configurePreset": "plugin-release"
+      "configurePreset": "plugin-release",
+      "jobs": 5
+    },
+    {
+      "name": "tests",
+      "configurePreset": "tests",
+      "jobs": 5
     }
   ]
 }

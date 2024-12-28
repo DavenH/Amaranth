@@ -12,8 +12,8 @@ using std::deque;
 
 class Updater :
         public SingletonAccessor
-    ,	public AsyncUpdater
-    ,	public ChangeBroadcaster {
+    ,   public AsyncUpdater
+    ,   public ChangeBroadcaster {
 public:
     class Node {
     public:
@@ -22,24 +22,24 @@ public:
         virtual ~Node() = default;
 
         // upstroke
-        void marks				(Array<Node*> nodes);
-        void marks				(Node* node);
-        void doesntMark			(Node* node);
+        void marks              (Array<Node*> nodes);
+        void marks              (Node* node);
+        void doesntMark         (Node* node);
         void marksAndUpdatesAfter(Node* parent);
-        void marksAll			(const Array<Node*>& nodes);
+        void marksAll           (const Array<Node*>& nodes);
 
         // down stroke
-        void doesntUpdateAfter	(Node* parent);
-        void updatesAfter		(Node* parent);
-        void updatesAfterAll	(const Array<Node*>& parents);
+        void doesntUpdateAfter  (Node* parent);
+        void updatesAfter       (Node* parent);
+        void updatesAfterAll    (const Array<Node*>& parents);
 
         void reset();
         void markPath();
         void performUpdate(String& path, UpdateType updateType);
 
-        [[nodiscard]] bool isDirty() const   { return dirty; 	}
-        [[nodiscard]] bool isUpdated() const { return updated; 	}
-        void markDirty() { dirty = true; 	}
+        [[nodiscard]] bool isDirty() const   { return dirty;    }
+        [[nodiscard]] bool isUpdated() const { return updated;  }
+        void markDirty() { dirty = true;    }
 
         virtual void executeUpdate(UpdateType updateType);
 
@@ -65,14 +65,14 @@ public:
         Graph(Updater* updater, SingletonRepo* repo);
         ~Graph() override = default;
 
-        void addHeadNode	(Node* node);
-        void addHeadNodes	(Array<Node*> nodes);
-        void removeHeadNode	(Node* node);
-        void update			(Node* node);
+        void addHeadNode    (Node* node);
+        void addHeadNodes   (Array<Node*> nodes);
+        void removeHeadNode (Node* node);
+        void update         (Node* node);
 
         [[nodiscard]] bool doesPrintPath() const { return printsPath; }
-        void setUpdateType(UpdateType type) 	{ updateType = type; }
-        void setPrintsPath(bool does) 	{ printsPath = does; }
+        void setUpdateType(UpdateType type)     { updateType = type; }
+        void setPrintsPath(bool does)   { printsPath = does; }
 
         virtual String getUpdateString() { return {}; }
 

@@ -41,18 +41,18 @@ public:
         frequencyRamps.resize(sizes.size());
 
         for (int i = 0; i < frequencyRamps.size(); ++i) {
-			Buffer<float>& ramp = frequencyRamps[i];
-			ramp = memory.place(sizes[i]);
+            Buffer<float>& ramp = frequencyRamps[i];
+            ramp = memory.place(sizes[i]);
 
-			int size 		= sizes[i];
-			float tension 	= size * ampTension;
-			float leftOffset= (powf(tension + 1, 0.05f) - 1) / float(tension);
-			float ix 		= (1.f - leftOffset) / float(size - 1.f);
-			float iln 		= 1 / logf(tension + 1.f);
+            int size        = sizes[i];
+            float tension   = size * ampTension;
+            float leftOffset= (powf(tension + 1, 0.05f) - 1) / float(tension);
+            float ix        = (1.f - leftOffset) / float(size - 1.f);
+            float iln       = 1 / logf(tension + 1.f);
 
-			ramp.ramp(leftOffset, ix).mul(tension).add(1.f).ln().mul(iln);
-		}
-	}
+            ramp.ramp(leftOffset, ix).mul(tension).add(1.f).ln().mul(iln);
+        }
+    }
 
     void clear() {
         for (auto& frequencyRamp : frequencyRamps)
@@ -64,11 +64,11 @@ public:
     Buffer<float> getRegion(int midiKey) {
         NumberUtils::constrain(midiKey, midiRange);
 
-		return frequencyRamps[midiKey - midiRange.getStart()];
-	}
+        return frequencyRamps[midiKey - midiRange.getStart()];
+    }
 
 private:
-	Range<int> midiRange;
-	ScopedAlloc<float> memory;
-	vector<Buffer<float>> frequencyRamps;
+    Range<int> midiRange;
+    ScopedAlloc<float> memory;
+    vector<Buffer<float>> frequencyRamps;
 };

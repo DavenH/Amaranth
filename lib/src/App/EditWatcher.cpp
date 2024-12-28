@@ -6,12 +6,12 @@
 
 EditWatcher::EditWatcher(SingletonRepo* repo) :
         SingletonAccessor(repo, "EditWatcher")
-    ,	editedWithoutUndo(false) {
+    ,   editedWithoutUndo(false) {
 }
 
 void EditWatcher::update(bool justUpdateTitle) {
-    String currPreset 	= getStrConstant(DocumentName);
-    String prodName 	= getStrConstant(ProductName);
+    String currPreset   = getStrConstant(DocumentName);
+    String prodName     = getStrConstant(ProductName);
 
     String titleBar = (prodName + " - ") + currPreset;
 

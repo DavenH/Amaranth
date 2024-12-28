@@ -17,20 +17,20 @@ template<class T> class FilterableList;
 template<class T>
 class SearchField:
         public Component
-    ,	public MultiTimer
-    ,	public SingletonAccessor {
+    ,   public MultiTimer
+    ,   public SingletonAccessor {
 public:
     enum { BlinkTimerId, RefreshTimerId };
 
     SearchField(FilterableList<T>* list, SingletonRepo* repo, String defaultString) :
             SingletonAccessor(repo, "SearchField")
-        ,	blink		  (false)
-        ,	focused		  (false)
-        ,	selectingAll  (false)
-        ,	filterableList(list)
-        ,	defaultString (std::move(defaultString))
-        ,	caretPosition (0)
-        ,	allowableChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ -_") {
+        ,   blink         (false)
+        ,   focused       (false)
+        ,   selectingAll  (false)
+        ,   filterableList(list)
+        ,   defaultString (std::move(defaultString))
+        ,   caretPosition (0)
+        ,   allowableChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ -_") {
         startTimer(BlinkTimerId, 400);
         setWantsKeyboardFocus(true);
 

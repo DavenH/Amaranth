@@ -13,14 +13,14 @@ float ZoomPanel::zoomRatio = 1.259921f; // 2^0.25
 ZoomPanel::ZoomPanel(SingletonRepo* repo, ZoomContext context) :
         Bounded()
     ,   SingletonAccessor(repo, "ZoomPanel")
-    ,	context			(context)
-    ,	horz			(false)
-    ,	vert			(true)
-    ,	tendZoomToBottom(true)
-    ,	tendZoomToTop	(true)
-    ,	tendZoomToLeft	(true)
-    ,	tendZoomToRight	(true)
-    ,	tendZoomToCentre(true) {
+    ,   context         (context)
+    ,   horz            (false)
+    ,   vert            (true)
+    ,   tendZoomToBottom(true)
+    ,   tendZoomToTop   (true)
+    ,   tendZoomToLeft  (true)
+    ,   tendZoomToRight (true)
+    ,   tendZoomToCentre(true) {
 
     if(context.haveHorz) {
         horz.setRangeLimits(rect.xMinimum, rect.xMaximum);
@@ -50,7 +50,7 @@ void ZoomPanel::setBounds(int x, int y, int width, int height) {
 
     Component::setBounds(x, y, width, height);
 
-    int panelWidth 	= width  - (context.haveVert ? scrollbarWidth : 0);
+    int panelWidth  = width  - (context.haveVert ? scrollbarWidth : 0);
     int panelHeight = height - (context.haveHorz ? scrollbarWidth : 0);
     context.bounded->setBounds(0, 0, panelWidth, panelHeight);
 
@@ -96,27 +96,27 @@ void ZoomPanel::scrollBarMoved(ScrollBar* bar, double newRangeStart) {
     listeners.call(&ZoomListener::zoomUpdated, updateSource);
 }
 
-int ZoomPanel::getX() 		{ return Component::getX();			}
-int ZoomPanel::getY()		{ return Component::getY();			}
-int ZoomPanel::getWidth()	{ return Component::getWidth();		}
-int ZoomPanel::getHeight()	{ return Component::getHeight(); 	}
+int ZoomPanel::getX()       { return Component::getX();         }
+int ZoomPanel::getY()       { return Component::getY();         }
+int ZoomPanel::getWidth()   { return Component::getWidth();     }
+int ZoomPanel::getHeight()  { return Component::getHeight();    }
 
 void ZoomPanel::panelZoomChanged(bool commandDown) {
     listeners.call(&ZoomListener::constrainZoom);
     listeners.call(&ZoomListener::doZoomExtra, commandDown);
 
     if(context.haveHorz) {
-        horz.removeListener	(this);
-        horz.setRangeLimits	(rect.xMinimum, rect.xMaximum);
+        horz.removeListener (this);
+        horz.setRangeLimits (rect.xMinimum, rect.xMaximum);
         horz.setCurrentRange(rect.x, rect.w);
-        horz.addListener	(this);
+        horz.addListener    (this);
     }
 
     if (context.haveVert) {
-        vert.removeListener	(this);
-        vert.setRangeLimits	(rect.yMinimum, rect.yMaximum);
+        vert.removeListener (this);
+        vert.setRangeLimits (rect.yMinimum, rect.yMaximum);
         vert.setCurrentRange(rect.y, rect.h);
-        vert.addListener	(this);
+        vert.addListener    (this);
     }
 }
 
@@ -140,10 +140,10 @@ void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
     float oldZoom;
 
     if (cmdDown) {
-        oldZoom 		= rect.h;
-        float y 		= 1 - context.panel->invertScaleY(mouseY);
-        float noZoomY 	= 1 - context.panel->invertScaleYNoZoom(mouseY);
-        bool usualZoom	= true;
+        oldZoom         = rect.h;
+        float y         = 1 - context.panel->invertScaleY(mouseY);
+        float noZoomY   = 1 - context.panel->invertScaleYNoZoom(mouseY);
+        bool usualZoom  = true;
 
         rect.h /= zoomRatio;
 
@@ -257,18 +257,18 @@ void ZoomPanel::doZoomAction(int action) {
     Ref<Cross> cross = &getObject(Cross);
     Ref<PlaybackPanel> playback = &getObject(PlaybackPanel);
 
-    ZoomRect& surf 		= surface		->getZoomRect();
-    ZoomRect& crossRect = cross			->getZoomRect();
-    ZoomRect& f3Rect 	= fourier3D		->getZoomRect();
-    ZoomRect& f2Rect 	= fourier2D		->getZoomRect();
-    ZoomRect& e2Rect	= envelopePanel	->getZoomRect();
+    ZoomRect& surf      = surface       ->getZoomRect();
+    ZoomRect& crossRect = cross         ->getZoomRect();
+    ZoomRect& f3Rect    = fourier3D     ->getZoomRect();
+    ZoomRect& f2Rect    = fourier2D     ->getZoomRect();
+    ZoomRect& e2Rect    = envelopePanel ->getZoomRect();
 
-    ZoomPanel* surfZoom = surface		->getZoomPanel();
-    ZoomPanel* crsZoom	= cross			->getZoomPanel();
-    ZoomPanel* f3Zoom 	= fourier3D		->getZoomPanel();
-    ZoomPanel* f2Zoom 	= fourier2D		->getZoomPanel();
-    ZoomPanel* e2Zoom 	= envelopePanel	->getZoomPanel();
-    ZoomPanel* e3Zoom 	= e3Panel		->getZoomPanel();
+    ZoomPanel* surfZoom = surface       ->getZoomPanel();
+    ZoomPanel* crsZoom  = cross         ->getZoomPanel();
+    ZoomPanel* f3Zoom   = fourier3D     ->getZoomPanel();
+    ZoomPanel* f2Zoom   = fourier2D     ->getZoomPanel();
+    ZoomPanel* e2Zoom   = envelopePanel ->getZoomPanel();
+    ZoomPanel* e3Zoom   = e3Panel       ->getZoomPanel();
 
     if(source == CrossUpdate)
     {

@@ -5,17 +5,17 @@
 class ReadWriteBuffer {
 public:
     ReadWriteBuffer() :
-            readPosition		(0)
-        , 	writePosition		(0)
-        ,	totalSamplesWritten	(0)
-        ,	totalSamplesRead	(0) {
+            readPosition        (0)
+        ,   writePosition       (0)
+        ,   totalSamplesWritten (0)
+        ,   totalSamplesRead    (0) {
     }
 
     explicit ReadWriteBuffer(Buffer<float> buff) :
-            readPosition		(0)
-        , 	writePosition		(0)
-        ,	totalSamplesWritten	(0)
-        ,	totalSamplesRead	(0) {
+            readPosition        (0)
+        ,   writePosition       (0)
+        ,   totalSamplesWritten (0)
+        ,   totalSamplesRead    (0) {
         workBuffer = buff;
     }
 
@@ -96,7 +96,7 @@ public:
         input.copyTo(output);
 
         totalSamplesWritten += input.size();
-        writePosition 		+= input.size();
+        writePosition       += input.size();
 
         return output;
     }
@@ -135,11 +135,11 @@ public:
         jassert(memory.empty());
         jassert(copy.memory.empty());
 
-        totalSamplesRead 	= copy.totalSamplesRead;
+        totalSamplesRead    = copy.totalSamplesRead;
         totalSamplesWritten = copy.totalSamplesWritten;
-        readPosition 		= copy.readPosition;
-        writePosition 		= copy.writePosition;
-        workBuffer			= copy.workBuffer;
+        readPosition        = copy.readPosition;
+        writePosition       = copy.writePosition;
+        workBuffer          = copy.workBuffer;
 
         jassert(writePosition < workBuffer.size() || workBuffer.empty());
 

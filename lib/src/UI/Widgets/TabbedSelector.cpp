@@ -5,10 +5,10 @@
 
 TabbedSelector::TabbedSelector(SingletonRepo* repo) :
         SingletonAccessor(repo, "TabbedSelector")
-    ,	selectedTab(0)
-    ,	hoveredTab(0)
-    ,	tabHeight(1)
-    ,	tabWidth(30) {
+    ,   selectedTab(0)
+    ,   hoveredTab(0)
+    ,   tabHeight(1)
+    ,   tabWidth(30) {
 }
 
 void TabbedSelector::paint(Graphics& g) {
@@ -84,17 +84,17 @@ void TabbedSelector::paint(Graphics& g) {
     /// text
 
     for (int i = 0; i < (int) tabs.size(); ++i) {
-        Tab& tab 			= tabs[i];
+        Tab& tab            = tabs[i];
 
-        const String& name 	= tab.name.toUpperCase();
-        int strLength 		= roundToInt(Util::getStringWidth(font, name));
-        int y 				= vertSpace + i * tabHeight;
-        float scale 		= jmin(tabHeight - 20, strLength) / float(strLength);
+        const String& name  = tab.name.toUpperCase();
+        int strLength       = roundToInt(Util::getStringWidth(font, name));
+        int y               = vertSpace + i * tabHeight;
+        float scale         = jmin(tabHeight - 20, strLength) / float(strLength);
 
         AffineTransform transform;
 
-        transform = transform.rotated	(halfPi);
-        transform = transform.scaled	(1.f, scale);
+        transform = transform.rotated   (halfPi);
+        transform = transform.scaled    (1.f, scale);
         transform = transform.translated(4, y); //getWidth() - 4
 
         Colour backColour = i == selectedTab ? Colour(0.60f, 0.2f, 0.5f, 1.f) :

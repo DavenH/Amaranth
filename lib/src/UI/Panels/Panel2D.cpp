@@ -20,11 +20,11 @@ Panel2D::Panel2D(SingletonRepo* repo,
                  const String& name,
                  bool curveIsBipolar,
                  bool haveVertZoom) :
-        SingletonAccessor	(repo, name)
-    ,	Panel				(repo, name)
-    ,	curveIsBipolar		(curveIsBipolar)
-    ,	haveVertZoom		(haveVertZoom)
-    ,	cyclicLines			(false)
+        SingletonAccessor   (repo, name)
+    ,   Panel               (repo, name)
+    ,   curveIsBipolar      (curveIsBipolar)
+    ,   haveVertZoom        (haveVertZoom)
+    ,   cyclicLines         (false)
     ,   colorA              (0.6f, 0.6f, 0.6f)
     ,   colorB              (0.5f, 0.5f, 0.5f, 0.7f)
 {
@@ -77,8 +77,8 @@ void Panel2D::drawCurvesAndSurfaces() {
             return;
         }
 
-        int istart 	= extendsX ? Arithmetic::binarySearch(xLimit.getStart(), waveX) : data.zeroIndex;
-        int iend 	= extendsX ? Arithmetic::binarySearch(xLimit.getEnd(), waveX) : jmin(waveX.size() - 1, data.oneIndex + 4);
+        int istart  = extendsX ? Arithmetic::binarySearch(xLimit.getStart(), waveX) : data.zeroIndex;
+        int iend    = extendsX ? Arithmetic::binarySearch(xLimit.getEnd(), waveX) : jmin(waveX.size() - 1, data.oneIndex + 4);
 
         if(istart > 4) {
             istart -= 4;
@@ -96,10 +96,10 @@ void Panel2D::drawCurvesAndSurfaces() {
         a = cBuffer.withSize(size);
     }
 
-    prepareAlpha	(xy.y, a, colourA.alpha());
-    applyScaleX		(xy.x);
-    applyScaleY		(xy.y);
-    drawCurvesFrom	(xy, a, colourA, colourB);
+    prepareAlpha    (xy.y, a, colourA.alpha());
+    applyScaleX     (xy.x);
+    applyScaleY     (xy.y);
+    drawCurvesFrom  (xy, a, colourA, colourB);
 }
 
 void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
@@ -138,7 +138,7 @@ void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
 
         //zero crossing
         if (samplesAreBipolar) {
-            float m 	= (xy.y[i + 1] - xy.y[i]) / (xy.x[i + 1] - xy.x[i]);
+            float m     = (xy.y[i + 1] - xy.y[i]) / (xy.x[i + 1] - xy.x[i]);
             float icptX = (m * xy.x[i] - xy.y[i] + baseY) / m;
 
             curr.update(icptX, baseY, sectionClr.withAlpha(alpha[i]));
@@ -264,8 +264,8 @@ void Panel2D::drawDepthLinesAndVerts() {
 
     Color clr;
     int dim;
-    float offsets[] 	= { 0, 0, 0, -0.5f, 0.5f };
-    int scratchChannel 	= getLayerScratchChannel();
+    float offsets[]     = { 0, 0, 0, -0.5f, 0.5f };
+    int scratchChannel  = getLayerScratchChannel();
 
     gfx->setCurrentLineWidth(1.f);
 

@@ -10,9 +10,9 @@ public:
 
     ~MemoryPool() override = default;
 
-    Buffer<float> getAudioPool() 	{ return audioPool; }
-    Buffer<float> getMainPool() 	{ return mainPool; 	}
-    Buffer<float> getGraphicsPool() { return gfxPool; 	}
+    Buffer<float> getAudioPool()    { return audioPool; }
+    Buffer<float> getMainPool()     { return mainPool;  }
+    Buffer<float> getGraphicsPool() { return gfxPool;   }
 
 private:
     ScopedAlloc<float> audioPool, gfxPool, mainPool;

@@ -34,20 +34,20 @@ void Settings::init() {
 void Settings::initialiseSettings() {
     using namespace AppSettings;
 
-    addSetting(CurrentMorphAxis, 		Vertex::Time);
-    addSetting(DrawScales, 				true);
-    addSetting(FirstLaunch, 			true);
-    addSetting(IgnoringEditMessages, 	false);
-    addSetting(LastPopupClickedHorz, 	false);
-    addSetting(LastPopupClickedTransp, 	false);
-    addSetting(LinkBlue, 				true);
-    addSetting(LinkRed, 				true);
-    addSetting(LinkYellow, 				true);
-    addSetting(PointSizeScale, 			ScaleSizes::ScaleSmall);
-    addSetting(SelectWithRight, 		false);
-    addSetting(Tool, 					Tools::Selector);
-    addSetting(UpdateGfxRealtime, 	 	true);
-    addSetting(ViewVertsOnlyOnHover, 	false);
+    addSetting(CurrentMorphAxis,        Vertex::Time);
+    addSetting(DrawScales,              true);
+    addSetting(FirstLaunch,             true);
+    addSetting(IgnoringEditMessages,    false);
+    addSetting(LastPopupClickedHorz,    false);
+    addSetting(LastPopupClickedTransp,  false);
+    addSetting(LinkBlue,                true);
+    addSetting(LinkRed,                 true);
+    addSetting(LinkYellow,              true);
+    addSetting(PointSizeScale,          ScaleSizes::ScaleSmall);
+    addSetting(SelectWithRight,         false);
+    addSetting(Tool,                    Tools::Selector);
+    addSetting(UpdateGfxRealtime,       true);
+    addSetting(ViewVertsOnlyOnHover,    false);
 }
 
 void Settings::readGlobalSettings(XmlElement* settingsDocElem) {

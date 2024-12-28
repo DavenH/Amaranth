@@ -22,7 +22,7 @@ class Texture;
 
 class Panel :
         public virtual SingletonAccessor
-    ,	public ZoomPanel::ZoomListener {
+    ,   public ZoomPanel::ZoomListener {
 public:
     static constexpr int linestripRes = 256;
 
@@ -33,9 +33,9 @@ public:
     public:
         virtual ~Renderer() = default;
 
-        virtual void deactivate() 	= 0;
-        virtual void activate() 	= 0;
-        virtual void clear() 		= 0;
+        virtual void deactivate()   = 0;
+        virtual void activate()     = 0;
+        virtual void clear()        = 0;
     };
 
     /* ----------------------------------------------------------------------------- */
@@ -57,11 +57,11 @@ public:
     void updateNameTexturePos();
     void updateVertexSizes();
 
-    void applyScale			(BufferXY& buff);
-    void applyScaleX		(Buffer<float> array);
-    void applyScaleY		(Buffer<float> array);
-    void applyNoZoomScaleX	(Buffer<float> array);
-    void applyNoZoomScaleY	(Buffer<float> array);
+    void applyScale         (BufferXY& buff);
+    void applyScaleX        (Buffer<float> array);
+    void applyScaleY        (Buffer<float> array);
+    void applyNoZoomScaleX  (Buffer<float> array);
+    void applyNoZoomScaleY  (Buffer<float> array);
 
     void doZoomExtra(bool commandDown) override;
     void zoomUpdated(int updateSource) override;
@@ -71,44 +71,44 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-    float sx(float x) 	const;
+    float sx(float x)   const;
     float sxnz(float x) const;
-    float invertScaleX(int x) 	const;
-    float invertScaleXNoZoom(int x) 	const;
-    float sy(float y) 	const;
+    float invertScaleX(int x)   const;
+    float invertScaleXNoZoom(int x)     const;
+    float sy(float y)   const;
     float synz(float y) const;
-    float invertScaleY(int y) 	const;
-    float invertScaleYNoZoom(int y) 	const;
+    float invertScaleY(int y)   const;
+    float invertScaleYNoZoom(int y)     const;
     float invScaleXNoDisp(int x) const;
     float invScaleYNoDisp(int y) const;
 
-    void clear() 							{ renderHelper->clear(); 		}
-    void deactivateContext() 				{ renderHelper->deactivate(); 	}
-    void activateContext()					{ renderHelper->activate(); 	}
-    void repaint() 							{ comp->repaint(); 				}
+    void clear()                            { renderHelper->clear();        }
+    void deactivateContext()                { renderHelper->deactivate();   }
+    void activateContext()                  { renderHelper->activate();     }
+    void repaint()                          { comp->repaint();              }
 
-    bool isVisible() const					{ return comp->isVisible(); 	}
-    int getNumCornersOverlapped() const		{ return numCornersOverlapped; 	}
-    int getWidth() const					{ return comp->getWidth(); 		}
-    int getHeight() const					{ return comp->getHeight(); 	}
-    Rectangle<int> getBounds() 				{ return comp->getBounds(); 	}
+    bool isVisible() const                  { return comp->isVisible();     }
+    int getNumCornersOverlapped() const     { return numCornersOverlapped;  }
+    int getWidth() const                    { return comp->getWidth();      }
+    int getHeight() const                   { return comp->getHeight();     }
+    Rectangle<int> getBounds()              { return comp->getBounds();     }
 
-    Ref<Interactor> getInteractor() 		{ return interactor; 			}
-    const String& getName() override		{ return panelName; 			}
-    CriticalSection& getRenderLock()		{ return renderLock; 			}
-    bool isSpeedApplicable() const 			{ return speedApplicable; 		}
+    Ref<Interactor> getInteractor()         { return interactor;            }
+    const String& getName() override        { return panelName;             }
+    CriticalSection& getRenderLock()        { return renderLock;            }
+    bool isSpeedApplicable() const          { return speedApplicable;       }
 
-    void setGraphicsHelper(CommonGfx* gfx)	{ this->gfx.reset(gfx); 		}
-    void setRenderHelper(Renderer* util) 	{ renderHelper = util; 			}
-    void setSpeedApplicable(bool is) 	 	{ speedApplicable = is; 		}
-    void setNameTextureId(int id) 		 	{ currentNameId = id; 			}
-    void setNumCornersOverlapped(int num)	{ numCornersOverlapped = num; 	}
-    void setComponent(Component* comp)		{ this->comp = comp;			}
+    void setGraphicsHelper(CommonGfx* gfx)  { this->gfx.reset(gfx);         }
+    void setRenderHelper(Renderer* util)    { renderHelper = util;          }
+    void setSpeedApplicable(bool is)        { speedApplicable = is;         }
+    void setNameTextureId(int id)           { currentNameId = id;           }
+    void setNumCornersOverlapped(int num)   { numCornersOverlapped = num;   }
+    void setComponent(Component* comp)      { this->comp = comp;            }
 
-    void triggerPendingScaleUpdate() 		{ pendingScaleUpdate = true; 	}
-    void triggerPendingDeformUpdate() 		{ pendingDeformUpdate = true; 	}
+    void triggerPendingScaleUpdate()        { pendingScaleUpdate = true;    }
+    void triggerPendingDeformUpdate()       { pendingDeformUpdate = true;   }
 
-    Component* getComponent()				{ return comp; 					}
+    Component* getComponent()               { return comp;                  }
 
     void prepareBuffers(int size, int colorSize = -1) {
         xBuffer.ensureSize(size);
@@ -137,17 +137,17 @@ public:
     /* ----------------------------------------------------------------------------- */
 
     virtual void drawDepthLinesAndVerts() = 0;
-    virtual void bakeTextures() 				{}
-    virtual void drawCurvesAndSurfaces() 		{}
-    virtual void drawDeformerTags() 			{}
-    virtual void drawInterceptLines() 			{}
-    virtual void drawVerticalLine() 			{}
-    virtual void highlightCurrentIntercept() 	{}
-    virtual void doExtraResized() 				{}
-    virtual void drawScales()					{}
-    virtual void postCurveDraw() 				{}
-    virtual void postVertsDraw() 				{}
-    virtual void preDraw() 						{}
+    virtual void bakeTextures()                 {}
+    virtual void drawCurvesAndSurfaces()        {}
+    virtual void drawDeformerTags()             {}
+    virtual void drawInterceptLines()           {}
+    virtual void drawVerticalLine()             {}
+    virtual void highlightCurrentIntercept()    {}
+    virtual void doExtraResized()               {}
+    virtual void drawScales()                   {}
+    virtual void postCurveDraw()                {}
+    virtual void postVertsDraw()                {}
+    virtual void preDraw()                      {}
 
     virtual void componentChanged();
     void constrainZoom() override;
@@ -157,9 +157,9 @@ public:
     virtual void panelResized();
     virtual void updateBackground(bool onlyVerticalBackground = false);
 
-    virtual bool isScratchApplicable() 			{ return false; 			}
-    virtual int getLayerScratchChannel() 		{ return CommonEnums::Null;	}
-    virtual void setInteractor(Interactor* itr) { this->interactor = itr; 	}
+    virtual bool isScratchApplicable()          { return false;             }
+    virtual int getLayerScratchChannel()        { return CommonEnums::Null; }
+    virtual void setInteractor(Interactor* itr) { this->interactor = itr;   }
 
 protected:
 
@@ -204,15 +204,15 @@ protected:
     Texture *grabTex, *nameTexA, *dfrmTex, *nameTexB, *scalesTex;
     Image scalesImage, dfrmImage, grabImage, nameImage, nameImageB;
 
-    BufferXY 	xy;
-    String 		panelName;
-    MicroTimer 	renderTime, frameTime;
-    Color 		pointColours[5];
+    BufferXY    xy;
+    String      panelName;
+    MicroTimer  renderTime, frameTime;
+    Color       pointColours[5];
     CriticalSection renderLock;
 
-    Ref<Component> 	comp;
+    Ref<Component>  comp;
     Ref<Interactor> interactor;
-    Ref<Renderer> 	renderHelper;
+    Ref<Renderer>   renderHelper;
     std::unique_ptr<CommonGfx> gfx;
 
     Buffer<float> vertMajorLines, vertMinorLines, horzMajorLines, horzMinorLines;

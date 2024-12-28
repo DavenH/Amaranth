@@ -14,32 +14,32 @@ class BoundWrapper;
 
 class Panel3D :
         public Panel
-    ,	public Dragger::Listener
+    ,   public Dragger::Listener
 {
 public:
     class Renderer : public Panel::Renderer {
     public:
-        void deactivate() 	override = 0;
-        void activate() 	override = 0;
-        void clear() 		override = 0;
+        void deactivate()   override = 0;
+        void activate()     override = 0;
+        void clear()        override = 0;
 
-        virtual void drawBakedTextures() 	{}
-        virtual void gridDrawBeginning() 	{}	// enable client arrays
-        virtual void gridDrawFinished() 	{}	// disable client arrays
-        virtual void postVertsDraw() 		{}
+        virtual void drawBakedTextures()    {}
+        virtual void gridDrawBeginning()    {}  // enable client arrays
+        virtual void gridDrawFinished()     {}  // disable client arrays
+        virtual void postVertsDraw()        {}
         virtual void scratchChannelSelected(int ch) {}
         virtual void textureBakeBeginning() {}
-        virtual void textureBakeFinished() 	{}
+        virtual void textureBakeFinished()  {}
 
-        virtual bool isDetailReduced() 		{ return false; }
-        virtual bool isScratchApplicable() 	{ return false; }
-        virtual bool shouldDrawGrid() 	 	{ return true;  }
-        virtual bool willAdjustColumns() 	{ return false; }
+        virtual bool isDetailReduced()      { return false; }
+        virtual bool isScratchApplicable()  { return false; }
+        virtual bool shouldDrawGrid()       { return true;  }
+        virtual bool willAdjustColumns()    { return false; }
 
-        virtual Buffer<float> getColumnArray() 		= 0;
-        virtual const vector<Column>& getColumns() 	= 0;
-        virtual CriticalSection& getGridLock() 		= 0;
-        virtual void drawSurfaceColumn(int index) 	= 0;
+        virtual Buffer<float> getColumnArray()      = 0;
+        virtual const vector<Column>& getColumns()  = 0;
+        virtual CriticalSection& getGridLock()      = 0;
+        virtual void drawSurfaceColumn(int index)   = 0;
     };
 
     class DataRetriever {
@@ -80,8 +80,8 @@ public:
 
     virtual vector<Color>& getGradientColours();
 
-    void drawCurvesAndSurfaces() override 			{ renderer->drawBakedTextures(); }
-    void setGraphicsRenderer(Renderer* renderer) 	{ this->renderer.reset(renderer); }
+    void drawCurvesAndSurfaces() override           { renderer->drawBakedTextures(); }
+    void setGraphicsRenderer(Renderer* renderer)    { this->renderer.reset(renderer); }
 
     void setUseVertices(bool doso)          { useVertices = doso; }
     Renderer* getRenderer() const           { return renderer.get(); }
@@ -104,22 +104,22 @@ protected:
     };
 
     void adjustLogColumnAndScale(int key, bool firstColumn);
-    void doColourLookup32f		(Buffer<float> grd, Buffer<float> colors);
-    void doColourLookup8u		(Buffer<Ipp8u> grd, Buffer<Ipp8u> colors);
-    void doColumnDraw			(Buffer<Ipp8u> grd8u, Buffer<float> grd32f, int i);
-    void downsampleColumn		(const Buffer<float>& column);
-    void resampleColours		(Buffer<float> srcColors, Buffer<float> dstColors);
-    void setVertices			(int column, Buffer<float> verts) const;
-    void resizeArrays			();
-    void setColumnColourIndices	();
+    void doColourLookup32f      (Buffer<float> grd, Buffer<float> colors);
+    void doColourLookup8u       (Buffer<Ipp8u> grd, Buffer<Ipp8u> colors);
+    void doColumnDraw           (Buffer<Ipp8u> grd8u, Buffer<float> grd32f, int i);
+    void downsampleColumn       (const Buffer<float>& column);
+    void resampleColours        (Buffer<float> srcColors, Buffer<float> dstColors);
+    void setVertices            (int column, Buffer<float> verts) const;
+    void resizeArrays           ();
+    void setColumnColourIndices ();
 
     /* ----------------------------------------------------------------------------- */
 
-    static const int bytesPerFloat 	 = sizeof(float);
-    static const int maxHorzLines 	 = 512;
-    static const int vertsPerQuad 	 = 2;
-    static const int coordsPerVert	 = 2;
-    static const int gradientWidth	 = 512;
+    static const int bytesPerFloat   = sizeof(float);
+    static const int maxHorzLines    = 512;
+    static const int vertsPerQuad    = 2;
+    static const int coordsPerVert   = 2;
+    static const int gradientWidth   = 512;
 
     bool useVertices, haveLogarithmicY, haveHorzZoom;
     int updateSource;
@@ -137,7 +137,7 @@ protected:
     ScopedAlloc<Ipp16s> clrIndicesA, clrIndicesB;
     ScopedAlloc<Ipp32f> downsampAcc, downsampBuf, scaledX, scaledY;
     ScopedAlloc<Ipp32f> fColours, fDestColours, vertices;
-    ScopedAlloc<Ipp8u> 	colours, texColours;
+    ScopedAlloc<Ipp8u>  colours, texColours;
 
     /* ----------------------------------------------------------------------------- */
 

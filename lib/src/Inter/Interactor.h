@@ -31,16 +31,16 @@ typedef vector<DepthVert>::iterator DepthIter;
 
 class Interactor :
         public Updateable
-    ,	public MouseListener
-    ,	public virtual AsyncUIUpdater
-    ,	public virtual SingletonAccessor {
+    ,   public MouseListener
+    ,   public virtual AsyncUIUpdater
+    ,   public virtual SingletonAccessor {
 public:
 
     class VertexProps {
     public:
         VertexProps() :
                 ampVsPhaseApplicable(false)
-            ,	isEnvelope(false) {
+            ,   isEnvelope(false) {
             dimensionNames.add("Time");
             dimensionNames.add("Phase");
             dimensionNames.add("Amp");
@@ -101,28 +101,28 @@ public:
     void validateLinePhases();
 
     void doMouseUpPencil(const MouseEvent& e);
-    void doBoxSelect	(const MouseEvent& e);
+    void doBoxSelect    (const MouseEvent& e);
 
     bool addNewCube(float startTime, float phase, float amp, float curveShape, const MorphPosition& cube);
     bool commitCubeAdditionIfValid(VertCube*& addedLine,
         const vector<VertCube*>& beforeLines,
         const vector<Vertex*>& beforeVerts);
 
-    Array<Vertex*> 	 	getVerticesToMove(VertCube* cube, Vertex* startVertex);
-    VertCube* 		 	getClosestLine(Vertex* vert);
-    vector<Vertex*>& 	getSelected();
-    Vertex* 		 	findClosestVertex(const Vertex2& posXY);
+    Array<Vertex*>      getVerticesToMove(VertCube* cube, Vertex* startVertex);
+    VertCube*           getClosestLine(Vertex* vert);
+    vector<Vertex*>&    getSelected();
+    Vertex*             findClosestVertex(const Vertex2& posXY);
 
-    const vector<VertexFrame>& getSelectedMovingVerts() const { return state.selectedFrame; 	}
-    CollisionDetector& 	getCollisionDetector() 				  { return collisionDetector; 	}
-    CriticalSection& 	getLock() 							  { return vertexLock; 			}
-    MeshRasterizer*  	getRasterizer() const				  { return rasterizer; 			}
-    MorphPosition 		getOffsetPosition(bool withDepths)    { return positioner->getOffsetPosition(withDepths); }
-    MorphPosition 		getMorphPosition() 					  { return positioner->getMorphPosition(); }
+    const vector<VertexFrame>& getSelectedMovingVerts() const { return state.selectedFrame;     }
+    CollisionDetector&  getCollisionDetector()                { return collisionDetector;   }
+    CriticalSection&    getLock()                             { return vertexLock;          }
+    MeshRasterizer*     getRasterizer() const                 { return rasterizer;          }
+    MorphPosition       getOffsetPosition(bool withDepths)    { return positioner->getOffsetPosition(withDepths); }
+    MorphPosition       getMorphPosition()                    { return positioner->getMorphPosition(); }
 
-    float getYellow() 	{ return positioner->getYellow(); 	}
-    float getRed() 		{ return positioner->getRed(); 		}
-    float getBlue() 	{ return positioner->getBlue(); 	}
+    float getYellow()   { return positioner->getYellow();   }
+    float getRed()      { return positioner->getRed();      }
+    float getBlue()     { return positioner->getBlue();     }
 
     /* ----------------------------------------------------------------------------- */
 
@@ -138,26 +138,26 @@ public:
     virtual MouseUsage getMouseUsage();
     virtual vector<VertCube*> getLinesToSlideOnSingleSelect();
 
-    void mouseDown 		(const MouseEvent& e) override;
-    void mouseUp 		(const MouseEvent& e) override;
-    void mouseDrag 		(const MouseEvent& e) override;
-    void mouseEnter		(const MouseEvent& e) override;
-    void mouseExit 		(const MouseEvent& e) override;
-    void mouseMove 		(const MouseEvent& e) override;
-    void mouseWheelMove	(const MouseEvent& e, const MouseWheelDetails& wheel) override;
-    virtual void commitPath			(const MouseEvent& e);
+    void mouseDown      (const MouseEvent& e) override;
+    void mouseUp        (const MouseEvent& e) override;
+    void mouseDrag      (const MouseEvent& e) override;
+    void mouseEnter     (const MouseEvent& e) override;
+    void mouseExit      (const MouseEvent& e) override;
+    void mouseMove      (const MouseEvent& e) override;
+    void mouseWheelMove (const MouseEvent& e, const MouseWheelDetails& wheel) override;
+    virtual void commitPath         (const MouseEvent& e);
 
-    virtual void doExtraMouseUp	 	() {}
-    virtual void doZoomExtra	 	(bool commandDown);
-    virtual void doClickSelect	 	(const MouseEvent& e);
-    virtual void doDragCorner	 	(const MouseEvent& e);
-    virtual void doDragMiddleZoom	(const MouseEvent& e);
-    virtual void doDragPaintTool 	(const MouseEvent& e);
-    virtual void doDragVertex	 	(const MouseEvent& e);
-    virtual void doExtraMouseDown	(const MouseEvent& e);
-    virtual void doExtraMouseDrag	(const MouseEvent& e) {}
-    virtual void doExtraMouseMove	(const MouseEvent& e);
-    virtual void doReshapeCurve	 	(const MouseEvent& e);
+    virtual void doExtraMouseUp     () {}
+    virtual void doZoomExtra        (bool commandDown);
+    virtual void doClickSelect      (const MouseEvent& e);
+    virtual void doDragCorner       (const MouseEvent& e);
+    virtual void doDragMiddleZoom   (const MouseEvent& e);
+    virtual void doDragPaintTool    (const MouseEvent& e);
+    virtual void doDragVertex       (const MouseEvent& e);
+    virtual void doExtraMouseDown   (const MouseEvent& e);
+    virtual void doExtraMouseDrag   (const MouseEvent& e) {}
+    virtual void doExtraMouseMove   (const MouseEvent& e);
+    virtual void doReshapeCurve     (const MouseEvent& e);
 
     virtual bool locateClosestElement();
     virtual void moveSelectedVerts(const Vertex2& diff);
@@ -169,15 +169,15 @@ public:
     virtual Mesh* getMesh();
     virtual Range<float> getVertexPhaseLimits(Vertex* vert);
 
-    virtual void doFurtherReset() 				{}
-    virtual void focusGained() 					{}
-    virtual void adjustAddedLine(VertCube*) 	{}
-    virtual bool is3DInteractor() 				{ return false; 		}
-    virtual bool extraUpdateCondition() 		{ return true; 			}
-    virtual bool isCurrentMeshActive()	 		{ return true; 			}
-    virtual bool isCursorApplicable(int tool) 	{ return true; 			}
-    virtual int  getUpdateSource()				{ return updateSource; 	}
-    virtual Interactor* getOppositeInteractor() { return nullptr; 		}
+    virtual void doFurtherReset()               {}
+    virtual void focusGained()                  {}
+    virtual void adjustAddedLine(VertCube*)     {}
+    virtual bool is3DInteractor()               { return false;         }
+    virtual bool extraUpdateCondition()         { return true;          }
+    virtual bool isCurrentMeshActive()          { return true;          }
+    virtual bool isCursorApplicable(int tool)   { return true;          }
+    virtual int  getUpdateSource()              { return updateSource;  }
+    virtual Interactor* getOppositeInteractor() { return nullptr;       }
 
     /* ----------------------------------------------------------------------------- */
 
@@ -190,11 +190,11 @@ public:
     PanelState state;
     VertexProps vertexProps;
 
-    Ref<Panel> 		panel;
-    Ref<Component> 	display;
+    Ref<Panel>      panel;
+    Ref<Component>  display;
 
-    Rectangle<int> 	selection;
-    Rectangle<int> 	finalSelection;
+    Rectangle<int>  selection;
+    Rectangle<int>  finalSelection;
 
     vector<Vertex2> pencilPath;
     vector<Vertex2> selectionCorners;
@@ -206,9 +206,9 @@ public:
 
 protected:
 
-    void loopBacktrack			(vector<Vertex*>& loop, set<Vertex*>& alreadySeen, Vertex* current, int level);
-    void updateLastValid		(vector<VertexFrame>& verts) const;
-    void selectConnectedVerts	(set<Vertex*>& alreadySeen, Vertex* current);
+    void loopBacktrack          (vector<Vertex*>& loop, set<Vertex*>& alreadySeen, Vertex* current, int level);
+    void updateLastValid        (vector<VertexFrame>& verts) const;
+    void selectConnectedVerts   (set<Vertex*>& alreadySeen, Vertex* current);
     void addSelectedVertexOrToggle(Vertex* v);
 
     bool isDuplicateVertex(Vertex* v);
@@ -229,11 +229,11 @@ protected:
 
     int updateSource;
 
-    MorphPositioner*	positioner;
-    MeshRasterizer* 	rasterizer;
+    MorphPositioner*    positioner;
+    MeshRasterizer*     rasterizer;
 
-    CriticalSection 	vertexLock;
-    CollisionDetector 	collisionDetector;
+    CriticalSection     vertexLock;
+    CollisionDetector   collisionDetector;
     VertexTransformUndo vertexTransformUndoer;
     VertCube::ReductionData reduceData;
 

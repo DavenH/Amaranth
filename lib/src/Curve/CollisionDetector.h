@@ -15,7 +15,7 @@ class Mesh;
 
 class CollisionDetector :
         public SingletonAccessor
-    ,	public InteractorListener {
+    ,   public InteractorListener {
 public:
     enum CollisionDim { Time, Key, Mod, Phase, nDims };
 
@@ -33,8 +33,8 @@ public:
     bool validate();
 
     void setNonintersectingDimension(CollisionDim dim);
-    void setDimSlices(int slices) 	{ dimSlices = slices; sliceSpacing = 1 / float(dimSlices); }
-    void setEnabled(bool is) 		{ enabled = is; }
+    void setDimSlices(int slices)   { dimSlices = slices; sliceSpacing = 1 / float(dimSlices); }
+    void setEnabled(bool is)        { enabled = is; }
 
 private:
     static const int numIndepDims = 3;

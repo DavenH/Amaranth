@@ -53,11 +53,11 @@ public:
         this->value = value;
     }
 
-//	void dismiss()
-//	{
-//		pending = false;
-//		value = T();
-//	}
+//  void dismiss()
+//  {
+//      pending = false;
+//      value = T();
+//  }
 
 private:
     T value;

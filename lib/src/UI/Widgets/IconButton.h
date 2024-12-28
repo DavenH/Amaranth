@@ -11,8 +11,8 @@ using namespace juce;
 
 class IconButton :
         public Button
-    ,	public IDynamicSizeComponent
-    ,	public SingletonAccessor {
+    ,   public IDynamicSizeComponent
+    ,   public SingletonAccessor {
 public:
     IconButton(Image image, SingletonRepo* repo);
     IconButton(int x, int y, Listener* listener,
@@ -29,25 +29,25 @@ public:
     void mouseDown(const MouseEvent& e) override;
     void mouseDrag(const MouseEvent& e) override;
 
-    [[nodiscard]] bool getIsPowered() const						{ return isPowered; 			}
-    [[nodiscard]] bool isApplicable() const    					{ return applicable;    		}
-    [[nodiscard]] bool isHighlit() const       					{ return highlit;    			}
-    [[nodiscard]] bool isVisibleDlg() const override			{ return isVisible();			}
+    [[nodiscard]] bool getIsPowered() const                     { return isPowered;             }
+    [[nodiscard]] bool isApplicable() const                     { return applicable;            }
+    [[nodiscard]] bool isHighlit() const                        { return highlit;               }
+    [[nodiscard]] bool isVisibleDlg() const override            { return isVisible();           }
 
-    [[nodiscard]] Rectangle<int> getBoundsInParentDelegate() const override	{ return getBoundsInParent();	}
-    [[nodiscard]] int getCollapsedSize() const override       	{ return collapsedSize;    		}
-    [[nodiscard]] int getExpandedSize() const override       	{ return expandedSize;    		}
-    [[nodiscard]] int getPendingItems() const					{ return pendingNumber; 		}
-    int getXDelegate() override    								{ return getX();    			}
-    int getYDelegate() override   					 			{ return getY();    			}
-    void setBoundsDelegate(int x, int y, int w, int h) override	{ setBounds(x, y, w, h);		}
+    [[nodiscard]] Rectangle<int> getBoundsInParentDelegate() const override { return getBoundsInParent();   }
+    [[nodiscard]] int getCollapsedSize() const override         { return collapsedSize;         }
+    [[nodiscard]] int getExpandedSize() const override          { return expandedSize;          }
+    [[nodiscard]] int getPendingItems() const                   { return pendingNumber;         }
+    int getXDelegate() override                                 { return getX();                }
+    int getYDelegate() override                                 { return getY();                }
+    void setBoundsDelegate(int x, int y, int w, int h) override { setBounds(x, y, w, h);        }
 
-    void setCollapsedSize(int size)    						{ collapsedSize = size;    		}
-    void setExpandedSize(int size)    						{ expandedSize = size;    		}
-    void setMouseScrollApplicable(bool is) 					{ mouseScrollApplicable = is; 	}
+    void setCollapsedSize(int size)                         { collapsedSize = size;         }
+    void setExpandedSize(int size)                          { expandedSize = size;          }
+    void setMouseScrollApplicable(bool is)                  { mouseScrollApplicable = is;   }
     void setNotApplicableMessage(const String& naMessage)   { this->naMessage = naMessage;  }
-    void setPendingItems(int is)    						{ pendingNumber	= is; repaint();}
-    void setPowered(bool is) 								{ isPowered = is; repaint();	}
+    void setPendingItems(int is)                            { pendingNumber = is; repaint();}
+    void setPowered(bool is)                                { isPowered = is; repaint();    }
     bool setHighlit(bool highlit);
     void setMessages(String mouseOverMessage, String keys);
     void setApplicable(bool applicable);

@@ -6,8 +6,8 @@ public:
     LockTracer(SingletonRepo* repo, void* lockAddr) :
             SingletonAccessor(repo, "LockTracker") {
 #ifdef TRACE_LOCKS
-        threadId 	= ((int)Thread::getCurrentThreadId());
-        lockId 		= ((int)lockAddr) % 10000;
+        threadId    = ((int)Thread::getCurrentThreadId());
+        lockId      = ((int)lockAddr) % 10000;
         sout << "    " << threadId << "\t" << lockId << "\n";
 #endif
     }
@@ -15,8 +15,8 @@ public:
     LockTracer(SingletonRepo* repo, const String& lockStr) :
             SingletonAccessor(repo, "LockTracker"), lockStr(lockStr), lockId(-1) {
 #ifdef TRACE_LOCKS
-        threadId 	= ((int)Thread::getCurrentThreadId());
-//		sout << "    " << threadId << "\t" << lockStr << "\n";
+        threadId    = ((int)Thread::getCurrentThreadId());
+//      sout << "    " << threadId << "\t" << lockStr << "\n";
 #endif
     }
 

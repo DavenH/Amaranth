@@ -20,7 +20,7 @@ void Directories::init() {
         String productName(ProjectInfo::projectName);
 
         contentDir = File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName()
-                     + File::getSeparatorString() + "Amaranth Audio"
+                     + File::getSeparatorString() + ProjectInfo::companyName
                      + File::getSeparatorString() + productName
                      + File::getSeparatorString();
 

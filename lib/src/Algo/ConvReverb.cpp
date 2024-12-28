@@ -8,16 +8,16 @@
 
 ConvReverb::ConvReverb(SingletonRepo* repo) :
         SingletonAccessor(repo, "ConvReverb")
-    ,	outBuffer(2)
-    ,	wetLevel(0.5f)
-    ,	dryLevel(1.f) {
+    ,   outBuffer(2)
+    ,   wetLevel(0.5f)
+    ,   dryLevel(1.f) {
 }
 
 void ConvReverb::reset() {
-    headBlockSize 	= 0;
-    tailBlockSize 	= 0;
-    precalcPos 	  	= 0;
-    tailInputPos	= 0;
+    headBlockSize   = 0;
+    tailBlockSize   = 0;
+    precalcPos      = 0;
+    tailInputPos    = 0;
 
     headConvolver.reset();
     tailConvolver.reset();
@@ -75,26 +75,26 @@ void ConvReverb::init(int headSize, int tailSize, const Buffer<float>& kernel) {
 
         tailOutput  = memory.place(tailBlockSize);
         tailPrecalc = memory.place(tailBlockSize);
-        tailInput 	= memory.place(tailBlockSize);
+        tailInput   = memory.place(tailBlockSize);
     } else {
         tailConvolver.active = false;
-        tailOutput	.nullify();
-        tailPrecalc	.nullify();
-        tailInput	.nullify();
+        tailOutput  .nullify();
+        tailPrecalc .nullify();
+        tailInput   .nullify();
     }
 
     if(!neckPrecalc.empty() || !tailPrecalc.empty())
         neckInput = memory.place(tailBlockSize);
 
-    tailOutput	.zero();
-    tailPrecalc	.zero();
-    tailInput	.zero();
-    neckOutput	.zero();
-    neckInput	.zero();
-    neckPrecalc	.zero();
+    tailOutput  .zero();
+    tailPrecalc .zero();
+    tailInput   .zero();
+    neckOutput  .zero();
+    neckInput   .zero();
+    neckPrecalc .zero();
 
-    tailInputPos 	= 0;
-    precalcPos		= 0;
+    tailInputPos    = 0;
+    precalcPos      = 0;
 }
 
 void ConvReverb::process(
@@ -174,11 +174,11 @@ void ConvReverb::process(
 }
 
 void BlockConvolver::reset() {
-    blockSize 		= 0;
-    numBlocks 		= 0;
-    currSegment		= 0;
-    active			= true;
-    useNoise		= false;
+    blockSize       = 0;
+    numBlocks       = 0;
+    currSegment     = 0;
+    active          = true;
+    useNoise        = false;
 
     memory.clear();
     cplxMemory.clear();
@@ -204,14 +204,14 @@ void BlockConvolver::init(int sizeOfBlock, int kernelSize, float decay) {
 
 BlockConvolver::BlockConvolver() :
         useNoise(false)
-    ,	active(true)
-    ,	numBlocks(0)
-    ,	currSegment(0)
-    ,	inputBufferPos(0)
-    ,	seed(0)
-    ,	blockSize(0)
-    ,	baseNoiseLevel{}
-    ,	noiseDecay(0) {
+    ,   active(true)
+    ,   numBlocks(0)
+    ,   currSegment(0)
+    ,   inputBufferPos(0)
+    ,   seed(0)
+    ,   blockSize(0)
+    ,   baseNoiseLevel{}
+    ,   noiseDecay(0) {
 }
 
 void BlockConvolver::init(
@@ -220,42 +220,42 @@ void BlockConvolver::init(
         bool usesNoise) {
     reset();
 
-    sizeOfBlock		= NumberUtils::nextPower2(sizeOfBlock);
-    useNoise		= usesNoise;
-    blockSize 		= sizeOfBlock;
-    numBlocks		= static_cast<int>(::ceilf(kernel.size() / float(blockSize)));
-    inputBufferPos 	= 0;
-    currSegment			= 0;
+    sizeOfBlock     = NumberUtils::nextPower2(sizeOfBlock);
+    useNoise        = usesNoise;
+    blockSize       = sizeOfBlock;
+    numBlocks       = static_cast<int>(::ceilf(kernel.size() / float(blockSize)));
+    inputBufferPos  = 0;
+    currSegment         = 0;
 
-    int segmentSize	= 2 * blockSize;
-    int complexSize	= blockSize + 1; // in Ipp32fc units
+    int segmentSize = 2 * blockSize;
+    int complexSize = blockSize + 1; // in Ipp32fc units
 
     fft.allocate(segmentSize);
 
     int complexReserve = complexSize * (numBlocks * 2 + 3);
 
-    cplxMemory	.resize(complexReserve);
-    memory		.resize(blockSize * 2 + segmentSize + (useNoise ? numBlocks : 0));
-    cplxMemory	.zero();
-    memory		.zero();
+    cplxMemory  .resize(complexReserve);
+    memory      .resize(blockSize * 2 + segmentSize + (useNoise ? numBlocks : 0));
+    cplxMemory  .zero();
+    memory      .zero();
 
-    sumBuffer 	  = cplxMemory.place(complexSize);
-    convBuffer 	  = cplxMemory.place(complexSize);
+    sumBuffer     = cplxMemory.place(complexSize);
+    convBuffer    = cplxMemory.place(complexSize);
 
     overlapBuffer = memory.place(blockSize);
-    inputBuffer	  = memory.place(blockSize);
-    fftBuffer	  = memory.place(segmentSize);
+    inputBuffer   = memory.place(blockSize);
+    fftBuffer     = memory.place(segmentSize);
 
     kernelBlocks.clear();
     inputBlocks.clear();
 
     for (int i = 0; i < numBlocks; ++i) {
-        Buffer<Ipp32fc> segment 	= cplxMemory.place(complexSize);
+        Buffer<Ipp32fc> segment     = cplxMemory.place(complexSize);
 
-        int remaining 				= kernel.size() - (i * blockSize);
-        int fftLen 					= (remaining >= blockSize) ? blockSize : remaining;
+        int remaining               = kernel.size() - (i * blockSize);
+        int fftLen                  = (remaining >= blockSize) ? blockSize : remaining;
 
-        Buffer<Ipp32fc> irSegment 	= cplxMemory.place(complexSize);
+        Buffer<Ipp32fc> irSegment   = cplxMemory.place(complexSize);
 
         kernel.section(i * blockSize, fftLen).copyTo(fftBuffer);
 
@@ -277,7 +277,7 @@ void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
     int samplesProcessed = 0;
 
     while (samplesProcessed < input.size()) {
-        bool inputWasEmpty 	 = inputBufferPos == 0;
+        bool inputWasEmpty   = inputBufferPos == 0;
         int samplesToProcess = jmin(input.size() - samplesProcessed, blockSize - inputBufferPos);
 
         input.section(samplesProcessed, samplesToProcess).copyTo(inputBuffer + inputBufferPos);
@@ -291,8 +291,8 @@ void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
             sumBuffer.zero();
 
             for (int i = 1; i < numBlocks; ++i) {
-                int kernIndex 	= i;
-                int inputIndex 	= (currSegment + i) % numBlocks;
+                int kernIndex   = i;
+                int inputIndex  = (currSegment + i) % numBlocks;
 
                 sumBuffer.addProduct(kernelBlocks[kernIndex], inputBlocks[inputIndex]);
             }
@@ -320,15 +320,15 @@ void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
 }
 
 Buffer<float> ConvReverb::convolve(const Buffer<float>& inputFrq, Buffer<float> kernelFrq) {
-    int paddedSize 	= NumberUtils::nextPower2(kernelFrq.size() + inputFrq.size() - 1);
+    int paddedSize  = NumberUtils::nextPower2(kernelFrq.size() + inputFrq.size() - 1);
     int complexSize = paddedSize + 2;
-    int cume 		= 0;
+    int cume        = 0;
 
     Transform& fft = getObj(Transforms).chooseFFT(paddedSize);
-    Buffer<float> workBuffer 	= getObj(MemoryPool).getAudioPool();
-    Buffer<float> kernelFrqPad 	= workBuffer.section(cume, complexSize);
+    Buffer<float> workBuffer    = getObj(MemoryPool).getAudioPool();
+    Buffer<float> kernelFrqPad  = workBuffer.section(cume, complexSize);
     cume += complexSize;
-    Buffer<float> inputFrqPad  	= workBuffer.section(cume, complexSize);
+    Buffer<float> inputFrqPad   = workBuffer.section(cume, complexSize);
     cume += complexSize;
 
     kernelFrq.copyTo(kernelFrqPad + 2);
@@ -375,8 +375,8 @@ void ConvReverb::basicConvolve(
 }
 
 void ConvReverb::test() {
-    test(44100, 131072, 512, 	8192, 	512, 	false, 	false);
-    test(44100, 131072, 512, 	8192, 	512, 	false, 	true);
+    test(44100, 131072, 512,    8192,   512,    false,  false);
+    test(44100, 131072, 512,    8192,   512,    false,  true);
 }
 
 void ConvReverb::test(int inputSize, int irSize,
@@ -386,10 +386,10 @@ void ConvReverb::test(int inputSize, int irSize,
     int seed = (bufferSize ^ irSize ^ inputSize) % bufferSize;
 
     ScopedAlloc<Ipp32f> memory(inputSize + irSize + bufferSize + (inputSize + irSize - 1) * 2);
-    Buffer<float> in 	= memory.place(inputSize);
-    Buffer<float> ir 	= memory.place(irSize);
+    Buffer<float> in    = memory.place(inputSize);
+    Buffer<float> ir    = memory.place(irSize);
     Buffer<float> buffer= memory.place(bufferSize);
-    Buffer<float> out 	= memory.place(inputSize + irSize - 1);
+    Buffer<float> out   = memory.place(inputSize + irSize - 1);
     Buffer<float> outCtrl = memory.place(inputSize + irSize - 1);
 
     memory.zero();
@@ -417,11 +417,11 @@ void ConvReverb::test(int inputSize, int irSize,
     timer.start();
 
     while(processedOut < out.size()) {
-        int maxToProcess	= jmax(1, seed % bufferSize); //jmax(1, random.nextInt(bufferSize - 1));
-        int remainingOut 	= out.size() - processedOut;
-        int remainingIn 	= in.size() - processedIn;
-        int toProcessOut 	= jmin(remainingOut, maxToProcess);
-        int toProcessIn		= jmin(remainingIn, maxToProcess);
+        int maxToProcess    = jmax(1, seed % bufferSize); //jmax(1, random.nextInt(bufferSize - 1));
+        int remainingOut    = out.size() - processedOut;
+        int remainingIn     = in.size() - processedIn;
+        int toProcessOut    = jmin(remainingOut, maxToProcess);
+        int toProcessIn     = jmin(remainingIn, maxToProcess);
 
         seed = seed * 37 + 331;
 
@@ -441,9 +441,9 @@ void ConvReverb::test(int inputSize, int irSize,
     timer.stop();
 
     if (refCheck) {
-        int 	diffSamples 	= 0;
-        float 	absTolerance 	= 0.001f * float(ir.size());
-        float 	relTolerance 	= 0.0001f * logf(float(ir.size()));
+        int     diffSamples     = 0;
+        float   absTolerance    = 0.001f * float(ir.size());
+        float   relTolerance    = 0.0001f * logf(float(ir.size()));
 
         for (int i = 0; i < outCtrl.size(); ++i) {
             float a = out[i];
@@ -458,9 +458,9 @@ void ConvReverb::test(int inputSize, int irSize,
             }
         }
     } else {
-//		sout << "Performance Test:\t" << (useTwoStage ? "2-stage" : "1-stage") << " input " << inputSize << ", IR " << irSize << ", blocksize 1-"
-//			 << bufferSize << " => Clocks: " << (int) timer.getClocks() << ", clk/input: " << int(timer.getClocks() / inputSize)
-//			 << "\n";
+//      sout << "Performance Test:\t" << (useTwoStage ? "2-stage" : "1-stage") << " input " << inputSize << ", IR " << irSize << ", blocksize 1-"
+//           << bufferSize << " => Clocks: " << (int) timer.getClocks() << ", clk/input: " << int(timer.getClocks() / inputSize)
+//           << "\n";
     }
 }
 

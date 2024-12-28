@@ -26,7 +26,7 @@ void MiscGraphics::init() {
     cursors.add(new MouseCursor(getIcon(0, 2), 11, 11)); // cross cursor
     cursors.add(new MouseCursor(getIcon(5, 6), 11, 11)); // cross add cursor
     cursors.add(new MouseCursor(getIcon(4, 6), 11, 11)); // cross sub cursor
-    cursors.add(new MouseCursor(getIcon(8, 7), 0,  0));	 // cancel cursor
+    cursors.add(new MouseCursor(getIcon(8, 7), 0,  0));  // cancel cursor
 
     // MemoryInputStream fontStream(Silkscreen::output, Silkscreen::outputSize, false);
     // auto typeface = Typeface::createSystemTypefaceFor(Silkscreen::output, Silkscreen::outputSize);
@@ -87,18 +87,18 @@ void MiscGraphics::applyMouseoverHighlight(Graphics& g, Image copy, bool mouseOv
 }
 
 void MiscGraphics::drawShadowedText(Graphics& g, const String& text, int x, int y, const Font& font, float alpha) {
-    g.setFont	(font);
-    g.setColour	(Colour::greyLevel(0.04f));
+    g.setFont   (font);
+    g.setColour (Colour::greyLevel(0.04f));
     g.drawSingleLineText(text, x + 1, y + 1);
 
-    g.setColour	(Colour::greyLevel(alpha));
+    g.setColour (Colour::greyLevel(alpha));
     g.drawSingleLineText(text, x, y);
 }
 
 Font* MiscGraphics::getAppropriateFont(int scaleSize) {
     switch (scaleSize) {
-        case ScaleSizes::ScaleSmall: 	return silkscreen;
-        case ScaleSizes::ScaleMed: 		return verdana12;
+        case ScaleSizes::ScaleSmall:    return silkscreen;
+        case ScaleSizes::ScaleMed:      return verdana12;
         case ScaleSizes::ScaleLarge:    return verdana16;
 
         default: {

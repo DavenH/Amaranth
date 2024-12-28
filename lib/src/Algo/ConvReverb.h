@@ -44,11 +44,11 @@ private:
     Random random;
     Transform fft;
 
-    ScopedAlloc<float> 	memory;
+    ScopedAlloc<float>  memory;
     ScopedAlloc<Ipp32fc> cplxMemory;
 
-    Buffer<float>		fftBuffer, overlapBuffer, inputBuffer, decayLevels;
-    Buffer<Ipp32fc>		sumBuffer, mulBuffer, convBuffer, noiseBuffer;
+    Buffer<float>       fftBuffer, overlapBuffer, inputBuffer, decayLevels;
+    Buffer<Ipp32fc>     sumBuffer, mulBuffer, convBuffer, noiseBuffer;
 
     vector<Buffer<Ipp32fc> > inputBlocks, kernelBlocks;
 
@@ -78,14 +78,14 @@ private:
 
     float wetLevel, dryLevel;
 
-    BlockConvolver 	headConvolver, neckConvolver, tailConvolver;
-    StereoBuffer  	outBuffer;
-    MicroTimer 		timer;
+    BlockConvolver  headConvolver, neckConvolver, tailConvolver;
+    StereoBuffer    outBuffer;
+    MicroTimer      timer;
 
-    Buffer<float>	kernel;
-    Buffer<float> 	tailOutput, tailPrecalc;
-    Buffer<float> 	neckOutput, neckPrecalc;
-    Buffer<float> 	neckInput, 	tailInput;
+    Buffer<float>   kernel;
+    Buffer<float>   tailOutput, tailPrecalc;
+    Buffer<float>   neckOutput, neckPrecalc;
+    Buffer<float>   neckInput,  tailInput;
 
     ScopedAlloc<float> memory;
 };

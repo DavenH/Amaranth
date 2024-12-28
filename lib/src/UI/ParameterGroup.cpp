@@ -9,11 +9,11 @@
 #include "../Util/ScopedBooleanSwitcher.h"
 
 ParameterGroup::ParameterGroup(SingletonRepo* repo, const String& name, Worker* worker) :
-        SingletonAccessor	(repo, name)
-    ,	worker				(worker)
-    ,	updatingAllSliders	(false)
-    ,	knobUIUpdater		(this)
-    ,	sliderStartingValue	(0.5)
+        SingletonAccessor   (repo, name)
+    ,   worker              (worker)
+    ,   updatingAllSliders  (false)
+    ,   knobUIUpdater       (this)
+    ,   sliderStartingValue (0.5)
 {
 }
 
@@ -80,7 +80,7 @@ void ParameterGroup::setKnobValue(int knobIndex, double knobValue,
         knobs[knobIndex]->setValue(knobValue, dontSendNotification);
     }
 
-    if(doGlobalUIUpdate	&& didAnythingSignificant && worker->shouldTriggerGlobalUpdate(knobs[knobIndex])) {
+    if(doGlobalUIUpdate && didAnythingSignificant && worker->shouldTriggerGlobalUpdate(knobs[knobIndex])) {
         triggerRefreshUpdate();
     }
 }
@@ -122,7 +122,7 @@ bool ParameterGroup::readKnobXML(const XmlElement* effectElem) {
 void ParameterGroup::writeKnobXML(XmlElement* effectElem) const {
     auto* knobsElem = new XmlElement("Knobs");
 
-    for(int knobIdx = 0; knobIdx < knobs.size(); ++knobIdx)	{
+    for(int knobIdx = 0; knobIdx < knobs.size(); ++knobIdx) {
         auto* knob = new XmlElement("Knob");
 
         knob->setAttribute("value", knobs[knobIdx]->getValue());

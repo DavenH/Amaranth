@@ -19,9 +19,9 @@ public:
 
         mem.resize(tapsSize * 5 / 2);
 
-        delayLine 	= mem.place(tapsSize);
-        taps32 		= mem.place(tapsSize);
-        moveBuffer	= mem.place(tapsSize / 2);
+        delayLine   = mem.place(tapsSize);
+        taps32      = mem.place(tapsSize);
+        moveBuffer  = mem.place(tapsSize / 2);
 
         rateRatio = jmin(0.499999, rateRatio * 0.5);
 
@@ -42,9 +42,9 @@ public:
         tapsSize = taps.size();
         mem.resize(tapsSize * 5 / 2);
 
-        delayLine 	= mem.place(tapsSize);
-        taps32		= mem.place(tapsSize);
-        moveBuffer	= mem.place(tapsSize / 2);
+        delayLine   = mem.place(tapsSize);
+        taps32      = mem.place(tapsSize);
+        moveBuffer  = mem.place(tapsSize / 2);
 
         init(compensateLatency);
     }
@@ -59,7 +59,7 @@ public:
             int padSize = moveBuffer.size();
             if (compensateLatency) {
                 if (padSize < buff.size()) {
-//					Line<float> line(Point<float>(0, buff.front()), Point<float>(padSize, buff[padSize]));
+//                  Line<float> line(Point<float>(0, buff.front()), Point<float>(padSize, buff[padSize]));
 
                     CurveLine line(Vertex2(0, buff.front()),
                                    Vertex2(padSize, buff[padSize]));
@@ -85,7 +85,7 @@ public:
                 int moveSize = buff.size() - zeroSize;
 
                 if (moveSize > 0) {
-//					ippsFIRSetDlyLine_32f(firState, delayLine);
+//                  ippsFIRSetDlyLine_32f(firState, delayLine);
                     ippsFIRSR_32f(moveBuffer, moveBuffer, zeroSize, firState, delayLine, delayLine, workBuff);
                     ippsMove_32f(buff + zeroSize, buff, moveSize);
                     moveBuffer.copyTo(buff + moveSize);

@@ -185,22 +185,22 @@ void deinterleave (int channels,
     {
       Td* l = dest[0];
       Td* r = dest[1];
-	    int n = (samples + 7) / 8;
-	    switch (samples % 8)
+        int n = (samples + 7) / 8;
+        switch (samples % 8)
       {
-	    case 0: do
+        case 0: do
               {
                 *l++ = *src++; *r++ = *src++;
-	    case 7:		*l++ = *src++; *r++ = *src++;
-	    case 6:		*l++ = *src++; *r++ = *src++;
-	    case 5:		*l++ = *src++; *r++ = *src++;
-	    case 4:		*l++ = *src++; *r++ = *src++;
-	    case 3:		*l++ = *src++; *r++ = *src++;
-	    case 2:		*l++ = *src++; *r++ = *src++;
-	    case 1:		*l++ = *src++; *r++ = *src++;
-		          }
+        case 7:     *l++ = *src++; *r++ = *src++;
+        case 6:     *l++ = *src++; *r++ = *src++;
+        case 5:     *l++ = *src++; *r++ = *src++;
+        case 4:     *l++ = *src++; *r++ = *src++;
+        case 3:     *l++ = *src++; *r++ = *src++;
+        case 2:     *l++ = *src++; *r++ = *src++;
+        case 1:     *l++ = *src++; *r++ = *src++;
+                  }
               while (--n > 0);
-	    }
+        }
     }
     break;
 
@@ -321,21 +321,21 @@ void interleave (int channels,
 
       // note that Duff's Device only works when samples>0
       int n = (samples + 7) / 8;
-	    switch (samples % 8)
+        switch (samples % 8)
       {
-	    case 0: do
+        case 0: do
               {
                 *dest++ = *l++; *dest++ = *r++;
-	    case 7:		*dest++ = *l++; *dest++ = *r++;
-	    case 6:		*dest++ = *l++; *dest++ = *r++;
-	    case 5:		*dest++ = *l++; *dest++ = *r++;
-	    case 4:		*dest++ = *l++; *dest++ = *r++;
-	    case 3:		*dest++ = *l++; *dest++ = *r++;
-	    case 2:		*dest++ = *l++; *dest++ = *r++;
-	    case 1:		*dest++ = *l++; *dest++ = *r++;
-		          }
+        case 7:     *dest++ = *l++; *dest++ = *r++;
+        case 6:     *dest++ = *l++; *dest++ = *r++;
+        case 5:     *dest++ = *l++; *dest++ = *r++;
+        case 4:     *dest++ = *l++; *dest++ = *r++;
+        case 3:     *dest++ = *l++; *dest++ = *r++;
+        case 2:     *dest++ = *l++; *dest++ = *r++;
+        case 1:     *dest++ = *l++; *dest++ = *r++;
+                  }
               while (--n > 0);
-	    }
+        }
     }
     break;
 
@@ -580,11 +580,11 @@ void zero (int channels,
 template <class TFunction>
 double BrentMinimize
 (
-  TFunction& f,	// [in] objective function to minimize
-  double leftEnd,	// [in] smaller value of bracketing interval
-  double rightEnd,	// [in] larger value of bracketing interval
-  double epsilon,	// [in] stopping tolerance
-  double& minLoc	// [out] location of minimum
+  TFunction& f, // [in] objective function to minimize
+  double leftEnd,   // [in] smaller value of bracketing interval
+  double rightEnd,  // [in] larger value of bracketing interval
+  double epsilon,   // [in] stopping tolerance
+  double& minLoc    // [out] location of minimum
 )
 {
   double d, e, m, p, q, r, tol, t2, u, v, w, fu, fv, fw, fx;

@@ -17,9 +17,9 @@ using std::vector;
 
 class PathRepo :
         public SingletonAccessor
-    ,	public Updateable
-    ,	public Document::Listener
-    ,	public InteractorListener {
+    ,   public Updateable
+    ,   public Document::Listener
+    ,   public InteractorListener {
 public:
     struct ScratchContext {
         Buffer<float> gridBuffer;

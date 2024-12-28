@@ -6,33 +6,33 @@ template<class T>
 class Buffer
 {
 public:
-    Buffer() 								: ptr(0), 			sz(0) 			{}
-    Buffer(T* array, int size) 				: ptr(array), 		sz(size) 		{}
-    Buffer(const Buffer& buff) 				: ptr(buff.get()), 	sz(buff.size()) {}
-    Buffer(const Buffer& buff, int size)	: ptr(buff.get()), 	sz(size) 		{ jassert(buff.size() >= size); }
+    Buffer()                                : ptr(0),           sz(0)           {}
+    Buffer(T* array, int size)              : ptr(array),       sz(size)        {}
+    Buffer(const Buffer& buff)              : ptr(buff.get()),  sz(buff.size()) {}
+    Buffer(const Buffer& buff, int size)    : ptr(buff.get()),  sz(size)        { jassert(buff.size() >= size); }
     explicit Buffer(AudioSampleBuffer& audioBuffer, int chan = 0);
 
     virtual ~Buffer() = default;
 
     /* —————————————————————————————————————————————————————————————————————————————————————————————————————— */
 
-    void copyTo(Buffer buff) 	 const;
+    void copyTo(Buffer buff)     const;
     void getMax(T& pMax, int& index) const;
     void getMin(T& pMin, int& index) const;
-    void minmax(T& pMin, T& pMax) 	 const;
+    void minmax(T& pMin, T& pMax)    const;
 
     [[nodiscard]] bool isProbablyEmpty() const;
 
     int downsampleFrom(Buffer buff, int factor = -1, int phase = 0);
     int upsampleFrom(Buffer buff, int factor = -1, int phase = 0);
 
-    T max() 	const;
-    T mean()	const;
-    T min() 	const;
-    T normL1() 	const;
-    T normL2() 	const;
-    T stddev() 	const;
-    T sum() 	const;
+    T max()     const;
+    T mean()    const;
+    T min()     const;
+    T normL1()  const;
+    T normL2()  const;
+    T stddev()  const;
+    T sum()     const;
 
     T dot(Buffer buff) const;
     T normDiffL2(Buffer buff) const;
@@ -80,19 +80,19 @@ public:
 
     /* —————————————————————————————————————————————————————————————————————————————————————————————————————— */
 
-    T* begin() 					{ return ptr; 		}
-    T* end() 					{ return ptr + sz; 	}
-    T& front() 					{ jassert(sz > 0); 	return ptr[0]; 		}
-    T& back() 					{ jassert(sz > 0); 	return ptr[sz - 1];	}
-    const T& front() const 		{ jassert(sz > 0); 	return ptr[0]; 		}
-    const T& back() const		{ jassert(sz > 0);	return ptr[sz - 1]; }
+    T* begin()                  { return ptr;       }
+    T* end()                    { return ptr + sz;  }
+    T& front()                  { jassert(sz > 0);  return ptr[0];      }
+    T& back()                   { jassert(sz > 0);  return ptr[sz - 1]; }
+    const T& front() const      { jassert(sz > 0);  return ptr[0];      }
+    const T& back() const       { jassert(sz > 0);  return ptr[sz - 1]; }
 
-    T* get() const				{ return ptr; 		}
-    operator T*()				{ return ptr; 		}
-    operator const T*() const 	{ return ptr; 		}
+    T* get() const              { return ptr;       }
+    operator T*()               { return ptr;       }
+    operator const T*() const   { return ptr;       }
 
-    [[nodiscard]] bool empty() const	{ return sz == 0; 	}
-    [[nodiscard]] int size() const		{ return sz; 		}
+    [[nodiscard]] bool empty() const    { return sz == 0;   }
+    [[nodiscard]] int size() const      { return sz;        }
 
     void nullify() {
         ptr = 0;
@@ -140,14 +140,14 @@ public:
         return Buffer(ptr - num, sz + num);
     }
 
-    void operator+=(const Buffer& other); //	{ add(other);	}
-    void operator+=(T val); //					{ add(val);		}
-    void operator-=(const Buffer& other); //	{ sub(other);	}
-    void operator-=(T val); // 					{ sub(val);		}
-    void operator*=(const Buffer& other); //	{ mul(other);	}
-    void operator*=(T val); //					{ mul(val);		}
-    void operator/=(const Buffer& other); //	{ div(other);	}
-    void operator/=(T val); //					{ div(val);		}
+    void operator+=(const Buffer& other); //    { add(other);   }
+    void operator+=(T val); //                  { add(val);     }
+    void operator-=(const Buffer& other); //    { sub(other);   }
+    void operator-=(T val); //                  { sub(val);     }
+    void operator*=(const Buffer& other); //    { mul(other);   }
+    void operator*=(T val); //                  { mul(val);     }
+    void operator/=(const Buffer& other); //    { div(other);   }
+    void operator/=(T val); //                  { div(val);     }
 
     void operator<<(const Buffer& other);
     // {

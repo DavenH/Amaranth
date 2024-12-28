@@ -5,15 +5,15 @@
 using namespace gl;
 
 TextureGL::TextureGL() :
-        id			(UINT_MAX)
-    , 	blendFunc	(GL_SRC_ALPHA)
+        id          (UINT_MAX)
+    ,   blendFunc   (GL_SRC_ALPHA)
 {
 }
 
 TextureGL::TextureGL(Image& image, int blendFunc) :
-        Texture		(image)
-    ,	id			(UINT_MAX)
-    , 	blendFunc	(blendFunc)
+        Texture     (image)
+    ,   id          (UINT_MAX)
+    ,   blendFunc   (blendFunc)
 {
     TextureGL::create();
 }
@@ -66,7 +66,7 @@ void TextureGL::draw() {
         glBlendFunc(blendFunc, GL_ONE_MINUS_SRC_ALPHA);
 
     glDisable(GL_LINE_SMOOTH);
-//	glColor4f(1, 1, 1, 1);
+//  glColor4f(1, 1, 1, 1);
     glBindTexture(GL_TEXTURE_2D, id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -76,13 +76,13 @@ void TextureGL::draw() {
     {
         ScopedElement quads(GL_QUADS);
 
-        float invH 	= 1.f / image.getHeight();
-        float invW 	= 1.f / image.getWidth();
+        float invH  = 1.f / image.getHeight();
+        float invW  = 1.f / image.getWidth();
 
-        float x1 	= src.getX() * invW;
-        float y1 	= src.getY() * invH;
-        float x2 	= src.getRight() * invW;
-        float y2 	= src.getBottom() * invH;
+        float x1    = src.getX() * invW;
+        float y1    = src.getY() * invH;
+        float x2    = src.getRight() * invW;
+        float y2    = src.getBottom() * invH;
 
         glTexCoord2f(x1, y1);
         glVertex2f(rect.getX(), rect.getY());

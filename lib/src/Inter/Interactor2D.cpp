@@ -14,7 +14,7 @@
 
 Interactor2D::Interactor2D(SingletonRepo* repo, const String& name, const Dimensions& d) :
         Interactor(repo, name, d)
-    ,	SingletonAccessor(repo, name) {
+    ,   SingletonAccessor(repo, name) {
 }
 
 bool Interactor2D::locateClosestElement() {
@@ -58,18 +58,18 @@ bool Interactor2D::locateClosestElement() {
     state.currentCube = nullptr;
 
     if(freeIdx != -1) {
-        state.currentVertex 	= depthVerts[freeIdx].vert;
-        state.currentFreeVert 	= freeIdx;
-        state.currentIcpt 		= -1;
+        state.currentVertex     = depthVerts[freeIdx].vert;
+        state.currentFreeVert   = freeIdx;
+        state.currentIcpt       = -1;
     } else if (icptIdx != -1) {
-        state.currentCube 		= icpts[icptIdx].cube;
+        state.currentCube       = icpts[icptIdx].cube;
 
         if(state.currentCube == nullptr && icptIdx > 0) {
             state.currentCube = icpts[icptIdx - 1].cube;
         }
 
-        state.currentFreeVert 	= -1;
-        state.currentIcpt		= icptIdx;
+        state.currentFreeVert   = -1;
+        state.currentIcpt       = icptIdx;
 
         if(state.currentCube == nullptr) {
             Mesh* mesh = getMesh();
@@ -107,7 +107,7 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 
     Buffer<Ipp32f> waveX = rastData.waveX;
     Buffer<Ipp32f> waveY = rastData.waveY;
-    bool inSelection 	 = finalSelection.contains(e.getPosition());
+    bool inSelection     = finalSelection.contains(e.getPosition());
 
     if(inSelection || waveX.empty() || waveY.empty()) {
         return;
@@ -115,17 +115,17 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 
     Vertex2 scaledMouse(panel->sx(state.currentMouse.x), panel->sy(state.currentMouse.y));
 
-    int startIndex 	= 0;
-    int endIndex 	= 0;
-    float lowBound 	= jlimit(waveX.front(), waveX.back(), panel->invertScaleX(scaledMouse.x - 3 * distThresPX));
+    int startIndex  = 0;
+    int endIndex    = 0;
+    float lowBound  = jlimit(waveX.front(), waveX.back(), panel->invertScaleX(scaledMouse.x - 3 * distThresPX));
     float highBound = jlimit(waveX.front(), waveX.back(), panel->invertScaleX(scaledMouse.x + 3 * distThresPX));
 
-    startIndex 		= Arithmetic::binarySearch(lowBound, waveX);
-    endIndex 		= Arithmetic::binarySearch(highBound, waveX);
+    startIndex      = Arithmetic::binarySearch(lowBound, waveX);
+    endIndex        = Arithmetic::binarySearch(highBound, waveX);
 
     if(endIndex - startIndex < 10) {
-        startIndex 	= jmax(0, startIndex - 5);
-        endIndex 	= jmin(waveX.size() - 1, endIndex + 5);
+        startIndex  = jmax(0, startIndex - 5);
+        endIndex    = jmin(waveX.size() - 1, endIndex + 5);
     }
 
     int size = endIndex - startIndex;
@@ -177,7 +177,7 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 
     flag(SimpleRepaint) = true;
 
-//	progressMark
+//  progressMark
 }
 
 void Interactor2D::doExtraMouseDrag(const MouseEvent& e) {
@@ -230,11 +230,11 @@ void Interactor2D::commitPath(const MouseEvent& e) {
         }
 
         Vertex pos;
-        pos[Vertex::Time] 	= morphPos.time;
-        pos[Vertex::Red] 	= morphPos.red;
-        pos[Vertex::Blue]	= morphPos.blue;
-        pos[Vertex::Amp] 	= -1;
-        pos[Vertex::Phase] 	= -1;
+        pos[Vertex::Time]   = morphPos.time;
+        pos[Vertex::Red]    = morphPos.red;
+        pos[Vertex::Blue]   = morphPos.blue;
+        pos[Vertex::Amp]    = -1;
+        pos[Vertex::Phase]  = -1;
 
         // just use the last two
         int end = pencilPath.size() - 1;
@@ -337,9 +337,9 @@ void Interactor2D::doReshapeCurve(const MouseEvent& e) {
     Array<Vertex*> movingVerts = getVerticesToMove(state.currentCube, state.currentVertex);
 
     float dragScale = getDragMovementScale(state.currentCube);
-    float diffY 	= (state.currentMouse.y - state.lastMouse.y) / sqrtf(panel->getZoomPanel()->rect.h);
-    float diff 		= diffY * dragScale / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
-    int pole 		= curves[getStateValue(CurrentCurve)].tp.ypole;
+    float diffY     = (state.currentMouse.y - state.lastMouse.y) / sqrtf(panel->getZoomPanel()->rect.h);
+    float diff      = diffY * dragScale / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
+    int pole        = curves[getStateValue(CurrentCurve)].tp.ypole;
 
     for(auto& vert : movingVerts) {
         float& weight = vert->values[Vertex::Curve];
@@ -420,9 +420,9 @@ float Interactor2D::getVertexClickProximityThres() {
 }
 
 Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
-    vector<Vertex*>& selected 	= getSelected();
-    RasterizerData& rastData 	= getRasterizer()->getRastData();
-    ModifierKeys keys 			= ModifierKeys::getCurrentModifiers();
+    vector<Vertex*>& selected   = getSelected();
+    RasterizerData& rastData    = getRasterizer()->getRastData();
+    ModifierKeys keys           = ModifierKeys::getCurrentModifiers();
 
     bool testAdjacent = keys.isAltDown() && selected.size() == 1 && ! rastData.intercepts.empty();
 

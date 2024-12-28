@@ -46,10 +46,10 @@ public:
         return audio.section(oldPos, numSamples);
     }
 
-    void resetPeriods()							{ periods.clear(); }
-    void resetPosition()						{ playbackPos = 0; }
-    [[nodiscard]] int size() const 				{ return audio.size(); }
-    [[nodiscard]] float lengthSeconds() const	{ return float(audio.size()) / float(samplerate); }
+    void resetPeriods()                         { periods.clear(); }
+    void resetPosition()                        { playbackPos = 0; }
+    [[nodiscard]] int size() const              { return audio.size(); }
+    [[nodiscard]] float lengthSeconds() const   { return float(audio.size()) / float(samplerate); }
 
     void addFrame(const PitchFrame& frame) { periods.push_back(frame); }
 
@@ -79,8 +79,8 @@ public:
     vector<PitchFrame> periods;
     std::unique_ptr<Mesh> mesh;
 
-    Range<int> 	 midiLimits;
-    Range<int> 	 midiRange;
+    Range<int>   midiLimits;
+    Range<int>   midiRange;
     Range<float> veloRange;
 
 private:

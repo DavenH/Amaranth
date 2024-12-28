@@ -10,7 +10,7 @@
 
 VertexTransformUndo::VertexTransformUndo(Interactor* itr) :
         interactor(itr)
-    ,	pending(false) {
+    ,   pending(false) {
 }
 
 void VertexTransformUndo::start() {

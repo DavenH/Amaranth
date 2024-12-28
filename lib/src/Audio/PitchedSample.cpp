@@ -11,15 +11,15 @@
 #include "../Definitions.h"
 
 PitchedSample::PitchedSample() :
-        samplerate	(44100)
-    ,	fundNote	(-1)
-    ,	playbackPos	(0)
-    ,	audio		(2)
-    ,	phaseOffset	(0.f) {
+        samplerate  (44100)
+    ,   fundNote    (-1)
+    ,   playbackPos (0)
+    ,   audio       (2)
+    ,   phaseOffset (0.f) {
 
     midiLimits  = Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote);
-    veloRange 	= Range<float>(0, 1.f);
-    midiRange 	= midiLimits;
+    veloRange   = Range<float>(0, 1.f);
+    midiRange   = midiLimits;
 
     mesh = std::make_unique<Mesh>();
 }
@@ -30,14 +30,14 @@ PitchedSample::PitchedSample(const Buffer<float>& sample) :
 }
 
 void PitchedSample::writeXML(XmlElement* sampleElem) const {
-    sampleElem->setAttribute("path", 		lastLoadedFilePath);
-    sampleElem->setAttribute("fund-note", 	fundNote);
+    sampleElem->setAttribute("path",        lastLoadedFilePath);
+    sampleElem->setAttribute("fund-note",   fundNote);
 
-    sampleElem->setAttribute("midi-start", 	midiRange.getStart());
-    sampleElem->setAttribute("midi-end", 	midiRange.getEnd());
+    sampleElem->setAttribute("midi-start",  midiRange.getStart());
+    sampleElem->setAttribute("midi-end",    midiRange.getEnd());
 
-    sampleElem->setAttribute("vel-start", 	veloRange.getStart());
-    sampleElem->setAttribute("vel-end", 	veloRange.getEnd());
+    sampleElem->setAttribute("vel-start",   veloRange.getStart());
+    sampleElem->setAttribute("vel-end",     veloRange.getEnd());
     sampleElem->setAttribute("phase-offset",phaseOffset);
 
     mesh->writeXML(sampleElem);
@@ -45,14 +45,14 @@ void PitchedSample::writeXML(XmlElement* sampleElem) const {
 
 bool PitchedSample::readXML(const XmlElement* sampleElem) {
     File file = File(sampleElem->getStringAttribute("path"));
-    fundNote 	= sampleElem->getIntAttribute("fund-note", 			 60);
-    phaseOffset = sampleElem->getDoubleAttribute("phase-offset", 	 0.f);
+    fundNote    = sampleElem->getIntAttribute("fund-note",           60);
+    phaseOffset = sampleElem->getDoubleAttribute("phase-offset",     0.f);
 
-    midiRange.setStart	(sampleElem->getIntAttribute("midi-start", 	 60));
-    midiRange.setEnd	(sampleElem->getIntAttribute("midi-end", 	 60));
+    midiRange.setStart  (sampleElem->getIntAttribute("midi-start",   60));
+    midiRange.setEnd    (sampleElem->getIntAttribute("midi-end",     60));
 
-    veloRange.setStart	(sampleElem->getDoubleAttribute("vel-start", 0.f));
-    veloRange.setEnd	(sampleElem->getDoubleAttribute("vel-end", 	 1.f));
+    veloRange.setStart  (sampleElem->getDoubleAttribute("vel-start", 0.f));
+    veloRange.setEnd    (sampleElem->getDoubleAttribute("vel-end",   1.f));
 
     mesh->readXML(sampleElem);
 
@@ -85,8 +85,8 @@ void PitchedSample::createDefaultPeriods() {
     for (; cume < audio.size(); cume += increment) {
         PitchFrame frame;
 
-        frame.period 		= period;
-        frame.sampleOffset 	= cume;
+        frame.period        = period;
+        frame.sampleOffset  = cume;
 
         periods.push_back(frame);
     }
@@ -98,22 +98,22 @@ void PitchedSample::createEnvFromPeriods(bool isMulti) {
         return;
     }
 
-    const int maxLines 	= 300;
-    float isamples 		= 1.f / (float) size();
-    float averageFreq 	= NumberUtils::noteToFrequency(fundNote);
-    float lastPeriod 	= samplerate / averageFreq;
-    int decimFactor 	= jmax(1, (int) periods.size() / maxLines);
+    const int maxLines  = 300;
+    float isamples      = 1.f / (float) size();
+    float averageFreq   = NumberUtils::noteToFrequency(fundNote);
+    float lastPeriod    = samplerate / averageFreq;
+    int decimFactor     = jmax(1, (int) periods.size() / maxLines);
 
     vector<Vertex2> path;
     ScopedAlloc<float> levels(periods.size() / decimFactor);
 
     for (int i = 0; i < periods.size() - (decimFactor - 1); i += decimFactor) {
         PitchFrame& frame = periods[i];
-        float period 	 = frame.period > 10 ? frame.period : lastPeriod;
-        lastPeriod 	 	 = period;
+        float period     = frame.period > 10 ? frame.period : lastPeriod;
+        lastPeriod       = period;
 
         float semisAbove = NumberUtils::frequencyToNote(samplerate / period) - fundNote;
-        float yValue 	 = NumberUtils::semisToUnitPitch(semisAbove);
+        float yValue     = NumberUtils::semisToUnitPitch(semisAbove);
 
         NumberUtils::constrain(yValue, 0.f, 1.f);
 
@@ -153,9 +153,9 @@ void PitchedSample::createPeriodsFromEnv(MeshRasterizer* rast) {
     {
         periods.clear();
 
-        int sz 			= size();
-        int maxPeriods 	= 400;
-        float period 	= samplerate / defaultFreq;
+        int sz          = size();
+        int maxPeriods  = 400;
+        float period    = samplerate / defaultFreq;
         int decimFactor = jmax(1, sz / int (maxPeriods * period));
 
         while ((int) position < sz) {
@@ -209,13 +209,13 @@ MorphPosition PitchedSample::getAveragePosition() const {
 
 MorphPosition PitchedSample::getBox() {
     MorphPosition m;
-    m.red 		= Arithmetic::getUnitValueForNote(midiRange.getStart(), midiLimits);
-    m.redDepth 	= Arithmetic::getUnitValueForNote(midiRange.getEnd(), midiLimits) - m.red;
+    m.red       = Arithmetic::getUnitValueForNote(midiRange.getStart(), midiLimits);
+    m.redDepth  = Arithmetic::getUnitValueForNote(midiRange.getEnd(), midiLimits) - m.red;
 
-    m.blue 		= 1.f - veloRange.getEnd();
-    m.blueDepth	= veloRange.getEnd() - veloRange.getStart();
+    m.blue      = 1.f - veloRange.getEnd();
+    m.blueDepth = veloRange.getEnd() - veloRange.getStart();
 
-    m.time 		= 0;
+    m.time      = 0;
     m.timeDepth = lengthSeconds();
 
     return m;

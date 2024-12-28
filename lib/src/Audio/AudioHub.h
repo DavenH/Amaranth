@@ -11,21 +11,21 @@ class AudioHub:
         public AudioIODeviceCallback,
       #endif
         public AudioSourceProcessor
-    ,	public SingletonAccessor {
+    ,   public SingletonAccessor {
 public:
     class SettingListener {
     public:
         enum {
                 SampleRateAction
-            ,	BufferSizeAction
-            ,	RareSampleRateAction
-            ,	LastActionEnum
+            ,   BufferSizeAction
+            ,   RareSampleRateAction
+            ,   LastActionEnum
         };
 
         SettingListener() :
-                sampleRateAction	(SampleRateAction)
-            ,	bufferSizeAction	(BufferSizeAction)
-            ,	rareSamplerateAction(RareSampleRateAction) {
+                sampleRateAction    (SampleRateAction)
+            ,   bufferSizeAction    (BufferSizeAction)
+            ,   rareSamplerateAction(RareSampleRateAction) {
         }
 
         void samplerateChanged(int samplerate) {
@@ -50,7 +50,7 @@ public:
     public:
         virtual ~DeviceListener() = default;
 
-        virtual void audioDeviceIsReady() 	= 0;
+        virtual void audioDeviceIsReady()   = 0;
         virtual void audioDeviceIsUnready() = 0;
     };
 
@@ -89,21 +89,21 @@ public:
 
     String getDeviceErrorAndReset();
 
-    void resetKeyboardState() 					{ keyboardState.reset(); 		 	}
-    void addListener(SettingListener* listener) { settingListeners.add(listener); 	}
-    void addListener(DeviceListener* listener) 	{ deviceListeners.add(listener); 	}
-    int getSampleRate() const 					{ return sampleRate; 			 	}
-    int getBufferSize() const 					{ return bufferSize; 			 	}
-    MidiKeyboardState& getKeyboardState() 		{ return keyboardState; 			}
+    void resetKeyboardState()                   { keyboardState.reset();            }
+    void addListener(SettingListener* listener) { settingListeners.add(listener);   }
+    void addListener(DeviceListener* listener)  { deviceListeners.add(listener);    }
+    int getSampleRate() const                   { return sampleRate;                }
+    int getBufferSize() const                   { return bufferSize;                }
+    MidiKeyboardState& getKeyboardState()       { return keyboardState;             }
 
 protected:
     int sampleRate, bufferSize;
 
-    String 				 deviceError;
-    AudioDeviceManager 	 audioDeviceManager;
-    AudioSourcePlayer 	 audioSourcePlayer;
+    String               deviceError;
+    AudioDeviceManager   audioDeviceManager;
+    AudioSourcePlayer    audioSourcePlayer;
     MidiMessageCollector midiCollector;
-    MidiKeyboardState 	 keyboardState;
+    MidiKeyboardState    keyboardState;
 
     AudioSourceProcessor* currentProcessor;
 

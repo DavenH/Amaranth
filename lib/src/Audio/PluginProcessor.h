@@ -16,7 +16,7 @@ class SingletonRepo;
 
 class PluginProcessor :
         public AudioProcessor
-    ,	public Document::Listener
+    ,   public Document::Listener
 {
 public:
     class Listener {
@@ -48,10 +48,10 @@ public:
     void setParameter (int index, float newValue) override;
     void addParameter(const Parameter& param);
     int getNumPrograms() override;
-    bool isParameterAutomatable 	(int parameterIndex) const override;
-    float getParameter 				(int index) override;
-    const String getParameterName 	(int index) override;
-    const String getParameterText 	(int index) override;
+    bool isParameterAutomatable     (int parameterIndex) const override;
+    float getParameter              (int index) override;
+    const String getParameterName   (int index) override;
+    const String getParameterText   (int index) override;
 
     void changeProgramName (int index, const String& newName) override {}
     void setCurrentProgram (int index) override;
@@ -65,19 +65,19 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-    bool acceptsMidi() const override							{ return true; 				}
-    bool hasEditor() const override                  			{ return true; 				}
-    bool isInputChannelStereoPair (int index) const override	{ return true; 				}
-    bool isOutputChannelStereoPair (int index) const override	{ return true; 				}
-    bool silenceInProducesSilenceOut() const override 			{ return false; 			}
-    bool producesMidi() const override							{ return true; 				}
-    double getTailLengthSeconds() const override    			{ return 0; 			   	}
-    AudioPlayHead::CurrentPositionInfo getCurrentPosition() 	{ return lastPosInfo; 		}
-    void setSuspendStateRead(bool suspend) 						{ suspendStateRead = suspend; }
-    int getNumParameters() override								{ return parameters.size(); }
+    bool acceptsMidi() const override                           { return true;              }
+    bool hasEditor() const override                             { return true;              }
+    bool isInputChannelStereoPair (int index) const override    { return true;              }
+    bool isOutputChannelStereoPair (int index) const override   { return true;              }
+    bool silenceInProducesSilenceOut() const override           { return false;             }
+    bool producesMidi() const override                          { return true;              }
+    double getTailLengthSeconds() const override                { return 0;                 }
+    AudioPlayHead::CurrentPositionInfo getCurrentPosition()     { return lastPosInfo;       }
+    void setSuspendStateRead(bool suspend)                      { suspendStateRead = suspend; }
+    int getNumParameters() override                             { return parameters.size(); }
 
-    const String getInputChannelName (int channelIndex) const override 	{ return String (channelIndex + 1); }
-    const String getOutputChannelName (int channelIndex) const override	{ return String (channelIndex + 1); }
+    const String getInputChannelName (int channelIndex) const override  { return String (channelIndex + 1); }
+    const String getOutputChannelName (int channelIndex) const override { return String (channelIndex + 1); }
     const String getName() const override;
 
     AudioProcessorEditor* createEditor() override = 0;
@@ -89,10 +89,10 @@ private:
 
     AudioPlayHead::CurrentPositionInfo lastPosInfo;
 
-    Ref<SingletonRepo>	 repo;
-    Ref<AudioHub>		 audioHub;
+    Ref<SingletonRepo>   repo;
+    Ref<AudioHub>        audioHub;
 
-    vector<Parameter> 	 parameters;
+    vector<Parameter>    parameters;
     Array<LatencyAdder*> latencies;
     ListenerList<Listener> listeners;
 

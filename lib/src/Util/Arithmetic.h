@@ -55,17 +55,17 @@ public:
     }
 
     static double centsToFrequency(float key, double cents, const Range<int>& range) {
-        int midiNote 			= getNoteForValue(key, range);
-        double freqWithCents 	= NumberUtils::noteToFrequency(midiNote, cents);
-        double baseFreq 		= NumberUtils::noteToFrequency(midiNote, 0);
+        int midiNote            = getNoteForValue(key, range);
+        double freqWithCents    = NumberUtils::noteToFrequency(midiNote, cents);
+        double baseFreq         = NumberUtils::noteToFrequency(midiNote, 0);
 
         return freqWithCents - baseFreq;
     }
 
     static double centsToFrequencyGraphic(float key, double cents, const Range<int>& range) {
-        int midiNote 		 	= getGraphicNoteForValue(key, range);
-        double freqWithCents 	= NumberUtils::noteToFrequency(midiNote, cents);
-        double baseFreq 	 	= NumberUtils::noteToFrequency(midiNote, 0);
+        int midiNote            = getGraphicNoteForValue(key, range);
+        double freqWithCents    = NumberUtils::noteToFrequency(midiNote, cents);
+        double baseFreq         = NumberUtils::noteToFrequency(midiNote, 0);
 
         return freqWithCents - baseFreq;
     }
@@ -73,11 +73,11 @@ public:
     static bool  isPowerOf2(int number) { return ! (number & (number - 1)); }
     static float calcAdditiveScaling(int numHarmonics);
     static float getRelativePan(float pan, float modPan);
-    static float getUnitValueForGraphicNote	(int key, const Range<int>& range);
-    static float getUnitValueForNote		(int key, const Range<int>& range);
-    static int 	 getGraphicNoteForValue		(float value, const Range<int>& range);
-    static int 	 getNoteForValue			(float value, const Range<int>& range);
-    static int 	 getNextPow2(float fperiod);
+    static float getUnitValueForGraphicNote (int key, const Range<int>& range);
+    static float getUnitValueForNote        (int key, const Range<int>& range);
+    static int   getGraphicNoteForValue     (float value, const Range<int>& range);
+    static int   getNoteForValue            (float value, const Range<int>& range);
+    static int   getNextPow2(float fperiod);
     static void  getInputOutputRates(int& inRate, int& outRate, double sampleRateReal);
     static void  getPans(float pan, float& left, float& right);
     static void  polarize(Buffer<float> x);

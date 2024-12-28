@@ -5,6 +5,6 @@ class EditWatcher;
 class EditSource
 {
 public:
-	virtual void addListenersTo(EditWatcher* watcher) = 0;
+    virtual void addListenersTo(EditWatcher* watcher) = 0;
 };
 */

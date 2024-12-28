@@ -17,8 +17,8 @@ ostream& operator<<(ostream& stream, TransformParameters t) {
 
 Curve::Curve(const Intercept& one, Intercept two, Intercept thr) :
         a(one)
-    ,	b(two)
-    ,	c(thr) {
+    ,   b(two)
+    ,   c(thr) {
     nullify();
     validate();
     update();
@@ -135,11 +135,11 @@ double Curve::function(const double x, const double t) {
 float Curve::yValue(int theta, int index, int res) {
     const float pi = MathConstants<float>::pi;
     double tan, root, x, xx, ret;
-    xx 		= double(theta) / numCurvelets;
-    tan 	= ::tan(pi / 2 * (2 * xx - xx * xx));
-    root 	= (2.0 / pi + tan) / (1 + tan);
-    x 		= 2 * double(index) / (res - 0.9999);
-    ret 	= (1 - (x - 1) * (x - 1)) * root;
+    xx      = double(theta) / numCurvelets;
+    tan     = ::tan(pi / 2 * (2 * xx - xx * xx));
+    root    = (2.0 / pi + tan) / (1 + tan);
+    x       = 2 * double(index) / (res - 0.9999);
+    ret     = (1 - (x - 1) * (x - 1)) * root;
     return ret;
 }
 
@@ -179,8 +179,8 @@ void Curve::recalculateCurve() {
 
     Vertex2 icpt;
 
-    dx 			= (c.x - a.x);
-    dyca 		= (c.y - a.y);
+    dx          = (c.x - a.x);
+    dyca        = (c.y - a.y);
 
     Ipp32fc cvec = { dx, dyca };
     ippsPhase_32fc(&cvec, &tp.theta, 1);
@@ -193,17 +193,17 @@ void Curve::recalculateCurve() {
     ippsSqrt_32f_I(&dist2, 1);
 
     // good luck understanding this
-    tp.scaleX 	= dist2;
-    m 			= dyca / dx;
-    icpt.x 		= (m * m * a.x + b.y * m - a.y * m + b.x) / (1.f + m * m);		// not cheap, can improve?
-    icpt.y 		= m * (icpt.x - a.x) + a.y;
-    tp.d.x 		= 0.5f * (a.x + c.x);
-    tp.d.y 		= 0.5f * (a.y + c.y);
-    tp.ypole 	= a.y + m * (b.x - a.x) < b.y ? 1 : -1;
-    tp.dpole 	= tp.d.x < icpt.x ? 1 : -1;
-    distbi 		= (b.x - icpt.x) * (b.x - icpt.x) + (b.y - icpt.y) * (b.y - icpt.y);
-    distbd 		= (b.x - tp.d.x) * (b.x - tp.d.x) + (b.y - tp.d.y) * (b.y - tp.d.y);
-    diff 		= distbd - distbi;
+    tp.scaleX   = dist2;
+    m           = dyca / dx;
+    icpt.x      = (m * m * a.x + b.y * m - a.y * m + b.x) / (1.f + m * m);      // not cheap, can improve?
+    icpt.y      = m * (icpt.x - a.x) + a.y;
+    tp.d.x      = 0.5f * (a.x + c.x);
+    tp.d.y      = 0.5f * (a.y + c.y);
+    tp.ypole    = a.y + m * (b.x - a.x) < b.y ? 1 : -1;
+    tp.dpole    = tp.d.x < icpt.x ? 1 : -1;
+    distbi      = (b.x - icpt.x) * (b.x - icpt.x) + (b.y - icpt.y) * (b.y - icpt.y);
+    distbd      = (b.x - tp.d.x) * (b.x - tp.d.x) + (b.y - tp.d.y) * (b.y - tp.d.y);
+    diff        = distbd - distbi;
 
     if (diff < 0)
         diff = 0;
@@ -220,32 +220,32 @@ void Curve::recalculateCurve() {
     float mb = tp.ypole * (tp.cosrot * tp.shear + tp.sinrot * tp.scaleY);
     float md = tp.ypole * (-tp.sinrot * tp.shear + tp.cosrot * tp.scaleY);
 
-    // res	clk
-    // 0	900
-    // 1	836
-    // 2	833
+    // res  clk
+    // 0    900
+    // 1    836
+    // 2    833
     float* t  = table[resIndex][tableCurveIdx];
     float* t2 = table[resIndex][tableCurveIdx + 1];
 
     float alpha = interpolate ? 1 - (tableCurvePos - tableCurveIdx) : 1.f;
     bool actuallyShouldInterpolate = tableCurveIdx < numCurvelets - 1 && alpha < 1.f;
 
-    ippsSet_32f			(a.x, transformX, res);
-    ippsAddProductC_32f	(t, 		ma * alpha, transformX, res);
-    ippsAddProductC_32f	(t + res, 	mb * alpha, transformX, res);
+    ippsSet_32f         (a.x, transformX, res);
+    ippsAddProductC_32f (t,         ma * alpha, transformX, res);
+    ippsAddProductC_32f (t + res,   mb * alpha, transformX, res);
 
     if (actuallyShouldInterpolate) {
-        ippsAddProductC_32f	(t2, 		ma * (1 - alpha), transformX, res);
-        ippsAddProductC_32f	(t2 + res, 	mb * (1 - alpha), transformX, res);
+        ippsAddProductC_32f (t2,        ma * (1 - alpha), transformX, res);
+        ippsAddProductC_32f (t2 + res,  mb * (1 - alpha), transformX, res);
     }
 
-    ippsSet_32f			(a.y, transformY, res);
-    ippsAddProductC_32f	(t, 		mc * alpha, transformY, res);
-    ippsAddProductC_32f	(t + res, 	md * alpha, transformY, res);
+    ippsSet_32f         (a.y, transformY, res);
+    ippsAddProductC_32f (t,         mc * alpha, transformY, res);
+    ippsAddProductC_32f (t + res,   md * alpha, transformY, res);
 
     if (actuallyShouldInterpolate) {
-        ippsAddProductC_32f	(t2, 		mc * (1 - alpha), transformY, res);
-        ippsAddProductC_32f	(t2 + res, 	md * (1 - alpha), transformY, res);
+        ippsAddProductC_32f (t2,        mc * (1 - alpha), transformY, res);
+        ippsAddProductC_32f (t2 + res,  md * (1 - alpha), transformY, res);
     }
 }
 

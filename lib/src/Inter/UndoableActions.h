@@ -19,10 +19,10 @@ public:
     bool undo() override;
     bool perform() override;
 
-    virtual void performDelegate() 	= 0;
-    virtual void undoDelegate() 	= 0;
+    virtual void performDelegate()  = 0;
+    virtual void undoDelegate()     = 0;
 
-    virtual void undoExtra() 	{}
+    virtual void undoExtra()    {}
     virtual void performExtra() {}
 
     const String& getDescription() { return description; }
@@ -36,8 +36,8 @@ protected:
 
 class ResponsiveUndoableAction :
         public NamedUndoableAction
-    ,	public AsyncUpdater
-    ,	public SingletonAccessor {
+    ,   public AsyncUpdater
+    ,   public SingletonAccessor {
 public:
     ResponsiveUndoableAction(SingletonRepo* repo, int updateCode);
 
@@ -59,10 +59,10 @@ class TransformVertexAction : public ResponsiveUndoableAction {
 public:
     TransformVertexAction(
             SingletonRepo* repo
-        ,	int updateCode
-        ,	Vertex* vertex
-        ,	Vertex before
-        ,	Vertex after);
+        ,   int updateCode
+        ,   Vertex* vertex
+        ,   Vertex before
+        ,   Vertex after);
 
     void performDelegate() override;
     void undoDelegate() override;
@@ -78,10 +78,10 @@ class TransformVerticesAction : public ResponsiveUndoableAction {
 public:
     TransformVerticesAction(
             SingletonRepo* repo
-        ,	int updateCode
-        ,	vector<Vertex*>* vertices
-        ,	const vector<Vertex>& original
-        ,	const vector<Vertex>& future);
+        ,   int updateCode
+        ,   vector<Vertex*>* vertices
+        ,   const vector<Vertex>& original
+        ,   const vector<Vertex>& future);
 
     void performDelegate() override;
     void undoDelegate() override;
@@ -100,10 +100,10 @@ public:
 
     UpdateVertexVectorAction(
             Interactor* interactor
-        ,	vector<Vertex*>* vertices
-        ,	const vector<Vertex*>& before
-        ,	const vector<Vertex*>& after
-        ,	bool doUpdate);
+        ,   vector<Vertex*>* vertices
+        ,   const vector<Vertex*>& before
+        ,   const vector<Vertex*>& after
+        ,   bool doUpdate);
 
     void doPreUpdateCheck() override;
     void performDelegate() override;
@@ -124,10 +124,10 @@ class UpdateCubeVectorAction : public ResponsiveUndoableAction {
 public:
     UpdateCubeVectorAction(
             Interactor* interactor
-        , 	vector<VertCube*>* elements
-        ,	const vector<VertCube*>& before
-        , 	const vector<VertCube*>& after
-        ,	bool shouldClearLines = true);
+        ,   vector<VertCube*>* elements
+        ,   const vector<VertCube*>& before
+        ,   const vector<VertCube*>& after
+        ,   bool shouldClearLines = true);
 
     void doPreUpdateCheck() override;
     void performDelegate() override;
@@ -148,9 +148,9 @@ class SliderValueChangedAction : public ResponsiveUndoableAction {
 public:
     SliderValueChangedAction(
             SingletonRepo* repo
-        ,	int updateCode
-        , 	Slider* slider
-        , 	double startingValue);
+        ,   int updateCode
+        ,   Slider* slider
+        ,   double startingValue);
 
     void performDelegate() override;
     void undoDelegate() override;
@@ -167,10 +167,10 @@ public:
     DeformerAssignment(
             SingletonRepo* repo
         ,   int updateSource
-        ,	Mesh* mesh
-        ,	const vector<VertCube*>& lines
-        ,	vector<int> previousMappings
-        , 	int thisMapping, int channel);
+        ,   Mesh* mesh
+        ,   const vector<VertCube*>& lines
+        ,   vector<int> previousMappings
+        ,   int thisMapping, int channel);
 
     void doPostUpdateCheck() override;
     void performDelegate() override;
@@ -202,13 +202,13 @@ private:
 
 class LayerMoveAction :
         public SingletonAccessor
-    ,	public NamedUndoableAction {
+    ,   public NamedUndoableAction {
 public:
     LayerMoveAction(SingletonRepo* repo, int layerType, int fromIndex, int toIndex)
             : SingletonAccessor(repo, "LayerMoveAction"),
             layerType(layerType)
-        , 	fromIndex(fromIndex)
-        , 	toIndex(toIndex) {
+        ,   fromIndex(fromIndex)
+        ,   toIndex(toIndex) {
         description = "Layer Move";
     }
 

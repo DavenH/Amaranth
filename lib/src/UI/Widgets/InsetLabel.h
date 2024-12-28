@@ -11,20 +11,20 @@
 
 class InsetLabel :
         public Component
-    , 	public SingletonAccessor {
+    ,   public SingletonAccessor {
 public:
     InsetLabel(SingletonRepo* repo, String name, float saturation = 0.f) :
             SingletonAccessor(repo, "InsetLabel")
-        ,	name	(std::move(name))
-        ,	offsetA	(-0.8f)
-        ,	offsetB	(-0.8f)
-        ,	font	(FontOptions(15, Font::bold)) {
+        ,   name    (std::move(name))
+        ,   offsetA (-0.8f)
+        ,   offsetB (-0.8f)
+        ,   font    (FontOptions(15, Font::bold)) {
         brightColor = Colour::greyLevel(0.28f);
-        dimColor	= Colour::greyLevel(0.f);
+        dimColor    = Colour::greyLevel(0.f);
 
       #ifdef JUCE_MAC
-        offsetA	-= 0.2f;
-        offsetB	-= 0.2f;
+        offsetA -= 0.2f;
+        offsetB -= 0.2f;
       #endif
     }
 
@@ -47,11 +47,11 @@ public:
 
         Graphics::ScopedSaveState sss(g);
 
-        g.setColour	(brightColor);
+        g.setColour (brightColor);
         getObj(MiscGraphics).drawCentredText(g, getLocalBounds(), name);
 
         g.addTransform(AffineTransform::translation(offsetA, offsetB));
-        g.setColour	(dimColor);
+        g.setColour (dimColor);
         getObj(MiscGraphics).drawCentredText(g, getLocalBounds(), name);
     }
 

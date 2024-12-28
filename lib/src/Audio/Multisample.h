@@ -13,8 +13,8 @@ class MeshRasterizer;
 
 class Multisample :
         public Savable
-    ,	public SingletonAccessor
-    ,	public Updateable {
+    ,   public SingletonAccessor
+    ,   public Updateable {
 public:
     struct NumberCode {
         NumberCode() : totalSize(0), average(0), posIndex(0) {}
@@ -59,9 +59,9 @@ public:
     }
 
     void setWaveRasterizer(MeshRasterizer* rasterizer) { waveRasterizer = rasterizer; }
-    int size() 							{ return samples.size(); 	}
-    PitchedSample* getCurrentSample() 	{ return current; 			}
-    CriticalSection& getLock() 			{ return audioLock; 		}
+    int size()                          { return samples.size();    }
+    PitchedSample* getCurrentSample()   { return current;           }
+    CriticalSection& getLock()          { return audioLock;         }
 
 private:
     void getModRanges(Range<int>& noteRange, Range<float>& velRange);

@@ -4,11 +4,11 @@
 #include "../../Definitions.h"
 
 Updater::Updater(SingletonRepo* repo) :
-        SingletonAccessor	(repo, "Updater")
-    ,	graph				(this, repo)
-    ,	lastUpdateMillis	(0)
-    ,	millisThresh		(10)
-    ,	throttleUpdates 	(true) {
+        SingletonAccessor   (repo, "Updater")
+    ,   graph               (this, repo)
+    ,   lastUpdateMillis    (0)
+    ,   millisThresh        (10)
+    ,   throttleUpdates     (true) {
 }
 
 void Updater::update(int code, UpdateType type) {
@@ -60,8 +60,8 @@ void Updater::handleAsyncUpdate() {
 
 Updater::Graph::Graph(Updater* updater, SingletonRepo* repo) :
         SingletonAccessor(repo, "UpdateGraph")
-    ,	updateType(Update)
-    ,	printsPath(false) {
+    ,   updateType(Update)
+    ,   printsPath(false) {
 }
 
 void Updater::Graph::update(Node* startingNode) {
@@ -108,13 +108,13 @@ void Updater::Graph::reset() {
 
 Updater::Node::Node() :
         updated(false)
-    ,	dirty(false)
-    ,	toUpdate(nullptr) {}
+    ,   dirty(false)
+    ,   toUpdate(nullptr) {}
 
 Updater::Node::Node(Updateable* objectToUpdate) :
         updated(false)
-    ,	dirty(false)
-    ,	toUpdate(objectToUpdate) {
+    ,   dirty(false)
+    ,   toUpdate(objectToUpdate) {
 }
 
 void Updater::Node::updatesAfter(Node* parent) {

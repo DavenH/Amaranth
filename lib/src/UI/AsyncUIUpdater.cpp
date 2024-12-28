@@ -4,8 +4,8 @@ using namespace juce;
 
 AsyncUIUpdater::AsyncUIUpdater() :
         doRefresh(false)
-    ,	forceNextUIUpdate(false)
-    ,	reductionLevel(0) {
+    ,   forceNextUIUpdate(false)
+    ,   reductionLevel(0) {
 }
 
 void AsyncUIUpdater::doGlobalUIUpdate(bool force) {}
@@ -22,7 +22,7 @@ void AsyncUIUpdater::triggerReduceUpdate() {
 }
 
 void AsyncUIUpdater::triggerRestoreUpdate() {
-//	jassert(reductionLevel < 0);
+//  jassert(reductionLevel < 0);
 
     ++reductionLevel;
     doRefresh = true;

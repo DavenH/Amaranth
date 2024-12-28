@@ -27,38 +27,38 @@ Interactor3D::Interactor3D(
 }
 
 bool Interactor3D::locateClosestElement() {
-//	progressMark
+//  progressMark
     ScopedLock sl(vertexLock);
 
     float minDist = 1e7f;
     float dist = 0;
 
-    int oldIcpt 	= state.currentIcpt;
+    int oldIcpt     = state.currentIcpt;
     int oldFreeVert = state.currentFreeVert;
 
     if (interceptPairs.empty() && depthVerts.empty()) {
-        state.currentIcpt 	  = -1;
+        state.currentIcpt     = -1;
         state.currentFreeVert = -1;
         return false;
     }
 
     int closestDepthVertIdx = -1;
-    int closestIcptIdx 	= -1;
-    float x 			= state.currentMouse.x;
-    float y 			= state.currentMouse.y;
+    int closestIcptIdx  = -1;
+    float x             = state.currentMouse.x;
+    float y             = state.currentMouse.y;
     bool depthIsClosest = true;
 
-    float invWidth 	= 1 / float(display->getWidth());
+    float invWidth  = 1 / float(display->getWidth());
     float invHeight = 1 / float(display->getHeight());
-    float sxPos 	= panel->sx(x);
-    float syPos 	= panel->sy(y);
+    float sxPos     = panel->sx(x);
+    float syPos     = panel->sy(y);
 
-    int idx 	= 0;
+    int idx     = 0;
     for (auto& depthVert : depthVerts) {
         float diffX = (panel->sx(depthVert.x) - sxPos) * invWidth;
         float diffY = (panel->sy(depthVert.y) - syPos) * invHeight;
 
-        dist 		= diffX * diffX + diffY * diffY;
+        dist        = diffX * diffX + diffY * diffY;
 
         if (dist < minDist) {
             minDist = dist;
@@ -71,11 +71,11 @@ bool Interactor3D::locateClosestElement() {
     for (auto & interceptPair : interceptPairs) {
         float diffX = (panel->sx(interceptPair.x) - sxPos) * invWidth;
         float diffY = (panel->sy(interceptPair.y) - syPos) * invHeight;
-        dist 		= diffX * diffX + diffY * diffY;
+        dist        = diffX * diffX + diffY * diffY;
 
         if (dist < minDist) {
             depthIsClosest = false;
-            minDist 	   = dist;
+            minDist        = dist;
             closestIcptIdx = idx;
         }
         ++idx;
@@ -84,10 +84,10 @@ bool Interactor3D::locateClosestElement() {
     bool changed = false;
 
     if (depthIsClosest) {
-        state.currentCube 		= nullptr;
-        state.currentVertex 	= depthVerts[closestDepthVertIdx].vert;
-        state.currentFreeVert 	= closestDepthVertIdx;
-        state.currentIcpt 		= -1;
+        state.currentCube       = nullptr;
+        state.currentVertex     = depthVerts[closestDepthVertIdx].vert;
+        state.currentFreeVert   = closestDepthVertIdx;
+        state.currentIcpt       = -1;
 
         changed = oldFreeVert != state.currentFreeVert;
     } else {
@@ -97,10 +97,10 @@ bool Interactor3D::locateClosestElement() {
         if(icpt.isWrapped)
             mousePos.y += 1.f;
 
-        state.currentCube 		= icpt.parent;
-        state.currentIcpt 		= closestIcptIdx;
-        state.currentFreeVert 	= -1;
-        state.currentVertex 	= findLinesClosestVertex(state.currentCube, mousePos);
+        state.currentCube       = icpt.parent;
+        state.currentIcpt       = closestIcptIdx;
+        state.currentFreeVert   = -1;
+        state.currentVertex     = findLinesClosestVertex(state.currentCube, mousePos);
 
         changed = oldIcpt != state.currentIcpt;
     }
@@ -166,7 +166,7 @@ void Interactor3D::doDragPaintTool(const MouseEvent& e) {
                     NumberUtils::within((**it)[Vertex::Blue], pos.blue, pos.blueEnd())) ||
                 (dims.x == Vertex::Blue &&
                     NumberUtils::within((**it)[Vertex::Time], pos.time, pos.timeEnd()) &&
-                    NumberUtils::within((**it)[Vertex::Red],  pos.red, 	pos.redEnd())))
+                    NumberUtils::within((**it)[Vertex::Red],  pos.red,  pos.redEnd())))
             {
                 x = (**it)[dims.x];
                 y = (**it)[dims.y];
@@ -349,7 +349,7 @@ void Interactor3D::mergeVertices(
     vector<Vertex*>& verts = mesh->getVerts();
 
     if(! firstSelected || ! secondSelected) return;
-    if(firstSelected == secondSelected) 	return;
+    if(firstSelected == secondSelected)     return;
 
     int numOwnersA = firstSelected->getNumOwners();
     int numOwnersB = secondSelected->getNumOwners();
@@ -404,7 +404,7 @@ void Interactor3D::mergeVerticesManyOwners(Vertex* firstSelected, Vertex* second
 void Interactor3D::mergeVerticesOneAndManyOwners(Vertex* firstSelected, Vertex* secondSelected,
                                                  MergeActionType mergeAction) {
     Vertex* ownedByMany  = firstSelected->getNumOwners() > 1 ? firstSelected : secondSelected;
-    Vertex* ownedByOne 	 = ownedByMany == firstSelected ? secondSelected : firstSelected;
+    Vertex* ownedByOne   = ownedByMany == firstSelected ? secondSelected : firstSelected;
 
     VertCube* commonCube = getLineContaining(ownedByMany, ownedByOne);
     VertCube* otherLine  = (commonCube == ownedByMany->owners[0]) ? ownedByMany->owners[1] : ownedByMany->owners[0];
@@ -447,7 +447,7 @@ void Interactor3D::mergeVerticesBothOneOwner(
         ownsFirst->orphanVerts();
         mesh->removeCube(ownsFirst);
 
-        state.currentCube 	= nullptr;
+        state.currentCube   = nullptr;
         state.currentVertex = nullptr;
     } else {
         // these get the verts in their dimension order
@@ -482,11 +482,11 @@ void Interactor3D::mergeVerticesOneOwner(
         Vertex* firstSelected,
         Vertex* secondSelected,
         MergeActionType mergeAction) {
-    Vertex* hasOneOwner 	= firstSelected->getNumOwners() == 1 ? firstSelected : secondSelected;
-    Vertex* hasZeroOwners 	= hasOneOwner == firstSelected ? secondSelected : firstSelected;
+    Vertex* hasOneOwner     = firstSelected->getNumOwners() == 1 ? firstSelected : secondSelected;
+    Vertex* hasZeroOwners   = hasOneOwner == firstSelected ? secondSelected : firstSelected;
 
-    float diffBA 	= secondSelected->values[dims.x] - firstSelected->values[dims.x];
-    VertCube* cube 	= hasOneOwner->owners.getFirst();
+    float diffBA    = secondSelected->values[dims.x] - firstSelected->values[dims.x];
+    VertCube* cube  = hasOneOwner->owners.getFirst();
 
     if(mergeAction == MergeAtFirst) {
         // move b over to a's position
@@ -515,9 +515,9 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
 
     // if both are unconnected, we don't need to worry about joining up the hyperverts
 
-    int currentAxis 	= getSetting(CurrentMorphAxis);
-    MorphPosition pos 	= positioner->getOffsetPosition(true);
-    Mesh* mesh 			= getMesh();
+    int currentAxis     = getSetting(CurrentMorphAxis);
+    MorphPosition pos   = positioner->getOffsetPosition(true);
+    Mesh* mesh          = getMesh();
 
     vector<Vertex*> beforeVerts = mesh->getVerts();
     vector<VertCube*> beforeCubes = mesh->getCubes();
@@ -551,9 +551,9 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
 
     // one is unconnected, one already connected
     else if (a->unattached() || b->unattached()) {
-        Vertex* freeVert 	  = a->unattached() ? a : b;
+        Vertex* freeVert      = a->unattached() ? a : b;
         Vertex* connectedVert = a->unattached() ? b : a;
-        VertCube* cube 		  = nullptr;
+        VertCube* cube        = nullptr;
 
         for(auto owner : connectedVert->owners) {
             int index = owner->indexOf(connectedVert);
@@ -678,7 +678,7 @@ void Interactor3D::copyVertices() {
         getVerts()->push_back(copy);
     }
 
-//	vector<VertCube*>& lines = getLines();
+//  vector<VertCube*>& lines = getLines();
     for(int i = 0; i < (int) selected.size(); ++i) {
         VertCube* lines[] = { selected[i]->ownerA, selected[i]->ownerB };
 
@@ -775,7 +775,7 @@ void Interactor3D::sliceLines(const Vertex2& start, const Vertex2& end) {
         cube->orphanVerts();
 
         VertCube::Face newFace(dims.x);
-        VertCube::Face lowFace 	= cube->getFace(dims.x, VertCube::LowPole);
+        VertCube::Face lowFace  = cube->getFace(dims.x, VertCube::LowPole);
         VertCube::Face highFace = cube->getFace(dims.x, VertCube::HighPole);
 
         for (int i = 0; i < VertCube::numVerts / 2; ++i) {
@@ -1026,8 +1026,8 @@ bool Interactor3D::doCreateVertex() {
 void Interactor3D::doAxe(const MouseEvent& e) {
     ScopedLock sl(vertexLock);
 
-    Vertex2 start 	= state.currentMouse + Vertex2(0, realValue(PencilRadius));
-    Vertex2 end 	= state.currentMouse - Vertex2(0, realValue(PencilRadius));
+    Vertex2 start   = state.currentMouse + Vertex2(0, realValue(PencilRadius));
+    Vertex2 end     = state.currentMouse - Vertex2(0, realValue(PencilRadius));
 
     if(! getMesh()) {
         return;

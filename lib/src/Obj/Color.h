@@ -40,7 +40,7 @@ public:
     }
 
     Color& operator=(const Color& copy) {
-//		memcpy(v, copy.v, sizeof(v) * sizeof(v[0]));
+//      memcpy(v, copy.v, sizeof(v) * sizeof(v[0]));
 
         v[0] = copy.v[0];
         v[1] = copy.v[1];

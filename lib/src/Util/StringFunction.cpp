@@ -26,20 +26,20 @@ double StringFunction::Op::eval(double arg) const {
     using namespace Ops;
 
     switch (code) {
-        case Add: 	return arg + arg1;
-        case Sub: 	return arg - arg1;
-        case Mul: 	return arg * arg1;
-        case Div: 	return arg / arg1;
-        case Max: 	return jmax(arg, arg1);
-        case Min: 	return jmin(arg, arg1);
-        case Rnd: 	return roundToInt(arg);
-        case Flr: 	return int(arg);
-        case Ceil:	return int(arg + 1 - 1e-9f);
-        case Abs: 	return fabsf(arg);
-        case Pow: 	return powf(arg, arg1);
-        case Log: 	return logf(arg);
+        case Add:   return arg + arg1;
+        case Sub:   return arg - arg1;
+        case Mul:   return arg * arg1;
+        case Div:   return arg / arg1;
+        case Max:   return jmax(arg, arg1);
+        case Min:   return jmin(arg, arg1);
+        case Rnd:   return roundToInt(arg);
+        case Flr:   return int(arg);
+        case Ceil:  return int(arg + 1 - 1e-9f);
+        case Abs:   return fabsf(arg);
+        case Pow:   return powf(arg, arg1);
+        case Log:   return logf(arg);
         case PowRev: return powf(arg1, arg);
-        case Np2: 	return 2 << static_cast<int>(ceilf(logf(arg)));
+        case Np2:   return 2 << static_cast<int>(ceilf(logf(arg)));
         default: break;
     }
 

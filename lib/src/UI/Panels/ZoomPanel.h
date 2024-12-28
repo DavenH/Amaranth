@@ -12,9 +12,9 @@ class ZoomContext {
 public:
     ZoomContext(Panel* panel, Bounded* bounded, bool haveHorz = true, bool haveVert = false) :
             panel(panel)
-        , 	bounded(bounded)
-        ,	haveHorz(haveHorz)
-        ,	haveVert(haveVert) {}
+        ,   bounded(bounded)
+        ,   haveHorz(haveHorz)
+        ,   haveVert(haveVert) {}
 
     bool haveHorz, haveVert;
     Panel* panel;
@@ -23,10 +23,10 @@ public:
 
 class ZoomPanel :
         public Component
-    ,	public Bounded
-    ,	public Deletable
-    ,	public SingletonAccessor
-    ,	public ScrollBar::Listener {
+    ,   public Bounded
+    ,   public Deletable
+    ,   public SingletonAccessor
+    ,   public ScrollBar::Listener {
 public:
     enum { scrollbarWidth = 8 };
     enum { ZoomToAttack, ZoomToFull };
@@ -47,9 +47,9 @@ public:
         virtual ~ZoomListener() = default;
 
         virtual void zoomUpdated(int updateSource) = 0;
-        virtual void constrainZoom() 				{}
+        virtual void constrainZoom()                {}
         virtual void doZoomExtra(bool commandDown)  {}
-        ZoomPanel* getZoomPanel() 					{ return zoomPanel.get(); }
+        ZoomPanel* getZoomPanel()                   { return zoomPanel.get(); }
     };
 
     /* ----------------------------------------------------------------------------- */
@@ -83,8 +83,8 @@ public:
 
     void setZoomContext(const ZoomContext context) { this->context = context; }
     void addListener(ZoomListener* listener) { listeners.add(listener);  }
-    ZoomRect& getZoomRect()   				 { return rect; 			 }
-    Component* getComponent(bool h) 		 { return h ? &horz : &vert; }
+    ZoomRect& getZoomRect()                  { return rect;              }
+    Component* getComponent(bool h)          { return h ? &horz : &vert; }
 
     ZoomRect rect;
 

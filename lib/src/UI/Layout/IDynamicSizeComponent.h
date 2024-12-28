@@ -8,17 +8,17 @@ class IDynamicSizeComponent
 public:
     IDynamicSizeComponent() :
             isCurrentCollapsed(false)
-        ,	alwaysCollapsed(false)
-        ,	neverCollapsed(false)
-        ,	outline(false)
-        ,	translateUp1(false)
-        ,	width(24) {}
+        ,   alwaysCollapsed(false)
+        ,   neverCollapsed(false)
+        ,   outline(false)
+        ,   translateUp1(false)
+        ,   width(24) {}
 
     virtual ~IDynamicSizeComponent() = default;
 
-    [[nodiscard]] bool isNeverCollapsed() const	 { return neverCollapsed;	}
-    [[nodiscard]] bool isAlwaysCollapsed() const { return alwaysCollapsed; 	}
-    [[nodiscard]] int getDynWidth() const        { return width; 			}
+    [[nodiscard]] bool isNeverCollapsed() const  { return neverCollapsed;   }
+    [[nodiscard]] bool isAlwaysCollapsed() const { return alwaysCollapsed;  }
+    [[nodiscard]] int getDynWidth() const        { return width;            }
 
     virtual void setCurrentlyCollapsed(bool isIt) {
         isCurrentCollapsed = isIt && !neverCollapsed;

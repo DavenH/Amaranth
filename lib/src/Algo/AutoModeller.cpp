@@ -10,12 +10,12 @@
 #include "PeakCounter.h"
 
 AutoModeller::AutoModeller() :
-        rasterizer			(points, false)
-    ,	random				(Time::currentTimeMillis())
-    ,	leftSamplingOffset	(0.f)
-    ,	rightSamplingOffset	(1.f)
-    ,	reductionLevel		(0.3f)
-    ,	useInflections		(false) {
+        rasterizer          (points, false)
+    ,   random              (Time::currentTimeMillis())
+    ,   leftSamplingOffset  (0.f)
+    ,   rightSamplingOffset (1.f)
+    ,   reductionLevel      (0.3f)
+    ,   useInflections      (false) {
 }
 
 void AutoModeller::amplifyCloseVerts() {
@@ -30,7 +30,7 @@ void AutoModeller::amplifyCloseVerts() {
 
         dyA = origPoints[i].y - origPoints[i - 1].y;
         dyB = origPoints[i].y - origPoints[i + 1].y;
-        dy 	= fabsf(dyA) < fabsf(dyB) ? dyA : dyB;
+        dy  = fabsf(dyA) < fabsf(dyB) ? dyA : dyB;
 
         points[i].y += factor * dy;
     }
@@ -115,11 +115,11 @@ vector<Intercept> AutoModeller::modelToPath(vector<Vertex2>& path, float reducti
 
     this->useInflections = useInflections;
 
-    int currentIndex 	= 1;
-    reductionLevel 		= reduction;
-    leftSamplingOffset 	= path.front().x;
+    int currentIndex    = 1;
+    reductionLevel      = reduction;
+    leftSamplingOffset  = path.front().x;
     rightSamplingOffset = path.back().x;
-    float span 			= rightSamplingOffset - leftSamplingOffset;
+    float span          = rightSamplingOffset - leftSamplingOffset;
 
     std::sort(path.begin(), path.end());
 
@@ -144,9 +144,9 @@ void AutoModeller::modelToInteractor(
         return;
     }
 
-    leftSamplingOffset 	= leftOffset;
-    reductionLevel 		= reduction;
-    useInflections 		= false;
+    leftSamplingOffset  = leftOffset;
+    reductionLevel      = reduction;
+    useInflections      = false;
 
     rasterizer.setCyclicity(isCyclic);
     srcSamples.resize(buffer.size());
@@ -180,10 +180,10 @@ void AutoModeller::removeUselessPoints() {
     int totalSize = size * 5 - 3;
     ScopedAlloc<Ipp32f> memory(totalSize);
 
-    Buffer<float> x 	= memory.place(size);
-    Buffer<float> y 	= memory.place(size);
-    Buffer<float> dx 	= memory.place(size - 1);
-    Buffer<float> dy 	= memory.place(size - 1);
+    Buffer<float> x     = memory.place(size);
+    Buffer<float> y     = memory.place(size);
+    Buffer<float> dx    = memory.place(size - 1);
+    Buffer<float> dy    = memory.place(size - 1);
     Buffer<float> score = memory.place(size - 1);
 
     for(int i = 0; i < size; ++i)
@@ -209,51 +209,51 @@ void AutoModeller::removeUselessPoints() {
 }
 
 void AutoModeller::fit() {
-    static const float varDecay 	= 0.75f;
-    static const int flipflopIters 	= 3; //3;
-    static const int convergeIters 	= 5;
-    static const float variaY 		= 0.35f;
-    static const float variaX 		= 0.15f;
-    static const float variaShrp 	= 0.5f;
+    static const float varDecay     = 0.75f;
+    static const int flipflopIters  = 3; //3;
+    static const int convergeIters  = 5;
+    static const float variaY       = 0.35f;
+    static const float variaX       = 0.15f;
+    static const float variaShrp    = 0.5f;
 
     for(int p = 1; p < (int) points.size() - 1; ++p) {
-        const Intercept& prev 	= points[p - 1];
-        Intercept& icpt 		= points[p + 0];
-        const Intercept& next 	= points[p + 1];
+        const Intercept& prev   = points[p - 1];
+        Intercept& icpt         = points[p + 0];
+        const Intercept& next   = points[p + 1];
 
         int curveIdx = p + rasterizer.getPaddingSize();
 
         float left  = prev.x + 0.00001f;
         float right = next.x - 0.00001f;
 
-        double invLength 	= (rightSamplingOffset - leftSamplingOffset) / double(srcSamples.size());
-        int sampleStart 	= jmax(0, (int) floorf((left - leftSamplingOffset) / invLength) - 4);
-        int sampleEnd 		= jmin(srcSamples.size() - 1, (int) ceilf((right - leftSamplingOffset) / invLength) + 4);
-        int sampleSize 		= sampleEnd - sampleStart;
+        double invLength    = (rightSamplingOffset - leftSamplingOffset) / double(srcSamples.size());
+        int sampleStart     = jmax(0, (int) floorf((left - leftSamplingOffset) / invLength) - 4);
+        int sampleEnd       = jmin(srcSamples.size() - 1, (int) ceilf((right - leftSamplingOffset) / invLength) + 4);
+        int sampleSize      = sampleEnd - sampleStart;
         double sampleOffset = sampleStart * invLength;
         float sampleLeft    = leftSamplingOffset + sampleOffset;
 
         Buffer<float> rastBuf = rastMem.section(sampleStart, sampleSize);
         Buffer<float> sampBuf = srcSamples.section(sampleStart, sampleSize);
 
-        float minFitness 	= performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft, false);
-        float fitness 		= minFitness;
+        float minFitness    = performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft, false);
+        float fitness       = minFitness;
 
-        Intercept best 		= icpt;
-        float variationY 	= variaY * jmin(1.f, 5 * minFitness);
-        float variationX 	= variaX * jmin(1.f, 5 * minFitness);
-        float varSharp 		= variaShrp * jmin(1.f, 5 * minFitness);
-        float deltaX 		= right - left;
+        Intercept best      = icpt;
+        float variationY    = variaY * jmin(1.f, 5 * minFitness);
+        float variationX    = variaX * jmin(1.f, 5 * minFitness);
+        float varSharp      = variaShrp * jmin(1.f, 5 * minFitness);
+        float deltaX        = right - left;
 
         for (int k = 0; k < flipflopIters; ++k) {
             for (int i = 0; i < convergeIters; ++i) {
-                float savedY 	= icpt.y;
-                icpt.y 		 	= jmin(1.f, best.y + (2 * random.nextFloat() - 1) * variationY);
-                fitness 	 	= performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
+                float savedY    = icpt.y;
+                icpt.y          = jmin(1.f, best.y + (2 * random.nextFloat() - 1) * variationY);
+                fitness         = performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
 
                 if (fitness < minFitness) {
-                    best.y 		= icpt.y;
-                    minFitness 	= fitness;
+                    best.y      = icpt.y;
+                    minFitness  = fitness;
                 } else {
                     icpt.y = savedY;
                     performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
@@ -261,13 +261,13 @@ void AutoModeller::fit() {
             }
 
             for (int i = 0; i < convergeIters; ++i) {
-                float savedX  	= icpt.x;
-                icpt.x 			= jlimit(left, right, best.x + (2 * random.nextFloat() - 1) * variationX * deltaX);
-                fitness 		= performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
+                float savedX    = icpt.x;
+                icpt.x          = jlimit(left, right, best.x + (2 * random.nextFloat() - 1) * variationX * deltaX);
+                fitness         = performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
 
                 if(fitness < minFitness) {
-                    best.x 		= icpt.x;
-                    minFitness 	= fitness;
+                    best.x      = icpt.x;
+                    minFitness  = fitness;
                 } else {
                     icpt.x = savedX;
                     performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
@@ -275,13 +275,13 @@ void AutoModeller::fit() {
             }
 
             for (int i = 0; i < convergeIters; ++i) {
-                float savedShp 	= icpt.shp;
-                icpt.shp 		= jlimit(0.f, 1.f, best.shp + (2 * random.nextFloat() - 1) * varSharp);
-                fitness 		= performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
+                float savedShp  = icpt.shp;
+                icpt.shp        = jlimit(0.f, 1.f, best.shp + (2 * random.nextFloat() - 1) * varSharp);
+                fitness         = performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
 
                 if(fitness < minFitness) {
-                    best.shp 	= icpt.shp;
-                    minFitness 	= fitness;
+                    best.shp    = icpt.shp;
+                    minFitness  = fitness;
                 } else {
                     icpt.shp = savedShp;
                     performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);

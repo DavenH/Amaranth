@@ -23,38 +23,38 @@ Panel3D::Panel3D(
     bool isTransparent,
     bool haveHorzZoom
 ) :
-        Panel				(repo, name, isTransparent)
-    ,	SingletonAccessor	(repo, name)
-    ,	volumeScale			(1.f)
-    ,	volumeTrans			(0.5f)
-    ,	haveLogarithmicY	(false)
-    ,	updateSource	    (updateSource)
-    ,	useVertices			(useVertices)
-    ,	haveHorzZoom	    (haveHorzZoom)
-    ,	dataRetriever		(retriever)
+        Panel               (repo, name, isTransparent)
+    ,   SingletonAccessor   (repo, name)
+    ,   volumeScale         (1.f)
+    ,   volumeTrans         (0.5f)
+    ,   haveLogarithmicY    (false)
+    ,   updateSource        (updateSource)
+    ,   useVertices         (useVertices)
+    ,   haveHorzZoom        (haveHorzZoom)
+    ,   dataRetriever       (retriever)
 {
 }
 
 Panel3D::~Panel3D() {
-    clrIndicesA	.clear();
-    clrIndicesB	.clear();
-    downsampAcc	.clear();
-    downsampBuf	.clear();
-    scaledX 	.clear();
-    scaledY 	.clear();
-    vertices 	.clear();
-    fColours 	.clear();
+    clrIndicesA .clear();
+    clrIndicesB .clear();
+    downsampAcc .clear();
+    downsampBuf .clear();
+    scaledX     .clear();
+    scaledY     .clear();
+    vertices    .clear();
+    fColours    .clear();
     fDestColours.clear();
-    texColours 	.clear();
-    colours 	.clear();
+    texColours  .clear();
+    colours     .clear();
 }
 
 void Panel3D::init() {
     Panel::init();
 
-    openGL 		= std::make_unique<OpenGLPanel3D>(repo, this, dataRetriever);
-    wrapper 	= std::make_unique<BoundWrapper>(openGL.get());
-    zoomPanel 	= std::make_unique<ZoomPanel>(repo, ZoomContext(this, wrapper.get(), haveHorzZoom, true));
+    openGL      = std::make_unique<OpenGLPanel3D>(repo, this, dataRetriever);
+    wrapper     = std::make_unique<BoundWrapper>(openGL.get());
+    zoomPanel   = std::make_unique<ZoomPanel>(repo, ZoomContext(this, wrapper.get(), haveHorzZoom, true));
     zoomPanel->addListener(this);
 
     drawLinesAfterFill = true;
@@ -87,8 +87,8 @@ void Panel3D::drawInterceptLines() {
         return;
     }
 
-    bool haveSpeed 		= false;
-    int scratchChannel 	= getLayerScratchChannel();
+    bool haveSpeed      = false;
+    int scratchChannel  = getLayerScratchChannel();
     int dim = getSetting(CurrentMorphAxis);
 
     if (scratchChannel != CommonEnums::Null && isScratchApplicable()) {
@@ -99,7 +99,7 @@ void Panel3D::drawInterceptLines() {
 
     Vertex* currVert = nullptr;
 
-    if(Interactor* opp 	= interactor->getOppositeInteractor())
+    if(Interactor* opp  = interactor->getOppositeInteractor())
         currVert = opp->state.currentVertex;
 
     float x1, y1, x2, y2;
@@ -209,7 +209,7 @@ void Panel3D::drawAxe() {
  * without verts: values -> lookup -> float colours -> resample to tex height -> resamp float colours -> pixels
  */
 void Panel3D::drawLogSurface(const vector<Column>& grid) {
-    Buffer<Ipp8u> pxBuf 	= gradient.getPixels();
+    Buffer<Ipp8u> pxBuf     = gradient.getPixels();
     Buffer<float> floatBuf = gradient.getFloatPixels();
 
     for (int i = 0; i < draw.sizeX; ++i) {
@@ -225,8 +225,8 @@ void Panel3D::drawLogSurface(const vector<Column>& grid) {
 void Panel3D::drawLinSurface(const vector<Column>& grid) {
     downsampBuf.resize(jmin(maxHorzLines, draw.colSourceSizeY));
 
-    Buffer<Ipp8u> pxBuf 	= gradient.getPixels();
-    Buffer<float> floatBuf 	= gradient.getFloatPixels();
+    Buffer<Ipp8u> pxBuf     = gradient.getPixels();
+    Buffer<float> floatBuf  = gradient.getFloatPixels();
 
     for (int i = 0; i < draw.sizeX; ++i) {
         const Buffer<float>& gridBuf = grid[i];
@@ -298,7 +298,7 @@ void Panel3D::adjustLogColumnAndScale(int key, bool firstColumn) {
 
 void Panel3D::downsampleColumn(const Buffer<float>& column) {
     int downsampleFactor    = draw.colSourceSizeY / maxHorzLines;
-    draw.sizeY 				= maxHorzLines;
+    draw.sizeY              = maxHorzLines;
 
     jassert(downsampAcc.size() >= draw.sizeY);
 
@@ -393,9 +393,9 @@ void Panel3D::resizeArrays() {
         colours.resize(vertsPerQuad * (draw.colSourceSizeY + 1) * draw.stride);
         vertices.resize(vertsPerQuad * coordsPerVert * (draw.colSourceSizeY + 1));
     } else {
-        fColours	.resize(draw.sizeY * draw.stride);
+        fColours    .resize(draw.sizeY * draw.stride);
         fDestColours.resize(draw.texHeight * draw.stride);
-        texColours	.resize(draw.texHeight * draw.stride);
+        texColours  .resize(draw.texHeight * draw.stride);
     }
 }
 
@@ -403,15 +403,15 @@ void Panel3D::resizeArrays() {
  * reduce log scale y:
  *
  * while pos < height
- * 		val = 0
- * 		while x[c] < pos
- * 			val += y[c]
- * 			c++
- * 		pos++
+ *      val = 0
+ *      while x[c] < pos
+ *          val += y[c]
+ *          c++
+ *      pos++
  */
 void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf) {
-    Ipp32f* colorPtr 	= srcColors;
-    Ipp32f* dstColors 	= dstColorBuf;
+    Ipp32f* colorPtr    = srcColors;
+    Ipp32f* dstColors   = dstColorBuf;
     Ipp32f* startClrPtr = colorPtr;
     Ipp32f* startDstPtr = dstColors;
 
@@ -424,13 +424,13 @@ void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf
 
     // scaled y is logarithmic ramp
     if (haveLogarithmicY) {
-        int srcIdx 		= 1;
-        int idxStride 	= srcIdx * draw.stride;
+        int srcIdx      = 1;
+        int idxStride   = srcIdx * draw.stride;
 
         float portion, prev;
-        float floatIdx 	= 0;
+        float floatIdx  = 0;
         float invHeight = 1 / float(draw.texHeight);
-        int rampSize 	= draw.ramp.size();
+        int rampSize    = draw.ramp.size();
 
         Ipp32f* rampPtr = draw.ramp.get();
         Ipp32f* endClrPtr = startClrPtr + draw.stride * rampSize;
@@ -449,13 +449,13 @@ void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf
                 ++srcIdx;
             }
 
-            prev 	= rampPtr[srcIdx - 1];
+            prev    = rampPtr[srcIdx - 1];
             portion = (floatIdx - prev) / (rampPtr[srcIdx] - prev);
 
             jassert(colorPtr + 3 < endClrPtr);
 
-            ippsMulC_32f		(colorPtr, 				 1 - portion, 	dstColors, 4);
-            ippsAddProductC_32f	(colorPtr + draw.stride, portion, 		dstColors, 4);
+            ippsMulC_32f        (colorPtr,               1 - portion,   dstColors, 4);
+            ippsAddProductC_32f (colorPtr + draw.stride, portion,       dstColors, 4);
 
             dstColors += draw.stride;
             ++i;
@@ -475,8 +475,8 @@ void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf
             remainder = phase - trunc;
             truncStride = draw.stride * trunc;
 
-            ippsMulC_32f		(colorPtr + truncStride, 				1 - remainder, 	dstColors + draw.stride * i, draw.stride);
-            ippsAddProductC_32f	(colorPtr + truncStride + draw.stride, 	remainder, 		dstColors + draw.stride * i, draw.stride);
+            ippsMulC_32f        (colorPtr + truncStride,                1 - remainder,  dstColors + draw.stride * i, draw.stride);
+            ippsAddProductC_32f (colorPtr + truncStride + draw.stride,  remainder,      dstColors + draw.stride * i, draw.stride);
 
             phase += sourceToDestRatio;
 
@@ -509,18 +509,18 @@ void Panel3D::drawSurface() {
 
     ScopedLock sl(arrayLock);
 
-    draw.lastSizeY 		= 0;
-    draw.lastKey 		= 0;
-    draw.sizeX 			= grid.size();
-    draw.sizeY 			= grid.front().size();
-    draw.currKey 		= grid.front().midiKey;
+    draw.lastSizeY      = 0;
+    draw.lastKey        = 0;
+    draw.sizeX          = grid.size();
+    draw.sizeY          = grid.front().size();
+    draw.currKey        = grid.front().midiKey;
     draw.colSourceSizeY = draw.sizeY;
-    draw.downsampSize 	= draw.sizeY;
-    draw.stride 		= isTransparent ? 4 : 3;
-    draw.texHeight 		= comp->getHeight() - 2 * vertPadding;
-    draw.reduced		= renderer->isDetailReduced();
-    draw.adjustColumns 	= renderer->willAdjustColumns();
-    draw.ramp			= Buffer<float>();
+    draw.downsampSize   = draw.sizeY;
+    draw.stride         = isTransparent ? 4 : 3;
+    draw.texHeight      = comp->getHeight() - 2 * vertPadding;
+    draw.reduced        = renderer->isDetailReduced();
+    draw.adjustColumns  = renderer->willAdjustColumns();
+    draw.ramp           = Buffer<float>();
 
     downsampAcc.resize(draw.colSourceSizeY);
     clrIndicesA.resize(draw.colSourceSizeY);
@@ -599,11 +599,11 @@ void Panel3D::doExtraResized() {
 }
 
 void Panel3D::freeResources() {
-    vertices	.clear();
-    colours		.clear();
-    fColours	.clear();
+    vertices    .clear();
+    colours     .clear();
+    fColours    .clear();
     fDestColours.clear();
-    texColours	.clear();
+    texColours  .clear();
 }
 
 void Panel3D::drawDeformerTags() {
@@ -629,7 +629,7 @@ void Panel3D::drawDeformerTags() {
         Vertex2 second = Vertex2(interceptPairs[i + 1]);
 
         if (cube != nullptr && cube->isDeformed()) {
-            Vertex2 b(sx(first.x), 	sy(first.y));
+            Vertex2 b(sx(first.x),  sy(first.y));
             Vertex2 d(sx(second.x), sy(second.y));
             Vertex2 e(Geometry::getSpacedVertex(- 6, d, b));
 

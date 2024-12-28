@@ -112,7 +112,7 @@ bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
         }
     }
 
-    if(sustainCubes.empty() && ! cubes.empty())	{
+    if(sustainCubes.empty() && ! cubes.empty()) {
         setSustainToRightmost();
     }
 

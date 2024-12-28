@@ -20,12 +20,12 @@ public:
     void highlightCurrentIntercept() override;
     void zoomUpdated(int updateSource) override;
 
-    bool isCurveBipolar() const 							 { return curveIsBipolar; 			 }
-    void setCurveBipolar(bool bipolar) 						 { curveIsBipolar = bipolar; 		 }
+    bool isCurveBipolar() const                              { return curveIsBipolar;            }
+    void setCurveBipolar(bool bipolar)                       { curveIsBipolar = bipolar;         }
     void setColors(const Color& color1, const Color& color2) { colorA = color1; colorB = color2; }
 
-    OpenGLPanel* getOpenglPanel() 							 { return openGL.get(); }
-    virtual bool shouldDrawCurve() 							 { return true; }
+    OpenGLPanel* getOpenglPanel()                            { return openGL.get(); }
+    virtual bool shouldDrawCurve()                           { return true; }
 
     virtual bool isMeshEnabled();
     void drawCurvesAndSurfaces() override;

@@ -18,7 +18,7 @@
 
 PluginProcessor::PluginProcessor() :
         suspendStateRead(false)
-    ,	presetOpenTime(0)
+    ,   presetOpenTime(0)
 {
     // Set up some default values.
     lastPosInfo.resetToDefault();
@@ -97,7 +97,7 @@ void PluginProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
 
 void PluginProcessor::getStateInformation(MemoryBlock& destData) {
     if (!suspendStateRead) {
-        XmlElement 	xml ("PluginSettings");
+        XmlElement  xml ("PluginSettings");
         MemoryBlock xmlBlock;
 
         getObj(Settings).saveGlobalSettings(&xml);
@@ -186,7 +186,7 @@ bool PluginProcessor::isParameterAutomatable(int index) const {
 
 void PluginProcessor::updateLatency() {
     int totalLatency = 0;
-    bool realtime 	 = isNonRealtime();
+    bool realtime    = isNonRealtime();
 
     for(auto* adder : latencies) {
         totalLatency += adder->getLatency(realtime);

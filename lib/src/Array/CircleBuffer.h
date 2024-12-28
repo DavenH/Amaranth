@@ -36,7 +36,7 @@ public:
     }
 
     int readArray(Buffer<float> dest) {
-//		jassert(readPosition + dest.size() <= writePosition);
+//      jassert(readPosition + dest.size() <= writePosition);
 
         int moddedRead = readPosition & (sz - 1);
         int maxReadable = int(writePosition - readPosition);

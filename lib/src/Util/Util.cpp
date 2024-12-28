@@ -84,9 +84,9 @@ int Util::extractVelocityFromFilename(const String& str) {
         strings.emplace_back("hard", 127);
         strings.emplace_back("loud", 127);
 
-        strings.emplace_back("mp", 	57);
-        strings.emplace_back("mf", 	93);
-        strings.emplace_back("ff", 	127);
+        strings.emplace_back("mp",  57);
+        strings.emplace_back("mf",  93);
+        strings.emplace_back("ff",  127);
     }
 
     for (auto& loudness : strings) {
@@ -105,12 +105,12 @@ int Util::extractPitchFromFilename(const String& str, bool useWeakMatch) {
     static bool havePopulated = false;
 
     if (!havePopulated) {
-        String notes[] 	= { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B", "H" };
+        String notes[]  = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B", "H" };
         String cxters[] = { " ", "_", "" };
-        String preps[] 	= { " ", "_" };
-        String octs[] 	= { "0", 	"1", 	"2", 	"3", 	"4", 	"5", 	"6", 	"7", 	"8",
-                            "00", 	"01", 	"02", 	"03", 	"04", 	"05", 	"06", 	"07", 	"08",
-                            "000", 	"001", 	"002", 	"003", 	"004", 	"005", 	"006", 	"007", 	"008" };
+        String preps[]  = { " ", "_" };
+        String octs[]   = { "0",    "1",    "2",    "3",    "4",    "5",    "6",    "7",    "8",
+                            "00",   "01",   "02",   "03",   "04",   "05",   "06",   "07",   "08",
+                            "000",  "001",  "002",  "003",  "004",  "005",  "006",  "007",  "008" };
 
         for (int key = 0; key < numElementsInArray(notes); ++key) {
             // H is same as B
@@ -118,8 +118,8 @@ int Util::extractPitchFromFilename(const String& str, bool useWeakMatch) {
 
             for (int oct = 0; oct < numElementsInArray(octs); ++oct) {
                 for (const auto& cxter : cxters) {
-                    String note 	= notes[key] + cxter + octs[oct];
-                    int midiNote 	= 12 * ((oct % 9) + 1)  + realKey;
+                    String note     = notes[key] + cxter + octs[oct];
+                    int midiNote    = 12 * ((oct % 9) + 1)  + realKey;
                     noteCodeMap.set(note, midiNote);
                 }
             }

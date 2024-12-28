@@ -5,10 +5,10 @@
 #include "../Audio/PitchedSample.h"
 
 SyncedSampleIterator::SyncedSampleIterator(PitchedSample* wrapper, Buffer<float> pitchBuffer) : wav(wrapper)
-    ,	pitchBuffer(pitchBuffer)
-    ,	hasReset(false)
-    ,	cycle(0)
-    ,	realPosition(0) {
+    ,   pitchBuffer(pitchBuffer)
+    ,   hasReset(false)
+    ,   cycle(0)
+    ,   realPosition(0) {
     float average = pitchBuffer.mean();
     sizePow2 = nextPowerOfTwo(roundToInt(average));
 }
@@ -18,17 +18,17 @@ bool SyncedSampleIterator::hasNext() {
 }
 
 void SyncedSampleIterator::reset() {
-    cycle 		 	= 0;
-    realPosition 	= 0;
-    double offset 	= 0;
+    cycle           = 0;
+    realPosition    = 0;
+    double offset   = 0;
 
-    int numSamples 	 = wav->audio.size();
+    int numSamples   = wav->audio.size();
 
     periods.clear();
 
     while(true) {
         double progress = offset / double(numSamples);
-        double period 	= wav->samplerate / Resampling::lerpC(pitchBuffer, progress);
+        double period   = wav->samplerate / Resampling::lerpC(pitchBuffer, progress);
 
         periods.push_back(period);
         offset += period;
@@ -44,8 +44,8 @@ void SyncedSampleIterator::reset() {
 Buffer<float> SyncedSampleIterator::getNext() {
     float position = realPosition / wav->samplerate;
 
-    int floorOffset	= roundToInt(realPosition);
-    int size		= roundToInt(realPosition + periods[cycle]) - floorOffset;
+    int floorOffset = roundToInt(realPosition);
+    int size        = roundToInt(realPosition + periods[cycle]) - floorOffset;
 
     realPosition += periods[cycle++];
 
@@ -85,10 +85,10 @@ int BlockIterator::getTotalSize() {
 
 WindowedSampleIterator::WindowedSampleIterator(Buffer<float> buffer, int bufferSize, int overlapFactor) :
         buffer(buffer)
-    , 	bufferSize(bufferSize)
-    , 	overlapFactor(overlapFactor) {
+    ,   bufferSize(bufferSize)
+    ,   overlapFactor(overlapFactor) {
     numHarmonics = bufferSize / 2;
-    numColumns 	= overlapFactor * buffer.size() / bufferSize;
+    numColumns  = overlapFactor * buffer.size() / bufferSize;
 
     memory.resize(bufferSize * 2);
     window = memory.place(bufferSize);

@@ -13,12 +13,12 @@ using std::map;
 
 Mesh::Mesh() :
         name("unnamed")
-    , 	version(Constants::MeshFormatVersion) {
+    ,   version(Constants::MeshFormatVersion) {
 }
 
 Mesh::Mesh(String  name) :
         name(std::move(name))
-    , 	version(Constants::MeshFormatVersion) {
+    ,   version(Constants::MeshFormatVersion) {
 }
 
 void Mesh::destroy() {
@@ -108,7 +108,7 @@ void Mesh::writeXML(XmlElement* parentElem) const {
     auto* meshElem = new XmlElement("Mesh");
     parentElem->addChildElement(meshElem);
 
-    meshElem->setAttribute("name", 		name);
+    meshElem->setAttribute("name",      name);
     meshElem->setAttribute("version",   Constants::MeshFormatVersion);
 
     int count = 0;
@@ -116,11 +116,11 @@ void Mesh::writeXML(XmlElement* parentElem) const {
     for(auto* vert : verts) {
         auto* vertElem = new XmlElement("Vertex");
 
-        vertElem->setAttribute("time", 	 vert->values[Vertex::Time]	);
+        vertElem->setAttribute("time",   vert->values[Vertex::Time] );
         vertElem->setAttribute("phase",  vert->values[Vertex::Phase]);
-        vertElem->setAttribute("amp", 	 vert->values[Vertex::Amp]	);
-        vertElem->setAttribute("key", 	 vert->values[Vertex::Red]	);
-        vertElem->setAttribute("mod", 	 vert->values[Vertex::Blue]	);
+        vertElem->setAttribute("amp",    vert->values[Vertex::Amp]  );
+        vertElem->setAttribute("key",    vert->values[Vertex::Red]  );
+        vertElem->setAttribute("mod",    vert->values[Vertex::Blue] );
         vertElem->setAttribute("weight", vert->values[Vertex::Curve]);
 
         vertElem->setAttribute("id", count);
@@ -144,19 +144,19 @@ void Mesh::writeXML(XmlElement* parentElem) const {
 
         jassert(cube->dfrmGainAt(Vertex::Curve) >= 0);
 
-        cubeElem->setAttribute("avpGuide", 	cube->dfrmChans[Vertex::Time]	);
-        cubeElem->setAttribute("keyGuide", 	cube->dfrmChans[Vertex::Red]	);
-        cubeElem->setAttribute("modGuide", 	cube->dfrmChans[Vertex::Blue]	);
-        cubeElem->setAttribute("phaseGuide",cube->dfrmChans[Vertex::Phase]	);
-        cubeElem->setAttribute("ampGuide", 	cube->dfrmChans[Vertex::Amp]	);
-        cubeElem->setAttribute("curveGuide",cube->dfrmChans[Vertex::Curve]	);
+        cubeElem->setAttribute("avpGuide",  cube->dfrmChans[Vertex::Time]   );
+        cubeElem->setAttribute("keyGuide",  cube->dfrmChans[Vertex::Red]    );
+        cubeElem->setAttribute("modGuide",  cube->dfrmChans[Vertex::Blue]   );
+        cubeElem->setAttribute("phaseGuide",cube->dfrmChans[Vertex::Phase]  );
+        cubeElem->setAttribute("ampGuide",  cube->dfrmChans[Vertex::Amp]    );
+        cubeElem->setAttribute("curveGuide",cube->dfrmChans[Vertex::Curve]  );
 
-        cubeElem->setAttribute("avpGain",	cube->dfrmGains[Vertex::Time]	);
-        cubeElem->setAttribute("keyGain",	cube->dfrmGains[Vertex::Red]	);
-        cubeElem->setAttribute("modGain",	cube->dfrmGains[Vertex::Blue]	);
-        cubeElem->setAttribute("phaseGain",	cube->dfrmGains[Vertex::Phase]	);
-        cubeElem->setAttribute("ampGain",	cube->dfrmGains[Vertex::Amp]	);
-        cubeElem->setAttribute("curveGain",	cube->dfrmGains[Vertex::Curve]	);
+        cubeElem->setAttribute("avpGain",   cube->dfrmGains[Vertex::Time]   );
+        cubeElem->setAttribute("keyGain",   cube->dfrmGains[Vertex::Red]    );
+        cubeElem->setAttribute("modGain",   cube->dfrmGains[Vertex::Blue]   );
+        cubeElem->setAttribute("phaseGain", cube->dfrmGains[Vertex::Phase]  );
+        cubeElem->setAttribute("ampGain",   cube->dfrmGains[Vertex::Amp]    );
+        cubeElem->setAttribute("curveGain", cube->dfrmGains[Vertex::Curve]  );
 
         meshElem->addChildElement(cubeElem);
     }
@@ -185,12 +185,12 @@ bool Mesh::readXML(const XmlElement* repoElem) {
         }
 
         auto* vert = new Vertex();
-        vert->values[Vertex::Time] 	= currentVert->getDoubleAttribute("time"	);
-        vert->values[Vertex::Phase] = currentVert->getDoubleAttribute("phase"	);
-        vert->values[Vertex::Amp] 	= currentVert->getDoubleAttribute("amp"		);
-        vert->values[Vertex::Red] 	= currentVert->getDoubleAttribute("key"		);
-        vert->values[Vertex::Blue] 	= currentVert->getDoubleAttribute("mod"		);
-        vert->values[Vertex::Curve] = currentVert->getDoubleAttribute("weight"	);
+        vert->values[Vertex::Time]  = currentVert->getDoubleAttribute("time"    );
+        vert->values[Vertex::Phase] = currentVert->getDoubleAttribute("phase"   );
+        vert->values[Vertex::Amp]   = currentVert->getDoubleAttribute("amp"     );
+        vert->values[Vertex::Red]   = currentVert->getDoubleAttribute("key"     );
+        vert->values[Vertex::Blue]  = currentVert->getDoubleAttribute("mod"     );
+        vert->values[Vertex::Curve] = currentVert->getDoubleAttribute("weight"  );
 
         int id = currentVert->getIntAttribute("id");
 
@@ -204,14 +204,14 @@ bool Mesh::readXML(const XmlElement* repoElem) {
     for(auto currentCube : meshElem->getChildWithTagNameIterator("VertCube")) {
         auto* cube = new VertCube();
 
-        cube->dfrmGains[Vertex::Amp]   = currentCube->getDoubleAttribute("ampGain", 	0.5);
-        cube->dfrmGains[Vertex::Blue]  = currentCube->getDoubleAttribute("modGain", 	0.5);
-        cube->dfrmGains[Vertex::Curve] = currentCube->getDoubleAttribute("curveGain", 	0.5);
-        cube->dfrmGains[Vertex::Phase] = currentCube->getDoubleAttribute("phaseGain", 	0.5);
-        cube->dfrmGains[Vertex::Red]   = currentCube->getDoubleAttribute("keyGain", 	0.5);
-        cube->dfrmGains[Vertex::Time]  = currentCube->getDoubleAttribute("avpGain", 	0.5);
+        cube->dfrmGains[Vertex::Amp]   = currentCube->getDoubleAttribute("ampGain",     0.5);
+        cube->dfrmGains[Vertex::Blue]  = currentCube->getDoubleAttribute("modGain",     0.5);
+        cube->dfrmGains[Vertex::Curve] = currentCube->getDoubleAttribute("curveGain",   0.5);
+        cube->dfrmGains[Vertex::Phase] = currentCube->getDoubleAttribute("phaseGain",   0.5);
+        cube->dfrmGains[Vertex::Red]   = currentCube->getDoubleAttribute("keyGain",     0.5);
+        cube->dfrmGains[Vertex::Time]  = currentCube->getDoubleAttribute("avpGain",     0.5);
 
-        cube->dfrmChans[Vertex::Amp]   = currentCube->getIntAttribute("ampGuide", 	-1);
+        cube->dfrmChans[Vertex::Amp]   = currentCube->getIntAttribute("ampGuide",   -1);
         cube->dfrmChans[Vertex::Blue]  = currentCube->getIntAttribute("modGuide",   -1);
         cube->dfrmChans[Vertex::Curve] = currentCube->getIntAttribute("curveGuide", -1);
         cube->dfrmChans[Vertex::Phase] = currentCube->getIntAttribute("phaseGuide", -1);
@@ -231,8 +231,8 @@ bool Mesh::readXML(const XmlElement* repoElem) {
                 return false;
             }
 
-            int num = currentVert->getIntAttribute("lineVertexNumber", 	-1);
-            int id 	= currentVert->getIntAttribute("vertexId", 			-1);
+            int num = currentVert->getIntAttribute("lineVertexNumber",  -1);
+            int id  = currentVert->getIntAttribute("vertexId",          -1);
 
             if(num < 0 || id < 0) {
                 failed = true;
@@ -305,9 +305,9 @@ void Mesh::removeFreeVerts() {
 void Mesh::updateToVersion(double newVersion) {
     if (version >= 1 && version < 1.1) {
         for(auto* vert : verts) {
-            vert->values[Vertex::Amp] 	= vert->values[Vertex::Phase];
+            vert->values[Vertex::Amp]   = vert->values[Vertex::Phase];
             vert->values[Vertex::Phase] = vert->values[Vertex::Time];
-            vert->values[Vertex::Time] 	= 0;
+            vert->values[Vertex::Time]  = 0;
         }
 
         version = newVersion;

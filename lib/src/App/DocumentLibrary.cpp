@@ -6,10 +6,10 @@
 #include "../Util/Util.h"
 
 DocumentLibrary::DocumentLibrary(SingletonRepo* repo) :
-        SingletonAccessor	(repo, "DocumentLibrary")
-    ,	pendingPresetIndex	(NullPresetIndex)
-    ,	currentPresetIndex	(NullPresetIndex)
-    ,	shouldOpenDefault	(formatSplit(false, true)) {
+        SingletonAccessor   (repo, "DocumentLibrary")
+    ,   pendingPresetIndex  (NullPresetIndex)
+    ,   currentPresetIndex  (NullPresetIndex)
+    ,   shouldOpenDefault   (formatSplit(false, true)) {
 }
 
 void DocumentLibrary::handleAsyncUpdate() {
@@ -34,11 +34,11 @@ void DocumentLibrary::readDocuments(const String& dir) {
 
         int64 millis = file.getCreationTime().toMilliseconds();
 
-        details.setDateMillis	(millis);
-        details.setFilename		(file.getFullPathName());
-        details.setName			(file.getFileNameWithoutExtension());
-        details.setRevision		(-1);
-        details.setSizeBytes	((int) file.getSize());
+        details.setDateMillis   (millis);
+        details.setFilename     (file.getFullPathName());
+        details.setName         (file.getFileNameWithoutExtension());
+        details.setRevision     (-1);
+        details.setSizeBytes    ((int) file.getSize());
 
         std::unique_ptr<InputStream> stream(file.createInputStream());
 
@@ -101,7 +101,7 @@ bool DocumentLibrary::readSettingsFile() {
     } else {
         if (XmlElement* ratingsElem = elem->getChildByName("Ratings")) {
             for(auto ratingElem : ratingsElem->getChildWithTagNameIterator("Rating")) {
-                int code 	= ratingElem->getIntAttribute("code", 0);
+                int code    = ratingElem->getIntAttribute("code", 0);
                 float value = ratingElem->getDoubleAttribute("value", 0);
 
                 if(code != 0) {

@@ -24,64 +24,64 @@
 int panelCount = 0;
 
 Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
-        SingletonAccessor		(repo, name)
-    ,	isTransparent			(isTransparent)
-    ,	alwaysDrawDepthLines	(false)
-    ,	backgroundTempoSynced	(false)
-    ,	backgroundTimeRelevant	(true)
-    ,	deformApplicable		(true)
-    ,	doesDrawMouseHint		(false)
-    ,	drawLinesAfterFill		(false)
-    ,	pendingDeformUpdate		(true)
-    ,	pendingNameUpdate		(false)
-    ,	pendingScaleUpdate		(false)
-    ,	shouldBakeTextures		(true)
-    ,	speedApplicable			(true)
+        SingletonAccessor       (repo, name)
+    ,   isTransparent           (isTransparent)
+    ,   alwaysDrawDepthLines    (false)
+    ,   backgroundTempoSynced   (false)
+    ,   backgroundTimeRelevant  (true)
+    ,   deformApplicable        (true)
+    ,   doesDrawMouseHint       (false)
+    ,   drawLinesAfterFill      (false)
+    ,   pendingDeformUpdate     (true)
+    ,   pendingNameUpdate       (false)
+    ,   pendingScaleUpdate      (false)
+    ,   shouldBakeTextures      (true)
+    ,   speedApplicable         (true)
 
-    ,	numCornersOverlapped	(0)
-    ,	vertPadding				(3)
-    ,	paddingLeft				(3)
-    ,	paddingRight			(3)
-    ,	maxWidth				(0)
-    ,	lastFrameTime			(0)
+    ,   numCornersOverlapped    (0)
+    ,   vertPadding             (3)
+    ,   paddingLeft             (3)
+    ,   paddingRight            (3)
+    ,   maxWidth                (0)
+    ,   lastFrameTime           (0)
 
-    ,	minorBrightness			(0.085f)
-    ,	majorBrightness			(0.14f)
+    ,   minorBrightness         (0.085f)
+    ,   majorBrightness         (0.14f)
 
-    ,	bgPaddingLeft			(0.f)
-    ,	bgPaddingRight			(0.f)
-    ,	bgPaddingTop			(0.f)
-    ,	bgPaddingBttm			(0.f)
+    ,   bgPaddingLeft           (0.f)
+    ,   bgPaddingRight          (0.f)
+    ,   bgPaddingTop            (0.f)
+    ,   bgPaddingBttm           (0.f)
 
-    ,	vertexWhiteRadius		(2.f)
-    , 	vertexSelectedRadius	(3.f)
-    ,	vertexBlackRadius		(5.f)
-    , 	vertexHighlightRadius	(7.f)
+    ,   vertexWhiteRadius       (2.f)
+    ,   vertexSelectedRadius    (3.f)
+    ,   vertexBlackRadius       (5.f)
+    ,   vertexHighlightRadius   (7.f)
 
-    , 	xBuffer					(512)
-    , 	yBuffer					(512)
-    , 	cBuffer					(512)
-    , 	stripRamp				(linestripRes)
-    ,	bgLinesMemory			(2 * maxMajorSize + 2 * maxMinorSize)
+    ,   xBuffer                 (512)
+    ,   yBuffer                 (512)
+    ,   cBuffer                 (512)
+    ,   stripRamp               (linestripRes)
+    ,   bgLinesMemory           (2 * maxMajorSize + 2 * maxMinorSize)
 
-    ,	interactor				(nullptr)
+    ,   interactor              (nullptr)
 
-    ,	nameTexA				(nullptr)
-    ,	nameTexB				(nullptr)
-    ,	dfrmTex					(nullptr)
-    ,	grabTex					(nullptr)
-    ,	scalesTex				(nullptr)
+    ,   nameTexA                (nullptr)
+    ,   nameTexB                (nullptr)
+    ,   dfrmTex                 (nullptr)
+    ,   grabTex                 (nullptr)
+    ,   scalesTex               (nullptr)
 
-    ,	panelName				(name)
-    ,	currentNameId			(NameTexture)
-    ,	nameCornerPos			(-8, 5) {
-    pointColours[Vertex::Time] 	= Color(0.6f,	0.55f,  0.f, 	0.9f);
-    pointColours[Vertex::Red] 	= Color(0.6f, 	0.1f, 	0.1f, 	0.9f);
-    pointColours[Vertex::Blue] 	= Color(0.15f, 	0.35f, 	0.75f, 	1.f);
-    pointColours[Vertex::Phase] = Color(0.9f, 	0.9f, 	0.9f, 	1.f);
+    ,   panelName               (name)
+    ,   currentNameId           (NameTexture)
+    ,   nameCornerPos           (-8, 5) {
+    pointColours[Vertex::Time]  = Color(0.6f,   0.55f,  0.f,    0.9f);
+    pointColours[Vertex::Red]   = Color(0.6f,   0.1f,   0.1f,   0.9f);
+    pointColours[Vertex::Blue]  = Color(0.15f,  0.35f,  0.75f,  1.f);
+    pointColours[Vertex::Phase] = Color(0.9f,   0.9f,   0.9f,   1.f);
 
-    panelId 	   = panelCount++;
-    grabImage 	   = PNGImageFormat::loadFrom(Images::grabtex_png, Images::grabtex_pngSize);
+    panelId        = panelCount++;
+    grabImage      = PNGImageFormat::loadFrom(Images::grabtex_png, Images::grabtex_pngSize);
 
     vertMajorLines = bgLinesMemory.place(maxMajorSize);
     horzMajorLines = bgLinesMemory.place(maxMajorSize);
@@ -202,7 +202,7 @@ void Panel::updateNameTexturePos() {
     int h = nameImage.getHeight();
 
     Rectangle<int> bounds = comp->getLocalBounds();
-    nameTexA->rect = (fromBottom ? 	bounds.removeFromRight(w).removeFromBottom(h) :
+    nameTexA->rect = (fromBottom ?  bounds.removeFromRight(w).removeFromBottom(h) :
                                     bounds.removeFromRight(w).removeFromTop(h)).toFloat();
 
     Point<float> offset = nameCornerPos;
@@ -221,7 +221,7 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
 
     ZoomRect& rect = zoomPanel->rect;
 
-    float zoomLeft 	= rect.x - bgPaddingLeft;
+    float zoomLeft  = rect.x - bgPaddingLeft;
     float zoomRight = rect.x + rect.w - bgPaddingRight; //xMaximum;
 
     Vertex2 fineInc, crsInc;
@@ -229,21 +229,21 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
     float yScale = rect.yMaximum - bgPaddingTop - bgPaddingBttm;
 
     if (backgroundTimeRelevant) {
-        float timeInc 	= 1.f / NumberUtils::nextPower2(roundToInt(16 / rect.w));
-        crsInc.x 		= 4 * timeInc;
-        fineInc.x 		= timeInc;
+        float timeInc   = 1.f / NumberUtils::nextPower2(roundToInt(16 / rect.w));
+        crsInc.x        = 4 * timeInc;
+        fineInc.x       = timeInc;
     } else {
-        fineInc.x 		= xScale / float(minorLineOrder);
-        crsInc.x 		= xScale / float(majorLineOrder);
+        fineInc.x       = xScale / float(minorLineOrder);
+        crsInc.x        = xScale / float(majorLineOrder);
     }
 
     // fine
     {
-        int startIdx 	= jmax(0, (int) ceilf(zoomLeft / fineInc.x));
-        int endIdx 		= ceilf(zoomRight / fineInc.x);
-        float offset	= bgPaddingLeft + startIdx * fineInc.x;
-        int maxSize 	= jmin(int(maxMinorSize), (int) ceilf(xScale / fineInc.x));
-        int numLines 	= jmin(maxSize, endIdx - startIdx) + 1;
+        int startIdx    = jmax(0, (int) ceilf(zoomLeft / fineInc.x));
+        int endIdx      = ceilf(zoomRight / fineInc.x);
+        float offset    = bgPaddingLeft + startIdx * fineInc.x;
+        int maxSize     = jmin(int(maxMinorSize), (int) ceilf(xScale / fineInc.x));
+        int numLines    = jmin(maxSize, endIdx - startIdx) + 1;
 
         vertMinorLines.resize(numLines);
         vertMinorLines.ramp(offset, fineInc.x);
@@ -251,11 +251,11 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
 
     // coarse
     {
-        int startIdx 	= jmax(0, (int) ceilf(zoomLeft / crsInc.x));
-        int endIdx 		= ceilf(zoomRight / crsInc.x);
-        float offset 	= bgPaddingLeft + startIdx * crsInc.x;
-        int maxSize		= jmin(int(maxMajorSize), (int) ceilf(xScale / crsInc.x));
-        int numLines 	= jmin(maxSize, endIdx - startIdx);
+        int startIdx    = jmax(0, (int) ceilf(zoomLeft / crsInc.x));
+        int endIdx      = ceilf(zoomRight / crsInc.x);
+        float offset    = bgPaddingLeft + startIdx * crsInc.x;
+        int maxSize     = jmin(int(maxMajorSize), (int) ceilf(xScale / crsInc.x));
+        int numLines    = jmin(maxSize, endIdx - startIdx);
 
         vertMajorLines.resize(numLines);
         vertMajorLines.ramp(offset, crsInc.x);
@@ -267,8 +267,8 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
     if (!onlyVerticalBackground) {
         {
             int numLines = int(minorLineOrder / reductRatio);
-            numLines 	 = jlimit(2, (int)maxMinorSize, NumberUtils::nextPower2(numLines));
-            fineInc.y 	 = yScale / numLines;
+            numLines     = jlimit(2, (int)maxMinorSize, NumberUtils::nextPower2(numLines));
+            fineInc.y    = yScale / numLines;
 
             horzMinorLines.resize(numLines);
             horzMinorLines.ramp(bgPaddingBttm + fineInc.y, fineInc.y);
@@ -276,8 +276,8 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
 
         {
             int numLines = int(majorLineOrder / reductRatio);
-            numLines 	 = jlimit(2, (int)maxMajorSize, NumberUtils::nextPower2(numLines));
-            crsInc.y 	 = yScale / numLines;
+            numLines     = jlimit(2, (int)maxMajorSize, NumberUtils::nextPower2(numLines));
+            crsInc.y     = yScale / numLines;
 
             horzMajorLines.resize(numLines - 1);
             horzMajorLines.ramp(bgPaddingBttm + crsInc.y, crsInc.y);
@@ -614,8 +614,8 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     const PathRepo::ScratchContext& scratchContext = getObj(PathRepo).getScratchContext(scratchChan);
 
     Buffer<float> redTable, blueTable, phaseTable, ampTable;
-    Buffer<float> speedEnv 	= scratchContext.panelBuffer;
-    Buffer<float> ramp 		= cBuffer.withSize(linestripRes);
+    Buffer<float> speedEnv  = scratchContext.panelBuffer;
+    Buffer<float> ramp      = cBuffer.withSize(linestripRes);
 
     if(IDeformer* deformer = interactor->getRasterizer()->getDeformer()) {
         phaseTable = deformer->getTable(phaseChan);
@@ -637,24 +637,24 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
         xy.x.ramp(first.x, xSlope);
 
         if (adjustSpeed) {
-            int 	speedEnvIdx;
-            float 	scaleX 		= second.x - first.x;
-            int 	offsetIdx 	= first.x * float(speedEnv.size() - 1);
-            float	speed;
+            int     speedEnvIdx;
+            float   scaleX      = second.x - first.x;
+            int     offsetIdx   = first.x * float(speedEnv.size() - 1);
+            float   speed;
 
             if (phsVsTimeChan >= 0) {
                 for (int i = 0; i < linestripRes; ++i) {
-                    speedEnvIdx = scaleX * i + offsetIdx;		// todo Lerp it
-                    speed		= speedEnv[speedEnvIdx];
-                    idx 		= int((phaseTable.size() - 1) * speed);
-                    xy.y[i] 	= phaseGain * phaseTable[idx]; // + speed * (second.y - first.y);
+                    speedEnvIdx = scaleX * i + offsetIdx;       // todo Lerp it
+                    speed       = speedEnv[speedEnvIdx];
+                    idx         = int((phaseTable.size() - 1) * speed);
+                    xy.y[i]     = phaseGain * phaseTable[idx]; // + speed * (second.y - first.y);
                 }
 
                 xy.y.addProduct(speedEnv, second.y - first.y).add(first.y + redOffset + blueOffset);
             } else {
                 if (scaleX < 0.99f) {
                     for(int i = 0; i < linestripRes; ++i)
-                        xy.y[i] = speedEnv[int(scaleX * i) + offsetIdx];		// todo Lerp it
+                        xy.y[i] = speedEnv[int(scaleX * i) + offsetIdx];        // todo Lerp it
                 } else {
                     speedEnv.copyTo(xy.y);
                 }
@@ -743,10 +743,10 @@ void Panel::createNameImage(const String& displayName, bool isSecondImage, bool 
     Font font(FontOptions(getStrConstant(FontFace), 20, Font::plain));
     font.setExtraKerningFactor(-0.02);
 
-    String lcName 	= displayName.toLowerCase();
-    int width 		= roundToInt(Util::getStringWidth(font, lcName));
-    int pow2 		= NumberUtils::nextPower2(width + 3);
-    Image tempImg	= Image(Image::ARGB, pow2, 64, true);
+    String lcName   = displayName.toLowerCase();
+    int width       = roundToInt(Util::getStringWidth(font, lcName));
+    int pow2        = NumberUtils::nextPower2(width + 3);
+    Image tempImg   = Image(Image::ARGB, pow2, 64, true);
 
     Graphics tempG(tempImg);
     Rectangle r(0, 0, pow2 - 2, 64);

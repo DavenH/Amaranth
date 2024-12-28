@@ -13,11 +13,11 @@ class Interactor3D;
 
 class OpenGLPanel3D :
         public OpenGLBase
-    ,	public PanelOwner<Panel3D>
-    ,	public Panel3D::Renderer
-    , 	public OpenGLRenderer
-    ,	public Component
-    , 	public virtual SingletonAccessor {
+    ,   public PanelOwner<Panel3D>
+    ,   public Panel3D::Renderer
+    ,   public OpenGLRenderer
+    ,   public Component
+    ,   public virtual SingletonAccessor {
 public:
     OpenGLPanel3D(SingletonRepo* repo, Panel3D* panel3D, Panel3D::DataRetriever* retriever);
     ~OpenGLPanel3D() override;
@@ -45,9 +45,9 @@ public:
     void activate() override { activateContext(); }
     void deactivate() override { deactivateContext(); }
 
-    CriticalSection& getGridLock() override 		{ return columnLock; }
-    Buffer<float> getColumnArray() override 		{ return dataRetriever->getColumnArray(); }
-    const vector<Column>& getColumns() override 	{ return dataRetriever->getColumns(); }
+    CriticalSection& getGridLock() override         { return columnLock; }
+    Buffer<float> getColumnArray() override         { return dataRetriever->getColumnArray(); }
+    const vector<Column>& getColumns() override     { return dataRetriever->getColumns(); }
 
 protected:
 

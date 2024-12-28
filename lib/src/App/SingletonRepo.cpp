@@ -21,12 +21,12 @@
 
 
 SingletonRepo::SingletonRepo() :
-        hasInstantiated	(false)
-    ,	hasInitialized	(false)
-    ,	debugStream		(nullptr)
-    ,	statStream		(nullptr)
-    ,	dummyStream		(nullptr)
-    ,	lastDebugTime	(0) {
+        hasInstantiated (false)
+    ,   hasInitialized  (false)
+    ,   debugStream     (nullptr)
+    ,   statStream      (nullptr)
+    ,   dummyStream     (nullptr)
+    ,   lastDebugTime   (0) {
     repo = this;
 }
 
@@ -45,18 +45,18 @@ void SingletonRepo::instantiate() {
     }
     dummyStream = std::make_unique<DummyOutputStream>();
 
-    add(new MiscGraphics	(this), -500);
-    add(new AppConstants	(this), -400);
-    add(new AudioHub		(this), -300);
-    add(new Settings		(this), -200);
-    add(new MeshLibrary		(this), -100);
-    add(new MemoryPool		(this), -100);
-    add(new Updater			(this), -1);
-    add(new LogRegions		(this), -1);
-    add(new Document		(this));
-    add(new PathRepo		(this));
-    add(new EditWatcher		(this));
-    add(new DocumentLibrary	(this));
+    add(new MiscGraphics    (this), -500);
+    add(new AppConstants    (this), -400);
+    add(new AudioHub        (this), -300);
+    add(new Settings        (this), -200);
+    add(new MeshLibrary     (this), -100);
+    add(new MemoryPool      (this), -100);
+    add(new Updater         (this), -1);
+    add(new LogRegions      (this), -1);
+    add(new Document        (this));
+    add(new PathRepo        (this));
+    add(new EditWatcher     (this));
+    add(new DocumentLibrary (this));
 
     hasInstantiated = true;
 }

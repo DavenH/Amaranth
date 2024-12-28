@@ -18,11 +18,11 @@ public:
 
     SingletonAccessor& operator=(const SingletonAccessor& other) = default;
 
-    SingletonAccessor(const SingletonAccessor& client)	{ operator=(client); }
-    SingletonRepo* getSingletonRepo() 					{ return repo;	 }
-    [[nodiscard]] int getInitOrder() const 				{ return initOrder;  }
-    void setInitOrder(int order)						{ initOrder = order; }
-    virtual const String& getName() 					{ return name;		 }
+    SingletonAccessor(const SingletonAccessor& client)  { operator=(client); }
+    SingletonRepo* getSingletonRepo()                   { return repo;   }
+    [[nodiscard]] int getInitOrder() const              { return initOrder;  }
+    void setInitOrder(int order)                        { initOrder = order; }
+    virtual const String& getName()                     { return name;       }
 
     virtual void init() {}
     virtual void reset() {}

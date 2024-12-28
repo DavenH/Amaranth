@@ -16,8 +16,8 @@ class Interactor3D:
 public:
     enum MergeActionType {
             MergeAtFirst
-        ,	MergeAtSecond
-        ,	MergeAtCentre
+        ,   MergeAtSecond
+        ,   MergeAtCentre
     };
 
     Interactor3D(

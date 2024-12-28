@@ -15,11 +15,11 @@ class Panel2D;
 
 class OpenGLPanel :
         public virtual SingletonAccessor
-    ,	public Component
-    ,	public OpenGLBase
-    ,	public OpenGLRenderer
-    ,	public Panel::Renderer
-    ,	public PanelOwner<Panel2D> {
+    ,   public Component
+    ,   public OpenGLBase
+    ,   public OpenGLRenderer
+    ,   public Panel::Renderer
+    ,   public PanelOwner<Panel2D> {
 public:
     OpenGLPanel(SingletonRepo* repo, Panel2D* panel);
     ~OpenGLPanel() override;

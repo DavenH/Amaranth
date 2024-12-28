@@ -15,16 +15,16 @@ public:
     void inverse(const Buffer<Ipp32fc>& fftInput, const Buffer<float>& dest);
     void setComplex(Buffer<Ipp32fc> buffer);
 
-    void setFFTScaleType(int type) 		{ scaleType = type; 	}
-    void setRemovesOffset(bool does) 	{ removeOffset = does; 	}
+    void setFFTScaleType(int type)      { scaleType = type;     }
+    void setRemovesOffset(bool does)    { removeOffset = does;  }
 
     Buffer<Ipp32fc> getComplex() const;
-    Buffer<float> getMagnitudes() 		{ return magnitudes; 	}
-    Buffer<float> getPhases() 			{ return phases; 		}
-    Buffer<float> getFFTBuffer() 		{ return fftBuffer; 	}
+    Buffer<float> getMagnitudes()       { return magnitudes;    }
+    Buffer<float> getPhases()           { return phases;        }
+    Buffer<float> getFFTBuffer()        { return fftBuffer;     }
 
-    Transform& operator<<(const Buffer<float>& buffer) { forward(buffer); 	return *this; }
-    Transform& operator>>(const Buffer<float>& buffer) { inverse(buffer); 	return *this; }
+    Transform& operator<<(const Buffer<float>& buffer) { forward(buffer);   return *this; }
+    Transform& operator>>(const Buffer<float>& buffer) { inverse(buffer);   return *this; }
 
 private:
     bool convertToCart, removeOffset;

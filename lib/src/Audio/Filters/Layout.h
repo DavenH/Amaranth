@@ -98,7 +98,7 @@ public:
   void addPoleZeroConjugatePairs (const complex_t pole,
                                   const complex_t zero)
   {
-	jassert (!(m_numPoles&1)); // single comes last
+    jassert (!(m_numPoles&1)); // single comes last
     jassert (!Dsp::is_nan (pole));
     m_pair[m_numPoles/2] = PoleZeroPair (
       pole, zero, std::conj (pole), std::conj (zero));

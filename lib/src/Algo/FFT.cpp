@@ -2,11 +2,11 @@
 #include "../Util/NumberUtils.h"
 
 Transform::Transform() :
-        order		(0)
-    , 	spec		(nullptr)
-    ,	convertToCart(false)
-    ,	scaleType	(IPP_FFT_DIV_FWD_BY_N)
-    ,	removeOffset(false) {
+        order       (0)
+    ,   spec        (nullptr)
+    ,   convertToCart(false)
+    ,   scaleType   (IPP_FFT_DIV_FWD_BY_N)
+    ,   removeOffset(false) {
 }
 
 Transform::~Transform() {
@@ -17,12 +17,12 @@ void Transform::clear() {
     if (spec != nullptr) {
         ScopedLock sl(lock);
 
-        spec 		= nullptr;
-        order 		= 0;
+        spec        = nullptr;
+        order       = 0;
 
-        fftBuffer	.nullify();
-        magnitudes	.nullify();
-        phases		.nullify();
+        fftBuffer   .nullify();
+        magnitudes  .nullify();
+        phases      .nullify();
     }
 }
 

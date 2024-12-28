@@ -80,12 +80,12 @@ public:
 
     Mesh* getCurrentMesh();
 
-    const EnvelopeMesh* getEnvMesh() const 		{ return envMesh; 							}
-    float getSustainLevel(int paramIndex) const { return params[paramIndex].sustainLevel; 	}
-    int getMode() const							{ return state; 							}
-    void setMode(int mode)						{ this->state = mode; 						}
-    bool wantsOneSamplePerCycle() const 		{ return oneSamplePerCycle; 				}
-    Buffer<float> getRenderBuffer() 			{ return renderBuffer; 					}
+    const EnvelopeMesh* getEnvMesh() const      { return envMesh;                           }
+    float getSustainLevel(int paramIndex) const { return params[paramIndex].sustainLevel;   }
+    int getMode() const                         { return state;                             }
+    void setMode(int mode)                      { this->state = mode;                       }
+    bool wantsOneSamplePerCycle() const         { return oneSamplePerCycle;                 }
+    Buffer<float> getRenderBuffer()             { return renderBuffer;                  }
 
 
 private:

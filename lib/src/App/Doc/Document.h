@@ -31,9 +31,9 @@ public:
     String getPresetString();
   #endif
 
-    void addListener(Listener* listener) 		{ listeners.add(listener); 		}
-    void registerSavable(Savable* toSave) 		{ savableItems.add(toSave); 	}
-    void setValidator(IValidator* validator)	{ this->validator = validator; 	}
+    void addListener(Listener* listener)        { listeners.add(listener);      }
+    void registerSavable(Savable* toSave)       { savableItems.add(toSave);     }
+    void setValidator(IValidator* validator)    { this->validator = validator;  }
 
     static bool readHeader(InputStream* stream, DocumentDetails& deets, int magicValue) {
         if (stream == nullptr)
@@ -84,7 +84,7 @@ public:
             return false;
 
         ScopedValueSetter revisionSuppressor(updatedDetails.getSuppressRevFlag(), ! preserveRevision, false);
-        ScopedValueSetter dateSuppressor(updatedDetails.getSuppressDateFlag(), 	! preserveDate, 	false);
+        ScopedValueSetter dateSuppressor(updatedDetails.getSuppressDateFlag(),  ! preserveDate,     false);
         std::unique_ptr<XmlElement> detailsElem(new XmlElement("PresetDetails"));
 
         updatedDetails.writeXML(detailsElem.get());
@@ -110,10 +110,10 @@ public:
         return true;
     }
 
-    DocumentDetails& getDetails() 		{ return details; }
-    virtual String getHeaderString() 	{ return {}; }
-    const String& getDocumentName() 	{ return details.getName(); }
-    double getVersionValue()			{ return details.getProductVersion(); }
+    DocumentDetails& getDetails()       { return details; }
+    virtual String getHeaderString()    { return {}; }
+    const String& getDocumentName()     { return details.getName(); }
+    double getVersionValue()            { return details.getProductVersion(); }
 
 protected:
     bool validate();

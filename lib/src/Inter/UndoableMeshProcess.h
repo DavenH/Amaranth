@@ -10,7 +10,7 @@ class UndoableMeshProcess {
 public:
     UndoableMeshProcess(Interactor* itr, const String& name) :
             interactor(itr)
-        , 	mesh(itr->getMesh()) {
+        ,   mesh(itr->getMesh()) {
         Mesh* mesh = itr->getMesh();
         if(mesh == nullptr)
             return;
@@ -59,7 +59,7 @@ class UndoableVertexProcess {
 public:
     UndoableVertexProcess(Interactor* itr) :
             interactor(itr)
-        , 	mesh(itr->getMesh()) {
+        ,   mesh(itr->getMesh()) {
         Mesh* mesh = itr->getMesh();
         if(mesh == nullptr)
             return;

@@ -8,8 +8,8 @@
 /* not a subclass of savable to prevent diamond inheritance */
 class ParameterGroup :
         public Slider::Listener
-    ,	public AsyncUIUpdater
-    ,	public SingletonAccessor {
+    ,   public AsyncUIUpdater
+    ,   public SingletonAccessor {
 public:
     class Worker {
     public:
@@ -17,11 +17,11 @@ public:
 
         Worker(SingletonRepo* repo, const String& name);
         virtual void overrideValueOptionally(int number, double& value) {}
-        virtual void finishedUpdatingAllSliders() 						{}
-        virtual void doLocalUIUpdate() 									{}
-        virtual bool shouldTriggerGlobalUpdate(Slider* slider) 			{ return true; }
-        virtual bool shouldTriggerLocalUpdate(Slider* slider) 			{ return true; }
-        virtual int getUpdateSource() 									{ return CommonEnums::Null; }
+        virtual void finishedUpdatingAllSliders()                       {}
+        virtual void doLocalUIUpdate()                                  {}
+        virtual bool shouldTriggerGlobalUpdate(Slider* slider)          { return true; }
+        virtual bool shouldTriggerLocalUpdate(Slider* slider)           { return true; }
+        virtual int getUpdateSource()                                   { return CommonEnums::Null; }
         virtual bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) { return false; }
 
         ParameterGroup& getParamGroup() { return *paramGroup; }
@@ -36,8 +36,8 @@ public:
     ~ParameterGroup() override = default;
 
     void sliderValueChanged (Slider* slider) override;
-    void sliderDragStarted 	(Slider* slider) override;
-    void sliderDragEnded 	(Slider* slider) override;
+    void sliderDragStarted  (Slider* slider) override;
+    void sliderDragEnded    (Slider* slider) override;
 
     [[nodiscard]] int getNumParams() const { return knobs.size(); }
     void addKnobsTo(Component* component);

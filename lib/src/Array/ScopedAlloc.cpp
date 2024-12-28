@@ -1,25 +1,25 @@
 #include "ScopedAlloc.h"
 
-#define constructScopedAlloc(T) 				\
-template<>										\
-ScopedAlloc<Ipp##T>::ScopedAlloc(int size) :	\
-        Buffer<Ipp##T>(nullptr, size)			\
-{												\
-    Buffer::ptr 	= ippsMalloc_##T(size);		\
-    placementPos 	= 0;						\
-    alive 			= true;						\
+#define constructScopedAlloc(T)                 \
+template<>                                      \
+ScopedAlloc<Ipp##T>::ScopedAlloc(int size) :    \
+        Buffer<Ipp##T>(nullptr, size)           \
+{                                               \
+    Buffer::ptr     = ippsMalloc_##T(size);     \
+    placementPos    = 0;                        \
+    alive           = true;                     \
 }
 
-#define resizeIpp(T) 							\
-template<> 										\
-bool ScopedAlloc<Ipp##T>::resize(int size) { 	\
-    if(Buffer::sz == size)  					\
-        return false; 							\
-    clear();									\
-    Buffer::sz 	= size;							\
-    Buffer::ptr = ippsMalloc_##T(size);			\
-    alive 		= true;							\
-    return true;								\
+#define resizeIpp(T)                            \
+template<>                                      \
+bool ScopedAlloc<Ipp##T>::resize(int size) {    \
+    if(Buffer::sz == size)                      \
+        return false;                           \
+    clear();                                    \
+    Buffer::sz  = size;                         \
+    Buffer::ptr = ippsMalloc_##T(size);         \
+    alive       = true;                         \
+    return true;                                \
 }
 
 declareForAllTypes(resizeIpp)
@@ -32,7 +32,7 @@ ScopedAlloc<Ipp32f>::ScopedAlloc(int size) :
 {
     placementPos = 0;
     ptr  = ippsMalloc_32f(size);
-    alive 		 = true;
+    alive        = true;
 }
 
 template<>
@@ -44,9 +44,9 @@ bool ScopedAlloc<Ipp32f>::resize(int size)
     }
 
     clear();
-    sz 		= size;
-    ptr 	= ippsMalloc_32f(size);
-    alive 	= true;
+    sz      = size;
+    ptr     = ippsMalloc_32f(size);
+    alive   = true;
     return true;
 }
 //*/

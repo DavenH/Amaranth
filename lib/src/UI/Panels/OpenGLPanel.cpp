@@ -11,8 +11,8 @@ using namespace gl;
 
 OpenGLPanel::OpenGLPanel(SingletonRepo* repo, Panel2D* panel2D) :
         PanelOwner(panel2D)
-    ,	SingletonAccessor(repo, "OpenGLPanel")
-    ,	OpenGLBase(this, this) {
+    ,   SingletonAccessor(repo, "OpenGLPanel")
+    ,   OpenGLBase(this, this) {
 }
 
 OpenGLPanel::~OpenGLPanel() {
@@ -63,14 +63,14 @@ void OpenGLPanel::resized() {
 
 void OpenGLPanel::activateContext()
 {
-//	dout << panel->getName() << " attaching context\n";
+//  dout << panel->getName() << " attaching context\n";
 
     attach();
 }
 
 void OpenGLPanel::deactivateContext()
 {
-//	dout << panel->getName() << " detaching context\n";
+//  dout << panel->getName() << " detaching context\n";
 
     context.detach();
 }

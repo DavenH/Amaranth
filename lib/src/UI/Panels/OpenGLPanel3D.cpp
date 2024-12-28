@@ -14,9 +14,9 @@ using namespace gl;
 
 OpenGLPanel3D::OpenGLPanel3D(SingletonRepo* repo, Panel3D* panel3D, Panel3D::DataRetriever* retriever) :
         PanelOwner          (panel3D)
-    ,	SingletonAccessor	(repo, panel3D->getName())
-    ,	OpenGLBase			(this, this)
-    ,	dataRetriever		(retriever)
+    ,   SingletonAccessor   (repo, panel3D->getName())
+    ,   OpenGLBase          (this, this)
+    ,   dataRetriever       (retriever)
 {
 }
 
@@ -77,9 +77,9 @@ void OpenGLPanel3D::drawCircle() {
     float cy = interactor->state.currentMouse.y;
     float r  = interactor->realValue(PencilRadius);
 
-    float theta 			= MathConstants<float>::twoPi / float(numSegments);
-    float tangentialFactor 	= tanf(theta);
-    float radialFactor 		= cosf(theta);
+    float theta             = MathConstants<float>::twoPi / float(numSegments);
+    float tangentialFactor  = tanf(theta);
+    float radialFactor      = cosf(theta);
 
     float x = r;
     float y = 0;
@@ -181,21 +181,21 @@ void OpenGLPanel3D::resized() {
 }
 
 void OpenGLPanel3D::deactivateContext() {
-//	dout << panel->getName() << " detaching context\n";
+//  dout << panel->getName() << " detaching context\n";
 
     context.detach();
 //
 //   #ifdef SINGLE_OPENGL_THREAD
-////	getObj(MasterRenderer).removeContext(this, panel->getName());
+////    getObj(MasterRenderer).removeContext(this, panel->getName());
 //   #endif
 //  #else
-//	makeCurrentContextInactive();
+//  makeCurrentContextInactive();
 //  #endif
 }
 
 void OpenGLPanel3D::openGLContextClosing() {
     info(panel->getName() << " context closing, clearing textures \n");
-//	HGLRC cc = wglGetCurrentContext();
+//  HGLRC cc = wglGetCurrentContext();
 
     /*
     for(int i = 0; i < panel->textures.size(); ++i)
@@ -212,8 +212,8 @@ void OpenGLPanel3D::initRender() {
 }
 
 void OpenGLPanel3D::activateContext() {
-//	dout << panel->getName() << " attaching context\n";
+//  dout << panel->getName() << " attaching context\n";
     attach();
 
-//	getObj(MasterRenderer).addContext(this, panel->getName());
+//  getObj(MasterRenderer).addContext(this, panel->getName());
 }

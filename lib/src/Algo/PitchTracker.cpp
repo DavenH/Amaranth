@@ -1,5 +1,8 @@
 #include <ipp.h>
 #include "PitchTracker.h"
+
+#include <Util/Arithmetic.h>
+
 #include "Resampling.h"
 
 #include "../Algo/FFT.h"
@@ -402,75 +405,17 @@ void PitchTracker::createKernels(
     }
 }
 
-void PitchTracker::setErbLimits(Window& window, Buffer<float> realErbIdx, bool isFirst, bool isLast) {
-    for (int realIdx = 0; realIdx < realErbIdx.size(); ++realIdx) {
-        if (isFirst && realErbIdx[realIdx] + window.erbOffset < 1 ||
-            isLast && realErbIdx[realIdx] + window.erbOffset > -1 ||
-            (!isFirst && !isLast && fabsf(realErbIdx[realIdx] + window.erbOffset) < 1)) {
-            window.erbStartJ = realIdx;
-
-            int i = realIdx;
-
-            if (isFirst) {
-                while (i < realErbIdx.size() && realErbIdx[i] + window.erbOffset < 1) {
-                    ++i;
-                }
-            } else if (isLast) {
-                while (i < realErbIdx.size() && realErbIdx[i] + window.erbOffset > -1) {
-                    ++i;
-                }
-            } else {
-                while (i < realErbIdx.size() && fabsf(realErbIdx[i] + window.erbOffset) < 1) {
-                    ++i;
-                }
-            }
-
-            window.erbEndJ = i;
-            window.erbSize = window.erbEndJ - window.erbStartJ;
-            break;
-        }
-    }
-
-    if (!isFirst && !isLast) {
-        window.erbStartK = window.erbStartJ;
-        window.erbEndK      = window.erbEndJ;
-    } else {
-        for (int i = window.erbStartJ; i <= window.erbEndJ; ++i) {
-            if (isFirst && realErbIdx[i] + window.erbOffset > 0 ||
-                isLast && realErbIdx[i] + window.erbOffset < 0) {
-                int j = i;
-                window.erbStartK = i;
-
-                if (isFirst) {
-                    while (j < window.erbEndJ && realErbIdx[j] + window.erbOffset > 0) {
-                        ++j;
-                    }
-
-                    window.erbEndK = j;
-                } else if (isLast) {
-                    while(j < window.erbEndJ && realErbIdx[j] + window.erbOffset < 0) {
-                        ++j;
-                    }
-
-                    window.erbEndK = j;
-                }
-
-                break;
-            }
-        }
-    }
-}
-
+// todo wtf is 'lambda'?
 void PitchTracker::calcLambda(Window& window, const Buffer<float>& realErbIdx) {
-    int start     = window.erbStartK;
-    int end     = window.erbEndK;
-    int size     = end - start;
-    int metaStart = window.erbStartK - window.erbStartJ;
+    int start     = window.erbStart;
+    int end       = window.erbEnd;
+    int size      = end - start;
+    int metaStart = 0;
 
     window.lambda.zero();
     Buffer<float> lambda = window.lambda.section(metaStart, size);
 
-    window.lambda.add(realErbIdx.section(window.erbStartK, size), window.erbOffset);
+    window.lambda.add(realErbIdx.section(window.erbStart, size), window.erbOffset);
 
     ScopedAlloc<float> mu(size);
 
@@ -580,17 +525,21 @@ void PitchTracker::swipe() {
         int hopSize           = roundToInt(hopCycles * samplerate / window.optimalFreq);
         window.overlapSamples = jmax(0, window.size - hopSize);
         window.offsetSamples  = 0;
-        window.hannWindow     = hannMemory.place(window.size);
-        window.hannWindow.set(1.f);
 
-        ippsWinHann_32f_I(window.hannWindow, window.size);
-
-        setErbLimits(window, realErbIdx, i == 0, i == numWindows - 1);
+        // solution to +-1 = (lowLimitLog2 + x * deltaPitchLog2 + 1 - logTwo(4 * hannK * samplerate / windowSizes.front()) + window.erbOffset;
+        const float common = logTwo(hannK * samplerate / windowSizes.front()) - lowLimitLog2 - window.erbOffset;
+        window.erbStart    = jlimit<int>(0, numCandidates, roundToInt(common / deltaPitchLog2));
+        window.erbEnd      = jlimit<int>(0, numCandidates, roundToInt((2 + common) / deltaPitchLog2));
+        window.erbSize     = window.erbEnd - window.erbStart;
 
         if(window.erbSize == 0) {
             continue;
         }
 
+        window.hannWindow = hannMemory.place(window.size);
+        window.hannWindow.set(1.f);
+
+        ippsWinHann_32f_I(window.hannWindow, window.size);
         window.lambda = lambdaMemory.place(window.erbSize);
         calcLambda(window, realErbIdx);
 
@@ -608,11 +557,11 @@ void PitchTracker::swipe() {
         windowStrengths.zero();
 
         while (true) {
-            int lastOffset      = window.offsetSamples;
-            int signalPosStart  = jmin(signal.size(), window.offsetSamples - window.size / 2);
-            int signalPosEnd    = jmin(signal.size(), window.offsetSamples + window.size / 2);
-            int paddingFront    = window.size / 2 - window.offsetSamples;
-            int paddingBack     = window.size - jmin(window.size, signal.size() - window.offsetSamples);
+            int lastOffset     = window.offsetSamples;
+            int signalPosStart = jmin(signal.size(), window.offsetSamples - window.size / 2);
+            int signalPosEnd   = jmin(signal.size(), window.offsetSamples + window.size / 2);
+            int paddingFront   = window.size / 2 - window.offsetSamples;
+            int paddingBack    = window.size - jmin(window.size, signal.size() - window.offsetSamples);
 
             int timeSlicesThisWindow = 0;
             int startingSlice   = totalSliceIndex;
@@ -647,8 +596,9 @@ void PitchTracker::swipe() {
                 int numToCopy = jmin(signal.size(), window.size - paddingFront);
                 signal.copyTo(paddedSignal.section(paddingFront, numToCopy));
 
-                if(signal.size() < window.size - paddingFront)
+                if(signal.size() < window.size - paddingFront) {
                     paddedSignal.section(paddingFront + signal.size(), window.size - paddingFront - signal.size()).zero();
+                }
 
                 source = paddedSignal;
             } else if (paddingBack > 0) {
@@ -703,7 +653,7 @@ void PitchTracker::swipe() {
             }
 
             for(int c = 0; c < window.erbSize; ++c) {
-                windowStrengths[c] = kernels[c + window.erbStartJ].dot(erbSpectrum);
+                windowStrengths[c] = kernels[c + window.erbStart].dot(erbSpectrum);
             }
 
             if(lastOffset == 0) {
@@ -732,7 +682,7 @@ void PitchTracker::swipe() {
                 }
 
                 weightedLoudness.mul(window.lambda);
-                sc.column.section(window.erbStartJ, window.erbSize).add(weightedLoudness);
+                sc.column.section(window.erbStart, window.erbSize).add(weightedLoudness);
             }
         }
     }
@@ -747,9 +697,7 @@ void PitchTracker::swipe() {
         StrengthColumn& sc = strengthColumns[i];
         sc.column.getMax(maxValue, maxIndex);
 
-        float strength = sc.column[maxIndex];
-
-        if (strength > strengthThresh) {
+        if (maxValue > strengthThresh) {
             pitches[i] = pitchCandidates[maxIndex];
 
             if (maxIndex > 0 && maxIndex < sc.column.size() - 1) {

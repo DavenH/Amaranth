@@ -32,7 +32,7 @@ public:
         if(path.size() < 2)
             return decimated;
 
-        float diff 		 = path[1].x - path[0].x;
+        float diff       = path[1].x - path[0].x;
         float areaThresh = tolerance * diff;
 
         decimated.push_back(path[0]);

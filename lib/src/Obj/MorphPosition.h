@@ -25,7 +25,7 @@ public:
     [[nodiscard]] float redEnd()  const { return jmin(1.f, red.getCurrentValue()  + redDepth ); }
     [[nodiscard]] float blueEnd() const { return jmin(1.f, blue.getCurrentValue() + blueDepth); }
 
-    void resetTime() 	  { time = 0; }
+    void resetTime()      { time = 0; }
 
     static void getOtherDims(int dim, int& dimX, int& dimY) {
         switch (dim) {
@@ -77,36 +77,36 @@ public:
 
     const SmoothedParameter& operator[](const int index) const {
         switch (index) {
-            case Vertex::Time: 	return time;
-            case Vertex::Red: 	return red;
-            case Vertex::Blue: 	return blue;
+            case Vertex::Time:  return time;
+            case Vertex::Red:   return red;
+            case Vertex::Blue:  return blue;
             default: throw std::out_of_range("MorphPosition::operator[&]");
         }
     }
 
     SmoothedParameter& operator[](const int index) {
         switch (index) {
-            case Vertex::Time: 	return time;
-            case Vertex::Red: 	return red;
-            case Vertex::Blue: 	return blue;
+            case Vertex::Time:  return time;
+            case Vertex::Red:   return red;
+            case Vertex::Blue:  return blue;
             default: throw std::out_of_range("MorphPosition::operator[&]");
         }
     }
 
     [[nodiscard]] float depthAt(const int index) const {
         switch (index) {
-            case Vertex::Time: 	return timeDepth;
-            case Vertex::Red: 	return redDepth;
-            case Vertex::Blue: 	return blueDepth;
+            case Vertex::Time:  return timeDepth;
+            case Vertex::Red:   return redDepth;
+            case Vertex::Blue:  return blueDepth;
             default: throw std::out_of_range("MorphPosition::depthAt");
         }
     }
 
     float& depthAt(const int index) {
         switch (index) {
-            case Vertex::Time: 	return timeDepth;
-            case Vertex::Red: 	return redDepth;
-            case Vertex::Blue: 	return blueDepth;
+            case Vertex::Time:  return timeDepth;
+            case Vertex::Red:   return redDepth;
+            case Vertex::Blue:  return blueDepth;
             default: throw std::out_of_range("MorphPosition::depthAt&");
         }
     }

@@ -173,7 +173,7 @@ public:
     virtual void reset();
     void performUpdate(UpdateType updateType) override;
     virtual void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
-    virtual	void updateCurves();
+    virtual void updateCurves();
 
     virtual bool hasEnoughCubesForCrossSection();
     virtual int getNumDims();
@@ -182,53 +182,53 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-    bool isBipolar() const							{ return scalingType == Bipolar || scalingType == HalfBipolar; 	}
-    bool doesIntegralSampling() const				{ return integralSampling; 			}
-    bool doesCalcDepthDimensions() const 			{ return calcDepthDims; 			}
+    bool isBipolar() const                          { return scalingType == Bipolar || scalingType == HalfBipolar;  }
+    bool doesIntegralSampling() const               { return integralSampling;          }
+    bool doesCalcDepthDimensions() const            { return calcDepthDims;             }
 
-    MorphPosition& getMorphPosition()				{ return morph; 					}
+    MorphPosition& getMorphPosition()               { return morph;                     }
 
-    Buffer<float> getWaveX()						{ return waveX;						}
-    Buffer<float> getWaveY()						{ return waveY;						}
-    Buffer<float> getSlopes()						{ return slope;						}
-    Buffer<float> getDiffX()						{ return diffX;						}
+    Buffer<float> getWaveX()                        { return waveX;                     }
+    Buffer<float> getWaveY()                        { return waveY;                     }
+    Buffer<float> getSlopes()                       { return slope;                     }
+    Buffer<float> getDiffX()                        { return diffX;                     }
 
-    const String& getName() const 					{ return name; 						}
-    int getPaddingSize() const 						{ return paddingSize;				}
-    int getOneIndex() const						    { return oneIndex;					}
-    int getZeroIndex() const						{ return zeroIndex;					}
+    const String& getName() const                   { return name;                      }
+    int getPaddingSize() const                      { return paddingSize;               }
+    int getOneIndex() const                         { return oneIndex;                  }
+    int getZeroIndex() const                        { return zeroIndex;                 }
 
-    const vector<Curve>& getCurves() const			{ return curves;    				}
-    const vector<Intercept>& getFrontIcpts() const  { return frontIcpts;				}
-    const vector<Intercept>& getBackIcpts() const  	{ return backIcpts;					}
-    vector<ColorPoint>& getColorPoints() 			{ return colorPoints; 				}
-    RasterizerData& getRastData() 					{ return rastArrays; 				}
-    IDeformer* getDeformer() const					{ return deformer;					}
+    const vector<Curve>& getCurves() const          { return curves;                    }
+    const vector<Intercept>& getFrontIcpts() const  { return frontIcpts;                }
+    const vector<Intercept>& getBackIcpts() const   { return backIcpts;                 }
+    vector<ColorPoint>& getColorPoints()            { return colorPoints;               }
+    RasterizerData& getRastData()                   { return rastArrays;                }
+    IDeformer* getDeformer() const                  { return deformer;                  }
 
-    void setBatchMode(bool batch) 					{ batchMode = batch; 				}
-    void setWrapsEnds(bool wraps)					{ cyclic = wraps;					}
-    void setCalcDepthDimensions(bool calc) 			{ calcDepthDims = calc;  			}
-    void setCalcInterceptsOnly(bool calc) 			{ calcInterceptsOnly = calc; 		}
-    void setDecoupleComponentDfrm(bool does) 		{ decoupleComponentDfrms = does;  	}
-    void setDims(const Dimensions& dims) 			{ this->dims = dims; 				}
-    void setIntegralSampling(bool does) 			{ this->integralSampling = does;	}
-    void setInterceptPadding(float value) 			{ interceptPadding = value; 		}
-    void setInterpolatesCurves(bool should)			{ interpolateCurves = should; 		}
-    void setLimits(float min, float max)			{ xMinimum = min; xMaximum = max;	}
-    void setLowresCurves(bool areLow) 				{ lowResCurves 	= areLow; 			}
-    void setNoiseSeed(int seed)						{ noiseSeed 	= seed; 			}
-    void setOverridingDim(int dim) 					{ overridingDim = dim; 				}
-    void setScalingMode(ScalingType type) 			{ scalingType 	= type; 			}
-    void setToOverrideDim(bool does) 				{ overrideDim 	= does; 			}
-    void setYellow(float yellow)					{ morph.time 	= yellow;			}
-    void setBlue(float blue)					    { morph.blue 	= blue;				}
-    virtual void setRed(float red) 					{ morph.red 	= red;				}
-    void setMorphPosition(const MorphPosition& m) 	{ morph 		= m; 				}
-    void setDeformer(IDeformer* panel)				{ deformer		= panel; 			}
+    void setBatchMode(bool batch)                   { batchMode = batch;                }
+    void setWrapsEnds(bool wraps)                   { cyclic = wraps;                   }
+    void setCalcDepthDimensions(bool calc)          { calcDepthDims = calc;             }
+    void setCalcInterceptsOnly(bool calc)           { calcInterceptsOnly = calc;        }
+    void setDecoupleComponentDfrm(bool does)        { decoupleComponentDfrms = does;    }
+    void setDims(const Dimensions& dims)            { this->dims = dims;                }
+    void setIntegralSampling(bool does)             { this->integralSampling = does;    }
+    void setInterceptPadding(float value)           { interceptPadding = value;         }
+    void setInterpolatesCurves(bool should)         { interpolateCurves = should;       }
+    void setLimits(float min, float max)            { xMinimum = min; xMaximum = max;   }
+    void setLowresCurves(bool areLow)               { lowResCurves  = areLow;           }
+    void setNoiseSeed(int seed)                     { noiseSeed     = seed;             }
+    void setOverridingDim(int dim)                  { overridingDim = dim;              }
+    void setScalingMode(ScalingType type)           { scalingType   = type;             }
+    void setToOverrideDim(bool does)                { overrideDim   = does;             }
+    void setYellow(float yellow)                    { morph.time    = yellow;           }
+    void setBlue(float blue)                        { morph.blue    = blue;             }
+    virtual void setRed(float red)                  { morph.red     = red;              }
+    void setMorphPosition(const MorphPosition& m)   { morph         = m;                }
+    void setDeformer(IDeformer* panel)              { deformer      = panel;            }
 
-    virtual Mesh* getMesh() 						{ return mesh; 						}
-    virtual void setMesh(Mesh* mesh)				{ this->mesh = mesh;				}
-    virtual bool wrapsVertices() const 				{ return cyclic; 					}
+    virtual Mesh* getMesh()                         { return mesh;                      }
+    virtual void setMesh(Mesh* mesh)                { this->mesh = mesh;                }
+    virtual bool wrapsVertices() const              { return cyclic;                    }
     virtual void updateOffsetSeeds(int layerSize, int tableSize);
 
 

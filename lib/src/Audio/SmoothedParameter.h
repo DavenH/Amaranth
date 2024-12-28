@@ -16,13 +16,13 @@ public:
     void maybeApplyRamp(Buffer<float> workBuffer, Buffer<float> dest, float multiplicand = 1.f);
 
     void updateToTarget();
-    void setConvergeSpeed(int halflifeSamples)	{ this->halflifeSamples = halflifeSamples; }
-    void setSmoothingActivity(bool doesSmooth) 	{ this->smoothingActive = doesSmooth; }
+    void setConvergeSpeed(int halflifeSamples)  { this->halflifeSamples = halflifeSamples; }
+    void setSmoothingActivity(bool doesSmooth)  { this->smoothingActive = doesSmooth; }
 
     bool setTargetValue(float value);
-    [[nodiscard]] float getTargetValue() const		{ return targetValue; }
-    [[nodiscard]] float getCurrentValue() const		{ return currentValue; }
-    [[nodiscard]] float getPastCurrentValue() const	{ return pastCurrentValue; }
+    [[nodiscard]] float getTargetValue() const      { return targetValue; }
+    [[nodiscard]] float getCurrentValue() const     { return currentValue; }
+    [[nodiscard]] float getPastCurrentValue() const { return pastCurrentValue; }
     [[nodiscard]] bool hasRamp() const;
 
     float operator*(float value) const { return currentValue * value; }
@@ -30,10 +30,10 @@ public:
     float operator-(float value) const { return currentValue - value; }
     float operator/(float value) const { return value == 0.f ? 100.f : currentValue / value; };
 
-    SmoothedParameter& operator=(float value)	{ targetValue = value; return *this;	}
-    bool operator!=(float value) const			{ return currentValue != value; 		}
+    SmoothedParameter& operator=(float value)   { targetValue = value; return *this;    }
+    bool operator!=(float value) const          { return currentValue != value;         }
 
-    operator float() const						{ return smoothingActive ? currentValue : targetValue; }
+    operator float() const                      { return smoothingActive ? currentValue : targetValue; }
 
 private:
     bool  smoothingActive;

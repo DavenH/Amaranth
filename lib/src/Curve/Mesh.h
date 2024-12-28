@@ -29,8 +29,8 @@ public:
     vector<VertCube*>& getCubes() { return cubes; }
 
     [[nodiscard]] const String& getName() const { return name; }
-    [[nodiscard]] int getNumCubes() const 	 { return (int) cubes.size(); }
-    [[nodiscard]] int getNumVerts() const 	 { return (int) verts.size(); }
+    [[nodiscard]] int getNumCubes() const    { return (int) cubes.size(); }
+    [[nodiscard]] int getNumVerts() const    { return (int) verts.size(); }
 
     void addCube(VertCube* cube) { cubes.insert(cubes.end(), cube); }
     void addVertex(Vertex* vert) { verts.insert(verts.end(), vert); }
@@ -59,8 +59,8 @@ public:
         return true;
     }
 
-    void copyElements(vector<VertCube*>& copyCubesTo) const	{ copyCubesTo = cubes; }
-    void copyElements(vector<Vertex*>& copyVertsTo) const	{ copyVertsTo = verts; }
+    void copyElements(vector<VertCube*>& copyCubesTo) const { copyCubesTo = cubes; }
+    void copyElements(vector<Vertex*>& copyVertsTo) const   { copyVertsTo = verts; }
 
     void copyElements(vector<Vertex*>& copyVertsTo, vector<VertCube*>& copyCubesTo) const {
         copyElements(copyVertsTo);

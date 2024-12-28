@@ -31,9 +31,9 @@ public:
 
 class Curve {
 public:
-    static const int resolutions 	= 3u;
-    static const int resolution 	= 64u;
-    static const int numCurvelets 	= 128u;
+    static const int resolutions    = 3u;
+    static const int resolution     = 64u;
+    static const int numCurvelets   = 128u;
 
     Ipp32f transformX[resolution];
     Ipp32f transformY[resolution];
@@ -51,11 +51,11 @@ public:
     Curve(const Curve& curve);
 
     void nullify() {
-        waveIdx 		= 0;
-        tableCurveIdx 	= 0;
-        tableCurvePos 	= 0;
-        resIndex 		= 0;
-        interpolate 	= false;
+        waveIdx         = 0;
+        tableCurveIdx   = 0;
+        tableCurvePos   = 0;
+        resIndex        = 0;
+        interpolate     = false;
     }
 
     bool operator==(const Curve& other);

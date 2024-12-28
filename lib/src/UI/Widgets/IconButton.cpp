@@ -15,18 +15,18 @@ IconButton::IconButton(int x, int y,
                        String overMsg,
                        String cmdMsg,
                        String naMsg)
-    : 	Button(String())
-    ,	SingletonAccessor(repo, String())
-    ,	mouseScrollApplicable(false)
-    ,	applicable		(true)
-    ,	isPowered		(false)
-    ,	highlit			(false)
-    ,	pendingNumber	(0)
-    ,	collapsedSize	(24)
-    ,	expandedSize	(24)
-    ,	message			(std::move(overMsg))
-    ,	keys			(std::move(cmdMsg))
-    ,	naMessage		(std::move(naMsg)) {
+    :   Button(String())
+    ,   SingletonAccessor(repo, String())
+    ,   mouseScrollApplicable(false)
+    ,   applicable      (true)
+    ,   isPowered       (false)
+    ,   highlit         (false)
+    ,   pendingNumber   (0)
+    ,   collapsedSize   (24)
+    ,   expandedSize    (24)
+    ,   message         (std::move(overMsg))
+    ,   keys            (std::move(cmdMsg))
+    ,   naMessage       (std::move(naMsg)) {
     neut = getObj(MiscGraphics).getIcon(x, y);
 
     addListener(listener);
@@ -35,15 +35,15 @@ IconButton::IconButton(int x, int y,
 }
 
 IconButton::IconButton(Image image, SingletonRepo* repo)
-    : 	Button(String())
-    ,	SingletonAccessor(repo, String())
-    ,	applicable		(true)
-    ,	highlit			(false)
-    ,	isPowered		(false)
-    ,	pendingNumber	(0)
-    ,	collapsedSize	(24)
-    ,	expandedSize	(24)
-    ,	neut			(std::move(image)) {
+    :   Button(String())
+    ,   SingletonAccessor(repo, String())
+    ,   applicable      (true)
+    ,   highlit         (false)
+    ,   isPowered       (false)
+    ,   pendingNumber   (0)
+    ,   collapsedSize   (24)
+    ,   expandedSize    (24)
+    ,   neut            (std::move(image)) {
     setMouseCursor(MouseCursor::PointingHandCursor);
 }
 
@@ -132,7 +132,7 @@ void IconButton::setApplicable(bool applicable) {
         return;
 
     this->applicable = applicable;
-//	setEnabled(applicable);
+//  setEnabled(applicable);
 
     repaint();
 }

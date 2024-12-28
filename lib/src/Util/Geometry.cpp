@@ -9,7 +9,7 @@ Vertex2 Geometry::getCrossPoint(
        (x1 == x4 && y1 == y4) ||
        (x2 == x3 && y2 == y3) ||
        (x2 == x4 && y2 == y4)) {
-//		cout << "common points!!" << "\n";
+//      cout << "common points!!" << "\n";
         return {-1, -1};
     }
 
@@ -73,6 +73,6 @@ bool Geometry::withinBoundingBox(Vertex2& v, Vertex2& one, Vertex2& two) {
 
 Vertex2 Geometry::getSpacedVertex(int dist, Vertex2& a, Vertex2& b) {
     Vertex2 diff = b - a;
-    float factor = dist / sqrtf(a.dist2(b)); 	// dist / sqrtf(a.x * a.x + b.x * b.x + a.y * a.y +	b.y * b.y - 2 * (a.x * b.x + a.y * b.y));
-    return diff * (1 + factor) + a; 		// b * factor + a * (1 - factor);
+    float factor = dist / sqrtf(a.dist2(b));    // dist / sqrtf(a.x * a.x + b.x * b.x + a.y * a.y + b.y * b.y - 2 * (a.x * b.x + a.y * b.y));
+    return diff * (1 + factor) + a;         // b * factor + a * (1 - factor);
 }

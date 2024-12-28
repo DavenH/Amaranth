@@ -8,36 +8,36 @@ class SingletonRepo;
 
 class Oversampler {
 public:
-	explicit Oversampler(SingletonRepo* repo, int kernelSize = 32);
-	virtual ~Oversampler();
+    explicit Oversampler(SingletonRepo* repo, int kernelSize = 32);
+    virtual ~Oversampler();
 
-	void resetDelayLine();
-	void sampleDown(Buffer<float> src, Buffer<float> dest, bool wrapTail = false);
-	void setKernelSize(int size);
-	void setOversampleFactor(int factor);
-	void start(Buffer<float>& buffer);
-	void stop();
+    void resetDelayLine();
+    void sampleDown(Buffer<float> src, Buffer<float> dest, bool wrapTail = false);
+    void setKernelSize(int size);
+    void setOversampleFactor(int factor);
+    void start(Buffer<float>& buffer);
+    void stop();
 
-	int getLatencySamples();
-	Buffer<float> getMemoryBuffer(int size);
-	Buffer<float> getTail();
+    int getLatencySamples();
+    Buffer<float> getMemoryBuffer(int size);
+    Buffer<float> getTail();
 
-	void setMemoryBuf(const Buffer<float>& buffer) { memoryBuf = buffer; }
-	int getOversampleFactor() const	{ return oversampleFactor; }
+    void setMemoryBuf(const Buffer<float>& buffer) { memoryBuf = buffer; }
+    int getOversampleFactor() const { return oversampleFactor; }
 
 private:
-	void updateTaps();
+    void updateTaps();
 
-	int phase, oversampleFactor;
+    int phase, oversampleFactor;
 
-	ScopedAlloc<Ipp8u> stateUpBuf, stateDownBuf;
-	ScopedAlloc<Ipp8u> workBuffUp, workBuffDown;
-	ScopedAlloc<Ipp32f> firTaps, firUpDly, firDownDly;
+    ScopedAlloc<Ipp8u> stateUpBuf, stateDownBuf;
+    ScopedAlloc<Ipp8u> workBuffUp, workBuffDown;
+    ScopedAlloc<Ipp32f> firTaps, firUpDly, firDownDly;
 
-	Buffer<float> memoryBuf, audioBuf;
-	Buffer<float>* oversampBuf;
+    Buffer<float> memoryBuf, audioBuf;
+    Buffer<float>* oversampBuf;
 
-	IppsFIRSpec_32f *filterUpState, *filterDownState;
+    IppsFIRSpec_32f *filterUpState, *filterDownState;
 
-	JUCE_LEAK_DETECTOR(Oversampler);
+    JUCE_LEAK_DETECTOR(Oversampler);
 };

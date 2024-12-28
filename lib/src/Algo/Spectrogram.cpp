@@ -13,9 +13,9 @@ Spectrogram::Spectrogram(SingletonRepo* repo) :
 }
 
 Spectrogram::~Spectrogram() {
-    magMemory  	.clear();
-    phaseMemory	.clear();
-    timeMemory 	.clear();
+    magMemory   .clear();
+    phaseMemory .clear();
+    timeMemory  .clear();
 }
 
 void Spectrogram::calculate(IterableBuffer* iterable, int flags) {
@@ -38,7 +38,7 @@ void Spectrogram::calculate(IterableBuffer* iterable, int flags) {
         Transform& fft = getObj(Transforms).chooseFFT(source.size());
         fft.forward(source);
 
-        Buffer<float> mags 	 = fft.getMagnitudes();
+        Buffer<float> mags   = fft.getMagnitudes();
         Buffer<float> phases = fft.getPhases();
 
         if (flags & LogScale) {
@@ -72,8 +72,8 @@ void Spectrogram::unwrapPhaseColumns() {
     ScopedAlloc<float> memory(phaseColumns.size() + 2 * numHarmonics);
 
     Buffer<float> unwrapped = memory.place(phaseColumns.size());
-    Buffer<float> maxima 	= memory.place(numHarmonics);
-    Buffer<float> minima	= memory.place(numHarmonics);
+    Buffer<float> maxima    = memory.place(numHarmonics);
+    Buffer<float> minima    = memory.place(numHarmonics);
 
     const float pi = MathConstants<float>::pi;
     const float invConst = 1 / pi * 0.5f;

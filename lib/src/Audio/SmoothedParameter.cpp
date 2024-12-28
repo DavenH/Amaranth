@@ -3,17 +3,17 @@
 
 SmoothedParameter::SmoothedParameter() :
         halflifeSamples(128)
-    ,	targetValue(0.f)
-    ,	currentValue(0.f)
-    ,	pastCurrentValue(0.f)
-    ,	smoothingActive(true) {
+    ,   targetValue(0.f)
+    ,   currentValue(0.f)
+    ,   pastCurrentValue(0.f)
+    ,   smoothingActive(true) {
 }
 
 SmoothedParameter::SmoothedParameter(float initialValue) :
         halflifeSamples(128)
-    ,	targetValue(initialValue)
-    ,	currentValue(initialValue)
-    ,	smoothingActive(true) {
+    ,   targetValue(initialValue)
+    ,   currentValue(initialValue)
+    ,   smoothingActive(true) {
 }
 
 void SmoothedParameter::update(int deltaSamples) {

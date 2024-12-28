@@ -10,7 +10,7 @@ using namespace juce;
 
 class DocumentLibrary :
         public SingletonAccessor
-    ,	public AsyncUpdater {
+    ,   public AsyncUpdater {
 public:
     enum { NullPresetIndex = -1 };
 
@@ -28,9 +28,9 @@ public:
 
     String getProgramName(int index);
 
-    int getSize() 							{ return allDocs.size(); 		}
-    int getCurrentIndex() const 			{ return currentPresetIndex; 	}
-    void setShouldOpenDefault(bool should) 	{ shouldOpenDefault = should; 	}
+    int getSize()                           { return allDocs.size();        }
+    int getCurrentIndex() const             { return currentPresetIndex;    }
+    void setShouldOpenDefault(bool should)  { shouldOpenDefault = should;   }
 
 private:
     bool settingsArePending, shouldOpenDefault;

@@ -3,11 +3,6 @@ project(AmaranthLib VERSION 1.0.0)
 
 set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode")
 
-#message(STATUS ${CMAKE_CURRENT_SOURCE_DIR})
-message(STATUS ${JUCE_DIR})
-message(STATUS ${JUCE_MODULES_DIR})
-
-
 file(GLOB_RECURSE LIB_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
     "${JUCE_DIR}/*.cpp"
@@ -16,14 +11,8 @@ file(GLOB_RECURSE LIB_SOURCES
 
 list(FILTER LIB_SOURCES EXCLUDE REGEX ".*tests/.*\\.cpp$")
 
-file(GLOB_RECURSE LIB_TEST_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/**/tests/*.cpp"
-)
-
-# Create library target
-add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES}
-        src/Obj/Deletable.h)
-add_executable(${PROJECT_NAME}_tests ${LIB_TEST_SOURCES} ${LIB_SOURCES})
+add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
+set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -40,7 +29,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${WEBKIT_INCLUDE_DIRS}
 )
 
-target_include_directories(${PROJECT_NAME}_tests PRIVATE "/usr/local/include")
 
 # Library compile definitions
 target_compile_definitions(${PROJECT_NAME} PUBLIC
@@ -87,21 +75,43 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     dl
 )
 
-target_link_libraries(${PROJECT_NAME}_tests PRIVATE Catch2::Catch2WithMain)
-
 target_link_directories(${PROJECT_NAME} PUBLIC
     ${IPP_DIR}/lib
 )
 
-# Compiler options
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -g -ggdb -O0)
+
+    file(GLOB_RECURSE TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/**/tests/*.cpp")
+    add_executable(${PROJECT_NAME}_tests ${TEST_SOURCES})
+    target_include_directories(${PROJECT_NAME}_tests PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${VST3_DIR}
+            ${JUCE_DIR}
+            ${JUCE_MODULES_DIR}
+            ${IPP_DIR}/include/ipp
+            ${ALSA_INCLUDE_DIRS}
+            ${FREETYPE_INCLUDE_DIRS}
+            ${FONTCONFIG_INCLUDE_DIRS}
+            ${OPENGL_INCLUDE_DIRS}
+            ${CURL_INCLUDE_DIRS}
+            ${GTK3_INCLUDE_DIRS}
+            ${WEBKIT_INCLUDE_DIRS}
+            PRIVATE "/usr/local/include" # catch2's include dirs
+    )
+    target_link_libraries(${PROJECT_NAME}_tests
+        PRIVATE
+        ${PROJECT_NAME}
+        Catch2::Catch2WithMain
+    )
+
+    # Register tests with CTest
+    include(CTest)
+    include(Catch)
+    catch_discover_tests(${PROJECT_NAME}_tests)
 else()
     target_compile_options(${PROJECT_NAME} PRIVATE -O3)
 endif()
 
 target_link_options(${PROJECT_NAME} PRIVATE -fvisibility=hidden)
 
-include(CTest)
-include(Catch)
-catch_discover_tests(${PROJECT_NAME}_tests)

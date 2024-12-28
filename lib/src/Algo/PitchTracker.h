@@ -28,33 +28,33 @@ public:
     };
 
     struct TrackingData {
-        int 	minFrequency;
-        int 	maxFrequency;
-        int 	overlap;
-        int 	step;
-        float 	helperScale;
-        float	octaveRatioThres;
-        int 	offsetSamples;
-        bool 	useOffsets;
-        int 	harmonic;
+        int     minFrequency;
+        int     maxFrequency;
+        int     overlap;
+        int     step;
+        float   helperScale;
+        float   octaveRatioThres;
+        int     offsetSamples;
+        bool    useOffsets;
+        int     harmonic;
 
         void reset()
         {
-            minFrequency 	= 20;
-            maxFrequency 	= 2000;
-            overlap 		= 4;
-            step 			= 1728;
-            helperScale 	= 0.1f;
+            minFrequency    = 20;
+            maxFrequency    = 2000;
+            overlap         = 4;
+            step            = 1728;
+            helperScale     = 0.1f;
             octaveRatioThres = 1.3f;
-            offsetSamples 	= 0;
-            useOffsets 		= false;
-            harmonic 		= 0;
+            offsetSamples   = 0;
+            useOffsets      = false;
+            harmonic        = 0;
         }
     };
 
     struct Window {
         int index, size, paddedSignalSize;
-        int erbStartJ, erbEndJ, erbSize, erbStartK, erbEndK;
+        int erbStart, erbEnd, erbSize;
         int offsetSamples, lastOffset, overlapSamples;
         float erbOffset, optimalFreq;
 
@@ -75,11 +75,11 @@ public:
     float getAveragePeriod();
     vector<FrequencyBin>& getFrequencyBins();
 
-    float getConfidence() const 			{ return confidence; }
-    PitchedSample* getSample() 			 	{ return sample; 	 }
+    float getConfidence() const             { return confidence; }
+    PitchedSample* getSample()              { return sample;     }
 
-    void setAlgo(int algo) 					{ this->algo = algo; }
-    void setSample(PitchedSample* wrapper) 	{ sample = wrapper;  }
+    void setAlgo(int algo)                  { this->algo = algo; }
+    void setSample(PitchedSample* wrapper)  { sample = wrapper;  }
 
 private:
     struct StrengthColumn {
@@ -109,12 +109,6 @@ private:
         Buffer<float> pitchCandidates
     );
 
-    static void setErbLimits(
-        Window& window,
-        Buffer<float> realErbIdx,
-        bool isFirst,
-        bool isLast
-    );
     static float erbsToHertz(float x);
     static float hertzToErbs(float x);
     static float logTwo(float x);

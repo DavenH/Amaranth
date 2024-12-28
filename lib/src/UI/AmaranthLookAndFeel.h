@@ -5,7 +5,7 @@
 
 class AmaranthLookAndFeel :
         public SingletonAccessor
-    ,	public LookAndFeel_V3 {
+    ,   public LookAndFeel_V3 {
 private:
     JUCE_LEAK_DETECTOR(AmaranthLookAndFeel);
 

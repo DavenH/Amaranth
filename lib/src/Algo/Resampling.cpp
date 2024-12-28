@@ -112,7 +112,7 @@ void Resampling::linResample2(
 float Resampling::hermite6_3(float x, float yn2, float yn1, float y0, float y1, float y2, float y3) {
     float c0 = y0;
     float c1 = 1/12.f * (yn2 - y2) + 2/3.f  * (y1 - yn1);
-    float c2 = 5/4.f  * yn1  	   - 7/3.f  * y0 		 + 5/3.f * y1 - 1/2.f * y2 + 1/12.f * y3 - 1/6.f * yn2;
+    float c2 = 5/4.f  * yn1        - 7/3.f  * y0         + 5/3.f * y1 - 1/2.f * y2 + 1/12.f * y3 - 1/6.f * yn2;
     float c3 = 1/12.f * (yn2 - y3) + 7/12.f * (y2 - yn1) + 4/3.f * (y0 - y1);
 
     return ((c3 * x + c2) * x + c1) * x + c0;
@@ -122,10 +122,10 @@ float Resampling::bspline6_5(float x, float yn2, float yn1, float y0, float y1, 
     float c0, c1, c2, c3, c4, c5;
     float ym1py1, y1mym1, ym2py2, y2mym2, sixthym1py1;
 
-    ym2py2 		= yn2 + y2;
-    ym1py1 		= yn1 + y1;
-    y2mym2 		= y2 - yn2;
-    y1mym1 		= y1 - yn1;
+    ym2py2      = yn2 + y2;
+    ym1py1      = yn1 + y1;
+    y2mym2      = y2 - yn2;
+    y1mym1      = y1 - yn1;
     sixthym1py1 = 1/6.f * ym1py1;
 
     c0 = 1/120.f * ym2py2 + 13/60.f * ym1py1 + 11/12.f * y0;
@@ -147,14 +147,14 @@ void Resampling::resample(
     float* src = source.get();
 
     float* pads[][6] = {
-            //	0	1	 2		3		4		5
-            { &p0,	&p1, &p2, 	&p3, 	&p4, 	&p5, 	},
-            { &p1, 	&p2, &p3, 	&p4, 	&p5, 	&p6, 	},
-            { &p2, 	&p3, &p4, 	&p5,	&p6, 	src, 	},
-            { &p3, 	&p4, &p5,	&p6, 	src,	src+1,	},
-            { &p4, 	&p5, &p6, 	src,	src+1,	src+2,	},
-            { &p5,	&p6, src,	src+1,	src+2,	src+3,	},
-            { &p6, 	src, src+1,	src+2,	src+3,	src+4,	}
+            //  0   1    2      3       4       5
+            { &p0,  &p1, &p2,   &p3,    &p4,    &p5,    },
+            { &p1,  &p2, &p3,   &p4,    &p5,    &p6,    },
+            { &p2,  &p3, &p4,   &p5,    &p6,    src,    },
+            { &p3,  &p4, &p5,   &p6,    src,    src+1,  },
+            { &p4,  &p5, &p6,   src,    src+1,  src+2,  },
+            { &p5,  &p6, src,   src+1,  src+2,  src+3,  },
+            { &p6,  src, src+1, src+2,  src+3,  src+4,  }
     };
 
     float x;
@@ -164,14 +164,14 @@ void Resampling::resample(
     if(srcSize < 6)
         return;
 
-//	jassert(phase > -2);
+//  jassert(phase > -2);
 
     while (floorf(phase) < 5.f) {
         trunc = jmax(-2, (int) floorf(phase));
         jassert(trunc >= -2);
 
         x = jmax(0., phase - trunc);
-        float** p 	= pads[trunc + 2];
+        float** p   = pads[trunc + 2];
 
         switch(algo) {
             case Linear:
@@ -197,7 +197,7 @@ void Resampling::resample(
         case Linear: {
             for (int i = start; i < dest.size(); ++i) {
                 trunc = (int) phase;
-                x 	  = phase - trunc;
+                x     = phase - trunc;
 
                 dest[i] = (1 - x) * source[trunc] + x * source[trunc + 1];
                 phase += sourceToDestRatio;
@@ -212,7 +212,7 @@ void Resampling::resample(
 
             for (int i = start; i < dest.size(); ++i) {
                 trunc = (int) (phase + 1e-6f);
-                x 	  = phase - trunc;
+                x     = phase - trunc;
 
                 yn2 = source[trunc-5];
                 yn1 = source[trunc-4];
@@ -223,8 +223,8 @@ void Resampling::resample(
 
                 c0 = y0;
                 c1 = 1/12.f * (yn2 - y2) + 2/3.f  * (y1 - yn1);
-                c2 = 5/4.f  * yn1  		 - 7/3.f  * y0 			+ 5/3.f * y1 - 1/2.f * y2 + 1/12.f * y3 - 1/6.f * yn2;
-                c3 = 1/12.f * (yn2 - y3) + 7/12.f * (y2 - yn1) 	+ 4/3.f * (y0 - y1);
+                c2 = 5/4.f  * yn1        - 7/3.f  * y0          + 5/3.f * y1 - 1/2.f * y2 + 1/12.f * y3 - 1/6.f * yn2;
+                c3 = 1/12.f * (yn2 - y3) + 7/12.f * (y2 - yn1)  + 4/3.f * (y0 - y1);
 
                 dest[i] = ((c3 * x + c2) * x + c1) * x + c0;
 
@@ -250,10 +250,10 @@ void Resampling::resample(
                 y2  = source[trunc-1];
                 y3  = source[trunc];
 
-                ym2py2 		= yn2 + y2;
-                ym1py1 		= yn1 + y1;
-                y2mym2 		= y2 - yn2;
-                y1mym1 		= y1 - yn1;
+                ym2py2      = yn2 + y2;
+                ym1py1      = yn1 + y1;
+                y2mym2      = y2 - yn2;
+                y1mym1      = y1 - yn1;
                 sixthym1py1 = 1/6.f * ym1py1;
 
                 c0 = 1/120.f * ym2py2 + 13/60.f * ym1py1 + 11/12.f * y0;
@@ -314,9 +314,9 @@ float Resampling::lerpC(Buffer<float> buff, float unitPos) {
     if(size == 0)
         return 0;
 
-    unitPos 		= jlimit(0.f, 1.f, unitPos);
-    float findex 	= size * unitPos;
-    int iindex 		= (int) findex;
+    unitPos         = jlimit(0.f, 1.f, unitPos);
+    float findex    = size * unitPos;
+    int iindex      = (int) findex;
 
     if(iindex >= size - 1) {
         return buff.back();

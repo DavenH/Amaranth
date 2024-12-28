@@ -5,12 +5,12 @@
 SmartLock::SmartLock(SingletonRepo* repo, CriticalSection& lock) :
         SingletonAccessor(repo, "SmartLock"), sl(lock) {
 #ifdef CHECK_LOCKS
-//	getObj(LockRegistry).lockEntered(&lock);
+//  getObj(LockRegistry).lockEntered(&lock);
 #endif
 }
 
 SmartLock::~SmartLock() {
 #ifdef CHECK_LOCKS
-//	getObj(LockRegistry).lockExited(&lock);
+//  getObj(LockRegistry).lockExited(&lock);
 #endif
 }

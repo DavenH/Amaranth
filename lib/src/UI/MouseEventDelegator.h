@@ -13,13 +13,13 @@ public:
 #ifdef JUCE_MAC
 class MouseEventDelegator :
         public MouseListener
-    ,	public Timer
+    ,   public Timer
 {
 public:
     MouseEventDelegator(Component* comp, MouseEventDelegatee* delegatee) :
             isOver(false)
-        ,	comp(comp)
-        , 	delegatee(delegatee)
+        ,   comp(comp)
+        ,   delegatee(delegatee)
     {
         Desktop::getInstance().addGlobalMouseListener (this);
     }

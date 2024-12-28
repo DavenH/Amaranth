@@ -78,7 +78,7 @@ void VisualDsp::rasterizeEnv(Buffer<Ipp32f> env,
     if (dim == Vertex::Time) {
         if (props->active) {
             // degrade curve for surface rendering (accuracy not important)
-            rasterizer.updateOffsetSeeds(1, DeformerPanel::tableSize);
+            rasterizer.updateOffsetSeeds(getObj(MeshLibrary).getLayerGroup(layerGroup).size(), DeformerPanel::tableSize);
             rasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
             rasterizer.setLowresCurves(layerGroup != ScratchType && layerGroup != ScratchPanelType);
             rasterizer.setCalcDepthDimensions(false);
@@ -176,7 +176,12 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
 
     if (envEnum == LayerGroups::GroupVolume) {
         volumeEnv.resize(numColumns);
-        rasterizeEnv(volumeEnv, zoomProgress, LayerGroups::GroupVolume, getObj(EnvVolumeRast));
+        rasterizeEnv(
+            volumeEnv,
+            zoomProgress,
+            LayerGroups::GroupVolume,
+            getObj(EnvVolumeRast)
+        );
         MeshLibrary::EnvProps* volumeProps = meshLib->getCurrentEnvProps(LayerGroups::GroupVolume);
 
         if(volumeProps->logarithmic) {
@@ -208,15 +213,29 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
 
         for (int i = 0; i < numScratchLayers; ++i) {
             rast->setMesh(dynamic_cast<EnvelopeMesh*>(scratchGroup.layers[i].mesh));
-            rasterizeEnv(scratchEnv.section(i * numColumns, numColumns), zoomProgress, LayerGroups::GroupScratch, *rast, false);
+
+            rasterizeEnv(
+                scratchEnv.section(i * numColumns, numColumns),
+                zoomProgress,
+                LayerGroups::GroupScratch,
+                *rast,
+                false
+            );
         }
 
         // rasterize the current env last to preserve state
         rast->setMesh(meshLib.getCurrentEnvMesh(LayerGroups::GroupScratch));
-        rasterizeEnv(scratchEnv.section(scratchGroup.current * numColumns, numColumns), zoomProgress, LayerGroups::GroupScratch, *rast);
+        rasterizeEnv(
+            scratchEnv.section(scratchGroup.current * numColumns, numColumns),
+            zoomProgress,
+            LayerGroups::GroupScratch,
+            *rast
+        );
 
-        Resampling::linResample(scratchEnv.withSize(numScratchLayers * numColumns),
-                                scratchEnvPanel.withSize(numScratchLayers * Panel::linestripRes));
+        Resampling::linResample(
+            scratchEnv.withSize(numScratchLayers * numColumns),
+            scratchEnvPanel.withSize(numScratchLayers * Panel::linestripRes)
+        );
 
         updateScratchContexts(numColumns);
     }
@@ -276,16 +295,16 @@ void VisualDsp::calcTimeDomain(int numColumns) {
     MeshLibrary::LayerGroup& timeGroup = meshLib->getLayerGroup(LayerGroups::GroupTime);
     auto& morphPanel = getObj(MorphPanel);
 
-    int nextPow2 		= preEnvCols.front().size();
-    int memorySize 		= nextPow2 * (timeGroup.size() + 2);
-    double delta		= 1.0 / double(nextPow2);
+    int nextPow2   = preEnvCols.front().size();
+    int memorySize = nextPow2 * (timeGroup.size() + 2);
+    double delta   = 1.0 / double(nextPow2);
 
-    float modTime		= morphPanel.getValue(Vertex::Time);
-    double modPan 		= morphPanel.getPanSlider()->getValue();
+    float modTime = morphPanel.getValue(Vertex::Time);
+    double modPan = morphPanel.getPanSlider()->getValue();
 
-    int stage			= getSetting(ViewStage);
+    int stage           = getSetting(ViewStage);
     int reductionFactor = getSetting(ReductionFactor);
-    int primeDim		= getSetting(CurrentMorphAxis);
+    int primeDim        = getSetting(CurrentMorphAxis);
 
     ScopedAlloc<Ipp32f> memory(memorySize);
 

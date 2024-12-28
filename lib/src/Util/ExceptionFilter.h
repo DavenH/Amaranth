@@ -42,8 +42,8 @@ void makeMinidump(EXCEPTION_POINTERS* e)
                        hFile,
                        MINIDUMP_TYPE(MiniDumpWithIndirectlyReferencedMemory | MiniDumpScanMemory),
                        e ? &exceptionInfo : nullptr,
-					   nullptr,
-					   nullptr);
+                       nullptr,
+                       nullptr);
 
     CloseHandle(hFile);
 

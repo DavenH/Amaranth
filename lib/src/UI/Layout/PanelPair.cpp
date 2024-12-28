@@ -6,11 +6,11 @@ PanelPair::PanelPair(SingletonRepo* repo, Bounded* a, Bounded* b,
                      int border, int min1, int max1, int min2, int max2) :
         SingletonAccessor(repo, name)
     ,   Bounded()
-    ,	one			(a)
-    ,	two			(b)
-    ,	portion		(portion)
-    ,	border		(border)
-    ,	sideBySide	(sideBySide) {
+    ,   one         (a)
+    ,   two         (b)
+    ,   portion     (portion)
+    ,   border      (border)
+    ,   sideBySide  (sideBySide) {
     childrenEnabled = false;
     dragger         = nullptr;
 

@@ -31,7 +31,7 @@ public:
 
     vector<Vertex> positions;
 
-//	vector<CoordFrame> selectionCorners;
+//  vector<CoordFrame> selectionCorners;
     vector<Vertex2> cornersStart;
     vector<Vertex2> pivots;
 
@@ -120,7 +120,7 @@ public:
     float realValues[numRealValues]{};
 
     ActionState actionState;
-//	char states[numPanelStates];
+//  char states[numPanelStates];
 
     VertCube* currentCube;
     Vertex* currentVertex;
@@ -154,8 +154,8 @@ public:
         resetActionState();
         resetValues();
 
-        currentVertex 	= nullptr;
-        currentCube 	= nullptr;
+        currentVertex   = nullptr;
+        currentCube     = nullptr;
     }
 
     void resetValues() {

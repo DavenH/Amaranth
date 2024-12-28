@@ -10,7 +10,7 @@
 class PanelPair :
         public Bounded
     ,   public Deletable
-    , 	public SingletonAccessor {
+    ,   public SingletonAccessor {
 public:
     PanelPair(SingletonRepo* repo, Bounded* a, Bounded* b,
               bool sideBySide, float portion, const String& name,
@@ -20,25 +20,25 @@ public:
     void setBounds(int x, int y, int width, int height) override;
     void setDragger(Dragger* dragger);
 
-    void setExactHeight	(int heightOfFirst, int heightOfSecond);
-    void setExactWidth	(int widthOfFirst,  int widthOfSecond);
-    void setMaxHeight	(int heightOfFirst, int heightOfSecond);
-    void setMaxWidth	(int widthOfFirst,  int widthOfSecond);
-    void setMinHeight	(int heightOfFirst, int heightOfSecond);
-    void setMinWidth	(int widthOfFirst,  int widthOfSecond);
+    void setExactHeight (int heightOfFirst, int heightOfSecond);
+    void setExactWidth  (int widthOfFirst,  int widthOfSecond);
+    void setMaxHeight   (int heightOfFirst, int heightOfSecond);
+    void setMaxWidth    (int widthOfFirst,  int widthOfSecond);
+    void setMinHeight   (int heightOfFirst, int heightOfSecond);
+    void setMinWidth    (int widthOfFirst,  int widthOfSecond);
 
-    int getHeight() override	{ return height; 	}
-    int getWidth() override		{ return width; 	}
-    int getX() override			{ return x; 		}
-    int getY() override			{ return y; 		}
-    [[nodiscard]] int getBorder() const 	{ return border; 	}
-    [[nodiscard]] float getPortion() const	{ return portion; 	}
+    int getHeight() override    { return height;    }
+    int getWidth() override     { return width;     }
+    int getX() override         { return x;         }
+    int getY() override         { return y;         }
+    [[nodiscard]] int getBorder() const     { return border;    }
+    [[nodiscard]] float getPortion() const  { return portion;   }
     [[nodiscard]] Rectangle<int> getBounds() const override { return {x, y, width, height}; }
 
-    void setFirst(Bounded* component) 	{ one = component; }
-    void setSecond(Bounded* component)	{ two = component; }
-    void setPortion(float value) 		{ portion = value; }
-    void resized() 						{ setBounds(x, y, width, height); }
+    void setFirst(Bounded* component)   { one = component; }
+    void setSecond(Bounded* component)  { two = component; }
+    void setPortion(float value)        { portion = value; }
+    void resized()                      { setBounds(x, y, width, height); }
 
     bool sideBySide;
 

@@ -14,10 +14,10 @@
 
 AudioHub::AudioHub(SingletonRepo* repo) :
         SingletonAccessor(repo, "AudioHub")
-    ,	sampleRate	(44100)
-    ,	bufferSize	(1)
-    ,	deviceError	(String())
-    ,	currentProcessor(nullptr) {
+    ,   sampleRate  (44100)
+    ,   bufferSize  (1)
+    ,   deviceError (String())
+    ,   currentProcessor(nullptr) {
 }
 
 AudioHub::~AudioHub() {

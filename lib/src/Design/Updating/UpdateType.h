@@ -2,8 +2,8 @@
 
 enum UpdateType {
         Null = -1
-    ,	Update= 0
-    ,	ReduceDetail
-    ,	RestoreDetail
-    ,	Repaint
+    ,   Update= 0
+    ,   ReduceDetail
+    ,   RestoreDetail
+    ,   Repaint
 };

@@ -53,9 +53,9 @@ void VertCube::getPoles(Vertex const* vert, bool& time, bool& red, bool& blue) c
 }
 
 void VertCube::getPoles(int index, bool& time, bool& red, bool& blue) {
-    time = index / 4 		> 0;
-    red  = (index / 2) % 2 	> 0;
-    blue = index % 2 		> 0;
+    time = index / 4        > 0;
+    red  = (index / 2) % 2  > 0;
+    blue = index % 2        > 0;
 }
 
 VertCube::Face VertCube::getFace(int primeDim, bool pole) const {
@@ -232,14 +232,14 @@ void VertCube::getInterceptsAccurate(int dim, ReductionData& data, const MorphPo
 
         denom = (nxv - xxv).cross(nnv - xnv);
         if (fabsf(denom) > 1e-4f) {
-            Vertex2 icptX 	= (nxv - xxv) * ((nxv - xxv).cross(nnv - xnv) / denom) + xxv;
-            Vertex2 diffPI 	= point - icptX;
+            Vertex2 icptX   = (nxv - xxv) * ((nxv - xxv).cross(nnv - xnv) / denom) + xxv;
+            Vertex2 diffPI  = point - icptX;
 
             float icptDenom = (point - icptX).cross(nxv - nnv);
-            yFracA 	  		= (nnv - icptX).cross(nxv - nnv) / icptDenom;
+            yFracA          = (nnv - icptX).cross(nxv - nnv) / icptDenom;
 
-            icptDenom 		= (point - icptX).cross(xxv - xnv);
-            yFracB 	  		= (xnv - icptX).cross(xxv - xnv) / icptDenom;
+            icptDenom       = (point - icptX).cross(xxv - xnv);
+            yFracB          = (xnv - icptX).cross(xxv - xnv) / icptDenom;
         } else {
             yFracA = yFracB = (point.y - nnv.y) / diffYminX.y;
         }
@@ -250,9 +250,9 @@ void VertCube::getInterceptsAccurate(int dim, ReductionData& data, const MorphPo
         }
 
         float nnFrac = (1 - xFracA) * (1 - yFracA);
-        float xnFrac = xFracA 		* (1 - yFracA);
+        float xnFrac = xFracA       * (1 - yFracA);
         float nxFrac = (1 - xFracB) * yFracB;
-        float xxFrac = xFracB 		* yFracB;
+        float xxFrac = xFracB       * yFracB;
 
         data[i] = *face.v00 * nnFrac
                   + *face.v10 * xnFrac
@@ -321,7 +321,7 @@ void VertCube::getInterceptsFast(int dim, ReductionData& data, const MorphPositi
     if (point.x >= x1 && point.x < x2 && point.y >= y1 && point.y < y2) {
         vertexAt(point.y, dimY, lowFace.v00, lowFace.v01, &data.v00);
         vertexAt(point.y, dimY, lowFace.v10, lowFace.v11, &data.v10);
-        vertexAt(point.x, dimX, &data.v00, 	 &data.v10,   &data.v0);
+        vertexAt(point.x, dimX, &data.v00,   &data.v10,   &data.v0);
 
         Face highFace = getFace(dim, HighPole);
 
@@ -341,7 +341,7 @@ void VertCube::getInterceptsFast(int dim, ReductionData& data, const MorphPositi
         if (point.x >= x1 && point.x < x2 && point.y >= y1 && point.y < y2) {
             vertexAt(point.y, dimY, highFace.v00, highFace.v01, &data.v01);
             vertexAt(point.y, dimY, highFace.v10, highFace.v11, &data.v11);
-            vertexAt(point.x, dimX, &data.v01, 	  &data.v11, 	&data.v1);
+            vertexAt(point.x, dimX, &data.v01,    &data.v11,    &data.v1);
 
             data.lineOverlaps = true;
 
@@ -379,10 +379,10 @@ void VertCube::getMultidimIntercept(
     vertexAt(pos.red,  Vertex::Red, lineVerts[y1r0b0], lineVerts[y1r1b0], &k3);
     vertexAt(pos.red,  Vertex::Red, lineVerts[y1r0b1], lineVerts[y1r1b1], &k4);
 
-    redLow 	= Resampling::lerp(k1.values[Vertex::Time],  k1.values[Vertex::Phase],
+    redLow  = Resampling::lerp(k1.values[Vertex::Time],  k1.values[Vertex::Phase],
                                k3.values[Vertex::Time],  k3.values[Vertex::Phase], pos.time);
 
-    redHigh	= Resampling::lerp(k2.values[Vertex::Time],  k2.values[Vertex::Phase],
+    redHigh = Resampling::lerp(k2.values[Vertex::Time],  k2.values[Vertex::Phase],
                                k4.values[Vertex::Time],  k4.values[Vertex::Phase], pos.time);
 
     blueLow = Resampling::lerp(a1->values[Vertex::Time], a1->values[Vertex::Phase],
@@ -396,9 +396,9 @@ bool VertCube::hasCommonVertsWith(const VertCube* cube) const {
     bool similarVerts = false;
 
     for(int i = 0; i < numVerts / 2; ++i) {
-        similarVerts |= lineVerts[i / 2] 	 == cube->lineVerts[i / 2];
+        similarVerts |= lineVerts[i / 2]     == cube->lineVerts[i / 2];
         similarVerts |= lineVerts[i / 2 + 1] == cube->lineVerts[i / 2];
-        similarVerts |= lineVerts[i / 2] 	 == cube->lineVerts[i / 2 + 1];
+        similarVerts |= lineVerts[i / 2]     == cube->lineVerts[i / 2 + 1];
         similarVerts |= lineVerts[i / 2 + 1] == cube->lineVerts[i / 2 + 1];
     }
 
@@ -582,9 +582,9 @@ bool VertCube::dimensionsAt(float x, int axis, Vertex const* one, Vertex const* 
 
     NumberUtils::constrain(mult, 0.f, 1.f);
 
-    vertex->values[Vertex::Time] 	= one->values[Vertex::Time]  + 	mult * (two->values[Vertex::Time] 	- one->values[Vertex::Time]	 );
-    vertex->values[Vertex::Red] 	= one->values[Vertex::Red] 	 + 	mult * (two->values[Vertex::Red] 	- one->values[Vertex::Red]	 );
-    vertex->values[Vertex::Blue] 	= one->values[Vertex::Blue]  + 	mult * (two->values[Vertex::Blue] 	- one->values[Vertex::Blue]	 );
+    vertex->values[Vertex::Time]    = one->values[Vertex::Time]  +  mult * (two->values[Vertex::Time]   - one->values[Vertex::Time]  );
+    vertex->values[Vertex::Red]     = one->values[Vertex::Red]   +  mult * (two->values[Vertex::Red]    - one->values[Vertex::Red]   );
+    vertex->values[Vertex::Blue]    = one->values[Vertex::Blue]  +  mult * (two->values[Vertex::Blue]   - one->values[Vertex::Blue]  );
 
     return true;
 }
@@ -697,12 +697,12 @@ float VertCube::getPortionAlong(int dim, const MorphPosition& morph) const {
 
     Face face = getFace(dim, LowPole);
 
-    float valMin =	kxx * face.v11->values[dim] + kxn * face.v10->values[dim] +
+    float valMin =  kxx * face.v11->values[dim] + kxn * face.v10->values[dim] +
                     knx * face.v01->values[dim] + knn * face.v00->values[dim];
 
     face = getFace(dim, HighPole);
 
-    float valMax =	kxx * face.v11->values[dim] + kxn * face.v10->values[dim] +
+    float valMax =  kxx * face.v11->values[dim] + kxn * face.v10->values[dim] +
                     knx * face.v01->values[dim] + knn * face.v00->values[dim];
 
     float diff = valMax - valMin;
@@ -725,8 +725,8 @@ bool VertCube::isDeformed() const {
 
 void VertCube::Face::set(int index, Vertex* vert) {
     switch (index) {
-        case 0: v00 = vert;	break;
-        case 1:	v01 = vert; break;
+        case 0: v00 = vert; break;
+        case 1: v01 = vert; break;
         case 2: v10 = vert; break;
         case 3: v11 = vert; break;
         default: throw std::invalid_argument("VertCube::Face::set: index out of range");

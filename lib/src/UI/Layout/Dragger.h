@@ -10,7 +10,7 @@ class SingletonRepo;
 class Dragger :
         public Component
     ,   public Deletable
-    , 	public SingletonAccessor {
+    ,   public SingletonAccessor {
 public:
     enum { Horz, Vert };
 
@@ -34,8 +34,8 @@ public:
     void resized() override;
     void setPanelPair(PanelPair* pair);
 
-    void addListener(Listener* listener) 	{ listeners.add(listener); }
-    PanelPair* getPair() 					{ return pair; }
+    void addListener(Listener* listener)    { listeners.add(listener); }
+    PanelPair* getPair()                    { return pair; }
 
     void mouseDown(const MouseEvent& e) override;
     virtual void update(int diff);
