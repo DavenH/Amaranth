@@ -15,3 +15,4 @@ CMakeUserPresets.json
 cmake-build-debug/*
 cmake-build-release/*
 build/*
+lib/tests/debug_output/*

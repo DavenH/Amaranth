@@ -105,6 +105,9 @@ public:
         return resize(size);
     }
 
+    bool hasSizeFor(int size) {
+        return this->sz >= placementPos + size;
+    }
 
 private:
     bool alive{};

@@ -79,21 +79,17 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -g -ggdb -O0)
 
     if(BUILD_TESTING)
-        file(GLOB_RECURSE TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp")
-
-        file(GLOB IMGUI_SOURCES
-                "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/*.cpp"
-                "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends/imgui_impl_glfw.cpp"
-                "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends/imgui_impl_opengl3.cpp"
-        )
-        file(GLOB IMPLOT_SOURCES
-                "${CMAKE_CURRENT_SOURCE_DIR}/external/implot/*.cpp"
+        file(GLOB_RECURSE TEST_SOURCES
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h"
         )
 
-        list(APPEND TEST_SOURCES ${IMGUI_SOURCES} ${IMPLOT_SOURCES})
+        list(APPEND TEST_SOURCES ${IM_SOURCES})
         add_executable(${PROJECT_NAME}_tests ${TEST_SOURCES})
+
         target_include_directories(${PROJECT_NAME}_tests PUBLIC
                 ${CMAKE_CURRENT_SOURCE_DIR}/src
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests
                 ${VST3_DIR}
                 ${JUCE_DIR}
                 ${JUCE_MODULES_DIR}
@@ -106,20 +102,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 ${GTK3_INCLUDE_DIRS}
                 ${WEBKIT_INCLUDE_DIRS}
         )
-        target_include_directories(${PROJECT_NAME}_tests PRIVATE
-                "/usr/local/include" # catch2's include dirs
-                "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui"
-                "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends"
-                "${CMAKE_CURRENT_SOURCE_DIR}/external/implot"
-        )
-        find_package(glfw3 REQUIRED)
+
+        target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
+                LIB_ROOT="${CMAKE_CURRENT_SOURCE_DIR}")
 
         target_link_libraries(${PROJECT_NAME}_tests
                 PRIVATE
-                # link all the stuff built in the main project library, saves us from having to build all of it again
+                # link all the stuff built in the main project library,
+                # saves us from having to build all of it again
                 ${PROJECT_NAME}
                 Catch2::Catch2WithMain
-                glfw
         )
 
         include(CTest)

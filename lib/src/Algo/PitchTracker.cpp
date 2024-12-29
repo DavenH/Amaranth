@@ -9,6 +9,12 @@
 #include "../Algo/Fir.h"
 #include "../Audio/PitchedSample.h"
 
+#ifdef BUILD_TESTING
+  #define DEBUG_RENDERING
+#endif
+#include "../../tests/TestDefs.h"
+#include "../../tests/SignalDebugger.h"
+
 PitchTracker::PitchTracker() :
         algo(AlgoAuto)
     ,   aperiodicityThresh(0.3f) {
@@ -475,7 +481,7 @@ void PitchTracker::swipe() {
     /// calculate ERBs
     ScopedAlloc<float> erbMem(numERBs * 2);
     Buffer<float> erbFreqs    = erbMem.place(numERBs);
-    Buffer<float> erbSpectrum = erbMem.place(numERBs);
+    Buffer<float> erbMagnitudes = erbMem.place(numERBs);
 
     erbFreqs.ramp(erbLow, deltaERBs);
 
@@ -489,6 +495,11 @@ void PitchTracker::swipe() {
     vector<Buffer<float>> kernels(numCandidates);
 
     createKernels(kernels, kernelMemory, kernelSizes, erbFreqs, pitchCandidates);
+
+    for(auto& k : kernels) {
+        DEBUG_ADD_TO_HEATMAP("kernels", k);
+    }
+    DEBUG_HEATMAP("kernels");
 
     ScopedAlloc<float> winMemory(8192 * 3 + numERBs);
 
@@ -509,8 +520,8 @@ void PitchTracker::swipe() {
 
     /// initialize windows
 
-    ScopedAlloc<float> spectFreqMem(2 * windowSizes.front());
-    ScopedAlloc<float> hannMemory(2 * windowSizes.front());
+    ScopedAlloc<float> spectFreqMem(roundToInt(2 * windowSizes.front()));
+    ScopedAlloc<float> hannMemory(roundToInt(2 * windowSizes.front()));
     ScopedAlloc<float> lambdaMemory(numWindows * 2 * numCandidates);
 
     vector<Window> windows(numWindows);
@@ -543,7 +554,7 @@ void PitchTracker::swipe() {
         window.lambda = lambdaMemory.place(window.erbSize);
         calcLambda(window, realErbIdx);
 
-        window.spectFreqs = spectFreqMem.place(window.size);
+        window.spectFreqs = spectFreqMem.place(window.size / 2);
         window.spectFreqs.ramp(0, samplerate / float(window.size));
 
         Transform fft;
@@ -564,7 +575,7 @@ void PitchTracker::swipe() {
             int paddingBack    = window.size - jmin(window.size, signal.size() - window.offsetSamples);
 
             int timeSlicesThisWindow = 0;
-            int startingSlice   = totalSliceIndex;
+            int startingSlice = totalSliceIndex;
 
             float prevTime = cumeTime;
             while((cumeTime) * samplerate < signalPosEnd && totalSliceIndex < numTimes - 1) {
@@ -586,7 +597,7 @@ void PitchTracker::swipe() {
             winMemory.resetPlacement();
             Buffer<float> paddedSignal  = winMemory.place(window.size);
             Buffer<float> lastStrengths = winMemory.place(window.erbSize);
-            Buffer<float> source;
+            // Buffer<float> source;
 
             if (paddingFront > 0) {
                 jassert(paddingFront <= window.size);
@@ -599,66 +610,72 @@ void PitchTracker::swipe() {
                 if(signal.size() < window.size - paddingFront) {
                     paddedSignal.section(paddingFront + signal.size(), window.size - paddingFront - signal.size()).zero();
                 }
-
-                source = paddedSignal;
             } else if (paddingBack > 0) {
                 paddedSignal.zero();
                 signal.section(signalPosStart, window.size - paddingBack).copyTo(paddedSignal);
-
-                source = paddedSignal;
             } else {
-                source = signal.section(signalPosStart, window.size);
+                signal.section(signalPosStart, window.size).copyTo(paddedSignal);
             }
+
+            paddedSignal.mul(window.hannWindow);
+            // DEBUG_ADD_TO_HEATMAP(String::formatted("source-%d", window.index), paddedSignal);
 
             lastStrengths.zero();
 
-            fft.forward(source);
+            fft.forward(paddedSignal);
             candLoudness.zero();
 
             Buffer<float> magnitudes = fft.getMagnitudes();
+
+            // DEBUG_ADD_TO_HEATMAP(String::formatted("mag-%d", window.index), magnitudes.sectionAtMost(0, 256));
+
             int specIdx = 0;
 
             for(int k = 0; k < numERBs; ++k) {
                 float candFreq = erbFreqs[k];
 
-                while (window.spectFreqs[specIdx] < candFreq) {
+                while (specIdx < window.spectFreqs.size() && window.spectFreqs[specIdx] < candFreq) {
                     ++specIdx;
                 }
+                specIdx = jmin(specIdx, magnitudes.size() - 1);
 
                 float interpMagn;
 
-                if (specIdx >= 3) {
-                    float* x = window.spectFreqs + (specIdx - 3);
-                    float* y = magnitudes + (specIdx - 3);
-
-                    jassert(candFreq < x[3] && candFreq >= x[2]);
-                    interpMagn = Resampling::spline(x[0], y[0], x[1], y[1], x[2], y[2], x[3], y[3], candFreq);
-                } else if (specIdx >= 1) {
+                // if (specIdx >= 3 && candFreq < x[3] && candFreq >= x[2]) {
+                //     float* x = window.spectFreqs + (specIdx - 3);
+                //     float* y = magnitudes + (specIdx - 3);
+                //
+                //     jassert(candFreq < x[3] && candFreq >= x[2]);
+                //     interpMagn = Resampling::spline(x[0], y[0], x[1], y[1], x[2], y[2], x[3], y[3], candFreq);
+                // } else
+                if (specIdx >= 1 && candFreq < window.spectFreqs[specIdx] && candFreq >= window.spectFreqs[specIdx - 1]) {
                     float* x = window.spectFreqs + (specIdx - 1);
                     float* y = magnitudes + (specIdx - 1);
-
-                    jassert(candFreq < x[1] && candFreq >= x[0]);
                     interpMagn = Resampling::lerp(x[0], y[0], x[1], y[1], candFreq);
                 } else {
                     interpMagn = magnitudes[specIdx];
                 }
 
-                erbSpectrum[k] = interpMagn;
+                erbMagnitudes[k] = interpMagn;
             }
 
-            erbSpectrum.threshLT(0.f).sqrt();
+            erbMagnitudes.threshLT(0.f).sqrt();
+
+            // DEBUG_ADD_TO_HEATMAP(String::formatted("erb-%d", window.index), erbMagnitudes);
 
             if(lastOffset > 0) {
                 windowStrengths.copyTo(lastStrengths);
             }
 
             for(int c = 0; c < window.erbSize; ++c) {
-                windowStrengths[c] = kernels[c + window.erbStart].dot(erbSpectrum);
+                windowStrengths[c] = kernels[c + window.erbStart].dot(erbMagnitudes);
             }
 
             if(lastOffset == 0) {
                 windowStrengths.copyTo(lastStrengths);
             }
+
+            DEBUG_ADD_TO_HEATMAP(String::formatted("strengths-%d", window.index), windowStrengths);
 
             ScopedAlloc<float> weightedLoudness(window.erbSize);
 
@@ -685,7 +702,13 @@ void PitchTracker::swipe() {
                 sc.column.section(window.erbStart, window.erbSize).add(weightedLoudness);
             }
         }
+        // DEBUG_HEATMAP(String::formatted("erb-%d", window.index));
+        // DEBUG_HEATMAP("mag-" + window.index);
+        // DEBUG_HEATMAP(String::formatted("source-%d", window.index));
+        DEBUG_HEATMAP(String::formatted("strengths-%d", window.index));
     }
+
+    DEBUG_CLEAR();
 
     pitches.set(-1.f);
     float backupPitch = -1;

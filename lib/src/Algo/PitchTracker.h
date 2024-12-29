@@ -102,7 +102,7 @@ private:
         Buffer<float> buff, int index, float& y1, float& y2, float& y3);
 
     static void createKernels(
-        vector<Buffer<float> >& kernels,
+        vector<Buffer<float>>& kernels,
         ScopedAlloc<float>& kernelMemory,
         const Buffer<int>& kernelSizes,
         Buffer<float> erbFreqs,
