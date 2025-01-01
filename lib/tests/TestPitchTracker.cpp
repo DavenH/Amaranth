@@ -5,6 +5,35 @@ using namespace juce;
 #include "../src/Audio/PitchedSample.h"
 #include "../src/Array/Buffer.h"
 
+void createSineWave(Buffer<float>& buff, float freq, float sampleRate) {
+    buff.ramp(0, 2 * M_PI * freq / sampleRate).sin();
+}
+
+void createSawtooth(Buffer<float>& buffer, float frequency, float sampleRate, float phase = 0.0f) {
+    const int size = buffer.size();
+    if (size == 0) {
+        return;
+    }
+
+    float samplesPerCycle = sampleRate / frequency;
+
+    buffer.ramp(phase, 1.0f/samplesPerCycle);
+
+    for (int i = 0; i < size; i++) {
+        buffer[i] = buffer[i] - std::floor(buffer[i]);
+    }
+
+    buffer.mul(2.0f).sub(1.0f);
+}
+
+void createExpSweep(Buffer<float>& buffer, float startFreq, float endFreq, float sampleRate) {
+    buffer.ramp()                           // 0 to 1 linear ramp
+          .mul(std::log(endFreq/startFreq)) // Scale for desired frequency range
+          .exp()                            // Make frequency increase exponentially
+          .mul(startFreq * 2 * M_PI)        // Scale to start at startFreq
+          .sin();                           // Convert phase to sine wave
+}
+
 TEST_CASE("PitchTracker basic functionality", "[pitch][dsp]") {
     PitchTracker tracker;
     const int sampleRate = 44100;
@@ -15,10 +44,47 @@ TEST_CASE("PitchTracker basic functionality", "[pitch][dsp]") {
 
         for (float freq: testFrequencies) {
             // Create 2 second test tone
-            ScopedAlloc<Ipp32f> sineWave(roundToInt(sampleRate * 2));
-            sineWave.ramp(0, freq / sampleRate).sin();
-            PitchedSample sample(sineWave);
+            ScopedAlloc<Ipp32f> signal(roundToInt(sampleRate * 2));
+            createSineWave(signal, freq, sampleRate);
 
+            PitchedSample sample(signal);
+            sample.samplerate = sampleRate;
+            tracker.setSample(&sample);
+
+            SECTION("Test YIN algorithm") {
+                tracker.setAlgo(PitchTracker::AlgoYin);
+                tracker.trackPitch();
+
+                float detectedPeriod = tracker.getAveragePeriod();
+                float detectedFreq   = sampleRate / detectedPeriod;
+
+                CHECK(abs(detectedFreq - freq) < tolerance);
+            }
+
+            SECTION("Test SWIPE algorithm") {
+                tracker.setAlgo(PitchTracker::AlgoSwipe);
+                tracker.trackPitch();
+
+                float detectedPeriod = tracker.getAveragePeriod();
+                float detectedFreq   = sampleRate / detectedPeriod;
+
+                CHECK(abs(detectedFreq - freq) < tolerance);
+            }
+        }
+    }
+
+    SECTION("Detect simple sawtooth frequencies") {
+        const float testFrequencies[] = { 225.0f }; // A4, A3, A5
+        const float tolerance         = 0.5f;       // Allow 0.5 Hz deviation
+
+        for (float freq: testFrequencies) {
+            // Create 2 second test tone
+            ScopedAlloc<Ipp32f> signal(roundToInt(sampleRate * 2));
+            createSawtooth(signal, freq, sampleRate);
+            // createExpSweep(signal, 40, 800, sampleRate);
+
+            PitchedSample sample(signal);
+            sample.samplerate = sampleRate;
             tracker.setSample(&sample);
 
             SECTION("Test YIN algorithm") {

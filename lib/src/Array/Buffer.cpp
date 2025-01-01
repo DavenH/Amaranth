@@ -134,7 +134,7 @@ template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::sub(Ipp##T c)                   \
 {                                                               \
     if(c != Ipp##T())                                           \
-        ippsAddC_##T##_I(c, ptr, sz);                           \
+        ippsSubC_##T##_I(c, ptr, sz);                           \
     return *this;                                               \
 }
 
@@ -222,6 +222,14 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::mul(Ipp##T c)                   \
 {                                                               \
     if(c != 1)                                                  \
         ippsMulC_##T##_I(c, ptr, sz);                           \
+    return *this;                                               \
+}
+
+#define constructTanh(T)                                        \
+template<>                                                      \
+Buffer<Ipp##T>& Buffer<Ipp##T>::tanh()                          \
+{                                                               \
+    ippsTanh_##T##_A24(ptr, ptr, sz);                           \
     return *this;                                               \
 }
 
@@ -797,15 +805,20 @@ constructSort(32f);
 constructDiff(32f);
 
 template<>
+Buffer<Ipp32f>& Buffer<Ipp32f>::tanh() {
+    ippsTanh_32f_A24(ptr, ptr, sz);
+    return *this;
+}
+
+template<>
 Buffer<Ipp32f>& Buffer<Ipp32f>::pow(Ipp32f c) {
     if(c != 1.f)
         ippsPowx_32f_A11(ptr, c, ptr, sz);
     return *this;
 }
 
-
 template<>
-Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Buffer<Ipp32fc> buff, Ipp32fc c) {
+Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Buffer buff, Ipp32fc c) {
     if (c.re == 1 && c.im == 0) {
         buff.copyTo(*this);
     } else {

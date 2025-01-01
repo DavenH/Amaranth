@@ -411,7 +411,6 @@ void PitchTracker::createKernels(
     }
 }
 
-// todo wtf is 'lambda'?
 void PitchTracker::calcLambda(Window& window, const Buffer<float>& realErbIdx) {
     int start     = window.erbStart;
     int end       = window.erbEnd;
@@ -496,12 +495,12 @@ void PitchTracker::swipe() {
 
     createKernels(kernels, kernelMemory, kernelSizes, erbFreqs, pitchCandidates);
 
-    for(auto& k : kernels) {
-        DEBUG_ADD_TO_HEATMAP("kernels", k);
-    }
-    DEBUG_HEATMAP("kernels");
+    // for(auto& k : kernels) {
+    //     DEBUG_ADD_TO_HEATMAP("kernels", k);
+    // }
+    // DEBUG_HEATMAP("kernels");
 
-    ScopedAlloc<float> winMemory(8192 * 3 + numERBs);
+    ScopedAlloc<float> winMemory(8192 * 3 + numCandidates);
 
     Buffer<float> signal = sample->audio.left;
 
@@ -526,6 +525,7 @@ void PitchTracker::swipe() {
 
     vector<Window> windows(numWindows);
 
+    numWindows = 8;
     for (int i = 0; i < numWindows; ++i) {
         Window& window        = windows[i];
         window.index          = i;
@@ -564,7 +564,7 @@ void PitchTracker::swipe() {
         cumeTime = 0;
         int totalSliceIndex = 0;
 
-        ScopedAlloc<float> windowStrengths(window.erbSize);
+        ScopedAlloc<float> windowStrengths(numCandidates); // window.erbSize
         windowStrengths.zero();
 
         while (true) {
@@ -596,7 +596,7 @@ void PitchTracker::swipe() {
 
             winMemory.resetPlacement();
             Buffer<float> paddedSignal  = winMemory.place(window.size);
-            Buffer<float> lastStrengths = winMemory.place(window.erbSize);
+            Buffer<float> lastStrengths = winMemory.place(numCandidates);
             // Buffer<float> source;
 
             if (paddingFront > 0) {
@@ -627,7 +627,7 @@ void PitchTracker::swipe() {
 
             Buffer<float> magnitudes = fft.getMagnitudes();
 
-            // DEBUG_ADD_TO_HEATMAP(String::formatted("mag-%d", window.index), magnitudes.sectionAtMost(0, 256));
+            // DEBUG_ADD_TO_HEATMAP(String::formatted("mag-%d", window.index), magnitudes.sectionAtMost(0, 512));
 
             int specIdx = 0;
 
@@ -641,7 +641,7 @@ void PitchTracker::swipe() {
 
                 float interpMagn;
 
-                // if (specIdx >= 3 && candFreq < x[3] && candFreq >= x[2]) {
+                // if (specIdx >= 3) {
                 //     float* x = window.spectFreqs + (specIdx - 3);
                 //     float* y = magnitudes + (specIdx - 3);
                 //
@@ -667,17 +667,20 @@ void PitchTracker::swipe() {
                 windowStrengths.copyTo(lastStrengths);
             }
 
-            for(int c = 0; c < window.erbSize; ++c) {
-                windowStrengths[c] = kernels[c + window.erbStart].dot(erbMagnitudes);
+            // for(int c = 0; c < window.erbSize; ++c) {
+            for(int c = 0; c < numCandidates; ++c) {
+                // windowStrengths[c] = kernels[c + window.erbStart].dot(erbMagnitudes);
+                windowStrengths[c] = kernels[c].dot(erbMagnitudes);
             }
 
             if(lastOffset == 0) {
                 windowStrengths.copyTo(lastStrengths);
             }
 
-            DEBUG_ADD_TO_HEATMAP(String::formatted("strengths-%d", window.index), windowStrengths);
+            // DEBUG_VIEW(windowStrengths, String::formatted("strengths-%d-%d", window.index, window.offsetSamples));
+            // DEBUG_ADD_TO_HEATMAP(String::formatted("strengths-%d", window.index), windowStrengths);
 
-            ScopedAlloc<float> weightedLoudness(window.erbSize);
+            ScopedAlloc<float> weightedLoudness(numCandidates);
 
             float prevWindowTime = float(lastOffset) / samplerate;
             float thisWindowTime = float(window.offsetSamples) / samplerate;
@@ -698,17 +701,27 @@ void PitchTracker::swipe() {
                     weightedLoudness.addProduct(windowStrengths, portion);
                 }
 
-                weightedLoudness.mul(window.lambda);
-                sc.column.section(window.erbStart, window.erbSize).add(weightedLoudness);
+                // if(window.erbStart > 0) {
+                //     weightedLoudness.section(0, window.erbStart).zero();
+                // }
+                // weightedLoudness.section(window.erbStart, window.erbSize).mul(window.lambda);
+                // if(window.erbEnd < numCandidates) {
+                //     weightedLoudness.offset(window.erbEnd).zero();
+                // }
+
+                sc.column.section(0, numCandidates).add(weightedLoudness);
             }
         }
         // DEBUG_HEATMAP(String::formatted("erb-%d", window.index));
-        // DEBUG_HEATMAP("mag-" + window.index);
+        // DEBUG_HEATMAP(String::formatted("mag-%d", window.index));
         // DEBUG_HEATMAP(String::formatted("source-%d", window.index));
-        DEBUG_HEATMAP(String::formatted("strengths-%d", window.index));
+        // DEBUG_HEATMAP(String::formatted("strengths-%d", window.index));
     }
 
-    DEBUG_CLEAR();
+    // for(auto& sc : strengthColumns) {
+    //     DEBUG_ADD_TO_HEATMAP(String::formatted("strengths"), sc.column);
+    // }
+    // DEBUG_HEATMAP(String::formatted("strengths"));
 
     pitches.set(-1.f);
     float backupPitch = -1;
@@ -721,6 +734,10 @@ void PitchTracker::swipe() {
         sc.column.getMax(maxValue, maxIndex);
 
         if (maxValue > strengthThresh) {
+            // if(i > 10 && i < 14) {
+            //     DEBUG_VIEW(sc.column, "strengths");
+            // }
+
             pitches[i] = pitchCandidates[maxIndex];
 
             if (maxIndex > 0 && maxIndex < sc.column.size() - 1) {
@@ -743,6 +760,10 @@ void PitchTracker::swipe() {
             backupPitch = pitchCandidates[maxIndex];
         }
     }
+
+    // DEBUG_VIEW(pitches, String::formatted("pitches"));
+
+    // DEBUG_CLEAR();
 
     vector<ContiguousRegion> regions;
     regions.emplace_back(0);
@@ -853,6 +874,7 @@ void PitchTracker::swipe() {
     bins.emplace_back(bin);
 
     confidence = refineFrames(sample, averagePeriod);
+    DEBUG_PERIODS(*sample, "after-refine-swipe");
 }
 
 void PitchTracker::trackPitch() {

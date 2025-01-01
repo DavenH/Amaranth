@@ -71,6 +71,7 @@ public:
     Buffer& flip(Buffer buff);
     Buffer& rand(unsigned& seed);
     Buffer& ramp();
+    Buffer& tanh();
     Buffer& ramp(T offset, T delta);
     Buffer& threshLT(T c);
     Buffer& threshGT(T c);

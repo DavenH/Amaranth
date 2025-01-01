@@ -5,10 +5,15 @@
 class ReadWriteBuffer {
 public:
     ReadWriteBuffer() :
-            readPosition        (0)
-        ,   writePosition       (0)
-        ,   totalSamplesWritten (0)
-        ,   totalSamplesRead    (0) {
+                readPosition        (0)
+            ,   writePosition       (0)
+            ,   totalSamplesWritten (0)
+            ,   totalSamplesRead    (0) {
+    }
+
+    explicit ReadWriteBuffer(int size) :
+            ReadWriteBuffer() {
+        allocate(size);
     }
 
     explicit ReadWriteBuffer(Buffer<float> buff) :

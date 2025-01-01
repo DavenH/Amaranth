@@ -40,7 +40,7 @@ public:
     static float hermite6_3(float x, float yn2, float yn1, float y0, float y1, float y2, float y3);
     static float bspline6_5(float x, float yn2, float yn1, float y0, float y1, float y2, float y3);
 
-    static void linResample(const Buffer<float> source, Buffer<float> dest) {
+    static void linResample(const Buffer<float>& source, Buffer<float> dest) {
         float remainder, realPosition;
         int trunc;
 

@@ -55,4 +55,5 @@ if(NOT WEBKIT_FOUND)
 endif()
 
 add_subdirectory(lib)
+add_subdirectory(oscillo)
 add_subdirectory(cycle)
