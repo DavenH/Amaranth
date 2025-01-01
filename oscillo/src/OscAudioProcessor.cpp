@@ -26,14 +26,22 @@ void OscAudioProcessor::setTargetFrequency(float freq) {
     targetPeriod    = sampleRate / freq;
 }
 
+std::vector<Buffer<Ipp32f>> OscAudioProcessor::getAudioPeriods() const {
+    const SpinLock::ScopedLockType lock(bufferLock);
+
+    // return a copy because underlying vector will be updated by audio thread
+    return {periods};
+}
+
 void OscAudioProcessor::audioDeviceAboutToStart(AudioIODevice* device) {
     auto freq = device->getCurrentSampleRate() / targetPeriod;
     setTargetFrequency(freq);
 }
 
+// called from UI thread
 void OscAudioProcessor::resetPeriods() {
     const SpinLock::ScopedLockType lock(bufferLock);
-    std::cout << periods.size() << std::endl;
+    // std::cout << periods.size() << std::endl;
     periods.clear();
     workBufferUI.resetPlacement();
 }

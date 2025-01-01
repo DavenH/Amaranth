@@ -11,7 +11,7 @@ public:
     void start();
     void stop();
     void setTargetFrequency(float freq);
-    const std::vector<Buffer<Ipp32f> >& getAudioPeriods() const { return periods; };
+    std::vector<Buffer<Ipp32f>> getAudioPeriods() const;
     void resetPeriods();
 
 private:

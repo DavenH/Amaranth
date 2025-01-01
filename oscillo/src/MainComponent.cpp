@@ -44,7 +44,7 @@ void MainComponent::updateHistoryImage() {
 
     Image::BitmapData pixelData(
         historyImage,
-        kHistoryFrames - periods.size(), 0,
+        jmax(0, kHistoryFrames - (int) periods.size()), 0,
         periods.size(), kImageHeight,
         Image::BitmapData::writeOnly
     );
