@@ -23,11 +23,8 @@ class PianoComponent
           public juce::ComboBox::Listener {
 public:
     explicit PianoComponent(std::function<void(float)> callback);
-
     ~PianoComponent() override;
-
     void resized() override;
-
     void comboBoxChanged(juce::ComboBox*) override;
 
 private:
@@ -38,7 +35,6 @@ private:
     std::vector<std::unique_ptr<PianoKey> > keys;
 
     void createKeys();
-
     void updateFrequencies();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PianoComponent)

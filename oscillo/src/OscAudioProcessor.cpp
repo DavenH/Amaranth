@@ -40,10 +40,12 @@ void OscAudioProcessor::audioDeviceAboutToStart(AudioIODevice* device) {
 
 // called from UI thread
 void OscAudioProcessor::resetPeriods() {
+    // pendingReset = true;
     const SpinLock::ScopedLockType lock(bufferLock);
     // std::cout << periods.size() << std::endl;
     periods.clear();
     workBufferUI.resetPlacement();
+    // std::cout << "reset" << std::endl;
 }
 
 void OscAudioProcessor::audioDeviceIOCallbackWithContext(
@@ -70,12 +72,14 @@ void OscAudioProcessor::audioDeviceIOCallbackWithContext(
     rwBufferAudioThread.write(currentSamples);
 
     auto period = targetPeriod;
-    accumulatedSamples += (float) numSamples;
 
-    int periodThisTime = (int) accumulatedSamples - (int) (accumulatedSamples - period); {
+    {
         const SpinLock::ScopedLockType lock(bufferLock);
 
-        while (periodThisTime > 0 && rwBufferAudioThread.hasDataFor(periodThisTime)) {
+        accumulatedSamples += (float) numSamples;
+        int periodThisTime = (int) accumulatedSamples - (int) (accumulatedSamples - period);
+
+        while (accumulatedSamples >= (float) periodThisTime && rwBufferAudioThread.hasDataFor(periodThisTime)) {
             Buffer<float> periodData   = rwBufferAudioThread.read(periodThisTime);
             Buffer<float> periodDataUI = workBufferUI.place(periodData.size());
             periodData.copyTo(periodDataUI);

@@ -11,7 +11,7 @@ MainComponent::MainComponent() {
     historyImage = Image(Image::RGB, kHistoryFrames, kImageHeight, true);
     setSize(1280, 960);
 
-    startTimer(50); // 20fps update rate
+    startTimer(100); // 20fps update rate
     processor.start();
 }
 
