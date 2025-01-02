@@ -67,32 +67,3 @@ private:
     int k;
     std::vector<Colour> colours;
 };
-
-// Example usage:
-/*
-    // Create a viridis gradient with 10 colors
-    GradientColourMap viridis(10, GradientColourMap::Palette::Viridis);
-    
-    // Create an inferno gradient with 5 colors
-    GradientColourMap inferno(5, GradientColourMap::Palette::Inferno);
-    
-    // Get a specific color
-    juce::Colour color = viridis.getColour(3);
-    
-    // Get all colors
-    auto allColors = viridis.getColours();
-    
-    // Use in painting
-    void paint(juce::Graphics& g) override
-    {
-        auto bounds = getLocalBounds();
-        float width = bounds.getWidth() / static_cast<float>(viridis.size());
-        
-        for (int i = 0; i < viridis.size(); ++i)
-        {
-            g.setColour(viridis.getColour(i));
-            g.fillRect(bounds.getX() + i * width, bounds.getY(), 
-                      width, bounds.getHeight());
-        }
-    }
-*/

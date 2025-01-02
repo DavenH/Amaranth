@@ -72,21 +72,21 @@ void MainComponent::updateHistoryImage() {
     g2.drawImageAt(oldSpectrogram, -effectiveColumns, 0);
 
     g.setColour(Colours::black);
-    g.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, kImageHeight);
+    g.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, cyclogram.getHeight());
     g2.setColour(Colours::black);
-    g2.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, kImageHeight / 2);
+    g2.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, spectrogram.getHeight());
 
     Image::BitmapData pixelData(
         cyclogram,
         jmax(0, kHistoryFrames - effectiveColumns), 0,
-        effectiveColumns, kImageHeight,
+        effectiveColumns, cyclogram.getHeight(),
         Image::BitmapData::writeOnly
     );
 
     Image::BitmapData spectData(
         spectrogram,
         jmax(0, kHistoryFrames - effectiveColumns), 0,
-        effectiveColumns, kImageHeight / 8,
+        effectiveColumns, spectrogram.getHeight(),
         Image::BitmapData::writeOnly
     );
 
@@ -111,7 +111,7 @@ void MainComponent::updateHistoryImage() {
 
         transform.forward(resampleBuffer);
         Buffer<float> magnitudes = transform
-            .getMagnitudes().section(0, kImageHeight / 8)
+            .getMagnitudes().section(0, spectrogram.getHeight())
             .add(1).ln().mul(5).tanh();
 
         // Map to colors
@@ -124,7 +124,7 @@ void MainComponent::updateHistoryImage() {
         for (int y = 0; y < magnitudes.size(); ++y) {
             float value = magnitudes[y];
             auto color  = inferno.getColour(static_cast<int>(value * (kNumColours - 0.01)));
-            spectData.setPixelColour(col, kImageHeight / 8 - 1 - y, color);
+            spectData.setPixelColour(col, cyclogram.getHeight() - 1 - y, color);
         }
 
     }
