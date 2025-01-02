@@ -4,6 +4,7 @@
 #include <Algo/FFT.h>
 
 #include "GradientColorMap.h"
+#include "TempermentControls.h"
 
 class MainComponent : public Component,
                       public Timer,
@@ -17,6 +18,7 @@ public:
     void resized() override;
     void timerCallback() override;
 
+    void updateCurrentNote();
     void handleNoteOn(MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
     void handleNoteOff(MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
 
@@ -28,7 +30,9 @@ private:
     OscAudioProcessor processor;
     MidiKeyboardState keyboardState;
     std::unique_ptr<MidiKeyboardComponent> keyboard;
-    
+    std::unique_ptr<TemperamentControls> temperamentControls;
+
+    int lastClickedMidiNote = 60;
     Image cyclogram, spectrogram;
     Rectangle<int> plotBounds;
     ScopedAlloc<Ipp32f> resampleBuffer{kImageHeight};

@@ -14,6 +14,16 @@ MainComponent::MainComponent()
     keyboard->setOctaveForMiddleC(4);
     addAndMakeVisible(keyboard.get());
 
+    temperamentControls = std::make_unique<TemperamentControls>();
+    addAndMakeVisible(temperamentControls.get());
+    temperamentControls->onTemperamentChanged = [this]() {
+        updateCurrentNote();
+    };
+    temperamentControls->onCentsOffsetChanged = [this]() {
+        updateCurrentNote();
+    };
+    updateCurrentNote();
+
     transform.allocate(kImageHeight, true);
     cyclogram   = Image(Image::RGB, kHistoryFrames, kImageHeight, true);
     spectrogram = Image(Image::RGB, kHistoryFrames, kImageHeight / 8, true);
@@ -35,12 +45,13 @@ void MainComponent::paint(Graphics& g) {
 void MainComponent::resized() {
     auto area = getLocalBounds();
     keyboard->setBounds(area.removeFromBottom(100));
-
-    plotBounds = area.reduced(20);
+    auto row = area.removeFromBottom(100);
+    temperamentControls->setBounds(row.reduced(10));
+    plotBounds = area.reduced(10);
 }
 
 void MainComponent::updateHistoryImage() {
-    const std::vector<Buffer<float> >& periods = processor.getAudioPeriods();
+    const std::vector<Buffer<float>>& periods = processor.getAudioPeriods();
     if (periods.empty()) return;
 
     // C4 = MIDI note 60, frequency ≈ 261.63 Hz
@@ -144,10 +155,18 @@ void MainComponent::timerCallback() {
 }
 
 void MainComponent::handleNoteOn(MidiKeyboardState*, int /*midiChannel*/, int midiNoteNumber, float /*velocity*/) {
-    auto freq = MidiMessage::getMidiNoteInHertz(midiNoteNumber);
-    processor.setTargetFrequency(freq);
+    lastClickedMidiNote = midiNoteNumber;
+    updateCurrentNote();
 }
 
 void MainComponent::handleNoteOff(MidiKeyboardState*, int /*midiChannel*/, int /*midiNoteNumber*/, float /*velocity*/) {
     // Optionally handle note off
+}
+
+void MainComponent::updateCurrentNote() {
+    temperamentControls->setCurrentNote(lastClickedMidiNote);
+
+    auto baseFreq = MidiMessage::getMidiNoteInHertz(lastClickedMidiNote);
+    auto multiplier = temperamentControls->getFrequencyMultiplier(lastClickedMidiNote);
+    processor.setTargetFrequency(baseFreq * multiplier);
 }
