@@ -2,16 +2,18 @@
 
 #include <Algo/Resampling.h>
 
-MainComponent::MainComponent() {
-    keyboard = std::make_unique<PianoComponent>([this](float freq) {
-        processor.setTargetFrequency(freq);
-    });
+MainComponent::MainComponent() : workBuffer(4096) {
+
+    keyboardState.addListener(this);
+    keyboard = std::make_unique<MidiKeyboardComponent>(keyboardState, MidiKeyboardComponent::horizontalKeyboard);
+    keyboard->setKeyWidth(24.0f);
+    keyboard->setAvailableRange(21, 108); // Full 88-key range
+    keyboard->setOctaveForMiddleC(4);
     addAndMakeVisible(keyboard.get());
 
     historyImage = Image(Image::RGB, kHistoryFrames, kImageHeight, true);
     setSize(1280, 960);
-
-    startTimer(100); // 20fps update rate
+    startTimer(50); // 20fps update rate
     processor.start();
 }
 
@@ -27,39 +29,62 @@ void MainComponent::paint(Graphics& g) {
 
 void MainComponent::resized() {
     auto area = getLocalBounds();
-    keyboard->setBounds(area.removeFromBottom(150));
+    keyboard->setBounds(area.removeFromBottom(100));
     plotBounds = area.reduced(20);
 }
 
+
 void MainComponent::updateHistoryImage() {
     const std::vector<Buffer<float>>& periods = processor.getAudioPeriods();
+    if (periods.empty()) return;
 
-    // Shift history image left
+    // C4 = MIDI note 60, frequency ≈ 261.63 Hz
+    const float targetPeriod = processor.getTargetPeriod();
+    const float c4Period = 2 * (float) processor.getCurrentSampleRate() / 261.63f;
+
+    // Calculate periods per column relative to C4
+    const int periodsPerColumn = jmax(1, roundToInt(c4Period / targetPeriod));
+    const int effectiveColumns = std::ceil(periods.size() / periodsPerColumn);
+
+    // Shift history image left by effective columns
     auto oldImage = historyImage.createCopy();
     Graphics g(historyImage);
-    g.drawImageAt(oldImage, -periods.size(), 0);
+    g.drawImageAt(oldImage, -effectiveColumns, 0);
 
     g.setColour(Colours::black);
-    g.fillRect(kHistoryFrames - periods.size(), 0, 1, kImageHeight);
+    g.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, kImageHeight);
 
     Image::BitmapData pixelData(
         historyImage,
-        jmax(0, kHistoryFrames - (int) periods.size()), 0,
-        periods.size(), kImageHeight,
+        jmax(0, kHistoryFrames - effectiveColumns), 0,
+        effectiveColumns, kImageHeight,
         Image::BitmapData::writeOnly
     );
 
-    // Map audio samples to colors
-    int j = 0;
-    for (const auto& columnBuff: periods) {
-        Resampling::linResample(columnBuff, resampleBuffer);
+    // Process each column
+    for (int col = 0; col < effectiveColumns; ++col) {
+        // Calculate range of periods to combine for this column
+        const int startPeriod = col * periodsPerColumn;
+        const int endPeriod = std::min((col + 1) * periodsPerColumn, (int)periods.size());
 
-        for (int i = 0; i < kImageHeight; ++i) {
-            float value = resampleBuffer[i];
-            auto color  = Colour::fromHSV(0.5f + value * 0.5f, 0.8f, 0.8f, 1.0f);
-            pixelData.setPixelColour(j, i, color);
+        // Combine multiple periods if needed
+        workBuffer.zero();
+        int samplesInColumn = 0;
+
+        for (int p = startPeriod; p < endPeriod; ++p) {
+            const auto& period = periods[p];
+            samplesInColumn = std::max(samplesInColumn, period.size());
+            workBuffer.addProduct(period, 1.0f / (endPeriod - startPeriod));
         }
-        ++j;
+
+        Resampling::linResample(workBuffer.withSize(samplesInColumn), resampleBuffer);
+
+        // Map to colors
+        for (int y = 0; y < kImageHeight; ++y) {
+            float value = resampleBuffer[y];
+            auto color = Colour::fromHSV(0.5f + value * 0.5f, 0.8f, 0.8f, 1.0f);
+            pixelData.setPixelColour(col, y, color);
+        }
     }
 
     processor.resetPeriods();
@@ -78,4 +103,13 @@ void MainComponent::drawHistoryImage(Graphics& g) {
 void MainComponent::timerCallback() {
     updateHistoryImage();
     repaint();
+}
+
+void MainComponent::handleNoteOn(MidiKeyboardState*, int /*midiChannel*/, int midiNoteNumber, float /*velocity*/) {
+    auto freq = MidiMessage::getMidiNoteInHertz(midiNoteNumber);
+    processor.setTargetFrequency(freq);
+}
+
+void MainComponent::handleNoteOff(MidiKeyboardState*, int /*midiChannel*/, int /*midiNoteNumber*/, float /*velocity*/) {
+    // Optionally handle note off
 }

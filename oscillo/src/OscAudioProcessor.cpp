@@ -22,7 +22,7 @@ void OscAudioProcessor::stop() {
 }
 
 void OscAudioProcessor::setTargetFrequency(float freq) {
-    auto sampleRate = deviceManager->getCurrentAudioDevice()->getCurrentSampleRate();
+    auto sampleRate = getCurrentSampleRate();
     targetPeriod    = sampleRate / freq;
 }
 
@@ -40,12 +40,9 @@ void OscAudioProcessor::audioDeviceAboutToStart(AudioIODevice* device) {
 
 // called from UI thread
 void OscAudioProcessor::resetPeriods() {
-    // pendingReset = true;
     const SpinLock::ScopedLockType lock(bufferLock);
-    // std::cout << periods.size() << std::endl;
     periods.clear();
     workBufferUI.resetPlacement();
-    // std::cout << "reset" << std::endl;
 }
 
 void OscAudioProcessor::audioDeviceIOCallbackWithContext(
@@ -95,4 +92,8 @@ void OscAudioProcessor::audioDeviceIOCallbackWithContext(
             output.set(0);
         }
     }
+}
+
+double OscAudioProcessor::getCurrentSampleRate() const {
+    return deviceManager->getCurrentAudioDevice()->getCurrentSampleRate();
 }

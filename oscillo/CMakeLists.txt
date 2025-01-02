@@ -43,21 +43,3 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
     AmaranthLib
 )
-
-#target_link_libraries(${PROJECT_NAME} PUBLIC
-#    ${ALSA_LIBRARIES}
-#    ${FREETYPE_LIBRARIES}
-#    ${FONTCONFIG_LIBRARIES}
-#    ${OPENGL_LIBRARIES}
-#    ${CURL_LIBRARIES}
-#    ${GTK3_LIBRARIES}
-#    ${WEBKIT_LIBRARIES}
-#    IPP::ippcore
-#    IPP::ipps
-#    IPP::ippcv
-#    IPP::ippi
-#    IPP::ippvm
-#    pthread
-#    rt
-#    dl
-#)

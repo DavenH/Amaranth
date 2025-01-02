@@ -13,6 +13,8 @@ public:
     void setTargetFrequency(float freq);
     std::vector<Buffer<Ipp32f>> getAudioPeriods() const;
     void resetPeriods();
+    float getTargetPeriod() const { return targetPeriod; }
+    [[nodiscard]] double getCurrentSampleRate() const;
 
 private:
     void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
