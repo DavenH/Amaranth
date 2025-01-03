@@ -2,6 +2,7 @@
 
 DEFAULT_INSTALL_ROOT="$HOME/SDKs"
 INSTALL_ROOT=${INSTALL_ROOT:-$DEFAULT_INSTALL_ROOT}
+IS_MACOS=$(uname -s | grep -i "darwin" > /dev/null && echo "true" || echo "false")
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -42,32 +43,44 @@ echo -e "${BLUE}Setting up Amaranth development environment${NC}"
 echo "This script will create a .env file with SDK locations"
 echo
 
+# Set platform-specific defaults
+if $IS_MACOS; then
+    DEFAULT_IPP_DIR="/opt/intel/oneapi/ipp/latest"
+    DEFAULT_CATCH2_DIR="/usr/local/lib/cmake/Catch2"
+else
+    DEFAULT_IPP_DIR="/opt/intel/oneapi/ipp/latest"
+    DEFAULT_CATCH2_DIR="/usr/local/lib/cmake/Catch2"
+fi
+
 # Prompt for each SDK location
 JUCE_DIR=$(prompt_directory "Enter JUCE modules directory" "${INSTALL_ROOT}/JUCE/modules")
 VST3_DIR=$(prompt_directory "Enter VST3 SDK directory" "${INSTALL_ROOT}/vst3sdk")
-IPP_DIR=$(prompt_directory "Enter Intel IPP directory" "/opt/intel/oneapi/ipp/latest")
-CATCH2_DIR=$(prompt_directory "Enter Catch2 directory" "/usr/local/lib/cmake/Catch2")
+IPP_DIR=$(prompt_directory "Enter Intel IPP directory" "$DEFAULT_IPP_DIR")
+CATCH2_DIR=$(prompt_directory "Enter Catch2 directory" "$DEFAULT_CATCH2_DIR")
 
 # Create output directory if it doesn't exist
 mkdir -p "$(dirname "$INSTALL_ROOT")"
 
-# Create the .env file
+# Create the .env file with platform-specific settings
 cat > ../.env << EOF
 # Amaranth SDK Locations
 # Generated on $(date)
+# Platform: $(uname -s)
 
 JUCE_MODULES_DIR=${JUCE_DIR}
 VST3_SDK_DIR=${VST3_DIR}
 IPP_DIR=${IPP_DIR}
 CATCH2_CMAKE_DIR=${CATCH2_DIR}
 
+# Platform-specific settings
+$($IS_MACOS && echo "MACOS=1" || echo "LINUX=1")
 EOF
 
 echo -e "\n${GREEN}Environment file created: .env${NC}"
 echo
 echo "Validating directories..."
 
-# Validate
+# Validate with platform-specific messaging
 ERRORS=0
 validate_directory "$JUCE_DIR" "JUCE modules" "required" || ((ERRORS++))
 validate_directory "$VST3_DIR" "VST3 SDK" "required" || ((ERRORS++))
@@ -76,7 +89,10 @@ validate_directory "$CATCH2_DIR" "Catch2" "required" || ((ERRORS++))
 
 if [ $ERRORS -gt 0 ]; then
     echo -e "\n${RED}Warning: Some directories are missing. Please install missing SDKs before building.${NC}"
-    echo "You can run the dependency installation script to set up missing dependencies."
+    echo "Run ./install_deps.sh to set up missing dependencies."
+    if $IS_MACOS; then
+        echo "Note: On macOS, some paths might differ if using Homebrew installations."
+    fi
 else
     echo -e "\n${GREEN}All directories validated successfully!${NC}"
 fi

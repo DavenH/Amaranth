@@ -41,23 +41,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 # Base definitions for both builds
 set(BASE_DEFINITIONS
-    LINUX=1
     JUCE_PROJUCER_VERSION=0x80004
-    JUCE_MODULE_AVAILABLE_juce_animation=1
-    JUCE_MODULE_AVAILABLE_juce_audio_basics=1
-    JUCE_MODULE_AVAILABLE_juce_audio_devices=1
-    JUCE_MODULE_AVAILABLE_juce_audio_formats=1
-    JUCE_MODULE_AVAILABLE_juce_audio_plugin_client=1
-    JUCE_MODULE_AVAILABLE_juce_audio_processors=1
-    JUCE_MODULE_AVAILABLE_juce_core=1
-    JUCE_MODULE_AVAILABLE_juce_data_structures=1
-    JUCE_MODULE_AVAILABLE_juce_dsp=1
-    JUCE_MODULE_AVAILABLE_juce_events=1
-    JUCE_MODULE_AVAILABLE_juce_graphics=1
-    JUCE_MODULE_AVAILABLE_juce_gui_basics=1
-    JUCE_MODULE_AVAILABLE_juce_gui_extra=1
-    JUCE_MODULE_AVAILABLE_juce_opengl=1
-    JUCE_MODULE_AVAILABLE_juce_osc=1
     JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
     JUCE_STRICT_REFCOUNTEDPOINTER=1
     JUCE_MODAL_LOOPS_PERMITTED=1
@@ -67,17 +51,37 @@ set(BASE_DEFINITIONS
     JUCE_USE_MP3AUDIOFORMAT=1
 )
 
+# Platform-specific definitions
+if(UNIX AND NOT APPLE)
+    list(APPEND BASE_DEFINITIONS LINUX=1)
+elseif(APPLE)
+    list(APPEND BASE_DEFINITIONS MAC=1)
+endif()
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${BASE_DEFINITIONS})
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     AmaranthLib
-    IPP::ippcore
-    IPP::ipps
-    IPP::ippi
-    IPP::ippcv
-    IPP::ippvm
-    pthread
-    rt
-    dl
 )
+
+# might be redundant
+if(UNIX AND NOT APPLE)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        pthread
+        rt
+        dl
+    )
+elseif(APPLE)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        ${COCOA_FRAMEWORK}
+        ${CORE_AUDIO_FRAMEWORK}
+        ${CORE_MIDI_FRAMEWORK}
+        ${AUDIO_TOOLBOX_FRAMEWORK}
+        ${ACCELERATE_FRAMEWORK}
+        ${WEBKIT_FRAMEWORK}
+        ${IOKIT_FRAMEWORK}
+    )
+endif()
 
 target_link_libraries(${PROJECT_NAME}_tests PRIVATE Catch2::Catch2WithMain)
 
@@ -91,13 +95,22 @@ else()
     target_compile_options(${PROJECT_NAME} PRIVATE -O3)
 endif()
 
-target_link_options(${PROJECT_NAME} PRIVATE -fvisibility=hidden)
+if(NOT APPLE)
+    target_link_options(${PROJECT_NAME} PRIVATE -fvisibility=hidden)
+endif()
 
 include(CTest)
 include(Catch)
 catch_discover_tests(${PROJECT_NAME}_tests)
 
-install(TARGETS ${PROJECT_NAME}
+if(UNIX AND NOT APPLE)
+    install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
-)
+    )
+elseif(APPLE)
+    install(TARGETS ${PROJECT_NAME}
+        RUNTIME DESTINATION Applications
+        LIBRARY DESTINATION "Library/Audio/Plug-Ins/VST3"
+    )
+endif()

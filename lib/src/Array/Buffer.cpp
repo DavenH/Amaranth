@@ -638,64 +638,6 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
     return phase;                                               \
 }
 
-/*
-#define constructUnsupportedUnary(T, op)                        \
-template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::##op() {                        \
-    throw std::runtime_error(#op " not supported for type " #T); \
-    return *this;                                               \
-}
-
-#define constructUnsupportedUnaryC(T, op)                       \
-template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::##op(Ipp##T val) {              \
-    throw std::runtime_error(#op " not supported for type " #T); \
-    return *this;                                               \
-}
-
-#define constructUnsupportedBinary(T, op)                       \
-template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::op(Buffer<Ipp##T> buff) {       \
-    throw std::runtime_error(#op " not supported for type " #T); \
-    return *this;                                               \
-}
-
-#define constructUnsupportedTernary(T, op)                      \
-template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::op(Buffer<Ipp##T> src1, Buffer<Ipp##T> src2) { \
-    throw std::runtime_error(#op " not supported for type " #T); \
-    return *this;                                               \
-}
-
-#define unsupportedIntegerTypes(m, op) \
-    m(32s, op)
-    // m(8u, op) \
-    // m(8s, op) \
-    // m(16s, op) \
-    // m(32s, op)
-
-
-#define defineUnsupportedOps(T) \
-    constructUnsupportedUnary(T, abs) \
-    constructUnsupportedUnary(T, exp) \
-    // constructUnsupportedUnary(T, inv) \
-    // constructUnsupportedUnary(T, ln) \
-    // constructUnsupportedUnary(T, sin) \
-    // constructUnsupportedUnary(T, sqr) \
-    // constructUnsupportedUnary(T, sqrt) \
-    // constructUnsupportedUnaryC(T, add) \
-    // constructUnsupportedUnaryC(T, sub) \
-    // constructUnsupportedUnaryC(T, mul) \
-    // constructUnsupportedUnaryC(T, div) \
-    // constructUnsupportedBinary(T, add) \
-    // constructUnsupportedBinary(T, sub) \
-    // constructUnsupportedBinary(T, mul) \
-    // constructUnsupportedBinary(T, div)
-
-unsupportedIntegerTypes(defineUnsupportedOps)
-*/
-
-
 #define implementOperators(T) \
 template<> \
 void Buffer<Ipp##T>::operator+=(const Buffer<Ipp##T>& other) { \
@@ -827,13 +769,8 @@ Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Buffer buff, Ipp32fc c) {
     return *this;
 }
 
-
-// implementOperators(8u)
-// implementOperators(16s)
-// implementOperators(32s)
 implementOperators(32f)
 implementOperators(64f)
-// implementOperators(32fc)
 
 // template<>
 // Buffer<Ipp32f>& Buffer<Ipp32f>::conv(
