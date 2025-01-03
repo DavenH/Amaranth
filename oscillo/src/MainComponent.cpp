@@ -124,7 +124,7 @@ void MainComponent::updateHistoryImage() {
         for (int y = 0; y < magnitudes.size(); ++y) {
             float value = magnitudes[y];
             auto color  = inferno.getColour(static_cast<int>(value * (kNumColours - 0.01)));
-            spectData.setPixelColour(col, cyclogram.getHeight() - 1 - y, color);
+            spectData.setPixelColour(col, spectrogram.getHeight() - 1 - y, color);
         }
 
     }
