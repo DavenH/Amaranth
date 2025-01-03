@@ -786,3 +786,105 @@ implementOperators(64f)
 //     ippsConvolve_32f(src1.get(), src1.sz, src2.get(), src2.sz, ptr, IppAlgType::ippAlgAuto, workBuff.get());
 //     return *this;
 // }
+
+/*
+#ifdef USE_IPP
+    using Int32 = Ipp32s;
+    using Float32 = Ipp32f;
+    using Float64 = Ipp64f;
+#else
+    using Int32 = int32_t;
+    using Float32 = float;
+    using Float64 = double;
+#endif
+
+template<typename T>
+struct NumericTraits {
+    static constexpr const char* suffix = nullptr;
+    static constexpr const char* accel_prefix = nullptr;
+};
+
+template<>
+struct NumericTraits<Float32> {
+    static constexpr const char* suffix = "32f";
+    static constexpr const char* accel_prefix = "";
+};
+
+template<>
+struct NumericTraits<Float64> {
+    static constexpr const char* suffix = "64f";
+    static constexpr const char* accel_prefix = "D";
+};
+
+#define constructSet(VTYPE)                                     \
+template<>                                                      \
+Buffer<VTYPE>& Buffer<VTYPE>::set(VTYPE value)                  \
+{                                                               \
+    if (sz == 0) return *this;                                  \
+      #ifdef USE_ACCELERATE                                     \
+        vDSP_vfill##NumericTraits<VTYPE>::accel_prefix(&value, ptr, 1, sz); \
+      #else                                                     \
+        ippsSet_##NumericTraits<VTYPE>::suffix(value, ptr, sz); \
+      #endif                                                    \
+    return *this;                                               \
+}
+
+// Usage:
+constructSet(Float32)
+constructSet(Float64)
+
+// Basic Operations
+ippsAdd_32f_I(a, b, len)           -> vDSP_vadd(a, 1, b, 1, dst, 1, len)
+ippsSub_32f_I(a, b, len)           -> vDSP_vsub(a, 1, b, 1, dst, 1, len)
+ippsMul_32f_I(a, b, len)           -> vDSP_vmul(a, 1, b, 1, dst, 1, len)
+ippsDiv_32f_I(a, b, len)           -> vDSP_vdiv(a, 1, b, 1, dst, 1, len)
+
+// Constants
+ippsSet_32f(val, dst, len)         -> vDSP_vfill(&val, dst, 1, len)
+ippsMulC_32f_I(val, dst, len)      -> vDSP_vsmul(dst, 1, &val, dst, 1, len)
+ippsAddC_32f_I(val, dst, len)      -> vDSP_vsadd(dst, 1, &val, dst, 1, len)
+ippsSubC_32f_I(val, dst, len)      -> vDSP_vsadd(dst, 1, &(-val), dst, 1, len)
+ippsDivC_32f_I(val, dst, len)      -> vDSP_vsdiv(dst, 1, &val, dst, 1, len)
+
+// Statistics
+ippsMean_32f(src, len, &mean)      -> vDSP_meanv(src, 1, &mean, len)
+ippsMax_32f(src, len, &max)        -> vDSP_maxv(src, 1, &max, len)
+ippsMin_32f(src, len, &min)        -> vDSP_minv(src, 1, &min, len)
+ippsStdDev_32f(src, len, &std)     -> vDSP_normalize(src, 1, dst, 1, &mean, &std, len)
+
+// Complex Operations
+ippsConvolve_32f()                 -> vDSP_conv(src, 1, kernel, 1, dst, 1, len, kernelLen)
+ippsFlip_32f_I(ptr, len)           -> vDSP_vrvrs(ptr, 1, len)
+ippsDotProd_32f(a, b, len, &dot)   -> vDSP_dotpr(a, 1, b, 1, &dot, len)
+
+// Double Precision
+// Add _D suffix for 64-bit versions:
+vDSP_vadd -> vDSP_vaddD
+vDSP_vmul -> vDSP_vmulD
+
+// Basic Math
+ippsZero_32f(ptr, len)             -> vDSP_vclr(ptr, 1, len)
+ippsSqrt_32f(src, dst, len)        -> vvsqrtf(dst, src, &len)
+ippsAbs_32f_I(ptr, len)            -> vDSP_vabs(ptr, 1, dst, 1, len)
+ippsSin_32f(src, dst, len)         -> vvsinf(dst, src, &len)
+ippsExp_32f(src, dst, len)         -> vvexpf(dst, src, &len)
+ippsLn_32f(src, dst, len)          -> vvlogf(dst, src, &len)
+ippsInv_32f(src, dst, len)         -> vvrecf(dst, src, &len)
+ippsTanh_32f(src, dst, len)        -> vvtanhf(dst, src, &len)
+
+// Vector Operations
+ippsVectorSlope_32f(dst, len, offset, delta) -> vDSP_vramp(&offset, &delta, dst, 1, len)
+
+// Norms and Sums
+ippsNorm_L1_32f(src, len, &norm)   -> vDSP_svemg(src, 1, &norm, len)
+ippsNorm_L2_32f(src, len, &norm)   -> vDSP_svesq(src, 1, &norm, len)
+ippsSum_32f(src, len, &sum)        -> vDSP_sve(src, 1, &sum, len)
+
+// Index Operations
+ippsMaxIndx_32f(src, len, &max, &idx) -> vDSP_maxvi(src, 1, &max, &idx, len)
+ippsMinIndx_32f(src, len, &min, &idx) -> vDSP_minvi(src, 1, &min, &idx, len)
+
+// Threshold Operations
+ippsThreshold_LT_32f_I(ptr, len, thresh) -> vDSP_vthr(ptr, 1, &thresh, dst, 1, len)
+ippsThreshold_GT_32f_I(ptr, len, thresh) -> vDSP_vthres(ptr, 1, &thresh, dst, 1, len)
+ */
