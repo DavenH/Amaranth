@@ -1,7 +1,40 @@
 #include "Buffer.h"
 #include "ScopedAlloc.h"
 
-#include "ipp.h"
+#ifdef USE_ACCELERATE
+  #include <Accelerate/Accelerate.h>
+#else
+  #include <ipp.h>
+#endif
+
+
+#ifdef USE_IPP
+    using Int32 = Ipp32s;
+    using Float32 = Ipp32f;
+    using Float64 = Ipp64f;
+#else
+    using Int32 = int32_t;
+    using Float32 = float;
+    using Float64 = double;
+#endif
+
+template<typename T>
+struct NumericTraits {
+    static constexpr const char* suffix = nullptr;
+    static constexpr const char* accel_prefix = nullptr;
+};
+
+template<>
+struct NumericTraits<Float32> {
+    static constexpr const char* suffix = "32f";
+    static constexpr const char* accel_prefix = "";
+};
+
+template<>
+struct NumericTraits<Float64> {
+    static constexpr const char* suffix = "64f";
+    static constexpr const char* accel_prefix = "D";
+};
 
 #pragma warning(disable: 4661)
 
@@ -96,13 +129,13 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::zero(int size)                  \
     return *this;                                               \
 }
 
-#define constructSet(T)                                         \
-template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::set(Ipp##T value)               \
-{                                                               \
-    ippsSet_##T(value, ptr, sz);                                \
-    return *this;                                               \
-}
+//#define constructSet(T)                                         \
+//template<>                                                      \
+//Buffer<Ipp##T>& Buffer<Ipp##T>::set(Ipp##T value)               \
+//{                                                               \
+//    ippsSet_##T(value, ptr, sz);                                \
+//    return *this;                                               \
+//}
 
 #define constructAdd(T)                                         \
 template<>                                                      \
@@ -772,6 +805,24 @@ Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Buffer buff, Ipp32fc c) {
 implementOperators(32f)
 implementOperators(64f)
 
+
+#define constructSet(T)                                         \
+template<>                                                      \
+Buffer<T>& Buffer<T>::set(T value)                              \
+{                                                               \
+    if (sz == 0) return *this;                                  \
+      #ifdef USE_ACCELERATE                                     \
+        vDSP_vfill##NumericTraits<T>::accel_prefix(&value, ptr, 1, sz); \
+      #else                                                     \
+        ippsSet_##NumericTraits<T>::suffix(value, ptr, sz);     \
+      #endif                                                    \
+    return *this;                                               \
+}
+
+// Usage:
+constructSet(Float32)
+constructSet(Float64)
+
 // template<>
 // Buffer<Ipp32f>& Buffer<Ipp32f>::conv(
 //     Buffer<Ipp32f> src1,
@@ -788,50 +839,6 @@ implementOperators(64f)
 // }
 
 /*
-#ifdef USE_IPP
-    using Int32 = Ipp32s;
-    using Float32 = Ipp32f;
-    using Float64 = Ipp64f;
-#else
-    using Int32 = int32_t;
-    using Float32 = float;
-    using Float64 = double;
-#endif
-
-template<typename T>
-struct NumericTraits {
-    static constexpr const char* suffix = nullptr;
-    static constexpr const char* accel_prefix = nullptr;
-};
-
-template<>
-struct NumericTraits<Float32> {
-    static constexpr const char* suffix = "32f";
-    static constexpr const char* accel_prefix = "";
-};
-
-template<>
-struct NumericTraits<Float64> {
-    static constexpr const char* suffix = "64f";
-    static constexpr const char* accel_prefix = "D";
-};
-
-#define constructSet(VTYPE)                                     \
-template<>                                                      \
-Buffer<VTYPE>& Buffer<VTYPE>::set(VTYPE value)                  \
-{                                                               \
-    if (sz == 0) return *this;                                  \
-      #ifdef USE_ACCELERATE                                     \
-        vDSP_vfill##NumericTraits<VTYPE>::accel_prefix(&value, ptr, 1, sz); \
-      #else                                                     \
-        ippsSet_##NumericTraits<VTYPE>::suffix(value, ptr, sz); \
-      #endif                                                    \
-    return *this;                                               \
-}
-
-// Usage:
-constructSet(Float32)
-constructSet(Float64)
 
 // Basic Operations
 ippsAdd_32f_I(a, b, len)           -> vDSP_vadd(a, 1, b, 1, dst, 1, len)
