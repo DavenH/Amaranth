@@ -1,6 +1,6 @@
 project(Cycle VERSION 1.9.0)
 
-set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode")
+set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../lib/JuceLibraryCode")
 
 file(GLOB_RECURSE APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"

@@ -1,71 +1,39 @@
 #include "Buffer.h"
 #include "ScopedAlloc.h"
 
-#ifdef USE_ACCELERATE
-  #include <Accelerate/Accelerate.h>
-#else
-  #include <ipp.h>
-#endif
-
-
 #ifdef USE_IPP
-    using Int32 = Ipp32s;
-    using Float32 = Ipp32f;
-    using Float64 = Ipp64f;
-#else
-    using Int32 = int32_t;
-    using Float32 = float;
-    using Float64 = double;
-#endif
-
-template<typename T>
-struct NumericTraits {
-    static constexpr const char* suffix = nullptr;
-    static constexpr const char* accel_prefix = nullptr;
-};
-
-template<>
-struct NumericTraits<Float32> {
-    static constexpr const char* suffix = "32f";
-    static constexpr const char* accel_prefix = "";
-};
-
-template<>
-struct NumericTraits<Float64> {
-    static constexpr const char* suffix = "64f";
-    static constexpr const char* accel_prefix = "D";
-};
+#include "ipp.h"
 
 #pragma warning(disable: 4661)
 
 #define declareForCommonTypes(T) \
-    T(8u)    \
-    T(16s)   \
-    T(32s)   \
-    T(32f)   \
-    T(64f)   \
-    T(32fc)
+    T(Int8u)   \
+    T(Int8s)   \
+    T(Int16s)  \
+    T(Int32s)  \
+    T(Float32) \
+    T(Float64)
 
 #define declareForReal(T) \
-    T(32f)    \
-    T(64f)
+    T(Float32) \
+    T(Float64)
 
 #define declareForRealAndCplx(T) \
-    T(32f)    \
-    T(64f)    \
-    T(32fc)
+    T(Float32)  \
+    T(Float64)  \
+    T(Complex32)
 
 #define declareForFloatAndCplx(T) \
-    T(32f)    \
-    T(32fc)
+    T(Float32)  \
+    T(Complex32)
 
-template class Buffer<Ipp8u>;
-template class Buffer<Ipp8s>;
-template class Buffer<Ipp16s>;
-template class Buffer<Ipp32s>;
-template class Buffer<Ipp32f>;
-template class Buffer<Ipp64f>;
-template class Buffer<Ipp32fc>;
+template class Buffer<Int8u>;
+template class Buffer<Int8s>;
+template class Buffer<Int16s>;
+template class Buffer<Int32s>;
+template class Buffer<Float32>;
+template class Buffer<Float64>;
+template class Buffer<Complex32>;
 
 template<>
 bool Buffer<float>::isProbablyEmpty() const {
@@ -129,13 +97,13 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::zero(int size)                  \
     return *this;                                               \
 }
 
-//#define constructSet(T)                                         \
-//template<>                                                      \
-//Buffer<Ipp##T>& Buffer<Ipp##T>::set(Ipp##T value)               \
-//{                                                               \
-//    ippsSet_##T(value, ptr, sz);                                \
-//    return *this;                                               \
-//}
+#define constructSet(T)                                         \
+template<>                                                      \
+Buffer<Ipp##T>& Buffer<Ipp##T>::set(Ipp##T value)               \
+{                                                               \
+    ippsSet_##T(value, ptr, sz);                                \
+    return *this;                                               \
+}
 
 #define constructAdd(T)                                         \
 template<>                                                      \
@@ -441,7 +409,6 @@ Buffer<Ipp##T>&  Buffer<Ipp##T>::rand(unsigned& seed)           \
     return *this;                                               \
 }
 
-
 #define constructRampOffset(T)                                  \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::ramp(Ipp##T offset, Ipp##T delta) \
@@ -453,7 +420,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::ramp(Ipp##T offset, Ipp##T delta) \
             ippsVectorSlope_##T(ptr, sz, offset, delta);        \
     return *this;                                               \
 }
-
 
 #define constructNorm(T)                                        \
 template<>                                                      \
@@ -805,24 +771,6 @@ Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Buffer buff, Ipp32fc c) {
 implementOperators(32f)
 implementOperators(64f)
 
-
-#define constructSet(T)                                         \
-template<>                                                      \
-Buffer<T>& Buffer<T>::set(T value)                              \
-{                                                               \
-    if (sz == 0) return *this;                                  \
-      #ifdef USE_ACCELERATE                                     \
-        vDSP_vfill##NumericTraits<T>::accel_prefix(&value, ptr, 1, sz); \
-      #else                                                     \
-        ippsSet_##NumericTraits<T>::suffix(value, ptr, sz);     \
-      #endif                                                    \
-    return *this;                                               \
-}
-
-// Usage:
-constructSet(Float32)
-constructSet(Float64)
-
 // template<>
 // Buffer<Ipp32f>& Buffer<Ipp32f>::conv(
 //     Buffer<Ipp32f> src1,
@@ -895,3 +843,5 @@ ippsMinIndx_32f(src, len, &min, &idx) -> vDSP_minvi(src, 1, &min, &idx, len)
 ippsThreshold_LT_32f_I(ptr, len, thresh) -> vDSP_vthr(ptr, 1, &thresh, dst, 1, len)
 ippsThreshold_GT_32f_I(ptr, len, thresh) -> vDSP_vthres(ptr, 1, &thresh, dst, 1, len)
  */
+
+#endif

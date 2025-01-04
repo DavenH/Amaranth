@@ -2,6 +2,28 @@
 #include "JuceHeader.h"
 using namespace juce;
 
+#ifdef USE_IPP
+    #include <ipp.h>
+    using Int8u = Ipp8u;
+    using Int8s = Ipp8s;
+    using Int16s = Ipp16s;
+    using Int32s = Ipp32s;
+    using Float32 = Ipp32f;
+    using Float64 = Ipp64f;
+    using Complex32 = Ipp32fc;
+#else
+    #include <cstdint>
+    #include <complex>
+
+    using Int8u = uint8_t;
+    using Int8s = int8_t;
+    using Int16s = int16_t;
+    using Int32s = int32_t;
+    using Float32 = float;
+    using Float64 = double;
+    using Complex32 = std::complex<float>;
+#endif
+
 template<class T>
 class Buffer
 {
