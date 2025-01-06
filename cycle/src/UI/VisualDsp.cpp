@@ -1495,7 +1495,7 @@ void VisualDsp::processThroughEffects(int numColumns) {
             fft.getPhases().copyTo(phasePostFXCols[i]);
         }
 
-        phasePostFXArray.add((float) 2 * M_PI);
+        phasePostFXArray.add((float) M_PI_2);
     }
 
     if (getSetting(CurrentMorphAxis) == Vertex::Time) {
