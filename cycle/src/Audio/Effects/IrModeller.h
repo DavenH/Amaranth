@@ -1,8 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <ipp.h>
-#include <ipp.h>
 #include <cmath>
 
 #include <Algo/ConvReverb.h>
@@ -51,7 +49,7 @@ public:
     void doPostWaveLoad();
     void doPostDeconvolve(int size);
 
-    void processVertexBuffer(Buffer<Ipp32f> buffer);
+    void processVertexBuffer(Buffer<Float32> buffer);
     void processBuffer(AudioSampleBuffer& buffer) override;
     void audioThreadUpdate() override;
     void resetIndices();
@@ -107,7 +105,7 @@ private:
     public:
         ConvState() : blockSize(1) {}
 
-        ScopedAlloc<Ipp32f> memory;
+        ScopedAlloc<Float32> memory;
 
         int blockSize;
         Buffer<float> impulse, rawImpulse;

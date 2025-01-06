@@ -2,7 +2,7 @@
 
 #include "JuceHeader.h"
 
-class TitleBacking : public Component
+class TitleBacking : public juce::Component
 {
 public:
     void paint(Graphics& g) override {

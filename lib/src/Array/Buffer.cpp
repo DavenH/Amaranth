@@ -1,7 +1,7 @@
 #include "Buffer.h"
-#include "ScopedAlloc.h"
 
 #ifdef USE_IPP
+#include "ScopedAlloc.h"
 #include "ipp.h"
 
 #pragma warning(disable: 4661)
@@ -17,6 +17,10 @@
 #define declareForReal(T) \
     T(Float32) \
     T(Float64)
+
+#define declareForRealPrec(T) \
+    T(Float32, A11) \
+    T(Float64, A50)
 
 #define declareForRealAndCplx(T) \
     T(Float32)  \
@@ -158,17 +162,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::sub(Buffer<Ipp##T> buff)        \
     return *this;                                               \
 }
 
-#define constructDiff(T)                                        \
-template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::diff(Buffer<Ipp##T> buff)       \
-{                                                               \
-    if(sz < 2)                                                  \
-        return *this;                                           \
-    ippsSub_##T(buff.ptr, buff.ptr + 1, ptr, jmin(buff.sz - 1, sz - 1)); \
-    ptr[sz - 1] = ptr[sz - 2];                                  \
-    return *this;                                               \
-}
-
 #define constructSubB(T)                                        \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::sub(Buffer<Ipp##T> src1, Buffer<Ipp##T> src2) \
@@ -226,11 +219,11 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::mul(Ipp##T c)                   \
     return *this;                                               \
 }
 
-#define constructTanh(T)                                        \
+#define constructTanh(T, prec)                                  \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::tanh()                          \
 {                                                               \
-    ippsTanh_##T##_A24(ptr, ptr, sz);                           \
+    ippsTanh_##T##_##prec(ptr, ptr, sz);                        \
     return *this;                                               \
 }
 
@@ -262,15 +255,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::mul(Buffer<Ipp##T> buff, Ipp##T c) \
     return *this;                                               \
 }
 
-#define constructMulComb2(T)                                    \
-template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::mul(Buffer<Ipp##T> src1, Buffer<Ipp##T> src2) \
-{                                                               \
-    ippsMul_##T(src1.ptr, src2.ptr, ptr, jmin(sz, src1.sz, src2.sz)); \
-    return *this;                                               \
-}
-
-
 #define constructConv(T)                                        \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::conv(Buffer<Ipp##T> src1, Buffer<Ipp##T> src2, Buffer<Ipp8u> workBuff) \
@@ -280,7 +264,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::conv(Buffer<Ipp##T> src1, Buffer<Ipp##T> src2, B
     return *this;                                               \
 }
 
-
 #define constructSqrt(T)                                        \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::sqrt()                          \
@@ -288,7 +271,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::sqrt()                          \
     ippsSqrt_##T##_A11(ptr, ptr, sz);                           \
     return *this;                                               \
 }
-
 
 #define constructAbs(T)                                         \
 template<>                                                      \
@@ -298,7 +280,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::abs()                           \
     return *this;                                               \
 }
 
-
 #define constructSqr(T)                                         \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::sqr()                           \
@@ -307,32 +288,29 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::sqr()                           \
     return *this;                                               \
 }
 
-
-#define constructSin(T)                                         \
+#define constructSin(T, prec)                                   \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::sin()                           \
 {                                                               \
-    ippsSin_##T##_A11(ptr, ptr, sz);                            \
+    ippsSin_##T##_##prec(ptr, ptr, sz);                         \
     return *this;                                               \
 }
 
-
-#define constructExp(T)                                         \
+#define constructExp(T, prec)                                   \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::exp()                           \
 {                                                               \
-    ippsExp_##T##_A11(ptr, ptr, sz);                            \
+    ippsExp_##T##_##prec(ptr, ptr, sz);                         \
     return *this;                                               \
 }
 
-#define constructInv(T)                                         \
+#define constructInv(T, prec)                                   \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::inv()                           \
 {                                                               \
-    ippsInv_##T##_A11(ptr, ptr, sz);                            \
+    ippsInv_##T##_##prec(ptr, ptr, sz);                         \
     return *this;                                               \
 }
-
 
 #define constructLn(T)                                          \
 template<>                                                      \
@@ -342,7 +320,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::ln()                            \
     return *this;                                               \
 }
 
-
 #define constructFlip(T)                                        \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::flip()                          \
@@ -350,7 +327,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::flip()                          \
     ippsFlip_##T##_I(ptr, sz);                                  \
     return *this;                                               \
 }
-
 
 #define constructFlipBuff(T)                                    \
 template<>                                                      \
@@ -360,14 +336,12 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::flip(Buffer<Ipp##T> buff)       \
     return *this;                                               \
 }
 
-
 #define constructCopy(T)                                        \
 template<>                                                      \
 void Buffer<Ipp##T>::copyTo(Buffer<Ipp##T> buff) const          \
 {                                                               \
     ippsCopy_##T(ptr, buff.ptr, jmin(sz, buff.sz));             \
 }
-
 
 #define constructPhase(T)                                       \
 template<>                                                      \
@@ -381,7 +355,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::withPhase(int phase, Buffer<Ipp##T> workBuffer) 
     return *this;                                               \
 }
 
-
 #define constructRamp(T)                                        \
 template<>                                                      \
 Buffer<Ipp##T>&  Buffer<Ipp##T>::ramp()                         \
@@ -392,7 +365,6 @@ Buffer<Ipp##T>&  Buffer<Ipp##T>::ramp()                         \
     }                                                           \
     return *this;                                               \
 }
-
 
 #define constructRand(T)                                        \
 template<>                                                      \
@@ -433,7 +405,6 @@ Ipp##T Buffer<Ipp##T>::normL1()    const                        \
     return norm;                                                \
 }
 
-
 #define constructSum(T)                                         \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::sum() const                              \
@@ -446,6 +417,13 @@ Ipp##T Buffer<Ipp##T>::sum() const                              \
     return sum;                                                 \
 }
 
+#define constructPow(T, prec)                                    \
+template<>                                                      \
+Buffer<Ipp##T>& Buffer<Ipp##T>::pow(Ipp##T c) {                 \
+    if(c != 1.)                                                 \
+        ippsPowx_##T_##prec(ptr, c, ptr, sz);                   \
+    return *this;                                               \
+}
 
 #define constructMaxVal(T)                                      \
 template<>                                                      \
@@ -471,7 +449,6 @@ Ipp##T Buffer<Ipp##T>::min() const                              \
     return minVal;                                              \
 }
 
-
 #define constructMean(T)                                        \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::mean() const                             \
@@ -484,14 +461,12 @@ Ipp##T Buffer<Ipp##T>::mean() const                             \
     return mean;                                                \
 }
 
-
 #define constructMinMax(T)                                      \
 template<>                                                      \
 void Buffer<Ipp##T>::minmax(Ipp##T& pMin, Ipp##T& pMax) const   \
 {                                                               \
     ippsMinMax_##T(ptr, sz, &pMin, &pMax);                      \
 }
-
 
 #define constructNormL2(T)                                      \
 template<>                                                      \
@@ -505,7 +480,6 @@ Ipp##T Buffer<Ipp##T>::normL2()    const                        \
     return norm;                                                \
 }
 
-
 #define constructNormDiffL2(T)                                  \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::normDiffL2(Buffer<Ipp##T> buff) const    \
@@ -518,7 +492,6 @@ Ipp##T Buffer<Ipp##T>::normDiffL2(Buffer<Ipp##T> buff) const    \
     return norm;                                                \
 }
 
-
 #define constructDot(T)                                         \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::dot(Buffer<Ipp##T> buff)    const        \
@@ -530,7 +503,6 @@ Ipp##T Buffer<Ipp##T>::dot(Buffer<Ipp##T> buff)    const        \
     ippsDotProd_##T(ptr, buff.ptr, jmin(sz, buff.sz), &prod);   \
     return prod;                                                \
 }
-
 
 #define constructMax(T)                                         \
 template<>                                                      \
@@ -551,7 +523,6 @@ void Buffer<Ipp##T>::getMin(Ipp##T& pMin, int& idx)    const    \
                                                                 \
     ippsMinIndx_##T(ptr, sz, &pMin, &idx);                      \
 }
-
 
 #define constructCombineC(T)                                    \
 template<>                                                      \
@@ -576,7 +547,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::addProduct(Buffer<Ipp##T> src1, \
     return *this;                                               \
 }
 
-
 #define constructThreshLT(T)                                    \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::threshLT(Ipp##T c)              \
@@ -586,13 +556,21 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::threshLT(Ipp##T c)              \
     return *this;                                               \
 }
 
-
 #define constructThreshGT(T)                                    \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::threshGT(Ipp##T c)              \
 {                                                               \
     if(sz > 0)                                                  \
         ippsThreshold_GT_##T##_I(ptr, sz, c);                   \
+    return *this;                                               \
+}
+
+#define constructClip(T)                                        \
+template<>                                                      \
+Buffer<Ipp##T>& Buffer<Ipp##T>::clip(Ipp##T low, Ipp##T high)   \
+{                                                               \
+    if(sz > 0)                                                  \
+        ippsThreshold_LTValGTVal_32f_I(ptr, sz, low, low, high, high); \
     return *this;                                               \
 }
 
@@ -688,7 +666,6 @@ void Buffer<Ipp##T>::operator>>(Buffer<Ipp##T> other) const {  \
     copyTo(other);                                             \
 }
 
-
 declareForCommonTypes(constructZeroSz);
 declareForCommonTypes(constructZero);
 declareForCommonTypes(constructSet);
@@ -713,27 +690,30 @@ declareForReal(constructRampOffset);
 declareForReal(constructNorm);
 declareForReal(constructNormL2);
 declareForReal(constructAbs);
+declareForReal(constructClip);
 declareForReal(constructMax);
 declareForReal(constructThreshLT);
 declareForReal(constructThreshGT);
+
+declareForRealPrec(constructSqrt)
+declareForRealPrec(constructPow)
+declareForRealPrec(constructInv)
+declareForRealPrec(constructExp)
+declareForRealPrec(constructSin)
+declareForRealPrec(constructTanh)
 
 constructNormDiffL2(32f);
 constructDownsample(32f);
 constructUpsample(32f);
 constructSubCRevB(32f);
-constructSqrt(32f);
 constructDot(32f);
 constructCombineC(32f);
 constructDivCRev(32f);
 constructSqr(32f);
-constructSin(32f);
-constructExp(32f);
-constructInv(32f);
 constructLn(32f);
 constructSum(32f);
 constructSubB(32f);
 constructFlip(32f);
-constructFlipBuff(32f);
 constructMin(32f);
 constructMaxVal(32f);
 constructMinVal(32f);
@@ -744,29 +724,6 @@ constructMean(32f);
 constructStddev(32f);
 constructSort(32f);
 constructDiff(32f);
-
-template<>
-Buffer<Ipp32f>& Buffer<Ipp32f>::tanh() {
-    ippsTanh_32f_A24(ptr, ptr, sz);
-    return *this;
-}
-
-template<>
-Buffer<Ipp32f>& Buffer<Ipp32f>::pow(Ipp32f c) {
-    if(c != 1.f)
-        ippsPowx_32f_A11(ptr, c, ptr, sz);
-    return *this;
-}
-
-template<>
-Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Buffer buff, Ipp32fc c) {
-    if (c.re == 1 && c.im == 0) {
-        buff.copyTo(*this);
-    } else {
-        ippsMulC_32fc(buff.ptr, c, ptr, jmin(sz, buff.sz));
-    }
-    return *this;
-}
 
 implementOperators(32f)
 implementOperators(64f)
@@ -786,62 +743,5 @@ implementOperators(64f)
 //     return *this;
 // }
 
-/*
-
-// Basic Operations
-ippsAdd_32f_I(a, b, len)           -> vDSP_vadd(a, 1, b, 1, dst, 1, len)
-ippsSub_32f_I(a, b, len)           -> vDSP_vsub(a, 1, b, 1, dst, 1, len)
-ippsMul_32f_I(a, b, len)           -> vDSP_vmul(a, 1, b, 1, dst, 1, len)
-ippsDiv_32f_I(a, b, len)           -> vDSP_vdiv(a, 1, b, 1, dst, 1, len)
-
-// Constants
-ippsSet_32f(val, dst, len)         -> vDSP_vfill(&val, dst, 1, len)
-ippsMulC_32f_I(val, dst, len)      -> vDSP_vsmul(dst, 1, &val, dst, 1, len)
-ippsAddC_32f_I(val, dst, len)      -> vDSP_vsadd(dst, 1, &val, dst, 1, len)
-ippsSubC_32f_I(val, dst, len)      -> vDSP_vsadd(dst, 1, &(-val), dst, 1, len)
-ippsDivC_32f_I(val, dst, len)      -> vDSP_vsdiv(dst, 1, &val, dst, 1, len)
-
-// Statistics
-ippsMean_32f(src, len, &mean)      -> vDSP_meanv(src, 1, &mean, len)
-ippsMax_32f(src, len, &max)        -> vDSP_maxv(src, 1, &max, len)
-ippsMin_32f(src, len, &min)        -> vDSP_minv(src, 1, &min, len)
-ippsStdDev_32f(src, len, &std)     -> vDSP_normalize(src, 1, dst, 1, &mean, &std, len)
-
-// Complex Operations
-ippsConvolve_32f()                 -> vDSP_conv(src, 1, kernel, 1, dst, 1, len, kernelLen)
-ippsFlip_32f_I(ptr, len)           -> vDSP_vrvrs(ptr, 1, len)
-ippsDotProd_32f(a, b, len, &dot)   -> vDSP_dotpr(a, 1, b, 1, &dot, len)
-
-// Double Precision
-// Add _D suffix for 64-bit versions:
-vDSP_vadd -> vDSP_vaddD
-vDSP_vmul -> vDSP_vmulD
-
-// Basic Math
-ippsZero_32f(ptr, len)             -> vDSP_vclr(ptr, 1, len)
-ippsSqrt_32f(src, dst, len)        -> vvsqrtf(dst, src, &len)
-ippsAbs_32f_I(ptr, len)            -> vDSP_vabs(ptr, 1, dst, 1, len)
-ippsSin_32f(src, dst, len)         -> vvsinf(dst, src, &len)
-ippsExp_32f(src, dst, len)         -> vvexpf(dst, src, &len)
-ippsLn_32f(src, dst, len)          -> vvlogf(dst, src, &len)
-ippsInv_32f(src, dst, len)         -> vvrecf(dst, src, &len)
-ippsTanh_32f(src, dst, len)        -> vvtanhf(dst, src, &len)
-
-// Vector Operations
-ippsVectorSlope_32f(dst, len, offset, delta) -> vDSP_vramp(&offset, &delta, dst, 1, len)
-
-// Norms and Sums
-ippsNorm_L1_32f(src, len, &norm)   -> vDSP_svemg(src, 1, &norm, len)
-ippsNorm_L2_32f(src, len, &norm)   -> vDSP_svesq(src, 1, &norm, len)
-ippsSum_32f(src, len, &sum)        -> vDSP_sve(src, 1, &sum, len)
-
-// Index Operations
-ippsMaxIndx_32f(src, len, &max, &idx) -> vDSP_maxvi(src, 1, &max, &idx, len)
-ippsMinIndx_32f(src, len, &min, &idx) -> vDSP_minvi(src, 1, &min, &idx, len)
-
-// Threshold Operations
-ippsThreshold_LT_32f_I(ptr, len, thresh) -> vDSP_vthr(ptr, 1, &thresh, dst, 1, len)
-ippsThreshold_GT_32f_I(ptr, len, thresh) -> vDSP_vthres(ptr, 1, &thresh, dst, 1, len)
- */
 
 #endif

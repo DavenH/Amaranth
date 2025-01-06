@@ -53,7 +53,7 @@ void Envelope2D::init() {
 
     zoomPanel->rect.w = 1.;
     zoomPanel->tendZoomToRight = false;
-    zoomPanel->rect.xMaximum = (float) IPP_SQRT2;
+    zoomPanel->rect.xMaximum = MathConstants<float>::sqrt2;
 
     colorA = Color(0.5f, 0.71f, 1.0f);
     colorB = Color(0.5f, 0.71f, 1.0f);
@@ -64,8 +64,8 @@ void Envelope2D::init() {
 
     EnvelopeInter2D* e2 = e2Interactor;
 
-    Component* tempEnv[] 	= { &e2->volumeIcon, &e2->scratchIcon, &e2->pitchIcon, 	&e2->wavePitchIcon  };
-    Component* tempLoop[] 	= { &e2->loopIcon, 	 &e2->sustainIcon };
+    juce::Component* tempEnv[] 	= { &e2->volumeIcon, &e2->scratchIcon, &e2->pitchIcon, 	&e2->wavePitchIcon  };
+    juce::Component* tempLoop[] 	= { &e2->loopIcon, 	 &e2->sustainIcon };
 
     int envSize = numElementsInArray(tempEnv);
 
@@ -548,7 +548,7 @@ void Envelope2D::postCurveDraw() {
     gfx->drawLine(currentPos, 0, currentPos, 1, true);
 }
 
-Component* Envelope2D::getComponent(int which) {
+juce::Component* Envelope2D::getComponent(int which) {
     switch (which) {
         case CycleTour::TargVol: 		return &e2Interactor->volumeIcon;
         case CycleTour::TargScratch:	return &e2Interactor->scratchIcon;

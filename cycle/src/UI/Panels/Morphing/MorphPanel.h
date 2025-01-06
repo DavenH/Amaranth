@@ -17,7 +17,7 @@ class CubeDisplay;
 class VertCube;
 
 class MorphPanel :
-        public Component
+        public juce::Component
     ,	public Slider::Listener
     ,	public Button::Listener
     ,	public AsyncUIUpdater

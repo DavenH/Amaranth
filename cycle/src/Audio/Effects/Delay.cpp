@@ -267,8 +267,8 @@ void Delay::recalculateWetBuffers(bool print) {
         wetBuffer[ch].ensureSize(wetBufferSize);
         inputBuffer[ch].ensureSize(pow2BufferSize);
 
-        ippsZero_32f(wetBuffer[ch], wetBufferSize);
-        ippsZero_32f(inputBuffer[ch], pow2BufferSize);
+        wetBuffer[ch].zero();
+        inputBuffer[ch].zero();
     }
 
     if (print) {

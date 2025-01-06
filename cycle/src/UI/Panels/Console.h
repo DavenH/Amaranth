@@ -13,7 +13,7 @@ class ResizerPullout;
 
 
 class Console:
-        public Component
+        public juce::Component
     ,	public Timer
     ,	public IConsole {
 public:

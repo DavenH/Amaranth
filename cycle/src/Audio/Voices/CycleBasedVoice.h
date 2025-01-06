@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <ipp.h>
 #include <App/MeshLibrary.h>
 #include <Array/ScopedAlloc.h>
 #include <Array/StereoBuffer.h>
@@ -152,18 +151,18 @@ protected:
     OwnedArray<Oversampler> oversamplers;
 
     StereoBuffer oversampleAccumBuf;
-    ScopedAlloc<Ipp32f> emergencyBuffer;
-    ScopedAlloc<Ipp32f> rastBuffer;
-    ScopedAlloc<Ipp32f> tempBuffer;
-    ScopedAlloc<Ipp32f> cycleBufferMemory;
-    ScopedAlloc<Ipp32f> resamplingMemory;
+    ScopedAlloc<Float32> emergencyBuffer;
+    ScopedAlloc<Float32> rastBuffer;
+    ScopedAlloc<Float32> tempBuffer;
+    ScopedAlloc<Float32> cycleBufferMemory;
+    ScopedAlloc<Float32> resamplingMemory;
 
-    ScopedAlloc<Ipp32f> layerAccumBuffer[2];	// (when interpolating) translationally symmetrical (far) future cycle
-    ScopedAlloc<Ipp32f> pastCycle[2];			// translationally symmetrical past cycle
-    ScopedAlloc<Ipp32f> biasedCycle[2];			// fades smoothly into immediate future cycle
+    ScopedAlloc<Float32> layerAccumBuffer[2];	// (when interpolating) translationally symmetrical (far) future cycle
+    ScopedAlloc<Float32> pastCycle[2];			// translationally symmetrical past cycle
+    ScopedAlloc<Float32> biasedCycle[2];			// fades smoothly into immediate future cycle
 
-    ScopedAlloc<Ipp32f> lerpMemory;
-    ScopedAlloc<Ipp32f> halfBuf;				// copy buffer
+    ScopedAlloc<Float32> lerpMemory;
+    ScopedAlloc<Float32> halfBuf;				// copy buffer
 
     MeshLibrary::LayerGroup* timeLayers;
 

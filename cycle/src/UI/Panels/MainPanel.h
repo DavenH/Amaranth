@@ -60,7 +60,7 @@ public:
 };
 
 class MainPanel :
-        public Component
+        public juce::Component
     ,	public TabbedSelector::Listener
     ,	public ComponentMovementWatcher
     ,	public WaveDragTarget

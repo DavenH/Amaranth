@@ -1,8 +1,11 @@
 #pragma once
 #include "JuceHeader.h"
+
+#include 
 using namespace juce;
 
 #ifdef USE_IPP
+    #define perfSplit(X, Y) X
     #include <ipp.h>
     using Int8u = Ipp8u;
     using Int8s = Ipp8s;
@@ -11,17 +14,24 @@ using namespace juce;
     using Float32 = Ipp32f;
     using Float64 = Ipp64f;
     using Complex32 = Ipp32fc;
-#else
+    using Complex64 = Ipp64fc;
+#elif defined(USE_ACCELERATE)
+    #define perfSplit(X, Y) Y
     #include <cstdint>
     #include <complex>
 
     using Int8u = uint8_t;
     using Int8s = int8_t;
     using Int16s = int16_t;
+    using Int16u = uint16_t;
     using Int32s = int32_t;
+    using Int32u = uint32_t;
     using Float32 = float;
     using Float64 = double;
     using Complex32 = std::complex<float>;
+    using Complex64 = std::complex<double>;
+#else
+    #error "No Performance Library specified"
 #endif
 
 template<class T>
@@ -38,68 +48,81 @@ public:
 
     /* —————————————————————————————————————————————————————————————————————————————————————————————————————— */
 
-    void copyTo(Buffer buff)     const;
+    void copyTo(Buffer buff)         const;
     void getMax(T& pMax, int& index) const;
     void getMin(T& pMin, int& index) const;
     void minmax(T& pMin, T& pMax)    const;
 
     [[nodiscard]] bool isProbablyEmpty() const;
 
-    int downsampleFrom(Buffer buff, int factor = -1, int phase = 0);
-    int upsampleFrom(Buffer buff, int factor = -1, int phase = 0);
-
+    // stats
     T max()     const;
     T mean()    const;
     T min()     const;
-    T normL1()  const;
-    T normL2()  const;
+    T normL1()  const;                // sum(abs(ptr[i]))
+    T normL2()  const;                // sqrt(sum(ptr[i])**2)
     T stddev()  const;
     T sum()     const;
-
+    T normDiffL2(Buffer buff) const;  // sqrt(sum(buff[i] - ptr[i])**2)
     T dot(Buffer buff) const;
-    T normDiffL2(Buffer buff) const;
 
-    Buffer& withPhase(int phase, Buffer workBuffer);
+    // init
+    Buffer& zero();
     Buffer& zero(int size);
-    Buffer& set(T val);
+    Buffer& rand(unsigned& seed);
+    Buffer& ramp();                  // ptr[i] = i / (sz - 1)
+    Buffer& ramp(T offset, T delta); // ptr[i] = offset + i * delta
+    Buffer& hann();
+
+    // nullary math
     Buffer& abs();
+    Buffer& inv(); // reciprocal
     Buffer& exp();
-    Buffer& inv();
-    Buffer& ln();
+    Buffer& ln(); // natural log
     Buffer& sin();
-    Buffer& sort();
+    Buffer& tanh();
     Buffer& sqr();
     Buffer& sqrt();
-    Buffer& zero();
-    Buffer& diff(Buffer buff);
-    Buffer& pow(T val);
-    Buffer& sub(T c);
-    Buffer& sub(Buffer buff);
-    Buffer& sub(Buffer src1, Buffer src2);
-    Buffer& subCRev(T c);
-    Buffer& subCRev(T c, Buffer buff);
+    Buffer& undenormalize();
+
+    // unary constant
+    Buffer& set(T c);
+    Buffer& pow(T c);
     Buffer& add(T c);
-    Buffer& add(Buffer buff, T c);
-    Buffer& add(Buffer buff);
-    Buffer& add(Buffer src1, Buffer src2);
     Buffer& mul(T c);
-    Buffer& mul(Buffer buff);
-    Buffer& mul(Buffer buff, T c);
-    Buffer& mul(Buffer src1, Buffer src2);
-    Buffer& div(Buffer buff);
     Buffer& div(T c);
-    Buffer& divCRev(T c);
-    Buffer& flip();
-    Buffer& flip(Buffer buff);
-    Buffer& rand(unsigned& seed);
-    Buffer& ramp();
-    Buffer& tanh();
-    Buffer& ramp(T offset, T delta);
-    Buffer& threshLT(T c);
-    Buffer& threshGT(T c);
+    Buffer& sub(T c);
+
+    // reverse ops
+    Buffer& subCRev(T c); // ptr[i] = c - ptr[i]
+    Buffer& divCRev(T c); // ptr[i] = c / ptr[i]
+    Buffer& powCRev(T c); // ptr[i] = c ** ptr[i]
+    Buffer& subCRev(T c, Buffer buff); // ptr[i] = c - buff[i]
+
+    // unary buffer
+    Buffer& sub(Buffer buff); // ptr[i] -= buff[i]
+    Buffer& add(Buffer buff); // ptr[i] += buff[i]
+    Buffer& mul(Buffer buff); // ptr[i] *= buff[i]
+    Buffer& div(Buffer buff); // ptr[i] /= buff[i]
+
+    Buffer& add(Buffer buff, T c); // ptr[i] += buff[i] * c
     Buffer& addProduct(Buffer buff, T c);
     Buffer& addProduct(Buffer src1, Buffer src2);
-    Buffer& conv(Buffer src1, Buffer src2, Buffer<unsigned char> workBuff);
+    Buffer& conv(Buffer src1, Buffer src2, Buffer<Int8u> workBuff); //
+
+    // thresholding
+    Buffer& clip(T low, T high);
+    Buffer& threshLT(T c);
+    Buffer& threshGT(T c);
+
+    // value shifting
+    Buffer& flip();
+    Buffer& withPhase(int phase, Buffer workBuffer);
+    Buffer& sort();
+
+    // returns phase
+    int downsampleFrom(Buffer buff, int factor = -1, int phase = 0);
+    int upsampleFrom(Buffer buff, int factor = -1, int phase = 0);
 
     /* —————————————————————————————————————————————————————————————————————————————————————————————————————— */
 
@@ -163,24 +186,17 @@ public:
         return Buffer(ptr - num, sz + num);
     }
 
-    void operator+=(const Buffer& other); //    { add(other);   }
-    void operator+=(T val); //                  { add(val);     }
-    void operator-=(const Buffer& other); //    { sub(other);   }
-    void operator-=(T val); //                  { sub(val);     }
-    void operator*=(const Buffer& other); //    { mul(other);   }
-    void operator*=(T val); //                  { mul(val);     }
-    void operator/=(const Buffer& other); //    { div(other);   }
-    void operator/=(T val); //                  { div(val);     }
+    void operator+=(const Buffer& other);
+    void operator+=(T val);
+    void operator-=(const Buffer& other);
+    void operator-=(T val);
+    void operator*=(const Buffer& other);
+    void operator*=(T val);
+    void operator/=(const Buffer& other);
+    void operator/=(T val);
 
     void operator<<(const Buffer& other);
-    // {
-    //     other.copyTo(*this);
-    // }
-
     void operator>>(Buffer other) const;
-    // {
-    //     copyTo(other);
-    // }
 
     Buffer& operator=(const Buffer& other) = default;
 
@@ -191,6 +207,8 @@ public:
         int newSize = (sizeof(T) * sz) / sizeof(S);
         return Buffer<S>(reinterpret_cast<S*>(ptr), newSize);
     }
+
+    void mul(const Buffer<float> & c, float x);
 
 protected:
     int sz;

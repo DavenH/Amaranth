@@ -496,7 +496,7 @@ void Spectrum2D::createScales() {
 
     for (float decibelLine : decibelLines) {
         int oldPos 	 = position;
-        float absAmp = 2 * Arithmetic::invLogMapping(getConstant(FFTLogTensionAmp) * IPP_2PI, decibelLine);
+        float absAmp = 2 * Arithmetic::invLogMapping(getConstant(FFTLogTensionAmp) * MathConstants<float>::twoPi, decibelLine);
         String text  = String(roundToInt(NumberUtils::toDecibels(absAmp)));
         int width 	 = Util::getStringWidth(font, text) + 1;
 

@@ -18,7 +18,7 @@ class PulloutComponent;
 
 class PresetPage :
 		public MultiTimer
-	,	public Component
+	,	public juce::Component
 	,	public TableListBoxModel
 	,	public FilterableList<DocumentDetails>
 	,	public ComponentMovementWatcher

@@ -298,7 +298,7 @@ bool Waveform3D::shouldDrawGrid() {
     return getNumActiveLayers() > 0;
 }
 
-Component* Waveform3D::getComponent(int which) {
+juce::Component* Waveform3D::getComponent(int which) {
     switch (which) {
         case CycleTour::TargLayerEnable: 	return &panelControls->enableCurrent;
         case CycleTour::TargLayerAdder: 	return &panelControls->addRemover;

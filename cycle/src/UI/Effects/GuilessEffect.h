@@ -15,7 +15,7 @@
 class Effect;
 
 class GuilessEffect :
-        public Component
+        public juce::Component
     ,	public Button::Listener
     ,	public Savable
     ,	public TourGuide

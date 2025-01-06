@@ -24,7 +24,7 @@ public:
 };
 
 class ControlsPanel :
-		public Component
+		public juce::Component
 	,	public SingletonAccessor {
 public:
 	ControlsPanel(Button::Listener* parent, SingletonRepo* repo, bool fillBackground = false);
@@ -36,7 +36,7 @@ public:
 			std::unique_ptr<PulloutComponent>& pullout,
 			SingletonRepo* repo,
 			int posX, int posY,
-			Component** buttonArray, int numButtons, bool horz = false);
+			juce::Component** buttonArray, int numButtons, bool horz = false);
 
 	void resized() override;
 	void addBand(IDynamicSizeComponent* end);

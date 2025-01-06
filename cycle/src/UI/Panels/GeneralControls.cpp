@@ -126,7 +126,7 @@ void GeneralControls::paint(Graphics& g) {
 
 void GeneralControls::paintOverChildren(Graphics& g) {
     if (tableIcon.getPendingItems() > 0 && !prstCO->isCollapsed()) {
-        Point<int> topLeft = prstCO->getBounds().getTopLeft();
+        juce::Point<int> topLeft = prstCO->getBounds().getTopLeft();
         Rectangle<int> rect = tableIcon.getBounds().translated(topLeft.getX(), topLeft.getY() + 24);
         getObj(MiscGraphics).drawJustifiedText(g, String(tableIcon.getPendingItems()), rect, true, nullptr);
     }
@@ -213,7 +213,7 @@ void GeneralControls::updateHighlights() {
     waveVerts.setApplicable(getSetting(WaveLoaded) == 1);
 }
 
-Component* GeneralControls::getComponent(int which) {
+juce::Component* GeneralControls::getComponent(int which) {
     switch (which) {
         case CycleTour::TargSelector: 	return &pointer;
         case CycleTour::TargPencil: 	return &pencil;

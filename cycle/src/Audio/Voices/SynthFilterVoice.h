@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ipp.h>
 #include <App/MeshLibrary.h>
 #include <Array/ScopedAlloc.h>
 #include <Algo/Convolver.h>
@@ -22,7 +21,7 @@ public:
 
 	void calcCycle(VoiceParameterGroup& group) override;
 	bool calcTimeDomain(VoiceParameterGroup& group, int samplingSize, int oversampleFactor);
-	void calcMagnitudeFilters(Buffer<Ipp32f> fftRamp);
+	void calcMagnitudeFilters(Buffer<Float32> fftRamp);
 	void calcPhaseDomain(Buffer<float> fftRamp, bool didFwdFFT, bool rightPhasesAreSet, int& channelCount);
 
 	void initialiseNoteExtra(int midiNoteNumber, float velocity) override;
@@ -35,11 +34,11 @@ private:
 	MeshRasterizer phaseRasterizer;
 
 	// TODO use stereo buffers, use some workbuffer for allocation
-	ScopedAlloc<Ipp32f> magnitudes[2];
-	ScopedAlloc<Ipp32f> phases[2];
-	ScopedAlloc<Ipp32f> phaseAccumBuffer[2];
-	ScopedAlloc<Ipp32f> phaseScaleRamp;
-	ScopedAlloc<Ipp32f> latencyMoveBuff;
+	ScopedAlloc<Float32> magnitudes[2];
+	ScopedAlloc<Float32> phases[2];
+	ScopedAlloc<Float32> phaseAccumBuffer[2];
+	ScopedAlloc<Float32> phaseScaleRamp;
+	ScopedAlloc<Float32> latencyMoveBuff;
 
 	Buffer<float> rastBuf;
 	Buffer<float> magBufs[2], phaseBufs[2], samplingBufs[2], accumBufs[2];

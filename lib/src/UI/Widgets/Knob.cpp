@@ -1,5 +1,3 @@
-#include <ipp.h>
-
 #include "Knob.h"
 
 #include <Util/Util.h>

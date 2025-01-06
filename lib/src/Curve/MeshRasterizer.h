@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <ipp.h>
 #include "Curve.h"
 #include "Mesh.h"
 #include "RasterizerData.h"
@@ -121,8 +120,7 @@ public:
         int size = buffer.size();
 
         if(waveX.empty()) {
-            ippsSet_32f(0.5f, dest, size);
-
+            buffer.set(0.5f);
             return 0;
         }
 
@@ -131,7 +129,7 @@ public:
         jassert(waveX.front() < phase && waveX.back() > lastAngle);
 
         if (waveX.front() > phase || waveX.back() < lastAngle) {
-            ippsSet_32f(0.f, buffer, buffer.size());
+            buffer.zero();
             phase += delta * size;
         } else {
             int currentIndex = jmax(0, zeroIndex - 1);
@@ -282,7 +280,7 @@ protected:
     vector<DeformRegion> deformRegions;
 
     ScopedAlloc<float> memoryBuffer;
-    ScopedAlloc<Ipp8u> alignedBytes;
+    ScopedAlloc<Int8u> alignedBytes;
 
     Buffer<float> waveX, waveY, diffX, slope, area;
     VertCube::ReductionData reduct;

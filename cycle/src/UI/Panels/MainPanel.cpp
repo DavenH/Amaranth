@@ -120,12 +120,12 @@ void MainPanel::initialisePanels() {
     keyboard->setLowestVisibleKey(2 * 12);
     this->setWantsKeyboardFocus(true);
 
-    Component* spectCtrls = spectrum3D->getControlsComponent();
-    Component* surfCtrls  = waveform3D->getControlsComponent();
-    Component* envCtrls   = envelope2D->getControlsComponent();
-    Component* dfrmCtrls  = dfrmPanel->getControlsComponent();
-    Component* irmodCtrls = irModelUI->getControlsComponent();
-    Component* wshpCtrls  = waveshaperUI->getControlsPanel();
+    juce::Component* spectCtrls = spectrum3D->getControlsComponent();
+    juce::Component* surfCtrls  = waveform3D->getControlsComponent();
+    juce::Component* envCtrls   = envelope2D->getControlsComponent();
+    juce::Component* dfrmCtrls  = dfrmPanel->getControlsComponent();
+    juce::Component* irmodCtrls = irModelUI->getControlsComponent();
+    juce::Component* wshpCtrls  = waveshaperUI->getControlsPanel();
 
     auto& updater = getObj(CycleUpdater);
 
@@ -977,10 +977,12 @@ void MainPanel::timerCallback(int timerId) {
                         continue;
                     }
 
-                    Point<int> points[] = { bounds.getTopLeft(),
-                                            bounds.getBottomLeft(),
-                                            bounds.getTopRight(),
-                                            bounds.getBottomRight() };
+                    juce::Point<int> points[] = {
+                        bounds.getTopLeft(),
+                        bounds.getBottomLeft(),
+                        bounds.getTopRight(),
+                        bounds.getBottomRight()
+                    };
 
                     int numCornersOverlapped = 0;
                     for (auto point : points) {
@@ -1016,7 +1018,7 @@ void MainPanel::triggerDelayedRepaint() {
     startTimer(DelayedRepaint, 200);
 }
 
-Component* MainPanel::getComponent(int which) {
+juce::Component* MainPanel::getComponent(int which) {
     switch (which) {
         case CompWaveform2DZoomH:
             return waveform2D->getZoomPanel()->getComponent(true);

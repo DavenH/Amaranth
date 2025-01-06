@@ -42,7 +42,7 @@ VisualDsp::VisualDsp(SingletonRepo* repo) :
     for (int fftOrderIdx = 0; fftOrderIdx < numFFTOrders; ++fftOrderIdx) {
         int size = 8 << fftOrderIdx;
         sizeToIndex[size] = fftOrderIdx;
-        ffts[fftOrderIdx].setFFTScaleType(IPP_FFT_DIV_FWD_BY_N);
+        ffts[fftOrderIdx].setFFTScaleType(Transform::ScaleType::DivFwdByN);
         ffts[fftOrderIdx].allocate(size, true);
     }
 }
@@ -61,8 +61,8 @@ CriticalSection& VisualDsp::getCalculationLock() {
     return calculationLock;
 }
 
-void VisualDsp::rasterizeEnv(Buffer<Ipp32f> env,
-                             Buffer<Ipp32f> zoomArray,
+void VisualDsp::rasterizeEnv(Buffer<Float32> env,
+                             Buffer<Float32> zoomArray,
                              int layerGroup,
                              EnvRasterizer& rasterizer,
                              bool doRestore)
@@ -95,7 +95,7 @@ void VisualDsp::rasterizeEnv(Buffer<Ipp32f> env,
                 jassert(rasterizer.getRenderBuffer().size() == env.size());
 
                 rasterizer.getRenderBuffer().copyTo(env);
-                ippsThreshold_LTValGTVal_32f_I(env, env.size(), 0.f, 0.f, 1.f, 1.f);
+                env.clip(0, 1);
             }
         } else {
             if (layerGroup == ScratchType) {
@@ -134,7 +134,7 @@ void VisualDsp::rasterizeEnv(Buffer<Ipp32f> env,
                          rasterizer.sampleAt(time, index) : zoomArray[i];
             }
 
-            ippsThreshold_LTValGTVal_32f_I(env, env.size(), 0.f, 0.f, 1.f, 1.f);
+            env.clip(0, 1);
 
             // reset the rasterizer
             p[dim] = originalPos;
@@ -170,7 +170,7 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
         return;
     }
 
-    ScopedAlloc<Ipp32f>* buff;
+    ScopedAlloc<Float32>* buff;
     EnvRasterizer* rast;
     EnvType type;
 
@@ -306,7 +306,7 @@ void VisualDsp::calcTimeDomain(int numColumns) {
     int reductionFactor = getSetting(ReductionFactor);
     int primeDim        = getSetting(CurrentMorphAxis);
 
-    ScopedAlloc<Ipp32f> memory(memorySize);
+    ScopedAlloc<Float32> memory(memorySize);
 
     Buffer<float> timeBuffer = memory.place(timeGroup.size() * nextPow2);
     Buffer<float> sumBuffer  = memory.place(nextPow2);
@@ -431,7 +431,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
     float additiveScale = Arithmetic::calcAdditiveScaling(numHarmonics);
 
     Transform& fft         = ffts[sizeIndex];
-    Buffer<Ipp32f> fftRamp = getObj(LogRegions).getRegion(midiKey);
+    Buffer<Float32> fftRamp = getObj(LogRegions).getRegion(midiKey);
 
     MeshLibrary::LayerGroup& magnGroup = meshLib.getLayerGroup(LayerGroups::GroupSpect);
     MeshLibrary::LayerGroup& phaseGroup = meshLib.getLayerGroup(LayerGroups::GroupPhase);
@@ -444,9 +444,9 @@ void VisualDsp::calcSpectrogram(int numColumns) {
 //	jassert(fftBuffer.size() >= nextPow2 + 2);
     jassert(volumeEnv.size() >= numColumns);
 
-    Ipp64u end;
+    // Int64 end;
     int memorySize = numHarmonics * int(2 + magnGroup.size() + phaseGroup.size()) + numColumns;
-    ScopedAlloc<Ipp32f> memory(memorySize);
+    ScopedAlloc<Float32> memory(memorySize);
 
     Buffer<float> localMaxima 	 = memory.place(numColumns);
     Buffer<float> workBuffer 	 = memory.place(numHarmonics);
@@ -515,7 +515,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
             spectRasterizer->getMorphPosition()[primeDim] = zoomProgress[fftIdx];
 
             for (int i = 0; i < magnGroup.size(); ++i) {
-                Buffer localBuffer(freqBuffer + i * numHarmonics, numHarmonics);
+                Buffer<float> localBuffer(freqBuffer + i * numHarmonics, numHarmonics);
                 MeshLibrary::Layer& spectLayer = magnGroup[i];
 
                 if(! spectLayer.props->active || ! spectLayer.mesh->hasEnoughCubesForCrossSection()) {
@@ -545,9 +545,8 @@ void VisualDsp::calcSpectrogram(int numColumns) {
 
                     rasterizer.sampleAtIntervals(fftRamp, localBuffer);
 
-                    float dynamicRange = Spectrum3D::calcDynamicRangeScale(spectLayer.props->range);
+                    float dynamicRange = std::sqrt(Spectrum3D::calcDynamicRangeScale(spectLayer.props->range));
                     float multiplicand = relativePan;
-                    ippsSqrt_32f_A11(&dynamicRange, &dynamicRange, 1);
 
                     float thresh = powf(1e-19f, 1.f / dynamicRange);
                     localBuffer.threshLT(thresh).pow(dynamicRange);
@@ -609,7 +608,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
 
                         double relativePan 	= Arithmetic::getRelativePan(layer.props->pan, modPan);
                         float phaseAmpScale = Spectrum3D::calcPhaseOffsetScale(layer.props->range);
-                        float multiplicand 	= relativePan * phaseAmpScale * IPP_2PI;
+                        float multiplicand 	= relativePan * phaseAmpScale * MathConstants<float>::twoPi;
 
                         localBuffer.mul(multiplicand);
                     } else {
@@ -649,7 +648,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
 
     processFrequency(timeColumns, processUnison);
 
-    end = ippGetCpuClocks();
+    // end = ippGetCpuClocks();
 
     if (getSetting(ViewStage) < ViewStages::PostFX) {
         if (primeDim == Vertex::Time)
@@ -730,7 +729,7 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
     getNumHarmonicsAndNextPower(numHarmonics, nextPow2, midiNote);
 
     int quarter = nextPow2 / 4;
-    ScopedAlloc<Ipp32f> fadeInMem(nextPow2);
+    ScopedAlloc<Float32> fadeInMem(nextPow2);
     Buffer<float> fadeInUp    = fadeInMem.place(quarter);
     Buffer<float> fadeInDown  = fadeInMem.place(quarter);
     Buffer<float> fadeOutUp   = fadeInMem.place(quarter);
@@ -760,10 +759,11 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
     if(wav->audio.numChannels > 1)
         wavCombined.addProduct(wav->audio.right, pans[1]);
 
-    fadeOutUp	.ramp().sqr();
-    fadeOutDown	.subCRev(1.f, fadeOutUp);
-    fadeInUp	.flip(fadeOutDown);
-    fadeInDown	.subCRev(1.f, fadeInUp);
+    fadeOutUp.ramp().sqr();
+    fadeOutDown.subCRev(1.f, fadeOutUp);
+
+    VecOps::flip(fadeOutDown, fadeInUp);
+    fadeInDown.subCRev(1.f, fadeInUp);
 
     jassert(getSetting(ViewStage) >= ViewStages::PostEnvelopes);
 
@@ -833,8 +833,9 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
                     // wrap quarter at end to front of this cycle to eliminate click
                     if (wrapCycles) {
                         resampledPrev.mul(fadeInUp);
-                        quarterBuf.mul(resampledPrev + nextPow2, fadeInDown);
-                        resampledPrev.add(quarterBuf);
+                        resampledPrev.addProduct(resampledPrev + nextPow2, fadeInDown);
+                        // quarterBuf.mul(resampledPrev + nextPow2, fadeInDown);
+                        // resampledPrev.add(quarterBuf);
                     }
                 } else {
                     resampledPrev.zero(nextPow2);
@@ -862,8 +863,9 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
                 if(wrapCycles)
                 {
                     resampledNext.mul(fadeInUp);
-                    quarterBuf.mul(resampledNext + nextPow2, fadeInDown);
-                    resampledNext.add(quarterBuf);
+                    resampledNext.addProduct(resampledNext + nextPow2, fadeInDown);
+                    // quarterBuf.mul(resampledNext + nextPow2, fadeInDown);
+                    // resampledNext.add(quarterBuf);
                 }
             }
         }
@@ -874,7 +876,7 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
         float diffCol 	= jmin(1.f, nextOffset * invWavLength) - prevPosX;
         float portion 	= jmin(1.f, diffX / diffCol);
 
-//		Ipp32f* timePtr = postEnvCols[i];
+//		Float32* timePtr = postEnvCols[i];
         Buffer<float> col = postEnvCols[i];
 
         if(nextOffset + nextLength >= wavLength) {
@@ -886,10 +888,12 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
                 veryFirstCycle.copyTo(col);
             } else {
                 if (interpCycles) {
-                    if (portion == 0.f)
+                    if (portion == 0.f) {
                         resampledPrev.copyTo(col);
-                    else
-                        col.mul(resampledPrev, 1 - portion).addProduct(resampledNext, portion);
+                    } else {
+                        VecOps::mul(resampledPrev, 1 - portion, col);
+                        col.addProduct(resampledNext, portion);
+                    }
                 } else {
                     if(portion < 0.9) {
                         resampledPrev.copyTo(col);
@@ -904,7 +908,7 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
     int sizeIndex = sizeToIndex[nextPow2];
     Transform& fft = ffts[nextPow2];
 
-    ScopedAlloc<Ipp32f> magBuffer(nextPow2);
+    ScopedAlloc<Float32> magBuffer(nextPow2);
 
     for (int i = 0; i < numColumns; ++i) {
         Buffer col = postEnvCols[i];
@@ -931,7 +935,7 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
     if(getSetting(CurrentMorphAxis) == Vertex::Time) {
         unwrapPhaseColumns(phasePreFXCols);
     } else {
-        phasePreFXArray.mul((float) IPP_RPI * 0.5f).add(0.5f);
+        phasePreFXArray.mul((float) M_1_PI * 0.5f).add(0.5f);
     }
 }
 
@@ -942,11 +946,11 @@ void VisualDsp::unwrapPhaseColumns(vector<Column>& phaseColumns) {
     }
 
     int numHarmonics = phaseColumns.front().size();
-    ScopedAlloc<Ipp32f> memory(phaseColumns.size() + 2 * numHarmonics);
+    ScopedAlloc<Float32> memory(phaseColumns.size() + 2 * numHarmonics);
 
-    Buffer<Ipp32f> unwrapped = memory.place(phaseColumns.size());
-    Buffer<Ipp32f> maxima 	 = memory.place(numHarmonics);
-    Buffer<Ipp32f> minima	 = memory.place(numHarmonics);
+    Buffer<Float32> unwrapped = memory.place(phaseColumns.size());
+    Buffer<Float32> maxima 	 = memory.place(numHarmonics);
+    Buffer<Float32> minima	 = memory.place(numHarmonics);
 
     const float pi = MathConstants<float>::pi;
     const float invConst = 0.5f / pi;
@@ -1007,7 +1011,7 @@ void VisualDsp::processThroughEnvelopes(int numColumns) {
         return;
 
     int stage = getSetting(ViewStage);
-    ScopedAlloc<Ipp32f> phaseMoveMem(postEnvCols.front().size());
+    ScopedAlloc<Float32> phaseMoveMem(postEnvCols.front().size());
     Buffer phaseMoveBuffer(phaseMoveMem);
 
     // volume changes appear as if it occurred after all processing
@@ -1031,7 +1035,7 @@ void VisualDsp::processThroughEnvelopes(int numColumns) {
 //			float volumeScale = 1.f; //getObj(OscControlPanel).getValue(OscControlPanel::VolumeSlider);
 //			if(intraRastEnd > 0)
 //			{
-//				ScopedAlloc<Ipp32f> envBuffer(nextPow2);
+//				ScopedAlloc<Float32> envBuffer(nextPow2);
 //				float delta = (zoomProgress[1] - zoomProgress[0]) / float(nextPow2);
 //
 //				for(int i = 0; i < intraRastEnd; ++i)
@@ -1107,7 +1111,7 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
 
     int columnSize = 8 << (numFFTOrders - 1);
 
-    ScopedAlloc<Ipp32f> memBuf(columnSize * 3);
+    ScopedAlloc<Float32> memBuf(columnSize * 3);
     Buffer<float> columnBuf, phaseMoveBuffer, phaseMoveBuffer2;
 
     processUnison &= unison->isEnabled();
@@ -1209,7 +1213,8 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
                         columnBuf.copyTo(phaseMoveBuffer);
                     }
 
-                    phaseMoveBuffer2.mul(phaseMoveBuffer, 1 - remainder).addProduct(phaseMoveBuffer + 1, remainder);
+                    VecOps::mul(phaseMoveBuffer, 1.f - (float) remainder, phaseMoveBuffer2);
+                    phaseMoveBuffer2.addProduct(phaseMoveBuffer + 1, remainder);
                     phaseMoveBuffer2[columnSize - 1] = (1 - remainder) * phaseMoveBuffer[columnSize - 1] + remainder * phaseMoveBuffer[0];
 
                     col.addProduct(phaseMoveBuffer2, relativePan);
@@ -1236,11 +1241,11 @@ void VisualDsp::trackWavePhaseEnvelope() {
     int length = phasePreFXCols.size();
 
     const int harmonicsToAverage = 1;
-    ScopedAlloc<Ipp32f> averagingKernel(harmonicsToAverage);
-    ScopedAlloc<Ipp32f> tempPhases(harmonicsToAverage);
-    ScopedAlloc<Ipp32f> averagePhase(length);
-    ScopedAlloc<Ipp32f> modWhole(length);
-    ScopedAlloc<Ipp32f> modPart(length);
+    ScopedAlloc<Float32> averagingKernel(harmonicsToAverage);
+    ScopedAlloc<Float32> tempPhases(harmonicsToAverage);
+    ScopedAlloc<Float32> averagePhase(length);
+    ScopedAlloc<Float32> modWhole(length);
+    ScopedAlloc<Float32> modPart(length);
 
     for(int i = 0; i < harmonicsToAverage; ++i)
         averagingKernel[i] = i + 1;
@@ -1352,7 +1357,7 @@ const vector<Column>& VisualDsp::getTimeColumns() {
     return postEnvCols;
 }
 
-Buffer<Ipp32f> VisualDsp::getTimeArray() {
+Buffer<Float32> VisualDsp::getTimeArray() {
     int stage = getSetting(ViewStage);
 
     return stage == ViewStages::PostFX ?
@@ -1360,7 +1365,7 @@ Buffer<Ipp32f> VisualDsp::getTimeArray() {
             preEnvArray : postEnvArray;
 }
 
-Buffer<Ipp32f> VisualDsp::getFreqArray() {
+Buffer<Float32> VisualDsp::getFreqArray() {
     bool postFX = getSetting(ViewStage) >= ViewStages::PostFX;
 
     return getSetting(MagnitudeDrawMode)
@@ -1471,9 +1476,10 @@ void VisualDsp::processThroughEffects(int numColumns) {
 
             col.latency &= (col.size() - 1);
             if(col.latency > 0) {
-                ippsCopy_32f(col + col.latency, moveBuffer, col.size() - col.latency);
-                ippsCopy_32f(col, moveBuffer.offset(col.size() - col.latency),  col.latency);
-                moveBuffer.copyTo(col);
+                col.withPhase(col.latency, moveBuffer);
+                // ippsCopy_32f(col + col.latency, moveBuffer, col.size() - col.latency);
+                // ippsCopy_32f(col, moveBuffer.offset(col.size() - col.latency),  col.latency);
+                // moveBuffer.copyTo(col);
                 col.latency = 0;
             }
 
@@ -1489,13 +1495,13 @@ void VisualDsp::processThroughEffects(int numColumns) {
             fft.getPhases().copyTo(phasePostFXCols[i]);
         }
 
-        phasePostFXArray.add((float) IPP_PI2);
+        phasePostFXArray.add((float) 2 * M_PI);
     }
 
     if (getSetting(CurrentMorphAxis) == Vertex::Time) {
         unwrapPhaseColumns(phasePostFXCols);
     } else {
-        phasePostFXArray.mul((float) IPP_RPI * 0.5f).add(0.5f);
+        phasePostFXArray.mul((float) M_1_PI * 0.5f).add(0.5f);
     }
 }
 

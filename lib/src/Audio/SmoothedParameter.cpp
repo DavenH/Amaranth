@@ -1,4 +1,3 @@
-#include <ipp.h>
 #include "SmoothedParameter.h"
 
 SmoothedParameter::SmoothedParameter() :
@@ -33,7 +32,7 @@ void SmoothedParameter::update(int deltaSamples) {
     float base = 0.5f;
     float expt = deltaSamples / (double) halflifeSamples;
 
-    ippsPow_32f_A24(&base, &expt, &product, 1);
+    product = std::pow(base, expt);
 
     jassert(product <= 1);
 

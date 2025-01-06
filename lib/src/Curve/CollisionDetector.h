@@ -1,7 +1,6 @@
 #pragma once
 
 #include <set>
-#include <ipp.h>
 #include "VertCube.h"
 #include "Mesh.h"
 #include "../App/SingletonAccessor.h"
@@ -61,8 +60,8 @@ private:
 
     set<VertCube*> selectedLines;
 
-    ScopedAlloc<Ipp32f> meshVerts;
-    ScopedAlloc<Ipp32f> selectedVerts;
+    ScopedAlloc<Float32> meshVerts;
+    ScopedAlloc<Float32> selectedVerts;
 
     vector<VertCube*> meshAddrsA;
     vector<VertCube*> meshAddrsB;

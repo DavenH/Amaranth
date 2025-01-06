@@ -15,7 +15,7 @@ class MainPanel;
 
 class PlaybackPanel :
         public Button::Listener
-    ,	public Component
+    ,	public juce::Component
     ,	public MultiTimer
     ,	public SingletonAccessor
 {

@@ -2,6 +2,8 @@
 #include <cmath>
 #include "Resampler.h"
 
+#include <Array/VecOps.h>
+
 const float resamplingScale = 0.98f;
 
 Resampler::Resampler() :
@@ -197,7 +199,7 @@ Buffer<float> Resampler::resample(Buffer<float> input) {
     jassert(haveReset);
     jassert(! fixed || history >= windowToHistory(window, dstToSrc));
 
-    ippsCopy_32f(input, source + lastread, input.size());
+    input.copyTo(source + lastread);
     lastread += input.size();
 
     jassert(lastread <= source.size());
@@ -213,8 +215,11 @@ Buffer<float> Resampler::resample(Buffer<float> input) {
     } else {
         resampleDlg(state, source, sourceSize, dest, dstToSrc, resamplingScale, &time, &outLen);
     }
-
-    ippsMove_32f(source + (int)time - history, source, lastread + history - (int)time);
+    int toMove = lastread + history - (int)time;
+    VecOps::move(
+        source.offset((int)time - history).withSize(toMove),
+        source.withSize(toMove)
+    );
 
     lastread -= (int)time - history;
     time -= (int)time - history;
@@ -227,12 +232,16 @@ Buffer<float> Resampler::resample(Buffer<float> input) {
 }
 
 void Resampler::dummyResample(int size) {
-    ippsZero_32f(source + lastread, bufSize - lastread);
+    source.offset(lastread).zero(bufSize - lastread);
 
     lastread += size;
     time += size / dstToSrc;
 
-    ippsMove_32f(source + (int)time - history, source, lastread + history - (int)time);
+    int toMove = lastread + history - (int)time;
+    VecOps::move(
+        source.offset((int)time - history).withSize(toMove),
+        source.withSize(toMove)
+    );
 
     lastread -= (int)time - history;
     time -= (int)time - history;

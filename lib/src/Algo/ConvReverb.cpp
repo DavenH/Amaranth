@@ -1,5 +1,6 @@
 #include "ConvReverb.h"
 #include "FFT.h"
+#include "../Array/VecOps.h"
 #include "../App/MemoryPool.h"
 #include "../App/SingletonRepo.h"
 #include "../App/Transforms.h"
@@ -186,7 +187,7 @@ void BlockConvolver::reset() {
     inputBlocks.clear();
     kernelBlocks.clear();
 
-    fft.setFFTScaleType(IPP_FFT_DIV_INV_BY_N);
+    fft.setFFTScaleType(Transform::ScaleType::DivInvByN);
 }
 
 void BlockConvolver::init(int sizeOfBlock, const Buffer<float>& kernel) {
@@ -195,10 +196,7 @@ void BlockConvolver::init(int sizeOfBlock, const Buffer<float>& kernel) {
 
 void BlockConvolver::init(int sizeOfBlock, int kernelSize, float decay) {
     init(sizeOfBlock, Buffer<float>(nullptr, kernelSize), true);
-
-    baseNoiseLevel.im = 0.f;
-    baseNoiseLevel.re = 1.f;
-
+    baseNoiseLevel = {0.f, 1.f};
     noiseDecay = decay;
 }
 
@@ -250,12 +248,12 @@ void BlockConvolver::init(
     inputBlocks.clear();
 
     for (int i = 0; i < numBlocks; ++i) {
-        Buffer<Ipp32fc> segment     = cplxMemory.place(complexSize);
+        Buffer<Complex32> segment = cplxMemory.place(complexSize);
 
-        int remaining               = kernel.size() - (i * blockSize);
-        int fftLen                  = (remaining >= blockSize) ? blockSize : remaining;
+        int remaining = kernel.size() - (i * blockSize);
+        int fftLen = (remaining >= blockSize) ? blockSize : remaining;
 
-        Buffer<Ipp32fc> irSegment   = cplxMemory.place(complexSize);
+        Buffer<Complex32> irSegment = cplxMemory.place(complexSize);
 
         kernel.section(i * blockSize, fftLen).copyTo(fftBuffer);
 
@@ -302,8 +300,11 @@ void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
         convBuffer.addProduct(kernelBlocks[0], inputBlocks[currSegment]);
         
         fft.inverse(convBuffer, fftBuffer);
-        output.section(samplesProcessed, samplesToProcess).add(fftBuffer + inputBufferPos,
-                                                               overlapBuffer + inputBufferPos);
+        VecOps::add(
+            fftBuffer + inputBufferPos,
+            overlapBuffer + inputBufferPos,
+            output.section(samplesToProcess, samplesToProcess)
+        );
 
         inputBufferPos += samplesToProcess;
 
@@ -325,10 +326,10 @@ Buffer<float> ConvReverb::convolve(const Buffer<float>& inputFrq, Buffer<float> 
     int cume        = 0;
 
     Transform& fft = getObj(Transforms).chooseFFT(paddedSize);
-    Buffer<float> workBuffer    = getObj(MemoryPool).getAudioPool();
-    Buffer<float> kernelFrqPad  = workBuffer.section(cume, complexSize);
+    Buffer<float> workBuffer = getObj(MemoryPool).getAudioPool();
+    Buffer<float> kernelFrqPad = workBuffer.section(cume, complexSize);
     cume += complexSize;
-    Buffer<float> inputFrqPad   = workBuffer.section(cume, complexSize);
+    Buffer<float> inputFrqPad = workBuffer.section(cume, complexSize);
     cume += complexSize;
 
     kernelFrq.copyTo(kernelFrqPad + 2);
@@ -337,8 +338,14 @@ Buffer<float> ConvReverb::convolve(const Buffer<float>& inputFrq, Buffer<float> 
     inputFrq.copyTo(inputFrqPad + 2);
     inputFrqPad.offset(2 + inputFrq.size()).zero();
 
-    ippsMul_32fc_I((Ipp32fc*)kernelFrqPad.get() + 1,
-                   (Ipp32fc*)inputFrqPad.get()  + 1, paddedSize / 2);
+    // TODO does the cross-platform fft implementation pack the DC offset the same way?
+    VecOps::mul(
+        Buffer((Complex32*)kernelFrqPad.get() + 1, paddedSize / 2),
+        Buffer((Complex32*)inputFrqPad.get() + 1, paddedSize / 2),
+        Buffer((Complex32*)inputFrqPad.get() + 1, paddedSize / 2));
+
+    // ippsMul_32fc_I((Complex32*)kernelFrqPad.get() + 1,
+    //                (Complex32*)inputFrqPad.get()  + 1, paddedSize / 2);
 
     fft.inverse(inputFrqPad);
 
@@ -385,7 +392,7 @@ void ConvReverb::test(int inputSize, int irSize,
                       bool refCheck, bool useTwoStage) {
     int seed = (bufferSize ^ irSize ^ inputSize) % bufferSize;
 
-    ScopedAlloc<Ipp32f> memory(inputSize + irSize + bufferSize + (inputSize + irSize - 1) * 2);
+    ScopedAlloc<float> memory(inputSize + irSize + bufferSize + (inputSize + irSize - 1) * 2);
     Buffer<float> in    = memory.place(inputSize);
     Buffer<float> ir    = memory.place(irSize);
     Buffer<float> buffer= memory.place(bufferSize);

@@ -94,8 +94,7 @@ WindowedSampleIterator::WindowedSampleIterator(Buffer<float> buffer, int bufferS
     window = memory.place(bufferSize);
     block = memory.place(bufferSize);
 
-    window.ramp();
-    ippsWinHann_32f_I(window, window.size());
+    window.hann();
 
     jassert(overlapFactor > 0);
 }

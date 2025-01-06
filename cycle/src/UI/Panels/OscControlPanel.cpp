@@ -43,7 +43,7 @@ void OscControlPanel::init() {
 
     StringFunction decibel18(StringFunction() .mul(2.0).sub(1.).mul(18.));
     StringFunction octaveStr(StringFunction(0).sub(0.5).mul(4.).add(0.5).rnd());
-    StringFunction speedTime(StringFunction(0).mul(8.0).sub(3.).pow(IPP_E).rnd());
+    StringFunction speedTime(StringFunction(0).mul(8.0).sub(3.).pow(M_E).rnd());
 
     volume->setStringFunction(decibel18, " dB");
     octave->setStringFunction(octaveStr, " octaves");
@@ -158,7 +158,7 @@ void OscControlPanel::timerCallback() {
     volume->setCurrentValue(synth->getLastAudioLevel());
 }
 
-Component* OscControlPanel::getComponent(int which) {
+juce::Component* OscControlPanel::getComponent(int which) {
     switch (which) {
         case CycleTour::TargMasterVol:	return volume;	break;
         case CycleTour::TargMasterOct:	return octave;	break;

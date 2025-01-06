@@ -47,7 +47,7 @@ void Phaser::setMax(float max) {
 }
 
 void Phaser::setRate(float rate) {
-    lfoInc = 2.f * IPP_PI * (rate / samplerate);
+    lfoInc = 2.f * M_PI * (rate / samplerate);
 }
 
 void Phaser::setFeedback(float feedback) {
@@ -67,8 +67,8 @@ void Phaser::update(float& inSamp) {
     float d = dmin + (dmax - dmin) * ((std::sin(lfoPhase) + 1.f) / 2.f);
     lfoPhase += lfoInc;
 
-    if (lfoPhase >= IPP_PI * 2.f) {
-        lfoPhase -= IPP_PI * 2.f;
+    if (lfoPhase >= M_PI * 2.f) {
+        lfoPhase -= M_PI * 2.f;
     }
 
     for (auto& allpassDelay : allpassDelays) {

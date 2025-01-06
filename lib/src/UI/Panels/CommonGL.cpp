@@ -115,7 +115,7 @@ void CommonGL::drawLineStrip(BufferXY& xy, bool singleCall, bool scale) {
     panel->spliceBuffer.ensureSize(size * 2);
 
     scaleIfNecessary(scale, xy);
-    xy.interlaceTo(panel->spliceBuffer);
+    xy.interleaveTo(panel->spliceBuffer);
 
     glVertexPointer((GLint) 2, GL_FLOAT, 0, panel->spliceBuffer);
     glDrawArrays(GL_LINE_STRIP, 0, size);

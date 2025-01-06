@@ -11,7 +11,7 @@ class Bounded;
 class InsetLabel;
 
 class TabbedSelector :
-        public Component
+        public juce::Component
     ,   public Deletable
     ,   public SingletonAccessor {
 public:

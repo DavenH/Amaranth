@@ -20,7 +20,7 @@ public:
 private:
     void init(int sizeOfBlock, const Buffer<float>& kernel, bool useNoise);
 
-    static bool isProbablyEmpty(const Buffer<Ipp32fc>& buffer) {
+    static bool isProbablyEmpty(const Buffer<Complex32>& buffer) {
         if(buffer.empty())
             return true;
 
@@ -28,8 +28,8 @@ private:
         int size = buffer.size() / 2;
 
         while (isEmpty && size > 0) {
-            const Ipp32fc& val = buffer[size];
-            isEmpty &= val.im == 0 && val.re == 0;
+            const Complex32& val = buffer[size];
+            isEmpty &= (val == Complex32());
             size >>= 1;
         }
 
@@ -44,15 +44,15 @@ private:
     Random random;
     Transform fft;
 
-    ScopedAlloc<float>  memory;
-    ScopedAlloc<Ipp32fc> cplxMemory;
+    ScopedAlloc<float> memory;
+    ScopedAlloc<Complex32> cplxMemory;
 
     Buffer<float>       fftBuffer, overlapBuffer, inputBuffer, decayLevels;
-    Buffer<Ipp32fc>     sumBuffer, mulBuffer, convBuffer, noiseBuffer;
+    Buffer<Complex32>   sumBuffer, mulBuffer, convBuffer, noiseBuffer;
 
-    vector<Buffer<Ipp32fc> > inputBlocks, kernelBlocks;
+    vector<Buffer<Complex32>> inputBlocks, kernelBlocks;
 
-    Ipp32fc baseNoiseLevel;
+    Complex32 baseNoiseLevel;
 
     friend class ConvReverb;
 };

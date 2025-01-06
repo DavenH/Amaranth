@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ipp.h>
 #include "../Array/ScopedAlloc.h"
 #include "../Curve/Rasterizer2D.h"
 #include "../Util/Geometry.h"
@@ -79,8 +78,8 @@ private:
     Random random;
     Rasterizer2D rasterizer;
 
-    ScopedAlloc<Ipp32f> rastMem;
-    ScopedAlloc<Ipp32f> srcSamples;
+    ScopedAlloc<Float32> rastMem;
+    ScopedAlloc<Float32> srcSamples;
 
     vector<Intercept> points;
 

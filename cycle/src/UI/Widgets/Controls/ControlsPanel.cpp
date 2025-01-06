@@ -1,9 +1,6 @@
 #include "JuceHeader.h"
-#include <iostream>
 #include <iterator>
 #include <algorithm>
-#include <memory>
-#include <ipp.h>
 #include <Definitions.h>
 #include <App/SingletonRepo.h>
 #include <UI/Layout/IDynamicSizeComponent.h>

@@ -6,7 +6,7 @@ using namespace juce;
 
 class ConstantSizeComponent :
         public IDynamicSizeComponent,
-        public Component {
+        public juce::Component {
     bool isCurrentCollapsed;
     int size;
 

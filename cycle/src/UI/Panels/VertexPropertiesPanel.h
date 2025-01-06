@@ -22,7 +22,7 @@ class TwoStateButton;
 class LabelHint;
 
 class VertexPropertiesPanel :
-        public Component
+        public juce::Component
     ,	public Slider::Listener
     ,	public Button::Listener
     ,	public ComboBox::Listener

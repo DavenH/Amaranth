@@ -32,7 +32,7 @@ void DeformerPanel::init() {
     meshLib                = &getObj(MeshLibrary);
     updateSource           = UpdateSources::SourceDeformer;
     layerType              = LayerGroups::GroupDeformer;
-    nameCornerPos          = Point<float>(-25, 5);
+    nameCornerPos          = juce::Point<float>(-25, 5);
     curveIsBipolar         = true;
     vertsAreWaveApplicable = true;
 
@@ -453,7 +453,7 @@ void DeformerPanel::sampleDownAddNoise(int index,
     int length = dest.size();
 
     GuideProps& props 	= guideTables[index];
-    Buffer<Ipp32f> table = props.table;
+    Buffer<Float32> table = props.table;
 
     dest.downsampleFrom(table);
 
@@ -493,7 +493,7 @@ void DeformerPanel::doubleMesh() {
     postUpdateMessage();
 }
 
-Component* DeformerPanel::getComponent(int which) {
+juce::Component* DeformerPanel::getComponent(int which) {
     switch (which) {
         case CycleTour::TargDfrmNoise: 		return &noise;
         case CycleTour::TargDfrmOffset: 	return &vertOffset;

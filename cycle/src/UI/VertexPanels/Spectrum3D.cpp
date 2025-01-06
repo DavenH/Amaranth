@@ -88,8 +88,8 @@ void Spectrum3D::init() {
     panelControls->enableCurrent.setHighlit(true);
     panelControls->drawLabel = true;
 
-    Component* tempMode[] = { &magsIcon, 	 &phaseIcon };
-    Component* tempOper[] = { &additiveIcon, &subtractiveIcon };
+    juce::Component* tempMode[] = { &magsIcon, 	 &phaseIcon };
+    juce::Component* tempOper[] = { &additiveIcon, &subtractiveIcon };
 
     CalloutUtils::addRetractableCallout(operCO, operPO, repo, 4, 8, tempOper,
                                         numElementsInArray(tempOper), panelControls.get(), false);
@@ -168,7 +168,7 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
             (MeshRasterizer*) &getObj(SpectRasterizer) :
             (MeshRasterizer*) &getObj(PhaseRasterizer);
 
-    StringFunction shortStr = isMags ? dynStr : StringFunction().mul(5.f).pow(IPP_E);
+    StringFunction shortStr = isMags ? dynStr : StringFunction().mul(5.f).pow(M_E);
     StringFunction longStr = isMags ? shortStr.withPostString(" dB") : shortStr.withPostString(L" \u03c0");
 
     dynRangeKnob->setStringFunctions(shortStr, longStr);
@@ -529,7 +529,7 @@ void Spectrum3D::enablementsChanged() {
     magsIcon.setPowered(haveAnyValidLayers(true, haveTime));
 }
 
-Component* Spectrum3D::getComponent(int which) {
+juce::Component* Spectrum3D::getComponent(int which) {
     switch (which) {
         case CycleTour::TargDomains: 		return modeCO.get();
         case CycleTour::TargLayerMode: 		return operCO.get();

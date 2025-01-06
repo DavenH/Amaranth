@@ -28,14 +28,14 @@ public:
     bool isEnvelope;
     int numColumns, overridePow2, overrideHarms, overrideKey;
 
-    ScopedAlloc<Ipp32f> *timeArray, *freqArray, *phaseArray;
+    ScopedAlloc<Float32> *timeArray, *freqArray, *phaseArray;
     vector<Column> *timeColumns, *freqColumns, *phaseColumns, *timeColumnsToCopy;
 
     ResizeParams(
             int numColumns,
-            ScopedAlloc<Ipp32f>* timeArray, vector<Column>* timeColumns,
-            ScopedAlloc<Ipp32f>* freqArray, vector<Column>* freqColumns,
-            ScopedAlloc<Ipp32f>* phaseArray, vector<Column>* phaseColumns,
+            ScopedAlloc<Float32>* timeArray, vector<Column>* timeColumns,
+            ScopedAlloc<Float32>* freqArray, vector<Column>* freqColumns,
+            ScopedAlloc<Float32>* phaseArray, vector<Column>* phaseColumns,
             vector<Column>* timeColumnsToCopyFrom) :
                 timeArray(timeArray),
                 freqArray(freqArray),
@@ -58,7 +58,6 @@ public:
         this->overrideKey 	= overrideKey;
         this->isEnvelope 	= isEnvelope;
     }
-
 };
 
 class VisualDsp :
@@ -116,13 +115,13 @@ public:
     void rasterizeEnv(int envEnum, int numColumns);
 
     void resizeArrays(int numColumns, int overrideLength, int overrideKey,
-                      ScopedAlloc<Ipp32f>* timeArray, vector<Column>* timeColumns,
-                      ScopedAlloc<Ipp32f>* freqArray, vector<Column>* freqColumns,
-                      ScopedAlloc<Ipp32f>* phaseArray, vector<Column>* phaseColumn,
+                      ScopedAlloc<Float32>* timeArray, vector<Column>* timeColumns,
+                      ScopedAlloc<Float32>* freqArray, vector<Column>* freqColumns,
+                      ScopedAlloc<Float32>* phaseArray, vector<Column>* phaseColumn,
                       vector<Column>* timeColumnsToCopy);
 
     void resizeArrays(const ResizeParams& params);
-    void rasterizeEnv(Buffer<Ipp32f> env, Buffer<Ipp32f> zoomArray,
+    void rasterizeEnv(Buffer<Float32> env, Buffer<Float32> zoomArray,
                       int type, EnvRasterizer& rasterizer,
                       bool doRestore = true);
 
@@ -167,8 +166,6 @@ private:
     map<int, int> sizeToIndex;
 
     static const int numFFTOrders = 11;
-    IppsFFTSpec_R_32f* fftspecs[numFFTOrders];
-
     Transform ffts[numFFTOrders];
 
     Ref<Unison> 	unison;
@@ -180,11 +177,11 @@ private:
     Ref<SpectRasterizer> spectRasterizer;
     Ref<PhaseRasterizer> phaseRasterizer;
 
-    ScopedAlloc<Ipp32f> zoomProgress;
-    ScopedAlloc<Ipp32f> fftPreFXArray, fftPostFXArray;			// fft
-    ScopedAlloc<Ipp32f> preEnvArray, postEnvArray, postFXArray;	// time
-    ScopedAlloc<Ipp32f> phasePreFXArray, phasePostFXArray;		// phase
-    ScopedAlloc<Ipp32f> volumeEnv, scratchEnv, pitchEnv, scratchEnvPanel;
+    ScopedAlloc<Float32> zoomProgress;
+    ScopedAlloc<Float32> fftPreFXArray, fftPostFXArray;			  // fft
+    ScopedAlloc<Float32> preEnvArray, postEnvArray, postFXArray;  // time
+    ScopedAlloc<Float32> phasePreFXArray, phasePostFXArray;		  // phase
+    ScopedAlloc<Float32> volumeEnv, scratchEnv, pitchEnv, scratchEnvPanel;
 
     CriticalSection timeColumnLock, envColumnLock, fftColumnLock,
                     fxColumnLock, graphicEnvLock, dummyLock, calculationLock;

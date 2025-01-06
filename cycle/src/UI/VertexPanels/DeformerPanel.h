@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ipp.h>
 #include <Curve/IDeformer.h>
 #include <Curve/Mesh.h>
 #include <Obj/Ref.h>
@@ -87,10 +86,10 @@ public:
                 noiseArray[context.vertOffset] * props.vertOffsetLevel;
     }
 
-    Buffer<Ipp32f> getTable(int index)
+    Buffer<Float32> getTable(int index)
     {
         if(index < 0)
-            return Buffer<Ipp32f>();
+            return Buffer<Float32>();
 
         return guideTables[index].table;
     }
@@ -116,7 +115,7 @@ private:
         int seed;
         float noiseLevel, vertOffsetLevel, phaseOffsetLevel;
         Ref<DeformerPanel> panel;
-        Buffer<Ipp32f> table;
+        Buffer<Float32> table;
     };
 
     float samplingInterval;
@@ -124,8 +123,8 @@ private:
     Random random;
     Ref<MeshLibrary> meshLib;
 
-    ScopedAlloc<Ipp32f> constMemory;
-    ScopedAlloc<Ipp32f> dynMemory;
+    ScopedAlloc<Float32> constMemory;
+    ScopedAlloc<Float32> dynMemory;
     Buffer<float> noiseArray;
     Buffer<float> phaseMoveBuffer;
     vector<GuideProps> guideTables;
