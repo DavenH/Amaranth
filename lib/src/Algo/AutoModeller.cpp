@@ -178,7 +178,7 @@ void AutoModeller::removeUselessPoints() {
     int size = (int) points.size();
 
     int totalSize = size * 5 - 3;
-    ScopedAlloc<Ipp32f> memory(totalSize);
+    ScopedAlloc<Float32> memory(totalSize);
 
     Buffer<float> x     = memory.place(size);
     Buffer<float> y     = memory.place(size);
@@ -186,15 +186,17 @@ void AutoModeller::removeUselessPoints() {
     Buffer<float> dy    = memory.place(size - 1);
     Buffer<float> score = memory.place(size - 1);
 
-    for(int i = 0; i < size; ++i)
-    {
+    for (int i = 0; i < size; ++i) {
         x[i] = points[i].x;
         y[i] = points[i].y;
     }
 
-    dx.sub(x, x + 1).sqr().threshLT(0.0001).inv();
-    dy.sub(y, y + 1).abs().threshLT(0.0001).inv();
-    score.mul(dx, dy).mul(0.0001f).sqrt();
+    VecOps::diff(x, dx);
+    VecOps::diff(y, dy);
+    dx.sqr().threshLT(0.0001).inv();
+    dy.abs().threshLT(0.0001).inv();
+    VecOps::mul(dx, dy, score);
+    score.mul(0.0001f).sqrt();
 
     vector<Intercept> relevantPoints;
     relevantPoints.push_back(points.front());

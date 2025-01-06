@@ -20,7 +20,7 @@ class FileManager;
 using std::vector;
 
 class GeneralControls :
-        public Component
+        public juce::Component
     ,	public Button::Listener
     ,	public Slider::Listener
     ,	public TourGuide

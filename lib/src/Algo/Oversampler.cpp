@@ -30,6 +30,7 @@ void Oversampler::start(Buffer<float>& buffer) {
         jassert(memoryBuf.size() >= oversampleFactor * buffer.size());
 
         buffer.mul(oversampleFactor * 0.97f);
+        phase = buffer.upsampleFrom(memoryBuf, oversampleFactor, phase);
         ippsSampleUp_32f(buffer, buffer.size(), memoryBuf, &destSize, oversampleFactor, &phase);
 
         int partitionPos = 0;
@@ -40,8 +41,15 @@ void Oversampler::start(Buffer<float>& buffer) {
             Buffer partition(memoryBuf + partitionPos, stepSize);
 
             ippsFIRSR_32f(partition, partition, stepSize, filterUpState, firUpDly, firUpDly, workBuffUp);
-            ippsThreshold_LTAbs_32f_I(partition, stepSize, 1e-12f);
+            partition.undenormalize();
 
+             // vDSP_vfix32(
+//     const float *__A,   // Input array
+//     vDSP_Stride __IA,   // Input stride
+//     float *__C,         // Output array
+//     vDSP_Stride __IC,   // Output stride
+//     vDSP_Length __N     // Number of elements
+// );
             partitionPos += stepSize;
         }
 
@@ -111,9 +119,9 @@ void Oversampler::setOversampleFactor(int factor) {
 }
 
 void Oversampler::setKernelSize(int size) {
-    firTaps        .resize(size);
+    firTaps     .resize(size);
     firUpDly    .resize(size);
-    firDownDly    .resize(size);
+    firDownDly  .resize(size);
 
     firDownDly.zero();
     firUpDly.zero();
@@ -150,11 +158,11 @@ void Oversampler::updateTaps() {
 
     double relativeFreq = 0.5 / (double) oversampleFactor;
 
-    ScopedAlloc<Ipp64f> tempTaps(firTaps.size());
+    ScopedAlloc<Float64> tempTaps(firTaps.size());
 
     int buffSize;
     ippsFIRGenGetBufferSize(firTaps.size(), &buffSize);
-    ScopedAlloc<Ipp8u> buffer(buffSize);
+    ScopedAlloc<Int8u> buffer(buffSize);
 
     ippsFIRGenLowpass_64f(relativeFreq, tempTaps, firTaps.size(), ippWinBlackman, ippTrue, buffer);
     ippsConvert_64f32f   (tempTaps, firTaps, firTaps.size());

@@ -28,7 +28,7 @@ public:
     int getLatencySamples();
     void rasterizeTable();
     void processBuffer(AudioSampleBuffer& audioBuffer) override;
-    void processVertexBuffer(Buffer<Ipp32f> outputBuffer);
+    void processVertexBuffer(Buffer<Float32> outputBuffer);
     void updateSmoothedParameters(int deltaSamples);
     bool doParamChange(int param, double value, bool doFurtherUpdate) override;
     void audioThreadUpdate() override;
@@ -57,10 +57,10 @@ private:
     Ref<WaveshaperUI> ui;
 
     Buffer<float> workBuffer;
-    ScopedAlloc<Ipp32f> rampBuffer;
-    ScopedAlloc<Ipp32f> table;
-    ScopedAlloc<Ipp32f> graphicOversampleBuf;
-    ScopedAlloc<Ipp32f> oversampleBuffers;
+    ScopedAlloc<Float32> rampBuffer;
+    ScopedAlloc<Float32> table;
+    ScopedAlloc<Float32> graphicOversampleBuf;
+    ScopedAlloc<Float32> oversampleBuffers;
 
     OwnedArray<Oversampler> oversamplers;
     CriticalSection graphicLock;

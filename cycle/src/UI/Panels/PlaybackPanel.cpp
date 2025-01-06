@@ -215,15 +215,15 @@ void PlaybackPanel::doPostCallback() {
 	morphPanel->updateCurrentSliderNoCallback(getProgress());
 
 	timeRasterizer->pullModPositionAndAdjust();
-	timeRasterizer->setNoiseSeed(int(timeRasterizer->getMorphPosition().time * 12541));
+	timeRasterizer->setNoiseSeed(int(timeRasterizer->getMorphPosition().time.getTargetValue() * 12541));
 	timeRasterizer->performUpdate(Update);
 
 	freqRasterizer->pullModPositionAndAdjust();
-	freqRasterizer->setNoiseSeed(int(freqRasterizer->getMorphPosition().time * 33947));
+	freqRasterizer->setNoiseSeed(int(freqRasterizer->getMorphPosition().time.getTargetValue() * 33947));
 	freqRasterizer->performUpdate(Update);
 
 	phaseRasterizer->pullModPositionAndAdjust();
-	phaseRasterizer->setNoiseSeed(int(phaseRasterizer->getMorphPosition().time * 94121));
+	phaseRasterizer->setNoiseSeed(int(phaseRasterizer->getMorphPosition().time.getTargetValue() * 94121));
 	phaseRasterizer->performUpdate(Update);
 
 	getObj(DerivativePanel).calcDerivative();

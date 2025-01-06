@@ -222,7 +222,7 @@ void VertexPropertiesPanel::sliderValueChanged(Slider* slider) {
 
 	const vector<VertexFrame>& movableVerts = currentInteractor->getSelectedMovingVerts();
 
-	ScopedAlloc<Ipp32f> diffs(movableVerts.size());
+	ScopedAlloc<Float32> diffs(movableVerts.size());
 
 	jassert(movableVerts.size() < 10000);
 
@@ -644,7 +644,7 @@ void VertexPropertiesPanel::gainChanged(Slider* slider, int changeType)
 	}
 }
 
-Component* VertexPropertiesPanel::getComponent(int which) {
+juce::Component* VertexPropertiesPanel::getComponent(int which) {
 	switch (which) {
 		case CycleTour::TargSliderArea: return &sliderArea;
 		case CycleTour::TargTimeSlider: return properties[Vertex::Time].slider;

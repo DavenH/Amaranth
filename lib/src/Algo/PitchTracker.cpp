@@ -1,4 +1,3 @@
-#include <ipp.h>
 #include "PitchTracker.h"
 
 #include <Util/Arithmetic.h>
@@ -12,6 +11,8 @@
 #ifdef BUILD_TESTING
   #define DEBUG_RENDERING
 #endif
+#include <Array/VecOps.h>
+
 #include "../../tests/TestDefs.h"
 #include "../../tests/SignalDebugger.h"
 
@@ -349,9 +350,11 @@ void PitchTracker::createKernels(
     int numCandidates = kernelSizes.size();
 
     ScopedAlloc<float> erbScale(numERBs);
-    ippsInvSqrt_32f_A11(erbFreqs.get(), erbScale.get(), numERBs);
+    erbFreqs.inv().sqrt();
 
     kernelMemory.resetPlacement();
+
+    const float twoPi = MathConstants<float>::twoPi;
 
     for (int i = 0; i < numCandidates; ++i) {
         float candFreq = pitchCandidates[i];
@@ -378,7 +381,7 @@ void PitchTracker::createKernels(
                     startIdxA = k;
 
                     while (a[k] < 0.25f) {
-                        kernels[i][k] = cosf(IPP_2PI * a[k]);
+                        kernels[i][k] = cosf(twoPi * a[k]);
                         ++k;
                     }
                     break;
@@ -391,7 +394,7 @@ void PitchTracker::createKernels(
                     startIdxB = k;
 
                     while (a[k] >= 0.25f && a[k] < 0.75f) {
-                        kernels[i][k] += cosf(IPP_2PI * q[k]) / 2;
+                        kernels[i][k] += cosf(twoPi * q[k]) / 2;
                         ++k;
                     }
 
@@ -407,7 +410,7 @@ void PitchTracker::createKernels(
         }
 
         kernels[i].mul(erbScale);
-        kernels[i].mul(1.414f / kernels[i].normL2());
+        kernels[i].mul(MathConstants<float>::sqrt2 / kernels[i].normL2());
     }
 }
 
@@ -465,9 +468,9 @@ void PitchTracker::swipe() {
     pitchCandLog2.ramp(lowLimitLog2, deltaPitchLog2);
     windowSizes.ramp((float) logWinSizeHigh, -1);
 
-    ippsPow_32f_A11(twos, pitchCandLog2, pitchCandidates, numCandidates);
-    ippsPow_32f_A11(twos, windowSizes, windowSizes, numWindows);
-    ippsDivCRev_32f(windowSizes, 4 * hannK * samplerate, optimalFreqs, numWindows);
+    pitchCandidates.powC(2.f, pitchCandLog2);
+    windowSizes.powCRev(2.f);
+    VecOps::divCRev(windowSizes, 4 * hannK * samplerate, optimalFreqs);
 
     realErbIdx.set(logTwo(4 * hannK * samplerate / windowSizes.front()));
     realErbIdx.subCRev(1.f);
@@ -479,7 +482,7 @@ void PitchTracker::swipe() {
 
     /// calculate ERBs
     ScopedAlloc<float> erbMem(numERBs * 2);
-    Buffer<float> erbFreqs    = erbMem.place(numERBs);
+    Buffer<float> erbFreqs = erbMem.place(numERBs);
     Buffer<float> erbMagnitudes = erbMem.place(numERBs);
 
     erbFreqs.ramp(erbLow, deltaERBs);
@@ -548,9 +551,8 @@ void PitchTracker::swipe() {
         }
 
         window.hannWindow = hannMemory.place(window.size);
-        window.hannWindow.set(1.f);
+        window.hannWindow.hann();
 
-        ippsWinHann_32f_I(window.hannWindow, window.size);
         window.lambda = lambdaMemory.place(window.erbSize);
         calcLambda(window, realErbIdx);
 
@@ -558,7 +560,7 @@ void PitchTracker::swipe() {
         window.spectFreqs.ramp(0, samplerate / float(window.size));
 
         Transform fft;
-        fft.setFFTScaleType(IPP_FFT_NODIV_BY_ANY);
+        fft.setFFTScaleType(Transform::ScaleType::NoDivByAny);
         fft.allocate(window.size, true);
 
         cumeTime = 0;

@@ -2,8 +2,9 @@
 
 #include <cmath>
 #include <vector>
-#include <ipp.h>
 #include <iostream>
+#include <Array/Buffer.h>
+
 #include "Vertex.h"
 #include "Vertex2.h"
 #include "Intercept.h"
@@ -35,8 +36,8 @@ public:
     static const int resolution     = 64u;
     static const int numCurvelets   = 128u;
 
-    Ipp32f transformX[resolution];
-    Ipp32f transformY[resolution];
+    Float32 transformX[resolution];
+    Float32 transformY[resolution];
 
     static float*** table;
 

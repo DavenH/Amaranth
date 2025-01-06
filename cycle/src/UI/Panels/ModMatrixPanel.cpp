@@ -40,7 +40,7 @@ void ModMatrix::paintRowBackground(Graphics& g, int rowNumber, int width, int he
 void ModMatrix::paintCell(Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) {
 }
 
-Component* ModMatrix::refreshComponentForCell(int row,
+juce::Component* ModMatrix::refreshComponentForCell(int row,
                                               int columnId,
                                               bool isRowSelected,
                                               Component* component) {
@@ -298,10 +298,10 @@ void ModMatrixPanel::resized() {
 	utilityArea.setBounds(utilityRect);
 
 	sourceArea.toBack();
-	sourceArea.setBounds(Rectangle(Point(20, bounds.getY()), bounds.getBottomLeft()));
+	sourceArea.setBounds(Rectangle(juce::Point(20, bounds.getY()), bounds.getBottomLeft()));
 
 	destArea.toBack();
-	destArea.setBounds(Rectangle(Point(bounds.getX(), 20), bounds.getTopRight()));
+	destArea.setBounds(Rectangle(juce::Point(bounds.getX(), 20), bounds.getTopRight()));
 
 	bottom.reduce(bottom.getWidth() / 2 - 60, 12);
 	closeButton.setBounds(bottom);
@@ -801,7 +801,7 @@ void ModMatrixPanel::layerAddedOrRemoved(bool added, int type, int index) {
 	}
 }
 
-Component* ModMatrixPanel::getComponent(int which) {
+juce::Component* ModMatrixPanel::getComponent(int which) {
     switch (which) {
         case CycleTour::TargMatrixSource: 		return &sourceArea;
 		case CycleTour::TargMatrixAddDest: 		return &addDestBtn;

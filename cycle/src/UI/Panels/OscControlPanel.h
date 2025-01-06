@@ -16,7 +16,7 @@ class Knob;
 class SynthAudioSource;
 
 class OscControlPanel:
-        public Component
+        public juce::Component
     ,	public ParameterGroup::Worker
     ,	public Savable
     ,	public Timer

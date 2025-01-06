@@ -22,7 +22,7 @@ template<class MeshType> class MeshSelector;
 
 template<class MeshType>
 class SaveItem :
-        public Component
+        public juce::Component
     ,	public Button::Listener
     ,	public Label::Listener
     ,	public Timer
@@ -382,8 +382,8 @@ public:
                 saveItem->setSize(180, 50);
 
                 CallOutBox& box = CallOutBox::launchAsynchronously(
-                    std::unique_ptr<Component>(std::move(saveItem)),
-                    getScreenBounds(),
+                    std::unique_ptr<juce::Component>(std::move(saveItem)),
+                    juce::Component::getScreenBounds(),
                     nullptr
                 );
                 box.setArrowSize(8.f);
@@ -502,17 +502,19 @@ public:
         }
     }
 
-    void setBoundsDelegate(int x, int y, int w, int h) override { setBounds(x, y, w, h); 			}
+    void setBoundsDelegate(int x, int y, int w, int h) override { juce::Component::setBounds(x, y, w, h); 			}
     MeshType* getCurrentClientMesh()							{ return client->getCurrentMesh(); 	}
     void setOriginalMesh(MeshType* oldMesh)						{ this->oldMesh = oldMesh; 			}
-    Rectangle<int> getBoundsInParentDelegate() const override	{ return Rectangle<int>(getX(), getY(), 25, 25); }
+
     int getExpandedSize() const override						{ return 22; 						}
     int getCollapsedSize() const override						{ return 22; 						}
-    int getYDelegate() override									{ return getY(); 					}
-    int getXDelegate() override									{ return getX(); 					}
-    bool isVisibleDlg() const override 							{ return isVisible(); 				}
-    void setVisibleDlg(bool isVisible) override 				{ setVisible(isVisible); 			}
-
+    int getYDelegate() override									{ return juce::Component::getY(); 					}
+    int getXDelegate() override									{ return juce::Component::getX(); 					}
+    bool isVisibleDlg() const override 							{ return juce::Component::isVisible(); 				}
+    void setVisibleDlg(bool isVisible) override 				{ juce::Component::setVisible(isVisible); 			}
+    Rectangle<int> getBoundsInParentDelegate() const override {
+        return Rectangle<int>(juce::Component::getX(), juce::Component::getY(), 25, 25);
+    }
 private:
     int itemCount;
     bool ignoreMouseExit;

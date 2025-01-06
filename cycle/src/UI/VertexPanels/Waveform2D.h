@@ -27,7 +27,7 @@ public:
 
 private:
     Ref<PlaybackPanel> position;
-    ScopedAlloc<Ipp32f> downsampleBuf;
+    ScopedAlloc<Float32> downsampleBuf;
 
     void drawHistory();
     void drawIfftCycle();

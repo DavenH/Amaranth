@@ -58,7 +58,7 @@ SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
         int size 			= 1 << fftOrder;
         sizeToIndex[size] 	= fftOrderIdx;
 
-        ffts[fftOrderIdx].setFFTScaleType(IPP_FFT_DIV_FWD_BY_N);
+        ffts[fftOrderIdx].setFFTScaleType(Transform::ScaleType::DivFwdByN);
         ffts[fftOrderIdx].allocate(size, true);
     }
 

@@ -1,6 +1,9 @@
 #include <App/SingletonRepo.h>
 
 #include "WaveShaper.h"
+
+#include <Array/VecOps.h>
+
 #include "../../Audio/SynthAudioSource.h"
 #include "../../UI/Effects/WaveshaperUI.h"
 #include "../../UI/VisualDsp.h"
@@ -41,7 +44,7 @@ void Waveshaper::rasterizeTable() {
 
     halfTable.add(-padding).mul(1.f / (1.f - 2.f * padding));
 
-    ippsFlip_32f(table + halfRes, table, halfRes);
+    VecOps::flip(halfTable, table.withSize(halfRes));
     table.withSize(halfRes).mul(-1.f);
 }
 
@@ -53,14 +56,13 @@ void Waveshaper::processBuffer(AudioSampleBuffer& audioBuffer) {
     }
 
     for (int i = 0; i < audioBuffer.getNumChannels(); ++i) {
-        Buffer<Ipp32f> buffer(audioBuffer, i);
+        Buffer<Float32> buffer(audioBuffer, i);
 
         oversamplers[i]->start(buffer);
 
         preamp.maybeApplyRamp(rampBuffer.withSize(buffer.size()), buffer, 0.5);
         buffer.add(0.5f);
-
-        ippsThreshold_LTValGTVal_32f_I(buffer, buffer.size(), 0.f, 0.f, 1.f, 1.f);
+        buffer.clip(0.f, 1.f);
 
         for (float& j : buffer) {
             linInterpTable(j);
@@ -71,7 +73,7 @@ void Waveshaper::processBuffer(AudioSampleBuffer& audioBuffer) {
     }
 }
 
-void Waveshaper::processVertexBuffer(Buffer<Ipp32f> outputBuffer) {
+void Waveshaper::processVertexBuffer(Buffer<Float32> outputBuffer) {
     bool doOversample = doesGraphicOversample();
 
     if (doOversample) {
@@ -81,8 +83,7 @@ void Waveshaper::processVertexBuffer(Buffer<Ipp32f> outputBuffer) {
     int oversampSize = outputBuffer.size();
 
     outputBuffer.mul((float) preamp.getTargetValue()).add(0.5f);
-
-    ippsThreshold_LTValGTVal_32f_I(outputBuffer, oversampSize, 0.f, 0.f, 1.f, 1.f);
+    outputBuffer.clip(0.f, 1.f);
 
     for (int i = 0; i < oversampSize; ++i) {
         linInterpTable(outputBuffer[i]);

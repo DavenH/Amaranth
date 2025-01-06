@@ -118,8 +118,9 @@ public:
     void clear() {
         left.zero();
 
-        if (numChannels > 1)
+        if (numChannels > 1) {
             right.zero();
+        }
     }
 
     [[nodiscard]] int size() const {

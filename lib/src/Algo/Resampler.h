@@ -51,23 +51,23 @@ private:
 
     static void resampleFixedDlg(
             IppsResamplingPolyphaseFixed_32f* state,
-            const Ipp32f *pSrc,
+            const Float32 *pSrc,
             int len,
-            Ipp32f *pDst,
-            Ipp32f norm,
-            Ipp64f *pTime,
+            Float32 *pDst,
+            Float32 norm,
+            Float64 *pTime,
             int *pOutlen) {
        ippsResamplePolyphaseFixed_32f(pSrc, len, pDst, norm, pTime, pOutlen, state);
     }
 
     static void resampleDlg(
             const IppsResamplingPolyphase_32f *pState,
-            const Ipp32f *pSrc,
+            const Float32 *pSrc,
             int len,
-            Ipp32f *pDst,
-            Ipp64f factor,
-            Ipp32f norm,
-            Ipp64f *pTime,
+            Float32 *pDst,
+            Float64 factor,
+            Float32 norm,
+            Float64 *pTime,
             int *pOutlen) {
        ippsResamplePolyphase_32f(pSrc, len, pDst, factor, norm, pTime, pOutlen, pState);
     }

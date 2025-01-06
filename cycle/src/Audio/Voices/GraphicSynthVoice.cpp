@@ -1,4 +1,3 @@
-#include <ipp.h>
 #include <App/AppConstants.h>
 #include <App/SingletonRepo.h>
 #include <Array/Column.h>

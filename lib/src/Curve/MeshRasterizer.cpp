@@ -1,17 +1,13 @@
 #include <iterator>
 #include <cmath>
-#include <ipp.h>
 #include <climits>
 #include "IDeformer.h"
 #include "Mesh.h"
 #include "MeshRasterizer.h"
 
-#include <Definitions.h>
-
 #include "VertCube.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
-#include "../App/Settings.h"
 #include "../Array/ScopedAlloc.h"
 #include "../Design/Updating/Updater.h"
 #include "../Util/CommonEnums.h"
@@ -483,12 +479,12 @@ void MeshRasterizer::calcWaveform() {
         VertCube* cube = thisCurve.b.cube;
 
         int indexA = 0, indexB = 0;
-        int curveRes     = thisCurve.curveRes;
-        int offset         = res >> thisCurve.resIndex;
-        int xferInc     = Curve::resolution / curveRes;
+        int curveRes = thisCurve.curveRes;
+        int offset   = res >> thisCurve.resIndex;
+        int xferInc  = Curve::resolution / curveRes;
 
-        int thisShift     = jmax(0, (nextCurve.resIndex - thisCurve.resIndex));
-        int nextShift     = jmax(0, (thisCurve.resIndex - nextCurve.resIndex));
+        int thisShift = jmax(0, (nextCurve.resIndex - thisCurve.resIndex));
+        int nextShift = jmax(0, (thisCurve.resIndex - nextCurve.resIndex));
 
         thisCurve.waveIdx = waveIdx;
 
@@ -499,12 +495,12 @@ void MeshRasterizer::calcWaveform() {
             Intercept& nextCentre = nextCurve.b;
 
             IDeformer::NoiseContext noise;
-            noise.noiseSeed   = noiseSeed < 0 ? morph.time * INT_MAX : noiseSeed;
+            noise.noiseSeed   = noiseSeed < 0 ? morph.time.getCurrentValue() * INT_MAX : noiseSeed;
             noise.phaseOffset = phaseOffsetSeeds[compDfrm];
             noise.vertOffset  = vertOffsetSeeds[compDfrm];
 
-            Buffer<Ipp32f> yPortion(waveY + waveIdx, curveRes);
-            Buffer<Ipp32f> xPortion(waveX + waveIdx, curveRes);
+            Buffer<Float32> yPortion(waveY + waveIdx, curveRes);
+            Buffer<Float32> xPortion(waveX + waveIdx, curveRes);
 
             float multiplier = thisCentre.shp * cube->deformerAbsGain(Vertex::Time);
 
@@ -611,9 +607,12 @@ void MeshRasterizer::calcWaveform() {
     Buffer<float> dif = diffX.withSize(resSubOne);
     Buffer<float> are = area.withSize(resSubOne);
 
-    dif.sub(waveX, waveX + 1).threshLT(1e-6f);
-    slp.sub(waveY, waveY + 1).div(dif);
-    are.add(waveY, waveY + 1).mul(dif).mul(0.5f);
+    VecOps::sub(waveX, waveX + 1, dif);
+    VecOps::sub(waveY, waveY + 1, slp);
+    VecOps::sub(waveY, waveY + 1, are);
+    dif.threshLT(1e-6f);
+    slp.div(dif);
+    are.mul(dif).mul(0.5f);
 
     unsampleable = false;
 }
@@ -1172,8 +1171,8 @@ void MeshRasterizer::oversamplingChanged() {
 #undef new
 
 void MeshRasterizer::initialise() {
-    ippsZero_16s(vertOffsetSeeds, numElementsInArray(vertOffsetSeeds));
-    ippsZero_16s(phaseOffsetSeeds, numElementsInArray(phaseOffsetSeeds));
+    std::memset(vertOffsetSeeds, 0, numElementsInArray(vertOffsetSeeds) * sizeof(short));
+    std::memset(phaseOffsetSeeds, 0, numElementsInArray(phaseOffsetSeeds) * sizeof(short));
 
     calcTransferTable();
     updateBuffers(2048);

@@ -4,7 +4,6 @@
 #include <vector>
 
 #include <App/MeshLibrary.h>
-#include <Audio/SmoothedParameter.h>
 #include <Obj/Ref.h>
 #include <UI/ColorGradient.h>
 #include <UI/AsyncUIUpdater.h>

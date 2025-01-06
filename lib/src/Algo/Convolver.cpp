@@ -1,4 +1,3 @@
-#include <ipp.h>
 #include "Convolver.h"
 #include "../App/SingletonRepo.h"
 #include "../App/Transforms.h"

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <ipp.h>
 
 //#define _DEBUG_IPP 1
 
@@ -54,7 +53,7 @@ private:
     const vector<Column>* columns;
 
     StereoBuffer renderBuffer;
-    ScopedAlloc<Ipp32f> leftMemory, rightMemory;
+    ScopedAlloc<Float32> leftMemory, rightMemory;
 
     bool playing;
     float increment;

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ipp.h>
 #include <Algo/HermiteResampler.h>
 #include <App/SingletonAccessor.h>
 #include <Array/RingBuffer.h>
@@ -80,5 +79,5 @@ private:
     int blockSize{};
     Array<SampleVoice*> voices;
     SampleSynth synth;
-    ScopedAlloc<Ipp32f> chanMemory;
+    ScopedAlloc<Float32> chanMemory;
 };

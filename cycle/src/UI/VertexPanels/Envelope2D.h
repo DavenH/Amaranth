@@ -96,11 +96,6 @@ private:
 
     Controls controls;
 
-//	MeshLibrary::EnvProps defaultProps;
-//	MeshLibrary::EnvProps volumeProps;
-//	MeshLibrary::EnvProps pitchProps;
-//	Array<MeshLibrary::EnvProps> scratchProps;
-
     std::unique_ptr<MeshSelector<EnvelopeMesh> > meshSelector;
     std::unique_ptr<RetractableCallout> envSelectCO;
     std::unique_ptr<PulloutComponent> envSelectPO;

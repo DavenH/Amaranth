@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ipp.h>
 #include "Buffer.h"
+#include "VecOps.h"
 #include "../Curve/Vertex2.h"
 
 class BufferXY {
@@ -57,10 +57,8 @@ public:
         return x.empty();
     }
 
-    void interlaceTo(const Buffer<float>& buffer) const {
-        jassert(buffer.size() >= 2 * size());
-
-        ippsRealToCplx_32f(x.get(), y.get(), (Ipp32fc*) buffer.get(), size());
+    void interleaveTo(const Buffer<float>& buffer) const {
+        VecOps::interleave(x, y, buffer);
     }
 
     void copyFrom(const Buffer<float>& ex, const Buffer<float>& why) const {

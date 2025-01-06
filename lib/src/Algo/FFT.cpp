@@ -9,7 +9,7 @@ Transform::Transform() :
     spec(nullptr),
   #endif
     convertToCart(false),
-    scaleType(IPP_FFT_DIV_FWD_BY_N),
+    scaleType(DivFwdByN),
     removeOffset(false) {
 }
 

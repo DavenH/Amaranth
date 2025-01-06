@@ -15,7 +15,7 @@ using std::endl;
 using std::vector;
 
 class DerivativePanel :
-        public Component
+        public juce::Component
     , 	public Updateable
     , 	public SingletonAccessor {
 public:
@@ -34,8 +34,8 @@ private:
     ColorGradient gradient;
     CriticalSection cSection;
 
-    ScopedAlloc<Ipp32f> workMemory;
-    ScopedAlloc<Ipp16s> indices;
+    ScopedAlloc<Float32> workMemory;
+    ScopedAlloc<Int16s> indices;
     Buffer<float> exes;
     std::unique_ptr<FIR> fir;
 };

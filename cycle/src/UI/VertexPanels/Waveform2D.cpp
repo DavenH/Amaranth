@@ -99,7 +99,8 @@ void Waveform2D::fillCurveFromGrid() {
     xy.x = xBuffer.withSize(size);
     xy.y = yBuffer.withSize(size);
 
-    a.mul(xy.y, 0.25f).abs().subCRev(0.5f).mul(c.alpha());
+    VecOps::mul(xy.y, 0.25f, a);
+    a.abs().subCRev(0.5f).mul(c.alpha());
 
     applyScaleX(xy.x);
     applyScaleY(xy.y);

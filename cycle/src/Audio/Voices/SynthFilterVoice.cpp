@@ -1,4 +1,3 @@
-#include <ipp.h>
 #include <Algo/Oversampler.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
@@ -126,7 +125,7 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group) {
         rightPhasesAreSet = true;
     }
 
-    Buffer<Ipp32f> fftRamp = getObj(LogRegions).getRegion(noteState.lastNoteNumber);
+    Buffer<Float32> fftRamp = getObj(LogRegions).getRegion(noteState.lastNoteNumber);
 
     calcMagnitudeFilters(fftRamp);
     calcPhaseDomain(fftRamp, doFwdFFT, rightPhasesAreSet, channelCount);
@@ -195,8 +194,7 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
     return requireFwdFFT;
 }
 
-void SynthFilterVoice::calcMagnitudeFilters(Buffer<Ipp32f> fftRamp)
-{
+void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
     bool wasStereoBeforeLayer 	= noteState.isStereo;
     float additiveScale 		= Arithmetic::calcAdditiveScaling(noteState.numHarmonics);
 
@@ -233,8 +231,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Ipp32f> fftRamp)
             Arithmetic::getPans(layerPan, leftPan, rightPan);
 
             float dynamicRange = Spectrum3D::calcDynamicRangeScale(props.range);
-
-            ippsSqrt_32f_I(&dynamicRange, 1);
+            dynamicRange = std::sqrt(dynamicRange);
 
             float multiplicand = powf(2.f, dynamicRange);
             float thresh = powf(1e-19f, 1.f / dynamicRange);
@@ -256,7 +253,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Ipp32f> fftRamp)
 
                     if (leftPan > 0.f) {
                         if (leftPan != 1.f) {
-                            harmRast.add(-1.f).mul(leftPan).add(1.f);
+                            harmRast.sub(1.f).mul(leftPan).add(1.f);
                         }
 
                         magBufs[Left].mul(harmRast);
@@ -264,7 +261,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Ipp32f> fftRamp)
 
                     if (rightPan > 0.f) {
                         if (rightPan != 1.f) {
-                            rightBuffer.add(-1.f).mul(rightPan).add(1.f);
+                            rightBuffer.sub(1.f).mul(rightPan).add(1.f);
                         }
 
                         magBufs[Right].mul(rightBuffer);
@@ -275,8 +272,9 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Ipp32f> fftRamp)
             } else {
                 magBufs[Left].addProduct(harmRast, leftPan);
 
-                if (noteState.isStereo)
+                if (noteState.isStereo) {
                     magBufs[Right].addProduct(harmRast, rightPan);
+                }
             }
         }
     }

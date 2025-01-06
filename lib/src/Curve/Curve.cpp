@@ -1,6 +1,8 @@
 #include <fstream>
-#include <ipp.h>
 #include "Curve.h"
+
+#include <Array/VecOps.h>
+
 #include "../Util/NumberUtils.h"
 
 using std::fstream;
@@ -8,7 +10,7 @@ float*** Curve::table = nullptr;
 
 ostream& operator<<(ostream& stream, TransformParameters t) {
     stream.precision(3);
-    stream << "theta:\t" << t.theta * 180 / IPP_PI << "\n" << "scaleX:\t" << t.scaleX << "\n"
+    stream << "theta:\t" << t.theta * 180 / M_PI << "\n" << "scaleX:\t" << t.scaleX << "\n"
             << "scaleY:\t" << t.scaleY << "\n" << "shear:\t" << t.shear << "\n" << "sinrot:\t"
             << t.sinrot << "\n" << "cosrot:\t" << t.cosrot << "\n" << "dpole:\t" << t.dpole << "\n"
             << "ypole:\t" << t.ypole << "\n" << "d:\t" << t.d.x << " " << t.d.y << "\n" << "\n";
@@ -93,7 +95,7 @@ void Curve::calcTable() {
     for (int r = 0; r < resolutions; ++r) {
         table[r] = new float* [numCurvelets];
         for (int j = 0; j < numCurvelets; ++j) {
-            table[r][j] = ippsMalloc_32f(2 * resolution >> r);
+            table[r][j] = VecOps::allocate<Float32>(2 * resolution >> r);
         }
     }
 

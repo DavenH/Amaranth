@@ -1,4 +1,3 @@
-#include <ipp.h>
 #include <Algo/ConvReverb.h>
 #include <App/SingletonRepo.h>
 #include <Util/Arithmetic.h>
@@ -218,7 +217,7 @@ void ReverbEffect::updateKernelSections()
         rolloff.ramp(1.f, -rolloffFactor / float(buffSize));
         fwdRamp.section(0, highStart).ramp(highLevelA, highLevelRamp);
         rolloff.section(0, highStart).mul(fwdRamp);
-        rolloff.mul(IPP_PI2).sin();
+        rolloff.mul(M_PI_2).sin();
     }
 
     fwdRamp.ramp();
@@ -274,7 +273,7 @@ void ReverbEffect::createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<
 //	}
 //	else
 //	{
-        float scale = IPP_PI2 * (float(NumberUtils::log2i(numBuffers) + 8) * 0.1f - 0.6);
+        float scale = M_PI_2 * (float(NumberUtils::log2i(numBuffers) + 8) * 0.1f - 0.6);
 
         rampStart 	= 0.25f / scale * sinf(scale * expf(i * -4.5f / float(numBuffers))) * sqrtf(float(numBuffers - i) / numBuffers);
         rampEnd 	= 0.25f / scale * sinf(scale * expf((i + 1) * -4.5f / float(numBuffers))) * sqrtf(float(numBuffers - (i + 1)) / numBuffers);

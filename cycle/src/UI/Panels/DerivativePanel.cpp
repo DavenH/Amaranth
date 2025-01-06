@@ -7,6 +7,9 @@
 #include <Util/Arithmetic.h>
 
 #include "DerivativePanel.h"
+
+#include <Array/VecOps.h>
+
 #include "../VertexPanels/Waveform2D.h"
 #include "../../Audio/AudioSourceRepo.h"
 #include "../../Curve/GraphicRasterizer.h"
@@ -21,6 +24,7 @@ DerivativePanel::DerivativePanel(SingletonRepo* repo) :
     jassert(! magenta.isNull());
 
     gradient.read(magenta, false, false);
+    juce::dsp::FIR::Filter<float> filter;
     fir = std::make_unique<FIR>(0.3f, 10, true);
 }
 
@@ -37,8 +41,8 @@ void DerivativePanel::paint(Graphics& g) {
     ColourGradient gradient;
     float rightX 		= wave2D->sx(1);
     gradient.isRadial 	= false;
-    gradient.point1 	= Point<float>(0, 0);
-    gradient.point2 	= Point<float>(rightX, 0);
+    gradient.point1 	= juce::Point<float>(0, 0);
+    gradient.point2 	= juce::Point<float>(rightX, 0);
 
     bool firstPoint = true;
 
@@ -61,9 +65,9 @@ void DerivativePanel::paint(Graphics& g) {
     int right = int(rightX + 0.5f);
 
     g.setGradientFill(gradient);
-    g.fillRect(Rectangle(0, 0, right, getHeight()));
+    g.fillRect(Rectangle(0, 0, right, juce::Component::getHeight()));
     g.setColour(Colour::greyLevel(0.06f));
-    g.fillRect(Rectangle(right, 0, getWidth() - right, getHeight()));
+    g.fillRect(Rectangle(right, 0, juce::Component::getWidth() - right, juce::Component::getHeight()));
 }
 
 void DerivativePanel::mouseEnter(const MouseEvent& e) {
@@ -110,7 +114,7 @@ void DerivativePanel::calcDerivative() {
         exes.ramp();
 
         if (index < columns.size() - 1 && fraction > 0.001f) {
-            sum.mul(column, 1 - fraction);
+            VecOps::mul(column, 1 - fraction, sum);
             sum.addProduct(columns[index + 1], fraction);
         } else {
             column.copyTo(sum);
@@ -120,8 +124,9 @@ void DerivativePanel::calcDerivative() {
 
         float iln = 1 / logf(600 + 1.f);
 
-        dy.diff(sum);
-        ddy.diff(dy).mul(600).abs().add(1.0001f).ln().mul(iln);
+        VecOps::diff(sum, dy);
+        VecOps::diff(dy, ddy);
+        ddy.mul(600).abs().add(1.0001f).ln().mul(iln);
         ddy.copyTo(num);
     } else {
         if (waveX.empty()) {
@@ -148,11 +153,11 @@ void DerivativePanel::calcDerivative() {
         num = workMemory.place(size);
 
         waveX.offset(start).copyTo(exes);
-        dx.diff(exes);
-        dy.diff(waveY.section(start, size));
-        ddy.diff(dy);
+        VecOps::diff(exes, dx);
+        VecOps::diff(waveY.section(start, size), dy);
+        VecOps::diff(dy, ddy);
 
-        num.mul(ddy, dx);
+        VecOps::mul(ddy, dx, num);
         ddy.sqr().add(dx.sqr()).pow(1.5f);
 
         num.div(ddy).abs();
@@ -161,7 +166,7 @@ void DerivativePanel::calcDerivative() {
 
     jassert(exes.front() < 10 && exes.front() > -10);
 
-    num.threshLT(0.f).threshGT(511.f / 512.f);
+    num.clip(0, 1).mul(511.f);
     float m = num.max();
     indices.resize(size);
 
@@ -171,10 +176,10 @@ void DerivativePanel::calcDerivative() {
     }
 
     // scales the [0 1] ranged derivativeY into a [0 511] range index array for the colour gradient
-    ippsConvert_32f16s_Sfs(num, indices, num.size(), ippRndZero, -9);
+    VecOps::roundDown(num, indices);
 }
 
 void DerivativePanel::performUpdate(UpdateType updateType) {
     calcDerivative();
-    repaint();
+    juce::Component::repaint();
 }

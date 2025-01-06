@@ -189,11 +189,13 @@ void DocumentLibrary::writeSettingsFile() {
 
         File file(filename);
 
-        if(file.existsAsFile())
+        if(file.existsAsFile()) {
             (void) file.deleteFile();
+        }
 
-        if(! file.create().wasOk())
+        if(! file.create().wasOk()) {
             return;
+        }
 
         std::unique_ptr<FileOutputStream> fileStream = file.createOutputStream();
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ScopedAlloc.h"
+#include "VecOps.h"
 
 class ReadWriteBuffer {
 public:
@@ -119,7 +120,10 @@ public:
             return;
         }
 
-        ippsMove_32f(workBuffer + amount, workBuffer, writePosition);
+        VecOps::move(
+            workBuffer.section(amount, writePosition),
+            workBuffer.withSize(writePosition - amount)
+        );
 
         writePosition -= amount;
     }
@@ -130,7 +134,10 @@ public:
         }
 
         if (writePosition > readPosition) {
-            ippsMove_32f(workBuffer + readPosition, workBuffer, writePosition - readPosition);
+            VecOps::move(
+                workBuffer.section(readPosition, writePosition - readPosition),
+                workBuffer.withSize(writePosition - readPosition)
+            );
             writePosition -= readPosition;
             readPosition = 0;
         }
