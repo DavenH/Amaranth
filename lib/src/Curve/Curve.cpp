@@ -184,7 +184,7 @@ void Curve::recalculateCurve() {
     dx          = (c.x - a.x);
     dyca        = (c.y - a.y);
 
-    Ipp32fc cvec = { dx, dyca };
+    Float32c cvec = { dx, dyca };
     ippsPhase_32fc(&cvec, &tp.theta, 1);
 
     float ntheta = -tp.theta;

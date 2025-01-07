@@ -3,13 +3,13 @@
 #include "../Curve/Vertex2.h"
 #include <ipp.h>
 
-void Arithmetic::applyLogMapping(Buffer<Ipp32f> array, float tension) {
+void Arithmetic::applyLogMapping(Buffer<Float32> array, float tension) {
     float iln = 1 / logf(MathConstants<float>::twoPi * tension + 1.000001f);
 
     array.mul(tension * MathConstants<float>::twoPi).add(1.000001).ln().mul(iln);
 }
 
-void Arithmetic::applyInvLogMapping(Buffer<Ipp32f> array, float tension) {
+void Arithmetic::applyInvLogMapping(Buffer<Float32> array, float tension) {
     float lntens = logf(MathConstants<float>::twoPi * tension + 1.000001f);
 
     array.mul(lntens).exp().add(-1.000001).mul(0.5f / float(tension * MathConstants<float>::pi));

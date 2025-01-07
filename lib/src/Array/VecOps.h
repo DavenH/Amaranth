@@ -20,4 +20,5 @@ namespace VecOps {
     template<typename T> void mul(T* srcA, T k, T* dst, int len);
     template<typename T> void addProd(T* srcA, T k, T* dst, int len);
     template<typename T> void interleave(Buffer<T> srcA, Buffer<T> srcB, Buffer<T> dst);
+    template<typename T, typename S> void convert(Buffer<T> src, Buffer<S> dst);
 };

@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.29)
 #set(CMAKE_CXX_COMPILER g++-11)
 project(Amaranth VERSION 1.0.0)
 
+enable_language(OBJC)
+enable_language(OBJCXX)
+
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.env")
     message(FATAL_ERROR
         "\n"
@@ -25,6 +28,9 @@ endforeach()
 
 # Global settings
 if(APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
+    set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -Wno-deprecated-declarations")
+    set(CMAKE_OBJCXX_FLAGS "${CMAKE_OBJCXX_FLAGS} -Wno-deprecated-declarations")
     set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X deployment version")
     if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
         set(IPP_ARCH "arm64")
@@ -72,13 +78,18 @@ if(UNIX AND NOT APPLE)
         pkg_check_modules(WEBKIT REQUIRED webkit2gtk-4.1)
     endif()
 elseif(APPLE)
+    find_library(ACCELERATE_FRAMEWORK Accelerate REQUIRED)
+    find_library(APP_KIT_FRAMEWORK AppKit REQUIRED)
+    find_library(AUDIO_TOOLBOX_FRAMEWORK AudioToolbox REQUIRED)
+    find_library(CARBON_FRAMEWORK Carbon REQUIRED)
     find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
     find_library(CORE_AUDIO_FRAMEWORK CoreAudio REQUIRED)
+    find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
     find_library(CORE_MIDI_FRAMEWORK CoreMIDI REQUIRED)
-    find_library(AUDIO_TOOLBOX_FRAMEWORK AudioToolbox REQUIRED)
-    find_library(ACCELERATE_FRAMEWORK Accelerate REQUIRED)
-    find_library(WEBKIT_FRAMEWORK WebKit REQUIRED)
     find_library(IOKIT_FRAMEWORK IOKit REQUIRED)
+    find_library(QUARTZ_CORE_FRAMEWORK QuartzCore REQUIRED)
+    find_library(WEBKIT_FRAMEWORK WebKit REQUIRED)
+
 endif()
 
 add_subdirectory(lib)

@@ -15,7 +15,7 @@ public:
     void read(Image& image, bool softerAlpha = true, bool isTransparent = false);
     void multiplyAlpha(float alpha);
 
-    Buffer<Ipp8u> getPixels()       { return pixels;                      }
+    Buffer<Int8u> getPixels()       { return pixels;                      }
     Buffer<float> getFloatPixels()  { return floatPixels;                 }
 
     static float squash(float x)    { return jmin(1.f, powf((5 * x), 2)); }
@@ -26,7 +26,7 @@ private:
     int pixelStride;
 
     vector<Color> colours;
-    ScopedAlloc<Ipp8u> pixels;
+    ScopedAlloc<Int8u> pixels;
     ScopedAlloc<float> floatPixels;
 
     JUCE_LEAK_DETECTOR(ColorGradient);

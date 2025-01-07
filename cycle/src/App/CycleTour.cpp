@@ -185,7 +185,7 @@ void CycleTour::handleAsyncUpdate() {
     Rectangle<int> screenBounds = item.getArea(this);
 
     if(screenBounds.getWidth() > 0) {
-        Point<int> xy;
+        juce::Point<int> xy;
 
         if(item.area == AreaModMatrix && last.area != AreaModMatrix) {
             getObj(MainPanel).removeChildComponent(&highlighter);
@@ -1018,6 +1018,7 @@ void CycleTour::ItemWrapper::updatePosition (
     const float hhReduced = (float) (hh - borderSpace * 2);
     const float arrowIndent = borderSpace - arrowSize;
 
+    using juce::Point;
     Point<float> targets[4] = { Point ((float) targetArea.getCentreX(), (float) targetArea.getBottom()),
                          Point ((float) targetArea.getRight(),   (float) targetArea.getCentreY()),
                          Point ((float) targetArea.getX(),       (float) targetArea.getCentreY()),
@@ -1057,7 +1058,7 @@ void CycleTour::ItemWrapper::updatePosition (
 }
 
 bool CycleTour::ItemWrapper::intersects(const Rectangle<float> &r, const Line<float> &l) {
-    Point<float> ignored;
+    juce::Point<float> ignored;
     return r.contains (l.getStart()) || r.contains (l.getEnd())
             || l.intersects (Line (r.getTopLeft(),     r.getTopRight()),     ignored)
             || l.intersects (Line (r.getTopRight(),    r.getBottomRight()), ignored)
@@ -1197,7 +1198,7 @@ TourGuide* CycleTour::getTourGuide(Area area) {
     return nullptr;
 }
 
-Component* CycleTour::getComponent(int which) {
+juce::Component* CycleTour::getComponent(int which) {
     Panel* panel = areaToPanel(which);
 
     if(panel != nullptr) {

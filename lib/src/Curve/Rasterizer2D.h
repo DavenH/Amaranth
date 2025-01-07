@@ -124,7 +124,7 @@ public:
             --size;
         }
 
-        Buffer<Ipp32f> ex   = waveX.section(waveStart, size);
+        Buffer<Float32> ex   = waveX.section(waveStart, size);
         Buffer<float> why   = waveY.section(waveStart, size);
         Buffer<float> diffx = diffX.section(waveStart, size);
         Buffer<float> slp   = slope.section(waveStart, size);

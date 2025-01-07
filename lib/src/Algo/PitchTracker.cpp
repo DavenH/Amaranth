@@ -5,7 +5,6 @@
 #include "Resampling.h"
 
 #include "../Algo/FFT.h"
-#include "../Algo/Fir.h"
 #include "../Audio/PitchedSample.h"
 
 #ifdef BUILD_TESTING
@@ -70,7 +69,7 @@ void PitchTracker::yin() {
             if (remaining > 0) {
                 Buffer<float> d = diff.withSize(jmin(remaining, data.step));
 
-                d.sub(resamp16k + offset, resamp16k + lag + offset);
+                VecOps::sub(resamp16k + offset, resamp16k + lag + offset, d);
                 norms[lag - minlag] += d.normL2();
             }
         }
@@ -143,14 +142,14 @@ float PitchTracker::refineFrames(PitchedSample* sample, float averagePeriod) {
 
                 if (offset - roundedDelay >= 0) {
                     offsetBuff = audio.sectionAtMost(offset - roundedDelay, waveBuff.size());
-                    diff.sub(waveBuff, offsetBuff);
+                    VecOps::sub(waveBuff, offsetBuff, diff);
 
                     subnorms[j] += diff.normL2() / power;
                 }
 
                 if (offset + roundedDelay + diff.size() <= numSamples) {
                     offsetBuff = audio.sectionAtMost(offset + roundedDelay, waveBuff.size());
-                    diff.sub(waveBuff, offsetBuff);
+                    VecOps::sub(waveBuff, offsetBuff, diff);
 
                     subnorms[j] += diff.normL2() / power;
                 }
@@ -468,7 +467,8 @@ void PitchTracker::swipe() {
     pitchCandLog2.ramp(lowLimitLog2, deltaPitchLog2);
     windowSizes.ramp((float) logWinSizeHigh, -1);
 
-    pitchCandidates.powC(2.f, pitchCandLog2);
+    pitchCandLog2.copyTo(pitchCandidates);
+    pitchCandidates.powCRev(2.f);
     windowSizes.powCRev(2.f);
     VecOps::divCRev(windowSizes, 4 * hannK * samplerate, optimalFreqs);
 

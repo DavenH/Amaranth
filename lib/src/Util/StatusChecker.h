@@ -1,5 +1,4 @@
 #pragma once
-#include <ipp.h>
 #include <iostream>
 #include <string>
 #include "JuceHeader.h"
@@ -14,7 +13,8 @@ class StatusChecker {
     StatusChecker() {
     }
 public:
-
+#ifdef USE_IPP
     static void report(SingletonRepo* repo, IppStatus status, int line, const char* function, const char* file);
     static void breakOnError(IppStatus status, int line, const char* function, const char* file);
+#endif
 };

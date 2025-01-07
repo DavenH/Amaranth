@@ -11,7 +11,7 @@ class PulloutComponent;
 class RetractableCallout;
 
 class PlayerComponent :
-        public Component
+        public juce::Component
     ,	public Button::Listener
     ,	public SingletonAccessor
 {

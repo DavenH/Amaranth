@@ -174,7 +174,7 @@ void Equalizer::updatePartition(int idx, bool canUpdateTaps) {
     }
 }
 
-void Equalizer::processVertexBuffer(Buffer<Ipp32f> inputBuffer) {
+void Equalizer::processVertexBuffer(Buffer<Float32> inputBuffer) {
     inputBuffer.section(inputBuffer.size() - overflowBuffer.size(),
                         overflowBuffer.size()).copyTo(overflowBuffer);
 
@@ -229,7 +229,7 @@ void Equalizer::updateStates() {
 
     for (auto& part : partitions) {
         for (int chan = 0; chan < numEqChannels; ++chan) {
-            Buffer<Ipp8u> buffer = stateBuffer.section(cumeSize, sizes[allocIndex]);
+            Buffer<Int8u> buffer = stateBuffer.section(cumeSize, sizes[allocIndex]);
             statusB(ippsIIRInit64f_BiQuad_32f(&part.states[chan], part.taps[chan],
                 part.numCascades, part.delayLine[chan], buffer));
 
@@ -270,7 +270,7 @@ void Equalizer::test() {
     int width = 16;
     int pulseWidth = 16;
 
-    ScopedAlloc<Ipp32f> buffers(size);
+    ScopedAlloc<Float32> buffers(size);
     Transform fft;
 
     fft.allocate(size, true);
@@ -311,7 +311,7 @@ void Equalizer::test() {
     for (int i = 0; i < 2; ++i) {
         Buffer<float> buf(audioBuffer, i);
 
-        //		Ipp32f* buffer = audioBuffer.getWritePointer(i);
+        //		Float32* buffer = audioBuffer.getWritePointer(i);
 
         buf.zero();
         buf.section(pulseWidth, pulseWidth).set(1.f);

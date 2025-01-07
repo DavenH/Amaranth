@@ -105,8 +105,8 @@ protected:
 
     void adjustLogColumnAndScale(int key, bool firstColumn);
     void doColourLookup32f      (Buffer<float> grd, Buffer<float> colors);
-    void doColourLookup8u       (Buffer<Ipp8u> grd, Buffer<Ipp8u> colors);
-    void doColumnDraw           (Buffer<Ipp8u> grd8u, Buffer<float> grd32f, int i);
+    void doColourLookup8u       (Buffer<Int8u> grd, Buffer<Int8u> colors);
+    void doColumnDraw           (Buffer<Int8u> grd8u, Buffer<float> grd32f, int i);
     void downsampleColumn       (const Buffer<float>& column);
     void resampleColours        (Buffer<float> srcColors, Buffer<float> dstColors);
     void setVertices            (int column, Buffer<float> verts) const;
@@ -134,10 +134,10 @@ protected:
     ColorGradient gradient;
     RenderParams draw;
 
-    ScopedAlloc<Ipp16s> clrIndicesA, clrIndicesB;
-    ScopedAlloc<Ipp32f> downsampAcc, downsampBuf, scaledX, scaledY;
-    ScopedAlloc<Ipp32f> fColours, fDestColours, vertices;
-    ScopedAlloc<Ipp8u>  colours, texColours;
+    ScopedAlloc<Int16s> clrIndicesA, clrIndicesB;
+    ScopedAlloc<Float32> downsampAcc, downsampBuf, scaledX, scaledY;
+    ScopedAlloc<Float32> fColours, fDestColours, vertices;
+    ScopedAlloc<Int8u>  colours, texColours;
 
     /* ----------------------------------------------------------------------------- */
 

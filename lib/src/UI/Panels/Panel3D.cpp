@@ -209,7 +209,7 @@ void Panel3D::drawAxe() {
  * without verts: values -> lookup -> float colours -> resample to tex height -> resamp float colours -> pixels
  */
 void Panel3D::drawLogSurface(const vector<Column>& grid) {
-    Buffer<Ipp8u> pxBuf     = gradient.getPixels();
+    Buffer<Int8u> pxBuf     = gradient.getPixels();
     Buffer<float> floatBuf = gradient.getFloatPixels();
 
     for (int i = 0; i < draw.sizeX; ++i) {
@@ -225,7 +225,7 @@ void Panel3D::drawLogSurface(const vector<Column>& grid) {
 void Panel3D::drawLinSurface(const vector<Column>& grid) {
     downsampBuf.resize(jmin(maxHorzLines, draw.colSourceSizeY));
 
-    Buffer<Ipp8u> pxBuf     = gradient.getPixels();
+    Buffer<Int8u> pxBuf     = gradient.getPixels();
     Buffer<float> floatBuf  = gradient.getFloatPixels();
 
     for (int i = 0; i < draw.sizeX; ++i) {
@@ -251,7 +251,7 @@ void Panel3D::drawLinSurface(const vector<Column>& grid) {
     }
 }
 
-void Panel3D::doColumnDraw(Buffer<Ipp8u> pxBuf, Buffer<float> grd32f, int i) {
+void Panel3D::doColumnDraw(Buffer<Int8u> pxBuf, Buffer<float> grd32f, int i) {
     resizeArrays();
     setColumnColourIndices();
 
@@ -335,10 +335,10 @@ void Panel3D::setColumnColourIndices() {
 void Panel3D::setVertices(int column, Buffer<float> vertices) const {
     jassert(4 * (draw.sizeY + 1) <= vertices.size());
 
-    Ipp32f* vertexPtr = vertices;
-    Ipp32f* x0 = scaledX.get() + column - 1;
-    Ipp32f* y0 = scaledY.get();
-    Ipp32f* x1 = x0 + 1;
+    Float32* vertexPtr = vertices;
+    Float32* x0 = scaledX.get() + column - 1;
+    Float32* y0 = scaledY.get();
+    Float32* x1 = x0 + 1;
 
     // fill in bottom
     *vertexPtr++ = *x0;
@@ -354,9 +354,9 @@ void Panel3D::setVertices(int column, Buffer<float> vertices) const {
     }
 }
 
-void Panel3D::doColourLookup8u(Buffer<Ipp8u> grd, Buffer<Ipp8u> colors) {
-    Ipp8u* grd8u = grd;
-    Ipp8u* colorPtr = colors;
+void Panel3D::doColourLookup8u(Buffer<Int8u> grd, Buffer<Int8u> colors) {
+    Int8u* grd8u = grd;
+    Int8u* colorPtr = colors;
     int bytes = draw.stride;
 
     jassert(2 * bytes * (draw.sizeY + 1) <= colors.size());
@@ -376,8 +376,8 @@ void Panel3D::doColourLookup8u(Buffer<Ipp8u> grd, Buffer<Ipp8u> colors) {
 }
 
 void Panel3D::doColourLookup32f(Buffer<float> grd, Buffer<float> colors) {
-    Ipp32f* grd32f = grd;
-    Ipp32f* colorPtr = colors;
+    Float32* grd32f = grd;
+    Float32* colorPtr = colors;
     int bytes = draw.stride;
 
     jassert(draw.sizeY * bytes <= colors.size());
@@ -410,10 +410,10 @@ void Panel3D::resizeArrays() {
  *      pos++
  */
 void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf) {
-    Ipp32f* colorPtr    = srcColors;
-    Ipp32f* dstColors   = dstColorBuf;
-    Ipp32f* startClrPtr = colorPtr;
-    Ipp32f* startDstPtr = dstColors;
+    Float32* colorPtr    = srcColors;
+    Float32* dstColors   = dstColorBuf;
+    Float32* startClrPtr = colorPtr;
+    Float32* startDstPtr = dstColors;
 
     jassert(draw.stride * draw.texHeight <= dstColorBuf.size());
 
@@ -432,8 +432,8 @@ void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf
         float invHeight = 1 / float(draw.texHeight);
         int rampSize    = draw.ramp.size();
 
-        Ipp32f* rampPtr = draw.ramp.get();
-        Ipp32f* endClrPtr = startClrPtr + draw.stride * rampSize;
+        Float32* rampPtr = draw.ramp.get();
+        Float32* endClrPtr = startClrPtr + draw.stride * rampSize;
 
         while ((floatIdx = i * invHeight) < draw.ramp.front()) {
             ippsCopy_32f(colorPtr, dstColors, draw.stride);

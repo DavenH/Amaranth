@@ -12,6 +12,7 @@
 
 #pragma once
 
+#define JUCE_USE_MP3AUDIOFORMAT 1
 #define JUCE_WASAPI 		1
 #define JUCE_ASIO 			1
 #define JUCE_USE_FLAC 		1
@@ -33,6 +34,11 @@
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <juce_opengl/juce_opengl.h>
 
+#if ! JUCE_DONT_DECLARE_PROJECTINFO
+namespace ProjectInfo {
+    const char* const  companyName    = "Amaranth Audio";
+}
+#endif
 
 #if defined (JUCE_PROJUCER_VERSION) && JUCE_PROJUCER_VERSION < JUCE_VERSION
  /** If you've hit this error then the version of the Projucer that was used to generate this project is

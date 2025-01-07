@@ -26,7 +26,7 @@ void OscAudioProcessor::setTargetFrequency(float freq) {
     targetPeriod    = sampleRate / freq;
 }
 
-std::vector<Buffer<Ipp32f>> OscAudioProcessor::getAudioPeriods() const {
+std::vector<Buffer<Float32>> OscAudioProcessor::getAudioPeriods() const {
     const SpinLock::ScopedLockType lock(bufferLock);
 
     // return a copy because underlying vector will be updated by audio thread

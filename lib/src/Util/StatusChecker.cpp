@@ -1,8 +1,9 @@
-#include <ipp.h>
 #include "StatusChecker.h"
 #include "../App/SingletonRepo.h"
 #include "../Definitions.h"
 
+#ifdef USE_IPP
+#include <ipp.h>
 void
 StatusChecker::report(SingletonRepo* repo, const IppStatus status, int line, const char* function, const char* file) {
     if (status != ippStsNoErr && status != ippStsNoOperation) {
@@ -17,3 +18,5 @@ void StatusChecker::breakOnError(const IppStatus status, int line, const char* f
         jassertfalse;
     }
 }
+
+#endif

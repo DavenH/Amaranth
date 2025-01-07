@@ -28,7 +28,7 @@ public:
     enum { E3LockId = 0x17b1eed5 };
 private:
     vector<Column> columns;
-    ScopedAlloc<Ipp32f> columnArray;
+    ScopedAlloc<Float32> columnArray;
 
     CriticalSection arrayLock;
 };

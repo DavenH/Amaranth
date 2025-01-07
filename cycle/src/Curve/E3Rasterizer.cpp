@@ -47,7 +47,7 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
         return;
     }
 
-    ScopedAlloc<Ipp32f> zoomProgress(gridSize);
+    ScopedAlloc<Float32> zoomProgress(gridSize);
     zoomProgress.ramp();
 
     int res = getConstant(EnvResolution);

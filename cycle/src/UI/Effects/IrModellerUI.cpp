@@ -98,8 +98,8 @@ void IrModellerUI::init() {
 
     selector = std::make_unique<MeshSelector<Mesh>>(repo.get(), this, String("ir"), true, false, true);
 
-    Component* wavArr[] = { &openWave, 		&removeWave, &modelWave };
-    Component* zoomArr[]= { &attkZoomIcon, 	&zoomOutIcon };
+    juce::Component* wavArr[] = { &openWave, &removeWave, &modelWave };
+    juce::Component* zoomArr[]= { &attkZoomIcon, &zoomOutIcon };
 
     panelControls = std::make_unique<PanelControls>(repo, this, this, nullptr, "Impulse Modeller");
     panelControls->addEnablementIcon();
@@ -193,7 +193,7 @@ void IrModellerUI::preDraw() {
 
     vector<Color>& grd = gradient.getColours();
 
-    ScopedAlloc<Ipp32f> reducedMags, accum;
+    ScopedAlloc<Float32> reducedMags, accum;
 
     if (mags.size() > 512) {
         accum.resize(512);
@@ -214,9 +214,9 @@ void IrModellerUI::preDraw() {
         mags = a;
     }
 
-    ScopedAlloc<Ipp16s> indices(mags.size());
+    ScopedAlloc<Int16s> indices(mags.size());
 
-    status(ippsConvert_32f16s_Sfs(mags, indices, mags.size(), ippRndZero, -9));
+    VecOps::roundDown(mags.mul(511.f), indices);
 
     int left 		= 0;
     int bottom 		= 0;
@@ -516,8 +516,7 @@ void IrModellerUI::loadWaveFile() {
     getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 }
 
-void IrModellerUI::deconvolve()
-{
+void IrModellerUI::deconvolve() {
     PitchedSample* wav = getObj(Multisample).getCurrentSample();
 
     if(wav == nullptr) {
@@ -571,25 +570,26 @@ void IrModellerUI::deconvolve()
 
     fadeOutUp	.ramp().sqr();
     fadeOutDown	.subCRev(1.f, fadeOutUp);
-    fadeInUp	.flip(fadeOutDown);
+    VecOps::flip(fadeOutDown, fadeInUp);
     fadeInDown	.subCRev(1.f, fadeInUp);
 
     waveSource	.copyTo(fadedCyc);
     fadedCyc	.mul(fadeInUp);
-    quarterBuf	.mul(fadedCyc + cycSize, fadeInDown);
-    fadedCyc	.add(quarterBuf);
+
+    VecOps::mul(fadedCyc + cycSize, fadeInDown, quarterBuf);
+    fadedCyc.add(quarterBuf);
 
     int hSize = pow2Size / 2;
 
-    ScopedAlloc<Ipp32fc> freqBuffer(hSize);
-    ScopedAlloc<Ipp32f> timeBuffer(pow2Size * 4);
+    ScopedAlloc<Complex32> freqBuffer(hSize);
+    ScopedAlloc<Float32> timeBuffer(pow2Size * 4);
 
     Buffer<float> 	paddedWav 	= timeBuffer.place(pow2Size);
     Buffer<float> 	synthRast 	= timeBuffer.place(pow2Size);
     Buffer<float>	impSignal	= timeBuffer.place(pow2Size);
     Buffer<float>	paddedMag	= timeBuffer.place(hSize);
     Buffer<float>	paddedPhs	= timeBuffer.place(hSize);
-    Buffer<Ipp32fc> impComplex  = freqBuffer.withSize(hSize);
+    Buffer<Complex32> impComplex  = freqBuffer.withSize(hSize);
 
     paddedWav.zero();
     fadedCyc.withSize(cycSize).copyTo(paddedWav);
@@ -597,7 +597,7 @@ void IrModellerUI::deconvolve()
     Transform wavFFT;
     wavFFT.allocate(pow2Size);
     wavFFT.forward(paddedWav);
-    Buffer<Ipp32fc> waveComplex = wavFFT.getComplex() + 1;	// +1 removes dc offset bytes
+    Buffer<Complex32> waveComplex = wavFFT.getComplex() + 1;	// +1 removes dc offset bytes
 
     synthRast.ramp(1, -2 / float(pow2Size));
 
@@ -625,12 +625,13 @@ void IrModellerUI::deconvolve()
     fft.allocate(pow2Size);
     fft.forward(synthRast);
 
-    Buffer<Ipp32fc> synthComplex = fft.getComplex();
+    Buffer<Complex32> synthComplex = fft.getComplex();
 
     jassert(synthComplex.size() == waveComplex.size() + 1);
 
-    ippsThreshold_32fc_I(synthComplex, synthComplex.size(), 1e-6f, ippCmpLess);
-    ippsDiv_32fc_A11(waveComplex, synthComplex, impComplex, waveComplex.size());
+    // ippsThreshold_32fc_I(synthComplex, synthComplex.size(), 1e-6f, ippCmpLess);
+    synthComplex.threshLT({1e-6f, 1e-6f});
+    VecOps::div(waveComplex, synthComplex, impComplex);
 
     impComplex.copyTo(fft.getComplex());
     fft.inverse(impSignal);
@@ -683,7 +684,7 @@ void IrModellerUI::doubleMesh() {
     postUpdateMessage();
 }
 
-Component* IrModellerUI::getComponent(int which) {
+juce::Component* IrModellerUI::getComponent(int which) {
     switch (which) {
         case CycleTour::TargImpLength: 		return lengthSlider;
         case CycleTour::TargImpGain:		return gainSlider;

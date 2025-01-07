@@ -62,7 +62,7 @@ void Transform::allocate(int bufferSize, bool convertsToCart) {
     workBuff.resize(buffSize);
     spec = (IppsFFTSpec_R_32f*) stateBuff.get();
 
-    ScopedAlloc<Ipp8u> initBuff(specBuffSize);
+    ScopedAlloc<Int8u> initBuff(specBuffSize);
     ippsFFTInit_R_32f(&spec, order, scaleType, ippAlgHintFast, stateBuff, initBuff);
 
     memory.ensureSize(convertToCart ? bufferSize * 2 + 2 : bufferSize + 2);
@@ -93,7 +93,7 @@ void Transform::forward(Buffer<float> src) {
     ippsFFTFwd_RToCCS_32f(src, fftBuffer, spec, workBuff);
 
     if (convertToCart) {
-        ippsCartToPolar_32fc(reinterpret_cast<Ipp32fc*>(fftBuffer.get()) + 1, magnitudes, phases, size/2);
+        ippsCartToPolar_32fc(reinterpret_cast<Float32c*>(fftBuffer.get()) + 1, magnitudes, phases, size/2);
     }
   #endif
 }
@@ -114,7 +114,7 @@ void Transform::inverse(Buffer<float> dest) {
     vDSP_vsmul(dest, 1, &scale, dest, 1, size);
   #else
     if (convertToCart) {
-        ippsPolarToCart_32fc(magnitudes, phases, (Ipp32fc*)fftBuffer.get() + 1, size/2);
+        ippsPolarToCart_32fc(magnitudes, phases, (Float32c*)fftBuffer.get() + 1, size/2);
     }
     ippsFFTInv_CCSToR_32f(fftBuffer, dest, spec, workBuff);
   #endif

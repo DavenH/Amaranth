@@ -7,7 +7,7 @@ using namespace juce;
 #ifdef USE_IPP
     #define perfSplit(X, Y) X
     #include <ipp.h>
-    using Int8u = Ipp8u;
+    using Int8u = Int8u;
     using Int8s = Ipp8s;
     using Int16s = Ipp16s;
     using Int32s = Ipp32s;
@@ -66,13 +66,14 @@ public:
     T normDiffL2(Buffer buff) const;  // sqrt(sum(buff[i] - ptr[i])**2)
     T dot(Buffer buff) const;
 
-    // init
+    // init (overwrites)
     Buffer& zero();
     Buffer& zero(int size);
     Buffer& rand(unsigned& seed);
     Buffer& ramp();                  // ptr[i] = i / (sz - 1)
     Buffer& ramp(T offset, T delta); // ptr[i] = offset + i * delta
     Buffer& hann();
+    Buffer& blackman();
 
     // nullary math
     Buffer& abs();

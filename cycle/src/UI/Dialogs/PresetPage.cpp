@@ -13,6 +13,7 @@
 
 #include "PresetPage.h"
 
+#include "../CycleDefs.h"
 #include "../Widgets/RatingSlider.h"
 #include "../Panels/GeneralControls.h"
 #include "../Panels/MainPanel.h"

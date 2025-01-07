@@ -74,16 +74,40 @@ defineDiff(Float32, vsub)
 defineDiff(Float64, vsubD)
 
 
-#define defineInterlace(type, fn) \
-    template<> void VecOps::interleave(Buffer<type> x, Buffer<type> y, Buffer<type> dst) { \
-        jassert(dst.size() >= 2 * x.size()); \
-        vDSP_vsz(x.get(), 1, y.get(), 1, dst.get(), 2, x.size()); \
-    }
+//#define defineInterleave(type, fn) \
+
+template<> void VecOps::interleave(Buffer<Float32> x, Buffer<Float32> y, Buffer<Float32> dst) {
+    if(x.empty()) return;
+    jassert(dst.size() >= 2 * x.size());
+    DSPSplitComplex z;
+    z.realp = reinterpret_cast<Float32*>(x.get());
+    z.imagp = reinterpret_cast<Float32*>(y.get());
+    DSPComplex* xp = reinterpret_cast<DSPComplex*>(dst.get());
+    vDSP_ztoc(&z, 1, xp, 1, x.size());
+}
+
+template<> void VecOps::interleave(Buffer<Float64> x, Buffer<Float64> y, Buffer<Float64> dst) {
+    if(x.empty()) return;
+    jassert(dst.size() >= 2 * x.size());
+    DSPDoubleSplitComplex z;
+    z.realp = reinterpret_cast<Float64*>(x.get());
+    z.imagp = reinterpret_cast<Float64*>(y.get());
+    DSPDoubleComplex* xp = reinterpret_cast<DSPDoubleComplex*>(dst.get());
+    vDSP_ztocD(&z, 1, xp, 1, x.size());
+}
 
 #define defineAllocate(T) template<> T* VecOps::allocate<T>(int size) { return (T*) malloc(size * sizeof(T)); }
 #define defineDeallocate(T) template<> void VecOps::deallocate<T>(T* ptr) { delete ptr; }
 declareForAllTypes(defineAllocate)
 declareForAllTypes(defineDeallocate)
+
+
+template<> void VecOps::convert(Buffer<Float64> src, Buffer<Float32> dst) {
+    vDSP_vdpsp(src.get(), 1, dst.get(), 1, src.size());
+}
+template<> void VecOps::convert(Buffer<Float32> src, Buffer<Float64> dst) {
+    vDSP_vspdp(src.get(), 1, dst.get(), 1, src.size());
+}
 
 
 #elif defined(USE_IPP)
@@ -143,6 +167,11 @@ template<> void VecOps::interleave(Buffer<Float32> x, Buffer<Float32> y, Buffer<
     ippsRealToCplx_32f(x.get(), y.get(), (Complex32*) dst.get(), x.size());
 }
 
+template<> void VecOps::interleave(Buffer<Float64> x, Buffer<Float64> y, Buffer<Float64> dst) {
+    if(x.empty()) return;
+    jassert(dst.size() >= 2 * x.size());
+    ippsRealToCplx_64f(x.get(), y.get(), (Complex64*) dst.get(), x.size());
+}
 
 template<> Int8u* VecOps::allocate<Int8u>(int size) { return ippsMalloc_8u(size); }
 template<> Int8s* VecOps::allocate<Int8s>(int size) { return ippsMalloc_8s(size); }
@@ -152,7 +181,16 @@ template<> Float32* VecOps::allocate<Float32>(int size) { return ippsMalloc_32f(
 template<> Float64* VecOps::allocate<Float64>(int size) { return ippsMalloc_64f(size); }
 template<> Complex32* VecOps::allocate<Complex32>(int size) { return ippsMalloc_32fc(size); }
 template<> Complex64* VecOps::allocate<Complex64>(int size) { return ippsMalloc_64fc(size); }
-#define vecFree ippsFree
+
+#define defineDeallocate(T) template<> void VecOps::deallocate<T>(T* ptr) { ippsFree(ptr); }
+declareForAllTypes(defineDeallocate)
+
+template<> void VecOps::convert(Buffer<Float64> src, Buffer<Float32> dst) {
+    ippsConvert_64f32f(src.get(), dst.get(), src.size());
+}
+template<> void VecOps::convert(Buffer<Float32> src, Buffer<Float64> dst) {
+    ippsConvert_32f64f(src.get(), dst.get(), src.size());
+}
 
 #endif
 

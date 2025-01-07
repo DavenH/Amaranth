@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ipp.h>
 
 #include "JuceHeader.h"
 #include "../Array/ScopedAlloc.h"
@@ -9,6 +8,8 @@ class Resampler {
 public:
     Resampler();
     ~Resampler();
+
+#ifdef USE_IPP
 
     void initFixedWithLength(float rollf, float alpha, int inRate,      int outRate, int length,    int bufSize,    int& sourceSize, int& destSize);
     void initFixedWithWindow(float rollf, float alpha, int inRate,      int outRate, float window,  int bufSize,    int& sourceSize, int& destSize);
@@ -49,29 +50,6 @@ public:
 private:
     void init(float rollf, float alpha, int& sourceSize, int& destSize);
 
-    static void resampleFixedDlg(
-            IppsResamplingPolyphaseFixed_32f* state,
-            const Float32 *pSrc,
-            int len,
-            Float32 *pDst,
-            Float32 norm,
-            Float64 *pTime,
-            int *pOutlen) {
-       ippsResamplePolyphaseFixed_32f(pSrc, len, pDst, norm, pTime, pOutlen, state);
-    }
-
-    static void resampleDlg(
-            const IppsResamplingPolyphase_32f *pState,
-            const Float32 *pSrc,
-            int len,
-            Float32 *pDst,
-            Float64 factor,
-            Float32 norm,
-            Float64 *pTime,
-            int *pOutlen) {
-       ippsResamplePolyphase_32f(pSrc, len, pDst, factor, norm, pTime, pOutlen, pState);
-    }
-
     /* ----------------------------------------------------------------------------- */
 
     bool    fixed;          // true for fixed factor filter
@@ -105,4 +83,7 @@ private:
     IppsResamplingPolyphaseFixed_32f *fixedState;
 
     JUCE_LEAK_DETECTOR(Resampler);
+#endif
+
 };
+

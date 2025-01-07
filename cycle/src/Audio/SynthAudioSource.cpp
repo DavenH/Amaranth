@@ -152,7 +152,7 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
             tempRendBuffer[i] = tempMemory[i].withSize(numSamples44k);
 
             if(numSamples44k > 0) {
-                ippsZero_32f(tempRendBuffer[i], numSamples44k);
+                tempRendBuffer[i].zero(numSamples44k);
             }
         }
 
@@ -330,7 +330,7 @@ void SynthAudioSource::calcDeclickEnvelope(double /*samplerate*/) {
         return;
     }
 
-    ScopedAlloc<Ipp32f> buff(attackLength);
+    ScopedAlloc<Float32> buff(attackLength);
     Buffer ramp = buff;
 
     attackDeclick.resize(attackLength);

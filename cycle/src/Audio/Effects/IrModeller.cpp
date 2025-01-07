@@ -167,7 +167,7 @@ void IrModeller::rasterizeImpulse(Buffer<float> impulse, FXRasterizer &rast, boo
         return;
     }
 
-    Ipp32f sum = 0;
+    Float32 sum = 0;
 
     if (!usingWavFile) {
         if (!rast.hasEnoughCubesForCrossSection()) {
@@ -183,7 +183,7 @@ void IrModeller::rasterizeImpulse(Buffer<float> impulse, FXRasterizer &rast, boo
             delta /= (double) oversampler.getOversampleFactor();
             int samplingSize = impulse.size() * oversampler.getOversampleFactor();
 
-            Buffer <Ipp32f> buff = oversampler.getMemoryBuffer(samplingSize);
+            Buffer<Float32> buff = oversampler.getMemoryBuffer(samplingSize);
             rast.samplePerfectly(delta, buff, phase);
 
             oversampler.sampleDown(buff, impulse);
@@ -282,7 +282,7 @@ void IrModeller::checkForPendingUpdates() {
     }
 }
 
-void IrModeller::processVertexBuffer(Buffer <Ipp32f> inputBuffer) {
+void IrModeller::processVertexBuffer(Buffer <Float32> inputBuffer) {
     if (!graphic.impulse.empty())
         graphicConv.process(inputBuffer, inputBuffer);
 

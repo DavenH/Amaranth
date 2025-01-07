@@ -1,23 +1,26 @@
-#include <ipp.h>
 #include "Oversampler.h"
 #include "../App/SingletonRepo.h"
 #include "../App/MemoryPool.h"
 #include "../Definitions.h"
-
+#include "../../../../../../../Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/vecLib.framework/Headers/vDSP.h"
 
 Oversampler::Oversampler(SingletonRepo* repo, int kernelSize) :
         memoryBuf        (getObj(MemoryPool).getAudioPool())
     ,   oversampleFactor (1)
+#ifdef USE_IPP
     ,   filterDownState  (nullptr)
     ,   filterUpState    (nullptr)
+#endif
     ,   oversampBuf      (nullptr)
     ,   phase            (0) {
     setKernelSize(2 * kernelSize);
 }
 
 Oversampler::~Oversampler() {
+#ifdef USE_IPP
     filterUpState = nullptr;
     filterDownState = nullptr;
+#endif
 }
 
 void Oversampler::start(Buffer<float>& buffer) {
@@ -30,8 +33,9 @@ void Oversampler::start(Buffer<float>& buffer) {
         jassert(memoryBuf.size() >= oversampleFactor * buffer.size());
 
         buffer.mul(oversampleFactor * 0.97f);
-        phase = buffer.upsampleFrom(memoryBuf, oversampleFactor, phase);
-        ippsSampleUp_32f(buffer, buffer.size(), memoryBuf, &destSize, oversampleFactor, &phase);
+        phase = memoryBuf
+            .withSize(oversampleFactor * buffer.size())
+            .upsampleFrom(buffer, oversampleFactor, phase);
 
         int partitionPos = 0;
 
@@ -40,20 +44,17 @@ void Oversampler::start(Buffer<float>& buffer) {
 
             Buffer partition(memoryBuf + partitionPos, stepSize);
 
+          #ifdef USE_IPP
             ippsFIRSR_32f(partition, partition, stepSize, filterUpState, firUpDly, firUpDly, workBuffUp);
+          #else
+            vDSP_desamp(partition, 1, firTaps, partition, partition.size(), firTaps.size());
+          #endif
             partition.undenormalize();
 
-             // vDSP_vfix32(
-//     const float *__A,   // Input array
-//     vDSP_Stride __IA,   // Input stride
-//     float *__C,         // Output array
-//     vDSP_Stride __IC,   // Output stride
-//     vDSP_Length __N     // Number of elements
-// );
             partitionPos += stepSize;
         }
 
-        buffer = memoryBuf.withSize(destSize); // Buffer<Ipp32f>(memoryBuf, destSize);
+        buffer = memoryBuf.withSize(destSize); // Buffer<Float32>(memoryBuf, destSize);
         oversampBuf = &buffer;
     } else {
         oversampBuf = nullptr;
@@ -62,7 +63,6 @@ void Oversampler::start(Buffer<float>& buffer) {
 
 void Oversampler::stop() {
     if (oversampleFactor > 1 && oversampBuf != nullptr && !oversampBuf->empty() && !audioBuf.empty()) {
-        jassert(filterDownState);
         jassert(!oversampBuf->empty() && !audioBuf.empty());
 
         sampleDown(*oversampBuf, audioBuf);
@@ -89,8 +89,13 @@ void Oversampler::sampleDown(Buffer<float> src, Buffer<float> dest, bool wrapTai
         Buffer partition(src + partitionPos, srcStep);
         Buffer destPart(dest + destPos, destStep);
 
-        ippsFIRSR_32f      (partition, partition, srcStep, filterDownState, firDownDly, firDownDly, workBuffDown);
-        ippsSampleDown_32f (partition, srcStep, destPart, &destSize, oversampleFactor, &phase);
+      #ifdef USE_IPP
+        jassert(filterDownState);
+        ippsFIRSR_32f(partition, partition, srcStep, filterDownState, firDownDly, firDownDly, workBuffDown);
+      #else
+        vDSP_desamp(partition, 1, firTaps, partition, partition.size(), firTaps.size());
+      #endif
+        phase = destPart.downsampleFrom(partition, oversampleFactor, phase);
 
         partitionPos += srcStep;
         destPos      += destStep;
@@ -105,8 +110,12 @@ void Oversampler::sampleDown(Buffer<float> src, Buffer<float> dest, bool wrapTai
 
         tail.zero();
 
-        ippsFIRSR_32f      (tail, tail, tail.size(), filterDownState, firDownDly, firDownDly, workBuffDown);
-        ippsSampleDown_32f (tail, tail.size(), temp, &destSize, oversampleFactor, &phase);
+      #ifdef USE_IPP
+        ippsFIRSR_32f(tail, tail, tail.size(), filterDownState, firDownDly, firDownDly, workBuffDown);
+      #else
+        vDSP_desamp(tail, 1, firTaps, tail, tail.size(), firTaps.size());
+      #endif
+        phase = temp.downsampleFrom(tail, oversampleFactor, phase);
 
         dest.add(temp.withSize(destSize));
     }
@@ -127,6 +136,8 @@ void Oversampler::setKernelSize(int size) {
     firUpDly.zero();
 
     int buffSize, specSize;
+
+#ifdef USE_IPP
     ippsFIRSRGetSize(firTaps.size(), ipp32f, &specSize, &buffSize);
 
     stateUpBuf.resize(specSize);
@@ -134,6 +145,7 @@ void Oversampler::setKernelSize(int size) {
 
     ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterUpState);
     ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterDownState);
+#endif
 
     updateTaps();
 }
@@ -158,17 +170,24 @@ void Oversampler::updateTaps() {
 
     double relativeFreq = 0.5 / (double) oversampleFactor;
 
-    ScopedAlloc<Float64> tempTaps(firTaps.size());
-
+#ifdef USE_IPP
     int buffSize;
     ippsFIRGenGetBufferSize(firTaps.size(), &buffSize);
     ScopedAlloc<Int8u> buffer(buffSize);
 
+    ScopedAlloc<Float64> tempTaps(firTaps.size());
     ippsFIRGenLowpass_64f(relativeFreq, tempTaps, firTaps.size(), ippWinBlackman, ippTrue, buffer);
-    ippsConvert_64f32f   (tempTaps, firTaps, firTaps.size());
+    VecOps::convert(tempTaps, firTaps);
 
     ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterUpState);
     ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterDownState);
+#else
+    ScopedAlloc<Float32> window(firTaps.size());
+    window.blackman();
+    firTaps
+        .ramp(0, MathConstants<float>::twoPi * relativeFreq / firTaps.size())
+        .mul(window);
+#endif
 }
 
 Buffer<float> Oversampler::getMemoryBuffer(int size) {

@@ -236,7 +236,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::div(Ipp##T c)                   \
     return *this;                                               \
 }
 
-template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Ipp32fc c)
+template<> Buffer<Float32c>& Buffer<Float32c>::mul(Float32c c)
 {
     if(c.re != 1 || c.im != 0)
         ippsMulC_32fc_I(c, ptr, sz);
@@ -257,7 +257,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::mul(Buffer<Ipp##T> buff, Ipp##T c) \
 
 #define constructConv(T)                                        \
 template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::conv(Buffer<Ipp##T> src1, Buffer<Ipp##T> src2, Buffer<Ipp8u> workBuff) \
+Buffer<Ipp##T>& Buffer<Ipp##T>::conv(Buffer<Ipp##T> src1, Buffer<Ipp##T> src2, Buffer<Int8u> workBuff) \
 {                                                               \
     jassert(sz >= src1.size() + src2.size() - 1);               \
     ippsConvolve_##T(src1, src1.sz, src2, src2.sz, ptr, IppAlgType::ippAlgAuto, workBuff); \
@@ -373,7 +373,7 @@ Buffer<Ipp##T>&  Buffer<Ipp##T>::rand(unsigned& seed)           \
     if(sz > 1) {                                                \
         int size = 0;                                           \
         ippsRandUniformGetSize_##T(&size);                      \
-        ScopedAlloc<Ipp8u> stateBuff(size);                     \
+        ScopedAlloc<Int8u> stateBuff(size);                     \
         IppsRandUniState_##T* state = (IppsRandUniState_##T*) stateBuff.get(); \
         ippsRandUniformInit_##T(state, -1, 1, seed);            \
         ippsRandUniform_##T(ptr, sz, state);                    \
@@ -615,6 +615,20 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
     return phase;                                               \
 }
 
+#define constructWinHann(T) \
+    template<> \
+    Buffer<Ipp##T>& Buffer<Ipp##T>::hann() { \
+        if(sz == 0) return *this; \
+        ippsWinHann_##T(ptr, ptr, sz); \
+    }
+
+#define constructWinBlackman(T) \
+    template<> \
+    Buffer<Ipp##T>& Buffer<Ipp##T>::blackman() { \
+        if(sz == 0) return *this; \
+        ippsWinBlackman_##T(ptr, ptr, sz); \
+    }
+
 #define implementOperators(T) \
 template<> \
 void Buffer<Ipp##T>::operator+=(const Buffer<Ipp##T>& other) { \
@@ -692,8 +706,10 @@ declareForReal(constructNormL2);
 declareForReal(constructAbs);
 declareForReal(constructClip);
 declareForReal(constructMax);
-declareForReal(constructThreshLT);
+declareForRealAndCplx(constructThreshLT);
 declareForReal(constructThreshGT);
+declareForReal(constructWinHann);
+declareForReal(constructWinBlackman);
 
 declareForRealPrec(constructSqrt)
 declareForRealPrec(constructPow)
@@ -729,10 +745,10 @@ implementOperators(32f)
 implementOperators(64f)
 
 // template<>
-// Buffer<Ipp32f>& Buffer<Ipp32f>::conv(
-//     Buffer<Ipp32f> src1,
-//     Buffer<Ipp32f> src2,
-//     Buffer<Ipp8u> workBuff) {
+// Buffer<Float32>& Buffer<Float32>::conv(
+//     Buffer<Float32> src1,
+//     Buffer<Float32> src2,
+//     Buffer<Int8u> workBuff) {
 //     do {
 //         if (!(sz >= src1.size() + src2.size() - 1)) do {
 //             juce::logAssertion("Buffer. cpp", 692);;

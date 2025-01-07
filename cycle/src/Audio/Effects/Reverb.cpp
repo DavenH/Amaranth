@@ -245,7 +245,7 @@ void ReverbEffect::updateKernelSections()
             fft		.getMagnitudes().mul(rolloff);
             fft		.inverse(filtered);
 
-            section	.mul(filteredA, invRamp);
+            VecOps::mul(filteredA, invRamp, section);
             section	.addProduct(fwdRamp, filtered);
             section	.mul(volRamp);
 

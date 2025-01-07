@@ -7,6 +7,7 @@
 #include <UI/Widgets/Knob.h>
 
 #include "WaveshaperUI.h"
+#include "../CycleDefs.h"
 #include "../Dialogs/PresetPage.h"
 #include "../Widgets/Controls/MeshSelector.h"
 #include "../Widgets/Controls/Spacers.h"
@@ -32,7 +33,7 @@ void WaveshaperUI::init() {
     layerType 				= LayerGroups::GroupWaveshaper;
     curveIsBipolar 			= false;
     vertsAreWaveApplicable 	= true;
-    nameCornerPos			= Point<float>(-25, 25);
+    nameCornerPos			= juce::Point<float>(-25, 25);
 
     float pad = getRealConstant(WaveshaperPadding);
 
@@ -105,7 +106,7 @@ void WaveshaperUI::init() {
     controls.addDynamicSizeComponent(selector.get(), false);
 
     for (int i = 0; i < (int) paramGroup->getNumParams(); ++i) {
-        controls.addAndMakeVisible(paramGroup->getKnob<Component>(i));
+        controls.addAndMakeVisible(paramGroup->getKnob<juce::Component>(i));
         controls.addAndMakeVisible(&labels[i]);
     }
 
@@ -356,7 +357,7 @@ void WaveshaperUI::doubleMesh() {
     postUpdateMessage();
 }
 
-Component* WaveshaperUI::getComponent(int which) {
+juce::Component* WaveshaperUI::getComponent(int which) {
     switch (which) {
         case CycleTour::TargWaveshaperOvsp: return &oversampleBox;
         case CycleTour::TargWaveshaperPre: return paramGroup->getKnob<Knob>(Waveshaper::Preamp);

@@ -5,7 +5,7 @@
 #include "../../UI/Effects/GuilessEffect.h"
 #include "../../UI/Effects/DelayUI.h"
 
-Delay::Delay(SingletonRepo* repo) :
+CycDelay::CycDelay(SingletonRepo* repo) :
         Effect		(repo, "Delay")
     ,	delayTime	(0.5f)
     ,	feedback	(0.5f)
@@ -24,7 +24,7 @@ Delay::Delay(SingletonRepo* repo) :
     recalculateWetBuffers();
 }
 
-Delay::~Delay() {
+CycDelay::~CycDelay() {
     int i = 0;
     for (auto spinParam : spinParams) {
         spinParam.clear();
@@ -34,14 +34,14 @@ Delay::~Delay() {
     }
 }
 
-void Delay::audioThreadUpdate() {
+void CycDelay::audioThreadUpdate() {
     if (pendingWetBufferUpdate) {
         recalculateWetBuffers();
         pendingWetBufferUpdate = false;
     }
 }
 
-void Delay::processBuffer(AudioSampleBuffer& buffer) {
+void CycDelay::processBuffer(AudioSampleBuffer& buffer) {
 //	int delaySamples = delayTime * sampleRate;
 //	int spinSamples = spinTime * sampleRate;
 //
@@ -149,20 +149,20 @@ void Delay::processBuffer(AudioSampleBuffer& buffer) {
     }
 }
 
-int Delay::calcSpinIters(double value) {
+int CycDelay::calcSpinIters(double value) {
     int iters = jmax(1, int(12 * value * value));
     return iters;
 }
 
-bool Delay::isEnabled() const {
+bool CycDelay::isEnabled() const {
     return ui->isEffectEnabled();
 }
 
-void Delay::setWetLevel(double value) {
+void CycDelay::setWetLevel(double value) {
     wetLevel = value;
 }
 
-double Delay::calcDelayTime(double unitValue)
+double CycDelay::calcDelayTime(double unitValue)
 {
     unitValue = jmax(0.15, unitValue);
 
@@ -182,7 +182,7 @@ double Delay::calcDelayTime(double unitValue)
     return beatsPerMeasure * unitValue * unitValue * secondsPerBeat;
 }
 
-bool Delay::doParamChange(int param, double value, bool doFurtherUpdate) {
+bool CycDelay::doParamChange(int param, double value, bool doFurtherUpdate) {
     bool changed = false;
 
     switch (param) {
@@ -192,7 +192,7 @@ bool Delay::doParamChange(int param, double value, bool doFurtherUpdate) {
         case Spin:		changed = setSpinAmount(value); 				break;
         case Wet:		changed = doFurtherUpdate; setWetLevel(value);	break;
         default:
-            throw std::out_of_range("Delay::doParamChange");
+            throw std::out_of_range("CycDelay::doParamChange");
     }
 
     if(doFurtherUpdate && changed) {
@@ -202,21 +202,21 @@ bool Delay::doParamChange(int param, double value, bool doFurtherUpdate) {
     return false;
 }
 
-bool Delay::setDelayTime(double value) {
+bool CycDelay::setDelayTime(double value) {
     double newValue = calcDelayTime(value);
 
     return Util::assignAndWereDifferent(delayTime, newValue);
 }
 
-bool Delay::setFeedback(double value) {
+bool CycDelay::setFeedback(double value) {
     return Util::assignAndWereDifferent(feedback, value);
 }
 
-bool Delay::setSpinAmount(double value) {
+bool CycDelay::setSpinAmount(double value) {
     return Util::assignAndWereDifferent(spinAmount, value);
 }
 
-bool Delay::setSpinIters(double value) {
+bool CycDelay::setSpinIters(double value) {
     int oldSpinIters = spinIters;
     pendingSpinIters = calcSpinIters(value);
 
@@ -227,7 +227,7 @@ bool Delay::setSpinIters(double value) {
     return true;
 }
 
-//void Delay::setSampleRate(double value)
+//void CycDelay::setSampleRate(double value)
 //{
 //	if(sampleRate == value)
 //		return;
@@ -237,11 +237,11 @@ bool Delay::setSpinIters(double value) {
 //	pendingWetBufferUpdate = true;
 //}
 
-void Delay::setUI(GuilessEffect* comp) {
+void CycDelay::setUI(GuilessEffect* comp) {
     ui = comp;
 }
 
-void Delay::recalculateWetBuffers(bool print) {
+void CycDelay::recalculateWetBuffers(bool print) {
     spinIters = pendingSpinIters;
 
     if (print) {

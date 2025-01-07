@@ -1,31 +1,39 @@
 #pragma once
 #include "JuceHeader.h"
 
-#include <ipp.h>
+#if JUCE_MAC
+    #include <mach/mach_time.h>
+    #include <sys/time.h>
+#elif JUCE_WINDOWS
+    #include <intrin.h>
+#else
+    #include <x86intrin.h>
+#endif
 
 class MicroTimer {
-    Ipp64u startTicks, endTicks;
+    uint64_t startTicks, endTicks;
     double iticks;
-    Ipp64u startTick, endTick;
+    uint64_t startCycle, endCycle;
 
 public:
-    MicroTimer() {
-        startTicks = 0;
-        endTicks = 0;
-        iticks = 1;
-        startTick = 0;
-        endTick = 0;
+    MicroTimer()
+        : startTicks(0)
+        , endTicks(0)
+        , iticks(1)
+        , startCycle(0)
+        , endCycle(0)
+    {
     }
 
     void start() {
         startTicks = Time::getHighResolutionTicks();
-
-        startTick = ippGetCpuClocks();
-        startTick = ippGetCpuClocks() * 2 - startTick;
+        startCycle = getCPUCycles();
+        // Double read to ensure pipeline flush
+        startCycle = getCPUCycles() * 2 - startCycle;
     }
 
     void stop() {
-        endTick = ippGetCpuClocks();
+        endCycle = getCPUCycles();
         endTicks = Time::getHighResolutionTicks();
     }
 
@@ -33,8 +41,30 @@ public:
         return Time::highResolutionTicksToSeconds(endTicks - startTicks);
     }
 
-    Ipp64u getClocks() {
-        return endTick - startTick;
+    uint64_t getClocks() {
+        return endCycle - startCycle;
+    }
+
+private:
+    static uint64_t getCPUCycles() {
+#if JUCE_MAC
+#if defined(__arm64__)
+        uint64_t val;
+        // On Apple Silicon, use the system timer register
+        asm volatile("mrs %0, cntvct_el0" : "=r" (val));
+        return val;
+#else
+        // On Intel Macs, use RDTSC
+        return __rdtsc();
+#endif
+#elif JUCE_WINDOWS
+        return __rdtsc();
+#else
+        // For other platforms (Linux, etc.) using gcc/clang
+        unsigned int lo, hi;
+        __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+        return ((uint64_t)hi << 32) | lo;
+#endif
     }
 };
 

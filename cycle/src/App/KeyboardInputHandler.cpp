@@ -46,7 +46,7 @@ void KeyboardInputHandler::init() {
     currentInteractor 	= waveInter3D;
 }
 
-bool KeyboardInputHandler::keyPressed(const KeyPress &key, Component* component) {
+bool KeyboardInputHandler::keyPressed(const KeyPress &key, juce::Component* component) {
     char c 					= key.getTextCharacter();
     int code 				= key.getKeyCode();
     bool cmdDown			= key.getModifiers().isCommandDown();

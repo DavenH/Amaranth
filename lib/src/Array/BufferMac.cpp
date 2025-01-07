@@ -100,6 +100,7 @@ declareForCommon(constructWithPhase);
 defineVdspNullary_Real(zero, vclr)
 defineVdspNullary_Real(flip, vrvrs)
 defineVdspNullary_Real(hann, hann_window)
+defineVdspNullary_Real(blackman, blkman_window)
 
 defineVforceAuto_Real (sqrt, vvsqrt)
 defineVforceAuto_Real (exp,  vvexp)
@@ -376,6 +377,16 @@ template<> Buffer<Float64>& Buffer<Float64>::ramp() { if(sz > 1) { return ramp(0
 template<> Buffer<Float32>& Buffer<Float32>::threshLT(Float32 c) { vDSP_vthr(VDSP_AUTO_ARGC_PATTERN); return *this; }
 template<> Buffer<Float64>& Buffer<Float64>::threshLT(Float64 c) { vDSP_vthrD(VDSP_AUTO_ARGC_PATTERN); return *this; }
 
+template<> Buffer<Complex32>& Buffer<Complex32>::threshLT(Complex32 c) {
+    // Complex32 is stored as pairs of floats [real0,imag0,real1,imag1,...]
+    float* float_ptr = reinterpret_cast<float*>(ptr);
+    float thresh_real = c.real();
+    float thresh_imag = c.imag();
+    jassert(thresh_real == thresh_imag);
+    vDSP_vthr(float_ptr, 1, &thresh_real, float_ptr, 1, vDSP_Length(sz * 2));
+    return *this;
+}
+
 template<> Buffer<Float32>& Buffer<Float32>::threshGT(Float32 c) {
     Float32 lowThresh = -INFINITY;
     vDSP_vclip(ptr, 1, &lowThresh, &c, ptr, 1, vDSP_Length(sz));
@@ -386,6 +397,7 @@ template<> Buffer<Float64>& Buffer<Float64>::threshGT(Float64 c) {
     vDSP_vclipD(ptr, 1, &lowThresh, &c, ptr, 1, vDSP_Length(sz));
     return *this;
 }
+
 template<> Buffer<Float32>& Buffer<Float32>::clip(Float32 low, Float32 high) {
     vDSP_vclip(ptr, 1, &low, &high, ptr, 1, vDSP_Length(sz));
     return *this;

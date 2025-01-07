@@ -89,9 +89,14 @@ elseif(APPLE)
         ${ACCELERATE_FRAMEWORK}
         ${WEBKIT_FRAMEWORK}
         ${IOKIT_FRAMEWORK}
+        ${CORE_FOUNDATION_FRAMEWORK}
+        ${CARBON_FRAMEWORK}
+        ${APP_KIT_FRAMEWORK}
+        ${QUARTZ_CORE_FRAMEWORK}
     )
 endif()
 
+# still want IPP on older Intel Silicon Macs
 if(NOT (APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64"))
     target_link_libraries(${PROJECT_NAME} PUBLIC
         IPP::ippcore

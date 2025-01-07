@@ -4,6 +4,7 @@
 #if !PLUGIN_MODE
 
 #include "MainAppWindow.h"
+#include "../CycleDefs.h"
 
 class AppClass : public JUCEApplication {
     std::unique_ptr <MainAppWindow> mainWindow;

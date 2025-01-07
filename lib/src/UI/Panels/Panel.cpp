@@ -296,21 +296,21 @@ void Panel::applyScale(BufferXY& buff) {
     applyScaleY(buff.y);
 }
 
-void Panel::applyScaleX(Buffer<Ipp32f> array) {
+void Panel::applyScaleX(Buffer<Float32> array) {
     float sumX = -zoomPanel->rect.x;
     float multX = (comp->getWidth() - paddingLeft - paddingRight) / zoomPanel->rect.w;
 
     array.add(sumX).mul(multX).add(paddingLeft);
 }
 
-void Panel::applyScaleY(Buffer<Ipp32f> array) {
+void Panel::applyScaleY(Buffer<Float32> array) {
     float multY = (comp->getHeight() - 2 * vertPadding) / zoomPanel->rect.h;
     float sumY = 1 - zoomPanel->rect.y;
 
     array.mul(-1).add(sumY).mul(multY).add(vertPadding);
 }
 
-void Panel::applyNoZoomScaleX(Buffer<Ipp32f> array) {
+void Panel::applyNoZoomScaleX(Buffer<Float32> array) {
     float multX = (comp->getWidth() - (paddingLeft + paddingRight));
 
     array.mul(multX).add(paddingLeft);

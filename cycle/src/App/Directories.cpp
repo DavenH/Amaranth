@@ -17,7 +17,7 @@ void Directories::init() {
     contentDir = getObj(Settings).getProperty("ContentDir");
 
     if (contentDir.isEmpty()) {
-        String productName(ProjectInfo::projectName);
+        String productName(getStrConstant(ProductName));
 
         contentDir = File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName()
                      + File::getSeparatorString() + ProjectInfo::companyName

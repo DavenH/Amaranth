@@ -106,7 +106,7 @@ private:
 
 	vector<EnvRasterizer*> envRasterizers;
 
-	ScopedAlloc<Ipp32f> chanMemory[2];
+	ScopedAlloc<Float32> chanMemory[2];
 
 	CycleBasedVoice* currentVoice;
 	SynthUnisonVoice unisonVoice;

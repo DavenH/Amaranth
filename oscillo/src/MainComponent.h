@@ -35,8 +35,8 @@ private:
     int lastClickedMidiNote = 60;
     Image cyclogram, spectrogram;
     Rectangle<int> plotBounds;
-    ScopedAlloc<Ipp32f> resampleBuffer{kImageHeight};
-    ScopedAlloc<Ipp32f> workBuffer;
+    ScopedAlloc<Float32> resampleBuffer{kImageHeight};
+    ScopedAlloc<Float32> workBuffer;
     Transform transform;
 
     GradientColourMap viridis, inferno;

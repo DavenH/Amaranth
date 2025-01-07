@@ -60,7 +60,7 @@ void WaveformInter2D::modelAudioCycle() {
         return;
     }
 
-    ScopedAlloc <Ipp32f> columnCopy;
+    ScopedAlloc <Float32> columnCopy;
 
     {
         const vector <Column> &timeColumns = getObj(VisualDsp).getTimeColumns();

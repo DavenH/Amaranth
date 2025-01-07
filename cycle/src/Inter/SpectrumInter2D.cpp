@@ -53,7 +53,7 @@ bool SpectrumInter2D::locateClosestElement() {
 
     int index = (columns.size() - 1) * getObj(PlaybackPanel).getProgress();
 
-    Buffer <Ipp32f> ramp = getObj(LogRegions).getRegion(columns[index].midiKey);
+    Buffer <Float32> ramp = getObj(LogRegions).getRegion(columns[index].midiKey);
 
     float freqTens = ramp.size() * getRealConstant(FreqTensionScale);
     float invScale = Arithmetic::invLogMapping(freqTens, state.currentMouse.x, true);
