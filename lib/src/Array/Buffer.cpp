@@ -615,18 +615,18 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
     return phase;                                               \
 }
 
-#define constructWinHann(T) \
-    template<> \
-    Buffer<Ipp##T>& Buffer<Ipp##T>::hann() { \
-        if(sz == 0) return *this; \
-        ippsWinHann_##T(ptr, ptr, sz); \
+#define constructWinHann(T)                      \
+    template<>                                   \
+    Buffer<Ipp##T>& Buffer<Ipp##T>::hann() {     \
+        if(sz == 0) return *this;                \
+        ippsWinHann_##T(ptr, ptr, sz);           \
     }
 
-#define constructWinBlackman(T) \
-    template<> \
+#define constructWinBlackman(T)                  \
+    template<>                                   \
     Buffer<Ipp##T>& Buffer<Ipp##T>::blackman() { \
-        if(sz == 0) return *this; \
-        ippsWinBlackman_##T(ptr, ptr, sz); \
+        if(sz == 0) return *this;                \
+        ippsWinBlackmanStd_##T(ptr, ptr, sz);    \
     }
 
 #define implementOperators(T) \
