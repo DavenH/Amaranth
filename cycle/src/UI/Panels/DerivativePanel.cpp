@@ -19,13 +19,14 @@
 
 
 DerivativePanel::DerivativePanel(SingletonRepo* repo) :
-        SingletonAccessor(repo, "DerivativePanel") {
+        SingletonAccessor(repo, "DerivativePanel")
+    ,   firKernel(16) {
     Image magenta = PNGImageFormat::loadFrom(Gradients::magenta_png, Gradients::magenta_pngSize);
     jassert(! magenta.isNull());
 
     gradient.read(magenta, false, false);
-    juce::dsp::FIR::Filter<float> filter;
-    fir = std::make_unique<FIR>(0.3f, 10, true);
+    ScopedAlloc<Float32> windowMem(firKernel.size());
+    VecOps::sinc(firKernel, windowMem, 0.3f);
 }
 
 void DerivativePanel::paint(Graphics& g) {
@@ -102,14 +103,15 @@ void DerivativePanel::calcDerivative() {
         const Column& column = columns[index];
         size = column.size();
 
-        workMemory.ensureSize(size * 5);
+        workMemory.ensureSize(size * 6 + firKernel.size());
 
-        Buffer<float> sum, upsamp;
+        Buffer<float> sum, upsamp, filtered;
         exes= workMemory.place(size);
         dy 	= workMemory.place(size);
         ddy = workMemory.place(size);
         num = workMemory.place(size);
         sum = workMemory.place(size);
+        filtered = workMemory.place(size + firKernel.size());
 
         exes.ramp();
 
@@ -120,11 +122,11 @@ void DerivativePanel::calcDerivative() {
             column.copyTo(sum);
         }
 
-        fir->process(sum);
+        VecOps::conv(sum, firKernel, filtered);
 
         float iln = 1 / logf(600 + 1.f);
 
-        VecOps::diff(sum, dy);
+        VecOps::diff(filtered.section(firKernel.size() / 2, size), dy);
         VecOps::diff(dy, ddy);
         ddy.mul(600).abs().add(1.0001f).ln().mul(iln);
         ddy.copyTo(num);

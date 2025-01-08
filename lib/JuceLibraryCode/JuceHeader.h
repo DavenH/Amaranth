@@ -20,6 +20,16 @@
 #define JUCE_DIRECTSOUND 	1
 #define JUCE_OPENGL 		1
 
+#ifdef _WIN32
+  #include <Windows.h>
+#elif defined(__APPLE__)
+  #define Point CarbonDummyPointName
+  #define Component CarbonDummyCompName
+  // #import <AppKit/AppKit.h>
+  #undef Point
+  #undef Component
+#endif
+
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_formats/juce_audio_formats.h>

@@ -24,5 +24,5 @@ bool ScopedAlloc<T>::resize(int size) {  \
     return true;                         \
 }
 
-declareForAllTypes(resizeIpp)
-declareForAllTypes(constructScopedAlloc)
+defineForAllTypes(resizeIpp)
+defineForAllTypes(constructScopedAlloc)

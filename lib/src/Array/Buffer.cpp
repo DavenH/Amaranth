@@ -255,15 +255,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::mul(Buffer<Ipp##T> buff, Ipp##T c) \
     return *this;                                               \
 }
 
-#define constructConv(T)                                        \
-template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::conv(Buffer<Ipp##T> src1, Buffer<Ipp##T> src2, Buffer<Int8u> workBuff) \
-{                                                               \
-    jassert(sz >= src1.size() + src2.size() - 1);               \
-    ippsConvolve_##T(src1, src1.sz, src2, src2.sz, ptr, IppAlgType::ippAlgAuto, workBuff); \
-    return *this;                                               \
-}
-
 #define constructSqrt(T)                                        \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::sqrt()                          \
@@ -734,7 +725,6 @@ constructMin(32f);
 constructMaxVal(32f);
 constructMinVal(32f);
 constructMinMax(32f);
-constructConv(32f);
 constructRand(32f);
 constructMean(32f);
 constructStddev(32f);
@@ -743,21 +733,5 @@ constructDiff(32f);
 
 implementOperators(32f)
 implementOperators(64f)
-
-// template<>
-// Buffer<Float32>& Buffer<Float32>::conv(
-//     Buffer<Float32> src1,
-//     Buffer<Float32> src2,
-//     Buffer<Int8u> workBuff) {
-//     do {
-//         if (!(sz >= src1.size() + src2.size() - 1)) do {
-//             juce::logAssertion("Buffer. cpp", 692);;
-//             if (juce::juce_isRunningUnderDebugger()) { ::kill(0, 5); };
-//         } while (false);
-//     } while (false);
-//     ippsConvolve_32f(src1.get(), src1.sz, src2.get(), src2.sz, ptr, IppAlgType::ippAlgAuto, workBuff.get());
-//     return *this;
-// }
-
 
 #endif

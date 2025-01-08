@@ -3,9 +3,6 @@ cmake_minimum_required(VERSION 3.29)
 #set(CMAKE_CXX_COMPILER g++-11)
 project(Amaranth VERSION 1.0.0)
 
-enable_language(OBJC)
-enable_language(OBJCXX)
-
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.env")
     message(FATAL_ERROR
         "\n"
@@ -28,10 +25,13 @@ endforeach()
 
 # Global settings
 if(APPLE)
+    enable_language(OBJC)
+    enable_language(OBJCXX)
+
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X deployment version")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
     set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -Wno-deprecated-declarations")
     set(CMAKE_OBJCXX_FLAGS "${CMAKE_OBJCXX_FLAGS} -Wno-deprecated-declarations")
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X deployment version")
     if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
         set(IPP_ARCH "arm64")
     else()
@@ -89,6 +89,8 @@ elseif(APPLE)
     find_library(IOKIT_FRAMEWORK IOKit REQUIRED)
     find_library(QUARTZ_CORE_FRAMEWORK QuartzCore REQUIRED)
     find_library(WEBKIT_FRAMEWORK WebKit REQUIRED)
+    find_library(SECURITY_FRAMEWORK Security REQUIRED)
+    find_library(CORE_AUDIO_KIT_FRAMEWORK CoreAudioKit REQUIRED)
 
 endif()
 

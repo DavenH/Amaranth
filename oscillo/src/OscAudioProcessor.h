@@ -1,7 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
 #include <Array/ScopedAlloc.h>
-#include <ipp.h>
 #include <Array/RingBuffer.h>
 
 class OscAudioProcessor : public AudioIODeviceCallback {

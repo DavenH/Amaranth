@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ipp.h>
 #include "../Array/ScopedAlloc.h"
 #include "../Array/Buffer.h"
 

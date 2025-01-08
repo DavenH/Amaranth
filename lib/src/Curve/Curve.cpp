@@ -3,6 +3,7 @@
 
 #include <Array/VecOps.h>
 
+#include "../../../../../../../Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/vecLib.framework/Headers/vForce.h"
 #include "../Util/NumberUtils.h"
 
 using std::fstream;
@@ -149,7 +150,7 @@ void Curve::deleteTable() {
     if (table) {
         for (int r = 0; r < resolutions; r++) {
             for (int j = 0; j < numCurvelets; ++j) {
-                ippsFree(table[r][j]);
+                VecOps::deallocate(table[r][j]);
             }
 
             delete[] table[r];
@@ -181,18 +182,22 @@ void Curve::recalculateCurve() {
 
     Vertex2 icpt;
 
-    dx          = (c.x - a.x);
-    dyca        = (c.y - a.y);
+    dx   = (c.x - a.x);
+    dyca = (c.y - a.y);
 
-    Float32c cvec = { dx, dyca };
-    ippsPhase_32fc(&cvec, &tp.theta, 1);
+    Complex32 cvec = { dx, dyca };
+    // ippsPhase_32fc(&cvec, &tp.theta, 1);
+    tp.theta = std::atan2(dyca, dx);
 
     float ntheta = -tp.theta;
-    ippsSin_32f_A21(&ntheta, &tp.sinrot, 1);
-    ippsCos_32f_A24(&ntheta, &tp.cosrot, 1);
+    tp.sinrot = std::sin(ntheta);
+    tp.cosrot = std::sin(ntheta);
+
+    // ippsSin_32f_A21(&ntheta, &tp.sinrot, 1);
+    // ippsCos_32f_A24(&ntheta, &tp.cosrot, 1);
 
     float dist2 = dx * dx + dyca * dyca;
-    ippsSqrt_32f_I(&dist2, 1);
+    dist2 = std::sqrt(dist2);
 
     // good luck understanding this
     tp.scaleX   = dist2;
@@ -210,10 +215,10 @@ void Curve::recalculateCurve() {
     if (diff < 0)
         diff = 0;
 
-    ippsSqrt_32f_I(&diff, 1);
+    diff = std::sqrt(diff);
     tp.shear = diff * tp.dpole * tp.ypole;
 
-    ippsSqrt_32f_I(&distbi, 1);
+    distbi = std::sqrt(distbi);
     tp.scaleY = distbi;
 
     int res  = resolution >> resIndex;
@@ -231,31 +236,48 @@ void Curve::recalculateCurve() {
 
     float alpha = interpolate ? 1 - (tableCurvePos - tableCurveIdx) : 1.f;
     bool actuallyShouldInterpolate = tableCurveIdx < numCurvelets - 1 && alpha < 1.f;
+    Buffer tx(transformX, res);
+    Buffer ty(transformY, res);
+    tx.set(a.x);
 
-    ippsSet_32f         (a.x, transformX, res);
-    ippsAddProductC_32f (t,         ma * alpha, transformX, res);
-    ippsAddProductC_32f (t + res,   mb * alpha, transformX, res);
+    VecOps::addProd(t,       ma * alpha, transformX, res);
+    VecOps::addProd(t + res, mb * alpha, transformX, res);
+
+    // ippsSet_32f         (a.x, transformX, res);
+    // ippsAddProductC_32f (t,         ma * alpha, transformX, res);
+    // ippsAddProductC_32f (t + res,   mb * alpha, transformX, res);
 
     if (actuallyShouldInterpolate) {
-        ippsAddProductC_32f (t2,        ma * (1 - alpha), transformX, res);
-        ippsAddProductC_32f (t2 + res,  mb * (1 - alpha), transformX, res);
+        VecOps::addProd(t2,       ma * (1 - alpha), transformX, res);
+        VecOps::addProd(t2 + res, mb * (1 - alpha), transformX, res);
+        // ippsAddProductC_32f (t2,        ma * (1 - alpha), transformX, res);
+        // ippsAddProductC_32f (t2 + res,  mb * (1 - alpha), transformX, res);
     }
 
-    ippsSet_32f         (a.y, transformY, res);
-    ippsAddProductC_32f (t,         mc * alpha, transformY, res);
-    ippsAddProductC_32f (t + res,   md * alpha, transformY, res);
+    ty.set(a.y);
+    VecOps::addProd(t,       mc * alpha, transformY, res);
+    VecOps::addProd(t + res, md * alpha, transformY, res);
+    // ippsSet_32f         (a.y, transformY, res);
+    // ippsAddProductC_32f (t,         mc * alpha, transformY, res);
+    // ippsAddProductC_32f (t + res,   md * alpha, transformY, res);
 
     if (actuallyShouldInterpolate) {
-        ippsAddProductC_32f (t2,        mc * (1 - alpha), transformY, res);
-        ippsAddProductC_32f (t2 + res,  md * (1 - alpha), transformY, res);
+        VecOps::addProd(t2,       mc * (1 - alpha), transformY, res);
+        VecOps::addProd(t2 + res, md * (1 - alpha), transformY, res);
+
+        // ippsAddProductC_32f (t2,        mc * (1 - alpha), transformY, res);
+        // ippsAddProductC_32f (t2 + res,  md * (1 - alpha), transformY, res);
     }
 }
 
 void Curve::recalculatedPadded() {
     int res = resolution >> resIndex;
-
-    ippsSet_32f(b.x, transformX, res);
-    ippsSet_32f(b.y, transformY, res);
+    Buffer tx(transformX, res);
+    Buffer ty(transformY, res);
+    tx.set(b.x);
+    ty.set(b.y);
+    // ippsSet_32f(b.x, transformX, res);
+    // ippsSet_32f(b.y, transformY, res);
 }
 
 float Curve::getCentreX() {

@@ -1,10 +1,10 @@
 #pragma once
 #include "JuceHeader.h"
 
-#include 
 using namespace juce;
 
 #ifdef USE_IPP
+    #include <ipp.h>
     #define perfSplit(X, Y) X
     #include <ipp.h>
     using Int8u = Int8u;
@@ -109,7 +109,6 @@ public:
     Buffer& add(Buffer buff, T c); // ptr[i] += buff[i] * c
     Buffer& addProduct(Buffer buff, T c);
     Buffer& addProduct(Buffer src1, Buffer src2);
-    Buffer& conv(Buffer src1, Buffer src2, Buffer<Int8u> workBuff); //
 
     // thresholding
     Buffer& clip(T low, T high);

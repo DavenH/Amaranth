@@ -53,8 +53,13 @@ void PitchTracker::yin() {
 
     {
         wavBuff.copyTo(wavCopy);
-        FIR fir(jmin(0.5, 0.25 / rateRatio));
-        fir.process(wavCopy);
+
+        ScopedAlloc<Float32> mem(64);
+        Buffer<Float32> kernel = mem.place(mem.size() / 2);
+        Buffer<Float32> window = mem.place(mem.size() / 2);
+        VecOps::sinc(kernel, window, jmin(0.5f, 0.25f / rateRatio));
+        // doesn't retract the kernel size...
+        VecOps::conv(wavBuff, kernel, wavCopy);
     }
 
     Resampling::linResample(wavBuff, resamp16k);

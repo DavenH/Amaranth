@@ -129,10 +129,14 @@ public:
         Buffer<float> diffx = diffX.section(waveStart, size);
         Buffer<float> slp   = slope.section(waveStart, size);
 
-        ippsSub_32f(ex, ex + 1, diffx, size);
-        ippsThreshold_LT_32f_I(diffx, size, 1e-06f);
-        ippsSub_32f(why, why + 1, slp, size);
-        ippsDiv_32f_I(diffx, slp, size);
+        VecOps::diff(ex, diffx);
+        diffx.threshLT(1e-6f);
+        VecOps::diff(why, slp);
+        slp.div(diffx);
+        // ippsSub_32f(ex, ex + 1, diffx, size);
+        // ippsThreshold_LT_32f_I(diffx, size, 1e-06f);
+        // ippsSub_32f(why, why + 1, slp, size);
+        // ippsDiv_32f_I(diffx, slp, size);
     }
 
     void setCyclicity(bool isCyclic)    { cyclic = isCyclic;    }

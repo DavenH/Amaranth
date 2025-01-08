@@ -3,6 +3,7 @@
 #include "Buffer.h"
 #include "ArrayDefs.h"
 
+#define VIMAGE_H
 #include <Accelerate/Accelerate.h>
 #include <algorithm>
 #include <random>
@@ -29,7 +30,7 @@ int globalBufferMacSizeErrorCount = 0;
     template<>                                   \
     void Buffer<T>::copyTo(Buffer buff) const {  \
         jassert(buff.sz >= sz);                  \
-        memcpy(buff.get(), ptr, sz * sizeof(T)); \
+        memcpy(ptr, buff.get(), sz * sizeof(T)); \
     }
 
 #define constructZero(T)                         \
@@ -404,20 +405,6 @@ template<> Buffer<Float32>& Buffer<Float32>::clip(Float32 low, Float32 high) {
 }
 template<> Buffer<Float64>& Buffer<Float64>::clip(Float64 low, Float64 high) {
     vDSP_vclipD(ptr, 1, &low, &high, ptr, 1, vDSP_Length(sz));
-    return *this;
-}
-
-
-// Specialized convolution for Float32
-template<>
-Buffer<Float32>& Buffer<Float32>::conv(Buffer src1, Buffer src2, Buffer<unsigned char> workBuff) {
-    vDSP_conv(
-        src1.get(), 1,
-        src2.get(), 1,
-        ptr, 1,
-        vDSP_Length(jmin(sz, src1.size() + src2.size() - 1)),
-        vDSP_Length(src2.size())
-    );
     return *this;
 }
 

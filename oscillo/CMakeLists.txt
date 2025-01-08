@@ -1,12 +1,12 @@
 project(Oscillo VERSION 0.0.1)
 
-set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../lib/JuceLibraryCode")
+#set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../lib/JuceLibraryCode")
 
 file(GLOB_RECURSE APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
-    "${JUCE_DIR}/*.cpp"
-    "${JUCE_DIR}/*.c"
+#    "${JUCE_DIR}/*.cpp"
+#    "${JUCE_DIR}/*.c"
 )
 
 set(BASE_DEFINITIONS
@@ -38,7 +38,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${JUCE_DIR}
+#    ${JUCE_DIR}
     ${JUCE_MODULES_DIR}
     ${IPP_DIR}/include/ipp
 )

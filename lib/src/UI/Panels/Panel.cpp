@@ -684,11 +684,13 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
                     speed = speedEnv[i];
                     idx = int((IDeformer::tableSize - 1) * speed);
 
-                    if(exHasPhase)
+                    if(exHasPhase) {
                         xy.x[i] = phaseGain * phaseTable[idx] + speed * (second.x - first.x);
+                    }
 
-                    if(whyHasAmp)
+                    if(whyHasAmp) {
                         xy.y[i] = ampGain * ampTable[idx] + speed * (second.y - first.y);
+                    }
                 }
             }
 
@@ -698,7 +700,8 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             if(exHasPhase)
                 xy.x.add(first.x + redOffset + blueOffset);
             else {
-                xy.x.mul(speedEnv, second.x - first.x).add(first.x + redOffset + blueOffset);
+                VecOps::mul(speedEnv, second.x - first.x, xy.x);
+                xy.x.add(first.x + redOffset + blueOffset);
             }
 
             if(whyHasAmp)

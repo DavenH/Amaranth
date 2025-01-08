@@ -1,7 +1,5 @@
 #include "Arithmetic.h"
 #include "../App/SingletonRepo.h"
-#include "../Curve/Vertex2.h"
-#include <ipp.h>
 
 void Arithmetic::applyLogMapping(Buffer<Float32> array, float tension) {
     float iln = 1 / logf(MathConstants<float>::twoPi * tension + 1.000001f);
