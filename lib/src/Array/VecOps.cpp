@@ -256,11 +256,14 @@ template<> void VecOps::sinc(Buffer<Float32> kernel, Buffer<Float32> window, flo
     kernel.mul(window);
 }
 
-template<> void VecOps::fir(Buffer<Float32> src, Buffer<Float32> dst, float relFreq) {
+template<> void VecOps::fir(Buffer<Float32> src, Buffer<Float32> dst, float relFreq, bool trim) {
     ScopedAlloc<Float32> mem(64);
     Buffer<Float32> kernel = mem.place(mem.size() / 2);
     Buffer<Float32> window = mem.place(mem.size() / 2);
     sinc(kernel, window, relFreq);
-    // note doesn't retract the kernel size...
-    conv(src, kernel, dst);
+    conv(
+        src.withSize(trim ? src.size() - kernel.size() : src.size()),
+        kernel,
+        dst
+    );
 }

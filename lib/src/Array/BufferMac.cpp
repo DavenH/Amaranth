@@ -133,8 +133,8 @@ template<> Buffer<Float64>& Buffer<Float64>::pow(Float64 c) { UNO_ARG_CHECK  vvp
 #define defineUnaryBuffFn(name, type, fn, args_pattern) \
     template<> Buffer<type>& Buffer<type>::name(Buffer<type> buff) { \
     if(buff.size() < sz) { ++ERROR_COUNTER; return *this; } \
-    fn(args_pattern); \
-    return *this; \
+    fn(args_pattern);     \
+    return *this;         \
 }
 
 #define defineVdspUnaryBuff_Real(name) \
@@ -278,7 +278,7 @@ Buffer<Float32>& Buffer<Float32>::subCRev(Float32 c) {
 
 template<>
 Buffer<Float32>& Buffer<Float32>::subCRev(Float32 c, Buffer buff) {
-    vDSP_vneg(VDSP_AUTO_ARG_PATTERN);
+    vDSP_vneg(buff.get(), 1, ptr, 1, vDSP_Length(sz));
     vDSP_vsadd(VDSP_AUTO_ARGC_PATTERN);
     return *this;
 }

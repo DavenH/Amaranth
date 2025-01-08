@@ -106,8 +106,8 @@ elseif(APPLE)
         ${CARBON_FRAMEWORK}
         ${APP_KIT_FRAMEWORK}
         ${QUARTZ_CORE_FRAMEWORK}
-        ${SECURITY_FRAMEWORK}          # Add this
-        ${CORE_AUDIO_KIT_FRAMEWORK}   # And this
+        ${SECURITY_FRAMEWORK}
+        ${CORE_AUDIO_KIT_FRAMEWORK}
     )
 endif()
 
