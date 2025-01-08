@@ -364,7 +364,7 @@ Array<int> UnisonUI::getApplicableKnobs() {
     return k;
 }
 
-Component* UnisonUI::getComponent(int which) {
+juce::Component* UnisonUI::getComponent(int which) {
     if (which <= Unison::Fine)
         return paramGroup->getKnob<Slider>(which);
 

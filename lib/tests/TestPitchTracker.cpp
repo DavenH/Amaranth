@@ -44,7 +44,7 @@ TEST_CASE("PitchTracker basic functionality", "[pitch][dsp]") {
 
         for (float freq: testFrequencies) {
             // Create 2 second test tone
-            ScopedAlloc<Ipp32f> signal(roundToInt(sampleRate * 2));
+            ScopedAlloc<Float32> signal(roundToInt(sampleRate * 2));
             createSineWave(signal, freq, sampleRate);
 
             PitchedSample sample(signal);
@@ -79,7 +79,7 @@ TEST_CASE("PitchTracker basic functionality", "[pitch][dsp]") {
 
         for (float freq: testFrequencies) {
             // Create 2 second test tone
-            ScopedAlloc<Ipp32f> signal(roundToInt(sampleRate * 2));
+            ScopedAlloc<Float32> signal(roundToInt(sampleRate * 2));
             createSawtooth(signal, freq, sampleRate);
             // createExpSweep(signal, 40, 800, sampleRate);
 

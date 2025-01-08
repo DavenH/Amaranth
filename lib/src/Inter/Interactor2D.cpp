@@ -105,8 +105,8 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 
     RasterizerData& rastData = rasterizer->getRastData();
 
-    Buffer<Ipp32f> waveX = rastData.waveX;
-    Buffer<Ipp32f> waveY = rastData.waveY;
+    Buffer<Float32> waveX = rastData.waveX;
+    Buffer<Float32> waveY = rastData.waveY;
     bool inSelection     = finalSelection.contains(e.getPosition());
 
     if(inSelection || waveX.empty() || waveY.empty()) {
@@ -129,7 +129,7 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
     }
 
     int size = endIndex - startIndex;
-    ScopedAlloc<Ipp32f> scaleMem(2 * size);
+    ScopedAlloc<Float32> scaleMem(2 * size);
 
     BufferXY xy;
     xy.x = scaleMem.place(size);

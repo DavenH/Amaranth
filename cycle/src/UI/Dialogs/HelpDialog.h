@@ -9,9 +9,10 @@
 #include "../../Binary/CycleImages.h"
 #include "../CycleGraphicsUtils.h"
 #include "../../Util/CycleEnums.h"
+#include "../../CycleDefs.h"
 
 class HelpDialog :
-		public Component
+		public juce::Component
 	, 	public Button::Listener
 	, 	public SingletonAccessor
 {

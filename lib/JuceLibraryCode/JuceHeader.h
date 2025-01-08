@@ -12,12 +12,23 @@
 
 #pragma once
 
+#define JUCE_USE_MP3AUDIOFORMAT 1
 #define JUCE_WASAPI 		1
 #define JUCE_ASIO 			1
 #define JUCE_USE_FLAC 		1
 #define JUCE_USE_OGGVORBIS 	1
 #define JUCE_DIRECTSOUND 	1
 #define JUCE_OPENGL 		1
+
+#ifdef _WIN32
+  #include <Windows.h>
+#elif defined(__APPLE__)
+  #define Point CarbonDummyPointName
+  #define Component CarbonDummyCompName
+  // #import <AppKit/AppKit.h>
+  #undef Point
+  #undef Component
+#endif
 
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_devices/juce_audio_devices.h>
@@ -33,6 +44,11 @@
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <juce_opengl/juce_opengl.h>
 
+#if ! JUCE_DONT_DECLARE_PROJECTINFO
+namespace ProjectInfo {
+    const char* const  companyName    = "Amaranth Audio";
+}
+#endif
 
 #if defined (JUCE_PROJUCER_VERSION) && JUCE_PROJUCER_VERSION < JUCE_VERSION
  /** If you've hit this error then the version of the Projucer that was used to generate this project is

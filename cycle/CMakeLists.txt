@@ -1,3 +1,4 @@
+# cycle/CMakeLists.txt
 project(Cycle VERSION 1.9.0)
 
 set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../lib/JuceLibraryCode")

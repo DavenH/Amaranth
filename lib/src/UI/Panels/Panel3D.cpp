@@ -209,7 +209,7 @@ void Panel3D::drawAxe() {
  * without verts: values -> lookup -> float colours -> resample to tex height -> resamp float colours -> pixels
  */
 void Panel3D::drawLogSurface(const vector<Column>& grid) {
-    Buffer<Ipp8u> pxBuf     = gradient.getPixels();
+    Buffer<Int8u> pxBuf     = gradient.getPixels();
     Buffer<float> floatBuf = gradient.getFloatPixels();
 
     for (int i = 0; i < draw.sizeX; ++i) {
@@ -225,7 +225,7 @@ void Panel3D::drawLogSurface(const vector<Column>& grid) {
 void Panel3D::drawLinSurface(const vector<Column>& grid) {
     downsampBuf.resize(jmin(maxHorzLines, draw.colSourceSizeY));
 
-    Buffer<Ipp8u> pxBuf     = gradient.getPixels();
+    Buffer<Int8u> pxBuf     = gradient.getPixels();
     Buffer<float> floatBuf  = gradient.getFloatPixels();
 
     for (int i = 0; i < draw.sizeX; ++i) {
@@ -251,7 +251,7 @@ void Panel3D::drawLinSurface(const vector<Column>& grid) {
     }
 }
 
-void Panel3D::doColumnDraw(Buffer<Ipp8u> pxBuf, Buffer<float> grd32f, int i) {
+void Panel3D::doColumnDraw(Buffer<Int8u> pxBuf, Buffer<float> grd32f, int i) {
     resizeArrays();
     setColumnColourIndices();
 
@@ -261,8 +261,10 @@ void Panel3D::doColumnDraw(Buffer<Ipp8u> pxBuf, Buffer<float> grd32f, int i) {
         doColourLookup32f(grd32f, fColours);
         resampleColours(fColours, fdest);
 
-        fdest.threshGT(255.f / 256.f);
-        ippsConvert_32f8u_Sfs(fdest, texColours, draw.stride * draw.texHeight, ippRndZero, -8);
+        fdest.threshGT(255.f / 256.f).mul(256);
+        const int size = draw.stride * draw.texHeight;
+        VecOps::roundDown(fdest.withSize(size), texColours.withSize(size));
+        // ippsConvert_32f8u_Sfs(fdest, texColours, draw.stride * draw.texHeight, ippRndZero, -8);
     }
 
     if (i > 0 && useVertices) {
@@ -321,24 +323,31 @@ void Panel3D::downsampleColumn(const Buffer<float>& column) {
 }
 
 void Panel3D::setColumnColourIndices() {
-    ippsCopy_16s(clrIndicesB, clrIndicesA, draw.sizeY);
+    clrIndicesB
+        .withSize(draw.sizeY)
+        .copyTo(clrIndicesA.withSize(draw.sizeY));
 
     Buffer<float> downsampAcc(downsampAcc.withSize(draw.sizeY));
-    downsampAcc.mul(volumeScale).add(volumeTrans);
+    downsampAcc.mul(volumeScale)
+        .add(volumeTrans)
+        .clip(0, gradientWidth/(float)(gradientWidth - 1))
+        .mul(gradientWidth);
 
-    ippsConvert_32f16s_Sfs(downsampAcc, clrIndicesB, draw.sizeY, ippRndZero, -9);
-    ippsThreshold_16s_I(clrIndicesB, draw.sizeY, gradientWidth - 1, ippCmpGreater);
-    ippsThreshold_16s_I(clrIndicesB, draw.sizeY, 0, ippCmpLess);
-    ippsMulC_16s_I(draw.stride, clrIndicesB, draw.sizeY);
+    VecOps::roundDown(downsampAcc, clrIndicesB.withSize(draw.sizeY));
+    // ippsConvert_32f16s_Sfs(downsampAcc, clrIndicesB, draw.sizeY, ippRndZero, -9);
+    // ippsThreshold_16s_I(clrIndicesB, draw.sizeY, gradientWidth - 1, ippCmpGreater);
+    // ippsThreshold_16s_I(clrIndicesB, draw.sizeY, 0, ippCmpLess);
+    clrIndicesA.mul(draw.stride);
+    // ippsMulC_16s_I(draw.stride, clrIndicesB, draw.sizeY);
 }
 
 void Panel3D::setVertices(int column, Buffer<float> vertices) const {
     jassert(4 * (draw.sizeY + 1) <= vertices.size());
 
-    Ipp32f* vertexPtr = vertices;
-    Ipp32f* x0 = scaledX.get() + column - 1;
-    Ipp32f* y0 = scaledY.get();
-    Ipp32f* x1 = x0 + 1;
+    Float32* vertexPtr = vertices;
+    Float32* x0 = scaledX.get() + column - 1;
+    Float32* y0 = scaledY.get();
+    Float32* x1 = x0 + 1;
 
     // fill in bottom
     *vertexPtr++ = *x0;
@@ -354,36 +363,41 @@ void Panel3D::setVertices(int column, Buffer<float> vertices) const {
     }
 }
 
-void Panel3D::doColourLookup8u(Buffer<Ipp8u> grd, Buffer<Ipp8u> colors) {
-    Ipp8u* grd8u = grd;
-    Ipp8u* colorPtr = colors;
+void Panel3D::doColourLookup8u(Buffer<Int8u> grd, Buffer<Int8u> colors) {
+    Int8u* grd8u = grd;
+    Int8u* colorPtr = colors;
     int bytes = draw.stride;
 
     jassert(2 * bytes * (draw.sizeY + 1) <= colors.size());
 
-    ippsCopy_8u(grd8u + clrIndicesA[0], colorPtr, bytes);
+    VecOps::copy(grd8u + clrIndicesA[0], colorPtr, bytes);
+    // ippsCopy_8u(grd8u + clrIndicesA[0], colorPtr, bytes);
     colorPtr += bytes;
-    ippsCopy_8u(grd8u + clrIndicesB[0], colorPtr, bytes);
+    VecOps::copy(grd8u + clrIndicesB[0], colorPtr, bytes);
+    // ippsCopy_8u(grd8u + clrIndicesB[0], colorPtr, bytes);
     colorPtr += bytes;
 
     for(int j = 0; j < draw.sizeY; ++j) {
-        ippsCopy_8u(grd8u + clrIndicesA[j], colorPtr, bytes);
+        VecOps::copy(grd8u + clrIndicesA[j], colorPtr, bytes);
+        // ippsCopy_8u(grd8u + clrIndicesA[j], colorPtr, bytes);
         colorPtr += bytes;
 
-        ippsCopy_8u(grd8u + clrIndicesB[j], colorPtr, bytes);
+        VecOps::copy(grd8u + clrIndicesB[j], colorPtr, bytes);
+        // ippsCopy_8u(grd8u + clrIndicesB[j], colorPtr, bytes);
         colorPtr += bytes;
     }
 }
 
 void Panel3D::doColourLookup32f(Buffer<float> grd, Buffer<float> colors) {
-    Ipp32f* grd32f = grd;
-    Ipp32f* colorPtr = colors;
+    Float32* grd32f = grd;
+    Float32* colorPtr = colors;
     int bytes = draw.stride;
 
     jassert(draw.sizeY * bytes <= colors.size());
 
     for (int j = 0; j < draw.sizeY; ++j) {
-        ippsCopy_32f(grd32f + clrIndicesB[j], colorPtr, bytes);
+        VecOps::copy(grd32f + clrIndicesB[j], colorPtr, bytes);
+        // ippsCopy_32f(grd32f + clrIndicesB[j], colorPtr, bytes);
         colorPtr += bytes;
     }
 }
@@ -410,10 +424,10 @@ void Panel3D::resizeArrays() {
  *      pos++
  */
 void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf) {
-    Ipp32f* colorPtr    = srcColors;
-    Ipp32f* dstColors   = dstColorBuf;
-    Ipp32f* startClrPtr = colorPtr;
-    Ipp32f* startDstPtr = dstColors;
+    Float32* colorPtr    = srcColors;
+    Float32* dstColors   = dstColorBuf;
+    Float32* startClrPtr = colorPtr;
+    Float32* startDstPtr = dstColors;
 
     jassert(draw.stride * draw.texHeight <= dstColorBuf.size());
 
@@ -432,11 +446,11 @@ void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf
         float invHeight = 1 / float(draw.texHeight);
         int rampSize    = draw.ramp.size();
 
-        Ipp32f* rampPtr = draw.ramp.get();
-        Ipp32f* endClrPtr = startClrPtr + draw.stride * rampSize;
+        Float32* rampPtr = draw.ramp.get();
+        Float32* endClrPtr = startClrPtr + draw.stride * rampSize;
 
         while ((floatIdx = i * invHeight) < draw.ramp.front()) {
-            ippsCopy_32f(colorPtr, dstColors, draw.stride);
+            VecOps::copy(colorPtr, dstColors, draw.stride);
             dstColors += draw.stride;
             ++i;
         }
@@ -454,8 +468,10 @@ void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf
 
             jassert(colorPtr + 3 < endClrPtr);
 
-            ippsMulC_32f        (colorPtr,               1 - portion,   dstColors, 4);
-            ippsAddProductC_32f (colorPtr + draw.stride, portion,       dstColors, 4);
+            VecOps::mul(colorPtr, 1 - portion, dstColors, 4);
+            VecOps::addProd(colorPtr + draw.stride, portion, dstColors, 4);
+            // ippsMulC_32f        (colorPtr,               1 - portion,   dstColors, 4);
+            // ippsAddProductC_32f (colorPtr + draw.stride, portion,       dstColors, 4);
 
             dstColors += draw.stride;
             ++i;
@@ -464,7 +480,8 @@ void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf
         idxStride = draw.stride * (draw.ramp.size() - 1);
         int lastDst = draw.stride * (subsampleIdx - 1);
 
-        ippsCopy_32f(startClrPtr + idxStride, startDstPtr + lastDst, draw.stride);
+        VecOps::copy(startClrPtr + idxStride, startDstPtr + lastDst, draw.stride);
+        // ippsCopy_32f(startClrPtr + idxStride, startDstPtr + lastDst, draw.stride);
     } else {
         // scaled y is linear ramp of values
         float remainder;
@@ -475,8 +492,11 @@ void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf
             remainder = phase - trunc;
             truncStride = draw.stride * trunc;
 
-            ippsMulC_32f        (colorPtr + truncStride,                1 - remainder,  dstColors + draw.stride * i, draw.stride);
-            ippsAddProductC_32f (colorPtr + truncStride + draw.stride,  remainder,      dstColors + draw.stride * i, draw.stride);
+
+            VecOps::mul(colorPtr + truncStride, 1 - remainder, dstColors + draw.stride * i, draw.stride);
+            VecOps::addProd(colorPtr + truncStride + draw.stride, remainder, dstColors + draw.stride * i, draw.stride);
+            // ippsMulC_32f        (colorPtr + truncStride,                1 - remainder,  dstColors + draw.stride * i, draw.stride);
+            // ippsAddProductC_32f (colorPtr + truncStride + draw.stride,  remainder,      dstColors + draw.stride * i, draw.stride);
 
             phase += sourceToDestRatio;
 
@@ -485,7 +505,12 @@ void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf
 
         jassert(draw.stride * (draw.sizeY - 1) + draw.stride - 1 < srcColors.size());
 
-        ippsCopy_32f(colorPtr + draw.stride * (draw.sizeY - 1), dstColors + draw.stride * (subsampleIdx - 1), draw.stride);
+        VecOps::copy(
+            colorPtr + draw.stride * (draw.sizeY - 1),
+            dstColors + draw.stride * (subsampleIdx - 1),
+            draw.stride
+        );
+        // ippsCopy_32f(colorPtr + draw.stride * (draw.sizeY - 1), dstColors + draw.stride * (subsampleIdx - 1), draw.stride);
     }
 }
 

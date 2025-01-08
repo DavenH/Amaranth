@@ -1,7 +1,7 @@
 #pragma once
 
 #include "JuceHeader.h"
-#include <ipp.h>
+#include <Array/VecOps.h>
 
 class VertCube;
 
@@ -59,14 +59,14 @@ public:
     }
 
     Vertex& operator=(const Vertex& other) {
-        ippsCopy_32f(other.values, values, numElements);
+        VecOps::copy(other.values, values, numElements);
         owners = other.owners;
 
         return *this;
     }
 
     Vertex(const Vertex& copy) {
-        ippsCopy_32f(copy.values, values, numElements);
+        VecOps::copy(copy.values, values, numElements);
         owners = copy.owners;
     }
 
@@ -89,7 +89,7 @@ public:
             return;
 
         if (factor == 0) {
-            ippsZero_32f(values, numElements);
+            VecOps::zero(values, numElements);
             return;
         }
 
@@ -139,7 +139,7 @@ public:
 private:
 
     void initValues() {
-        ippsZero_32f(values, numElements);
+        VecOps::zero(values, numElements);
         values[Amp] = 0.5f;
     }
 };

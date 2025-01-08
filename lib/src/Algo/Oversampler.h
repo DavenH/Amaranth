@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ipp.h>
 #include "../Array/ScopedAlloc.h"
 #include "../Array/Buffer.h"
 
@@ -30,14 +29,16 @@ private:
 
     int phase, oversampleFactor;
 
-    ScopedAlloc<Ipp8u> stateUpBuf, stateDownBuf;
-    ScopedAlloc<Ipp8u> workBuffUp, workBuffDown;
-    ScopedAlloc<Ipp32f> firTaps, firUpDly, firDownDly;
+    ScopedAlloc<Int8u> stateUpBuf, stateDownBuf;
+    ScopedAlloc<Int8u> workBuffUp, workBuffDown;
+    ScopedAlloc<Float32> firTaps, firUpDly, firDownDly;
 
     Buffer<float> memoryBuf, audioBuf;
     Buffer<float>* oversampBuf;
 
+#ifdef USE_IPP
     IppsFIRSpec_32f *filterUpState, *filterDownState;
+#endif
 
     JUCE_LEAK_DETECTOR(Oversampler);
 };

@@ -61,7 +61,7 @@ public:
 	/* Rendering */
 	void clearGraphicBuffer();
 	void processBuffer(AudioSampleBuffer& buffer) override;
-	void processVertexBuffer(Buffer<Ipp32f> inputBuffer);
+	void processVertexBuffer(Buffer<Float32> inputBuffer);
 
 	/* Updating */
 	void updatePartition(int idx, bool canUpdateTaps);
@@ -104,10 +104,10 @@ private:
 	Dsp::SimpleFilter <Dsp::Butterworth::BandShelf<2>> bsFilter[numPartitions - 2];
 	Dsp::SimpleFilter <Dsp::Butterworth::HighShelf<2>> hsFilter;
 
-	ScopedAlloc<Ipp32f> overflowBuffer;
+	ScopedAlloc<Float32> overflowBuffer;
 	ScopedAlloc<Ipp64f> tapsBuffer;
 	ScopedAlloc<Ipp64f> delayBuffer;
-	ScopedAlloc<Ipp8u> stateBuffer;
+	ScopedAlloc<Int8u> stateBuffer;
 
 
 };

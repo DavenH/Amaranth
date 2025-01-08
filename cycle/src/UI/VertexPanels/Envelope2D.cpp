@@ -207,7 +207,8 @@ void Envelope2D::drawCurvesAndSurfaces() {
         a = cBuffer.withSize(size);
     }
 
-    a.mul(xy.y, 0.25f).abs().subCRev(0.5f).mul(color1.alpha());
+    VecOps::mul(xy.y, 0.25f, a);
+    a.abs().subCRev(0.5f).mul(color1.alpha());
 
     applyScale(xy);
 

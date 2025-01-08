@@ -245,7 +245,8 @@ ostream& operator<<(ostream& stream, const Vertex* vert) {
 }
 
 void Panel2D::prepareAlpha(const Buffer<float>& y, Buffer<float> alpha, float baseAlpha) {
-    alpha.mul(y, 0.25f).abs().subCRev(0.5f).mul(baseAlpha);
+    VecOps::mul(y, 0.25f, alpha);
+    alpha.abs().subCRev(0.5f).mul(baseAlpha);
 }
 
 void Panel2D::drawDepthLinesAndVerts() {

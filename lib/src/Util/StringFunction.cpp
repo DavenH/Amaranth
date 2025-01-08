@@ -35,7 +35,7 @@ double StringFunction::Op::eval(double arg) const {
         case Rnd:   return roundToInt(arg);
         case Flr:   return int(arg);
         case Ceil:  return int(arg + 1 - 1e-9f);
-        case Abs:   return fabsf(arg);
+        case Abs:   return std::abs(arg);
         case Pow:   return powf(arg, arg1);
         case Log:   return logf(arg);
         case PowRev: return powf(arg1, arg);
@@ -43,5 +43,5 @@ double StringFunction::Op::eval(double arg) const {
         default: break;
     }
 
-    throw std::invalid_argument("Invalid operator " + (code));
+    throw std::invalid_argument("Invalid operator " + String(code).toStdString());
 }

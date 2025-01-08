@@ -29,3 +29,9 @@
   #define bitsSplit(X, Y) X
 #endif
 
+namespace ProjectInfo
+{
+  const char* const  projectName    = "Cycle";
+  const char* const  versionString  = "1.9.0";
+  const int          versionNumber  = 0x10900;
+}

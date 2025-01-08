@@ -28,6 +28,7 @@
 #include "../Curve/EnvRenderContext.h"
 
 using std::map;
+#undef juce::Delay;
 
 class WavAudioSource;
 class SynthFilterVoice;
@@ -75,7 +76,7 @@ public:
 
     float getModValue();
     double getTempoScale() const	{ return tempoScale; 		}
-    Delay& getDelay() 				{ return *delay; 			}
+    CycDelay& getDelay() 			{ return *delay; 			}
     Equalizer& getEqualizer()		{ return *equalizer; 		}
     Waveshaper& getWaveshaper() 	{ return *waveshaper; 		}
     IrModeller& getIrModeller() 	{ return *tubeModel; 		}
@@ -99,7 +100,7 @@ public:
     void setUnison(Unison* unison)  			{ this->unison = unison; 		 }
     void setReverb(ReverbEffect* reverb) 		{ this->reverb = reverb; 		 }
     void setWaveshaper(Waveshaper* waveshaper) 	{ this->waveshaper = waveshaper; }
-    void setDelay(Delay* delay) 				{ this->delay = delay; 			 }
+    void setDelay(CycDelay* delay) 				{ this->delay = delay; 			 }
     void setChorus(Chorus* chorus) 				{ this->chorus = chorus; 		 }
     void setEqualizer(Equalizer* equalizer) 	{ this->equalizer = equalizer; 	 }
     void setIrModeller(IrModeller* modeller) 	{ this->tubeModel = modeller; 	 }
@@ -169,7 +170,7 @@ private:
     Ref<Waveshaper> 	waveshaper;
     Ref<IrModeller> 	tubeModel;
     Ref<ReverbEffect> 	reverb;
-    Ref<Delay> 			delay;
+    Ref<CycDelay> 		delay;
     Ref<Phaser> 		phaser;
     Ref<Chorus> 		chorus;
     Ref<Equalizer> 		equalizer;
@@ -186,17 +187,17 @@ private:
     Array<PendingAction*> 		pendingActions;
     vector<EnvRenderContext>	globalScratch;
 
-    ScopedAlloc<Ipp32f> 		globalRenderMem;
-    ScopedAlloc<Ipp32f> 		workBuffer;
-    ScopedAlloc<Ipp32f> 		attackDeclick;
-    ScopedAlloc<Ipp32f> 		releaseDeclick;
-    ScopedAlloc<Ipp32f> 		angleDeltas;
-    ScopedAlloc<Ipp32f> 		tempMemory	[2];
-    ScopedAlloc<Ipp32f>			resamplingMemory;
-    ScopedAlloc<Ipp32f>			fadeMemory;
+    ScopedAlloc<Float32> 		globalRenderMem;
+    ScopedAlloc<Float32> 		workBuffer;
+    ScopedAlloc<Float32> 		attackDeclick;
+    ScopedAlloc<Float32> 		releaseDeclick;
+    ScopedAlloc<Float32> 		angleDeltas;
+    ScopedAlloc<Float32> 		tempMemory	[2];
+    ScopedAlloc<Float32>		resamplingMemory;
+    ScopedAlloc<Float32>		fadeMemory;
 
-    Buffer<Ipp32f> 				fadeIns	[numOctaves];
-    Buffer<Ipp32f> 				fadeOuts[numOctaves];
+    Buffer<Float32> 			fadeIns	[numOctaves];
+    Buffer<Float32> 			fadeOuts[numOctaves];
     Transform					ffts	[numOctaves];
 
     Array<Effect*> 				postProcessEffects;

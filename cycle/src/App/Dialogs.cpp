@@ -356,13 +356,13 @@ void Dialogs::showPresetBrowserModal() {
     cout << "Showing preset browser\n";
     bool playerView = false;
 
-#if PLUGIN_MODE
+  #if PLUGIN_MODE
     playerView = getSetting(WindowSize) == WindowSizes::PlayerSize;
-#endif
+  #endif
 
     getObj(PresetPage).setSize(800, 600);
 
-    Component* c = mainPanel;
+    juce::Component* c = mainPanel;
     if (playerView) {
         c = &getObj(PlayerComponent);
     }

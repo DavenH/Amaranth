@@ -17,9 +17,7 @@ Buffer<float> Convolver::processBuffer(Buffer<float> buffer) {
     return Buffer<float>();
 }
 
-Buffer<float> Convolver::convolve(
-        Buffer<float> kernelFrq,
-        Buffer<float> inputFrq) {
+Buffer<float> Convolver::convolve(Buffer<float> kernelFrq, Buffer<float> inputFrq) {
     int paddedSize = NumberUtils::nextPower2(kernelFrq.size() + inputFrq.size() - 1) + 2;
 
     Transform& spec = getObj(Transforms).chooseFFT(paddedSize);
@@ -37,8 +35,11 @@ Buffer<float> Convolver::convolve(
     inputFrq.copyTo(inputFrqPad + 2);
     inputFrqPad.offset(2 + inputFrq.size()).zero();
 
-    ippsMul_32fc_I((Ipp32fc*) kernelFrqPad.get() + 1,
-                   (Ipp32fc*) inputFrqPad.get() + 1, (paddedSize - 2) / 2);
+    VecOps::mul(
+        Buffer((Complex32*)kernelFrqPad.get() + 1, paddedSize / 2),
+        Buffer((Complex32*)inputFrqPad.get() + 1, paddedSize / 2),
+        Buffer((Complex32*)inputFrqPad.get() + 1, paddedSize / 2)
+    );
 
     spec >> inputFrqPad;
 

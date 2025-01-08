@@ -4,6 +4,7 @@
 #include "../Array/Buffer.h"
 
 #ifdef USE_ACCELERATE
+  #define VIMAGE_H
   #include <Accelerate/Accelerate.h>
 #else
   #include <ipp.h>

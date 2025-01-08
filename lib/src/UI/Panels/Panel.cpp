@@ -296,21 +296,21 @@ void Panel::applyScale(BufferXY& buff) {
     applyScaleY(buff.y);
 }
 
-void Panel::applyScaleX(Buffer<Ipp32f> array) {
+void Panel::applyScaleX(Buffer<Float32> array) {
     float sumX = -zoomPanel->rect.x;
     float multX = (comp->getWidth() - paddingLeft - paddingRight) / zoomPanel->rect.w;
 
     array.add(sumX).mul(multX).add(paddingLeft);
 }
 
-void Panel::applyScaleY(Buffer<Ipp32f> array) {
+void Panel::applyScaleY(Buffer<Float32> array) {
     float multY = (comp->getHeight() - 2 * vertPadding) / zoomPanel->rect.h;
     float sumY = 1 - zoomPanel->rect.y;
 
     array.mul(-1).add(sumY).mul(multY).add(vertPadding);
 }
 
-void Panel::applyNoZoomScaleX(Buffer<Ipp32f> array) {
+void Panel::applyNoZoomScaleX(Buffer<Float32> array) {
     float multX = (comp->getWidth() - (paddingLeft + paddingRight));
 
     array.mul(multX).add(paddingLeft);
@@ -684,11 +684,13 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
                     speed = speedEnv[i];
                     idx = int((IDeformer::tableSize - 1) * speed);
 
-                    if(exHasPhase)
+                    if(exHasPhase) {
                         xy.x[i] = phaseGain * phaseTable[idx] + speed * (second.x - first.x);
+                    }
 
-                    if(whyHasAmp)
+                    if(whyHasAmp) {
                         xy.y[i] = ampGain * ampTable[idx] + speed * (second.y - first.y);
+                    }
                 }
             }
 
@@ -698,7 +700,8 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             if(exHasPhase)
                 xy.x.add(first.x + redOffset + blueOffset);
             else {
-                xy.x.mul(speedEnv, second.x - first.x).add(first.x + redOffset + blueOffset);
+                VecOps::mul(speedEnv, second.x - first.x, xy.x);
+                xy.x.add(first.x + redOffset + blueOffset);
             }
 
             if(whyHasAmp)

@@ -9,6 +9,19 @@ file(GLOB_RECURSE LIB_SOURCES
         "${JUCE_DIR}/*.c"
 )
 
+if(APPLE)
+    file(GLOB JUCE_OBJCXX_SOURCES
+        "${JUCE_DIR}/*.cpp"
+        "${JUCE_DIR}/*.mm"
+    )
+
+    set_source_files_properties(
+        ${JUCE_OBJCXX_SOURCES}
+        PROPERTIES
+        COMPILE_FLAGS "-x objective-c++"
+    )
+endif()
+
 add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -89,9 +102,16 @@ elseif(APPLE)
         ${ACCELERATE_FRAMEWORK}
         ${WEBKIT_FRAMEWORK}
         ${IOKIT_FRAMEWORK}
+        ${CORE_FOUNDATION_FRAMEWORK}
+        ${CARBON_FRAMEWORK}
+        ${APP_KIT_FRAMEWORK}
+        ${QUARTZ_CORE_FRAMEWORK}
+        ${SECURITY_FRAMEWORK}
+        ${CORE_AUDIO_KIT_FRAMEWORK}
     )
 endif()
 
+# still want IPP on older Intel Silicon Macs
 if(NOT (APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64"))
     target_link_libraries(${PROJECT_NAME} PUBLIC
         IPP::ippcore
@@ -100,11 +120,10 @@ if(NOT (APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64"))
         IPP::ippi
         IPP::ippvm
     )
+    target_link_directories(${PROJECT_NAME} PUBLIC
+            ${IPP_DIR}/lib
+    )
 endif()
-
-target_link_directories(${PROJECT_NAME} PUBLIC
-    ${IPP_DIR}/lib
-)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -g -ggdb -O0)

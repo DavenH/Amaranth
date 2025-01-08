@@ -8,7 +8,7 @@
 //	public Timer
 //{
 //private:
-//	ScopedAlloc<Ipp32f> channelData[2];
+//	ScopedAlloc<Float32> channelData[2];
 //	Buffer<float> currData[2];
 //
 //	BufferOutputPanel(SingletonRepo* repo) :
@@ -33,7 +33,7 @@
 //		if(size <= 1)
 //			return;
 //
-//		ScopedAlloc<Ipp32f> xs(size);
+//		ScopedAlloc<Float32> xs(size);
 //		ippsVectorRamp_32f(xs, size, 0.f, 1.f / float(size - 1));
 //
 //		ippsMulC_32f_I(0.25, currData[0], size);

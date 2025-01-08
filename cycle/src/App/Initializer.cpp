@@ -88,17 +88,19 @@ void Initializer::init() {
 
     if (numInstances.get() == 0) {
         ++numInstances;
-
+      #ifdef USE_IPP
         ippInit();
+      #endif
         Curve::calcTable();
     } else {
         ++numInstances;
     }
 
     instanceId = numInstances.get();
-
+  #ifdef USE_IPP
     status(ippSetNumThreads(1));
     status(ippSetDenormAreZeros(1));
+  #endif
 
     repo->instantiate();
     setConstants();
@@ -270,7 +272,7 @@ void Initializer::instantiate() {
     repo->add(audioSource = new SynthAudioSource(repo));
     repo->add(new Multisample(repo, pitchRast));
 
-    auto* delay		 = new Delay(repo);
+    auto* delay		 = new CycDelay(repo);
     auto* unison 	 = new Unison(repo);
     auto* reverb 	 = new ReverbEffect(repo);
     auto* equalizer  = new Equalizer(repo);
@@ -370,7 +372,7 @@ void Initializer::instantiate() {
 Initializer::~Initializer() {
     progressMark
 
-    if(Component* c = getObj(PresetPage).getParentComponent()) {
+    if(juce::Component* c = getObj(PresetPage).getParentComponent()) {
         c->exitModalState(1);
     }
 

@@ -1,7 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
 #include <Array/ScopedAlloc.h>
-#include <ipp.h>
 #include <Array/RingBuffer.h>
 
 class OscAudioProcessor : public AudioIODeviceCallback {
@@ -14,7 +13,7 @@ public:
     void resetPeriods();
     float getTargetPeriod() const { return targetPeriod; }
     [[nodiscard]] double getCurrentSampleRate() const;
-    std::vector<Buffer<Ipp32f>> getAudioPeriods() const;
+    std::vector<Buffer<Float32>> getAudioPeriods() const;
 
 private:
     void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
@@ -34,11 +33,11 @@ private:
     float accumulatedSamples;
     float targetPeriod { 44100.0f / 440.0f }; // Default to A4
 
-    ScopedAlloc<Ipp32f> workBuffer;
-    ScopedAlloc<Ipp32f> workBufferUI;
+    ScopedAlloc<Float32> workBuffer;
+    ScopedAlloc<Float32> workBufferUI;
     ReadWriteBuffer rwBufferAudioThread;
 
-    std::vector<Buffer<Ipp32f> > periods;
+    std::vector<Buffer<Float32> > periods;
 
     SpinLock bufferLock;
 

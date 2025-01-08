@@ -6,15 +6,15 @@
 #include "../../Audio/Effects/Delay.h"
 
 DelayUI::DelayUI(SingletonRepo* repo, Effect* effect) :
-		GuilessEffect("DelayUI", "Delay", Delay::numDelayParams, repo, effect)
+		GuilessEffect("DelayUI", "Delay", CycDelay::numDelayParams, repo, effect)
 {
 	Knob *spinItrKnob, *timeKnob;
 
-	paramGroup->addSlider(timeKnob = new Knob(repo, Delay::Time, "Delay time", 0.5f));
-	paramGroup->addSlider(new Knob(repo, Delay::Feedback, "Feedback", 0.5f));
-	paramGroup->addSlider(spinItrKnob = new Knob(repo, Delay::SpinIters, "Spin revolution length", 0.2f));
-	paramGroup->addSlider(new Knob(repo, Delay::Spin, "Spin Amount", 0.5f));
-	paramGroup->addSlider(new Knob(repo, Delay::Wet, "Wet Amount", 0.5f));
+	paramGroup->addSlider(timeKnob = new Knob(repo, CycDelay::Time, "Delay time", 0.5f));
+	paramGroup->addSlider(new Knob(repo, CycDelay::Feedback, "Feedback", 0.5f));
+	paramGroup->addSlider(spinItrKnob = new Knob(repo, CycDelay::SpinIters, "Spin revolution length", 0.2f));
+	paramGroup->addSlider(new Knob(repo, CycDelay::Spin, "Spin Amount", 0.5f));
+	paramGroup->addSlider(new Knob(repo, CycDelay::Wet, "Wet Amount", 0.5f));
 
 	using namespace Ops;
 	StringFunction delayStr(StringFunction(1).max(0.15).pow(2.0).mul(4.0));
@@ -27,11 +27,11 @@ String DelayUI::getKnobName(int index) const {
 	bool superSmall = getWidth() < 200;
 
 	switch (index) {
-		case Delay::Time: 		return superSmall ? "tm" 	: "Time";
-		case Delay::Feedback:	return superSmall ? "fb" 	: little ? "Fdbk" : "Feedbk";
-		case Delay::Spin:		return superSmall ? "spn" 	: "Spin";
-		case Delay::SpinIters:	return little ? 	"spn #" : "Spin Len";
-		case Delay::Wet:		return superSmall ? "wet" 	: "Wet";
+		case CycDelay::Time: 		return superSmall ? "tm" 	: "Time";
+		case CycDelay::Feedback:	return superSmall ? "fb" 	: little ? "Fdbk" : "Feedbk";
+		case CycDelay::Spin:		return superSmall ? "spn" 	: "Spin";
+		case CycDelay::SpinIters:	return little ? 	"spn #" : "Spin Len";
+		case CycDelay::Wet:			return superSmall ? "wet" 	: "Wet";
 		default:
 			break;
 	}

@@ -1,7 +1,6 @@
 #include <fstream>
 #include "AutoModeller.h"
 #include "Resampling.h"
-#include "Fir.h"
 #include "../Curve/Curve.h"
 #include "../Curve/Rasterizer2D.h"
 #include "../Design/Updating/Updater.h"
@@ -58,15 +57,17 @@ void AutoModeller::preparePoints() {
     }
 
     int length = srcSamples.size();
+    int kernelSize = 32;
 
-    ScopedAlloc<float> memory(length * 2);
+    ScopedAlloc<float> memory(length * 2 + kernelSize * 2);
 
     Buffer<float> filtered = memory.place(length);
     Buffer<float> ramp = memory.place(length);
-    FIR fir(0.3, 16);
+    Buffer<float> kernel = memory.place(kernelSize);
+    Buffer<float> window = memory.place(kernelSize);
 
-    srcSamples.copyTo(filtered);
-    fir.process(filtered);
+    VecOps::sinc(kernel, window, 0.3f);
+    VecOps::conv(srcSamples, kernel, filtered);
 
     float left = leftSamplingOffset;
     float delta = (rightSamplingOffset - leftSamplingOffset) / float(length);
@@ -81,14 +82,16 @@ void AutoModeller::preparePoints() {
 
         points.clear();
 
-        for(int inflection : inflections)
+        for(int inflection : inflections) {
             points.emplace_back(ramp[inflection], filtered[inflection]);
+        }
 
         points = reducePath(points, reductionLevel);
     } else {
         vector<Intercept> spoints;
-        for(int i = 0; i < filtered.size(); ++i)
+        for(int i = 0; i < filtered.size(); ++i) {
             spoints.emplace_back(ramp[i], srcSamples[i]);
+        }
 
         points = reducePath(spoints, reductionLevel);
     }

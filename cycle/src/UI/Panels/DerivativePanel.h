@@ -3,7 +3,6 @@
 #include <vector>
 #include <iostream>
 
-#include <Algo/Fir.h>
 #include <App/SingletonAccessor.h>
 #include <Design/Updating/Updateable.h>
 #include <UI/ColorGradient.h>
@@ -35,7 +34,7 @@ private:
     CriticalSection cSection;
 
     ScopedAlloc<Float32> workMemory;
+    ScopedAlloc<Float32> firKernel;
     ScopedAlloc<Int16s> indices;
     Buffer<float> exes;
-    std::unique_ptr<FIR> fir;
 };

@@ -19,13 +19,13 @@ public:
 	Buffer<float> buffer;
 };
 
-class Delay : public Effect
+class CycDelay : public Effect
 {
 public:
 	enum DelayParam { Time, Feedback, SpinIters, Spin, Wet, numDelayParams };
 
-	explicit Delay(SingletonRepo* repo);
-	~Delay() override;
+	explicit CycDelay(SingletonRepo* repo);
+	~CycDelay() override;
 
 	void processBuffer(AudioSampleBuffer& buffer) override;
 	[[nodiscard]] bool isEnabled() const override;

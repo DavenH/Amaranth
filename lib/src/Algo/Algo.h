@@ -4,7 +4,6 @@
 #include "Convolver.h"
 #include "ConvReverb.h"
 #include "FFT.h"
-#include "Fir.h"
 #include "GaussRand.h"
 #include "HermiteResampler.h"
 #include "Oversampler.h"

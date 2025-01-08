@@ -3,6 +3,7 @@
 #include "Buffer.h"
 #include "ArrayDefs.h"
 
+#define VIMAGE_H
 #include <Accelerate/Accelerate.h>
 #include <algorithm>
 #include <random>
@@ -29,7 +30,7 @@ int globalBufferMacSizeErrorCount = 0;
     template<>                                   \
     void Buffer<T>::copyTo(Buffer buff) const {  \
         jassert(buff.sz >= sz);                  \
-        memcpy(buff.get(), ptr, sz * sizeof(T)); \
+        memcpy(ptr, buff.get(), sz * sizeof(T)); \
     }
 
 #define constructZero(T)                         \
@@ -100,6 +101,7 @@ declareForCommon(constructWithPhase);
 defineVdspNullary_Real(zero, vclr)
 defineVdspNullary_Real(flip, vrvrs)
 defineVdspNullary_Real(hann, hann_window)
+defineVdspNullary_Real(blackman, blkman_window)
 
 defineVforceAuto_Real (sqrt, vvsqrt)
 defineVforceAuto_Real (exp,  vvexp)
@@ -131,8 +133,8 @@ template<> Buffer<Float64>& Buffer<Float64>::pow(Float64 c) { UNO_ARG_CHECK  vvp
 #define defineUnaryBuffFn(name, type, fn, args_pattern) \
     template<> Buffer<type>& Buffer<type>::name(Buffer<type> buff) { \
     if(buff.size() < sz) { ++ERROR_COUNTER; return *this; } \
-    fn(args_pattern); \
-    return *this; \
+    fn(args_pattern);     \
+    return *this;         \
 }
 
 #define defineVdspUnaryBuff_Real(name) \
@@ -276,7 +278,7 @@ Buffer<Float32>& Buffer<Float32>::subCRev(Float32 c) {
 
 template<>
 Buffer<Float32>& Buffer<Float32>::subCRev(Float32 c, Buffer buff) {
-    vDSP_vneg(VDSP_AUTO_ARG_PATTERN);
+    vDSP_vneg(buff.get(), 1, ptr, 1, vDSP_Length(sz));
     vDSP_vsadd(VDSP_AUTO_ARGC_PATTERN);
     return *this;
 }
@@ -376,6 +378,16 @@ template<> Buffer<Float64>& Buffer<Float64>::ramp() { if(sz > 1) { return ramp(0
 template<> Buffer<Float32>& Buffer<Float32>::threshLT(Float32 c) { vDSP_vthr(VDSP_AUTO_ARGC_PATTERN); return *this; }
 template<> Buffer<Float64>& Buffer<Float64>::threshLT(Float64 c) { vDSP_vthrD(VDSP_AUTO_ARGC_PATTERN); return *this; }
 
+template<> Buffer<Complex32>& Buffer<Complex32>::threshLT(Complex32 c) {
+    // Complex32 is stored as pairs of floats [real0,imag0,real1,imag1,...]
+    float* float_ptr = reinterpret_cast<float*>(ptr);
+    float thresh_real = c.real();
+    float thresh_imag = c.imag();
+    jassert(thresh_real == thresh_imag);
+    vDSP_vthr(float_ptr, 1, &thresh_real, float_ptr, 1, vDSP_Length(sz * 2));
+    return *this;
+}
+
 template<> Buffer<Float32>& Buffer<Float32>::threshGT(Float32 c) {
     Float32 lowThresh = -INFINITY;
     vDSP_vclip(ptr, 1, &lowThresh, &c, ptr, 1, vDSP_Length(sz));
@@ -386,26 +398,13 @@ template<> Buffer<Float64>& Buffer<Float64>::threshGT(Float64 c) {
     vDSP_vclipD(ptr, 1, &lowThresh, &c, ptr, 1, vDSP_Length(sz));
     return *this;
 }
+
 template<> Buffer<Float32>& Buffer<Float32>::clip(Float32 low, Float32 high) {
     vDSP_vclip(ptr, 1, &low, &high, ptr, 1, vDSP_Length(sz));
     return *this;
 }
 template<> Buffer<Float64>& Buffer<Float64>::clip(Float64 low, Float64 high) {
     vDSP_vclipD(ptr, 1, &low, &high, ptr, 1, vDSP_Length(sz));
-    return *this;
-}
-
-
-// Specialized convolution for Float32
-template<>
-Buffer<Float32>& Buffer<Float32>::conv(Buffer src1, Buffer src2, Buffer<unsigned char> workBuff) {
-    vDSP_conv(
-        src1.get(), 1,
-        src2.get(), 1,
-        ptr, 1,
-        vDSP_Length(jmin(sz, src1.size() + src2.size() - 1)),
-        vDSP_Length(src2.size())
-    );
     return *this;
 }
 

@@ -226,7 +226,7 @@ void BlockConvolver::init(
     currSegment         = 0;
 
     int segmentSize = 2 * blockSize;
-    int complexSize = blockSize + 1; // in Ipp32fc units
+    int complexSize = blockSize + 1; // in Float32c units
 
     fft.allocate(segmentSize);
 
@@ -342,7 +342,8 @@ Buffer<float> ConvReverb::convolve(const Buffer<float>& inputFrq, Buffer<float> 
     VecOps::mul(
         Buffer((Complex32*)kernelFrqPad.get() + 1, paddedSize / 2),
         Buffer((Complex32*)inputFrqPad.get() + 1, paddedSize / 2),
-        Buffer((Complex32*)inputFrqPad.get() + 1, paddedSize / 2));
+        Buffer((Complex32*)inputFrqPad.get() + 1, paddedSize / 2)
+    );
 
     // ippsMul_32fc_I((Complex32*)kernelFrqPad.get() + 1,
     //                (Complex32*)inputFrqPad.get()  + 1, paddedSize / 2);

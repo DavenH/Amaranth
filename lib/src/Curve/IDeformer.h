@@ -15,6 +15,6 @@ public:
 
     virtual float getTableValue(int guideIndex, float progress, const NoiseContext& context) = 0;
     virtual void sampleDownAddNoise(int index, Buffer<float> dest, const NoiseContext& context) = 0;
-    virtual Buffer<Ipp32f> getTable(int index) = 0;
+    virtual Buffer<Float32> getTable(int index) = 0;
     virtual int getTableDensity(int index) = 0;
 };

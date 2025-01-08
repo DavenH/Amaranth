@@ -1,8 +1,9 @@
-#include <ipp.h>
 #include <cmath>
 #include "Resampler.h"
 
 #include <Array/VecOps.h>
+
+#ifdef USE_IPP
 
 const float resamplingScale = 0.98f;
 
@@ -180,9 +181,9 @@ Buffer<float> Resampler::finalise() {
     int sourceSize = lastread - (int) time;
 
     if(fixed) {
-        resampleFixedDlg(fixedState, source, sourceSize, dest, resamplingScale, &time, &outLen);
+        ippsResamplePolyphaseFixed_32f(source, sourceSize, dest, resamplingScale, &time, &outLen, fixedState);
     } else {
-        resampleDlg(state, source, sourceSize, dest, dstToSrc, resamplingScale, &time, &outLen);
+        ippsResamplePolyphase_32f(source, sourceSize, dest, dstToSrc, resamplingScale, &time, &outLen, state);
     }
 
     haveReset = false;
@@ -211,9 +212,9 @@ Buffer<float> Resampler::resample(Buffer<float> input) {
     int sourceSize = lastread - history - (int) time;
 
     if(fixed) {
-        resampleFixedDlg(fixedState, source, sourceSize, dest, resamplingScale, &time, &outLen);
+        ippsResamplePolyphaseFixed_32f(source, sourceSize, dest, resamplingScale, &time, &outLen, fixedState);
     } else {
-        resampleDlg(state, source, sourceSize, dest, dstToSrc, resamplingScale, &time, &outLen);
+        ippsResamplePolyphase_32f(source, sourceSize, dest, dstToSrc, resamplingScale, &time, &outLen, state);
     }
     int toMove = lastread + history - (int)time;
     VecOps::move(
@@ -246,3 +247,5 @@ void Resampler::dummyResample(int size) {
     lastread -= (int)time - history;
     time -= (int)time - history;
 }
+
+#endif

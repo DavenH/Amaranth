@@ -32,7 +32,7 @@ private:
     Ref<Spectrum3D> 		spectrum3D;
     Ref<SpectrumInter2D> 	f2Interactor;
     Ref<Console> 			console;
-    ScopedAlloc<Ipp32f> 	decibelLines;
+    ScopedAlloc<Float32> 	decibelLines;
 
 //	void doPostZoomRatioChange(const MouseEvent& e, float oldZoom);
 };

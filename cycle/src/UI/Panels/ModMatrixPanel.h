@@ -80,7 +80,7 @@ private:
 };
 
 class ModMatrixPanel :
-        public Component
+        public juce::Component
     ,	public Button::Listener
     ,	public ComboBox::Listener
     ,	public ScrollBar::Listener
