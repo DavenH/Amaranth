@@ -102,7 +102,6 @@ template<> void VecOps::interleave(Buffer<Float64> x, Buffer<Float64> y, Buffer<
 defineForAllTypes(defineAllocate)
 defineForAllTypes(defineDeallocate)
 
-
 template<> void VecOps::convert(Buffer<Float64> src, Buffer<Float32> dst) {
     vDSP_vdpsp(src.get(), 1, dst.get(), 1, src.size());
 }
@@ -135,8 +134,11 @@ void VecOps::conv(Buffer<Float32> src1, Buffer<Float32> src2, Buffer<Float32> ds
 #elif defined(USE_IPP)
 //#else
 
-#define FN_ARG_PATTERN src1.get(), src2.get(), dst.get(), dst.size()
-#define MOVE_ARG_PATTERN src.get(), dst.get(), dst.get(), src.size()
+template<> void VecOps::zero(Float32* src, int size) { ippsZero_32f(src, size); }
+template<> void VecOps::zero(Float64* src, int size) { ippsZero_64f(src, size); }
+
+#define FN_ARG_PATTERN src1.get(), src2.get(), dst.get(), jmin(src1.size(), src2.size(), dst.size())
+#define MOVE_ARG_PATTERN src.get(), dst.get(), jmin(src.size(), src.size())
 
 #define declareForF32_F64_Cplx(op, fn) \
     template<> void VecOps::op(SRCA_SRCB_DST(Float32))   { BUFFS_DST_CHECK ipps##fn##_32f(FN_ARG_PATTERN); }  \
@@ -149,8 +151,8 @@ declareForF32_F64_Cplx(mul, Mul)
 declareForF32_F64_Cplx(div, Div)
 
 #define declareForF32_F64(op, fn) \
-    template<> void VecOps::op(SRC_DST(Float32)) { BUFFS_EQ_CHECK ipps_##fn##_32f(MOVE_ARG_PATTERN); } \
-    template<> void VecOps::op(SRC_DST(Float64)) { BUFFS_EQ_CHECK ipps_##fn##_64f(MOVE_ARG_PATTERN); }
+    template<> void VecOps::op(SRC_DST(Float32)) { BUFFS_EQ_CHECK ipps##fn##_32f(MOVE_ARG_PATTERN); } \
+    template<> void VecOps::op(SRC_DST(Float64)) { BUFFS_EQ_CHECK ipps##fn##_64f(MOVE_ARG_PATTERN); }
 
 declareForF32_F64(move, Move)
 
@@ -160,9 +162,9 @@ template<> void VecOps::roundDown(Buffer<Float32> src, Buffer<Int32s> dst) { ipp
 template<> void VecOps::roundDown(Buffer<Float64> src, Buffer<Int16s> dst) { ippsConvert_64f16s_Sfs(src, dst, src.size(), ippRndZero, 0); }
 
 #define defineCopy(T, S) template<> void VecOps::copy(const T* src, T* dst, int size) { \
-    ippsCopy_##S(src, dst, size);
+    ippsCopy_##S(src, dst, size);  \
 }
-defineForAllTypes(defineCopy);
+defineForAllIppTypes(defineCopy);
 
 template<> void VecOps::mul(Buffer<Float32> src, Float32 k, Buffer<Float32> dst) {
     BUFFS_EQ_CHECK
@@ -217,27 +219,29 @@ template<> void VecOps::convert(Buffer<Float32> src, Buffer<Float64> dst) {
 template<> void VecOps::conv(Buffer<Float32> src1, Buffer<Float32> src2, Buffer<Float32> dst) {
     jassert(dst.size() >= src1.size() + src2.size() - 1);
     int buffSize;
-    ippsConvolveGetBufferSize(src1.size(), src2.size(), IppDataType::ipp32f, IppAlgType::IppAlgAuto, &buffSize);
+    ippsConvolveGetBufferSize(src1.size(), src2.size(), IppDataType::ipp32f, ippAlgAuto, &buffSize);
     ScopedAlloc<Ipp8u> workBuff(buffSize);
-    jassert(sz >= src1.size() + src2.size() - 1);
-    ippsConvolve_32f(src1.get(), src1.size(), src2.get(), src2.size(), dst.get(), IppAlgType::ippAlgAuto, workBuff);
+    jassert(dst.size() >= src1.size() + src2.size() - 1);
+    ippsConvolve_32f(src1.get(), src1.size(), src2.get(), src2.size(), dst.get(), ippAlgAuto, workBuff);
 }
 
 /*
-template<> void VecOps::fir(Buffer<Float32> src, Buffer<Float32> dst, float relFreq) {
-    int specSize, buffSize;
+template<> void VecOps::fir(const Buffer<Float32>& src, Buffer<Float32> dst, float relFreq, bool trim) {
+    int specSize, buffSize, kernelBuffSize;
     const int kernelSize = 32;
     ippsFIRSRGetSize(kernelSize, ipp32f, &specSize, &buffSize);
+    ippsFIRGenGetBufferSize(kernelSize, &kernelBuffSize);
+    ScopedAlloc<Int8u> kernelWorkBuff(kernelBuffSize);
 
     ScopedAlloc<Ipp64f> taps64(kernelSize);
     ScopedAlloc<Ipp32f> taps32(kernelSize);
-    ippsFIRGenLowpass_32f(relFreq, taps64, tapsSize, ippWinBlackman, ippTrue, kernelWorkBuff);
+    ippsFIRGenLowpass_64f(relFreq, taps64, kernelSize, ippWinBlackman, ippTrue, kernelWorkBuff);
     ippsConvert_64f32f(taps64, taps32, kernelSize);
 
     ScopedAlloc<Ipp8u> stateBuff(specSize);
     ScopedAlloc<Ipp8u> workBuff(buffSize);
-    IppsFIRSpec_32f* state = (IppsFIRSpec_32f*) stateBuff.get();
-    ippsFIRSRInit_32f(taps32, kernelSize, IppAlgType::ippAlgAuto, state);
+    auto* state = (IppsFIRSpec_32f*) stateBuff.get();
+    ippsFIRSRInit_32f(taps32, kernelSize, ippAlgAuto, state);
     ippsFIRSR_32f(src, dst, src.size(), state, taps32, taps32, workBuff);
 }
 */
@@ -245,7 +249,7 @@ template<> void VecOps::fir(Buffer<Float32> src, Buffer<Float32> dst, float relF
 #endif
 
 template<> void VecOps::divCRev(Buffer<Float32> src, Float32 k, Buffer<Float32> dst) { src.copyTo(dst); dst.divCRev(k); }
-template<> void VecOps::divCRev(Buffer<Float64> src, Float64 k, Buffer<Float64> dst) { src.copyTo(dst); dst.divCRev(k); }
+// template<> void VecOps::divCRev(Buffer<Float64> src, Float64 k, Buffer<Float64> dst) { src.copyTo(dst); dst.divCRev(k); }
 template<> void VecOps::flip(Buffer<Float32> src, Buffer<Float32> dst) { src.copyTo(dst); dst.flip();  }
 template<> void VecOps::flip(Buffer<Float64> src, Buffer<Float64> dst) { src.copyTo(dst); dst.flip();  }
 
@@ -256,7 +260,7 @@ template<> void VecOps::sinc(Buffer<Float32> kernel, Buffer<Float32> window, flo
     kernel.mul(window);
 }
 
-template<> void VecOps::fir(Buffer<Float32> src, Buffer<Float32> dst, float relFreq, bool trim) {
+template<> void VecOps::fir(const Buffer<Float32>& src, Buffer<Float32> dst, float relFreq, bool trim) {
     ScopedAlloc<Float32> mem(64);
     Buffer<Float32> kernel = mem.place(mem.size() / 2);
     Buffer<Float32> window = mem.place(mem.size() / 2);

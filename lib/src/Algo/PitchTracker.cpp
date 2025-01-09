@@ -364,7 +364,7 @@ void PitchTracker::createKernels(
         Buffer<float> q = buff.place(numERBs);
         Buffer<float> a = buff.place(numERBs);
 
-        q.mul(erbFreqs, 1 / candFreq);
+        VecOps::mul(erbFreqs, 1 / candFreq, q);
         kernels[i].zero();
 
         int primeIdx = 0;
@@ -373,7 +373,7 @@ void PitchTracker::createKernels(
         while (primes[primeIdx] < numHarmonics) {
             int prime = primes[primeIdx];
 
-            a.add(q, -prime).abs();
+            a.add(q).sub((float) prime).abs();
 
             for (int k = startIdxA; k < numERBs; ++k) {
                 if (a[k] < 0.25f) {
@@ -422,7 +422,7 @@ void PitchTracker::calcLambda(Window& window, const Buffer<float>& realErbIdx) {
     window.lambda.zero();
     Buffer<float> lambda = window.lambda.section(metaStart, size);
 
-    window.lambda.add(realErbIdx.section(window.erbStart, size), window.erbOffset);
+    window.lambda.add(realErbIdx.section(window.erbStart, size)).add(window.erbOffset);
 
     ScopedAlloc<float> mu(size);
 

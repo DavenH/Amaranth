@@ -14,7 +14,6 @@
 
 #define defineForAllTypes(T) \
     T(Int8u)      \
-    T(Int8s)      \
     T(Int16s)     \
     T(Int32s)     \
     T(Float32)    \
@@ -24,7 +23,6 @@
 
 #define defineForAllIppTypes(T) \
     T(Int8u, 8u)      \
-    T(Int8s, 8s)      \
     T(Int16s, 16s)    \
     T(Int32s, 32s)    \
     T(Float32, 32f)   \

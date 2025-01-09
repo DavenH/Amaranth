@@ -2,25 +2,24 @@
 #include "../App/SingletonRepo.h"
 #include "../App/MemoryPool.h"
 #include "../Definitions.h"
-#include "../../../../../../../Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/vecLib.framework/Headers/vDSP.h"
 
 Oversampler::Oversampler(SingletonRepo* repo, int kernelSize) :
         memoryBuf        (getObj(MemoryPool).getAudioPool())
     ,   oversampleFactor (1)
-#ifdef USE_IPP
+  #ifdef USE_IPP
     ,   filterDownState  (nullptr)
     ,   filterUpState    (nullptr)
-#endif
+  #endif
     ,   oversampBuf      (nullptr)
     ,   phase            (0) {
     setKernelSize(2 * kernelSize);
 }
 
 Oversampler::~Oversampler() {
-#ifdef USE_IPP
+  #ifdef USE_IPP
     filterUpState = nullptr;
     filterDownState = nullptr;
-#endif
+  #endif
 }
 
 void Oversampler::start(Buffer<float>& buffer) {
@@ -49,7 +48,7 @@ void Oversampler::start(Buffer<float>& buffer) {
           #else
             vDSP_desamp(partition, 1, firTaps, partition, partition.size(), firTaps.size());
           #endif
-            partition.undenormalize();
+            partition.add(1e-11f);
 
             partitionPos += stepSize;
         }
@@ -170,7 +169,7 @@ void Oversampler::updateTaps() {
 
     double relativeFreq = 0.5 / (double) oversampleFactor;
 
-#ifdef USE_IPP
+  #ifdef USE_IPP
     int buffSize;
     ippsFIRGenGetBufferSize(firTaps.size(), &buffSize);
     ScopedAlloc<Int8u> buffer(buffSize);
@@ -181,13 +180,9 @@ void Oversampler::updateTaps() {
 
     ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterUpState);
     ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterDownState);
-#else
-    ScopedAlloc<Float32> window(firTaps.size());
-    window.blackman();
-    firTaps
-        .ramp(0, MathConstants<float>::twoPi * relativeFreq / firTaps.size())
-        .mul(window);
-#endif
+  #else
+    firTaps.sinc(relativeFreq);
+  #endif
 }
 
 Buffer<float> Oversampler::getMemoryBuffer(int size) {

@@ -93,9 +93,21 @@ void Transform::forward(Buffer<float> src) {
     ippsFFTFwd_RToCCS_32f(src, fftBuffer, spec, workBuff);
 
     if (convertToCart) {
-        ippsCartToPolar_32fc(reinterpret_cast<Float32c*>(fftBuffer.get()) + 1, magnitudes, phases, size/2);
+        ippsCartToPolar_32fc(reinterpret_cast<Complex32*>(fftBuffer.get()) + 1, magnitudes, phases, size/2);
     }
   #endif
+}
+
+
+void Transform::inverse(const Buffer<Ipp32fc>& fftInput, const Buffer<float>& dest) {
+    Buffer<float> oldBuffer = fftBuffer;
+
+    int size = 1 << (order - 1);
+    jassert(fftInput.size() == size + 1);
+
+    fftBuffer = fftInput.toType<Ipp32f>();
+    inverse(dest);
+    fftBuffer = oldBuffer;
 }
 
 void Transform::inverse(Buffer<float> dest) {
@@ -114,7 +126,7 @@ void Transform::inverse(Buffer<float> dest) {
     vDSP_vsmul(dest, 1, &scale, dest, 1, size);
   #else
     if (convertToCart) {
-        ippsPolarToCart_32fc(magnitudes, phases, (Float32c*)fftBuffer.get() + 1, size/2);
+        ippsPolarToCart_32fc(magnitudes, phases, (Complex32*)fftBuffer.get() + 1, size/2);
     }
     ippsFFTInv_CCSToR_32f(fftBuffer, dest, spec, workBuff);
   #endif

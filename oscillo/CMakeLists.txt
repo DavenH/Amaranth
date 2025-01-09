@@ -42,15 +42,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     AmaranthLib
 )
 
-if(APPLE)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        ${COCOA_FRAMEWORK}
-        ${CORE_AUDIO_FRAMEWORK}
-        ${CORE_MIDI_FRAMEWORK}
-        ${AUDIO_TOOLBOX_FRAMEWORK}
-        ${ACCELERATE_FRAMEWORK}
-    )
-endif()
+#if(APPLE)
+#    target_link_libraries(${PROJECT_NAME} PRIVATE
+#        ${COCOA_FRAMEWORK}
+#        ${CORE_AUDIO_FRAMEWORK}
+#        ${CORE_MIDI_FRAMEWORK}
+#        ${AUDIO_TOOLBOX_FRAMEWORK}
+#        ${ACCELERATE_FRAMEWORK}
+#    )
+#endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -g -ggdb -O0)

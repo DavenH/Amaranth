@@ -1,11 +1,15 @@
 #pragma once
 #include <iostream>
 #include <string>
+
 #include "JuceHeader.h"
 
 using std::cout;
 using std::endl;
 using std::string;
+#ifdef USE_IPP
+    #include <ipp.h>
+#endif
 
 class SingletonRepo;
 

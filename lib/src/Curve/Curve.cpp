@@ -3,7 +3,6 @@
 
 #include <Array/VecOps.h>
 
-#include "../../../../../../../Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/vecLib.framework/Headers/vForce.h"
 #include "../Util/NumberUtils.h"
 
 using std::fstream;

@@ -304,21 +304,21 @@ void Panel3D::downsampleColumn(const Buffer<float>& column) {
 
     jassert(downsampAcc.size() >= draw.sizeY);
 
-    Buffer<float> downsampAcc(downsampAcc.withSize(draw.sizeY));
+    Buffer downsampAccum(downsampAcc.withSize(draw.sizeY));
     Buffer downsampBuff(downsampBuf.withSize(draw.sizeY));
 
-    downsampAcc.zero();
+    downsampAccum.zero();
 
     int buffsToMerge = draw.reduced ? 1 : downsampleFactor;
     for (int k = 0; k < buffsToMerge; ++k) {
         int phase = k;
 
         downsampBuff.downsampleFrom(column, downsampleFactor, phase);
-        downsampAcc.add(downsampBuff);
+        downsampAccum.add(downsampBuff);
     }
 
     if(buffsToMerge > 1) {
-        downsampAcc.mul(1 / float(buffsToMerge));
+        downsampAccum.mul(1 / float(buffsToMerge));
     }
 }
 

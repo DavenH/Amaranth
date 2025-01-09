@@ -31,7 +31,12 @@ public:
     void setFFTScaleType(int type)      { scaleType = type;     }
     void setRemovesOffset(bool does)    { removeOffset = does;  }
 
-    Buffer<Complex32> getComplex() const;
+    Buffer<Complex32> getComplex() const {
+        int size = 1 << (order - 1);
+        jassert(fftBuffer.size() >= size * 2 + 2);
+
+        return fftBuffer.toType<Complex32>();
+    }
     Buffer<float> getMagnitudes()       { return magnitudes;    }
     Buffer<float> getPhases()           { return phases;        }
     Buffer<float> getFFTBuffer()        { return fftBuffer;     }

@@ -66,13 +66,13 @@ void ReverbEffect::processBuffer(AudioSampleBuffer &buffer) {
         Buffer<float> merge = mergeBuffer.withSize(numSamples);
         float level = 1 - 0.24f * wetLevel;
 
-        merge.mul(outBuffer.left, 			wetLevel * jmax(0.5f, width));
-        merge.addProduct(outBuffer.right, 	wetLevel * jmin(0.5f, 1.f - width));
+        VecOps::mul(outBuffer.left, wetLevel * jmax(0.5f, width), merge);
+        merge.addProduct(outBuffer.right, wetLevel * jmin(0.5f, 1.f - width));
 
         input.left.mul(level).add(merge);
 
-        merge.mul(outBuffer.right, 			wetLevel * jmax(0.5f, width));
-        merge.addProduct(outBuffer.left, 	wetLevel * jmin(0.5f, 1.f - width));
+        VecOps::mul(outBuffer.right, wetLevel * jmax(0.5f, width), merge);
+        merge.addProduct(outBuffer.left, wetLevel * jmin(0.5f, 1.f - width));
 
         input.right.mul(level).add(merge);
     }

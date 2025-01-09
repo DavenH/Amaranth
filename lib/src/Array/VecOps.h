@@ -25,7 +25,7 @@ namespace VecOps {
     template<typename T> void sinc(Buffer<T> kernel, Buffer<T> window, T relFreq);
 
     // finite impulse response filter
-    template<typename T> void fir(Buffer<T> src, Buffer<T> dst, T relFreq, bool trim = false);
+    template<typename T> void fir(const Buffer<T>& src, Buffer<T> dst, T relFreq, bool trim = false);
 
     template<typename T, typename S> void roundDown(Buffer<T> a, Buffer<S> b);
     template<typename T, typename S> void convert(Buffer<T> src, Buffer<S> dst);

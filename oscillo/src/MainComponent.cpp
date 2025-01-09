@@ -107,7 +107,7 @@ void MainComponent::updateHistoryImage() {
         }
 
         Resampling::linResample(workBuffer.withSize(samplesInColumn), resampleBuffer);
-        resampleBuffer.threshLT(-1.f).threshGT(1.0f);
+        resampleBuffer.clip(-1.f, 1.f);
 
         transform.forward(resampleBuffer);
         Buffer<float> magnitudes = transform

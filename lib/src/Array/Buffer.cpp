@@ -7,29 +7,29 @@
 #pragma warning(disable: 4661)
 
 #define declareForCommonTypes(T) \
-    T(Int8u)   \
-    T(Int8s)   \
-    T(Int16s)  \
-    T(Int32s)  \
-    T(Float32) \
-    T(Float64)
+    T(8u)   \
+    T(16s)  \
+    T(32s)  \
+    T(32f) \
+    T(64f) \
+    T(32fc)
 
 #define declareForReal(T) \
-    T(Float32) \
-    T(Float64)
+    T(32f) \
+    T(64f)
 
 #define declareForRealPrec(T) \
-    T(Float32, A11) \
-    T(Float64, A50)
+    T(32f, A11) \
+    T(64f, A50)
 
 #define declareForRealAndCplx(T) \
-    T(Float32)  \
-    T(Float64)  \
-    T(Complex32)
+    T(32f)  \
+    T(64f)  \
+    T(32fc)
 
 #define declareForFloatAndCplx(T) \
-    T(Float32)  \
-    T(Complex32)
+    T(32f)  \
+    T(32fc)
 
 template class Buffer<Int8u>;
 template class Buffer<Int8s>;
@@ -117,14 +117,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::add(Buffer<Ipp##T> buff)        \
     return *this;                                               \
 }
 
-#define constructAdd2(T)                                        \
-template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::add(Buffer<Ipp##T> src1, Buffer<Ipp##T> src2) \
-{                                                               \
-    ippsAdd_##T(src1.ptr, src2.ptr, ptr, jmin(sz, src1.sz, src2.sz)); \
-    return *this;                                               \
-}
-
 #define constructAddC(T)                                        \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::add(Ipp##T c)                   \
@@ -159,14 +151,6 @@ template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::sub(Buffer<Ipp##T> buff)        \
 {                                                               \
     ippsSub_##T##_I(buff.ptr, ptr, jmin(sz, buff.sz));          \
-    return *this;                                               \
-}
-
-#define constructSubB(T)                                        \
-template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::sub(Buffer<Ipp##T> src1, Buffer<Ipp##T> src2) \
-{                                                               \
-    ippsSub_##T(src1.ptr, src2.ptr, ptr, jmin(sz, src1.sz, src2.sz)); \
     return *this;                                               \
 }
 
@@ -236,7 +220,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::div(Ipp##T c)                   \
     return *this;                                               \
 }
 
-template<> Buffer<Float32c>& Buffer<Float32c>::mul(Float32c c)
+template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Ipp32fc c)
 {
     if(c.re != 1 || c.im != 0)
         ippsMulC_32fc_I(c, ptr, sz);
@@ -255,11 +239,11 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::mul(Buffer<Ipp##T> buff, Ipp##T c) \
     return *this;                                               \
 }
 
-#define constructSqrt(T)                                        \
+#define constructSqrt(T, prec)                                  \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::sqrt()                          \
 {                                                               \
-    ippsSqrt_##T##_A11(ptr, ptr, sz);                           \
+    ippsSqrt_##T##_##prec(ptr, ptr, sz);                        \
     return *this;                                               \
 }
 
@@ -408,11 +392,21 @@ Ipp##T Buffer<Ipp##T>::sum() const                              \
     return sum;                                                 \
 }
 
-#define constructPow(T, prec)                                    \
+#define constructPow(T, prec)                                   \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::pow(Ipp##T c) {                 \
     if(c != 1.)                                                 \
-        ippsPowx_##T_##prec(ptr, c, ptr, sz);                   \
+        ippsPowx_##T##_##prec(ptr, c, ptr, sz);                 \
+    return *this;                                               \
+}
+
+#define constructPowCRev(T, prec)                               \
+template<>                                                      \
+Buffer<Ipp##T>& Buffer<Ipp##T>::powCRev(Ipp##T k) {             \
+    if(sz == 0 || k == 1) return *this;                         \
+    Ipp##T c = std::log(k);                                     \
+    ippsMulC_##T##_I(c, ptr, sz);                               \
+    ippsExp_##T##_##prec(ptr, ptr, sz);                         \
     return *this;                                               \
 }
 
@@ -561,7 +555,7 @@ template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::clip(Ipp##T low, Ipp##T high)   \
 {                                                               \
     if(sz > 0)                                                  \
-        ippsThreshold_LTValGTVal_32f_I(ptr, sz, low, low, high, high); \
+        ippsThreshold_LTValGTVal_##T##_I(ptr, sz, low, low, high, high); \
     return *this;                                               \
 }
 
@@ -602,7 +596,10 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
                                                                 \
     int destSize;                                               \
                                                                 \
-    ippsSampleUp_##T(buff.ptr, buff.size(), ptr, &destSize, factor, &phase); \
+    ippsSampleUp_##T(                                           \
+        buff.ptr, buff.size(),                                  \
+        ptr, &destSize, factor, &phase                          \
+    );                                                          \
     return phase;                                               \
 }
 
@@ -611,6 +608,7 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
     Buffer<Ipp##T>& Buffer<Ipp##T>::hann() {     \
         if(sz == 0) return *this;                \
         ippsWinHann_##T(ptr, ptr, sz);           \
+        return *this;                            \
     }
 
 #define constructWinBlackman(T)                  \
@@ -618,10 +616,11 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
     Buffer<Ipp##T>& Buffer<Ipp##T>::blackman() { \
         if(sz == 0) return *this;                \
         ippsWinBlackmanStd_##T(ptr, ptr, sz);    \
+        return *this;                            \
     }
 
-#define implementOperators(T) \
-template<> \
+#define implementOperators(T)                                  \
+template<>                                                     \
 void Buffer<Ipp##T>::operator+=(const Buffer<Ipp##T>& other) { \
     add(other);                                                \
 }                                                              \
@@ -679,15 +678,11 @@ declareForCommonTypes(constructPhase);
 declareForRealAndCplx(constructAdd);
 declareForRealAndCplx(constructDiv);
 declareForRealAndCplx(constructSub);
-declareForRealAndCplx(constructAdd2);
-declareForRealAndCplx(constructMulComb2);
 declareForFloatAndCplx(constructCombine);
 declareForReal(constructAddC);
-declareForReal(constructAddBuffC);
 declareForReal(constructMul);
 declareForReal(constructMulC);
 declareForReal(constructDivC);
-declareForReal(constructMulComb);
 declareForReal(constructSubC);
 declareForReal(constructSubCRev);
 declareForReal(constructRamp);
@@ -697,10 +692,11 @@ declareForReal(constructNormL2);
 declareForReal(constructAbs);
 declareForReal(constructClip);
 declareForReal(constructMax);
-declareForRealAndCplx(constructThreshLT);
+declareForReal(constructThreshLT);
 declareForReal(constructThreshGT);
 declareForReal(constructWinHann);
 declareForReal(constructWinBlackman);
+declareForReal(constructFlip);
 
 declareForRealPrec(constructSqrt)
 declareForRealPrec(constructPow)
@@ -708,6 +704,8 @@ declareForRealPrec(constructInv)
 declareForRealPrec(constructExp)
 declareForRealPrec(constructSin)
 declareForRealPrec(constructTanh)
+declareForRealPrec(constructPowCRev)
+
 
 constructNormDiffL2(32f);
 constructDownsample(32f);
@@ -715,12 +713,11 @@ constructUpsample(32f);
 constructSubCRevB(32f);
 constructDot(32f);
 constructCombineC(32f);
-constructDivCRev(32f);
 constructSqr(32f);
 constructLn(32f);
 constructSum(32f);
-constructSubB(32f);
-constructFlip(32f);
+constructDivCRev(32f);
+
 constructMin(32f);
 constructMaxVal(32f);
 constructMinVal(32f);
@@ -729,7 +726,6 @@ constructRand(32f);
 constructMean(32f);
 constructStddev(32f);
 constructSort(32f);
-constructDiff(32f);
 
 implementOperators(32f)
 implementOperators(64f)

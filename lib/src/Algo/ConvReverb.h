@@ -24,15 +24,11 @@ private:
         if(buffer.empty())
             return true;
 
-        bool isEmpty = true;
-        int size = buffer.size() / 2;
-
-        while (isEmpty && size > 0) {
-            const Complex32& val = buffer[size];
-            isEmpty &= (val == Complex32());
-            size >>= 1;
-        }
-
+        Complex32 sum = buffer.sum();
+        bool isEmpty = perfSplit(
+            std::abs(sum.im) < 1e-6f && std::abs(sum.re) < 1e-6f,
+            std::abs(sum.imag()) < 1e-6f && std::abs(sum.real()) < 1e-6f
+        );
         return isEmpty;
     }
 

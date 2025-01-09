@@ -3,11 +3,11 @@
 
 using namespace juce;
 
-#ifdef USE_IPP
+  #ifdef USE_IPP
     #include <ipp.h>
     #define perfSplit(X, Y) X
     #include <ipp.h>
-    using Int8u = Int8u;
+    using Int8u = Ipp8u;
     using Int8s = Ipp8s;
     using Int16s = Ipp16s;
     using Int32s = Ipp32s;
@@ -15,7 +15,7 @@ using namespace juce;
     using Float64 = Ipp64f;
     using Complex32 = Ipp32fc;
     using Complex64 = Ipp64fc;
-#elif defined(USE_ACCELERATE)
+  #elif defined(USE_ACCELERATE)
     #define perfSplit(X, Y) Y
     #include <cstdint>
     #include <complex>
@@ -30,9 +30,9 @@ using namespace juce;
     using Float64 = double;
     using Complex32 = std::complex<float>;
     using Complex64 = std::complex<double>;
-#else
+  #else
     #error "No Performance Library specified"
-#endif
+  #endif
 
 template<class T>
 class Buffer
@@ -61,38 +61,37 @@ public:
     T min()     const;
     T normL1()  const;                // sum(abs(ptr[i]))
     T normL2()  const;                // sqrt(sum(ptr[i])**2)
-    T stddev()  const;
-    T sum()     const;
+    T stddev()  const;                // standard deviation
+    T sum()     const;                // sum(ptr[i])
     T normDiffL2(Buffer buff) const;  // sqrt(sum(buff[i] - ptr[i])**2)
     T dot(Buffer buff) const;
 
     // init (overwrites)
-    Buffer& zero();
-    Buffer& zero(int size);
-    Buffer& rand(unsigned& seed);
+    Buffer& zero();                  // ptr[i] = 0
+    Buffer& zero(int size);          // ptr[i] = 0, 0<=i< size
+    Buffer& rand(unsigned& seed);    // ptr[i] = rand(0, 1)
     Buffer& ramp();                  // ptr[i] = i / (sz - 1)
     Buffer& ramp(T offset, T delta); // ptr[i] = offset + i * delta
-    Buffer& hann();
-    Buffer& blackman();
+    Buffer& hann();                  // ptr[i] = winHann(i/(sz-1))
+    Buffer& blackman();              // ptr[i] = winBlackman(i/(sz-1))
 
     // nullary math
-    Buffer& abs();
-    Buffer& inv(); // reciprocal
-    Buffer& exp();
-    Buffer& ln(); // natural log
-    Buffer& sin();
-    Buffer& tanh();
-    Buffer& sqr();
-    Buffer& sqrt();
-    Buffer& undenormalize();
+    Buffer& abs();  // ptr[i] = abs(ptr[i])
+    Buffer& inv();  // ptr[i] = 1 / ptr[i]
+    Buffer& exp();  // ptr[i] = e ** ptr[i]
+    Buffer& ln();   // ptr[i] = log_e(ptr[i])
+    Buffer& sin();  // ptr[i] = sin(ptr[i])
+    Buffer& tanh(); // ptr[i] = tanh(ptr[i])
+    Buffer& sqr();  // ptr[i] = ptr[i] ** 2
+    Buffer& sqrt(); // ptr[i] = ptr[i] ** 0.5
 
     // unary constant
-    Buffer& set(T c);
-    Buffer& pow(T c);
-    Buffer& add(T c);
-    Buffer& mul(T c);
-    Buffer& div(T c);
-    Buffer& sub(T c);
+    Buffer& set(T c); // ptr[i] = c
+    Buffer& pow(T c); // ptr[i] **= c
+    Buffer& add(T c); // ptr[i] += c
+    Buffer& mul(T c); // ptr[i] *= c
+    Buffer& div(T c); // ptr[i] /= c, unless c = 0, then it is a no-op
+    Buffer& sub(T c); // ptr[i] -= c
 
     // reverse ops
     Buffer& subCRev(T c); // ptr[i] = c - ptr[i]
@@ -106,18 +105,17 @@ public:
     Buffer& mul(Buffer buff); // ptr[i] *= buff[i]
     Buffer& div(Buffer buff); // ptr[i] /= buff[i]
 
-    Buffer& add(Buffer buff, T c); // ptr[i] += buff[i] * c
-    Buffer& addProduct(Buffer buff, T c);
-    Buffer& addProduct(Buffer src1, Buffer src2);
+    Buffer& addProduct(Buffer buff, T c); // ptr[i] += buff[i] * c
+    Buffer& addProduct(Buffer src1, Buffer src2); // ptr[i] += src1[i] + src2[i]
 
     // thresholding
-    Buffer& clip(T low, T high);
-    Buffer& threshLT(T c);
-    Buffer& threshGT(T c);
+    Buffer& clip(T low, T high); // ptr[i] = max(low, min(high, ptr[i]))
+    Buffer& threshLT(T c); // ptr[i] = min(c, ptr[i])
+    Buffer& threshGT(T c); // ptr[i] = max(c, ptr[i])
 
     // value shifting
-    Buffer& flip();
-    Buffer& withPhase(int phase, Buffer workBuffer);
+    Buffer& flip(); // ptr[i] = ptr[sz-1-i]
+    Buffer& withPhase(int phase, Buffer workBuffer); // ptr[i] = ptr[(i + phase)%sz]
     Buffer& sort();
 
     // returns phase
@@ -207,8 +205,6 @@ public:
         int newSize = (sizeof(T) * sz) / sizeof(S);
         return Buffer<S>(reinterpret_cast<S*>(ptr), newSize);
     }
-
-    void mul(const Buffer<float> & c, float x);
 
 protected:
     int sz;
