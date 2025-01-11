@@ -110,12 +110,12 @@ public:
 
     // thresholding
     Buffer& clip(T low, T high); // ptr[i] = max(low, min(high, ptr[i]))
-    Buffer& threshLT(T c); // ptr[i] = min(c, ptr[i])
-    Buffer& threshGT(T c); // ptr[i] = max(c, ptr[i])
+    Buffer& threshLT(T c); // ptr[i] = max(c, ptr[i])
+    Buffer& threshGT(T c); // ptr[i] = min(c, ptr[i])
 
     // value shifting
     Buffer& flip(); // ptr[i] = ptr[sz-1-i]
-    Buffer& withPhase(int phase, Buffer workBuffer); // ptr[i] = ptr[(i + phase)%sz]
+    Buffer& withPhase(int phase, Buffer workBuffer); // ptr[(i + phase)%sz] = ptr[i]
     Buffer& sort();
 
     // returns phase

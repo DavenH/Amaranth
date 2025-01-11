@@ -1477,9 +1477,6 @@ void VisualDsp::processThroughEffects(int numColumns) {
             col.latency &= (col.size() - 1);
             if(col.latency > 0) {
                 col.withPhase(col.latency, moveBuffer);
-                // ippsCopy_32f(col + col.latency, moveBuffer, col.size() - col.latency);
-                // ippsCopy_32f(col, moveBuffer.offset(col.size() - col.latency),  col.latency);
-                // moveBuffer.copyTo(col);
                 col.latency = 0;
             }
 

@@ -327,18 +327,14 @@ void Panel3D::setColumnColourIndices() {
         .withSize(draw.sizeY)
         .copyTo(clrIndicesA.withSize(draw.sizeY));
 
-    Buffer<float> downsampAcc(downsampAcc.withSize(draw.sizeY));
-    downsampAcc.mul(volumeScale)
+    Buffer downsampAccum(downsampAcc.withSize(draw.sizeY));
+    downsampAccum.mul(volumeScale)
         .add(volumeTrans)
         .clip(0, gradientWidth/(float)(gradientWidth - 1))
         .mul(gradientWidth);
 
-    VecOps::roundDown(downsampAcc, clrIndicesB.withSize(draw.sizeY));
-    // ippsConvert_32f16s_Sfs(downsampAcc, clrIndicesB, draw.sizeY, ippRndZero, -9);
-    // ippsThreshold_16s_I(clrIndicesB, draw.sizeY, gradientWidth - 1, ippCmpGreater);
-    // ippsThreshold_16s_I(clrIndicesB, draw.sizeY, 0, ippCmpLess);
+    VecOps::roundDown(downsampAccum, clrIndicesB.withSize(draw.sizeY));
     clrIndicesA.mul(draw.stride);
-    // ippsMulC_16s_I(draw.stride, clrIndicesB, draw.sizeY);
 }
 
 void Panel3D::setVertices(int column, Buffer<float> vertices) const {

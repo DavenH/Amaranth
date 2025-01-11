@@ -19,7 +19,7 @@
     T(64f)
 
 #define declareForRealPrec(T) \
-    T(32f, A11) \
+    T(32f, A24) \
     T(64f, A50)
 
 #define declareForRealAndCplx(T) \
@@ -320,10 +320,11 @@ void Buffer<Ipp##T>::copyTo(Buffer<Ipp##T> buff) const          \
 
 #define constructPhase(T)                                       \
 template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::withPhase(int phase, Buffer<Ipp##T> workBuffer) \
-{                                                               \
-    if(phase == 0)                                              \
+Buffer<Ipp##T>& Buffer<Ipp##T>::withPhase(int phase,            \
+        Buffer<Ipp##T> workBuffer) {                            \
+    if(phase == 0 || sz == 0)                                   \
         return *this;                                           \
+    phase = phase % sz;                                         \
     section(phase, sz - phase).copyTo(workBuffer);              \
     copyTo(workBuffer.section(sz - phase, phase));              \
     workBuffer.copyTo(*this);                                   \
@@ -563,10 +564,10 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::clip(Ipp##T low, Ipp##T high)   \
 template<>                                                      \
 int Buffer<Ipp##T>::downsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
 {                                                               \
+    if(sz == 0 || buff.empty())                                 \
+        return 0;                                               \
     if(factor < 0)                                              \
         factor = buff.size() / sz;                              \
-    if(sz == 0)                                                 \
-        return 0;                                               \
                                                                 \
     if(factor == 1) {                                           \
         buff.copyTo(*this);                                     \
@@ -584,10 +585,10 @@ int Buffer<Ipp##T>::downsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
 template<>                                                      \
 int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
 {                                                               \
-    if(factor < 0)                                              \
-        factor = buff.size() / sz;                              \
-    if(sz == 0)                                                 \
+    if(sz == 0 || buff.empty())                                 \
         return 0;                                               \
+    if(factor < 0)                                              \
+        factor = sz / buff.size();                              \
                                                                 \
     if(factor == 1) {                                           \
         buff.copyTo(*this);                                     \
