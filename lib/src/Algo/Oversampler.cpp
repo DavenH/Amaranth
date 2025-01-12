@@ -3,6 +3,11 @@
 #include "../App/MemoryPool.h"
 #include "../Definitions.h"
 
+#ifdef USE_ACCELERATE
+#define VIMAGE_H
+#include <Accelerate/Accelerate.h>
+#endif
+
 Oversampler::Oversampler(SingletonRepo* repo, int kernelSize) :
         memoryBuf        (getObj(MemoryPool).getAudioPool())
     ,   oversampleFactor (1)
@@ -181,7 +186,8 @@ void Oversampler::updateTaps() {
     ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterUpState);
     ippsFIRSRInit_32f(firTaps, firTaps.size(), ippAlgAuto, filterDownState);
   #else
-    firTaps.sinc(relativeFreq);
+    ScopedAlloc<Float32> windowMem(firTaps.size());
+    VecOps::sinc(firTaps, windowMem, (float) relativeFreq);
   #endif
 }
 

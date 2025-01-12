@@ -29,7 +29,7 @@ Panel3D::Panel3D(
     ,   volumeTrans         (0.5f)
     ,   haveLogarithmicY    (false)
     ,   updateSource        (updateSource)
-    ,   useVertices         (useVertices)
+    ,   useVertices         (false)
     ,   haveHorzZoom        (haveHorzZoom)
     ,   dataRetriever       (retriever)
 {

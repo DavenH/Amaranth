@@ -115,7 +115,7 @@ void Transform::forward(Buffer<float> src) {
   #endif
 }
 
-void Transform::inverse(const Buffer<Ipp32fc>& fftInput, const Buffer<float>& dest) {
+void Transform::inverse(const Buffer<Complex32>& fftInput, const Buffer<float>& dest) {
   #ifdef USE_ACCELERATE
     DSPComplex c;
     c.realp = reinterpret_cast<float*>(fftInput.get());

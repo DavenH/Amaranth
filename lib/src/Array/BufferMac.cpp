@@ -499,8 +499,4 @@ int Buffer<Float32>::downsampleFrom(Buffer<Float32> buff, int factor, int phase)
     return phase;
 }
 
-template<> Buffer<Float32>& Buffer<Float32>::undenormalize() { return *this; }
-template<> Buffer<Float64>& Buffer<Float64>::undenormalize() { return *this; }
-
-
 #endif // USE_ACCELERATE
