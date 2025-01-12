@@ -59,15 +59,12 @@ void AutoModeller::preparePoints() {
     int length = srcSamples.size();
     int kernelSize = 32;
 
-    ScopedAlloc<float> memory(length * 2 + kernelSize * 2);
+    ScopedAlloc<float> memory(length * 2 + kernelSize);
 
-    Buffer<float> filtered = memory.place(length);
+    Buffer<float> filtered = memory.place(length + kernelSize);
     Buffer<float> ramp = memory.place(length);
-    Buffer<float> kernel = memory.place(kernelSize);
-    Buffer<float> window = memory.place(kernelSize);
 
-    VecOps::sinc(kernel, window, 0.3f);
-    VecOps::conv(srcSamples, kernel, filtered);
+    VecOps::fir(srcSamples, filtered, 0.3f);
 
     float left = leftSamplingOffset;
     float delta = (rightSamplingOffset - leftSamplingOffset) / float(length);

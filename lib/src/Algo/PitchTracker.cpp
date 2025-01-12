@@ -37,10 +37,10 @@ void PitchTracker::yin() {
     int lagSize       = maxlag - minlag;
     int offset        = 0;
 
-    ScopedAlloc<float> memory(sample->size() + numSamples16k + data.step + lagSize * 2);
+    ScopedAlloc<float> memory(sample->size() + numSamples16k + data.step + lagSize * 2 + 32);
 
     Buffer<float> wavBuff   = sample->audio.left;
-    Buffer<float> wavCopy   = memory.place(sample->size());
+    Buffer<float> wavCopy   = memory.place(sample->size() + 32);
     Buffer<float> resamp16k = memory.place(numSamples16k);
     Buffer<float> diff      = memory.place(data.step);
     Buffer<float> ramp      = memory.place(lagSize);
@@ -51,7 +51,7 @@ void PitchTracker::yin() {
     {
         wavBuff.copyTo(wavCopy);
 
-        VecOps::fir(wavBuff, wavCopy, jmin(0.5f, 0.25f / rateRatio), true);
+        VecOps::fir(wavBuff, wavCopy, jmin(0.5f, 0.25f / rateRatio));
     }
 
     Resampling::linResample(wavBuff, resamp16k);
@@ -425,7 +425,8 @@ void PitchTracker::calcLambda(Window& window, const Buffer<float>& realErbIdx) {
 
     mu.set(1.f);
     lambda.abs();
-    mu.subCRev(1.f, lambda).copyTo(lambda);
+    VecOps::subCRev(lambda, 1.f, mu);
+    mu.copyTo(lambda);
 }
 
 void PitchTracker::swipe() {

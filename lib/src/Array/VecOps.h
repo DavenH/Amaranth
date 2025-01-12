@@ -36,6 +36,9 @@ namespace VecOps {
     // T = Float32
     template<typename T> void divCRev(Buffer<T> src, T k, Buffer<T> dst);
 
+    // dst[i] = k - src[i]
+    template<typename T> void subCRev(Buffer<T> src, T c, Buffer<T> dst);
+
     // dst[i] = k * src[i]
     // T = Float32, Float64
     template<typename T> void mul(Buffer<T> srcA, T k, Buffer<T> dst);

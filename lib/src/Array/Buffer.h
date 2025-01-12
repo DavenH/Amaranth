@@ -42,11 +42,11 @@ public:
     Buffer(T* array, int size)              : ptr(array),       sz(size)        {}
     Buffer(const Buffer& buff)              : ptr(buff.get()),  sz(buff.size()) {}
     Buffer(const Buffer& buff, int size)    : ptr(buff.get()),  sz(size)        { jassert(buff.size() >= size); }
-    explicit Buffer(AudioSampleBuffer& audioBuffer, int chan = 0);
+    explicit Buffer(AudioBuffer<T>& audioBuffer, int chan = 0);
 
     virtual ~Buffer() = default;
 
-    /* —————————————————————————————————————————————————————————————————————————————————————————————————————— */
+    /* ——————————————————————————————————————————————————————————————————————————————— */
 
     void copyTo(Buffer buff)         const;
     void getMax(T& pMax, int& index) const;
@@ -75,6 +75,10 @@ public:
     Buffer& hann();                  // ptr[i] = winHann(i/(sz-1))
     Buffer& blackman();              // ptr[i] = winBlackman(i/(sz-1))
 
+    // the remaining methods operate on the contents of underlying array.
+    // Expressions that totally replace the contents will be in VecOps,
+    // and of the form op(src, args, dst)
+
     // nullary math
     Buffer& abs();  // ptr[i] = abs(ptr[i])
     Buffer& inv();  // ptr[i] = 1 / ptr[i]
@@ -97,7 +101,6 @@ public:
     Buffer& subCRev(T c); // ptr[i] = c - ptr[i]
     Buffer& divCRev(T c); // ptr[i] = c / ptr[i]
     Buffer& powCRev(T c); // ptr[i] = c ** ptr[i]
-    Buffer& subCRev(T c, Buffer buff); // ptr[i] = c - buff[i]
 
     // unary buffer
     Buffer& sub(Buffer buff); // ptr[i] -= buff[i]
@@ -116,13 +119,13 @@ public:
     // value shifting
     Buffer& flip(); // ptr[i] = ptr[sz-1-i]
     Buffer& withPhase(int phase, Buffer workBuffer); // ptr[(i + phase)%sz] = ptr[i]
-    Buffer& sort();
+    Buffer& sort(); // sorts in ascending order
 
     // returns phase
     int downsampleFrom(Buffer buff, int factor = -1, int phase = 0);
     int upsampleFrom(Buffer buff, int factor = -1, int phase = 0);
 
-    /* —————————————————————————————————————————————————————————————————————————————————————————————————————— */
+    /* ——————————————————————————————————————————————————————————————————————————————— */
 
     T* begin()                  { return ptr;       }
     T* end()                    { return ptr + sz;  }

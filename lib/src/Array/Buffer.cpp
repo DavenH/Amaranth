@@ -55,16 +55,8 @@ bool Buffer<float>::isProbablyEmpty() const {
     return isEmpty;
 }
 
-template<>
-Buffer<double>::Buffer(AudioSampleBuffer& audioBuffer, int chan) :
-    ptr(nullptr), sz(0) {
-}
-
-template<>
-Buffer<float>::Buffer(AudioSampleBuffer& audioBuffer, int chan) :
-        ptr(audioBuffer.getWritePointer(chan)),
-        sz(audioBuffer.getNumSamples()) {
-}
+defineAudioBufferConstructor(Float32)
+defineAudioBufferConstructor(Float64)
 
 #define constructStddev(T)                                      \
 template<>                                                      \

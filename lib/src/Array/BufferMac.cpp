@@ -294,22 +294,8 @@ Buffer<Float32>& Buffer<Float32>::subCRev(Float32 c) {
 }
 
 template<>
-Buffer<Float32>& Buffer<Float32>::subCRev(Float32 c, Buffer buff) {
-    vDSP_vneg(buff.get(), 1, ptr, 1, vDSP_Length(sz));
-    vDSP_vsadd(VDSP_AUTO_ARGC_PATTERN);
-    return *this;
-}
-
-template<>
 Buffer<Float64>& Buffer<Float64>::subCRev(Float64 c) {
     vDSP_vnegD(VDSP_AUTO_ARG_PATTERN);
-    vDSP_vsaddD(VDSP_AUTO_ARGC_PATTERN);
-    return *this;
-}
-
-template<>
-Buffer<Float64>& Buffer<Float64>::subCRev(Float64 c, Buffer buff) {
-    vDSP_vnegD(buff.get(), 1, ptr, 1, vDSP_Length(sz));
     vDSP_vsaddD(VDSP_AUTO_ARGC_PATTERN);
     return *this;
 }
@@ -564,14 +550,7 @@ void Buffer<T>::operator>>(Buffer<T> other) const {  \
 implementOperators(Float32)
 implementOperators(Float64)
 
-template<>
-Buffer<double>::Buffer(AudioSampleBuffer& audioBuffer, int chan) : ptr(nullptr), sz(0) {
-}
-
-template<>
-Buffer<float>::Buffer(AudioSampleBuffer& audioBuffer, int chan) :
-        ptr(audioBuffer.getWritePointer(chan)),
-        sz(audioBuffer.getNumSamples()) {
-}
+defineAudioBufferConstructor(Float32)
+defineAudioBufferConstructor(Float64)
 
 #endif // USE_ACCELERATE

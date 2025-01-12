@@ -45,9 +45,9 @@ template<> void VecOps::mul(Float32* src, Float32 k, Float32* dst, int len) {
 }
 template<>
 void VecOps::mul(Buffer<Float64> src, Float64 k, Buffer<Float64> dst) {
-    BUFFS_EQ_CHECK
-    vDSP_vsmulD(src.get(), 1, &k, dst.get(), 1, src.size());
+    vDSP_vsmulD(src.get(), 1, &k, dst.get(), 1, jmin(src.size(), dst.size()));
 }
+
 template<>
 void VecOps::mul(Buffer<Complex32> src, Complex32 val, Buffer<Complex32> dst) {
     BUFFS_EQ_CHECK
@@ -62,6 +62,17 @@ void VecOps::mul(Buffer<Complex32> src, Complex32 val, Buffer<Complex32> dst) {
 }
 template<> void VecOps::addProd(Float32* src, Float32 k, Float32* dst, int len) {
     vDSP_vsma(src, 1, &k, dst, 1, dst, 1, len);
+}
+
+template<>
+void VecOps::subCRev(Buffer<Float32> buff, Float32 c, Buffer<Float32> dst) {
+    vDSP_vneg(buff.get(), 1, dst.get(), 1, vDSP_Length(jmin(dst.size(), buff.size())));
+    vDSP_vsadd(dst.get(), 1, &c, dst.get(), 1, vDSP_Length(dst.size()));
+}
+template<>
+void VecOps::subCRev(Buffer<Float64> buff, Float64 c,Buffer<Float64> dst) {
+    vDSP_vnegD(buff.get(), 1, dst.get(), 1, vDSP_Length(jmin(dst.size(), buff.size())));
+    vDSP_vsaddD(dst.get(), 1, &c, dst.get(), 1, vDSP_Length(dst.size()));
 }
 
 #define defineDiff(type, fn) \
@@ -249,7 +260,6 @@ template<> void VecOps::fir(const Buffer<Float32>& src, Buffer<Float32> dst, flo
 #endif
 
 template<> void VecOps::divCRev(Buffer<Float32> src, Float32 k, Buffer<Float32> dst) { src.copyTo(dst); dst.divCRev(k); }
-// template<> void VecOps::divCRev(Buffer<Float64> src, Float64 k, Buffer<Float64> dst) { src.copyTo(dst); dst.divCRev(k); }
 template<> void VecOps::flip(Buffer<Float32> src, Buffer<Float32> dst) { src.copyTo(dst); dst.flip();  }
 template<> void VecOps::flip(Buffer<Float64> src, Buffer<Float64> dst) { src.copyTo(dst); dst.flip();  }
 

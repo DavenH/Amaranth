@@ -30,6 +30,12 @@
     T(Complex32, 32fc)\
     T(Complex64, 64fc)
 
+#define defineAudioBufferConstructor(T) \
+    template<> Buffer<T>::Buffer(AudioBuffer<T>& audioBuffer, int chan) : \
+        ptr(audioBuffer.getWritePointer(chan)), \
+        sz(audioBuffer.getNumSamples()) {}
+
+
 #ifdef USE_ACCELERATE
 
 #define CPLX_TRIADIC_SETUP(src1, src2, dst)            \
