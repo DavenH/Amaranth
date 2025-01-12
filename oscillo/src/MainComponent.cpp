@@ -24,7 +24,7 @@ MainComponent::MainComponent()
     };
     updateCurrentNote();
 
-    transform.allocate(kImageHeight, true);
+    transform.allocate(kImageHeight, Transform::DivFwdByN, true);
     cyclogram   = Image(Image::RGB, kHistoryFrames, kImageHeight, true);
     spectrogram = Image(Image::RGB, kHistoryFrames, kImageHeight / 8, true);
     setSize(1280, 960);
@@ -124,7 +124,7 @@ void MainComponent::updateHistoryImage() {
         for (int y = 0; y < magnitudes.size(); ++y) {
             float value = magnitudes[y];
             auto color  = inferno.getColour(static_cast<int>(value * (kNumColours - 0.01)));
-            spectData.setPixelColour(col, cyclogram.getHeight() - 1 - y, color);
+            spectData.setPixelColour(col, spectrogram.getHeight() - 1 - y, color);
         }
 
     }
