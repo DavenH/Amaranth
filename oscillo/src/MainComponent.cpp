@@ -27,8 +27,10 @@ MainComponent::MainComponent()
     transform.allocate(kImageHeight, Transform::DivFwdByN, true);
     cyclogram   = Image(Image::RGB, kHistoryFrames, kImageHeight, true);
     spectrogram = Image(Image::RGB, kHistoryFrames, kImageHeight / 8, true);
+    Component::setVisible(true);
     setSize(1280, 960);
     startTimer(50);
+
     processor.start();
 }
 
@@ -44,6 +46,7 @@ void MainComponent::paint(Graphics& g) {
 
 void MainComponent::resized() {
     auto area = getLocalBounds();
+    std::cout << "Resized " << area.getWidth() << " " << area.getHeight() << std::endl;
     keyboard->setBounds(area.removeFromBottom(100));
     auto row = area.removeFromBottom(100);
     temperamentControls->setBounds(row.reduced(10));
@@ -150,6 +153,7 @@ void MainComponent::drawHistoryImage(Graphics& g) {
 }
 
 void MainComponent::timerCallback() {
+    std::cout << "Timer callback" << std::endl;
     updateHistoryImage();
     repaint();
 }

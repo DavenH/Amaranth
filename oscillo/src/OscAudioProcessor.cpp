@@ -67,6 +67,7 @@ void OscAudioProcessor::audioDeviceIOCallbackWithContext(
         rwBufferAudioThread.retract();
     }
     rwBufferAudioThread.write(currentSamples);
+    std::cout << accumulatedSamples << std::endl;
 
     auto period = targetPeriod;
 
