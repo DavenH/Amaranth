@@ -367,7 +367,7 @@ TEST_CASE("Buffer arithmetic edge cases", "[buffer][arithmetic]") {
 
         // Test division by zero buffer
         buf /= zero;
-        REQUIRE(isinff(buf[0]));
+        REQUIRE(isinf(buf[0]));
     }
 
     SECTION("operations with different sized buffers") {

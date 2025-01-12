@@ -96,6 +96,7 @@ void Transform::forward(Buffer<float> src) {
         case DivFwdByN:
             fftBuffer.toType<Float32>().mul(1 / size);
             break;
+        default: break;
     }
 
     if (convertToCart) {
@@ -117,13 +118,10 @@ void Transform::forward(Buffer<float> src) {
 
 void Transform::inverse(const Buffer<Complex32>& fftInput, const Buffer<float>& dest) {
   #ifdef USE_ACCELERATE
-    DSPComplex c;
-    c.realp = reinterpret_cast<float*>(fftInput.get());
-    c.imagp = reinterpret_cast<float*>(fftInput.get()) + 1;
-    // this mutates the fftBuffer, referenced by the splitComplex real/imag pointers
-    vDSP_ctoz(&c, 1, &splitComplex, 1, size / 2);
-
     int size = 1 << (order - 1);
+    // this mutates the fftBuffer, referenced by the splitComplex real/imag pointers
+    vDSP_ctoz(reinterpret_cast<DSPComplex *>(fftInput.get()), 1, &splitComplex, 1, size / 2);
+
     jassert(fftInput.size() == size + 1);
   #elif defined(USE_IPP)
     Buffer<float> oldBuffer = fftBuffer;
@@ -150,8 +148,9 @@ void Transform::inverse(Buffer<float> dest) {
     vDSP_fft_zrip(fftSetup, &splitComplex, 1, order, FFT_INVERSE);
     switch(scaleType) {
         case DivInvByN:
-            dest.mul(1.0f / size);
+            dest.mul(1.0f / (float) size);
             break;
+        default: break;
     }
   #else
     if (convertToCart) {

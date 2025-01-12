@@ -16,7 +16,11 @@ int globalBufferMacSizeErrorCount = 0;
     T(Int8u)   \
     T(Int8s)   \
     T(Int16s)  \
-    T(Int32s)
+    T(Int32s)  \
+    T(Complex32)
+
+#define declareForComplex(T) \
+    T(Complex32)
 
 #define declareForCommon(T) \
     T(Int8u)   \
@@ -25,6 +29,16 @@ int globalBufferMacSizeErrorCount = 0;
     T(Int32s)  \
     T(Float32) \
     T(Float64)
+
+#define declareForAll(T) \
+    T(Int8u)   \
+    T(Int8s)   \
+    T(Int16s)  \
+    T(Int32s)  \
+    T(Float32) \
+    T(Float64) \
+    T(Complex32)
+
 
 #define constructCopyTo(T)                       \
     template<>                                   \
@@ -58,18 +72,20 @@ int globalBufferMacSizeErrorCount = 0;
     template<>                                   \
     Buffer<T>& Buffer<T>::withPhase(int phase, Buffer workBuffer) { \
         jassert(phase >= 0 && phase < sz);       \
-        if (phase == 0) return *this;            \
-        const int firstPartSize = sz - phase;    \
-        std::memcpy(workBuffer.get(), ptr + phase, firstPartSize * sizeof(T)); \
-        std::memcpy(workBuffer.get() + firstPartSize, ptr, phase * sizeof(T)); \
-        std::memcpy(ptr, workBuffer.get(), sz * sizeof(T)); \
+        if(phase == 0 || sz == 0)                \
+            return *this;                        \
+        phase = phase % sz;                      \
+        section(phase, sz - phase).copyTo(workBuffer); \
+        copyTo(workBuffer.section(sz - phase, phase)); \
+        workBuffer.copyTo(*this);                \
         return *this;                            \
     }
 
 declareForInts(constructZero);
+// declareForComplex(constructZero);
 declareForInts(constructZeroSz);
 declareForInts(constructSet);
-declareForCommon(constructCopyTo);
+declareForAll(constructCopyTo);
 declareForCommon(constructWithPhase);
 
 #define VFORCE_AUTO_ARG_PATTERN  ptr, ptr, &sz
@@ -97,7 +113,6 @@ declareForCommon(constructWithPhase);
 #define defineVdspAuto_Real(name, fn) \
     defineFn(name, Float32, vDSP_##fn, VDSP_AUTO_ARG_PATTERN) \
     defineFn(name, Float64, vDSP_##fn##D, VDSP_AUTO_ARG_PATTERN)
-
 defineVdspNullary_Real(zero, vclr)
 defineVdspNullary_Real(flip, vrvrs)
 defineVdspNullary_Real(hann, hann_window)
@@ -165,8 +180,8 @@ defineVdspNullaryConst_Real(min,  minv)
 defineVdspNullaryConst_Real(max,  maxv)
     
 
-template<> Buffer<Float32>& Buffer<Float32>::sort() { EMPTY_CHECK vDSP_vsort(ptr, 1, vDSP_Length(sz)); return *this; }
-template<> Buffer<Float64>& Buffer<Float64>::sort() { EMPTY_CHECK vDSP_vsortD(ptr, 1, vDSP_Length(sz)); return *this; }
+template<> Buffer<Float32>& Buffer<Float32>::sort() { EMPTY_CHECK vDSP_vsort(ptr, vDSP_Length(sz), 1); return *this; }
+template<> Buffer<Float64>& Buffer<Float64>::sort() { EMPTY_CHECK vDSP_vsortD(ptr, vDSP_Length(sz), 1); return *this; }
 
 template<>
 void Buffer<Float32>::minmax(Float32& pMin, Float32& pMax) const {
@@ -229,12 +244,14 @@ defineNormDiffL2(Float64, normDiffL2, distancesqD)
 
 template<>
 Buffer<Float32>& Buffer<Float32>::addProduct(Buffer src1, Buffer src2) {
-    vDSP_vsmul(VDSP_SRC1_SRC2_AUTO_PATTERN);
+    if (sz == 0) return *this;
+    vDSP_vma(src1.get(), 1, src2.get(), 1, ptr, 1, ptr, 1, vDSP_Length(sz));
     return *this;
 }
 template<>
 Buffer<Float64>& Buffer<Float64>::addProduct(Buffer src1, Buffer src2) {
-    vDSP_vsmulD(VDSP_SRC1_SRC2_AUTO_PATTERN);
+    if (sz == 0) return *this;
+    vDSP_vmaD(src1.get(), 1, src2.get(), 1, ptr, 1, ptr, 1, vDSP_Length(sz));
     return *this;
 }
 
@@ -339,25 +356,19 @@ Buffer<Float64>& Buffer<Float64>::powCRev(Float64 k) {
 
 // statistics
 
-template<>
-Float32 Buffer<Float32>::stddev() const {
-    Float32 mean_sq, variance;
-    Float32 mean_val = mean();
-    vDSP_vsq  (VDSP_AUTO_ARG_PATTERN);
-    vDSP_meanv(ptr, 1, &mean_sq, vDSP_Length(sz));
-    variance = mean_sq - (mean_val * mean_val);
-    return std::sqrt(variance);
-}
+#define defineStddev(T) \
+    template<> T Buffer<T>::stddev() const { \
+        T variance = 0; \
+        T meanVal = mean(); \
+        for (int i = 0; i < sz; ++i) { \
+            variance += (ptr[i] - meanVal) * (ptr[i] - meanVal); \
+        } \
+        variance /= T(sz - 1); \
+        return std::sqrt(variance); \
+    }
 
-template<>
-Float64 Buffer<Float64>::stddev() const {
-    Float64 mean_sq, variance;
-    Float64 mean_val = mean();
-    vDSP_vsqD  (VDSP_AUTO_ARG_PATTERN);
-    vDSP_meanvD(ptr, 1, &mean_sq, vDSP_Length(sz));
-    variance = mean_sq - (mean_val * mean_val);
-    return std::sqrt(variance);
-}
+defineStddev(Float32);
+defineStddev(Float64);
 
 // vector ramp
 template<>
@@ -439,10 +450,10 @@ bool Buffer<Float32>::isProbablyEmpty() const {
 
 template <>
 int Buffer<Float32>::upsampleFrom(Buffer<Float32> buff, int factor, int phase) {
-    if (factor < 0)
-        factor = buff.size() / sz;
-    if (sz == 0)
+    if (sz == 0 || buff.empty())
         return 0;
+    if (factor < 0)
+        factor = sz / buff.size();
     if (factor == 1) {
         buff.copyTo(*this);
         return 0;
@@ -474,10 +485,10 @@ int Buffer<Float32>::upsampleFrom(Buffer<Float32> buff, int factor, int phase) {
 
 template <>
 int Buffer<Float32>::downsampleFrom(Buffer<Float32> buff, int factor, int phase) {
+    if (sz == 0 || buff.empty())
+        return 0;
     if (factor < 0)
         factor = buff.size() / sz;
-    if (sz == 0)
-        return 0;
     if (factor == 1) {
         buff.copyTo(*this);
         return 0;
@@ -497,6 +508,70 @@ int Buffer<Float32>::downsampleFrom(Buffer<Float32> buff, int factor, int phase)
                dstLen);             // Number of elements to process
 
     return phase;
+}
+
+#define implementOperators(T)                                  \
+template<>                                                     \
+void Buffer<T>::operator+=(const Buffer<T>& other) { \
+    add(other);                                                \
+}                                                              \
+                                                               \
+template<>                                                     \
+void Buffer<T>::operator+=(T val) {                  \
+    add(val);                                                  \
+}                                                              \
+                                                               \
+template<>                                                     \
+void Buffer<T>::operator-=(const Buffer<T>& other) { \
+    sub(other);                                                \
+}                                                              \
+                                                               \
+template<>                                                     \
+void Buffer<T>::operator-=(T val) {                  \
+    sub(val);                                                  \
+}                                                              \
+                                                               \
+template<>                                                     \
+void Buffer<T>::operator*=(const Buffer<T>& other) { \
+    mul(other);                                                \
+}                                                              \
+                                                               \
+template<>                                                     \
+void Buffer<T>::operator*=(T val) {                  \
+    mul(val);                                                  \
+}                                                              \
+                                                               \
+template<>                                                     \
+void Buffer<T>::operator/=(const Buffer<T>& other) { \
+    div(other);                                                \
+}                                                              \
+                                                               \
+template<>                                                     \
+void Buffer<T>::operator/=(T val) {                  \
+    div(val);                                                  \
+}                                                              \
+                                                               \
+template<>                                                     \
+void Buffer<T>::operator<<(const Buffer<T>& other) { \
+    other.copyTo(*this);                                       \
+}                                                              \
+                                                               \
+template<>                                                     \
+void Buffer<T>::operator>>(Buffer<T> other) const {  \
+    copyTo(other);                                             \
+}
+
+implementOperators(Float32)
+implementOperators(Float64)
+
+template<>
+Buffer<double>::Buffer(AudioSampleBuffer& audioBuffer, int chan) : ptr(nullptr), sz(0) {
+}
+
+template<>
+Buffer<float>::Buffer(AudioSampleBuffer& audioBuffer, int chan) :
+        ptr(audioBuffer.getWritePointer(chan)),
+        sz(audioBuffer.getNumSamples()) {
 }
 
 #endif // USE_ACCELERATE

@@ -56,7 +56,8 @@ bool Buffer<float>::isProbablyEmpty() const {
 }
 
 template<>
-Buffer<double>::Buffer(AudioSampleBuffer& audioBuffer, int chan) : ptr(nullptr), sz(0) {
+Buffer<double>::Buffer(AudioSampleBuffer& audioBuffer, int chan) :
+    ptr(nullptr), sz(0) {
 }
 
 template<>
