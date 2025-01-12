@@ -137,13 +137,13 @@ void VecOps::conv(Buffer<Float32> src1, Buffer<Float32> src2, Buffer<Float32> ds
 template<> void VecOps::zero(Float32* src, int size) { ippsZero_32f(src, size); }
 template<> void VecOps::zero(Float64* src, int size) { ippsZero_64f(src, size); }
 
-#define FN_ARG_PATTERN src1.get(), src2.get(), dst.get(), jmin(src1.size(), src2.size(), dst.size())
-#define MOVE_ARG_PATTERN src.get(), dst.get(), jmin(src.size(), src.size())
+#define FN_ARG_PATTERN src2.get(), src1.get(), dst.get(), jmin(src1.size(), src2.size(), dst.size())
+#define MOVE_ARG_PATTERN src.get(), dst.get(), jmin(src.size(), dst.size())
 
 #define declareForF32_F64_Cplx(op, fn) \
-    template<> void VecOps::op(SRCA_SRCB_DST(Float32))   { BUFFS_DST_CHECK ipps##fn##_32f(FN_ARG_PATTERN); }  \
-    template<> void VecOps::op(SRCA_SRCB_DST(Float64))   { BUFFS_DST_CHECK ipps##fn##_64f(FN_ARG_PATTERN); }  \
-    template<> void VecOps::op(SRCA_SRCB_DST(Complex32)) { BUFFS_DST_CHECK ipps##fn##_32fc(FN_ARG_PATTERN); }
+    template<> void VecOps::op(SRCA_SRCB_DST(Float32))   { ipps##fn##_32f(FN_ARG_PATTERN); }  \
+    template<> void VecOps::op(SRCA_SRCB_DST(Float64))   { ipps##fn##_64f(FN_ARG_PATTERN); }  \
+    template<> void VecOps::op(SRCA_SRCB_DST(Complex32)) { ipps##fn##_32fc(FN_ARG_PATTERN); }
 
 declareForF32_F64_Cplx(add, Add)
 declareForF32_F64_Cplx(sub, Sub)
@@ -151,8 +151,8 @@ declareForF32_F64_Cplx(mul, Mul)
 declareForF32_F64_Cplx(div, Div)
 
 #define declareForF32_F64(op, fn) \
-    template<> void VecOps::op(SRC_DST(Float32)) { BUFFS_EQ_CHECK ipps##fn##_32f(MOVE_ARG_PATTERN); } \
-    template<> void VecOps::op(SRC_DST(Float64)) { BUFFS_EQ_CHECK ipps##fn##_64f(MOVE_ARG_PATTERN); }
+    template<> void VecOps::op(SRC_DST(Float32)) { ipps##fn##_32f(MOVE_ARG_PATTERN); } \
+    template<> void VecOps::op(SRC_DST(Float64)) { ipps##fn##_64f(MOVE_ARG_PATTERN); }
 
 declareForF32_F64(move, Move)
 
@@ -255,7 +255,7 @@ template<> void VecOps::flip(Buffer<Float64> src, Buffer<Float64> dst) { src.cop
 
 template<> void VecOps::sinc(Buffer<Float32> kernel, Buffer<Float32> window, float relFreq) {
     if (kernel.size() <= 1) { return; }
-    kernel.ramp(0, relFreq * 2 * M_PI / (kernel.size() - 1));
+    kernel.ramp(0, relFreq * 2 * M_PI / kernel.size());
     window.blackman();
     kernel.mul(window);
 }
@@ -265,6 +265,7 @@ template<> void VecOps::fir(const Buffer<Float32>& src, Buffer<Float32> dst, flo
     Buffer<Float32> kernel = mem.place(mem.size() / 2);
     Buffer<Float32> window = mem.place(mem.size() / 2);
     sinc(kernel, window, relFreq);
+    jassert(dst.size() >= trim ? src.size() : src.size() + 32);
     conv(
         src.withSize(trim ? src.size() - kernel.size() : src.size()),
         kernel,

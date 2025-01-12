@@ -14,13 +14,11 @@ public:
     ScopedAlloc() {
         placementPos = 0;
         alive = false;
-        reserveFront = T();
-        reserveBack = T();
     }
 
     virtual ~ScopedAlloc() { clear(); }
 
-    ScopedAlloc& operator=(ScopedAlloc&& copy) noexcept {
+    ScopedAlloc& takeOwnershipFrom(ScopedAlloc&& copy) noexcept {
         if (this->ptr == copy.ptr) {
             return *this;
         }
@@ -38,20 +36,8 @@ public:
         return *this;
     }
 
-    ScopedAlloc& operator=(const ScopedAlloc& copy) {
-        if (this->ptr == copy.ptr) {
-            return *this;
-        }
-
-        jassertfalse;
-        clear();
-
-        return *this;
-    }
-
     ScopedAlloc(const ScopedAlloc& copy) {
-        jassertfalse;
-        clear();
+        throw std::logic_error("ScopedAlloc: copy constructor not allowed");
     }
 
     void resetPlacement() { placementPos = 0; }
@@ -99,6 +85,4 @@ public:
 private:
     bool alive{};
     int placementPos{};
-
-    T reserveFront, reserveBack;
 };

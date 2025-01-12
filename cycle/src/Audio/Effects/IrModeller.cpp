@@ -49,7 +49,6 @@ IrModeller::IrModeller(SingletonRepo *repo) :
     graphic.convolvers.push_back(&graphicConv);
 }
 
-
 IrModeller::~IrModeller() {
     cleanUp();
 
@@ -77,13 +76,12 @@ void IrModeller::doPostDeconvolve(int size) {
 void IrModeller::trimWave() {
     int size = wavImpulse.audio.size();
 
-    if (size < 64)
+    if (size < 64) {
         return;
+    }
 
     static const float trimThres = 0.001f;
-
     float movingAverage = 0;
-
     int threshIdx = size - 1;
 
     Buffer<float> channel = wavImpulse.audio.left;
@@ -97,8 +95,9 @@ void IrModeller::trimWave() {
         }
     }
 
-    if (threshIdx == 0)
+    if (threshIdx == 0) {
         showImportant("Wave file is silent");
+    }
 
     int newSize = threshIdx + 1;
     NumberUtils::constrain(newSize, 64, 16384);
@@ -283,8 +282,9 @@ void IrModeller::checkForPendingUpdates() {
 }
 
 void IrModeller::processVertexBuffer(Buffer <Float32> inputBuffer) {
-    if (!graphic.impulse.empty())
+    if (!graphic.impulse.empty()) {
         graphicConv.process(inputBuffer, inputBuffer);
+    }
 
     inputBuffer.mul((float) postamp.getTargetValue());
 }
@@ -306,7 +306,7 @@ void IrModeller::setImpulseLength(ConvState &state, int length) {
         state.impulse = state.memory.place(length);
         state.levels = state.memory.place(length / 2);
 
-        state.fft.allocate(length, true);
+        state.fft.allocate(length, Transform::DivFwdByN, true);
 
         calcPrefiltLevels(state.levels);
     }
@@ -404,8 +404,9 @@ void IrModeller::setAudioBlockSize(int size) {
         output.left = outputMem.place(size);
         output.right = outputMem.place(size);
 
-        for (auto & convolver : convolvers)
+        for (auto & convolver : convolvers) {
             convolver.init(size, audio.impulse);
+        }
 
         /*
         if(convBufferSize > 0)

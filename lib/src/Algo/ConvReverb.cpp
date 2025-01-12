@@ -186,8 +186,6 @@ void BlockConvolver::reset() {
 
     inputBlocks.clear();
     kernelBlocks.clear();
-
-    fft.setFFTScaleType(Transform::ScaleType::DivInvByN);
 }
 
 void BlockConvolver::init(int sizeOfBlock, const Buffer<float>& kernel) {
@@ -228,7 +226,7 @@ void BlockConvolver::init(
     int segmentSize = 2 * blockSize;
     int complexSize = blockSize + 1; // in Float32c units
 
-    fft.allocate(segmentSize);
+    fft.allocate(segmentSize, Transform::ScaleType::DivInvByN);
 
     int complexReserve = complexSize * (numBlocks * 2 + 3);
 

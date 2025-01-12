@@ -7,29 +7,65 @@
   #define VIMAGE_H
   #include <Accelerate/Accelerate.h>
 #else
-  #include <ipp.h>
+#include <ipp.h>
 #endif
 
 class Transform {
 public:
     enum ScaleType {
-      NoDivByAny,
-      DivFwdByN,
-      DivInvByN
+        NoDivByAny, DivFwdByN, DivInvByN
     };
 
     Transform();
     virtual ~Transform();
 
-    void allocate(int size, bool convertsToCart = false);
-    void clear();
-    void forward(Buffer<float> src);
-    void inverse(Buffer<float> dst);
-    void inverse(const Buffer<Complex32>& fftInput, const Buffer<float>& dest);
-    void setComplex(Buffer<Complex32> buffer);
+    /**
+      * @param bufferSize the size of the buffer we expect to call
+      *     with the forward() pass. Power of 2. If already called, is a no-op.
+      * @param scaleType how to scale the forward or inverse pass
+      * @param convertsToCart whether we plan to convert complex outputs to
+      *     power and phase spectra. If so we allocate more working memory for
+      *     these buffers.
+      */
+    void allocate(int bufferSize, ScaleType scaleType = DivFwdByN, bool convertsToCart = false);
 
-    void setFFTScaleType(int type)      { scaleType = type;     }
-    void setRemovesOffset(bool does)    { removeOffset = does;  }
+    /*
+     * Resets memory buffers
+     */
+    void clear();
+
+    /*
+     * Performs the forward FFT transform. Scales the results according to the scaleType:
+     * - NoDivByAny => output is unscaled
+     * - DivFwdByN  => output is scaled by 1 / bufferSize
+     * - DivInvByN  => N/A
+     */
+    void forward(Buffer<float> src);
+
+    /*
+     * Performs the inverse FFT transform. Scales the results according to the scaleType:
+     * - NoDivByAny => output is unscaled
+     * - DivFwdByN  => N/A
+     * - DivInvByN  => output is scaled by 1 / bufferSize
+     */
+    void inverse(Buffer<float> dst);
+
+    /*
+     * Perform the inverse FFT transform upon the provided complex input and store the real output in the dest buffer
+     */
+    void inverse(const Buffer<Complex32>& fftInput, const Buffer<float>& dest);
+
+    // void setComplex(Buffer<Complex32> buffer);
+
+    /*
+     * Re-
+     */
+    void scaleTypeChanged();
+
+    /*
+     * Set whether to remove DC offset
+     */
+    void setRemovesOffset(bool does) { removeOffset = does; }
 
     Buffer<Complex32> getComplex() const {
         int size = 1 << (order - 1);
@@ -37,16 +73,30 @@ public:
 
         return fftBuffer.toType<Complex32>();
     }
-    Buffer<float> getMagnitudes()       { return magnitudes;    }
-    Buffer<float> getPhases()           { return phases;        }
-    Buffer<float> getFFTBuffer()        { return fftBuffer;     }
 
-    Transform& operator<<(const Buffer<float>& buffer) { forward(buffer);   return *this; }
-    Transform& operator>>(const Buffer<float>& buffer) { inverse(buffer);   return *this; }
+    /*
+     * Returns the power spectrum of the FFT data
+     */
+    Buffer<float> getMagnitudes() { return magnitudes; }
+    /*
+     * Returns the phase spectrum of the FFT data
+     */
+    Buffer<float> getPhases() { return phases; }
+
+    Transform& operator<<(const Buffer<float>& buffer) {
+        forward(buffer);
+        return *this;
+    }
+
+    Transform& operator>>(const Buffer<float>& buffer) {
+        inverse(buffer);
+        return *this;
+    }
 
 private:
     bool convertToCart, removeOffset;
-    int scaleType, order;
+    ScaleType scaleType;
+    int order;
 
     CriticalSection lock;
     ScopedAlloc<float> memory;

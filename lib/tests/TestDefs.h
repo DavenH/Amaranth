@@ -1,4 +1,5 @@
 #pragma once
+#include "../src/Array/Buffer.h"
 
 #ifdef DEBUG_RENDERING
   #define DEBUG_CLEAR() SignalDebugger::instance().clearPlots()
@@ -13,3 +14,8 @@
   #define DEBUG_ADD_TO_HEATMAP(label, data) ((void)0)
   #define DEBUG_PERIODS(sample, label) ((void)0)
 #endif
+
+float real(const Complex32& c);
+float imag(const Complex32& c);
+float mag(const Complex32& c);
+Complex32 makeComplex(float r, float i);

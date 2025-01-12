@@ -1,18 +1,15 @@
-#include "PitchTracker.h"
-
 #include <Util/Arithmetic.h>
-
+#include <Array/VecOps.h>
+#include "PitchTracker.h"
 #include "Resampling.h"
-
 #include "../Algo/FFT.h"
 #include "../Audio/PitchedSample.h"
+#include "../../tests/TestDefs.h"
 
 #ifdef BUILD_TESTING
   #define DEBUG_RENDERING
 #endif
-#include <Array/VecOps.h>
 
-#include "../../tests/TestDefs.h"
 #include "../../tests/SignalDebugger.h"
 
 PitchTracker::PitchTracker() :
@@ -560,8 +557,7 @@ void PitchTracker::swipe() {
         window.spectFreqs.ramp(0, samplerate / float(window.size));
 
         Transform fft;
-        fft.setFFTScaleType(Transform::ScaleType::NoDivByAny);
-        fft.allocate(window.size, true);
+        fft.allocate(window.size, Transform::ScaleType::NoDivByAny, true);
 
         cumeTime = 0;
         int totalSliceIndex = 0;

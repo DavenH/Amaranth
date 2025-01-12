@@ -22,7 +22,7 @@ Oversampler::~Oversampler() {
   #endif
 }
 
-void Oversampler::start(Buffer<float>& buffer) {
+void Oversampler::startOversamplingBlock(Buffer<float>& buffer) {
     if (oversampleFactor > 1) {
         int destSize = oversampleFactor * buffer.size();
 
@@ -60,7 +60,7 @@ void Oversampler::start(Buffer<float>& buffer) {
     }
 }
 
-void Oversampler::stop() {
+void Oversampler::stopOversamplingBlock() {
     if (oversampleFactor > 1 && oversampBuf != nullptr && !oversampBuf->empty() && !audioBuf.empty()) {
         jassert(!oversampBuf->empty() && !audioBuf.empty());
 

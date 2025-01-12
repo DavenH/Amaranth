@@ -58,7 +58,7 @@ void Waveshaper::processBuffer(AudioSampleBuffer& audioBuffer) {
     for (int i = 0; i < audioBuffer.getNumChannels(); ++i) {
         Buffer<Float32> buffer(audioBuffer, i);
 
-        oversamplers[i]->start(buffer);
+        oversamplers[i]->startOversamplingBlock(buffer);
 
         preamp.maybeApplyRamp(rampBuffer.withSize(buffer.size()), buffer, 0.5);
         buffer.add(0.5f);
@@ -68,7 +68,7 @@ void Waveshaper::processBuffer(AudioSampleBuffer& audioBuffer) {
             linInterpTable(j);
         }
 
-        oversamplers[i]->stop();
+        oversamplers[i]->stopOversamplingBlock();
         postamp.maybeApplyRamp(rampBuffer.withSize(buffer.size()), buffer);
     }
 }
@@ -77,7 +77,7 @@ void Waveshaper::processVertexBuffer(Buffer<Float32> outputBuffer) {
     bool doOversample = doesGraphicOversample();
 
     if (doOversample) {
-        oversamplers[graphicOvspIndex]->start(outputBuffer);
+        oversamplers[graphicOvspIndex]->startOversamplingBlock(outputBuffer);
     }
 
     int oversampSize = outputBuffer.size();
@@ -90,7 +90,7 @@ void Waveshaper::processVertexBuffer(Buffer<Float32> outputBuffer) {
     }
 
     if (doOversample) {
-        oversamplers[graphicOvspIndex]->stop();
+        oversamplers[graphicOvspIndex]->stopOversamplingBlock();
     }
 
     // keep the range to -0.5..0.5

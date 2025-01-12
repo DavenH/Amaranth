@@ -11,13 +11,40 @@ public:
     virtual ~Oversampler();
 
     void resetDelayLine();
-    void sampleDown(Buffer<float> src, Buffer<float> dest, bool wrapTail = false);
     void setKernelSize(int size);
     void setOversampleFactor(int factor);
-    void start(Buffer<float>& buffer);
-    void stop();
+
+    /**
+     * Samples down by `oversampleFactor`, first filtering at the Nyquist frequency.
+     */
+    void sampleDown(Buffer<float> src, Buffer<float> dest, bool wrapTail = false);
+
+    /**
+     * Starts oversampling, reassigning the `buffer` argument to
+     * the oversample buffer iff the oversample factor is not 1.
+     *
+     * Usage:
+     * <code>
+     * Buffer<float> audio(data, size);
+     * oversampler.startOversamplingBlock(audio);
+     * audio.tanh(); // audio.size() is now `size * oversampleFactor`
+     * oversampler.stopOversamplingBlock();
+     * // audio.size() is now `size`
+     * </code>
+     * audio has now been tanh'd without aliasing distortion
+     */
+    void startOversamplingBlock(Buffer<float>& buffer);
+
+    /**
+     * Ends oversampling, by filtering at the Nyquist frequency
+     * and downsampling the internal `oversampBuf`.
+     *
+     * Clients can now continue processing the buffer passed into start().
+     */
+    void stopOversamplingBlock();
 
     int getLatencySamples();
+
     Buffer<float> getMemoryBuffer(int size);
     Buffer<float> getTail();
 
