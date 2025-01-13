@@ -138,9 +138,9 @@ public:
                 workBuffer.section(readPosition, writePosition - readPosition),
                 workBuffer.withSize(writePosition - readPosition)
             );
-            writePosition -= readPosition;
-            readPosition = 0;
         }
+        writePosition -= readPosition;
+        readPosition = 0;
     }
 
     ReadWriteBuffer& operator=(const ReadWriteBuffer& copy) {

@@ -613,6 +613,16 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
         return *this;                            \
     }
 
+#define constructSinInit(T) \
+    template<>
+    Buffer<Ipp##T>& Buffer<Ipp##T>::sin(float relFreq, float unitPhase) { \
+        if(sz == 0) return *this; \
+        return ramp( \
+                static_cast<T>(unitPhase * 2 * M_PI), \
+                static_cast<T>(relFreq * 2 * M_PI) \
+            ).sin(); \
+    }
+
 #define implementOperators(T)                                  \
 template<>                                                     \
 void Buffer<Ipp##T>::operator+=(const Buffer<Ipp##T>& other) { \
@@ -691,6 +701,7 @@ declareForReal(constructThreshGT);
 declareForReal(constructWinHann);
 declareForReal(constructWinBlackman);
 declareForReal(constructFlip);
+declareForReal(constructSinInit);
 
 declareForRealPrec(constructSqrt)
 declareForRealPrec(constructPow)

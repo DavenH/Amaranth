@@ -419,7 +419,9 @@ void PitchTracker::calcLambda(Window& window, const Buffer<float>& realErbIdx) {
     window.lambda.zero();
     Buffer<float> lambda = window.lambda.section(metaStart, size);
 
-    window.lambda.add(realErbIdx.section(window.erbStart, size)).add(window.erbOffset);
+    window.lambda
+        .add(realErbIdx.section(window.erbStart, size))
+        .add(window.erbOffset);
 
     ScopedAlloc<float> mu(size);
 

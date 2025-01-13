@@ -754,16 +754,15 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
         pans[1]	= modPan;
     }
 
-    wavCombined.mul(wav->audio.left, pans[0]);
+    VecOps::mul(wav->audio.left, pans[0], wavCombined);
 
     if(wav->audio.numChannels > 1)
         wavCombined.addProduct(wav->audio.right, pans[1]);
 
     fadeOutUp.ramp().sqr();
-    fadeOutDown.subCRev(1.f, fadeOutUp);
-
+    VecOps::subCRev(fadeOutUp, 1.f, fadeOutDown);
     VecOps::flip(fadeOutDown, fadeInUp);
-    fadeInDown.subCRev(1.f, fadeInUp);
+    VecOps::subCRev(fadeInUp, 1.f, fadeInDown);
 
     jassert(getSetting(ViewStage) >= ViewStages::PostEnvelopes);
 

@@ -25,7 +25,7 @@ public:
 private:
     static constexpr int kImageHeight = 512;
     static constexpr int kHistoryFrames = 512;
-    static constexpr int kNumColours = 24;
+    static constexpr int kNumColours = 64;
 
     OscAudioProcessor processor;
     MidiKeyboardState keyboardState;

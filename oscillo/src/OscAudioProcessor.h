@@ -3,6 +3,8 @@
 #include <Array/ScopedAlloc.h>
 #include <Array/RingBuffer.h>
 
+class TestableOscAudioProcessor;
+
 class OscAudioProcessor : public AudioIODeviceCallback {
 public:
     OscAudioProcessor();
@@ -24,22 +26,22 @@ private:
                                           const AudioIODeviceCallbackContext& context) override;
 
     void audioDeviceAboutToStart(AudioIODevice* device) override;
-    void audioDeviceStopped() override {
-    }
+    void audioDeviceStopped() override {}
+    void appendSamplesRetractingPeriods(Buffer<float>& audioBlock);
 
+    float accumulatedSamples{};
     static constexpr int kBufferSize = 2048;
-
-    std::unique_ptr<AudioDeviceManager> deviceManager;
-    float accumulatedSamples;
     float targetPeriod { 44100.0f / 440.0f }; // Default to A4
 
     ScopedAlloc<Float32> workBuffer;
     ScopedAlloc<Float32> workBufferUI;
     ReadWriteBuffer rwBufferAudioThread;
 
+    std::unique_ptr<AudioDeviceManager> deviceManager;
     std::vector<Buffer<Float32> > periods;
 
     SpinLock bufferLock;
+    friend class TestableOscAudioProcessor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OscAudioProcessor)
 };

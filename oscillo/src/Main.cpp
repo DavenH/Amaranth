@@ -14,6 +14,7 @@ public:
 
     void initialise(const String&) override {
         mainWindow = std::make_unique<MainWindow>(getApplicationName());
+        mainWindow->setVisible(true);
     }
 
     void shutdown() override { mainWindow = nullptr; }
@@ -41,5 +42,7 @@ private:
     std::unique_ptr<MainWindow> mainWindow;
 };
 
-START_JUCE_APPLICATION(OscilloscopeApplication)
-JUCE_MAIN_FUNCTION_DEFINITION
+#ifndef BUILD_TESTING
+    START_JUCE_APPLICATION(OscilloscopeApplication)
+    JUCE_MAIN_FUNCTION_DEFINITION
+#endif

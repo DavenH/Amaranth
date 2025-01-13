@@ -66,7 +66,7 @@ public:
     T normDiffL2(Buffer buff) const;  // sqrt(sum(buff[i] - ptr[i])**2)
     T dot(Buffer buff) const;
 
-    // init (overwrites)
+    // init (overwrites existing data)
     Buffer& zero();                  // ptr[i] = 0
     Buffer& zero(int size);          // ptr[i] = 0, 0<=i< size
     Buffer& rand(unsigned& seed);    // ptr[i] = rand(0, 1)
@@ -74,6 +74,7 @@ public:
     Buffer& ramp(T offset, T delta); // ptr[i] = offset + i * delta
     Buffer& hann();                  // ptr[i] = winHann(i/(sz-1))
     Buffer& blackman();              // ptr[i] = winBlackman(i/(sz-1))
+    Buffer& sin(float relFreq, float unitPhase = T()); // ptr[i] = sin(2 * pi * relFreq * i + 2 * pi * unitPhase)
 
     // the remaining methods operate on the contents of underlying array.
     // Expressions that totally replace the contents will be in VecOps,

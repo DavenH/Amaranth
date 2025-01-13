@@ -1,19 +1,18 @@
 #include "OscAudioProcessor.h"
 
 OscAudioProcessor::OscAudioProcessor()
-    : workBuffer(1024 * 4),
-      workBufferUI(1024 * 128),
-      rwBufferAudioThread(1024 * 4) {
-    deviceManager = std::make_unique<AudioDeviceManager>();
-    auto error    = deviceManager->initialise(1, 0, nullptr, true);
-    jassert(error.isEmpty());
+    :   workBuffer(1024 * 4)
+    ,   workBufferUI(1024 * 128)
+    ,   rwBufferAudioThread(1024 * 4) {
 }
 
 OscAudioProcessor::~OscAudioProcessor() {
-    stop();
 }
 
 void OscAudioProcessor::start() {
+    deviceManager = std::make_unique<AudioDeviceManager>();
+    auto error = deviceManager->initialise(1, 0, nullptr, true);
+    jassert(error.isEmpty());
     deviceManager->addAudioCallback(this);
 }
 
@@ -46,12 +45,12 @@ void OscAudioProcessor::resetPeriods() {
 }
 
 void OscAudioProcessor::audioDeviceIOCallbackWithContext(
-    const float* const* inputChannelData,
-    int numInputChannels,
-    float* const* outputChannelData,
-    int numOutputChannels,
-    int numSamples,
-    const AudioIODeviceCallbackContext& context) {
+        const float* const* inputChannelData,
+        int numInputChannels,
+        float* const* outputChannelData,
+        int numOutputChannels,
+        int numSamples,
+        const AudioIODeviceCallbackContext& context) {
     if (numInputChannels == 0) {
         return;
     }
@@ -63,35 +62,36 @@ void OscAudioProcessor::audioDeviceIOCallbackWithContext(
     input.copyTo(currentSamples);
     currentSamples.mul(3.0f).tanh();
 
-    if (!rwBufferAudioThread.hasRoomFor(numSamples)) {
-        rwBufferAudioThread.retract();
-    }
-    rwBufferAudioThread.write(currentSamples);
-    std::cout << accumulatedSamples << std::endl;
-
-    auto period = targetPeriod;
-
-    {
-        const SpinLock::ScopedLockType lock(bufferLock);
-
-        accumulatedSamples += (float) numSamples;
-        int periodThisTime = (int) accumulatedSamples - (int) (accumulatedSamples - period);
-
-        while (accumulatedSamples >= (float) periodThisTime && rwBufferAudioThread.hasDataFor(periodThisTime)) {
-            Buffer<float> periodData   = rwBufferAudioThread.read(periodThisTime);
-            Buffer<float> periodDataUI = workBufferUI.place(periodData.size());
-            periodData.copyTo(periodDataUI);
-            periods.push_back(periodDataUI);
-            accumulatedSamples -= period;
-            periodThisTime = (int) accumulatedSamples - (int) (accumulatedSamples - period);
-        }
-    }
+    appendSamplesRetractingPeriods(currentSamples);
 
     for (int i = 0; i < numOutputChannels; ++i) {
         if (outputChannelData[i]) {
             Buffer output(outputChannelData[i], numSamples);
             output.set(0);
         }
+    }
+}
+
+void OscAudioProcessor::appendSamplesRetractingPeriods(Buffer<float>& audioBlock) {
+    if (!rwBufferAudioThread.hasRoomFor(audioBlock.size())) {
+        // std::cout << "Retracting, " << accumulatedSamples << " " << targetPeriod << std::endl;
+        rwBufferAudioThread.retract();
+    }
+    rwBufferAudioThread.write(audioBlock);
+
+    float period = targetPeriod; // copy for thread safety
+    const SpinLock::ScopedLockType lock(bufferLock);
+
+    accumulatedSamples += (float) audioBlock.size();
+    int periodThisTime = (int) (accumulatedSamples + period) - (int) accumulatedSamples;
+
+    while (accumulatedSamples >= (float) periodThisTime && rwBufferAudioThread.hasDataFor(periodThisTime)) {
+        Buffer<float> periodData   = rwBufferAudioThread.read(periodThisTime);
+        Buffer<float> periodDataUI = workBufferUI.place(periodData.size());
+        periodData.copyTo(periodDataUI);
+        periods.push_back(periodDataUI);
+        accumulatedSamples -= period;
+        periodThisTime = (int)(accumulatedSamples + period) - (int) accumulatedSamples;
     }
 }
 

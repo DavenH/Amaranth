@@ -135,7 +135,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h"
         )
 
-        list(APPEND TEST_SOURCES ${IM_SOURCES})
+#        list(APPEND TEST_SOURCES ${IM_SOURCES})
         add_executable(${PROJECT_NAME}_tests ${TEST_SOURCES})
 
         target_include_directories(${PROJECT_NAME}_tests PUBLIC

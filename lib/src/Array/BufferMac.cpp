@@ -44,7 +44,7 @@ int globalBufferMacSizeErrorCount = 0;
     template<>                                   \
     void Buffer<T>::copyTo(Buffer buff) const {  \
         jassert(buff.sz >= sz);                  \
-        memcpy(ptr, buff.get(), sz * sizeof(T)); \
+        memcpy(buff.get(), ptr, sz * sizeof(T)); \
     }
 
 #define constructZero(T)                         \
@@ -178,7 +178,6 @@ defineVdspNullaryConst_Real(sum,  sve)
 defineVdspNullaryConst_Real(mean, meanv)
 defineVdspNullaryConst_Real(min,  minv)
 defineVdspNullaryConst_Real(max,  maxv)
-    
 
 template<> Buffer<Float32>& Buffer<Float32>::sort() { EMPTY_CHECK vDSP_vsort(ptr, vDSP_Length(sz), 1); return *this; }
 template<> Buffer<Float64>& Buffer<Float64>::sort() { EMPTY_CHECK vDSP_vsortD(ptr, vDSP_Length(sz), 1); return *this; }
@@ -370,6 +369,20 @@ Buffer<Float64>& Buffer<Float64>::ramp(Float64 offset, Float64 delta) {
 
 template<> Buffer<Float32>& Buffer<Float32>::ramp() { if(sz > 1) { return ramp(0.f, 1.f / (sz - 1)); } return *this; }
 template<> Buffer<Float64>& Buffer<Float64>::ramp() { if(sz > 1) { return ramp(0., 1. / (sz - 1)); } return *this; }
+
+
+#define constructSinInit(T) \
+template<> \
+    Buffer<T>& Buffer<T>::sin(float relFreq, float unitPhase) { \
+        if(sz == 0) return *this; \
+        return ramp( \
+            static_cast<T>(unitPhase * 2 * M_PI), \
+            static_cast<T>(relFreq * 2 * M_PI) \
+        ).sin(); \
+    }
+
+constructSinInit(Float32);
+constructSinInit(Float64);
 
 // Threshold operations
 template<> Buffer<Float32>& Buffer<Float32>::threshLT(Float32 c) { vDSP_vthr(VDSP_AUTO_ARGC_PATTERN); return *this; }
