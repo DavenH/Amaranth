@@ -1,7 +1,7 @@
 #include <JuceHeader.h>
-
 #include <memory>
 #include "MainComponent.h"
+#include "AppSettings.h"
 #include "incl/JucePluginDefines.h"
 
 class OscilloscopeApplication : public JUCEApplication {
@@ -28,13 +28,55 @@ public:
             setUsingNativeTitleBar(true);
             setContentOwned(new MainComponent(), true);
             setResizable(true, true);
-            centreWithSize(getWidth(), getHeight());
+
+            canSaveResize = true;
+
+            // Load saved window bounds
+            auto& settings = AppSettings::getInstance()->getSettings();
+            const String keyvals = settings.createXml("asdf")->toString();
+            if (settings.containsKey("windowX") && settings.containsKey("windowY") &&
+                settings.containsKey("windowW") && settings.containsKey("windowH")) {
+                setBounds(settings.getIntValue("windowX"),
+                         settings.getIntValue("windowY"),
+                         jmax(640, settings.getIntValue("windowW")),
+                         jmax(480, settings.getIntValue("windowH")));
+            } else {
+                centreWithSize(jmax(640, getWidth()), jmax(480, getHeight()));
+            }
+
             Component::setVisible(true);
         }
 
-        void closeButtonPressed() override { getInstance()->systemRequestedQuit(); }
+        void closeButtonPressed() override {
+            saveWindowPosition();
+            AppSettings::deleteInstance();
+            getInstance()->systemRequestedQuit();
+        }
+
+        void moved() override {
+            DocumentWindow::moved();
+            saveWindowPosition();
+        }
+
+        void resized() override {
+            DocumentWindow::resized();
+            if (canSaveResize) {
+                saveWindowPosition();
+            }
+        }
 
     private:
+        bool canSaveResize = false;
+
+        void saveWindowPosition() {
+            auto& settings = AppSettings::getInstance()->getSettings();
+            settings.setValue("windowX", getX());
+            settings.setValue("windowY", getY());
+            settings.setValue("windowW", getWidth());
+            settings.setValue("windowH", getHeight());
+            settings.saveIfNeeded();
+        }
+
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainWindow)
     };
 

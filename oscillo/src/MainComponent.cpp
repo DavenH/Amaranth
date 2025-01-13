@@ -27,8 +27,8 @@ MainComponent::MainComponent()
     cyclogram   = Image(Image::RGB, kHistoryFrames, kImageHeight, true);
     spectrogram = Image(Image::RGB, kHistoryFrames, kImageHeight / 8, true);
     // Component::setVisible(true);
-    setSize(1280, 960);
-    startTimer(100);`
+    // setSize(1280, 960);
+    startTimer(100);
 
     DBG(String::formatted("Main component constructor - Thread ID: %d", Thread::getCurrentThreadId()));
     DBG(String("Is message thread? ") + (MessageManager::getInstance()->isThisTheMessageThread() ? "yes" : "no"));
@@ -123,7 +123,7 @@ void MainComponent::updateHistoryImage() {
         // Map to colors
         for (int y = 0; y < kImageHeight; ++y) {
             float value = resampleBuffer[y];
-            auto color  = viridis.getColour(static_cast<int>((value * 0.5f + 0.5f) * (kNumColours - 0.01)));
+            auto color  = inferno.getColour(static_cast<int>((value * 0.5f + 0.5f) * (kNumColours - 0.01)));
             pixelData.setPixelColour(col, y, color);
         }
 

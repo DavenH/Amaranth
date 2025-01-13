@@ -28,6 +28,7 @@ private:
     void audioDeviceAboutToStart(AudioIODevice* device) override;
     void audioDeviceStopped() override {}
     void appendSamplesRetractingPeriods(Buffer<float>& audioBlock);
+    void applyDynamicRangeCompression(Buffer<float> audio);
 
     float accumulatedSamples{};
     static constexpr int kBufferSize = 2048;

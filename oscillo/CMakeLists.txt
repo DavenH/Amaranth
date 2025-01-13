@@ -24,7 +24,8 @@ elseif(APPLE)
     list(APPEND BASE_DEFINITIONS MAC=1)
 endif()
 
-add_executable(${PROJECT_NAME} ${APP_SOURCES})
+add_executable(${PROJECT_NAME} ${APP_SOURCES}
+        src/AppSettings.h)
 set(TARGET_TYPE "Standalone")
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

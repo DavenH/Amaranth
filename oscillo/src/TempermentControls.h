@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "AppSettings.h"
 
 class TemperamentControls
         : public Component,
@@ -18,7 +19,7 @@ public:
         temperamentSelect.addListener(this);
         addAndMakeVisible(temperamentSelect);
 
-        centsOffsetSlider.setRange(-50.0, 50.0, 0.1);
+        centsOffsetSlider.setRange(-30.0, 30.0, 1);
         centsOffsetSlider.setValue(0.0);
         centsOffsetSlider.setTextBoxStyle(Slider::TextBoxRight, false, 60, 20);
         centsOffsetSlider.addListener(this);
@@ -35,9 +36,7 @@ public:
         frequencyLabel.setJustificationType(Justification::centred);
         addAndMakeVisible(frequencyLabel);
 
-        // for(int i = 0; i < 128; ++i) {
-        //     std::cout << MidiMessage::getMidiNoteName(i, true, true, 4) << " " << getCentsOffset(i, Temperament::Railsback) << std::endl;
-        // }
+        initializeSettings();
     }
 
     void resized() override {
@@ -85,12 +84,22 @@ public:
     }
 
     void comboBoxChanged(ComboBox*) override {
+        if (settings != nullptr) {
+            settings->setValue("temperament", temperamentSelect.getSelectedId());
+            settings->saveIfNeeded();
+        }
+
         if (onTemperamentChanged) {
             onTemperamentChanged();
         }
     }
 
     void sliderDragEnded(Slider*) override {
+        if (settings != nullptr) {
+            settings->setValue("centsOffset", centsOffsetSlider.getValue());
+            settings->saveIfNeeded();
+        }
+
         if (onCentsOffsetChanged) {
             onCentsOffsetChanged();
         }
@@ -102,11 +111,23 @@ public:
     std::function<void()> onCentsOffsetChanged;
 
 private:
+    void initializeSettings() {
+        auto& settings = AppSettings::getInstance()->getSettings();
+
+        // Load saved settings
+        if (settings.isValidFile()) {
+            temperamentSelect.setSelectedId(settings.getIntValue("temperament", (int) Temperament::Equal),
+                                            dontSendNotification);
+            centsOffsetSlider.setValue(settings.getDoubleValue("centsOffset", 0.0), dontSendNotification);
+        }
+    }
+
     ComboBox temperamentSelect;
     Slider centsOffsetSlider;
     Label temperamentLabel;
     Label centsLabel;
     Label frequencyLabel;
+    std::unique_ptr<PropertiesFile> settings;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TemperamentControls)
 };

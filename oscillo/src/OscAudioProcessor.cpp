@@ -60,7 +60,7 @@ void OscAudioProcessor::audioDeviceIOCallbackWithContext(
 
     Buffer<float> currentSamples = workBuffer.section(0, numSamples);
     input.copyTo(currentSamples);
-    currentSamples.mul(3.0f).tanh();
+    currentSamples.mul(2.0f).tanh();
 
     appendSamplesRetractingPeriods(currentSamples);
 
@@ -89,10 +89,24 @@ void OscAudioProcessor::appendSamplesRetractingPeriods(Buffer<float>& audioBlock
         Buffer<float> periodData   = rwBufferAudioThread.read(periodThisTime);
         Buffer<float> periodDataUI = workBufferUI.place(periodData.size());
         periodData.copyTo(periodDataUI);
+        applyDynamicRangeCompression(periodDataUI);
         periods.push_back(periodDataUI);
         accumulatedSamples -= period;
         periodThisTime = (int)(accumulatedSamples + period) - (int) accumulatedSamples;
     }
+}
+
+void OscAudioProcessor::applyDynamicRangeCompression(Buffer<float> audio) {
+    float min = 0, max = 0;
+    audio.minmax(min, max);
+    float absMax = jmax(std::abs(max), std::abs(min));
+    if (absMax < 0.01) {
+        return;
+    }
+
+    float scalingFactor = 1.0f / absMax;
+    float adjustedScalingFactor = std::pow(scalingFactor, 0.66f);
+    audio.mul(adjustedScalingFactor);
 }
 
 double OscAudioProcessor::getCurrentSampleRate() const {
