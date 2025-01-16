@@ -1,8 +1,5 @@
 #include "FFT.h"
 
-#include <dispatch/data.h>
-
-#include "../../tests/TestDefs.h"
 #include "../Util/NumberUtils.h"
 
 Transform::Transform() :
