@@ -388,6 +388,9 @@ TEST_CASE("Buffer arithmetic edge cases", "[buffer][arithmetic]") {
     }
 }
 
+#define VIMAGE_H
+#include <Accelerate/Accelerate.h>
+
 TEST_CASE("Buffer utility operations", "[buffer][utility]") {
     Buffer<float> buf1, buf2;
     std::array<float, 4> data1{};
@@ -577,7 +580,7 @@ TEST_CASE("Buffer downsampling operations", "[buffer][resample]") {
     std::array<float, 8> data1{};
     std::array<float, 8> data2{};
 
-    auto beforeEach = [&]() {
+    auto beforeEach = [&] {
         // Initialize with a simple counting sequence
         data1 = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
         data2 = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};

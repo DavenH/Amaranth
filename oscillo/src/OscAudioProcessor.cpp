@@ -100,7 +100,7 @@ void OscAudioProcessor::applyDynamicRangeCompression(Buffer<float> audio) {
     float min = 0, max = 0;
     audio.minmax(min, max);
     float absMax = jmax(std::abs(max), std::abs(min));
-    if (absMax < 0.01) {
+    if (absMax < 0.001) {
         return;
     }
 

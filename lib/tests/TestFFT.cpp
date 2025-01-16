@@ -4,6 +4,20 @@
 #include "../src/Array/Buffer.h"
 #include "TestDefs.h"
 
+void print(const Buffer<Complex32>& buffer) {
+    std::cout << std::fixed << std::setprecision(3);
+    for (int i = 0; i < buffer.size(); ++i) {
+        std::cout << i << "\t" << real(buffer[i]) << "\t" << imag(buffer[i]) << std::endl;
+    }
+}
+
+void print(const Buffer<Float32>& buffer) {
+    std::cout << std::fixed << std::setprecision(3);
+    for (int i = 0; i < buffer.size(); ++i) {
+        std::cout << i << "\t" << buffer[i] << std::endl;
+    }
+}
+
 TEST_CASE("Transform Initialization", "[transform]") {
     Transform fft;
     
@@ -30,15 +44,19 @@ TEST_CASE("Transform Basic Operations", "[transform]") {
     fft.allocate(size, Transform::ScaleType::NoDivByAny);
 
     SECTION("DC Signal") {
-        std::vector input(size, 1.0f); // DC signal
-        Buffer buffer(input.data(), size);
-        
-        REQUIRE_NOTHROW(fft.forward(buffer));
+        // DC signal
+        ScopedAlloc<float> signal(size);
+        signal.set(1);
+        auto c1 = fft.getComplex();
+
+        REQUIRE_NOTHROW(fft.forward(signal));
         
         auto complex = fft.getComplex();
+        // print(complex);
         REQUIRE(complex.size() > 0);
-        // DC component should be size, all others near zero
-        REQUIRE(real(complex[0]) == Catch::Approx(size).margin(0.1f));
+
+        // DC component should be 'size', all others near zero
+        REQUIRE(real(complex[0]) == Catch::Approx(size).margin(0.01f));
         
         // Check other bins are near zero
         for (int i = 1; i < complex.size() / 2; ++i) {
@@ -48,19 +66,18 @@ TEST_CASE("Transform Basic Operations", "[transform]") {
     }
     
     SECTION("Sine Wave") {
-        std::vector<float> input(size);
-        const float frequency = 4.0f; // 4 complete cycles
-        for (int i = 0; i < size; ++i) {
-            input[i] = std::sin(2.0f * M_PI * frequency * i / size);
-        }
-        
-        Buffer<float> buffer(input.data(), size);
-        fft.forward(buffer);
+        // 4 complete cycles
+        const float frequency = 4.0f;
+        ScopedAlloc<float> signal(size);
+        signal.sin(frequency / size);
+        fft.forward(signal);
         
         auto complex = fft.getComplex();
+        // print(complex);
+
         // Should have peaks at frequency bin 4 and size-4
-        int freqBin = static_cast<int>(frequency);
-        REQUIRE(mag(complex[freqBin]) > size/4);
+        int freqBin = roundToInt(frequency);
+        REQUIRE(mag(complex[freqBin]) > size / 4);
     }
 }
 
@@ -84,7 +101,7 @@ TEST_CASE("Transform Forward/Inverse", "[transform]") {
         fft.forward(inBuffer);
         // Inverse transform
         fft.inverse(outBuffer);
-        
+
         // Compare input and output
         for (int i = 0; i < size; ++i) {
             REQUIRE(input[i] == Catch::Approx(output[i]).margin(1e-5f));
@@ -98,10 +115,10 @@ TEST_CASE("Transform Scaling Options", "[transform]") {
 
     SECTION("No Scaling") {
         fft.allocate(size, Transform::NoDivByAny);
-        std::vector<float> input(size, 1.0f);
-        Buffer<float> buffer(input.data(), size);
-        
-        fft.forward(buffer);
+        ScopedAlloc<float> signal(size);
+        signal.set(1);
+
+        fft.forward(signal);
         auto complex = fft.getComplex();
         REQUIRE(std::abs(real(complex[0])) == Catch::Approx(size).margin(0.1f));
     }
@@ -124,20 +141,20 @@ TEST_CASE("Transform DC Offset Removal", "[transform]") {
     
     SECTION("With DC Removal") {
         fft.setRemovesOffset(true);
-        std::vector input(size, 2.0f);
-        Buffer buffer(input.data(), size);
-        
-        fft.forward(buffer);
+        ScopedAlloc<float> signal(size);
+        signal.set(2.f);
+
+        fft.forward(signal);
         auto complex = fft.getComplex();
         REQUIRE(mag(complex[0]) < 0.1f); // DC should be removed
     }
     
     SECTION("Without DC Removal") {
         fft.setRemovesOffset(false);
-        std::vector input(size, 2.0f);
-        Buffer buffer(input.data(), size);
+        ScopedAlloc<float> signal(size);
+        signal.set(2.f);
         
-        fft.forward(buffer);
+        fft.forward(signal);
         auto complex = fft.getComplex();
         REQUIRE(std::abs(real(complex[0])) > 0.1f); // DC should be present
     }
@@ -149,14 +166,9 @@ TEST_CASE("Transform Cartesian Conversion", "[transform]") {
     fft.allocate(size, Transform::DivFwdByN, true); // Enable cartesian conversion
     
     SECTION("Magnitude and Phase") {
-        std::vector<float> input(size);
-        // Generate a simple sine wave
-        for (int i = 0; i < size; ++i) {
-            input[i] = std::sin(2.0f * M_PI * i / size);
-        }
-        Buffer<float> buffer(input.data(), size);
-        
-        fft.forward(buffer);
+        ScopedAlloc<float> signal(size);
+        signal.sin(1.f);
+        fft.forward(signal);
         
         auto magnitudes = fft.getMagnitudes();
         auto phases = fft.getPhases();
@@ -165,14 +177,14 @@ TEST_CASE("Transform Cartesian Conversion", "[transform]") {
         REQUIRE(phases.size() > 0);
         
         // Check that magnitudes are non-negative
-        for (int i = 0; i < magnitudes.size(); ++i) {
-            REQUIRE(magnitudes[i] >= 0.0f);
+        for (float magnitude : magnitudes) {
+            REQUIRE(magnitude >= 0.0f);
         }
         
         // Check that phases are within [-π, π]
-        for (int i = 0; i < phases.size(); ++i) {
-            REQUIRE(phases[i] >= -M_PI - 0.01f);
-            REQUIRE(phases[i] <= M_PI + 0.01f);
+        for (float phase : phases) {
+            REQUIRE(phase >= -M_PI - 0.01f);
+            REQUIRE(phase <= M_PI + 0.01f);
         }
     }
 }
@@ -184,21 +196,22 @@ TEST_CASE("Transform Dirac Function", "[transform]") {
 
     SECTION("Dirac Impulse Response") {
         // Create dirac impulse (1 at t=0, 0 elsewhere)
-        std::vector<float> input(size, 0.0f);
-        input[0] = 1.0f;
-        Buffer<float> buffer(input.data(), size);
+        ScopedAlloc<float> signal(size);
+        signal.zero();
+        signal[0] = 1.f;
 
-        fft.forward(buffer);
+        fft.forward(signal);
         auto complex = fft.getComplex();
-
+        print(complex);
         // For a dirac function, all frequency bins should have equal magnitude
         float expectedMag = 1.0f;
-        for (int i = 0; i < complex.size() / 2; ++i) {
+        // skip dc/nyquist
+        for (int i = 1; i < complex.size() / 2 + 1; ++i) {
             REQUIRE(mag(complex[i]) == Catch::Approx(expectedMag).margin(0.01f));
         }
 
         // Phases should be 0 for all bins since dirac is symmetric
-        for (int i = 0; i < complex.size() / 2; ++i) {
+        for (int i = 1; i < complex.size() / 2 + 1;  ++i) {
             float phase = std::atan2(imag(complex[i]), real(complex[i]));
             REQUIRE(std::abs(phase) < 0.01f);
         }

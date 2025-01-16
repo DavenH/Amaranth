@@ -55,13 +55,6 @@ public:
      */
     void inverse(const Buffer<Complex32>& fftInput, const Buffer<float>& dest);
 
-    // void setComplex(Buffer<Complex32> buffer);
-
-    /*
-     * Re-
-     */
-    void scaleTypeChanged();
-
     /*
      * Set whether to remove DC offset
      */
@@ -69,9 +62,15 @@ public:
 
     Buffer<Complex32> getComplex() const {
         int size = 1 << (order - 1);
+      #ifdef USE_ACCELERATE
+        jassert(complex.size() >= size);
+        vDSP_ztoc(&splitComplex, 1, (DSPComplex*) complex.get(), 2, complex.size());
+        return complex;
+      #else
         jassert(fftBuffer.size() >= size * 2 + 2);
 
         return fftBuffer.toType<Complex32>();
+      #endif
     }
 
     /*
@@ -105,6 +104,7 @@ private:
 
   #ifdef USE_ACCELERATE
     FFTSetup fftSetup;
+    Buffer<Complex32> complex;
     DSPSplitComplex splitComplex;
   #else
     ScopedAlloc<Int8u> stateBuff;

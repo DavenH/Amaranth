@@ -1,3 +1,4 @@
+#include "ScopedAlloc.h"
 #ifdef USE_ACCELERATE
 
 #include "Buffer.h"
@@ -43,8 +44,7 @@ int globalBufferMacSizeErrorCount = 0;
 #define constructCopyTo(T)                       \
     template<>                                   \
     void Buffer<T>::copyTo(Buffer buff) const {  \
-        jassert(buff.sz >= sz);                  \
-        memcpy(buff.get(), ptr, sz * sizeof(T)); \
+        memcpy(buff.get(), ptr, jmin(sz, buff.sz) * sizeof(T)); \
     }
 
 #define constructZero(T)                         \
@@ -71,7 +71,7 @@ int globalBufferMacSizeErrorCount = 0;
 #define constructWithPhase(T)                    \
     template<>                                   \
     Buffer<T>& Buffer<T>::withPhase(int phase, Buffer workBuffer) { \
-        jassert(phase >= 0 && phase < sz);       \
+        jassert(phase >= 0);       \
         if(phase == 0 || sz == 0)                \
             return *this;                        \
         phase = phase % sz;                      \
@@ -266,8 +266,23 @@ Buffer<Float64>& Buffer<Float64>::addProduct(Buffer src, Float64 k) {
 }
 
 template<> Buffer<Complex32>& Buffer<Complex32>::addProduct(Buffer src1, Buffer src2) {
-    CPLX_TRIADIC_SETUP(src1, src2, (*this));
-    vDSP_zvma(&srcA, 2, &srcB, 2, &dest, 2, &dest, 2, vDSP_Length(sz));
+    int size = jmin(sz, src1.size(), src2.size());
+    // todo maybe these ought to be in VecOps, taking an optional workbuffer to avoid reallocation
+    //  or, a split-complex buffer?
+    ScopedAlloc<Float32> tmp(size * 6);
+    DSPSplitComplex dest, srcA, srcB;
+    srcA.realp = tmp.place(size);
+    srcA.imagp = tmp.place(size);
+    vDSP_ctoz((DSPComplex*)src1.get(), 2, &srcA, 2, size);
+    srcB.realp = tmp.place(size);
+    srcB.imagp = tmp.place(size);
+    vDSP_ctoz((DSPComplex*)src2.get(), 2, &srcB, 2, size);
+    dest.realp = tmp.place(size);
+    dest.imagp = tmp.place(size);
+    vDSP_ctoz((DSPComplex*)ptr, 2, &dest, 2, size);
+
+    vDSP_zvma(&srcA, 2, &srcB, 2, &dest, 2, &dest, 2, vDSP_Length(size));
+    vDSP_ztoc(&dest, 2, (DSPComplex*) ptr, 2, size);
     return *this;
 }
 
@@ -420,12 +435,16 @@ template<> Buffer<Float64>& Buffer<Float64>::clip(Float64 low, Float64 high) {
 
 template<>
 void Buffer<Float32>::getMin(Float32& pMin, int& index) const {
-    vDSP_minvi(ptr, 1, &pMin, (vDSP_Length*)&index, vDSP_Length(sz));
+    long minIdx;
+    vDSP_minvi(ptr, 1, &pMin, (vDSP_Length*)&minIdx, vDSP_Length(sz));
+    index = minIdx;
 }
 
 template<>
 void Buffer<Float32>::getMax(Float32& pMax, int& index) const {
-    vDSP_maxvi(ptr, 1, &pMax, (vDSP_Length*)&index, vDSP_Length(sz));
+    long maxIdx;
+    vDSP_maxvi(ptr, 1, &pMax, (vDSP_Length*)&maxIdx, vDSP_Length(sz));
+    index = maxIdx;
 }
 
 template<>
