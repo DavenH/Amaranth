@@ -118,7 +118,7 @@ void MainComponent::updateHistoryImage() {
         transform.forward(resampleBuffer);
         Buffer<float> magnitudes = transform
             .getMagnitudes().section(0, spectrogram.getHeight())
-            .add(1).ln().mul(5).tanh();
+            .mul(30).add(1).ln().mul(3).tanh();
 
         // Map to colors
         for (int y = 0; y < kImageHeight; ++y) {

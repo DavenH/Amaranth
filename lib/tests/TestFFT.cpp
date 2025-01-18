@@ -18,7 +18,7 @@ void print(const Buffer<Float32>& buffer) {
     }
 }
 
-TEST_CASE("Transform Initialization", "[transform]") {
+TEST_CASE("Transform Initialization", "[transform][init]") {
     Transform fft;
     
     SECTION("Default construction") {
@@ -38,7 +38,7 @@ TEST_CASE("Transform Initialization", "[transform]") {
     }
 }
 
-TEST_CASE("Transform Basic Operations", "[transform]") {
+TEST_CASE("Transform Basic Operations", "[transform][sanity]") {
     Transform fft;
     const int size = 1024;
     fft.allocate(size, Transform::ScaleType::NoDivByAny);
@@ -81,7 +81,7 @@ TEST_CASE("Transform Basic Operations", "[transform]") {
     }
 }
 
-TEST_CASE("Transform Forward/Inverse", "[transform]") {
+TEST_CASE("Transform Forward/Inverse", "[transform][identity]") {
     Transform fft;
     const int size = 512;
     fft.allocate(size, Transform::DivFwdByN);
@@ -109,7 +109,7 @@ TEST_CASE("Transform Forward/Inverse", "[transform]") {
     }
 }
 
-TEST_CASE("Transform Scaling Options", "[transform]") {
+TEST_CASE("Transform Scaling Options", "[transform][scaling]") {
     Transform fft;
     const int size = 256;
 
@@ -134,7 +134,7 @@ TEST_CASE("Transform Scaling Options", "[transform]") {
     }
 }
 
-TEST_CASE("Transform DC Offset Removal", "[transform]") {
+TEST_CASE("Transform DC Offset Removal", "[transform][DC-offset]") {
     Transform fft;
     const int size = 256;
     fft.allocate(size, Transform::NoDivByAny);
@@ -160,7 +160,7 @@ TEST_CASE("Transform DC Offset Removal", "[transform]") {
     }
 }
 
-TEST_CASE("Transform Cartesian Conversion", "[transform]") {
+TEST_CASE("Transform Cartesian Conversion", "[transform][polar-to-cart]") {
     Transform fft;
     const int size = 256;
     fft.allocate(size, Transform::DivFwdByN, true); // Enable cartesian conversion
@@ -189,10 +189,10 @@ TEST_CASE("Transform Cartesian Conversion", "[transform]") {
     }
 }
 
-TEST_CASE("Transform Dirac Function", "[transform]") {
+TEST_CASE("Transform Standard Functions", "[transform][functions]") {
     Transform fft;
     const int size = 512;
-    fft.allocate(size, Transform::NoDivByAny);
+    fft.allocate(size, Transform::NoDivByAny, true);
 
     SECTION("Dirac Impulse Response") {
         // Create dirac impulse (1 at t=0, 0 elsewhere)
@@ -202,7 +202,6 @@ TEST_CASE("Transform Dirac Function", "[transform]") {
 
         fft.forward(signal);
         auto complex = fft.getComplex();
-        print(complex);
         // For a dirac function, all frequency bins should have equal magnitude
         float expectedMag = 1.0f;
         // skip dc/nyquist
@@ -214,6 +213,40 @@ TEST_CASE("Transform Dirac Function", "[transform]") {
         for (int i = 1; i < complex.size() / 2 + 1;  ++i) {
             float phase = std::atan2(imag(complex[i]), real(complex[i]));
             REQUIRE(std::abs(phase) < 0.01f);
+        }
+    }
+
+    SECTION("Sawtooth Harmonic Series") {
+        // Create sawtooth wave [-1, 1]
+        ScopedAlloc<float> signal(size);
+        signal.ramp(-1, 2.f / static_cast<float>(size - 1));
+        // print(signal);
+
+        fft.forward(signal);
+        auto complex = fft.getComplex();
+        print(complex);
+
+        auto magnitudes = fft.getMagnitudes();
+
+        // In a sawtooth wave, the nth harmonic should have magnitude proportional to 1/n
+        // We'll check the first 8 harmonics
+        const int numHarmonicsToCheck = 8;
+
+        // The ratio between successive harmonics should be approximately n/(n+1)
+        // We allow for some deviation due to windowing effects and finite resolution
+        for (int n = 0; n < numHarmonicsToCheck - 1; ++n) {
+            float expectedRatio = static_cast<float>(n + 1) / static_cast<float>(n + 2);
+            float actualRatio = magnitudes[n + 1] / magnitudes[n];
+
+            // Use a relatively generous margin due to discretization and windowing effects
+            REQUIRE(actualRatio == Catch::Approx(expectedRatio).margin(0.15f));
+        }
+
+        // Additionally, check that harmonics decay approximately as 1/n
+        float firstHarmonicMag = magnitudes[0];
+        for (int n = 1; n < numHarmonicsToCheck; ++n) {
+            float expectedMag = firstHarmonicMag / (n + 1);
+            REQUIRE(magnitudes[n] == Catch::Approx(expectedMag).margin(0.15f));
         }
     }
 }
@@ -263,4 +296,11 @@ TEST_CASE("Transform Phase Shift Invariance", "[transform]") {
 
         REQUIRE(std::abs(phaseDiff - phaseShift) < 0.01f);
     }
+}
+
+TEST_CASE("Transform Sawtooth Harmonics", "[transform]") {
+    Transform fft;
+    const int size = 1024; // Larger size for better frequency resolution
+    fft.allocate(size, Transform::NoDivByAny, true); // Enable cartesian conversion for magnitude computation
+
 }
