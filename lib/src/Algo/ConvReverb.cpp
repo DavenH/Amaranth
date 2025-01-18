@@ -210,10 +210,7 @@ BlockConvolver::BlockConvolver() :
     ,   noiseDecay(0) {
 }
 
-void BlockConvolver::init(
-        int sizeOfBlock,
-        const Buffer<float>& kernel,
-        bool usesNoise) {
+void BlockConvolver::init(int sizeOfBlock, const Buffer<float>& kernel, bool usesNoise) {
     reset();
 
     sizeOfBlock     = NumberUtils::nextPower2(sizeOfBlock);
@@ -221,7 +218,7 @@ void BlockConvolver::init(
     blockSize       = sizeOfBlock;
     numBlocks       = static_cast<int>(::ceilf(kernel.size() / float(blockSize)));
     inputBufferPos  = 0;
-    currSegment         = 0;
+    currSegment     = 0;
 
     int segmentSize = 2 * blockSize;
     int complexSize = blockSize + 1; // in Float32c units

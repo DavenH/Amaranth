@@ -58,7 +58,7 @@ void VecOps::mul(Buffer<Complex32> src, Complex32 val, Buffer<Complex32> dst) {
     d.imagp = d.realp + 1;
     s.realp = reinterpret_cast<float*>(src.get());
     s.imagp = s.realp + 1;
-    vDSP_zvzsml(&d, 1, &k, &s, 1, src.size());
+    vDSP_zvzsml(&d, 2, &k, &s, 2, src.size());
 }
 template<> void VecOps::addProd(Float32* src, Float32 k, Float32* dst, int len) {
     vDSP_vsma(src, 1, &k, dst, 1, dst, 1, len);

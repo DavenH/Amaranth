@@ -60,8 +60,7 @@
 #define defineAddSubMulDiv(T) \
   T(add, ) \
   T(sub, ) \
-  T(mul, mulConjArg) \
-  T(div, )
+  T(mul, mulConjArg)
 
 #ifdef USE_IPP
 #endif

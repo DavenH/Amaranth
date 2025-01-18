@@ -13,7 +13,7 @@
 
 int globalBufferMacSizeErrorCount = 0;
 
-#define declareForInts(T) \
+#define declareForIntsAndCplx(T) \
     T(Int8u)   \
     T(Int8s)   \
     T(Int16s)  \
@@ -81,10 +81,10 @@ int globalBufferMacSizeErrorCount = 0;
         return *this;                            \
     }
 
-declareForInts(constructZero);
+declareForIntsAndCplx(constructZero);
 // declareForComplex(constructZero);
-declareForInts(constructZeroSz);
-declareForInts(constructSet);
+declareForIntsAndCplx(constructZeroSz);
+declareForIntsAndCplx(constructSet);
 declareForAll(constructCopyTo);
 declareForCommon(constructWithPhase);
 
@@ -113,6 +113,7 @@ declareForCommon(constructWithPhase);
 #define defineVdspAuto_Real(name, fn) \
     defineFn(name, Float32, vDSP_##fn, VDSP_AUTO_ARG_PATTERN) \
     defineFn(name, Float64, vDSP_##fn##D, VDSP_AUTO_ARG_PATTERN)
+
 defineVdspNullary_Real(zero, vclr)
 defineVdspNullary_Real(flip, vrvrs)
 defineVdspNullary_Real(hann, hann_window)
@@ -254,6 +255,15 @@ Buffer<Float64>& Buffer<Float64>::addProduct(Buffer src1, Buffer src2) {
     return *this;
 }
 
+template<> Buffer<Complex32>& Buffer<Complex32>::addProduct(Buffer src1, Buffer src2) {
+    int size = jmin(sz, src1.size(), src2.size());
+    CPLX_TRIADIC_SETUP(src1, src2, (*this));
+
+    vDSP_zvma(&srcA, 2, &srcB, 2, &dest, 2, &dest, 2, vDSP_Length(size));
+    vDSP_ztoc(&dest, 2, (DSPComplex*) ptr, 2, size);
+    return *this;
+}
+
 template<>
 Buffer<Float32>& Buffer<Float32>::addProduct(Buffer src, Float32 k) {
     vDSP_vsma(src.get(), 1, &k, ptr, 1, ptr, 1, vDSP_Length(sz));
@@ -265,39 +275,73 @@ Buffer<Float64>& Buffer<Float64>::addProduct(Buffer src, Float64 k) {
     return *this;
 }
 
-template<> Buffer<Complex32>& Buffer<Complex32>::addProduct(Buffer src1, Buffer src2) {
-    int size = jmin(sz, src1.size(), src2.size());
-    // todo maybe these ought to be in VecOps, taking an optional workbuffer to avoid reallocation
-    //  or, a split-complex buffer?
-    ScopedAlloc<Float32> tmp(size * 6);
-    DSPSplitComplex dest, srcA, srcB;
-    srcA.realp = tmp.place(size);
-    srcA.imagp = tmp.place(size);
-    vDSP_ctoz((DSPComplex*)src1.get(), 2, &srcA, 2, size);
-    srcB.realp = tmp.place(size);
-    srcB.imagp = tmp.place(size);
-    vDSP_ctoz((DSPComplex*)src2.get(), 2, &srcB, 2, size);
-    dest.realp = tmp.place(size);
-    dest.imagp = tmp.place(size);
-    vDSP_ctoz((DSPComplex*)ptr, 2, &dest, 2, size);
-
-    vDSP_zvma(&srcA, 2, &srcB, 2, &dest, 2, &dest, 2, vDSP_Length(size));
-    vDSP_ztoc(&dest, 2, (DSPComplex*) ptr, 2, size);
-    return *this;
+template<> Buffer<Complex32>& Buffer<Complex32>::addProduct(Buffer src, Complex32 k) {
+    int size = jmin(sz, src.size());
+    ScopedAlloc<Complex32> temp(size);
+    temp.set(k);
+    return addProduct(src.withSize(size), temp);
 }
 
+//
 #define CPLX_AUTO_FN_ARG_PATTERN &src, 2, &dest, 2, &dest, 2, vDSP_Length(sz)
+
+//
+#define CPLX_AUTO_FN_ARG_PATTERN2 &dest, 2, &src, 2, &dest, 2, vDSP_Length(sz)
 
 #define defineComplexBuffOp(name, conjArg) \
     template<> \
     Buffer<Complex32>& Buffer<Complex32>::name(Buffer buff) { \
         BUFF_CHECK \
         CPLX_DIADIC_SETUP \
-        vDSP_zv##name(CPLX_AUTO_FN_ARG_PATTERN conjArg); \
+        vDSP_zv##name(&dest, 2, &src, 2, &dest, 2, vDSP_Length(sz) conjArg); \
         return *this; \
     }
 
+#define defineComplexDivBuff \
+    template<> \
+    Buffer<Complex32>& Buffer<Complex32>::div(Buffer buff) { \
+        BUFF_CHECK \
+        CPLX_DIADIC_SETUP \
+        vDSP_zvdiv(&src, 2, &dest, 2, &dest, 2, vDSP_Length(sz)); \
+        return *this; \
+    }
+
+#define defineComplexConstOp(name, conjArg)                   \
+    template<>                                                \
+    Buffer<Complex32>& Buffer<Complex32>::name(Complex32 c) { \
+        if(sz == 0) return *this;                             \
+        ScopedAlloc<Complex32> temp(sz);                      \
+        temp.set(c);                                          \
+        DSPSplitComplex dest, src;                            \
+        dest.realp = reinterpret_cast<float*>(ptr);           \
+        dest.imagp = dest.realp + 1;                          \
+        src.realp = reinterpret_cast<float*>(temp.get());     \
+        src.imagp = src.realp + 1;                            \
+        vDSP_zv##name(&dest, 2, &src, 2, &dest, 2, vDSP_Length(sz) conjArg); \
+        return *this;                                         \
+    }
+
+#define defineComplexConstDiv                                 \
+    template<>                                                \
+    Buffer<Complex32>& Buffer<Complex32>::div(Complex32 c) {  \
+        if(sz == 0) return *this;                             \
+        ScopedAlloc<Complex32> temp(sz);                      \
+        temp.set(c);                                          \
+        DSPSplitComplex dest, src;                            \
+        dest.realp = reinterpret_cast<float*>(ptr);           \
+        dest.imagp = dest.realp + 1;                          \
+        src.realp = reinterpret_cast<float*>(temp.get());     \
+        src.imagp = src.realp + 1;                            \
+        vDSP_zvdiv(&src, 2, &dest, 2, &dest, 2, vDSP_Length(sz)); \
+        return *this;                                         \
+    }
+
+// ptr[i] = ptr[i] op C
+defineAddSubMulDiv(defineComplexConstOp)
+defineComplexConstDiv
+// ptr[i] = ptr[i] op buff[i]
 defineAddSubMulDiv(defineComplexBuffOp)
+defineComplexDivBuff
 
 // c - a[i]
 template<>
@@ -405,7 +449,7 @@ template<> Buffer<Float64>& Buffer<Float64>::threshLT(Float64 c) { vDSP_vthrD(VD
 
 template<> Buffer<Complex32>& Buffer<Complex32>::threshLT(Complex32 c) {
     // Complex32 is stored as pairs of floats [real0,imag0,real1,imag1,...]
-    float* float_ptr = reinterpret_cast<float*>(ptr);
+    auto* float_ptr = reinterpret_cast<float*>(ptr);
     float thresh_real = c.real();
     float thresh_imag = c.imag();
     jassert(thresh_real == thresh_imag);

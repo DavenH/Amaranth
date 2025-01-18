@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 
 #include "../src/Array/Buffer.h"
+#include "TestDefs.h"
 #include <array>
 #include <cmath>
 
@@ -122,7 +123,7 @@ TEST_CASE("Buffer mathematical operations", "[buffer]") {
     }
 }
 
-TEST_CASE("Buffer statistical operations", "[buffer]") {
+TEST_CASE("Buffer statistical operations", "[buffer][statistics]") {
     std::array<float, 4> data = {1.0f, 2.0f, 3.0f, 4.0f};
     Buffer buf(data.data(), 4);
     
@@ -734,5 +735,196 @@ TEST_CASE("Buffer upsampling operations", "[buffer][resample]") {
         REQUIRE(buf2[9] == 4.0f);
         REQUIRE(buf2[10] == 0.0f);
         REQUIRE(buf2[11] == 0.0f);
+    }
+}
+
+// --------------- Complex arithmetic ---------------- //
+
+TEST_CASE("Buffer complex arithmetic operations", "[buffer][complex]") {
+    Buffer<Complex32> buf1, buf2;
+    std::array<Complex32, 4> data1{};
+    std::array<Complex32, 4> data2{};
+
+    auto beforeEach = [&] {
+        // Initialize with some basic complex numbers:
+        // data1: {1+0i, 0+1i, -1+0i, 0-1i}
+        // data2: {1+1i, -1+1i, -1-1i, 1-1i}
+        data1 = {
+            Complex32{1.0f, 0.0f},
+            Complex32{0.0f, 1.0f},
+            Complex32{-1.0f, 0.0f},
+            Complex32{0.0f, -1.0f}
+        };
+        data2 = {
+            Complex32{1.0f, 1.0f},
+            Complex32{-1.0f, 1.0f},
+            Complex32{-1.0f, -1.0f},
+            Complex32{1.0f, -1.0f}
+        };
+        buf1 = Buffer(data1.data(), 4);
+        buf2 = Buffer(data2.data(), 4);
+    };
+
+    SECTION("scalar multiplication") {
+        beforeEach();
+        Complex32 scalar{2.0f, 1.0f};  // 2 + i
+
+        buf1.mul(scalar);
+
+        // (1+0i)(2+i) = 2+i
+        REQUIRE(real(buf1[0]) == Approx(2.0f));
+        REQUIRE(imag(buf1[0]) == Approx(1.0f));
+
+        // (0+i)(2+i) = -1+2i
+        REQUIRE(real(buf1[1]) == Approx(-1.0f));
+        REQUIRE(imag(buf1[1]) == Approx(2.0f));
+
+        // (-1+0i)(2+i) = -2-i
+        REQUIRE(real(buf1[2]) == Approx(-2.0f));
+        REQUIRE(imag(buf1[2]) == Approx(-1.0f));
+
+        // (0-i)(2+i) = 1-2i
+        REQUIRE(real(buf1[3]) == Approx(1.0f));
+        REQUIRE(imag(buf1[3]) == Approx(-2.0f));
+    }
+
+    SECTION("buffer addition") {
+        beforeEach();
+
+        buf1.add(buf2);
+
+        // (1+0i) + (1+i) = 2+i
+        REQUIRE(real(buf1[0]) == Approx(2.0f));
+        REQUIRE(imag(buf1[0]) == Approx(1.0f));
+
+        // (0+i) + (-1+i) = -1+2i
+        REQUIRE(real(buf1[1]) == Approx(-1.0f));
+        REQUIRE(imag(buf1[1]) == Approx(2.0f));
+
+        // (-1+0i) + (-1-i) = -2-i
+        REQUIRE(real(buf1[2]) == Approx(-2.0f));
+        REQUIRE(imag(buf1[2]) == Approx(-1.0f));
+
+        // (0-i) + (1-i) = 1-2i
+        REQUIRE(real(buf1[3]) == Approx(1.0f));
+        REQUIRE(imag(buf1[3]) == Approx(-2.0f));
+    }
+
+    SECTION("buffer subtraction") {
+        beforeEach();
+
+        buf1.sub(buf2);
+
+        // (1+0i) - (1+i) = 0-i
+        REQUIRE(real(buf1[0]) == Approx(0.0f));
+        REQUIRE(imag(buf1[0]) == Approx(-1.0f));
+
+        // (0+i) - (-1+i) = 1+0i
+        REQUIRE(real(buf1[1]) == Approx(1.0f));
+        REQUIRE(imag(buf1[1]) == Approx(0.0f));
+
+        // (-1+0i) - (-1-i) = 0+i
+        REQUIRE(real(buf1[2]) == Approx(0.0f));
+        REQUIRE(imag(buf1[2]) == Approx(1.0f));
+
+        // (0-i) - (1-i) = -1+0i
+        REQUIRE(real(buf1[3]) == Approx(-1.0f));
+        REQUIRE(imag(buf1[3]) == Approx(0.0f));
+    }
+
+    SECTION("buffer multiplication") {
+        beforeEach();
+
+        buf1.mul(buf2);
+
+        // (1+0i)(1+i) = 1+i
+        REQUIRE(real(buf1[0]) == Approx(1.0f));
+        REQUIRE(imag(buf1[0]) == Approx(1.0f));
+
+        // (0+i)(-1+i) = -1
+        REQUIRE(real(buf1[1]) == Approx(-1.0f));
+        REQUIRE(imag(buf1[1]) == Approx(-1.0f));
+
+        // (-1+0i)(-1-i) = 1+i
+        REQUIRE(real(buf1[2]) == Approx(1.0f));
+        REQUIRE(imag(buf1[2]) == Approx(1.0f));
+
+        // (0-i)(1-i) = -1 - i
+        REQUIRE(real(buf1[3]) == Approx(-1.0f));
+        REQUIRE(imag(buf1[3]) == Approx(-1.0f));
+    }
+
+    SECTION("buffer division") {
+        beforeEach();
+
+        buf1.div(buf2);
+
+        // (1+0i)/(1+i) = (1-i)/2
+        REQUIRE(real(buf1[0]) == Approx(0.5f));
+        REQUIRE(imag(buf1[0]) == Approx(-0.5f));
+
+        // (0+i)/(-1+i) = (-1-1)/2
+        REQUIRE(real(buf1[1]) == Approx(0.5f));
+        REQUIRE(imag(buf1[1]) == Approx(-0.5f));
+
+        // (-1+0i)/(-1-i) = (1-i)/2
+        REQUIRE(real(buf1[2]) == Approx(0.5f));
+        REQUIRE(imag(buf1[2]) == Approx(-0.5f));
+
+        // (0-i)/(1-i) = 0.5 - 0.5i
+        REQUIRE(real(buf1[3]) == Approx(0.5f));
+        REQUIRE(imag(buf1[3]) == Approx(-0.5f));
+    }
+
+    SECTION("addProduct with scalar") {
+        beforeEach();
+        Complex32 scalar{0.0f, 1.0f};  // i
+
+        buf1.addProduct(buf2, scalar);
+
+        // (1+0i) + (1+i)(i) = 1+0i + (-1+i) = 0+i
+        REQUIRE(real(buf1[0]) == Approx(0.0f));
+        REQUIRE(imag(buf1[0]) == Approx(1.0f));
+
+        // (0+i) + (-1+i)(i) = i + (-i-1) = -1
+        REQUIRE(real(buf1[1]) == Approx(-1.0f));
+        REQUIRE(imag(buf1[1]) == Approx(0.0f));
+
+        // (-1+0i) + (-1-i)(i) = -i
+        REQUIRE(real(buf1[2]) == Approx(0.0f));
+        REQUIRE(imag(buf1[2]) == Approx(-1.0f));
+
+        // (0-i) + (1-i)(i) = 1
+        REQUIRE(real(buf1[3]) == Approx(1.0f));
+        REQUIRE(imag(buf1[3]) == Approx(0.0f));
+    }
+
+    SECTION("addProduct with two buffers") {
+        beforeEach();
+        std::array<Complex32, 4> data3 = {
+            Complex32{1.0f, 0.0f},
+            Complex32{1.0f, 0.0f},
+            Complex32{1.0f, 0.0f},
+            Complex32{1.0f, 0.0f}
+        };
+        Buffer result(data3.data(), 4);
+
+        result.addProduct(buf1, buf2);
+
+        // 1 + (1+0i)(1+i) = 1 + (1+i) = 2+i
+        REQUIRE(real(result[0]) == Approx(2.0f));
+        REQUIRE(imag(result[0]) == Approx(1.0f));
+
+        // 1 + (0+i)(-1+i) = 1 + (-1) = 0
+        REQUIRE(real(result[1]) == Approx(0.0f));
+        REQUIRE(imag(result[1]) == Approx(-1.0f));
+
+        // 1 + (-1+0i)(-1-i) = 1 + (1+i) = 2+i
+        REQUIRE(real(result[2]) == Approx(2.0f));
+        REQUIRE(imag(result[2]) == Approx(1.0f));
+
+        // 1 + (0-i)(1-i) = -i
+        REQUIRE(real(result[3]) == Approx(0.0f));
+        REQUIRE(imag(result[3]) == Approx(-1.0f));
     }
 }
