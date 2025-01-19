@@ -24,6 +24,37 @@ int globalVecOpsSizeErrorCount = 0;
 // a div b -> c
 defineAddSubMulDiv(declareForF32_F64_Cplx)
 
+
+template<>
+void VecOps::div(Buffer<Float32> src1, Buffer<Float32> src2, Buffer<Float32> dst) {
+    if (src1.size() < dst.size() || src2.size() < dst.size()) {
+        ++globalVecOpsSizeErrorCount;
+        return;
+    }
+    vDSP_vdiv(src2.get(), 1, src1.get(), 1, dst.get(), 1, vDSP_Length(dst.size()));
+}
+
+template<>
+void VecOps::div(Buffer<Float64> src1, Buffer<Float64> src2, Buffer<Float64> dst) {
+    if (src1.size() < dst.size() || src2.size() < dst.size()) {
+        ++globalVecOpsSizeErrorCount;
+        return;
+    }
+    vDSP_vdivD(src2.get(), 1, src1.get(), 1, dst.get(), 1, vDSP_Length(dst.size()));
+}
+
+template<>
+void VecOps::div(Buffer<Complex32> src1, Buffer<Complex32> src2, Buffer<Complex32> dst) {
+    DSPSplitComplex dest, srcA, srcB;
+    dest.realp = reinterpret_cast<float *>(dst.get());
+    dest.imagp = dest.realp + 1;
+    srcA.realp = reinterpret_cast<float *>(src1.get());
+    srcA.imagp = srcA.realp + 1;
+    srcB.realp = reinterpret_cast<float *>(src2.get());
+    srcB.imagp = srcB.realp + 1;;
+    vDSP_zvdiv(&srcB, 2, &srcA, 2, &dest, 2, vDSP_Length(dst.size()));
+}
+
 #define declareForF32_F64(op, fn) \
     template<> void VecOps::op(SRC_DST(Float32)) { BUFFS_EQ_CHECK vDSP_##fn(MOVE_ARG_PATTERN); } \
     template<> void VecOps::op(SRC_DST(Float64)) { BUFFS_EQ_CHECK vDSP_##fn##D(MOVE_ARG_PATTERN); }
@@ -58,7 +89,7 @@ void VecOps::mul(Buffer<Complex32> src, Complex32 val, Buffer<Complex32> dst) {
     d.imagp = d.realp + 1;
     s.realp = reinterpret_cast<float*>(src.get());
     s.imagp = s.realp + 1;
-    vDSP_zvzsml(&d, 1, &k, &s, 1, src.size());
+    vDSP_zvzsml(&d, 2, &k, &s, 2, src.size());
 }
 template<> void VecOps::addProd(Float32* src, Float32 k, Float32* dst, int len) {
     vDSP_vsma(src, 1, &k, dst, 1, dst, 1, len);

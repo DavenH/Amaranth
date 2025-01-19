@@ -73,14 +73,14 @@ void MainComponent::updateHistoryImage() {
     Graphics g(cyclogram);
     g.drawImageAt(oldCyclogram, -effectiveColumns, 0);
 
-    // auto oldSpectrogram = spectrogram.createCopy();
-    // Graphics g2(spectrogram);
-    // g2.drawImageAt(oldSpectrogram, -effectiveColumns, 0);
+    auto oldSpectrogram = spectrogram.createCopy();
+    Graphics g2(spectrogram);
+    g2.drawImageAt(oldSpectrogram, -effectiveColumns, 0);
 
     g.setColour(Colours::black);
     g.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, cyclogram.getHeight());
-    // g2.setColour(Colours::black);
-    // g2.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, spectrogram.getHeight());
+    g2.setColour(Colours::black);
+    g2.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, spectrogram.getHeight());
 
     Image::BitmapData pixelData(
         cyclogram,
@@ -89,12 +89,12 @@ void MainComponent::updateHistoryImage() {
         Image::BitmapData::writeOnly
     );
 
-    // Image::BitmapData spectData(
-    //     spectrogram,
-    //     jmax(0, kHistoryFrames - effectiveColumns), 0,
-    //     effectiveColumns, spectrogram.getHeight(),
-    //     Image::BitmapData::writeOnly
-    // );
+    Image::BitmapData spectData(
+        spectrogram,
+        jmax(0, kHistoryFrames - effectiveColumns), 0,
+        effectiveColumns, spectrogram.getHeight(),
+        Image::BitmapData::writeOnly
+    );
 
     // Process each column
     for (int col = 0; col < effectiveColumns; ++col) {
@@ -115,10 +115,10 @@ void MainComponent::updateHistoryImage() {
         Resampling::linResample(workBuffer.withSize(samplesInColumn), resampleBuffer);
         resampleBuffer.clip(-1.f, 1.f);
 
-        // transform.forward(resampleBuffer);
-        // Buffer<float> magnitudes = transform
-        //     .getMagnitudes().section(0, spectrogram.getHeight())
-        //     .add(1).ln().mul(5).tanh();
+        transform.forward(resampleBuffer);
+        Buffer<float> magnitudes = transform
+            .getMagnitudes().section(0, spectrogram.getHeight())
+            .mul(30).add(1).ln().mul(3).tanh();
 
         // Map to colors
         for (int y = 0; y < kImageHeight; ++y) {
@@ -127,11 +127,11 @@ void MainComponent::updateHistoryImage() {
             pixelData.setPixelColour(col, y, color);
         }
 
-        // for (int y = 0; y < magnitudes.size(); ++y) {
-        //     float value = magnitudes[y];
-        //     auto color  = inferno.getColour(static_cast<int>(value * (kNumColours - 0.01)));
-        //     spectData.setPixelColour(col, spectrogram.getHeight() - 1 - y, color);
-        // }
+        for (int y = 0; y < magnitudes.size(); ++y) {
+            float value = magnitudes[y];
+            auto color  = inferno.getColour(static_cast<int>(value * (kNumColours - 0.01)));
+            spectData.setPixelColour(col, spectrogram.getHeight() - 1 - y, color);
+        }
     }
 
     processor.resetPeriods();
@@ -141,14 +141,14 @@ void MainComponent::drawHistoryImage(Graphics& g) {
     if (plotBounds.isEmpty()) return;
 
     Rectangle<int> local = plotBounds;
-    // Rectangle<int> left  = local.removeFromLeft((plotBounds.getWidth() - 20) / 2);
-    Rectangle<int> right = local.removeFromRight((plotBounds.getWidth()));
+    Rectangle<int> left  = local.removeFromLeft((plotBounds.getWidth() - 20) / 2);
+    Rectangle<int> right = local.removeFromRight((plotBounds.getWidth() / 2));
 
     g.setImageResamplingQuality(Graphics::lowResamplingQuality);
     g.drawImage(cyclogram, right.toFloat());
 
-    // g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-    // g.drawImage(spectrogram, left.toFloat());
+    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+    g.drawImage(spectrogram, left.toFloat());
 
     g.setColour(Colours::white);
     g.drawRect(plotBounds);

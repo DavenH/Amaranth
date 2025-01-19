@@ -52,9 +52,9 @@ void Transform::allocate(int bufferSize, ScaleType scaleType, bool convertsToCar
   #ifdef USE_ACCELERATE
     fftSetup = vDSP_create_fftsetup(order, FFT_RADIX2);
     int fftBufferSize = bufferSize + 2; // +2 for dc offset and nyquist bins
-    memory.ensureSize(fftBufferSize + bufferSize + (convertToCart ? bufferSize : 0));
+    memory.ensureSize(2 * fftBufferSize + (convertToCart ? bufferSize : 0));
     fftBuffer = memory.place(fftBufferSize);
-    complex = memory.place(bufferSize).toType<Complex32>();
+    complex = memory.place(fftBufferSize).toType<Complex32>();
 
     splitComplex.realp = fftBuffer.get();
     splitComplex.imagp = fftBuffer.get() + bufferSize / 2;
@@ -105,15 +105,21 @@ void Transform::forward(Buffer<float> src) {
     if(removeOffset) {
         // vDSP stores the nyquist bin in im[0] - it's only needed for
         // convolution, which won't be the case if we have `removeOffset` true
-        fftBuffer[1] = 0;
+        // edit, not sure if this is true anymore.
+        // fftBuffer[1] = 0;
 
         // vDSP stores the DC offset in re[0]
         fftBuffer[0] = 0;
     }
 
     if (convertToCart) {
-        vDSP_zvmags(&splitComplex, 1, magnitudes, 1, size/2);
-        vDSP_zvphas(&splitComplex, 1, phases, 1, size/2);
+        DSPSplitComplex temp;
+        int hsize = size / 2;
+        temp.realp = fftBuffer.get() + 1;
+        temp.imagp = fftBuffer.get() + hsize + 1;
+        vDSP_zvmags(&temp, 1, magnitudes, 1, hsize);
+        vvsqrtf(magnitudes.get(), magnitudes.get(), &hsize);
+        vDSP_zvphas(&temp, 1, phases, 1, hsize);
     }
   #else
     ippsFFTFwd_RToCCS_32f(src, fftBuffer, spec, workBuff);
@@ -157,8 +163,8 @@ void Transform::inverse(Buffer<float> dest) {
   #ifdef USE_ACCELERATE
     if (convertToCart) {
         int hsize = size / 2;
-        float* real = fftBuffer.get() + 2;
-        float* imag = fftBuffer.get() + hsize + 2;
+        float* real = fftBuffer.get() + 1;
+        float* imag = fftBuffer.get() + hsize + 1;
         vvcosf(real, phases.get(), &hsize);
         vvsinf(imag, phases.get(), &hsize);
         vDSP_vmul(real, 1, magnitudes.get(), 1, real, 1, hsize);
