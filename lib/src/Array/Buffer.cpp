@@ -1,5 +1,7 @@
 #include "Buffer.h"
 
+#include "ArrayDefs.h"
+
 #ifdef USE_IPP
 #include "ScopedAlloc.h"
 #include "ipp.h"
@@ -152,14 +154,6 @@ template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::subCRev(Ipp##T c)               \
 {                                                               \
     ippsSubCRev_##T##_I(c, ptr, sz);                            \
-    return *this;                                               \
-}
-
-#define constructSubCRevB(T)                                    \
-template<>                                                      \
-Buffer<Ipp##T>& Buffer<Ipp##T>::subCRev(Ipp##T c, Buffer<Ipp##T> buff) \
-{                                                               \
-    ippsSubCRev_##T(buff.ptr, c, ptr, jmin(sz, buff.sz));       \
     return *this;                                               \
 }
 
@@ -614,12 +608,12 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
     }
 
 #define constructSinInit(T) \
-    template<>
+    template<> \
     Buffer<Ipp##T>& Buffer<Ipp##T>::sin(float relFreq, float unitPhase) { \
         if(sz == 0) return *this; \
         return ramp( \
-                static_cast<T>(unitPhase * 2 * M_PI), \
-                static_cast<T>(relFreq * 2 * M_PI) \
+                static_cast<Ipp##T>(unitPhase * 2 * M_PI), \
+                static_cast<Ipp##T>(relFreq * 2 * M_PI) \
             ).sin(); \
     }
 
@@ -701,7 +695,6 @@ declareForReal(constructThreshGT);
 declareForReal(constructWinHann);
 declareForReal(constructWinBlackman);
 declareForReal(constructFlip);
-declareForReal(constructSinInit);
 
 declareForRealPrec(constructSqrt)
 declareForRealPrec(constructPow)
@@ -711,11 +704,11 @@ declareForRealPrec(constructSin)
 declareForRealPrec(constructTanh)
 declareForRealPrec(constructPowCRev)
 
+declareForReal(constructSinInit);
 
 constructNormDiffL2(32f);
 constructDownsample(32f);
 constructUpsample(32f);
-constructSubCRevB(32f);
 constructDot(32f);
 constructCombineC(32f);
 constructSqr(32f);
