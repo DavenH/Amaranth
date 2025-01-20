@@ -219,13 +219,11 @@ TEST_CASE("Transform Standard Functions", "[transform][functions]") {
     SECTION("Sawtooth Harmonic Series") {
         // Create sawtooth wave [-1, 1]
         ScopedAlloc<float> signal(size);
-        signal.ramp(-1, 2.f / static_cast<float>(size - 1));
-        // print(signal);
+        signal.ramp(0, 2.f / static_cast<float>(size));
+        signal.section(size / 2, size / 2).sub(2.f);
+        signal.add(1.f / size);
 
         fft.forward(signal);
-        auto complex = fft.getComplex();
-        print(complex);
-
         auto magnitudes = fft.getMagnitudes();
 
         // In a sawtooth wave, the nth harmonic should have magnitude proportional to 1/n
@@ -239,14 +237,16 @@ TEST_CASE("Transform Standard Functions", "[transform][functions]") {
             float actualRatio = magnitudes[n + 1] / magnitudes[n];
 
             // Use a relatively generous margin due to discretization and windowing effects
-            REQUIRE(actualRatio == Catch::Approx(expectedRatio).margin(0.15f));
+            REQUIRE(actualRatio == Catch::Approx(expectedRatio).margin(0.01f));
         }
+
+        REQUIRE(magnitudes[0] == Catch::Approx(2.f / M_PI * magnitudes.size()).margin(1e-4f));
 
         // Additionally, check that harmonics decay approximately as 1/n
         float firstHarmonicMag = magnitudes[0];
         for (int n = 1; n < numHarmonicsToCheck; ++n) {
             float expectedMag = firstHarmonicMag / (n + 1);
-            REQUIRE(magnitudes[n] == Catch::Approx(expectedMag).margin(0.15f));
+            REQUIRE(magnitudes[n] == Catch::Approx(expectedMag).margin(0.01f));
         }
     }
 }

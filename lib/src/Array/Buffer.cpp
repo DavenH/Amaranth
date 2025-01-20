@@ -207,13 +207,6 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::div(Ipp##T c)                   \
     return *this;                                               \
 }
 
-template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Ipp32fc c)
-{
-    if(c.re != 1 || c.im != 0)
-        ippsMulC_32fc_I(c, ptr, sz);
-    return *this;
-}
-
 #define constructMulComb(T)                                     \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::mul(Buffer<Ipp##T> buff, Ipp##T c) \
@@ -727,5 +720,24 @@ constructSort(32f);
 
 implementOperators(32f)
 implementOperators(64f)
+
+template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Ipp32fc c)
+{
+    if(c.re != 1 || c.im != 0)
+        ippsMulC_32fc_I(c, ptr, sz);
+    return *this;
+}
+
+template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::addProduct(Buffer buff, Ipp32fc c) {
+    if(c.re != 1 || c.im != 0) {
+        ScopedAlloc<Ipp32fc> temp(sz);
+        temp.set(c);
+        ippsAddProduct_32fc(buff.ptr, temp.ptr, ptr, sz);
+    } else {
+        ippsAdd_32fc_I(buff.ptr, ptr, sz);
+    }
+    return *this;
+}
+
 
 #endif

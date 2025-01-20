@@ -128,7 +128,7 @@ void Transform::forward(Buffer<float> src) {
         fftBuffer[0] = 0;
     }
     if (convertToCart) {
-        ippsCartToPolar_32fc(reinterpret_cast<Complex32*>(fftBuffer.get()) + 1, magnitudes, phases, size/2);
+        ippsCartToPolar_32fc(reinterpret_cast<Complex32*>(fftBuffer.get()+2), magnitudes, phases, size/2);
     }
   #endif
 }

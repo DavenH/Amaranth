@@ -55,6 +55,10 @@ void VecOps::div(Buffer<Complex32> src1, Buffer<Complex32> src2, Buffer<Complex3
     vDSP_zvdiv(&srcB, 2, &srcA, 2, &dest, 2, vDSP_Length(dst.size()));
 }
 
+template<> void VecOps::divCRev(Buffer<Float32> src, Float32 k, Buffer<Float32> dst) {
+    src.copyTo(dst); dst.divCRev(k);
+}
+
 #define declareForF32_F64(op, fn) \
     template<> void VecOps::op(SRC_DST(Float32)) { BUFFS_EQ_CHECK vDSP_##fn(MOVE_ARG_PATTERN); } \
     template<> void VecOps::op(SRC_DST(Float64)) { BUFFS_EQ_CHECK vDSP_##fn##D(MOVE_ARG_PATTERN); }
@@ -174,7 +178,6 @@ void VecOps::conv(Buffer<Float32> src1, Buffer<Float32> src2, Buffer<Float32> ds
 
 
 #elif defined(USE_IPP)
-//#else
 
 template<> void VecOps::zero(Float32* src, int size) { ippsZero_32f(src, size); }
 template<> void VecOps::zero(Float64* src, int size) { ippsZero_64f(src, size); }
@@ -288,9 +291,16 @@ template<> void VecOps::fir(const Buffer<Float32>& src, Buffer<Float32> dst, flo
 }
 */
 
+template<> void VecOps::subCRev(Buffer<Float32> src, Float32 k, Buffer<Float32> dst) {
+    ippsSubCRev_32f(src.get(), k, dst.get(), jmin(src.size(), dst.size()));
+}
+
+template<> void VecOps::divCRev(Buffer<Float32> src, Float32 k, Buffer<Float32> dst) {
+    ippsDivCRev_32f(src.get(), k, dst.get(), jmin(src.size(), dst.size()));
+}
+
 #endif
 
-template<> void VecOps::divCRev(Buffer<Float32> src, Float32 k, Buffer<Float32> dst) { src.copyTo(dst); dst.divCRev(k); }
 template<> void VecOps::flip(Buffer<Float32> src, Buffer<Float32> dst) { src.copyTo(dst); dst.flip();  }
 template<> void VecOps::flip(Buffer<Float64> src, Buffer<Float64> dst) { src.copyTo(dst); dst.flip();  }
 

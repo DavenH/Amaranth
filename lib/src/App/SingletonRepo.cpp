@@ -31,9 +31,12 @@ SingletonRepo::SingletonRepo() :
 }
 
 SingletonRepo::~SingletonRepo() {
-    getObj(Settings).writePropertiesFile();
-    getObj(DocumentLibrary).writeSettingsFile();
-
+    if(hashes.contains("Settings")) {
+        getObj(Settings).writePropertiesFile();
+    }
+    if(hashes.contains("DocumentLibrary")) {
+        getObj(DocumentLibrary).writeSettingsFile();
+    }
     if(hasInstantiated) {
         clearSingletons();
     }

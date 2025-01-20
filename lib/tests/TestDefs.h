@@ -19,3 +19,14 @@ float real(const Complex32& c);
 float imag(const Complex32& c);
 float mag(const Complex32& c);
 Complex32 makeComplex(float r, float i);
+
+#if (defined(JUCE_WINDOWS) && (JUCE_WINDOWS == 1))
+#define platformSplit(X, Y, Z) X
+#elif (defined(JUCE_MAC) && (JUCE_MAC == 1))
+#define platformSplit(X, Y, Z) Y
+#elif (defined(JUCE_LINUX) && (JUCE_LINUX == 1))
+#define platformSplit(X, Y, Z) Z
+#else
+#error "Include JuceHeader.h"
+// #define platformSplit(X, Y, Z) ""
+#endif

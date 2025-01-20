@@ -368,7 +368,7 @@ TEST_CASE("Buffer arithmetic edge cases", "[buffer][arithmetic]") {
 
         // Test division by zero buffer
         buf /= zero;
-        REQUIRE(isinf(buf[0]));
+        REQUIRE(platformSplit(isinf(buf[0]), isinf(buf[0]), isinff(buf[0])));
     }
 
     SECTION("operations with different sized buffers") {
@@ -389,8 +389,10 @@ TEST_CASE("Buffer arithmetic edge cases", "[buffer][arithmetic]") {
     }
 }
 
-#define VIMAGE_H
-#include <Accelerate/Accelerate.h>
+#ifdef USE_ACCELERATE
+  #define VIMAGE_H
+  #include <Accelerate/Accelerate.h>
+#endif
 
 TEST_CASE("Buffer utility operations", "[buffer][utility]") {
     Buffer<float> buf1, buf2;
