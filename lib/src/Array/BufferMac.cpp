@@ -116,9 +116,6 @@ declareForCommon(constructWithPhase);
 
 defineVdspNullary_Real(zero, vclr)
 defineVdspNullary_Real(flip, vrvrs)
-defineVdspNullary_Real(hann, hann_window)
-defineVdspNullary_Real(blackman, blkman_window)
-
 defineVforceAuto_Real (sqrt, vvsqrt)
 defineVforceAuto_Real (exp,  vvexp)
 defineVforceAuto_Real (tanh, vvtanh)
@@ -182,6 +179,35 @@ defineVdspNullaryConst_Real(max,  maxv)
 
 template<> Buffer<Float32>& Buffer<Float32>::sort() { EMPTY_CHECK vDSP_vsort(ptr, vDSP_Length(sz), 1); return *this; }
 template<> Buffer<Float64>& Buffer<Float64>::sort() { EMPTY_CHECK vDSP_vsortD(ptr, vDSP_Length(sz), 1); return *this; }
+
+
+template<>
+Buffer<Float32> &Buffer<Float32>::hann() {
+    if (sz == 0) return *this;
+    vDSP_hann_window(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    return *this;
+}
+
+template<>
+Buffer<Float64> &Buffer<Float64>::hann() {
+    if (sz == 0) return *this;
+    vDSP_hann_windowD(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    return *this;
+}
+
+template<>
+Buffer<Float32> &Buffer<Float32>::blackman() {
+    if (sz == 0) return *this;
+    vDSP_blkman_window(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    return *this;
+}
+
+template<>
+Buffer<Float64> &Buffer<Float64>::blackman() {
+    if (sz == 0) return *this;
+    vDSP_blkman_windowD(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    return *this;
+}
 
 template<>
 void Buffer<Float32>::minmax(Float32& pMin, Float32& pMax) const {

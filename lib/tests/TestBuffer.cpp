@@ -741,27 +741,23 @@ TEST_CASE("Buffer upsampling operations", "[buffer][resample]") {
 }
 
 TEST_CASE("Buffer window functions", "[buffer][window]") {
-    Buffer<float> buf1, buf2;
-    std::array<float, 16> data1{};
+    Buffer<float> buf;
+    std::array<float, 50> data1{};
 
     auto beforeEach = [&] {
-        buf1 = Buffer(data1.data(), 16);
+        buf = Buffer(data1.data(), data1.size());
     };
 
     SECTION("Hanning Window") {
         beforeEach();
-        buf1.hann();
-        print(buf1);
-
-        REQUIRE(buf1[0] == 1.0f);
+        buf.hann();
+        REQUIRE(buf.sum() == Approx(buf.size() / 2).epsilon(0.01f));
     }
 
     SECTION("Blackman Window") {
         beforeEach();
-        buf1.blackman();
-        print(buf1);
-
-        REQUIRE(buf1[0] == 1.0f);
+        buf.blackman();
+        REQUIRE(buf.sum() == Approx(buf.size() * 21.f / 50.f).epsilon(0.01f));
     }
 }
 
