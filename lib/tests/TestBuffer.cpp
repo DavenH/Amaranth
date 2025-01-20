@@ -740,6 +740,31 @@ TEST_CASE("Buffer upsampling operations", "[buffer][resample]") {
     }
 }
 
+TEST_CASE("Buffer window functions", "[buffer][window]") {
+    Buffer<float> buf1, buf2;
+    std::array<float, 16> data1{};
+
+    auto beforeEach = [&] {
+        buf1 = Buffer(data1.data(), 16);
+    };
+
+    SECTION("Hanning Window") {
+        beforeEach();
+        buf1.hann();
+        print(buf1);
+
+        REQUIRE(buf1[0] == 1.0f);
+    }
+
+    SECTION("Blackman Window") {
+        beforeEach();
+        buf1.blackman();
+        print(buf1);
+
+        REQUIRE(buf1[0] == 1.0f);
+    }
+}
+
 // --------------- Complex arithmetic ---------------- //
 
 TEST_CASE("Buffer complex arithmetic operations", "[buffer][complex]") {

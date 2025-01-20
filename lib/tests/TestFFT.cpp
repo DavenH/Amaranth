@@ -4,20 +4,6 @@
 #include "../src/Array/Buffer.h"
 #include "TestDefs.h"
 
-void print(const Buffer<Complex32>& buffer) {
-    std::cout << std::fixed << std::setprecision(3);
-    for (int i = 0; i < buffer.size(); ++i) {
-        std::cout << i << "\t" << real(buffer[i]) << "\t" << imag(buffer[i]) << std::endl;
-    }
-}
-
-void print(const Buffer<Float32>& buffer) {
-    std::cout << std::fixed << std::setprecision(3);
-    for (int i = 0; i < buffer.size(); ++i) {
-        std::cout << i << "\t" << buffer[i] << std::endl;
-    }
-}
-
 TEST_CASE("Transform Initialization", "[transform][init]") {
     Transform fft;
     
@@ -224,6 +210,8 @@ TEST_CASE("Transform Standard Functions", "[transform][functions]") {
         signal.add(1.f / size);
 
         fft.forward(signal);
+        auto complex = fft.getComplex();
+        print(complex.section(0, 10));
         auto magnitudes = fft.getMagnitudes();
 
         // In a sawtooth wave, the nth harmonic should have magnitude proportional to 1/n
@@ -260,13 +248,13 @@ TEST_CASE("Transform Phase Shift Invariance", "[transform]") {
         // Create original signal (simple sine wave)
         std::vector<float> input1(size);
         std::vector<float> input2(size);
-        std::vector<Complex32> freqData(size / 2);
+        std::vector<Complex32> freqData(size / 2 + 1);
         const float frequency = 4.0f;
         const float phaseShift = M_PI / 4.0f; // 45 degree shift
 
         Buffer<float> buffer1(input1.data(), size);
         Buffer<float> buffer2(input2.data(), size);
-        Buffer<Complex32> storedCplx(freqData.data(), size);
+        Buffer<Complex32> storedCplx(freqData.data(), size / 2 + 1);
 
         buffer1.ramp(0, 2 * M_PI * frequency / size).sin();
         buffer2.ramp(phaseShift, 2 * M_PI * frequency / size).sin();
@@ -280,7 +268,7 @@ TEST_CASE("Transform Phase Shift Invariance", "[transform]") {
         auto complex2 = fft.getComplex();
 
         // Magnitudes should be identical despite phase shift
-        for (int i = 0; i < complex1.size() / 2; ++i) {
+        for (int i = 0; i < complex1.size(); ++i) {
             REQUIRE(mag(storedCplx[i]) == Catch::Approx(mag(complex2[i])).margin(0.01f));
         }
 
@@ -296,11 +284,4 @@ TEST_CASE("Transform Phase Shift Invariance", "[transform]") {
 
         REQUIRE(std::abs(phaseDiff - phaseShift) < 0.01f);
     }
-}
-
-TEST_CASE("Transform Sawtooth Harmonics", "[transform]") {
-    Transform fft;
-    const int size = 1024; // Larger size for better frequency resolution
-    fft.allocate(size, Transform::NoDivByAny, true); // Enable cartesian conversion for magnitude computation
-
 }
