@@ -30,3 +30,6 @@ Complex32 makeComplex(float r, float i);
 #error "Include JuceHeader.h"
 // #define platformSplit(X, Y, Z) ""
 #endif
+
+void print(const Buffer<Complex32>& buffer);
+void print(const Buffer<Float32>& buffer);

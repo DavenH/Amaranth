@@ -11,3 +11,18 @@
   float mag(const Complex32& c) { return std::sqrt(c.re*c.re + c.im*c.im); }
   Complex32 makeComplex(float r, float i) { return Ipp32fc{r, i}; }
 #endif
+
+
+void print(const Buffer<Complex32>& buffer) {
+    std::cout << std::fixed << std::setprecision(3);
+    for (int i = 0; i < buffer.size(); ++i) {
+      std::cout << i << "\t" << real(buffer[i]) << "\t" << imag(buffer[i]) << std::endl;
+    }
+  }
+
+void print(const Buffer<Float32>& buffer) {
+    std::cout << std::fixed << std::setprecision(3);
+    for (int i = 0; i < buffer.size(); ++i) {
+      std::cout << i << "\t" << buffer[i] << std::endl;
+    }
+  }
