@@ -221,7 +221,7 @@ void BlockConvolver::init(int sizeOfBlock, const Buffer<float>& kernel, bool use
     currSegment     = 0;
 
     int segmentSize = 2 * blockSize;
-    int complexSize = blockSize + 1; // in Float32c units
+    int complexSize = blockSize + 1; // in Complex32 units (8 bytes)
 
     fft.allocate(segmentSize, Transform::ScaleType::DivInvByN);
 
