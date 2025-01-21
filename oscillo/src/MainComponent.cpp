@@ -16,10 +16,10 @@ MainComponent::MainComponent()
 
     temperamentControls = std::make_unique<TemperamentControls>();
     addAndMakeVisible(temperamentControls.get());
-    temperamentControls->onTemperamentChanged = [this]() {
+    temperamentControls->onTemperamentChanged = [this] {
         updateCurrentNote();
     };
-    temperamentControls->onCentsOffsetChanged = [this]() {
+    temperamentControls->onCentsOffsetChanged = [this] {
         updateCurrentNote();
     };
 

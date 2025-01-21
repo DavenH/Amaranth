@@ -12,6 +12,9 @@ OscAudioProcessor::~OscAudioProcessor() {
 void OscAudioProcessor::start() {
     deviceManager = std::make_unique<AudioDeviceManager>();
     auto error = deviceManager->initialise(1, 0, nullptr, true);
+    if (error.isNotEmpty()) {
+        std::cout << error << std::endl;;
+    }
     jassert(error.isEmpty());
     deviceManager->addAudioCallback(this);
 }
