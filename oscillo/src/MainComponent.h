@@ -33,7 +33,7 @@ private:
     std::unique_ptr<TemperamentControls> temperamentControls;
 
     int lastClickedMidiNote = 60;
-    Image cyclogram, spectrogram;
+    Image cyclogram, spectrogram, phasigram;
     Rectangle<int> plotBounds;
     ScopedAlloc<Float32> resampleBuffer{kImageHeight};
     ScopedAlloc<Float32> workBuffer;
