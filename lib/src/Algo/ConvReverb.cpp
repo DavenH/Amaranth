@@ -298,7 +298,7 @@ void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
         VecOps::add(
             fftBuffer + inputBufferPos,
             overlapBuffer + inputBufferPos,
-            output.section(samplesToProcess, samplesToProcess)
+            output.section(samplesProcessed, samplesToProcess)
         );
 
         inputBufferPos += samplesToProcess;

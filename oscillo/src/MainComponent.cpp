@@ -16,16 +16,17 @@ MainComponent::MainComponent()
 
     temperamentControls = std::make_unique<TemperamentControls>();
     addAndMakeVisible(temperamentControls.get());
-    temperamentControls->onTemperamentChanged = [this]() {
+    temperamentControls->onTemperamentChanged = [this] {
         updateCurrentNote();
     };
-    temperamentControls->onCentsOffsetChanged = [this]() {
+    temperamentControls->onCentsOffsetChanged = [this] {
         updateCurrentNote();
     };
 
     transform.allocate(kImageHeight, Transform::DivFwdByN, true);
     cyclogram   = Image(Image::RGB, kHistoryFrames, kImageHeight, true);
     spectrogram = Image(Image::RGB, kHistoryFrames, kImageHeight / 8, true);
+    phasigram   = Image(Image::RGB, kHistoryFrames, kImageHeight / 8, true);
     // Component::setVisible(true);
     // setSize(1280, 960);
     startTimer(100);
@@ -73,14 +74,20 @@ void MainComponent::updateHistoryImage() {
     Graphics g(cyclogram);
     g.drawImageAt(oldCyclogram, -effectiveColumns, 0);
 
-    auto oldSpectrogram = spectrogram.createCopy();
-    Graphics g2(spectrogram);
-    g2.drawImageAt(oldSpectrogram, -effectiveColumns, 0);
+    // auto oldSpectrogram = spectrogram.createCopy();
+    // Graphics g2(spectrogram);
+    // g2.drawImageAt(oldSpectrogram, -effectiveColumns, 0);
+
+    auto oldPhasigram = phasigram.createCopy();
+    Graphics g3(phasigram);
+    g3.drawImageAt(oldPhasigram, -effectiveColumns, 0);
 
     g.setColour(Colours::black);
     g.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, cyclogram.getHeight());
-    g2.setColour(Colours::black);
-    g2.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, spectrogram.getHeight());
+    // g2.setColour(Colours::black);
+    // g2.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, spectrogram.getHeight());
+    g3.setColour(Colours::black);
+    g3.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, phasigram.getHeight());
 
     Image::BitmapData pixelData(
         cyclogram,
@@ -89,12 +96,20 @@ void MainComponent::updateHistoryImage() {
         Image::BitmapData::writeOnly
     );
 
-    Image::BitmapData spectData(
-        spectrogram,
+    // Image::BitmapData spectData(
+    //     spectrogram,
+    //     jmax(0, kHistoryFrames - effectiveColumns), 0,
+    //     effectiveColumns, spectrogram.getHeight(),
+    //     Image::BitmapData::writeOnly
+    // );
+
+    Image::BitmapData phaseData(
+        phasigram,
         jmax(0, kHistoryFrames - effectiveColumns), 0,
-        effectiveColumns, spectrogram.getHeight(),
+        effectiveColumns, phasigram.getHeight(),
         Image::BitmapData::writeOnly
     );
+
 
     // Process each column
     for (int col = 0; col < effectiveColumns; ++col) {
@@ -120,6 +135,9 @@ void MainComponent::updateHistoryImage() {
             .getMagnitudes().section(0, spectrogram.getHeight())
             .mul(30).add(1).ln().mul(3).tanh();
 
+        Buffer<float> phases = transform.getPhases()
+            .section(0, phasigram.getHeight()).add(M_PI).mul(0.5 / M_PI);
+
         // Map to colors
         for (int y = 0; y < kImageHeight; ++y) {
             float value = resampleBuffer[y];
@@ -127,10 +145,17 @@ void MainComponent::updateHistoryImage() {
             pixelData.setPixelColour(col, y, color);
         }
 
-        for (int y = 0; y < magnitudes.size(); ++y) {
-            float value = magnitudes[y];
-            auto color  = inferno.getColour(static_cast<int>(value * (kNumColours - 0.01)));
-            spectData.setPixelColour(col, spectrogram.getHeight() - 1 - y, color);
+        // for (int y = 0; y < magnitudes.size(); ++y) {
+        //     float value = magnitudes[y];
+        //     auto color  = inferno.getColour(static_cast<int>(value * (kNumColours - 0.01)));
+        //     spectData.setPixelColour(col, spectrogram.getHeight() - 1 - y, color);
+        // }
+        for (int y = 0; y < phases.size(); ++y) {
+            float value = phases[y];
+            auto color  = inferno
+                .getColour(static_cast<int>(value * (kNumColours - 0.01)))
+                .withAlpha(magnitudes[y]);
+            phaseData.setPixelColour(col, phasigram.getHeight() - 1 - y, color);
         }
     }
 
@@ -147,8 +172,11 @@ void MainComponent::drawHistoryImage(Graphics& g) {
     g.setImageResamplingQuality(Graphics::lowResamplingQuality);
     g.drawImage(cyclogram, right.toFloat());
 
+    // g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+    // g.drawImage(spectrogram, left.toFloat());
+
     g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-    g.drawImage(spectrogram, left.toFloat());
+    g.drawImage(phasigram, left.toFloat());
 
     g.setColour(Colours::white);
     g.drawRect(plotBounds);

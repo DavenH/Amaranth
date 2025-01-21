@@ -14,7 +14,7 @@ TEST_CASE("Transform Initialization", "[transform][init]") {
     
     SECTION("Multiple allocations") {
         REQUIRE_NOTHROW(fft.allocate(1024));
-        REQUIRE_NOTHROW(fft.allocate(2048)); // Should handle reallocation
+        REQUIRE_NOTHROW(fft.allocate(2048));
     }
     
     SECTION("Power of 2 sizes") {

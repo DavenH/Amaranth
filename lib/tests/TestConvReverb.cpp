@@ -45,7 +45,6 @@ public:
     static void generateTestIR(Buffer<float>& buffer) {
         buffer.ramp(0.01f, 0.1f).inv().sin();
     }
-
 };
 
 TEST_CASE("ConvReverb Basic Operation", "[ConvReverb]") {
@@ -101,7 +100,7 @@ TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
         TestConvReverb::generateTestIR(ir);
 
         // Generate reference result
-        // ConvReverb::basicConvolve(input, ir, reference);
+        ConvReverb::basicConvolve(input, ir, reference);
 
         // Test single-stage convolution
         BlockConvolver convolver;
@@ -130,10 +129,10 @@ TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
 
     SECTION("Two-stage convolution accuracy") {
         const int inputSize = 44100;
-        const int irSize = 131072;
-        const int headSize = 512;
-        const int tailSize = 8192;
-        const int bufferSize = 512;
+        const int irSize = 4096;
+        const int headSize = 16;
+        const int tailSize = 1024;
+        const int bufferSize = 256;
         
         ScopedAlloc<float> memory(inputSize + irSize + bufferSize + (inputSize + irSize - 1) * 2);
         Buffer<float> input = memory.place(inputSize);
@@ -147,7 +146,7 @@ TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
         TestConvReverb::generateTestIR(ir);
 
         // Generate reference result
-        // ConvReverb::basicConvolve(input, ir, reference);
+        ConvReverb::basicConvolve(input, ir, reference);
 
         // Initialize two-stage convolution
         reverb.init(headSize, tailSize, ir);

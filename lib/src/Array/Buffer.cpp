@@ -588,7 +588,8 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
     template<>                                   \
     Buffer<Ipp##T>& Buffer<Ipp##T>::hann() {     \
         if(sz == 0) return *this;                \
-        ippsWinHann_##T(ptr, ptr, sz);           \
+        ippsSet_##T(1, ptr, sz);                 \
+        ippsWinHann_##T##_I(ptr, sz);            \
         return *this;                            \
     }
 
@@ -596,6 +597,7 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
     template<>                                   \
     Buffer<Ipp##T>& Buffer<Ipp##T>::blackman() { \
         if(sz == 0) return *this;                \
+        ippsSet_##T(1, ptr, sz);                 \
         ippsWinBlackmanStd_##T(ptr, ptr, sz);    \
         return *this;                            \
     }
