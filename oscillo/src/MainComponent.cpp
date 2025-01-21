@@ -26,7 +26,7 @@ MainComponent::MainComponent()
     transform.allocate(kImageHeight, Transform::DivFwdByN, true);
     cyclogram   = Image(Image::RGB, kHistoryFrames, kImageHeight, true);
     spectrogram = Image(Image::RGB, kHistoryFrames, kImageHeight / 8, true);
-    phasigram   = Image(Image::RGB, kHistoryFrames, kImageHeight / 8, true);
+    phasigram   = Image(Image::RGB, kHistoryFrames, kImageHeight / 32, true);
     // Component::setVisible(true);
     // setSize(1280, 960);
     startTimer(100);
@@ -152,9 +152,9 @@ void MainComponent::updateHistoryImage() {
         // }
         for (int y = 0; y < phases.size(); ++y) {
             float value = phases[y];
-            auto color  = inferno
+            auto color  = viridis
                 .getColour(static_cast<int>(value * (kNumColours - 0.01)))
-                .withAlpha(magnitudes[y]);
+                .withBrightness(magnitudes[y]);
             phaseData.setPixelColour(col, phasigram.getHeight() - 1 - y, color);
         }
     }
