@@ -24,6 +24,7 @@ public:
 
 private:
     static constexpr int kImageHeight = 512;
+    static constexpr int kNumPhasePartials = 16;
     static constexpr int kHistoryFrames = 512;
     static constexpr int kNumColours = 64;
 
@@ -37,6 +38,7 @@ private:
     Rectangle<int> plotBounds;
     ScopedAlloc<Float32> resampleBuffer{kImageHeight};
     ScopedAlloc<Float32> workBuffer;
+    ScopedAlloc<Float32> phaseVelocity;
     Transform transform;
 
     GradientColourMap viridis, inferno;

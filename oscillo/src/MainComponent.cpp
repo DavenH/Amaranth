@@ -115,7 +115,7 @@ void MainComponent::updateHistoryImage() {
     for (int col = 0; col < effectiveColumns; ++col) {
         // Calculate range of periods to combine for this column
         const int startPeriod = col * periodsPerColumn;
-        const int endPeriod   = std::min((col + 1) * periodsPerColumn, (int) periods.size());
+        const int endPeriod   = std::min((col + 1) * periodsPerColumn, static_cast<int>(periods.size()));
 
         // Combine multiple periods if needed
         workBuffer.zero();
@@ -136,7 +136,8 @@ void MainComponent::updateHistoryImage() {
             .mul(30).add(1).ln().mul(3).tanh();
 
         Buffer<float> phases = transform.getPhases()
-            .section(0, phasigram.getHeight()).add(M_PI).mul(0.5 / M_PI);
+            .section(0, phasigram.getHeight())
+            .add(M_PI).mul(0.5 / M_PI);
 
         // Map to colors
         for (int y = 0; y < kImageHeight; ++y) {
@@ -166,8 +167,8 @@ void MainComponent::drawHistoryImage(Graphics& g) {
     if (plotBounds.isEmpty()) return;
 
     Rectangle<int> local = plotBounds;
-    Rectangle<int> left  = local.removeFromLeft((plotBounds.getWidth() - 20) / 2);
-    Rectangle<int> right = local.removeFromRight((plotBounds.getWidth() / 2));
+    const Rectangle<int> left  = local.removeFromLeft((plotBounds.getWidth() - 20) / 2);
+    const Rectangle<int> right = local.removeFromRight((plotBounds.getWidth() / 2));
 
     g.setImageResamplingQuality(Graphics::lowResamplingQuality);
     g.drawImage(cyclogram, right.toFloat());
