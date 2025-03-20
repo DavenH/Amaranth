@@ -27,12 +27,13 @@ MainComponent::MainComponent()
     transform.allocate(kImageHeight, Transform::DivFwdByN, true);
     cyclogram   = Image(Image::RGB, kHistoryFrames, kImageHeight, true);
     spectrogram = Image(Image::RGB, kHistoryFrames, kImageHeight / 8, true);
-    phasigram   = Image(Image::RGB, kHistoryFrames, kImageHeight / 32, true);
-    phaseVelocityBar = Image(Image::RGB, 1, kImageHeight / 32, true);
+    phasigram   = Image(Image::RGB, kHistoryFrames, kNumPhasePartials, true);
+    phaseVelocityBar = Image(Image::RGB, 1, kNumPhasePartials, true);
 
     phaseVelocity.zero();
     prevPhases.zero();
     phaseDiff.zero();
+    avgMagnitudes.zero();
 
     startTimer(100);
 
@@ -51,6 +52,77 @@ MainComponent::~MainComponent() {
 void MainComponent::paint(Graphics& g) {
     g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
     drawHistoryImage(g);
+}
+
+void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>& area) {
+    const int numHarmonics = phaseVelocity.size();
+    if (numHarmonics == 0) return;
+
+    // Draw background
+    g.setColour(Colours::black);
+    g.fillRect(area);
+
+    // Draw axes
+    g.setColour(Colours::grey);
+
+    // Vertical center line (zero velocity)
+    const int centerX = area.getX() + area.getWidth() / 2;
+    g.drawVerticalLine(centerX, area.getY(), area.getBottom());
+
+    // Draw grid lines for velocity
+    g.setColour(Colours::darkgrey.withAlpha(0.5f));
+    // Quarter divisions
+    g.drawVerticalLine(area.getX() + area.getWidth() / 4, area.getY(), area.getBottom());
+    g.drawVerticalLine(area.getX() + area.getWidth() * 3 / 4, area.getY(), area.getBottom());
+
+    // Calculate bar height
+    const float barHeight = (float)area.getHeight() / numHarmonics;
+
+    for (int i = 0; i < numHarmonics; ++i) {
+        const float velocity = phaseVelocity[i];
+        const float normalizedVelocity = jlimit(-1.0f, 1.0f, velocity / kBarChartMaxVelocity);
+
+        // Map the harmonic to y position (reversed to match phasigram)
+        const int y = area.getBottom() - (int)((i + 1) * barHeight);
+
+        // Calculate bar width and position
+        int barWidth, barX;
+        if (normalizedVelocity >= 0) {
+            barWidth = (int)(normalizedVelocity * area.getWidth() / 2);
+            barX = centerX;
+        } else {
+            barWidth = (int)(-normalizedVelocity * area.getWidth() / 2);
+            barX = centerX - barWidth;
+        }
+
+        // Choose color based on velocity direction (blue for negative, red for positive)
+        Colour barColor;
+        if (normalizedVelocity >= 0) {
+            barColor = Colours::red
+            .withMultipliedSaturation(normalizedVelocity)
+            .withBrightness(jmin(1.f, avgMagnitudes[i]));
+        } else {
+            barColor = Colours::blue
+            .withMultipliedSaturation(-normalizedVelocity)
+            .withBrightness(jmin(1.f, avgMagnitudes[i]));
+        }
+
+        // Draw the bar
+        g.setColour(barColor);
+        g.fillRect(barX, y, barWidth, (int)barHeight - 1);
+
+        // Draw harmonic label every 4 harmonics
+        if (i % 4 == 0) {
+            g.setColour(Colours::white);
+            g.setFont(10.0f);
+            g.drawText(String(i + 1), area.getX() - 25, y, 20, (int)barHeight, Justification::centredRight);
+        }
+    }
+
+    // Draw title
+    g.setColour(Colours::white);
+    g.setFont(14.0f);
+    g.drawText("Phase Velocity", area.getX(), area.getY() - 20, area.getWidth(), 20, Justification::centred);
 }
 
 void MainComponent::resized() {
@@ -115,14 +187,16 @@ void MainComponent::updateHistoryImage() {
         Image::BitmapData::writeOnly
     );
 
-    Image::BitmapData phaseVelocityData(
-        phaseVelocityBar,
-        0, 0,
-        1, phaseVelocityBar.getHeight(),
-        Image::BitmapData::writeOnly
-    );
+    // Image::BitmapData phaseVelocityData(
+    //     phaseVelocityBar,
+    //     0, 0,
+    //     1, phaseVelocityBar.getHeight(),
+    //     Image::BitmapData::writeOnly
+    // );
 
-    const float smoothingK = powf(kPhaseSmoothing, 1.0 / (float) effectiveColumns);
+    // const float smoothingK = powf(kPhaseSmoothing, 1.0 / (float) effectiveColumns);
+
+    avgMagnitudes.zero();
 
     // Process each column
     for (int col = 0; col < effectiveColumns; ++col) {
@@ -146,37 +220,30 @@ void MainComponent::updateHistoryImage() {
         transform.forward(resampleBuffer);
         Buffer<float> magnitudes = transform
             .getMagnitudes().section(0, spectrogram.getHeight())
-            .mul(30).add(1).ln().mul(3).tanh();
+            .mul(30).add(1).ln();
 
         Buffer<float> phases = transform.getPhases()
             .section(0, phasigram.getHeight())
             .add(M_PI).mul(0.5 / M_PI);
 
-        bool isLast = col == effectiveColumns - 1;
-        VecOps::sub(phases, prevPhases, phaseDiff);
+        VecOps::addProd(
+            magnitudes.section(0, kNumPhasePartials).get(),
+            1.f / (effectiveColumns),
+            avgMagnitudes.get(),
+            kNumPhasePartials
+        );
+
+        VecOps::sub(prevPhases, phases, phaseDiff);
 
         for (float &diff : phaseDiff) {
             while (diff > 0.5f) diff -= 1.0f;
             while (diff < -0.5f) diff += 1.0f;
         }
-        phaseVelocity *= (1.f - smoothingK);
-        phaseVelocity += phaseDiff.mul(10 * smoothingK);
+        phaseVelocity *= (1.f - kPhaseSmoothing);
+        phaseVelocity += phaseDiff.mul(2 * kPhaseSmoothing);
         phaseVelocity.clip(-0.5f, 0.5f);
 
         phases.copyTo(prevPhases);
-
-        if (isLast) {
-            for (int y = 0; y < phases.size(); ++y) {
-                auto invY = phasigram.getHeight() - 1 - y;
-
-                int colorIndex = static_cast<int>((phaseVelocity[y] + 0.5f) * (kNumColours - 0.01));
-                auto velocColor = bipolar
-                    .getColour(colorIndex)
-                    .withBrightness(magnitudes[y]);
-
-                phaseVelocityData.setPixelColour(0, invY, velocColor);
-            }
-        }
 
         // Map to colors
         for (int y = 0; y < kImageHeight; ++y) {
@@ -184,6 +251,9 @@ void MainComponent::updateHistoryImage() {
             auto color  = inferno.getColour(static_cast<int>((value * 0.5f + 0.5f) * (kNumColours - 0.01)));
             pixelData.setPixelColour(col, y, color);
         }
+
+        // scale it
+        magnitudes.mul(3).tanh();
 
         for (int y = 0; y < phases.size(); ++y) {
             float value = phases[y];
@@ -203,23 +273,29 @@ void MainComponent::drawHistoryImage(Graphics& g) {
     if (plotBounds.isEmpty()) return;
 
     Rectangle<int> local = plotBounds;
-    Rectangle<int> left = local.removeFromLeft((plotBounds.getWidth() - 20) / 4);
 
-    // Slice off a piece for the phase velocity bar
-    Rectangle<int> phaseVelRect = local.removeFromLeft(kPhaseVelocityWidth);
+    // Left quarter for phasigram
+    Rectangle<int> phasigram_area = local.removeFromLeft(local.getWidth() / 4);
 
-    const Rectangle<int> right = local.removeFromRight((plotBounds.getWidth() / 2) - kPhaseVelocityWidth);
+    // Second quarter for phase velocity bar chart
+    Rectangle<int> phaseVelArea = local.removeFromLeft(local.getWidth() / 3);
+    phaseVelArea.reduce(10, 10); // Add margins
 
-    left.removeFromRight(10);
+    // Right half for cyclogram
+    const Rectangle<int> right = local;
+
+    // Draw phasigram
     g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-    g.drawImage(phasigram, left.toFloat());
+    g.drawImage(phasigram, phasigram_area.toFloat());
 
-    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-    g.drawImage(phaseVelocityBar, phaseVelRect.toFloat());
+    // Draw phase velocity bar chart
+    drawPhaseVelocityBarChart(g, phaseVelArea);
 
+    // Draw cyclogram
     g.setImageResamplingQuality(Graphics::lowResamplingQuality);
     g.drawImage(cyclogram, right.toFloat());
 
+    // Draw border
     g.setColour(Colours::white);
     g.drawRect(plotBounds);
 }
