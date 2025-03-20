@@ -5,7 +5,8 @@
 MainComponent::MainComponent()
     : workBuffer(4096),
     viridis(kNumColours, GradientColourMap::Palette::Viridis),
-    inferno(kNumColours, GradientColourMap::Palette::Inferno)
+    inferno(kNumColours, GradientColourMap::Palette::Inferno),
+    bipolar(kNumColours, GradientColourMap::Palette::Bipolar) // Add this line
 {
     keyboardState.addListener(this);
     keyboard = std::make_unique<MidiKeyboardComponent>(keyboardState, MidiKeyboardComponent::horizontalKeyboard);
@@ -27,8 +28,12 @@ MainComponent::MainComponent()
     cyclogram   = Image(Image::RGB, kHistoryFrames, kImageHeight, true);
     spectrogram = Image(Image::RGB, kHistoryFrames, kImageHeight / 8, true);
     phasigram   = Image(Image::RGB, kHistoryFrames, kImageHeight / 32, true);
-    // Component::setVisible(true);
-    // setSize(1280, 960);
+    phaseVelocityBar = Image(Image::RGB, 1, kImageHeight / 32, true);
+
+    phaseVelocity.zero();
+    prevPhases.zero();
+    phaseDiff.zero();
+
     startTimer(100);
 
     DBG(String::formatted("Main component constructor - Thread ID: %d", Thread::getCurrentThreadId()));
@@ -110,6 +115,14 @@ void MainComponent::updateHistoryImage() {
         Image::BitmapData::writeOnly
     );
 
+    Image::BitmapData phaseVelocityData(
+        phaseVelocityBar,
+        0, 0,
+        1, phaseVelocityBar.getHeight(),
+        Image::BitmapData::writeOnly
+    );
+
+    const float smoothingK = powf(kPhaseSmoothing, 1.0 / (float) effectiveColumns);
 
     // Process each column
     for (int col = 0; col < effectiveColumns; ++col) {
@@ -139,6 +152,32 @@ void MainComponent::updateHistoryImage() {
             .section(0, phasigram.getHeight())
             .add(M_PI).mul(0.5 / M_PI);
 
+        bool isLast = col == effectiveColumns - 1;
+        VecOps::sub(phases, prevPhases, phaseDiff);
+
+        for (float &diff : phaseDiff) {
+            while (diff > 0.5f) diff -= 1.0f;
+            while (diff < -0.5f) diff += 1.0f;
+        }
+        phaseVelocity *= (1.f - smoothingK);
+        phaseVelocity += phaseDiff.mul(10 * smoothingK);
+        phaseVelocity.clip(-0.5f, 0.5f);
+
+        phases.copyTo(prevPhases);
+
+        if (isLast) {
+            for (int y = 0; y < phases.size(); ++y) {
+                auto invY = phasigram.getHeight() - 1 - y;
+
+                int colorIndex = static_cast<int>((phaseVelocity[y] + 0.5f) * (kNumColours - 0.01));
+                auto velocColor = bipolar
+                    .getColour(colorIndex)
+                    .withBrightness(magnitudes[y]);
+
+                phaseVelocityData.setPixelColour(0, invY, velocColor);
+            }
+        }
+
         // Map to colors
         for (int y = 0; y < kImageHeight; ++y) {
             float value = resampleBuffer[y];
@@ -146,17 +185,14 @@ void MainComponent::updateHistoryImage() {
             pixelData.setPixelColour(col, y, color);
         }
 
-        // for (int y = 0; y < magnitudes.size(); ++y) {
-        //     float value = magnitudes[y];
-        //     auto color  = inferno.getColour(static_cast<int>(value * (kNumColours - 0.01)));
-        //     spectData.setPixelColour(col, spectrogram.getHeight() - 1 - y, color);
-        // }
         for (int y = 0; y < phases.size(); ++y) {
             float value = phases[y];
+            auto invY = phasigram.getHeight() - 1 - y;
+
             auto color  = viridis
                 .getColour(static_cast<int>(value * (kNumColours - 0.01)))
                 .withBrightness(magnitudes[y]);
-            phaseData.setPixelColour(col, phasigram.getHeight() - 1 - y, color);
+            phaseData.setPixelColour(col, invY, color);
         }
     }
 
@@ -167,17 +203,22 @@ void MainComponent::drawHistoryImage(Graphics& g) {
     if (plotBounds.isEmpty()) return;
 
     Rectangle<int> local = plotBounds;
-    const Rectangle<int> left  = local.removeFromLeft((plotBounds.getWidth() - 20) / 2);
-    const Rectangle<int> right = local.removeFromRight((plotBounds.getWidth() / 2));
+    Rectangle<int> left = local.removeFromLeft((plotBounds.getWidth() - 20) / 4);
+
+    // Slice off a piece for the phase velocity bar
+    Rectangle<int> phaseVelRect = local.removeFromLeft(kPhaseVelocityWidth);
+
+    const Rectangle<int> right = local.removeFromRight((plotBounds.getWidth() / 2) - kPhaseVelocityWidth);
+
+    left.removeFromRight(10);
+    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+    g.drawImage(phasigram, left.toFloat());
+
+    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+    g.drawImage(phaseVelocityBar, phaseVelRect.toFloat());
 
     g.setImageResamplingQuality(Graphics::lowResamplingQuality);
     g.drawImage(cyclogram, right.toFloat());
-
-    // g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-    // g.drawImage(spectrogram, left.toFloat());
-
-    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-    g.drawImage(phasigram, left.toFloat());
 
     g.setColour(Colours::white);
     g.drawRect(plotBounds);

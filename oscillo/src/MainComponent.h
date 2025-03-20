@@ -27,6 +27,8 @@ private:
     static constexpr int kNumPhasePartials = 16;
     static constexpr int kHistoryFrames = 512;
     static constexpr int kNumColours = 64;
+    static constexpr int kPhaseVelocityWidth = 20;
+    static constexpr float kPhaseSmoothing = 0.5f; // Exponential smoothing factor (0 to 1)
 
     OscAudioProcessor processor;
     MidiKeyboardState keyboardState;
@@ -34,15 +36,19 @@ private:
     std::unique_ptr<TemperamentControls> temperamentControls;
 
     int lastClickedMidiNote = 60;
+    Image phaseVelocityBar;
     Image cyclogram, spectrogram, phasigram;
     Rectangle<int> plotBounds;
     ScopedAlloc<Float32> resampleBuffer{kImageHeight};
     ScopedAlloc<Float32> workBuffer;
-    ScopedAlloc<Float32> phaseVelocity;
+    ScopedAlloc<Float32> prevPhases{kNumPhasePartials};
+    ScopedAlloc<Float32> phaseDiff{kNumPhasePartials};
+    ScopedAlloc<Float32> phaseVelocity{kNumPhasePartials};
     Transform transform;
 
     GradientColourMap viridis, inferno;
-    
+    GradientColourMap bipolar;
+
     void updateHistoryImage();
     void drawHistoryImage(Graphics& g);
 
