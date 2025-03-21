@@ -117,21 +117,18 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
         }
     }
 
-    const float normalizedTrueDrift = jlimit(-1.0f, 1.0f, trueDrift / kBarChartMaxVelocity);
-    int driftX;
-    if (normalizedTrueDrift >= 0) {
-        driftX = centerX + (int)(normalizedTrueDrift * area.getWidth() / 2);
-    } else {
-        driftX = centerX + (int)(normalizedTrueDrift * area.getWidth() / 2);
+    if (avgMagnitudes.sum() > 1.5) {
+        const float normalizedTrueDrift = jlimit(-1.0f, 1.0f, trueDrift / kBarChartMaxVelocity);
+        int driftX = centerX + (int)(normalizedTrueDrift * area.getWidth() / 2);
+
+        g.setColour(Colours::cyan.withAlpha(0.9f));  // Bright green color to stand out
+        g.fillRect(Rectangle<int>(driftX, area.getY(), 2.f, area.getHeight()));
+
+        g.setFont(16.0f);
+        g.setColour(Colours::cyan);
+        String driftText = String::formatted("Drift: %.2f", trueDrift * 10);
+        g.drawText(driftText, driftX + 10, area.getY(), 80, 20, Justification::centred);
     }
-
-    g.setColour(Colours::cyan.withAlpha(0.9f));  // Bright green color to stand out
-    g.fillRect(Rectangle<int>(driftX, area.getY(), 2.f, area.getHeight()));
-
-    g.setFont(12.0f);
-    g.setColour(Colours::cyan);
-    String driftText = String::formatted("Drift: %.2f", trueDrift * 10);
-    g.drawText(driftText, driftX, area.getY(), 80, 20, Justification::centred);
 
     g.setColour(Colours::white);
     g.setFont(14.0f);
@@ -291,7 +288,7 @@ void MainComponent::drawHistoryImage(Graphics& g) {
 
     // Second quarter for phase velocity bar chart
     Rectangle<int> phaseVelArea = local.removeFromLeft(local.getWidth() / 3);
-    phaseVelArea.reduce(10, 10); // Add margins
+    phaseVelArea.reduce(10, 0); // Add margins
 
     // Right half for cyclogram
     const Rectangle<int> right = local;
