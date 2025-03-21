@@ -107,11 +107,9 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
             .withBrightness(jmin(1.f, avgMagnitudes[i]));
         }
 
-        // Draw the bar
         g.setColour(barColor);
         g.fillRect(barX, y, barWidth, (int)barHeight - 1);
 
-        // Draw harmonic label every 4 harmonics
         if (i % 4 == 0) {
             g.setColour(Colours::white);
             g.setFont(10.0f);
@@ -119,7 +117,6 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
         }
     }
 
-    // Draw the true drift indicator
     const float normalizedTrueDrift = jlimit(-1.0f, 1.0f, trueDrift / kBarChartMaxVelocity);
     int driftX;
     if (normalizedTrueDrift >= 0) {
@@ -128,18 +125,14 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
         driftX = centerX + (int)(normalizedTrueDrift * area.getWidth() / 2);
     }
 
-    // Draw vertical line for true drift
     g.setColour(Colours::cyan.withAlpha(0.9f));  // Bright green color to stand out
-    // g.drawVerticalLine(driftX, area.getY(), area.getBottom());
     g.fillRect(Rectangle<int>(driftX, area.getY(), 2.f, area.getHeight()));
 
-    // Draw a small label for the true drift value
     g.setFont(12.0f);
     g.setColour(Colours::cyan);
     String driftText = String::formatted("Drift: %.2f", trueDrift * 10);
     g.drawText(driftText, driftX, area.getY(), 80, 20, Justification::centred);
 
-    // Draw title
     g.setColour(Colours::white);
     g.setFont(14.0f);
     g.drawText("Phase Velocity", area.getX(), area.getY() - 20, area.getWidth(), 20, Justification::centred);
