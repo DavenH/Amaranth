@@ -25,6 +25,9 @@ public:
     void handleNoteOff(MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
 
 private:
+    void calculateTrueDrift();
+
+    static constexpr int kTopKHarmonics = 4;  // Number of strongest harmonics to consider
     static constexpr int kImageHeight = 512;
     static constexpr int kNumPhasePartials = 8;
     static constexpr int kHistoryFrames = 512;
@@ -39,6 +42,8 @@ private:
     std::unique_ptr<TemperamentControls> temperamentControls;
 
     int lastClickedMidiNote = 60;
+    float trueDrift = 0.0f;
+
     Image phaseVelocityBar;
     Image cyclogram, spectrogram, phasigram;
     Rectangle<int> plotBounds;

@@ -84,10 +84,10 @@ public:
     }
 
     void comboBoxChanged(ComboBox*) override {
-        if (settings != nullptr) {
-            settings->setValue("temperament", temperamentSelect.getSelectedId());
-            settings->saveIfNeeded();
-        }
+        auto& settings = AppSettings::getInstance()->getSettings();
+
+        settings.setValue("temperament", temperamentSelect.getSelectedId());
+        settings.saveIfNeeded();
 
         if (onTemperamentChanged) {
             onTemperamentChanged();
@@ -95,10 +95,10 @@ public:
     }
 
     void sliderDragEnded(Slider*) override {
-        if (settings != nullptr) {
-            settings->setValue("centsOffset", centsOffsetSlider.getValue());
-            settings->saveIfNeeded();
-        }
+        auto& settings = AppSettings::getInstance()->getSettings();
+
+        settings.setValue("centsOffset", centsOffsetSlider.getValue());
+        settings.saveIfNeeded();
 
         if (onCentsOffsetChanged) {
             onCentsOffsetChanged();
@@ -127,7 +127,6 @@ private:
     Label temperamentLabel;
     Label centsLabel;
     Label frequencyLabel;
-    std::unique_ptr<PropertiesFile> settings;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TemperamentControls)
 };

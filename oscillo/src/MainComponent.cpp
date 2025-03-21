@@ -119,6 +119,26 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
         }
     }
 
+    // Draw the true drift indicator
+    const float normalizedTrueDrift = jlimit(-1.0f, 1.0f, trueDrift / kBarChartMaxVelocity);
+    int driftX;
+    if (normalizedTrueDrift >= 0) {
+        driftX = centerX + (int)(normalizedTrueDrift * area.getWidth() / 2);
+    } else {
+        driftX = centerX + (int)(normalizedTrueDrift * area.getWidth() / 2);
+    }
+
+    // Draw vertical line for true drift
+    g.setColour(Colours::cyan.withAlpha(0.9f));  // Bright green color to stand out
+    // g.drawVerticalLine(driftX, area.getY(), area.getBottom());
+    g.fillRect(Rectangle<int>(driftX, area.getY(), 2.f, area.getHeight()));
+
+    // Draw a small label for the true drift value
+    g.setFont(12.0f);
+    g.setColour(Colours::cyan);
+    String driftText = String::formatted("Drift: %.2f", trueDrift * 10);
+    g.drawText(driftText, driftX, area.getY(), 80, 20, Justification::centred);
+
     // Draw title
     g.setColour(Colours::white);
     g.setFont(14.0f);
@@ -127,7 +147,6 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
 
 void MainComponent::resized() {
     auto area = getLocalBounds();
-    std::cout << "Resized " << area.getWidth() << " " << area.getHeight() << std::endl;
     keyboard->setBounds(area.removeFromBottom(100));
     auto row = area.removeFromBottom(100);
     temperamentControls->setBounds(row.reduced(10));
@@ -296,13 +315,62 @@ void MainComponent::drawHistoryImage(Graphics& g) {
     g.drawImage(cyclogram, right.toFloat());
 
     // Draw border
-    g.setColour(Colours::white);
-    g.drawRect(plotBounds);
+    // g.setColour(Colours::white);
+    // g.drawRect(plotBounds);
+}
+
+// --------- DSP stuff --------- //
+
+void MainComponent::calculateTrueDrift() {
+    // Early return if we don't have enough data
+    if (phaseVelocity.size() < 2 || avgMagnitudes.size() < 2) {
+        trueDrift = 0.0f;
+        return;
+    }
+
+    // Create pairs of (magnitude, index) for sorting
+    std::vector<std::pair<float, int>> harmonicStrengths;
+    for (int i = 0; i < jmin(phaseVelocity.size(), avgMagnitudes.size()); ++i) {
+        harmonicStrengths.emplace_back(avgMagnitudes[i], i);
+    }
+
+    // Sort by magnitude in descending order
+    std::sort(harmonicStrengths.begin(), harmonicStrengths.end(),
+        [](const auto& a, const auto& b) { return a.first > b.first; });
+
+    // Take only top K harmonics and calculate weighted average
+    float totalWeight = 0.0f;
+    float weightedSum = 0.0f;
+    int harmonicsUsed = 0;
+
+    for (int i = 0; i < jmin(kTopKHarmonics, (int)harmonicStrengths.size()); ++i) {
+        int harmonicIdx = harmonicStrengths[i].second;
+        float harmonicNum = harmonicIdx + 1.0f;
+        float magnitude = harmonicStrengths[i].first;
+
+        // Skip if magnitude is too low
+        if (magnitude < 0.05f) continue;
+
+        // Normalize velocity by harmonic number as suggested
+        float normalizedVelocity = phaseVelocity[harmonicIdx] / harmonicNum;
+
+        weightedSum += normalizedVelocity * magnitude;
+        totalWeight += magnitude;
+        harmonicsUsed++;
+    }
+
+    // Calculate final weighted average if we have valid data
+    if (totalWeight > 0.0f && harmonicsUsed > 0) {
+        trueDrift = weightedSum / totalWeight;
+    } else {
+        trueDrift = 0.0f;
+    }
 }
 
 void MainComponent::timerCallback() {
     // std::cout << "Timer callback" << std::endl;
     updateHistoryImage();
+    calculateTrueDrift();
     repaint();
 }
 
