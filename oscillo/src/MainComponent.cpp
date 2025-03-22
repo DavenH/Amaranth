@@ -30,6 +30,9 @@ MainComponent::MainComponent()
     phasigram   = Image(Image::RGB, kHistoryFrames, kNumPhasePartials, true);
     phaseVelocityBar = Image(Image::RGB, 1, kNumPhasePartials, true);
 
+    pitchTracker = std::make_unique<RealTimePitchTracker>();
+    processor = std::make_unique<OscAudioProcessor>(pitchTracker.get());
+
     phaseVelocity.zero();
     prevPhases.zero();
     phaseDiff.zero();
@@ -40,13 +43,13 @@ MainComponent::MainComponent()
     DBG(String::formatted("Main component constructor - Thread ID: %d", Thread::getCurrentThreadId()));
     DBG(String("Is message thread? ") + (MessageManager::getInstance()->isThisTheMessageThread() ? "yes" : "no"));
 
-    processor.start();
+    processor->start();
     updateCurrentNote();
 }
 
 MainComponent::~MainComponent() {
     stopTimer();
-    processor.stop();
+    processor->stop();
 }
 
 void MainComponent::paint(Graphics& g) {
@@ -144,12 +147,12 @@ void MainComponent::resized() {
 }
 
 void MainComponent::updateHistoryImage() {
-    const std::vector<Buffer<float>>& periods = processor.getAudioPeriods();
+    const std::vector<Buffer<float>>& periods = processor->getAudioPeriods();
     if (periods.empty()) return;
 
     // C4 = MIDI note 60, frequency ≈ 261.63 Hz
-    const float targetPeriod = processor.getTargetPeriod();
-    const float c4Period     = 2 * (float) processor.getCurrentSampleRate() / 261.63f;
+    const float targetPeriod = processor->getTargetPeriod();
+    const float c4Period     = 2 * (float) processor->getCurrentSampleRate() / 261.63f;
 
     // Calculate periods per column relative to C4
     const int periodsPerColumn = jmax(1, roundToInt(c4Period / targetPeriod));
@@ -275,7 +278,7 @@ void MainComponent::updateHistoryImage() {
         }
     }
 
-    processor.resetPeriods();
+    processor->resetPeriods();
 }
 
 void MainComponent::drawHistoryImage(Graphics& g) {
@@ -358,15 +361,19 @@ void MainComponent::calculateTrueDrift() {
 }
 
 void MainComponent::timerCallback() {
-    // std::cout << "Timer callback" << std::endl;
     updateHistoryImage();
     calculateTrueDrift();
     repaint();
+    auto note = pitchTracker->update();
+    std::cout << note.first << std::endl;
+    handleNoteOn(nullptr, 0, note.first, 0.f);
 }
 
 void MainComponent::handleNoteOn(MidiKeyboardState*, int /*midiChannel*/, int midiNoteNumber, float /*velocity*/) {
-    lastClickedMidiNote = midiNoteNumber;
-    updateCurrentNote();
+    if (midiNoteNumber != lastClickedMidiNote) {
+        lastClickedMidiNote = midiNoteNumber;
+        updateCurrentNote();
+    }
 }
 
 void MainComponent::handleNoteOff(MidiKeyboardState*, int /*midiChannel*/, int /*midiNoteNumber*/, float /*velocity*/) {
@@ -378,5 +385,5 @@ void MainComponent::updateCurrentNote() {
 
     auto baseFreq = MidiMessage::getMidiNoteInHertz(lastClickedMidiNote);
     auto multiplier = temperamentControls->getFrequencyMultiplier(lastClickedMidiNote);
-    processor.setTargetFrequency(baseFreq * multiplier);
+    processor->setTargetFrequency(baseFreq * multiplier);
 }

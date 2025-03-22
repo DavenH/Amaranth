@@ -1,9 +1,12 @@
 #include "OscAudioProcessor.h"
+#include "RealTimePitchTracker.h"
 
-OscAudioProcessor::OscAudioProcessor()
+OscAudioProcessor::OscAudioProcessor(RealTimePitchTracker* pitchTracker)
     :   workBuffer(1024 * 4)
     ,   workBufferUI(1024 * 128)
-    ,   rwBufferAudioThread(1024 * 4) {
+    ,   rwBufferAudioThread(1024 * 4)
+    ,   pitchTracker(pitchTracker)
+{
 }
 
 OscAudioProcessor::~OscAudioProcessor() {
@@ -38,6 +41,7 @@ std::vector<Buffer<Float32>> OscAudioProcessor::getAudioPeriods() const {
 void OscAudioProcessor::audioDeviceAboutToStart(AudioIODevice* device) {
     auto freq = device->getCurrentSampleRate() / targetPeriod;
     setTargetFrequency(freq);
+    pitchTracker->setSampleRate(device->getCurrentSampleRate());
 }
 
 // called from UI thread
@@ -63,6 +67,7 @@ void OscAudioProcessor::audioDeviceIOCallbackWithContext(
 
     Buffer<float> currentSamples = workBuffer.section(0, numSamples);
     input.copyTo(currentSamples);
+
     currentSamples.mul(2.0f).tanh();
 
     appendSamplesRetractingPeriods(currentSamples);
@@ -81,6 +86,8 @@ void OscAudioProcessor::appendSamplesRetractingPeriods(Buffer<float>& audioBlock
         rwBufferAudioThread.retract();
     }
     rwBufferAudioThread.write(audioBlock);
+
+    pitchTracker->write(audioBlock);
 
     float period = targetPeriod; // copy for thread safety
     const SpinLock::ScopedLockType lock(bufferLock);

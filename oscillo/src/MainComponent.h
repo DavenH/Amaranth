@@ -4,6 +4,7 @@
 #include <Algo/FFT.h>
 
 #include "GradientColorMap.h"
+#include "RealTimePitchTracker.h"
 #include "TempermentControls.h"
 
 class MainComponent : public Component,
@@ -27,7 +28,7 @@ public:
 private:
     void calculateTrueDrift();
 
-    static constexpr int kTopKHarmonics = 4;  // Number of strongest harmonics to consider
+    static constexpr int kTopKHarmonics = 4;
     static constexpr int kImageHeight = 512;
     static constexpr int kNumPhasePartials = 8;
     static constexpr int kHistoryFrames = 512;
@@ -36,10 +37,12 @@ private:
     static constexpr float kPhaseSmoothing = 0.05f; // Exponential smoothing factor (0 to 1)
     static constexpr float kBarChartMaxVelocity = 0.1f; // Maximum velocity for scaling bars
 
-    OscAudioProcessor processor;
     MidiKeyboardState keyboardState;
+
+    std::unique_ptr<OscAudioProcessor> processor;
     std::unique_ptr<MidiKeyboardComponent> keyboard;
     std::unique_ptr<TemperamentControls> temperamentControls;
+    std::unique_ptr<RealTimePitchTracker> pitchTracker;
 
     int lastClickedMidiNote = 60;
     float trueDrift = 0.0f;
