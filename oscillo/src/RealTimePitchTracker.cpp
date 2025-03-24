@@ -1,11 +1,11 @@
 #include "RealTimePitchTracker.h"
-
 #include <Array/ScopedAlloc.h>
+
 using std::vector;
 
 RealTimePitchTracker::RealTimePitchTracker():
         kernelMemory(numKeys * blockSize)
-    ,   rwBuffer(blockSize + 2048)
+    ,   rwBuffer(blockSize + 4096)
 {
     fftFreqs.resize(blockSize / 2);
     localBlock.resize(blockSize);
@@ -31,9 +31,10 @@ void RealTimePitchTracker::write(Buffer<float>& audioBlock) {
         auto block = rwBuffer.read(blockSize);
         {
             // just try to lock - audio thread updates more often, it's okay to queue up a few samples
-            const SpinLock::ScopedLockType lock(bufferLock);
+            const SpinLock::ScopedTryLockType lock(bufferLock);
             block.copyTo(localBlock);
             localBlock.mul(hannWindow);
+            localBlock.mul(1 / jmax(0.01f, localBlock.max()));
         }
     }
 }
@@ -45,11 +46,10 @@ pair<int, float> RealTimePitchTracker::update() {
 
     {
         const SpinLock::ScopedLockType lock(bufferLock);
-        Buffer<float> windowedBlock = localBlock;
-        transform.forward(windowedBlock);
+        transform.forward(localBlock);
     }
 
-    Buffer<float> magnitudes = transform.getMagnitudes();
+    Buffer<float> magnitudes = transform.getMagnitudes().add(0.5).ln();
 
     float maxCorrelation = 0.0f;
     int bestKey = bestKeyIndex; // Start with previous best key as default
@@ -73,7 +73,7 @@ pair<int, float> RealTimePitchTracker::update() {
 
         {
             const SpinLock::ScopedLockType lock(bufferLock);
-            bestKeyIndex = bestKey;
+            bestKeyIndex = midiNote;
             bestPitch = pitch;
         }
     }
@@ -97,8 +97,12 @@ void RealTimePitchTracker::createKernels(double frequencyOfA4) {
     const float topFrequency = 5000;
     const int numFreqs = fftFreqs.size();
 
+    ScopedAlloc<float> invRamp(numFreqs);
+
     for (int i = 0; i < numKeys; ++i) {
-        const int noteNumber = i + 21;
+        invRamp.ramp(1, 0.05).inv();
+
+        const int noteNumber = i + 21 - 12;
         float candFreq = MidiMessage::getMidiNoteInHertz(noteNumber, frequencyOfA4);
 
         Buffer<float> kernel = kernelMemory.place(numFreqs);
@@ -153,6 +157,7 @@ void RealTimePitchTracker::createKernels(double frequencyOfA4) {
             ++primeIdx;
         }
 
+        kernel.mul(invRamp);
         kernel.mul(MathConstants<float>::sqrt2 / kernel.normL2());
         kernels.push_back(kernel);
     }

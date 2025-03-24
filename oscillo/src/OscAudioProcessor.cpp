@@ -81,13 +81,13 @@ void OscAudioProcessor::audioDeviceIOCallbackWithContext(
 }
 
 void OscAudioProcessor::appendSamplesRetractingPeriods(Buffer<float>& audioBlock) {
+    pitchTracker->write(audioBlock);
+
     if (!rwBufferAudioThread.hasRoomFor(audioBlock.size())) {
         // std::cout << "Retracting, " << accumulatedSamples << " " << targetPeriod << std::endl;
         rwBufferAudioThread.retract();
     }
     rwBufferAudioThread.write(audioBlock);
-
-    pitchTracker->write(audioBlock);
 
     float period = targetPeriod; // copy for thread safety
     const SpinLock::ScopedLockType lock(bufferLock);
