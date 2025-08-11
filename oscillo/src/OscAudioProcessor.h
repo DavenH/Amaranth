@@ -3,11 +3,12 @@
 #include <Array/ScopedAlloc.h>
 #include <Array/RingBuffer.h>
 
+class RealTimePitchTracker;
 class TestableOscAudioProcessor;
 
 class OscAudioProcessor : public AudioIODeviceCallback {
 public:
-    OscAudioProcessor();
+    OscAudioProcessor(RealTimePitchTracker* pitchTracker);
     ~OscAudioProcessor() override;
     void start();
     void stop();
@@ -37,7 +38,7 @@ private:
     ScopedAlloc<Float32> workBuffer;
     ScopedAlloc<Float32> workBufferUI;
     ReadWriteBuffer rwBufferAudioThread;
-
+    RealTimePitchTracker* pitchTracker;
     std::unique_ptr<AudioDeviceManager> deviceManager;
     std::vector<Buffer<Float32> > periods;
 

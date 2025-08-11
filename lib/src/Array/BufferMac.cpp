@@ -82,7 +82,6 @@ int globalBufferMacSizeErrorCount = 0;
     }
 
 declareForIntsAndCplx(constructZero);
-// declareForComplex(constructZero);
 declareForIntsAndCplx(constructZeroSz);
 declareForIntsAndCplx(constructSet);
 declareForAll(constructCopyTo);
