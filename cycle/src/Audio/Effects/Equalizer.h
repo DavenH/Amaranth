@@ -83,7 +83,7 @@ public:
 	static double calcFreq(double value, double logTension);
 	static double calcKnobValue(double value, double logTension);
 
-	void test();
+	// void test();
 
 private:
 	Ref<GuilessEffect> ui;

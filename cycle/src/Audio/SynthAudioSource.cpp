@@ -58,8 +58,7 @@ SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
         int size 			= 1 << fftOrder;
         sizeToIndex[size] 	= fftOrderIdx;
 
-        ffts[fftOrderIdx].setFFTScaleType(Transform::ScaleType::DivFwdByN);
-        ffts[fftOrderIdx].allocate(size, true);
+        ffts[fftOrderIdx].allocate(size, Transform::ScaleType::DivFwdByN, true);
     }
 
     getObj(Document).addListener(this);
@@ -368,7 +367,7 @@ void SynthAudioSource::calcFades() {
 
         in.ramp(-0.5f * pi, pi / float(half - 1)).sin().add(1.f).mul(0.5f);
 
-        fadeOuts[i].subCRev(1.f, in);
+        VecOps::subCRev(in, 1.f, fadeOuts[i]);
     }
 
     Range range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
@@ -383,6 +382,7 @@ void SynthAudioSource::convertMidiTo44k(
     const MidiBuffer& source,
     MidiBuffer& dest,
     int numSamples44k) {
+    // MidiBufferIterator iter(source);
     MidiBuffer::Iterator iter(source);
 
     if (numSamples44k == 0) {

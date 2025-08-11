@@ -193,7 +193,7 @@ void ReverbEffect::updateKernelSections()
     int buffSize = 256;
 
     Transform fft;
-    fft.allocate(buffSize, true);
+    fft.allocate(buffSize, Transform::DivFwdByN, true);
 
     ScopedAlloc<float> mem(buffSize * 10);
 

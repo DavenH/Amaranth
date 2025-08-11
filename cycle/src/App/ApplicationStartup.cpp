@@ -37,6 +37,9 @@ public:
     }
 };
 
-START_JUCE_APPLICATION(AppClass)
+  #ifndef BUILD_TESTING
+    START_JUCE_APPLICATION(AppClass)
+    JUCE_MAIN_FUNCTION_DEFINITION
+  #endif
 
 #endif
