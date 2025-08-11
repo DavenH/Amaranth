@@ -276,6 +276,7 @@ This is a subclass of Buffer which additionally takes memory ownership of the da
 
 - Avoid `using namespace` at global scope; single-symbol `using` at file scope is acceptable
 - Use `explicit` on single-argument constructors
+- Prefer range-based for loops where possible
 - Prefer `= default`/`= delete` for trivial special members
 - Lines are not strictly wrapped at 80 columns; prioritize readability
 - Follow existing spacing around operators and parentheses

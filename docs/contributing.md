@@ -21,4 +21,4 @@ workingMemory.resetPlacement();
 Buffer<float> block4 = workingMemory.place(512); // takes [0 - 511]
 ...
 ```
-``
+

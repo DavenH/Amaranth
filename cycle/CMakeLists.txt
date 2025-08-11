@@ -34,9 +34,29 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${IPP_DIR}/include/ipp
 )
 
-target_include_directories(${PROJECT_NAME}_tests PRIVATE "/usr/local/include")
+target_include_directories(${PROJECT_NAME}_tests PRIVATE
+        "/usr/local/include"
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests
+        ${JUCE_DIR}
+        ${JUCE_MODULES_DIR}
+        ${IPP_DIR}/include/ipp
+        ${ALSA_INCLUDE_DIRS}
+        ${FREETYPE_INCLUDE_DIRS}
+        ${FONTCONFIG_INCLUDE_DIRS}
+        ${OPENGL_INCLUDE_DIRS}
+        ${CURL_INCLUDE_DIRS}
+        ${GTK3_INCLUDE_DIRS}
+        ${WEBKIT_INCLUDE_DIRS}
+)
+
+#target_include_directories(${PROJECT_NAME}_tests PRIVATE "/usr/local/include")
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+    JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/Incl/JucePluginDefines.h"
+)
+
+target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
     JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/Incl/JucePluginDefines.h"
 )
 

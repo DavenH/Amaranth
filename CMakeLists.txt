@@ -1,6 +1,6 @@
 # Root CMakeLists.txt
-cmake_minimum_required(VERSION 3.28)
-#set(CMAKE_CXX_COMPILER g++-11)
+cmake_minimum_required(VERSION 3.29)
+set(CMAKE_CXX_COMPILER g++-11) # might just need to be linux
 project(Amaranth VERSION 1.0.0)
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.env")

@@ -6,12 +6,8 @@
 #include "SynthAudioSource.h"
 #include "AudioSourceRepo.h"
 #include "../UI/Effects/DelayUI.h"
-#include "../UI/Effects/EqualizerUI.h"
 #include "../UI/Effects/ReverbUI.h"
 #include "../UI/Panels/OscControlPanel.h"
-#include "../UI/VertexPanels/Envelope2D.h"
-#include "../UI/VertexPanels/Spectrum3D.h"
-#include "../UI/VertexPanels/Waveform3D.h"
 #include "../UI/Panels/ModMatrixPanel.h"
 #include "../UI/VertexPanels/DeformerPanel.h"
 #include "../Util/CycleEnums.h"
@@ -27,6 +23,7 @@ SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
     ,	tubeModel			(nullptr)
     ,	waveshaper			(nullptr)
     ,	lastAudioLevel		(0.f)
+    ,	lastBlueLevel		(0.f)
     , 	tempoScale			(1.)
     , 	samplesProcessed	(-1)
     , 	tempRendBuffer		(2)
@@ -378,44 +375,29 @@ void SynthAudioSource::calcFades() {
     }
 }
 
-void SynthAudioSource::convertMidiTo44k(
-    const MidiBuffer& source,
-    MidiBuffer& dest,
-    int numSamples44k) {
-    // MidiBufferIterator iter(source);
-    MidiBuffer::Iterator iter(source);
-
+void SynthAudioSource::convertMidiTo44k(const MidiBuffer& source, MidiBuffer& dest, int numSamples44k) {
     if (numSamples44k == 0) {
-        MidiMessage message;
-        int position;
-
         carryMessages.clear();
-
-        while (iter.getNextEvent(message, position)) {
-            carryMessages.add(message);
+        for (const MidiMessageMetadata md : source) {
+            carryMessages.add(md.getMessage());
         }
-
         return;
     }
 
-    double srRatio = 44100.0 / getObj(AudioHub).getSampleRate();
-
-    int position, position44k;
-    MidiMessage currMsg;
+    const double srRatio = 44100.0 / getObj(AudioHub).getSampleRate();
 
     dest.clear();
 
-    if (carryMessages.size() > 0) {
-        for (int i = 0; i < carryMessages.size(); ++i) {
-            dest.addEvent(carryMessages.getUnchecked(i), 0);
-        }
+    for (int i = 0; i < carryMessages.size(); ++i) {
+        dest.addEvent(carryMessages.getUnchecked(i), 0);
     }
 
-    while (iter.getNextEvent(currMsg, position)) {
-        position44k = int(position * srRatio + 0.5);
-        dest.addEvent(currMsg, position44k);
+    for (const MidiMessageMetadata md : source) {
+        const int position44k = roundToInt(md.samplePosition * srRatio + 0.5);
+        dest.addEvent(md.getMessage(), position44k);
     }
 }
+
 
 void SynthAudioSource::initResampler() {
     double sampleRateReal = getObj(AudioHub).getSampleRate();
