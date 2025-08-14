@@ -4,10 +4,9 @@
 #include <App/SingletonRepo.h>
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
-#include <Wireframe/MeshRasterizer.h>
+#include <Wireframe/OldMeshRasterizer.h>
 #include <vector>
 
-#include "Wireframe/OldMeshRasterizer.h"
 
 using std::vector;
 
