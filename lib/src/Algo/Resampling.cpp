@@ -1,5 +1,5 @@
 #include "Resampling.h"
-#include "../Curve/Vertex2.h"
+#include "../Wireframe/Vertex/Vertex2.h"
 
 Resampling::Resampling() = default;
 

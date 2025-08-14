@@ -2,7 +2,7 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Binary/Gradients.h>
-#include <Curve/RasterizerData.h>
+#include <../../../../lib/>
 #include <UI/IConsole.h>
 #include <Util/Arithmetic.h>
 
@@ -12,7 +12,7 @@
 
 #include "../VertexPanels/Waveform2D.h"
 #include "../../Audio/AudioSourceRepo.h"
-#include "../../Curve/GraphicRasterizer.h"
+#include "../../Wireframe/GraphicRasterizer.h"
 #include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VisualDsp.h"
 #include "../../Util/CycleEnums.h"

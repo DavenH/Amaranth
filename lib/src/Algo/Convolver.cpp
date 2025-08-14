@@ -1,10 +1,11 @@
 #include "Convolver.h"
+
+#include "../App/MemoryPool.h"
 #include "../App/SingletonRepo.h"
 #include "../App/Transforms.h"
+#include "../Definitions.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
-#include "../App/MemoryPool.h"
-#include "../Definitions.h"
 
 Convolver::Convolver(SingletonRepo* repo) : SingletonAccessor(repo, "Convolver") {
 }
@@ -14,7 +15,7 @@ void Convolver::setKernel(Buffer<float> kernel) {
 }
 
 Buffer<float> Convolver::processBuffer(Buffer<float> buffer) {
-    return Buffer<float>();
+    return {};
 }
 
 Buffer<float> Convolver::convolve(Buffer<float> kernelFrq, Buffer<float> inputFrq) {

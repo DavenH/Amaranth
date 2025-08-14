@@ -1,6 +1,6 @@
 #include "Geometry.h"
 #include "NumberUtils.h"
-#include "../Curve/Vertex2.h"
+#include "../Wireframe/Vertex/Vertex2.h"
 
 Vertex2 Geometry::getCrossPoint(
         float x1, float x2, float x3, float x4,

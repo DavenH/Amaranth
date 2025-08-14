@@ -28,7 +28,7 @@ public:
     ~UndoableMeshProcess() {
         // these will be copied in the UpdateVertexVectorAction ctor,
         // but no need to copy them here
-        vector<VertCube*>& afterLines = mesh->getCubes();
+        vector<TrilinearCube*>& afterLines = mesh->getCubes();
         vector<Vertex*>& afterVerts = mesh->getVerts();
 
         bool haveLines = interactor->dims.numHidden() > 0;
@@ -47,7 +47,7 @@ public:
     }
 
 private:
-    vector<VertCube*> beforeCubes;
+    vector<TrilinearCube*> beforeCubes;
     vector<Vertex*> beforeVerts;
 
     Ref<Interactor> interactor;

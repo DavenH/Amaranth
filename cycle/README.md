@@ -26,7 +26,7 @@ In addition to that, most instruments have a natural change in timber along the 
 This means that we need 3 dimensions for the timbre to freely morph along, to capture the bare minimum of an
 instrument's dynamism.
 
-For many 'breathy' sound targets, we need a way to insert noise and chaos into the tone. This is why we have the **Deformers** concept -- a way to create reusable parts of waveshapes / filters -- which among other things, gives us the ability to introduce random paths into the waveform or spectrum, or envelope.
+For many 'breathy' sound targets, we need a way to insert noise and chaos into the tone. This is why we have the **Paths** concept -- a way to create reusable parts of waveshapes / filters -- which among other things, gives us the ability to introduce random paths into the waveform or spectrum, or envelope.
 
 I also wanted it to be relatively easy to create and understand, so we have immediate UI feedback -- visualizing the full processing pipeline. 
 We also have a custom-built **curve design** with many desirable audio-tailored properties.
@@ -70,27 +70,27 @@ Instead of being defined by control points that pull the curve, as in a Bézier 
 
 When you place a vertex, Cycle creates a `Curve` object defined by three points: `a`, `b`, and `c` (`Intercept` structs). The curve segment is primarily the path from `a` to `c`, with `b` influencing the curvature and sharpness (`b.shp`). The `recalculateCurve` function in `Curve.cpp` performs the necessary affine transformations based on the positions of these three points to generate the final curve shape. This method is distinct from the polynomial equations of Bezier curves and is more akin to a specialized form of spline interpolation, like a Catmull-Rom spline, which is designed to pass through all of its control points smoothly. This results in a highly efficient and predictable way to generate a wide variety of curve shapes.
 
-### Mesh Overview: The "VertCube"
+### Mesh Overview: The "TrilinearCube"
 
-![A diagram showing the 3D VertCube being reduced to a 2D cross-section.](../docs/media/images/cube-reduction-2.png)
+![A diagram showing the 3D TrilinearCube being reduced to a 2D cross-section.](../docs/media/images/cube-reduction-2.png)
 
 The term "mesh" or "wireframe" in Cycle refers to a complex, multi-dimensional structure that defines the complete sonic potential of a layer. It's more than just a 2D shape; it's a representation of how the sound evolves across several dimensions.
 
 The fundamental building blocks are:
 *   **Vertex (`Vertex.h`):** This is a point in a 5-dimensional space, with coordinates for Time, Phase, Amplitude, Red, and Blue. Each vertex you create in the editor is one of these points.
-*   **VertCube (`VertCube.h`):** This is the core structural element. It's a hypercube defined by **eight** vertices. Think of it as a 3D cube existing in the **Time**, **Red**, and **Blue** dimensions. Each of its eight corners corresponds to a `Vertex` you place, and the synthesizer interpolates the space within this cube.
+*   **TrilinearCube (`TrilinearCube.h`):** This is the core structural element. It's a hypercube defined by **eight** vertices. Think of it as a 3D cube existing in the **Time**, **Red**, and **Blue** dimensions. Each of its eight corners corresponds to a `Vertex` you place, and the synthesizer interpolates the space within this cube.
 
-A complete "mesh" (`Mesh.h`) is a collection of these `VertCube`s. This structure allows you to define not just a single oscillator shape, but an entire "sound surface" that can be explored and morphed in real-time.
+A complete "mesh" (`Mesh.h`) is a collection of these `TrilinearCube`s. This structure allows you to define not just a single oscillator shape, but an entire "sound surface" that can be explored and morphed in real-time.
 
 ### Waveform/Spectral Surface Morphing
 
 Morphing is the process of navigating the multi-dimensional sound surface you've created with the mesh. The final sound you hear is a 2D "slice" or cross-section of this high-dimensional object.
 
 *   **Morph Position (`MorphPosition.h`):** This object holds the current coordinates in the **Time, Red, and Blue** dimensions. These are the primary controls for morphing.
-*   **Rasterization (`MeshRasterizer.cpp`):** This is the process of generating the final 2D waveform or spectral curve from the mesh. The `calcCrossPoints` function is central to this. It iterates through the mesh's `VertCube`s and, based on the current `MorphPosition`, calculates where the "slice" intersects the cube.
+*   **Rasterization (`MeshRasterizer.cpp`):** This is the process of generating the final 2D waveform or spectral curve from the mesh. The `calcCrossPoints` function is central to this. It iterates through the mesh's `TrilinearCube`s and, based on the current `MorphPosition`, calculates where the "slice" intersects the cube.
 *   **Intercepts (`Intercept.h`):** These intersection points are called "intercepts." They represent the points that will define the final 2D curve for a given moment in the morph.
 
-Essentially, as you move the Time, Red, or Blue controls, you are moving a cutting plane through the 3D `VertCube` structure. The shape of the cut changes as you move, resulting in a smooth transition between the sounds defined by the vertices at the corners of the cubes. This allows for complex, evolving timbres where you can, for example, morph a sine wave into a square wave over the 'Time' dimension while simultaneously using the 'Red' and 'Blue' dimensions to introduce other timbral changes.
+Essentially, as you move the Time, Red, or Blue controls, you are moving a cutting plane through the 3D `TrilinearCube` structure. The shape of the cut changes as you move, resulting in a smooth transition between the sounds defined by the vertices at the corners of the cubes. This allows for complex, evolving timbres where you can, for example, morph a sine wave into a square wave over the 'Time' dimension while simultaneously using the 'Red' and 'Blue' dimensions to introduce other timbral changes.
 
 ## Layers
 
@@ -140,7 +140,7 @@ Furthermore, each layer includes parameters for per-layer panning, enabling the 
 Envelopes are built using the same powerful wireframe system as the oscillators, moving far beyond traditional ADSR (Attack, Decay, Sustain, Release) models.
 
 *   **Envelope Mesh (`EnvelopeMesh.h`):** This is a specialized, non-cyclical `Mesh`. The horizontal axis represents time, and the vertical axis represents the envelope's output level.
-*   **Looping and Sustain (`EnvRasterizer.cpp`):** You can designate any point or a series of points within the envelope mesh to act as the sustain or loop section. The `sustainCubes` and `loopCubes` sets in `EnvelopeMesh` store which `VertCube`s are part of these sections.
+*   **Looping and Sustain (`EnvRasterizer.cpp`):** You can designate any point or a series of points within the envelope mesh to act as the sustain or loop section. The `sustainCubes` and `loopCubes` sets in `EnvelopeMesh` store which `TrilinearCube`s are part of these sections.
 *   **State Machine (`EnvRasterizer.h`):** The `EnvRasterizer` manages the envelope's state (`NormalState`, `Looping`, `Releasing`). When a note is pressed, it traverses the mesh from the beginning. If it reaches a sustain point, it holds there. If it enters a loop section, it will cycle through that part of the mesh, creating complex, rhythmic modulations similar to an LFO. When the note is released, the rasterizer transitions to the release portion of the envelope.
 
 This approach means you can design envelopes with multiple attack stages, complex looped decays, or intricate release shapes, all with the same intuitive curve editing used for oscillator design.

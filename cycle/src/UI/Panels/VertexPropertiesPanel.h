@@ -46,7 +46,7 @@ public:
     void mouseEnter(const MouseEvent& e) override;
     void mouseUp(const MouseEvent& e) override;
     void paint(Graphics & g) override;
-    void refreshCube(set<VertCube*>& lines);
+    void refreshCube(set<TrilinearCube*>& lines);
     void resized() override;
     void setSelectedAndCaller(Interactor* interactor);
     void sliderDragEnded(Slider* slider) override;
@@ -70,7 +70,7 @@ private:
     Label titleLabelA;
 
     enum SliderOrder { TimeSldr, KeySldr, ModSldr, PhaseSldr, AmpSldr, CurveSldr, numSliders };
-    enum GuideIds { NullDfrmId = 1, /* NewDfrmId */ };
+    enum GuideIds { NullPathId = 1, /* NewPathId */ };
     enum { ValueChanged, DragEnded, DragStarted };
 
 
@@ -102,7 +102,7 @@ private:
         float previousGain;
 
         HSlider* 			slider;
-        ComboBox* 			dfrmChanBox;
+        ComboBox* 			pathChanBox;
         Knob*				gain;
         MouseOverMessager* 	messager;
     };

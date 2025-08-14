@@ -1,7 +1,7 @@
 #pragma once
 
 #include <map>
-#include <Curve/EnvRasterizer.h>
+#include <Wireframe/Rasterizer/EnvRasterizer.h>
 #include <Inter/Interactor2D.h>
 #include <Obj/Ref.h>
 #include <UI/Widgets/IconButton.h>
@@ -62,7 +62,7 @@ public:
     EnvelopeMesh* getCurrentMesh() override;
     MeshRasterizer* getRast(int envEnum);
     EnvRasterizer* getEnvRasterizer();
-    vector<VertCube*> getLinesToSlideOnSingleSelect() override;
+    vector<TrilinearCube*> getLinesToSlideOnSingleSelect() override;
     Button* getEnableButton() { return &enableButton; }
 
     bool addNewCube(float startTime, float x, float y, float curve) override;
@@ -71,7 +71,7 @@ public:
     bool shouldDoDimensionCheck() override;
     bool synchronizeEnvPoints(Vertex* startVertex, bool vertexIsLoopVert);
     Range<float> getVertexPhaseLimits(Vertex* vert) override;
-    void adjustAddedLine(VertCube* addedLine) override;
+    void adjustAddedLine(TrilinearCube* addedLine) override;
     void delegateUpdate(bool performUpdate);
     void doExtraMouseDrag(const MouseEvent& e) override;
     void doExtraMouseUp() override;
@@ -89,7 +89,7 @@ public:
     void switchedEnvelope(int envMesh, bool doUpdate = true, bool force = false);
     void syncEnvPointsImplicit();
     void toggleEnvelopePoint(Button* button);
-    void transferLineProperties(VertCube* from, VertCube* to1, VertCube* to2);
+    void transferLineProperties(TrilinearCube* from, TrilinearCube* to1, TrilinearCube* to2);
     void triggerButton(int id);
     void updateHighlights();
     void updatePhaseLimit(float limit);

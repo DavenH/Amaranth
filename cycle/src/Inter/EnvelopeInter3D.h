@@ -9,6 +9,6 @@ public:
     explicit EnvelopeInter3D(SingletonRepo* repo);
 
     void init() override;
-    void transferLineProperties(VertCube* from, VertCube* to1, VertCube* to2);
+    void transferLineProperties(TrilinearCube* from, TrilinearCube* to1, TrilinearCube* to2);
     Mesh* getMesh() override;
 };

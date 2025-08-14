@@ -8,10 +8,9 @@
 #include <App/SingletonAccessor.h>
 #include <Array/ScopedAlloc.h>
 #include <Audio/SmoothedParameter.h>
-#include <Curve/EnvRasterizer.h>
 #include "JuceHeader.h"
 
-#include "../../Curve/EnvRenderContext.h"
+#include "../../Wireframe/EnvRenderContext.h"
 #include "../../UI/Panels/ModMatrixPanel.h"
 
 using std::vector;

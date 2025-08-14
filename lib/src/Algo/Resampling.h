@@ -2,7 +2,7 @@
 
 #include <vector>
 #include "../Array/Buffer.h"
-#include "../Curve/Vertex2.h"
+#include "../Wireframe/Vertex/Vertex2.h"
 
 using std::vector;
 

@@ -201,7 +201,7 @@ void read2() {
 		}
 	}
 
-	validateDeformers();
+	validatePaths();
 
 	// want to do this after all settings have been read from xml
 	pushMeshesToRasterizers();

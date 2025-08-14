@@ -20,14 +20,14 @@
 
 #include "../Dialogs/PresetPage.h"
 #include "../Panels/PlaybackPanel.h"
-#include "../VertexPanels/DeformerPanel.h"
+#include "../VertexPanels/PathPanel.h"
 #include "../VertexPanels/Waveform3D.h"
 
 #include "../CycleDefs.h"
 #include "../../App/CycleTour.h"
 #include "../../App/Dialogs.h"
 #include "../../Audio/SynthAudioSource.h"
-#include "../../Curve/GraphicRasterizer.h"
+#include "../../Wireframe/GraphicRasterizer.h"
 
 #define componentName "IrModellerUI"
 
@@ -610,7 +610,7 @@ void IrModellerUI::deconvolve() {
     timeRast.setLowresCurves(false);
     timeRast.setCalcDepthDimensions(false);
     timeRast.setScalingMode(MeshRasterizer::Bipolar);
-    timeRast.calcCrossPoints();
+    timeRast.generateControlPoints();
 
     if(! timeRast.isSampleable())
     {

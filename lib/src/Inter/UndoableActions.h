@@ -2,10 +2,10 @@
 
 #include <vector>
 #include "../App/SingletonAccessor.h"
-#include "../Curve/Mesh.h"
+#include "../Wireframe/Mesh.h"
 #include "JuceHeader.h"
-#include "../Curve/Vertex.h"
-#include "../Curve/VertCube.h"
+#include "../Wireframe/Interpolator/Trilinear/TrilinearVertex.h"
+#include "../Wireframe/Interpolator/Trilinear/TrilinearCube.h"
 
 class Interactor;
 class Mesh;
@@ -124,9 +124,9 @@ class UpdateCubeVectorAction : public ResponsiveUndoableAction {
 public:
     UpdateCubeVectorAction(
             Interactor* interactor
-        ,   vector<VertCube*>* elements
-        ,   const vector<VertCube*>& before
-        ,   const vector<VertCube*>& after
+        ,   vector<TrilinearCube*>* elements
+        ,   const vector<TrilinearCube*>& before
+        ,   const vector<TrilinearCube*>& after
         ,   bool shouldClearLines = true);
 
     void doPreUpdateCheck() override;
@@ -137,9 +137,9 @@ private:
     bool shouldClearLines;
 
     Interactor* itr;
-    vector<VertCube*>* elements;
-    vector<VertCube*> before;
-    vector<VertCube*> after;
+    vector<TrilinearCube*>* elements;
+    vector<TrilinearCube*> before;
+    vector<TrilinearCube*> after;
 };
 
 /* ----------------------------------------------------------------------------- */
@@ -162,13 +162,13 @@ private:
 
 /* ----------------------------------------------------------------------------- */
 
-class DeformerAssignment : public ResponsiveUndoableAction {
+class PathAssignment : public ResponsiveUndoableAction {
 public:
-    DeformerAssignment(
+    PathAssignment(
             SingletonRepo* repo
         ,   int updateSource
         ,   Mesh* mesh
-        ,   const vector<VertCube*>& lines
+        ,   const vector<TrilinearCube*>& lines
         ,   vector<int> previousMappings
         ,   int thisMapping, int channel);
 
@@ -180,7 +180,7 @@ private:
     int currentMapping, channel;
     // Interactor* itr;
     Mesh* mesh;
-    vector<VertCube*> affectedLines;
+    vector<TrilinearCube*> affectedLines;
     vector<int> previousMappings;
 };
 
@@ -225,12 +225,12 @@ class VertexOwnershipAction :
         public NamedUndoableAction {
 public:
 
-    VertexOwnershipAction(VertCube* cube, bool undoRemoves, const Array<Vertex*>& toChange);
+    VertexOwnershipAction(TrilinearCube* cube, bool undoRemoves, const Array<Vertex*>& toChange);
     void performDelegate() override;
     void undoDelegate() override;
 
     bool undoRemoves;
-    VertCube* cube;
+    TrilinearCube* cube;
     Array<Vertex*> toChange;
 };
 
@@ -239,13 +239,13 @@ public:
 class VertexCubePropertyAction :
         public NamedUndoableAction {
 public:
-    VertexCubePropertyAction(VertCube* cube, const VertCube& oldProps, const VertCube& newProps);
+    VertexCubePropertyAction(TrilinearCube* cube, const TrilinearCube& oldProps, const TrilinearCube& newProps);
     void performDelegate() override;
     void undoDelegate() override;
 
 private:
-    VertCube* cube;
-    VertCube oldProps, newProps;
+    TrilinearCube* cube;
+    TrilinearCube oldProps, newProps;
 };
 
 

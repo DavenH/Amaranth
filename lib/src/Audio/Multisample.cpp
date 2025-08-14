@@ -10,7 +10,7 @@
 #include "../Inter/MorphPositioner.h"
 #include "../Definitions.h"
 
-Multisample::Multisample(SingletonRepo* repo, MeshRasterizer* rasterizer) :
+Multisample::Multisample(SingletonRepo* repo, OldMeshRasterizer* rasterizer) :
         SingletonAccessor(repo, "Multisample")
     ,   current(nullptr)
     ,   waveRasterizer(rasterizer) {

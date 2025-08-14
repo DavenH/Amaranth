@@ -1,11 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include "JuceHeader.h"
 using namespace juce;
-#include "../src/Curve/Vertex2.h"
 
 #include <fstream>
 
 #include "../src/Algo/AutoModeller.h"
+#include "../src/Wireframe/Vertex/Vertex2.h"
 
 using std::fstream;
 using std::vector;

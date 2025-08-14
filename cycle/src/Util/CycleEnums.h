@@ -24,7 +24,7 @@ namespace UpdateSources {
         SourceSpectrum3D,
         SourceEnvelope2D,
         SourceEnvelope3D,
-        SourceDeformer,
+        SourcePath,
         SourceScratch,
         SourceUnison,
         SourceOscCtrls,
@@ -69,7 +69,7 @@ namespace Constants {
     ,   SpectralMargin
     ,   MaxCyclePeriod
     ,   MaxUnisonOrder
-    ,   DeformerPadding
+    ,   PathPadding
     ,   FFTLogTensionAmp
     ,   ResamplerLatency
     ,   IrModellerPadding

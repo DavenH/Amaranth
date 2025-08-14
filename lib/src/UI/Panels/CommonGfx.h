@@ -3,7 +3,7 @@
 #include <vector>
 #include "../../Array/Buffer.h"
 #include "../../Array/BufferXY.h"
-#include "../../Curve/Vertex2.h"
+#include "../../Wireframe/Vertex/Vertex2.h"
 #include "../../Obj/Ref.h"
 #include "../../Obj/Color.h"
 #include "../../Obj/ColorPos.h"

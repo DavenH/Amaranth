@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Util/NumberUtils.h"
-#include "../Curve/Vertex2.h"
+#include "../Wireframe/Vertex/Vertex2.h"
 
 class CurveLine {
 public:

@@ -38,6 +38,7 @@ This document summarises formatting patterns observed in the repository. When ed
   5. Forward declarations
   6. Type aliases
   7. Class/struct definitions
+
 - Inside classes, leave **one blank line** between logical groups:
 
   - Nested enums/structs/classes
@@ -91,7 +92,7 @@ This document summarises formatting patterns observed in the repository. When ed
   MeshRasterizer::MeshRasterizer(const String& name) :
           name                (name)
       ,   mesh                (nullptr)
-      ,   deformer            (nullptr)
+      ,   path            (nullptr)
       ,   zeroIndex           (0)
       ,   paddingSize         (2)
       ,   oneIndex            (INT_MAX / 2)
@@ -173,7 +174,7 @@ This document summarises formatting patterns observed in the repository. When ed
 - Space around `=` in default args:
 
   ```cpp
-  void applyDeformers(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds = false);
+  void applyPaths(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds = false);
   ```
 
 ## Forward Declarations, Aliases, and Iterators

@@ -8,12 +8,12 @@
 #include "InteractorListener.h"
 #include "../App/MeshLibrary.h"
 #include "../App/SingletonAccessor.h"
-#include "../Curve/CollisionDetector.h"
-#include "../Curve/DepthVert.h"
-#include "../Curve/VertCube.h"
-#include "../Curve/Vertex2.h"
+#include "../Wireframe/CollisionDetector.h"
+#include "../Wireframe/Vertex/Vertex2.h"
+#include "../Wireframe/Interpolator/Trilinear/DepthVert.h"
+#include "../Wireframe/Interpolator/Trilinear/TrilinearCube.h"
+#include "../Wireframe/Interpolator/Trilinear/MorphPosition.h"
 #include "../Design/Updating/Updateable.h"
-#include "../Obj/MorphPosition.h"
 #include "../Obj/Ref.h"
 #include "../UI/AsyncUIUpdater.h"
 #include "../UI/IConsole.h"
@@ -24,7 +24,7 @@ using std::set;
 
 class Panel;
 class Vertex;
-class MeshRasterizer;
+class OldMeshRasterizer;
 
 typedef vector<Vertex2>::iterator CoordIter;
 typedef vector<DepthVert>::iterator DepthIter;
@@ -72,8 +72,8 @@ public:
     void init() override;
 
     virtual bool addNewCube(float startTime, float phase, float amp, float shape);
-    void addNewCubeForMultipleIntercepts(VertCube* addedLine, float startTime, float phase, float amp);
-    void addNewCubeForOneIntercept(VertCube* addedLine, float startTime, float phase, float amp, const MorphPosition& box);
+    void addNewCubeForMultipleIntercepts(TrilinearCube* addedLine, float startTime, float phase, float amp);
+    void addNewCubeForOneIntercept(TrilinearCube* addedLine, float startTime, float phase, float amp, const MorphPosition& box);
     void addToArray(const Array<Vertex*>& src, vector<VertexFrame>& dst);
     void associateTo(Panel* panel);
     void clearSelectedAndCurrent();
@@ -82,7 +82,7 @@ public:
     void deselectAll(bool forceDeselect = false);
     void doGlobalUIUpdate(bool force) override;
     void eraseSelected();
-    void initVertsWithDepthDims(VertCube* line, const vector<int>& depthDims, float x, float y, const MorphPosition& box);
+    void initVertsWithDepthDims(TrilinearCube* line, const vector<int>& depthDims, float x, float y, const MorphPosition& box);
     void postUpdateMessage();
     void reduceDetail() override;
     void restoreDetail() override;
@@ -94,7 +94,7 @@ public:
     void setAxeSize(float size);
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
-    void setRasterizer(MeshRasterizer* rasterizer);
+    void setRasterizer(OldMeshRasterizer* rasterizer);
     void snapToGrid(Vertex2& toSnap);
     void translateVerts(vector<VertexFrame>& verts, const Vertex2& diff);
     void updateSelectionFrames();
@@ -104,19 +104,19 @@ public:
     void doBoxSelect    (const MouseEvent& e);
 
     bool addNewCube(float startTime, float phase, float amp, float curveShape, const MorphPosition& cube);
-    bool commitCubeAdditionIfValid(VertCube*& addedLine,
-        const vector<VertCube*>& beforeLines,
+    bool commitCubeAdditionIfValid(TrilinearCube*& addedLine,
+        const vector<TrilinearCube*>& beforeLines,
         const vector<Vertex*>& beforeVerts);
 
-    Array<Vertex*>      getVerticesToMove(VertCube* cube, Vertex* startVertex);
-    VertCube*           getClosestLine(Vertex* vert);
+    Array<Vertex*>      getVerticesToMove(TrilinearCube* cube, Vertex* startVertex);
+    TrilinearCube*           getClosestLine(Vertex* vert);
     vector<Vertex*>&    getSelected();
     Vertex*             findClosestVertex(const Vertex2& posXY);
 
     const vector<VertexFrame>& getSelectedMovingVerts() const { return state.selectedFrame;     }
     CollisionDetector&  getCollisionDetector()                { return collisionDetector;   }
     CriticalSection&    getLock()                             { return vertexLock;          }
-    MeshRasterizer*     getRasterizer() const                 { return rasterizer;          }
+    OldMeshRasterizer*  getRasterizer() const                 { return rasterizer;          }
     MorphPosition       getOffsetPosition(bool withDepths)    { return positioner->getOffsetPosition(withDepths); }
     MorphPosition       getMorphPosition()                    { return positioner->getMorphPosition(); }
 
@@ -126,7 +126,7 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-    virtual void transferLineProperties(VertCube const* from, VertCube* to1,  VertCube* to2);
+    virtual void transferLineProperties(TrilinearCube const* from, TrilinearCube* to1,  TrilinearCube* to2);
 
     void performUpdate(UpdateType updateType) override;
     virtual void updateDepthVerts();
@@ -134,9 +134,9 @@ public:
     virtual bool doesMeshChangeWarrantGlobalUpdate();
     virtual bool shouldDoDimensionCheck();
     virtual bool doCreateVertex();
-    virtual float getDragMovementScale(VertCube* cube);
+    virtual float getDragMovementScale(TrilinearCube* cube);
     virtual MouseUsage getMouseUsage();
-    virtual vector<VertCube*> getLinesToSlideOnSingleSelect();
+    virtual vector<TrilinearCube*> getLinesToSlideOnSingleSelect();
 
     void mouseDown      (const MouseEvent& e) override;
     void mouseUp        (const MouseEvent& e) override;
@@ -171,7 +171,7 @@ public:
 
     virtual void doFurtherReset()               {}
     virtual void focusGained()                  {}
-    virtual void adjustAddedLine(VertCube*)     {}
+    virtual void adjustAddedLine(TrilinearCube*)     {}
     virtual bool is3DInteractor()               { return false;         }
     virtual bool extraUpdateCondition()         { return true;          }
     virtual bool isCurrentMeshActive()          { return true;          }
@@ -213,9 +213,9 @@ protected:
 
     bool isDuplicateVertex(Vertex* v);
 
-    Vertex* findLinesClosestVertex(VertCube* cube, const Vertex2& mouseXY, Vertex& pos);
-    Vertex* findLinesClosestVertex(VertCube* cube, const Vertex2& mouseXY);
-    Vertex* findLinesClosestVertex(VertCube* cube, const Vertex2& mouseXY, const MorphPosition& pos);
+    Vertex* findLinesClosestVertex(TrilinearCube* cube, const Vertex2& mouseXY, Vertex& pos);
+    Vertex* findLinesClosestVertex(TrilinearCube* cube, const Vertex2& mouseXY);
+    Vertex* findLinesClosestVertex(TrilinearCube* cube, const Vertex2& mouseXY, const MorphPosition& pos);
 
     MorphPosition getModPosition(bool adjust = true);
     MorphPosition getCube();
@@ -230,12 +230,12 @@ protected:
     int updateSource;
 
     MorphPositioner*    positioner;
-    MeshRasterizer*     rasterizer;
+    OldMeshRasterizer*     rasterizer;
 
     CriticalSection     vertexLock;
     CollisionDetector   collisionDetector;
     VertexTransformUndo vertexTransformUndoer;
-    VertCube::ReductionData reduceData;
+    TrilinearCube::ReductionData reduceData;
 
     ListenerList<InteractorListener> listeners;
 

@@ -5,7 +5,7 @@
 #include <App/SingletonRepo.h>
 #include <Audio/Multisample.h>
 #include <Audio/PitchedSample.h>
-#include <Curve/EnvRasterizer.h>
+#include <../../../lib/>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <UI/IConsole.h>

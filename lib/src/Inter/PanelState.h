@@ -1,8 +1,8 @@
 #pragma once
 
 #include <vector>
-#include "../Curve/Vertex.h"
-#include "../Curve/Vertex2.h"
+#include "../Wireframe/Interpolator/Trilinear/TrilinearVertex.h"
+#include "../Wireframe/Vertex/Vertex2.h"
 
 using std::vector;
 
@@ -122,7 +122,7 @@ public:
     ActionState actionState;
 //  char states[numPanelStates];
 
-    VertCube* currentCube;
+    TrilinearCube* currentCube;
     Vertex* currentVertex;
 
     // 3d-specific

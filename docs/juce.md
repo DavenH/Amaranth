@@ -24,7 +24,7 @@
     * On Apple, `.mm` files are given **Objective-C++** compile flags (don’t remove).
 * JUCE module availability and app settings are expressed via a set of `JUCE_*` **compile definitions** already present in `CMakeLists.txt`. Don’t rename or “simplify” these unless you know the JUCE build graph.
 
-## Rules for the agent (very important)
+## Rules for the agent (important)
 
 **Do:**
 

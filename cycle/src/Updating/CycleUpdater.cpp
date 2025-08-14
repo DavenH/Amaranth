@@ -8,7 +8,7 @@
 #include "ScratchUpdate.h"
 #include "SpectDelegate.h"
 
-#include "../Curve/GraphicRasterizer.h"
+#include "../Wireframe/GraphicRasterizer.h"
 #include "../Inter/EnvelopeInter2D.h"
 #include "../Inter/EnvelopeInter3D.h"
 #include "../Inter/SpectrumInter2D.h"
@@ -19,7 +19,7 @@
 #include "../UI/Effects/IrModellerUI.h"
 #include "../UI/Effects/WaveshaperUI.h"
 #include "../UI/Panels/DerivativePanel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/PathPanel.h"
 #include "../UI/VisualDsp.h"
 #include "../Util/CycleEnums.h"
 
@@ -43,10 +43,10 @@ void CycleUpdater::createUpdateGraph() {
     wshpItr 	= new Node(&getObj(WaveshaperUI));
     eqlzerUI 	= new Node(&getObj(EqualizerUI));
     derivUI 	= new Node(&getObj(DerivativePanel));
-    dfrmItr 	= new Node(&getObj(DeformerPanel));
+    pathItr 	= new Node(&getObj(PathPanel));
 
     time2Rast  	= new Node(&getObj(TimeRasterizer));
-    dfrmRast 	= new Node(getObj(DeformerPanel).getRasterizer());
+    pathRast 	= new Node(getObj(PathPanel).getRasterizer());
     irModelRast = new Node(getObj(IrModellerUI).getRasterizer());
     wshpRast 	= new Node(getObj(WaveshaperUI).getRasterizer());
 
@@ -80,7 +80,7 @@ void CycleUpdater::createUpdateGraph() {
     spect3Itr	->marks(synthNode);
     time2Itr	->marks(Array<Node*>(timeNodes, 3));
     time3Itr	->marks(Array<Node*>(timeNodes, 3));
-    dfrmItr		->marks(synthNode);
+    pathItr		->marks(synthNode);
     scratchRast	->marks(synthNode);
     scratchRast	->marks(scratchRast);
     morphNode	->marks(morphNode);
@@ -89,10 +89,10 @@ void CycleUpdater::createUpdateGraph() {
     env2Itr		->marks(envDlg);
     env3Itr		->marks(envDlg);
 
-    Node* universalNodes[] 	= { morphNode, spectDlg, envDlg, dfrmRast, wshpRast, irModelRast,
+    Node* universalNodes[] 	= { morphNode, spectDlg, envDlg, pathRast, wshpRast, irModelRast,
                                 scratchRast, irModelDsp, unison, timeProc, time2Rast, synthNode };
 
-    Node* allButFxNodes[] 	= { morphNode, spectDlg, envDlg, dfrmRast, scratchRast, timeProc,
+    Node* allButFxNodes[] 	= { morphNode, spectDlg, envDlg, pathRast, scratchRast, timeProc,
                                 time2Rast, synthNode };
 
     univNode	->marks(Array<Node*>(universalNodes, numElementsInArray(universalNodes)));
@@ -116,7 +116,7 @@ void CycleUpdater::createUpdateGraph() {
     envDlg		->updatesAfter(morphNode);
 
     Node* startingNodes[]	= { morphNode, time2Rast, envDlg, irModelDsp, wshpDsp, effectsProc, timeProc,
-                                unisonItr, synthNode, irModelRast, dfrmRast, scratchRast, spectDlg };
+                                unisonItr, synthNode, irModelRast, pathRast, scratchRast, spectDlg };
 
     updater->getGraph().addHeadNodes(Array<Node*>(startingNodes, numElementsInArray(startingNodes)));
 
@@ -126,14 +126,14 @@ void CycleUpdater::createUpdateGraph() {
     irModelItr	->marksAndUpdatesAfter(irModelDsp);
     wshpItr		->marksAndUpdatesAfter(wshpDsp);
     wshpItr		->marksAndUpdatesAfter(wshpRast);
-    dfrmItr		->marksAndUpdatesAfter(dfrmRast);
+    pathItr		->marksAndUpdatesAfter(pathRast);
     unisonItr	->marksAndUpdatesAfter(unison);
 
     envelopeVisibilityChanged();
 
     updater->setStartingNode(UpdateSources::SourceAll, 			univNode);
     updater->setStartingNode(UpdateSources::SourceAllButFX, 	allButFX);
-    updater->setStartingNode(UpdateSources::SourceDeformer, 	dfrmItr);
+    updater->setStartingNode(UpdateSources::SourcePath, 	pathItr);
     updater->setStartingNode(UpdateSources::SourceEnvelope2D, 	env2Itr);
     updater->setStartingNode(UpdateSources::SourceEnvelope3D, 	env3Itr);
     updater->setStartingNode(UpdateSources::SourceEqualizer, 	eqlzerUI);
@@ -204,7 +204,7 @@ void CycleUpdater::setDspFXConnections() const {
 
 void CycleUpdater::setTimeFreqParents() {
     layerChanged(LayerGroups::GroupScratch, -1);
-    layerChanged(LayerGroups::GroupDeformer, -1);
+    layerChanged(LayerGroups::GroupPath, -1);
 }
 
 void CycleUpdater::setTimeFreqChildren(bool toFFT) const {
@@ -284,7 +284,7 @@ void CycleUpdater::viewStageChanged(bool force) {
 }
 
 void CycleUpdater::layerChanged(int layerGroup, int index) {
-    Node* srcNode = layerGroup == LayerGroups::GroupScratch ? scratchRast : dfrmRast;
+    Node* srcNode = layerGroup == LayerGroups::GroupScratch ? scratchRast : pathRast;
 
     Array<int> types = getObj(MeshLibrary).getMeshTypesAffectedByCurrent(layerGroup);
     refreshConnections(srcNode, types);

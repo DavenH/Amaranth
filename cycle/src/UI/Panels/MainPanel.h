@@ -16,7 +16,7 @@ class Bounded;
 class BoundWrapper;
 class ConfigPanel;
 class Console;
-class DeformerPanel;
+class PathPanel;
 class DerivativePanel;
 class Dragger;
 class EffectPanel;
@@ -84,7 +84,7 @@ public:
 
     enum TopTabs {
         TabSpectrum,
-        TabDeformers,
+        TabPaths,
     };
 
     enum TimerIds {
@@ -116,7 +116,7 @@ public:
     void toggleEffectComponents(bool add);
     void togglePresetPage(bool add);
     void toggleEffectsWaveform2DPresets(int toShow);
-    void toggleDeformers(bool add);
+    void togglePaths(bool add);
     void toggleF2D(bool add);
     void toggleF2DGuide(bool wantToShowGuide);
     void toggleEnvPanel(bool wantToShow3D);
@@ -184,7 +184,7 @@ private:
     PanelPair* cv_middlePair;
 
     PanelPair* wave2DPair;
-    PanelPair* dfrmPair;
+    PanelPair* pathPair;
     PanelPair* irmodPair;
     PanelPair* wshpPair;
 
@@ -208,7 +208,7 @@ private:
 
     PanelPair* xv_ctrl_key;
     PanelPair* xv_envDfmImp;
-    PanelPair* xv_dfrm_imp;
+    PanelPair* xv_path_imp;
     PanelPair* xv_FX_pair_1;
     PanelPair* xv_FX_Pair_2;
     PanelPair* xv_FX_pair_A;
@@ -255,7 +255,7 @@ private:
     ZoomPanel* wave2DZoomPanel;
     ZoomPanel* tubeZoomPanel;
     ZoomPanel* wsZoomPanel;
-    ZoomPanel* dfrmZoomPanel;
+    ZoomPanel* pathZoomPanel;
 
     BoundWrapper* derivBounds;
     BoundWrapper* propsBounds;
@@ -298,7 +298,7 @@ private:
     Ref<Envelope2D> envelope2D;
     Ref<Envelope3D> envelope3D;
     Ref<DerivativePanel> derivPanel;
-    Ref<DeformerPanel> dfrmPanel;
+    Ref<PathPanel> pathPanel;
 
     Ref<IrModellerUI> irModelUI;
     Ref<WaveshaperUI> waveshaperUI;
@@ -308,7 +308,7 @@ private:
     Ref<EqualizerUI> eqUI;
     Ref<MidiKeyboard> keyboard;
 
-    PanelGroup wave2DGroup, surfGroup, spectGroup2, spectGroup3, envGroup2, envGroup3, wshpGroup, irGroup, dfrmGroup;
+    PanelGroup wave2DGroup, surfGroup, spectGroup2, spectGroup3, envGroup2, envGroup3, wshpGroup, irGroup, pathGroup;
     Array<PanelGroup*> panelGroups;
 
     OwnedArray<Deletable> deletable;
@@ -319,7 +319,7 @@ private:
     bool initialized, gainedFocus, needsRepaint, forceResize, attachNextResize;
     float f2dEffectsWidth;
     float cv_wholePortion, cv_middlePortion, cv_surfEnvPortion, cv_spectSurfPortion;
-    float xv_wholePortion, xv_spectSurfPortion, xv_dfrmImpPortion, xv_topBttmPortion, xv_envDfmImpPortion;
+    float xv_wholePortion, xv_spectSurfPortion, xv_pathImpPortion, xv_topBttmPortion, xv_envDfmImpPortion;
 
     ViewMode viewMode;
     Image bufferedImage;

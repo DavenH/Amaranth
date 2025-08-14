@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include "../Obj/Ref.h"
-#include "../Curve/Vertex.h"
+#include "../Wireframe/Interpolator/Trilinear/TrilinearVertex.h"
 
 using std::vector;
 

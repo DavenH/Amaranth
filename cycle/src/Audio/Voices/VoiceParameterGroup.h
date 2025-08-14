@@ -2,7 +2,7 @@
 #include <vector>
 #include <Algo/Resampler.h>
 #include <Array/RingBuffer.h>
-#include "../../Curve/CycleState.h"
+#include "../../Wireframe/CycleState.h"
 
 using std::vector;
 

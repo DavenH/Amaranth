@@ -3,9 +3,9 @@
 #include "Interactor3D.h"
 #include "../App/EditWatcher.h"
 #include "../App/Settings.h"
-#include "../Curve/EnvelopeMesh.h"
-#include "../Curve/CollisionDetector.h"
-#include "../Curve/SimpleIcpt.h"
+#include "../Wireframe/Env/EnvelopeMesh.h"
+#include "../Wireframe/CollisionDetector.h"
+#include "../Wireframe/Vertex/SimpleIcpt.h"
 #include "../Inter/UndoableMeshProcess.h"
 #include "../Obj/Ref.h"
 #include "../Thread/LockTracer.h"
@@ -13,8 +13,8 @@
 #include "../UI/Panels/Panel3D.h"
 #include "../Util/NumberUtils.h"
 #include "../Util/CommonEnums.h"
-#include "../Curve/SurfaceLine.h"
-#include "../Curve/MeshRasterizer.h"
+#include "../Wireframe/SurfaceLine.h"
+#include "../Wireframe/OldMeshRasterizer.h"
 #include "../Design/Updating/Updater.h"
 #include "../Definitions.h"
 
@@ -375,17 +375,17 @@ void Interactor3D::mergeVertices(
 }
 
 void Interactor3D::mergeVerticesManyOwners(Vertex* firstSelected, Vertex* secondSelected, MergeActionType mergeAction) {
-    VertCube* containsBoth = getLineContaining(firstSelected, secondSelected);
+    TrilinearCube* containsBoth = getLineContaining(firstSelected, secondSelected);
     Mesh* mesh = getMesh();
 
-    Array<VertCube*> ownersA = firstSelected->owners;
-    Array<VertCube*> ownersB = secondSelected->owners;
+    Array<TrilinearCube*> ownersA = firstSelected->owners;
+    Array<TrilinearCube*> ownersB = secondSelected->owners;
 
     ownersA.removeFirstMatchingValue(containsBoth);
     ownersB.removeFirstMatchingValue(containsBoth);
 
     for (auto& it : ownersA) {
-        VertCube::Face face = it->getFace(dims.x, firstSelected);
+        TrilinearCube::Face face = it->getFace(dims.x, firstSelected);
 
         // TODO: remove verts from face
     }
@@ -406,13 +406,13 @@ void Interactor3D::mergeVerticesOneAndManyOwners(Vertex* firstSelected, Vertex* 
     Vertex* ownedByMany  = firstSelected->getNumOwners() > 1 ? firstSelected : secondSelected;
     Vertex* ownedByOne   = ownedByMany == firstSelected ? secondSelected : firstSelected;
 
-    VertCube* commonCube = getLineContaining(ownedByMany, ownedByOne);
-    VertCube* otherLine  = (commonCube == ownedByMany->owners[0]) ? ownedByMany->owners[1] : ownedByMany->owners[0];
+    TrilinearCube* commonCube = getLineContaining(ownedByMany, ownedByOne);
+    TrilinearCube* otherLine  = (commonCube == ownedByMany->owners[0]) ? ownedByMany->owners[1] : ownedByMany->owners[0];
 
     Mesh* mesh = getMesh();
 
     Array<Vertex*> notContained;
-    for (int i = 0; i < VertCube::numVerts; ++i) {
+    for (int i = 0; i < TrilinearCube::numVerts; ++i) {
         Vertex* vert = commonCube->getVertex(i);
         bool otherLineContains = otherLine->indexOf(vert) != CommonEnums::Null;
 
@@ -432,8 +432,8 @@ void Interactor3D::mergeVerticesBothOneOwner(
         Vertex* firstSelected,
         Vertex* secondSelected,
         MergeActionType mergeAction) {
-    VertCube* ownsFirst = firstSelected->owners.getFirst();
-    VertCube* ownsSecnd = secondSelected->owners.getFirst();
+    TrilinearCube* ownsFirst = firstSelected->owners.getFirst();
+    TrilinearCube* ownsSecnd = secondSelected->owners.getFirst();
 
     Mesh* mesh = getMesh();
 
@@ -451,8 +451,8 @@ void Interactor3D::mergeVerticesBothOneOwner(
         state.currentVertex = nullptr;
     } else {
         // these get the verts in their dimension order
-        VertCube::Face faceA = ownsFirst->getFace(dims.x, firstSelected);
-        VertCube::Face faceB = ownsSecnd->getFace(dims.x, secondSelected);
+        TrilinearCube::Face faceA = ownsFirst->getFace(dims.x, firstSelected);
+        TrilinearCube::Face faceB = ownsSecnd->getFace(dims.x, secondSelected);
 
         bool pole = ownsFirst->poleOf(dims.x, firstSelected);
         ownsFirst->setFace(faceB, dims.x, pole);
@@ -486,12 +486,12 @@ void Interactor3D::mergeVerticesOneOwner(
     Vertex* hasZeroOwners   = hasOneOwner == firstSelected ? secondSelected : firstSelected;
 
     float diffBA    = secondSelected->values[dims.x] - firstSelected->values[dims.x];
-    VertCube* cube  = hasOneOwner->owners.getFirst();
+    TrilinearCube* cube  = hasOneOwner->owners.getFirst();
 
     if(mergeAction == MergeAtFirst) {
         // move b over to a's position
         if (hasOneOwner == secondSelected) {
-            VertCube::Face face = cube->getFace(dims.x, hasOneOwner);
+            TrilinearCube::Face face = cube->getFace(dims.x, hasOneOwner);
             moveVertsAndTest(face.toArray(), diffBA);
         }
     } else if (mergeAction == MergeAtSecond || mergeAction == MergeAtCentre) {
@@ -520,21 +520,21 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
     Mesh* mesh          = getMesh();
 
     vector<Vertex*> beforeVerts = mesh->getVerts();
-    vector<VertCube*> beforeCubes = mesh->getCubes();
+    vector<TrilinearCube*> beforeCubes = mesh->getCubes();
 
     vector<Vertex*> vertsToDeleteOnFailure;
     vector<Vertex*> vertsToRemoveOnSuccess;
 
-    VertCube* addedCube = nullptr;
+    TrilinearCube* addedCube = nullptr;
 
     if (a->unattached() && b->unattached()) {
-        addedCube = new VertCube(mesh);
+        addedCube = new TrilinearCube(mesh);
         addedCube->initVerts(pos);
 
         Vertex* poleVerts[] = { a, b };
 
         for(int p = 0; p < 2; ++p) {
-            VertCube::Face face = addedCube->getFace(dims.x, p > 0);
+            TrilinearCube::Face face = addedCube->getFace(dims.x, p > 0);
 
             for (int i = 0; i < face.size(); ++i) {
                 face[i]->values[dims.x] = poleVerts[p]->values[dims.x];
@@ -542,8 +542,9 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
             }
         }
 
-        for(auto lineVert : addedCube->lineVerts)
+        for(auto lineVert : addedCube->lineVerts) {
             vertsToDeleteOnFailure.push_back(lineVert);
+        }
 
         vertsToRemoveOnSuccess.push_back(a);
         vertsToRemoveOnSuccess.push_back(b);
@@ -553,7 +554,7 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
     else if (a->unattached() || b->unattached()) {
         Vertex* freeVert      = a->unattached() ? a : b;
         Vertex* connectedVert = a->unattached() ? b : a;
-        VertCube* cube        = nullptr;
+        TrilinearCube* cube        = nullptr;
 
         for(auto owner : connectedVert->owners) {
             int index = owner->indexOf(connectedVert);
@@ -569,17 +570,17 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
         }
 
         // set verts of the exisint cube's inner face to the new cube's inner face
-        VertCube::Face cnxdFace = cube->getFace(currentAxis, connectedVert);
+        TrilinearCube::Face cnxdFace = cube->getFace(currentAxis, connectedVert);
 
         bool polarity  = cube->poleOf(currentAxis, connectedVert);
         bool otherPole = ! polarity;
 
-        addedCube = new VertCube();
+        addedCube = new TrilinearCube();
         addedCube->setFace(cnxdFace, currentAxis, otherPole);
 
         // create new verts for the opposing face of the new cube
         Vertex diffValues = *freeVert - *connectedVert;
-        VertCube::Face newFace(dims.x);
+        TrilinearCube::Face newFace(dims.x);
 
         for(int i = 0; i < cnxdFace.size(); ++i) {
             auto* vert = new Vertex(*cnxdFace[i] + diffValues);
@@ -592,23 +593,23 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
         addedCube->setFace(newFace, currentAxis, polarity);
         vertsToRemoveOnSuccess.push_back(freeVert);
     } else {
-        VertCube* ownsA = a->owners.getFirst();
-        VertCube* ownsB = b->owners.getFirst();
+        TrilinearCube* ownsA = a->owners.getFirst();
+        TrilinearCube* ownsB = b->owners.getFirst();
 
-        VertCube::Face faceA = ownsA->getFace(currentAxis, a);
-        VertCube::Face faceB = ownsB->getFace(currentAxis, b);
+        TrilinearCube::Face faceA = ownsA->getFace(currentAxis, a);
+        TrilinearCube::Face faceB = ownsB->getFace(currentAxis, b);
 
         bool polarityA = ownsA->poleOf(getSetting(CurrentMorphAxis), a);
         bool otherPole = ! polarityA;
 
-        addedCube = new VertCube();
+        addedCube = new TrilinearCube();
         addedCube->setFace(faceA, currentAxis, otherPole);
         addedCube->setFace(faceB, currentAxis, polarityA);
     }
 
     bool succeeded = false;
 
-    for (int i = 0; i < VertCube::numVerts; ++i) {
+    for (int i = 0; i < TrilinearCube::numVerts; ++i) {
         addedCube->getVertex(i)->addOwner(addedCube);
     }
 
@@ -678,9 +679,9 @@ void Interactor3D::copyVertices() {
         getVerts()->push_back(copy);
     }
 
-//  vector<VertCube*>& lines = getLines();
+//  vector<TrilinearCube*>& lines = getLines();
     for(int i = 0; i < (int) selected.size(); ++i) {
-        VertCube* lines[] = { selected[i]->ownerA, selected[i]->ownerB };
+        TrilinearCube* lines[] = { selected[i]->ownerA, selected[i]->ownerB };
 
         for(int k = 0; k < 2; k++) {
             for(int j = 0; j < selected.size(); ++j) {
@@ -688,7 +689,7 @@ void Interactor3D::copyVertices() {
 
                 if(i != j && line->owns(selected[j]) && copiedIndices.find(hash) == copiedIndices.end()) {
                     copiedIndices.insert(hash);
-                    (new VertCube(copiedVerts[i], copiedVerts[j], getMesh()));
+                    (new TrilinearCube(copiedVerts[i], copiedVerts[j], getMesh()));
                 }
 
             }
@@ -746,24 +747,26 @@ void Interactor3D::extrudeVertices() {
 void Interactor3D::sliceLines(const Vertex2& start, const Vertex2& end) {
     ScopedLock sl(vertexLock);
 
-    vector<VertCube*> toAdd, toRemove, newCubes;
+    vector<TrilinearCube*> toAdd, toRemove, newCubes;
     vector<Vertex*> newVerts;
 
-    Mesh* mesh = getMesh();
+    Mesh* mesh               = getMesh();
     EditWatcher* editWatcher = &getObj(EditWatcher);
-    MorphPosition pos = getOffsetPosition(true);
+    MorphPosition pos        = getOffsetPosition(true);
 
-    for (auto* cube : mesh->getCubes()) {
-        if(! cube->intersectsMorphRect(dims.x, reduceData, pos))
+    for (auto* cube: mesh->getCubes()) {
+        if (!cube->intersectsMorphRect(dims.x, reduceData, pos)) {
             continue;
+        }
 
         cube->getInterceptsFast(dims.x, reduceData, pos);
 
         SurfaceLine line(&reduceData.v0, &reduceData.v1, dims.x);
         Vertex2 point = line.getCrossPoint(start, end, dims.x, dims.y);
 
-        if(point == Vertex2(-1, -1))
+        if (point == Vertex2(-1, -1)) {
             continue;
+        }
 
         float xMax = reduceData.v0.values[dims.x];
         float xMin = reduceData.v1.values[dims.x];
@@ -774,11 +777,11 @@ void Interactor3D::sliceLines(const Vertex2& start, const Vertex2& end) {
         editWatcher->addAction(new VertexOwnershipAction(cube, false, cube->toArray()), false);
         cube->orphanVerts();
 
-        VertCube::Face newFace(dims.x);
-        VertCube::Face lowFace  = cube->getFace(dims.x, VertCube::LowPole);
-        VertCube::Face highFace = cube->getFace(dims.x, VertCube::HighPole);
+        TrilinearCube::Face newFace(dims.x);
+        TrilinearCube::Face lowFace  = cube->getFace(dims.x, TrilinearCube::LowPole);
+        TrilinearCube::Face highFace = cube->getFace(dims.x, TrilinearCube::HighPole);
 
-        for (int i = 0; i < VertCube::numVerts / 2; ++i) {
+        for (int i = 0; i < TrilinearCube::numVerts / 2; ++i) {
             auto* vert = new Vertex(*lowFace[i] * (1 - prog) + *highFace[i] * prog);
 
             newFace.set(i, vert);
@@ -786,19 +789,19 @@ void Interactor3D::sliceLines(const Vertex2& start, const Vertex2& end) {
             newVerts.push_back(vert);
         }
 
-        auto* lowCube  = new VertCube();
-        auto* highCube = new VertCube();
+        auto* lowCube  = new TrilinearCube();
+        auto* highCube = new TrilinearCube();
 
         newCubes.push_back(lowCube);
         newCubes.push_back(highCube);
 
         transferLineProperties(cube, lowCube, highCube);
 
-        lowCube->setFace(lowFace, dims.x, VertCube::LowPole);
-        lowCube->setFace(newFace, dims.x, VertCube::HighPole);
+        lowCube->setFace(lowFace, dims.x, TrilinearCube::LowPole);
+        lowCube->setFace(newFace, dims.x, TrilinearCube::HighPole);
 
-        highCube->setFace(newFace, dims.x, VertCube::LowPole);
-        highCube->setFace(highFace, dims.x, VertCube::HighPole);
+        highCube->setFace(newFace, dims.x, TrilinearCube::LowPole);
+        highCube->setFace(highFace, dims.x, TrilinearCube::HighPole);
 
         // do not add or delete lines from mesh immediately or this will invalidate iterators
         toAdd.push_back(lowCube);
@@ -832,7 +835,7 @@ void Interactor3D::sliceLines(const Vertex2& start, const Vertex2& end) {
 
 void Interactor3D::removeDuplicateVerts(
         vector<Vertex*>& affectedVerts,
-        vector<VertCube*>& affectedCubes,
+        vector<TrilinearCube*>& affectedCubes,
         bool deleteDupes) {
     vector<Vertex*> duplicates;
     vector<Vertex*> originals;
@@ -860,7 +863,7 @@ void Interactor3D::removeDuplicateVerts(
             int index = affectedCube->indexOf(duplicates[i]);
 
             if (index != CommonEnums::Null) {
-                VertCube* cube = affectedCube;
+                TrilinearCube* cube = affectedCube;
                 cube->setVertex(originals[i], index);
                 editWatcher->addAction(new VertexOwnershipAction(cube, true, Array<Vertex*>(&originals[i], 1)), false);
             }
@@ -889,22 +892,22 @@ void Interactor3D::glueCubes() {
         if (icpt.pole == false) {
             Mesh* mesh = getMesh();
 
-            VertCube* startingCube = icpt.parent;
+            TrilinearCube* startingCube = icpt.parent;
             MorphPosition pos = positioner->getOffsetPosition(true);
 
-            Array<VertCube*> currDivision;
+            Array<TrilinearCube*> currDivision;
             currDivision = startingCube->getAllAdjacentCubes(dims.x, pos);
 
             for (auto cube : currDivision) {
-                VertCube::Face face1 = (cube)->getFace(dims.x, VertCube::LowPole);
-                VertCube::Face face2 = (cube)->getFace(dims.x, VertCube::HighPole);
+                TrilinearCube::Face face1 = (cube)->getFace(dims.x, TrilinearCube::LowPole);
+                TrilinearCube::Face face2 = (cube)->getFace(dims.x, TrilinearCube::HighPole);
 
                 // dedupe step will remove unneeded verts
                 for(int i = 0; i < face1.size(); ++i)
                     *face1[i] = *face2[i];
 
-                if (VertCube* behind = cube->getAdjacentCube(dims.x, VertCube::LowPole)) {
-                    VertCube::Face lowFace = behind->getFace(dims.x, VertCube::HighPole);
+                if (TrilinearCube* behind = cube->getAdjacentCube(dims.x, TrilinearCube::LowPole)) {
+                    TrilinearCube::Face lowFace = behind->getFace(dims.x, TrilinearCube::HighPole);
                 }
 
                 mesh->removeCube(cube);
@@ -917,7 +920,7 @@ void Interactor3D::glueCubes() {
     }
 }
 
-void Interactor3D::glueCubes(VertCube* cubeOne, VertCube* cubeTwo) {
+void Interactor3D::glueCubes(TrilinearCube* cubeOne, TrilinearCube* cubeTwo) {
     // TODO
 }
 
@@ -968,17 +971,17 @@ void Interactor3D::commitPath(const MouseEvent& e) {
     }
 }
 
-VertCube* Interactor3D::getLineContaining(Vertex* a, Vertex* b) {
+TrilinearCube* Interactor3D::getLineContaining(Vertex* a, Vertex* b) {
     if(a == b) {
         return nullptr;
     }
 
-    VertCube* cube = nullptr;
+    TrilinearCube* cube = nullptr;
     Mesh* mesh = getMesh();
 
     for (auto& it : mesh->getCubes()) {
         bool matchesA = false, matchesB = false;
-        for (int i = 0; i < VertCube::numVerts; ++i) {
+        for (int i = 0; i < TrilinearCube::numVerts; ++i) {
             Vertex* vert = it->getVertex(i);
 
             if (a == vert) {
@@ -1064,7 +1067,7 @@ void Interactor3D::primaryDimensionChanged() {
     auto it = std::find(dims.hidden.begin(), dims.hidden.end(), newDim);
 
     // this interactor had the new dim hidden
-    // exchange the currnet x-dim with the new one
+    // exchange the current x-dim with the new one
     if (it != dims.hidden.end()) {
         int xDimCopy = dims.x;
         dims.x = newDim;

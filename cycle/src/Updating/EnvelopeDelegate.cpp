@@ -1,12 +1,11 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Curve/Vertex.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 
 #include "EnvelopeDelegate.h"
 
-#include "../Curve/E3Rasterizer.h"
+#include "../Wireframe/E3Rasterizer.h"
 #include "../Inter/EnvelopeInter2D.h"
 #include "../UI/VertexPanels/Envelope3D.h"
 #include "../UI/VertexPanels/Waveform3D.h"

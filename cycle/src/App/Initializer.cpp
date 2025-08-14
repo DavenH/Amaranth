@@ -22,8 +22,8 @@
 #include "../Audio/AudioSourceRepo.h"
 #include "../Audio/SampleUtils.h"
 #include "../Audio/SynthAudioSource.h"
-#include "../Curve/E3Rasterizer.h"
-#include "../Curve/GraphicRasterizer.h"
+#include "../Wireframe/E3Rasterizer.h"
+#include "../Wireframe/GraphicRasterizer.h"
 #include "../CycleDefs.h"
 #include "../Inter/EnvelopeInter2D.h"
 #include "../Inter/EnvelopeInter3D.h"
@@ -53,7 +53,7 @@
 #include "../UI/Panels/PlayerComponent.h"
 #include "../UI/Panels/SynthMenuBarModel.h"
 #include "../UI/Panels/VertexPropertiesPanel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/PathPanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
 #include "../UI/VertexPanels/Envelope3D.h"
 #include "../UI/VertexPanels/Spectrum2D.h"
@@ -91,7 +91,7 @@ void Initializer::init() {
       #ifdef USE_IPP
         ippInit();
       #endif
-        Curve::calcTable();
+        CurvePiece::calcTable();
     } else {
         ++numInstances;
     }
@@ -132,7 +132,7 @@ void Initializer::init2() {
 
     repo->setMorphPositioner(morph);
     repo->setConsole(&getObj(Console));
-    repo->setDeformer(&getObj(DeformerPanel));
+    repo->setPath(&getObj(PathPanel));
 
     int width, height;
 
@@ -147,7 +147,7 @@ void Initializer::init2() {
     meshLib->addGroup(LayerGroups::GroupVolume);
     meshLib->addGroup(LayerGroups::GroupPitch);
     meshLib->addGroup(LayerGroups::GroupScratch);
-    meshLib->addGroup(LayerGroups::GroupDeformer);
+    meshLib->addGroup(LayerGroups::GroupPath);
     meshLib->addGroup(LayerGroups::GroupTime);
     meshLib->addGroup(LayerGroups::GroupSpect);
     meshLib->addGroup(LayerGroups::GroupPhase);
@@ -158,7 +158,7 @@ void Initializer::init2() {
     meshLib->addLayer(LayerGroups::GroupVolume);
     meshLib->addLayer(LayerGroups::GroupPitch);
     meshLib->addLayer(LayerGroups::GroupScratch);
-    meshLib->addLayer(LayerGroups::GroupDeformer);
+    meshLib->addLayer(LayerGroups::GroupPath);
     meshLib->addLayer(LayerGroups::GroupTime);
     meshLib->addLayer(LayerGroups::GroupSpect);
     meshLib->addLayer(LayerGroups::GroupPhase);
@@ -254,7 +254,7 @@ void Initializer::setDefaultSettings() {
 
 void Initializer::instantiate() {
     Interactor* timeInter, *spectInter;
-    DeformerPanel* deformer;
+    PathPanel* path;
     SynthAudioSource* audioSource;
     auto* pitchRast = new EnvWavePitchRast(repo, "EnvWavePitchRast");
 
@@ -353,7 +353,7 @@ void Initializer::instantiate() {
     repo->add(new CycleUpdater(repo));
     repo->add(timeInter  = new WaveformInter2D(repo));
     repo->add(spectInter = new SpectrumInter2D(repo));
-    repo->add(deformer 	 = new DeformerPanel(repo));
+    repo->add(path 	 = new PathPanel(repo));
 
     repo->add(new Envelope2D(repo));
     repo->add(new Envelope3D(repo));
@@ -362,9 +362,9 @@ void Initializer::instantiate() {
     repo->add(new SpectRasterizer(repo, spectInter, "SpectRasterizer", 	LayerGroups::GroupSpect, true, 0));
     repo->add(new PhaseRasterizer(repo, spectInter, "PhaseRasterizer", 	LayerGroups::GroupPhase, true, 0));
 
-    repo->add(new EnvVolumeRast  (repo, deformer, "EnvVolumeRast"));
-    repo->add(new EnvPitchRast   (repo, deformer, "EnvPitchRast"));
-    repo->add(new EnvScratchRast (repo, deformer, "EnvScratchRast"));
+    repo->add(new EnvVolumeRast  (repo, path, "EnvVolumeRast"));
+    repo->add(new EnvPitchRast   (repo, path, "EnvPitchRast"));
+    repo->add(new EnvScratchRast (repo, path, "EnvScratchRast"));
 
     repo->add(this);
 }
@@ -384,7 +384,7 @@ Initializer::~Initializer() {
     --numInstances;
 
     if (numInstances.get() == 0) {
-        Curve::deleteTable();
+        CurvePiece::deleteTable();
     }
 
     // must delete singletons and everything that will use ipp_cyc.dll before we unload it
@@ -432,7 +432,7 @@ void Initializer::freeUIResources() {
     getObj(Envelope3D).deactivateContext();
     getObj(WaveshaperUI).deactivateContext();
     getObj(IrModellerUI).deactivateContext();
-    getObj(DeformerPanel).deactivateContext();
+    getObj(PathPanel).deactivateContext();
     getObj(VisualDsp).reset();
     getObj(Waveform3D).freeResources();
     getObj(Spectrum3D).freeResources();

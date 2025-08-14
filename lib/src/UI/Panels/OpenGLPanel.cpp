@@ -1,13 +1,12 @@
 #include "CommonGL.h"
 #include "OpenGLPanel.h"
+#include "Panel.h"
+#include "Texture.h"
+
+#include "../../App/SingletonRepo.h"
 
 #include <Definitions.h>
 
-#include "Panel.h"
-#include "Texture.h"
-#include "../../App/SingletonRepo.h"
-
-using namespace gl;
 
 OpenGLPanel::OpenGLPanel(SingletonRepo* repo, Panel2D* panel2D) :
         PanelOwner(panel2D)
@@ -41,7 +40,7 @@ void OpenGLPanel::newOpenGLContextCreated() {
     commonGL->initializeTextures();
     commonGL->initLineParams();
 
-    jassert(glGetError() == GL_NO_ERROR);
+    jassert(gl::glGetError() == gl::GL_NO_ERROR);
 
     repaint();
 }

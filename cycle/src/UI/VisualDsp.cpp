@@ -4,7 +4,6 @@
 #include <Array/StereoBuffer.h>
 #include <Audio/Multisample.h>
 #include <Audio/PitchedSample.h>
-#include <Curve/EnvelopeMesh.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <Thread/LockTracer.h>
@@ -18,12 +17,12 @@
 #include "../App/Initializer.h"
 #include "../Audio/AudioSourceRepo.h"
 #include "../Audio/SynthAudioSource.h"
-#include "../Curve/ScratchContext.h"
+#include "../Wireframe/ScratchContext.h"
 #include "../CycleDefs.h"
 #include "../UI/Effects/UnisonUI.h"
 #include "../UI/Panels/Morphing/MorphPanel.h"
 #include "../UI/Panels/OscControlPanel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/PathPanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
 #include "../UI/VertexPanels/Spectrum3D.h"
 #include "../UI/VertexPanels/Waveform3D.h"
@@ -77,12 +76,12 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
     if (dim == Vertex::Time) {
         if (props->active) {
             // degrade curve for surface rendering (accuracy not important)
-            rasterizer.updateOffsetSeeds(getObj(MeshLibrary).getLayerGroup(layerGroup).size(), DeformerPanel::tableSize);
-            rasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
+            rasterizer.updateOffsetSeeds(getObj(MeshLibrary).getLayerGroup(layerGroup).size(), PathPanel::tableSize);
+            rasterizer.setNoiseSeed(random.nextInt(PathPanel::tableSize));
             rasterizer.setLowresCurves(layerGroup != ScratchType && layerGroup != ScratchPanelType);
             rasterizer.setCalcDepthDimensions(false);
             rasterizer.setMode(EnvRasterizer::NormalState);
-            rasterizer.calcCrossPoints();
+            rasterizer.generateControlPoints();
 
             if (rasterizer.isSampleable()) {
                 double delta = 1 / float(env.size());
@@ -127,7 +126,7 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
             int index = 0;
             for(int i = 0; i < env.size(); ++i) {
                 p[dim] = zoomArray[i];
-                rasterizer.calcCrossPoints();
+                rasterizer.generateControlPoints();
 
                 env[i] = rasterizer.isSampleableAt(time) ?
                          rasterizer.sampleAt(time, index) : zoomArray[i];
@@ -191,10 +190,10 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
 
         // calculates graphic curve (update() makes a copy)
         rast->setNoteOn();
-        rast->updateOffsetSeeds(1, DeformerPanel::tableSize);
+        rast->updateOffsetSeeds(1, PathPanel::tableSize);
         rast->setWantOneSamplePerCycle(false);
         rast->setCalcDepthDimensions(true);
-        rast->setDecoupleComponentDfrm(false);
+        rast->setDecoupleComponentPath(false);
         rast->setLowresCurves(false);
         rast->update(Update);
     } else if (envEnum == LayerGroups::GroupScratch) {
@@ -314,16 +313,16 @@ void VisualDsp::calcTimeDomain(int numColumns) {
 
     int timeInc	= timeProcessor.isDetailReduced() ? reductionFactor : 1;
 
-    MeshRasterizer::RenderState timeState;
-    MeshRasterizer::ScopedRenderState scopedState(timeRasterizer, &timeState);
+    OldMeshRasterizer::RenderState timeState;
+    OldMeshRasterizer::ScopedRenderState scopedState(timeRasterizer, &timeState);
 
-    MeshRasterizer::RenderState batchState(true, true, false, MeshRasterizer::HalfBipolar, timeState.pos);
+    OldMeshRasterizer::RenderState batchState(true, true, false, OldMeshRasterizer::HalfBipolar, timeState.pos);
     batchState.pos.time = 0;
 
     timeRasterizer->restoreStateFrom(batchState);
-    timeRasterizer->updateOffsetSeeds(timeGroup.size(), DeformerPanel::tableSize);
+    timeRasterizer->updateOffsetSeeds(timeGroup.size(), PathPanel::tableSize);
 
-    MeshRasterizer& rasterizer = *timeRasterizer;
+    OldMeshRasterizer& rasterizer = *timeRasterizer;
 
     int numActiveLayers = surface->getNumActiveLayers();
 
@@ -370,7 +369,7 @@ void VisualDsp::calcTimeDomain(int numColumns) {
 
             rasterizer.setNoiseSeed(colIdx * 6197);
             rasterizer.setYellow(scratchTime);
-            rasterizer.calcCrossPoints(mesh, 0.f);
+            rasterizer.generateControlPoints(mesh, 0.f);
 
             if (!rasterizer.isSampleable()) {
                 localBuffer.zero();
@@ -455,19 +454,19 @@ void VisualDsp::calcSpectrogram(int numColumns) {
 
     phaseScaleRamp.ramp(1.f, 1.f).sqrt();
 
-    MeshRasterizer::RenderState freqState, phaseState;
-    MeshRasterizer::ScopedRenderState freqStateScoped(spectRasterizer, &freqState);
-    MeshRasterizer::ScopedRenderState phaseStateScoped(phaseRasterizer, &phaseState);
-    MeshRasterizer::RenderState batchState(true, true, false, MeshRasterizer::Bipolar, freqState.pos);
+    OldMeshRasterizer::RenderState freqState, phaseState;
+    OldMeshRasterizer::ScopedRenderState freqStateScoped(spectRasterizer, &freqState);
+    OldMeshRasterizer::ScopedRenderState phaseStateScoped(phaseRasterizer, &phaseState);
+    OldMeshRasterizer::RenderState batchState(true, true, false, OldMeshRasterizer::Bipolar, freqState.pos);
 
     batchState.pos.time = 0;
     phaseRasterizer->restoreStateFrom(batchState);
 
-    batchState.scalingType = MeshRasterizer::Unipolar;
+    batchState.scalingType = OldMeshRasterizer::Unipolar;
     spectRasterizer->restoreStateFrom(batchState);
     // TODO what are the current layer sizes?
-    phaseRasterizer->updateOffsetSeeds(0, DeformerPanel::tableSize);
-    spectRasterizer->updateOffsetSeeds(0, DeformerPanel::tableSize);
+    phaseRasterizer->updateOffsetSeeds(0, PathPanel::tableSize);
+    spectRasterizer->updateOffsetSeeds(0, PathPanel::tableSize);
 
     Buffer magBuf(fft.getMagnitudes(), numHarmonics);
     Buffer phaseBuf(fft.getPhases(), numHarmonics);
@@ -510,7 +509,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
         if (isFilterEnabled) {
             int fftIdx = jmin(zoomProgress.size() - 1, colIdx * fftProcInc);
 
-            MeshRasterizer& rasterizer = *spectRasterizer;
+            OldMeshRasterizer& rasterizer = *spectRasterizer;
             spectRasterizer->getMorphPosition()[primeDim] = zoomProgress[fftIdx];
 
             for (int i = 0; i < magnGroup.size(); ++i) {
@@ -535,7 +534,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                 if (colIdx % colMagRatio == 0) {
                     rasterizer.setNoiseSeed(colIdx * 1997);
                     rasterizer.setYellow(scratchTime);
-                    rasterizer.calcCrossPoints(spectLayer.mesh, 0.f);
+                    rasterizer.generateControlPoints(spectLayer.mesh, 0.f);
 
                     if (!rasterizer.isSampleable()) {
                         localBuffer.zero();
@@ -580,7 +579,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
             int fftIdx = jmin(zoomProgress.size() - 1, colIdx * fftProcInc);
 
             phaseRasterizer->getMorphPosition()[primeDim] = zoomProgress[fftIdx];
-            MeshRasterizer& rasterizer = *phaseRasterizer;
+            OldMeshRasterizer& rasterizer = *phaseRasterizer;
             workBuffer.zero();
 
             for (int i = 0; i < phaseGroup.size(); ++i) {
@@ -600,7 +599,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                 if(colIdx % colPhaseRatio == 0) {
                     rasterizer.setNoiseSeed(colIdx * 671);
                     rasterizer.setYellow(scratchTime);
-                    rasterizer.calcCrossPoints(layer.mesh, 0.f);
+                    rasterizer.generateControlPoints(layer.mesh, 0.f);
 
                     if(rasterizer.isSampleable()) {
                         rasterizer.sampleAtIntervals(fftRamp, localBuffer);
@@ -1125,7 +1124,7 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
     float unisonScale 	 = powf(2.f, -(unison->getOrder(false) - 1) * 0.14f);
     int unisonOrder 	 = processUnison ? unison->getOrder(false) : 1;
 
-    vector<MeshRasterizer::DeformContext> contexts(unisonOrder);
+    vector<OldMeshRasterizer::DeformContext> contexts(unisonOrder);
 
     ScopedAlloc<double> cumePhases(unisonOrder);
     cumePhases.zero();
@@ -1134,13 +1133,13 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
 
     // calculates curve for deferred sampleAt calls in processing
     // do this second to preserve deform contexts.
-    pitch.updateOffsetSeeds(1, DeformerPanel::tableSize);
+    pitch.updateOffsetSeeds(1, PathPanel::tableSize);
     pitch.ensureParamSize(unisonOrder);
     pitch.setCalcDepthDimensions(false);
     pitch.setWantOneSamplePerCycle(true);
     pitch.setMode(EnvRasterizer::NormalState);
     pitch.setLowresCurves(true);
-    pitch.calcCrossPoints();
+    pitch.generateControlPoints();
     pitch.setNoteOn();
 
     Range midiRange(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
@@ -1297,7 +1296,7 @@ void VisualDsp::trackWavePhaseEnvelope() {
         Vertex* y1r0b0 = new Vertex(*y0r0b0);
         y1r0b0->values[Vertex::Time] = 1;
 
-        VertCube* cube = new VertCube(y0r0b0, y1r0b0, wavePhase);
+        TrilinearCube* cube = new TrilinearCube(y0r0b0, y1r0b0, wavePhase);
         wavePhase->verts.push_back(y0r0b0);
         wavePhase->verts.push_back(y1r0b0);
         wavePhase->lines.push_back(cube);
@@ -1306,12 +1305,12 @@ void VisualDsp::trackWavePhaseEnvelope() {
         if(i > 0 && path[i].x - path[i - 1].x < 0.003f)
             sharpness = 1.f;
 
-        for (int j = 0; j < VertCube::numVerts; ++j)
+        for (int j = 0; j < TrilinearCube::numVerts; ++j)
             cube->getVertex(j)->values[Vertex::Curve] = sharpness;
     }
 
     getObj(OscPhaseRasterizer).setMesh(wavePhase);
-//	getObj(OscPhaseRasterizer).calcCrossPoints();
+//	getObj(OscPhaseRasterizer).generateControlPoints();
 */
 }
 
@@ -1503,9 +1502,9 @@ void VisualDsp::processThroughEffects(int numColumns) {
 void VisualDsp::reset() {
     destroyArrays();
 
-    ((MeshRasterizer*)timeRasterizer)->reset();
-    ((MeshRasterizer*)spectRasterizer)->reset();
-    ((MeshRasterizer*)phaseRasterizer)->reset();
+    ((OldMeshRasterizer*)timeRasterizer)->reset();
+    ((OldMeshRasterizer*)spectRasterizer)->reset();
+    ((OldMeshRasterizer*)phaseRasterizer)->reset();
 }
 
 void VisualDsp::destroyArrays() {

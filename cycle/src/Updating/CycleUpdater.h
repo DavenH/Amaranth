@@ -40,11 +40,11 @@ private:
     Node* env3Itr;
     Node* irModelItr;
     Node* wshpItr;
-    Node* dfrmItr;
+    Node* pathItr;
     Node* derivUI;
 
     Node* time2Rast;
-    Node* dfrmRast;
+    Node* pathRast;
     Node* irModelRast;
     Node* wshpRast;
 

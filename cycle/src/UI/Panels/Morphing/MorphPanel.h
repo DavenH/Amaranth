@@ -3,7 +3,7 @@
 #include <App/Doc/Savable.h>
 #include <App/SingletonAccessor.h>
 #include <Inter/MorphPositioner.h>
-#include <Obj/MorphPosition.h>
+#include <Wireframe/Interpolator/Trilinear/MorphPosition.h>
 #include <UI/AsyncUIUpdater.h>
 #include <UI/Widgets/IconButton.h>
 
@@ -14,7 +14,7 @@
 class PulloutComponent;
 class RetractableCallout;
 class CubeDisplay;
-class VertCube;
+class TrilinearCube;
 
 class MorphPanel :
         public juce::Component
@@ -43,7 +43,7 @@ public:
     void sliderDragEnded(Slider* slider) override;
     void sliderDragStarted(Slider* slider) override;
     void sliderValueChanged(Slider* slider) override;
-    void setSelectedCube(Vertex* vert, VertCube* cube, int scratchChannel, bool isEnvelope);
+    void setSelectedCube(Vertex* vert, TrilinearCube* cube, int scratchChannel, bool isEnvelope);
     void setRedBlueStrings(const String& redStr, const String& blueStr);
     void updateModPosition(int dim, float value);
     void updateCurrentSliderNoCallback(float value);

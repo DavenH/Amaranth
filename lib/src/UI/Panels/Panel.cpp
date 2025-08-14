@@ -1,25 +1,24 @@
-#include <utility>
-#include "Panel.h"
-
-#include <Definitions.h>
-#include <App/AppConstants.h>
-
 #include "CommonGfx.h"
-#include "Texture.h"
 #include "CursorHelper.h"
-#include "../MiscGraphics.h"
+#include "Panel.h"
+#include "Texture.h"
+
 #include "../../App/Settings.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Binary/Images.h"
-#include "../../Curve/IDeformer.h"
-#include "../../Curve/MeshRasterizer.h"
-#include "../../Curve/PathRepo.h"
-#include "../../Curve/RasterizerData.h"
 #include "../../Inter/Interactor.h"
 #include "../../Obj/Color.h"
 #include "../../Thread/LockTracer.h"
 #include "../../Util/MicroTimer.h"
 #include "../../Util/Util.h"
+#include "../../Wireframe/OldMeshRasterizer.h"
+#include "../../Wireframe/Path/ICurvePath.h"
+#include "../../Wireframe/Path/PathInventory.h"
+#include "../../Wireframe/State/RasterizerData.h"
+#include "../MiscGraphics.h"
+
+#include <App/AppConstants.h>
+#include <Definitions.h>
 
 int panelCount = 0;
 
@@ -68,7 +67,7 @@ Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
 
     ,   nameTexA                (nullptr)
     ,   nameTexB                (nullptr)
-    ,   dfrmTex                 (nullptr)
+    ,   pathTex                 (nullptr)
     ,   grabTex                 (nullptr)
     ,   scalesTex               (nullptr)
 
@@ -146,7 +145,7 @@ void Panel::render() {
         gfx->drawTexture(currentNameId == NameTexture ? nameTexA : nameTexB);
 
         drawScales();
-        drawDeformerTags();
+        drawPathTags();
     }
 
     if (mouseFlag(MouseOver)) {
@@ -393,10 +392,10 @@ void Panel::handlePendingUpdates() {
     }
 
     if (Util::assignAndWereDifferent(pendingDeformUpdate, false)) {
-        createDeformerTags();
+        createPathTags();
 
-        dfrmTex->image = dfrmImage;
-        dfrmTex->bind();
+        pathTex->image = pathImage;
+        pathTex->bind();
     }
 }
 
@@ -567,15 +566,15 @@ void Panel::setCursor() {
     CursorHelper::setCursor(repo, comp, interactor);
 }
 
-bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube* cube, int pointDim, bool haveSpeed) {
+bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, TrilinearCube* cube, int pointDim, bool haveSpeed) {
     if (cube == nullptr || ! (deformApplicable || speedApplicable)) {
         return false;
     }
 
-    int phsVsTimeChan = cube->deformerAt(Vertex::Time);
-    int ampChan       = cube->deformerAt(Vertex::Amp);
-    int phsVsRedChan  = cube->deformerAt(Vertex::Red);
-    int phsVsBlueChan = cube->deformerAt(Vertex::Blue);
+    int phsVsTimeChan = cube->pathAt(Vertex::Time);
+    int ampChan       = cube->pathAt(Vertex::Amp);
+    int phsVsRedChan  = cube->pathAt(Vertex::Red);
+    int phsVsBlueChan = cube->pathAt(Vertex::Blue);
 
     bool isTime = pointDim == Vertex::Time;
     bool isRed  = pointDim == Vertex::Red;
@@ -586,10 +585,10 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     bool adjustSpeed        = haveSpeed && speedApplicable && isTime;
     bool adjustPhase        = phaseSrcDim == pointDim && phaseChan >= 0;
     bool adjustAmp          = ampChan >= 0 && isTime;
-    bool anyDfrmAdjustments = (adjustPhase || adjustAmp) && deformApplicable;
+    bool anyPathAdjustments = (adjustPhase || adjustAmp) && deformApplicable;
     const Dimensions& dims  = interactor->dims;
 
-    if(! anyDfrmAdjustments && (! adjustSpeed || dims.x == Vertex::Phase)) {
+    if(! anyPathAdjustments && (! adjustSpeed || dims.x == Vertex::Phase)) {
         return false;
     }
 
@@ -599,8 +598,8 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     float blueOffset = 0;
     int scratchChan  = getLayerScratchChannel();
     float invSize    = 1 / float(linestripRes - 0.5);
-    float phaseGain  = cube->deformerAbsGain(phaseDim);
-    float ampGain    = cube->deformerAbsGain(Vertex::Amp);
+    float phaseGain  = cube->pathAbsGain(phaseDim);
+    float ampGain    = cube->pathAbsGain(Vertex::Amp);
 
     bool exHasPhase = adjustPhase && dims.x == Vertex::Phase;
     bool whyHasAmp  = adjustAmp && dims.y == Vertex::Amp;
@@ -608,22 +607,22 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     std::unique_ptr<ScopedLock> sl;
 
     if(adjustSpeed) {
-        getObj(PathRepo).getLock().enter();
+        getObj(PathInventory).getLock().enter();
     }
 
-    const PathRepo::ScratchContext& scratchContext = getObj(PathRepo).getScratchContext(scratchChan);
+    const PathInventory::ScratchContext& scratchContext = getObj(PathInventory).getScratchContext(scratchChan);
 
     Buffer<float> redTable, blueTable, phaseTable, ampTable;
     Buffer<float> speedEnv  = scratchContext.panelBuffer;
     Buffer<float> ramp      = cBuffer.withSize(linestripRes);
 
-    if(IDeformer* deformer = interactor->getRasterizer()->getDeformer()) {
-        phaseTable = deformer->getTable(phaseChan);
-        ampTable = deformer->getTable(ampChan);
+    if(ICurvePath* path = interactor->getRasterizer()->getPath()) {
+        phaseTable = path->getTable(phaseChan);
+        ampTable = path->getTable(ampChan);
     }
 
     if(speedEnv.empty()) {
-        getObj(PathRepo).getLock().exit();
+        getObj(PathInventory).getLock().exit();
         adjustSpeed = false;
     }
 
@@ -653,8 +652,9 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
                 xy.y.addProduct(speedEnv, second.y - first.y).add(first.y + redOffset + blueOffset);
             } else {
                 if (scaleX < 0.99f) {
-                    for(int i = 0; i < linestripRes; ++i)
-                        xy.y[i] = speedEnv[int(scaleX * i) + offsetIdx];        // todo Lerp it
+                    for (int i = 0; i < linestripRes; ++i) {
+                        xy.y[i] = speedEnv[int(scaleX * i) + offsetIdx]; // todo Lerp it
+                    }
                 } else {
                     speedEnv.copyTo(xy.y);
                 }
@@ -682,7 +682,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             if (exHasPhase || whyHasAmp) {
                 for (int i = 0; i < speedEnv.size(); ++i) {
                     speed = speedEnv[i];
-                    idx = int((IDeformer::tableSize - 1) * speed);
+                    idx = int((ICurvePath::tableSize - 1) * speed);
 
                     if(exHasPhase) {
                         xy.x[i] = phaseGain * phaseTable[idx] + speed * (second.x - first.x);
@@ -733,7 +733,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             xy.y.add(ramp.ramp(first.y, ySlope));
         }
     }
-    getObj(PathRepo).getLock().exit();
+    getObj(PathInventory).getLock().exit();
 
     return true;
 }
@@ -772,7 +772,7 @@ void Panel::createNameImage(const String& displayName, bool isSecondImage, bool 
     g.drawText(lcName, r, Justification::topRight, false);
 }
 
-void Panel::createDeformerTags() {
+void Panel::createPathTags() {
     int position = 0;
     int fontScale = getSetting(PointSizeScale);
     auto& mg = getObj(MiscGraphics);
@@ -792,15 +792,15 @@ void Panel::createDeformerTags() {
         position += width;
     }
 
-    dfrmImage = Image(Image::ARGB, 512, 16, true);
-    Graphics g(dfrmImage);
+    pathImage = Image(Image::ARGB, 512, 16, true);
+    Graphics g(pathImage);
 
     g.drawImageAt(tempImage, 1, 1);
     g.setFont(font);
     g.setColour(Colour::greyLevel(1.f));
 
     position = 0;
-    dfrmTags.clear();
+    pathTags.clear();
 
     for(int i = 0; i < 32; ++i) {
         String number(i + 1);
@@ -808,7 +808,7 @@ void Panel::createDeformerTags() {
         Rectangle r(position, 0, width, (int) font.getHeight());
         g.drawSingleLineText(number, position, (int) font.getHeight());
 
-        dfrmTags.push_back(r.toFloat());
+        pathTags.push_back(r.toFloat());
         position += width;
     }
 }

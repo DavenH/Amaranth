@@ -4,6 +4,7 @@
 #include "Delay.h"
 #include "../../UI/Effects/GuilessEffect.h"
 #include "../../UI/Effects/DelayUI.h"
+#include "Util/Arithmetic.h"
 
 CycDelay::CycDelay(SingletonRepo* repo) :
         Effect		(repo, "Delay")

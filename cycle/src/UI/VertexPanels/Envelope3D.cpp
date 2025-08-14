@@ -6,7 +6,7 @@
 
 #include "Envelope2D.h"
 #include "../../Inter/EnvelopeInter3D.h"
-#include "../../Curve/E3Rasterizer.h"
+#include "../../Wireframe/E3Rasterizer.h"
 
 Envelope3D::Envelope3D(SingletonRepo* repo) :
         Panel3D(repo, "Envelope3D", this, UpdateSources::SourceEnvelope3D, false, true)

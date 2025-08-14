@@ -1,19 +1,12 @@
 #include <iterator>
-#include "Interactor.h"
-
 #include <App/AppConstants.h>
 
-#include "Interactor3D.h"
-#include "UndoableActions.h"
-#include "UndoableMeshProcess.h"
-#include "../Algo/AutoModeller.h"
 #include "../App/DocumentLibrary.h"
 #include "../App/EditWatcher.h"
 #include "../App/MeshLibrary.h"
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
-#include "../Curve/MeshRasterizer.h"
-#include "../Curve/Vertex.h"
+#include "../Definitions.h"
 #include "../Design/Updating/Updater.h"
 #include "../Obj/CurveLine.h"
 #include "../UI/Panels/Panel.h"
@@ -22,7 +15,12 @@
 #include "../Util/CommonEnums.h"
 #include "../Util/NumberUtils.h"
 #include "../Util/Util.h"
-#include "../Definitions.h"
+#include "../Wireframe/Interpolator/Trilinear/TrilinearVertex.h"
+#include "../Wireframe/OldMeshRasterizer.h"
+#include "Interactor.h"
+#include "Interactor3D.h"
+#include "UndoableActions.h"
+#include "UndoableMeshProcess.h"
 
 Interactor::Interactor(SingletonRepo* repo, const String& name, const Dimensions& d) :
         SingletonAccessor       (repo, name)
@@ -335,7 +333,7 @@ void Interactor::updateSelectionFrames() {
     MorphPosition morph = getModPosition();
 
     {
-        vector<VertCube*> linesToSlide = getLinesToSlideOnSingleSelect();
+        vector<TrilinearCube*> linesToSlide = getLinesToSlideOnSingleSelect();
 
         for (auto& it : linesToSlide) {
             Array<Vertex*> arr = getVerticesToMove(it, it->findClosestVertex(morph));
@@ -374,7 +372,7 @@ void Interactor::updateSelectionFrames() {
             continue;
         }
 
-        VertCube* closestLine = getClosestLine(vert);
+        TrilinearCube* closestLine = getClosestLine(vert);
 
         if(closestLine != nullptr)
             closestLine->getPoles(vert, timePole, red, blue);
@@ -437,7 +435,7 @@ void Interactor::eraseSelected() {
     UndoableMeshProcess eraseProcess(this, "Erase selected");
 
     if (dims.numHidden() > 0) {
-        set<VertCube*> linesToDelete;
+        set<TrilinearCube*> linesToDelete;
 
         for (auto& it : selected) {
             for (auto& owner : it->owners)
@@ -446,7 +444,7 @@ void Interactor::eraseSelected() {
 
         for (auto cube : linesToDelete) {
             if (mesh->removeCube(cube)) {
-                for (int i = 0; i < VertCube::numVerts; ++i) {
+                for (int i = 0; i < TrilinearCube::numVerts; ++i) {
                     Vertex* vert = cube->getVertex(i);
 
                     if (vert->getNumOwners() == 1) {
@@ -799,9 +797,9 @@ void Interactor::doBoxSelect(const MouseEvent& e) {
                 }
             }
         } else {
-            const vector<Intercept>& icpts = getRasterizer()->getRastData().intercepts;
+            const vector<Intercept>& controlPoints = getRasterizer()->getRastData().intercepts;
 
-            for (const auto& icpt : icpts) {
+            for (const auto& icpt : controlPoints) {
                 int xx = roundToInt(panel->sx(icpt.x));
                 int yy = roundToInt(panel->sy(icpt.y));
 
@@ -1119,7 +1117,7 @@ void Interactor::validateLinePhases() {
             bool allPhaseAboveOne = true;
             bool anyPhaseNegative = false;
 
-            for(int j = 0; j < VertCube::numVerts; ++j) {
+            for(int j = 0; j < TrilinearCube::numVerts; ++j) {
                 Vertex* vert = line->getVertex(j);
                 float phase = vert->values[Vertex::Phase];
 
@@ -1131,7 +1129,7 @@ void Interactor::validateLinePhases() {
             }
 
             if (allPhaseAboveOne || anyPhaseNegative) {
-                for (int j = 0; j < VertCube::numVerts; ++j) {
+                for (int j = 0; j < TrilinearCube::numVerts; ++j) {
                     Vertex* vert = line->getVertex(j);
 
                     vert->values[Vertex::Phase] += (allPhaseAboveOne ? -1 : 1);
@@ -1141,7 +1139,7 @@ void Interactor::validateLinePhases() {
     }
 }
 
-void Interactor::transferLineProperties(VertCube const* from, VertCube* to1, VertCube* to2) {
+void Interactor::transferLineProperties(TrilinearCube const* from, TrilinearCube* to1, TrilinearCube* to2) {
     to1->setPropertiesFrom(from);
     to2->setPropertiesFrom(from);
 }
@@ -1213,12 +1211,12 @@ void Interactor::snapToGrid(Vertex2& toSnap) {
     toSnap.y /= sizeY;
 }
 
-void Interactor::setRasterizer(MeshRasterizer* rasterizer) {
+void Interactor::setRasterizer(OldMeshRasterizer* rasterizer) {
     this->rasterizer = rasterizer;
     this->rasterizer->setDims(dims);
 }
 
-float Interactor::getDragMovementScale(VertCube* cube) {
+float Interactor::getDragMovementScale(TrilinearCube* cube) {
     float scale = 1.f;
 
     if (cube) {
@@ -1457,7 +1455,7 @@ void Interactor::translateVerts(vector<VertexFrame>& verts, const Vertex2& diff)
 
     for (auto& it : verts) {
         Vertex* vert = it.vert;
-        VertCube* line     = getClosestLine(vert);
+        TrilinearCube* line     = getClosestLine(vert);
 
         Range<float> xLimits = getVertexPhaseLimits(vert);
 
@@ -1631,14 +1629,14 @@ vector<Vertex*>& Interactor::getSelected() {
     return getObj(MeshLibrary).getSelectedByType(layerType);
 }
 
-bool Interactor::commitCubeAdditionIfValid(VertCube*& addedCube,
-                                           const vector<VertCube*>& beforeCubes,
+bool Interactor::commitCubeAdditionIfValid(TrilinearCube*& addedCube,
+                                           const vector<TrilinearCube*>& beforeCubes,
                                            const vector<Vertex*>& beforeVerts) {
     Mesh* mesh = getMesh();
 
     // use reference because these will be deep copied in the
     // UpdateVertexVectorAction ctor, so no need to deep copy them here
-    vector<VertCube*>& afterCubes = mesh->getCubes();
+    vector<TrilinearCube*>& afterCubes = mesh->getCubes();
     vector<Vertex*>& afterVerts = mesh->getVerts();
 
     afterCubes.push_back(addedCube);
@@ -1684,11 +1682,11 @@ bool Interactor::commitCubeAdditionIfValid(VertCube*& addedCube,
     return false;
 }
 
-vector<VertCube*> Interactor::getLinesToSlideOnSingleSelect() {
+vector<TrilinearCube*> Interactor::getLinesToSlideOnSingleSelect() {
     return {};
 }
 
-Array<Vertex*> Interactor::getVerticesToMove(VertCube* cube, Vertex* startVertex) {
+Array<Vertex*> Interactor::getVerticesToMove(TrilinearCube* cube, Vertex* startVertex) {
     Array<Vertex*> movingVerts;
 
     if(startVertex != nullptr) {
@@ -1709,7 +1707,7 @@ Array<Vertex*> Interactor::getVerticesToMove(VertCube* cube, Vertex* startVertex
             } else if (numLinks == 2) {
                 int dim = (linkYllw && linkRed) ? Vertex::Blue : (linkYllw && linkBlue) ? Vertex::Red
                                                                                         : Vertex::Time;
-                VertCube::Face face = cube->getFace(dim, startVertex);
+                TrilinearCube::Face face = cube->getFace(dim, startVertex);
                 movingVerts = face.toArray();
             } else if (numLinks == 3) {
                 movingVerts = cube->toArray();
@@ -1783,26 +1781,26 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
     }
 
     vector<Vertex*> beforeVerts;
-    vector<VertCube*> beforeCubes;
+    vector<TrilinearCube*> beforeCubes;
 
     if(! suspendUndo) {
         mesh->copyElements(beforeVerts, beforeCubes);
     }
 
-    auto* addedLine = new VertCube(mesh);
+    auto* addedLine = new TrilinearCube(mesh);
 
-    const vector<Intercept>& icpts = is3D ? icpts3D : rasterizer->getRastData().intercepts;
+    const vector<Intercept>& controlPoints = is3D ? icpts3D : rasterizer->getRastData().intercepts;
 
-    if (icpts.empty()) {
+    if (controlPoints.empty()) {
         initVertsWithDepthDims(addedLine, dims.hidden, phase, amp, box);
-    } else if (icpts.size() == 1) {
+    } else if (controlPoints.size() == 1) {
         addNewCubeForOneIntercept(addedLine, startTime, phase, amp, box);
     } else {
         addNewCubeForMultipleIntercepts(addedLine, startTime, phase, amp);
     }
 
     // shorten line's span to fit current depths
-    if (!icpts.empty()) {
+    if (!controlPoints.empty()) {
         float times[] = {box.time, box.timeEnd()};
         float reds[] = {box.red, box.redEnd()};
         float blues[] = {box.blue, box.blueEnd()};
@@ -1831,13 +1829,13 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
                 }
             }
 
-            if(vertexIdx >= VertCube::numVerts) {
+            if(vertexIdx >= TrilinearCube::numVerts) {
                 break;
             }
         }
     }
 
-    for (int i = 0; i < VertCube::numVerts; ++i) {
+    for (int i = 0; i < TrilinearCube::numVerts; ++i) {
         addedLine->getVertex(i)->addOwner(addedLine);
 
         if (curveShape >= 0) {
@@ -1860,7 +1858,7 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
 
 
 void Interactor::addNewCubeForOneIntercept(
-        VertCube* addedLine,
+        TrilinearCube* addedLine,
         float startTime,
         float phase,
         float amp,
@@ -1869,7 +1867,7 @@ void Interactor::addNewCubeForOneIntercept(
 
     jassert(!(mesh->getNumCubes() > 0));
 
-    VertCube* meshLine = *mesh->getCubes().begin();
+    TrilinearCube* meshLine = *mesh->getCubes().begin();
 
     // get difference from the line's interpolated mod position to our click point
     // used then to shift all the copied verts, from that line, by the difference
@@ -1880,7 +1878,7 @@ void Interactor::addNewCubeForOneIntercept(
     if (reduceData.pointOverlaps) {
         float diffPhase = phase - reduceData.v.values[Vertex::Phase];
 
-        for (int i = 0; i < VertCube::numVerts; ++i) {
+        for (int i = 0; i < TrilinearCube::numVerts; ++i) {
             Vertex* vert = addedLine->getVertex(i);
             *vert = *meshLine->getVertex(i);
 
@@ -1895,43 +1893,43 @@ void Interactor::addNewCubeForOneIntercept(
 }
 
 void Interactor::addNewCubeForMultipleIntercepts(
-        VertCube* addedCube,
+        TrilinearCube* addedCube,
         float startTime,
         float phase,
         float amp) {
-    const vector<Intercept>& icpts = rasterizer->getRastData().intercepts;
+    const vector<Intercept>& controlPoints = rasterizer->getRastData().intercepts;
 
-    VertCube* rightLine = nullptr;
-    VertCube* leftLine = nullptr;
+    TrilinearCube* rightLine = nullptr;
+    TrilinearCube* leftLine = nullptr;
 
     const Intercept* leftmostIcpt;
     const Intercept* rightmostIcpt;
     const Intercept* rightIcpt = nullptr;
     const Intercept* leftIcpt = nullptr;
 
-    leftmostIcpt = &icpts.front();
-    rightmostIcpt = &icpts.back();
+    leftmostIcpt = &controlPoints.front();
+    rightmostIcpt = &controlPoints.back();
 
     // x is not contains within range of intercepts
-    if (icpts.size() > 1 && phase >= rightmostIcpt->x || phase <= leftmostIcpt->x) {
+    if (controlPoints.size() > 1 && phase >= rightmostIcpt->x || phase <= leftmostIcpt->x) {
         leftLine     = leftmostIcpt->cube;
         rightLine    = rightmostIcpt->cube;
         leftIcpt     = leftmostIcpt;
         rightIcpt    = rightmostIcpt;
     } else {
-        for (int i = 0; i < (int) icpts.size() - 1; ++i) {
-            if (NumberUtils::within(phase, icpts[i].x, icpts[i + 1].x)) {
-                leftIcpt  = &icpts[i];
+        for (int i = 0; i < (int) controlPoints.size() - 1; ++i) {
+            if (NumberUtils::within(phase, controlPoints[i].x, controlPoints[i + 1].x)) {
+                leftIcpt  = &controlPoints[i];
                 leftLine  = leftIcpt->cube;
 
                 // cube can be null with envelope padding intercepts, so choose the one to the left of it
                 int j = 1;
                 while (leftLine == nullptr && i - j >= 0) {
-                    leftIcpt = &icpts[i - j];
+                    leftIcpt = &controlPoints[i - j];
                     leftLine = leftIcpt->cube;
                 }
 
-                rightIcpt = &icpts[i + 1];
+                rightIcpt = &controlPoints[i + 1];
                 rightLine = rightIcpt->cube;
             }
         }
@@ -1950,10 +1948,10 @@ void Interactor::addNewCubeForMultipleIntercepts(
     bool wraps = rasterizer->wrapsVertices();
 
     if (!wraps && phase > rightIcptPhs || phase < leftIcptPhs) {
-        VertCube* toCopy = (phase > rightIcptPhs) ? rightLine : leftLine;
+        TrilinearCube* toCopy = (phase > rightIcptPhs) ? rightLine : leftLine;
         float diffPhs      = phase - ((phase > rightIcptPhs) ? rightIcptPhs : leftIcptPhs);
 
-        for (int i = 0; i < VertCube::numVerts; ++i) {
+        for (int i = 0; i < TrilinearCube::numVerts; ++i) {
             Vertex* vert = addedCube->getVertex(i);
 
             *vert = *toCopy->getVertex(i);
@@ -1962,8 +1960,8 @@ void Interactor::addNewCubeForMultipleIntercepts(
     } else {
         float leftWrapOffset       = 0;
         float rightWrapOffset      = 0;
-        VertCube* wrappedLeftLine  = leftLine;
-        VertCube* wrappedRightLine = rightLine;
+        TrilinearCube* wrappedLeftLine  = leftLine;
+        TrilinearCube* wrappedRightLine = rightLine;
 
         if (phase > rightIcptPhs) {
             leftWrapOffset = 1;
@@ -1978,7 +1976,7 @@ void Interactor::addNewCubeForMultipleIntercepts(
         float diffBetweenPoles    = wrappedLeftIcptPhs - wrappedRightIcptPhs;
         float portionOfLeft       = diffBetweenPoles == 0 ? 1 : 1 - fabsf(diffXFromLeft / diffBetweenPoles);
 
-        for (int i = 0; i < VertCube::numVerts; ++i) {
+        for (int i = 0; i < TrilinearCube::numVerts; ++i) {
             Vertex* vert      = addedCube->getVertex(i);
             Vertex* rightVert = rightLine->getVertex(i);
             Vertex* leftVert  = leftLine->getVertex(i);
@@ -1993,7 +1991,7 @@ void Interactor::addNewCubeForMultipleIntercepts(
     }
 
     if(dims.y == Vertex::Amp) {
-        for (int i = 0; i < VertCube::numVerts; ++i) {
+        for (int i = 0; i < TrilinearCube::numVerts; ++i) {
             Vertex* vert = addedCube->getVertex(i);
 
             vert->owners.clear(); // why?? xxx
@@ -2004,14 +2002,14 @@ void Interactor::addNewCubeForMultipleIntercepts(
 
 
 void Interactor::initVertsWithDepthDims(
-        VertCube* cube,
+        TrilinearCube* cube,
         const vector<int>& depthDims,
         float phase,
         float amp,
         const MorphPosition& box) {
     cube->initVerts(box);
 
-    for (int i = 0; i < VertCube::numVerts; ++i) {
+    for (int i = 0; i < TrilinearCube::numVerts; ++i) {
         cube->getVertex(i)->values[Vertex::Phase]     = phase;
         cube->getVertex(i)->values[Vertex::Amp]     = amp;
     }
@@ -2032,7 +2030,7 @@ MorphPosition Interactor::getCube() {
     return pos;
 }
 
-Vertex* Interactor::findLinesClosestVertex(VertCube* cube, const Vertex2& mouseXY, Vertex& pos) {
+Vertex* Interactor::findLinesClosestVertex(TrilinearCube* cube, const Vertex2& mouseXY, Vertex& pos) {
     float minDist = 100000;
     float dist;
 
@@ -2082,12 +2080,12 @@ Vertex* Interactor::findLinesClosestVertex(VertCube* cube, const Vertex2& mouseX
     return closest;
 }
 
-Vertex* Interactor::findLinesClosestVertex(VertCube* cube, const Vertex2& mouseXY) {
+Vertex* Interactor::findLinesClosestVertex(TrilinearCube* cube, const Vertex2& mouseXY) {
     return findLinesClosestVertex(cube, mouseXY, getModPosition());
 }
 
 Vertex* Interactor::findLinesClosestVertex(
-        VertCube* cube,
+        TrilinearCube* cube,
         const Vertex2& mouseXY,
         const MorphPosition& morph) {
 
@@ -2132,7 +2130,7 @@ bool Interactor::shouldDoDimensionCheck() {
     return dims.numHidden() > 0;
 }
 
-VertCube* Interactor::getClosestLine(Vertex* vert) {
+TrilinearCube* Interactor::getClosestLine(Vertex* vert) {
     if (vert->getNumOwners() > 0) {
         MorphPosition pos = positioner->getMorphPosition();
 
@@ -2145,7 +2143,7 @@ VertCube* Interactor::getClosestLine(Vertex* vert) {
         }
 
         float minPos = 10000;
-        VertCube* closest = nullptr;
+        TrilinearCube* closest = nullptr;
 
         for (auto cube : vert->owners) {
             float dist = pos.distanceTo(cube->getCentroid(vertexProps.isEnvelope));

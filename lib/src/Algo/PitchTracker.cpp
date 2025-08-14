@@ -1,10 +1,12 @@
-#include <Util/Arithmetic.h>
-#include <Array/VecOps.h>
 #include "PitchTracker.h"
 #include "Resampling.h"
+
+#include "../../tests/TestDefs.h"
 #include "../Algo/FFT.h"
 #include "../Audio/PitchedSample.h"
-#include "../../tests/TestDefs.h"
+
+#include <Array/VecOps.h>
+#include <Util/Arithmetic.h>
 
 #ifdef BUILD_TESTING
   #define DEBUG_RENDERING

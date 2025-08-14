@@ -1,15 +1,15 @@
 #include "MiscGraphics.h"
+#include "Widgets/IconButton.h"
 
-#include <Definitions.h>
 #include <App/SingletonRepo.h>
+#include <Definitions.h>
 #include <Util/Util.h>
 
-#include "Widgets/IconButton.h"
+#include "../App/AppConstants.h"
 #include "../Binary/Images.h"
 #include "../Binary/Silkscreen.h"
-#include "../Util/NumberUtils.h"
 #include "../Util/CommonEnums.h"
-#include "../App/AppConstants.h"
+#include "../Util/NumberUtils.h"
 
 MiscGraphics::MiscGraphics(SingletonRepo* repo) : SingletonAccessor(repo, "MiscGraphics") {
 }

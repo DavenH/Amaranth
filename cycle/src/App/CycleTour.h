@@ -4,8 +4,6 @@
 #include <vector>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Curve/Vertex.h>
-#include <Curve/Vertex2.h>
 #include "JuceHeader.h"
 #include <Util/CommonEnums.h>
 
@@ -41,7 +39,7 @@ public:
 		AreaPitch			,
 		AreaScratch			,
 		AreaWaveshaper		,
-		AreaDeformers		,
+		AreaPaths		,
 		AreaImpulse			,
 		AreaMorphPanel		,
 		AreaVertexProps		,
@@ -131,7 +129,7 @@ public:
 		NumLines,
 		NumLayers,
 		CurrentLayer,
-		DfrmAssignments,
+		PathAssignments,
 	};
 
 	enum
@@ -187,14 +185,14 @@ public:
 	};
 
 
-	enum DfrmTargets
+	enum PathTargets
 	{
-		TargDfrmNoise,
-		TargDfrmOffset,
-		TargDfrmPhase,
-		TargDfrmMeshSlct,
-		TargDfrmLayerAdd,
-		TargDfrmLayerSlct
+		TargPathNoise,
+		TargPathOffset,
+		TargPathPhase,
+		TargPathMeshSlct,
+		TargPathLayerAdd,
+		TargPathLayerSlct
 	};
 
 	enum ImpTargets
@@ -339,7 +337,7 @@ public:
 
 	enum ModComps
 	{
-		TargVertCube,
+		TargTrilinearCube,
 
 		TargPrimeArea,
 		TargPrimeY,
@@ -559,5 +557,5 @@ private:
 	HashMap<String, Area> 		areaStrings;
 	HashMap<String, Comparable> compareStrings;
 	HashMap<String, ActionType> actionStrings;
-	HashMap<String, CondOper> 	condStrings;
+	WireframeHashMap<String, CondOper> 	condStrings;
 };

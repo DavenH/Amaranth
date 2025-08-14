@@ -3,7 +3,6 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Curve/EnvelopeMesh.h>
 #include <Obj/ColorPos.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Panels/Texture.h>
@@ -20,7 +19,7 @@
 
 #include "../../Audio/SynthAudioSource.h"
 #include "../../App/CycleTour.h"
-#include "../../Curve/E3Rasterizer.h"
+#include "../../Wireframe/E3Rasterizer.h"
 #include "../../Inter/EnvelopeInter2D.h"
 #include "../../Inter/EnvelopeInter3D.h"
 #include "../../UI/Panels/PlaybackPanel.h"
@@ -187,14 +186,14 @@ void Envelope2D::drawCurvesAndSurfaces() {
     {
         ScopedLock sl(data.lock);
 
-        const vector<Intercept>& icpts  = data.intercepts;
+        const vector<Intercept>& controlPoints  = data.intercepts;
         waveX = data.waveX;
         waveY = data.waveY;
 
-        float backEx = icpts.empty() ? 1.f : icpts.back().x;
+        float backEx = controlPoints.empty() ? 1.f : controlPoints.back().x;
         stopPosition = sx(backEx);
 
-        if(waveX.empty() || icpts.empty())
+        if(waveX.empty() || controlPoints.empty())
             return;
 
         int istart = jmax(0, data.zeroIndex - 4);
@@ -321,17 +320,17 @@ void Envelope2D::getLoopPoints(float& loopStart, float& sustain) {
         RasterizerData& data = rast->getRastData();
         ScopedLock dataLock(data.lock);
 
-        const vector<Intercept>& icpts = data.intercepts;
+        const vector<Intercept>& controlPoints = data.intercepts;
 
         loopStart = -1;
         sustain = -1;
 
-        if(isPositiveAndBelow(loopIdx, (int) icpts.size())) {
-            loopStart = icpts[loopIdx].x;
+        if(isPositiveAndBelow(loopIdx, (int) controlPoints.size())) {
+            loopStart = controlPoints[loopIdx].x;
         }
 
-        if(isPositiveAndBelow(sustIdx, (int) icpts.size())) {
-            sustain = icpts[sustIdx].x;
+        if(isPositiveAndBelow(sustIdx, (int) controlPoints.size())) {
+            sustain = controlPoints[sustIdx].x;
         }
     }
 }

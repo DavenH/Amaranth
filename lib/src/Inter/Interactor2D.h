@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Interactor.h"
-#include "../Obj/MorphPosition.h"
+#include "../Wireframe/Interpolator/Trilinear/MorphPosition.h"
 
 class Panel2D;
 

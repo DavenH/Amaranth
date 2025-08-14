@@ -3,7 +3,6 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Audio/Multisample.h>
-#include <Curve/VertCube.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <Inter/Interactor.h>
@@ -521,7 +520,7 @@ void MorphPanel::blueDimUpdated(float value) {
     blueSlider.setCurrentValue(value);
 }
 
-void MorphPanel::setSelectedCube(Vertex* vert, VertCube* cube, int scratchChannel, bool isEnvelope) {
+void MorphPanel::setSelectedCube(Vertex* vert, TrilinearCube* cube, int scratchChannel, bool isEnvelope) {
     int selectedIdx = cube == nullptr ? -1 : cube->indexOf(vert);
 
     cubeDisplay->update(cube, selectedIdx, scratchChannel, isEnvelope);
@@ -541,7 +540,7 @@ void MorphPanel::setRedBlueStrings(const String& redStr, const String& blueStr) 
 
 Component* MorphPanel::getComponent(int which) {
     switch (which) {
-        case CycleTour::TargVertCube:	return cubeDisplay.get();
+        case CycleTour::TargTrilinearCube:	return cubeDisplay.get();
         case CycleTour::TargLinkArea:	return linkCO.get();
         case CycleTour::TargLinkY:		return &linkYllw;
         case CycleTour::TargLinkR:		return &linkRed;

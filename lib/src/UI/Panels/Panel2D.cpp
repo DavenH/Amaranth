@@ -1,20 +1,20 @@
 #include "CommonGfx.h"
+#include "OpenGLPanel.h"
 #include "Panel2D.h"
+#include "Panel3D.h"
+#include "Texture.h"
+
+#include "../../App/SingletonRepo.h"
+#include "../../Array/Buffer.h"
+#include "../../Inter/Interactor.h"
+#include "../../UI/Layout/BoundWrapper.h"
+#include "../../Util/Arithmetic.h"
+#include "../../Util/Geometry.h"
+#include "../../Wireframe/OldMeshRasterizer.h"
+#include "../../Wireframe/Vertex/Intercept.h"
 
 #include <Definitions.h>
 #include <memory>
-
-#include "OpenGLPanel.h"
-#include "Panel3D.h"
-#include "Texture.h"
-#include "../../App/SingletonRepo.h"
-#include "../../Array/Buffer.h"
-#include "../../Curve/Intercept.h"
-#include "../../Curve/MeshRasterizer.h"
-#include "../../Inter/Interactor.h"
-#include "../../Util/Arithmetic.h"
-#include "../../Util/Geometry.h"
-#include "../../UI/Layout/BoundWrapper.h"
 
 Panel2D::Panel2D(SingletonRepo* repo,
                  const String& name,
@@ -218,18 +218,18 @@ void Panel2D::highlightCurrentIntercept()
         RasterizerData& data = interactor->getRasterizer()->getRastData();
         ScopedLock dataLock(data.lock);
 
-        const vector<Intercept>& icpts = data.intercepts;
+        const vector<Intercept>& controlPoints = data.intercepts;
 
-        if(! isPositiveAndBelow(icptIdx, (int) icpts.size())) {
+        if(! isPositiveAndBelow(icptIdx, (int) controlPoints.size())) {
             return;
         }
 
-        if(interactor->dims.numHidden() > 0 && icpts[icptIdx].cube == nullptr && icptIdx > 0) {
+        if(interactor->dims.numHidden() > 0 && controlPoints[icptIdx].cube == nullptr && icptIdx > 0) {
             --icptIdx;
         }
 
-        point.x = icpts[icptIdx].x;
-        point.y = icpts[icptIdx].y;
+        point.x = controlPoints[icptIdx].x;
+        point.y = controlPoints[icptIdx].y;
     }
 
     gfx->setCurrentColour(1.0f, 0.8f, 0.0f);
@@ -297,9 +297,9 @@ void Panel2D::drawDepthLinesAndVerts() {
     }
 }
 
-void Panel2D::drawDeformerTags() {
+void Panel2D::drawPathTags() {
     RasterizerData& data  = interactor->getRasterizer()->getRastData();
-    vector<Curve>& curves = data.curves;
+    vector<CurvePiece>& curves = data.curves;
 
     Color colors[Vertex::numElements];
     colors[Vertex::Time]  = Color(0.6f, 0.6f, 0.6f, 1.f);
@@ -313,16 +313,16 @@ void Panel2D::drawDeformerTags() {
 
     gfx->setCurrentColour(Color(1));
 
-    if (dfrmTags.empty()) {
+    if (pathTags.empty()) {
         return;
     }
 
-    float h = dfrmTags.front().getHeight();
+    float h = pathTags.front().getHeight();
 
     for (auto& curve : curves) {
         Intercept& icpt = curve.b;
 
-        if (VertCube* cube = icpt.cube) {
+        if (TrilinearCube* cube = icpt.cube) {
             if (!cube->isDeformed()) {
                 continue;
             }
@@ -334,19 +334,19 @@ void Panel2D::drawDeformerTags() {
             int cumeWidth = 0;
             int numTags = 0;
             for (int j = 0; j < Vertex::numElements; ++j) {
-                int chan = cube->deformerAt(j);
+                int chan = cube->pathAt(j);
 
-                if (isPositiveAndBelow(chan, (int) dfrmTags.size())) {
-                    Rectangle<float> rect = dfrmTags[chan];
+                if (isPositiveAndBelow(chan, (int) pathTags.size())) {
+                    Rectangle<float> rect = pathTags[chan];
 
                     float x = e.x + cumeWidth - 2;
                     float y = jmin(getHeight() - rect.getHeight()
                                  , e.y - rect.getHeight() / 2 + (numTags & 1 ? 1 : 0)); //  + 5
-                    dfrmTex->rect = Rectangle((float) roundToInt(x), (float) roundToInt(y), rect.getWidth()
+                    pathTex->rect = Rectangle((float) roundToInt(x), (float) roundToInt(y), rect.getWidth()
                                             , rect.getHeight());
 
                     gfx->setCurrentColour(colors[j]);
-                    gfx->drawSubTexture(dfrmTex, rect);
+                    gfx->drawSubTexture(pathTex, rect);
 
                     cumeWidth += rect.getWidth();
                     ++numTags;

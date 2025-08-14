@@ -4,8 +4,8 @@
 
 #include "EditWatcher.h"
 #include "SingletonRepo.h"
-#include "../Curve/Mesh.h"
-#include "../Curve/EnvelopeMesh.h"
+#include "../Wireframe/Mesh.h"
+#include "../Wireframe/Env/EnvelopeMesh.h"
 #include "../Util/CommonEnums.h"
 #include "../UI/IConsole.h"
 
@@ -132,7 +132,7 @@ void MeshLibrary::pasteFromClipboardTo(Mesh* mesh, int type) {
     if (canPasteTo(type)) {
         mesh->deepCopy(sourceClipboardMesh);
 
-        // anything to change about deformers here?
+        // anything to change about paths here?
     } else {
         showConsoleMsg("Cannot paste between incompatible mesh types");
     }
@@ -371,7 +371,7 @@ bool MeshLibrary::layerRemoved(int layerGroup, int index) {
     bool changed = false;
 
     switch (layerGroup) {
-        case LayerGroups::GroupDeformer: {
+        case LayerGroups::GroupPath: {
             for (int i = 0; i < getNumGroups(); ++i) {
                 LayerGroup& group = layerGroups[i];
 
@@ -380,7 +380,7 @@ bool MeshLibrary::layerRemoved(int layerGroup, int index) {
 
                     for(auto& cube : layer.mesh->getCubes()) {
                         for (int k = Vertex::Time; k <= Vertex::Curve; ++k) {
-                            char& chan = cube->deformerAt(k);
+                            char& chan = cube->pathAt(k);
 
                             if (chan > index) {
                                 --chan;
@@ -437,7 +437,7 @@ bool MeshLibrary::layerChanged(int layerGroup, int index) {
             break;
         }
 
-        case LayerGroups::GroupDeformer: {
+        case LayerGroups::GroupPath: {
 
             int types[] = {
                 LayerGroups::GroupTime,
@@ -451,7 +451,7 @@ bool MeshLibrary::layerChanged(int layerGroup, int index) {
             srcGroup.sources.clear();
 
             for (int i = 0; i < numElementsInArray(types); ++i) {
-                if (i == LayerGroups::GroupDeformer) {
+                if (i == LayerGroups::GroupPath) {
                     continue;
                 }
 
@@ -460,7 +460,7 @@ bool MeshLibrary::layerChanged(int layerGroup, int index) {
                 for (int j = 0; j < group.size(); ++j) {
                     for(auto& cube : group[j].mesh->getCubes()) {
                         for (int d = 0; d <= Vertex::Curve; ++d) {
-                            char& deformChan = cube->deformerAt(d);
+                            char& deformChan = cube->pathAt(d);
 
                             if (deformChan >= 0) {
                                 group.sources[deformChan].add(types[i]);

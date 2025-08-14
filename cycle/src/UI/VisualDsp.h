@@ -11,8 +11,8 @@
 #include <Obj/Ref.h>
 
 #include "../Updating/DynamicDetailUpdater.h"
-#include "../Curve/GraphicRasterizer.h"
-#include "../Curve/ScratchContext.h"
+#include "../Wireframe/GraphicRasterizer.h"
+#include "../Wireframe/ScratchContext.h"
 
 class EnvRasterizer;
 class Spectrum3D;

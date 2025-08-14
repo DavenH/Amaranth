@@ -9,12 +9,10 @@
 #include <Audio/Multisample.h>
 #include <Audio/PluginProcessor.h>
 #include <Audio/PitchedSample.h>
-#include <Curve/EnvelopeMesh.h>
-#include <Curve/EnvRasterizer.h>
-#include <Curve/Intercept.h>
 #include <UI/Panels/ZoomPanel.h>
 #include <UI/Widgets/IconButton.h>
-
+#include <Wireframe/Env/EnvelopeMesh.h>
+#include <Wireframe/Rasterizer/FXRasterizer.h>
 #include "EnvelopeInter2D.h"
 #include "../App/CycleTour.h"
 #include "../App/Initializer.h"
@@ -122,15 +120,15 @@ void EnvelopeInter2D::doExtraMouseUp() {
 
     if (isSingleVertex) {
         Vertex* vert = selected.front();
-        const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
+        const vector <Intercept> &controlPoints = rasterizer->getRastData().intercepts;
 
-        if (!icpts.empty()) {
+        if (!controlPoints.empty()) {
             int icptIndex = -1;
             int sustIdx, loopIdx;
             rast->getIndices(loopIdx, sustIdx);
 
-            for (int i = 0; i < (int) icpts.size(); ++i) {
-                if (vert->isOwnedBy(icpts[i].cube))
+            for (int i = 0; i < (int) controlPoints.size(); ++i) {
+                if (vert->isOwnedBy(controlPoints[i].cube))
                     icptIndex = i;
             }
 
@@ -138,7 +136,7 @@ void EnvelopeInter2D::doExtraMouseUp() {
                 isLoopApplicable = true;
 
             if (sustIdx >= 0 && loopIdx >= 0 && icptIndex >= 0 && sustIdx - loopIdx < EnvRasterizer::loopMinSizeIcpts) {
-                envMesh->loopCubes.erase(icpts[icptIndex].cube);
+                envMesh->loopCubes.erase(controlPoints[icptIndex].cube);
                 rast->evaluateLoopSustainIndices();
 
                 envPanel->repaint();
@@ -303,37 +301,37 @@ bool EnvelopeInter2D::synchronizeEnvPoints(Vertex* vertex, bool vertexIsLoopVert
     bool didAnything = false;
 
     if (EnvRasterizer* rast = getEnvRasterizer()) {
-        const vector <Intercept> &icpts = rast->getRastData().intercepts;
+        const vector <Intercept> &controlPoints = rast->getRastData().intercepts;
 
         int loopIdx, sustIdx;
         rast->getIndices(loopIdx, sustIdx);
 
-        VertCube* sustainCube = sustIdx >= 0 ? icpts[sustIdx].cube : nullptr;
-        VertCube* loopCube = loopIdx >= 0 ? icpts[loopIdx].cube : nullptr;
+        TrilinearCube* sustainCube = sustIdx >= 0 ? controlPoints[sustIdx].cube : nullptr;
+        TrilinearCube* loopCube = loopIdx >= 0 ? controlPoints[loopIdx].cube : nullptr;
 
         int numLoopPoints = sustIdx - loopIdx;
 
         if (sustainCube != nullptr && loopCube != nullptr) {
-            VertCube* toMove = vertexIsLoopVert ? sustainCube : loopCube;
-            VertCube* toCopyFrom = vertexIsLoopVert ? loopCube : sustainCube;
+            TrilinearCube* toMove = vertexIsLoopVert ? sustainCube : loopCube;
+            TrilinearCube* toCopyFrom = vertexIsLoopVert ? loopCube : sustainCube;
 
-            for (int i = 0; i < VertCube::numVerts; ++i) {
+            for (int i = 0; i < TrilinearCube::numVerts; ++i) {
                 toMove->getVertex(i)->values[Vertex::Amp] = toCopyFrom->getVertex(i)->values[Vertex::Amp];
 
-                // if an component curve deformer is set, the sharpness is treated as its gain
-                // plus, deformers aren't smooth so disconts don't matter
-                if (toMove->getCompDfrm() < 0) {
+                // if an component curve path is set, the sharpness is treated as its gain
+                // plus, paths aren't smooth so disconts don't matter
+                if (toMove->getCompPath() < 0) {
                     toMove->getVertex(i)->setMaxSharpness();
                 }
 
-                if (toCopyFrom->getCompDfrm() < 0) {
+                if (toCopyFrom->getCompPath() < 0) {
                     toCopyFrom->getVertex(i)->setMaxSharpness();
                 }
             }
 
             didAnything = true;
-        } else if (sustainCube != nullptr && sustainCube->deformerAt(Vertex::Time) < 0) {
-            for (int i = 0; i < VertCube::numVerts; ++i) {
+        } else if (sustainCube != nullptr && sustainCube->pathAt(Vertex::Time) < 0) {
+            for (int i = 0; i < TrilinearCube::numVerts; ++i) {
                 sustainCube->getVertex(i)->setMaxSharpness();
             }
         }
@@ -519,15 +517,15 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
             } else {
                 IconButton &bttn = isLoop ? loopIcon : sustainIcon;
                 Vertex* vert = selected.front();
-                VertCube* cube = nullptr;
+                TrilinearCube* cube = nullptr;
 
-                const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
-                for (const auto& icpt : icpts) {
+                const vector <Intercept> &controlPoints = rasterizer->getRastData().intercepts;
+                for (const auto& icpt : controlPoints) {
                     for (int j = 0; j < vert->getNumOwners(); ++j) {
-                        VertCube* vertCube = vert->owners[j];
+                        TrilinearCube* TrilinearCube = vert->owners[j];
 
-                        if (icpt.cube == vertCube && vertCube != nullptr) {
-                            cube = vertCube;
+                        if (icpt.cube == TrilinearCube && TrilinearCube != nullptr) {
+                            cube = TrilinearCube;
                         }
                         break;
                     }
@@ -539,7 +537,7 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
                     return;
                 }
 
-                set < VertCube * > &envLines = isLoop ? currentMesh->loopCubes : currentMesh->sustainCubes;
+                set < TrilinearCube * > &envLines = isLoop ? currentMesh->loopCubes : currentMesh->sustainCubes;
 
                 bool wasAlreadySet = envLines.find(cube) != envLines.end();
                 bool didAnything = false;
@@ -590,7 +588,7 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
 
     updateHighlights();
 
-    MeshRasterizer* rast = getRast(envEnum);
+    OldMeshRasterizer* rast = getRast(envEnum);
     setRasterizer(rast);
 
     if (getSetting(CurrentMorphAxis) == Vertex::Time && changedToOrFromVol) {
@@ -629,9 +627,9 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
     delegateUpdate(performUpdate);
 }
 
-void EnvelopeInter2D::adjustAddedLine(VertCube* addedLine) {
-    VertCube::Face lowFace = addedLine->getFace(Vertex::Time, VertCube::LowPole);
-    VertCube::Face highFace = addedLine->getFace(Vertex::Time, VertCube::HighPole);
+void EnvelopeInter2D::adjustAddedLine(TrilinearCube* addedLine) {
+    TrilinearCube::Face lowFace = addedLine->getFace(Vertex::Time, TrilinearCube::LowPole);
+    TrilinearCube::Face highFace = addedLine->getFace(Vertex::Time, TrilinearCube::HighPole);
 
     for (int i = 0; i < 4; ++i) {
         lowFace[i]->values[Vertex::Time] = 0.f;
@@ -728,7 +726,7 @@ void EnvelopeInter2D::validateMesh() {
 //	EnvRasterizer* envRast = static_cast<EnvRasterizer*>(getRasterizer());
 //	EnvelopeMesh* envMesh = getCurrentMesh();
 
-//	vector<VertCube*>& lines = envMesh->lines;
+//	vector<TrilinearCube*>& lines = envMesh->lines;
 
 // todo
 //	bool isContained = false;
@@ -746,12 +744,12 @@ void EnvelopeInter2D::validateMesh() {
 //		envRast->calcIntercepts();
 //		envRast->evaluateLoopSustainIndices();
 //
-//		const vector<Intercept>& icpts = envRast->getIntercepts();
-//		for(int i = 0; i < (int) icpts.size(); ++i)
+//		const vector<Intercept>& controlPoints = envRast->getIntercepts();
+//		for(int i = 0; i < (int) controlPoints.size(); ++i)
 //		{
-//			if(envMesh->loopLines.find(icpts[i].cube) != envMesh->loopLines.end())
+//			if(envMesh->loopLines.find(controlPoints[i].cube) != envMesh->loopLines.end())
 //			{
-//				if(i > (icpts.size() - 1) - EnvRasterizer::loopMinSizeIcpts)
+//				if(i > (controlPoints.size() - 1) - EnvRasterizer::loopMinSizeIcpts)
 //				{
 //					isContained = false;
 //				}
@@ -787,9 +785,9 @@ Range<float> EnvelopeInter2D::getVertexPhaseLimits(Vertex* vert) {
     Range<float> minRange = Interactor2D::getVertexPhaseLimits(vert);
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
-        const vector <Intercept>& icpts = envRast->getRastData().intercepts;
+        const vector <Intercept>& controlPoints = envRast->getRastData().intercepts;
 
-        if (icpts.empty() || vert == nullptr) {
+        if (controlPoints.empty() || vert == nullptr) {
             return Interactor2D::getVertexPhaseLimits(vert);
         }
 
@@ -797,8 +795,8 @@ Range<float> EnvelopeInter2D::getVertexPhaseLimits(Vertex* vert) {
         int sustIdx, loopIdx;
         envRast->getIndices(loopIdx, sustIdx);
 
-        for (int i = 0; i < (int) icpts.size(); ++i) {
-            if (vert->isOwnedBy(icpts[i].cube)) {
+        for (int i = 0; i < (int) controlPoints.size(); ++i) {
+            if (vert->isOwnedBy(controlPoints[i].cube)) {
                 icptIndex = i;
             }
         }
@@ -809,7 +807,7 @@ Range<float> EnvelopeInter2D::getVertexPhaseLimits(Vertex* vert) {
             }
 
             if (icptIndex == loopIdx && sustIdx > 0) {
-                range.setEnd(icpts[sustIdx].x - 0.001f);
+                range.setEnd(controlPoints[sustIdx].x - 0.001f);
             }
         }
     }
@@ -850,12 +848,12 @@ EnvRasterizer* EnvelopeInter2D::getEnvRasterizer() {
     return dynamic_cast<EnvRasterizer*>(rasterizer);
 }
 
-void EnvelopeInter2D::transferLineProperties(VertCube* from, VertCube* to1, VertCube* to2) {
+void EnvelopeInter2D::transferLineProperties(TrilinearCube* from, TrilinearCube* to1, TrilinearCube* to2) {
     Interactor::transferLineProperties(from, to1, to2);
 
     if (EnvelopeMesh* envMesh = getCurrentMesh()) {
-        set < VertCube * > &loopLines = envMesh->loopCubes;
-        set < VertCube * > &sustLines = envMesh->sustainCubes;
+        set < TrilinearCube * > &loopLines = envMesh->loopCubes;
+        set < TrilinearCube * > &sustLines = envMesh->sustainCubes;
 
         bool wasLoopLine = (loopLines.find(from) != loopLines.end());
         bool wasSustLine = (sustLines.find(from) != sustLines.end());
@@ -875,18 +873,18 @@ void EnvelopeInter2D::transferLineProperties(VertCube* from, VertCube* to1, Vert
 }
 
 void EnvelopeInter2D::removeCurrentEnvLine(bool isLoop) {
-    const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
+    const vector <Intercept> &controlPoints = rasterizer->getRastData().intercepts;
     EnvelopeMesh* envMesh = getCurrentMesh();
 
     if (envMesh == nullptr) {
         return;
     }
 
-    set<VertCube*>& loopLines = envMesh->loopCubes;
-    set<VertCube*>& sustLines = envMesh->sustainCubes;
+    set<TrilinearCube*>& loopLines = envMesh->loopCubes;
+    set<TrilinearCube*>& sustLines = envMesh->sustainCubes;
 
-    for (const auto& icpt : icpts) {
-        VertCube* cube = icpt.cube;
+    for (const auto& icpt : controlPoints) {
+        TrilinearCube* cube = icpt.cube;
 
         if (isLoop && loopLines.find(cube) != loopLines.end()) {
             loopLines.erase(cube);
@@ -912,15 +910,15 @@ void EnvelopeInter2D::syncEnvPointsImplicit() {
         vector < Vertex * > &selected = getSelected();
         Vertex* vertToSyncFrom = state.currentVertex;
 
-        const set<VertCube*> &loopLines = envMesh->loopCubes;
-        const set<VertCube*> &sustLines = envMesh->sustainCubes;
+        const set<TrilinearCube*> &loopLines = envMesh->loopCubes;
+        const set<TrilinearCube*> &sustLines = envMesh->sustainCubes;
 
         if (!selected.empty()) {
             for (auto vert : selected) {
                 for (int j = 0; j < vert->getNumOwners(); ++j) {
-                    VertCube* vertCube = vert->owners[j];
+                    TrilinearCube* TrilinearCube = vert->owners[j];
 
-                    if (vertCube != nullptr && loopLines.find(vertCube) != loopLines.end()) {
+                    if (TrilinearCube != nullptr && loopLines.find(TrilinearCube) != loopLines.end()) {
                         areMovingLoopLine = true;
                         vertToSyncFrom = vert;
                     }
@@ -928,9 +926,9 @@ void EnvelopeInter2D::syncEnvPointsImplicit() {
                 }
 
                 for (int j = 0; j < vert->getNumOwners(); ++j) {
-                    VertCube* vertCube = vert->owners[j];
+                    TrilinearCube* TrilinearCube = vert->owners[j];
 
-                    if (vertCube != nullptr && sustLines.find(vertCube) != sustLines.end()) {
+                    if (TrilinearCube != nullptr && sustLines.find(TrilinearCube) != sustLines.end()) {
                         areMovingSustainLine = true;
                         vertToSyncFrom = vert;
                     }
@@ -1101,7 +1099,7 @@ void EnvelopeInter2D::triggerButton(int id) {
     }
 }
 
-MeshRasterizer* EnvelopeInter2D::getRast(int envEnum) {
+OldMeshRasterizer* EnvelopeInter2D::getRast(int envEnum) {
     switch (envEnum) {
         case LayerGroups::GroupVolume:    return &getObj(EnvVolumeRast);
         case LayerGroups::GroupPitch:     return &getObj(EnvPitchRast);
@@ -1132,12 +1130,12 @@ bool EnvelopeInter2D::addNewCube(float startTime, float x, float y, float curve)
     return true;
 }
 
-vector<VertCube*> EnvelopeInter2D::getLinesToSlideOnSingleSelect() {
-    vector <VertCube*> cubes;
-    const vector <Intercept>& icpts = rasterizer->getRastData().intercepts;
+vector<TrilinearCube*> EnvelopeInter2D::getLinesToSlideOnSingleSelect() {
+    vector <TrilinearCube*> cubes;
+    const vector <Intercept>& controlPoints = rasterizer->getRastData().intercepts;
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
-        if (!icpts.empty()) {
+        if (!controlPoints.empty()) {
             int icptIndex = -1;
             int sustIdx, loopIdx;
             envRast->getIndices(loopIdx, sustIdx);
@@ -1146,14 +1144,14 @@ vector<VertCube*> EnvelopeInter2D::getLinesToSlideOnSingleSelect() {
                 return cubes;
             }
 
-            VertCube* lastCube = nullptr;
+            TrilinearCube* lastCube = nullptr;
             bool startMoving = false;
 
             if (state.currentCube != nullptr) {
-                bool releaseIsRightmost = icpts[sustIdx].x >= 1.f;
+                bool releaseIsRightmost = controlPoints[sustIdx].x >= 1.f;
 
-                for (int i = 0; i < (int) icpts.size(); ++i) {
-                    const Intercept& icpt = icpts[i];
+                for (int i = 0; i < (int) controlPoints.size(); ++i) {
+                    const Intercept& icpt = controlPoints[i];
 
                     if (startMoving && icpt.cube != nullptr && icpt.cube != lastCube) {
                         cubes.push_back(icpt.cube);

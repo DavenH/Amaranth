@@ -258,7 +258,7 @@ void IrModeller::checkForPendingUpdates() {
                     break;
 
                 case rasterize: {
-                    audioThdRasterizer.calcCrossPoints();
+                    audioThdRasterizer.generateControlPoints();
                     rasterizeImpulseDirect();
                     break;
                 }

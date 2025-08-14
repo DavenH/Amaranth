@@ -25,7 +25,7 @@
 #include "../Audio/Effects/Equalizer.h"
 #include "../Audio/Effects/Unison.h"
 #include "../Audio/Voices/SynthesizerVoice.h"
-#include "../Curve/EnvRenderContext.h"
+#include "../Wireframe/EnvRenderContext.h"
 
 using std::map;
 #undef Delay

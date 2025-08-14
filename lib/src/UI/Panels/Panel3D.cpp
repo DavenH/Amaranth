@@ -6,7 +6,7 @@
 #include "../../App/MeshLibrary.h"
 #include "../../App/Settings.h"
 #include "../../App/SingletonRepo.h"
-#include "../../Curve/DepthVert.h"
+#include "../../Wireframe/Interpolator/Trilinear/DepthVert.h"
 #include "../../Inter/Interactor3D.h"
 #include "../../UI/Layout/BoundWrapper.h"
 #include "../../Util/CommonEnums.h"
@@ -105,7 +105,7 @@ void Panel3D::drawInterceptLines() {
     float x1, y1, x2, y2;
 
     for (int i = 0; i < (int) interceptPairs.size() - 1; i += 2) {
-        VertCube* cube = interceptPairs[i].parent;
+        TrilinearCube* cube = interceptPairs[i].parent;
         const Vertex2& first = Vertex2(interceptPairs[i]);
         Vertex2 second = Vertex2(interceptPairs[i + 1]);
 
@@ -627,7 +627,7 @@ void Panel3D::freeResources() {
     texColours  .clear();
 }
 
-void Panel3D::drawDeformerTags() {
+void Panel3D::drawPathTags() {
     vector<SimpleIcpt> interceptPairs;
 
     {
@@ -644,7 +644,7 @@ void Panel3D::drawDeformerTags() {
     colors[Vertex::Curve] = Color(0.7f, 0.5f, 0.8f);
 
     for (int i = 0; i < (int) interceptPairs.size() - 1; i += 2) {
-        VertCube* cube = interceptPairs[i].parent;
+        TrilinearCube* cube = interceptPairs[i].parent;
 
         Vertex2 first = Vertex2(interceptPairs[i]);
         Vertex2 second = Vertex2(interceptPairs[i + 1]);
@@ -658,17 +658,17 @@ void Panel3D::drawDeformerTags() {
             int numTags = 0;
 
             for(int j = 0; j < Vertex::numElements; ++j) {
-                int chan = cube->deformerAt(j);
+                int chan = cube->pathAt(j);
 
-                if (isPositiveAndBelow(chan, (int) dfrmTags.size())) {
-                    Rectangle<float> rect = dfrmTags[chan];
+                if (isPositiveAndBelow(chan, (int) pathTags.size())) {
+                    Rectangle<float> rect = pathTags[chan];
 
                     float x = e.x + cumeWidth - 2;
                     float y = jmin(getHeight() - 16.f, e.y + 2.f + (numTags & 1 ? 1 : 0)); //  + 5
-                    dfrmTex->rect = Rectangle(roundf(x), roundf(y), rect.getWidth(), rect.getHeight());
+                    pathTex->rect = Rectangle(roundf(x), roundf(y), rect.getWidth(), rect.getHeight());
 
                     gfx->setCurrentColour(colors[j]);
-                    gfx->drawSubTexture(dfrmTex, rect);
+                    gfx->drawSubTexture(pathTex, rect);
 
                     cumeWidth += rect.getWidth();
                     ++numTags;

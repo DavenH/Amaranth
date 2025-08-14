@@ -15,7 +15,7 @@ public:
     void contractToRange(bool includeX = false);
     void drawCurvesFrom(BufferXY& buff, Buffer<float> alpha, const Color& colourA, const Color& colourB);
     static void prepareAlpha(const Buffer<float>& y, Buffer<float> alpha, float baseAlpha);
-    void drawDeformerTags() override;
+    void drawPathTags() override;
     void drawDepthLinesAndVerts() override;
     void highlightCurrentIntercept() override;
     void zoomUpdated(int updateSource) override;

@@ -1,6 +1,5 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Curve/VertCube.h>
 
 #include "CubeDisplay.h"
 
@@ -54,7 +53,7 @@ CubeDisplay::CubeDisplay(SingletonRepo* repo) :
 		for(int j = 0; j < 4; ++j)
 			faces[i][j] = f[i][j];
 
-    for (int i = 0; i < VertCube::numVerts; ++i) {
+    for (int i = 0; i < TrilinearCube::numVerts; ++i) {
         Vertex2& vert1 = unit[i];
 		Vertex2& vert2 = expUnit[i];
 		Vertex2& vert3 = expUnitB[i];
@@ -194,7 +193,7 @@ void CubeDisplay::resized() {
 	refreshCube();
 }
 
-void CubeDisplay::update(VertCube* cube, int selectedIdx, int scratchChannel, bool isEnvelope) {
+void CubeDisplay::update(TrilinearCube* cube, int selectedIdx, int scratchChannel, bool isEnvelope) {
     this->isEnvelope = isEnvelope;
 	this->lastScratchChannel = scratchChannel;
 
@@ -207,7 +206,7 @@ void CubeDisplay::update(VertCube* cube, int selectedIdx, int scratchChannel, bo
 	} else {
         this->selectedIdx = selectedIdx;
 
-        for (int i = 0; i < VertCube::numVerts; ++i) {
+        for (int i = 0; i < TrilinearCube::numVerts; ++i) {
 			float key 	= cube->lineVerts[i]->values[Vertex::Red];
 			float mod 	= 1 - cube->lineVerts[i]->values[Vertex::Blue];
 			float time 	= isEnvelope ? 0 : cube->lineVerts[i]->values[Vertex::Time];
@@ -261,19 +260,19 @@ void CubeDisplay::linkingChanged() {
         }
     } else if (numLinks == 2) {
         if (!LinkBlue) {
-            int addand = (idx == VertCube::y0r0b0 || idx == VertCube::y0r1b0 || idx == VertCube::y1r0b0 || idx == VertCube::y1r1b0) ? 0 : 1;
+            int addand = (idx == TrilinearCube::y0r0b0 || idx == TrilinearCube::y0r1b0 || idx == TrilinearCube::y1r0b0 || idx == TrilinearCube::y1r1b0) ? 0 : 1;
 			selected[0 + addand] = true;
 			selected[2 + addand] = true;
 			selected[4 + addand] = true;
 			selected[6 + addand] = true;
         } else if (!LinkRed) {
-            int addand = (idx == VertCube::y0r0b0 || idx == VertCube::y0r0b1 || idx == VertCube::y1r0b0 || idx == VertCube::y1r0b1) ? 0 : 2;
+            int addand = (idx == TrilinearCube::y0r0b0 || idx == TrilinearCube::y0r0b1 || idx == TrilinearCube::y1r0b0 || idx == TrilinearCube::y1r0b1) ? 0 : 2;
 			selected[0 + addand] = true;
 			selected[4 + addand] = true;
 			selected[5 + addand] = true;
             selected[1 + addand] = true;
         } else if (!LinkYellow) {
-            int addand = (idx == VertCube::y0r0b0 || idx == VertCube::y0r0b1 || idx == VertCube::y0r1b0 || idx == VertCube::y0r1b1) ? 0 : 4;
+            int addand = (idx == TrilinearCube::y0r0b0 || idx == TrilinearCube::y0r0b1 || idx == TrilinearCube::y0r1b0 || idx == TrilinearCube::y0r1b1) ? 0 : 4;
 			selected[0 + addand] = true;
 			selected[1 + addand] = true;
 			selected[2 + addand] = true;
@@ -283,11 +282,11 @@ void CubeDisplay::linkingChanged() {
 		int addand = 0;
 
 		if(LinkYellow)
-			addand = (idx == VertCube::y0r0b0 || idx == VertCube::y0r0b1 || idx == VertCube::y0r1b0 || idx == VertCube::y0r1b1) ? 	4 : -4;
+			addand = (idx == TrilinearCube::y0r0b0 || idx == TrilinearCube::y0r0b1 || idx == TrilinearCube::y0r1b0 || idx == TrilinearCube::y0r1b1) ? 	4 : -4;
 		else if(LinkRed)
-			addand = (idx == VertCube::y0r0b0 || idx == VertCube::y0r0b1 || idx == VertCube::y1r0b0 || idx == VertCube::y1r0b1) ? 	2 : -2;
+			addand = (idx == TrilinearCube::y0r0b0 || idx == TrilinearCube::y0r0b1 || idx == TrilinearCube::y1r0b0 || idx == TrilinearCube::y1r0b1) ? 	2 : -2;
 		else if(LinkBlue)
-			addand = (idx == VertCube::y0r0b0 || idx == VertCube::y0r1b0 || idx == VertCube::y1r0b0 || idx == VertCube::y1r1b0) ?  	1 : -1;
+			addand = (idx == TrilinearCube::y0r0b0 || idx == TrilinearCube::y0r1b0 || idx == TrilinearCube::y1r0b0 || idx == TrilinearCube::y1r1b0) ?  	1 : -1;
 
 		selected[idx + addand] = true;
 	}

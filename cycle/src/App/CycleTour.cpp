@@ -1,6 +1,5 @@
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
-#include <Curve/VertCube.h>
 #include <Design/Updating/Updater.h>
 #include <Inter/Interactor.h>
 #include <Inter/Interactor3D.h>
@@ -35,7 +34,7 @@
 #include "../UI/Panels/PlaybackPanel.h"
 #include "../UI/Panels/VertexPropertiesPanel.h"
 #include "../UI/SynthLookAndFeel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/PathPanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
 #include "../UI/VertexPanels/Spectrum2D.h"
 #include "../UI/VertexPanels/Spectrum3D.h"
@@ -63,7 +62,7 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     ,   currentTutorial  (0) {
     A(AreaNull),           A(AreaWshpEditor),    A(AreaSharpBand),      A(AreaWfrmWaveform3D);
     A(AreaSpectrum),       A(AreaSpectrogram),   A(AreaEnvelopes),      A(AreaVolume);
-    A(AreaPitch),          A(AreaScratch),       A(AreaWaveshaper),     A(AreaDeformers);
+    A(AreaPitch),          A(AreaScratch),       A(AreaWaveshaper),     A(AreaPaths);
     A(AreaImpulse),        A(AreaMorphPanel),    A(AreaVertexProps),    A(AreaGenControls);
     A(AreaConsole),        A(AreaPlayback),      A(AreaUnison),         A(AreaReverb);
     A(AreaDelay),          A(AreaEQ),            A(AreaMain),           A(AreaModMatrix);
@@ -74,8 +73,8 @@ CycleTour::CycleTour(SingletonRepo* repo) :
 
     B(TargUniMode),        B(TargUniVoiceSlct),  B(TargUniAddRemove);
 
-    B(TargDfrmNoise),      B(TargDfrmOffset),    B(TargDfrmPhase),      B(TargDfrmMeshSlct);
-    B(TargDfrmLayerAdd),   B(TargDfrmLayerSlct);
+    B(TargPathNoise),      B(TargPathOffset),    B(TargPathPhase),      B(TargPathMeshSlct);
+    B(TargPathLayerAdd),   B(TargPathLayerSlct);
 
     B(TargImpLength),      B(TargImpGain),       B(TargImpHP),          B(TargImpZoom);
     B(TargImpLoadWav),     B(TargImpUnloadWav),  B(TargImpModelWav);
@@ -100,7 +99,7 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     B(TargModelCycle);
 
     B(TargSelector),       B(TargPencil),        B(TargAxe),            B(TargNudge);
-    B(TargWaveVerts),      B(TargVerts),         B(TargLinkYellow),     B(TargVertCube);
+    B(TargWaveVerts),      B(TargVerts),         B(TargLinkYellow),     B(TargTrilinearCube);
  
     B(TargPrimeArea),      B(TargPrimeY),        B(TargPrimeB),         B(TargPrimeR);
     B(TargLinkArea),       B(TargLinkY),         B(TargLinkB),          B(TargLinkR);
@@ -127,7 +126,7 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     C(OperLessThan),       C(OperLessThanEQ),    C(OperMoreThan);
 
     P(NoCompare),          P(NumPoints),         P(NumLines);
-    P(NumLayers),          P(CurrentLayer),      P(DfrmAssignments);
+    P(NumLayers),          P(CurrentLayer),      P(PathAssignments);
 
     I(IdYellow),           I(IdRed),             I(IdBlue);
     I(IdMeshVol),          I(IdMeshPitch),       I(IdMeshScratch);
@@ -326,14 +325,14 @@ bool CycleTour::conditionPassed(const Condition& c){
             break;
         }
 
-        case DfrmAssignments: {
+        case PathAssignments: {
             int num = 0;
             if(Interactor* itr = areaToInteractor(c.area)) {
                 Mesh* mesh = itr->getMesh();
 
                 for (auto* cube : mesh->getCubes()) {
                     for(int j = 0; j <= Vertex::Curve; ++j)
-                        num += int(cube->deformerAt(j) >= 0);
+                        num += int(cube->pathAt(j) >= 0);
                 }
 
                 return compare(c, num);
@@ -508,9 +507,9 @@ void CycleTour::performAction(Action& action) {
 
                 if(isPositiveAndBelow(action.data1, mesh->getNumCubes()))
                 {
-                    VertCube* cube = mesh->getCubes()[action.data1];
+                    TrilinearCube* cube = mesh->getCubes()[action.data1];
 
-                    cube->deformerAt(action.id) = action.data2;
+                    cube->pathAt(action.id) = action.data2;
                     getObj(VertexPropertiesPanel).setSelectedAndCaller(itr);
                     itr->triggerRefreshUpdate();
                 }
@@ -605,7 +604,7 @@ void CycleTour::performAction(Action& action) {
                 case AreaWshpEditor:
                 case AreaWfrmWaveform3D: getObj(Waveform3D).triggerButton(action.id);      break;
 
-                case AreaDeformers:      getObj(DeformerPanel).triggerButton(action.id);   break;
+                case AreaPaths:      getObj(PathPanel).triggerButton(action.id);   break;
                 case AreaScratch:        getObj(EnvelopeInter2D).triggerButton(action.id); break;
                 default:
                     break;
@@ -627,8 +626,8 @@ void CycleTour::performAction(Action& action) {
                     getObj(Spectrum3D).getPanelControls()->layerSelector->clickedOnRow(action.data1);
                     break;
 
-                case AreaDeformers:
-                    getObj(DeformerPanel).getPanelControls()->layerSelector->clickedOnRow(action.data1);
+                case AreaPaths:
+                    getObj(PathPanel).getPanelControls()->layerSelector->clickedOnRow(action.data1);
                     break;
 
                 case AreaScratch:
@@ -1187,7 +1186,7 @@ TourGuide* CycleTour::getTourGuide(Area area) {
         case AreaGenControls:    return &getObj(GeneralControls);
         case AreaImpulse:        return &getObj(IrModellerUI);
         case AreaWaveshaper:     return &getObj(WaveshaperUI);
-        case AreaDeformers:      return &getObj(DeformerPanel);
+        case AreaPaths:      return &getObj(PathPanel);
         case AreaUnison:         return &getObj(UnisonUI);
         case AreaModMatrix:      return &getObj(ModMatrixPanel);
         case AreaMasterCtrls:    return &getObj(OscControlPanel);
@@ -1238,7 +1237,7 @@ Panel* CycleTour::areaToPanel(int which) {
         case AreaScratch:        return &getObj(Envelope2D);
         case AreaWaveshaper:     return &getObj(WaveshaperUI);
         case AreaImpulse:        return &getObj(IrModellerUI);
-        case AreaDeformers:      return &getObj(DeformerPanel);
+        case AreaPaths:      return &getObj(PathPanel);
         default: break;
     }
 

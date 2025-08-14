@@ -3,7 +3,6 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Array/Buffer.h>
-#include <Curve/EnvelopeMesh.h>
 #include <Util/Arithmetic.h>
 
 #include "CycleBasedVoice.h"
@@ -13,7 +12,7 @@
 #include "../CycleDefs.h"
 #include "../../UI/Panels/ModMatrixPanel.h"
 #include "../../UI/Panels/OscControlPanel.h"
-#include "../../UI/VertexPanels/DeformerPanel.h"
+#include "../../UI/VertexPanels/PathPanel.h"
 #include "../../UI/VertexPanels/Envelope2D.h"
 #include "../../UI/VertexPanels/Spectrum3D.h"
 #include "../../UI/VertexPanels/Waveform3D.h"
@@ -47,10 +46,10 @@ SynthesizerVoice::SynthesizerVoice(int voiceIndex, SingletonRepo* repo) :
     envGroups[1] = &pitchGroup;
     envGroups[2] = &scratchGroup;
 
-    auto& deformer = getObj(DeformerPanel);
+    auto& path = getObj(PathPanel);
 
     for (auto group: envGroups) {
-        group->envGroup.emplace_back(EnvRasterizer(repo, &deformer, "EnvRasterizer" + String(group->layerGroup) + "_0"), 0);
+        group->envGroup.emplace_back(EnvRasterizer(repo, &path, "EnvRasterizer" + String(group->layerGroup) + "_0"), 0);
 
         EnvRenderContext& last = group->envGroup.back();
         last.rast.setWantOneSamplePerCycle(true);
@@ -284,7 +283,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
             rast.sampleable = false;
 
             if (props->active && rast.rast.hasEnoughCubesForCrossSection()) {
-                rast.rast.calcCrossPoints();
+                rast.rast.generateControlPoints();
                 rast.sampleable = rast.rast.isSampleable();
             }
         }
@@ -293,7 +292,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
     for (auto& envRasterizer: envRasterizers) {
         envRasterizer->setNoiseSeed(random.nextInt());
         // TODO
-        envRasterizer->updateOffsetSeeds(1, DeformerPanel::tableSize);
+        envRasterizer->updateOffsetSeeds(1, PathPanel::tableSize);
     }
 }
 
@@ -424,7 +423,7 @@ void SynthesizerVoice::calcEnvelopeBuffers(int numSamples) {
 
 void SynthesizerVoice::fetchEnvelopeMeshes() {
     envRasterizers.clear();
-    auto& deformer = getObj(DeformerPanel);
+    auto& path = getObj(PathPanel);
 
     for (int groupIndex = 0; groupIndex < numElementsInArray(envGroups); ++groupIndex) {
         EnvRastGroup& group = *envGroups[groupIndex];
@@ -445,7 +444,7 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
 
                 if (!dynamic_cast<MeshLibrary::EnvProps*>(layer.props)->global) {
                     String name = "EnvRasterizer" + String(groupIndex) + "_" + String(layerIndex);
-                    group.envGroup.emplace_back(EnvRasterizer(repo, &deformer, name), layerIndex);
+                    group.envGroup.emplace_back(EnvRasterizer(repo, &path, name), layerIndex);
 
                     EnvRasterizer& rast = group.envGroup.back().rast;
                     envRasterizers.push_back(&rast);
@@ -469,7 +468,7 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
     for (auto rast: envRasterizers) {
         rast->setCalcDepthDimensions(false);
         rast->setToOverrideDim(true);
-        rast->calcCrossPoints();
+        rast->generateControlPoints();
         rast->validateState();
     }
 }

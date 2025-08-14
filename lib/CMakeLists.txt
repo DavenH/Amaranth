@@ -5,8 +5,10 @@ set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode")
 
 file(GLOB_RECURSE LIB_SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
         "${JUCE_DIR}/*.cpp"
         "${JUCE_DIR}/*.c"
+        "${JUCE_DIR}/*.h"
 )
 
 if(APPLE)

@@ -3,10 +3,10 @@
 #include <memory>
 #include "../Algo/AutoModeller.h"
 #include "../App/AppConstants.h"
-#include "../Curve/EnvRasterizer.h"
+#include "../Wireframe/Rasterizer/EnvRasterizer.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
-#include "../Curve/MeshRasterizer.h"
+#include "../Wireframe/OldMeshRasterizer.h"
 #include "../Util/Util.h"
 #include "../Definitions.h"
 
@@ -133,7 +133,7 @@ void PitchedSample::createEnvFromPeriods(bool isMulti) {
     }
 }
 
-void PitchedSample::createPeriodsFromEnv(MeshRasterizer* rast) {
+void PitchedSample::createPeriodsFromEnv(OldMeshRasterizer* rast) {
     jassert(fundNote > 0);
     progressMark
 
@@ -146,8 +146,8 @@ void PitchedSample::createPeriodsFromEnv(MeshRasterizer* rast) {
     float defaultFreq = NumberUtils::noteToFrequency(fundNote, 0);
 
     rast->setMesh(mesh.get());
-    rast->calcCrossPoints();
-    rast->makeCopy();
+    rast->generateControlPoints();
+    rast->storeRasteredArrays();
 
     if(rast->isSampleable())
     {

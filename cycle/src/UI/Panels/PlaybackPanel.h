@@ -5,7 +5,7 @@
 #include <UI/Widgets/IconButton.h>
 #include "JuceHeader.h"
 #include <Util/MicroTimer.h>
-#include "../../Curve/GraphicRasterizer.h"
+#include "../../Wireframe/GraphicRasterizer.h"
 
 class Mesh;
 class Spectrum2D;

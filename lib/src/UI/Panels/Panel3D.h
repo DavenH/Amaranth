@@ -68,7 +68,7 @@ public:
     void bakeTextures() override;
     void doExtraResized() override;
     void drawAxe();
-    void drawDeformerTags() override;
+    void drawPathTags() override;
     void drawDepthLinesAndVerts() override;
     void drawInterceptLines() override;
     void drawInterceptsAndHighlightClosest() override;

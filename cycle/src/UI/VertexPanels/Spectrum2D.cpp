@@ -14,7 +14,7 @@
 #include "../Panels/Morphing/MorphPanel.h"
 #include "../Panels/PlaybackPanel.h"
 #include "../../Audio/AudioSourceRepo.h"
-#include "../../Curve/GraphicRasterizer.h"
+#include "../../Wireframe/GraphicRasterizer.h"
 #include "../../Inter/SpectrumInter2D.h"
 #include "../../UI/Panels/Console.h"
 #include "../../UI/VertexPanels/Waveform2D.h"

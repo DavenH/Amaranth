@@ -1,5 +1,4 @@
 #include "Spectrogram.h"
-#include "PitchTracker.h"
 #include "../Algo/FFT.h"
 #include "../App/SingletonRepo.h"
 #include "../App/Transforms.h"

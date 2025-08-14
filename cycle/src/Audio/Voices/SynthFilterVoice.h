@@ -3,7 +3,7 @@
 #include <App/MeshLibrary.h>
 #include <Array/ScopedAlloc.h>
 #include <Algo/Convolver.h>
-#include <Curve/MeshRasterizer.h>
+#include <Wireframe/MeshRasterizer.h>
 #include <Obj/Ref.h>
 #include "CycleBasedVoice.h"
 #include "VoiceParameterGroup.h"

@@ -2,7 +2,6 @@
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
-#include <Curve/IDeformer.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Widgets/Knob.h>
 
@@ -13,7 +12,7 @@
 #include "../Widgets/Controls/Spacers.h"
 #include "../../App/CycleTour.h"
 #include "../../Audio/SynthAudioSource.h"
-#include "../../UI/VertexPanels/DeformerPanel.h"
+#include "../../UI/VertexPanels/PathPanel.h"
 
 const int WaveshaperUI::oversampFactors[5] = { 1, 1, 2, 4, 8 };
 
@@ -90,7 +89,7 @@ void WaveshaperUI::init() {
     waveshaper = &getObj(SynthAudioSource).getWaveshaper();
     waveshaper->setRasterizer(rasterizer);
 
-    rasterizer->setDeformer(&getObj(DeformerPanel));
+    rasterizer->setPath(&getObj(PathPanel));
     rasterizer->setMesh(getMesh());
     rasterizer->performUpdate(Update);
 

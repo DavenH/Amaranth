@@ -26,7 +26,7 @@ void EnvelopeInter3D::init() {
     vertexProps.dimensionNames.set(Vertex::Time, {});
 }
 
-void EnvelopeInter3D::transferLineProperties(VertCube* from, VertCube* to1, VertCube* to2) {
+void EnvelopeInter3D::transferLineProperties(TrilinearCube* from, TrilinearCube* to1, TrilinearCube* to2) {
     getObj(EnvelopeInter2D).transferLineProperties(from, to1, to2);
 }
 

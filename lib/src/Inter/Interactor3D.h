@@ -2,7 +2,7 @@
 #include <vector>
 #include "Interactor.h"
 #include "../Array/Column.h"
-#include "../Curve/SimpleIcpt.h"
+#include "../Wireframe/Vertex/SimpleIcpt.h"
 #include "../Design/Updating/Updater.h"
 #include "JuceHeader.h"
 
@@ -37,7 +37,7 @@ public:
     void primaryDimensionChanged();
     void shallowUpdate();
     void glueCubes();
-    void glueCubes(VertCube* cubeOne, VertCube* cubeTwo);
+    void glueCubes(TrilinearCube* cubeOne, TrilinearCube* cubeTwo);
     void sliceLines();
     void sliceLines(const Vertex2& start, const Vertex2& end);
     void performUpdate(UpdateType updateType) override;
@@ -51,7 +51,7 @@ public:
     bool locateClosestElement() override;
 
     int getCapabilities();
-    VertCube* getLineContaining(Vertex* a, Vertex* b);
+    TrilinearCube* getLineContaining(Vertex* a, Vertex* b);
 
     virtual int getTableIndexY(float y, int size);
     virtual String getYString(float yVal, int yIndex, const Column& col, float fundFreq);
@@ -73,7 +73,7 @@ public:
     const vector<SimpleIcpt>& getInterceptPairs() { return interceptPairs; }
 
 protected:
-    void removeDuplicateVerts(vector<Vertex*>& affectedVerts, vector<VertCube*>& affectedCubes, bool deleteDupes);
+    void removeDuplicateVerts(vector<Vertex*>& affectedVerts, vector<TrilinearCube*>& affectedCubes, bool deleteDupes);
     void moveVertsAndTest(const Array<Vertex*>& arr, float diff);
     void mergeVerticesOneOwner(Vertex* firstSelected, Vertex* secondSelected, MergeActionType mergeAction);
     void mergeVerticesBothOneOwner(Vertex* firstSelected, Vertex* secondSelected, MergeActionType mergeAction);

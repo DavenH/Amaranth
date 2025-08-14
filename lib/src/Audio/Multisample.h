@@ -9,7 +9,7 @@ using std::set;
 
 class Mesh;
 class PitchedSample;
-class MeshRasterizer;
+class OldMeshRasterizer;
 
 class Multisample :
         public Savable
@@ -34,7 +34,7 @@ public:
 
     /* -------------------------------------------------------------------------- */
 
-    Multisample(SingletonRepo* repo, MeshRasterizer* rasterizer);
+    Multisample(SingletonRepo* repo, OldMeshRasterizer* rasterizer);
 
     void clear();
     void createFromDirectory(const File& directory);
@@ -58,7 +58,7 @@ public:
         return nullptr;
     }
 
-    void setWaveRasterizer(MeshRasterizer* rasterizer) { waveRasterizer = rasterizer; }
+    void setWaveRasterizer(OldMeshRasterizer* rasterizer) { waveRasterizer = rasterizer; }
     int size()                          { return samples.size();    }
     PitchedSample* getCurrentSample()   { return current;           }
     CriticalSection& getLock()          { return audioLock;         }
@@ -66,7 +66,7 @@ public:
 private:
     void getModRanges(Range<int>& noteRange, Range<float>& velRange);
 
-    MeshRasterizer* waveRasterizer;
+    OldMeshRasterizer* waveRasterizer;
     PitchedSample* current;
     CriticalSection audioLock;
     ListenerList<Listener> listeners;

@@ -1,6 +1,5 @@
 #pragma once
-
-#include "../Obj/MorphPosition.h"
+#include "Wireframe/Interpolator/Trilinear/MorphPosition.h"
 
 class MorphPositioner {
 public:

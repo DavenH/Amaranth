@@ -4,7 +4,7 @@
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
 #include "../Array/BufferXY.h"
-#include "../Curve/VertCube.h"
+#include "../Wireframe/Interpolator/Trilinear/TrilinearCube.h"
 #include "../Inter/UndoableMeshProcess.h"
 #include "../Thread/LockTracer.h"
 #include "../UI/Panels/Panel.h"
@@ -24,7 +24,7 @@ bool Interactor2D::locateClosestElement() {
         return Interactor::locateClosestElement();
     }
 
-    const vector<Intercept>& icpts = rastData.intercepts;
+    const vector<Intercept>& controlPoints = rastData.intercepts;
 
     float dist = 1e7f;
     float x = state.currentMouse.x;
@@ -36,7 +36,7 @@ bool Interactor2D::locateClosestElement() {
     int freeIdx = -1;
 
     int i = 0;
-    for(auto& icpt : icpts) {
+    for(auto& icpt : controlPoints) {
         if (fabsf(icpt.x - x) < dist) {
             dist = fabsf(icpt.x - x);
             icptIdx = i;
@@ -62,10 +62,10 @@ bool Interactor2D::locateClosestElement() {
         state.currentFreeVert   = freeIdx;
         state.currentIcpt       = -1;
     } else if (icptIdx != -1) {
-        state.currentCube       = icpts[icptIdx].cube;
+        state.currentCube       = controlPoints[icptIdx].cube;
 
         if(state.currentCube == nullptr && icptIdx > 0) {
-            state.currentCube = icpts[icptIdx - 1].cube;
+            state.currentCube = controlPoints[icptIdx - 1].cube;
         }
 
         state.currentFreeVert   = -1;
@@ -75,7 +75,7 @@ bool Interactor2D::locateClosestElement() {
             Mesh* mesh = getMesh();
 
             for(auto& vert : mesh->getVerts()) {
-                if (fabsf(vert->values[dims.x] - icpts[state.currentIcpt].x) < 0.0001f) {
+                if (fabsf(vert->values[dims.x] - controlPoints[state.currentIcpt].x) < 0.0001f) {
                     // when does this ever happen???
                     state.currentVertex = vert;
                     break;
@@ -221,7 +221,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 
         flag(DidMeshChange) = true;
     } else if (actionIs(PaintingEdit)) {
-        const vector<Intercept>& icpts = rasterizer->getRastData().intercepts;
+        const vector<Intercept>& controlPoints = rasterizer->getRastData().intercepts;
 
         float diff;
 
@@ -249,7 +249,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
         bool useLines = shouldDoDimensionCheck();
 
         if (useLines) {
-            for (const auto & icpt : icpts) {
+            for (const auto & icpt : controlPoints) {
                 if(! NumberUtils::within(icpt.x, a.x, b.x)) {
                     continue;
                 }
@@ -257,7 +257,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
                 float curveY = Resampling::lerp(a.x, a.y, b.x, b.y, icpt.x);
                 diff = curveY - icpt.y;
 
-                VertCube* cube = icpt.cube;
+                TrilinearCube* cube = icpt.cube;
 
                 if (cube != nullptr) {
                     Vertex* vNear = findLinesClosestVertex(cube, state.currentMouse, pos);
@@ -318,7 +318,7 @@ void Interactor2D::doReshapeCurve(const MouseEvent& e) {
 
     flag(LoweredRes) = true;
 
-    const vector<Curve>& curves = data.curves;
+    const vector<CurvePiece>& curves = data.curves;
 
     {
         ScopedLock sl(vertexLock);
@@ -361,7 +361,7 @@ void Interactor2D::removeLinesInRange(Range<float> phsRange, const MorphPosition
     if (dims.numHidden() > 0) {
         bool overlapsAll;
 
-        vector<VertCube*> linesToDelete;
+        vector<TrilinearCube*> linesToDelete;
 
         for(auto& cube : mesh->getCubes()) {
             cube->getFinalIntercept(reduceData, pos);
@@ -429,49 +429,49 @@ Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
     if (testAdjacent) {
         float maximum = panel->getZoomPanel()->rect.xMaximum;
 
-        const vector<Intercept>& icpts = rastData.intercepts;
+        const vector<Intercept>& controlPoints = rastData.intercepts;
         Range<float> limits = vertexLimits[dims.x];
 
-        for (int i = 0; i < (int) icpts.size(); ++i) {
-            const Intercept& icpt = icpts[i];
+        for (int i = 0; i < (int) controlPoints.size(); ++i) {
+            const Intercept& icpt = controlPoints[i];
 
             if (NumberUtils::within(icpt.x, 0.f, maximum) && vert->isOwnedBy(icpt.cube)) {
-                if (i < icpts.size() - 1) {
+                if (i < controlPoints.size() - 1) {
                     int j = i + 1;
 
-                    while (j + 1 < icpts.size()) {
-                        if (icpts[j].cube != nullptr) {
+                    while (j + 1 < controlPoints.size()) {
+                        if (controlPoints[j].cube != nullptr) {
                             break;
                         }
 
                         ++j;
                     }
 
-                    limits.setEnd(icpts[j].x - 0.0005f);
+                    limits.setEnd(controlPoints[j].x - 0.0005f);
                 }
 
                 if (i > 0) {
                     int j = i - 1;
                     while (j - 1 > 0) {
-                        if (icpts[j].cube != nullptr) {
+                        if (controlPoints[j].cube != nullptr) {
                             break;
                         }
 
                         --j;
                     }
-                    limits.setStart(icpts[j].x + 0.0005f);
+                    limits.setStart(controlPoints[j].x + 0.0005f);
                 }
 
                 return limits;
             }
 
             if (vert->getNumOwners() == 0 && fabsf(icpt.x - vert->values[dims.x]) < 0.0001f) {
-                if (i < icpts.size() - 1) {
-                    limits.setEnd(icpts[i + 1].x - 0.0005f);
+                if (i < controlPoints.size() - 1) {
+                    limits.setEnd(controlPoints[i + 1].x - 0.0005f);
                 }
 
                 if (i > 0) {
-                    limits.setStart(icpts[i - 1].x + 0.0005f);
+                    limits.setStart(controlPoints[i - 1].x + 0.0005f);
                 }
 
                 return limits;

@@ -1,7 +1,7 @@
-#include <cmath>
 #include "Resampler.h"
 
 #include <Array/VecOps.h>
+#include <cmath>
 
 #ifdef USE_IPP
 

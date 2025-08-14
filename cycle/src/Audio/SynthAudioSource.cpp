@@ -9,7 +9,7 @@
 #include "../UI/Effects/ReverbUI.h"
 #include "../UI/Panels/OscControlPanel.h"
 #include "../UI/Panels/ModMatrixPanel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/PathPanel.h"
 #include "../Util/CycleEnums.h"
 
 SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
@@ -508,7 +508,7 @@ void SynthAudioSource::modulationChanged(float value, int voiceIndex, int output
                     rast.updateValue(dim, value);
 
                     if (props->dynamic) {
-                        rast.calcCrossPoints();
+                        rast.generateControlPoints();
                         rast.validateState();
 
                         scratchRast.sampleable = rast.isSampleable();
@@ -540,7 +540,7 @@ void SynthAudioSource::updateTempoScale() {
 
 void SynthAudioSource::updateGlobality() {
     MeshLibrary::LayerGroup& scratchGroup = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch);
-    IDeformer& deformer                   = getObj(DeformerPanel);
+    ICurvePath& path                   = getObj(PathPanel);
 
     globalScratch.clear();
 
@@ -550,7 +550,7 @@ void SynthAudioSource::updateGlobality() {
         if (dynamic_cast<MeshLibrary::EnvProps*>(layer.props)->global) {
             int size = globalScratch.size();
 
-            globalScratch.emplace_back(EnvRasterizer(repo, &deformer, "GlobalScratch" + String(size)), i);
+            globalScratch.emplace_back(EnvRasterizer(repo, &path, "GlobalScratch" + String(size)), i);
             globalScratch.back().rast.setMesh(layer.mesh);
         }
     }
@@ -579,7 +579,7 @@ void SynthAudioSource::rasterizeGlobalEnvs() {
         rast.updateValue(Vertex::Red, 0);
         rast.setWantOneSamplePerCycle(false);
         rast.setLowresCurves(true);
-        rast.calcCrossPoints();
+        rast.generateControlPoints();
         rast.validateState();
 
         scratchRast.sampleable = rast.isSampleable();

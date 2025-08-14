@@ -1,9 +1,10 @@
 #pragma once
 
 #include "../MiscGraphics.h"
-#include "../../Inter/Interactor.h"
 #include "../../App/Settings.h"
 #include "../../App/SingletonRepo.h"
+#include "../../Inter/Interactor.h"
+#include <Definitions.h>
 
 class CursorHelper {
 public:
@@ -44,7 +45,7 @@ public:
                     c->setMouseCursor(
                         getObj(MiscGraphics).getCursor(
                             mods.isRightButtonDown() ? MiscGraphics::PencilEditCursor : MiscGraphics::PencilCursor));
-                } else if (tool == Tools::Axe) {
+                } else {
                     c->setMouseCursor(MouseCursor::NoCursor);
                 }
             }

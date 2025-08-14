@@ -66,7 +66,7 @@ public:
     void doZoomExtra(bool commandDown) override;
     void zoomUpdated(int updateSource) override;
 
-    bool createLinePath(const Vertex2& start, const Vertex2& end, VertCube* cube, int pointDim, bool haveSpeed);
+    bool createLinePath(const Vertex2& start, const Vertex2& end, TrilinearCube* cube, int pointDim, bool haveSpeed);
     void createNameImage(const String& displayName, bool isSecondImage = false, bool dark = false);
 
     /* ----------------------------------------------------------------------------- */
@@ -139,7 +139,7 @@ public:
     virtual void drawDepthLinesAndVerts() = 0;
     virtual void bakeTextures()                 {}
     virtual void drawCurvesAndSurfaces()        {}
-    virtual void drawDeformerTags()             {}
+    virtual void drawPathTags()             {}
     virtual void drawInterceptLines()           {}
     virtual void drawVerticalLine()             {}
     virtual void highlightCurrentIntercept()    {}
@@ -164,7 +164,7 @@ public:
 protected:
 
     void handlePendingUpdates();
-    void createDeformerTags();
+    void createPathTags();
     virtual void createScales() {}
 
     /* ----------------------------------------------------------------------------- */
@@ -201,8 +201,8 @@ protected:
 
     Point<float> nameCornerPos;
 
-    Texture *grabTex, *nameTexA, *dfrmTex, *nameTexB, *scalesTex;
-    Image scalesImage, dfrmImage, grabImage, nameImage, nameImageB;
+    Texture *grabTex, *nameTexA, *pathTex, *nameTexB, *scalesTex;
+    Image scalesImage, pathImage, grabImage, nameImage, nameImageB;
 
     BufferXY    xy;
     String      panelName;
@@ -219,7 +219,7 @@ protected:
     ScopedAlloc<float> xBuffer, yBuffer, cBuffer, stripRamp, spliceBuffer, bgLinesMemory;
 
     OwnedArray<Texture> textures;
-    vector<Rectangle<float> > scales, dfrmTags;
+    vector<Rectangle<float> > scales, pathTags;
 
     /* ----------------------------------------------------------------------------- */
 

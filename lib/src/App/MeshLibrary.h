@@ -4,7 +4,7 @@
 #include <vector>
 #include "SingletonAccessor.h"
 #include "Doc/Savable.h"
-#include "../Obj/MorphPosition.h"
+#include "../Wireframe/Interpolator/Trilinear/MorphPosition.h"
 #include "../Util/CommonEnums.h"
 
 using std::vector;
@@ -19,7 +19,7 @@ namespace LayerGroups {
         GroupVolume
     ,   GroupPitch
     ,   GroupScratch
-    ,   GroupDeformer
+    ,   GroupPath
     ,   GroupTime
     ,   GroupSpect
     ,   GroupPhase

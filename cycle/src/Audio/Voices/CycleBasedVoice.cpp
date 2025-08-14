@@ -1,13 +1,10 @@
 #include <Algo/Resampler.h>
-#include <Curve/EnvRasterizer.h>
-#include <Curve/IDeformer.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegions.h>
 #include <Util/NumberUtils.h>
 #include <Util/Util.h>
 
 #include "CycleBasedVoice.h"
-
 #include <climits>
 #include <Util/StatusChecker.h>
 
@@ -16,11 +13,11 @@
 #include "../SynthAudioSource.h"
 #include "../../App/Initializer.h"
 #include "../../Audio/Effects/Unison.h"
-#include "../../Curve/EnvRenderContext.h"
+#include "../../Wireframe/EnvRenderContext.h"
 #include "../../UI/Panels/ModMatrixPanel.h"
 #include "../../UI/VertexPanels/Envelope2D.h"
 #include "../../UI/VertexPanels/Spectrum3D.h"
-#include "../../UI/VertexPanels/DeformerPanel.h"
+#include "../../UI/VertexPanels/PathPanel.h"
 #include "../../UI/VertexPanels/Waveform3D.h"
 #include "../../Util/CycleEnums.h"
 #include "../CycleDefs.h"
@@ -53,7 +50,7 @@ CycleBasedVoice::CycleBasedVoice(SynthesizerVoice* parent, SingletonRepo* repo) 
     tempBuffer.resize(maxPeriod);
 
     timeRasterizer.setCalcDepthDimensions(false);
-    timeRasterizer.setDeformer(&getObj(DeformerPanel));
+    timeRasterizer.setPath(&getObj(PathPanel));
 
     for (int c = 0; c < 2; ++c) {
         // we reuse this as a CCS fft buffer -> 2(n + 1) samples
@@ -85,7 +82,7 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
     }
 
     const int timeLayerSize = timeLayers->size();
-    timeRasterizer.updateOffsetSeeds(timeLayerSize, DeformerPanel::tableSize);
+    timeRasterizer.updateOffsetSeeds(timeLayerSize, PathPanel::tableSize);
 
     EnvRasterizer& pitchRast = parent->pitchGroup[0].rast;
     float pitchEnvVal = parent->flags.havePitch ? pitchRast.sampleAt(0) : 0.5;
@@ -909,7 +906,7 @@ void CycleBasedVoice::updateValue(int outputId, int dim, float value) {
             envRast.updateValue(dim, value);
 
             if (props.dynamic) {
-                envRast.calcCrossPoints();
+                envRast.generateControlPoints();
                 envRast.validateState();
 
                 renderRast.sampleable = envRast.isSampleable();

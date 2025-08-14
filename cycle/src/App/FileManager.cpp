@@ -31,7 +31,7 @@
 #include "../UI/Panels/Morphing/MorphPanel.h"
 #include "../UI/Panels/PlaybackPanel.h"
 #include "../UI/Panels/VertexPropertiesPanel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/PathPanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
 #include "../UI/VertexPanels/Envelope3D.h"
 #include "../UI/VertexPanels/Spectrum3D.h"
@@ -132,7 +132,7 @@ void FileManager::doPostPresetLoad() {
     getObj(VertexPropertiesPanel).updateComboBoxes();
     getObj(Spectrum3D)		.validateScratchChannels();
     getObj(Waveform3D)		.validateScratchChannels();
-    getObj(DeformerPanel)	.rasterizeAllTables();
+    getObj(PathPanel)	.rasterizeAllTables();
     getObj(IrModellerUI)	.updateDspSync();
     getObj(WaveshaperUI)	.updateDspSync();
     getObj(Waveform3D)		.updateBackground(false);
@@ -155,7 +155,7 @@ void FileManager::doPostPresetLoad() {
     getObj(EnvelopeInter2D)	.switchedEnvelope(LayerGroups::GroupVolume, false, true);
     getObj(EnvelopeInter2D)	.waveOverlayChanged();
     getObj(MeshLibrary)		.layerChanged(LayerGroups::GroupScratch, -1);
-    getObj(MeshLibrary)		.layerChanged(LayerGroups::GroupDeformer, -1);
+    getObj(MeshLibrary)		.layerChanged(LayerGroups::GroupPath, -1);
     getObj(GeneralControls)	.updateHighlights();
     getObj(GeneralControls)	.repaint();
 

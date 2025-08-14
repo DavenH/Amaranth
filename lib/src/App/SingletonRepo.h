@@ -6,10 +6,10 @@
 class Savable;
 class PluginProcessor;
 class SingletonAccessor;
-class MeshRasterizer;
+class OldMeshRasterizer;
 class MorphPositioner;
 class IConsole;
-class IDeformer;
+class ICurvePath;
 class Panel;
 using namespace juce;
 
@@ -31,11 +31,11 @@ public:
     void setDebugStream(OutputStream* output)           { this->debugStream.reset(output);   }
     void setMorphPositioner(MorphPositioner* positioner){ this->positioner = positioner;     }
     void setConsole(IConsole* console)                  { this->console = console;           }
-    void setDeformer(IDeformer* deformer);
+    void setPath(ICurvePath* path);
 
     MorphPositioner& getMorphPosition()                 { return *positioner;   }
     IConsole& getConsole()                              { return *console;      }
-    IDeformer& getDeformer()                            { return *deformer;     }
+    ICurvePath& getPath()                            { return *path;     }
 
     /* ----------------------------------------------------------------------------- */
 
@@ -71,11 +71,11 @@ protected:
 
     Ref<MorphPositioner> positioner;
     Ref<IConsole> console;
-    Ref<IDeformer> deformer;
+    Ref<ICurvePath> path;
 
     Array<Savable*> saveSources;
     Array<Panel*> panels;
-    Array<MeshRasterizer*> rasterizers;
+    Array<OldMeshRasterizer*> rasterizers;
 
     HashMap<String, SingletonAccessor*> hashes;
     OwnedArray<SingletonAccessor> objects;

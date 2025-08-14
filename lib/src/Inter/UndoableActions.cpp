@@ -171,9 +171,9 @@ void UpdateVertexVectorAction::undoDelegate() {
 
 UpdateCubeVectorAction::UpdateCubeVectorAction(
         Interactor* itr
-    ,   vector<VertCube*>* _elements
-    ,   const vector<VertCube*>& _before
-    ,   const vector<VertCube*>& _after
+    ,   vector<TrilinearCube*>* _elements
+    ,   const vector<TrilinearCube*>& _before
+    ,   const vector<TrilinearCube*>& _after
     ,   bool                        _shouldClearLines) :
             ResponsiveUndoableAction(itr->getSingletonRepo(), itr->getUpdateSource())
         ,   itr             (itr)
@@ -225,11 +225,11 @@ void SliderValueChangedAction::undoDelegate() {
     slider->setValue(before);
 }
 
-DeformerAssignment::DeformerAssignment(
+PathAssignment::PathAssignment(
         SingletonRepo* repo
     ,   int updateSource
     ,   Mesh* mesh
-    ,   const vector<VertCube*>& selectedLines
+    ,   const vector<TrilinearCube*>& selectedLines
     ,   vector<int> previousMappings
     ,   int thisMapping
     ,   int channel) :
@@ -242,7 +242,7 @@ DeformerAssignment::DeformerAssignment(
     description = "Line deformation";
 }
 
-void DeformerAssignment::performDelegate() {
+void PathAssignment::performDelegate() {
     auto start  = mesh->getCubes().begin();
     auto end    = mesh->getCubes().end();
 
@@ -250,9 +250,9 @@ void DeformerAssignment::performDelegate() {
 
         // check if line is still good
         if (line != nullptr && std::find(start, end, line) != end) {
-            line->deformerAt(channel) = (char) currentMapping;
+            line->pathAt(channel) = (char) currentMapping;
 
-            // component curve assignment changes the sharpness / dfrm-gain
+            // component curve assignment changes the sharpness / path-gain
             if (channel == Vertex::Time) {
                 bool doAdjustment = true;
                 for (auto& lineVert : line->lineVerts) {
@@ -273,23 +273,23 @@ void DeformerAssignment::performDelegate() {
     }
 }
 
-void DeformerAssignment::undoDelegate() {
+void PathAssignment::undoDelegate() {
     jassert(affectedLines.size() == previousMappings.size());
 
     auto start  = mesh->getCubes().begin();
     auto end    = mesh->getCubes().end();
 
     for (int i = 0; i < affectedLines.size(); ++i) {
-        VertCube* cube = affectedLines[i];
+        TrilinearCube* cube = affectedLines[i];
 
         if (cube != nullptr && std::find(start, end, cube) != end) {
-            cube->deformerAt(channel) = previousMappings[i];
+            cube->pathAt(channel) = previousMappings[i];
         }
     }
 }
 
-void DeformerAssignment::doPostUpdateCheck() {
-    getObj(MeshLibrary).layerChanged(LayerGroups::GroupDeformer, -1);
+void PathAssignment::doPostUpdateCheck() {
+    getObj(MeshLibrary).layerChanged(LayerGroups::GroupPath, -1);
 }
 
 ComboboxChangeAction::ComboboxChangeAction(ComboBox* box, int previousId) :
@@ -319,7 +319,7 @@ void LayerMoveAction::undoDelegate() {
 }
 
 VertexOwnershipAction::VertexOwnershipAction(
-        VertCube* cube
+        TrilinearCube* cube
     ,   bool undoRemoves
     ,   const Array<Vertex*>& toChange) :
             cube(cube)
@@ -341,9 +341,9 @@ void VertexOwnershipAction::performDelegate() {
 }
 
 VertexCubePropertyAction::VertexCubePropertyAction(
-        VertCube* cube
-    ,   const VertCube& oldProps
-    ,   const VertCube& newProps) :
+        TrilinearCube* cube
+    ,   const TrilinearCube& oldProps
+    ,   const TrilinearCube& newProps) :
             cube(cube)
         ,   oldProps(oldProps)
         ,   newProps(newProps) {

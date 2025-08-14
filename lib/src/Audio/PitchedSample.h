@@ -2,14 +2,14 @@
 #include <vector>
 #include "JuceHeader.h"
 #include "../Array/StereoBuffer.h"
-#include "../Obj/MorphPosition.h"
+#include "../Wireframe/Interpolator/Trilinear/MorphPosition.h"
 #include "../App/Doc/Savable.h"
 
 using std::vector;
 
 class SingletonRepo;
 class Mesh;
-class MeshRasterizer;
+class OldMeshRasterizer;
 
 class PitchFrame {
 public:
@@ -59,7 +59,7 @@ public:
     MorphPosition getBox();
 
     void createEnvFromPeriods(bool isMulti);
-    void createPeriodsFromEnv(MeshRasterizer* rast);
+    void createPeriodsFromEnv(OldMeshRasterizer* rast);
     void shiftOctave(bool up);
 
     void writeXML(XmlElement* element) const override;

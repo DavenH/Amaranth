@@ -12,7 +12,7 @@
 #include "../App/MeshLibrary.h"
 #include "../App/Settings.h"
 #include "../Audio/AudioHub.h"
-#include "../Curve/PathRepo.h"
+#include "../Wireframe/Path/PathInventory.h"
 #include "../Design/Updating/Updater.h"
 #include "../UI/Panels/Panel.h"
 #include "../UI/MiscGraphics.h"
@@ -57,7 +57,7 @@ void SingletonRepo::instantiate() {
     add(new Updater         (this), -1);
     add(new LogRegions      (this), -1);
     add(new Document        (this));
-    add(new PathRepo        (this));
+    add(new PathInventory        (this));
     add(new EditWatcher     (this));
     add(new DocumentLibrary (this));
 
@@ -107,7 +107,7 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
         panels.add(panel);
     }
 
-    if(auto* rasterizer = dynamic_cast<MeshRasterizer*>(accessor)) {
+    if(auto* rasterizer = dynamic_cast<OldMeshRasterizer*>(accessor)) {
         rasterizers.add(rasterizer);
     }
 }
@@ -150,10 +150,10 @@ void SingletonRepo::clearSingletons() {
     objects.clear(true);
 }
 
-void SingletonRepo::setDeformer(IDeformer* deformer) {
-    this->deformer = deformer;
+void SingletonRepo::setPath(ICurvePath* path) {
+    this->path = path;
 
     for(auto rasterizer : rasterizers) {
-        rasterizer->setDeformer(deformer);
+        rasterizer->setPath(path);
     }
 }

@@ -3,7 +3,7 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Curve/CollisionDetector.h>
+#include <../../../../lib/>
 #include <Inter/Interactor.h>
 #include <Inter/Interactor3D.h>
 #include <Inter/UndoableActions.h>
@@ -18,7 +18,7 @@
 #include "VertexPropertiesPanel.h"
 
 #include "Morphing/MorphPanel.h"
-#include "../VertexPanels/DeformerPanel.h"
+#include "../VertexPanels/PathPanel.h"
 #include "../Widgets/HSlider.h"
 
 #include "../../App/CycleTour.h"
@@ -42,7 +42,7 @@ VertexPropertiesPanel::VertexPropertiesPanel(SingletonRepo* repo) :
 
 VertexPropertiesPanel::~VertexPropertiesPanel() {
 	for (auto p : allProperties) {
-		delete p->dfrmChanBox;
+		delete p->pathChanBox;
 		delete p->gain;
 		delete p->messager;
 		delete p->slider;
@@ -89,7 +89,7 @@ void VertexPropertiesPanel::paint(Graphics& g) {
 	getObj(MiscGraphics).drawShadowedText(g, titleText, 	titleTextX, timeSlider.getY() - 5, font);
 
 	Knob& gainKnob		= *properties[Vertex::Red].gain;
-	ComboBox& dfrmBox 	= *properties[Vertex::Red].dfrmChanBox;
+	ComboBox& pathBox 	= *properties[Vertex::Red].pathChanBox;
 
 	Rectangle<float> titleBounds(title.getBounds().expanded(30, 30).translated(0, 20).toFloat());
 
@@ -102,23 +102,23 @@ void VertexPropertiesPanel::paint(Graphics& g) {
 	                     curveSlider.getX() + (curveSlider.getWidth() - avpWidth - 5),
 	                     curveSlider.getY() + curveSlider.getHeight() * 3 / 2 + 5);
 
-	bool isSmall 		= (dfrmBox.getWidth() < 20);
+	bool isSmall 		= (pathBox.getWidth() < 20);
 	String gainText 	= isSmall ? "gn" 	: "gain";
-	String dfrmTextA 	= isSmall ? "DFM" 	: "DFRM";
-	String dfrmTextB 	= isSmall ? "CH" 	: "CHAN";
+	String pathTextA 	= isSmall ? "DFM" 	: "DFRM";
+	String pathTextB 	= isSmall ? "CH" 	: "CHAN";
 
-	int guideTextX 		= timeSlider.getRight() + 1 + (dfrmBox.getWidth() - Util::getStringWidth(font, dfrmTextA)) / 2;
-	int gainTextX 		= dfrmBox.getRight() + 1 + (gainKnob.getWidth() - Util::getStringWidth(font, gainText)) / 2;
+	int guideTextX 		= timeSlider.getRight() + 1 + (pathBox.getWidth() - Util::getStringWidth(font, pathTextA)) / 2;
+	int gainTextX 		= pathBox.getRight() + 1 + (gainKnob.getWidth() - Util::getStringWidth(font, gainText)) / 2;
 
 	float alpha = 0.65f;
-	getObj(MiscGraphics).drawShadowedText(g, dfrmTextA, guideTextX + 14, timeSlider.getY() - 7, font, alpha);
-	getObj(MiscGraphics).drawShadowedText(g, dfrmTextB, guideTextX, timeSlider.getY() + 4, 	font, alpha);
+	getObj(MiscGraphics).drawShadowedText(g, pathTextA, guideTextX + 14, timeSlider.getY() - 7, font, alpha);
+	getObj(MiscGraphics).drawShadowedText(g, pathTextB, guideTextX, timeSlider.getY() + 4, 	font, alpha);
 	getObj(MiscGraphics).drawShadowedText(g, gainText, 	gainTextX, 	timeSlider.getY() + 4, 	font, alpha);
 
 	Rectangle tSlider(properties[Vertex::Time].slider->getBounds());
 
 	g.setColour(Colours::black);
-	g.drawRect(ampVsPhaseProperties->dfrmChanBox->getBounds()
+	g.drawRect(ampVsPhaseProperties->pathChanBox->getBounds()
 	           .withX(tSlider.getX()).withWidth(tSlider.getWidth()));
 }
 
@@ -148,7 +148,7 @@ void VertexPropertiesPanel::resized() {
 		Rectangle<int> deformBounds = labelBounds.removeFromTop(knobWidth);
 
 		if(props->id != Vertex::Time) {
-			props->dfrmChanBox->setBounds(deformBounds.removeFromLeft(jmax(24, knobWidth)));
+			props->pathChanBox->setBounds(deformBounds.removeFromLeft(jmax(24, knobWidth)));
 
 			deformBounds.removeFromLeft(2);
 
@@ -167,7 +167,7 @@ void VertexPropertiesPanel::resized() {
 	                                    properties[Vertex::Curve].slider->getBounds().getBottomRight()));
 
 	Rectangle<int> deformBounds = labelBounds.removeFromTop(knobWidth);
-	ampVsPhaseProperties->dfrmChanBox->setBounds(deformBounds.removeFromLeft(jmax(24, knobWidth)));
+	ampVsPhaseProperties->pathChanBox->setBounds(deformBounds.removeFromLeft(jmax(24, knobWidth)));
 
 	deformBounds.removeFromLeft(2);
 	int size = jmin(deformBounds.getWidth(), deformBounds.getHeight());
@@ -178,15 +178,15 @@ void VertexPropertiesPanel::resized() {
 	                                  ampVsPhaseProperties->gain->getBounds().getBottomRight()));
 
 	boxArea.toBack();
-	boxArea.setBounds(Rectangle(properties[Vertex::Red].dfrmChanBox->getPosition(),
-	                                 ampVsPhaseProperties->dfrmChanBox->getBounds().getBottomRight()));
+	boxArea.setBounds(Rectangle(properties[Vertex::Red].pathChanBox->getPosition(),
+	                                 ampVsPhaseProperties->pathChanBox->getBounds().getBottomRight()));
 
 	labelBounds.removeFromTop(2);
 }
 
 void VertexPropertiesPanel::mouseEnter(const MouseEvent& e) {
 	Console* console = dynamic_cast<Console*>(&getObj(IConsole));
-	console->updateAll({}, "Parameters of selected vertices. Deformers warp path of parent lines",
+	console->updateAll({}, "Parameters of selected vertices. Paths warp path of parent lines",
 					   MouseUsage(false, false, false, false));
 }
 
@@ -248,14 +248,14 @@ void VertexPropertiesPanel::sliderValueChanged(Slider* slider) {
 		if (slider == properties[Vertex::Time].slider ||
 		    slider == properties[Vertex::Red].slider ||
 		    slider == properties[Vertex::Blue].slider) {
-			set<VertCube*> lines;
+			set<TrilinearCube*> lines;
 
 			vector<Vertex*>& selected = currentInteractor->getSelected();
 			for (auto it = selected.begin(); it != selected.end(); ++it) {
 				Vertex* vert = *it;
 
 				if (it == selected.begin()) {
-					VertCube* line = currentInteractor->getClosestLine(vert);
+					TrilinearCube* line = currentInteractor->getClosestLine(vert);
 					if(line != nullptr)
 						lines.insert(line);
 				}
@@ -292,19 +292,19 @@ void VertexPropertiesPanel::setSelectedAndCaller(Interactor* interactor)
 void VertexPropertiesPanel::updateComboBoxes() {
 	auto& meshLib = getObj(MeshLibrary);
 
-	int numDeformLayers = meshLib.getLayerGroup(LayerGroups::GroupDeformer).size();
+	int numDeformLayers = meshLib.getLayerGroup(LayerGroups::GroupPath).size();
 
 	vector<ComboBox*> boxes;
 
 	for (int i = 1; i < numSliders; ++i) {
-		boxes.push_back(properties[i].dfrmChanBox);
+		boxes.push_back(properties[i].pathChanBox);
 	}
 
-	boxes.push_back(ampVsPhaseProperties->dfrmChanBox);
+	boxes.push_back(ampVsPhaseProperties->pathChanBox);
 
 	for (auto box : boxes) {
 		box->clear(dontSendNotification);
-		box->addItem(String(L"\u2013"), NullDfrmId);
+		box->addItem(String(L"\u2013"), NullPathId);
 
 		for (int j = 0; j < numDeformLayers; ++j) {
 			box->addItem(String(j + 1), j + 2);
@@ -328,8 +328,8 @@ void VertexPropertiesPanel::updateSliderValues(bool ignoreChangeMessage)
 
 			props.slider->setValue(0., ignoreChangeMessage ? dontSendNotification : sendNotificationAsync);
 
-			if (props.dfrmChanBox != nullptr) {
-				props.dfrmChanBox->setSelectedId(NullDfrmId, dontSendNotification);
+			if (props.pathChanBox != nullptr) {
+				props.pathChanBox->setSelectedId(NullPathId, dontSendNotification);
 			}
 
 			if (props.gain) {
@@ -337,7 +337,7 @@ void VertexPropertiesPanel::updateSliderValues(bool ignoreChangeMessage)
 			}
 
 			if (i == Vertex::Amp) {
-				ampVsPhaseProperties->dfrmChanBox->setSelectedId(NullDfrmId, dontSendNotification);
+				ampVsPhaseProperties->pathChanBox->setSelectedId(NullPathId, dontSendNotification);
 				ampVsPhaseProperties->gain->setValue(
 					0.5, ignoreChangeMessage ? dontSendNotification : sendNotificationAsync);
 			}
@@ -360,13 +360,13 @@ void VertexPropertiesPanel::updateSliderValues(bool ignoreChangeMessage)
 
 	bool wrapsPhase = currentInteractor->getRasterizer()->wrapsVertices();
 
-	set<VertCube*> lines;
+	set<TrilinearCube*> lines;
 
 	bool isFirst = true;
 	for(auto& vert : selected) {
 		if (isFirst) {
 			isFirst = false;
-			VertCube* line = currentInteractor->getClosestLine(vert);
+			TrilinearCube* line = currentInteractor->getClosestLine(vert);
 			if(line != nullptr) {
 				lines.insert(line);
 			}
@@ -397,7 +397,7 @@ void VertexPropertiesPanel::updateSliderValues(bool ignoreChangeMessage)
 
 	for(auto& cube : lines) {
 		for(auto& props : gainProperties) {
-			props->previousGain += cube->dfrmGainAt(props->id) * invLinesSize;
+			props->previousGain += cube->pathGainAt(props->id) * invLinesSize;
 		}
 	}
 
@@ -409,13 +409,13 @@ void VertexPropertiesPanel::updateSliderValues(bool ignoreChangeMessage)
 	properties[CurveSldr].slider->name = "curve";
 
 	if (lines.size() == 1) {
-		if (ampVsPhaseProperties->dfrmChanBox->getSelectedId() != NullDfrmId) {
-			properties[CurveSldr].slider->name = "Dfrm gain";
+		if (ampVsPhaseProperties->pathChanBox->getSelectedId() != NullPathId) {
+			properties[CurveSldr].slider->name = "Path gain";
 		}
 	}
 }
 
-void VertexPropertiesPanel::refreshCube(set<VertCube*>& lines)
+void VertexPropertiesPanel::refreshCube(set<TrilinearCube*>& lines)
 {
 	vector<Vertex*> selected = currentInteractor->getSelected();
 
@@ -436,7 +436,7 @@ void VertexPropertiesPanel::refreshCube(set<VertCube*>& lines)
 		Interactor::VertexProps& itrProps = currentInteractor->vertexProps;
 
 		Vertex* selectedVert = *selected.begin();
-		VertCube* selectedLine = *lines.begin();
+		TrilinearCube* selectedLine = *lines.begin();
 
 		getObj(MorphPanel).setSelectedCube(selectedVert, selectedLine,
 		                                    scratchChannel, itrProps.isEnvelope);
@@ -455,7 +455,7 @@ void VertexPropertiesPanel::sliderDragEnded(Slider* slider) {
 			slider == properties[Vertex::Key].slider ||
 			slider == properties[Vertex::Mod].slider)
 	{
-		set<VertCube*> lines;
+		set<TrilinearCube*> lines;
 
 		vector<Vertex*>& selected = currentInteractor->getSelected();
 		for(vector<Vertex*>::iterator it = selected.begin(); it != selected.end(); ++it)
@@ -529,14 +529,14 @@ void VertexPropertiesPanel::buttonClicked(Button* button) {
 
 void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 	if (!currentInteractor) {
-		box->setSelectedId(NullDfrmId, dontSendNotification);
+		box->setSelectedId(NullPathId, dontSendNotification);
 
 		return;
 	}
 
 	int dim = -1;
 	for (int i = 0; i < numSliders; ++i) {
-		if (box == properties[i].dfrmChanBox)
+		if (box == properties[i].pathChanBox)
 			dim = i;
 	}
 
@@ -547,7 +547,7 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 		}
 
 		dim = Vertex::Time;
-		jassert(box == ampVsPhaseProperties->dfrmChanBox);
+		jassert(box == ampVsPhaseProperties->pathChanBox);
 	} else {
 		if (!currentInteractor->vertexProps.sliderApplicable[dim]) {
 			showConsoleMsg("This dimension is not applicable in this context");
@@ -558,7 +558,7 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 	vector<Vertex*>& selected = currentInteractor->getSelected();
 
 	if (selected.empty()) {
-		box->setSelectedId(NullDfrmId, dontSendNotification);
+		box->setSelectedId(NullPathId, dontSendNotification);
 
 		showConsoleMsg("Select a vertex first!");
 		return;
@@ -567,26 +567,26 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 	int id = box->getSelectedId();
 	int guideIndex = -1;
 
-	if (id == NullDfrmId) {
+	if (id == NullPathId) {
 		// leave as is
 	} else {
-		guideIndex = id - NullDfrmId - 1;
+		guideIndex = id - NullPathId - 1;
 	}
 
 	info("set guide dim to " << dim << "\n");
 
-	vector<VertCube*> affectedLines;
+	vector<TrilinearCube*> affectedLines;
 	vector<int> previousMappings;
 
 	for(auto& vert : selected) {
 		for(auto& cube : vert->owners) {
 			affectedLines.push_back(cube);
-			previousMappings.push_back(cube->deformerAt(dim));
+			previousMappings.push_back(cube->pathAt(dim));
 		}
 	}
 
 	getObj(EditWatcher).addAction(
-			new DeformerAssignment(
+			new PathAssignment(
 				currentInteractor->getSingletonRepo(),
 				currentInteractor->getUpdateSource(),
 				currentInteractor->getMesh(),
@@ -614,17 +614,17 @@ void VertexPropertiesPanel::gainChanged(Slider* slider, int changeType)
 
 	int id = props->id;
 	bool deformEnabled = currentInteractor->vertexProps.deformApplicable[id];
-	deformEnabled &= props->dfrmChanBox->getSelectedId() != NullDfrmId;
+	deformEnabled &= props->pathChanBox->getSelectedId() != NullPathId;
 
 	if(deformEnabled) {
 		if (changeType == ValueChanged) {
 			vector<Vertex*>& selected = currentInteractor->getSelected();
 
 			for(auto& vert : selected) {
-				VertCube* cube = vert->owners.getFirst();
+				TrilinearCube* cube = vert->owners.getFirst();
 
 				if (cube != nullptr) {
-					float& unitValue = cube->dfrmGainAt(id);
+					float& unitValue = cube->pathGainAt(id);
 					unitValue = jlimit<float>(0.f, 1.f, unitValue + (slider->getValue() - props->previousGain));
 				}
 			}
@@ -655,12 +655,12 @@ juce::Component* VertexPropertiesPanel::getComponent(int which) {
 		case CycleTour::TargCrvSlider: 	return properties[Vertex::Curve].slider;
 
 		case CycleTour::TargBoxArea: 	return &boxArea;
-		case CycleTour::TargPhsBox: 	return properties[Vertex::Phase].dfrmChanBox;
-		case CycleTour::TargAmpBox: 	return properties[Vertex::Amp].dfrmChanBox;
-		case CycleTour::TargKeyBox: 	return properties[Vertex::Red].dfrmChanBox;
-		case CycleTour::TargModBox: 	return properties[Vertex::Blue].dfrmChanBox;
-		case CycleTour::TargCrvBox: 	return properties[Vertex::Curve].dfrmChanBox;
-		case CycleTour::TargAvpBox: 	return ampVsPhaseProperties->dfrmChanBox;
+		case CycleTour::TargPhsBox: 	return properties[Vertex::Phase].pathChanBox;
+		case CycleTour::TargAmpBox: 	return properties[Vertex::Amp].pathChanBox;
+		case CycleTour::TargKeyBox: 	return properties[Vertex::Red].pathChanBox;
+		case CycleTour::TargModBox: 	return properties[Vertex::Blue].pathChanBox;
+		case CycleTour::TargCrvBox: 	return properties[Vertex::Curve].pathChanBox;
+		case CycleTour::TargAvpBox: 	return ampVsPhaseProperties->pathChanBox;
 
 		case CycleTour::TargGainArea: 	return &gainArea;
 		case CycleTour::TargPhsGain: 	return properties[Vertex::Phase].gain;
@@ -689,7 +689,7 @@ void VertexPropertiesPanel::refreshValueBoxesFromSelected() {
 
 		for(int vertIdx = 0; vertIdx < (int) selected.size(); ++vertIdx) {
 			Vertex* vert = selected[vertIdx];
-			VertCube* a = vert->owners.getFirst();
+			TrilinearCube* a = vert->owners.getFirst();
 
 			if(a == nullptr) {
 				continue;
@@ -697,9 +697,9 @@ void VertexPropertiesPanel::refreshValueBoxesFromSelected() {
 
 			for (int j = 0; j < numSliders; ++j) {
 				if(vertIdx == 0) {
-					guideLayerIdx[j] = a->deformerAt(j);
+					guideLayerIdx[j] = a->pathAt(j);
 				} else {
-					common[j] &= (guideLayerIdx[j] == a->deformerAt(j));
+					common[j] &= (guideLayerIdx[j] == a->pathAt(j));
 				}
 			}
 		}
@@ -716,7 +716,7 @@ void VertexPropertiesPanel::refreshValueBoxesFromSelected() {
 				props = &properties[i];
 			}
 
-			props->dfrmChanBox->setSelectedId(guideLayerIdx[i] < 0 ? NullDfrmId : guideLayerIdx[i] + 1 + NullDfrmId,
+			props->pathChanBox->setSelectedId(guideLayerIdx[i] < 0 ? NullPathId : guideLayerIdx[i] + 1 + NullPathId,
 			                                  dontSendNotification);
 		}
 	}
@@ -726,7 +726,7 @@ VertexPropertiesPanel::VertexProperties::~VertexProperties() {
 	gain 		= nullptr;
 	slider 		= nullptr;
 	messager	= nullptr;
-	dfrmChanBox	= nullptr;
+	pathChanBox	= nullptr;
 }
 
 VertexPropertiesPanel::VertexProperties::VertexProperties(
@@ -740,7 +740,7 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 		,	gain		(nullptr)
 		,	slider		(nullptr)
 		,	messager	(nullptr)
-		,	dfrmChanBox	(nullptr)
+		,	pathChanBox	(nullptr)
 {
 	StringArray names;
 
@@ -766,18 +766,18 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 	}
 
 	if (name != "time") {
-		panel->addAndMakeVisible(dfrmChanBox = new ComboBox());
+		panel->addAndMakeVisible(pathChanBox = new ComboBox());
 
-		dfrmChanBox->addListener(panel);
-		dfrmChanBox->setWantsKeyboardFocus(false);
-		dfrmChanBox->setMouseClickGrabsKeyboardFocus(false);
-		dfrmChanBox->setTextWhenNothingSelected(String(L"\u2013"));
-		dfrmChanBox->setColour(ComboBox::outlineColourId, Colours::black);
+		pathChanBox->addListener(panel);
+		pathChanBox->setWantsKeyboardFocus(false);
+		pathChanBox->setMouseClickGrabsKeyboardFocus(false);
+		pathChanBox->setTextWhenNothingSelected(String(L"\u2013"));
+		pathChanBox->setColour(ComboBox::outlineColourId, Colours::black);
 
 		int srcId, destId;
 		panel->getSourceDestDimensionIds(id, srcId, destId);
 
-		messager = new MouseOverMessager(repo, "Set deform channel for " + names[srcId] + " versus " + names[destId], dfrmChanBox);
+		messager = new MouseOverMessager(repo, "Set deform channel for " + names[srcId] + " versus " + names[destId], pathChanBox);
 
 		panel->addAndMakeVisible(gain = new Knob(panel->repo));
 
@@ -786,13 +786,13 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 
 		gain->setRange(0, 1);
 		gain->addListener(&panel->gainListener);
-		gain->setHint("Deformer gain");
+		gain->setHint("Path gain");
 		gain->setColour(Colour::greyLevel(0.4f));
 		gain->setStringFunctions(decibel30, decibel30.withPostString(" dB"));
 		gain->setDrawValueText(false);
 
 		if (id == Vertex::Red || id == Vertex::Blue) {
-//			dfrmChanBox->setEnabled(false);
+//			pathChanBox->setEnabled(false);
 //			gain->setEnabled(false);
 		}
 	}
@@ -817,7 +817,7 @@ VertexPropertiesPanel::VertexProperties& VertexPropertiesPanel::VertexProperties
 	previousValue 	= copy.previousValue;
 
 	slider 			= copy.slider;
-	dfrmChanBox 	= copy.dfrmChanBox;
+	pathChanBox 	= copy.pathChanBox;
 	gain 			= copy.gain;
 	messager		= copy.messager;
 
@@ -856,12 +856,12 @@ void VertexPropertiesPanel::updateSliderProperties() {
 						: String();
 		}
 
-		if (props.dfrmChanBox != nullptr) {
+		if (props.pathChanBox != nullptr) {
 			if (!itrProps.deformApplicable[i]) {
-				props.dfrmChanBox->setSelectedId(NullDfrmId, dontSendNotification);
+				props.pathChanBox->setSelectedId(NullPathId, dontSendNotification);
 			}
 
-			props.dfrmChanBox->setEnabled(itrProps.deformApplicable[i]);
+			props.pathChanBox->setEnabled(itrProps.deformApplicable[i]);
 
 			if(! itrProps.deformApplicable[i]) {
 				props.gain->setValue(0.5, dontSendNotification);
@@ -873,7 +873,7 @@ void VertexPropertiesPanel::updateSliderProperties() {
 	}
 
 	if (!itrProps.ampVsPhaseApplicable) {
-		ampVsPhaseProperties->dfrmChanBox->setSelectedId(NullDfrmId, dontSendNotification);
+		ampVsPhaseProperties->pathChanBox->setSelectedId(NullPathId, dontSendNotification);
 		ampVsPhaseProperties->gain->setValue(0.5, dontSendNotification);
 		ampVsPhaseProperties->messager->message = {};
 		ampVsPhaseStr = "--";
@@ -883,7 +883,7 @@ void VertexPropertiesPanel::updateSliderProperties() {
 		ampVsPhaseStr = "component curve"; // "(" + names[Vertex::Amp] + " versus " + names[Vertex::Phase] + ")";
 	}
 
-	ampVsPhaseProperties->dfrmChanBox->setEnabled(itrProps.ampVsPhaseApplicable);
+	ampVsPhaseProperties->pathChanBox->setEnabled(itrProps.ampVsPhaseApplicable);
 	ampVsPhaseProperties->gain->setEnabled(itrProps.ampVsPhaseApplicable);
 }
 

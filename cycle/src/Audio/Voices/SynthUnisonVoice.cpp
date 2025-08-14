@@ -9,9 +9,9 @@
 
 #include "../../Audio/Effects/Unison.h"
 #include "../../Audio/SynthAudioSource.h"
-#include "../../Curve/CycleState.h"
-#include "../../Curve/EnvRenderContext.h"
-#include "../../UI/VertexPanels/DeformerPanel.h"
+#include "../../Wireframe/CycleState.h"
+#include "../../Wireframe/EnvRenderContext.h"
+#include "../../UI/VertexPanels/PathPanel.h"
 #include "../../UI/VertexPanels/Waveform3D.h"
 
 SynthUnisonVoice::SynthUnisonVoice(SynthesizerVoice* parent, SingletonRepo* repo) :
@@ -55,7 +55,7 @@ void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float
 
             state.reset();
 
-            timeRasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
+            timeRasterizer.setNoiseSeed(random.nextInt(PathPanel::tableSize));
 
             //			modMatrix->route(progress, ModMatrixPanel::VoiceTime, parent->voiceIndex);
             MorphPosition pos = layer.props->pos[parent->voiceIndex];
@@ -67,11 +67,11 @@ void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float
             timeRasterizer.setWrapsEnds(true);
 
             if (cycleCompositeAlgo == Interpolate) {
-                timeRasterizer.calcCrossPoints(layer.mesh, oscPhase);
+                timeRasterizer.generateControlPoints(layer.mesh, oscPhase);
             } else {
                 // prime rasterizer
                 timeRasterizer.setMesh(layer.mesh);
-                timeRasterizer.calcCrossPointsChaining(oscPhase);
+                timeRasterizer.generateControlPointsChaining(oscPhase);
             }
         }
     }
@@ -115,7 +115,7 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
         pos.time = getScratchTime(layer.props->scratchChan, group.cumePos);
 
         timeRasterizer.setMorphPosition(pos);
-        timeRasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
+        timeRasterizer.setNoiseSeed(random.nextInt(PathPanel::tableSize));
 
         if (cycleCompositeAlgo == Interpolate) {
             delta = 1 / (double) samplingSize;
@@ -123,14 +123,14 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
             state.advancement = 0.f;
 
             timeRasterizer.setInterceptPadding((float) delta);
-            timeRasterizer.calcCrossPoints(layer.mesh, totalPhase);
+            timeRasterizer.generateControlPoints(layer.mesh, totalPhase);
         } else {
             delta = group.angleDelta / double(oversampleFactor);
             spillover = state.spillover; //group.samplingSpillover[0];
 
             timeRasterizer.setMesh(layer.mesh);
             timeRasterizer.setInterceptPadding(jmax(-spillover, delta));
-            timeRasterizer.calcCrossPointsChaining(totalPhase);
+            timeRasterizer.generateControlPointsChaining(totalPhase);
         }
 
         Buffer<float> rastBuf(rastBuffer, samplingSize);

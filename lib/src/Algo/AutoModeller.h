@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Array/ScopedAlloc.h"
-#include "../Curve/Rasterizer2D.h"
+#include "../Wireframe/Rasterizer/Rasterizer2D.h"
 #include "../Util/Geometry.h"
 
 class Interactor2D;

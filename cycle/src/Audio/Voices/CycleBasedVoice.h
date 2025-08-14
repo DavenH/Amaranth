@@ -11,7 +11,7 @@
 
 #include "JuceHeader.h"
 #include "VoiceParameterGroup.h"
-#include "../../Curve/VoiceMeshRasterizer.h"
+#include "../../Wireframe/VoiceMeshRasterizer.h"
 
 using std::vector;
 
