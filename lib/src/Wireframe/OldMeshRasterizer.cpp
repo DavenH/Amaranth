@@ -1,10 +1,11 @@
 #include <iterator>
 #include <cmath>
 #include <climits>
+#include <Util/Arithmetic.h>
+
 #include "Mesh.h"
 #include "OldMeshRasterizer.h"
-
-#include <Util/Arithmetic.h>
+#include "Path/ICurvePath.h"
 
 #include "../App/AppConstants.h"
 #include "../Array/ScopedAlloc.h"
@@ -12,7 +13,6 @@
 #include "../Util/CommonEnums.h"
 #include "../Util/NumberUtils.h"
 #include "../Util/Util.h"
-#include "Path/ICurvePath.h"
 
 float OldMeshRasterizer::transferTable[CurvePiece::resolution];
 
@@ -47,7 +47,7 @@ OldMeshRasterizer::OldMeshRasterizer(const String& name) :
 }
 
 
-OldMeshRasterizer::~MeshRasterizer() {
+OldMeshRasterizer::~OldMeshRasterizer() {
     waveX.nullify();
     waveY.nullify();
     diffX.nullify();
@@ -954,23 +954,23 @@ void OldMeshRasterizer::applyPaths(
     noise.noiseSeed = noiseSeed;
 
     if (cube->pathAt(Vertex::Red) >= 0) {
-        int path = cube->pathAt(Vertex::Red);
+        int pathChan = cube->pathAt(Vertex::Red);
         float progress = cube->getPortionAlong(Vertex::Red, morph);
 
-        noise.vertOffset  = vertOffsetSeeds [path];
-        noise.phaseOffset = phaseOffsetSeeds[path];
+        noise.vertOffset  = vertOffsetSeeds [pathChan];
+        noise.phaseOffset = phaseOffsetSeeds[pathChan];
 
-        icpt.adjustedX += cube->pathAbsGain(Vertex::Red) * path->getTableValue(path, progress, noise);
+        icpt.adjustedX += cube->pathAbsGain(Vertex::Red) * this->path->getTableValue(pathChan, progress, noise);
     }
 
     if (cube->pathAt(Vertex::Blue) >= 0) {
-        int path = cube->pathAt(Vertex::Blue);
+        int pathChan = cube->pathAt(Vertex::Blue);
         float progress = cube->getPortionAlong(Vertex::Blue, morph);
 
-        noise.vertOffset  = vertOffsetSeeds [path];
-        noise.phaseOffset = phaseOffsetSeeds[path];
+        noise.vertOffset  = vertOffsetSeeds [pathChan];
+        noise.phaseOffset = phaseOffsetSeeds[pathChan];
 
-        icpt.adjustedX += cube->pathAbsGain(Vertex::Blue) * path->getTableValue(path, progress, noise);
+        icpt.adjustedX += cube->pathAbsGain(Vertex::Blue) * this->path->getTableValue(pathChan, progress, noise);
     }
 
     float timeMin = reduct.v0.values[Vertex::Time];
@@ -991,7 +991,7 @@ void OldMeshRasterizer::applyPaths(
         noise.phaseOffset = phaseOffsetSeeds[pathChan];
 
         if (!ignore) {
-            icpt.y += cube->pathAbsGain(Vertex::Amp) * path->getTableValue(pathChan, progress, noise);
+            icpt.y += cube->pathAbsGain(Vertex::Amp) * this->path->getTableValue(pathChan, progress, noise);
             NumberUtils::constrain(icpt.y, (scalingType != Unipolar ? -1.f : 0.f), 1.f);
         }
     }
@@ -1002,7 +1002,7 @@ void OldMeshRasterizer::applyPaths(
         noise.phaseOffset = phaseOffsetSeeds[pathChan];
 
         if (!ignore) {
-            icpt.adjustedX += cube->pathAbsGain(Vertex::Phase) * path->getTableValue(pathChan, progress, noise);
+            icpt.adjustedX += cube->pathAbsGain(Vertex::Phase) * this->path->getTableValue(pathChan, progress, noise);
 
             if (cyclic) {
                 float lastAdjX = icpt.adjustedX;
@@ -1019,11 +1019,11 @@ void OldMeshRasterizer::applyPaths(
     }
 
     if (cube->pathAt(Vertex::Curve) >= 0) {
-        int path = cube->pathAt(Vertex::Curve);
-        noise.vertOffset  = vertOffsetSeeds[path];
-        noise.phaseOffset = phaseOffsetSeeds[path];
+        int pathChan = cube->pathAt(Vertex::Curve);
+        noise.vertOffset  = vertOffsetSeeds[pathChan];
+        noise.phaseOffset = phaseOffsetSeeds[pathChan];
 
-        icpt.shp += 2 * cube->pathAbsGain(Vertex::Curve) * path->getTableValue(path, progress, noise);
+        icpt.shp += 2 * cube->pathAbsGain(Vertex::Curve) * this->path->getTableValue(pathChan, progress, noise);
 
         NumberUtils::constrain(icpt.shp, 0.f, 1.f);
     }
@@ -1093,7 +1093,7 @@ void OldMeshRasterizer::setResolutionIndices(float base) {
 void OldMeshRasterizer::preCleanup() {
 }
 
-MeshRasterizer& OldMeshRasterizer::operator=(const MeshRasterizer& copy) {
+OldMeshRasterizer& OldMeshRasterizer::operator=(const OldMeshRasterizer& copy) {
 //    jassertfalse;
 
     this->xMinimum     = copy.xMinimum;
@@ -1124,7 +1124,7 @@ MeshRasterizer& OldMeshRasterizer::operator=(const MeshRasterizer& copy) {
     return *this;
 }
 
-OldMeshRasterizer::MeshRasterizer(const MeshRasterizer& copy) {
+OldMeshRasterizer::OldMeshRasterizer(const OldMeshRasterizer& copy) {
 //    jassertfalse;
 
     operator=(copy);
@@ -1300,4 +1300,3 @@ void OldMeshRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
         phaseOffsetSeeds[i] = rand.nextInt(tableSize);
     }
 }
-

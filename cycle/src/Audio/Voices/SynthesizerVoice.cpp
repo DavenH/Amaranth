@@ -4,19 +4,20 @@
 #include <App/SingletonRepo.h>
 #include <Array/Buffer.h>
 #include <Util/Arithmetic.h>
+#include <Wireframe/Env/EnvelopeMesh.h>
 
 #include "CycleBasedVoice.h"
-#include "SynthesizerVoice.h"
-#include "Algo/Resampling.h"
-#include "../SynthAudioSource.h"
-#include "../CycleDefs.h"
 #include "../../UI/Panels/ModMatrixPanel.h"
 #include "../../UI/Panels/OscControlPanel.h"
-#include "../../UI/VertexPanels/PathPanel.h"
 #include "../../UI/VertexPanels/Envelope2D.h"
+#include "../../UI/VertexPanels/PathPanel.h"
 #include "../../UI/VertexPanels/Spectrum3D.h"
 #include "../../UI/VertexPanels/Waveform3D.h"
 #include "../../Util/CycleEnums.h"
+#include "../CycleDefs.h"
+#include "../SynthAudioSource.h"
+#include "Algo/Resampling.h"
+#include "SynthesizerVoice.h"
 
 SynthesizerVoice::SynthesizerVoice(int voiceIndex, SingletonRepo* repo) :
         SingletonAccessor(repo, "SynthesizerVoice")

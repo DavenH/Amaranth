@@ -8,6 +8,7 @@
 #include <UI/Panels/Texture.h>
 #include <UI/Panels/ZoomPanel.h>
 #include <UI/Widgets/CalloutUtils.h>
+#include <Wireframe/Env/EnvelopeMesh.h>
 
 #include "Envelope2D.h"
 #include "Spectrum3D.h"

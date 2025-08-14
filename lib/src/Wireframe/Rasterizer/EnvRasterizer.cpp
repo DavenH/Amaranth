@@ -2,7 +2,7 @@
 
 #include <Definitions.h>
 
-#include "EnvelopeMesh.h"
+#include "../Env/EnvelopeMesh.h"
 #include "../Path/ICurvePath.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Util/Arithmetic.h"

@@ -2,12 +2,10 @@
 #include <App/EditWatcher.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <../../../lib/>
-#include <../../../lib/>
 #include <Design/Updating/Updater.h>
-#include <Inter/UndoableMeshProcess.h>
 #include <Inter/Interactor.h>
 #include <Inter/Interactor2D.h>
+#include <Inter/UndoableMeshProcess.h>
 #include <UI/Panels/ZoomPanel.h>
 
 #include "Dialogs.h"

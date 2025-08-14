@@ -11,23 +11,24 @@
 #include <Util/LogRegions.h>
 #include <Util/NumberUtils.h>
 #include <Util/Util.h>
+#include <Wireframe/Env/EnvelopeMesh.h>
 
 #include "VisualDsp.h"
-#include "Algo/Resampling.h"
 #include "../App/Initializer.h"
 #include "../Audio/AudioSourceRepo.h"
 #include "../Audio/SynthAudioSource.h"
-#include "../Wireframe/ScratchContext.h"
 #include "../CycleDefs.h"
 #include "../UI/Effects/UnisonUI.h"
 #include "../UI/Panels/Morphing/MorphPanel.h"
 #include "../UI/Panels/OscControlPanel.h"
-#include "../UI/VertexPanels/PathPanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
+#include "../UI/VertexPanels/PathPanel.h"
 #include "../UI/VertexPanels/Spectrum3D.h"
 #include "../UI/VertexPanels/Waveform3D.h"
 #include "../UI/Widgets/HSlider.h"
 #include "../Util/CycleEnums.h"
+#include "../Wireframe/ScratchContext.h"
+#include "Algo/Resampling.h"
 
 VisualDsp::VisualDsp(SingletonRepo* repo) :
         SingletonAccessor(repo, "VisualDsp")

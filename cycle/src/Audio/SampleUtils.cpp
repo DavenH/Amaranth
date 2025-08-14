@@ -5,7 +5,6 @@
 #include <App/SingletonRepo.h>
 #include <Audio/Multisample.h>
 #include <Audio/PitchedSample.h>
-#include <../../../lib/>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <UI/IConsole.h>
@@ -59,15 +58,16 @@ int SampleUtils::calcFundDelta() {
         for (int i = 0; i < numElementsInArray(testSamples); ++i) {
             PitchedSample* sample = testSamples[i];
 
-            if(sample == nullptr || sample->fundNote < 10)
+            if (sample == nullptr || sample->fundNote < 10) {
                 continue;
+            }
 
             tracker->setSample(sample);
             tracker->trackPitch();
 
             if (tracker->getConfidence() < 10) {
                 float wavFrequency = sample->samplerate / sample->getAveragePeriod();
-                int fundCalced = roundToInt(NumberUtils::frequencyToNote(wavFrequency));
+                int fundCalced     = roundToInt(NumberUtils::frequencyToNote(wavFrequency));
 
                 ++numGood;
                 diffs[i] = fundCalced - sample->fundNote;

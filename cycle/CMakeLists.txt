@@ -25,8 +25,10 @@ else()
     set(TARGET_TYPE "Plugin")
 endif()
 
-# Add test executable regardless of build type
-add_executable(${PROJECT_NAME}_tests ${APP_TEST_SOURCES} ${APP_SOURCES})
+if(BUILD_TESTING)
+    # Add test executable when testing is enabled
+    add_executable(${PROJECT_NAME}_tests ${APP_TEST_SOURCES} ${APP_SOURCES})
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -35,21 +37,23 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${IPP_DIR}/include/ipp
 )
 
-target_include_directories(${PROJECT_NAME}_tests PRIVATE
-        "/usr/local/include"
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests
-        ${JUCE_DIR}
-        ${JUCE_MODULES_DIR}
-        ${IPP_DIR}/include/ipp
-        ${ALSA_INCLUDE_DIRS}
-        ${FREETYPE_INCLUDE_DIRS}
-        ${FONTCONFIG_INCLUDE_DIRS}
-        ${OPENGL_INCLUDE_DIRS}
-        ${CURL_INCLUDE_DIRS}
-        ${GTK3_INCLUDE_DIRS}
-        ${WEBKIT_INCLUDE_DIRS}
-)
+if(BUILD_TESTING)
+    target_include_directories(${PROJECT_NAME}_tests PRIVATE
+            "/usr/local/include"
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests
+            ${JUCE_DIR}
+            ${JUCE_MODULES_DIR}
+            ${IPP_DIR}/include/ipp
+            ${ALSA_INCLUDE_DIRS}
+            ${FREETYPE_INCLUDE_DIRS}
+            ${FONTCONFIG_INCLUDE_DIRS}
+            ${OPENGL_INCLUDE_DIRS}
+            ${CURL_INCLUDE_DIRS}
+            ${GTK3_INCLUDE_DIRS}
+            ${WEBKIT_INCLUDE_DIRS}
+    )
+endif()
 
 #target_include_directories(${PROJECT_NAME}_tests PRIVATE "/usr/local/include")
 
@@ -57,9 +61,11 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/Incl/JucePluginDefines.h"
 )
 
-target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
-    JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/Incl/JucePluginDefines.h"
-)
+if(BUILD_TESTING)
+    target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
+        JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/Incl/JucePluginDefines.h"
+    )
+endif()
 
 # Base definitions for both builds
 set(BASE_DEFINITIONS
@@ -105,7 +111,12 @@ elseif(APPLE)
     )
 endif()
 
-target_link_libraries(${PROJECT_NAME}_tests PRIVATE Catch2::Catch2WithMain)
+if(BUILD_TESTING)
+    target_link_libraries(${PROJECT_NAME}_tests PRIVATE
+        AmaranthLib
+        Catch2::Catch2WithMain
+    )
+endif()
 
 target_link_directories(${PROJECT_NAME} PRIVATE
     ${IPP_DIR}/lib
@@ -121,9 +132,11 @@ if(NOT APPLE)
     target_link_options(${PROJECT_NAME} PRIVATE -fvisibility=hidden)
 endif()
 
-include(CTest)
-include(Catch)
-catch_discover_tests(${PROJECT_NAME}_tests)
+if(BUILD_TESTING)
+    include(CTest)
+    include(Catch)
+    catch_discover_tests(${PROJECT_NAME}_tests)
+endif()
 
 if(UNIX AND NOT APPLE)
     install(TARGETS ${PROJECT_NAME}

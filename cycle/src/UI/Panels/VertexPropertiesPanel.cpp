@@ -3,7 +3,6 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <../../../../lib/>
 #include <Inter/Interactor.h>
 #include <Inter/Interactor3D.h>
 #include <Inter/UndoableActions.h>

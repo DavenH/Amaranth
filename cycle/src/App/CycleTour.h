@@ -6,6 +6,7 @@
 #include <App/SingletonRepo.h>
 #include "JuceHeader.h"
 #include <Util/CommonEnums.h>
+#include <Wireframe/Vertex/Vertex2.h>
 
 #include "../Audio/Effects/Unison.h"
 #include "../UI/Panels/SynthMenuBarModel.h"
@@ -557,5 +558,5 @@ private:
 	HashMap<String, Area> 		areaStrings;
 	HashMap<String, Comparable> compareStrings;
 	HashMap<String, ActionType> actionStrings;
-	WireframeHashMap<String, CondOper> 	condStrings;
+	HashMap<String, CondOper> 	condStrings;
 };
