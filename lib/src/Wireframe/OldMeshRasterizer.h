@@ -14,7 +14,7 @@
 using std::vector;
 
 class Interactor;
-class ICurvePath;
+class IPathSampler;
 
 typedef vector<Intercept>::iterator IcptIter;
 typedef vector<Intercept>::const_iterator ConstIcptIter;
@@ -218,7 +218,7 @@ public:
     const vector<Intercept>& getBackIcpts() const   { return backIcpts;                 }
     vector<ColorPoint>& getColorPoints()            { return colorPoints;               }
     RasterizerData& getRastData()                   { return rastArrays;                }
-    ICurvePath* getPath() const                     { return path;                  }
+    IPathSampler* getPath() const                     { return path;                  }
 
     void setBatchMode(bool batch)                   { batchMode = batch;                }
     void setWrapsEnds(bool wraps)                   { cyclic = wraps;                   }
@@ -239,7 +239,7 @@ public:
     void setBlue(float blue)                        { morph.blue    = blue;             }
     virtual void setRed(float red)                  { morph.red     = red;              }
     void setMorphPosition(const MorphPosition& m)   { morph         = m;                }
-    void setPath(ICurvePath* panel)                 { path      = panel;            }
+    void setPath(IPathSampler* panel)                 { path      = panel;            }
 
     virtual Mesh* getMesh()                         { return mesh;                      }
     virtual void setMesh(Mesh* mesh)                { this->mesh = mesh;                }
@@ -303,7 +303,7 @@ protected:
 
     Buffer<float> waveX, waveY, diffX, slope, area; // SimpleCurveSampler
     TrilinearCube::ReductionData reduct; // PathdeformingPositioner
-    ICurvePath* path;
+    IPathSampler* path;
     Mesh* mesh;
 
     JUCE_LEAK_DETECTOR(OldMeshRasterizer)

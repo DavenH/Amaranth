@@ -2,7 +2,7 @@
 
 enum ScalingType { Unipolar, Bipolar, HalfBipolar };
 
-struct CurveParameters {
+struct PositionerParameters {
     bool cyclic{false};
     bool interpolate{true};
     float padding{0.0f};
@@ -17,13 +17,12 @@ struct GeneratorParameters {
     // Defaults to 2 in OldMeshRasterizer. FXRasterizer sets it to 1.
     int paddingCount{2};
 
-    // base = some runtime size of the wavelength?
-    float base{1.f};
+    bool interpolateCurves{false};
+    bool integralSampling{false};
+    bool lowResolution{false};
 };
 
 struct SamplingParameters {
-    bool integralSampling{false};
-    bool lowResolution{false};
     int oversamplingFactor{1};
 };
 
@@ -32,7 +31,7 @@ struct InterpolatorParameters {
 };
 
 struct RasterizerParameters {
-    CurveParameters curve;
+    PositionerParameters curve;
     SamplingParameters sampling;
     GeneratorParameters generator;
     InterpolatorParameters interpolation{};

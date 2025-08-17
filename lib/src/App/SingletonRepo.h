@@ -9,7 +9,7 @@ class SingletonAccessor;
 class OldMeshRasterizer;
 class MorphPositioner;
 class IConsole;
-class ICurvePath;
+class IPathSampler;
 class Panel;
 using namespace juce;
 
@@ -31,11 +31,11 @@ public:
     void setDebugStream(OutputStream* output)           { this->debugStream.reset(output);   }
     void setMorphPositioner(MorphPositioner* positioner){ this->positioner = positioner;     }
     void setConsole(IConsole* console)                  { this->console = console;           }
-    void setPath(ICurvePath* path);
+    void setPath(IPathSampler* path);
 
     MorphPositioner& getMorphPosition()                 { return *positioner;   }
     IConsole& getConsole()                              { return *console;      }
-    ICurvePath& getPath()                            { return *path;     }
+    IPathSampler& getPath()                            { return *path;     }
 
     /* ----------------------------------------------------------------------------- */
 
@@ -71,7 +71,7 @@ protected:
 
     Ref<MorphPositioner> positioner;
     Ref<IConsole> console;
-    Ref<ICurvePath> path;
+    Ref<IPathSampler> path;
 
     Array<Savable*> saveSources;
     Array<Panel*> panels;

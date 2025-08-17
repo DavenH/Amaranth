@@ -540,7 +540,7 @@ void SynthAudioSource::updateTempoScale() {
 
 void SynthAudioSource::updateGlobality() {
     MeshLibrary::LayerGroup& scratchGroup = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch);
-    ICurvePath& path                   = getObj(PathPanel);
+    IPathSampler& path                   = getObj(PathPanel);
 
     globalScratch.clear();
 

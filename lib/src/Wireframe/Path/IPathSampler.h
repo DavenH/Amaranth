@@ -3,7 +3,7 @@
 #include "../../Array/Buffer.h"
 
 /**
- * @class ICurvePath
+ * @class IPathSampler
  * @brief Allows us to make 'meta-curves' by storing a curve path in a pre-rendered table,
  * and reusing this shape as a 'CurvePiece' -- a stretch of the waveform between two
  * control points.
@@ -34,9 +34,9 @@
  * @see @class PathDeformingCurveSampler
  * @see @class PathDeformingPositioner
  **/
-class ICurvePath {
+class IPathSampler {
 public:
-    virtual ~ICurvePath() = default;
+    virtual ~IPathSampler() = default;
 
     enum { tableSize = 0x2000 };
 

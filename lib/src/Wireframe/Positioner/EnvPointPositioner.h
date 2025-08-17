@@ -4,7 +4,7 @@
 
 class EnvPointPositioner : public PointPositioner {
 public:
-    void adjustControlPoints(vector<Intercept>& controlPoints, CurveParameters config) override {
+    void adjustControlPoints(vector<Intercept>& controlPoints, PositionerParameters config) override {
 
         if (scalingType != Bipolar) {
             if (sustainIndex >= 0 && sustainIndex != intercepts.size() - 1) {

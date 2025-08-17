@@ -1,13 +1,12 @@
 #pragma once
 
-#include <cmath>
-#include <vector>
-#include <iostream>
 #include <Array/Buffer.h>
+#include <cmath>
+#include <iostream>
 
 #include "../Interpolator/Trilinear/TrilinearVertex.h"
-#include "../Vertex/Vertex2.h"
 #include "../Vertex/Intercept.h"
+#include "../Vertex/Vertex2.h"
 
 using std::cout;
 using std::endl;
@@ -36,15 +35,31 @@ public:
     static const int resolution     = 64u;
     static const int numCurvelets   = 128u;
 
+    // the xy arrays that define the parametric path of this CurvePiece
     Float32 transformX[resolution];
     Float32 transformY[resolution];
 
+    // cached table of curve pieces - it's a complex calculation
+    // triple nested float array because we have these dimensions:
+    // - x-axis
+    // - theta (family of curves the set of intersections of a plane and conic section, plane rotated at various theta)
+    // - multiple resolutions
     static float*** table;
 
+    // the defining points of the CurvePiece. Each CurvePiece is like a boomerang with
+    // the legs at point `a` and `c`, with the vertex at point `b`.
     Intercept a, b, c;
+
+    // The linear algebra intermediates
     TransformParameters tp;
+
+    // Resolution index of the curve, indexes into the table property
     int resIndex;
+
+    // The resolution in samples
     int curveRes;
+
+    // where this CurvePiece is in the series of curve pieces that compose a full curve
     int waveIdx;
 
     CurvePiece(const Intercept& one, Intercept two, Intercept thr);

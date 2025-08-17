@@ -27,7 +27,22 @@ std::vector<CurvePiece> SimpleCurveGenerator::produceCurvePieces(
         pieces.emplace_back(cps[i + 0], cps[i + 1], cps[i + 2]);
     }
 
-    setResolutionIndices(pieces, config.base, config.paddingCount);
+    if (config.lowResolution && pieces.size() > 8) {
+        for (auto & curve : pieces) {
+            curve.resIndex = CurvePiece::resolutions - 1;
+            curve.setShouldInterpolate(false);
+        }
+    } else {
+        for(auto & piece : pieces) {
+            piece.setShouldInterpolate(! config.lowResolution && config.interpolateCurves);
+        }
+
+        float baseFactor = config.lowResolution ? 0.4f : config.integralSampling ? 0.05f : 0.1f;
+        float resolutionScalingFactor = baseFactor / float(CurvePiece::resolution);
+
+        setResolutionIndices(pieces, resolutionScalingFactor, config.paddingCount);
+    }
+
     adjustPathDeformerSharpness(pieces);
 
     return pieces;
@@ -43,25 +58,16 @@ void SimpleCurveGenerator::applyScale(vector<Intercept>& points, ScalingType sca
             intercept.y = 0.5f;
         }
 
-        // more stuff that should be in the CurveGenerator or Sampler
         switch (scalingType) {
-            case Unipolar:
-                break;
-
-            case Bipolar:
-                intercept.y = 2 * intercept.y - 1;
-            break;
-
-            case HalfBipolar:
-                intercept.y -= 0.5f;
-            break;
-
+            case Unipolar:      break;
+            case Bipolar:       intercept.y = 2 * intercept.y - 1;  break;
+            case HalfBipolar:   intercept.y -= 0.5f;                break;
             default: break;
         }
     }
 }
 
-void SimpleCurveGenerator::setResolutionIndices(vector<CurvePiece>& curves, float base, int paddingCount) {
+void SimpleCurveGenerator::setResolutionIndices(vector<CurvePiece>& curves, float resScalingFactor, int paddingCount) {
     float dx;
     int res;
     size_t lastIdx = curves.size() - 1;
@@ -72,7 +78,7 @@ void SimpleCurveGenerator::setResolutionIndices(vector<CurvePiece>& curves, floa
         for (int j = 0; j < CurvePiece::resolutions; ++j) {
             res = CurvePiece::resolution >> j;
 
-            if (dx < base * static_cast<float>(res)) {
+            if (dx < resScalingFactor * static_cast<float>(res)) {
                 curves[i].resIndex = j;
             }
         }

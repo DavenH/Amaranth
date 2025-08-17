@@ -6,5 +6,5 @@ class PointPositioner {
 public:
     virtual ~PointPositioner() = default;
 
-    virtual void adjustControlPoints(vector<Intercept>& controlPoints, CurveParameters config) = 0;
+    virtual void adjustControlPoints(vector<Intercept>& controlPoints, PositionerParameters config) = 0;
 };

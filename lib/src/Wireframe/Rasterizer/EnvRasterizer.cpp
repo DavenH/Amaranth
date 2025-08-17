@@ -3,12 +3,12 @@
 #include <Definitions.h>
 
 #include "../Env/EnvelopeMesh.h"
-#include "../Path/ICurvePath.h"
+#include "../Path/IPathSampler.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Util/Arithmetic.h"
 
 
-EnvRasterizer::EnvRasterizer(SingletonRepo* repo, ICurvePath* path, const String& name) :
+EnvRasterizer::EnvRasterizer(SingletonRepo* repo, IPathSampler* path, const String& name) :
         SingletonAccessor(repo, name)
     ,   OldMeshRasterizer   (name)
     ,    envMesh         (nullptr)

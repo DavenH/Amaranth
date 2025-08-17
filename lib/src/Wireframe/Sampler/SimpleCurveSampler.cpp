@@ -5,6 +5,8 @@
 
 #include <climits>
 
+#include "Wireframe/State/RasterizerParameters.h"
+
 float SimpleCurveSampler::transferTable[CurvePiece::resolution] {};
 
 void SimpleCurveSampler::ensureTransferTable() {
@@ -38,7 +40,10 @@ void SimpleCurveSampler::placeWaveBuffers(int size) {
     area  = memoryBuffer.place(size);
 }
 
-void SimpleCurveSampler::buildFromCurves(const std::vector<CurvePiece>& curves) {
+void SimpleCurveSampler::buildFromCurves(
+    const std::vector<CurvePiece>& curves,
+    const SamplingParameters& params
+) {
     if (curves.size() < 2) {
         cleanUp();
         return;

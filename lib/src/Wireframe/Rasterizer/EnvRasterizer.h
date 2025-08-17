@@ -44,7 +44,7 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-    explicit EnvRasterizer(SingletonRepo* repo, ICurvePath* path, const String& name = String());
+    explicit EnvRasterizer(SingletonRepo* repo, IPathSampler* path, const String& name = String());
     EnvRasterizer& operator =(const EnvRasterizer& copy);
     EnvRasterizer(const EnvRasterizer& copy);
     ~EnvRasterizer() override;

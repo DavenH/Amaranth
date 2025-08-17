@@ -5,7 +5,7 @@
 #include "Wireframe/Sampler/CurveSampler.h"
 
 template<typename InputType, typename OutputPointType>
-RasterizerData Rasterizer<InputType, OutputPointType>::runPipeline(InputType arg) {
+Buffer<float> Rasterizer<InputType, OutputPointType>::runPipeline(InputType arg) {
     vector<Intercept> icpts = interpolator->interpolate(arg, config.interpolation);
 
     for (auto& pos: positioners) {

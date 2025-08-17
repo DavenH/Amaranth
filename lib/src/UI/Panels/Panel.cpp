@@ -12,7 +12,7 @@
 #include "../../Util/MicroTimer.h"
 #include "../../Util/Util.h"
 #include "../../Wireframe/OldMeshRasterizer.h"
-#include "../../Wireframe/Path/ICurvePath.h"
+#include "../../Wireframe/Path/IPathSampler.h"
 #include "../../Wireframe/Path/PathInventory.h"
 #include "../../Wireframe/State/RasterizerData.h"
 #include "../MiscGraphics.h"
@@ -616,7 +616,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, Trilinea
     Buffer<float> speedEnv  = scratchContext.panelBuffer;
     Buffer<float> ramp      = cBuffer.withSize(linestripRes);
 
-    if(ICurvePath* path = interactor->getRasterizer()->getPath()) {
+    if(IPathSampler* path = interactor->getRasterizer()->getPath()) {
         phaseTable = path->getTable(phaseChan);
         ampTable = path->getTable(ampChan);
     }
@@ -682,7 +682,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, Trilinea
             if (exHasPhase || whyHasAmp) {
                 for (int i = 0; i < speedEnv.size(); ++i) {
                     speed = speedEnv[i];
-                    idx = int((ICurvePath::tableSize - 1) * speed);
+                    idx = int((IPathSampler::tableSize - 1) * speed);
 
                     if(exHasPhase) {
                         xy.x[i] = phaseGain * phaseTable[idx] + speed * (second.x - first.x);

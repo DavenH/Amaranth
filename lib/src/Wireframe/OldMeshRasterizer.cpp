@@ -5,7 +5,7 @@
 
 #include "Mesh.h"
 #include "OldMeshRasterizer.h"
-#include "Path/ICurvePath.h"
+#include "Path/IPathSampler.h"
 
 #include "../App/AppConstants.h"
 #include "../Array/ScopedAlloc.h"
@@ -499,7 +499,7 @@ void OldMeshRasterizer::calcWaveform() {
             Intercept& thisCentre = thisCurve.b;
             Intercept& nextCentre = nextCurve.b;
 
-            ICurvePath::NoiseContext noise;
+            IPathSampler::NoiseContext noise;
             noise.noiseSeed   = noiseSeed < 0 ? morph.time.getCurrentValue() * INT_MAX : noiseSeed;
             noise.phaseOffset = phaseOffsetSeeds[compPath];
             noise.vertOffset  = vertOffsetSeeds[compPath];
@@ -598,8 +598,9 @@ void OldMeshRasterizer::calcWaveform() {
 
         if (waveX.front() < 0 && waveX.back() > 0) {
             for (int i = 0; i < cumeRes - 1; ++i) {
-                if(waveX[i] <= 0 && waveX[i + 1] > 0)
+                if(waveX[i] <= 0 && waveX[i + 1] > 0) {
                     zeroIndex = i;
+                }
             }
         }
     }
@@ -638,7 +639,7 @@ float OldMeshRasterizer::sampleAtDecoupled(double angle, DeformContext& context)
             float diff = region.end.x - region.start.x;
 
             if (diff > 0) {
-                ICurvePath::NoiseContext noise;
+                IPathSampler::NoiseContext noise;
                 noise.noiseSeed   = noiseSeed;
                 noise.phaseOffset = context.phaseOffsetSeed;
                 noise.vertOffset  = context.vertOffsetSeed;
@@ -950,7 +951,7 @@ void OldMeshRasterizer::applyPaths(
 
     TrilinearCube* cube = icpt.cube;
 
-    ICurvePath::NoiseContext noise;
+    IPathSampler::NoiseContext noise;
     noise.noiseSeed = noiseSeed;
 
     if (cube->pathAt(Vertex::Red) >= 0) {

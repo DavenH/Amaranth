@@ -11,7 +11,7 @@ public:
     PaddingPointPositioner(const vector<float>& padding);
     virtual ~PaddingPointPositioner() = default;
 
-    virtual void adjustControlPoints(vector<Intercept>& controlPoints, CurveParameters config)  {
+    virtual void adjustControlPoints(vector<Intercept>& controlPoints, PositionerParameters config)  {
         int end = controlPoints.size() - 1;
 
         if (end <= 0) {

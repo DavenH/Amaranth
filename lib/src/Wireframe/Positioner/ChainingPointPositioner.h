@@ -8,5 +8,5 @@
 class ChainingPointPositioner : public PointPositioner {
 public:
     // should make the points
-    void adjustControlPoints(vector<Intercept>& controlPoints, CurveParameters config) override;
+    void adjustControlPoints(vector<Intercept>& controlPoints, PositionerParameters config) override;
 };

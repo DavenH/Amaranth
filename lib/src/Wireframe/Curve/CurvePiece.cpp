@@ -168,7 +168,7 @@ void CurvePiece::setResIndex(int index) {
 }
 
 void CurvePiece::recalculateCurve() {
-    // the curve uses a time-guide, so no need for transform array
+    // the waveform uses a path deformer for this piece, so no need for transform array
     if (b.padAfter || b.padBefore) {
         recalculatedPadded();
         tp.scaleY = 1.f;
@@ -210,8 +210,9 @@ void CurvePiece::recalculateCurve() {
     distbd      = (b.x - tp.d.x) * (b.x - tp.d.x) + (b.y - tp.d.y) * (b.y - tp.d.y);
     diff        = distbd - distbi;
 
-    if (diff < 0)
+    if (diff < 0) {
         diff = 0;
+    }
 
     diff = std::sqrt(diff);
     tp.shear = diff * tp.dpole * tp.ypole;

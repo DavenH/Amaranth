@@ -65,7 +65,7 @@ void PathPanel::init() {
 
     createNameImage("Paths");
     dynMemory.resize(tableSize * 4);
-    guideTables.emplace_back(this, 0, 0, 0, 0, 0);
+    curvePathTables.emplace_back(this, 0, 0, 0, 0, 0);
     setGuideBuffers();
 
     rasterizer->cleanUp();
@@ -102,10 +102,10 @@ void PathPanel::rasterizeAllTables() {
         rasterizer->cleanUp();
         rasterizer->setMesh(mesh);
         rasterizer->performUpdate(Update);
-        rasterizer->sampleWithInterval(guideTables[i].table,
+        rasterizer->sampleWithInterval(curvePathTables[i].table,
                                        samplingInterval, (float) getRealConstant(PathPadding));
 
-        guideTables[i].table.add(-0.5f);
+        curvePathTables[i].table.add(-0.5f);
     }
 
     rasterizer->cleanUp();
@@ -120,7 +120,7 @@ void PathPanel::rasterizeTable() {
 
     int currentLayer = meshLib->getLayerGroup(LayerGroups::GroupPath).current;
 
-    GuideProps& props = guideTables[currentLayer];
+    CurvePathProps& props = curvePathTables[currentLayer];
 
     rasterizer->performUpdate(Update);
     if (rasterizer->hasEnoughCubesForCrossSection()) {
@@ -155,7 +155,7 @@ void PathPanel::preDraw()
 
     int currentLayer = meshLib->getLayerGroup(LayerGroups::GroupPath).current;
 
-    GuideProps& props = guideTables[currentLayer];
+    CurvePathProps& props = curvePathTables[currentLayer];
 
     float rectLeft = padding;
     float rectRight = 1 - padding;
@@ -193,7 +193,7 @@ void PathPanel::buttonClicked(Button* button) {
                 {
                     ScopedLock lock(getObj(SynthAudioSource).getLock());
                     if(index > 0)
-                        guideTables.erase(guideTables.begin() + index);
+                        curvePathTables.erase(curvePathTables.begin() + index);
 
                     setGuideBuffers();
 
@@ -226,7 +226,7 @@ void PathPanel::addNewLayer(bool update) {
 
     {
         enterClientLock();
-        guideTables.emplace_back(this, currentLayer, 0, 0, 0, random.nextInt(tableSize));
+        curvePathTables.emplace_back(this, currentLayer, 0, 0, 0, random.nextInt(tableSize));
         exitClientLock();
     }
 
@@ -272,7 +272,7 @@ void PathPanel::sliderValueChanged(Slider* slider) {
 
     int currentLayer = meshLib->getLayerGroup(LayerGroups::GroupPath).current;
 
-    GuideProps& props = guideTables[currentLayer];
+    CurvePathProps& props = curvePathTables[currentLayer];
 
     if (slider == &noise) {
         props.noiseLevel = powf(noise.getValue(), 2);
@@ -305,11 +305,11 @@ void PathPanel::layerChanged() {
 void PathPanel::updateKnobsImplicit() {
     int currentLayer = meshLib->getLayerGroup(layerType).current;
 
-    if(! isPositiveAndBelow(currentLayer, (int) guideTables.size())) {
+    if(! isPositiveAndBelow(currentLayer, (int) curvePathTables.size())) {
         return;
     }
 
-    GuideProps& props = guideTables[currentLayer];
+    CurvePathProps& props = curvePathTables[currentLayer];
     float noiseValue = sqrtf(props.noiseLevel);
     noise.setValue(noiseValue, dontSendNotification);
 
@@ -370,9 +370,9 @@ bool PathPanel::setGuideBuffers() {
         [this]{enterClientLock();},
         [this]{exitClientLock();});
 
-    bool changed = dynMemory.ensureSize(guideTables.size() * tableSize);
+    bool changed = dynMemory.ensureSize(curvePathTables.size() * tableSize);
 
-    for (auto& guideTable : guideTables) {
+    for (auto& guideTable : curvePathTables) {
         guideTable.table = dynMemory.place(tableSize);
     }
 
@@ -382,14 +382,14 @@ bool PathPanel::setGuideBuffers() {
 bool PathPanel::readXML(const XmlElement* element) {
     XmlElement* pathElem = element->getChildByName("PathProps");
 
-    guideTables.clear();
+    curvePathTables.clear();
     int index = 0;
 
     int numMeshes = meshLib->getLayerGroup(layerType).size();
 
     if (pathElem != nullptr) {
         for(auto propsElem : pathElem->getChildWithTagNameIterator("Properties")) {
-            if (guideTables.size() >= numMeshes) {
+            if (curvePathTables.size() >= numMeshes) {
                 break;
             }
 
@@ -402,12 +402,12 @@ bool PathPanel::readXML(const XmlElement* element) {
                 seed = random.nextInt(tableSize);
             }
 
-            guideTables.emplace_back(this, index++, noiseLevel, offsetLevel, phaseLevel, seed);
+            curvePathTables.emplace_back(this, index++, noiseLevel, offsetLevel, phaseLevel, seed);
         }
     }
 
-    while ((int) guideTables.size() < numMeshes) {
-        guideTables.emplace_back(this, index++, 0, 0, 0, random.nextInt(tableSize));
+    while ((int) curvePathTables.size() < numMeshes) {
+        curvePathTables.emplace_back(this, index++, 0, 0, 0, random.nextInt(tableSize));
     }
 
     panelControls->layerSelector->reset();
@@ -433,7 +433,7 @@ void PathPanel::writeXML(XmlElement* element) const
 {
     auto* pathElem = new XmlElement("PathProps");
 
-    for (const auto& props: guideTables) {
+    for (const auto& props: curvePathTables) {
         auto* propsElem 	= new XmlElement("Properties");
         propsElem->setAttribute("noiseLevel", 	props.noiseLevel);
         propsElem->setAttribute("offsetLevel", 	props.vertOffsetLevel);
@@ -451,7 +451,7 @@ void PathPanel::sampleDownAddNoise(int index,
                                    const NoiseContext& context) {
     int length = dest.size();
 
-    GuideProps& props 	= guideTables[index];
+    CurvePathProps& props 	= curvePathTables[index];
     Buffer<Float32> table = props.table;
 
     dest.downsampleFrom(table);

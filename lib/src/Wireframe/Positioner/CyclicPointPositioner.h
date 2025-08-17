@@ -7,7 +7,7 @@
  */
 class CyclicPointPositioner : public PointPositioner {
 public:
-    void adjustControlPoints(vector<Intercept>& controlPoints, CurveParameters config) override {
+    void adjustControlPoints(vector<Intercept>& controlPoints, PositionerParameters config) override {
         int size = controlPoints.size();
         int end  = size - 1;
 

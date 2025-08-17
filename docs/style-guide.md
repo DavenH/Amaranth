@@ -215,8 +215,16 @@ Mirror this order in constructor initializer lists.
 - Should have at most 4 words (plus some prefix like get-/set-/is-/create-)
 - Should be self-documenting
 - Name should be as precise and constraining as reasonable, so for example, avoid "handleGenericEvent()" if at all possible
-  - Prefer to keep necessarily generic names as private methods, expose concrete methods as public  
-- Should specify any side effects -- state changes that aren't obviously related from the method name, e.g. serializeDataCachingAuth()
+  - Prefer to keep necessarily generic names as private methods, expose concrete methods as public, e.g.
+```cpp 
+    public:
+      void convertToBipolar() { convert(PolarityType.Bipolar); }
+      void convertToUnipolar() { convert(PolarityType.Unipolar); }
+    private: 
+      void convert(PolarityType type) { ... }
+``` 
+- Should specify any side effects -- state changes that aren't obviously related from the method name, 
+  - e.g. `serializeDataCachingAuth()`
  
 
 ## Comments

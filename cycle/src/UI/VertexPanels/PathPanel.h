@@ -2,7 +2,7 @@
 
 #include <Obj/Ref.h>
 #include <UI/Widgets/Knob.h>
-#include <Wireframe/Path/ICurvePath.h>
+#include <Wireframe/Path/IPathSampler.h>
 
 #include "EffectPanel.h"
 #include "../TourGuide.h"
@@ -23,7 +23,7 @@ class PathPanel :
     ,	public Savable
     ,	public TourGuide
     ,	public ControlsClient
-    ,	public ICurvePath
+    ,	public IPathSampler
 {
 public:
     enum { tableSize = 8192, tableModulo = tableSize - 1 };
@@ -67,16 +67,16 @@ public:
     bool readXML(const XmlElement* element) override;
     void writeXML(XmlElement* element) const override;
 
-    float getTableValue(int guideIndex, float progress, const ICurvePath::NoiseContext& context) override
+    float getTableValue(int guideIndex, float progress, const IPathSampler::NoiseContext& context) override
     {
-        jassert(guideIndex < guideTables.size());
-        if(guideIndex >= guideTables.size())
+        jassert(guideIndex < curvePathTables.size());
+        if(guideIndex >= curvePathTables.size())
             return 0;
 
         float position  = progress * (PathPanel::tableSize - 1);
         int idx 		= (int) position;
 
-        GuideProps& props = guideTables[guideIndex];
+        CurvePathProps& props = curvePathTables[guideIndex];
 
         int phaseOffset = (context.phaseOffset & tableModulo - tableSize / 2) * props.phaseOffsetLevel;
 
@@ -90,17 +90,17 @@ public:
         if(index < 0)
             return Buffer<Float32>();
 
-        return guideTables[index].table;
+        return curvePathTables[index].table;
     }
 
     void sampleDownAddNoise(int index, Buffer<float> dest,
-                            const ICurvePath::NoiseContext& context);
+                            const IPathSampler::NoiseContext& context);
 
 private:
-    class GuideProps
+    class CurvePathProps
     {
     public:
-        GuideProps(PathPanel* pnl, int idx,
+        CurvePathProps(PathPanel* pnl, int idx,
                     float noiseLevel, float offsetLevel, float phaseLevel,
                     int seed) :
             noiseLevel(noiseLevel),
@@ -126,7 +126,7 @@ private:
     ScopedAlloc<Float32> dynMemory;
     Buffer<float> noiseArray;
     Buffer<float> phaseMoveBuffer;
-    vector<GuideProps> guideTables;
+    vector<CurvePathProps> curvePathTables;
 
     std::unique_ptr<MeshSelector<Mesh> > meshSelector;
 

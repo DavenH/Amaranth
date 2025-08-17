@@ -4,17 +4,21 @@
 #include "../../Array/ScopedAlloc.h"
 #include "../../Util/Arithmetic.h"
 #include "../Curve/CurvePiece.h"
+#include "../State/RasterizerParameters.h"
 
 class SimpleCurveSampler : public CurveSampler {
 public:
 
-    // Build rasterized buffers from a sequence of CurvePieces
-    void buildFromCurves(const std::vector<CurvePiece>& curves);
+    // separated into two steps because we may want to sample multiple times
+    void buildFromCurves(
+        const std::vector<CurvePiece>& curves,
+        const SamplingParameters& params
+    );
 
     // Sampling API
-    [[nodiscard]] bool isSampleable() const override { return waveX.size() > 1; }
     float sampleAt(double position) override;
     void sampleToBuffer(Buffer<float>& buffer, double delta) override;
+    [[nodiscard]] bool isSampleable() const override { return waveX.size() > 1; }
 
     // Accessors (useful in tests)
     [[nodiscard]] Buffer<float> getWaveX() const { return waveX; }

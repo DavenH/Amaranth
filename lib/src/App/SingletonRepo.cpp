@@ -150,7 +150,7 @@ void SingletonRepo::clearSingletons() {
     objects.clear(true);
 }
 
-void SingletonRepo::setPath(ICurvePath* path) {
+void SingletonRepo::setPath(IPathSampler* path) {
     this->path = path;
 
     for(auto rasterizer : rasterizers) {

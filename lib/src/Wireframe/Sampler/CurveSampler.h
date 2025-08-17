@@ -17,7 +17,6 @@ class CurveSampler {
 public:
     virtual ~CurveSampler() = default;
 
-
     virtual void sampleToBuffer(Buffer<float>& buffer, double delta) = 0;
 
     [[nodiscard]] virtual bool isSampleable() const = 0;
