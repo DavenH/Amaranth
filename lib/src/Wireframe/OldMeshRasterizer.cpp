@@ -19,7 +19,7 @@ float OldMeshRasterizer::transferTable[CurvePiece::resolution];
 OldMeshRasterizer::OldMeshRasterizer(const String& name) :
          name                (name)
     ,    mesh                (nullptr)
-    ,    path            (nullptr)
+    ,    path                (nullptr)
 
     ,    zeroIndex           (0)
     ,    paddingSize         (2)
@@ -1007,7 +1007,7 @@ void OldMeshRasterizer::applyPaths(
             if (cyclic) {
                 float lastAdjX = icpt.adjustedX;
 
-                while(icpt.adjustedX >= 1.f)     { icpt.adjustedX -= 1.f; }
+                while(icpt.adjustedX >= 1.f)    { icpt.adjustedX -= 1.f; }
                 while(icpt.adjustedX < 0.f)     { icpt.adjustedX += 1.f; }
 
                 if (lastAdjX != icpt.adjustedX) {
@@ -1055,7 +1055,7 @@ void OldMeshRasterizer::cleanUp() {
     colorPoints.clear();
 
     // for when layer change and there are no intercepts in new layer, we don't want the old ones carrying over
-    controlPoints        .clear();
+    controlPoints.clear();
     frontIcpts   .clear();
     backIcpts    .clear();
     deformRegions.clear();
@@ -1110,7 +1110,7 @@ OldMeshRasterizer& OldMeshRasterizer::operator=(const OldMeshRasterizer& copy) {
     this->overrideDim   = copy.overrideDim;
     this->overridingDim = copy.overridingDim;
     this->cyclic        = copy.cyclic;
-    this->path      = copy.path;
+    this->path          = copy.path;
     this->calcInterceptsOnly = copy.calcInterceptsOnly;
     this->decoupleComponentPaths = copy.decoupleComponentPaths;
 

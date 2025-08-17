@@ -31,7 +31,8 @@ typedef vector<Intercept>::const_iterator ConstIcptIter;
  * will be new compositions of types:
  * 1. Interpolator: subclasses TrilinearInterpolator, SimpleInterpolator
  * 2. Point Positioner: many subclasses
- * 3. Sampler: SimpleCurveSampler
+ * 3. Curve Generator: SimpleCurveGenerator
+ * 4. Sampler: SimpleCurveSampler, PathDeformingCurveSampler
  *
  * More oddball features like depth verts, color verts which are useful UI elements, are biproducts
  * of the calculations for trilinear interpolation. I don't know where to put those at the moment.
@@ -276,8 +277,10 @@ protected:
     int paddingSize;
     int zeroIndex;
 
+    // refactored to: PathdeformingPositioner
     short phaseOffsetSeeds[128];
     short vertOffsetSeeds[128];
+    // end
 
     float interceptPadding;
     float xMaximum, xMinimum;
@@ -298,8 +301,8 @@ protected:
     ScopedAlloc<float> memoryBuffer;
     ScopedAlloc<Int8u> alignedBytes;
 
-    Buffer<float> waveX, waveY, diffX, slope, area;
-    TrilinearCube::ReductionData reduct;
+    Buffer<float> waveX, waveY, diffX, slope, area; // SimpleCurveSampler
+    TrilinearCube::ReductionData reduct; // PathdeformingPositioner
     ICurvePath* path;
     Mesh* mesh;
 

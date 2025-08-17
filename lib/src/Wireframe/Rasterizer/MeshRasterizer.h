@@ -1,25 +1,34 @@
 #pragma once
-#include "../Positioner/PointPositioner.h"
-#include "../Interpolator/MeshInterpolator.h"
-#include "../Sampler/CurveSampler.h"
+
+#include <memory>
+#include <vector>
+
+#include "Rasterizer.h"
+#include "Wireframe/Vertex/Intercept.h"
+
+class CurveGenerator;
+class CurveSampler;
+class PointPositioner;
+class Mesh;
+
+template <typename InputType, typename OutputPointType>
+class Interpolator;
 
 using std::unique_ptr;
+using std::vector;
 
-/**
- * New thin facade which should be sufficient to accomplish any meshrasterizer behavior with no subclassing,
- * by composing different interpolator/positioner/sampler types.
- *
- * Note, it may be required for positioners to be an array, e.g. if CurvePathPositioner -> ChainingPointPositioner.
- * Maybe CurvePathPositioner should be always available?
- *
- * @tparam T
- */
-template<typename T> class MeshRasterizer {
+// Only addition to base Rasterizer is the Mesh property.
+class MeshRasterizer : Rasterizer<Mesh*, Intercept> {
 public:
-    explicit MeshRasterizer(MeshInterpolator<T> interpolator);
+
+    MeshRasterizer(
+        Mesh* mesh,
+        unique_ptr<Interpolator<Mesh*, Intercept>> interpolator,
+        unique_ptr<PointPositioner> positioners[],
+        unique_ptr<CurveGenerator> generator,
+        unique_ptr<CurveSampler> sampler
+    );
 
 private:
-    unique_ptr<MeshInterpolator<T>> interpolator;
-    vector<PointPositioner> positioners;
-    unique_ptr<CurveSampler> sampler;
+    Mesh* mesh;
 };

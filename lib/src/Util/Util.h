@@ -83,4 +83,14 @@ public:
         free(demangled);
         return result;
     }
+
+    template <typename T>
+    auto reverseIter(T& container) {
+        struct Wrapper {
+            T& container;
+            auto begin() { return container.rbegin(); }
+            auto end()   { return container.rend(); }
+        };
+        return Wrapper{container};
+    }
 };

@@ -42,7 +42,7 @@ SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo
     freqRasterizer.setLimits(-spectMargin, 1 + spectMargin);
 
     phaseRasterizer.setWrapsEnds(false);
-    phaseRasterizer.setScalingMode(MeshRasterizer::Bipolar);
+    phaseRasterizer.setScalingMode(OldMeshRasterizer::Bipolar);
     phaseRasterizer.setPath(&pathPanel);
     phaseRasterizer.setCalcDepthDimensions(false);
     phaseRasterizer.setInterpolatesCurves(true);

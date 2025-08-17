@@ -1,14 +1,13 @@
 #pragma once
 
 #include "../../Vertex/Intercept.h"
-#include "../MeshInterpolator.h"
+#include "../Interpolator.h"
 
 using std::vector;
 
-class SimpleInterpolator : public MeshInterpolator<const vector<Intercept>&> {
+class SimpleInterpolator : public Interpolator<const vector<Intercept>&, Intercept> {
 public:
-    vector<Intercept> interpolate(const vector<Intercept>& arg) override {
-        // deep copy?
+    vector<Intercept> interpolate(const vector<Intercept>& arg, const InterpolatorParameters& params) override {
         return arg;
     }
 };

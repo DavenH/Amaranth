@@ -13,7 +13,7 @@ file(GLOB_RECURSE APP_SOURCES
 list(FILTER APP_SOURCES EXCLUDE REGEX ".*tests/.*\\.cpp$")
 
 file(GLOB_RECURSE APP_TEST_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/**/tests/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp"
 )
 
 # Define different targets based on build type

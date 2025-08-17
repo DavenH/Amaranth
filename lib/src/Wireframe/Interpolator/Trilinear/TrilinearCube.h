@@ -113,9 +113,11 @@ public:
     [[nodiscard]] const char& pathAt(int dim) const     { return pathChans[dim]; }
     [[nodiscard]] const float& pathGainAt(int dim) const    { return pathGains[dim]; }
 
+    // Vertex::Time dim is kind of a hacked slot to put the amp-versus-phase path channel
     char& getCompPath() { return pathAt(Vertex::Time); }
     float getCompGain() { return pathGainAt(Vertex::Time); }
 
+    // probably belongs in TrilinearInterpolator
     static void getPoles(int index, bool& time, bool& red, bool& blue);
     static bool dimensionsAt(float x, int dim, Vertex const* one, Vertex const* two, Vertex* vertex);
     static void positionAt(float x, int axis, Vertex const* one, Vertex const* two, Vertex* vertex);

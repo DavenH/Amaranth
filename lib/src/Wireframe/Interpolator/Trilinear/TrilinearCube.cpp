@@ -300,9 +300,9 @@ void TrilinearCube::getInterceptsFast(int dim, ReductionData& data, const MorphP
 
     int dimX = Vertex::Red, dimY = Vertex::Blue;
 
+    // get other morph dims, i.e. if dim is R, then other dims are YB.
     MorphPosition::getOtherDims(dim, dimX, dimY);
     Vertex2 point(pos[dimX], pos[dimY]);
-
     Face lowFace = getFace(dim, LowPole);
 
     float nx = lowFace.v00->values[dimX];
@@ -346,12 +346,12 @@ void TrilinearCube::getInterceptsFast(int dim, ReductionData& data, const MorphP
 
             data.lineOverlaps = true;
 
-            float primeVal = pos[dim];
+            float zVal = pos[dim];
             float a = data.v0.values[dim];
             float b = data.v1.values[dim];
 
-            data.pointOverlaps = (primeVal == 1.f || primeVal == 0.f) ?
-                    a == primeVal || b == primeVal : NumberUtils::withinExclUpper(primeVal, jmin(a, b), jmax(a, b));
+            data.pointOverlaps = (zVal == 1.f || zVal == 0.f) ?
+                    a == zVal || b == zVal : NumberUtils::withinExclUpper(zVal, jmin(a, b), jmax(a, b));
         }
     }
 }

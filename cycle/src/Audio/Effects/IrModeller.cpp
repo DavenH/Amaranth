@@ -190,6 +190,7 @@ void IrModeller::rasterizeImpulse(Buffer<float> impulse, FXRasterizer &rast, boo
             rast.sampleWithInterval(impulse, delta, phase);
         }
 
+        // HMM why do we need to do this, the CurveSampler ought to be taking care of that...
         if (!rast.isBipolar()) {
             impulse.mul(2.f).add(-1.f);
         }
@@ -375,6 +376,8 @@ void IrModeller::setUI(IrModellerUI *comp) {
 }
 
 void IrModeller::setConvBufferSize(int newConvBufSize) {
+    // why do I have this commented out ;;;(
+
 //	if(! Util::assignAndWereDifferent(convBufferSize, newConvBufSize))
 //	{
 //		return;

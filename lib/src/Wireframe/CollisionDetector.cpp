@@ -175,13 +175,13 @@ bool CollisionDetector::validate() {
     dout << "\n";
   #endif
 
-    bool sameLines     = true;
-    int dimAfter     = 0;
+    bool sameLines    = true;
+    int dimAfter      = 0;
     int dim2After     = 0;
-    int baseIndexL     = 0;
-    int baseIndexM     = 0;
+    int baseIndexL    = 0;
+    int baseIndexM    = 0;
     int numDim2Slices = timeIsApplicable ? dimSlices : 1;
-    int dimIdx         = nonIntersectingDim;
+    int dimIdx        = nonIntersectingDim;
 
 //    for(int dimIdx = 0; dimIdx < numIndepDims; ++dimIdx)
 //    {
@@ -289,7 +289,9 @@ bool CollisionDetector::validate() {
                     }
 
                     if (timeIsApplicable) {
-                    // lerp the 4 pairs along first dimension
+                        // TODO DH 2025:I don't remember why we have this inlined, for speed? We have these same calculations in TrilinearVertex / TrilinearCube?
+
+                        // lerp the 4 pairs along first dimension
                         VecOps::mul    (&meshVerts[baseIndexL + nDims * 0], 1 - xDimValue, minV, 4);
                         VecOps::addProd(&meshVerts[baseIndexL + nDims * 1],     xDimValue, minV, 4);
                         VecOps::mul    (&meshVerts[baseIndexL + nDims * 2], 1 - xDimValue, maxV, 4);

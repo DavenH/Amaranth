@@ -447,8 +447,8 @@ void PathPanel::writeXML(XmlElement* element) const
 }
 
 void PathPanel::sampleDownAddNoise(int index,
-                                       Buffer<float> dest,
-                                       const NoiseContext& context) {
+                                   Buffer<float> dest,
+                                   const NoiseContext& context) {
     int length = dest.size();
 
     GuideProps& props 	= guideTables[index];

@@ -26,7 +26,7 @@
 - Linting: `.clang-tidy` is configured; example: `clang-tidy -p build/standalone-debug path/to/file.cpp`.
 
 ## Testing Guidelines
-- Framework: Catch2.
+- Framework: Catch2. Get access to TEST_CASE, REQUIRE, etc with `#include <catch2/catch_test_macros.hpp>`
 - Locations: `lib/tests/*.cpp`, `cycle/tests/*.cpp`, `oscillo/tests/*.cpp`.
 - Naming: begin test files with `Test*.cpp` or place under a `tests/` subfolder.
 - Coverage: prefer tests for new DSP modules and bugfixes; include edge‑rate/sample‑rate cases.

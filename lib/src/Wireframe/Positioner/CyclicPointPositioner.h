@@ -76,8 +76,14 @@ public:
                 offset += 1.f;
             }
         }
+
+        // Merge into controlPoints ensuring ascending x for the front padding
+        std::reverse(frontIcpts.begin(), frontIcpts.end());
+        controlPoints.insert(controlPoints.begin(), frontIcpts.begin(), frontIcpts.end());
+        controlPoints.insert(controlPoints.end(), backIcpts.begin(), backIcpts.end());
     }
 
+    void adjustSingleControlPoint()
     void setInterceptPadding(float value) { interceptPadding = value; }
 
 private:

@@ -22,6 +22,7 @@ void FXRasterizer::generateControlPoints() {
         float* values = vert->values;
         Intercept icpt(values[dims.x], values[dims.y], 0, values[Vertex::Curve]);
 
+        // huh ?
         if(scalingType) {
             icpt.y = 2.f * icpt.y - 1.f;
         }

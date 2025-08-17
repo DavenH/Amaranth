@@ -29,13 +29,13 @@ This document summarises formatting patterns observed in the repository. When ed
 
 ## Newlines & Logical Grouping
 
-- At file top:
+- Order at header file top:
 
   1. `#pragma once`
   2. System/module includes
   3. Project includes
-  4. `using` declarations
   5. Forward declarations
+  4. `using` declarations
   6. Type aliases
   7. Class/struct definitions
 
@@ -51,7 +51,8 @@ This document summarises formatting patterns observed in the repository. When ed
   - Overrides of base-class hooks
   - Protected helpers
   - Data members
-- Use the section-break comment:
+  - Between declarations and conditionals
+  - Use the section-break comment:
 
   ```cpp
   /* ----------------------------------------------------------------------------- */
@@ -179,7 +180,7 @@ This document summarises formatting patterns observed in the repository. When ed
 
 ## Forward Declarations, Aliases, and Iterators
 
-- Forward-declare peer classes used by pointer/reference
+- Forward-declare peer classes used by pointer/reference; this limits translation unit recompilation.
 - Prefer `using` over `typedef` for new code, but maintain existing style for minimal churn
 
 ## Getters/Setters & Naming
@@ -203,6 +204,20 @@ Group members by role and volatility, separated by one blank line:
 10. Trailing macros (e.g., `JUCE_LEAK_DETECTOR`)
 
 Mirror this order in constructor initializer lists.
+
+## Variable Naming
+
+- Variables should be named with at most 4 words
+- Should be self-documenting
+
+## Method Naming
+
+- Should have at most 4 words (plus some prefix like get-/set-/is-/create-)
+- Should be self-documenting
+- Name should be as precise and constraining as reasonable, so for example, avoid "handleGenericEvent()" if at all possible
+  - Prefer to keep necessarily generic names as private methods, expose concrete methods as public  
+- Should specify any side effects -- state changes that aren't obviously related from the method name, e.g. serializeDataCachingAuth()
+ 
 
 ## Comments
 
@@ -273,11 +288,33 @@ VecOps::add(x, y, z)
 This is a subclass of Buffer which additionally takes memory ownership of the data.
 
 
+## Switch Blocks
+
+Where appropriate, throw a `std::invalid_argument` if the cases should be exhaustive. 
+
+Example:
+```cpp
+Vertex* TrilinearCube::Face::operator[](const int index) const {
+    switch (index) {
+        case 0: return v00;
+        case 1: return v01;
+        case 2: return v10;
+        case 3: return v11;
+        default: throw std::invalid_argument("TrilinearCube::Face::[]: index out of range");;
+    }
+}
+```
+
+## Loops
+
+- Prefer range-based for-loops where the iterator index is not required
+- If a boolean filter is nested within the loop, prefer to flatten the nesting structure by using `if(!condition) { continue; }` rather than a nested `if (condition)` block. 
+ 
+
 ## Miscellaneous
 
 - Avoid `using namespace` at global scope; single-symbol `using` at file scope is acceptable
 - Use `explicit` on single-argument constructors
-- Prefer range-based for loops where possible
 - Prefer `= default`/`= delete` for trivial special members
 - Lines are not strictly wrapped at 80 columns; prioritize readability
 - Follow existing spacing around operators and parentheses
