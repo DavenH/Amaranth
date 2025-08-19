@@ -1,6 +1,6 @@
 #pragma once
 #include "../Vertex/Intercept.h"
-#include "Wireframe/State/RasterizerParameters.h"
+#include "Wireframe/Rasterizer/RasterizerParams.h"
 
 class PointPositioner {
 public:

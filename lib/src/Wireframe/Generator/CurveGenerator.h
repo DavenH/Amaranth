@@ -1,7 +1,7 @@
 #pragma once
 
-#include "CurvePiece.h"
-#include "../State/RasterizerParameters.h"
+#include "../Curve/CurvePiece.h"
+#include "../Rasterizer/RasterizerParams.h"
 #include "../Vertex/Intercept.h"
 
 #include <vector>

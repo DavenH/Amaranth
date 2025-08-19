@@ -1,14 +1,14 @@
 #pragma once
 
 #include "../Vertex/Intercept.h"
-#include "../State/RasterizerParameters.h"
+#include "../Rasterizer/RasterizerParams.h"
 #include <Util/Util.h>
 
 using std::vector;
 
 class PaddingPointPositioner {
 public:
-    PaddingPointPositioner(const vector<float>& padding);
+    explicit PaddingPointPositioner(const vector<float>& padding) : padding(padding) {}
     virtual ~PaddingPointPositioner() = default;
 
     virtual void adjustControlPoints(vector<Intercept>& controlPoints, PositionerParameters config)  {
@@ -28,7 +28,7 @@ public:
             controlPoints.insert(controlPoints.begin(), icpt);
         }
 
-        for (auto pad : reverseIter(this->padding)) {
+        for (auto pad : Util::reverseIter(this->padding)) {
             Intercept icpt(maxX + pad, controlPoints[end].y);
             controlPoints.insert(controlPoints.end(), icpt);
         }

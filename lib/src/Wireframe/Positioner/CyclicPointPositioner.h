@@ -8,8 +8,8 @@
 class CyclicPointPositioner : public PointPositioner {
 public:
     void adjustControlPoints(vector<Intercept>& controlPoints, PositionerParameters config) override {
-        int size = controlPoints.size();
-        int end  = size - 1;
+        size_t size = controlPoints.size();
+        size_t end  = size - 1;
 
         if (end < 1) {
             return;
@@ -19,7 +19,7 @@ public:
 
         float frontier     = 0.f;
         float offset       = -1.f;
-        int idx            = end;
+        size_t idx         = end;
         int remainingIters = 2;
 
         frontIcpts.emplace_back(controlPoints[1]);
@@ -30,7 +30,7 @@ public:
                 break;
             }
 
-            if (frontier < -interceptPadding) {
+            if (frontier < -config.padding) {
                 --remainingIters;
             }
 
@@ -60,7 +60,7 @@ public:
                 break;
             }
 
-            if (frontier > 1.f + interceptPadding) {
+            if (frontier > 1.f + config.padding) {
                 --remainingIters;
             }
 
@@ -83,9 +83,32 @@ public:
         controlPoints.insert(controlPoints.end(), backIcpts.begin(), backIcpts.end());
     }
 
-    void adjustSingleControlPoint()
-    void setInterceptPadding(float value) { interceptPadding = value; }
+    // I think this should capture a lot more of the semantics of the operation.
+    // We want to preserve lines that transit the 1.0 edge in a 2D waveshape.
+    // We don't want one point being wrapped
+    // We DO want both points wrapped if neither of them transit the 1.0 edge, i.e. both are > 1
+    // now, since we're talking lines, I think we need to have it named wrapLines, or something.
+    // Should there be a way to generate Line segments by a->line(zDim, Vertex::phase)?
+    // Second thought, this doesn't seem to be a positioner thing necessarily. It's a line splitting policy.
+    static void wrapTrilinearEdge(float& ax, float& ay, float& bx, float& by, float indie) {
+        if (ay > 1 && by > 1) {
+            ay -= 1;
+            by -= 1;
+        } else if (ay > 1 != by > 1) {
+            float icpt = ax + (1 - ay) / ((ay - by) / (ax - bx));
+            if (icpt > indie) {
+                ay -= 1;
+                by -= 1;
+            }
+        }
+    }
 
-private:
-    float interceptPadding {};
+    static bool wrapAndDidAnything(float& x) {
+        float lastX = x;
+
+        while (x >= 1.f) { x -= 1.f; }
+        while (x < 0.f) { x += 1.f; }
+
+        return lastX != x;
+    }
 };

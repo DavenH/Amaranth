@@ -144,8 +144,8 @@ void MidiKeyboard::getKeyPosition(int midiNoteNumber, float keyWidth, int& x, in
     const int octave = midiNoteNumber / 12;
     const int note = midiNoteNumber % 12;
 
-    x = int(octave * 7.0f * keyWidth + notePos [note] * keyWidth + offsets[note] + 0.5f);
-    w = int(widths [note] * keyWidth + 0.5f);
+    x = roundToInt(octave * 7.0f * keyWidth + notePos [note] * keyWidth + offsets[note]);
+    w = roundToInt(widths [note] * keyWidth);
 }
 
 void MidiKeyboard::mouseEnter(const MouseEvent& e) {

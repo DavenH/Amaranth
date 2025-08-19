@@ -7,7 +7,7 @@ using std::vector;
 
 class SimpleInterpolator : public Interpolator<const vector<Intercept>&, Intercept> {
 public:
-    vector<Intercept> interpolate(const vector<Intercept>& arg, const InterpolatorParameters& params) override {
+    vector<Intercept> interpolate(const vector<Intercept>& arg, const RasterizerParams& params) override {
         return arg;
     }
 };

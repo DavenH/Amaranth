@@ -1,11 +1,15 @@
 #pragma once
+
 #include <vector>
 #include <set>
+
+#include "JuceHeader.h"
 #include "Dimensions.h"
 #include "MorphPositioner.h"
 #include "PanelState.h"
 #include "VertexTransformUndo.h"
 #include "InteractorListener.h"
+
 #include "../App/MeshLibrary.h"
 #include "../App/SingletonAccessor.h"
 #include "../Wireframe/CollisionDetector.h"
@@ -17,7 +21,6 @@
 #include "../Obj/Ref.h"
 #include "../UI/AsyncUIUpdater.h"
 #include "../UI/IConsole.h"
-#include "JuceHeader.h"
 
 using std::vector;
 using std::set;

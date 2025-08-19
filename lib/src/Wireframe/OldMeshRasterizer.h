@@ -5,7 +5,7 @@
 #include "../Array/ScopedAlloc.h"
 #include "../Design/Updating/Updateable.h"
 #include "../Inter/Dimensions.h"
-#include "../Obj/ColorPoint.h"
+#include "../Obj/TrilinearEdge.h"
 #include "../Util/MicroTimer.h"
 #include "Curve/CurvePiece.h"
 #include "Interpolator/Trilinear/MorphPosition.h"
@@ -216,7 +216,7 @@ public:
     const vector<CurvePiece>& getCurves() const     { return curves;                    }
     const vector<Intercept>& getFrontIcpts() const  { return frontIcpts;                }
     const vector<Intercept>& getBackIcpts() const   { return backIcpts;                 }
-    vector<ColorPoint>& getColorPoints()            { return colorPoints;               }
+    vector<TrilinearEdge>& getColorPoints()            { return colorPoints;               }
     RasterizerData& getRastData()                   { return rastArrays;                }
     IPathSampler* getPath() const                     { return path;                  }
 
@@ -263,9 +263,9 @@ protected:
     bool calcDepthDims;
     bool calcInterceptsOnly;
     bool cyclic;
-    bool decoupleComponentPaths;
-    bool integralSampling;
-    bool interpolateCurves;
+    bool decoupleComponentPaths; // PathdeformingPositioner
+    bool integralSampling;       // RasterizerParams.GeneratorParams
+    bool interpolateCurves;      // RasterizerParams.GeneratorParams
     bool lowResCurves;
     bool needsResorting;
     bool overrideDim;
@@ -294,7 +294,7 @@ protected:
     RasterizerData rastArrays;
 
     vector<Intercept> frontIcpts, backIcpts, controlPoints;
-    vector<ColorPoint> colorPoints;
+    vector<TrilinearEdge> colorPoints;
     vector<CurvePiece> curves;
     vector<DeformRegion> deformRegions;
 

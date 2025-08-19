@@ -76,7 +76,7 @@ private:
     float leftSamplingOffset, rightSamplingOffset, reductionLevel;
 
     Random random;
-    Rasterizer2D rasterizer;
+    Rasterizer rasterizer;
 
     ScopedAlloc<Float32> rastMem;
     ScopedAlloc<Float32> srcSamples;

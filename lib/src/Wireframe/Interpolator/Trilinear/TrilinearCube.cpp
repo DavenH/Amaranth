@@ -294,6 +294,10 @@ bool TrilinearCube::intersectsMorphRect(int dim, ReductionData& data, const Morp
     return false;
 }
 
+// this is a weirdly named method. Get Intercepts? It should be more like calcPointOverlap or whatnot.
+// Should we return ReductionData as more pure functional style? I think so.
+// But it does has a lot of vertices, so would be a lot of copying. Performance hit? Probably negligible.
+// Method evaluates: does tricube contain morph position?
 void TrilinearCube::getInterceptsFast(int dim, ReductionData& data, const MorphPosition& pos) const {
     data.pointOverlaps = false;
     data.lineOverlaps = false;

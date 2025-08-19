@@ -1,32 +1,21 @@
 #pragma once
 
 #include <algorithm>
-#include <vector>
+#include "../Vertex/Intercept.h"
+#include "../Curve/CurvePiece.h"
+#include "MeshRasterizer.h"
+#include "Wireframe/Positioner/CyclicPointPositioner.h"
+#include "Wireframe/Positioner/PaddingPointPositioner.h"
 
-#include "FXRasterizer.h"
-#include "../Rasterizer/MeshRasterizer.h"
-#include "../Interpolator/Simple/SimpleInterpolator.h"
-#include "../Curve/SimpleCurveGenerator.h"
-#include "../Positioner/PointPositioner.h"
-#include "../Positioner/CyclicPointPositioner.h"
-#include "../State/RasterizerParameters.h"
-#include "../Sampler/SimpleCurveSampler.h"
-#include <Array/ScopedAlloc.h>
-#include <Array/VecOps.h>
-
-class Rasterizer2D {
+class Rasterizer2D: public Rasterizer<vector<Intercept>, Intercept> {
 public:
-    explicit Rasterizer2D(std::vector<Intercept>& verts, bool cyclic = false)
-        : verts(verts) {
-        if (cyclic) {
-            this->positioner = new CyclicPointPositioner();
-        }
+    explicit Rasterizer2D(vector<Intercept>& verts, bool cyclic = false)
+            : verts(verts), cyclic(cyclic) {
+
+        addPositioner(cyclic ? new CyclicPointPositioner() : PaddingPointPositioner({}));
     }
 
-    void setInterceptPadding(float v)   { interceptPadding = v; }
-    void setLimits(float min, float max){ xMinimum_ = min; xMaximum_ = max; }
-
-    void generateControlPoints() override {
+    void calcCrossPoints() override {
         if (verts.empty()) {
             cleanUp();
             return;
@@ -34,13 +23,14 @@ public:
 
         std::sort(verts.begin(), verts.end());
 
+
         if(cyclic) {
-            padControlPointsWrapped(verts, curves);
+            padIcptsWrapped(verts, curves);
         } else {
-            padControlPoints(verts, curves);
+            padIcpts(verts, curves);
         }
 
-        float base = 0.1f / float(CurvePiece::resolution);
+        float base = 0.1f / float(Curve::resolution);
 
         setResolutionIndices(base);
 
@@ -59,9 +49,9 @@ public:
             return;
         }
 
-        CurvePiece& prev = curves[index - 1];
-        CurvePiece& curve = curves[index + 0];
-        CurvePiece& next = curves[index + 1];
+        Curve& prev = curves[index - 1];
+        Curve& curve = curves[index + 0];
+        Curve& next = curves[index + 1];
 
         prev.c.x = position.x;
         prev.c.y = position.y;
@@ -86,14 +76,14 @@ public:
     }
 
     void updateWaveform(int index) {
-        int res         = CurvePiece::resolution / 2;
+        int res         = Curve::resolution / 2;
         int startIdx    = jmax(0, index - 1);
         int endIdx      = jmin((int) curves.size() - 1, index + 2);
         int waveIdx     = curves[startIdx].waveIdx;
 
         for (int c = startIdx; c < endIdx; ++c) {
-            CurvePiece& thisCurve    = curves[c];
-            CurvePiece& nextCurve    = curves[c + 1];
+            Curve& thisCurve    = curves[c];
+            Curve& nextCurve    = curves[c + 1];
 
             jassert(waveIdx == curves[c].waveIdx);
 
@@ -103,7 +93,7 @@ public:
             int indexB          = 0;
             int minCurveRes     = jmin(res >> thisCurve.resIndex, res >> nextCurve.resIndex);
             int offset          = res >> thisCurve.resIndex;
-            int xferInc         = CurvePiece::resolution / minCurveRes;
+            int xferInc         = Curve::resolution / minCurveRes;
 
             int thisShift       = jmax(0, (nextCurve.resIndex - thisCurve.resIndex));
             int nextShift       = jmax(0, (thisCurve.resIndex - nextCurve.resIndex));
@@ -147,61 +137,15 @@ public:
         diffx.threshLT(1e-6f);
         VecOps::diff(why, slp);
         slp.div(diffx);
-        // ippsSub_32f(ex, ex + 1, diffx, size);
-        // ippsThreshold_LT_32f_I(diffx, size, 1e-06f);
-        // ippsSub_32f(why, why + 1, slp, size);
-        // ippsDiv_32f_I(diffx, slp, size);
     }
 
-    // Compatibility shim for existing callers
-    void performUpdate(int /*updateType*/) { generateControlPoints(); }
+    void setCyclicity(bool isCyclic)    { cyclic = isCyclic;    }
+    bool isCyclic() const               { return cyclic;        }
+    static int getPaddingSize()         { return 2;             }
 
-    // Accessors used by tests and callers
-    const std::vector<CurvePiece>& getCurves() const { return curves_; }
-    Buffer<float> getWaveX() { return waveX_; }
-    Buffer<float> getWaveY() { return waveY_; }
-    bool wasCleanedUp() const { return unsampleable_; }
+protected:
+    bool cyclic;
+    vector<Intercept>& verts;
 
-private:
-    static int getPaddingSize() { return 2; }
-
-    // TODO doesn't belong here -- belongs in CurveSampler
-    void updateBuffers(int size) {
-        const int numBuffers = 4;
-        memory_.ensureSize(size * numBuffers);
-        waveX_ = memory_.place(size);
-        waveY_ = memory_.place(size);
-        diffX_ = memory_.place(size);
-        slope_ = memory_.place(size);
-    }
-
-    // TODO doesn't belong here -- belongs in CurveGenerator
-    void setResolutionIndices(float base) {
-        if (curves_.empty()) return;
-        int lastIdx = (int)curves_.size() - 1;
-        for (int i = 1; i < (int)curves_.size() - 1; ++i) {
-            float dx = (curves_[i + 1].c.x - curves_[i - 1].a.x);
-            for (int j = 0; j < CurvePiece::resolutions; ++j) {
-                int res = CurvePiece::resolution >> j;
-                if (dx < base * float(res)) {
-                    curves_[i].resIndex = j;
-                };
-            }
-        }
-        int padding = getPaddingSize();
-        curves_.front().resIndex = curves_[lastIdx - 2 * (padding - 1)].resIndex;
-        curves_.back().resIndex  = curves_[2 * padding - 1].resIndex;
-    }
-
-    // State
-    std::vector<Intercept>& verts;
-    bool cyclic{};
-    float interceptPadding{};
-    float xMinimum_{0.f}, xMaximum_{1.f};
-    bool unsampleable_{false};
-    int zeroIndex_{0}, oneIndex_{0};
-
-    std::vector<CurvePiece> curves_;
-    ScopedAlloc<float> memory_;
-    Buffer<float> waveX_, waveY_, diffX_, slope_;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Rasterizer2D)
 };

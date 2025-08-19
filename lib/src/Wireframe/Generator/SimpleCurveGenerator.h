@@ -1,7 +1,7 @@
 #pragma once
 #include "CurvePiece.h"
 #include "CurveGenerator.h"
-#include "Wireframe/State/RasterizerParameters.h"
+#include "Wireframe/Rasterizer/RasterizerParams.h"
 
 using std::vector;
 
@@ -10,6 +10,8 @@ class SimpleCurveGenerator : public CurveGenerator {
 public:
     vector<CurvePiece> produceCurvePieces(const vector<Intercept>& controlPoints, const GeneratorParameters& config) override;
 
+
+    static void updateCurve(vector<CurvePiece>& curves, int index, const Intercept& position);
     static void applyScale(vector<Intercept>& points, ScalingType scaling);
     static void setResolutionIndices(vector<CurvePiece>& curves, float resScalingFactor, int paddingCount);
     static void adjustPathDeformerSharpness(vector<CurvePiece>& curves);

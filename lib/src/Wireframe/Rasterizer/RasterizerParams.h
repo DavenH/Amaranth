@@ -1,4 +1,5 @@
 #pragma once
+#include "Inter/Dimensions.h"
 
 enum ScalingType { Unipolar, Bipolar, HalfBipolar };
 
@@ -10,7 +11,6 @@ struct PositionerParameters {
     float minX{0.0f};
     float maxX{1.0f};
 };
-
 
 struct GeneratorParameters {
     ScalingType scaling {Unipolar};
@@ -26,13 +26,14 @@ struct SamplingParameters {
     int oversamplingFactor{1};
 };
 
-struct InterpolatorParameters {
-    double oscPhase;
+struct InterpolatorParams {
+    Dimensions dims;
+    double phaseOffset;
 };
 
-struct RasterizerParameters {
-    PositionerParameters curve;
+struct RasterizerParams {
+    PositionerParameters positionerParams;
     SamplingParameters sampling;
     GeneratorParameters generator;
-    InterpolatorParameters interpolation{};
+    InterpolatorParams interpolation{};
 };

@@ -10,7 +10,7 @@ struct Intercept {
     Intercept() = default;
 
     Intercept(float xx, float yy, TrilinearCube* cube = nullptr, float sharpness = 0) :
-            x(xx), y(yy), cube(cube), shp(sharpness) {
+            x(xx), y(yy), cube(cube), shp(sharpness), adjustedX(x) {
     }
 
     Intercept(const Intercept& other) {

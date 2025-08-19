@@ -2,11 +2,12 @@
 
 #include "TrilinearCube.h"
 #include "MorphPosition.h"
+
 #include "../Interpolator.h"
+#include "../../Positioner/CyclicPointPositioner.h"
 
 using std::vector;
 
-class CyclicPointPositioner;
 class PathDeformingPositioner;
 
 /**
@@ -83,7 +84,7 @@ public:
      *       visualization when enabled; these will migrate to dedicated components
      *       (PointPositioner/visualization) as part of the rasterization refactor.
      */
-    vector<Intercept> interpolate(Mesh* mesh, const InterpolatorParameters& params) override;
+    vector<Intercept> interpolate(Mesh* mesh, const RasterizerParams& params) override;
 
     void setMorphPosition(const MorphPosition& position) { morph = position; }
 
@@ -96,5 +97,5 @@ protected:
     TrilinearCube::ReductionData reduct;
 
     PathDeformingPositioner* pathDeformer;
-    CyclicPointPositioner* cyclicPositioner;
+    CyclicPointPositioner cyclicPositioner;
 };

@@ -1,12 +1,13 @@
-#include <fstream>
-#include "AutoModeller.h"
-#include "Resampling.h"
-#include "../Wireframe/Curve/CurvePiece.h"
-#include "../Wireframe/Rasterizer/Rasterizer2D.h"
 #include "../Design/Updating/Updater.h"
 #include "../Inter/Interactor2D.h"
 #include "../UI/Panels/Panel.h"
+#include "../Wireframe/Curve/CurvePiece.h"
+#include "../Wireframe/Rasterizer/Rasterizer2D.h"
+
+#include "AutoModeller.h"
 #include "PeakCounter.h"
+#include "Resampling.h"
+#include <fstream>
 
 AutoModeller::AutoModeller() :
         rasterizer          (points, false)
@@ -223,7 +224,7 @@ void AutoModeller::fit() {
         Intercept& icpt         = points[p + 0];
         const Intercept& next   = points[p + 1];
 
-        int curveIdx = p + rasterizer.getPaddingSize();
+        int curveIdx = p + rasterizer.getConfig().generator.paddingSize;
 
         float left  = prev.x + 0.00001f;
         float right = next.x - 0.00001f;

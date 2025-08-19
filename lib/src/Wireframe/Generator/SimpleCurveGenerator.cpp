@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "Util/NumberUtils.h"
+
 using std::vector;
 
 std::vector<CurvePiece> SimpleCurveGenerator::produceCurvePieces(
@@ -45,7 +47,42 @@ std::vector<CurvePiece> SimpleCurveGenerator::produceCurvePieces(
 
     adjustPathDeformerSharpness(pieces);
 
+    for(auto& curve : pieces) {
+        curve.recalculateCurve();
+    }
+
     return pieces;
+}
+
+void SimpleCurveGenerator::updateCurve(vector<CurvePiece>& pieces, int index, const Intercept& position) {
+    jassert(index < pieces.size());
+
+    if(index < 1 || index > (int) pieces.size() - 2) {
+        return;
+    }
+
+    CurvePiece& prev = pieces[index - 1];
+    CurvePiece& curve = pieces[index + 0];
+    CurvePiece& next = pieces[index + 1];
+
+    prev.c.x = position.x;
+    prev.c.y = position.y;
+
+    prev.validate();
+    prev.recalculateCurve();
+
+    curve.b.x = position.x;
+    curve.b.y = position.y;
+    curve.b.shp = position.shp;
+
+    curve.updateCurrentIndex();
+    curve.validate();
+    curve.recalculateCurve();
+
+    next.a.x = position.x;
+    next.a.y = position.y;
+    next.validate();
+    next.recalculateCurve();
 }
 
 void SimpleCurveGenerator::applyScale(vector<Intercept>& points, ScalingType scalingType) {
@@ -64,6 +101,8 @@ void SimpleCurveGenerator::applyScale(vector<Intercept>& points, ScalingType sca
             case HalfBipolar:   intercept.y -= 0.5f;                break;
             default: break;
         }
+
+        NumberUtils::constrain(intercept.y, (scalingType != Unipolar ? -1.f : 0.f), 1.f);
     }
 }
 

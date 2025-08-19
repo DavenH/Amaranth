@@ -439,8 +439,9 @@ void OldMeshRasterizer::calcWaveform() {
     int res = CurvePiece::resolution / 2;
     int totalRes = 0;
 
-    if(decoupleComponentPaths)
+    if(decoupleComponentPaths) {
         deformRegions.clear();
+    }
 
     int tableSize = Constants::DeformTableSize;
 
@@ -460,7 +461,7 @@ void OldMeshRasterizer::calcWaveform() {
                 scaleRatio /= 2;
             }
 
-            int truncRatio = jlimit(1, 256, int(scaleRatio + 0.5));
+            int truncRatio = jlimit(1, 256, roundToInt(scaleRatio));
             thisCurve.curveRes = tableSize / truncRatio;
         } else {
             // take the minimum of adjacent curves

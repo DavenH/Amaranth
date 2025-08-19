@@ -273,7 +273,7 @@ void CycleBasedVoice::renderChainedCycles(int numSamples) {
 
         while (group.sampledFrontier < lastIndexToRender) {
             if (parent != nullptr) {
-                int period = int(1 / group.angleDelta + 0.5);
+                int period = roundToInt(1 / group.angleDelta);
                 noteState.absVoiceTime = jmin(group.cumePos * noteState.timePerOutputSample, 1.);
 
                 int deltaSamples = group.samplesThisCycle;

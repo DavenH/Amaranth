@@ -1203,11 +1203,11 @@ void Interactor::snapToGrid(Vertex2& toSnap) {
     int sizeY = NumberUtils::nextPower2(roundToInt(0.7 * panel->horzMinorLines.size()));
 
     toSnap.x *= sizeX;
-    toSnap.x  = (float)(int)(toSnap.x + 0.5f);
+    toSnap.x  = (float)roundToInt(toSnap.x);
     toSnap.x /= sizeX;
 
     toSnap.y *= sizeY;
-    toSnap.y  = (float)(int)(toSnap.y + 0.5f);
+    toSnap.y  = (float)roundToInt(toSnap.y);
     toSnap.y /= sizeY;
 }
 
@@ -1295,9 +1295,9 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
         return;
     }
 
-    vector<VertexFrame>& movingX     = state.singleHorz;
-    vector<VertexFrame>& movingXY     = state.singleXY;
-    vector<VertexFrame>& movingAll    = state.singleAll;
+    vector<VertexFrame>& movingX   = state.singleHorz;
+    vector<VertexFrame>& movingXY  = state.singleXY;
+    vector<VertexFrame>& movingAll = state.singleAll;
 
     Vertex2 candidate(state.currentVertex->values[dims.x], state.currentVertex->values[dims.y]);
     Vertex2 old(candidate);
@@ -1339,8 +1339,8 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
     Vertex2 bestOld(old);
     Vertex2 last;
 
-    Mesh* mesh     = getMesh();
-    bool testY     = is3DInteractor();
+    Mesh* mesh  = getMesh();
+    bool testY  = is3DInteractor();
     bool passed = true;
 
     translateVerts(movingXY, limitedDiff);
@@ -1368,12 +1368,12 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
         passed = true;
 
         for (int i = 0; i < refiningIterations; ++i) {
-            Vertex2 targetValue     = passed ? bestNew : bestOld;
-            Vertex2& valueToUpdate     = passed ? bestOld : bestNew;
+            Vertex2 targetValue    = passed ? bestNew : bestOld;
+            Vertex2& valueToUpdate = passed ? bestOld : bestNew;
 
-            valueToUpdate     = candidate;
-            candidate         = (candidate + targetValue) * 0.5f;
-            currentDiff     = candidate - old;
+            valueToUpdate = candidate;
+            candidate     = (candidate + targetValue) * 0.5f;
+            currentDiff   = candidate - old;
 
             // move vertices
             for (auto& allIter : movingAll) {
@@ -1459,9 +1459,9 @@ void Interactor::translateVerts(vector<VertexFrame>& verts, const Vertex2& diff)
 
         Range<float> xLimits = getVertexPhaseLimits(vert);
 
-        float& x     = vert->values[dims.x];
-        float oldX     = x;
-        float newX     = x + diff.x;
+        float& x   = vert->values[dims.x];
+        float oldX = x;
+        float newX = x + diff.x;
 
         NumberUtils::constrain(newX, xLimits);
 
@@ -1509,8 +1509,9 @@ void Interactor::doClickSelect(const MouseEvent& e) {
 
     if (wrapsPhase) {
         for (int i = 0; i < numElementsInArray(dimArr); ++i) {
-            if (dimArr[i] == Vertex::Phase && vals[i] > 1)
+            if (dimArr[i] == Vertex::Phase && vals[i] > 1) {
                 vals[i] -= 1;
+            }
         }
     }
 
@@ -1538,8 +1539,9 @@ bool Interactor::doCreateVertex() {
     vertex->values[Vertex::Phase] = 0.5f;
     vertex->values[Vertex::Amp] = 0.5f;
 
-    for(int i = 0; i < dims.numHidden(); ++i)
+    for(int i = 0; i < dims.numHidden(); ++i) {
         vertex->values[dims.hidden[i]] = positioner->getValue(dims.hidden[i]);
+    }
 
     vertex->values[dims.x] = state.currentMouse.x;
     vertex->values[dims.y] = state.currentMouse.y;
@@ -1608,8 +1610,9 @@ void Interactor::refresh() {
             updateDspSync();
             performUpdate(Update);
 
-            if (Interactor * opposite = getOppositeInteractor())
+            if (Interactor * opposite = getOppositeInteractor()) {
                 opposite->performUpdate(Update);
+            }
         }
     } else if (flag(SimpleRepaint)) {
         display->repaint();
@@ -1733,15 +1736,17 @@ MorphPosition Interactor::getModPosition(bool adjust) {
     MorphPosition m = positioner->getMorphPosition();
 
     if (adjust) {
-        if (ignoresTime)
+        if (ignoresTime) {
             m.time = 0;
+        }
 
         if (scratchesTime) {
             if (positioner->getPrimaryDimension() == Vertex::Time) {
                 int chan = panel->getLayerScratchChannel();
 
-                if (chan != CommonEnums::Null)
+                if (chan != CommonEnums::Null) {
                     m.time = positioner->getDistortedTime(chan);
+                }
             }
         }
     }
@@ -2037,10 +2042,11 @@ Vertex* Interactor::findLinesClosestVertex(TrilinearCube* cube, const Vertex2& m
     pos.values[dims.x] = mouseXY.x;
 
     // don't want to factor in amplitude position in 2D selection
-    if(dims.y != Vertex::Amp)
+    if(dims.y != Vertex::Amp) {
         pos.values[dims.y] = mouseXY.y;
+    }
 
-    Vertex* closest = 0;
+    Vertex* closest = nullptr;
 
     float invWidth     = 1 / float(display->getWidth());
     float invHeight = 1 / float(display->getHeight());

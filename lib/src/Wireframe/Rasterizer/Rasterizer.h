@@ -1,9 +1,10 @@
 #pragma once
 
 #include "Design/Updating/Updateable.h"
-#include "Wireframe/Interpolator/Interpolator.h"
-#include "../State/RasterizerParameters.h"
-#include "Wireframe/State/RasterizerData.h"
+#include "../Interpolator/Interpolator.h"
+#include "../Sampler/SamplerOutput.h"
+#include "../State/RasterizerData.h"
+#include "RasterizerParams.h"
 
 class CurveGenerator;
 class CurveSampler;
@@ -34,14 +35,19 @@ public:
         unique_ptr<CurveSampler> sampler
     )
         : interpolator(std::move(interpolator)),
-          generator(std::move(generator)) {
+          generator(std::move(generator)),
+          sampler(std::move(sampler))
+    {
+        for (const auto& p : positioners) {
+            this->positioners.emplace_back(p);
+        }
     }
 
     void addPositioner(unique_ptr<PointPositioner> positioner) {
         positioners.emplace_back(std::move(positioner));
     }
 
-    RasterizerData runPipeline(InputType arg);
+    SamplerOutput runPipeline(InputType arg);
 
 
     void performUpdate(UpdateType updateType) override {
@@ -49,12 +55,14 @@ public:
         runPipeline();
     }
 
+    const RasterizerParams& getConfig() { return config; }
+
 protected:
     unique_ptr<Interpolator<InputType, OutputPointType>> interpolator;
     unique_ptr<CurveGenerator> generator;
     unique_ptr<CurveSampler> sampler;
     vector<unique_ptr<PointPositioner> > positioners;
 
-    RasterizerParameters config;
+    RasterizerParams config;
 };
 

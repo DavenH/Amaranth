@@ -256,7 +256,7 @@ void Panel2D::drawDepthLinesAndVerts() {
         return;
     }
 
-    vector<ColorPoint> points;
+    vector<TrilinearEdge> points;
 
     {
         ScopedLock sl(data.lock);
@@ -270,9 +270,9 @@ void Panel2D::drawDepthLinesAndVerts() {
 
     gfx->setCurrentLineWidth(1.f);
 
-    vector<ColorPoint> finalPoints;
+    vector<TrilinearEdge> finalPoints;
 
-    typedef vector<ColorPoint>::iterator ColorIter;
+    typedef vector<TrilinearEdge>::iterator ColorIter;
 
     for (auto& point : points) {
         dim = point.num;

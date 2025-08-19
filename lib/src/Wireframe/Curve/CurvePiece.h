@@ -74,7 +74,7 @@ public:
         interpolate   = false;
     }
 
-    bool operator==(const CurvePiece& other);
+    bool operator==(const CurvePiece& other) const;
     double function(double x, double t);
     float getCentreX();
     static void calcTable();

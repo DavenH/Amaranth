@@ -1,10 +1,10 @@
 #pragma once
-#include <vector>
 #include "../../Array/ScopedAlloc.h"
 
+#include <vector>
 using std::vector;
 
-class ColorPoint;
+class TrilinearEdge;
 struct Intercept;
 class CurvePiece;
 
@@ -17,7 +17,7 @@ struct RasterizerData {
     ScopedAlloc<float> buffer;
     Buffer<float> waveX, waveY;
 
-    vector<ColorPoint> colorPoints;
+    vector<TrilinearEdge> colorPoints;
     vector<Intercept> intercepts;
     vector<CurvePiece> curves;
 

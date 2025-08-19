@@ -2,15 +2,14 @@
 
 #include <Definitions.h>
 
-#include "../Env/EnvelopeMesh.h"
-#include "../Path/IPathSampler.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Util/Arithmetic.h"
+#include "../Env/EnvelopeMesh.h"
 
 
 EnvRasterizer::EnvRasterizer(SingletonRepo* repo, IPathSampler* path, const String& name) :
         SingletonAccessor(repo, name)
-    ,   OldMeshRasterizer   (name)
+    ,   OldMeshRasterizer(name)
     ,    envMesh         (nullptr)
     ,    sampleReleaseNextCall(false)
     ,    oneSamplePerCycle(false)
@@ -51,7 +50,9 @@ EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
     return *this;
 }
 
-EnvRasterizer::EnvRasterizer(const EnvRasterizer& copy) : SingletonAccessor(copy), OldMeshRasterizer(copy) {
+EnvRasterizer::EnvRasterizer(const EnvRasterizer& copy)
+    : SingletonAccessor(copy),
+      OldMeshRasterizer(copy) {
     initialise();
     operator=(copy);
 }
@@ -84,7 +85,9 @@ bool EnvRasterizer::hasReleaseCurve() {
 }
 
 void EnvRasterizer::generateControlPoints() {
+    // the actual 'time' axis is 'phase'
     morph.time = 0;
+
     OldMeshRasterizer::generateControlPoints(envMesh, 0.f);
 
     // do this even if we can't loop right now just in case
@@ -111,13 +114,14 @@ void EnvRasterizer::generateControlPoints() {
     //    evaluateLoopSustainIndices();
 }
 
+// this is the only specializer of `OldMeshRasterizer::processIntercepts`
 void EnvRasterizer::processIntercepts(vector<Intercept>& intercepts) {
     evaluateLoopSustainIndices();
 
     if (scalingType != Bipolar) {
         if (sustainIndex >= 0 && sustainIndex != intercepts.size() - 1) {
             Intercept sustIcpt = intercepts[sustainIndex];
-            sustIcpt.cube = nullptr;
+            sustIcpt.cube      = nullptr;
             sustIcpt.x += 0.0001f;
 
             if (sustIcpt.y < 0.5f) {
@@ -147,8 +151,8 @@ void EnvRasterizer::padControlPointsForRender(vector<Intercept>& intercepts, vec
     Intercept loopBackIcptA, loopBackIcptB;
 
     int numLoopPoints = sustainIndex - loopIndex;
-    bool loopable = state != Releasing && canLoop() && numLoopPoints > 1;
-    float loopLength = loopable ? getLoopLength() : 0;
+    bool loopable     = state != Releasing && canLoop() && numLoopPoints > 1;
+    float loopLength  = loopable ? getLoopLength() : 0;
 
     if (loopable) {
         jassert(loopIndex + loopMinSizeIcpts <= sustainIndex);
@@ -197,8 +201,9 @@ void EnvRasterizer::padControlPointsForRender(vector<Intercept>& intercepts, vec
         curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
         curves.emplace_back(intercepts[end], back1, back2);
 
-        if (state == Releasing || !loopable)
+        if (state == Releasing || !loopable) {
             curves.emplace_back(back1, back2, back3);
+        }
     } else if (state == Looping && loopable) {
         vector<Intercept> loopIcpts;
 
@@ -250,7 +255,7 @@ void EnvRasterizer::padControlPoints(vector<Intercept>& controlPoints, vector<Cu
 
     const Intercept& endIcpt = controlPoints[end];
 
-    bool loopable = canLoop();
+    bool loopable    = canLoop();
     bool haveRelease = hasReleaseCurve();
 
     int numLoopPoints = sustainIndex - loopIndex;
@@ -298,9 +303,9 @@ void EnvRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
         Random rand(Time::currentTimeMillis());
 
         for (auto& param: params) {
-            DeformContext& context = param.deformContext;
+            DeformContext& context  = param.deformContext;
             context.phaseOffsetSeed = rand.nextInt(tableSize);
-            context.vertOffsetSeed = rand.nextInt(tableSize);
+            context.vertOffsetSeed  = rand.nextInt(tableSize);
         }
     } else {
         OldMeshRasterizer::updateOffsetSeeds(layerSize, tableSize);
@@ -308,7 +313,7 @@ void EnvRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
 }
 
 void EnvRasterizer::setWantOneSamplePerCycle(bool does) {
-    oneSamplePerCycle = does;
+    oneSamplePerCycle      = does;
     decoupleComponentPaths = does;
 }
 
@@ -340,7 +345,7 @@ void EnvRasterizer::setNoteOn() {
 void EnvRasterizer::setNoteOff() {
     if (state != Releasing) {
         if (hasReleaseCurve()) {
-            state = Releasing;
+            state                 = Releasing;
             sampleReleaseNextCall = true;
         }
     }
@@ -384,22 +389,22 @@ bool EnvRasterizer::renderToBuffer(
 
     // todo adjust this according to loop length? must be less than loop length in time
     // also depends on deltaX, if it's very large, the granularity must be increased
-    auto loopLength = jmax<float>(2.f * newDelta, getLoopLength()); //88
+    auto loopLength               = jmax<float>(2.f * newDelta, getLoopLength()); //88
     float maxIterativeAdvancement = 0.5f;
-    int maxSamplesPerBuf = 512;
+    int maxSamplesPerBuf          = 512;
 
-    if (loopLength > 2 * newDelta){
+    if (loopLength > 2 * newDelta) {
         maxIterativeAdvancement = 0.9f * loopLength; //130
     }
 
     maxSamplesPerBuf = jlimit(1, maxSamplesPerBuf, int(maxIterativeAdvancement / newDelta));
 
-    int bufferPos = 0;
+    int bufferPos   = 0;
     bool stillAlive = true;
 
     // partition buffers because state may change within buffer
     while (numSamples - bufferPos > 0) {
-        int maxSamples = jmin(maxSamplesPerBuf, numSamples - bufferPos);
+        int maxSamples      = jmin(maxSamplesPerBuf, numSamples - bufferPos);
         int samplesRendered = maxSamples;
 
         Buffer<float> buffer;
@@ -444,13 +449,13 @@ int EnvRasterizer::vectorizedRenderToBuffer(
 
     dbg("\n\n" << OldMeshRasterizer::name << "(" << paramIndex << ")");
 
-    double advancement = numSamples * deltaX;
-    double boundary = (state == Releasing) ? controlPoints.back().x : controlPoints[sustainIndex].x;
-    double nextPosition = group.samplePosition + advancement;
-    bool overextends = nextPosition > boundary;
-    bool loopable = canLoop();
+    double advancement        = numSamples * deltaX;
+    double boundary           = (state == Releasing) ? controlPoints.back().x : controlPoints[sustainIndex].x;
+    double nextPosition       = group.samplePosition + advancement;
+    bool overextends          = nextPosition > boundary;
+    bool loopable             = canLoop();
     bool willLoopBackNextCall = loopable && overextends && state == NormalState;
-    int samplesRendered = numSamples;
+    int samplesRendered       = numSamples;
 
     dbg("rendering to buffer\t" << buffer.size() << " with delta " << deltaX <<
         ", range " << group.samplePosition << " - " << nextPosition);
@@ -577,8 +582,8 @@ int EnvRasterizer::vectorizedRenderToBuffer(
 
 void EnvRasterizer::simulateStart(double& lastPosition) {
     sampleReleaseNextCall = false;
-    lastPosition = 0;
-    state = NormalState;
+    lastPosition          = 0;
+    state                 = NormalState;
 }
 
 bool EnvRasterizer::simulateStop(double& lastPosition) {
@@ -609,10 +614,10 @@ bool EnvRasterizer::simulateRender(
 
     advancement = newAdvancement;
 
-    double boundary = (state == Releasing) ? controlPoints.back().x : controlPoints[sustainIndex].x;
-    double nextPosition = lastPosition + advancement;
-    bool overextends = nextPosition > boundary;
-    bool loopable = canLoop();
+    double boundary           = (state == Releasing) ? controlPoints.back().x : controlPoints[sustainIndex].x;
+    double nextPosition       = lastPosition + advancement;
+    bool overextends          = nextPosition > boundary;
+    bool loopable             = canLoop();
     bool willLoopBackNextCall = loopable && overextends && state == NormalState;
 
     if (willLoopBackNextCall) {
@@ -621,9 +626,9 @@ bool EnvRasterizer::simulateRender(
 
     if (sampleReleaseNextCall) {
         sampleReleaseNextCall = false;
-        int releaseIdx = scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
-        float releasePosX = controlPoints[releaseIdx].x;
-        lastPosition = releasePosX;
+        int releaseIdx        = scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
+        float releasePosX     = controlPoints[releaseIdx].x;
+        lastPosition          = releasePosX;
     }
 
     switch (state) {
@@ -678,7 +683,7 @@ void EnvRasterizer::evaluateLoopSustainIndices() {
 
     int end = (int) controlPoints.size() - 1;
 
-    loopIndex = -1;
+    loopIndex    = -1;
     sustainIndex = -1;
 
     if (controlPoints.empty()) {
@@ -695,8 +700,9 @@ void EnvRasterizer::evaluateLoopSustainIndices() {
             continue;
         }
 
-        if (loopLines.find(cube) != loopLines.end())
+        if (loopLines.find(cube) != loopLines.end()) {
             loopIndex = i;
+        }
 
         if (sustLines.find(cube) != sustLines.end()) {
             sustainIndex = i;
@@ -724,9 +730,9 @@ void EnvRasterizer::changedToRelease() {
         slope = slopeCopy;
     }
 
-    float lastLevel = params[headUnisonIndex].sustainLevel;
-    int releaseIdx = scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
-    float releasePosX = controlPoints[releaseIdx].x;
+    float lastLevel           = params[headUnisonIndex].sustainLevel;
+    int releaseIdx            = scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
+    float releasePosX         = controlPoints[releaseIdx].x;
     float initialReleaseLevel = jmax(0.5f, sampleAt(releasePosX));
 
     releaseScale = lastLevel / initialReleaseLevel;
@@ -746,11 +752,11 @@ void EnvRasterizer::validateState() {
     for (auto& p: params) {
         if (waveX.empty()) {
             p.samplePosition = 0;
-            p.sampleIndex = 0;
+            p.sampleIndex    = 0;
         } else {
             if (p.samplePosition > waveX.back()) {
                 p.samplePosition = waveX.back();
-                p.sampleIndex = waveX.size() - 1;
+                p.sampleIndex    = waveX.size() - 1;
             }
         }
     }
@@ -762,16 +768,14 @@ void EnvRasterizer::validateState() {
             state = NormalState;
         } else {
             for (int i = headUnisonIndex; i < params.size(); ++i) {
-                double low = controlPoints[loopIndex].x;
+                double low  = controlPoints[loopIndex].x;
                 double high = controlPoints[sustainIndex].x;
 
                 double& pos = params[i].samplePosition;
 
                 if (pos > high) {
                     pos = jmax(low, pos - loopLength);
-                }
-
-                else if (pos < low) {
+                } else if (pos < low) {
                     pos = jmin(high, pos + loopLength);
                 }
             }

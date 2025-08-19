@@ -1,15 +1,15 @@
 #pragma once
 
-#include "Obj/ColorPoint.h"
+#include "Obj/TrilinearEdge.h"
 #include "Wireframe/Interpolator/Interpolator.h"
 #include "Wireframe/Interpolator/Trilinear/MorphPosition.h"
 
 class PathDeformingPositioner;
 
-class VisualTrilinearInterpolator : public Interpolator<Mesh*, ColorPoint> {
+class VisualTrilinearInterpolator : public Interpolator<Mesh*, TrilinearEdge> {
     explicit VisualTrilinearInterpolator(PathDeformingPositioner* pathDeformer);
 
-    vector<ColorPoint> interpolate(Mesh* usedMesh, const InterpolatorParameters& params) override;
+    vector<TrilinearEdge> interpolate(Mesh* usedMesh, const RasterizerParams& params) override;
     virtual int getPrimaryViewDimension() { return Vertex::Time; };
 
 protected:

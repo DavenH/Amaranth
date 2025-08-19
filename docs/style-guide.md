@@ -209,6 +209,7 @@ Mirror this order in constructor initializer lists.
 
 - Variables should be named with at most 4 words
 - Should be self-documenting
+- Camel-cased with no underscores
 
 ## Method Naming
 

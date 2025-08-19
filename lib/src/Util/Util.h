@@ -85,7 +85,7 @@ public:
     }
 
     template <typename T>
-    auto reverseIter(T& container) {
+    static auto reverseIter(T& container) {
         struct Wrapper {
             T& container;
             auto begin() { return container.rbegin(); }

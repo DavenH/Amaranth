@@ -62,7 +62,7 @@ void DerivativePanel::paint(Graphics& g) {
         gradient.addColour(double(x), c.toColour());
     }
 
-    int right = int(rightX + 0.5f);
+    int right = roundToInt(rightX);
 
     g.setGradientFill(gradient);
     g.fillRect(Rectangle(0, 0, right, juce::Component::getHeight()));

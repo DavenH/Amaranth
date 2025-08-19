@@ -5,7 +5,7 @@
 
 #include <climits>
 
-#include "Wireframe/State/RasterizerParameters.h"
+#include "Wireframe/Rasterizer/RasterizerParams.h"
 
 float SimpleCurveSampler::transferTable[CurvePiece::resolution] {};
 
@@ -40,62 +40,64 @@ void SimpleCurveSampler::placeWaveBuffers(int size) {
     area  = memoryBuffer.place(size);
 }
 
-void SimpleCurveSampler::buildFromCurves(
-    const std::vector<CurvePiece>& curves,
+int SimpleCurveSampler::getCurveResolution(const CurvePiece& thisCurve, const CurvePiece& nextCurve) const {
+    const int res = CurvePiece::resolution / 2;
+    const int thisRes = res >> thisCurve.resIndex;
+    const int nextRes = res >> nextCurve.resIndex;
+    return jmin(thisRes, nextRes);
+}
+
+void SimpleCurveSampler::generateWaveformForCurve(int& waveIdx, const CurvePiece& thisCurve, const CurvePiece& nextCurve, int curveRes) {
+    const int res = CurvePiece::resolution / 2;
+    const int offset = res >> thisCurve.resIndex;
+    const int xferInc = CurvePiece::resolution / curveRes;
+    const int thisShift = jmax(0, (nextCurve.resIndex - thisCurve.resIndex));
+    const int nextShift = jmax(0, (thisCurve.resIndex - nextCurve.resIndex));
+
+    for (int i = 0; i < curveRes; ++i) {
+        const float xferValue = transferTable[i * xferInc];
+        int indexA = (i << thisShift) + offset;
+        int indexB = (i << nextShift);
+
+        const float t1x = thisCurve.transformX[indexA] * (1.0f - xferValue);
+        const float t1y = thisCurve.transformY[indexA] * (1.0f - xferValue);
+        const float t2x = nextCurve.transformX[indexB] * xferValue;
+        const float t2y = nextCurve.transformY[indexB] * xferValue;
+
+        waveX[waveIdx] = t1x + t2x;
+        waveY[waveIdx] = t1y + t2y;
+        ++waveIdx;
+    }
+}
+
+SamplerOutput SimpleCurveSampler::buildFromCurves(
+    std::vector<CurvePiece>& pieces,
     const SamplingParameters& params
-) {
-    if (curves.size() < 2) {
+) override {
+    if (pieces.size() < 2) {
         cleanUp();
-        return;
+        return {};
     }
 
     ensureTransferTable();
 
-    const int res = CurvePiece::resolution / 2;
-    int totalRes  = 0;
-
-    // Determine per-piece resolution and total size
-    for (size_t i = 0; i < curves.size() - 1; ++i) {
-        const CurvePiece& a = curves[i];
-        const CurvePiece& b = curves[i + 1];
-        const int thisRes   = res >> a.resIndex;
-        const int nextRes   = res >> b.resIndex;
-        const int curveRes  = jmin(thisRes, nextRes);
-        totalRes += curveRes;
+    int totalRes = 0;
+    std::vector<int> curveResArray(pieces.size() - 1);
+    for (size_t i = 0; i < pieces.size() - 1; ++i) {
+        curveResArray[i] = getCurveResolution(pieces[i], pieces[i+1]);
+        totalRes += curveResArray[i];
     }
 
     placeWaveBuffers(totalRes);
 
-    zeroIndex   = 0;
-    oneIndex    = INT_MAX / 2;
+    zeroIndex = 0;
+    oneIndex = INT_MAX / 2;
     int waveIdx = 0;
     int cumeRes = 0;
 
-    for (size_t c = 0; c < curves.size() - 1; ++c) {
-        const CurvePiece& thisCurve = curves[c];
-        const CurvePiece& nextCurve = curves[c + 1];
-
-        int indexA          = 0, indexB = 0;
-        const int curveRes  = jmin(res >> thisCurve.resIndex, res >> nextCurve.resIndex);
-        const int offset    = res >> thisCurve.resIndex;
-        const int xferInc   = CurvePiece::resolution / curveRes;
-        const int thisShift = jmax(0, (nextCurve.resIndex - thisCurve.resIndex));
-        const int nextShift = jmax(0, (thisCurve.resIndex - nextCurve.resIndex));
-
-        for (int i = 0; i < curveRes; ++i) {
-            const float xferValue = transferTable[i * xferInc];
-            indexA                = (i << thisShift) + offset;
-            indexB                = (i << nextShift);
-
-            const float t1x = thisCurve.transformX[indexA] * (1 - xferValue);
-            const float t1y = thisCurve.transformY[indexA] * (1 - xferValue);
-            const float t2x = nextCurve.transformX[indexB] * xferValue;
-            const float t2y = nextCurve.transformY[indexB] * xferValue;
-
-            waveX[waveIdx] = t1x + t2x;
-            waveY[waveIdx] = t1y + t2y;
-            ++waveIdx;
-        }
+    for (size_t c = 0; c < pieces.size() - 1; ++c) {
+        const int curveRes = curveResArray[c];
+        generateWaveformForCurve(waveIdx, pieces[c], pieces[c + 1], curveRes);
 
         if (cumeRes > 0 && waveX[cumeRes - 1] <= 0 && waveX[cumeRes] > 0) {
             zeroIndex = cumeRes - 1;
@@ -124,13 +126,13 @@ void SimpleCurveSampler::buildFromCurves(
 
     if (cumeRes == 0) {
         cleanUp();
-        return;
+        return {};
     }
 
     const int resSubOne = cumeRes - 1;
-    Buffer<float> slp   = slope.withSize(resSubOne);
-    Buffer<float> dif   = diffX.withSize(resSubOne);
-    Buffer<float> are   = area.withSize(resSubOne);
+    Buffer<float> slp = slope.withSize(resSubOne);
+    Buffer<float> dif = diffX.withSize(resSubOne);
+    Buffer<float> are = area.withSize(resSubOne);
 
     VecOps::sub(waveX, waveX + 1, dif);
     VecOps::sub(waveY, waveY + 1, slp);
@@ -138,6 +140,8 @@ void SimpleCurveSampler::buildFromCurves(
     dif.threshLT(1e-6f);
     slp.div(dif);
     are.mul(dif).mul(0.5f);
+
+    return SamplerOutput{waveX, waveY, zeroIndex, oneIndex};
 }
 
 float SimpleCurveSampler::sampleAt(double position) {

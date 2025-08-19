@@ -124,32 +124,28 @@ No behavior redesign, but naming/param cleanup is permissible.
 
 ## Current Status
 
-- Many of the class files are already created, most with stubs.
 - [ ] **Positioner**
-  - [x] `PaddingPointPositioner`: Mostly complete. Call sites not updated. Covers FXRasterizer's point positioning
-  - [x] `PathDeformingPositioner`: Mostly complete. Handles applyPaths() calls upon control points
-  - [ ] `CyclicPointPositioner`: In progress. Interpolator parameters like `interceptPadding` should go in a new `InterpolatorConfig` struct inside `RasterizationConfig`. Covers TimeGraphicRasterizer
-  - [ ] `EnvPointPositioner`: Barely started. Covers EnvRasterizer's point positioning.
-  - [ ] `ChainingPointPositioner`: Not started. Covers VoiceMeshRasterizer's point positioning
-- [ ] **Interpolator**
-  - [ ] `TrilinearInterpolator` In progress. Not yet compiling. Some code 
-         concerning `colorPointers` split out to `VisualTrilinearInterpolator`. Need to understand 
-         how to inject `CurveConfiguration` object for member point positioner.
-  - [ ] `VisualTrilinearInterpolator`: In Progress. Need to update path deformer call pattern.
-- [ ] **CurveGenerator**
-  - [x] `SimpleCurveGenerator`: Possibly complete?
-- [ ] **CurveSampler**
-  - [x] `SimpleCurveSampler`: Looks complete.
-  - [ ] `PathDeformingCurveSampler`: Not started. Needed for any TrilinearInterpolator users. 
+  - [x] `PaddingPointPositioner`: Implemented.
+  - [x] `PathDeformingPositioner`: Implemented.
+  - [x] `CyclicPointPositioner`: Implemented.
+  - [ ] `EnvPointPositioner`: Stubbed, but logic is not implemented.
+  - [ ] `ChainingPointPositioner`: Stubbed, but logic is not implemented.
+- [x] **Interpolator**
+  - [x] `TrilinearInterpolator`: Implemented.
+  - [x] `SimpleInterpolator`: Implemented.
+  - [x] `BilinearInterpolator`: Implemented.
+- [x] **CurveGenerator**
+  - [x] `SimpleCurveGenerator`: Implemented.
+- [x] **CurveSampler**
+  - [x] `SimpleCurveSampler`: Implemented.
+  - [x] `PathDeformingCurveSampler`: Implemented.
 - [ ] **Rasterizer**
-  - [ ] `Rasterizer2D` is about half migrated, with some code style issues. Hopefully removable post-refactor. Callers should configure a MeshRasterizer wiht appropriate config.
-  - [ ] `Rasterizer` Dependency-injection vs Builder pattern still up in the air
-  - [ ] `FXRasterizer`: Hopefully removable post-refactor. Callers should configure a MeshRasterizer wiht appropriate config.
-  - [ ] `EnvRasterizer`: Large amount of work left to migrate functionality to composed units.
-- [ ] **State**
-  - [ ] `RasterizerParameters`: In progress. Collect properties into the appropriate structs. Plumb config objects through pipeline. 
-
-Caller sites need to be replaced by Rasterizer.Builder.
+  - [x] `Rasterizer2D`: Implemented.
+  - [x] `MeshRasterizer`: Implemented.
+  - [ ] `FXRasterizer`: Still inherits from `OldMeshRasterizer`.
+  - [ ] `EnvRasterizer`: Still inherits from `OldMeshRasterizer`.
+  - [x] `Rasterizer`: Abstract base class implemented, using dependency injection.
+- [x] **State**
+  - [x] `RasterizerParameters`: Structs for configuration are defined.
 
 Relevant files are in `lib/src/Wireframe/` and `cycle/src/Wireframe/`.
-

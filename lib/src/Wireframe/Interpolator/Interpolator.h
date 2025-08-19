@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Vertex/Intercept.h"
-#include "../State/RasterizerParameters.h"
+#include "../Rasterizer/RasterizerParams.h"
 
 using std::vector;
 
@@ -23,5 +23,7 @@ class Interpolator {
 public:
     virtual ~Interpolator() = default;
 
-    virtual vector<OutputPointType> interpolate(InputType arg, const InterpolatorParameters& params) = 0;
+    // Giving the whole RasterizerParams config violates principle of least privilege,
+    // but interpolator needs some positioner params. Could factor out shared params.
+    virtual vector<OutputPointType> interpolate(InputType arg, const RasterizerParams& params) = 0;
 };
