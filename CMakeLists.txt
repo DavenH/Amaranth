@@ -1,6 +1,24 @@
 # Root CMakeLists.txt
 cmake_minimum_required(VERSION 3.29)
 #set(CMAKE_CXX_COMPILER g++-11)
+
+if(APPLE)
+    if(NOT CMAKE_OSX_SYSROOT OR NOT EXISTS "${CMAKE_OSX_SYSROOT}")
+        execute_process(
+            COMMAND xcrun --sdk macosx --show-sdk-path
+            OUTPUT_VARIABLE MACOS_SDK_PATH
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE XCRUN_RESULT
+        )
+        if(MACOS_SDK_PATH AND EXISTS "${MACOS_SDK_PATH}")
+            set(CMAKE_OSX_SYSROOT "${MACOS_SDK_PATH}" CACHE PATH "macOS SDK path" FORCE)
+            message(STATUS "Using macOS SDK: ${CMAKE_OSX_SYSROOT}")
+        else()
+            message(WARNING "Unable to resolve macOS SDK path via xcrun (result ${XCRUN_RESULT}).")
+        endif()
+    endif()
+endif()
+
 project(Amaranth VERSION 1.0.0)
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.env")
