@@ -4,7 +4,7 @@
 
 #include <Definitions.h>
 #include <App/SingletonRepo.h>
-
+#include "../CycleDefs.h"
 
 BannerPanel::BannerPanel(SingletonRepo* repo) : SingletonAccessor(repo, "BannerPanel") {
 }

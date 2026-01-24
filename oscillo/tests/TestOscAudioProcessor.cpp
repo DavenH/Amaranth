@@ -1,3 +1,4 @@
+#include <RealTimePitchTracker.cpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
@@ -5,6 +6,9 @@
 
 class TestableOscAudioProcessor : public OscAudioProcessor {
 public:
+    explicit TestableOscAudioProcessor(RealTimePitchTracker* pt)
+        : OscAudioProcessor(pt) {}
+
     using OscAudioProcessor::appendSamplesRetractingPeriods;
     using OscAudioProcessor::accumulatedSamples;
     using OscAudioProcessor::targetPeriod;
@@ -15,8 +19,17 @@ public:
     void setTargetPeriod(float value) { targetPeriod = value; }
 };
 
+class StubPitchTracker : public RealTimePitchTracker {
+public:
+    void setSampleRate(int) { /* no-op */ }
+    void write(Buffer<float>&) { /* no-op */ }
+    // update() not used by OscAudioProcessor in these tests
+};
+
+
 TEST_CASE("OscAudioProcessor Period Extraction", "[audio]") {
-    TestableOscAudioProcessor processor;
+    StubPitchTracker tracker;
+    TestableOscAudioProcessor processor(&tracker);
 
     SECTION("Simple integer period") {
         float period = 100.f;
@@ -97,8 +110,8 @@ TEST_CASE("OscAudioProcessor Period Extraction", "[audio]") {
 
         auto periods = processor.getAudioPeriods();
         // Should alternate between 2 and 3 samples per period
-        for (size_t i = 0; i < periods.size(); i++) {
-            REQUIRE((periods[i].size() == 2 || periods[i].size() == 3));
+        for (const auto& period : periods) {
+            REQUIRE((period.size() == 2 || period.size() == 3));
         }
 
         float accumulated = processor.getAccumulatedSamples();

@@ -94,11 +94,11 @@ void WavAudioSource::SampleVoice::renderNextBlock(AudioSampleBuffer& outputBuffe
 
         if (state.srcToDstRatio == 1.f) {
             Buffer<float> input = sample->audio[i].sectionAtMost(offsetSamples, numSamples);
-            renderBuffer[i].mul(input, velocity);
+            VecOps::mul(input, velocity, renderBuffer[i]);
 
             if (sample->audio.numChannels < output.numChannels) {
                 input = sample->audio[i].sectionAtMost(offsetSamples, numSamples);
-                renderBuffer.right.mul(input, velocity);
+                VecOps::mul(input, velocity, renderBuffer.right);
             }
 
             if (input.size() < numSamples) {
@@ -115,10 +115,10 @@ void WavAudioSource::SampleVoice::renderNextBlock(AudioSampleBuffer& outputBuffe
 
             if (!src.empty()) {
                 size = state.resample(src, dst);
-                renderBuffer[i].mul(dst.withSize(size), velocity);
+                VecOps::mul(dst.withSize(size), velocity, renderBuffer[i]);
 
                 if (sample->audio.numChannels < output.numChannels) {
-                    renderBuffer.right.mul(dst.withSize(size), velocity);
+                    VecOps::mul(dst.withSize(size), velocity, renderBuffer.right);
                 }
             }
 

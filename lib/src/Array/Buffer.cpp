@@ -672,9 +672,11 @@ declareForRealAndCplx(constructAdd);
 declareForRealAndCplx(constructDiv);
 declareForRealAndCplx(constructSub);
 declareForRealAndCplx(constructMul);
+constructMul(16s)
 declareForFloatAndCplx(constructCombine);
 declareForReal(constructAddC);
 declareForReal(constructMulC);
+constructMulC(16s)
 declareForReal(constructDivC);
 declareForReal(constructSubC);
 declareForReal(constructSubCRev);
@@ -738,6 +740,12 @@ template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::addProduct(Buffer buff, Ipp32fc c) 
     } else {
         ippsAdd_32fc_I(buff.ptr, ptr, sz);
     }
+    return *this;
+}
+
+template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::threshLT(Ipp32fc c) {                                                               \
+    if(sz > 0)
+    ippsThreshold_LT_32fc_I(ptr, sz, c.re);
     return *this;
 }
 

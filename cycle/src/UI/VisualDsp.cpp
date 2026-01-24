@@ -42,8 +42,7 @@ VisualDsp::VisualDsp(SingletonRepo* repo) :
     for (int fftOrderIdx = 0; fftOrderIdx < numFFTOrders; ++fftOrderIdx) {
         int size = 8 << fftOrderIdx;
         sizeToIndex[size] = fftOrderIdx;
-        ffts[fftOrderIdx].setFFTScaleType(Transform::ScaleType::DivFwdByN);
-        ffts[fftOrderIdx].allocate(size, true);
+        ffts[fftOrderIdx].allocate(size, Transform::DivFwdByN, true);
     }
 }
 

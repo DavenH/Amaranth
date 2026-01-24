@@ -9,7 +9,7 @@
 #include "../../Binary/CycleImages.h"
 #include "../CycleGraphicsUtils.h"
 #include "../../Util/CycleEnums.h"
-#include "../../CycleDefs.h"
+#include "../CycleDefs.h"
 
 class HelpDialog :
 		public juce::Component
@@ -25,7 +25,6 @@ public:
 		addAndMakeVisible(&closeButton);
 
 		logo 		= PNGImageFormat::loadFrom(CycleImages::cyclelogo_png, CycleImages::cyclelogo_pngSize);
-//		beatLogo	= PNGImageFormat::loadFrom(CycleImages::beatlogo_png,  CycleImages::beatlogo_pngSize );
 		bert 		= PNGImageFormat::loadFrom(CycleImages::cyclebert_png, CycleImages::cyclebert_pngSize);
 	}
 

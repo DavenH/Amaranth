@@ -27,6 +27,7 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.env")
         "ERROR: No .env file found in project root!\n"
         "Please run the environment setup script to create one:\n"
         "\n"
+        "    .scripts/install_deps.sh\n"
         "    .scripts/make_env.sh\n"
         "\n"
         "This will help you configure the necessary SDK paths for building.\n"

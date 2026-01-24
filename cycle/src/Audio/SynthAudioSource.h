@@ -28,7 +28,7 @@
 #include "../Curve/EnvRenderContext.h"
 
 using std::map;
-#undef juce::Delay;
+#undef Delay
 
 class WavAudioSource;
 class SynthFilterVoice;

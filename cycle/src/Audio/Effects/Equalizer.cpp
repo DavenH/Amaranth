@@ -148,7 +148,7 @@ void Equalizer::updatePartition(int idx, bool canUpdateTaps) {
             break;
 
         default:
-            bsFilter[idx - 1].setup(filterOrder, samplerate, part.centreFreq, part.centreFreq * 0.7, part.gainDB);
+            bsFilter[idx - 1].setup(filterOrder, samplerate, part.centreFreq, part.centreFreq * 0.7f, part.gainDB);
             break;
     }
 
@@ -265,74 +265,74 @@ void Equalizer::updateParametersToTarget() {
     }
 }
 
-void Equalizer::test() {
-    int size = 1024;
-    int width = 16;
-    int pulseWidth = 16;
-
-    ScopedAlloc<Float32> buffers(size);
-    Transform fft;
-
-    fft.allocate(size, true);
-
-    AudioSampleBuffer audioBuffer(2, size);
-    audioBuffer.clear();
-
-    doParamChange(Band1Gain, 0.5001, false);
-    doParamChange(Band2Gain, 0.5001, false);
-    doParamChange(Band3Gain, 0.5001, false);
-    doParamChange(Band4Gain, 0.5001, false);
-    doParamChange(Band5Gain, 0.5001, true);
-
-    doParamChange(Band1Freq, 0.1, false);
-    doParamChange(Band2Freq, 0.3, false);
-    doParamChange(Band3Freq, 0.5, false);
-    doParamChange(Band4Freq, 0.7, false);
-    doParamChange(Band5Freq, 0.9, true);
-
-    updateParametersToTarget();
-
-    for (int i = 0; i < numPartitions; ++i) {
-        EqPartition &part = partitions[i];
-
-        info("Eq partition " << String(i) << "\n");
-        info("Gain: " << String(part.gainDB.getCurrentValue(), 2) << "\n");
-        info("Freq: " << String(part.centreFreq.getCurrentValue(), 2) << "\n");
-
-        //		for(int j = 0; j < 2; ++j)
-        //		{
-        //			info("State: " << part.states[j] << "\n");
-        //			std::cout << ""
-        //		}
-
-        info("\n");
-    }
-
-    for (int i = 0; i < 2; ++i) {
-        Buffer<float> buf(audioBuffer, i);
-
-        //		Float32* buffer = audioBuffer.getWritePointer(i);
-
-        buf.zero();
-        buf.section(pulseWidth, pulseWidth).set(1.f);
-        buf.section(pulseWidth * 2, pulseWidth).set(-1.f);
-        buf.copyTo(buffers);
-
-        fft.forward(buffers);
-
-        Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(FFTLogTensionAmp));
-        // getObj(CsvFile).addValues(fft.getMagnitudes(), i);
-    }
-
-    processBuffer(audioBuffer);
-
-    for (int i = 0; i < 2; ++i) {
-        ippsCopy_32f(audioBuffer.getWritePointer(i), buffers, size);
-        fft.forward(buffers);
-
-        Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(FFTLogTensionAmp));
-        // getObj(CsvFile).addValues(fft.getMagnitudes(), i + 2);
-    }
-
-    // getObj(CsvFile).print(repo);
-}
+// void Equalizer::test() {
+//     int size = 1024;
+//     int width = 16;
+//     int pulseWidth = 16;
+//
+//     ScopedAlloc<Float32> buffers(size);
+//     Transform fft;
+//
+//     fft.allocate(size, true);
+//
+//     AudioSampleBuffer audioBuffer(2, size);
+//     audioBuffer.clear();
+//
+//     doParamChange(Band1Gain, 0.5001, false);
+//     doParamChange(Band2Gain, 0.5001, false);
+//     doParamChange(Band3Gain, 0.5001, false);
+//     doParamChange(Band4Gain, 0.5001, false);
+//     doParamChange(Band5Gain, 0.5001, true);
+//
+//     doParamChange(Band1Freq, 0.1, false);
+//     doParamChange(Band2Freq, 0.3, false);
+//     doParamChange(Band3Freq, 0.5, false);
+//     doParamChange(Band4Freq, 0.7, false);
+//     doParamChange(Band5Freq, 0.9, true);
+//
+//     updateParametersToTarget();
+//
+//     for (int i = 0; i < numPartitions; ++i) {
+//         EqPartition &part = partitions[i];
+//
+//         info("Eq partition " << String(i) << "\n");
+//         info("Gain: " << String(part.gainDB.getCurrentValue(), 2) << "\n");
+//         info("Freq: " << String(part.centreFreq.getCurrentValue(), 2) << "\n");
+//
+//         //		for(int j = 0; j < 2; ++j)
+//         //		{
+//         //			info("State: " << part.states[j] << "\n");
+//         //			std::cout << ""
+//         //		}
+//
+//         info("\n");
+//     }
+//
+//     for (int i = 0; i < 2; ++i) {
+//         Buffer<float> buf(audioBuffer, i);
+//
+//         //		Float32* buffer = audioBuffer.getWritePointer(i);
+//
+//         buf.zero();
+//         buf.section(pulseWidth, pulseWidth).set(1.f);
+//         buf.section(pulseWidth * 2, pulseWidth).set(-1.f);
+//         buf.copyTo(buffers);
+//
+//         fft.forward(buffers);
+//
+//         Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(FFTLogTensionAmp));
+//         // getObj(CsvFile).addValues(fft.getMagnitudes(), i);
+//     }
+//
+//     processBuffer(audioBuffer);
+//
+//     for (int i = 0; i < 2; ++i) {
+//         ippsCopy_32f(audioBuffer.getWritePointer(i), buffers, size);
+//         fft.forward(buffers);
+//
+//         Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(FFTLogTensionAmp));
+//         // getObj(CsvFile).addValues(fft.getMagnitudes(), i + 2);
+//     }
+//
+//     // getObj(CsvFile).print(repo);
+// }

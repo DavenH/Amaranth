@@ -569,9 +569,9 @@ void IrModellerUI::deconvolve() {
     Buffer<float> fadedCyc 		= fadeMem.place(cycSize + quarter);
 
     fadeOutUp	.ramp().sqr();
-    fadeOutDown	.subCRev(1.f, fadeOutUp);
+    VecOps::subCRev(fadeOutUp, 1.f, fadeOutDown);
     VecOps::flip(fadeOutDown, fadeInUp);
-    fadeInDown	.subCRev(1.f, fadeInUp);
+    VecOps::subCRev(fadeInUp, 1.f, fadeInDown);
 
     waveSource	.copyTo(fadedCyc);
     fadedCyc	.mul(fadeInUp);
