@@ -26,11 +26,11 @@ public:
         addAndMakeVisible(centsOffsetSlider);
 
         temperamentLabel.setText("Temperament:", dontSendNotification);
-        temperamentLabel.attachToComponent(&temperamentSelect, true);
+        temperamentLabel.setJustificationType(Justification::centredLeft);
         addAndMakeVisible(temperamentLabel);
 
         centsLabel.setText("Cents Offset:", dontSendNotification);
-        centsLabel.attachToComponent(&centsOffsetSlider, true);
+        centsLabel.setJustificationType(Justification::centredLeft);
         addAndMakeVisible(centsLabel);
 
         frequencyLabel.setJustificationType(Justification::centred);
@@ -40,13 +40,22 @@ public:
     }
 
     void resized() override {
-        auto area = getLocalBounds();
-        auto column = area.removeFromRight(250);
-        temperamentSelect.setBounds(column.removeFromTop(30));
-        column.removeFromTop(10);
-        centsOffsetSlider.setBounds(column.removeFromTop(30));
-        column = area.removeFromRight(400);
-        frequencyLabel.setBounds(column.removeFromTop(30));
+        auto area = getLocalBounds().reduced(16, 12);
+        const int rowHeight = 28;
+        const int labelWidth = 130;
+        const int rowGap = 10;
+
+        frequencyLabel.setBounds(area.removeFromTop(rowHeight));
+        area.removeFromTop(rowGap);
+
+        auto row = area.removeFromTop(rowHeight);
+        temperamentLabel.setBounds(row.removeFromLeft(labelWidth));
+        temperamentSelect.setBounds(row);
+
+        area.removeFromTop(rowGap);
+        row = area.removeFromTop(rowHeight);
+        centsLabel.setBounds(row.removeFromLeft(labelWidth));
+        centsOffsetSlider.setBounds(row);
     }
 
     [[nodiscard]] double getCentsOffset(int midiNote, Temperament selectedTemperment) const {

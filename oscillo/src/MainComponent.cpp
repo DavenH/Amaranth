@@ -52,6 +52,7 @@ MainComponent::MainComponent()
 MainComponent::~MainComponent() {
     stopTimer();
     processor->stop();
+    temperamentDialog = nullptr;
 }
 
 void MainComponent::paint(Graphics& g) {
@@ -135,9 +136,6 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
         g.drawText(driftText, driftX + 10, area.getY(), 90, 20, Justification::centred);
     }
 
-    g.setColour(Colours::white);
-    g.setFont(14.0f);
-    g.drawText("Phase Velocity", area.getX(), area.getY() - 20, area.getWidth(), 20, Justification::centred);
 }
 
 void MainComponent::drawHarmonicPhaseVelocityPlot(Graphics& g, const Rectangle<int>& area) {
@@ -183,14 +181,6 @@ void MainComponent::drawHarmonicPhaseVelocityPlot(Graphics& g, const Rectangle<i
         g.strokePath(path, PathStrokeType(2.0f));
     }
 
-    if (currentNoteHistory >= 0) {
-        const auto& history = noteHistories[(size_t) currentNoteHistory];
-        const auto label = MidiMessage::getMidiNoteName(history.midiNote, true, true, 4);
-        g.setColour(Colours::white);
-        g.setFont(14.0f);
-        g.drawText("H1 Phase Velocity: " + label, area.getX(), area.getY(), area.getWidth(), 18,
-            Justification::centred);
-    }
 }
 
 void MainComponent::resized() {
@@ -425,22 +415,25 @@ void MainComponent::showTemperamentDialog() {
         }
     };
 
+    Component::SafePointer<MainComponent> safeThis(this);
     auto* dialog = new TemperamentDialogWindow("Temperament Settings",
         getLookAndFeel().findColour(ResizableWindow::backgroundColourId),
         true);
     dialog->setUsingNativeTitleBar(true);
     dialog->setResizable(false, false);
 
-    temperamentControls->setSize(520, 140);
+    temperamentControls->setSize(520, 180);
     dialog->setContentOwned(temperamentControls.get(), false);
-    dialog->centreAroundComponent(this, 520, 140);
+    dialog->centreAroundComponent(this, 520, 180);
     dialog->setVisible(true);
     dialog->toFront(true);
 
-    dialog->onClose = [this]() {
-        if (temperamentDialog) {
-            temperamentDialog = nullptr;
-        }
+    dialog->onClose = [safeThis]() {
+        MessageManager::callAsync([safeThis]() {
+            if (safeThis != nullptr && safeThis->temperamentDialog) {
+                safeThis->temperamentDialog = nullptr;
+            }
+        });
     };
 
     temperamentDialog.reset(dialog);

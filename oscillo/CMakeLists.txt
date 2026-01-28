@@ -24,7 +24,7 @@ elseif(APPLE)
     list(APPEND BASE_DEFINITIONS MAC=1)
 endif()
 
-add_executable(${PROJECT_NAME} ${APP_SOURCES}
+add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${APP_SOURCES}
         src/AppSettings.h)
 set(TARGET_TYPE "Standalone")
 
@@ -32,6 +32,19 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     ${BASE_DEFINITIONS}
     JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/incl/JucePluginDefines.h"
 )
+
+if(APPLE)
+    set(APP_ICON ${CMAKE_CURRENT_SOURCE_DIR}/resources/Oscillo.icns)
+    set_source_files_properties(${APP_ICON} PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources"
+    )
+    target_sources(${PROJECT_NAME} PRIVATE ${APP_ICON})
+
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/resources/Info.plist
+        MACOSX_BUNDLE_ICON_FILE "Oscillo.icns"
+    )
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -91,6 +104,6 @@ if(UNIX AND NOT APPLE)
     )
 elseif(APPLE)
     install(TARGETS ${PROJECT_NAME}
-        RUNTIME DESTINATION Applications
+        BUNDLE DESTINATION Applications
     )
 endif()

@@ -20,7 +20,6 @@ public:
     std::function<void(int)> onArrowKey;
 
     bool keyPressed(const KeyPress& key) override {
-        DBG("HighlightKeyboard::keyPressed " + key.getTextDescription());
         if (key.getKeyCode() == KeyPress::rightKey) {
             if (onArrowKey) {
                 onArrowKey(1);

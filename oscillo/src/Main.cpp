@@ -25,7 +25,10 @@ public:
         });
     }
 
-    void shutdown() override { mainWindow = nullptr; }
+    void shutdown() override {
+        mainWindow = nullptr;
+        AppSettings::deleteInstance();
+    }
 
     class MainWindow : public DocumentWindow {
     public:
@@ -49,7 +52,7 @@ public:
                 menu.addSeparator();
                 menu.addItem(kMenuQuit, "Quit");
                 return menu;
-         +_+_++++--=   }
+            }
 
             void menuItemSelected(int menuItemID, int) override {
                 if (menuItemID == kMenuTemperamentSettings) {
@@ -110,7 +113,6 @@ public:
         }
 
         bool keyPressed(const KeyPress& key) override {
-            DBG("MainWindow::keyPressed " + key.getTextDescription());
             if (key.getKeyCode() == KeyPress::rightKey) {
                 if (auto* content = dynamic_cast<MainComponent*>(getContentComponent())) {
                     content->stepRootNote(1);
