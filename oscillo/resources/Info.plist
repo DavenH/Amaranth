@@ -20,5 +20,7 @@
     <string>1</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Oscillo needs access to your microphone to record and analyze audio.</string>
 </dict>
 </plist>

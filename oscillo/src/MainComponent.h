@@ -95,9 +95,9 @@ private:
     static constexpr int kSpectrogramHeight = 64;
     static constexpr int kNumColours = 64;
     static constexpr int kPhaseVelocityWidth = 20;
-    static constexpr float kPhaseSmoothing = 0.05f; // Exponential smoothing factor (0 to 1)
+    static constexpr float kPhaseSmoothing = 0.04f; // Exponential smoothing factor (0 to 1)
     static constexpr float kBarChartMaxVelocity = 0.1f; // Maximum velocity for scaling bars
-    static constexpr float kPlotMaxVelocity = 0.1f;
+    static constexpr float kPlotMaxVelocity = 0.05f;
 
     struct NoteHistory {
         int midiNote = 60;
@@ -109,6 +109,7 @@ private:
     };
 
     MidiKeyboardState keyboardState;
+    bool needsPhaseVelocityInit = true;
 
     std::unique_ptr<OscAudioProcessor> processor;
     std::unique_ptr<HighlightKeyboard> keyboard;

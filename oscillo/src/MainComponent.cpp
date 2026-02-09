@@ -40,7 +40,7 @@ MainComponent::MainComponent()
     phaseDiff.zero();
     avgMagnitudes.zero();
 
-    startTimer(100);
+    startTimer(50);
 
     DBG(String::formatted("Main component constructor - Thread ID: %d", Thread::getCurrentThreadId()));
     DBG(String("Is message thread? ") + (MessageManager::getInstance()->isThisTheMessageThread() ? "yes" : "no"));
@@ -148,11 +148,17 @@ void MainComponent::drawHarmonicPhaseVelocityPlot(Graphics& g, const Rectangle<i
     g.drawHorizontalLine(area.getY() + area.getHeight() * 3 / 4, (float) area.getX(), (float) area.getRight());
 
     static const Colour colours[] = {
-        Colours::yellow, Colours::cyan, Colours::orange, Colours::limegreen,
-        Colours::magenta, Colours::lightskyblue, Colours::salmon, Colours::white
+        Colours::yellow,
+        Colours::cyan,
+        Colours::orange,
+        Colours::limegreen,
+        Colours::magenta,
+        Colours::lightskyblue,
+        Colours::salmon,
+        Colours::white
     };
 
-    const float xStep = (float) area.getWidth() / jmax(1, kNoteHistoryFrames - 1);
+    const float xStep = 6 * (float) area.getWidth() / jmax(1, kNoteHistoryFrames - 1);
     const float halfHeight = area.getHeight() / 2.0f;
     const float centerY = (float) area.getCentreY();
 
@@ -301,17 +307,28 @@ void MainComponent::updateHistoryImage() {
             kNumPhasePartials
         );
 
-        VecOps::sub(prevPhases, phases, phaseDiff);
+        if (needsPhaseVelocityInit) {
+            // First tick after reset: just store current phase, skip velocity calculation
+            // (prevPhases was zeroed, so any difference would be meaningless)
+            phases.copyTo(prevPhases);
+            needsPhaseVelocityInit = false;
+        } else {
+            // Calculate phase difference from previous measurement
+            VecOps::sub(prevPhases, phases, phaseDiff);
 
-        for (float &diff : phaseDiff) {
-            while (diff > 0.5f) diff -= 1.0f;
-            while (diff < -0.5f) diff += 1.0f;
+            // Wrap phase difference to [-0.5, 0.5]
+            for (float &diff : phaseDiff) {
+                while (diff > 0.5f) diff -= 1.0f;
+                while (diff < -0.5f) diff += 1.0f;
+            }
+
+            // Apply exponential smoothing
+            phaseVelocity *= (1.f - kPhaseSmoothing);
+            phaseVelocity += phaseDiff.mul(2 * kPhaseSmoothing);
+            phaseVelocity.clip(-0.5f, 0.5f);
+
+            phases.copyTo(prevPhases);
         }
-        phaseVelocity *= (1.f - kPhaseSmoothing);
-        phaseVelocity += phaseDiff.mul(2 * kPhaseSmoothing);
-        phaseVelocity.clip(-0.5f, 0.5f);
-
-        phases.copyTo(prevPhases);
 
         // Map to colors
         for (int y = 0; y < kImageHeight; ++y) {
@@ -359,30 +376,27 @@ void MainComponent::drawHistoryImage(Graphics& g) {
     g.setImageResamplingQuality(Graphics::lowResamplingQuality);
     g.drawImage(phasigram, phasigramArea.toFloat());
 
-    // Draw phase velocity bar chart
     {
         Graphics::ScopedSaveState state(g);
         drawPhaseVelocityBarChart(g, phaseVelArea);
     }
 
     // Draw spectrogram
-    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-    g.drawImage(spectrogram, spectrogramArea.toFloat());
+    {
+        g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+        g.drawImage(spectrogram, spectrogramArea.toFloat());
+    }
 
-    // Draw harmonic phase velocity plot
     {
         Graphics::ScopedSaveState state(g);
         drawHarmonicPhaseVelocityPlot(g, harmonicPlotArea);
     }
 
-    // Draw cyclogram
-    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-    g.setOpacity(1.0f);
-    g.drawImage(cyclogram, right.toFloat());
-
-    // Draw border
-    // g.setColour(Colours::white);
-    // g.drawRect(plotBounds);
+    {
+        g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+        g.setOpacity(1.0f);
+        g.drawImage(cyclogram, right.toFloat());
+    }
 }
 
 // --------- DSP stuff --------- //
@@ -466,6 +480,11 @@ void MainComponent::pushNoteHistory(int midiNoteNumber) {
     history.sequence = ++noteSequenceCounter;
     history.active = true;
     history.values.fill(0.0f);
+
+    // Reset phase tracking to avoid carrying over previous note's state
+    phaseVelocity.zero();
+    prevPhases.zero();
+    needsPhaseVelocityInit = true;
 }
 
 void MainComponent::appendCurrentPhaseVelocity() {
@@ -478,10 +497,8 @@ void MainComponent::appendCurrentPhaseVelocity() {
         return;
     }
 
-    for (int i = 0; i < kNoteHistoryAdvancePerTick && history.writeIndex < kNoteHistoryFrames; ++i) {
-        history.values[(size_t) history.writeIndex] = phaseVelocity[0];
-        history.writeIndex++;
-    }
+    history.values[(size_t) history.writeIndex] = phaseVelocity[0];
+    history.writeIndex++;
     history.length = history.writeIndex;
 }
 
@@ -495,6 +512,11 @@ void MainComponent::clearNoteHistories() {
         history.sequence = 0;
         history.values.fill(0.0f);
     }
+
+    // Reset phase tracking state
+    phaseVelocity.zero();
+    prevPhases.zero();
+    needsPhaseVelocityInit = true;
 }
 
 void MainComponent::calculateTrueDrift() {
