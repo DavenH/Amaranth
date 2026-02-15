@@ -63,6 +63,7 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TYPE": "Standalone",
         "BUILD_TESTING": "ON",
         "CMAKE_CXX_FLAGS": "-DLIB_ROOT=\\\"${sourceDir}/lib\\\" -DBUILD_TESTING=1 -DJUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1 -DJUCE_STANDALONE_APPLICATION=1 -DJucePlugin_Build_Standalone=1 -DJUCE_MODAL_LOOPS_PERMITTED=1"
       }
@@ -92,7 +93,25 @@
     {
       "name": "tests",
       "configurePreset": "tests",
+      "targets": [
+        "AmaranthLib_tests",
+        "Oscillo_tests",
+        "Cycle_tests"
+      ],
       "jobs": 5
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "tests",
+      "configurePreset": "tests",
+      "execution": {
+        "noTestsAction": "error"
+      },
+      "output": {
+        "outputOnFailure": true,
+        "shortProgress": true
+      }
     }
   ]
 }
