@@ -72,3 +72,18 @@ To configure and build with a specific preset, for example, `standalone-debug`, 
 `cmake --preset standalone-debug`  
 `cmake --build --preset standalone-debug`
 
+## **Testing**
+
+Use CTest as the canonical test entrypoint.
+
+1. Configure test build files:  
+   `cmake --preset tests`
+2. Build test executables (`AmaranthLib_tests`, `Oscillo_tests`, `Cycle_tests`):  
+   `cmake --build --preset tests`
+3. Run the full discovered test suite:  
+   `ctest --preset tests`
+
+Notes:
+* Catch2 is the underlying test framework.
+* CTest discovers and runs Catch tests via `catch_discover_tests(...)`.
+* In IDEs, prefer the **CTest Application** run configuration for routine test runs.
