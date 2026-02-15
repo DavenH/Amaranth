@@ -104,7 +104,10 @@ elseif(APPLE)
     )
 endif()
 
-target_link_libraries(${PROJECT_NAME}_tests PRIVATE Catch2::Catch2WithMain)
+target_link_libraries(${PROJECT_NAME}_tests PRIVATE
+    AmaranthLib
+    Catch2::Catch2WithMain
+)
 
 target_link_directories(${PROJECT_NAME} PRIVATE
     ${IPP_DIR}/lib
