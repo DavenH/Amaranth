@@ -807,7 +807,9 @@ TEST_CASE("Buffer window functions", "[buffer][window]") {
         49	0.000
          */
 
-        REQUIRE(buf.sum() == Approx(buf.size() / 2).epsilon(0.01f));
+        // Both IPP and vDSP window generators here are symmetric (N-1 denominator),
+        // so Hann sum is (N - 1) / 2, not N / 2.
+        REQUIRE(buf.sum() == Approx((buf.size() - 1) / 2.f).epsilon(0.01f));
     }
 
     SECTION("Blackman Window") {
@@ -869,7 +871,8 @@ TEST_CASE("Buffer window functions", "[buffer][window]") {
         48	0.001
         49	0.000
          */
-        REQUIRE(buf.sum() == Approx(buf.size() * 21.f / 50.f).epsilon(0.01f));
+        // Standard Blackman with symmetric windowing sums to 0.42 * (N - 1).
+        REQUIRE(buf.sum() == Approx((buf.size() - 1) * 21.f / 50.f).epsilon(0.01f));
     }
 }
 

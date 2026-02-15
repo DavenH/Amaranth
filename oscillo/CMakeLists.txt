@@ -68,6 +68,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 #        list(APPEND TEST_SOURCES ${IM_SOURCES})
         add_executable(${PROJECT_NAME}_tests ${APP_SOURCES} ${TEST_SOURCES})
 
+        target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
+            BUILD_TESTING=1
+            JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/incl/JucePluginDefines.h"
+        )
+
         target_include_directories(${PROJECT_NAME}_tests PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/src
             ${CMAKE_CURRENT_SOURCE_DIR}/tests

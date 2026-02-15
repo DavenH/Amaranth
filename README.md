@@ -82,8 +82,12 @@ Use CTest as the canonical test entrypoint.
    `cmake --build --preset tests`
 3. Run the full discovered test suite:  
    `ctest --preset tests`
+4. More examples:
+   - `cmake --build --preset tests --target AmaranthLib_tests -- -j1`
+   - `ctest --preset tests -R "Buffer window functions"`
 
 Notes:
 * Catch2 is the underlying test framework.
 * CTest discovers and runs Catch tests via `catch_discover_tests(...)`.
 * In IDEs, prefer the **CTest Application** run configuration for routine test runs.
+* In CLion, select the CMake profile based on the `tests` preset (commonly shown as `tests - tests`) before using green run buttons for test targets.

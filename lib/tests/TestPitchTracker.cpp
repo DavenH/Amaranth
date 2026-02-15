@@ -34,7 +34,7 @@ void createExpSweep(Buffer<float>& buffer, float startFreq, float endFreq, float
           .sin();                           // Convert phase to sine wave
 }
 
-TEST_CASE("PitchTracker basic functionality", "[pitch][dsp]") {
+TEST_CASE("PitchTracker basic functionality", "[pitch][dsp][wip]") {
     PitchTracker tracker;
     const int sampleRate = 44100;
 
@@ -119,17 +119,19 @@ TEST_CASE("PitchTracker basic functionality", "[pitch][dsp]") {
         tracker.trackPitch();
 
         // Should have low confidence for silence
-        CHECK(tracker.getConfidence() > 0.8f);
+        CHECK(tracker.getConfidence() < 0.8f);
     }
 
     SECTION("Detect frequency changes") {
         ScopedAlloc<float> buffer(sampleRate * 2);
 
         // First second: 440 Hz
-        buffer.section(0, sampleRate).ramp(0, 440.0f / sampleRate).sin();
+        Buffer<float> firstHalf = buffer.section(0, sampleRate);
+        createSineWave(firstHalf, 440.0f, sampleRate);
 
         // Second second: 880 Hz
-        buffer.section(sampleRate, sampleRate).ramp(0, 880.0f / sampleRate).sin();
+        Buffer<float> secondHalf = buffer.section(sampleRate, sampleRate);
+        createSineWave(secondHalf, 880.0f, sampleRate);
         PitchedSample sample(buffer);
         tracker.setSample(&sample);
         tracker.setAlgo(PitchTracker::AlgoAuto);
@@ -153,7 +155,7 @@ TEST_CASE("PitchTracker basic functionality", "[pitch][dsp]") {
         ScopedAlloc<float> buffer(sampleRate * 2);
 
         // Test minimum frequency
-        buffer.ramp(0, minFreq / sampleRate).sin();
+        createSineWave(buffer, minFreq, sampleRate);
 
         PitchedSample sample(buffer);
         tracker.setSample(&sample);
@@ -171,7 +173,7 @@ TEST_CASE("PitchTracker basic functionality", "[pitch][dsp]") {
         ScopedAlloc<float> buffer(sampleRate * 2);
 
         // Test maximum frequency
-        buffer.ramp(0, maxFreq / sampleRate).sin();
+        createSineWave(buffer, maxFreq, sampleRate);
 
         PitchedSample sample(buffer);
         tracker.setSample(&sample);
@@ -191,9 +193,12 @@ TEST_CASE("PitchTracker basic functionality", "[pitch][dsp]") {
         Buffer<float> sum       = buffer.place(sampleRate);
 
         std::array<Buffer<float>*, 3> harmonics = { &harmonic1, &harmonic2, &harmonic3 };
-        for (int i = 1; i < 3; ++i) {
+        sum.zero();
+
+        for (int i = 0; i < 3; ++i) {
             auto f = static_cast<float>(i + 1);
             harmonics[i]->ramp(0, f * 440.0f / sampleRate).sin().mul(1.f / f);
+            sum.add(*harmonics[i]);
         }
 
         PitchedSample sample(sum);
