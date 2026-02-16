@@ -1,5 +1,7 @@
 #include "RealTimePitchTracker.h"
 #include <Array/ScopedAlloc.h>
+#include <cmath>
+#include <limits>
 
 using std::vector;
 
@@ -8,15 +10,18 @@ RealTimePitchTracker::RealTimePitchTracker():
     ,   rwBuffer(blockSize + 4096)
 {
     fftFreqs.resize(blockSize / 2);
+    fftMagnitudes.resize(blockSize / 2);
+    correlations.resize(numKeys);
     localBlock.resize(blockSize);
     hannWindow.resize(blockSize);
     hannWindow.hann();
     localBlock.zero();
+    fftMagnitudes.zero();
 }
 
 void RealTimePitchTracker::setSampleRate(int samplerate) {
     float delta = 1.f / blockSize;
-    fftFreqs.ramp(delta, delta).mul(samplerate / 2);
+    fftFreqs.ramp(delta, delta).mul((float) samplerate);
     transform.allocate(blockSize, Transform::NoDivByAny, true);
     createKernels(440.0);
 }
@@ -32,16 +37,18 @@ void RealTimePitchTracker::write(Buffer<float>& audioBlock) {
         {
             // just try to lock - audio thread updates more often, it's okay to queue up a few samples
             const SpinLock::ScopedTryLockType lock(bufferLock);
-            block.copyTo(localBlock);
-            localBlock.mul(hannWindow);
-            localBlock.mul(1 / jmax(0.01f, localBlock.max()));
+            if (lock.isLocked()) {
+                block.copyTo(localBlock);
+                localBlock.mul(hannWindow);
+                localBlock.mul(1 / jmax(0.01f, localBlock.max()));
+            }
         }
     }
 }
 
-pair<int, float> RealTimePitchTracker::update() {
+int RealTimePitchTracker::update() {
     if (kernels.empty()) {
-        return {bestKeyIndex, bestPitch};
+        return bestKeyIndex;
     }
 
     {
@@ -50,35 +57,35 @@ pair<int, float> RealTimePitchTracker::update() {
     }
 
     Buffer<float> magnitudes = transform.getMagnitudes().add(0.5).ln();
+    magnitudes.copyTo(fftMagnitudes);
+    fftMagnitudes.sub(fftMagnitudes.mean());
 
-    float maxCorrelation = 0.0f;
-    int bestKey = bestKeyIndex; // Start with previous best key as default
+    const float spectrumNorm = fftMagnitudes.normL2();
+    fftMagnitudes.mul(spectrumNorm > 1.0e-8f ? 1.0f / spectrumNorm : 0.f);
 
     for (int i = 0; i < kernels.size(); ++i) {
         const auto& kernel = kernels[i];
-
-        float correlation = magnitudes.dot(kernel);
-
-        if (correlation > maxCorrelation) {
-            maxCorrelation = correlation;
-            bestKey = i;
-        }
+        correlations[i] = fftMagnitudes.dot(kernel);
     }
+
+    float maxCorrelation = -std::numeric_limits<float>::infinity();
+    int bestKernelIndex = jlimit(0, numKeys - 1, bestKeyIndex - 21);
+    correlations.getMax(maxCorrelation, bestKernelIndex);
+
+    float spectralPeakLogMagnitude = -std::numeric_limits<float>::infinity();
+    int spectralPeakIndex = 0;
+    fftMagnitudes.getMax(spectralPeakLogMagnitude, spectralPeakIndex);
 
     if (maxCorrelation > 0.1f) {
-        int midiNote = bestKey + 21; // Assuming lowest key is A0 (MIDI note 21)
-
-        // Calculate frequency for this MIDI note (we could refine this with quadratic interpolation)
-        float pitch = MidiMessage::getMidiNoteInHertz(midiNote);
-
-        {
-            const SpinLock::ScopedLockType lock(bufferLock);
-            bestKeyIndex = midiNote;
-            bestPitch = pitch;
-        }
+        int midiNote = bestKernelIndex + 21; // Lowest key is A0 (MIDI note 21)
+        bestKeyIndex = midiNote;
     }
 
-    return {bestKeyIndex, bestPitch};
+    {
+        const SpinLock::ScopedLockType lock(bufferLock);
+        traceListener->onPitchFrame(bestKeyIndex, localBlock, correlations, fftMagnitudes);
+    }
+    return bestKeyIndex;
 }
 
 void RealTimePitchTracker::createKernels(double frequencyOfA4) {
@@ -98,11 +105,22 @@ void RealTimePitchTracker::createKernels(double frequencyOfA4) {
     const int numFreqs = fftFreqs.size();
 
     ScopedAlloc<float> invRamp(numFreqs);
+    ScopedAlloc<float> strongHighPassWeight(numFreqs);
+    invRamp.ramp(1, 0.08).inv();
+
+    // Extra low-note tilt: w(f) = f / (f + f0)
+    fftFreqs.copyTo(strongHighPassWeight);
+    strongHighPassWeight.add(60.0f).divCRev(60.0f).subCRev(1.0f).clip(0.0f, 1.0f);
+    strongHighPassWeight.mul(invRamp);
+
+    std::cout << std::fixed << std::setprecision(3);
+    for (int i = 0; i < strongHighPassWeight.size(); ++i) {
+        std::cout << i << "\t" << strongHighPassWeight[i] << std::endl;
+    }
 
     for (int i = 0; i < numKeys; ++i) {
-        invRamp.ramp(1, 0.05).inv();
 
-        const int noteNumber = i + 21 - 12;
+        const int noteNumber = i + 21;
         float candFreq = MidiMessage::getMidiNoteInHertz(noteNumber, frequencyOfA4);
 
         Buffer<float> kernel = kernelMemory.place(numFreqs);
@@ -158,7 +176,21 @@ void RealTimePitchTracker::createKernels(double frequencyOfA4) {
         }
 
         kernel.mul(invRamp);
-        kernel.mul(MathConstants<float>::sqrt2 / kernel.normL2());
+        // float highpassScale = (200.f - candFreq) / 200.f;
+        // if (highpassScale > 0.f) {
+        //     kernel.mul(1 - highpassScale);
+        //     kernel.addProduct(strongHighPassWeight, highpassScale);
+        // }
+        const float normL2 = kernel.normL2();
+        kernel.mul(MathConstants<float>::sqrt2 / jmax(1e-5f, normL2));
         kernels.push_back(kernel);
     }
+}
+
+void RealTimePitchTracker::setTraceListener(RealTimePitchTraceListener& listener) {
+    traceListener = &listener;
+}
+
+void RealTimePitchTracker::useDefaultTraceListener() {
+    traceListener = &defaultTraceListener;
 }

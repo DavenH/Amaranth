@@ -15,8 +15,13 @@ public:
     }
 
     [[nodiscard]] Colour getColour(int index) const {
-        jassert(index >= 0 && index < k);
-        return colours[index];
+        if (colours.empty()) {
+            jassertfalse;
+            return Colours::black;
+        }
+
+        const int clampedIndex = jlimit(0, (int) colours.size() - 1, index);
+        return colours[(size_t) clampedIndex];
     }
 
     [[nodiscard]] const std::vector<Colour>& getColours() const { return colours; }
