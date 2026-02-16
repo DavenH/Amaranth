@@ -91,6 +91,7 @@ V2RenderResult V2RasterizerGraph::render(
 
     int zeroIndex = 0;
     int oneIndex = 0;
+    int wavePointCount = 0;
 
     if (! waveBuilder->run(
             workspace.curves,
@@ -99,6 +100,7 @@ V2RenderResult V2RasterizerGraph::render(
             workspace.waveY,
             workspace.diffX,
             workspace.slope,
+            wavePointCount,
             zeroIndex,
             oneIndex,
             waveBuilderContext)) {
@@ -106,14 +108,18 @@ V2RenderResult V2RasterizerGraph::render(
     }
 
     V2SamplerContext context = samplerContext;
+    context.wavePointCount = wavePointCount;
     context.zeroIndex = zeroIndex;
     context.oneIndex = oneIndex;
 
+    if (context.wavePointCount <= 1) {
+        return result;
+    }
+
     return sampler->run(
-        workspace.waveX,
-        workspace.waveY,
-        workspace.slope,
+        workspace.waveX.withSize(context.wavePointCount),
+        workspace.waveY.withSize(context.wavePointCount),
+        workspace.slope.withSize(context.wavePointCount - 1),
         output,
         context);
 }
-

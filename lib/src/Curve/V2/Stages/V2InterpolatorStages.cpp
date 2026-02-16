@@ -1,7 +1,6 @@
 #include "V2InterpolatorStages.h"
 
 #include <algorithm>
-#include <cmath>
 
 #include "../../VertCube.h"
 
@@ -92,8 +91,15 @@ bool runInterpolator(
                     continue;
                 }
 
-                float distA = std::fabs(context.morph.time - reduction.v0.values[Vertex::Time]);
-                float distB = std::fabs(context.morph.time - reduction.v1.values[Vertex::Time]);
+                float distA = context.morph.time - reduction.v0.values[Vertex::Time];
+                if (distA < 0.0f) {
+                    distA = -distA;
+                }
+
+                float distB = context.morph.time - reduction.v1.values[Vertex::Time];
+                if (distB < 0.0f) {
+                    distB = -distB;
+                }
                 const Vertex& chosen = (distA <= distB) ? reduction.v0 : reduction.v1;
 
                 appendInterceptFromVertex(chosen, cube, context.wrapPhases, outIntercepts);
@@ -127,4 +133,3 @@ bool V2SimpleInterpolatorStage::run(
     int& outCount) noexcept {
     return runInterpolator(context, outIntercepts, outCount, V2InterpolatorMode::SimplePoleBlend);
 }
-

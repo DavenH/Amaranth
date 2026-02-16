@@ -36,6 +36,7 @@ struct V2WaveBuilderContext {
 
 struct V2SamplerContext {
     V2RenderRequest request{};
+    int wavePointCount{0};
     int zeroIndex{0};
     int oneIndex{0};
 };
@@ -83,6 +84,7 @@ public:
         Buffer<float> waveY,
         Buffer<float> diffX,
         Buffer<float> slope,
+        int& outWavePointCount,
         int& zeroIndex,
         int& oneIndex,
         const V2WaveBuilderContext& context) noexcept = 0;
@@ -99,4 +101,3 @@ public:
         Buffer<float> output,
         const V2SamplerContext& context) noexcept = 0;
 };
-
