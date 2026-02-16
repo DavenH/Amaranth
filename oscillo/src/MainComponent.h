@@ -60,6 +60,7 @@ private:
 class MainComponent : public Component,
                       public Timer,
                       public MidiKeyboardStateListener
+                    , public RealTimePitchTraceListener
 {
 public:
     MainComponent();
@@ -77,6 +78,11 @@ public:
     void updateCurrentNote();
     void handleNoteOn(MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
     void handleNoteOff(MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
+    // Pitch debug (disabled):
+    void onPitchFrame(int bestKeyIndex,
+        const Buffer<float>& windowedAudio,
+        const Buffer<float>& kernelCorrelations,
+        const Buffer<float>& fftMagnitudes) override;
 
 private:
     void calculateTrueDrift();
@@ -84,6 +90,10 @@ private:
     void pushNoteHistory(int midiNoteNumber);
     void appendCurrentPhaseVelocity();
     void clearNoteHistories();
+    void updatePitchTrackingState();
+
+    // Pitch debug (disabled):
+    void appendPitchDebugImage();
 
     static constexpr int kTopKHarmonics = 4;
     static constexpr int kImageHeight = 512;
@@ -93,11 +103,14 @@ private:
     static constexpr int kNoteHistoryFrames = 512;
     static constexpr int kNoteHistoryAdvancePerTick = 4;
     static constexpr int kSpectrogramHeight = 64;
+    static constexpr int kPitchDebugHeight = 88;
     static constexpr int kNumColours = 64;
     static constexpr int kPhaseVelocityWidth = 20;
     static constexpr float kPhaseSmoothing = 0.04f; // Exponential smoothing factor (0 to 1)
     static constexpr float kBarChartMaxVelocity = 0.1f; // Maximum velocity for scaling bars
     static constexpr float kPlotMaxVelocity = 0.05f;
+    static constexpr int kPitchVoteWindowFrames = 5;
+    static constexpr int kPitchVoteQuorum = 3;
 
     struct NoteHistory {
         int midiNote = 60;
@@ -110,9 +123,11 @@ private:
 
     MidiKeyboardState keyboardState;
     bool needsPhaseVelocityInit = true;
+    bool realtimePitchTrackingEnabled = true;
 
     std::unique_ptr<OscAudioProcessor> processor;
     std::unique_ptr<HighlightKeyboard> keyboard;
+    std::unique_ptr<ToggleButton> pitchTrackingToggle;
     std::unique_ptr<TemperamentControls> temperamentControls;
     std::unique_ptr<RealTimePitchTracker> pitchTracker;
     std::unique_ptr<DialogWindow> temperamentDialog;
@@ -123,6 +138,7 @@ private:
 
     Image phaseVelocityBar;
     Image cyclogram, spectrogram, phasigram;
+    Image pitchDebug;
     Rectangle<int> plotBounds;
     ScopedAlloc<Float32> resampleBuffer{kImageHeight};
     ScopedAlloc<Float32> workBuffer;
@@ -137,6 +153,17 @@ private:
 
     GradientColourMap viridis, inferno;
     GradientColourMap bipolar;
+    // Pitch debug (disabled):
+    SpinLock pitchTraceLock;
+    ScopedAlloc<float> latestKernelCorrelations{kPitchDebugHeight};
+    bool hasPitchTraceFrame = false;
+
+    int latestDetectedMidi = 69;
+    std::array<int, 128> pitchVoteCounts{};
+    bool pitchVoteActive = false;
+    int pitchVoteFramesRemaining = 0;
+    int pitchVoteBestMidi = 69;
+    int pitchVoteBestCount = 0;
 
     void updateHistoryImage();
     void drawHistoryImage(Graphics& g);

@@ -1,6 +1,25 @@
 #include "MainComponent.h"
 
 #include <Algo/Resampling.h>
+#include <cmath>
+
+namespace {
+int toPaletteIndex(float normalized, int paletteSize) {
+    const int maxIndex = jmax(0, paletteSize - 1);
+    if (!std::isfinite(normalized)) {
+        normalized = 0.0f;
+    }
+    normalized = jlimit(0.0f, 1.0f, normalized);
+    return (int) std::round(normalized * (float) maxIndex);
+}
+
+float finiteUnit(float value) {
+    if (!std::isfinite(value)) {
+        return 0.0f;
+    }
+    return jlimit(0.0f, 1.0f, value);
+}
+}
 
 MainComponent::MainComponent()
     : workBuffer(4096),
@@ -18,6 +37,18 @@ MainComponent::MainComponent()
     addAndMakeVisible(keyboard.get());
     keyboard->onArrowKey = [this](int delta) { stepRootNote(delta); };
 
+    pitchTrackingToggle = std::make_unique<ToggleButton>("Real-time pitch tracking");
+    pitchTrackingToggle->setClickingTogglesState(true);
+    pitchTrackingToggle->setToggleState(true, dontSendNotification);
+    pitchTrackingToggle->onClick = [this]() {
+        realtimePitchTrackingEnabled = pitchTrackingToggle->getToggleState();
+        if (!realtimePitchTrackingEnabled) {
+            pitchVoteActive = false;
+            pitchVoteFramesRemaining = 0;
+        }
+    };
+    addAndMakeVisible(pitchTrackingToggle.get());
+
     temperamentControls = std::make_unique<TemperamentControls>();
     temperamentControls->onTemperamentChanged = [this] {
         updateCurrentNote();
@@ -30,9 +61,12 @@ MainComponent::MainComponent()
     cyclogram   = Image(Image::RGB, kHistoryFrames, kImageHeight, true);
     spectrogram = Image(Image::RGB, kHistoryFrames, kSpectrogramHeight, true);
     phasigram   = Image(Image::RGB, kHistoryFrames, kNumPhasePartials, true);
+    pitchDebug  = Image(Image::RGB, kHistoryFrames, kPitchDebugHeight, true);
     phaseVelocityBar = Image(Image::RGB, 1, kNumPhasePartials, true);
 
     pitchTracker = std::make_unique<RealTimePitchTracker>();
+
+    pitchTracker->setTraceListener(*this);
     processor = std::make_unique<OscAudioProcessor>(pitchTracker.get());
 
     phaseVelocity.zero();
@@ -47,6 +81,12 @@ MainComponent::MainComponent()
 
     processor->start();
     updateCurrentNote();
+
+    pitchVoteCounts.fill(0);
+    pitchVoteActive = true;
+    pitchVoteFramesRemaining = kPitchVoteWindowFrames;
+    pitchVoteBestMidi = lastClickedMidiNote;
+    pitchVoteBestCount = 0;
 }
 
 MainComponent::~MainComponent() {
@@ -194,7 +234,11 @@ void MainComponent::resized() {
     const int keyboardHeight = jmax(60, roundToInt(keyboardKeyWidth * 3.0f));
     const int keyboardRegionHeight = roundToInt(keyboardHeight * 1.2f);
     auto keyboardRegion = area.removeFromBottom(keyboardRegionHeight);
-    const int keyboardWidth = jmin((int) std::round(keyboard->getTotalKeyboardWidth()),
+
+    auto toggleArea = keyboardRegion.removeFromLeft(jmin(240, keyboardRegion.getWidth() / 3)).reduced(6);
+    pitchTrackingToggle->setBounds(toggleArea.removeFromTop(28));
+
+    const int keyboardWidth = jmin((int) std::round(keyboard->getTotalKeyboardWidth() * 1.5f),
         keyboardRegion.getWidth());
     keyboard->setBounds(keyboardRegion.withSizeKeepingCentre(keyboardWidth, keyboardHeight));
     plotBounds = area.reduced(10);
@@ -294,9 +338,9 @@ void MainComponent::updateHistoryImage() {
 
         for (int y = 0; y < spectrogram.getHeight(); ++y) {
             const float rawMag = magnitudes[y];
-            float value = jlimit(0.0f, 1.0f, rawMag);
+            float value = finiteUnit(rawMag);
             auto invY = spectrogram.getHeight() - 1 - y;
-            auto color = inferno.getColour(static_cast<int>(value * (kNumColours - 0.01)));
+            auto color = inferno.getColour(toPaletteIndex(value, kNumColours));
             spectData.setPixelColour(col, invY, color);
         }
 
@@ -314,7 +358,7 @@ void MainComponent::updateHistoryImage() {
             needsPhaseVelocityInit = false;
         } else {
             // Calculate phase difference from previous measurement
-            VecOps::sub(prevPhases, phases, phaseDiff);
+            VecOps::sub(phases, prevPhases, phaseDiff);
 
             // Wrap phase difference to [-0.5, 0.5]
             for (float &diff : phaseDiff) {
@@ -333,7 +377,8 @@ void MainComponent::updateHistoryImage() {
         // Map to colors
         for (int y = 0; y < kImageHeight; ++y) {
             float value = resampleBuffer[y];
-            auto color  = inferno.getColour(static_cast<int>((value * 0.5f + 0.5f) * (kNumColours - 0.01)));
+            value = finiteUnit(value * 0.5f + 0.5f);
+            auto color  = inferno.getColour(toPaletteIndex(value, kNumColours));
             pixelData.setPixelColour(col, y, color);
         }
 
@@ -341,12 +386,12 @@ void MainComponent::updateHistoryImage() {
         magnitudes.mul(3).tanh();
 
         for (int y = 0; y < phases.size(); ++y) {
-            float value = phases[y];
+            float value = finiteUnit(phases[y]);
             auto invY = phasigram.getHeight() - 1 - y;
 
             auto color  = viridis
-                .getColour(static_cast<int>(value * (kNumColours - 0.01)))
-                .withBrightness(magnitudes[y]);
+                .getColour(toPaletteIndex(value, kNumColours))
+                .withBrightness(finiteUnit(magnitudes[y]));
             phaseData.setPixelColour(col, invY, color);
         }
     }
@@ -392,11 +437,16 @@ void MainComponent::drawHistoryImage(Graphics& g) {
         drawHarmonicPhaseVelocityPlot(g, harmonicPlotArea);
     }
 
-    {
-        g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-        g.setOpacity(1.0f);
-        g.drawImage(cyclogram, right.toFloat());
-    }
+    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+    g.setOpacity(1.0f);
+
+    // g.drawImage(cyclogram, right.reduced(6).toFloat());
+
+    // Pitch debug (disabled):
+    Rectangle<int> cyclogramArea = right.removeFromTop(right.getHeight() / 2).reduced(6);
+    Rectangle<int> pitchDebugArea = right.reduced(6);
+    g.drawImage(cyclogram, cyclogramArea.toFloat());
+    g.drawImage(pitchDebug, pitchDebugArea.toFloat());
 }
 
 // --------- DSP stuff --------- //
@@ -456,14 +506,18 @@ void MainComponent::showTemperamentDialog() {
 void MainComponent::handleOnsetEvents() {
     std::vector<OscAudioProcessor::OnsetEvent> onsets;
     processor->popOnsetEvents(onsets);
-    if (onsets.empty()) {
+    if (onsets.empty() || !realtimePitchTrackingEnabled) {
         return;
     }
 
     for (const auto& onset : onsets) {
         (void) onset;
-        auto note = pitchTracker->update();
-        pushNoteHistory(note.first);
+        pitchVoteCounts.fill(0);
+        pitchVoteActive = true;
+        pitchVoteFramesRemaining = kPitchVoteWindowFrames;
+        pitchVoteBestMidi = lastClickedMidiNote;
+        pitchVoteBestCount = 0;
+        pushNoteHistory(lastClickedMidiNote);
     }
 }
 
@@ -502,6 +556,49 @@ void MainComponent::appendCurrentPhaseVelocity() {
     history.length = history.writeIndex;
 }
 
+void MainComponent::appendPitchDebugImage() {
+    ScopedAlloc<float> corrCopy(kPitchDebugHeight);
+    {
+        const SpinLock::ScopedLockType lock(pitchTraceLock);
+        if (!hasPitchTraceFrame) {
+            return;
+        }
+        latestKernelCorrelations.copyTo(corrCopy);
+    }
+
+    auto oldPitchDebug = pitchDebug.createCopy();
+    Graphics g(pitchDebug);
+    g.drawImageAt(oldPitchDebug, -1, 0);
+    g.setColour(Colours::black);
+    g.fillRect(kHistoryFrames - 1, 0, 1, pitchDebug.getHeight());
+
+    Image::BitmapData pitchData(
+        pitchDebug,
+        kHistoryFrames - 1, 0,
+        1, pitchDebug.getHeight(),
+        Image::BitmapData::writeOnly
+    );
+
+    const int imageHeight = pitchDebug.getHeight();
+    const int numRows = jmin(imageHeight, corrCopy.size());
+
+    Buffer<float> corrStrengthRows = corrCopy.section(0, numRows);
+    corrCopy.section(0, numRows).copyTo(corrStrengthRows);
+    corrStrengthRows.threshLT(0.0f);
+
+    float maxCorr = 0.0f;
+    int maxIndex = 0;
+    corrStrengthRows.getMax(maxCorr, maxIndex);
+    maxCorr = jmax(maxCorr, 1.0e-6f);
+    corrStrengthRows.mul(1.0f / maxCorr).sqrt();
+
+    const float lutScale = (float) (kNumColours - 1);
+    for (int y = 0, invY = imageHeight - 1; y < imageHeight; ++y, --invY) {
+        const int lutIndex = jlimit(0, kNumColours - 1, roundToInt(corrStrengthRows[y] * lutScale));
+        pitchData.setPixelColour(0, invY, inferno.getColour(lutIndex));
+    }
+}
+
 void MainComponent::clearNoteHistories() {
     currentNoteHistory = -1;
     noteSequenceCounter = 0;
@@ -517,6 +614,24 @@ void MainComponent::clearNoteHistories() {
     phaseVelocity.zero();
     prevPhases.zero();
     needsPhaseVelocityInit = true;
+}
+
+
+void MainComponent::onPitchFrame(int bestKeyIndex,
+    const Buffer<float>& windowedAudio,
+    const Buffer<float>& kernelCorrelations,
+    const Buffer<float>& fftMagnitudes) {
+    (void) windowedAudio;
+    (void) fftMagnitudes;
+
+    const int copyCount = jmin(kPitchDebugHeight, kernelCorrelations.size());
+    const SpinLock::ScopedLockType lock(pitchTraceLock);
+    kernelCorrelations.section(0, copyCount).copyTo(latestKernelCorrelations.section(0, copyCount));
+    if (copyCount < kPitchDebugHeight) {
+        latestKernelCorrelations.section(copyCount, kPitchDebugHeight - copyCount).zero();
+    }
+    latestDetectedMidi = bestKeyIndex;
+    hasPitchTraceFrame = true;
 }
 
 void MainComponent::calculateTrueDrift() {
@@ -566,15 +681,46 @@ void MainComponent::calculateTrueDrift() {
 }
 
 void MainComponent::timerCallback() {
+    updatePitchTrackingState();
     updateHistoryImage();
     calculateTrueDrift();
     handleOnsetEvents();
     appendCurrentPhaseVelocity();
+    appendPitchDebugImage();
     repaint();
-    // auto note = pitchTracker->update();
-    // std::cout << note.first << std::endl;
-    // handleNoteOn(nullptr, 0, note.first, 0.f);
 }
+
+void MainComponent::updatePitchTrackingState() {
+    if (realtimePitchTrackingEnabled) {
+        latestDetectedMidi = pitchTracker->update();
+        if (pitchVoteActive) {
+            const int midi = jlimit(0, 127, latestDetectedMidi);
+            const int count = ++pitchVoteCounts[(size_t) midi];
+            if (count > pitchVoteBestCount) {
+                pitchVoteBestCount = count;
+                pitchVoteBestMidi = midi;
+            }
+
+            --pitchVoteFramesRemaining;
+            const bool reachedQuorum = pitchVoteBestCount >= kPitchVoteQuorum;
+            const bool voteExpired = pitchVoteFramesRemaining <= 0;
+
+            if (reachedQuorum) {
+                handleNoteOn(nullptr, 0, pitchVoteBestMidi, 0.f);
+                pitchVoteActive = false;
+            } else if (voteExpired) {
+                if (pitchVoteBestCount > 0) {
+                    handleNoteOn(nullptr, 0, pitchVoteBestMidi, 0.f);
+                }
+                pitchVoteActive = false;
+            }
+        }
+    } else {
+        pitchVoteActive = false;
+        pitchVoteFramesRemaining = 0;
+    }
+}
+
 
 void MainComponent::handleNoteOn(MidiKeyboardState*, int /*midiChannel*/, int midiNoteNumber, float /*velocity*/) {
     if (midiNoteNumber != lastClickedMidiNote) {

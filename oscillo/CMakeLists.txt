@@ -1,4 +1,5 @@
 project(Oscillo VERSION 0.0.1)
+option(OSCILLO_ENABLE_DSP_TRACE "Enable Oscillo DSP trace rendering/debug macros in tests" OFF)
 
 file(GLOB_RECURSE APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
@@ -65,13 +66,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h"
         )
 
-#        list(APPEND TEST_SOURCES ${IM_SOURCES})
         add_executable(${PROJECT_NAME}_tests ${APP_SOURCES} ${TEST_SOURCES})
 
         target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
             BUILD_TESTING=1
             JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/incl/JucePluginDefines.h"
         )
+
+        if(OSCILLO_ENABLE_DSP_TRACE)
+            target_compile_definitions(${PROJECT_NAME}_tests PRIVATE DEBUG_RENDERING=1)
+        endif()
 
         target_include_directories(${PROJECT_NAME}_tests PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/src

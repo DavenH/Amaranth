@@ -3,6 +3,7 @@
 #include <App/Transforms.h>
 #include <Array/RingBuffer.h>
 #include <Array/ScopedAlloc.h>
+#include "RealTimePitchTrace.h"
 using std::vector;
 using std::pair;
 
@@ -12,7 +13,9 @@ public:
     void setSampleRate(int samplerate);
     void write(Buffer<float>& audioBlock);
     void createKernels(double frequencyOfA4);
-    pair<int, float> update();
+    int update();
+    void setTraceListener(RealTimePitchTraceListener& listener);
+    void useDefaultTraceListener();
 
 private:
     vector<Buffer<float>> kernels;
@@ -23,14 +26,15 @@ private:
     ScopedAlloc<float> fftFreqs;
     ScopedAlloc<float> localBlock;
     ScopedAlloc<float> fftMagnitudes;
+    ScopedAlloc<float> correlations;
     ScopedAlloc<float> hannWindow;
 
-    std::atomic<bool> pendingPitchUpdate{false};
-
     SpinLock bufferLock;
+    bool hasWindowedBlock = false;
 
-    float bestPitch = 440.0f;
-    int bestKeyIndex = 48;
+    int bestKeyIndex = 69;
+    RealTimePitchTraceListener defaultTraceListener;
+    RealTimePitchTraceListener* traceListener = &defaultTraceListener;
 
     static constexpr int numKeys = 88;
     static constexpr int blockSize = 4096;
