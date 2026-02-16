@@ -186,8 +186,14 @@ Exit criteria:
   - `Runtime/V2RasterizerWorkspace.h/.cpp`
   - `Stages/V2StageInterfaces.h`
   - `State/V2EnvStateMachine.h/.cpp`
+- Added concrete stage implementations:
+  - `Stages/V2InterpolatorStages.h/.cpp`
+  - `Stages/V2PositionerStages.h/.cpp`
+- Added graph orchestration:
+  - `Runtime/V2RasterizerGraph.h/.cpp`
 - Added tests:
   - `lib/tests/TestV2EnvStateMachine.cpp`
+  - `lib/tests/TestV2RasterizerPipeline.cpp`
 - Build status:
   - `AmaranthLib` and `AmaranthLib_tests` build successfully.
   - `ctest -R V2EnvStateMachine` passes.
@@ -201,15 +207,16 @@ Exit criteria:
 - [ ] Define fixed-capacity policies for intercepts/curves/waves/deform regions.
 - [ ] Add allocation guard helper for render-path tests.
 - [ ] Create initial golden fixtures from current behavior for:
-  - [ ] envelope normal
-  - [ ] envelope loop
-  - [ ] envelope release
+  - [x] envelope normal
+  - [x] envelope loop
+  - [x] envelope release
   - [ ] oscillator cyclic
   - [ ] oscillator chaining
 
 ### Short Term
-- [ ] Implement v2 interpolator stages.
-- [ ] Implement v2 positioner stages.
+- [x] Implement v2 interpolator stages.
+- [x] Implement v2 positioner stages.
+- [x] Add `V2RasterizerGraph` orchestration over `V2RasterizerWorkspace`.
 - [ ] Implement v2 curve builder stage.
 - [ ] Implement v2 wave builder stage.
 - [x] Implement `EnvStateMachine`.
