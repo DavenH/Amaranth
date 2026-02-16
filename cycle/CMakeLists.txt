@@ -57,6 +57,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 )
 
 target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
+    BUILD_TESTING=1
     JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/Incl/JucePluginDefines.h"
 )
 
@@ -104,7 +105,10 @@ elseif(APPLE)
     )
 endif()
 
-target_link_libraries(${PROJECT_NAME}_tests PRIVATE Catch2::Catch2WithMain)
+target_link_libraries(${PROJECT_NAME}_tests PRIVATE
+    AmaranthLib
+    Catch2::Catch2WithMain
+)
 
 target_link_directories(${PROJECT_NAME} PRIVATE
     ${IPP_DIR}/lib

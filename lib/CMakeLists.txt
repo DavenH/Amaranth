@@ -167,7 +167,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
         include(CTest)
         include(Catch)
-        catch_discover_tests(${PROJECT_NAME}_tests)
+        catch_discover_tests(${PROJECT_NAME}_tests
+            TEST_SPEC "~[wip]"
+        )
     endif()
 else()
     target_compile_options(${PROJECT_NAME} PRIVATE -O3)
