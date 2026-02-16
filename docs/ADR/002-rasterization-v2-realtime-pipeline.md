@@ -189,6 +189,9 @@ Exit criteria:
 - Added concrete stage implementations:
   - `Stages/V2InterpolatorStages.h/.cpp`
   - `Stages/V2PositionerStages.h/.cpp`
+  - `Stages/V2CurveBuilderStages.h/.cpp`
+  - `Stages/V2WaveBuilderStages.h/.cpp`
+  - `Stages/V2SamplerStages.h/.cpp`
 - Added graph orchestration:
   - `Runtime/V2RasterizerGraph.h/.cpp`
 - Added tests:
@@ -197,7 +200,9 @@ Exit criteria:
 - Build status:
   - `AmaranthLib` and `AmaranthLib_tests` build successfully.
   - `ctest -R V2EnvStateMachine` passes.
-  - Full preset build currently blocked by existing `cycle` include error (`cycle/src/App/ApplicationStartup.cpp`: `<Definitions.h>` not found).
+  - `ctest -R V2` currently has two failing strict characterization tests in `TestV2RasterizerPipeline.cpp`:
+    - `V2 rendered output matches sawtooth control points sample-by-sample`
+    - `V2 rendered output matches square-like control points sample-by-sample`  
 
 ### Immediate
 - [x] Create `Curve/V2/` module layout (`Stages`, `State`, `Runtime`).
@@ -217,10 +222,10 @@ Exit criteria:
 - [x] Implement v2 interpolator stages.
 - [x] Implement v2 positioner stages.
 - [x] Add `V2RasterizerGraph` orchestration over `V2RasterizerWorkspace`.
-- [ ] Implement v2 curve builder stage.
-- [ ] Implement v2 wave builder stage.
+- [x] Implement v2 curve builder stage.
+- [x] Implement v2 wave builder stage.
 - [x] Implement `EnvStateMachine`.
-- [ ] Implement v2 sampler stage.
+- [x] Implement v2 sampler stage.
 
 ### Integration
 - [ ] Implement `GraphicRasterizerV2`.
@@ -232,6 +237,7 @@ Exit criteria:
 
 ### Validation
 - [ ] Run full `ctest` suite for tests preset.
+- [ ] Resolve strict sample-by-sample waveform characterization failures for saw/square in `TestV2RasterizerPipeline.cpp`.
 - [ ] Add benchmark for audio-block render cost per rasterizer.
 - [ ] Verify deterministic output across runs and platforms.
 - [ ] Document realtime invariants in code comments and contributor docs.
