@@ -6,30 +6,31 @@
 #include "../../../Array/VecOps.h"
 
 namespace {
-Buffer<float> gTransferTable;
-ScopedAlloc<float> gTransferMemory;
-bool gTransferReady = false;
+Buffer<float> getTransferTable() {
+    static ScopedAlloc<float> transferMemory;
+    static Buffer<float> transferTable;
+    static bool initialized = false;
 
-void ensureTransferTable() {
-    if (gTransferReady) {
-        return;
+    if (! initialized) {
+        const float pi = MathConstants<float>::pi;
+
+        transferMemory.ensureSize(Curve::resolution);
+        transferTable = transferMemory.withSize(Curve::resolution);
+
+        double isize = 1.0 / static_cast<double>(Curve::resolution);
+        for (int i = 0; i < Curve::resolution; ++i) {
+            double x = i * isize;
+            transferTable[i] = static_cast<float>(
+                x
+                - 0.2180285 * std::sin(2.0 * pi * x)
+                + 0.0322599 * std::sin(4.0 * pi * x)
+                - 0.0018794 * std::sin(6.0 * pi * x));
+        }
+
+        initialized = true;
     }
 
-    const float pi = MathConstants<float>::pi;
-    gTransferMemory.ensureSize(Curve::resolution);
-    gTransferTable = gTransferMemory.withSize(Curve::resolution);
-
-    double isize = 1.0 / static_cast<double>(Curve::resolution);
-    for (int i = 0; i < Curve::resolution; ++i) {
-        double x = i * isize;
-        gTransferTable[i] = static_cast<float>(
-            x
-            - 0.2180285 * std::sin(2.0 * pi * x)
-            + 0.0322599 * std::sin(4.0 * pi * x)
-            - 0.0018794 * std::sin(6.0 * pi * x));
-    }
-
-    gTransferReady = true;
+    return transferTable;
 }
 }
 
@@ -52,7 +53,7 @@ bool V2DefaultWaveBuilderStage::run(
         return false;
     }
 
-    ensureTransferTable();
+    const Buffer<float> transferTable = getTransferTable();
 
     int totalRes = 0;
     int halfRes = Curve::resolution / 2;
@@ -84,7 +85,7 @@ bool V2DefaultWaveBuilderStage::run(
         int nextShift = jmax(0, thisCurve.resIndex - nextCurve.resIndex);
 
         for (int i = 0; i < curveRes; ++i) {
-            float xfer = gTransferTable[i * xferInc];
+            float xfer = transferTable[i * xferInc];
             int indexA = (i << thisShift) + offset;
             int indexB = (i << nextShift);
 
@@ -123,8 +124,8 @@ bool V2DefaultWaveBuilderStage::run(
     Buffer<float> slopeUsed = slope.withSize(outWavePointCount - 1);
     Buffer<float> diffUsed = diffX.withSize(outWavePointCount - 1);
 
-    VecOps::sub(waveX, waveX + 1, diffUsed);
-    VecOps::sub(waveY, waveY + 1, slopeUsed);
+    VecOps::sub(waveX + 1, waveX, diffUsed);
+    VecOps::sub(waveY + 1, waveY, slopeUsed);
     diffUsed.threshLT(1e-6f);
     slopeUsed.div(diffUsed);
 
