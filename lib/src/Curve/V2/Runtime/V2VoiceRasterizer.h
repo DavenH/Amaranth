@@ -1,0 +1,64 @@
+#pragma once
+
+#include "../../../Obj/MorphPosition.h"
+#include "../../Mesh.h"
+#include "../Stages/V2CurveBuilderStages.h"
+#include "../Stages/V2InterpolatorStages.h"
+#include "../Stages/V2PositionerStages.h"
+#include "../Stages/V2SamplerStages.h"
+#include "../Stages/V2WaveBuilderStages.h"
+#include "V2RasterizerGraph.h"
+#include "V2RasterizerWorkspace.h"
+
+struct V2VoiceControlSnapshot {
+    MorphPosition morph{};
+    V2ScalingType scaling{V2ScalingType::Bipolar};
+    bool wrapPhases{false};
+    bool cyclic{true};
+    float minX{0.0f};
+    float maxX{1.0f};
+    bool interpolateCurves{true};
+    bool lowResolution{false};
+    bool integralSampling{false};
+};
+
+class V2VoiceRasterizer {
+public:
+    V2VoiceRasterizer();
+
+    void prepare(const V2PrepareSpec& spec);
+    void setMeshSnapshot(const Mesh* meshSnapshot) noexcept;
+    void updateControlData(const V2VoiceControlSnapshot& snapshot) noexcept;
+    void resetPhase(double phase = 0.0) noexcept;
+    double getPhaseForTesting() const noexcept;
+
+    bool renderAudio(
+        const V2RenderRequest& request,
+        Buffer<float> output,
+        V2RenderResult& result) noexcept;
+
+private:
+    bool buildWave(int& wavePointCount) noexcept;
+    float sampleAtPhase(
+        double phase,
+        Buffer<float> waveX,
+        Buffer<float> waveY,
+        Buffer<float> slope,
+        int wavePointCount,
+        int& ioSampleIndex) const noexcept;
+
+    V2RasterizerWorkspace workspace;
+    V2RasterizerGraph graph;
+
+    V2TrilinearInterpolatorStage interpolator;
+    V2LinearPositionerStage linearPositioner;
+    V2CyclicPositionerStage cyclicPositioner;
+    V2DefaultCurveBuilderStage curveBuilder;
+    V2DefaultWaveBuilderStage waveBuilder;
+    V2LinearSamplerStage sampler;
+
+    const Mesh* mesh{nullptr};
+    V2VoiceControlSnapshot controls{};
+    double phase{0.0};
+    int sampleIndex{0};
+};
