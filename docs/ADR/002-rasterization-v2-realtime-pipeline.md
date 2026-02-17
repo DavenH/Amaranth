@@ -200,12 +200,15 @@ Exit criteria:
   - `Runtime/V2EnvRasterizer.h/.cpp`
 - Added initial concrete v2 voice rasterizer:
   - `Runtime/V2VoiceRasterizer.h/.cpp`
+- Added initial concrete v2 fx rasterizer:
+  - `Runtime/V2FxRasterizer.h/.cpp`
 - Added tests:
   - `lib/tests/TestV2EnvStateMachine.cpp`
   - `lib/tests/TestV2RasterizerPipeline.cpp`
   - `lib/tests/TestV2GraphicRasterizer.cpp`
   - `lib/tests/TestV2EnvRasterizer.cpp`
   - `lib/tests/TestV2VoiceRasterizer.cpp`
+  - `lib/tests/TestV2FxRasterizer.cpp`
 - Updated render-path guardrails and waveform validation:
   - `V2RasterizerGraph` now rejects intercept/curve over-capacity outputs.
   - `V2WaveBuilderStages` slope derivation corrected (`dx = x[i+1] - x[i]`).
@@ -214,11 +217,12 @@ Exit criteria:
   - Added deterministic output characterization test for fixed pipeline inputs.
   - Added envelope loop/release sampling characterization test.
   - Added voice block-continuity and phase-wrap characterization tests.
+  - Added FX precondition/determinism/mode characterization tests.
   - Added `V2GraphicRequest` / `V2GraphicResult` types in `V2RenderTypes.h`.
 - Build status:
   - `AmaranthLib` and `AmaranthLib_tests` build successfully.
   - `ctest -R V2EnvStateMachine` passes.
-  - `ctest -R V2 --output-on-failure` passes (26/26 tests).
+  - `ctest -R V2 --output-on-failure` passes (29/29 tests).
 
 ### Immediate
 - [x] Create `Curve/V2/` module layout (`Stages`, `State`, `Runtime`).
@@ -246,7 +250,7 @@ Exit criteria:
 - [x] Implement `GraphicRasterizerV2`.
 - [x] Implement `VoiceRasterizerV2`.
 - [x] Implement `EnvRasterizerV2`.
-- [ ] Implement `FxRasterizerV2`.
+- [x] Implement `FxRasterizerV2`.
 - [ ] Swap all call sites to v2 API.
 - [ ] Remove legacy rasterizer codepaths from build.
 
