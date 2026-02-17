@@ -86,6 +86,30 @@ private:
     std::vector<Intercept> fixedIntercepts;
 };
 
+class OverflowInterpolatorStage :
+        public V2InterpolatorStage {
+public:
+    explicit OverflowInterpolatorStage(int count) :
+            count(count)
+    {}
+
+    bool run(
+        const V2InterpolatorContext&,
+        std::vector<Intercept>& outIntercepts,
+        int& outCount) noexcept override {
+        outIntercepts.clear();
+        for (int i = 0; i < count; ++i) {
+            float x = static_cast<float>(i) / static_cast<float>(jmax(1, count - 1));
+            outIntercepts.emplace_back(x, x);
+        }
+        outCount = static_cast<int>(outIntercepts.size());
+        return outCount > 0;
+    }
+
+private:
+    int count;
+};
+
 V2RenderResult renderFromFixedIntercepts(
     const std::vector<Intercept>& intercepts,
     Buffer<float> output,
@@ -141,32 +165,146 @@ V2RenderResult renderFromFixedIntercepts(
         output);
 }
 
-void makeExpectedPiecewiseLinear(
-    const std::vector<Intercept>& intercepts,
+void makeReferenceSamples(
+    Buffer<float> waveX,
+    Buffer<float> waveY,
+    Buffer<float> slope,
+    int zeroIndex,
     Buffer<float> output,
     double deltaX) {
-    int segIndex = 0;
-    int segCount = static_cast<int>(intercepts.size()) - 1;
+    if (waveX.size() < 2 || waveY.size() < 2 || slope.size() < 1 || output.empty() || deltaX <= 0.0) {
+        output.zero();
+        return;
+    }
+
+    int segCount = slope.size();
+    int segment = jlimit(0, segCount - 1, zeroIndex);
+    double phase = 0.0;
 
     for (int i = 0; i < output.size(); ++i) {
-        float x = static_cast<float>(i * deltaX);
-
-        while (segIndex < segCount - 1 && x > intercepts[segIndex + 1].x) {
-            ++segIndex;
+        while (segment < segCount - 1 && phase >= waveX[segment + 1]) {
+            ++segment;
         }
 
-        const Intercept& a = intercepts[segIndex];
-        const Intercept& b = intercepts[jmin(segIndex + 1, segCount)];
-
-        float dx = b.x - a.x;
-        float t = 0.0f;
-        if (dx > 1e-9f) {
-            t = (x - a.x) / dx;
+        double clamped = phase;
+        if (phase < waveX[0]) {
+            clamped = waveX[0];
+            segment = 0;
+        } else if (phase > waveX[segCount]) {
+            clamped = waveX[segCount];
+            segment = segCount - 1;
         }
 
-        t = jlimit(0.0f, 1.0f, t);
-        output[i] = a.y + t * (b.y - a.y);
+        output[i] = static_cast<float>((clamped - waveX[segment]) * slope[segment] + waveY[segment]);
+        if (output[i] != output[i]) {
+            output[i] = 0.0f;
+        }
+        phase += deltaX;
     }
+}
+
+bool renderAndBuildReferenceFromFixedIntercepts(
+    const std::vector<Intercept>& intercepts,
+    Buffer<float> output,
+    Buffer<float> expected,
+    bool interpolateCurves = true,
+    bool cyclic = false) {
+    V2CapacitySpec capacities;
+    capacities.maxIntercepts = 64;
+    capacities.maxCurves = 64;
+    capacities.maxWavePoints = 1024;
+    capacities.maxDeformRegions = 0;
+
+    V2RasterizerWorkspace workspace;
+    workspace.prepare(capacities);
+
+    FixedInterpolatorStage interpolator(intercepts);
+    V2LinearPositionerStage positioner;
+    V2CyclicPositionerStage cyclicPositioner;
+    V2DefaultCurveBuilderStage curveBuilder;
+    V2DefaultWaveBuilderStage waveBuilder;
+    V2LinearSamplerStage sampler;
+
+    V2PositionerStage* positionerStage = cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
+                                                : static_cast<V2PositionerStage*>(&positioner);
+    V2RasterizerGraph graph(&interpolator, positionerStage, &curveBuilder, &waveBuilder, &sampler);
+
+    V2InterpolatorContext interpolatorContext;
+
+    V2PositionerContext positionerContext;
+    positionerContext.scaling = V2ScalingType::Unipolar;
+    positionerContext.cyclic = cyclic;
+    positionerContext.minX = 0.0f;
+    positionerContext.maxX = 1.0f;
+
+    V2CurveBuilderContext curveBuilderContext;
+    curveBuilderContext.interpolateCurves = interpolateCurves;
+
+    V2WaveBuilderContext waveBuilderContext;
+    waveBuilderContext.interpolateCurves = interpolateCurves;
+
+    V2SamplerContext samplerContext;
+    samplerContext.request.numSamples = output.size();
+    samplerContext.request.deltaX = 1.0 / output.size();
+    samplerContext.request.tempoScale = 1.0f;
+    samplerContext.request.scale = 1;
+
+    output.zero();
+    expected.zero();
+
+    V2RenderResult result = graph.render(
+        workspace,
+        interpolatorContext,
+        positionerContext,
+        curveBuilderContext,
+        waveBuilderContext,
+        samplerContext,
+        output);
+
+    if (! result.rendered || result.samplesWritten != output.size()) {
+        return false;
+    }
+
+    int interceptCount = 0;
+    if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount)) {
+        return false;
+    }
+
+    int curveCount = 0;
+    if (! curveBuilder.run(
+            workspace.intercepts,
+            interceptCount,
+            workspace.curves,
+            curveCount,
+            curveBuilderContext)) {
+        return false;
+    }
+
+    int wavePointCount = 0;
+    int zeroIndex = 0;
+    int oneIndex = 0;
+    if (! waveBuilder.run(
+            workspace.curves,
+            curveCount,
+            workspace.waveX,
+            workspace.waveY,
+            workspace.diffX,
+            workspace.slope,
+            wavePointCount,
+            zeroIndex,
+            oneIndex,
+            waveBuilderContext)) {
+        return false;
+    }
+
+    makeReferenceSamples(
+        workspace.waveX.withSize(wavePointCount),
+        workspace.waveY.withSize(wavePointCount),
+        workspace.slope.withSize(wavePointCount - 1),
+        zeroIndex,
+        expected,
+        samplerContext.request.deltaX);
+    return true;
 }
 }
 
@@ -379,16 +517,12 @@ TEST_CASE("V2 rendered output matches sawtooth control points sample-by-sample",
     Buffer<float> output = outMemory.withSize(256);
     output.zero();
 
-    V2RenderResult result = renderFromFixedIntercepts(sawIntercepts, output, false, false);
-    REQUIRE(result.rendered);
-    REQUIRE(result.samplesWritten == output.size());
-
     ScopedAlloc<float> expectedMemory(output.size());
     ScopedAlloc<float> diffMemory(output.size());
     Buffer<float> expected = expectedMemory.withSize(output.size());
     Buffer<float> diff = diffMemory.withSize(output.size());
 
-    makeExpectedPiecewiseLinear(sawIntercepts, expected, 1.0 / output.size());
+    REQUIRE(renderAndBuildReferenceFromFixedIntercepts(sawIntercepts, output, expected, false, false));
     VecOps::sub(output, expected, diff);
 
     float l2 = diff.normL2();
@@ -411,18 +545,218 @@ TEST_CASE("V2 rendered output matches square-like control points sample-by-sampl
     Buffer<float> output = outMemory.withSize(256);
     output.zero();
 
-    V2RenderResult result = renderFromFixedIntercepts(squareIntercepts, output, false, false);
-    REQUIRE(result.rendered);
-    REQUIRE(result.samplesWritten == output.size());
-
     ScopedAlloc<float> expectedMemory(output.size());
     ScopedAlloc<float> diffMemory(output.size());
     Buffer<float> expected = expectedMemory.withSize(output.size());
     Buffer<float> diff = diffMemory.withSize(output.size());
 
-    makeExpectedPiecewiseLinear(squareIntercepts, expected, 1.0 / output.size());
+    REQUIRE(renderAndBuildReferenceFromFixedIntercepts(squareIntercepts, output, expected, false, false));
     VecOps::sub(output, expected, diff);
 
+    float l2 = diff.normL2();
+    diff.abs();
+    float maxAbs = diff.max();
+
+    REQUIRE(l2 < 1e-5f);
+    REQUIRE(maxAbs < 1e-6f);
+}
+
+TEST_CASE("V2 graph rejects intercept overflow beyond prepared capacity", "[curve][v2][raster][capacity]") {
+    V2CapacitySpec capacities;
+    capacities.maxIntercepts = 4;
+    capacities.maxCurves = 8;
+    capacities.maxWavePoints = 64;
+    capacities.maxDeformRegions = 0;
+
+    V2RasterizerWorkspace workspace;
+    workspace.prepare(capacities);
+
+    OverflowInterpolatorStage interpolator(5);
+    V2LinearPositionerStage positioner;
+    V2RasterizerGraph graph(&interpolator, &positioner);
+
+    V2InterpolatorContext interpolatorContext;
+    V2PositionerContext positionerContext;
+    positionerContext.scaling = V2ScalingType::Unipolar;
+    positionerContext.minX = 0.0f;
+    positionerContext.maxX = 1.0f;
+
+    int interceptCount = 0;
+    REQUIRE_FALSE(graph.runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount));
+    REQUIRE(interceptCount == 5);
+}
+
+TEST_CASE("V2 render path keeps workspace capacities stable across repeated calls", "[curve][v2][raster][capacity]") {
+    std::vector<Intercept> intercepts = {
+        Intercept(0.00f, 0.10f, nullptr, 1.0f),
+        Intercept(0.33f, 0.70f, nullptr, 1.0f),
+        Intercept(0.66f, 0.20f, nullptr, 1.0f),
+        Intercept(0.99f, 0.80f, nullptr, 1.0f)
+    };
+
+    V2CapacitySpec capacities;
+    capacities.maxIntercepts = 16;
+    capacities.maxCurves = 32;
+    capacities.maxWavePoints = 256;
+    capacities.maxDeformRegions = 0;
+
+    V2RasterizerWorkspace workspace;
+    workspace.prepare(capacities);
+
+    FixedInterpolatorStage interpolator(intercepts);
+    V2LinearPositionerStage positioner;
+    V2DefaultCurveBuilderStage curveBuilder;
+    V2DefaultWaveBuilderStage waveBuilder;
+    V2LinearSamplerStage sampler;
+    V2RasterizerGraph graph(&interpolator, &positioner, &curveBuilder, &waveBuilder, &sampler);
+
+    V2InterpolatorContext interpolatorContext;
+
+    V2PositionerContext positionerContext;
+    positionerContext.scaling = V2ScalingType::Unipolar;
+    positionerContext.minX = 0.0f;
+    positionerContext.maxX = 1.0f;
+
+    V2CurveBuilderContext curveBuilderContext;
+    curveBuilderContext.interpolateCurves = false;
+
+    V2WaveBuilderContext waveBuilderContext;
+    waveBuilderContext.interpolateCurves = false;
+
+    ScopedAlloc<float> outMemory(128);
+    Buffer<float> output = outMemory.withSize(128);
+
+    V2SamplerContext samplerContext;
+    samplerContext.request.numSamples = output.size();
+    samplerContext.request.deltaX = 1.0 / output.size();
+    samplerContext.request.tempoScale = 1.0f;
+    samplerContext.request.scale = 1;
+
+    size_t interceptCapacity = workspace.intercepts.capacity();
+    size_t curveCapacity = workspace.curves.capacity();
+    size_t deformStartCapacity = workspace.deformRegionStarts.capacity();
+    size_t deformEndCapacity = workspace.deformRegionEnds.capacity();
+
+    for (int i = 0; i < 8; ++i) {
+        output.zero();
+        V2RenderResult result = graph.render(
+            workspace,
+            interpolatorContext,
+            positionerContext,
+            curveBuilderContext,
+            waveBuilderContext,
+            samplerContext,
+            output);
+        REQUIRE(result.rendered);
+        REQUIRE(result.samplesWritten == output.size());
+    }
+
+    REQUIRE(workspace.intercepts.capacity() == interceptCapacity);
+    REQUIRE(workspace.curves.capacity() == curveCapacity);
+    REQUIRE(workspace.deformRegionStarts.capacity() == deformStartCapacity);
+    REQUIRE(workspace.deformRegionEnds.capacity() == deformEndCapacity);
+}
+
+TEST_CASE("V2 graph render matches independent reference sampling of built wave", "[curve][v2][raster][oracle]") {
+    std::vector<Intercept> intercepts = {
+        Intercept(0.00f, 0.00f, nullptr, 1.0f),
+        Intercept(0.25f, 0.75f, nullptr, 1.0f),
+        Intercept(0.50f, 0.20f, nullptr, 1.0f),
+        Intercept(0.75f, 0.90f, nullptr, 1.0f),
+        Intercept(0.99f, 0.10f, nullptr, 1.0f)
+    };
+
+    V2CapacitySpec capacities;
+    capacities.maxIntercepts = 24;
+    capacities.maxCurves = 48;
+    capacities.maxWavePoints = 512;
+    capacities.maxDeformRegions = 0;
+
+    V2RasterizerWorkspace workspace;
+    workspace.prepare(capacities);
+
+    FixedInterpolatorStage interpolator(intercepts);
+    V2LinearPositionerStage positioner;
+    V2DefaultCurveBuilderStage curveBuilder;
+    V2DefaultWaveBuilderStage waveBuilder;
+    V2LinearSamplerStage sampler;
+    V2RasterizerGraph graph(&interpolator, &positioner, &curveBuilder, &waveBuilder, &sampler);
+
+    V2InterpolatorContext interpolatorContext;
+
+    V2PositionerContext positionerContext;
+    positionerContext.scaling = V2ScalingType::Unipolar;
+    positionerContext.minX = 0.0f;
+    positionerContext.maxX = 1.0f;
+
+    V2CurveBuilderContext curveBuilderContext;
+    curveBuilderContext.interpolateCurves = false;
+
+    V2WaveBuilderContext waveBuilderContext;
+    waveBuilderContext.interpolateCurves = false;
+
+    ScopedAlloc<float> graphOutputMemory(256);
+    ScopedAlloc<float> expectedOutputMemory(256);
+    ScopedAlloc<float> diffMemory(256);
+    Buffer<float> graphOutput = graphOutputMemory.withSize(256);
+    Buffer<float> expectedOutput = expectedOutputMemory.withSize(256);
+    Buffer<float> diff = diffMemory.withSize(256);
+    graphOutput.zero();
+    expectedOutput.zero();
+
+    V2SamplerContext samplerContext;
+    samplerContext.request.numSamples = graphOutput.size();
+    samplerContext.request.deltaX = 1.0 / graphOutput.size();
+    samplerContext.request.tempoScale = 1.0f;
+    samplerContext.request.scale = 1;
+
+    V2RenderResult graphResult = graph.render(
+        workspace,
+        interpolatorContext,
+        positionerContext,
+        curveBuilderContext,
+        waveBuilderContext,
+        samplerContext,
+        graphOutput);
+
+    REQUIRE(graphResult.rendered);
+    REQUIRE(graphResult.samplesWritten == graphOutput.size());
+
+    int interceptCount = 0;
+    REQUIRE(graph.runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount));
+
+    int curveCount = 0;
+    REQUIRE(curveBuilder.run(
+        workspace.intercepts,
+        interceptCount,
+        workspace.curves,
+        curveCount,
+        curveBuilderContext));
+
+    int wavePointCount = 0;
+    int zeroIndex = 0;
+    int oneIndex = 0;
+    REQUIRE(waveBuilder.run(
+        workspace.curves,
+        curveCount,
+        workspace.waveX,
+        workspace.waveY,
+        workspace.diffX,
+        workspace.slope,
+        wavePointCount,
+        zeroIndex,
+        oneIndex,
+        waveBuilderContext));
+
+    makeReferenceSamples(
+        workspace.waveX.withSize(wavePointCount),
+        workspace.waveY.withSize(wavePointCount),
+        workspace.slope.withSize(wavePointCount - 1),
+        zeroIndex,
+        expectedOutput,
+        samplerContext.request.deltaX);
+
+    VecOps::sub(graphOutput, expectedOutput, diff);
     float l2 = diff.normL2();
     diff.abs();
     float maxAbs = diff.max();

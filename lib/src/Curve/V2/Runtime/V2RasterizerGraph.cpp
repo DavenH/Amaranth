@@ -44,13 +44,26 @@ bool V2RasterizerGraph::runInterceptStages(
         return false;
     }
 
+    const V2CapacitySpec& capacities = workspace.getCapacities();
     workspace.reset();
 
     if (! interpolator->run(interpolatorContext, workspace.intercepts, outInterceptCount)) {
         return false;
     }
 
+    if (outInterceptCount <= 0
+            || outInterceptCount > capacities.maxIntercepts
+            || static_cast<int>(workspace.intercepts.size()) > capacities.maxIntercepts) {
+        return false;
+    }
+
     if (! positioner->run(workspace.intercepts, outInterceptCount, positionerContext)) {
+        return false;
+    }
+
+    if (outInterceptCount <= 0
+            || outInterceptCount > capacities.maxIntercepts
+            || static_cast<int>(workspace.intercepts.size()) > capacities.maxIntercepts) {
         return false;
     }
 
@@ -86,6 +99,13 @@ V2RenderResult V2RasterizerGraph::render(
             workspace.curves,
             curveCount,
             curveBuilderContext)) {
+        return result;
+    }
+
+    const V2CapacitySpec& capacities = workspace.getCapacities();
+    if (curveCount <= 0
+            || curveCount > capacities.maxCurves
+            || static_cast<int>(workspace.curves.size()) > capacities.maxCurves) {
         return result;
     }
 

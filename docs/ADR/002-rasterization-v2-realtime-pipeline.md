@@ -197,16 +197,18 @@ Exit criteria:
 - Added tests:
   - `lib/tests/TestV2EnvStateMachine.cpp`
   - `lib/tests/TestV2RasterizerPipeline.cpp`
+- Updated render-path guardrails and waveform validation:
+  - `V2RasterizerGraph` now rejects intercept/curve over-capacity outputs.
+  - `V2WaveBuilderStages` slope derivation corrected (`dx = x[i+1] - x[i]`).
+  - Added strict oracle-based sample-by-sample waveform tests (saw/square + generic oracle case).
+  - Added repeated-render capacity-stability and overflow rejection tests.
 - Build status:
   - `AmaranthLib` and `AmaranthLib_tests` build successfully.
   - `ctest -R V2EnvStateMachine` passes.
-  - `ctest -R V2` currently has two failing strict characterization tests in `TestV2RasterizerPipeline.cpp`:
-    - `V2 rendered output matches sawtooth control points sample-by-sample`
-    - `V2 rendered output matches square-like control points sample-by-sample`  
+  - `ctest -R V2 -V` passes (14/14 tests).
 
 ### Immediate
 - [x] Create `Curve/V2/` module layout (`Stages`, `State`, `Runtime`).
-- [ ] Add optional `Tests` subfolder under `Curve/V2/` if test utilities become shared.
 - [ ] Define `GraphicRequest` and `GraphicResult`.
 - [x] Define `PrepareSpec`, `RenderRequest`, and `RenderResult`.
 - [ ] Define fixed-capacity policies for intercepts/curves/waves/deform regions.
@@ -237,7 +239,7 @@ Exit criteria:
 
 ### Validation
 - [ ] Run full `ctest` suite for tests preset.
-- [ ] Resolve strict sample-by-sample waveform characterization failures for saw/square in `TestV2RasterizerPipeline.cpp`.
+- [x] Resolve strict sample-by-sample waveform characterization failures for saw/square in `TestV2RasterizerPipeline.cpp`.
 - [ ] Add benchmark for audio-block render cost per rasterizer.
 - [ ] Verify deterministic output across runs and platforms.
 - [ ] Document realtime invariants in code comments and contributor docs.
