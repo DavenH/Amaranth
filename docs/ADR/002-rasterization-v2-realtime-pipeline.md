@@ -209,6 +209,7 @@ Exit criteria:
   - `lib/tests/TestV2EnvRasterizer.cpp`
   - `lib/tests/TestV2VoiceRasterizer.cpp`
   - `lib/tests/TestV2FxRasterizer.cpp`
+  - `lib/tests/TestV2MeshInterpolation.cpp`
 - Updated render-path guardrails and waveform validation:
   - `V2RasterizerGraph` now rejects intercept/curve over-capacity outputs.
   - `V2WaveBuilderStages` slope derivation corrected (`dx = x[i+1] - x[i]`).
@@ -217,12 +218,14 @@ Exit criteria:
   - Added deterministic output characterization test for fixed pipeline inputs.
   - Added envelope loop/release sampling characterization test.
   - Added voice block-continuity and phase-wrap characterization tests.
+  - Added chaining-style voice interpolation continuity test with pole/time modulation and softened curve values.
   - Added FX precondition/determinism/mode characterization tests.
+  - Added mesh->intercept interpolation characterization tests for determinism, bounds, and wrap-phases behavior.
   - Added `V2GraphicRequest` / `V2GraphicResult` types in `V2RenderTypes.h`.
 - Build status:
   - `AmaranthLib` and `AmaranthLib_tests` build successfully.
   - `ctest -R V2EnvStateMachine` passes.
-  - `ctest -R V2 --output-on-failure` passes (29/29 tests).
+  - `ctest -R V2 --output-on-failure` passes (32/32 tests).
 
 ### Immediate
 - [x] Create `Curve/V2/` module layout (`Stages`, `State`, `Runtime`).
