@@ -54,7 +54,9 @@ bool V2VoiceRasterizer::renderAudio(
     }
 
     int wavePointCount = 0;
-    if (! buildWave(wavePointCount)) {
+    int zeroIndex = 0;
+    int oneIndex = 0;
+    if (! buildWave(wavePointCount, zeroIndex, oneIndex)) {
         return false;
     }
 
@@ -66,8 +68,8 @@ bool V2VoiceRasterizer::renderAudio(
 
     int currentIndex = jlimit(0, wavePointCount - 2, sampleIndex);
     double localPhase = phase;
-    double cycleStart = controls.minX;
-    double cycleEnd = controls.maxX;
+    double cycleStart = cycleStartX;
+    double cycleEnd = cycleEndX;
     double cycleLength = cycleEnd - cycleStart;
     bool wraps = controls.cyclic && cycleLength > kMinCycleLength;
 
@@ -103,7 +105,7 @@ bool V2VoiceRasterizer::renderAudio(
     return true;
 }
 
-bool V2VoiceRasterizer::buildWave(int& wavePointCount) noexcept {
+bool V2VoiceRasterizer::buildWave(int& wavePointCount, int& zeroIndex, int& oneIndex) noexcept {
     graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
                                         : static_cast<V2PositionerStage*>(&linearPositioner));
 
@@ -139,8 +141,6 @@ bool V2VoiceRasterizer::buildWave(int& wavePointCount) noexcept {
         return false;
     }
 
-    int zeroIndex = 0;
-    int oneIndex = 0;
     V2WaveBuilderContext waveBuilderContext;
     waveBuilderContext.interpolateCurves = controls.interpolateCurves;
     if (! waveBuilder.run(
@@ -157,7 +157,21 @@ bool V2VoiceRasterizer::buildWave(int& wavePointCount) noexcept {
         return false;
     }
 
-    return wavePointCount > 1;
+    if (wavePointCount <= 1) {
+        return false;
+    }
+
+    const int clampedZero = jlimit(0, wavePointCount - 2, zeroIndex);
+    const int clampedOne = jlimit(clampedZero, wavePointCount - 2, oneIndex);
+    cycleStartX = workspace.waveX[clampedZero];
+    cycleEndX = workspace.waveX[jmin(clampedOne + 1, wavePointCount - 1)];
+
+    if (cycleEndX <= cycleStartX + static_cast<float>(kMinCycleLength)) {
+        cycleStartX = controls.minX;
+        cycleEndX = controls.maxX;
+    }
+
+    return true;
 }
 
 float V2VoiceRasterizer::sampleAtPhase(

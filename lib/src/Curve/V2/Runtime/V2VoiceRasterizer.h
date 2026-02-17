@@ -38,7 +38,7 @@ public:
         V2RenderResult& result) noexcept;
 
 private:
-    bool buildWave(int& wavePointCount) noexcept;
+    bool buildWave(int& wavePointCount, int& zeroIndex, int& oneIndex) noexcept;
     float sampleAtPhase(
         double phase,
         Buffer<float> waveX,
@@ -61,4 +61,6 @@ private:
     V2VoiceControlSnapshot controls{};
     double phase{0.0};
     int sampleIndex{0};
+    float cycleStartX{0.0f};
+    float cycleEndX{1.0f};
 };
