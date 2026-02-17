@@ -764,3 +764,36 @@ TEST_CASE("V2 graph render matches independent reference sampling of built wave"
     REQUIRE(l2 < 1e-5f);
     REQUIRE(maxAbs < 1e-6f);
 }
+
+TEST_CASE("V2 render output is deterministic for fixed pipeline input", "[curve][v2][raster][determinism]") {
+    std::vector<Intercept> intercepts = {
+        Intercept(0.00f, 0.00f, nullptr, 1.0f),
+        Intercept(0.19f, 0.86f, nullptr, 1.0f),
+        Intercept(0.41f, 0.14f, nullptr, 1.0f),
+        Intercept(0.64f, 0.77f, nullptr, 1.0f),
+        Intercept(0.99f, 0.03f, nullptr, 1.0f)
+    };
+
+    ScopedAlloc<float> firstMemory(256);
+    ScopedAlloc<float> secondMemory(256);
+    ScopedAlloc<float> diffMemory(256);
+    Buffer<float> first = firstMemory.withSize(256);
+    Buffer<float> second = secondMemory.withSize(256);
+    Buffer<float> diff = diffMemory.withSize(256);
+
+    V2RenderResult firstResult = renderFromFixedIntercepts(intercepts, first, false, false);
+    V2RenderResult secondResult = renderFromFixedIntercepts(intercepts, second, false, false);
+
+    REQUIRE(firstResult.rendered);
+    REQUIRE(secondResult.rendered);
+    REQUIRE(firstResult.samplesWritten == first.size());
+    REQUIRE(secondResult.samplesWritten == second.size());
+
+    VecOps::sub(first, second, diff);
+    float l2 = diff.normL2();
+    diff.abs();
+    float maxAbs = diff.max();
+
+    REQUIRE(l2 == 0.0f);
+    REQUIRE(maxAbs == 0.0f);
+}

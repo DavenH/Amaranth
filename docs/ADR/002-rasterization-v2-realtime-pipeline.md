@@ -194,22 +194,27 @@ Exit criteria:
   - `Stages/V2SamplerStages.h/.cpp`
 - Added graph orchestration:
   - `Runtime/V2RasterizerGraph.h/.cpp`
+- Added initial concrete v2 graphic rasterizer:
+  - `Runtime/V2GraphicRasterizer.h/.cpp`
 - Added tests:
   - `lib/tests/TestV2EnvStateMachine.cpp`
   - `lib/tests/TestV2RasterizerPipeline.cpp`
+  - `lib/tests/TestV2GraphicRasterizer.cpp`
 - Updated render-path guardrails and waveform validation:
   - `V2RasterizerGraph` now rejects intercept/curve over-capacity outputs.
   - `V2WaveBuilderStages` slope derivation corrected (`dx = x[i+1] - x[i]`).
   - Added strict oracle-based sample-by-sample waveform tests (saw/square + generic oracle case).
   - Added repeated-render capacity-stability and overflow rejection tests.
+  - Added deterministic output characterization test for fixed pipeline inputs.
+  - Added `V2GraphicRequest` / `V2GraphicResult` types in `V2RenderTypes.h`.
 - Build status:
   - `AmaranthLib` and `AmaranthLib_tests` build successfully.
   - `ctest -R V2EnvStateMachine` passes.
-  - `ctest -R V2 -V` passes (14/14 tests).
+  - `ctest -R V2 --output-on-failure` passes (18/18 tests).
 
 ### Immediate
 - [x] Create `Curve/V2/` module layout (`Stages`, `State`, `Runtime`).
-- [ ] Define `GraphicRequest` and `GraphicResult`.
+- [x] Define `GraphicRequest` and `GraphicResult`.
 - [x] Define `PrepareSpec`, `RenderRequest`, and `RenderResult`.
 - [ ] Define fixed-capacity policies for intercepts/curves/waves/deform regions.
 - [ ] Add allocation guard helper for render-path tests.
@@ -230,7 +235,7 @@ Exit criteria:
 - [x] Implement v2 sampler stage.
 
 ### Integration
-- [ ] Implement `GraphicRasterizerV2`.
+- [x] Implement `GraphicRasterizerV2`.
 - [ ] Implement `VoiceRasterizerV2`.
 - [ ] Implement `EnvRasterizerV2`.
 - [ ] Implement `FxRasterizerV2`.

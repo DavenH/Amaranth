@@ -26,6 +26,21 @@ struct V2PrepareSpec {
     bool oneSamplePerCycle{false};
 };
 
+struct V2GraphicRequest {
+    int numSamples{0};
+    bool interpolateCurves{true};
+    bool lowResolution{false};
+
+    bool isValid() const noexcept {
+        return numSamples >= 0;
+    }
+};
+
+struct V2GraphicResult {
+    bool rendered{false};
+    int pointsWritten{0};
+};
+
 struct V2RenderRequest {
     int numSamples{0};
     int unisonIndex{0};
@@ -45,4 +60,3 @@ struct V2RenderResult {
     bool stillActive{false};
     int samplesWritten{0};
 };
-
