@@ -221,6 +221,8 @@ Exit criteria:
   - Added chaining-style voice interpolation continuity test with pole/time modulation and softened curve values.
   - Added FX precondition/determinism/mode characterization tests.
   - Added mesh->intercept interpolation characterization tests for determinism, bounds, and wrap-phases behavior.
+  - Added a graphic call-site adapter in `cycle/src/Curve/GraphicRasterizer.cpp` to route `calcCrossPoints()` through `V2GraphicRasterizer`, with legacy fallback when V2 render cannot produce output.
+  - Added an FX call-site adapter in `lib/src/Curve/FXRasterizer.cpp` to route `calcCrossPoints()` through `V2FxRasterizer`, with legacy fallback when V2 render cannot produce output.
   - Added `V2GraphicRequest` / `V2GraphicResult` types in `V2RenderTypes.h`.
 - Build status:
   - `AmaranthLib` and `AmaranthLib_tests` build successfully.
@@ -255,6 +257,8 @@ Exit criteria:
 - [x] Implement `EnvRasterizerV2`.
 - [x] Implement `FxRasterizerV2`.
 - [ ] Swap all call sites to v2 API.
+  - [x] Graphic path defaults to V2 adapter with legacy fallback on render failure.
+  - [x] FX path defaults to V2 adapter with legacy fallback on render failure.
 - [ ] Remove legacy rasterizer codepaths from build.
 
 ### Validation

@@ -1,11 +1,5 @@
 #pragma once
 
-enum class V2ScalingType {
-    Unipolar = 0,
-    Bipolar,
-    HalfBipolar
-};
-
 struct V2CapacitySpec {
     int maxIntercepts{0};
     int maxCurves{0};

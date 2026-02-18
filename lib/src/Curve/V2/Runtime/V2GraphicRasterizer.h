@@ -12,7 +12,8 @@
 
 struct V2GraphicControlSnapshot {
     MorphPosition morph{};
-    V2ScalingType scaling{V2ScalingType::Unipolar};
+    MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
+    int primaryDimension{Vertex::Time};
     bool wrapPhases{false};
     bool cyclic{false};
     float minX{0.0f};

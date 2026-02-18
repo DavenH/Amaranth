@@ -138,7 +138,7 @@ V2RenderResult renderFromFixedIntercepts(
     V2InterpolatorContext interpolatorContext;
 
     V2PositionerContext positionerContext;
-    positionerContext.scaling = V2ScalingType::Unipolar;
+    positionerContext.scaling = MeshRasterizer::Unipolar;
     positionerContext.cyclic = cyclic;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
@@ -232,7 +232,7 @@ bool renderAndBuildReferenceFromFixedIntercepts(
     V2InterpolatorContext interpolatorContext;
 
     V2PositionerContext positionerContext;
-    positionerContext.scaling = V2ScalingType::Unipolar;
+    positionerContext.scaling = MeshRasterizer::Unipolar;
     positionerContext.cyclic = cyclic;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
@@ -345,7 +345,7 @@ TEST_CASE("V2 positioner stages normalize order and scaling", "[curve][v2][raste
     int count = static_cast<int>(intercepts.size());
 
     V2PositionerContext linearContext;
-    linearContext.scaling = V2ScalingType::Bipolar;
+    linearContext.scaling = MeshRasterizer::Bipolar;
     linearContext.minX = 0.0f;
     linearContext.maxX = 1.0f;
 
@@ -359,7 +359,7 @@ TEST_CASE("V2 positioner stages normalize order and scaling", "[curve][v2][raste
     REQUIRE(intercepts[2].y <= 1.0f);
 
     V2PositionerContext cyclicContext;
-    cyclicContext.scaling = V2ScalingType::Unipolar;
+    cyclicContext.scaling = MeshRasterizer::Unipolar;
     cyclicContext.minX = 0.0f;
     cyclicContext.maxX = 1.0f;
 
@@ -389,7 +389,7 @@ TEST_CASE("V2 rasterizer graph runs interpolation and positioning with workspace
 
     V2InterpolatorContext interpolatorContext;
     V2PositionerContext positionerContext;
-    positionerContext.scaling = V2ScalingType::Unipolar;
+    positionerContext.scaling = MeshRasterizer::Unipolar;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
 
@@ -472,7 +472,7 @@ TEST_CASE("V2 rasterizer graph renders first end-to-end waveform buffer", "[curv
     interpolatorContext.wrapPhases = false;
 
     V2PositionerContext positionerContext;
-    positionerContext.scaling = V2ScalingType::Unipolar;
+    positionerContext.scaling = MeshRasterizer::Unipolar;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
 
@@ -577,7 +577,7 @@ TEST_CASE("V2 graph rejects intercept overflow beyond prepared capacity", "[curv
 
     V2InterpolatorContext interpolatorContext;
     V2PositionerContext positionerContext;
-    positionerContext.scaling = V2ScalingType::Unipolar;
+    positionerContext.scaling = MeshRasterizer::Unipolar;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
 
@@ -613,7 +613,7 @@ TEST_CASE("V2 render path keeps workspace capacities stable across repeated call
     V2InterpolatorContext interpolatorContext;
 
     V2PositionerContext positionerContext;
-    positionerContext.scaling = V2ScalingType::Unipolar;
+    positionerContext.scaling = MeshRasterizer::Unipolar;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
 
@@ -685,7 +685,7 @@ TEST_CASE("V2 graph render matches independent reference sampling of built wave"
     V2InterpolatorContext interpolatorContext;
 
     V2PositionerContext positionerContext;
-    positionerContext.scaling = V2ScalingType::Unipolar;
+    positionerContext.scaling = MeshRasterizer::Unipolar;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
 

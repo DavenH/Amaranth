@@ -123,7 +123,7 @@ TEST_CASE("V2EnvRasterizer renders deterministic output for fixed inputs", "[cur
 
     V2EnvControlSnapshot controls;
     controls.morph = MorphPosition(0.2f, 0.4f, 0.8f);
-    controls.scaling = V2ScalingType::Unipolar;
+    controls.scaling = MeshRasterizer::Unipolar;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
     controls.cyclic = false;
@@ -180,7 +180,7 @@ TEST_CASE("V2EnvRasterizer loops until release then follows release region", "[c
 
     V2EnvControlSnapshot controls;
     controls.morph = MorphPosition(0.2f, 0.4f, 0.8f);
-    controls.scaling = V2ScalingType::Unipolar;
+    controls.scaling = MeshRasterizer::Unipolar;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
     controls.hasReleaseCurve = true;

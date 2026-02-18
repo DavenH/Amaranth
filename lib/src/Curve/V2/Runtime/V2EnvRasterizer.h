@@ -13,7 +13,7 @@
 
 struct V2EnvControlSnapshot {
     MorphPosition morph{};
-    V2ScalingType scaling{V2ScalingType::Unipolar};
+    MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
     bool wrapPhases{false};
     bool cyclic{false};
     float minX{0.0f};

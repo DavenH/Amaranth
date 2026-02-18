@@ -12,7 +12,7 @@
 
 struct V2FxControlSnapshot {
     MorphPosition morph{};
-    V2ScalingType scaling{V2ScalingType::Unipolar};
+    MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
     bool wrapPhases{false};
     bool cyclic{false};
     float minX{0.0f};
@@ -39,7 +39,7 @@ private:
     V2RasterizerWorkspace workspace;
     V2RasterizerGraph graph;
 
-    V2TrilinearInterpolatorStage interpolator;
+    V2FxVertexInterpolatorStage interpolator;
     V2LinearPositionerStage linearPositioner;
     V2CyclicPositionerStage cyclicPositioner;
     V2DefaultCurveBuilderStage curveBuilder;
