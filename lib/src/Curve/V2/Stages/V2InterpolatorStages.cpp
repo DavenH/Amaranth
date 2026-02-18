@@ -11,6 +11,19 @@ enum class V2InterpolatorMode {
     SimplePoleBlend
 };
 
+float getPrimaryMorphValue(const MorphPosition& morph, int dimension) {
+    switch (dimension) {
+        case Vertex::Time:
+            return morph.time;
+        case Vertex::Red:
+            return morph.red;
+        case Vertex::Blue:
+            return morph.blue;
+        default:
+            return morph.time;
+    }
+}
+
 void wrapPhase(float& phase) {
     while (phase >= 1.0f) {
         phase -= 1.0f;
@@ -62,41 +75,51 @@ bool runInterpolator(
 
         switch (mode) {
             case V2InterpolatorMode::TrilinearFast: {
-                cube->getFinalIntercept(reduction, context.morph);
+                int dim = context.primaryDimension;
+                float independent = getPrimaryMorphValue(context.morph, dim);
+
+                cube->getInterceptsFast(dim, reduction, context.morph);
 
                 if (! reduction.pointOverlaps) {
                     continue;
                 }
 
+                VertCube::vertexAt(independent, dim, &reduction.v0, &reduction.v1, &reduction.v);
                 appendInterceptFromVertex(reduction.v, cube, context.wrapPhases, outIntercepts);
                 break;
             }
 
             case V2InterpolatorMode::TrilinearAccurate: {
-                cube->getInterceptsAccurate(Vertex::Time, reduction, context.morph);
+                int dim = context.primaryDimension;
+                float independent = getPrimaryMorphValue(context.morph, dim);
+
+                cube->getInterceptsAccurate(dim, reduction, context.morph);
 
                 if (! reduction.pointOverlaps) {
                     continue;
                 }
 
-                VertCube::vertexAt(context.morph.time, Vertex::Time, &reduction.v0, &reduction.v1, &reduction.v);
+                VertCube::vertexAt(independent, dim, &reduction.v0, &reduction.v1, &reduction.v);
                 appendInterceptFromVertex(reduction.v, cube, context.wrapPhases, outIntercepts);
                 break;
             }
 
             case V2InterpolatorMode::SimplePoleBlend: {
-                cube->getInterceptsFast(Vertex::Time, reduction, context.morph);
+                int dim = context.primaryDimension;
+                float independent = getPrimaryMorphValue(context.morph, dim);
+
+                cube->getInterceptsFast(dim, reduction, context.morph);
 
                 if (! reduction.pointOverlaps) {
                     continue;
                 }
 
-                float distA = context.morph.time - reduction.v0.values[Vertex::Time];
+                float distA = independent - reduction.v0.values[dim];
                 if (distA < 0.0f) {
                     distA = -distA;
                 }
 
-                float distB = context.morph.time - reduction.v1.values[Vertex::Time];
+                float distB = independent - reduction.v1.values[dim];
                 if (distB < 0.0f) {
                     distB = -distB;
                 }
@@ -132,4 +155,31 @@ bool V2SimpleInterpolatorStage::run(
     std::vector<Intercept>& outIntercepts,
     int& outCount) noexcept {
     return runInterpolator(context, outIntercepts, outCount, V2InterpolatorMode::SimplePoleBlend);
+}
+
+bool V2FxVertexInterpolatorStage::run(
+    const V2InterpolatorContext& context,
+    std::vector<Intercept>& outIntercepts,
+    int& outCount) noexcept {
+    outIntercepts.clear();
+    outCount = 0;
+
+    if (context.mesh == nullptr) {
+        return false;
+    }
+
+    const auto& verts = context.mesh->getVerts();
+    outIntercepts.reserve(verts.size());
+
+    for (auto* vert : verts) {
+        if (vert == nullptr) {
+            continue;
+        }
+
+        Vertex point = *vert;
+        appendInterceptFromVertex(point, nullptr, context.wrapPhases, outIntercepts);
+    }
+
+    outCount = static_cast<int>(outIntercepts.size());
+    return outCount > 0;
 }

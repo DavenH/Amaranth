@@ -58,6 +58,7 @@ bool V2FxRasterizer::renderAudio(
 
     V2CurveBuilderContext curveBuilderContext;
     curveBuilderContext.scaling = controls.scaling;
+    curveBuilderContext.paddingPolicy = V2CurveBuilderContext::PaddingPolicy::FxLegacyFixed;
     curveBuilderContext.interpolateCurves = controls.interpolateCurves;
     curveBuilderContext.lowResolution = controls.lowResolution;
     curveBuilderContext.integralSampling = controls.integralSampling;

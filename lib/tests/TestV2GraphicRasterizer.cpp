@@ -58,7 +58,7 @@ TEST_CASE("V2GraphicRasterizer renders after prepare and control update", "[curv
 
     V2GraphicControlSnapshot controls;
     controls.morph = MorphPosition(0.25f, 0.5f, 0.75f);
-    controls.scaling = V2ScalingType::Unipolar;
+    controls.scaling = MeshRasterizer::Unipolar;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
     controls.cyclic = false;
@@ -127,7 +127,7 @@ TEST_CASE("V2GraphicRasterizer supports cyclic and linear positioning modes", "[
 
     V2GraphicControlSnapshot controls;
     controls.morph = MorphPosition(0.4f, 0.6f, 0.3f);
-    controls.scaling = V2ScalingType::Unipolar;
+    controls.scaling = MeshRasterizer::Unipolar;
     controls.interpolateCurves = false;
     controls.lowResolution = true;
     controls.cyclic = false;

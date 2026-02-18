@@ -1,5 +1,15 @@
 #include <algorithm>
+
+#include <Curve/V2/Runtime/V2WaveformAdapter.h>
+
 #include "FXRasterizer.h"
+
+namespace {
+constexpr int kV2FxMaxIntercepts = 128;
+constexpr int kV2FxMaxCurves = 256;
+constexpr int kV2FxMaxWavePoints = 4096;
+constexpr int kV2FxRenderSamples = 2048;
+}
 
 FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
         SingletonAccessor(repo, name),
@@ -9,9 +19,21 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 
     dims.x = Vertex::Phase;
     dims.y = Vertex::Amp;
+
+    V2PrepareSpec prepareSpec;
+    prepareSpec.capacities.maxIntercepts = kV2FxMaxIntercepts;
+    prepareSpec.capacities.maxCurves = kV2FxMaxCurves;
+    prepareSpec.capacities.maxWavePoints = kV2FxMaxWavePoints;
+    prepareSpec.capacities.maxDeformRegions = 0;
+    v2FxRasterizer.prepare(prepareSpec);
+    v2RenderMemory.ensureSize(kV2FxRenderSamples);
 }
 
 void FXRasterizer::calcCrossPoints() {
+    if (renderWithV2()) {
+        return;
+    }
+
     if (mesh == nullptr || mesh->getNumVerts() == 0) {
         cleanUp();
         return;
@@ -100,4 +122,54 @@ int FXRasterizer::getNumDims() {
 
 bool FXRasterizer::hasEnoughCubesForCrossSection() {
     return mesh->getNumVerts() > 1;
+}
+
+bool FXRasterizer::renderWithV2() {
+    if (mesh == nullptr || ! hasEnoughCubesForCrossSection()) {
+        return false;
+    }
+
+    v2FxRasterizer.setMeshSnapshot(mesh);
+
+    V2FxControlSnapshot controls;
+    controls.morph = morph;
+    controls.scaling = scalingType;
+    controls.wrapPhases = cyclic;
+    controls.cyclic = cyclic;
+    controls.minX = xMinimum;
+    controls.maxX = xMaximum;
+    controls.interpolateCurves = interpolateCurves;
+    controls.lowResolution = lowResCurves;
+    controls.integralSampling = integralSampling;
+    v2FxRasterizer.updateControlData(controls);
+
+    Buffer<float> v2Output = v2RenderMemory.withSize(kV2FxRenderSamples);
+    v2Output.zero();
+
+    V2RenderRequest request;
+    request.numSamples = v2Output.size();
+    request.deltaX = 1.0 / static_cast<double>(v2Output.size());
+    request.tempoScale = 1.0f;
+    request.scale = 1;
+
+    V2RenderResult result;
+    if (! v2FxRasterizer.renderAudio(request, v2Output, result) || result.samplesWritten <= 1) {
+        return false;
+    }
+
+    updateBuffers(result.samplesWritten);
+    return V2WaveformAdapter::adaptWaveformSamples(
+        v2Output,
+        result.samplesWritten,
+        xMinimum,
+        xMaximum,
+        waveX,
+        waveY,
+        slope,
+        diffX,
+        zeroIndex,
+        oneIndex,
+        icpts,
+        curves,
+        unsampleable);
 }

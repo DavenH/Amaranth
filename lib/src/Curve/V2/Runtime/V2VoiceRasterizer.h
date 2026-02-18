@@ -12,7 +12,7 @@
 
 struct V2VoiceControlSnapshot {
     MorphPosition morph{};
-    V2ScalingType scaling{V2ScalingType::Bipolar};
+    MeshRasterizer::ScalingType scaling{MeshRasterizer::Bipolar};
     bool wrapPhases{false};
     bool cyclic{true};
     float minX{0.0f};

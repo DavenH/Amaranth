@@ -7,18 +7,18 @@
 namespace {
 constexpr float kMinDx = 0.0001f;
 
-float applyScaling(float y, V2ScalingType scaling) {
+float applyScaling(float y, MeshRasterizer::ScalingType scaling) {
     switch (scaling) {
-        case V2ScalingType::Unipolar: {
+        case MeshRasterizer::Unipolar: {
             NumberUtils::constrain(y, 0.0f, 1.0f);
             return y;
         }
-        case V2ScalingType::Bipolar: {
+        case MeshRasterizer::Bipolar: {
             float scaled = 2.0f * y - 1.0f;
             NumberUtils::constrain(scaled, -1.0f, 1.0f);
             return scaled;
         }
-        case V2ScalingType::HalfBipolar: {
+        case MeshRasterizer::HalfBipolar: {
             float scaled = y - 0.5f;
             NumberUtils::constrain(scaled, -0.5f, 0.5f);
             return scaled;

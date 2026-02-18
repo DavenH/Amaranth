@@ -50,6 +50,7 @@ bool V2GraphicRasterizer::renderGraphic(
     interpolatorContext.mesh = mesh;
     interpolatorContext.morph = controls.morph;
     interpolatorContext.wrapPhases = controls.wrapPhases;
+    interpolatorContext.primaryDimension = controls.primaryDimension;
 
     V2PositionerContext positionerContext;
     positionerContext.scaling = controls.scaling;

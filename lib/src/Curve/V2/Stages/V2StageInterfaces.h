@@ -5,6 +5,7 @@
 #include "../../Curve.h"
 #include "../../Intercept.h"
 #include "../../Mesh.h"
+#include "../../MeshRasterizer.h"
 #include "../../../Obj/MorphPosition.h"
 #include "../Runtime/V2RenderTypes.h"
 
@@ -12,10 +13,11 @@ struct V2InterpolatorContext {
     const Mesh* mesh{nullptr};
     MorphPosition morph{};
     bool wrapPhases{false};
+    int primaryDimension{Vertex::Time};
 };
 
 struct V2PositionerContext {
-    V2ScalingType scaling{V2ScalingType::Unipolar};
+    MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
     bool cyclic{false};
     float padding{0.0f};
     float minX{0.0f};
@@ -23,8 +25,14 @@ struct V2PositionerContext {
 };
 
 struct V2CurveBuilderContext {
-    V2ScalingType scaling{V2ScalingType::Unipolar};
+    enum class PaddingPolicy {
+        Generic,
+        FxLegacyFixed
+    };
+
+    MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
     int paddingCount{2};
+    PaddingPolicy paddingPolicy{PaddingPolicy::Generic};
     bool interpolateCurves{true};
     bool lowResolution{false};
     bool integralSampling{false};

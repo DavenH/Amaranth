@@ -3,6 +3,7 @@
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Array/VecOps.h"
 #include "../src/Curve/V2/Runtime/V2FxRasterizer.h"
+#include "../src/Curve/V2/Stages/V2CurveBuilderStages.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/VertCube.h"
 
@@ -54,7 +55,7 @@ void prepareFxRasterizer(V2FxRasterizer& rasterizer, const Mesh& mesh) {
 
     V2FxControlSnapshot controls;
     controls.morph = MorphPosition(0.35f, 0.4f, 0.7f);
-    controls.scaling = V2ScalingType::Unipolar;
+    controls.scaling = MeshRasterizer::Unipolar;
     controls.cyclic = false;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
@@ -139,7 +140,7 @@ TEST_CASE("V2FxRasterizer supports linear and cyclic modes", "[curve][v2][fx][mo
 
     V2FxControlSnapshot controls;
     controls.morph = MorphPosition(0.35f, 0.4f, 0.7f);
-    controls.scaling = V2ScalingType::Unipolar;
+    controls.scaling = MeshRasterizer::Unipolar;
     controls.cyclic = true;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
@@ -148,4 +149,74 @@ TEST_CASE("V2FxRasterizer supports linear and cyclic modes", "[curve][v2][fx][mo
     V2RenderResult cyclicResult;
     REQUIRE(rasterizer.renderAudio(request, cyclic, cyclicResult));
     REQUIRE(cyclicResult.samplesWritten == cyclic.size());
+}
+
+TEST_CASE("V2FxRasterizer intercept extraction is morph-invariant like legacy FX path", "[curve][v2][fx][parity]") {
+    ScopedMesh scoped("v2-fx-morph-invariant");
+    populateFxTestMesh(scoped.mesh);
+
+    V2FxRasterizer rasterizer;
+    prepareFxRasterizer(rasterizer, scoped.mesh);
+
+    V2RenderRequest request;
+    request.numSamples = 64;
+    request.deltaX = 1.0 / 64.0;
+    request.tempoScale = 1.0f;
+    request.scale = 1;
+
+    ScopedAlloc<float> aMem(64);
+    ScopedAlloc<float> bMem(64);
+    ScopedAlloc<float> diffMem(64);
+    Buffer<float> a = aMem.withSize(64);
+    Buffer<float> b = bMem.withSize(64);
+    Buffer<float> diff = diffMem.withSize(64);
+
+    V2RenderResult aResult;
+    REQUIRE(rasterizer.renderAudio(request, a, aResult));
+    REQUIRE(aResult.samplesWritten == a.size());
+
+    V2FxControlSnapshot controls;
+    controls.morph = MorphPosition(0.91f, 0.02f, 0.11f);
+    controls.scaling = MeshRasterizer::Unipolar;
+    controls.cyclic = false;
+    controls.interpolateCurves = true;
+    controls.lowResolution = false;
+    rasterizer.updateControlData(controls);
+
+    V2RenderResult bResult;
+    REQUIRE(rasterizer.renderAudio(request, b, bResult));
+    REQUIRE(bResult.samplesWritten == b.size());
+
+    VecOps::sub(a, b, diff);
+    float l2 = diff.normL2();
+    diff.abs();
+    float maxAbs = diff.max();
+
+    REQUIRE(l2 == 0.0f);
+    REQUIRE(maxAbs == 0.0f);
+}
+
+TEST_CASE("V2FxRasterizer curve builder can reproduce legacy fixed FX padding anchors", "[curve][v2][fx][padding]") {
+    std::vector<Intercept> intercepts;
+    intercepts.emplace_back(0.0f, 0.2f);
+    intercepts.emplace_back(0.4f, 0.5f);
+    intercepts.emplace_back(0.9f, 0.8f);
+
+    V2DefaultCurveBuilderStage curveBuilder;
+    V2CurveBuilderContext context;
+    context.paddingPolicy = V2CurveBuilderContext::PaddingPolicy::FxLegacyFixed;
+    context.interpolateCurves = false;
+
+    std::vector<Curve> curves;
+    int curveCount = 0;
+    REQUIRE(curveBuilder.run(intercepts, static_cast<int>(intercepts.size()), curves, curveCount, context));
+    REQUIRE(curveCount == 5);
+
+    REQUIRE(curves[0].a.x == -1.0f);
+    REQUIRE(curves[0].b.x == -0.5f);
+    REQUIRE(curves[0].c.x == intercepts[0].x);
+
+    REQUIRE(curves[curveCount - 1].a.x == intercepts[2].x);
+    REQUIRE(curves[curveCount - 1].b.x == 1.5f);
+    REQUIRE(curves[curveCount - 1].c.x == 2.0f);
 }

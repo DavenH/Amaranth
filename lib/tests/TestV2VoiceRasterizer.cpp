@@ -106,7 +106,7 @@ void prepareVoiceRasterizer(V2VoiceRasterizer& rasterizer, const Mesh& mesh) {
 
     V2VoiceControlSnapshot controls;
     controls.morph = MorphPosition(0.2f, 0.5f, 0.75f);
-    controls.scaling = V2ScalingType::Bipolar;
+    controls.scaling = MeshRasterizer::Bipolar;
     controls.cyclic = true;
     controls.minX = 0.0f;
     controls.maxX = 1.0f;
@@ -249,7 +249,7 @@ TEST_CASE("V2VoiceRasterizer chaining interpolation stays continuous across cycl
 
     V2VoiceControlSnapshot controls;
     controls.morph = MorphPosition(0.47f, 0.63f, 0.39f);
-    controls.scaling = V2ScalingType::Bipolar;
+    controls.scaling = MeshRasterizer::Bipolar;
     controls.cyclic = true;
     controls.minX = 0.0f;
     controls.maxX = 1.0f;

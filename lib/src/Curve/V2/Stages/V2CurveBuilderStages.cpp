@@ -3,7 +3,7 @@
 #include <algorithm>
 
 namespace {
-void appendCurvePadding(
+void appendGenericCurvePadding(
     const std::vector<Intercept>& intercepts,
     int count,
     std::vector<Curve>& outCurves) {
@@ -36,6 +36,26 @@ void appendCurvePadding(
     outCurves.emplace_back(intercepts[count - 2], intercepts[count - 1], back1);
     outCurves.emplace_back(intercepts[count - 1], back1, back2);
     outCurves.emplace_back(back1, back2, back3);
+}
+
+void appendFxLegacyCurvePadding(
+    const std::vector<Intercept>& intercepts,
+    int count,
+    std::vector<Curve>& outCurves) {
+    Intercept front1(-1.0f, intercepts[0].y);
+    Intercept front2(-0.5f, intercepts[0].y);
+    Intercept back1(1.5f, intercepts[count - 1].y);
+    Intercept back2(2.0f, intercepts[count - 1].y);
+
+    outCurves.emplace_back(front1, front2, intercepts[0]);
+    outCurves.emplace_back(front2, intercepts[0], intercepts[1]);
+
+    for (int i = 0; i < count - 2; ++i) {
+        outCurves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
+    }
+
+    outCurves.emplace_back(intercepts[count - 2], intercepts[count - 1], back1);
+    outCurves.emplace_back(intercepts[count - 1], back1, back2);
 }
 
 void applyResolutionPolicy(std::vector<Curve>& curves, const V2CurveBuilderContext& context) {
@@ -96,7 +116,12 @@ bool V2DefaultCurveBuilderStage::run(
     std::vector<Intercept> localIntercepts(inIntercepts.begin(), inIntercepts.begin() + inCount);
     outCurves.reserve(static_cast<size_t>(inCount + 6));
 
-    appendCurvePadding(localIntercepts, inCount, outCurves);
+    if (context.paddingPolicy == V2CurveBuilderContext::PaddingPolicy::FxLegacyFixed) {
+        appendFxLegacyCurvePadding(localIntercepts, inCount, outCurves);
+    } else {
+        appendGenericCurvePadding(localIntercepts, inCount, outCurves);
+    }
+
     applyResolutionPolicy(outCurves, context);
 
     for (auto& curve : outCurves) {
