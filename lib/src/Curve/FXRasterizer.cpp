@@ -1,14 +1,11 @@
 #include <algorithm>
 
-#include <Curve/V2/Runtime/V2WaveformAdapter.h>
-
 #include "FXRasterizer.h"
 
 namespace {
 constexpr int kV2FxMaxIntercepts = 128;
 constexpr int kV2FxMaxCurves = 256;
 constexpr int kV2FxMaxWavePoints = 4096;
-constexpr int kV2FxRenderSamples = 2048;
 }
 
 FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
@@ -26,7 +23,6 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
     prepareSpec.capacities.maxWavePoints = kV2FxMaxWavePoints;
     prepareSpec.capacities.maxDeformRegions = 0;
     v2FxRasterizer.prepare(prepareSpec);
-    v2RenderMemory.ensureSize(kV2FxRenderSamples);
 }
 
 void FXRasterizer::calcCrossPoints() {
@@ -143,33 +139,18 @@ bool FXRasterizer::renderWithV2() {
     controls.integralSampling = integralSampling;
     v2FxRasterizer.updateControlData(controls);
 
-    Buffer<float> v2Output = v2RenderMemory.withSize(kV2FxRenderSamples);
-    v2Output.zero();
-
-    V2RenderRequest request;
-    request.numSamples = v2Output.size();
-    request.deltaX = 1.0 / static_cast<double>(v2Output.size());
-    request.tempoScale = 1.0f;
-    request.scale = 1;
-
-    V2RenderResult result;
-    if (! v2FxRasterizer.renderAudio(request, v2Output, result) || result.samplesWritten <= 1) {
+    std::vector<Intercept> intercepts;
+    int interceptCount = 0;
+    if (! v2FxRasterizer.extractIntercepts(intercepts, interceptCount) || interceptCount <= 1) {
         return false;
     }
 
-    updateBuffers(result.samplesWritten);
-    return V2WaveformAdapter::adaptWaveformSamples(
-        v2Output,
-        result.samplesWritten,
-        xMinimum,
-        xMaximum,
-        waveX,
-        waveY,
-        slope,
-        diffX,
-        zeroIndex,
-        oneIndex,
-        icpts,
-        curves,
-        unsampleable);
+    icpts.assign(intercepts.begin(), intercepts.begin() + interceptCount);
+    std::sort(icpts.begin(), icpts.end());
+
+    curves.clear();
+    padIcpts(icpts, curves);
+    updateCurves();
+    unsampleable = false;
+    return true;
 }

@@ -21,7 +21,6 @@ private:
     bool renderWithV2();
 
     V2FxRasterizer v2FxRasterizer;
-    ScopedAlloc<float> v2RenderMemory;
 
     JUCE_LEAK_DETECTOR(FXRasterizer)
 };

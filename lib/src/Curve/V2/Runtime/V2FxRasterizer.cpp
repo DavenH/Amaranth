@@ -27,18 +27,11 @@ void V2FxRasterizer::updateControlData(const V2FxControlSnapshot& snapshot) noex
     controls = snapshot;
 }
 
-bool V2FxRasterizer::renderAudio(
-    const V2RenderRequest& request,
-    Buffer<float> output,
-    V2RenderResult& result) noexcept {
-    result = V2RenderResult{};
+bool V2FxRasterizer::extractIntercepts(std::vector<Intercept>& outIntercepts, int& outCount) noexcept {
+    outIntercepts.clear();
+    outCount = 0;
 
-    if (! workspace.isPrepared() || mesh == nullptr || output.empty() || ! request.isValid()) {
-        return false;
-    }
-
-    int numSamples = clampRequestedSamples(request.numSamples, output);
-    if (numSamples <= 0) {
+    if (! workspace.isPrepared() || mesh == nullptr) {
         return false;
     }
 
@@ -55,6 +48,35 @@ bool V2FxRasterizer::renderAudio(
     positionerContext.cyclic = controls.cyclic;
     positionerContext.minX = controls.minX;
     positionerContext.maxX = controls.maxX;
+
+    if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, outCount)) {
+        return false;
+    }
+
+    outIntercepts.assign(workspace.intercepts.begin(), workspace.intercepts.begin() + outCount);
+    return outCount > 0;
+}
+
+bool V2FxRasterizer::renderAudio(
+    const V2RenderRequest& request,
+    Buffer<float> output,
+    V2RenderResult& result) noexcept {
+    result = V2RenderResult{};
+
+    if (! workspace.isPrepared() || mesh == nullptr || output.empty() || ! request.isValid()) {
+        return false;
+    }
+
+    int numSamples = clampRequestedSamples(request.numSamples, output);
+    if (numSamples <= 0) {
+        return false;
+    }
+
+    std::vector<Intercept> intercepts;
+    int interceptCount = 0;
+    if (! extractIntercepts(intercepts, interceptCount) || interceptCount <= 1) {
+        return false;
+    }
 
     V2CurveBuilderContext curveBuilderContext;
     curveBuilderContext.scaling = controls.scaling;
@@ -73,13 +95,44 @@ bool V2FxRasterizer::renderAudio(
         samplerContext.request.deltaX = 1.0 / static_cast<double>(numSamples);
     }
 
-    result = graph.render(
-        workspace,
-        interpolatorContext,
-        positionerContext,
-        curveBuilderContext,
-        waveBuilderContext,
-        samplerContext,
-        output.withSize(numSamples));
+    int curveCount = 0;
+    workspace.curves.clear();
+    if (! curveBuilder.run(intercepts, interceptCount, workspace.curves, curveCount, curveBuilderContext)) {
+        return false;
+    }
+
+    const V2CapacitySpec& capacities = workspace.getCapacities();
+    if (curveCount <= 0
+            || curveCount > capacities.maxCurves
+            || static_cast<int>(workspace.curves.size()) > capacities.maxCurves) {
+        return false;
+    }
+
+    int zeroIndex = 0;
+    int oneIndex = 0;
+    int wavePointCount = 0;
+    if (! waveBuilder.run(
+            workspace.curves,
+            curveCount,
+            workspace.waveX,
+            workspace.waveY,
+            workspace.diffX,
+            workspace.slope,
+            wavePointCount,
+            zeroIndex,
+            oneIndex,
+            waveBuilderContext)) {
+        return false;
+    }
+
+    samplerContext.wavePointCount = wavePointCount;
+    samplerContext.zeroIndex = zeroIndex;
+    samplerContext.oneIndex = oneIndex;
+    result = sampler.run(
+        workspace.waveX.withSize(wavePointCount),
+        workspace.waveY.withSize(wavePointCount),
+        workspace.slope.withSize(wavePointCount - 1),
+        output.withSize(numSamples),
+        samplerContext);
     return result.rendered;
 }

@@ -27,7 +27,6 @@ private:
     int layerGroup;
     Interactor* interactor;
     V2GraphicRasterizer v2GraphicRasterizer;
-    ScopedAlloc<float> v2RenderMemory;
 };
 
 typedef GraphicRasterizer TimeRasterizer;

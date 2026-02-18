@@ -3,7 +3,6 @@
 #include <App/SingletonRepo.h>
 #include <Definitions.h>
 #include <Inter/Interactor.h>
-#include <Curve/V2/Runtime/V2WaveformAdapter.h>
 
 #include "GraphicRasterizer.h"
 #include "../UI/Panels/Morphing/MorphPanel.h"
@@ -13,7 +12,6 @@ namespace {
 constexpr int kV2GraphicMaxIntercepts = 128;
 constexpr int kV2GraphicMaxCurves = 256;
 constexpr int kV2GraphicMaxWavePoints = 4096;
-constexpr int kV2GraphicRenderSamples = 1024;
 }
 
 GraphicRasterizer::GraphicRasterizer(
@@ -36,7 +34,6 @@ GraphicRasterizer::GraphicRasterizer(
     prepareSpec.capacities.maxWavePoints = kV2GraphicMaxWavePoints;
     prepareSpec.capacities.maxDeformRegions = 0;
     v2GraphicRasterizer.prepare(prepareSpec);
-    v2RenderMemory.ensureSize(kV2GraphicRenderSamples);
 }
 
 void GraphicRasterizer::calcCrossPoints() {
@@ -79,32 +76,23 @@ bool GraphicRasterizer::renderWithV2() {
     controls.integralSampling = integralSampling;
     v2GraphicRasterizer.updateControlData(controls);
 
-    Buffer<float> v2Output = v2RenderMemory.withSize(kV2GraphicRenderSamples);
-    v2Output.zero();
-
-    V2GraphicRequest request;
-    request.numSamples = v2Output.size();
-    request.interpolateCurves = interpolateCurves;
-    request.lowResolution = lowResCurves;
-
-    V2GraphicResult result;
-    if (! v2GraphicRasterizer.renderGraphic(request, v2Output, result) || result.pointsWritten <= 1) {
+    std::vector<Intercept> intercepts;
+    int interceptCount = 0;
+    if (! v2GraphicRasterizer.extractIntercepts(intercepts, interceptCount) || interceptCount <= 1) {
         return false;
     }
 
-    updateBuffers(result.pointsWritten);
-    return V2WaveformAdapter::adaptWaveformSamples(
-        v2Output,
-        result.pointsWritten,
-        xMinimum,
-        xMaximum,
-        waveX,
-        waveY,
-        slope,
-        diffX,
-        zeroIndex,
-        oneIndex,
-        icpts,
-        curves,
-        unsampleable);
+    icpts.assign(intercepts.begin(), intercepts.begin() + interceptCount);
+    curves.clear();
+    colorPoints.clear();
+
+    if (cyclic) {
+        padIcptsWrapped(icpts, curves);
+    } else {
+        padIcpts(icpts, curves);
+    }
+
+    updateCurves();
+    unsampleable = false;
+    return true;
 }

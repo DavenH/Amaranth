@@ -30,6 +30,7 @@ public:
     void prepare(const V2PrepareSpec& spec);
     void setMeshSnapshot(const Mesh* meshSnapshot) noexcept;
     void updateControlData(const V2GraphicControlSnapshot& snapshot) noexcept;
+    bool extractIntercepts(std::vector<Intercept>& outIntercepts, int& outCount) noexcept;
 
     bool renderGraphic(
         const V2GraphicRequest& request,
