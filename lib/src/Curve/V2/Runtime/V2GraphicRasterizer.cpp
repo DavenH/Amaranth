@@ -27,6 +27,37 @@ void V2GraphicRasterizer::updateControlData(const V2GraphicControlSnapshot& snap
     controls = snapshot;
 }
 
+bool V2GraphicRasterizer::extractIntercepts(std::vector<Intercept>& outIntercepts, int& outCount) noexcept {
+    outIntercepts.clear();
+    outCount = 0;
+
+    if (! workspace.isPrepared() || mesh == nullptr) {
+        return false;
+    }
+
+    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
+                                        : static_cast<V2PositionerStage*>(&linearPositioner));
+
+    V2InterpolatorContext interpolatorContext;
+    interpolatorContext.mesh = mesh;
+    interpolatorContext.morph = controls.morph;
+    interpolatorContext.wrapPhases = controls.wrapPhases;
+    interpolatorContext.primaryDimension = controls.primaryDimension;
+
+    V2PositionerContext positionerContext;
+    positionerContext.scaling = controls.scaling;
+    positionerContext.cyclic = controls.cyclic;
+    positionerContext.minX = controls.minX;
+    positionerContext.maxX = controls.maxX;
+
+    if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, outCount)) {
+        return false;
+    }
+
+    outIntercepts.assign(workspace.intercepts.begin(), workspace.intercepts.begin() + outCount);
+    return outCount > 0;
+}
+
 bool V2GraphicRasterizer::renderGraphic(
     const V2GraphicRequest& request,
     Buffer<float> output,

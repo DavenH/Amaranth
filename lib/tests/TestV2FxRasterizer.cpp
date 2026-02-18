@@ -46,9 +46,9 @@ void populateFxTestMesh(Mesh& mesh) {
 
 void prepareFxRasterizer(V2FxRasterizer& rasterizer, const Mesh& mesh) {
     V2PrepareSpec prepare;
-    prepare.capacities.maxIntercepts = 32;
-    prepare.capacities.maxCurves = 64;
-    prepare.capacities.maxWavePoints = 512;
+    prepare.capacities.maxIntercepts = 128;
+    prepare.capacities.maxCurves = 256;
+    prepare.capacities.maxWavePoints = 4096;
     prepare.capacities.maxDeformRegions = 0;
     rasterizer.prepare(prepare);
     rasterizer.setMeshSnapshot(&mesh);
@@ -100,6 +100,11 @@ TEST_CASE("V2FxRasterizer renders deterministic output for fixed controls", "[cu
     Buffer<float> second = secondMemory.withSize(96);
     Buffer<float> diff = diffMemory.withSize(96);
 
+    std::vector<Intercept> intercepts;
+    int interceptCount = 0;
+    REQUIRE(rasterizer.extractIntercepts(intercepts, interceptCount));
+    REQUIRE(interceptCount > 1);
+
     V2RenderResult firstResult;
     V2RenderResult secondResult;
     REQUIRE(rasterizer.renderAudio(request, first, firstResult));
@@ -133,6 +138,11 @@ TEST_CASE("V2FxRasterizer supports linear and cyclic modes", "[curve][v2][fx][mo
     ScopedAlloc<float> cyclicMemory(80);
     Buffer<float> linear = linearMemory.withSize(80);
     Buffer<float> cyclic = cyclicMemory.withSize(80);
+
+    std::vector<Intercept> intercepts;
+    int interceptCount = 0;
+    REQUIRE(rasterizer.extractIntercepts(intercepts, interceptCount));
+    REQUIRE(interceptCount > 1);
 
     V2RenderResult linearResult;
     REQUIRE(rasterizer.renderAudio(request, linear, linearResult));
@@ -170,6 +180,11 @@ TEST_CASE("V2FxRasterizer intercept extraction is morph-invariant like legacy FX
     Buffer<float> a = aMem.withSize(64);
     Buffer<float> b = bMem.withSize(64);
     Buffer<float> diff = diffMem.withSize(64);
+
+    std::vector<Intercept> intercepts;
+    int interceptCount = 0;
+    REQUIRE(rasterizer.extractIntercepts(intercepts, interceptCount));
+    REQUIRE(interceptCount > 1);
 
     V2RenderResult aResult;
     REQUIRE(rasterizer.renderAudio(request, a, aResult));
