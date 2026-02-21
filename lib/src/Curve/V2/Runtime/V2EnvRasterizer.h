@@ -1,32 +1,14 @@
 #pragma once
 
-#include "../../../Obj/MorphPosition.h"
-#include "../../Mesh.h"
 #include "../Stages/V2CurveBuilderStages.h"
 #include "../Stages/V2InterpolatorStages.h"
 #include "../Stages/V2PositionerStages.h"
 #include "../Stages/V2SamplerStages.h"
 #include "../Stages/V2WaveBuilderStages.h"
 #include "../State/V2EnvStateMachine.h"
+#include "V2RasterizerControls.h"
 #include "V2RasterizerGraph.h"
 #include "V2RasterizerWorkspace.h"
-
-struct V2EnvControlSnapshot {
-    MorphPosition morph{};
-    MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
-    bool wrapPhases{false};
-    bool cyclic{false};
-    float minX{0.0f};
-    float maxX{1.0f};
-    bool interpolateCurves{true};
-    bool lowResolution{false};
-    bool integralSampling{false};
-    bool hasReleaseCurve{true};
-    bool hasLoopRegion{false};
-    float loopStartX{0.0f};
-    float loopEndX{1.0f};
-    float releaseStartX{0.0f};
-};
 
 class V2EnvRasterizer {
 public:
@@ -58,13 +40,6 @@ private:
         int& wavePointCount,
         int& zeroIndex,
         int& oneIndex) noexcept;
-    float sampleAtPhase(
-        double phase,
-        Buffer<float> waveX,
-        Buffer<float> waveY,
-        Buffer<float> slope,
-        int wavePointCount,
-        int& ioSampleIndex) const noexcept;
 
     V2RasterizerWorkspace workspace;
     V2RasterizerGraph graph;

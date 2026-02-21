@@ -76,23 +76,36 @@ bool GraphicRasterizer::renderWithV2() {
     controls.integralSampling = integralSampling;
     v2GraphicRasterizer.updateControlData(controls);
 
-    std::vector<Intercept> intercepts;
-    int interceptCount = 0;
-    if (! v2GraphicRasterizer.extractIntercepts(intercepts, interceptCount) || interceptCount <= 1) {
+    V2GraphicArtifactsView artifacts;
+    if (! v2GraphicRasterizer.extractArtifacts(artifacts)
+            || artifacts.intercepts == nullptr
+            || artifacts.curves == nullptr
+            || artifacts.interceptCount <= 1) {
         return false;
     }
 
-    icpts.assign(intercepts.begin(), intercepts.begin() + interceptCount);
-    curves.clear();
+    icpts.assign(artifacts.intercepts->begin(), artifacts.intercepts->begin() + artifacts.interceptCount);
+    curves.assign(artifacts.curves->begin(), artifacts.curves->begin() + artifacts.curveCount);
     colorPoints.clear();
+    zeroIndex = artifacts.zeroIndex;
+    oneIndex = artifacts.oneIndex;
 
-    if (cyclic) {
-        padIcptsWrapped(icpts, curves);
+    int wavePointCount = artifacts.wavePointCount;
+    if (wavePointCount > 0) {
+        updateBuffers(wavePointCount);
+        artifacts.waveX.copyTo(waveX.withSize(wavePointCount));
+        artifacts.waveY.copyTo(waveY.withSize(wavePointCount));
+
+        int slopeCount = jmax(0, wavePointCount - 1);
+        if (slopeCount > 0) {
+            artifacts.diffX.copyTo(diffX.withSize(slopeCount));
+            artifacts.slope.copyTo(slope.withSize(slopeCount));
+        }
     } else {
-        padIcpts(icpts, curves);
+        waveX.nullify();
+        waveY.nullify();
     }
 
-    updateCurves();
-    unsampleable = false;
+    unsampleable = wavePointCount <= 1;
     return true;
 }

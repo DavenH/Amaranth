@@ -128,3 +128,21 @@ bool V2CyclicPositionerStage::run(
     const V2PositionerContext& context) noexcept {
     return runPositioningStage(ioIntercepts, ioCount, context, true);
 }
+
+void V2VoiceChainingPositionerStage::reset() noexcept {
+    previousIntercepts.clear();
+    primed = false;
+}
+
+bool V2VoiceChainingPositionerStage::run(
+    std::vector<Intercept>& ioIntercepts,
+    int& ioCount,
+    const V2PositionerContext& context) noexcept {
+    if (! runPositioningStage(ioIntercepts, ioCount, context, context.cyclic)) {
+        return false;
+    }
+
+    previousIntercepts.assign(ioIntercepts.begin(), ioIntercepts.begin() + ioCount);
+    primed = true;
+    return true;
+}

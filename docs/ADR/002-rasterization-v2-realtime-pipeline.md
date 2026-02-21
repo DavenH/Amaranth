@@ -6,6 +6,9 @@ Proposed
 ## Date
 2026-02-15
 
+## Parity Checkpoint
+See `docs/ADR/002-parity-checkpoint.md` for the current legacy-parity status and mandatory remaining work, including the open `VoiceMeshRasterizer` chaining parity gap.
+
 ## Context
 The current rasterization refactor direction is correct at a high level (interpolate -> position -> curve build -> sample), but the implementation has architectural friction:
 

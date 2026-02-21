@@ -1,27 +1,15 @@
 #pragma once
 
-#include "../../../Obj/MorphPosition.h"
-#include "../../Mesh.h"
 #include "../Stages/V2CurveBuilderStages.h"
 #include "../Stages/V2InterpolatorStages.h"
 #include "../Stages/V2PositionerStages.h"
 #include "../Stages/V2SamplerStages.h"
 #include "../Stages/V2WaveBuilderStages.h"
+#include "V2RasterizerControls.h"
 #include "V2RasterizerGraph.h"
 #include "V2RasterizerWorkspace.h"
 
-struct V2GraphicControlSnapshot {
-    MorphPosition morph{};
-    MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
-    int primaryDimension{Vertex::Time};
-    bool wrapPhases{false};
-    bool cyclic{false};
-    float minX{0.0f};
-    float maxX{1.0f};
-    bool interpolateCurves{true};
-    bool lowResolution{false};
-    bool integralSampling{false};
-};
+using V2GraphicArtifactsView = V2BuiltArtifacts;
 
 class V2GraphicRasterizer {
 public:
@@ -31,6 +19,7 @@ public:
     void setMeshSnapshot(const Mesh* meshSnapshot) noexcept;
     void updateControlData(const V2GraphicControlSnapshot& snapshot) noexcept;
     bool extractIntercepts(std::vector<Intercept>& outIntercepts, int& outCount) noexcept;
+    bool extractArtifacts(V2GraphicArtifactsView& outArtifacts) noexcept;
 
     bool renderGraphic(
         const V2GraphicRequest& request,

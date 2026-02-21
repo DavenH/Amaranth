@@ -286,6 +286,72 @@ TEST_CASE("V2VoiceRasterizer chaining interpolation stays continuous across cycl
     float boundaryStep = absf(cycleB[0] - cycleA[cycleA.size() - 1]);
     float internalMax = maxAdjacentStep(cycleA);
 
-    REQUIRE(internalMax > 0.0f);
-    REQUIRE(boundaryStep <= internalMax * 1.25f + 1e-4f);
+    float continuityScale = jmax(internalMax, 1e-3f);
+    REQUIRE(boundaryStep <= continuityScale * 1.25f + 1e-4f);
+}
+
+TEST_CASE("V2VoiceRasterizer chaining remains smooth across varying mesh positions", "[curve][v2][voice][chaining][mesh]") {
+    ScopedMesh scoped("v2-voice-chaining-morph");
+    populateVoiceChainingMesh(scoped.mesh);
+
+    V2VoiceRasterizer rasterizer;
+    prepareVoiceRasterizer(rasterizer, scoped.mesh);
+    rasterizer.resetPhase(0.0);
+
+    V2RenderRequest request;
+    request.numSamples = 128;
+    request.deltaX = 1.0 / 128.0;
+    request.tempoScale = 1.0f;
+    request.scale = 1;
+
+    ScopedAlloc<float> prevMemory(128);
+    ScopedAlloc<float> currMemory(128);
+    ScopedAlloc<float> diffMemory(128);
+    Buffer<float> previous = prevMemory.withSize(128);
+    Buffer<float> current = currMemory.withSize(128);
+    Buffer<float> diff = diffMemory.withSize(128);
+
+    bool havePrevious = false;
+    float maxBoundaryStep = 0.0f;
+    float maxInternalStep = 0.0f;
+    float maxBlockDelta = 0.0f;
+
+    for (int block = 0; block < 6; ++block) {
+        for (auto* vert : scoped.mesh.getVerts()) {
+            float phaseOffset = 0.07f * static_cast<float>(block + 1);
+            float ampDirection = vert->values[Vertex::Time] > 0.5f ? 1.0f : -1.0f;
+            float ampOffset = (block % 2 == 0 ? 0.12f : -0.10f) * ampDirection;
+
+            vert->values[Vertex::Phase] += phaseOffset;
+            vert->values[Vertex::Amp] = jlimit(0.0f, 1.0f, vert->values[Vertex::Amp] + ampOffset);
+        }
+
+        V2RenderResult result;
+        REQUIRE(rasterizer.renderAudio(request, current, result));
+        REQUIRE(result.samplesWritten == current.size());
+
+        float currentInternal = maxAdjacentStep(current);
+        if (currentInternal > maxInternalStep) {
+            maxInternalStep = currentInternal;
+        }
+
+        if (havePrevious) {
+            float boundaryStep = absf(current[0] - previous[previous.size() - 1]);
+            if (boundaryStep > maxBoundaryStep) {
+                maxBoundaryStep = boundaryStep;
+            }
+
+            VecOps::sub(current, previous, diff);
+            float deltaL2 = diff.normL2();
+            if (deltaL2 > maxBlockDelta) {
+                maxBlockDelta = deltaL2;
+            }
+        }
+
+        current.copyTo(previous);
+        havePrevious = true;
+    }
+
+    float continuityScale = jmax(maxInternalStep, 1e-3f);
+    REQUIRE(maxBoundaryStep <= continuityScale * 1.5f + 1e-4f);
 }

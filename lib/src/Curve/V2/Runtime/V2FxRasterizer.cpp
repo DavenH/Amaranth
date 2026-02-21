@@ -38,16 +38,8 @@ bool V2FxRasterizer::extractIntercepts(std::vector<Intercept>& outIntercepts, in
     graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
                                         : static_cast<V2PositionerStage*>(&linearPositioner));
 
-    V2InterpolatorContext interpolatorContext;
-    interpolatorContext.mesh = mesh;
-    interpolatorContext.morph = controls.morph;
-    interpolatorContext.wrapPhases = controls.wrapPhases;
-
-    V2PositionerContext positionerContext;
-    positionerContext.scaling = controls.scaling;
-    positionerContext.cyclic = controls.cyclic;
-    positionerContext.minX = controls.minX;
-    positionerContext.maxX = controls.maxX;
+    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
+    V2PositionerContext positionerContext = makePositionerContext(controls);
 
     if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, outCount)) {
         return false;
@@ -72,66 +64,42 @@ bool V2FxRasterizer::renderAudio(
         return false;
     }
 
-    std::vector<Intercept> intercepts;
-    int interceptCount = 0;
-    if (! extractIntercepts(intercepts, interceptCount) || interceptCount <= 1) {
+    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
+                                        : static_cast<V2PositionerStage*>(&linearPositioner));
+
+    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
+    V2PositionerContext positionerContext = makePositionerContext(controls);
+    V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(
+        controls,
+        V2CurveBuilderContext::PaddingPolicy::FxLegacyFixed);
+    V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
+
+    V2RenderRequest samplerRequest = request;
+    samplerRequest.numSamples = numSamples;
+    if (samplerRequest.deltaX <= 0.0) {
+        samplerRequest.deltaX = 1.0 / static_cast<double>(numSamples);
+    }
+
+    V2BuiltArtifacts artifacts;
+    if (! graph.buildArtifacts(
+            workspace,
+            interpolatorContext,
+            positionerContext,
+            curveBuilderContext,
+            waveBuilderContext,
+            artifacts)) {
         return false;
     }
 
-    V2CurveBuilderContext curveBuilderContext;
-    curveBuilderContext.scaling = controls.scaling;
-    curveBuilderContext.paddingPolicy = V2CurveBuilderContext::PaddingPolicy::FxLegacyFixed;
-    curveBuilderContext.interpolateCurves = controls.interpolateCurves;
-    curveBuilderContext.lowResolution = controls.lowResolution;
-    curveBuilderContext.integralSampling = controls.integralSampling;
-
-    V2WaveBuilderContext waveBuilderContext;
-    waveBuilderContext.interpolateCurves = controls.interpolateCurves;
-
-    V2SamplerContext samplerContext;
-    samplerContext.request = request;
-    samplerContext.request.numSamples = numSamples;
-    if (samplerContext.request.deltaX <= 0.0) {
-        samplerContext.request.deltaX = 1.0 / static_cast<double>(numSamples);
-    }
-
-    int curveCount = 0;
-    workspace.curves.clear();
-    if (! curveBuilder.run(intercepts, interceptCount, workspace.curves, curveCount, curveBuilderContext)) {
-        return false;
-    }
-
-    const V2CapacitySpec& capacities = workspace.getCapacities();
-    if (curveCount <= 0
-            || curveCount > capacities.maxCurves
-            || static_cast<int>(workspace.curves.size()) > capacities.maxCurves) {
-        return false;
-    }
-
-    int zeroIndex = 0;
-    int oneIndex = 0;
-    int wavePointCount = 0;
-    if (! waveBuilder.run(
-            workspace.curves,
-            curveCount,
-            workspace.waveX,
-            workspace.waveY,
-            workspace.diffX,
-            workspace.slope,
-            wavePointCount,
-            zeroIndex,
-            oneIndex,
-            waveBuilderContext)) {
-        return false;
-    }
-
-    samplerContext.wavePointCount = wavePointCount;
-    samplerContext.zeroIndex = zeroIndex;
-    samplerContext.oneIndex = oneIndex;
+    V2SamplerContext samplerContext(
+        samplerRequest,
+        artifacts.wavePointCount,
+        artifacts.zeroIndex,
+        artifacts.oneIndex);
     result = sampler.run(
-        workspace.waveX.withSize(wavePointCount),
-        workspace.waveY.withSize(wavePointCount),
-        workspace.slope.withSize(wavePointCount - 1),
+        artifacts.waveX,
+        artifacts.waveY,
+        artifacts.slope,
         output.withSize(numSamples),
         samplerContext);
     return result.rendered;
