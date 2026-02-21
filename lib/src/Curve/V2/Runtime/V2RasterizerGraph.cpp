@@ -70,26 +70,22 @@ bool V2RasterizerGraph::runInterceptStages(
     return outInterceptCount > 0;
 }
 
-V2RenderResult V2RasterizerGraph::render(
+bool V2RasterizerGraph::buildArtifacts(
     V2RasterizerWorkspace& workspace,
     const V2InterpolatorContext& interpolatorContext,
     const V2PositionerContext& positionerContext,
     const V2CurveBuilderContext& curveBuilderContext,
     const V2WaveBuilderContext& waveBuilderContext,
-    const V2SamplerContext& samplerContext,
-    Buffer<float> output) noexcept {
-    V2RenderResult result;
+    V2BuiltArtifacts& outArtifacts) noexcept {
+    outArtifacts = V2BuiltArtifacts{};
+
+    if (curveBuilder == nullptr || waveBuilder == nullptr || ! workspace.isPrepared()) {
+        return false;
+    }
 
     int interceptCount = 0;
     if (! runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount)) {
-        return result;
-    }
-
-    if (curveBuilder == nullptr || waveBuilder == nullptr || sampler == nullptr) {
-        result.rendered = true;
-        result.stillActive = interceptCount > 0;
-        result.samplesWritten = 0;
-        return result;
+        return false;
     }
 
     int curveCount = 0;
@@ -99,20 +95,19 @@ V2RenderResult V2RasterizerGraph::render(
             workspace.curves,
             curveCount,
             curveBuilderContext)) {
-        return result;
+        return false;
     }
 
     const V2CapacitySpec& capacities = workspace.getCapacities();
     if (curveCount <= 0
             || curveCount > capacities.maxCurves
             || static_cast<int>(workspace.curves.size()) > capacities.maxCurves) {
-        return result;
+        return false;
     }
 
     int zeroIndex = 0;
     int oneIndex = 0;
     int wavePointCount = 0;
-
     if (! waveBuilder->run(
             workspace.curves,
             curveCount,
@@ -124,22 +119,72 @@ V2RenderResult V2RasterizerGraph::render(
             zeroIndex,
             oneIndex,
             waveBuilderContext)) {
+        return false;
+    }
+
+    outArtifacts.intercepts = &workspace.intercepts;
+    outArtifacts.interceptCount = interceptCount;
+    outArtifacts.curves = &workspace.curves;
+    outArtifacts.curveCount = curveCount;
+    outArtifacts.waveX = workspace.waveX.withSize(wavePointCount);
+    outArtifacts.waveY = workspace.waveY.withSize(wavePointCount);
+    outArtifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
+    outArtifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
+    outArtifacts.wavePointCount = wavePointCount;
+    outArtifacts.zeroIndex = zeroIndex;
+    outArtifacts.oneIndex = oneIndex;
+    return wavePointCount > 1;
+}
+
+V2RenderResult V2RasterizerGraph::render(
+    V2RasterizerWorkspace& workspace,
+    const V2InterpolatorContext& interpolatorContext,
+    const V2PositionerContext& positionerContext,
+    const V2CurveBuilderContext& curveBuilderContext,
+    const V2WaveBuilderContext& waveBuilderContext,
+    const V2SamplerContext& samplerContext,
+    Buffer<float> output) noexcept {
+    V2RenderResult result;
+
+    if (curveBuilder == nullptr || waveBuilder == nullptr) {
+        int interceptCount = 0;
+        if (! runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount)) {
+            return result;
+        }
+
+        result.rendered = true;
+        result.stillActive = interceptCount > 0;
+        result.samplesWritten = 0;
+        return result;
+    }
+
+    V2BuiltArtifacts artifacts;
+    if (! buildArtifacts(
+            workspace,
+            interpolatorContext,
+            positionerContext,
+            curveBuilderContext,
+            waveBuilderContext,
+            artifacts)) {
+        return result;
+    }
+
+    if (sampler == nullptr) {
+        result.rendered = true;
+        result.stillActive = artifacts.interceptCount > 0;
+        result.samplesWritten = 0;
         return result;
     }
 
     V2SamplerContext context = samplerContext;
-    context.wavePointCount = wavePointCount;
-    context.zeroIndex = zeroIndex;
-    context.oneIndex = oneIndex;
-
-    if (context.wavePointCount <= 1) {
-        return result;
-    }
+    context.wavePointCount = artifacts.wavePointCount;
+    context.zeroIndex = artifacts.zeroIndex;
+    context.oneIndex = artifacts.oneIndex;
 
     return sampler->run(
-        workspace.waveX.withSize(context.wavePointCount),
-        workspace.waveY.withSize(context.wavePointCount),
-        workspace.slope.withSize(context.wavePointCount - 1),
+        artifacts.waveX,
+        artifacts.waveY,
+        artifacts.slope,
         output,
         context);
 }

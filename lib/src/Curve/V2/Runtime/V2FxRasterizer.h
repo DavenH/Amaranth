@@ -1,26 +1,13 @@
 #pragma once
 
-#include "../../../Obj/MorphPosition.h"
-#include "../../Mesh.h"
 #include "../Stages/V2CurveBuilderStages.h"
 #include "../Stages/V2InterpolatorStages.h"
 #include "../Stages/V2PositionerStages.h"
 #include "../Stages/V2SamplerStages.h"
 #include "../Stages/V2WaveBuilderStages.h"
+#include "V2RasterizerControls.h"
 #include "V2RasterizerGraph.h"
 #include "V2RasterizerWorkspace.h"
-
-struct V2FxControlSnapshot {
-    MorphPosition morph{};
-    MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
-    bool wrapPhases{false};
-    bool cyclic{false};
-    float minX{0.0f};
-    float maxX{1.0f};
-    bool interpolateCurves{true};
-    bool lowResolution{false};
-    bool integralSampling{false};
-};
 
 class V2FxRasterizer {
 public:

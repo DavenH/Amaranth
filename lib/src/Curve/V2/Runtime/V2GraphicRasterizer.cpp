@@ -38,17 +38,11 @@ bool V2GraphicRasterizer::extractIntercepts(std::vector<Intercept>& outIntercept
     graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
                                         : static_cast<V2PositionerStage*>(&linearPositioner));
 
-    V2InterpolatorContext interpolatorContext;
-    interpolatorContext.mesh = mesh;
-    interpolatorContext.morph = controls.morph;
-    interpolatorContext.wrapPhases = controls.wrapPhases;
-    interpolatorContext.primaryDimension = controls.primaryDimension;
-
-    V2PositionerContext positionerContext;
-    positionerContext.scaling = controls.scaling;
-    positionerContext.cyclic = controls.cyclic;
-    positionerContext.minX = controls.minX;
-    positionerContext.maxX = controls.maxX;
+    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(
+        mesh,
+        controls,
+        controls.primaryDimension);
+    V2PositionerContext positionerContext = makePositionerContext(controls);
 
     if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, outCount)) {
         return false;
@@ -56,6 +50,30 @@ bool V2GraphicRasterizer::extractIntercepts(std::vector<Intercept>& outIntercept
 
     outIntercepts.assign(workspace.intercepts.begin(), workspace.intercepts.begin() + outCount);
     return outCount > 0;
+}
+
+bool V2GraphicRasterizer::extractArtifacts(V2GraphicArtifactsView& outArtifacts) noexcept {
+    if (! workspace.isPrepared() || mesh == nullptr) {
+        return false;
+    }
+
+    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
+                                        : static_cast<V2PositionerStage*>(&linearPositioner));
+
+    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(
+        mesh,
+        controls,
+        controls.primaryDimension);
+    V2PositionerContext positionerContext = makePositionerContext(controls);
+    V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(controls);
+    V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
+    return graph.buildArtifacts(
+        workspace,
+        interpolatorContext,
+        positionerContext,
+        curveBuilderContext,
+        waveBuilderContext,
+        outArtifacts);
 }
 
 bool V2GraphicRasterizer::renderGraphic(
@@ -77,32 +95,21 @@ bool V2GraphicRasterizer::renderGraphic(
     graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
                                         : static_cast<V2PositionerStage*>(&linearPositioner));
 
-    V2InterpolatorContext interpolatorContext;
-    interpolatorContext.mesh = mesh;
-    interpolatorContext.morph = controls.morph;
-    interpolatorContext.wrapPhases = controls.wrapPhases;
-    interpolatorContext.primaryDimension = controls.primaryDimension;
+    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(
+        mesh,
+        controls,
+        controls.primaryDimension);
+    V2PositionerContext positionerContext = makePositionerContext(controls);
+    V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(
+        controls,
+        request.interpolateCurves,
+        request.lowResolution);
+    V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(
+        controls,
+        curveBuilderContext.interpolateCurves);
 
-    V2PositionerContext positionerContext;
-    positionerContext.scaling = controls.scaling;
-    positionerContext.cyclic = controls.cyclic;
-    positionerContext.minX = controls.minX;
-    positionerContext.maxX = controls.maxX;
-
-    V2CurveBuilderContext curveBuilderContext;
-    curveBuilderContext.scaling = controls.scaling;
-    curveBuilderContext.interpolateCurves = request.interpolateCurves && controls.interpolateCurves;
-    curveBuilderContext.lowResolution = request.lowResolution || controls.lowResolution;
-    curveBuilderContext.integralSampling = controls.integralSampling;
-
-    V2WaveBuilderContext waveBuilderContext;
-    waveBuilderContext.interpolateCurves = curveBuilderContext.interpolateCurves;
-
-    V2SamplerContext samplerContext;
-    samplerContext.request.numSamples = numSamples;
-    samplerContext.request.deltaX = 1.0 / static_cast<double>(numSamples);
-    samplerContext.request.tempoScale = 1.0f;
-    samplerContext.request.scale = 1;
+    V2SamplerContext samplerContext(
+        V2RenderRequest{numSamples, 0, 1.0 / static_cast<double>(numSamples), 1.0f, 1, false, false});
 
     V2RenderResult renderResult = graph.render(
         workspace,

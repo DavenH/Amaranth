@@ -58,6 +58,43 @@ void appendFxLegacyCurvePadding(
     outCurves.emplace_back(intercepts[count - 1], back1, back2);
 }
 
+void appendVoiceChainingPadding(
+    const std::vector<Intercept>& intercepts,
+    int count,
+    const std::vector<Intercept>& previousIntercepts,
+    std::vector<Curve>& outCurves) {
+    const int end = count - 1;
+
+    const std::vector<Intercept>& frontSource = previousIntercepts.empty() ? intercepts : previousIntercepts;
+    const int frontEnd = static_cast<int>(frontSource.size()) - 1;
+
+    Intercept front1 = frontSource[jmax(0, frontEnd - 0)];
+    Intercept front2 = frontSource[jmax(0, frontEnd - 1)];
+    Intercept front3 = frontSource[jmax(0, frontEnd - 2)];
+    front1.x -= 1.0f;
+    front2.x -= 1.0f;
+    front3.x -= 1.0f;
+
+    Intercept back1 = intercepts[0];
+    Intercept back2 = intercepts[jmin(1, end)];
+    Intercept back3 = intercepts[jmin(2, end)];
+    back1.x += 1.0f;
+    back2.x += 1.0f;
+    back3.x += 1.0f;
+
+    outCurves.emplace_back(front3, front2, front1);
+    outCurves.emplace_back(front2, front1, intercepts[0]);
+    outCurves.emplace_back(front1, intercepts[0], intercepts[1]);
+
+    for (int i = 0; i < count - 2; ++i) {
+        outCurves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
+    }
+
+    outCurves.emplace_back(intercepts[end - 1], intercepts[end], back1);
+    outCurves.emplace_back(intercepts[end], back1, back2);
+    outCurves.emplace_back(back1, back2, back3);
+}
+
 void applyResolutionPolicy(std::vector<Curve>& curves, const V2CurveBuilderContext& context) {
     if (curves.size() < 3) {
         return;
@@ -128,6 +165,41 @@ bool V2DefaultCurveBuilderStage::run(
         curve.recalculateCurve();
     }
 
+    outCount = static_cast<int>(outCurves.size());
+    return outCount > 0;
+}
+
+void V2VoiceChainingCurveBuilderStage::reset() noexcept {
+    previousIntercepts.clear();
+}
+
+bool V2VoiceChainingCurveBuilderStage::run(
+    const std::vector<Intercept>& inIntercepts,
+    int inCount,
+    std::vector<Curve>& outCurves,
+    int& outCount,
+    const V2CurveBuilderContext& context) noexcept {
+    outCurves.clear();
+    outCount = 0;
+
+    if (inCount < 2 || inCount > static_cast<int>(inIntercepts.size())) {
+        return false;
+    }
+
+    if (Curve::table == nullptr) {
+        Curve::calcTable();
+    }
+
+    std::vector<Intercept> localIntercepts(inIntercepts.begin(), inIntercepts.begin() + inCount);
+    outCurves.reserve(static_cast<size_t>(inCount + 4));
+    appendVoiceChainingPadding(localIntercepts, inCount, previousIntercepts, outCurves);
+    applyResolutionPolicy(outCurves, context);
+
+    for (auto& curve : outCurves) {
+        curve.recalculateCurve();
+    }
+
+    previousIntercepts = localIntercepts;
     outCount = static_cast<int>(outCurves.size());
     return outCount > 0;
 }

@@ -1,4 +1,5 @@
 #include "V2EnvRasterizer.h"
+#include "V2WaveSampling.h"
 
 namespace {
 constexpr double kMinLoopLength = 1e-6;
@@ -114,7 +115,7 @@ bool V2EnvRasterizer::renderAudio(
             }
         }
 
-        out[i] = sampleAtPhase(phase, waveX, waveY, slopeUsed, wavePointCount, currentIndex);
+        out[i] = V2WaveSampling::sampleAtPhase(phase, waveX, waveY, slopeUsed, wavePointCount, currentIndex);
         samplePosition = phase + deltaX;
 
         if (envState.getMode() == V2EnvMode::Looping && haveLoop) {
@@ -145,85 +146,23 @@ bool V2EnvRasterizer::buildWaveForCurrentState(
     graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
                                         : static_cast<V2PositionerStage*>(&linearPositioner));
 
-    V2InterpolatorContext interpolatorContext;
-    interpolatorContext.mesh = mesh;
-    interpolatorContext.morph = controls.morph;
-    interpolatorContext.wrapPhases = controls.wrapPhases;
-
-    V2PositionerContext positionerContext;
-    positionerContext.scaling = controls.scaling;
-    positionerContext.cyclic = controls.cyclic;
-    positionerContext.minX = controls.minX;
-    positionerContext.maxX = controls.maxX;
-
-    int interceptCount = 0;
-    if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount)) {
+    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
+    V2PositionerContext positionerContext = makePositionerContext(controls);
+    V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(controls);
+    V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
+    V2BuiltArtifacts artifacts;
+    if (! graph.buildArtifacts(
+            workspace,
+            interpolatorContext,
+            positionerContext,
+            curveBuilderContext,
+            waveBuilderContext,
+            artifacts)) {
         return false;
     }
 
-    V2CurveBuilderContext curveBuilderContext;
-    curveBuilderContext.scaling = controls.scaling;
-    curveBuilderContext.interpolateCurves = controls.interpolateCurves;
-    curveBuilderContext.lowResolution = controls.lowResolution;
-    curveBuilderContext.integralSampling = controls.integralSampling;
-
-    int curveCount = 0;
-    if (! curveBuilder.run(
-            workspace.intercepts,
-            interceptCount,
-            workspace.curves,
-            curveCount,
-            curveBuilderContext)) {
-        return false;
-    }
-
-    V2WaveBuilderContext waveBuilderContext;
-    waveBuilderContext.interpolateCurves = controls.interpolateCurves;
-
-    if (! waveBuilder.run(
-            workspace.curves,
-            curveCount,
-            workspace.waveX,
-            workspace.waveY,
-            workspace.diffX,
-            workspace.slope,
-            wavePointCount,
-            zeroIndex,
-            oneIndex,
-            waveBuilderContext)) {
-        return false;
-    }
-
-    return wavePointCount > 1;
-}
-
-float V2EnvRasterizer::sampleAtPhase(
-    double phase,
-    Buffer<float> waveX,
-    Buffer<float> waveY,
-    Buffer<float> slope,
-    int wavePointCount,
-    int& ioSampleIndex) const noexcept {
-    while (ioSampleIndex < wavePointCount - 2 && phase >= waveX[ioSampleIndex + 1]) {
-        ++ioSampleIndex;
-    }
-
-    while (ioSampleIndex > 0 && phase < waveX[ioSampleIndex]) {
-        --ioSampleIndex;
-    }
-
-    float sampled = 0.0f;
-    if (phase <= waveX[0]) {
-        sampled = waveY[0];
-    } else if (phase >= waveX[wavePointCount - 1]) {
-        sampled = waveY[wavePointCount - 1];
-    } else {
-        sampled = static_cast<float>((phase - waveX[ioSampleIndex]) * slope[ioSampleIndex] + waveY[ioSampleIndex]);
-    }
-
-    if (sampled != sampled) {
-        return 0.0f;
-    }
-
-    return sampled;
+    wavePointCount = artifacts.wavePointCount;
+    zeroIndex = artifacts.zeroIndex;
+    oneIndex = artifacts.oneIndex;
+    return true;
 }

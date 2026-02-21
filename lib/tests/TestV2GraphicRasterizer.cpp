@@ -144,3 +144,38 @@ TEST_CASE("V2GraphicRasterizer supports cyclic and linear positioning modes", "[
     REQUIRE(rasterizer.renderGraphic(request, cyclic, cyclicResult));
     REQUIRE(cyclicResult.pointsWritten == cyclic.size());
 }
+
+TEST_CASE("V2GraphicRasterizer extracts pipeline artifacts for updater parity", "[curve][v2][graphic]") {
+    ScopedMesh scoped("v2-graphic-artifacts");
+    populateGraphicTestMesh(scoped.mesh);
+
+    V2GraphicRasterizer rasterizer;
+
+    V2PrepareSpec prepare;
+    prepare.capacities.maxIntercepts = 64;
+    prepare.capacities.maxCurves = 128;
+    prepare.capacities.maxWavePoints = 1024;
+    prepare.capacities.maxDeformRegions = 0;
+    rasterizer.prepare(prepare);
+    rasterizer.setMeshSnapshot(&scoped.mesh);
+
+    V2GraphicControlSnapshot controls;
+    controls.morph = MorphPosition(0.35f, 0.55f, 0.75f);
+    controls.scaling = MeshRasterizer::Unipolar;
+    controls.interpolateCurves = true;
+    controls.lowResolution = false;
+    controls.cyclic = false;
+    rasterizer.updateControlData(controls);
+
+    V2GraphicArtifactsView artifacts;
+    REQUIRE(rasterizer.extractArtifacts(artifacts));
+    REQUIRE(artifacts.intercepts != nullptr);
+    REQUIRE(artifacts.curves != nullptr);
+    REQUIRE(artifacts.interceptCount > 1);
+    REQUIRE(artifacts.curveCount > 0);
+    REQUIRE(artifacts.wavePointCount > 1);
+    REQUIRE(artifacts.waveX.size() == artifacts.wavePointCount);
+    REQUIRE(artifacts.waveY.size() == artifacts.wavePointCount);
+    REQUIRE(artifacts.diffX.size() == artifacts.wavePointCount - 1);
+    REQUIRE(artifacts.slope.size() == artifacts.wavePointCount - 1);
+}

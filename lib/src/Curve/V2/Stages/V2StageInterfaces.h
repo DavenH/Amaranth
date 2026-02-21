@@ -14,6 +14,19 @@ struct V2InterpolatorContext {
     MorphPosition morph{};
     bool wrapPhases{false};
     int primaryDimension{Vertex::Time};
+
+    V2InterpolatorContext() = default;
+
+    V2InterpolatorContext(
+        const Mesh* mesh,
+        const MorphPosition& morph,
+        bool wrapPhases,
+        int primaryDimension = Vertex::Time) noexcept :
+            mesh(mesh)
+        ,   morph(morph)
+        ,   wrapPhases(wrapPhases)
+        ,   primaryDimension(primaryDimension)
+    {}
 };
 
 struct V2PositionerContext {
@@ -22,6 +35,21 @@ struct V2PositionerContext {
     float padding{0.0f};
     float minX{0.0f};
     float maxX{1.0f};
+
+    V2PositionerContext() = default;
+
+    V2PositionerContext(
+        MeshRasterizer::ScalingType scaling,
+        bool cyclic,
+        float minX,
+        float maxX,
+        float padding = 0.0f) noexcept :
+            scaling(scaling)
+        ,   cyclic(cyclic)
+        ,   padding(padding)
+        ,   minX(minX)
+        ,   maxX(maxX)
+    {}
 };
 
 struct V2CurveBuilderContext {
@@ -36,10 +64,33 @@ struct V2CurveBuilderContext {
     bool interpolateCurves{true};
     bool lowResolution{false};
     bool integralSampling{false};
+
+    V2CurveBuilderContext() = default;
+
+    V2CurveBuilderContext(
+        MeshRasterizer::ScalingType scaling,
+        bool interpolateCurves,
+        bool lowResolution,
+        bool integralSampling,
+        PaddingPolicy paddingPolicy = PaddingPolicy::Generic,
+        int paddingCount = 2) noexcept :
+            scaling(scaling)
+        ,   paddingCount(paddingCount)
+        ,   paddingPolicy(paddingPolicy)
+        ,   interpolateCurves(interpolateCurves)
+        ,   lowResolution(lowResolution)
+        ,   integralSampling(integralSampling)
+    {}
 };
 
 struct V2WaveBuilderContext {
     bool interpolateCurves{true};
+
+    V2WaveBuilderContext() = default;
+
+    explicit V2WaveBuilderContext(bool interpolateCurves) noexcept :
+            interpolateCurves(interpolateCurves)
+    {}
 };
 
 struct V2SamplerContext {
@@ -47,6 +98,19 @@ struct V2SamplerContext {
     int wavePointCount{0};
     int zeroIndex{0};
     int oneIndex{0};
+
+    V2SamplerContext() = default;
+
+    V2SamplerContext(
+        const V2RenderRequest& request,
+        int wavePointCount = 0,
+        int zeroIndex = 0,
+        int oneIndex = 0) noexcept :
+            request(request)
+        ,   wavePointCount(wavePointCount)
+        ,   zeroIndex(zeroIndex)
+        ,   oneIndex(oneIndex)
+    {}
 };
 
 class V2InterpolatorStage {
