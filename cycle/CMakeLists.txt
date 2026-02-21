@@ -30,11 +30,32 @@ endif()
 
 # Define different targets based on build type
 if(BUILD_TYPE STREQUAL "Standalone")
-    add_executable(${PROJECT_NAME} ${APP_SOURCES})
+    add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${APP_SOURCES})
     set(TARGET_TYPE "Standalone")
 else()
     add_library(${PROJECT_NAME} MODULE ${APP_SOURCES})
     set(TARGET_TYPE "Plugin")
+endif()
+
+if(APPLE AND BUILD_TYPE STREQUAL "Standalone")
+    set(CYCLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/resources/Info.plist)
+    set(CYCLE_ICON ${CMAKE_CURRENT_SOURCE_DIR}/resources/Cycle.icns)
+
+    if(EXISTS ${CYCLE_INFO_PLIST})
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            MACOSX_BUNDLE_INFO_PLIST ${CYCLE_INFO_PLIST}
+        )
+    endif()
+
+    if(EXISTS ${CYCLE_ICON})
+        set_source_files_properties(${CYCLE_ICON} PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources"
+        )
+        target_sources(${PROJECT_NAME} PRIVATE ${CYCLE_ICON})
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            MACOSX_BUNDLE_ICON_FILE "Cycle.icns"
+        )
+    endif()
 endif()
 
 # Add test executable regardless of build type
@@ -147,8 +168,13 @@ if(UNIX AND NOT APPLE)
         LIBRARY DESTINATION lib
     )
 elseif(APPLE)
-    install(TARGETS ${PROJECT_NAME}
-        RUNTIME DESTINATION Applications
-        LIBRARY DESTINATION "Library/Audio/Plug-Ins/VST3"
-    )
+    if(BUILD_TYPE STREQUAL "Standalone")
+        install(TARGETS ${PROJECT_NAME}
+            BUNDLE DESTINATION Applications
+        )
+    else()
+        install(TARGETS ${PROJECT_NAME}
+            LIBRARY DESTINATION "Library/Audio/Plug-Ins/VST3"
+        )
+    endif()
 endif()
