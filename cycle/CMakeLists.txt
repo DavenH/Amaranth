@@ -15,6 +15,19 @@ file(GLOB_RECURSE APP_TEST_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/**/tests/*.cpp"
 )
 
+if(APPLE)
+    file(GLOB JUCE_OBJCXX_SOURCES
+        "${JUCE_DIR}/*.cpp"
+        "${JUCE_DIR}/*.mm"
+    )
+
+    set_source_files_properties(
+        ${JUCE_OBJCXX_SOURCES}
+        PROPERTIES
+        COMPILE_FLAGS "-x objective-c++"
+    )
+endif()
+
 # Define different targets based on build type
 if(BUILD_TYPE STREQUAL "Standalone")
     add_executable(${PROJECT_NAME} ${APP_SOURCES})
