@@ -198,7 +198,7 @@ void OpenGLPanel3D::openGLContextClosing() {
 //  HGLRC cc = wglGetCurrentContext();
 
     /*
-    for(int i = 0; i < panel->textures.size(); ++i)
+    for (int i = 0; i < panel->textures.size(); ++i)
         panel->textures[i]->clear();
 
     backTex.clear();

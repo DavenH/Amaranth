@@ -4,12 +4,12 @@
 #include <App/SingletonAccessor.h>
 
 class VersionConsiliator :
-		public SingletonAccessor
-	,	public MeshLibrary::Listener
+        public SingletonAccessor
+    ,	public MeshLibrary::Listener
 {
 public:
-	explicit VersionConsiliator(SingletonRepo* repo);
-	void transform(XmlElement* element);
+    explicit VersionConsiliator(SingletonRepo* repo);
+    void transform(XmlElement* element);
 
 private:
 };

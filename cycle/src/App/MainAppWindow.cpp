@@ -67,7 +67,7 @@ void MainAppWindow::maximiseButtonPressed() {
 
 void MainAppWindow::handleMessage(const Message &message) {
   #if JUCE_MAC
-    if(! getObj(MainPanel).hasKeyboardFocus(false))
+    if (! getObj(MainPanel).hasKeyboardFocus(false))
     {
         postMessage(new Message());
     }

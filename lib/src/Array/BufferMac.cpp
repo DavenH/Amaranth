@@ -72,7 +72,7 @@ int globalBufferMacSizeErrorCount = 0;
     template<>                                   \
     Buffer<T>& Buffer<T>::withPhase(int phase, Buffer workBuffer) { \
         jassert(phase >= 0);       \
-        if(phase == 0 || sz == 0)                \
+        if (phase == 0 || sz == 0)                \
             return *this;                        \
         phase = phase % sz;                      \
         section(phase, sz - phase).copyTo(workBuffer); \
@@ -144,7 +144,7 @@ template<> Buffer<Float64>& Buffer<Float64>::pow(Float64 c) { UNO_ARG_CHECK  vvp
 
 #define defineUnaryBuffFn(name, type, fn, args_pattern) \
     template<> Buffer<type>& Buffer<type>::name(Buffer<type> buff) { \
-    if(buff.size() < sz) { ++ERROR_COUNTER; return *this; } \
+    if (buff.size() < sz) { ++ERROR_COUNTER; return *this; } \
     fn(args_pattern);     \
     return *this;         \
 }
@@ -158,10 +158,10 @@ defineVdspUnaryBuff_Real(sub)
 defineVdspUnaryBuff_Real(mul)
 defineVdspUnaryBuff_Real(div)
 
-    
+
 #define defineNullaryConstFn(name, type, fn) \
     template<> type Buffer<type>::name() const { \
-    if(sz == 0) return 0; \
+    if (sz == 0) return 0; \
     type result; \
     vDSP_##fn(ptr, 1, &result, vDSP_Length(sz)); \
     return result; \
@@ -170,7 +170,7 @@ defineVdspUnaryBuff_Real(div)
 #define defineVdspNullaryConst_Real(name, fn) \
     defineNullaryConstFn(name, Float32, fn) \
     defineNullaryConstFn(name, Float64, fn##D)
-  
+
 defineVdspNullaryConst_Real(sum,  sve)
 defineVdspNullaryConst_Real(mean, meanv)
 defineVdspNullaryConst_Real(min,  minv)
@@ -182,35 +182,39 @@ template<> Buffer<Float64>& Buffer<Float64>::sort() { EMPTY_CHECK vDSP_vsortD(pt
 
 template<>
 Buffer<Float32> &Buffer<Float32>::hann() {
-    if (sz == 0) return *this;
+    if (sz == 0) { return *this;
+}
     vDSP_hann_window(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
     return *this;
 }
 
 template<>
 Buffer<Float64> &Buffer<Float64>::hann() {
-    if (sz == 0) return *this;
+    if (sz == 0) { return *this;
+}
     vDSP_hann_windowD(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
     return *this;
 }
 
 template<>
 Buffer<Float32> &Buffer<Float32>::blackman() {
-    if (sz == 0) return *this;
+    if (sz == 0) { return *this;
+}
     vDSP_blkman_window(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
     return *this;
 }
 
 template<>
 Buffer<Float64> &Buffer<Float64>::blackman() {
-    if (sz == 0) return *this;
+    if (sz == 0) { return *this;
+}
     vDSP_blkman_windowD(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
     return *this;
 }
 
 template<>
 void Buffer<Float32>::minmax(Float32& pMin, Float32& pMax) const {
-    if(sz == 0) {
+    if (sz == 0) {
         pMin = 0;
         pMax = 0;
     }
@@ -255,7 +259,7 @@ defineNormL2(Float64, normL2, dotprD)
 
 #define defineNormDiffL2(type, name, fn) \
   template<> type Buffer<type>::name(Buffer<type> buff) const { \
-    if(buff.size() == 0) return 0; \
+    if (buff.size() == 0) return 0; \
     type result; \
     vDSP_##fn(VDSP_BUFF_ARGC_PATTERN); \
     return std::sqrt(result);  \
@@ -269,13 +273,15 @@ defineNormDiffL2(Float64, normDiffL2, distancesqD)
 
 template<>
 Buffer<Float32>& Buffer<Float32>::addProduct(Buffer src1, Buffer src2) {
-    if (sz == 0) return *this;
+    if (sz == 0) { return *this;
+}
     vDSP_vma(src1.get(), 1, src2.get(), 1, ptr, 1, ptr, 1, vDSP_Length(sz));
     return *this;
 }
 template<>
 Buffer<Float64>& Buffer<Float64>::addProduct(Buffer src1, Buffer src2) {
-    if (sz == 0) return *this;
+    if (sz == 0) { return *this;
+}
     vDSP_vmaD(src1.get(), 1, src2.get(), 1, ptr, 1, ptr, 1, vDSP_Length(sz));
     return *this;
 }
@@ -334,7 +340,7 @@ template<> Buffer<Complex32>& Buffer<Complex32>::addProduct(Buffer src, Complex3
 #define defineComplexConstOp(name, conjArg)                   \
     template<>                                                \
     Buffer<Complex32>& Buffer<Complex32>::name(Complex32 c) { \
-        if(sz == 0) return *this;                             \
+        if (sz == 0) return *this;                             \
         ScopedAlloc<Complex32> temp(sz);                      \
         temp.set(c);                                          \
         DSPSplitComplex dest, src;                            \
@@ -349,7 +355,7 @@ template<> Buffer<Complex32>& Buffer<Complex32>::addProduct(Buffer src, Complex3
 #define defineComplexConstDiv                                 \
     template<>                                                \
     Buffer<Complex32>& Buffer<Complex32>::div(Complex32 c) {  \
-        if(sz == 0) return *this;                             \
+        if (sz == 0) return *this;                             \
         ScopedAlloc<Complex32> temp(sz);                      \
         temp.set(c);                                          \
         DSPSplitComplex dest, src;                            \
@@ -387,9 +393,11 @@ Buffer<Float64>& Buffer<Float64>::subCRev(Float64 c) {
 template<>
 Buffer<Float32>& Buffer<Float32>::divCRev(Float32 c) {
     EMPTY_CHECK
-    if(c == 0.f) return zero();
+    if (c == 0.f) { return zero();
+}
     vvrecf(VFORCE_AUTO_ARG_PATTERN);
-    if(c == 1.f) return *this;
+    if (c == 1.f) { return *this;
+}
     vDSP_vsmul(VDSP_AUTO_ARGC_PATTERN);
     return *this;
 }
@@ -397,9 +405,11 @@ Buffer<Float32>& Buffer<Float32>::divCRev(Float32 c) {
 template<>
 Buffer<Float64>& Buffer<Float64>::divCRev(Float64 c) {
     EMPTY_CHECK
-    if(c == 0) return zero();
+    if (c == 0) { return zero();
+}
     vvrec(VFORCE_AUTO_ARG_PATTERN);
-    if(c == 1.f) return *this;
+    if (c == 1.f) { return *this;
+}
     vDSP_vsmulD(VDSP_AUTO_ARGC_PATTERN);
     return *this;
 }
@@ -407,7 +417,8 @@ Buffer<Float64>& Buffer<Float64>::divCRev(Float64 c) {
 template<>
 Buffer<Float32>& Buffer<Float32>::powCRev(Float32 k) {
     EMPTY_CHECK
-    if(k == 1.f) return *this;
+    if (k == 1.f) { return *this;
+}
     float c = std::log(k);
     vDSP_vsmul(VDSP_AUTO_ARGC_PATTERN);
     vvexpf(VFORCE_AUTO_ARG_PATTERN);
@@ -416,7 +427,8 @@ Buffer<Float32>& Buffer<Float32>::powCRev(Float32 k) {
 template<>
 Buffer<Float64>& Buffer<Float64>::powCRev(Float64 k) {
     EMPTY_CHECK
-    if(k == 1.) return *this;
+    if (k == 1.) { return *this;
+}
     Float64 c = std::log(k);
     vDSP_vsmulD(VDSP_AUTO_ARGC_PATTERN);
     vvexp(VFORCE_AUTO_ARG_PATTERN);
@@ -451,14 +463,14 @@ Buffer<Float64>& Buffer<Float64>::ramp(Float64 offset, Float64 delta) {
     return *this;
 }
 
-template<> Buffer<Float32>& Buffer<Float32>::ramp() { if(sz > 1) { return ramp(0.f, 1.f / (sz - 1)); } return *this; }
-template<> Buffer<Float64>& Buffer<Float64>::ramp() { if(sz > 1) { return ramp(0., 1. / (sz - 1)); } return *this; }
+template<> Buffer<Float32>& Buffer<Float32>::ramp() { if (sz > 1) { return ramp(0.f, 1.f / (sz - 1)); } return *this; }
+template<> Buffer<Float64>& Buffer<Float64>::ramp() { if (sz > 1) { return ramp(0., 1. / (sz - 1)); } return *this; }
 
 
 #define constructSinInit(T) \
 template<> \
     Buffer<T>& Buffer<T>::sin(float relFreq, float unitPhase) { \
-        if(sz == 0) return *this; \
+        if (sz == 0) return *this; \
         return ramp( \
             static_cast<T>(unitPhase * 2 * M_PI), \
             static_cast<T>(relFreq * 2 * M_PI) \
@@ -529,7 +541,8 @@ Buffer<Float32>& Buffer<Float32>::rand(unsigned& seed) {
 
 template<>
 bool Buffer<Float32>::isProbablyEmpty() const {
-    if (sz == 0) return true;
+    if (sz == 0) { return true;
+}
     Float32 result;
     vDSP_sve(ptr, 1, &result, vDSP_Length(sz));
     return result == 0.0f;
@@ -537,10 +550,12 @@ bool Buffer<Float32>::isProbablyEmpty() const {
 
 template <>
 int Buffer<Float32>::upsampleFrom(Buffer<Float32> buff, int factor, int phase) {
-    if (sz == 0 || buff.empty())
+    if (sz == 0 || buff.empty()) {
         return 0;
-    if (factor < 0)
+}
+    if (factor < 0) {
         factor = sz / buff.size();
+}
     if (factor == 1) {
         buff.copyTo(*this);
         return 0;
@@ -550,7 +565,7 @@ int Buffer<Float32>::upsampleFrom(Buffer<Float32> buff, int factor, int phase) {
     const float offset = 0;
     const int srcLen = buff.size();
     const int dstLen = srcLen * factor;
-    if(dstLen > sz) {
+    if (dstLen > sz) {
         ++ERROR_COUNTER;
         return 0;
     }
@@ -572,10 +587,12 @@ int Buffer<Float32>::upsampleFrom(Buffer<Float32> buff, int factor, int phase) {
 
 template <>
 int Buffer<Float32>::downsampleFrom(Buffer<Float32> buff, int factor, int phase) {
-    if (sz == 0 || buff.empty())
+    if (sz == 0 || buff.empty()) {
         return 0;
-    if (factor < 0)
+}
+    if (factor < 0) {
         factor = buff.size() / sz;
+}
     if (factor == 1) {
         buff.copyTo(*this);
         return 0;

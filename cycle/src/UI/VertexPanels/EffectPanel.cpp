@@ -37,7 +37,7 @@ EffectPanel::EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZ
     vertexProps.sliderApplicable[Vertex::Blue] 	= false;
     vertexProps.ampVsPhaseApplicable 			= false;
 
-    for(auto& flag : vertexProps.deformApplicable) {
+    for (auto& flag : vertexProps.deformApplicable) {
         flag = false;
     }
 
@@ -83,7 +83,7 @@ bool EffectPanel::addNewCube(float startTime, float x, float y, float curve) {
     vector<Vertex*>& verts = getMesh()->getVerts();
     vector<Vertex*> beforeVerts;
 
-    if(! suspendUndo) {
+    if (! suspendUndo) {
         beforeVerts = verts;
     }
 
@@ -93,7 +93,7 @@ bool EffectPanel::addNewCube(float startTime, float x, float y, float curve) {
 
     verts.push_back(vertex);
 
-    if(!suspendUndo) {
+    if (!suspendUndo) {
         vector<Vertex*>& afterVerts = verts;
         getObj(EditWatcher).addAction(new UpdateVertexVectorAction(this, &verts, beforeVerts, afterVerts, true));
     }

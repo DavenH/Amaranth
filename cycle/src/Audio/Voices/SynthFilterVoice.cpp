@@ -57,7 +57,7 @@ void SynthFilterVoice::initialiseNoteExtra(const int midiNoteNumber, const float
     auto* props = getObj(MeshLibrary).getProps(LayerGroups::GroupTime, parent->voiceIndex);
     jassert(props != nullptr);
 
-    if(props != nullptr) {
+    if (props != nullptr) {
         props->updateParameterSmoothing(smooth);
     }
 
@@ -65,7 +65,7 @@ void SynthFilterVoice::initialiseNoteExtra(const int midiNoteNumber, const float
     freqRasterizer.updateOffsetSeeds(1, DeformerPanel::tableSize);
     phaseRasterizer.updateOffsetSeeds(1, DeformerPanel::tableSize);
 
-    if(parent->flags.haveFFTPhase) {
+    if (parent->flags.haveFFTPhase) {
         phaseScaleRamp.withSize(noteState.numHarmonics).ramp(1.f, 1.f).sqrt();
     }
 }
@@ -131,7 +131,7 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group) {
     calcPhaseDomain(fftRamp, doFwdFFT, rightPhasesAreSet, channelCount);
 
     // inverse FFT
-    for(int c = 0; c < channelCount; ++c) {
+    for (int c = 0; c < channelCount; ++c) {
         Transform& fft = audioSource->getFFT(noteState.nextPow2);
 
         magBufs[c].copyTo(fft.getMagnitudes());
@@ -139,7 +139,7 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group) {
         fft.inverse(accumBufs[c]);
     }
 
-    if(! noteState.isStereo) {
+    if (! noteState.isStereo) {
         accumBufs[Left].copyTo(accumBufs[Right]);
     }
 
@@ -200,7 +200,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
 
     Buffer harmRast(rastBuffer.withSize(noteState.numHarmonics));
 
-    for(auto& layer : freqLayers->layers) {
+    for (auto& layer : freqLayers->layers) {
         MeshLibrary::Properties& props = *layer.props;
 
         if (!props.active || !layer.mesh->hasEnoughCubesForCrossSection()) {
@@ -301,7 +301,7 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 
     bool haveAnyValidPhaseLayers = false;
 
-    for(auto& layer : phaseLayers->layers) {
+    for (auto& layer : phaseLayers->layers) {
         MeshLibrary::Properties& props = *layer.props;
 
         if (props.active && layer.mesh->hasEnoughCubesForCrossSection()) {
@@ -334,7 +334,7 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
             MeshLibrary::Layer& layer 		= phaseLayers->layers[i];
             MeshLibrary::Properties& props 	= *layer.props;
 
-            if(! props.active || ! layer.mesh->hasEnoughCubesForCrossSection()) {
+            if (! props.active || ! layer.mesh->hasEnoughCubesForCrossSection()) {
                 continue;
             }
 
@@ -354,13 +354,13 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 
                 harmRast.mul(phaseAmpScale * MathConstants<float>::twoPi);
 
-                for(int c = 0; c < channelCount; ++c) {
+                for (int c = 0; c < channelCount; ++c) {
                     phaseAccBufs[c].addProduct(harmRast, pans[c]);
                 }
             }
         }
 
-        for(int c = 0; c < channelCount; ++c) {
+        for (int c = 0; c < channelCount; ++c) {
             phaseAccBufs[c].mul(phaseScaleRamp.withSize(noteState.numHarmonics));
             phases[c].add(phaseAccBufs[c]);		// phases[1] has to be copied or zeroed at this point!
         }

@@ -34,10 +34,11 @@ float SurfaceLine::yAt(int dim, float y) {
 }
 
 bool SurfaceLine::overlaps(float x, int dim) const {
-    if(one->values[dim] < two->values[dim])
+    if (one->values[dim] < two->values[dim]) {
         return one->values[dim] <= x && two->values[dim] >= x;
-    else
+    } else {
         return two->values[dim] <= x && one->values[dim] >= x;
+}
 }
 
 

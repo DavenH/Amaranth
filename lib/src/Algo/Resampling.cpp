@@ -8,14 +8,15 @@ float Resampling::at(float x, const vector<Vertex2>& points, int& currentIndex) 
         return 0;
     }
 
-    if(points.size() == 2)
+    if (points.size() == 2) {
         return lerp(points[0].x, points[0].y, points[1].x, points[1].y, x);
+}
 
-    if(x == points.front().x) {
+    if (x == points.front().x) {
         return points.front().y;
     }
 
-    if(x == points.back().x) {
+    if (x == points.back().x) {
         return points.back().y;
     }
 
@@ -44,8 +45,9 @@ void Resampling::linResample(
 
     jassert(! (srcSizeSub1 & (srcSizeSub1 + 1)));
 
-    if(phase > source.size())
+    if (phase > source.size()) {
         phase -= double(source.size());
+}
 
     jassert(phase + dest.size() * sourceToDestRatio > source.size());
 
@@ -69,8 +71,9 @@ void Resampling::linResample2(
     int trunc;
     int start = 0;
 
-    if(phase > 0.)
+    if (phase > 0.) {
         phase -= double(source.size());
+}
 
     jassert(phase > -sourceToDestRatio - 0.001);
     jassert(phase + dest.size() * sourceToDestRatio < source.size());
@@ -161,8 +164,9 @@ void Resampling::resample(
     int trunc;
     int start = 0;
 
-    if(srcSize < 6)
+    if (srcSize < 6) {
         return;
+}
 
 //  jassert(phase > -2);
 
@@ -173,7 +177,7 @@ void Resampling::resample(
         x = jmax(0., phase - trunc);
         float** p   = pads[trunc + 2];
 
-        switch(algo) {
+        switch (algo) {
             case Linear:
                 dest[start++] = (1 - x) * *p[4] + x * *p[5];
                 break;
@@ -275,8 +279,9 @@ void Resampling::resample(
             jassertfalse;
     }
 
-    if(phase > 0.)
+    if (phase > 0.) {
         phase -= double(srcSize);
+}
 
     jassert(phase > -3);
 
@@ -297,7 +302,7 @@ float Resampling::lerp(float x1, float y1, float x2, float y2, float pos) {
     if (pos == 0) {
         return y1;
     }
-    if(pos == 1.f) {
+    if (pos == 1.f) {
         return y2;
     }
 
@@ -311,14 +316,15 @@ float Resampling::lerp(float x1, float y1, float x2, float y2, float pos) {
 float Resampling::lerpC(Buffer<float> buff, float unitPos) {
     int size = buff.size();
 
-    if(size == 0)
+    if (size == 0) {
         return 0;
+}
 
     unitPos         = jlimit(0.f, 1.f, unitPos);
     float findex    = size * unitPos;
     int iindex      = (int) findex;
 
-    if(iindex >= size - 1) {
+    if (iindex >= size - 1) {
         return buff.back();
     }
 
@@ -341,7 +347,7 @@ float Resampling::interpIndexQuadratic(float y1, float y2, float y3) {
     float peak = 0;
     float d = (y1 - 2 * y2 + y3);
 
-    if(d != 0.f) {
+    if (d != 0.f) {
         peak = 0.5 * (y1 - y3) / d;
     }
 

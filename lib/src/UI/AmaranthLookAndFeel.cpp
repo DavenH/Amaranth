@@ -74,8 +74,9 @@ void AmaranthLookAndFeel::drawScrollbar(
     const float thumbIndent = slotIndent; // + 1.0f;
     float thumbIndentx2 = thumbIndent;
 
-    if (width > 8 && width < height)
+    if (width > 8 && width < height) {
         thumbIndentx2 = thumbIndent + 1;
+}
 
     float gx1 = 0.0f, gy1 = 0.0f, gx2 = 0.0f, gy2 = 0.0f;
 
@@ -93,9 +94,10 @@ void AmaranthLookAndFeel::drawScrollbar(
     } else {
         slotPath.addRectangle(x + slotIndent, y + slotIndent, width - slotIndentx2, height - slotIndentx2);
 
-        if (thumbSize > 0)
+        if (thumbSize > 0) {
             thumbPath.addRectangle(thumbStartPosition + thumbIndent - 0.5f, y + thumbIndent + 0.5f,
                                    thumbSize - thumbIndentx2 + 1.f, height - thumbIndentx2);
+}
         gy1 = (float) y;
         gy2 = y + height;
     }
@@ -127,22 +129,23 @@ void AmaranthLookAndFeel::drawScrollbarButton(
     Path p;
     Colour triangleColour(Colour::greyLevel(0.35f));
 
-    if (buttonDirection == VertUp)
+    if (buttonDirection == VertUp) {
         p.addTriangle(
                 width * 0.5f, height * 0.2f, width * 0.1f,
                 height * 0.7f, width * 0.9f, height * 0.7f);
-    else if (buttonDirection == HorzDown)
+    } else if (buttonDirection == HorzDown) {
         p.addTriangle(
                 width * 0.6f, height * 0.5f, width * 0.2f,
                 height * 0.2f, width * 0.2f, height * 0.8f);
-    else if (buttonDirection == VertDown)
+    } else if (buttonDirection == VertDown) {
         p.addTriangle(
                 width * 0.5f, height * 0.8f, width * 0.1f,
                 height * 0.3f, width * 0.9f, height * 0.3f);
-    else if (buttonDirection == HorzUp)
+    } else if (buttonDirection == HorzUp) {
         p.addTriangle(
                 width * 0.3f, height * 0.5f, width * 0.7f,
                 height * 0.2f, width * 0.7f, height * 0.8f);
+}
 
     p.scaleToFit(3, height / 2 - 3, width - 6, 6, false);
     g.setColour(isButtonDown ? triangleColour.contrasting(0.2f) : triangleColour);
@@ -480,7 +483,7 @@ Button* AmaranthLookAndFeel::createFileBrowserGoUpButton() {
 void AmaranthLookAndFeel::fillResizableWindowBackground(Graphics& g, int w, int h,
                                                         const BorderSize<int>& border,
                                                         ResizableWindow& window) {
-//  if(w > 700 || h > 700)
+//  if (w > 700 || h > 700)
 //  {
     g.fillAll(Colours::black);
 //      return;
@@ -643,8 +646,9 @@ void AmaranthLookAndFeel::drawPopupMenuItem(Graphics& g,
 
         const float maxFontHeight = area.getHeight() / 1.3f;
 
-        if (font.getHeight() > maxFontHeight)
+        if (font.getHeight() > maxFontHeight) {
             font.setHeight(maxFontHeight);
+}
 
         g.setFont(font);
 
@@ -745,8 +749,9 @@ void AmaranthLookAndFeel::drawAlertBox(Graphics& g, AlertWindow& alert, const Re
     const int iconWidth = 30;
     int iconSize = jmin(iconWidth + 20, alert.getHeight() + 10);
 
-    if (alert.containsAnyExtraComponents() || alert.getNumButtons() > 2)
+    if (alert.containsAnyExtraComponents() || alert.getNumButtons() > 2) {
         iconSize = jmin(iconSize, textArea.getHeight() + 50);
+}
 
     const Rectangle iconRect(30, 30, iconSize, iconSize);
 

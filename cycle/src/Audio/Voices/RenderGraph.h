@@ -7,15 +7,15 @@ using std::vector;
 class RenderGraph
 {
 public:
-	RenderGraph();
-	virtual ~RenderGraph();
+    RenderGraph();
+    virtual ~RenderGraph();
 
-	void addColumn();
-	void addRow();
-	void resize(int rows, int cols);
+    void addColumn();
+    void addRow();
+    void resize(int rows, int cols);
 
 private:
-	vector<vector<int> > mappings;
+    vector<vector<int> > mappings;
 };
 
 #endif

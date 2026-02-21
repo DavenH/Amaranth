@@ -3,9 +3,9 @@
 #include <App/SingletonAccessor.h>
 
 class CommandClient :
-		public SingletonAccessor
-	,	public ApplicationCommandManager {
+        public SingletonAccessor
+    ,	public ApplicationCommandManager {
 public:
-	CommandClient(SingletonRepo* repo);
-	virtual ~CommandClient() = default;
+    CommandClient(SingletonRepo* repo);
+    virtual ~CommandClient() = default;
 };

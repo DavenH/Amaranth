@@ -145,11 +145,11 @@ void TabbedSelector::mouseMove(const MouseEvent& e) {
     int lastHover = hoveredTab;
     updateTabUnderMouse(e);
 
-    if(hoveredTab < 0) {
+    if (hoveredTab < 0) {
         return;
     }
 
-    if(lastHover != hoveredTab) {
+    if (lastHover != hoveredTab) {
         repo->getConsole().updateAll(tabs[hoveredTab].shortcutKey,
                                    tabs[hoveredTab].name,
                                    MouseUsage(true, false, false, false));
@@ -171,7 +171,7 @@ void TabbedSelector::updateTabUnderMouse(const MouseEvent& e) {
 }
 
 void TabbedSelector::mouseDown(const MouseEvent& e) {
-    if(! e.mods.isLeftButtonDown()) {
+    if (! e.mods.isLeftButtonDown()) {
         return;
     }
 
@@ -179,7 +179,7 @@ void TabbedSelector::mouseDown(const MouseEvent& e) {
 
     selectedTab = hoveredTab;
 
-    if(! isPositiveAndBelow(selectedTab, (int) tabs.size())) {
+    if (! isPositiveAndBelow(selectedTab, (int) tabs.size())) {
         return;
     }
 
@@ -188,7 +188,7 @@ void TabbedSelector::mouseDown(const MouseEvent& e) {
 }
 
 void TabbedSelector::selectTab(int tab) {
-    if(! isPositiveAndBelow(tab, (int) tabs.size())) {
+    if (! isPositiveAndBelow(tab, (int) tabs.size())) {
         return;
     }
 
@@ -199,7 +199,7 @@ void TabbedSelector::selectTab(int tab) {
 }
 
 void TabbedSelector::callListeners(Bounded* selected) {
-    for(auto listener : listeners) {
+    for (auto listener : listeners) {
         listener->tabSelected(this, selected);
     }
 }

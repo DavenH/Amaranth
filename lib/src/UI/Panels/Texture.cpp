@@ -62,8 +62,9 @@ void TextureGL::clear() {
 }
 
 void TextureGL::draw() {
-    if (blendFunc != GL_SRC_ALPHA)
+    if (blendFunc != GL_SRC_ALPHA) {
         glBlendFunc(blendFunc, GL_ONE_MINUS_SRC_ALPHA);
+}
 
     glDisable(GL_LINE_SMOOTH);
 //  glColor4f(1, 1, 1, 1);

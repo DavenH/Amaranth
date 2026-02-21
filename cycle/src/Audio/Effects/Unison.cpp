@@ -115,16 +115,19 @@ void Unison::updatePanning(bool isAudio, bool force) {
 
         if (order % 2 == 1) {
             int i = 0;
-            for (; i < order / 2; ++i)
+            for (; i < order / 2; ++i) {
                 group.voices[i].pan = 0.5f + group.panScale * 0.5f * cos(M_PI * i);
+            }
 
-            for (; i < order; ++i)
+            for (; i < order; ++i) {
                 group.voices[i].pan = 0.5f - group.panScale * 0.5f * cos(M_PI * i);
+            }
 
             group.voices[order / 2].pan = 0.5;
         } else {
-            for (int i = 0; i < order; ++i)
+            for (int i = 0; i < order; ++i) {
                 group.voices[i].pan = 0.5f + group.panScale * 0.5f * cos(M_PI * i);
+            }
         }
     }
 }

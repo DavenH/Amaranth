@@ -21,7 +21,7 @@ void Waveshaper::init() {
     graphicOversampleBuf.resize(getConstant(MaxCyclePeriod) / 2 * maxOversampleFactor);
 
     // 2 for stereo + 1 for graphics, separate for threading
-    for(int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 3; ++i) {
         auto* oversampler = new Oversampler(repo, 16);
         oversampler->setOversampleFactor(1);
         oversamplers.add(oversampler);

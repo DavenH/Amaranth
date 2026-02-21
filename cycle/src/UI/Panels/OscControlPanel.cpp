@@ -29,7 +29,7 @@ void OscControlPanel::init() {
     paramGroup->addSlider(octave = new HSlider(repo, "OCTAVE", "Octave", false));
     paramGroup->addSlider(speed  = new HSlider(repo, "DURATION", "Duration", false));
 
-    for(int i = 0; i < numSliders; ++i) {
+    for (int i = 0; i < numSliders; ++i) {
         paramGroup->setKnobValue(i, 0.5, false, false);
     }
 
@@ -77,7 +77,7 @@ bool OscControlPanel::shouldTriggerGlobalUpdate(Slider* slider) {
 void OscControlPanel::sliderValueChanged(Slider* slider)
 {
     // update the backgrounds;
-    if(slider == speed)
+    if (slider == speed)
     {
         getObj(SynthAudioSource).updateTempoScale();
 
@@ -128,8 +128,9 @@ void OscControlPanel::resized() {
     int sliderHeight = getHeight() - 2 * space;
     int sliderWidth = (getWidth() - 4 * space) * 0.3333f + 0.5f;
 
-    for(int i = 0; i < numSliders; ++i)
+    for (int i = 0; i < numSliders; ++i) {
         hSliders[i]->setBounds(sliderWidth * i + (i + 1) * space, space + topSpacer, sliderWidth, sliderHeight);
+}
 }
 
 void OscControlPanel::writeXML(XmlElement* element) const {

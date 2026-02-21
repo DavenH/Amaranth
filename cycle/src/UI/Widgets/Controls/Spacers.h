@@ -7,18 +7,18 @@ using namespace juce;
 
 class ClearSpacer : public IDynamicSizeComponent
 {
-	bool reducible;
-	bool isVisible;
-	int space, x, y;
-	JUCE_LEAK_DETECTOR(ClearSpacer)
+    bool reducible;
+    bool isVisible;
+    int space, x, y;
+    JUCE_LEAK_DETECTOR(ClearSpacer)
 
 public:
-	explicit ClearSpacer(int space, bool _reducible = true) :
-			reducible(_reducible)
-		, 	space(space)
-		, 	isVisible(true)
-		,	x(0)
-		,	y(0) {
+    explicit ClearSpacer(int space, bool _reducible = true) :
+            reducible(_reducible)
+        , 	space(space)
+        , 	isVisible(true)
+        ,	x(0)
+        ,	y(0) {
     }
 
     ~ClearSpacer() override = default;
@@ -48,13 +48,13 @@ public:
         return x;
     }
 
-	[[nodiscard]] bool isVisibleDlg() const override { return isVisible; }
-	void setVisibleDlg(bool isVisible) override { this->isVisible = isVisible; }
+    [[nodiscard]] bool isVisibleDlg() const override { return isVisible; }
+    void setVisibleDlg(bool isVisible) override { this->isVisible = isVisible; }
 };
 
 class Separator :
-	public IDynamicSizeComponent,
-	public Component {
+    public IDynamicSizeComponent,
+    public Component {
     bool isHorz;
     int x, y;
 
@@ -63,10 +63,10 @@ class Separator :
 public:
     explicit Separator(bool layout);
     [[nodiscard]] int getExpandedSize() const override;
-	[[nodiscard]] int getCollapsedSize() const override;
-	void paint(Graphics& g) override;
-	void setBoundsDelegate(int x, int y, int w, int h) override;
-	Rectangle<int> getBoundsInParentDelegate() const override;
-	int getYDelegate() override;
-	int getXDelegate() override;
+    [[nodiscard]] int getCollapsedSize() const override;
+    void paint(Graphics& g) override;
+    void setBoundsDelegate(int x, int y, int w, int h) override;
+    Rectangle<int> getBoundsInParentDelegate() const override;
+    int getYDelegate() override;
+    int getXDelegate() override;
 };

@@ -106,7 +106,7 @@ void MorphSlider::setDepth(const MouseEvent& e) {
 
     repaint();
 
-    if(dim == getSetting(CurrentMorphAxis)) {
+    if (dim == getSetting(CurrentMorphAxis)) {
         getObj(PlaybackPanel).repaint();
     }
 

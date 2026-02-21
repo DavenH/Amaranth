@@ -4,8 +4,8 @@
 class CleanupCrew
 {
 public:
-	CleanupCrew();
-	virtual ~CleanupCrew();
+    CleanupCrew();
+    virtual ~CleanupCrew();
 };
 
 #endif

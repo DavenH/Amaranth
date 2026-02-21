@@ -51,7 +51,7 @@ void ColorGradient::read(Image& image, bool softerAlpha, bool isTransparent) {
         pixels[pos++] = colour.getGreen();
         pixels[pos++] = colour.getBlue();
 
-        if(isTransparent) {
+        if (isTransparent) {
             pixels[pos++] = std::numeric_limits<unsigned char>::max() * alpha;
         }
     }
@@ -60,12 +60,13 @@ void ColorGradient::read(Image& image, bool softerAlpha, bool isTransparent) {
 void ColorGradient::multiplyAlpha(float alpha) {
     jassert(pixelStride == 4);
 
-    if(pixelStride != 4) {
+    if (pixelStride != 4) {
         return;
     }
 
-    for (auto& colour : colours)
+    for (auto& colour : colours) {
         colour.v[3] = jlimit<float>(0, 1.f, alpha * colour.v[3]);
+}
 
     uint8 maxu8 = std::numeric_limits<unsigned char>::max();
 

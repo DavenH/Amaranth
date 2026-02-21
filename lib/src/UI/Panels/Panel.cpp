@@ -111,7 +111,7 @@ void Panel::render() {
     clear();
     drawBackground();
 
-    if(shouldBakeTextures) {
+    if (shouldBakeTextures) {
         bakeTextures();
     }
 
@@ -119,13 +119,13 @@ void Panel::render() {
 
     preDraw();
 
-    if(! drawLinesAfterFill && drawVerts) {
+    if (! drawLinesAfterFill && drawVerts) {
         drawInterceptLines();
     }
 
     drawCurvesAndSurfaces();
 
-    if(drawLinesAfterFill && drawVerts) {
+    if (drawLinesAfterFill && drawVerts) {
         drawInterceptLines();
     }
 
@@ -155,7 +155,7 @@ void Panel::render() {
 
     drawPencilPath();
 
-    if(actionIs(BoxSelecting)) {
+    if (actionIs(BoxSelecting)) {
         drawSelectionRectangle();
     }
 
@@ -169,11 +169,11 @@ void Panel::constrainZoom() {
     NumberUtils::constrain<float>(rect.x, interactor->vertexLimits[interactor->dims.x]);
     NumberUtils::constrain<float>(rect.y, 0, 1);
 
-    if(rect.y + rect.h > 1) {
+    if (rect.y + rect.h > 1) {
         rect.y = 1 - rect.h;
     }
 
-    if(rect.x + rect.w > rect.xMaximum) {
+    if (rect.x + rect.w > rect.xMaximum) {
         rect.x = rect.xMaximum - rect.w;
     }
 }
@@ -346,7 +346,7 @@ void Panel::highlightSelectedVerts() {
 
         vector<Vertex*>& selected = interactor->getSelected();
 
-        if(selected.empty()) {
+        if (selected.empty()) {
             return;
         }
 
@@ -362,7 +362,7 @@ void Panel::highlightSelectedVerts() {
 
             if (wrapsVerts) {
                 for (int j = 0; j < numElementsInArray(vals); ++j) {
-                    if(vals[j] > 1 && dimArr[j] == Vertex::Phase) {
+                    if (vals[j] > 1 && dimArr[j] == Vertex::Phase) {
                         vals[j] -= 1;
                     }
                 }
@@ -405,7 +405,7 @@ void Panel::drawInterceptsAndHighlightClosest() {
     const vector<Intercept>& intercepts = data.intercepts;
 
     int size = 0;
-    if(intercepts.empty() && interactor->depthVerts.empty()) {
+    if (intercepts.empty() && interactor->depthVerts.empty()) {
         return;
     }
 
@@ -472,7 +472,7 @@ void Panel::drawPencilPath() {
         ScopedLock sl(interactor->getLock());
         vector<Vertex2>& path = interactor->pencilPath;
 
-        if(path.empty()) {
+        if (path.empty()) {
             return;
         }
 
@@ -589,7 +589,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     bool anyDfrmAdjustments = (adjustPhase || adjustAmp) && deformApplicable;
     const Dimensions& dims  = interactor->dims;
 
-    if(! anyDfrmAdjustments && (! adjustSpeed || dims.x == Vertex::Phase)) {
+    if (! anyDfrmAdjustments && (! adjustSpeed || dims.x == Vertex::Phase)) {
         return false;
     }
 
@@ -607,7 +607,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
 
     std::unique_ptr<ScopedLock> sl;
 
-    if(adjustSpeed) {
+    if (adjustSpeed) {
         getObj(PathRepo).getLock().enter();
     }
 
@@ -617,12 +617,12 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     Buffer<float> speedEnv  = scratchContext.panelBuffer;
     Buffer<float> ramp      = cBuffer.withSize(linestripRes);
 
-    if(IDeformer* deformer = interactor->getRasterizer()->getDeformer()) {
+    if (IDeformer* deformer = interactor->getRasterizer()->getDeformer()) {
         phaseTable = deformer->getTable(phaseChan);
         ampTable = deformer->getTable(ampChan);
     }
 
-    if(speedEnv.empty()) {
+    if (speedEnv.empty()) {
         getObj(PathRepo).getLock().exit();
         adjustSpeed = false;
     }
@@ -653,8 +653,9 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
                 xy.y.addProduct(speedEnv, second.y - first.y).add(first.y + redOffset + blueOffset);
             } else {
                 if (scaleX < 0.99f) {
-                    for(int i = 0; i < linestripRes; ++i)
+                    for (int i = 0; i < linestripRes; ++i) {
                         xy.y[i] = speedEnv[int(scaleX * i) + offsetIdx];        // todo Lerp it
+}
                 } else {
                     speedEnv.copyTo(xy.y);
                 }
@@ -684,11 +685,11 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
                     speed = speedEnv[i];
                     idx = int((IDeformer::tableSize - 1) * speed);
 
-                    if(exHasPhase) {
+                    if (exHasPhase) {
                         xy.x[i] = phaseGain * phaseTable[idx] + speed * (second.x - first.x);
                     }
 
-                    if(whyHasAmp) {
+                    if (whyHasAmp) {
                         xy.y[i] = ampGain * ampTable[idx] + speed * (second.y - first.y);
                     }
                 }
@@ -697,16 +698,16 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             linTransX = false; // ! exHasPhase;
             linTransY = false; // ! whyHasAmp;
 
-            if(exHasPhase)
+            if (exHasPhase) {
                 xy.x.add(first.x + redOffset + blueOffset);
-            else {
+            } else {
                 VecOps::mul(speedEnv, second.x - first.x, xy.x);
                 xy.x.add(first.x + redOffset + blueOffset);
             }
 
-            if(whyHasAmp)
+            if (whyHasAmp) {
                 xy.y.add(first.y);
-            else {
+            } else {
                 speedEnv.copyTo(xy.y);
                 xy.y.mul(second.y - first.y).add(first.y);
             }
@@ -715,11 +716,12 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
                 xy.x.downsampleFrom(phaseTable);
                 xy.x.mul(phaseGain);
 
-                if(redOffset + blueOffset != 0.f)
+                if (redOffset + blueOffset != 0.f) {
                     xy.x.add(redOffset + blueOffset);
+}
             }
 
-            if(whyHasAmp) {
+            if (whyHasAmp) {
                 xy.y.downsampleFrom(ampTable);
                 xy.y.mul(ampGain);
             }
@@ -729,7 +731,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             xy.x.add(ramp.ramp(first.x, xSlope));
         }
 
-        if(linTransY) {
+        if (linTransY) {
             xy.y.add(ramp.ramp(first.y, ySlope));
         }
     }
@@ -802,7 +804,7 @@ void Panel::createDeformerTags() {
     position = 0;
     dfrmTags.clear();
 
-    for(int i = 0; i < 32; ++i) {
+    for (int i = 0; i < 32; ++i) {
         String number(i + 1);
         int width = roundToInt(Util::getStringWidth(font, number)) + 1;
         Rectangle r(position, 0, width, (int) font.getHeight());

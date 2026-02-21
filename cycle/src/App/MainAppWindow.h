@@ -7,19 +7,19 @@
 #include <App/SingletonAccessor.h>
 
 class MainAppWindow:
-		public DocumentWindow
-	,	public MessageListener
-	,	public SingletonAccessor
+        public DocumentWindow
+    ,	public MessageListener
+    ,	public SingletonAccessor
 {
 public:
-	explicit MainAppWindow(const String& commandLine);
-	void openFile(const String& commandLine);
-	void closeButtonPressed() override;
-	void maximiseButtonPressed() override;
-	void handleMessage (const Message& message) override;
+    explicit MainAppWindow(const String& commandLine);
+    void openFile(const String& commandLine);
+    void closeButtonPressed() override;
+    void maximiseButtonPressed() override;
+    void handleMessage (const Message& message) override;
 
 private:
-	std::unique_ptr<Initializer> initializer;
+    std::unique_ptr<Initializer> initializer;
 };
 
 #endif

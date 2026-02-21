@@ -5,7 +5,7 @@
 Vertex2 Geometry::getCrossPoint(
         float x1, float x2, float x3, float x4,
         float y1, float y2, float y3, float y4) {
-    if((x1 == x3 && y1 == y3) ||
+    if ((x1 == x3 && y1 == y3) ||
        (x1 == x4 && y1 == y4) ||
        (x2 == x3 && y2 == y3) ||
        (x2 == x4 && y2 == y4)) {
@@ -16,7 +16,7 @@ Vertex2 Geometry::getCrossPoint(
     float d = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
 
     // parallel
-    if(d == 0) {
+    if (d == 0) {
         if (NumberUtils::withinExclusive(x3, x1, x2) || NumberUtils::withinExclusive(x3, x2, x1)) {
             return {x3, y3};
         }
@@ -29,8 +29,9 @@ Vertex2 Geometry::getCrossPoint(
     float r1 = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / d;
     float r2 = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / d;
 
-    if(!NumberUtils::within(r1, 0.f, 1.f) || !NumberUtils::within(r2, 0.f, 1.f))
+    if (!NumberUtils::within(r1, 0.f, 1.f) || !NumberUtils::within(r2, 0.f, 1.f)) {
         return {-1, -1};
+}
 
     return {x1 + r1 * (x2 - x1), y1 + r1 * (y2 - y1)};
 }
@@ -50,8 +51,9 @@ char Geometry::computeDirection(double xi, double yi, double xj, double yj, doub
 int Geometry::doLineSegmentsIntersect(double x1, double x2, double x3, double x4,
                                       double y1, double y2, double y3, double y4) {
     // merely connected at ends
-    if(x1 == x4 && y1 == y4 || x1 == x3 && y1 == y3 || x2 == x4 && y2 == y4 || x2 == x3 && y2 == y3)
+    if (x1 == x4 && y1 == y4 || x1 == x3 && y1 == y3 || x2 == x4 && y2 == y4 || x2 == x3 && y2 == y3) {
         return IntersectAtEnds;
+}
 
     char d1 = computeDirection(x3, y3, x4, y4, x1, y1);
     char d2 = computeDirection(x3, y3, x4, y4, x2, y2);

@@ -20,7 +20,7 @@ public:
 
         std::sort(verts.begin(), verts.end());
 
-        if(cyclic) {
+        if (cyclic) {
             padIcptsWrapped(verts, curves);
         } else {
             padIcpts(verts, curves);
@@ -30,7 +30,7 @@ public:
 
         setResolutionIndices(base);
 
-        for(auto & curve : curves) {
+        for (auto & curve : curves) {
             curve.recalculateCurve();
         }
 
@@ -41,7 +41,7 @@ public:
     void updateCurve(int index, const Intercept& position) {
         jassert(index < curves.size());
 
-        if(index < 1 || index > (int) curves.size() - 2) {
+        if (index < 1 || index > (int) curves.size() - 2) {
             return;
         }
 
@@ -120,7 +120,7 @@ public:
         int waveEnd     = waveIdx;
         int size        = waveEnd - waveStart;
 
-        if(waveEnd == waveX.size()) {
+        if (waveEnd == waveX.size()) {
             --size;
         }
 

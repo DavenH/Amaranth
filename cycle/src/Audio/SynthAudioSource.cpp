@@ -147,7 +147,7 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
             tempMemory[i].ensureSize(numSamples44k);
             tempRendBuffer[i] = tempMemory[i].withSize(numSamples44k);
 
-            if(numSamples44k > 0) {
+            if (numSamples44k > 0) {
                 tempRendBuffer[i].zero(numSamples44k);
             }
         }
@@ -160,10 +160,10 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
     auto& meshLib = getObj(MeshLibrary);
 
     float deltaPerSample = 1.0 / 44100.0 / getObj(OscControlPanel).getLengthInSeconds();
-    for(auto& scratchRast : globalScratch) {
+    for (auto& scratchRast : globalScratch) {
         MeshLibrary::EnvProps* props = meshLib.getEnvProps(LayerGroups::GroupScratch, scratchRast.layerIndex);
 
-        if(props->active && scratchRast.sampleable) {
+        if (props->active && scratchRast.sampleable) {
             scratchRast.rast.renderToBuffer(numSamples, deltaPerSample, 0, *props, 1.f);
         }
     }
@@ -189,19 +189,19 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
 
         for (auto voice : voices) {
             // todo why is this condition necessary? Makes more sense to invert it.
-            if(voice->getCurrentlyPlayingNote() >= 0) {
+            if (voice->getCurrentlyPlayingNote() >= 0) {
                 voice->updateSmoothedParameters(numSamples44k);
                 getObj(MeshLibrary).updateSmoothedParameters(voice->getVoiceIndex(), numSamples44k);
             }
         }
 
-        for(auto postProcessEffect : postProcessEffects) {
+        for (auto postProcessEffect : postProcessEffects) {
             postProcessEffect->process(buffer44k);
         }
 
         volumeScale.update(numSamples44k);
 
-        for(int i = 0; i < buffer.getNumChannels(); ++i) {
+        for (int i = 0; i < buffer.getNumChannels(); ++i) {
             volumeScale.maybeApplyRamp(
                 workBuffer.withSize(numSamples44k),
                 Buffer<float>(buffer44k, i)
@@ -232,7 +232,7 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
 
     float audioLevel = 0;
 
-    for(int i = 0; i < rendBuffer.numChannels; ++i) {
+    for (int i = 0; i < rendBuffer.numChannels; ++i) {
         audioLevel = jmax(audioLevel, outBuffer[i].max());
     }
 
@@ -322,7 +322,7 @@ void SynthAudioSource::calcDeclickEnvelope(double /*samplerate*/) {
     int attackLength 	= (int) ceil(0.00145 * samplerate);
     int releaseLength 	= (int) ceil(0.01 * samplerate);
 
-    if(attackDeclick.size() == attackLength) {
+    if (attackDeclick.size() == attackLength) {
         return;
     }
 
@@ -370,7 +370,7 @@ void SynthAudioSource::calcFades() {
     Range range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
     angleDeltas.resize(range.getLength());
 
-    for(int i = 0; i < range.getLength(); ++i) {
+    for (int i = 0; i < range.getLength(); ++i) {
         angleDeltas[i] = NumberUtils::noteToFrequency(i + getConstant(LowestMidiNote), 0.0);
     }
 }
@@ -409,7 +409,7 @@ void SynthAudioSource::initResampler() {
     Arithmetic::getInputOutputRates(inRate, outRate, sampleRateReal);
 
     /*
-    for(int ch = 0; ch < 2; ++ch)
+    for (int ch = 0; ch < 2; ++ch)
     {
         Resampler& r = sampleRateConverter[ch];
 
@@ -469,7 +469,7 @@ void SynthAudioSource::doAudioThreadUpdates() {
                 }
 
                 case UpdateCycleCachesAction:
-                    if(! voices.size() == 0) {
+                    if (! voices.size() == 0) {
                         voices.getFirst()->updateCycleCaches();
                     }
                     break;
@@ -557,7 +557,7 @@ void SynthAudioSource::updateGlobality() {
 
     rasterizeGlobalEnvs();
 
-    for(auto voice : voices) {
+    for (auto voice : voices) {
         voice->envGlobalityChanged();
     }
 }
@@ -584,7 +584,7 @@ void SynthAudioSource::rasterizeGlobalEnvs() {
 
         scratchRast.sampleable = rast.isSampleable();
 
-        if(scratchRast.sampleable) {
+        if (scratchRast.sampleable) {
             rast.setNoteOn();
         }
     }

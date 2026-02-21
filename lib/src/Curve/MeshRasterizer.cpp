@@ -133,8 +133,10 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
             float x = vertex->values[Vertex::Phase] + oscPhase;
 
             if (cyclic) {
-                while (x >= 1.f) x -= 1.f;
-                while (x < 0.f) x += 1.f;
+                while (x >= 1.f) { x -= 1.f;
+}
+                while (x < 0.f) { x += 1.f;
+}
 
                 jassert(x >= 0.f && x < 1.f);
                 jassert(xMaximum == 1.f && xMinimum == 0.f);
@@ -151,8 +153,9 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
             jassert(intercept.x == intercept.x);
 
             // can be NaN, short circuit here so it doesn't propagate
-            if(!(intercept.y == intercept.y))
+            if (!(intercept.y == intercept.y)) {
                 intercept.y = 0.5f;
+}
 
             switch (scalingType) {
                 case Unipolar:
@@ -237,8 +240,9 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
 
     processIntercepts(icpts);
 
-    if(Util::assignAndWereDifferent(needsResorting, false))
+    if (Util::assignAndWereDifferent(needsResorting, false)) {
         std::sort(icpts.begin(), icpts.end());
+}
 
     int end = icpts.size() - 1;
     if (end < 0) {
@@ -269,11 +273,13 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
     }
 
     if (padAny) {
-        for(int i = 1; i < icpts.size(); ++i)
+        for (int i = 1; i < icpts.size(); ++i) {
             icpts[i].padBefore &= ! icpts[i - 1].padBefore;
+}
 
-        for(int i = 0; i < (int) icpts.size() - 1; ++i)
+        for (int i = 0; i < (int) icpts.size() - 1; ++i) {
             icpts[i].padAfter &= ! icpts[i + 1].padAfter;
+}
     }
 
     if (!calcInterceptsOnly) {
@@ -302,7 +308,7 @@ void MeshRasterizer::calcIntercepts() {
 
 void MeshRasterizer::calcTransferTable() {
     static bool alreadyCalculated = false;
-    if(alreadyCalculated) {
+    if (alreadyCalculated) {
         return;
     }
 
@@ -336,7 +342,7 @@ void MeshRasterizer::restrictIntercepts(vector<Intercept>& intercepts) {
         Intercept& b = intercepts[i];
 
         if (b.adjustedX < a.adjustedX) {
-            if(b.isWrapped == a.isWrapped) {
+            if (b.isWrapped == a.isWrapped) {
                 b.adjustedX = a.adjustedX + 0.0001f;
             }
         }
@@ -351,24 +357,26 @@ void MeshRasterizer::restrictIntercepts(vector<Intercept>& intercepts) {
             Intercept& left = intercepts[i - 1];
             Intercept& right = intercepts[i];
 
-            if(left.x >= right.x)
+            if (left.x >= right.x) {
                 left.x = right.x - 0.0001f;
+}
         }
     }
 
-//    if(intercepts.front().x <= 0)
+//    if (intercepts.front().x <= 0)
     {
         for (int i = 1; i < (int) intercepts.size(); ++i) {
             Intercept& left = intercepts[i - 1];
             Intercept& right = intercepts[i];
 
-            if(right.x <= left.x)
+            if (right.x <= left.x) {
                 right.x = left.x + 0.0001f;
+}
         }
     }
 
   #ifdef _DEBUG
-    for(int i = 0; i < intercepts.size() - 1; ++i)
+    for (int i = 0; i < intercepts.size() - 1; ++i)
     {
         jassert(intercepts[i].x < intercepts[i + 1].x);
     }
@@ -413,8 +421,9 @@ void MeshRasterizer::updateCurves() {
             curve.setShouldInterpolate(false);
         }
     } else {
-        for(auto & curve : curves)
+        for (auto & curve : curves) {
             curve.setShouldInterpolate(! lowResCurves && interpolateCurves);
+}
 
         float baseFactor = lowResCurves ? 0.4f : integralSampling ? 0.05f : 0.1f;
         float base          = baseFactor / float(Curve::resolution);
@@ -435,8 +444,9 @@ void MeshRasterizer::calcWaveform() {
     int res = Curve::resolution / 2;
     int totalRes = 0;
 
-    if(decoupleComponentDfrms)
+    if (decoupleComponentDfrms) {
         deformRegions.clear();
+}
 
     int tableSize = Constants::DeformTableSize;
 
@@ -447,13 +457,14 @@ void MeshRasterizer::calcWaveform() {
         int thisRes     = res >> thisCurve.resIndex;
         int nextRes     = res >> curves[i + 1].resIndex;
 
-        if(cube != nullptr && deformer != nullptr && cube->getCompDfrm() >= 0) {
+        if (cube != nullptr && deformer != nullptr && cube->getCompDfrm() >= 0) {
             int numVerts         = deformer->getTableDensity(cube->getCompDfrm());
             int desiredRes         = thisRes * (int) ((lowResCurves ? 2 : 8) * sqrtf(numVerts) + 0.49f);
             float scaleRatio     = tableSize / float(desiredRes);
 
-            if(curves.size() == 6)
+            if (curves.size() == 6) {
                 scaleRatio /= 2;
+}
 
             int truncRatio         = jlimit(1, 256, int(scaleRatio + 0.5));
             thisCurve.curveRes     = tableSize / truncRatio;
@@ -556,7 +567,7 @@ void MeshRasterizer::calcWaveform() {
             }
         }
 
-        if(cumeRes > 0 && waveX[cumeRes - 1] <= 0 && waveX[cumeRes] > 0) {
+        if (cumeRes > 0 && waveX[cumeRes - 1] <= 0 && waveX[cumeRes] > 0) {
             zeroIndex = cumeRes - 1;
         }
 
@@ -593,8 +604,9 @@ void MeshRasterizer::calcWaveform() {
 
         if (waveX.front() < 0 && waveX.back() > 0) {
             for (int i = 0; i < cumeRes - 1; ++i) {
-                if(waveX[i] <= 0 && waveX[i + 1] > 0)
+                if (waveX[i] <= 0 && waveX[i + 1] > 0) {
                     zeroIndex = i;
+}
             }
         }
     }
@@ -628,7 +640,7 @@ float MeshRasterizer::sampleAt(double angle) {
 float MeshRasterizer::sampleAtDecoupled(double angle, DeformContext& context) {
     float val = sampleAt(angle, context.currentIndex);
 
-    for(auto& region : deformRegions) {
+    for (auto& region : deformRegions) {
         if (NumberUtils::within<float>(angle, region.start.x, region.end.x)) {
             float diff = region.end.x - region.start.x;
 
@@ -662,20 +674,21 @@ float MeshRasterizer::sampleAt(double angle, int& currentIndex) {
     if (currentIndex > 0) {
         while (angle < waveX[currentIndex - 1]) {
             --currentIndex;
-            if(currentIndex == 0)
+            if (currentIndex == 0) {
                 currentIndex = waveX.size() - 1;
+}
         }
     }
 
     while (angle >= waveX[currentIndex]) {
         ++currentIndex;
 
-        if(currentIndex >= (int) waveX.size()) {
+        if (currentIndex >= (int) waveX.size()) {
             currentIndex = 0;
         }
     }
 
-    if(currentIndex == 0) {
+    if (currentIndex == 0) {
         return waveY[0];
     }
 
@@ -722,16 +735,16 @@ float MeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double
 
     int currentIndex = zeroIndex;
 
-    while(accum < waveX[currentIndex] && currentIndex > 0) {
+    while (accum < waveX[currentIndex] && currentIndex > 0) {
         --currentIndex;
     }
-    while(accum >= waveX[currentIndex + 1] && currentIndex < waveX.size()) {
+    while (accum >= waveX[currentIndex + 1] && currentIndex < waveX.size()) {
         ++currentIndex;
     }
 
     jassert(waveX[currentIndex] <= accum && waveX[currentIndex + 1] >= accum);
 
-    if(accum < waveX.front()) {
+    if (accum < waveX.front()) {
         accum = waveX.front();
         currentIndex = 0;
     }
@@ -743,20 +756,20 @@ float MeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double
         prevIdx = currentIndex;
         accum += delta;
 
-        while(accum >= waveX[currentIndex]) {
+        while (accum >= waveX[currentIndex]) {
             ++currentIndex;
         }
 
         --currentIndex;
         diffIdx = currentIndex - prevIdx;
 
-        if(diffIdx == 0) {
+        if (diffIdx == 0) {
             dest[i] = ((accum - halfDiff - waveX[currentIndex]) * slope[currentIndex] + waveY[currentIndex]);
         } else {
             x = accum - delta;
             dest[i] = 0.5f * (slope[prevIdx] * (x - waveX[prevIdx]) + waveY[prevIdx] + waveY[prevIdx + 1]) * (waveX[prevIdx + 1] - x);
 
-            for(int j = 0; j < diffIdx - 1; ++j) {
+            for (int j = 0; j < diffIdx - 1; ++j) {
                 dest[i] += area[prevIdx + j + 1];
             }
 
@@ -769,7 +782,7 @@ float MeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double
 
     phase = accum + halfDiff;
 
-    if(phase > 0.5) {
+    if (phase > 0.5) {
         phase -= 1;
     }
 
@@ -793,7 +806,7 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
     int size = intercepts.size();
     int end = size - 1;
 
-    if(end < 1) {
+    if (end < 1) {
         return;
     }
 
@@ -809,11 +822,11 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
     frontIcpts.emplace_back(intercepts[0]);
 
     for (;;) {
-        if(remainingIters <= 0) {
+        if (remainingIters <= 0) {
             break;
         }
 
-        if(frontier < -interceptPadding) {
+        if (frontier < -interceptPadding) {
             --remainingIters;
         }
 
@@ -838,12 +851,12 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
     backIcpts.emplace_back(intercepts[end - 1]);
     backIcpts.emplace_back(intercepts[end]);
 
-    for(;;) {
-        if(remainingIters <= 0) {
+    for (;;) {
+        if (remainingIters <= 0) {
             break;
         }
 
-        if(frontier > 1.f + interceptPadding) {
+        if (frontier > 1.f + interceptPadding) {
             --remainingIters;
         }
 
@@ -917,7 +930,7 @@ void MeshRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curv
     curves.emplace_back(front1, intercepts[0], intercepts[1]);
 
     jassert(intercepts[0].y == intercepts[0].y);
-    for(int i = 0; i < (int) intercepts.size() - 2; ++i) {
+    for (int i = 0; i < (int) intercepts.size() - 2; ++i) {
         curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
     }
 
@@ -936,7 +949,7 @@ void MeshRasterizer::validateCurves() {
 // NB: set the intercept's adjustedX property rather than x
 // it will be used to re-sort and then assign the x property
 void MeshRasterizer::applyDeformers(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds) {
-    if(icpt.cube == nullptr || deformer == nullptr) {
+    if (icpt.cube == nullptr || deformer == nullptr) {
         return;
     }
 
@@ -968,7 +981,7 @@ void MeshRasterizer::applyDeformers(Intercept& icpt, const MorphPosition& morph,
     float timeMin = reduct.v0.values[Vertex::Time];
     float timeMax = reduct.v1.values[Vertex::Time];
 
-    if(timeMin > timeMax) {
+    if (timeMin > timeMax) {
         std::swap(timeMin, timeMax);
     }
 
@@ -999,8 +1012,8 @@ void MeshRasterizer::applyDeformers(Intercept& icpt, const MorphPosition& morph,
             if (cyclic) {
                 float lastAdjX = icpt.adjustedX;
 
-                while(icpt.adjustedX >= 1.f)     { icpt.adjustedX -= 1.f; }
-                while(icpt.adjustedX < 0.f)     { icpt.adjustedX += 1.f; }
+                while (icpt.adjustedX >= 1.f)     { icpt.adjustedX -= 1.f; }
+                while (icpt.adjustedX < 0.f)     { icpt.adjustedX += 1.f; }
 
                 if (lastAdjX != icpt.adjustedX) {
                     icpt.isWrapped = true;
@@ -1053,7 +1066,7 @@ void MeshRasterizer::cleanUp() {
     backIcpts    .clear();
     deformRegions.clear();
 
-    if(! batchMode) {
+    if (! batchMode) {
         makeCopy();
     }
 
@@ -1144,11 +1157,11 @@ void MeshRasterizer::separateIntercepts(vector<Intercept>& intercepts, float min
         float endSpace = (1 - intercepts.back().x) - minDx;
         float maxSpread = intercepts[0].x + endSpace;
 
-        for(int i = 0; i < size; ++i) {
+        for (int i = 0; i < size; ++i) {
             intercepts[i].x += endSpace;
         }
 
-        if(cumulativeRetract > maxSpread) {
+        if (cumulativeRetract > maxSpread) {
             doFlatten = true;
         }
 
@@ -1216,7 +1229,7 @@ void MeshRasterizer::print(OutputStream& dout) {
     dout << "\n";
 
     dout << "intercepts: " << "\n";
-    for(auto & icpt : icpts) {
+    for (auto & icpt : icpts) {
         dout << icpt.x << "\t" << icpt.y << "\n";
     }
 

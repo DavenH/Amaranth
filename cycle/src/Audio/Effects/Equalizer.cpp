@@ -116,10 +116,10 @@ void Equalizer::updateFilters() {
         updateStates();
 
         /*
-        for(int i = 0; i < numPartitions; ++i)
+        for (int i = 0; i < numPartitions; ++i)
         {
             EqPartition& part = partitions[i];
-            for(int c = 0; c < numEqChannels; ++c)
+            for (int c = 0; c < numEqChannels; ++c)
             {
                 jassert(part.states[c]);
                 ippsIIRSetTaps64f_32f(part.taps[c], part.states[c]);
@@ -169,7 +169,7 @@ void Equalizer::updatePartition(int idx, bool canUpdateTaps) {
             count += tapsPerBiquad;
         }
 
-        //		if(part.states[c] != 0 && canUpdateTaps)
+        //		if (part.states[c] != 0 && canUpdateTaps)
         //			ippsIIRSetTaps64f_32f(part.taps[c], part.states[c]);
     }
 }
@@ -247,8 +247,9 @@ void Equalizer::updateSmoothedParameters(int deltaSamples) {
         part.centreFreq.update(deltaSamples);
         part.gainDB.update(deltaSamples);
 
-        if (part.centreFreq.hasRamp() || part.gainDB.hasRamp())
+        if (part.centreFreq.hasRamp() || part.gainDB.hasRamp()) {
             updatePartition(i, true);
+}
     }
 }
 
@@ -299,7 +300,7 @@ void Equalizer::updateParametersToTarget() {
 //         info("Gain: " << String(part.gainDB.getCurrentValue(), 2) << "\n");
 //         info("Freq: " << String(part.centreFreq.getCurrentValue(), 2) << "\n");
 //
-//         //		for(int j = 0; j < 2; ++j)
+//         //		for (int j = 0; j < 2; ++j)
 //         //		{
 //         //			info("State: " << part.states[j] << "\n");
 //         //			std::cout << ""

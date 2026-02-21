@@ -13,8 +13,9 @@ EffectGuiRegistry::EffectGuiRegistry(SingletonRepo* repo) : SingletonAccessor(re
 bool EffectGuiRegistry::readXML(const XmlElement* topElement) {
     XmlElement* effectsElem = topElement->getChildByName("Effects");
 
-    if (!effectsElem)
+    if (!effectsElem) {
         return false;
+}
 
     Savable* effects[] = {
         &getObj(IrModellerUI),

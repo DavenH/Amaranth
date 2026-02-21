@@ -21,9 +21,9 @@ public:
     T* get()                    { return object;    }
 
     Ref& operator=(T* pointer) {
-        if (object == 0)
+        if (object == 0) {
             object = pointer;
-        else {
+        } else {
             object = pointer;
         }
 

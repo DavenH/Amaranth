@@ -97,7 +97,7 @@ void DeformerPanel::rasterizeAllTables() {
 
     MeshLibrary::LayerGroup& dfrmGroup = meshLib->getLayerGroup(LayerGroups::GroupDeformer);
 
-    for(int i = 0; i < dfrmGroup.size(); ++i) {
+    for (int i = 0; i < dfrmGroup.size(); ++i) {
         Mesh* mesh = dfrmGroup.layers[i].mesh;
 
         rasterizer->cleanUp();
@@ -177,7 +177,7 @@ bool DeformerPanel::isEffectEnabled() const {
 }
 
 void DeformerPanel::buttonClicked(Button* button) {
-    if(button == &panelControls->addRemover.add ||
+    if (button == &panelControls->addRemover.add ||
        button == &panelControls->addRemover.remove)
     {
         bool forceUpdate = false;
@@ -186,15 +186,16 @@ void DeformerPanel::buttonClicked(Button* button) {
         {
             ScopedLock lock(getObj(SynthAudioSource).getLock());
 
-            if(button == &panelControls->addRemover.add) {
+            if (button == &panelControls->addRemover.add) {
                 addNewLayer(false);
             } else if (button == &panelControls->addRemover.remove) {
                 int index = meshLib->getLayerGroup(LayerGroups::GroupDeformer).current;
 
                 {
                     ScopedLock lock(getObj(SynthAudioSource).getLock());
-                    if(index > 0)
+                    if (index > 0) {
                         guideTables.erase(guideTables.begin() + index);
+}
 
                     setGuideBuffers();
 
@@ -213,7 +214,7 @@ void DeformerPanel::buttonClicked(Button* button) {
         getObj(VertexPropertiesPanel).updateComboBoxes();
         panelControls->layerSelector->refresh(forceUpdate);
 
-        if(globalUpdate) {
+        if (globalUpdate) {
             getObj(Updater).update(UpdateSources::SourceWaveform3D);
         }
     }
@@ -306,7 +307,7 @@ void DeformerPanel::layerChanged() {
 void DeformerPanel::updateKnobsImplicit() {
     int currentLayer = meshLib->getLayerGroup(layerType).current;
 
-    if(! isPositiveAndBelow(currentLayer, (int) guideTables.size())) {
+    if (! isPositiveAndBelow(currentLayer, (int) guideTables.size())) {
         return;
     }
 
@@ -389,7 +390,7 @@ bool DeformerPanel::readXML(const XmlElement* element) {
     int numMeshes = meshLib->getLayerGroup(layerType).size();
 
     if (deformerElem != nullptr) {
-        for(auto propsElem : deformerElem->getChildWithTagNameIterator("Properties")) {
+        for (auto propsElem : deformerElem->getChildWithTagNameIterator("Properties")) {
             if (guideTables.size() >= numMeshes) {
                 break;
             }
@@ -399,7 +400,7 @@ bool DeformerPanel::readXML(const XmlElement* element) {
             float phaseLevel 	= propsElem->getDoubleAttribute ("phaseLevel",  0);
             int seed			= propsElem->getIntAttribute	("noiseSeed",  -1);
 
-            if(seed == -1) {
+            if (seed == -1) {
                 seed = random.nextInt(tableSize);
             }
 

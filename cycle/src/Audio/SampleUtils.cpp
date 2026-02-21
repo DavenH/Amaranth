@@ -46,7 +46,7 @@ int SampleUtils::calcFundDelta() {
     int fundDiff = 0;
     int numSamples 	= multisample->size();
 
-    if(numSamples > 3) {
+    if (numSamples > 3) {
         PitchedSample* testSamples[] = {
             multisample->getSampleAt(numSamples / 4),
             multisample->getSampleAt(numSamples / 2),
@@ -59,8 +59,9 @@ int SampleUtils::calcFundDelta() {
         for (int i = 0; i < numElementsInArray(testSamples); ++i) {
             PitchedSample* sample = testSamples[i];
 
-            if(sample == nullptr || sample->fundNote < 10)
+            if (sample == nullptr || sample->fundNote < 10) {
                 continue;
+            }
 
             tracker->setSample(sample);
             tracker->trackPitch();
@@ -102,8 +103,9 @@ void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
     int fundDiff = 0;
     bool noteRangesChanged = false;
 
-    if(isMulti)
+    if (isMulti) {
         fundDiff = calcFundDelta();
+    }
 
     Range midiRange(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
 
@@ -111,7 +113,7 @@ void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
         PitchedSample* sample = i;
 
         if (sample == nullptr || sample->size() == 0) {
-            if(! isMulti) {
+            if (! isMulti) {
                 showConsoleMsg("Wave too short or empty");
             }
 
@@ -138,8 +140,9 @@ void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
         float insecurity = tracker->getConfidence();
 
         if (sample->periods.empty()) {
-            if (!isMulti)
+            if (!isMulti) {
                 showConsoleMsg("Wave too short or empty");
+            }
 
             continue;
         }
@@ -147,8 +150,9 @@ void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
         if (insecurity > 50) {
             sample->createDefaultPeriods();
 
-            if(sample->fundNote < 10)
+            if (sample->fundNote < 10) {
                 sample->fundNote = 41;
+            }
         } else {
             if (!NumberUtils::within<int>(sample->fundNote, midiRange)) {
                 float wavFrequency 	= sample->samplerate / sample->getAveragePeriod();
@@ -167,12 +171,12 @@ void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
 
         multisample->performUpdate(Update);
 
-        if(PitchedSample* current = multisample->getCurrentSample()) {
+        if (PitchedSample* current = multisample->getCurrentSample()) {
             getObj(MidiKeyboard).setAuditionKey(current->fundNote);
         }
     }
 
-    if(invokerIsDialog) {
+    if (invokerIsDialog) {
         getObj(OscControlPanel).setLengthInSeconds(getWavLengthSeconds());
     }
 }
@@ -215,7 +219,7 @@ void SampleUtils::updateMidiNoteNumber(int note) {
         float increment = sample->size() * 0.01f;
         float cume = 0;
 
-        for(int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 100; ++i) {
             PitchFrame frame;
             frame.sampleOffset 	= roundToInt(cume);
             frame.period 		= period;
@@ -265,7 +269,7 @@ void SampleUtils::waveOverlayChanged(bool shouldDrawWave) {
         getObj(SpectrumInter2D).setClosestHarmonic(0);
         getObj(EnvelopeInter2D).waveOverlayChanged();
 
-        if(shouldDrawWave) {
+        if (shouldDrawWave) {
             showImportant(getObj(Directories).getLoadedWavePath());
         }
 

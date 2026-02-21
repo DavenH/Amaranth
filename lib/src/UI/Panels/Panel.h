@@ -117,8 +117,9 @@ public:
         xy.x = xBuffer.withSize(size);
         xy.y = yBuffer.withSize(size);
 
-        if(colorSize > 0)
+        if (colorSize > 0) {
             cBuffer.ensureSize(colorSize);
+}
     }
 
     template<class T>
@@ -130,8 +131,9 @@ public:
         xy.x = xBuffer.withSize(size);
         xy.y = yBuffer.withSize(size);
 
-        for(int i = 0; i < size; ++i)
+        for (int i = 0; i < size; ++i) {
             xy.set(i, vec[i]);
+}
     }
 
     /* ----------------------------------------------------------------------------- */

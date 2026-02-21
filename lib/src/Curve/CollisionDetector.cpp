@@ -24,7 +24,7 @@ CollisionDetector::CollisionDetector(SingletonRepo* repo, CollisionDim nonInters
 }
 
 void CollisionDetector::update(Mesh* mesh) {
-    if(! enabled) {
+    if (! enabled) {
         return;
     }
 
@@ -35,13 +35,13 @@ void CollisionDetector::update(Mesh* mesh) {
     uniqueMeshCubes.reserve(numMeshCubes);
 
     for (auto& it : mesh->getCubes()) {
-        if(selectedLines.find(it) != selectedLines.end()) {
+        if (selectedLines.find(it) != selectedLines.end()) {
             uniqueMeshCubes.push_back(it);
         }
     }
 
     // nothing to collide with
-    if(numSelectedLines == 0 || uniqueMeshCubes.size() <= 1) {
+    if (numSelectedLines == 0 || uniqueMeshCubes.size() <= 1) {
         return;
     }
 
@@ -81,7 +81,7 @@ void CollisionDetector::update(Mesh* mesh) {
         ++index;
     }
 
-    for(int i = 0; i < numIndepDims; ++i) {
+    for (int i = 0; i < numIndepDims; ++i) {
         sliceSpacings[i] = sliceSpacing * (selectMaxima[i] - selectMinima[i]);
     }
 
@@ -122,8 +122,9 @@ void CollisionDetector::setCurrentSelection(Mesh* mesh, VertCube* lineCube) {
 void CollisionDetector::setCurrentSelection(Mesh* mesh, const vector<Vertex*>& verts) {
     selectedLines.clear();
 
-    for (auto vert : verts)
+    for (auto vert : verts) {
         addLinesToSet(selectedLines, vert);
+}
 
     update(mesh);
 }
@@ -183,7 +184,7 @@ bool CollisionDetector::validate() {
     int numDim2Slices = timeIsApplicable ? dimSlices : 1;
     int dimIdx         = nonIntersectingDim;
 
-//    for(int dimIdx = 0; dimIdx < numIndepDims; ++dimIdx)
+//    for (int dimIdx = 0; dimIdx < numIndepDims; ++dimIdx)
 //    {
     axes[dimIdx] = 0; //???
 
@@ -209,19 +210,19 @@ bool CollisionDetector::validate() {
                     float xxx = meshVerts[baseIndexL + nDims * 3 + dimAfter];
                     float xxy = meshVerts[baseIndexL + nDims * 3 + dim2After];
 
-                    if(nnx < xxx)    { x1 = nnx; x2 = xxx; }
+                    if (nnx < xxx)    { x1 = nnx; x2 = xxx; }
                     else             { x1 = xxx; x2 = nnx; }
 
-                    if(nny < xxy)    { y1 = nny; y2 = xxy; }
+                    if (nny < xxy)    { y1 = nny; y2 = xxy; }
                     else             { y1 = xxy; y2 = nny; }
 
-                    if(x2 == 1.f)    { x2 += 0.000001f;    }
-                    if(y2 == 1.f)    { y2 += 0.000001f;    }
+                    if (x2 == 1.f)    { x2 += 0.000001f;    }
+                    if (y2 == 1.f)    { y2 += 0.000001f;    }
 
                     meshLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     meshLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
-                    if(! meshLineIsInSlice) {
+                    if (! meshLineIsInSlice) {
                         continue;
                     }
 
@@ -230,19 +231,19 @@ bool CollisionDetector::validate() {
                     xxx = meshVerts[baseIndexL + nDims * 7 + dimAfter];
                     xxy = meshVerts[baseIndexL + nDims * 7 + dim2After];
 
-                    if(nnx < xxx)    { x1 = nnx; x2 = xxx; }
+                    if (nnx < xxx)    { x1 = nnx; x2 = xxx; }
                     else             { x1 = xxx; x2 = nnx; }
 
-                    if(nny < xxy)    { y1 = nny; y2 = xxy; }
+                    if (nny < xxy)    { y1 = nny; y2 = xxy; }
                     else             { y1 = xxy; y2 = nny; }
 
-                    if(x2 == 1.f)    { x2 += 0.000001f;    }
-                    if(y2 == 1.f)    { y2 += 0.000001f;    }
+                    if (x2 == 1.f)    { x2 += 0.000001f;    }
+                    if (y2 == 1.f)    { y2 += 0.000001f;    }
 
                     meshLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     meshLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
-                    if(! meshLineIsInSlice) {
+                    if (! meshLineIsInSlice) {
                         continue;
                     }
 
@@ -251,19 +252,19 @@ bool CollisionDetector::validate() {
                     xxx = selectedVerts[baseIndexM + nDims * 3 + dimAfter];
                     xxy = selectedVerts[baseIndexM + nDims * 3 + dim2After];
 
-                    if(nnx < xxx)    { x1 = nnx; x2 = xxx; }
+                    if (nnx < xxx)    { x1 = nnx; x2 = xxx; }
                     else             { x1 = xxx; x2 = nnx; }
 
-                    if(nny < xxy)    { y1 = nny; y2 = xxy; }
+                    if (nny < xxy)    { y1 = nny; y2 = xxy; }
                     else             { y1 = xxy; y2 = nny; }
 
-                    if(x2 == 1.f)    { x2 += 0.000001f;    }
-                    if(y2 == 1.f)    { y2 += 0.000001f;    }
+                    if (x2 == 1.f)    { x2 += 0.000001f;    }
+                    if (y2 == 1.f)    { y2 += 0.000001f;    }
 
                     selectedLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     selectedLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
-                    if(! selectedLineIsInSlice) {
+                    if (! selectedLineIsInSlice) {
                         continue;
                     }
 
@@ -272,19 +273,19 @@ bool CollisionDetector::validate() {
                     xxx = selectedVerts[baseIndexM + nDims * 7 + dimAfter];
                     xxy = selectedVerts[baseIndexM + nDims * 7 + dim2After];
 
-                    if(nnx < xxx)    { x1 = nnx; x2 = xxx; }
+                    if (nnx < xxx)    { x1 = nnx; x2 = xxx; }
                     else             { x1 = xxx; x2 = nnx; }
 
-                    if(nny < xxy)    { y1 = nny; y2 = xxy; }
+                    if (nny < xxy)    { y1 = nny; y2 = xxy; }
                     else             { y1 = xxy; y2 = nny; }
 
-                    if(x2 == 1.f)    { x2 += 0.000001f;    }
-                    if(y2 == 1.f)    { y2 += 0.000001f;    }
+                    if (x2 == 1.f)    { x2 += 0.000001f;    }
+                    if (y2 == 1.f)    { y2 += 0.000001f;    }
 
                     selectedLineIsInSlice = (xDimValue >= x1 && xDimValue < x2);
                     selectedLineIsInSlice &= ! timeIsApplicable || (yDimValue >= y1 && yDimValue < y2);
 
-                    if(! selectedLineIsInSlice) {
+                    if (! selectedLineIsInSlice) {
                         continue;
                     }
 

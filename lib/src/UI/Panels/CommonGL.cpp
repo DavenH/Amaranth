@@ -38,8 +38,9 @@ void CommonGL::disableSmoothing() {
 }
 
 void CommonGL::enableSmoothing() {
-    if (parent->smoothLines)
+    if (parent->smoothLines) {
         glEnable(GL_LINE_SMOOTH);
+}
 }
 
 void CommonGL::drawPoint(float size, Vertex2 point, bool scale) {
@@ -61,8 +62,9 @@ void CommonGL::drawPoints(float pointSize, BufferXY& xy, bool scale) {
 
     ScopedElement glPoint(GL_POINTS);
 
-    for (int i = 0; i < xy.size(); ++i)
+    for (int i = 0; i < xy.size(); ++i) {
         glVertex2f(xy.x[i], xy.y[i]);
+}
 }
 
 void CommonGL::drawLine(float x1, float y1, float x2, float y2,

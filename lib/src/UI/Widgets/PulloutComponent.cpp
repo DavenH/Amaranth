@@ -41,14 +41,14 @@ void BoxComp::setHorizontal(bool isHorizontal) {
 
 void BoxComp::mouseEnter(const MouseEvent& e) {
 #ifndef JUCE_MAC
-//  if(e.originalComponent == this)
+//  if (e.originalComponent == this)
     enterDlg();
 #endif
 }
 
 void BoxComp::mouseExit(const MouseEvent& e) {
 #ifndef JUCE_MAC
-//  if(e.originalComponent == this)
+//  if (e.originalComponent == this)
     exitDlg();
 #endif
 }

@@ -69,14 +69,14 @@ void IconButton::paintButton(Graphics& g, bool mouseOver, bool buttonDown) {
     Image copy = neut;
 
     if (applicable) {
-        if(highlit) {
+        if (highlit) {
             getObj(MiscGraphics).drawHighlight(g, Rectangle<float>(0, 0, 24, 24));
         }
 
         getObj(MiscGraphics).applyMouseoverHighlight(g, copy, mouseOver, buttonDown, pendingNumber > 0);
     }
 
-    if(! applicable) {
+    if (! applicable) {
         g.setOpacity(0.4f);
     }
 
@@ -105,8 +105,9 @@ void IconButton::mouseEnter(const MouseEvent& e) {
 }
 
 void IconButton::mouseDrag(const MouseEvent& e) {
-    if (e.mods.isRightButtonDown())
+    if (e.mods.isRightButtonDown()) {
         return;
+}
 
     if (applicable) {
         Button::mouseDrag(e);
@@ -128,8 +129,9 @@ void IconButton::mouseDown(const MouseEvent& e) {
 }
 
 void IconButton::setApplicable(bool applicable) {
-    if (applicable == this->applicable)
+    if (applicable == this->applicable) {
         return;
+}
 
     this->applicable = applicable;
 //  setEnabled(applicable);

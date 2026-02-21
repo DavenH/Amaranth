@@ -82,7 +82,7 @@ IrModellerUI::IrModellerUI(SingletonRepo* repo) :
 
     gainSlider->setStringFunctions(decibel30, decibel30.withPostString(" dB"));
 
-    for(auto& slider : sliders)	{
+    for (auto& slider : sliders)	{
         paramGroup->addSlider(slider);
     }
 
@@ -174,7 +174,7 @@ void IrModellerUI::setMeshAndUpdate(Mesh* mesh, bool doRepaint) {
     irModeller->setMesh(mesh);
     irModeller->setPendingAction(IrModeller::rasterize);
 
-    if(doRepaint) {
+    if (doRepaint) {
         repaint();
     }
 }
@@ -187,7 +187,7 @@ void IrModellerUI::preDraw() {
     Buffer<float> mags 		= irModeller->getMagnitudes();
     Buffer<float> impulse 	= irModeller->getGraphicImpulse();
 
-    if(mags.size() == 0) {
+    if (mags.size() == 0) {
         return;
     }
 
@@ -246,7 +246,7 @@ void IrModellerUI::preDraw() {
 
     vector<Color> colors;
 
-    for(int i = 0; i < yScale.size(); ++i) {
+    for (int i = 0; i < yScale.size(); ++i) {
         colors.push_back(grd[indices[i]]);
     }
 
@@ -307,7 +307,7 @@ bool IrModellerUI::updateDsp(int knobIndex, double knobValue, bool doFurtherUpda
     didChange &= doFurtherUpdate;
 
     if (didChange) {
-        if(knobIndex == IrModeller::Length) {
+        if (knobIndex == IrModeller::Length) {
             pendingScaleUpdate = true;
         }
 
@@ -357,7 +357,7 @@ void IrModellerUI::buttonClicked(Button* button) {
         }
     }
 
-    if(button != &panelControls->enableCurrent) {
+    if (button != &panelControls->enableCurrent) {
         repaint();
     }
 }
@@ -465,7 +465,7 @@ void IrModellerUI::modelLoadedWave()
 {
     PitchedSample& wav = irModeller->getWrapper();
 
-    if(wav.audio.size() < 64) {
+    if (wav.audio.size() < 64) {
         return;
     }
 
@@ -519,13 +519,13 @@ void IrModellerUI::loadWaveFile() {
 void IrModellerUI::deconvolve() {
     PitchedSample* wav = getObj(Multisample).getCurrentSample();
 
-    if(wav == nullptr) {
+    if (wav == nullptr) {
         return;
     }
 
     float position = getObj(PlaybackPanel).getProgress();
 
-    if(wav->periods.size() < 2) {
+    if (wav->periods.size() < 2) {
         return;
     }
 
@@ -612,7 +612,7 @@ void IrModellerUI::deconvolve() {
     timeRast.setScalingMode(MeshRasterizer::Bipolar);
     timeRast.calcCrossPoints();
 
-    if(! timeRast.isSampleable())
+    if (! timeRast.isSampleable())
     {
         showConsoleMsg("A waveshape must be defined");
         return;
@@ -651,7 +651,7 @@ void IrModellerUI::deconvolve() {
     float scaleFactor = pow2Size / float(cycSize);
     Mesh* mesh = getMesh();
 
-    for(auto& vert : mesh->getVerts()) {
+    for (auto& vert : mesh->getVerts()) {
         float& phase = vert->values[Vertex::Phase];
         phase = (phase - getConstant(IrModellerPadding)) * scaleFactor + getConstant(IrModellerPadding);
     }
@@ -722,7 +722,7 @@ void IrModellerUI::createScales() {
         int samples = roundToInt(size * x);
 
         String text;
-        if(samples > 800) {
+        if (samples > 800) {
             text = String(roundToInt(samples * 0.001f)) + "k";
         } else {
             text = String(samples);

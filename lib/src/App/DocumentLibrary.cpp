@@ -49,7 +49,7 @@ void DocumentLibrary::readDocuments(const String& dir) {
                 continue;
             }
 
-            if(ratingsMap.contains(code)) {
+            if (ratingsMap.contains(code)) {
                 details.setRating(ratingsMap[code]);
             }
 
@@ -92,7 +92,7 @@ bool DocumentLibrary::readSettingsFile() {
         for (auto &allDoc : allDocs) {
             int code = allDoc.getKey().hashCode();
 
-            if(allDoc.getRating() > 0.f) {
+            if (allDoc.getRating() > 0.f) {
                 ratingsMap.set(code, allDoc.getRating());
             }
         }
@@ -100,31 +100,31 @@ bool DocumentLibrary::readSettingsFile() {
         settingsArePending = true;
     } else {
         if (XmlElement* ratingsElem = elem->getChildByName("Ratings")) {
-            for(auto ratingElem : ratingsElem->getChildWithTagNameIterator("Rating")) {
+            for (auto ratingElem : ratingsElem->getChildWithTagNameIterator("Rating")) {
                 int code    = ratingElem->getIntAttribute("code", 0);
                 float value = ratingElem->getDoubleAttribute("value", 0);
 
-                if(code != 0) {
+                if (code != 0) {
                     ratingsMap.set(code, value);
                 }
             }
         }
 
         if (XmlElement* dismissed = elem->getChildByName("Dismissed")) {
-            for(auto dissedElem : dismissed->getChildWithTagNameIterator("Dismissal")) {
+            for (auto dissedElem : dismissed->getChildWithTagNameIterator("Dismissal")) {
                 int code = dissedElem->getIntAttribute("code", 0);
 
-                if(code != 0) {
+                if (code != 0) {
                     dismissedSet.insert(code);
                 }
             }
         }
 
         if (XmlElement* downloaded = elem->getChildByName("DownloadedPresets")) {
-            for(auto dldElem : downloaded->getChildWithTagNameIterator("Download")) {
+            for (auto dldElem : downloaded->getChildWithTagNameIterator("Download")) {
                 int code = dldElem->getIntAttribute("code", 0);
 
-                if(code != 0) {
+                if (code != 0) {
                     downloadedSet.insert(code);
                 }
             }
@@ -189,11 +189,11 @@ void DocumentLibrary::writeSettingsFile() {
 
         File file(filename);
 
-        if(file.existsAsFile()) {
+        if (file.existsAsFile()) {
             (void) file.deleteFile();
         }
 
-        if(! file.create().wasOk()) {
+        if (! file.create().wasOk()) {
             return;
         }
 

@@ -165,14 +165,14 @@ void CommonGfx::drawFinalSelection() {
 
         #if USE_CORNERS
             }
-            else if(corner % 4 == 1)
+            else if (corner % 4 == 1)
             {
                 d[0] = Vertex2(0, 1.6f);
                 d[1] = Vertex2(-1.6f, 0);
                 d[2] = Vertex2(1.6f, 0);
                 d[3] = Vertex2(0, -1.6f);
             }
-            else if(corner % 4 == 3)
+            else if (corner % 4 == 3)
             {
                 d[0] = Vertex2(0, -1.6f);
                 d[1] = Vertex2(-1.6f, 0);

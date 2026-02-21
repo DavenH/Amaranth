@@ -10,39 +10,39 @@ TEST_CASE("VecOps::zero", "[vecops]") {
     SECTION("Float32 array zeroing") {
         const int size = 100;
         auto* data = allocate<Float32>(size);
-        
+
         // Fill with non-zero values
         for (int i = 0; i < size; ++i) {
             data[i] = static_cast<Float32>(i + 1);
         }
-        
+
         zero(data, size);
-        
+
         for (int i = 0; i < size; ++i) {
             REQUIRE(data[i] == 0.0f);
         }
-        
+
         deallocate(data);
     }
-    
+
     SECTION("Float64 array zeroing") {
         const int size = 100;
         auto* data = allocate<Float64>(size);
-        
+
         // Fill with non-zero values
         for (int i = 0; i < size; ++i) {
             data[i] = static_cast<Float64>(i + 1);
         }
-        
+
         zero(data, size);
-        
+
         for (int i = 0; i < size; ++i) {
             REQUIRE(data[i] == 0.0);
         }
-        
+
         deallocate(data);
     }
-    
+
     SECTION("Zero-length array") {
         Float32* data = nullptr;
         REQUIRE_NOTHROW(zero(data, 0));
@@ -54,40 +54,40 @@ TEST_CASE("VecOps::copy", "[vecops]") {
         const int size = 100;
         auto* src = allocate<Float32>(size);
         auto* dst = allocate<Float32>(size);
-        
+
         for (int i = 0; i < size; ++i) {
             src[i] = static_cast<Float32>(i);
         }
-        
+
         copy(src, dst, size);
-        
+
         for (int i = 0; i < size; ++i) {
             REQUIRE(dst[i] == src[i]);
         }
-        
+
         deallocate(src);
         deallocate(dst);
     }
-    
+
     SECTION("Int16s array copying") {
         const int size = 100;
         auto* src = allocate<Int16s>(size);
         auto* dst = allocate<Int16s>(size);
-        
+
         for (int i = 0; i < size; ++i) {
             src[i] = static_cast<Int16s>(i);
         }
-        
+
         copy(src, dst, size);
-        
+
         for (int i = 0; i < size; ++i) {
             REQUIRE(dst[i] == src[i]);
         }
-        
+
         deallocate(src);
         deallocate(dst);
     }
-    
+
     SECTION("Zero-length array") {
         Float32* src = nullptr;
         Float32* dst = nullptr;
@@ -123,72 +123,72 @@ TEST_CASE("VecOps buffer operations", "[vecops]") {
         deallocate(dataB);
         deallocate(result);
     };
-    
+
     SECTION("Buffer addition") {
         beforeEach(
             [](int i) { return i; },
             [](int i) { return i * 2; }
         );
         add(srcA, srcB, dst);
-        
+
         for (int i = 0; i < dst.size(); ++i) {
             REQUIRE(dst[i] == Catch::Approx(i + i * 2));
         }
 
         afterEach();
     }
-    
+
     SECTION("Buffer subtraction") {
         beforeEach(
             [](int i) { return i * 3 ; },
             [](int i) { return i; }
         );
-        
+
         sub(srcA, srcB, dst);
-        
+
         for (int i = 0; i < dst.size(); ++i) {
             REQUIRE(dst[i] == Catch::Approx(i * 2));
         }
 
         afterEach();
     }
-    
+
     SECTION("Buffer multiplication") {
         beforeEach(
             [](int i) { return i + 1; },
             [](int i) { return 2; }
         );
-        
+
         mul(srcA, srcB, dst);
-        
+
         for (int i = 0; i < dst.size(); ++i) {
             REQUIRE(dst[i] == Catch::Approx((i + 1) * 2));
         }
 
         afterEach();
     }
-    
+
     SECTION("Buffer division") {
         beforeEach(
             [](int i) { return (i + 1) * 2; },
             [](int i) { return 2; }
         );
-        
+
         div(srcA, srcB, dst);
-        
+
         for (int i = 0; i < dst.size(); ++i) {
             REQUIRE(dst[i] == Catch::Approx(i + 1));
         }
 
         afterEach();
     }
-    
+
     SECTION("Division by zero handling") {
         beforeEach(
             [](int i) { return 1; },
             [](int i) { return 0; }
         );
-        
+
         // Should not crash, but results may be undefined
         REQUIRE_NOTHROW(div(srcA, srcB, dst));
         afterEach();
@@ -275,7 +275,7 @@ TEST_CASE("VecOps buffer K operations", "[vecops]") {
             [](int i) { return (i + 1); }
         );
 
-        for(int i = 0; i < 10; ++i) {
+        for (int i = 0; i < 10; ++i) {
             dst[i] = 1.0;
         }
 
@@ -317,7 +317,7 @@ TEST_CASE("VecOps Complex32 operations", "[vecops]") {
         deallocate(dataB);
         deallocate(result);
     };
-    
+
     SECTION("Complex32 addition") {
         beforeEach(
             [](int i) { return makeComplex((float)i, (float)i); },
@@ -325,7 +325,7 @@ TEST_CASE("VecOps Complex32 operations", "[vecops]") {
         );
 
         add(srcA, srcB, dst);
-        
+
         for (int i = 0; i < size; ++i) {
             REQUIRE(real(dst[i]) == Catch::Approx(i + 1.0f));
             REQUIRE(imag(dst[i]) == Catch::Approx(i + 2.0f));

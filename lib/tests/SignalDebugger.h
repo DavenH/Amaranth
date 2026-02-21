@@ -361,7 +361,7 @@ public:
         float columnWidth = static_cast<float>(plotArea.getWidth()) / sample.periods.size();
 
         int i = 0;
-        for(auto& frame : sample.periods) {
+        for (auto& frame : sample.periods) {
             float xPos = plotArea.getX() + i++ * columnWidth;
 
             int startSample  = frame.sampleOffset;
@@ -411,11 +411,11 @@ public:
     }
 
     void addBufferToGrid(const String& label, const Buffer<float>& data) {
-        if(! dataMap.contains(label)) {
+        if (! dataMap.contains(label)) {
             dataMap.set(label, PlotData());
         }
         PlotData& plotData = dataMap.getReference(label);
-        if(! workBuffer.hasSizeFor(data.size()) || plotData.gridData.size() >= config.width) {
+        if (! workBuffer.hasSizeFor(data.size()) || plotData.gridData.size() >= config.width) {
             plotHeatmap(label);
             workBuffer.resetPlacement();
         }

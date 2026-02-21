@@ -6,7 +6,7 @@
 
 
 bool Util::saveXml(const File& file, const Savable* savable, const String& name) {
-    if(file.existsAsFile()) {
+    if (file.existsAsFile()) {
         (void) file.deleteFile();
     }
 
@@ -16,7 +16,7 @@ bool Util::saveXml(const File& file, const Savable* savable, const String& name)
     String filedata = topelem->toString();
     std::unique_ptr<FileOutputStream> outStream = file.createOutputStream();
 
-    if(! outStream) {
+    if (! outStream) {
         return false;
     }
 
@@ -36,7 +36,7 @@ bool Util::readXml(const File& file, Savable* savable, const String& name) {
     XmlDocument presetDoc(presetDocString);
     std::unique_ptr topelem(presetDoc.getDocumentElement());
 
-    if(topelem == nullptr) {
+    if (topelem == nullptr) {
         return false;
     }
 
@@ -132,14 +132,14 @@ int Util::extractPitchFromFilename(const String& str, bool useWeakMatch) {
     }
 
     int midiNote = 0;
-    for(int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 5; ++i) {
         midiNote = jmax(midiNote, noteCodeMap[str.getLastCharacters(i + 2)]);
     }
 
     if (midiNote == 0 && str.containsAnyOf("CDEFGABH#cdefgabh")) {
         midiNote = findKey(noteCodeMap, str);
 
-        if(midiNote == 0 && useWeakMatch) {
+        if (midiNote == 0 && useWeakMatch) {
             midiNote = findKey(weakCodeMap, str);
         }
     }
@@ -157,7 +157,7 @@ int Util::pitchAwareComparison(const String& a, const String& b) {
     for (const auto& i : tokensA) {
         for (const auto& j : tokensB) {
             if (i == j) {
-                if(i.length() > jmax(1, common.length())) {
+                if (i.length() > jmax(1, common.length())) {
                     common = i;
                 }
             }
@@ -203,14 +203,14 @@ vector<int> Util::getIntegersInString(const String& str) {
 
         if (NumberUtils::within<juce_wchar>(ch, '0', '9')) {
             start = i;
-            while(i < str.length() && NumberUtils::within<juce_wchar>(str[i], '0', '9')) {
+            while (i < str.length() && NumberUtils::within<juce_wchar>(str[i], '0', '9')) {
                 ++i;
             }
 
             String sub(str.substring(start, i));
             int val = sub.getIntValue();
 
-            if(val > 0) {
+            if (val > 0) {
                 ints.push_back(val);
             }
         }

@@ -1,9 +1,9 @@
 #include "Spacers.h"
 
 Separator::Separator(bool layout)
-	:	isHorz(layout)
-	,	x(0)
-	, 	y(0) {
+    :	isHorz(layout)
+    ,	x(0)
+    , 	y(0) {
 }
 
 int Separator::getExpandedSize() const {

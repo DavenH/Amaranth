@@ -31,23 +31,24 @@ public:
 
     void mouseMove(const MouseEvent& e)
     {
-        if(! comp->isVisible())
+        if (! comp->isVisible()) {
             return;
+}
 
         const Point<int> globalMousePos (Desktop::getMousePosition());
         const Point<int> localMousePos (comp->getLocalPoint (nullptr, globalMousePos));
 
         const uint32 now = Time::getMillisecondCounter();
 
-        if(Util::assignAndWereDifferent(isOver, comp->reallyContains (localMousePos, true)))
+        if (Util::assignAndWereDifferent(isOver, comp->reallyContains (localMousePos, true)))
         {
-            if(isOver)
+            if (isOver)
             {
                 startTimer(10);
             }
             else
             {
-                if(tempComponent != nullptr)
+                if (tempComponent != nullptr)
                 {
                     tempComponent->setMouseCursor(tempCursor);
                 }
@@ -61,7 +62,7 @@ public:
     {
         tempComponent = Desktop::getInstance().getMainMouseSource().getComponentUnderMouse();
 
-        if(tempComponent != nullptr)
+        if (tempComponent != nullptr)
         {
             tempCursor = tempComponent->getMouseCursor();
             tempComponent->setMouseCursor(MouseCursor::PointingHandCursor);

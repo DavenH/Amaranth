@@ -43,7 +43,7 @@ public:
 
         Label* editors[] = { &nameEditor, &folderEditor };
 
-        for(auto& editor : editors) {
+        for (auto& editor : editors) {
             editor->setColour(Label::textColourId, 		Colour::greyLevel(0.95f));
             editor->setColour(Label::outlineColourId, 	Colour(180, 190, 240));
             editor->setWantsKeyboardFocus(true);
@@ -96,7 +96,7 @@ public:
     void buttonClicked(Button* button) override {
         jassert(button == &saveButton);
 
-        if(! nameEditor.getText().containsNonWhitespaceChars()) {
+        if (! nameEditor.getText().containsNonWhitespaceChars()) {
             showImportant("Please enter a name");
             return;
         }
@@ -104,7 +104,7 @@ public:
         String folderPath = savePath + getCurrentFolder();
         File folderFile(folderPath);
 
-        if(! folderFile.exists()) {
+        if (! folderFile.exists()) {
             if (folderFile.createDirectory().failed()) {
                 showCritical("Problem creating directory");
                 return;
@@ -112,7 +112,7 @@ public:
         }
 
         const String& filename(folderPath + getCurrentFilename());
-        if(! Util::saveXml(File(filename), selector->getCurrentClientMesh(), "MeshPreset")) {
+        if (! Util::saveXml(File(filename), selector->getCurrentClientMesh(), "MeshPreset")) {
             showCritical("Problem saving mesh");
         }
 
@@ -122,8 +122,9 @@ public:
     String getCurrentFilename() {
         String editorText = nameEditor.getText();
 
-        if(! editorText.endsWith(extension))
+        if (! editorText.endsWith(extension)) {
             editorText += String(".") + extension;
+}
 
         return editorText;
     }
@@ -241,14 +242,14 @@ public:
         parentUserFile.findChildFiles(categories, File::findDirectories, false, "*");
 
         StringArray uniqueCategs;
-        for(auto&& categorie : categories) {
+        for (auto&& categorie : categories) {
             uniqueCategs.addIfNotAlreadyThere(categorie.getFileName());
         }
 
         uniqueCategs.sort(true);
 
         menu.clear();
-        if(saveAtTop) {
+        if (saveAtTop) {
             addNonSelectionItems(menu, saveAtTop);
         }
 
@@ -265,25 +266,25 @@ public:
             PopupMenu subMenu;
             bool containsAny = addFilesInDirectory(userCateg, subMenu);
 
-            if(containsAny) {
+            if (containsAny) {
                 subMenu.addSeparator();
             }
 
             containsAny |= addFilesInDirectory(categ, subMenu);
 
-            if(containsAny) {
+            if (containsAny) {
                 menu.addSubMenu(category, subMenu, true, Image(), false);
             }
         }
 
-        if(! saveAtTop) {
+        if (! saveAtTop) {
             addNonSelectionItems(menu, saveAtTop);
         }
     }
 
     void addNonSelectionItems(PopupMenu& menu, bool atTop)
     {
-        if(! atTop) {
+        if (! atTop) {
             menu.addSeparator();
         }
 
@@ -294,11 +295,11 @@ public:
         menu.addItem(MeshCopy, 	"Copy",  true, false, Image());
         menu.addItem(MeshPaste, "Paste", true, false, Image());
 
-        if(meshDoubleApplic) {
+        if (meshDoubleApplic) {
             menu.addItem(MeshDouble, "Double", true, false, Image());
         }
 
-        if(atTop) {
+        if (atTop) {
             menu.addSeparator();
         }
     }
@@ -311,7 +312,7 @@ public:
         Array<File> results;
         child.findChildFiles(results, File::findFiles, false, String("*.") + extension);
 
-        if(results.size() == 0) {
+        if (results.size() == 0) {
             return false;
         }
 
@@ -336,11 +337,11 @@ public:
 
             mesh->readXML(meshElem.get());
 
-            if(updateMeshVersion) {
+            if (updateMeshVersion) {
                 mesh->updateToVersion(getRealConstant(ProductVersion));
             }
 
-            for(auto& cube : mesh->getCubes()) {
+            for (auto& cube : mesh->getCubes()) {
                 cube->resetProperties();
             }
 
@@ -419,7 +420,7 @@ public:
             default: {
                 jassert(itemId > 0);
 
-                if(itemId <= 0) {
+                if (itemId <= 0) {
                     return;
                 }
 
@@ -436,11 +437,11 @@ public:
 
                 mesh->readXML(meshElem.get());
 
-                if(updateMeshVersion) {
+                if (updateMeshVersion) {
                     mesh->updateToVersion(getRealConstant(ProductVersion));
                 }
 
-                for(auto& cube : mesh->getCubes()) {
+                for (auto& cube : mesh->getCubes()) {
                     cube->resetProperties();
                 }
 
@@ -488,8 +489,9 @@ public:
     }
 
     void mouseLeftItem(int itemIndex) override {
-        if (!ignoreMouseExit)
+        if (!ignoreMouseExit) {
             startTimer(RevertTimer, 50);
+}
     }
 
     void timerCallback(int id) override {

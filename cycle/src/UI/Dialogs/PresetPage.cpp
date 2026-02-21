@@ -23,7 +23,7 @@
 #include "../../Util/CycleEnums.h"
 
 
-PresetPage::PresetPage(SingletonRepo* repo) : 
+PresetPage::PresetPage(SingletonRepo* repo) :
         ComponentMovementWatcher(this)
     ,	SingletonAccessor(repo, "PresetPage")
 
@@ -109,7 +109,7 @@ tableListBox = std::make_unique<TableListBox>("Presets", this);
     wavDirectory.setColour(Label::outlineColourId, Colour::greyLevel(0.14));
 
     Label* labels[] = { &tagsField, /* &commentLabel */ };
-    for(auto & label : labels) {
+    for (auto & label : labels) {
         label->setColour(Label::textColourId, Colour::greyLevel(0.65f));
         label->setJustificationType(Justification::centredRight);
         label->setColour(Label::backgroundColourId, Colour::greyLevel(0.1f));
@@ -134,7 +134,7 @@ tableListBox = std::make_unique<TableListBox>("Presets", this);
 }
 
 void PresetPage::addToRevisionMap(const Array<DocumentDetails, CriticalSection>& array) {
-    for(auto& details : array) {
+    for (auto& details : array) {
         int code = details.getKey().hashCode();
         dldedRevisionMap.set(code, details.getRevision());
     }
@@ -209,7 +209,7 @@ void PresetPage::addFilesToArray(Array<DocumentDetails, CriticalSection>& list,
     Array<File> allResults;
     dir.findChildFiles(allResults, File::findFiles, false, "*." + extension);
 
-    for(auto& file : allResults) {
+    for (auto& file : allResults) {
         DocumentDetails details;
 
         details.setName(file.getFileNameWithoutExtension());
@@ -271,7 +271,7 @@ void PresetPage::paintRowBackground(Graphics& g, int rowNumber, int width, int h
     bool isNew 	= false;
     int code = details.getKey().hashCode();
 
-    if(newlyDownloaded.contains(code)) {
+    if (newlyDownloaded.contains(code)) {
         isNew = true;
     }
 
@@ -284,7 +284,7 @@ void PresetPage::paintRowBackground(Graphics& g, int rowNumber, int width, int h
     float saturation 	= isNew ? 0.6f : details.isRemote() ? 0.3f : details.isWave() ? 0.2f : 0.f;
     float hue 			= isNew ? 0.0 : 0.6f;
 
-    if(Time::currentTimeMillis() - details.getDateMillis() < 2 * 86400 * 1000)
+    if (Time::currentTimeMillis() - details.getDateMillis() < 2 * 86400 * 1000)
         saturation += 0.2f;
 
     gradient.addColour(0.0f, Colour::fromHSV(hue, saturation, brightness, 1.f));
@@ -306,13 +306,13 @@ void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, 
                   columnId == DocumentDetails::Pack ? details.getPack() :
                   columnId == DocumentDetails::Tag ? (tags.size() == 0 ? String() : tags[0]) : details.getAuthor();
 
-    switch(columnId) {
+    switch (columnId) {
         case DocumentDetails::Name:
         case DocumentDetails::Pack:
         case DocumentDetails::Author:
         case DocumentDetails::Tag:
         {
-            if(columnId == DocumentDetails::Author && details.isWave()) {
+            if (columnId == DocumentDetails::Author && details.isWave()) {
                 break;
             }
 
@@ -354,7 +354,7 @@ void PresetPage::paintCell(Graphics& g, int rowNumber, int columnId, int width, 
             int revision = details.getRevision();
 
             g.setFont(12);
-            if(revision >= 0) {
+            if (revision >= 0) {
                 g.drawText(String(details.getRevision()), 10, 0, width, height, Justification::centredLeft, true);
             }
 
@@ -398,7 +398,7 @@ void PresetPage::cellDoubleClicked(int rowNumber, int columnId, const MouseEvent
         return;
     }
 
-    if(netIcon.isHighlit()) {
+    if (netIcon.isHighlit()) {
         return;
     }
 
@@ -411,7 +411,7 @@ void PresetPage::loadItem(int itemIndex, bool ignoreSave) {
 
     jassert(isPositiveAndBelow(itemIndex, getNumRows()));
 
-    if(itemIndex >= getNumRows()) {
+    if (itemIndex >= getNumRows()) {
         return;
     }
 
@@ -545,20 +545,20 @@ void PresetPage::resized() {
 }
 
 bool PresetPage::containsString(DocumentDetails& details, const String& str) {
-    if(details.getName().containsIgnoreCase(str)) {
+    if (details.getName().containsIgnoreCase(str)) {
         return true;
     }
 
-    if(details.getAuthor().containsIgnoreCase(str)) {
+    if (details.getAuthor().containsIgnoreCase(str)) {
         return true;
     }
 
-    if(details.getPack().containsIgnoreCase(str)) {
+    if (details.getPack().containsIgnoreCase(str)) {
         return true;
     }
 
     const StringArray& tags = details.getTags();
-    for(const auto& tag : tags) {
+    for (const auto& tag : tags) {
         if (tag.containsIgnoreCase(str)) {
             return true;
         }
@@ -568,7 +568,7 @@ bool PresetPage::containsString(DocumentDetails& details, const String& str) {
 }
 
 void PresetPage::updateTags(int index) {
-    if(index < 0) {
+    if (index < 0) {
         return;
     }
 
@@ -861,7 +861,7 @@ void PresetPage::updateCurrentPreset(const String& name) {
     const Array<DocumentDetails, CriticalSection>& detailsList = getFilteredItems();
 
     int i = 0;
-    for(auto& details : detailsList) {
+    for (auto& details : detailsList) {
         if (!details.isWave() && details.getName().equalsIgnoreCase(name)) {
             currPresetFiltIndex = i;
             listBox->selectRow(currPresetFiltIndex);
@@ -918,15 +918,15 @@ void PresetPage::timerCallback(int id) {
 
 void PresetPage::killThreads()
 {
-    if(downloadDeetsThread.isThreadRunning()) {
+    if (downloadDeetsThread.isThreadRunning()) {
         downloadDeetsThread.stopThread(10);
     }
 
-    if(uploadThread.isThreadRunning()) {
+    if (uploadThread.isThreadRunning()) {
         uploadThread.stopThread(10);
     }
 
-    if(downloadPresetThread.isThreadRunning()) {
+    if (downloadPresetThread.isThreadRunning()) {
         downloadPresetThread.stopThread(10);
     }
 }
@@ -1039,7 +1039,7 @@ void PresetPage::triggerButtonClick(ButtonEnum button) {
 }
 
 void PresetPage::buttonClicked(Button* button) {
-    if(button == &wave || button == &verts || button == &netIcon) {
+    if (button == &wave || button == &verts || button == &netIcon) {
         bool didAnything = false;
         didAnything |= wave.setHighlit(button == &wave);
         didAnything |= verts.setHighlit(button == &verts);
@@ -1076,7 +1076,7 @@ void PresetPage::buttonClicked(Button* button) {
         }
     }
 
-    else if(button == &nextIcon || button == &prevIcon) {
+    else if (button == &nextIcon || button == &prevIcon) {
         int oldIndex = currPresetFiltIndex;
         int numRows = getNumRows();
 
@@ -1161,7 +1161,7 @@ String PresetPage::populateRemoteNames() {
 
     remoteDetails.clear();
 
-    for(auto& presetName : presetNames) {
+    for (auto& presetName : presetNames) {
         StringArray tokens;
         DocumentDetails deets;
 
@@ -1176,7 +1176,7 @@ String PresetPage::populateRemoteNames() {
 
         int code = deets.getKey().hashCode();
         if (dldedRevisionMap.contains(code)) {
-            //			if(deets.getRevision() <= dldedRevisionMap[code])
+            //			if (deets.getRevision() <= dldedRevisionMap[code])
             //			{
             continue;
             //			}
@@ -1353,7 +1353,7 @@ void PresetPage::readPresetSettings() {
 
     if (elem != nullptr) {
         if (XmlElement* ratingsElem = elem->getChildByName("Ratings")) {
-            for(auto ratingElem : ratingsElem->getChildWithTagNameIterator("Rating")) {
+            for (auto ratingElem : ratingsElem->getChildWithTagNameIterator("Rating")) {
                 int code = ratingElem->getIntAttribute("code", 0);
                 float value = ratingElem->getDoubleAttribute("value", 0);
 
@@ -1364,7 +1364,7 @@ void PresetPage::readPresetSettings() {
         }
 
         if (XmlElement* dismissed = elem->getChildByName("Dismissed")) {
-            for(auto dissedElem : dismissed->getChildWithTagNameIterator("Dismissal")) {
+            for (auto dissedElem : dismissed->getChildWithTagNameIterator("Dismissal")) {
                 int code = dissedElem->getIntAttribute("code", 0);
 
                 if (code != 0) {
@@ -1374,7 +1374,7 @@ void PresetPage::readPresetSettings() {
         }
 
         if (XmlElement* downloaded = elem->getChildByName("DownloadedPresets")) {
-            for(auto dldElem : downloaded->getChildWithTagNameIterator("Download")) {
+            for (auto dldElem : downloaded->getChildWithTagNameIterator("Download")) {
                 int code = dldElem->getIntAttribute("code", 0);
 
                 if (code != 0) {
@@ -1392,7 +1392,7 @@ void PresetPage::writePresetSettings() {
         auto* ratingsElem = new XmlElement("Ratings");
 
         HashMap<int, float>::Iterator iter(ratingsMap);
-        while(iter.next()) {
+        while (iter.next()) {
             auto* rating = new XmlElement("Rating");
             rating->setAttribute("code",  iter.getKey());
             rating->setAttribute("value", iter.getValue());
@@ -1403,7 +1403,7 @@ void PresetPage::writePresetSettings() {
         auto* dismissed = new XmlElement("Dismissed");
 
         auto it = dismissedSet.begin();
-        while(it != dismissedSet.end()) {
+        while (it != dismissedSet.end()) {
             auto* dissed = new XmlElement("Dismissal");
             dissed->setAttribute("code", *it);
 
@@ -1414,7 +1414,7 @@ void PresetPage::writePresetSettings() {
         auto* downloaded = new XmlElement("DownloadedPresets");
         it = downloadedSet.begin();
 
-        while(it != downloadedSet.end()) {
+        while (it != downloadedSet.end()) {
             auto* dldElem = new XmlElement("Download");
             dldElem->setAttribute("code", *it);
 

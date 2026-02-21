@@ -28,7 +28,7 @@ public:
     static vector<T> reducePath(const vector<T>& path, float tolerance) {
         vector<T> decimated;
 
-        if(path.size() < 2)
+        if (path.size() < 2)
             return decimated;
 
         float diff       = path[1].x - path[0].x;
@@ -53,7 +53,7 @@ public:
                 ++end;
             }
 
-            if(areaAboveThresh) {
+            if (areaAboveThresh) {
                 decimated.push_back(path[middle]);
             }
 
@@ -64,7 +64,7 @@ public:
             }
         }
 
-        if(! (decimated.back() == path.back())) {
+        if (! (decimated.back() == path.back())) {
             decimated.push_back(path.back());
         }
 

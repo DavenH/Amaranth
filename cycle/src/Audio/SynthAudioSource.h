@@ -119,7 +119,7 @@ public:
     /*
     IppsFFTSpec_R_32f* getFftSpec(int sizePow2)
     {
-        if(sizeToIndex.find(sizePow2) == sizeToIndex.end())
+        if (sizeToIndex.find(sizePow2) == sizeToIndex.end())
             return 0;
 
         return fftspecs[sizeToIndex[sizePow2]];

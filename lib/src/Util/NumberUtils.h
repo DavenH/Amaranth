@@ -8,10 +8,12 @@ class NumberUtils {
 public:
     template<typename type>
     static void constrain(type& n, type lowerBound, type upperBound) {
-        if (n < lowerBound)
+        if (n < lowerBound) {
             n = lowerBound;
-        if (n > upperBound)
+}
+        if (n > upperBound) {
             n = upperBound;
+}
     }
 
     template<typename T>
@@ -50,8 +52,9 @@ public:
         }
 
         unsigned count = 32;
-        while (!(x & (1 << --count)))
+        while (!(x & (1 << --count))) {
             ;
+}
         return count;
     }
 

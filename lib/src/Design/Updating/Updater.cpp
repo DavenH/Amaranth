@@ -14,11 +14,11 @@ Updater::Updater(SingletonRepo* repo) :
 void Updater::update(int code, UpdateType type) {
     Node* node = startingNodes[code];
 
-    if(getSetting(IgnoringEditMessages)) {
+    if (getSetting(IgnoringEditMessages)) {
         return;
     }
 
-    if(node != nullptr) {
+    if (node != nullptr) {
         int64 millis = Time::currentTimeMillis();
 
         if (lastUpdateMillis > 0 && millis - lastUpdateMillis < millisThresh) {
@@ -71,12 +71,12 @@ void Updater::Graph::update(Node* startingNode) {
     String path = String();
 
     for (auto headNode : headNodes) {
-        if(headNode->isDirty()) {
+        if (headNode->isDirty()) {
             headNode->performUpdate(path, updateType);
         }
     }
 
-    if(printsPath) {
+    if (printsPath) {
         String action = getUpdateString();
 
         path = "Update: " + action + "\t" + path;
@@ -147,23 +147,23 @@ void Updater::Node::doesntMark(Node* node) {
 }
 
 void Updater::Node::performUpdate(String& updatePath, UpdateType updateType) {
-    if(updated || ! dirty) {
+    if (updated || ! dirty) {
         return;
     }
 
-    for(auto i : children) {
+    for (auto i : children) {
         i->markDirty();
     }
 
-    for(auto parent : parents) {
-        if(parent->isDirty()) {
+    for (auto parent : parents) {
+        if (parent->isDirty()) {
             parent->performUpdate(updatePath, updateType);
         }
     }
 
     // we can get here by a parent updating this
     if (!updated) {
-        if(updater->graph.doesPrintPath() && toUpdate != nullptr) {
+        if (updater->graph.doesPrintPath() && toUpdate != nullptr) {
             updatePath << toUpdate->getUpdateName() << " ";
         }
 
@@ -172,7 +172,7 @@ void Updater::Node::performUpdate(String& updatePath, UpdateType updateType) {
         updated = true;
         dirty = false;
 
-        for(auto node : children) {
+        for (auto node : children) {
             node->performUpdate(updatePath, updateType);
         }
     }

@@ -237,7 +237,7 @@ void MorphPanel::resized() {
 
 void MorphPanel::sliderValueChanged(Slider* slider) {
     if (slider == &panSlider) {
-        if(getSetting(ViewStage) >= ViewStages::PostEnvelopes) {
+        if (getSetting(ViewStage) >= ViewStages::PostEnvelopes) {
             triggerRefreshUpdate();
         }
 
@@ -246,7 +246,7 @@ void MorphPanel::sliderValueChanged(Slider* slider) {
 
     auto* mslider = dynamic_cast<MorphSlider*>(slider);
 
-    if(mslider != nullptr) {
+    if (mslider != nullptr) {
         updateModPosition(mslider->dim, slider->getValue());
     }
 }
@@ -270,7 +270,7 @@ void MorphPanel::updateModPosition(int dim, float value) {
 
             multi.performUpdate(Update);
 
-            if(existing != multi.getCurrentSample()) {
+            if (existing != multi.getCurrentSample()) {
                 triggerRefreshUpdate();
             }
         }
@@ -314,11 +314,11 @@ void MorphPanel::sliderDragStarted(Slider* slider) {
 void MorphPanel::updateCurrentSliderNoCallback(float value) {
     int dim = getSetting(CurrentMorphAxis);
 
-    if(yllwSlider.dim == dim) {
+    if (yllwSlider.dim == dim) {
         yllwSlider.setValue(value, dontSendNotification);
-    } else if(blueSlider.dim == dim) {
+    } else if (blueSlider.dim == dim) {
         blueSlider.setValue(value, dontSendNotification);
-    } else if(redSlider.dim == dim) {
+    } else if (redSlider.dim == dim) {
         redSlider.setValue(value, dontSendNotification);
     }
 
@@ -383,7 +383,7 @@ void MorphPanel::buttonClicked(Button* button) {
     if (changedLinking) {
         Interactor* itr = getObj(VertexPropertiesPanel).getCurrentInteractor();
 
-        if(itr != nullptr) {
+        if (itr != nullptr) {
             itr->setMovingVertsFromSelected();
         }
 
@@ -417,12 +417,12 @@ void MorphPanel::comboBoxChanged(ComboBox* box)
 {
     int id = box->getSelectedId();
 
-    if(box == &mappingBox)
+    if (box == &mappingBox)
     {
-        if(currentModMapping != id)
+        if (currentModMapping != id)
         {
             currentModMapping = id;
-            if(id == NullMappingId)
+            if (id == NullMappingId)
             {
                 MorphSlider.setName("unset");
             }
@@ -431,7 +431,7 @@ void MorphPanel::comboBoxChanged(ComboBox* box)
                 MorphSlider.setName(box->getText());
             }
 
-            if(ignoreNextEditMessage)
+            if (ignoreNextEditMessage)
                 ignoreNextEditMessage = false;
             else
                 getObj(EditWatcher).setHaveEditedWithoutUndo(true);
@@ -490,7 +490,7 @@ void MorphPanel::triggerClick(int button) {
 bool MorphPanel::readXML(const XmlElement* element) {
     // XmlElement* modElem = element->getChildByName("ModMapping");
     //
-    // if(! modElem) {
+    // if (! modElem) {
        //  return false;
     // }
     //

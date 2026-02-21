@@ -10,8 +10,8 @@
 class PluginProcessor;
 
 class PluginWindow  :
-		public AudioProcessorEditor
-	,	public SingletonAccessor
+        public AudioProcessorEditor
+    ,	public SingletonAccessor
 {
 public:
     explicit PluginWindow (PluginProcessor* ownerFilter);

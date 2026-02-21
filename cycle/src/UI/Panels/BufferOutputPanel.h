@@ -30,7 +30,7 @@
 //		Panel::renderOpenGL();
 //
 //		int size = currData[0].size();
-//		if(size <= 1)
+//		if (size <= 1)
 //			return;
 //
 //		ScopedAlloc<Float32> xs(size);
@@ -42,7 +42,7 @@
 //		ippsMulC_32f_I(0.25, currData[1], size);
 //		ippsAddC_32f_I(0.25f, currData[1], size);
 //
-//		for(int c = 0; c < 2; ++c)
+//		for (int c = 0; c < 2; ++c)
 //		{
 //			float yOffset = 0.75f - c * 0.5;
 //			glColor3f(1, 1, 1);
@@ -66,14 +66,14 @@
 //	void setBufferAndRepaint(AudioSampleBuffer& buffer)
 //	{
 //
-//		for(int c = 0; c < buffer.getNumChannels(); ++c)
+//		for (int c = 0; c < buffer.getNumChannels(); ++c)
 //		{
 //			channelData[c].ensureSize(buffer.getNumSamples());
 //			ippsCopy_32f(buffer.getWritePointer(c), channelData[c], buffer.getNumSamples());
 //			currData[c] = Buffer<float>(channelData[c], buffer.getNumSamples());
 //		}
 //
-////		if(isVisible())
+////		if (isVisible())
 ////		{
 ////			* current = buffer;
 ////			repaint();

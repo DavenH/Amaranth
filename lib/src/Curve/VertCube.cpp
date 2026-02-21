@@ -31,7 +31,7 @@ VertCube::VertCube(VertCube& cube) {
 VertCube::~VertCube() {
     init();
 
-    for(auto& lineVert : lineVerts) {
+    for (auto& lineVert : lineVerts) {
         lineVert = nullptr;
     }
 }
@@ -39,7 +39,7 @@ VertCube::~VertCube() {
 void VertCube::init() {
     float defaultComp = 0.5f + NumberUtils::toDecibels(1.5) / 60.f;
 
-    for(float& dfrmGain : dfrmGains) {
+    for (float& dfrmGain : dfrmGains) {
         dfrmGain = 0.5;
     }
 
@@ -171,7 +171,7 @@ void VertCube::getFinalIntercept(ReductionData& data, const MorphPosition& pos) 
 
     getInterceptsFast(arbitraryDimToUse, data, pos);
 
-    if(! data.pointOverlaps) {
+    if (! data.pointOverlaps) {
         return;
     }
 
@@ -191,7 +191,7 @@ void VertCube::getInterceptsAccurate(int dim, ReductionData& data, const MorphPo
     Vertex2 point(pos[dimX], pos[dimY]);
     float primeVal = pos[dim];
 
-    for(int i = 0; i < 2; ++i) {
+    for (int i = 0; i < 2; ++i) {
         Face face = getFace(dim, poles[i]);
 
         float xFracA = 1, xFracB = 1;
@@ -213,8 +213,9 @@ void VertCube::getInterceptsAccurate(int dim, ReductionData& data, const MorphPo
         if (fabsf(denom) > 1e-4f) {
             Vertex2 icptY = (nnv - nxv) * ((xxv - nxv).cross(xnv - xxv) / denom) + nxv;
 
-            if(Geometry::doLineSegmentsIntersect(icptY.x, icptY.y, point.x, point.y, nnv.x, nnv.y, nxv.x, nxv.y))
+            if (Geometry::doLineSegmentsIntersect(icptY.x, icptY.y, point.x, point.y, nnv.x, nnv.y, nxv.x, nxv.y)) {
                 ++intersectCount;
+}
 
             float icptDenom = (point - icptY).cross(nnv - xnv);
             xFracA = (xnv - icptY).cross(nnv - xnv) / icptDenom;
@@ -277,7 +278,7 @@ bool VertCube::intersectsMorphRect(int dim, ReductionData& data, const MorphPosi
     Face midFace(data, dim);
     bool overlapsDim = midFace.merge(this, pos[dim]);
 
-    if(overlapsDim) {
+    if (overlapsDim) {
         int dimX, dimY;
         MorphPosition::getOtherDims(dim, dimX, dimY);
 
@@ -315,8 +316,8 @@ void VertCube::getInterceptsFast(int dim, ReductionData& data, const MorphPositi
     float y2 = jmax(ny, xy);
 
     // only want upper inclusivity at the unit boundaries
-    if(x2 == 1.f) { x2 += 0.000001f; }
-    if(y2 == 1.f) { y2 += 0.000001f; }
+    if (x2 == 1.f) { x2 += 0.000001f; }
+    if (y2 == 1.f) { y2 += 0.000001f; }
 
     if (point.x >= x1 && point.x < x2 && point.y >= y1 && point.y < y2) {
         vertexAt(point.y, dimY, lowFace.v00, lowFace.v01, &data.v00);
@@ -335,8 +336,8 @@ void VertCube::getInterceptsFast(int dim, ReductionData& data, const MorphPositi
         x2 = jmax(nnx, xxx);
         y2 = jmax(nny, xxy);
 
-        if(x2 == 1.f) { x2 += 0.000001f; }
-        if(y2 == 1.f) { y2 += 0.000001f; }
+        if (x2 == 1.f) { x2 += 0.000001f; }
+        if (y2 == 1.f) { y2 += 0.000001f; }
 
         if (point.x >= x1 && point.x < x2 && point.y >= y1 && point.y < y2) {
             vertexAt(point.y, dimY, highFace.v00, highFace.v01, &data.v01);
@@ -395,7 +396,7 @@ void VertCube::getMultidimIntercept(
 bool VertCube::hasCommonVertsWith(const VertCube* cube) const {
     bool similarVerts = false;
 
-    for(int i = 0; i < numVerts / 2; ++i) {
+    for (int i = 0; i < numVerts / 2; ++i) {
         similarVerts |= lineVerts[i / 2]     == cube->lineVerts[i / 2];
         similarVerts |= lineVerts[i / 2 + 1] == cube->lineVerts[i / 2];
         similarVerts |= lineVerts[i / 2]     == cube->lineVerts[i / 2 + 1];
@@ -509,8 +510,9 @@ bool VertCube::poleOf(int dim, Vertex const* poleVert) const {
 }
 
 void VertCube::orphanVerts() {
-    for (auto& lineVert : lineVerts)
+    for (auto& lineVert : lineVerts) {
         lineVert->removeOwner(this);
+}
 }
 
 void VertCube::setPropertiesFrom(VertCube const* other) {
@@ -541,7 +543,7 @@ float VertCube::deformerAbsGain(int dim) const {
 
     float value = dfrmGainAt(dim);
 
-    if(value == 0.5) {
+    if (value == 0.5) {
         return 1;
     }
 
@@ -553,7 +555,7 @@ bool VertCube::hasCommonEdgeAlong(int dim, VertCube const* cube) const {
     Face highFace = getFace(dim, HighPole);
 
     for (int i = 0; i < numVerts / 2; ++i) {
-        if(cube->containsEdge(Edge(lowFace[i], highFace[i]))) {
+        if (cube->containsEdge(Edge(lowFace[i], highFace[i]))) {
             return true;
         }
     }
@@ -576,7 +578,7 @@ bool VertCube::dimensionsAt(float x, int axis, Vertex const* one, Vertex const* 
 
     float mult = (x - one->values[axis]) / diff;
 
-    if(mult < 0.f || mult > 1.f) {
+    if (mult < 0.f || mult > 1.f) {
         return false;
     }
 
@@ -616,8 +618,9 @@ Array<VertCube*> VertCube::getAllAdjacentCubes(int dim, const MorphPosition& pos
 #include "../Definitions.h"
 
 void VertCube::getAdjacentCubes(int dim, Array<VertCube*>& cubes, ReductionData& data, const MorphPosition& pos) {
-    if (!intersectsMorphRect(dim, data, pos))
+    if (!intersectsMorphRect(dim, data, pos)) {
         cubes.add(this);
+}
 
     int dimX, dimY;
     MorphPosition::getOtherDims(dim, dimX, dimY);
@@ -628,8 +631,8 @@ void VertCube::getAdjacentCubes(int dim, Array<VertCube*>& cubes, ReductionData&
     newCubes.add(getAdjacentCube(dimY, LowPole));
     newCubes.add(getAdjacentCube(dimY, HighPole));
 
-    for(auto cube : newCubes) {
-        if(cube != nullptr && ! cubes.contains(cube)) {
+    for (auto cube : newCubes) {
+        if (cube != nullptr && ! cubes.contains(cube)) {
             cube->getAdjacentCubes(dim, cubes, data, pos);
         }
     }
@@ -641,8 +644,8 @@ VertCube* VertCube::getAdjacentCube(int dim, bool pole) const {
     Vertex* first = face.v00;
     Vertex* last = face.v11;
 
-    for(auto v1 : first->owners) {
-        for(auto v2 : last->owners) {
+    for (auto v1 : first->owners) {
+        for (auto v2 : last->owners) {
             if (v1 == v2 && v1 != this) {
                 return v1;
             }
@@ -714,8 +717,8 @@ float VertCube::getPortionAlong(int dim, const MorphPosition& morph) const {
 }
 
 bool VertCube::isDeformed() const {
-    for(int i = 0; i < Vertex::numElements; ++i) {
-        if(deformerAt(i) >= 0) {
+    for (int i = 0; i < Vertex::numElements; ++i) {
+        if (deformerAt(i) >= 0) {
             return true;
         }
     }
@@ -763,7 +766,7 @@ Vertex* VertCube::Face::operator[](const int index) const {
 }
 
 void VertCube::Face::removeOwner(VertCube* cube) {
-    for(int i = 0; i < size(); ++i) {
+    for (int i = 0; i < size(); ++i) {
         (*this)[i]->removeOwner(cube);
     }
 }

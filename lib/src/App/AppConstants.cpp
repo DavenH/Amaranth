@@ -4,7 +4,7 @@ AppConstants::AppConstants(SingletonRepo* repo) : SingletonAccessor(repo, "AppCo
 }
 
 int AppConstants::getAppConstant(int key) const {
-    if(values.contains(key)) {
+    if (values.contains(key)) {
         return values[key];
     }
 
@@ -20,7 +20,7 @@ double AppConstants::getRealAppConstant(int key) const {
 }
 
 String AppConstants::getStringAppConstant(int key) const {
-    if(strValues.contains(key)) {
+    if (strValues.contains(key)) {
         return strValues[key];
     }
 

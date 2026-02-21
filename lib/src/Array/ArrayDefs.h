@@ -1,14 +1,14 @@
 #pragma once
 
-#define EMPTY_CHECK if(sz == 0) return *this;
-#define BUFF_CHECK if(buff.size() == 0) return *this;
-#define SIZE_CHECK if(size == 0) return *this;
-#define UNO_ARG_CHECK if(c == 1) return *this;
-#define NULL_ARG_CHECK if(c == 0) return *this;
-#define EMPTY_CHECK_ZERO if(sz == 0) return 0;
-#define BUFFS_CHECK if(src1.size() < sz || src2.size() < sz) { ++ERROR_COUNTER; return *this; }
-#define BUFFS_DST_CHECK if(src1.size() < dst.size() || src2.size() < dst.size()) { ++ERROR_COUNTER; return; }
-#define BUFFS_EQ_CHECK if(src.size() != dst.size()) { ++ERROR_COUNTER; return; }
+#define EMPTY_CHECK if (sz == 0) return *this;
+#define BUFF_CHECK if (buff.size() == 0) return *this;
+#define SIZE_CHECK if (size == 0) return *this;
+#define UNO_ARG_CHECK if (c == 1) return *this;
+#define NULL_ARG_CHECK if (c == 0) return *this;
+#define EMPTY_CHECK_ZERO if (sz == 0) return 0;
+#define BUFFS_CHECK if (src1.size() < sz || src2.size() < sz) { ++ERROR_COUNTER; return *this; }
+#define BUFFS_DST_CHECK if (src1.size() < dst.size() || src2.size() < dst.size()) { ++ERROR_COUNTER; return; }
+#define BUFFS_EQ_CHECK if (src.size() != dst.size()) { ++ERROR_COUNTER; return; }
 #define SRCA_SRCB_DST(T) Buffer<T> src1, Buffer<T> src2, Buffer<T> dst
 #define SRC_DST(T) Buffer<T> src, Buffer<T> dst
 

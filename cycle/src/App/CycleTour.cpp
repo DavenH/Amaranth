@@ -101,7 +101,7 @@ CycleTour::CycleTour(SingletonRepo* repo) :
 
     B(TargSelector),       B(TargPencil),        B(TargAxe),            B(TargNudge);
     B(TargWaveVerts),      B(TargVerts),         B(TargLinkYellow),     B(TargVertCube);
- 
+
     B(TargPrimeArea),      B(TargPrimeY),        B(TargPrimeB),         B(TargPrimeR);
     B(TargLinkArea),       B(TargLinkY),         B(TargLinkB),          B(TargLinkR);
     B(TargRangeArea),      B(TargRangeY),        B(TargRangeB),         B(TargRangeR);
@@ -152,7 +152,7 @@ void CycleTour::init() {
 void CycleTour::handleAsyncUpdate() {
     vector<Item>& items = current.items;
 
-    if(currentItem >= (int) items.size()) {
+    if (currentItem >= (int) items.size()) {
         exit();
         return;
     }
@@ -160,15 +160,15 @@ void CycleTour::handleAsyncUpdate() {
     Item& item = items[currentItem];
     Item last = items[lastItem];
 
-    if(last.condition.type != NoCompare) {
-        if(! conditionPassed(last.condition)) {
+    if (last.condition.type != NoCompare) {
+        if (! conditionPassed(last.condition)) {
             currentItem = lastItem;
             showConsoleMsg(last.condition.failMsg);
             return;
         }
     }
 
-    if(! item.actions.empty()) {
+    if (! item.actions.empty()) {
         Action& first = item.actions.front();
         performAction(first);
 
@@ -176,7 +176,7 @@ void CycleTour::handleAsyncUpdate() {
         startTimer(item.area, first.delayMillis);
     }
 
-//    if(! item.animation.actions.empty() && ! item.animation.hasExecuted)
+//    if (! item.animation.actions.empty() && ! item.animation.hasExecuted)
 //    {
 //        item.animation.currentIndex = 0;
 //        performAction(item.animation.actions.front());
@@ -184,14 +184,14 @@ void CycleTour::handleAsyncUpdate() {
 
     Rectangle<int> screenBounds = item.getArea(this);
 
-    if(screenBounds.getWidth() > 0) {
+    if (screenBounds.getWidth() > 0) {
         juce::Point<int> xy;
 
-        if(item.area == AreaModMatrix && last.area != AreaModMatrix) {
+        if (item.area == AreaModMatrix && last.area != AreaModMatrix) {
             getObj(MainPanel).removeChildComponent(&highlighter);
             getObj(ModMatrix).addAndMakeVisible(&highlighter);
         }
-        else if(item.area != AreaModMatrix && last.area == AreaModMatrix) {
+        else if (item.area != AreaModMatrix && last.area == AreaModMatrix) {
             getObj(ModMatrix).removeChildComponent(&highlighter);
             getObj(MainPanel).addAndMakeVisible(&highlighter);
 //            wrapper.toFront(true);
@@ -213,11 +213,11 @@ void CycleTour::handleAsyncUpdate() {
 }
 
 void CycleTour::showNext() {
-    if(! current.items.empty()) {
+    if (! current.items.empty()) {
         Item& item = current.items[currentItem];
 
         // animation not complete
-        if(item.actionIndex < item.actions.size()) {
+        if (item.actionIndex < item.actions.size()) {
             return;
         }
     }
@@ -228,7 +228,7 @@ void CycleTour::showNext() {
 }
 
 void CycleTour::showPrevious() {
-    if(Util::assignAndWereDifferent(currentItem, jmax(0, currentItem - 1))){
+    if (Util::assignAndWereDifferent(currentItem, jmax(0, currentItem - 1))){
         lastItem = currentItem;
         triggerAsyncUpdate();
     }
@@ -280,12 +280,12 @@ bool CycleTour::conditionPassed(const Condition& c){
     jassert(c.oper != OperNull);
     jassert(c.type != NoCompare);
 
-    switch(c.type) {
+    switch (c.type) {
         case NoCompare:
             return true;
 
         case NumLines:{
-            if(Interactor* itr = areaToInteractor(c.area)) {
+            if (Interactor* itr = areaToInteractor(c.area)) {
                 return compare(c, itr->getMesh()->getNumCubes());
             }
 
@@ -293,7 +293,7 @@ bool CycleTour::conditionPassed(const Condition& c){
         }
 
         case NumPoints: {
-            if(Interactor* itr = areaToInteractor(c.area)) {
+            if (Interactor* itr = areaToInteractor(c.area)) {
                 return compare(c, itr->getMesh()->getNumVerts());
             }
 
@@ -303,7 +303,7 @@ bool CycleTour::conditionPassed(const Condition& c){
         case CurrentLayer:{
             auto& lib = getObj(MeshLibrary);
 
-            switch(c.area) {
+            switch (c.area) {
                 case AreaWshpEditor:
                 case AreaWfrmWaveform3D:
                     return compare(c, lib.getCurrentIndex(LayerGroups::GroupTime));
@@ -320,20 +320,22 @@ bool CycleTour::conditionPassed(const Condition& c){
         }
 
         case NumLayers: {
-            if(Interactor* itr = areaToInteractor(c.area))
+            if (Interactor* itr = areaToInteractor(c.area)) {
                 return compare(c, getObj(MeshLibrary).getLayerGroup(itr->layerType).size());
+}
 
             break;
         }
 
         case DfrmAssignments: {
             int num = 0;
-            if(Interactor* itr = areaToInteractor(c.area)) {
+            if (Interactor* itr = areaToInteractor(c.area)) {
                 Mesh* mesh = itr->getMesh();
 
                 for (auto* cube : mesh->getCubes()) {
-                    for(int j = 0; j <= Vertex::Curve; ++j)
+                    for (int j = 0; j <= Vertex::Curve; ++j) {
                         num += int(cube->deformerAt(j) >= 0);
+}
                 }
 
                 return compare(c, num);
@@ -349,12 +351,13 @@ bool CycleTour::conditionPassed(const Condition& c){
 void CycleTour::performAction(Action& action) {
     Interactor* itr = areaToInteractor(action.area);
 
-    switch(action.type) {
+    switch (action.type) {
         case NullAction: break;
 
         case SetNoteOn: {
-            if(! action.hasExecuted)
+            if (! action.hasExecuted) {
                 getObj(AudioHub).getKeyboardState().noteOn(1, action.data1, action.value);
+}
 
             action.hasExecuted = true;
 
@@ -373,14 +376,15 @@ void CycleTour::performAction(Action& action) {
         }
 
         case SwitchToEnv: {
-            if(action.id != IdNull)
+            if (action.id != IdNull) {
                 getObj(EnvelopeInter2D).switchedEnvelope(action.id, true);
+}
 
             break;
         }
 
         case SwitchToTool: {
-            if(action.id != IdNull) {
+            if (action.id != IdNull) {
                 getSetting(Tool) = action.id;
                 getObj(GeneralControls).updateHighlights();
             }
@@ -389,7 +393,7 @@ void CycleTour::performAction(Action& action) {
         }
 
         case ShowArea: {
-            if(action.area == AreaModMatrix) {
+            if (action.area == AreaModMatrix) {
                 getObj(Dialogs).showModMatrix();
                 startTimer(ToFrontId, 100);
             }
@@ -398,7 +402,7 @@ void CycleTour::performAction(Action& action) {
         }
 
         case HideArea: {
-            if(action.area == AreaModMatrix) {
+            if (action.area == AreaModMatrix) {
                 getObj(ModMatrix).removeFromDesktop();
                 getObj(ModMatrix).setVisible(false);
                 startTimer(ToFrontId, 100);
@@ -412,7 +416,7 @@ void CycleTour::performAction(Action& action) {
         case SetMorphRange: {
             getObj(MorphPanel).updateModPosition(action.id, action.value);
 
-//            if(action.id != getSetting(CurrentMorphAxis))
+//            if (action.id != getSetting(CurrentMorphAxis))
 //                doUpdate(ModUpdate);
 
             break;
@@ -429,7 +433,7 @@ void CycleTour::performAction(Action& action) {
         }
 
         case SwitchMode: {
-            switch(action.area) {
+            switch (action.area) {
                 case AreaSpectrum:
                 case AreaSpectrogram:
                     getObj(Spectrum3D).modeChanged(action.id == IdModeMagn, true);
@@ -467,7 +471,7 @@ void CycleTour::performAction(Action& action) {
         }
 
         case Zoom: {
-            if(auto* panel = dynamic_cast<Panel*>(getTourGuide(action.area))) {
+            if (auto* panel = dynamic_cast<Panel*>(getTourGuide(action.area))) {
                 panel->triggerZoom(action.id == IdZoomIn);
             }
 
@@ -475,11 +479,11 @@ void CycleTour::performAction(Action& action) {
         }
 
         case LinkRange: {
-            if(action.id == IdYellow && ! getSetting(LinkYellow)) {
+            if (action.id == IdYellow && ! getSetting(LinkYellow)) {
                 getObj(MorphPanel).triggerClick(IdBttnLinkY);
-            } else if(action.id == IdRed && ! getSetting(LinkRed)) {
+            } else if (action.id == IdRed && ! getSetting(LinkRed)) {
                 getObj(MorphPanel).triggerClick(IdBttnLinkR);
-            } else if(action.id == IdBlue && ! getSetting(LinkBlue)) {
+            } else if (action.id == IdBlue && ! getSetting(LinkBlue)) {
                 getObj(MorphPanel).triggerClick(IdBttnLinkB);
             }
 
@@ -487,11 +491,11 @@ void CycleTour::performAction(Action& action) {
         }
 
         case UnlinkRange: {
-            if(action.id == IdYellow && getSetting(LinkYellow)) {
+            if (action.id == IdYellow && getSetting(LinkYellow)) {
                 getObj(MorphPanel).triggerClick(IdBttnLinkY);
-            } else if(action.id == IdRed && getSetting(LinkRed)) {
+            } else if (action.id == IdRed && getSetting(LinkRed)) {
                 getObj(MorphPanel).triggerClick(IdBttnLinkR);
-            } else if(action.id == IdBlue && getSetting(LinkBlue)) {
+            } else if (action.id == IdBlue && getSetting(LinkBlue)) {
                 getObj(MorphPanel).triggerClick(IdBttnLinkB);
             }
 
@@ -499,14 +503,14 @@ void CycleTour::performAction(Action& action) {
         }
 
         case DeformLine: {
-            if(action.hasExecuted) {
+            if (action.hasExecuted) {
                 return;
             }
 
-            if(itr) {
+            if (itr) {
                 Mesh* mesh = itr->getMesh();
 
-                if(isPositiveAndBelow(action.data1, mesh->getNumCubes()))
+                if (isPositiveAndBelow(action.data1, mesh->getNumCubes()))
                 {
                     VertCube* cube = mesh->getCubes()[action.data1];
 
@@ -523,10 +527,10 @@ void CycleTour::performAction(Action& action) {
 
         case Enable:
         {
-            switch(action.area) {
+            switch (action.area) {
                 case AreaWfrmWaveform3D:
                 case AreaWshpEditor:
-                    if(! getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime)->active) {
+                    if (! getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime)->active) {
                         getObj(Waveform3D).triggerButton(IdBttnEnable);
                     }
 
@@ -534,14 +538,14 @@ void CycleTour::performAction(Action& action) {
 
                 case AreaSpectrum:
                 case AreaSpectrogram:
-                    if(! getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupSpect)->active) {
+                    if (! getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupSpect)->active) {
                         getObj(Spectrum3D).triggerButton(IdBttnEnable);
                     }
 
                     break;
 
                 case AreaEnvelopes:
-                    if(! getObj(MeshLibrary).getCurrentEnvProps(getSetting(CurrentEnvGroup))->active) {
+                    if (! getObj(MeshLibrary).getCurrentEnvProps(getSetting(CurrentEnvGroup))->active) {
                         getObj(EnvelopeInter2D).triggerButton(IdBttnEnable);
                     }
 
@@ -560,10 +564,10 @@ void CycleTour::performAction(Action& action) {
         }
 
         case Disable: {
-            switch(action.area) {
+            switch (action.area) {
                 case AreaWfrmWaveform3D:
                 case AreaWshpEditor:
-                    if(getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime)->active) {
+                    if (getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime)->active) {
                         getObj(Waveform3D).triggerButton(IdBttnEnable);
                     }
 
@@ -571,13 +575,13 @@ void CycleTour::performAction(Action& action) {
 
                 case AreaSpectrum:
                 case AreaSpectrogram:
-                    if(getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupSpect)->active) {
+                    if (getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupSpect)->active) {
                         getObj(Spectrum3D).triggerButton(IdBttnEnable);
                     }
                     break;
 
                 case AreaEnvelopes:
-                    if(getObj(MeshLibrary).getCurrentProps(getSetting(CurrentEnvGroup))->active) {
+                    if (getObj(MeshLibrary).getCurrentProps(getSetting(CurrentEnvGroup))->active) {
                         getObj(EnvelopeInter2D).triggerButton(IdBttnEnable);
                     }
                     break;
@@ -595,10 +599,11 @@ void CycleTour::performAction(Action& action) {
         }
 
         case TriggerButton: {
-            if(action.id < 0 || action.hasExecuted)
+            if (action.id < 0 || action.hasExecuted) {
                 return;
+}
 
-            switch(action.area) {
+            switch (action.area) {
                 case AreaSpectrum:
                 case AreaSpectrogram:    getObj(Spectrum3D).triggerButton(action.id);      break;
 
@@ -616,7 +621,7 @@ void CycleTour::performAction(Action& action) {
         }
 
         case SetLayer: {
-            switch(action.area) {
+            switch (action.area) {
                 case AreaWfrmWaveform3D:
                 case AreaWshpEditor:
                     getObj(Waveform3D).getPanelControls()->layerSelector->clickedOnRow(action.data1);
@@ -642,7 +647,7 @@ void CycleTour::performAction(Action& action) {
         }
 
         case OpenFactoryPreset: {
-            if(! action.hasExecuted && action.str.isNotEmpty()) {
+            if (! action.hasExecuted && action.str.isNotEmpty()) {
                 getObj(FileManager).openFactoryPreset(action.str);
                 action.hasExecuted = true;
             }
@@ -651,8 +656,9 @@ void CycleTour::performAction(Action& action) {
         }
 
         case AddPoint: {
-            if(action.hasExecuted)
+            if (action.hasExecuted) {
                 return;
+}
 
             if (itr) {
                 ScopedBooleanSwitcher sbs(itr->suspendUndo);
@@ -671,13 +677,14 @@ void CycleTour::performAction(Action& action) {
         }
 
         case DeletePoint: {
-            if(action.hasExecuted)
+            if (action.hasExecuted) {
                 return;
+}
 
-            if(itr) {
+            if (itr) {
                 Mesh* mesh = itr->getMesh();
 
-                if(isPositiveAndBelow(action.data1, mesh->getNumVerts())) {
+                if (isPositiveAndBelow(action.data1, mesh->getNumVerts())) {
                     vector<Vertex*>& selected = itr->getSelected();
                     selected.clear();
 
@@ -686,7 +693,7 @@ void CycleTour::performAction(Action& action) {
                     selected.push_back(vert);
                     itr->eraseSelected();
 
-                    if(action.triggersUpdate) {
+                    if (action.triggersUpdate) {
                         itr->postUpdateMessage();
                         itr->doExtraMouseUp();
                     }
@@ -699,13 +706,14 @@ void CycleTour::performAction(Action& action) {
         }
 
         case MovePoint: {
-            if(action.hasExecuted)
+            if (action.hasExecuted) {
                 return;
+}
 
-            if(itr) {
+            if (itr) {
                 Mesh* mesh = itr->getMesh();
 
-                if(isPositiveAndBelow(action.data1, mesh->getNumVerts())) {
+                if (isPositiveAndBelow(action.data1, mesh->getNumVerts())) {
                     vector<Vertex*>& selected = itr->getSelected();
                     selected.clear();
 
@@ -715,7 +723,7 @@ void CycleTour::performAction(Action& action) {
                     itr->updateSelectionFrames();
                     itr->moveSelectedVerts(action.point);
 
-                    if(action.triggersUpdate) {
+                    if (action.triggersUpdate) {
                         getObj(VertexPropertiesPanel).setSelectedAndCaller(itr);
                         itr->postUpdateMessage();
                     }
@@ -731,16 +739,16 @@ void CycleTour::performAction(Action& action) {
             if (itr) {
                 Mesh* mesh = itr->getMesh();
 
-                if(isPositiveAndBelow(action.data1, mesh->getNumVerts()) &&
+                if (isPositiveAndBelow(action.data1, mesh->getNumVerts()) &&
                         NumberUtils::within<int>(action.id, IdParamTime, IdParamSharp)) {
                     Vertex* vert = mesh->getVerts()[action.data1];
                     Array<Vertex*> movingVerts = itr->getVerticesToMove(vert->owners.getFirst(), vert);
 
-                    for(auto movingVert : movingVerts) {
+                    for (auto movingVert : movingVerts) {
                         movingVert->values[action.id] = action.value;
                     }
 
-                    if(action.triggersUpdate) {
+                    if (action.triggersUpdate) {
                         getObj(VertexPropertiesPanel).setSelectedAndCaller(itr);
                         itr->postUpdateMessage();
                     }
@@ -750,23 +758,24 @@ void CycleTour::performAction(Action& action) {
         }
 
         case SelectPoint: {
-            if(itr) {
+            if (itr) {
                 Mesh* mesh = itr->getMesh();
 
-                if(isPositiveAndBelow(action.data1, mesh->getNumVerts())) {
+                if (isPositiveAndBelow(action.data1, mesh->getNumVerts())) {
                     vector<Vertex*>& selected = itr->getSelected();
                     Vertex* vert = mesh->getVerts()[action.data1];
 
                     bool contained = false;
-                    for(auto& i : selected) {
-                        if(i == vert) {
+                    for (auto& i : selected) {
+                        if (i == vert) {
                             contained = true;
                             break;
                         }
                     }
 
-                    if(! contained)
+                    if (! contained) {
                         selected.push_back(vert);
+}
 
                     itr->setMovingVertsFromSelected();
                     getObj(VertexPropertiesPanel).setSelectedAndCaller(itr);
@@ -783,7 +792,7 @@ void CycleTour::performAction(Action& action) {
                 vector<Vertex*>& selected = itr->getSelected();
                 selected.clear();
 
-                if(action.triggersUpdate) {
+                if (action.triggersUpdate) {
                     itr->resizeFinalBoxSelection(true);
                     itr->update(Update);
                     getObj(VertexPropertiesPanel).setSelectedAndCaller(itr);
@@ -794,7 +803,7 @@ void CycleTour::performAction(Action& action) {
         }
 
         case SetKnobValue: {
-            switch(action.area) {
+            switch (action.area) {
                 case AreaUnison:       getObj(UnisonUI)    .getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
                 case AreaReverb:       getObj(ReverbUI)    .getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
                 case AreaEQ:           getObj(EqualizerUI) .getParamGroup().setKnobValue(action.data1, action.value, action.triggersUpdate, false); break;
@@ -819,14 +828,15 @@ void CycleTour::performAction(Action& action) {
         case SetVertexSize: {
             getSetting(UseLargerPoints) = action.data1 > 1;
 
-            if(action.triggersUpdate)
+            if (action.triggersUpdate) {
                 getObj(Updater).update(UpdateSources::SourceAll, UpdateType::Repaint);
+}
 
             break;
         }
 
         case SetUseRange:
-            switch(action.id) {
+            switch (action.id) {
                 case IdYellow: getSetting(UseYellowDepth) = action.data1 > 0; break;
                 case IdRed:    getSetting(UseRedDepth)    = action.data1 > 0; break;
                 case IdBlue:   getSetting(UseBlueDepth)   = action.data1 > 0; break;
@@ -867,20 +877,22 @@ void CycleTour::performAction(Action& action) {
             break;
 
         case SetAxeSize:{
-            if(action.area != AreaSpectrogram && action.area != AreaWfrmWaveform3D)
+            if (action.area != AreaSpectrogram && action.area != AreaWfrmWaveform3D) {
                 return;
+}
 
-            if(itr)
+            if (itr) {
                 itr->setAxeSize(action.value);
+}
 
             break;
         }
 
         case ChopLines: {
-            if(itr && ! action.hasExecuted &&
+            if (itr && ! action.hasExecuted &&
                     (action.area == AreaSpectrogram || action.area == AreaWfrmWaveform3D) &&
                     action.id != IdNull) {
-                if(auto* i3d = dynamic_cast<Interactor3D*>(itr)) {
+                if (auto* i3d = dynamic_cast<Interactor3D*>(itr)) {
                     jassert(action.value > 0);
 
                     /*
@@ -904,7 +916,7 @@ void CycleTour::performAction(Action& action) {
                 selected.clear();
                 selected.push_back(vert);
 
-                if(action.triggersUpdate) {
+                if (action.triggersUpdate) {
                     itr->setMovingVertsFromSelected();
                     itr->resizeFinalBoxSelection(true);
                     itr->update(Update);
@@ -988,9 +1000,9 @@ bool CycleTour::ItemWrapper::keyPressed(const KeyPress &press) {
     juce_wchar c = press.getTextCharacter();
 
     if (tour.isLive()) {
-        if (code == KeyPress::escapeKey)
+        if (code == KeyPress::escapeKey) {
             tour.exit();
-        else if (code == KeyPress::leftKey || code == KeyPress::rightKey) {
+        } else if (code == KeyPress::leftKey || code == KeyPress::rightKey) {
             code == KeyPress::leftKey ? tour.showPrevious() : tour.showNext();
         } else if (c == '[' || c == ']') {
             c == '[' ? tour.showPrevious() : tour.showNext();
@@ -1178,7 +1190,7 @@ void CycleTour::timerCallback(int id) {
 }
 
 TourGuide* CycleTour::getTourGuide(Area area) {
-    switch(area) {
+    switch (area) {
         case AreaWfrmWaveform3D: return &getObj(Waveform3D);
         case AreaMorphPanel:     return &getObj(MorphPanel);
         case AreaVertexProps:    return &getObj(VertexPropertiesPanel);
@@ -1201,11 +1213,11 @@ TourGuide* CycleTour::getTourGuide(Area area) {
 juce::Component* CycleTour::getComponent(int which) {
     Panel* panel = areaToPanel(which);
 
-    if(panel != nullptr) {
+    if (panel != nullptr) {
         return panel->getComponent();
     }
 
-    switch(which) {
+    switch (which) {
         case AreaMain:          return &getObj(MainPanel);
         case AreaMorphPanel:    return &getObj(MorphPanel);
         case AreaModMatrix:     return &getObj(ModMatrixPanel);
@@ -1227,7 +1239,7 @@ juce::Component* CycleTour::getComponent(int which) {
 }
 
 Panel* CycleTour::areaToPanel(int which) {
-    switch(which) {
+    switch (which) {
         case AreaWshpEditor:     return &getObj(Waveform2D);
         case AreaWfrmWaveform3D: return &getObj(Waveform3D);
         case AreaSpectrum:       return &getObj(Spectrum2D);
@@ -1248,7 +1260,7 @@ Panel* CycleTour::areaToPanel(int which) {
 Interactor* CycleTour::areaToInteractor(int which) {
     Panel* panel = areaToPanel(which);
 
-    if(panel != nullptr) {
+    if (panel != nullptr) {
         return panel->getInteractor();
     }
 
@@ -1256,7 +1268,7 @@ Interactor* CycleTour::areaToInteractor(int which) {
 }
 
 bool CycleTour::passesRequirements(const String& ignore, const String& require) {
-    if(ignore.isEmpty() && require.isEmpty()) {
+    if (ignore.isEmpty() && require.isEmpty()) {
         return true;
     }
 
@@ -1276,11 +1288,11 @@ bool CycleTour::passesRequirements(const String& ignore, const String& require) 
         return false;
     }
 
-    if(formatSplit(require.containsIgnoreCase("plugin"), ignore.containsIgnoreCase("plugin"))) {
+    if (formatSplit(require.containsIgnoreCase("plugin"), ignore.containsIgnoreCase("plugin"))) {
         return false;
     }
 
-    if(getSetting(FirstLaunch) ? ignore.containsIgnoreCase("first-launch") : require.containsIgnoreCase("first-launch")) {
+    if (getSetting(FirstLaunch) ? ignore.containsIgnoreCase("first-launch") : require.containsIgnoreCase("first-launch")) {
         return false;
     }
 
@@ -1298,7 +1310,7 @@ void CycleTour::readAction(Action& action, XmlElement* actionElem) {
 
     String actionArea = actionElem->getStringAttribute("area", {});
 
-    if(actionArea.isNotEmpty() && areaStrings.contains(actionArea)) {
+    if (actionArea.isNotEmpty() && areaStrings.contains(actionArea)) {
         action.area = areaStrings[actionArea];
     }
 
@@ -1313,14 +1325,14 @@ void CycleTour::readAction(Action& action, XmlElement* actionElem) {
     action.delayMillis = actionElem->getIntAttribute("delay-millis",   100);
     action.triggersUpdate = actionElem->getBoolAttribute("updates",    true);
 
-    if(action.str.contains("%TUT")) {
+    if (action.str.contains("%TUT")) {
         String tutDir = getObj(Directories).getTutorialDir();
         action.str = action.str.replace("%TUT", tutDir);
     }
 }
 
 bool CycleTour::readXML(const XmlElement* element) {
-    if(element == nullptr) {
+    if (element == nullptr) {
         return false;
     }
 
@@ -1330,7 +1342,7 @@ bool CycleTour::readXML(const XmlElement* element) {
     current.items.clear();
     current.name = element->getStringAttribute("title", "Untitled");
 
-    for(auto itemElem : element->getChildWithTagNameIterator("Item")) {
+    for (auto itemElem : element->getChildWithTagNameIterator("Item")) {
         Item item;
 
         String areaStr = itemElem->getStringAttribute("area",    "AreaNull");
@@ -1348,19 +1360,19 @@ bool CycleTour::readXML(const XmlElement* element) {
         String ignoreStr     = itemElem->getStringAttribute("ignore",   {});
         String requireStr    = itemElem->getStringAttribute("require",  {});
 
-        if(! passesRequirements(ignoreStr, requireStr)) {
+        if (! passesRequirements(ignoreStr, requireStr)) {
             continue;
         }
 
-        if(item.text.contains("\\n")) {
+        if (item.text.contains("\\n")) {
             item.text = item.text.replace("\\n", "\n");
         }
 
-        if(item.text.contains("%CMD")) {
+        if (item.text.contains("%CMD")) {
             item.text = item.text.replace("%CMD", cmdString);
         }
 
-        if(XmlElement* condElem = itemElem->getChildByName("Condition")) {
+        if (XmlElement* condElem = itemElem->getChildByName("Condition")) {
             Condition cond;
             cond.area        = item.area;
             cond.oper        = condStrings[condElem->getStringAttribute("operation", "OperNull")];
@@ -1374,7 +1386,7 @@ bool CycleTour::readXML(const XmlElement* element) {
             item.condition = cond;
         }
 
-        for(auto actionElem : itemElem->getChildWithTagNameIterator("Action")) {
+        for (auto actionElem : itemElem->getChildWithTagNameIterator("Action")) {
             Action animAction;
             animAction.area = item.area;
             readAction(animAction, actionElem);

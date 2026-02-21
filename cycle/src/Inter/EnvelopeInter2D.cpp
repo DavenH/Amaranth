@@ -30,49 +30,49 @@
 #include "../UI/VertexPanels/Waveform2D.h"
 #include "../UI/VertexPanels/Waveform3D.h"
 
-EnvelopeInter2D::EnvelopeInter2D(SingletonRepo* repo) : 
-		Interactor2D		(repo, "EnvelopeInter2D", Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Red, Vertex::Blue))
-	,	SingletonAccessor	(repo, "EnvelopeInter2D")
-	,	LayerSelectionClient(repo)
+EnvelopeInter2D::EnvelopeInter2D(SingletonRepo* repo) :
+        Interactor2D		(repo, "EnvelopeInter2D", Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Red, Vertex::Blue))
+    ,	SingletonAccessor	(repo, "EnvelopeInter2D")
+    ,	LayerSelectionClient(repo)
 
-	,	layerSelector(repo, this)
-	,	addRemover(			  this, repo, "Scratch Channel")
-	,	loopIcon(		4, 3, this, repo, "Toggle selected vertex as loop start", String(), "Toggle vertex as loop start (select one, at least 2 behind sustain)")
-	,	sustainIcon(	5, 3, this, repo, "Toggle selected vertex as sustain", 	 String(), "Toggle vertex as sustain (select exactly one)")
-	,	enableButton(	5, 5, this, repo, "Enable envelope")
+    ,	layerSelector(repo, this)
+    ,	addRemover(			  this, repo, "Scratch Channel")
+    ,	loopIcon(		4, 3, this, repo, "Toggle selected vertex as loop start", String(), "Toggle vertex as loop start (select one, at least 2 behind sustain)")
+    ,	sustainIcon(	5, 3, this, repo, "Toggle selected vertex as sustain", 	 String(), "Toggle vertex as sustain (select exactly one)")
+    ,	enableButton(	5, 5, this, repo, "Enable envelope")
 
-	,	contractIcon(   6, 0, this, repo, "Contract to range")
-	,	expandIcon(   	6, 1, this, repo, "Expand to full")
+    ,	contractIcon(   6, 0, this, repo, "Contract to range")
+    ,	expandIcon(   	6, 1, this, repo, "Expand to full")
 
-	,	configIcon( 	9, 1, this, repo, "Envelope Options")
-	,	volumeIcon( 	7, 0, this, repo, "Volume Envelope")
-	,	pitchIcon(		7, 1, this, repo, "Pitch Envelope")
-	,	scratchIcon(	7, 2, this, repo, "Scratch Envelopes")
-	,	wavePitchIcon(  7, 3, this, repo, "Wave Pitch Envelope", String(), "Wave pitch envelope - applicable when sample is loaded")
+    ,	configIcon( 	9, 1, this, repo, "Envelope Options")
+    ,	volumeIcon( 	7, 0, this, repo, "Volume Envelope")
+    ,	pitchIcon(		7, 1, this, repo, "Pitch Envelope")
+    ,	scratchIcon(	7, 2, this, repo, "Scratch Envelopes")
+    ,	wavePitchIcon(  7, 3, this, repo, "Wave Pitch Envelope", String(), "Wave pitch envelope - applicable when sample is loaded")
 {
-	updateSource 	= UpdateSources::SourceEnvelope2D;
-	layerType 		= LayerGroups::GroupVolume;
-	ignoresTime 	= true;
-	scratchesTime 	= false;
+    updateSource 	= UpdateSources::SourceEnvelope2D;
+    layerType 		= LayerGroups::GroupVolume;
+    ignoresTime 	= true;
+    scratchesTime 	= false;
 
-	wavePitchIcon.setApplicable(false);
-	collisionDetector.setNonintersectingDimension(CollisionDetector::Key);
+    wavePitchIcon.setApplicable(false);
+    collisionDetector.setNonintersectingDimension(CollisionDetector::Key);
 
-	configIcon	 .setMouseScrollApplicable(false);
-	volumeIcon	 .setMouseScrollApplicable(true);
-	pitchIcon	 .setMouseScrollApplicable(true);
-	scratchIcon	 .setMouseScrollApplicable(true);
-	wavePitchIcon.setMouseScrollApplicable(true);
+    configIcon	 .setMouseScrollApplicable(false);
+    volumeIcon	 .setMouseScrollApplicable(true);
+    pitchIcon	 .setMouseScrollApplicable(true);
+    scratchIcon	 .setMouseScrollApplicable(true);
+    wavePitchIcon.setMouseScrollApplicable(true);
 
-	vertexProps.ampVsPhaseApplicable = false;
-	vertexProps.sliderApplicable[Vertex::Time] = false;
-	enableButton.setHighlit(false);
+    vertexProps.ampVsPhaseApplicable = false;
+    vertexProps.sliderApplicable[Vertex::Time] = false;
+    enableButton.setHighlit(false);
 
-	vertexProps.ampVsPhaseApplicable = true;
+    vertexProps.ampVsPhaseApplicable = true;
 
-	vertexProps.dimensionNames.set(Vertex::Phase, "Time");
-	vertexProps.dimensionNames.set(Vertex::Time, String());
-	vertexProps.isEnvelope = true;
+    vertexProps.dimensionNames.set(Vertex::Phase, "Time");
+    vertexProps.dimensionNames.set(Vertex::Time, String());
+    vertexProps.isEnvelope = true;
 }
 
 void EnvelopeInter2D::init() {
@@ -130,12 +130,14 @@ void EnvelopeInter2D::doExtraMouseUp() {
             rast->getIndices(loopIdx, sustIdx);
 
             for (int i = 0; i < (int) icpts.size(); ++i) {
-                if (vert->isOwnedBy(icpts[i].cube))
+                if (vert->isOwnedBy(icpts[i].cube)) {
                     icptIndex = i;
+}
             }
 
-            if (icptIndex >= 0 && icptIndex <= sustIdx - EnvRasterizer::loopMinSizeIcpts)
+            if (icptIndex >= 0 && icptIndex <= sustIdx - EnvRasterizer::loopMinSizeIcpts) {
                 isLoopApplicable = true;
+}
 
             if (sustIdx >= 0 && loopIdx >= 0 && icptIndex >= 0 && sustIdx - loopIdx < EnvRasterizer::loopMinSizeIcpts) {
                 envMesh->loopCubes.erase(icpts[icptIndex].cube);
@@ -346,12 +348,12 @@ bool EnvelopeInter2D::synchronizeEnvPoints(Vertex* vertex, bool vertexIsLoopVert
 void EnvelopeInter2D::buttonClicked(Button* button) {
     progressMark
 
-    if (button == &volumeIcon)          switchedEnvelope(LayerGroups::GroupVolume);
-    else if (button == &pitchIcon)      switchedEnvelope(LayerGroups::GroupPitch);
-    else if (button == &wavePitchIcon)  switchedEnvelope(LayerGroups::GroupWavePitch);
-    else if (button == &scratchIcon)    switchedEnvelope(LayerGroups::GroupScratch);
+    if (button == &volumeIcon) {          switchedEnvelope(LayerGroups::GroupVolume);
+    } else if (button == &pitchIcon) {      switchedEnvelope(LayerGroups::GroupPitch);
+    } else if (button == &wavePitchIcon) {  switchedEnvelope(LayerGroups::GroupWavePitch);
+    } else if (button == &scratchIcon) {    switchedEnvelope(LayerGroups::GroupScratch);
 
-    else if (button == &contractIcon || button == &expandIcon) {
+    } else if (button == &contractIcon || button == &expandIcon) {
         if (button == &contractIcon) {
             envPanel->zoomAndRepaint();
         } else {
@@ -732,26 +734,26 @@ void EnvelopeInter2D::validateMesh() {
 
 // todo
 //	bool isContained = false;
-//	for(int i = 0; i < (int) lines.size(); ++i)
+//	for (int i = 0; i < (int) lines.size(); ++i)
 //	{
-//		if(lines[i] == envMesh->loopLine)
+//		if (lines[i] == envMesh->loopLine)
 //		{
 //			isContained = true;
 //		}
 //	}
 //
-//	if(isContained)
+//	if (isContained)
 //	{
 //		// if a line has been deleted, the intercepts won't be updated at this point
 //		envRast->calcIntercepts();
 //		envRast->evaluateLoopSustainIndices();
 //
 //		const vector<Intercept>& icpts = envRast->getIntercepts();
-//		for(int i = 0; i < (int) icpts.size(); ++i)
+//		for (int i = 0; i < (int) icpts.size(); ++i)
 //		{
-//			if(envMesh->loopLines.find(icpts[i].cube) != envMesh->loopLines.end())
+//			if (envMesh->loopLines.find(icpts[i].cube) != envMesh->loopLines.end())
 //			{
-//				if(i > (icpts.size() - 1) - EnvRasterizer::loopMinSizeIcpts)
+//				if (i > (icpts.size() - 1) - EnvRasterizer::loopMinSizeIcpts)
 //				{
 //					isContained = false;
 //				}
@@ -759,7 +761,7 @@ void EnvelopeInter2D::validateMesh() {
 //		}
 //	}
 //
-//	if(! isContained)
+//	if (! isContained)
 //	{
 //		envMesh->loopLine = nullptr;
 //		calcSustainLoopIndices();
@@ -825,9 +827,9 @@ void EnvelopeInter2D::waveOverlayChanged() {
     if (drawWave) {
         switchedEnvelope(LayerGroups::GroupWavePitch, true, true);
     } else {
-        if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch)
+        if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch) {
             switchedEnvelope(LayerGroups::GroupPitch, true);
-        else {
+        } else {
             getObj(EnvPitchRast).setMesh(getObj(MeshLibrary).getCurrentEnvMesh(LayerGroups::GroupPitch));
         }
     }
@@ -1084,8 +1086,9 @@ void EnvelopeInter2D::enablementsChanged() {
 
     MeshLibrary::EnvProps* props = meshLib.getCurrentEnvProps(getSetting(CurrentEnvGroup));
 
-    if (props != nullptr)
+    if (props != nullptr) {
         configIcon.setPowered(props->dynamic || props->global || props->scale != 1 || props->tempoSync);
+}
 }
 
 

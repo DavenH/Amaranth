@@ -18,11 +18,11 @@ void FXRasterizer::calcCrossPoints() {
     }
 
     icpts.clear();
-    for(auto vert : mesh->getVerts()) {
+    for (auto vert : mesh->getVerts()) {
         float* values = vert->values;
         Intercept icpt(values[dims.x], values[dims.y], 0, values[Vertex::Curve]);
 
-        if(scalingType) {
+        if (scalingType) {
             icpt.y = 2.f * icpt.y - 1.f;
         }
 
@@ -60,7 +60,7 @@ void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
     Intercept back1(1.5f, icpts[end].y);
     Intercept back2(2.0f, icpts[end].y);
 
-    for(auto& curve : curves) {
+    for (auto& curve : curves) {
         curve.destruct();
     }
 
@@ -69,14 +69,14 @@ void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
     curves.emplace_back(front1, front2, icpts[0]);
     curves.emplace_back(front2, icpts[0], icpts[1]);
 
-    for(int i = 0; i < (int) icpts.size() - 2; ++i) {
+    for (int i = 0; i < (int) icpts.size() - 2; ++i) {
         curves.emplace_back(icpts[i], icpts[i + 1], icpts[i + 2]);
     }
 
     curves.emplace_back(icpts[end - 1], icpts[end], back1);
     curves.emplace_back(icpts[end], back1, back2);
 
-    for(auto& curve : curves) {
+    for (auto& curve : curves) {
         curve.construct();
     }
 }

@@ -55,7 +55,7 @@ void GuilessEffect::paint(Graphics& g) {
     Array<int> knobIdcs = getApplicableKnobs();
 
     g.setColour(Colour::greyLevel(0.235f));
-    for(int idx : knobIdcs) {
+    for (int idx : knobIdcs) {
         Slider* knob = paramGroup->getKnob<Knob>(idx);
         String text  = getKnobName(idx);
 
@@ -70,7 +70,7 @@ void GuilessEffect::paint(Graphics& g) {
     Array<Rectangle<int> > rects = getOutlinableRects();
 
     g.setColour(Colour::greyLevel(0.05f));
-    for(auto rect : rects) {
+    for (auto rect : rects) {
         Path strokePath;
         strokePath.addRoundedRectangle(rect.getX(), rect.getY(), rect.getWidth() + 1, rect.getHeight() + 1, 2.f);
         strokePath.applyTransform(AffineTransform::translation(-0.5f, -0.5f));

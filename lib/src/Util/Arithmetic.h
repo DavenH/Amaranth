@@ -18,7 +18,7 @@ public:
     static float invLogMapping(float tension, float x, bool useOffset = false);
 
     static int binarySearch(float value, Buffer<float> values) {
-        if(values.empty()) {
+        if (values.empty()) {
             return 0;
         }
 
@@ -26,18 +26,18 @@ public:
         int upper = values.size() - 1;
         int index = 0;
 
-        if(value > values.back()) {
+        if (value > values.back()) {
             return upper;
         }
 
-        if(value < values.front()) {
+        if (value < values.front()) {
             return 0;
         }
 
         while (upper - lower > 5) {
             index = (upper + lower) / 2;
 
-            if(values[index] < value) {
+            if (values[index] < value) {
                 lower = index;
             } else {
                 upper = index;
@@ -45,7 +45,7 @@ public:
         }
 
         for (int i = lower; i <= upper; ++i) {
-            if(values[i] >= value) {
+            if (values[i] >= value) {
                 return i;
             }
         }

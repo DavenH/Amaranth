@@ -72,7 +72,7 @@ bool SmoothedParameter::setTargetValue(float value) {
     float lastVal = targetValue;
     targetValue = value;
 
-    if(! smoothingActive) {
+    if (! smoothingActive) {
         currentValue = targetValue;
     }
 

@@ -24,7 +24,7 @@ PitchedSample* Multisample::getSampleForNote(int midiNote, float velocity) {
     NumberUtils::constrain(velocity, 0.00001f, 0.99999f);
 
     for (auto& sample : samples) {
-        if(sample->midiRange.contains(midiNote) && sample->veloRange.contains(velocity)) {
+        if (sample->midiRange.contains(midiNote) && sample->veloRange.contains(velocity)) {
             return sample;
         }
     }
@@ -38,8 +38,9 @@ void Multisample::createFromDirectory(const File& directory) {
     Array<File> files;
     String exts[] = { "*.wav", "*.aif", "*.mp3", "*.ogg", "*.flac", "*.aiff" };
 
-    for(const auto & ext : exts)
+    for (const auto & ext : exts) {
         directory.findChildFiles(files, File::findFiles, false, ext);
+}
 
     samples.clear();
 
@@ -81,7 +82,7 @@ void Multisample::fillRanges() {
     samples.sort(comparator);
 
     int j = 0;
-    while(j < samples.size())
+    while (j < samples.size())
     {
         PitchedSample* sample = samples[j];
         int currentNote = sample->midiRange.getStart();
@@ -105,8 +106,9 @@ void Multisample::fillRanges() {
         // fill note range
         int nextNote = j < samples.size() ? samples[j]->midiRange.getStart() : getConstant(HighestMidiNote);
 
-    for (auto& velocity : velocities)
+    for (auto& velocity : velocities) {
         velocity->midiRange.setEnd(nextNote);
+}
     }
 
     // extend lowest note to bottom
@@ -202,17 +204,17 @@ void Multisample::parseRanges() {
             NumberCode& codeSet = codeSets[i];
             codeSet.average = 0;
 
-            for(auto it = codeSet.numbers.begin(); it != codeSet.numbers.end(); ++it) {
+            for (auto it = codeSet.numbers.begin(); it != codeSet.numbers.end(); ++it) {
                 codeSet.average += *it;
             }
 
             codeSet.average /= codeSet.numbers.size();
 
-            if(codeSet.numbers.size() > 5 && NumberUtils::within(codeSet.average, 40, 100)) {
+            if (codeSet.numbers.size() > 5 && NumberUtils::within(codeSet.average, 40, 100)) {
                 notePos = i;
             }
 
-            if(codeSet.numbers.size() <= 5 && NumberUtils::within(codeSet.average, 60, 127)) {
+            if (codeSet.numbers.size() <= 5 && NumberUtils::within(codeSet.average, 60, 127)) {
                 velPos = i;
             }
         }
@@ -228,7 +230,7 @@ void Multisample::parseRanges() {
                     sample->fundNote = note;
                 }
 
-                if(isPositiveAndBelow(velPos, (int) ints.size())) {
+                if (isPositiveAndBelow(velPos, (int) ints.size())) {
                     sample->veloRange.setEnd(ints[velPos] / 127.f);
                 }
             }
@@ -280,8 +282,8 @@ PitchedSample* Multisample::addSample(const File& file, int defaultNote) {
     sample->midiRange = noteRange;
     sample->veloRange = velRange;
 
-    if(sample->load(file.getFullPathName()) >= 0) {
-        if(defaultNote >= Constants::LowestMidiNote) {
+    if (sample->load(file.getFullPathName()) >= 0) {
+        if (defaultNote >= Constants::LowestMidiNote) {
             sample->fundNote = defaultNote;
         }
 
@@ -290,12 +292,12 @@ PitchedSample* Multisample::addSample(const File& file, int defaultNote) {
         vector<PitchedSample*> toRemove;
 
         for (auto cand : samples) {
-            if(sample->midiRange.intersects(cand->midiRange) && sample->veloRange.intersects(cand->veloRange)) {
+            if (sample->midiRange.intersects(cand->midiRange) && sample->veloRange.intersects(cand->veloRange)) {
                 toRemove.push_back(cand);
             }
         }
 
-        for(auto& i : toRemove) {
+        for (auto& i : toRemove) {
             samples.removeObject(i, true);
         }
 
@@ -341,7 +343,7 @@ bool Multisample::readXML(const XmlElement* element) {
         samples.clear();
     }
 
-    for(auto sampleElem : element->getChildWithTagNameIterator("Sample")) {
+    for (auto sampleElem : element->getChildWithTagNameIterator("Sample")) {
         std::unique_ptr<PitchedSample> sample(new PitchedSample());
         sample->readXML(sampleElem);
         sample->createPeriodsFromEnv(waveRasterizer);
@@ -380,7 +382,7 @@ void Multisample::updatePlaybackPosition() {
     float seconds   = getGreatestLengthSeconds();
     int newPosition = roundToInt(progress * seconds * 44100.f);
 
-    for(auto sample : samples) {
+    for (auto sample : samples) {
         sample->playbackPos = newPosition;
     }
 }

@@ -5,35 +5,35 @@
 #include "Dialogs.h"
 
 class FileManager :
-		public SingletonAccessor {
+        public SingletonAccessor {
 public:
-	explicit FileManager(SingletonRepo* repo);
-	void unloadWav(bool);
-	void loadPendingItem();
-	void saveCurrentPreset();
-	void openCurrentPreset();
-	void openDefaultPreset();
-	void openFactoryPreset(const String& presetName);
-	void openPreset(const File& file);
-	void doPostPresetLoad();
-	void revertCurrentPreset();
-	bool canSaveOverCurrentPreset();
+    explicit FileManager(SingletonRepo* repo);
+    void unloadWav(bool);
+    void loadPendingItem();
+    void saveCurrentPreset();
+    void openCurrentPreset();
+    void openDefaultPreset();
+    void openFactoryPreset(const String& presetName);
+    void openPreset(const File& file);
+    void doPostPresetLoad();
+    void revertCurrentPreset();
+    bool canSaveOverCurrentPreset();
 
-	bool openWave(const File& file, Dialogs::OpenWaveInvoker invoker, int defaultNote = -1);
-	void doPostWaveLoad(Dialogs::OpenWaveInvoker invoker);
+    bool openWave(const File& file, Dialogs::OpenWaveInvoker invoker, int defaultNote = -1);
+    void doPostWaveLoad(Dialogs::OpenWaveInvoker invoker);
 
-	//void launchCheatsheetDocument();
-	//void launchHelp();
-	//void launchTutorials();
+    //void launchCheatsheetDocument();
+    //void launchHelp();
+    //void launchTutorials();
 
-	void setCurrentPresetName(const String& str) { currentPresetName = str;			 }
-	const String& getCurrentPresetName()		 { return currentPresetName; 		 }
-	void setOpenDefaultPreset(bool should) 		 { shouldOpenDefaultPreset = should; }
+    void setCurrentPresetName(const String& str) { currentPresetName = str;			 }
+    const String& getCurrentPresetName()		 { return currentPresetName; 		 }
+    void setOpenDefaultPreset(bool should) 		 { shouldOpenDefaultPreset = should; }
 
-	static void revertCallback(int returnId, SingletonRepo* repo);
+    static void revertCallback(int returnId, SingletonRepo* repo);
 private:
-	bool shouldOpenDefaultPreset;
+    bool shouldOpenDefaultPreset;
 
-	String currentPresetName;
-	String defaultPresetName;
+    String currentPresetName;
+    String defaultPresetName;
 };

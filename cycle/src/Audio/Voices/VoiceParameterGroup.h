@@ -41,13 +41,13 @@ public:
         unisonIndex				= group.unisonIndex;
         samplesThisCycle		= group.samplesThisCycle;
 
-        for(int i = 0; i < 2; ++i) {
+        for (int i = 0; i < 2; ++i) {
             cycleBuffer[i] 		 = group.cycleBuffer[i];
             lastLerpHalf[i] 	 = group.lastLerpHalf[i];
             resamplers[i] 		 = group.resamplers[i];
             samplingSpillover[i] = group.samplingSpillover[i];
 
-            for(int j = 0; j < 7; ++j) {
+            for (int j = 0; j < 7; ++j) {
                 padding[i][j] = group.padding[i][j];
             }
         }
@@ -61,7 +61,7 @@ public:
         cycleBuffer[0].reset();
         cycleBuffer[1].reset();
 
-        for(auto& layerState : layerStates) {
+        for (auto& layerState : layerStates) {
             layerState.reset();
         }
 

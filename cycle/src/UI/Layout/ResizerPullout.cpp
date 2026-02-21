@@ -44,7 +44,7 @@ void ResizerPullout::buttonClicked(Button* button) {
 
     pullout->removeBoxFromDesktop();
 
-    if(oldSize != size) {
+    if (oldSize != size) {
         window->changeSizeAndSet(size);
     }
   #endif

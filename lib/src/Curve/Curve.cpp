@@ -66,7 +66,7 @@ void Curve::validate() {
             b.x = c.x - 0.0001f;
         }
 
-        if(a.x > b.x) {
+        if (a.x > b.x) {
             a.x = b.x - 0.0001f;
         }
     }
@@ -211,8 +211,9 @@ void Curve::recalculateCurve() {
     distbd      = (b.x - tp.d.x) * (b.x - tp.d.x) + (b.y - tp.d.y) * (b.y - tp.d.y);
     diff        = distbd - distbi;
 
-    if (diff < 0)
+    if (diff < 0) {
         diff = 0;
+}
 
     diff = std::sqrt(diff);
     tp.shear = diff * tp.dpole * tp.ypole;

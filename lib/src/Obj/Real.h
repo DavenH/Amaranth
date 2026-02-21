@@ -53,8 +53,9 @@ public:
     }
 
     Real operator^(const Real& r) const {
-        if (r.val == 0.f)
+        if (r.val == 0.f) {
             return Real(1.f);
+}
 
         return Real(powf(val, r.val));
     }

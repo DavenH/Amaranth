@@ -19,11 +19,11 @@
 #include "../../App/CycleTour.h"
 
 ModMatrix::ModMatrix(SingletonRepo* repo, ModMatrixPanel* panel) :
-		SingletonAccessor(repo, "ModMatrix")
-	,	panel(panel)
-	,	tableListBox(new TableListBox({}, this))
+        SingletonAccessor(repo, "ModMatrix")
+    ,	panel(panel)
+    ,	tableListBox(new TableListBox({}, this))
 {
-	addAndMakeVisible(tableListBox.get());
+    addAndMakeVisible(tableListBox.get());
 }
 
 int ModMatrix::getNumRows() {
@@ -47,7 +47,7 @@ juce::Component* ModMatrix::refreshComponentForCell(int row,
     int column = columnIdToIndex(columnId);
 
     if (column < 0) {
-	    return nullptr;
+        return nullptr;
     }
 
     if (component == nullptr) {
@@ -73,85 +73,85 @@ void ModMatrix::showDimensionsPopup(ColourCheckbox* checkbox) {
     int oldDim = mappingIndex < 0 ? -1 : panel->mappings.getReference(mappingIndex).dim;
 
     bool active = oldDim != ModMatrixPanel::YellowDim;
-	bool isVoiceTime = inputId == ModMatrixPanel::VoiceTime;
-	bool isEnvelope = outputId >= ModMatrixPanel::VolEnvId;
-	active &= !(isVoiceTime && isEnvelope);
+    bool isVoiceTime = inputId == ModMatrixPanel::VoiceTime;
+    bool isEnvelope = outputId >= ModMatrixPanel::VolEnvId;
+    active &= !(isVoiceTime && isEnvelope);
 
-	PopupMenu menu;
-	menu.addItem(1, "None", active, oldDim == ModMatrixPanel::NullDim);
-	menu.addItem(3, "Red", 	active, oldDim == ModMatrixPanel::RedDim);
-	menu.addItem(4, "Blue", active, oldDim == ModMatrixPanel::BlueDim);
+    PopupMenu menu;
+    menu.addItem(1, "None", active, oldDim == ModMatrixPanel::NullDim);
+    menu.addItem(3, "Red", 	active, oldDim == ModMatrixPanel::RedDim);
+    menu.addItem(4, "Blue", active, oldDim == ModMatrixPanel::BlueDim);
 
-	// checkbox, 0, 80, 1, 24;
-	auto options = PopupMenu::Options()
-		.withStandardItemHeight(24)
-		.withTargetComponent(checkbox)
-	;
+    // checkbox, 0, 80, 1, 24;
+    auto options = PopupMenu::Options()
+        .withStandardItemHeight(24)
+        .withTargetComponent(checkbox)
+    ;
 
-	menu.showMenuAsync(options, [this,oldDim,mappingIndex,inputId,outputId](int result) {
-		int newDim = result - 2;
-			if(result != 0 && oldDim != newDim) {
-				panel->mappingChanged(mappingIndex, inputId, outputId, oldDim, newDim);
-			}
-		}
-	);
+    menu.showMenuAsync(options, [this,oldDim,mappingIndex,inputId,outputId](int result) {
+        int newDim = result - 2;
+            if (result != 0 && oldDim != newDim) {
+                panel->mappingChanged(mappingIndex, inputId, outputId, oldDim, newDim);
+            }
+        }
+    );
 
 }
 
 ModMatrixPanel::ModMatrixPanel(SingletonRepo* repo) :
-		SingletonAccessor(repo, "ModMatrixPanel")
-	,	ParameterGroup::Worker(repo, "ModMatrixPanel")
-	,	modMatrix		(repo, this)
-	,	addDestBtn		("Add Dest")
-	,	addInputBtn		("Add Source")
-	,	closeButton		("Close")
-	,	inputLabel		("", "Add source")
-	,	destLabel		("", "Add dest")
-	,	pendingFocusGrab(false)
-	,	dfltModMapping	(ModWheel) {
-	addAndMakeVisible(&modMatrix);
+        SingletonAccessor(repo, "ModMatrixPanel")
+    ,	ParameterGroup::Worker(repo, "ModMatrixPanel")
+    ,	modMatrix		(repo, this)
+    ,	addDestBtn		("Add Dest")
+    ,	addInputBtn		("Add Source")
+    ,	closeButton		("Close")
+    ,	inputLabel		("", "Add source")
+    ,	destLabel		("", "Add dest")
+    ,	pendingFocusGrab(false)
+    ,	dfltModMapping	(ModWheel) {
+    addAndMakeVisible(&modMatrix);
 
-	TableListBox& listbox = modMatrix.getListbox();
+    TableListBox& listbox = modMatrix.getListbox();
 
-	ScrollBar& vertScrollbar = listbox.getViewport()->getVerticalScrollBar();
-	ScrollBar& horzScrollbar = listbox.getViewport()->getHorizontalScrollBar();
+    ScrollBar& vertScrollbar = listbox.getViewport()->getVerticalScrollBar();
+    ScrollBar& horzScrollbar = listbox.getViewport()->getHorizontalScrollBar();
 
-	listbox.setRowHeight(gridSize);
-	listbox.getHeader().setVisible(false);
-	listbox.setHeaderHeight(0);
+    listbox.setRowHeight(gridSize);
+    listbox.getHeader().setVisible(false);
+    listbox.setHeaderHeight(0);
 
-	addDestBtn.getProperties().set("inactive", "");
-	addInputBtn.getProperties().set("inactive", "");
+    addDestBtn.getProperties().set("inactive", "");
+    addInputBtn.getProperties().set("inactive", "");
 
-	vertScrollbar.addListener(this);
-	horzScrollbar.addListener(this);
+    vertScrollbar.addListener(this);
+    horzScrollbar.addListener(this);
 
-	listbox.updateContent();
+    listbox.updateContent();
 
-	addAndMakeVisible(&addDestBtn);
-	addAndMakeVisible(&addInputBtn);
-	addAndMakeVisible(&utilityArea);
-	addAndMakeVisible(&sourceArea);
-	addAndMakeVisible(&destArea);
-	addAndMakeVisible(&closeButton);
+    addAndMakeVisible(&addDestBtn);
+    addAndMakeVisible(&addInputBtn);
+    addAndMakeVisible(&utilityArea);
+    addAndMakeVisible(&sourceArea);
+    addAndMakeVisible(&destArea);
+    addAndMakeVisible(&closeButton);
 
-	addDestBtn.addListener(this);
-	addInputBtn.addListener(this);
-	closeButton.addListener(this);
+    addDestBtn.addListener(this);
+    addInputBtn.addListener(this);
+    closeButton.addListener(this);
 
     for (int i = 0; i < 20; ++i) {
         auto* knob = new HSlider(repo, "#" + String(i + 1), "Utility parameter " + String(i + 1), true);
         paramGroup->addSlider(knob);
-		addAndMakeVisible(knob);
-	}
+        addAndMakeVisible(knob);
+    }
 
-	paramGroup->listenToKnobs();
+    paramGroup->listenToKnobs();
 }
 
 void ModMatrixPanel::init() {
-	audio 	   = &getObj(SynthAudioSource);
-	morphPanel = &getObj(MorphPanel);
-	lockImage  = getObj(MiscGraphics).getIcon(8, 8);
+    audio 	   = &getObj(SynthAudioSource);
+    morphPanel = &getObj(MorphPanel);
+    lockImage  = getObj(MiscGraphics).getIcon(8, 8);
 
 //	addKeyListener(&getObj(KeyboardInputHandler));
 }
@@ -160,9 +160,9 @@ void ModMatrixPanel::scrollBarMoved(ScrollBar* bar, double newRange) {
     TableListBox& listbox = modMatrix.getListbox();
 
     if (bar == &listbox.getHorizontalScrollBar()) {
-		// TODO
+        // TODO
     } else if (bar == &listbox.getVerticalScrollBar()) {
-    	// TODO
+        // TODO
     }
 
     repaint();
@@ -172,12 +172,12 @@ void ModMatrixPanel::scrollBarMoved(ScrollBar* bar, double newRange) {
 void ModMatrixPanel::paint(Graphics& g) {
     getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
-	g.setColour(Colours::darkgrey);
-	g.setFont(16);
+    g.setColour(Colours::darkgrey);
+    g.setFont(16);
 
-	Viewport& port = *modMatrix.getListbox().getViewport();
+    Viewport& port = *modMatrix.getListbox().getViewport();
 
-	Rectangle<int> modBounds = modMatrix.getBounds();
+    Rectangle<int> modBounds = modMatrix.getBounds();
 
     g.setFont(20);
     g.drawFittedText("Destination", modBounds.getX(),
@@ -185,40 +185,41 @@ void ModMatrixPanel::paint(Graphics& g) {
 
     getObj(MiscGraphics).drawTransformedText(g, "Source",
                                              AffineTransform::rotation(-MathConstants<float>::pi * 0.5).translated(
-	                                             35, modBounds.getCentreY()));
+                                                 35, modBounds.getCentreY()));
 
     getObj(MiscGraphics).drawTransformedText(g, "Utility Params",
                                              AffineTransform::rotation(-MathConstants<float>::pi * 0.5).translated(
-	                                             getWidth() - 120, modBounds.getCentreY()));
+                                                 getWidth() - 120, modBounds.getCentreY()));
 
     g.setFont(16);
-	g.setColour(Colours::grey);
+    g.setColour(Colours::grey);
 
-	{
-		Graphics::ScopedSaveState sss(g);
-		g.reduceClipRegion(10, modMatrix.getY(), modMatrix.getX() - 10, modMatrix.getHeight());
+    {
+        Graphics::ScopedSaveState sss(g);
+        g.reduceClipRegion(10, modMatrix.getY(), modMatrix.getX() - 10, modMatrix.getHeight());
 
-		for(int i = 0; i < inputs.size(); ++i)
-			g.drawText(inputs.getReference(i).name, 0, modMatrix.getY() + 10 + gridSize * i - port.getViewPositionY(),
-					   modMatrix.getX() - 10, 20, Justification::right, true);
-	}
+        for (int i = 0; i < inputs.size(); ++i) {
+            g.drawText(inputs.getReference(i).name, 0, modMatrix.getY() + 10 + gridSize * i - port.getViewPositionY(),
+                       modMatrix.getX() - 10, 20, Justification::right, true);
+}
+    }
 
-	AffineTransform destXform(
-			AffineTransform::rotation(- MathConstants<float>::pi * 0.2f).translated(
-					modMatrix.getX() + 20 - port.getViewPositionX(), modMatrix.getY() - 6));
+    AffineTransform destXform(
+            AffineTransform::rotation(- MathConstants<float>::pi * 0.2f).translated(
+                    modMatrix.getX() + 20 - port.getViewPositionX(), modMatrix.getY() - 6));
 
-	g.reduceClipRegion(modMatrix.getX(), 0, modMatrix.getWidth() + 30, modMatrix.getY());
+    g.reduceClipRegion(modMatrix.getX(), 0, modMatrix.getWidth() + 30, modMatrix.getY());
 
     for (int i = 0; i < outputs.size(); ++i) {
-	    HeaderElement& elem = outputs.getReference(i);
+        HeaderElement& elem = outputs.getReference(i);
 
-	    getObj(MiscGraphics).drawTransformedText(g, elem.name, destXform);
-	    destXform = destXform.translated(gridSize, 0);
+        getObj(MiscGraphics).drawTransformedText(g, elem.name, destXform);
+        destXform = destXform.translated(gridSize, 0);
     }
 
     if (pendingFocusGrab) {
-	    grabKeyboardFocus();
-	    pendingFocusGrab = false;
+        grabKeyboardFocus();
+        pendingFocusGrab = false;
     }
 }
 
@@ -228,115 +229,116 @@ void ModMatrixPanel::comboBoxChanged(ComboBox* combobox) {
 void ModMatrixPanel::buttonClicked(Button* button) {
     if (button == &addInputBtn) {
         PopupMenu menu(getInputMenu());
-    	/*
+        /*
         @see show()
-		int showAt (const Rectangle<int>& screenAreaToAttachTo,
+        int showAt (const Rectangle<int>& screenAreaToAttachTo,
                 int itemIDThatMustBeVisible = 0,
                 int minimumWidth = 0,
                 int maximumNumColumns = 0,
                 int standardItemHeight = 0,
                 ModalComponentManager::Callback* callback = nullptr);
-    	 */
+         */
 
-    	auto options = PopupMenu::Options()
-    		.withTargetScreenArea(addInputBtn.getScreenBounds())
-    		.withItemThatMustBeVisible(1)
-    		.withStandardItemHeight(24);
-    	menu.showMenuAsync(options, [this](int id) {
-    		if (id != 0) {
-				addInput(id);
-				selfSize();
-			}
-    	});
-	} else if(button == &addDestBtn) {
+        auto options = PopupMenu::Options()
+            .withTargetScreenArea(addInputBtn.getScreenBounds())
+            .withItemThatMustBeVisible(1)
+            .withStandardItemHeight(24);
+        menu.showMenuAsync(options, [this](int id) {
+            if (id != 0) {
+                addInput(id);
+                selfSize();
+            }
+        });
+    } else if (button == &addDestBtn) {
         PopupMenu menu(getOutputMenu(MeshTypes));
 
-		auto options = PopupMenu::Options()
-			.withTargetScreenArea(addDestBtn.getScreenBounds())
-			.withItemThatMustBeVisible(1)
-			.withStandardItemHeight(24);
-		menu.showMenuAsync(options, [this](int id) {
-			if (id != 0) {
-				addDestination(id);
-				selfSize();
-			}
-		});
-	} else if(button == &closeButton) {
+        auto options = PopupMenu::Options()
+            .withTargetScreenArea(addDestBtn.getScreenBounds())
+            .withItemThatMustBeVisible(1)
+            .withStandardItemHeight(24);
+        menu.showMenuAsync(options, [this](int id) {
+            if (id != 0) {
+                addDestination(id);
+                selfSize();
+            }
+        });
+    } else if (button == &closeButton) {
         removeFromDesktop();
-		setVisible(false);
-	}
+        setVisible(false);
+    }
 }
 
 void ModMatrixPanel::resized() {
     Rectangle<int> bounds 	= getLocalBounds();
-	Rectangle<int> bounds2 	= bounds;
-	Rectangle<int> right 	= bounds.removeFromRight(120);
-	Rectangle<int> bottom 	= bounds2.removeFromBottom (60);
+    Rectangle<int> bounds2 	= bounds;
+    Rectangle<int> right 	= bounds.removeFromRight(120);
+    Rectangle<int> bottom 	= bounds2.removeFromBottom (60);
 
-	bounds.removeFromBottom	(60);
-	bounds.removeFromTop	(120);
-	bounds.removeFromLeft	(140);
-	bounds.removeFromRight	(30);
+    bounds.removeFromBottom	(60);
+    bounds.removeFromTop	(120);
+    bounds.removeFromLeft	(140);
+    bounds.removeFromRight	(30);
 
-	modMatrix.setBounds  (bounds);
-	addInputBtn.setBounds(30, 30, 95, 24);
-	addDestBtn.setBounds (30, 60, 95, 24);
+    modMatrix.setBounds  (bounds);
+    addInputBtn.setBounds(30, 30, 95, 24);
+    addDestBtn.setBounds (30, 60, 95, 24);
 
-	right.reduce(20, 20);
+    right.reduce(20, 20);
 
-	int utilHeight = 13 + jmax(0, getHeight() - 400) / 20;
+    int utilHeight = 13 + jmax(0, getHeight() - 400) / 20;
 
     for (int i = 0; i < paramGroup->getNumParams(); ++i) {
-		paramGroup->getKnob<Knob>(i)->setBounds(right.removeFromTop(utilHeight));
-		right.removeFromTop(4);
-	}
+        paramGroup->getKnob<Knob>(i)->setBounds(right.removeFromTop(utilHeight));
+        right.removeFromTop(4);
+    }
 
-	Rectangle utilityRect(paramGroup->getKnob<Slider>(0)->getPosition(),
-						  paramGroup->getKnob<Slider>(paramGroup->getNumParams() - 1)->getBounds().getBottomRight());
+    Rectangle utilityRect(paramGroup->getKnob<Slider>(0)->getPosition(),
+                          paramGroup->getKnob<Slider>(paramGroup->getNumParams() - 1)->getBounds().getBottomRight());
 
-	utilityArea.toBack();
-	utilityArea.setBounds(utilityRect);
+    utilityArea.toBack();
+    utilityArea.setBounds(utilityRect);
 
-	sourceArea.toBack();
-	sourceArea.setBounds(Rectangle(juce::Point(20, bounds.getY()), bounds.getBottomLeft()));
+    sourceArea.toBack();
+    sourceArea.setBounds(Rectangle(juce::Point(20, bounds.getY()), bounds.getBottomLeft()));
 
-	destArea.toBack();
-	destArea.setBounds(Rectangle(juce::Point(bounds.getX(), 20), bounds.getTopRight()));
+    destArea.toBack();
+    destArea.setBounds(Rectangle(juce::Point(bounds.getX(), 20), bounds.getTopRight()));
 
-	bottom.reduce(bottom.getWidth() / 2 - 60, 12);
-	closeButton.setBounds(bottom);
+    bottom.reduce(bottom.getWidth() / 2 - 60, 12);
+    closeButton.setBounds(bottom);
 }
 
 void ModMatrixPanel::addDestination(int id, bool update) {
     for (int i = 0; i < outputs.size(); ++i) {
         if (outputs.getReference(i).id == id) {
-			showConsoleMsg("Output already available");
-			return;
-		}
-	}
+            showConsoleMsg("Output already available");
+            return;
+        }
+    }
 
-	int flags = TableHeaderComponent::visible |
-				TableHeaderComponent::notResizableOrSortable;
+    int flags = TableHeaderComponent::visible |
+                TableHeaderComponent::notResizableOrSortable;
 
-	String destName(getOutputName(id));
+    String destName(getOutputName(id));
 
-	TableHeaderComponent& header = modMatrix.getListbox().getHeader();
-	header.addColumn(destName, id, gridSize, gridSize, gridSize, flags);
+    TableHeaderComponent& header = modMatrix.getListbox().getHeader();
+    header.addColumn(destName, id, gridSize, gridSize, gridSize, flags);
 
-	outputs.add(HeaderElement(destName, id));
+    outputs.add(HeaderElement(destName, id));
 
-	if(id < VolEnvId)
-		mappings.add(Mapping(VoiceTime, id, YellowDim));
+    if (id < VolEnvId) {
+        mappings.add(Mapping(VoiceTime, id, YellowDim));
+}
 
-	mappings.add(Mapping(KeyScale, 		 id, RedDim));
-	mappings.add(Mapping(dfltModMapping, id, BlueDim));
+    mappings.add(Mapping(KeyScale, 		 id, RedDim));
+    mappings.add(Mapping(dfltModMapping, id, BlueDim));
 
 //	dfltModMapping = id;
 
     if (update) {
         modMatrix.getListbox().updateContent();
-		repaint();
-	}
+        repaint();
+    }
 }
 
 void ModMatrixPanel::addInput(int id, bool update) {
@@ -357,43 +359,43 @@ void ModMatrixPanel::addInput(int id, bool update) {
         repaint();
 
         getObj(MorphPanel).setRedBlueStrings(getDimString(RedDim), getDimString(BlueDim));
-	}
+    }
 }
 
 String ModMatrixPanel::getInputName(int id) {
     switch (id) {
         case VoiceTime: 	return "Voice Time";
-		case Velocity: 		return "1-Velocity";
-		case KeyScale: 		return "Key Scale";
-		case ModWheel: 		return "Mod Wheel";
-		case Aftertouch:	return "Aftertouch";
-    	default: break;
-	}
+        case Velocity: 		return "1-Velocity";
+        case KeyScale: 		return "Key Scale";
+        case ModWheel: 		return "Mod Wheel";
+        case Aftertouch:	return "Aftertouch";
+        default: break;
+    }
 
     if (id >= MidiController && id < Utility) {
         return "CC #" + String(id - MidiController); //+ " " + name;
     }
-	if (id >= Utility) {
+    if (id >= Utility) {
         return "Utility #" + String(id - Utility + 1);
     }
 
-	return {};
+    return {};
 }
 
 String ModMatrixPanel::getInputShortName(int id) {
     switch (id) {
         case VoiceTime: 	return "Time";
-		case Velocity: 		return "1-Vel";
-		case KeyScale: 		return "Key";
-		case ModWheel: 		return "Mod W";
-		case Aftertouch:	return "Af.tch";
-    	default: break;
-	}
+        case Velocity: 		return "1-Vel";
+        case KeyScale: 		return "Key";
+        case ModWheel: 		return "Mod W";
+        case Aftertouch:	return "Af.tch";
+        default: break;
+    }
 
     if (id >= MidiController && id < Utility) {
         return "CC" + String(id - MidiController); //+ " " + name;
     }
-	if (id >= Utility) {
+    if (id >= Utility) {
         return "Util #" + String(id - Utility + 1);
     }
 
@@ -405,19 +407,19 @@ String ModMatrixPanel::getOutputName(int id) {
         return "Waveshape-L" + String(1 + (id - TimeSurfId) / 3);
     }
     if (id >= HarmMagId && id < HarmPhsId) {
-	    return "SpectMag-L" + String(1 + (id - HarmMagId) / 3);
+        return "SpectMag-L" + String(1 + (id - HarmMagId) / 3);
     }
-		if (id >= HarmPhsId && id < VolEnvId) {
-	    return "SpectPhs-L" + String(1 + (id - HarmPhsId) / 3);
+        if (id >= HarmPhsId && id < VolEnvId) {
+        return "SpectPhs-L" + String(1 + (id - HarmPhsId) / 3);
     }
-	if (id == VolEnvId) {
-	    return "Env-Volume";
+    if (id == VolEnvId) {
+        return "Env-Volume";
     }
-	if (id == PitchEnvId) {
-	    return "Env-Pitch";
+    if (id == PitchEnvId) {
+        return "Env-Pitch";
     }
-	if (id >= ScratchEnvId) {
-	    return "Env-Scratch-" + String(1 + (id - ScratchEnvId) / 2);
+    if (id >= ScratchEnvId) {
+        return "Env-Scratch-" + String(1 + (id - ScratchEnvId) / 2);
     }
 
     return {};
@@ -428,179 +430,183 @@ void ModMatrixPanel::addToMenu(int id, PopupMenu& menu) {
 }
 
 PopupMenu ModMatrixPanel::getInputMenu() {
-	PopupMenu menu;
+    PopupMenu menu;
 
-	int inputIds[] = { VoiceTime, Velocity, KeyScale, ModWheel, Aftertouch };
+    int inputIds[] = { VoiceTime, Velocity, KeyScale, ModWheel, Aftertouch };
 
     for (int inputId : inputIds) {
-        if (isNotInInputs(inputId))
+        if (isNotInInputs(inputId)) {
             addToMenu(inputId, menu);
+}
     }
 
     std::set<int> midiIds;
     for (auto && input : inputs) {
         int id = input.id;
-		if(id >= MidiController && id < Utility) {
-			midiIds.insert(input.id);
-		}
-	}
+        if (id >= MidiController && id < Utility) {
+            midiIds.insert(input.id);
+        }
+    }
 
-	int count = 0;
+    int count = 0;
     for (int i = 0; i < 10; ++i) {
         PopupMenu midiCC;
 
         int start = count, end = count + 9;
 
         for (int j = 0; j < 10; ++j) {
-			int midiId = MidiController + count;
+            int midiId = MidiController + count;
 
-			if(midiIds.find(midiId) == midiIds.end())
-				addToMenu(midiId, midiCC);
+            if (midiIds.find(midiId) == midiIds.end()) {
+                addToMenu(midiId, midiCC);
+}
 
-			++count;
-		}
+            ++count;
+        }
 
-		menu.addSubMenu("MidiCC " + String(start) + "-" + String(end), midiCC);
-	}
+        menu.addSubMenu("MidiCC " + String(start) + "-" + String(end), midiCC);
+    }
 
-	PopupMenu utilityMenu;
+    PopupMenu utilityMenu;
 
-	for(int i = 0; i < 20; ++i) {
+    for (int i = 0; i < 20; ++i) {
         int midiId = Utility + i;
 
-		if(midiIds.find(midiId) == midiIds.end())
-			addToMenu(midiId, utilityMenu);
-	}
+        if (midiIds.find(midiId) == midiIds.end()) {
+            addToMenu(midiId, utilityMenu);
+}
+    }
 
-	menu.addSubMenu("Utility", utilityMenu);
+    menu.addSubMenu("Utility", utilityMenu);
 
-	return menu;
+    return menu;
 }
 
 bool ModMatrixPanel::isNotInInputs(int id) {
     bool contains = false;
     for (int j = 0; j < inputs.size(); ++j) {
         if (inputs.getReference(j).id == id) {
-			contains = true;
-			break;
-		}
-	}
+            contains = true;
+            break;
+        }
+    }
 
-	return ! contains;
+    return ! contains;
 }
 
 bool ModMatrixPanel::isNotInOutputs(int id) {
     bool contains = false;
     for (int j = 0; j < outputs.size(); ++j) {
         if (outputs.getReference(j).id == id) {
-			contains = true;
-			break;
-		}
-	}
+            contains = true;
+            break;
+        }
+    }
 
-	return ! contains;
+    return ! contains;
 }
 
 PopupMenu ModMatrixPanel::getOutputMenu(int source) {
-	PopupMenu menu;
+    PopupMenu menu;
 
-	auto& meshLib = getObj(MeshLibrary);
+    auto& meshLib = getObj(MeshLibrary);
 
-	switch (source) {
+    switch (source) {
         case MeshTypes:
-			menu.addSubMenu("Waveshape", 	getOutputMenu(WaveshapeLayers));
-			menu.addSubMenu("Spectral", 	getOutputMenu(SpectTypes));
-			menu.addSubMenu("Envelopes", 	getOutputMenu(EnvTypes));
-			break;
+            menu.addSubMenu("Waveshape", 	getOutputMenu(WaveshapeLayers));
+            menu.addSubMenu("Spectral", 	getOutputMenu(SpectTypes));
+            menu.addSubMenu("Envelopes", 	getOutputMenu(EnvTypes));
+            break;
 
         case SpectTypes: {
             menu.addSubMenu("Magn. Layers", getOutputMenu(HarmMagLayers));
-			menu.addSubMenu("Phase Layers", getOutputMenu(HarmPhsLayers));
-			break;
-		}
+            menu.addSubMenu("Phase Layers", getOutputMenu(HarmPhsLayers));
+            break;
+        }
 
         case WaveshapeLayers: {
             for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupTime).size(); ++i) {
                 int id = TimeSurfId + i * 3;
 
-				if(isNotInOutputs(id)) {
-					menu.addItem(id, "Layer " + String(i + 1));
-				}
-			}
+                if (isNotInOutputs(id)) {
+                    menu.addItem(id, "Layer " + String(i + 1));
+                }
+            }
 
-			break;
-		}
+            break;
+        }
         case HarmMagLayers: {
             for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupSpect).size(); ++i) {
                 int id = HarmMagId + i * 3;
 
-				if(isNotInOutputs(id))
-					menu.addItem(id, "Layer " + String(i + 1));
-			}
+                if (isNotInOutputs(id)) {
+                    menu.addItem(id, "Layer " + String(i + 1));
+}
+            }
 
-			break;
-		}
+            break;
+        }
         case HarmPhsLayers: {
             for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupPhase).size(); ++i) {
                 int id = HarmPhsId + i * 3;
 
-				if(isNotInOutputs(id)) {
-					menu.addItem(id, "Layer " + String(i + 1));
-				}
-			}
+                if (isNotInOutputs(id)) {
+                    menu.addItem(id, "Layer " + String(i + 1));
+                }
+            }
 
-			break;
-		}
+            break;
+        }
 
-		case VolumeEnvLayers: {
+        case VolumeEnvLayers: {
             for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupVolume).size(); ++i) {
                 int id = VolEnvId + i * 3;
 
-				if(isNotInOutputs(id)) {
-					menu.addItem(id, "Volume Env " + String(i + 1));
-				}
-			}
-		}
+                if (isNotInOutputs(id)) {
+                    menu.addItem(id, "Volume Env " + String(i + 1));
+                }
+            }
+        }
 
         case PitchEnvLayers: {
             for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupPitch).size(); ++i) {
                 int id = PitchEnvId + i * 3;
 
-				if(isNotInOutputs(id)) {
-					menu.addItem(id, "Volume Env " + String(i + 1));
-				}
-			}
-		}
+                if (isNotInOutputs(id)) {
+                    menu.addItem(id, "Volume Env " + String(i + 1));
+                }
+            }
+        }
 
         case ScratchLayers: {
             for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupScratch).size(); ++i) {
                 int id = ScratchEnvId + i * 3;
 
                 if (isNotInOutputs(id)) {
-	                menu.addItem(id, "Channel " + String(i + 1));
+                    menu.addItem(id, "Channel " + String(i + 1));
                 }
-			}
+            }
 
-			break;
-		}
+            break;
+        }
 
-		case EnvTypes:
-			menu.addSubMenu("Volume Envs", 	getOutputMenu(VolumeEnvLayers));
-			menu.addSubMenu("Pitch Envs", 	getOutputMenu(PitchEnvLayers));
-			menu.addSubMenu("Scratch Envs", getOutputMenu(ScratchLayers));
+        case EnvTypes:
+            menu.addSubMenu("Volume Envs", 	getOutputMenu(VolumeEnvLayers));
+            menu.addSubMenu("Pitch Envs", 	getOutputMenu(PitchEnvLayers));
+            menu.addSubMenu("Scratch Envs", getOutputMenu(ScratchLayers));
 
-			break;
+            break;
 
-		default:
-			break;
-	}
+        default:
+            break;
+    }
 
-	return menu;
+    return menu;
 }
 
 int ModMatrixPanel::getMappingOrder(int outputId) {
     if (outputId >= VolEnvId) {
-	    return 2;
+        return 2;
     }
 
     return 3;
@@ -609,13 +615,13 @@ int ModMatrixPanel::getMappingOrder(int outputId) {
 //
 //ModMatrixPanel::MenuIds ModMatrixPanel::outputIdToType(int destId)
 //{
-//	if(destId >= TimeSurfId && destId < HarmMagId)
+//	if (destId >= TimeSurfId && destId < HarmMagId)
 //		return WaveshapeTypes;
 //
-//	if(destId >= HarmMagId && destId < VolEnvId)
+//	if (destId >= HarmMagId && destId < VolEnvId)
 //		return SpectTypes;
 //
-//	if(destId >= VolEnvId && destId < PitchEnvId)
+//	if (destId >= VolEnvId && destId < PitchEnvId)
 //		return VolumeEnvLayers;
 //
 //	return MeshTypes;
@@ -627,103 +633,105 @@ int ModMatrix::columnIdToIndex(int columnId) {
 
     for (int i = 0; i < header.getNumColumns(true); ++i) {
         if (columnId == header.getColumnIdOfIndex(i, true)) {
-	        return i;
+            return i;
         }
-	}
+    }
 
-	return -1;
+    return -1;
 }
 
 void ModMatrix::ColourCheckbox::paint(Graphics& g) {
     ModMatrixPanel* panel = modMatrix->panel;
     Rectangle<int> rect 	= getLocalBounds().reduced(6, 6);
 
-	int inputId, outputId;
-	panel->getIds(row, col, inputId, outputId);
+    int inputId, outputId;
+    panel->getIds(row, col, inputId, outputId);
 
-	int mappingIndex = panel->indexOfMapping(inputId, outputId);
-	int dim = mappingIndex < 0 ? -1 : panel->mappings.getReference(mappingIndex).dim;
+    int mappingIndex = panel->indexOfMapping(inputId, outputId);
+    int dim = mappingIndex < 0 ? -1 : panel->mappings.getReference(mappingIndex).dim;
 
-	g.fillAll(Colour::greyLevel((row + col) % 2 == 0 ? 0.1f : 0.07f));
-	g.setColour(Colour::greyLevel(0.2f));
-	g.drawVerticalLine(0, 0, getHeight());
-	g.drawHorizontalLine(0, 0, getWidth());
+    g.fillAll(Colour::greyLevel((row + col) % 2 == 0 ? 0.1f : 0.07f));
+    g.setColour(Colour::greyLevel(0.2f));
+    g.drawVerticalLine(0, 0, getHeight());
+    g.drawHorizontalLine(0, 0, getWidth());
 
-	if(row == panel->inputs.size() - 1)
-		g.drawHorizontalLine(getHeight() - 1, 0, getWidth());
+    if (row == panel->inputs.size() - 1) {
+        g.drawHorizontalLine(getHeight() - 1, 0, getWidth());
+}
 
-	if(col == panel->outputs.size() - 1)
-		g.drawVerticalLine(getWidth() - 1, 0, getHeight());
+    if (col == panel->outputs.size() - 1) {
+        g.drawVerticalLine(getWidth() - 1, 0, getHeight());
+}
 
-	float h = 0, s = 0.75f, v = 0.5f;
-	Colour colour;
+    float h = 0, s = 0.75f, v = 0.5f;
+    Colour colour;
 
-	switch(dim) {
-		case ModMatrixPanel::YellowDim:
-			h = 0.11f;
-			break;
+    switch (dim) {
+        case ModMatrixPanel::YellowDim:
+            h = 0.11f;
+            break;
 
-		case ModMatrixPanel::RedDim:
-			h = 0.98f;
-			s += 0.1f;
-			v -= 0.2f;
-			break;
+        case ModMatrixPanel::RedDim:
+            h = 0.98f;
+            s += 0.1f;
+            v -= 0.2f;
+            break;
 
-		case ModMatrixPanel::BlueDim:
-			h = 0.6f;
-			break;
+        case ModMatrixPanel::BlueDim:
+            h = 0.6f;
+            break;
 
-		case -1:
-			return;
-		default: break;
-	}
+        case -1:
+            return;
+        default: break;
+    }
 
-	if(isMouseButtonDown() && dim != ModMatrixPanel::YellowDim) {
+    if (isMouseButtonDown() && dim != ModMatrixPanel::YellowDim) {
         v -= 0.1f;
     }
 
-	g.setGradientFill(ColourGradient(Colour(h, s - 0.2, v + 0.2f, 1.f), 0, 0, Colour(h, s, v, 1.f),
-	                                 ModMatrixPanel::gridSize, ModMatrixPanel::gridSize, true));
-	g.fillRect(rect);
+    g.setGradientFill(ColourGradient(Colour(h, s - 0.2, v + 0.2f, 1.f), 0, 0, Colour(h, s, v, 1.f),
+                                     ModMatrixPanel::gridSize, ModMatrixPanel::gridSize, true));
+    g.fillRect(rect);
 
-	if(dim == ModMatrixPanel::YellowDim) {
-		g.drawImageAt(panel->lockImage, 18, 16);
-	}
+    if (dim == ModMatrixPanel::YellowDim) {
+        g.drawImageAt(panel->lockImage, 18, 16);
+    }
 }
 
 void ModMatrixPanel::writeXML(XmlElement* element) const {
     auto* matrixElem = new XmlElement("ModMatrix");
-	auto* outputsElem = new XmlElement("Outputs");
-	auto* inputsElem = new XmlElement("Inputs");
-	auto* mappingsElem = new XmlElement("Mappings");
+    auto* outputsElem = new XmlElement("Outputs");
+    auto* inputsElem = new XmlElement("Inputs");
+    auto* mappingsElem = new XmlElement("Mappings");
 
-	for (auto& elem : inputs) {
-		auto* inElem = new XmlElement("input");
+    for (auto& elem : inputs) {
+        auto* inElem = new XmlElement("input");
 
-		inElem->setAttribute("id", elem.id);
-		inputsElem->addChildElement(inElem);
-	}
+        inElem->setAttribute("id", elem.id);
+        inputsElem->addChildElement(inElem);
+    }
 
-	matrixElem->addChildElement(inputsElem);
+    matrixElem->addChildElement(inputsElem);
 
-	for (auto& elem : outputs) {
-		auto* outElem = new XmlElement("output");
+    for (auto& elem : outputs) {
+        auto* outElem = new XmlElement("output");
 
-		outElem->setAttribute("id", elem.id);
-		outputsElem->addChildElement(outElem);
-	}
+        outElem->setAttribute("id", elem.id);
+        outputsElem->addChildElement(outElem);
+    }
 
-	matrixElem->addChildElement(outputsElem);
+    matrixElem->addChildElement(outputsElem);
 
-	for (auto& m : mappings) {
-		auto* mappingElem = new XmlElement("mapping");
+    for (auto& m : mappings) {
+        auto* mappingElem = new XmlElement("mapping");
 
-		mappingElem->setAttribute("in", m.in);
-		mappingElem->setAttribute("out", m.out);
-		mappingElem->setAttribute("dim", m.dim);
+        mappingElem->setAttribute("in", m.in);
+        mappingElem->setAttribute("out", m.out);
+        mappingElem->setAttribute("dim", m.dim);
 
-		mappingsElem->addChildElement(mappingElem);
-	}
+        mappingsElem->addChildElement(mappingElem);
+    }
 
     matrixElem->addChildElement(mappingsElem);
     element->addChildElement(matrixElem);
@@ -741,20 +749,20 @@ void ModMatrixPanel::layerAddedOrRemoved(bool added, int type, int index) {
     int outputId = -1;
 
     switch (type) {
-		case LayerGroups::GroupTime:	outputId = TimeSurfId 	+ index * 3; break;
-		case LayerGroups::GroupSpect:	outputId = HarmMagId	+ index * 3; break;
-		case LayerGroups::GroupPhase:	outputId = HarmPhsId 	+ index * 3; break;
-		case LayerGroups::GroupVolume:	outputId = VolEnvId 	+ index * 3; break;
-		case LayerGroups::GroupPitch:	outputId = PitchEnvId 	+ index * 3; break;
-		case LayerGroups::GroupScratch:	outputId = ScratchEnvId + index * 3; break;
-    	default: break;
-	}
+        case LayerGroups::GroupTime:	outputId = TimeSurfId 	+ index * 3; break;
+        case LayerGroups::GroupSpect:	outputId = HarmMagId	+ index * 3; break;
+        case LayerGroups::GroupPhase:	outputId = HarmPhsId 	+ index * 3; break;
+        case LayerGroups::GroupVolume:	outputId = VolEnvId 	+ index * 3; break;
+        case LayerGroups::GroupPitch:	outputId = PitchEnvId 	+ index * 3; break;
+        case LayerGroups::GroupScratch:	outputId = ScratchEnvId + index * 3; break;
+        default: break;
+    }
 
-	if(outputId == -1) {
-		return;
-	}
+    if (outputId == -1) {
+        return;
+    }
 
-	Array<int> toRemove;
+    Array<int> toRemove;
 
     if (added) {
         ScopedLock sl(mappingLock);
@@ -770,7 +778,7 @@ void ModMatrixPanel::layerAddedOrRemoved(bool added, int type, int index) {
         }
 
         if (outIdx < 0) {
-	        return;
+            return;
         }
 
         outputs.remove(outIdx);
@@ -781,38 +789,38 @@ void ModMatrixPanel::layerAddedOrRemoved(bool added, int type, int index) {
         for (int j = 0; j < mappings.size(); ++j) {
             Mapping& m = mappings.getReference(j);
 
-			if(m.out == outputId) {
-				toRemove.add(j);
-			}
-		}
-	}
+            if (m.out == outputId) {
+                toRemove.add(j);
+            }
+        }
+    }
 
     if (toRemove.size() > 0 || added) {
         {
             ScopedLock sl(mappingLock);
 
             // do it backwards to keep indices valid
-			for(int i = toRemove.size() - 1; i >= 0; --i) {
-				mappings.remove(toRemove[i]);
-			}
-		}
+            for (int i = toRemove.size() - 1; i >= 0; --i) {
+                mappings.remove(toRemove[i]);
+            }
+        }
 
-		modMatrix.getListbox().updateContent();
-	}
+        modMatrix.getListbox().updateContent();
+    }
 }
 
 juce::Component* ModMatrixPanel::getComponent(int which) {
     switch (which) {
         case CycleTour::TargMatrixSource: 		return &sourceArea;
-		case CycleTour::TargMatrixAddDest: 		return &addDestBtn;
-		case CycleTour::TargMatrixAddSource: 	return &addInputBtn;
-		case CycleTour::TargMatrixDest: 		return &destArea;
-		case CycleTour::TargMatrixGrid: 		return &modMatrix;
-		case CycleTour::TargMatrixUtility: 		return &utilityArea;
-    	default: break;
-	}
+        case CycleTour::TargMatrixAddDest: 		return &addDestBtn;
+        case CycleTour::TargMatrixAddSource: 	return &addInputBtn;
+        case CycleTour::TargMatrixDest: 		return &destArea;
+        case CycleTour::TargMatrixGrid: 		return &modMatrix;
+        case CycleTour::TargMatrixUtility: 		return &utilityArea;
+        default: break;
+    }
 
-	return nullptr;
+    return nullptr;
 }
 
 //bool ModMatrixPanel::keyPressed(const KeyPress& key, Component* component)
@@ -835,22 +843,22 @@ bool ModMatrixPanel::readXML(const XmlElement* element) {
     if (inputsElem == nullptr || outputsElem == nullptr || mappingsElem == nullptr) {
         initializeDefaults();
 
-		return false;
-	}
+        return false;
+    }
 
-	inputs.clear();
-	outputs.clear();
-	mappings.clear();
+    inputs.clear();
+    outputs.clear();
+    mappings.clear();
 
     // inputs
 
-    for(auto inputElem : inputsElem->getChildWithTagNameIterator("input")) {
-	    int id = inputElem->getIntAttribute("id", -1);
+    for (auto inputElem : inputsElem->getChildWithTagNameIterator("input")) {
+        int id = inputElem->getIntAttribute("id", -1);
 
-	    HeaderElement elem(getInputName(id), id);
-	    elem.shortName = getInputShortName(id);
+        HeaderElement elem(getInputName(id), id);
+        elem.shortName = getInputShortName(id);
 
-	    inputs.add(elem);
+        inputs.add(elem);
     }
 
     // outputs
@@ -861,47 +869,48 @@ bool ModMatrixPanel::readXML(const XmlElement* element) {
 
     //	header.addColumn("Set All", SetAllId, gridSize, gridSize, gridSize, flags);
 
-    for(auto outputElem : outputsElem->getChildWithTagNameIterator("output")) {
-	    int id = outputElem->getIntAttribute("id", -1);
+    for (auto outputElem : outputsElem->getChildWithTagNameIterator("output")) {
+        int id = outputElem->getIntAttribute("id", -1);
 
-	    HeaderElement elem(getOutputName(id), id);
-	    outputs.add(elem);
+        HeaderElement elem(getOutputName(id), id);
+        outputs.add(elem);
 
-	    header.addColumn(elem.name, id, gridSize, gridSize, gridSize, flags);
+        header.addColumn(elem.name, id, gridSize, gridSize, gridSize, flags);
     }
 
     // mappings
 
-    for(auto mappingElem : mappingsElem->getChildWithTagNameIterator("mapping")) {
-	    Mapping m;
-	    m.in = mappingElem->getIntAttribute("in", -1);
-	    m.out = mappingElem->getIntAttribute("out", -1);
-	    m.dim = mappingElem->getIntAttribute("dim", -1);
+    for (auto mappingElem : mappingsElem->getChildWithTagNameIterator("mapping")) {
+        Mapping m;
+        m.in = mappingElem->getIntAttribute("in", -1);
+        m.out = mappingElem->getIntAttribute("out", -1);
+        m.dim = mappingElem->getIntAttribute("dim", -1);
 
-	    mappings.add(m);
+        mappings.add(m);
     }
 
     modMatrix.getListbox().updateContent();
     getObj(MorphPanel).setRedBlueStrings(getDimString(RedDim), getDimString(BlueDim));
 
-	return true;
+    return true;
 }
 
 int ModMatrixPanel::indexOfMapping(int inputId, int outputId) {
     int mappingIndex = -1;
 
-	if(outputId == SetAllId)
-		return -1;
+    if (outputId == SetAllId) {
+        return -1;
+}
 
     for (int i = 0; i < mappings.size(); ++i) {
         Mapping& m = mappings.getReference(i);
         if (m.in == inputId && m.out == outputId) {
-			mappingIndex = i;
-			break;
-		}
-	}
+            mappingIndex = i;
+            break;
+        }
+    }
 
-	return mappingIndex;
+    return mappingIndex;
 }
 
 void ModMatrixPanel::getIds(int row, int col, int& inputId, int& outputId) {
@@ -914,58 +923,58 @@ void ModMatrixPanel::cycleDimensionMapping(int row, int col) {
     int inputId, outputId;
     getIds(row, col, inputId, outputId);
 
-	int dim, mappingIndex;
+    int dim, mappingIndex;
 
-	bool isVoiceTime = inputId == VoiceTime;
-	bool isEnvelope = outputId >= VolEnvId;
+    bool isVoiceTime = inputId == VoiceTime;
+    bool isEnvelope = outputId >= VolEnvId;
 
-	mappingIndex = indexOfMapping(inputId, outputId);
-	dim = mappingIndex < 0 ? NullDim : mappings.getReference(mappingIndex).dim;
+    mappingIndex = indexOfMapping(inputId, outputId);
+    dim = mappingIndex < 0 ? NullDim : mappings.getReference(mappingIndex).dim;
 
-	if(dim == YellowDim || (isVoiceTime && isEnvelope)) {
-		return;
-	}
+    if (dim == YellowDim || (isVoiceTime && isEnvelope)) {
+        return;
+    }
 
-	int old = dim;
+    int old = dim;
 
-	// skip time
-	if(dim == NullDim) {
-		dim = RedDim;
-	} else {
-		++dim;
-	}
+    // skip time
+    if (dim == NullDim) {
+        dim = RedDim;
+    } else {
+        ++dim;
+    }
 
-	if(dim > BlueDim) {
-		dim = NullDim;
-	}
+    if (dim > BlueDim) {
+        dim = NullDim;
+    }
 
-	mappingChanged(mappingIndex, inputId, outputId, old, dim);
+    mappingChanged(mappingIndex, inputId, outputId, old, dim);
 }
 
 void ModMatrixPanel::mappingChanged(int mappingIndex, int inputId, int outputId, int oldDim, int newDim) {
     getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 
-	// remove old when cycled out
+    // remove old when cycled out
     if (mappingIndex >= 0 && newDim == -1) {
-		ScopedLock sl(mappingLock);
+        ScopedLock sl(mappingLock);
 
-		mappings.remove(mappingIndex);
-		return;
-	}
+        mappings.remove(mappingIndex);
+        return;
+    }
 
     // new mapping
     if (mappingIndex < 0) {
         ScopedLock sl(mappingLock);
-		mappings.add(Mapping(inputId, outputId, 0));
-		mappingIndex = mappings.size() - 1;
-	}
+        mappings.add(Mapping(inputId, outputId, 0));
+        mappingIndex = mappings.size() - 1;
+    }
 
-	Mapping& m = mappings.getReference(mappingIndex);
+    Mapping& m = mappings.getReference(mappingIndex);
 
     // update old mapping
     if (newDim != -1) {
-		m.dim = newDim;
-	}
+        m.dim = newDim;
+    }
 
     // can have no duplicates of a certain dim per output
     Array<int> toRemove;
@@ -973,20 +982,20 @@ void ModMatrixPanel::mappingChanged(int mappingIndex, int inputId, int outputId,
         Mapping& m2 = mappings.getReference(i);
         if (i != mappingIndex && m2.out == m.out && m2.dim == m.dim) {
             toRemove.add(i);
-		}
-	}
+        }
+    }
 
     if (toRemove.size() > 0) {
         {
             ScopedLock sl(mappingLock);
             for (int i = toRemove.size() - 1; i >= 0; --i) {
                 mappings.remove(toRemove[i]);
-			}
-		}
+            }
+        }
 
-		modMatrix.getListbox().updateContent();
-		getObj(MorphPanel).setRedBlueStrings(getDimString(RedDim), getDimString(BlueDim));
-	}
+        modMatrix.getListbox().updateContent();
+        getObj(MorphPanel).setRedBlueStrings(getDimString(RedDim), getDimString(BlueDim));
+    }
 }
 
 void ModMatrixPanel::route(float value, int inputId, int voiceIndex) {
@@ -999,43 +1008,44 @@ void ModMatrixPanel::route(float value, int inputId, int voiceIndex) {
             audio->modulationChanged(value, voiceIndex, m.out, m.dim);
 
             if (m.dim == BlueDim) {
-	            morphPanel->blueDimUpdated(value);
+                morphPanel->blueDimUpdated(value);
             }
 
-			if(m.dim == RedDim) {
-				morphPanel->redDimUpdated(value);
-			}
+            if (m.dim == RedDim) {
+                morphPanel->redDimUpdated(value);
+            }
         }
     }
 }
 
 void ModMatrixPanel::initializeDefaults() {
-	TableHeaderComponent& header = modMatrix.getListbox().getHeader();
-	header.removeAllColumns();
-	outputs.clear();
-	inputs.clear();
-	mappings.clear();
+    TableHeaderComponent& header = modMatrix.getListbox().getHeader();
+    header.removeAllColumns();
+    outputs.clear();
+    inputs.clear();
+    mappings.clear();
 
-	auto& lib = getObj(MeshLibrary);
+    auto& lib = getObj(MeshLibrary);
 
-	using namespace LayerGroups;
-	int groups[] = { GroupTime,  GroupSpect, GroupPhase, GroupVolume, GroupPitch, GroupScratch };
-	int ids[] 	 = { TimeSurfId, HarmMagId,  HarmPhsId,  VolEnvId, 	  PitchEnvId, ScratchEnvId };
+    using namespace LayerGroups;
+    int groups[] = { GroupTime,  GroupSpect, GroupPhase, GroupVolume, GroupPitch, GroupScratch };
+    int ids[] 	 = { TimeSurfId, HarmMagId,  HarmPhsId,  VolEnvId, 	  PitchEnvId, ScratchEnvId };
 
     for (int i = 0; i < numElementsInArray(groups); ++i) {
-        for (int j = 0; j < lib.getLayerGroup(groups[i]).size(); ++j)
+        for (int j = 0; j < lib.getLayerGroup(groups[i]).size(); ++j) {
             addDestination(ids[j] + 3 * i, false);
+}
     }
 
-	addInput(VoiceTime,  false);
-	addInput(Velocity, 	 false);
-	addInput(KeyScale, 	 false);
-	addInput(ModWheel, 	 false);
-	addInput(Aftertouch, false);
+    addInput(VoiceTime,  false);
+    addInput(Velocity, 	 false);
+    addInput(KeyScale, 	 false);
+    addInput(ModWheel, 	 false);
+    addInput(Aftertouch, false);
 
-	getObj(MorphPanel).setRedBlueStrings(getDimString(RedDim), getDimString(BlueDim));
+    getObj(MorphPanel).setRedBlueStrings(getDimString(RedDim), getDimString(BlueDim));
 
-	modMatrix.getListbox().updateContent();
+    modMatrix.getListbox().updateContent();
 }
 
 void ModMatrixPanel::selfSize() {
@@ -1053,17 +1063,18 @@ String ModMatrixPanel::getDimString(int dim) {
             for (int i = 0; i < inputs.size(); ++i) {
                 HeaderElement input = inputs.getReference(i);
 
-				if(input.id == mapping.in)
-					str.addIfNotAlreadyThere(input.shortName);
-			}
-		}
-	}
+                if (input.id == mapping.in) {
+                    str.addIfNotAlreadyThere(input.shortName);
+}
+            }
+        }
+    }
 
     if (str.size() == 0) {
         return dim == RedDim ? "red" : "blue";
     }
 
-	return str.joinIntoString(",");
+    return str.joinIntoString(",");
 }
 
 float ModMatrixPanel::getUtilityValue(int utilityIndex) {
@@ -1087,14 +1098,16 @@ bool ModMatrixPanel::updateDsp(int knobIndex, double knobValue, bool doFurtherUp
 }
 
 void ModMatrixPanel::setMatrixCell(int inputId, int outputId, int dim) {
-    if (dim == YellowDim)
+    if (dim == YellowDim) {
         return;
+}
 
     int mappingIndex = indexOfMapping(inputId, outputId);
     int oldDim = mappingIndex < 0 ? -1 : mappings.getReference(mappingIndex).dim;
 
-    if (oldDim != dim)
+    if (oldDim != dim) {
         mappingChanged(mappingIndex, inputId, outputId, oldDim, dim);
+}
 }
 
 void ModMatrixPanel::setPendingFocusGrab(bool val) {
@@ -1107,8 +1120,9 @@ void ModMatrixPanel::setPendingFocusGrab(bool val) {
 
 void ModMatrixPanel::handleMessage(const Message& message) {
   #if JUCE_MAC
-    if(! hasKeyboardFocus(false))
+    if (! hasKeyboardFocus(false)) {
         postMessage(new Message());
+}
 
     grabKeyboardFocus();
   #endif

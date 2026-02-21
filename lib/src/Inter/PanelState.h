@@ -135,7 +135,7 @@ public:
     Vertex2 lastMouse;
 
     PanelState() {
-        for(int i = 0; i < numSelectionPositions; ++i) {
+        for (int i = 0; i < numSelectionPositions; ++i) {
             pivots.emplace_back();
         }
 
@@ -164,7 +164,7 @@ public:
     }
 
     void resetFlags() {
-        for(bool& i : flags) {
+        for (bool& i : flags) {
             i = false;
         }
     }

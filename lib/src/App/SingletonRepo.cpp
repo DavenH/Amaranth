@@ -31,19 +31,19 @@ SingletonRepo::SingletonRepo() :
 }
 
 SingletonRepo::~SingletonRepo() {
-    if(hashes.contains("Settings")) {
+    if (hashes.contains("Settings")) {
         getObj(Settings).writePropertiesFile();
     }
-    if(hashes.contains("DocumentLibrary")) {
+    if (hashes.contains("DocumentLibrary")) {
         getObj(DocumentLibrary).writeSettingsFile();
     }
-    if(hasInstantiated) {
+    if (hasInstantiated) {
         clearSingletons();
     }
 }
 
 void SingletonRepo::instantiate() {
-    if(hasInstantiated) {
+    if (hasInstantiated) {
         return;
     }
     dummyStream = std::make_unique<DummyOutputStream>();
@@ -65,7 +65,7 @@ void SingletonRepo::instantiate() {
 }
 
 void SingletonRepo::init() {
-    if(hasInitialized) {
+    if (hasInitialized) {
         return;
     }
 
@@ -89,7 +89,7 @@ void SingletonRepo::init() {
 
     auto& document = getObj(Document);
 
-    for(auto saveSource : saveSources) {
+    for (auto saveSource : saveSources) {
         document.registerSavable(saveSource);
     }
 }
@@ -99,28 +99,28 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
     objects.add(accessor);
     hashes.set(accessor->getName(), accessor);
 
-    if(auto* savable = dynamic_cast<Savable*>(accessor)) {
+    if (auto* savable = dynamic_cast<Savable*>(accessor)) {
         saveSources.add(savable);
     }
 
-    if(auto* panel = dynamic_cast<Panel*>(accessor)) {
+    if (auto* panel = dynamic_cast<Panel*>(accessor)) {
         panels.add(panel);
     }
 
-    if(auto* rasterizer = dynamic_cast<MeshRasterizer*>(accessor)) {
+    if (auto* rasterizer = dynamic_cast<MeshRasterizer*>(accessor)) {
         rasterizers.add(rasterizer);
     }
 }
 
 OutputStream& SingletonRepo::getDebugStream() {
   #ifdef JUCE_DEBUG
-    if(debugStream == nullptr) {
+    if (debugStream == nullptr) {
         return *dummyStream;
     }
 
     int64 curr = Time::currentTimeMillis();
 
-    if(curr - lastDebugTime > 50) {
+    if (curr - lastDebugTime > 50) {
         *debugStream << "\n";
     }
 
@@ -153,7 +153,7 @@ void SingletonRepo::clearSingletons() {
 void SingletonRepo::setDeformer(IDeformer* deformer) {
     this->deformer = deformer;
 
-    for(auto rasterizer : rasterizers) {
+    for (auto rasterizer : rasterizers) {
         rasterizer->setDeformer(deformer);
     }
 }

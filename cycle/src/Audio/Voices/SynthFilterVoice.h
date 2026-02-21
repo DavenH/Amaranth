@@ -12,39 +12,39 @@ class Mesh;
 class SynthesizerVoice;
 
 class SynthFilterVoice :
-	public CycleBasedVoice
+    public CycleBasedVoice
 {
 public:
-	SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo);
+    SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo);
 
-	~SynthFilterVoice() override = default;
+    ~SynthFilterVoice() override = default;
 
-	void calcCycle(VoiceParameterGroup& group) override;
-	bool calcTimeDomain(VoiceParameterGroup& group, int samplingSize, int oversampleFactor);
-	void calcMagnitudeFilters(Buffer<Float32> fftRamp);
-	void calcPhaseDomain(Buffer<float> fftRamp, bool didFwdFFT, bool rightPhasesAreSet, int& channelCount);
+    void calcCycle(VoiceParameterGroup& group) override;
+    bool calcTimeDomain(VoiceParameterGroup& group, int samplingSize, int oversampleFactor);
+    void calcMagnitudeFilters(Buffer<Float32> fftRamp);
+    void calcPhaseDomain(Buffer<float> fftRamp, bool didFwdFFT, bool rightPhasesAreSet, int& channelCount);
 
-	void initialiseNoteExtra(int midiNoteNumber, float velocity) override;
-	void testMeshConditions();
-	void updateCachedCycles();
-	void updateValue(int outputId, int dim, float value) override;
+    void initialiseNoteExtra(int midiNoteNumber, float velocity) override;
+    void testMeshConditions();
+    void updateCachedCycles();
+    void updateValue(int outputId, int dim, float value) override;
 
 private:
-	MeshRasterizer freqRasterizer;
-	MeshRasterizer phaseRasterizer;
+    MeshRasterizer freqRasterizer;
+    MeshRasterizer phaseRasterizer;
 
-	// TODO use stereo buffers, use some workbuffer for allocation
-	ScopedAlloc<Float32> magnitudes[2];
-	ScopedAlloc<Float32> phases[2];
-	ScopedAlloc<Float32> phaseAccumBuffer[2];
-	ScopedAlloc<Float32> phaseScaleRamp;
-	ScopedAlloc<Float32> latencyMoveBuff;
+    // TODO use stereo buffers, use some workbuffer for allocation
+    ScopedAlloc<Float32> magnitudes[2];
+    ScopedAlloc<Float32> phases[2];
+    ScopedAlloc<Float32> phaseAccumBuffer[2];
+    ScopedAlloc<Float32> phaseScaleRamp;
+    ScopedAlloc<Float32> latencyMoveBuff;
 
-	Buffer<float> rastBuf;
-	Buffer<float> magBufs[2], phaseBufs[2], samplingBufs[2], accumBufs[2];
+    Buffer<float> rastBuf;
+    Buffer<float> magBufs[2], phaseBufs[2], samplingBufs[2], accumBufs[2];
 
-	Ref<MeshLibrary::LayerGroup> freqLayers;
-	Ref<MeshLibrary::LayerGroup> phaseLayers;
+    Ref<MeshLibrary::LayerGroup> freqLayers;
+    Ref<MeshLibrary::LayerGroup> phaseLayers;
 
-	friend class SynthesizerVoice;
+    friend class SynthesizerVoice;
 };

@@ -20,11 +20,11 @@ Spectrogram::~Spectrogram() {
 
 void Spectrogram::calculate(IterableBuffer* iterable, int flags) {
 
-    if(flags & CalcPhases) {
+    if (flags & CalcPhases) {
         phaseMemory.ensureSize(iterable->getTotalSize() / 2);
     }
 
-    if(flags & SaveTime) {
+    if (flags & SaveTime) {
         timeMemory.ensureSize(iterable->getTotalSize());
     }
 
@@ -62,7 +62,7 @@ void Spectrogram::calculate(IterableBuffer* iterable, int flags) {
         }
     }
 
-    if(flags & CalcPhases && flags & UnwrapPhases) {
+    if (flags & CalcPhases && flags & UnwrapPhases) {
         unwrapPhaseColumns();
     }
 }
@@ -92,11 +92,11 @@ void Spectrogram::unwrapPhaseColumns() {
             diff = unwrapped[col] - unwrapped[col - 1];
             diff *= invConst;
 
-            if(diff > 0.50001f) {
+            if (diff > 0.50001f) {
                 unwrapped[col] -= 2 * pi * int(diff + 0.499989999f);
             }
 
-            if(diff < -0.50001f) {
+            if (diff < -0.50001f) {
                 unwrapped[col] += 2 * pi * int(-diff + 0.499989999f);
             }
         }

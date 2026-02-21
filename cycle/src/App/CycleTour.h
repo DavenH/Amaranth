@@ -20,544 +20,544 @@ class Panel;
 class Interactor;
 
 class CycleTour :
-		public Component
-	,	public AsyncUpdater
-	,	public MultiTimer
-	,	public SingletonAccessor
+        public Component
+    ,	public AsyncUpdater
+    ,	public MultiTimer
+    ,	public SingletonAccessor
 
 {
 public:
 
-	enum Area
-	{
-		AreaNull			,
-		AreaWshpEditor		,
-		AreaSharpBand		,
-		AreaWfrmWaveform3D	,
-		AreaSpectrum		,
-		AreaSpectrogram		,
-		AreaEnvelopes		,
-		AreaVolume			,
-		AreaPitch			,
-		AreaScratch			,
-		AreaWaveshaper		,
-		AreaDeformers		,
-		AreaImpulse			,
-		AreaMorphPanel		,
-		AreaVertexProps		,
-		AreaGenControls		,
-		AreaConsole			,
-		AreaPlayback		,
-		AreaUnison			,
-		AreaReverb			,
-		AreaDelay			,
-		AreaEQ				,
-		AreaMain			,
-		AreaModMatrix		,
-		AreaMasterCtrls		,
-	};
+    enum Area
+    {
+        AreaNull			,
+        AreaWshpEditor		,
+        AreaSharpBand		,
+        AreaWfrmWaveform3D	,
+        AreaSpectrum		,
+        AreaSpectrogram		,
+        AreaEnvelopes		,
+        AreaVolume			,
+        AreaPitch			,
+        AreaScratch			,
+        AreaWaveshaper		,
+        AreaDeformers		,
+        AreaImpulse			,
+        AreaMorphPanel		,
+        AreaVertexProps		,
+        AreaGenControls		,
+        AreaConsole			,
+        AreaPlayback		,
+        AreaUnison			,
+        AreaReverb			,
+        AreaDelay			,
+        AreaEQ				,
+        AreaMain			,
+        AreaModMatrix		,
+        AreaMasterCtrls		,
+    };
 
-	enum ActionType
-	{
-		NullAction 			,
-		SetNoteOn 			,
-		SetNoteOff 			,
-		StartPlayback		,
+    enum ActionType
+    {
+        NullAction 			,
+        SetNoteOn 			,
+        SetNoteOff 			,
+        StartPlayback		,
 
-		SwitchMode			,
-		SwitchToEnv			,
-		SwitchToTool		,
+        SwitchMode			,
+        SwitchToEnv			,
+        SwitchToTool		,
 
-		ShowArea			,
-		HideArea			,
+        ShowArea			,
+        HideArea			,
 
-		SetDeclick			,
-		SetMorphRange		,
-		SetLayerMode		,
-		SetPlaybackPos		,
-		SetKnobValue		,
-		SetVertexParam		,
-		SetMatrixCell		,
-		SetLayer			,
-		SetPropsValue		,
-		SetVertexSize		,
-		SetUseRange			,
-		SetViewStage		,
+        SetDeclick			,
+        SetMorphRange		,
+        SetLayerMode		,
+        SetPlaybackPos		,
+        SetKnobValue		,
+        SetVertexParam		,
+        SetMatrixCell		,
+        SetLayer			,
+        SetPropsValue		,
+        SetVertexSize		,
+        SetUseRange			,
+        SetViewStage		,
 
-		LoadRefSample		,
-		UnloadSample		,
-		ChangeViewMode		,
+        LoadRefSample		,
+        UnloadSample		,
+        ChangeViewMode		,
 
-		ImpLoadWave			,
-		ImpModelWave		,
-		ImpUnloadWave		,
+        ImpLoadWave			,
+        ImpModelWave		,
+        ImpUnloadWave		,
 
-		Zoom				,
-		DeformLine			,
+        Zoom				,
+        DeformLine			,
 
-		Enable				,
-		Disable				,
+        Enable				,
+        Disable				,
 
-		LinkRange			,
-		UnlinkRange			,
+        LinkRange			,
+        UnlinkRange			,
 
-		TriggerButton		,
-		OpenFactoryPreset 	,
+        TriggerButton		,
+        OpenFactoryPreset 	,
 
-		SetAxeSize			,
-		ChopLines			,
-		AddPoint			,
-		DeletePoint			,
-		MovePoint			,
-		SelectPoint			,
-		SelectVertAtPos		,
-		DeselectPoints		,
-	};
+        SetAxeSize			,
+        ChopLines			,
+        AddPoint			,
+        DeletePoint			,
+        MovePoint			,
+        SelectPoint			,
+        SelectVertAtPos		,
+        DeselectPoints		,
+    };
 
-	enum CondOper
-	{
-		OperNull,
-		OperEquals,
-		OperLessThan,
-		OperLessThanEQ,
-		OperMoreThan,
-		OperMoreThanEQ,
-	};
+    enum CondOper
+    {
+        OperNull,
+        OperEquals,
+        OperLessThan,
+        OperLessThanEQ,
+        OperMoreThan,
+        OperMoreThanEQ,
+    };
 
-	enum Comparable
-	{
-		NoCompare,
-		NumPoints,
-		NumLines,
-		NumLayers,
-		CurrentLayer,
-		DfrmAssignments,
-	};
+    enum Comparable
+    {
+        NoCompare,
+        NumPoints,
+        NumLines,
+        NumLayers,
+        CurrentLayer,
+        DfrmAssignments,
+    };
 
-	enum
-	{
-		TargNull = -1,
-		IdNull = -1
-	};
+    enum
+    {
+        TargNull = -1,
+        IdNull = -1
+    };
 
-	enum
-	{
-		IdOn	,
-		IdOff	,
-	};
+    enum
+    {
+        IdOn	,
+        IdOff	,
+    };
 
-	enum
-	{
-		IdModeMagn	,
-		IdModePhase
-	};
+    enum
+    {
+        IdModeMagn	,
+        IdModePhase
+    };
 
-	enum
-	{
-		ToFrontId = 0xc0dedbad
-	};
+    enum
+    {
+        ToFrontId = 0xc0dedbad
+    };
 
-	enum
-	{
-		IdModeUniGroup	,
-		IdModeUniSingle
-	};
+    enum
+    {
+        IdModeUniGroup	,
+        IdModeUniSingle
+    };
 
-	enum
-	{
-		IdViewSynth,
-		IdViewWave,
-	};
+    enum
+    {
+        IdViewSynth,
+        IdViewWave,
+    };
 
-	enum TargMatrix
-	{
-		TargMatrixGrid,
-		TargMatrixUtility,
-		TargMatrixSource,
-		TargMatrixAddSource,
-		TargMatrixAddDest,
-		TargMatrixDest,
-	};
+    enum TargMatrix
+    {
+        TargMatrixGrid,
+        TargMatrixUtility,
+        TargMatrixSource,
+        TargMatrixAddSource,
+        TargMatrixAddDest,
+        TargMatrixDest,
+    };
 
-	enum TargUni
-	{
-		TargUniMode = Unison::numParams,
-		TargUniVoiceSlct,
-		TargUniAddRemove
-	};
-
-
-	enum DfrmTargets
-	{
-		TargDfrmNoise,
-		TargDfrmOffset,
-		TargDfrmPhase,
-		TargDfrmMeshSlct,
-		TargDfrmLayerAdd,
-		TargDfrmLayerSlct
-	};
-
-	enum ImpTargets
-	{
-		TargImpLength,
-		TargImpGain,
-		TargImpHP,
-		TargImpZoom,
-		TargImpLoadWav,
-		TargImpUnloadWav,
-		TargImpModelWav,
-	};
+    enum TargUni
+    {
+        TargUniMode = Unison::numParams,
+        TargUniVoiceSlct,
+        TargUniAddRemove
+    };
 
 
-	enum WaveshaperTargets
-	{
-		TargWaveshaperOvsp,
-		TargWaveshaperPre,
-		TargWaveshaperPost,
-		TargWaveshaperSlct,
-	};
+    enum DfrmTargets
+    {
+        TargDfrmNoise,
+        TargDfrmOffset,
+        TargDfrmPhase,
+        TargDfrmMeshSlct,
+        TargDfrmLayerAdd,
+        TargDfrmLayerSlct
+    };
 
-	enum VertexProps
-	{
-		TargSliderArea,
-		TargTimeSlider,
-		TargPhsSlider,
-		TargAmpSlider,
-		TargKeySlider,
-		TargMorphSlider,
-		TargCrvSlider,
-
-		TargBoxArea = 10,
-		TargPhsBox,
-		TargAmpBox,
-		TargKeyBox,
-		TargModBox,
-		TargCrvBox,
-		TargAvpBox,
-
-		TargGainArea = 20,
-		TargPhsGain,
-		TargAmpGain,
-		TargKeyGain,
-		TargModGain,
-		TargCrvGain,
-		TargAvpGain,
-	};
-
-	enum CompEnvs
-	{
-		TargVol,
-		TargScratch,
-		TargPitch,
-		TargWavPitch,
-		TargScratchLyr,
-		TargSustLoop,
-	};
-
-	enum CompWaveform3D
-	{
-		TargDomains,
-		TargLayerEnable,
-		TargLayerMode,
-		TargLayerAdder,
-		TargLayerMover,
-		TargLayerSlct,
-		TargScratchBox,
-		TargDeconv,
-		TargModelCycle,
-		TargPhaseUp,
-		TargPan,
-		TargRange,
-		TargMeshSelector
-	};
-
-	enum GenControls
-	{
-		TargSelector,
-		TargPencil,
-		TargAxe,
-		TargNudge,
-		TargWaveVerts,
-		TargVerts,
-		TargLinkYellow
-	};
-
-	enum MasterCtrls
-	{
-		TargMasterVol,
-		TargMasterOct,
-		TargMasterLen,
-	};
-
-	enum
-	{
-		IdZoomIn	,
-		IdZoomOut	,
-	};
+    enum ImpTargets
+    {
+        TargImpLength,
+        TargImpGain,
+        TargImpHP,
+        TargImpZoom,
+        TargImpLoadWav,
+        TargImpUnloadWav,
+        TargImpModelWav,
+    };
 
 
-	enum
-	{
-		IdToolSelector 	= Tools::Selector,
-		IdToolPencil	= Tools::Pencil,
-		IdToolAxe		= Tools::Axe,
-	};
+    enum WaveshaperTargets
+    {
+        TargWaveshaperOvsp,
+        TargWaveshaperPre,
+        TargWaveshaperPost,
+        TargWaveshaperSlct,
+    };
 
-	enum
-	{
-		IdMeshVol		= LayerGroups::GroupVolume,
-		IdMeshPitch		= LayerGroups::GroupPitch,
-		IdMeshScratch	= LayerGroups::GroupScratch,
-		IdMeshWavePitch	= LayerGroups::GroupWavePitch,
-	};
+    enum VertexProps
+    {
+        TargSliderArea,
+        TargTimeSlider,
+        TargPhsSlider,
+        TargAmpSlider,
+        TargKeySlider,
+        TargMorphSlider,
+        TargCrvSlider,
 
-	enum
-	{
-		IdYellow		= Vertex::Time,
-		IdRed			= Vertex::Red,
-		IdBlue			= Vertex::Blue,
-	};
+        TargBoxArea = 10,
+        TargPhsBox,
+        TargAmpBox,
+        TargKeyBox,
+        TargModBox,
+        TargCrvBox,
+        TargAvpBox,
 
-	enum
-	{
-		IdParamTime 	= Vertex::Time,
-		IdParamAvp 		= Vertex::Time,
-		IdParamPhase 	= Vertex::Phase,
-		IdParamAmp 		= Vertex::Amp,
-		IdParamBlue 	= Vertex::Red,
-		IdParamRed 		= Vertex::Blue,
-		IdParamSharp 	= Vertex::Curve,
-	};
+        TargGainArea = 20,
+        TargPhsGain,
+        TargAmpGain,
+        TargKeyGain,
+        TargModGain,
+        TargCrvGain,
+        TargAvpGain,
+    };
 
-	enum
-	{
-		IdViewStageA	= SynthMenuBarModel::ViewStageA,
-		IdViewStageB	= SynthMenuBarModel::ViewStageB,
-		IdViewStageC	= SynthMenuBarModel::ViewStageC,
-		IdViewStageD	= SynthMenuBarModel::ViewStageD,
-	};
+    enum CompEnvs
+    {
+        TargVol,
+        TargScratch,
+        TargPitch,
+        TargWavPitch,
+        TargScratchLyr,
+        TargSustLoop,
+    };
 
-	enum ModComps
-	{
-		TargVertCube,
+    enum CompWaveform3D
+    {
+        TargDomains,
+        TargLayerEnable,
+        TargLayerMode,
+        TargLayerAdder,
+        TargLayerMover,
+        TargLayerSlct,
+        TargScratchBox,
+        TargDeconv,
+        TargModelCycle,
+        TargPhaseUp,
+        TargPan,
+        TargRange,
+        TargMeshSelector
+    };
 
-		TargPrimeArea,
-		TargPrimeY,
-		TargPrimeB,
-		TargPrimeR,
+    enum GenControls
+    {
+        TargSelector,
+        TargPencil,
+        TargAxe,
+        TargNudge,
+        TargWaveVerts,
+        TargVerts,
+        TargLinkYellow
+    };
 
-		TargLinkArea,
-		TargLinkY,
-		TargLinkB,
-		TargLinkR,
+    enum MasterCtrls
+    {
+        TargMasterVol,
+        TargMasterOct,
+        TargMasterLen,
+    };
 
-		TargRangeArea,
-		TargRangeY,
-		TargRangeB,
-		TargRangeR,
-
-		TargSlidersArea,
-		TargSliderY,
-		TargSliderB,
-		TargSliderR,
-		TargSliderPan,
-	};
+    enum
+    {
+        IdZoomIn	,
+        IdZoomOut	,
+    };
 
 
-	enum
-	{
-		IdBttnEnable,
-		IdBttnAdd,
-		IdBttnRemove,
-		IdBttnMoveUp,
-		IdBttnMoveDown,
-		IdBttnModeAdditive,
-		IdBttnModeFilter,
-		IdBttnDeconv,
-		IdBttnModel,
-		IdBttnPhaseUp,
-		IdBttnLoop,
-		IdBttnSustain,
+    enum
+    {
+        IdToolSelector 	= Tools::Selector,
+        IdToolPencil	= Tools::Pencil,
+        IdToolAxe		= Tools::Axe,
+    };
 
-		IdBttnLinkY,
-		IdBttnLinkR,
-		IdBttnLinkB,
+    enum
+    {
+        IdMeshVol		= LayerGroups::GroupVolume,
+        IdMeshPitch		= LayerGroups::GroupPitch,
+        IdMeshScratch	= LayerGroups::GroupScratch,
+        IdMeshWavePitch	= LayerGroups::GroupWavePitch,
+    };
 
-		IdBttnRangeY,
-		IdBttnRangeR,
-		IdBttnRangeB,
+    enum
+    {
+        IdYellow		= Vertex::Time,
+        IdRed			= Vertex::Red,
+        IdBlue			= Vertex::Blue,
+    };
 
-		IdBttnPrimeY,
-		IdBttnPrimeR,
-		IdBttnPrimeB,
-	};
+    enum
+    {
+        IdParamTime 	= Vertex::Time,
+        IdParamAvp 		= Vertex::Time,
+        IdParamPhase 	= Vertex::Phase,
+        IdParamAmp 		= Vertex::Amp,
+        IdParamBlue 	= Vertex::Red,
+        IdParamRed 		= Vertex::Blue,
+        IdParamSharp 	= Vertex::Curve,
+    };
 
-	struct Action
-	{
-		bool		hasExecuted, triggersUpdate;
-		int 		data1, data2, data3, id;
-		int			delayMillis;
-		float 		value;
-		Area 		area;
-		ActionType 	type;
-		Vertex2 	point;
-		String		str;
+    enum
+    {
+        IdViewStageA	= SynthMenuBarModel::ViewStageA,
+        IdViewStageB	= SynthMenuBarModel::ViewStageB,
+        IdViewStageC	= SynthMenuBarModel::ViewStageC,
+        IdViewStageD	= SynthMenuBarModel::ViewStageD,
+    };
 
-		Action() : 	type(NullAction), id(IdNull), area(AreaNull),
-					hasExecuted(false), triggersUpdate(false), value(0), data1(0), data2(0), data3(0), delayMillis(100)
-		{}
-	};
+    enum ModComps
+    {
+        TargVertCube,
+
+        TargPrimeArea,
+        TargPrimeY,
+        TargPrimeB,
+        TargPrimeR,
+
+        TargLinkArea,
+        TargLinkY,
+        TargLinkB,
+        TargLinkR,
+
+        TargRangeArea,
+        TargRangeY,
+        TargRangeB,
+        TargRangeR,
+
+        TargSlidersArea,
+        TargSliderY,
+        TargSliderB,
+        TargSliderR,
+        TargSliderPan,
+    };
+
+
+    enum
+    {
+        IdBttnEnable,
+        IdBttnAdd,
+        IdBttnRemove,
+        IdBttnMoveUp,
+        IdBttnMoveDown,
+        IdBttnModeAdditive,
+        IdBttnModeFilter,
+        IdBttnDeconv,
+        IdBttnModel,
+        IdBttnPhaseUp,
+        IdBttnLoop,
+        IdBttnSustain,
+
+        IdBttnLinkY,
+        IdBttnLinkR,
+        IdBttnLinkB,
+
+        IdBttnRangeY,
+        IdBttnRangeR,
+        IdBttnRangeB,
+
+        IdBttnPrimeY,
+        IdBttnPrimeR,
+        IdBttnPrimeB,
+    };
+
+    struct Action
+    {
+        bool		hasExecuted, triggersUpdate;
+        int 		data1, data2, data3, id;
+        int			delayMillis;
+        float 		value;
+        Area 		area;
+        ActionType 	type;
+        Vertex2 	point;
+        String		str;
+
+        Action() : 	type(NullAction), id(IdNull), area(AreaNull),
+                    hasExecuted(false), triggersUpdate(false), value(0), data1(0), data2(0), data3(0), delayMillis(100)
+        {}
+    };
 
 /*
-	struct Animation
-	{
-		bool hasExecuted;
-		int delayMillis, timerId, currentIndex;
-		vector<Action> actions;
+    struct Animation
+    {
+        bool hasExecuted;
+        int delayMillis, timerId, currentIndex;
+        vector<Action> actions;
 
-		Animation() : hasExecuted(false), delayMillis(40), timerId(1), currentIndex(0) {}
-	};
-	*/
+        Animation() : hasExecuted(false), delayMillis(40), timerId(1), currentIndex(0) {}
+    };
+    */
 
-	struct Condition
-	{
-		int 		value;
+    struct Condition
+    {
+        int 		value;
 
-		Area		area;
-		CondOper 	oper;
-		Comparable 	type;
-		String 		failMsg;
+        Area		area;
+        CondOper 	oper;
+        Comparable 	type;
+        String 		failMsg;
 
-		Condition() : value(0), area(), type(NoCompare), oper(OperEquals) {
-		}
-	};
+        Condition() : value(0), area(), type(NoCompare), oper(OperEquals) {
+        }
+    };
 
-	struct Item
-	{
-		int 		subArea;
-		int 		actionIndex{};
+    struct Item
+    {
+        int 		subArea;
+        int 		actionIndex{};
 
-		Area 		area;
-		Condition 	condition;
+        Area 		area;
+        Condition 	condition;
 //		Animation 	animation;
-		vector<Action> actions;
+        vector<Action> actions;
 
-		String title;
-		String text;
+        String title;
+        String text;
 
-		Item() : subArea(-1), area() {
-		}
+        Item() : subArea(-1), area() {
+        }
 
-		Rectangle<int> getArea(CycleTour *tour) const {
-			if (subArea != TargNull) {
-				TourGuide *t = tour->getTourGuide(area);
+        Rectangle<int> getArea(CycleTour *tour) const {
+            if (subArea != TargNull) {
+                TourGuide *t = tour->getTourGuide(area);
 
-				if (Component *c = t->getComponent(subArea)) {
-					return c->getScreenBounds();
-				}
-			} else {
-				if (Component *c = tour->getComponent(area)) {
-					return c->getScreenBounds();
-				}
-			}
+                if (Component *c = t->getComponent(subArea)) {
+                    return c->getScreenBounds();
+                }
+            } else {
+                if (Component *c = tour->getComponent(area)) {
+                    return c->getScreenBounds();
+                }
+            }
 
-			return {};
-		}
-	};
+            return {};
+        }
+    };
 
-	class Highlighter : public Component {
-	public:
-		explicit Highlighter(CycleTour *tour);
+    class Highlighter : public Component {
+    public:
+        explicit Highlighter(CycleTour *tour);
 
-		void paint(Graphics& g) override;
-		void update(const Rectangle<int>& r);
+        void paint(Graphics& g) override;
+        void update(const Rectangle<int>& r);
 
-		CycleTour* tour;
-	};
+        CycleTour* tour;
+    };
 
-	class ItemComponent : public Component {
-	public:
-		void paint(Graphics& g) override;
-		void setItem(const Item& item);
+    class ItemComponent : public Component {
+    public:
+        void paint(Graphics& g) override;
+        void setItem(const Item& item);
 
-		TextLayout layout;
-		Item item;
-	};
+        TextLayout layout;
+        Item item;
+    };
 
-	class ItemWrapper : public Component, public SingletonAccessor {
-	public:
-		explicit ItemWrapper(SingletonRepo* repo);
+    class ItemWrapper : public Component, public SingletonAccessor {
+    public:
+        explicit ItemWrapper(SingletonRepo* repo);
 
-		void paint(Graphics& g) override;
-		void moved() override;
-		void resized() override;
-		void childBoundsChanged (Component*) override;
+        void paint(Graphics& g) override;
+        void moved() override;
+        void resized() override;
+        void childBoundsChanged (Component*) override;
 
-		void setItem(const Item& item);
-		bool keyPressed(const KeyPress& press) override;
-		void updatePosition (const Rectangle<int>& newAreaToPointTo,
-							 const Rectangle<int>& newAreaToFitIn);
+        void setItem(const Item& item);
+        bool keyPressed(const KeyPress& press) override;
+        void updatePosition (const Rectangle<int>& newAreaToPointTo,
+                             const Rectangle<int>& newAreaToFitIn);
 
-		bool intersects(const Rectangle<float>& r, const Line<float>& l);
+        bool intersects(const Rectangle<float>& r, const Line<float>& l);
 
-	private:
-		void refreshPath();
+    private:
+        void refreshPath();
 
-		int borderSpace;
-		float arrowSize;
+        int borderSpace;
+        float arrowSize;
 
-		Path outline;
-		Image background;
-		Point<float> targetPoint;
-		Rectangle<int> availableArea, targetArea;
-		ItemComponent content;
-	};
+        Path outline;
+        Image background;
+        Point<float> targetPoint;
+        Rectangle<int> availableArea, targetArea;
+        ItemComponent content;
+    };
 
-	explicit CycleTour(SingletonRepo* repo);
+    explicit CycleTour(SingletonRepo* repo);
 
-	void init() override;
-	void exit();
-	void enter();
-	void showNext();
-	void showPrevious();
-	void handleAsyncUpdate() override;
-	void timerCallback(int id) override;
-	void performAction(Action& type);
+    void init() override;
+    void exit();
+    void enter();
+    void showNext();
+    void showPrevious();
+    void handleAsyncUpdate() override;
+    void timerCallback(int id) override;
+    void performAction(Action& type);
 
-	bool isLive() const { return live; }
-	bool conditionPassed(const Condition& c);
-	bool compare(const Condition& cond, int value);
-	bool passesRequirements(const String& ignore, const String& require);
-	void readAction(Action& action, XmlElement* actionElem);
-	bool readXML(const XmlElement* element);
+    bool isLive() const { return live; }
+    bool conditionPassed(const Condition& c);
+    bool compare(const Condition& cond, int value);
+    bool passesRequirements(const String& ignore, const String& require);
+    void readAction(Action& action, XmlElement* actionElem);
+    bool readXML(const XmlElement* element);
 
-	Panel* 		areaToPanel(int which);
-	Interactor* areaToInteractor(int which);
-	Component* 	getComponent(int which);
-	TourGuide* 	getTourGuide(Area area);
+    Panel* 		areaToPanel(int which);
+    Interactor* areaToInteractor(int which);
+    Component* 	getComponent(int which);
+    TourGuide* 	getTourGuide(Area area);
 
-	class Tutorial {
-	public:
-		Tutorial() = default;
+    class Tutorial {
+    public:
+        Tutorial() = default;
 
-		explicit Tutorial(String name) : name(std::move(name)) {
-		}
+        explicit Tutorial(String name) : name(std::move(name)) {
+        }
 
-		String name;
-		vector<Item> items;
-	};
+        String name;
+        vector<Item> items;
+    };
 
 private:
-	bool live, createdWaveshape;
-	int currentItem, lastItem, currentTutorial;
+    bool live, createdWaveshape;
+    int currentItem, lastItem, currentTutorial;
 
-	Tutorial 	current;
-	Highlighter highlighter;
-	ItemWrapper wrapper;
+    Tutorial 	current;
+    Highlighter highlighter;
+    ItemWrapper wrapper;
 
-	HashMap<String, int> 		subareaStrings, idStrings;
-	HashMap<String, Area> 		areaStrings;
-	HashMap<String, Comparable> compareStrings;
-	HashMap<String, ActionType> actionStrings;
-	HashMap<String, CondOper> 	condStrings;
+    HashMap<String, int> 		subareaStrings, idStrings;
+    HashMap<String, Area> 		areaStrings;
+    HashMap<String, Comparable> compareStrings;
+    HashMap<String, ActionType> actionStrings;
+    HashMap<String, CondOper> 	condStrings;
 };

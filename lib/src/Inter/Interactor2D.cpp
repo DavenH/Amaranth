@@ -36,7 +36,7 @@ bool Interactor2D::locateClosestElement() {
     int freeIdx = -1;
 
     int i = 0;
-    for(auto& icpt : icpts) {
+    for (auto& icpt : icpts) {
         if (fabsf(icpt.x - x) < dist) {
             dist = fabsf(icpt.x - x);
             icptIdx = i;
@@ -45,7 +45,7 @@ bool Interactor2D::locateClosestElement() {
     }
 
     i = 0;
-    for(auto& vert : depthVerts) {
+    for (auto& vert : depthVerts) {
         if (fabsf(vert.x - x) < dist) {
             dist = fabsf(vert.x - x);
             freeIdx = i;
@@ -57,24 +57,24 @@ bool Interactor2D::locateClosestElement() {
     Vertex* lastCurrent = state.currentVertex;
     state.currentCube = nullptr;
 
-    if(freeIdx != -1) {
+    if (freeIdx != -1) {
         state.currentVertex     = depthVerts[freeIdx].vert;
         state.currentFreeVert   = freeIdx;
         state.currentIcpt       = -1;
     } else if (icptIdx != -1) {
         state.currentCube       = icpts[icptIdx].cube;
 
-        if(state.currentCube == nullptr && icptIdx > 0) {
+        if (state.currentCube == nullptr && icptIdx > 0) {
             state.currentCube = icpts[icptIdx - 1].cube;
         }
 
         state.currentFreeVert   = -1;
         state.currentIcpt       = icptIdx;
 
-        if(state.currentCube == nullptr) {
+        if (state.currentCube == nullptr) {
             Mesh* mesh = getMesh();
 
-            for(auto& vert : mesh->getVerts()) {
+            for (auto& vert : mesh->getVerts()) {
                 if (fabsf(vert->values[dims.x] - icpts[state.currentIcpt].x) < 0.0001f) {
                     // when does this ever happen???
                     state.currentVertex = vert;
@@ -88,7 +88,7 @@ bool Interactor2D::locateClosestElement() {
         getStateValue(CurrentCurve) = icptIdx + rasterizer->getPaddingSize();
     }
 
-    if(icptIdx != oldIcptIdx || freeIdx != oldFreeIdx) {
+    if (icptIdx != oldIcptIdx || freeIdx != oldFreeIdx) {
         flag(SimpleRepaint) = true;
     }
 
@@ -109,7 +109,7 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
     Buffer<Float32> waveY = rastData.waveY;
     bool inSelection     = finalSelection.contains(e.getPosition());
 
-    if(inSelection || waveX.empty() || waveY.empty()) {
+    if (inSelection || waveX.empty() || waveY.empty()) {
         return;
     }
 
@@ -123,7 +123,7 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
     startIndex      = Arithmetic::binarySearch(lowBound, waveX);
     endIndex        = Arithmetic::binarySearch(highBound, waveX);
 
-    if(endIndex - startIndex < 10) {
+    if (endIndex - startIndex < 10) {
         startIndex  = jmax(0, startIndex - 5);
         endIndex    = jmin(waveX.size() - 1, endIndex + 5);
     }
@@ -152,15 +152,15 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
         Vertex2 b(xy[i + 1]);
 
         float diff = a.dist2(b);
-        if(diff == 0) {
+        if (diff == 0) {
             distToCurve = b.dist2(c);
         } else {
             float t = (c - a).dot(b - a) / diff;
-            if(t < 0)
+            if (t < 0) {
                 distToCurve = c.dist2(a);
-            else if(t > 1)
+            } else if (t > 1) {
                 distToCurve = c.dist2(b);
-            else {
+            } else {
                 Vertex2 vec = a + (b - a) * t;
 
                 distToCurve = c.dist2(vec);
@@ -169,7 +169,7 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 
         distToCurve = sqrtf(distToCurve);
 
-        if(distToCurve < distThresPX) {
+        if (distToCurve < distThresPX) {
             mouseFlag(WithinReshapeThresh) = true;
             break;
         }
@@ -181,7 +181,7 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 }
 
 void Interactor2D::doExtraMouseDrag(const MouseEvent& e) {
-    if(actionIs(PaintingEdit)) {
+    if (actionIs(PaintingEdit)) {
         commitPath(e);
     }
 }
@@ -204,7 +204,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
     if (actionIs(PaintingCreate)) {
         vector<Intercept> reducedPath = getObj(AutoModeller).modelToPath(pencilPath, 1.f, false);
 
-        if(reducedPath.size() < 2) {
+        if (reducedPath.size() < 2) {
             return;
         }
 
@@ -225,7 +225,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 
         float diff;
 
-        if(pencilPath.size() < 2) {
+        if (pencilPath.size() < 2) {
             return;
         }
 
@@ -241,7 +241,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
         Vertex2 a(pencilPath[end - 1]);
         Vertex2 b(pencilPath[end]);
 
-        if(a.x > b.x) {
+        if (a.x > b.x) {
             std::swap(a, b);
         }
 
@@ -250,7 +250,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 
         if (useLines) {
             for (const auto & icpt : icpts) {
-                if(! NumberUtils::within(icpt.x, a.x, b.x)) {
+                if (! NumberUtils::within(icpt.x, a.x, b.x)) {
                     continue;
                 }
 
@@ -263,7 +263,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
                     Vertex* vNear = findLinesClosestVertex(cube, state.currentMouse, pos);
                     Array<Vertex*> innerMovingVerts = getVerticesToMove(cube, vNear);
 
-                    for(auto* vert : innerMovingVerts) {
+                    for (auto* vert : innerMovingVerts) {
                         vert->values[dims.y] += diff;
 
                         NumberUtils::constrain(vert->values[dims.y], vertexLimits[dims.y]);
@@ -275,7 +275,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
                 }
             }
         } else if (Mesh* mesh = getMesh()) {
-            if(pencilPath.size() < 2) {
+            if (pencilPath.size() < 2) {
                 return;
             }
 
@@ -284,15 +284,15 @@ void Interactor2D::commitPath(const MouseEvent& e) {
             Vertex2 c = pencilPath[size - 2];
             Vertex2 d = pencilPath[size - 1];
 
-            if(c.x > d.x) {
+            if (c.x > d.x) {
                 std::swap(c, d);
             }
 
-            if(c.x == d.x) {
+            if (c.x == d.x) {
                 return;
             }
 
-            for(auto& vert : mesh->getVerts()) {
+            for (auto& vert : mesh->getVerts()) {
                 Vertex2 icpt(vert->values[dims.x], vert->values[dims.y]);
 
                 if (NumberUtils::within(icpt.x, c.x, d.x)) {
@@ -341,7 +341,7 @@ void Interactor2D::doReshapeCurve(const MouseEvent& e) {
     float diff      = diffY * dragScale / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
     int pole        = curves[getStateValue(CurrentCurve)].tp.ypole;
 
-    for(auto& vert : movingVerts) {
+    for (auto& vert : movingVerts) {
         float& weight = vert->values[Vertex::Curve];
         weight += diff * pole;
 
@@ -363,27 +363,28 @@ void Interactor2D::removeLinesInRange(Range<float> phsRange, const MorphPosition
 
         vector<VertCube*> linesToDelete;
 
-        for(auto& cube : mesh->getCubes()) {
+        for (auto& cube : mesh->getCubes()) {
             cube->getFinalIntercept(reduceData, pos);
 
-            if(reduceData.pointOverlaps && phsRange.contains(reduceData.v.values[dims.x]))
+            if (reduceData.pointOverlaps && phsRange.contains(reduceData.v.values[dims.x])) {
                 linesToDelete.push_back(cube);
+}
         }
 
         listeners.call(&InteractorListener::cubesRemoved, linesToDelete);
 
-        for(auto& cube : linesToDelete) {
+        for (auto& cube : linesToDelete) {
             if (mesh->removeCube(cube)) {
                 for (auto vert : cube->lineVerts) {
-                    if(vert->getNumOwners() == 1) {
+                    if (vert->getNumOwners() == 1) {
                         mesh->removeVert(vert);
                     }
                 }
             }
         }
     } else {
-        for(auto& vert : mesh->getVerts()) {
-            if(phsRange.contains(vert->values[dims.x])) {
+        for (auto& vert : mesh->getVerts()) {
+            if (phsRange.contains(vert->values[dims.x])) {
                 mesh->removeVert(vert);
             }
         }

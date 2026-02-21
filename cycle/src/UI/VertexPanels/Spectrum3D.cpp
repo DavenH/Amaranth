@@ -33,7 +33,7 @@
 
 #define panelName "Spectrum3D"
 
-Spectrum3D::Spectrum3D(SingletonRepo* repo) : 
+Spectrum3D::Spectrum3D(SingletonRepo* repo) :
         Panel3D				(repo, panelName, this, UpdateSources::SourceSpectrum3D, true, false)
     ,	SingletonAccessor	(repo, panelName)
     ,	LayerSelectionClient(repo)
@@ -221,8 +221,9 @@ void Spectrum3D::buttonClicked(Button* button) {
                button == &subtractiveIcon) {
 
         bool isAdditive = button == &additiveIcon;
-        if(props->mode == Additive && isAdditive)
+        if (props->mode == Additive && isAdditive) {
             return;
+}
 
         props->mode = isAdditive ? Additive : Subtractive;
 
@@ -245,7 +246,7 @@ void Spectrum3D::buttonClicked(Button* button) {
                 // takes care of decrementing current layer
                 forceUpdate = meshLib->removeLayerKeepingOne(interactor->layerType, index);
 
-                if(group.size() > 1) {
+                if (group.size() > 1) {
                     getObj(ModMatrixPanel).layerRemoved(interactor->layerType, index);
                 }
             }
@@ -253,7 +254,7 @@ void Spectrum3D::buttonClicked(Button* button) {
 
         panelControls->refreshSelector(forceUpdate);
 
-        if(forceUpdate) {
+        if (forceUpdate) {
             triggerRefreshUpdate();
         }
 
@@ -276,19 +277,19 @@ void Spectrum3D::buttonClicked(Button* button) {
         }
     }
 
-    if(	button == &panelControls->enableCurrent ||
+    if (	button == &panelControls->enableCurrent ||
         button == &additiveIcon 				||
         button == &subtractiveIcon) {
         getObj(SynthAudioSource).enablementChanged();
     }
 
-    if(	button != &panelControls->upDownMover.up 	&&
+    if (	button != &panelControls->upDownMover.up 	&&
         button != &panelControls->upDownMover.down 	&&
         button != &panelControls->enableCurrent) {
         setIconHighlightImplicit();
     }
 
-    if(button == &magsIcon || button == &phaseIcon) {
+    if (button == &magsIcon || button == &phaseIcon) {
         updateKnobValue();
     }
 }
@@ -365,7 +366,7 @@ void Spectrum3D::updateColours() {
 }
 
 void Spectrum3D::layerChanged(int layerGroup, int index) {
-    if(layerGroup != (int) LayerGroups::GroupSpect || layerGroup != LayerGroups::GroupPhase) {
+    if (layerGroup != (int) LayerGroups::GroupSpect || layerGroup != LayerGroups::GroupPhase) {
         return;
     }
     panelControls->resetSelector(); //resetLayerBox();
@@ -515,8 +516,9 @@ bool Spectrum3D::haveAnyValidLayers(bool isMags, bool haveAnyValidTimeLayers) {
         MeshLibrary::Layer layer = group.layers[i];
 
         if (layer.props->active && layer.mesh->hasEnoughCubesForCrossSection() &&
-                (haveAnyValidTimeLayers || ! isMags || layer.props->mode == Spectrum3D::Additive))
+                (haveAnyValidTimeLayers || ! isMags || layer.props->mode == Spectrum3D::Additive)) {
             return true;
+}
     }
 
     return false;

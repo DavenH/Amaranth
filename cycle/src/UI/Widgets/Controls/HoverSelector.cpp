@@ -8,11 +8,11 @@
 #include "HoverSelector.h"
 
 HoverSelector::HoverSelector(SingletonRepo* repo, int x, int y, bool horz) :
-		SingletonAccessor(repo, "HoverSelector")
-	,	horizontal(horz) {
-	Image img = getObj(MiscGraphics).getIcon(x, y);
+        SingletonAccessor(repo, "HoverSelector")
+    ,	horizontal(horz) {
+    Image img = getObj(MiscGraphics).getIcon(x, y);
     headerIcon = std::make_unique<IconButton>(img, repo);
-	addAndMakeVisible(*headerIcon);
+    addAndMakeVisible(*headerIcon);
 
     headerIcon->addMouseListener(this, true);
     headerIcon->setMessages("Select mesh preset", {});
@@ -40,9 +40,9 @@ void HoverSelector::mouseExit(const MouseEvent& e) {
 }
 
 //void HoverSelector::timerCallback(int id) {
-//	if(id == ShowDelayId) {
-//		if(window) {
-//			if(window->isOverAnyMenu() || isMouseOver()) {
+//	if (id == ShowDelayId) {
+//		if (window) {
+//			if (window->isOverAnyMenu() || isMouseOver()) {
 //				stopTimer(ShowDelayId);
 //			} else {
 //				PopupMenu::dismissAllActiveMenus();
@@ -55,9 +55,9 @@ void HoverSelector::mouseExit(const MouseEvent& e) {
 //			stopTimer(ShowDelayId);
 //		}
 //	}
-//	else if(id == MouseOutId) {
-//		if(window) {
-//			if(window->isOverAnyMenu() || isMouseOver()) {
+//	else if (id == MouseOutId) {
+//		if (window) {
+//			if (window->isOverAnyMenu() || isMouseOver()) {
 //				stopTimer(ShowDelayId);
 //			} else {
 //				startTimer(ShowDelayId, 300);
@@ -67,7 +67,7 @@ void HoverSelector::mouseExit(const MouseEvent& e) {
 //}
 
 void HoverSelector::setSelectedId(int id) {
-    //	if(itemIsSelection(id)) {
+    //	if (itemIsSelection(id)) {
     //		PopupMenu::dismissAllActiveMenus();
     //
     //		stopTimer(ShowDelayId);
@@ -125,7 +125,7 @@ void HoverSelector::showPopup() {
 
         Rectangle<int> screenArea(getScreenBounds());
 
-        //		if(horizontal)
+        //		if (horizontal)
         //		{
         //			screenArea.setX(screenArea.getX() + 24);
         //			screenArea.setY(screenArea.getY() - 24);

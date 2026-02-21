@@ -71,44 +71,51 @@ public:
     }
 
     Vertex operator*(const float factor) {
-        if(factor == 1)
+        if (factor == 1) {
             return *this;
+}
 
-        if(factor == 0)
+        if (factor == 0) {
             return {};
+}
 
         Vertex vertex;
-        for (int i = 0; i < numElements; ++i)
+        for (int i = 0; i < numElements; ++i) {
             vertex.values[i] = values[i] * factor;
+}
 
         return vertex;
     }
 
     void operator*=(const float factor) {
-        if (factor == 1)
+        if (factor == 1) {
             return;
+}
 
         if (factor == 0) {
             VecOps::zero(values, numElements);
             return;
         }
 
-        for (float& value : values)
+        for (float& value : values) {
             value *= factor;
+}
     }
 
     Vertex operator+(const Vertex& other) const {
         Vertex vertex;
-        for (int i = 0; i < numElements; ++i)
+        for (int i = 0; i < numElements; ++i) {
             vertex.values[i] = values[i] + other.values[i];
+}
 
         return vertex;
     }
 
     Vertex operator-(const Vertex& other) const {
         Vertex vertex;
-        for (int i = 0; i < numElements; ++i)
+        for (int i = 0; i < numElements; ++i) {
             vertex.values[i] = values[i] - other.values[i];
+}
 
         return vertex;
     }

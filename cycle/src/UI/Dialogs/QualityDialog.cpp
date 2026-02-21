@@ -113,7 +113,7 @@ void QualityDialog::comboBoxChanged(ComboBox* box) {
                 default: break;
             }
 
-            if(Util::assignAndWereDifferent(getDocSetting(OversampleFactorRend), factor)) {
+            if (Util::assignAndWereDifferent(getDocSetting(OversampleFactorRend), factor)) {
                 getObj(EditWatcher).setHaveEditedWithoutUndo(true);
             }
 
@@ -141,7 +141,7 @@ void QualityDialog::comboBoxChanged(ComboBox* box) {
     } else if (item >= ResampAlgoRltmLinear && item <= ResampAlgoRltmSinc) {
         char newAlgo = Resampling::Linear;
 
-        switch(item) {
+        switch (item) {
             case ResampAlgoRltmLinear: 	newAlgo = Resampling::Linear;	break;
             case ResampAlgoRltmHermite: newAlgo = Resampling::Hermite;	break;
             case ResampAlgoRltmBspline: newAlgo = Resampling::BSpline;	break;
@@ -156,7 +156,7 @@ void QualityDialog::comboBoxChanged(ComboBox* box) {
     } else if (item >= ResampAlgoRendLinear && item <= ResampAlgoRendSinc) {
         int newAlgo = Resampling::Linear;
 
-        switch(item) {
+        switch (item) {
             case ResampAlgoRendLinear: 	newAlgo = Resampling::Linear;	break;
             case ResampAlgoRendHermite: newAlgo = Resampling::Hermite;	break;
             case ResampAlgoRendBspline: newAlgo = Resampling::BSpline;	break;
@@ -165,7 +165,7 @@ void QualityDialog::comboBoxChanged(ComboBox* box) {
                 break;
         }
 
-        if(Util::assignAndWereDifferent(getDocSetting(ResamplingAlgoRend), newAlgo)) {
+        if (Util::assignAndWereDifferent(getDocSetting(ResamplingAlgoRend), newAlgo)) {
             getObj(EditWatcher).setHaveEditedWithoutUndo(true);
         }
     }
@@ -175,7 +175,7 @@ void QualityDialog::comboBoxChanged(ComboBox* box) {
 
 void QualityDialog::updateSelections() {
     int ovspRltmId;
-    switch(getDocSetting(OversampleFactorRltm))
+    switch (getDocSetting(OversampleFactorRltm))
     {
         case 1:		ovspRltmId = OversampRltm1x;	break;
         case 2:		ovspRltmId = OversampRltm2x;	break;
@@ -197,7 +197,7 @@ void QualityDialog::updateSelections() {
     rendOvsp.setSelectedId(ovspRendId);
 
     int controlId;
-    switch(getDocSetting(ControlFreq)) {
+    switch (getDocSetting(ControlFreq)) {
         case 4: 	controlId = ControlFreq16;		break;
         case 6: 	controlId = ControlFreq64;		break;
         case 8: 	controlId = ControlFreq256;		break;
@@ -207,7 +207,7 @@ void QualityDialog::updateSelections() {
     ctrlFreqCmbo.setSelectedId(controlId, dontSendNotification);
 
     int resampAlgoRltm = ResampAlgoRltmLinear;
-    switch(getDocSetting(ResamplingAlgoRltm)) {
+    switch (getDocSetting(ResamplingAlgoRltm)) {
         case Resampling::Linear:	resampAlgoRltm = ResampAlgoRltmLinear;	break;
         case Resampling::Hermite:	resampAlgoRltm = ResampAlgoRltmHermite;	break;
         case Resampling::BSpline:	resampAlgoRltm = ResampAlgoRltmBspline;	break;
@@ -217,7 +217,7 @@ void QualityDialog::updateSelections() {
     }
 
     int resampAlgoRend = ResampAlgoRendLinear;
-    switch(getDocSetting(ResamplingAlgoRend)) {
+    switch (getDocSetting(ResamplingAlgoRend)) {
         case Resampling::Linear:	resampAlgoRend = ResampAlgoRendLinear;	break;
         case Resampling::Hermite:	resampAlgoRend = ResampAlgoRendHermite;	break;
         case Resampling::BSpline:	resampAlgoRend = ResampAlgoRendBspline;	break;

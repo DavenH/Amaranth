@@ -21,7 +21,7 @@ private:
     void init(int sizeOfBlock, const Buffer<float>& kernel, bool useNoise);
 
     static bool isProbablyEmpty(const Buffer<Complex32>& buffer) {
-        if(buffer.empty())
+        if (buffer.empty())
             return true;
 
         Complex32 sum = buffer.sum();

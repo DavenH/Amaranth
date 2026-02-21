@@ -48,11 +48,11 @@ public:
             dimensionNames.add("Blue");
             dimensionNames.add("Curve");
 
-            for(int i = 0; i < numElementsInArray(sliderApplicable); ++i) {
+            for (int i = 0; i < numElementsInArray(sliderApplicable); ++i) {
                 sliderApplicable[i] = true;
             }
 
-            for(int i = 0; i < numElementsInArray(deformApplicable); ++i) {
+            for (int i = 0; i < numElementsInArray(deformApplicable); ++i) {
                 deformApplicable[i] = true;
             }
         }

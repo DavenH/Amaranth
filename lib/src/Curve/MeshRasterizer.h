@@ -107,7 +107,7 @@ public:
 
     void sampleEvenlyTo(const Buffer<float>& dest)
     {
-        if(dest.empty()) {
+        if (dest.empty()) {
             return;
         }
 
@@ -119,7 +119,7 @@ public:
         float* dest = buffer.get();
         int size = buffer.size();
 
-        if(waveX.empty()) {
+        if (waveX.empty()) {
             buffer.set(0.5f);
             return 0;
         }
@@ -134,12 +134,13 @@ public:
         } else {
             int currentIndex = jmax(0, zeroIndex - 1);
 
-            while(phase < waveX[currentIndex] && currentIndex > 0)
+            while (phase < waveX[currentIndex] && currentIndex > 0) {
                 currentIndex--;
+}
 
             jassert(phase > waveX[currentIndex]);
 
-            for(int i = 0; i < size; ++i) {
+            for (int i = 0; i < size; ++i) {
                 while (phase >= waveX[currentIndex + 1]) {
                     currentIndex++;
                 }
@@ -150,7 +151,7 @@ public:
             }
         }
 
-        if(phase > 0.5) {
+        if (phase > 0.5) {
             phase -= 1;
         }
 

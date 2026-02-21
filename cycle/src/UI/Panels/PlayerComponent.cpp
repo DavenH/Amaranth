@@ -54,7 +54,7 @@ void PlayerComponent::paint(Graphics& g) {
     Rectangle<int> textBounds(5, 0, getWidth() - 100, 28);
 
     String nameStr = name;
-    if(getObj(EditWatcher).getHaveEdited()) {
+    if (getObj(EditWatcher).getHaveEdited()) {
         nameStr += "*";
     }
 

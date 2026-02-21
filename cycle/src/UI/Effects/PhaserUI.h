@@ -23,7 +23,7 @@ public:
         bool little 	= getWidth() < 300;
         bool superSmall = getWidth() < 200;
 
-        switch(index)
+        switch (index)
         {
             case Phaser::Rate: 		return superSmall ? "rt" : "Rate";
             case Phaser::Feedback:	return little ? "fb" : "Feedback";

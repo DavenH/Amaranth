@@ -55,8 +55,9 @@ public:
     }
 
     void clear() {
-        for (auto& frequencyRamp : frequencyRamps)
+        for (auto& frequencyRamp : frequencyRamps) {
             frequencyRamp.nullify();
+}
 
         memory.clear();
     }

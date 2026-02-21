@@ -25,7 +25,7 @@ void Mesh::destroy() {
     // lines should be deleted first as they try to remove the vertices' references
     // before destruction.
     if (!cubes.empty()) {
-        for(auto& cube : cubes) {
+        for (auto& cube : cubes) {
             delete cube;
             cube = nullptr;
         }
@@ -34,7 +34,7 @@ void Mesh::destroy() {
     }
 
     if (!verts.empty()) {
-        for(auto& vert : verts) {
+        for (auto& vert : verts) {
             delete vert;
             vert = nullptr;
         }
@@ -48,7 +48,7 @@ void Mesh::print(bool printLines, bool printVerts) {
     if (printLines) {
         info("Lines: " << (int) cubes.size() << "\n");
 
-        for(auto it : cubes) {
+        for (auto it : cubes) {
             VertCube& cube = *it;
 
             std::cout << String::formatted("%d\t\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n%3.4f\t%3.4f\t%3.4f\t%3.4f\t%3.4f\t%3.4f\n",
@@ -86,12 +86,12 @@ void Mesh::print(bool printLines, bool printVerts) {
     if (printVerts) {
         info("Verts: " << (int) verts.size() << "\n");
         int index = 1;
-        for(auto* vert : verts) {
+        for (auto* vert : verts) {
             std::cout << String::formatted("%d.\t%3.6f\t%3.6f\t%3.6f\t%3.6f\t%3.6f",
                                       index, vert->values[0], vert->values[1], vert->values[2], vert->values[3],
                                       vert->values[4]);
 
-            for(auto& cube : vert->owners) {
+            for (auto& cube : vert->owners) {
                 info("\t" << (int64) cube);
             }
 
@@ -113,7 +113,7 @@ void Mesh::writeXML(XmlElement* parentElem) const {
 
     int count = 0;
     map<Vertex*, int> idMap;
-    for(auto* vert : verts) {
+    for (auto* vert : verts) {
         auto* vertElem = new XmlElement("Vertex");
 
         vertElem->setAttribute("time",   vert->values[Vertex::Time] );
@@ -131,7 +131,7 @@ void Mesh::writeXML(XmlElement* parentElem) const {
         ++count;
     }
 
-    for(auto* cube : cubes) {
+    for (auto* cube : cubes) {
         auto* cubeElem = new XmlElement("VertCube");
 
         for (int i = 0; i < VertCube::numVerts; ++i) {
@@ -163,8 +163,9 @@ void Mesh::writeXML(XmlElement* parentElem) const {
 }
 
 bool Mesh::readXML(const XmlElement* repoElem) {
-    if (repoElem == nullptr)
+    if (repoElem == nullptr) {
         return false;
+}
 
     XmlElement* meshElem = repoElem->getChildByName("Mesh");
 
@@ -178,7 +179,7 @@ bool Mesh::readXML(const XmlElement* repoElem) {
 
     map<int, Vertex*> idMap;
 
-    for(auto currentVert : meshElem->getChildWithTagNameIterator("Vertex")) {
+    for (auto currentVert : meshElem->getChildWithTagNameIterator("Vertex")) {
         if (currentVert == nullptr) {
             jassertfalse;
             return false;
@@ -201,7 +202,7 @@ bool Mesh::readXML(const XmlElement* repoElem) {
     vector<Vertex*> failedVerts;
     vector<VertCube*> failedLines;
 
-    for(auto currentCube : meshElem->getChildWithTagNameIterator("VertCube")) {
+    for (auto currentCube : meshElem->getChildWithTagNameIterator("VertCube")) {
         auto* cube = new VertCube();
 
         cube->dfrmGains[Vertex::Amp]   = currentCube->getDoubleAttribute("ampGain",     0.5);
@@ -218,14 +219,14 @@ bool Mesh::readXML(const XmlElement* repoElem) {
         cube->dfrmChans[Vertex::Red]   = currentCube->getIntAttribute("keyGuide",   -1);
         cube->dfrmChans[Vertex::Time]  = currentCube->getIntAttribute("avpGuide",   -1);
 
-        if(cube->getCompDfrm() < 0) {
+        if (cube->getCompDfrm() < 0) {
             cube->getCompDfrm() = currentCube->getIntAttribute("timeGuide",  -1);
         }
 
         int numVertsSet = 0;
         bool failed = false;
 
-        for(auto currentVert : currentCube->getChildWithTagNameIterator("Vertex")) {
+        for (auto currentVert : currentCube->getChildWithTagNameIterator("Vertex")) {
             if (currentVert == nullptr) {
                 jassertfalse;
                 return false;
@@ -234,7 +235,7 @@ bool Mesh::readXML(const XmlElement* repoElem) {
             int num = currentVert->getIntAttribute("lineVertexNumber",  -1);
             int id  = currentVert->getIntAttribute("vertexId",          -1);
 
-            if(num < 0 || id < 0) {
+            if (num < 0 || id < 0) {
                 failed = true;
                 break;
             }
@@ -250,11 +251,11 @@ bool Mesh::readXML(const XmlElement* repoElem) {
 
         jassert(numVertsSet == VertCube::numVerts);
 
-        if(failed) {
+        if (failed) {
             for (int i = 0; i < VertCube::numVerts; ++i) {
                 Vertex* vert = cube->getVertex(i);
 
-                if(vert != nullptr) {
+                if (vert != nullptr) {
                     failedVerts.push_back(vert);
                 }
             }
@@ -275,12 +276,12 @@ bool Mesh::hasEnoughCubesForCrossSection() {
 }
 
 void Mesh::validate() {
-    for(auto* vert : verts) {
+    for (auto* vert : verts) {
         vert->owners.clear();
     }
 
-    for(auto* cube : cubes) {
-        for(auto& lineVert : cube->lineVerts) {
+    for (auto* cube : cubes) {
+        for (auto& lineVert : cube->lineVerts) {
             lineVert->addOwner(cube);
         }
 
@@ -291,20 +292,20 @@ void Mesh::validate() {
 void Mesh::removeFreeVerts() {
     vector<Vertex*> vertsToDelete;
 
-    for(auto* vert : verts) {
+    for (auto* vert : verts) {
         if (vert->owners.size() == 0) {
             vertsToDelete.push_back(vert);
         }
     }
 
-    for(auto* vert : vertsToDelete) {
+    for (auto* vert : vertsToDelete) {
         removeVert(vert);
     }
 }
 
 void Mesh::updateToVersion(double newVersion) {
     if (version >= 1 && version < 1.1) {
-        for(auto* vert : verts) {
+        for (auto* vert : verts) {
             vert->values[Vertex::Amp]   = vert->values[Vertex::Phase];
             vert->values[Vertex::Phase] = vert->values[Vertex::Time];
             vert->values[Vertex::Time]  = 0;
@@ -330,17 +331,17 @@ void Mesh::twin(float padLeft, float padRight) {
 
     vector<Vertex*> toDelete;
 
-    for(auto* vert : verts) {
+    for (auto* vert : verts) {
         float& phase = vert->values[Vertex::Phase];
 
-        if(phase < padLeft || phase > 1.f - padRight) {
+        if (phase < padLeft || phase > 1.f - padRight) {
             continue;
         }
 
         phase = (phase - padLeft) * 0.5 + padLeft;
     }
 
-    for(auto* vert : meshCopy->getVerts()) {
+    for (auto* vert : meshCopy->getVerts()) {
         float& phase = vert->values[Vertex::Phase];
 
         if (phase < padLeft || phase >= 1.f - padRight) {
@@ -353,7 +354,7 @@ void Mesh::twin(float padLeft, float padRight) {
         verts.push_back(vert);
     }
 
-    for(auto*& vert : toDelete) {
+    for (auto*& vert : toDelete) {
         delete vert;
         vert = nullptr;
     }

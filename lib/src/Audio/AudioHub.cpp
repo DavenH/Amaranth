@@ -23,7 +23,7 @@ AudioHub::AudioHub(SingletonRepo* repo) :
 AudioHub::~AudioHub() {
     std::unique_ptr<ScopedLock> sl;
 
-    if(currentProcessor != nullptr) {
+    if (currentProcessor != nullptr) {
         sl = std::make_unique<ScopedLock>(currentProcessor->getLock());
     }
 
@@ -112,21 +112,21 @@ void AudioHub::stopAudio() {
 void AudioHub::prepareToPlay(int newBlockSize, double sampleRate) {
     ScopedLock sl(repo->getInitLock());
 
-    if(Util::assignAndWereDifferent(this->sampleRate, sampleRate)) {
+    if (Util::assignAndWereDifferent(this->sampleRate, sampleRate)) {
         settingListeners.call(&SettingListener::samplerateChanged, sampleRate);
     }
 
-    if(sampleRate != 44100.0) {
+    if (sampleRate != 44100.0) {
         settingListeners.call(&SettingListener::becameRareSamplerate, sampleRate);
     }
 
-    if(Util::assignAndWereDifferent(bufferSize, newBlockSize)) {
+    if (Util::assignAndWereDifferent(bufferSize, newBlockSize)) {
         settingListeners.call(&SettingListener::bufferSizeChanged, bufferSize);
     }
 
     midiCollector.reset(sampleRate);
 
-    if(currentProcessor != nullptr) {
+    if (currentProcessor != nullptr) {
         currentProcessor->prepareToPlay(newBlockSize, sampleRate);
     }
 }
@@ -144,12 +144,12 @@ void AudioHub::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
     keyboardState.processNextMidiBuffer(midiMessages, 0, buffer.getNumSamples(), true);
 
   #if PLUGIN_MODE
-    if(getObj(PluginProcessor).isSuspended()) {
+    if (getObj(PluginProcessor).isSuspended()) {
         return;
     }
   #endif
 
-    if(currentProcessor != nullptr) {
+    if (currentProcessor != nullptr) {
         currentProcessor->processBlock(buffer, midiMessages);
     }
 }

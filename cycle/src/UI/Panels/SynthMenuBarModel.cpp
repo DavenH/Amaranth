@@ -38,15 +38,15 @@ SynthMenuBarModel::SynthMenuBarModel(SingletonRepo* repo) : SingletonAccessor(re
 
 /** This method must return a list of the names of the menus. */
 StringArray SynthMenuBarModel::getMenuBarNames() {
-	StringArray array;
+    StringArray array;
 
-	array.add("File");
-	array.add("Edit");
-	array.add("Graphics");
-	array.add("Audio");
-	array.add("Help");
+    array.add("File");
+    array.add("Edit");
+    array.add("Graphics");
+    array.add("Audio");
+    array.add("Help");
 
-	return array;
+    return array;
 }
 
 /** This should return the popup menu to display for a given top-level menu.
@@ -55,179 +55,179 @@ StringArray SynthMenuBarModel::getMenuBarNames() {
  @param menuName		 the name of the top-level menu item to show
  */
 PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String& menuName) {
-	getSetting(LastPopupClickedHorz) 	= false;
-	getSetting(LastPopupClickedTransp)	= false;
+    getSetting(LastPopupClickedHorz) 	= false;
+    getSetting(LastPopupClickedTransp)	= false;
 
-	PopupMenu menu;
+    PopupMenu menu;
 
-	if (topLevelMenuIndex == FileMenu) {
-		bool haveEdited = getObj(EditWatcher).getHaveEdited();
-		bool canSaveAs = true;
+    if (topLevelMenuIndex == FileMenu) {
+        bool haveEdited = getObj(EditWatcher).getHaveEdited();
+        bool canSaveAs = true;
 
-		menu.addItem(NewFile, 		"New");
-		menu.addItem(OpenFile, 		"Open");
+        menu.addItem(NewFile, 		"New");
+        menu.addItem(OpenFile, 		"Open");
 
-		menu.addSeparator();
-		menu.addItem(SaveFile, 		"Save", 		haveEdited);
-		menu.addItem(SaveAsFile, 	"Save as...", 	canSaveAs);
+        menu.addSeparator();
+        menu.addItem(SaveFile, 		"Save", 		haveEdited);
+        menu.addItem(SaveAsFile, 	"Save as...", 	canSaveAs);
 
-		menu.addSeparator();
-		menu.addItem(RevertToSaved, "Revert to saved");
+        menu.addSeparator();
+        menu.addItem(RevertToSaved, "Revert to saved");
 
-		menu.addSeparator();
-		menu.addItem(LoadSample, 	"Load reference sample...");
-		menu.addItem(LoadMultiSample,"Load multiSample...");
-		menu.addItem(UnloadSample, 	"Unload sample");
+        menu.addSeparator();
+        menu.addItem(LoadSample, 	"Load reference sample...");
+        menu.addItem(LoadMultiSample,"Load multiSample...");
+        menu.addItem(UnloadSample, 	"Unload sample");
 
-		menu.addSeparator();
-	  #if ! PLUGIN_MODE
-		menu.addItem(ExitProgram, 	"Exit", 			true, 		false);
-	  #endif
-	} else if (topLevelMenuIndex == EditMenu) {
-		UndoManager& undoManager = editWatcher->getUndoManager();
+        menu.addSeparator();
+      #if ! PLUGIN_MODE
+        menu.addItem(ExitProgram, 	"Exit", 			true, 		false);
+      #endif
+    } else if (topLevelMenuIndex == EditMenu) {
+        UndoManager& undoManager = editWatcher->getUndoManager();
 
-		bool canUndo = undoManager.canUndo();
-		bool canRedo = undoManager.canRedo();
+        bool canUndo = undoManager.canUndo();
+        bool canRedo = undoManager.canRedo();
 
-		const String& undoString = "Undo" + (canUndo ? " (" + undoManager.getUndoDescription() + ")" : String());
-		const String& redoString = "Redo" + (canRedo ? " (" + undoManager.getRedoDescription() + ")" : String());
+        const String& undoString = "Undo" + (canUndo ? " (" + undoManager.getUndoDescription() + ")" : String());
+        const String& redoString = "Redo" + (canRedo ? " (" + undoManager.getRedoDescription() + ")" : String());
 
-		menu.addItem(UndoEdit, 	undoString, 	canUndo, 	false);
-		menu.addItem(RedoEdit, 	redoString, 	canRedo,	false);
-		menu.addSeparator();
+        menu.addItem(UndoEdit, 	undoString, 	canUndo, 	false);
+        menu.addItem(RedoEdit, 	redoString, 	canRedo,	false);
+        menu.addSeparator();
 
-		Interactor* itr 	= getObj(VertexPropertiesPanel).getCurrentInteractor();
-		bool haveSelected 	= itr != nullptr && ! itr->getSelected().empty();
-		bool canExtrude 	= itr != nullptr && itr->is3DInteractor();
+        Interactor* itr 	= getObj(VertexPropertiesPanel).getCurrentInteractor();
+        bool haveSelected 	= itr != nullptr && ! itr->getSelected().empty();
+        bool canExtrude 	= itr != nullptr && itr->is3DInteractor();
 
-		menu.addItem(EraseVerts, 	"Erase selected (del)", haveSelected,	false);
-		menu.addItem(ExtrudeVerts, 	"Extrude selected (e)", canExtrude,		false);
-		menu.addSeparator();
+        menu.addItem(EraseVerts, 	"Erase selected (del)", haveSelected,	false);
+        menu.addItem(ExtrudeVerts, 	"Extrude selected (e)", canExtrude,		false);
+        menu.addSeparator();
 
-	  #if ! PLUGIN_MODE
-		menu.addItem(AudioConfigEdit, 	"Audio Settings", 	true, 	false);
-	  #endif
+      #if ! PLUGIN_MODE
+        menu.addItem(AudioConfigEdit, 	"Audio Settings", 	true, 	false);
+      #endif
 
-		menu.addSeparator();
-		menu.addItem(SnapEdit, 			 "Snap to grid",			true, getSetting(SnapMode) == 1);
-		menu.addItem(CollisionDetection, "Prevent line collisions",	true, getSetting(CollisionDetection) == 1);
+        menu.addSeparator();
+        menu.addItem(SnapEdit, 			 "Snap to grid",			true, getSetting(SnapMode) == 1);
+        menu.addItem(CollisionDetection, "Prevent line collisions",	true, getSetting(CollisionDetection) == 1);
 
-		PopupMenu updateMenu;
-		updateMenu.addItem(UpdateRealtime, 	"All events",			true, getSetting(UpdateGfxRealtime) == 1);
-		updateMenu.addItem(UpdateOnRelease, "Drag release",			true, getSetting(UpdateGfxRealtime) != 1);
+        PopupMenu updateMenu;
+        updateMenu.addItem(UpdateRealtime, 	"All events",			true, getSetting(UpdateGfxRealtime) == 1);
+        updateMenu.addItem(UpdateOnRelease, "Drag release",			true, getSetting(UpdateGfxRealtime) != 1);
 
-		menu.addSubMenu("Update On", updateMenu);
+        menu.addSubMenu("Update On", updateMenu);
 
-		menu.addSeparator();
+        menu.addSeparator();
 
-		menu.addItem(SelectWithRight, 	"Select with right click", 	true, getSetting(SelectWithRight) == 1);
-		menu.addItem(NativeDialogs, 	"Use native dialogs", 		true, getSetting(NativeDialogs) == 1);
-		menu.addSeparator();
+        menu.addItem(SelectWithRight, 	"Select with right click", 	true, getSetting(SelectWithRight) == 1);
+        menu.addItem(NativeDialogs, 	"Use native dialogs", 		true, getSetting(NativeDialogs) == 1);
+        menu.addSeparator();
 
-		PopupMenu pitchMenu;
+        PopupMenu pitchMenu;
 
-		PopupMenu algoMenu;
-		algoMenu.addItem(PitchAlgorithmAuto, 	"Auto",  true, getSetting(PitchAlgo) == PitchAlgos::AlgoAuto );
-		algoMenu.addItem(PitchAlgorithmYin, 	"YIN", 	 true, getSetting(PitchAlgo) == PitchAlgos::AlgoYin  );
-		algoMenu.addItem(PitchAlgorithmSwipe, 	"Swipe", true, getSetting(PitchAlgo) == PitchAlgos::AlgoSwipe);
+        PopupMenu algoMenu;
+        algoMenu.addItem(PitchAlgorithmAuto, 	"Auto",  true, getSetting(PitchAlgo) == PitchAlgos::AlgoAuto );
+        algoMenu.addItem(PitchAlgorithmYin, 	"YIN", 	 true, getSetting(PitchAlgo) == PitchAlgos::AlgoYin  );
+        algoMenu.addItem(PitchAlgorithmSwipe, 	"Swipe", true, getSetting(PitchAlgo) == PitchAlgos::AlgoSwipe);
 
-		PopupMenu setPitchMenu;
+        PopupMenu setPitchMenu;
 
-		setPitchMenu.addItem(PitchOctaveDown, 	"Octave Down");
-		setPitchMenu.addItem(PitchOctaveUp, 	"Octave Up");
+        setPitchMenu.addItem(PitchOctaveDown, 	"Octave Down");
+        setPitchMenu.addItem(PitchOctaveUp, 	"Octave Up");
 
-		pitchMenu.addSubMenu("Tracking Algo", algoMenu);
-		pitchMenu.addSubMenu("Set Pitch", setPitchMenu);
+        pitchMenu.addSubMenu("Tracking Algo", algoMenu);
+        pitchMenu.addSubMenu("Set Pitch", setPitchMenu);
 
-		menu.addSubMenu("Pitch Tracking", pitchMenu);
-	} else if (topLevelMenuIndex == GraphicsMenu) {
-		menu.addItem(WaveformWaterfall, "Waveform waterfall", 		true, getSetting(Waterfall) == 1);
-		menu.addItem(DrawScales, 		"Draw scales and tags", 	true, getSetting(DrawScales) == 1);
-		menu.addItem(VertsOnHover, 		"Draw verts only on hover",	true, getSetting(ViewVertsOnlyOnHover) == 1);
+        menu.addSubMenu("Pitch Tracking", pitchMenu);
+    } else if (topLevelMenuIndex == GraphicsMenu) {
+        menu.addItem(WaveformWaterfall, "Waveform waterfall", 		true, getSetting(Waterfall) == 1);
+        menu.addItem(DrawScales, 		"Draw scales and tags", 	true, getSetting(DrawScales) == 1);
+        menu.addItem(VertsOnHover, 		"Draw verts only on hover",	true, getSetting(ViewVertsOnlyOnHover) == 1);
 
-		menu.addSeparator();
+        menu.addSeparator();
 
-		{
-			int viewStage = getSetting(ViewStage);
-			PopupMenu waveformMenu;
-			waveformMenu.addItem(ViewStageA, "1. Just wireframe", getSetting(DrawWave) == 0, viewStage == ViewStages::PreProcessing);
-			waveformMenu.addItem(ViewStageB, "2. After envelopes", 			true, viewStage == ViewStages::PostEnvelopes);
-			waveformMenu.addItem(ViewStageC, "3. After spectral filtering", true, viewStage == ViewStages::PostSpectrum);
-			waveformMenu.addItem(ViewStageD, "4. After effects", 			true, viewStage == ViewStages::PostFX);
-			menu.addSubMenu("Displayed Processing Stage", waveformMenu, true);
-		}
+        {
+            int viewStage = getSetting(ViewStage);
+            PopupMenu waveformMenu;
+            waveformMenu.addItem(ViewStageA, "1. Just wireframe", getSetting(DrawWave) == 0, viewStage == ViewStages::PreProcessing);
+            waveformMenu.addItem(ViewStageB, "2. After envelopes", 			true, viewStage == ViewStages::PostEnvelopes);
+            waveformMenu.addItem(ViewStageC, "3. After spectral filtering", true, viewStage == ViewStages::PostSpectrum);
+            waveformMenu.addItem(ViewStageD, "4. After effects", 			true, viewStage == ViewStages::PostFX);
+            menu.addSubMenu("Displayed Processing Stage", waveformMenu, true);
+        }
 
 
-		{
-			PopupMenu sizeMenu;
-			sizeMenu.addItem(PointSize1x, "1x", true, getSetting(PointSizeScale) == ScaleSizes::ScaleSmall);
-			sizeMenu.addItem(PointSize2x, "2x", true, getSetting(PointSizeScale) == ScaleSizes::ScaleMed);
-			sizeMenu.addItem(PointSize4x, "4x", true, getSetting(PointSizeScale) == ScaleSizes::ScaleLarge);
+        {
+            PopupMenu sizeMenu;
+            sizeMenu.addItem(PointSize1x, "1x", true, getSetting(PointSizeScale) == ScaleSizes::ScaleSmall);
+            sizeMenu.addItem(PointSize2x, "2x", true, getSetting(PointSizeScale) == ScaleSizes::ScaleMed);
+            sizeMenu.addItem(PointSize4x, "4x", true, getSetting(PointSizeScale) == ScaleSizes::ScaleLarge);
 
-			menu.addSubMenu("Vertex Point Size", sizeMenu);
-		}
+            menu.addSubMenu("Vertex Point Size", sizeMenu);
+        }
 
-		{
-			int factor = getSetting(ReductionFactor);
+        {
+            int factor = getSetting(ReductionFactor);
 
-			PopupMenu reductMenu;
-			reductMenu.addItem(Reduction1x, "1x", true, factor == 1);
-			reductMenu.addItem(Reduction3x, "3x", true, factor == 3);
-			reductMenu.addItem(Reduction5x, "5x", true, factor == 5);
+            PopupMenu reductMenu;
+            reductMenu.addItem(Reduction1x, "1x", true, factor == 1);
+            reductMenu.addItem(Reduction3x, "3x", true, factor == 3);
+            reductMenu.addItem(Reduction5x, "5x", true, factor == 5);
 
-			menu.addSubMenu("Detail Reduction", reductMenu);
-		}
+            menu.addSubMenu("Detail Reduction", reductMenu);
+        }
 
-		PopupMenu sampleMenu;
+        PopupMenu sampleMenu;
 
-		sampleMenu.addItem(InterpWaveCycles, 	"Interpolate", true, getSetting(InterpWaveCycles) == 1);
-		sampleMenu.addItem(WrapWaveCycles, 		"Wrap cycles", true, getSetting(WrapWaveCycles) == 1);
-		menu.addSubMenu("Sample Display", sampleMenu, true);
-	} else if (topLevelMenuIndex == AudioMenu) {
-		menu.addItem(Declick, "Declick", true, getDocSetting(Declick) == 1);
+        sampleMenu.addItem(InterpWaveCycles, 	"Interpolate", true, getSetting(InterpWaveCycles) == 1);
+        sampleMenu.addItem(WrapWaveCycles, 		"Wrap cycles", true, getSetting(WrapWaveCycles) == 1);
+        menu.addSubMenu("Sample Display", sampleMenu, true);
+    } else if (topLevelMenuIndex == AudioMenu) {
+        menu.addItem(Declick, "Declick", true, getDocSetting(Declick) == 1);
 
 //		menu.addItem(DynamicEnvs, "Dynamic Envelopes", true, getDocSetting(DynamicEnvelopes) == 1);
-		int bendRange = getDocSetting(PitchBendRange);
-		menu.addSeparator();
+        int bendRange = getDocSetting(PitchBendRange);
+        menu.addSeparator();
 
-		PopupMenu bendMenu;
-		bendMenu.addItem(BendRange2, "+- 2",  true, bendRange == 2);
-		bendMenu.addItem(BendRange6, "+- 6",  true, bendRange == 6);
-		bendMenu.addItem(BendRange12,"+- 12", true, bendRange == 12);
+        PopupMenu bendMenu;
+        bendMenu.addItem(BendRange2, "+- 2",  true, bendRange == 2);
+        bendMenu.addItem(BendRange6, "+- 6",  true, bendRange == 6);
+        bendMenu.addItem(BendRange12,"+- 12", true, bendRange == 12);
 
-		menu.addSubMenu("Pitch Bend Range", bendMenu, true, Image(), false);
+        menu.addSubMenu("Pitch Bend Range", bendMenu, true, Image(), false);
 
-		menu.addItem(ModMatrix, "Modulation Matrix...");
-		menu.addItem(QualityOptions, "Quality options...");
+        menu.addItem(ModMatrix, "Modulation Matrix...");
+        menu.addItem(QualityOptions, "Quality options...");
 
-		PopupMenu oversampMenu;
-		oversampMenu.addItem(OversampRltm1x, "None", true);
-		oversampMenu.addItem(OversampRltm2x, "2x", true);
-		oversampMenu.addItem(OversampRltm4x, "4x", true);
-		menu.addSubMenu("Oversample", oversampMenu, true);
+        PopupMenu oversampMenu;
+        oversampMenu.addItem(OversampRltm1x, "None", true);
+        oversampMenu.addItem(OversampRltm2x, "2x", true);
+        oversampMenu.addItem(OversampRltm4x, "4x", true);
+        menu.addSubMenu("Oversample", oversampMenu, true);
 
-	} else if(topLevelMenuIndex == HelpMenu) {
-		menu.addSeparator();
+    } else if (topLevelMenuIndex == HelpMenu) {
+        menu.addSeparator();
 
-		PopupMenu tutMenu;
+        PopupMenu tutMenu;
 
-		int i = 0;
-		for(auto& file : tutorials) {
-			XmlDocument doc(file);
-			std::unique_ptr<XmlElement> elem = doc.getDocumentElement(true);
+        int i = 0;
+        for (auto& file : tutorials) {
+            XmlDocument doc(file);
+            std::unique_ptr<XmlElement> elem = doc.getDocumentElement(true);
 
-			String name = elem->getStringAttribute("title", file.getFileNameWithoutExtension());
-			tutMenu.addItem(Tutorials + i++, name, true, false);
-		}
+            String name = elem->getStringAttribute("title", file.getFileNameWithoutExtension());
+            tutMenu.addItem(Tutorials + i++, name, true, false);
+        }
 
-		menu.addSubMenu("Tutorials", tutMenu, true);
+        menu.addSubMenu("Tutorials", tutMenu, true);
 
-		menu.addItem(Help, 				"Online Help");
-		//menu.addItem(Cheatsheet, 		"Cheatsheet");
-		menu.addItem(About, 			"About");
-	}
+        menu.addItem(Help, 				"Online Help");
+        //menu.addItem(Cheatsheet, 		"Cheatsheet");
+        menu.addItem(About, 			"About");
+    }
 
-	return menu;
+    return menu;
 }
 
 /** This is called when a menu item has been clicked on.
@@ -238,235 +238,238 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
  on more than one of the popup menus)
  */
 void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
-	bool editedSomething = false;
+    bool editedSomething = false;
 
-	if (topLevelMenuIndex == FileMenu) {
-		if (item == NewFile) {
-			dialogs->promptForSaveApplicably(Dialogs::LoadEmptyPreset);
-		} else if (item == OpenFile) {
-			dialogs->promptForSaveApplicably(Dialogs::ShowOpenPresetDialog);
-		} else if (item == SaveFile) fileMgr->saveCurrentPreset();
-		else if (item == SaveAsFile) dialogs->showPresetSaveAsDialog();
-		else if (item == RevertToSaved) fileMgr->revertCurrentPreset();
-		else if (item == LoadSample) {
-			dialogs->showOpenWaveDialog(nullptr, String(), DialogActions::TrackPitchAction);
-		} else if (item == LoadMultiSample) {
-			dialogs->showOpenWaveDialog(nullptr, String(), Dialogs::LoadMultisample,
-			                            Dialogs::DoNothing, true);
-		} else if (item == UnloadSample) {
-			if (!getSetting(WaveLoaded)) {
-				showConsoleMsg("No wave file loaded!");
-				return;
-			}
+    if (topLevelMenuIndex == FileMenu) {
+        if (item == NewFile) {
+            dialogs->promptForSaveApplicably(Dialogs::LoadEmptyPreset);
+        } else if (item == OpenFile) {
+            dialogs->promptForSaveApplicably(Dialogs::ShowOpenPresetDialog);
+        } else if (item == SaveFile) { fileMgr->saveCurrentPreset();
+        } else if (item == SaveAsFile) { dialogs->showPresetSaveAsDialog();
+        } else if (item == RevertToSaved) { fileMgr->revertCurrentPreset();
+        } else if (item == LoadSample) {
+            dialogs->showOpenWaveDialog(nullptr, String(), DialogActions::TrackPitchAction);
+        } else if (item == LoadMultiSample) {
+            dialogs->showOpenWaveDialog(nullptr, String(), Dialogs::LoadMultisample,
+                                        Dialogs::DoNothing, true);
+        } else if (item == UnloadSample) {
+            if (!getSetting(WaveLoaded)) {
+                showConsoleMsg("No wave file loaded!");
+                return;
+            }
 
-			getObj(SampleUtils).unloadWav();
+            getObj(SampleUtils).unloadWav();
 
-			getSetting(DrawWave) = false;
-			getSetting(WaveLoaded) = false;
+            getSetting(DrawWave) = false;
+            getSetting(WaveLoaded) = false;
 
-			getObj(GeneralControls).updateHighlights();
+            getObj(GeneralControls).updateHighlights();
 
-			getObj(Updater).update(UpdateSources::SourceAllButFX, Repaint);
-		} else if (item == SaveAudioMeta) {
-			//			fileMgr->saveWavePitchEnvelope();
-		}
+            getObj(Updater).update(UpdateSources::SourceAllButFX, Repaint);
+        } else if (item == SaveAudioMeta) {
+            //			fileMgr->saveWavePitchEnvelope();
+        }
 
-	  #if ! PLUGIN_MODE
-		else if (item == ExitProgram) {
-			getObj(MainAppWindow).closeButtonPressed();
-		}
-	  #endif
-	} else if (topLevelMenuIndex == EditMenu) {
-		if (item == UndoEdit) editWatcher->undo();
-		else if (item == RedoEdit) editWatcher->redo();
+      #if ! PLUGIN_MODE
+        else if (item == ExitProgram) {
+            getObj(MainAppWindow).closeButtonPressed();
+        }
+      #endif
+    } else if (topLevelMenuIndex == EditMenu) {
+        if (item == UndoEdit) { editWatcher->undo();
+        } else if (item == RedoEdit) { editWatcher->redo();
 
-	  #if ! PLUGIN_MODE
-		else if (item == AudioConfigEdit) dialogs->showAudioSettings();
-	  #endif
+      #if ! PLUGIN_MODE
+        } else if (item == AudioConfigEdit) { dialogs->showAudioSettings();
+      #endif
 
-		else if (item == EraseVerts) {
-			Interactor* itr = getObj(VertexPropertiesPanel).getCurrentInteractor();
-			if (itr != nullptr) {
-				itr->eraseSelected();
-			}
-		} else if (item == ExtrudeVerts) {
-			Interactor* itr = getObj(VertexPropertiesPanel).getCurrentInteractor();
-			if (itr != nullptr && itr->is3DInteractor()) {
-				if (auto* i3d = dynamic_cast<Interactor3D*>(itr)) {
-					i3d->extrudeVertices();
-				}
-			}
-		} else if (item == DebugLogging) {
-			getSetting(DebugLogging) ^= true;
-		} else if (item == SelectWithRight) {
-			getSetting(SelectWithRight) ^= true;
-		} else if (item == NativeDialogs) {
-			getSetting(NativeDialogs) ^= true;
-		} else if (item == SnapEdit) {
-			getSetting(SnapMode) ^= true;
-		} else if (item == CollisionDetection) {
-			getSetting(CollisionDetection) ^= true;
-		} else if (item == UpdateRealtime || item == UpdateOnRelease) {
-			getSetting(UpdateGfxRealtime) = item == UpdateRealtime;
-		} else if (item >= PitchAlgorithmAuto && item <= PitchAlgorithmSwipe) {
-			switch (item) {
-				case PitchAlgorithmAuto:	getSetting(PitchAlgo) = PitchAlgos::AlgoAuto;
-				case PitchAlgorithmYin:		getSetting(PitchAlgo) = PitchAlgos::AlgoYin;
-				case PitchAlgorithmSwipe:	getSetting(PitchAlgo) = PitchAlgos::AlgoSwipe;
-				default: break;
-			}
-		} else if (item == PitchOctaveUp || item == PitchOctaveDown) {
-			getObj(SampleUtils).shiftWaveNoteOctave(item == PitchOctaveUp);
-		} else if (item >= NoteStart) {
-			int midiNote = item - NoteStart;
+        } else if (item == EraseVerts) {
+            Interactor* itr = getObj(VertexPropertiesPanel).getCurrentInteractor();
+            if (itr != nullptr) {
+                itr->eraseSelected();
+            }
+        } else if (item == ExtrudeVerts) {
+            Interactor* itr = getObj(VertexPropertiesPanel).getCurrentInteractor();
+            if (itr != nullptr && itr->is3DInteractor()) {
+                if (auto* i3d = dynamic_cast<Interactor3D*>(itr)) {
+                    i3d->extrudeVertices();
+                }
+            }
+        } else if (item == DebugLogging) {
+            getSetting(DebugLogging) ^= true;
+        } else if (item == SelectWithRight) {
+            getSetting(SelectWithRight) ^= true;
+        } else if (item == NativeDialogs) {
+            getSetting(NativeDialogs) ^= true;
+        } else if (item == SnapEdit) {
+            getSetting(SnapMode) ^= true;
+        } else if (item == CollisionDetection) {
+            getSetting(CollisionDetection) ^= true;
+        } else if (item == UpdateRealtime || item == UpdateOnRelease) {
+            getSetting(UpdateGfxRealtime) = item == UpdateRealtime;
+        } else if (item >= PitchAlgorithmAuto && item <= PitchAlgorithmSwipe) {
+            switch (item) {
+                case PitchAlgorithmAuto:	getSetting(PitchAlgo) = PitchAlgos::AlgoAuto;
+                case PitchAlgorithmYin:		getSetting(PitchAlgo) = PitchAlgos::AlgoYin;
+                case PitchAlgorithmSwipe:	getSetting(PitchAlgo) = PitchAlgos::AlgoSwipe;
+                default: break;
+            }
+        } else if (item == PitchOctaveUp || item == PitchOctaveDown) {
+            getObj(SampleUtils).shiftWaveNoteOctave(item == PitchOctaveUp);
+        } else if (item >= NoteStart) {
+            int midiNote = item - NoteStart;
 
-			getObj(SampleUtils).updateMidiNoteNumber(midiNote);
-		}
-	} else if (topLevelMenuIndex == GraphicsMenu) {
-		if (item == VertsOnHover) {
-			getSetting(ViewVertsOnlyOnHover) ^= true;
-			getObj(Updater).update(UpdateSources::SourceAll, Repaint);
-		} else if (item >= ViewStageA && item <= ViewStageD) {
-			int newViewStage = ViewStages::PreProcessing;
+            getObj(SampleUtils).updateMidiNoteNumber(midiNote);
+        }
+    } else if (topLevelMenuIndex == GraphicsMenu) {
+        if (item == VertsOnHover) {
+            getSetting(ViewVertsOnlyOnHover) ^= true;
+            getObj(Updater).update(UpdateSources::SourceAll, Repaint);
+        } else if (item >= ViewStageA && item <= ViewStageD) {
+            int newViewStage = ViewStages::PreProcessing;
 
-			if (item == ViewStageA) newViewStage = ViewStages::PreProcessing;
-			else if (item == ViewStageB) newViewStage = ViewStages::PostEnvelopes;
-			else if (item == ViewStageC) newViewStage = ViewStages::PostSpectrum;
-			else if (item == ViewStageD) newViewStage = ViewStages::PostFX;
+            if (item == ViewStageA) { newViewStage = ViewStages::PreProcessing;
+            } else if (item == ViewStageB) { newViewStage = ViewStages::PostEnvelopes;
+            } else if (item == ViewStageC) { newViewStage = ViewStages::PostSpectrum;
+            } else if (item == ViewStageD) { newViewStage = ViewStages::PostFX;
+}
 
-			if (Util::assignAndWereDifferent(getSetting(ViewStage), newViewStage)) {
-				info("view stage set to " << String((int) getSetting(ViewStage)) << "\n");
+            if (Util::assignAndWereDifferent(getSetting(ViewStage), newViewStage)) {
+                info("view stage set to " << String((int) getSetting(ViewStage)) << "\n");
 
-				// XXX
-				//				getObj(Updater).viewStageChanged();
-				doUpdate(SourceMorph);
-			}
-		} else if (item == WaveformWaterfall) {
-			getSetting(Waterfall) ^= true;
-			getObj(Waveform2D).repaint();
-		} else if (item == DrawScales) {
-			getSetting(DrawScales) ^= true;
-		}
+                // XXX
+                //				getObj(Updater).viewStageChanged();
+                doUpdate(SourceMorph);
+            }
+        } else if (item == WaveformWaterfall) {
+            getSetting(Waterfall) ^= true;
+            getObj(Waveform2D).repaint();
+        } else if (item == DrawScales) {
+            getSetting(DrawScales) ^= true;
+        }
 
-		/*
-		else if(item == UseOpenGL)
-		{
+        /*
+        else if (item == UseOpenGL)
+        {
 //			getSetting(UseOpenGL) ^= true;
-			getObj(MainPanel).switchedRenderingMode(true);
-		}
-		*/
+            getObj(MainPanel).switchedRenderingMode(true);
+        }
+        */
 
-		else if (item >= PointSize1x && item <= PointSize4x) {
-			int& size = getSetting(PointSizeScale);
-			int newSize = ScaleSizes::ScaleSmall;
+        else if (item >= PointSize1x && item <= PointSize4x) {
+            int& size = getSetting(PointSizeScale);
+            int newSize = ScaleSizes::ScaleSmall;
 
-			switch (item) {
-				case PointSize1x: newSize = ScaleSizes::ScaleSmall; break;
-				case PointSize2x: newSize = ScaleSizes::ScaleMed;   break;
-				case PointSize4x: newSize = ScaleSizes::ScaleLarge; break;
-				default: break;
-			}
+            switch (item) {
+                case PointSize1x: newSize = ScaleSizes::ScaleSmall; break;
+                case PointSize2x: newSize = ScaleSizes::ScaleMed;   break;
+                case PointSize4x: newSize = ScaleSizes::ScaleLarge; break;
+                default: break;
+            }
 
-			if (Util::assignAndWereDifferent(size, newSize)) {
-				getObj(Updater).update(UpdateSources::SourceAll, Repaint);
-			}
-		} else if (item >= Reduction1x && item <= Reduction5x) {
-			int& factor = getSetting(ReductionFactor);
-			int newFactor = 5;
-			switch (item) {
-				case Reduction1x: newFactor = 1; break;
-				case Reduction3x: newFactor = 3; break;
-				case Reduction5x: newFactor = 5; break;
-				default: break;
-			}
+            if (Util::assignAndWereDifferent(size, newSize)) {
+                getObj(Updater).update(UpdateSources::SourceAll, Repaint);
+            }
+        } else if (item >= Reduction1x && item <= Reduction5x) {
+            int& factor = getSetting(ReductionFactor);
+            int newFactor = 5;
+            switch (item) {
+                case Reduction1x: newFactor = 1; break;
+                case Reduction3x: newFactor = 3; break;
+                case Reduction5x: newFactor = 5; break;
+                default: break;
+            }
 
-			// XXX
-			if(Util::assignAndWereDifferent(factor, newFactor)) {
-				getObj(Updater).update(UpdateSources::SourceMorph, RestoreDetail);
-			}
-		} else if (item == InterpWaveCycles || item == WrapWaveCycles) {
-			if (item == InterpWaveCycles)
-				getSetting(InterpWaveCycles) ^= true;
-			else
-				getSetting(WrapWaveCycles) ^= true;
+            // XXX
+            if (Util::assignAndWereDifferent(factor, newFactor)) {
+                getObj(Updater).update(UpdateSources::SourceMorph, RestoreDetail);
+            }
+        } else if (item == InterpWaveCycles || item == WrapWaveCycles) {
+            if (item == InterpWaveCycles) {
+                getSetting(InterpWaveCycles) ^= true;
+            } else {
+                getSetting(WrapWaveCycles) ^= true;
+}
 
-			if (getSetting(DrawWave))
-				doUpdate(SourceMorph);
-		}
-	} else if (topLevelMenuIndex == AudioMenu) {
-		if (item == QualityOptions) {
-			getObj(Dialogs).showQualityOptions();
-		} else if (item >= OversampRltm1x && item <= OversampRltm16x) {
-			int id = (item - OversampRltm1x) + QualityDialog::OversampRltm1x;
+            if (getSetting(DrawWave)) {
+                doUpdate(SourceMorph);
+}
+        }
+    } else if (topLevelMenuIndex == AudioMenu) {
+        if (item == QualityOptions) {
+            getObj(Dialogs).showQualityOptions();
+        } else if (item >= OversampRltm1x && item <= OversampRltm16x) {
+            int id = (item - OversampRltm1x) + QualityDialog::OversampRltm1x;
 
-			getObj(QualityDialog).triggerOversample(id);
-		} else if (item == ModMatrix) {
-			getObj(Dialogs).showModMatrix();
-		} else if (item == Declick) {
-			getDocSetting(Declick) ^= true;
-			editedSomething = true;
-		} else if (item >= BendRange2 && item <= BendRange12) {
-			int range = 2;
-			switch (item) {
-				case BendRange2: range = 2;   break;
-				case BendRange6: range = 6;   break;
-				case BendRange12: range = 12; break;
-				default: break;
-			}
+            getObj(QualityDialog).triggerOversample(id);
+        } else if (item == ModMatrix) {
+            getObj(Dialogs).showModMatrix();
+        } else if (item == Declick) {
+            getDocSetting(Declick) ^= true;
+            editedSomething = true;
+        } else if (item >= BendRange2 && item <= BendRange12) {
+            int range = 2;
+            switch (item) {
+                case BendRange2: range = 2;   break;
+                case BendRange6: range = 6;   break;
+                case BendRange12: range = 12; break;
+                default: break;
+            }
 
-			if (Util::assignAndWereDifferent(getDocSetting(PitchBendRange), range)) {
-				editedSomething = true;
-			}
-		} else if (item == DynamicEnvs) {
-			getDocSetting(DynamicEnvelopes) ^= true;
-			editedSomething = true;
-		}
-	} else if (topLevelMenuIndex == HelpMenu) {
-		if (item == About)
-			getObj(Dialogs).showAboutDialog();
-			//		else if(item == Help)		getObj(Dialogs).launchHelp();
-		else if (item == Tour)
-			getObj(CycleTour).enter();
-			//		else if(item == Cheatsheet)	getObj(Dialogs).launchCheatsheetDocument();
-		else if (item >= Tutorials) {
-			int fileIndex = item - Tutorials;
+            if (Util::assignAndWereDifferent(getDocSetting(PitchBendRange), range)) {
+                editedSomething = true;
+            }
+        } else if (item == DynamicEnvs) {
+            getDocSetting(DynamicEnvelopes) ^= true;
+            editedSomething = true;
+        }
+    } else if (topLevelMenuIndex == HelpMenu) {
+        if (item == About) {
+            getObj(Dialogs).showAboutDialog();
+            //		else if (item == Help)		getObj(Dialogs).launchHelp();
+        } else if (item == Tour) {
+            getObj(CycleTour).enter();
+            //		else if (item == Cheatsheet)	getObj(Dialogs).launchCheatsheetDocument();
+        } else if (item >= Tutorials) {
+            int fileIndex = item - Tutorials;
 
-			jassert(fileIndex < tutorials.size());
+            jassert(fileIndex < tutorials.size());
 
-			File& file = tutorials.getReference(fileIndex);
+            File& file = tutorials.getReference(fileIndex);
 
-			XmlDocument doc(file.loadFileAsString());
-			std::unique_ptr<XmlElement> top = doc.getDocumentElement();
+            XmlDocument doc(file.loadFileAsString());
+            std::unique_ptr<XmlElement> top = doc.getDocumentElement();
 
-			if (doc.getLastParseError().isEmpty()) {
-				getObj(CycleTour).readXML(top.get());
-			} else {
-				showCritical("Xml parse error: " + doc.getLastParseError());
-			}
-		}
-	}
+            if (doc.getLastParseError().isEmpty()) {
+                getObj(CycleTour).readXML(top.get());
+            } else {
+                showCritical("Xml parse error: " + doc.getLastParseError());
+            }
+        }
+    }
 
-	if (editedSomething) {
-		getObj(EditWatcher).setHaveEditedWithoutUndo(true);
-	}
+    if (editedSomething) {
+        getObj(EditWatcher).setHaveEditedWithoutUndo(true);
+    }
 }
 
 void SynthMenuBarModel::init() {
-	miscGfx = &getObj(MiscGraphics);
-	source = &getObj(SynthAudioSource);
+    miscGfx = &getObj(MiscGraphics);
+    source = &getObj(SynthAudioSource);
 
-	File tutorialDir(getObj(Directories).getTutorialDir());
-	tutorialDir.findChildFiles(tutorials, File::findFiles, false, "*.xml");
+    File tutorialDir(getObj(Directories).getTutorialDir());
+    tutorialDir.findChildFiles(tutorials, File::findFiles, false, "*.xml");
 }
 
 void SynthMenuBarModel::triggerClick(int stage) {
-	switch (stage) {
-		case ViewStageA: menuItemSelected(ViewStageA, GraphicsMenu); break;
-		case ViewStageB: menuItemSelected(ViewStageB, GraphicsMenu); break;
-		case ViewStageC: menuItemSelected(ViewStageC, GraphicsMenu); break;
-		case ViewStageD: menuItemSelected(ViewStageD, GraphicsMenu); break;
-		default: break;
-	}
+    switch (stage) {
+        case ViewStageA: menuItemSelected(ViewStageA, GraphicsMenu); break;
+        case ViewStageB: menuItemSelected(ViewStageB, GraphicsMenu); break;
+        case ViewStageC: menuItemSelected(ViewStageC, GraphicsMenu); break;
+        case ViewStageD: menuItemSelected(ViewStageD, GraphicsMenu); break;
+        default: break;
+    }
 }
 
 EditableItem::EditableItem(String  name) : name(std::move(name)) {

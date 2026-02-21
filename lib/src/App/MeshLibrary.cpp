@@ -229,22 +229,22 @@ bool MeshLibrary::readXML(const XmlElement* element) {
     ScopedLock sl(arrayLock);
 
     destroy();
-    for(auto& layerGroup : layerGroups) {
+    for (auto& layerGroup : layerGroups) {
         listeners.call(&Listener::layerGroupDeleted, layerGroup.meshType);
     }
     layerGroups.clear();
 
-    for(auto groupElem : repoElem->getChildWithTagNameIterator("Group")) {
+    for (auto groupElem : repoElem->getChildWithTagNameIterator("Group")) {
         LayerGroup group(groupElem->getIntAttribute("mesh-type", TypeMesh));
 
-        for(auto layerElem : groupElem->getChildWithTagNameIterator("Layer")) {
+        for (auto layerElem : groupElem->getChildWithTagNameIterator("Layer")) {
             Layer layer = instantiateLayer(layerElem, group.meshType);
             group.layers.push_back(layer);
         }
 
         layerGroups.push_back(group);
     }
-    for(auto& layerGroup : layerGroups) {
+    for (auto& layerGroup : layerGroups) {
         listeners.call(&Listener::layerGroupAdded, layerGroup.meshType);
     }
     return true;
@@ -254,7 +254,7 @@ MeshLibrary::Properties::Properties() {
     smoothedParameters.emplace_back(&pan);
     smoothedParameters.emplace_back(&fineTune);
 
-    for(auto& p : pos) {
+    for (auto& p : pos) {
         smoothedParameters.emplace_back(&p.time);
         smoothedParameters.emplace_back(&p.red);
         smoothedParameters.emplace_back(&p.blue);
@@ -298,7 +298,7 @@ void MeshLibrary::Properties::writeXML(XmlElement* layerElem) const {
 }
 
 void MeshLibrary::Properties::setDimValue(int index, int dim, float value) {
-    if(dim == Vertex::Time) {
+    if (dim == Vertex::Time) {
         pos[index][dim].setValueDirect(value);
     } else {
         pos[index][dim].setTargetValue(value);
@@ -306,7 +306,7 @@ void MeshLibrary::Properties::setDimValue(int index, int dim, float value) {
 }
 
 void MeshLibrary::Properties::updateSmoothedParameters(int sampleCount44k) {
-    for(auto* p : smoothedParameters) {
+    for (auto* p : smoothedParameters) {
         p->update(sampleCount44k);
     }
 }
@@ -318,11 +318,11 @@ void MeshLibrary::Properties::updateToTarget(int voiceIndex) {
 }
 
 void MeshLibrary::Properties::updateParameterSmoothing(bool smooth) {
-    for(auto* p : smoothedParameters) {
+    for (auto* p : smoothedParameters) {
         p->setSmoothingActivity(smooth);
     }
-    if(smooth) {
-        for(auto* p : smoothedParameters) {
+    if (smooth) {
+        for (auto* p : smoothedParameters) {
             p->updateToTarget();
         }
     }
@@ -378,7 +378,7 @@ bool MeshLibrary::layerRemoved(int layerGroup, int index) {
                 for (int j = 0; j < group.size(); ++j) {
                     Layer& layer = group.layers[j];
 
-                    for(auto& cube : layer.mesh->getCubes()) {
+                    for (auto& cube : layer.mesh->getCubes()) {
                         for (int k = Vertex::Time; k <= Vertex::Curve; ++k) {
                             char& chan = cube->deformerAt(k);
 
@@ -458,7 +458,7 @@ bool MeshLibrary::layerChanged(int layerGroup, int index) {
                 LayerGroup& group = layerGroups[i];
 
                 for (int j = 0; j < group.size(); ++j) {
-                    for(auto& cube : group[j].mesh->getCubes()) {
+                    for (auto& cube : group[j].mesh->getCubes()) {
                         for (int d = 0; d <= Vertex::Curve; ++d) {
                             char& deformChan = cube->deformerAt(d);
 
@@ -487,9 +487,9 @@ Array<int> MeshLibrary::getMeshTypesAffectedByCurrent(int layerGroup) {
 }
 
 void MeshLibrary::updateSmoothedParameters(int voiceIndex, int numSamples44k) const {
-    for(auto& group : layerGroups) {
-        for(auto& layer : group.layers) {
-            if(layer.props) {
+    for (auto& group : layerGroups) {
+        for (auto& layer : group.layers) {
+            if (layer.props) {
                 layer.props->pos[voiceIndex].update(numSamples44k);
             }
         }
@@ -497,9 +497,9 @@ void MeshLibrary::updateSmoothedParameters(int voiceIndex, int numSamples44k) co
 }
 
 void MeshLibrary::updateAllSmoothedParamsToTarget(int voiceIndex) const {
-    for(auto& group : layerGroups) {
-        for(auto& layer : group.layers) {
-            if(layer.props) {
+    for (auto& group : layerGroups) {
+        for (auto& layer : group.layers) {
+            if (layer.props) {
                 layer.props->pos[voiceIndex].updateToTarget();
             }
         }

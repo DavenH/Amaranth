@@ -17,9 +17,9 @@ OpenGLBase::OpenGLBase(OpenGLRenderer* renderer, Component* component) :
 void OpenGLBase::printErrors(SingletonRepo* repo) {
   #ifdef _DEBUG
     int errorCode;
-    if((errorCode = glGetError()) != GL_NO_ERROR) {
+    if ((errorCode = glGetError()) != GL_NO_ERROR) {
         const char* error = "Unknown error";
-        switch(errorCode) {
+        switch (errorCode) {
             case GL_INVALID_ENUM: error      = "GL_INVALID_ENUM";       break;
             case GL_INVALID_VALUE: error     = "GL_INVALID_VALUE";      break;
             case GL_INVALID_OPERATION: error = "GL_INVALID_OPERATION";  break;

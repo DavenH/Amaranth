@@ -180,7 +180,7 @@ Buffer<float> Resampler::finalise() {
     source.sectionAtMost(lastread, history).zero();
     int sourceSize = lastread - (int) time;
 
-    if(fixed) {
+    if (fixed) {
         ippsResamplePolyphaseFixed_32f(source, sourceSize, dest, resamplingScale, &time, &outLen, fixedState);
     } else {
         ippsResamplePolyphase_32f(source, sourceSize, dest, dstToSrc, resamplingScale, &time, &outLen, state);
@@ -205,13 +205,13 @@ Buffer<float> Resampler::resample(Buffer<float> input) {
 
     jassert(lastread <= source.size());
 
-    if(lastread > source.size()) {
+    if (lastread > source.size()) {
         return {dest, 0};
     }
 
     int sourceSize = lastread - history - (int) time;
 
-    if(fixed) {
+    if (fixed) {
         ippsResamplePolyphaseFixed_32f(source, sourceSize, dest, resamplingScale, &time, &outLen, fixedState);
     } else {
         ippsResamplePolyphase_32f(source, sourceSize, dest, dstToSrc, resamplingScale, &time, &outLen, state);
@@ -225,7 +225,7 @@ Buffer<float> Resampler::resample(Buffer<float> input) {
     lastread -= (int)time - history;
     time -= (int)time - history;
 
-    if(sourceSize == 0) {
+    if (sourceSize == 0) {
         outLen = 0;
     }
 

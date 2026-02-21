@@ -28,8 +28,9 @@ void WaveDragTarget::fileDragExit(const StringArray &files) {
 }
 
 void WaveDragTarget::filesDropped(const StringArray &files, int x, int y) {
-    if (listener == nullptr)
+    if (listener == nullptr) {
         return;
+}
 
     for (const auto& i : files) {
         File file(i);

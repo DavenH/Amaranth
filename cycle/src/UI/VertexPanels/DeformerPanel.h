@@ -71,8 +71,9 @@ public:
     float getTableValue(int guideIndex, float progress, const IDeformer::NoiseContext& context) override
     {
         jassert(guideIndex < guideTables.size());
-        if(guideIndex >= guideTables.size())
+        if (guideIndex >= guideTables.size()) {
             return 0;
+}
 
         float position  = progress * (DeformerPanel::tableSize - 1);
         int idx 		= (int) position;
@@ -88,8 +89,9 @@ public:
 
     Buffer<Float32> getTable(int index)
     {
-        if(index < 0)
+        if (index < 0) {
             return Buffer<Float32>();
+}
 
         return guideTables[index].table;
     }

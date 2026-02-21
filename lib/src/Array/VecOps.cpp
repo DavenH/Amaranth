@@ -112,7 +112,7 @@ void VecOps::subCRev(Buffer<Float64> buff, Float64 c,Buffer<Float64> dst) {
 
 #define defineDiff(type, fn) \
     template<> void VecOps::diff(Buffer<type> src, Buffer<type> dst) { \
-        if(dst.size() < 2) return;   \
+        if (dst.size() < 2) return;   \
         vDSP_##fn(src.get(), 1,      \
                   src.get() + 1, 1,  \
                   dst.get(), 1,      \
@@ -124,7 +124,7 @@ defineDiff(Float32, vsub)
 defineDiff(Float64, vsubD)
 
 template<> void VecOps::interleave(Buffer<Float32> x, Buffer<Float32> y, Buffer<Float32> dst) {
-    if(x.empty()) return;
+    if (x.empty()) return;
     jassert(dst.size() >= 2 * x.size());
     DSPSplitComplex z;
     z.realp = x.get();
@@ -134,7 +134,7 @@ template<> void VecOps::interleave(Buffer<Float32> x, Buffer<Float32> y, Buffer<
 }
 
 template<> void VecOps::interleave(Buffer<Float64> x, Buffer<Float64> y, Buffer<Float64> dst) {
-    if(x.empty()) return;
+    if (x.empty()) return;
     jassert(dst.size() >= 2 * x.size());
     DSPDoubleSplitComplex z;
     z.realp = x.get();
@@ -228,7 +228,7 @@ template<> void VecOps::addProd(Float32* src, Float32 k, Float32* dst, int len) 
 
 #define defineDiff(type, fn) \
     template<> void VecOps::diff(Buffer<type> src, Buffer<type> dst) { \
-        if(dst.size() < src.size() - 1 || dst.size() < 2) return; \
+        if (dst.size() < src.size() - 1 || dst.size() < 2) return; \
         fn(src.get(), src.get() + 1, dst.get(), src.size() - 1); \
         dst[dst.size() - 1] = dst[dst.size() - 2]; \
     }
@@ -237,13 +237,13 @@ defineDiff(Float32, ippsSub_32f)
 defineDiff(Float64, ippsSub_64f)
 
 template<> void VecOps::interleave(Buffer<Float32> x, Buffer<Float32> y, Buffer<Float32> dst) {
-    if(x.empty()) return;
+    if (x.empty()) return;
     jassert(dst.size() >= 2 * x.size());
     ippsRealToCplx_32f(x.get(), y.get(), (Complex32*) dst.get(), x.size());
 }
 
 template<> void VecOps::interleave(Buffer<Float64> x, Buffer<Float64> y, Buffer<Float64> dst) {
-    if(x.empty()) return;
+    if (x.empty()) return;
     jassert(dst.size() >= 2 * x.size());
     ippsRealToCplx_64f(x.get(), y.get(), (Complex64*) dst.get(), x.size());
 }

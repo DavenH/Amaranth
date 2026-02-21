@@ -32,8 +32,9 @@ public:
     }
 
     float rootOf(float y) const {
-        if (slope == 0.f)
+        if (slope == 0.f) {
             return 10000.f;
+}
         return one.x + (y - one.y) / slope;
     }
 

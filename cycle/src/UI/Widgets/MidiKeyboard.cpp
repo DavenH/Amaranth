@@ -34,8 +34,9 @@ void MidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, int x, int y,
     g.setOpacity(1.f);
     g.drawImage(keys, x, y, w, h, pxGreyBlack, keys.getHeight() - h, w, h, false);
 
-    if(midiNoteNumber != auditionKey)
+    if (midiNoteNumber != auditionKey) {
         g.setOpacity(jmin(1.f, getVelocityA() / 0.7f));
+}
 
     if (isDown || isOver || shouldDrawAuditionKey(midiNoteNumber)) {
         int offset = isDown ? pxOrangeBlack : pxBlueBlack;
@@ -51,7 +52,7 @@ void MidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, int x, int y,
 
     g.setOpacity(1.f);
 
-    if(isOver) {
+    if (isOver) {
         showConsoleMsg(getText(midiNoteNumber));
     }
 }
@@ -62,8 +63,9 @@ void MidiKeyboard::drawWhiteNote(int midiNoteNumber, Graphics& g, int x, int y,
                                  const Colour& textColour) {
     g.drawImage(keys, x, y, w, h, pxGreyWhite, keys.getHeight() - h, w, h, false);
 
-    if(midiNoteNumber != auditionKey)
+    if (midiNoteNumber != auditionKey) {
         g.setOpacity(getVelocityA());
+}
 
     if (isDown || isOver || shouldDrawAuditionKey(midiNoteNumber)) {
         int offset = isDown ? pxOrangeWhite : pxBlueWhite;
@@ -79,7 +81,7 @@ void MidiKeyboard::drawWhiteNote(int midiNoteNumber, Graphics& g, int x, int y,
 
     g.setOpacity(1.f);
 
-    if(isOver) {
+    if (isOver) {
         showConsoleMsg(getText(midiNoteNumber));
     }
 }
@@ -106,7 +108,7 @@ void MidiKeyboard::drawUpDownButton(Graphics& g, int w, int h,
 String MidiKeyboard::getText(int note) {
     note -= 12;
 
-    if(note < 0) {
+    if (note < 0) {
         return {};
     }
 
@@ -165,7 +167,7 @@ void MidiKeyboard::mouseMove(const MouseEvent& e) {
 
     String message = getText(mouseNote);
 
-    if(mouseNote == auditionKey) {
+    if (mouseNote == auditionKey) {
         message = message + " (audition key)";
     }
 
@@ -209,7 +211,7 @@ void MidiKeyboard::setAuditionKey(int key) {
 
     repaintNote (auditionKey);
 
-    if(oldAuditionKey != auditionKey) {
+    if (oldAuditionKey != auditionKey) {
         repaintNote (oldAuditionKey);
     }
 }

@@ -141,7 +141,7 @@ void Knob::mouseEnter(const MouseEvent& e) {
     setMouseCursor(MouseCursor::UpDownResizeCursor);
 
     String consoleStr = consoleString.toString(getValue());
-    if(hint.isNotEmpty()) {
+    if (hint.isNotEmpty()) {
         consoleStr = consoleStr + " - " + hint;
     }
 

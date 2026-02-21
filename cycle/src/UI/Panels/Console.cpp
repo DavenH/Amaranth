@@ -59,7 +59,7 @@ void Console::paint(Graphics& g) {
     g.setColour(Colour::greyLevel(0.09f));
     g.fillAll();
 
-    for(int i = 0; i < getWidth() / 2 + 1; ++i) {
+    for (int i = 0; i < getWidth() / 2 + 1; ++i) {
         g.drawVerticalLine(i * 2, 0, getHeight());
     }
 
@@ -81,8 +81,9 @@ void Console::paint(Graphics& g) {
 
     g.setOpacity(0.3f);
 
-    if (usage.left)
+    if (usage.left) {
         g.drawImage(mouseparts, width - 31, -1, 11, 25, 37, 0, 11, 25, false);
+}
 
     if (usage.scroll) {
         g.drawImage(mouseparts, width - 20, 0, 6, 6, 48, 0, 6, 6, false);
@@ -93,7 +94,7 @@ void Console::paint(Graphics& g) {
         g.drawImage(mouseparts, width - 20,  7, 6, 8, 48, 7, 6, 8, false);
     }
 
-    if(usage.right) {
+    if (usage.right) {
         g.drawImage(mouseparts, width - 14, -1, 11, 25, 54, 0, 11, 25, false);
     }
 }

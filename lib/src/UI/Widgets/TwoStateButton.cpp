@@ -35,7 +35,7 @@ void TwoStateButton::setState(int state) {
 }
 
 void TwoStateButton::mouseDown(const MouseEvent& e) {
-    if(! e.mods.isLeftButtonDown()) {
+    if (! e.mods.isLeftButtonDown()) {
         return;
     }
 

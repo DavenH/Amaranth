@@ -15,13 +15,13 @@ void EditWatcher::update(bool justUpdateTitle) {
 
     String titleBar = (prodName + " - ") + currPreset;
 
-    if(undoManager.canUndo() || editedWithoutUndo) {
+    if (undoManager.canUndo() || editedWithoutUndo) {
         titleBar += String("*");
     }
 
     clients.call(&Client::updateTitle, titleBar);
 
-    if(! justUpdateTitle) {
+    if (! justUpdateTitle) {
         clients.call(&Client::notifyChange);
     }
 }
@@ -47,8 +47,9 @@ bool EditWatcher::addAction(NamedUndoableAction* action, bool startNewTransactio
 }
 
 bool EditWatcher::addAction(UndoableAction* action, bool startNewTransaction) {
-    if(startNewTransaction)
+    if (startNewTransaction) {
         undoManager.beginNewTransaction();
+}
 
     return undoManager.perform(action);
 }

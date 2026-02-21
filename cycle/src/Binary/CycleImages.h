@@ -24,7 +24,7 @@ namespace CycleImages
     const int           cyclelogo_pngSize = 12911;
 
     extern const char*  mouseparts2_png;
-	const int           mouseparts2_pngSize = 2528;
+    const int           mouseparts2_pngSize = 2528;
 };
 
 #endif

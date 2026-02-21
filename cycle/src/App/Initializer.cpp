@@ -372,7 +372,7 @@ void Initializer::instantiate() {
 Initializer::~Initializer() {
     progressMark
 
-    if(juce::Component* c = getObj(PresetPage).getParentComponent()) {
+    if (juce::Component* c = getObj(PresetPage).getParentComponent()) {
         c->exitModalState(1);
     }
 
@@ -393,9 +393,9 @@ Initializer::~Initializer() {
 
   #if PLUGIN_MODE
     #ifdef JUCE_WINDOWS
-    if(numInstances.get() == 0)
+    if (numInstances.get() == 0)
     {
-        if(HMODULE module = GetModuleHandleA(dllName.toUTF8()))
+        if (HMODULE module = GetModuleHandleA(dllName.toUTF8()))
             FreeLibrary(module);
     }
     #endif

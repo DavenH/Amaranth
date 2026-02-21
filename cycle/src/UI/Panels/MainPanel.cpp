@@ -48,7 +48,7 @@
 #include "../../Audio/Effects/Reverb.h"
 #include "../../Audio/Effects/WaveShaper.h"
 
-MainPanel::MainPanel(SingletonRepo* repo) : 
+MainPanel::MainPanel(SingletonRepo* repo) :
         ComponentMovementWatcher(this)
     ,	SingletonAccessor	(repo, "MainPanel")
     ,	WaveDragTarget		(repo)
@@ -265,7 +265,7 @@ void MainPanel::initialisePanels() {
         delayBounds,reverbBounds,	eqBounds
     };
 
-    for(auto i : temp) {
+    for (auto i : temp) {
         toOutline.insert(i);
     }
 
@@ -452,7 +452,7 @@ void MainPanel::detachComponent(PanelGroup& group) {
     return;
 //	GLParent* parent = group.gl;
 //
-//	if(parent != nullptr)
+//	if (parent != nullptr)
 //	{
 //		parent->detach();
 //
@@ -495,7 +495,7 @@ void MainPanel::paint(Graphics& g) {
 
     g.setColour(Colour(150, 150, 180));
 
-    for(auto it : toOutline) {
+    for (auto it : toOutline) {
         if (it->getWidth() == 0) {
             continue;
         }
@@ -868,9 +868,9 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
 void MainPanel::componentVisibilityChanged() {
     info("Main component visibility changed: " << (isShowing() ? "showing" : "not showing") << "\n");
 
-//	if(isVisible())
+//	if (isVisible())
 //	{
-//		if(Util::assignAndWereDifferent(attachNextResize, false))
+//		if (Util::assignAndWereDifferent(attachNextResize, false))
 //		{
 //			attachVisibleComponents();
 //		}
@@ -880,7 +880,7 @@ void MainPanel::componentVisibilityChanged() {
 //	      #ifdef SINGLE_OPENGL_THREAD
 //			getObj(MasterRenderer).repaintAll();
 //		  #else
-//			if(getSetting(UseOpenGL))
+//			if (getSetting(UseOpenGL))
 //				repaintAll();
 //	      #endif
 //		}
@@ -909,7 +909,7 @@ void MainPanel::componentMovedOrResized(bool wasMoved, bool wasResized) {
     info("Main panel moved or resized, repainting all\n");
 
   #ifdef SINGLE_OPENGL_THREAD
-    if(isVisible()) {
+    if (isVisible()) {
         getObj(MasterRenderer).repaintAll();
     }
   #else
@@ -941,7 +941,7 @@ bool MainPanel::readXML(const XmlElement* element) {
 
     XmlElement* mainXml = element->getChildByName("MainPanel");
 
-    if(mainXml == nullptr) {
+    if (mainXml == nullptr) {
         return false;
     }
 
@@ -968,7 +968,7 @@ void MainPanel::timerCallback(int timerId) {
 
         const Desktop& desktop = Desktop::getInstance();
 
-        for(auto panel : panels) {
+        for (auto panel : panels) {
             if (Component * c = panel->getComponent()) {
                 if (c->isShowing()) {
                     Rectangle<int> bounds = c->getScreenBounds().reduced(5, 5);

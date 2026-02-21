@@ -43,7 +43,7 @@ template class Buffer<Complex32>;
 
 template<>
 bool Buffer<float>::isProbablyEmpty() const {
-    if(sz == 0)
+    if (sz == 0)
         return true;
 
     bool isEmpty = ptr[sz - 1] == 0;
@@ -89,7 +89,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::zero()                          \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::zero(int size)                  \
 {                                                               \
-    if(sz == 0)                                                 \
+    if (sz == 0)                                                 \
         return *this;                                           \
     jassert(size <= sz);                                        \
     ippsZero_##T(ptr, size);                                    \
@@ -116,7 +116,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::add(Buffer<Ipp##T> buff)        \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::add(Ipp##T c)                   \
 {                                                               \
-    if(c != Ipp##T())                                           \
+    if (c != Ipp##T())                                           \
         ippsAddC_##T##_I(c, ptr, sz);                           \
     return *this;                                               \
 }
@@ -125,7 +125,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::add(Ipp##T c)                   \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::sub(Ipp##T c)                   \
 {                                                               \
-    if(c != Ipp##T())                                           \
+    if (c != Ipp##T())                                           \
         ippsSubC_##T##_I(c, ptr, sz);                           \
     return *this;                                               \
 }
@@ -134,7 +134,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::sub(Ipp##T c)                   \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::add(Buffer<Ipp##T> buff, Ipp##T c) \
 {                                                               \
-    if(c == Ipp##T())                                           \
+    if (c == Ipp##T())                                           \
         ippsAdd_##T##_I(buff.ptr, ptr, jmin(buff.sz,sz));       \
     else                                                        \
         ippsAddC_##T(buff.ptr, c, ptr, jmin(buff.sz,sz));       \
@@ -185,7 +185,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::div(Buffer<Ipp##T> buff)        \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::mul(Ipp##T c)                   \
 {                                                               \
-    if(c != 1)                                                  \
+    if (c != 1)                                                  \
         ippsMulC_##T##_I(c, ptr, sz);                           \
     return *this;                                               \
 }
@@ -202,7 +202,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::tanh()                          \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::div(Ipp##T c)                   \
 {                                                               \
-    if(c != 0)                                                  \
+    if (c != 0)                                                  \
         ippsDivC_##T##_I(c, ptr, sz);                           \
     return *this;                                               \
 }
@@ -211,7 +211,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::div(Ipp##T c)                   \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::mul(Buffer<Ipp##T> buff, Ipp##T c) \
 {                                                               \
-    if(c == Ipp##T(1)) {                                        \
+    if (c == Ipp##T(1)) {                                        \
         buff.copyTo(*this);                                     \
     } else {                                                    \
         ippsMulC_##T(buff.ptr, c, ptr, jmin(sz, buff.sz));      \
@@ -302,7 +302,7 @@ void Buffer<Ipp##T>::copyTo(Buffer<Ipp##T> buff) const          \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::withPhase(int phase,            \
         Buffer<Ipp##T> workBuffer) {                            \
-    if(phase == 0 || sz == 0)                                   \
+    if (phase == 0 || sz == 0)                                   \
         return *this;                                           \
     phase = phase % sz;                                         \
     section(phase, sz - phase).copyTo(workBuffer);              \
@@ -315,7 +315,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::withPhase(int phase,            \
 template<>                                                      \
 Buffer<Ipp##T>&  Buffer<Ipp##T>::ramp()                         \
 {                                                               \
-    if(sz > 1) {                                                \
+    if (sz > 1) {                                                \
         Ipp##T delta = 1 / Ipp##T(sz - 1.f);                    \
         ippsVectorSlope_##T(ptr, sz, 0, delta);                 \
     }                                                           \
@@ -326,7 +326,7 @@ Buffer<Ipp##T>&  Buffer<Ipp##T>::ramp()                         \
 template<>                                                      \
 Buffer<Ipp##T>&  Buffer<Ipp##T>::rand(unsigned& seed)           \
 {                                                               \
-    if(sz > 1) {                                                \
+    if (sz > 1) {                                                \
         int size = 0;                                           \
         ippsRandUniformGetSize_##T(&size);                      \
         ScopedAlloc<Int8u> stateBuff(size);                     \
@@ -341,8 +341,8 @@ Buffer<Ipp##T>&  Buffer<Ipp##T>::rand(unsigned& seed)           \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::ramp(Ipp##T offset, Ipp##T delta) \
 {                                                               \
-    if(sz > 0)                                                  \
-        if(delta <= 0.000001f && delta >= -0.000001f)           \
+    if (sz > 0)                                                  \
+        if (delta <= 0.000001f && delta >= -0.000001f)           \
             ippsSet_##T(offset, ptr, sz);                       \
         else                                                    \
             ippsVectorSlope_##T(ptr, sz, offset, delta);        \
@@ -353,7 +353,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::ramp(Ipp##T offset, Ipp##T delta) \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::normL1()    const                        \
 {                                                               \
-    if(sz == 0)                                                 \
+    if (sz == 0)                                                 \
         return 1.f;                                             \
                                                                 \
     Ipp##T norm = 1.f;                                          \
@@ -365,7 +365,7 @@ Ipp##T Buffer<Ipp##T>::normL1()    const                        \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::sum() const                              \
 {                                                               \
-    if(sz == 0)                                                 \
+    if (sz == 0)                                                 \
         return 0.f;                                             \
                                                                 \
     Ipp##T sum = 1.f;                                           \
@@ -376,7 +376,7 @@ Ipp##T Buffer<Ipp##T>::sum() const                              \
 #define constructPow(T, prec)                                   \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::pow(Ipp##T c) {                 \
-    if(c != 1.)                                                 \
+    if (c != 1.)                                                 \
         ippsPowx_##T##_##prec(ptr, c, ptr, sz);                 \
     return *this;                                               \
 }
@@ -384,7 +384,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::pow(Ipp##T c) {                 \
 #define constructPowCRev(T, prec)                               \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::powCRev(Ipp##T k) {             \
-    if(sz == 0 || k == 1) return *this;                         \
+    if (sz == 0 || k == 1) return *this;                         \
     Ipp##T c = std::log(k);                                     \
     ippsMulC_##T##_I(c, ptr, sz);                               \
     ippsExp_##T##_##prec(ptr, ptr, sz);                         \
@@ -395,7 +395,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::powCRev(Ipp##T k) {             \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::max() const                              \
 {                                                               \
-    if(sz == 0)                                                 \
+    if (sz == 0)                                                 \
         return 0.f;                                             \
                                                                 \
     Ipp##T maxVal = 0.f;                                        \
@@ -407,7 +407,7 @@ Ipp##T Buffer<Ipp##T>::max() const                              \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::min() const                              \
 {                                                               \
-    if(sz == 0)                                                 \
+    if (sz == 0)                                                 \
         return 0.f;                                             \
                                                                 \
     Ipp##T minVal = 0.f;                                        \
@@ -419,7 +419,7 @@ Ipp##T Buffer<Ipp##T>::min() const                              \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::mean() const                             \
 {                                                               \
-    if(sz == 0)                                                 \
+    if (sz == 0)                                                 \
         return 0.f;                                             \
                                                                 \
     Ipp##T mean = 0.f;                                          \
@@ -438,7 +438,7 @@ void Buffer<Ipp##T>::minmax(Ipp##T& pMin, Ipp##T& pMax) const   \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::normL2()    const                        \
 {                                                               \
-    if(sz == 0)                                                 \
+    if (sz == 0)                                                 \
         return 1.f;                                             \
                                                                 \
     Ipp##T norm = 1.f;                                          \
@@ -450,7 +450,7 @@ Ipp##T Buffer<Ipp##T>::normL2()    const                        \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::normDiffL2(Buffer<Ipp##T> buff) const    \
 {                                                               \
-    if(sz == 0)                                                 \
+    if (sz == 0)                                                 \
         return 1.f;                                             \
                                                                 \
     Ipp##T norm = 1.f;                                          \
@@ -462,7 +462,7 @@ Ipp##T Buffer<Ipp##T>::normDiffL2(Buffer<Ipp##T> buff) const    \
 template<>                                                      \
 Ipp##T Buffer<Ipp##T>::dot(Buffer<Ipp##T> buff)    const        \
 {                                                               \
-    if(sz == 0)                                                 \
+    if (sz == 0)                                                 \
         return 0.f;                                             \
                                                                 \
     Ipp##T prod = 1.f;                                          \
@@ -474,7 +474,7 @@ Ipp##T Buffer<Ipp##T>::dot(Buffer<Ipp##T> buff)    const        \
 template<>                                                      \
 void Buffer<Ipp##T>::getMax(Ipp##T& pMax, int& idx) const       \
 {                                                               \
-    if(sz == 0)                                                 \
+    if (sz == 0)                                                 \
         return;                                                 \
                                                                 \
     ippsMaxIndx_##T(ptr, sz, &pMax, &idx);                      \
@@ -484,7 +484,7 @@ void Buffer<Ipp##T>::getMax(Ipp##T& pMax, int& idx) const       \
 template<>                                                      \
 void Buffer<Ipp##T>::getMin(Ipp##T& pMin, int& idx)    const    \
 {                                                               \
-    if(sz == 0)                                                 \
+    if (sz == 0)                                                 \
         return;                                                 \
                                                                 \
     ippsMinIndx_##T(ptr, sz, &pMin, &idx);                      \
@@ -494,9 +494,9 @@ void Buffer<Ipp##T>::getMin(Ipp##T& pMin, int& idx)    const    \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::addProduct(Buffer<Ipp##T> buff, Ipp##T c) \
 {                                                               \
-    if(sz == 0 || c == Ipp##T(0))                               \
+    if (sz == 0 || c == Ipp##T(0))                               \
         return *this;                                           \
-    if(c == Ipp##T(1))                                          \
+    if (c == Ipp##T(1))                                          \
         add(buff);                                              \
     else                                                        \
         ippsAddProductC_##T(buff.ptr, c, ptr, jmin(sz, buff.sz)); \
@@ -508,7 +508,7 @@ template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::addProduct(Buffer<Ipp##T> src1, \
                                            Buffer<Ipp##T> src2) \
 {                                                               \
-    if(sz > 0)                                                  \
+    if (sz > 0)                                                  \
         ippsAddProduct_##T(src1.ptr, src2.ptr, ptr, jmin(sz, src1.sz, src2.sz)); \
     return *this;                                               \
 }
@@ -517,7 +517,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::addProduct(Buffer<Ipp##T> src1, \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::threshLT(Ipp##T c)              \
 {                                                               \
-    if(sz > 0)                                                  \
+    if (sz > 0)                                                  \
         ippsThreshold_LT_##T##_I(ptr, sz, c);                   \
     return *this;                                               \
 }
@@ -526,7 +526,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::threshLT(Ipp##T c)              \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::threshGT(Ipp##T c)              \
 {                                                               \
-    if(sz > 0)                                                  \
+    if (sz > 0)                                                  \
         ippsThreshold_GT_##T##_I(ptr, sz, c);                   \
     return *this;                                               \
 }
@@ -535,7 +535,7 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::threshGT(Ipp##T c)              \
 template<>                                                      \
 Buffer<Ipp##T>& Buffer<Ipp##T>::clip(Ipp##T low, Ipp##T high)   \
 {                                                               \
-    if(sz > 0)                                                  \
+    if (sz > 0)                                                  \
         ippsThreshold_LTValGTVal_##T##_I(ptr, sz, low, low, high, high); \
     return *this;                                               \
 }
@@ -544,12 +544,12 @@ Buffer<Ipp##T>& Buffer<Ipp##T>::clip(Ipp##T low, Ipp##T high)   \
 template<>                                                      \
 int Buffer<Ipp##T>::downsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
 {                                                               \
-    if(sz == 0 || buff.empty())                                 \
+    if (sz == 0 || buff.empty())                                 \
         return 0;                                               \
-    if(factor < 0)                                              \
+    if (factor < 0)                                              \
         factor = buff.size() / sz;                              \
                                                                 \
-    if(factor == 1) {                                           \
+    if (factor == 1) {                                           \
         buff.copyTo(*this);                                     \
         return 0;                                               \
     }                                                           \
@@ -565,12 +565,12 @@ int Buffer<Ipp##T>::downsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
 template<>                                                      \
 int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
 {                                                               \
-    if(sz == 0 || buff.empty())                                 \
+    if (sz == 0 || buff.empty())                                 \
         return 0;                                               \
-    if(factor < 0)                                              \
+    if (factor < 0)                                              \
         factor = sz / buff.size();                              \
                                                                 \
-    if(factor == 1) {                                           \
+    if (factor == 1) {                                           \
         buff.copyTo(*this);                                     \
         return 0;                                               \
     }                                                           \
@@ -587,7 +587,7 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
 #define constructWinHann(T)                      \
     template<>                                   \
     Buffer<Ipp##T>& Buffer<Ipp##T>::hann() {     \
-        if(sz == 0) return *this;                \
+        if (sz == 0) return *this;                \
         ippsSet_##T(1, ptr, sz);                 \
         ippsWinHann_##T##_I(ptr, sz);            \
         return *this;                            \
@@ -596,7 +596,7 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
 #define constructWinBlackman(T)                  \
     template<>                                   \
     Buffer<Ipp##T>& Buffer<Ipp##T>::blackman() { \
-        if(sz == 0) return *this;                \
+        if (sz == 0) return *this;                \
         ippsSet_##T(1, ptr, sz);                 \
         ippsWinBlackmanStd_##T(ptr, ptr, sz);    \
         return *this;                            \
@@ -605,7 +605,7 @@ int Buffer<Ipp##T>::upsampleFrom(Buffer<Ipp##T> buff, int factor, int phase) \
 #define constructSinInit(T) \
     template<> \
     Buffer<Ipp##T>& Buffer<Ipp##T>::sin(float relFreq, float unitPhase) { \
-        if(sz == 0) return *this; \
+        if (sz == 0) return *this; \
         return ramp( \
                 static_cast<Ipp##T>(unitPhase * 2 * M_PI), \
                 static_cast<Ipp##T>(relFreq * 2 * M_PI) \
@@ -727,13 +727,13 @@ implementOperators(64f)
 
 template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::mul(Ipp32fc c)
 {
-    if(c.re != 1 || c.im != 0)
+    if (c.re != 1 || c.im != 0)
         ippsMulC_32fc_I(c, ptr, sz);
     return *this;
 }
 
 template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::addProduct(Buffer buff, Ipp32fc c) {
-    if(c.re != 1 || c.im != 0) {
+    if (c.re != 1 || c.im != 0) {
         ScopedAlloc<Ipp32fc> temp(sz);
         temp.set(c);
         ippsAddProduct_32fc(buff.ptr, temp.ptr, ptr, sz);
@@ -744,7 +744,7 @@ template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::addProduct(Buffer buff, Ipp32fc c) 
 }
 
 template<> Buffer<Ipp32fc>& Buffer<Ipp32fc>::threshLT(Ipp32fc c) {                                                               \
-    if(sz > 0)
+    if (sz > 0)
     ippsThreshold_LT_32fc_I(ptr, sz, c.re);
     return *this;
 }

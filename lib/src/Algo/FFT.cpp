@@ -61,7 +61,7 @@ void Transform::allocate(int bufferSize, ScaleType scaleType, bool convertsToCar
   #else
     int specSize, specBuffSize, buffSize;
     int ippScaleType = -1;
-    switch(scaleType) {
+    switch (scaleType) {
         case DivFwdByN:  ippScaleType = IPP_DIV_FWD_BY_N; break;
         case DivInvByN:  ippScaleType = IPP_DIV_INV_BY_N; break;
         case NoDivByAny: ippScaleType = IPP_NODIV_BY_ANY; break;
@@ -102,7 +102,7 @@ void Transform::forward(Buffer<float> src) {
     }
     fftBuffer.toType<Float32>().mul(multiplier);
 
-    if(removeOffset) {
+    if (removeOffset) {
         // vDSP stores the nyquist bin in im[0] - it's only needed for
         // convolution, which won't be the case if we have `removeOffset` true
         // edit, not sure if this is true anymore.
@@ -124,7 +124,7 @@ void Transform::forward(Buffer<float> src) {
   #else
     ippsFFTFwd_RToCCS_32f(src, fftBuffer, spec, workBuff);
 
-    if(removeOffset) {
+    if (removeOffset) {
         fftBuffer[0] = 0;
     }
     if (convertToCart) {

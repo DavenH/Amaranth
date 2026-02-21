@@ -69,7 +69,7 @@ String UnisonUI::getKnobName(int index) const {
     bool little 	= getWidth() < 300;
     bool superSmall = getWidth() < 250;
 
-    switch(index) {
+    switch (index) {
         case Unison::Width: 	return superSmall ? "wth"	:  little ? 	"wdth" 	: "Width";
         case Unison::Order: 	return little ? 	"ord" 	: "Order";
         case Unison::PanSpread: return superSmall ? "pn" 	: "Pan";
@@ -120,11 +120,11 @@ void UnisonUI::modeChanged(bool updateAudio, bool graphicUpdate) {
     // phase knob is reused
     paramGroup->getKnob<Slider>(Unison::Phase)->setValue(trueIfGroupMode ? group.phaseScale : data.phase, dontSendNotification);
 
-    if(updateAudio) {
+    if (updateAudio) {
         unison->modeChanged();
     }
 
-    if(graphicUpdate) {
+    if (graphicUpdate) {
         doUpdate(SourceUnison);
     }
 
@@ -229,7 +229,7 @@ void UnisonUI::writeXML(XmlElement* registryElem) const {
     auto* effectElem = new XmlElement(getEffectName());
     auto* knobsElem = new XmlElement("Knobs");
 
-    for(int knobIdx = 0; knobIdx <= Unison::Jitter; ++knobIdx) {
+    for (int knobIdx = 0; knobIdx <= Unison::Jitter; ++knobIdx) {
         auto* knob = new XmlElement("Knob");
 
         knob->setAttribute("value", paramGroup->getKnob<Slider>(knobIdx)->getValue());
@@ -243,7 +243,7 @@ void UnisonUI::writeXML(XmlElement* registryElem) const {
     auto* voiceDataElem = new XmlElement("VoiceData");
     const Unison::ParamGroup& group = unison->getGraphicParams();
 
-    for(auto data : group.voices)
+    for (auto data : group.voices)
     {
         auto* dataElem = new XmlElement("data");
 
@@ -272,7 +272,7 @@ bool UnisonUI::isGroupMode() const {
 bool UnisonUI::readXML(const XmlElement* element) {
     XmlElement* effectElem = element->getChildByName(getEffectName());
 
-    if(effectElem != nullptr) {
+    if (effectElem != nullptr) {
         bool oldWasGroup = modeBox.getSelectedId() == Group;
         bool isGroup 	 = effectElem->getBoolAttribute("mode", true);
 
@@ -287,15 +287,16 @@ bool UnisonUI::readXML(const XmlElement* element) {
         modeBox.setSelectedId(isGroup ? Group : Single, dontSendNotification);
 
         XmlElement* voiceDataElem = effectElem->getChildByName("VoiceData");
-        if(voiceDataElem != nullptr) {
+        if (voiceDataElem != nullptr) {
             int count = 0;
 
             int limit = INT_MAX;
 
             vector<Unison::UnivoiceData> data;
-            for(auto dataElem : voiceDataElem->getChildWithTagNameIterator("data")) {
-                if(count++ >= limit)
+            for (auto dataElem : voiceDataElem->getChildWithTagNameIterator("data")) {
+                if (count++ >= limit) {
                     break;
+}
 
                 float finePct = dataElem->getDoubleAttribute("fine",	0.5);
                 float pan 	  = dataElem->getDoubleAttribute("pan", 	0.5);
@@ -330,8 +331,9 @@ bool UnisonUI::readXML(const XmlElement* element) {
     } else if (isGroupMode()) {
         ScopedBooleanSwitcher sbs(paramGroup->updatingAllSliders);
 
-        for (int i = 0; i <= Unison::Jitter; ++i)
+        for (int i = 0; i <= Unison::Jitter; ++i) {
             paramGroup->setKnobValue(i, 0.5, false);
+}
     }
 
     return true;
@@ -365,8 +367,9 @@ Array<int> UnisonUI::getApplicableKnobs() {
 }
 
 juce::Component* UnisonUI::getComponent(int which) {
-    if (which <= Unison::Fine)
+    if (which <= Unison::Fine) {
         return paramGroup->getKnob<Slider>(which);
+}
 
     switch (which) {
         case CycleTour::TargUniVoiceSlct: return &voiceSelector;

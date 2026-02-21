@@ -40,7 +40,7 @@ public:
     }
 
     bool removeCube(vector<VertCube*>::iterator cube) {
-        if(cube == cubes.end())
+        if (cube == cubes.end())
             return false;
 
         cubes.erase(cube);
@@ -52,7 +52,7 @@ public:
     }
 
     bool removeVert(vector<Vertex*>::iterator vert) {
-        if(vert == verts.end())
+        if (vert == verts.end())
             return false;
 
         verts.erase(vert);

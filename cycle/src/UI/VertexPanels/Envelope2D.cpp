@@ -194,7 +194,7 @@ void Envelope2D::drawCurvesAndSurfaces() {
         float backEx = icpts.empty() ? 1.f : icpts.back().x;
         stopPosition = sx(backEx);
 
-        if(waveX.empty() || icpts.empty())
+        if (waveX.empty() || icpts.empty())
             return;
 
         int istart = jmax(0, data.zeroIndex - 4);
@@ -226,7 +226,7 @@ void Envelope2D::drawCurvesAndSurfaces() {
     getLoopPoints(loopStart, sustain);
 
     // fixes transition if there's no loop
-    if(loopStart < 0) {
+    if (loopStart < 0) {
         topColors[1] = color1;
     }
 
@@ -234,12 +234,12 @@ void Envelope2D::drawCurvesAndSurfaces() {
 
     int size = xy.size();
     int i = 0;
-    while(i < size - 1 && xy.x[i + 1] < 0) {
+    while (i < size - 1 && xy.x[i + 1] < 0) {
         ++i;
     }
 
     int cp = 0;
-    while(xy.x[i] > changePoints[cp] && cp < numElementsInArray(changePoints)) {
+    while (xy.x[i] > changePoints[cp] && cp < numElementsInArray(changePoints)) {
         ++cp;
     }
 
@@ -298,7 +298,7 @@ void Envelope2D::drawCurvesAndSurfaces() {
         }
     }
 
-    if(! positions.empty()) {
+    if (! positions.empty()) {
         gfx->fillAndOutlineColoured(positions, baseY, baseAlpha, true, true);
     }
 
@@ -326,11 +326,11 @@ void Envelope2D::getLoopPoints(float& loopStart, float& sustain) {
         loopStart = -1;
         sustain = -1;
 
-        if(isPositiveAndBelow(loopIdx, (int) icpts.size())) {
+        if (isPositiveAndBelow(loopIdx, (int) icpts.size())) {
             loopStart = icpts[loopIdx].x;
         }
 
-        if(isPositiveAndBelow(sustIdx, (int) icpts.size())) {
+        if (isPositiveAndBelow(sustIdx, (int) icpts.size())) {
             sustain = icpts[sustIdx].x;
         }
     }
@@ -404,7 +404,7 @@ void Envelope2D::Controls::paint(Graphics& g)
     rects.add(panel->loopCO->getBoundsInParentDelegate().translated(0, -1));
     rects.add(e2->getEnableButton()->getBoundsInParent().expanded(0, 1));
 
-    if(showLayerSelector) {
+    if (showLayerSelector) {
         rects.add(e2->addRemover.getBoundsInParentDelegate());
         rects.add(e2->layerSelector.getBoundsInParentDelegate());
     }
@@ -451,7 +451,7 @@ void Envelope2D::Controls::resized()
     int rightHeight = layerBounds.getHeight() - rightSide.getHeight();
 
     bounds.removeFromTop(jmax(leftHeight, rightHeight));
-    if(bounds.getHeight() > 40) {
+    if (bounds.getHeight() > 40) {
         bounds.removeFromTop(8);
     }
 
@@ -467,7 +467,7 @@ void Envelope2D::createScales()
     int currentGroup = getSetting(CurrentEnvGroup);
     MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(currentGroup);
 
-    if(props == nullptr) {
+    if (props == nullptr) {
         return;
     }
 
@@ -503,11 +503,11 @@ void Envelope2D::createScales()
 
         int decimals = jlimit(1, 4, int(-logf(seconds)));
 
-        if(seconds == 0) {
+        if (seconds == 0) {
             text = String("0");
-        } else if(seconds < 1.f) {
+        } else if (seconds < 1.f) {
             text = String(seconds, decimals + 1);
-        } else if(seconds < 2.5f) {
+        } else if (seconds < 2.5f) {
             text = String(seconds, decimals);
         } else {
             text = String(roundToInt(seconds));
@@ -601,13 +601,13 @@ bool Envelope2D::readXML(const XmlElement* element) {
     };
 
     XmlElement* envProps = element->getChildByName("EnvelopeProps");
-    for(auto& envTypes: types) {
+    for (auto& envTypes: types) {
         MeshLibrary::LayerGroup& group = getObj(MeshLibrary).getLayerGroup(envTypes.type);
 
         group.layers.clear();
 
-        for(auto elem : envProps->getChildWithTagNameIterator(envTypes.name + "Props")) {
-            if(elem == nullptr) {
+        for (auto elem : envProps->getChildWithTagNameIterator(envTypes.name + "Props")) {
+            if (elem == nullptr) {
                 continue;
             }
             bool defaultDynamic = false;

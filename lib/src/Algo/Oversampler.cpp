@@ -85,7 +85,7 @@ void Oversampler::sampleDown(Buffer<float> src, Buffer<float> dest, bool wrapTai
     int partitionPos = 0;
     int destPos      = 0;
 
-    while(partitionPos < src.size()) {
+    while (partitionPos < src.size()) {
         int srcStep  = jmin(src.size() - partitionPos, 1024);
         int destStep = srcStep / oversampleFactor;
         int destSize = destStep;
@@ -168,7 +168,7 @@ void Oversampler::resetDelayLine() {
 }
 
 void Oversampler::updateTaps() {
-    if(oversampleFactor == 1) {
+    if (oversampleFactor == 1) {
         return;
     }
 

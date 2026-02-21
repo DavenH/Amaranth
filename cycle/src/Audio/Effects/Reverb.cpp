@@ -46,7 +46,7 @@ void ReverbEffect::processBuffer(AudioSampleBuffer &buffer) {
         return;
     }
 
-    //	if(calls == 0)
+    //	if (calls == 0)
     //	{
     //		dout << "samp\tcume\tf.re\tf.wr\tp.re\tp.wr\t\n";
     //	}
@@ -228,10 +228,10 @@ void ReverbEffect::updateKernelSections()
 
     const int numBuffers  = kernel.left.size() / buffSize;
 
-    for(int c = 0; c < 2; ++c) {
+    for (int c = 0; c < 2; ++c) {
         cumeRoll.set(1.f);
 
-        for(int i = 0; i < numBuffers; ++i) {
+        for (int i = 0; i < numBuffers; ++i) {
             Buffer<float> section = kernel[c].section(i * buffSize, buffSize);
 
             createVolumeRamp(i, numBuffers, buffSize, volRamp);
@@ -262,7 +262,7 @@ void ReverbEffect::createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<
     const int rampUpBuffs = jlimit(3, 20, int(roomSize * 0.03f * numBuffers));
     float rampStart, rampEnd, rampDelta;
 
-//	if(i < rampUpBuffs)
+//	if (i < rampUpBuffs)
 //	{
 //		float start = i / float(rampUpBuffs - 1);
 //		float end 	= (i + 1) / float(rampUpBuffs - 1);
@@ -283,13 +283,13 @@ void ReverbEffect::createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<
         rampDelta 	= (rampEnd - rampStart) / float(buffSize);
 //	}
 
-    if(i < rampUpBuffs) {
+    if (i < rampUpBuffs) {
         /*
 
 
-        if(silence < buffSize)
+        if (silence < buffSize)
         {
-            for(int j = 0; j <= 5 * (i + 2); ++j)
+            for (int j = 0; j <= 5 * (i + 2); ++j)
             {
                 ramp[delay1 & mod] = noiseArray[delay2 & mod];
                 ramp[delay2 & mod] = noiseArray[delay1 & mod];
@@ -300,12 +300,12 @@ void ReverbEffect::createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<
 
 
             int offset = delay1 & mod;
-            for(int j = 0; j <= i; ++j)
+            for (int j = 0; j <= i; ++j)
             {
-                if(offset < buffSize)
+                if (offset < buffSize)
                     ramp.addProduct(ramp.section(offset, buffSize - offset), -0.5f);
 
-                if(offset > 0)
+                if (offset > 0)
                     ramp.section(buffSize - offset, offset).addProduct(ramp, -0.5f);
 
                 offset = (offset + delay1) & mod;
@@ -331,7 +331,7 @@ void ReverbEffect::createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<
 
     int silence = roomSize * 450 - i * buffSize;
 
-    if(silence > 0) {
+    if (silence > 0) {
         ramp.zero(jmin(buffSize, silence));
     }
 }
@@ -345,7 +345,7 @@ void ReverbEffect::setBlockSize(int size) {
 
     ConvReverb* convolvers[] = { &leftConv, &rightConv };
 
-    for(int i = 0; i < 2; ++i) {
+    for (int i = 0; i < 2; ++i) {
         outBuffer[i] = blockMemory.place(size);
         outBuffer[i].zero();
 
@@ -354,15 +354,15 @@ void ReverbEffect::setBlockSize(int size) {
 }
 
 void ReverbEffect::audioThreadUpdate() {
-    if(blockSizeAction.isPending()) {
+    if (blockSizeAction.isPending()) {
         setBlockSize(blockSizeAction.getValueAndDismiss());
     }
 
-    if(kernelSizeAction.isPending()) {
+    if (kernelSizeAction.isPending()) {
         createKernel(kernelSizeAction.getValueAndDismiss());
     }
 
-    if(kernelFilterAction.isPending()) {
+    if (kernelFilterAction.isPending()) {
         updateKernelSections();
         kernelFilterAction.dismiss();
     }

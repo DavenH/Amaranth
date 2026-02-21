@@ -36,7 +36,7 @@ void ControlsPanel::paint(Graphics& g) {
 
     g.setOpacity(0.5f);
 
-    for(auto&& image : images) {
+    for (auto&& image : images) {
         g.drawImageAt(image.image, image.x, image.y);
     }
 
@@ -110,7 +110,7 @@ void ControlsPanel::paint(Graphics& g) {
         }
     } else {
         for (auto band : bands) {
-            if(band->isCurrentlyCollapsed() || ! band->isVisibleDlg())
+            if (band->isCurrentlyCollapsed() || ! band->isVisibleDlg())
                 continue;
 
             const Rectangle<int>& bandRect = band->getBoundsInParentDelegate();
@@ -144,7 +144,7 @@ void ControlsPanel::paint(Graphics& g) {
 
             Path path;
 
-            if(bandCount[dividedBand.first] > 1) {
+            if (bandCount[dividedBand.first] > 1) {
                 path.startNewSubPath(leftX, (topY + firstLower) / 2);
                 path.addArc(leftX, firstLower - arcRadius, arcRadius, arcRadius, thrQrtr, half);
                 path.addArc(middleX - 2 * arcRadius, firstLower, arcRadius, separation, full, oneAndHalf);
@@ -198,7 +198,7 @@ void ControlsPanel::addDynamicSizeComponent(IDynamicSizeComponent* component, bo
 
     expandableComponents.add(component);
 
-    if(manageMemory) {
+    if (manageMemory) {
         componentsToDelete.add(component);
     }
 }
@@ -243,7 +243,7 @@ void ControlsPanel::resized() {
     for (int i = 0; i < expandableComponents.size(); ++i) {
         IDynamicSizeComponent* dsc = expandableComponents[i];
 
-        if(! dsc->isVisibleDlg()) {
+        if (! dsc->isVisibleDlg()) {
             continue;
         }
 
@@ -253,7 +253,7 @@ void ControlsPanel::resized() {
 
       #if CTRLS_DEBUG
         dout << "expanded sizes: ";
-        for(int j = i + 1; j < expandableComponents.size(); ++j)
+        for (int j = i + 1; j < expandableComponents.size(); ++j)
             dout << expandableComponents[j]->getExpandedSize() + 1 << " ";
         dout << "\n";
       #endif
@@ -263,7 +263,7 @@ void ControlsPanel::resized() {
         for (int j = i + 1; j < expandableComponents.size(); ++j) {
             IDynamicSizeComponent* dsc2 = expandableComponents[j];
 
-            if(! dsc2->isVisibleDlg()) {
+            if (! dsc2->isVisibleDlg()) {
                 continue;
             }
 
@@ -294,7 +294,7 @@ void ControlsPanel::resized() {
         } else {
             int collapsedSize = dsc->getCollapsedSize();
 
-            if(isHorz) {
+            if (isHorz) {
                 dsc->setBoundsDelegate(pos, excess, collapsedSize + 1, minorSize);
             } else {
                 dsc->setBoundsDelegate(excess, pos, minorSize, collapsedSize + 1);

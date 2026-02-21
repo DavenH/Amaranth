@@ -12,8 +12,9 @@ String StringFunction::roundedString(double value) const {
 }
 
 double StringFunction::evaluate(int idx, double curr) {
-    if (idx == 0)
+    if (idx == 0) {
         return curr;
+}
 
     return evaluate(idx - 1, ops[idx].eval(curr));
 }

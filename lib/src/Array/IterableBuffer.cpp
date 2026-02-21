@@ -26,14 +26,14 @@ void SyncedSampleIterator::reset() {
 
     periods.clear();
 
-    while(true) {
+    while (true) {
         double progress = offset / double(numSamples);
         double period   = wav->samplerate / Resampling::lerpC(pitchBuffer, progress);
 
         periods.push_back(period);
         offset += period;
 
-        if((int) offset >= wav->audio.size()) {
+        if ((int) offset >= wav->audio.size()) {
             break;
         }
     }

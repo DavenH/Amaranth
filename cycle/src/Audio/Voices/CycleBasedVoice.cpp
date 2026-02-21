@@ -190,8 +190,9 @@ void CycleBasedVoice::initCycleBuffers() {
     int totalSize = 2 * groups.size() * cycleBuffSize;
     int offset = 0;
 
-    if (cycleBufferMemory.ensureSize(totalSize))
+    if (cycleBufferMemory.ensureSize(totalSize)) {
         cycleBufferMemory.zero(totalSize);
+}
 
     for (auto& group: groups) {
         for (auto& c: group.cycleBuffer) {
@@ -247,8 +248,9 @@ void CycleBasedVoice::render(StereoBuffer& channelPair) {
 
     if (downSample) {
         if (srcChanCount == dstChanCount) {
-            for (int c = 0; c < srcChanCount; ++c)
+            for (int c = 0; c < srcChanCount; ++c) {
                 oversamplers[c]->sampleDown(oversampleAccumBuf[c], channelPair[c]);
+}
         } else if (srcChanCount == 1) {
             oversamplers[0]->sampleDown(oversampleAccumBuf[Left], channelPair.left);
             channelPair.left.copyTo(channelPair.right);
@@ -281,8 +283,9 @@ void CycleBasedVoice::renderChainedCycles(int numSamples) {
 
                 int deltaSamples = group.samplesThisCycle;
 
-                if (deltaSamples == 0)
+                if (deltaSamples == 0) {
                     deltaSamples = period;
+}
 
                 updateEnvelopes(EnvRasterizer::headUnisonIndex + group.unisonIndex, deltaSamples);
             }
@@ -303,8 +306,9 @@ void CycleBasedVoice::renderChainedCycles(int numSamples) {
 
             int ovspCycleSize = group.samplesThisCycle * oversamplers[0]->getOversampleFactor();
 
-            for (int c = 0; c < 2; ++c)
+            for (int c = 0; c < 2; ++c) {
                 group.cycleBuffer[c].write(layerAccumBuffer[c].withSize(ovspCycleSize));
+}
         }
     }
 }
@@ -326,8 +330,9 @@ void CycleBasedVoice::renderOverlappedCycles(int numSamples) {
 
             int deltaSamples = group.samplesThisCycle;
 
-            if (deltaSamples == 0)
+            if (deltaSamples == 0) {
                 deltaSamples = period;
+}
 
             updateEnvelopes(EnvRasterizer::headUnisonIndex + group.unisonIndex, deltaSamples);
         }
@@ -348,26 +353,27 @@ void CycleBasedVoice::renderOverlappedCycles(int numSamples) {
 
         int ovspCycleSize = group.samplesThisCycle * oversamplers[0]->getOversampleFactor();
 
-        for (int c = 0; c < 2; ++c)
+        for (int c = 0; c < 2; ++c) {
             group.cycleBuffer[c].write(layerAccumBuffer[c].withSize(ovspCycleSize));
+}
     }
 }
 
 /*
 
-while(futureFrame.frontier < last)
+while (futureFrame.frontier < last)
 {
     bool isSaturated = singleFrame ?
             midFrame.cycleCount == futureFrame.cycleCount :
             midFrame.cumePos >= futureFrame.cumePos;
 
-    if(isSaturated || futureFrame.cycleCount < 0)
+    if (isSaturated || futureFrame.cycleCount < 0)
     {
         futureFrame.period = 1 / getAngle(x, 0);
 
         long pastPos = futureFrame.cumePos;
 
-        if(futureFrame.cycleCount > 0)
+        if (futureFrame.cycleCount > 0)
             futureFrame.cumePos += futureFrame.period * stride;
 
         long samplesAdvanced = (long) futureFrame.cumePos - pastPos;
@@ -383,14 +389,14 @@ while(futureFrame.frontier < last)
         futureFrame.frontier 	= (long) futureFrame.cumePos;
     }
 
-    for(int i = 0; i < unisonCount; ++i)
+    for (int i = 0; i < unisonCount; ++i)
     {
         RenderFrame& frame = frames[i];
 
         bool condition = singleFrame ? frame.cycleCount < futureFrame.cycleCount :
                                        frame.cumePos < futureFrame.cumePos;
 
-        while(condition && frame.frontier < last)
+        while (condition && frame.frontier < last)
         {
             int rem 		= frame.cycleCount % stride;
             float portion 	= singleFrame ? rem / float(stride) :
@@ -494,8 +500,9 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
                 NumberUtils::constrain(portionOfNext, 0.f, 1.f);
                 group.cumePos = nextCume;
 
-                if (i == 0)
+                if (i == 0) {
                     frame.cumePos = group.cumePos;
+}
 
                 int scaledPhase = int(noteState.nextPow2 * (unison->getPhase(group.unisonIndex))) & (
                                       noteState.nextPow2 - 1);
@@ -646,7 +653,7 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
         // ippsCopy_32f(layerAccumBuffer[Right], pastCycle[Right], noteState.nextPow2);
 
         // if we didn't have a cached first cycle
-        //		if(updatePosition == 0)
+        //		if (updatePosition == 0)
         if (futureFrame.cycleCount == 0) {
             for (int j = 0; j < noteState.numUnisonVoices; ++j) {
                 pastCycle[Left].copyTo(groups[j].lastLerpHalf[Left].withSize(noteState.nextPow2 / 2));
@@ -657,7 +664,7 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
         }
     }
 
-    //	if(updatePosition > lastSampleToRender)
+    //	if (updatePosition > lastSampleToRender)
     //	{
     //		updatePosition -= updateThreshSamples;
     ////		cout << "retracting update position " << updateThreshSamples << " samples to " << updatePosition << "\n";
@@ -806,8 +813,9 @@ void CycleBasedVoice::stealNoteFrom(CycleBasedVoice* oldVoice) {
 
     int oldGroupSize = (int) oldVoice->groups.size();
 
-    for (int i = 0; i < (int) groups.size(); ++i)
+    for (int i = 0; i < (int) groups.size(); ++i) {
         groups[i] = oldVoice->groups[jmin(oldGroupSize - 1, i)];
+}
 }
 
 void CycleBasedVoice::ensureOversampleBufferSize(int numSamples) {
@@ -890,8 +898,9 @@ void CycleBasedVoice::updateValue(int outputId, int dim, float value) {
                                         ? parent->pitchGroup
                                         : parent->scratchGroup;
 
-        if (group.envGroup.empty())
+        if (group.envGroup.empty()) {
             return;
+}
 
         int realIndex = CommonEnums::Null;
         for (int i = 0; i < group.size(); ++i) {
@@ -955,8 +964,9 @@ void CycleBasedVoice::testNumLayersChanged() {
 
         int numLayers = timeLayers->size();
 
-        if (group.layerStates.size() != numLayers)
+        if (group.layerStates.size() != numLayers) {
             group.layerStates.resize(numLayers);
+}
     }
 }
 
@@ -969,8 +979,9 @@ void CycleBasedVoice::testIfResamplingQualityChanged() {
 }
 
 float CycleBasedVoice::getScratchTime(int layerIndex, double cumePos) {
-    if (layerIndex == CommonEnums::Null)
+    if (layerIndex == CommonEnums::Null) {
         return noteState.absVoiceTime;
+}
 
     float blockOffset = double(parent->blockStartOffset - noteState.totalSamplesPlayed) + cumePos;
     MeshLibrary::EnvProps& props = *parent->meshLib->getEnvProps(LayerGroups::GroupScratch, layerIndex);

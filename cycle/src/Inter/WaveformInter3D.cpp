@@ -41,7 +41,7 @@ void WaveformInter3D::doPhaseShift(float shift) {
     } else
         shiftedPhase += shift;
 
-    for(auto vert : getMesh()->getVerts()) {
+    for (auto vert : getMesh()->getVerts()) {
         vert->values[Vertex::Phase] += shift;
     }
 
@@ -52,13 +52,13 @@ void WaveformInter3D::doPhaseShift(float shift) {
 void WaveformInter3D::doCommitPencilEditPath() {
     // todo put this in the phase envelope
 
-    //	if(getSetting(DrawWave)) {
+    //	if (getSetting(DrawWave)) {
     //		WavWrapper& wrapper = getObj(AudioSourceRepo).getWrapper();
     //		const vector<Column>& timeColumns = getObj(VisualDsp).getTimeColumns();
     //
     //		vector<PitchFrame>& periods = wrapper.periods;
     //
-    //		if(pencilPath.size() < 2)
+    //		if (pencilPath.size() < 2)
     //			return;
     //
     //		sort(pencilPath.begin(), pencilPath.end());
@@ -69,7 +69,7 @@ void WaveformInter3D::doCommitPencilEditPath() {
     //		float sustainedPhaseLeft = pencilPath.front().y;
     //		float sustainedPhaseRight = pencilPath.back().y;
     //
-    //		if(periods.size() != phaseOffsets.size()) {
+    //		if (periods.size() != phaseOffsets.size()) {
     //			cout << "phase offsets vector not same size as period vector" << "\n";
     //			return;
     //		}
@@ -77,10 +77,10 @@ void WaveformInter3D::doCommitPencilEditPath() {
     //		float invWavLength = 1 / float(wrapper.numSamples);
     //
     //		int currentIndex = 0;
-    //		for(size_t i = 0; i < timeColumns.size(); ++i) {
+    //		for (size_t i = 0; i < timeColumns.size(); ++i) {
     //			position = periods[i].sampleOffset * invWavLength;
     //
-    //			if(NumberUtils::within(position, lower, upper))
+    //			if (NumberUtils::within(position, lower, upper))
     //				phaseOffsets[i] = -Arithmetic::at(position, pencilPath, currentIndex) * periods[i].period;
     //			else
     //				phaseOffsets[i] = -(fabs(position - lower) < fabs(position - upper) ? sustainedPhaseLeft :

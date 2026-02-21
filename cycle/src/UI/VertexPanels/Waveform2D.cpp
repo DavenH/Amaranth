@@ -46,8 +46,9 @@ void Waveform2D::init() {
 }
 
 void Waveform2D::preDraw() {
-    if (getSetting(Waterfall))
+    if (getSetting(Waterfall)) {
         drawHistory();
+}
 }
 
 void Waveform2D::drawCurvesAndSurfaces() {
@@ -58,8 +59,9 @@ void Waveform2D::drawCurvesAndSurfaces() {
     // fills curve from mesh
     Panel2D::drawCurvesAndSurfaces();
 
-    if (getSetting(ViewStage) > ViewStages::PreProcessing || getSetting(DrawWave))
+    if (getSetting(ViewStage) > ViewStages::PreProcessing || getSetting(DrawWave)) {
         drawIfftCycle();
+}
 }
 
 void Waveform2D::drawBackground(bool fillBackground) {
@@ -76,8 +78,9 @@ void Waveform2D::postCurveDraw() {
 void Waveform2D::fillCurveFromGrid() {
     const vector<Column>& timeColumns = getObj(VisualDsp).getTimeColumns();
 
-    if (timeColumns.size() < 2 || !getObj(Waveform3D).shouldDrawGrid())
+    if (timeColumns.size() < 2 || !getObj(Waveform3D).shouldDrawGrid()) {
         return;
+}
 
     Color c = colorA.withAlpha(getSetting(DrawWave) ? 0.2f : isMeshEnabled() ? 0.5f : 0.3f);
     float baseAlpha = c.alpha() * 0.2f;
@@ -108,7 +111,7 @@ void Waveform2D::fillCurveFromGrid() {
     ColorPos curr;
     vector<ColorPos> positions;
 
-    for(int i = 0; i < size; ++i) {
+    for (int i = 0; i < size; ++i) {
         curr.update(xy[i], c.withAlpha(a[i]));
         positions.push_back(curr);
     }
@@ -122,7 +125,7 @@ int Waveform2D::initXYArrays(Buffer<float> one, Buffer<float> two, float portion
 
     int size = smaller.size();
 
-    if(size < 2) {
+    if (size < 2) {
         return 0;
     }
 
@@ -141,7 +144,7 @@ int Waveform2D::initXYArrays(Buffer<float> one, Buffer<float> two, float portion
 
     Buffer<float> y = yBuffer.withSize(size);
 
-    if(portion == 0.f) {
+    if (portion == 0.f) {
         one.copyTo(y);
     } else {
         y.zero().addProduct(one, 1 - portion).addProduct(two, portion);
@@ -155,7 +158,7 @@ int Waveform2D::initXYArrays(Buffer<float> one, Buffer<float> two, float portion
 void Waveform2D::drawIfftCycle() {
     const vector<Column>& ifftColumns = getObj(VisualDsp).getTimeColumns();
 
-    if(ifftColumns.empty()) {
+    if (ifftColumns.empty()) {
         return;
     }
 
@@ -166,7 +169,7 @@ void Waveform2D::drawIfftCycle() {
     int secondCol 	= jmin(maxRow, iIndex + 1);
     int size 		= initXYArrays(ifftColumns[iIndex], ifftColumns[secondCol], remainder);
 
-    if(! size) {
+    if (! size) {
         return;
     }
 
@@ -184,7 +187,7 @@ void Waveform2D::drawHistory() {
 
     ScopedLock sl(renderer->getGridLock());
 
-    if(numCols == 0) {
+    if (numCols == 0) {
         return;
     }
 
@@ -210,8 +213,9 @@ void Waveform2D::drawHistory() {
 
             gfx->setCurrentColour(0.45f, 0.5f, 0.75f, alphaScale * alpha);
 
-            while(columnIndex > 0 && columns[columnIndex - 1].x > cume)
+            while (columnIndex > 0 && columns[columnIndex - 1].x > cume) {
                 --columnIndex;
+}
 
             int firstCol = jmax(0, columnIndex - 1);
             jassert(columnIndex < numCols && firstCol < numCols);

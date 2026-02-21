@@ -1,7 +1,7 @@
 #include "Vertex.h"
 
 void Vertex::addOwner(VertCube* cube) {
-    if(cube == nullptr || owners.contains(cube)) {
+    if (cube == nullptr || owners.contains(cube)) {
         return;
     }
 

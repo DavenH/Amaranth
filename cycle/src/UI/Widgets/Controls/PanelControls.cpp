@@ -18,56 +18,56 @@
 #include "../../CycleGraphicsUtils.h"
 
 PanelControls::PanelControls(
-		SingletonRepo* 			repo
-	,	Interactor* 			interactor
-	,	Button::Listener* 		listener
-	,	LayerSelectionClient* 	client
-	,	const String& 			layerString) :
-			SingletonAccessor(repo, "PanelControls")
-		, 	layerClient		(client)
-		, 	interactor		(interactor)
-		, 	scratchLabel	(getObj(MiscGraphics), "s.ch")
-		, 	addRemover		(listener, repo, layerString)
-		, 	upDownMover		(listener, repo)
-		, 	enableCurrent	(5, 5, listener, repo, "Enable " + layerString)
-		,	drawLabel		(false)
-		,	haveEnablement	(false)
-		,	haveDomains		(false)
-		,	meshSelector	(nullptr)
-		,	layerSelector	(nullptr)
-		, 	spacer1			(1)
-		, 	spacer2			(2)
-		, 	spacer4			(4)
-		, 	spacer6			(6)
-		, 	spacer8			(8) {
+        SingletonRepo* 			repo
+    ,	Interactor* 			interactor
+    ,	Button::Listener* 		listener
+    ,	LayerSelectionClient* 	client
+    ,	const String& 			layerString) :
+            SingletonAccessor(repo, "PanelControls")
+        , 	layerClient		(client)
+        , 	interactor		(interactor)
+        , 	scratchLabel	(getObj(MiscGraphics), "s.ch")
+        , 	addRemover		(listener, repo, layerString)
+        , 	upDownMover		(listener, repo)
+        , 	enableCurrent	(5, 5, listener, repo, "Enable " + layerString)
+        ,	drawLabel		(false)
+        ,	haveEnablement	(false)
+        ,	haveDomains		(false)
+        ,	meshSelector	(nullptr)
+        ,	layerSelector	(nullptr)
+        , 	spacer1			(1)
+        , 	spacer2			(2)
+        , 	spacer4			(4)
+        , 	spacer6			(6)
+        , 	spacer8			(8) {
 }
 
 void PanelControls::paint(Graphics& g) {
     getObj(CycleGraphicsUtils).fillBlackground(this, g);
 
-	auto& mg = getObj(MiscGraphics);
-	g.setFont(*mg.getSilkscreen());
-	g.setColour(Colour::greyLevel(0.64f));
+    auto& mg = getObj(MiscGraphics);
+    g.setFont(*mg.getSilkscreen());
+    g.setColour(Colour::greyLevel(0.64f));
 
     if (haveDomains) {
         mg.drawJustifiedText(g, "domain", domainBounds);
     }
 
     if (drawLabel) {
-		mg.drawJustifiedText(g, "layer", layerLblBounds);
-	}
+        mg.drawJustifiedText(g, "layer", layerLblBounds);
+    }
 
-	Array<Rectangle<int> > rects;
-	Array<IDynamicSizeComponent*>* arrs[] = { &leftItems, &rightItems };
+    Array<Rectangle<int> > rects;
+    Array<IDynamicSizeComponent*>* arrs[] = { &leftItems, &rightItems };
 
     for (auto& arr : arrs) {
-    	for(auto* c : *arr) {
+        for (auto* c : *arr) {
             if (c->outline && !c->isCurrentlyCollapsed()) {
                 Rectangle<int> r = c->getBoundsInParentDelegate().translated(0, c->translateUp1 ? -1 : 0);
-				rects.add(r);
-			}
-		}
-	}
+                rects.add(r);
+            }
+        }
+    }
 
     for (auto rect : rects) {
         Path strokePath;
@@ -80,7 +80,7 @@ void PanelControls::paint(Graphics& g) {
 
     if (!icon.isNull()) {
         g.drawImageAt(icon, iconBounds.getX(), iconBounds.getY());
-	}
+    }
 }
 
 void PanelControls::resized() {
@@ -88,56 +88,56 @@ void PanelControls::resized() {
 
     if (haveDomains) {
         domainBounds = bounds.removeFromTop(8);
-		bounds.removeFromTop(2);
-		domainCO->setBounds(bounds.removeFromTop(24).reduced(2, 0).translated(3, 0));
-		bounds.removeFromTop(14);
-	}
+        bounds.removeFromTop(2);
+        domainCO->setBounds(bounds.removeFromTop(24).reduced(2, 0).translated(3, 0));
+        bounds.removeFromTop(14);
+    }
 
     if (drawLabel) {
         layerLblBounds = bounds.removeFromTop(11);
-	}
+    }
 
-	int leftHeight = 0, rightHeight = 0;
+    int leftHeight = 0, rightHeight = 0;
 
-	Rectangle<int> layerBounds 	= bounds;
-	Rectangle<int> leftSide 	= layerBounds.removeFromLeft(24);
-	Rectangle<int> rightSide 	= layerBounds.removeFromRight(24);
+    Rectangle<int> layerBounds 	= bounds;
+    Rectangle<int> leftSide 	= layerBounds.removeFromLeft(24);
+    Rectangle<int> rightSide 	= layerBounds.removeFromRight(24);
 
     for (auto item : leftItems) {
         Rectangle<int> r(leftSide.removeFromTop(item->getExpandedSize()));
 
-		if(item->getDynWidth() > 24)
-			r.expand((item->getDynWidth() - 24) / 2, 0);
+        if (item->getDynWidth() > 24)
+            r.expand((item->getDynWidth() - 24) / 2, 0);
 
-		item->setBoundsDelegate(r.getX(), r.getY(), r.getWidth(), r.getHeight());
-	}
+        item->setBoundsDelegate(r.getX(), r.getY(), r.getWidth(), r.getHeight());
+    }
 
     for (auto item : rightItems) {
         Rectangle<int> r(rightSide.removeFromTop(item->getExpandedSize()));
 
-		if(item->getDynWidth() > 24) {
-			r.expand((item->getDynWidth() - 24) / 2, 0);
-		}
+        if (item->getDynWidth() > 24) {
+            r.expand((item->getDynWidth() - 24) / 2, 0);
+        }
 
-		item->setBoundsDelegate(r.getX(), r.getY(), r.getWidth(), r.getHeight());
-	}
+        item->setBoundsDelegate(r.getX(), r.getY(), r.getWidth(), r.getHeight());
+    }
 
-	leftHeight = layerBounds.getHeight() - leftSide.getHeight();
-	rightHeight = layerBounds.getHeight() - rightSide.getHeight();
+    leftHeight = layerBounds.getHeight() - leftSide.getHeight();
+    rightHeight = layerBounds.getHeight() - rightSide.getHeight();
 
-	bounds.removeFromTop(jmax(leftHeight, rightHeight));
-	bounds.removeFromTop(6);
+    bounds.removeFromTop(jmax(leftHeight, rightHeight));
+    bounds.removeFromTop(6);
 
-	for (auto slider : sliders) {
+    for (auto slider : sliders) {
         slider->setBounds(bounds.removeFromTop(13));
-		bounds.removeFromTop(4);
-	}
+        bounds.removeFromTop(4);
+    }
 
-	bounds.removeFromTop(bounds.getHeight() > 40 ? 6 : 0);
+    bounds.removeFromTop(bounds.getHeight() > 40 ? 6 : 0);
 
     if (meshSelector != nullptr) {
         meshSelector->setBounds(bounds.removeFromTop(24).reduced((bounds.getWidth() - 24) / 2, 0));
-	}
+    }
 }
 
 void PanelControls::addSlider(HSlider* slider) {
@@ -151,14 +151,14 @@ void PanelControls::initialise() {
 void PanelControls::populateScratchSelector() {
     scratchSelector.clear(dontSendNotification);
 
-	String dash(L"\u2013");
-	scratchSelector.addItem(dash, NullScratchChannel);
+    String dash(L"\u2013");
+    scratchSelector.addItem(dash, NullScratchChannel);
 
-	int size = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch).size();
+    int size = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch).size();
 
-	for(int i = 0; i < size; ++i) {
-		scratchSelector.addItem(String(i + 1), i + 1);
-	}
+    for (int i = 0; i < size; ++i) {
+        scratchSelector.addItem(String(i + 1), i + 1);
+    }
 }
 
 void PanelControls::setScratchSelector(int channel) {
@@ -170,16 +170,16 @@ void PanelControls::comboBoxChanged(ComboBox* box) {
     if (box == &scratchSelector) {
         Panel* panel = interactor->panel;
 
-		int selectedId = box->getSelectedId();
-		int scratchChannel = (selectedId == NullScratchChannel) ? CommonEnums::Null : selectedId - 1;
+        int selectedId = box->getSelectedId();
+        int scratchChannel = (selectedId == NullScratchChannel) ? CommonEnums::Null : selectedId - 1;
 
-		MeshLibrary::Properties* focusedProps = getObj(MeshLibrary).getCurrentProps(interactor->layerType);
-		focusedProps->scratchChan = scratchChannel;
+        MeshLibrary::Properties* focusedProps = getObj(MeshLibrary).getCurrentProps(interactor->layerType);
+        focusedProps->scratchChan = scratchChannel;
 
-		getObj(EditWatcher).setHaveEditedWithoutUndo(true);
-		getObj(MeshLibrary).layerChanged(LayerGroups::GroupScratch, scratchChannel);
+        getObj(EditWatcher).setHaveEditedWithoutUndo(true);
+        getObj(MeshLibrary).layerChanged(LayerGroups::GroupScratch, scratchChannel);
 
-		panel->setSpeedApplicable(false);
+        panel->setSpeedApplicable(false);
 
         if (scratchChannel != CommonEnums::Null) {
             MeshLibrary::EnvProps* props = getObj(MeshLibrary).getEnvProps(LayerGroups::GroupScratch, scratchChannel);
@@ -190,10 +190,10 @@ void PanelControls::comboBoxChanged(ComboBox* box) {
             opposite->panel->setSpeedApplicable(panel->isSpeedApplicable());
         }
 
-		interactor->triggerRefreshUpdate();
+        interactor->triggerRefreshUpdate();
 
-		triggerAsyncUpdate();
-	}
+        triggerAsyncUpdate();
+    }
 }
 
 void PanelControls::handleAsyncUpdate() {
@@ -203,14 +203,14 @@ void PanelControls::handleAsyncUpdate() {
 void PanelControls::addEnablementIcon() {
     enableContainer = std::make_unique<DynamicSizeContainer>(&enableCurrent, 27, 25);
     enableContainer->outline = true;
-	enableContainer->translateUp1 = true;
+    enableContainer->translateUp1 = true;
 
-	leftItems.add(&spacer1);
-	leftItems.add(enableContainer.get());
-	leftItems.add(&spacer6);
-	addAndMakeVisible(&enableCurrent);
+    leftItems.add(&spacer1);
+    leftItems.add(enableContainer.get());
+    leftItems.add(&spacer6);
+    addAndMakeVisible(&enableCurrent);
 
-	haveEnablement = true;
+    haveEnablement = true;
 }
 
 void PanelControls::addMeshSelector(Component* selector) {
@@ -220,42 +220,42 @@ void PanelControls::addMeshSelector(Component* selector) {
 
 void PanelControls::addScratchSelector() {
     scratchSelector.setColour(ComboBox::outlineColourId, Colours::black);
-	scratchSelector.addListener(this);
-	scratchSelector.setWantsKeyboardFocus(false);
+    scratchSelector.addListener(this);
+    scratchSelector.setWantsKeyboardFocus(false);
 
-	scratchContainer = std::make_unique<DynamicSizeContainer>(&scratchSelector, 26, 26);
-	scratchListener = std::make_unique<MouseOverMessager>(repo, "Set scratch channel", &scratchSelector);
+    scratchContainer = std::make_unique<DynamicSizeContainer>(&scratchSelector, 26, 26);
+    scratchListener = std::make_unique<MouseOverMessager>(repo, "Set scratch channel", &scratchSelector);
 
-	scratchContainer->width = 26;
-	leftItems.add(scratchContainer.get());
-	leftItems.add(&spacer2);
-	leftItems.add(&scratchLabel);
+    scratchContainer->width = 26;
+    leftItems.add(scratchContainer.get());
+    leftItems.add(&spacer2);
+    leftItems.add(&scratchLabel);
 
-	addAndMakeVisible(&scratchSelector);
-	addAndMakeVisible(&scratchLabel);
+    addAndMakeVisible(&scratchSelector);
+    addAndMakeVisible(&scratchLabel);
 
-	scratchSelector.addListener(this);
+    scratchSelector.addListener(this);
 }
 
 void PanelControls::addLayerItems(LayerSelectionClient* client, bool includeMover, bool separate) {
     layerSelector = std::make_unique<LayerSelectorPanel>(repo, client);
     layerSelector->outline = true;
 
-	addAndMakeVisible(&addRemover);
-	addRightItem(&addRemover, true);
-	rightItems.add(&spacer8);
+    addAndMakeVisible(&addRemover);
+    addRightItem(&addRemover, true);
+    rightItems.add(&spacer8);
 
-	if(includeMover) {
+    if (includeMover) {
         addAndMakeVisible(&upDownMover);
         addRightItem(&upDownMover, true);
-		rightItems.add(&spacer6);
-	}
+        rightItems.add(&spacer6);
+    }
 
-	Array<IDynamicSizeComponent*>& arr = separate ? leftItems : rightItems;
-	arr.add(layerSelector.get());
-	arr.add(&spacer2);
+    Array<IDynamicSizeComponent*>& arr = separate ? leftItems : rightItems;
+    arr.add(layerSelector.get());
+    arr.add(&spacer2);
 
-	addAndMakeVisible(layerSelector.get());
+    addAndMakeVisible(layerSelector.get());
 }
 
 void PanelControls::addLeftItem(IDynamicSizeComponent* item, bool outline) {
@@ -275,19 +275,19 @@ void PanelControls::addDomainItems(RetractableCallout* domainCO) {
 
 void PanelControls::resetSelector() const {
     if (layerSelector != nullptr) {
-	    layerSelector->reset();
+        layerSelector->reset();
     }
 }
 
 void PanelControls::refreshSelector(bool update) const {
     if (layerSelector != nullptr) {
-	    layerSelector->refresh(update);
+        layerSelector->refresh(update);
     }
 }
 
 void PanelControls::moveLayer(bool up) const {
     if (layerSelector != nullptr) {
-	    layerSelector->moveCurrentLayer(up);
+        layerSelector->moveCurrentLayer(up);
     }
 }
 

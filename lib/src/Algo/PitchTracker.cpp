@@ -19,7 +19,7 @@ PitchTracker::PitchTracker() :
 }
 
 void PitchTracker::yin() {
-    if(sample == nullptr) {
+    if (sample == nullptr) {
         return;
     }
 
@@ -89,7 +89,7 @@ void PitchTracker::yin() {
 }
 
 float PitchTracker::refineFrames(PitchedSample* sample, float averagePeriod) {
-    if(sample->periods.empty()) {
+    if (sample->periods.empty()) {
         return 0;
     }
 
@@ -175,7 +175,7 @@ float PitchTracker::refineFrames(PitchedSample* sample, float averagePeriod) {
 }
 
 float PitchTracker::interpIndexQuadratic(const Buffer<float>& norms, int troughIndex, int minlag) {
-    if(troughIndex >= norms.size()) {
+    if (troughIndex >= norms.size()) {
         return float (troughIndex + minlag);
     }
 
@@ -187,7 +187,7 @@ float PitchTracker::interpIndexQuadratic(const Buffer<float>& norms, int troughI
 }
 
 float PitchTracker::interpValueQuadratic(const Buffer<float>& norms, int troughIndex) {
-    if(troughIndex >= norms.size() || norms.empty()) {
+    if (troughIndex >= norms.size() || norms.empty()) {
         return 0;
     }
 
@@ -224,7 +224,7 @@ int PitchTracker::getTrough(Buffer<float> norms, int minlag) {
         }
     }
 
-    if(troughIndex < 0) {
+    if (troughIndex < 0) {
         float minval;
         norms.getMin(minval, troughIndex);
 
@@ -288,7 +288,7 @@ void PitchTracker::fillFrequencyBins() {
             float currToAvgRatio = 1 / avgToCurrRatio;
             intRatio = float(int(currToAvgRatio + 0.12f));
 
-            if(fabsf(float(intRatio) - currToAvgRatio) < 0.06f && intRatio > 0) {
+            if (fabsf(float(intRatio) - currToAvgRatio) < 0.06f && intRatio > 0) {
                 frame.period /= intRatio;
             } else {
                 frame.period = baseAverage;
@@ -487,7 +487,7 @@ void PitchTracker::swipe() {
 
     erbFreqs.ramp(erbLow, deltaERBs);
 
-    for(int i = 0; i < numERBs; ++i) {
+    for (int i = 0; i < numERBs; ++i) {
         erbFreqs[i] = erbsToHertz(erbFreqs[i]);
     }
 
@@ -498,7 +498,7 @@ void PitchTracker::swipe() {
 
     createKernels(kernels, kernelMemory, kernelSizes, erbFreqs, pitchCandidates);
 
-    // for(auto& k : kernels) {
+    // for (auto& k : kernels) {
     //     DEBUG_ADD_TO_HEATMAP("kernels", k);
     // }
     // DEBUG_HEATMAP("kernels");
@@ -510,7 +510,7 @@ void PitchTracker::swipe() {
     ScopedAlloc<float> strengthMatrix(numCandidates * numTimes);
     vector<StrengthColumn> strengthColumns;
 
-    for(int i = 0; i < numTimes; ++i) {
+    for (int i = 0; i < numTimes; ++i) {
         StrengthColumn sc;
         sc.column = strengthMatrix.section(i * numCandidates, numCandidates);
         sc.time   = i * deltaTime;
@@ -546,7 +546,7 @@ void PitchTracker::swipe() {
         window.erbEnd      = jlimit<int>(0, numCandidates, roundToInt((2 + common) / deltaPitchLog2));
         window.erbSize     = window.erbEnd - window.erbStart;
 
-        if(window.erbSize == 0) {
+        if (window.erbSize == 0) {
             continue;
         }
 
@@ -579,7 +579,7 @@ void PitchTracker::swipe() {
             int startingSlice = totalSliceIndex;
 
             float prevTime = cumeTime;
-            while((cumeTime) * samplerate < signalPosEnd && totalSliceIndex < numTimes - 1) {
+            while ((cumeTime) * samplerate < signalPosEnd && totalSliceIndex < numTimes - 1) {
                 cumeTime += deltaTime;
                 ++timeSlicesThisWindow;
                 ++totalSliceIndex;
@@ -587,11 +587,11 @@ void PitchTracker::swipe() {
 
             window.offsetSamples += window.overlapSamples;
 
-            if(paddingBack >= window.size || (timeSlicesThisWindow == 0 && totalSliceIndex == numTimes)) {
+            if (paddingBack >= window.size || (timeSlicesThisWindow == 0 && totalSliceIndex == numTimes)) {
                 break;
             }
 
-            if(timeSlicesThisWindow == 0) {
+            if (timeSlicesThisWindow == 0) {
                 continue;
             }
 
@@ -608,7 +608,7 @@ void PitchTracker::swipe() {
                 int numToCopy = jmin(signal.size(), window.size - paddingFront);
                 signal.copyTo(paddedSignal.section(paddingFront, numToCopy));
 
-                if(signal.size() < window.size - paddingFront) {
+                if (signal.size() < window.size - paddingFront) {
                     paddedSignal.section(paddingFront + signal.size(), window.size - paddingFront - signal.size()).zero();
                 }
             } else if (paddingBack > 0) {
@@ -632,7 +632,7 @@ void PitchTracker::swipe() {
 
             int specIdx = 0;
 
-            for(int k = 0; k < numERBs; ++k) {
+            for (int k = 0; k < numERBs; ++k) {
                 float candFreq = erbFreqs[k];
 
                 while (specIdx < window.spectFreqs.size() && window.spectFreqs[specIdx] < candFreq) {
@@ -664,17 +664,17 @@ void PitchTracker::swipe() {
 
             // DEBUG_ADD_TO_HEATMAP(String::formatted("erb-%d", window.index), erbMagnitudes);
 
-            if(lastOffset > 0) {
+            if (lastOffset > 0) {
                 windowStrengths.copyTo(lastStrengths);
             }
 
-            // for(int c = 0; c < window.erbSize; ++c) {
-            for(int c = 0; c < numCandidates; ++c) {
+            // for (int c = 0; c < window.erbSize; ++c) {
+            for (int c = 0; c < numCandidates; ++c) {
                 // windowStrengths[c] = kernels[c + window.erbStart].dot(erbMagnitudes);
                 windowStrengths[c] = kernels[c].dot(erbMagnitudes);
             }
 
-            if(lastOffset == 0) {
+            if (lastOffset == 0) {
                 windowStrengths.copyTo(lastStrengths);
             }
 
@@ -694,19 +694,19 @@ void PitchTracker::swipe() {
 
                 weightedLoudness.zero();
 
-                if(portion < 1.f) {
+                if (portion < 1.f) {
                     weightedLoudness.addProduct(lastStrengths, 1 - portion);
                 }
 
-                if(portion > 0.f) {
+                if (portion > 0.f) {
                     weightedLoudness.addProduct(windowStrengths, portion);
                 }
 
-                // if(window.erbStart > 0) {
+                // if (window.erbStart > 0) {
                 //     weightedLoudness.section(0, window.erbStart).zero();
                 // }
                 // weightedLoudness.section(window.erbStart, window.erbSize).mul(window.lambda);
-                // if(window.erbEnd < numCandidates) {
+                // if (window.erbEnd < numCandidates) {
                 //     weightedLoudness.offset(window.erbEnd).zero();
                 // }
 
@@ -719,7 +719,7 @@ void PitchTracker::swipe() {
         // DEBUG_HEATMAP(String::formatted("strengths-%d", window.index));
     }
 
-    // for(auto& sc : strengthColumns) {
+    // for (auto& sc : strengthColumns) {
     //     DEBUG_ADD_TO_HEATMAP(String::formatted("strengths"), sc.column);
     // }
     // DEBUG_HEATMAP(String::formatted("strengths"));
@@ -735,7 +735,7 @@ void PitchTracker::swipe() {
         sc.column.getMax(maxValue, maxIndex);
 
         if (maxValue > strengthThresh) {
-            // if(i > 10 && i < 14) {
+            // if (i > 10 && i < 14) {
             //     DEBUG_VIEW(sc.column, "strengths");
             // }
 
@@ -792,7 +792,7 @@ void PitchTracker::swipe() {
 
     float startPitch = pitches[bestRegion.startIdx];
 
-    if(startPitch < 0) {
+    if (startPitch < 0) {
         startPitch = backupPitch;
     }
 
@@ -835,7 +835,7 @@ void PitchTracker::swipe() {
         frame.period = pitches[i] < 0 ? prevPeriod : samplerate / pitches[i];
         frame.sampleOffset = roundToInt(jmax(0.f, strengthColumns[i].time) * samplerate);
 
-        if(frame.sampleOffset == 0) {
+        if (frame.sampleOffset == 0) {
             continue;
         }
 
@@ -860,7 +860,7 @@ void PitchTracker::swipe() {
         }
     }
 
-    if(numGood == 0) {
+    if (numGood == 0) {
         averagePitch = backupPitch;
     } else {
         averagePitch /= float(numGood);
@@ -889,7 +889,7 @@ void PitchTracker::trackPitch() {
         float yinAtonicity = 0;
         vector<PitchFrame> yinFrames = sample->periods;
 
-        for(auto& yinFrame : yinFrames) {
+        for (auto& yinFrame : yinFrames) {
             yinAtonicity += yinFrame.atonal;
         }
 
@@ -901,13 +901,13 @@ void PitchTracker::trackPitch() {
 
             float swipeAtonicity = 0;
 
-            for(auto& swipeFrame : swipeFrames) {
+            for (auto& swipeFrame : swipeFrames) {
                 swipeAtonicity += swipeFrame.atonal;
             }
 
             swipeAtonicity /= float(swipeFrames.size());
 
-            if(yinAtonicity < swipeAtonicity) {
+            if (yinAtonicity < swipeAtonicity) {
                 sample->periods = yinFrames;
             }
         }

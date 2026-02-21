@@ -62,7 +62,7 @@ public:
     void setListenersForEditWatcher(EditWatcher* watcher);
 
     /* callbacks */
-	bool readXML(const XmlElement* element) override;
+    bool readXML(const XmlElement* element) override;
     void writeXML(XmlElement* element) const override;
 
     Component* getComponent(int which) override;

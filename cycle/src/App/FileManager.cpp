@@ -82,7 +82,7 @@ void FileManager::saveCurrentPreset() {
 void FileManager::openCurrentPreset() {
     progressMark
 
-    if(getSetting(DrawWave)) {
+    if (getSetting(DrawWave)) {
         getObj(SampleUtils).waveOverlayChanged(false);
     }
 
@@ -269,10 +269,10 @@ void FileManager::openDefaultPreset() {
         noPlug(getObj(CycleTour).enter());
     }
 
-//	if(getObj(Settings).getValidationState() == SerialChecker::betaVersion)
+//	if (getObj(Settings).getValidationState() == SerialChecker::betaVersion)
 //	{
 //		int64 smallTime = 0.001 * Time::currentTimeMillis();
-//		if(smallTime > getConstant(BetaExpiry))
+//		if (smallTime > getConstant(BetaExpiry))
 //		{
 //			showCritical("Beta expired, please update to the latest");
 //		}

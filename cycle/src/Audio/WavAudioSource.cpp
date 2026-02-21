@@ -179,7 +179,7 @@ void WavAudioSource::initResampler() {
 
     // int blockSize = getObj(AudioSourceRepo).getBufferSize();
     //
-    // if(wav != nullptr && wav->samplerate != 44100.0)
+    // if (wav != nullptr && wav->samplerate != 44100.0)
     // {
     //     int inRate, outRate;
     //     int srcSize, dstSize;
@@ -190,7 +190,7 @@ void WavAudioSource::initResampler() {
     //
     //     resamplingMem.ensureSize(2 * (srcSize + dstSize));
     //
-    //     for(int i = 0; i < 2; ++i)
+    //     for (int i = 0; i < 2; ++i)
     //     {
     //         Resampler& r = resampler[i];
     //         r.source 	 = resamplingMem.place(srcSize);
@@ -209,7 +209,7 @@ void WavAudioSource::initResampler() {
     //     int numSamples = buffer.getNumSamples();
     //     int maxSamples = 0;
     //
-    //     if(wav->samplerate != 44100.0)
+    //     if (wav->samplerate != 44100.0)
     //     {
     //         double ratio     = wav->samplerate / 44100.0;
     //
@@ -218,11 +218,11 @@ void WavAudioSource::initResampler() {
     //
     //         maxSamples = jmin(resampSize, wav->buffer.getNumSamples() - resampOffset);
     //
-    //         if(maxSamples > 0)
+    //         if (maxSamples > 0)
     //         {
     //             StereoBuffer out(buffer);
     //
-    //             for(int i = 0; i < wav->audio.numChannels; ++i)
+    //             for (int i = 0; i < wav->audio.numChannels; ++i)
     //             {
     //                 Buffer<float> toResample = wav->audio[i].section(resampOffset, maxSamples);
     //                 resampleAccum[i].write(resampler[i].resample(toResample));
@@ -230,12 +230,12 @@ void WavAudioSource::initResampler() {
     //                 Buffer<float> resampled = resampleAccum[i].readAtMost(numSamples);
     //                 resampled.copyTo(out[i]);
     //
-    //                 if(out[i].size() > resampled.size()) {
+    //                 if (out[i].size() > resampled.size()) {
     //                     out[i].offset(resampled.size()).zero();
     //                 }
     //             }
     //
-    //             if(out.numChannels > wav->audio.numChannels) {
+    //             if (out.numChannels > wav->audio.numChannels) {
     //                 out.left.copyTo(out.right);
     //             }
     //         }

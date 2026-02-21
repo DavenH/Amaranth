@@ -58,7 +58,7 @@ bool KeyboardInputHandler::keyPressed(const KeyPress &key, juce::Component* comp
     auto* itr3D 	 = dynamic_cast<Interactor3D*>(currentInteractor);
     auto& morphPanel = getObj(MorphPanel);
 
-    if(currentInteractor) {
+    if (currentInteractor) {
         currentInteractor->flag(DidMeshChange) = false;
         currentInteractor->flag(SimpleRepaint) = false;
     }
@@ -73,17 +73,17 @@ bool KeyboardInputHandler::keyPressed(const KeyPress &key, juce::Component* comp
 //#endif
     } else if (code == KeyPress::endKey) {
 
-        if(cmdDown) {
+        if (cmdDown) {
             morphPanel.triggerValue(Vertex::Blue, 1.f);
-        } else if(shftDown) {
+        } else if (shftDown) {
             morphPanel.triggerValue(Vertex::Red, 1.f);
         } else {
             position->setProgress(1.0f);
         }
     } else if (code == KeyPress::homeKey) {
-        if(cmdDown) {
+        if (cmdDown) {
             morphPanel.triggerValue(Vertex::Blue, 0.f);
-        } else if(shftDown) {
+        } else if (shftDown) {
             morphPanel.triggerValue(Vertex::Red, 0.f);
         } else {
             position->resetPlayback(true);
@@ -109,7 +109,7 @@ bool KeyboardInputHandler::keyPressed(const KeyPress &key, juce::Component* comp
 
             getObj(MorphPanel).triggerValue(dim, newPosition);
 
-            if(dim == getSetting(CurrentMorphAxis)) {
+            if (dim == getSetting(CurrentMorphAxis)) {
                 position->setProgress(newPosition);
             }
         }
@@ -182,7 +182,7 @@ bool KeyboardInputHandler::keyPressed(const KeyPress &key, juce::Component* comp
         } else {
             getObj(FileManager).saveCurrentPreset();
         }
-    } else if(c == 'q')	{
+    } else if (c == 'q')	{
       #ifdef JUCE_DEBUG
         String detailsString = getObj(Document).getPresetString();
         info(detailsString << "\n");

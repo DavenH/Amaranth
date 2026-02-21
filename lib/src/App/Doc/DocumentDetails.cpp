@@ -20,14 +20,15 @@ DocumentDetails::DocumentDetails() :
 }
 
 bool DocumentDetails::readXML(const XmlElement* element) {
-    if(element == nullptr) {
+    if (element == nullptr) {
         return false;
     }
 
     const XmlElement* detailsElem = element->getChildByName("PresetDetails");
 
-    if(detailsElem == nullptr)
+    if (detailsElem == nullptr) {
         detailsElem = element;
+}
 
     rating          = detailsElem->getDoubleAttribute("rating",         0);
     revision        = detailsElem->getIntAttribute   ("revision",       1);
@@ -36,15 +37,15 @@ bool DocumentDetails::readXML(const XmlElement* element) {
     pack            = detailsElem->getStringAttribute("pack",           "none");
     productVersion  = detailsElem->getDoubleAttribute("productVersion", productVersion);
 
-    if(pack.isEmpty()) {
+    if (pack.isEmpty()) {
         pack = "none";
     }
 
-    if(author.isEmpty()) {
+    if (author.isEmpty()) {
         author = "Anonymous";
     }
 
-    if(name.isEmpty()) {
+    if (name.isEmpty()) {
         name = "Untitled";
     }
 
@@ -56,7 +57,7 @@ bool DocumentDetails::readXML(const XmlElement* element) {
 
     tags.clear();
 
-    for(auto tagElem : detailsElem->getChildWithTagNameIterator("Tag")) {
+    for (auto tagElem : detailsElem->getChildWithTagNameIterator("Tag")) {
         if (tagElem == nullptr) {
             return false;
         }
@@ -77,8 +78,9 @@ void DocumentDetails::writeXML(XmlElement* detailsElem) const {
     detailsElem->setAttribute("pack",   pack.substring(0, 40));
     detailsElem->setAttribute("author", author.substring(0, 50));
 
-    if(! suppressRevision)
+    if (! suppressRevision) {
         detailsElem->setAttribute("revision", revision + 1);
+}
 
     if (!suppressDate) {
         detailsElem->setAttribute("modified", String(Time::currentTimeMillis()));
@@ -129,11 +131,11 @@ bool DocumentDetails::operator<(const DocumentDetails& details) const {
         case Size:      return sizeBytes        < details.getSizeBytes();
         case Version:   return productVersion   < details.getProductVersion();
         case Tag: {
-            if(tags.size() == 0 && details.tags.size() == 0) {
+            if (tags.size() == 0 && details.tags.size() == 0) {
                 return name.compareIgnoreCase(details.getName()) < 0;
             }
 
-            if(tags.size() > 0 && details.tags.size() > 0) {
+            if (tags.size() > 0 && details.tags.size() > 0) {
                 return tags[0].compareIgnoreCase(details.tags[0]) < 0;
             }
             return tags.size() > details.tags.size();

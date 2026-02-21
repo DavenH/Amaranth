@@ -16,7 +16,7 @@ CycDelay::CycDelay(SingletonRepo* repo) :
     ,	pendingSpinIters(1)
     ,	pendingWetBufferUpdate(false)
 {
-    for(long& i : readPosition) {
+    for (long& i : readPosition) {
         inputBuffer[i].resize(delaySize);
         i = 0;
     }
@@ -69,7 +69,7 @@ void CycDelay::processBuffer(AudioSampleBuffer& buffer) {
 
     jassert(! spinParams[0].empty());
 
-    if(spinParams[0].empty() || buffer.getNumSamples() == 0) {
+    if (spinParams[0].empty() || buffer.getNumSamples() == 0) {
         return;
     }
 
@@ -82,7 +82,7 @@ void CycDelay::processBuffer(AudioSampleBuffer& buffer) {
 
     jassert(modulo > 0);
 
-    if(modulo < 1) {
+    if (modulo < 1) {
         return;
     }
 
@@ -121,24 +121,24 @@ void CycDelay::processBuffer(AudioSampleBuffer& buffer) {
                 wetSum += params->pan * params->startingLevel * readSample;
 
               #ifdef JUCE_DEBUG
-//				if(wetSum < 1e-24f && wetSum > -1e-24f)
+//				if (wetSum < 1e-24f && wetSum > -1e-24f)
 //				{
 //					jassertfalse;
 //				}
               #endif
 
-//				if(i == 0)
+//				if (i == 0)
 //					std::cout << "idx:\t" << readPosition[i] << "\tbuffer pos\t" << bufferReadPos << "\tself pos\t" << selfReadPos << "\tdly input\t" << inputBuffer[i][bufferReadPos] <<
 //						"\tdly self\t" << params->buffer[selfReadPos] << "\tcurr self\t" << readSample << "\wetsum\t" << wetSum << "\n";
             }
 
-//			if(i == 0)
+//			if (i == 0)
 //				info("\n");
 
             sample = sample + wetLevel * wetSum + 1e-19f;
 
           #ifdef JUCE_DEBUG
-//			if(sample < 1e-24f && sample > -1e-24f)
+//			if (sample < 1e-24f && sample > -1e-24f)
 //			{
 //				jassertfalse;
 //			}
@@ -172,7 +172,7 @@ double CycDelay::calcDelayTime(double unitValue)
   #if PLUGIN_MODE
     AudioPlayHead::CurrentPositionInfo info = getObj(PluginProcessor).getCurrentPosition();
 
-    if(info.bpm > 0.0 && info.timeSigNumerator > 0)
+    if (info.bpm > 0.0 && info.timeSigNumerator > 0)
     {
         secondsPerBeat = 60.0 / info.bpm;
         beatsPerMeasure = info.timeSigNumerator;
@@ -195,7 +195,7 @@ bool CycDelay::doParamChange(int param, double value, bool doFurtherUpdate) {
             throw std::out_of_range("CycDelay::doParamChange");
     }
 
-    if(doFurtherUpdate && changed) {
+    if (doFurtherUpdate && changed) {
         pendingWetBufferUpdate = true;
     }
 
@@ -229,7 +229,7 @@ bool CycDelay::setSpinIters(double value) {
 
 //void CycDelay::setSampleRate(double value)
 //{
-//	if(sampleRate == value)
+//	if (sampleRate == value)
 //		return;
 //
 //	sampleRate = value;
@@ -294,7 +294,7 @@ void CycDelay::recalculateWetBuffers(bool print) {
         right.startingLevel		= startingLevel;
         Arithmetic::getPans(pan, left.pan, right.pan);
 
-        if(print) {
+        if (print) {
             info("i: " 			<< spinIdx 			 		<< "\n");
             info("pan: " 		<< pan 				 		<< "\n");
             info("level: " 		<< startingLevel 	 		<< "\n");
@@ -306,7 +306,7 @@ void CycDelay::recalculateWetBuffers(bool print) {
         }
     }
 
-    if(print) {
+    if (print) {
         info("\n" << "\n");
     }
 }

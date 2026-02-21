@@ -18,8 +18,8 @@ void VersionConsiliator::transform(XmlElement* element) {
 //		names[TubeModelLayer] 	= "TubeModel";
 //		names[OtherLayer] 		= "Other";
 
-		element->removeChildElement(meshesElement, false);
-	}
+        element->removeChildElement(meshesElement, false);
+    }
 }
 
 
@@ -27,48 +27,48 @@ void VersionConsiliator::transform(XmlElement* element) {
 
 XmlElement* timeDomainElem = element->getChildByName("TimeDomainProperties");
 
-	auto& meshLib = getObj(MeshLibrary);
-	int layerSize = meshLib.getLayerGroup(LayerGroups::GroupTime).size();
+    auto& meshLib = getObj(MeshLibrary);
+    int layerSize = meshLib.getLayerGroup(LayerGroups::GroupTime).size();
 
-	if (timeDomainElem) {
-		bool first = false;
+    if (timeDomainElem) {
+        bool first = false;
 
-		for(auto timePropsElem : timeDomainElem->getChildWithTagNameIterator("TimeProperties")) {
-			MeshLibrary::Properties props;
+        for (auto timePropsElem : timeDomainElem->getChildWithTagNameIterator("TimeProperties")) {
+            MeshLibrary::Properties props;
 
-			props.pan 			= timePropsElem->getDoubleAttribute("pan", 0.5);
-			props.fineTune 		= timePropsElem->getDoubleAttribute("fine", 0.5);
-			props.scratchChan 	= timePropsElem->getIntAttribute("scratchChannel", 0);
-			props.active 		= timePropsElem->getBoolAttribute("isEnabled", true);
+            props.pan 			= timePropsElem->getDoubleAttribute("pan", 0.5);
+            props.fineTune 		= timePropsElem->getDoubleAttribute("fine", 0.5);
+            props.scratchChan 	= timePropsElem->getIntAttribute("scratchChannel", 0);
+            props.active 		= timePropsElem->getBoolAttribute("isEnabled", true);
 
-			if(first) {
-				panelControls->enableCurrent.setHighlit(props.active);
-				first = false;
-			}
+            if (first) {
+                panelControls->enableCurrent.setHighlit(props.active);
+                first = false;
+            }
 //			props.pan.setValueDirect(		timePropsElem->getDoubleAttribute("pan", 	0.5));
 //			props.fineTune.setValueDirect(	timePropsElem->getDoubleAttribute("fine", 	0.5));
-		}
-	}
+        }
+    }
 
  */
 /*
-	<AllMeshes>
-	 	<TimeLayer TimeLayerSize=4>
+    <AllMeshes>
+         <TimeLayer TimeLayerSize=4>
 
-	 	</TimeLayer>
+         </TimeLayer>
 
-	 	<FreqLayer FreqLayerSize=4>
+         <FreqLayer FreqLayerSize=4>
 
-	 	</FreqLayer>
+         </FreqLayer>
 
-	 	<PhaseLayer PhaseLayerSize=4>
+         <PhaseLayer PhaseLayerSize=4>
 
-	 	</PhaseLayer>
-	 	...
-	 	<EnvLayer>
+         </PhaseLayer>
+         ...
+         <EnvLayer>
 
-	 	</EnvLayer>
-	</AllMeshes>
+         </EnvLayer>
+    </AllMeshes>
 
 
 
@@ -83,20 +83,20 @@ void VersionConsiliator::transform(XmlElement* element) {
             "Env", "Scratch", "WaveShaper", "TubeModel", "Other"
     };
 
-	// src
-	String envNames[] = {
-			"Volume", "Pitch", "Speed", "WavePitch"
-	};
+    // src
+    String envNames[] = {
+            "Volume", "Pitch", "Speed", "WavePitch"
+    };
 
-	// src
-	XmlElement* allMeshesElem = element->getChildByName("AllMeshes");	// 2
+    // src
+    XmlElement* allMeshesElem = element->getChildByName("AllMeshes");	// 2
 
-	// src
-	if(allMeshesElem == nullptr)
-		return;
+    // src
+    if (allMeshesElem == nullptr)
+        return;
 
-	// src
-	XmlElement* meshLibraryElem = new XmlElement("MeshLibrary");
+    // src
+    XmlElement* meshLibraryElem = new XmlElement("MeshLibrary");
 
     // src
     for (int i = 0; i < numElementsInArray(names); ++i) {
@@ -107,27 +107,27 @@ void VersionConsiliator::transform(XmlElement* element) {
         if (srcLayerElem == nullptr) {
             // add empty mesh of correct type to
             continue;
-		}
+        }
 
-		// src
-		int layerSize = srcLayerElem->getIntAttribute(layerName + "Size");
+        // src
+        int layerSize = srcLayerElem->getIntAttribute(layerName + "Size");
 
-		// dst
-		XmlElement* dstGroupElem = new XmlElement("Group");
+        // dst
+        XmlElement* dstGroupElem = new XmlElement("Group");
 
-		if(i == 4) // env
-			layerSize = jmin(layerSize, (int) 4);
+        if (i == 4) // env
+            layerSize = jmin(layerSize, (int) 4);
 
-		// dst
+        // dst
         dstGroupElem->setAttribute("mesh-type", (int) i);
 
         for (int j = 0; j < layerSize; ++j) {
             // dst
             XmlElement* dstLayerElem = new XmlElement("Layer");
 
-			String meshName;
+            String meshName;
 
-			// src
+            // src
             if (i == 4) {
                 String envName = j < numElementsInArray(envNames) ? envNames[j] : String::empty;
                 meshName = names[i] + envName + "Mesh";
@@ -135,17 +135,17 @@ void VersionConsiliator::transform(XmlElement* element) {
                 meshName = names[i] + "Mesh" + String(j);
             }
 
-			// src
-			XmlElement* currentMeshElem = srcLayerElem->getChildByName(meshName);
+            // src
+            XmlElement* currentMeshElem = srcLayerElem->getChildByName(meshName);
 
-			// can I really do this? Or do I need to deep copy?
-			// I suspect that these are not reference counted -
-			// so could result in double deletion.
-			dstLayerElem = currentMeshElem;
+            // can I really do this? Or do I need to deep copy?
+            // I suspect that these are not reference counted -
+            // so could result in double deletion.
+            dstLayerElem = currentMeshElem;
 
-			Mesh* mesh = createMesh(i);
-			mesh->readXML(currentMeshElem);
-			mesh->writeXML(dstLayerElem);
+            Mesh* mesh = createMesh(i);
+            mesh->readXML(currentMeshElem);
+            mesh->writeXML(dstLayerElem);
 
 //			layerElem->setAttribute("active", 		active);
 //			layerElem->setAttribute("fine-tune", 	fineTune);
@@ -155,15 +155,15 @@ void VersionConsiliator::transform(XmlElement* element) {
 //			layerElem->setAttribute("mode", 		mode);
 //			layerElem->setAttribute("scratch-chan", scratchChan);
 
-			// dst
-			dstGroupElem->addChildElement(dstLayerElem);
-		}
+            // dst
+            dstGroupElem->addChildElement(dstLayerElem);
+        }
 
-		meshLibraryElem->addChildElement(dstGroupElem);
-	}
+        meshLibraryElem->addChildElement(dstGroupElem);
+    }
 
-	element->replaceChildElement(allMeshesElem, meshLibraryElem);
-	return true;
+    element->replaceChildElement(allMeshesElem, meshLibraryElem);
+    return true;
 }
 
 
@@ -172,17 +172,17 @@ void read2() {
         XmlElement* layersElem = meshes->getChildByName(names[i] + "Layer");
         Array < Mesh * > &layer = layers.getReference(i);
 
-		int layerSize = layersElem->getIntAttribute(names[i] + "LayerSize");
+        int layerSize = layersElem->getIntAttribute(names[i] + "LayerSize");
 
-		if(types[i] == EnvLayer)
-			layerSize = jmin(layerSize, (int) numEnvelopesTotal);
+        if (types[i] == EnvLayer)
+            layerSize = jmin(layerSize, (int) numEnvelopesTotal);
 
-		layer.resize(layerSize);
+        layer.resize(layerSize);
 
-		for(int j = 0; j < layerSize; ++j)
-		{
-			Mesh* mesh = createMeshForType(types[i], j);
-			layer.set(j, mesh);
+        for (int j = 0; j < layerSize; ++j)
+        {
+            Mesh* mesh = createMeshForType(types[i], j);
+            layer.set(j, mesh);
 
 //			dout << "created mesh called " << mesh->getName() << "\n";
 
@@ -194,17 +194,17 @@ void read2() {
                     mesh->destroy();
                     delete mesh;
 
-					layer.set(j, nullptr);
-					continue;
-				}
-			}
-		}
-	}
+                    layer.set(j, nullptr);
+                    continue;
+                }
+            }
+        }
+    }
 
-	validateDeformers();
+    validateDeformers();
 
-	// want to do this after all settings have been read from xml
-	pushMeshesToRasterizers();
+    // want to do this after all settings have been read from xml
+    pushMeshesToRasterizers();
 }
 
 
@@ -222,15 +222,15 @@ void VersionConsiliator::fixScratchMeshes() {
         if (envLayerScratch->verts.size() > 0) {
             scratchMesh->destroy();
 
-			scratchMesh->verts 			= envLayerScratch->verts;
-			scratchMesh->lines 			= envLayerScratch->lines;
-			scratchMesh->sustainLines 	= envLayerScratch->sustainLines;
-			scratchMesh->loopLines 		= envLayerScratch->loopLines;
-			scratchMesh->active 		= envLayerScratch->active;
+            scratchMesh->verts 			= envLayerScratch->verts;
+            scratchMesh->lines 			= envLayerScratch->lines;
+            scratchMesh->sustainLines 	= envLayerScratch->sustainLines;
+            scratchMesh->loopLines 		= envLayerScratch->loopLines;
+            scratchMesh->active 		= envLayerScratch->active;
 
-			delete envLayerScratch;
-			layers.getReference(EnvLayer).set(ScratchMesh, nullptr);
-		}
-	}
+            delete envLayerScratch;
+            layers.getReference(EnvLayer).set(ScratchMesh, nullptr);
+        }
+    }
 }
 */

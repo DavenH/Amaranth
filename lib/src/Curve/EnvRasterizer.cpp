@@ -197,8 +197,9 @@ void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curv
         curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
         curves.emplace_back(intercepts[end], back1, back2);
 
-        if (state == Releasing || !loopable)
+        if (state == Releasing || !loopable) {
             curves.emplace_back(back1, back2, back3);
+}
     } else if (state == Looping && loopable) {
         vector<Intercept> loopIcpts;
 
@@ -695,8 +696,9 @@ void EnvRasterizer::evaluateLoopSustainIndices() {
             continue;
         }
 
-        if (loopLines.find(cube) != loopLines.end())
+        if (loopLines.find(cube) != loopLines.end()) {
             loopIndex = i;
+}
 
         if (sustLines.find(cube) != sustLines.end()) {
             sustainIndex = i;

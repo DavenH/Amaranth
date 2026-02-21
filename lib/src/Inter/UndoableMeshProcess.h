@@ -12,8 +12,9 @@ public:
             interactor(itr)
         ,   mesh(itr->getMesh()) {
         Mesh* mesh = itr->getMesh();
-        if(mesh == nullptr)
+        if (mesh == nullptr) {
             return;
+        }
 
         // these need to be copies because the vectors
         // will change, so no using references
@@ -41,9 +42,10 @@ public:
         getObj(EditWatcher).addAction(
                 new UpdateVertexVectorAction(interactor, &mesh->getVerts(), beforeVerts, afterVerts, doUpdateWithVertexAction), false);
 
-        if(haveLines)
+        if (haveLines) {
             getObj(EditWatcher).addAction(
                     new UpdateCubeVectorAction(interactor, &mesh->getCubes(), beforeCubes, afterLines), false);
+        }
     }
 
 private:
@@ -61,8 +63,9 @@ public:
             interactor(itr)
         ,   mesh(itr->getMesh()) {
         Mesh* mesh = itr->getMesh();
-        if(mesh == nullptr)
+        if (mesh == nullptr) {
             return;
+        }
 
         beforeVerts = mesh->getVerts();
     }

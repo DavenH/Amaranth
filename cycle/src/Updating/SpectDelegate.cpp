@@ -21,11 +21,11 @@ void SpectDelegate::performUpdate(UpdateType updateType) {
         case RestoreDetail: {
             bool isPostFFT = getSetting(ViewStage) >= ViewStages::PostSpectrum;
 
-            if(isMagnitudesMode || isPostFFT) {
+            if (isMagnitudesMode || isPostFFT) {
                 getObj(SpectRasterizer).performUpdate(updateType);
             }
 
-            if((! isMagnitudesMode || isPostFFT)) {
+            if ((! isMagnitudesMode || isPostFFT)) {
                 getObj(PhaseRasterizer).performUpdate(updateType);
             }
 

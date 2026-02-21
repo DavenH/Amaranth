@@ -27,7 +27,7 @@ float PathRepo::getScratchPosition(int scratchChannel, float defaultPos) {
     const ScratchContext& context = getScratchContext(scratchChannel);
     Buffer<float> buffer = context.gridBuffer;
 
-    if(buffer.empty() || scratchChannel == CommonEnums::Null) {
+    if (buffer.empty() || scratchChannel == CommonEnums::Null) {
         return defaultPos;
     }
 
@@ -35,7 +35,7 @@ float PathRepo::getScratchPosition(int scratchChannel, float defaultPos) {
     auto* scratchMesh = dynamic_cast<EnvelopeMesh*>(layer.mesh);
     MeshLibrary::Properties* props = layer.props;
 
-    if(scratchChannel >= (int) contexts.size() || scratchMesh == nullptr || props == nullptr) {
+    if (scratchChannel >= (int) contexts.size() || scratchMesh == nullptr || props == nullptr) {
         return defaultPos;
     }
 
@@ -52,17 +52,17 @@ void PathRepo::updateCache(int groupId, int layer) {
     int numGroups = meshes->getNumGroups();
 
     MeshLibrary::LayerGroup& group = meshes->getLayerGroup(groupId);
-    if(group.meshType == LayerGroups::GroupScratch) {
+    if (group.meshType == LayerGroups::GroupScratch) {
         return;
     }
 
     MeshLibrary::Layer& lyr = group.layers[layer];
 
-    if(lyr.props == nullptr || lyr.props->scratchChan == CommonEnums::Null) {
+    if (lyr.props == nullptr || lyr.props->scratchChan == CommonEnums::Null) {
         return;
     }
 
-    for(auto cube : lyr.mesh->getCubes()) {
+    for (auto cube : lyr.mesh->getCubes()) {
         // TODO what is the rest of this?
     }
 }
@@ -88,14 +88,14 @@ void PathRepo::documentHasLoaded() {
 }
 
 void PathRepo::cubesRemoved(const vector<VertCube*>& cubes) {
-    for(auto cube : cubes) {
+    for (auto cube : cubes) {
         caches[cube] = PathCache();
     }
 }
 
 void PathRepo::cubesAdded(const vector<VertCube*>& cubes) {
     // TODO
-    for(auto cube : cubes) {
+    for (auto cube : cubes) {
         caches[cube] = PathCache();
     }
 }

@@ -73,14 +73,14 @@ void Panel2D::drawCurvesAndSurfaces() {
         waveX = data.waveX;
         waveY = data.waveY;
 
-        if(waveX.size() < 2) {
+        if (waveX.size() < 2) {
             return;
         }
 
         int istart  = extendsX ? Arithmetic::binarySearch(xLimit.getStart(), waveX) : data.zeroIndex;
         int iend    = extendsX ? Arithmetic::binarySearch(xLimit.getEnd(), waveX) : jmin(waveX.size() - 1, data.oneIndex + 4);
 
-        if(istart > 4) {
+        if (istart > 4) {
             istart -= 4;
         }
 
@@ -161,7 +161,7 @@ void Panel2D::drawInterceptLines() {
         ScopedLock sl(rastData.lock);
         const vector<Intercept>& intercepts = rastData.intercepts;
 
-        if(intercepts.empty()) {
+        if (intercepts.empty()) {
             return;
         }
 
@@ -198,7 +198,7 @@ void Panel2D::highlightCurrentIntercept()
     int icptIdx = interactor->state.currentIcpt;
     const int freeIdx = interactor->state.currentFreeVert;
 
-    if(icptIdx == -1 && freeIdx == -1) {
+    if (icptIdx == -1 && freeIdx == -1) {
         return;
     }
 
@@ -208,7 +208,7 @@ void Panel2D::highlightCurrentIntercept()
         ScopedLock sl(interactor->getLock());
         vector<DepthVert>& verts = interactor->depthVerts;
 
-        if(! isPositiveAndBelow(freeIdx, (int) verts.size())) {
+        if (! isPositiveAndBelow(freeIdx, (int) verts.size())) {
             return;
         }
 
@@ -220,11 +220,11 @@ void Panel2D::highlightCurrentIntercept()
 
         const vector<Intercept>& icpts = data.intercepts;
 
-        if(! isPositiveAndBelow(icptIdx, (int) icpts.size())) {
+        if (! isPositiveAndBelow(icptIdx, (int) icpts.size())) {
             return;
         }
 
-        if(interactor->dims.numHidden() > 0 && icpts[icptIdx].cube == nullptr && icptIdx > 0) {
+        if (interactor->dims.numHidden() > 0 && icpts[icptIdx].cube == nullptr && icptIdx > 0) {
             --icptIdx;
         }
 
@@ -252,7 +252,7 @@ void Panel2D::prepareAlpha(const Buffer<float>& y, Buffer<float> alpha, float ba
 void Panel2D::drawDepthLinesAndVerts() {
     RasterizerData& data = interactor->getRasterizer()->getRastData();
 
-    if(data.colorPoints.empty()) {
+    if (data.colorPoints.empty()) {
         return;
     }
 

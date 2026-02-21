@@ -22,10 +22,11 @@ public:
 
     ~LockTracer() override {
 #ifdef TRACE_LOCKS
-        if(lockId >= 0)
+        if (lockId >= 0) {
             sout << "### " << threadId << "\t" << lockId << "\n";
-        else
+        } else {
             sout << "### " << threadId << "\t" << lockStr << "\n";
+        }
 #endif
     }
 

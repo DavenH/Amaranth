@@ -30,13 +30,13 @@ void ConvReverb::reset() {
 void ConvReverb::init(int headSize, int tailSize, const Buffer<float>& kernel) {
     reset();
 
-    if(headSize == 0 || tailSize == 0) {
+    if (headSize == 0 || tailSize == 0) {
         return;
     }
 
     headSize = jmax(1, headSize);
 
-    if(headSize > tailSize) {
+    if (headSize > tailSize) {
         std::swap(headSize, tailSize);
     }
 
@@ -44,7 +44,7 @@ void ConvReverb::init(int headSize, int tailSize, const Buffer<float>& kernel) {
     tailBlockSize = NumberUtils::nextPower2(tailSize);
 
     // test after setting vars
-    if(kernel.empty()) {
+    if (kernel.empty()) {
         return;
     }
 
@@ -58,7 +58,7 @@ void ConvReverb::init(int headSize, int tailSize, const Buffer<float>& kernel) {
     int headLenIR = jmin(kernel.size(), tailBlockSize);
     headConvolver.init(headBlockSize, kernel.withSize(headLenIR));
 
-    if(kernel.size() > tailBlockSize) {
+    if (kernel.size() > tailBlockSize) {
         int neckIrSize = jmin(kernel.size() - tailBlockSize, tailBlockSize);
         neckConvolver.init(tailBlockSize / 2, kernel.section(tailBlockSize, neckIrSize));
 
@@ -84,8 +84,9 @@ void ConvReverb::init(int headSize, int tailSize, const Buffer<float>& kernel) {
         tailInput   .nullify();
     }
 
-    if(!neckPrecalc.empty() || !tailPrecalc.empty())
+    if (!neckPrecalc.empty() || !tailPrecalc.empty()) {
         neckInput = memory.place(tailBlockSize);
+}
 
     tailOutput  .zero();
     tailPrecalc .zero();
@@ -106,7 +107,7 @@ void ConvReverb::process(
 
     headConvolver.process(input, output);
 
-    if(neckInput.empty()) {
+    if (neckInput.empty()) {
         return;
     }
     int samplesDone = 0;
@@ -119,11 +120,12 @@ void ConvReverb::process(
 
         {
             // sum first tail block
-            if(neckConvolver.active) {
+            if (neckConvolver.active) {
                 Buffer<float> neck = neckPrecalc.section(precalcPos, samplesToDo);
 
-                if(! neck.isProbablyEmpty())
+                if (! neck.isProbablyEmpty()) {
                     output.section(samplesDone, samplesToDo).add(neck);
+}
             }
 
             // sum 2nd - nth tail block
@@ -165,7 +167,7 @@ void ConvReverb::process(
             tailConvolver.process(tailInput, tailOutput);
         }
 
-        if(tailInputPos == tailBlockSize) {
+        if (tailInputPos == tailBlockSize) {
             tailInputPos = 0;
             precalcPos = 0;
         }
@@ -274,7 +276,7 @@ void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
         int samplesToProcess = jmin(input.size() - samplesProcessed, blockSize - inputBufferPos);
 
         input.section(samplesProcessed, samplesToProcess).copyTo(inputBuffer + inputBufferPos);
-        
+
         inputBuffer.copyTo(fftBuffer);
         fftBuffer.offset(blockSize).zero();
         fft.forward(fftBuffer);
@@ -293,7 +295,7 @@ void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
 
         sumBuffer.copyTo(convBuffer);
         convBuffer.addProduct(kernelBlocks[0], inputBlocks[currSegment]);
-        
+
         fft.inverse(convBuffer, fftBuffer);
         VecOps::add(
             fftBuffer + inputBufferPos,
@@ -354,24 +356,25 @@ void ConvReverb::basicConvolve(
         Buffer<float> output) {
     jassert(output.size() >= input.size() + response.size() - 1);
 
-    if(response.size() > input.size())
+    if (response.size() > input.size()) {
         std::swap(input, response);
+}
 
     output.zero();
-    for(int i = 0; i < response.size(); ++i) {
-        for(int j = 0; j <= i; ++j) {
+    for (int i = 0; i < response.size(); ++i) {
+        for (int j = 0; j <= i; ++j) {
             output[i] += response[j] * input[i - j];
         }
     }
 
-    for(int i = response.size(); i < input.size(); ++i) {
-        for(int j = 0; j < response.size(); ++j) {
+    for (int i = response.size(); i < input.size(); ++i) {
+        for (int j = 0; j < response.size(); ++j) {
             output[i] += response[j] * input[i - j];
         }
     }
 
-    for(int i = input.size(); i < input.size() + response.size() - 1; ++i){
-        for(int j = i - input.size() + 1; j < response.size(); ++j) {
+    for (int i = input.size(); i < input.size() + response.size() - 1; ++i){
+        for (int j = i - input.size() + 1; j < response.size(); ++j) {
             output[i] += response[j] * input[i - j];
         }
     }
@@ -405,7 +408,7 @@ void ConvReverb::test(int inputSize, int irSize,
     in.front() = 1;
     ir.ramp(0.01f, 0.1f).inv().sin();
 
-    if(refCheck) {
+    if (refCheck) {
         basicConvolve(in, ir, outCtrl);
     }
 
@@ -419,7 +422,7 @@ void ConvReverb::test(int inputSize, int irSize,
 
     timer.start();
 
-    while(processedOut < out.size()) {
+    while (processedOut < out.size()) {
         int maxToProcess    = jmax(1, seed % bufferSize); //jmax(1, random.nextInt(bufferSize - 1));
         int remainingOut    = out.size() - processedOut;
         int remainingIn     = in.size() - processedIn;
@@ -430,8 +433,9 @@ void ConvReverb::test(int inputSize, int irSize,
 
         Buffer<float> subBuffer = buffer.withSize(toProcessIn);
 
-        if(toProcessIn > 0)
+        if (toProcessIn > 0) {
             in.section(processedIn, toProcessIn).copyTo(subBuffer);
+}
 
         useTwoStage ?
                 process(subBuffer, out.section(processedOut, toProcessOut)) :
@@ -456,8 +460,9 @@ void ConvReverb::test(int inputSize, int irSize,
                 float absError = fabsf(a - b);
                 float relError = absError / b;
 
-                if(relError > relTolerance && absError > absTolerance)
+                if (relError > relTolerance && absError > absTolerance) {
                     ++diffSamples;
+}
             }
         }
     } else {

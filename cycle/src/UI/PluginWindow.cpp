@@ -27,73 +27,73 @@
 using namespace juce;
 
 PluginWindow::PluginWindow (PluginProcessor* proc) :
-		SingletonAccessor(proc->repo, "PluginWindow")
-	,	AudioProcessorEditor (proc)
-	,	doUpdateAfterResize(false)
-	,	haveFreedResources(false)
+        SingletonAccessor(proc->repo, "PluginWindow")
+    ,	AudioProcessorEditor (proc)
+    ,	doUpdateAfterResize(false)
+    ,	haveFreedResources(false)
 {
-	info("Created plugin window\n");
+    info("Created plugin window\n");
 
-	setLookAndFeel(&getObj(SynthLookAndFeel));
-	changeSizeAndSet(getSetting(WindowSize));
+    setLookAndFeel(&getObj(SynthLookAndFeel));
+    changeSizeAndSet(getSetting(WindowSize));
 
-	Ref mainPanel = &getObj(MainPanel);
+    Ref mainPanel = &getObj(MainPanel);
 
-	using namespace WindowSizes;
+    using namespace WindowSizes;
 
-	if(getSetting(WindowSize) != PlayerSize) {
-		addAndMakeVisible(mainPanel);
-		mainPanel->grabKeyboardFocus();
+    if (getSetting(WindowSize) != PlayerSize) {
+        addAndMakeVisible(mainPanel);
+        mainPanel->grabKeyboardFocus();
 
-		if(haveFreedResources) {
-			info("have freed UI, so activating contexts\n");
-			// TODO, this is an opengl thing -- not sure if still needed
-			// repo->activateContexts();
+        if (haveFreedResources) {
+            info("have freed UI, so activating contexts\n");
+            // TODO, this is an opengl thing -- not sure if still needed
+            // repo->activateContexts();
 
-		  #ifndef JUCE_MAC
-			doUpdate(SourceMorph);
-		  #endif
-		}
+          #ifndef JUCE_MAC
+            doUpdate(SourceMorph);
+          #endif
+        }
 
-	  #ifdef JUCE_MAC
-		mainPanel->triggerDelayedRepaint();
-	  #endif
-	}
+      #ifdef JUCE_MAC
+        mainPanel->triggerDelayedRepaint();
+      #endif
+    }
 }
 
 PluginWindow::~PluginWindow() {
-	freeUIResources();
-	resizer = nullptr;
+    freeUIResources();
+    resizer = nullptr;
 }
 
 void PluginWindow::paint(Graphics& g) {
 }
 
 void PluginWindow::resized() {
-	ScopedBooleanSwitcher sbs(getObj(MainPanel).getForceResizeFlag());
-	auto& mp = getObj(MainPanel);
+    ScopedBooleanSwitcher sbs(getObj(MainPanel).getForceResizeFlag());
+    auto& mp = getObj(MainPanel);
 
-	if(doUpdateAfterResize)	{
-		doUpdateAfterResize = false;
-		mp.setAttachNextResize(true);
-		addAndMakeVisible(&mp);
+    if (doUpdateAfterResize)	{
+        doUpdateAfterResize = false;
+        mp.setAttachNextResize(true);
+        addAndMakeVisible(&mp);
 
-	  #ifndef JUCE_MAC
-		doUpdate(SourceMorph);
-	  #endif
-	}
+      #ifndef JUCE_MAC
+        doUpdate(SourceMorph);
+      #endif
+    }
 
-	mp.triggerDelayedRepaint();
+    mp.triggerDelayedRepaint();
 
-	bool willResize = mp.getWidth() != getWidth() || mp.getHeight() != getHeight();
+    bool willResize = mp.getWidth() != getWidth() || mp.getHeight() != getHeight();
 
-	(getSetting(WindowSize) == AppSettings::PlayerSize) ?
-		getObj(PlayerComponent).setBounds(0, 0, getWidth(), getHeight()) :
-		mp.setBounds(0, 0, getWidth(), getHeight());
+    (getSetting(WindowSize) == AppSettings::PlayerSize) ?
+        getObj(PlayerComponent).setBounds(0, 0, getWidth(), getHeight()) :
+        mp.setBounds(0, 0, getWidth(), getHeight());
 
-	if(! willResize) {
-		mp.resized();
-	}
+    if (! willResize) {
+        mp.resized();
+    }
 }
 
 void PluginWindow::focusLost (FocusChangeType cause)
@@ -102,43 +102,43 @@ void PluginWindow::focusLost (FocusChangeType cause)
 
 void PluginWindow::focusGained (FocusChangeType cause)
 {
-	jassertfalse;
+    jassertfalse;
 }
 
 void PluginWindow::changeSizeAndSet(int sizeEnum)
 {
-	Ref mainPanel 				= &getObj(MainPanel);
-	Ref playerComponent 	= &getObj(PlayerComponent);
+    Ref mainPanel 				= &getObj(MainPanel);
+    Ref playerComponent 	= &getObj(PlayerComponent);
 
-	int oldSize = getSetting(WindowSize);
-	getSetting(WindowSize) = sizeEnum;
+    int oldSize = getSetting(WindowSize);
+    getSetting(WindowSize) = sizeEnum;
 
-	int width, height;
-	Dialogs::getSizeFromSetting(sizeEnum, width, height);
+    int width, height;
+    Dialogs::getSizeFromSetting(sizeEnum, width, height);
 
-	doUpdateAfterResize = false;
+    doUpdateAfterResize = false;
 
-	if(sizeEnum == AppSettings::PlayerSize) {
-		removeChildComponent(mainPanel);
-		playerComponent->setComponents(true);
-		playerComponent->resized();
+    if (sizeEnum == AppSettings::PlayerSize) {
+        removeChildComponent(mainPanel);
+        playerComponent->setComponents(true);
+        playerComponent->resized();
 
-		addAndMakeVisible(playerComponent);
-		freeUIResources();
-	}
+        addAndMakeVisible(playerComponent);
+        freeUIResources();
+    }
 
-	else if(oldSize == AppSettings::PlayerSize) {
-		playerComponent->setComponents(false);
-		removeChildComponent(playerComponent);
+    else if (oldSize == AppSettings::PlayerSize) {
+        playerComponent->setComponents(false);
+        removeChildComponent(playerComponent);
 
-		mainPanel->setPlayerComponents();
-		getObj(IConsole).addPullout();
-		getObj(IConsole).resized();
+        mainPanel->setPlayerComponents();
+        getObj(IConsole).addPullout();
+        getObj(IConsole).resized();
 
-		doUpdateAfterResize = true;
-	}
+        doUpdateAfterResize = true;
+    }
 
-	setSize(width, height);
+    setSize(width, height);
 }
 
 void PluginWindow::freeUIResources()

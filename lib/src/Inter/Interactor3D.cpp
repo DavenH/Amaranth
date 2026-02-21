@@ -94,8 +94,9 @@ bool Interactor3D::locateClosestElement() {
         SimpleIcpt& icpt = interceptPairs[closestIcptIdx];
         Vertex2 mousePos = state.currentMouse;
 
-        if(icpt.isWrapped)
+        if (icpt.isWrapped) {
             mousePos.y += 1.f;
+}
 
         state.currentCube       = icpt.parent;
         state.currentIcpt       = closestIcptIdx;
@@ -113,10 +114,10 @@ bool Interactor3D::locateClosestElement() {
 void Interactor3D::doExtraMouseDown(const MouseEvent& e) {
     vector<Vertex*>& selected = getSelected();
 
-    if(getSetting(Tool) == Tools::Axe)
+    if (getSetting(Tool) == Tools::Axe) {
         doAxe(e);
 
-    else if (actionIs(SelectingConnected)) {
+    } else if (actionIs(SelectingConnected)) {
         ScopedLock sl(vertexLock);
 
         selected.clear();
@@ -156,9 +157,9 @@ void Interactor3D::doDragPaintTool(const MouseEvent& e) {
         float my = state.currentMouse.y;
 
         vector<Vertex*>& verts = getMesh()->verts;
-        for(vector<Vertex*>::iterator it = verts.begin(); it != verts.end(); ++it)
+        for (vector<Vertex*>::iterator it = verts.begin(); it != verts.end(); ++it)
         {
-            if((dims.x == Vertex::Time &&
+            if ((dims.x == Vertex::Time &&
                     NumberUtils::within((**it)[Vertex::Red],  pos.red,  pos.redEnd()) &&
                     NumberUtils::within((**it)[Vertex::Blue], pos.blue, pos.blueEnd())) ||
                 (dims.x == Vertex::Red &&
@@ -173,7 +174,7 @@ void Interactor3D::doDragPaintTool(const MouseEvent& e) {
 
                 dist = (x - mx) * (x - mx) + (y - my) * (y - my);
 
-                if(dist < radiusSqr)
+                if (dist < radiusSqr)
                 {
                     float weight = dist / radiusSqr;
                     (**it)[dims.x] += weight * weight * (mx - state.lastMouse.y);
@@ -259,7 +260,7 @@ void Interactor3D::beginAction(int action)
     }
     else if (action == Actions::Align)
     {
-        if(selected.size() < 2)
+        if (selected.size() < 2)
             message = String("Must select at least 2 vertices to align");
         else
         {
@@ -267,14 +268,14 @@ void Interactor3D::beginAction(int action)
             updateSelectionFrames();
             Vertex2 pivot = state.getClosestPivot();
 
-            if(ModifierKeys::getCurrentModifiers().isShiftDown())
+            if (ModifierKeys::getCurrentModifiers().isShiftDown())
             {
-                for(vector<Vertex*>::iterator it = selected.begin(); it != selected.end(); ++it)
+                for (vector<Vertex*>::iterator it = selected.begin(); it != selected.end(); ++it)
                     (**it)[dims.y] = pivot.y;
             }
             else
             {
-                for(vector<Vertex*>::iterator it = selected.begin(); it != selected.end(); ++it)
+                for (vector<Vertex*>::iterator it = selected.begin(); it != selected.end(); ++it)
                     (**it)[dims.x] = pivot.x;
             }
 
@@ -286,7 +287,7 @@ void Interactor3D::beginAction(int action)
         }
     }
 
-    if(message != String())
+    if (message != String())
         showCritical(message);
 }
 */
@@ -297,21 +298,21 @@ void Interactor3D::endAction(int action)
     PanelState::ActionState& actionState = state.actionState;
     vector<Vertex*>& verts = getMesh()->verts;
 
-    if(action == Actions::Cut)
+    if (action == Actions::Cut)
     {
         actionState = PanelState::Cutting;
 
         UndoableMeshProcess sliceProcess(this);
         sliceLines();
     }
-    else if(action == Actions::Rotate)
+    else if (action == Actions::Rotate)
     {
         actionState = PanelState::Rotating;
 
         vector<Vertex> after;
-        for(vector<Vertex*>::iterator it = verts.begin(); it != verts.end(); ++it)
+        for (vector<Vertex*>::iterator it = verts.begin(); it != verts.end(); ++it)
         {
-            if((**it)[dims.x] < 0)
+            if ((**it)[dims.x] < 0)
                 (**it)[dims.x] = 0;
             after.push_back(**it);
         }
@@ -319,22 +320,22 @@ void Interactor3D::endAction(int action)
         TransformVerticesAction* action = new TransformVerticesAction(this, &verts, state.positions, after);
         getObj(GlobalOperations).performAction(action);
     }
-    else if(action == Actions::Stretch)
+    else if (action == Actions::Stretch)
     {
         actionState = PanelState::Stretching;
 
         vector<Vertex> after;
 
-        for(vector<Vertex*>::iterator it = verts.begin(); it != verts.end(); ++it)
+        for (vector<Vertex*>::iterator it = verts.begin(); it != verts.end(); ++it)
             after.push_back(**it);
 
         TransformVerticesAction* action = new TransformVerticesAction(this, &verts, state.positions, after);
         getObj(GlobalOperations).performAction(action);
     }
-    else if(action == Actions::Copy)
+    else if (action == Actions::Copy)
         actionState = PanelState::Copying;
 
-    else if(action == Actions::Extrude)
+    else if (action == Actions::Extrude)
         actionState = PanelState::Extruding;
 }
 */
@@ -348,20 +349,22 @@ void Interactor3D::mergeVertices(
     Mesh* mesh = getMesh();
     vector<Vertex*>& verts = mesh->getVerts();
 
-    if(! firstSelected || ! secondSelected) return;
-    if(firstSelected == secondSelected)     return;
+    if (! firstSelected || ! secondSelected) { return;
+}
+    if (firstSelected == secondSelected) {     return;
+}
 
     int numOwnersA = firstSelected->getNumOwners();
     int numOwnersB = secondSelected->getNumOwners();
 
-    if(numOwnersA == 0 && numOwnersB == 0) {
+    if (numOwnersA == 0 && numOwnersB == 0) {
         Vertex* toRemove = mergeAction == MergeAtFirst ? secondSelected : firstSelected;
 
         removeFromVector(verts, toRemove);
     }
 
     // one of the verts is connected to a linecube
-    else if((numOwnersA == 1 && numOwnersB == 0) || (numOwnersA == 0 && numOwnersB == 1)) {
+    else if ((numOwnersA == 1 && numOwnersB == 0) || (numOwnersA == 0 && numOwnersB == 1)) {
         mergeVerticesOneOwner(firstSelected, secondSelected, mergeAction);
     } else if (numOwnersA == 1 && numOwnersB == 1) {
         mergeVerticesBothOneOwner(firstSelected, secondSelected, mergeAction);
@@ -390,7 +393,7 @@ void Interactor3D::mergeVerticesManyOwners(Vertex* firstSelected, Vertex* second
         // TODO: remove verts from face
     }
 /*
-    if(mergeAction == MergeAtFirst || mergeAction == MergeAtSecond)
+    if (mergeAction == MergeAtFirst || mergeAction == MergeAtSecond)
     {
         Array<Vertex*>& secondVector = mergeAction == MergeAtFirst ? connectedB : connectedA;
 
@@ -438,8 +441,8 @@ void Interactor3D::mergeVerticesBothOneOwner(
     Mesh* mesh = getMesh();
 
     // these two share a linecube
-    if(ownsFirst == ownsSecnd) {
-        for(auto& lineVert : ownsFirst->lineVerts) {
+    if (ownsFirst == ownsSecnd) {
+        for (auto& lineVert : ownsFirst->lineVerts) {
             mesh->removeVert(lineVert);
         }
 
@@ -457,7 +460,7 @@ void Interactor3D::mergeVerticesBothOneOwner(
         bool pole = ownsFirst->poleOf(dims.x, firstSelected);
         ownsFirst->setFace(faceB, dims.x, pole);
 
-        for(int i = 0; i < faceA.size(); ++i) {
+        for (int i = 0; i < faceA.size(); ++i) {
             mesh->removeVert(faceA[i]);
         }
     }
@@ -469,7 +472,7 @@ void Interactor3D::moveVertsAndTest(const Array<Vertex*>& arr, float diff) {
     }
 
     collisionDetector.setCurrentSelection(getMesh(), arr);
-    if(! collisionDetector.validate()) {
+    if (! collisionDetector.validate()) {
         for (auto it : arr) {
             it->values[dims.x] -= diff;
         }
@@ -488,7 +491,7 @@ void Interactor3D::mergeVerticesOneOwner(
     float diffBA    = secondSelected->values[dims.x] - firstSelected->values[dims.x];
     VertCube* cube  = hasOneOwner->owners.getFirst();
 
-    if(mergeAction == MergeAtFirst) {
+    if (mergeAction == MergeAtFirst) {
         // move b over to a's position
         if (hasOneOwner == secondSelected) {
             VertCube::Face face = cube->getFace(dims.x, hasOneOwner);
@@ -499,7 +502,7 @@ void Interactor3D::mergeVerticesOneOwner(
 
         if (mergeAction == MergeAtCentre) {
             diff = diffBA * 0.5f;
-        } else if(hasOneOwner != firstSelected) {
+        } else if (hasOneOwner != firstSelected) {
             diff = -diffBA;
         }
 
@@ -533,7 +536,7 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
 
         Vertex* poleVerts[] = { a, b };
 
-        for(int p = 0; p < 2; ++p) {
+        for (int p = 0; p < 2; ++p) {
             VertCube::Face face = addedCube->getFace(dims.x, p > 0);
 
             for (int i = 0; i < face.size(); ++i) {
@@ -542,8 +545,9 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
             }
         }
 
-        for(auto lineVert : addedCube->lineVerts)
+        for (auto lineVert : addedCube->lineVerts) {
             vertsToDeleteOnFailure.push_back(lineVert);
+}
 
         vertsToRemoveOnSuccess.push_back(a);
         vertsToRemoveOnSuccess.push_back(b);
@@ -555,16 +559,16 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
         Vertex* connectedVert = a->unattached() ? b : a;
         VertCube* cube        = nullptr;
 
-        for(auto owner : connectedVert->owners) {
+        for (auto owner : connectedVert->owners) {
             int index = owner->indexOf(connectedVert);
 
-            if(index != CommonEnums::Null) {
+            if (index != CommonEnums::Null) {
                 cube = owner;
             }
         }
 
         jassert(cube != nullptr);
-        if(cube == nullptr) {
+        if (cube == nullptr) {
             return false;
         }
 
@@ -581,7 +585,7 @@ bool Interactor3D::connectVertices(Vertex* a, Vertex* b) {
         Vertex diffValues = *freeVert - *connectedVert;
         VertCube::Face newFace(dims.x);
 
-        for(int i = 0; i < cnxdFace.size(); ++i) {
+        for (int i = 0; i < cnxdFace.size(); ++i) {
             auto* vert = new Vertex(*cnxdFace[i] + diffValues);
 
             mesh->addVertex(vert);
@@ -657,7 +661,7 @@ bool Interactor3D::connectSelected() {
     flag(DidMeshChange) = succeeded;
 
     Interactor* opposite = getOppositeInteractor();
-    if(opposite) {
+    if (opposite) {
         opposite->performUpdate(Update);
     }
 
@@ -670,7 +674,7 @@ void Interactor3D::copyVertices() {
     set<int> copiedIndices;
     int hash;
 
-    for(vector<Vertex*>::iterator it = selected.begin(); it != selected.end(); ++it) {
+    for (vector<Vertex*>::iterator it = selected.begin(); it != selected.end(); ++it) {
         Vertex* copy = new Vertex();
         *copy = **it;
 
@@ -679,14 +683,14 @@ void Interactor3D::copyVertices() {
     }
 
 //  vector<VertCube*>& lines = getLines();
-    for(int i = 0; i < (int) selected.size(); ++i) {
+    for (int i = 0; i < (int) selected.size(); ++i) {
         VertCube* lines[] = { selected[i]->ownerA, selected[i]->ownerB };
 
-        for(int k = 0; k < 2; k++) {
-            for(int j = 0; j < selected.size(); ++j) {
+        for (int k = 0; k < 2; k++) {
+            for (int j = 0; j < selected.size(); ++j) {
                 hash = 1000000 * jmax(i, j) + jmin(i, j);
 
-                if(i != j && line->owns(selected[j]) && copiedIndices.find(hash) == copiedIndices.end()) {
+                if (i != j && line->owns(selected[j]) && copiedIndices.find(hash) == copiedIndices.end()) {
                     copiedIndices.insert(hash);
                     (new VertCube(copiedVerts[i], copiedVerts[j], getMesh()));
                 }
@@ -710,7 +714,7 @@ void Interactor3D::extrudeVertices() {
     // connectVertices() will clear selected
     vector<Vertex*> selectedCopy = selected;
 
-    if(selectedCopy.empty()) {
+    if (selectedCopy.empty()) {
         return;
     }
 
@@ -728,7 +732,7 @@ void Interactor3D::extrudeVertices() {
 
         bool succeeded = connectVertices(vert, fv);
 
-        if(succeeded) {
+        if (succeeded) {
             toSelect.push_back(fv);
         }
     }
@@ -754,16 +758,18 @@ void Interactor3D::sliceLines(const Vertex2& start, const Vertex2& end) {
     MorphPosition pos = getOffsetPosition(true);
 
     for (auto* cube : mesh->getCubes()) {
-        if(! cube->intersectsMorphRect(dims.x, reduceData, pos))
+        if (! cube->intersectsMorphRect(dims.x, reduceData, pos)) {
             continue;
+}
 
         cube->getInterceptsFast(dims.x, reduceData, pos);
 
         SurfaceLine line(&reduceData.v0, &reduceData.v1, dims.x);
         Vertex2 point = line.getCrossPoint(start, end, dims.x, dims.y);
 
-        if(point == Vertex2(-1, -1))
+        if (point == Vertex2(-1, -1)) {
             continue;
+}
 
         float xMax = reduceData.v0.values[dims.x];
         float xMin = reduceData.v1.values[dims.x];
@@ -840,8 +846,8 @@ void Interactor3D::removeDuplicateVerts(
     EditWatcher* editWatcher = &getObj(EditWatcher);
     Mesh* mesh = getMesh();
 
-    for(auto v1 : affectedVerts) {
-        for(auto v2 : affectedVerts) {
+    for (auto v1 : affectedVerts) {
+        for (auto v2 : affectedVerts) {
             if (v1 == v2) {
                 continue;
             }
@@ -900,8 +906,9 @@ void Interactor3D::glueCubes() {
                 VertCube::Face face2 = (cube)->getFace(dims.x, VertCube::HighPole);
 
                 // dedupe step will remove unneeded verts
-                for(int i = 0; i < face1.size(); ++i)
+                for (int i = 0; i < face1.size(); ++i) {
                     *face1[i] = *face2[i];
+}
 
                 if (VertCube* behind = cube->getAdjacentCube(dims.x, VertCube::LowPole)) {
                     VertCube::Face lowFace = behind->getFace(dims.x, VertCube::HighPole);
@@ -926,13 +933,13 @@ void Interactor3D::commitPath(const MouseEvent& e) {
 
     Mesh* mesh = getMesh();
 
-    if(actionIs(PaintingEdit)) {
+    if (actionIs(PaintingEdit)) {
         doCommitPencilEditPath();
     }
 
-    else if(actionIs(PaintingCreate))
+    else if (actionIs(PaintingCreate))
     {
-        if(pencilPath.empty()) {
+        if (pencilPath.empty()) {
             return;
         }
 
@@ -959,7 +966,7 @@ void Interactor3D::commitPath(const MouseEvent& e) {
                 mesh->addVertex(vert);
             }
 
-            for(int i = 0; i < (int) addedVerts.size() - 1; ++i) {
+            for (int i = 0; i < (int) addedVerts.size() - 1; ++i) {
                 connectVertices(addedVerts[i], addedVerts[i + 1]);
             }
         }
@@ -969,7 +976,7 @@ void Interactor3D::commitPath(const MouseEvent& e) {
 }
 
 VertCube* Interactor3D::getLineContaining(Vertex* a, Vertex* b) {
-    if(a == b) {
+    if (a == b) {
         return nullptr;
     }
 
@@ -1029,7 +1036,7 @@ void Interactor3D::doAxe(const MouseEvent& e) {
     Vertex2 start   = state.currentMouse + Vertex2(0, realValue(PencilRadius));
     Vertex2 end     = state.currentMouse - Vertex2(0, realValue(PencilRadius));
 
-    if(! getMesh()) {
+    if (! getMesh()) {
         return;
     }
 
@@ -1090,14 +1097,14 @@ void Interactor3D::updateInterceptsWithMesh(Mesh* mesh) {
 
     bool wrapsVerts = getRasterizer()->wrapsVertices();
 
-    if(mesh == nullptr) {
+    if (mesh == nullptr) {
         return;
     }
 
     for (auto& lit : mesh->getCubes()) {
         lit->getInterceptsFast(dims.x, reduceData, pos);
 
-        if(! reduceData.lineOverlaps) {
+        if (! reduceData.lineOverlaps) {
             continue;
         }
 

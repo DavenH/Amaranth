@@ -7,13 +7,13 @@
 #define doUpdate(X) 	getObj(Updater).update(UpdateSources::X)
 
 #ifdef TRACE_LOCKS
-	 #define lockTrace(X) LockTracer JUCE_JOIN_MACRO(trace, __LINE__) (repo, X)
+     #define lockTrace(X) LockTracer JUCE_JOIN_MACRO(trace, __LINE__) (repo, X)
 #else
-	 #define lockTrace(X)
+     #define lockTrace(X)
 #endif
 
-#define doOnce(X) { static int times = 0; if(times++ < 1) { X } }
-#define do10X(X) { static int times = 0; if(times++ < 10) { X } }
+#define doOnce(X) { static int times = 0; if (times++ < 1) { X } }
+#define do10X(X) { static int times = 0; if (times++ < 10) { X } }
 
 #if PLUGIN_MODE
   #define onlyPlug(X) X

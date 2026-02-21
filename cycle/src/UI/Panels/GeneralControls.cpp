@@ -26,7 +26,7 @@
 #include "../CycleGraphicsUtils.h"
 
 
-GeneralControls::GeneralControls(SingletonRepo* repo) : 
+GeneralControls::GeneralControls(SingletonRepo* repo) :
         SingletonAccessor(repo, "GeneralControls")
 
     ,	linkYellow(	1, 1, this, repo, "Move the ends of lines in unison", "t, 7")
@@ -144,13 +144,13 @@ void GeneralControls::resized() {
     vector<int> xPositions;
 
     int rawWidth = 0;
-    for(auto callout : topCallouts)	{
+    for (auto callout : topCallouts)	{
         rawWidth += callout->getExpandedSize();
     }
 
     float spacer = (getWidth() - rawWidth) / float(topCallouts.size() + 1);
 
-    if(spacer < padding) {
+    if (spacer < padding) {
         spacer = padding;
     }
 

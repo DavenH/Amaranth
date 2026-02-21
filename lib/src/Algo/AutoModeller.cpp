@@ -38,7 +38,7 @@ void AutoModeller::amplifyCloseVerts() {
 float AutoModeller::performFitness(int curveIdx, const Intercept& icpt,
                                    int sampleStart, int sampleSize,
                                    float invLength, float left, bool doUpdate) {
-    if(doUpdate) {
+    if (doUpdate) {
         rasterizer.updateCurve(curveIdx, icpt);
     }
 
@@ -52,7 +52,7 @@ float AutoModeller::performFitness(int curveIdx, const Intercept& icpt,
 }
 
 void AutoModeller::preparePoints() {
-    if(srcSamples.empty()) {
+    if (srcSamples.empty()) {
         return;
     }
 
@@ -73,20 +73,20 @@ void AutoModeller::preparePoints() {
     if (useInflections) {
         vector<int> inflections = PeakCounter::findInflections(filtered);
 
-        if(inflections.empty()) {
+        if (inflections.empty()) {
             return;
         }
 
         points.clear();
 
-        for(int inflection : inflections) {
+        for (int inflection : inflections) {
             points.emplace_back(ramp[inflection], filtered[inflection]);
         }
 
         points = reducePath(points, reductionLevel);
     } else {
         vector<Intercept> spoints;
-        for(int i = 0; i < filtered.size(); ++i) {
+        for (int i = 0; i < filtered.size(); ++i) {
             spoints.emplace_back(ramp[i], srcSamples[i]);
         }
 
@@ -106,7 +106,7 @@ void AutoModeller::preparePoints() {
 }
 
 vector<Intercept> AutoModeller::modelToPath(vector<Vertex2>& path, float reduction, bool useInflections) {
-    if(path.size() < 2)
+    if (path.size() < 2)
         return {};
 
     srcSamples.resize(1024);
@@ -124,7 +124,7 @@ vector<Intercept> AutoModeller::modelToPath(vector<Vertex2>& path, float reducti
     std::sort(path.begin(), path.end());
 
     float invSize = 1 / float(srcSamples.size() - 1);
-    for(int i = 0; i < srcSamples.size(); ++i) {
+    for (int i = 0; i < srcSamples.size(); ++i) {
         float x = leftSamplingOffset + span * i * invSize;
         srcSamples[i] = Resampling::at(x, path, currentIndex);
     }
@@ -140,7 +140,7 @@ void AutoModeller::modelToInteractor(
         bool isCyclic,
         float leftOffset,
         float reduction) {
-    if(buffer.empty()) {
+    if (buffer.empty()) {
         return;
     }
 
@@ -201,8 +201,8 @@ void AutoModeller::removeUselessPoints() {
     vector<Intercept> relevantPoints;
     relevantPoints.push_back(points.front());
 
-    for(int i = 0; i < score.size(); ++i) {
-        if(score[i] < reductionLevel) {
+    for (int i = 0; i < score.size(); ++i) {
+        if (score[i] < reductionLevel) {
             relevantPoints.push_back(points[i + 1]);
         }
     }
@@ -218,7 +218,7 @@ void AutoModeller::fit() {
     static const float variaX       = 0.15f;
     static const float variaShrp    = 0.5f;
 
-    for(int p = 1; p < (int) points.size() - 1; ++p) {
+    for (int p = 1; p < (int) points.size() - 1; ++p) {
         const Intercept& prev   = points[p - 1];
         Intercept& icpt         = points[p + 0];
         const Intercept& next   = points[p + 1];
@@ -267,7 +267,7 @@ void AutoModeller::fit() {
                 icpt.x          = jlimit(left, right, best.x + (2 * random.nextFloat() - 1) * variationX * deltaX);
                 fitness         = performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
 
-                if(fitness < minFitness) {
+                if (fitness < minFitness) {
                     best.x      = icpt.x;
                     minFitness  = fitness;
                 } else {
@@ -281,7 +281,7 @@ void AutoModeller::fit() {
                 icpt.shp        = jlimit(0.f, 1.f, best.shp + (2 * random.nextFloat() - 1) * varSharp);
                 fitness         = performFitness(curveIdx, icpt, sampleStart, sampleSize, invLength, sampleLeft);
 
-                if(fitness < minFitness) {
+                if (fitness < minFitness) {
                     best.shp    = icpt.shp;
                     minFitness  = fitness;
                 } else {

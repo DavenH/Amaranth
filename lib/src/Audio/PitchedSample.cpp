@@ -56,7 +56,7 @@ bool PitchedSample::readXML(const XmlElement* sampleElem) {
 
     mesh->readXML(sampleElem);
 
-    if(load(file.getFullPathName()) < 0) {
+    if (load(file.getFullPathName()) < 0) {
         return false;
     }
 
@@ -71,7 +71,7 @@ PitchedSample::~PitchedSample() {
 void PitchedSample::createDefaultPeriods() {
     float period = 1024;
 
-    if(fundNote > 10) {
+    if (fundNote > 10) {
         period = samplerate / NumberUtils::noteToFrequency(fundNote);
     }
 
@@ -137,7 +137,7 @@ void PitchedSample::createPeriodsFromEnv(MeshRasterizer* rast) {
     jassert(fundNote > 0);
     progressMark
 
-    if(fundNote < 0) {
+    if (fundNote < 0) {
         return;
     }
 
@@ -149,7 +149,7 @@ void PitchedSample::createPeriodsFromEnv(MeshRasterizer* rast) {
     rast->calcCrossPoints();
     rast->makeCopy();
 
-    if(rast->isSampleable())
+    if (rast->isSampleable())
     {
         periods.clear();
 
@@ -194,8 +194,9 @@ void PitchedSample::shiftOctave(bool up) {
         throw std::runtime_error("Desired midi note is out of range.");
     }
 
-    for (auto& period : periods)
+    for (auto& period : periods) {
         period.period *= (up ? 0.5f : 2.f);
+    }
 }
 
 MorphPosition PitchedSample::getAveragePosition() const {
@@ -229,7 +230,7 @@ float PitchedSample::getAveragePeriod() {
     }
 
     if (periods.empty()) {
-        if(fundNote > 10) {
+        if (fundNote > 10) {
             return samplerate / NumberUtils::noteToFrequency(fundNote);
         }
     } else {
@@ -242,7 +243,7 @@ float PitchedSample::getAveragePeriod() {
 int PitchedSample::load(const String& filename) {
     File audioFile(File::getCurrentWorkingDirectory().getChildFile(filename).getFullPathName());
 
-    if(! audioFile.existsAsFile()) {
+    if (! audioFile.existsAsFile()) {
         return -3;
     }
 

@@ -36,8 +36,9 @@ public:
     void setValidator(IValidator* validator)    { this->validator = validator;  }
 
     static bool readHeader(InputStream* stream, DocumentDetails& deets, int magicValue) {
-        if (stream == nullptr)
+        if (stream == nullptr) {
             return false;
+}
 
         int code = stream->readInt();
 
@@ -52,8 +53,9 @@ public:
             jassert(deetsDoc.getLastParseError().isEmpty());
             jassert(deetsElem != nullptr);
 
-            if(deetsElem == nullptr)
+            if (deetsElem == nullptr) {
                 return false;
+}
 
             stream->setPosition(headerSizeBytes);
 
@@ -72,7 +74,7 @@ public:
         const String& filename = updatedDetails.getFilename();
 
         File file(filename);
-        if(! file.existsAsFile()) {
+        if (! file.existsAsFile()) {
             jassertfalse;
             return false;
         }
@@ -80,8 +82,9 @@ public:
         std::unique_ptr<InputStream> in(file.createInputStream());
 
         int firstByte = in->readInt();
-        if(firstByte != magicValue)
+        if (firstByte != magicValue) {
             return false;
+}
 
         ScopedValueSetter revisionSuppressor(updatedDetails.getSuppressRevFlag(), ! preserveRevision, false);
         ScopedValueSetter dateSuppressor(updatedDetails.getSuppressDateFlag(),  ! preserveDate,     false);

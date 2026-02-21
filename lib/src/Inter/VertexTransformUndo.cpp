@@ -15,14 +15,14 @@ VertexTransformUndo::VertexTransformUndo(Interactor* itr) :
 
 void VertexTransformUndo::start() {
     Mesh* itrMesh = interactor->getMesh();
-    if(itrMesh == nullptr) {
+    if (itrMesh == nullptr) {
         return;
     }
 
     mesh = itrMesh;
     beforeVerts.clear();
 
-    for(auto& vert : mesh->getVerts()) {
+    for (auto& vert : mesh->getVerts()) {
         beforeVerts.push_back(*vert);
     }
 
@@ -30,8 +30,9 @@ void VertexTransformUndo::start() {
 }
 
 void VertexTransformUndo::commitIfPending() {
-    if(! pending)
+    if (! pending) {
         return;
+}
 
     if (mesh->getNumVerts() != beforeVerts.size()) {
         jassertfalse;
@@ -42,10 +43,10 @@ void VertexTransformUndo::commitIfPending() {
 
     bool areIdentical = true;
     int i = 0;
-    for(auto& vert : mesh->getVerts()) {
+    for (auto& vert : mesh->getVerts()) {
         afterVerts.push_back(*vert);
 
-        if(areIdentical && ! (beforeVerts[i] == *vert)) {
+        if (areIdentical && ! (beforeVerts[i] == *vert)) {
             areIdentical = false;
         }
 

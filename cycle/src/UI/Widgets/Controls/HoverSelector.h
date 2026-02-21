@@ -63,7 +63,7 @@ private:
 
     JUCE_LEAK_DETECTOR(SelectorCallback)
 
-public: 
+public:
     SelectorCallback(int _itemIndex, String  _filename, HoverSelector* _selector) :
             itemIndex(_itemIndex)
         ,	filename(std::move(_filename))
@@ -92,14 +92,14 @@ public:
 
     void mouseEnter(const MouseEvent& e) override {
       #ifndef JUCE_MAC
-//		if(e.originalComponent == this)
+//		if (e.originalComponent == this)
         enterDlg();
       #endif
     }
 
     void mouseExit(const MouseEvent& e) override {
       #ifndef JUCE_MAC
-//		if(e.originalComponent == this)
+//		if (e.originalComponent == this)
         exitDlg();
       #endif
     }

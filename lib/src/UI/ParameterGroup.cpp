@@ -26,7 +26,7 @@ bool ParameterGroup::paramTriggersAggregateUpdate(int knobIndex) {
  */
 void ParameterGroup::sliderValueChanged(Slider* slider) {
     int knobIndex = knobs.indexOf(slider);
-    if(knobIndex < 0) {
+    if (knobIndex < 0) {
         return;
     }
 
@@ -35,12 +35,12 @@ void ParameterGroup::sliderValueChanged(Slider* slider) {
     bool didAnythingSignificant = worker->updateDsp(knobIndex, slider->getValue(),
                                                     paramTriggersAggregateUpdate(knobIndex));
 
-    if(didAnythingSignificant) {
-        if(worker->shouldTriggerGlobalUpdate(slider) && getSetting(UpdateGfxRealtime)) {
+    if (didAnythingSignificant) {
+        if (worker->shouldTriggerGlobalUpdate(slider) && getSetting(UpdateGfxRealtime)) {
             triggerRefreshUpdate();
         }
 
-        else if(worker->shouldTriggerLocalUpdate(slider)) {
+        else if (worker->shouldTriggerLocalUpdate(slider)) {
             worker->doLocalUIUpdate();
         }
     }
@@ -49,7 +49,7 @@ void ParameterGroup::sliderValueChanged(Slider* slider) {
 void ParameterGroup::sliderDragStarted(Slider* slider) {
     sliderStartingValue = slider->getValue();
 
-    if(worker->shouldTriggerGlobalUpdate(slider) && getSetting(UpdateGfxRealtime)) {
+    if (worker->shouldTriggerGlobalUpdate(slider) && getSetting(UpdateGfxRealtime)) {
         triggerReduceUpdate();
     }
 }
@@ -59,7 +59,7 @@ void ParameterGroup::sliderDragEnded(Slider* slider) {
                                                 slider, sliderStartingValue);
     getObj(EditWatcher).addAction(action, true);
 
-    if(worker->shouldTriggerGlobalUpdate(slider)) {
+    if (worker->shouldTriggerGlobalUpdate(slider)) {
         triggerRestoreUpdate();
     }
 }
@@ -74,13 +74,13 @@ void ParameterGroup::setKnobValue(int knobIndex, double knobValue,
     bool didAnythingSignificant = worker->updateDsp(knobIndex, knobValue, paramTriggersAggregateUpdate(knobIndex));
     knobUIUpdater.setKnobUpdate(knobIndex, knobValue);
 
-    if(isAutomation) {
+    if (isAutomation) {
         knobUIUpdater.triggerAsyncUpdate();
     } else {
         knobs[knobIndex]->setValue(knobValue, dontSendNotification);
     }
 
-    if(doGlobalUIUpdate && didAnythingSignificant && worker->shouldTriggerGlobalUpdate(knobs[knobIndex])) {
+    if (doGlobalUIUpdate && didAnythingSignificant && worker->shouldTriggerGlobalUpdate(knobs[knobIndex])) {
         triggerRefreshUpdate();
     }
 }
@@ -92,19 +92,19 @@ double ParameterGroup::getKnobValue(int knobIdx) const {
 bool ParameterGroup::readKnobXML(const XmlElement* effectElem) {
     XmlElement* knobsElem = effectElem->getChildByName("Knobs");
 
-    if(knobsElem == nullptr) {
+    if (knobsElem == nullptr) {
         return false;
     }
 
     ScopedBooleanSwitcher sbs(updatingAllSliders);
 
-    for(auto currentKnob : knobsElem->getChildWithTagNameIterator("Knob")) {
-        if(currentKnob == nullptr) {
+    for (auto currentKnob : knobsElem->getChildWithTagNameIterator("Knob")) {
+        if (currentKnob == nullptr) {
             continue;
         }
 
         int number = currentKnob->getIntAttribute("number");
-        if(number >= knobs.size()) {
+        if (number >= knobs.size()) {
             continue;
         }
 
@@ -122,7 +122,7 @@ bool ParameterGroup::readKnobXML(const XmlElement* effectElem) {
 void ParameterGroup::writeKnobXML(XmlElement* effectElem) const {
     auto* knobsElem = new XmlElement("Knobs");
 
-    for(int knobIdx = 0; knobIdx < knobs.size(); ++knobIdx) {
+    for (int knobIdx = 0; knobIdx < knobs.size(); ++knobIdx) {
         auto* knob = new XmlElement("Knob");
 
         knob->setAttribute("value", knobs[knobIdx]->getValue());
@@ -134,7 +134,7 @@ void ParameterGroup::writeKnobXML(XmlElement* effectElem) const {
 }
 
 void ParameterGroup::listenToKnobs() {
-    for(int i = 0; i < knobs.size(); ++i) {
+    for (int i = 0; i < knobs.size(); ++i) {
         Slider* knob = knobs.getUnchecked(i);
         knob->addListener(this);
         knob->setRange(0, 1);
@@ -143,7 +143,7 @@ void ParameterGroup::listenToKnobs() {
 }
 
 void ParameterGroup::addKnobsTo(Component* component) {
-    for(auto slider : knobs) {
+    for (auto slider : knobs) {
         component->addAndMakeVisible(slider);
     }
 }

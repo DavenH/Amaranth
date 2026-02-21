@@ -27,7 +27,7 @@ ContentComponent::ContentComponent (const String& name,
     TextEditor* editors[] = { &tagsBox, &authorBox, &packBox };
     Label* labels[] = { &tagsLabel, &authorLabel, &packLabel };
 
-    for(int i = 0; i < numElementsInArray(editors); ++i) {
+    for (int i = 0; i < numElementsInArray(editors); ++i) {
         addAndMakeVisible(editors[i]);
         editors[i]->setMultiLine(false);
         editors[i]->setSelectAllWhenFocused(true);
@@ -73,7 +73,7 @@ void ContentComponent::resized() {
 
     TextEditor* editors[] = { &tagsBox, &authorBox, &packBox, &detailsBox };
 
-    for(auto& editor : editors) {
+    for (auto& editor : editors) {
         editor->setBounds((getWidth() - boxWidth) / 2, detailsArea.getY(), boxWidth, buttonHeight);
         detailsArea.removeFromTop(30);
     }

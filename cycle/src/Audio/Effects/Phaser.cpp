@@ -19,8 +19,8 @@ Phaser::Phaser(SingletonRepo* repo) :
 }
 
 void Phaser::processBuffer(AudioSampleBuffer& buffer) {
-    for(int i = 0; i < buffer.getNumChannels(); ++i) {
-        for(int j = 0; j < buffer.getNumSamples(); ++j) {
+    for (int i = 0; i < buffer.getNumChannels(); ++i) {
+        for (int j = 0; j < buffer.getNumSamples(); ++j) {
             update(*buffer.getWritePointer(i, j));
         }
     }
@@ -28,7 +28,7 @@ void Phaser::processBuffer(AudioSampleBuffer& buffer) {
 
 void Phaser::doParamChange(int index, float value)
 {
-    switch(index) {
+    switch (index) {
         case Rate: 		setRate(value);		break;
         case Feedback:	setFeedback(value);	break;
         case Depth: 	setDepth(value);	break;

@@ -15,7 +15,7 @@ ScopedAlloc<T>::ScopedAlloc(int size) :  \
 #define resizeIpp(T)                     \
 template<>                               \
 bool ScopedAlloc<T>::resize(int size) {  \
-    if(Buffer::sz == size)               \
+    if (Buffer::sz == size)               \
         return false;                    \
     clear();                             \
     Buffer::sz  = size;                  \

@@ -84,7 +84,7 @@ void PluginProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
         // Successfully got the current time from the host..
         lastPosInfo = newTime;
 
-        if(lastBpm != lastPosInfo.bpm) {
+        if (lastBpm != lastPosInfo.bpm) {
             listeners.call(&Listener::tempoChanged, lastPosInfo.bpm);
         }
     } else {
@@ -167,8 +167,9 @@ int PluginProcessor::getCurrentProgram() {
 void PluginProcessor::setCurrentProgram(int index) {
     int64 currentTime = Time::currentTimeMillis();
 
-    if (currentTime - presetOpenTime < 400 || currentTime - creationTime < 400)
+    if (currentTime - presetOpenTime < 400 || currentTime - creationTime < 400) {
         return;
+    }
 
     getObj(DocumentLibrary).triggerAsyncLoad(index);
 }
@@ -178,8 +179,9 @@ const String PluginProcessor::getProgramName(int index) {
 }
 
 bool PluginProcessor::isParameterAutomatable(int index) const {
-    if(isPositiveAndBelow(index, (int) parameters.size()))
+    if (isPositiveAndBelow(index, (int) parameters.size())) {
         return parameters[index].isAutomable;
+    }
 
     return true;
 }
@@ -188,7 +190,7 @@ void PluginProcessor::updateLatency() {
     int totalLatency = 0;
     bool realtime    = isNonRealtime();
 
-    for(auto* adder : latencies) {
+    for (auto* adder : latencies) {
         totalLatency += adder->getLatency(realtime);
     }
     ScopedBooleanSwitcher switcher(suspendStateRead);
@@ -209,4 +211,3 @@ void PluginProcessor::presetHasLoaded() {
 }
 
 #endif
-

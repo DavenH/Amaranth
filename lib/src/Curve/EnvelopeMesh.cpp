@@ -9,7 +9,7 @@ EnvelopeMesh::EnvelopeMesh(const String& name) :
 }
 
 float EnvelopeMesh::getPositionOfCubeAt(VertCube* line, MorphPosition pos) {
-    if(line == nullptr) {
+    if (line == nullptr) {
         return -1.f;
     }
 
@@ -17,7 +17,7 @@ float EnvelopeMesh::getPositionOfCubeAt(VertCube* line, MorphPosition pos) {
     VertCube::ReductionData reduce;
     line->getFinalIntercept(reduce, pos);
 
-    if(reduce.pointOverlaps) {
+    if (reduce.pointOverlaps) {
         return reduce.v[Vertex::Phase];
     }
 
@@ -61,13 +61,13 @@ void EnvelopeMesh::writeXML(XmlElement* envLayersElem) const {
 
 bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
     XmlElement* envMeshElem = envLayersElem->getChildByName("EnvelopeMesh");
-    if(envMeshElem == nullptr) {
+    if (envMeshElem == nullptr) {
         return false;
     }
 
     XmlElement* mainMeshElem = envMeshElem->getChildByName("MainMesh");
 
-    if(mainMeshElem != nullptr) {
+    if (mainMeshElem != nullptr) {
         Mesh::readXML(mainMeshElem);
     }
 
@@ -76,7 +76,7 @@ bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
 
     if (loopIndicesElem != nullptr) {
         loopCubes.clear();
-        for(auto loopIndexElem : loopIndicesElem->getChildWithTagNameIterator("LoopIndex")) {
+        for (auto loopIndexElem : loopIndicesElem->getChildWithTagNameIterator("LoopIndex")) {
             int index = loopIndexElem->getIntAttribute("index", -1);
 
             if (isPositiveAndBelow(index, (int) cubes.size())) {
@@ -95,7 +95,7 @@ bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
 
     if (sustIndicesElem != nullptr) {
         sustainCubes.clear();
-        for(auto sustIndexElem : sustIndicesElem->getChildWithTagNameIterator("SustIndex")) {
+        for (auto sustIndexElem : sustIndicesElem->getChildWithTagNameIterator("SustIndex")) {
             int index = sustIndexElem->getIntAttribute("index", -1);
 
             if (isPositiveAndBelow(index, (int) cubes.size())) {
@@ -112,7 +112,7 @@ bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
         }
     }
 
-    if(sustainCubes.empty() && ! cubes.empty()) {
+    if (sustainCubes.empty() && ! cubes.empty()) {
         setSustainToRightmost();
     }
 
@@ -145,7 +145,7 @@ void EnvelopeMesh::setSustainToRightmost() {
 
     set<float> blueSlicePoints, redSlicePoints;
 
-    for(auto line : cubes) {
+    for (auto line : cubes) {
         for (int j = 0; j < 4; ++j) {
             blueSlicePoints.insert(line->lineVerts[j]->values[Vertex::Blue]);
             redSlicePoints.insert(line->lineVerts[j]->values[Vertex::Red]);
@@ -154,10 +154,10 @@ void EnvelopeMesh::setSustainToRightmost() {
 
     VertCube::ReductionData reduce;
 
-    for(float blueSlicePoint : blueSlicePoints) {
+    for (float blueSlicePoint : blueSlicePoints) {
         float blueSlice = jmin(1.f, blueSlicePoint + 0.0001f);
 
-        for(float redSlicePoint : redSlicePoints) {
+        for (float redSlicePoint : redSlicePoints) {
 
             // increase by a fraction so that overlap test finds line in front
             float redSlice = jmin(1.f, redSlicePoint + 0.0001f);
@@ -165,7 +165,7 @@ void EnvelopeMesh::setSustainToRightmost() {
 
             VertCube* maxLine = nullptr;
 
-            for(auto& line : cubes) {
+            for (auto& line : cubes) {
                 if (line == nullptr) {
                     continue;
                 }
@@ -175,7 +175,7 @@ void EnvelopeMesh::setSustainToRightmost() {
                 if (reduce.pointOverlaps) {
                     float x = reduce.v.values[Vertex::Phase];
 
-                    if(x > maxX) {
+                    if (x > maxX) {
                         maxLine = line;
                         maxX = x;
                     }

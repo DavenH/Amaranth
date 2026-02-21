@@ -53,7 +53,7 @@ void MiscGraphics::init() {
 
 void MiscGraphics::drawCorneredRectangle(Graphics& g, const Rectangle<int>& r, int cornerSize) {
     Path path;
-    if(cornerSize) {
+    if (cornerSize) {
         path.addRoundedRectangle(r.getX(), r.getY(), r.getWidth(), r.getHeight(), cornerSize);
     } else {
         path.addRectangle(r);
@@ -63,11 +63,11 @@ void MiscGraphics::drawCorneredRectangle(Graphics& g, const Rectangle<int>& r, i
 }
 
 const MouseCursor& MiscGraphics::getCursor(int cursor) const {
-    if(NumberUtils::within<int>(cursor, 0, NudgeCursorHorz)) {
+    if (NumberUtils::within<int>(cursor, 0, NudgeCursorHorz)) {
         return *cursors[cursor];
     }
 
-    if(extension != nullptr) {
+    if (extension != nullptr) {
         return extension->getCursor(cursor);
     }
 
@@ -75,11 +75,11 @@ const MouseCursor& MiscGraphics::getCursor(int cursor) const {
 }
 
 void MiscGraphics::applyMouseoverHighlight(Graphics& g, Image copy, bool mouseOver, bool buttonDown, bool pending) {
-    if(mouseOver && ! buttonDown) {
+    if (mouseOver && ! buttonDown) {
         redGlow.applyEffect(copy, g, 1.f, 0.5f);
-    } else if(buttonDown) {
+    } else if (buttonDown) {
         yllwGlow.applyEffect(copy, g, 1.f, 0.7f);
-    } else if(pending) {
+    } else if (pending) {
         blueGlow.applyEffect(copy, g, 1.f, 0.7f);
     } else {
         shadow.applyEffect(copy, g, 1.f, 1.f);
@@ -102,7 +102,7 @@ Font* MiscGraphics::getAppropriateFont(int scaleSize) {
         case ScaleSizes::ScaleLarge:    return verdana16;
 
         default: {
-            if(extension != nullptr) {
+            if (extension != nullptr) {
                 return extension->getAppropriateFont(scaleSize);
             }
         }
@@ -118,7 +118,7 @@ Image& MiscGraphics::getImage(int imageEnum) {
         return icons;
     }
 
-    if(extension != nullptr) {
+    if (extension != nullptr) {
         return extension->getImage(imageEnum);
     }
     throw std::out_of_range("MiscGraphics::getImage()");

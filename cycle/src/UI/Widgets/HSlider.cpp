@@ -77,7 +77,7 @@ void HSlider::paintSecond(Graphics& g) {
     g.setOpacity(1.f);
     g.setColour(Colour::greyLevel(hztl ? 0.6f : 0.65f));
 
-    if(hztl) {
+    if (hztl) {
         int width = Util::getStringWidth(*silkscreen, name);
         g.drawSingleLineText(name, getWidth() - width - 4, getHeight() / 2 + 3);
     } else {
@@ -93,7 +93,7 @@ void HSlider::paintSecond(Graphics& g) {
     getObj(MiscGraphics).drawCorneredRectangle(g, r);
 
 
-    if(drawsValue) {
+    if (drawsValue) {
         g.setColour(currentValue > 1.f ? Colour(0.95f, 0.75f, 0.35f, 1.0f) : Colours::grey);
 
         float drawnValue = jlimit(0.f, 1.f, currentValue);

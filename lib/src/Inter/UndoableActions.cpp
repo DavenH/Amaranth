@@ -246,7 +246,7 @@ void DeformerAssignment::performDelegate() {
     auto start  = mesh->getCubes().begin();
     auto end    = mesh->getCubes().end();
 
-    for(auto line : affectedLines) {
+    for (auto line : affectedLines) {
 
         // check if line is still good
         if (line != nullptr && std::find(start, end, line) != end) {
@@ -329,13 +329,13 @@ VertexOwnershipAction::VertexOwnershipAction(
 }
 
 void VertexOwnershipAction::undoDelegate() {
-    for(auto it : toChange) {
+    for (auto it : toChange) {
         undoRemoves ? it->removeOwner(cube) : it->addOwner(cube);
     }
 }
 
 void VertexOwnershipAction::performDelegate() {
-    for(auto it : toChange) {
+    for (auto it : toChange) {
         undoRemoves ? it->addOwner(cube) : it->removeOwner(cube);
     }
 }

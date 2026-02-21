@@ -23,7 +23,7 @@
 
 using namespace gl;
 
-Spectrum2D::Spectrum2D(SingletonRepo* repo) : 
+Spectrum2D::Spectrum2D(SingletonRepo* repo) :
         SingletonAccessor(repo, "Spectrum2D")
     ,	Panel2D(repo, "Spectrum2D", true, true)
     ,	decibelLines(24) {
@@ -51,7 +51,7 @@ void Spectrum2D::init() {
 
     double value = 1.f;
 
-    for(float& decibelLine : decibelLines) {
+    for (float& decibelLine : decibelLines) {
         decibelLine = value;
         value *= 0.5;
     }
@@ -68,13 +68,13 @@ void Spectrum2D::drawBackground(bool fillBackground) {
     const vector <Column>& columns = getObj(VisualDsp).getFreqColumns();
     int index = position->getProgress() * (columns.size() - 1);
 
-    if(index >= columns.size() || getWidth() == 0 || getHeight() == 0)
+    if (index >= columns.size() || getWidth() == 0 || getHeight() == 0)
         return;
 
     const Column& column = columns[index];
 
     int midiKey = column.midiKey;
-    if(midiKey < 0) {
+    if (midiKey < 0) {
         midiKey = getObj(MorphPanel).getCurrentMidiKey();
     }
 
@@ -230,14 +230,14 @@ void Spectrum2D::drawPartials() {
         const vector<Column>& columns = getObj(VisualDsp).getFreqColumns();
         int index = position->getProgress() * (columns.size() - 1);
 
-        if(index >= columns.size()) {
+        if (index >= columns.size()) {
             return;
         }
 
         const Column& column = columns[index];
 
         int midiKey = column.midiKey;
-        if(midiKey < 0) {
+        if (midiKey < 0) {
             midiKey = getObj(MorphPanel).getCurrentMidiKey();
         }
 
@@ -261,39 +261,39 @@ void Spectrum2D::drawPartials() {
 
     int i = 0, start = 0;
 
-    while(ramp[start] < zoomPanel->rect.x) {
+    while (ramp[start] < zoomPanel->rect.x) {
         start++;
     }
 
-    if(start > 0) {
+    if (start > 0) {
         start--;
     }
 
     int end = minSize - 1;
-    while(ramp[end] > zoomPanel->rect.w + zoomPanel->rect.x && end > 0) {
+    while (ramp[end] > zoomPanel->rect.w + zoomPanel->rect.x && end > 0) {
         end--;
     }
 
     end = jmin(minSize - 1, end + 1);
     int widthMostOne = end;
 
-    while(widthMostOne > 1 && scaledRamp[widthMostOne] - scaledRamp[widthMostOne - 1] < 2) {
+    while (widthMostOne > 1 && scaledRamp[widthMostOne] - scaledRamp[widthMostOne - 1] < 2) {
         --widthMostOne;
     }
 
-    if(widthMostOne <= 2) {
+    if (widthMostOne <= 2) {
         return;
     }
 
     int widthMostThree = widthMostOne;
 
-    while(widthMostThree > 1 && scaledRamp[widthMostThree] - scaledRamp[widthMostThree - 1] < 4) {
+    while (widthMostThree > 1 && scaledRamp[widthMostThree] - scaledRamp[widthMostThree - 1] < 4) {
         --widthMostThree;
     }
 
     int widthMostSix = widthMostThree;
 
-    while(widthMostSix > 1 && scaledRamp[widthMostSix] - scaledRamp[widthMostSix - 1] < 7) {
+    while (widthMostSix > 1 && scaledRamp[widthMostSix] - scaledRamp[widthMostSix - 1] < 7) {
         --widthMostSix;
     }
 
@@ -448,7 +448,7 @@ void Spectrum2D::drawHistory() {
     historySize 		= jmin(end - start, historySize);
     int decrement 		= jmax((int)1, historySize / 60);
 
-    if(size == 0 || end == 0) {
+    if (size == 0 || end == 0) {
         return;
     }
 
@@ -463,7 +463,7 @@ void Spectrum2D::drawHistory() {
 
         ScopedElement gl(GL_LINE_STRIP);
 
-        for(int i = 0; i < columns[col].size() - 1; ++i)
+        for (int i = 0; i < columns[col].size() - 1; ++i)
         {
             glVertex2f(sx(ramp[i]), sy(columns[col][i]));
             glVertex2f(sx(ramp[i + 1]), sy(columns[col][i]));
@@ -515,7 +515,7 @@ void Spectrum2D::createScales() {
         while (rampIndex < ramp.size() / 2) {
             int val = rampIndex * 2;
             String text;
-            if(val > 1000) {
+            if (val > 1000) {
                 text = String(val / 1000) + "k";
             } else {
                 text = String(val);

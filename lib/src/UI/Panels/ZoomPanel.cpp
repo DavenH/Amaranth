@@ -22,7 +22,7 @@ ZoomPanel::ZoomPanel(SingletonRepo* repo, ZoomContext context) :
     ,   tendZoomToRight (true)
     ,   tendZoomToCentre(true) {
 
-    if(context.haveHorz) {
+    if (context.haveHorz) {
         horz.setRangeLimits(rect.xMinimum, rect.xMaximum);
         horz.setCurrentRange(rect.x, rect.w);
         horz.addListener(this);
@@ -54,11 +54,11 @@ void ZoomPanel::setBounds(int x, int y, int width, int height) {
     int panelHeight = height - (context.haveHorz ? scrollbarWidth : 0);
     context.bounded->setBounds(0, 0, panelWidth, panelHeight);
 
-    if(context.haveHorz) {
+    if (context.haveHorz) {
         horz.setBounds(0, height - scrollbarWidth, panelWidth, scrollbarWidth);
     }
 
-    if(context.haveVert) {
+    if (context.haveVert) {
         vert.setBounds(width - scrollbarWidth, 0, scrollbarWidth, height);
     }
 }
@@ -66,7 +66,7 @@ void ZoomPanel::setBounds(int x, int y, int width, int height) {
 void ZoomPanel::mouseEnter(const MouseEvent& e) {
     auto& console = getObj(IConsole);
 
-    if(e.originalComponent == &horz) {
+    if (e.originalComponent == &horz) {
         console.setMouseUsage(false, false, true, false);
         console.setKeys(String());
     } else if (e.originalComponent == &vert) {
@@ -105,7 +105,7 @@ void ZoomPanel::panelZoomChanged(bool commandDown) {
     listeners.call(&ZoomListener::constrainZoom);
     listeners.call(&ZoomListener::doZoomExtra, commandDown);
 
-    if(context.haveHorz) {
+    if (context.haveHorz) {
         horz.removeListener (this);
         horz.setRangeLimits (rect.xMinimum, rect.xMaximum);
         horz.setCurrentRange(rect.x, rect.w);
@@ -129,7 +129,7 @@ void ZoomPanel::updateRange(double newLimit) {
 void ZoomPanel::panelComponentChanged(Component* newComponent, Component* oldComponent) {
     jassert(newComponent != nullptr);
 
-    if(oldComponent != nullptr) {
+    if (oldComponent != nullptr) {
         removeChildComponent(oldComponent);
     }
 
@@ -156,7 +156,7 @@ void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
             y = 0.5f;
         }
 
-        if(usualZoom) {
+        if (usualZoom) {
             rect.y = y + (rect.y - y) / zoomRatio;
         }
     } else {
@@ -212,7 +212,7 @@ void ZoomPanel::contractToRange(Buffer<float> y) {
     y.minmax(minY, maxY);
 
     float diff = jmax(0.02f, maxY - minY);
-    if(diff > 0.25f) {
+    if (diff > 0.25f) {
         diff = 1.f;
     }
 
@@ -224,7 +224,7 @@ void ZoomPanel::contractToRange(Buffer<float> y) {
     float zy = 1.f - 0.5f * (minY + maxY + rect.h);
     rect.y = jmax(0.f, zy);
 
-    if(rect.y + rect.h > 1.f) {
+    if (rect.y + rect.h > 1.f) {
         rect.y = 1.f - rect.h;
     }
 
@@ -240,7 +240,7 @@ void ZoomPanel::zoomToFull() {
 }
 
 void ZoomPanel::doZoomAction(int action) {
-    if(action == ZoomToAttack) {
+    if (action == ZoomToAttack) {
         rect.x = 0;
         rect.w *= 0.2f;
     } else if (action == ZoomToFull) {
@@ -270,7 +270,7 @@ void ZoomPanel::doZoomAction(int action) {
     ZoomPanel* e2Zoom   = envelopePanel ->getZoomPanel();
     ZoomPanel* e3Zoom   = e3Panel       ->getZoomPanel();
 
-    if(source == CrossUpdate)
+    if (source == CrossUpdate)
     {
         surf.h = crossRect.w;
         surf.y = (1 - surf.h) - crossRect.x;
@@ -285,7 +285,7 @@ void ZoomPanel::doZoomAction(int action) {
         surface->repaint();
 
     }
-    else if(source == Fourier2DUpdate)
+    else if (source == Fourier2DUpdate)
     {
         f3Rect.h = f2Rect.w;
         f3Rect.y = (1 - f3Rect.h) - f2Rect.x;
@@ -297,7 +297,7 @@ void ZoomPanel::doZoomAction(int action) {
         fourier2D->repaint();
         fourier3D->repaint();
     }
-    else if(source == SurfaceUpdate || source == Fourier3DUpdate)
+    else if (source == SurfaceUpdate || source == Fourier3DUpdate)
     {
         ZoomRect& sourceRect = source == SurfaceUpdate ? surf : f3Rect;
 
@@ -317,31 +317,31 @@ void ZoomPanel::doZoomAction(int action) {
 
         updateTimeBackgrounds(true);
     }
-    else if(source == Env2DUpdate || source == ScratchUpdate)
+    else if (source == Env2DUpdate || source == ScratchUpdate)
     {
         envelopePanel->updateBackground(false);
         e2Zoom->panelZoomChanged();
         envelopePanel->repaint();
     }
-    else if(source == Env3DUpdate)
+    else if (source == Env3DUpdate)
     {
         e3Zoom->panelZoomChanged();
         e3Panel->bakeTexturesNextRepaint();
         e3Panel->repaint();
     }
-    else if(source == GuideUpdate)
+    else if (source == GuideUpdate)
     {
         guidePanel->updateBackground(false);
         guidePanel->repaint();
         guidePanel->getZoomPanel()->panelZoomChanged();
     }
-    else if(source == WaveshapeUpdate)
+    else if (source == WaveshapeUpdate)
     {
         waveShaperCmpt->updateBackground(false);
         waveShaperCmpt->repaint();
         waveShaperCmpt->getZoomPanel()->panelZoomChanged();
     }
-    else if(source == TubeModelUpdate)
+    else if (source == TubeModelUpdate)
     {
         tubeModelCmpt->updateBackground(false);
         tubeModelCmpt->repaint();

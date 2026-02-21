@@ -70,7 +70,7 @@ private:
 
     static void addLinesToSet(set<VertCube*>& selected, Vertex* vert) {
         for (auto& owner : vert->owners) {
-            if(owner != nullptr) {
+            if (owner != nullptr) {
                 selected.insert(owner);
             }
         }

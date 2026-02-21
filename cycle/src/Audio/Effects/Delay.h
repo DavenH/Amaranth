@@ -11,56 +11,56 @@ class DelayUI;
 class SpinParams
 {
 public:
-	float pan;
-	float startingLevel;
-	int inputDelaySamples;
-	int spinDelaySamples;
+    float pan;
+    float startingLevel;
+    int inputDelaySamples;
+    int spinDelaySamples;
 
-	Buffer<float> buffer;
+    Buffer<float> buffer;
 };
 
 class CycDelay : public Effect
 {
 public:
-	enum DelayParam { Time, Feedback, SpinIters, Spin, Wet, numDelayParams };
+    enum DelayParam { Time, Feedback, SpinIters, Spin, Wet, numDelayParams };
 
-	explicit CycDelay(SingletonRepo* repo);
-	~CycDelay() override;
+    explicit CycDelay(SingletonRepo* repo);
+    ~CycDelay() override;
 
-	void processBuffer(AudioSampleBuffer& buffer) override;
-	[[nodiscard]] bool isEnabled() const override;
+    void processBuffer(AudioSampleBuffer& buffer) override;
+    [[nodiscard]] bool isEnabled() const override;
 
-	void setWetLevel(double value);
-	bool setSpinAmount(double value);
-	bool setFeedback(double value);
-	bool setSpinIters(double value);
-	bool setDelayTime(double value);
-	static int calcSpinIters(double value);
-	void recalculateWetBuffers(bool print = false);
-	void setUI(GuilessEffect* comp);
-	void audioThreadUpdate() override;
-	double calcDelayTime(double unitValue);
+    void setWetLevel(double value);
+    bool setSpinAmount(double value);
+    bool setFeedback(double value);
+    bool setSpinIters(double value);
+    bool setDelayTime(double value);
+    static int calcSpinIters(double value);
+    void recalculateWetBuffers(bool print = false);
+    void setUI(GuilessEffect* comp);
+    void audioThreadUpdate() override;
+    double calcDelayTime(double unitValue);
 
 protected:
-	bool doParamChange(int param, double value, bool doFurtherUpdate) override;
+    bool doParamChange(int param, double value, bool doFurtherUpdate) override;
 
 private:
-	static constexpr int delaySize = 65536;
+    static constexpr int delaySize = 65536;
 
-	bool pendingWetBufferUpdate;
+    bool pendingWetBufferUpdate;
 
-	int spinIters;
-	int pendingSpinIters;
-	long readPosition[2]{};
+    int spinIters;
+    int pendingSpinIters;
+    long readPosition[2]{};
 
-	double delayTime;
-	double feedback;
-	double spinAmount;
-	double sampleRate;
-	double wetLevel;
+    double delayTime;
+    double feedback;
+    double spinAmount;
+    double sampleRate;
+    double wetLevel;
 
-	Ref<GuilessEffect> ui;
-	vector<SpinParams> spinParams[2];
-	ScopedAlloc<float> inputBuffer[2];
-	ScopedAlloc<float> wetBuffer[2];
+    Ref<GuilessEffect> ui;
+    vector<SpinParams> spinParams[2];
+    ScopedAlloc<float> inputBuffer[2];
+    ScopedAlloc<float> wetBuffer[2];
 };

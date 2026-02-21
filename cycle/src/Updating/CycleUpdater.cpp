@@ -297,7 +297,7 @@ void CycleUpdater::refreshConnections(Node* destNode, const Array<int>& meshType
     envDlg		->doesntUpdateAfter(destNode);
     scratchRast	->doesntUpdateAfter(destNode);
 
-    if(getSetting(ViewStage) < ViewStages::PostEnvelopes) {
+    if (getSetting(ViewStage) < ViewStages::PostEnvelopes) {
         return;
     }
 
@@ -320,7 +320,7 @@ void CycleUpdater::refreshConnections(Node* destNode, const Array<int>& meshType
             case GroupScratch:
                 envDlg->updatesAfter(destNode);
 
-                if(meshType == GroupScratch) {
+                if (meshType == GroupScratch) {
                     scratchRast->updatesAfter(destNode);
                 }
                 break;

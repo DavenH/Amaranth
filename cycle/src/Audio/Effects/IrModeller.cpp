@@ -132,8 +132,9 @@ void IrModeller::rasterizeGraphicImpulse() {
         Buffer<float> channel = wavImpulse.audio.left;
         channel.copyTo(impulse);
 
-        if (maxSamples < impulse.size())
+        if (maxSamples < impulse.size()) {
             impulse.offset(maxSamples).zero();
+}
     } else {
         FXRasterizer &graphicRast = *dynamic_cast<FXRasterizer *>(ui->getRasterizer());
         rasterizeImpulse(impulse, graphicRast, false);
@@ -239,8 +240,9 @@ void IrModeller::checkForPendingUpdates() {
     bool oldEnabled = enabled;
     enabled = ui->isEffectEnabled();
 
-    if (oldEnabled != enabled)
+    if (oldEnabled != enabled) {
         resetIndices();
+    }
 
     for (int i = 0; i < pendingActions.size(); ++i) {
         PendingAction *action = pendingActions.getReference(i);
@@ -293,8 +295,9 @@ void IrModeller::cleanUp() {
 }
 
 void IrModeller::setImpulseLength(ConvState &state, int length) {
-    if (length == 0)
+    if (length == 0) {
         return;
+    }
 
     bool sizeChanged = length != state.impulse.size();
 
@@ -375,17 +378,17 @@ void IrModeller::setUI(IrModellerUI *comp) {
 }
 
 void IrModeller::setConvBufferSize(int newConvBufSize) {
-//	if(! Util::assignAndWereDifferent(convBufferSize, newConvBufSize))
+//	if (! Util::assignAndWereDifferent(convBufferSize, newConvBufSize))
 //	{
 //		return;
 //	}
 
-//	for(int i = 0; i < numElementsInArray(convStates); ++i)
+//	for (int i = 0; i < numElementsInArray(convStates); ++i)
 //		updateConvState(convStates[i], convBufferSize);
 
-//	if(audioBlockSize > 0)
+//	if (audioBlockSize > 0)
 //	{
-//		for(int i = 0; i < 2; ++i)
+//		for (int i = 0; i < 2; ++i)
 //		{
 //			accumBufs[i].resize(2 * convBufferSize + audioBlockSize);
 //			accumBufs[i].zero();
@@ -409,9 +412,9 @@ void IrModeller::setAudioBlockSize(int size) {
         }
 
         /*
-        if(convBufferSize > 0)
+        if (convBufferSize > 0)
         {
-            for(int i = 0; i < 2; ++i)
+            for (int i = 0; i < 2; ++i)
             {
                 accumBufs[i].resize(2 * convBufferSize + audioBlockSize);
                 accumBufs[i].zero();
@@ -463,8 +466,9 @@ bool IrModeller::doParamChange(int param, double value, bool doFurtherUpdate) {
             int oldLength = audio.impulse.size();
             int length = calcLength(value);
 
-            if (oldLength == length)
+            if (oldLength == length) {
                 return false;
+            }
 
             setPendingAction(impulseSize, length);
 
@@ -477,8 +481,9 @@ bool IrModeller::doParamChange(int param, double value, bool doFurtherUpdate) {
         case Highpass: {
             bool changed = prefilt.setTargetValue(value);
 
-            if (changed)
+            if (changed) {
                 setPendingAction(prefilterChg);
+            }
         }
         default:
             throw std::invalid_argument("Illegal param: " + std::to_string(param));

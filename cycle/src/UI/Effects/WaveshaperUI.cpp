@@ -74,7 +74,7 @@ void WaveshaperUI::init() {
     postampKnob->setStringFunctions(decibel30, decibel30.withPostString(" dB"));
 
     int i = 0;
-    for(auto& label : labels) {
+    for (auto& label : labels) {
         label.setText		(names[i], dontSendNotification);
         label.setEditable	(false, false);
         label.setFont		(*getObj(MiscGraphics).getSilkscreen());
@@ -216,8 +216,9 @@ bool WaveshaperUI::updateDsp(int knobIndex, double knobValue, bool doFurtherUpda
 void WaveshaperUI::updateDspSync() {
     rasterizer->performUpdate(Update);
 
-    if (isEffectEnabled())
+    if (isEffectEnabled()) {
         waveshaper->rasterizeTable();
+}
 }
 
 Mesh* WaveshaperUI::getCurrentMesh() {
@@ -307,8 +308,9 @@ void WaveshaperUI::buttonClicked(Button* button) {
         isEnabled ^= true;
         enabledButton.setHighlit(isEnabled);
 
-        if (isEnabled)
+        if (isEnabled) {
             waveshaper->rasterizeTable();
+}
 
         forceNextUIUpdate = true;
         triggerRefreshUpdate();

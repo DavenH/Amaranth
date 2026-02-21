@@ -28,7 +28,7 @@
 #define panelName "Waveform3D"
 
 
-Waveform3D::Waveform3D(SingletonRepo* repo) : 
+Waveform3D::Waveform3D(SingletonRepo* repo) :
         Panel3D				(repo, panelName, this, UpdateSources::SourceWaveform3D, false, true)
     ,	SingletonAccessor	(repo, panelName)
     ,	LayerSelectionClient(repo)
@@ -97,7 +97,7 @@ void Waveform3D::buttonClicked(Button* button) {
     auto& meshLib = getObj(MeshLibrary);
     MeshLibrary::LayerGroup& timeGroup = meshLib.getLayerGroup(LayerGroups::GroupTime);
 
-    if(button == &panelControls->addRemover.add || button == &panelControls->addRemover.remove) {
+    if (button == &panelControls->addRemover.add || button == &panelControls->addRemover.remove) {
         bool forceUpdate = false;
 
         {
@@ -112,7 +112,7 @@ void Waveform3D::buttonClicked(Button* button) {
 
                 forceUpdate = meshLib.removeLayerKeepingOne(LayerGroups::GroupTime, layerIdx);
 
-                if(! isLast) {
+                if (! isLast) {
                     getObj(ModMatrixPanel).layerRemoved(interactor->layerType, layerIdx);
                 }
             }
@@ -120,7 +120,7 @@ void Waveform3D::buttonClicked(Button* button) {
 
         panelControls->refreshSelector(forceUpdate);
 
-        if(forceUpdate) {
+        if (forceUpdate) {
             triggerRefreshUpdate();
         }
 
@@ -131,24 +131,24 @@ void Waveform3D::buttonClicked(Button* button) {
         props->active ^= true;
         panelControls->enableCurrent.setHighlit(props->active);
 
-        if(getSetting(TimeEnabled)) {
+        if (getSetting(TimeEnabled)) {
             doUpdate(SourceWaveform3D);
         }
     } else if (button == &deconvolve) {
-        if(getSetting(WaveLoaded) && getSetting(DrawWave)) {
+        if (getSetting(WaveLoaded) && getSetting(DrawWave)) {
             getObj(IrModellerUI).deconvolve();
         } else {
             showConsoleMsg("You must first be in sample view ('w').");
         }
     } else if (button == &model) {
-        if(getSetting(WaveLoaded) && getSetting(DrawWave)) {
+        if (getSetting(WaveLoaded) && getSetting(DrawWave)) {
             getObj(WaveformInter2D).modelAudioCycle();
         } else {
             showConsoleMsg("You must first be in sample view ('w').");
         }
     }
 
-    if(button != &deconvolve) {
+    if (button != &deconvolve) {
         getObj(SynthAudioSource).enablementChanged();
     }
 }
@@ -208,7 +208,7 @@ void Waveform3D::restoreDetail() {
 }
 
 void Waveform3D::reduceDetail() {
-    if(getSetting(DrawWave) == 0) {
+    if (getSetting(DrawWave) == 0) {
         interactor->reduceDetail();
     }
 }
@@ -282,7 +282,7 @@ int Waveform3D::getNumActiveLayers() {
 
     int numActiveLayers = 0;
     for (int i = 0; i < timeGroup.size(); ++i) {
-        if(timeGroup[i].props->active && timeGroup[i].mesh->hasEnoughCubesForCrossSection()) {
+        if (timeGroup[i].props->active && timeGroup[i].mesh->hasEnoughCubesForCrossSection()) {
             ++numActiveLayers;
         }
     }

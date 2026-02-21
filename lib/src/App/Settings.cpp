@@ -79,7 +79,7 @@ void Settings::saveGlobalSettings(XmlElement* pluginElem) {
     pluginElem->addChildElement(settingsDocElem.get());
   #else
 
-    if(settingsFile.existsAsFile()) {
+    if (settingsFile.existsAsFile()) {
         (void) settingsFile.deleteFile();
     }
 
@@ -136,12 +136,12 @@ void Settings::setProperty(const String& key,
 }
 
 void Settings::createSettingsFile(const String& path) {
-    if(path.isEmpty()) {
+    if (path.isEmpty()) {
         throw std::runtime_error("No properties file specified");
     }
     settingsFile = File(path);
 
-    if(! settingsFile.existsAsFile()) {
+    if (! settingsFile.existsAsFile()) {
         return;
     }
 
@@ -151,7 +151,7 @@ void Settings::createSettingsFile(const String& path) {
 }
 
 void Settings::createPropertiesFile(const String& path) {
-    if(path.isEmpty()) {
+    if (path.isEmpty()) {
         throw std::runtime_error("No properties file specified");
     }
 

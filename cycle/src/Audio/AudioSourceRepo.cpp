@@ -35,8 +35,9 @@ void AudioSourceRepo::setAudioProcessor(AudioSourceEnum source) {
     AudioSourceProcessor* proc = audioHub->getAudioSourceProcessor();
     std::unique_ptr<ScopedLock> sl;
 
-    if(proc != nullptr)
+    if (proc != nullptr) {
         sl = std::make_unique<ScopedLock>(proc->getLock());
+    }
 
     switch (source) {
         case WavSource: {
