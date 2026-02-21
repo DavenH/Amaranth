@@ -5,51 +5,78 @@
 
 using std::vector;
 
-RealTimePitchTracker::RealTimePitchTracker():
-        kernelMemory(numKeys * blockSize)
-    ,   rwBuffer(blockSize + 4096)
+RealTimePitchTracker::RealTimePitchTracker(Algorithm algo) :
+        rwBuffer(blockSize + 4096),
+        algorithm(algo)
 {
-    fftFreqs.resize(blockSize / 2);
-    fftMagnitudes.resize(blockSize / 2);
-    correlations.resize(numKeys);
+    // Shared buffers needed by both modes
     localBlock.resize(blockSize);
+    localBlock.zero();
     hannWindow.resize(blockSize);
     hannWindow.hann();
-    localBlock.zero();
-    fftMagnitudes.zero();
+
+    if (algo == AlgoSpectral) {
+        kernelMemory.resize(numKeys * blockSize);
+        fftFreqs.resize(blockSize / 2);
+        fftMagnitudes.resize(blockSize / 2);
+        correlations.resize(numKeys);
+    } else {
+        rawBlock.resize(blockSize);
+        rawBlock.zero();
+        periodScores.resize(numKeys);
+        cycleDiffScratch.resize(blockSize);
+        tauTable.resize(numKeys);
+    }
 }
 
-void RealTimePitchTracker::setSampleRate(int samplerate) {
-    float delta = 1.f / blockSize;
-    fftFreqs.ramp(delta, delta).mul((float) samplerate);
-    transform.allocate(blockSize, Transform::NoDivByAny, true);
-    createKernels(440.0);
+void RealTimePitchTracker::setSampleRate(int sr) {
+    sampleRate = sr;
+
+    if (algorithm == AlgoSpectral) {
+        float delta = 1.f / blockSize;
+        fftFreqs.ramp(delta, delta).mul((float) sr);
+        transform.allocate(blockSize, Transform::NoDivByAny, true);
+        createKernels(440.0);
+    } else {
+        precomputePeriods(440.0, sr);
+    }
 }
 
 void RealTimePitchTracker::write(Buffer<float>& audioBlock) {
-    if (!rwBuffer.hasRoomFor(audioBlock.size())) {
+    if (!rwBuffer.hasRoomFor(audioBlock.size()))
         rwBuffer.retract();
-    }
+
     rwBuffer.write(audioBlock);
 
     if (rwBuffer.hasDataFor(blockSize)) {
         auto block = rwBuffer.read(blockSize);
-        {
-            // just try to lock - audio thread updates more often, it's okay to queue up a few samples
-            const SpinLock::ScopedTryLockType lock(bufferLock);
-            if (lock.isLocked()) {
+        const SpinLock::ScopedTryLockType lock(bufferLock);
+        if (lock.isLocked()) {
+            if (algorithm == AlgoSpectral) {
                 block.copyTo(localBlock);
                 localBlock.mul(hannWindow);
                 localBlock.mul(1 / jmax(0.01f, localBlock.max()));
+            } else {
+                // No window: a Hann taper drives edge rows toward zero and
+                // inflates cycle-diff scores even at the true period.
+                block.copyTo(rawBlock);
+                rawBlock.mul(1.f / jmax(0.01f, rawBlock.max()));
             }
         }
     }
 }
 
 int RealTimePitchTracker::update() {
-    if (kernels.empty()) {
+    return algorithm == AlgoSpectral ? updateSpectral() : updatePeriodic();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Spectral mode: FFT log-magnitude correlation against harmonic kernels
+// ─────────────────────────────────────────────────────────────────────────────
+
+int RealTimePitchTracker::updateSpectral() {
+    if (kernels.empty())
         return bestKeyIndex;
-    }
 
     {
         const SpinLock::ScopedLockType lock(bufferLock);
@@ -63,23 +90,15 @@ int RealTimePitchTracker::update() {
     const float spectrumNorm = fftMagnitudes.normL2();
     fftMagnitudes.mul(spectrumNorm > 1.0e-8f ? 1.0f / spectrumNorm : 0.f);
 
-    for (int i = 0; i < kernels.size(); ++i) {
-        const auto& kernel = kernels[i];
-        correlations[i] = fftMagnitudes.dot(kernel);
-    }
+    for (int i = 0; i < (int) kernels.size(); ++i)
+        correlations[i] = fftMagnitudes.dot(kernels[i]);
 
     float maxCorrelation = -std::numeric_limits<float>::infinity();
     int bestKernelIndex = jlimit(0, numKeys - 1, bestKeyIndex - 21);
     correlations.getMax(maxCorrelation, bestKernelIndex);
 
-    float spectralPeakLogMagnitude = -std::numeric_limits<float>::infinity();
-    int spectralPeakIndex = 0;
-    fftMagnitudes.getMax(spectralPeakLogMagnitude, spectralPeakIndex);
-
-    if (maxCorrelation > 0.1f) {
-        int midiNote = bestKernelIndex + 21; // Lowest key is A0 (MIDI note 21)
-        bestKeyIndex = midiNote;
-    }
+    if (maxCorrelation > 0.1f)
+        bestKeyIndex = bestKernelIndex + 21;
 
     {
         const SpinLock::ScopedLockType lock(bufferLock);
@@ -87,6 +106,131 @@ int RealTimePitchTracker::update() {
     }
     return bestKeyIndex;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CycleDiff mode: cycle-to-cycle auto-difference in the time domain
+// ─────────────────────────────────────────────────────────────────────────────
+
+void RealTimePitchTracker::precomputePeriods(double frequencyOfA4, int sr) {
+    tauTable.resize(numKeys);
+    for (int i = 0; i < numKeys; ++i) {
+        const float freq = MidiMessage::getMidiNoteInHertz(i + 21, frequencyOfA4);
+        tauTable[i] = jmax(2, roundToInt((float) sr / freq));
+    }
+}
+
+int RealTimePitchTracker::updatePeriodic() {
+    if (tauTable.empty())
+        return bestKeyIndex;
+
+    // Silence guard: a peak-normalised non-silent block always has normL2 >> 1.
+    // An all-zero block scores 0 on every candidate and would give a false reading.
+    {
+        const SpinLock::ScopedLockType lock(bufferLock);
+        if (rawBlock.normL2() < 1.f)
+            return bestKeyIndex;
+    }
+
+    float* sig = rawBlock.get();
+
+    // ── 1. Score every candidate period ──────────────────────────────────────
+    //
+    // For candidate period τ, reshape the block into rows of width τ.
+    // The sum of consecutive row-pair L2 differences equals:
+    //
+    //   Σ_{i=0}^{(numCycles-1)·τ - 1}  (x[i+τ] - x[i])²   (then sqrt'd)
+    //
+    // because when i sweeps [0,τ) it covers row 0 vs 1, [τ,2τ) covers row 1
+    // vs 2, etc.  This collapses the inner per-cycle loop into two BLAS calls:
+    // one sub and one normL2 over the full diffLen span.
+    //
+    // Normalise by sqrt(τ) · numComparisons so the noise floor is the same
+    // for all periods (L2 of white noise scales as sqrt(N)), making scores
+    // directly comparable across the 88-key range.
+
+    for (int key = 0; key < numKeys; ++key) {
+        const int tau           = tauTable[key];
+        const int numCycles     = blockSize / tau;
+
+        if (numCycles < 2) {
+            // Fewer than 2 complete cycles — insufficient data.
+            // Affects roughly the bottom octave at 44100 Hz / 4096-sample block.
+            periodScores[key] = std::numeric_limits<float>::infinity();
+            continue;
+        }
+
+        const int numComparisons = numCycles - 1;
+        const int diffLen        = numComparisons * tau;  // == numCycles*tau - tau <= blockSize
+
+        // x[i+τ] - x[i] for i in [0, diffLen): one BLAS subtract
+        Buffer<float> base   (sig,       diffLen);
+        Buffer<float> lagged (sig + tau, diffLen);
+        Buffer<float> scratch(cycleDiffScratch.get(), diffLen);
+        VecOps::sub(lagged, base, scratch);
+
+        // Single L2 norm over the full lagged-diff span: replaces the per-cycle loop
+        const float rawScore = scratch.normL2();
+
+        periodScores[key] = rawScore / (std::sqrt((float) tau) * (float) numComparisons);
+    }
+
+    // ── 2. Octave cascade ────────────────────────────────────────────────────
+    //
+    // If the true period is τ₀, then 2τ₀, 3τ₀, … also give near-zero diffs
+    // (each row contains complete cycles so consecutive rows are nearly identical).
+    // The sqrt(τ) normalisation reduces but doesn't eliminate this.
+    //
+    // Sweep low→high: if the key one octave up scores within the tolerance
+    // of the current key, the current key is an artifact of a 2× sub-multiple.
+    // Penalise it so the higher-frequency (shorter-period) candidate wins.
+    // Sweeping ascending ensures we don't penalise a key based on a score that
+    // was itself already penalised in the same pass.
+
+    constexpr float octaveTolerance = 1.08f;  // tune in [1.02, 1.20]
+
+    for (int key = 0; key + 12 < numKeys; ++key) {
+        if (periodScores[key]      == std::numeric_limits<float>::infinity()) continue;
+        if (periodScores[key + 12] == std::numeric_limits<float>::infinity()) continue;
+
+        if (periodScores[key + 12] <= periodScores[key] * octaveTolerance)
+            periodScores[key] *= 2.f;  // demote: this key is likely an octave artifact
+    }
+
+    // ── 3. Winner ────────────────────────────────────────────────────────────
+
+    float minScore = std::numeric_limits<float>::infinity();
+    int   bestKey  = jlimit(0, numKeys - 1, bestKeyIndex - 21);
+
+    for (int key = 0; key < numKeys; ++key) {
+        if (periodScores[key] < minScore) {
+            minScore = periodScores[key];
+            bestKey  = key;
+        }
+    }
+
+    // Only commit when the signal is sufficiently periodic.
+    // Pure noise after normalization scores around sqrt(2)/sqrt(numComparisons).
+    // A clean tone scores close to 0. Starting value of 0.25 is conservative —
+    // tune downward if unvoiced frames are incorrectly assigned a pitch.
+    constexpr float periodicityThreshold = 0.25f;
+
+    if (minScore < periodicityThreshold)
+        bestKeyIndex = bestKey + 21;
+
+    // Pass periodScores in place of correlations so the trace listener can
+    // visualise the score landscape. Lower = stronger pitch candidate.
+    {
+        const SpinLock::ScopedLockType lock(bufferLock);
+        Buffer<float> emptyMags;
+        traceListener->onPitchFrame(bestKeyIndex, rawBlock, periodScores, emptyMags);
+    }
+
+    return bestKeyIndex;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Kernel construction (spectral mode only)
+// ─────────────────────────────────────────────────────────────────────────────
 
 void RealTimePitchTracker::createKernels(double frequencyOfA4) {
     int primes[] = {   1,    2,    3,    5,    7,   11,   13,   17,   19,   23,   29,   31,   37,   41,   43,   47,   53,
@@ -176,11 +320,6 @@ void RealTimePitchTracker::createKernels(double frequencyOfA4) {
         }
 
         kernel.mul(invRamp);
-        // float highpassScale = (200.f - candFreq) / 200.f;
-        // if (highpassScale > 0.f) {
-        //     kernel.mul(1 - highpassScale);
-        //     kernel.addProduct(strongHighPassWeight, highpassScale);
-        // }
         const float normL2 = kernel.normL2();
         kernel.mul(MathConstants<float>::sqrt2 / jmax(1e-5f, normL2));
         kernels.push_back(kernel);
