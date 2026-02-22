@@ -247,3 +247,164 @@ TEST_CASE("V2EnvRasterizer loops until release then follows release region", "[c
     float releaseL2 = diffRelease.normL2();
     REQUIRE(releaseL2 >= 0.0f);
 }
+
+TEST_CASE("V2EnvRasterizer rendered envelope is invariant to cyclic positioning flag", "[curve][v2][env][rendered][positioner]") {
+    std::vector<Intercept> intercepts = {
+        Intercept(0.0f, 0.10f),
+        Intercept(0.25f, 0.95f),
+        Intercept(0.60f, 0.55f),
+        Intercept(1.20f, 0.25f)
+    };
+    FixedEnvInterpolatorStage fixedInterpolator(intercepts);
+
+    V2PrepareSpec prepare;
+    prepare.capacities.maxIntercepts = 32;
+    prepare.capacities.maxCurves = 64;
+    prepare.capacities.maxWavePoints = 512;
+    prepare.capacities.maxDeformRegions = 0;
+
+    V2RenderRequest request;
+    request.numSamples = 64;
+    request.deltaX = 0.01;
+    request.tempoScale = 1.0f;
+    request.scale = 1;
+
+    ScopedAlloc<float> linearMemory(64);
+    ScopedAlloc<float> cyclicMemory(64);
+    ScopedAlloc<float> diffMemory(64);
+    Buffer<float> linear = linearMemory.withSize(64);
+    Buffer<float> cyclic = cyclicMemory.withSize(64);
+    Buffer<float> diff = diffMemory.withSize(64);
+
+    V2EnvControlSnapshot controls;
+    controls.scaling = MeshRasterizer::Unipolar;
+    controls.minX = 0.0f;
+    controls.maxX = 1.0f;
+    controls.hasReleaseCurve = true;
+
+    V2EnvRasterizer linearRasterizer;
+    linearRasterizer.prepare(prepare);
+    linearRasterizer.setInterpolatorForTesting(&fixedInterpolator);
+    controls.cyclic = false;
+    linearRasterizer.updateControlData(controls);
+    linearRasterizer.noteOn();
+
+    V2EnvRasterizer cyclicRasterizer;
+    cyclicRasterizer.prepare(prepare);
+    cyclicRasterizer.setInterpolatorForTesting(&fixedInterpolator);
+    controls.cyclic = true;
+    cyclicRasterizer.updateControlData(controls);
+    cyclicRasterizer.noteOn();
+
+    V2RenderResult linearResult;
+    V2RenderResult cyclicResult;
+    REQUIRE(linearRasterizer.renderAudio(request, linear, linearResult));
+    REQUIRE(cyclicRasterizer.renderAudio(request, cyclic, cyclicResult));
+
+    REQUIRE(linearResult.samplesWritten == linear.size());
+    REQUIRE(cyclicResult.samplesWritten == cyclic.size());
+    VecOps::sub(linear, cyclic, diff);
+    REQUIRE(diff.normL2() == 0.0f);
+}
+
+TEST_CASE("V2EnvRasterizer rendered ADSR-like envelope loops at sustain and releases after noteOff", "[curve][v2][env][rendered][adsr]") {
+    std::vector<Intercept> intercepts = {
+        Intercept(0.00f, 0.00f), // attack start
+        Intercept(0.12f, 1.00f), // attack peak
+        Intercept(0.30f, 0.60f), // decay to sustain
+        Intercept(0.50f, 0.60f), // sustain region end
+        Intercept(0.90f, 0.05f)  // release tail
+    };
+    FixedEnvInterpolatorStage fixedInterpolator(intercepts);
+
+    V2EnvRasterizer rasterizer;
+    V2PrepareSpec prepare;
+    prepare.capacities.maxIntercepts = 32;
+    prepare.capacities.maxCurves = 64;
+    prepare.capacities.maxWavePoints = 512;
+    prepare.capacities.maxDeformRegions = 0;
+    rasterizer.prepare(prepare);
+    rasterizer.setInterpolatorForTesting(&fixedInterpolator);
+
+    V2EnvControlSnapshot controls;
+    controls.scaling = MeshRasterizer::Unipolar;
+    controls.minX = 0.0f;
+    controls.maxX = 1.0f;
+    controls.cyclic = false;
+    controls.hasReleaseCurve = true;
+    controls.hasLoopRegion = true;
+    controls.loopStartX = 0.30f;
+    controls.loopEndX = 0.50f;
+    controls.releaseStartX = 0.50f;
+    rasterizer.updateControlData(controls);
+    rasterizer.noteOn();
+
+    V2RenderRequest attackRequest;
+    attackRequest.numSamples = 30;
+    attackRequest.deltaX = 0.01;
+    attackRequest.tempoScale = 1.0f;
+    attackRequest.scale = 1;
+
+    ScopedAlloc<float> attackMemory(30);
+    Buffer<float> attack = attackMemory.withSize(30);
+    V2RenderResult attackResult;
+    REQUIRE(rasterizer.renderAudio(attackRequest, attack, attackResult));
+    REQUIRE(attackResult.samplesWritten == attack.size());
+    REQUIRE(attack[10] > attack[0]);   // attack rise
+    REQUIRE(attack[29] < attack[10]);  // decay toward sustain
+
+    REQUIRE(rasterizer.transitionToLooping(true, true));
+    REQUIRE(rasterizer.getMode() == V2EnvMode::Looping);
+
+    V2RenderRequest loopRequest;
+    loopRequest.numSamples = 20;
+    loopRequest.deltaX = 0.01;
+    loopRequest.tempoScale = 1.0f;
+    loopRequest.scale = 1;
+
+    ScopedAlloc<float> loopAMemory(20);
+    ScopedAlloc<float> loopBMemory(20);
+    ScopedAlloc<float> loopDiffMemory(20);
+    Buffer<float> loopA = loopAMemory.withSize(20);
+    Buffer<float> loopB = loopBMemory.withSize(20);
+    Buffer<float> loopDiff = loopDiffMemory.withSize(20);
+
+    V2RenderResult loopResultA;
+    V2RenderResult loopResultB;
+    REQUIRE(rasterizer.renderAudio(loopRequest, loopA, loopResultA));
+    REQUIRE(rasterizer.renderAudio(loopRequest, loopB, loopResultB));
+
+    float internalMaxStep = 0.0f;
+    for (int i = 1; i < loopA.size(); ++i) {
+        float step = loopA[i] - loopA[i - 1];
+        if (step < 0.0f) {
+            step = -step;
+        }
+        if (step > internalMaxStep) {
+            internalMaxStep = step;
+        }
+    }
+
+    float boundaryStep = loopB[0] - loopA[loopA.size() - 1];
+    if (boundaryStep < 0.0f) {
+        boundaryStep = -boundaryStep;
+    }
+
+    float continuityScale = jmax(internalMaxStep, 1e-3f);
+    REQUIRE(boundaryStep <= continuityScale * 1.25f + 1e-4f);
+
+    REQUIRE(rasterizer.noteOff());
+    REQUIRE(rasterizer.getMode() == V2EnvMode::Releasing);
+
+    ScopedAlloc<float> releaseMemory(20);
+    ScopedAlloc<float> releaseDiffMemory(20);
+    Buffer<float> release = releaseMemory.withSize(20);
+    Buffer<float> releaseDiff = releaseDiffMemory.withSize(20);
+    V2RenderResult releaseResult;
+    REQUIRE(rasterizer.renderAudio(loopRequest, release, releaseResult));
+    REQUIRE(releaseResult.samplesWritten == release.size());
+
+    VecOps::sub(loopA, release, releaseDiff);
+    REQUIRE(releaseDiff.normL2() > 0.0f);  // release diverges from sustain loop
+    REQUIRE(release[release.size() - 1] <= release[0]); // release moves downward
+}
