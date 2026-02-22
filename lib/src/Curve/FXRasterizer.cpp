@@ -1,5 +1,12 @@
 #include <algorithm>
+
 #include "FXRasterizer.h"
+
+namespace {
+constexpr int kV2FxMaxIntercepts = 128;
+constexpr int kV2FxMaxCurves = 256;
+constexpr int kV2FxMaxWavePoints = 4096;
+}
 
 FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
         SingletonAccessor(repo, name),
@@ -9,9 +16,20 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 
     dims.x = Vertex::Phase;
     dims.y = Vertex::Amp;
+
+    V2PrepareSpec prepareSpec;
+    prepareSpec.capacities.maxIntercepts = kV2FxMaxIntercepts;
+    prepareSpec.capacities.maxCurves = kV2FxMaxCurves;
+    prepareSpec.capacities.maxWavePoints = kV2FxMaxWavePoints;
+    prepareSpec.capacities.maxDeformRegions = 0;
+    v2FxRasterizer.prepare(prepareSpec);
 }
 
 void FXRasterizer::calcCrossPoints() {
+    if (renderWithV2()) {
+        return;
+    }
+
     if (mesh == nullptr || mesh->getNumVerts() == 0) {
         cleanUp();
         return;
@@ -100,4 +118,39 @@ int FXRasterizer::getNumDims() {
 
 bool FXRasterizer::hasEnoughCubesForCrossSection() {
     return mesh->getNumVerts() > 1;
+}
+
+bool FXRasterizer::renderWithV2() {
+    if (mesh == nullptr || ! hasEnoughCubesForCrossSection()) {
+        return false;
+    }
+
+    v2FxRasterizer.setMeshSnapshot(mesh);
+
+    V2FxControlSnapshot controls;
+    controls.morph = morph;
+    controls.scaling = scalingType;
+    controls.wrapPhases = cyclic;
+    controls.cyclic = cyclic;
+    controls.minX = xMinimum;
+    controls.maxX = xMaximum;
+    controls.interpolateCurves = interpolateCurves;
+    controls.lowResolution = lowResCurves;
+    controls.integralSampling = integralSampling;
+    v2FxRasterizer.updateControlData(controls);
+
+    std::vector<Intercept> intercepts;
+    int interceptCount = 0;
+    if (! v2FxRasterizer.extractIntercepts(intercepts, interceptCount) || interceptCount <= 1) {
+        return false;
+    }
+
+    icpts.assign(intercepts.begin(), intercepts.begin() + interceptCount);
+    std::sort(icpts.begin(), icpts.end());
+
+    curves.clear();
+    padIcpts(icpts, curves);
+    updateCurves();
+    unsampleable = false;
+    return true;
 }

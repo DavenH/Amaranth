@@ -55,9 +55,7 @@ public:
     /* ----------------------------------------------------------------------------- */
 
     ZoomPanel(SingletonRepo* repo, ZoomContext panel);
-    ~ZoomPanel() override {
-        Component::~Component();
-    }
+    ~ZoomPanel() override = default;
 
     [[nodiscard]] Rectangle<int> getBounds() const override {
         return Component::getBounds();
