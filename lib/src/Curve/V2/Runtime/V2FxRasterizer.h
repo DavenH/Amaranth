@@ -5,18 +5,21 @@
 #include "../Stages/V2PositionerStages.h"
 #include "../Stages/V2SamplerStages.h"
 #include "../Stages/V2WaveBuilderStages.h"
+#include "V2RasterizerPipeline.h"
 #include "V2RasterizerControls.h"
 #include "V2RasterizerGraph.h"
 #include "V2RasterizerWorkspace.h"
 
-class V2FxRasterizer {
+class V2FxRasterizer :
+        public V2RasterizerPipeline {
 public:
     V2FxRasterizer();
 
     void prepare(const V2PrepareSpec& spec);
     void setMeshSnapshot(const Mesh* meshSnapshot) noexcept;
     void updateControlData(const V2FxControlSnapshot& snapshot) noexcept;
-    bool extractIntercepts(std::vector<Intercept>& outIntercepts, int& outCount) noexcept;
+    bool renderIntercepts(V2RasterArtifacts& artifacts) noexcept override;
+    bool renderWaveform(V2RasterArtifacts& artifacts) noexcept override;
 
     bool renderAudio(
         const V2RenderRequest& request,

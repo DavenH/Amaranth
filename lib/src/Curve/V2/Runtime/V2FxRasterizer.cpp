@@ -27,9 +27,9 @@ void V2FxRasterizer::updateControlData(const V2FxControlSnapshot& snapshot) noex
     controls = snapshot;
 }
 
-bool V2FxRasterizer::extractIntercepts(std::vector<Intercept>& outIntercepts, int& outCount) noexcept {
-    outIntercepts.clear();
-    outCount = 0;
+bool V2FxRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
+    artifacts.clear();
+    int outCount = 0;
 
     if (! workspace.isPrepared() || mesh == nullptr) {
         return false;
@@ -45,8 +45,57 @@ bool V2FxRasterizer::extractIntercepts(std::vector<Intercept>& outIntercepts, in
         return false;
     }
 
-    outIntercepts.assign(workspace.intercepts.begin(), workspace.intercepts.begin() + outCount);
+    artifacts.intercepts = &workspace.intercepts;
     return outCount > 0;
+}
+
+bool V2FxRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
+    if (! workspace.isPrepared()
+            || artifacts.intercepts != &workspace.intercepts
+            || artifacts.intercepts->empty()) {
+        return false;
+    }
+
+    V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(
+        controls,
+        V2CurveBuilderContext::PaddingPolicy::FxLegacyFixed);
+    V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
+
+    int curveCount = 0;
+    if (! curveBuilder.run(
+            workspace.intercepts,
+            static_cast<int>(artifacts.intercepts->size()),
+            workspace.curves,
+            curveCount,
+            curveBuilderContext)) {
+        return false;
+    }
+
+    int zeroIndex = 0;
+    int oneIndex = 0;
+    int wavePointCount = 0;
+    if (! waveBuilder.run(
+            workspace.curves,
+            curveCount,
+            workspace.waveX,
+            workspace.waveY,
+            workspace.diffX,
+            workspace.slope,
+            wavePointCount,
+            zeroIndex,
+            oneIndex,
+            waveBuilderContext)) {
+        return false;
+    }
+
+    artifacts.curves = &workspace.curves;
+    artifacts.waveX = workspace.waveX.withSize(wavePointCount);
+    artifacts.waveY = workspace.waveY.withSize(wavePointCount);
+    artifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
+    artifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
+    artifacts.zeroIndex = zeroIndex;
+    artifacts.oneIndex = oneIndex;
+    return wavePointCount > 1;
 }
 
 bool V2FxRasterizer::renderAudio(
@@ -64,36 +113,20 @@ bool V2FxRasterizer::renderAudio(
         return false;
     }
 
-    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
-                                        : static_cast<V2PositionerStage*>(&linearPositioner));
-
-    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
-    V2PositionerContext positionerContext = makePositionerContext(controls);
-    V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(
-        controls,
-        V2CurveBuilderContext::PaddingPolicy::FxLegacyFixed);
-    V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
-
     V2RenderRequest samplerRequest = request;
     samplerRequest.numSamples = numSamples;
     if (samplerRequest.deltaX <= 0.0) {
         samplerRequest.deltaX = 1.0 / static_cast<double>(numSamples);
     }
 
-    V2BuiltArtifacts artifacts;
-    if (! graph.buildArtifacts(
-            workspace,
-            interpolatorContext,
-            positionerContext,
-            curveBuilderContext,
-            waveBuilderContext,
-            artifacts)) {
+    V2RasterArtifacts artifacts;
+    if (! renderArtifacts(artifacts)) {
         return false;
     }
 
     V2SamplerContext samplerContext(
         samplerRequest,
-        artifacts.wavePointCount,
+        artifacts.waveX.size(),
         artifacts.zeroIndex,
         artifacts.oneIndex);
     result = sampler.run(

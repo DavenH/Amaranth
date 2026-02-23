@@ -100,10 +100,10 @@ TEST_CASE("V2FxRasterizer renders deterministic output for fixed controls", "[cu
     Buffer<float> second = secondMemory.withSize(96);
     Buffer<float> diff = diffMemory.withSize(96);
 
-    std::vector<Intercept> intercepts;
-    int interceptCount = 0;
-    REQUIRE(rasterizer.extractIntercepts(intercepts, interceptCount));
-    REQUIRE(interceptCount > 1);
+    V2RasterArtifacts artifacts;
+    REQUIRE(rasterizer.renderArtifacts(artifacts));
+    REQUIRE(artifacts.intercepts != nullptr);
+    REQUIRE(artifacts.intercepts->size() > 1);
 
     V2RenderResult firstResult;
     V2RenderResult secondResult;
@@ -139,10 +139,10 @@ TEST_CASE("V2FxRasterizer supports linear and cyclic modes", "[curve][v2][fx][mo
     Buffer<float> linear = linearMemory.withSize(80);
     Buffer<float> cyclic = cyclicMemory.withSize(80);
 
-    std::vector<Intercept> intercepts;
-    int interceptCount = 0;
-    REQUIRE(rasterizer.extractIntercepts(intercepts, interceptCount));
-    REQUIRE(interceptCount > 1);
+    V2RasterArtifacts artifacts;
+    REQUIRE(rasterizer.renderArtifacts(artifacts));
+    REQUIRE(artifacts.intercepts != nullptr);
+    REQUIRE(artifacts.intercepts->size() > 1);
 
     V2RenderResult linearResult;
     REQUIRE(rasterizer.renderAudio(request, linear, linearResult));
@@ -181,10 +181,10 @@ TEST_CASE("V2FxRasterizer intercept extraction is morph-invariant like legacy FX
     Buffer<float> b = bMem.withSize(64);
     Buffer<float> diff = diffMem.withSize(64);
 
-    std::vector<Intercept> intercepts;
-    int interceptCount = 0;
-    REQUIRE(rasterizer.extractIntercepts(intercepts, interceptCount));
-    REQUIRE(interceptCount > 1);
+    V2RasterArtifacts artifacts;
+    REQUIRE(rasterizer.renderArtifacts(artifacts));
+    REQUIRE(artifacts.intercepts != nullptr);
+    REQUIRE(artifacts.intercepts->size() > 1);
 
     V2RenderResult aResult;
     REQUIRE(rasterizer.renderAudio(request, a, aResult));

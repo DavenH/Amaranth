@@ -5,21 +5,23 @@
 #include "../Stages/V2PositionerStages.h"
 #include "../Stages/V2SamplerStages.h"
 #include "../Stages/V2WaveBuilderStages.h"
+#include "V2RasterizerPipeline.h"
 #include "V2RasterizerControls.h"
 #include "V2RasterizerGraph.h"
 #include "V2RasterizerWorkspace.h"
 
-using V2GraphicArtifactsView = V2BuiltArtifacts;
+using V2GraphicArtifactsView = V2RasterArtifacts;
 
-class V2GraphicRasterizer {
+class V2GraphicRasterizer :
+        public V2RasterizerPipeline {
 public:
     V2GraphicRasterizer();
 
     void prepare(const V2PrepareSpec& spec);
     void setMeshSnapshot(const Mesh* meshSnapshot) noexcept;
     void updateControlData(const V2GraphicControlSnapshot& snapshot) noexcept;
-    bool extractIntercepts(std::vector<Intercept>& outIntercepts, int& outCount) noexcept;
-    bool extractArtifacts(V2GraphicArtifactsView& outArtifacts) noexcept;
+    bool renderIntercepts(V2RasterArtifacts& artifacts) noexcept override;
+    bool renderWaveform(V2RasterArtifacts& artifacts) noexcept override;
 
     bool renderGraphic(
         const V2GraphicRequest& request,

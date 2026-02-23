@@ -123,14 +123,11 @@ bool V2RasterizerGraph::buildArtifacts(
     }
 
     outArtifacts.intercepts = &workspace.intercepts;
-    outArtifacts.interceptCount = interceptCount;
     outArtifacts.curves = &workspace.curves;
-    outArtifacts.curveCount = curveCount;
     outArtifacts.waveX = workspace.waveX.withSize(wavePointCount);
     outArtifacts.waveY = workspace.waveY.withSize(wavePointCount);
     outArtifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
     outArtifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
-    outArtifacts.wavePointCount = wavePointCount;
     outArtifacts.zeroIndex = zeroIndex;
     outArtifacts.oneIndex = oneIndex;
     return wavePointCount > 1;
@@ -171,13 +168,13 @@ V2RenderResult V2RasterizerGraph::render(
 
     if (sampler == nullptr) {
         result.rendered = true;
-        result.stillActive = artifacts.interceptCount > 0;
+        result.stillActive = artifacts.intercepts != nullptr && ! artifacts.intercepts->empty();
         result.samplesWritten = 0;
         return result;
     }
 
     V2SamplerContext context = samplerContext;
-    context.wavePointCount = artifacts.wavePointCount;
+    context.wavePointCount = artifacts.waveX.size();
     context.zeroIndex = artifacts.zeroIndex;
     context.oneIndex = artifacts.oneIndex;
 

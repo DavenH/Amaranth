@@ -167,15 +167,14 @@ TEST_CASE("V2GraphicRasterizer extracts pipeline artifacts for updater parity", 
     controls.cyclic = false;
     rasterizer.updateControlData(controls);
 
-    V2GraphicArtifactsView artifacts;
-    REQUIRE(rasterizer.extractArtifacts(artifacts));
+    V2RasterArtifacts artifacts;
+    REQUIRE(rasterizer.renderArtifacts(artifacts));
     REQUIRE(artifacts.intercepts != nullptr);
     REQUIRE(artifacts.curves != nullptr);
-    REQUIRE(artifacts.interceptCount > 1);
-    REQUIRE(artifacts.curveCount > 0);
-    REQUIRE(artifacts.wavePointCount > 1);
-    REQUIRE(artifacts.waveX.size() == artifacts.wavePointCount);
-    REQUIRE(artifacts.waveY.size() == artifacts.wavePointCount);
-    REQUIRE(artifacts.diffX.size() == artifacts.wavePointCount - 1);
-    REQUIRE(artifacts.slope.size() == artifacts.wavePointCount - 1);
+    REQUIRE(artifacts.intercepts->size() > 1);
+    REQUIRE(! artifacts.curves->empty());
+    REQUIRE(artifacts.waveX.size() > 1);
+    REQUIRE(artifacts.waveY.size() == artifacts.waveX.size());
+    REQUIRE(artifacts.diffX.size() == artifacts.waveX.size() - 1);
+    REQUIRE(artifacts.slope.size() == artifacts.waveX.size() - 1);
 }
