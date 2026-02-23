@@ -1,23 +1,10 @@
 #pragma once
 
 #include "../Stages/V2StageInterfaces.h"
+#include "V2RasterizerPipeline.h"
 #include "V2RasterizerWorkspace.h"
 
-struct V2BuiltArtifacts {
-    const std::vector<Intercept>* intercepts{nullptr};
-    int interceptCount{0};
-
-    const std::vector<Curve>* curves{nullptr};
-    int curveCount{0};
-
-    Buffer<float> waveX;
-    Buffer<float> waveY;
-    Buffer<float> diffX;
-    Buffer<float> slope;
-    int wavePointCount{0};
-    int zeroIndex{0};
-    int oneIndex{0};
-};
+using V2BuiltArtifacts = V2RasterArtifacts;
 
 class V2RasterizerGraph {
 public:

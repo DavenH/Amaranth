@@ -76,21 +76,21 @@ bool GraphicRasterizer::renderWithV2() {
     controls.integralSampling = integralSampling;
     v2GraphicRasterizer.updateControlData(controls);
 
-    V2GraphicArtifactsView artifacts;
-    if (! v2GraphicRasterizer.extractArtifacts(artifacts)
+    V2RasterArtifacts artifacts;
+    if (! v2GraphicRasterizer.renderArtifacts(artifacts)
             || artifacts.intercepts == nullptr
             || artifacts.curves == nullptr
-            || artifacts.interceptCount <= 1) {
+            || artifacts.intercepts->size() <= 1) {
         return false;
     }
 
-    icpts.assign(artifacts.intercepts->begin(), artifacts.intercepts->begin() + artifacts.interceptCount);
-    curves.assign(artifacts.curves->begin(), artifacts.curves->begin() + artifacts.curveCount);
+    icpts.assign(artifacts.intercepts->begin(), artifacts.intercepts->end());
+    curves.assign(artifacts.curves->begin(), artifacts.curves->end());
     colorPoints.clear();
     zeroIndex = artifacts.zeroIndex;
     oneIndex = artifacts.oneIndex;
 
-    int wavePointCount = artifacts.wavePointCount;
+    int wavePointCount = artifacts.waveX.size();
     if (wavePointCount > 0) {
         updateBuffers(wavePointCount);
         artifacts.waveX.copyTo(waveX.withSize(wavePointCount));

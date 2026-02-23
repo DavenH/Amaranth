@@ -139,13 +139,14 @@ bool FXRasterizer::renderWithV2() {
     controls.integralSampling = integralSampling;
     v2FxRasterizer.updateControlData(controls);
 
-    std::vector<Intercept> intercepts;
-    int interceptCount = 0;
-    if (! v2FxRasterizer.extractIntercepts(intercepts, interceptCount) || interceptCount <= 1) {
+    V2RasterArtifacts artifacts;
+    if (! v2FxRasterizer.renderArtifacts(artifacts)
+            || artifacts.intercepts == nullptr
+            || artifacts.intercepts->size() <= 1) {
         return false;
     }
 
-    icpts.assign(intercepts.begin(), intercepts.begin() + interceptCount);
+    icpts.assign(artifacts.intercepts->begin(), artifacts.intercepts->end());
     std::sort(icpts.begin(), icpts.end());
 
     curves.clear();

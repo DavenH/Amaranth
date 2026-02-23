@@ -5,11 +5,13 @@
 #include "../Stages/V2PositionerStages.h"
 #include "../Stages/V2SamplerStages.h"
 #include "../Stages/V2WaveBuilderStages.h"
+#include "V2RasterizerPipeline.h"
 #include "V2RasterizerControls.h"
 #include "V2RasterizerGraph.h"
 #include "V2RasterizerWorkspace.h"
 
-class V2VoiceRasterizer {
+class V2VoiceRasterizer :
+        public V2RasterizerPipeline {
 public:
     V2VoiceRasterizer();
 
@@ -23,11 +25,10 @@ public:
         const V2RenderRequest& request,
         Buffer<float> output,
         V2RenderResult& result) noexcept;
-    bool extractInterceptsForTesting(std::vector<Intercept>& outIntercepts, int& outCount) noexcept;
+    bool renderIntercepts(V2RasterArtifacts& artifacts) noexcept override;
+    bool renderWaveform(V2RasterArtifacts& artifacts) noexcept override;
 
 private:
-    bool buildWave(int& wavePointCount, int& zeroIndex, int& oneIndex) noexcept;
-
     V2RasterizerWorkspace workspace;
     V2RasterizerGraph graph;
 

@@ -6,11 +6,13 @@
 #include "../Stages/V2SamplerStages.h"
 #include "../Stages/V2WaveBuilderStages.h"
 #include "../State/V2EnvStateMachine.h"
+#include "V2RasterizerPipeline.h"
 #include "V2RasterizerControls.h"
 #include "V2RasterizerGraph.h"
 #include "V2RasterizerWorkspace.h"
 
-class V2EnvRasterizer {
+class V2EnvRasterizer :
+        public V2RasterizerPipeline {
 public:
     V2EnvRasterizer();
 
@@ -30,17 +32,12 @@ public:
         const V2RenderRequest& request,
         Buffer<float> output,
         V2RenderResult& result) noexcept;
+    bool renderIntercepts(V2RasterArtifacts& artifacts) noexcept override;
+    bool renderWaveform(V2RasterArtifacts& artifacts) noexcept override;
 
     void setInterpolatorForTesting(V2InterpolatorStage* stage) noexcept;
 
 private:
-    bool buildWaveForCurrentState(
-        const V2RenderRequest& request,
-        int numSamples,
-        int& wavePointCount,
-        int& zeroIndex,
-        int& oneIndex) noexcept;
-
     V2RasterizerWorkspace workspace;
     V2RasterizerGraph graph;
 

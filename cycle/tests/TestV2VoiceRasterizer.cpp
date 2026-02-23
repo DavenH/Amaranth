@@ -516,16 +516,15 @@ TEST_CASE("V2VoiceRasterizer chaining intercepts match legacy oracle sequencing"
 
         runLegacyVoiceChainingOracleStep(scoped.mesh, morph, controls.minX, controls.maxX, 0.0f, 0.0f, legacy);
 
-        std::vector<Intercept> v2Intercepts;
-        int v2Count = 0;
-        REQUIRE(rasterizer.extractInterceptsForTesting(v2Intercepts, v2Count));
-        REQUIRE(static_cast<int>(legacy.backIcpts.size()) == v2Count);
+        V2RasterArtifacts v2Artifacts;
+        REQUIRE(rasterizer.renderIntercepts(v2Artifacts));
+        REQUIRE(legacy.backIcpts.size() == v2Artifacts.intercepts->size());
 
-        for (int i = 0; i < v2Count; ++i) {
-            REQUIRE(v2Intercepts[i].x == Catch::Approx(legacy.backIcpts[i].x).margin(1e-6f));
-            REQUIRE(v2Intercepts[i].y == Catch::Approx(legacy.backIcpts[i].y).margin(1e-6f));
-            REQUIRE(v2Intercepts[i].shp == Catch::Approx(legacy.backIcpts[i].shp).margin(1e-6f));
-            REQUIRE(v2Intercepts[i].adjustedX == Catch::Approx(legacy.backIcpts[i].adjustedX).margin(1e-6f));
+        for (int i = 0; i < static_cast<int>(v2Artifacts.intercepts->size()); ++i) {
+            REQUIRE((*v2Artifacts.intercepts)[i].x == Catch::Approx(legacy.backIcpts[i].x).margin(1e-6f));
+            REQUIRE((*v2Artifacts.intercepts)[i].y == Catch::Approx(legacy.backIcpts[i].y).margin(1e-6f));
+            REQUIRE((*v2Artifacts.intercepts)[i].shp == Catch::Approx(legacy.backIcpts[i].shp).margin(1e-6f));
+            REQUIRE((*v2Artifacts.intercepts)[i].adjustedX == Catch::Approx(legacy.backIcpts[i].adjustedX).margin(1e-6f));
         }
 
         if (block > 0) {
@@ -536,6 +535,8 @@ TEST_CASE("V2VoiceRasterizer chaining intercepts match legacy oracle sequencing"
             }
         }
 
-        previousV2Intercepts = v2Intercepts;
+        previousV2Intercepts.assign(
+            v2Artifacts.intercepts->begin(),
+            v2Artifacts.intercepts->end());
     }
 }

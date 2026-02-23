@@ -65,17 +65,16 @@ bool V2VoiceRasterizer::renderAudio(
         return false;
     }
 
-    int wavePointCount = 0;
-    int zeroIndex = 0;
-    int oneIndex = 0;
-    if (! buildWave(wavePointCount, zeroIndex, oneIndex)) {
+    V2RasterArtifacts artifacts;
+    if (! renderArtifacts(artifacts)) {
         return false;
     }
 
     Buffer<float> out = output.withSize(numSamples);
-    Buffer<float> waveX = workspace.waveX.withSize(wavePointCount);
-    Buffer<float> waveY = workspace.waveY.withSize(wavePointCount);
-    Buffer<float> slopeUsed = workspace.slope.withSize(wavePointCount - 1);
+    int wavePointCount = artifacts.waveX.size();
+    Buffer<float> waveX = artifacts.waveX;
+    Buffer<float> waveY = artifacts.waveY;
+    Buffer<float> slopeUsed = artifacts.slope;
     double deltaX = request.deltaX > 0.0 ? request.deltaX : 1.0 / static_cast<double>(numSamples);
 
     int currentIndex = jlimit(0, wavePointCount - 2, sampleIndex);
@@ -117,10 +116,8 @@ bool V2VoiceRasterizer::renderAudio(
     return true;
 }
 
-bool V2VoiceRasterizer::extractInterceptsForTesting(std::vector<Intercept>& outIntercepts, int& outCount) noexcept {
-    outIntercepts.clear();
-    outCount = 0;
-
+bool V2VoiceRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
+    artifacts.clear();
     if (! workspace.isPrepared() || mesh == nullptr) {
         return false;
     }
@@ -131,37 +128,59 @@ bool V2VoiceRasterizer::extractInterceptsForTesting(std::vector<Intercept>& outI
     V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
     V2PositionerContext positionerContext = makePositionerContext(controls);
 
+    int outCount = 0;
     if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, outCount)) {
         return false;
     }
 
-    outIntercepts.assign(workspace.intercepts.begin(), workspace.intercepts.begin() + outCount);
-    return true;
+    artifacts.intercepts = &workspace.intercepts;
+    return outCount > 0;
 }
 
-bool V2VoiceRasterizer::buildWave(int& wavePointCount, int& zeroIndex, int& oneIndex) noexcept {
-    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&chainingPositioner)
-                                        : static_cast<V2PositionerStage*>(&linearPositioner));
-
-    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
-    V2PositionerContext positionerContext = makePositionerContext(controls);
-    V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(controls);
-    V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
-
-    V2BuiltArtifacts artifacts;
-    if (! graph.buildArtifacts(
-            workspace,
-            interpolatorContext,
-            positionerContext,
-            curveBuilderContext,
-            waveBuilderContext,
-            artifacts)) {
+bool V2VoiceRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
+    if (! workspace.isPrepared()
+            || artifacts.intercepts != &workspace.intercepts
+            || artifacts.intercepts->empty()) {
         return false;
     }
 
-    wavePointCount = artifacts.wavePointCount;
-    zeroIndex = artifacts.zeroIndex;
-    oneIndex = artifacts.oneIndex;
+    V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(controls);
+    V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
+
+    int curveCount = 0;
+    if (! curveBuilder.run(
+            workspace.intercepts,
+            static_cast<int>(artifacts.intercepts->size()),
+            workspace.curves,
+            curveCount,
+            curveBuilderContext)) {
+        return false;
+    }
+
+    int zeroIndex = 0;
+    int oneIndex = 0;
+    int wavePointCount = 0;
+    if (! waveBuilder.run(
+            workspace.curves,
+            curveCount,
+            workspace.waveX,
+            workspace.waveY,
+            workspace.diffX,
+            workspace.slope,
+            wavePointCount,
+            zeroIndex,
+            oneIndex,
+            waveBuilderContext)) {
+        return false;
+    }
+
+    artifacts.curves = &workspace.curves;
+    artifacts.waveX = workspace.waveX.withSize(wavePointCount);
+    artifacts.waveY = workspace.waveY.withSize(wavePointCount);
+    artifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
+    artifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
+    artifacts.zeroIndex = zeroIndex;
+    artifacts.oneIndex = oneIndex;
 
     const int clampedZero = jlimit(0, wavePointCount - 2, zeroIndex);
     const int clampedOne = jlimit(clampedZero, wavePointCount - 2, oneIndex);
@@ -173,5 +192,5 @@ bool V2VoiceRasterizer::buildWave(int& wavePointCount, int& zeroIndex, int& oneI
         cycleEndX = controls.maxX;
     }
 
-    return true;
+    return wavePointCount > 1;
 }
