@@ -25,26 +25,7 @@ Equalizer::Equalizer(SingletonRepo *repo) : Effect(repo, "Equalizer")
 }
 
 Equalizer::~Equalizer() {
-    freeStates();
-
-    stateBuffer.clear();
     overflowBuffer.clear();
-    delayBuffer.clear();
-}
-
-void Equalizer::freeStates() {
-    ScopedLock sl(stateLock);
-
-    for (auto& partition : partitions) {
-        for (int c = 0; c < numEqChannels; ++c) {
-            IppsIIRState64f_32f **state = &partition.states[c];
-
-            if (*state != 0) {
-                //				status(ippsIIRFree64f_32f(*state));
-                *state = 0;
-            }
-        }
-    }
 }
 
 void Equalizer::processBuffer(AudioSampleBuffer &buffer) {
@@ -60,9 +41,7 @@ void Equalizer::processBuffer(AudioSampleBuffer &buffer) {
                 continue;
             }
 
-            jassert(part.states[c] != nullptr);
-
-            statusB(ippsIIR64f_32f(destBuffer, destBuffer, numSamples, part.states[c]));
+            part.iir.process(c, destBuffer);
         }
     }
 }
@@ -78,7 +57,6 @@ void Equalizer::setSampleRate(double samplerate) {
 
 bool Equalizer::doParamChange(int index, double value, bool doFurtherUpdate) {
     //	progressMark
-    jassert(partitions[0].states[0] != nullptr);
 
     int partIdx = index % Band1Freq;
     bool didChange = false;
@@ -90,7 +68,7 @@ bool Equalizer::doParamChange(int index, double value, bool doFurtherUpdate) {
     }
 
     if (doFurtherUpdate && didChange) {
-        updatePartition(partIdx, true);
+        updatePartition(partIdx);
     }
 
     return true;
@@ -98,45 +76,15 @@ bool Equalizer::doParamChange(int index, double value, bool doFurtherUpdate) {
 
 
 void Equalizer::updateFilters() {
-    int tapsLength = 2 * tapsPerBiquad;
-    int delayLineLength = (2 * filterOrder);
-
-    bool haveResizedBuffers = false;
-    haveResizedBuffers |= tapsBuffer.resize(numPartitions * tapsLength * numEqChannels);
-    haveResizedBuffers |= delayBuffer.resize(numPartitions * delayLineLength * numEqChannels);
-
-    tapsBuffer.zero();
-    delayBuffer.zero();
-
     for (int i = 0; i < numPartitions; ++i) {
-        updatePartition(i, !haveResizedBuffers);
-    }
-
-    if (haveResizedBuffers) {
-        updateStates();
-
-        /*
-        for(int i = 0; i < numPartitions; ++i)
-        {
-            EqPartition& part = partitions[i];
-            for(int c = 0; c < numEqChannels; ++c)
-            {
-                jassert(part.states[c]);
-                ippsIIRSetTaps64f_32f(part.taps[c], part.states[c]);
-            }
-        }
-        */
+        updatePartition(i);
     }
 }
 
-void Equalizer::updatePartition(int idx, bool canUpdateTaps) {
+void Equalizer::updatePartition(int idx) {
     //	progressMark
 
     EqPartition& part = partitions[idx];
-    int tapsLength = 2 * tapsPerBiquad;
-    int delayLineLength = (2 * filterOrder);
-    int tapsOffset = numEqChannels * tapsLength * idx;
-    int delayOffset = numEqChannels * delayLineLength * idx;
 
     switch (idx) {
         case lowShelfPartition:
@@ -151,27 +99,7 @@ void Equalizer::updatePartition(int idx, bool canUpdateTaps) {
             bsFilter[idx - 1].setup(filterOrder, samplerate, part.centreFreq, part.centreFreq * 0.7f, part.gainDB);
             break;
     }
-
-    for (int c = 0; c < numEqChannels; ++c) {
-        tapsLength = part.cascade->getNumStages() * tapsPerBiquad;
-
-        part.taps[c] = Buffer(tapsBuffer + tapsOffset + c * tapsLength, tapsLength);
-        part.delayLine[c] = Buffer(delayBuffer + delayOffset + c * delayLineLength, delayLineLength);
-
-        Buffer<double> &t = part.taps[c];
-        int count = 0;
-
-        for (int s = 0; s < part.cascade->getNumStages(); ++s) {
-            const Dsp::Cascade::Stage &st = (*part.cascade)[s];
-            const double taps[] = {st.m_b0, st.m_b1, st.m_b2, st.m_a0, st.m_a1, st.m_a2};
-
-            ippsCopy_64f(taps, t + count, tapsPerBiquad);
-            count += tapsPerBiquad;
-        }
-
-        //		if(part.states[c] != 0 && canUpdateTaps)
-        //			ippsIIRSetTaps64f_32f(part.taps[c], part.states[c]);
-    }
+    part.iir.updateFromCascade(*part.cascade);
 }
 
 void Equalizer::processVertexBuffer(Buffer<Float32> inputBuffer) {
@@ -179,17 +107,19 @@ void Equalizer::processVertexBuffer(Buffer<Float32> inputBuffer) {
                         overflowBuffer.size()).copyTo(overflowBuffer);
 
     for (auto& partition : partitions) {
-        IppsIIRState64f_32f *state = partition.states[graphicEqChannel];
-
-        ippsIIR64f_32f(overflowBuffer, overflowBuffer, overflowBuffer.size(), state);
-        ippsIIR64f_32f(inputBuffer, inputBuffer, inputBuffer.size(), state);
+        partition.iir.process(graphicEqChannel, overflowBuffer);
+        partition.iir.process(graphicEqChannel, inputBuffer);
     }
 
-    ippsThreshold_GTAbs_32f_I(inputBuffer, inputBuffer.size(), 30.f);
+    inputBuffer.clip(-30.f, 30.f);
 }
 
 void Equalizer::clearGraphicBuffer() {
     overflowBuffer.zero();
+
+    for (auto& partition : partitions) {
+        partition.iir.clear();
+    }
 }
 
 bool Equalizer::isEnabled() const {
@@ -205,39 +135,6 @@ double Equalizer::calcKnobValue(double value, double logTension) {
     return jlimit(0., 1., log(logTension * x + 1) / log(logTension + 1));
 }
 
-void Equalizer::updateStates() {
-    ScopedLock sl(stateLock);
-
-    freeStates();
-    vector<int> sizes;
-    int cumeSize = 0;
-
-    for (auto& part : partitions) {
-        for (int chan = 0; chan < numEqChannels; ++chan) {
-            int stateSize;
-            statusB(ippsIIRGetStateSize64f_BiQuad_32f(part.numCascades, &stateSize));
-
-            stateSize *= 2;
-            cumeSize += stateSize;
-            sizes.push_back(stateSize);
-        }
-    }
-
-    stateBuffer.resize(cumeSize);
-    cumeSize = 0;
-    int allocIndex = 0;
-
-    for (auto& part : partitions) {
-        for (int chan = 0; chan < numEqChannels; ++chan) {
-            Buffer<Int8u> buffer = stateBuffer.section(cumeSize, sizes[allocIndex]);
-            statusB(ippsIIRInit64f_BiQuad_32f(&part.states[chan], part.taps[chan],
-                part.numCascades, part.delayLine[chan], buffer));
-
-            cumeSize += sizes[allocIndex++];
-        }
-    }
-}
-
 void Equalizer::updateSmoothedParameters(int deltaSamples) {
     //	progressMark
 
@@ -247,8 +144,9 @@ void Equalizer::updateSmoothedParameters(int deltaSamples) {
         part.centreFreq.update(deltaSamples);
         part.gainDB.update(deltaSamples);
 
-        if (part.centreFreq.hasRamp() || part.gainDB.hasRamp())
-            updatePartition(i, true);
+        if (part.centreFreq.hasRamp() || part.gainDB.hasRamp()) {
+            updatePartition(i);
+        }
     }
 }
 
@@ -261,7 +159,7 @@ void Equalizer::updateParametersToTarget() {
         part.centreFreq.updateToTarget();
         part.gainDB.updateToTarget();
 
-        updatePartition(i, true);
+        updatePartition(i);
     }
 }
 

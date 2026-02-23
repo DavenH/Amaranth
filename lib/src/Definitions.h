@@ -35,11 +35,13 @@
 #define actionIs(X)           (state.actionState == PanelState::X)
 #define getStateValue(X)    state.values[PanelState::X]
 
-#if (defined(JucePlugin_Build_AU) && (JucePlugin_Build_AU == 1)) || \
-  (defined(JucePlugin_Build_AUv3) && (JucePlugin_Build_AUv3 == 1)) || \
-  (defined(JucePlugin_Build_VST3) && (JucePlugin_Build_VST3 == 1)) || \
-  (defined(JucePlugin_Build_VST) && (JucePlugin_Build_VST == 1)) || \
-  (defined(JucePlugin_Build_AAX) && (JucePlugin_Build_AAX == 1))
+#if defined(BUILD_TESTING) && (BUILD_TESTING == 1)
+  #define PLUGIN_MODE 0
+#elif (defined(JucePlugin_Build_AU) && (JucePlugin_Build_AU == 1)) || \
+    (defined(JucePlugin_Build_AUv3) && (JucePlugin_Build_AUv3 == 1)) || \
+    (defined(JucePlugin_Build_VST3) && (JucePlugin_Build_VST3 == 1)) || \
+    (defined(JucePlugin_Build_VST) && (JucePlugin_Build_VST == 1)) || \
+    (defined(JucePlugin_Build_AAX) && (JucePlugin_Build_AAX == 1))
   #define PLUGIN_MODE 1
 #else
   #define PLUGIN_MODE 0
