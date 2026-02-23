@@ -18,6 +18,7 @@
 
 #include "../App/Initializer.h"
 #include "../Audio/AudioSourceRepo.h"
+#include <Audio/PluginProcessor.h>
 #include "../Audio/WavAudioSource.h"
 #include "../Audio/SampleUtils.h"
 #include "../Audio/SynthAudioSource.h"

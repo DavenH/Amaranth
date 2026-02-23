@@ -1,15 +1,13 @@
 #pragma once
 #include "JuceHeader.h"
-#include <vector>
 
+#include <Algo/IIR.h>
 #include <Array/ScopedAlloc.h>
 #include <Audio/Filters/Butterworth.h>
 #include <Audio/Filters/Filter.h>
 #include <Audio/SmoothedParameter.h>
 #include <Obj/Ref.h>
 #include "AudioEffect.h"
-
-using std::vector;
 
 class GuilessEffect;
 class EqualizerUI;
@@ -38,18 +36,12 @@ private:
 		EqPartition() :
 			gainDB(0.)
 		,	centreFreq(100.)
-		,	numCascades(1)
+		,	iir(numEqChannels)
 		{
-			for(auto& state : states)
-				state = nullptr;
 		}
 
-		IppsIIRState64f_32f* states[numEqChannels]{};
-		Buffer<Ipp64f> delayLine[numEqChannels];
-		Buffer<Ipp64f> taps[numEqChannels];
-
 		Dsp::Cascade* cascade{};
-		int numCascades;
+		IIR iir;
 		SmoothedParameter gainDB;
 		SmoothedParameter centreFreq;
 	};
@@ -64,7 +56,7 @@ public:
 	void processVertexBuffer(Buffer<Float32> inputBuffer);
 
 	/* Updating */
-	void updatePartition(int idx, bool canUpdateTaps);
+	void updatePartition(int idx);
 	bool doParamChange(int index, double value, bool doFurtherUpdate) override;
 	void updateSmoothedParameters(int deltaSamples);
 
@@ -90,9 +82,7 @@ private:
 
 	CriticalSection stateLock;
 
-	void freeStates();
 	void updateFilters();
-	void updateStates();
 
 	double samplerate;
 	int filterOrder;
@@ -105,9 +95,4 @@ private:
 	Dsp::SimpleFilter <Dsp::Butterworth::HighShelf<2>> hsFilter;
 
 	ScopedAlloc<Float32> overflowBuffer;
-	ScopedAlloc<Ipp64f> tapsBuffer;
-	ScopedAlloc<Ipp64f> delayBuffer;
-	ScopedAlloc<Int8u> stateBuffer;
-
-
 };
