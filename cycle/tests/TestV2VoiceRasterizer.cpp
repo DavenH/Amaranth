@@ -1,11 +1,12 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 
-#include "../src/Array/ScopedAlloc.h"
-#include "../src/Array/VecOps.h"
-#include "../src/Curve/V2/Runtime/V2VoiceRasterizer.h"
-#include "../src/Curve/Mesh.h"
-#include "../src/Curve/VertCube.h"
+#include <Array/ScopedAlloc.h>
+#include <Array/VecOps.h>
+#include <Curve/Mesh.h>
+#include <Curve/V2/Runtime/V2VoiceRasterizer.h>
+#include <Curve/VertCube.h>
 
 namespace {
 struct ScopedMesh {
@@ -93,6 +94,136 @@ float maxAdjacentStep(Buffer<float> data) {
     }
 
     return maxStep;
+}
+
+struct LegacyVoiceChainingOracleState {
+    Intercept frontA{-0.05f, 0.0f};
+    Intercept frontB{-0.10f, 0.0f};
+    Intercept frontC{-0.15f, 0.0f};
+    Intercept frontD{-0.25f, 0.0f};
+    Intercept frontE{-0.35f, 0.0f};
+    std::vector<Intercept> icpts;
+    std::vector<Intercept> backIcpts;
+    int callCount{0};
+    float advancement{0.0f};
+};
+
+void restrictInterceptsLegacyOracle(std::vector<Intercept>& intercepts, float minX, float maxX) {
+    if (intercepts.empty()) {
+        return;
+    }
+
+    for (auto& intercept : intercepts) {
+        intercept.adjustedX = jlimit(minX, maxX, intercept.adjustedX);
+    }
+
+    for (int i = 1; i < static_cast<int>(intercepts.size()); ++i) {
+        Intercept& a = intercepts[i - 1];
+        Intercept& b = intercepts[i];
+        if (b.adjustedX < a.adjustedX && b.isWrapped == a.isWrapped) {
+            b.adjustedX = a.adjustedX + 0.0001f;
+        }
+    }
+
+    for (auto& intercept : intercepts) {
+        intercept.x = intercept.adjustedX;
+    }
+
+    if (intercepts.back().x >= maxX) {
+        for (int i = static_cast<int>(intercepts.size()) - 1; i >= 1; --i) {
+            Intercept& left = intercepts[i - 1];
+            Intercept& right = intercepts[i];
+            if (left.x >= right.x) {
+                left.x = right.x - 0.0001f;
+            }
+        }
+    }
+
+    for (int i = 1; i < static_cast<int>(intercepts.size()); ++i) {
+        Intercept& left = intercepts[i - 1];
+        Intercept& right = intercepts[i];
+        if (right.x <= left.x) {
+            right.x = left.x + 0.0001f;
+        }
+    }
+}
+
+void runLegacyVoiceChainingOracleStep(
+    const Mesh& mesh,
+    const MorphPosition& morph,
+    float minX,
+    float maxX,
+    float oscPhase,
+    float minLineLength,
+    LegacyVoiceChainingOracleState& state) {
+    if (mesh.getNumCubes() == 0) {
+        return;
+    }
+
+    if (state.callCount > 0) {
+        std::swap(state.backIcpts, state.icpts);
+        state.backIcpts.clear();
+    }
+
+    VertCube::ReductionData reduct;
+
+    for (auto* cube : mesh.getCubes()) {
+        float voiceTime = jmin(1.0f, morph.time + state.advancement);
+        cube->getInterceptsFast(Vertex::Time, reduct, MorphPosition(voiceTime, morph.red, morph.blue));
+
+        Vertex* a = &reduct.v0;
+        Vertex* b = &reduct.v1;
+        Vertex* v = &reduct.v;
+
+        if (! reduct.pointOverlaps) {
+            continue;
+        }
+
+        if (a->values[Vertex::Phase] > 1.0f && b->values[Vertex::Phase] > 1.0f) {
+            a->values[Vertex::Phase] -= 1.0f;
+            b->values[Vertex::Phase] -= 1.0f;
+        }
+
+        if ((a->values[Vertex::Phase] > 1.0f) != (b->values[Vertex::Phase] > 1.0f)) {
+            float icpt = a->values[Vertex::Time]
+                + (1.0f - a->values[Vertex::Phase])
+                    / ((a->values[Vertex::Phase] - b->values[Vertex::Phase])
+                       / (a->values[Vertex::Time] - b->values[Vertex::Time]));
+            if (icpt > voiceTime) {
+                a->values[Vertex::Phase] -= 1.0f;
+                b->values[Vertex::Phase] -= 1.0f;
+            }
+        }
+
+        VertCube::vertexAt(voiceTime, Vertex::Time, a, b, v);
+
+        float phase = v->values[Vertex::Phase] + oscPhase;
+        while (phase >= 1.0f) {
+            phase -= 1.0f;
+        }
+        while (phase < 0.0f) {
+            phase += 1.0f;
+        }
+
+        Intercept intercept(phase, 2.0f * v->values[Vertex::Amp] - 1.0f, cube, 0.0f);
+        intercept.shp = v->values[Vertex::Curve];
+        intercept.adjustedX = intercept.x;
+        state.backIcpts.push_back(intercept);
+    }
+
+    std::sort(state.backIcpts.begin(), state.backIcpts.end());
+    restrictInterceptsLegacyOracle(state.backIcpts, minX, maxX);
+
+    if (state.backIcpts.size() < 2 || state.icpts.size() < 2) {
+        ++state.callCount;
+        return;
+    }
+
+    if (state.callCount == 0) {
+        state.advancement = minLineLength * 1.1f;
+    }
+
+    ++state.callCount;
 }
 
 void prepareVoiceRasterizer(V2VoiceRasterizer& rasterizer, const Mesh& mesh) {
@@ -354,4 +485,57 @@ TEST_CASE("V2VoiceRasterizer chaining remains smooth across varying mesh positio
 
     float continuityScale = jmax(maxInternalStep, 1e-3f);
     REQUIRE(maxBoundaryStep <= continuityScale * 1.5f + 1e-4f);
+}
+
+TEST_CASE("V2VoiceRasterizer chaining intercepts match legacy oracle sequencing", "[curve][v2][voice][chaining][parity]") {
+    ScopedMesh scoped("v2-voice-chaining-parity");
+    populateVoiceChainingMesh(scoped.mesh);
+
+    V2VoiceRasterizer rasterizer;
+    prepareVoiceRasterizer(rasterizer, scoped.mesh);
+
+    LegacyVoiceChainingOracleState legacy;
+    std::vector<Intercept> previousV2Intercepts;
+
+    for (int block = 0; block < 6; ++block) {
+        MorphPosition morph(
+            0.47f,
+            0.63f + 0.02f * static_cast<float>(block),
+            0.39f - 0.015f * static_cast<float>(block));
+
+        V2VoiceControlSnapshot controls;
+        controls.morph = morph;
+        controls.scaling = MeshRasterizer::Bipolar;
+        controls.cyclic = true;
+        controls.minX = 0.0f;
+        controls.maxX = 1.0f;
+        controls.interpolateCurves = true;
+        controls.lowResolution = false;
+        controls.integralSampling = false;
+        rasterizer.updateControlData(controls);
+
+        runLegacyVoiceChainingOracleStep(scoped.mesh, morph, controls.minX, controls.maxX, 0.0f, 0.0f, legacy);
+
+        std::vector<Intercept> v2Intercepts;
+        int v2Count = 0;
+        REQUIRE(rasterizer.extractInterceptsForTesting(v2Intercepts, v2Count));
+        REQUIRE(static_cast<int>(legacy.backIcpts.size()) == v2Count);
+
+        for (int i = 0; i < v2Count; ++i) {
+            REQUIRE(v2Intercepts[i].x == Catch::Approx(legacy.backIcpts[i].x).margin(1e-6f));
+            REQUIRE(v2Intercepts[i].y == Catch::Approx(legacy.backIcpts[i].y).margin(1e-6f));
+            REQUIRE(v2Intercepts[i].shp == Catch::Approx(legacy.backIcpts[i].shp).margin(1e-6f));
+            REQUIRE(v2Intercepts[i].adjustedX == Catch::Approx(legacy.backIcpts[i].adjustedX).margin(1e-6f));
+        }
+
+        if (block > 0) {
+            REQUIRE(static_cast<int>(legacy.icpts.size()) == static_cast<int>(previousV2Intercepts.size()));
+            for (int i = 0; i < static_cast<int>(legacy.icpts.size()); ++i) {
+                REQUIRE(legacy.icpts[i].x == Catch::Approx(previousV2Intercepts[i].x).margin(1e-6f));
+                REQUIRE(legacy.icpts[i].y == Catch::Approx(previousV2Intercepts[i].y).margin(1e-6f));
+            }
+        }
+
+        previousV2Intercepts = v2Intercepts;
+    }
 }

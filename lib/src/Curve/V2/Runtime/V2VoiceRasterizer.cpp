@@ -117,6 +117,28 @@ bool V2VoiceRasterizer::renderAudio(
     return true;
 }
 
+bool V2VoiceRasterizer::extractInterceptsForTesting(std::vector<Intercept>& outIntercepts, int& outCount) noexcept {
+    outIntercepts.clear();
+    outCount = 0;
+
+    if (! workspace.isPrepared() || mesh == nullptr) {
+        return false;
+    }
+
+    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&chainingPositioner)
+                                        : static_cast<V2PositionerStage*>(&linearPositioner));
+
+    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
+    V2PositionerContext positionerContext = makePositionerContext(controls);
+
+    if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, outCount)) {
+        return false;
+    }
+
+    outIntercepts.assign(workspace.intercepts.begin(), workspace.intercepts.begin() + outCount);
+    return true;
+}
+
 bool V2VoiceRasterizer::buildWave(int& wavePointCount, int& zeroIndex, int& oneIndex) noexcept {
     graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&chainingPositioner)
                                         : static_cast<V2PositionerStage*>(&linearPositioner));

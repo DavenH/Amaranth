@@ -23,6 +23,7 @@ public:
         const V2RenderRequest& request,
         Buffer<float> output,
         V2RenderResult& result) noexcept;
+    bool extractInterceptsForTesting(std::vector<Intercept>& outIntercepts, int& outCount) noexcept;
 
 private:
     bool buildWave(int& wavePointCount, int& zeroIndex, int& oneIndex) noexcept;
