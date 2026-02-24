@@ -49,6 +49,6 @@
 
 ## Quick checks the agent should run
 
-* **Build all targets** (`Debug` and `Release`) after edits.
+* **Build targets** (`Debug`) after edits.
 * On macOS, verify that `.mm` sources are compiled as Objective-C++ (already set in this CMake; don’t remove).
 * Ensure JUCE macros (`JUCE_MODULE_AVAILABLE_*`, `JUCE_APP_VERSION`, etc.) remain defined as in CMake.
