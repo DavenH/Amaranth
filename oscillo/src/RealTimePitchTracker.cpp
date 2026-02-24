@@ -75,8 +75,9 @@ int RealTimePitchTracker::update() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 int RealTimePitchTracker::updateSpectral() {
-    if (kernels.empty())
+    if (kernels.empty()) {
         return bestKeyIndex;
+    }
 
     {
         const SpinLock::ScopedLockType lock(bufferLock);
@@ -97,8 +98,9 @@ int RealTimePitchTracker::updateSpectral() {
     int bestKernelIndex = jlimit(0, numKeys - 1, bestKeyIndex - 21);
     correlations.getMax(maxCorrelation, bestKernelIndex);
 
-    if (maxCorrelation > 0.1f)
+    if (maxCorrelation > 0.1f) {
         bestKeyIndex = bestKernelIndex + 21;
+    }
 
     {
         const SpinLock::ScopedLockType lock(bufferLock);
@@ -120,15 +122,17 @@ void RealTimePitchTracker::precomputePeriods(double frequencyOfA4, int sr) {
 }
 
 int RealTimePitchTracker::updatePeriodic() {
-    if (tauTable.empty())
+    if (tauTable.empty()) {
         return bestKeyIndex;
+    }
 
     // Silence guard: a peak-normalised non-silent block always has normL2 >> 1.
     // An all-zero block scores 0 on every candidate and would give a false reading.
     {
         const SpinLock::ScopedLockType lock(bufferLock);
-        if (rawBlock.normL2() < 1.f)
+        if (rawBlock.normL2() < 1.f) {
             return bestKeyIndex;
+        }
     }
 
     float* sig = rawBlock.get();
@@ -214,8 +218,9 @@ int RealTimePitchTracker::updatePeriodic() {
     // tune downward if unvoiced frames are incorrectly assigned a pitch.
     constexpr float periodicityThreshold = 0.25f;
 
-    if (minScore < periodicityThreshold)
+    if (minScore < periodicityThreshold) {
         bestKeyIndex = bestKey + 21;
+    }
 
     // Pass periodScores in place of correlations so the trace listener can
     // visualise the score landscape. Lower = stronger pitch candidate.

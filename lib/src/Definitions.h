@@ -52,11 +52,11 @@
 #endif
 
 #ifdef _DEBUG
-  #define status(X) StatusChecker::report(repo, X, __LINE__, __func__, __FILE__)
-  #define statusB(X) StatusChecker::breakOnError(X, __LINE__, __func__, __FILE__)
+  #define checkIppStatus(X) StatusChecker::report(repo, X, __LINE__, __func__, __FILE__)
+  #define checkIppStatusBreak(X) StatusChecker::breakOnError(X, __LINE__, __func__, __FILE__)
 #else
-  #define status(X) X
-  #define statusB(X) X
+  #define checkIppStatus(X) X
+  #define checkIppStatusBreak(X) X
 #endif
 
 #define progressMark ;

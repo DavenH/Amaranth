@@ -64,7 +64,7 @@ MainComponent::MainComponent()
     pitchDebug  = Image(Image::RGB, kHistoryFrames, kPitchDebugHeight, true);
     phaseVelocityBar = Image(Image::RGB, 1, kNumPhasePartials, true);
 
-    pitchTracker = std::make_unique<RealTimePitchTracker>();
+    pitchTracker = std::make_unique<RealTimePitchTracker>(RealTimePitchTracker::AlgoCycleDiff);
 
     pitchTracker->setTraceListener(*this);
     processor = std::make_unique<OscAudioProcessor>(pitchTracker.get());
