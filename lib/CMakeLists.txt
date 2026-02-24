@@ -139,6 +139,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 #        list(APPEND TEST_SOURCES ${IM_SOURCES})
         add_executable(${PROJECT_NAME}_tests ${TEST_SOURCES})
 
+        target_compile_options(${PROJECT_NAME}_tests PRIVATE
+            $<$<CONFIG:Debug>:-g>
+            $<$<CONFIG:Debug>:-O0>
+        )
+
         target_include_directories(${PROJECT_NAME}_tests PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/src
             ${CMAKE_CURRENT_SOURCE_DIR}/tests

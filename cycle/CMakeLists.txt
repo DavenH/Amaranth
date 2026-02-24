@@ -61,6 +61,11 @@ endif()
 # Add test executable regardless of build type
 add_executable(${PROJECT_NAME}_tests ${APP_TEST_SOURCES} ${APP_SOURCES})
 
+target_compile_options(${PROJECT_NAME}_tests PRIVATE
+    $<$<CONFIG:Debug>:-g>
+    $<$<CONFIG:Debug>:-O0>
+)
+
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${JUCE_DIR}

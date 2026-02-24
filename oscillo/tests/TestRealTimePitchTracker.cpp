@@ -10,6 +10,16 @@
 #include <fstream>
 
 namespace {
+    struct AlgoCase {
+        RealTimePitchTracker::Algorithm algorithm;
+        const char* name;
+    };
+
+    constexpr AlgoCase algoCases[] = {
+        { RealTimePitchTracker::AlgoSpectral,  "spectral"  },
+        // { RealTimePitchTracker::AlgoCycleDiff, "cycle-diff" }
+    };
+
     void streamToTracker(RealTimePitchTracker& tracker, Buffer<float> signal, int chunkSize) {
         int offset = 0;
         while (offset < signal.size()) {
@@ -19,46 +29,58 @@ namespace {
             offset += size;
         }
     }
+
+    void fillHarmonicSignal(Buffer<float> signal, float fundamental, float sampleRate, int numHarmonics = 8) {
+        signal.zero();
+        ScopedAlloc<float> harmonicWave(signal.size());
+        for (int harmonic = 1; harmonic <= numHarmonics; ++harmonic) {
+            harmonicWave.zero();
+            harmonicWave.sin((fundamental * static_cast<float>(harmonic)) / sampleRate).mul(1.0f / (float) harmonic);
+            signal.add(harmonicWave);
+        }
+    }
 }
 
 TEST_CASE("RealTimePitchTracker tracks equal-tempered notes exactly", "[pitch][realtime][oscillo]") {
-    RealTimePitchTracker tracker;
-    constexpr float sampleRate = 44100.0f;
-    tracker.setSampleRate((int) sampleRate);
+    for (const auto& algoCase : algoCases) {
+        DYNAMIC_SECTION("algorithm: " << algoCase.name) {
+            RealTimePitchTracker tracker(algoCase.algorithm);
+            constexpr float sampleRate = 44100.0f;
+            tracker.setSampleRate((int) sampleRate);
 
-    const int midiNotes[] = {45, 57, 69, 81};
+            const int midiNotes[] = {45, 57, 69, 81};
 
-    for (int midiNote : midiNotes) {
-        const float frequency = MidiMessage::getMidiNoteInHertz(midiNote);
-        ScopedAlloc<float> signal(4096 * 3);
-        signal.sin(frequency / sampleRate);
+            for (int midiNote : midiNotes) {
+                const float frequency = MidiMessage::getMidiNoteInHertz(midiNote);
+                ScopedAlloc<float> signal(4096 * 3);
+                fillHarmonicSignal(signal, frequency, sampleRate);
 
-        streamToTracker(tracker, signal, 256);
-        const auto result = tracker.update();
+                streamToTracker(tracker, signal, 256);
+                const auto result = tracker.update();
 
-        CHECK(result == midiNote);
+                CHECK(result == midiNote);
+            }
+        }
     }
 }
 
 TEST_CASE("RealTimePitchTracker handles rich harmonic content exactly", "[pitch][realtime][oscillo]") {
-    RealTimePitchTracker tracker;
-    constexpr float sampleRate = 48000.0f;
-    tracker.setSampleRate((int) sampleRate);
-    constexpr int midiNote = 57; // A3
-    const float frequency = MidiMessage::getMidiNoteInHertz(midiNote);
-    ScopedAlloc<float> signal(4096 * 3);
-    signal.zero();
-    ScopedAlloc<float> harmonicWave(signal.size());
-    for (int harmonic = 1; harmonic <= 8; ++harmonic) {
-        harmonicWave.zero();
-        harmonicWave.sin((frequency * static_cast<float>(harmonic)) / sampleRate).mul(1.0f / (float) harmonic);
-        signal.add(harmonicWave);
+    for (const auto& algoCase : algoCases) {
+        DYNAMIC_SECTION("algorithm: " << algoCase.name) {
+            RealTimePitchTracker tracker(algoCase.algorithm);
+            constexpr float sampleRate = 48000.0f;
+            tracker.setSampleRate((int) sampleRate);
+            constexpr int midiNote = 57; // A3
+            const float frequency = MidiMessage::getMidiNoteInHertz(midiNote);
+            ScopedAlloc<float> signal(4096 * 3);
+            fillHarmonicSignal(signal, frequency, sampleRate);
+
+            streamToTracker(tracker, signal, 192);
+            const auto result = tracker.update();
+
+            CHECK(result == midiNote);
+        }
     }
-
-    streamToTracker(tracker, signal, 192);
-    const auto result = tracker.update();
-
-    CHECK(result == midiNote);
 }
 /*
 TEST_CASE("RealTimePitchTracker is robust to moderate noise", "[pitch][realtime][oscillo]") {
@@ -82,28 +104,32 @@ TEST_CASE("RealTimePitchTracker is robust to moderate noise", "[pitch][realtime]
 }*/
 
 TEST_CASE("RealTimePitchTracker follows note changes in streaming input", "[pitch][realtime][oscillo]") {
-    RealTimePitchTracker tracker;
-    constexpr float sampleRate = 44100.0f;
-    tracker.setSampleRate((int) sampleRate);
+    for (const auto& algoCase : algoCases) {
+        DYNAMIC_SECTION("algorithm: " << algoCase.name) {
+            RealTimePitchTracker tracker(algoCase.algorithm);
+            constexpr float sampleRate = 44100.0f;
+            tracker.setSampleRate((int) sampleRate);
 
-    constexpr int firstNote = 57;  // A3
-    constexpr int secondNote = 69; // A4
-    const float firstFrequency = MidiMessage::getMidiNoteInHertz(firstNote);
-    const float secondFrequency = MidiMessage::getMidiNoteInHertz(secondNote);
+            constexpr int firstNote = 57;  // A3
+            constexpr int secondNote = 69; // A4
+            const float firstFrequency = MidiMessage::getMidiNoteInHertz(firstNote);
+            const float secondFrequency = MidiMessage::getMidiNoteInHertz(secondNote);
 
-    ScopedAlloc<float> firstSignal(4096 * 2);
-    firstSignal.sin(firstFrequency / sampleRate);
-    streamToTracker(tracker, firstSignal, 256);
+            ScopedAlloc<float> firstSignal(4096 * 2);
+            fillHarmonicSignal(firstSignal, firstFrequency, sampleRate);
+            streamToTracker(tracker, firstSignal, 256);
 
-    const auto firstResult = tracker.update();
-    CHECK(firstResult == firstNote);
+            const auto firstResult = tracker.update();
+            CHECK(firstResult == firstNote);
 
-    ScopedAlloc<float> secondSignal(4096 * 2);
-    secondSignal.sin(secondFrequency / sampleRate);
-    streamToTracker(tracker, secondSignal, 256);
+            ScopedAlloc<float> secondSignal(4096 * 2);
+            fillHarmonicSignal(secondSignal, secondFrequency, sampleRate);
+            streamToTracker(tracker, secondSignal, 256);
 
-    const auto secondResult = tracker.update();
-    CHECK(secondResult == secondNote);
+            const auto secondResult = tracker.update();
+            CHECK(secondResult == secondNote);
+        }
+    }
 }
 /*
 TEST_CASE("RealTimePitchTracker keeps last valid pitch through silence", "[pitch][realtime][oscillo]") {

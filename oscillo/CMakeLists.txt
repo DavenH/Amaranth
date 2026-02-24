@@ -68,6 +68,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
         add_executable(${PROJECT_NAME}_tests ${APP_SOURCES} ${TEST_SOURCES})
 
+        target_compile_options(${PROJECT_NAME}_tests PRIVATE
+            $<$<CONFIG:Debug>:-g>
+            $<$<CONFIG:Debug>:-O0>
+        )
+
         set(OSCILLO_TEST_DEFINITIONS
             BUILD_TESTING=1
             JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/incl/JucePluginDefines.h"

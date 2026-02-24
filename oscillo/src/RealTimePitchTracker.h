@@ -40,6 +40,8 @@ private:
     ScopedAlloc<float> periodScores;     // one score per piano key
     ScopedAlloc<float> cycleDiffScratch; // working buffer, length = blockSize
     vector<int>        tauTable;         // integer period per key (samples)
+    vector<float>      tauInvSqrtTable;  // 1 / sqrt(diffLen) per key
+    vector<float>      tauLagCompTable;  // short-lag bias compensation per key
 
     // ── Shared ────────────────────────────────────────────────────────────
     ReadWriteBuffer rwBuffer;
@@ -50,6 +52,7 @@ private:
     bool hasWindowedBlock = false;
 
     int bestKeyIndex = 69;
+    int periodicUpdateCount = 0;
     RealTimePitchTraceListener defaultTraceListener;
     RealTimePitchTraceListener* traceListener = &defaultTraceListener;
 

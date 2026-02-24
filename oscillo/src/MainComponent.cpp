@@ -179,6 +179,8 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
 }
 
 void MainComponent::drawHarmonicPhaseVelocityPlot(Graphics& g, const Rectangle<int>& area) {
+    g.reduceClipRegion(area);
+
     g.setColour(Colours::black);
     g.fillRect(area);
 
@@ -713,6 +715,11 @@ void MainComponent::updatePitchTrackingState() {
                     handleNoteOn(nullptr, 0, pitchVoteBestMidi, 0.f);
                 }
                 pitchVoteActive = false;
+            }
+        } else {
+            const int midi = jlimit(21, 108, latestDetectedMidi);
+            if (midi != lastClickedMidiNote) {
+                handleNoteOn(nullptr, 0, midi, 0.f);
             }
         }
     } else {

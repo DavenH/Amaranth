@@ -1,6 +1,7 @@
 #include "RealTimePitchTracker.h"
 #include <Array/ScopedAlloc.h>
 #include <cmath>
+#include <iomanip>
 #include <limits>
 
 using std::vector;
@@ -115,9 +116,17 @@ int RealTimePitchTracker::updateSpectral() {
 
 void RealTimePitchTracker::precomputePeriods(double frequencyOfA4, int sr) {
     tauTable.resize(numKeys);
+    tauInvSqrtTable.resize(numKeys);
+    tauLagCompTable.resize(numKeys);
     for (int i = 0; i < numKeys; ++i) {
         const float freq = MidiMessage::getMidiNoteInHertz(i + 21, frequencyOfA4);
-        tauTable[i] = jmax(2, roundToInt((float) sr / freq));
+        const int tau = jmax(2, roundToInt((float) sr / freq));
+        const int numCycles = blockSize / tau;
+        const int numComparisons = numCycles - 1;
+        const int diffLen = numComparisons * tau;
+        tauTable[i] = tau;
+        tauInvSqrtTable[i] = diffLen > 0 ? 1.0f / std::sqrt((float) diffLen) : 0.0f;
+        tauLagCompTable[i] = 1.0f / std::sqrt(std::sqrt((float) tau));
     }
 }
 
@@ -125,6 +134,7 @@ int RealTimePitchTracker::updatePeriodic() {
     if (tauTable.empty()) {
         return bestKeyIndex;
     }
+    ++periodicUpdateCount;
 
     // Silence guard: a peak-normalised non-silent block always has normL2 >> 1.
     // An all-zero block scores 0 on every candidate and would give a false reading.
@@ -148,9 +158,9 @@ int RealTimePitchTracker::updatePeriodic() {
     // vs 2, etc.  This collapses the inner per-cycle loop into two BLAS calls:
     // one sub and one normL2 over the full diffLen span.
     //
-    // Normalise by sqrt(τ) · numComparisons so the noise floor is the same
-    // for all periods (L2 of white noise scales as sqrt(N)), making scores
-    // directly comparable across the 88-key range.
+    // Normalize by sqrt(diffLen), where diffLen = numComparisons * tau,
+    // then apply a mild short-lag compensation term. This counteracts the
+    // tendency of very small lags to look artificially good on smooth signals.
 
     for (int key = 0; key < numKeys; ++key) {
         const int tau           = tauTable[key];
@@ -175,32 +185,31 @@ int RealTimePitchTracker::updatePeriodic() {
         // Single L2 norm over the full lagged-diff span: replaces the per-cycle loop
         const float rawScore = scratch.normL2();
 
-        periodScores[key] = rawScore / (std::sqrt((float) tau) * (float) numComparisons);
+        periodScores[key] = rawScore * tauInvSqrtTable[key] * tauLagCompTable[key];
     }
 
-    // ── 2. Octave cascade ────────────────────────────────────────────────────
-    //
-    // If the true period is τ₀, then 2τ₀, 3τ₀, … also give near-zero diffs
-    // (each row contains complete cycles so consecutive rows are nearly identical).
-    // The sqrt(τ) normalisation reduces but doesn't eliminate this.
-    //
-    // Sweep low→high: if the key one octave up scores within the tolerance
-    // of the current key, the current key is an artifact of a 2× sub-multiple.
-    // Penalise it so the higher-frequency (shorter-period) candidate wins.
-    // Sweeping ascending ensures we don't penalise a key based on a score that
-    // was itself already penalised in the same pass.
+    if (periodicUpdateCount % 10 == 0) {
 
-    constexpr float octaveTolerance = 1.08f;  // tune in [1.02, 1.20]
-
-    for (int key = 0; key + 12 < numKeys; ++key) {
-        if (periodScores[key]      == std::numeric_limits<float>::infinity()) continue;
-        if (periodScores[key + 12] == std::numeric_limits<float>::infinity()) continue;
-
-        if (periodScores[key + 12] <= periodScores[key] * octaveTolerance)
-            periodScores[key] *= 2.f;  // demote: this key is likely an octave artifact
+        // const std::streamsize oldPrecision = std::cout.precision();
+        // const std::ios::fmtflags oldFlags = std::cout.flags();
+        // std::cout << std::fixed << std::setprecision(3);
+        // std::cout << "period_scores_frame," << periodicUpdateCount;
+        // for (int key = 0; key < numKeys; ++key) {
+        //     std::cout << "," << periodScores[key];
+        // }
+        // std::cout << std::endl;
+        // std::cout.flags(oldFlags);
+        // std::cout.precision(oldPrecision);
     }
 
-    // ── 3. Winner ────────────────────────────────────────────────────────────
+    // ── 2. Winner + subharmonic suppression ──────────────────────────────────
+    //
+    // For a tone with period τ0, larger periods 2τ0, 3τ0... can also produce low
+    // cycle-diff scores. This creates octave-down errors (e.g. A3 -> A2).
+    //
+    // After finding the global minimum, search only upward by octaves for the
+    // same pitch class and take the highest octave still close to the minimum.
+    // This keeps true pitch classes while suppressing subharmonic picks.
 
     float minScore = std::numeric_limits<float>::infinity();
     int   bestKey  = jlimit(0, numKeys - 1, bestKeyIndex - 21);
@@ -212,24 +221,36 @@ int RealTimePitchTracker::updatePeriodic() {
         }
     }
 
-    // Only commit when the signal is sufficiently periodic.
-    // Pure noise after normalization scores around sqrt(2)/sqrt(numComparisons).
-    // A clean tone scores close to 0. Starting value of 0.25 is conservative —
-    // tune downward if unvoiced frames are incorrectly assigned a pitch.
+    const float octaveAcceptThreshold = jmax(0.08f, minScore * 2.6f);
+    int octaveResolvedKey = bestKey;
+    for (int key = bestKey + 12; key < numKeys; key += 12) {
+        if (periodScores[key] <= octaveAcceptThreshold) {
+            octaveResolvedKey = key;
+        }
+    }
+
+    // Commit when either:
+    // 1) the frame is clearly periodic in absolute terms, or
+    // 2) the new candidate is substantially better than the currently latched key.
+    //
+    // This prevents stale latch lock-in (for example, a transient jump to a bad
+    // key that never clears because later voiced frames miss the absolute gate).
     constexpr float periodicityThreshold = 0.25f;
-
+    // const int prevKey = jlimit(0, numKeys - 1, bestKeyIndex - 21);
+    // const float prevScore = periodScores[prevKey];
+    // const bool clearlyBetterThanLatched = std::isfinite(prevScore) && (minScore * 1.15f < prevScore);
+    //
     if (minScore < periodicityThreshold) {
-        bestKeyIndex = bestKey + 21;
-    }
+        bestKeyIndex = octaveResolvedKey + 21;
 
-    // Pass periodScores in place of correlations so the trace listener can
-    // visualise the score landscape. Lower = stronger pitch candidate.
-    {
-        const SpinLock::ScopedLockType lock(bufferLock);
-        Buffer<float> emptyMags;
-        traceListener->onPitchFrame(bestKeyIndex, rawBlock, periodScores, emptyMags);
+        // Pass periodScores in place of correlations so the trace listener can
+        // visualise the score landscape. Lower = stronger pitch candidate.
+        {
+            const SpinLock::ScopedLockType lock(bufferLock);
+            Buffer<float> emptyMags;
+            traceListener->onPitchFrame(bestKeyIndex, rawBlock, periodScores, emptyMags);
+        }
     }
-
     return bestKeyIndex;
 }
 
