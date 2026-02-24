@@ -98,8 +98,8 @@ void Initializer::init() {
 
     instanceId = numInstances.get();
   #ifdef USE_IPP
-    status(ippSetNumThreads(1));
-    status(ippSetDenormAreZeros(1));
+    checkIppStatus(ippSetNumThreads(1));
+    checkIppStatus(ippSetDenormAreZeros(1));
   #endif
 
     repo->instantiate();
