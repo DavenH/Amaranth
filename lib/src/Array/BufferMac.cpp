@@ -133,6 +133,17 @@ template<> Buffer<Float32>& Buffer<Float32>::add(Float32 c) { NULL_ARG_CHECK vDS
 template<> Buffer<Float64>& Buffer<Float64>::add(Float64 c) { NULL_ARG_CHECK vDSP_vsaddD (VDSP_AUTO_ARGC_PATTERN); return *this; }
 template<> Buffer<Float32>& Buffer<Float32>::mul(Float32 c) { UNO_ARG_CHECK  vDSP_vsmul  (VDSP_AUTO_ARGC_PATTERN); return *this; }
 template<> Buffer<Float64>& Buffer<Float64>::mul(Float64 c) { UNO_ARG_CHECK  vDSP_vsmulD (VDSP_AUTO_ARGC_PATTERN); return *this; }
+template<> Buffer<Int16s>& Buffer<Int16s>::mul(Int16s c) {
+    if (ptr == nullptr || c == 1) {
+        return *this;
+    }
+
+    for (int i = 0; i < sz; ++i) {
+        ptr[i] = (Int16s) ((int) ptr[i] * (int) c);
+    }
+
+    return *this;
+}
 template<> Buffer<Float32>& Buffer<Float32>::sub(Float32 c) { return add(-c); }
 template<> Buffer<Float64>& Buffer<Float64>::sub(Float64 c) { return add(-c); }
 template<> Buffer<Float32>& Buffer<Float32>::div(Float32 c) { NULL_ARG_CHECK return mul(1.0f / c); }

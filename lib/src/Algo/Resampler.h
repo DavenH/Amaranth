@@ -9,8 +9,6 @@ public:
     Resampler();
     ~Resampler();
 
-#ifdef USE_IPP
-
     void initFixedWithLength(float rollf, float alpha, int inRate,      int outRate, int length,    int bufSize,    int& sourceSize, int& destSize);
     void initFixedWithWindow(float rollf, float alpha, int inRate,      int outRate, float window,  int bufSize,    int& sourceSize, int& destSize);
     void initFixed          (float rollf, float alpha, int inRate,      int outRate, int bufSize,   int& sourceSize, int& destSize);
@@ -24,23 +22,28 @@ public:
 
     Buffer<float> finalise();
     Buffer<float> resample(Buffer<float> input);
+    void copyStateFrom(const Resampler& other);
 
     [[nodiscard]] int getHistorySize() const { return history; }
     void setRatio(double ratio) { dstToSrc = ratio; }
 
     void freeFixedState() {
+      #ifdef USE_IPP
         if (fixedState != nullptr) {
             ippsFree(fixedState);
 
             fixedState = nullptr;
         }
+      #endif
     }
 
     void freeState() {
+      #ifdef USE_IPP
         if (state != nullptr) {
             ippsFree(state);
             state = nullptr;
         }
+      #endif
     }
 
     static int lengthToHistory(int length)                      { return (((length + 3) & (~3)) >> 1) + 1;                      }
@@ -49,6 +52,9 @@ public:
 
 private:
     void init(float rollf, float alpha, int& sourceSize, int& destSize);
+    int  runSincResample(bool flushTail);
+    int  runLinearResample(bool flushTail);
+    void normalizeSourceWindow();
 
     /* ----------------------------------------------------------------------------- */
 
@@ -79,11 +85,13 @@ public:
     Buffer<float> dest;
 
 private:
+#ifdef USE_IPP
     IppsResamplingPolyphase_32f *state;
     IppsResamplingPolyphaseFixed_32f *fixedState;
-
-    JUCE_LEAK_DETECTOR(Resampler);
+#else
+    juce::WindowedSincInterpolator sincInterpolator;
 #endif
 
-};
+    JUCE_LEAK_DETECTOR(Resampler);
 
+};

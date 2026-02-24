@@ -134,6 +134,7 @@ elseif(APPLE)
         ${CORE_MIDI_FRAMEWORK}
         ${AUDIO_TOOLBOX_FRAMEWORK}
         ${ACCELERATE_FRAMEWORK}
+        ${OPENGL_FRAMEWORK}
         ${WEBKIT_FRAMEWORK}
         ${IOKIT_FRAMEWORK}
     )
