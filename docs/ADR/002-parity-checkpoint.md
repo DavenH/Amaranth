@@ -12,13 +12,14 @@ Date: 2026-02-21
 - V2 is integrated as default path in key rasterizers and builds/tests pass.
 - Full `Cycle` target builds successfully.
 - V2 test suite currently passes.
+- V2 rasterizers now share a staged artifact API (`renderIntercepts` / `renderWaveform` / `renderArtifacts`) so intercept-stage parity is testable without test-only extraction wrappers.
 
 ## Critical Parity Gap (Open)
 
 ### Voice chaining parity is not complete
 
-- `V2VoiceRasterizer` does **not** yet fully reproduce `cycle/src/Curve/VoiceMeshRasterizer.cpp::calcCrossPointsChaining()`.
-- Existing V2 voice chaining implementation is still an approximation relative to legacy call-count/front-back carry semantics.
+- Intercept-stage sequencing parity is now covered by `cycle/tests/TestV2VoiceRasterizer.cpp` (`V2VoiceRasterizer chaining intercepts match legacy oracle sequencing`).
+- Full parity is still not declared complete until end-to-end legacy-vs-v2 behavior is validated for all chaining state and padding edge cases (including advancement semantics under non-zero `MinLineLength`).
 
 ## What Must Be Ported for Voice Parity
 
@@ -34,14 +35,15 @@ Date: 2026-02-21
 
 ## Mandatory Validation for Voice
 
-1. Add parity tests directly comparing legacy voice chaining outputs vs V2 for same fixtures:
+1. Keep parity tests directly comparing legacy chaining behavior vs V2 for same fixtures:
    - same mesh,
    - same morph evolution sequence,
    - same phase progression.
 2. Validate:
    - phase wrap behavior,
    - cycle boundary continuity,
-   - block concatenation equivalence where legacy guarantees it.
+   - block concatenation equivalence where legacy guarantees it,
+   - non-zero advancement (`MinLineLength`) behavior.
 
 ## Guardrail for Future Changes
 

@@ -82,6 +82,17 @@ Public rasterizer API should expose explicit phases:
 
 `renderAudio` and `renderGraphic` share stage code paths where possible, but state/config may differ.
 
+### 5) Artifact Pipeline Interface (Implemented 2026-02-24)
+V2 rasterizers now implement a shared staged interface in `lib/src/Curve/V2/Runtime/V2RasterizerPipeline.h`:
+
+- `renderIntercepts(V2RasterArtifacts&)`
+- `renderWaveform(V2RasterArtifacts&)`
+- `renderArtifacts(V2RasterArtifacts&)` (composed default: intercepts then waveform)
+
+`V2RasterArtifacts` is a shared payload for stage outputs. It carries pointers/views for intercepts/curves and waveform buffers (`waveX`, `waveY`, `diffX`, `slope`) plus `zeroIndex`/`oneIndex`.
+
+Counts are not duplicated in artifacts. Container/buffer `size()` is the source of truth.
+
 ## Realtime Memory Strategy
 
 ### Containers
@@ -210,7 +221,7 @@ Exit criteria:
   - `lib/tests/TestV2RasterizerPipeline.cpp`
   - `lib/tests/TestV2GraphicRasterizer.cpp`
   - `lib/tests/TestV2EnvRasterizer.cpp`
-  - `lib/tests/TestV2VoiceRasterizer.cpp`
+  - `cycle/tests/TestV2VoiceRasterizer.cpp`
   - `lib/tests/TestV2FxRasterizer.cpp`
   - `lib/tests/TestV2MeshInterpolation.cpp`
 - Updated render-path guardrails and waveform validation:
@@ -224,13 +235,17 @@ Exit criteria:
   - Added chaining-style voice interpolation continuity test with pole/time modulation and softened curve values.
   - Added FX precondition/determinism/mode characterization tests.
   - Added mesh->intercept interpolation characterization tests for determinism, bounds, and wrap-phases behavior.
+  - Introduced shared staged artifact pipeline (`V2RasterizerPipeline`) and migrated V2 rasterizers to `renderIntercepts` + `renderWaveform` + `renderArtifacts`.
+  - Removed V2 wrapper extraction methods in favor of staged artifact rendering at call sites/tests.
+  - Removed redundant artifact count fields (`interceptCount`, `curveCount`, `wavePointCount`, `colorPointCount`); artifacts now use container/buffer `size()` directly.
   - Added a graphic call-site adapter in `cycle/src/Curve/GraphicRasterizer.cpp` to route `calcCrossPoints()` through `V2GraphicRasterizer`, with legacy fallback when V2 render cannot produce output.
   - Added an FX call-site adapter in `lib/src/Curve/FXRasterizer.cpp` to route `calcCrossPoints()` through `V2FxRasterizer`, with legacy fallback when V2 render cannot produce output.
   - Added `V2GraphicRequest` / `V2GraphicResult` types in `V2RenderTypes.h`.
 - Build status:
   - `AmaranthLib` and `AmaranthLib_tests` build successfully.
+  - `Cycle_tests` build successfully.
   - `ctest -R V2EnvStateMachine` passes.
-  - `ctest -R V2 --output-on-failure` passes (32/32 tests).
+  - `ctest -R V2 --output-on-failure` passes (39/39 tests).
 
 ### Immediate
 - [x] Create `Curve/V2/` module layout (`Stages`, `State`, `Runtime`).
