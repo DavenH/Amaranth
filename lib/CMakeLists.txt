@@ -109,6 +109,7 @@ elseif(APPLE)
         ${QUARTZ_CORE_FRAMEWORK}
         ${SECURITY_FRAMEWORK}
         ${CORE_AUDIO_KIT_FRAMEWORK}
+        ${OPENGL_FRAMEWORK}
     )
 endif()
 

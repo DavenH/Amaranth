@@ -97,7 +97,7 @@ void SpectrumInter2D::showCoordinates() {
     String yString;
     if (isMagnitudeMode) {
         float absAmp =
-                2 * Arithmetic::invLogMapping((float) getConstant(FFTLogTensionAmp) * IPP_2PI, col[currHarmonic]);
+                2 * Arithmetic::invLogMapping((float) getConstant(FFTLogTensionAmp) * MathConstants<float>::twoPi, col[currHarmonic]);
         yString = Util::getDecibelString(absAmp);
     } else {
         float phaseScale = powf(2, spectrum3D->getScaleFactor()) * sqrtf(currHarmonic + 1);
