@@ -44,7 +44,7 @@ public:
         for(int i = 0; i < 2; ++i) {
             cycleBuffer[i] 		 = group.cycleBuffer[i];
             lastLerpHalf[i] 	 = group.lastLerpHalf[i];
-            resamplers[i] 		 = group.resamplers[i];
+            resamplers[i].copyStateFrom(group.resamplers[i]);
             samplingSpillover[i] = group.samplingSpillover[i];
 
             for(int j = 0; j < 7; ++j) {

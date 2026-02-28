@@ -73,7 +73,10 @@ String SpectrumInter3D::getZString(float tableValue, int xIndex) {
     String zString;
 
     if (getSetting(MagnitudeDrawMode)) {
-        float absAmp = 2 * Arithmetic::invLogMapping((float) getConstant(FFTLogTensionAmp) * IPP_2PI, tableValue);
+        float absAmp = 2 * Arithmetic::invLogMapping(
+            (float) getConstant(FFTLogTensionAmp) * MathConstants<float>::twoPi,
+            tableValue
+        );
         zString = Util::getDecibelString(absAmp);
     } else {
 

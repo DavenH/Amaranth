@@ -110,6 +110,7 @@ elseif(APPLE)
     find_library(WEBKIT_FRAMEWORK WebKit REQUIRED)
     find_library(SECURITY_FRAMEWORK Security REQUIRED)
     find_library(CORE_AUDIO_KIT_FRAMEWORK CoreAudioKit REQUIRED)
+    find_library(OPENGL_FRAMEWORK OpenGL REQUIRED)
 
 endif()
 

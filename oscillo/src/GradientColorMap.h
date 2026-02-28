@@ -53,11 +53,11 @@ private:
                 break;
 
             case Palette::Bipolar:
-                gradient.addColour(0.0, Colour::fromRGB(255, 0, 0));     // Deep red
-                gradient.addColour(0.25, Colour::fromRGB(180, 100, 100));     // Deep red
-                gradient.addColour(0.5, Colour::fromRGB(100, 100, 100));       // Black (zero)
-                gradient.addColour(0.75, Colour::fromRGB(100, 100, 180));       // Black (zero)
-                gradient.addColour(1.0, Colour::fromRGB(0, 0, 255));     // Deep blue
+                gradient.addColour(0.0, Colour::fromRGB(255, 0, 0));      // Deep red
+                gradient.addColour(0.25, Colour::fromRGB(180, 100, 100)); // Reddish
+                gradient.addColour(0.5, Colour::fromRGB(100, 100, 100));  // Grey
+                gradient.addColour(0.75, Colour::fromRGB(100, 100, 180)); // Blueish
+                gradient.addColour(1.0, Colour::fromRGB(0, 0, 255));      // Deep blue
                 break;
         }
 

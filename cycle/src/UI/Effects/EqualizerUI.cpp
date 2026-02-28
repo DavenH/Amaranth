@@ -13,7 +13,10 @@ EqualizerUI::EqualizerUI(SingletonRepo* repo, Effect* effect) :
 
     StringFunction emptyStr;
     StringFunction decibel30(StringFunction(0).mul(2.0).add(-1.).mul(30.0));
-    StringFunction eqStr(StringFunction(1).mul(log(logTension) + 1).powRev(IPP_E).sub(1.0).mul(16000.0 / logTension).max(40.0));
+    StringFunction eqStr(StringFunction(1)
+        .mul(log(logTension) + 1)
+        .powRev(MathConstants<double>::euler)
+        .sub(1.0).mul(16000.0 / logTension).max(40.0));
 
     for (int i = 0; i <= Equalizer::Band5Gain; ++i) {
         Knob* knob = new Knob(repo, i, String::formatted("Band %d Gain", i + 1), 0.5f);

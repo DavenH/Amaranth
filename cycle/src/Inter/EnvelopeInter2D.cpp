@@ -86,7 +86,7 @@ void EnvelopeInter2D::init() {
     volumeIcon.setHighlit(true);
     loopIcon.setApplicable(false);
 
-    vertexLimits[Vertex::Phase].setEnd(IPP_SQRT2); //envPanel->zoom.wLimit;
+    vertexLimits[Vertex::Phase].setEnd(MathConstants<float>::sqrt2); //envPanel->zoom.wLimit;
 }
 
 void EnvelopeInter2D::doExtraMouseUp() {

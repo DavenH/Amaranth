@@ -171,44 +171,25 @@ void Dialogs::showOpenWaveDialog(PitchedSample* dstWav, const String &subDir,
         lastWaveDirectory = getObj(PresetPage).getWavDirectory();
     }
 
-    if (getSetting(NativeDialogs) == 1 || forDirectory) {
-        nativeFileChooser = std::make_unique<FileChooser>("Open Audio File", lastWaveDirectory, filter, true);
+    const bool useNativeChooser = (getSetting(NativeDialogs) == 1 || forDirectory);
+    nativeFileChooser = std::make_unique<FileChooser>("Open Audio File", lastWaveDirectory, filter, useNativeChooser);
 
-        if (int result = (forDirectory
-                              ? nativeFileChooser->browseForDirectory()
-                              : nativeFileChooser->browseForFileToOpen())) {
-            data.audioFile = nativeFileChooser->getResult();
-            openWaveCallback(result, data);
-        }
+    int openFlags = FileBrowserComponent::openMode;
+    if (forDirectory) {
+        openFlags |= FileBrowserComponent::canSelectDirectories;
     } else {
-        String instructions = actionContext == DialogActions::TrackPitchAction
-                                  ? "The best reference sound files are short (1 - 10s), single note, with few applied effects."
-                                  : "Load a short cabinet / amplifier impulse response wave file. Reverb impulses are not supported.";
-
-        if (!forDirectory) {
-            fileFilter = std::make_unique<WildcardFileFilter>(filter, String(), "Audio files");
-        }
-
-        int openFlags = forDirectory
-                            ? FileBrowserComponent::useTreeView | FileBrowserComponent::canSelectDirectories
-                            : FileBrowserComponent::canSelectFiles;
-        //
-        // FileBrowserComponent (int flags,
-        //               const File& initialFileOrDirectory,
-        //               const FileFilter* fileFilter,
-        //               FilePreviewComponent* previewComp);
-        fileBrowser = std::make_unique<FileBrowserComponent>(FileBrowserComponent::openMode | openFlags,
-                                                             lastWaveDirectory, fileFilter.get(), nullptr);
-
-        fileLoader = std::make_unique<FileChooserDialogBox>("Open Audio File", instructions, *fileBrowser,
-                                                            true, Colour::greyLevel(0.08f));
-        fileLoader->setAlwaysOnTop(true);
-
-        if (int result = fileLoader->show()) {
-            data.audioFile = fileBrowser->getSelectedFile(0);
-            openWaveCallback(result, data);
-        }
+        openFlags |= FileBrowserComponent::canSelectFiles;
     }
+
+    nativeFileChooser->launchAsync(openFlags, [data](const FileChooser& chooser) mutable {
+        data.audioFile = chooser.getResult();
+
+        if (data.audioFile.exists() || data.audioFile.isDirectory()) {
+            Dialogs::openWaveCallback(DialogSave, data);
+        } else {
+            Dialogs::openWaveCallback(DialogCancel, data);
+        }
+    });
 }
 
 void Dialogs::showOpenPresetDialog() {
@@ -218,30 +199,20 @@ void Dialogs::showOpenPresetDialog() {
         lastPresetDirectory = getObj(Directories).getPresetDir();
     }
 
-    if (getSetting(NativeDialogs) == 1) {
-        nativeFileChooser = std::make_unique<FileChooser>("Open " + getStrConstant(ProductName) + " Preset",
-                                            lastPresetDirectory, "*." + getStrConstant(DocumentExt), true);
+    const bool useNativeChooser = getSetting(NativeDialogs) == 1;
+    nativeFileChooser = std::make_unique<FileChooser>("Open " + getStrConstant(ProductName) + " Preset",
+                                        lastPresetDirectory, "*." + getStrConstant(DocumentExt), useNativeChooser);
 
-        if (int result = nativeFileChooser->browseForFileToOpen()) {
-            openPresetCallback(result, nativeFileChooser->getResult(), this);
-        }
-    } else {
-        fileFilter = std::make_unique<WildcardFileFilter>("*." + getStrConstant(DocumentExt),
-                                            String(), "Preset files");
-        fileBrowser = std::make_unique<FileBrowserComponent>(FileBrowserComponent::openMode |
-                                               FileBrowserComponent::canSelectFiles,
-                                               lastPresetDirectory, fileFilter.get(), nullptr);
+    nativeFileChooser->launchAsync(FileBrowserComponent::openMode | FileBrowserComponent::canSelectFiles,
+                                   [this](const FileChooser& chooser) {
+                                       const File selected = chooser.getResult();
 
-        fileLoader = std::make_unique<FileChooserDialogBox>("Open " + getStrConstant(ProductName) +
-                                              " Preset", String(), *fileBrowser,
-                                              true, Colour::greyLevel(0.08f));
-
-        fileLoader->setAlwaysOnTop(true);
-
-        if (int result = fileLoader->show()) {
-            openPresetCallback(result, fileBrowser->getSelectedFile(0), this);
-        }
-    }
+                                       if (selected.existsAsFile()) {
+                                           openPresetCallback(DialogSave, selected, this);
+                                       } else {
+                                           openPresetCallback(DialogCancel, File(), this);
+                                       }
+                                   });
 }
 
 #if !PLUGIN_MODE
@@ -250,9 +221,9 @@ void Dialogs::showAudioSettings() {
             *(getObj(AudioHub).getAudioDeviceManager()), 0, 1, 2, 2, true, false, true, false);
 
     audioSettingsComp.setSize(600, 500);
-    DialogWindow::showModalDialog("Audio Settings", &audioSettingsComp,
-                                  mainPanel, Colour::greyLevel(0.08f),
-                                  true, true, true);
+    DialogWindow::showDialog("Audio Settings", &audioSettingsComp,
+                             mainPanel, Colour::greyLevel(0.08f),
+                             true, true, true);
 }
 #endif
 
@@ -530,6 +501,10 @@ void Dialogs::openWaveCallback(int returnId, WaveOpenData data) {
 }
 
 void Dialogs::openPresetCallback(int returnId, const File &currentFile, Dialogs* ops) {
+    if (returnId == DialogCancel) {
+        return;
+    }
+
     File parentFile = currentFile.getParentDirectory();
     String filename = currentFile.getFullPathName();
 

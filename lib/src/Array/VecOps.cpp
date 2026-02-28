@@ -66,6 +66,17 @@ template<> void VecOps::divCRev(Buffer<Float32> src, Float32 k, Buffer<Float32> 
 declareForF32_F64(move, mmov)
 
 template<> void VecOps::roundDown(Buffer<Float32> src, Buffer<Int8s> dst)  { vDSP_vfix8(src, 1, reinterpret_cast<char*>(dst.get()), 1, src.size()); }
+template<> void VecOps::roundDown(Buffer<Float32> src, Buffer<Int8u> dst)  {
+    if (src.size() < dst.size()) {
+        ++globalVecOpsSizeErrorCount;
+        return;
+    }
+
+    for (int i = 0; i < dst.size(); ++i) {
+        const int v = (int) src[i];
+        dst[i] = (Int8u) jlimit(0, 255, v);
+    }
+}
 template<> void VecOps::roundDown(Buffer<Float32> src, Buffer<Int16s> dst) { vDSP_vfix16(src, 1, dst, 1, src.size()); }
 template<> void VecOps::roundDown(Buffer<Float32> src, Buffer<Int32s> dst) { vDSP_vfix32(src, 1, dst, 1, src.size()); }
 template<> void VecOps::roundDown(Buffer<Float64> src, Buffer<Int16s> dst) { vDSP_vfix16D(src, 1, dst, 1, src.size()); }

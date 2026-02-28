@@ -1249,22 +1249,22 @@ void VisualDsp::trackWavePhaseEnvelope() {
         averagingKernel[i] = i + 1;
 
     float scale = powf(2, getObj(Spectrum3D).getScaleFactor());
-    status(ippsDivCRev_32f_I(1.f, averagingKernel, harmonicsToAverage));
+    checkIppStatus(ippsDivCRev_32f_I(1.f, averagingKernel, harmonicsToAverage));
 
     float invNumToAvg;
-    status(ippsSum_32f(averagingKernel, harmonicsToAverage, &invNumToAvg, ippAlgHintFast));
-    status(ippsMulC_32f_I(1 / invNumToAvg, averagingKernel, harmonicsToAverage));
+    checkIppStatus(ippsSum_32f(averagingKernel, harmonicsToAverage, &invNumToAvg, ippAlgHintFast));
+    checkIppStatus(ippsMulC_32f_I(1 / invNumToAvg, averagingKernel, harmonicsToAverage));
 
     for(int i = 0; i < length; ++i)
     {
-        status(ippsCopy_32f(phasePreFXCols[i], tempPhases, harmonicsToAverage));
-        status(ippsAddC_32f_I(-0.5f, tempPhases, harmonicsToAverage));
-        status(ippsMulC_32f_I(-1, tempPhases, harmonicsToAverage));
-        status(ippsDotProd_32f(tempPhases, averagingKernel, harmonicsToAverage, averagePhase.get() + i));
+        checkIppStatus(ippsCopy_32f(phasePreFXCols[i], tempPhases, harmonicsToAverage));
+        checkIppStatus(ippsAddC_32f_I(-0.5f, tempPhases, harmonicsToAverage));
+        checkIppStatus(ippsMulC_32f_I(-1, tempPhases, harmonicsToAverage));
+        checkIppStatus(ippsDotProd_32f(tempPhases, averagingKernel, harmonicsToAverage, averagePhase.get() + i));
     }
 
-    status(ippsAddC_32f_I(1000.f, averagePhase, length));		// want to have same polarity for modf
-    status(ippsModf_32f(averagePhase, modWhole, modPart, length));
+    checkIppStatus(ippsAddC_32f_I(1000.f, averagePhase, length));		// want to have same polarity for modf
+    checkIppStatus(ippsModf_32f(averagePhase, modWhole, modPart, length));
 
     bool didSplit;
 

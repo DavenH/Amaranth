@@ -1,22 +1,11 @@
-#include <Algo/AutoModeller.h>
-#include <Algo/PitchTracker.h>
-#include <App/MeshLibrary.h>
-#include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Audio/Multisample.h>
 #include <Audio/PluginProcessor.h>
-#include <Thread/LockTracer.h>
-#include <UI/IConsole.h>
-#include <Util/NumberUtils.h>
 
 #include "AudioSourceRepo.h"
 #include "GraphicTableAudioSource.h"
 #include "SynthAudioSource.h"
 #include "WavAudioSource.h"
 
-#include <iterator>
-#include <algorithm>
-#include <deque>
 #include <fstream>
 
 
