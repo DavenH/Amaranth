@@ -74,6 +74,23 @@ bool GraphicRasterizer::renderWithV2() {
     controls.interpolateCurves = interpolateCurves;
     controls.lowResolution = lowResCurves;
     controls.integralSampling = integralSampling;
+    controls.pointPath = V2PositionerContext::PointPathContext(
+        deformer,
+        noiseSeed,
+        vertOffsetSeeds,
+        phaseOffsetSeeds,
+        deformer != nullptr,
+        false,
+        true);
+    controls.componentPath = V2WaveBuilderContext::ComponentPathContext(
+        deformer,
+        noiseSeed,
+        vertOffsetSeeds,
+        phaseOffsetSeeds,
+        deformer != nullptr,
+        decoupleComponentDfrms,
+        lowResCurves,
+        morph.time);
     v2GraphicRasterizer.updateControlData(controls);
 
     V2RasterArtifacts artifacts;

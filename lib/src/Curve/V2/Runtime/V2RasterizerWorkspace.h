@@ -2,10 +2,10 @@
 
 #include <vector>
 
-#include "../../../Array/ScopedAlloc.h"
-#include "../../Curve.h"
-#include "../../Intercept.h"
-#include "V2RenderTypes.h"
+#include <Array/ScopedAlloc.h>
+#include <Curve/Curve.h>
+#include <Curve/Intercept.h>
+#include <Curve/V2/Runtime/V2RenderTypes.h>
 
 class V2RasterizerWorkspace {
 public:
@@ -18,8 +18,7 @@ public:
 
     std::vector<Intercept> intercepts;
     std::vector<Curve> curves;
-    std::vector<Intercept> deformRegionStarts;
-    std::vector<Intercept> deformRegionEnds;
+    std::vector<V2DeformRegion> deformRegions;
 
     ScopedAlloc<float> waveMemory;
     Buffer<float> waveX;
@@ -30,4 +29,3 @@ public:
 private:
     V2CapacitySpec capacities;
 };
-

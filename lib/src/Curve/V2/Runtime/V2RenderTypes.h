@@ -1,5 +1,20 @@
 #pragma once
 
+#include <Curve/Intercept.h>
+
+enum class V2ScalingType {
+    Unipolar,
+    Bipolar,
+    HalfBipolar
+};
+
+struct V2DeformRegion {
+    int deformChan{0};
+    float amplitude{0.0f};
+    Intercept start{};
+    Intercept end{};
+};
+
 struct V2CapacitySpec {
     int maxIntercepts{0};
     int maxCurves{0};

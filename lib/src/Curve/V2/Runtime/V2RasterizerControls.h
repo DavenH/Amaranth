@@ -4,7 +4,7 @@
 
 struct V2CommonControlSnapshot {
     MorphPosition morph{};
-    MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
+    V2ScalingType scaling{V2ScalingType::Unipolar};
     bool wrapPhases{false};
     bool cyclic{false};
     float minX{0.0f};
@@ -13,6 +13,7 @@ struct V2CommonControlSnapshot {
     bool lowResolution{false};
     bool integralSampling{false};
     V2PositionerContext::PointPathContext pointPath{};
+    V2WaveBuilderContext::ComponentPathContext componentPath{};
 };
 
 struct V2GraphicControlSnapshot :
@@ -26,8 +27,10 @@ struct V2FxControlSnapshot :
 
 struct V2VoiceControlSnapshot :
         public V2CommonControlSnapshot {
+    float minLineLength{0.0f};
+
     V2VoiceControlSnapshot() noexcept {
-        scaling = MeshRasterizer::Bipolar;
+        scaling = V2ScalingType::Bipolar;
         cyclic = true;
     }
 };
@@ -49,14 +52,41 @@ inline V2InterpolatorContext makeInterpolatorContext(
 }
 
 inline V2PositionerContext makePositionerContext(const V2CommonControlSnapshot& controls) noexcept {
+    V2PositionerContext::PointPathContext pointPath = controls.pointPath;
+    pointPath.enabled = pointPath.enabled
+        && pointPath.path != nullptr
+        && pointPath.vertOffsetSeeds != nullptr
+        && pointPath.phaseOffsetSeeds != nullptr;
+
     return V2PositionerContext(
         controls.scaling,
         controls.cyclic,
         controls.minX,
         controls.maxX,
         0.0f,
+        Vertex::Time,
         controls.morph,
-        controls.pointPath);
+        pointPath);
+}
+
+inline V2PositionerContext makePositionerContext(
+    const V2CommonControlSnapshot& controls,
+    int interpolationDimension) noexcept {
+    V2PositionerContext::PointPathContext pointPath = controls.pointPath;
+    pointPath.enabled = pointPath.enabled
+        && pointPath.path != nullptr
+        && pointPath.vertOffsetSeeds != nullptr
+        && pointPath.phaseOffsetSeeds != nullptr;
+
+    return V2PositionerContext(
+        controls.scaling,
+        controls.cyclic,
+        controls.minX,
+        controls.maxX,
+        0.0f,
+        interpolationDimension,
+        controls.morph,
+        pointPath);
 }
 
 inline V2CurveBuilderContext makeCurveBuilderContext(
@@ -85,9 +115,21 @@ inline V2CurveBuilderContext makeCurveBuilderContext(
 inline V2WaveBuilderContext makeWaveBuilderContext(
     const V2CommonControlSnapshot& controls,
     bool interpolateCurves) noexcept {
-    return V2WaveBuilderContext(interpolateCurves && controls.interpolateCurves);
+    V2WaveBuilderContext::ComponentPathContext componentPath = controls.componentPath;
+    componentPath.enabled = componentPath.enabled
+        && componentPath.path != nullptr
+        && componentPath.vertOffsetSeeds != nullptr
+        && componentPath.phaseOffsetSeeds != nullptr;
+
+    return V2WaveBuilderContext(interpolateCurves && controls.interpolateCurves, componentPath);
 }
 
 inline V2WaveBuilderContext makeWaveBuilderContext(const V2CommonControlSnapshot& controls) noexcept {
-    return V2WaveBuilderContext(controls.interpolateCurves);
+    V2WaveBuilderContext::ComponentPathContext componentPath = controls.componentPath;
+    componentPath.enabled = componentPath.enabled
+        && componentPath.path != nullptr
+        && componentPath.vertOffsetSeeds != nullptr
+        && componentPath.phaseOffsetSeeds != nullptr;
+
+    return V2WaveBuilderContext(controls.interpolateCurves, componentPath);
 }

@@ -2,12 +2,12 @@
 
 #include <vector>
 
-#include "../../Curve.h"
-#include "../../Intercept.h"
-#include "../../Mesh.h"
-#include "../../MeshRasterizer.h"
-#include "../../../Obj/MorphPosition.h"
-#include "../Runtime/V2RenderTypes.h"
+#include <Curve/Curve.h>
+#include <Curve/IDeformer.h>
+#include <Curve/Intercept.h>
+#include <Curve/Mesh.h>
+#include <Obj/MorphPosition.h>
+#include <Curve/V2/Runtime/V2RenderTypes.h>
 
 struct V2InterpolatorContext {
     const Mesh* mesh{nullptr};
@@ -36,6 +36,8 @@ struct V2PositionerContext {
         const short* vertOffsetSeeds{nullptr};
         const short* phaseOffsetSeeds{nullptr};
         bool enabled{false};
+        bool noOffsetAtEnds{false};
+        bool useLegacyTimeProgress{true};
 
         PointPathContext() = default;
 
@@ -44,31 +46,37 @@ struct V2PositionerContext {
             int noiseSeed,
             const short* vertOffsetSeeds,
             const short* phaseOffsetSeeds,
-            bool enabled) noexcept :
+            bool enabled,
+            bool noOffsetAtEnds = false,
+            bool useLegacyTimeProgress = true) noexcept :
                 path(path)
             ,   noiseSeed(noiseSeed)
             ,   vertOffsetSeeds(vertOffsetSeeds)
             ,   phaseOffsetSeeds(phaseOffsetSeeds)
             ,   enabled(enabled)
+            ,   noOffsetAtEnds(noOffsetAtEnds)
+            ,   useLegacyTimeProgress(useLegacyTimeProgress)
         {}
     };
 
-    MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
+    V2ScalingType scaling{V2ScalingType::Unipolar};
     bool cyclic{false};
     float padding{0.0f};
     float minX{0.0f};
     float maxX{1.0f};
+    int interpolationDimension{Vertex::Time};
     MorphPosition morph{};
     PointPathContext pointPath{};
 
     V2PositionerContext() = default;
 
     V2PositionerContext(
-        MeshRasterizer::ScalingType scaling,
+        V2ScalingType scaling,
         bool cyclic,
         float minX,
         float maxX,
         float padding,
+        int interpolationDimension,
         const MorphPosition& morph,
         const PointPathContext& pointPath) noexcept :
             scaling(scaling)
@@ -76,17 +84,26 @@ struct V2PositionerContext {
         ,   padding(padding)
         ,   minX(minX)
         ,   maxX(maxX)
+        ,   interpolationDimension(interpolationDimension)
         ,   morph(morph)
         ,   pointPath(pointPath)
     {}
 
     V2PositionerContext(
-        MeshRasterizer::ScalingType scaling,
+        V2ScalingType scaling,
         bool cyclic,
         float minX,
         float maxX,
         float padding = 0.0f) noexcept :
-            V2PositionerContext(scaling, cyclic, minX, maxX, padding, MorphPosition(), PointPathContext())
+            V2PositionerContext(
+                scaling,
+                cyclic,
+                minX,
+                maxX,
+                padding,
+                Vertex::Time,
+                MorphPosition(),
+                PointPathContext())
     {}
 };
 
@@ -96,7 +113,7 @@ struct V2CurveBuilderContext {
         FxLegacyFixed
     };
 
-    MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
+    V2ScalingType scaling{V2ScalingType::Unipolar};
     int paddingCount{2};
     PaddingPolicy paddingPolicy{PaddingPolicy::Generic};
     bool interpolateCurves{true};
@@ -106,7 +123,7 @@ struct V2CurveBuilderContext {
     V2CurveBuilderContext() = default;
 
     V2CurveBuilderContext(
-        MeshRasterizer::ScalingType scaling,
+        V2ScalingType scaling,
         bool interpolateCurves,
         bool lowResolution,
         bool integralSampling,
@@ -122,12 +139,61 @@ struct V2CurveBuilderContext {
 };
 
 struct V2WaveBuilderContext {
+    struct ComponentPathContext {
+        IDeformer* path{nullptr};
+        int noiseSeed{-1};
+        const short* vertOffsetSeeds{nullptr};
+        const short* phaseOffsetSeeds{nullptr};
+        bool enabled{false};
+        bool decoupled{false};
+        bool lowResolution{false};
+        float morphTime{0.0f};
+        int decoupledPhaseOffsetSeed{0};
+        int decoupledVertOffsetSeed{0};
+        std::vector<V2DeformRegion>* deformRegions{nullptr};
+
+        ComponentPathContext() = default;
+
+        ComponentPathContext(
+            IDeformer* path,
+            int noiseSeed,
+            const short* vertOffsetSeeds,
+            const short* phaseOffsetSeeds,
+            bool enabled,
+            bool decoupled,
+            bool lowResolution,
+            float morphTime,
+            int decoupledPhaseOffsetSeed = 0,
+            int decoupledVertOffsetSeed = 0,
+            std::vector<V2DeformRegion>* deformRegions = nullptr) noexcept :
+                path(path)
+            ,   noiseSeed(noiseSeed)
+            ,   vertOffsetSeeds(vertOffsetSeeds)
+            ,   phaseOffsetSeeds(phaseOffsetSeeds)
+            ,   enabled(enabled)
+            ,   decoupled(decoupled)
+            ,   lowResolution(lowResolution)
+            ,   morphTime(morphTime)
+            ,   decoupledPhaseOffsetSeed(decoupledPhaseOffsetSeed)
+            ,   decoupledVertOffsetSeed(decoupledVertOffsetSeed)
+            ,   deformRegions(deformRegions)
+        {}
+    };
+
     bool interpolateCurves{true};
+    ComponentPathContext componentPath{};
 
     V2WaveBuilderContext() = default;
 
     explicit V2WaveBuilderContext(bool interpolateCurves) noexcept :
             interpolateCurves(interpolateCurves)
+    {}
+
+    V2WaveBuilderContext(
+        bool interpolateCurves,
+        const ComponentPathContext& componentPath) noexcept :
+            interpolateCurves(interpolateCurves)
+        ,   componentPath(componentPath)
     {}
 };
 
@@ -136,6 +202,10 @@ struct V2SamplerContext {
     int wavePointCount{0};
     int zeroIndex{0};
     int oneIndex{0};
+    IDeformer* decoupledPath{nullptr};
+    const std::vector<V2DeformRegion>* deformRegions{nullptr};
+    int phaseOffsetSeed{0};
+    int vertOffsetSeed{0};
 
     V2SamplerContext() = default;
 
@@ -143,11 +213,19 @@ struct V2SamplerContext {
         const V2RenderRequest& request,
         int wavePointCount = 0,
         int zeroIndex = 0,
-        int oneIndex = 0) noexcept :
+        int oneIndex = 0,
+        IDeformer* decoupledPath = nullptr,
+        const std::vector<V2DeformRegion>* deformRegions = nullptr,
+        int phaseOffsetSeed = 0,
+        int vertOffsetSeed = 0) noexcept :
             request(request)
         ,   wavePointCount(wavePointCount)
         ,   zeroIndex(zeroIndex)
         ,   oneIndex(oneIndex)
+        ,   decoupledPath(decoupledPath)
+        ,   deformRegions(deformRegions)
+        ,   phaseOffsetSeed(phaseOffsetSeed)
+        ,   vertOffsetSeed(vertOffsetSeed)
     {}
 };
 

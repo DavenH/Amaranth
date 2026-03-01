@@ -1,6 +1,11 @@
 #pragma once
 
-#include "../../../Array/Buffer.h"
+#include <vector>
+
+#include <Array/Buffer.h>
+#include <Curve/IDeformer.h>
+#include <Util/NumberUtils.h>
+#include <Curve/V2/Runtime/V2RenderTypes.h>
 
 namespace V2WaveSampling {
 inline float sampleAtPhase(
@@ -29,6 +34,45 @@ inline float sampleAtPhase(
 
     if (sampled != sampled) {
         return 0.0f;
+    }
+
+    return sampled;
+}
+
+inline float sampleAtPhaseDecoupled(
+    double phase,
+    Buffer<float> waveX,
+    Buffer<float> waveY,
+    Buffer<float> slope,
+    int wavePointCount,
+    int& ioSampleIndex,
+    IDeformer* path,
+    const std::vector<V2DeformRegion>* deformRegions,
+    int noiseSeed,
+    int phaseOffsetSeed,
+    int vertOffsetSeed) noexcept {
+    float sampled = sampleAtPhase(phase, waveX, waveY, slope, wavePointCount, ioSampleIndex);
+    if (path == nullptr || deformRegions == nullptr || deformRegions->empty()) {
+        return sampled;
+    }
+
+    for (const auto& region : *deformRegions) {
+        if (! NumberUtils::within<float>(static_cast<float>(phase), region.start.x, region.end.x)) {
+            continue;
+        }
+
+        float diff = region.end.x - region.start.x;
+        if (diff <= 0.0f) {
+            continue;
+        }
+
+        IDeformer::NoiseContext noise;
+        noise.noiseSeed = noiseSeed;
+        noise.phaseOffset = phaseOffsetSeed;
+        noise.vertOffset = vertOffsetSeed;
+
+        float progress = (static_cast<float>(phase) - region.start.x) / diff;
+        return sampled + region.amplitude * path->getTableValue(region.deformChan, progress, noise);
     }
 
     return sampled;

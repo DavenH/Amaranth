@@ -27,12 +27,16 @@ void V2VoiceRasterizer::prepare(const V2PrepareSpec& spec) {
     controls.lowResolution = spec.lowResolution;
     chainingPositionerPipeline.reset();
     curveBuilder.reset();
+    chainingCallCount = 0;
+    chainingAdvancement = 0.0f;
 }
 
 void V2VoiceRasterizer::setMeshSnapshot(const Mesh* meshSnapshot) noexcept {
     mesh = meshSnapshot;
     chainingPositionerPipeline.reset();
     curveBuilder.reset();
+    chainingCallCount = 0;
+    chainingAdvancement = 0.0f;
 }
 
 void V2VoiceRasterizer::updateControlData(const V2VoiceControlSnapshot& snapshot) noexcept {
@@ -45,6 +49,8 @@ void V2VoiceRasterizer::resetPhase(double phase) noexcept {
     sampleIndex = 0;
     chainingPositionerPipeline.reset();
     curveBuilder.reset();
+    chainingCallCount = 0;
+    chainingAdvancement = 0.0f;
 }
 
 double V2VoiceRasterizer::getPhaseForTesting() const noexcept {
@@ -126,6 +132,11 @@ bool V2VoiceRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept 
     graph.setPositioner(static_cast<V2PositionerStage*>(&chainingPositionerPipeline));
 
     V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
+    if (chainingCallCount > 0 && chainingAdvancement > 0.0f) {
+        interpolatorContext.morph.time.setValueDirect(jmin(
+            1.0f,
+            interpolatorContext.morph.time.getCurrentValue() + chainingAdvancement));
+    }
     V2PositionerContext positionerContext = makePositionerContext(controls);
     positionerContext.cyclic = true;
 
@@ -134,6 +145,11 @@ bool V2VoiceRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept 
         return false;
     }
 
+    if (chainingCallCount == 0 && controls.minLineLength > 0.0f) {
+        chainingAdvancement = controls.minLineLength * 1.1f;
+    }
+
+    ++chainingCallCount;
     artifacts.intercepts = &workspace.intercepts;
     return outCount > 0;
 }
@@ -147,6 +163,7 @@ bool V2VoiceRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
 
     V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(controls);
     V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
+    waveBuilderContext.componentPath.deformRegions = &workspace.deformRegions;
 
     int curveCount = 0;
     if (! curveBuilder.run(
@@ -180,18 +197,12 @@ bool V2VoiceRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
     artifacts.waveY = workspace.waveY.withSize(wavePointCount);
     artifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
     artifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
+    artifacts.deformRegions = &workspace.deformRegions;
     artifacts.zeroIndex = zeroIndex;
     artifacts.oneIndex = oneIndex;
 
-    const int clampedZero = jlimit(0, wavePointCount - 2, zeroIndex);
-    const int clampedOne = jlimit(clampedZero, wavePointCount - 2, oneIndex);
-    cycleStartX = workspace.waveX[clampedZero];
-    cycleEndX = workspace.waveX[jmin(clampedOne + 1, wavePointCount - 1)];
-
-    if (cycleEndX <= cycleStartX + static_cast<float>(kMinCycleLength)) {
-        cycleStartX = controls.minX;
-        cycleEndX = controls.maxX;
-    }
+    cycleStartX = controls.minX;
+    cycleEndX = controls.maxX;
 
     return wavePointCount > 1;
 }

@@ -494,6 +494,241 @@ TEST_CASE("V2 point-path positioner stage can be inserted into composed pipeline
     REQUIRE(intercepts[0].isWrapped);
 }
 
+TEST_CASE("V2 point-path stage supports noOffsetAtEnds suppression and legacy time progress", "[curve][v2][raster][positioner][path][parity]") {
+    ScopedMesh scoped("v2-point-path-legacy-progress");
+    auto* cube = new VertCube(&scoped.mesh);
+    scoped.mesh.addCube(cube);
+
+    for (int i = 0; i < static_cast<int>(VertCube::numVerts); ++i) {
+        bool timePole = false;
+        bool redPole = false;
+        bool bluePole = false;
+        VertCube::getPoles(i, timePole, redPole, bluePole);
+
+        auto* vert = cube->lineVerts[i];
+        vert->values[Vertex::Time] = timePole ? 1.0f : 0.0f;
+        vert->values[Vertex::Red] = redPole ? 1.0f : 0.0f;
+        vert->values[Vertex::Blue] = bluePole ? 1.0f : 0.0f;
+        vert->values[Vertex::Phase] = 0.35f + (redPole ? 0.10f : -0.05f);
+        vert->values[Vertex::Amp] = 0.55f + (bluePole ? 0.15f : -0.10f);
+        vert->values[Vertex::Curve] = 0.40f;
+    }
+
+    for (int d = 0; d < Vertex::numElements; ++d) {
+        cube->deformerAt(d) = -1;
+        cube->dfrmGainAt(d) = 0.0f;
+    }
+
+    cube->deformerAt(Vertex::Amp) = 0;
+    cube->dfrmGainAt(Vertex::Amp) = 0.25f;
+    cube->deformerAt(Vertex::Phase) = 0;
+    cube->dfrmGainAt(Vertex::Phase) = 0.25f;
+    cube->deformerAt(Vertex::Curve) = 0;
+    cube->dfrmGainAt(Vertex::Curve) = 0.10f;
+
+    ConstantDeformer deformer(1.0f);
+    short seeds[1] = { 0 };
+
+    std::vector<Intercept> legacyProgress = { Intercept(0.45f, 0.60f, cube, 0.30f) };
+    std::vector<Intercept> directProgress = legacyProgress;
+    legacyProgress[0].adjustedX = legacyProgress[0].x;
+    directProgress[0].adjustedX = directProgress[0].x;
+    int legacyCount = 1;
+    int directCount = 1;
+
+    V2PointPathPositionerStage stage;
+
+    V2PositionerContext legacyContext;
+    legacyContext.scaling = MeshRasterizer::Bipolar;
+    legacyContext.cyclic = true;
+    legacyContext.minX = 0.0f;
+    legacyContext.maxX = 1.0f;
+    legacyContext.interpolationDimension = Vertex::Time;
+    legacyContext.morph = MorphPosition(0.37f, 0.42f, 0.58f);
+    legacyContext.pointPath = V2PositionerContext::PointPathContext(
+        &deformer,
+        0,
+        seeds,
+        seeds,
+        true,
+        false,
+        true);
+
+    V2PositionerContext directContext = legacyContext;
+    directContext.pointPath = V2PositionerContext::PointPathContext(
+        &deformer,
+        0,
+        seeds,
+        seeds,
+        true,
+        false,
+        false);
+
+    REQUIRE(stage.run(legacyProgress, legacyCount, legacyContext));
+    REQUIRE(stage.run(directProgress, directCount, directContext));
+
+    REQUIRE(std::abs(legacyProgress[0].x - directProgress[0].x) < 1e-6f);
+    REQUIRE(std::abs(legacyProgress[0].y - directProgress[0].y) < 1e-6f);
+    REQUIRE(std::abs(legacyProgress[0].shp - directProgress[0].shp) < 1e-6f);
+
+    std::vector<Intercept> suppressed = { Intercept(0.45f, 0.60f, cube, 0.30f) };
+    suppressed[0].adjustedX = suppressed[0].x;
+    int suppressedCount = 1;
+    V2PositionerContext suppressedContext = legacyContext;
+    suppressedContext.morph = MorphPosition(0.0f, 0.42f, 0.58f);
+    suppressedContext.pointPath = V2PositionerContext::PointPathContext(
+        &deformer,
+        0,
+        seeds,
+        seeds,
+        true,
+        true,
+        true);
+
+    REQUIRE(stage.run(suppressed, suppressedCount, suppressedContext));
+    REQUIRE(std::abs(suppressed[0].y - 0.60f) < 1e-6f);
+    REQUIRE(std::abs(suppressed[0].shp - 0.30f) < 1e-6f);
+    REQUIRE(std::abs(suppressed[0].x - 0.45f) < 1e-6f);
+}
+
+TEST_CASE("V2 wave builder supports component deformer and decoupled deform-region output", "[curve][v2][raster][wave][deformer]") {
+    ScopedMesh scoped("v2-wave-component-path");
+    auto* cube = new VertCube(&scoped.mesh);
+    scoped.mesh.addCube(cube);
+    cube->getCompDfrm() = 0;
+    cube->dfrmGainAt(Vertex::Time) = 0.5f;
+
+    Intercept i0(0.0f, 0.25f, cube, 0.0f);
+    Intercept i1(0.5f, 0.75f, cube, 0.8f);
+    Intercept i2(1.0f, 0.25f, cube, 0.0f);
+
+    std::vector<Curve> curves;
+    curves.emplace_back(i0, i1, i2);
+    curves.emplace_back(i1, i2, Intercept(1.25f, 0.25f, cube, 0.0f));
+
+    V2DefaultWaveBuilderStage waveBuilder;
+    ConstantDeformer deformer(0.5f);
+    short seeds[1] = { 0 };
+
+    V2CapacitySpec caps;
+    caps.maxIntercepts = 8;
+    caps.maxCurves = 8;
+    caps.maxWavePoints = 1024;
+    caps.maxDeformRegions = 8;
+    V2RasterizerWorkspace workspace;
+    workspace.prepare(caps);
+
+    int waveCount = 0;
+    int zeroIndex = 0;
+    int oneIndex = 0;
+    V2WaveBuilderContext directContext(
+        true,
+        V2WaveBuilderContext::ComponentPathContext(
+            &deformer,
+            0,
+            seeds,
+            seeds,
+            true,
+            false,
+            false,
+            0.5f,
+            0,
+            0,
+            &workspace.deformRegions));
+
+    REQUIRE(waveBuilder.run(
+        curves,
+        static_cast<int>(curves.size()),
+        workspace.waveX,
+        workspace.waveY,
+        workspace.diffX,
+        workspace.slope,
+        waveCount,
+        zeroIndex,
+        oneIndex,
+        directContext));
+
+    REQUIRE(waveCount > 1);
+    REQUIRE(workspace.deformRegions.empty());
+
+    float directSum = workspace.waveY.withSize(waveCount).sum();
+
+    V2WaveBuilderContext decoupledContext(
+        true,
+        V2WaveBuilderContext::ComponentPathContext(
+            &deformer,
+            0,
+            seeds,
+            seeds,
+            true,
+            true,
+            false,
+            0.5f,
+            0,
+            0,
+            &workspace.deformRegions));
+
+    REQUIRE(waveBuilder.run(
+        curves,
+        static_cast<int>(curves.size()),
+        workspace.waveX,
+        workspace.waveY,
+        workspace.diffX,
+        workspace.slope,
+        waveCount,
+        zeroIndex,
+        oneIndex,
+        decoupledContext));
+
+    REQUIRE(! workspace.deformRegions.empty());
+    REQUIRE(workspace.deformRegions[0].deformChan == 0);
+    REQUIRE(workspace.deformRegions[0].amplitude > 0.0f);
+    REQUIRE(workspace.waveY.withSize(waveCount).sum() < directSum);
+}
+
+TEST_CASE("V2 sampler stage applies decoupled deform regions at sample time", "[curve][v2][raster][sampler][decoupled]") {
+    V2LinearSamplerStage sampler;
+    ConstantDeformer deformer(0.5f);
+
+    ScopedAlloc<float> memory(16);
+    Buffer<float> waveX(memory.place(3), 3);
+    Buffer<float> waveY(memory.place(3), 3);
+    Buffer<float> slope(memory.place(2), 2);
+    Buffer<float> output(memory.place(4), 4);
+
+    waveX[0] = 0.0f;
+    waveX[1] = 0.5f;
+    waveX[2] = 1.0f;
+    waveY.zero();
+    slope.zero();
+    output.zero();
+
+    std::vector<MeshRasterizer::DeformRegion> deformRegions;
+    MeshRasterizer::DeformRegion region;
+    region.deformChan = 0;
+    region.amplitude = 1.0f;
+    region.start = Intercept(0.0f, 0.0f);
+    region.end = Intercept(1.0f, 0.0f);
+    deformRegions.emplace_back(region);
+
+    V2SamplerContext context;
+    context.request.numSamples = 4;
+    context.request.deltaX = 0.25;
+    context.request.tempoScale = 1.0f;
+    context.request.scale = 1;
+    context.wavePointCount = 3;
+    context.zeroIndex = 0;
+    context.decoupledPath = &deformer;
+    context.deformRegions = &deformRegions;
+
+    V2RenderResult result = sampler.run(waveX, waveY, slope, output, context);
+    REQUIRE(result.rendered);
+    REQUIRE(result.samplesWritten == output.size());
+    for (int i = 0; i < output.size(); ++i) {
+        REQUIRE(std::abs(output[i] - 0.5f) < 1e-6f);
+    }
+}
+
 TEST_CASE("V2 rasterizer graph runs interpolation and positioning with workspace", "[curve][v2][raster]") {
     V2CapacitySpec capacities;
     capacities.maxIntercepts = 16;
@@ -756,8 +991,7 @@ TEST_CASE("V2 render path keeps workspace capacities stable across repeated call
 
     size_t interceptCapacity = workspace.intercepts.capacity();
     size_t curveCapacity = workspace.curves.capacity();
-    size_t deformStartCapacity = workspace.deformRegionStarts.capacity();
-    size_t deformEndCapacity = workspace.deformRegionEnds.capacity();
+    size_t deformCapacity = workspace.deformRegions.capacity();
 
     for (int i = 0; i < 8; ++i) {
         output.zero();
@@ -775,8 +1009,7 @@ TEST_CASE("V2 render path keeps workspace capacities stable across repeated call
 
     REQUIRE(workspace.intercepts.capacity() == interceptCapacity);
     REQUIRE(workspace.curves.capacity() == curveCapacity);
-    REQUIRE(workspace.deformRegionStarts.capacity() == deformStartCapacity);
-    REQUIRE(workspace.deformRegionEnds.capacity() == deformEndCapacity);
+    REQUIRE(workspace.deformRegions.capacity() == deformCapacity);
 }
 
 TEST_CASE("V2 graph render matches independent reference sampling of built wave", "[curve][v2][raster][oracle]") {

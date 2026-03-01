@@ -6,6 +6,7 @@
 #include "RasterizerData.h"
 #include "SurfaceLine.h"
 #include "VertCube.h"
+#include <Curve/V2/Runtime/V2RenderTypes.h>
 #include "../Array/ScopedAlloc.h"
 #include "../Design/Updating/Updateable.h"
 #include "../Inter/Dimensions.h"
@@ -24,7 +25,11 @@ typedef vector<Intercept>::const_iterator ConstIcptIter;
 class MeshRasterizer :
         public Updateable {
 public:
-    enum ScalingType { Unipolar, Bipolar, HalfBipolar };
+    using ScalingType = V2ScalingType;
+    using DeformRegion = V2DeformRegion;
+    static constexpr ScalingType Unipolar = ScalingType::Unipolar;
+    static constexpr ScalingType Bipolar = ScalingType::Bipolar;
+    static constexpr ScalingType HalfBipolar = ScalingType::HalfBipolar;
 
     struct DeformContext {
         int phaseOffsetSeed;
@@ -32,12 +37,6 @@ public:
         int currentIndex;
 
         DeformContext() : phaseOffsetSeed(0), vertOffsetSeed(0), currentIndex(0) {}
-    };
-
-    struct DeformRegion {
-        int deformChan;
-        float amplitude;
-        Intercept start, end;
     };
 
     struct RenderState {

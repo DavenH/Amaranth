@@ -108,6 +108,9 @@ bool V2RasterizerGraph::buildArtifacts(
     int zeroIndex = 0;
     int oneIndex = 0;
     int wavePointCount = 0;
+    V2WaveBuilderContext localWaveBuilderContext = waveBuilderContext;
+    localWaveBuilderContext.componentPath.deformRegions = &workspace.deformRegions;
+
     if (! waveBuilder->run(
             workspace.curves,
             curveCount,
@@ -118,7 +121,7 @@ bool V2RasterizerGraph::buildArtifacts(
             wavePointCount,
             zeroIndex,
             oneIndex,
-            waveBuilderContext)) {
+            localWaveBuilderContext)) {
         return false;
     }
 
@@ -128,6 +131,7 @@ bool V2RasterizerGraph::buildArtifacts(
     outArtifacts.waveY = workspace.waveY.withSize(wavePointCount);
     outArtifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
     outArtifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
+    outArtifacts.deformRegions = &workspace.deformRegions;
     outArtifacts.zeroIndex = zeroIndex;
     outArtifacts.oneIndex = oneIndex;
     return wavePointCount > 1;
@@ -177,6 +181,12 @@ V2RenderResult V2RasterizerGraph::render(
     context.wavePointCount = artifacts.waveX.size();
     context.zeroIndex = artifacts.zeroIndex;
     context.oneIndex = artifacts.oneIndex;
+    context.deformRegions = artifacts.deformRegions;
+    if (waveBuilderContext.componentPath.decoupled) {
+        context.decoupledPath = waveBuilderContext.componentPath.path;
+        context.phaseOffsetSeed = waveBuilderContext.componentPath.decoupledPhaseOffsetSeed;
+        context.vertOffsetSeed = waveBuilderContext.componentPath.decoupledVertOffsetSeed;
+    }
 
     return sampler->run(
         artifacts.waveX,

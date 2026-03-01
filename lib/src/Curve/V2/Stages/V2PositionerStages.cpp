@@ -1,25 +1,26 @@
 #include "V2PositionerStages.h"
 
 #include <algorithm>
+#include <cmath>
 
-#include "../../IDeformer.h"
-#include "../../../Util/NumberUtils.h"
+#include <Curve/IDeformer.h>
+#include <Util/NumberUtils.h>
 
 namespace {
 constexpr float kMinDx = 0.0001f;
 
-float applyScaling(float y, MeshRasterizer::ScalingType scaling) {
+float applyScaling(float y, V2ScalingType scaling) {
     switch (scaling) {
-        case MeshRasterizer::Unipolar: {
+        case V2ScalingType::Unipolar: {
             NumberUtils::constrain(y, 0.0f, 1.0f);
             return y;
         }
-        case MeshRasterizer::Bipolar: {
+        case V2ScalingType::Bipolar: {
             float scaled = 2.0f * y - 1.0f;
             NumberUtils::constrain(scaled, -1.0f, 1.0f);
             return scaled;
         }
-        case MeshRasterizer::HalfBipolar: {
+        case V2ScalingType::HalfBipolar: {
             float scaled = y - 0.5f;
             NumberUtils::constrain(scaled, -0.5f, 0.5f);
             return scaled;
@@ -132,6 +133,24 @@ float getTimeProgress(const Intercept& intercept, const V2PositionerContext& con
         return 0.0f;
     }
 
+    if (context.pointPath.useLegacyTimeProgress) {
+        VertCube::ReductionData reduction;
+        intercept.cube->getInterceptsFast(context.interpolationDimension, reduction, context.morph);
+
+        float timeMin = reduction.v0.values[Vertex::Time];
+        float timeMax = reduction.v1.values[Vertex::Time];
+        if (timeMin > timeMax) {
+            std::swap(timeMin, timeMax);
+        }
+
+        float diffTime = timeMax - timeMin;
+        if (diffTime == 0.0f) {
+            return 0.0f;
+        }
+
+        return std::fabs(reduction.v.values[Vertex::Time] - timeMin) / diffTime;
+    }
+
     return intercept.cube->getPortionAlong(Vertex::Time, context.morph);
 }
 
@@ -226,6 +245,7 @@ bool V2PointPathPositionerStage::run(
         float redProgress = cube->getPortionAlong(Vertex::Red, context.morph);
         float blueProgress = cube->getPortionAlong(Vertex::Blue, context.morph);
         float timeProgress = getTimeProgress(intercept, context);
+        bool ignoreTimeEdge = pointPath.noOffsetAtEnds && (timeProgress == 0.0f || timeProgress == 1.0f);
 
         if (cube->deformerAt(Vertex::Red) >= 0) {
             int dfrm = cube->deformerAt(Vertex::Red);
@@ -247,20 +267,24 @@ bool V2PointPathPositionerStage::run(
             int dfrm = cube->deformerAt(Vertex::Amp);
             noise.vertOffset = pointPath.vertOffsetSeeds[dfrm];
             noise.phaseOffset = pointPath.phaseOffsetSeeds[dfrm];
-            intercept.y += cube->deformerAbsGain(Vertex::Amp)
-                * pointPath.path->getTableValue(dfrm, timeProgress, noise);
-            NumberUtils::constrain(intercept.y, (context.scaling == MeshRasterizer::Unipolar ? 0.0f : -1.0f), 1.0f);
+            if (! ignoreTimeEdge) {
+                intercept.y += cube->deformerAbsGain(Vertex::Amp)
+                    * pointPath.path->getTableValue(dfrm, timeProgress, noise);
+                NumberUtils::constrain(intercept.y, (context.scaling == V2ScalingType::Unipolar ? 0.0f : -1.0f), 1.0f);
+            }
         }
 
         if (cube->deformerAt(Vertex::Phase) >= 0) {
             int dfrm = cube->deformerAt(Vertex::Phase);
             noise.vertOffset = pointPath.vertOffsetSeeds[dfrm];
             noise.phaseOffset = pointPath.phaseOffsetSeeds[dfrm];
-            intercept.adjustedX += cube->deformerAbsGain(Vertex::Phase)
-                * pointPath.path->getTableValue(dfrm, timeProgress, noise);
+            if (! ignoreTimeEdge) {
+                intercept.adjustedX += cube->deformerAbsGain(Vertex::Phase)
+                    * pointPath.path->getTableValue(dfrm, timeProgress, noise);
 
-            if (context.cyclic) {
-                wrapAdjustedX(intercept, context);
+                if (context.cyclic) {
+                    wrapAdjustedX(intercept, context);
+                }
             }
         }
 
@@ -268,9 +292,11 @@ bool V2PointPathPositionerStage::run(
             int dfrm = cube->deformerAt(Vertex::Curve);
             noise.vertOffset = pointPath.vertOffsetSeeds[dfrm];
             noise.phaseOffset = pointPath.phaseOffsetSeeds[dfrm];
-            intercept.shp += 2.0f * cube->deformerAbsGain(Vertex::Curve)
-                * pointPath.path->getTableValue(dfrm, timeProgress, noise);
-            NumberUtils::constrain(intercept.shp, 0.0f, 1.0f);
+            if (! ignoreTimeEdge) {
+                intercept.shp += 2.0f * cube->deformerAbsGain(Vertex::Curve)
+                    * pointPath.path->getTableValue(dfrm, timeProgress, noise);
+                NumberUtils::constrain(intercept.shp, 0.0f, 1.0f);
+            }
         }
 
         intercept.x = intercept.adjustedX;

@@ -2,10 +2,11 @@
 
 #include <vector>
 
-#include "../../../Array/ScopedAlloc.h"
-#include "../../Curve.h"
-#include "../../Intercept.h"
-#include "../../../Obj/ColorPoint.h"
+#include <Array/ScopedAlloc.h>
+#include <Curve/Curve.h>
+#include <Curve/Intercept.h>
+#include <Obj/ColorPoint.h>
+#include <Curve/V2/Runtime/V2RenderTypes.h>
 
 struct V2RasterArtifacts {
     const std::vector<Intercept>* intercepts{nullptr};
@@ -13,6 +14,7 @@ struct V2RasterArtifacts {
     const std::vector<Curve>* curves{nullptr};
 
     const std::vector<ColorPoint>* colorPoints{nullptr};
+    const std::vector<V2DeformRegion>* deformRegions{nullptr};
 
     Buffer<float> waveX;
     Buffer<float> waveY;
