@@ -2,11 +2,9 @@
 #include "../Runtime/V2WaveSampling.h"
 
 V2RenderResult V2LinearSamplerStage::run(
-    Buffer<float> waveX,
-    Buffer<float> waveY,
-    Buffer<float> slope,
-    Buffer<float> output,
-    const V2SamplerContext& context) noexcept {
+        const V2WaveBuffers& waveBuffers,
+        Buffer<float> output,
+        const V2SamplerContext& context) noexcept {
     V2RenderResult result;
 
     int requested = context.request.numSamples;
@@ -19,11 +17,10 @@ V2RenderResult V2LinearSamplerStage::run(
     int samples = jmin(requested, output.size());
     Buffer<float> out = output.withSize(samples);
 
-    Buffer<float> wx = waveX.withSize(waveCount);
-    Buffer<float> wy = waveY.withSize(waveCount);
-    Buffer<float> sl = slope.withSize(waveCount - 1);
+    V2WaveBuffers sampledWaveBuffers;
+    waveBuffers.assignSized(sampledWaveBuffers, waveCount);
 
-    if (wx.empty()) {
+    if (sampledWaveBuffers.waveX.empty()) {
         out.zero();
         return result;
     }
@@ -38,21 +35,16 @@ V2RenderResult V2LinearSamplerStage::run(
     int currentIndex = jlimit(0, waveCount - 2, context.zeroIndex);
 
     for (int i = 0; i < samples; ++i) {
-        if (context.decoupledPath != nullptr && context.deformRegions != nullptr) {
+        if (context.decoupledDeform.isEnabled()) {
             out[i] = V2WaveSampling::sampleAtPhaseDecoupled(
                 phase,
-                wx,
-                wy,
-                sl,
+                sampledWaveBuffers,
                 waveCount,
                 currentIndex,
-                context.decoupledPath,
-                context.deformRegions,
-                0,
-                context.phaseOffsetSeed,
-                context.vertOffsetSeed);
+                context.decoupledDeform
+            );
         } else {
-            out[i] = V2WaveSampling::sampleAtPhase(phase, wx, wy, sl, waveCount, currentIndex);
+            out[i] = V2WaveSampling::sampleAtPhase(phase, sampledWaveBuffers, waveCount, currentIndex);
         }
 
         if (out[i] != out[i]) {

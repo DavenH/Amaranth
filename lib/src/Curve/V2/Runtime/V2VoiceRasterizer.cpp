@@ -61,17 +61,16 @@ bool V2VoiceRasterizer::sampleArtifacts(
     const V2RenderRequest& request,
     Buffer<float> out,
     V2RenderResult& result) noexcept {
-    int wavePointCount = artifacts.waveX.size();
-    Buffer<float> waveX = artifacts.waveX;
-    Buffer<float> waveY = artifacts.waveY;
-    Buffer<float> slopeUsed = artifacts.slope;
+    int wavePointCount = artifacts.waveBuffers.waveX.size();
+    V2WaveBuffers waveBuffers;
+    artifacts.waveBuffers.assignSized(waveBuffers, wavePointCount);
     double deltaX = request.deltaX > 0.0 ? request.deltaX : 1.0 / static_cast<double>(out.size());
 
     int currentIndex = jlimit(0, wavePointCount - 2, sampleIndex);
     double localPhase = phase;
 
     for (int i = 0; i < out.size(); ++i) {
-        out[i] = V2WaveSampling::sampleAtPhase(localPhase, waveX, waveY, slopeUsed, wavePointCount, currentIndex);
+        out[i] = V2WaveSampling::sampleAtPhase(localPhase, waveBuffers, wavePointCount, currentIndex);
         localPhase += deltaX;
     }
 

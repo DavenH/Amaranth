@@ -87,10 +87,10 @@ bool V2RasterizerGraph::buildInterceptArtifacts(
 }
 
 bool V2RasterizerGraph::buildWaveArtifactsFromCurves(
-    V2RasterizerWorkspace& workspace,
-    int curveCount,
-    const V2WaveBuilderContext& waveBuilderContext,
-    V2BuiltArtifacts& outArtifacts) noexcept {
+        V2RasterizerWorkspace& workspace,
+        int curveCount,
+        const V2WaveBuilderContext& waveBuilderContext,
+        V2BuiltArtifacts& outArtifacts) noexcept {
     if (waveBuilder == nullptr || ! workspace.isPrepared()) {
         return false;
     }
@@ -112,10 +112,7 @@ bool V2RasterizerGraph::buildWaveArtifactsFromCurves(
     if (! waveBuilder->run(
             workspace.curves,
             curveCount,
-            workspace.waveX,
-            workspace.waveY,
-            workspace.diffX,
-            workspace.slope,
+            workspace.waveBuffers,
             wavePointCount,
             zeroIndex,
             oneIndex,
@@ -125,16 +122,12 @@ bool V2RasterizerGraph::buildWaveArtifactsFromCurves(
 
     if (wavePointCount <= 1
             || wavePointCount > capacities.maxWavePoints
-            || wavePointCount > workspace.waveX.size()
-            || wavePointCount > workspace.waveY.size()) {
+            || ! workspace.waveBuffers.canContain(wavePointCount)) {
         return false;
     }
 
     outArtifacts.curves = &workspace.curves;
-    outArtifacts.waveX = workspace.waveX.withSize(wavePointCount);
-    outArtifacts.waveY = workspace.waveY.withSize(wavePointCount);
-    outArtifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
-    outArtifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
+    workspace.waveBuffers.assignSized(outArtifacts.waveBuffers, wavePointCount);
     outArtifacts.deformRegions = &workspace.deformRegions;
     outArtifacts.zeroIndex = zeroIndex;
     outArtifacts.oneIndex = oneIndex;
@@ -237,20 +230,9 @@ V2RenderResult V2RasterizerGraph::render(
     }
 
     V2SamplerContext context = samplerContext;
-    context.wavePointCount = artifacts.waveX.size();
-    context.zeroIndex = artifacts.zeroIndex;
-    context.oneIndex = artifacts.oneIndex;
-    context.deformRegions = artifacts.deformRegions;
-    if (waveBuilderContext.componentPath.decoupled) {
-        context.decoupledPath = waveBuilderContext.componentPath.path;
-        context.phaseOffsetSeed = waveBuilderContext.componentPath.decoupledPhaseOffsetSeed;
-        context.vertOffsetSeed = waveBuilderContext.componentPath.decoupledVertOffsetSeed;
-    }
+    context.setWaveState(artifacts.waveBuffers.waveX.size(), artifacts.zeroIndex, artifacts.oneIndex);
+    context.setDecoupledRegions(artifacts.deformRegions);
+    context.configureDecoupledDeform(waveBuilderContext.componentPath);
 
-    return sampler->run(
-        artifacts.waveX,
-        artifacts.waveY,
-        artifacts.slope,
-        output,
-        context);
+    return sampler->run(artifacts.waveBuffers, output, context);
 }

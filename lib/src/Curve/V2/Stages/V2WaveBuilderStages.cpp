@@ -166,16 +166,18 @@ void renderCurveByBlend(
 }
 
 bool V2DefaultWaveBuilderStage::run(
-    const std::vector<Curve>& curves,
-    int curveCount,
-    Buffer<float> waveX,
-    Buffer<float> waveY,
-    Buffer<float> diffX,
-    Buffer<float> slope,
-    int& outWavePointCount,
-    int& zeroIndex,
-    int& oneIndex,
-    const V2WaveBuilderContext& context) noexcept {
+        const std::vector<Curve>& curves,
+        int curveCount,
+        V2WaveBuffers waveBuffers,
+        int& outWavePointCount,
+        int& zeroIndex,
+        int& oneIndex,
+        const V2WaveBuilderContext& context) noexcept {
+    Buffer<float> waveX = waveBuffers.waveX;
+    Buffer<float> waveY = waveBuffers.waveY;
+    Buffer<float> diffX = waveBuffers.diffX;
+    Buffer<float> slope = waveBuffers.slope;
+
     outWavePointCount = 0;
     zeroIndex = 0;
     oneIndex = INT_MAX / 2;
@@ -231,26 +233,8 @@ bool V2DefaultWaveBuilderStage::run(
             renderCurveWithComponentDeformer(thisCurve, nextCurve, curveRes, waveIdx, waveX, waveY, context);
             waveIdx += curveRes;
         } else {
-            int offset = halfRes >> thisCurve.resIndex;
-            int xferInc = Curve::resolution / curveRes;
-
-            int thisShift = jmax(0, nextCurve.resIndex - thisCurve.resIndex);
-            int nextShift = jmax(0, thisCurve.resIndex - nextCurve.resIndex);
-
-            for (int i = 0; i < curveRes; ++i) {
-                float xfer = transferTable[i * xferInc];
-                int indexA = (i << thisShift) + offset;
-                int indexB = (i << nextShift);
-
-                float t1x = thisCurve.transformX[indexA] * (1.0f - xfer);
-                float t1y = thisCurve.transformY[indexA] * (1.0f - xfer);
-                float t2x = nextCurve.transformX[indexB] * xfer;
-                float t2y = nextCurve.transformY[indexB] * xfer;
-
-                waveX[waveIdx] = t1x + t2x;
-                waveY[waveIdx] = t1y + t2y;
-                ++waveIdx;
-            }
+            renderCurveByBlend(thisCurve, nextCurve, curveRes, halfRes, waveIdx, transferTable, waveX, waveY);
+            waveIdx += curveRes;
         }
 
         if (cumeRes > 0 && waveX[cumeRes - 1] <= 0.0f && waveX[cumeRes] > 0.0f) {
