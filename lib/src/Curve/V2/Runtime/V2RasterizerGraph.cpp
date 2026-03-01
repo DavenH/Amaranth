@@ -70,37 +70,35 @@ bool V2RasterizerGraph::runInterceptStages(
     return outInterceptCount > 0;
 }
 
-bool V2RasterizerGraph::buildArtifacts(
+bool V2RasterizerGraph::buildInterceptArtifacts(
     V2RasterizerWorkspace& workspace,
     const V2InterpolatorContext& interpolatorContext,
     const V2PositionerContext& positionerContext,
-    const V2CurveBuilderContext& curveBuilderContext,
-    const V2WaveBuilderContext& waveBuilderContext,
     V2BuiltArtifacts& outArtifacts) noexcept {
     outArtifacts = V2BuiltArtifacts{};
-
-    if (curveBuilder == nullptr || waveBuilder == nullptr || ! workspace.isPrepared()) {
-        return false;
-    }
 
     int interceptCount = 0;
     if (! runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount)) {
         return false;
     }
 
-    int curveCount = 0;
-    if (! curveBuilder->run(
-            workspace.intercepts,
-            interceptCount,
-            workspace.curves,
-            curveCount,
-            curveBuilderContext)) {
+    outArtifacts.intercepts = &workspace.intercepts;
+    return interceptCount > 0;
+}
+
+bool V2RasterizerGraph::buildWaveArtifactsFromCurves(
+    V2RasterizerWorkspace& workspace,
+    int curveCount,
+    const V2WaveBuilderContext& waveBuilderContext,
+    V2BuiltArtifacts& outArtifacts) noexcept {
+    if (waveBuilder == nullptr || ! workspace.isPrepared()) {
         return false;
     }
 
     const V2CapacitySpec& capacities = workspace.getCapacities();
     if (curveCount <= 0
             || curveCount > capacities.maxCurves
+            || curveCount > static_cast<int>(workspace.curves.size())
             || static_cast<int>(workspace.curves.size()) > capacities.maxCurves) {
         return false;
     }
@@ -125,7 +123,13 @@ bool V2RasterizerGraph::buildArtifacts(
         return false;
     }
 
-    outArtifacts.intercepts = &workspace.intercepts;
+    if (wavePointCount <= 1
+            || wavePointCount > capacities.maxWavePoints
+            || wavePointCount > workspace.waveX.size()
+            || wavePointCount > workspace.waveY.size()) {
+        return false;
+    }
+
     outArtifacts.curves = &workspace.curves;
     outArtifacts.waveX = workspace.waveX.withSize(wavePointCount);
     outArtifacts.waveY = workspace.waveY.withSize(wavePointCount);
@@ -134,7 +138,62 @@ bool V2RasterizerGraph::buildArtifacts(
     outArtifacts.deformRegions = &workspace.deformRegions;
     outArtifacts.zeroIndex = zeroIndex;
     outArtifacts.oneIndex = oneIndex;
-    return wavePointCount > 1;
+    return true;
+}
+
+bool V2RasterizerGraph::buildCurveAndWaveArtifacts(
+    V2RasterizerWorkspace& workspace,
+    int interceptCount,
+    const V2CurveBuilderContext& curveBuilderContext,
+    const V2WaveBuilderContext& waveBuilderContext,
+    V2BuiltArtifacts& outArtifacts) noexcept {
+    if (curveBuilder == nullptr || ! workspace.isPrepared()) {
+        return false;
+    }
+
+    const V2CapacitySpec& capacities = workspace.getCapacities();
+    if (interceptCount <= 0
+            || interceptCount > capacities.maxIntercepts
+            || interceptCount > static_cast<int>(workspace.intercepts.size())) {
+        return false;
+    }
+
+    int curveCount = 0;
+    if (! curveBuilder->run(
+            workspace.intercepts,
+            interceptCount,
+            workspace.curves,
+            curveCount,
+            curveBuilderContext)) {
+        return false;
+    }
+
+    return buildWaveArtifactsFromCurves(workspace, curveCount, waveBuilderContext, outArtifacts);
+}
+
+bool V2RasterizerGraph::buildArtifacts(
+    V2RasterizerWorkspace& workspace,
+    const V2InterpolatorContext& interpolatorContext,
+    const V2PositionerContext& positionerContext,
+    const V2CurveBuilderContext& curveBuilderContext,
+    const V2WaveBuilderContext& waveBuilderContext,
+    V2BuiltArtifacts& outArtifacts) noexcept {
+    outArtifacts = V2BuiltArtifacts{};
+
+    if (curveBuilder == nullptr || waveBuilder == nullptr || ! workspace.isPrepared()) {
+        return false;
+    }
+
+    if (! buildInterceptArtifacts(workspace, interpolatorContext, positionerContext, outArtifacts)) {
+        return false;
+    }
+
+    return buildCurveAndWaveArtifacts(
+        workspace,
+        static_cast<int>(workspace.intercepts.size()),
+        curveBuilderContext,
+        waveBuilderContext,
+        outArtifacts);
 }
 
 V2RenderResult V2RasterizerGraph::render(

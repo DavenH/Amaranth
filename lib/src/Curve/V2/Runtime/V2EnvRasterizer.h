@@ -38,6 +38,12 @@ public:
     void setInterpolatorForTesting(V2InterpolatorStage* stage) noexcept;
 
 private:
+    bool sampleArtifacts(
+        const V2RasterArtifacts& artifacts,
+        const V2RenderRequest& request,
+        Buffer<float> output,
+        V2RenderResult& result) noexcept override;
+
     V2RasterizerWorkspace workspace;
     V2RasterizerGraph graph;
 

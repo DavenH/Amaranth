@@ -29,6 +29,12 @@ public:
     bool renderWaveform(V2RasterArtifacts& artifacts) noexcept override;
 
 private:
+    bool sampleArtifacts(
+        const V2RasterArtifacts& artifacts,
+        const V2RenderRequest& request,
+        Buffer<float> output,
+        V2RenderResult& result) noexcept override;
+
     V2RasterizerWorkspace workspace;
     V2RasterizerGraph graph;
 
@@ -49,6 +55,4 @@ private:
     float chainingAdvancement{0.0f};
     double phase{0.0};
     int sampleIndex{0};
-    float cycleStartX{0.0f};
-    float cycleEndX{1.0f};
 };

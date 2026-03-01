@@ -7,14 +7,6 @@ namespace {
 constexpr double kMinLoopLength = 1e-6;
 constexpr int kLoopMinSizeIcpts = 1;
 
-int clampRequestedSamples(int requested, Buffer<float> output) {
-    if (requested <= 0 || output.empty()) {
-        return 0;
-    }
-
-    return jmin(requested, output.size());
-}
-
 bool isLoopable(int loopIndex, int sustainIndex) {
     return loopIndex >= 0 && sustainIndex >= 0 && sustainIndex - loopIndex >= kLoopMinSizeIcpts;
 }
@@ -288,33 +280,21 @@ bool V2EnvRasterizer::renderAudio(
     const V2RenderRequest& request,
     Buffer<float> output,
     V2RenderResult& result) noexcept {
-    result = V2RenderResult{};
+    return renderBlock(request, output, result);
+}
 
-    if (! workspace.isPrepared()
-            || output.empty()
-            || ! request.isValid()
-            || (mesh == nullptr && testInterpolator == nullptr)) {
-        return false;
-    }
-
-    int numSamples = clampRequestedSamples(request.numSamples, output);
-    if (numSamples <= 0) {
-        return false;
-    }
-
-    V2RasterArtifacts artifacts;
-    if (! renderArtifacts(artifacts)) {
-        return false;
-    }
-
-    Buffer<float> out = output.withSize(numSamples);
+bool V2EnvRasterizer::sampleArtifacts(
+    const V2RasterArtifacts& artifacts,
+    const V2RenderRequest& request,
+    Buffer<float> out,
+    V2RenderResult& result) noexcept {
     int wavePointCount = artifacts.waveX.size();
     Buffer<float> waveX = artifacts.waveX;
     Buffer<float> waveY = artifacts.waveY;
     Buffer<float> slopeUsed = artifacts.slope;
 
     int currentIndex = jlimit(0, wavePointCount - 2, sampleIndex);
-    double deltaX = request.deltaX > 0.0 ? request.deltaX : 1.0 / static_cast<double>(numSamples);
+    double deltaX = request.deltaX > 0.0 ? request.deltaX : 1.0 / static_cast<double>(out.size());
 
     bool haveLoop = controls.hasLoopRegion && controls.loopEndX > controls.loopStartX + static_cast<float>(kMinLoopLength);
     double loopStart = controls.loopStartX;
@@ -416,33 +396,8 @@ bool V2EnvRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
         return false;
     }
 
-    int wavePointCount = 0;
-    int zeroIndex = 0;
-    int oneIndex = 0;
     V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
-    if (! waveBuilder.run(
-            workspace.curves,
-            curveCount,
-            workspace.waveX,
-            workspace.waveY,
-            workspace.diffX,
-            workspace.slope,
-            wavePointCount,
-            zeroIndex,
-            oneIndex,
-            waveBuilderContext)) {
-        return false;
-    }
-
-    artifacts.curves = &workspace.curves;
-    artifacts.waveX = workspace.waveX.withSize(wavePointCount);
-    artifacts.waveY = workspace.waveY.withSize(wavePointCount);
-    artifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
-    artifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
-    artifacts.deformRegions = &workspace.deformRegions;
-    artifacts.zeroIndex = zeroIndex;
-    artifacts.oneIndex = oneIndex;
-    return wavePointCount > 1;
+    return graph.buildWaveArtifactsFromCurves(workspace, curveCount, waveBuilderContext, artifacts);
 }
 
 void V2EnvRasterizer::setInterpolatorForTesting(V2InterpolatorStage* stage) noexcept {

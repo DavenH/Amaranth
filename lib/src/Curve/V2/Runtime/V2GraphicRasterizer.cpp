@@ -37,9 +37,6 @@ void V2GraphicRasterizer::updateControlData(const V2GraphicControlSnapshot& snap
 }
 
 bool V2GraphicRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
-    artifacts.clear();
-    int outCount = 0;
-
     if (! workspace.isPrepared() || mesh == nullptr) {
         return false;
     }
@@ -53,12 +50,7 @@ bool V2GraphicRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcep
         controls.primaryDimension);
     V2PositionerContext positionerContext = makePositionerContext(controls, controls.primaryDimension);
 
-    if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, outCount)) {
-        return false;
-    }
-
-    artifacts.intercepts = &workspace.intercepts;
-    return outCount > 0;
+    return graph.buildInterceptArtifacts(workspace, interpolatorContext, positionerContext, artifacts);
 }
 
 bool V2GraphicRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
@@ -70,44 +62,12 @@ bool V2GraphicRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept 
 
     V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(controls);
     V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
-    waveBuilderContext.componentPath.deformRegions = &workspace.deformRegions;
-
-    int curveCount = 0;
-    if (! curveBuilder.run(
-            workspace.intercepts,
-            static_cast<int>(artifacts.intercepts->size()),
-            workspace.curves,
-            curveCount,
-            curveBuilderContext)) {
-        return false;
-    }
-
-    int zeroIndex = 0;
-    int oneIndex = 0;
-    int wavePointCount = 0;
-    if (! waveBuilder.run(
-            workspace.curves,
-            curveCount,
-            workspace.waveX,
-            workspace.waveY,
-            workspace.diffX,
-            workspace.slope,
-            wavePointCount,
-            zeroIndex,
-            oneIndex,
-            waveBuilderContext)) {
-        return false;
-    }
-
-    artifacts.curves = &workspace.curves;
-    artifacts.waveX = workspace.waveX.withSize(wavePointCount);
-    artifacts.waveY = workspace.waveY.withSize(wavePointCount);
-    artifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
-    artifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
-    artifacts.deformRegions = &workspace.deformRegions;
-    artifacts.zeroIndex = zeroIndex;
-    artifacts.oneIndex = oneIndex;
-    return wavePointCount > 1;
+    return graph.buildCurveAndWaveArtifacts(
+        workspace,
+        static_cast<int>(artifacts.intercepts->size()),
+        curveBuilderContext,
+        waveBuilderContext,
+        artifacts);
 }
 
 bool V2GraphicRasterizer::renderGraphic(
@@ -156,5 +116,30 @@ bool V2GraphicRasterizer::renderGraphic(
 
     result.rendered = renderResult.rendered;
     result.pointsWritten = renderResult.samplesWritten;
+    return result.rendered;
+}
+
+bool V2GraphicRasterizer::sampleArtifacts(
+    const V2RasterArtifacts& artifacts,
+    const V2RenderRequest& request,
+    Buffer<float> output,
+    V2RenderResult& result) noexcept {
+    V2RenderRequest samplerRequest = request;
+    samplerRequest.numSamples = output.size();
+    if (samplerRequest.deltaX <= 0.0) {
+        samplerRequest.deltaX = 1.0 / static_cast<double>(output.size());
+    }
+
+    V2SamplerContext samplerContext(
+        samplerRequest,
+        artifacts.waveX.size(),
+        artifacts.zeroIndex,
+        artifacts.oneIndex);
+    result = sampler.run(
+        artifacts.waveX,
+        artifacts.waveY,
+        artifacts.slope,
+        output,
+        samplerContext);
     return result.rendered;
 }
