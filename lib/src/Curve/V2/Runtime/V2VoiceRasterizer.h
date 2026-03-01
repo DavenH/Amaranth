@@ -33,8 +33,12 @@ private:
     V2RasterizerGraph graph;
 
     V2TrilinearInterpolatorStage interpolator;
-    V2LinearPositionerStage linearPositioner;
+    V2ClampOrWrapPositionerStage cyclicClampPositioner{true};
+    V2ApplyScalingPositionerStage scalingPositioner;
+    V2PointPathPositionerStage pointPathPositioner;
+    V2SortAndOrderPositionerStage orderPositioner;
     V2VoiceChainingPositionerStage chainingPositioner;
+    V2CompositePositionerStage chainingPositionerPipeline;
     V2VoiceChainingCurveBuilderStage curveBuilder;
     V2DefaultWaveBuilderStage waveBuilder;
     V2LinearSamplerStage sampler;

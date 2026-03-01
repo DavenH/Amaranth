@@ -11,8 +11,17 @@ int clampRequestedSamples(int requested, Buffer<float> output) {
 }
 
 V2GraphicRasterizer::V2GraphicRasterizer() :
-        graph(&interpolator, &linearPositioner, &curveBuilder, &waveBuilder, &sampler)
-{}
+        graph(&interpolator, &linearPositionerPipeline, &curveBuilder, &waveBuilder, &sampler) {
+    linearPositionerPipeline.addStage(&linearClampPositioner);
+    linearPositionerPipeline.addStage(&scalingPositioner);
+    linearPositionerPipeline.addStage(&pointPathPositioner);
+    linearPositionerPipeline.addStage(&orderPositioner);
+
+    cyclicPositionerPipeline.addStage(&cyclicClampPositioner);
+    cyclicPositionerPipeline.addStage(&scalingPositioner);
+    cyclicPositionerPipeline.addStage(&pointPathPositioner);
+    cyclicPositionerPipeline.addStage(&orderPositioner);
+}
 
 void V2GraphicRasterizer::prepare(const V2PrepareSpec& spec) {
     workspace.prepare(spec.capacities);
@@ -35,8 +44,8 @@ bool V2GraphicRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcep
         return false;
     }
 
-    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
-                                        : static_cast<V2PositionerStage*>(&linearPositioner));
+    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositionerPipeline)
+                                        : static_cast<V2PositionerStage*>(&linearPositionerPipeline));
 
     V2InterpolatorContext interpolatorContext = makeInterpolatorContext(
         mesh,
@@ -115,8 +124,8 @@ bool V2GraphicRasterizer::renderGraphic(
         return false;
     }
 
-    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
-                                        : static_cast<V2PositionerStage*>(&linearPositioner));
+    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositionerPipeline)
+                                        : static_cast<V2PositionerStage*>(&linearPositionerPipeline));
 
     V2InterpolatorContext interpolatorContext = makeInterpolatorContext(
         mesh,

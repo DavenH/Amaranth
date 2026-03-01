@@ -12,6 +12,7 @@ struct V2CommonControlSnapshot {
     bool interpolateCurves{true};
     bool lowResolution{false};
     bool integralSampling{false};
+    V2PositionerContext::PointPathContext pointPath{};
 };
 
 struct V2GraphicControlSnapshot :
@@ -52,7 +53,10 @@ inline V2PositionerContext makePositionerContext(const V2CommonControlSnapshot& 
         controls.scaling,
         controls.cyclic,
         controls.minX,
-        controls.maxX);
+        controls.maxX,
+        0.0f,
+        controls.morph,
+        controls.pointPath);
 }
 
 inline V2CurveBuilderContext makeCurveBuilderContext(
