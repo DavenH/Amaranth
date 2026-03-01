@@ -2,12 +2,11 @@
 
 #include <cmath>
 
-#include "../src/Curve/V2/Runtime/V2RasterizerGraph.h"
-#include "../src/Curve/V2/Runtime/V2RasterizerWorkspace.h"
+#include "../src/Curve/V2/Runtime/V2RasterizerPipeline.h"
+#include "../src/Curve/V2/Runtime/V2WaveSampling.h"
 #include "../src/Curve/V2/Stages/V2CurveBuilderStages.h"
 #include "../src/Curve/V2/Stages/V2InterpolatorStages.h"
 #include "../src/Curve/V2/Stages/V2PositionerStages.h"
-#include "../src/Curve/V2/Stages/V2SamplerStages.h"
 #include "../src/Curve/V2/Stages/V2WaveBuilderStages.h"
 #include "../src/Curve/V2/State/V2EnvStateMachine.h"
 #include "../src/Array/VecOps.h"
@@ -140,6 +139,38 @@ private:
     float value{0.0f};
 };
 
+class TestRasterizer :
+        public V2RasterizerPipeline {
+public:
+    TestRasterizer(
+        V2InterpolatorStage* interp,
+        V2PositionerStage* pos,
+        V2CurveBuilderStage* curve = nullptr,
+        V2WaveBuilderStage* wave = nullptr) {
+        setInterpolator(interp);
+        setPositioner(pos);
+        if (curve != nullptr) { setCurveBuilder(curve); }
+        if (wave != nullptr) { setWaveBuilder(wave); }
+    }
+
+    using V2RasterizerPipeline::workspace;
+    using V2RasterizerPipeline::runInterceptStages;
+    using V2RasterizerPipeline::buildInterceptArtifacts;
+    using V2RasterizerPipeline::buildCurveAndWaveArtifacts;
+    using V2RasterizerPipeline::buildWaveArtifactsFromCurves;
+    using V2RasterizerPipeline::buildAllArtifacts;
+
+    bool renderIntercepts(V2RasterArtifacts&) noexcept override { return false; }
+    bool renderWaveform(V2RasterArtifacts&) noexcept override { return false; }
+
+protected:
+    bool sampleArtifacts(
+        const V2RasterArtifacts&,
+        const V2RenderRequest&,
+        Buffer<float>,
+        V2RenderResult&) noexcept override { return false; }
+};
+
 V2RenderResult renderFromFixedIntercepts(
     const std::vector<Intercept>& intercepts,
     Buffer<float> output,
@@ -151,19 +182,16 @@ V2RenderResult renderFromFixedIntercepts(
     capacities.maxWavePoints = 1024;
     capacities.maxDeformRegions = 0;
 
-    V2RasterizerWorkspace workspace;
-    workspace.prepare(capacities);
-
     FixedInterpolatorStage interpolator(intercepts);
     V2LinearPositionerStage positioner;
     V2CyclicPositionerStage cyclicPositioner;
     V2DefaultCurveBuilderStage curveBuilder;
     V2DefaultWaveBuilderStage waveBuilder;
-    V2LinearSamplerStage sampler;
 
     V2PositionerStage* positionerStage = cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
                                                 : static_cast<V2PositionerStage*>(&positioner);
-    V2RasterizerGraph graph(&interpolator, positionerStage, &curveBuilder, &waveBuilder, &sampler);
+    TestRasterizer rasterizer(&interpolator, positionerStage, &curveBuilder, &waveBuilder);
+    rasterizer.workspace.prepare(capacities);
 
     V2InterpolatorContext interpolatorContext;
 
@@ -179,20 +207,15 @@ V2RenderResult renderFromFixedIntercepts(
     V2WaveBuilderContext waveBuilderContext;
     waveBuilderContext.interpolateCurves = interpolateCurves;
 
-    V2SamplerContext samplerContext;
-    samplerContext.request.numSamples = output.size();
-    samplerContext.request.deltaX = 1.0 / output.size();
-    samplerContext.request.tempoScale = 1.0f;
-    samplerContext.request.scale = 1;
+    V2RasterArtifacts artifacts;
+    if (! rasterizer.buildAllArtifacts(interpolatorContext, positionerContext, curveBuilderContext, waveBuilderContext, artifacts)) {
+        return V2RenderResult{};
+    }
 
-    return graph.render(
-        workspace,
-        interpolatorContext,
-        positionerContext,
-        curveBuilderContext,
-        waveBuilderContext,
-        samplerContext,
-        output);
+    int wavePointCount = artifacts.waveBuffers.waveX.size();
+    LinearPhasePolicy policy(0.0, 1.0 / output.size());
+    int sampleIndex = jlimit(0, wavePointCount - 2, artifacts.zeroIndex);
+    return V2WaveSampling::sampleBlock(policy, artifacts.waveBuffers, wavePointCount, output, sampleIndex);
 }
 
 void makeReferenceSamples(
@@ -251,19 +274,16 @@ bool renderAndBuildReferenceFromFixedIntercepts(
     capacities.maxWavePoints = 1024;
     capacities.maxDeformRegions = 0;
 
-    V2RasterizerWorkspace workspace;
-    workspace.prepare(capacities);
-
     FixedInterpolatorStage interpolator(intercepts);
     V2LinearPositionerStage positioner;
     V2CyclicPositionerStage cyclicPositioner;
     V2DefaultCurveBuilderStage curveBuilder;
     V2DefaultWaveBuilderStage waveBuilder;
-    V2LinearSamplerStage sampler;
 
     V2PositionerStage* positionerStage = cyclic ? static_cast<V2PositionerStage*>(&cyclicPositioner)
                                                 : static_cast<V2PositionerStage*>(&positioner);
-    V2RasterizerGraph graph(&interpolator, positionerStage, &curveBuilder, &waveBuilder, &sampler);
+    TestRasterizer rasterizer(&interpolator, positionerStage, &curveBuilder, &waveBuilder);
+    rasterizer.workspace.prepare(capacities);
 
     V2InterpolatorContext interpolatorContext;
 
@@ -279,51 +299,48 @@ bool renderAndBuildReferenceFromFixedIntercepts(
     V2WaveBuilderContext waveBuilderContext;
     waveBuilderContext.interpolateCurves = interpolateCurves;
 
-    V2SamplerContext samplerContext;
-    samplerContext.request.numSamples = output.size();
-    samplerContext.request.deltaX = 1.0 / output.size();
-    samplerContext.request.tempoScale = 1.0f;
-    samplerContext.request.scale = 1;
+    double deltaX = 1.0 / output.size();
 
     output.zero();
     expected.zero();
 
-    V2RenderResult result = graph.render(
-        workspace,
-        interpolatorContext,
-        positionerContext,
-        curveBuilderContext,
-        waveBuilderContext,
-        samplerContext,
-        output);
+    V2RasterArtifacts artifacts;
+    if (! rasterizer.buildAllArtifacts(interpolatorContext, positionerContext, curveBuilderContext, waveBuilderContext, artifacts)) {
+        return false;
+    }
+
+    int wavePointCount = artifacts.waveBuffers.waveX.size();
+    LinearPhasePolicy policy(0.0, deltaX);
+    int sampleIndex = jlimit(0, wavePointCount - 2, artifacts.zeroIndex);
+    V2RenderResult result = V2WaveSampling::sampleBlock(policy, artifacts.waveBuffers, wavePointCount, output, sampleIndex);
 
     if (! result.rendered || result.samplesWritten != output.size()) {
         return false;
     }
 
     int interceptCount = 0;
-    if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount)) {
+    if (! rasterizer.runInterceptStages(interpolatorContext, positionerContext, interceptCount)) {
         return false;
     }
 
     int curveCount = 0;
     if (! curveBuilder.run(
-            workspace.intercepts,
+            rasterizer.workspace.intercepts,
             interceptCount,
-            workspace.curves,
+            rasterizer.workspace.curves,
             curveCount,
             curveBuilderContext)) {
         return false;
     }
 
-    int wavePointCount = 0;
+    int refWavePointCount = 0;
     int zeroIndex = 0;
     int oneIndex = 0;
     if (! waveBuilder.run(
-            workspace.curves,
+            rasterizer.workspace.curves,
             curveCount,
-            workspace.waveBuffers,
-            wavePointCount,
+            rasterizer.workspace.waveBuffers,
+            refWavePointCount,
             zeroIndex,
             oneIndex,
             waveBuilderContext)) {
@@ -331,11 +348,11 @@ bool renderAndBuildReferenceFromFixedIntercepts(
     }
 
     makeReferenceSamples(
-        workspace.waveBuffers,
-        wavePointCount,
+        rasterizer.workspace.waveBuffers,
+        refWavePointCount,
         zeroIndex,
         expected,
-        samplerContext.request.deltaX);
+        deltaX);
     return true;
 }
 }
@@ -683,7 +700,6 @@ TEST_CASE("V2 wave builder supports component deformer and decoupled deform-regi
 }
 
 TEST_CASE("V2 sampler stage applies decoupled deform regions at sample time", "[curve][v2][raster][sampler][decoupled]") {
-    V2LinearSamplerStage sampler;
     ConstantDeformer deformer(0.5f);
 
     ScopedAlloc<float> memory(16);
@@ -707,19 +723,15 @@ TEST_CASE("V2 sampler stage applies decoupled deform regions at sample time", "[
     region.end = Intercept(1.0f, 0.0f);
     deformRegions.emplace_back(region);
 
-    V2SamplerContext context;
-    context.request.numSamples = 4;
-    context.request.deltaX = 0.25;
-    context.request.tempoScale = 1.0f;
-    context.request.scale = 1;
-    context.wavePointCount = 3;
-    context.zeroIndex = 0;
-    context.decoupledDeform.path = &deformer;
-    context.decoupledDeform.deformRegions = &deformRegions;
+    V2DecoupledDeformContext deform;
+    deform.path = &deformer;
+    deform.deformRegions = &deformRegions;
 
     V2WaveBuffers waveBuffers(waveX, waveY, Buffer<float>(), slope);
 
-    V2RenderResult result = sampler.run(waveBuffers, output, context);
+    LinearPhasePolicy policy(0.0, 0.25);
+    int sampleIndex = 0;
+    V2RenderResult result = V2WaveSampling::sampleBlock(policy, waveBuffers, 3, output, sampleIndex, deform);
     REQUIRE(result.rendered);
     REQUIRE(result.samplesWritten == output.size());
     for (int i = 0; i < output.size(); ++i) {
@@ -734,13 +746,11 @@ TEST_CASE("V2 rasterizer graph runs interpolation and positioning with workspace
     capacities.maxWavePoints = 64;
     capacities.maxDeformRegions = 0;
 
-    V2RasterizerWorkspace workspace;
-    workspace.prepare(capacities);
-    workspace.intercepts.emplace_back(99.0f, 99.0f); // should be cleared by graph
-
     StubInterpolatorStage interpolator;
     V2LinearPositionerStage positioner;
-    V2RasterizerGraph graph(&interpolator, &positioner);
+    TestRasterizer rasterizer(&interpolator, &positioner);
+    rasterizer.workspace.prepare(capacities);
+    rasterizer.workspace.intercepts.emplace_back(99.0f, 99.0f); // should be cleared by pipeline
 
     V2InterpolatorContext interpolatorContext;
     V2PositionerContext positionerContext;
@@ -749,9 +759,9 @@ TEST_CASE("V2 rasterizer graph runs interpolation and positioning with workspace
     positionerContext.maxX = 1.0f;
 
     int interceptCount = 0;
-    REQUIRE(graph.runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount));
+    REQUIRE(rasterizer.runInterceptStages(interpolatorContext, positionerContext, interceptCount));
     REQUIRE(interceptCount == 2);
-    REQUIRE(workspace.intercepts[0].x < workspace.intercepts[1].x);
+    REQUIRE(rasterizer.workspace.intercepts[0].x < rasterizer.workspace.intercepts[1].x);
 }
 
 TEST_CASE("V2 envelope golden characterization: Normal to Looping to Releasing", "[curve][v2][env][golden]") {
@@ -810,16 +820,13 @@ TEST_CASE("V2 rasterizer graph renders first end-to-end waveform buffer", "[curv
     capacities.maxWavePoints = 512;
     capacities.maxDeformRegions = 0;
 
-    V2RasterizerWorkspace workspace;
-    workspace.prepare(capacities);
-
     V2TrilinearInterpolatorStage interpolator;
     V2LinearPositionerStage positioner;
     V2DefaultCurveBuilderStage curveBuilder;
     V2DefaultWaveBuilderStage waveBuilder;
-    V2LinearSamplerStage sampler;
 
-    V2RasterizerGraph graph(&interpolator, &positioner, &curveBuilder, &waveBuilder, &sampler);
+    TestRasterizer rasterizer(&interpolator, &positioner, &curveBuilder, &waveBuilder);
+    rasterizer.workspace.prepare(capacities);
 
     V2InterpolatorContext interpolatorContext;
     interpolatorContext.mesh = &mesh;
@@ -840,20 +847,13 @@ TEST_CASE("V2 rasterizer graph renders first end-to-end waveform buffer", "[curv
     Buffer<float> output = outMemory.withSize(128);
     output.zero();
 
-    V2SamplerContext samplerContext;
-    samplerContext.request.numSamples = output.size();
-    samplerContext.request.deltaX = 1.0 / output.size();
-    samplerContext.request.tempoScale = 1.0f;
-    samplerContext.request.scale = 1;
+    V2RasterArtifacts artifacts;
+    REQUIRE(rasterizer.buildAllArtifacts(interpolatorContext, positionerContext, curveBuilderContext, waveBuilderContext, artifacts));
 
-    V2RenderResult result = graph.render(
-        workspace,
-        interpolatorContext,
-        positionerContext,
-        curveBuilderContext,
-        waveBuilderContext,
-        samplerContext,
-        output);
+    int wavePointCount = artifacts.waveBuffers.waveX.size();
+    LinearPhasePolicy policy(0.0, 1.0 / output.size());
+    int sampleIndex = jlimit(0, wavePointCount - 2, artifacts.zeroIndex);
+    V2RenderResult result = V2WaveSampling::sampleBlock(policy, artifacts.waveBuffers, wavePointCount, output, sampleIndex);
 
     REQUIRE(result.rendered);
     REQUIRE(result.samplesWritten == output.size());
@@ -923,12 +923,10 @@ TEST_CASE("V2 graph rejects intercept overflow beyond prepared capacity", "[curv
     capacities.maxWavePoints = 64;
     capacities.maxDeformRegions = 0;
 
-    V2RasterizerWorkspace workspace;
-    workspace.prepare(capacities);
-
     OverflowInterpolatorStage interpolator(5);
     V2LinearPositionerStage positioner;
-    V2RasterizerGraph graph(&interpolator, &positioner);
+    TestRasterizer rasterizer(&interpolator, &positioner);
+    rasterizer.workspace.prepare(capacities);
 
     V2InterpolatorContext interpolatorContext;
     V2PositionerContext positionerContext;
@@ -937,7 +935,7 @@ TEST_CASE("V2 graph rejects intercept overflow beyond prepared capacity", "[curv
     positionerContext.maxX = 1.0f;
 
     int interceptCount = 0;
-    REQUIRE_FALSE(graph.runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount));
+    REQUIRE_FALSE(rasterizer.runInterceptStages(interpolatorContext, positionerContext, interceptCount));
     REQUIRE(interceptCount == 5);
 }
 
@@ -955,15 +953,12 @@ TEST_CASE("V2 render path keeps workspace capacities stable across repeated call
     capacities.maxWavePoints = 256;
     capacities.maxDeformRegions = 0;
 
-    V2RasterizerWorkspace workspace;
-    workspace.prepare(capacities);
-
     FixedInterpolatorStage interpolator(intercepts);
     V2LinearPositionerStage positioner;
     V2DefaultCurveBuilderStage curveBuilder;
     V2DefaultWaveBuilderStage waveBuilder;
-    V2LinearSamplerStage sampler;
-    V2RasterizerGraph graph(&interpolator, &positioner, &curveBuilder, &waveBuilder, &sampler);
+    TestRasterizer rasterizer(&interpolator, &positioner, &curveBuilder, &waveBuilder);
+    rasterizer.workspace.prepare(capacities);
 
     V2InterpolatorContext interpolatorContext;
 
@@ -981,33 +976,26 @@ TEST_CASE("V2 render path keeps workspace capacities stable across repeated call
     ScopedAlloc<float> outMemory(128);
     Buffer<float> output = outMemory.withSize(128);
 
-    V2SamplerContext samplerContext;
-    samplerContext.request.numSamples = output.size();
-    samplerContext.request.deltaX = 1.0 / output.size();
-    samplerContext.request.tempoScale = 1.0f;
-    samplerContext.request.scale = 1;
-
-    size_t interceptCapacity = workspace.intercepts.capacity();
-    size_t curveCapacity = workspace.curves.capacity();
-    size_t deformCapacity = workspace.deformRegions.capacity();
+    size_t interceptCapacity = rasterizer.workspace.intercepts.capacity();
+    size_t curveCapacity = rasterizer.workspace.curves.capacity();
+    size_t deformCapacity = rasterizer.workspace.deformRegions.capacity();
 
     for (int i = 0; i < 8; ++i) {
         output.zero();
-        V2RenderResult result = graph.render(
-            workspace,
-            interpolatorContext,
-            positionerContext,
-            curveBuilderContext,
-            waveBuilderContext,
-            samplerContext,
-            output);
+        V2RasterArtifacts artifacts;
+        REQUIRE(rasterizer.buildAllArtifacts(interpolatorContext, positionerContext, curveBuilderContext, waveBuilderContext, artifacts));
+
+        int wavePointCount = artifacts.waveBuffers.waveX.size();
+        LinearPhasePolicy policy(0.0, 1.0 / output.size());
+        int sampleIndex = jlimit(0, wavePointCount - 2, artifacts.zeroIndex);
+        V2RenderResult result = V2WaveSampling::sampleBlock(policy, artifacts.waveBuffers, wavePointCount, output, sampleIndex);
         REQUIRE(result.rendered);
         REQUIRE(result.samplesWritten == output.size());
     }
 
-    REQUIRE(workspace.intercepts.capacity() == interceptCapacity);
-    REQUIRE(workspace.curves.capacity() == curveCapacity);
-    REQUIRE(workspace.deformRegions.capacity() == deformCapacity);
+    REQUIRE(rasterizer.workspace.intercepts.capacity() == interceptCapacity);
+    REQUIRE(rasterizer.workspace.curves.capacity() == curveCapacity);
+    REQUIRE(rasterizer.workspace.deformRegions.capacity() == deformCapacity);
 }
 
 TEST_CASE("V2 graph render matches independent reference sampling of built wave", "[curve][v2][raster][oracle]") {
@@ -1025,15 +1013,12 @@ TEST_CASE("V2 graph render matches independent reference sampling of built wave"
     capacities.maxWavePoints = 512;
     capacities.maxDeformRegions = 0;
 
-    V2RasterizerWorkspace workspace;
-    workspace.prepare(capacities);
-
     FixedInterpolatorStage interpolator(intercepts);
     V2LinearPositionerStage positioner;
     V2DefaultCurveBuilderStage curveBuilder;
     V2DefaultWaveBuilderStage waveBuilder;
-    V2LinearSamplerStage sampler;
-    V2RasterizerGraph graph(&interpolator, &positioner, &curveBuilder, &waveBuilder, &sampler);
+    TestRasterizer rasterizer(&interpolator, &positioner, &curveBuilder, &waveBuilder);
+    rasterizer.workspace.prepare(capacities);
 
     V2InterpolatorContext interpolatorContext;
 
@@ -1057,53 +1042,48 @@ TEST_CASE("V2 graph render matches independent reference sampling of built wave"
     graphOutput.zero();
     expectedOutput.zero();
 
-    V2SamplerContext samplerContext;
-    samplerContext.request.numSamples = graphOutput.size();
-    samplerContext.request.deltaX = 1.0 / graphOutput.size();
-    samplerContext.request.tempoScale = 1.0f;
-    samplerContext.request.scale = 1;
+    double deltaX = 1.0 / graphOutput.size();
 
-    V2RenderResult graphResult = graph.render(
-        workspace,
-        interpolatorContext,
-        positionerContext,
-        curveBuilderContext,
-        waveBuilderContext,
-        samplerContext,
-        graphOutput);
+    V2RasterArtifacts artifacts;
+    REQUIRE(rasterizer.buildAllArtifacts(interpolatorContext, positionerContext, curveBuilderContext, waveBuilderContext, artifacts));
+
+    int wavePointCount = artifacts.waveBuffers.waveX.size();
+    LinearPhasePolicy policy(0.0, deltaX);
+    int sampleIndex = jlimit(0, wavePointCount - 2, artifacts.zeroIndex);
+    V2RenderResult graphResult = V2WaveSampling::sampleBlock(policy, artifacts.waveBuffers, wavePointCount, graphOutput, sampleIndex);
 
     REQUIRE(graphResult.rendered);
     REQUIRE(graphResult.samplesWritten == graphOutput.size());
 
     int interceptCount = 0;
-    REQUIRE(graph.runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount));
+    REQUIRE(rasterizer.runInterceptStages(interpolatorContext, positionerContext, interceptCount));
 
     int curveCount = 0;
     REQUIRE(curveBuilder.run(
-        workspace.intercepts,
+        rasterizer.workspace.intercepts,
         interceptCount,
-        workspace.curves,
+        rasterizer.workspace.curves,
         curveCount,
         curveBuilderContext));
 
-    int wavePointCount = 0;
+    int refWavePointCount = 0;
     int zeroIndex = 0;
     int oneIndex = 0;
     REQUIRE(waveBuilder.run(
-        workspace.curves,
+        rasterizer.workspace.curves,
         curveCount,
-        workspace.waveBuffers,
-        wavePointCount,
+        rasterizer.workspace.waveBuffers,
+        refWavePointCount,
         zeroIndex,
         oneIndex,
         waveBuilderContext));
 
     makeReferenceSamples(
-        workspace.waveBuffers,
-        wavePointCount,
+        rasterizer.workspace.waveBuffers,
+        refWavePointCount,
         zeroIndex,
         expectedOutput,
-        samplerContext.request.deltaX);
+        deltaX);
 
     VecOps::sub(graphOutput, expectedOutput, diff);
     float l2 = diff.normL2();

@@ -303,7 +303,7 @@ Exit criteria:
 - [x] Create `Curve/V2/` module layout (`Stages`, `State`, `Runtime`).
 - [x] Define `GraphicRequest` and `GraphicResult`.
 - [x] Define `PrepareSpec`, `RenderRequest`, and `RenderResult`.
-- [ ] Port legacy deformer-aware intercept positioning into V2 intercept pipeline:
+- [x] Port legacy deformer-aware intercept positioning into V2 intercept pipeline:
   - [x] Add explicit deformer context/state inputs to v2 intercept-stage contracts (`V2PositionerContext::PointPathContext` with deformer handle, noise seed, offset seeds, enabled flag).
   - [x] Apply deformer adjustments to intercept fields (`adjustedX`, `y`, `shp`) for all five dimensions (Red, Blue, Amp, Phase, Curve) in `V2PointPathPositionerStage`.
   - [x] Preserve cyclic wrap/resort parity behavior for phase deformer repositioning — phase wrapping implemented via `wrapAdjustedX` and sequencing covered by chaining parity tests.
@@ -312,7 +312,7 @@ Exit criteria:
 - [~] Port legacy waveform-piece path/deformer integration into V2 wave pipeline:
   - [x] Add a composable wave-builder chain with explicit non-path baseline stage + path-aware stage (avoid duplicating non-path curve-blend logic).
   - [x] Port component/time deformer branch from legacy `calcWaveform` (`getCompDfrm`) including per-piece resolution policy and deterministic noise-context use.
-  - [~] Reintroduce decoupled path deformation behavior (`decoupleComponentDfrms`) via explicit deform-region artifacts and sampler-time application parity.
+  - [x] Reintroduce decoupled path deformation behavior (`decoupleComponentDfrms`) via explicit deform-region artifacts (`V2DeformRegion`, `V2DecoupledDeformContext`) and sampler-time application (`sampleAtPhaseDecoupled`). Remaining: end-to-end parity validation.
   - [ ] Ensure path-aware wave behavior remains allocation-free and bounded by prepared capacities (`maxDeformRegions`, `maxWavePoints`).
 - [ ] Define fixed-capacity policies for intercepts/curves/waves/deform regions.
 - [ ] Add allocation guard helper for render-path tests.
@@ -334,7 +334,7 @@ Exit criteria:
 ### Architecture Cleanup
 - [x] Extract `ScalingType` from `MeshRasterizer` into a standalone V2 enum (e.g. in `V2RenderTypes.h`) to eliminate the `#include "MeshRasterizer.h"` dependency in `V2StageInterfaces.h`.
 - [ ] Migrate stage interface output parameters from `std::vector<T>&` to `std::span<T>` + count, so the no-alloc-on-audio-thread rule is structurally enforced rather than relying on pre-reserve discipline.
-- [ ] Consolidate per-rasterizer artifact wiring into `V2RasterizerGraph` (e.g. `renderToArtifacts(InterpolatorCtx, PositionerCtx, CurveCtx, WaveCtx) -> V2RasterArtifacts`) so concrete rasterizers only construct context structs and don't manually thread buffers.
+- [x] Consolidate per-rasterizer artifact wiring — `V2RasterizerGraph` provides composable entry points (`buildInterceptArtifacts`, `buildCurveAndWaveArtifacts`, `buildArtifacts`, `render`), `V2RasterizerControls.h` provides factory functions for context construction, and `V2CommonControlSnapshot` hierarchy gives each rasterizer a typed control surface. Concrete rasterizers now only contain domain-specific logic (env loop/sustain, voice chaining, fx padding policy).
 
 ### Integration
 - [x] Implement `GraphicRasterizerV2`.

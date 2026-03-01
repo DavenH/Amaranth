@@ -204,52 +204,6 @@ struct V2WaveBuilderContext {
     {}
 };
 
-struct V2SamplerContext {
-    V2RenderRequest request{};
-    int wavePointCount{0};
-    int zeroIndex{0};
-    int oneIndex{0};
-    V2DecoupledDeformContext decoupledDeform{};
-
-    V2SamplerContext() = default;
-
-    V2SamplerContext(
-        const V2RenderRequest& request,
-        int wavePointCount = 0,
-        int zeroIndex = 0,
-        int oneIndex = 0,
-        const V2DecoupledDeformContext& decoupledDeform = V2DecoupledDeformContext()) noexcept :
-            request(request)
-        ,   wavePointCount(wavePointCount)
-        ,   zeroIndex(zeroIndex)
-        ,   oneIndex(oneIndex)
-        ,   decoupledDeform(decoupledDeform)
-    {}
-
-    void setWaveState(int wavePointCount, int zeroIndex, int oneIndex) noexcept {
-        this->wavePointCount = wavePointCount;
-        this->zeroIndex = zeroIndex;
-        this->oneIndex = oneIndex;
-    }
-
-    void setDecoupledRegions(const std::vector<V2DeformRegion>* deformRegions) noexcept {
-        decoupledDeform.deformRegions = deformRegions;
-    }
-
-    void configureDecoupledDeform(const V2WaveBuilderContext::ComponentPathContext& componentPath) noexcept {
-        if (! componentPath.decoupled) {
-            decoupledDeform.path = nullptr;
-            decoupledDeform.phaseOffsetSeed = 0;
-            decoupledDeform.vertOffsetSeed = 0;
-            return;
-        }
-
-        decoupledDeform.path = componentPath.path;
-        decoupledDeform.phaseOffsetSeed = componentPath.decoupledPhaseOffsetSeed;
-        decoupledDeform.vertOffsetSeed = componentPath.decoupledVertOffsetSeed;
-    }
-};
-
 class V2InterpolatorStage {
 public:
     virtual ~V2InterpolatorStage() = default;
@@ -298,12 +252,3 @@ public:
             const V2WaveBuilderContext& context) noexcept = 0;
 };
 
-class V2SamplerStage {
-public:
-    virtual ~V2SamplerStage() = default;
-
-    virtual V2RenderResult run(
-            const V2WaveBuffers& waveBuffers,
-            Buffer<float> output,
-            const V2SamplerContext& context) noexcept = 0;
-};
