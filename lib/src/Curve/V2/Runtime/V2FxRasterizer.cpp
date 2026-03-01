@@ -69,6 +69,7 @@ bool V2FxRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
         controls,
         V2CurveBuilderContext::PaddingPolicy::FxLegacyFixed);
     V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
+    waveBuilderContext.componentPath.deformRegions = &workspace.deformRegions;
 
     int curveCount = 0;
     if (! curveBuilder.run(
@@ -102,6 +103,7 @@ bool V2FxRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
     artifacts.waveY = workspace.waveY.withSize(wavePointCount);
     artifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
     artifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
+    artifacts.deformRegions = &workspace.deformRegions;
     artifacts.zeroIndex = zeroIndex;
     artifacts.oneIndex = oneIndex;
     return wavePointCount > 1;

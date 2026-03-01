@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <algorithm>
+#include <cmath>
 
 #include <Array/ScopedAlloc.h>
 #include <Array/VecOps.h>
@@ -237,7 +238,7 @@ void prepareVoiceRasterizer(V2VoiceRasterizer& rasterizer, const Mesh& mesh) {
 
     V2VoiceControlSnapshot controls;
     controls.morph = MorphPosition(0.2f, 0.5f, 0.75f);
-    controls.scaling = MeshRasterizer::Bipolar;
+    controls.scaling = V2ScalingType::Bipolar;
     controls.cyclic = true;
     controls.minX = 0.0f;
     controls.maxX = 1.0f;
@@ -371,6 +372,46 @@ TEST_CASE("V2VoiceRasterizer phase wraps in cyclic mode", "[curve][v2][voice][ph
     REQUIRE(phase < 1.0);
 }
 
+TEST_CASE("V2VoiceRasterizer applies non-zero minLineLength advancement on subsequent intercept renders", "[curve][v2][voice][chaining][advancement]") {
+    ScopedMesh scoped("v2-voice-min-line-advancement");
+    populateVoiceChainingMesh(scoped.mesh);
+
+    V2VoiceRasterizer rasterizer;
+    prepareVoiceRasterizer(rasterizer, scoped.mesh);
+
+    V2VoiceControlSnapshot controls;
+    controls.morph = MorphPosition(0.23f, 0.61f, 0.44f);
+    controls.scaling = V2ScalingType::Bipolar;
+    controls.cyclic = true;
+    controls.minX = 0.0f;
+    controls.maxX = 1.0f;
+    controls.interpolateCurves = true;
+    controls.lowResolution = false;
+    controls.minLineLength = 0.01f;
+    rasterizer.updateControlData(controls);
+    rasterizer.resetPhase(0.0);
+
+    V2RasterArtifacts first;
+    V2RasterArtifacts second;
+    REQUIRE(rasterizer.renderIntercepts(first));
+    REQUIRE(first.intercepts != nullptr);
+    std::vector<Intercept> firstSnapshot(first.intercepts->begin(), first.intercepts->end());
+    REQUIRE(rasterizer.renderIntercepts(second));
+    REQUIRE(second.intercepts != nullptr);
+    REQUIRE(firstSnapshot.size() == second.intercepts->size());
+
+    bool changed = false;
+    for (size_t i = 0; i < firstSnapshot.size(); ++i) {
+        if (std::abs(firstSnapshot[i].x - (*second.intercepts)[i].x) > 1e-6f
+                || std::abs(firstSnapshot[i].y - (*second.intercepts)[i].y) > 1e-6f) {
+            changed = true;
+            break;
+        }
+    }
+
+    REQUIRE(changed);
+}
+
 TEST_CASE("V2VoiceRasterizer chaining interpolation stays continuous across cycle boundaries", "[curve][v2][voice][chaining][continuity]") {
     ScopedMesh scoped("v2-voice-chaining");
     populateVoiceChainingMesh(scoped.mesh);
@@ -380,7 +421,7 @@ TEST_CASE("V2VoiceRasterizer chaining interpolation stays continuous across cycl
 
     V2VoiceControlSnapshot controls;
     controls.morph = MorphPosition(0.47f, 0.63f, 0.39f);
-    controls.scaling = MeshRasterizer::Bipolar;
+    controls.scaling = V2ScalingType::Bipolar;
     controls.cyclic = true;
     controls.minX = 0.0f;
     controls.maxX = 1.0f;
@@ -505,7 +546,7 @@ TEST_CASE("V2VoiceRasterizer chaining intercepts match legacy oracle sequencing"
 
         V2VoiceControlSnapshot controls;
         controls.morph = morph;
-        controls.scaling = MeshRasterizer::Bipolar;
+        controls.scaling = V2ScalingType::Bipolar;
         controls.cyclic = true;
         controls.minX = 0.0f;
         controls.maxX = 1.0f;

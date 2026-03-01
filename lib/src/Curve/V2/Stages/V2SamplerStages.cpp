@@ -1,4 +1,5 @@
 #include "V2SamplerStages.h"
+#include "../Runtime/V2WaveSampling.h"
 
 V2RenderResult V2LinearSamplerStage::run(
     Buffer<float> waveX,
@@ -37,14 +38,21 @@ V2RenderResult V2LinearSamplerStage::run(
     int currentIndex = jlimit(0, waveCount - 2, context.zeroIndex);
 
     for (int i = 0; i < samples; ++i) {
-        while (currentIndex < waveCount - 1 && phase >= wx[currentIndex + 1]) {
-            ++currentIndex;
-        }
-
-        if (currentIndex >= waveCount - 1) {
-            out[i] = wy[waveCount - 1];
+        if (context.decoupledPath != nullptr && context.deformRegions != nullptr) {
+            out[i] = V2WaveSampling::sampleAtPhaseDecoupled(
+                phase,
+                wx,
+                wy,
+                sl,
+                waveCount,
+                currentIndex,
+                context.decoupledPath,
+                context.deformRegions,
+                0,
+                context.phaseOffsetSeed,
+                context.vertOffsetSeed);
         } else {
-            out[i] = static_cast<float>((phase - wx[currentIndex]) * sl[currentIndex] + wy[currentIndex]);
+            out[i] = V2WaveSampling::sampleAtPhase(phase, wx, wy, sl, waveCount, currentIndex);
         }
 
         if (out[i] != out[i]) {

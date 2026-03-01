@@ -45,6 +45,8 @@ private:
 
     const Mesh* mesh{nullptr};
     V2VoiceControlSnapshot controls{};
+    int chainingCallCount{0};
+    float chainingAdvancement{0.0f};
     double phase{0.0};
     int sampleIndex{0};
     float cycleStartX{0.0f};

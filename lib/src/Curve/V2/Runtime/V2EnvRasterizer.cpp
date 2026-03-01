@@ -73,7 +73,7 @@ void processEnvIntercepts(
     int& interceptCount,
     const V2EnvControlSnapshot& controls,
     int sustainIndex) {
-    if (controls.scaling == MeshRasterizer::Bipolar) {
+    if (controls.scaling == V2ScalingType::Bipolar) {
         return;
     }
 
@@ -234,6 +234,7 @@ bool buildEnvCurves(
     outCurveCount = static_cast<int>(outCurves.size());
     return outCurveCount > 0;
 }
+
 }
 
 V2EnvRasterizer::V2EnvRasterizer() :
@@ -415,10 +416,10 @@ bool V2EnvRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
         return false;
     }
 
-    V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
     int wavePointCount = 0;
     int zeroIndex = 0;
     int oneIndex = 0;
+    V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
     if (! waveBuilder.run(
             workspace.curves,
             curveCount,
@@ -438,6 +439,7 @@ bool V2EnvRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
     artifacts.waveY = workspace.waveY.withSize(wavePointCount);
     artifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
     artifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
+    artifacts.deformRegions = &workspace.deformRegions;
     artifacts.zeroIndex = zeroIndex;
     artifacts.oneIndex = oneIndex;
     return wavePointCount > 1;

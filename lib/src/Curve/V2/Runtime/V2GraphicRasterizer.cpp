@@ -51,7 +51,7 @@ bool V2GraphicRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcep
         mesh,
         controls,
         controls.primaryDimension);
-    V2PositionerContext positionerContext = makePositionerContext(controls);
+    V2PositionerContext positionerContext = makePositionerContext(controls, controls.primaryDimension);
 
     if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, outCount)) {
         return false;
@@ -70,6 +70,7 @@ bool V2GraphicRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept 
 
     V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(controls);
     V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
+    waveBuilderContext.componentPath.deformRegions = &workspace.deformRegions;
 
     int curveCount = 0;
     if (! curveBuilder.run(
@@ -103,6 +104,7 @@ bool V2GraphicRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept 
     artifacts.waveY = workspace.waveY.withSize(wavePointCount);
     artifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
     artifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
+    artifacts.deformRegions = &workspace.deformRegions;
     artifacts.zeroIndex = zeroIndex;
     artifacts.oneIndex = oneIndex;
     return wavePointCount > 1;
@@ -131,7 +133,7 @@ bool V2GraphicRasterizer::renderGraphic(
         mesh,
         controls,
         controls.primaryDimension);
-    V2PositionerContext positionerContext = makePositionerContext(controls);
+    V2PositionerContext positionerContext = makePositionerContext(controls, controls.primaryDimension);
     V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(
         controls,
         request.interpolateCurves,

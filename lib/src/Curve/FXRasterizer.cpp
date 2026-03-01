@@ -80,19 +80,16 @@ void FXRasterizer::calcCrossPoints() {
     }
 
     if (mesh == nullptr || mesh->getNumVerts() == 0) {
-        DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup empty " + describeFxMesh(mesh));
         cleanUp();
         return;
     }
-
-    DBG(MeshRasterizer::getName() + "::calcCrossPoints begin " + describeFxMesh(mesh));
 
     icpts.clear();
     for(auto vert : mesh->getVerts()) {
         float* values = vert->values;
         Intercept icpt(values[dims.x], values[dims.y], 0, values[Vertex::Curve]);
 
-        if(scalingType) {
+        if (scalingType != MeshRasterizer::Unipolar) {
             icpt.y = 2.f * icpt.y - 1.f;
         }
 
@@ -157,7 +154,6 @@ void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
 }
 
 void FXRasterizer::setMesh(Mesh* newMesh) {
-    DBG(MeshRasterizer::getName() + "::setMesh " + describeFxMesh(newMesh));
     mesh = newMesh;
 }
 
@@ -168,8 +164,6 @@ void FXRasterizer::cleanUp() {
     curves.clear();
     icpts.clear();
     unsampleable = true;
-
-    DBG(MeshRasterizer::getName() + "::cleanUp");
 }
 
 int FXRasterizer::getNumDims() {
@@ -197,6 +191,23 @@ bool FXRasterizer::renderWithV2() {
     controls.interpolateCurves = interpolateCurves;
     controls.lowResolution = lowResCurves;
     controls.integralSampling = integralSampling;
+    controls.pointPath = V2PositionerContext::PointPathContext(
+        deformer,
+        noiseSeed,
+        vertOffsetSeeds,
+        phaseOffsetSeeds,
+        deformer != nullptr,
+        false,
+        true);
+    controls.componentPath = V2WaveBuilderContext::ComponentPathContext(
+        deformer,
+        noiseSeed,
+        vertOffsetSeeds,
+        phaseOffsetSeeds,
+        deformer != nullptr,
+        decoupleComponentDfrms,
+        lowResCurves,
+        morph.time);
     v2FxRasterizer.updateControlData(controls);
 
     V2RasterArtifacts artifacts;
