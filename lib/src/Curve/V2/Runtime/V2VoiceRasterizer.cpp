@@ -14,35 +14,36 @@ int clampRequestedSamples(int requested, Buffer<float> output) {
 }
 
 V2VoiceRasterizer::V2VoiceRasterizer() :
-        graph(&interpolator, &linearPositioner, &curveBuilder, &waveBuilder, &sampler)
-{}
+        graph(&interpolator, &chainingPositionerPipeline, &curveBuilder, &waveBuilder, &sampler) {
+    chainingPositionerPipeline.addStage(&cyclicClampPositioner);
+    chainingPositionerPipeline.addStage(&scalingPositioner);
+    chainingPositionerPipeline.addStage(&pointPathPositioner);
+    chainingPositionerPipeline.addStage(&orderPositioner);
+    chainingPositionerPipeline.addStage(&chainingPositioner);
+}
 
 void V2VoiceRasterizer::prepare(const V2PrepareSpec& spec) {
     workspace.prepare(spec.capacities);
     controls.lowResolution = spec.lowResolution;
-    chainingPositioner.reset();
+    chainingPositionerPipeline.reset();
     curveBuilder.reset();
 }
 
 void V2VoiceRasterizer::setMeshSnapshot(const Mesh* meshSnapshot) noexcept {
     mesh = meshSnapshot;
-    chainingPositioner.reset();
+    chainingPositionerPipeline.reset();
     curveBuilder.reset();
 }
 
 void V2VoiceRasterizer::updateControlData(const V2VoiceControlSnapshot& snapshot) noexcept {
-    if (controls.cyclic != snapshot.cyclic) {
-        chainingPositioner.reset();
-        curveBuilder.reset();
-    }
-
     controls = snapshot;
+    controls.cyclic = true;
 }
 
 void V2VoiceRasterizer::resetPhase(double phase) noexcept {
     this->phase = phase;
     sampleIndex = 0;
-    chainingPositioner.reset();
+    chainingPositionerPipeline.reset();
     curveBuilder.reset();
 }
 
@@ -82,7 +83,7 @@ bool V2VoiceRasterizer::renderAudio(
     double cycleStart = cycleStartX;
     double cycleEnd = cycleEndX;
     double cycleLength = cycleEnd - cycleStart;
-    bool wraps = controls.cyclic && cycleLength > kMinCycleLength;
+    bool wraps = cycleLength > kMinCycleLength;
 
     for (int i = 0; i < out.size(); ++i) {
         if (wraps) {
@@ -122,11 +123,11 @@ bool V2VoiceRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept 
         return false;
     }
 
-    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&chainingPositioner)
-                                        : static_cast<V2PositionerStage*>(&linearPositioner));
+    graph.setPositioner(static_cast<V2PositionerStage*>(&chainingPositionerPipeline));
 
     V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
     V2PositionerContext positionerContext = makePositionerContext(controls);
+    positionerContext.cyclic = true;
 
     int outCount = 0;
     if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, outCount)) {

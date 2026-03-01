@@ -6,8 +6,50 @@ Proposed
 ## Date
 2026-02-15
 
-## Parity Checkpoint
-See `docs/ADR/002-parity-checkpoint.md` for the current legacy-parity status and mandatory remaining work, including the open `VoiceMeshRasterizer` chaining parity gap.
+## Parity Requirements (Consolidated)
+
+### Non-Negotiable Rule
+- V2 must preserve legacy behavior unless explicitly approved otherwise.
+- No heuristic substitutions for legacy logic in parity paths.
+
+### Critical Parity Gaps (Open)
+
+#### Voice chaining parity is not complete
+- Intercept-stage sequencing parity exists, but full parity is not complete until end-to-end legacy-vs-v2 behavior is validated for all chaining state and padding edge cases, including advancement semantics under non-zero `MinLineLength`.
+
+What must be ported for voice parity:
+1. Legacy chaining state machine behavior:
+   - first-call behavior vs subsequent-call behavior,
+   - advancement semantics,
+   - carry of prior intercept sets.
+2. Legacy front/back chained padding construction:
+   - equivalent front/back intercept derivation policy,
+   - equivalent curve triplet assembly order.
+3. Legacy boundary continuity characteristics:
+   - block-to-block continuity under evolving mesh/morph states.
+
+Mandatory validation for voice:
+1. Keep parity tests directly comparing legacy chaining behavior vs V2 for same fixtures:
+   - same mesh,
+   - same morph evolution sequence,
+   - same phase progression.
+2. Validate:
+   - phase wrap behavior,
+   - cycle boundary continuity,
+   - block concatenation equivalence where legacy guarantees it,
+   - non-zero advancement (`MinLineLength`) behavior.
+
+#### Waveform-piece path/deformer parity is not complete
+- Intercept-stage path positioning is in-progress, but parity is not complete until legacy `MeshRasterizer::calcWaveform` component/time deformer behavior is matched.
+- Remaining gap includes both non-decoupled path-aware wave construction and decoupled sampler-time path deformation (`deformRegions` / `sampleAtDecoupled` behavior).
+
+### Guardrail for Future Changes
+- Any V2 voice chaining change must state:
+  - which legacy behavior is being matched,
+  - which test proves parity for that behavior.
+- Any V2 path/deformer wave behavior change must state:
+  - which legacy `calcWaveform` / decoupled behavior is being matched,
+  - which test proves parity for that behavior.
 
 ## Context
 The current rasterization refactor direction is correct at a high level (interpolate -> position -> curve build -> sample), but the implementation has architectural friction:
@@ -251,6 +293,17 @@ Exit criteria:
 - [x] Create `Curve/V2/` module layout (`Stages`, `State`, `Runtime`).
 - [x] Define `GraphicRequest` and `GraphicResult`.
 - [x] Define `PrepareSpec`, `RenderRequest`, and `RenderResult`.
+- [ ] Port legacy deformer-aware intercept positioning into V2 intercept pipeline:
+  - [x] Add explicit deformer context/state inputs to v2 intercept-stage contracts (`V2PositionerContext::PointPathContext` with deformer handle, noise seed, offset seeds, enabled flag).
+  - [x] Apply deformer adjustments to intercept fields (`adjustedX`, `y`, `shp`) for all five dimensions (Red, Blue, Amp, Phase, Curve) in `V2PointPathPositionerStage`.
+  - [~] Preserve cyclic wrap/resort parity behavior for phase deformer repositioning — phase wrapping implemented via `wrapAdjustedX`, but legacy re-sort-after-all-deformers (`needsResorting` flag) sequencing needs parity validation.
+  - [ ] Add `noOffsetAtEnds` suppression for Amp/Phase/Curve deformers when time progress is 0 or 1 (legacy `applyDeformers` line 978). Currently V2 always applies.
+  - [ ] Validate time-progress calculation parity: legacy derives progress from `reduct.v0/v1` (vertex pair captured during `getInterceptsFast`), V2 uses `cube->getPortionAlong(Vertex::Time, morph)` — verify these are equivalent or document the intentional difference.
+- [ ] Port legacy waveform-piece path/deformer integration into V2 wave pipeline:
+  - [ ] Add a composable wave-builder chain with explicit non-path baseline stage + path-aware stage (avoid duplicating non-path curve-blend logic).
+  - [ ] Port component/time deformer branch from legacy `calcWaveform` (`getCompDfrm`) including per-piece resolution policy and deterministic noise-context use.
+  - [ ] Reintroduce decoupled path deformation behavior (`decoupleComponentDfrms`) via explicit deform-region artifacts and sampler-time application parity.
+  - [ ] Ensure path-aware wave behavior remains allocation-free and bounded by prepared capacities (`maxDeformRegions`, `maxWavePoints`).
 - [ ] Define fixed-capacity policies for intercepts/curves/waves/deform regions.
 - [ ] Add allocation guard helper for render-path tests.
 - [ ] Create initial golden fixtures from current behavior for:
@@ -269,6 +322,11 @@ Exit criteria:
 - [x] Implement `EnvStateMachine`.
 - [x] Implement v2 sampler stage.
 
+### Architecture Cleanup
+- [ ] Extract `ScalingType` from `MeshRasterizer` into a standalone V2 enum (e.g. in `V2RenderTypes.h`) to eliminate the `#include "MeshRasterizer.h"` dependency in `V2StageInterfaces.h`.
+- [ ] Migrate stage interface output parameters from `std::vector<T>&` to `std::span<T>` + count, so the no-alloc-on-audio-thread rule is structurally enforced rather than relying on pre-reserve discipline.
+- [ ] Consolidate per-rasterizer artifact wiring into `V2RasterizerGraph` (e.g. `renderToArtifacts(InterpolatorCtx, PositionerCtx, CurveCtx, WaveCtx) -> V2RasterArtifacts`) so concrete rasterizers only construct context structs and don't manually thread buffers.
+
 ### Integration
 - [x] Implement `GraphicRasterizerV2`.
 - [x] Implement `VoiceRasterizerV2`.
@@ -282,6 +340,18 @@ Exit criteria:
 ### Validation
 - [ ] Run full `ctest` suite for tests preset.
 - [x] Resolve strict sample-by-sample waveform characterization failures for saw/square in `TestV2RasterizerPipeline.cpp`.
+- [ ] Add legacy-vs-v2 parity tests for deformer-aware intercept positioning:
+  - [ ] red/blue deformers affecting `adjustedX` ordering and clamp/wrap behavior.
+  - [ ] phase deformer wrap semantics in cyclic mode (including reorder points).
+  - [ ] amp and curve deformer effects on intercept `y` and `shp`.
+  - [ ] `noOffsetAtEnds` suppression at progress boundaries.
+  - [ ] time-progress source equivalence (`reduct`-based vs `getPortionAlong`).
+  - [ ] voice chaining + deformer combinations across block boundaries.
+- [ ] Add legacy-vs-v2 parity tests for waveform-piece path/deformer behavior:
+  - [ ] component/time deformer (`getCompDfrm`) wave-shape parity in non-decoupled mode.
+  - [ ] deformer-region generation parity and sampler-time application parity in decoupled mode.
+  - [ ] zero/one index and slope-table invariants under path-aware wave generation.
+  - [ ] deterministic output parity for fixed morph + noise seeds across repeated renders.
 - [ ] Add benchmark for audio-block render cost per rasterizer.
 - [ ] Verify deterministic output across runs and platforms.
 - [ ] Document realtime invariants in code comments and contributor docs.

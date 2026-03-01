@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
+
 #include "../src/Curve/V2/Runtime/V2RasterizerGraph.h"
 #include "../src/Curve/V2/Runtime/V2RasterizerWorkspace.h"
 #include "../src/Curve/V2/Stages/V2CurveBuilderStages.h"
@@ -9,6 +11,7 @@
 #include "../src/Curve/V2/Stages/V2WaveBuilderStages.h"
 #include "../src/Curve/V2/State/V2EnvStateMachine.h"
 #include "../src/Array/VecOps.h"
+#include "../src/Curve/IDeformer.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/VertCube.h"
 
@@ -108,6 +111,33 @@ public:
 
 private:
     int count;
+};
+
+class ConstantDeformer :
+        public IDeformer {
+public:
+    explicit ConstantDeformer(float value) :
+            value(value)
+    {}
+
+    float getTableValue(int, float, const NoiseContext&) override {
+        return value;
+    }
+
+    void sampleDownAddNoise(int, Buffer<float> dest, const NoiseContext&) override {
+        dest.add(value);
+    }
+
+    Buffer<Float32> getTable(int) override {
+        return Buffer<Float32>();
+    }
+
+    int getTableDensity(int) override {
+        return 0;
+    }
+
+private:
+    float value{0.0f};
 };
 
 V2RenderResult renderFromFixedIntercepts(
@@ -370,6 +400,98 @@ TEST_CASE("V2 positioner stages normalize order and scaling", "[curve][v2][raste
     REQUIRE(cyclic.run(intercepts, count, cyclicContext));
     REQUIRE(intercepts[0].x >= 0.0f);
     REQUIRE(intercepts[1].x <= 1.0f);
+}
+
+TEST_CASE("V2 composite positioner composes reusable stages", "[curve][v2][raster][positioner]") {
+    std::vector<Intercept> baseline = {
+        Intercept(1.2f, 0.25f),
+        Intercept(-0.1f, 0.75f),
+        Intercept(0.4f, 0.5f)
+    };
+    std::vector<Intercept> composed = baseline;
+    int baselineCount = static_cast<int>(baseline.size());
+    int composedCount = static_cast<int>(composed.size());
+
+    V2PositionerContext context;
+    context.scaling = MeshRasterizer::Bipolar;
+    context.minX = 0.0f;
+    context.maxX = 1.0f;
+
+    V2LinearPositionerStage linear;
+    REQUIRE(linear.run(baseline, baselineCount, context));
+
+    V2ClampOrWrapPositionerStage clampStage(false);
+    V2ApplyScalingPositionerStage scalingStage;
+    V2SortAndOrderPositionerStage orderStage;
+    V2CompositePositionerStage composedStage;
+    REQUIRE(composedStage.addStage(&clampStage));
+    REQUIRE(composedStage.addStage(&scalingStage));
+    REQUIRE(composedStage.addStage(&orderStage));
+    REQUIRE(composedStage.run(composed, composedCount, context));
+
+    REQUIRE(baselineCount == composedCount);
+    for (int i = 0; i < baselineCount; ++i) {
+        REQUIRE(std::abs(composed[i].x - baseline[i].x) < 1e-6f);
+        REQUIRE(std::abs(composed[i].y - baseline[i].y) < 1e-6f);
+    }
+}
+
+TEST_CASE("V2 point-path positioner stage can be inserted into composed pipeline", "[curve][v2][raster][positioner][path]") {
+    ScopedMesh scoped("v2-point-path-positioner");
+    auto* cube = new VertCube(&scoped.mesh);
+    scoped.mesh.addCube(cube);
+
+    for (int d = 0; d < Vertex::numElements; ++d) {
+        cube->deformerAt(d) = -1;
+        cube->dfrmGainAt(d) = 0.0f;
+    }
+
+    cube->deformerAt(Vertex::Red) = 0;
+    cube->dfrmGainAt(Vertex::Red) = 0.1f;
+    cube->deformerAt(Vertex::Amp) = 1;
+    cube->dfrmGainAt(Vertex::Amp) = 0.2f;
+    cube->deformerAt(Vertex::Phase) = 2;
+    cube->dfrmGainAt(Vertex::Phase) = 0.2f;
+    cube->deformerAt(Vertex::Curve) = 3;
+    cube->dfrmGainAt(Vertex::Curve) = 0.1f;
+
+    std::vector<Intercept> intercepts = { Intercept(0.95f, 0.75f, cube, 0.4f) };
+    int count = static_cast<int>(intercepts.size());
+
+    short vertOffsets[4] = { 0, 0, 0, 0 };
+    short phaseOffsets[4] = { 0, 0, 0, 0 };
+    ConstantDeformer deformer(1.0f);
+
+    V2PositionerContext context;
+    context.scaling = MeshRasterizer::Bipolar;
+    context.cyclic = true;
+    context.minX = 0.0f;
+    context.maxX = 1.0f;
+    context.morph = MorphPosition(0.5f, 0.5f, 0.5f);
+    context.pointPath = V2PositionerContext::PointPathContext(
+        &deformer,
+        123,
+        vertOffsets,
+        phaseOffsets,
+        true);
+
+    V2ClampOrWrapPositionerStage clampStage(true);
+    V2ApplyScalingPositionerStage scalingStage;
+    V2PointPathPositionerStage pointPathStage;
+    V2SortAndOrderPositionerStage orderStage;
+    V2CompositePositionerStage composedStage;
+    REQUIRE(composedStage.addStage(&clampStage));
+    REQUIRE(composedStage.addStage(&scalingStage));
+    REQUIRE(composedStage.addStage(&pointPathStage));
+    REQUIRE(composedStage.addStage(&orderStage));
+    REQUIRE(composedStage.run(intercepts, count, context));
+
+    REQUIRE(count == 1);
+    REQUIRE(intercepts[0].x >= context.minX);
+    REQUIRE(intercepts[0].x <= context.maxX);
+    REQUIRE(intercepts[0].y > 0.5f);
+    REQUIRE(intercepts[0].shp > 0.4f);
+    REQUIRE(intercepts[0].isWrapped);
 }
 
 TEST_CASE("V2 rasterizer graph runs interpolation and positioning with workspace", "[curve][v2][raster]") {

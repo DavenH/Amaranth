@@ -30,11 +30,36 @@ struct V2InterpolatorContext {
 };
 
 struct V2PositionerContext {
+    struct PointPathContext {
+        IDeformer* path{nullptr};
+        int noiseSeed{-1};
+        const short* vertOffsetSeeds{nullptr};
+        const short* phaseOffsetSeeds{nullptr};
+        bool enabled{false};
+
+        PointPathContext() = default;
+
+        PointPathContext(
+            IDeformer* path,
+            int noiseSeed,
+            const short* vertOffsetSeeds,
+            const short* phaseOffsetSeeds,
+            bool enabled) noexcept :
+                path(path)
+            ,   noiseSeed(noiseSeed)
+            ,   vertOffsetSeeds(vertOffsetSeeds)
+            ,   phaseOffsetSeeds(phaseOffsetSeeds)
+            ,   enabled(enabled)
+        {}
+    };
+
     MeshRasterizer::ScalingType scaling{MeshRasterizer::Unipolar};
     bool cyclic{false};
     float padding{0.0f};
     float minX{0.0f};
     float maxX{1.0f};
+    MorphPosition morph{};
+    PointPathContext pointPath{};
 
     V2PositionerContext() = default;
 
@@ -43,12 +68,25 @@ struct V2PositionerContext {
         bool cyclic,
         float minX,
         float maxX,
-        float padding = 0.0f) noexcept :
+        float padding,
+        const MorphPosition& morph,
+        const PointPathContext& pointPath) noexcept :
             scaling(scaling)
         ,   cyclic(cyclic)
         ,   padding(padding)
         ,   minX(minX)
         ,   maxX(maxX)
+        ,   morph(morph)
+        ,   pointPath(pointPath)
+    {}
+
+    V2PositionerContext(
+        MeshRasterizer::ScalingType scaling,
+        bool cyclic,
+        float minX,
+        float maxX,
+        float padding = 0.0f) noexcept :
+            V2PositionerContext(scaling, cyclic, minX, maxX, padding, MorphPosition(), PointPathContext())
     {}
 };
 
@@ -126,6 +164,8 @@ public:
 class V2PositionerStage {
 public:
     virtual ~V2PositionerStage() = default;
+
+    virtual void reset() noexcept {}
 
     virtual bool run(
         std::vector<Intercept>& ioIntercepts,
