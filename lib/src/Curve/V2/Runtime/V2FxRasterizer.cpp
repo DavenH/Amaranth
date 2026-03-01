@@ -1,8 +1,12 @@
 #include "V2FxRasterizer.h"
+#include "V2WaveSampling.h"
 
-V2FxRasterizer::V2FxRasterizer() :
-        graph(&interpolator, &linearPositionerPipeline, &curveBuilder, &waveBuilder, &sampler) {
-    // FxRasterizer has no cyclic point positioning
+V2FxRasterizer::V2FxRasterizer() {
+    setInterpolator(&interpolator);
+    setPositioner(&linearPositionerPipeline);
+    setCurveBuilder(&curveBuilder);
+    setWaveBuilder(&waveBuilder);
+
     linearPositionerPipeline.addStage(&linearClampPositioner);
     linearPositionerPipeline.addStage(&scalingPositioner);
     linearPositionerPipeline.addStage(&pointPathPositioner);
@@ -12,7 +16,6 @@ V2FxRasterizer::V2FxRasterizer() :
 void V2FxRasterizer::prepare(const V2PrepareSpec& spec) {
     workspace.prepare(spec.capacities);
     controls.lowResolution = spec.lowResolution;
-    graph.setPositioner(&linearPositionerPipeline);
 }
 
 void V2FxRasterizer::setMeshSnapshot(const Mesh* meshSnapshot) noexcept {
@@ -31,7 +34,7 @@ bool V2FxRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
     V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
     V2PositionerContext positionerContext = makePositionerContext(controls);
 
-    return graph.buildInterceptArtifacts(workspace, interpolatorContext, positionerContext, artifacts);
+    return buildInterceptArtifacts(interpolatorContext, positionerContext, artifacts);
 }
 
 bool V2FxRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
@@ -45,8 +48,7 @@ bool V2FxRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
         controls,
         V2CurveBuilderContext::PaddingPolicy::FxLegacyFixed);
     V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
-    return graph.buildCurveAndWaveArtifacts(
-        workspace,
+    return buildCurveAndWaveArtifacts(
         static_cast<int>(artifacts.intercepts->size()),
         curveBuilderContext,
         waveBuilderContext,
@@ -65,17 +67,11 @@ bool V2FxRasterizer::sampleArtifacts(
     const V2RenderRequest& request,
     Buffer<float> output,
     V2RenderResult& result) noexcept {
-    V2RenderRequest samplerRequest = request;
-    samplerRequest.numSamples = output.size();
-    if (samplerRequest.deltaX <= 0.0) {
-        samplerRequest.deltaX = 1.0 / static_cast<double>(output.size());
-    }
+    int wavePointCount = artifacts.waveBuffers.waveX.size();
+    double deltaX = request.deltaX > 0.0 ? request.deltaX : 1.0 / static_cast<double>(output.size());
 
-    V2SamplerContext samplerContext(
-        samplerRequest,
-        artifacts.waveBuffers.waveX.size(),
-        artifacts.zeroIndex,
-        artifacts.oneIndex);
-    result = sampler.run(artifacts.waveBuffers, output, samplerContext);
+    LinearPhasePolicy policy(0.0, deltaX);
+    int sampleIndex = jlimit(0, wavePointCount - 2, artifacts.zeroIndex);
+    result = V2WaveSampling::sampleBlock(policy, artifacts.waveBuffers, wavePointCount, output, sampleIndex);
     return result.rendered;
 }

@@ -1,17 +1,17 @@
 #include "V2VoiceRasterizer.h"
 #include "V2WaveSampling.h"
 
-namespace {
-}
+V2VoiceRasterizer::V2VoiceRasterizer() {
+    setInterpolator(&interpolator);
+    setPositioner(&chainingPositionerPipeline);
+    setCurveBuilder(&curveBuilder);
+    setWaveBuilder(&waveBuilder);
 
-V2VoiceRasterizer::V2VoiceRasterizer() :
-        graph(&interpolator, &chainingPositionerPipeline, &curveBuilder, &waveBuilder, &sampler) {
     chainingPositionerPipeline.addStage(&cyclicClampPositioner);
     chainingPositionerPipeline.addStage(&scalingPositioner);
     chainingPositionerPipeline.addStage(&pointPathPositioner);
     chainingPositionerPipeline.addStage(&orderPositioner);
     chainingPositionerPipeline.addStage(&chainingPositioner);
-    graph.setPositioner(&chainingPositionerPipeline);
 }
 
 void V2VoiceRasterizer::prepare(const V2PrepareSpec& spec) {
@@ -62,30 +62,12 @@ bool V2VoiceRasterizer::sampleArtifacts(
     Buffer<float> out,
     V2RenderResult& result) noexcept {
     int wavePointCount = artifacts.waveBuffers.waveX.size();
-    V2WaveBuffers waveBuffers;
-    artifacts.waveBuffers.assignSized(waveBuffers, wavePointCount);
     double deltaX = request.deltaX > 0.0 ? request.deltaX : 1.0 / static_cast<double>(out.size());
 
-    int currentIndex = jlimit(0, wavePointCount - 2, sampleIndex);
-    double localPhase = phase;
-
-    for (int i = 0; i < out.size(); ++i) {
-        out[i] = V2WaveSampling::sampleAtPhase(localPhase, waveBuffers, wavePointCount, currentIndex);
-        localPhase += deltaX;
-    }
-
-    // Legacy voice sampling keeps a running block spillover and only folds once.
-    if (localPhase > 0.5) {
-        localPhase -= 1.0;
-    }
-
-    phase = localPhase;
-    sampleIndex = currentIndex;
-
-    result.rendered = true;
-    result.stillActive = true;
-    result.samplesWritten = out.size();
-    return true;
+    VoiceFoldPhasePolicy policy(phase, deltaX);
+    result = V2WaveSampling::sampleBlock(policy, artifacts.waveBuffers, wavePointCount, out, sampleIndex);
+    phase = policy.phase;
+    return result.rendered;
 }
 
 bool V2VoiceRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
@@ -102,7 +84,7 @@ bool V2VoiceRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept 
     V2PositionerContext positionerContext = makePositionerContext(controls);
     positionerContext.cyclic = true;
 
-    if (! graph.buildInterceptArtifacts(workspace, interpolatorContext, positionerContext, artifacts)) {
+    if (! buildInterceptArtifacts(interpolatorContext, positionerContext, artifacts)) {
         return false;
     }
 
@@ -123,14 +105,9 @@ bool V2VoiceRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
 
     V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(controls);
     V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
-    if (! graph.buildCurveAndWaveArtifacts(
-            workspace,
-            static_cast<int>(artifacts.intercepts->size()),
-            curveBuilderContext,
-            waveBuilderContext,
-            artifacts)) {
-        return false;
-    }
-
-    return true;
+    return buildCurveAndWaveArtifacts(
+        static_cast<int>(artifacts.intercepts->size()),
+        curveBuilderContext,
+        waveBuilderContext,
+        artifacts);
 }

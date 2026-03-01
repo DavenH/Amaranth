@@ -229,9 +229,12 @@ bool buildEnvCurves(
 
 }
 
-V2EnvRasterizer::V2EnvRasterizer() :
-        graph(&interpolator, &linearPositioner, &curveBuilder, &waveBuilder, &sampler)
-{}
+V2EnvRasterizer::V2EnvRasterizer() {
+    setInterpolator(&interpolator);
+    setPositioner(&linearPositioner);
+    setCurveBuilder(&curveBuilder);
+    setWaveBuilder(&waveBuilder);
+}
 
 void V2EnvRasterizer::prepare(const V2PrepareSpec& spec) {
     workspace.prepare(spec.capacities);
@@ -289,53 +292,28 @@ bool V2EnvRasterizer::sampleArtifacts(
         Buffer<float> out,
         V2RenderResult& result) noexcept {
     int wavePointCount = artifacts.waveBuffers.waveX.size();
-    V2WaveBuffers waveBuffers;
-    artifacts.waveBuffers.assignSized(waveBuffers, wavePointCount);
-
-    int currentIndex = jlimit(0, wavePointCount - 2, sampleIndex);
     double deltaX = request.deltaX > 0.0 ? request.deltaX : 1.0 / static_cast<double>(out.size());
-
-    bool haveLoop = controls.hasLoopRegion && controls.loopEndX > controls.loopStartX + static_cast<float>(kMinLoopLength);
-    double loopStart = controls.loopStartX;
-    double loopEnd = controls.loopEndX;
-    double loopLength = loopEnd - loopStart;
 
     if (envState.consumeReleaseTrigger() && controls.hasReleaseCurve) {
         samplePosition = controls.releaseStartX;
-        currentIndex = 0;
+        sampleIndex = 0;
     }
 
     if (envState.getMode() == V2EnvMode::Looping) {
-        currentIndex = jlimit(0, wavePointCount - 2, artifacts.zeroIndex);
+        sampleIndex = jlimit(0, wavePointCount - 2, artifacts.zeroIndex);
     }
 
-    for (int i = 0; i < out.size(); ++i) {
-        double phase = samplePosition;
+    bool loopActive = envState.getMode() == V2EnvMode::Looping
+        && controls.hasLoopRegion
+        && controls.loopEndX > controls.loopStartX + static_cast<float>(kMinLoopLength);
 
-        if (envState.getMode() == V2EnvMode::Looping && haveLoop) {
-            while (phase >= loopEnd) {
-                phase -= loopLength;
-            }
-            while (phase < loopStart) {
-                phase += loopLength;
-            }
-        }
-
-        out[i] = V2WaveSampling::sampleAtPhase(phase, waveBuffers, wavePointCount, currentIndex);
-        samplePosition = phase + deltaX;
-
-        if (envState.getMode() == V2EnvMode::Looping && haveLoop) {
-            while (samplePosition >= loopEnd) {
-                samplePosition -= loopLength;
-            }
-        }
-    }
-
-    sampleIndex = currentIndex;
-    result.rendered = true;
-    result.stillActive = true;
-    result.samplesWritten = out.size();
-    return true;
+    LoopingPhasePolicy policy(
+        samplePosition, deltaX,
+        controls.loopStartX, controls.loopEndX,
+        loopActive);
+    result = V2WaveSampling::sampleBlock(policy, artifacts.waveBuffers, wavePointCount, out, sampleIndex);
+    samplePosition = policy.phase;
+    return result.rendered;
 }
 
 bool V2EnvRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
@@ -345,8 +323,8 @@ bool V2EnvRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
         return false;
     }
 
-    graph.setInterpolator(testInterpolator != nullptr ? testInterpolator : static_cast<V2InterpolatorStage*>(&interpolator));
-    graph.setPositioner(&linearPositioner);
+    setInterpolator(testInterpolator != nullptr ? testInterpolator : static_cast<V2InterpolatorStage*>(&interpolator));
+    setPositioner(&linearPositioner);
 
     V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
     V2PositionerContext positionerContext(
@@ -356,7 +334,7 @@ bool V2EnvRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
         controls.maxX);
 
     int interceptCount = 0;
-    if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, interceptCount)) {
+    if (! runInterceptStages(interpolatorContext, positionerContext, interceptCount)) {
         return false;
     }
 
@@ -396,7 +374,7 @@ bool V2EnvRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
     }
 
     V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
-    return graph.buildWaveArtifactsFromCurves(workspace, curveCount, waveBuilderContext, artifacts);
+    return buildWaveArtifactsFromCurves(curveCount, waveBuilderContext, artifacts);
 }
 
 void V2EnvRasterizer::setInterpolatorForTesting(V2InterpolatorStage* stage) noexcept {

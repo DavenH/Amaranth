@@ -1,4 +1,5 @@
 #include "V2GraphicRasterizer.h"
+#include "V2WaveSampling.h"
 
 namespace {
 int clampRequestedSamples(int requested, Buffer<float> output) {
@@ -10,8 +11,12 @@ int clampRequestedSamples(int requested, Buffer<float> output) {
 }
 }
 
-V2GraphicRasterizer::V2GraphicRasterizer() :
-        graph(&interpolator, &linearPositionerPipeline, &curveBuilder, &waveBuilder, &sampler) {
+V2GraphicRasterizer::V2GraphicRasterizer() {
+    setInterpolator(&interpolator);
+    setPositioner(&linearPositionerPipeline);
+    setCurveBuilder(&curveBuilder);
+    setWaveBuilder(&waveBuilder);
+
     linearPositionerPipeline.addStage(&linearClampPositioner);
     linearPositionerPipeline.addStage(&scalingPositioner);
     linearPositionerPipeline.addStage(&pointPathPositioner);
@@ -41,8 +46,8 @@ bool V2GraphicRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcep
         return false;
     }
 
-    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositionerPipeline)
-                                        : static_cast<V2PositionerStage*>(&linearPositionerPipeline));
+    setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositionerPipeline)
+                                  : static_cast<V2PositionerStage*>(&linearPositionerPipeline));
 
     V2InterpolatorContext interpolatorContext = makeInterpolatorContext(
         mesh,
@@ -50,7 +55,7 @@ bool V2GraphicRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcep
         controls.primaryDimension);
     V2PositionerContext positionerContext = makePositionerContext(controls, controls.primaryDimension);
 
-    return graph.buildInterceptArtifacts(workspace, interpolatorContext, positionerContext, artifacts);
+    return buildInterceptArtifacts(interpolatorContext, positionerContext, artifacts);
 }
 
 bool V2GraphicRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
@@ -62,8 +67,7 @@ bool V2GraphicRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept 
 
     V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(controls);
     V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
-    return graph.buildCurveAndWaveArtifacts(
-        workspace,
+    return buildCurveAndWaveArtifacts(
         static_cast<int>(artifacts.intercepts->size()),
         curveBuilderContext,
         waveBuilderContext,
@@ -86,8 +90,8 @@ bool V2GraphicRasterizer::renderGraphic(
         return false;
     }
 
-    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositionerPipeline)
-                                        : static_cast<V2PositionerStage*>(&linearPositionerPipeline));
+    setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositionerPipeline)
+                                  : static_cast<V2PositionerStage*>(&linearPositionerPipeline));
 
     V2InterpolatorContext interpolatorContext = makeInterpolatorContext(
         mesh,
@@ -102,17 +106,21 @@ bool V2GraphicRasterizer::renderGraphic(
         controls,
         curveBuilderContext.interpolateCurves);
 
-    V2SamplerContext samplerContext(
-        V2RenderRequest{numSamples, 0, 1.0 / static_cast<double>(numSamples), 1.0f, 1, false, false});
+    V2RasterArtifacts artifacts;
+    if (! buildAllArtifacts(
+            interpolatorContext,
+            positionerContext,
+            curveBuilderContext,
+            waveBuilderContext,
+            artifacts)) {
+        return false;
+    }
 
-    V2RenderResult renderResult = graph.render(
-        workspace,
-        interpolatorContext,
-        positionerContext,
-        curveBuilderContext,
-        waveBuilderContext,
-        samplerContext,
-        output.withSize(numSamples));
+    V2RenderRequest renderRequest{numSamples, 0, 1.0 / static_cast<double>(numSamples), 1.0f, 1, false, false};
+    V2RenderResult renderResult;
+    if (! sampleArtifacts(artifacts, renderRequest, output.withSize(numSamples), renderResult)) {
+        return false;
+    }
 
     result.rendered = renderResult.rendered;
     result.pointsWritten = renderResult.samplesWritten;
@@ -124,17 +132,11 @@ bool V2GraphicRasterizer::sampleArtifacts(
     const V2RenderRequest& request,
     Buffer<float> output,
     V2RenderResult& result) noexcept {
-    V2RenderRequest samplerRequest = request;
-    samplerRequest.numSamples = output.size();
-    if (samplerRequest.deltaX <= 0.0) {
-        samplerRequest.deltaX = 1.0 / static_cast<double>(output.size());
-    }
+    int wavePointCount = artifacts.waveBuffers.waveX.size();
+    double deltaX = request.deltaX > 0.0 ? request.deltaX : 1.0 / static_cast<double>(output.size());
 
-    V2SamplerContext samplerContext(
-        samplerRequest,
-        artifacts.waveBuffers.waveX.size(),
-        artifacts.zeroIndex,
-        artifacts.oneIndex);
-    result = sampler.run(artifacts.waveBuffers, output, samplerContext);
+    LinearPhasePolicy policy(0.0, deltaX);
+    int sampleIndex = jlimit(0, wavePointCount - 2, artifacts.zeroIndex);
+    result = V2WaveSampling::sampleBlock(policy, artifacts.waveBuffers, wavePointCount, output, sampleIndex);
     return result.rendered;
 }

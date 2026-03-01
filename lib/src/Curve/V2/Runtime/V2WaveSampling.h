@@ -5,6 +5,7 @@
 #include <Array/Buffer.h>
 #include <Curve/IDeformer.h>
 #include <Util/NumberUtils.h>
+#include <Curve/V2/Runtime/V2PhasePolicies.h>
 #include <Curve/V2/Runtime/V2RenderTypes.h>
 
 namespace V2WaveSampling {
@@ -72,5 +73,47 @@ inline float sampleAtPhaseDecoupled(
     }
 
     return sampled;
+}
+
+template<typename PhasePolicy>
+inline V2RenderResult sampleBlock(
+        PhasePolicy& policy,
+        const V2WaveBuffers& waveBuffers,
+        int wavePointCount,
+        Buffer<float> output,
+        int& ioSampleIndex,
+        const V2DecoupledDeformContext& deform = {}) noexcept {
+    V2RenderResult result;
+
+    if (output.empty() || wavePointCount <= 1) {
+        return result;
+    }
+
+    int currentIndex = jlimit(0, wavePointCount - 2, ioSampleIndex);
+    bool hasDeform = deform.isEnabled();
+
+    for (int i = 0; i < output.size(); ++i) {
+        double phase = policy.currentPhase();
+
+        if (hasDeform) {
+            output[i] = sampleAtPhaseDecoupled(phase, waveBuffers, wavePointCount, currentIndex, deform);
+        } else {
+            output[i] = sampleAtPhase(phase, waveBuffers, wavePointCount, currentIndex);
+        }
+
+        if (output[i] != output[i]) {
+            output[i] = 0.0f;
+        }
+
+        policy.advance();
+    }
+
+    policy.finalize();
+    ioSampleIndex = currentIndex;
+
+    result.rendered = true;
+    result.stillActive = true;
+    result.samplesWritten = output.size();
+    return result;
 }
 }

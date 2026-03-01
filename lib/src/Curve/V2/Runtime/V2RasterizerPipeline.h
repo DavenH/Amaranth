@@ -6,7 +6,9 @@
 #include <Curve/Curve.h>
 #include <Curve/Intercept.h>
 #include <Obj/ColorPoint.h>
+#include <Curve/V2/Stages/V2StageInterfaces.h>
 #include <Curve/V2/Runtime/V2RenderTypes.h>
+#include "V2RasterizerWorkspace.h"
 
 struct V2RasterArtifacts {
     const std::vector<Intercept>* intercepts{nullptr};
@@ -29,37 +31,12 @@ class V2RasterizerPipeline {
 public:
     virtual ~V2RasterizerPipeline() = default;
 
-    bool renderArtifacts(V2RasterArtifacts& artifacts) noexcept {
-        artifacts.clear();
-        if (! renderIntercepts(artifacts)) {
-            return false;
-        }
-
-        return renderWaveform(artifacts);
-    }
+    bool renderArtifacts(V2RasterArtifacts& artifacts) noexcept;
 
     bool renderBlock(
         const V2RenderRequest& request,
         Buffer<float> output,
-        V2RenderResult& result) noexcept {
-        result = V2RenderResult{};
-
-        if (output.empty() || ! request.isValid()) {
-            return false;
-        }
-
-        int numSamples = jmin(request.numSamples, output.size());
-        if (numSamples <= 0) {
-            return false;
-        }
-
-        V2RasterArtifacts artifacts;
-        if (! renderArtifacts(artifacts)) {
-            return false;
-        }
-
-        return sampleArtifacts(artifacts, request, output.withSize(numSamples), result);
-    }
+        V2RenderResult& result) noexcept;
 
     virtual bool renderIntercepts(V2RasterArtifacts& artifacts) noexcept = 0;
     virtual bool renderWaveform(V2RasterArtifacts& artifacts) noexcept = 0;
@@ -70,4 +47,45 @@ protected:
         const V2RenderRequest& request,
         Buffer<float> output,
         V2RenderResult& result) noexcept = 0;
+
+    void setInterpolator(V2InterpolatorStage* stage) noexcept { interpolator_ = stage; }
+    void setPositioner(V2PositionerStage* stage) noexcept { positioner_ = stage; }
+    void setCurveBuilder(V2CurveBuilderStage* stage) noexcept { curveBuilder_ = stage; }
+    void setWaveBuilder(V2WaveBuilderStage* stage) noexcept { waveBuilder_ = stage; }
+
+    bool runInterceptStages(
+        const V2InterpolatorContext& interpolatorContext,
+        const V2PositionerContext& positionerContext,
+        int& outInterceptCount) noexcept;
+
+    bool buildInterceptArtifacts(
+        const V2InterpolatorContext& interpolatorContext,
+        const V2PositionerContext& positionerContext,
+        V2RasterArtifacts& outArtifacts) noexcept;
+
+    bool buildWaveArtifactsFromCurves(
+        int curveCount,
+        const V2WaveBuilderContext& waveBuilderContext,
+        V2RasterArtifacts& outArtifacts) noexcept;
+
+    bool buildCurveAndWaveArtifacts(
+        int interceptCount,
+        const V2CurveBuilderContext& curveBuilderContext,
+        const V2WaveBuilderContext& waveBuilderContext,
+        V2RasterArtifacts& outArtifacts) noexcept;
+
+    bool buildAllArtifacts(
+        const V2InterpolatorContext& interpolatorContext,
+        const V2PositionerContext& positionerContext,
+        const V2CurveBuilderContext& curveBuilderContext,
+        const V2WaveBuilderContext& waveBuilderContext,
+        V2RasterArtifacts& outArtifacts) noexcept;
+
+    V2RasterizerWorkspace workspace;
+
+private:
+    V2InterpolatorStage* interpolator_{nullptr};
+    V2PositionerStage* positioner_{nullptr};
+    V2CurveBuilderStage* curveBuilder_{nullptr};
+    V2WaveBuilderStage* waveBuilder_{nullptr};
 };
