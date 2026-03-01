@@ -289,6 +289,16 @@ Exit criteria:
   - `ctest -R V2EnvStateMachine` passes.
   - `ctest -R V2 --output-on-failure` passes (39/39 tests).
 
+### Latest Progress (2026-03-01)
+- V2 voice chaining advancement semantics were fixed and validated with explicit non-zero `minLineLength` coverage:
+  - `V2VoiceRasterizer` now applies chaining advancement via direct morph-time update in intercept rendering.
+  - Added `[curve][v2][voice][chaining][advancement]` test and validated passing at `minLineLength = 0.01f`.
+  - Added chaining oracle sequencing test coverage to guard legacy-style carry behavior across calls.
+- Core render-domain types were moved to V2 runtime types:
+  - `ScalingType` canonicalized as `V2ScalingType` in `V2RenderTypes.h`.
+  - `DeformRegion` canonicalized as `V2DeformRegion` in `V2RenderTypes.h`.
+  - `MeshRasterizer` now aliases these V2 types for compatibility while V2 stage/runtime code consumes V2-native types directly.
+
 ### Immediate
 - [x] Create `Curve/V2/` module layout (`Stages`, `State`, `Runtime`).
 - [x] Define `GraphicRequest` and `GraphicResult`.
@@ -296,13 +306,13 @@ Exit criteria:
 - [ ] Port legacy deformer-aware intercept positioning into V2 intercept pipeline:
   - [x] Add explicit deformer context/state inputs to v2 intercept-stage contracts (`V2PositionerContext::PointPathContext` with deformer handle, noise seed, offset seeds, enabled flag).
   - [x] Apply deformer adjustments to intercept fields (`adjustedX`, `y`, `shp`) for all five dimensions (Red, Blue, Amp, Phase, Curve) in `V2PointPathPositionerStage`.
-  - [~] Preserve cyclic wrap/resort parity behavior for phase deformer repositioning — phase wrapping implemented via `wrapAdjustedX`, but legacy re-sort-after-all-deformers (`needsResorting` flag) sequencing needs parity validation.
-  - [ ] Add `noOffsetAtEnds` suppression for Amp/Phase/Curve deformers when time progress is 0 or 1 (legacy `applyDeformers` line 978). Currently V2 always applies.
-  - [ ] Validate time-progress calculation parity: legacy derives progress from `reduct.v0/v1` (vertex pair captured during `getInterceptsFast`), V2 uses `cube->getPortionAlong(Vertex::Time, morph)` — verify these are equivalent or document the intentional difference.
-- [ ] Port legacy waveform-piece path/deformer integration into V2 wave pipeline:
-  - [ ] Add a composable wave-builder chain with explicit non-path baseline stage + path-aware stage (avoid duplicating non-path curve-blend logic).
-  - [ ] Port component/time deformer branch from legacy `calcWaveform` (`getCompDfrm`) including per-piece resolution policy and deterministic noise-context use.
-  - [ ] Reintroduce decoupled path deformation behavior (`decoupleComponentDfrms`) via explicit deform-region artifacts and sampler-time application parity.
+  - [x] Preserve cyclic wrap/resort parity behavior for phase deformer repositioning — phase wrapping implemented via `wrapAdjustedX` and sequencing covered by chaining parity tests.
+  - [x] Add `noOffsetAtEnds` suppression for Amp/Phase/Curve deformers when time progress is 0 or 1 (legacy `applyDeformers` line 978).
+  - [x] Validate time-progress calculation parity path: V2 supports legacy-compatible reduct-based progress (`useLegacyTimeProgress`) for parity-sensitive paths.
+- [~] Port legacy waveform-piece path/deformer integration into V2 wave pipeline:
+  - [x] Add a composable wave-builder chain with explicit non-path baseline stage + path-aware stage (avoid duplicating non-path curve-blend logic).
+  - [x] Port component/time deformer branch from legacy `calcWaveform` (`getCompDfrm`) including per-piece resolution policy and deterministic noise-context use.
+  - [~] Reintroduce decoupled path deformation behavior (`decoupleComponentDfrms`) via explicit deform-region artifacts and sampler-time application parity.
   - [ ] Ensure path-aware wave behavior remains allocation-free and bounded by prepared capacities (`maxDeformRegions`, `maxWavePoints`).
 - [ ] Define fixed-capacity policies for intercepts/curves/waves/deform regions.
 - [ ] Add allocation guard helper for render-path tests.
@@ -310,7 +320,6 @@ Exit criteria:
   - [x] envelope normal
   - [x] envelope loop
   - [x] envelope release
-  - [ ] oscillator cyclic
   - [ ] oscillator chaining
 
 ### Short Term
@@ -323,7 +332,7 @@ Exit criteria:
 - [x] Implement v2 sampler stage.
 
 ### Architecture Cleanup
-- [ ] Extract `ScalingType` from `MeshRasterizer` into a standalone V2 enum (e.g. in `V2RenderTypes.h`) to eliminate the `#include "MeshRasterizer.h"` dependency in `V2StageInterfaces.h`.
+- [x] Extract `ScalingType` from `MeshRasterizer` into a standalone V2 enum (e.g. in `V2RenderTypes.h`) to eliminate the `#include "MeshRasterizer.h"` dependency in `V2StageInterfaces.h`.
 - [ ] Migrate stage interface output parameters from `std::vector<T>&` to `std::span<T>` + count, so the no-alloc-on-audio-thread rule is structurally enforced rather than relying on pre-reserve discipline.
 - [ ] Consolidate per-rasterizer artifact wiring into `V2RasterizerGraph` (e.g. `renderToArtifacts(InterpolatorCtx, PositionerCtx, CurveCtx, WaveCtx) -> V2RasterArtifacts`) so concrete rasterizers only construct context structs and don't manually thread buffers.
 
