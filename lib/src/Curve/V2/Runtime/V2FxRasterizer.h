@@ -27,6 +27,12 @@ public:
         V2RenderResult& result) noexcept;
 
 private:
+    bool sampleArtifacts(
+        const V2RasterArtifacts& artifacts,
+        const V2RenderRequest& request,
+        Buffer<float> output,
+        V2RenderResult& result) noexcept override;
+
     V2RasterizerWorkspace workspace;
     V2RasterizerGraph graph;
 
@@ -37,7 +43,6 @@ private:
     V2PointPathPositionerStage pointPathPositioner;
     V2SortAndOrderPositionerStage orderPositioner;
     V2CompositePositionerStage linearPositionerPipeline;
-    V2CompositePositionerStage cyclicPositionerPipeline;
     V2DefaultCurveBuilderStage curveBuilder;
     V2DefaultWaveBuilderStage waveBuilder;
     V2LinearSamplerStage sampler;

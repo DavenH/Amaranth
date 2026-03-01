@@ -55,7 +55,7 @@ void prepareFxRasterizer(V2FxRasterizer& rasterizer, const Mesh& mesh) {
 
     V2FxControlSnapshot controls;
     controls.morph = MorphPosition(0.35f, 0.4f, 0.7f);
-    controls.scaling = MeshRasterizer::Unipolar;
+    controls.scaling = V2ScalingType::Unipolar;
     controls.cyclic = false;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
@@ -150,7 +150,7 @@ TEST_CASE("V2FxRasterizer supports linear and cyclic modes", "[curve][v2][fx][mo
 
     V2FxControlSnapshot controls;
     controls.morph = MorphPosition(0.35f, 0.4f, 0.7f);
-    controls.scaling = MeshRasterizer::Unipolar;
+    controls.scaling = V2ScalingType::Unipolar;
     controls.cyclic = true;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
@@ -192,7 +192,7 @@ TEST_CASE("V2FxRasterizer intercept extraction is morph-invariant like legacy FX
 
     V2FxControlSnapshot controls;
     controls.morph = MorphPosition(0.91f, 0.02f, 0.11f);
-    controls.scaling = MeshRasterizer::Unipolar;
+    controls.scaling = V2ScalingType::Unipolar;
     controls.cyclic = false;
     controls.interpolateCurves = true;
     controls.lowResolution = false;

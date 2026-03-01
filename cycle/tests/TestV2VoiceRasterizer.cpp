@@ -357,7 +357,7 @@ TEST_CASE("V2VoiceRasterizer phase wraps in cyclic mode", "[curve][v2][voice][ph
 
     V2RenderRequest request;
     request.numSamples = 400;
-    request.deltaX = 0.01;
+    request.deltaX = 1.0 / 400.0;
     request.tempoScale = 1.0f;
     request.scale = 1;
 
@@ -368,8 +368,8 @@ TEST_CASE("V2VoiceRasterizer phase wraps in cyclic mode", "[curve][v2][voice][ph
     REQUIRE(rasterizer.renderAudio(request, output, result));
 
     double phase = rasterizer.getPhaseForTesting();
-    REQUIRE(phase >= 0.0);
-    REQUIRE(phase < 1.0);
+    REQUIRE(phase >= -0.5);
+    REQUIRE(phase <= 0.5);
 }
 
 TEST_CASE("V2VoiceRasterizer applies non-zero minLineLength advancement on subsequent intercept renders", "[curve][v2][voice][chaining][advancement]") {

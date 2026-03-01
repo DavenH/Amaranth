@@ -116,8 +116,7 @@ inline V2WaveBuilderContext makeWaveBuilderContext(
     const V2CommonControlSnapshot& controls,
     bool interpolateCurves) noexcept {
     V2WaveBuilderContext::ComponentPathContext componentPath = controls.componentPath;
-    componentPath.enabled = componentPath.enabled
-        && componentPath.path != nullptr
+    componentPath.enabled &= componentPath.path != nullptr
         && componentPath.vertOffsetSeeds != nullptr
         && componentPath.phaseOffsetSeeds != nullptr;
 
@@ -126,8 +125,7 @@ inline V2WaveBuilderContext makeWaveBuilderContext(
 
 inline V2WaveBuilderContext makeWaveBuilderContext(const V2CommonControlSnapshot& controls) noexcept {
     V2WaveBuilderContext::ComponentPathContext componentPath = controls.componentPath;
-    componentPath.enabled = componentPath.enabled
-        && componentPath.path != nullptr
+    componentPath.enabled &= componentPath.path != nullptr
         && componentPath.vertOffsetSeeds != nullptr
         && componentPath.phaseOffsetSeeds != nullptr;
 

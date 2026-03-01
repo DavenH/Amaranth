@@ -41,6 +41,36 @@ public:
         return renderWaveform(artifacts);
     }
 
+    bool renderBlock(
+        const V2RenderRequest& request,
+        Buffer<float> output,
+        V2RenderResult& result) noexcept {
+        result = V2RenderResult{};
+
+        if (output.empty() || ! request.isValid()) {
+            return false;
+        }
+
+        int numSamples = jmin(request.numSamples, output.size());
+        if (numSamples <= 0) {
+            return false;
+        }
+
+        V2RasterArtifacts artifacts;
+        if (! renderArtifacts(artifacts)) {
+            return false;
+        }
+
+        return sampleArtifacts(artifacts, request, output.withSize(numSamples), result);
+    }
+
     virtual bool renderIntercepts(V2RasterArtifacts& artifacts) noexcept = 0;
     virtual bool renderWaveform(V2RasterArtifacts& artifacts) noexcept = 0;
+
+protected:
+    virtual bool sampleArtifacts(
+        const V2RasterArtifacts& artifacts,
+        const V2RenderRequest& request,
+        Buffer<float> output,
+        V2RenderResult& result) noexcept = 0;
 };

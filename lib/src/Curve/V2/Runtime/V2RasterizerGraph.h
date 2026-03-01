@@ -28,6 +28,25 @@ public:
         const V2PositionerContext& positionerContext,
         int& outInterceptCount) noexcept;
 
+    bool buildInterceptArtifacts(
+        V2RasterizerWorkspace& workspace,
+        const V2InterpolatorContext& interpolatorContext,
+        const V2PositionerContext& positionerContext,
+        V2BuiltArtifacts& outArtifacts) noexcept;
+
+    bool buildWaveArtifactsFromCurves(
+        V2RasterizerWorkspace& workspace,
+        int curveCount,
+        const V2WaveBuilderContext& waveBuilderContext,
+        V2BuiltArtifacts& outArtifacts) noexcept;
+
+    bool buildCurveAndWaveArtifacts(
+        V2RasterizerWorkspace& workspace,
+        int interceptCount,
+        const V2CurveBuilderContext& curveBuilderContext,
+        const V2WaveBuilderContext& waveBuilderContext,
+        V2BuiltArtifacts& outArtifacts) noexcept;
+
     bool buildArtifacts(
         V2RasterizerWorkspace& workspace,
         const V2InterpolatorContext& interpolatorContext,

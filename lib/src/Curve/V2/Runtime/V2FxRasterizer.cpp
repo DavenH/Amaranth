@@ -1,31 +1,18 @@
 #include "V2FxRasterizer.h"
 
-namespace {
-int clampRequestedSamples(int requested, Buffer<float> output) {
-    if (requested <= 0 || output.empty()) {
-        return 0;
-    }
-
-    return jmin(requested, output.size());
-}
-}
-
 V2FxRasterizer::V2FxRasterizer() :
         graph(&interpolator, &linearPositionerPipeline, &curveBuilder, &waveBuilder, &sampler) {
+    // FxRasterizer has no cyclic point positioning
     linearPositionerPipeline.addStage(&linearClampPositioner);
     linearPositionerPipeline.addStage(&scalingPositioner);
     linearPositionerPipeline.addStage(&pointPathPositioner);
     linearPositionerPipeline.addStage(&orderPositioner);
-
-    cyclicPositionerPipeline.addStage(&cyclicClampPositioner);
-    cyclicPositionerPipeline.addStage(&scalingPositioner);
-    cyclicPositionerPipeline.addStage(&pointPathPositioner);
-    cyclicPositionerPipeline.addStage(&orderPositioner);
 }
 
 void V2FxRasterizer::prepare(const V2PrepareSpec& spec) {
     workspace.prepare(spec.capacities);
     controls.lowResolution = spec.lowResolution;
+    graph.setPositioner(&linearPositionerPipeline);
 }
 
 void V2FxRasterizer::setMeshSnapshot(const Mesh* meshSnapshot) noexcept {
@@ -37,25 +24,14 @@ void V2FxRasterizer::updateControlData(const V2FxControlSnapshot& snapshot) noex
 }
 
 bool V2FxRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
-    artifacts.clear();
-    int outCount = 0;
-
     if (! workspace.isPrepared() || mesh == nullptr) {
         return false;
     }
 
-    graph.setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositionerPipeline)
-                                        : static_cast<V2PositionerStage*>(&linearPositionerPipeline));
-
     V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
     V2PositionerContext positionerContext = makePositionerContext(controls);
 
-    if (! graph.runInterceptStages(workspace, interpolatorContext, positionerContext, outCount)) {
-        return false;
-    }
-
-    artifacts.intercepts = &workspace.intercepts;
-    return outCount > 0;
+    return graph.buildInterceptArtifacts(workspace, interpolatorContext, positionerContext, artifacts);
 }
 
 bool V2FxRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
@@ -69,70 +45,30 @@ bool V2FxRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
         controls,
         V2CurveBuilderContext::PaddingPolicy::FxLegacyFixed);
     V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
-    waveBuilderContext.componentPath.deformRegions = &workspace.deformRegions;
-
-    int curveCount = 0;
-    if (! curveBuilder.run(
-            workspace.intercepts,
-            static_cast<int>(artifacts.intercepts->size()),
-            workspace.curves,
-            curveCount,
-            curveBuilderContext)) {
-        return false;
-    }
-
-    int zeroIndex = 0;
-    int oneIndex = 0;
-    int wavePointCount = 0;
-    if (! waveBuilder.run(
-            workspace.curves,
-            curveCount,
-            workspace.waveX,
-            workspace.waveY,
-            workspace.diffX,
-            workspace.slope,
-            wavePointCount,
-            zeroIndex,
-            oneIndex,
-            waveBuilderContext)) {
-        return false;
-    }
-
-    artifacts.curves = &workspace.curves;
-    artifacts.waveX = workspace.waveX.withSize(wavePointCount);
-    artifacts.waveY = workspace.waveY.withSize(wavePointCount);
-    artifacts.diffX = workspace.diffX.withSize(jmax(0, wavePointCount - 1));
-    artifacts.slope = workspace.slope.withSize(jmax(0, wavePointCount - 1));
-    artifacts.deformRegions = &workspace.deformRegions;
-    artifacts.zeroIndex = zeroIndex;
-    artifacts.oneIndex = oneIndex;
-    return wavePointCount > 1;
+    return graph.buildCurveAndWaveArtifacts(
+        workspace,
+        static_cast<int>(artifacts.intercepts->size()),
+        curveBuilderContext,
+        waveBuilderContext,
+        artifacts);
 }
 
 bool V2FxRasterizer::renderAudio(
     const V2RenderRequest& request,
     Buffer<float> output,
     V2RenderResult& result) noexcept {
-    result = V2RenderResult{};
+    return renderBlock(request, output, result);
+}
 
-    if (! workspace.isPrepared() || mesh == nullptr || output.empty() || ! request.isValid()) {
-        return false;
-    }
-
-    int numSamples = clampRequestedSamples(request.numSamples, output);
-    if (numSamples <= 0) {
-        return false;
-    }
-
+bool V2FxRasterizer::sampleArtifacts(
+    const V2RasterArtifacts& artifacts,
+    const V2RenderRequest& request,
+    Buffer<float> output,
+    V2RenderResult& result) noexcept {
     V2RenderRequest samplerRequest = request;
-    samplerRequest.numSamples = numSamples;
+    samplerRequest.numSamples = output.size();
     if (samplerRequest.deltaX <= 0.0) {
-        samplerRequest.deltaX = 1.0 / static_cast<double>(numSamples);
-    }
-
-    V2RasterArtifacts artifacts;
-    if (! renderArtifacts(artifacts)) {
-        return false;
+        samplerRequest.deltaX = 1.0 / static_cast<double>(output.size());
     }
 
     V2SamplerContext samplerContext(
@@ -144,7 +80,7 @@ bool V2FxRasterizer::renderAudio(
         artifacts.waveX,
         artifacts.waveY,
         artifacts.slope,
-        output.withSize(numSamples),
+        output,
         samplerContext);
     return result.rendered;
 }
