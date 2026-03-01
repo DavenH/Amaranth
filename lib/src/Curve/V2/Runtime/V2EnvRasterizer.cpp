@@ -126,15 +126,15 @@ void applyResolutionPolicy(std::vector<Curve>& curves, const V2CurveBuilderConte
 }
 
 bool buildEnvCurves(
-    const std::vector<Intercept>& intercepts,
-    int interceptCount,
-    V2EnvMode mode,
-    const V2EnvControlSnapshot& controls,
-    int loopIndex,
-    int sustainIndex,
-    std::vector<Curve>& outCurves,
-    int& outCurveCount,
-    const V2CurveBuilderContext& curveContext) {
+        const std::vector<Intercept>& intercepts,
+        int interceptCount,
+        V2EnvMode mode,
+        const V2EnvControlSnapshot& controls,
+        int loopIndex,
+        int sustainIndex,
+        std::vector<Curve>& outCurves,
+        int& outCurveCount,
+        const V2CurveBuilderContext& curveContext) {
     outCurves.clear();
     outCurveCount = 0;
 
@@ -277,21 +277,20 @@ double V2EnvRasterizer::getSamplePositionForTesting() const noexcept {
 }
 
 bool V2EnvRasterizer::renderAudio(
-    const V2RenderRequest& request,
-    Buffer<float> output,
-    V2RenderResult& result) noexcept {
+        const V2RenderRequest& request,
+        Buffer<float> output,
+        V2RenderResult& result) noexcept {
     return renderBlock(request, output, result);
 }
 
 bool V2EnvRasterizer::sampleArtifacts(
-    const V2RasterArtifacts& artifacts,
-    const V2RenderRequest& request,
-    Buffer<float> out,
-    V2RenderResult& result) noexcept {
-    int wavePointCount = artifacts.waveX.size();
-    Buffer<float> waveX = artifacts.waveX;
-    Buffer<float> waveY = artifacts.waveY;
-    Buffer<float> slopeUsed = artifacts.slope;
+        const V2RasterArtifacts& artifacts,
+        const V2RenderRequest& request,
+        Buffer<float> out,
+        V2RenderResult& result) noexcept {
+    int wavePointCount = artifacts.waveBuffers.waveX.size();
+    V2WaveBuffers waveBuffers;
+    artifacts.waveBuffers.assignSized(waveBuffers, wavePointCount);
 
     int currentIndex = jlimit(0, wavePointCount - 2, sampleIndex);
     double deltaX = request.deltaX > 0.0 ? request.deltaX : 1.0 / static_cast<double>(out.size());
@@ -322,7 +321,7 @@ bool V2EnvRasterizer::sampleArtifacts(
             }
         }
 
-        out[i] = V2WaveSampling::sampleAtPhase(phase, waveX, waveY, slopeUsed, wavePointCount, currentIndex);
+        out[i] = V2WaveSampling::sampleAtPhase(phase, waveBuffers, wavePointCount, currentIndex);
         samplePosition = phase + deltaX;
 
         if (envState.getMode() == V2EnvMode::Looping && haveLoop) {
@@ -347,7 +346,7 @@ bool V2EnvRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
     }
 
     graph.setInterpolator(testInterpolator != nullptr ? testInterpolator : static_cast<V2InterpolatorStage*>(&interpolator));
-    graph.setPositioner(static_cast<V2PositionerStage*>(&linearPositioner));
+    graph.setPositioner(&linearPositioner);
 
     V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
     V2PositionerContext positionerContext(

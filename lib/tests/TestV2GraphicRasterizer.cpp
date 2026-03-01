@@ -58,7 +58,7 @@ TEST_CASE("V2GraphicRasterizer renders after prepare and control update", "[curv
 
     V2GraphicControlSnapshot controls;
     controls.morph = MorphPosition(0.25f, 0.5f, 0.75f);
-    controls.scaling = MeshRasterizer::Unipolar;
+    controls.scaling = V2ScalingType::Unipolar;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
     controls.cyclic = false;
@@ -127,7 +127,7 @@ TEST_CASE("V2GraphicRasterizer supports cyclic and linear positioning modes", "[
 
     V2GraphicControlSnapshot controls;
     controls.morph = MorphPosition(0.4f, 0.6f, 0.3f);
-    controls.scaling = MeshRasterizer::Unipolar;
+    controls.scaling = V2ScalingType::Unipolar;
     controls.interpolateCurves = false;
     controls.lowResolution = true;
     controls.cyclic = false;
@@ -161,7 +161,7 @@ TEST_CASE("V2GraphicRasterizer extracts pipeline artifacts for updater parity", 
 
     V2GraphicControlSnapshot controls;
     controls.morph = MorphPosition(0.35f, 0.55f, 0.75f);
-    controls.scaling = MeshRasterizer::Unipolar;
+    controls.scaling = V2ScalingType::Unipolar;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
     controls.cyclic = false;
@@ -173,8 +173,8 @@ TEST_CASE("V2GraphicRasterizer extracts pipeline artifacts for updater parity", 
     REQUIRE(artifacts.curves != nullptr);
     REQUIRE(artifacts.intercepts->size() > 1);
     REQUIRE(! artifacts.curves->empty());
-    REQUIRE(artifacts.waveX.size() > 1);
-    REQUIRE(artifacts.waveY.size() == artifacts.waveX.size());
-    REQUIRE(artifacts.diffX.size() == artifacts.waveX.size() - 1);
-    REQUIRE(artifacts.slope.size() == artifacts.waveX.size() - 1);
+    REQUIRE(artifacts.waveBuffers.waveX.size() > 1);
+    REQUIRE(artifacts.waveBuffers.waveY.size() == artifacts.waveBuffers.waveX.size());
+    REQUIRE(artifacts.waveBuffers.diffX.size() == artifacts.waveBuffers.waveX.size() - 1);
+    REQUIRE(artifacts.waveBuffers.slope.size() == artifacts.waveBuffers.waveX.size() - 1);
 }

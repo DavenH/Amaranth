@@ -21,10 +21,7 @@ public:
     std::vector<V2DeformRegion> deformRegions;
 
     ScopedAlloc<float> waveMemory;
-    Buffer<float> waveX;
-    Buffer<float> waveY;
-    Buffer<float> slope;
-    Buffer<float> diffX;
+    V2WaveBuffers waveBuffers;
 
 private:
     V2CapacitySpec capacities;

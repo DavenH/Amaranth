@@ -9,6 +9,29 @@
 #include <Obj/MorphPosition.h>
 #include <Curve/V2/Runtime/V2RenderTypes.h>
 
+struct V2PathContext {
+    IDeformer* path{nullptr};
+    int noiseSeed{-1};
+    const short* vertOffsetSeeds{nullptr};
+    const short* phaseOffsetSeeds{nullptr};
+    bool enabled{false};
+
+    V2PathContext() = default;
+
+    V2PathContext(
+        IDeformer* path,
+        int noiseSeed,
+        const short* vertOffsetSeeds,
+        const short* phaseOffsetSeeds,
+        bool enabled) noexcept :
+            path(path)
+        ,   noiseSeed(noiseSeed)
+        ,   vertOffsetSeeds(vertOffsetSeeds)
+        ,   phaseOffsetSeeds(phaseOffsetSeeds)
+        ,   enabled(enabled)
+    {}
+};
+
 struct V2InterpolatorContext {
     const Mesh* mesh{nullptr};
     MorphPosition morph{};
@@ -30,12 +53,8 @@ struct V2InterpolatorContext {
 };
 
 struct V2PositionerContext {
-    struct PointPathContext {
-        IDeformer* path{nullptr};
-        int noiseSeed{-1};
-        const short* vertOffsetSeeds{nullptr};
-        const short* phaseOffsetSeeds{nullptr};
-        bool enabled{false};
+    struct PointPathContext :
+            public V2PathContext {
         bool noOffsetAtEnds{false};
         bool useLegacyTimeProgress{true};
 
@@ -49,11 +68,7 @@ struct V2PositionerContext {
             bool enabled,
             bool noOffsetAtEnds = false,
             bool useLegacyTimeProgress = true) noexcept :
-                path(path)
-            ,   noiseSeed(noiseSeed)
-            ,   vertOffsetSeeds(vertOffsetSeeds)
-            ,   phaseOffsetSeeds(phaseOffsetSeeds)
-            ,   enabled(enabled)
+                V2PathContext(path, noiseSeed, vertOffsetSeeds, phaseOffsetSeeds, enabled)
             ,   noOffsetAtEnds(noOffsetAtEnds)
             ,   useLegacyTimeProgress(useLegacyTimeProgress)
         {}
@@ -139,12 +154,8 @@ struct V2CurveBuilderContext {
 };
 
 struct V2WaveBuilderContext {
-    struct ComponentPathContext {
-        IDeformer* path{nullptr};
-        int noiseSeed{-1};
-        const short* vertOffsetSeeds{nullptr};
-        const short* phaseOffsetSeeds{nullptr};
-        bool enabled{false};
+    struct ComponentPathContext :
+            public V2PathContext {
         bool decoupled{false};
         bool lowResolution{false};
         float morphTime{0.0f};
@@ -166,11 +177,7 @@ struct V2WaveBuilderContext {
             int decoupledPhaseOffsetSeed = 0,
             int decoupledVertOffsetSeed = 0,
             std::vector<V2DeformRegion>* deformRegions = nullptr) noexcept :
-                path(path)
-            ,   noiseSeed(noiseSeed)
-            ,   vertOffsetSeeds(vertOffsetSeeds)
-            ,   phaseOffsetSeeds(phaseOffsetSeeds)
-            ,   enabled(enabled)
+                V2PathContext(path, noiseSeed, vertOffsetSeeds, phaseOffsetSeeds, enabled)
             ,   decoupled(decoupled)
             ,   lowResolution(lowResolution)
             ,   morphTime(morphTime)
@@ -202,10 +209,7 @@ struct V2SamplerContext {
     int wavePointCount{0};
     int zeroIndex{0};
     int oneIndex{0};
-    IDeformer* decoupledPath{nullptr};
-    const std::vector<V2DeformRegion>* deformRegions{nullptr};
-    int phaseOffsetSeed{0};
-    int vertOffsetSeed{0};
+    V2DecoupledDeformContext decoupledDeform{};
 
     V2SamplerContext() = default;
 
@@ -214,19 +218,36 @@ struct V2SamplerContext {
         int wavePointCount = 0,
         int zeroIndex = 0,
         int oneIndex = 0,
-        IDeformer* decoupledPath = nullptr,
-        const std::vector<V2DeformRegion>* deformRegions = nullptr,
-        int phaseOffsetSeed = 0,
-        int vertOffsetSeed = 0) noexcept :
+        const V2DecoupledDeformContext& decoupledDeform = V2DecoupledDeformContext()) noexcept :
             request(request)
         ,   wavePointCount(wavePointCount)
         ,   zeroIndex(zeroIndex)
         ,   oneIndex(oneIndex)
-        ,   decoupledPath(decoupledPath)
-        ,   deformRegions(deformRegions)
-        ,   phaseOffsetSeed(phaseOffsetSeed)
-        ,   vertOffsetSeed(vertOffsetSeed)
+        ,   decoupledDeform(decoupledDeform)
     {}
+
+    void setWaveState(int wavePointCount, int zeroIndex, int oneIndex) noexcept {
+        this->wavePointCount = wavePointCount;
+        this->zeroIndex = zeroIndex;
+        this->oneIndex = oneIndex;
+    }
+
+    void setDecoupledRegions(const std::vector<V2DeformRegion>* deformRegions) noexcept {
+        decoupledDeform.deformRegions = deformRegions;
+    }
+
+    void configureDecoupledDeform(const V2WaveBuilderContext::ComponentPathContext& componentPath) noexcept {
+        if (! componentPath.decoupled) {
+            decoupledDeform.path = nullptr;
+            decoupledDeform.phaseOffsetSeed = 0;
+            decoupledDeform.vertOffsetSeed = 0;
+            return;
+        }
+
+        decoupledDeform.path = componentPath.path;
+        decoupledDeform.phaseOffsetSeed = componentPath.decoupledPhaseOffsetSeed;
+        decoupledDeform.vertOffsetSeed = componentPath.decoupledVertOffsetSeed;
+    }
 };
 
 class V2InterpolatorStage {
@@ -268,16 +289,13 @@ public:
     virtual ~V2WaveBuilderStage() = default;
 
     virtual bool run(
-        const std::vector<Curve>& curves,
-        int curveCount,
-        Buffer<float> waveX,
-        Buffer<float> waveY,
-        Buffer<float> diffX,
-        Buffer<float> slope,
-        int& outWavePointCount,
-        int& zeroIndex,
-        int& oneIndex,
-        const V2WaveBuilderContext& context) noexcept = 0;
+            const std::vector<Curve>& curves,
+            int curveCount,
+            V2WaveBuffers waveBuffers,
+            int& outWavePointCount,
+            int& zeroIndex,
+            int& oneIndex,
+            const V2WaveBuilderContext& context) noexcept = 0;
 };
 
 class V2SamplerStage {
@@ -285,9 +303,7 @@ public:
     virtual ~V2SamplerStage() = default;
 
     virtual V2RenderResult run(
-        Buffer<float> waveX,
-        Buffer<float> waveY,
-        Buffer<float> slope,
-        Buffer<float> output,
-        const V2SamplerContext& context) noexcept = 0;
+            const V2WaveBuffers& waveBuffers,
+            Buffer<float> output,
+            const V2SamplerContext& context) noexcept = 0;
 };

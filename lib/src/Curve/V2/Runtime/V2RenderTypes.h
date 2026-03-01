@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+
+#include <Curve/IDeformer.h>
 #include <Curve/Intercept.h>
 
 enum class V2ScalingType {
@@ -13,6 +16,85 @@ struct V2DeformRegion {
     float amplitude{0.0f};
     Intercept start{};
     Intercept end{};
+};
+
+struct V2DecoupledDeformContext {
+    IDeformer* path{nullptr};
+    const std::vector<V2DeformRegion>* deformRegions{nullptr};
+    int noiseSeed{0};
+    int phaseOffsetSeed{0};
+    int vertOffsetSeed{0};
+
+    bool isEnabled() const noexcept {
+        return path != nullptr && deformRegions != nullptr && ! deformRegions->empty();
+    }
+};
+
+struct V2WaveBuffers {
+    Buffer<float> waveX;
+    Buffer<float> waveY;
+    Buffer<float> diffX;
+    Buffer<float> slope;
+
+    V2WaveBuffers() = default;
+
+    V2WaveBuffers(
+        Buffer<float> waveX,
+        Buffer<float> waveY,
+        Buffer<float> diffX,
+        Buffer<float> slope) noexcept :
+            waveX(waveX)
+        ,   waveY(waveY)
+        ,   diffX(diffX)
+        ,   slope(slope)
+    {}
+
+    void clear() noexcept {
+        waveX = Buffer<float>();
+        waveY = Buffer<float>();
+        diffX = Buffer<float>();
+        slope = Buffer<float>();
+    }
+
+    bool hasStorage() const noexcept {
+        return ! waveX.empty();
+    }
+
+    void zeroIfAllocated() noexcept {
+        if (! hasStorage()) {
+            return;
+        }
+
+        waveX.zero();
+        waveY.zero();
+        diffX.zero();
+        slope.zero();
+    }
+
+    bool canContain(int wavePointCount) const noexcept {
+        return wavePointCount > 1
+            && wavePointCount <= waveX.size()
+            && wavePointCount <= waveY.size();
+    }
+
+    void assignSized(V2WaveBuffers& out, int wavePointCount) const noexcept {
+        const int slopeCount = jmax(0, wavePointCount - 1);
+        out.waveX = waveX.withSize(wavePointCount);
+        out.waveY = waveY.withSize(wavePointCount);
+        out.diffX = diffX.withSize(slopeCount);
+        out.slope = slope.withSize(slopeCount);
+    }
+
+    void copyToSized(V2WaveBuffers& out, int wavePointCount) const noexcept {
+        waveX.withSize(wavePointCount).copyTo(out.waveX.withSize(wavePointCount));
+        waveY.withSize(wavePointCount).copyTo(out.waveY.withSize(wavePointCount));
+
+        const int slopeCount = jmax(0, wavePointCount - 1);
+        if (slopeCount > 0) {
+            diffX.withSize(slopeCount).copyTo(out.diffX.withSize(slopeCount));
+            slope.withSize(slopeCount).copyTo(out.slope.withSize(slopeCount));
+        }
+    }
 };
 
 struct V2CapacitySpec {

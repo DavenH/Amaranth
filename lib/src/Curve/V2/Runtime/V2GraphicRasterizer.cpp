@@ -132,14 +132,9 @@ bool V2GraphicRasterizer::sampleArtifacts(
 
     V2SamplerContext samplerContext(
         samplerRequest,
-        artifacts.waveX.size(),
+        artifacts.waveBuffers.waveX.size(),
         artifacts.zeroIndex,
         artifacts.oneIndex);
-    result = sampler.run(
-        artifacts.waveX,
-        artifacts.waveY,
-        artifacts.slope,
-        output,
-        samplerContext);
+    result = sampler.run(artifacts.waveBuffers, output, samplerContext);
     return result.rendered;
 }

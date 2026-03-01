@@ -13,10 +13,10 @@ void V2RasterizerWorkspace::prepare(const V2CapacitySpec& capacities) {
 
     waveMemory.ensureSize(4 * capacities.maxWavePoints);
     waveMemory.resetPlacement();
-    waveX = waveMemory.place(capacities.maxWavePoints);
-    waveY = waveMemory.place(capacities.maxWavePoints);
-    slope = waveMemory.place(capacities.maxWavePoints);
-    diffX = waveMemory.place(capacities.maxWavePoints);
+    waveBuffers.waveX = waveMemory.place(capacities.maxWavePoints);
+    waveBuffers.waveY = waveMemory.place(capacities.maxWavePoints);
+    waveBuffers.slope = waveMemory.place(capacities.maxWavePoints);
+    waveBuffers.diffX = waveMemory.place(capacities.maxWavePoints);
 }
 
 void V2RasterizerWorkspace::reset() {
@@ -24,12 +24,7 @@ void V2RasterizerWorkspace::reset() {
     curves.clear();
     deformRegions.clear();
 
-    if (! waveX.empty()) {
-        waveX.zero();
-        waveY.zero();
-        slope.zero();
-        diffX.zero();
-    }
+    waveBuffers.zeroIfAllocated();
 }
 
 bool V2RasterizerWorkspace::isPrepared() const noexcept {

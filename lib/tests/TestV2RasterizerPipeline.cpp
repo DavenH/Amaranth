@@ -168,7 +168,7 @@ V2RenderResult renderFromFixedIntercepts(
     V2InterpolatorContext interpolatorContext;
 
     V2PositionerContext positionerContext;
-    positionerContext.scaling = MeshRasterizer::Unipolar;
+    positionerContext.scaling = V2ScalingType::Unipolar;
     positionerContext.cyclic = cyclic;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
@@ -196,12 +196,18 @@ V2RenderResult renderFromFixedIntercepts(
 }
 
 void makeReferenceSamples(
-    Buffer<float> waveX,
-    Buffer<float> waveY,
-    Buffer<float> slope,
-    int zeroIndex,
-    Buffer<float> output,
-    double deltaX) {
+        const V2WaveBuffers& waveBuffers,
+        int wavePointCount,
+        int zeroIndex,
+        Buffer<float> output,
+        double deltaX) {
+    V2WaveBuffers sampledWaveBuffers;
+    waveBuffers.assignSized(sampledWaveBuffers, wavePointCount);
+
+    Buffer<float> waveX = sampledWaveBuffers.waveX;
+    Buffer<float> waveY = sampledWaveBuffers.waveY;
+    Buffer<float> slope = sampledWaveBuffers.slope;
+
     if (waveX.size() < 2 || waveY.size() < 2 || slope.size() < 1 || output.empty() || deltaX <= 0.0) {
         output.zero();
         return;
@@ -262,7 +268,7 @@ bool renderAndBuildReferenceFromFixedIntercepts(
     V2InterpolatorContext interpolatorContext;
 
     V2PositionerContext positionerContext;
-    positionerContext.scaling = MeshRasterizer::Unipolar;
+    positionerContext.scaling = V2ScalingType::Unipolar;
     positionerContext.cyclic = cyclic;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
@@ -316,10 +322,7 @@ bool renderAndBuildReferenceFromFixedIntercepts(
     if (! waveBuilder.run(
             workspace.curves,
             curveCount,
-            workspace.waveX,
-            workspace.waveY,
-            workspace.diffX,
-            workspace.slope,
+            workspace.waveBuffers,
             wavePointCount,
             zeroIndex,
             oneIndex,
@@ -328,9 +331,8 @@ bool renderAndBuildReferenceFromFixedIntercepts(
     }
 
     makeReferenceSamples(
-        workspace.waveX.withSize(wavePointCount),
-        workspace.waveY.withSize(wavePointCount),
-        workspace.slope.withSize(wavePointCount - 1),
+        workspace.waveBuffers,
+        wavePointCount,
         zeroIndex,
         expected,
         samplerContext.request.deltaX);
@@ -375,7 +377,7 @@ TEST_CASE("V2 positioner stages normalize order and scaling", "[curve][v2][raste
     int count = static_cast<int>(intercepts.size());
 
     V2PositionerContext linearContext;
-    linearContext.scaling = MeshRasterizer::Bipolar;
+    linearContext.scaling = V2ScalingType::Bipolar;
     linearContext.minX = 0.0f;
     linearContext.maxX = 1.0f;
 
@@ -389,7 +391,7 @@ TEST_CASE("V2 positioner stages normalize order and scaling", "[curve][v2][raste
     REQUIRE(intercepts[2].y <= 1.0f);
 
     V2PositionerContext cyclicContext;
-    cyclicContext.scaling = MeshRasterizer::Unipolar;
+    cyclicContext.scaling = V2ScalingType::Unipolar;
     cyclicContext.minX = 0.0f;
     cyclicContext.maxX = 1.0f;
 
@@ -413,7 +415,7 @@ TEST_CASE("V2 composite positioner composes reusable stages", "[curve][v2][raste
     int composedCount = static_cast<int>(composed.size());
 
     V2PositionerContext context;
-    context.scaling = MeshRasterizer::Bipolar;
+    context.scaling = V2ScalingType::Bipolar;
     context.minX = 0.0f;
     context.maxX = 1.0f;
 
@@ -463,7 +465,7 @@ TEST_CASE("V2 point-path positioner stage can be inserted into composed pipeline
     ConstantDeformer deformer(1.0f);
 
     V2PositionerContext context;
-    context.scaling = MeshRasterizer::Bipolar;
+    context.scaling = V2ScalingType::Bipolar;
     context.cyclic = true;
     context.minX = 0.0f;
     context.maxX = 1.0f;
@@ -539,7 +541,7 @@ TEST_CASE("V2 point-path stage supports noOffsetAtEnds suppression and legacy ti
     V2PointPathPositionerStage stage;
 
     V2PositionerContext legacyContext;
-    legacyContext.scaling = MeshRasterizer::Bipolar;
+    legacyContext.scaling = V2ScalingType::Bipolar;
     legacyContext.cyclic = true;
     legacyContext.minX = 0.0f;
     legacyContext.maxX = 1.0f;
@@ -639,10 +641,7 @@ TEST_CASE("V2 wave builder supports component deformer and decoupled deform-regi
     REQUIRE(waveBuilder.run(
         curves,
         static_cast<int>(curves.size()),
-        workspace.waveX,
-        workspace.waveY,
-        workspace.diffX,
-        workspace.slope,
+        workspace.waveBuffers,
         waveCount,
         zeroIndex,
         oneIndex,
@@ -651,7 +650,7 @@ TEST_CASE("V2 wave builder supports component deformer and decoupled deform-regi
     REQUIRE(waveCount > 1);
     REQUIRE(workspace.deformRegions.empty());
 
-    float directSum = workspace.waveY.withSize(waveCount).sum();
+    float directSum = workspace.waveBuffers.waveY.withSize(waveCount).sum();
 
     V2WaveBuilderContext decoupledContext(
         true,
@@ -671,10 +670,7 @@ TEST_CASE("V2 wave builder supports component deformer and decoupled deform-regi
     REQUIRE(waveBuilder.run(
         curves,
         static_cast<int>(curves.size()),
-        workspace.waveX,
-        workspace.waveY,
-        workspace.diffX,
-        workspace.slope,
+        workspace.waveBuffers,
         waveCount,
         zeroIndex,
         oneIndex,
@@ -683,7 +679,7 @@ TEST_CASE("V2 wave builder supports component deformer and decoupled deform-regi
     REQUIRE(! workspace.deformRegions.empty());
     REQUIRE(workspace.deformRegions[0].deformChan == 0);
     REQUIRE(workspace.deformRegions[0].amplitude > 0.0f);
-    REQUIRE(workspace.waveY.withSize(waveCount).sum() < directSum);
+    REQUIRE(workspace.waveBuffers.waveY.withSize(waveCount).sum() < directSum);
 }
 
 TEST_CASE("V2 sampler stage applies decoupled deform regions at sample time", "[curve][v2][raster][sampler][decoupled]") {
@@ -703,8 +699,8 @@ TEST_CASE("V2 sampler stage applies decoupled deform regions at sample time", "[
     slope.zero();
     output.zero();
 
-    std::vector<MeshRasterizer::DeformRegion> deformRegions;
-    MeshRasterizer::DeformRegion region;
+    std::vector<V2DeformRegion> deformRegions;
+    V2DeformRegion region;
     region.deformChan = 0;
     region.amplitude = 1.0f;
     region.start = Intercept(0.0f, 0.0f);
@@ -718,10 +714,12 @@ TEST_CASE("V2 sampler stage applies decoupled deform regions at sample time", "[
     context.request.scale = 1;
     context.wavePointCount = 3;
     context.zeroIndex = 0;
-    context.decoupledPath = &deformer;
-    context.deformRegions = &deformRegions;
+    context.decoupledDeform.path = &deformer;
+    context.decoupledDeform.deformRegions = &deformRegions;
 
-    V2RenderResult result = sampler.run(waveX, waveY, slope, output, context);
+    V2WaveBuffers waveBuffers(waveX, waveY, Buffer<float>(), slope);
+
+    V2RenderResult result = sampler.run(waveBuffers, output, context);
     REQUIRE(result.rendered);
     REQUIRE(result.samplesWritten == output.size());
     for (int i = 0; i < output.size(); ++i) {
@@ -746,7 +744,7 @@ TEST_CASE("V2 rasterizer graph runs interpolation and positioning with workspace
 
     V2InterpolatorContext interpolatorContext;
     V2PositionerContext positionerContext;
-    positionerContext.scaling = MeshRasterizer::Unipolar;
+    positionerContext.scaling = V2ScalingType::Unipolar;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
 
@@ -829,7 +827,7 @@ TEST_CASE("V2 rasterizer graph renders first end-to-end waveform buffer", "[curv
     interpolatorContext.wrapPhases = false;
 
     V2PositionerContext positionerContext;
-    positionerContext.scaling = MeshRasterizer::Unipolar;
+    positionerContext.scaling = V2ScalingType::Unipolar;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
 
@@ -934,7 +932,7 @@ TEST_CASE("V2 graph rejects intercept overflow beyond prepared capacity", "[curv
 
     V2InterpolatorContext interpolatorContext;
     V2PositionerContext positionerContext;
-    positionerContext.scaling = MeshRasterizer::Unipolar;
+    positionerContext.scaling = V2ScalingType::Unipolar;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
 
@@ -970,7 +968,7 @@ TEST_CASE("V2 render path keeps workspace capacities stable across repeated call
     V2InterpolatorContext interpolatorContext;
 
     V2PositionerContext positionerContext;
-    positionerContext.scaling = MeshRasterizer::Unipolar;
+    positionerContext.scaling = V2ScalingType::Unipolar;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
 
@@ -1040,7 +1038,7 @@ TEST_CASE("V2 graph render matches independent reference sampling of built wave"
     V2InterpolatorContext interpolatorContext;
 
     V2PositionerContext positionerContext;
-    positionerContext.scaling = MeshRasterizer::Unipolar;
+    positionerContext.scaling = V2ScalingType::Unipolar;
     positionerContext.minX = 0.0f;
     positionerContext.maxX = 1.0f;
 
@@ -1094,19 +1092,15 @@ TEST_CASE("V2 graph render matches independent reference sampling of built wave"
     REQUIRE(waveBuilder.run(
         workspace.curves,
         curveCount,
-        workspace.waveX,
-        workspace.waveY,
-        workspace.diffX,
-        workspace.slope,
+        workspace.waveBuffers,
         wavePointCount,
         zeroIndex,
         oneIndex,
         waveBuilderContext));
 
     makeReferenceSamples(
-        workspace.waveX.withSize(wavePointCount),
-        workspace.waveY.withSize(wavePointCount),
-        workspace.slope.withSize(wavePointCount - 1),
+        workspace.waveBuffers,
+        wavePointCount,
         zeroIndex,
         expectedOutput,
         samplerContext.request.deltaX);

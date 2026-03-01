@@ -16,10 +16,7 @@ struct V2RasterArtifacts {
     const std::vector<ColorPoint>* colorPoints{nullptr};
     const std::vector<V2DeformRegion>* deformRegions{nullptr};
 
-    Buffer<float> waveX;
-    Buffer<float> waveY;
-    Buffer<float> diffX;
-    Buffer<float> slope;
+    V2WaveBuffers waveBuffers;
     int zeroIndex{0};
     int oneIndex{0};
 

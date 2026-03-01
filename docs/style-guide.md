@@ -175,6 +175,8 @@ This document summarises formatting patterns observed in the repository. When ed
   ```cpp
   void applyDeformers(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds = false);
   ```
+- Prefer function/method signatures with **5 parameters or fewer**.
+- When a call naturally needs more than 5 parameters, bundle related values into a small context/value object.
 
 ## Forward Declarations, Aliases, and Iterators
 
@@ -185,6 +187,8 @@ This document summarises formatting patterns observed in the repository. When ed
 
 - Boolean getters may use verbs (`doesCalcDepthDimensions`) or `is/has`; be consistent within a class
 - Group getters/setters together, with a blank line before and after
+- Avoid mutating another object's data members directly from outside that object's class.
+- Prefer intent-revealing methods on the owning type (for example `context.configureFrom(...)`) over external property assignment chains.
 
 ## Data Member Ordering & Grouping
 

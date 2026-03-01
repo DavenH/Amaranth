@@ -107,17 +107,11 @@ bool GraphicRasterizer::renderWithV2() {
     zeroIndex = artifacts.zeroIndex;
     oneIndex = artifacts.oneIndex;
 
-    int wavePointCount = artifacts.waveX.size();
+    int wavePointCount = artifacts.waveBuffers.waveX.size();
     if (wavePointCount > 0) {
         updateBuffers(wavePointCount);
-        artifacts.waveX.copyTo(waveX.withSize(wavePointCount));
-        artifacts.waveY.copyTo(waveY.withSize(wavePointCount));
-
-        int slopeCount = jmax(0, wavePointCount - 1);
-        if (slopeCount > 0) {
-            artifacts.diffX.copyTo(diffX.withSize(slopeCount));
-            artifacts.slope.copyTo(slope.withSize(slopeCount));
-        }
+        V2WaveBuffers destination(waveX, waveY, diffX, slope);
+        artifacts.waveBuffers.copyToSized(destination, wavePointCount);
     } else {
         waveX.nullify();
         waveY.nullify();

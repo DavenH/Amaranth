@@ -123,7 +123,7 @@ TEST_CASE("V2EnvRasterizer renders deterministic output for fixed inputs", "[cur
 
     V2EnvControlSnapshot controls;
     controls.morph = MorphPosition(0.2f, 0.4f, 0.8f);
-    controls.scaling = MeshRasterizer::Unipolar;
+    controls.scaling = V2ScalingType::Unipolar;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
     controls.cyclic = false;
@@ -180,7 +180,7 @@ TEST_CASE("V2EnvRasterizer loops until release then follows release region", "[c
 
     V2EnvControlSnapshot controls;
     controls.morph = MorphPosition(0.2f, 0.4f, 0.8f);
-    controls.scaling = MeshRasterizer::Unipolar;
+    controls.scaling = V2ScalingType::Unipolar;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
     controls.hasReleaseCurve = true;
@@ -277,7 +277,7 @@ TEST_CASE("V2EnvRasterizer rendered envelope is invariant to cyclic positioning 
     Buffer<float> diff = diffMemory.withSize(64);
 
     V2EnvControlSnapshot controls;
-    controls.scaling = MeshRasterizer::Unipolar;
+    controls.scaling = V2ScalingType::Unipolar;
     controls.minX = 0.0f;
     controls.maxX = 1.0f;
     controls.hasReleaseCurve = true;
@@ -327,7 +327,7 @@ TEST_CASE("V2EnvRasterizer rendered ADSR-like envelope loops at sustain and rele
     rasterizer.setInterpolatorForTesting(&fixedInterpolator);
 
     V2EnvControlSnapshot controls;
-    controls.scaling = MeshRasterizer::Unipolar;
+    controls.scaling = V2ScalingType::Unipolar;
     controls.minX = 0.0f;
     controls.maxX = 1.0f;
     controls.cyclic = false;

@@ -9,12 +9,14 @@
 
 namespace V2WaveSampling {
 inline float sampleAtPhase(
-    double phase,
-    Buffer<float> waveX,
-    Buffer<float> waveY,
-    Buffer<float> slope,
-    int wavePointCount,
-    int& ioSampleIndex) noexcept {
+        double phase,
+        const V2WaveBuffers& waveBuffers,
+        int wavePointCount,
+        int& ioSampleIndex) noexcept {
+    Buffer<float> waveX = waveBuffers.waveX;
+    Buffer<float> waveY = waveBuffers.waveY;
+    Buffer<float> slope = waveBuffers.slope;
+
     while (ioSampleIndex < wavePointCount - 2 && phase >= waveX[ioSampleIndex + 1]) {
         ++ioSampleIndex;
     }
@@ -40,23 +42,17 @@ inline float sampleAtPhase(
 }
 
 inline float sampleAtPhaseDecoupled(
-    double phase,
-    Buffer<float> waveX,
-    Buffer<float> waveY,
-    Buffer<float> slope,
-    int wavePointCount,
-    int& ioSampleIndex,
-    IDeformer* path,
-    const std::vector<V2DeformRegion>* deformRegions,
-    int noiseSeed,
-    int phaseOffsetSeed,
-    int vertOffsetSeed) noexcept {
-    float sampled = sampleAtPhase(phase, waveX, waveY, slope, wavePointCount, ioSampleIndex);
-    if (path == nullptr || deformRegions == nullptr || deformRegions->empty()) {
+        double phase,
+        const V2WaveBuffers& waveBuffers,
+        int wavePointCount,
+        int& ioSampleIndex,
+        const V2DecoupledDeformContext& deformContext) noexcept {
+    float sampled = sampleAtPhase(phase, waveBuffers, wavePointCount, ioSampleIndex);
+    if (! deformContext.isEnabled()) {
         return sampled;
     }
 
-    for (const auto& region : *deformRegions) {
+    for (const auto& region : *deformContext.deformRegions) {
         if (! NumberUtils::within<float>(static_cast<float>(phase), region.start.x, region.end.x)) {
             continue;
         }
@@ -67,12 +63,12 @@ inline float sampleAtPhaseDecoupled(
         }
 
         IDeformer::NoiseContext noise;
-        noise.noiseSeed = noiseSeed;
-        noise.phaseOffset = phaseOffsetSeed;
-        noise.vertOffset = vertOffsetSeed;
+        noise.noiseSeed = deformContext.noiseSeed;
+        noise.phaseOffset = deformContext.phaseOffsetSeed;
+        noise.vertOffset = deformContext.vertOffsetSeed;
 
         float progress = (static_cast<float>(phase) - region.start.x) / diff;
-        return sampled + region.amplitude * path->getTableValue(region.deformChan, progress, noise);
+        return sampled + region.amplitude * deformContext.path->getTableValue(region.deformChan, progress, noise);
     }
 
     return sampled;
