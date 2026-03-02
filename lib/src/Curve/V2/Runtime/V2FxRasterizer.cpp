@@ -55,13 +55,6 @@ bool V2FxRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
         artifacts);
 }
 
-bool V2FxRasterizer::renderAudio(
-    const V2RenderRequest& request,
-    Buffer<float> output,
-    V2RenderResult& result) noexcept {
-    return renderBlock(request, output, result);
-}
-
 bool V2FxRasterizer::sampleArtifacts(
     const V2RasterArtifacts& artifacts,
     const V2RenderRequest& request,

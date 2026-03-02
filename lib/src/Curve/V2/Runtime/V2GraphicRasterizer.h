@@ -18,11 +18,6 @@ public:
     bool renderIntercepts(V2RasterArtifacts& artifacts) noexcept override;
     bool renderWaveform(V2RasterArtifacts& artifacts) noexcept override;
 
-    bool renderGraphic(
-        const V2GraphicRequest& request,
-        Buffer<float> output,
-        V2GraphicResult& result) noexcept;
-
 private:
     bool sampleArtifacts(
         const V2RasterArtifacts& artifacts,

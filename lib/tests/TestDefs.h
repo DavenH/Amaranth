@@ -2,6 +2,7 @@
 #include "../src/Array/Buffer.h"
 
 #ifdef DEBUG_RENDERING
+  #include "SignalDebugger.h"
   #define DEBUG_CLEAR() SignalDebugger::instance().clearPlots()
   #define DEBUG_VIEW(data, label) SignalDebugger::instance().plotSignal(data, label)
   #define DEBUG_VIEW_OVERLAY(a, b, label) SignalDebugger::instance().plotSignalOverlay(a, b, label)

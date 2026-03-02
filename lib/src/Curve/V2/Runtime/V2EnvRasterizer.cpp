@@ -88,43 +88,6 @@ void processEnvIntercepts(
     interceptCount = static_cast<int>(intercepts.size());
 }
 
-void applyResolutionPolicy(std::vector<Curve>& curves, const V2CurveBuilderContext& context) {
-    if (curves.size() < 3) {
-        return;
-    }
-
-    if (context.lowResolution && curves.size() > 8) {
-        for (auto& curve : curves) {
-            curve.resIndex = Curve::resolutions - 1;
-            curve.setShouldInterpolate(false);
-        }
-        return;
-    }
-
-    for (auto& curve : curves) {
-        curve.setShouldInterpolate(! context.lowResolution && context.interpolateCurves);
-    }
-
-    float baseFactor = context.lowResolution ? 0.4f : context.integralSampling ? 0.05f : 0.1f;
-    float base = baseFactor / static_cast<float>(Curve::resolution);
-
-    for (int i = 1; i < static_cast<int>(curves.size()) - 1; ++i) {
-        float dx = curves[i + 1].c.x - curves[i - 1].a.x;
-
-        for (int j = 0; j < Curve::resolutions; ++j) {
-            int res = Curve::resolution >> j;
-            if (dx < base * static_cast<float>(res)) {
-                curves[i].resIndex = j;
-            }
-        }
-    }
-
-    const int padding = 2;
-    int lastIdx = static_cast<int>(curves.size()) - 1;
-    curves.front().resIndex = curves[lastIdx - 2 * (padding - 1)].resIndex;
-    curves.back().resIndex = curves[2 * padding - 1].resIndex;
-}
-
 bool buildEnvCurves(
         const std::vector<Intercept>& intercepts,
         int interceptCount,
@@ -277,13 +240,6 @@ bool V2EnvRasterizer::isReleasePending() const noexcept {
 
 double V2EnvRasterizer::getSamplePositionForTesting() const noexcept {
     return samplePosition;
-}
-
-bool V2EnvRasterizer::renderAudio(
-        const V2RenderRequest& request,
-        Buffer<float> output,
-        V2RenderResult& result) noexcept {
-    return renderBlock(request, output, result);
 }
 
 bool V2EnvRasterizer::sampleArtifacts(

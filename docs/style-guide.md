@@ -275,6 +275,10 @@ VecOps::add(x, y, z)
 
 This is a subclass of Buffer which additionally takes memory ownership of the data.
 
+Style hint: within one lexical scope (for example one test case), 
+prefer a single `ScopedAlloc<T>` and carve per-buffer views with `.place(...)` 
+instead of creating multiple same-scope `ScopedAlloc<T>` instances.
+
 
 ## Miscellaneous
 

@@ -95,6 +95,8 @@ void appendVoiceChainingPadding(
     outCurves.emplace_back(back1, back2, back3);
 }
 
+}
+
 void applyResolutionPolicy(std::vector<Curve>& curves, const V2CurveBuilderContext& context) {
     if (curves.size() < 3) {
         return;
@@ -130,7 +132,6 @@ void applyResolutionPolicy(std::vector<Curve>& curves, const V2CurveBuilderConte
     int lastIdx = static_cast<int>(curves.size()) - 1;
     curves.front().resIndex = curves[lastIdx - 2 * (padding - 1)].resIndex;
     curves.back().resIndex = curves[2 * padding - 1].resIndex;
-}
 }
 
 bool V2DefaultCurveBuilderStage::run(

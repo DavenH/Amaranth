@@ -249,7 +249,7 @@ void prepareVoiceRasterizer(V2VoiceRasterizer& rasterizer, const Mesh& mesh) {
 }
 }
 
-TEST_CASE("V2VoiceRasterizer renderAudio requires prepare and mesh", "[curve][v2][voice]") {
+TEST_CASE("V2VoiceRasterizer renderBlock requires prepare and mesh", "[curve][v2][voice]") {
     V2VoiceRasterizer rasterizer;
 
     V2RenderRequest request;
@@ -262,7 +262,7 @@ TEST_CASE("V2VoiceRasterizer renderAudio requires prepare and mesh", "[curve][v2
     Buffer<float> output = outputMemory.withSize(64);
 
     V2RenderResult result;
-    REQUIRE_FALSE(rasterizer.renderAudio(request, output, result));
+    REQUIRE_FALSE(rasterizer.renderBlock(request, output, result));
     REQUIRE_FALSE(result.rendered);
 }
 
@@ -299,9 +299,9 @@ TEST_CASE("V2VoiceRasterizer block continuity matches single long render", "[cur
     V2RenderResult resultA;
     V2RenderResult resultB;
     V2RenderResult resultFull;
-    REQUIRE(splitRender.renderAudio(splitRequest, a, resultA));
-    REQUIRE(splitRender.renderAudio(splitRequest, b, resultB));
-    REQUIRE(fullRender.renderAudio(fullRequest, full, resultFull));
+    REQUIRE(splitRender.renderBlock(splitRequest, a, resultA));
+    REQUIRE(splitRender.renderBlock(splitRequest, b, resultB));
+    REQUIRE(fullRender.renderBlock(fullRequest, full, resultFull));
 
     VecOps::sub(a, full.section(0, 64), diffA);
     VecOps::sub(b, full.section(64, 64), diffB);
@@ -335,9 +335,9 @@ TEST_CASE("V2VoiceRasterizer deterministic with phase reset", "[curve][v2][voice
 
     V2RenderResult firstResult;
     V2RenderResult secondResult;
-    REQUIRE(rasterizer.renderAudio(request, first, firstResult));
+    REQUIRE(rasterizer.renderBlock(request, first, firstResult));
     rasterizer.resetPhase(0.0);
-    REQUIRE(rasterizer.renderAudio(request, second, secondResult));
+    REQUIRE(rasterizer.renderBlock(request, second, secondResult));
 
     VecOps::sub(first, second, diff);
     float l2 = diff.normL2();
@@ -365,7 +365,7 @@ TEST_CASE("V2VoiceRasterizer phase wraps in cyclic mode", "[curve][v2][voice][ph
     Buffer<float> output = outputMemory.withSize(400);
 
     V2RenderResult result;
-    REQUIRE(rasterizer.renderAudio(request, output, result));
+    REQUIRE(rasterizer.renderBlock(request, output, result));
 
     double phase = rasterizer.getPhaseForTesting();
     REQUIRE(phase >= -0.5);
@@ -446,8 +446,8 @@ TEST_CASE("V2VoiceRasterizer chaining interpolation stays continuous across cycl
 
     V2RenderResult resultA;
     V2RenderResult resultB;
-    REQUIRE(rasterizer.renderAudio(request, cycleA, resultA));
-    REQUIRE(rasterizer.renderAudio(request, cycleB, resultB));
+    REQUIRE(rasterizer.renderBlock(request, cycleA, resultA));
+    REQUIRE(rasterizer.renderBlock(request, cycleB, resultB));
     REQUIRE(resultA.samplesWritten == cycleA.size());
     REQUIRE(resultB.samplesWritten == cycleB.size());
 
@@ -499,7 +499,7 @@ TEST_CASE("V2VoiceRasterizer chaining remains smooth across varying mesh positio
         }
 
         V2RenderResult result;
-        REQUIRE(rasterizer.renderAudio(request, current, result));
+        REQUIRE(rasterizer.renderBlock(request, current, result));
         REQUIRE(result.samplesWritten == current.size());
 
         float currentInternal = maxAdjacentStep(current);

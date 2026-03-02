@@ -97,7 +97,7 @@ bool produceCurvePieces(
 ### 1) Data Ownership
 - `RasterizerInstance` owns all long-lived state and fixed-capacity buffers.
 - `RasterizerWorkspace` is preallocated scratch memory for one rasterizer instance.
-- `RasterizerGraph` owns concrete stage objects and wires execution order.
+- `RasterizerPipeline` owns concrete stage objects and wires execution order.
 
 ### 2) Stage Interfaces
 - `InterpolatorStage`
@@ -119,10 +119,8 @@ Public rasterizer API should expose explicit phases:
 - `prepare(const PrepareSpec&)` (alloc/reserve/reset capacities)
 - `setMeshSnapshot(const MeshSnapshot&)`
 - `updateControlData(const ControlSnapshot&)`
-- `renderAudio(RenderRequest, RenderResult&)`
-- `renderGraphic(GraphicRequest, GraphicResult&)`
+- `renderBlock(RenderRequest, RenderResult&)`
 
-`renderAudio` and `renderGraphic` share stage code paths where possible, but state/config may differ.
 
 ### 5) Artifact Pipeline Interface (Implemented 2026-02-24)
 V2 rasterizers now implement a shared staged interface in `lib/src/Curve/V2/Runtime/V2RasterizerPipeline.h`:
@@ -333,7 +331,6 @@ Exit criteria:
 
 ### Architecture Cleanup
 - [x] Extract `ScalingType` from `MeshRasterizer` into a standalone V2 enum (e.g. in `V2RenderTypes.h`) to eliminate the `#include "MeshRasterizer.h"` dependency in `V2StageInterfaces.h`.
-- [ ] Migrate stage interface output parameters from `std::vector<T>&` to `std::span<T>` + count, so the no-alloc-on-audio-thread rule is structurally enforced rather than relying on pre-reserve discipline.
 - [x] Consolidate per-rasterizer artifact wiring — `V2RasterizerGraph` provides composable entry points (`buildInterceptArtifacts`, `buildCurveAndWaveArtifacts`, `buildArtifacts`, `render`), `V2RasterizerControls.h` provides factory functions for context construction, and `V2CommonControlSnapshot` hierarchy gives each rasterizer a typed control surface. Concrete rasterizers now only contain domain-specific logic (env loop/sustain, voice chaining, fx padding policy).
 
 ### Integration

@@ -74,59 +74,6 @@ bool V2GraphicRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept 
         artifacts);
 }
 
-bool V2GraphicRasterizer::renderGraphic(
-    const V2GraphicRequest& request,
-    Buffer<float> output,
-    V2GraphicResult& result) noexcept {
-    result.rendered = false;
-    result.pointsWritten = 0;
-
-    if (! workspace.isPrepared() || mesh == nullptr || output.empty() || ! request.isValid()) {
-        return false;
-    }
-
-    int numSamples = clampRequestedSamples(request.numSamples, output);
-    if (numSamples <= 0) {
-        return false;
-    }
-
-    setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositionerPipeline)
-                                  : static_cast<V2PositionerStage*>(&linearPositionerPipeline));
-
-    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(
-        mesh,
-        controls,
-        controls.primaryDimension);
-    V2PositionerContext positionerContext = makePositionerContext(controls, controls.primaryDimension);
-    V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(
-        controls,
-        request.interpolateCurves,
-        request.lowResolution);
-    V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(
-        controls,
-        curveBuilderContext.interpolateCurves);
-
-    V2RasterArtifacts artifacts;
-    if (! buildAllArtifacts(
-            interpolatorContext,
-            positionerContext,
-            curveBuilderContext,
-            waveBuilderContext,
-            artifacts)) {
-        return false;
-    }
-
-    V2RenderRequest renderRequest{numSamples, 0, 1.0 / static_cast<double>(numSamples), 1.0f, 1, false, false};
-    V2RenderResult renderResult;
-    if (! sampleArtifacts(artifacts, renderRequest, output.withSize(numSamples), renderResult)) {
-        return false;
-    }
-
-    result.rendered = renderResult.rendered;
-    result.pointsWritten = renderResult.samplesWritten;
-    return result.rendered;
-}
-
 bool V2GraphicRasterizer::sampleArtifacts(
     const V2RasterArtifacts& artifacts,
     const V2RenderRequest& request,
