@@ -301,7 +301,31 @@ TEST_CASE("V2EnvRasterizer rendered ADSR-like envelope loops at sustain and rele
     attackRequest.tempoScale = 1.0f;
     attackRequest.scale = 1;
 
-    ScopedAlloc<float> memory(130);
+    ScopedAlloc<float> memory(2048);
+
+    V2RasterArtifacts attackArtifacts;
+    REQUIRE(rasterizer.renderArtifacts(attackArtifacts));
+    REQUIRE(attackArtifacts.intercepts != nullptr);
+    REQUIRE(attackArtifacts.waveBuffers.waveX.size() > 1);
+
+    int icptCount = static_cast<int>(attackArtifacts.intercepts->size());
+    int waveCount = attackArtifacts.waveBuffers.waveX.size();
+    Buffer<float> icptX = memory.place(icptCount);
+    Buffer<float> icptY = memory.place(icptCount);
+    Buffer<float> waveX = memory.place(waveCount);
+    Buffer<float> waveY = memory.place(waveCount);
+
+    for (int i = 0; i < icptCount; ++i) {
+        icptX[i] = (*attackArtifacts.intercepts)[i].x;
+        icptY[i] = (*attackArtifacts.intercepts)[i].y;
+    }
+    attackArtifacts.waveBuffers.waveX.copyTo(waveX);
+    attackArtifacts.waveBuffers.waveY.copyTo(waveY);
+    DEBUG_VIEW(icptX, "v2_env_adsr_icpt_x");
+    DEBUG_VIEW(icptY, "v2_env_adsr_icpt_y");
+    DEBUG_VIEW(waveX, "v2_env_adsr_wave_x");
+    DEBUG_VIEW(waveY, "v2_env_adsr_wave_y");
+
     Buffer<float> attack = memory.place(30);
     V2RenderResult attackResult;
     REQUIRE(rasterizer.renderBlock(attackRequest, attack, attackResult));
