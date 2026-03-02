@@ -68,15 +68,13 @@ TEST_CASE("V2GraphicRasterizer renders after prepare and control update", "[curv
     Buffer<float> output = outputMemory.withSize(128);
     output.zero();
 
-    V2GraphicRequest request;
+    V2RenderRequest request;
     request.numSamples = output.size();
-    request.interpolateCurves = true;
-    request.lowResolution = false;
 
-    V2GraphicResult result;
-    REQUIRE(rasterizer.renderGraphic(request, output, result));
+    V2RenderResult result;
+    REQUIRE(rasterizer.renderBlock(request, output, result));
     REQUIRE(result.rendered);
-    REQUIRE(result.pointsWritten == output.size());
+    REQUIRE(result.samplesWritten == output.size());
     REQUIRE(output.sum() > 0.0f);
 }
 
@@ -87,16 +85,16 @@ TEST_CASE("V2GraphicRasterizer rejects rendering when not prepared", "[curve][v2
     V2GraphicRasterizer rasterizer;
     rasterizer.setMeshSnapshot(&scoped.mesh);
 
-    V2GraphicRequest request;
+    V2RenderRequest request;
     request.numSamples = 64;
 
     ScopedAlloc<float> outputMemory(64);
     Buffer<float> output = outputMemory.withSize(64);
 
-    V2GraphicResult result;
-    REQUIRE_FALSE(rasterizer.renderGraphic(request, output, result));
+    V2RenderResult result;
+    REQUIRE_FALSE(rasterizer.renderBlock(request, output, result));
     REQUIRE_FALSE(result.rendered);
-    REQUIRE(result.pointsWritten == 0);
+    REQUIRE(result.samplesWritten == 0);
 }
 
 TEST_CASE("V2GraphicRasterizer supports cyclic and linear positioning modes", "[curve][v2][graphic]") {
@@ -113,10 +111,8 @@ TEST_CASE("V2GraphicRasterizer supports cyclic and linear positioning modes", "[
     rasterizer.prepare(prepare);
     rasterizer.setMeshSnapshot(&scoped.mesh);
 
-    V2GraphicRequest request;
+    V2RenderRequest request;
     request.numSamples = 96;
-    request.interpolateCurves = false;
-    request.lowResolution = true;
 
     ScopedAlloc<float> linearMemory(96);
     ScopedAlloc<float> cyclicMemory(96);
@@ -133,16 +129,16 @@ TEST_CASE("V2GraphicRasterizer supports cyclic and linear positioning modes", "[
     controls.cyclic = false;
     rasterizer.updateControlData(controls);
 
-    V2GraphicResult linearResult;
-    REQUIRE(rasterizer.renderGraphic(request, linear, linearResult));
-    REQUIRE(linearResult.pointsWritten == linear.size());
+    V2RenderResult linearResult;
+    REQUIRE(rasterizer.renderBlock(request, linear, linearResult));
+    REQUIRE(linearResult.samplesWritten == linear.size());
 
     controls.cyclic = true;
     rasterizer.updateControlData(controls);
 
-    V2GraphicResult cyclicResult;
-    REQUIRE(rasterizer.renderGraphic(request, cyclic, cyclicResult));
-    REQUIRE(cyclicResult.pointsWritten == cyclic.size());
+    V2RenderResult cyclicResult;
+    REQUIRE(rasterizer.renderBlock(request, cyclic, cyclicResult));
+    REQUIRE(cyclicResult.samplesWritten == cyclic.size());
 }
 
 TEST_CASE("V2GraphicRasterizer extracts pipeline artifacts for updater parity", "[curve][v2][graphic]") {
