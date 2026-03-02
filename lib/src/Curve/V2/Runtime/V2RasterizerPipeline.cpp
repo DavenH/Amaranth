@@ -10,9 +10,10 @@ bool V2RasterizerPipeline::renderArtifacts(V2RasterArtifacts& artifacts) noexcep
 }
 
 bool V2RasterizerPipeline::renderBlock(
-    const V2RenderRequest& request,
-    Buffer<float> output,
-    V2RenderResult& result) noexcept {
+        const V2RenderRequest& request,
+        Buffer<float> output,
+        V2RenderResult& result
+) noexcept {
     result = V2RenderResult{};
 
     if (output.empty() || ! request.isValid()) {
@@ -33,9 +34,10 @@ bool V2RasterizerPipeline::renderBlock(
 }
 
 bool V2RasterizerPipeline::runInterceptStages(
-    const V2InterpolatorContext& interpolatorContext,
-    const V2PositionerContext& positionerContext,
-    int& outInterceptCount) noexcept {
+        const V2InterpolatorContext& interpolatorContext,
+        const V2PositionerContext& positionerContext,
+        int& outInterceptCount
+) noexcept {
     outInterceptCount = 0;
 
     if (interpolator_ == nullptr || positioner_ == nullptr || ! workspace.isPrepared()) {
@@ -69,9 +71,10 @@ bool V2RasterizerPipeline::runInterceptStages(
 }
 
 bool V2RasterizerPipeline::buildInterceptArtifacts(
-    const V2InterpolatorContext& interpolatorContext,
-    const V2PositionerContext& positionerContext,
-    V2RasterArtifacts& outArtifacts) noexcept {
+        const V2InterpolatorContext& interpolatorContext,
+        const V2PositionerContext& positionerContext,
+        V2RasterArtifacts& outArtifacts
+) noexcept {
     outArtifacts = V2RasterArtifacts{};
 
     int interceptCount = 0;
@@ -86,7 +89,8 @@ bool V2RasterizerPipeline::buildInterceptArtifacts(
 bool V2RasterizerPipeline::buildWaveArtifactsFromCurves(
         int curveCount,
         const V2WaveBuilderContext& waveBuilderContext,
-        V2RasterArtifacts& outArtifacts) noexcept {
+        V2RasterArtifacts& outArtifacts
+) noexcept {
     if (waveBuilder_ == nullptr || ! workspace.isPrepared()) {
         return false;
     }
@@ -131,10 +135,11 @@ bool V2RasterizerPipeline::buildWaveArtifactsFromCurves(
 }
 
 bool V2RasterizerPipeline::buildCurveAndWaveArtifacts(
-    int interceptCount,
-    const V2CurveBuilderContext& curveBuilderContext,
-    const V2WaveBuilderContext& waveBuilderContext,
-    V2RasterArtifacts& outArtifacts) noexcept {
+        int interceptCount,
+        const V2CurveBuilderContext& curveBuilderContext,
+        const V2WaveBuilderContext& waveBuilderContext,
+        V2RasterArtifacts& outArtifacts
+) noexcept {
     if (curveBuilder_ == nullptr || ! workspace.isPrepared()) {
         return false;
     }
@@ -160,11 +165,12 @@ bool V2RasterizerPipeline::buildCurveAndWaveArtifacts(
 }
 
 bool V2RasterizerPipeline::buildAllArtifacts(
-    const V2InterpolatorContext& interpolatorContext,
-    const V2PositionerContext& positionerContext,
-    const V2CurveBuilderContext& curveBuilderContext,
-    const V2WaveBuilderContext& waveBuilderContext,
-    V2RasterArtifacts& outArtifacts) noexcept {
+        const V2InterpolatorContext& interpolatorContext,
+        const V2PositionerContext& positionerContext,
+        const V2CurveBuilderContext& curveBuilderContext,
+        const V2WaveBuilderContext& waveBuilderContext,
+        V2RasterArtifacts& outArtifacts
+) noexcept {
     outArtifacts = V2RasterArtifacts{};
 
     if (curveBuilder_ == nullptr || waveBuilder_ == nullptr || ! workspace.isPrepared()) {

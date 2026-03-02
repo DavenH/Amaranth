@@ -4,14 +4,16 @@
 
 #include <JuceHeader.h>
 #include "../src/Array/Buffer.h"
+#include "../src/Audio/PitchedSample.h"
+
 using namespace juce;
 
 class SignalDebugger {
 public:
     // Configuration struct for plot dimensions and styling
     struct PlotConfig {
-        int width                 = 1280;
-        int height                = 1280;
+        int width                 = 640;
+        int height                = 640;
         int marginLeft            = 60; // Increased for y-axis labels
         int marginRight           = 90; // Increased for value labels
         int marginTop             = 30; // Increased for title
@@ -194,7 +196,7 @@ public:
         const Buffer<float>& first,
         const Buffer<float>& second,
         const String& label,
-        const OverlayConfig& overlay = OverlayConfig()) {
+        const OverlayConfig& overlay) {
         if (first.empty() || second.empty()) {
             return;
         }
@@ -308,9 +310,17 @@ public:
         writeImageArtifact(image, "lineplot_overlay", label);
     }
 
+    void plotSignalOverlay(
+        const Buffer<float>& first,
+        const Buffer<float>& second,
+        const String& label) {
+        OverlayConfig overlay;
+        plotSignalOverlay(first, second, label, overlay);
+    }
+
     void plotHeatmap(const String& label) {
         PlotData& plotData = dataMap.getReference(label);
-        vector<Buffer<float>>& gridData = plotData.gridData;
+        std::vector<Buffer<float>>& gridData = plotData.gridData;
 
         if (plotData.gridData.empty()) {
             return;

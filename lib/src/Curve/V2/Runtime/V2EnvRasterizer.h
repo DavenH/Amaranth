@@ -25,10 +25,6 @@ public:
     bool isReleasePending() const noexcept;
     double getSamplePositionForTesting() const noexcept;
 
-    bool renderAudio(
-        const V2RenderRequest& request,
-        Buffer<float> output,
-        V2RenderResult& result) noexcept;
     bool renderIntercepts(V2RasterArtifacts& artifacts) noexcept override;
     bool renderWaveform(V2RasterArtifacts& artifacts) noexcept override;
 

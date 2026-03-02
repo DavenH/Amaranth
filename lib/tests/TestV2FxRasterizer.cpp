@@ -63,7 +63,7 @@ void prepareFxRasterizer(V2FxRasterizer& rasterizer, const Mesh& mesh) {
 }
 }
 
-TEST_CASE("V2FxRasterizer renderAudio requires prepare and mesh", "[curve][v2][fx]") {
+TEST_CASE("V2FxRasterizer renderBlock requires prepare and mesh", "[curve][v2][fx]") {
     V2FxRasterizer rasterizer;
 
     V2RenderRequest request;
@@ -76,7 +76,7 @@ TEST_CASE("V2FxRasterizer renderAudio requires prepare and mesh", "[curve][v2][f
     Buffer<float> output = outputMemory.withSize(64);
 
     V2RenderResult result;
-    REQUIRE_FALSE(rasterizer.renderAudio(request, output, result));
+    REQUIRE_FALSE(rasterizer.renderBlock(request, output, result));
     REQUIRE_FALSE(result.rendered);
 }
 
@@ -107,8 +107,8 @@ TEST_CASE("V2FxRasterizer renders deterministic output for fixed controls", "[cu
 
     V2RenderResult firstResult;
     V2RenderResult secondResult;
-    REQUIRE(rasterizer.renderAudio(request, first, firstResult));
-    REQUIRE(rasterizer.renderAudio(request, second, secondResult));
+    REQUIRE(rasterizer.renderBlock(request, first, firstResult));
+    REQUIRE(rasterizer.renderBlock(request, second, secondResult));
     REQUIRE(firstResult.samplesWritten == first.size());
     REQUIRE(secondResult.samplesWritten == second.size());
 
@@ -145,7 +145,7 @@ TEST_CASE("V2FxRasterizer supports linear and cyclic modes", "[curve][v2][fx][mo
     REQUIRE(artifacts.intercepts->size() > 1);
 
     V2RenderResult linearResult;
-    REQUIRE(rasterizer.renderAudio(request, linear, linearResult));
+    REQUIRE(rasterizer.renderBlock(request, linear, linearResult));
     REQUIRE(linearResult.samplesWritten == linear.size());
 
     V2FxControlSnapshot controls;
@@ -157,7 +157,7 @@ TEST_CASE("V2FxRasterizer supports linear and cyclic modes", "[curve][v2][fx][mo
     rasterizer.updateControlData(controls);
 
     V2RenderResult cyclicResult;
-    REQUIRE(rasterizer.renderAudio(request, cyclic, cyclicResult));
+    REQUIRE(rasterizer.renderBlock(request, cyclic, cyclicResult));
     REQUIRE(cyclicResult.samplesWritten == cyclic.size());
 }
 
@@ -187,7 +187,7 @@ TEST_CASE("V2FxRasterizer intercept extraction is morph-invariant like legacy FX
     REQUIRE(artifacts.intercepts->size() > 1);
 
     V2RenderResult aResult;
-    REQUIRE(rasterizer.renderAudio(request, a, aResult));
+    REQUIRE(rasterizer.renderBlock(request, a, aResult));
     REQUIRE(aResult.samplesWritten == a.size());
 
     V2FxControlSnapshot controls;
@@ -199,7 +199,7 @@ TEST_CASE("V2FxRasterizer intercept extraction is morph-invariant like legacy FX
     rasterizer.updateControlData(controls);
 
     V2RenderResult bResult;
-    REQUIRE(rasterizer.renderAudio(request, b, bResult));
+    REQUIRE(rasterizer.renderBlock(request, b, bResult));
     REQUIRE(bResult.samplesWritten == b.size());
 
     VecOps::sub(a, b, diff);

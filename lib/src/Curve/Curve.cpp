@@ -170,6 +170,10 @@ void Curve::setResIndex(int index) {
 }
 
 void Curve::recalculateCurve() {
+    if (table == nullptr) {
+        calcTable();
+    }
+
     // the curve uses a time-guide, so no need for transform array
     if (b.padAfter || b.padBefore) {
         recalculatedPadded();

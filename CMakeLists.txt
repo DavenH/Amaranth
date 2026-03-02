@@ -21,6 +21,8 @@ endif()
 
 project(Amaranth VERSION 1.0.0)
 
+option(ENABLE_DEBUG_RENDERING "Enable SignalDebugger plot/PNG output in test binaries" OFF)
+
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.env")
     message(FATAL_ERROR
         "\n"

@@ -49,13 +49,6 @@ double V2VoiceRasterizer::getPhaseForTesting() const noexcept {
     return phase;
 }
 
-bool V2VoiceRasterizer::renderAudio(
-    const V2RenderRequest& request,
-    Buffer<float> output,
-    V2RenderResult& result) noexcept {
-    return renderBlock(request, output, result);
-}
-
 bool V2VoiceRasterizer::sampleArtifacts(
     const V2RasterArtifacts& artifacts,
     const V2RenderRequest& request,

@@ -98,9 +98,9 @@ struct V2WaveBuffers {
 };
 
 struct V2CapacitySpec {
-    int maxIntercepts{0};
-    int maxCurves{0};
-    int maxWavePoints{0};
+    int maxIntercepts{256};
+    int maxCurves{256};
+    int maxWavePoints{4096};
     int maxDeformRegions{0};
 
     bool isValid() const noexcept {

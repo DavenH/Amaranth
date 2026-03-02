@@ -3,16 +3,25 @@
 
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Array/VecOps.h"
+#include "../src/Curve/EnvelopeMesh.h"
+#include "../src/Curve/EnvRasterizer.h"
 #include "../src/Curve/V2/Runtime/V2EnvRasterizer.h"
 #include "../src/Curve/V2/Stages/V2StageInterfaces.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/VertCube.h"
+#include "TestDefs.h"
 
 namespace {
 struct ScopedMesh {
     explicit ScopedMesh(const String& name) : mesh(name) {}
     ~ScopedMesh() { mesh.destroy(); }
     Mesh mesh;
+};
+
+struct ScopedEnvelopeMesh {
+    explicit ScopedEnvelopeMesh(const String& name) : mesh(name) {}
+    ~ScopedEnvelopeMesh() { mesh.destroy(); }
+    EnvelopeMesh mesh;
 };
 
 void appendEnvTestCube(Mesh& mesh, float phaseOffset) {
@@ -42,6 +51,17 @@ void appendEnvTestCube(Mesh& mesh, float phaseOffset) {
 void populateEnvTestMesh(Mesh& mesh) {
     appendEnvTestCube(mesh, 0.0f);
     appendEnvTestCube(mesh, 0.12f);
+}
+
+float maxAbs(Buffer<float> buffer) {
+    if (buffer.empty()) {
+        return 0.0f;
+    }
+
+    float minValue = 0.0f;
+    float maxValue = 0.0f;
+    buffer.minmax(minValue, maxValue);
+    return jmax(maxValue, -minValue);
 }
 
 class FixedEnvInterpolatorStage :
@@ -88,7 +108,7 @@ TEST_CASE("V2EnvRasterizer note on/off and release trigger semantics", "[curve][
     REQUIRE_FALSE(rasterizer.consumeReleaseTrigger());
 }
 
-TEST_CASE("V2EnvRasterizer renderAudio requires prepare and mesh", "[curve][v2][env][rasterizer]") {
+TEST_CASE("V2EnvRasterizer renderBlock requires prepare and mesh", "[curve][v2][env][rasterizer]") {
     V2EnvRasterizer rasterizer;
 
     V2RenderRequest request;
@@ -102,7 +122,7 @@ TEST_CASE("V2EnvRasterizer renderAudio requires prepare and mesh", "[curve][v2][
     output.zero();
 
     V2RenderResult result;
-    REQUIRE_FALSE(rasterizer.renderAudio(request, output, result));
+    REQUIRE_FALSE(rasterizer.renderBlock(request, output, result));
     REQUIRE_FALSE(result.rendered);
     REQUIRE(result.samplesWritten == 0);
 }
@@ -114,10 +134,6 @@ TEST_CASE("V2EnvRasterizer renders deterministic output for fixed inputs", "[cur
     V2EnvRasterizer rasterizer;
 
     V2PrepareSpec prepare;
-    prepare.capacities.maxIntercepts = 32;
-    prepare.capacities.maxCurves = 64;
-    prepare.capacities.maxWavePoints = 512;
-    prepare.capacities.maxDeformRegions = 0;
     rasterizer.prepare(prepare);
     rasterizer.setMeshSnapshot(&scoped.mesh);
 
@@ -126,7 +142,6 @@ TEST_CASE("V2EnvRasterizer renders deterministic output for fixed inputs", "[cur
     controls.scaling = V2ScalingType::Unipolar;
     controls.interpolateCurves = true;
     controls.lowResolution = false;
-    controls.cyclic = false;
     controls.hasReleaseCurve = true;
     rasterizer.updateControlData(controls);
     rasterizer.noteOn();
@@ -137,20 +152,19 @@ TEST_CASE("V2EnvRasterizer renders deterministic output for fixed inputs", "[cur
     request.tempoScale = 1.0f;
     request.scale = 1;
 
-    ScopedAlloc<float> firstMemory(128);
-    ScopedAlloc<float> secondMemory(128);
-    ScopedAlloc<float> diffMemory(128);
-    Buffer<float> first = firstMemory.withSize(128);
-    Buffer<float> second = secondMemory.withSize(128);
-    Buffer<float> diff = diffMemory.withSize(128);
+    ScopedAlloc<float> memory(384);
+    Buffer<float> first = memory.place(128);
+    Buffer<float> second = memory.place(128);
+    Buffer<float> diff = memory.place(128);
     first.zero();
     second.zero();
 
     V2RenderResult firstResult;
     V2RenderResult secondResult;
-    REQUIRE(rasterizer.renderAudio(request, first, firstResult));
+    REQUIRE(rasterizer.renderBlock(request, first, firstResult));
+
     rasterizer.noteOn();
-    REQUIRE(rasterizer.renderAudio(request, second, secondResult));
+    REQUIRE(rasterizer.renderBlock(request, second, secondResult));
     REQUIRE(firstResult.samplesWritten == first.size());
     REQUIRE(secondResult.samplesWritten == second.size());
 
@@ -200,24 +214,23 @@ TEST_CASE("V2EnvRasterizer loops until release then follows release region", "[c
     request.tempoScale = 1.0f;
     request.scale = 1;
 
-    ScopedAlloc<float> loopAMemory(50);
-    ScopedAlloc<float> loopBMemory(50);
-    ScopedAlloc<float> releaseMemory(50);
-    ScopedAlloc<float> diffLoopMemory(50);
-    ScopedAlloc<float> diffReleaseMemory(50);
+    ScopedAlloc<float> memory(250);
 
-    Buffer<float> loopA = loopAMemory.withSize(50);
-    Buffer<float> loopB = loopBMemory.withSize(50);
-    Buffer<float> release = releaseMemory.withSize(50);
-    Buffer<float> diffLoop = diffLoopMemory.withSize(50);
-    Buffer<float> diffRelease = diffReleaseMemory.withSize(50);
+    Buffer<float> loopA = memory.place(50);
+    Buffer<float> loopB = memory.place(50);
+    Buffer<float> release = memory.place(50);
+    Buffer<float> diffLoop = memory.place(50);
+    Buffer<float> diffRelease = memory.place(50);
 
     V2RenderResult loopResultA;
     V2RenderResult loopResultB;
-    REQUIRE(rasterizer.renderAudio(request, loopA, loopResultA));
+
+    REQUIRE(rasterizer.renderBlock(request, loopA, loopResultA));
     double loopPosAfterA = rasterizer.getSamplePositionForTesting();
-    REQUIRE(rasterizer.renderAudio(request, loopB, loopResultB));
+
+    REQUIRE(rasterizer.renderBlock(request, loopB, loopResultB));
     double loopPosAfterB = rasterizer.getSamplePositionForTesting();
+
     REQUIRE(loopResultA.samplesWritten == loopA.size());
     REQUIRE(loopResultB.samplesWritten == loopB.size());
     REQUIRE(loopPosAfterA >= controls.loopStartX);
@@ -236,7 +249,8 @@ TEST_CASE("V2EnvRasterizer loops until release then follows release region", "[c
     REQUIRE(rasterizer.isReleasePending());
 
     V2RenderResult releaseResult;
-    REQUIRE(rasterizer.renderAudio(request, release, releaseResult));
+    REQUIRE(rasterizer.renderBlock(request, release, releaseResult));
+
     double releasePosAfter = rasterizer.getSamplePositionForTesting();
     REQUIRE(releaseResult.samplesWritten == release.size());
     REQUIRE_FALSE(rasterizer.isReleasePending());
@@ -248,66 +262,9 @@ TEST_CASE("V2EnvRasterizer loops until release then follows release region", "[c
     REQUIRE(releaseL2 >= 0.0f);
 }
 
-TEST_CASE("V2EnvRasterizer rendered envelope is invariant to cyclic positioning flag", "[curve][v2][env][rendered][positioner]") {
-    std::vector<Intercept> intercepts = {
-        Intercept(0.0f, 0.10f),
-        Intercept(0.25f, 0.95f),
-        Intercept(0.60f, 0.55f),
-        Intercept(1.20f, 0.25f)
-    };
-    FixedEnvInterpolatorStage fixedInterpolator(intercepts);
-
-    V2PrepareSpec prepare;
-    prepare.capacities.maxIntercepts = 32;
-    prepare.capacities.maxCurves = 64;
-    prepare.capacities.maxWavePoints = 512;
-    prepare.capacities.maxDeformRegions = 0;
-
-    V2RenderRequest request;
-    request.numSamples = 64;
-    request.deltaX = 0.01;
-    request.tempoScale = 1.0f;
-    request.scale = 1;
-
-    ScopedAlloc<float> linearMemory(64);
-    ScopedAlloc<float> cyclicMemory(64);
-    ScopedAlloc<float> diffMemory(64);
-    Buffer<float> linear = linearMemory.withSize(64);
-    Buffer<float> cyclic = cyclicMemory.withSize(64);
-    Buffer<float> diff = diffMemory.withSize(64);
-
-    V2EnvControlSnapshot controls;
-    controls.scaling = V2ScalingType::Unipolar;
-    controls.minX = 0.0f;
-    controls.maxX = 1.0f;
-    controls.hasReleaseCurve = true;
-
-    V2EnvRasterizer linearRasterizer;
-    linearRasterizer.prepare(prepare);
-    linearRasterizer.setInterpolatorForTesting(&fixedInterpolator);
-    controls.cyclic = false;
-    linearRasterizer.updateControlData(controls);
-    linearRasterizer.noteOn();
-
-    V2EnvRasterizer cyclicRasterizer;
-    cyclicRasterizer.prepare(prepare);
-    cyclicRasterizer.setInterpolatorForTesting(&fixedInterpolator);
-    controls.cyclic = true;
-    cyclicRasterizer.updateControlData(controls);
-    cyclicRasterizer.noteOn();
-
-    V2RenderResult linearResult;
-    V2RenderResult cyclicResult;
-    REQUIRE(linearRasterizer.renderAudio(request, linear, linearResult));
-    REQUIRE(cyclicRasterizer.renderAudio(request, cyclic, cyclicResult));
-
-    REQUIRE(linearResult.samplesWritten == linear.size());
-    REQUIRE(cyclicResult.samplesWritten == cyclic.size());
-    VecOps::sub(linear, cyclic, diff);
-    REQUIRE(diff.normL2() == 0.0f);
-}
-
 TEST_CASE("V2EnvRasterizer rendered ADSR-like envelope loops at sustain and releases after noteOff", "[curve][v2][env][rendered][adsr]") {
+    DEBUG_CLEAR();
+
     std::vector<Intercept> intercepts = {
         Intercept(0.00f, 0.00f), // attack start
         Intercept(0.12f, 1.00f), // attack peak
@@ -330,7 +287,6 @@ TEST_CASE("V2EnvRasterizer rendered ADSR-like envelope loops at sustain and rele
     controls.scaling = V2ScalingType::Unipolar;
     controls.minX = 0.0f;
     controls.maxX = 1.0f;
-    controls.cyclic = false;
     controls.hasReleaseCurve = true;
     controls.hasLoopRegion = true;
     controls.loopStartX = 0.30f;
@@ -345,11 +301,12 @@ TEST_CASE("V2EnvRasterizer rendered ADSR-like envelope loops at sustain and rele
     attackRequest.tempoScale = 1.0f;
     attackRequest.scale = 1;
 
-    ScopedAlloc<float> attackMemory(30);
-    Buffer<float> attack = attackMemory.withSize(30);
+    ScopedAlloc<float> memory(130);
+    Buffer<float> attack = memory.place(30);
     V2RenderResult attackResult;
-    REQUIRE(rasterizer.renderAudio(attackRequest, attack, attackResult));
+    REQUIRE(rasterizer.renderBlock(attackRequest, attack, attackResult));
     REQUIRE(attackResult.samplesWritten == attack.size());
+    DEBUG_VIEW(attack, "v2_env_adsr_attack");
     REQUIRE(attack[10] > attack[0]);   // attack rise
     REQUIRE(attack[29] < attack[10]);  // decay toward sustain
 
@@ -362,17 +319,15 @@ TEST_CASE("V2EnvRasterizer rendered ADSR-like envelope loops at sustain and rele
     loopRequest.tempoScale = 1.0f;
     loopRequest.scale = 1;
 
-    ScopedAlloc<float> loopAMemory(20);
-    ScopedAlloc<float> loopBMemory(20);
-    ScopedAlloc<float> loopDiffMemory(20);
-    Buffer<float> loopA = loopAMemory.withSize(20);
-    Buffer<float> loopB = loopBMemory.withSize(20);
-    Buffer<float> loopDiff = loopDiffMemory.withSize(20);
+    Buffer<float> loopA = memory.place(20);
+    Buffer<float> loopB = memory.place(20);
+    Buffer<float> loopDiff = memory.place(20);
 
     V2RenderResult loopResultA;
     V2RenderResult loopResultB;
-    REQUIRE(rasterizer.renderAudio(loopRequest, loopA, loopResultA));
-    REQUIRE(rasterizer.renderAudio(loopRequest, loopB, loopResultB));
+    REQUIRE(rasterizer.renderBlock(loopRequest, loopA, loopResultA));
+    REQUIRE(rasterizer.renderBlock(loopRequest, loopB, loopResultB));
+    DEBUG_VIEW_OVERLAY(loopA, loopB, "v2_env_adsr_loopA_vs_loopB");
 
     float internalMaxStep = 0.0f;
     for (int i = 1; i < loopA.size(); ++i) {
@@ -396,15 +351,155 @@ TEST_CASE("V2EnvRasterizer rendered ADSR-like envelope loops at sustain and rele
     REQUIRE(rasterizer.noteOff());
     REQUIRE(rasterizer.getMode() == V2EnvMode::Releasing);
 
-    ScopedAlloc<float> releaseMemory(20);
-    ScopedAlloc<float> releaseDiffMemory(20);
-    Buffer<float> release = releaseMemory.withSize(20);
-    Buffer<float> releaseDiff = releaseDiffMemory.withSize(20);
+    Buffer<float> release = memory.place(20);
+    Buffer<float> releaseDiff = memory.place(20);
     V2RenderResult releaseResult;
-    REQUIRE(rasterizer.renderAudio(loopRequest, release, releaseResult));
+    REQUIRE(rasterizer.renderBlock(loopRequest, release, releaseResult));
     REQUIRE(releaseResult.samplesWritten == release.size());
+    DEBUG_VIEW_OVERLAY(loopA, release, "v2_env_adsr_loopA_vs_release");
 
+    VecOps::sub(loopA, loopB, loopDiff);
     VecOps::sub(loopA, release, releaseDiff);
+    DEBUG_VIEW(loopDiff, "v2_env_adsr_loop_diff");
+    DEBUG_VIEW(releaseDiff, "v2_env_adsr_release_diff");
     REQUIRE(releaseDiff.normL2() > 0.0f);  // release diverges from sustain loop
     REQUIRE(release[release.size() - 1] <= release[0]); // release moves downward
+}
+
+TEST_CASE("V2EnvRasterizer parity debug overlays against legacy EnvRasterizer", "[curve][v2][env][parity][debug]") {
+    DEBUG_CLEAR();
+
+    ScopedEnvelopeMesh scoped("env-legacy-v2-parity");
+    populateEnvTestMesh(scoped.mesh);
+    INFO("mesh cubes: " << scoped.mesh.getNumCubes());
+    REQUIRE(scoped.mesh.getNumCubes() >= 2);
+
+    scoped.mesh.loopCubes.insert(scoped.mesh.getCubes()[0]);
+    scoped.mesh.sustainCubes.insert(scoped.mesh.getCubes()[1]);
+
+    EnvRasterizer legacy(nullptr, nullptr, "legacy-env-parity");
+    legacy.setMesh(&scoped.mesh);
+    legacy.setMorphPosition(MorphPosition(0.2f, 0.4f, 0.8f));
+    legacy.setScalingMode(MeshRasterizer::Unipolar);
+    legacy.setInterpolatesCurves(true);
+    legacy.setLowresCurves(false);
+    legacy.setWrapsEnds(false);
+    legacy.setLimits(0.0f, 10.0f);
+    legacy.calcCrossPoints();
+    legacy.makeCopy();
+
+    const std::vector<Intercept>& legacyIcpts = legacy.getRastData().intercepts;
+    REQUIRE(legacyIcpts.size() >= 2);
+
+    int loopIndex = -1;
+    int sustainIndex = -1;
+    legacy.getIndices(loopIndex, sustainIndex);
+    REQUIRE(sustainIndex >= 0);
+    REQUIRE(sustainIndex < static_cast<int>(legacyIcpts.size()));
+
+    bool hasLoopRegion = loopIndex >= 0 && sustainIndex > loopIndex;
+    bool hasReleaseCurve = sustainIndex < static_cast<int>(legacyIcpts.size()) - 1;
+    int releaseIndex = hasReleaseCurve
+        ? jmin(static_cast<int>(legacyIcpts.size()) - 1, sustainIndex + 1)
+        : sustainIndex;
+
+    V2EnvRasterizer v2;
+    V2PrepareSpec prepare;
+    prepare.capacities.maxIntercepts = 64;
+    prepare.capacities.maxCurves = 128;
+    prepare.capacities.maxWavePoints = 2048;
+    prepare.capacities.maxDeformRegions = 0;
+    v2.prepare(prepare);
+    v2.setMeshSnapshot(&scoped.mesh);
+
+    V2EnvControlSnapshot controls;
+    controls.morph = MorphPosition(0.2f, 0.4f, 0.8f);
+    controls.scaling = V2ScalingType::Unipolar;
+    controls.interpolateCurves = true;
+    controls.lowResolution = false;
+    controls.hasReleaseCurve = hasReleaseCurve;
+    controls.hasLoopRegion = hasLoopRegion;
+    controls.loopStartX = hasLoopRegion ? legacyIcpts[loopIndex].x : 0.0f;
+    controls.loopEndX = hasLoopRegion ? legacyIcpts[sustainIndex].x : 1.0f;
+    controls.releaseStartX = legacyIcpts[releaseIndex].x;
+    v2.updateControlData(controls);
+
+    MeshLibrary::EnvProps props{};
+    props.active = true;
+    props.dynamic = false;
+    props.tempoSync = false;
+    props.global = false;
+    props.logarithmic = false;
+    props.scale = 1;
+    props.tempoScale = 1.0f;
+
+    constexpr int numSamples = 96;
+    constexpr double deltaX = 0.01;
+
+    ScopedAlloc<float> memory(9 * numSamples);
+    Buffer<float> legacyAttack = memory.place(numSamples);
+    Buffer<float> legacyLoop = memory.place(numSamples);
+    Buffer<float> legacyRelease = memory.place(numSamples);
+    Buffer<float> v2Attack = memory.place(numSamples);
+    Buffer<float> v2Loop = memory.place(numSamples);
+    Buffer<float> v2Release = memory.place(numSamples);
+    Buffer<float> attackDiff = memory.place(numSamples);
+    Buffer<float> loopDiff = memory.place(numSamples);
+    Buffer<float> releaseDiff = memory.place(numSamples);
+
+    legacy.setNoteOn();
+    v2.noteOn();
+
+    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::graphicIndex, props, 1.0f));
+    legacy.getRenderBuffer().withSize(numSamples).copyTo(legacyAttack);
+
+    V2RenderRequest request;
+    request.numSamples = numSamples;
+    request.deltaX = deltaX;
+    request.tempoScale = 1.0f;
+    request.scale = 1;
+
+    V2RenderResult v2AttackResult;
+    REQUIRE(v2.renderBlock(request, v2Attack, v2AttackResult));
+    REQUIRE(v2AttackResult.samplesWritten == numSamples);
+
+    if (hasLoopRegion) {
+        REQUIRE(v2.transitionToLooping(true, true));
+    }
+
+    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::graphicIndex, props, 1.0f));
+    legacy.getRenderBuffer().withSize(numSamples).copyTo(legacyLoop);
+
+    V2RenderResult v2LoopResult;
+    REQUIRE(v2.renderBlock(request, v2Loop, v2LoopResult));
+    REQUIRE(v2LoopResult.samplesWritten == numSamples);
+
+    legacy.setNoteOff();
+    if (hasReleaseCurve) {
+        REQUIRE(v2.noteOff());
+    } else {
+        REQUIRE_FALSE(v2.noteOff());
+    }
+
+    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::graphicIndex, props, 1.0f));
+    legacy.getRenderBuffer().withSize(numSamples).copyTo(legacyRelease);
+
+    V2RenderResult v2ReleaseResult;
+    REQUIRE(v2.renderBlock(request, v2Release, v2ReleaseResult));
+    REQUIRE(v2ReleaseResult.samplesWritten > 0);
+
+    VecOps::sub(legacyAttack, v2Attack, attackDiff);
+    VecOps::sub(legacyLoop, v2Loop, loopDiff);
+    VecOps::sub(legacyRelease, v2Release, releaseDiff);
+
+    INFO("attack l2=" << attackDiff.normL2() << " maxAbs=" << maxAbs(attackDiff));
+    INFO("loop   l2=" << loopDiff.normL2() << " maxAbs=" << maxAbs(loopDiff));
+    INFO("rel    l2=" << releaseDiff.normL2() << " maxAbs=" << maxAbs(releaseDiff));
+
+    DEBUG_VIEW_OVERLAY(legacyAttack, v2Attack, "env_parity_attack_overlay");
+    DEBUG_VIEW(attackDiff, "env_parity_attack_diff");
+    DEBUG_VIEW_OVERLAY(legacyLoop, v2Loop, "env_parity_loop_overlay");
+    DEBUG_VIEW(loopDiff, "env_parity_loop_diff");
+    DEBUG_VIEW_OVERLAY(legacyRelease, v2Release, "env_parity_release_overlay");
+    DEBUG_VIEW(releaseDiff, "env_parity_release_diff");
 }

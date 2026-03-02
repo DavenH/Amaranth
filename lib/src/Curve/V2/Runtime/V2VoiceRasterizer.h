@@ -18,10 +18,6 @@ public:
     void resetPhase(double phase = 0.0) noexcept;
     double getPhaseForTesting() const noexcept;
 
-    bool renderAudio(
-        const V2RenderRequest& request,
-        Buffer<float> output,
-        V2RenderResult& result) noexcept;
     bool renderIntercepts(V2RasterArtifacts& artifacts) noexcept override;
     bool renderWaveform(V2RasterArtifacts& artifacts) noexcept override;
 

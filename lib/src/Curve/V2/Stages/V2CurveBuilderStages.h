@@ -2,6 +2,8 @@
 
 #include "V2StageInterfaces.h"
 
+void applyResolutionPolicy(std::vector<Curve>& curves, const V2CurveBuilderContext& context);
+
 class V2DefaultCurveBuilderStage :
         public V2CurveBuilderStage {
 public:
