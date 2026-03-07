@@ -4,17 +4,17 @@
 #include "../Stages/V2InterpolatorStages.h"
 #include "../Stages/V2PositionerStages.h"
 #include "../Stages/V2WaveBuilderStages.h"
-#include "V2RasterizerPipeline.h"
-#include "V2RasterizerControls.h"
+#include "../Orchestration/V2RasterizerPipeline.h"
+#include "../Orchestration/V2RasterizerControls.h"
 
-class V2GraphicRasterizer :
+class V2FxRasterizer :
         public V2RasterizerPipeline {
 public:
-    V2GraphicRasterizer();
+    V2FxRasterizer();
 
     void prepare(const V2PrepareSpec& spec);
     void setMeshSnapshot(const Mesh* meshSnapshot) noexcept;
-    void updateControlData(const V2GraphicControlSnapshot& snapshot) noexcept;
+    void updateControlData(const V2FxControlSnapshot& snapshot) noexcept;
     bool renderIntercepts(V2RasterArtifacts& artifacts) noexcept override;
     bool renderWaveform(V2RasterArtifacts& artifacts) noexcept override;
 
@@ -25,17 +25,16 @@ private:
         Buffer<float> output,
         V2RenderResult& result) noexcept override;
 
-    V2TrilinearInterpolatorStage interpolator;
+    V2FxVertexInterpolatorStage interpolator;
     V2ClampOrWrapPositionerStage linearClampPositioner{false};
     V2ClampOrWrapPositionerStage cyclicClampPositioner{true};
     V2ApplyScalingPositionerStage scalingPositioner;
     V2PointPathPositionerStage pointPathPositioner;
     V2SortAndOrderPositionerStage orderPositioner;
     V2CompositePositionerStage linearPositionerPipeline;
-    V2CompositePositionerStage cyclicPositionerPipeline;
     V2DefaultCurveBuilderStage curveBuilder;
     V2DefaultWaveBuilderStage waveBuilder;
 
     const Mesh* mesh{nullptr};
-    V2GraphicControlSnapshot controls{};
+    V2FxControlSnapshot controls{};
 };

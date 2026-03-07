@@ -1,5 +1,5 @@
 #include "V2VoiceRasterizer.h"
-#include "V2WaveSampling.h"
+#include "../Sampling/V2WaveSampling.h"
 
 V2VoiceRasterizer::V2VoiceRasterizer() {
     setInterpolator(&interpolator);

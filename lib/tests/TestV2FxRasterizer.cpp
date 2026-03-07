@@ -2,7 +2,7 @@
 
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Array/VecOps.h"
-#include "../src/Curve/V2/Runtime/V2FxRasterizer.h"
+#include "../src/Curve/V2/Rasterizers/V2FxRasterizer.h"
 #include "../src/Curve/V2/Stages/V2CurveBuilderStages.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/VertCube.h"

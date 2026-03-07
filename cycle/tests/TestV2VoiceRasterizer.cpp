@@ -6,7 +6,7 @@
 #include <Array/ScopedAlloc.h>
 #include <Array/VecOps.h>
 #include <Curve/Mesh.h>
-#include <Curve/V2/Runtime/V2VoiceRasterizer.h>
+#include <Curve/V2/Rasterizers/V2VoiceRasterizer.h>
 #include <Curve/VertCube.h>
 
 namespace {

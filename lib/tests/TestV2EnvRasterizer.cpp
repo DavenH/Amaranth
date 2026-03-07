@@ -5,7 +5,7 @@
 #include "../src/Array/VecOps.h"
 #include "../src/Curve/EnvelopeMesh.h"
 #include "../src/Curve/EnvRasterizer.h"
-#include "../src/Curve/V2/Runtime/V2EnvRasterizer.h"
+#include "../src/Curve/V2/Rasterizers/V2EnvRasterizer.h"
 #include "../src/Curve/V2/Stages/V2StageInterfaces.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/VertCube.h"

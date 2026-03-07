@@ -5,8 +5,8 @@
 #include <Array/Buffer.h>
 #include <Curve/IDeformer.h>
 #include <Util/NumberUtils.h>
-#include <Curve/V2/Runtime/V2PhasePolicies.h>
-#include <Curve/V2/Runtime/V2RenderTypes.h>
+#include <Curve/V2/Sampling/V2PhasePolicies.h>
+#include <Curve/V2/Core/V2RenderTypes.h>
 
 namespace V2WaveSampling {
 inline float sampleAtPhase(

@@ -7,7 +7,7 @@
 #include <Curve/Intercept.h>
 #include <Curve/Mesh.h>
 #include <Obj/MorphPosition.h>
-#include <Curve/V2/Runtime/V2RenderTypes.h>
+#include <Curve/V2/Core/V2RenderTypes.h>
 
 struct V2PathContext {
     IDeformer* path{nullptr};
