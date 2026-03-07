@@ -7,8 +7,8 @@
 #include <Curve/Intercept.h>
 #include <Obj/ColorPoint.h>
 #include <Curve/V2/Stages/V2StageInterfaces.h>
-#include <Curve/V2/Runtime/V2RenderTypes.h>
-#include "V2RasterizerWorkspace.h"
+#include <Curve/V2/Core/V2RenderTypes.h>
+#include "../Core/V2RasterizerWorkspace.h"
 
 struct V2RasterArtifacts {
     const std::vector<Intercept>* intercepts{nullptr};

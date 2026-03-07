@@ -4,8 +4,8 @@
 #include "../Stages/V2InterpolatorStages.h"
 #include "../Stages/V2PositionerStages.h"
 #include "../Stages/V2WaveBuilderStages.h"
-#include "V2RasterizerPipeline.h"
-#include "V2RasterizerControls.h"
+#include "../Orchestration/V2RasterizerPipeline.h"
+#include "../Orchestration/V2RasterizerControls.h"
 
 class V2VoiceRasterizer :
         public V2RasterizerPipeline {

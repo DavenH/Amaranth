@@ -7,7 +7,7 @@
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/MeshRasterizer.h"
-#include "../src/Curve/V2/Runtime/V2GraphicRasterizer.h"
+#include "../src/Curve/V2/Rasterizers/V2GraphicRasterizer.h"
 #include "../src/Curve/VertCube.h"
 
 namespace RasterizerParityHarness {
@@ -267,13 +267,11 @@ private:
         Buffer<float> samples = sampleMemory.withSize(config.sampleCount);
         samples.zero();
 
-        V2GraphicRequest request;
+        V2RenderRequest request;
         request.numSamples = config.sampleCount;
-        request.interpolateCurves = config.interpolateCurves;
-        request.lowResolution = config.lowResolution;
 
-        V2GraphicResult result;
-        if (! v2.renderGraphic(request, samples, result) || ! result.rendered) {
+        V2RenderResult result;
+        if (! v2.renderBlock(request, samples, result) || ! result.rendered) {
             return false;
         }
 

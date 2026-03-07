@@ -123,7 +123,7 @@ Public rasterizer API should expose explicit phases:
 
 
 ### 5) Artifact Pipeline Interface (Implemented 2026-02-24)
-V2 rasterizers now implement a shared staged interface in `lib/src/Curve/V2/Runtime/V2RasterizerPipeline.h`:
+V2 rasterizers now implement a shared staged interface in `lib/src/Curve/V2/Orchestration/V2RasterizerPipeline.h`:
 
 - `renderIntercepts(V2RasterArtifacts&)`
 - `renderWaveform(V2RasterArtifacts&)`
@@ -236,8 +236,8 @@ Exit criteria:
 
 ### Progress Snapshot (2026-02-15)
 - Completed scaffold under `lib/src/Curve/V2/`:
-  - `Runtime/V2RenderTypes.h`
-  - `Runtime/V2RasterizerWorkspace.h/.cpp`
+  - `Core/V2RenderTypes.h`
+  - `Core/V2RasterizerWorkspace.h/.cpp`
   - `Stages/V2StageInterfaces.h`
   - `State/V2EnvStateMachine.h/.cpp`
 - Added concrete stage implementations:
@@ -249,13 +249,13 @@ Exit criteria:
 - Added graph orchestration:
   - `Runtime/V2RasterizerGraph.h/.cpp`
 - Added initial concrete v2 graphic rasterizer:
-  - `Runtime/V2GraphicRasterizer.h/.cpp`
+  - `Rasterizers/V2GraphicRasterizer.h/.cpp`
 - Added initial concrete v2 env rasterizer:
-  - `Runtime/V2EnvRasterizer.h/.cpp`
+  - `Rasterizers/V2EnvRasterizer.h/.cpp`
 - Added initial concrete v2 voice rasterizer:
-  - `Runtime/V2VoiceRasterizer.h/.cpp`
+  - `Rasterizers/V2VoiceRasterizer.h/.cpp`
 - Added initial concrete v2 fx rasterizer:
-  - `Runtime/V2FxRasterizer.h/.cpp`
+  - `Rasterizers/V2FxRasterizer.h/.cpp`
 - Added tests:
   - `lib/tests/TestV2EnvStateMachine.cpp`
   - `lib/tests/TestV2RasterizerPipeline.cpp`
