@@ -60,18 +60,7 @@ public:
      */
     void setRemovesOffset(bool does) { removeOffset = does; }
 
-    Buffer<Complex32> getComplex() const {
-        int size = 1 << (order - 1);
-      #ifdef USE_ACCELERATE
-        jassert(complex.size() >= size);
-        vDSP_ztoc(&splitComplex, 1, (DSPComplex*) complex.get(), 2, complex.size());
-        return complex;
-      #else
-        jassert(fftBuffer.size() >= size * 2 + 2);
-
-        return fftBuffer.toType<Complex32>();
-      #endif
-    }
+    Buffer<Complex32> getComplex() const;
 
     /*
      * Returns the power spectrum of the FFT data

@@ -1,6 +1,7 @@
 #include "VecOps.h"
 #include "ArrayDefs.h"
 #include "ScopedAlloc.h"
+#include <cstring>
 int globalVecOpsSizeErrorCount = 0;
 
 #define ERROR_COUNTER globalVecOpsSizeErrorCount
@@ -9,20 +10,61 @@ int globalVecOpsSizeErrorCount = 0;
 #define VIMAGE_H
 #include <Accelerate/Accelerate.h>
 
-#define FN_ARG_PATTERN   src1.get(), 1, src2.get(), 1, dst.get(), 1, vDSP_Length(dst.size())
 #define MOVE_ARG_PATTERN src.get(), dst.get(), 1, src.size(), 1, 1
-#define CPLX_ARG_PATTERN &srcA, 2, &srcB, 2, &dest, 2, vDSP_Length(dst.size())
 
-#define declareForF32_F64_Cplx(op, conjArg) \
-    template<> void VecOps::op(SRCA_SRCB_DST(Float32)) { BUFFS_DST_CHECK vDSP_v##op(FN_ARG_PATTERN); } \
-    template<> void VecOps::op(SRCA_SRCB_DST(Float64)) { BUFFS_DST_CHECK vDSP_v##op##D(FN_ARG_PATTERN); } \
-    template<> void VecOps::op(SRCA_SRCB_DST(Complex32)) { CPLX_TRIADIC_SETUP(src1, src2, dst); vDSP_zv##op(CPLX_ARG_PATTERN conjArg); }
+template<>
+void VecOps::add(Buffer<Float32> src1, Buffer<Float32> src2, Buffer<Float32> dst) {
+    BUFFS_DST_CHECK
+    vDSP_vadd(src1.get(), 1, src2.get(), 1, dst.get(), 1, vDSP_Length(dst.size()));
+}
 
-// a add b -> c
-// a sub b -> c
-// a mul b -> c
-// a div b -> c
-defineAddSubMulDiv(declareForF32_F64_Cplx)
+template<>
+void VecOps::add(Buffer<Float64> src1, Buffer<Float64> src2, Buffer<Float64> dst) {
+    BUFFS_DST_CHECK
+    vDSP_vaddD(src1.get(), 1, src2.get(), 1, dst.get(), 1, vDSP_Length(dst.size()));
+}
+
+template<>
+void VecOps::add(Buffer<Complex32> src1, Buffer<Complex32> src2, Buffer<Complex32> dst) {
+    CPLX_TRIADIC_SETUP(src1, src2, dst);
+    vDSP_zvadd(&srcA, 2, &srcB, 2, &dest, 2, vDSP_Length(dst.size()));
+}
+
+template<>
+void VecOps::sub(Buffer<Float32> src1, Buffer<Float32> src2, Buffer<Float32> dst) {
+    BUFFS_DST_CHECK
+    vDSP_vsub(src2.get(), 1, src1.get(), 1, dst.get(), 1, vDSP_Length(dst.size()));
+}
+
+template<>
+void VecOps::sub(Buffer<Float64> src1, Buffer<Float64> src2, Buffer<Float64> dst) {
+    BUFFS_DST_CHECK
+    vDSP_vsubD(src2.get(), 1, src1.get(), 1, dst.get(), 1, vDSP_Length(dst.size()));
+}
+
+template<>
+void VecOps::sub(Buffer<Complex32> src1, Buffer<Complex32> src2, Buffer<Complex32> dst) {
+    CPLX_TRIADIC_SETUP(src1, src2, dst);
+    vDSP_zvsub(&srcA, 2, &srcB, 2, &dest, 2, vDSP_Length(dst.size()));
+}
+
+template<>
+void VecOps::mul(Buffer<Float32> src1, Buffer<Float32> src2, Buffer<Float32> dst) {
+    BUFFS_DST_CHECK
+    vDSP_vmul(src1.get(), 1, src2.get(), 1, dst.get(), 1, vDSP_Length(dst.size()));
+}
+
+template<>
+void VecOps::mul(Buffer<Float64> src1, Buffer<Float64> src2, Buffer<Float64> dst) {
+    BUFFS_DST_CHECK
+    vDSP_vmulD(src1.get(), 1, src2.get(), 1, dst.get(), 1, vDSP_Length(dst.size()));
+}
+
+template<>
+void VecOps::mul(Buffer<Complex32> src1, Buffer<Complex32> src2, Buffer<Complex32> dst) {
+    CPLX_TRIADIC_SETUP(src1, src2, dst);
+    vDSP_zvmul(&srcA, 2, &srcB, 2, &dest, 2, vDSP_Length(dst.size()), 0);
+}
 
 
 template<>
@@ -59,11 +101,23 @@ template<> void VecOps::divCRev(Buffer<Float32> src, Float32 k, Buffer<Float32> 
     src.copyTo(dst); dst.divCRev(k);
 }
 
-#define declareForF32_F64(op, fn) \
-    template<> void VecOps::op(SRC_DST(Float32)) { BUFFS_EQ_CHECK vDSP_##fn(MOVE_ARG_PATTERN); } \
-    template<> void VecOps::op(SRC_DST(Float64)) { BUFFS_EQ_CHECK vDSP_##fn##D(MOVE_ARG_PATTERN); }
+template<>
+void VecOps::move(Buffer<Float32> src, Buffer<Float32> dst) {
+    int size = jmin(src.size(), dst.size());
+    if (size == 0) {
+        return;
+    }
+    std::memmove(dst.get(), src.get(), size_t(size) * sizeof(Float32));
+}
 
-declareForF32_F64(move, mmov)
+template<>
+void VecOps::move(Buffer<Float64> src, Buffer<Float64> dst) {
+    int size = jmin(src.size(), dst.size());
+    if (size == 0) {
+        return;
+    }
+    std::memmove(dst.get(), src.get(), size_t(size) * sizeof(Float64));
+}
 
 template<> void VecOps::roundDown(Buffer<Float32> src, Buffer<Int8s> dst)  { vDSP_vfix8(src, 1, reinterpret_cast<char*>(dst.get()), 1, src.size()); }
 template<> void VecOps::roundDown(Buffer<Float32> src, Buffer<Int8u> dst)  {
@@ -135,23 +189,33 @@ defineDiff(Float32, vsub)
 defineDiff(Float64, vsubD)
 
 template<> void VecOps::interleave(Buffer<Float32> x, Buffer<Float32> y, Buffer<Float32> dst) {
-    if(x.empty()) return;
-    jassert(dst.size() >= 2 * x.size());
+    if (x.empty()) {
+        return;
+    }
+    if (y.size() < x.size() || dst.size() < 2 * x.size()) {
+        ++globalVecOpsSizeErrorCount;
+        return;
+    }
     DSPSplitComplex z;
     z.realp = x.get();
     z.imagp = y.get();
     auto* xp = reinterpret_cast<DSPComplex*>(dst.get());
-    vDSP_ztoc(&z, 1, xp, 1, x.size());
+    vDSP_ztoc(&z, 1, xp, 2, vDSP_Length(x.size()));
 }
 
 template<> void VecOps::interleave(Buffer<Float64> x, Buffer<Float64> y, Buffer<Float64> dst) {
-    if(x.empty()) return;
-    jassert(dst.size() >= 2 * x.size());
+    if (x.empty()) {
+        return;
+    }
+    if (y.size() < x.size() || dst.size() < 2 * x.size()) {
+        ++globalVecOpsSizeErrorCount;
+        return;
+    }
     DSPDoubleSplitComplex z;
     z.realp = x.get();
     z.imagp = y.get();
     auto* xp = reinterpret_cast<DSPDoubleComplex*>(dst.get());
-    vDSP_ztocD(&z, 1, xp, 1, x.size());
+    vDSP_ztocD(&z, 1, xp, 2, vDSP_Length(x.size()));
 }
 
 #define defineAllocate(T) template<> T* VecOps::allocate<T>(int size) { return (T*) malloc(size * sizeof(T)); }

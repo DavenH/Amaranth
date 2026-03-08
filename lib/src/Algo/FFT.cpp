@@ -133,13 +133,47 @@ void Transform::forward(Buffer<float> src) {
   #endif
 }
 
+Buffer<Complex32> Transform::getComplex() const {
+    int size = 1 << (order - 1);
+  #ifdef USE_ACCELERATE
+    jassert(size > 0);
+    jassert(complex.size() == size + 1);
+
+    auto* bins = complex.get();
+    bins[0] = Complex32(splitComplex.realp[0], 0.0f);
+
+    for (int i = 1; i < size; ++i) {
+        bins[i] = Complex32(splitComplex.realp[i], splitComplex.imagp[i]);
+    }
+
+    bins[size] = Complex32(splitComplex.imagp[0], 0.0f);
+    return complex;
+  #else
+    jassert(fftBuffer.size() >= size * 2 + 2);
+    return fftBuffer.toType<Complex32>();
+  #endif
+}
+
 void Transform::inverse(const Buffer<Complex32>& fftInput, const Buffer<float>& dest) {
   #ifdef USE_ACCELERATE
     int size = 1 << order;
-    // this mutates the fftBuffer, referenced by the splitComplex real/imag pointers
-    vDSP_ctoz(reinterpret_cast<DSPComplex *>(fftInput.get()), 1, &splitComplex, 1, size / 2);
+    int packedComplexSize = size / 2 + 1;
 
-    jassert(fftInput.size() == size + 1);
+    if (order == 0 || fftInput.empty()) {
+        return;
+    }
+    jassert(fftInput.size() == packedComplexSize);
+    if (fftInput.size() != packedComplexSize) {
+        return;
+    }
+
+    splitComplex.realp[0] = fftInput[0].real();
+    splitComplex.imagp[0] = fftInput[packedComplexSize - 1].real();
+
+    for (int i = 1; i < packedComplexSize - 1; ++i) {
+        splitComplex.realp[i] = fftInput[i].real();
+        splitComplex.imagp[i] = fftInput[i].imag();
+    }
   #elif defined(USE_IPP)
     Buffer<float> oldBuffer = fftBuffer;
     fftBuffer = fftInput.toType<Ipp32f>();

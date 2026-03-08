@@ -193,29 +193,64 @@ template<> Buffer<Float64>& Buffer<Float64>::sort() { EMPTY_CHECK vDSP_vsortD(pt
 
 template<>
 Buffer<Float32> &Buffer<Float32>::hann() {
-    if (sz == 0) return *this;
-    vDSP_hann_window(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    if (sz == 0) {
+        return *this;
+    }
+    if (sz == 1) {
+        ptr[0] = 1.0f;
+        return *this;
+    }
+
+    // Symmetric Hann (N-1 denominator) is equivalent to periodic Hann with N=sz-1,
+    // then appending a zero at the endpoint.
+    vDSP_hann_window(ptr, vDSP_Length(sz - 1), vDSP_HANN_DENORM);
+    ptr[sz - 1] = 0.0f;
     return *this;
 }
 
 template<>
 Buffer<Float64> &Buffer<Float64>::hann() {
-    if (sz == 0) return *this;
-    vDSP_hann_windowD(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    if (sz == 0) {
+        return *this;
+    }
+    if (sz == 1) {
+        ptr[0] = 1.0;
+        return *this;
+    }
+
+    vDSP_hann_windowD(ptr, vDSP_Length(sz - 1), vDSP_HANN_DENORM);
+    ptr[sz - 1] = 0.0;
     return *this;
 }
 
 template<>
 Buffer<Float32> &Buffer<Float32>::blackman() {
-    if (sz == 0) return *this;
-    vDSP_blkman_window(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    if (sz == 0) {
+        return *this;
+    }
+    if (sz == 1) {
+        ptr[0] = 1.0f;
+        return *this;
+    }
+
+    // Symmetric Blackman (N-1 denominator) follows the same mapping as Hann.
+    vDSP_blkman_window(ptr, vDSP_Length(sz - 1), vDSP_HANN_DENORM);
+    ptr[sz - 1] = 0.0f;
     return *this;
 }
 
 template<>
 Buffer<Float64> &Buffer<Float64>::blackman() {
-    if (sz == 0) return *this;
-    vDSP_blkman_windowD(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    if (sz == 0) {
+        return *this;
+    }
+    if (sz == 1) {
+        ptr[0] = 1.0;
+        return *this;
+    }
+
+    vDSP_blkman_windowD(ptr, vDSP_Length(sz - 1), vDSP_HANN_DENORM);
+    ptr[sz - 1] = 0.0;
     return *this;
 }
 
@@ -296,7 +331,6 @@ template<> Buffer<Complex32>& Buffer<Complex32>::addProduct(Buffer src1, Buffer 
     CPLX_TRIADIC_SETUP(src1, src2, (*this));
 
     vDSP_zvma(&srcA, 2, &srcB, 2, &dest, 2, &dest, 2, vDSP_Length(size));
-    vDSP_ztoc(&dest, 2, (DSPComplex*) ptr, 2, size);
     return *this;
 }
 
@@ -587,14 +621,25 @@ int Buffer<Float32>::downsampleFrom(Buffer<Float32> buff, int factor, int phase)
         return 0;
     if (factor < 0)
         factor = buff.size() / sz;
+    if (factor <= 0)
+        return 0;
     if (factor == 1) {
         buff.copyTo(*this);
         return 0;
     }
 
+    phase = ((phase % factor) + factor) % factor;
+
     const float offset = 0;
     const int srcLen = buff.size();
-    const int dstLen = srcLen / factor;
+    const int dstLen = (srcLen + factor - 1 - phase) / factor;
+    if (dstLen > sz) {
+        ++ERROR_COUNTER;
+        return phase;
+    }
+    if (dstLen <= 0) {
+        return (factor + phase - (srcLen % factor)) % factor;
+    }
 
     // Extract samples at the specified phase
     // This is equivalent to taking every nth sample where n = factor
@@ -605,7 +650,7 @@ int Buffer<Float32>::downsampleFrom(Buffer<Float32> buff, int factor, int phase)
                1,                   // Destination stride
                dstLen);             // Number of elements to process
 
-    return phase;
+    return (factor + phase - (srcLen % factor)) % factor;
 }
 
 #define implementOperators(T)                                  \
