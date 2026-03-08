@@ -129,16 +129,11 @@ public:
         // Find min/max values
         float minVal = std::numeric_limits<float>::max();
         float maxVal = std::numeric_limits<float>::lowest();
-        for (int i = 0; i < data.size(); ++i) {
-            minVal = std::min(minVal, data[i]);
-            maxVal = std::max(maxVal, data[i]);
-        }
+        data.minmax(minVal, maxVal);
 
         // Add padding to range
         float range   = maxVal - minVal;
         float padding = range * config.valuePadding;
-        float minV = minVal;
-        float maxV = maxVal;
         minVal -= padding;
         maxVal += padding;
         range = maxVal - minVal;
@@ -222,18 +217,11 @@ public:
             g.drawVerticalLine((int) x, plotArea.getY(), plotArea.getBottom());
         }
 
-        float minVal = std::numeric_limits<float>::max();
-        float maxVal = std::numeric_limits<float>::lowest();
-
-        for (int i = 0; i < first.size(); ++i) {
-            minVal = std::min(minVal, first[i]);
-            maxVal = std::max(maxVal, first[i]);
-        }
-
-        for (int i = 0; i < second.size(); ++i) {
-            minVal = std::min(minVal, second[i]);
-            maxVal = std::max(maxVal, second[i]);
-        }
+        float minV1, maxV1, minV2, maxV2;
+        first.minmax(minV1, maxV1);
+        second.minmax(minV2, maxV2);
+        float minVal = jmin(minV1, minV2);
+        float maxVal = jmin(maxV1, maxV2);
 
         float range = maxVal - minVal;
         if (range <= 0.0f) {
