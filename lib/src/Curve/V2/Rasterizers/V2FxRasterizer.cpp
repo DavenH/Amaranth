@@ -1,17 +1,7 @@
-#include "V2GraphicRasterizer.h"
-#include "V2WaveSampling.h"
+#include "V2FxRasterizer.h"
+#include "../Sampling/V2WaveSampling.h"
 
-namespace {
-int clampRequestedSamples(int requested, Buffer<float> output) {
-    if (requested <= 0 || output.empty()) {
-        return 0;
-    }
-
-    return jmin(requested, output.size());
-}
-}
-
-V2GraphicRasterizer::V2GraphicRasterizer() {
+V2FxRasterizer::V2FxRasterizer() {
     setInterpolator(&interpolator);
     setPositioner(&linearPositionerPipeline);
     setCurveBuilder(&curveBuilder);
@@ -21,51 +11,42 @@ V2GraphicRasterizer::V2GraphicRasterizer() {
     linearPositionerPipeline.addStage(&scalingPositioner);
     linearPositionerPipeline.addStage(&pointPathPositioner);
     linearPositionerPipeline.addStage(&orderPositioner);
-
-    cyclicPositionerPipeline.addStage(&cyclicClampPositioner);
-    cyclicPositionerPipeline.addStage(&scalingPositioner);
-    cyclicPositionerPipeline.addStage(&pointPathPositioner);
-    cyclicPositionerPipeline.addStage(&orderPositioner);
 }
 
-void V2GraphicRasterizer::prepare(const V2PrepareSpec& spec) {
+void V2FxRasterizer::prepare(const V2PrepareSpec& spec) {
     workspace.prepare(spec.capacities);
     controls.lowResolution = spec.lowResolution;
 }
 
-void V2GraphicRasterizer::setMeshSnapshot(const Mesh* meshSnapshot) noexcept {
+void V2FxRasterizer::setMeshSnapshot(const Mesh* meshSnapshot) noexcept {
     mesh = meshSnapshot;
 }
 
-void V2GraphicRasterizer::updateControlData(const V2GraphicControlSnapshot& snapshot) noexcept {
+void V2FxRasterizer::updateControlData(const V2FxControlSnapshot& snapshot) noexcept {
     controls = snapshot;
 }
 
-bool V2GraphicRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
+bool V2FxRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept {
     if (! workspace.isPrepared() || mesh == nullptr) {
         return false;
     }
 
-    setPositioner(controls.cyclic ? static_cast<V2PositionerStage*>(&cyclicPositionerPipeline)
-                                  : static_cast<V2PositionerStage*>(&linearPositionerPipeline));
-
-    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(
-        mesh,
-        controls,
-        controls.primaryDimension);
-    V2PositionerContext positionerContext = makePositionerContext(controls, controls.primaryDimension);
+    V2InterpolatorContext interpolatorContext = makeInterpolatorContext(mesh, controls);
+    V2PositionerContext positionerContext = makePositionerContext(controls);
 
     return buildInterceptArtifacts(interpolatorContext, positionerContext, artifacts);
 }
 
-bool V2GraphicRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
+bool V2FxRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
     if (! workspace.isPrepared()
             || artifacts.intercepts != &workspace.intercepts
             || artifacts.intercepts->empty()) {
         return false;
     }
 
-    V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(controls);
+    V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(
+        controls,
+        V2CurveBuilderContext::PaddingPolicy::FxLegacyFixed);
     V2WaveBuilderContext waveBuilderContext = makeWaveBuilderContext(controls);
     return buildCurveAndWaveArtifacts(
         static_cast<int>(artifacts.intercepts->size()),
@@ -74,7 +55,7 @@ bool V2GraphicRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept 
         artifacts);
 }
 
-bool V2GraphicRasterizer::sampleArtifacts(
+bool V2FxRasterizer::sampleArtifacts(
     const V2RasterArtifacts& artifacts,
     const V2RenderRequest& request,
     Buffer<float> output,

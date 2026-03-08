@@ -1,7 +1,7 @@
 #pragma once
 
 #include <App/SingletonAccessor.h>
-#include <Curve/V2/Runtime/V2FxRasterizer.h>
+#include <Curve/V2/Rasterizers/V2FxRasterizer.h>
 
 #include "MeshRasterizer.h"
 

@@ -6,7 +6,7 @@
 #include "RasterizerData.h"
 #include "SurfaceLine.h"
 #include "VertCube.h"
-#include <Curve/V2/Runtime/V2RenderTypes.h>
+#include <Curve/V2/Core/V2RenderTypes.h>
 #include "../Array/ScopedAlloc.h"
 #include "../Design/Updating/Updateable.h"
 #include "../Inter/Dimensions.h"

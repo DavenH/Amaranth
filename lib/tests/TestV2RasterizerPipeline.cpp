@@ -2,8 +2,8 @@
 
 #include <cmath>
 
-#include "../src/Curve/V2/Runtime/V2RasterizerPipeline.h"
-#include "../src/Curve/V2/Runtime/V2WaveSampling.h"
+#include "../src/Curve/V2/Orchestration/V2RasterizerPipeline.h"
+#include "../src/Curve/V2/Sampling/V2WaveSampling.h"
 #include "../src/Curve/V2/Stages/V2CurveBuilderStages.h"
 #include "../src/Curve/V2/Stages/V2InterpolatorStages.h"
 #include "../src/Curve/V2/Stages/V2PositionerStages.h"

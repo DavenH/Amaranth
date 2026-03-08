@@ -5,7 +5,7 @@
 #include <Array/ScopedAlloc.h>
 #include <Curve/Curve.h>
 #include <Curve/Intercept.h>
-#include <Curve/V2/Runtime/V2RenderTypes.h>
+#include <Curve/V2/Core/V2RenderTypes.h>
 
 class V2RasterizerWorkspace {
 public:

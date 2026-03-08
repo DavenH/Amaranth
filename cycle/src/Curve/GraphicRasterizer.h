@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Curve/MeshRasterizer.h>
-#include <Curve/V2/Runtime/V2GraphicRasterizer.h>
+#include <Curve/V2/Rasterizers/V2GraphicRasterizer.h>
 #include "../Updating/DynamicDetailUpdater.h"
 
 class GraphicRasterizer :

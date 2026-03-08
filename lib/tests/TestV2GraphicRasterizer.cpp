@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Array/ScopedAlloc.h"
-#include "../src/Curve/V2/Runtime/V2GraphicRasterizer.h"
+#include "../src/Curve/V2/Rasterizers/V2GraphicRasterizer.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/VertCube.h"
 

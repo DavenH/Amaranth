@@ -1,5 +1,5 @@
 #include "V2EnvRasterizer.h"
-#include "V2WaveSampling.h"
+#include "../Sampling/V2WaveSampling.h"
 
 #include <algorithm>
 
