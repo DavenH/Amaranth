@@ -2,7 +2,7 @@
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
-#include <Curve/IDeformer.h>
+#include <Curve/GuideCurveProvider.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Widgets/Knob.h>
 
@@ -13,7 +13,7 @@
 #include "../Widgets/Controls/Spacers.h"
 #include "../../App/CycleTour.h"
 #include "../../Audio/SynthAudioSource.h"
-#include "../../UI/VertexPanels/DeformerPanel.h"
+#include "../../UI/VertexPanels/GuideCurvePanel.h"
 
 const int WaveshaperUI::oversampFactors[5] = { 1, 1, 2, 4, 8 };
 
@@ -90,7 +90,7 @@ void WaveshaperUI::init() {
     waveshaper = &getObj(SynthAudioSource).getWaveshaper();
     waveshaper->setRasterizer(rasterizer);
 
-    rasterizer->setDeformer(&getObj(DeformerPanel));
+    rasterizer->setGuideCurveProvider(&getObj(GuideCurvePanel));
     rasterizer->setMesh(getMesh());
     rasterizer->performUpdate(Update);
 
@@ -297,7 +297,7 @@ void WaveshaperUI::showCoordinates() {
     float xformY = (state.currentMouse.y - getRealConstant(WaveshaperPadding)) * invSize;
 
     String message = String(xformX, 2) + ", " + String(xformY, 2);
-    getObj(IConsole).write(message, IConsole::DefaultPriority);
+    repo->getConsole().write(message, IConsole::DefaultPriority);
 }
 
 void WaveshaperUI::buttonClicked(Button* button) {
@@ -343,7 +343,7 @@ void WaveshaperUI::comboBoxChanged(ComboBox* box) {
         getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 
       #if PLUGIN_MODE
-        getObj(PluginProcessor).updateLatency();
+        repo->getPluginProcessor().updateLatency();
       #endif
 
         triggerRefreshUpdate();

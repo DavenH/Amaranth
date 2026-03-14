@@ -143,7 +143,7 @@ public:
         const String& currentFolder = getCurrentFolder();
 
         stopTimer();
-        getObj(IConsole).write({}, IConsole::DefaultPriority);
+        repo->getConsole().write({}, IConsole::DefaultPriority);
 
         overwriteMessage = {};
 

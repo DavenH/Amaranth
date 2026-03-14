@@ -95,7 +95,7 @@ void MorphSlider::mouseEnter(const MouseEvent& e) {
         default: break;
     }
 
-    getObj(IConsole).setKeys(keys);
+    repo->getConsole().setKeys(keys);
 }
 
 void MorphSlider::setDepth(const MouseEvent& e) {

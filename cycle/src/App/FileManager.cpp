@@ -32,7 +32,7 @@
 #include "../UI/Panels/Morphing/MorphPanel.h"
 #include "../UI/Panels/PlaybackPanel.h"
 #include "../UI/Panels/VertexPropertiesPanel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/GuideCurvePanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
 #include "../UI/VertexPanels/Envelope3D.h"
 #include "../UI/VertexPanels/Spectrum3D.h"
@@ -91,7 +91,7 @@ void FileManager::openCurrentPreset() {
     getObj(SynthAudioSource).allNotesOff();
 
     formatSplit(getObj(AudioHub).suspendAudio(),
-                getObj(PluginProcessor).suspendProcessing(true));
+                repo->getPluginProcessor().suspendProcessing(true));
 
     unloadWav(false);
 
@@ -133,7 +133,7 @@ void FileManager::doPostPresetLoad() {
     getObj(VertexPropertiesPanel).updateComboBoxes();
     getObj(Spectrum3D)		.validateScratchChannels();
     getObj(Waveform3D)		.validateScratchChannels();
-    getObj(DeformerPanel)	.rasterizeAllTables();
+    getObj(GuideCurvePanel)	.rasterizeAllTables();
     getObj(IrModellerUI)	.updateDspSync();
     getObj(WaveshaperUI)	.updateDspSync();
     getObj(Waveform3D)		.updateBackground(false);
@@ -145,9 +145,9 @@ void FileManager::doPostPresetLoad() {
     getObj(MorphPanel)		.setSelectedCube(nullptr, nullptr, -1, false);
 
   #if PLUGIN_MODE
-    getObj(PluginProcessor)	.suspendProcessing(false);
-    getObj(PluginProcessor)	.documentHasLoaded();
-    getObj(PluginProcessor)	.updateLatency();
+    repo->getPluginProcessor().suspendProcessing(false);
+    repo->getPluginProcessor().documentHasLoaded();
+    repo->getPluginProcessor().updateLatency();
   #else
     getObj(AudioHub)		.resumeAudio();
     getObj(AudioSourceRepo)	.setAudioProcessor(AudioSourceRepo::SynthSource);
@@ -156,7 +156,7 @@ void FileManager::doPostPresetLoad() {
     getObj(EnvelopeInter2D)	.switchedEnvelope(LayerGroups::GroupVolume, false, true);
     getObj(EnvelopeInter2D)	.waveOverlayChanged();
     getObj(MeshLibrary)		.layerChanged(LayerGroups::GroupScratch, -1);
-    getObj(MeshLibrary)		.layerChanged(LayerGroups::GroupDeformer, -1);
+    getObj(MeshLibrary)		.layerChanged(LayerGroups::GroupGuideCurve, -1);
     getObj(GeneralControls)	.updateHighlights();
     getObj(GeneralControls)	.repaint();
 

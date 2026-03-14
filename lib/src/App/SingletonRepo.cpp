@@ -4,6 +4,7 @@
 #include "AppConstants.h"
 #include "MemoryPool.h"
 #include "DocumentLibrary.h"
+#include "Transforms.h"
 #include "Doc/Document.h"
 
 #include "../Definitions.h"
@@ -54,6 +55,7 @@ void SingletonRepo::instantiate() {
     add(new Settings        (this), -200);
     add(new MeshLibrary     (this), -100);
     add(new MemoryPool      (this), -100);
+    add(new Transforms      (this), -100);
     add(new Updater         (this), -1);
     add(new LogRegions      (this), -1);
     add(new Document        (this));
@@ -150,10 +152,10 @@ void SingletonRepo::clearSingletons() {
     objects.clear(true);
 }
 
-void SingletonRepo::setDeformer(IDeformer* deformer) {
-    this->deformer = deformer;
+void SingletonRepo::setGuideCurveProvider(GuideCurveProvider* guideCurveProvider) {
+    this->guideCurveProvider = guideCurveProvider;
 
     for(auto rasterizer : rasterizers) {
-        rasterizer->setDeformer(deformer);
+        rasterizer->setGuideCurveProvider(guideCurveProvider);
     }
 }

@@ -489,7 +489,7 @@ void Dialogs::openWaveCallback(int returnId, WaveOpenData data) {
                     getObj(IrModellerUI).modelLoadedWave();
                 }
             } else {
-                getObj(IConsole).write("Failed to load audio file", IConsole::DefaultPriority);
+                repo->getConsole().write("Failed to load audio file", IConsole::DefaultPriority);
             }
         }
     }

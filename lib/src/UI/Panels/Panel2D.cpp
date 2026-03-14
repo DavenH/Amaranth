@@ -297,7 +297,7 @@ void Panel2D::drawDepthLinesAndVerts() {
     }
 }
 
-void Panel2D::drawDeformerTags() {
+void Panel2D::drawGuideCurveTags() {
     RasterizerData& data  = interactor->getRasterizer()->getRastData();
     vector<Curve>& curves = data.curves;
 
@@ -313,11 +313,11 @@ void Panel2D::drawDeformerTags() {
 
     gfx->setCurrentColour(Color(1));
 
-    if (dfrmTags.empty()) {
+    if (guideCurveTags.empty()) {
         return;
     }
 
-    float h = dfrmTags.front().getHeight();
+    float h = guideCurveTags.front().getHeight();
 
     for (auto& curve : curves) {
         Intercept& icpt = curve.b;
@@ -334,19 +334,19 @@ void Panel2D::drawDeformerTags() {
             int cumeWidth = 0;
             int numTags = 0;
             for (int j = 0; j < Vertex::numElements; ++j) {
-                int chan = cube->deformerAt(j);
+                int chan = cube->guideCurveAt(j);
 
-                if (isPositiveAndBelow(chan, (int) dfrmTags.size())) {
-                    Rectangle<float> rect = dfrmTags[chan];
+                if (isPositiveAndBelow(chan, (int) guideCurveTags.size())) {
+                    Rectangle<float> rect = guideCurveTags[chan];
 
                     float x = e.x + cumeWidth - 2;
                     float y = jmin(getHeight() - rect.getHeight()
                                  , e.y - rect.getHeight() / 2 + (numTags & 1 ? 1 : 0)); //  + 5
-                    dfrmTex->rect = Rectangle((float) roundToInt(x), (float) roundToInt(y), rect.getWidth()
+                    guideCurveTex->rect = Rectangle((float) roundToInt(x), (float) roundToInt(y), rect.getWidth()
                                             , rect.getHeight());
 
                     gfx->setCurrentColour(colors[j]);
-                    gfx->drawSubTexture(dfrmTex, rect);
+                    gfx->drawSubTexture(guideCurveTex, rect);
 
                     cumeWidth += rect.getWidth();
                     ++numTags;

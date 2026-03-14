@@ -16,7 +16,7 @@ class Bounded;
 class BoundWrapper;
 class ConfigPanel;
 class Console;
-class DeformerPanel;
+class GuideCurvePanel;
 class DerivativePanel;
 class Dragger;
 class EffectPanel;
@@ -84,7 +84,7 @@ public:
 
     enum TopTabs {
         TabSpectrum,
-        TabDeformers,
+        TabGuideCurves,
     };
 
     enum TimerIds {
@@ -116,7 +116,7 @@ public:
     void toggleEffectComponents(bool add);
     void togglePresetPage(bool add);
     void toggleEffectsWaveform2DPresets(int toShow);
-    void toggleDeformers(bool add);
+    void toggleGuideCurves(bool add);
     void toggleF2D(bool add);
     void toggleF2DGuide(bool wantToShowGuide);
     void toggleEnvPanel(bool wantToShow3D);
@@ -184,7 +184,7 @@ private:
     PanelPair* cv_middlePair;
 
     PanelPair* wave2DPair;
-    PanelPair* dfrmPair;
+    PanelPair* guideCurvePair;
     PanelPair* irmodPair;
     PanelPair* wshpPair;
 
@@ -255,7 +255,7 @@ private:
     ZoomPanel* wave2DZoomPanel;
     ZoomPanel* tubeZoomPanel;
     ZoomPanel* wsZoomPanel;
-    ZoomPanel* dfrmZoomPanel;
+    ZoomPanel* guideCurveZoomPanel;
 
     BoundWrapper* derivBounds;
     BoundWrapper* propsBounds;
@@ -298,7 +298,7 @@ private:
     Ref<Envelope2D> envelope2D;
     Ref<Envelope3D> envelope3D;
     Ref<DerivativePanel> derivPanel;
-    Ref<DeformerPanel> dfrmPanel;
+    Ref<GuideCurvePanel> guideCurvePanel;
 
     Ref<IrModellerUI> irModelUI;
     Ref<WaveshaperUI> waveshaperUI;
@@ -308,7 +308,7 @@ private:
     Ref<EqualizerUI> eqUI;
     Ref<MidiKeyboard> keyboard;
 
-    PanelGroup wave2DGroup, surfGroup, spectGroup2, spectGroup3, envGroup2, envGroup3, wshpGroup, irGroup, dfrmGroup;
+    PanelGroup wave2DGroup, surfGroup, spectGroup2, spectGroup3, envGroup2, envGroup3, wshpGroup, irGroup, guideCurveGroup;
     Array<PanelGroup*> panelGroups;
 
     OwnedArray<Deletable> deletable;

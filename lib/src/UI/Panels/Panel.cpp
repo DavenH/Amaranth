@@ -11,7 +11,7 @@
 #include "../../App/Settings.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Binary/Images.h"
-#include "../../Curve/IDeformer.h"
+#include "../../Curve/GuideCurveProvider.h"
 #include "../../Curve/MeshRasterizer.h"
 #include "../../Curve/PathRepo.h"
 #include "../../Curve/RasterizerData.h"
@@ -29,7 +29,7 @@ Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
     ,   alwaysDrawDepthLines    (false)
     ,   backgroundTempoSynced   (false)
     ,   backgroundTimeRelevant  (true)
-    ,   deformApplicable        (true)
+    ,   guideCurveApplicable        (true)
     ,   doesDrawMouseHint       (false)
     ,   drawLinesAfterFill      (false)
     ,   pendingDeformUpdate     (true)
@@ -68,7 +68,7 @@ Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
 
     ,   nameTexA                (nullptr)
     ,   nameTexB                (nullptr)
-    ,   dfrmTex                 (nullptr)
+    ,   guideCurveTex                 (nullptr)
     ,   grabTex                 (nullptr)
     ,   scalesTex               (nullptr)
 
@@ -146,7 +146,7 @@ void Panel::render() {
         gfx->drawTexture(currentNameId == NameTexture ? nameTexA : nameTexB);
 
         drawScales();
-        drawDeformerTags();
+        drawGuideCurveTags();
     }
 
     if (mouseFlag(MouseOver)) {
@@ -393,10 +393,10 @@ void Panel::handlePendingUpdates() {
     }
 
     if (Util::assignAndWereDifferent(pendingDeformUpdate, false)) {
-        createDeformerTags();
+        createGuideCurveTags();
 
-        dfrmTex->image = dfrmImage;
-        dfrmTex->bind();
+        guideCurveTex->image = guideCurveImage;
+        guideCurveTex->bind();
     }
 }
 
@@ -568,14 +568,14 @@ void Panel::setCursor() {
 }
 
 bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube* cube, int pointDim, bool haveSpeed) {
-    if (cube == nullptr || ! (deformApplicable || speedApplicable)) {
+    if (cube == nullptr || ! (guideCurveApplicable || speedApplicable)) {
         return false;
     }
 
-    int phsVsTimeChan = cube->deformerAt(Vertex::Time);
-    int ampChan       = cube->deformerAt(Vertex::Amp);
-    int phsVsRedChan  = cube->deformerAt(Vertex::Red);
-    int phsVsBlueChan = cube->deformerAt(Vertex::Blue);
+    int phsVsTimeChan = cube->guideCurveAt(Vertex::Time);
+    int ampChan       = cube->guideCurveAt(Vertex::Amp);
+    int phsVsRedChan  = cube->guideCurveAt(Vertex::Red);
+    int phsVsBlueChan = cube->guideCurveAt(Vertex::Blue);
 
     bool isTime = pointDim == Vertex::Time;
     bool isRed  = pointDim == Vertex::Red;
@@ -586,7 +586,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     bool adjustSpeed        = haveSpeed && speedApplicable && isTime;
     bool adjustPhase        = phaseSrcDim == pointDim && phaseChan >= 0;
     bool adjustAmp          = ampChan >= 0 && isTime;
-    bool anyDfrmAdjustments = (adjustPhase || adjustAmp) && deformApplicable;
+    bool anyDfrmAdjustments = (adjustPhase || adjustAmp) && guideCurveApplicable;
     const Dimensions& dims  = interactor->dims;
 
     if(! anyDfrmAdjustments && (! adjustSpeed || dims.x == Vertex::Phase)) {
@@ -599,8 +599,8 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     float blueOffset = 0;
     int scratchChan  = getLayerScratchChannel();
     float invSize    = 1 / float(linestripRes - 0.5);
-    float phaseGain  = cube->deformerAbsGain(phaseDim);
-    float ampGain    = cube->deformerAbsGain(Vertex::Amp);
+    float phaseGain  = cube->guideCurveAbsGain(phaseDim);
+    float ampGain    = cube->guideCurveAbsGain(Vertex::Amp);
 
     bool exHasPhase = adjustPhase && dims.x == Vertex::Phase;
     bool whyHasAmp  = adjustAmp && dims.y == Vertex::Amp;
@@ -617,9 +617,9 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     Buffer<float> speedEnv  = scratchContext.panelBuffer;
     Buffer<float> ramp      = cBuffer.withSize(linestripRes);
 
-    if(IDeformer* deformer = interactor->getRasterizer()->getDeformer()) {
-        phaseTable = deformer->getTable(phaseChan);
-        ampTable = deformer->getTable(ampChan);
+    if(GuideCurveProvider* guideCurveProvider = interactor->getRasterizer()->getGuideCurveProvider()) {
+        phaseTable = guideCurveProvider->getTable(phaseChan);
+        ampTable = guideCurveProvider->getTable(ampChan);
     }
 
     if(speedEnv.empty()) {
@@ -682,7 +682,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             if (exHasPhase || whyHasAmp) {
                 for (int i = 0; i < speedEnv.size(); ++i) {
                     speed = speedEnv[i];
-                    idx = int((IDeformer::tableSize - 1) * speed);
+                    idx = int((GuideCurveProvider::tableSize - 1) * speed);
 
                     if(exHasPhase) {
                         xy.x[i] = phaseGain * phaseTable[idx] + speed * (second.x - first.x);
@@ -772,7 +772,7 @@ void Panel::createNameImage(const String& displayName, bool isSecondImage, bool 
     g.drawText(lcName, r, Justification::topRight, false);
 }
 
-void Panel::createDeformerTags() {
+void Panel::createGuideCurveTags() {
     int position = 0;
     int fontScale = getSetting(PointSizeScale);
     auto& mg = getObj(MiscGraphics);
@@ -792,15 +792,15 @@ void Panel::createDeformerTags() {
         position += width;
     }
 
-    dfrmImage = Image(Image::ARGB, 512, 16, true);
-    Graphics g(dfrmImage);
+    guideCurveImage = Image(Image::ARGB, 512, 16, true);
+    Graphics g(guideCurveImage);
 
     g.drawImageAt(tempImage, 1, 1);
     g.setFont(font);
     g.setColour(Colour::greyLevel(1.f));
 
     position = 0;
-    dfrmTags.clear();
+    guideCurveTags.clear();
 
     for(int i = 0; i < 32; ++i) {
         String number(i + 1);
@@ -808,7 +808,7 @@ void Panel::createDeformerTags() {
         Rectangle r(position, 0, width, (int) font.getHeight());
         g.drawSingleLineText(number, position, (int) font.getHeight());
 
-        dfrmTags.push_back(r.toFloat());
+        guideCurveTags.push_back(r.toFloat());
         position += width;
     }
 }

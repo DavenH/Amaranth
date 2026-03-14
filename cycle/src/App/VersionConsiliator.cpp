@@ -201,7 +201,7 @@ void read2() {
 		}
 	}
 
-	validateDeformers();
+	validateGuideCurves();
 
 	// want to do this after all settings have been read from xml
 	pushMeshesToRasterizers();

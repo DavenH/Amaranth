@@ -32,7 +32,7 @@
 #include "../Effects/ReverbUI.h"
 #include "../Effects/UnisonUI.h"
 #include "../Effects/WaveshaperUI.h"
-#include "../VertexPanels/DeformerPanel.h"
+#include "../VertexPanels/GuideCurvePanel.h"
 #include "../VertexPanels/Envelope2D.h"
 #include "../VertexPanels/Envelope3D.h"
 #include "../VertexPanels/Spectrum2D.h"
@@ -83,7 +83,7 @@ MainPanel::~MainPanel() {
 void MainPanel::init() {
     delayUI			= &getObj(DelayUI);
     derivPanel		= &getObj(DerivativePanel);
-    dfrmPanel		= &getObj(DeformerPanel);
+    guideCurvePanel		= &getObj(GuideCurvePanel);
     envelope2D 		= &getObj(Envelope2D);
     envelope3D		= &getObj(Envelope3D);
     eqUI			= &getObj(EqualizerUI);
@@ -110,7 +110,7 @@ void MainPanel::tabSelected(TabbedSelector* selector, Bounded* callbackComponent
     if (selector == bottomTabs) {
         toggleEffectsWaveform2DPresets(callbackComponent == wave2DPair ? 0 : callbackComponent == ev_bottomRight ? 1 : 2);
     } else if (selector == topTabs) {
-        toggleF2DGuide(callbackComponent == dfrmPair);
+        toggleF2DGuide(callbackComponent == guideCurvePair);
     } else if (selector == topRightTabs) {
         toggleEnvPanel(callbackComponent == envelope3D->getZoomPanel());
     }
@@ -123,7 +123,7 @@ void MainPanel::initialisePanels() {
     juce::Component* spectCtrls = spectrum3D->getControlsComponent();
     juce::Component* surfCtrls  = waveform3D->getControlsComponent();
     juce::Component* envCtrls   = envelope2D->getControlsComponent();
-    juce::Component* dfrmCtrls  = dfrmPanel->getControlsComponent();
+    juce::Component* guideCurveCtrls  = guideCurvePanel->getControlsComponent();
     juce::Component* irmodCtrls = irModelUI->getControlsComponent();
     juce::Component* wshpCtrls  = waveshaperUI->getControlsPanel();
 
@@ -156,7 +156,7 @@ void MainPanel::initialisePanels() {
 
     surfCtrlBounds		= new BoundWrapper(surfCtrls);
     spectCtrlBounds		= new BoundWrapper(spectCtrls);
-    guideCtrlBounds		= new BoundWrapper(dfrmCtrls);
+    guideCtrlBounds		= new BoundWrapper(guideCurveCtrls);
     tubeCtrlBoundsB		= new BoundWrapper(irmodCtrls);
     envCtrlBounds		= new BoundWrapper(envCtrls);
     wsCtrlBounds		= new BoundWrapper(wshpCtrls);
@@ -202,8 +202,8 @@ void MainPanel::initialisePanels() {
         xsBord, cpWidth, cpWidth
     );
 
-    dfrmPair = new PanelPair(
-        repo, guideCtrlBounds, dfrmPanel->getZoomPanel(),
+    guideCurvePair = new PanelPair(
+        repo, guideCtrlBounds, guideCurvePanel->getZoomPanel(),
         true, 0.03f, "guidepair",
         xsBord, cpWidth, cpWidth
     );
@@ -229,7 +229,7 @@ void MainPanel::initialisePanels() {
     panelGroups.add(&envGroup3);
     panelGroups.add(&wshpGroup);
     panelGroups.add(&irGroup);
-    panelGroups.add(&dfrmGroup);
+    panelGroups.add(&guideCurveGroup);
 
     initialiseMainView();
     initialiseFXView();
@@ -248,7 +248,7 @@ void MainPanel::initialisePanels() {
     bottomTabs->addListener(this);
 
     topTabs->addTab("Spectrum", spectrum2D->getZoomPanel());
-    topTabs->addTab("Deformers", dfrmPair);
+    topTabs->addTab("Guide Curves", guideCurvePair);
     topTabs->setSelectedTab(TabSpectrum);
     topTabs->addListener(this);
 
@@ -260,7 +260,7 @@ void MainPanel::initialisePanels() {
         spectPair, 	keybBounds, 	consBounds,
         genBounds, 	propsBounds, 	modBounds,
         bnrBounds, 	oscCtrlBounds, 	playbackBounds,
-        menuBounds,	wave2DPair, 	dfrmPair,
+        menuBounds,	wave2DPair, 	guideCurvePair,
         wshpPair,	irmodPair,		unisonBounds,
         delayBounds,reverbBounds,	eqBounds
     };
@@ -274,7 +274,7 @@ void MainPanel::initialisePanels() {
 
     Deletable* deleteMe[] = {
         wavePair, spectPair, envPair, ev_bottomRight, ev_reverbUni, ev_delayEQ,
-        ev_paramFX, ev_tubeParamFX, cv_bottomPair, cv_middlePair, wave2DPair, dfrmPair,
+        ev_paramFX, ev_tubeParamFX, cv_bottomPair, cv_middlePair, wave2DPair, guideCurvePair,
         irmodPair, wshpPair, cv_bnrOscCtrls, cv_genKeyBnr, cv_leftTriple, cv_menuCons,
         cv_playbackLeft, cv_right, cv_rt_pair, cv_rtb_pair, cv_rtt_pair, cv_rttb_pair,
         cv_spectSurf, cv_whole, xv_ctrl_key, xv_envDfmImp, xv_dfrm_imp, xv_FX_pair_1,
@@ -283,7 +283,7 @@ void MainPanel::initialisePanels() {
         xv_spectSurf, xv_playbackLeft, topRightTabs, bottomTabs, topTabs,
         bannerPanel, envCtrlBounds, keybBounds, genBounds, consBounds, modBounds, playbackBounds, spectCtrlBounds,
         surfCtrlBounds, guideCtrlBounds, tubeCtrlBoundsB, spectZoomPanel, e3dZoomPanel, envZoomPanel,
-        f2dZoomPanel, wave3DZoomPanel, wave2DZoomPanel, tubeZoomPanel, wsZoomPanel, dfrmZoomPanel,
+        f2dZoomPanel, wave3DZoomPanel, wave2DZoomPanel, tubeZoomPanel, wsZoomPanel, guideCurveZoomPanel,
         derivBounds, propsBounds, unisonBounds, bnrBounds, menuBounds, oscCtrlBounds, reverbBounds,
         delayBounds, eqBounds, wsCtrlBounds, cv_botTabBounds, cv_topTabBounds, xv_topBotDragger,
         xv_spectSurfDragger, xv_envDfmImpDragger, xv_dfmImpDragger, xv_wholeDragger, cv_wholeDragger,
@@ -324,7 +324,7 @@ void MainPanel::initialiseExtendedView() {
     ZoomPanel* spectZoom = spectrum2D->getZoomPanel();
 
     xv_ctrl_key		= new PanelPair(repo, genBounds, 	keybBounds,		false,	0.4f, 					"xv_ctrl_key", 		mBord, 	60, 	INT_MAX, 	80, 	82	);
-    xv_dfrm_imp		= new PanelPair(repo, dfrmPair, 	irmodPair, 		true, 	xv_dfrmImpPortion, 		"xv_dfrm_imp",		mmBord									);
+    xv_dfrm_imp		= new PanelPair(repo, guideCurvePair, 	irmodPair, 		true, 	xv_dfrmImpPortion, 		"xv_dfrm_imp",		mmBord									);
     xv_envDfmImp	= new PanelPair(repo, envPair,		xv_dfrm_imp,	true, 	xv_envDfmImpPortion, 	"xv_brws_dfm_imp",	mmBord									);
     xv_TRTRBR_pair 	= new PanelPair(repo, xv_ctrl_key,	oscCtrlBounds,	true,	0.85f, 					"xv_trtrbr_pair", 	mBord, 	0, 		INT_MAX, 	100, 	105	);
     xv_TRTRB_pair 	= new PanelPair(repo, modBounds, 	xv_TRTRBR_pair, true,	0.4f,					"xv_trtrb_pair", 	mBord, 	210, 	370				 		);
@@ -375,7 +375,7 @@ void MainPanel::viewModeSwitched() {
     info("view mode switched to: " << viewMode << "\n");
 
     bool showingWaveform 	= bottomTabs->getSelectedId() == TabWaveform;
-    bool showingDeformers 	= topTabs->getSelectedId() == TabDeformers;
+    bool showingGuideCurves 	= topTabs->getSelectedId() == TabGuideCurves;
 
     if (viewMode == CollapsedView) {
         addAndMakeVisible(bottomTabs);
@@ -388,11 +388,11 @@ void MainPanel::viewModeSwitched() {
         toggleEffectComponents(false) :
         toggleWaveform2DComponents(false);
 
-        showingDeformers ?
+        showingGuideCurves ?
         toggleF2D(false) :
-        toggleDeformers(false);
+        toggleGuideCurves(false);
 
-        cv_middlePair->one = showingDeformers ? (Bounded*) dfrmPair : (Bounded*) spectrum2D->getZoomPanel();
+        cv_middlePair->one = showingGuideCurves ? (Bounded*) guideCurvePair : (Bounded*) spectrum2D->getZoomPanel();
         cv_middlePair->resized();
 
         toggleDraggers(true);
@@ -407,9 +407,9 @@ void MainPanel::viewModeSwitched() {
         toggleEffectComponents(true) :
         toggleWaveform2DComponents(true);
 
-        showingDeformers ?
+        showingGuideCurves ?
         toggleF2D(true) :
-        toggleDeformers(true);
+        toggleGuideCurves(true);
 
         toggleDraggers(false);
     }
@@ -609,17 +609,17 @@ void MainPanel::toggleEffectsWaveform2DPresets(int toShow) {
     repaint();
 }
 
-void MainPanel::toggleDeformers(bool add) {
+void MainPanel::toggleGuideCurves(bool add) {
     if (add) {
-        addAndMakeVisible(dfrmPanel->getZoomPanel());
-        addAndMakeVisible(dfrmPanel->getControlsComponent());
+        addAndMakeVisible(guideCurvePanel->getZoomPanel());
+        addAndMakeVisible(guideCurvePanel->getControlsComponent());
 
-        toOutline.insert(dfrmPair);
+        toOutline.insert(guideCurvePair);
     } else {
-        removeChildComponent(dfrmPanel->getZoomPanel());
-        removeChildComponent(dfrmPanel->getControlsComponent());
+        removeChildComponent(guideCurvePanel->getZoomPanel());
+        removeChildComponent(guideCurvePanel->getControlsComponent());
 
-        toOutline.erase(dfrmPair);
+        toOutline.erase(guideCurvePair);
     }
 }
 
@@ -633,16 +633,16 @@ void MainPanel::toggleF2D(bool add) {
     }
 }
 
-void MainPanel::toggleF2DGuide(bool wantToShowDeformers) {
-    if (wantToShowDeformers) {
+void MainPanel::toggleF2DGuide(bool wantToShowGuideCurves) {
+    if (wantToShowGuideCurves) {
         toggleF2D(false);
 
-        cv_middlePair->one = dfrmPair;
+        cv_middlePair->one = guideCurvePair;
         cv_middlePair->resized();
 
-        toggleDeformers(true);
+        toggleGuideCurves(true);
     } else {
-        toggleDeformers(false);
+        toggleGuideCurves(false);
 
         cv_middlePair->one = spectrum2D->getZoomPanel();
         cv_middlePair->resized();
@@ -761,8 +761,8 @@ void MainPanel::addCorePanels() {
     addAndMakeVisible(&getObj(OscControlPanel));
     addAndMakeVisible(waveshaperUI->getControlsPanel());
     addAndMakeVisible(irModelUI->getControlsComponent());
-    addAndMakeVisible(dfrmPanel->getControlsComponent());
-    addAndMakeVisible(dfrmPanel->getZoomPanel());
+    addAndMakeVisible(guideCurvePanel->getControlsComponent());
+    addAndMakeVisible(guideCurvePanel->getZoomPanel());
     addAndMakeVisible(irModelUI->getZoomPanel());
     addAndMakeVisible(waveshaperUI->getZoomPanel());
     addAndMakeVisible(unisonUI);
@@ -815,7 +815,7 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
     // needs to be resized first
     // crsGL 	= new OpenGLPanel	(repo, waveform2D);
     // f2GL 	= new OpenGLPanel	(repo, spectrum2D);
-    // dfmGL	= new OpenGLPanel	(repo, dfrmPanel);
+    // dfmGL	= new OpenGLPanel	(repo, guideCurvePanel);
     // e2GL 	= new OpenGLPanel	(repo, envelope2D);
     // wsGL 	= new OpenGLPanel	(repo, waveshaperUI);
     // tmGL 	= new OpenGLPanel	(repo, irModelUI);
@@ -831,7 +831,7 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
     // wave3DZoomPanel	->panelComponentChanged(surfGL);
     // tubeZoomPanel	->panelComponentChanged(tmGL);
     // wsZoomPanel		->panelComponentChanged(wsGL);
-    // dfrmZoomPanel	->panelComponentChanged(dfmGL);
+    // guideCurveZoomPanel	->panelComponentChanged(dfmGL);
 
     wave2DGroup = PanelGroup(waveform2D, 	wave2DPair, waveform2D->getOpenglPanel());
     surfGroup 	= PanelGroup(waveform3D, 	wavePair, 	waveform3D->getOpenglPanel());
@@ -839,7 +839,7 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
     envGroup2	= PanelGroup(envelope2D, 	envPair, 	envelope2D->getOpenglPanel());
     wshpGroup	= PanelGroup(waveshaperUI,	wshpPair, 	waveshaperUI->getOpenglPanel());
     irGroup		= PanelGroup(irModelUI,		irmodPair, 	irModelUI->getOpenglPanel());
-    dfrmGroup	= PanelGroup(dfrmPanel,		dfrmPair, 	dfrmPanel->getOpenglPanel());
+    guideCurveGroup	= PanelGroup(guideCurvePanel,		guideCurvePair, 	guideCurvePanel->getOpenglPanel());
     spectGroup2	= PanelGroup(spectrum2D, 	spectrum2D->getZoomPanel(), spectrum2D->getOpenglPanel());
     envGroup3	= PanelGroup(envelope3D, 	envelope3D->getZoomPanel(), envelope3D->getOpenglPanel());
 
@@ -962,7 +962,7 @@ bool MainPanel::readXML(const XmlElement* element) {
 void MainPanel::timerCallback(int timerId) {
     if (timerId == BoundsCheckId) {
         Panel* panels[] = {
-            spectrum2D, spectrum3D, waveform3D, waveform2D, dfrmPanel,
+            spectrum2D, spectrum3D, waveform3D, waveform2D, guideCurvePanel,
             irModelUI, waveshaperUI, envelope2D, envelope3D
         };
 

@@ -225,7 +225,7 @@ void SliderValueChangedAction::undoDelegate() {
     slider->setValue(before);
 }
 
-DeformerAssignment::DeformerAssignment(
+GuideCurveAssignment::GuideCurveAssignment(
         SingletonRepo* repo
     ,   int updateSource
     ,   Mesh* mesh
@@ -239,10 +239,10 @@ DeformerAssignment::DeformerAssignment(
         ,   currentMapping  (thisMapping)
         ,   channel         (channel)
         ,   mesh            (mesh) {
-    description = "Line deformation";
+    description = "Guide curve assignment";
 }
 
-void DeformerAssignment::performDelegate() {
+void GuideCurveAssignment::performDelegate() {
     auto start  = mesh->getCubes().begin();
     auto end    = mesh->getCubes().end();
 
@@ -250,9 +250,9 @@ void DeformerAssignment::performDelegate() {
 
         // check if line is still good
         if (line != nullptr && std::find(start, end, line) != end) {
-            line->deformerAt(channel) = (char) currentMapping;
+            line->guideCurveAt(channel) = (char) currentMapping;
 
-            // component curve assignment changes the sharpness / dfrm-gain
+            // component curve assignment changes the sharpness / guide-curve gain
             if (channel == Vertex::Time) {
                 bool doAdjustment = true;
                 for (auto& lineVert : line->lineVerts) {
@@ -273,7 +273,7 @@ void DeformerAssignment::performDelegate() {
     }
 }
 
-void DeformerAssignment::undoDelegate() {
+void GuideCurveAssignment::undoDelegate() {
     jassert(affectedLines.size() == previousMappings.size());
 
     auto start  = mesh->getCubes().begin();
@@ -283,13 +283,13 @@ void DeformerAssignment::undoDelegate() {
         VertCube* cube = affectedLines[i];
 
         if (cube != nullptr && std::find(start, end, cube) != end) {
-            cube->deformerAt(channel) = previousMappings[i];
+            cube->guideCurveAt(channel) = previousMappings[i];
         }
     }
 }
 
-void DeformerAssignment::doPostUpdateCheck() {
-    getObj(MeshLibrary).layerChanged(LayerGroups::GroupDeformer, -1);
+void GuideCurveAssignment::doPostUpdateCheck() {
+    getObj(MeshLibrary).layerChanged(LayerGroups::GroupGuideCurve, -1);
 }
 
 ComboboxChangeAction::ComboboxChangeAction(ComboBox* box, int previousId) :

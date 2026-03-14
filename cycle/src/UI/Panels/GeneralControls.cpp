@@ -190,7 +190,7 @@ void GeneralControls::sliderValueChanged(Slider* slider) {
 }
 
 void GeneralControls::mouseEnter(const MouseEvent& e) {
-    getObj(IConsole).reset();
+    repo->getConsole().reset();
 }
 
 void GeneralControls::setNumCommunityPresets(int num) {

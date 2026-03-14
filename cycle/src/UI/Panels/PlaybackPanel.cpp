@@ -123,8 +123,8 @@ void PlaybackPanel::mouseDown(const MouseEvent& e) {
 }
 
 void PlaybackPanel::mouseEnter(const MouseEvent& e) {
-	getObj(IConsole).updateAll("Set playback position (left), Set view depth (right)",
-	                           {}, MouseUsage(true, false, true, true));
+    repo->getConsole().updateAll("Set playback position (left), Set view depth (right)",
+                                 {}, MouseUsage(true, false, true, true));
 }
 
 void PlaybackPanel::mouseDrag(const MouseEvent& e) {

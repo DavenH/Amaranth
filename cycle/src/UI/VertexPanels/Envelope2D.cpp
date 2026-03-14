@@ -47,7 +47,7 @@ void Envelope2D::init() {
     doesDrawMouseHint 	= true;
     curveIsBipolar 		= false;
     speedApplicable		= false;
-    deformApplicable	= false;
+    guideCurveApplicable	= false;
     e2Interactor		= &getObj(EnvelopeInter2D);
     interactor			= e2Interactor;
 
@@ -483,7 +483,7 @@ void Envelope2D::createScales()
     float alpha 	 = fontScale == ScaleSizes::ScaleSmall ? 0.35f : 0.6f;
 
   #if PLUGIN_MODE
-    AudioPlayHead::CurrentPositionInfo info = getObj(PluginProcessor).getCurrentPosition();
+    AudioPlayHead::CurrentPositionInfo info = repo->getPluginProcessor().getCurrentPosition();
     beats = info.timeSigNumerator;
   #endif
 

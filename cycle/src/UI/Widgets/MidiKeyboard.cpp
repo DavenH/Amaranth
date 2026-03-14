@@ -149,8 +149,8 @@ void MidiKeyboard::getKeyPosition(int midiNoteNumber, float keyWidth, int& x, in
 }
 
 void MidiKeyboard::mouseEnter(const MouseEvent& e) {
-    getObj(IConsole).setMouseUsage(true, true, false, true);
-    getObj(IConsole).setKeys({});
+    repo->getConsole().setMouseUsage(true, true, false, true);
+    repo->getConsole().setKeys({});
 
     MidiKeyboardComponent::mouseEnter(e);
 }

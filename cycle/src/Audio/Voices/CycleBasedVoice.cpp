@@ -1,6 +1,6 @@
 #include <Algo/Resampler.h>
 #include <Curve/EnvRasterizer.h>
-#include <Curve/IDeformer.h>
+#include <Curve/GuideCurveProvider.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegions.h>
 #include <Util/NumberUtils.h>
@@ -20,7 +20,7 @@
 #include "../../UI/Panels/ModMatrixPanel.h"
 #include "../../UI/VertexPanels/Envelope2D.h"
 #include "../../UI/VertexPanels/Spectrum3D.h"
-#include "../../UI/VertexPanels/DeformerPanel.h"
+#include "../../UI/VertexPanels/GuideCurvePanel.h"
 #include "../../UI/VertexPanels/Waveform3D.h"
 #include "../../Util/CycleEnums.h"
 #include "../CycleDefs.h"
@@ -53,7 +53,7 @@ CycleBasedVoice::CycleBasedVoice(SynthesizerVoice* parent, SingletonRepo* repo) 
     tempBuffer.resize(maxPeriod);
 
     timeRasterizer.setCalcDepthDimensions(false);
-    timeRasterizer.setDeformer(&getObj(DeformerPanel));
+    timeRasterizer.setGuideCurveProvider(&getObj(GuideCurvePanel));
 
     for (int c = 0; c < 2; ++c) {
         // we reuse this as a CCS fft buffer -> 2(n + 1) samples
@@ -85,7 +85,7 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
     }
 
     const int timeLayerSize = timeLayers->size();
-    timeRasterizer.updateOffsetSeeds(timeLayerSize, DeformerPanel::tableSize);
+    timeRasterizer.updateOffsetSeeds(timeLayerSize, GuideCurvePanel::tableSize);
 
     EnvRasterizer& pitchRast = parent->pitchGroup[0].rast;
     float pitchEnvVal = parent->flags.havePitch ? pitchRast.sampleAt(0) : 0.5;
@@ -770,7 +770,7 @@ void CycleBasedVoice::testIfOversamplingChanged() {
     int factor = -1;
 
 #if PLUGIN_MODE
-    PluginProcessor& proc = getObj(PluginProcessor);
+    PluginProcessor& proc = repo->getPluginProcessor();
 
     factor = (proc.isNonRealtime()) ? getDocSetting(OversampleFactorRend) : getDocSetting(OversampleFactorRltm);
 #else
@@ -963,7 +963,7 @@ void CycleBasedVoice::testNumLayersChanged() {
 void CycleBasedVoice::testIfResamplingQualityChanged() {
     bool isRealtime = true;
 
-    onlyPlug(isRealtime = ! getObj(PluginProcessor).isNonRealtime());
+    onlyPlug(isRealtime = ! repo->getPluginProcessor().isNonRealtime());
 
     resamplingAlgo = isRealtime ? getDocSetting(ResamplingAlgoRltm) : getDocSetting(ResamplingAlgoRend);
 }

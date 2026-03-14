@@ -1,7 +1,7 @@
 #include <iterator>
 #include <cmath>
 #include <climits>
-#include "IDeformer.h"
+#include "GuideCurveProvider.h"
 #include "Mesh.h"
 #include "MeshRasterizer.h"
 
@@ -19,7 +19,7 @@ float MeshRasterizer::transferTable[Curve::resolution];
 MeshRasterizer::MeshRasterizer(const String& name) :
          name                (name)
     ,    mesh                (nullptr)
-    ,    deformer            (nullptr)
+    ,    guideCurveProvider            (nullptr)
 
     ,    zeroIndex           (0)
     ,    paddingSize         (2)
@@ -169,14 +169,14 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
                 default: break;
             }
 
-            applyDeformers(intercept, morph);
+            applyGuideCurves(intercept, morph);
             icpts.emplace_back(intercept);
 
             int currentlyVisibleRYBDim = getPrimaryViewDimension();
             if (calcDepthDims) {
                 midIcpt.cube = cube;
                 midIcpt.adjustedX = midIcpt.x;
-                applyDeformers(midIcpt, morph);
+                applyGuideCurves(midIcpt, morph);
 
                 for (int i = 0; i < dims.numHidden(); ++i) {
                     Vertex2 midCopy(midIcpt.adjustedX, midIcpt.y);
@@ -192,13 +192,13 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
                     cube->getFinalIntercept(reduct, posA);
                     Intercept beforeIcpt(reduct.v.values[dims.x], reduct.v.values[dims.y], cube);
                     beforeIcpt.adjustedX = beforeIcpt.x;
-                    applyDeformers(beforeIcpt, posA, hiddenDim == currentlyVisibleRYBDim);
+                    applyGuideCurves(beforeIcpt, posA, hiddenDim == currentlyVisibleRYBDim);
 
                     MorphPosition posB(poleB[0], poleB[1], poleB[2]);
                     cube->getFinalIntercept(reduct, posB);
                     Intercept afterIcpt(reduct.v.values[dims.x], reduct.v.values[dims.y], cube);
                     afterIcpt.adjustedX = afterIcpt.x;
-                    applyDeformers(afterIcpt, posB, hiddenDim == currentlyVisibleRYBDim);
+                    applyGuideCurves(afterIcpt, posB, hiddenDim == currentlyVisibleRYBDim);
 
                     Vertex2 before(beforeIcpt.adjustedX, beforeIcpt.y);
                     Vertex2 after(afterIcpt.adjustedX, afterIcpt.y);
@@ -261,7 +261,7 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
     for (int i = 0; i < (int) icpts.size() - 1; ++i) {
         Intercept& curr = icpts[i];
         Intercept& next = icpts[i + 1];
-        bool pad        = curr.cube != nullptr && curr.cube->getCompDfrm() >= 0;
+        bool pad        = curr.cube != nullptr && curr.cube->getCompGuideCurve() >= 0;
         curr.padBefore     = pad;
         next.padAfter     = pad;
 
@@ -376,7 +376,7 @@ void MeshRasterizer::restrictIntercepts(vector<Intercept>& intercepts) {
 }
 
 /*
- * set curve after a amp-vs-phase deformer to full sharpness
+ * set curve after a amp-vs-phase guideCurveProvider to full sharpness
  * so that waveX is continuous. At < 1 sharpness, the trailing
  * x-values of the curve create a discontinuity
  */
@@ -385,10 +385,10 @@ void MeshRasterizer::adjustDeformingSharpness() {
         Curve& curve = curves[i];
 
         if (i < (int) curves.size() - 1 && curve.b.cube != nullptr) {
-            if (curve.b.cube->getCompDfrm() >= 0) {
+            if (curve.b.cube->getCompGuideCurve() >= 0) {
                 Curve& next = curves[i + 1];
 
-                if (next.b.cube == nullptr || next.b.cube->getCompDfrm() < 0) {
+                if (next.b.cube == nullptr || next.b.cube->getCompGuideCurve() < 0) {
                     curve.c.shp = 1;
                     next.b.shp = 1;
                     next.updateCurrentIndex();
@@ -435,10 +435,11 @@ void MeshRasterizer::calcWaveform() {
     int res = Curve::resolution / 2;
     int totalRes = 0;
 
-    if(decoupleComponentDfrms)
-        deformRegions.clear();
+    if(decoupleComponentDfrms) {
+        guideCurveRegions.clear();
+    }
 
-    int tableSize = Constants::DeformTableSize;
+    int tableSize = Constants::GuideCurveTableSize;
 
     for (int i = 0; i < (int) curves.size() - 1; ++i) {
         Curve& thisCurve = curves[i];
@@ -447,8 +448,8 @@ void MeshRasterizer::calcWaveform() {
         int thisRes     = res >> thisCurve.resIndex;
         int nextRes     = res >> curves[i + 1].resIndex;
 
-        if(cube != nullptr && deformer != nullptr && cube->getCompDfrm() >= 0) {
-            int numVerts         = deformer->getTableDensity(cube->getCompDfrm());
+        if(cube != nullptr && guideCurveProvider != nullptr && cube->getCompGuideCurve() >= 0) {
+            int numVerts         = guideCurveProvider->getTableDensity(cube->getCompGuideCurve());
             int desiredRes         = thisRes * (int) ((lowResCurves ? 2 : 8) * sqrtf(numVerts) + 0.49f);
             float scaleRatio     = tableSize / float(desiredRes);
 
@@ -488,13 +489,13 @@ void MeshRasterizer::calcWaveform() {
 
         thisCurve.waveIdx = waveIdx;
 
-        if (cube != nullptr && deformer != nullptr && cube->getCompDfrm() >= 0) {
-            int compDfrm = cube->getCompDfrm();
+        if (cube != nullptr && guideCurveProvider != nullptr && cube->getCompGuideCurve() >= 0) {
+            int compDfrm = cube->getCompGuideCurve();
 
             Intercept& thisCentre = thisCurve.b;
             Intercept& nextCentre = nextCurve.b;
 
-            IDeformer::NoiseContext noise;
+            GuideCurveProvider::NoiseContext noise;
             noise.noiseSeed   = noiseSeed < 0 ? morph.time.getCurrentValue() * INT_MAX : noiseSeed;
             noise.phaseOffset = phaseOffsetSeeds[compDfrm];
             noise.vertOffset  = vertOffsetSeeds[compDfrm];
@@ -502,20 +503,20 @@ void MeshRasterizer::calcWaveform() {
             Buffer<Float32> yPortion(waveY + waveIdx, curveRes);
             Buffer<Float32> xPortion(waveX + waveIdx, curveRes);
 
-            float multiplier = thisCentre.shp * cube->deformerAbsGain(Vertex::Time);
+            float multiplier = thisCentre.shp * cube->guideCurveAbsGain(Vertex::Time);
 
             if (decoupleComponentDfrms) {
                 yPortion.zero();
 
-                DeformRegion region;
+                GuideCurveRegion region;
                 region.amplitude   = multiplier;
-                region.deformChan  = cube->getCompDfrm();
+                region.guideIndex  = cube->getCompGuideCurve();
                 region.start       = thisCentre;
                 region.end         = nextCentre;
 
-                deformRegions.emplace_back(region);
+                guideCurveRegions.emplace_back(region);
             } else {
-                deformer->sampleDownAddNoise(cube->getCompDfrm(), yPortion, noise);
+                guideCurveProvider->sampleDownAddNoise(cube->getCompGuideCurve(), yPortion, noise);
                 yPortion.mul(multiplier);
             }
 
@@ -625,22 +626,22 @@ float MeshRasterizer::sampleAt(double angle) {
 /*
  * For single sample per cycle rasterization, e.g. envelopes
  */
-float MeshRasterizer::sampleAtDecoupled(double angle, DeformContext& context) {
+float MeshRasterizer::sampleAtDecoupled(double angle, GuideCurveContext& context) {
     float val = sampleAt(angle, context.currentIndex);
 
-    for(auto& region : deformRegions) {
+    for(auto& region : guideCurveRegions) {
         if (NumberUtils::within<float>(angle, region.start.x, region.end.x)) {
             float diff = region.end.x - region.start.x;
 
             if (diff > 0) {
-                IDeformer::NoiseContext noise;
+                GuideCurveProvider::NoiseContext noise;
                 noise.noiseSeed     = noiseSeed;
                 noise.phaseOffset     = context.phaseOffsetSeed;
                 noise.vertOffset     = context.vertOffsetSeed;
 
                 float progress = (angle - region.start.x) / diff;
 
-                return val + region.amplitude * deformer->getTableValue(region.deformChan, progress, noise);
+                return val + region.amplitude * guideCurveProvider->getTableValue(region.guideIndex, progress, noise);
             }
         }
     }
@@ -935,34 +936,34 @@ void MeshRasterizer::validateCurves() {
 
 // NB: set the intercept's adjustedX property rather than x
 // it will be used to re-sort and then assign the x property
-void MeshRasterizer::applyDeformers(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds) {
-    if(icpt.cube == nullptr || deformer == nullptr) {
+void MeshRasterizer::applyGuideCurves(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds) {
+    if(icpt.cube == nullptr || guideCurveProvider == nullptr) {
         return;
     }
 
     VertCube* cube = icpt.cube;
 
-    IDeformer::NoiseContext noise;
+    GuideCurveProvider::NoiseContext noise;
     noise.noiseSeed = noiseSeed;
 
-    if (cube->deformerAt(Vertex::Red) >= 0) {
-        int dfrm = cube->deformerAt(Vertex::Red);
+    if (cube->guideCurveAt(Vertex::Red) >= 0) {
+        int guideIndex = cube->guideCurveAt(Vertex::Red);
         float progress = cube->getPortionAlong(Vertex::Red, morph);
 
-        noise.vertOffset  = vertOffsetSeeds [dfrm];
-        noise.phaseOffset = phaseOffsetSeeds[dfrm];
+        noise.vertOffset  = vertOffsetSeeds [guideIndex];
+        noise.phaseOffset = phaseOffsetSeeds[guideIndex];
 
-        icpt.adjustedX += cube->deformerAbsGain(Vertex::Red) * deformer->getTableValue(dfrm, progress, noise);
+        icpt.adjustedX += cube->guideCurveAbsGain(Vertex::Red) * guideCurveProvider->getTableValue(guideIndex, progress, noise);
     }
 
-    if (cube->deformerAt(Vertex::Blue) >= 0) {
-        int dfrm = cube->deformerAt(Vertex::Blue);
+    if (cube->guideCurveAt(Vertex::Blue) >= 0) {
+        int guideIndex = cube->guideCurveAt(Vertex::Blue);
         float progress = cube->getPortionAlong(Vertex::Blue, morph);
 
-        noise.vertOffset  = vertOffsetSeeds [dfrm];
-        noise.phaseOffset = phaseOffsetSeeds[dfrm];
+        noise.vertOffset  = vertOffsetSeeds [guideIndex];
+        noise.phaseOffset = phaseOffsetSeeds[guideIndex];
 
-        icpt.adjustedX += cube->deformerAbsGain(Vertex::Blue) * deformer->getTableValue(dfrm, progress, noise);
+        icpt.adjustedX += cube->guideCurveAbsGain(Vertex::Blue) * guideCurveProvider->getTableValue(guideIndex, progress, noise);
     }
 
     float timeMin = reduct.v0.values[Vertex::Time];
@@ -977,24 +978,24 @@ void MeshRasterizer::applyDeformers(Intercept& icpt, const MorphPosition& morph,
 
     bool ignore = (noOffsetAtEnds && (progress == 0 || progress == 1.f));
 
-    if (cube->deformerAt(Vertex::Amp) >= 0) {
-        int dfrm = cube->deformerAt(Vertex::Amp);
-        noise.vertOffset  = vertOffsetSeeds [dfrm];
-        noise.phaseOffset = phaseOffsetSeeds[dfrm];
+    if (cube->guideCurveAt(Vertex::Amp) >= 0) {
+        int guideIndex = cube->guideCurveAt(Vertex::Amp);
+        noise.vertOffset  = vertOffsetSeeds [guideIndex];
+        noise.phaseOffset = phaseOffsetSeeds[guideIndex];
 
         if (!ignore) {
-            icpt.y += cube->deformerAbsGain(Vertex::Amp) * deformer->getTableValue(dfrm, progress, noise);
+            icpt.y += cube->guideCurveAbsGain(Vertex::Amp) * guideCurveProvider->getTableValue(guideIndex, progress, noise);
             NumberUtils::constrain(icpt.y, (scalingType != Unipolar ? -1.f : 0.f), 1.f);
         }
     }
 
-    if (cube->deformerAt(Vertex::Phase) >= 0) {
-        int dfrm = cube->deformerAt(Vertex::Phase);
-        noise.vertOffset  = vertOffsetSeeds [dfrm];
-        noise.phaseOffset = phaseOffsetSeeds[dfrm];
+    if (cube->guideCurveAt(Vertex::Phase) >= 0) {
+        int guideIndex = cube->guideCurveAt(Vertex::Phase);
+        noise.vertOffset  = vertOffsetSeeds [guideIndex];
+        noise.phaseOffset = phaseOffsetSeeds[guideIndex];
 
         if (!ignore) {
-            icpt.adjustedX += cube->deformerAbsGain(Vertex::Phase) * deformer->getTableValue(dfrm, progress, noise);
+            icpt.adjustedX += cube->guideCurveAbsGain(Vertex::Phase) * guideCurveProvider->getTableValue(guideIndex, progress, noise);
 
             if (cyclic) {
                 float lastAdjX = icpt.adjustedX;
@@ -1010,12 +1011,12 @@ void MeshRasterizer::applyDeformers(Intercept& icpt, const MorphPosition& morph,
         }
     }
 
-    if (cube->deformerAt(Vertex::Curve) >= 0) {
-        int dfrm = cube->deformerAt(Vertex::Curve);
-        noise.vertOffset  = vertOffsetSeeds[dfrm];
-        noise.phaseOffset = phaseOffsetSeeds[dfrm];
+    if (cube->guideCurveAt(Vertex::Curve) >= 0) {
+        int guideIndex = cube->guideCurveAt(Vertex::Curve);
+        noise.vertOffset  = vertOffsetSeeds[guideIndex];
+        noise.phaseOffset = phaseOffsetSeeds[guideIndex];
 
-        icpt.shp += 2 * cube->deformerAbsGain(Vertex::Curve) * deformer->getTableValue(dfrm, progress, noise);
+        icpt.shp += 2 * cube->guideCurveAbsGain(Vertex::Curve) * guideCurveProvider->getTableValue(guideIndex, progress, noise);
 
         NumberUtils::constrain(icpt.shp, 0.f, 1.f);
     }
@@ -1051,7 +1052,7 @@ void MeshRasterizer::cleanUp() {
     icpts        .clear();
     frontIcpts    .clear();
     backIcpts    .clear();
-    deformRegions.clear();
+    guideCurveRegions.clear();
 
     if(! batchMode) {
         makeCopy();
@@ -1105,7 +1106,7 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     this->overrideDim             = copy.overrideDim;
     this->overridingDim         = copy.overridingDim;
     this->cyclic                 = copy.cyclic;
-    this->deformer                 = copy.deformer;
+    this->guideCurveProvider                 = copy.guideCurveProvider;
     this->calcInterceptsOnly     = copy.calcInterceptsOnly;
     this->decoupleComponentDfrms= copy.decoupleComponentDfrms;
 

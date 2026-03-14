@@ -9,7 +9,7 @@
 #include "../UI/Effects/ReverbUI.h"
 #include "../UI/Panels/OscControlPanel.h"
 #include "../UI/Panels/ModMatrixPanel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/GuideCurvePanel.h"
 #include "../Util/CycleEnums.h"
 
 SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
@@ -528,7 +528,7 @@ void SynthAudioSource::updateTempoScale() {
     double beatsPerSecond = beatsPerMin / 60.;
 
   #if PLUGIN_MODE
-    AudioPlayHead::CurrentPositionInfo info = getObj(PluginProcessor).getCurrentPosition();
+    AudioPlayHead::CurrentPositionInfo info = repo->getPluginProcessor().getCurrentPosition();
     beatsPerSecond 		= info.bpm / 60.;
     beatsPerMeasure 	= info.timeSigNumerator;
   #endif
@@ -540,7 +540,7 @@ void SynthAudioSource::updateTempoScale() {
 
 void SynthAudioSource::updateGlobality() {
     MeshLibrary::LayerGroup& scratchGroup = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch);
-    IDeformer& deformer                   = getObj(DeformerPanel);
+    GuideCurveProvider& guideCurveProvider                   = getObj(GuideCurvePanel);
 
     globalScratch.clear();
 
@@ -550,7 +550,7 @@ void SynthAudioSource::updateGlobality() {
         if (dynamic_cast<MeshLibrary::EnvProps*>(layer.props)->global) {
             int size = globalScratch.size();
 
-            globalScratch.emplace_back(EnvRasterizer(repo, &deformer, "GlobalScratch" + String(size)), i);
+            globalScratch.emplace_back(EnvRasterizer(repo, &guideCurveProvider, "GlobalScratch" + String(size)), i);
             globalScratch.back().rast.setMesh(layer.mesh);
         }
     }

@@ -7,7 +7,7 @@ using namespace juce;
 
 namespace Constants {
     enum {
-        DeformTableSize     = 8192
+        GuideCurveTableSize = 8192
     ,   LogTension          = 50
     ,   LowestMidiNote      = 20
     ,   TitleBarHeight      = 24

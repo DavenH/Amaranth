@@ -144,7 +144,7 @@ void AudioHub::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
     keyboardState.processNextMidiBuffer(midiMessages, 0, buffer.getNumSamples(), true);
 
   #if PLUGIN_MODE
-    if(getObj(PluginProcessor).isSuspended()) {
+    if(repo->getPluginProcessor().isSuspended()) {
         return;
     }
   #endif

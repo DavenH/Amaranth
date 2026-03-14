@@ -162,9 +162,9 @@ private:
 
 /* ----------------------------------------------------------------------------- */
 
-class DeformerAssignment : public ResponsiveUndoableAction {
+class GuideCurveAssignment : public ResponsiveUndoableAction {
 public:
-    DeformerAssignment(
+    GuideCurveAssignment(
             SingletonRepo* repo
         ,   int updateSource
         ,   Mesh* mesh

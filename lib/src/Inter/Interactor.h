@@ -52,15 +52,15 @@ public:
                 sliderApplicable[i] = true;
             }
 
-            for(int i = 0; i < numElementsInArray(deformApplicable); ++i) {
-                deformApplicable[i] = true;
+            for(int i = 0; i < numElementsInArray(guideCurveApplicable); ++i) {
+                guideCurveApplicable[i] = true;
             }
         }
 
         StringArray dimensionNames;
 
         bool sliderApplicable[Vertex::numElements]{};
-        bool deformApplicable[Vertex::numElements]{};
+        bool guideCurveApplicable[Vertex::numElements]{};
         bool ampVsPhaseApplicable;
         bool isEnvelope;
     };

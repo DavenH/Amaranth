@@ -433,10 +433,10 @@ void PresetPage::loadItem(const DocumentDetails& details, bool ignoreSave) {
             getObj(FileManager).openPreset(file);
 
             showImportant(details.getName());
-            getObj(IConsole).setKeys(details.getAuthor());
+            repo->getConsole().setKeys(details.getAuthor());
 
           #if PLUGIN_MODE
-            getObj(PluginProcessor).updateHostDisplay();
+            repo->getPluginProcessor().updateHostDisplay();
           #endif
         } else {
             pendingDeetsToLoad = details;
@@ -574,7 +574,7 @@ void PresetPage::updateTags(int index) {
 
     const Array<DocumentDetails, CriticalSection>& filtered = getFilteredItems();
 
-    if (!filtered.size() == 0 && index < filtered.size()) {
+    if (filtered.size() != 0 && index < filtered.size()) {
         const DocumentDetails& details = filtered[index];
         const StringArray& tags = details.getTags();
 

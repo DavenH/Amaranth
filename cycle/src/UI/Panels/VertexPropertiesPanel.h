@@ -70,7 +70,7 @@ private:
     Label titleLabelA;
 
     enum SliderOrder { TimeSldr, KeySldr, ModSldr, PhaseSldr, AmpSldr, CurveSldr, numSliders };
-    enum GuideIds { NullDfrmId = 1, /* NewDfrmId */ };
+    enum GuideIds { NullGuideCurveId = 1, /* NewDfrmId */ };
     enum { ValueChanged, DragEnded, DragStarted };
 
 
@@ -102,7 +102,7 @@ private:
         float previousGain;
 
         HSlider* 			slider;
-        ComboBox* 			dfrmChanBox;
+        ComboBox* 			guideCurveChanBox;
         Knob*				gain;
         MouseOverMessager* 	messager;
     };

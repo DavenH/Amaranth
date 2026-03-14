@@ -16,7 +16,7 @@
 using std::vector;
 
 class Interactor;
-class IDeformer;
+class GuideCurveProvider;
 
 typedef vector<Intercept>::iterator IcptIter;
 typedef vector<Intercept>::const_iterator ConstIcptIter;
@@ -26,16 +26,16 @@ class MeshRasterizer :
 public:
     enum ScalingType { Unipolar, Bipolar, HalfBipolar };
 
-    struct DeformContext {
+    struct GuideCurveContext {
         int phaseOffsetSeed;
         int vertOffsetSeed;
         int currentIndex;
 
-        DeformContext() : phaseOffsetSeed(0), vertOffsetSeed(0), currentIndex(0) {}
+        GuideCurveContext() : phaseOffsetSeed(0), vertOffsetSeed(0), currentIndex(0) {}
     };
 
-    struct DeformRegion {
-        int deformChan;
+    struct GuideCurveRegion {
+        int guideIndex;
         float amplitude;
         Intercept start, end;
     };
@@ -67,7 +67,7 @@ public:
         }
     };
 
-    typedef vector<DeformRegion>::iterator DeformIter;
+    typedef vector<GuideCurveRegion>::iterator GuideCurveIter;
 
     /* ----------------------------------------------------------------------------- */
 
@@ -77,7 +77,7 @@ public:
     ~MeshRasterizer() override;
 
     void adjustDeformingSharpness();
-    void applyDeformers(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds = false);
+    void applyGuideCurves(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds = false);
     void calcCrossPoints(Mesh* usedmesh, float oscPhase);
     void calcIntercepts();
     void calcWaveformFrom(vector<Intercept>& icpts);
@@ -99,7 +99,7 @@ public:
 
     float sampleAt(double angle);
     float sampleAt(double angle, int& currentIndex);
-    float sampleAtDecoupled(double angle, DeformContext& context);
+    float sampleAtDecoupled(double angle, GuideCurveContext& context);
     float samplePerfectly(double delta, Buffer<float> buffer, double phase);
     void sampleAtIntervals(Buffer<float> deltas, Buffer<float> dest);
 
@@ -201,7 +201,7 @@ public:
     const vector<Intercept>& getBackIcpts() const   { return backIcpts;                 }
     vector<ColorPoint>& getColorPoints()            { return colorPoints;               }
     RasterizerData& getRastData()                   { return rastArrays;                }
-    IDeformer* getDeformer() const                  { return deformer;                  }
+    GuideCurveProvider* getGuideCurveProvider() const  { return guideCurveProvider;        }
 
     void setBatchMode(bool batch)                   { batchMode = batch;                }
     void setWrapsEnds(bool wraps)                   { cyclic = wraps;                   }
@@ -221,8 +221,8 @@ public:
     void setYellow(float yellow)                    { morph.time    = yellow;           }
     void setBlue(float blue)                        { morph.blue    = blue;             }
     virtual void setRed(float red)                  { morph.red     = red;              }
-    void setMorphPosition(const MorphPosition& m)   { morph         = m;                }
-    void setDeformer(IDeformer* panel)              { deformer      = panel;            }
+    void setMorphPosition(const MorphPosition& m)    { morph         = m;                }
+    void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
 
     virtual Mesh* getMesh()                         { return mesh;                      }
     virtual void setMesh(Mesh* mesh)                { this->mesh = mesh;                }
@@ -277,14 +277,14 @@ protected:
     vector<Intercept> frontIcpts, backIcpts, icpts;
     vector<ColorPoint> colorPoints;
     vector<Curve> curves;
-    vector<DeformRegion> deformRegions;
+    vector<GuideCurveRegion> guideCurveRegions;
 
     ScopedAlloc<float> memoryBuffer;
     ScopedAlloc<Int8u> alignedBytes;
 
     Buffer<float> waveX, waveY, diffX, slope, area;
     VertCube::ReductionData reduct;
-    IDeformer* deformer;
+    GuideCurveProvider* guideCurveProvider;
     Mesh* mesh;
 
     JUCE_LEAK_DETECTOR(MeshRasterizer)

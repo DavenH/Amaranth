@@ -61,7 +61,7 @@ void SelectorPanel::mouseEnter(const MouseEvent& e) {
 	int listSize 	= getSize();
 	String message 	= itemName + " " + String(currentIndex + 1) + " of " + String(listSize);
 
-	getObj(IConsole).updateAll(message, String(), MouseUsage(true, true, false, false));
+    repo->getConsole().updateAll(message, String(), MouseUsage(true, true, false, false));
 }
 
 void SelectorPanel::mouseDrag(const MouseEvent& e) {

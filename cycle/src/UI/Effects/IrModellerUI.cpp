@@ -20,7 +20,7 @@
 
 #include "../Dialogs/PresetPage.h"
 #include "../Panels/PlaybackPanel.h"
-#include "../VertexPanels/DeformerPanel.h"
+#include "../VertexPanels/GuideCurvePanel.h"
 #include "../VertexPanels/Waveform3D.h"
 
 #include "../CycleDefs.h"

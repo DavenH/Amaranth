@@ -19,7 +19,7 @@ namespace LayerGroups {
         GroupVolume
     ,   GroupPitch
     ,   GroupScratch
-    ,   GroupDeformer
+    ,   GroupGuideCurve
     ,   GroupTime
     ,   GroupSpect
     ,   GroupPhase

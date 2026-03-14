@@ -9,7 +9,7 @@
 #include "../../Util/CycleEnums.h"
 #include "../../Audio/SynthAudioSource.h"
 #include "../../UI/Panels/ModMatrixPanel.h"
-#include "../../UI/VertexPanels/DeformerPanel.h"
+#include "../../UI/VertexPanels/GuideCurvePanel.h"
 #include "../../UI/VertexPanels/Spectrum3D.h"
 #include "../../UI/VertexPanels/Waveform3D.h"
 
@@ -34,16 +34,16 @@ SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo
     phaseAccumBuffer[Left]	.resize(maxPartials);
     phaseAccumBuffer[Right]	.resize(maxPartials);
 
-    auto& deformerPanel = getObj(DeformerPanel);
+    auto& guideCurvePanel = getObj(GuideCurvePanel);
 
     freqRasterizer.setWrapsEnds(false);
-    freqRasterizer.setDeformer(&deformerPanel);
+    freqRasterizer.setGuideCurveProvider(&guideCurvePanel);
     freqRasterizer.setCalcDepthDimensions(false);
     freqRasterizer.setLimits(-spectMargin, 1 + spectMargin);
 
     phaseRasterizer.setWrapsEnds(false);
     phaseRasterizer.setScalingMode(MeshRasterizer::Bipolar);
-    phaseRasterizer.setDeformer(&deformerPanel);
+    phaseRasterizer.setGuideCurveProvider(&guideCurvePanel);
     phaseRasterizer.setCalcDepthDimensions(false);
     phaseRasterizer.setInterpolatesCurves(true);
     phaseRasterizer.setLimits(-spectMargin, 1 + spectMargin);
@@ -62,8 +62,8 @@ void SynthFilterVoice::initialiseNoteExtra(const int midiNoteNumber, const float
     }
 
     // TODO
-    freqRasterizer.updateOffsetSeeds(1, DeformerPanel::tableSize);
-    phaseRasterizer.updateOffsetSeeds(1, DeformerPanel::tableSize);
+    freqRasterizer.updateOffsetSeeds(1, GuideCurvePanel::tableSize);
+    phaseRasterizer.updateOffsetSeeds(1, GuideCurvePanel::tableSize);
 
     if(parent->flags.haveFFTPhase) {
         phaseScaleRamp.withSize(noteState.numHarmonics).ramp(1.f, 1.f).sqrt();
@@ -169,7 +169,7 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
         position.time = getScratchTime(props.scratchChan, frame.frontier);
 
         timeRasterizer.setMorphPosition(position);
-        timeRasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
+        timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
         timeRasterizer.setInterceptPadding((float) samplingDelta * 2);
         timeRasterizer.calcCrossPoints(layer.mesh, 0.f);
 
@@ -210,7 +210,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
         float progress = getScratchTime(props.scratchChan, frame.frontier);
 
         freqRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
-        freqRasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
+        freqRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
         freqRasterizer.calcCrossPoints(layer.mesh, 0.f);
 
         if (freqRasterizer.isSampleable()) {
@@ -341,7 +341,7 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
             float progress = getScratchTime(props.scratchChan, frame.frontier);
 
             phaseRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
-            phaseRasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
+            phaseRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
             phaseRasterizer.calcCrossPoints(layer.mesh, 0.f);
 
             if (phaseRasterizer.isSampleable()) {

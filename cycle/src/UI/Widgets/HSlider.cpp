@@ -145,8 +145,8 @@ void HSlider::mouseEnter(const MouseEvent& e) {
     Slider::mouseEnter(e);
 
     String valueText = consoleString.toString(getValue());
-    getObj(IConsole).write(valueText + " - " + message);
-    getObj(IConsole).setMouseUsage(true, true, true, usesRightClick);
+    repo->getConsole().write(valueText + " - " + message);
+    repo->getConsole().setMouseUsage(true, true, true, usesRightClick);
 }
 
 
@@ -154,7 +154,7 @@ void HSlider::mouseMove(const MouseEvent& e) {
     Slider::mouseMove(e);
 
     String valueText = consoleString.toString(getValue());
-    getObj(IConsole).write(valueText + " - " + message);
+    repo->getConsole().write(valueText + " - " + message);
 }
 
 
@@ -169,7 +169,7 @@ void HSlider::mouseDrag(const MouseEvent& e) {
         Slider::mouseDrag(e);
 
     String valueText = consoleString.toString(getValue());
-    getObj(IConsole).write(valueText + " - " + message);
+    repo->getConsole().write(valueText + " - " + message);
 }
 
 

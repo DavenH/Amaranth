@@ -248,7 +248,7 @@ void CommonGL::initializeTextures() {
     info(panel->panelName << " initializing textures\n");
 
     OwnedArray <Texture>& textures = panel->textures;
-    TextureGL* nameA, * nameB, * grab, * scales, * dfrm;
+    TextureGL* nameA, * nameB, * grab, * scales, * guideCurve;
 
     for (auto texture : textures) {
         texture->clear();
@@ -259,7 +259,7 @@ void CommonGL::initializeTextures() {
     textures.add(nameB = new TextureGL(panel->nameImageB, GL_ONE));
     textures.add(grab = new TextureGL(panel->grabImage));
     textures.add(scales = new TextureGL(panel->scalesImage));
-    textures.add(dfrm = new TextureGL(panel->dfrmImage));
+    textures.add(guideCurve = new TextureGL(panel->guideCurveImage));
 
     grab->src = Rectangle<float>(0, 0, 24.f, 24.f);
 
@@ -271,7 +271,7 @@ void CommonGL::initializeTextures() {
     panel->nameTexA = nameA;
     panel->nameTexB = nameB;
     panel->scalesTex = scales;
-    panel->dfrmTex = dfrm;
+    panel->guideCurveTex = guideCurve;
 
     panel->updateNameTexturePos();
     panel->triggerPendingScaleUpdate();

@@ -64,7 +64,7 @@ void ZoomPanel::setBounds(int x, int y, int width, int height) {
 }
 
 void ZoomPanel::mouseEnter(const MouseEvent& e) {
-    auto& console = getObj(IConsole);
+    auto& console = repo->getConsole();
 
     if(e.originalComponent == &horz) {
         console.setMouseUsage(false, false, true, false);
