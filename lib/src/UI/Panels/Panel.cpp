@@ -29,7 +29,7 @@ Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
     ,   alwaysDrawDepthLines    (false)
     ,   backgroundTempoSynced   (false)
     ,   backgroundTimeRelevant  (true)
-    ,   guideCurveApplicable        (true)
+    ,   guideCurveApplicable    (true)
     ,   doesDrawMouseHint       (false)
     ,   drawLinesAfterFill      (false)
     ,   pendingDeformUpdate     (true)
