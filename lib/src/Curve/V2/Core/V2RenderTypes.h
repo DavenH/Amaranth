@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <Curve/IDeformer.h>
+#include <Curve/GuideCurveProvider.h>
 #include <Curve/Intercept.h>
 
 enum class V2ScalingType {
@@ -19,7 +19,7 @@ struct V2DeformRegion {
 };
 
 struct V2DecoupledDeformContext {
-    IDeformer* path{nullptr};
+    GuideCurveProvider* path{nullptr};
     const std::vector<V2DeformRegion>* deformRegions{nullptr};
     int noiseSeed{0};
     int phaseOffsetSeed{0};

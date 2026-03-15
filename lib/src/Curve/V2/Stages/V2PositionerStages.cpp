@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include <Curve/IDeformer.h>
+#include <Curve/GuideCurveProvider.h>
 #include <Util/NumberUtils.h>
 
 namespace {
@@ -232,7 +232,7 @@ bool V2PointPathPositionerStage::run(
         return true;
     }
 
-    IDeformer::NoiseContext noise;
+    GuideCurveProvider::NoiseContext noise;
     noise.noiseSeed = pointPath.noiseSeed;
 
     for (int i = 0; i < ioCount; ++i) {
@@ -247,39 +247,39 @@ bool V2PointPathPositionerStage::run(
         float timeProgress = getTimeProgress(intercept, context);
         bool ignoreTimeEdge = pointPath.noOffsetAtEnds && (timeProgress == 0.0f || timeProgress == 1.0f);
 
-        if (cube->deformerAt(Vertex::Red) >= 0) {
-            int dfrm = cube->deformerAt(Vertex::Red);
+        if (cube->guideCurveAt(Vertex::Red) >= 0) {
+            int dfrm = cube->guideCurveAt(Vertex::Red);
             noise.vertOffset = pointPath.vertOffsetSeeds[dfrm];
             noise.phaseOffset = pointPath.phaseOffsetSeeds[dfrm];
-            intercept.adjustedX += cube->deformerAbsGain(Vertex::Red)
+            intercept.adjustedX += cube->guideCurveAbsGain(Vertex::Red)
                 * pointPath.path->getTableValue(dfrm, redProgress, noise);
         }
 
-        if (cube->deformerAt(Vertex::Blue) >= 0) {
-            int dfrm = cube->deformerAt(Vertex::Blue);
+        if (cube->guideCurveAt(Vertex::Blue) >= 0) {
+            int dfrm = cube->guideCurveAt(Vertex::Blue);
             noise.vertOffset = pointPath.vertOffsetSeeds[dfrm];
             noise.phaseOffset = pointPath.phaseOffsetSeeds[dfrm];
-            intercept.adjustedX += cube->deformerAbsGain(Vertex::Blue)
+            intercept.adjustedX += cube->guideCurveAbsGain(Vertex::Blue)
                 * pointPath.path->getTableValue(dfrm, blueProgress, noise);
         }
 
-        if (cube->deformerAt(Vertex::Amp) >= 0) {
-            int dfrm = cube->deformerAt(Vertex::Amp);
+        if (cube->guideCurveAt(Vertex::Amp) >= 0) {
+            int dfrm = cube->guideCurveAt(Vertex::Amp);
             noise.vertOffset = pointPath.vertOffsetSeeds[dfrm];
             noise.phaseOffset = pointPath.phaseOffsetSeeds[dfrm];
             if (! ignoreTimeEdge) {
-                intercept.y += cube->deformerAbsGain(Vertex::Amp)
+                intercept.y += cube->guideCurveAbsGain(Vertex::Amp)
                     * pointPath.path->getTableValue(dfrm, timeProgress, noise);
                 NumberUtils::constrain(intercept.y, (context.scaling == V2ScalingType::Unipolar ? 0.0f : -1.0f), 1.0f);
             }
         }
 
-        if (cube->deformerAt(Vertex::Phase) >= 0) {
-            int dfrm = cube->deformerAt(Vertex::Phase);
+        if (cube->guideCurveAt(Vertex::Phase) >= 0) {
+            int dfrm = cube->guideCurveAt(Vertex::Phase);
             noise.vertOffset = pointPath.vertOffsetSeeds[dfrm];
             noise.phaseOffset = pointPath.phaseOffsetSeeds[dfrm];
             if (! ignoreTimeEdge) {
-                intercept.adjustedX += cube->deformerAbsGain(Vertex::Phase)
+                intercept.adjustedX += cube->guideCurveAbsGain(Vertex::Phase)
                     * pointPath.path->getTableValue(dfrm, timeProgress, noise);
 
                 if (context.cyclic) {
@@ -288,12 +288,12 @@ bool V2PointPathPositionerStage::run(
             }
         }
 
-        if (cube->deformerAt(Vertex::Curve) >= 0) {
-            int dfrm = cube->deformerAt(Vertex::Curve);
+        if (cube->guideCurveAt(Vertex::Curve) >= 0) {
+            int dfrm = cube->guideCurveAt(Vertex::Curve);
             noise.vertOffset = pointPath.vertOffsetSeeds[dfrm];
             noise.phaseOffset = pointPath.phaseOffsetSeeds[dfrm];
             if (! ignoreTimeEdge) {
-                intercept.shp += 2.0f * cube->deformerAbsGain(Vertex::Curve)
+                intercept.shp += 2.0f * cube->guideCurveAbsGain(Vertex::Curve)
                     * pointPath.path->getTableValue(dfrm, timeProgress, noise);
                 NumberUtils::constrain(intercept.shp, 0.0f, 1.0f);
             }
