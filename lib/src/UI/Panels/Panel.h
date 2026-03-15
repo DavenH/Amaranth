@@ -3,6 +3,8 @@
 #include <iostream>
 #include <vector>
 #include "CommonGfx.h"
+#include "PanelDirtyState.h"
+#include "PanelRenderContext.h"
 #include "ZoomPanel.h"
 #include "JuceHeader.h"
 #include "../../App/SingletonAccessor.h"
@@ -56,6 +58,7 @@ public:
     void triggerZoom(bool in);
     void updateNameTexturePos();
     void updateVertexSizes();
+    PanelRenderContext createRenderContext() const;
 
     void applyScale         (BufferXY& buff);
     void applyScaleX        (Buffer<float> array);
@@ -105,10 +108,15 @@ public:
     void setNumCornersOverlapped(int num)   { numCornersOverlapped = num;   }
     void setComponent(Component* comp)      { this->comp = comp;            }
 
-    void triggerPendingScaleUpdate()        { pendingScaleUpdate = true;    }
-    void triggerPendingDeformUpdate()       { pendingDeformUpdate = true;   }
+    void triggerPendingScaleUpdate()        { pendingScaleUpdate = true; dirtyState.mark(PanelDirtyState::Flag::StaticVisual); }
+    void triggerPendingDeformUpdate()       { pendingDeformUpdate = true; dirtyState.mark(PanelDirtyState::Flag::Resource); }
+    void markDirty(PanelDirtyState::Flag flag) { dirtyState.mark(flag);     }
+
+    bool isDirty(PanelDirtyState::Flag flag) const { return dirtyState.isDirty(flag); }
 
     Component* getComponent()               { return comp;                  }
+    PanelDirtyState& getDirtyState()        { return dirtyState;            }
+    const PanelDirtyState& getDirtyState() const { return dirtyState;       }
 
     void prepareBuffers(int size, int colorSize = -1) {
         xBuffer.ensureSize(size);
@@ -205,6 +213,7 @@ protected:
     Image scalesImage, guideCurveImage, grabImage, nameImage, nameImageB;
 
     BufferXY    xy;
+    PanelDirtyState dirtyState;
     String      panelName;
     MicroTimer  renderTime, frameTime;
     Color       pointColours[5];

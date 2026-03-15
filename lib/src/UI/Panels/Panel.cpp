@@ -187,6 +187,9 @@ void Panel::drawBackground(bool fillBackground) {
 }
 
 void Panel::panelResized() {
+    dirtyState.mark(PanelDirtyState::Flag::Layout);
+    dirtyState.mark(PanelDirtyState::Flag::StaticVisual);
+
     if (interactor) {
         interactor->resizeFinalBoxSelection();
     }
@@ -563,6 +566,18 @@ void Panel::applyNoZoomScaleY(Buffer<float> array) {
 
 void Panel::bakeTexturesNextRepaint() {
     shouldBakeTextures = true;
+    dirtyState.mark(PanelDirtyState::Flag::SurfaceCache);
+}
+
+PanelRenderContext Panel::createRenderContext() const {
+    PanelRenderContext context;
+
+    if (comp != nullptr) {
+        context.bounds = comp->getBounds();
+        context.clip = comp->getBounds();
+    }
+
+    return context;
 }
 
 void Panel::setCursor() {
