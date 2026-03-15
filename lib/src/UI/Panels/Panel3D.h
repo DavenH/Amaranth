@@ -33,7 +33,6 @@ public:
         virtual Buffer<float> getColumnArray()      = 0;
         virtual const vector<Column>& getColumns()  = 0;
         virtual CriticalSection& getGridLock()      = 0;
-        virtual void drawSurfaceColumn(int index)   = 0;
     };
 
     class DataRetriever {

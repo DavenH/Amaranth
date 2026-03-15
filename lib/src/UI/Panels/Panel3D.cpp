@@ -290,12 +290,13 @@ void Panel3D::doColumnDraw(Buffer<Int8u> pxBuf, Buffer<float> grd32f, int i) {
         setVertices(i, vertices);
     }
 
-    if(i > 0 || ! useVertices) {
-        renderer->drawSurfaceColumn(i);
-    }
-
     PanelRenderer* panelRenderer = ::getPanelRenderer(this);
     jassert(panelRenderer != nullptr);
+
+    if (i > 0 || ! useVertices) {
+        panelRenderer->drawSurfaceColumn(colours, vertices, draw.stride, draw.sizeY);
+    }
+
   #ifdef JUCE_DEBUG
     panelRenderer->checkErrors();
   #endif

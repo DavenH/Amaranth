@@ -24,7 +24,6 @@ public:
     ~OpenGLPanel3D() override;
 
     void init() override;
-    void drawSurfaceColumn(int x) override;
     void resized() override;
     void drawCircle();
     void initRender();

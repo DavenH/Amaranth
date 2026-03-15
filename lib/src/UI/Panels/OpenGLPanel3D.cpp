@@ -85,13 +85,6 @@ void OpenGLPanel3D::disableClientArrays() {
     glDisableClientState(GL_COLOR_ARRAY);
 }
 
-void OpenGLPanel3D::drawSurfaceColumn(int x) {
-    // before draw, specify vertex arrays
-    glColorPointer(panel->draw.stride, GL_UNSIGNED_BYTE, 0, panel->colours);
-    glVertexPointer((GLint) Panel3D::vertsPerQuad, GL_FLOAT, 0, panel->vertices);
-    glDrawArrays(GL_QUAD_STRIP, 0, (panel->draw.sizeY + 1) * vertsPerPolygon);
-}
-
 // must be done for each relevant opengl context
 void OpenGLPanel3D::populateExtensions() {
     String str((char*) glGetString(GL_EXTENSIONS));

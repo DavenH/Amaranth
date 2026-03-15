@@ -5,6 +5,8 @@
 #include "GLSurfaceCache.h"
 #include "Texture.h"
 
+using namespace gl;
+
 GLPanelRenderer::GLPanelRenderer(CommonGfx* gfx, GLSurfaceCache* surfaceCache) :
         gfx(gfx)
     ,   surfaceCache(surfaceCache)
@@ -37,6 +39,14 @@ void GLPanelRenderer::drawBackground(const juce::Rectangle<int>& bounds, bool fi
 
 void GLPanelRenderer::drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) {
     resourceCache.drawCachedTexture(gfx, texture, bounds);
+}
+
+void GLPanelRenderer::drawSurfaceColumn(Buffer<Int8u> colours, Buffer<float> vertices, int stride, int sizeY) {
+    ignoreUnused(sizeY);
+
+    glColorPointer(stride, GL_UNSIGNED_BYTE, 0, colours);
+    glVertexPointer(2, GL_FLOAT, 0, vertices);
+    glDrawArrays(GL_QUAD_STRIP, 0, (sizeY + 1) * 2);
 }
 
 void GLPanelRenderer::drawSurfaceCache() {

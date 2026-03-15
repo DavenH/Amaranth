@@ -19,6 +19,7 @@ public:
 
     void drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) override;
     void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) override;
+    void drawSurfaceColumn(Buffer<Int8u> colours, Buffer<float> vertices, int stride, int sizeY) override;
     void drawSurfaceCache() override;
     void drawFinalSelection() override;
     void finishSurfaceBake() override;

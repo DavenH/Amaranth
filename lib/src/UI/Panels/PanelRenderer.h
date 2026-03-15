@@ -22,6 +22,7 @@ public:
 
     virtual void drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) = 0;
     virtual void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) = 0;
+    virtual void drawSurfaceColumn(Buffer<Int8u> colours, Buffer<float> vertices, int stride, int sizeY) = 0;
     virtual void drawSurfaceCache() = 0;
     virtual void drawFinalSelection() = 0;
     virtual void finishSurfaceBake() = 0;
