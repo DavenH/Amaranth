@@ -224,11 +224,12 @@ void Initializer::setConstants() {
 }
 
 void Initializer::setDefaultSettings() {
-    // TODO linux, where to put config?
+    const String companyName(ProjectInfo::companyName);
+    const String projectName(ProjectInfo::projectName);
     const String path = platformSplit(
-        "/Amaranth Audio/Cycle/install.xml",
-        "/Preferences/com.amaranthaudio.Cycle.xml",
-        ""
+        "/" + companyName + "/" + projectName,
+        "/Application Support/" + companyName + "/" + projectName,
+        "/" + companyName + "/" + projectName
     );
     getObj(Settings).setPropertiesPath(path);
 

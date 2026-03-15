@@ -23,6 +23,12 @@ void Settings::init() {
 
     String appDir(File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName());
     const String path = appDir + propertiesPath + "/settings.json";
+    File parentDir = File(path).getParentDirectory();
+
+    if (! parentDir.exists()) {
+        (void) parentDir.createDirectory();
+    }
+
     createPropertiesFile(path);
     createSettingsFile(path);
 
@@ -189,4 +195,3 @@ void Settings::writePropertiesFile() {
         }
     }
 }
-
