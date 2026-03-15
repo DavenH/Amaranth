@@ -15,6 +15,7 @@ public:
     void endPanelRender() override;
 
     void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) override;
+    void drawLine(float x1, float y1, float x2, float y2, bool scale) override;
     void drawLine(float x1, float y1, float x2, float y2, const Color& c1, const Color& c2) override;
     void drawLineStrip(BufferXY& xy, bool scale) override;
     void drawPoints(float size, BufferXY& xy, bool scale) override;
@@ -27,8 +28,15 @@ public:
         bool fill,
         bool outline
     ) override;
+    void drawTexture(Texture* texture) override;
+    void enableSmoothing() override;
     void fillRect(float leftX, float topY, float rightX, float botY, bool scale) override;
     void fillRect(float x1, float y1, float x2, float y2, const Color& c1, const Color& c2) override;
+    void disableSmoothing() override;
+    void setCurrentColour(const Color& color) override;
+    void setCurrentColour(float c1, float c2, float c3) override;
+    void setCurrentColour(float c1, float c2, float c3, float c4) override;
+    void setCurrentLineWidth(float width) override;
     void setClip(const juce::Rectangle<int>& clip) override;
     void setTransform(const juce::AffineTransform& transform) override;
 

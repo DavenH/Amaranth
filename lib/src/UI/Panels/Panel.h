@@ -119,6 +119,7 @@ public:
     Component* getComponent()               { return comp;                  }
     PanelDirtyState& getDirtyState()        { return dirtyState;            }
     const PanelDirtyState& getDirtyState() const { return dirtyState;       }
+    PanelRenderer* getPanelRenderer()       { return panelRenderer;         }
 
     void prepareBuffers(int size, int colorSize = -1) {
         xBuffer.ensureSize(size);
