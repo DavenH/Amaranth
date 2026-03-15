@@ -469,7 +469,7 @@ void SynthAudioSource::doAudioThreadUpdates() {
                 }
 
                 case UpdateCycleCachesAction:
-                    if(! voices.size() == 0) {
+                    if(voices.size() != 0) {
                         voices.getFirst()->updateCycleCaches();
                     }
                     break;

@@ -60,6 +60,7 @@ void Updater::handleAsyncUpdate() {
 
 Updater::Graph::Graph(Updater* updater, SingletonRepo* repo) :
         SingletonAccessor(repo, "UpdateGraph")
+    ,   updater(updater)
     ,   updateType(Update)
     ,   printsPath(false) {
 }
@@ -106,14 +107,16 @@ void Updater::Graph::reset() {
 
 /* ----------------------------------------------------------------------------- */
 
-Updater::Node::Node() :
+Updater::Node::Node(Updater* updater) :
         updated(false)
     ,   dirty(false)
+    ,   updater(updater)
     ,   toUpdate(nullptr) {}
 
-Updater::Node::Node(Updateable* objectToUpdate) :
+Updater::Node::Node(Updater* updater, Updateable* objectToUpdate) :
         updated(false)
     ,   dirty(false)
+    ,   updater(updater)
     ,   toUpdate(objectToUpdate) {
 }
 

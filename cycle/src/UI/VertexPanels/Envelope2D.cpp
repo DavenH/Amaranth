@@ -43,6 +43,8 @@ Envelope2D::~Envelope2D() {
 }
 
 void Envelope2D::init() {
+    Panel2D::init();
+
     vertPadding 		= 2;
     doesDrawMouseHint 	= true;
     curveIsBipolar 		= false;

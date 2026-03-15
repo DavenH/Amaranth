@@ -107,6 +107,7 @@ void Initializer::init() {
     setDefaultSettings();
     instantiate();
 
+    repo->setMorphPositioner(&getObj(MorphPanel));
     repo->init();
     init2();
 
@@ -130,7 +131,6 @@ void Initializer::init2() {
     getObj(GeneralControls).addKeyListener(handler);
     getObj(VertexPropertiesPanel).addKeyListener(handler);
 
-    repo->setMorphPositioner(morph);
     repo->setConsole(&getObj(Console));
     repo->setGuideCurveProvider(&getObj(GuideCurvePanel));
 
@@ -144,16 +144,16 @@ void Initializer::init2() {
     meshLib->addListener(&getObj(Spectrum3D));
     meshLib->addListener(&getObj(Waveform3D));
 
-    meshLib->addGroup(LayerGroups::GroupVolume);
-    meshLib->addGroup(LayerGroups::GroupPitch);
-    meshLib->addGroup(LayerGroups::GroupScratch);
-    meshLib->addGroup(LayerGroups::GroupGuideCurve);
-    meshLib->addGroup(LayerGroups::GroupTime);
-    meshLib->addGroup(LayerGroups::GroupSpect);
-    meshLib->addGroup(LayerGroups::GroupPhase);
-    meshLib->addGroup(LayerGroups::GroupWavePitch);
-    meshLib->addGroup(LayerGroups::GroupWaveshaper);
-    meshLib->addGroup(LayerGroups::GroupIrModeller);
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
 
     meshLib->addLayer(LayerGroups::GroupVolume);
     meshLib->addLayer(LayerGroups::GroupPitch);
@@ -165,6 +165,8 @@ void Initializer::init2() {
     meshLib->addLayer(LayerGroups::GroupWavePitch);
     meshLib->addLayer(LayerGroups::GroupWaveshaper);
     meshLib->addLayer(LayerGroups::GroupIrModeller);
+
+    getObj(CycleUpdater).finishInitialization();
 
     morph->updateCube();
     main->switchedRenderingMode(false);

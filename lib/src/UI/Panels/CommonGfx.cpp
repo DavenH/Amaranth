@@ -34,24 +34,27 @@ void CommonGfx::drawBackground(const Rectangle<int>& bounds, bool fillBackground
         return;
     }
 
-    if (fillBackground) {
-        Interactor* itr = panel->interactor;
-        Range<float> xLimits = itr->vertexLimits[itr->dims.x];
-        Range<float> yLimits = itr->vertexLimits[itr->dims.y];
+    Interactor* itr = panel->interactor;
 
+    if (fillBackground) {
         setCurrentColour(0.07f, 0.07f, 0.07f);
         fillRect(0, 0, bounds.getWidth(), bounds.getHeight(), false);
 
-        if (xLimits.getLength() > 1.f) {
-            setCurrentColour(0.12f, 0.12f, 0.12f);
-            fillRect(panel->sx(xLimits.getStart()), 0, panel->sx(0), bounds.getHeight(), false);
-            fillRect(panel->sx(1), 0, panel->sx(yLimits.getEnd()), bounds.getHeight(), false);
-        }
+        if (itr != nullptr) {
+            Range<float> xLimits = itr->vertexLimits[itr->dims.x];
+            Range<float> yLimits = itr->vertexLimits[itr->dims.y];
 
-        if (yLimits.getLength() > 1.f) {
-            setCurrentColour(0.12f, 0.12f, 0.12f);
-            fillRect(0, panel->sy(yLimits.getStart()), bounds.getWidth(), panel->sy(0), false);
-            fillRect(0, panel->sy(1), bounds.getWidth(), panel->sy(yLimits.getEnd()), false);
+            if (xLimits.getLength() > 1.f) {
+                setCurrentColour(0.12f, 0.12f, 0.12f);
+                fillRect(panel->sx(xLimits.getStart()), 0, panel->sx(0), bounds.getHeight(), false);
+                fillRect(panel->sx(1), 0, panel->sx(yLimits.getEnd()), bounds.getHeight(), false);
+            }
+
+            if (yLimits.getLength() > 1.f) {
+                setCurrentColour(0.12f, 0.12f, 0.12f);
+                fillRect(0, panel->sy(yLimits.getStart()), bounds.getWidth(), panel->sy(0), false);
+                fillRect(0, panel->sy(1), bounds.getWidth(), panel->sy(yLimits.getEnd()), false);
+            }
         }
     }
 
@@ -121,7 +124,7 @@ void CommonGfx::drawBackground(const Rectangle<int>& bounds, bool fillBackground
 }
 
 void CommonGfx::drawFinalSelection() {
-    if (panel->interactor->getSelected().empty()) {
+    if (panel->interactor == nullptr || panel->interactor->getSelected().empty()) {
         return;
     }
 

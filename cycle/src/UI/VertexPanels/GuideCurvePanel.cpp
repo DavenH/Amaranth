@@ -29,6 +29,8 @@ GuideCurvePanel::GuideCurvePanel(SingletonRepo* repo) :
 }
 
 void GuideCurvePanel::init() {
+    EffectPanel::init();
+
     meshLib                = &getObj(MeshLibrary);
     updateSource           = UpdateSources::SourceGuideCurve;
     layerType              = LayerGroups::GroupGuideCurve;

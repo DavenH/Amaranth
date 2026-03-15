@@ -103,6 +103,10 @@ void Panel::render() {
     // should only be held on mesh deletions
     ScopedLock sl(renderLock);
 
+    if (interactor == nullptr || comp == nullptr || interactor->getRasterizer() == nullptr) {
+        return;
+    }
+
     gfx->initRender();
     handlePendingUpdates();
 

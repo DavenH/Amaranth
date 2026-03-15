@@ -29,6 +29,8 @@ WaveshaperUI::WaveshaperUI(SingletonRepo* repo) :
 }
 
 void WaveshaperUI::init() {
+    EffectPanel::init();
+
     updateSource			= UpdateSources::SourceWaveshaper;
     layerType 				= LayerGroups::GroupWaveshaper;
     curveIsBipolar 			= false;

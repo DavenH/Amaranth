@@ -482,7 +482,7 @@ void MainPanel::detachVisibleComponents() {
 }
 
 void MainPanel::paint(Graphics& g) {
-    if (!gainedFocus && !hasKeyboardFocus(true)) {
+    if (isShowing() && !gainedFocus && !hasKeyboardFocus(true)) {
         if (getScreenBounds().contains(Desktop::getMousePosition())) {
             grabKeyboardFocus();
             gainedFocus = true;

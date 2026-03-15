@@ -1167,11 +1167,15 @@ void Interactor::selectConnectedVerts(set<Vertex*>& alreadySeen, Vertex* current
 void Interactor::performUpdate(UpdateType updateType) {
     if (updateType == Update) {
         updateDepthVerts();
-        display->repaint();
+        if (display != nullptr) {
+            display->repaint();
+        }
     }
 
     if (updateType == Repaint) {
-        display->repaint();
+        if (display != nullptr) {
+            display->repaint();
+        }
     }
 }
 
@@ -1240,6 +1244,10 @@ float Interactor::getDragMovementScale(VertCube* cube) {
 }
 
 void Interactor::updateDepthVerts() {
+    if (positioner == nullptr) {
+        return;
+    }
+
     Mesh* mesh = getMesh();
 
     if (mesh == nullptr) {
@@ -1738,7 +1746,7 @@ MorphPosition Interactor::getModPosition(bool adjust) {
         if (ignoresTime)
             m.time = 0;
 
-        if (scratchesTime) {
+        if (scratchesTime && panel != nullptr) {
             if (positioner->getPrimaryDimension() == Vertex::Time) {
                 int chan = panel->getLayerScratchChannel();
 

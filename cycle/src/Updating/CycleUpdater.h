@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include <App/MeshLibrary.h>
 #include <App/SingletonAccessor.h>
 #include <Design/Updating/Updater.h>
@@ -18,8 +20,10 @@ public:
     explicit CycleUpdater(SingletonRepo* repo);
 
     void init() override;
+    void finishInitialization();
     void createUpdateGraph();
     void envelopeVisibilityChanged();
+    void validateUpdateGraph() const;
     void moveTimeUIs(int viewStage, int lastViewStage);
     void viewStageChanged(bool force);
     void setDspFXConnections() const;
@@ -28,6 +32,7 @@ public:
     void removeTimeFreqChildren(bool fromFFT) const;
     void removeTimeFreqParents() const;
     void removeDspFXConnections() const;
+    void collectTrackedNodes(Array<Node*>& nodes) const;
     void refreshConnections(Node* destNode, const Array<int>& meshTypes);
     void layerChanged(int layerGroup, int index) override;
 
@@ -76,6 +81,7 @@ private:
 
     Ref<Updater> updater;
 
+    bool graphCreated;
     int lastViewStage;
 
     std::unique_ptr<EnvelopeDelegate> envelopeDelegate;

@@ -55,7 +55,9 @@ void Panel3D::init() {
     openGL      = std::make_unique<OpenGLPanel3D>(repo, this, dataRetriever);
     wrapper     = std::make_unique<BoundWrapper>(openGL.get());
     zoomPanel   = std::make_unique<ZoomPanel>(repo, ZoomContext(this, wrapper.get(), haveHorzZoom, true));
+    zoomPanel->panelComponentChanged(openGL.get());
     zoomPanel->addListener(this);
+    openGL->init();
 
     drawLinesAfterFill = true;
 }

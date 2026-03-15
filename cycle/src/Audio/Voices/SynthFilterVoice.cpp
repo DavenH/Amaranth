@@ -294,7 +294,7 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
     };
     Buffer harmRast(rastBuffer.withSize(noteState.numHarmonics));
 
-    if (!phaseLayers->size() == 0) {
+    if (phaseLayers->size() != 0) {
         phaseAccBufs[Left].zero();
         phaseAccBufs[Right].zero();
     }

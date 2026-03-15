@@ -41,6 +41,7 @@ void Panel2D::init() {
     zoomPanel->panelComponentChanged(openGL.get());
     zoomPanel->addListener(this);
 
+    openGL->init();
     openGL->attach();
 }
 

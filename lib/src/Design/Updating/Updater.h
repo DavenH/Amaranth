@@ -17,8 +17,8 @@ class Updater :
 public:
     class Node {
     public:
-        Node();
-        explicit Node(Updateable* object);
+        explicit Node(Updater* updater = nullptr);
+        Node(Updater* updater, Updateable* object);
         virtual ~Node() = default;
 
         // upstroke
@@ -39,6 +39,10 @@ public:
 
         [[nodiscard]] bool isDirty() const   { return dirty;    }
         [[nodiscard]] bool isUpdated() const { return updated;  }
+        [[nodiscard]] const Array<Node*>& getParents() const     { return parents;     }
+        [[nodiscard]] const Array<Node*>& getChildren() const    { return children;    }
+        [[nodiscard]] const Array<Node*>& getMarkedNodes() const { return nodesToMark; }
+        [[nodiscard]] Updateable* getTarget() const              { return toUpdate;    }
         void markDirty() { dirty = true;    }
 
         virtual void executeUpdate(UpdateType updateType);
@@ -71,6 +75,7 @@ public:
         void update         (Node* node);
 
         [[nodiscard]] bool doesPrintPath() const { return printsPath; }
+        [[nodiscard]] const Array<Node*>& getHeadNodes() const { return headNodes; }
         void setUpdateType(UpdateType type)     { updateType = type; }
         void setPrintsPath(bool does)   { printsPath = does; }
 
@@ -109,6 +114,8 @@ public:
     void addListener(ChangeListener* listener) { listeners.add(listener); }
     void setStartingNode(int code, Node* node);
     Graph& getGraph() { return graph; }
+    const Graph& getGraph() const { return graph; }
+    const map<int, Node*>& getStartingNodes() const { return startingNodes; }
 
 protected:
     bool throttleUpdates;

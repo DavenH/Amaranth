@@ -54,10 +54,6 @@ IrModellerUI::IrModellerUI(SingletonRepo* repo) :
     doesDrawMouseHint 		= true;
     vertsAreWaveApplicable 	= true;
 
-    zoomPanel->tendZoomToBottom	= false;
-    zoomPanel->tendZoomToLeft	= false;
-    zoomPanel->tendZoomToTop	= false;
-
     bgPaddingLeft = getRealConstant(IrModellerPadding);
 
     Image alum = PNGImageFormat::loadFrom(Gradients::burntalum_png, Gradients::burntalum_pngSize);
@@ -94,7 +90,13 @@ IrModellerUI::IrModellerUI(SingletonRepo* repo) :
 }
 
 void IrModellerUI::init() {
+    EffectPanel::init();
+
     irModeller = &getObj(SynthAudioSource).getIrModeller();
+
+    zoomPanel->tendZoomToBottom = false;
+    zoomPanel->tendZoomToLeft   = false;
+    zoomPanel->tendZoomToTop    = false;
 
     selector = std::make_unique<MeshSelector<Mesh>>(repo.get(), this, String("ir"), true, false, true);
 

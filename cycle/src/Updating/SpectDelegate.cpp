@@ -10,6 +10,7 @@
 
 SpectDelegate::SpectDelegate(SingletonRepo* repo) :
         SingletonAccessor(repo, "SpectDelegate") {
+    updateName = name;
 }
 
 void SpectDelegate::performUpdate(UpdateType updateType) {

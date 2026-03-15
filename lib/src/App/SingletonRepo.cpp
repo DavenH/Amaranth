@@ -1,4 +1,5 @@
 #include <memory>
+#include <iostream>
 
 #include "SingletonRepo.h"
 #include "AppConstants.h"
@@ -84,8 +85,13 @@ void SingletonRepo::init() {
 
     ScopedLock sl(initLock);
 
-    for (auto object : objects) {
-        info(object->getName() << std::endl);
+    for (int i = 0; i < objects.size(); ++i) {
+        auto* object = objects[i];
+
+        info("Singleton init [" << i << "] order=" << object->getInitOrder()
+             << " name=" << object->getName() << "\n");
+        std::cerr << "Singleton init [" << i << "] order=" << object->getInitOrder()
+                  << " name=" << object->getName() << '\n';
         object->init();
     }
 

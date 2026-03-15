@@ -29,5 +29,6 @@ const vector<Column>& Envelope3D::getColumns() {
 }
 
 void Envelope3D::init() {
+    Panel3D::init();
     interactor3D = &getObj(EnvelopeInter3D);
 }

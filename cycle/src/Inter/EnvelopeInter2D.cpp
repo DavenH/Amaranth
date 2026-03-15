@@ -76,6 +76,7 @@ EnvelopeInter2D::EnvelopeInter2D(SingletonRepo* repo) :
 }
 
 void EnvelopeInter2D::init() {
+    Interactor::init();
     envPanel = &getObj(Envelope2D);
 
     meshToSlider[LayerGroups::GroupVolume] = OscControlPanel::Volume;
@@ -87,6 +88,11 @@ void EnvelopeInter2D::init() {
     loopIcon.setApplicable(false);
 
     vertexLimits[Vertex::Phase].setEnd(MathConstants<float>::sqrt2); //envPanel->zoom.wLimit;
+
+    // The updater can reach the envelope path during startup before the UI
+    // explicitly switches envelope types, so bind the current rasterizer now.
+    layerType = getSetting(CurrentEnvGroup);
+    setRasterizer(getRast(layerType));
 }
 
 void EnvelopeInter2D::doExtraMouseUp() {

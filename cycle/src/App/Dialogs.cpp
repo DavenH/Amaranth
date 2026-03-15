@@ -86,14 +86,21 @@ void Dialogs::showPresetSaveAsDialog() {
     String filename = getObj(Directories).getUserPresetDir() + deets.getName();
     File absfile = File::getCurrentWorkingDirectory().getChildFile(filename);
 
-    FileBrowserComponent browser(FileBrowserComponent::saveMode | FileBrowserComponent::canSelectFiles |
-                                 FileBrowserComponent::warnAboutOverwriting, absfile, &filter, nullptr);
+    auto browser = std::make_unique<FileBrowserComponent>(
+            FileBrowserComponent::saveMode | FileBrowserComponent::canSelectFiles
+                | FileBrowserComponent::warnAboutOverwriting,
+            absfile, &filter, nullptr);
 
-    FileChooserDialog dialogBox("Save Preset", String(), browser,
-                                true, Colour::greyLevel(0.08f), deets);
+    auto* dialogBox = new FileChooserDialog("Save Preset", String(), std::move(browser),
+                                            true, Colour::greyLevel(0.08f), deets);
 
-    if (dialogBox.show()) {
-        File currentFile = browser.getSelectedFile(0);
+    dialogBox->showAsync([this, dialogBox, deets, ext](bool ok) mutable {
+        if (!ok) {
+            handleNextPendingModalAction();
+            return;
+        }
+
+        File currentFile = dialogBox->getSelectedFile();
         String filename = currentFile.getFullPathName();
 
         bool existsBefore = currentFile.existsAsFile();
@@ -102,7 +109,7 @@ void Dialogs::showPresetSaveAsDialog() {
             filename += String(".") + ext;
         }
 
-        String author = dialogBox.getAuthorBoxContent();
+        String author = dialogBox->getAuthorBoxContent();
 
         if (author.isEmpty()) {
             author = String("Anonymous");
@@ -112,12 +119,11 @@ void Dialogs::showPresetSaveAsDialog() {
             deets.setRevision(0);
             deets.setName(currentFile.getFileNameWithoutExtension());
             deets.setAuthor(author);
-            deets.setPack(dialogBox.getPackBoxContent());
+            deets.setPack(dialogBox->getPackBoxContent());
 
             getObj(FileManager).setCurrentPresetName(filename);
 
-            const String &tagsString = dialogBox
-                .getTagsBoxContent()
+            const String& tagsString = dialogBox->getTagsBoxContent()
                 .removeCharacters("\t. ")
                 .toLowerCase();
 
@@ -139,9 +145,9 @@ void Dialogs::showPresetSaveAsDialog() {
             watcher->reset();
             watcher->update();
         }
-    }
 
-    handleNextPendingModalAction();
+        handleNextPendingModalAction();
+    });
 }
 
 void Dialogs::showDeviceErrorApplicably() {

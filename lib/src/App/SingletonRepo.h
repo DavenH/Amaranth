@@ -37,6 +37,8 @@ public:
     MorphPositioner& getMorphPosition()                 { return *positioner;   }
     IConsole& getConsole()                              { return *console;      }
     GuideCurveProvider& getGuideCurveProvider()         { return *guideCurveProvider;  }
+    // Temporary debug hook for CycleUpdater graph validation. Remove after startup debugging.
+    const OwnedArray<SingletonAccessor>& getObjects() const { return objects; }
 
     /* ----------------------------------------------------------------------------- */
 
