@@ -3,7 +3,7 @@
 #include <vector>
 
 #include <Array/Buffer.h>
-#include <Curve/IDeformer.h>
+#include <Curve/GuideCurveProvider.h>
 #include <Util/NumberUtils.h>
 #include <Curve/V2/Sampling/V2PhasePolicies.h>
 #include <Curve/V2/Core/V2RenderTypes.h>
@@ -63,7 +63,7 @@ inline float sampleAtPhaseDecoupled(
             continue;
         }
 
-        IDeformer::NoiseContext noise;
+        GuideCurveProvider::NoiseContext noise;
         noise.noiseSeed = deformContext.noiseSeed;
         noise.phaseOffset = deformContext.phaseOffsetSeed;
         noise.vertOffset = deformContext.vertOffsetSeed;

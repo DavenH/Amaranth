@@ -3,14 +3,14 @@
 #include <vector>
 
 #include <Curve/Curve.h>
-#include <Curve/IDeformer.h>
+#include <Curve/GuideCurveProvider.h>
 #include <Curve/Intercept.h>
 #include <Curve/Mesh.h>
 #include <Obj/MorphPosition.h>
 #include <Curve/V2/Core/V2RenderTypes.h>
 
 struct V2PathContext {
-    IDeformer* path{nullptr};
+    GuideCurveProvider* path{nullptr};
     int noiseSeed{-1};
     const short* vertOffsetSeeds{nullptr};
     const short* phaseOffsetSeeds{nullptr};
@@ -19,7 +19,7 @@ struct V2PathContext {
     V2PathContext() = default;
 
     V2PathContext(
-        IDeformer* path,
+        GuideCurveProvider* path,
         int noiseSeed,
         const short* vertOffsetSeeds,
         const short* phaseOffsetSeeds,
@@ -61,7 +61,7 @@ struct V2PositionerContext {
         PointPathContext() = default;
 
         PointPathContext(
-            IDeformer* path,
+            GuideCurveProvider* path,
             int noiseSeed,
             const short* vertOffsetSeeds,
             const short* phaseOffsetSeeds,
@@ -166,7 +166,7 @@ struct V2WaveBuilderContext {
         ComponentPathContext() = default;
 
         ComponentPathContext(
-            IDeformer* path,
+            GuideCurveProvider* path,
             int noiseSeed,
             const short* vertOffsetSeeds,
             const short* phaseOffsetSeeds,
@@ -251,4 +251,3 @@ public:
             int& oneIndex,
             const V2WaveBuilderContext& context) noexcept = 0;
 };
-

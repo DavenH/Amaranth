@@ -127,6 +127,8 @@ bool FXRasterizer::renderWithV2() {
         return false;
     }
 
+    GuideCurveProvider* guideCurveProvider = getGuideCurveProvider();
+
     v2FxRasterizer.setMeshSnapshot(mesh);
 
     V2FxControlSnapshot controls;
@@ -140,19 +142,19 @@ bool FXRasterizer::renderWithV2() {
     controls.lowResolution = lowResCurves;
     controls.integralSampling = integralSampling;
     controls.pointPath = V2PositionerContext::PointPathContext(
-        deformer,
+        guideCurveProvider,
         noiseSeed,
         vertOffsetSeeds,
         phaseOffsetSeeds,
-        deformer != nullptr,
+        guideCurveProvider != nullptr,
         false,
         true);
     controls.componentPath = V2WaveBuilderContext::ComponentPathContext(
-        deformer,
+        guideCurveProvider,
         noiseSeed,
         vertOffsetSeeds,
         phaseOffsetSeeds,
-        deformer != nullptr,
+        guideCurveProvider != nullptr,
         decoupleComponentDfrms,
         lowResCurves,
         morph.time);

@@ -6,7 +6,7 @@
 #include <Array/ScopedAlloc.h>
 #include <Array/VecOps.h>
 #include <App/AppConstants.h>
-#include <Curve/IDeformer.h>
+#include <Curve/GuideCurveProvider.h>
 
 namespace {
 Buffer<float> getTransferTable() {
@@ -51,16 +51,16 @@ int computeCurveResolution(
     if (! context.componentPath.enabled
             || context.componentPath.path == nullptr
             || cube == nullptr
-            || cube->getCompDfrm() < 0) {
+            || cube->getCompGuideCurve() < 0) {
         return jmin(thisRes, nextRes);
     }
 
-    int compDfrm = cube->getCompDfrm();
+    int compDfrm = cube->getCompGuideCurve();
     int numVerts = context.componentPath.path->getTableDensity(compDfrm);
     int desiredRes = thisRes * static_cast<int>(((context.componentPath.lowResolution ? 2.0f : 8.0f)
         * std::sqrt(static_cast<float>(numVerts))) + 0.49f);
 
-    const int tableSize = Constants::DeformTableSize;
+    const int tableSize = GuideCurveProvider::tableSize;
     if (desiredRes <= 0) {
         return jmin(thisRes, nextRes);
     }
@@ -85,7 +85,7 @@ void appendDecoupledRegion(
 
     V2DeformRegion region;
     region.amplitude = amplitude;
-    region.deformChan = thisCurve.b.cube->getCompDfrm();
+    region.deformChan = thisCurve.b.cube->getCompGuideCurve();
     region.start = thisCurve.b;
     region.end = nextCurve.b;
     context.componentPath.deformRegions->emplace_back(region);
@@ -99,19 +99,19 @@ void renderCurveWithComponentDeformer(
     Buffer<float> waveX,
     Buffer<float> waveY,
     const V2WaveBuilderContext& context) {
-    IDeformer::NoiseContext noise;
+    GuideCurveProvider::NoiseContext noise;
     noise.noiseSeed = context.componentPath.noiseSeed < 0
         ? static_cast<int>(context.componentPath.morphTime * INT_MAX)
         : context.componentPath.noiseSeed;
 
-    int compDfrm = thisCurve.b.cube->getCompDfrm();
+    int compDfrm = thisCurve.b.cube->getCompGuideCurve();
     noise.phaseOffset = context.componentPath.phaseOffsetSeeds[compDfrm];
     noise.vertOffset = context.componentPath.vertOffsetSeeds[compDfrm];
 
     Buffer<float> yPortion(waveY + waveIdx, curveRes);
     Buffer<float> xPortion(waveX + waveIdx, curveRes);
 
-    float multiplier = thisCurve.b.shp * thisCurve.b.cube->deformerAbsGain(Vertex::Time);
+    float multiplier = thisCurve.b.shp * thisCurve.b.cube->guideCurveAbsGain(Vertex::Time);
     if (context.componentPath.decoupled) {
         yPortion.zero();
         appendDecoupledRegion(thisCurve, nextCurve, multiplier, context);
@@ -227,7 +227,7 @@ bool V2DefaultWaveBuilderStage::run(
         bool hasComponentDeformer = context.componentPath.enabled
             && context.componentPath.path != nullptr
             && thisCurve.b.cube != nullptr
-            && thisCurve.b.cube->getCompDfrm() >= 0;
+            && thisCurve.b.cube->getCompGuideCurve() >= 0;
 
         if (hasComponentDeformer) {
             renderCurveWithComponentDeformer(thisCurve, nextCurve, curveRes, waveIdx, waveX, waveY, context);

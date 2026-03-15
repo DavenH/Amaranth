@@ -10,7 +10,7 @@
 #include "../src/Curve/V2/Stages/V2WaveBuilderStages.h"
 #include "../src/Curve/V2/State/V2EnvStateMachine.h"
 #include "../src/Array/VecOps.h"
-#include "../src/Curve/IDeformer.h"
+#include "../src/Curve/GuideCurveProvider.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/VertCube.h"
 
@@ -112,10 +112,10 @@ private:
     int count;
 };
 
-class ConstantDeformer :
-        public IDeformer {
+class ConstantGuideCurveProvider :
+        public GuideCurveProvider {
 public:
-    explicit ConstantDeformer(float value) :
+    explicit ConstantGuideCurveProvider(float value) :
             value(value)
     {}
 
@@ -461,25 +461,25 @@ TEST_CASE("V2 point-path positioner stage can be inserted into composed pipeline
     scoped.mesh.addCube(cube);
 
     for (int d = 0; d < Vertex::numElements; ++d) {
-        cube->deformerAt(d) = -1;
-        cube->dfrmGainAt(d) = 0.0f;
+        cube->guideCurveAt(d) = -1;
+        cube->guideCurveGainAt(d) = 0.0f;
     }
 
-    cube->deformerAt(Vertex::Red) = 0;
-    cube->dfrmGainAt(Vertex::Red) = 0.1f;
-    cube->deformerAt(Vertex::Amp) = 1;
-    cube->dfrmGainAt(Vertex::Amp) = 0.2f;
-    cube->deformerAt(Vertex::Phase) = 2;
-    cube->dfrmGainAt(Vertex::Phase) = 0.2f;
-    cube->deformerAt(Vertex::Curve) = 3;
-    cube->dfrmGainAt(Vertex::Curve) = 0.1f;
+    cube->guideCurveAt(Vertex::Red) = 0;
+    cube->guideCurveGainAt(Vertex::Red) = 0.1f;
+    cube->guideCurveAt(Vertex::Amp) = 1;
+    cube->guideCurveGainAt(Vertex::Amp) = 0.2f;
+    cube->guideCurveAt(Vertex::Phase) = 2;
+    cube->guideCurveGainAt(Vertex::Phase) = 0.2f;
+    cube->guideCurveAt(Vertex::Curve) = 3;
+    cube->guideCurveGainAt(Vertex::Curve) = 0.1f;
 
     std::vector<Intercept> intercepts = { Intercept(0.95f, 0.75f, cube, 0.4f) };
     int count = static_cast<int>(intercepts.size());
 
     short vertOffsets[4] = { 0, 0, 0, 0 };
     short phaseOffsets[4] = { 0, 0, 0, 0 };
-    ConstantDeformer deformer(1.0f);
+    ConstantGuideCurveProvider guideCurveProvider(1.0f);
 
     V2PositionerContext context;
     context.scaling = V2ScalingType::Bipolar;
@@ -488,7 +488,7 @@ TEST_CASE("V2 point-path positioner stage can be inserted into composed pipeline
     context.maxX = 1.0f;
     context.morph = MorphPosition(0.5f, 0.5f, 0.5f);
     context.pointPath = V2PositionerContext::PointPathContext(
-        &deformer,
+        &guideCurveProvider,
         123,
         vertOffsets,
         phaseOffsets,
@@ -534,18 +534,18 @@ TEST_CASE("V2 point-path stage supports noOffsetAtEnds suppression and legacy ti
     }
 
     for (int d = 0; d < Vertex::numElements; ++d) {
-        cube->deformerAt(d) = -1;
-        cube->dfrmGainAt(d) = 0.0f;
+        cube->guideCurveAt(d) = -1;
+        cube->guideCurveGainAt(d) = 0.0f;
     }
 
-    cube->deformerAt(Vertex::Amp) = 0;
-    cube->dfrmGainAt(Vertex::Amp) = 0.25f;
-    cube->deformerAt(Vertex::Phase) = 0;
-    cube->dfrmGainAt(Vertex::Phase) = 0.25f;
-    cube->deformerAt(Vertex::Curve) = 0;
-    cube->dfrmGainAt(Vertex::Curve) = 0.10f;
+    cube->guideCurveAt(Vertex::Amp) = 0;
+    cube->guideCurveGainAt(Vertex::Amp) = 0.25f;
+    cube->guideCurveAt(Vertex::Phase) = 0;
+    cube->guideCurveGainAt(Vertex::Phase) = 0.25f;
+    cube->guideCurveAt(Vertex::Curve) = 0;
+    cube->guideCurveGainAt(Vertex::Curve) = 0.10f;
 
-    ConstantDeformer deformer(1.0f);
+    ConstantGuideCurveProvider guideCurveProvider(1.0f);
     short seeds[1] = { 0 };
 
     std::vector<Intercept> legacyProgress = { Intercept(0.45f, 0.60f, cube, 0.30f) };
@@ -565,7 +565,7 @@ TEST_CASE("V2 point-path stage supports noOffsetAtEnds suppression and legacy ti
     legacyContext.interpolationDimension = Vertex::Time;
     legacyContext.morph = MorphPosition(0.37f, 0.42f, 0.58f);
     legacyContext.pointPath = V2PositionerContext::PointPathContext(
-        &deformer,
+        &guideCurveProvider,
         0,
         seeds,
         seeds,
@@ -575,7 +575,7 @@ TEST_CASE("V2 point-path stage supports noOffsetAtEnds suppression and legacy ti
 
     V2PositionerContext directContext = legacyContext;
     directContext.pointPath = V2PositionerContext::PointPathContext(
-        &deformer,
+        &guideCurveProvider,
         0,
         seeds,
         seeds,
@@ -596,7 +596,7 @@ TEST_CASE("V2 point-path stage supports noOffsetAtEnds suppression and legacy ti
     V2PositionerContext suppressedContext = legacyContext;
     suppressedContext.morph = MorphPosition(0.0f, 0.42f, 0.58f);
     suppressedContext.pointPath = V2PositionerContext::PointPathContext(
-        &deformer,
+        &guideCurveProvider,
         0,
         seeds,
         seeds,
@@ -610,12 +610,12 @@ TEST_CASE("V2 point-path stage supports noOffsetAtEnds suppression and legacy ti
     REQUIRE(std::abs(suppressed[0].x - 0.45f) < 1e-6f);
 }
 
-TEST_CASE("V2 wave builder supports component deformer and decoupled deform-region output", "[curve][v2][raster][wave][deformer]") {
+TEST_CASE("V2 wave builder supports component guide curve and decoupled deform-region output", "[curve][v2][raster][wave][guide]") {
     ScopedMesh scoped("v2-wave-component-path");
     auto* cube = new VertCube(&scoped.mesh);
     scoped.mesh.addCube(cube);
-    cube->getCompDfrm() = 0;
-    cube->dfrmGainAt(Vertex::Time) = 0.5f;
+    cube->getCompGuideCurve() = 0;
+    cube->guideCurveGainAt(Vertex::Time) = 0.5f;
 
     Intercept i0(0.0f, 0.25f, cube, 0.0f);
     Intercept i1(0.5f, 0.75f, cube, 0.8f);
@@ -626,7 +626,7 @@ TEST_CASE("V2 wave builder supports component deformer and decoupled deform-regi
     curves.emplace_back(i1, i2, Intercept(1.25f, 0.25f, cube, 0.0f));
 
     V2DefaultWaveBuilderStage waveBuilder;
-    ConstantDeformer deformer(0.5f);
+    ConstantGuideCurveProvider guideCurveProvider(0.5f);
     short seeds[1] = { 0 };
 
     V2CapacitySpec caps;
@@ -643,7 +643,7 @@ TEST_CASE("V2 wave builder supports component deformer and decoupled deform-regi
     V2WaveBuilderContext directContext(
         true,
         V2WaveBuilderContext::ComponentPathContext(
-            &deformer,
+            &guideCurveProvider,
             0,
             seeds,
             seeds,
@@ -672,7 +672,7 @@ TEST_CASE("V2 wave builder supports component deformer and decoupled deform-regi
     V2WaveBuilderContext decoupledContext(
         true,
         V2WaveBuilderContext::ComponentPathContext(
-            &deformer,
+            &guideCurveProvider,
             0,
             seeds,
             seeds,
@@ -700,7 +700,7 @@ TEST_CASE("V2 wave builder supports component deformer and decoupled deform-regi
 }
 
 TEST_CASE("V2 sampler stage applies decoupled deform regions at sample time", "[curve][v2][raster][sampler][decoupled]") {
-    ConstantDeformer deformer(0.5f);
+    ConstantGuideCurveProvider guideCurveProvider(0.5f);
 
     ScopedAlloc<float> memory(16);
     Buffer<float> waveX(memory.place(3), 3);
@@ -724,7 +724,7 @@ TEST_CASE("V2 sampler stage applies decoupled deform regions at sample time", "[
     deformRegions.emplace_back(region);
 
     V2DecoupledDeformContext deform;
-    deform.path = &deformer;
+    deform.path = &guideCurveProvider;
     deform.deformRegions = &deformRegions;
 
     V2WaveBuffers waveBuffers(waveX, waveY, Buffer<float>(), slope);

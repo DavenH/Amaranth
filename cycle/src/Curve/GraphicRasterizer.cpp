@@ -65,6 +65,8 @@ bool GraphicRasterizer::renderWithV2() {
         return false;
     }
 
+    GuideCurveProvider* guideCurveProvider = getGuideCurveProvider();
+
     v2GraphicRasterizer.setMeshSnapshot(mesh);
 
     V2GraphicControlSnapshot controls;
@@ -79,19 +81,19 @@ bool GraphicRasterizer::renderWithV2() {
     controls.lowResolution = lowResCurves;
     controls.integralSampling = integralSampling;
     controls.pointPath = V2PositionerContext::PointPathContext(
-        deformer,
+        guideCurveProvider,
         noiseSeed,
         vertOffsetSeeds,
         phaseOffsetSeeds,
-        deformer != nullptr,
+        guideCurveProvider != nullptr,
         false,
         true);
     controls.componentPath = V2WaveBuilderContext::ComponentPathContext(
-        deformer,
+        guideCurveProvider,
         noiseSeed,
         vertOffsetSeeds,
         phaseOffsetSeeds,
-        deformer != nullptr,
+        guideCurveProvider != nullptr,
         decoupleComponentDfrms,
         lowResCurves,
         morph.time);
