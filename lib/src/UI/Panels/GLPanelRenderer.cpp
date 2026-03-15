@@ -26,9 +26,7 @@ void GLPanelRenderer::drawBackground(const juce::Rectangle<int>& bounds, bool fi
 }
 
 void GLPanelRenderer::drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) {
-    if (gfx != nullptr) {
-        gfx->drawSubTexture(texture, bounds);
-    }
+    resourceCache.drawCachedTexture(gfx, texture, bounds);
 }
 
 void GLPanelRenderer::drawFinalSelection() {
@@ -92,9 +90,7 @@ void GLPanelRenderer::fillAndOutlineColoured(
 }
 
 void GLPanelRenderer::drawTexture(Texture* texture) {
-    if (gfx != nullptr) {
-        gfx->drawTexture(texture);
-    }
+    resourceCache.drawTexture(gfx, texture);
 }
 
 void GLPanelRenderer::enableSmoothing() {
@@ -154,7 +150,5 @@ void GLPanelRenderer::setTransform(const juce::AffineTransform& transform) {
 }
 
 void GLPanelRenderer::updateTexture(Texture* texture) {
-    if (gfx != nullptr) {
-        gfx->updateTexture(texture);
-    }
+    resourceCache.updateTexture(gfx, texture);
 }

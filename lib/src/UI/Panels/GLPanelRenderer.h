@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PanelRenderer.h"
+#include "RenderResourceCache.h"
 
 #include "../../Obj/Ref.h"
 
@@ -46,4 +47,5 @@ public:
 
 private:
     Ref<CommonGfx> gfx;
+    RenderResourceCache resourceCache;
 };
