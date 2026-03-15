@@ -540,7 +540,7 @@ void SynthAudioSource::updateTempoScale() {
 
 void SynthAudioSource::updateGlobality() {
     MeshLibrary::LayerGroup& scratchGroup = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch);
-    GuideCurveProvider& guideCurveProvider                   = getObj(GuideCurvePanel);
+    GuideCurveProvider& guideCurveProvider = getObj(GuideCurvePanel);
 
     globalScratch.clear();
 

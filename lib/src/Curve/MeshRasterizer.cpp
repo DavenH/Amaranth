@@ -19,7 +19,7 @@ float MeshRasterizer::transferTable[Curve::resolution];
 MeshRasterizer::MeshRasterizer(const String& name) :
          name                (name)
     ,    mesh                (nullptr)
-    ,    guideCurveProvider            (nullptr)
+    ,    guideCurveProvider  (nullptr)
 
     ,    zeroIndex           (0)
     ,    paddingSize         (2)
@@ -450,7 +450,7 @@ void MeshRasterizer::calcWaveform() {
 
         if(cube != nullptr && guideCurveProvider != nullptr && cube->getCompGuideCurve() >= 0) {
             int numVerts         = guideCurveProvider->getTableDensity(cube->getCompGuideCurve());
-            int desiredRes         = thisRes * (int) ((lowResCurves ? 2 : 8) * sqrtf(numVerts) + 0.49f);
+            int desiredRes       = thisRes * (int) ((lowResCurves ? 2 : 8) * sqrtf(numVerts) + 0.49f);
             float scaleRatio     = tableSize / float(desiredRes);
 
             if(curves.size() == 6)
@@ -468,8 +468,8 @@ void MeshRasterizer::calcWaveform() {
 
     updateBuffers(totalRes);
 
-    zeroIndex     = 0;
-    oneIndex     = INT_MAX / 2;
+    zeroIndex   = 0;
+    oneIndex    = INT_MAX / 2;
     int waveIdx = 0;
     int cumeRes = 0;
 
@@ -1092,30 +1092,30 @@ void MeshRasterizer::preCleanup() {
 MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
 //    jassertfalse;
 
-    this->xMinimum                 = copy.xMinimum;
-    this->xMaximum                 = copy.xMaximum;
-    this->mesh                     = copy.mesh;
-    this->morph                     = copy.morph;
-    this->lowResCurves             = copy.lowResCurves;
-    this->scalingType             = copy.scalingType;
-    this->name                     = copy.name;
-    this->zeroIndex             = 0;
-    this->oneIndex                 = INT_MAX / 2;
+    this->xMinimum               = copy.xMinimum;
+    this->xMaximum               = copy.xMaximum;
+    this->mesh                   = copy.mesh;
+    this->morph                  = copy.morph;
+    this->lowResCurves           = copy.lowResCurves;
+    this->scalingType            = copy.scalingType;
+    this->name                   = copy.name;
+    this->zeroIndex              = 0;
+    this->oneIndex               = INT_MAX / 2;
 
     // flags
-    this->overrideDim             = copy.overrideDim;
-    this->overridingDim         = copy.overridingDim;
+    this->overrideDim            = copy.overrideDim;
+    this->overridingDim          = copy.overridingDim;
     this->cyclic                 = copy.cyclic;
-    this->guideCurveProvider                 = copy.guideCurveProvider;
+    this->guideCurveProvider     = copy.guideCurveProvider;
     this->calcInterceptsOnly     = copy.calcInterceptsOnly;
-    this->decoupleComponentDfrms= copy.decoupleComponentDfrms;
+    this->decoupleComponentDfrms = copy.decoupleComponentDfrms;
 
-    this->integralSampling         = copy.integralSampling;
-    this->paddingSize             = copy.paddingSize;
-    this->interceptPadding         = copy.interceptPadding;
+    this->integralSampling       = copy.integralSampling;
+    this->paddingSize            = copy.paddingSize;
+    this->interceptPadding       = copy.interceptPadding;
     this->needsResorting         = copy.needsResorting;
-    this->interpolateCurves     = copy.interpolateCurves;
-    this->unsampleable             = true;
+    this->interpolateCurves      = copy.interpolateCurves;
+    this->unsampleable           = true;
 
     return *this;
 }

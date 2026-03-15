@@ -221,7 +221,7 @@ public:
     void setYellow(float yellow)                    { morph.time    = yellow;           }
     void setBlue(float blue)                        { morph.blue    = blue;             }
     virtual void setRed(float red)                  { morph.red     = red;              }
-    void setMorphPosition(const MorphPosition& m)    { morph         = m;                }
+    void setMorphPosition(const MorphPosition& m)   { morph         = m;                }
     void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
 
     virtual Mesh* getMesh()                         { return mesh;                      }
