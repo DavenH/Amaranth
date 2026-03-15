@@ -538,7 +538,7 @@ void Panel3D::drawCurvesAndSurfaces() {
 }
 
 void Panel3D::drawSurface() {
-    if(! renderer->shouldDrawGrid()) {
+    if (!shouldDrawGrid()) {
         return;
     }
 
@@ -562,8 +562,8 @@ void Panel3D::drawSurface() {
     draw.downsampSize   = draw.sizeY;
     draw.stride         = isTransparent ? 4 : 3;
     draw.texHeight      = comp->getHeight() - 2 * vertPadding;
-    draw.reduced        = renderer->isDetailReduced();
-    draw.adjustColumns  = renderer->willAdjustColumns();
+    draw.reduced        = isSurfaceDetailReduced();
+    draw.adjustColumns  = willAdjustSurfaceColumns();
     draw.ramp           = Buffer<float>();
 
     downsampAcc.resize(draw.colSourceSizeY);

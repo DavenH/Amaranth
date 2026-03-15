@@ -46,7 +46,7 @@ public:
     void reset() override;
 
     /* Events */
-    bool shouldDrawGrid();
+    bool shouldDrawGrid() override;
     bool shouldTriggerGlobalUpdate(Slider* slider) override;
     bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
     bool validateScratchChannels();

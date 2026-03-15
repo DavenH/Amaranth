@@ -1,6 +1,7 @@
 #include "GLPanelRenderer.h"
 
 #include "CommonGfx.h"
+#include "PanelRenderContext.h"
 #include "GLSurfaceCache.h"
 #include "Texture.h"
 

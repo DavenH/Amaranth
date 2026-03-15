@@ -9,6 +9,7 @@
 #include <Obj/Ref.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/MiscGraphics.h>
+#include <UI/Panels/CommonGfx.h>
 #include <UI/Panels/Texture.h>
 #include <UI/Panels/ZoomPanel.h>
 #include <Util/Arithmetic.h>

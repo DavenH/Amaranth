@@ -29,11 +29,7 @@ public:
         virtual void scratchChannelSelected(int ch) {}
         virtual void textureBakeBeginning() {}
 
-        virtual bool isDetailReduced()      { return false; }
         virtual bool isScratchApplicable()  { return false; }
-        virtual bool shouldDrawGrid()       { return true;  }
-        virtual bool willAdjustColumns()    { return false; }
-
         virtual Buffer<float> getColumnArray()      = 0;
         virtual const vector<Column>& getColumns()  = 0;
         virtual CriticalSection& getGridLock()      = 0;
@@ -85,6 +81,10 @@ public:
     Renderer* getRenderer() const           { return renderer.get(); }
     OpenGLPanel3D* getOpenglPanel() const   { return openGL.get(); }
     bool usesCachedSurface() const override { return true; }
+
+    virtual bool isSurfaceDetailReduced()           { return false; }
+    virtual bool shouldDrawGrid()                   { return true; }
+    virtual bool willAdjustSurfaceColumns()         { return false; }
 
     void postVertsDraw() override;
 
