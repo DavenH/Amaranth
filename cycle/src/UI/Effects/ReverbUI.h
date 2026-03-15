@@ -15,7 +15,8 @@ class ReverbUI :
 {
 public:
     ReverbUI(SingletonRepo* repo, Effect* effect) :
-            GuilessEffect("ReverbUI", "Reverb", ReverbEffect::numReverbParams, repo, effect, EffectTypes::TypeReverb)
+            GuilessEffect("ReverbUI", "Reverb", ReverbEffect::numReverbParams, repo, effect,
+                          EffectTypes::TypeReverb, UpdateSources::SourceNull)
     {
         Knob* size = new Knob(repo, ReverbEffect::Size, "Reverb Length", 0.5);
         paramGroup->addSlider(size);

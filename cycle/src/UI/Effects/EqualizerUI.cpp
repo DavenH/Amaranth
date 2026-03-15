@@ -7,7 +7,8 @@
 #include "../../Audio/SynthAudioSource.h"
 
 EqualizerUI::EqualizerUI(SingletonRepo* repo, Effect* effect) :
-    GuilessEffect("EqualizerUI", "EQ", Equalizer::numParams, repo, effect, UpdateSources::SourceEqualizer) {
+    GuilessEffect("EqualizerUI", "EQ", Equalizer::numParams, repo, effect,
+                  EffectTypes::TypeEqualizer, UpdateSources::SourceEqualizer) {
     using namespace Ops;
     double logTension = getConstant(LogTension);
 

@@ -312,7 +312,7 @@ Effect* SynthAudioSource::getDspEffect(int fxEnum) {
         case EffectTypes::TypeUnison: 		return unison;
         case EffectTypes::TypeIrModeller: 	return tubeModel;
         case EffectTypes::TypeReverb: 		return reverb;
-        default: throw std::out_of_range("Unsupported effect " + fxEnum);
+        default: throw std::out_of_range("Unsupported effect " + std::to_string(fxEnum));
     }
 }
 

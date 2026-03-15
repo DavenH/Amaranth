@@ -18,7 +18,8 @@
 #include "../CycleDefs.h"
 
 UnisonUI::UnisonUI(SingletonRepo* repo, Effect* effect) :
-        GuilessEffect("UnisonUI", "Unison", Unison::numParams, repo, effect, UpdateSources::SourceUnison)
+        GuilessEffect("UnisonUI", "Unison", Unison::numParams, repo, effect,
+                      EffectTypes::TypeUnison, UpdateSources::SourceUnison)
     ,	voiceSelector	 (repo, this)
     ,	addRemover		 (this, repo, "Unison voice")
 {

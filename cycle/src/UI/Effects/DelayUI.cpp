@@ -6,7 +6,7 @@
 #include "../../Audio/Effects/Delay.h"
 
 DelayUI::DelayUI(SingletonRepo* repo, Effect* effect) :
-		GuilessEffect("DelayUI", "Delay", CycDelay::numDelayParams, repo, effect)
+		GuilessEffect("DelayUI", "Delay", CycDelay::numDelayParams, repo, effect, EffectTypes::TypeDelay)
 {
 	Knob *spinItrKnob, *timeKnob;
 
