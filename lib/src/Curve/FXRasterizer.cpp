@@ -26,9 +26,11 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 }
 
 void FXRasterizer::calcCrossPoints() {
+  #if AMARANTH_ENABLE_V2_RASTERIZERS
     if (renderWithV2()) {
         return;
     }
+  #endif
 
     if (mesh == nullptr || mesh->getNumVerts() == 0) {
         cleanUp();

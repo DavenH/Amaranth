@@ -4,6 +4,15 @@
 #include <Curve/V2/Rasterizers/V2GraphicRasterizer.h>
 #include "../Updating/DynamicDetailUpdater.h"
 
+/*
+ * Graphic rasterizers serve editor and display views.
+ *
+ * Contract:
+ * - render a visually coherent cross-section of the current cycle,
+ * - allow self-cyclic closure of the current cycle instead of audio-style chaining,
+ * - remain finite and deterministic,
+ * - do not need to match voice-chain seam behavior at the phase boundary.
+ */
 class GraphicRasterizer :
         public MeshRasterizer
     ,	public DynamicDetailUpdateable

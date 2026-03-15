@@ -37,9 +37,13 @@ GraphicRasterizer::GraphicRasterizer(
 }
 
 void GraphicRasterizer::calcCrossPoints() {
-    if (! renderWithV2()) {
-        MeshRasterizer::calcCrossPoints();
+  #if AMARANTH_ENABLE_V2_RASTERIZERS
+    if (renderWithV2()) {
+        return;
     }
+  #endif
+
+    MeshRasterizer::calcCrossPoints();
 }
 
 void GraphicRasterizer::pullModPositionAndAdjust() {

@@ -113,7 +113,20 @@ void Curve::calcTable() {
             for (int j = 0; j < res / 2; ++j) {
                 y = yValue(i, j, res);
                 temp = tn - y * tn + 2.0 / pi;
-                value = 0.5f * ::acosf(y / temp) * temp / (1 + tn * pi / 2) + 0.5f;
+                float ratio = temp != 0.0f ? y / temp : 0.0f;
+                NumberUtils::constrain(ratio, -1.0f, 1.0f);
+
+                float denominator = 1.0f + tn * pi / 2.0f;
+                float scaled = denominator != 0.0f ? temp / denominator : 0.0f;
+                value = 0.5f * ::acosf(ratio) * scaled + 0.5f;
+
+                if (! std::isfinite(value)) {
+                    value = 0.5f;
+                }
+
+                if (! std::isfinite(y)) {
+                    y = 0.0f;
+                }
 
                 table[r][i][res - 1 - j] = value;
                 table[r][i][res - 1 - j + res] = y;
@@ -194,7 +207,7 @@ void Curve::recalculateCurve() {
 
     float ntheta = -tp.theta;
     tp.sinrot = std::sin(ntheta);
-    tp.cosrot = std::sin(ntheta);
+    tp.cosrot = std::cos(ntheta);
 
     // ippsSin_32f_A21(&ntheta, &tp.sinrot, 1);
     // ippsCos_32f_A24(&ntheta, &tp.cosrot, 1);
@@ -235,7 +248,7 @@ void Curve::recalculateCurve() {
     // 1    836
     // 2    833
     float* t  = table[resIndex][tableCurveIdx];
-    float* t2 = table[resIndex][tableCurveIdx + 1];
+    float* t2 = tableCurveIdx < numCurvelets - 1 ? table[resIndex][tableCurveIdx + 1] : t;
 
     float alpha = interpolate ? 1 - (tableCurvePos - tableCurveIdx) : 1.f;
     bool actuallyShouldInterpolate = tableCurveIdx < numCurvelets - 1 && alpha < 1.f;

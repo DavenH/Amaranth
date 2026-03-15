@@ -28,7 +28,7 @@ void populateHarnessMesh(Mesh& mesh) {
 }
 }
 
-TEST_CASE("Graphic parity facade compares legacy and v2 sample outputs", "[curve][v2][parity][harness]") {
+TEST_CASE("Graphic parity facade compares legacy and v2 sample outputs", "[curve][v2][graphic][parity][legacy][harness]") {
     ScopedMesh scoped("graphic-parity-harness");
     populateHarnessMesh(scoped.mesh);
 
@@ -61,7 +61,7 @@ TEST_CASE("Graphic parity facade compares legacy and v2 sample outputs", "[curve
     REQUIRE(result.l2Diff < 0.01f);
 }
 
-TEST_CASE("Graphic parity harness accepts explicit per-vertex cube specifications", "[curve][v2][parity][harness]") {
+TEST_CASE("Graphic parity harness accepts explicit per-vertex cube specifications", "[curve][v2][graphic][parity][legacy][harness]") {
     ScopedMesh scoped("graphic-parity-explicit-cube");
 
     CubeVertexSpecs cubeSpecs{};

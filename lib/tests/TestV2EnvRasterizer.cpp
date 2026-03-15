@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include <cmath>
+
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Array/VecOps.h"
 #include "../src/Curve/EnvelopeMesh.h"
@@ -53,6 +55,20 @@ void populateEnvTestMesh(Mesh& mesh) {
     appendEnvTestCube(mesh, 0.12f);
 }
 
+void prepareLegacyEnvForRuntime(EnvRasterizer& legacy, EnvelopeMesh& mesh) {
+    legacy.ensureParamSize(1);
+    legacy.setMesh(&mesh);
+    legacy.setMorphPosition(MorphPosition(0.2f, 0.4f, 0.8f));
+    legacy.setScalingMode(MeshRasterizer::Unipolar);
+    legacy.setInterpolatesCurves(true);
+    legacy.setLowresCurves(false);
+    legacy.setWrapsEnds(false);
+    legacy.setLimits(0.0f, 10.0f);
+    legacy.calcCrossPoints();
+    legacy.makeCopy();
+    legacy.setNoteOn();
+}
+
 float maxAbs(Buffer<float> buffer) {
     if (buffer.empty()) {
         return 0.0f;
@@ -62,6 +78,98 @@ float maxAbs(Buffer<float> buffer) {
     float maxValue = 0.0f;
     buffer.minmax(minValue, maxValue);
     return jmax(maxValue, -minValue);
+}
+
+struct InvalidSampleSummary {
+    int invalidCount{0};
+    int firstInvalidIndex{-1};
+};
+
+struct CurveInvalidSummary {
+    int invalidCurveCount{0};
+    int firstInvalidCurve{-1};
+    float ax{0.0f};
+    float ay{0.0f};
+    float bx{0.0f};
+    float by{0.0f};
+    float cx{0.0f};
+    float cy{0.0f};
+    int resIndex{0};
+};
+
+InvalidSampleSummary scanInvalidSamples(const char* label, Buffer<float> buffer) {
+    InvalidSampleSummary summary;
+
+    for (int i = 0; i < buffer.size(); ++i) {
+        if (! std::isfinite(buffer[i])) {
+            ++summary.invalidCount;
+            if (summary.firstInvalidIndex < 0) {
+                summary.firstInvalidIndex = i;
+            }
+        }
+    }
+
+    INFO(label << " invalidSamples=" << summary.invalidCount
+         << " firstInvalidIndex=" << summary.firstInvalidIndex);
+    return summary;
+}
+
+CurveInvalidSummary scanCurveTransforms(const char* label, const std::vector<Curve>& curves) {
+    CurveInvalidSummary summary;
+
+    for (int curveIndex = 0; curveIndex < static_cast<int>(curves.size()); ++curveIndex) {
+        const Curve& curve = curves[curveIndex];
+        int res = Curve::resolution >> curve.resIndex;
+
+        for (int i = 0; i < res; ++i) {
+            if (! std::isfinite(curve.transformX[i]) || ! std::isfinite(curve.transformY[i])) {
+                ++summary.invalidCurveCount;
+                if (summary.firstInvalidCurve < 0) {
+                    summary.firstInvalidCurve = curveIndex;
+                    summary.ax = curve.a.x;
+                    summary.ay = curve.a.y;
+                    summary.bx = curve.b.x;
+                    summary.by = curve.b.y;
+                    summary.cx = curve.c.x;
+                    summary.cy = curve.c.y;
+                    summary.resIndex = curve.resIndex;
+                }
+                break;
+            }
+        }
+    }
+    return summary;
+}
+
+int sanitizeInvalidSamples(const char* label, Buffer<float> buffer) {
+    int invalidCount = 0;
+
+    for (int i = 0; i < buffer.size(); ++i) {
+        if (! std::isfinite(buffer[i])) {
+            ++invalidCount;
+            buffer[i] = 0.0f;
+        }
+    }
+
+    INFO(label << " invalidSamples=" << invalidCount);
+    return invalidCount;
+}
+
+void requireFiniteBuffer(const char* label, Buffer<float> buffer) {
+    REQUIRE(sanitizeInvalidSamples(label, buffer) == 0);
+}
+
+void requireCloseToLegacy(
+    const char* label,
+    Buffer<float> diff,
+    float l2Tolerance,
+    float maxTolerance) {
+    float l2 = diff.normL2();
+    float maximum = maxAbs(diff);
+
+    INFO(label << " l2=" << l2 << " maxAbs=" << maximum);
+    REQUIRE(l2 <= l2Tolerance);
+    REQUIRE(maximum <= maxTolerance);
 }
 
 class FixedEnvInterpolatorStage :
@@ -85,7 +193,7 @@ private:
 };
 }
 
-TEST_CASE("V2EnvRasterizer note on/off and release trigger semantics", "[curve][v2][env][rasterizer]") {
+TEST_CASE("V2EnvRasterizer note on/off and release trigger semantics", "[curve][v2][env][rasterizer][contract]") {
     V2EnvRasterizer rasterizer;
 
     V2EnvControlSnapshot controls;
@@ -108,7 +216,7 @@ TEST_CASE("V2EnvRasterizer note on/off and release trigger semantics", "[curve][
     REQUIRE_FALSE(rasterizer.consumeReleaseTrigger());
 }
 
-TEST_CASE("V2EnvRasterizer renderBlock requires prepare and mesh", "[curve][v2][env][rasterizer]") {
+TEST_CASE("V2EnvRasterizer renderBlock requires prepare and mesh", "[curve][v2][env][rasterizer][contract]") {
     V2EnvRasterizer rasterizer;
 
     V2RenderRequest request;
@@ -127,7 +235,7 @@ TEST_CASE("V2EnvRasterizer renderBlock requires prepare and mesh", "[curve][v2][
     REQUIRE(result.samplesWritten == 0);
 }
 
-TEST_CASE("V2EnvRasterizer renders deterministic output for fixed inputs", "[curve][v2][env][rasterizer]") {
+TEST_CASE("V2EnvRasterizer renders deterministic output for fixed inputs", "[curve][v2][env][rasterizer][contract]") {
     ScopedMesh scoped("v2-env-rasterizer");
     populateEnvTestMesh(scoped.mesh);
 
@@ -178,7 +286,7 @@ TEST_CASE("V2EnvRasterizer renders deterministic output for fixed inputs", "[cur
     REQUIRE(maxAbs == 0.0f);
 }
 
-TEST_CASE("V2EnvRasterizer loops until release then follows release region", "[curve][v2][env][rasterizer][loop][release]") {
+TEST_CASE("V2EnvRasterizer loops until release then follows release region", "[curve][v2][env][rasterizer][loop][release][contract]") {
     V2EnvRasterizer rasterizer;
 
     V2PrepareSpec prepare;
@@ -262,7 +370,7 @@ TEST_CASE("V2EnvRasterizer loops until release then follows release region", "[c
     REQUIRE(releaseL2 >= 0.0f);
 }
 
-TEST_CASE("V2EnvRasterizer rendered ADSR-like envelope loops at sustain and releases after noteOff", "[curve][v2][env][rendered][adsr]") {
+TEST_CASE("V2EnvRasterizer rendered ADSR-like envelope loops at sustain and releases after noteOff", "[curve][v2][env][rendered][adsr][contract]") {
     DEBUG_CLEAR();
 
     std::vector<Intercept> intercepts = {
@@ -390,7 +498,69 @@ TEST_CASE("V2EnvRasterizer rendered ADSR-like envelope loops at sustain and rele
     REQUIRE(release[release.size() - 1] <= release[0]); // release moves downward
 }
 
-TEST_CASE("V2EnvRasterizer parity debug overlays against legacy EnvRasterizer", "[curve][v2][env][parity][debug]") {
+TEST_CASE("Legacy EnvRasterizer attack loop and release outputs remain finite", "[curve][legacy][env][contract]") {
+    ScopedEnvelopeMesh scoped("legacy-env-contract");
+    populateEnvTestMesh(scoped.mesh);
+    REQUIRE(scoped.mesh.getNumCubes() >= 2);
+
+    scoped.mesh.loopCubes.insert(scoped.mesh.getCubes()[0]);
+    scoped.mesh.sustainCubes.insert(scoped.mesh.getCubes()[1]);
+
+    EnvRasterizer legacy(nullptr, nullptr, "legacy-env-contract");
+    prepareLegacyEnvForRuntime(legacy, scoped.mesh);
+    CurveInvalidSummary curveSummary = scanCurveTransforms("legacyEnvCurves", legacy.getCurves());
+    INFO("legacyEnvCurves invalidCurves=" << curveSummary.invalidCurveCount
+         << " firstInvalidCurve=" << curveSummary.firstInvalidCurve
+         << " a=(" << curveSummary.ax << "," << curveSummary.ay << ")"
+         << " b=(" << curveSummary.bx << "," << curveSummary.by << ")"
+         << " c=(" << curveSummary.cx << "," << curveSummary.cy << ")"
+         << " resIndex=" << curveSummary.resIndex);
+    REQUIRE(curveSummary.invalidCurveCount == 0);
+
+    Buffer<float> legacyWaveX = legacy.getWaveX();
+    Buffer<float> legacyWaveY = legacy.getWaveY();
+    Buffer<float> legacySlope = legacy.getSlopes().withSize(jmax(0, legacyWaveX.size() - 1));
+    REQUIRE(scanInvalidSamples("legacyEnvWaveX", legacyWaveX).invalidCount == 0);
+    REQUIRE(scanInvalidSamples("legacyEnvWaveY", legacyWaveY).invalidCount == 0);
+    REQUIRE(scanInvalidSamples("legacyEnvSlope", legacySlope).invalidCount == 0);
+
+    MeshLibrary::EnvProps props{};
+    props.active = true;
+    props.dynamic = false;
+    props.tempoSync = false;
+    props.global = false;
+    props.logarithmic = false;
+    props.scale = 1;
+    props.tempoScale = 1.0f;
+
+    constexpr int numSamples = 96;
+    constexpr double deltaX = 0.01;
+
+    ScopedAlloc<float> memory(3 * numSamples);
+    Buffer<float> attack = memory.place(numSamples);
+    Buffer<float> loop = memory.place(numSamples);
+    Buffer<float> release = memory.place(numSamples);
+
+    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, props, 1.0f));
+    legacy.getRenderBuffer().withSize(numSamples).copyTo(attack);
+
+    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, props, 1.0f));
+    legacy.getRenderBuffer().withSize(numSamples).copyTo(loop);
+
+    legacy.setNoteOff();
+    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, props, 1.0f));
+    legacy.getRenderBuffer().withSize(numSamples).copyTo(release);
+
+    InvalidSampleSummary attackSummary = scanInvalidSamples("legacyAttack", attack);
+    InvalidSampleSummary loopSummary = scanInvalidSamples("legacyLoop", loop);
+    InvalidSampleSummary releaseSummary = scanInvalidSamples("legacyRelease", release);
+
+    REQUIRE(attackSummary.invalidCount == 0);
+    REQUIRE(loopSummary.invalidCount == 0);
+    REQUIRE(releaseSummary.invalidCount == 0);
+}
+
+TEST_CASE("V2EnvRasterizer legacy oracle rendered output stays close to EnvRasterizer", "[curve][v2][env][parity][legacy]") {
     DEBUG_CLEAR();
 
     ScopedEnvelopeMesh scoped("env-legacy-v2-parity");
@@ -402,15 +572,7 @@ TEST_CASE("V2EnvRasterizer parity debug overlays against legacy EnvRasterizer", 
     scoped.mesh.sustainCubes.insert(scoped.mesh.getCubes()[1]);
 
     EnvRasterizer legacy(nullptr, nullptr, "legacy-env-parity");
-    legacy.setMesh(&scoped.mesh);
-    legacy.setMorphPosition(MorphPosition(0.2f, 0.4f, 0.8f));
-    legacy.setScalingMode(MeshRasterizer::Unipolar);
-    legacy.setInterpolatesCurves(true);
-    legacy.setLowresCurves(false);
-    legacy.setWrapsEnds(false);
-    legacy.setLimits(0.0f, 10.0f);
-    legacy.calcCrossPoints();
-    legacy.makeCopy();
+    prepareLegacyEnvForRuntime(legacy, scoped.mesh);
 
     const std::vector<Intercept>& legacyIcpts = legacy.getRastData().intercepts;
     REQUIRE(legacyIcpts.size() >= 2);
@@ -470,11 +632,9 @@ TEST_CASE("V2EnvRasterizer parity debug overlays against legacy EnvRasterizer", 
     Buffer<float> attackDiff = memory.place(numSamples);
     Buffer<float> loopDiff = memory.place(numSamples);
     Buffer<float> releaseDiff = memory.place(numSamples);
-
-    legacy.setNoteOn();
     v2.noteOn();
 
-    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::graphicIndex, props, 1.0f));
+    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, props, 1.0f));
     legacy.getRenderBuffer().withSize(numSamples).copyTo(legacyAttack);
 
     V2RenderRequest request;
@@ -491,7 +651,7 @@ TEST_CASE("V2EnvRasterizer parity debug overlays against legacy EnvRasterizer", 
         REQUIRE(v2.transitionToLooping(true, true));
     }
 
-    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::graphicIndex, props, 1.0f));
+    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, props, 1.0f));
     legacy.getRenderBuffer().withSize(numSamples).copyTo(legacyLoop);
 
     V2RenderResult v2LoopResult;
@@ -505,20 +665,27 @@ TEST_CASE("V2EnvRasterizer parity debug overlays against legacy EnvRasterizer", 
         REQUIRE_FALSE(v2.noteOff());
     }
 
-    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::graphicIndex, props, 1.0f));
+    REQUIRE(legacy.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, props, 1.0f));
     legacy.getRenderBuffer().withSize(numSamples).copyTo(legacyRelease);
 
     V2RenderResult v2ReleaseResult;
     REQUIRE(v2.renderBlock(request, v2Release, v2ReleaseResult));
     REQUIRE(v2ReleaseResult.samplesWritten > 0);
 
+    sanitizeInvalidSamples("legacyAttack", legacyAttack);
+    sanitizeInvalidSamples("legacyLoop", legacyLoop);
+    sanitizeInvalidSamples("legacyRelease", legacyRelease);
+    requireFiniteBuffer("v2Attack", v2Attack);
+    requireFiniteBuffer("v2Loop", v2Loop);
+    requireFiniteBuffer("v2Release", v2Release);
+
     VecOps::sub(legacyAttack, v2Attack, attackDiff);
     VecOps::sub(legacyLoop, v2Loop, loopDiff);
     VecOps::sub(legacyRelease, v2Release, releaseDiff);
 
-    INFO("attack l2=" << attackDiff.normL2() << " maxAbs=" << maxAbs(attackDiff));
-    INFO("loop   l2=" << loopDiff.normL2() << " maxAbs=" << maxAbs(loopDiff));
-    INFO("rel    l2=" << releaseDiff.normL2() << " maxAbs=" << maxAbs(releaseDiff));
+    requireCloseToLegacy("attack", attackDiff, 4.00f, 0.45f);
+    requireCloseToLegacy("loop", loopDiff, 4.00f, 0.45f);
+    requireCloseToLegacy("release", releaseDiff, 4.00f, 0.45f);
 
     DEBUG_VIEW_OVERLAY(legacyAttack, v2Attack, "env_parity_attack_overlay");
     DEBUG_VIEW(attackDiff, "env_parity_attack_diff");

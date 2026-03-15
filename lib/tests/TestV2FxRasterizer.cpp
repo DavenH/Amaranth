@@ -63,7 +63,7 @@ void prepareFxRasterizer(V2FxRasterizer& rasterizer, const Mesh& mesh) {
 }
 }
 
-TEST_CASE("V2FxRasterizer renderBlock requires prepare and mesh", "[curve][v2][fx]") {
+TEST_CASE("V2FxRasterizer renderBlock requires prepare and mesh", "[curve][v2][fx][contract]") {
     V2FxRasterizer rasterizer;
 
     V2RenderRequest request;
@@ -80,7 +80,7 @@ TEST_CASE("V2FxRasterizer renderBlock requires prepare and mesh", "[curve][v2][f
     REQUIRE_FALSE(result.rendered);
 }
 
-TEST_CASE("V2FxRasterizer renders deterministic output for fixed controls", "[curve][v2][fx][determinism]") {
+TEST_CASE("V2FxRasterizer renders deterministic output for fixed controls", "[curve][v2][fx][determinism][contract]") {
     ScopedMesh scoped("v2-fx-determinism");
     populateFxTestMesh(scoped.mesh);
 
@@ -121,7 +121,7 @@ TEST_CASE("V2FxRasterizer renders deterministic output for fixed controls", "[cu
     REQUIRE(maxAbs == 0.0f);
 }
 
-TEST_CASE("V2FxRasterizer supports linear and cyclic modes", "[curve][v2][fx][modes]") {
+TEST_CASE("V2FxRasterizer supports linear and cyclic modes", "[curve][v2][fx][modes][contract]") {
     ScopedMesh scoped("v2-fx-modes");
     populateFxTestMesh(scoped.mesh);
 
@@ -161,7 +161,7 @@ TEST_CASE("V2FxRasterizer supports linear and cyclic modes", "[curve][v2][fx][mo
     REQUIRE(cyclicResult.samplesWritten == cyclic.size());
 }
 
-TEST_CASE("V2FxRasterizer intercept extraction is morph-invariant like legacy FX path", "[curve][v2][fx][parity]") {
+TEST_CASE("V2FxRasterizer legacy intercept extraction is morph-invariant like the FX path", "[curve][v2][fx][parity][legacy]") {
     ScopedMesh scoped("v2-fx-morph-invariant");
     populateFxTestMesh(scoped.mesh);
 
@@ -211,7 +211,7 @@ TEST_CASE("V2FxRasterizer intercept extraction is morph-invariant like legacy FX
     REQUIRE(maxAbs == 0.0f);
 }
 
-TEST_CASE("V2FxRasterizer curve builder can reproduce legacy fixed FX padding anchors", "[curve][v2][fx][padding]") {
+TEST_CASE("V2FxRasterizer curve builder can reproduce legacy fixed FX padding anchors", "[curve][v2][fx][padding][contract]") {
     std::vector<Intercept> intercepts;
     intercepts.emplace_back(0.0f, 0.2f);
     intercepts.emplace_back(0.4f, 0.5f);
