@@ -93,6 +93,7 @@ public:
 
     bool isVisible() const                  { return comp->isVisible();     }
     int getNumCornersOverlapped() const     { return numCornersOverlapped;  }
+    int getPanelId() const                  { return panelId;               }
     int getWidth() const                    { return comp->getWidth();      }
     int getHeight() const                   { return comp->getHeight();     }
     Rectangle<int> getBounds()              { return comp->getBounds();     }
@@ -169,6 +170,7 @@ public:
     virtual void updateBackground(bool onlyVerticalBackground = false);
 
     virtual bool isScratchApplicable()          { return false;             }
+    virtual bool usesCachedSurface() const      { return false;             }
     virtual int getLayerScratchChannel()        { return CommonEnums::Null; }
     virtual void setInteractor(Interactor* itr) { this->interactor = itr;   }
 

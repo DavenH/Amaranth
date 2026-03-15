@@ -86,6 +86,7 @@ public:
     void setUseVertices(bool doso)          { useVertices = doso; }
     Renderer* getRenderer() const           { return renderer.get(); }
     OpenGLPanel3D* getOpenglPanel() const   { return openGL.get(); }
+    bool usesCachedSurface() const override { return true; }
 
     void postVertsDraw() override;
 
