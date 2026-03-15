@@ -101,6 +101,10 @@ Panel::~Panel() {
     gfx = nullptr;
 }
 
+void Panel::setGraphicsHelper(CommonGfx* gfx) {
+    this->gfx.reset(gfx);
+}
+
 void Panel::render() {
     // should only be held on mesh deletions
     ScopedLock sl(renderLock);
@@ -622,6 +626,10 @@ PanelRenderContext Panel::createRenderContext() const {
         context.bounds = comp->getBounds();
         context.clip = comp->getBounds();
     }
+
+    context.dirtyMask = dirtyState.mask();
+    context.panelId = panelId;
+    context.usesCachedSurface = usesCachedSurface();
 
     return context;
 }

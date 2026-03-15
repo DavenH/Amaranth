@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <vector>
-#include "CommonGfx.h"
 #include "PanelRenderer.h"
 #include "PanelDirtyState.h"
 #include "PanelRenderContext.h"
@@ -21,6 +20,7 @@ using std::vector;
 
 class Interactor;
 class Interactor3D;
+class CommonGfx;
 class Texture;
 
 class Panel :
@@ -103,7 +103,7 @@ public:
     CriticalSection& getRenderLock()        { return renderLock;            }
     bool isSpeedApplicable() const          { return speedApplicable;       }
 
-    void setGraphicsHelper(CommonGfx* gfx)  { this->gfx.reset(gfx);         }
+    void setGraphicsHelper(CommonGfx* gfx);
     void setPanelRenderer(PanelRenderer* renderer) { panelRenderer = renderer; }
     void setRenderHelper(Renderer* util)    { renderHelper = util;          }
     void setSpeedApplicable(bool is)        { speedApplicable = is;         }
