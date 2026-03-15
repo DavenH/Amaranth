@@ -42,6 +42,15 @@ The target architecture is:
 
 On macOS, the long-term backend target is Metal. A shared OpenGL compositor may be used as an intermediate migration step if it reduces risk, but per-panel OpenGL contexts will be removed.
 
+Phase 1 is intentionally designed as a stable plateau. If the shared compositor work in Phase 2 is delayed or proves too risky in a given release window, the codebase should still remain shippable with:
+
+- backend-neutral panel rendering APIs,
+- renderer-managed resources,
+- the existing JUCE component and event model,
+- a transitional backend path.
+
+This creates an explicit rollback boundary: do not remove the last working transitional backend until the shared compositor is functionally complete and validated in both standalone and plugin contexts.
+
 ## Consequences
 
 ### Positive
@@ -60,7 +69,37 @@ On macOS, the long-term backend target is Metal. A shared OpenGL compositor may 
 - Some current rendering helpers are too close to legacy OpenGL and will need redesign.
 - Shared rendering introduces central scheduling and dirty-region management.
 - Offscreen caching must be designed carefully to avoid stale content and excess memory use.
-- Plugin-host edge cases may require a fallback renderer path.
+- Plugin-host constraints may require a fallback renderer path or delayed backend rollout in some hosts.
+
+### Plugin Host Considerations
+
+Plugin editors run inside host-controlled windows and event lifecycles. In practice, this means:
+
+- context creation and destruction may occur at times Cycle does not control,
+- visibility, resize, and peer changes may be more frequent or less predictable,
+- some hosts are stricter about graphics backend lifetime and thread affinity,
+- backend rollout may need to differ between standalone and plugin targets at first.
+
+For that reason, shared rendering must preserve a conservative fallback path until the shared compositor is validated in representative plugin hosts.
+
+## Success Metrics
+
+The motivation for this ADR is performance and stability, so success must be measurable.
+
+Target outcomes:
+
+- major panel startup should avoid one GPU context per panel and reduce total panel initialization time materially,
+- resize behavior should eliminate visible multi-context flicker,
+- steady-state interaction should avoid thread thrash from many panel-local renderer threads,
+- GPU resource creation should become centralized and significantly less duplicated,
+- plugin and standalone editors should remain stable through repeated show, hide, resize, and close cycles.
+
+Exact numeric targets may be refined after baseline measurement on representative development machines, but the implementation should include before-and-after measurement for:
+
+- startup time with the typical full panel set visible,
+- resize latency and visible redraw stability,
+- number of renderer contexts or threads created,
+- cache rebuild frequency during common editing workflows.
 
 ## Alternatives Considered
 
