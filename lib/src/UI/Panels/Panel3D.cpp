@@ -72,11 +72,12 @@ void Panel3D::bakeTextures() {
     shouldBakeTextures = false;
     dirtyState.clear(PanelDirtyState::Flag::SurfaceCache);
 
-    ScopedFunction sf(
-            renderer.get(),
-            &Renderer::textureBakeBeginning,
-            &Renderer::textureBakeFinished);
+    renderer->textureBakeBeginning();
     drawSurface();
+
+    PanelRenderer* panelRenderer = ::getPanelRenderer(this);
+    jassert(panelRenderer != nullptr);
+    panelRenderer->finishSurfaceBake();
 }
 
 void Panel3D::drawDepthLinesAndVerts() {
@@ -528,6 +529,12 @@ void Panel3D::resampleColours(Buffer<float> srcColors, Buffer<float> dstColorBuf
 
 vector<Color>& Panel3D::getGradientColours() {
     return gradient.getColours();
+}
+
+void Panel3D::drawCurvesAndSurfaces() {
+    PanelRenderer* panelRenderer = ::getPanelRenderer(this);
+    jassert(panelRenderer != nullptr);
+    panelRenderer->drawSurfaceCache();
 }
 
 void Panel3D::drawSurface() {

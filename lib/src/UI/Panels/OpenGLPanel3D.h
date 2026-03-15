@@ -25,7 +25,6 @@ public:
 
     void init() override;
     void drawSurfaceColumn(int x) override;
-    void drawCurvesAndSurfaces();
     void resized() override;
     void drawCircle();
     void initRender();
@@ -39,7 +38,6 @@ public:
     void newOpenGLContextCreated() override;
     void openGLContextClosing() override;
     void renderOpenGL() override;
-    void textureBakeFinished() override;
 
     // panel3d renderer
     void clear() override;

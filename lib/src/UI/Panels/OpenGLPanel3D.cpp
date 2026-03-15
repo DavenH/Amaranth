@@ -27,7 +27,7 @@ void OpenGLPanel3D::init() {
     surfaceCache.setSize(1024, 1024);
 
     commonGL = new CommonGL(panel, this);
-    panelRenderer = std::make_unique<GLPanelRenderer>(commonGL);
+    panelRenderer = std::make_unique<GLPanelRenderer>(commonGL, &surfaceCache);
 
     panel->setComponent(this);
     panel->setUseVertices(true);
@@ -37,10 +37,6 @@ void OpenGLPanel3D::init() {
     panel->setRenderHelper(this);
 
     attach();
-}
-
-void OpenGLPanel3D::drawCurvesAndSurfaces() {
-    surfaceCache.draw();
 }
 
 void OpenGLPanel3D::drawCircle() {
@@ -109,10 +105,6 @@ void OpenGLPanel3D::populateExtensions() {
 
 bool OpenGLPanel3D::isSupported(const String& extension) {
     return extensions.contains(extension, false);
-}
-
-void OpenGLPanel3D::textureBakeFinished() {
-    surfaceCache.captureFromFramebuffer(getHeight());
 }
 
 void OpenGLPanel3D::clear() {

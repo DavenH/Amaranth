@@ -6,11 +6,12 @@
 #include "../../Obj/Ref.h"
 
 class CommonGfx;
+class GLSurfaceCache;
 
 class GLPanelRenderer :
         public PanelRenderer {
 public:
-    explicit GLPanelRenderer(CommonGfx* gfx);
+    explicit GLPanelRenderer(CommonGfx* gfx, GLSurfaceCache* surfaceCache = nullptr);
 
     void beginPanelRender(const PanelRenderContext& context) override;
     void checkErrors() override;
@@ -18,7 +19,9 @@ public:
 
     void drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) override;
     void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) override;
+    void drawSurfaceCache() override;
     void drawFinalSelection() override;
+    void finishSurfaceBake() override;
     void drawLine(float x1, float y1, float x2, float y2, bool scale) override;
     void drawLine(float x1, float y1, float x2, float y2, const Color& c1, const Color& c2) override;
     void drawPoint(float size, Vertex2 point, bool scale) override;
@@ -48,5 +51,7 @@ public:
 
 private:
     Ref<CommonGfx> gfx;
+    GLSurfaceCache* surfaceCache;
+    const PanelRenderContext* currentContext = nullptr;
     RenderResourceCache resourceCache;
 };

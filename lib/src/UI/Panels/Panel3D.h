@@ -23,13 +23,11 @@ public:
         void activate()     override = 0;
         void clear()        override = 0;
 
-        virtual void drawBakedTextures()    {}
         virtual void gridDrawBeginning()    {}  // enable client arrays
         virtual void gridDrawFinished()     {}  // disable client arrays
         virtual void postVertsDraw()        {}
         virtual void scratchChannelSelected(int ch) {}
         virtual void textureBakeBeginning() {}
-        virtual void textureBakeFinished()  {}
 
         virtual bool isDetailReduced()      { return false; }
         virtual bool isScratchApplicable()  { return false; }
@@ -80,7 +78,7 @@ public:
 
     virtual vector<Color>& getGradientColours();
 
-    void drawCurvesAndSurfaces() override           { renderer->drawBakedTextures(); }
+    void drawCurvesAndSurfaces() override;
     void setGraphicsRenderer(Renderer* renderer)    { this->renderer.reset(renderer); }
 
     void setUseVertices(bool doso)          { useVertices = doso; }

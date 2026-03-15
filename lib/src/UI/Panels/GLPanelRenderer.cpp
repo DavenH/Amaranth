@@ -1,15 +1,17 @@
 #include "GLPanelRenderer.h"
 
 #include "CommonGfx.h"
+#include "GLSurfaceCache.h"
 #include "Texture.h"
 
-GLPanelRenderer::GLPanelRenderer(CommonGfx* gfx) :
+GLPanelRenderer::GLPanelRenderer(CommonGfx* gfx, GLSurfaceCache* surfaceCache) :
         gfx(gfx)
+    ,   surfaceCache(surfaceCache)
 {
 }
 
 void GLPanelRenderer::beginPanelRender(const PanelRenderContext& context) {
-    ignoreUnused(context);
+    currentContext = &context;
 
     if (gfx != nullptr) {
         gfx->initRender();
@@ -23,6 +25,7 @@ void GLPanelRenderer::checkErrors() {
 }
 
 void GLPanelRenderer::endPanelRender() {
+    currentContext = nullptr;
 }
 
 void GLPanelRenderer::drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) {
@@ -35,9 +38,21 @@ void GLPanelRenderer::drawCachedTexture(Texture* texture, const juce::Rectangle<
     resourceCache.drawCachedTexture(gfx, texture, bounds);
 }
 
+void GLPanelRenderer::drawSurfaceCache() {
+    if (surfaceCache != nullptr) {
+        surfaceCache->draw();
+    }
+}
+
 void GLPanelRenderer::drawFinalSelection() {
     if (gfx != nullptr) {
         gfx->drawFinalSelection();
+    }
+}
+
+void GLPanelRenderer::finishSurfaceBake() {
+    if (surfaceCache != nullptr && currentContext != nullptr) {
+        surfaceCache->captureFromFramebuffer(currentContext->bounds.getHeight());
     }
 }
 
