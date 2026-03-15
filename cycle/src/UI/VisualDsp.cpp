@@ -1234,85 +1234,85 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
 }
 
 void VisualDsp::trackWavePhaseEnvelope() {
-/*
     vector<Vertex2> path;
     int length = phasePreFXCols.size();
+
+    if (length == 0) {
+        return;
+    }
 
     const int harmonicsToAverage = 1;
     ScopedAlloc<Float32> averagingKernel(harmonicsToAverage);
     ScopedAlloc<Float32> tempPhases(harmonicsToAverage);
     ScopedAlloc<Float32> averagePhase(length);
-    ScopedAlloc<Float32> modWhole(length);
-    ScopedAlloc<Float32> modPart(length);
+    ScopedAlloc<Float32> phaseWhole(length);
+    ScopedAlloc<Float32> phaseFraction(length);
 
-    for(int i = 0; i < harmonicsToAverage; ++i)
-        averagingKernel[i] = i + 1;
+    averagingKernel.ramp(1.f, 1.f).divCRev(1.f);
+    averagingKernel.mul(1.f / averagingKernel.sum());
 
-    float scale = powf(2, getObj(Spectrum3D).getScaleFactor());
-    checkIppStatus(ippsDivCRev_32f_I(1.f, averagingKernel, harmonicsToAverage));
+    for (int i = 0; i < length; ++i) {
+        Buffer<Float32> phaseColumn(phasePreFXCols[i], harmonicsToAverage);
 
-    float invNumToAvg;
-    checkIppStatus(ippsSum_32f(averagingKernel, harmonicsToAverage, &invNumToAvg, ippAlgHintFast));
-    checkIppStatus(ippsMulC_32f_I(1 / invNumToAvg, averagingKernel, harmonicsToAverage));
-
-    for(int i = 0; i < length; ++i)
-    {
-        checkIppStatus(ippsCopy_32f(phasePreFXCols[i], tempPhases, harmonicsToAverage));
-        checkIppStatus(ippsAddC_32f_I(-0.5f, tempPhases, harmonicsToAverage));
-        checkIppStatus(ippsMulC_32f_I(-1, tempPhases, harmonicsToAverage));
-        checkIppStatus(ippsDotProd_32f(tempPhases, averagingKernel, harmonicsToAverage, averagePhase.get() + i));
+        phaseColumn.copyTo(tempPhases);
+        tempPhases.sub(0.5f).mul(-1.f);
+        averagePhase[i] = tempPhases.dot(averagingKernel);
     }
 
-    checkIppStatus(ippsAddC_32f_I(1000.f, averagePhase, length));		// want to have same polarity for modf
-    checkIppStatus(ippsModf_32f(averagePhase, modWhole, modPart, length));
+    averagePhase.add(1000.f);
+    VecOps::splitFrac(Buffer<Float32>(averagePhase), Buffer<Float32>(phaseWhole), Buffer<Float32>(phaseFraction));
 
     bool didSplit;
 
-    for(int i = 0; i < length; ++i)
-    {
-        didSplit = i > 0 && modWhole[i - 1] != modWhole[i];
+    for (int i = 0; i < length; ++i) {
+        didSplit = i > 0 && phaseWhole[i - 1] != phaseWhole[i];
 
-        if(didSplit)
-        {
+        if (didSplit) {
             float x = phasePreFXCols[i].x - 0.001f;
-            path.push_back(Vertex2(x, modPart[i - 1]));
+            path.emplace_back(x, phaseFraction[i - 1]);
 
             x += 0.002f;
-            path.push_back(Vertex2(x, modPart[i]));
-        }
-        else
-        {
-            path.push_back(Vertex2(phasePreFXCols[i].x, modPart[i]));
+            path.emplace_back(Vertex2(x, phaseFraction[i]));
+        } else {
+            path.emplace_back(Vertex2(phasePreFXCols[i].x, phaseFraction[i]));
         }
     }
 
 //	getObj(AutoModeller).reducePath<Vertex2>(path);
 
-    Mesh* wavePhase = getObj(LayerManager).getEnvMesh(LayerSources::GroupWavePhase);
+    EnvelopeMesh* wavePhase = getObj(MeshLibrary).getCurrentEnvMesh(LayerGroups::GroupOscPhase);
     wavePhase->destroy();
 
-    for (int i = 0; i < (int) path.size(); ++i)
-    {
-        Vertex* y0r0b0 = new Vertex(0.f, path[i].x, path[i].y, 0.f, 0.f);
-        Vertex* y1r0b0 = new Vertex(*y0r0b0);
-        y1r0b0->values[Vertex::Time] = 1;
+    for (int i = 0; i < (int) path.size(); ++i) {
+        Vertex lowPole(0.f, path[i].x, path[i].y, 0.f, 0.f);
+        Vertex highPole(lowPole);
+        highPole.values[Vertex::Time] = 1.f;
 
-        VertCube* cube = new VertCube(y0r0b0, y1r0b0, wavePhase);
-        wavePhase->verts.push_back(y0r0b0);
-        wavePhase->verts.push_back(y1r0b0);
-        wavePhase->lines.push_back(cube);
+        auto* cube = new VertCube(wavePhase);
+        wavePhase->addCube(cube);
+
+        for (int j = 0; j < VertCube::numVerts; ++j) {
+            bool timePole, redPole, bluePole;
+            VertCube::getPoles(j, timePole, redPole, bluePole);
+
+            Vertex* vertex = cube->getVertex(j);
+            *vertex = timePole ? highPole : lowPole;
+            vertex->values[Vertex::Red] = redPole ? 1.f : 0.f;
+            vertex->values[Vertex::Blue] = bluePole ? 1.f : 0.f;
+        }
 
         float sharpness = 0.3f;
-        if(i > 0 && path[i].x - path[i - 1].x < 0.003f)
+        if (i > 0 && path[i].x - path[i - 1].x < 0.003f) {
             sharpness = 1.f;
+        }
 
-        for (int j = 0; j < VertCube::numVerts; ++j)
+        for (int j = 0; j < VertCube::numVerts; ++j) {
             cube->getVertex(j)->values[Vertex::Curve] = sharpness;
+        }
     }
 
-    getObj(OscPhaseRasterizer).setMesh(wavePhase);
-//	getObj(OscPhaseRasterizer).calcCrossPoints();
-*/
+    oscPhaseRasterizer.setMesh(wavePhase);
+    oscPhaseRasterizer.calcCrossPoints();
 }
 
 Buffer<float> VisualDsp::getFreqColumn(float position, bool isMags) {
@@ -1359,7 +1359,7 @@ Buffer<Float32> VisualDsp::getTimeArray() {
     int stage = getSetting(ViewStage);
 
     return stage == ViewStages::PostFX ?
-        postFXArray : stage == ViewStages::PreProcessing ?
+            postFXArray : stage == ViewStages::PreProcessing ?
             preEnvArray : postEnvArray;
 }
 

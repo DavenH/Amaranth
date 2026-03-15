@@ -39,6 +39,10 @@ namespace VecOps {
     // dst[i] = k - src[i]
     template<typename T> void subCRev(Buffer<T> src, T c, Buffer<T> dst);
 
+    // whole[i] = floor(src[i]), frac[i] = src[i] - whole[i]
+    // T = Float32, Float64
+    template<typename T> void splitFrac(Buffer<T> src, Buffer<T> whole, Buffer<T> frac);
+
     // dst[i] = k * src[i]
     // T = Float32, Float64
     template<typename T> void mul(Buffer<T> srcA, T k, Buffer<T> dst);
