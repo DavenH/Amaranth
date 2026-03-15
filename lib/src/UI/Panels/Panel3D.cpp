@@ -377,11 +377,9 @@ void Panel3D::doColourLookup8u(Buffer<Int8u> grd, Buffer<Int8u> colors) {
 
     for(int j = 0; j < draw.sizeY; ++j) {
         VecOps::copy(grd8u + clrIndicesA[j], colorPtr, bytes);
-        // ippsCopy_8u(grd8u + clrIndicesA[j], colorPtr, bytes);
         colorPtr += bytes;
 
         VecOps::copy(grd8u + clrIndicesB[j], colorPtr, bytes);
-        // ippsCopy_8u(grd8u + clrIndicesB[j], colorPtr, bytes);
         colorPtr += bytes;
     }
 }
@@ -395,7 +393,6 @@ void Panel3D::doColourLookup32f(Buffer<float> grd, Buffer<float> colors) {
 
     for (int j = 0; j < draw.sizeY; ++j) {
         VecOps::copy(grd32f + clrIndicesB[j], colorPtr, bytes);
-        // ippsCopy_32f(grd32f + clrIndicesB[j], colorPtr, bytes);
         colorPtr += bytes;
     }
 }

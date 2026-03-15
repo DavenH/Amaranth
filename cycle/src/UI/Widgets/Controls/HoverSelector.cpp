@@ -134,6 +134,27 @@ void HoverSelector::showPopup() {
         jassert(screenArea.getWidth() > 0);
 
         prepareForPopup();
-        menu.showAt(screenArea, 1, getWidth(), 1, 24, new HoverSelectorCallback(this));
+
+        auto options = PopupMenu::Options()
+            .withTargetScreenArea(screenArea)
+            .withItemThatMustBeVisible(0)
+            .withMinimumNumColumns(1)
+            .withMinimumWidth(getWidth())
+            .withStandardItemHeight(24);
+
+        SafePointer safeThis(this);
+        menu.showMenuAsync(options, [safeThis](int returnValue) {
+            if (safeThis == nullptr) {
+                return;
+            }
+
+            safeThis->menuActive = false;
+
+            if (returnValue == 0) {
+                safeThis->revert();
+            } else {
+                safeThis->setSelectedId(returnValue);
+            }
+        });
     }
 }

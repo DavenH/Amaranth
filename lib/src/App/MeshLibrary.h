@@ -23,6 +23,7 @@ namespace LayerGroups {
     ,   GroupTime
     ,   GroupSpect
     ,   GroupPhase
+    ,   GroupOscPhase
     ,   numDefaultGroups
     };
 }

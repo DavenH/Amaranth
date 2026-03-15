@@ -176,6 +176,7 @@ private:
     Ref<TimeRasterizer>  timeRasterizer;
     Ref<SpectRasterizer> spectRasterizer;
     Ref<PhaseRasterizer> phaseRasterizer;
+    MeshRasterizer oscPhaseRasterizer;
 
     ScopedAlloc<Float32> zoomProgress;
     ScopedAlloc<Float32> fftPreFXArray, fftPostFXArray;			  // fft

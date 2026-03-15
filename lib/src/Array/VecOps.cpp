@@ -59,6 +59,32 @@ template<> void VecOps::divCRev(Buffer<Float32> src, Float32 k, Buffer<Float32> 
     src.copyTo(dst); dst.divCRev(k);
 }
 
+template<>
+void VecOps::splitFrac(Buffer<Float32> src, Buffer<Float32> whole, Buffer<Float32> frac) {
+    if (src.size() < whole.size() || src.size() < frac.size()) {
+        ++globalVecOpsSizeErrorCount;
+        return;
+    }
+
+    int size = src.size();
+    vvfloorf(whole.get(), src.get(), &size);
+    src.copyTo(frac);
+    frac.sub(whole);
+}
+
+template<>
+void VecOps::splitFrac(Buffer<Float64> src, Buffer<Float64> whole, Buffer<Float64> frac) {
+    if (src.size() < whole.size() || src.size() < frac.size()) {
+        ++globalVecOpsSizeErrorCount;
+        return;
+    }
+
+    int size = src.size();
+    vvfloor(whole.get(), src.get(), &size);
+    src.copyTo(frac);
+    frac.sub(whole);
+}
+
 #define declareForF32_F64(op, fn) \
     template<> void VecOps::op(SRC_DST(Float32)) { BUFFS_EQ_CHECK vDSP_##fn(MOVE_ARG_PATTERN); } \
     template<> void VecOps::op(SRC_DST(Float64)) { BUFFS_EQ_CHECK vDSP_##fn##D(MOVE_ARG_PATTERN); }
@@ -308,6 +334,32 @@ template<> void VecOps::subCRev(Buffer<Float32> src, Float32 k, Buffer<Float32> 
 
 template<> void VecOps::divCRev(Buffer<Float32> src, Float32 k, Buffer<Float32> dst) {
     ippsDivCRev_32f(src.get(), k, dst.get(), jmin(src.size(), dst.size()));
+}
+
+template<>
+void VecOps::splitFrac(Buffer<Float32> src, Buffer<Float32> whole, Buffer<Float32> frac) {
+    int size = jmin(src.size(), whole.size(), frac.size());
+
+    if (size <= 0) {
+        return;
+    }
+
+    ippsFloor_32f(src.get(), whole.get(), size);
+    src.withSize(size).copyTo(frac.withSize(size));
+    frac.withSize(size).sub(whole.withSize(size));
+}
+
+template<>
+void VecOps::splitFrac(Buffer<Float64> src, Buffer<Float64> whole, Buffer<Float64> frac) {
+    int size = jmin(src.size(), whole.size(), frac.size());
+
+    if (size <= 0) {
+        return;
+    }
+
+    ippsFloor_64f(src.get(), whole.get(), size);
+    src.withSize(size).copyTo(frac.withSize(size));
+    frac.withSize(size).sub(whole.withSize(size));
 }
 
 #endif

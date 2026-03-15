@@ -176,11 +176,11 @@ bool CollisionDetector::validate() {
   #endif
 
     bool sameLines     = true;
-    int dimAfter     = 0;
-    int dim2After     = 0;
+    int dimAfter       = 0;
+    int dim2After      = 0;
     int baseIndexL     = 0;
     int baseIndexM     = 0;
-    int numDim2Slices = timeIsApplicable ? dimSlices : 1;
+    int numDim2Slices  = timeIsApplicable ? dimSlices : 1;
     int dimIdx         = nonIntersectingDim;
 
 //    for(int dimIdx = 0; dimIdx < numIndepDims; ++dimIdx)
