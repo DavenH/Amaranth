@@ -23,9 +23,9 @@ void BannerPanel::paint(Graphics& g) {
 void BannerPanel::mouseEnter(const MouseEvent& e) {
     String line = String(ProjectInfo::projectName) + " v" + String(ProjectInfo::versionString);
 
-    getObj(IConsole).reset();
-    getObj(IConsole).write(line, IConsole::DefaultPriority);
-    getObj(IConsole).setKeys("by " + String(ProjectInfo::companyName));
+    getObj(Console).reset();
+    getObj(Console).write(line, IConsole::DefaultPriority);
+    getObj(Console).setKeys("by " + String(ProjectInfo::companyName));
 }
 
 void BannerPanel::mouseDown(const MouseEvent& e) {

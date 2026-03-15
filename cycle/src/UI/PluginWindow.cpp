@@ -18,6 +18,7 @@
 #include "VisualDsp.h"
 #include "SynthLookAndFeel.h"
 
+#include "Panels/Console.h"
 #include "Panels/MainPanel.h"
 #include "Panels/PlayerComponent.h"
 #include "../Util/CycleEnums.h"
@@ -132,8 +133,8 @@ void PluginWindow::changeSizeAndSet(int sizeEnum)
 		removeChildComponent(playerComponent);
 
 		mainPanel->setPlayerComponents();
-		getObj(IConsole).addPullout();
-		getObj(IConsole).resized();
+        getObj(Console).addPullout();
+        getObj(Console).resized();
 
 		doUpdateAfterResize = true;
 	}

@@ -1,4 +1,6 @@
 #include <App/MeshLibrary.h>
+#include <App/SingletonRepo.h>
+#include <Audio/Multisample.h>
 #include <Definitions.h>
 #include <Inter/Interactor.h>
 
@@ -8,6 +10,8 @@
 #include "ScratchUpdate.h"
 #include "SpectDelegate.h"
 
+#include "../App/Initializer.h"
+#include "../Curve/E3Rasterizer.h"
 #include "../Curve/GraphicRasterizer.h"
 #include "../Inter/EnvelopeInter2D.h"
 #include "../Inter/EnvelopeInter3D.h"
@@ -19,17 +23,38 @@
 #include "../UI/Effects/IrModellerUI.h"
 #include "../UI/Effects/WaveshaperUI.h"
 #include "../UI/Panels/DerivativePanel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/GuideCurvePanel.h"
 #include "../UI/VisualDsp.h"
 #include "../Util/CycleEnums.h"
 
 CycleUpdater::CycleUpdater(SingletonRepo* repo) :
         SingletonAccessor(repo, "CycleUpdater")
+    ,   graphCreated(false)
     , 	lastViewStage(ViewStages::PreProcessing) {
 }
 
 void CycleUpdater::init() {
     updater = &getObj(Updater);
+
+    if (graphCreated) {
+        return;
+    }
+
+    envelopeDelegate = std::make_unique<EnvelopeDelegate>(repo);
+    spectDelegate    = std::make_unique<SpectDelegate>(repo);
+    morphUpdate      = std::make_unique<MorphUpdate>(repo);
+    scratchUpdate    = std::make_unique<ScratchUpdate>(repo);
+
+    createUpdateGraph();
+    graphCreated = true;
+}
+
+void CycleUpdater::finishInitialization() {
+    if (!graphCreated) {
+        init();
+    }
+
+    viewStageChanged(true);
 }
 
 void CycleUpdater::createUpdateGraph() {
@@ -43,10 +68,10 @@ void CycleUpdater::createUpdateGraph() {
     wshpItr 	= new Node(&getObj(WaveshaperUI));
     eqlzerUI 	= new Node(&getObj(EqualizerUI));
     derivUI 	= new Node(&getObj(DerivativePanel));
-    dfrmItr 	= new Node(&getObj(DeformerPanel));
+    guideCurveItr 	= new Node(&getObj(GuideCurvePanel));
 
     time2Rast  	= new Node(&getObj(TimeRasterizer));
-    dfrmRast 	= new Node(getObj(DeformerPanel).getRasterizer());
+    guideCurveRast = new Node(getObj(GuideCurvePanel).getRasterizer());
     irModelRast = new Node(getObj(IrModellerUI).getRasterizer());
     wshpRast 	= new Node(getObj(WaveshaperUI).getRasterizer());
 
@@ -80,7 +105,7 @@ void CycleUpdater::createUpdateGraph() {
     spect3Itr	->marks(synthNode);
     time2Itr	->marks(Array<Node*>(timeNodes, 3));
     time3Itr	->marks(Array<Node*>(timeNodes, 3));
-    dfrmItr		->marks(synthNode);
+    guideCurveItr->marks(synthNode);
     scratchRast	->marks(synthNode);
     scratchRast	->marks(scratchRast);
     morphNode	->marks(morphNode);
@@ -89,10 +114,10 @@ void CycleUpdater::createUpdateGraph() {
     env2Itr		->marks(envDlg);
     env3Itr		->marks(envDlg);
 
-    Node* universalNodes[] 	= { morphNode, spectDlg, envDlg, dfrmRast, wshpRast, irModelRast,
+    Node* universalNodes[] 	= { morphNode, spectDlg, envDlg, guideCurveRast, wshpRast, irModelRast,
                                 scratchRast, irModelDsp, unison, timeProc, time2Rast, synthNode };
 
-    Node* allButFxNodes[] 	= { morphNode, spectDlg, envDlg, dfrmRast, scratchRast, timeProc,
+    Node* allButFxNodes[] 	= { morphNode, spectDlg, envDlg, guideCurveRast, scratchRast, timeProc,
                                 time2Rast, synthNode };
 
     univNode	->marks(Array<Node*>(universalNodes, numElementsInArray(universalNodes)));
@@ -116,7 +141,7 @@ void CycleUpdater::createUpdateGraph() {
     envDlg		->updatesAfter(morphNode);
 
     Node* startingNodes[]	= { morphNode, time2Rast, envDlg, irModelDsp, wshpDsp, effectsProc, timeProc,
-                                unisonItr, synthNode, irModelRast, dfrmRast, scratchRast, spectDlg };
+                                unisonItr, synthNode, irModelRast, wshpRast, guideCurveRast, scratchRast, spectDlg };
 
     updater->getGraph().addHeadNodes(Array<Node*>(startingNodes, numElementsInArray(startingNodes)));
 
@@ -126,14 +151,14 @@ void CycleUpdater::createUpdateGraph() {
     irModelItr	->marksAndUpdatesAfter(irModelDsp);
     wshpItr		->marksAndUpdatesAfter(wshpDsp);
     wshpItr		->marksAndUpdatesAfter(wshpRast);
-    dfrmItr		->marksAndUpdatesAfter(dfrmRast);
+    guideCurveItr->marksAndUpdatesAfter(guideCurveRast);
     unisonItr	->marksAndUpdatesAfter(unison);
 
     envelopeVisibilityChanged();
 
     updater->setStartingNode(UpdateSources::SourceAll, 			univNode);
     updater->setStartingNode(UpdateSources::SourceAllButFX, 	allButFX);
-    updater->setStartingNode(UpdateSources::SourceDeformer, 	dfrmItr);
+    updater->setStartingNode(UpdateSources::SourceGuideCurve, 	guideCurveItr);
     updater->setStartingNode(UpdateSources::SourceEnvelope2D, 	env2Itr);
     updater->setStartingNode(UpdateSources::SourceEnvelope3D, 	env3Itr);
     updater->setStartingNode(UpdateSources::SourceEqualizer, 	eqlzerUI);
@@ -204,7 +229,7 @@ void CycleUpdater::setDspFXConnections() const {
 
 void CycleUpdater::setTimeFreqParents() {
     layerChanged(LayerGroups::GroupScratch, -1);
-    layerChanged(LayerGroups::GroupDeformer, -1);
+    layerChanged(LayerGroups::GroupGuideCurve, -1);
 }
 
 void CycleUpdater::setTimeFreqChildren(bool toFFT) const {
@@ -284,7 +309,7 @@ void CycleUpdater::viewStageChanged(bool force) {
 }
 
 void CycleUpdater::layerChanged(int layerGroup, int index) {
-    Node* srcNode = layerGroup == LayerGroups::GroupScratch ? scratchRast : dfrmRast;
+    Node* srcNode = layerGroup == LayerGroups::GroupScratch ? scratchRast : guideCurveRast;
 
     Array<int> types = getObj(MeshLibrary).getMeshTypesAffectedByCurrent(layerGroup);
     refreshConnections(srcNode, types);

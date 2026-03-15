@@ -15,6 +15,7 @@
 #include "PlaybackPanel.h"
 
 #include "../VisualDsp.h"
+#include "../Panels/Console.h"
 
 #include "MainPanel.h"
 #include "Morphing/MorphPanel.h"
@@ -123,8 +124,8 @@ void PlaybackPanel::mouseDown(const MouseEvent& e) {
 }
 
 void PlaybackPanel::mouseEnter(const MouseEvent& e) {
-	getObj(IConsole).updateAll("Set playback position (left), Set view depth (right)",
-	                           {}, MouseUsage(true, false, true, true));
+    getObj(Console).updateAll("Set playback position (left), Set view depth (right)",
+                                 {}, MouseUsage(true, false, true, true));
 }
 
 void PlaybackPanel::mouseDrag(const MouseEvent& e) {

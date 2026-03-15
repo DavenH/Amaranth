@@ -2,13 +2,14 @@
 
 FileChooserDialog::FileChooserDialog(const String& name,
                                      const String& instructions,
-                                     FileBrowserComponent& chooserComponent,
+                                     std::unique_ptr<FileBrowserComponent> chooserComponent,
                                      const bool warnAboutOverwritingExistingFiles_,
                                      const Colour& backgroundColour,
                                      const DocumentDetails& details)
     : ResizableWindow(name, backgroundColour, true),
+      browserComponent(std::move(chooserComponent)),
       warnAboutOverwritingExistingFiles(warnAboutOverwritingExistingFiles_) {
-    content = new ContentComponent(name, instructions, chooserComponent);
+    content = new ContentComponent(name, instructions, *browserComponent);
 
     setAlwaysOnTop(true);
     setContentOwned(content, false);
@@ -30,6 +31,7 @@ FileChooserDialog::~FileChooserDialog() {
     content->chooserComponent.removeListener(this);
 }
 
+#if JUCE_MODAL_LOOPS_PERMITTED
 bool FileChooserDialog::show(int w, int h) {
     return showAt(-1, -1, w, h);
 }
@@ -59,6 +61,46 @@ bool FileChooserDialog::showAt(int x, int y, int w, int h) {
     setVisible(false);
     return ok;
 }
+#endif
+
+void FileChooserDialog::showAsync(std::function<void(bool)> completion, int w, int h) {
+    showAtAsync(std::move(completion), -1, -1, w, h);
+}
+
+void FileChooserDialog::showAtAsync(std::function<void(bool)> completion, int x, int y, int w, int h) {
+    if (w <= 0) {
+        Component* const previewComp = content->chooserComponent.getPreviewComponent();
+
+        if (previewComp != nullptr) {
+            w = 400 + previewComp->getWidth();
+        } else {
+            w = 600;
+        }
+    }
+
+    if (h <= 0) {
+        h = 500;
+    }
+
+    if (x < 0 || y < 0) {
+        centreWithSize(w, h);
+    } else {
+        setBounds(x, y, w, h);
+    }
+
+    setVisible(true);
+    toFront(true);
+    SafePointer<FileChooserDialog> safeThis(this);
+    enterModalState(true, ModalCallbackFunction::create(
+        [safeThis, callback = std::move(completion)](int result) mutable {
+            if (safeThis == nullptr) {
+                return;
+            }
+
+            callback(result != 0);
+            delete safeThis.getComponent();
+        }), false);
+}
 
 void FileChooserDialog::centreWithDefaultSize(Component* componentToCentreAround) {
     Component* const previewComp = content->chooserComponent.getPreviewComponent();
@@ -79,7 +121,7 @@ void FileChooserDialog::buttonClicked(Button* button) {
 }
 
 void FileChooserDialog::closeButtonPressed() {
-    setVisible(false);
+    exitModalState(0);
 }
 
 void FileChooserDialog::selectionChanged() {

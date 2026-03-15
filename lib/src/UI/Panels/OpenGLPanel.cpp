@@ -42,8 +42,12 @@ void OpenGLPanel::newOpenGLContextCreated() {
     commonGL->initLineParams();
 
     jassert(glGetError() == GL_NO_ERROR);
-
-    repaint();
+    auto safeThis = Component::SafePointer<OpenGLPanel>(this);
+    MessageManager::callAsync([safeThis]() {
+        if (safeThis != nullptr) {
+            safeThis->repaint();
+        }
+    });
 }
 
 void OpenGLPanel::openGLContextClosing() {

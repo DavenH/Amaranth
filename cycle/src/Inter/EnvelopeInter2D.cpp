@@ -76,6 +76,7 @@ EnvelopeInter2D::EnvelopeInter2D(SingletonRepo* repo) :
 }
 
 void EnvelopeInter2D::init() {
+    Interactor::init();
     envPanel = &getObj(Envelope2D);
 
     meshToSlider[LayerGroups::GroupVolume] = OscControlPanel::Volume;
@@ -87,6 +88,11 @@ void EnvelopeInter2D::init() {
     loopIcon.setApplicable(false);
 
     vertexLimits[Vertex::Phase].setEnd(MathConstants<float>::sqrt2); //envPanel->zoom.wLimit;
+
+    // The updater can reach the envelope path during startup before the UI
+    // explicitly switches envelope types, so bind the current rasterizer now.
+    layerType = getSetting(CurrentEnvGroup);
+    setRasterizer(getRast(layerType));
 }
 
 void EnvelopeInter2D::doExtraMouseUp() {
@@ -320,19 +326,19 @@ bool EnvelopeInter2D::synchronizeEnvPoints(Vertex* vertex, bool vertexIsLoopVert
             for (int i = 0; i < VertCube::numVerts; ++i) {
                 toMove->getVertex(i)->values[Vertex::Amp] = toCopyFrom->getVertex(i)->values[Vertex::Amp];
 
-                // if an component curve deformer is set, the sharpness is treated as its gain
-                // plus, deformers aren't smooth so disconts don't matter
-                if (toMove->getCompDfrm() < 0) {
+                // if a component guide curve is set, the sharpness is treated as its gain
+                // plus, guide curves aren't smooth so disconts don't matter
+                if (toMove->getCompGuideCurve() < 0) {
                     toMove->getVertex(i)->setMaxSharpness();
                 }
 
-                if (toCopyFrom->getCompDfrm() < 0) {
+                if (toCopyFrom->getCompGuideCurve() < 0) {
                     toCopyFrom->getVertex(i)->setMaxSharpness();
                 }
             }
 
             didAnything = true;
-        } else if (sustainCube != nullptr && sustainCube->deformerAt(Vertex::Time) < 0) {
+        } else if (sustainCube != nullptr && sustainCube->guideCurveAt(Vertex::Time) < 0) {
             for (int i = 0; i < VertCube::numVerts; ++i) {
                 sustainCube->getVertex(i)->setMaxSharpness();
             }

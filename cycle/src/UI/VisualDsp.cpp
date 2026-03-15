@@ -23,7 +23,7 @@
 #include "../UI/Effects/UnisonUI.h"
 #include "../UI/Panels/Morphing/MorphPanel.h"
 #include "../UI/Panels/OscControlPanel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/GuideCurvePanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
 #include "../UI/VertexPanels/Spectrum3D.h"
 #include "../UI/VertexPanels/Waveform3D.h"
@@ -77,8 +77,8 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
     if (dim == Vertex::Time) {
         if (props->active) {
             // degrade curve for surface rendering (accuracy not important)
-            rasterizer.updateOffsetSeeds(getObj(MeshLibrary).getLayerGroup(layerGroup).size(), DeformerPanel::tableSize);
-            rasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
+            rasterizer.updateOffsetSeeds(getObj(MeshLibrary).getLayerGroup(layerGroup).size(), GuideCurvePanel::tableSize);
+            rasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
             rasterizer.setLowresCurves(layerGroup != ScratchType && layerGroup != ScratchPanelType);
             rasterizer.setCalcDepthDimensions(false);
             rasterizer.setMode(EnvRasterizer::NormalState);
@@ -191,7 +191,7 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
 
         // calculates graphic curve (update() makes a copy)
         rast->setNoteOn();
-        rast->updateOffsetSeeds(1, DeformerPanel::tableSize);
+        rast->updateOffsetSeeds(1, GuideCurvePanel::tableSize);
         rast->setWantOneSamplePerCycle(false);
         rast->setCalcDepthDimensions(true);
         rast->setDecoupleComponentDfrm(false);
@@ -321,7 +321,7 @@ void VisualDsp::calcTimeDomain(int numColumns) {
     batchState.pos.time = 0;
 
     timeRasterizer->restoreStateFrom(batchState);
-    timeRasterizer->updateOffsetSeeds(timeGroup.size(), DeformerPanel::tableSize);
+    timeRasterizer->updateOffsetSeeds(timeGroup.size(), GuideCurvePanel::tableSize);
 
     MeshRasterizer& rasterizer = *timeRasterizer;
 
@@ -466,8 +466,8 @@ void VisualDsp::calcSpectrogram(int numColumns) {
     batchState.scalingType = MeshRasterizer::Unipolar;
     spectRasterizer->restoreStateFrom(batchState);
     // TODO what are the current layer sizes?
-    phaseRasterizer->updateOffsetSeeds(0, DeformerPanel::tableSize);
-    spectRasterizer->updateOffsetSeeds(0, DeformerPanel::tableSize);
+    phaseRasterizer->updateOffsetSeeds(0, GuideCurvePanel::tableSize);
+    spectRasterizer->updateOffsetSeeds(0, GuideCurvePanel::tableSize);
 
     Buffer magBuf(fft.getMagnitudes(), numHarmonics);
     Buffer phaseBuf(fft.getPhases(), numHarmonics);
@@ -1125,7 +1125,7 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
     float unisonScale 	 = powf(2.f, -(unison->getOrder(false) - 1) * 0.14f);
     int unisonOrder 	 = processUnison ? unison->getOrder(false) : 1;
 
-    vector<MeshRasterizer::DeformContext> contexts(unisonOrder);
+    vector<MeshRasterizer::GuideCurveContext> contexts(unisonOrder);
 
     ScopedAlloc<double> cumePhases(unisonOrder);
     cumePhases.zero();
@@ -1133,8 +1133,8 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
     auto& pitch = getObj(EnvPitchRast);
 
     // calculates curve for deferred sampleAt calls in processing
-    // do this second to preserve deform contexts.
-    pitch.updateOffsetSeeds(1, DeformerPanel::tableSize);
+    // do this second to preserve guide curve contexts.
+    pitch.updateOffsetSeeds(1, GuideCurvePanel::tableSize);
     pitch.ensureParamSize(unisonOrder);
     pitch.setCalcDepthDimensions(false);
     pitch.setWantOneSamplePerCycle(true);

@@ -39,11 +39,11 @@ VertCube::~VertCube() {
 void VertCube::init() {
     float defaultComp = 0.5f + NumberUtils::toDecibels(1.5) / 60.f;
 
-    for(float& dfrmGain : dfrmGains) {
-        dfrmGain = 0.5;
+    for(float& guideCurveGain : guideCurveGains) {
+        guideCurveGain = 0.5;
     }
 
-    dfrmGains[Vertex::Time] = defaultComp;
+    guideCurveGains[Vertex::Time] = defaultComp;
 
     resetProperties();
 }
@@ -515,14 +515,14 @@ void VertCube::orphanVerts() {
 
 void VertCube::setPropertiesFrom(VertCube const* other) {
     for (int i = Vertex::Time; i <= Vertex::Curve; ++i) {
-        deformerAt(i) = other->deformerAt(i);
-        dfrmGainAt(i) = other->dfrmGainAt(i);
+        guideCurveAt(i) = other->guideCurveAt(i);
+        guideCurveGainAt(i) = other->guideCurveGainAt(i);
     }
 }
 
 void VertCube::resetProperties() {
-    for (char& dfrmChan : dfrmChans) {
-        dfrmChan = CommonEnums::Null;
+    for (char& guideCurveChan : guideCurveChans) {
+        guideCurveChan = CommonEnums::Null;
     }
 }
 
@@ -534,12 +534,12 @@ void VertCube::validate() {
     }
 }
 
-float VertCube::deformerAbsGain(int dim) const {
+float VertCube::guideCurveAbsGain(int dim) const {
     if (dim < 0) {
         return CommonEnums::Null;
     }
 
-    float value = dfrmGainAt(dim);
+    float value = guideCurveGainAt(dim);
 
     if(value == 0.5) {
         return 1;
@@ -715,7 +715,7 @@ float VertCube::getPortionAlong(int dim, const MorphPosition& morph) const {
 
 bool VertCube::isDeformed() const {
     for(int i = 0; i < Vertex::numElements; ++i) {
-        if(deformerAt(i) >= 0) {
+        if(guideCurveAt(i) >= 0) {
             return true;
         }
     }

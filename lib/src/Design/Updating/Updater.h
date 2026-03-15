@@ -35,10 +35,14 @@ public:
 
         void reset();
         void markPath();
-        void performUpdate(String& path, UpdateType updateType);
+        void performUpdate(String& path, UpdateType updateType, bool shouldPrintPath = false);
 
         [[nodiscard]] bool isDirty() const   { return dirty;    }
         [[nodiscard]] bool isUpdated() const { return updated;  }
+        [[nodiscard]] const Array<Node*>& getParents() const     { return parents;     }
+        [[nodiscard]] const Array<Node*>& getChildren() const    { return children;    }
+        [[nodiscard]] const Array<Node*>& getMarkedNodes() const { return nodesToMark; }
+        [[nodiscard]] Updateable* getTarget() const              { return toUpdate;    }
         void markDirty() { dirty = true;    }
 
         virtual void executeUpdate(UpdateType updateType);
@@ -46,8 +50,6 @@ public:
     private:
         bool updated;
         bool dirty;
-
-        Ref<Updater> updater;
 
         Array<Node*> parents;
         Array<Node*> children;
@@ -62,7 +64,7 @@ public:
 
     class Graph : public SingletonAccessor {
     public:
-        Graph(Updater* updater, SingletonRepo* repo);
+        explicit Graph(SingletonRepo* repo);
         ~Graph() override = default;
 
         void addHeadNode    (Node* node);
@@ -70,7 +72,7 @@ public:
         void removeHeadNode (Node* node);
         void update         (Node* node);
 
-        [[nodiscard]] bool doesPrintPath() const { return printsPath; }
+        [[nodiscard]] const Array<Node*>& getHeadNodes() const { return headNodes; }
         void setUpdateType(UpdateType type)     { updateType = type; }
         void setPrintsPath(bool does)   { printsPath = does; }
 
@@ -80,8 +82,6 @@ public:
         bool printsPath;
         UpdateType updateType;
         String lastPath;
-
-        Ref<Updater> updater;
         Array<Node*> headNodes;
 
         void reset() override;
@@ -109,6 +109,7 @@ public:
     void addListener(ChangeListener* listener) { listeners.add(listener); }
     void setStartingNode(int code, Node* node);
     Graph& getGraph() { return graph; }
+    const Graph& getGraph() const { return graph; }
 
 protected:
     bool throttleUpdates;

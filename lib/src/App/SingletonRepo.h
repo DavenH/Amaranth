@@ -9,7 +9,7 @@ class SingletonAccessor;
 class MeshRasterizer;
 class MorphPositioner;
 class IConsole;
-class IDeformer;
+class GuideCurveProvider;
 class Panel;
 using namespace juce;
 
@@ -31,11 +31,12 @@ public:
     void setDebugStream(OutputStream* output)           { this->debugStream.reset(output);   }
     void setMorphPositioner(MorphPositioner* positioner){ this->positioner = positioner;     }
     void setConsole(IConsole* console)                  { this->console = console;           }
-    void setDeformer(IDeformer* deformer);
+    void setGuideCurveProvider(GuideCurveProvider* guideCurveProvider);
 
+    PluginProcessor& getPluginProcessor()               { jassert(plugin != nullptr); return *plugin; }
     MorphPositioner& getMorphPosition()                 { return *positioner;   }
     IConsole& getConsole()                              { return *console;      }
-    IDeformer& getDeformer()                            { return *deformer;     }
+    GuideCurveProvider& getGuideCurveProvider()         { return *guideCurveProvider;  }
 
     /* ----------------------------------------------------------------------------- */
 
@@ -71,7 +72,7 @@ protected:
 
     Ref<MorphPositioner> positioner;
     Ref<IConsole> console;
-    Ref<IDeformer> deformer;
+    Ref<GuideCurveProvider> guideCurveProvider;
 
     Array<Savable*> saveSources;
     Array<Panel*> panels;
@@ -82,3 +83,9 @@ protected:
 
     CriticalSection initLock;
 };
+
+template<>
+PluginProcessor& SingletonRepo::get<PluginProcessor>(const String& name);
+
+template<>
+const PluginProcessor& SingletonRepo::get<PluginProcessor>(const String& name) const;

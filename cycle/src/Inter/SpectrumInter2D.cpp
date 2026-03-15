@@ -23,6 +23,7 @@ SpectrumInter2D::SpectrumInter2D(SingletonRepo* repo) :
 }
 
 void SpectrumInter2D::init() {
+    Interactor::init();
     spectrum3D = &getObj(Spectrum3D);
     updateSource = UpdateSources::SourceSpectrum2D;
     layerType = LayerGroups::GroupSpect;

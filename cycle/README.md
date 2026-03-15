@@ -26,7 +26,7 @@ In addition to that, most instruments have a natural change in timber along the 
 This means that we need 3 dimensions for the timbre to freely morph along, to capture the bare minimum of an
 instrument's dynamism.
 
-For many 'breathy' sound targets, we need a way to insert noise and chaos into the tone. This is why we have the **Deformers** concept -- a way to create reusable parts of waveshapes / filters -- which among other things, gives us the ability to introduce random paths into the waveform or spectrum, or envelope.
+For many 'breathy' sound targets, we need a way to insert noise and chaos into the tone. This is why we have the **Guide Curves** concept -- a way to create reusable curve fragments for waveshapes, filters, and envelopes -- which among other things, gives us the ability to introduce custom paths into the waveform, spectrum, or envelope.
 
 I also wanted it to be relatively easy to create and understand, so we have immediate UI feedback -- visualizing the full processing pipeline. 
 We also have a custom-built **curve design** with many desirable audio-tailored properties.

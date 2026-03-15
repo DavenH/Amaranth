@@ -63,7 +63,7 @@ public:
 
         listBox->updateContent();
 
-        if (!filteredItems.size() == 0) {
+        if (filteredItems.size() != 0) {
             listBox->selectRow(0);
         }
 

@@ -11,7 +11,7 @@
 #include "../../Audio/SynthAudioSource.h"
 #include "../../Curve/CycleState.h"
 #include "../../Curve/EnvRenderContext.h"
-#include "../../UI/VertexPanels/DeformerPanel.h"
+#include "../../UI/VertexPanels/GuideCurvePanel.h"
 #include "../../UI/VertexPanels/Waveform3D.h"
 
 SynthUnisonVoice::SynthUnisonVoice(SynthesizerVoice* parent, SingletonRepo* repo) :
@@ -55,7 +55,7 @@ void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float
 
             state.reset();
 
-            timeRasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
+            timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
 
             //			modMatrix->route(progress, ModMatrixPanel::VoiceTime, parent->voiceIndex);
             MorphPosition pos = layer.props->pos[parent->voiceIndex];
@@ -115,7 +115,7 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
         pos.time = getScratchTime(layer.props->scratchChan, group.cumePos);
 
         timeRasterizer.setMorphPosition(pos);
-        timeRasterizer.setNoiseSeed(random.nextInt(DeformerPanel::tableSize));
+        timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
 
         if (cycleCompositeAlgo == Interpolate) {
             delta = 1 / (double) samplingSize;

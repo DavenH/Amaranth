@@ -85,7 +85,7 @@ public:
     Array<VertCube*> getAllAdjacentCubes(int dim, const MorphPosition& pos);
     [[nodiscard]] VertCube* getAdjacentCube(int dim, bool pole) const;
     int indexOf(Vertex const* vertex) const;
-    [[nodiscard]] float deformerAbsGain(int dim) const;
+    [[nodiscard]] float guideCurveAbsGain(int dim) const;
     [[nodiscard]] float getPortionAlong(int dim, const MorphPosition& morph) const;
     [[nodiscard]] Face getFace(int xDim, bool pole) const;
     Face getFace(int xDim, Vertex const* pole) const;
@@ -107,14 +107,14 @@ public:
             ReductionData& data,
             const MorphPosition& pos) const;
 
-    char& deformerAt(int dim) { return dfrmChans[dim]; }
-    float& dfrmGainAt(int dim) { return dfrmGains[dim]; }
+    char& guideCurveAt(int dim) { return guideCurveChans[dim]; }
+    float& guideCurveGainAt(int dim) { return guideCurveGains[dim]; }
 
-    [[nodiscard]] const char& deformerAt(int dim) const     { return dfrmChans[dim]; }
-    [[nodiscard]] const float& dfrmGainAt(int dim) const    { return dfrmGains[dim]; }
+    [[nodiscard]] const char& guideCurveAt(int dim) const     { return guideCurveChans[dim]; }
+    [[nodiscard]] const float& guideCurveGainAt(int dim) const    { return guideCurveGains[dim]; }
 
-    char& getCompDfrm() { return deformerAt(Vertex::Time); }
-    float getCompGain() { return dfrmGainAt(Vertex::Time); }
+    char& getCompGuideCurve() { return guideCurveAt(Vertex::Time); }
+    float getCompGain() { return guideCurveGainAt(Vertex::Time); }
 
     static void getPoles(int index, bool& time, bool& red, bool& blue);
     static bool dimensionsAt(float x, int dim, Vertex const* one, Vertex const* two, Vertex* vertex);
@@ -127,8 +127,8 @@ public:
 
     VertCube& operator=(const VertCube& that) {
         for (int i = 0; i <= Vertex::Curve; ++i) {
-            dfrmChans[i] = that.dfrmChans[i];
-            dfrmGains[i] = that.dfrmGains[i];
+            guideCurveChans[i] = that.guideCurveChans[i];
+            guideCurveGains[i] = that.guideCurveGains[i];
         }
 
         return *this;
@@ -136,8 +136,8 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-    char dfrmChans[Vertex::numElements]{};
-    float dfrmGains[Vertex::numElements]{};
+    char guideCurveChans[Vertex::numElements]{};
+    float guideCurveGains[Vertex::numElements]{};
 
     Vertex* lineVerts[numVerts]{};
 

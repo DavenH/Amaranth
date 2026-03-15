@@ -3,12 +3,12 @@
 #include <Definitions.h>
 
 #include "EnvelopeMesh.h"
-#include "IDeformer.h"
+#include "GuideCurveProvider.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
 
 
-EnvRasterizer::EnvRasterizer(SingletonRepo* repo, IDeformer* deformer, const String& name) :
+EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurveProvider, const String& name) :
         SingletonAccessor(repo, name)
     ,   MeshRasterizer   (name)
     ,    envMesh         (nullptr)
@@ -31,7 +31,7 @@ EnvRasterizer::EnvRasterizer(SingletonRepo* repo, IDeformer* deformer, const Str
 
     paddingSize = 2;
 
-    setDeformer(deformer);
+    setGuideCurveProvider(guideCurveProvider);
 }
 
 EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
@@ -298,7 +298,7 @@ void EnvRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
         Random rand(Time::currentTimeMillis());
 
         for (auto& param: params) {
-            DeformContext& context = param.deformContext;
+            GuideCurveContext& context = param.guideCurveContext;
             context.phaseOffsetSeed = rand.nextInt(tableSize);
             context.vertOffsetSeed = rand.nextInt(tableSize);
         }
@@ -473,7 +473,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
             dbg("normal state");
 
             if (oneSamplePerCycle) {
-                group.sustainLevel = sampleAtDecoupled(group.samplePosition, group.deformContext);
+                group.sustainLevel = sampleAtDecoupled(group.samplePosition, group.guideCurveContext);
             } else {
                 int maxSamples = jmin(numSamples, int((boundary - group.samplePosition) / deltaX));
 
@@ -501,7 +501,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
             dbg("looping state, loop length " << loopLength);
 
             if (oneSamplePerCycle) {
-                group.sustainLevel = sampleAtDecoupled(group.samplePosition, group.deformContext);
+                group.sustainLevel = sampleAtDecoupled(group.samplePosition, group.guideCurveContext);
 
                 while (overextends) {
                     group.samplePosition -= loopLength;
@@ -542,7 +542,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
                 jassert(isSampleableAt(boundary));
 
                 if (group.samplePosition <= boundary) {
-                    group.sustainLevel = releaseScale * sampleAtDecoupled(group.samplePosition, group.deformContext);
+                    group.sustainLevel = releaseScale * sampleAtDecoupled(group.samplePosition, group.guideCurveContext);
                 }
             } else {
                 int maxSamples = jmin(numSamples, int((boundary - group.samplePosition) / deltaX));

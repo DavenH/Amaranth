@@ -24,7 +24,7 @@ EffectPanel::EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZ
 
     backgroundTimeRelevant = false;
     speedApplicable        = false;
-    deformApplicable       = false;
+    guideCurveApplicable       = false;
 
     colorA = Color(0.8f, 0.8, 0.9f);
     colorB = Color(0.8f, 0.8, 0.9f);
@@ -37,7 +37,7 @@ EffectPanel::EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZ
     vertexProps.sliderApplicable[Vertex::Blue] 	= false;
     vertexProps.ampVsPhaseApplicable 			= false;
 
-    for(auto& flag : vertexProps.deformApplicable) {
+    for(auto& flag : vertexProps.guideCurveApplicable) {
         flag = false;
     }
 

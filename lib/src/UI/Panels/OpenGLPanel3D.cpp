@@ -173,7 +173,12 @@ void OpenGLPanel3D::newOpenGLContextCreated() {
     commonGL->initLineParams();
 
     jassert(glGetError() == GL_NO_ERROR);
-    repaint();
+    auto safeThis = Component::SafePointer<OpenGLPanel3D>(this);
+    MessageManager::callAsync([safeThis]() {
+        if (safeThis != nullptr) {
+            safeThis->repaint();
+        }
+    });
 }
 
 void OpenGLPanel3D::resized() {

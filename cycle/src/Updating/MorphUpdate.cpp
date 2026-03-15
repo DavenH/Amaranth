@@ -1,5 +1,6 @@
 #include "MorphUpdate.h"
 
+#include <Audio/Multisample.h>
 #include <Curve/EnvRasterizer.h>
 #include <Curve/MeshRasterizer.h>
 #include <Definitions.h>
@@ -37,7 +38,7 @@ void MorphUpdate::performUpdate(UpdateType updateType) {
             MorphPosition m = getObj(MorphPanel).getMorphPosition();
             m.time = 0;
 
-//			getObj(Multisample).performUpdate();
+            getObj(Multisample).performUpdate(updateType);
             getObj(EnvPitchRast).setMorphPosition(m);
             getObj(EnvVolumeRast).setMorphPosition(m);
             getObj(EnvScratchRast).setMorphPosition(m);

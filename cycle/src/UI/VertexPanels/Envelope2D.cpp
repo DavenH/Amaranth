@@ -43,11 +43,13 @@ Envelope2D::~Envelope2D() {
 }
 
 void Envelope2D::init() {
+    Panel2D::init();
+
     vertPadding 		= 2;
     doesDrawMouseHint 	= true;
     curveIsBipolar 		= false;
     speedApplicable		= false;
-    deformApplicable	= false;
+    guideCurveApplicable	= false;
     e2Interactor		= &getObj(EnvelopeInter2D);
     interactor			= e2Interactor;
 

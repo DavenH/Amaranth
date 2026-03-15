@@ -39,19 +39,19 @@ public:
         void reset() {
             samplePosition = 0;
             sampleIndex = 0;
-            deformContext.currentIndex = 0;
+            guideCurveContext.currentIndex = 0;
         }
 
         int sampleIndex;
         float sustainLevel;
         double samplePosition;
 
-        DeformContext deformContext;
+        GuideCurveContext guideCurveContext;
     };
 
     /* ----------------------------------------------------------------------------- */
 
-    explicit EnvRasterizer(SingletonRepo* repo, IDeformer* deformer, const String& name = String());
+    explicit EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurveProvider, const String& name = String());
     EnvRasterizer& operator =(const EnvRasterizer& copy);
     EnvRasterizer(const EnvRasterizer& copy);
     ~EnvRasterizer() override;

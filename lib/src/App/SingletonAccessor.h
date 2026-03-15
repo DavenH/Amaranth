@@ -20,6 +20,7 @@ public:
 
     SingletonAccessor(const SingletonAccessor& client)  { operator=(client); }
     SingletonRepo* getSingletonRepo()                   { return repo;   }
+    const SingletonRepo* getSingletonRepo() const       { return repo;   }
     [[nodiscard]] int getInitOrder() const              { return initOrder;  }
     void setInitOrder(int order)                        { initOrder = order; }
     virtual const String& getName()                     { return name;       }

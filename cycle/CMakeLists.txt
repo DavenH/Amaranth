@@ -65,7 +65,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${JUCE_DIR}
     ${JUCE_MODULES_DIR}
-    ${IPP_DIR}/include/ipp
 )
 
 target_include_directories(${PROJECT_NAME}_tests PRIVATE
@@ -74,7 +73,6 @@ target_include_directories(${PROJECT_NAME}_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/tests
         ${JUCE_DIR}
         ${JUCE_MODULES_DIR}
-        ${IPP_DIR}/include/ipp
         ${ALSA_INCLUDE_DIRS}
         ${FREETYPE_INCLUDE_DIRS}
         ${FONTCONFIG_INCLUDE_DIRS}
@@ -146,7 +144,6 @@ target_link_libraries(${PROJECT_NAME}_tests PRIVATE
 )
 
 target_link_directories(${PROJECT_NAME} PRIVATE
-    ${IPP_DIR}/lib
 )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -156,6 +153,18 @@ else()
 endif()
 
 if(NOT APPLE)
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        ${IPP_DIR}/include/ipp
+    )
+
+    target_include_directories(${PROJECT_NAME}_tests PRIVATE
+        ${IPP_DIR}/include/ipp
+    )
+
+    target_link_directories(${PROJECT_NAME} PRIVATE
+        ${IPP_DIR}/lib
+    )
+
     target_link_options(${PROJECT_NAME} PRIVATE -fvisibility=hidden)
 endif()
 
