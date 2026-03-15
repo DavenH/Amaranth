@@ -13,15 +13,17 @@
 #include "../CycleGraphicsUtils.h"
 
 GuilessEffect::GuilessEffect(const String& name, const String& displayName, int numParams,
-                             SingletonRepo* repo, Effect* effect, int source) :
+                             SingletonRepo* repo, Effect* effect, int fxEnum, int source) :
         SingletonAccessor(repo, name)
     ,	Worker(repo, name)
     , 	effect			(effect)
     ,	fxEnum			(fxEnum)
     ,	enabled			(false)
+    ,	haveInitialised	(false)
     ,	updateSource	(source)
     ,	minTitleSize	(50)
     ,	font			(FontOptions(15, Font::bold))
+    ,	name			(name)
     ,	enableButton	(5, 5, this, repo, "Enable effect")
     ,	title			(repo, displayName.toUpperCase()) {
     addAndMakeVisible(&enableButton);

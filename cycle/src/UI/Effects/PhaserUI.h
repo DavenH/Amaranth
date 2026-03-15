@@ -10,11 +10,10 @@ class SingletonRepo;
 class PhaserUI :
     public GuilessEffect
 {
-    Ref<Effect> phaser;
-
 public:
-    explicit PhaserUI(SingletonRepo* repo) :
-        GuilessEffect("PhaserUI", "Phaser", Phaser::numPhaserParams, repo, phaser, UpdateSources::SourceNull)
+    PhaserUI(SingletonRepo* repo, Effect* effect) :
+        GuilessEffect("PhaserUI", "Phaser", Phaser::numPhaserParams, repo, effect,
+                      EffectTypes::TypePhaser, UpdateSources::SourceNull)
     {
     }
 

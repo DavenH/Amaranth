@@ -179,7 +179,7 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
                     timeRasterizer.sampleWithInterval(timeBuf, samplingDelta, 0.);
 
             float layerPan = props.pan;
-            noteState.isStereo |= fabsf(layerPan - 0.5) > 0.03;
+            noteState.isStereo |= std::abs(layerPan - 0.5f) > 0.03f;
 
             float leftPan, rightPan;
             Arithmetic::getPans(layerPan, leftPan, rightPan);

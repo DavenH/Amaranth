@@ -24,7 +24,7 @@ class GuilessEffect :
 {
 public:
     GuilessEffect(const String& name, const String& displayName, int numParams,
-                  SingletonRepo* repo, Effect* effect, int source = UpdateSources::SourceNull);
+                  SingletonRepo* repo, Effect* effect, int fxEnum, int source = UpdateSources::SourceNull);
 
     ~GuilessEffect() override = default;
 
