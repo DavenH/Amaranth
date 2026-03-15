@@ -363,6 +363,9 @@ int Resampler::runLinearResample(bool flushTail) {
 }
 
 int Resampler::runSincResample(bool flushTail) {
+#ifdef USE_IPP
+    return runLinearResample(flushTail);
+#else
     const double ratio = jmax(dstToSrc, 1.0e-9);
     const double sourceToDestRatio = 1.0 / ratio;
 
@@ -387,6 +390,7 @@ int Resampler::runSincResample(bool flushTail) {
     }
 
     return runLinearResample(flushTail);
+#endif
 }
 
 void Resampler::normalizeSourceWindow() {

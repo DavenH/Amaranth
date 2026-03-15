@@ -27,6 +27,8 @@ public:
 
     vector<Vertex*>& getVerts()   { return verts; }
     vector<VertCube*>& getCubes() { return cubes; }
+    const vector<Vertex*>& getVerts() const   { return verts; }
+    const vector<VertCube*>& getCubes() const { return cubes; }
 
     [[nodiscard]] const String& getName() const { return name; }
     [[nodiscard]] int getNumCubes() const    { return (int) cubes.size(); }
