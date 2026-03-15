@@ -111,6 +111,7 @@ public:
     void setNumCornersOverlapped(int num)   { numCornersOverlapped = num;   }
     void setComponent(Component* comp)      { this->comp = comp;            }
 
+    void triggerPendingNameUpdate()         { pendingNameUpdate = true; dirtyState.mark(PanelDirtyState::Flag::StaticVisual); }
     void triggerPendingScaleUpdate()        { pendingScaleUpdate = true; dirtyState.mark(PanelDirtyState::Flag::StaticVisual); }
     void triggerPendingDeformUpdate()       { pendingDeformUpdate = true; dirtyState.mark(PanelDirtyState::Flag::Resource); }
     void markDirty(PanelDirtyState::Flag flag) { dirtyState.mark(flag);     }

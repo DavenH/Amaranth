@@ -89,12 +89,6 @@ Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
     horzMinorLines = bgLinesMemory.place(maxMinorSize);
 }
 
-#ifdef JUCE_DEBUG
- #define CHECK_ERRORS gfx->checkErrors() ;
-#else
- #define CHECK_ERRORS
-#endif
-
 namespace {
 
 PanelRenderer* getRenderer(Panel* panel) {
@@ -119,7 +113,6 @@ void Panel::render() {
         panelRenderer->beginPanelRender(createRenderContext());
     }
 
-    gfx->initRender();
     handlePendingUpdates();
 
     PanelState& state = interactor->state;
@@ -158,13 +151,10 @@ void Panel::render() {
     postVertsDraw();
 
     if (mouseFlag(MouseOver) && getSetting(DrawScales)) {
-        if (PanelRenderer* renderer = getRenderer(this)) {
-            renderer->setCurrentColour(Color(1, 1, 1));
-            renderer->drawTexture(currentNameId == NameTexture ? nameTexA : nameTexB);
-        } else {
-            gfx->setCurrentColour(Color(1, 1, 1));
-            gfx->drawTexture(currentNameId == NameTexture ? nameTexA : nameTexB);
-        }
+        PanelRenderer* renderer = getRenderer(this);
+        jassert(renderer != nullptr);
+        renderer->setCurrentColour(Color(1, 1, 1));
+        renderer->drawTexture(currentNameId == NameTexture ? nameTexA : nameTexB);
 
         drawScales();
         drawGuideCurveTags();
@@ -182,9 +172,15 @@ void Panel::render() {
 
     if (panelRenderer != nullptr) {
         panelRenderer->endPanelRender();
+      #ifdef JUCE_DEBUG
+        panelRenderer->checkErrors();
+      #endif
     }
 
-    CHECK_ERRORS
+    dirtyState.clear(PanelDirtyState::Flag::Layout);
+    dirtyState.clear(PanelDirtyState::Flag::StaticVisual);
+    dirtyState.clear(PanelDirtyState::Flag::Overlay);
+    dirtyState.clear(PanelDirtyState::Flag::Full);
 }
 
 void Panel::constrainZoom() {
@@ -317,6 +313,7 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
     }
 
     pendingScaleUpdate = true;
+    dirtyState.mark(PanelDirtyState::Flag::StaticVisual);
 }
 
 void Panel::applyScale(BufferXY& buff) {
@@ -362,17 +359,12 @@ void Panel::drawViewableVerts() {
 
     applyScale(xy);
 
-    if (PanelRenderer* renderer = getRenderer(this)) {
-        renderer->setCurrentColour(0, 0, 0);
-        renderer->drawPoints(vertexBlackRadius, xy, false);
-        renderer->setCurrentColour(1, 1, 1);
-        renderer->drawPoints(vertexWhiteRadius, xy, false);
-    } else {
-        gfx->setCurrentColour(0, 0, 0);
-        gfx->drawPoints(vertexBlackRadius, xy, false);
-        gfx->setCurrentColour(1, 1, 1);
-        gfx->drawPoints(vertexWhiteRadius, xy, false);
-    }
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentColour(0, 0, 0);
+    renderer->drawPoints(vertexBlackRadius, xy, false);
+    renderer->setCurrentColour(1, 1, 1);
+    renderer->drawPoints(vertexWhiteRadius, xy, false);
 }
 
 void Panel::highlightSelectedVerts() {
@@ -409,13 +401,10 @@ void Panel::highlightSelectedVerts() {
         }
     }
 
-    if (PanelRenderer* renderer = getRenderer(this)) {
-        renderer->setCurrentColour(0.8f, 0.0f, 0.55f);
-        renderer->drawPoints(vertexSelectedRadius, xy, true);
-    } else {
-        gfx->setCurrentColour(0.8f, 0.0f, 0.55f);
-        gfx->drawPoints(vertexSelectedRadius, xy, true);
-    }
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentColour(0.8f, 0.0f, 0.55f);
+    renderer->drawPoints(vertexSelectedRadius, xy, true);
 }
 
 void Panel::handlePendingUpdates() {
@@ -423,24 +412,21 @@ void Panel::handlePendingUpdates() {
         createScales();
         scalesTex->image = scalesImage;
 
-        if (PanelRenderer* renderer = getRenderer(this)) {
-            renderer->updateTexture(scalesTex);
-        } else {
-            scalesTex->bind();
-        }
+        PanelRenderer* renderer = getRenderer(this);
+        jassert(renderer != nullptr);
+        renderer->updateTexture(scalesTex);
+        dirtyState.clear(PanelDirtyState::Flag::StaticVisual);
     }
 
     if (Util::assignAndWereDifferent(pendingNameUpdate, false)) {
         nameTexA->image = nameImage;
         nameTexB->image = nameImageB;
 
-        if (PanelRenderer* renderer = getRenderer(this)) {
-            renderer->updateTexture(nameTexA);
-            renderer->updateTexture(nameTexB);
-        } else {
-            nameTexA->bind();
-            nameTexB->bind();
-        }
+        PanelRenderer* renderer = getRenderer(this);
+        jassert(renderer != nullptr);
+        renderer->updateTexture(nameTexA);
+        renderer->updateTexture(nameTexB);
+        dirtyState.clear(PanelDirtyState::Flag::StaticVisual);
     }
 
     if (Util::assignAndWereDifferent(pendingDeformUpdate, false)) {
@@ -448,11 +434,10 @@ void Panel::handlePendingUpdates() {
 
         guideCurveTex->image = guideCurveImage;
 
-        if (PanelRenderer* renderer = getRenderer(this)) {
-            renderer->updateTexture(guideCurveTex);
-        } else {
-            guideCurveTex->bind();
-        }
+        PanelRenderer* renderer = getRenderer(this);
+        jassert(renderer != nullptr);
+        renderer->updateTexture(guideCurveTex);
+        dirtyState.clear(PanelDirtyState::Flag::Resource);
     }
 }
 
@@ -513,17 +498,12 @@ void Panel::updateVertexSizes() {
 void Panel::drawScaledInterceptPoints(int size) {
     applyScale(xy);
 
-    if (PanelRenderer* renderer = getRenderer(this)) {
-        renderer->setCurrentColour(0, 0, 0, 1);
-        renderer->drawPoints(vertexBlackRadius, xy, false);
-        renderer->setCurrentColour(1, 1, 1, 1);
-        renderer->drawPoints(vertexWhiteRadius, xy, false);
-    } else {
-        gfx->setCurrentColour(0, 0, 0, 1);
-        gfx->drawPoints(vertexBlackRadius, xy, false);
-        gfx->setCurrentColour(1, 1, 1, 1);
-        gfx->drawPoints(vertexWhiteRadius, xy, false);
-    }
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentColour(0, 0, 0, 1);
+    renderer->drawPoints(vertexBlackRadius, xy, false);
+    renderer->setCurrentColour(1, 1, 1, 1);
+    renderer->drawPoints(vertexWhiteRadius, xy, false);
 }
 
 void Panel::drawPencilPath() {
@@ -543,19 +523,13 @@ void Panel::drawPencilPath() {
         prepareAndCopy(path);
     }
 
-    if (PanelRenderer* renderer = getRenderer(this)) {
-        renderer->setCurrentColour(0.5f, 0.6f, 1.f);
-        renderer->drawLine(last.x, last.y, interactor->state.currentMouse.x, interactor->state.currentMouse.y, true);
-        renderer->enableSmoothing();
-        renderer->setCurrentColour(1.0f, 0.71f, 0.1f);
-        renderer->drawLineStrip(xy, true);
-    } else {
-        gfx->setCurrentColour(0.5f, 0.6f, 1.f);
-        gfx->drawLine(last, interactor->state.currentMouse);
-        gfx->enableSmoothing();
-        gfx->setCurrentColour(1.0f, 0.71f, 0.1f);
-        gfx->drawLineStrip(xy, true, true);
-    }
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentColour(0.5f, 0.6f, 1.f);
+    renderer->drawLine(last.x, last.y, interactor->state.currentMouse.x, interactor->state.currentMouse.y, true);
+    renderer->enableSmoothing();
+    renderer->setCurrentColour(1.0f, 0.71f, 0.1f);
+    renderer->drawLineStrip(xy, true);
 }
 
 void Panel::drawOutline() {
@@ -567,57 +541,34 @@ void Panel::drawOutline() {
     float x1 = sxnz(0);
     float x2 = sxnz(1);
 
-    if (PanelRenderer* renderer = getRenderer(this)) {
-        renderer->setCurrentColour(0.1f, 0.1f, 0.1f);
-        if (vertPadding != 0) {
-            renderer->fillRect(0, 0, right, y2, false);
-            renderer->fillRect(0, y1, right, low, false);
-        }
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentColour(0.1f, 0.1f, 0.1f);
+    if (vertPadding != 0) {
+        renderer->fillRect(0, 0, right, y2, false);
+        renderer->fillRect(0, y1, right, low, false);
+    }
 
-        if (paddingLeft != 0) {
-            renderer->fillRect(0, y1, x1, y2, false);
-        }
+    if (paddingLeft != 0) {
+        renderer->fillRect(0, y1, x1, y2, false);
+    }
 
-        if (paddingRight != 0) {
-            renderer->fillRect(x2, y1, right, y2, false);
-        }
+    if (paddingRight != 0) {
+        renderer->fillRect(x2, y1, right, y2, false);
+    }
 
-        if (paddingRight + paddingLeft + vertPadding > 0) {
-            renderer->disableSmoothing();
-            renderer->setCurrentColour(0.2f, 0.2f, 0.2f);
-            renderer->drawRect(x1, y1, x2, y2, true);
-            renderer->enableSmoothing();
-        }
-    } else {
-        gfx->setCurrentColour(0.1f, 0.1f, 0.1f);
-        if (vertPadding != 0) {
-            gfx->fillRect(0, 0, right, y2, false);
-            gfx->fillRect(0, y1, right, low, false);
-        }
-
-        if (paddingLeft != 0) {
-            gfx->fillRect(0, y1, x1, y2, false);
-        }
-
-        if (paddingRight != 0) {
-            gfx->fillRect(x2, y1, right, y2, false);
-        }
-
-        if (paddingRight + paddingLeft + vertPadding > 0) {
-            gfx->disableSmoothing();
-            gfx->setCurrentColour(0.2f, 0.2f, 0.2f);
-            gfx->drawRect(x1, y1, x2, y2, true);
-            gfx->enableSmoothing();
-        }
+    if (paddingRight + paddingLeft + vertPadding > 0) {
+        renderer->disableSmoothing();
+        renderer->setCurrentColour(0.2f, 0.2f, 0.2f);
+        renderer->drawRect(x1, y1, x2, y2, true);
+        renderer->enableSmoothing();
     }
 }
 
 void Panel::drawFinalSelection() {
-    if (PanelRenderer* renderer = getRenderer(this)) {
-        renderer->drawFinalSelection();
-    } else {
-        gfx->drawFinalSelection();
-    }
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->drawFinalSelection();
 }
 
 void Panel::drawSelectionRectangle() {
@@ -632,33 +583,24 @@ void Panel::drawSelectionRectangle() {
     float ty = selection.getY();
     float by = selection.getBottom();
 
-    if (PanelRenderer* renderer = getRenderer(this)) {
-        renderer->setCurrentColour(1.0f, 0.7f, 0.15f, 0.23f);
-        renderer->fillRect(lx, ty, rx, by, false);
-        renderer->disableSmoothing();
-        renderer->setCurrentLineWidth(1.f);
-        renderer->setCurrentColour(1.0f, 0.7f, 0.15f, 0.45f);
-        renderer->drawRect(lx, ty, rx, by, false);
-        renderer->enableSmoothing();
-    } else {
-        gfx->setCurrentColour(1.0f, 0.7f, 0.15f, 0.23f);
-        gfx->fillRect(lx, ty, rx, by, false);
-        gfx->disableSmoothing();
-        gfx->setCurrentLineWidth(1.f);
-        gfx->setCurrentColour(1.0f, 0.7f, 0.15f, 0.45f);
-        gfx->drawRect(lx, ty, rx, by, false);
-        gfx->enableSmoothing();
-    }
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentColour(1.0f, 0.7f, 0.15f, 0.23f);
+    renderer->fillRect(lx, ty, rx, by, false);
+    renderer->disableSmoothing();
+    renderer->setCurrentLineWidth(1.f);
+    renderer->setCurrentColour(1.0f, 0.7f, 0.15f, 0.45f);
+    renderer->drawRect(lx, ty, rx, by, false);
+    renderer->enableSmoothing();
 }
 
 void Panel::drawBackground(const Rectangle<int>& bounds, bool fillBackground) {
-    if (PanelRenderer* renderer = getRenderer(this)) {
-        renderer->drawBackground(bounds, fillBackground);
-    } else {
-        gfx->drawBackground(bounds, fillBackground);
-    }
-
-    gfx->checkErrors();
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->drawBackground(bounds, fillBackground);
+  #ifdef JUCE_DEBUG
+    renderer->checkErrors();
+  #endif
 }
 
 void Panel::applyNoZoomScaleY(Buffer<float> array) {
@@ -893,6 +835,8 @@ void Panel::createNameImage(const String& displayName, bool isSecondImage, bool 
     g.setFont(font);
     g.setColour(Colour::greyLevel(1.f).withAlpha(brighter ? 0.65f : 0.6f));
     g.drawText(lcName, r, Justification::topRight, false);
+
+    triggerPendingNameUpdate();
 }
 
 void Panel::createGuideCurveTags() {

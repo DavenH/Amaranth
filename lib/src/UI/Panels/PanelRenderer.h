@@ -17,6 +17,7 @@ public:
     virtual ~PanelRenderer() = default;
 
     virtual void beginPanelRender(const PanelRenderContext& context) = 0;
+    virtual void checkErrors() = 0;
     virtual void endPanelRender() = 0;
 
     virtual void drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) = 0;

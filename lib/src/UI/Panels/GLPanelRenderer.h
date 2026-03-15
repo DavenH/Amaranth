@@ -13,6 +13,7 @@ public:
     explicit GLPanelRenderer(CommonGfx* gfx);
 
     void beginPanelRender(const PanelRenderContext& context) override;
+    void checkErrors() override;
     void endPanelRender() override;
 
     void drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) override;

@@ -16,6 +16,12 @@ void GLPanelRenderer::beginPanelRender(const PanelRenderContext& context) {
     }
 }
 
+void GLPanelRenderer::checkErrors() {
+    if (gfx != nullptr) {
+        gfx->checkErrors();
+    }
+}
+
 void GLPanelRenderer::endPanelRender() {
 }
 
