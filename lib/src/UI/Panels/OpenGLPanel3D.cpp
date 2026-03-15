@@ -9,8 +9,6 @@
 #include "CursorHelper.h"
 #include "../../UI/Panels/ScopedGL.h"
 
-#define GL_BGRA 0x80E1
-
 using namespace gl;
 
 OpenGLPanel3D::OpenGLPanel3D(SingletonRepo* repo, Panel3D* panel3D, Panel3D::DataRetriever* retriever) :
@@ -26,7 +24,7 @@ OpenGLPanel3D::~OpenGLPanel3D() {
 }
 
 void OpenGLPanel3D::init() {
-    backTex.rect.setSize(1024, 1024);
+    surfaceCache.setSize(1024, 1024);
 
     commonGL = new CommonGL(panel, this);
     panelRenderer = std::make_unique<GLPanelRenderer>(commonGL);
@@ -42,32 +40,7 @@ void OpenGLPanel3D::init() {
 }
 
 void OpenGLPanel3D::drawCurvesAndSurfaces() {
-    ScopedEnable tex2d(GL_TEXTURE_2D);
-    Rectangle<float>& r = backTex.rect;
-
-    glBindTexture(GL_TEXTURE_2D, backTex.id);
-    glColor3f(1, 1, 1);
-
-    float x1 = 0.f;
-    float x2 = 1.f;
-    float y1 = 0.f;
-    float y2 = 1.f;
-
-    {
-        ScopedElement glQuads(GL_QUADS);
-
-        glTexCoord2f(x1, y1);
-        glVertex2f(0.f, r.getHeight());
-
-        glTexCoord2f(x2, y1);
-        glVertex2f(r.getWidth(), r.getHeight());
-
-        glTexCoord2f(x2, y2);
-        glVertex2f(r.getWidth(), 0.f);
-
-        glTexCoord2f(x1, y2);
-        glVertex2f(0.f, 0.f);
-    }
+    surfaceCache.draw();
 }
 
 void OpenGLPanel3D::drawCircle() {
@@ -139,15 +112,7 @@ bool OpenGLPanel3D::isSupported(const String& extension) {
 }
 
 void OpenGLPanel3D::textureBakeFinished() {
-    glBindTexture(GL_TEXTURE_2D, backTex.id);
-
-    Rectangle<float>& r = backTex.rect;
-
-    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0,
-                        getHeight() - r.getHeight(),
-                        r.getWidth(), r.getHeight());
-
-    glClear(GL_COLOR_BUFFER_BIT);
+    surfaceCache.captureFromFramebuffer(getHeight());
 }
 
 void OpenGLPanel3D::clear() {
@@ -164,14 +129,8 @@ void OpenGLPanel3D::newOpenGLContextCreated() {
 
     commonGL->initializeTextures();
 
-    backTex.create();
-
-    Rectangle<float>& r = backTex.rect;
-    int format = panel->isTransparent ? GL_RGBA : GL_RGB;
-
-    glBindTexture(GL_TEXTURE_2D, backTex.id);
-    glTexImage2D(GL_TEXTURE_2D, 0, format, r.getWidth(), r.getHeight(),
-                 0, format, GL_UNSIGNED_BYTE, nullptr);
+    surfaceCache.create();
+    surfaceCache.allocate(panel->isTransparent);
 
     commonGL->initLineParams();
 
@@ -203,14 +162,8 @@ void OpenGLPanel3D::deactivateContext() {
 
 void OpenGLPanel3D::openGLContextClosing() {
     info(panel->getName() << " context closing, clearing textures \n");
-//  HGLRC cc = wglGetCurrentContext();
 
-    /*
-    for(int i = 0; i < panel->textures.size(); ++i)
-        panel->textures[i]->clear();
-
-    backTex.clear();
-    */
+    surfaceCache.clear();
 
     printErrors(repo);
 }

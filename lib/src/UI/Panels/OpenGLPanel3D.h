@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Panel3D.h"
+#include "GLSurfaceCache.h"
 #include "OpenGLBase.h"
 #include "PanelOwner.h"
-#include "Texture.h"
 #include "../../App/SingletonAccessor.h"
 
 using std::vector;
@@ -57,7 +57,7 @@ protected:
 
     bool usePixels;
 
-    TextureGL backTex;
+    GLSurfaceCache surfaceCache;
     StringArray extensions;
     CriticalSection columnLock;
     Ref<Panel3D::DataRetriever> dataRetriever;
