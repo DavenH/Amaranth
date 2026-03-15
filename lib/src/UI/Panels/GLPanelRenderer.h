@@ -17,6 +17,7 @@ public:
     void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) override;
     void drawLine(float x1, float y1, float x2, float y2, bool scale) override;
     void drawLine(float x1, float y1, float x2, float y2, const Color& c1, const Color& c2) override;
+    void drawPoint(float size, Vertex2 point, bool scale) override;
     void drawLineStrip(BufferXY& xy, bool scale) override;
     void drawPoints(float size, BufferXY& xy, bool scale) override;
     void drawPoints(float size, BufferXY& xy, Buffer<float> c, bool scale) override;

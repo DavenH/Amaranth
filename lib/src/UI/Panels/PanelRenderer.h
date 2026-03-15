@@ -22,6 +22,7 @@ public:
     virtual void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) = 0;
     virtual void drawLine(float x1, float y1, float x2, float y2, bool scale) = 0;
     virtual void drawLine(float x1, float y1, float x2, float y2, const Color& c1, const Color& c2) = 0;
+    virtual void drawPoint(float size, Vertex2 point, bool scale) = 0;
     virtual void drawLineStrip(BufferXY& xy, bool scale) = 0;
     virtual void drawPoints(float size, BufferXY& xy, bool scale) = 0;
     virtual void drawPoints(float size, BufferXY& xy, Buffer<float> c, bool scale) = 0;

@@ -37,6 +37,12 @@ void GLPanelRenderer::drawLine(float x1, float y1, float x2, float y2, const Col
     }
 }
 
+void GLPanelRenderer::drawPoint(float size, Vertex2 point, bool scale) {
+    if (gfx != nullptr) {
+        gfx->drawPoint(size, point, scale);
+    }
+}
+
 void GLPanelRenderer::drawLineStrip(BufferXY& xy, bool scale) {
     if (gfx != nullptr) {
         gfx->drawLineStrip(xy, true, scale);
