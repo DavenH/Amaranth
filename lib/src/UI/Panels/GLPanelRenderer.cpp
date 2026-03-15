@@ -19,9 +19,21 @@ void GLPanelRenderer::beginPanelRender(const PanelRenderContext& context) {
 void GLPanelRenderer::endPanelRender() {
 }
 
+void GLPanelRenderer::drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) {
+    if (gfx != nullptr) {
+        gfx->drawBackground(bounds, fillBackground);
+    }
+}
+
 void GLPanelRenderer::drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) {
     if (gfx != nullptr) {
         gfx->drawSubTexture(texture, bounds);
+    }
+}
+
+void GLPanelRenderer::drawFinalSelection() {
+    if (gfx != nullptr) {
+        gfx->drawFinalSelection();
     }
 }
 
@@ -139,4 +151,10 @@ void GLPanelRenderer::setClip(const juce::Rectangle<int>& clip) {
 
 void GLPanelRenderer::setTransform(const juce::AffineTransform& transform) {
     ignoreUnused(transform);
+}
+
+void GLPanelRenderer::updateTexture(Texture* texture) {
+    if (gfx != nullptr) {
+        gfx->updateTexture(texture);
+    }
 }

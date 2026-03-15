@@ -19,7 +19,9 @@ public:
     virtual void beginPanelRender(const PanelRenderContext& context) = 0;
     virtual void endPanelRender() = 0;
 
+    virtual void drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) = 0;
     virtual void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) = 0;
+    virtual void drawFinalSelection() = 0;
     virtual void drawLine(float x1, float y1, float x2, float y2, bool scale) = 0;
     virtual void drawLine(float x1, float y1, float x2, float y2, const Color& c1, const Color& c2) = 0;
     virtual void drawPoint(float size, Vertex2 point, bool scale) = 0;
@@ -45,4 +47,5 @@ public:
     virtual void setCurrentLineWidth(float width) = 0;
     virtual void setClip(const juce::Rectangle<int>& clip) = 0;
     virtual void setTransform(const juce::AffineTransform& transform) = 0;
+    virtual void updateTexture(Texture* texture) = 0;
 };

@@ -14,7 +14,9 @@ public:
     void beginPanelRender(const PanelRenderContext& context) override;
     void endPanelRender() override;
 
+    void drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) override;
     void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) override;
+    void drawFinalSelection() override;
     void drawLine(float x1, float y1, float x2, float y2, bool scale) override;
     void drawLine(float x1, float y1, float x2, float y2, const Color& c1, const Color& c2) override;
     void drawPoint(float size, Vertex2 point, bool scale) override;
@@ -40,6 +42,7 @@ public:
     void setCurrentLineWidth(float width) override;
     void setClip(const juce::Rectangle<int>& clip) override;
     void setTransform(const juce::AffineTransform& transform) override;
+    void updateTexture(Texture* texture) override;
 
 private:
     Ref<CommonGfx> gfx;

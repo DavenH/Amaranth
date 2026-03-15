@@ -422,22 +422,37 @@ void Panel::handlePendingUpdates() {
     if (Util::assignAndWereDifferent(pendingScaleUpdate, false)) {
         createScales();
         scalesTex->image = scalesImage;
-        scalesTex->bind();
+
+        if (PanelRenderer* renderer = getRenderer(this)) {
+            renderer->updateTexture(scalesTex);
+        } else {
+            scalesTex->bind();
+        }
     }
 
     if (Util::assignAndWereDifferent(pendingNameUpdate, false)) {
         nameTexA->image = nameImage;
         nameTexB->image = nameImageB;
 
-        nameTexA->bind();
-        nameTexB->bind();
+        if (PanelRenderer* renderer = getRenderer(this)) {
+            renderer->updateTexture(nameTexA);
+            renderer->updateTexture(nameTexB);
+        } else {
+            nameTexA->bind();
+            nameTexB->bind();
+        }
     }
 
     if (Util::assignAndWereDifferent(pendingDeformUpdate, false)) {
         createGuideCurveTags();
 
         guideCurveTex->image = guideCurveImage;
-        guideCurveTex->bind();
+
+        if (PanelRenderer* renderer = getRenderer(this)) {
+            renderer->updateTexture(guideCurveTex);
+        } else {
+            guideCurveTex->bind();
+        }
     }
 }
 
@@ -598,7 +613,11 @@ void Panel::drawOutline() {
 }
 
 void Panel::drawFinalSelection() {
-    gfx->drawFinalSelection();
+    if (PanelRenderer* renderer = getRenderer(this)) {
+        renderer->drawFinalSelection();
+    } else {
+        gfx->drawFinalSelection();
+    }
 }
 
 void Panel::drawSelectionRectangle() {
@@ -633,7 +652,12 @@ void Panel::drawSelectionRectangle() {
 }
 
 void Panel::drawBackground(const Rectangle<int>& bounds, bool fillBackground) {
-    gfx->drawBackground(bounds, fillBackground);
+    if (PanelRenderer* renderer = getRenderer(this)) {
+        renderer->drawBackground(bounds, fillBackground);
+    } else {
+        gfx->drawBackground(bounds, fillBackground);
+    }
+
     gfx->checkErrors();
 }
 

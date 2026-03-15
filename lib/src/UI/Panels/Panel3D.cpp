@@ -71,6 +71,7 @@ void Panel3D::init() {
 
 void Panel3D::bakeTextures() {
     shouldBakeTextures = false;
+    dirtyState.clear(PanelDirtyState::Flag::SurfaceCache);
 
     ScopedFunction sf(
             renderer.get(),
@@ -683,6 +684,7 @@ void Panel3D::highlightCurrentIntercept() {
 
 void Panel3D::doExtraResized() {
     shouldBakeTextures = true;
+    dirtyState.mark(PanelDirtyState::Flag::SurfaceCache);
 }
 
 void Panel3D::freeResources() {
@@ -733,8 +735,13 @@ void Panel3D::drawGuideCurveTags() {
                     float y = jmin(getHeight() - 16.f, e.y + 2.f + (numTags & 1 ? 1 : 0)); //  + 5
                     guideCurveTex->rect = Rectangle(roundf(x), roundf(y), rect.getWidth(), rect.getHeight());
 
-                    gfx->setCurrentColour(colors[j]);
-                    gfx->drawSubTexture(guideCurveTex, rect);
+                    if (PanelRenderer* renderer = ::getPanelRenderer(this)) {
+                        renderer->setCurrentColour(colors[j]);
+                        renderer->drawCachedTexture(guideCurveTex, rect);
+                    } else {
+                        gfx->setCurrentColour(colors[j]);
+                        gfx->drawSubTexture(guideCurveTex, rect);
+                    }
 
                     cumeWidth += rect.getWidth();
                     ++numTags;
