@@ -10,6 +10,7 @@
 
 #include "../../Audio/SampleUtils.h"
 #include "../../Inter/EnvelopeInter2D.h"
+#include "../../UI/Panels/Console.h"
 
 MidiKeyboard::MidiKeyboard(
         SingletonRepo* repo
@@ -149,8 +150,8 @@ void MidiKeyboard::getKeyPosition(int midiNoteNumber, float keyWidth, int& x, in
 }
 
 void MidiKeyboard::mouseEnter(const MouseEvent& e) {
-    repo->getConsole().setMouseUsage(true, true, false, true);
-    repo->getConsole().setKeys({});
+    getObj(Console).setMouseUsage(true, true, false, true);
+    getObj(Console).setKeys({});
 
     MidiKeyboardComponent::mouseEnter(e);
 }

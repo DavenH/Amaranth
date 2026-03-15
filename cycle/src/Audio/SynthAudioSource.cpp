@@ -528,7 +528,7 @@ void SynthAudioSource::updateTempoScale() {
     double beatsPerSecond = beatsPerMin / 60.;
 
   #if PLUGIN_MODE
-    AudioPlayHead::CurrentPositionInfo info = repo->getPluginProcessor().getCurrentPosition();
+    AudioPlayHead::CurrentPositionInfo info = getObj(PluginProcessor).getCurrentPosition();
     beatsPerSecond 		= info.bpm / 60.;
     beatsPerMeasure 	= info.timeSigNumerator;
   #endif

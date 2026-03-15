@@ -17,6 +17,7 @@
 #include "MainPanel.h"
 #include "VertexPropertiesPanel.h"
 
+#include "Console.h"
 #include "Morphing/MorphPanel.h"
 #include "../VertexPanels/GuideCurvePanel.h"
 #include "../Widgets/HSlider.h"
@@ -185,7 +186,7 @@ void VertexPropertiesPanel::resized() {
 }
 
 void VertexPropertiesPanel::mouseEnter(const MouseEvent& e) {
-    repo->getConsole().updateAll({}, "Parameters of selected vertices. Guide curves warp path of parent lines",
+    getObj(Console).updateAll({}, "Parameters of selected vertices. Guide curves warp path of parent lines",
                                  MouseUsage(false, false, false, false));
 }
 

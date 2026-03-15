@@ -4,6 +4,7 @@
 #include <App/SingletonAccessor.h>
 
 #include "SelectorPanel.h"
+#include "../../Panels/Console.h"
 #include <Definitions.h>
 #include <App/SingletonRepo.h>
 #include <Util/Util.h>
@@ -61,7 +62,7 @@ void SelectorPanel::mouseEnter(const MouseEvent& e) {
 	int listSize 	= getSize();
 	String message 	= itemName + " " + String(currentIndex + 1) + " of " + String(listSize);
 
-    repo->getConsole().updateAll(message, String(), MouseUsage(true, true, false, false));
+    getObj(Console).updateAll(message, String(), MouseUsage(true, true, false, false));
 }
 
 void SelectorPanel::mouseDrag(const MouseEvent& e) {

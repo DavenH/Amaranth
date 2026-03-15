@@ -14,6 +14,7 @@
 #include "../App/MeshLibrary.h"
 #include "../App/Settings.h"
 #include "../Audio/AudioHub.h"
+#include "../Audio/PluginProcessor.h"
 #include "../Curve/PathRepo.h"
 #include "../Design/Updating/Updater.h"
 #include "../UI/Panels/Panel.h"
@@ -158,4 +159,20 @@ void SingletonRepo::setGuideCurveProvider(GuideCurveProvider* guideCurveProvider
     for(auto rasterizer : rasterizers) {
         rasterizer->setGuideCurveProvider(guideCurveProvider);
     }
+}
+
+template<>
+PluginProcessor& SingletonRepo::get<PluginProcessor>(const String& name) {
+    ignoreUnused(name);
+    jassert(plugin != nullptr);
+
+    return *plugin;
+}
+
+template<>
+const PluginProcessor& SingletonRepo::get<PluginProcessor>(const String& name) const {
+    ignoreUnused(name);
+    jassert(plugin != nullptr);
+
+    return *plugin;
 }

@@ -91,7 +91,7 @@ void FileManager::openCurrentPreset() {
     getObj(SynthAudioSource).allNotesOff();
 
     formatSplit(getObj(AudioHub).suspendAudio(),
-                repo->getPluginProcessor().suspendProcessing(true));
+                getObj(PluginProcessor).suspendProcessing(true));
 
     unloadWav(false);
 
@@ -145,9 +145,9 @@ void FileManager::doPostPresetLoad() {
     getObj(MorphPanel)		.setSelectedCube(nullptr, nullptr, -1, false);
 
   #if PLUGIN_MODE
-    repo->getPluginProcessor().suspendProcessing(false);
-    repo->getPluginProcessor().documentHasLoaded();
-    repo->getPluginProcessor().updateLatency();
+    getObj(PluginProcessor).suspendProcessing(false);
+    getObj(PluginProcessor).documentHasLoaded();
+    getObj(PluginProcessor).updateLatency();
   #else
     getObj(AudioHub)		.resumeAudio();
     getObj(AudioSourceRepo)	.setAudioProcessor(AudioSourceRepo::SynthSource);

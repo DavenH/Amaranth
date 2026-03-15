@@ -485,7 +485,7 @@ void Envelope2D::createScales()
     float alpha 	 = fontScale == ScaleSizes::ScaleSmall ? 0.35f : 0.6f;
 
   #if PLUGIN_MODE
-    AudioPlayHead::CurrentPositionInfo info = repo->getPluginProcessor().getCurrentPosition();
+    AudioPlayHead::CurrentPositionInfo info = getObj(PluginProcessor).getCurrentPosition();
     beats = info.timeSigNumerator;
   #endif
 

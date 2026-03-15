@@ -9,6 +9,7 @@
 #include "WaveshaperUI.h"
 #include "../CycleDefs.h"
 #include "../Dialogs/PresetPage.h"
+#include "../Panels/Console.h"
 #include "../Widgets/Controls/MeshSelector.h"
 #include "../Widgets/Controls/Spacers.h"
 #include "../../App/CycleTour.h"
@@ -299,7 +300,7 @@ void WaveshaperUI::showCoordinates() {
     float xformY = (state.currentMouse.y - getRealConstant(WaveshaperPadding)) * invSize;
 
     String message = String(xformX, 2) + ", " + String(xformY, 2);
-    repo->getConsole().write(message, IConsole::DefaultPriority);
+    getObj(Console).write(message, IConsole::DefaultPriority);
 }
 
 void WaveshaperUI::buttonClicked(Button* button) {
@@ -345,7 +346,7 @@ void WaveshaperUI::comboBoxChanged(ComboBox* box) {
         getObj(EditWatcher).setHaveEditedWithoutUndo(true);
 
       #if PLUGIN_MODE
-        repo->getPluginProcessor().updateLatency();
+        getObj(PluginProcessor).updateLatency();
       #endif
 
         triggerRefreshUpdate();

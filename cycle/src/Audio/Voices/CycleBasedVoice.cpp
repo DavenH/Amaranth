@@ -770,7 +770,7 @@ void CycleBasedVoice::testIfOversamplingChanged() {
     int factor = -1;
 
 #if PLUGIN_MODE
-    PluginProcessor& proc = repo->getPluginProcessor();
+    PluginProcessor& proc = getObj(PluginProcessor);
 
     factor = (proc.isNonRealtime()) ? getDocSetting(OversampleFactorRend) : getDocSetting(OversampleFactorRltm);
 #else
@@ -963,7 +963,7 @@ void CycleBasedVoice::testNumLayersChanged() {
 void CycleBasedVoice::testIfResamplingQualityChanged() {
     bool isRealtime = true;
 
-    onlyPlug(isRealtime = ! repo->getPluginProcessor().isNonRealtime());
+    onlyPlug(isRealtime = ! getObj(PluginProcessor).isNonRealtime());
 
     resamplingAlgo = isRealtime ? getDocSetting(ResamplingAlgoRltm) : getDocSetting(ResamplingAlgoRend);
 }

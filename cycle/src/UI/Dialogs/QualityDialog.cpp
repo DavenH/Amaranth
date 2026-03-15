@@ -99,7 +99,7 @@ void QualityDialog::comboBoxChanged(ComboBox* box) {
             }
 
             if (oldFactor == 1 != factor == 1) {
-                onlyPlug(repo->getPluginProcessor().updateLatency());
+                onlyPlug(getObj(PluginProcessor).updateLatency());
             }
         }
 
@@ -120,7 +120,7 @@ void QualityDialog::comboBoxChanged(ComboBox* box) {
             getDocSetting(SubsampleRend) = (factor > 1);
         }
 
-        onlyPlug(repo->getPluginProcessor().updateLatency());
+        onlyPlug(getObj(PluginProcessor).updateLatency());
     }
 
     else if (item >= ControlFreq16 && item <= ControlFreq1024) {

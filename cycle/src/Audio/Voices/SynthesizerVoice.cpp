@@ -312,7 +312,7 @@ int SynthesizerVoice::getCurrentOscillatorLatency() {
     bool isRealtime = true;
 
   #if PLUGIN_MODE
-    isRealtime = ! repo->getPluginProcessor().isNonRealtime();
+    isRealtime = ! getObj(PluginProcessor).isNonRealtime();
   #endif
 
     if (isRealtime && getDocSetting(OversampleFactorRend) > 1 ||

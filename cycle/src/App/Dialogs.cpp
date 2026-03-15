@@ -23,6 +23,7 @@
 #include "../UI/Dialogs/FileChooser.h"
 #include "../UI/Dialogs/PresetPage.h"
 #include "../UI/Dialogs/HelpDialog.h"
+#include "../UI/Panels/Console.h"
 #include "../UI/Panels/PlayerComponent.h"
 #include "../UI/Effects/IrModellerUI.h"
 #include "../UI/Panels/MainPanel.h"
@@ -495,7 +496,7 @@ void Dialogs::openWaveCallback(int returnId, WaveOpenData data) {
                     getObj(IrModellerUI).modelLoadedWave();
                 }
             } else {
-                repo->getConsole().write("Failed to load audio file", IConsole::DefaultPriority);
+                getObj(Console).write("Failed to load audio file", IConsole::DefaultPriority);
             }
         }
     }

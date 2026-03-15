@@ -12,6 +12,7 @@
 #include <Util/ScopedBooleanSwitcher.h>
 
 #include "BannerPanel.h"
+#include "Console.h"
 #include "DerivativePanel.h"
 #include "GeneralControls.h"
 #include "MainPanel.h"
@@ -83,7 +84,7 @@ MainPanel::~MainPanel() {
 void MainPanel::init() {
     delayUI			= &getObj(DelayUI);
     derivPanel		= &getObj(DerivativePanel);
-    guideCurvePanel		= &getObj(GuideCurvePanel);
+    guideCurvePanel	= &getObj(GuideCurvePanel);
     envelope2D 		= &getObj(Envelope2D);
     envelope3D		= &getObj(Envelope3D);
     eqUI			= &getObj(EqualizerUI);
@@ -289,9 +290,11 @@ void MainPanel::initialisePanels() {
         xv_spectSurfDragger, xv_envDfmImpDragger, xv_dfmImpDragger, xv_wholeDragger, cv_wholeDragger,
         cv_middleDragger, cv_envSpectDragger, cv_spectSurfDragger,
     };
+
     for (auto ptr : deleteMe) {
         deletable.add(ptr);
     }
+
     deletableComponents.add(menuBar);
     initialized = true;
 }
@@ -323,24 +326,24 @@ void MainPanel::initialiseMainView() {
 void MainPanel::initialiseExtendedView() {
     ZoomPanel* spectZoom = spectrum2D->getZoomPanel();
 
-    xv_ctrl_key		= new PanelPair(repo, genBounds, 	keybBounds,		false,	0.4f, 					"xv_ctrl_key", 		mBord, 	60, 	INT_MAX, 	80, 	82	);
-    xv_dfrm_imp		= new PanelPair(repo, guideCurvePair, 	irmodPair, 		true, 	xv_dfrmImpPortion, 		"xv_dfrm_imp",		mmBord									);
-    xv_envDfmImp	= new PanelPair(repo, envPair,		xv_dfrm_imp,	true, 	xv_envDfmImpPortion, 	"xv_brws_dfm_imp",	mmBord									);
-    xv_TRTRBR_pair 	= new PanelPair(repo, xv_ctrl_key,	oscCtrlBounds,	true,	0.85f, 					"xv_trtrbr_pair", 	mBord, 	0, 		INT_MAX, 	100, 	105	);
-    xv_TRTRB_pair 	= new PanelPair(repo, modBounds, 	xv_TRTRBR_pair, true,	0.4f,					"xv_trtrb_pair", 	mBord, 	210, 	370				 		);
-    xv_TRTR_pair 	= new PanelPair(repo, cv_menuCons,	xv_TRTRB_pair,  false,	0.14f,					"xv_trtr_pair", 	mBord, 	24, 	25, 		110			);
-    xv_FX_pair_1 	= new PanelPair(repo, unisonBounds, eqBounds, 		false, 	0.5f, 					"xv_unison_eq"												);
-    xv_FX_Pair_2 	= new PanelPair(repo, reverbBounds, delayBounds, 	false, 	0.5f, 					"xv_reverb_dly"												);
-    xv_FX_pair_A	= new PanelPair(repo, xv_FX_pair_1, xv_FX_Pair_2, 	false, 	0.5f, 					"xv_fx_pair_a"												);
-    xv_TRBR_pair	= new PanelPair(repo, xv_FX_pair_A, wshpPair, 		false, 	0.5f, 					"xv_trbr_pair",		mmBord									);
-    xv_TRBL_pair	= new PanelPair(repo, spectZoom,	wave2DPair,		false,	0.47f,					"xv_trbl_pair"												);
-    xv_TRT_pair 	= new PanelPair(repo, propsBounds, 	xv_TRTR_pair, 	true, 	0.20f, 					"xv_trt_pair",  	mBord, 	180, 	220						);
-    xv_TRB_pair 	= new PanelPair(repo, xv_TRBL_pair, xv_TRBR_pair, 	true, 	0.75f, 					"xv_trb_pair",		mBord, 	0, 		INT_MAX, 	255, 	450	);
-    xv_TR_pair 		= new PanelPair(repo, xv_TRT_pair, 	xv_TRB_pair, 	false, 	0.25f, 					"xv_tr_pair",		mBord,  180, 	300						);
-    xv_spectSurf	= new PanelPair(repo, spectPair,	wavePair,	    false,	xv_spectSurfPortion,	"xv_spectSurf",		lBord									);
-    xv_playbackLeft	= new PanelPair(repo, playbackBounds, xv_spectSurf,	false,	0.02f, 					"xv_playbackLeft", 	mBord,	24, 	INT_MAX, 	28			);
-    xv_topPair 		= new PanelPair(repo, xv_playbackLeft,xv_TR_pair, 	true, 	xv_wholePortion, 		"xv_top_pair",		lBord, 	360, 	720						);
-    xv_whole 		= new PanelPair(repo, xv_topPair, 	xv_envDfmImp, 	false, 	xv_topBttmPortion, 		"xv_whole", 		lBord, 	0, 		INT_MAX, 	165, 	350	);
+    xv_ctrl_key		= new PanelPair(repo, genBounds, 	  keybBounds,		false,	0.4f, 					"xv_ctrl_key", 		mBord, 	60, 	INT_MAX, 	80, 	82	);
+    xv_dfrm_imp		= new PanelPair(repo, guideCurvePair, irmodPair,    	true, 	xv_dfrmImpPortion, 		"xv_dfrm_imp",		mmBord									);
+    xv_envDfmImp	= new PanelPair(repo, envPair,		  xv_dfrm_imp,	    true, 	xv_envDfmImpPortion, 	"xv_brws_dfm_imp",	mmBord									);
+    xv_TRTRBR_pair 	= new PanelPair(repo, xv_ctrl_key,	  oscCtrlBounds,	true,	0.85f, 					"xv_trtrbr_pair", 	mBord, 	0, 		INT_MAX, 	100, 	105	);
+    xv_TRTRB_pair 	= new PanelPair(repo, modBounds, 	  xv_TRTRBR_pair,   true,	0.4f,					"xv_trtrb_pair", 	mBord, 	210, 	370				 		);
+    xv_TRTR_pair 	= new PanelPair(repo, cv_menuCons,	  xv_TRTRB_pair,    false,	0.14f,					"xv_trtr_pair", 	mBord, 	24, 	25, 		110			);
+    xv_FX_pair_1 	= new PanelPair(repo, unisonBounds,   eqBounds, 		false, 	0.5f, 					"xv_unison_eq"												);
+    xv_FX_Pair_2 	= new PanelPair(repo, reverbBounds,   delayBounds,   	false, 	0.5f, 					"xv_reverb_dly"												);
+    xv_FX_pair_A	= new PanelPair(repo, xv_FX_pair_1,   xv_FX_Pair_2, 	false, 	0.5f, 					"xv_fx_pair_a"												);
+    xv_TRBR_pair	= new PanelPair(repo, xv_FX_pair_A,   wshpPair, 		false, 	0.5f, 					"xv_trbr_pair",		mmBord									);
+    xv_TRBL_pair	= new PanelPair(repo, spectZoom,	  wave2DPair,		false,	0.47f,					"xv_trbl_pair"												);
+    xv_TRT_pair 	= new PanelPair(repo, propsBounds, 	  xv_TRTR_pair, 	true, 	0.20f, 					"xv_trt_pair",  	mBord, 	180, 	220						);
+    xv_TRB_pair 	= new PanelPair(repo, xv_TRBL_pair,   xv_TRBR_pair, 	true, 	0.75f, 					"xv_trb_pair",		mBord, 	0, 		INT_MAX, 	255, 	450	);
+    xv_TR_pair 		= new PanelPair(repo, xv_TRT_pair, 	  xv_TRB_pair, 	    false, 	0.25f, 					"xv_tr_pair",		mBord,  180, 	300						);
+    xv_spectSurf	= new PanelPair(repo, spectPair,	  wavePair,	        false,	xv_spectSurfPortion,	"xv_spectSurf",		lBord									);
+    xv_playbackLeft	= new PanelPair(repo, playbackBounds, xv_spectSurf,	    false,	0.02f, 					"xv_playbackLeft", 	mBord,	24, 	INT_MAX, 	28			);
+    xv_topPair 		= new PanelPair(repo, xv_playbackLeft,xv_TR_pair, 	    true, 	xv_wholePortion, 		"xv_top_pair",		lBord, 	360, 	720						);
+    xv_whole 		= new PanelPair(repo, xv_topPair, 	  xv_envDfmImp, 	false, 	xv_topBttmPortion, 		"xv_whole", 		lBord, 	0, 		INT_MAX, 	165, 	350	);
 
     xv_spectSurfDragger	= new Dragger(repo);
     xv_topBotDragger	= new Dragger(repo);
@@ -375,7 +378,7 @@ void MainPanel::viewModeSwitched() {
     info("view mode switched to: " << viewMode << "\n");
 
     bool showingWaveform 	= bottomTabs->getSelectedId() == TabWaveform;
-    bool showingGuideCurves 	= topTabs->getSelectedId() == TabGuideCurves;
+    bool showingGuideCurves = topTabs->getSelectedId() == TabGuideCurves;
 
     if (viewMode == CollapsedView) {
         addAndMakeVisible(bottomTabs);
@@ -438,8 +441,9 @@ void MainPanel::resized() {
     if (width != pair->getWidth() || height != pair->getHeight() || forceResize || oldView != viewMode) {
         pair->setBounds(addand, addand, width, height);
 
-        if (Util::assignAndWereDifferent(attachNextResize, false))
+        if (Util::assignAndWereDifferent(attachNextResize, false)) {
             attachVisibleComponents();
+        }
 
         stopTimer(BoundsCheckId);
         startTimer(BoundsCheckId, 200);
@@ -920,15 +924,15 @@ void MainPanel::componentMovedOrResized(bool wasMoved, bool wasResized) {
 void MainPanel::writeXML(XmlElement* element) const {
     auto* mainXml = new XmlElement("MainPanel");
 
-    mainXml->setAttribute("CV_WholeDragger", 	cv_wholeDragger	->getPair()->getPortion());
+    mainXml->setAttribute("CV_WholeDragger", 	cv_wholeDragger	    ->getPair()->getPortion());
     mainXml->setAttribute("CV_MiddleDragger", 	cv_middleDragger	->getPair()->getPortion());
     mainXml->setAttribute("CV_EnvSpectDragger", cv_envSpectDragger	->getPair()->getPortion());
-    mainXml->setAttribute("CV_SpectSurfDragger",cv_spectSurfDragger->getPair()->getPortion());
+    mainXml->setAttribute("CV_SpectSurfDragger",cv_spectSurfDragger ->getPair()->getPortion());
 
-    mainXml->setAttribute("XV_WholeDragger", 	xv_wholeDragger	->getPair()->getPortion());
+    mainXml->setAttribute("XV_WholeDragger", 	xv_wholeDragger	    ->getPair()->getPortion());
     mainXml->setAttribute("XV_TopBttmDragger", 	xv_topBotDragger	->getPair()->getPortion());
-    mainXml->setAttribute("XV_SpectSurfDragger",xv_spectSurfDragger->getPair()->getPortion());
-    mainXml->setAttribute("XV_EnvDfmImpDragger",xv_envDfmImpDragger->getPair()->getPortion());
+    mainXml->setAttribute("XV_SpectSurfDragger",xv_spectSurfDragger ->getPair()->getPortion());
+    mainXml->setAttribute("XV_EnvDfmImpDragger",xv_envDfmImpDragger ->getPair()->getPortion());
     mainXml->setAttribute("XV_DfrmImpDragger", 	xv_dfmImpDragger	->getPair()->getPortion());
 
     element->addChildElement(mainXml);

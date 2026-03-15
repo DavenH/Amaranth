@@ -83,3 +83,9 @@ protected:
 
     CriticalSection initLock;
 };
+
+template<>
+PluginProcessor& SingletonRepo::get<PluginProcessor>(const String& name);
+
+template<>
+const PluginProcessor& SingletonRepo::get<PluginProcessor>(const String& name) const;

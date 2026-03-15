@@ -13,6 +13,7 @@
 #include <Util/Util.h>
 
 #include "../CycleGraphicsUtils.h"
+#include "../Panels/Console.h"
 HSlider::HSlider(SingletonRepo* repo, const String& name, String  message, bool horizontal) :
         Slider			(name)
     ,	SingletonAccessor(repo, name)
@@ -145,8 +146,8 @@ void HSlider::mouseEnter(const MouseEvent& e) {
     Slider::mouseEnter(e);
 
     String valueText = consoleString.toString(getValue());
-    repo->getConsole().write(valueText + " - " + message);
-    repo->getConsole().setMouseUsage(true, true, true, usesRightClick);
+    getObj(Console).write(valueText + " - " + message, IConsole::DefaultPriority);
+    getObj(Console).setMouseUsage(true, true, true, usesRightClick);
 }
 
 
@@ -154,7 +155,7 @@ void HSlider::mouseMove(const MouseEvent& e) {
     Slider::mouseMove(e);
 
     String valueText = consoleString.toString(getValue());
-    repo->getConsole().write(valueText + " - " + message);
+    getObj(Console).write(valueText + " - " + message, IConsole::DefaultPriority);
 }
 
 
@@ -169,7 +170,7 @@ void HSlider::mouseDrag(const MouseEvent& e) {
         Slider::mouseDrag(e);
 
     String valueText = consoleString.toString(getValue());
-    repo->getConsole().write(valueText + " - " + message);
+    getObj(Console).write(valueText + " - " + message, IConsole::DefaultPriority);
 }
 
 

@@ -4,6 +4,7 @@
 
 #include "MorphSlider.h"
 
+#include "../Panels/Console.h"
 #include "../Panels/Morphing/MorphPanel.h"
 #include "../Panels/PlaybackPanel.h"
 #include "../../Inter/WaveformInter3D.h"
@@ -95,7 +96,7 @@ void MorphSlider::mouseEnter(const MouseEvent& e) {
         default: break;
     }
 
-    repo->getConsole().setKeys(keys);
+    getObj(Console).setKeys(keys);
 }
 
 void MorphSlider::setDepth(const MouseEvent& e) {

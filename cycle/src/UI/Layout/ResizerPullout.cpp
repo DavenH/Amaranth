@@ -30,7 +30,7 @@ void ResizerPullout::init() {
 
 void ResizerPullout::buttonClicked(Button* button) {
   #if PLUGIN_MODE
-    PluginWindow* window = dynamic_cast<PluginWindow*>(repo->getPluginProcessor().getActiveEditor());
+    PluginWindow* window = dynamic_cast<PluginWindow*>(getObj(PluginProcessor).getActiveEditor());
 
     int oldSize = getSetting(WindowSize);
 

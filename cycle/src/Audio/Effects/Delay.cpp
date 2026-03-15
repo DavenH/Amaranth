@@ -170,7 +170,7 @@ double CycDelay::calcDelayTime(double unitValue)
     int beatsPerMeasure = 4;
 
   #if PLUGIN_MODE
-    AudioPlayHead::CurrentPositionInfo info = repo->getPluginProcessor().getCurrentPosition();
+    AudioPlayHead::CurrentPositionInfo info = getObj(PluginProcessor).getCurrentPosition();
 
     if(info.bpm > 0.0 && info.timeSigNumerator > 0)
     {

@@ -233,7 +233,7 @@ void EnvelopeInter2D::showCoordinates() {
     float tempoScale = getObj(SynthAudioSource).getTempoScale();
 
   #if PLUGIN_MODE
-    AudioPlayHead::CurrentPositionInfo info = repo->getPluginProcessor().getCurrentPosition();
+    AudioPlayHead::CurrentPositionInfo info = getObj(PluginProcessor).getCurrentPosition();
     beats = info.timeSigNumerator;
   #endif
 
