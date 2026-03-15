@@ -5,7 +5,7 @@
 
 Updater::Updater(SingletonRepo* repo) :
         SingletonAccessor   (repo, "Updater")
-    ,   graph               (this, repo)
+    ,   graph               (repo)
     ,   lastUpdateMillis    (0)
     ,   millisThresh        (10)
     ,   throttleUpdates     (true) {
@@ -58,9 +58,8 @@ void Updater::handleAsyncUpdate() {
 
 /* ----------------------------------------------------------------------------- */
 
-Updater::Graph::Graph(Updater* updater, SingletonRepo* repo) :
+Updater::Graph::Graph(SingletonRepo* repo) :
         SingletonAccessor(repo, "UpdateGraph")
-    ,   updater(updater)
     ,   updateType(Update)
     ,   printsPath(false) {
 }
@@ -73,7 +72,7 @@ void Updater::Graph::update(Node* startingNode) {
 
     for (auto headNode : headNodes) {
         if(headNode->isDirty()) {
-            headNode->performUpdate(path, updateType);
+            headNode->performUpdate(path, updateType, printsPath);
         }
     }
 
@@ -107,16 +106,14 @@ void Updater::Graph::reset() {
 
 /* ----------------------------------------------------------------------------- */
 
-Updater::Node::Node(Updater* updater) :
+Updater::Node::Node() :
         updated(false)
     ,   dirty(false)
-    ,   updater(updater)
     ,   toUpdate(nullptr) {}
 
-Updater::Node::Node(Updater* updater, Updateable* objectToUpdate) :
+Updater::Node::Node(Updateable* objectToUpdate) :
         updated(false)
     ,   dirty(false)
-    ,   updater(updater)
     ,   toUpdate(objectToUpdate) {
 }
 
@@ -149,7 +146,7 @@ void Updater::Node::doesntMark(Node* node) {
     nodesToMark.removeFirstMatchingValue(node);
 }
 
-void Updater::Node::performUpdate(String& updatePath, UpdateType updateType) {
+void Updater::Node::performUpdate(String& updatePath, UpdateType updateType, bool shouldPrintPath) {
     if(updated || ! dirty) {
         return;
     }
@@ -160,13 +157,13 @@ void Updater::Node::performUpdate(String& updatePath, UpdateType updateType) {
 
     for(auto parent : parents) {
         if(parent->isDirty()) {
-            parent->performUpdate(updatePath, updateType);
+            parent->performUpdate(updatePath, updateType, shouldPrintPath);
         }
     }
 
     // we can get here by a parent updating this
     if (!updated) {
-        if(updater->graph.doesPrintPath() && toUpdate != nullptr) {
+        if(shouldPrintPath && toUpdate != nullptr) {
             updatePath << toUpdate->getUpdateName() << " ";
         }
 
@@ -176,7 +173,7 @@ void Updater::Node::performUpdate(String& updatePath, UpdateType updateType) {
         dirty = false;
 
         for(auto node : children) {
-            node->performUpdate(updatePath, updateType);
+            node->performUpdate(updatePath, updateType, shouldPrintPath);
         }
     }
 }

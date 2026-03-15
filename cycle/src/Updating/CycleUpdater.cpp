@@ -3,7 +3,6 @@
 #include <Audio/Multisample.h>
 #include <Definitions.h>
 #include <Inter/Interactor.h>
-#include <iostream>
 
 #include "CycleUpdater.h"
 #include "EnvelopeDelegate.h"
@@ -27,51 +26,6 @@
 #include "../UI/VertexPanels/GuideCurvePanel.h"
 #include "../UI/VisualDsp.h"
 #include "../Util/CycleEnums.h"
-
-namespace {
-    void registerRepresentedTarget(std::map<Updateable*, CycleUpdater::Node*>& represented,
-                                   Updateable* updateable,
-                                   CycleUpdater::Node* node) {
-        if (updateable == nullptr || node == nullptr) {
-            return;
-        }
-
-        represented[updateable] = node;
-    }
-
-    String getUpdateableName(Updateable* updateable) {
-        if (updateable == nullptr) {
-            return "<null>";
-        }
-
-        if (auto* accessor = dynamic_cast<SingletonAccessor*>(updateable)) {
-            return accessor->getName();
-        }
-
-        String updateName = updateable->getUpdateName();
-        if (updateName.isNotEmpty()) {
-            return updateName;
-        }
-
-        return "<unnamed>";
-    }
-
-    void traverseReachable(CycleUpdater::Node* node, std::set<CycleUpdater::Node*>& visited) {
-        if (node == nullptr || visited.find(node) != visited.end()) {
-            return;
-        }
-
-        visited.insert(node);
-
-        for (auto* parent : node->getParents()) {
-            traverseReachable(parent, visited);
-        }
-
-        for (auto* child : node->getChildren()) {
-            traverseReachable(child, visited);
-        }
-    }
-}
 
 CycleUpdater::CycleUpdater(SingletonRepo* repo) :
         SingletonAccessor(repo, "CycleUpdater")
@@ -101,49 +55,48 @@ void CycleUpdater::finishInitialization() {
     }
 
     viewStageChanged(true);
-    validateUpdateGraph();
 }
 
 void CycleUpdater::createUpdateGraph() {
-    time2Itr 	= new Node(updater.get(), &getObj(WaveformInter2D));
-    time3Itr 	= new Node(updater.get(), &getObj(WaveformInter3D));
-    spect2Itr 	= new Node(updater.get(), &getObj(SpectrumInter2D));
-    spect3Itr 	= new Node(updater.get(), &getObj(SpectrumInter3D));
-    env2Itr 	= new Node(updater.get(), &getObj(EnvelopeInter2D));
-    env3Itr 	= new Node(updater.get(), &getObj(EnvelopeInter3D));
-    irModelItr 	= new Node(updater.get(), &getObj(IrModellerUI));
-    wshpItr 	= new Node(updater.get(), &getObj(WaveshaperUI));
-    eqlzerUI 	= new Node(updater.get(), &getObj(EqualizerUI));
-    derivUI 	= new Node(updater.get(), &getObj(DerivativePanel));
-    guideCurveItr 	= new Node(updater.get(), &getObj(GuideCurvePanel));
+    time2Itr 	= new Node(&getObj(WaveformInter2D));
+    time3Itr 	= new Node(&getObj(WaveformInter3D));
+    spect2Itr 	= new Node(&getObj(SpectrumInter2D));
+    spect3Itr 	= new Node(&getObj(SpectrumInter3D));
+    env2Itr 	= new Node(&getObj(EnvelopeInter2D));
+    env3Itr 	= new Node(&getObj(EnvelopeInter3D));
+    irModelItr 	= new Node(&getObj(IrModellerUI));
+    wshpItr 	= new Node(&getObj(WaveshaperUI));
+    eqlzerUI 	= new Node(&getObj(EqualizerUI));
+    derivUI 	= new Node(&getObj(DerivativePanel));
+    guideCurveItr 	= new Node(&getObj(GuideCurvePanel));
 
-    time2Rast  	= new Node(updater.get(), &getObj(TimeRasterizer));
-    guideCurveRast = new Node(updater.get(), getObj(GuideCurvePanel).getRasterizer());
-    irModelRast = new Node(updater.get(), getObj(IrModellerUI).getRasterizer());
-    wshpRast 	= new Node(updater.get(), getObj(WaveshaperUI).getRasterizer());
+    time2Rast  	= new Node(&getObj(TimeRasterizer));
+    guideCurveRast = new Node(getObj(GuideCurvePanel).getRasterizer());
+    irModelRast = new Node(getObj(IrModellerUI).getRasterizer());
+    wshpRast 	= new Node(getObj(WaveshaperUI).getRasterizer());
 
-    envProc 	= new Node(updater.get(), getObj(VisualDsp).getEnvProcessor());
-    timeProc  	= new Node(updater.get(), getObj(VisualDsp).getTimeProcessor());
-    spectProc 	= new Node(updater.get(), getObj(VisualDsp).getFFTProcessor());
-    effectsProc = new Node(updater.get(), getObj(VisualDsp).getFXProcessor());
+    envProc 	= new Node(getObj(VisualDsp).getEnvProcessor());
+    timeProc  	= new Node(getObj(VisualDsp).getTimeProcessor());
+    spectProc 	= new Node(getObj(VisualDsp).getFFTProcessor());
+    effectsProc = new Node(getObj(VisualDsp).getFXProcessor());
 
-    univNode 	= new Node(updater.get());
-    allButFX 	= new Node(updater.get());
-    wshpDsp 	= new Node(updater.get());
-    irModelDsp 	= new Node(updater.get());
+    univNode 	= new Node();
+    allButFX 	= new Node();
+    wshpDsp 	= new Node();
+    irModelDsp 	= new Node();
 
-    unisonItr 	= new Node(updater.get());
-    unison		= new Node(updater.get());
-    ctrlNode	= new Node(updater.get());
+    unisonItr 	= new Node();
+    unison		= new Node();
+    ctrlNode	= new Node();
 
-    envDlg		= new Node(updater.get(), envelopeDelegate.get());
-    spectDlg	= new Node(updater.get(), spectDelegate.get());
-    scratchRast	= new Node(updater.get(), scratchUpdate.get());
-    morphNode   = new Node(updater.get(), morphUpdate.get());
-    synthNode   = new Node(updater.get());
+    envDlg		= new Node(envelopeDelegate.get());
+    spectDlg	= new Node(spectDelegate.get());
+    scratchRast	= new Node(scratchUpdate.get());
+    morphNode   = new Node(morphUpdate.get());
+    synthNode   = new Node();
 
-    timeUIs 	= new Node(updater.get());
-    spectUIs 	= new Node(updater.get());
+    timeUIs 	= new Node();
+    spectUIs 	= new Node();
 
     Node* timeNodes[] = { timeProc, time2Rast, synthNode };
 
@@ -219,158 +172,6 @@ void CycleUpdater::createUpdateGraph() {
     updater->setStartingNode(UpdateSources::SourceWaveform2D, 	time2Itr);
     updater->setStartingNode(UpdateSources::SourceWaveform3D, 	time3Itr);
     updater->setStartingNode(UpdateSources::SourceWaveshaper, 	wshpItr);
-}
-
-void CycleUpdater::collectTrackedNodes(Array<Node*>& nodes) const {
-    nodes.add(time2Itr);
-    nodes.add(time3Itr);
-    nodes.add(spect2Itr);
-    nodes.add(spect3Itr);
-    nodes.add(env2Itr);
-    nodes.add(env3Itr);
-    nodes.add(irModelItr);
-    nodes.add(wshpItr);
-    nodes.add(guideCurveItr);
-    nodes.add(derivUI);
-    nodes.add(time2Rast);
-    nodes.add(guideCurveRast);
-    nodes.add(irModelRast);
-    nodes.add(wshpRast);
-    nodes.add(envProc);
-    nodes.add(timeProc);
-    nodes.add(spectProc);
-    nodes.add(effectsProc);
-    nodes.add(univNode);
-    nodes.add(allButFX);
-    nodes.add(wshpDsp);
-    nodes.add(irModelDsp);
-    nodes.add(unisonItr);
-    nodes.add(unison);
-    nodes.add(ctrlNode);
-    nodes.add(envDlg);
-    nodes.add(spectDlg);
-    nodes.add(scratchRast);
-    nodes.add(morphNode);
-    nodes.add(synthNode);
-    nodes.add(eqlzerUI);
-    nodes.add(timeUIs);
-    nodes.add(spectUIs);
-}
-
-void CycleUpdater::validateUpdateGraph() const {
-    Array<Node*> trackedNodes;
-    collectTrackedNodes(trackedNodes);
-
-    std::set<Node*> trackedNodeSet;
-    std::set<Node*> reachableNodes;
-    std::set<Node*> headNodeSet;
-    std::set<Node*> startingNodeSet;
-    std::map<Updateable*, Node*> represented;
-
-    for (auto* node : trackedNodes) {
-        if (node == nullptr) {
-            continue;
-        }
-
-        trackedNodeSet.insert(node);
-
-        if (Updateable* target = node->getTarget()) {
-            represented[target] = node;
-        }
-    }
-
-    // These updateables are still executed transitively by delegate nodes rather than
-    // owning dedicated graph nodes. Keep them explicit here while validating coverage.
-    registerRepresentedTarget(represented, const_cast<EnvVolumeRast*>(&getObj(EnvVolumeRast)), envDlg);
-    registerRepresentedTarget(represented, const_cast<EnvPitchRast*>(&getObj(EnvPitchRast)), envDlg);
-    registerRepresentedTarget(represented, const_cast<EnvScratchRast*>(&getObj(EnvScratchRast)), scratchRast);
-    registerRepresentedTarget(represented, const_cast<EnvWavePitchRast*>(&getObj(EnvWavePitchRast)), envDlg);
-    registerRepresentedTarget(represented, const_cast<E3Rasterizer*>(&getObj(E3Rasterizer)), envDlg);
-    registerRepresentedTarget(represented, const_cast<SpectRasterizer*>(&getObj(SpectRasterizer)), spectDlg);
-    registerRepresentedTarget(represented, const_cast<PhaseRasterizer*>(&getObj(PhaseRasterizer)), spectDlg);
-    registerRepresentedTarget(represented, const_cast<Multisample*>(&getObj(Multisample)), morphNode);
-
-    for (auto* headNode : updater->getGraph().getHeadNodes()) {
-        if (headNode != nullptr) {
-            headNodeSet.insert(headNode);
-        }
-    }
-
-    for (const auto& entry : updater->getStartingNodes()) {
-        Node* startingNode = entry.second;
-        if (startingNode == nullptr) {
-            continue;
-        }
-
-        startingNodeSet.insert(startingNode);
-        traverseReachable(startingNode, reachableNodes);
-
-        for (auto* markedNode : startingNode->getMarkedNodes()) {
-            traverseReachable(markedNode, reachableNodes);
-        }
-    }
-
-    StringArray missingNodes;
-    StringArray disconnectedNodes;
-    StringArray orphanNodes;
-
-    for (auto* accessor : getSingletonRepo()->getObjects()) {
-        auto* updateable = dynamic_cast<Updateable*>(accessor);
-        if (updateable == nullptr) {
-            continue;
-        }
-
-        if (accessor->getName() == "PathRepo") {
-            continue;
-        }
-
-        if (represented.find(updateable) == represented.end()) {
-            missingNodes.add(accessor->getName());
-        }
-    }
-
-    for (auto* node : trackedNodes) {
-        if (node == nullptr || node->getTarget() == nullptr) {
-            continue;
-        }
-
-        bool isHead = headNodeSet.find(node) != headNodeSet.end();
-        bool isStartingNode = startingNodeSet.find(node) != startingNodeSet.end();
-        bool hasParents = !node->getParents().isEmpty();
-        bool isReachable = reachableNodes.find(node) != reachableNodes.end();
-        String nodeName = getUpdateableName(node->getTarget());
-
-        if (!isHead && !isStartingNode && !hasParents) {
-            orphanNodes.add(nodeName);
-        }
-
-        if (!isReachable) {
-            disconnectedNodes.add(nodeName);
-        }
-    }
-
-    if (missingNodes.isEmpty() && disconnectedNodes.isEmpty() && orphanNodes.isEmpty()) {
-        info("CycleUpdater graph validation passed\n");
-        std::cerr << "CycleUpdater graph validation passed\n";
-        return;
-    }
-
-    if (!missingNodes.isEmpty()) {
-        info("CycleUpdater missing nodes: " << missingNodes.joinIntoString(", ") << "\n");
-        std::cerr << "CycleUpdater missing nodes: " << missingNodes.joinIntoString(", ") << '\n';
-    }
-
-    if (!orphanNodes.isEmpty()) {
-        info("CycleUpdater orphan nodes: " << orphanNodes.joinIntoString(", ") << "\n");
-        std::cerr << "CycleUpdater orphan nodes: " << orphanNodes.joinIntoString(", ") << '\n';
-    }
-
-    if (!disconnectedNodes.isEmpty()) {
-        info("CycleUpdater disconnected nodes: " << disconnectedNodes.joinIntoString(", ") << "\n");
-        std::cerr << "CycleUpdater disconnected nodes: " << disconnectedNodes.joinIntoString(", ") << '\n';
-    }
-
-    jassertfalse;
 }
 
 void CycleUpdater::envelopeVisibilityChanged() {

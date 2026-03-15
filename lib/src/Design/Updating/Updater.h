@@ -17,8 +17,8 @@ class Updater :
 public:
     class Node {
     public:
-        explicit Node(Updater* updater = nullptr);
-        Node(Updater* updater, Updateable* object);
+        Node();
+        explicit Node(Updateable* object);
         virtual ~Node() = default;
 
         // upstroke
@@ -35,7 +35,7 @@ public:
 
         void reset();
         void markPath();
-        void performUpdate(String& path, UpdateType updateType);
+        void performUpdate(String& path, UpdateType updateType, bool shouldPrintPath = false);
 
         [[nodiscard]] bool isDirty() const   { return dirty;    }
         [[nodiscard]] bool isUpdated() const { return updated;  }
@@ -51,8 +51,6 @@ public:
         bool updated;
         bool dirty;
 
-        Ref<Updater> updater;
-
         Array<Node*> parents;
         Array<Node*> children;
         Array<Node*> nodesToMark;
@@ -66,7 +64,7 @@ public:
 
     class Graph : public SingletonAccessor {
     public:
-        Graph(Updater* updater, SingletonRepo* repo);
+        explicit Graph(SingletonRepo* repo);
         ~Graph() override = default;
 
         void addHeadNode    (Node* node);
@@ -74,7 +72,6 @@ public:
         void removeHeadNode (Node* node);
         void update         (Node* node);
 
-        [[nodiscard]] bool doesPrintPath() const { return printsPath; }
         [[nodiscard]] const Array<Node*>& getHeadNodes() const { return headNodes; }
         void setUpdateType(UpdateType type)     { updateType = type; }
         void setPrintsPath(bool does)   { printsPath = does; }
@@ -85,8 +82,6 @@ public:
         bool printsPath;
         UpdateType updateType;
         String lastPath;
-
-        Ref<Updater> updater;
         Array<Node*> headNodes;
 
         void reset() override;
@@ -115,7 +110,6 @@ public:
     void setStartingNode(int code, Node* node);
     Graph& getGraph() { return graph; }
     const Graph& getGraph() const { return graph; }
-    const map<int, Node*>& getStartingNodes() const { return startingNodes; }
 
 protected:
     bool throttleUpdates;
