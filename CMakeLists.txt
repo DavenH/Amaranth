@@ -22,6 +22,13 @@ endif()
 project(Amaranth VERSION 1.0.0)
 
 option(ENABLE_DEBUG_RENDERING "Enable SignalDebugger plot/PNG output in test binaries" OFF)
+option(ENABLE_V2_RASTERIZERS "Enable adapter-backed V2 rasterizer paths" ON)
+
+if(ENABLE_V2_RASTERIZERS)
+    add_compile_definitions(AMARANTH_ENABLE_V2_RASTERIZERS=1)
+else()
+    add_compile_definitions(AMARANTH_ENABLE_V2_RASTERIZERS=0)
+endif()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.env")
     message(FATAL_ERROR

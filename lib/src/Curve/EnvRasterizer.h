@@ -6,6 +6,14 @@
 class SingletonRepo;
 
 /**
+ * Env rasterizers render non-periodic control signals.
+ *
+ * Contract:
+ * - respect attack, loop, sustain, and release state transitions,
+ * - remain finite during note-on and note-off progression,
+ * - do not apply cyclic closure rules,
+ * - allow corners where the envelope shape or state transition implies them.
+ *
  * Policies:
  *
  * - An env mesh's sustain line cannot be assigned to the last icpt

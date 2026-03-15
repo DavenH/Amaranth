@@ -2,13 +2,18 @@
 #include <catch2/catch_test_macros.hpp>
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
+#include <App/SingletonAccessor.h>
 #include <Array/ScopedAlloc.h>
 #include <Array/VecOps.h>
 #include <Curve/Mesh.h>
 #include <Curve/V2/Rasterizers/V2VoiceRasterizer.h>
+#include <Curve/V2/Sampling/V2WaveSampling.h>
 #include <Curve/VertCube.h>
+#include <Curve/VoiceMeshRasterizer.h>
 
+#include "../src/Curve/CycleState.h"
 namespace {
 struct ScopedMesh {
     explicit ScopedMesh(const String& name) : mesh(name) {}
@@ -77,6 +82,20 @@ void populateVoiceChainingMesh(Mesh& mesh) {
     appendVoiceChainingCube(mesh, 3, 0.86f, 0.18f);
 }
 
+void wrapMeshPhasesToUnitRange(Mesh& mesh) {
+    for (auto* vert : mesh.getVerts()) {
+        float& phase = vert->values[Vertex::Phase];
+
+        while (phase >= 1.0f) {
+            phase -= 1.0f;
+        }
+
+        while (phase < 0.0f) {
+            phase += 1.0f;
+        }
+    }
+}
+
 float absf(float x) {
     return x >= 0.0f ? x : -x;
 }
@@ -95,6 +114,184 @@ float maxAdjacentStep(Buffer<float> data) {
     }
 
     return maxStep;
+}
+
+struct InvalidSampleSummary {
+    int invalidCount{0};
+    int firstInvalidIndex{-1};
+};
+
+struct CurveInvalidSummary {
+    int invalidCurveCount{0};
+    int firstInvalidCurve{-1};
+    float ax{0.0f};
+    float ay{0.0f};
+    float bx{0.0f};
+    float by{0.0f};
+    float cx{0.0f};
+    float cy{0.0f};
+    int resIndex{0};
+};
+
+InvalidSampleSummary scanInvalidSamples(const char* label, Buffer<float> buffer) {
+    InvalidSampleSummary summary;
+
+    for (int i = 0; i < buffer.size(); ++i) {
+        if (! std::isfinite(buffer[i])) {
+            ++summary.invalidCount;
+            if (summary.firstInvalidIndex < 0) {
+                summary.firstInvalidIndex = i;
+            }
+        }
+    }
+
+    INFO(label << " invalidSamples=" << summary.invalidCount
+         << " firstInvalidIndex=" << summary.firstInvalidIndex);
+    return summary;
+}
+
+CurveInvalidSummary scanCurveTransforms(const char* label, const std::vector<Curve>& curves) {
+    CurveInvalidSummary summary;
+
+    for (int curveIndex = 0; curveIndex < static_cast<int>(curves.size()); ++curveIndex) {
+        const Curve& curve = curves[curveIndex];
+        int res = Curve::resolution >> curve.resIndex;
+
+        for (int i = 0; i < res; ++i) {
+            if (! std::isfinite(curve.transformX[i]) || ! std::isfinite(curve.transformY[i])) {
+                ++summary.invalidCurveCount;
+                if (summary.firstInvalidCurve < 0) {
+                    summary.firstInvalidCurve = curveIndex;
+                    summary.ax = curve.a.x;
+                    summary.ay = curve.a.y;
+                    summary.bx = curve.b.x;
+                    summary.by = curve.b.y;
+                    summary.cx = curve.c.x;
+                    summary.cy = curve.c.y;
+                    summary.resIndex = curve.resIndex;
+                }
+                break;
+            }
+        }
+    }
+    return summary;
+}
+
+bool findFiniteRange(Buffer<float> buffer, int& first, int& last) {
+    first = -1;
+    last = -1;
+
+    for (int i = 0; i < buffer.size(); ++i) {
+        if (std::isfinite(buffer[i])) {
+            first = i;
+            break;
+        }
+    }
+
+    for (int i = buffer.size() - 1; i >= 0; --i) {
+        if (std::isfinite(buffer[i])) {
+            last = i;
+            break;
+        }
+    }
+
+    return first >= 0 && last > first;
+}
+
+int sanitizeInvalidSamples(const char* label, Buffer<float> buffer) {
+    int invalidCount = 0;
+    for (int i = 0; i < buffer.size(); ++i) {
+        if (! std::isfinite(buffer[i])) {
+            ++invalidCount;
+            buffer[i] = 0.0f;
+        }
+    }
+
+    INFO(label << " invalidSamples=" << invalidCount);
+    return invalidCount;
+}
+
+struct LegacyVoicePhaseDiagnostics {
+    int overlapCount{0};
+    int invalidPhaseCount{0};
+    int negativePhaseCount{0};
+    int overOnePhaseCount{0};
+    float minPhase{std::numeric_limits<float>::infinity()};
+    float maxPhase{-std::numeric_limits<float>::infinity()};
+};
+
+LegacyVoicePhaseDiagnostics collectLegacyVoicePhaseDiagnostics(
+    const Mesh& mesh,
+    const MorphPosition& morph,
+    float advancement) {
+    LegacyVoicePhaseDiagnostics diagnostics;
+    VertCube::ReductionData reduct;
+    float voiceTime = jmin(1.f, morph.time + advancement);
+
+    for (auto* cube : mesh.getCubes()) {
+        cube->getInterceptsFast(Vertex::Time, reduct, MorphPosition(voiceTime, morph.red, morph.blue));
+
+        if (! reduct.pointOverlaps) {
+            continue;
+        }
+
+        ++diagnostics.overlapCount;
+
+        float aPhase = reduct.v0.values[Vertex::Phase];
+        float bPhase = reduct.v1.values[Vertex::Phase];
+
+        diagnostics.minPhase = jmin(diagnostics.minPhase, jmin(aPhase, bPhase));
+        diagnostics.maxPhase = jmax(diagnostics.maxPhase, jmax(aPhase, bPhase));
+
+        float phases[2] = { aPhase, bPhase };
+        for (float phase : phases) {
+            if (! std::isfinite(phase)) {
+                ++diagnostics.invalidPhaseCount;
+                continue;
+            }
+
+            if (phase < 0.0f) {
+                ++diagnostics.negativePhaseCount;
+            }
+
+            if (phase > 1.0f) {
+                ++diagnostics.overOnePhaseCount;
+            }
+        }
+    }
+
+    INFO("legacyVoice overlaps=" << diagnostics.overlapCount
+         << " invalidPhases=" << diagnostics.invalidPhaseCount
+         << " negativePhases=" << diagnostics.negativePhaseCount
+         << " overOnePhases=" << diagnostics.overOnePhaseCount
+         << " minPhase=" << diagnostics.minPhase
+         << " maxPhase=" << diagnostics.maxPhase
+         << " advancement=" << advancement);
+
+    return diagnostics;
+}
+
+void prepareLegacyVoiceRasterizer(
+    VoiceMeshRasterizer& rasterizer,
+    CycleState& state,
+    Mesh& mesh,
+    const MorphPosition& morph) {
+    rasterizer.setState(&state);
+    rasterizer.setMesh(&mesh);
+    rasterizer.setMorphPosition(morph);
+    rasterizer.setScalingMode(MeshRasterizer::Bipolar);
+    rasterizer.setWrapsEnds(true);
+    rasterizer.setInterpolatesCurves(true);
+    rasterizer.setLowresCurves(false);
+    rasterizer.setLimits(0.0f, 1.0f);
+}
+
+bool primeLegacyVoiceRasterizer(
+    VoiceMeshRasterizer& rasterizer,
+    float oscPhase = 0.0f) {
+    rasterizer.calcCrossPointsChaining(oscPhase);
+    rasterizer.calcCrossPointsChaining(oscPhase);
+    return rasterizer.isSampleable();
 }
 
 struct LegacyVoiceChainingOracleState {
@@ -249,7 +446,7 @@ void prepareVoiceRasterizer(V2VoiceRasterizer& rasterizer, const Mesh& mesh) {
 }
 }
 
-TEST_CASE("V2VoiceRasterizer renderBlock requires prepare and mesh", "[curve][v2][voice]") {
+TEST_CASE("V2VoiceRasterizer renderBlock requires prepare and mesh", "[curve][v2][voice][contract]") {
     V2VoiceRasterizer rasterizer;
 
     V2RenderRequest request;
@@ -266,7 +463,7 @@ TEST_CASE("V2VoiceRasterizer renderBlock requires prepare and mesh", "[curve][v2
     REQUIRE_FALSE(result.rendered);
 }
 
-TEST_CASE("V2VoiceRasterizer block continuity matches single long render", "[curve][v2][voice][continuity]") {
+TEST_CASE("V2VoiceRasterizer block continuity matches single long render", "[curve][v2][voice][continuity][contract]") {
     ScopedMesh scoped("v2-voice-continuity");
     populateVoiceTestMesh(scoped.mesh);
 
@@ -312,7 +509,7 @@ TEST_CASE("V2VoiceRasterizer block continuity matches single long render", "[cur
     REQUIRE(l2B == 0.0f);
 }
 
-TEST_CASE("V2VoiceRasterizer deterministic with phase reset", "[curve][v2][voice][determinism]") {
+TEST_CASE("V2VoiceRasterizer deterministic with phase reset", "[curve][v2][voice][determinism][contract]") {
     ScopedMesh scoped("v2-voice-determinism");
     populateVoiceTestMesh(scoped.mesh);
 
@@ -348,7 +545,7 @@ TEST_CASE("V2VoiceRasterizer deterministic with phase reset", "[curve][v2][voice
     REQUIRE(maxAbs == 0.0f);
 }
 
-TEST_CASE("V2VoiceRasterizer phase wraps in cyclic mode", "[curve][v2][voice][phase]") {
+TEST_CASE("V2VoiceRasterizer phase wraps in cyclic mode", "[curve][v2][voice][phase][contract]") {
     ScopedMesh scoped("v2-voice-wrap");
     populateVoiceTestMesh(scoped.mesh);
 
@@ -372,7 +569,7 @@ TEST_CASE("V2VoiceRasterizer phase wraps in cyclic mode", "[curve][v2][voice][ph
     REQUIRE(phase <= 0.5);
 }
 
-TEST_CASE("V2VoiceRasterizer applies non-zero minLineLength advancement on subsequent intercept renders", "[curve][v2][voice][chaining][advancement]") {
+TEST_CASE("V2VoiceRasterizer applies non-zero minLineLength advancement on subsequent intercept renders", "[curve][v2][voice][chaining][advancement][contract]") {
     ScopedMesh scoped("v2-voice-min-line-advancement");
     populateVoiceChainingMesh(scoped.mesh);
 
@@ -412,7 +609,7 @@ TEST_CASE("V2VoiceRasterizer applies non-zero minLineLength advancement on subse
     REQUIRE(changed);
 }
 
-TEST_CASE("V2VoiceRasterizer chaining interpolation stays continuous across cycle boundaries", "[curve][v2][voice][chaining][continuity]") {
+TEST_CASE("V2VoiceRasterizer chaining interpolation stays continuous across cycle boundaries", "[curve][v2][voice][chaining][continuity][contract]") {
     ScopedMesh scoped("v2-voice-chaining");
     populateVoiceChainingMesh(scoped.mesh);
 
@@ -462,7 +659,7 @@ TEST_CASE("V2VoiceRasterizer chaining interpolation stays continuous across cycl
     REQUIRE(boundaryStep <= continuityScale * 1.25f + 1e-4f);
 }
 
-TEST_CASE("V2VoiceRasterizer chaining remains smooth across varying mesh positions", "[curve][v2][voice][chaining][mesh]") {
+TEST_CASE("V2VoiceRasterizer chaining remains smooth across varying mesh positions", "[curve][v2][voice][chaining][mesh][contract]") {
     ScopedMesh scoped("v2-voice-chaining-morph");
     populateVoiceChainingMesh(scoped.mesh);
 
@@ -528,7 +725,7 @@ TEST_CASE("V2VoiceRasterizer chaining remains smooth across varying mesh positio
     REQUIRE(maxBoundaryStep <= continuityScale * 1.5f + 1e-4f);
 }
 
-TEST_CASE("V2VoiceRasterizer chaining intercepts match legacy oracle sequencing", "[curve][v2][voice][chaining][parity]") {
+TEST_CASE("V2VoiceRasterizer chaining intercepts match legacy oracle sequencing", "[curve][v2][voice][chaining][parity][legacy]") {
     ScopedMesh scoped("v2-voice-chaining-parity");
     populateVoiceChainingMesh(scoped.mesh);
 
@@ -580,4 +777,156 @@ TEST_CASE("V2VoiceRasterizer chaining intercepts match legacy oracle sequencing"
             v2Artifacts.intercepts->begin(),
             v2Artifacts.intercepts->end());
     }
+}
+
+TEST_CASE("Legacy VoiceMeshRasterizer chaining inputs stay phase-valid", "[curve][legacy][voice][contract]") {
+    ScopedMesh scoped("legacy-voice-phase-contract");
+    populateVoiceChainingMesh(scoped.mesh);
+    wrapMeshPhasesToUnitRange(scoped.mesh);
+
+    MorphPosition morph(0.47f, 0.63f, 0.39f);
+    LegacyVoicePhaseDiagnostics initial = collectLegacyVoicePhaseDiagnostics(scoped.mesh, morph, 0.0f);
+
+    REQUIRE(initial.overlapCount > 0);
+    REQUIRE(initial.invalidPhaseCount == 0);
+    REQUIRE(initial.negativePhaseCount == 0);
+
+    CycleState state;
+    VoiceMeshRasterizer legacy(nullptr);
+    prepareLegacyVoiceRasterizer(legacy, state, scoped.mesh, morph);
+    legacy.calcCrossPointsChaining(0.0f);
+
+    LegacyVoicePhaseDiagnostics primed = collectLegacyVoicePhaseDiagnostics(scoped.mesh, morph, state.advancement);
+    REQUIRE(primed.overlapCount > 0);
+    REQUIRE(primed.invalidPhaseCount == 0);
+    REQUIRE(primed.negativePhaseCount == 0);
+}
+
+TEST_CASE("Legacy VoiceMeshRasterizer primed chained render remains finite", "[curve][legacy][voice][contract]") {
+    ScopedMesh scoped("legacy-voice-finite-contract");
+    populateVoiceChainingMesh(scoped.mesh);
+    wrapMeshPhasesToUnitRange(scoped.mesh);
+
+    MorphPosition morph(0.47f, 0.63f, 0.39f);
+    CycleState state;
+    VoiceMeshRasterizer legacy(nullptr);
+    prepareLegacyVoiceRasterizer(legacy, state, scoped.mesh, morph);
+    REQUIRE(primeLegacyVoiceRasterizer(legacy, 0.0f));
+    CurveInvalidSummary curveSummary = scanCurveTransforms("legacyVoiceCurves", legacy.getCurves());
+    INFO("legacyVoiceCurves invalidCurves=" << curveSummary.invalidCurveCount
+         << " firstInvalidCurve=" << curveSummary.firstInvalidCurve
+         << " a=(" << curveSummary.ax << "," << curveSummary.ay << ")"
+         << " b=(" << curveSummary.bx << "," << curveSummary.by << ")"
+         << " c=(" << curveSummary.cx << "," << curveSummary.cy << ")"
+         << " resIndex=" << curveSummary.resIndex);
+    REQUIRE(curveSummary.invalidCurveCount == 0);
+
+    Buffer<float> legacyWaveX = legacy.getWaveX();
+    Buffer<float> legacyWaveY = legacy.getWaveY();
+    Buffer<float> legacySlope = legacy.getSlopes().withSize(jmax(0, legacyWaveX.size() - 1));
+    int legacyWaveCount = legacyWaveX.size();
+    REQUIRE(legacyWaveCount > 1);
+    REQUIRE(scanInvalidSamples("legacyVoiceWaveX", legacyWaveX).invalidCount == 0);
+    REQUIRE(scanInvalidSamples("legacyVoiceWaveY", legacyWaveY).invalidCount == 0);
+    REQUIRE(scanInvalidSamples("legacyVoiceSlope", legacySlope).invalidCount == 0);
+
+    int start = 0;
+    int end = 0;
+    REQUIRE(findFiniteRange(legacyWaveX, start, end));
+
+    constexpr int numSamples = 128;
+    ScopedAlloc<float> outputMemory(numSamples);
+    Buffer<float> output = outputMemory.withSize(numSamples);
+    double phaseStart = legacyWaveX[start];
+    double phaseEnd = jmin(1.0, static_cast<double>(legacyWaveX[end]));
+    double delta = (phaseEnd - phaseStart) / static_cast<double>(numSamples - 1);
+    int index = jlimit(0, legacyWaveCount - 2, legacy.getZeroIndex());
+
+    for (int i = 0; i < numSamples; ++i) {
+        double phase = phaseStart + static_cast<double>(i) * delta;
+        output[i] = legacy.sampleAt(phase, index);
+    }
+
+    InvalidSampleSummary summary = scanInvalidSamples("legacyVoice", output);
+    REQUIRE(summary.invalidCount == 0);
+}
+
+TEST_CASE("V2VoiceRasterizer legacy oracle primed chained render stays close to VoiceMeshRasterizer", "[curve][v2][voice][parity][legacy]") {
+    ScopedMesh scoped("v2-voice-legacy-render-parity");
+    populateVoiceChainingMesh(scoped.mesh);
+    wrapMeshPhasesToUnitRange(scoped.mesh);
+
+    MorphPosition morph(0.47f, 0.63f, 0.39f);
+
+    V2VoiceRasterizer v2;
+    prepareVoiceRasterizer(v2, scoped.mesh);
+
+    V2VoiceControlSnapshot controls;
+    controls.morph = morph;
+    controls.scaling = V2ScalingType::Bipolar;
+    controls.cyclic = true;
+    controls.minX = 0.0f;
+    controls.maxX = 1.0f;
+    controls.interpolateCurves = true;
+    controls.lowResolution = false;
+    controls.integralSampling = false;
+    v2.updateControlData(controls);
+
+    V2RasterArtifacts primedArtifacts;
+    REQUIRE(v2.renderIntercepts(primedArtifacts));
+
+    constexpr int numSamples = 128;
+
+    ScopedAlloc<float> memory(3 * numSamples);
+    Buffer<float> v2Output = memory.place(numSamples);
+    Buffer<float> legacyOutput = memory.place(numSamples);
+    Buffer<float> diff = memory.place(numSamples);
+
+    V2RasterArtifacts artifacts;
+    REQUIRE(v2.renderArtifacts(artifacts));
+    REQUIRE(artifacts.waveBuffers.waveX.size() > 1);
+
+    CycleState state;
+    VoiceMeshRasterizer legacy(nullptr);
+    prepareLegacyVoiceRasterizer(legacy, state, scoped.mesh, morph);
+    REQUIRE(primeLegacyVoiceRasterizer(legacy, 0.0f));
+
+    Buffer<float> legacyWaveX = legacy.getWaveX();
+    int legacyWaveCount = legacyWaveX.size();
+    int v2WaveCount = artifacts.waveBuffers.waveX.size();
+    REQUIRE(legacyWaveCount > 1);
+
+    int legacyStart = 0;
+    int legacyEnd = 0;
+    int v2Start = 0;
+    int v2End = 0;
+    REQUIRE(findFiniteRange(legacyWaveX, legacyStart, legacyEnd));
+    REQUIRE(findFiniteRange(artifacts.waveBuffers.waveX, v2Start, v2End));
+
+    float phaseStart = jmax(0.0f, jmax(legacyWaveX[legacyStart], artifacts.waveBuffers.waveX[v2Start]));
+    float phaseEnd = jmin(1.0f, jmin(legacyWaveX[legacyEnd], artifacts.waveBuffers.waveX[v2End]));
+    REQUIRE(phaseEnd > phaseStart);
+
+    double commonDelta = (phaseEnd - phaseStart) / static_cast<double>(numSamples - 1);
+    int legacyIndex = jlimit(0, legacyWaveCount - 2, legacy.getZeroIndex());
+    int v2Index = jlimit(0, v2WaveCount - 2, artifacts.zeroIndex);
+
+    for (int i = 0; i < numSamples; ++i) {
+        double phase = phaseStart + static_cast<double>(i) * commonDelta;
+        legacyOutput[i] = legacy.sampleAt(phase, legacyIndex);
+        v2Output[i] = V2WaveSampling::sampleAtPhase(phase, artifacts.waveBuffers, v2WaveCount, v2Index);
+        REQUIRE(std::isfinite(v2Output[i]));
+    }
+
+    sanitizeInvalidSamples("legacyVoice", legacyOutput);
+    REQUIRE(sanitizeInvalidSamples("v2Voice", v2Output) == 0);
+
+    VecOps::sub(legacyOutput, v2Output, diff);
+    float l2 = diff.normL2();
+    diff.abs();
+    float maximum = diff.max();
+
+    INFO("voice render parity l2=" << l2 << " maxAbs=" << maximum);
+    REQUIRE(l2 <= 2.0f);
+    REQUIRE(maximum <= 0.25f);
 }

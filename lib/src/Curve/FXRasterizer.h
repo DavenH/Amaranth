@@ -5,6 +5,14 @@
 
 #include "MeshRasterizer.h"
 
+/*
+ * FX rasterizers render general-purpose curves with padding.
+ *
+ * Contract:
+ * - produce finite, sorted, sampleable output,
+ * - apply padding without creating invalid geometry,
+ * - avoid voice-style chaining requirements unless a caller explicitly adds them.
+ */
 class FXRasterizer:
         public MeshRasterizer
     ,   public SingletonAccessor {
