@@ -13,7 +13,7 @@
 #include "../CycleDefs.h"
 #include "../../UI/Panels/ModMatrixPanel.h"
 #include "../../UI/Panels/OscControlPanel.h"
-#include "../../UI/VertexPanels/DeformerPanel.h"
+#include "../../UI/VertexPanels/GuideCurvePanel.h"
 #include "../../UI/VertexPanels/Envelope2D.h"
 #include "../../UI/VertexPanels/Spectrum3D.h"
 #include "../../UI/VertexPanels/Waveform3D.h"
@@ -47,10 +47,10 @@ SynthesizerVoice::SynthesizerVoice(int voiceIndex, SingletonRepo* repo) :
     envGroups[1] = &pitchGroup;
     envGroups[2] = &scratchGroup;
 
-    auto& deformer = getObj(DeformerPanel);
+    auto& guideCurveProvider = getObj(GuideCurvePanel);
 
     for (auto group: envGroups) {
-        group->envGroup.emplace_back(EnvRasterizer(repo, &deformer, "EnvRasterizer" + String(group->layerGroup) + "_0"), 0);
+        group->envGroup.emplace_back(EnvRasterizer(repo, &guideCurveProvider, "EnvRasterizer" + String(group->layerGroup) + "_0"), 0);
 
         EnvRenderContext& last = group->envGroup.back();
         last.rast.setWantOneSamplePerCycle(true);
@@ -293,7 +293,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
     for (auto& envRasterizer: envRasterizers) {
         envRasterizer->setNoiseSeed(random.nextInt());
         // TODO
-        envRasterizer->updateOffsetSeeds(1, DeformerPanel::tableSize);
+        envRasterizer->updateOffsetSeeds(1, GuideCurvePanel::tableSize);
     }
 }
 
@@ -312,7 +312,7 @@ int SynthesizerVoice::getCurrentOscillatorLatency() {
     bool isRealtime = true;
 
   #if PLUGIN_MODE
-    isRealtime = ! repo->getPluginProcessor().isNonRealtime();
+    isRealtime = ! getObj(PluginProcessor).isNonRealtime();
   #endif
 
     if (isRealtime && getDocSetting(OversampleFactorRend) > 1 ||
@@ -424,7 +424,7 @@ void SynthesizerVoice::calcEnvelopeBuffers(int numSamples) {
 
 void SynthesizerVoice::fetchEnvelopeMeshes() {
     envRasterizers.clear();
-    auto& deformer = getObj(DeformerPanel);
+    auto& guideCurveProvider = getObj(GuideCurvePanel);
 
     for (int groupIndex = 0; groupIndex < numElementsInArray(envGroups); ++groupIndex) {
         EnvRastGroup& group = *envGroups[groupIndex];
@@ -445,7 +445,7 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
 
                 if (!dynamic_cast<MeshLibrary::EnvProps*>(layer.props)->global) {
                     String name = "EnvRasterizer" + String(groupIndex) + "_" + String(layerIndex);
-                    group.envGroup.emplace_back(EnvRasterizer(repo, &deformer, name), layerIndex);
+                    group.envGroup.emplace_back(EnvRasterizer(repo, &guideCurveProvider, name), layerIndex);
 
                     EnvRasterizer& rast = group.envGroup.back().rast;
                     envRasterizers.push_back(&rast);

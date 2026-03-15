@@ -12,6 +12,7 @@
 
 #include "../CycleDefs.h"
 #include "../Dialogs/PresetPage.h"
+#include "../Panels/Console.h"
 #include "../Panels/Morphing/MorphPanel.h"
 #include "../VertexPanels/Spectrum2D.h"
 #include "../VertexPanels/Spectrum3D.h"
@@ -190,7 +191,7 @@ void GeneralControls::sliderValueChanged(Slider* slider) {
 }
 
 void GeneralControls::mouseEnter(const MouseEvent& e) {
-    getObj(IConsole).reset();
+    getObj(Console).reset();
 }
 
 void GeneralControls::setNumCommunityPresets(int num) {

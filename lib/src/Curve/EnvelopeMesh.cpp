@@ -131,7 +131,7 @@ void EnvelopeMesh::destroy() {
 }
 
 void EnvelopeMesh::clampSharpness(VertCube* line) {
-    if (line->getCompDfrm() >= 0) {
+    if (line->getCompGuideCurve() >= 0) {
         return;
     }
 

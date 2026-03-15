@@ -53,7 +53,7 @@
 #include "../UI/Panels/PlayerComponent.h"
 #include "../UI/Panels/SynthMenuBarModel.h"
 #include "../UI/Panels/VertexPropertiesPanel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/GuideCurvePanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
 #include "../UI/VertexPanels/Envelope3D.h"
 #include "../UI/VertexPanels/Spectrum2D.h"
@@ -107,6 +107,7 @@ void Initializer::init() {
     setDefaultSettings();
     instantiate();
 
+    repo->setMorphPositioner(&getObj(MorphPanel));
     repo->init();
     init2();
 
@@ -130,9 +131,8 @@ void Initializer::init2() {
     getObj(GeneralControls).addKeyListener(handler);
     getObj(VertexPropertiesPanel).addKeyListener(handler);
 
-    repo->setMorphPositioner(morph);
     repo->setConsole(&getObj(Console));
-    repo->setDeformer(&getObj(DeformerPanel));
+    repo->setGuideCurveProvider(&getObj(GuideCurvePanel));
 
     int width, height;
 
@@ -144,27 +144,29 @@ void Initializer::init2() {
     meshLib->addListener(&getObj(Spectrum3D));
     meshLib->addListener(&getObj(Waveform3D));
 
-    meshLib->addGroup(LayerGroups::GroupVolume);
-    meshLib->addGroup(LayerGroups::GroupPitch);
-    meshLib->addGroup(LayerGroups::GroupScratch);
-    meshLib->addGroup(LayerGroups::GroupDeformer);
-    meshLib->addGroup(LayerGroups::GroupTime);
-    meshLib->addGroup(LayerGroups::GroupSpect);
-    meshLib->addGroup(LayerGroups::GroupPhase);
-    meshLib->addGroup(LayerGroups::GroupWavePitch);
-    meshLib->addGroup(LayerGroups::GroupWaveshaper);
-    meshLib->addGroup(LayerGroups::GroupIrModeller);
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
 
     meshLib->addLayer(LayerGroups::GroupVolume);
     meshLib->addLayer(LayerGroups::GroupPitch);
     meshLib->addLayer(LayerGroups::GroupScratch);
-    meshLib->addLayer(LayerGroups::GroupDeformer);
+    meshLib->addLayer(LayerGroups::GroupGuideCurve);
     meshLib->addLayer(LayerGroups::GroupTime);
     meshLib->addLayer(LayerGroups::GroupSpect);
     meshLib->addLayer(LayerGroups::GroupPhase);
     meshLib->addLayer(LayerGroups::GroupWavePitch);
     meshLib->addLayer(LayerGroups::GroupWaveshaper);
     meshLib->addLayer(LayerGroups::GroupIrModeller);
+
+    getObj(CycleUpdater).finishInitialization();
 
     morph->updateCube();
     main->switchedRenderingMode(false);
@@ -254,7 +256,7 @@ void Initializer::setDefaultSettings() {
 
 void Initializer::instantiate() {
     Interactor* timeInter, *spectInter;
-    DeformerPanel* deformer;
+    GuideCurvePanel* guideCurvePanel;
     SynthAudioSource* audioSource;
     auto* pitchRast = new EnvWavePitchRast(repo, "EnvWavePitchRast");
 
@@ -353,7 +355,7 @@ void Initializer::instantiate() {
     repo->add(new CycleUpdater(repo));
     repo->add(timeInter  = new WaveformInter2D(repo));
     repo->add(spectInter = new SpectrumInter2D(repo));
-    repo->add(deformer 	 = new DeformerPanel(repo));
+    repo->add(guideCurvePanel 	 = new GuideCurvePanel(repo));
 
     repo->add(new Envelope2D(repo));
     repo->add(new Envelope3D(repo));
@@ -362,9 +364,9 @@ void Initializer::instantiate() {
     repo->add(new SpectRasterizer(repo, spectInter, "SpectRasterizer", 	LayerGroups::GroupSpect, true, 0));
     repo->add(new PhaseRasterizer(repo, spectInter, "PhaseRasterizer", 	LayerGroups::GroupPhase, true, 0));
 
-    repo->add(new EnvVolumeRast  (repo, deformer, "EnvVolumeRast"));
-    repo->add(new EnvPitchRast   (repo, deformer, "EnvPitchRast"));
-    repo->add(new EnvScratchRast (repo, deformer, "EnvScratchRast"));
+    repo->add(new EnvVolumeRast  (repo, guideCurvePanel, "EnvVolumeRast"));
+    repo->add(new EnvPitchRast   (repo, guideCurvePanel, "EnvPitchRast"));
+    repo->add(new EnvScratchRast (repo, guideCurvePanel, "EnvScratchRast"));
 
     repo->add(this);
 }
@@ -432,7 +434,7 @@ void Initializer::freeUIResources() {
     getObj(Envelope3D).deactivateContext();
     getObj(WaveshaperUI).deactivateContext();
     getObj(IrModellerUI).deactivateContext();
-    getObj(DeformerPanel).deactivateContext();
+    getObj(GuideCurvePanel).deactivateContext();
     getObj(VisualDsp).reset();
     getObj(Waveform3D).freeResources();
     getObj(Spectrum3D).freeResources();

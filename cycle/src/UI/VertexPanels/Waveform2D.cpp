@@ -42,6 +42,8 @@ Waveform2D::Waveform2D(SingletonRepo* repo) :
 }
 
 void Waveform2D::init() {
+    Panel2D::init();
+
     position = &getObj(PlaybackPanel);
 }
 

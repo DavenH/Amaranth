@@ -83,7 +83,7 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 			intercept.shp = vertex->values[Vertex::Curve];
 			intercept.adjustedX = intercept.x;
 
-			applyDeformers(intercept, morph);
+			applyGuideCurves(intercept, morph);
 
 			state->backIcpts.push_back(intercept);
 		}

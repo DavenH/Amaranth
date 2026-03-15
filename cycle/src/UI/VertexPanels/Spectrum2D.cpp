@@ -30,6 +30,8 @@ Spectrum2D::Spectrum2D(SingletonRepo* repo) :
 }
 
 void Spectrum2D::init() {
+    Panel2D::init();
+
     position 		= &getObj(PlaybackPanel);
     spectrum3D 		= &getObj(Spectrum3D);
     f2Interactor 	= &getObj(SpectrumInter2D);

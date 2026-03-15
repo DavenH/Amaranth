@@ -17,8 +17,9 @@
 #include "MainPanel.h"
 #include "VertexPropertiesPanel.h"
 
+#include "Console.h"
 #include "Morphing/MorphPanel.h"
-#include "../VertexPanels/DeformerPanel.h"
+#include "../VertexPanels/GuideCurvePanel.h"
 #include "../Widgets/HSlider.h"
 
 #include "../../App/CycleTour.h"
@@ -42,7 +43,7 @@ VertexPropertiesPanel::VertexPropertiesPanel(SingletonRepo* repo) :
 
 VertexPropertiesPanel::~VertexPropertiesPanel() {
 	for (auto p : allProperties) {
-		delete p->dfrmChanBox;
+		delete p->guideCurveChanBox;
 		delete p->gain;
 		delete p->messager;
 		delete p->slider;
@@ -88,8 +89,8 @@ void VertexPropertiesPanel::paint(Graphics& g) {
 	int titleTextX		= timeSlider.getBounds().getCentreX() - Util::getStringWidth(font, titleText) / 2;
 	getObj(MiscGraphics).drawShadowedText(g, titleText, 	titleTextX, timeSlider.getY() - 5, font);
 
-	Knob& gainKnob		= *properties[Vertex::Red].gain;
-	ComboBox& dfrmBox 	= *properties[Vertex::Red].dfrmChanBox;
+	Knob& gainKnob		    = *properties[Vertex::Red].gain;
+	ComboBox& guideCurveBox = *properties[Vertex::Red].guideCurveChanBox;
 
 	Rectangle<float> titleBounds(title.getBounds().expanded(30, 30).translated(0, 20).toFloat());
 
@@ -102,23 +103,23 @@ void VertexPropertiesPanel::paint(Graphics& g) {
 	                     curveSlider.getX() + (curveSlider.getWidth() - avpWidth - 5),
 	                     curveSlider.getY() + curveSlider.getHeight() * 3 / 2 + 5);
 
-	bool isSmall 		= (dfrmBox.getWidth() < 20);
-	String gainText 	= isSmall ? "gn" 	: "gain";
-	String dfrmTextA 	= isSmall ? "DFM" 	: "DFRM";
-	String dfrmTextB 	= isSmall ? "CH" 	: "CHAN";
+	bool isSmall 		    = (guideCurveBox.getWidth() < 20);
+	String gainText 	    = isSmall ? "gn" : "gain";
+	String guideCurveTextA  = isSmall ? "GUIDE" : "GUIDE";
+	String guideCurveTextB  = isSmall ? "CV" : "CURVE";
 
-	int guideTextX 		= timeSlider.getRight() + 1 + (dfrmBox.getWidth() - Util::getStringWidth(font, dfrmTextA)) / 2;
-	int gainTextX 		= dfrmBox.getRight() + 1 + (gainKnob.getWidth() - Util::getStringWidth(font, gainText)) / 2;
+	int guideTextX 		    = timeSlider.getRight() + 1 + (guideCurveBox.getWidth() - Util::getStringWidth(font, guideCurveTextA)) / 2;
+	int gainTextX 		    = guideCurveBox.getRight() + 1 + (gainKnob.getWidth() - Util::getStringWidth(font, gainText)) / 2;
 
 	float alpha = 0.65f;
-	getObj(MiscGraphics).drawShadowedText(g, dfrmTextA, guideTextX + 14, timeSlider.getY() - 7, font, alpha);
-	getObj(MiscGraphics).drawShadowedText(g, dfrmTextB, guideTextX, timeSlider.getY() + 4, 	font, alpha);
+	getObj(MiscGraphics).drawShadowedText(g, guideCurveTextA, guideTextX + 14, timeSlider.getY() - 7, font, alpha);
+	getObj(MiscGraphics).drawShadowedText(g, guideCurveTextB, guideTextX, timeSlider.getY() + 4, 	font, alpha);
 	getObj(MiscGraphics).drawShadowedText(g, gainText, 	gainTextX, 	timeSlider.getY() + 4, 	font, alpha);
 
 	Rectangle tSlider(properties[Vertex::Time].slider->getBounds());
 
 	g.setColour(Colours::black);
-	g.drawRect(ampVsPhaseProperties->dfrmChanBox->getBounds()
+	g.drawRect(ampVsPhaseProperties->guideCurveChanBox->getBounds()
 	           .withX(tSlider.getX()).withWidth(tSlider.getWidth()));
 }
 
@@ -145,15 +146,15 @@ void VertexPropertiesPanel::resized() {
 	for (auto props : displayOrder) {
 		props->slider->setBounds(bounds.removeFromTop(knobWidth));
 
-		Rectangle<int> deformBounds = labelBounds.removeFromTop(knobWidth);
+		Rectangle<int> guideCurveBounds = labelBounds.removeFromTop(knobWidth);
 
 		if(props->id != Vertex::Time) {
-			props->dfrmChanBox->setBounds(deformBounds.removeFromLeft(jmax(24, knobWidth)));
+			props->guideCurveChanBox->setBounds(guideCurveBounds.removeFromLeft(jmax(24, knobWidth)));
 
-			deformBounds.removeFromLeft(2);
+			guideCurveBounds.removeFromLeft(2);
 
-			int size = jmin(deformBounds.getWidth(), deformBounds.getHeight());
-			props->gain->setBounds(Rectangle(deformBounds.getX(), deformBounds.getY(), size, size));
+			int size = jmin(guideCurveBounds.getWidth(), guideCurveBounds.getHeight());
+			props->gain->setBounds(Rectangle(guideCurveBounds.getX(), guideCurveBounds.getY(), size, size));
 		}
 
 		bounds.removeFromTop(2);
@@ -166,28 +167,27 @@ void VertexPropertiesPanel::resized() {
 	sliderArea.setBounds(Rectangle(properties[Vertex::Time].slider->getPosition(),
 	                                    properties[Vertex::Curve].slider->getBounds().getBottomRight()));
 
-	Rectangle<int> deformBounds = labelBounds.removeFromTop(knobWidth);
-	ampVsPhaseProperties->dfrmChanBox->setBounds(deformBounds.removeFromLeft(jmax(24, knobWidth)));
+	Rectangle<int> guideCurveBounds = labelBounds.removeFromTop(knobWidth);
+	ampVsPhaseProperties->guideCurveChanBox->setBounds(guideCurveBounds.removeFromLeft(jmax(24, knobWidth)));
 
-	deformBounds.removeFromLeft(2);
-	int size = jmin(deformBounds.getWidth(), deformBounds.getHeight());
-	ampVsPhaseProperties->gain->setBounds(Rectangle(deformBounds.getX(), deformBounds.getY(), size, size));
+	guideCurveBounds.removeFromLeft(2);
+	int size = jmin(guideCurveBounds.getWidth(), guideCurveBounds.getHeight());
+	ampVsPhaseProperties->gain->setBounds(Rectangle(guideCurveBounds.getX(), guideCurveBounds.getY(), size, size));
 
 	gainArea.toBack();
 	gainArea.setBounds(Rectangle(properties[Vertex::Red].gain->getPosition(),
 	                                  ampVsPhaseProperties->gain->getBounds().getBottomRight()));
 
 	boxArea.toBack();
-	boxArea.setBounds(Rectangle(properties[Vertex::Red].dfrmChanBox->getPosition(),
-	                                 ampVsPhaseProperties->dfrmChanBox->getBounds().getBottomRight()));
+	boxArea.setBounds(Rectangle(properties[Vertex::Red].guideCurveChanBox->getPosition(),
+	                                 ampVsPhaseProperties->guideCurveChanBox->getBounds().getBottomRight()));
 
 	labelBounds.removeFromTop(2);
 }
 
 void VertexPropertiesPanel::mouseEnter(const MouseEvent& e) {
-	Console* console = dynamic_cast<Console*>(&getObj(IConsole));
-	console->updateAll({}, "Parameters of selected vertices. Deformers warp path of parent lines",
-					   MouseUsage(false, false, false, false));
+    getObj(Console).updateAll({}, "Parameters of selected vertices. Guide curves warp path of parent lines",
+                                 MouseUsage(false, false, false, false));
 }
 
 void VertexPropertiesPanel::mouseUp(const MouseEvent& e) {
@@ -292,21 +292,21 @@ void VertexPropertiesPanel::setSelectedAndCaller(Interactor* interactor)
 void VertexPropertiesPanel::updateComboBoxes() {
 	auto& meshLib = getObj(MeshLibrary);
 
-	int numDeformLayers = meshLib.getLayerGroup(LayerGroups::GroupDeformer).size();
+	int numGuideCurveLayers = meshLib.getLayerGroup(LayerGroups::GroupGuideCurve).size();
 
 	vector<ComboBox*> boxes;
 
 	for (int i = 1; i < numSliders; ++i) {
-		boxes.push_back(properties[i].dfrmChanBox);
+		boxes.push_back(properties[i].guideCurveChanBox);
 	}
 
-	boxes.push_back(ampVsPhaseProperties->dfrmChanBox);
+	boxes.push_back(ampVsPhaseProperties->guideCurveChanBox);
 
 	for (auto box : boxes) {
 		box->clear(dontSendNotification);
-		box->addItem(String(L"\u2013"), NullDfrmId);
+		box->addItem(String(L"\u2013"), NullGuideCurveId);
 
-		for (int j = 0; j < numDeformLayers; ++j) {
+		for (int j = 0; j < numGuideCurveLayers; ++j) {
 			box->addItem(String(j + 1), j + 2);
 		}
 	}
@@ -328,8 +328,8 @@ void VertexPropertiesPanel::updateSliderValues(bool ignoreChangeMessage)
 
 			props.slider->setValue(0., ignoreChangeMessage ? dontSendNotification : sendNotificationAsync);
 
-			if (props.dfrmChanBox != nullptr) {
-				props.dfrmChanBox->setSelectedId(NullDfrmId, dontSendNotification);
+			if (props.guideCurveChanBox != nullptr) {
+				props.guideCurveChanBox->setSelectedId(NullGuideCurveId, dontSendNotification);
 			}
 
 			if (props.gain) {
@@ -337,7 +337,7 @@ void VertexPropertiesPanel::updateSliderValues(bool ignoreChangeMessage)
 			}
 
 			if (i == Vertex::Amp) {
-				ampVsPhaseProperties->dfrmChanBox->setSelectedId(NullDfrmId, dontSendNotification);
+				ampVsPhaseProperties->guideCurveChanBox->setSelectedId(NullGuideCurveId, dontSendNotification);
 				ampVsPhaseProperties->gain->setValue(
 					0.5, ignoreChangeMessage ? dontSendNotification : sendNotificationAsync);
 			}
@@ -397,7 +397,7 @@ void VertexPropertiesPanel::updateSliderValues(bool ignoreChangeMessage)
 
 	for(auto& cube : lines) {
 		for(auto& props : gainProperties) {
-			props->previousGain += cube->dfrmGainAt(props->id) * invLinesSize;
+			props->previousGain += cube->guideCurveGainAt(props->id) * invLinesSize;
 		}
 	}
 
@@ -409,7 +409,7 @@ void VertexPropertiesPanel::updateSliderValues(bool ignoreChangeMessage)
 	properties[CurveSldr].slider->name = "curve";
 
 	if (lines.size() == 1) {
-		if (ampVsPhaseProperties->dfrmChanBox->getSelectedId() != NullDfrmId) {
+		if (ampVsPhaseProperties->guideCurveChanBox->getSelectedId() != NullGuideCurveId) {
 			properties[CurveSldr].slider->name = "Dfrm gain";
 		}
 	}
@@ -529,14 +529,14 @@ void VertexPropertiesPanel::buttonClicked(Button* button) {
 
 void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 	if (!currentInteractor) {
-		box->setSelectedId(NullDfrmId, dontSendNotification);
+		box->setSelectedId(NullGuideCurveId, dontSendNotification);
 
 		return;
 	}
 
 	int dim = -1;
 	for (int i = 0; i < numSliders; ++i) {
-		if (box == properties[i].dfrmChanBox)
+		if (box == properties[i].guideCurveChanBox)
 			dim = i;
 	}
 
@@ -547,7 +547,7 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 		}
 
 		dim = Vertex::Time;
-		jassert(box == ampVsPhaseProperties->dfrmChanBox);
+		jassert(box == ampVsPhaseProperties->guideCurveChanBox);
 	} else {
 		if (!currentInteractor->vertexProps.sliderApplicable[dim]) {
 			showConsoleMsg("This dimension is not applicable in this context");
@@ -558,7 +558,7 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 	vector<Vertex*>& selected = currentInteractor->getSelected();
 
 	if (selected.empty()) {
-		box->setSelectedId(NullDfrmId, dontSendNotification);
+		box->setSelectedId(NullGuideCurveId, dontSendNotification);
 
 		showConsoleMsg("Select a vertex first!");
 		return;
@@ -567,10 +567,10 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 	int id = box->getSelectedId();
 	int guideIndex = -1;
 
-	if (id == NullDfrmId) {
+	if (id == NullGuideCurveId) {
 		// leave as is
 	} else {
-		guideIndex = id - NullDfrmId - 1;
+		guideIndex = id - NullGuideCurveId - 1;
 	}
 
 	info("set guide dim to " << dim << "\n");
@@ -581,12 +581,12 @@ void VertexPropertiesPanel::comboBoxChanged(ComboBox* box) {
 	for(auto& vert : selected) {
 		for(auto& cube : vert->owners) {
 			affectedLines.push_back(cube);
-			previousMappings.push_back(cube->deformerAt(dim));
+			previousMappings.push_back(cube->guideCurveAt(dim));
 		}
 	}
 
 	getObj(EditWatcher).addAction(
-			new DeformerAssignment(
+			new GuideCurveAssignment(
 				currentInteractor->getSingletonRepo(),
 				currentInteractor->getUpdateSource(),
 				currentInteractor->getMesh(),
@@ -613,10 +613,10 @@ void VertexPropertiesPanel::gainChanged(Slider* slider, int changeType)
 	}
 
 	int id = props->id;
-	bool deformEnabled = currentInteractor->vertexProps.deformApplicable[id];
-	deformEnabled &= props->dfrmChanBox->getSelectedId() != NullDfrmId;
+	bool guideCurveEnabled = currentInteractor->vertexProps.guideCurveApplicable[id];
+	guideCurveEnabled &= props->guideCurveChanBox->getSelectedId() != NullGuideCurveId;
 
-	if(deformEnabled) {
+	if(guideCurveEnabled) {
 		if (changeType == ValueChanged) {
 			vector<Vertex*>& selected = currentInteractor->getSelected();
 
@@ -624,7 +624,7 @@ void VertexPropertiesPanel::gainChanged(Slider* slider, int changeType)
 				VertCube* cube = vert->owners.getFirst();
 
 				if (cube != nullptr) {
-					float& unitValue = cube->dfrmGainAt(id);
+					float& unitValue = cube->guideCurveGainAt(id);
 					unitValue = jlimit<float>(0.f, 1.f, unitValue + (slider->getValue() - props->previousGain));
 				}
 			}
@@ -633,7 +633,7 @@ void VertexPropertiesPanel::gainChanged(Slider* slider, int changeType)
 
 	props->previousGain = slider->getValue();
 
-	if(deformEnabled) {
+	if(guideCurveEnabled) {
 		switch (changeType) {
 			case ValueChanged: 	currentInteractor->postUpdateMessage(); 	break;
 			case DragStarted:	currentInteractor->triggerReduceUpdate();	break;
@@ -655,12 +655,12 @@ juce::Component* VertexPropertiesPanel::getComponent(int which) {
 		case CycleTour::TargCrvSlider: 	return properties[Vertex::Curve].slider;
 
 		case CycleTour::TargBoxArea: 	return &boxArea;
-		case CycleTour::TargPhsBox: 	return properties[Vertex::Phase].dfrmChanBox;
-		case CycleTour::TargAmpBox: 	return properties[Vertex::Amp].dfrmChanBox;
-		case CycleTour::TargKeyBox: 	return properties[Vertex::Red].dfrmChanBox;
-		case CycleTour::TargModBox: 	return properties[Vertex::Blue].dfrmChanBox;
-		case CycleTour::TargCrvBox: 	return properties[Vertex::Curve].dfrmChanBox;
-		case CycleTour::TargAvpBox: 	return ampVsPhaseProperties->dfrmChanBox;
+		case CycleTour::TargPhsBox: 	return properties[Vertex::Phase].guideCurveChanBox;
+		case CycleTour::TargAmpBox: 	return properties[Vertex::Amp].guideCurveChanBox;
+		case CycleTour::TargKeyBox: 	return properties[Vertex::Red].guideCurveChanBox;
+		case CycleTour::TargModBox: 	return properties[Vertex::Blue].guideCurveChanBox;
+		case CycleTour::TargCrvBox: 	return properties[Vertex::Curve].guideCurveChanBox;
+		case CycleTour::TargAvpBox: 	return ampVsPhaseProperties->guideCurveChanBox;
 
 		case CycleTour::TargGainArea: 	return &gainArea;
 		case CycleTour::TargPhsGain: 	return properties[Vertex::Phase].gain;
@@ -697,9 +697,9 @@ void VertexPropertiesPanel::refreshValueBoxesFromSelected() {
 
 			for (int j = 0; j < numSliders; ++j) {
 				if(vertIdx == 0) {
-					guideLayerIdx[j] = a->deformerAt(j);
+					guideLayerIdx[j] = a->guideCurveAt(j);
 				} else {
-					common[j] &= (guideLayerIdx[j] == a->deformerAt(j));
+					common[j] &= (guideLayerIdx[j] == a->guideCurveAt(j));
 				}
 			}
 		}
@@ -716,7 +716,7 @@ void VertexPropertiesPanel::refreshValueBoxesFromSelected() {
 				props = &properties[i];
 			}
 
-			props->dfrmChanBox->setSelectedId(guideLayerIdx[i] < 0 ? NullDfrmId : guideLayerIdx[i] + 1 + NullDfrmId,
+			props->guideCurveChanBox->setSelectedId(guideLayerIdx[i] < 0 ? NullGuideCurveId : guideLayerIdx[i] + 1 + NullGuideCurveId,
 			                                  dontSendNotification);
 		}
 	}
@@ -726,7 +726,7 @@ VertexPropertiesPanel::VertexProperties::~VertexProperties() {
 	gain 		= nullptr;
 	slider 		= nullptr;
 	messager	= nullptr;
-	dfrmChanBox	= nullptr;
+	guideCurveChanBox	= nullptr;
 }
 
 VertexPropertiesPanel::VertexProperties::VertexProperties(
@@ -740,7 +740,7 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 		,	gain		(nullptr)
 		,	slider		(nullptr)
 		,	messager	(nullptr)
-		,	dfrmChanBox	(nullptr)
+		,	guideCurveChanBox	(nullptr)
 {
 	StringArray names;
 
@@ -766,18 +766,18 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 	}
 
 	if (name != "time") {
-		panel->addAndMakeVisible(dfrmChanBox = new ComboBox());
+		panel->addAndMakeVisible(guideCurveChanBox = new ComboBox());
 
-		dfrmChanBox->addListener(panel);
-		dfrmChanBox->setWantsKeyboardFocus(false);
-		dfrmChanBox->setMouseClickGrabsKeyboardFocus(false);
-		dfrmChanBox->setTextWhenNothingSelected(String(L"\u2013"));
-		dfrmChanBox->setColour(ComboBox::outlineColourId, Colours::black);
+		guideCurveChanBox->addListener(panel);
+		guideCurveChanBox->setWantsKeyboardFocus(false);
+		guideCurveChanBox->setMouseClickGrabsKeyboardFocus(false);
+		guideCurveChanBox->setTextWhenNothingSelected(String(L"\u2013"));
+		guideCurveChanBox->setColour(ComboBox::outlineColourId, Colours::black);
 
 		int srcId, destId;
 		panel->getSourceDestDimensionIds(id, srcId, destId);
 
-		messager = new MouseOverMessager(repo, "Set deform channel for " + names[srcId] + " versus " + names[destId], dfrmChanBox);
+		messager = new MouseOverMessager(repo, "Set guide curve for " + names[srcId] + " versus " + names[destId], guideCurveChanBox);
 
 		panel->addAndMakeVisible(gain = new Knob(panel->repo));
 
@@ -786,13 +786,13 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 
 		gain->setRange(0, 1);
 		gain->addListener(&panel->gainListener);
-		gain->setHint("Deformer gain");
+        gain->setHint("Guide curve gain");
 		gain->setColour(Colour::greyLevel(0.4f));
 		gain->setStringFunctions(decibel30, decibel30.withPostString(" dB"));
 		gain->setDrawValueText(false);
 
 		if (id == Vertex::Red || id == Vertex::Blue) {
-//			dfrmChanBox->setEnabled(false);
+//			guideCurveChanBox->setEnabled(false);
 //			gain->setEnabled(false);
 		}
 	}
@@ -817,7 +817,7 @@ VertexPropertiesPanel::VertexProperties& VertexPropertiesPanel::VertexProperties
 	previousValue 	= copy.previousValue;
 
 	slider 			= copy.slider;
-	dfrmChanBox 	= copy.dfrmChanBox;
+	guideCurveChanBox 	= copy.guideCurveChanBox;
 	gain 			= copy.gain;
 	messager		= copy.messager;
 
@@ -851,39 +851,39 @@ void VertexPropertiesPanel::updateSliderProperties() {
 
 		if (props.messager != nullptr) {
 			props.messager->message =
-					itrProps.deformApplicable[i]
-						? "Set deform channel for " + names[srcId] + " versus " + names[destId]
+					itrProps.guideCurveApplicable[i]
+						? "Set guide curve for " + names[srcId] + " versus " + names[destId]
 						: String();
 		}
 
-		if (props.dfrmChanBox != nullptr) {
-			if (!itrProps.deformApplicable[i]) {
-				props.dfrmChanBox->setSelectedId(NullDfrmId, dontSendNotification);
+		if (props.guideCurveChanBox != nullptr) {
+			if (!itrProps.guideCurveApplicable[i]) {
+				props.guideCurveChanBox->setSelectedId(NullGuideCurveId, dontSendNotification);
 			}
 
-			props.dfrmChanBox->setEnabled(itrProps.deformApplicable[i]);
+			props.guideCurveChanBox->setEnabled(itrProps.guideCurveApplicable[i]);
 
-			if(! itrProps.deformApplicable[i]) {
+			if(! itrProps.guideCurveApplicable[i]) {
 				props.gain->setValue(0.5, dontSendNotification);
 			}
 
-			props.gain->setEnabled(itrProps.deformApplicable[i]);
+			props.gain->setEnabled(itrProps.guideCurveApplicable[i]);
 		}
 		++i;
 	}
 
 	if (!itrProps.ampVsPhaseApplicable) {
-		ampVsPhaseProperties->dfrmChanBox->setSelectedId(NullDfrmId, dontSendNotification);
+		ampVsPhaseProperties->guideCurveChanBox->setSelectedId(NullGuideCurveId, dontSendNotification);
 		ampVsPhaseProperties->gain->setValue(0.5, dontSendNotification);
 		ampVsPhaseProperties->messager->message = {};
 		ampVsPhaseStr = "--";
 	} else {
-		ampVsPhaseProperties->messager->message = "Set deform channel for component curve";
+		ampVsPhaseProperties->messager->message = "Set guide curve for component curve";
 		// names[Vertex::Amp] + " versus " + names[Vertex::Phase];
 		ampVsPhaseStr = "component curve"; // "(" + names[Vertex::Amp] + " versus " + names[Vertex::Phase] + ")";
 	}
 
-	ampVsPhaseProperties->dfrmChanBox->setEnabled(itrProps.ampVsPhaseApplicable);
+	ampVsPhaseProperties->guideCurveChanBox->setEnabled(itrProps.ampVsPhaseApplicable);
 	ampVsPhaseProperties->gain->setEnabled(itrProps.ampVsPhaseApplicable);
 }
 

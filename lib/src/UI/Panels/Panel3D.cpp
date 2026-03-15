@@ -55,7 +55,9 @@ void Panel3D::init() {
     openGL      = std::make_unique<OpenGLPanel3D>(repo, this, dataRetriever);
     wrapper     = std::make_unique<BoundWrapper>(openGL.get());
     zoomPanel   = std::make_unique<ZoomPanel>(repo, ZoomContext(this, wrapper.get(), haveHorzZoom, true));
+    zoomPanel->panelComponentChanged(openGL.get());
     zoomPanel->addListener(this);
+    openGL->init();
 
     drawLinesAfterFill = true;
 }
@@ -627,7 +629,7 @@ void Panel3D::freeResources() {
     texColours  .clear();
 }
 
-void Panel3D::drawDeformerTags() {
+void Panel3D::drawGuideCurveTags() {
     vector<SimpleIcpt> interceptPairs;
 
     {
@@ -658,17 +660,17 @@ void Panel3D::drawDeformerTags() {
             int numTags = 0;
 
             for(int j = 0; j < Vertex::numElements; ++j) {
-                int chan = cube->deformerAt(j);
+                int chan = cube->guideCurveAt(j);
 
-                if (isPositiveAndBelow(chan, (int) dfrmTags.size())) {
-                    Rectangle<float> rect = dfrmTags[chan];
+                if (isPositiveAndBelow(chan, (int) guideCurveTags.size())) {
+                    Rectangle<float> rect = guideCurveTags[chan];
 
                     float x = e.x + cumeWidth - 2;
                     float y = jmin(getHeight() - 16.f, e.y + 2.f + (numTags & 1 ? 1 : 0)); //  + 5
-                    dfrmTex->rect = Rectangle(roundf(x), roundf(y), rect.getWidth(), rect.getHeight());
+                    guideCurveTex->rect = Rectangle(roundf(x), roundf(y), rect.getWidth(), rect.getHeight());
 
                     gfx->setCurrentColour(colors[j]);
-                    gfx->drawSubTexture(dfrmTex, rect);
+                    gfx->drawSubTexture(guideCurveTex, rect);
 
                     cumeWidth += rect.getWidth();
                     ++numTags;

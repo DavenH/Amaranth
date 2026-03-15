@@ -1079,10 +1079,18 @@ void Interactor3D::primaryDimensionChanged() {
 void Interactor3D::updateRastDims() {
     progressMark
 
+    if (rasterizer == nullptr) {
+        return;
+    }
+
     rasterizer->setDims(dims);
 }
 
 void Interactor3D::updateInterceptsWithMesh(Mesh* mesh) {
+    if (rasterizer == nullptr) {
+        return;
+    }
+
     ScopedLock sl(vertexLock);
     interceptPairs.clear();
 
@@ -1162,7 +1170,9 @@ void Interactor3D::doCommitPencilEditPath() {
 void Interactor3D::performUpdate(UpdateType updateType) {
     if (updateType == Update) {
         updateIntercepts();
-        panel->bakeTexturesNextRepaint();
+        if (panel != nullptr) {
+            panel->bakeTexturesNextRepaint();
+        }
     }
 
     Interactor::performUpdate(updateType);
@@ -1179,4 +1189,3 @@ String Interactor3D::getYString(
         float fundFreq) {
     return {yVal, 3};
 }
-

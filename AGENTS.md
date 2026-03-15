@@ -52,8 +52,8 @@
 - `.env` is mandatory at configure time; CMake reads it to locate SDKs.
 - Linux uses Intel IPP; macOS uses Accelerate/vDSP. Do not allocate on audio threads—preallocate and reuse buffers (see `docs/contributing.md`).
 
-## Tooling Tips
-- `jdoc <symbol>`: Quick lookup for JUCE APIs (types, methods). It takes about 1 second to run.
-- Examples: `jdoc AudioProcessor`, `jdoc AudioBuffer`.
-- Use during reviews/tests to confirm semantics (thread safety, parameter ranges, ownership).
-- Prefer fully qualified names for nested namespaces; match JUCE casing exactly; no template arguments.
+## Chat Playbook
+- Consult `docs/chats/README.md` and recent files in `docs/chats/` when a session establishes durable user preferences, naming direction, ambiguity-resolution rules, or workflow expectations.
+- Update `docs/chats/` before any conversation compaction and whenever the user explicitly asks to preserve new guidance from the session.
+- Treat the exact phrase `update playbook` as a direct instruction to add or refresh the relevant `docs/chats/` session summary immediately.
+- Keep chat-playbook updates concise, generalized, and semantic; do not store raw transcript dumps.

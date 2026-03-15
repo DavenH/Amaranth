@@ -129,6 +129,14 @@ void Knob::paint(Graphics& g) {
 
     if (drawValueText) {
         String text = valueString.toString(getValue());
+        if (font.isNull()) {
+            font = getObj(MiscGraphics).getSilkscreen();
+        }
+
+        if (font.isNull()) {
+            return;
+        }
+
         g.setFont(*font);
 
         int width = Util::getStringWidth(*font, text);
@@ -182,4 +190,3 @@ void Knob::resized() {
     r1 = 0.57f;
     r2 = jmax(4.f / size, 0.22f);
 }
-

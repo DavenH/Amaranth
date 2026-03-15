@@ -35,7 +35,7 @@
 #include "../UI/Panels/PlaybackPanel.h"
 #include "../UI/Panels/VertexPropertiesPanel.h"
 #include "../UI/SynthLookAndFeel.h"
-#include "../UI/VertexPanels/DeformerPanel.h"
+#include "../UI/VertexPanels/GuideCurvePanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
 #include "../UI/VertexPanels/Spectrum2D.h"
 #include "../UI/VertexPanels/Spectrum3D.h"
@@ -63,7 +63,7 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     ,   currentTutorial  (0) {
     A(AreaNull),           A(AreaWshpEditor),    A(AreaSharpBand),      A(AreaWfrmWaveform3D);
     A(AreaSpectrum),       A(AreaSpectrogram),   A(AreaEnvelopes),      A(AreaVolume);
-    A(AreaPitch),          A(AreaScratch),       A(AreaWaveshaper),     A(AreaDeformers);
+    A(AreaPitch),          A(AreaScratch),       A(AreaWaveshaper),     A(AreaGuideCurves);
     A(AreaImpulse),        A(AreaMorphPanel),    A(AreaVertexProps),    A(AreaGenControls);
     A(AreaConsole),        A(AreaPlayback),      A(AreaUnison),         A(AreaReverb);
     A(AreaDelay),          A(AreaEQ),            A(AreaMain),           A(AreaModMatrix);
@@ -114,7 +114,7 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     N(LinkRange),          N(UnlinkRange),       N(TriggerButton),     N(SetVertexSize);
     N(SetUseRange),        N(SetViewStage),      N(ImpLoadWave),       N(ImpModelWave);
     N(ImpUnloadWave),      N(SwitchMode),        N(SwitchToEnv),       N(SwitchToTool);
-    N(ShowArea),           N(HideArea),          N(Zoom),              N(DeformLine);
+    N(ShowArea),           N(HideArea),          N(Zoom),              N(GuideCurveLine);
     N(SetNoteOn),          N(SetNoteOff),        N(SetMorphRange),     N(SetLayerMode);
     N(SetLayer),           N(AddPoint),          N(DeletePoint),       N(MovePoint);
     N(SelectPoint),        N(DeselectPoints),    N(SetVertexParam),    N(SetPlaybackPos);
@@ -189,16 +189,16 @@ void CycleTour::handleAsyncUpdate() {
 
         if(item.area == AreaModMatrix && last.area != AreaModMatrix) {
             getObj(MainPanel).removeChildComponent(&highlighter);
-            getObj(ModMatrix).addAndMakeVisible(&highlighter);
+            getObj(ModMatrixPanel).getModMatrix().addAndMakeVisible(&highlighter);
         }
         else if(item.area != AreaModMatrix && last.area == AreaModMatrix) {
-            getObj(ModMatrix).removeChildComponent(&highlighter);
+            getObj(ModMatrixPanel).getModMatrix().removeChildComponent(&highlighter);
             getObj(MainPanel).addAndMakeVisible(&highlighter);
 //            wrapper.toFront(true);
         }
 
         xy = (item.area == AreaModMatrix) ?
-            getObj(ModMatrix).getScreenPosition() :
+            getObj(ModMatrixPanel).getModMatrix().getScreenPosition() :
             getObj(MainPanel).getScreenPosition();
 
         highlighter.update(screenBounds.expanded(4, 4).translated(-xy.getX(), -xy.getY()));
@@ -254,7 +254,7 @@ void CycleTour::exit() {
     currentItem = 0;
     lastItem = 0;
 
-    getObj(ModMatrix).removeChildComponent(&highlighter);
+    getObj(ModMatrixPanel).getModMatrix().removeChildComponent(&highlighter);
     getObj(MainPanel).removeChildComponent(&highlighter);
     cancelPendingUpdate();
 
@@ -333,7 +333,7 @@ bool CycleTour::conditionPassed(const Condition& c){
 
                 for (auto* cube : mesh->getCubes()) {
                     for(int j = 0; j <= Vertex::Curve; ++j)
-                        num += int(cube->deformerAt(j) >= 0);
+                        num += int(cube->guideCurveAt(j) >= 0);
                 }
 
                 return compare(c, num);
@@ -399,11 +399,11 @@ void CycleTour::performAction(Action& action) {
 
         case HideArea: {
             if(action.area == AreaModMatrix) {
-                getObj(ModMatrix).removeFromDesktop();
-                getObj(ModMatrix).setVisible(false);
+                getObj(ModMatrixPanel).getModMatrix().removeFromDesktop();
+                getObj(ModMatrixPanel).getModMatrix().setVisible(false);
                 startTimer(ToFrontId, 100);
 
-                //Util::removeModalParent<DialogWindow>(&getObj(ModMatrix));
+                //Util::removeModalParent<DialogWindow>(&getObj(ModMatrixPanel).getModMatrix());
             }
 
             break;
@@ -498,7 +498,7 @@ void CycleTour::performAction(Action& action) {
             break;
         }
 
-        case DeformLine: {
+        case GuideCurveLine: {
             if(action.hasExecuted) {
                 return;
             }
@@ -510,7 +510,7 @@ void CycleTour::performAction(Action& action) {
                 {
                     VertCube* cube = mesh->getCubes()[action.data1];
 
-                    cube->deformerAt(action.id) = action.data2;
+                    cube->guideCurveAt(action.id) = action.data2;
                     getObj(VertexPropertiesPanel).setSelectedAndCaller(itr);
                     itr->triggerRefreshUpdate();
                 }
@@ -605,7 +605,7 @@ void CycleTour::performAction(Action& action) {
                 case AreaWshpEditor:
                 case AreaWfrmWaveform3D: getObj(Waveform3D).triggerButton(action.id);      break;
 
-                case AreaDeformers:      getObj(DeformerPanel).triggerButton(action.id);   break;
+                case AreaGuideCurves:      getObj(GuideCurvePanel).triggerButton(action.id);   break;
                 case AreaScratch:        getObj(EnvelopeInter2D).triggerButton(action.id); break;
                 default:
                     break;
@@ -627,8 +627,8 @@ void CycleTour::performAction(Action& action) {
                     getObj(Spectrum3D).getPanelControls()->layerSelector->clickedOnRow(action.data1);
                     break;
 
-                case AreaDeformers:
-                    getObj(DeformerPanel).getPanelControls()->layerSelector->clickedOnRow(action.data1);
+                case AreaGuideCurves:
+                    getObj(GuideCurvePanel).getPanelControls()->layerSelector->clickedOnRow(action.data1);
                     break;
 
                 case AreaScratch:
@@ -1187,7 +1187,7 @@ TourGuide* CycleTour::getTourGuide(Area area) {
         case AreaGenControls:    return &getObj(GeneralControls);
         case AreaImpulse:        return &getObj(IrModellerUI);
         case AreaWaveshaper:     return &getObj(WaveshaperUI);
-        case AreaDeformers:      return &getObj(DeformerPanel);
+        case AreaGuideCurves:      return &getObj(GuideCurvePanel);
         case AreaUnison:         return &getObj(UnisonUI);
         case AreaModMatrix:      return &getObj(ModMatrixPanel);
         case AreaMasterCtrls:    return &getObj(OscControlPanel);
@@ -1218,7 +1218,7 @@ juce::Component* CycleTour::getComponent(int which) {
         case AreaReverb:        return &getObj(ReverbUI);
         case AreaDelay:         return &getObj(DelayUI);
         case AreaEQ:            return &getObj(EqualizerUI);
-        case AreaConsole:       return dynamic_cast<Console*>(&getObj(IConsole));
+        case AreaConsole:       return &getObj(Console);
         default: break;
     }
 
@@ -1238,7 +1238,7 @@ Panel* CycleTour::areaToPanel(int which) {
         case AreaScratch:        return &getObj(Envelope2D);
         case AreaWaveshaper:     return &getObj(WaveshaperUI);
         case AreaImpulse:        return &getObj(IrModellerUI);
-        case AreaDeformers:      return &getObj(DeformerPanel);
+        case AreaGuideCurves:      return &getObj(GuideCurvePanel);
         default: break;
     }
 

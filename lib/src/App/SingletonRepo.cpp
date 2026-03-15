@@ -1,9 +1,11 @@
 #include <memory>
+#include <iostream>
 
 #include "SingletonRepo.h"
 #include "AppConstants.h"
 #include "MemoryPool.h"
 #include "DocumentLibrary.h"
+#include "Transforms.h"
 #include "Doc/Document.h"
 
 #include "../Definitions.h"
@@ -12,6 +14,7 @@
 #include "../App/MeshLibrary.h"
 #include "../App/Settings.h"
 #include "../Audio/AudioHub.h"
+#include "../Audio/PluginProcessor.h"
 #include "../Curve/PathRepo.h"
 #include "../Design/Updating/Updater.h"
 #include "../UI/Panels/Panel.h"
@@ -54,6 +57,7 @@ void SingletonRepo::instantiate() {
     add(new Settings        (this), -200);
     add(new MeshLibrary     (this), -100);
     add(new MemoryPool      (this), -100);
+    add(new Transforms      (this), -100);
     add(new Updater         (this), -1);
     add(new LogRegions      (this), -1);
     add(new Document        (this));
@@ -82,9 +86,8 @@ void SingletonRepo::init() {
 
     ScopedLock sl(initLock);
 
-    for (auto object : objects) {
-        info(object->getName() << std::endl);
-        object->init();
+    for (int i = 0; i < objects.size(); ++i) {
+        objects[i]->init();
     }
 
     auto& document = getObj(Document);
@@ -150,10 +153,26 @@ void SingletonRepo::clearSingletons() {
     objects.clear(true);
 }
 
-void SingletonRepo::setDeformer(IDeformer* deformer) {
-    this->deformer = deformer;
+void SingletonRepo::setGuideCurveProvider(GuideCurveProvider* guideCurveProvider) {
+    this->guideCurveProvider = guideCurveProvider;
 
     for(auto rasterizer : rasterizers) {
-        rasterizer->setDeformer(deformer);
+        rasterizer->setGuideCurveProvider(guideCurveProvider);
     }
+}
+
+template<>
+PluginProcessor& SingletonRepo::get<PluginProcessor>(const String& name) {
+    ignoreUnused(name);
+    jassert(plugin != nullptr);
+
+    return *plugin;
+}
+
+template<>
+const PluginProcessor& SingletonRepo::get<PluginProcessor>(const String& name) const {
+    ignoreUnused(name);
+    jassert(plugin != nullptr);
+
+    return *plugin;
 }

@@ -20,7 +20,7 @@
 
 #include "../Dialogs/PresetPage.h"
 #include "../Panels/PlaybackPanel.h"
-#include "../VertexPanels/DeformerPanel.h"
+#include "../VertexPanels/GuideCurvePanel.h"
 #include "../VertexPanels/Waveform3D.h"
 
 #include "../CycleDefs.h"
@@ -53,10 +53,6 @@ IrModellerUI::IrModellerUI(SingletonRepo* repo) :
     layerType 				= LayerGroups::GroupIrModeller;
     doesDrawMouseHint 		= true;
     vertsAreWaveApplicable 	= true;
-
-    zoomPanel->tendZoomToBottom	= false;
-    zoomPanel->tendZoomToLeft	= false;
-    zoomPanel->tendZoomToTop	= false;
 
     bgPaddingLeft = getRealConstant(IrModellerPadding);
 
@@ -94,7 +90,13 @@ IrModellerUI::IrModellerUI(SingletonRepo* repo) :
 }
 
 void IrModellerUI::init() {
+    EffectPanel::init();
+
     irModeller = &getObj(SynthAudioSource).getIrModeller();
+
+    zoomPanel->tendZoomToBottom = false;
+    zoomPanel->tendZoomToLeft   = false;
+    zoomPanel->tendZoomToTop    = false;
 
     selector = std::make_unique<MeshSelector<Mesh>>(repo.get(), this, String("ir"), true, false, true);
 

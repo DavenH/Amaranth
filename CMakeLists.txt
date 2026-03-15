@@ -97,6 +97,27 @@ if(UNIX AND NOT APPLE)
         pkg_check_modules(WEBKIT REQUIRED webkit2gtk-4.1)
     endif()
 elseif(APPLE)
+    foreach(FRAMEWORK_VAR
+            ACCELERATE_FRAMEWORK
+            APP_KIT_FRAMEWORK
+            AUDIO_TOOLBOX_FRAMEWORK
+            CARBON_FRAMEWORK
+            COCOA_FRAMEWORK
+            CORE_AUDIO_FRAMEWORK
+            CORE_FOUNDATION_FRAMEWORK
+            CORE_MIDI_FRAMEWORK
+            IOKIT_FRAMEWORK
+            QUARTZ_CORE_FRAMEWORK
+            WEBKIT_FRAMEWORK
+            SECURITY_FRAMEWORK
+            CORE_AUDIO_KIT_FRAMEWORK
+            OPENGL_FRAMEWORK)
+        if(DEFINED ${FRAMEWORK_VAR}
+           AND NOT "$CACHE{${FRAMEWORK_VAR}}" MATCHES "^${CMAKE_OSX_SYSROOT}(/|$)")
+            unset(${FRAMEWORK_VAR} CACHE)
+        endif()
+    endforeach()
+
     find_library(ACCELERATE_FRAMEWORK Accelerate REQUIRED)
     find_library(APP_KIT_FRAMEWORK AppKit REQUIRED)
     find_library(AUDIO_TOOLBOX_FRAMEWORK AudioToolbox REQUIRED)

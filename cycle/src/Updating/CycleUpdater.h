@@ -18,6 +18,7 @@ public:
     explicit CycleUpdater(SingletonRepo* repo);
 
     void init() override;
+    void finishInitialization();
     void createUpdateGraph();
     void envelopeVisibilityChanged();
     void moveTimeUIs(int viewStage, int lastViewStage);
@@ -40,11 +41,11 @@ private:
     Node* env3Itr;
     Node* irModelItr;
     Node* wshpItr;
-    Node* dfrmItr;
+    Node* guideCurveItr;
     Node* derivUI;
 
     Node* time2Rast;
-    Node* dfrmRast;
+    Node* guideCurveRast;
     Node* irModelRast;
     Node* wshpRast;
 
@@ -76,6 +77,7 @@ private:
 
     Ref<Updater> updater;
 
+    bool graphCreated;
     int lastViewStage;
 
     std::unique_ptr<EnvelopeDelegate> envelopeDelegate;

@@ -41,7 +41,7 @@ public:
 		AreaPitch			,
 		AreaScratch			,
 		AreaWaveshaper		,
-		AreaDeformers		,
+		AreaGuideCurves		,
 		AreaImpulse			,
 		AreaMorphPanel		,
 		AreaVertexProps		,
@@ -93,7 +93,7 @@ public:
 		ImpUnloadWave		,
 
 		Zoom				,
-		DeformLine			,
+		GuideCurveLine		,
 
 		Enable				,
 		Disable				,

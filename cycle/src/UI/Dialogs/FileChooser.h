@@ -1,5 +1,8 @@
 #pragma once
 
+#include <functional>
+#include <memory>
+
 #include <App/Doc/DocumentDetails.h>
 #include "FileChooserContent.h"
 #include "JuceHeader.h"
@@ -12,15 +15,19 @@ class FileChooserDialog :
 public:
     FileChooserDialog (const String& title,
                        const String& instructions,
-                       FileBrowserComponent& browserComponent,
+                       std::unique_ptr<FileBrowserComponent> browserComponent,
                        bool warnAboutOverwritingExistingFiles,
                        const Colour& backgroundColour,
                        const DocumentDetails& details);
 
     ~FileChooserDialog() override;
 
+#if JUCE_MODAL_LOOPS_PERMITTED
     bool show (int width = 0, int height = 0);
     bool showAt (int x, int y, int width, int height);
+#endif
+    void showAsync(std::function<void(bool)> completion, int width = 0, int height = 0);
+    void showAtAsync(std::function<void(bool)> completion, int x, int y, int width, int height);
     void centreWithDefaultSize (Component* componentToCentreAround = nullptr);
 
     enum ColourIds
@@ -36,12 +43,14 @@ public:
     [[nodiscard]] const String& getAuthorBoxContent() const { return authorBoxContent; }
     [[nodiscard]] const String& getTagsBoxContent() const { return tagsBoxContent; }
     [[nodiscard]] const String& getPackBoxContent() const { return packBoxContent; }
+    [[nodiscard]] File getSelectedFile() const { return browserComponent->getSelectedFile(0); }
 //    const String& getCommentBoxContent() const { return commentBoxContent; }
 
 //    void paint(Graphics& g);
 
 private:
     ContentComponent* content;
+    std::unique_ptr<FileBrowserComponent> browserComponent;
     const bool warnAboutOverwritingExistingFiles;
     String tagsBoxContent;
     String authorBoxContent;

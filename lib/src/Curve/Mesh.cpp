@@ -52,18 +52,18 @@ void Mesh::print(bool printLines, bool printVerts) {
             VertCube& cube = *it;
 
             std::cout << String::formatted("%d\t\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n%3.4f\t%3.4f\t%3.4f\t%3.4f\t%3.4f\t%3.4f\n",
-                   cube.dfrmChans[Vertex::Red],
-                   cube.dfrmChans[Vertex::Blue],
-                   cube.dfrmChans[Vertex::Phase],
-                   cube.dfrmChans[Vertex::Amp],
-                   cube.dfrmChans[Vertex::Curve],
-                   cube.dfrmChans[Vertex::Time],
-                   cube.dfrmGains[Vertex::Red],
-                   cube.dfrmGains[Vertex::Blue],
-                   cube.dfrmGains[Vertex::Phase],
-                   cube.dfrmGains[Vertex::Amp],
-                   cube.dfrmGains[Vertex::Curve],
-                   cube.dfrmGains[Vertex::Time]
+                   cube.guideCurveChans[Vertex::Red],
+                   cube.guideCurveChans[Vertex::Blue],
+                   cube.guideCurveChans[Vertex::Phase],
+                   cube.guideCurveChans[Vertex::Amp],
+                   cube.guideCurveChans[Vertex::Curve],
+                   cube.guideCurveChans[Vertex::Time],
+                   cube.guideCurveGains[Vertex::Red],
+                   cube.guideCurveGains[Vertex::Blue],
+                   cube.guideCurveGains[Vertex::Phase],
+                   cube.guideCurveGains[Vertex::Amp],
+                   cube.guideCurveGains[Vertex::Curve],
+                   cube.guideCurveGains[Vertex::Time]
             );
 
             for (int i = 0; i < VertCube::numVerts; ++i) {
@@ -142,21 +142,21 @@ void Mesh::writeXML(XmlElement* parentElem) const {
             cubeElem->addChildElement(vertElem);
         }
 
-        jassert(cube->dfrmGainAt(Vertex::Curve) >= 0);
+        jassert(cube->guideCurveGainAt(Vertex::Curve) >= 0);
 
-        cubeElem->setAttribute("avpGuide",  cube->dfrmChans[Vertex::Time]   );
-        cubeElem->setAttribute("keyGuide",  cube->dfrmChans[Vertex::Red]    );
-        cubeElem->setAttribute("modGuide",  cube->dfrmChans[Vertex::Blue]   );
-        cubeElem->setAttribute("phaseGuide",cube->dfrmChans[Vertex::Phase]  );
-        cubeElem->setAttribute("ampGuide",  cube->dfrmChans[Vertex::Amp]    );
-        cubeElem->setAttribute("curveGuide",cube->dfrmChans[Vertex::Curve]  );
+        cubeElem->setAttribute("avpGuide",  cube->guideCurveChans[Vertex::Time]   );
+        cubeElem->setAttribute("keyGuide",  cube->guideCurveChans[Vertex::Red]    );
+        cubeElem->setAttribute("modGuide",  cube->guideCurveChans[Vertex::Blue]   );
+        cubeElem->setAttribute("phaseGuide",cube->guideCurveChans[Vertex::Phase]  );
+        cubeElem->setAttribute("ampGuide",  cube->guideCurveChans[Vertex::Amp]    );
+        cubeElem->setAttribute("curveGuide",cube->guideCurveChans[Vertex::Curve]  );
 
-        cubeElem->setAttribute("avpGain",   cube->dfrmGains[Vertex::Time]   );
-        cubeElem->setAttribute("keyGain",   cube->dfrmGains[Vertex::Red]    );
-        cubeElem->setAttribute("modGain",   cube->dfrmGains[Vertex::Blue]   );
-        cubeElem->setAttribute("phaseGain", cube->dfrmGains[Vertex::Phase]  );
-        cubeElem->setAttribute("ampGain",   cube->dfrmGains[Vertex::Amp]    );
-        cubeElem->setAttribute("curveGain", cube->dfrmGains[Vertex::Curve]  );
+        cubeElem->setAttribute("avpGain",   cube->guideCurveGains[Vertex::Time]   );
+        cubeElem->setAttribute("keyGain",   cube->guideCurveGains[Vertex::Red]    );
+        cubeElem->setAttribute("modGain",   cube->guideCurveGains[Vertex::Blue]   );
+        cubeElem->setAttribute("phaseGain", cube->guideCurveGains[Vertex::Phase]  );
+        cubeElem->setAttribute("ampGain",   cube->guideCurveGains[Vertex::Amp]    );
+        cubeElem->setAttribute("curveGain", cube->guideCurveGains[Vertex::Curve]  );
 
         meshElem->addChildElement(cubeElem);
     }
@@ -204,22 +204,22 @@ bool Mesh::readXML(const XmlElement* repoElem) {
     for(auto currentCube : meshElem->getChildWithTagNameIterator("VertCube")) {
         auto* cube = new VertCube();
 
-        cube->dfrmGains[Vertex::Amp]   = currentCube->getDoubleAttribute("ampGain",     0.5);
-        cube->dfrmGains[Vertex::Blue]  = currentCube->getDoubleAttribute("modGain",     0.5);
-        cube->dfrmGains[Vertex::Curve] = currentCube->getDoubleAttribute("curveGain",   0.5);
-        cube->dfrmGains[Vertex::Phase] = currentCube->getDoubleAttribute("phaseGain",   0.5);
-        cube->dfrmGains[Vertex::Red]   = currentCube->getDoubleAttribute("keyGain",     0.5);
-        cube->dfrmGains[Vertex::Time]  = currentCube->getDoubleAttribute("avpGain",     0.5);
+        cube->guideCurveGains[Vertex::Amp]   = currentCube->getDoubleAttribute("ampGain",     0.5);
+        cube->guideCurveGains[Vertex::Blue]  = currentCube->getDoubleAttribute("modGain",     0.5);
+        cube->guideCurveGains[Vertex::Curve] = currentCube->getDoubleAttribute("curveGain",   0.5);
+        cube->guideCurveGains[Vertex::Phase] = currentCube->getDoubleAttribute("phaseGain",   0.5);
+        cube->guideCurveGains[Vertex::Red]   = currentCube->getDoubleAttribute("keyGain",     0.5);
+        cube->guideCurveGains[Vertex::Time]  = currentCube->getDoubleAttribute("avpGain",     0.5);
 
-        cube->dfrmChans[Vertex::Amp]   = currentCube->getIntAttribute("ampGuide",   -1);
-        cube->dfrmChans[Vertex::Blue]  = currentCube->getIntAttribute("modGuide",   -1);
-        cube->dfrmChans[Vertex::Curve] = currentCube->getIntAttribute("curveGuide", -1);
-        cube->dfrmChans[Vertex::Phase] = currentCube->getIntAttribute("phaseGuide", -1);
-        cube->dfrmChans[Vertex::Red]   = currentCube->getIntAttribute("keyGuide",   -1);
-        cube->dfrmChans[Vertex::Time]  = currentCube->getIntAttribute("avpGuide",   -1);
+        cube->guideCurveChans[Vertex::Amp]   = currentCube->getIntAttribute("ampGuide",   -1);
+        cube->guideCurveChans[Vertex::Blue]  = currentCube->getIntAttribute("modGuide",   -1);
+        cube->guideCurveChans[Vertex::Curve] = currentCube->getIntAttribute("curveGuide", -1);
+        cube->guideCurveChans[Vertex::Phase] = currentCube->getIntAttribute("phaseGuide", -1);
+        cube->guideCurveChans[Vertex::Red]   = currentCube->getIntAttribute("keyGuide",   -1);
+        cube->guideCurveChans[Vertex::Time]  = currentCube->getIntAttribute("avpGuide",   -1);
 
-        if(cube->getCompDfrm() < 0) {
-            cube->getCompDfrm() = currentCube->getIntAttribute("timeGuide",  -1);
+        if(cube->getCompGuideCurve() < 0) {
+            cube->getCompGuideCurve() = currentCube->getIntAttribute("timeGuide",  -1);
         }
 
         int numVertsSet = 0;
