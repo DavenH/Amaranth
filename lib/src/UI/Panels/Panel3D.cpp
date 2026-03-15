@@ -14,6 +14,13 @@
 #include "../../Util/LogRegions.h"
 #include "../../Util/ScopedFunction.h"
 
+namespace {
+
+PanelRenderer* getPanelRenderer(Panel3D* panel) {
+    return panel->getPanelRenderer();
+}
+
+}
 
 Panel3D::Panel3D(
     SingletonRepo* repo,
@@ -123,52 +130,102 @@ void Panel3D::drawInterceptLines() {
 
             applyScale(xy);
 
-            gfx->enableSmoothing();
+            if (PanelRenderer* renderer = ::getPanelRenderer(this)) {
+                renderer->enableSmoothing();
 
-            bool revertWidth = false;
-            if (currVert != nullptr && currVert->isOwnedBy(cube)) {
-                gfx->setCurrentLineWidth(2.f);
-                revertWidth = true;
+                bool revertWidth = false;
+                if (currVert != nullptr && currVert->isOwnedBy(cube)) {
+                    renderer->setCurrentLineWidth(2.f);
+                    revertWidth = true;
+                }
+
+                renderer->setCurrentColour(0.1f, 0.1f, 0.3f, 0.6f);
+                renderer->drawLineStrip(xy, false);
+
+                xy.x.add(0.5f);
+                xy.y.add(0.5f);
+
+                renderer->setCurrentColour(0.7f, 0.7f, 1.0f, 0.8f);
+                renderer->drawLineStrip(xy, false);
+                renderer->setCurrentColour(0.7f, 0.7f, 0.7f, 0.5f);
+
+                if (revertWidth) {
+                    renderer->setCurrentLineWidth(1.f);
+                }
+
+                renderer->disableSmoothing();
+                renderer->drawLine(first.x, first.y, realFirst.x, realFirst.y, true);
+                renderer->drawLine(realLast.x, realLast.y, second.x, second.y, true);
+            } else {
+                gfx->enableSmoothing();
+
+                bool revertWidth = false;
+                if (currVert != nullptr && currVert->isOwnedBy(cube)) {
+                    gfx->setCurrentLineWidth(2.f);
+                    revertWidth = true;
+                }
+
+                gfx->setCurrentColour(0.1f, 0.1f, 0.3f, 0.6f);
+                gfx->drawLineStrip(xy, true, false);
+
+                xy.x.add(0.5f);
+                xy.y.add(0.5f);
+
+                gfx->setCurrentColour(0.7f, 0.7f, 1.0f, 0.8f);
+                gfx->drawLineStrip(xy, true, false);
+                gfx->setCurrentColour(0.7f, 0.7f, 0.7f, 0.5f);
+
+                if(revertWidth) {
+                    gfx->setCurrentLineWidth(1.f);
+                }
+
+                gfx->disableSmoothing();
+                gfx->drawLine(first, realFirst, true);
+                gfx->drawLine(realLast, second, true);
             }
-
-            gfx->setCurrentColour(0.1f, 0.1f, 0.3f, 0.6f);
-            gfx->drawLineStrip(xy, true, false);
-
-            xy.x.add(0.5f);
-            xy.y.add(0.5f);
-
-            gfx->setCurrentColour(0.7f, 0.7f, 1.0f, 0.8f);
-            gfx->drawLineStrip(xy, true, false);
-            gfx->setCurrentColour(0.7f, 0.7f, 0.7f, 0.5f);
-
-            if(revertWidth) {
-                gfx->setCurrentLineWidth(1.f);
-            }
-
-            gfx->disableSmoothing();
-            gfx->drawLine(first, realFirst, true);
-            gfx->drawLine(realLast, second, true);
         } else {
-            gfx->enableSmoothing();
             x1 = sx(first.x);
             x2 = sx(second.x);
             y1 = sy(first.y);
             y2 = sy(second.y);
 
-            bool revertWidth = false;
-            if(currVert != nullptr && currVert->isOwnedBy(cube)) {
-                gfx->setCurrentLineWidth(2.f);
-                revertWidth = true;
+            if (PanelRenderer* renderer = ::getPanelRenderer(this)) {
+                renderer->enableSmoothing();
+
+                bool revertWidth = false;
+                if (currVert != nullptr && currVert->isOwnedBy(cube)) {
+                    renderer->setCurrentLineWidth(2.f);
+                    revertWidth = true;
+                }
+
+                renderer->setCurrentColour(0.1f, 0.1f, 0.3f, 0.6f);
+                renderer->drawLine(x1, y1 + 0.5f, x2, y2 + 0.5f, false);
+
+                renderer->setCurrentColour(0.7f, 0.7f, 1.0f, 0.8f);
+                renderer->drawLine(x1, y1, x2, y2, false);
+
+                if (revertWidth) {
+                    renderer->setCurrentLineWidth(1.f);
+                }
+            } else {
+                gfx->enableSmoothing();
+
+                bool revertWidth = false;
+                if(currVert != nullptr && currVert->isOwnedBy(cube)) {
+                    gfx->setCurrentLineWidth(2.f);
+                    revertWidth = true;
+                }
+
+                gfx->setCurrentColour(0.1f, 0.1f, 0.3f, 0.6f);
+                gfx->drawLine(x1, y1 + 0.5f, x2, y2 + 0.5f, false);
+
+                gfx->setCurrentColour(0.7f, 0.7f, 1.0f, 0.8f);
+                gfx->drawLine(x1, y1, x2, y2, false);
+
+                if(revertWidth) {
+                    gfx->setCurrentLineWidth(1.f);
+                }
             }
-
-            gfx->setCurrentColour(0.1f, 0.1f, 0.3f, 0.6f);
-            gfx->drawLine(x1, y1 + 0.5f, x2, y2 + 0.5f, false);
-
-            gfx->setCurrentColour(0.7f, 0.7f, 1.0f, 0.8f);
-            gfx->drawLine(x1, y1, x2, y2, false);
-
-            if(revertWidth)
-                gfx->setCurrentLineWidth(1.f);
         }
     }
 }
@@ -200,8 +257,13 @@ void Panel3D::drawAxe() {
     Vertex2 curr = interactor->state.currentMouse;
     float length = interactor->realValue(PencilRadius);
 
-    gfx->setCurrentColour(1, 1, 1);
-    gfx->drawLine(Vertex2(curr.x, curr.y - length), Vertex2(curr.x, curr.y + length));
+    if (PanelRenderer* renderer = ::getPanelRenderer(this)) {
+        renderer->setCurrentColour(1, 1, 1);
+        renderer->drawLine(curr.x, curr.y - length, curr.x, curr.y + length, true);
+    } else {
+        gfx->setCurrentColour(1, 1, 1);
+        gfx->drawLine(Vertex2(curr.x, curr.y - length), Vertex2(curr.x, curr.y + length));
+    }
 }
 
 /*
@@ -610,8 +672,13 @@ void Panel3D::highlightCurrentIntercept() {
         }
     }
 
-    gfx->setCurrentColour(1.f, 0.8f, 0.0f);
-    gfx->drawPoint(vertexHighlightRadius, point, true);
+    if (PanelRenderer* renderer = ::getPanelRenderer(this)) {
+        renderer->setCurrentColour(1.f, 0.8f, 0.0f);
+        renderer->drawPoint(vertexHighlightRadius, point, true);
+    } else {
+        gfx->setCurrentColour(1.f, 0.8f, 0.0f);
+        gfx->drawPoint(vertexHighlightRadius, point, true);
+    }
 }
 
 void Panel3D::doExtraResized() {
