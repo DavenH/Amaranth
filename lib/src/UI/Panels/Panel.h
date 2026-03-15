@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include "CommonGfx.h"
+#include "PanelRenderer.h"
 #include "PanelDirtyState.h"
 #include "PanelRenderContext.h"
 #include "ZoomPanel.h"
@@ -102,6 +103,7 @@ public:
     bool isSpeedApplicable() const          { return speedApplicable;       }
 
     void setGraphicsHelper(CommonGfx* gfx)  { this->gfx.reset(gfx);         }
+    void setPanelRenderer(PanelRenderer* renderer) { panelRenderer = renderer; }
     void setRenderHelper(Renderer* util)    { renderHelper = util;          }
     void setSpeedApplicable(bool is)        { speedApplicable = is;         }
     void setNameTextureId(int id)           { currentNameId = id;           }
@@ -221,6 +223,7 @@ protected:
 
     Ref<Component>  comp;
     Ref<Interactor> interactor;
+    Ref<PanelRenderer> panelRenderer;
     Ref<Renderer>   renderHelper;
     std::unique_ptr<CommonGfx> gfx;
 

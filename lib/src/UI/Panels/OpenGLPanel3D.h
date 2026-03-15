@@ -9,6 +9,7 @@
 using std::vector;
 
 class CommonGL;
+class GLPanelRenderer;
 class Interactor3D;
 
 class OpenGLPanel3D :
@@ -60,6 +61,7 @@ protected:
     StringArray extensions;
     CriticalSection columnLock;
     Ref<Panel3D::DataRetriever> dataRetriever;
+    std::unique_ptr<GLPanelRenderer> panelRenderer;
 
     void populateExtensions();
     bool isSupported(const String& extension);

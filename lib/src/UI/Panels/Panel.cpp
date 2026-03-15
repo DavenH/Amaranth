@@ -107,6 +107,10 @@ void Panel::render() {
         return;
     }
 
+    if (panelRenderer != nullptr) {
+        panelRenderer->beginPanelRender(createRenderContext());
+    }
+
     gfx->initRender();
     handlePendingUpdates();
 
@@ -161,6 +165,10 @@ void Panel::render() {
 
     if(actionIs(BoxSelecting)) {
         drawSelectionRectangle();
+    }
+
+    if (panelRenderer != nullptr) {
+        panelRenderer->endPanelRender();
     }
 
     CHECK_ERRORS

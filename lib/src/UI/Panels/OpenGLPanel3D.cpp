@@ -2,6 +2,7 @@
 
 #include <Definitions.h>
 
+#include "GLPanelRenderer.h"
 #include "Panel3D.h"
 #include "Panel.h"
 #include "CommonGL.h"
@@ -28,10 +29,12 @@ void OpenGLPanel3D::init() {
     backTex.rect.setSize(1024, 1024);
 
     commonGL = new CommonGL(panel, this);
+    panelRenderer = std::make_unique<GLPanelRenderer>(commonGL);
 
     panel->setComponent(this);
     panel->setUseVertices(true);
     panel->setGraphicsHelper(commonGL);
+    panel->setPanelRenderer(panelRenderer.get());
     panel->setGraphicsRenderer(this);
     panel->setRenderHelper(this);
 
