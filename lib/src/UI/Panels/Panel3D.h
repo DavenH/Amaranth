@@ -76,11 +76,12 @@ public:
     OpenGLPanel3D* getOpenglPanel() const   { return openGL.get(); }
     bool usesCachedSurface() const override { return true; }
 
+    virtual Buffer<float> getColumnArray()          { jassert(dataRetriever != nullptr); return dataRetriever->getColumnArray(); }
+    virtual const vector<Column>& getColumns() const;
+    virtual CriticalSection& getGridLock();
     virtual bool isSurfaceDetailReduced()           { return false; }
     virtual bool shouldDrawGrid()                   { return true; }
     virtual bool willAdjustSurfaceColumns()         { return false; }
-    virtual const vector<Column>& getSurfaceColumns() const;
-    virtual CriticalSection& getSurfaceGridLock();
 
     void postVertsDraw() override;
 

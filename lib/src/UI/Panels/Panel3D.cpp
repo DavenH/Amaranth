@@ -537,12 +537,12 @@ void Panel3D::drawCurvesAndSurfaces() {
     panelRenderer->drawSurfaceCache();
 }
 
-const vector<Column>& Panel3D::getSurfaceColumns() const {
+const vector<Column>& Panel3D::getColumns() const {
     jassert(dataRetriever != nullptr);
     return dataRetriever->getColumns();
 }
 
-CriticalSection& Panel3D::getSurfaceGridLock() {
+CriticalSection& Panel3D::getGridLock() {
     jassert(dataRetriever != nullptr);
     return dataRetriever->getGridLock();
 }
@@ -552,13 +552,13 @@ void Panel3D::drawSurface() {
         return;
     }
 
-    const vector<Column>& grid = getSurfaceColumns();
+    const vector<Column>& grid = getColumns();
 
     if(grid.empty()) {
         return;
     }
 
-    ScopedLock sl(getSurfaceGridLock());
+    ScopedLock sl(getGridLock());
 
     draw.lastSizeY      = 0;
     draw.lastKey        = 0;

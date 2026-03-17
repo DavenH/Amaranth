@@ -66,7 +66,7 @@ void WaveformInter2D::modelAudioCycle() {
         const vector <Column> &timeColumns = getObj(VisualDsp).getTimeColumns();
         float progress = getObj(PlaybackPanel).getProgress();
         const Column &column = timeColumns[progress * ((int) timeColumns.size() - 1)];
-        CriticalSection &lock = getObj(Spectrum3D).getSurfaceGridLock();
+        CriticalSection &lock = getObj(Spectrum3D).getGridLock();
 
         ScopedLock sl(lock);
 

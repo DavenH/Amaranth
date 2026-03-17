@@ -180,11 +180,11 @@ void Waveform2D::drawIfftCycle() {
 
 void Waveform2D::drawHistory() {
     Panel3D& waveform3D = getObj(Waveform3D);
-    const vector<Column>& columns = waveform3D.getSurfaceColumns();
+    const vector<Column>& columns = waveform3D.getColumns();
     float width 	= getObj(MorphPanel).getDepth(getSetting(CurrentMorphAxis));
     int numCols 	= (int) columns.size();
 
-    ScopedLock sl(waveform3D.getSurfaceGridLock());
+    ScopedLock sl(waveform3D.getGridLock());
 
     if(numCols == 0) {
         return;
