@@ -32,8 +32,6 @@ public:
     void activateContext();
     void deactivateContext();
 
-    static void disableClientArrays();
-    static void enableClientArrays();
     void newOpenGLContextCreated() override;
     void openGLContextClosing() override;
     void renderOpenGL() override;
@@ -42,10 +40,6 @@ public:
     void clear() override;
     void activate() override { activateContext(); }
     void deactivate() override { deactivateContext(); }
-
-    CriticalSection& getGridLock() override         { return columnLock; }
-    Buffer<float> getColumnArray() override         { return dataRetriever->getColumnArray(); }
-    const vector<Column>& getColumns() override     { return dataRetriever->getColumns(); }
 
 protected:
 
@@ -56,7 +50,6 @@ protected:
 
     GLSurfaceCache surfaceCache;
     StringArray extensions;
-    CriticalSection columnLock;
     Ref<Panel3D::DataRetriever> dataRetriever;
     std::unique_ptr<GLPanelRenderer> panelRenderer;
 

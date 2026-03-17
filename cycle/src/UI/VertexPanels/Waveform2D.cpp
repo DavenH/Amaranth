@@ -179,12 +179,12 @@ void Waveform2D::drawIfftCycle() {
 }
 
 void Waveform2D::drawHistory() {
-    Panel3D::Renderer* renderer = getObj(Waveform3D).getRenderer();
-    const vector<Column>& columns = renderer->getColumns();
+    Panel3D& waveform3D = getObj(Waveform3D);
+    const vector<Column>& columns = waveform3D.getSurfaceColumns();
     float width 	= getObj(MorphPanel).getDepth(getSetting(CurrentMorphAxis));
     int numCols 	= (int) columns.size();
 
-    ScopedLock sl(renderer->getGridLock());
+    ScopedLock sl(waveform3D.getSurfaceGridLock());
 
     if(numCols == 0) {
         return;

@@ -25,18 +25,15 @@ public:
 
         virtual void postVertsDraw()        {}
         virtual void scratchChannelSelected(int ch) {}
-        virtual void textureBakeBeginning() {}
 
         virtual bool isScratchApplicable()  { return false; }
-        virtual Buffer<float> getColumnArray()      = 0;
-        virtual const vector<Column>& getColumns()  = 0;
-        virtual CriticalSection& getGridLock()      = 0;
     };
 
     class DataRetriever {
     public:
         virtual Buffer<float> getColumnArray() = 0;
         virtual const vector<Column>& getColumns() = 0;
+        virtual CriticalSection& getGridLock() = 0;
     };
 
     /* ----------------------------------------------------------------------------- */
@@ -82,6 +79,8 @@ public:
     virtual bool isSurfaceDetailReduced()           { return false; }
     virtual bool shouldDrawGrid()                   { return true; }
     virtual bool willAdjustSurfaceColumns()         { return false; }
+    virtual const vector<Column>& getSurfaceColumns() const;
+    virtual CriticalSection& getSurfaceGridLock();
 
     void postVertsDraw() override;
 

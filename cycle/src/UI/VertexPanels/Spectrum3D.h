@@ -91,6 +91,7 @@ public:
 
     Buffer<float> getColumnArray() override;
     const vector<Column>& getColumns() override;
+    CriticalSection& getGridLock() override { return layerLock; }
 
     MeshLibrary::Properties* getPropertiesForLayer(int layerIdx, bool isFreq);
     MeshLibrary::Properties* getCurrentProperties();

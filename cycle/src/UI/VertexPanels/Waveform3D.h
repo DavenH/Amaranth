@@ -79,6 +79,7 @@ public:
 
     Buffer<float> getColumnArray() override;
     const vector<Column>& getColumns() override;
+    CriticalSection& getGridLock() override { return layerLock; }
 
     /* Accessors */
     int getLayerType() override;

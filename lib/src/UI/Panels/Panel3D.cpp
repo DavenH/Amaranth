@@ -72,7 +72,6 @@ void Panel3D::bakeTextures() {
     shouldBakeTextures = false;
     dirtyState.clear(PanelDirtyState::Flag::SurfaceCache);
 
-    renderer->textureBakeBeginning();
     drawSurface();
 
     PanelRenderer* panelRenderer = ::getPanelRenderer(this);
@@ -538,21 +537,28 @@ void Panel3D::drawCurvesAndSurfaces() {
     panelRenderer->drawSurfaceCache();
 }
 
+const vector<Column>& Panel3D::getSurfaceColumns() const {
+    jassert(dataRetriever != nullptr);
+    return dataRetriever->getColumns();
+}
+
+CriticalSection& Panel3D::getSurfaceGridLock() {
+    jassert(dataRetriever != nullptr);
+    return dataRetriever->getGridLock();
+}
+
 void Panel3D::drawSurface() {
     if (!shouldDrawGrid()) {
         return;
     }
 
-    const vector<Column>& grid = renderer->getColumns();
+    const vector<Column>& grid = getSurfaceColumns();
 
     if(grid.empty()) {
         return;
     }
 
-    CriticalSection dummy;
-    CriticalSection& arrayLock = renderer->getGridLock();
-
-    ScopedLock sl(arrayLock);
+    ScopedLock sl(getSurfaceGridLock());
 
     draw.lastSizeY      = 0;
     draw.lastKey        = 0;

@@ -73,18 +73,6 @@ void OpenGLPanel3D::drawCircle() {
     }
 }
 
-void OpenGLPanel3D::enableClientArrays() {
-    // enable vertex arrays
-    glEnableClientState(GL_COLOR_ARRAY);
-    glEnableClientState(GL_VERTEX_ARRAY);
-}
-
-void OpenGLPanel3D::disableClientArrays() {
-    // enable vertex arrays
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
-}
-
 // must be done for each relevant opengl context
 void OpenGLPanel3D::populateExtensions() {
     String str((char*) glGetString(GL_EXTENSIONS));
