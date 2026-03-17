@@ -23,8 +23,6 @@ public:
         void activate()     override = 0;
         void clear()        override = 0;
 
-        virtual void gridDrawBeginning()    {}  // enable client arrays
-        virtual void gridDrawFinished()     {}  // disable client arrays
         virtual void postVertsDraw()        {}
         virtual void scratchChannelSelected(int ch) {}
         virtual void textureBakeBeginning() {}

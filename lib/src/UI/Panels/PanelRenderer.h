@@ -19,6 +19,7 @@ public:
     virtual void beginPanelRender(const PanelRenderContext& context) = 0;
     virtual void checkErrors() = 0;
     virtual void endPanelRender() = 0;
+    virtual void finishSurfaceGrid() = 0;
 
     virtual void drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) = 0;
     virtual void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) = 0;
@@ -44,6 +45,7 @@ public:
     virtual void enableSmoothing() = 0;
     virtual void fillRect(float leftX, float topY, float rightX, float botY, bool scale) = 0;
     virtual void fillRect(float x1, float y1, float x2, float y2, const Color& c1, const Color& c2) = 0;
+    virtual void beginSurfaceGrid() = 0;
     virtual void disableSmoothing() = 0;
     virtual void setCurrentColour(const Color& color) = 0;
     virtual void setCurrentColour(float c1, float c2, float c3) = 0;

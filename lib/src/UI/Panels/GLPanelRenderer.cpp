@@ -31,6 +31,11 @@ void GLPanelRenderer::endPanelRender() {
     currentContext = nullptr;
 }
 
+void GLPanelRenderer::finishSurfaceGrid() {
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+}
+
 void GLPanelRenderer::drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) {
     if (gfx != nullptr) {
         gfx->drawBackground(bounds, fillBackground);
@@ -141,6 +146,11 @@ void GLPanelRenderer::fillRect(float x1, float y1, float x2, float y2, const Col
     if (gfx != nullptr) {
         gfx->fillRect(x1, y1, x2, y2, c1, c2);
     }
+}
+
+void GLPanelRenderer::beginSurfaceGrid() {
+    glEnableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
 }
 
 void GLPanelRenderer::disableSmoothing() {

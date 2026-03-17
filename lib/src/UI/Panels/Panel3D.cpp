@@ -578,10 +578,13 @@ void Panel3D::drawSurface() {
     scaledX.ramp(0, slope);
     applyScaleX(scaledX);
 
+    PanelRenderer* panelRenderer = ::getPanelRenderer(this);
+    jassert(panelRenderer != nullptr);
+
     ScopedFunction sf(
-        renderer.get(),
-        &Renderer::gridDrawBeginning,
-        &Renderer::gridDrawFinished);
+        panelRenderer,
+        &PanelRenderer::beginSurfaceGrid,
+        &PanelRenderer::finishSurfaceGrid);
 
     haveLogarithmicY ?
         drawLogSurface(grid) :

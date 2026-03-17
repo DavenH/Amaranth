@@ -16,6 +16,7 @@ public:
     void beginPanelRender(const PanelRenderContext& context) override;
     void checkErrors() override;
     void endPanelRender() override;
+    void finishSurfaceGrid() override;
 
     void drawBackground(const juce::Rectangle<int>& bounds, bool fillBackground) override;
     void drawCachedTexture(Texture* texture, const juce::Rectangle<float>& bounds) override;
@@ -41,6 +42,7 @@ public:
     void enableSmoothing() override;
     void fillRect(float leftX, float topY, float rightX, float botY, bool scale) override;
     void fillRect(float x1, float y1, float x2, float y2, const Color& c1, const Color& c2) override;
+    void beginSurfaceGrid() override;
     void disableSmoothing() override;
     void setCurrentColour(const Color& color) override;
     void setCurrentColour(float c1, float c2, float c3) override;
