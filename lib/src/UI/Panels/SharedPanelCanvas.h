@@ -6,9 +6,10 @@
 class Panel;
 
 class SharedPanelCanvas :
-        public juce::Component {
+        public juce::Component
+    ,   private juce::Timer {
 public:
-    SharedPanelCanvas() = default;
+    SharedPanelCanvas();
     ~SharedPanelCanvas() override = default;
 
     PanelCompositor& getCompositor() { return compositor; }
@@ -22,5 +23,8 @@ public:
     void paint(juce::Graphics& g) override;
 
 private:
+    void repaintDirtyRegions();
+    void timerCallback() override;
+
     PanelCompositor compositor;
 };

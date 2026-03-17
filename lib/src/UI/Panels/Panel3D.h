@@ -17,16 +17,11 @@ class Panel3D :
     ,   public Dragger::Listener
 {
 public:
-    class Renderer : public Panel::Renderer {
+    class ContextHelper : public Panel::Renderer {
     public:
         void deactivate()   override = 0;
         void activate()     override = 0;
         void clear()        override = 0;
-
-        virtual void postVertsDraw()        {}
-        virtual void scratchChannelSelected(int ch) {}
-
-        virtual bool isScratchApplicable()  { return false; }
     };
 
     class DataRetriever {
@@ -69,12 +64,12 @@ public:
     virtual vector<Color>& getGradientColours();
 
     void drawCurvesAndSurfaces() override;
-    void setGraphicsRenderer(Renderer* renderer)    { this->renderer.reset(renderer); }
+    void setContextHelper(ContextHelper* helper)    { contextHelper.reset(helper); }
 
-    void setUseVertices(bool doso)          { useVertices = doso; }
-    Renderer* getRenderer() const           { return renderer.get(); }
-    OpenGLPanel3D* getOpenglPanel() const   { return openGL.get(); }
-    bool usesCachedSurface() const override { return true; }
+    void setUseVertices(bool doso)              { useVertices = doso; }
+    ContextHelper* getContextHelper() const     { return contextHelper.get(); }
+    OpenGLPanel3D* getOpenglPanel() const       { return openGL.get(); }
+    bool usesCachedSurface() const override     { return true; }
 
     virtual Buffer<float> getColumnArray()          { jassert(dataRetriever != nullptr); return dataRetriever->getColumnArray(); }
     virtual const vector<Column>& getColumns() const;
@@ -123,7 +118,7 @@ protected:
 
     DataRetriever* dataRetriever;
     Ref<Interactor3D> interactor3D;
-    std::unique_ptr<Renderer> renderer;
+    std::unique_ptr<ContextHelper> contextHelper;
     std::unique_ptr<OpenGLPanel3D> openGL;
     std::unique_ptr<BoundWrapper> wrapper;
 

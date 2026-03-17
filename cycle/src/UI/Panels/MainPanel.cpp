@@ -511,18 +511,32 @@ void MainPanel::updateSharedCanvasRegistry() {
     }
 
     auto& compositor = sharedCanvas->getCompositor();
-    compositor.clear();
+    set<Panel*> registeredPanels;
 
     for (auto group : panelGroups) {
         if (group == nullptr || group->panel == nullptr) {
             continue;
         }
 
+        registeredPanels.insert(group->panel);
+
         Component* component = group->panel->getComponent();
         Rectangle<int> bounds = component != nullptr ? component->getBounds() : group->panel->getBounds();
         bool visible = component != nullptr ? component->isVisible() : group->panel->isVisible();
 
         sharedCanvas->registerOrUpdatePanel(group->panel, bounds, visible);
+    }
+
+    vector<Panel*> stalePanels;
+
+    for (const auto& entry : compositor.getEntries()) {
+        if (registeredPanels.count(entry.panel) == 0) {
+            stalePanels.push_back(entry.panel);
+        }
+    }
+
+    for (auto* panel : stalePanels) {
+        sharedCanvas->removePanel(panel);
     }
 }
 

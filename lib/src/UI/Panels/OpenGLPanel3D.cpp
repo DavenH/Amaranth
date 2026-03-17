@@ -33,7 +33,7 @@ void OpenGLPanel3D::init() {
     panel->setUseVertices(true);
     panel->setGraphicsHelper(commonGL);
     panel->setPanelRenderer(panelRenderer.get());
-    panel->setGraphicsRenderer(this);
+    panel->setContextHelper(this);
     panel->setRenderHelper(this);
 
     attach();

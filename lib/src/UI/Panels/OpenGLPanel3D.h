@@ -15,7 +15,7 @@ class Interactor3D;
 class OpenGLPanel3D :
         public OpenGLBase
     ,   public PanelOwner<Panel3D>
-    ,   public Panel3D::Renderer
+    ,   public Panel3D::ContextHelper
     ,   public OpenGLRenderer
     ,   public Component
     ,   public virtual SingletonAccessor {

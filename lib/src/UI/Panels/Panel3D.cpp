@@ -603,8 +603,6 @@ void Panel3D::postVertsDraw() {
     if (getSetting(Tool) == Tools::Axe && mouseFlag(MouseOver)) {
         drawAxe();
     }
-
-    renderer->postVertsDraw();
 }
 
 void Panel3D::highlightCurrentIntercept() {
