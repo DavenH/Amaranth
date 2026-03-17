@@ -96,8 +96,13 @@ void PanelCompositor::syncWithPanels() {
         entry.dirtyMask |= entry.panel->getDirtyState().mask();
 
         Component* component = entry.panel->getComponent();
-        juce::Rectangle<int> bounds = component != nullptr ? component->getBounds() : entry.panel->getBounds();
-        bool visible = component != nullptr ? component->isVisible() : entry.panel->isVisible();
+        juce::Rectangle<int> bounds;
+        bool visible = false;
+
+        if (component != nullptr) {
+            bounds = component->getBounds();
+            visible = component->isVisible();
+        }
 
         if (entry.bounds != bounds || entry.visible != visible) {
             orphanedDirtyBounds.add(entry.bounds);

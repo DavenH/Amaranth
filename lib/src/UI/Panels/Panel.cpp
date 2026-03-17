@@ -120,11 +120,15 @@ void Panel::render() {
     handlePendingUpdates();
 
     PanelState& state = interactor->state;
+    bool sharedCanvasBackground = usesSharedCanvasBackground();
+    bool sharedCanvasSurface = usesSharedCanvasSurface();
 
     clear();
-    drawBackground();
+    if (!sharedCanvasBackground) {
+        drawBackground();
+    }
 
-    if(shouldBakeTextures) {
+    if (shouldBakeTextures && !sharedCanvasSurface) {
         bakeTextures();
     }
 
@@ -605,6 +609,23 @@ void Panel::drawBackground(const Rectangle<int>& bounds, bool fillBackground) {
   #ifdef JUCE_DEBUG
     renderer->checkErrors();
   #endif
+}
+
+void Panel::paintSharedCanvasBackground(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {
+    g.saveState();
+    g.reduceClipRegion(bounds);
+
+    g.setColour(juce::Colour::greyLevel(0.08f));
+    g.fillRect(bounds);
+
+    g.setColour(juce::Colour::greyLevel(0.12f));
+    g.drawRect(bounds);
+
+    g.restoreState();
+}
+
+void Panel::paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {
+    ignoreUnused(g, bounds);
 }
 
 void Panel::applyNoZoomScaleY(Buffer<float> array) {

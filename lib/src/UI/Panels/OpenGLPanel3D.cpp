@@ -97,6 +97,10 @@ void OpenGLPanel3D::renderOpenGL() {
     printErrors(repo);
 }
 
+bool OpenGLPanel3D::paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {
+    return surfaceCache.paintSnapshot(g, bounds);
+}
+
 void OpenGLPanel3D::newOpenGLContextCreated() {
     info(panel->getName() << " new context created\n");
 

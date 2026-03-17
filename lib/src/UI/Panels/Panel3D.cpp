@@ -537,6 +537,49 @@ void Panel3D::drawCurvesAndSurfaces() {
     panelRenderer->drawSurfaceCache();
 }
 
+void Panel3D::paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {
+    if (openGL != nullptr && openGL->paintSharedCanvasSurface(g, bounds)) {
+        return;
+    }
+
+    g.saveState();
+    g.reduceClipRegion(bounds);
+
+    juce::ColourGradient gradient(
+        juce::Colour(22, 28, 36),
+        bounds.getX(),
+        (float) bounds.getBottom(),
+        juce::Colour(54, 78, 108),
+        (float) bounds.getRight(),
+        (float) bounds.getY(),
+        false
+    );
+    gradient.addColour(0.55, juce::Colour(116, 146, 171));
+
+    g.setGradientFill(gradient);
+    g.fillRect(bounds.reduced(1));
+
+    g.setColour(juce::Colour::fromRGBA((juce::uint8) 255, (juce::uint8) 255, (juce::uint8) 255, (juce::uint8) 28));
+
+    const int numVerticals = 9;
+    for (int i = 1; i < numVerticals; ++i) {
+        float x = bounds.getX() + bounds.getWidth() * (float) i / (float) numVerticals;
+        g.drawVerticalLine((int) x, (float) bounds.getY(), (float) bounds.getBottom());
+    }
+
+    const int numHorizontals = 7;
+    for (int i = 1; i < numHorizontals; ++i) {
+        float y = bounds.getY() + bounds.getHeight() * (float) i / (float) numHorizontals;
+        g.drawHorizontalLine((int) y, (float) bounds.getX(), (float) bounds.getRight());
+    }
+
+    g.setColour(juce::Colour::fromRGBA((juce::uint8) 255, (juce::uint8) 255, (juce::uint8) 255, (juce::uint8) 90));
+    g.setFont(juce::Font(juce::FontOptions(13.f)));
+    g.drawText(panelName, bounds.reduced(10, 8), juce::Justification::topLeft, false);
+
+    g.restoreState();
+}
+
 const vector<Column>& Panel3D::getColumns() const {
     jassert(dataRetriever != nullptr);
     return dataRetriever->getColumns();

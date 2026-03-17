@@ -521,8 +521,13 @@ void MainPanel::updateSharedCanvasRegistry() {
         registeredPanels.insert(group->panel);
 
         Component* component = group->panel->getComponent();
-        Rectangle<int> bounds = component != nullptr ? component->getBounds() : group->panel->getBounds();
-        bool visible = component != nullptr ? component->isVisible() : group->panel->isVisible();
+        Rectangle<int> bounds;
+        bool visible = false;
+
+        if (component != nullptr) {
+            bounds = component->getBounds();
+            visible = component->isVisible();
+        }
 
         sharedCanvas->registerOrUpdatePanel(group->panel, bounds, visible);
     }

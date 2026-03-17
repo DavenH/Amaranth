@@ -35,6 +35,7 @@ public:
     void newOpenGLContextCreated() override;
     void openGLContextClosing() override;
     void renderOpenGL() override;
+    bool paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const;
 
     // panel3d renderer
     void clear() override;

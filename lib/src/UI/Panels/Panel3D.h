@@ -60,6 +60,7 @@ public:
     void drawSurface();
     void freeResources();
     void highlightCurrentIntercept() override;
+    void paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const override;
 
     virtual vector<Color>& getGradientColours();
 

@@ -5,6 +5,8 @@
 using namespace gl;
 
 void GLSurfaceCache::allocate(bool transparent) {
+    this->transparent = transparent;
+
     const auto& rect = texture.rect;
     int format = transparent ? GL_RGBA : GL_RGB;
 
@@ -26,22 +28,49 @@ void GLSurfaceCache::captureFromFramebuffer(int componentHeight) {
     glBindTexture(GL_TEXTURE_2D, texture.id);
 
     const auto& rect = texture.rect;
+    int width = rect.getWidth();
+    int height = rect.getHeight();
     glCopyTexSubImage2D(
         GL_TEXTURE_2D,
         0,
         0,
         0,
         0,
-        componentHeight - rect.getHeight(),
-        rect.getWidth(),
-        rect.getHeight()
+        componentHeight - height,
+        width,
+        height
     );
+
+    juce::HeapBlock<juce::uint8> pixels(width * height * 4);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, componentHeight - height, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
+
+    juce::Image image(juce::Image::ARGB, width, height, true);
+    juce::Image::BitmapData bitmap(image, juce::Image::BitmapData::writeOnly);
+
+    for (int y = 0; y < height; ++y) {
+        const juce::uint8* srcRow = pixels.get() + (height - 1 - y) * width * 4;
+
+        for (int x = 0; x < width; ++x) {
+            const juce::uint8* src = srcRow + x * 4;
+            juce::uint8 alpha = transparent ? src[3] : (juce::uint8) 255;
+            bitmap.setPixelColour(x, y, juce::Colour::fromRGBA(src[0], src[1], src[2], alpha));
+        }
+    }
+
+    {
+        const juce::ScopedLock sl(snapshotLock);
+        snapshot = image;
+    }
 
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void GLSurfaceCache::clear() {
     texture.clear();
+
+    const juce::ScopedLock sl(snapshotLock);
+    snapshot = {};
 }
 
 void GLSurfaceCache::create() {
@@ -71,6 +100,17 @@ void GLSurfaceCache::draw() const {
         glTexCoord2f(0.f, 1.f);
         glVertex2f(0.f, 0.f);
     }
+}
+
+bool GLSurfaceCache::paintSnapshot(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {
+    const juce::ScopedLock sl(snapshotLock);
+
+    if (!snapshot.isValid()) {
+        return false;
+    }
+
+    g.drawImage(snapshot, bounds.toFloat());
+    return true;
 }
 
 void GLSurfaceCache::setSize(int width, int height) {

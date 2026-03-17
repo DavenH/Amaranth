@@ -29,7 +29,20 @@ void SharedPanelCanvas::removePanel(Panel* panel) {
 }
 
 void SharedPanelCanvas::paint(juce::Graphics& g) {
-    ignoreUnused(g);
+    for (const auto& entry : compositor.getVisibleEntries()) {
+        if (entry.panel == nullptr || !g.getClipBounds().intersects(entry.bounds)) {
+            continue;
+        }
+
+        if (entry.panel->usesSharedCanvasBackground()) {
+            entry.panel->paintSharedCanvasBackground(g, entry.bounds);
+        }
+
+        if (entry.usesCachedSurface && entry.panel->usesSharedCanvasSurface()) {
+            entry.panel->paintSharedCanvasSurface(g, entry.bounds);
+        }
+    }
+
     compositor.clearDirtyFlags();
 }
 
