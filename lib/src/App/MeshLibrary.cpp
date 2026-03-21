@@ -20,7 +20,7 @@ MeshLibrary::~MeshLibrary() {
     destroy();
 }
 
-void MeshLibrary::destroyLayer(Layer& layer) {
+void MeshLibrary::destroyLayer(Layer& layer, bool notifyEditWatcher) {
     if (layer.mesh != nullptr) {
         layer.mesh->destroy();
         delete layer.mesh;
@@ -33,7 +33,9 @@ void MeshLibrary::destroyLayer(Layer& layer) {
         layer.props = nullptr;
     }
 
-    getObj(EditWatcher).setHaveEditedWithoutUndo(true);
+    if (notifyEditWatcher) {
+        getObj(EditWatcher).setHaveEditedWithoutUndo(true);
+    }
 }
 
 void MeshLibrary::destroy() {
@@ -41,7 +43,7 @@ void MeshLibrary::destroy() {
 
     for (auto& layerGroup : layerGroups) {
         for (auto& layer : layerGroup.layers) {
-            destroyLayer(layer);
+            destroyLayer(layer, false);
         }
     }
 

@@ -580,6 +580,23 @@ void Panel3D::paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<
     g.restoreState();
 }
 
+bool Panel3D::paintSharedCanvasDebugOverlay(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {
+    if (openGL == nullptr || !openGL->paintSharedCanvasSurface(g, bounds)) {
+        return false;
+    }
+
+    g.saveState();
+    g.reduceClipRegion(bounds);
+    g.setColour(juce::Colour::fromRGBA((juce::uint8) 120, (juce::uint8) 210, (juce::uint8) 255, (juce::uint8) 180));
+    g.drawRect(bounds, 2);
+    g.setColour(juce::Colour::fromRGBA((juce::uint8) 120, (juce::uint8) 210, (juce::uint8) 255, (juce::uint8) 220));
+    g.setFont(juce::Font(juce::FontOptions(11.f)));
+    auto labelBounds = bounds;
+    g.drawText("snapshot", labelBounds.removeFromTop(18).reduced(6, 2), juce::Justification::centredRight, false);
+    g.restoreState();
+    return true;
+}
+
 const vector<Column>& Panel3D::getColumns() const {
     jassert(dataRetriever != nullptr);
     return dataRetriever->getColumns();

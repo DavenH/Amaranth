@@ -22,12 +22,21 @@ void DocumentLibrary::init() {
 }
 
 void DocumentLibrary::readDocuments(const String& dir) {
-    Array<File> files;
+    allDocs.clear();
+
+    if (dir.isEmpty()) {
+        return;
+    }
 
     File directory(dir);
-    directory.findChildFiles(files, File::findFiles, false, "*." + getStrConstant(DocumentExt));
 
-    allDocs.clear();
+    if (!directory.exists() || !directory.isDirectory()) {
+        return;
+    }
+
+    Array<File> files;
+    directory.findChildFiles(files, File::findFiles, false, "*." + getStrConstant(DocumentExt),
+                             File::FollowSymlinks::no);
 
     for (auto& file : files) {
         DocumentDetails details;
@@ -83,6 +92,11 @@ String DocumentLibrary::getProgramName(int index) {
 
 bool DocumentLibrary::readSettingsFile() {
     String filename(getStrConstant(DocSettingsDir));
+
+    if (filename.isEmpty()) {
+        settingsArePending = true;
+        return false;
+    }
 
     File file(filename);
     XmlDocument settingsDoc(file);
@@ -188,6 +202,14 @@ void DocumentLibrary::writeSettingsFile() {
         }
 
         File file(filename);
+        File parent = file.getParentDirectory();
+
+        if (!parent.exists()) {
+            if (!parent.createDirectory().wasOk()) {
+                settingsArePending = true;
+                return;
+            }
+        }
 
         if(file.existsAsFile()) {
             (void) file.deleteFile();

@@ -19,6 +19,8 @@ public:
     void invalidatePanel(Panel* panel, PanelDirtyState::Flag flag);
     void registerOrUpdatePanel(Panel* panel, const juce::Rectangle<int>& bounds, bool visible);
     void removePanel(Panel* panel);
+    void setDebugSnapshotOverlayEnabled(bool enabled);
+    bool isDebugSnapshotOverlayEnabled() const { return debugSnapshotOverlayEnabled; }
 
     void paint(juce::Graphics& g) override;
 
@@ -27,4 +29,5 @@ private:
     void timerCallback() override;
 
     PanelCompositor compositor;
+    bool debugSnapshotOverlayEnabled = false;
 };

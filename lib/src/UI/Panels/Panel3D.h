@@ -60,15 +60,16 @@ public:
     void drawSurface();
     void freeResources();
     void highlightCurrentIntercept() override;
+    bool paintSharedCanvasDebugOverlay(juce::Graphics& g, const juce::Rectangle<int>& bounds) const override;
     void paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const override;
 
     virtual vector<Color>& getGradientColours();
 
     void drawCurvesAndSurfaces() override;
-    void setContextHelper(ContextHelper* helper)    { contextHelper.reset(helper); }
+    void setContextHelper(ContextHelper* helper)    { contextHelper = helper; }
 
     void setUseVertices(bool doso)              { useVertices = doso; }
-    ContextHelper* getContextHelper() const     { return contextHelper.get(); }
+    ContextHelper* getContextHelper() const     { return contextHelper; }
     OpenGLPanel3D* getOpenglPanel() const       { return openGL.get(); }
     bool usesCachedSurface() const override     { return true; }
 
@@ -119,7 +120,7 @@ protected:
 
     DataRetriever* dataRetriever;
     Ref<Interactor3D> interactor3D;
-    std::unique_ptr<ContextHelper> contextHelper;
+    ContextHelper* contextHelper = nullptr;
     std::unique_ptr<OpenGLPanel3D> openGL;
     std::unique_ptr<BoundWrapper> wrapper;
 

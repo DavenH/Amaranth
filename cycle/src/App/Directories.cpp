@@ -13,6 +13,19 @@ Directories::Directories(SingletonRepo* repo)
     , 	loadedWave(String())
 {
 }
+
+namespace {
+    String getPresetSettingsPath() {
+        String appDataDir = File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName();
+
+      #ifdef JUCE_WINDOWS
+        return appDataDir + "/Amaranth Audio/" + ProjectInfo::projectName + "/presets.xml";
+      #else
+        return appDataDir + "/Preferences/com.amaranthaudio." + ProjectInfo::projectName + ".presets.xml";
+      #endif
+    }
+}
+
 void Directories::init() {
     contentDir = getObj(Settings).getProperty("ContentDir");
 
@@ -31,6 +44,12 @@ void Directories::init() {
         getObj(Settings).setProperty("ContentDir", contentDir);
     }
 
+    File presets(getPresetDir());
+
+    if (!presets.exists()) {
+        (void) presets.createDirectory();
+    }
+
     File userPresets(getUserPresetDir());
     if (!userPresets.exists()) {
         (void) userPresets.createDirectory();
@@ -41,6 +60,9 @@ void Directories::init() {
     if (!userMesh.exists()) {
         (void) userMesh.createDirectory();
     }
+
+    getObj(AppConstants).setConstant(Constants::DocumentsDir, getPresetDir());
+    getObj(AppConstants).setConstant(Constants::DocSettingsDir, getPresetSettingsPath());
 
     jassert(! contentDir.isEmpty());
 }

@@ -78,6 +78,7 @@ MainPanel::MainPanel(SingletonRepo* repo) :
 MainPanel::~MainPanel() {
     stopTimer(BoundsCheckId);
     stopTimer(DelayedRepaint);
+    detachVisibleComponents();
 
     removeListeners();
 }
@@ -493,7 +494,13 @@ void MainPanel::attachVisibleComponents() {
 }
 
 void MainPanel::detachVisibleComponents() {
-    return;
+    for (auto group : panelGroups) {
+        if (group == nullptr || group->gl == nullptr || group->panel == nullptr) {
+            continue;
+        }
+
+        group->panel->deactivateContext();
+    }
 }
 
 void MainPanel::updateSharedCanvasBounds() {

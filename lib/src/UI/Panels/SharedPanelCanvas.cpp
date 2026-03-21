@@ -28,7 +28,29 @@ void SharedPanelCanvas::removePanel(Panel* panel) {
     repaint();
 }
 
+void SharedPanelCanvas::setDebugSnapshotOverlayEnabled(bool enabled) {
+    if (debugSnapshotOverlayEnabled == enabled) {
+        return;
+    }
+
+    debugSnapshotOverlayEnabled = enabled;
+    repaint();
+}
+
 void SharedPanelCanvas::paint(juce::Graphics& g) {
+    if (debugSnapshotOverlayEnabled) {
+        for (const auto& entry : compositor.getVisibleEntries()) {
+            if (entry.panel == nullptr || !entry.usesCachedSurface || !g.getClipBounds().intersects(entry.bounds)) {
+                continue;
+            }
+
+            entry.panel->paintSharedCanvasDebugOverlay(g, entry.bounds);
+        }
+
+        compositor.clearDirtyFlags();
+        return;
+    }
+
     for (const auto& entry : compositor.getVisibleEntries()) {
         if (entry.panel == nullptr || !g.getClipBounds().intersects(entry.bounds)) {
             continue;

@@ -109,7 +109,7 @@ public:
     void setSpeedApplicable(bool is)        { speedApplicable = is;         }
     void setNameTextureId(int id)           { currentNameId = id;           }
     void setNumCornersOverlapped(int num)   { numCornersOverlapped = num;   }
-    void setComponent(Component* comp)      { this->comp = comp;            }
+    void setComponent(Component* comp);
 
     void triggerPendingNameUpdate()         { pendingNameUpdate = true; dirtyState.mark(PanelDirtyState::Flag::StaticVisual); }
     void triggerPendingScaleUpdate()        { pendingScaleUpdate = true; dirtyState.mark(PanelDirtyState::Flag::StaticVisual); }
@@ -169,6 +169,7 @@ public:
     virtual void drawInterceptsAndHighlightClosest();
     virtual void paintSharedCanvasBackground(juce::Graphics& g, const juce::Rectangle<int>& bounds) const;
     virtual void paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const;
+    virtual bool paintSharedCanvasDebugOverlay(juce::Graphics& g, const juce::Rectangle<int>& bounds) const;
     virtual void panelResized();
     virtual void updateBackground(bool onlyVerticalBackground = false);
     virtual bool usesSharedCanvasBackground() const { return false; }
@@ -177,10 +178,11 @@ public:
     virtual bool isScratchApplicable()          { return false;             }
     virtual bool usesCachedSurface() const      { return false;             }
     virtual int getLayerScratchChannel()        { return CommonEnums::Null; }
-    virtual void setInteractor(Interactor* itr) { this->interactor = itr;   }
+    virtual void setInteractor(Interactor* itr);
 
 protected:
 
+    void bindInteractorToComponent();
     void handlePendingUpdates();
     void createGuideCurveTags();
     virtual void createScales() {}

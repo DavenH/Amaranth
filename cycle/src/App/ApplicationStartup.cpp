@@ -12,8 +12,11 @@ class AppClass : public JUCEApplication {
 public:
     void initialise(const String &commandLine) override {
         mainWindow = std::make_unique<MainAppWindow>(commandLine);
-        mainWindow->maximiseButtonPressed();
         mainWindow->setVisible(true);
+
+      #if ! JUCE_DEBUG
+        mainWindow->maximiseButtonPressed();
+      #endif
     }
 
     void shutdown() override {

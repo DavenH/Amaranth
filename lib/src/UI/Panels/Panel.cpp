@@ -105,6 +105,24 @@ void Panel::setGraphicsHelper(CommonGfx* gfx) {
     this->gfx.reset(gfx);
 }
 
+void Panel::setComponent(Component* comp) {
+    this->comp = comp;
+    bindInteractorToComponent();
+}
+
+void Panel::setInteractor(Interactor* itr) {
+    interactor = itr;
+    bindInteractorToComponent();
+}
+
+void Panel::bindInteractorToComponent() {
+    if (interactor == nullptr || comp == nullptr) {
+        return;
+    }
+
+    interactor->associateTo(this);
+}
+
 void Panel::render() {
     // should only be held on mesh deletions
     ScopedLock sl(renderLock);
@@ -626,6 +644,11 @@ void Panel::paintSharedCanvasBackground(juce::Graphics& g, const juce::Rectangle
 
 void Panel::paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {
     ignoreUnused(g, bounds);
+}
+
+bool Panel::paintSharedCanvasDebugOverlay(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {
+    ignoreUnused(g, bounds);
+    return false;
 }
 
 void Panel::applyNoZoomScaleY(Buffer<float> array) {

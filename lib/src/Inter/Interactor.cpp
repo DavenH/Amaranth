@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <iterator>
 #include "Interactor.h"
 
@@ -493,11 +494,16 @@ void Interactor::eraseSelected() {
 }
 
 void Interactor::associateTo(Panel* panel) {
+    if (display != nullptr) {
+        display->removeMouseListener(this);
+    }
+
     this->panel = panel;
     this->display = panel->comp;
 
-    display->addMouseListener(this, false);
-    panel->setInteractor(this);
+    if (display != nullptr) {
+        display->addMouseListener(this, false);
+    }
 }
 
 void Interactor::init() {
@@ -625,6 +631,11 @@ void Interactor::showCoordinates() {
 }
 
 void Interactor::resizeFinalBoxSelection(bool recalculateFromVerts) {
+    if (display == nullptr) {
+        resetFinalSelection();
+        return;
+    }
+
     vector<Vertex*>& selected = getSelected();
 
     if (selected.size() < 2) {
@@ -640,6 +651,12 @@ void Interactor::resizeFinalBoxSelection(bool recalculateFromVerts) {
         bool wrapsPhase = getRasterizer()->wrapsVertices();
 
         for(auto vertex : selected) {
+            if (vertex == nullptr || reinterpret_cast<uintptr_t>(vertex) < 4096) {
+                resetFinalSelection();
+                selected.clear();
+                return;
+            }
+
             unitX = vertex->values[dims.x];
             unitY = vertex->values[dims.y];
 
