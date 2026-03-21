@@ -46,6 +46,7 @@ class OpenGLPanel;
 class OpenGLPanel3D;
 class PhaserUI;
 class ReverbUI;
+class SharedPanelCanvas;
 class UnisonUI;
 class WaveshaperUI;
 
@@ -159,6 +160,8 @@ public:
 private:
     void attachComponent(PanelGroup& group);
     void detachComponent(PanelGroup& group);
+    void updateSharedCanvasBounds();
+    void updateSharedCanvasRegistry();
     void viewModeSwitched();
 
     class ItrFocus {
@@ -307,6 +310,7 @@ private:
     Ref<DelayUI> delayUI;
     Ref<EqualizerUI> eqUI;
     Ref<MidiKeyboard> keyboard;
+    std::unique_ptr<SharedPanelCanvas> sharedCanvas;
 
     PanelGroup wave2DGroup, surfGroup, spectGroup2, spectGroup3, envGroup2, envGroup3, wshpGroup, irGroup, guideCurveGroup;
     Array<PanelGroup*> panelGroups;

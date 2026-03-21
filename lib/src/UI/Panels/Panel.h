@@ -2,7 +2,9 @@
 
 #include <iostream>
 #include <vector>
-#include "CommonGfx.h"
+#include "PanelRenderer.h"
+#include "PanelDirtyState.h"
+#include "PanelRenderContext.h"
 #include "ZoomPanel.h"
 #include "JuceHeader.h"
 #include "../../App/SingletonAccessor.h"
@@ -18,6 +20,7 @@ using std::vector;
 
 class Interactor;
 class Interactor3D;
+class CommonGfx;
 class Texture;
 
 class Panel :
@@ -56,6 +59,7 @@ public:
     void triggerZoom(bool in);
     void updateNameTexturePos();
     void updateVertexSizes();
+    PanelRenderContext createRenderContext() const;
 
     void applyScale         (BufferXY& buff);
     void applyScaleX        (Buffer<float> array);
@@ -85,30 +89,39 @@ public:
     void clear()                            { renderHelper->clear();        }
     void deactivateContext()                { renderHelper->deactivate();   }
     void activateContext()                  { renderHelper->activate();     }
-    void repaint()                          { comp->repaint();              }
+    void repaint()                          { if (comp != nullptr) comp->repaint(); }
 
-    bool isVisible() const                  { return comp->isVisible();     }
+    bool isVisible() const                  { return comp != nullptr && comp->isVisible(); }
     int getNumCornersOverlapped() const     { return numCornersOverlapped;  }
-    int getWidth() const                    { return comp->getWidth();      }
-    int getHeight() const                   { return comp->getHeight();     }
-    Rectangle<int> getBounds()              { return comp->getBounds();     }
+    int getPanelId() const                  { return panelId;               }
+    int getWidth() const                    { return comp != nullptr ? comp->getWidth() : 0; }
+    int getHeight() const                   { return comp != nullptr ? comp->getHeight() : 0; }
+    Rectangle<int> getBounds()              { return comp != nullptr ? comp->getBounds() : Rectangle<int>(); }
 
     Ref<Interactor> getInteractor()         { return interactor;            }
     const String& getName() override        { return panelName;             }
     CriticalSection& getRenderLock()        { return renderLock;            }
     bool isSpeedApplicable() const          { return speedApplicable;       }
 
-    void setGraphicsHelper(CommonGfx* gfx)  { this->gfx.reset(gfx);         }
+    void setGraphicsHelper(CommonGfx* gfx);
+    void setPanelRenderer(PanelRenderer* renderer) { panelRenderer = renderer; }
     void setRenderHelper(Renderer* util)    { renderHelper = util;          }
     void setSpeedApplicable(bool is)        { speedApplicable = is;         }
     void setNameTextureId(int id)           { currentNameId = id;           }
     void setNumCornersOverlapped(int num)   { numCornersOverlapped = num;   }
-    void setComponent(Component* comp)      { this->comp = comp;            }
+    void setComponent(Component* comp);
 
-    void triggerPendingScaleUpdate()        { pendingScaleUpdate = true;    }
-    void triggerPendingDeformUpdate()       { pendingDeformUpdate = true;   }
+    void triggerPendingNameUpdate()         { pendingNameUpdate = true; dirtyState.mark(PanelDirtyState::Flag::StaticVisual); }
+    void triggerPendingScaleUpdate()        { pendingScaleUpdate = true; dirtyState.mark(PanelDirtyState::Flag::StaticVisual); }
+    void triggerPendingDeformUpdate()       { pendingDeformUpdate = true; dirtyState.mark(PanelDirtyState::Flag::Resource); }
+    void markDirty(PanelDirtyState::Flag flag) { dirtyState.mark(flag);     }
+
+    bool isDirty(PanelDirtyState::Flag flag) const { return dirtyState.isDirty(flag); }
 
     Component* getComponent()               { return comp;                  }
+    PanelDirtyState& getDirtyState()        { return dirtyState;            }
+    const PanelDirtyState& getDirtyState() const { return dirtyState;       }
+    PanelRenderer* getPanelRenderer()       { return panelRenderer;         }
 
     void prepareBuffers(int size, int colorSize = -1) {
         xBuffer.ensureSize(size);
@@ -154,15 +167,22 @@ public:
     virtual void drawBackground(bool fillBackground = true);
     virtual void drawBackground(const Rectangle<int>& bounds, bool fillBackground);
     virtual void drawInterceptsAndHighlightClosest();
+    virtual void paintSharedCanvasBackground(juce::Graphics& g, const juce::Rectangle<int>& bounds) const;
+    virtual void paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const;
+    virtual bool paintSharedCanvasDebugOverlay(juce::Graphics& g, const juce::Rectangle<int>& bounds) const;
     virtual void panelResized();
     virtual void updateBackground(bool onlyVerticalBackground = false);
+    virtual bool usesSharedCanvasBackground() const { return false; }
+    virtual bool usesSharedCanvasSurface() const { return false; }
 
     virtual bool isScratchApplicable()          { return false;             }
+    virtual bool usesCachedSurface() const      { return false;             }
     virtual int getLayerScratchChannel()        { return CommonEnums::Null; }
-    virtual void setInteractor(Interactor* itr) { this->interactor = itr;   }
+    virtual void setInteractor(Interactor* itr);
 
 protected:
 
+    void bindInteractorToComponent();
     void handlePendingUpdates();
     void createGuideCurveTags();
     virtual void createScales() {}
@@ -205,6 +225,7 @@ protected:
     Image scalesImage, guideCurveImage, grabImage, nameImage, nameImageB;
 
     BufferXY    xy;
+    PanelDirtyState dirtyState;
     String      panelName;
     MicroTimer  renderTime, frameTime;
     Color       pointColours[5];
@@ -212,6 +233,7 @@ protected:
 
     Ref<Component>  comp;
     Ref<Interactor> interactor;
+    Ref<PanelRenderer> panelRenderer;
     Ref<Renderer>   renderHelper;
     std::unique_ptr<CommonGfx> gfx;
 

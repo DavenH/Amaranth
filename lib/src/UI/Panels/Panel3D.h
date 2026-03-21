@@ -17,35 +17,18 @@ class Panel3D :
     ,   public Dragger::Listener
 {
 public:
-    class Renderer : public Panel::Renderer {
+    class ContextHelper : public Panel::Renderer {
     public:
         void deactivate()   override = 0;
         void activate()     override = 0;
         void clear()        override = 0;
-
-        virtual void drawBakedTextures()    {}
-        virtual void gridDrawBeginning()    {}  // enable client arrays
-        virtual void gridDrawFinished()     {}  // disable client arrays
-        virtual void postVertsDraw()        {}
-        virtual void scratchChannelSelected(int ch) {}
-        virtual void textureBakeBeginning() {}
-        virtual void textureBakeFinished()  {}
-
-        virtual bool isDetailReduced()      { return false; }
-        virtual bool isScratchApplicable()  { return false; }
-        virtual bool shouldDrawGrid()       { return true;  }
-        virtual bool willAdjustColumns()    { return false; }
-
-        virtual Buffer<float> getColumnArray()      = 0;
-        virtual const vector<Column>& getColumns()  = 0;
-        virtual CriticalSection& getGridLock()      = 0;
-        virtual void drawSurfaceColumn(int index)   = 0;
     };
 
     class DataRetriever {
     public:
         virtual Buffer<float> getColumnArray() = 0;
         virtual const vector<Column>& getColumns() = 0;
+        virtual CriticalSection& getGridLock() = 0;
     };
 
     /* ----------------------------------------------------------------------------- */
@@ -77,15 +60,25 @@ public:
     void drawSurface();
     void freeResources();
     void highlightCurrentIntercept() override;
+    bool paintSharedCanvasDebugOverlay(juce::Graphics& g, const juce::Rectangle<int>& bounds) const override;
+    void paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const override;
 
     virtual vector<Color>& getGradientColours();
 
-    void drawCurvesAndSurfaces() override           { renderer->drawBakedTextures(); }
-    void setGraphicsRenderer(Renderer* renderer)    { this->renderer.reset(renderer); }
+    void drawCurvesAndSurfaces() override;
+    void setContextHelper(ContextHelper* helper)    { contextHelper = helper; }
 
-    void setUseVertices(bool doso)          { useVertices = doso; }
-    Renderer* getRenderer() const           { return renderer.get(); }
-    OpenGLPanel3D* getOpenglPanel() const   { return openGL.get(); }
+    void setUseVertices(bool doso)              { useVertices = doso; }
+    ContextHelper* getContextHelper() const     { return contextHelper; }
+    OpenGLPanel3D* getOpenglPanel() const       { return openGL.get(); }
+    bool usesCachedSurface() const override     { return true; }
+
+    virtual Buffer<float> getColumnArray()          { jassert(dataRetriever != nullptr); return dataRetriever->getColumnArray(); }
+    virtual const vector<Column>& getColumns() const;
+    virtual CriticalSection& getGridLock();
+    virtual bool isSurfaceDetailReduced()           { return false; }
+    virtual bool shouldDrawGrid()                   { return true; }
+    virtual bool willAdjustSurfaceColumns()         { return false; }
 
     void postVertsDraw() override;
 
@@ -127,7 +120,7 @@ protected:
 
     DataRetriever* dataRetriever;
     Ref<Interactor3D> interactor3D;
-    std::unique_ptr<Renderer> renderer;
+    ContextHelper* contextHelper = nullptr;
     std::unique_ptr<OpenGLPanel3D> openGL;
     std::unique_ptr<BoundWrapper> wrapper;
 

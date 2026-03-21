@@ -8,6 +8,7 @@
 #include <UI/MiscGraphics.h>
 #include <UI/Panels/OpenGLPanel.h>
 #include <UI/Panels/OpenGLPanel3D.h>
+#include <UI/Panels/SharedPanelCanvas.h>
 #include <UI/Panels/ZoomPanel.h>
 #include <Util/ScopedBooleanSwitcher.h>
 
@@ -77,6 +78,7 @@ MainPanel::MainPanel(SingletonRepo* repo) :
 MainPanel::~MainPanel() {
     stopTimer(BoundsCheckId);
     stopTimer(DelayedRepaint);
+    detachVisibleComponents();
 
     removeListeners();
 }
@@ -103,6 +105,7 @@ void MainPanel::init() {
     waveform3D 		= &getObj(Waveform3D);
     waveshaperUI	= &getObj(WaveshaperUI);
     console 		= &getObj(Console);
+    sharedCanvas    = std::make_unique<SharedPanelCanvas>();
 
     initialisePanels();
 }
@@ -120,6 +123,8 @@ void MainPanel::tabSelected(TabbedSelector* selector, Bounded* callbackComponent
 void MainPanel::initialisePanels() {
     keyboard->setLowestVisibleKey(2 * 12);
     this->setWantsKeyboardFocus(true);
+
+    addAndMakeVisible(sharedCanvas.get());
 
     juce::Component* spectCtrls = spectrum3D->getControlsComponent();
     juce::Component* surfCtrls  = waveform3D->getControlsComponent();
@@ -296,6 +301,8 @@ void MainPanel::initialisePanels() {
     }
 
     deletableComponents.add(menuBar);
+    updateSharedCanvasBounds();
+    updateSharedCanvasRegistry();
     initialized = true;
 }
 
@@ -449,6 +456,9 @@ void MainPanel::resized() {
         startTimer(BoundsCheckId, 200);
     }
 
+    updateSharedCanvasBounds();
+    updateSharedCanvasRegistry();
+
     keyboard->setLowestVisibleKey(36);
 }
 
@@ -479,10 +489,67 @@ void MainPanel::attachVisibleComponents() {
     for (auto group : panelGroups) {
         attachComponent(*group);
     }
+
+    updateSharedCanvasRegistry();
 }
 
 void MainPanel::detachVisibleComponents() {
-    return;
+    for (auto group : panelGroups) {
+        if (group == nullptr || group->gl == nullptr || group->panel == nullptr) {
+            continue;
+        }
+
+        group->panel->deactivateContext();
+    }
+}
+
+void MainPanel::updateSharedCanvasBounds() {
+    if (sharedCanvas == nullptr) {
+        return;
+    }
+
+    sharedCanvas->setBounds(getLocalBounds());
+    sharedCanvas->toBack();
+}
+
+void MainPanel::updateSharedCanvasRegistry() {
+    if (sharedCanvas == nullptr) {
+        return;
+    }
+
+    auto& compositor = sharedCanvas->getCompositor();
+    set<Panel*> registeredPanels;
+
+    for (auto group : panelGroups) {
+        if (group == nullptr || group->panel == nullptr) {
+            continue;
+        }
+
+        registeredPanels.insert(group->panel);
+
+        Component* component = group->panel->getComponent();
+        Rectangle<int> bounds;
+        bool visible = false;
+
+        if (component != nullptr) {
+            bounds = component->getBounds();
+            visible = component->isVisible();
+        }
+
+        sharedCanvas->registerOrUpdatePanel(group->panel, bounds, visible);
+    }
+
+    vector<Panel*> stalePanels;
+
+    for (const auto& entry : compositor.getEntries()) {
+        if (registeredPanels.count(entry.panel) == 0) {
+            stalePanels.push_back(entry.panel);
+        }
+    }
+
+    for (auto* panel : stalePanels) {
+        sharedCanvas->removePanel(panel);
+    }
 }
 
 void MainPanel::paint(Graphics& g) {

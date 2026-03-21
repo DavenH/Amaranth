@@ -45,6 +45,16 @@ ZoomPanel::ZoomPanel(SingletonRepo* repo, ZoomContext context) :
     }
 }
 
+ZoomPanel::~ZoomPanel() {
+    horz.removeListener(this);
+    vert.removeListener(this);
+
+    horz.removeMouseListener(this);
+    vert.removeMouseListener(this);
+
+    listeners.clear();
+}
+
 void ZoomPanel::setBounds(int x, int y, int width, int height) {
     jassert(context.panel != nullptr);
 

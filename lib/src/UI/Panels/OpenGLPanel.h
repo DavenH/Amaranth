@@ -11,6 +11,7 @@ using std::vector;
 class Interactor;
 class ZoomPanel;
 class CommonGL;
+class GLPanelRenderer;
 class Panel2D;
 
 class OpenGLPanel :
@@ -39,5 +40,7 @@ public:
     void deactivate() override { deactivateContext(); }
 
 protected:
+    std::unique_ptr<GLPanelRenderer> panelRenderer;
+
     JUCE_LEAK_DETECTOR(OpenGLPanel)
 };

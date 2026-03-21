@@ -1,4 +1,3 @@
-#include "CommonGfx.h"
 #include "Panel2D.h"
 
 #include <Definitions.h>
@@ -15,6 +14,14 @@
 #include "../../Util/Arithmetic.h"
 #include "../../Util/Geometry.h"
 #include "../../UI/Layout/BoundWrapper.h"
+
+namespace {
+
+PanelRenderer* getRenderer(Panel2D* panel) {
+    return panel->getPanelRenderer();
+}
+
+}
 
 Panel2D::Panel2D(SingletonRepo* repo,
                  const String& name,
@@ -151,9 +158,11 @@ void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
         }
     }
 
-    gfx->setCurrentLineWidth(interactor->mouseFlag(WithinReshapeThresh) ? 2.f : 1.f);
-    gfx->fillAndOutlineColoured(positions, baseY, baseAlpha, true, true);
-    gfx->setCurrentLineWidth(1.f);
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentLineWidth(interactor->mouseFlag(WithinReshapeThresh) ? 2.f : 1.f);
+    renderer->fillAndOutlineColoured(positions, baseY, baseAlpha, true, true);
+    renderer->setCurrentLineWidth(1.f);
 }
 
 void Panel2D::drawInterceptLines() {
@@ -186,10 +195,12 @@ void Panel2D::drawInterceptLines() {
         }
     }
 
-    gfx->setCurrentLineWidth(1.f);
-    gfx->setCurrentColour(0.2f, 0.2f, 0.2f, 0.9f);
-    gfx->enableSmoothing();
-    gfx->drawLineStrip(xy, true, true);
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentLineWidth(1.f);
+    renderer->setCurrentColour(0.2f, 0.2f, 0.2f, 0.9f);
+    renderer->enableSmoothing();
+    renderer->drawLineStrip(xy, true);
 }
 
 void Panel2D::highlightCurrentIntercept()
@@ -233,8 +244,10 @@ void Panel2D::highlightCurrentIntercept()
         point.y = icpts[icptIdx].y;
     }
 
-    gfx->setCurrentColour(1.0f, 0.8f, 0.0f);
-    gfx->drawPoint(vertexHighlightRadius, point, true);
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentColour(1.0f, 0.8f, 0.0f);
+    renderer->drawPoint(vertexHighlightRadius, point, true);
 }
 
 ostream& operator<<(ostream& stream, const Vertex* vert) {
@@ -269,7 +282,9 @@ void Panel2D::drawDepthLinesAndVerts() {
     float offsets[]     = { 0, 0, 0, -0.5f, 0.5f };
     int scratchChannel  = getLayerScratchChannel();
 
-    gfx->setCurrentLineWidth(1.f);
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentLineWidth(1.f);
 
     vector<ColorPoint> finalPoints;
 
@@ -287,14 +302,14 @@ void Panel2D::drawDepthLinesAndVerts() {
 
         Color c = clr.withAlpha(0.5f);
 
-        gfx->drawLine(curr, next, c, clr);
-        gfx->drawLine(next, next2,clr, c);
+        renderer->drawLine(curr.x, curr.y, next.x, next.y, c, clr);
+        renderer->drawLine(next.x, next.y, next2.x, next2.y, clr, c);
     }
 
     for (auto& p : points) {
-        gfx->setCurrentColour(pointColours[p.num]);
-        gfx->drawPoint(vertexWhiteRadius, p.before, true);
-        gfx->drawPoint(vertexWhiteRadius, p.after, true);
+        renderer->setCurrentColour(pointColours[p.num]);
+        renderer->drawPoint(vertexWhiteRadius, p.before, true);
+        renderer->drawPoint(vertexWhiteRadius, p.after, true);
     }
 }
 
@@ -312,7 +327,9 @@ void Panel2D::drawGuideCurveTags() {
 
     ScopedLock sl2(data.lock);
 
-    gfx->setCurrentColour(Color(1));
+    PanelRenderer* renderer = getRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentColour(Color(1));
 
     if (guideCurveTags.empty()) {
         return;
@@ -346,8 +363,8 @@ void Panel2D::drawGuideCurveTags() {
                     guideCurveTex->rect = Rectangle((float) roundToInt(x), (float) roundToInt(y), rect.getWidth()
                                             , rect.getHeight());
 
-                    gfx->setCurrentColour(colors[j]);
-                    gfx->drawSubTexture(guideCurveTex, rect);
+                    renderer->setCurrentColour(colors[j]);
+                    renderer->drawCachedTexture(guideCurveTex, rect);
 
                     cumeWidth += rect.getWidth();
                     ++numTags;

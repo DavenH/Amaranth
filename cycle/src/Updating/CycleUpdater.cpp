@@ -57,46 +57,54 @@ void CycleUpdater::finishInitialization() {
     viewStageChanged(true);
 }
 
+CycleUpdater::Node* CycleUpdater::createNode() {
+    return ownedNodes.add(new Node());
+}
+
+CycleUpdater::Node* CycleUpdater::createNode(Updateable* updateable) {
+    return ownedNodes.add(new Node(updateable));
+}
+
 void CycleUpdater::createUpdateGraph() {
-    time2Itr 	= new Node(&getObj(WaveformInter2D));
-    time3Itr 	= new Node(&getObj(WaveformInter3D));
-    spect2Itr 	= new Node(&getObj(SpectrumInter2D));
-    spect3Itr 	= new Node(&getObj(SpectrumInter3D));
-    env2Itr 	= new Node(&getObj(EnvelopeInter2D));
-    env3Itr 	= new Node(&getObj(EnvelopeInter3D));
-    irModelItr 	= new Node(&getObj(IrModellerUI));
-    wshpItr 	= new Node(&getObj(WaveshaperUI));
-    eqlzerUI 	= new Node(&getObj(EqualizerUI));
-    derivUI 	= new Node(&getObj(DerivativePanel));
-    guideCurveItr 	= new Node(&getObj(GuideCurvePanel));
+    time2Itr 	= createNode(&getObj(WaveformInter2D));
+    time3Itr 	= createNode(&getObj(WaveformInter3D));
+    spect2Itr 	= createNode(&getObj(SpectrumInter2D));
+    spect3Itr 	= createNode(&getObj(SpectrumInter3D));
+    env2Itr 	= createNode(&getObj(EnvelopeInter2D));
+    env3Itr 	= createNode(&getObj(EnvelopeInter3D));
+    irModelItr 	= createNode(&getObj(IrModellerUI));
+    wshpItr 	= createNode(&getObj(WaveshaperUI));
+    eqlzerUI 	= createNode(&getObj(EqualizerUI));
+    derivUI 	= createNode(&getObj(DerivativePanel));
+    guideCurveItr 	= createNode(&getObj(GuideCurvePanel));
 
-    time2Rast  	= new Node(&getObj(TimeRasterizer));
-    guideCurveRast = new Node(getObj(GuideCurvePanel).getRasterizer());
-    irModelRast = new Node(getObj(IrModellerUI).getRasterizer());
-    wshpRast 	= new Node(getObj(WaveshaperUI).getRasterizer());
+    time2Rast  	= createNode(&getObj(TimeRasterizer));
+    guideCurveRast = createNode(getObj(GuideCurvePanel).getRasterizer());
+    irModelRast = createNode(getObj(IrModellerUI).getRasterizer());
+    wshpRast 	= createNode(getObj(WaveshaperUI).getRasterizer());
 
-    envProc 	= new Node(getObj(VisualDsp).getEnvProcessor());
-    timeProc  	= new Node(getObj(VisualDsp).getTimeProcessor());
-    spectProc 	= new Node(getObj(VisualDsp).getFFTProcessor());
-    effectsProc = new Node(getObj(VisualDsp).getFXProcessor());
+    envProc 	= createNode(getObj(VisualDsp).getEnvProcessor());
+    timeProc  	= createNode(getObj(VisualDsp).getTimeProcessor());
+    spectProc 	= createNode(getObj(VisualDsp).getFFTProcessor());
+    effectsProc = createNode(getObj(VisualDsp).getFXProcessor());
 
-    univNode 	= new Node();
-    allButFX 	= new Node();
-    wshpDsp 	= new Node();
-    irModelDsp 	= new Node();
+    univNode 	= createNode();
+    allButFX 	= createNode();
+    wshpDsp 	= createNode();
+    irModelDsp 	= createNode();
 
-    unisonItr 	= new Node();
-    unison		= new Node();
-    ctrlNode	= new Node();
+    unisonItr 	= createNode();
+    unison		= createNode();
+    ctrlNode	= createNode();
 
-    envDlg		= new Node(envelopeDelegate.get());
-    spectDlg	= new Node(spectDelegate.get());
-    scratchRast	= new Node(scratchUpdate.get());
-    morphNode   = new Node(morphUpdate.get());
-    synthNode   = new Node();
+    envDlg		= createNode(envelopeDelegate.get());
+    spectDlg	= createNode(spectDelegate.get());
+    scratchRast	= createNode(scratchUpdate.get());
+    morphNode   = createNode(morphUpdate.get());
+    synthNode   = createNode();
 
-    timeUIs 	= new Node();
-    spectUIs 	= new Node();
+    timeUIs 	= createNode();
+    spectUIs 	= createNode();
 
     Node* timeNodes[] = { timeProc, time2Rast, synthNode };
 
