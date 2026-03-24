@@ -1,4 +1,3 @@
-#include "CommonGfx.h"
 #include "Panel3D.h"
 #include "Texture.h"
 #include "ZoomPanel.h"
@@ -14,6 +13,13 @@
 #include "../../Util/LogRegions.h"
 #include "../../Util/ScopedFunction.h"
 
+namespace {
+
+PanelRenderer* getPanelRenderer(Panel3D* panel) {
+    return panel->getPanelRenderer();
+}
+
+}
 
 Panel3D::Panel3D(
     SingletonRepo* repo,
@@ -64,12 +70,13 @@ void Panel3D::init() {
 
 void Panel3D::bakeTextures() {
     shouldBakeTextures = false;
+    dirtyState.clear(PanelDirtyState::Flag::SurfaceCache);
 
-    ScopedFunction sf(
-            renderer.get(),
-            &Renderer::textureBakeBeginning,
-            &Renderer::textureBakeFinished);
     drawSurface();
+
+    PanelRenderer* panelRenderer = ::getPanelRenderer(this);
+    jassert(panelRenderer != nullptr);
+    panelRenderer->finishSurfaceBake();
 }
 
 void Panel3D::drawDepthLinesAndVerts() {
@@ -123,52 +130,58 @@ void Panel3D::drawInterceptLines() {
 
             applyScale(xy);
 
-            gfx->enableSmoothing();
+            PanelRenderer* renderer = ::getPanelRenderer(this);
+            jassert(renderer != nullptr);
+            renderer->enableSmoothing();
 
             bool revertWidth = false;
             if (currVert != nullptr && currVert->isOwnedBy(cube)) {
-                gfx->setCurrentLineWidth(2.f);
+                renderer->setCurrentLineWidth(2.f);
                 revertWidth = true;
             }
 
-            gfx->setCurrentColour(0.1f, 0.1f, 0.3f, 0.6f);
-            gfx->drawLineStrip(xy, true, false);
+            renderer->setCurrentColour(0.1f, 0.1f, 0.3f, 0.6f);
+            renderer->drawLineStrip(xy, false);
 
             xy.x.add(0.5f);
             xy.y.add(0.5f);
 
-            gfx->setCurrentColour(0.7f, 0.7f, 1.0f, 0.8f);
-            gfx->drawLineStrip(xy, true, false);
-            gfx->setCurrentColour(0.7f, 0.7f, 0.7f, 0.5f);
+            renderer->setCurrentColour(0.7f, 0.7f, 1.0f, 0.8f);
+            renderer->drawLineStrip(xy, false);
+            renderer->setCurrentColour(0.7f, 0.7f, 0.7f, 0.5f);
 
-            if(revertWidth) {
-                gfx->setCurrentLineWidth(1.f);
+            if (revertWidth) {
+                renderer->setCurrentLineWidth(1.f);
             }
 
-            gfx->disableSmoothing();
-            gfx->drawLine(first, realFirst, true);
-            gfx->drawLine(realLast, second, true);
+            renderer->disableSmoothing();
+            renderer->drawLine(first.x, first.y, realFirst.x, realFirst.y, true);
+            renderer->drawLine(realLast.x, realLast.y, second.x, second.y, true);
         } else {
-            gfx->enableSmoothing();
             x1 = sx(first.x);
             x2 = sx(second.x);
             y1 = sy(first.y);
             y2 = sy(second.y);
 
+            PanelRenderer* renderer = ::getPanelRenderer(this);
+            jassert(renderer != nullptr);
+            renderer->enableSmoothing();
+
             bool revertWidth = false;
-            if(currVert != nullptr && currVert->isOwnedBy(cube)) {
-                gfx->setCurrentLineWidth(2.f);
+            if (currVert != nullptr && currVert->isOwnedBy(cube)) {
+                renderer->setCurrentLineWidth(2.f);
                 revertWidth = true;
             }
 
-            gfx->setCurrentColour(0.1f, 0.1f, 0.3f, 0.6f);
-            gfx->drawLine(x1, y1 + 0.5f, x2, y2 + 0.5f, false);
+            renderer->setCurrentColour(0.1f, 0.1f, 0.3f, 0.6f);
+            renderer->drawLine(x1, y1 + 0.5f, x2, y2 + 0.5f, false);
 
-            gfx->setCurrentColour(0.7f, 0.7f, 1.0f, 0.8f);
-            gfx->drawLine(x1, y1, x2, y2, false);
+            renderer->setCurrentColour(0.7f, 0.7f, 1.0f, 0.8f);
+            renderer->drawLine(x1, y1, x2, y2, false);
 
-            if(revertWidth)
-                gfx->setCurrentLineWidth(1.f);
+            if (revertWidth) {
+                renderer->setCurrentLineWidth(1.f);
+            }
         }
     }
 }
@@ -200,8 +213,10 @@ void Panel3D::drawAxe() {
     Vertex2 curr = interactor->state.currentMouse;
     float length = interactor->realValue(PencilRadius);
 
-    gfx->setCurrentColour(1, 1, 1);
-    gfx->drawLine(Vertex2(curr.x, curr.y - length), Vertex2(curr.x, curr.y + length));
+    PanelRenderer* renderer = ::getPanelRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentColour(1, 1, 1);
+    renderer->drawLine(curr.x, curr.y - length, curr.x, curr.y + length, true);
 }
 
 /*
@@ -274,12 +289,15 @@ void Panel3D::doColumnDraw(Buffer<Int8u> pxBuf, Buffer<float> grd32f, int i) {
         setVertices(i, vertices);
     }
 
-    if(i > 0 || ! useVertices) {
-        renderer->drawSurfaceColumn(i);
+    PanelRenderer* panelRenderer = ::getPanelRenderer(this);
+    jassert(panelRenderer != nullptr);
+
+    if (i > 0 || ! useVertices) {
+        panelRenderer->drawSurfaceColumn(colours, vertices, draw.stride, draw.sizeY);
     }
 
   #ifdef JUCE_DEBUG
-    gfx->checkErrors();
+    panelRenderer->checkErrors();
   #endif
 }
 
@@ -513,21 +531,94 @@ vector<Color>& Panel3D::getGradientColours() {
     return gradient.getColours();
 }
 
-void Panel3D::drawSurface() {
-    if(! renderer->shouldDrawGrid()) {
+void Panel3D::drawCurvesAndSurfaces() {
+    PanelRenderer* panelRenderer = ::getPanelRenderer(this);
+    jassert(panelRenderer != nullptr);
+    panelRenderer->drawSurfaceCache();
+}
+
+void Panel3D::paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {
+    if (openGL != nullptr && openGL->paintSharedCanvasSurface(g, bounds)) {
         return;
     }
 
-    const vector<Column>& grid = renderer->getColumns();
+    g.saveState();
+    g.reduceClipRegion(bounds);
+
+    juce::ColourGradient gradient(
+        juce::Colour(22, 28, 36),
+        bounds.getX(),
+        (float) bounds.getBottom(),
+        juce::Colour(54, 78, 108),
+        (float) bounds.getRight(),
+        (float) bounds.getY(),
+        false
+    );
+    gradient.addColour(0.55, juce::Colour(116, 146, 171));
+
+    g.setGradientFill(gradient);
+    g.fillRect(bounds.reduced(1));
+
+    g.setColour(juce::Colour::fromRGBA((juce::uint8) 255, (juce::uint8) 255, (juce::uint8) 255, (juce::uint8) 28));
+
+    const int numVerticals = 9;
+    for (int i = 1; i < numVerticals; ++i) {
+        float x = bounds.getX() + bounds.getWidth() * (float) i / (float) numVerticals;
+        g.drawVerticalLine((int) x, (float) bounds.getY(), (float) bounds.getBottom());
+    }
+
+    const int numHorizontals = 7;
+    for (int i = 1; i < numHorizontals; ++i) {
+        float y = bounds.getY() + bounds.getHeight() * (float) i / (float) numHorizontals;
+        g.drawHorizontalLine((int) y, (float) bounds.getX(), (float) bounds.getRight());
+    }
+
+    g.setColour(juce::Colour::fromRGBA((juce::uint8) 255, (juce::uint8) 255, (juce::uint8) 255, (juce::uint8) 90));
+    g.setFont(juce::Font(juce::FontOptions(13.f)));
+    g.drawText(panelName, bounds.reduced(10, 8), juce::Justification::topLeft, false);
+
+    g.restoreState();
+}
+
+bool Panel3D::paintSharedCanvasDebugOverlay(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {
+    if (openGL == nullptr || !openGL->paintSharedCanvasSurface(g, bounds)) {
+        return false;
+    }
+
+    g.saveState();
+    g.reduceClipRegion(bounds);
+    g.setColour(juce::Colour::fromRGBA((juce::uint8) 120, (juce::uint8) 210, (juce::uint8) 255, (juce::uint8) 180));
+    g.drawRect(bounds, 2);
+    g.setColour(juce::Colour::fromRGBA((juce::uint8) 120, (juce::uint8) 210, (juce::uint8) 255, (juce::uint8) 220));
+    g.setFont(juce::Font(juce::FontOptions(11.f)));
+    auto labelBounds = bounds;
+    g.drawText("snapshot", labelBounds.removeFromTop(18).reduced(6, 2), juce::Justification::centredRight, false);
+    g.restoreState();
+    return true;
+}
+
+const vector<Column>& Panel3D::getColumns() const {
+    jassert(dataRetriever != nullptr);
+    return dataRetriever->getColumns();
+}
+
+CriticalSection& Panel3D::getGridLock() {
+    jassert(dataRetriever != nullptr);
+    return dataRetriever->getGridLock();
+}
+
+void Panel3D::drawSurface() {
+    if (!shouldDrawGrid()) {
+        return;
+    }
+
+    const vector<Column>& grid = getColumns();
 
     if(grid.empty()) {
         return;
     }
 
-    CriticalSection dummy;
-    CriticalSection& arrayLock = renderer->getGridLock();
-
-    ScopedLock sl(arrayLock);
+    ScopedLock sl(getGridLock());
 
     draw.lastSizeY      = 0;
     draw.lastKey        = 0;
@@ -538,8 +629,8 @@ void Panel3D::drawSurface() {
     draw.downsampSize   = draw.sizeY;
     draw.stride         = isTransparent ? 4 : 3;
     draw.texHeight      = comp->getHeight() - 2 * vertPadding;
-    draw.reduced        = renderer->isDetailReduced();
-    draw.adjustColumns  = renderer->willAdjustColumns();
+    draw.reduced        = isSurfaceDetailReduced();
+    draw.adjustColumns  = willAdjustSurfaceColumns();
     draw.ramp           = Buffer<float>();
 
     downsampAcc.resize(draw.colSourceSizeY);
@@ -553,10 +644,13 @@ void Panel3D::drawSurface() {
     scaledX.ramp(0, slope);
     applyScaleX(scaledX);
 
+    PanelRenderer* panelRenderer = ::getPanelRenderer(this);
+    jassert(panelRenderer != nullptr);
+
     ScopedFunction sf(
-        renderer.get(),
-        &Renderer::gridDrawBeginning,
-        &Renderer::gridDrawFinished);
+        panelRenderer,
+        &PanelRenderer::beginSurfaceGrid,
+        &PanelRenderer::finishSurfaceGrid);
 
     haveLogarithmicY ?
         drawLogSurface(grid) :
@@ -569,8 +663,6 @@ void Panel3D::postVertsDraw() {
     if (getSetting(Tool) == Tools::Axe && mouseFlag(MouseOver)) {
         drawAxe();
     }
-
-    renderer->postVertsDraw();
 }
 
 void Panel3D::highlightCurrentIntercept() {
@@ -610,12 +702,15 @@ void Panel3D::highlightCurrentIntercept() {
         }
     }
 
-    gfx->setCurrentColour(1.f, 0.8f, 0.0f);
-    gfx->drawPoint(vertexHighlightRadius, point, true);
+    PanelRenderer* renderer = ::getPanelRenderer(this);
+    jassert(renderer != nullptr);
+    renderer->setCurrentColour(1.f, 0.8f, 0.0f);
+    renderer->drawPoint(vertexHighlightRadius, point, true);
 }
 
 void Panel3D::doExtraResized() {
     shouldBakeTextures = true;
+    dirtyState.mark(PanelDirtyState::Flag::SurfaceCache);
 }
 
 void Panel3D::freeResources() {
@@ -666,8 +761,10 @@ void Panel3D::drawGuideCurveTags() {
                     float y = jmin(getHeight() - 16.f, e.y + 2.f + (numTags & 1 ? 1 : 0)); //  + 5
                     guideCurveTex->rect = Rectangle(roundf(x), roundf(y), rect.getWidth(), rect.getHeight());
 
-                    gfx->setCurrentColour(colors[j]);
-                    gfx->drawSubTexture(guideCurveTex, rect);
+                    PanelRenderer* renderer = ::getPanelRenderer(this);
+                    jassert(renderer != nullptr);
+                    renderer->setCurrentColour(colors[j]);
+                    renderer->drawCachedTexture(guideCurveTex, rect);
 
                     cumeWidth += rect.getWidth();
                     ++numTags;

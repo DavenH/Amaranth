@@ -115,6 +115,23 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
     }
 }
 
+void SingletonRepo::addExternal(SingletonAccessor* accessor, int order) {
+    accessor->setInitOrder(order);
+    hashes.set(accessor->getName(), accessor);
+
+    if(auto* savable = dynamic_cast<Savable*>(accessor)) {
+        saveSources.add(savable);
+    }
+
+    if(auto* panel = dynamic_cast<Panel*>(accessor)) {
+        panels.add(panel);
+    }
+
+    if(auto* rasterizer = dynamic_cast<MeshRasterizer*>(accessor)) {
+        rasterizers.add(rasterizer);
+    }
+}
+
 OutputStream& SingletonRepo::getDebugStream() {
   #ifdef JUCE_DEBUG
     if(debugStream == nullptr) {

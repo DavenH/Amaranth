@@ -15,13 +15,13 @@
 
 MainAppWindow::MainAppWindow(const String& commandLine) :
         DocumentWindow("Cycle", Colours::black, allButtons, true)
-    ,	SingletonAccessor(repo, "MainAppWindow") {
+    ,	SingletonAccessor(nullptr, "MainAppWindow") {
     setResizable(platformSplit(true, false, true), false);
     setTitleBarHeight(25);
 
     initializer = std::make_unique<Initializer>();
     repo = initializer->getSingletonRepo();
-    repo->add(this);
+    repo->addExternal(this);
 
     initializer->setCommandLine(commandLine);
     initializer->init();

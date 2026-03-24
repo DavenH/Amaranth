@@ -3,6 +3,7 @@
 #include <Array/ScopedAlloc.h>
 #include <Thread/LockTracer.h>
 #include <UI/MiscGraphics.h>
+#include <UI/Panels/CommonGfx.h>
 #include <UI/Panels/ScopedGL.h>
 #include <UI/Panels/Texture.h>
 #include <Util/NumberUtils.h>

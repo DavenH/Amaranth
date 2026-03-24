@@ -4,6 +4,7 @@
 #include <App/SingletonRepo.h>
 #include <Curve/GuideCurveProvider.h>
 #include <UI/MiscGraphics.h>
+#include <UI/Panels/CommonGfx.h>
 #include <UI/Widgets/Knob.h>
 
 #include "WaveshaperUI.h"

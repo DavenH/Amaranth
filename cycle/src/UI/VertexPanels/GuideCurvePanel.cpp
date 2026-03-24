@@ -3,6 +3,7 @@
 #include <Curve/GuideCurveProvider.h>
 #include <Design/Updating/Updater.h>
 #include <UI/IConsole.h>
+#include <UI/Panels/CommonGfx.h>
 
 #include "GuideCurvePanel.h"
 

@@ -154,6 +154,7 @@ void Initializer::init2() {
     meshLib->addGroup(MeshLibrary::TypeEnvelope);
     meshLib->addGroup(MeshLibrary::TypeMesh);
     meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
 
     meshLib->addLayer(LayerGroups::GroupVolume);
     meshLib->addLayer(LayerGroups::GroupPitch);
@@ -369,7 +370,7 @@ void Initializer::instantiate() {
     repo->add(new EnvPitchRast   (repo, guideCurvePanel, "EnvPitchRast"));
     repo->add(new EnvScratchRast (repo, guideCurvePanel, "EnvScratchRast"));
 
-    repo->add(this);
+    repo->addExternal(this);
 }
 
 Initializer::~Initializer() {
