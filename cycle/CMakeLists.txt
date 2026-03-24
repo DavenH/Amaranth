@@ -85,11 +85,13 @@ target_include_directories(${PROJECT_NAME}_tests PRIVATE
 #target_include_directories(${PROJECT_NAME}_tests PRIVATE "/usr/local/include")
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+    CYCLE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
     JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/Incl/JucePluginDefines.h"
 )
 
 target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
     BUILD_TESTING=1
+    CYCLE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
     JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/Incl/JucePluginDefines.h"
 )
 

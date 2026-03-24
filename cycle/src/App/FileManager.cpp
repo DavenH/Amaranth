@@ -58,8 +58,29 @@ FileManager::FileManager(SingletonRepo* repo) :
 void FileManager::loadPendingItem() {
 }
 
+File FileManager::findFactoryPresetFile(const String& presetName) const {
+    String filename = presetName + "." + getStrConstant(DocumentExt);
+    StringArray searchDirs = getObj(Directories).getPresetSearchDirs();
+
+    for (auto& dir : searchDirs) {
+        File file(dir + filename);
+
+        if (file.existsAsFile()) {
+            return file;
+        }
+    }
+
+    return {};
+}
+
 void FileManager::openFactoryPreset(const String &presetName) {
-    File file(getObj(Directories).getPresetDir() + presetName + "." + getStrConstant(DocumentExt));
+    File file(findFactoryPresetFile(presetName));
+
+    if (!file.existsAsFile()) {
+        jassertfalse;
+        showConsoleMsg("Couldn't find factory preset: " + presetName);
+        return;
+    }
 
     openPreset(file);
 }

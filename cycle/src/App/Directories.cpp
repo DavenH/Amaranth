@@ -67,12 +67,36 @@ void Directories::init() {
     jassert(! contentDir.isEmpty());
 }
 
+String Directories::getRepoPresetDir() const {
+    File repoPresetDir = File(String(CYCLE_SOURCE_DIR)).getChildFile("content").getChildFile("presets");
+
+    if (!repoPresetDir.isDirectory()) {
+        return {};
+    }
+
+    return repoPresetDir.getFullPathName() + File::getSeparatorString();
+}
+
 String Directories::getPresetDir() const {
     String path = contentDir;
     if (!path.endsWithChar(File::getSeparatorChar())) {
         path += File::getSeparatorString();
     }
     return path + "presets" + File::getSeparatorString();
+}
+
+StringArray Directories::getPresetSearchDirs() const {
+    StringArray dirs;
+
+    dirs.add(getPresetDir());
+
+    String repoPresetDir = getRepoPresetDir();
+    if (repoPresetDir.isNotEmpty()) {
+        dirs.addIfNotAlreadyThere(repoPresetDir);
+    }
+
+    dirs.add(getUserPresetDir());
+    return dirs;
 }
 
 String Directories::getUserPresetDir() const {
