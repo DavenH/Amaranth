@@ -72,6 +72,7 @@ public:
     ContextHelper* getContextHelper() const     { return contextHelper; }
     OpenGLPanel3D* getOpenglPanel() const       { return openGL.get(); }
     bool usesCachedSurface() const override     { return true; }
+    bool usesSharedCanvasSurface() const override { return true; }
 
     virtual Buffer<float> getColumnArray()          { jassert(dataRetriever != nullptr); return dataRetriever->getColumnArray(); }
     virtual const vector<Column>& getColumns() const;
