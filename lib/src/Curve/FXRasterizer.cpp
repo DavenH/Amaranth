@@ -1,5 +1,12 @@
 #include <algorithm>
+
 #include "FXRasterizer.h"
+
+namespace {
+constexpr int kV2FxMaxIntercepts = 128;
+constexpr int kV2FxMaxCurves = 256;
+constexpr int kV2FxMaxWavePoints = 4096;
+}
 
 FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
         SingletonAccessor(repo, name),
@@ -9,9 +16,22 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 
     dims.x = Vertex::Phase;
     dims.y = Vertex::Amp;
+
+    V2PrepareSpec prepareSpec;
+    prepareSpec.capacities.maxIntercepts = kV2FxMaxIntercepts;
+    prepareSpec.capacities.maxCurves = kV2FxMaxCurves;
+    prepareSpec.capacities.maxWavePoints = kV2FxMaxWavePoints;
+    prepareSpec.capacities.maxDeformRegions = 0;
+    v2FxRasterizer.prepare(prepareSpec);
 }
 
 void FXRasterizer::calcCrossPoints() {
+  #if AMARANTH_ENABLE_V2_RASTERIZERS
+    if (renderWithV2()) {
+        return;
+    }
+  #endif
+
     if (mesh == nullptr || mesh->getNumVerts() == 0) {
         cleanUp();
         return;
@@ -22,7 +42,7 @@ void FXRasterizer::calcCrossPoints() {
         float* values = vert->values;
         Intercept icpt(values[dims.x], values[dims.y], 0, values[Vertex::Curve]);
 
-        if(scalingType) {
+        if (scalingType != MeshRasterizer::Unipolar) {
             icpt.y = 2.f * icpt.y - 1.f;
         }
 
@@ -100,4 +120,59 @@ int FXRasterizer::getNumDims() {
 
 bool FXRasterizer::hasEnoughCubesForCrossSection() {
     return mesh->getNumVerts() > 1;
+}
+
+bool FXRasterizer::renderWithV2() {
+    if (mesh == nullptr || ! hasEnoughCubesForCrossSection()) {
+        return false;
+    }
+
+    GuideCurveProvider* guideCurveProvider = getGuideCurveProvider();
+
+    v2FxRasterizer.setMeshSnapshot(mesh);
+
+    V2FxControlSnapshot controls;
+    controls.morph = morph;
+    controls.scaling = scalingType;
+    controls.wrapPhases = cyclic;
+    controls.cyclic = cyclic;
+    controls.minX = xMinimum;
+    controls.maxX = xMaximum;
+    controls.interpolateCurves = interpolateCurves;
+    controls.lowResolution = lowResCurves;
+    controls.integralSampling = integralSampling;
+    controls.pointPath = V2PositionerContext::PointPathContext(
+        guideCurveProvider,
+        noiseSeed,
+        vertOffsetSeeds,
+        phaseOffsetSeeds,
+        guideCurveProvider != nullptr,
+        false,
+        true);
+    controls.componentPath = V2WaveBuilderContext::ComponentPathContext(
+        guideCurveProvider,
+        noiseSeed,
+        vertOffsetSeeds,
+        phaseOffsetSeeds,
+        guideCurveProvider != nullptr,
+        decoupleComponentDfrms,
+        lowResCurves,
+        morph.time);
+    v2FxRasterizer.updateControlData(controls);
+
+    V2RasterArtifacts artifacts;
+    if (! v2FxRasterizer.renderArtifacts(artifacts)
+            || artifacts.intercepts == nullptr
+            || artifacts.intercepts->size() <= 1) {
+        return false;
+    }
+
+    icpts.assign(artifacts.intercepts->begin(), artifacts.intercepts->end());
+    std::sort(icpts.begin(), icpts.end());
+
+    curves.clear();
+    padIcpts(icpts, curves);
+    updateCurves();
+    unsampleable = false;
+    return true;
 }

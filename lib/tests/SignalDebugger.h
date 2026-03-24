@@ -4,14 +4,16 @@
 
 #include <JuceHeader.h>
 #include "../src/Array/Buffer.h"
+#include "../src/Audio/PitchedSample.h"
+
 using namespace juce;
 
 class SignalDebugger {
 public:
     // Configuration struct for plot dimensions and styling
     struct PlotConfig {
-        int width                 = 1280;
-        int height                = 1280;
+        int width                 = 640;
+        int height                = 640;
         int marginLeft            = 60; // Increased for y-axis labels
         int marginRight           = 90; // Increased for value labels
         int marginTop             = 30; // Increased for title
@@ -37,6 +39,15 @@ public:
     struct PlotData {
         std::vector<Buffer<float>> gridData;
         PlotData() {}
+    };
+
+    struct OverlayConfig {
+        Colour firstColor = Colours::blue;
+        Colour secondColor = Colours::red;
+        float firstThickness = 2.0f;
+        float secondThickness = 2.0f;
+        String firstLabel = "signal-a";
+        String secondLabel = "signal-b";
     };
 
     void setConfig(const PlotConfig& newConfig) {
@@ -118,16 +129,11 @@ public:
         // Find min/max values
         float minVal = std::numeric_limits<float>::max();
         float maxVal = std::numeric_limits<float>::lowest();
-        for (int i = 0; i < data.size(); ++i) {
-            minVal = std::min(minVal, data[i]);
-            maxVal = std::max(maxVal, data[i]);
-        }
+        data.minmax(minVal, maxVal);
 
         // Add padding to range
         float range   = maxVal - minVal;
         float padding = range * config.valuePadding;
-        float minV = minVal;
-        float maxV = maxVal;
         minVal -= padding;
         maxVal += padding;
         range = maxVal - minVal;
@@ -178,23 +184,131 @@ public:
                       0, data.size(),   // X-axis range (time)
                       minVal, maxVal);
 
-        auto timestamp = Time::currentTimeMillis();
-        auto safeLabel = File::createLegalFileName(label);
-        auto filename  = "lineplot_" + safeLabel + "_" + String(timestamp) + ".png";
+        writeImageArtifact(image, "lineplot", label);
+    }
 
-        File outputDir(LIB_ROOT "/tests/debug_output");
-        File outputFile = outputDir.getChildFile(filename);
-        FileOutputStream stream(outputFile);
-
-        if (stream.openedOk()) {
-            PNGImageFormat pngWriter;
-            pngWriter.writeImageToStream(image, stream);
+    void plotSignalOverlay(
+        const Buffer<float>& first,
+        const Buffer<float>& second,
+        const String& label,
+        const OverlayConfig& overlay) {
+        if (first.empty() || second.empty()) {
+            return;
         }
+
+        Image image(Image::RGB, config.width, config.height, true);
+        Graphics g(image);
+        g.fillAll(Colours::white);
+
+        const Rectangle<int> plotArea(
+            config.marginLeft,
+            config.marginTop,
+            config.width - config.marginLeft - config.marginRight,
+            config.height - config.marginTop - config.marginBottom
+        );
+
+        g.setColour(Colours::lightgrey);
+        float gridStepX = plotArea.getWidth() / config.gridDivisions;
+        float gridStepY = plotArea.getHeight() / config.gridDivisions;
+        for (int i = 0; i <= config.gridDivisions; ++i) {
+            float y = plotArea.getY() + i * gridStepY;
+            float x = plotArea.getX() + i * gridStepX;
+            g.drawHorizontalLine((int) y, plotArea.getX(), plotArea.getRight());
+            g.drawVerticalLine((int) x, plotArea.getY(), plotArea.getBottom());
+        }
+
+        float minV1, maxV1, minV2, maxV2;
+        first.minmax(minV1, maxV1);
+        second.minmax(minV2, maxV2);
+        float minVal = jmin(minV1, minV2);
+        float maxVal = jmin(maxV1, maxV2);
+
+        float range = maxVal - minVal;
+        if (range <= 0.0f) {
+            range = 1.0f;
+        }
+
+        float padding = range * config.valuePadding;
+        minVal -= padding;
+        maxVal += padding;
+        range = maxVal - minVal;
+
+        auto drawSeries = [&](const Buffer<float>& data, const Colour& colour, float thickness) {
+            if (data.size() < 2) {
+                return;
+            }
+
+            Path path;
+            float xScale = plotArea.getWidth() / float(data.size() - 1);
+            float yScale = plotArea.getHeight() / range;
+
+            path.startNewSubPath(
+                plotArea.getX(),
+                plotArea.getBottom() - (data[0] - minVal) * yScale);
+
+            for (int i = 1; i < data.size(); ++i) {
+                float x = plotArea.getX() + i * xScale;
+                float y = plotArea.getBottom() - (data[i] - minVal) * yScale;
+                path.lineTo(x, y);
+            }
+
+            g.setColour(colour);
+            g.strokePath(path, PathStrokeType(thickness));
+        };
+
+        drawSeries(first, overlay.firstColor, overlay.firstThickness);
+        drawSeries(second, overlay.secondColor, overlay.secondThickness);
+
+        g.setColour(Colours::black);
+        g.drawRect(plotArea, 1);
+        g.setFont(config.labelFontSize);
+
+        drawAxisTicks(g, plotArea,
+                      0, jmax(first.size(), second.size()),
+                      minVal, maxVal);
+
+        g.drawText(String(maxVal, 2),
+                   plotArea.getRight(), plotArea.getY() - 20,
+                   config.marginRight - 5, 20,
+                   Justification::right);
+
+        g.drawText(String(minVal, 2),
+                   plotArea.getRight(), plotArea.getBottom(),
+                   config.marginRight - 5, 20,
+                   Justification::right);
+
+        g.drawText(label,
+                   plotArea.getX(), plotArea.getBottom() + 5,
+                   plotArea.getWidth(), config.marginBottom - 10,
+                   Justification::centred);
+
+        int legendX = plotArea.getX() + 8;
+        int legendY = plotArea.getY() + 8;
+
+        g.setColour(overlay.firstColor);
+        g.fillRect(legendX, legendY, 14, 14);
+        g.setColour(Colours::black);
+        g.drawText(overlay.firstLabel, legendX + 18, legendY - 2, 140, 18, Justification::left);
+
+        g.setColour(overlay.secondColor);
+        g.fillRect(legendX, legendY + 18, 14, 14);
+        g.setColour(Colours::black);
+        g.drawText(overlay.secondLabel, legendX + 18, legendY + 16, 140, 18, Justification::left);
+
+        writeImageArtifact(image, "lineplot_overlay", label);
+    }
+
+    void plotSignalOverlay(
+        const Buffer<float>& first,
+        const Buffer<float>& second,
+        const String& label) {
+        OverlayConfig overlay;
+        plotSignalOverlay(first, second, label, overlay);
     }
 
     void plotHeatmap(const String& label) {
         PlotData& plotData = dataMap.getReference(label);
-        vector<Buffer<float>>& gridData = plotData.gridData;
+        std::vector<Buffer<float>>& gridData = plotData.gridData;
 
         if (plotData.gridData.empty()) {
             return;
@@ -317,13 +431,7 @@ public:
                    40, 20, Justification::left);
 
         // Save image (same as before)
-        auto timestamp = Time::currentTimeMillis();
-        auto safeLabel = File::createLegalFileName(label);
-        auto filename  = "heatmap_" + safeLabel + "_" + String(timestamp) + ".png";
-
-        File outputDir(LIB_ROOT "/tests/debug_output");
-        File outputFile = outputDir.getChildFile(filename);
-        FileOutputStream stream(outputFile);
+        FileOutputStream stream(writeImageArtifactPath("heatmap", label));
 
         plotData.gridData.clear();
 
@@ -396,13 +504,7 @@ public:
                 }
             }
         }
-        auto timestamp = Time::currentTimeMillis();
-        auto safeLabel = File::createLegalFileName(label);
-        auto filename  = "periods_" + safeLabel + "_" + String(timestamp) + ".png";
-
-        File outputDir(LIB_ROOT "/tests/debug_output");
-        File outputFile = outputDir.getChildFile(filename);
-        FileOutputStream stream(outputFile);
+        FileOutputStream stream(writeImageArtifactPath("periods", label));
 
         if (stream.openedOk()) {
             PNGImageFormat pngWriter;
@@ -432,6 +534,28 @@ public:
     }
 
 private:
+    File writeImageArtifactPath(const String& prefix, const String& label) {
+        auto timestamp = Time::currentTimeMillis();
+        auto safeLabel = File::createLegalFileName(label);
+        auto filename = prefix + "_" + safeLabel + "_" + String(timestamp) + ".png";
+
+        File outputDir(LIB_ROOT "/tests/debug_output");
+        (void) outputDir.createDirectory();
+        return outputDir.getChildFile(filename);
+    }
+
+    File writeImageArtifact(const Image& image, const String& prefix, const String& label) {
+        File outputFile = writeImageArtifactPath(prefix, label);
+        FileOutputStream stream(outputFile);
+
+        if (stream.openedOk()) {
+            PNGImageFormat pngWriter;
+            pngWriter.writeImageToStream(image, stream);
+        }
+
+        return outputFile;
+    }
+
     ScopedAlloc<float> workBuffer;
     HashMap<String, PlotData> dataMap;
 

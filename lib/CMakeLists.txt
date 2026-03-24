@@ -158,6 +158,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
                 LIB_ROOT="${CMAKE_CURRENT_SOURCE_DIR}")
 
+        if(ENABLE_DEBUG_RENDERING)
+            target_compile_definitions(${PROJECT_NAME}_tests PRIVATE DEBUG_RENDERING=1)
+        endif()
+
         target_link_libraries(${PROJECT_NAME}_tests
             PRIVATE
             # link all the stuff built in the main project library,
