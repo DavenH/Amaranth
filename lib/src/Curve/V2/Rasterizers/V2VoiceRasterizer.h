@@ -40,6 +40,8 @@ private:
 
     const Mesh* mesh{nullptr};
     V2VoiceControlSnapshot controls{};
+    std::vector<Intercept> previousBackIntercepts;
+    std::vector<Intercept> currentBackIntercepts;
     int chainingCallCount{0};
     float chainingAdvancement{0.0f};
     double phase{0.0};

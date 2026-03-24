@@ -19,6 +19,8 @@ void V2VoiceRasterizer::prepare(const V2PrepareSpec& spec) {
     controls.lowResolution = spec.lowResolution;
     chainingPositionerPipeline.reset();
     curveBuilder.reset();
+    previousBackIntercepts.clear();
+    currentBackIntercepts.clear();
     chainingCallCount = 0;
     chainingAdvancement = 0.0f;
 }
@@ -27,6 +29,8 @@ void V2VoiceRasterizer::setMeshSnapshot(const Mesh* meshSnapshot) noexcept {
     mesh = meshSnapshot;
     chainingPositionerPipeline.reset();
     curveBuilder.reset();
+    previousBackIntercepts.clear();
+    currentBackIntercepts.clear();
     chainingCallCount = 0;
     chainingAdvancement = 0.0f;
 }
@@ -41,6 +45,8 @@ void V2VoiceRasterizer::resetPhase(double phase) noexcept {
     sampleIndex = 0;
     chainingPositionerPipeline.reset();
     curveBuilder.reset();
+    previousBackIntercepts.clear();
+    currentBackIntercepts.clear();
     chainingCallCount = 0;
     chainingAdvancement = 0.0f;
 }
@@ -81,6 +87,11 @@ bool V2VoiceRasterizer::renderIntercepts(V2RasterArtifacts& artifacts) noexcept 
         return false;
     }
 
+    previousBackIntercepts = currentBackIntercepts;
+    currentBackIntercepts.assign(
+        artifacts.intercepts->begin(),
+        artifacts.intercepts->end());
+
     if (chainingCallCount == 0 && controls.minLineLength > 0.0f) {
         chainingAdvancement = controls.minLineLength * 1.1f;
     }
@@ -94,6 +105,10 @@ bool V2VoiceRasterizer::renderWaveform(V2RasterArtifacts& artifacts) noexcept {
             || artifacts.intercepts != &workspace.intercepts
             || artifacts.intercepts->empty()) {
         return false;
+    }
+
+    if (! previousBackIntercepts.empty()) {
+        curveBuilder.prime(previousBackIntercepts);
     }
 
     V2CurveBuilderContext curveBuilderContext = makeCurveBuilderContext(controls);
