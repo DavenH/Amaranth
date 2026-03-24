@@ -40,7 +40,8 @@ void SharedPanelCanvas::setDebugSnapshotOverlayEnabled(bool enabled) {
 void SharedPanelCanvas::paint(juce::Graphics& g) {
     if (debugSnapshotOverlayEnabled) {
         for (const auto& entry : compositor.getVisibleEntries()) {
-            if (entry.panel == nullptr || !entry.usesCachedSurface || !g.getClipBounds().intersects(entry.bounds)) {
+            if (entry.panel == nullptr || !entry.usesCachedSurface || !entry.panel->usesSharedCanvasSurface()
+                || !g.getClipBounds().intersects(entry.bounds)) {
                 continue;
             }
 
@@ -52,7 +53,8 @@ void SharedPanelCanvas::paint(juce::Graphics& g) {
     }
 
     for (const auto& entry : compositor.getVisibleEntries()) {
-        if (entry.panel == nullptr || !g.getClipBounds().intersects(entry.bounds)) {
+        if (entry.panel == nullptr || !entry.panel->usesSharedCanvasSurface()
+            || !g.getClipBounds().intersects(entry.bounds)) {
             continue;
         }
 
@@ -63,6 +65,16 @@ void SharedPanelCanvas::paint(juce::Graphics& g) {
         if (entry.usesCachedSurface && entry.panel->usesSharedCanvasSurface()) {
             entry.panel->paintSharedCanvasSurface(g, entry.bounds);
         }
+
+      #ifdef JUCE_DEBUG
+        g.saveState();
+        g.setColour(juce::Colour::fromRGBA((juce::uint8) 255, (juce::uint8) 128, (juce::uint8) 48, (juce::uint8) 220));
+        g.drawRect(entry.bounds, 2);
+        g.setFont(juce::Font(juce::FontOptions(12.f)));
+        auto labelBounds = entry.bounds.reduced(6, 4).removeFromTop(18);
+        g.drawText(entry.panel->getName(), labelBounds, juce::Justification::topLeft, false);
+        g.restoreState();
+      #endif
     }
 
     compositor.clearDirtyFlags();
