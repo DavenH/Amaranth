@@ -100,6 +100,17 @@ float absf(float x) {
     return x >= 0.0f ? x : -x;
 }
 
+float maxAbs(Buffer<float> buffer) {
+    if (buffer.empty()) {
+        return 0.0f;
+    }
+
+    float minValue = 0.0f;
+    float maxValue = 0.0f;
+    buffer.minmax(minValue, maxValue);
+    return jmax(maxValue, -minValue);
+}
+
 float maxAdjacentStep(Buffer<float> data) {
     if (data.size() < 2) {
         return 0.0f;
@@ -885,6 +896,7 @@ TEST_CASE("V2VoiceRasterizer legacy oracle primed chained render stays close to 
     V2RasterArtifacts artifacts;
     REQUIRE(v2.renderArtifacts(artifacts));
     REQUIRE(artifacts.waveBuffers.waveX.size() > 1);
+    REQUIRE(artifacts.curves != nullptr);
 
     CycleState state;
     VoiceMeshRasterizer legacy(nullptr);
@@ -892,9 +904,57 @@ TEST_CASE("V2VoiceRasterizer legacy oracle primed chained render stays close to 
     REQUIRE(primeLegacyVoiceRasterizer(legacy, 0.0f));
 
     Buffer<float> legacyWaveX = legacy.getWaveX();
+    Buffer<float> legacyWaveY = legacy.getWaveY();
+    Buffer<float> legacySlope = legacy.getSlopes().withSize(jmax(0, legacyWaveX.size() - 1));
     int legacyWaveCount = legacyWaveX.size();
     int v2WaveCount = artifacts.waveBuffers.waveX.size();
     REQUIRE(legacyWaveCount > 1);
+
+    CurveInvalidSummary legacyCurveSummary = scanCurveTransforms("legacyVoiceCurves", legacy.getCurves());
+    CurveInvalidSummary v2CurveSummary = scanCurveTransforms("v2VoiceCurves", *artifacts.curves);
+    INFO("legacyVoiceCurves invalidCurves=" << legacyCurveSummary.invalidCurveCount
+         << " firstInvalidCurve=" << legacyCurveSummary.firstInvalidCurve);
+    INFO("v2VoiceCurves invalidCurves=" << v2CurveSummary.invalidCurveCount
+         << " firstInvalidCurve=" << v2CurveSummary.firstInvalidCurve);
+    INFO("legacy curve count=" << legacy.getCurves().size()
+         << " v2 curve count=" << artifacts.curves->size());
+    REQUIRE(legacyCurveSummary.invalidCurveCount == 0);
+    REQUIRE(v2CurveSummary.invalidCurveCount == 0);
+
+    int comparableCurveCount = jmin(static_cast<int>(legacy.getCurves().size()), static_cast<int>(artifacts.curves->size()));
+    float maxCurvePointDiff = 0.0f;
+    int maxCurveIndex = -1;
+    for (int i = 0; i < comparableCurveCount; ++i) {
+        const Curve& legacyCurve = legacy.getCurves()[i];
+        const Curve& v2Curve = (*artifacts.curves)[i];
+        float localMax = jmax(
+            jmax(absf(legacyCurve.a.x - v2Curve.a.x), absf(legacyCurve.a.y - v2Curve.a.y)),
+            jmax(
+                jmax(absf(legacyCurve.b.x - v2Curve.b.x), absf(legacyCurve.b.y - v2Curve.b.y)),
+                jmax(absf(legacyCurve.c.x - v2Curve.c.x), absf(legacyCurve.c.y - v2Curve.c.y))));
+        if (localMax > maxCurvePointDiff) {
+            maxCurvePointDiff = localMax;
+            maxCurveIndex = i;
+        }
+    }
+    INFO("max curve point diff=" << maxCurvePointDiff << " at index=" << maxCurveIndex);
+    if (maxCurveIndex >= 0) {
+        const Curve& legacyCurve = legacy.getCurves()[maxCurveIndex];
+        const Curve& v2Curve = (*artifacts.curves)[maxCurveIndex];
+        INFO("legacy curve[" << maxCurveIndex << "] a=(" << legacyCurve.a.x << "," << legacyCurve.a.y
+             << ") b=(" << legacyCurve.b.x << "," << legacyCurve.b.y
+             << ") c=(" << legacyCurve.c.x << "," << legacyCurve.c.y << ")");
+        INFO("v2 curve[" << maxCurveIndex << "] a=(" << v2Curve.a.x << "," << v2Curve.a.y
+             << ") b=(" << v2Curve.b.x << "," << v2Curve.b.y
+             << ") c=(" << v2Curve.c.x << "," << v2Curve.c.y << ")");
+    }
+
+    REQUIRE(scanInvalidSamples("legacyVoiceWaveX", legacyWaveX).invalidCount == 0);
+    REQUIRE(scanInvalidSamples("legacyVoiceWaveY", legacyWaveY).invalidCount == 0);
+    REQUIRE(scanInvalidSamples("legacyVoiceSlope", legacySlope).invalidCount == 0);
+    REQUIRE(scanInvalidSamples("v2VoiceWaveX", artifacts.waveBuffers.waveX).invalidCount == 0);
+    REQUIRE(scanInvalidSamples("v2VoiceWaveY", artifacts.waveBuffers.waveY).invalidCount == 0);
+    REQUIRE(scanInvalidSamples("v2VoiceSlope", artifacts.waveBuffers.slope).invalidCount == 0);
 
     int legacyStart = 0;
     int legacyEnd = 0;
@@ -902,6 +962,40 @@ TEST_CASE("V2VoiceRasterizer legacy oracle primed chained render stays close to 
     int v2End = 0;
     REQUIRE(findFiniteRange(legacyWaveX, legacyStart, legacyEnd));
     REQUIRE(findFiniteRange(artifacts.waveBuffers.waveX, v2Start, v2End));
+    INFO("legacy wave range indices=[" << legacyStart << "," << legacyEnd << "] x=["
+         << legacyWaveX[legacyStart] << "," << legacyWaveX[legacyEnd] << "]");
+    INFO("v2 wave range indices=[" << v2Start << "," << v2End << "] x=["
+         << artifacts.waveBuffers.waveX[v2Start] << "," << artifacts.waveBuffers.waveX[v2End] << "]");
+    INFO("legacy zeroIndex=" << legacy.getZeroIndex() << " v2 zeroIndex=" << artifacts.zeroIndex);
+
+    ScopedAlloc<float> waveDiffMemory(3 * jmax(legacyWaveCount, v2WaveCount));
+    Buffer<float> waveXDiff = waveDiffMemory.place(jmin(legacyWaveCount, v2WaveCount));
+    Buffer<float> waveYDiff = waveDiffMemory.place(jmin(legacyWaveCount, v2WaveCount));
+    Buffer<float> slopeDiff = waveDiffMemory.place(jmin(legacySlope.size(), artifacts.waveBuffers.slope.size()));
+    VecOps::sub(legacyWaveX.withSize(waveXDiff.size()), artifacts.waveBuffers.waveX.withSize(waveXDiff.size()), waveXDiff);
+    VecOps::sub(legacyWaveY.withSize(waveYDiff.size()), artifacts.waveBuffers.waveY.withSize(waveYDiff.size()), waveYDiff);
+    VecOps::sub(legacySlope.withSize(slopeDiff.size()), artifacts.waveBuffers.slope.withSize(slopeDiff.size()), slopeDiff);
+    int maxSlopeDiffIndex = 0;
+    float maxSlopeDiffValue = 0.0f;
+    for (int i = 0; i < slopeDiff.size(); ++i) {
+        float current = absf(slopeDiff[i]);
+        if (current > maxSlopeDiffValue) {
+            maxSlopeDiffValue = current;
+            maxSlopeDiffIndex = i;
+        }
+    }
+    INFO("waveX diff l2=" << waveXDiff.normL2() << " max=" << maxAbs(waveXDiff));
+    INFO("waveY diff l2=" << waveYDiff.normL2() << " max=" << maxAbs(waveYDiff));
+    INFO("slope diff l2=" << slopeDiff.normL2() << " max=" << maxAbs(slopeDiff));
+    INFO("max slope diff index=" << maxSlopeDiffIndex
+         << " legacy segment x=[" << legacyWaveX[maxSlopeDiffIndex] << "," << legacyWaveX[maxSlopeDiffIndex + 1] << "]"
+         << " legacy y=[" << legacyWaveY[maxSlopeDiffIndex] << "," << legacyWaveY[maxSlopeDiffIndex + 1] << "]"
+         << " legacy slope=" << legacySlope[maxSlopeDiffIndex]
+         << " v2 segment x=[" << artifacts.waveBuffers.waveX[maxSlopeDiffIndex] << ","
+         << artifacts.waveBuffers.waveX[maxSlopeDiffIndex + 1] << "]"
+         << " v2 y=[" << artifacts.waveBuffers.waveY[maxSlopeDiffIndex] << ","
+         << artifacts.waveBuffers.waveY[maxSlopeDiffIndex + 1] << "]"
+         << " v2 slope=" << artifacts.waveBuffers.slope[maxSlopeDiffIndex]);
 
     float phaseStart = jmax(0.0f, jmax(legacyWaveX[legacyStart], artifacts.waveBuffers.waveX[v2Start]));
     float phaseEnd = jmin(1.0f, jmin(legacyWaveX[legacyEnd], artifacts.waveBuffers.waveX[v2End]));

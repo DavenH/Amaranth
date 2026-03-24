@@ -18,21 +18,47 @@ inline float sampleAtPhase(
     Buffer<float> waveY = waveBuffers.waveY;
     Buffer<float> slope = waveBuffers.slope;
 
-    while (ioSampleIndex < wavePointCount - 2 && phase >= waveX[ioSampleIndex + 1]) {
-        ++ioSampleIndex;
+    if (wavePointCount <= 1 || waveX.empty() || waveY.empty()) {
+        return 0.0f;
     }
 
-    while (ioSampleIndex > 0 && phase < waveX[ioSampleIndex]) {
-        --ioSampleIndex;
+    if (ioSampleIndex >= wavePointCount) {
+        ioSampleIndex = 0;
     }
 
     float sampled = 0.0f;
+    if (phase >= waveX[wavePointCount - 1] || phase < waveX[0]) {
+        sampled = static_cast<float>(phase);
+    } else {
+        if (ioSampleIndex > 0) {
+            while (phase < waveX[ioSampleIndex - 1]) {
+                --ioSampleIndex;
+                if (ioSampleIndex == 0) {
+                    ioSampleIndex = wavePointCount - 1;
+                }
+            }
+        }
+
+        while (phase >= waveX[ioSampleIndex]) {
+            ++ioSampleIndex;
+            if (ioSampleIndex >= wavePointCount) {
+                ioSampleIndex = 0;
+            }
+        }
+
+        if (ioSampleIndex == 0) {
+            sampled = waveY[0];
+        } else {
+            sampled = static_cast<float>(
+                (phase - waveX[ioSampleIndex - 1]) * slope[ioSampleIndex - 1]
+                + waveY[ioSampleIndex - 1]);
+        }
+    }
+
     if (phase <= waveX[0]) {
         sampled = waveY[0];
     } else if (phase >= waveX[wavePointCount - 1]) {
         sampled = waveY[wavePointCount - 1];
-    } else {
-        sampled = static_cast<float>((phase - waveX[ioSampleIndex]) * slope[ioSampleIndex] + waveY[ioSampleIndex]);
     }
 
     if (sampled != sampled) {
