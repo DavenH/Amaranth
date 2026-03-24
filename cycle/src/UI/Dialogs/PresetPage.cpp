@@ -154,8 +154,10 @@ void PresetPage::addToRevisionMap(const DocumentDetails& deets) {
 void PresetPage::presetDirUpdated() {
     localDetails.clear();
 
-    addFilesToArray(localDetails, getObj(Directories).getPresetDir(), getStrConstant(DocumentExt));
-    addFilesToArray(localDetails, getObj(Directories).getUserPresetDir(), getStrConstant(DocumentExt));
+    for (auto& dir : getObj(Directories).getPresetSearchDirs()) {
+        addFilesToArray(localDetails, dir, getStrConstant(DocumentExt));
+    }
+
     addToRevisionMap(localDetails);
 }
 
@@ -173,8 +175,9 @@ void PresetPage::refresh() {
     allItems.clear();
 
     if (verts.isHighlit()) {
-        addFilesToDefaultArray(getObj(Directories).getPresetDir(), getStrConstant(DocumentExt));
-        addFilesToDefaultArray(getObj(Directories).getUserPresetDir(), getStrConstant(DocumentExt));
+        for (auto& dir : getObj(Directories).getPresetSearchDirs()) {
+            addFilesToDefaultArray(dir, getStrConstant(DocumentExt));
+        }
     }
 
     if (wave.isHighlit()) {

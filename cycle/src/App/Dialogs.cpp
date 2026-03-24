@@ -203,7 +203,11 @@ void Dialogs::showOpenPresetDialog() {
     String lastPresetDirectory = getObj(Directories).getLastPresetDir();
 
     if (lastPresetDirectory.isEmpty()) {
-        lastPresetDirectory = getObj(Directories).getPresetDir();
+        lastPresetDirectory = getObj(Directories).getRepoPresetDir();
+
+        if (lastPresetDirectory.isEmpty()) {
+            lastPresetDirectory = getObj(Directories).getPresetDir();
+        }
     }
 
     const bool useNativeChooser = getSetting(NativeDialogs) == 1;

@@ -13,6 +13,7 @@ public:
 	void saveCurrentPreset();
 	void openCurrentPreset();
 	void openDefaultPreset();
+	File findFactoryPresetFile(const String& presetName) const;
 	void openFactoryPreset(const String& presetName);
 	void openPreset(const File& file);
 	void doPostPresetLoad();
