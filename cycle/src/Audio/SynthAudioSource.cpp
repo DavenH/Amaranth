@@ -367,11 +367,11 @@ void SynthAudioSource::calcFades() {
         VecOps::subCRev(in, 1.f, fadeOuts[i]);
     }
 
-    Range range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    Range<int> range(Constants::LowestMidiNote, Constants::HighestMidiNote);
     angleDeltas.resize(range.getLength());
 
     for(int i = 0; i < range.getLength(); ++i) {
-        angleDeltas[i] = NumberUtils::noteToFrequency(i + getConstant(LowestMidiNote), 0.0);
+        angleDeltas[i] = NumberUtils::noteToFrequency(i + Constants::LowestMidiNote, 0.0);
     }
 }
 
@@ -596,7 +596,7 @@ void SynthAudioSource::qualityChanged() {
 SynthSound::SynthSound(SingletonRepo* repo) : SingletonAccessor(repo, "SynthSound") {}
 
 bool SynthSound::appliesToNote(int midiNoteNumber) {
-    return NumberUtils::within(midiNoteNumber, getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    return NumberUtils::within<int>(midiNoteNumber, Constants::LowestMidiNote, Constants::HighestMidiNote);
 }
 
 bool SynthSound::appliesToChannel(int midiChannel) {
