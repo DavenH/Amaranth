@@ -344,7 +344,7 @@ void PlaybackPanel::update() {
 void PlaybackPanel::startAudio() {
 	if (x < 1) {
 		midiKeyPlaying = getObj(MidiKeyboard).getAuditionKey();
-		NumberUtils::constrain(midiKeyPlaying, getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+		NumberUtils::constrain<int>(midiKeyPlaying, Constants::LowestMidiNote, Constants::HighestMidiNote);
 
 		float velocity = 0.8f;
 

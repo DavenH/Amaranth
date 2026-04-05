@@ -16,6 +16,7 @@
 MainAppWindow::MainAppWindow(const String& commandLine) :
         DocumentWindow("Cycle", Colours::black, allButtons, true)
     ,	SingletonAccessor(nullptr, "MainAppWindow") {
+    DBG("MainAppWindow ctor commandLine=\"" + commandLine + "\"");
     setResizable(platformSplit(true, false, true), false);
     setTitleBarHeight(25);
 
@@ -31,6 +32,7 @@ MainAppWindow::MainAppWindow(const String& commandLine) :
 }
 
 void MainAppWindow::openFile(const String &commandLine) {
+    DBG("MainAppWindow::openFile commandLine=\"" + commandLine + "\"");
     initializer->setCommandLine(commandLine);
     getObj(FileManager).openDefaultPreset();
 }

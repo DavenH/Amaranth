@@ -339,6 +339,97 @@ void ModMatrixPanel::addDestination(int id, bool update) {
 	}
 }
 
+int ModMatrixPanel::getOutputStride(int groupId) {
+    switch (groupId) {
+        case LayerGroups::GroupVolume:
+        case LayerGroups::GroupPitch:
+        case LayerGroups::GroupScratch:
+            return getObj(SynthAudioSource).getNumEnvelopeDims();
+        default:
+            return 3;
+    }
+}
+
+int ModMatrixPanel::getOutputIdForLayer(int groupId, int layerIndex) {
+    if (layerIndex < 0) {
+        return -1;
+    }
+
+    switch (groupId) {
+        case LayerGroups::GroupTime:    return TimeSurfId + layerIndex * getOutputStride(groupId);
+        case LayerGroups::GroupSpect:   return HarmMagId + layerIndex * getOutputStride(groupId);
+        case LayerGroups::GroupPhase:   return HarmPhsId + layerIndex * getOutputStride(groupId);
+        case LayerGroups::GroupVolume:  return VolEnvId + layerIndex * getOutputStride(groupId);
+        case LayerGroups::GroupPitch:   return PitchEnvId + layerIndex * getOutputStride(groupId);
+        case LayerGroups::GroupScratch: return ScratchEnvId + layerIndex * getOutputStride(groupId);
+        default:                        return -1;
+    }
+}
+
+String ModMatrixPanel::describeOutputId(int outputId) {
+    MeshLibrary::GroupLayerPair groupPair = toLayerIndex(outputId);
+    int groupSize = 0;
+
+    if (groupPair.isNotNull()) {
+        groupSize = getObj(MeshLibrary).getLayerGroup(groupPair.groupId).size();
+    }
+
+    return "outputId=" + String(outputId)
+        + " decodedGroup=" + String(groupPair.groupId)
+        + " decodedLayer=" + String(groupPair.layerIdx)
+        + " groupSize=" + String(groupSize)
+        + " numEnvelopeDims=" + String(getObj(SynthAudioSource).getNumEnvelopeDims());
+}
+
+bool ModMatrixPanel::isValidInputId(int inputId) {
+    if (inputId == VoiceTime || inputId == Velocity || inputId == KeyScale || inputId == Aftertouch) {
+        return true;
+    }
+
+    if (inputId >= MidiController && inputId < Utility) {
+        return true;
+    }
+
+    return inputId >= Utility;
+}
+
+bool ModMatrixPanel::isValidOutputId(int outputId) {
+    if (outputId == SetAllId) {
+        return false;
+    }
+
+    MeshLibrary::GroupLayerPair groupPair = toLayerIndex(outputId);
+    if (!groupPair.isNotNull()) {
+        return false;
+    }
+
+    auto& layerGroup = getObj(MeshLibrary).getLayerGroup(groupPair.groupId);
+    return isPositiveAndBelow(groupPair.layerIdx, layerGroup.size());
+}
+
+bool ModMatrixPanel::isValidMapping(const Mapping& mapping) {
+    return isValidInputId(mapping.in) && isValidOutputId(mapping.out)
+           && mapping.dim >= NullDim && mapping.dim <= BlueDim;
+}
+
+void ModMatrixPanel::sanitizeMappings() {
+    Array<Mapping> filteredMappings;
+    filteredMappings.ensureStorageAllocated(mappings.size());
+
+    for (auto& mapping : mappings) {
+        if (isValidMapping(mapping)) {
+            filteredMappings.add(mapping);
+        } else {
+            String message = "Warning: dropping invalid mod mapping in="
+                + String(mapping.in) + " out=" + String(mapping.out) + " dim=" + String(mapping.dim);
+            showImportant(message);
+            DBG("ModMatrixPanel::sanitizeMappings " + message);
+        }
+    }
+
+    mappings.swapWith(filteredMappings);
+}
+
 void ModMatrixPanel::addInput(int id, bool update) {
     for (int i = 0; i < inputs.size(); ++i) {
         if (inputs.getReference(i).id == id) {
@@ -401,6 +492,8 @@ String ModMatrixPanel::getInputShortName(int id) {
 }
 
 String ModMatrixPanel::getOutputName(int id) {
+    int envStride = getObj(SynthAudioSource).getNumEnvelopeDims();
+
     if (id >= TimeSurfId && id < HarmMagId) {
         return "Waveshape-L" + String(1 + (id - TimeSurfId) / 3);
     }
@@ -410,14 +503,14 @@ String ModMatrixPanel::getOutputName(int id) {
 		if (id >= HarmPhsId && id < VolEnvId) {
 	    return "SpectPhs-L" + String(1 + (id - HarmPhsId) / 3);
     }
-	if (id == VolEnvId) {
-	    return "Env-Volume";
+	if (id >= VolEnvId && id < PitchEnvId) {
+	    return "Env-Volume-" + String(1 + (id - VolEnvId) / envStride);
     }
-	if (id == PitchEnvId) {
-	    return "Env-Pitch";
+	if (id >= PitchEnvId && id < ScratchEnvId) {
+	    return "Env-Pitch-" + String(1 + (id - PitchEnvId) / envStride);
     }
 	if (id >= ScratchEnvId) {
-	    return "Env-Scratch-" + String(1 + (id - ScratchEnvId) / 2);
+	    return "Env-Scratch-" + String(1 + (id - ScratchEnvId) / envStride);
     }
 
     return {};
@@ -552,9 +645,9 @@ PopupMenu ModMatrixPanel::getOutputMenu(int source) {
 			break;
 		}
 
-		case VolumeEnvLayers: {
+        case VolumeEnvLayers: {
             for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupVolume).size(); ++i) {
-                int id = VolEnvId + i * 3;
+                int id = getOutputIdForLayer(LayerGroups::GroupVolume, i);
 
 				if(isNotInOutputs(id)) {
 					menu.addItem(id, "Volume Env " + String(i + 1));
@@ -564,7 +657,7 @@ PopupMenu ModMatrixPanel::getOutputMenu(int source) {
 
         case PitchEnvLayers: {
             for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupPitch).size(); ++i) {
-                int id = PitchEnvId + i * 3;
+                int id = getOutputIdForLayer(LayerGroups::GroupPitch, i);
 
 				if(isNotInOutputs(id)) {
 					menu.addItem(id, "Volume Env " + String(i + 1));
@@ -574,7 +667,7 @@ PopupMenu ModMatrixPanel::getOutputMenu(int source) {
 
         case ScratchLayers: {
             for (int i = 0; i < meshLib.getLayerGroup(LayerGroups::GroupScratch).size(); ++i) {
-                int id = ScratchEnvId + i * 3;
+                int id = getOutputIdForLayer(LayerGroups::GroupScratch, i);
 
                 if (isNotInOutputs(id)) {
 	                menu.addItem(id, "Channel " + String(i + 1));
@@ -738,17 +831,7 @@ void ModMatrixPanel::layerRemoved(int type, int index) {
 }
 
 void ModMatrixPanel::layerAddedOrRemoved(bool added, int type, int index) {
-    int outputId = -1;
-
-    switch (type) {
-		case LayerGroups::GroupTime:	outputId = TimeSurfId 	+ index * 3; break;
-		case LayerGroups::GroupSpect:	outputId = HarmMagId	+ index * 3; break;
-		case LayerGroups::GroupPhase:	outputId = HarmPhsId 	+ index * 3; break;
-		case LayerGroups::GroupVolume:	outputId = VolEnvId 	+ index * 3; break;
-		case LayerGroups::GroupPitch:	outputId = PitchEnvId 	+ index * 3; break;
-		case LayerGroups::GroupScratch:	outputId = ScratchEnvId + index * 3; break;
-    	default: break;
-	}
+    int outputId = getOutputIdForLayer(type, index);
 
 	if(outputId == -1) {
 		return;
@@ -863,6 +946,13 @@ bool ModMatrixPanel::readXML(const XmlElement* element) {
 
     for(auto outputElem : outputsElem->getChildWithTagNameIterator("output")) {
 	    int id = outputElem->getIntAttribute("id", -1);
+        if (!isValidOutputId(id)) {
+            String message = "Warning: skipping invalid mod output " + describeOutputId(id);
+            showImportant(message);
+            DBG("ModMatrixPanel::readXML " + message);
+            jassertfalse;
+            continue;
+        }
 
 	    HeaderElement elem(getOutputName(id), id);
 	    outputs.add(elem);
@@ -878,8 +968,19 @@ bool ModMatrixPanel::readXML(const XmlElement* element) {
 	    m.out = mappingElem->getIntAttribute("out", -1);
 	    m.dim = mappingElem->getIntAttribute("dim", -1);
 
-	    mappings.add(m);
+        if (isValidMapping(m)) {
+	        mappings.add(m);
+        } else {
+            String message = "Warning: skipping invalid mod mapping in="
+                + String(m.in) + " out=" + String(m.out) + " dim=" + String(m.dim)
+                + " " + describeOutputId(m.out);
+            showImportant(message);
+            DBG("ModMatrixPanel::readXML " + message);
+            jassertfalse;
+        }
     }
+
+    sanitizeMappings();
 
     modMatrix.getListbox().updateContent();
     getObj(MorphPanel).setRedBlueStrings(getDimString(RedDim), getDimString(BlueDim));
@@ -991,9 +1092,19 @@ void ModMatrixPanel::mappingChanged(int mappingIndex, int inputId, int outputId,
 
 void ModMatrixPanel::route(float value, int inputId, int voiceIndex) {
     ScopedLock sl(mappingLock);
+    Array<int> toRemove;
 
     for (int i = 0; i < mappings.size(); ++i) {
         Mapping& m = mappings.getReference(i);
+
+        if (!isValidMapping(m)) {
+            String message = "Warning: pruning invalid mod mapping during route in="
+                + String(m.in) + " out=" + String(m.out) + " dim=" + String(m.dim);
+            showImportant(message);
+            DBG("ModMatrixPanel::route " + message);
+            toRemove.add(i);
+            continue;
+        }
 
         if (m.in == inputId) {
             audio->modulationChanged(value, voiceIndex, m.out, m.dim);
@@ -1006,6 +1117,10 @@ void ModMatrixPanel::route(float value, int inputId, int voiceIndex) {
 				morphPanel->redDimUpdated(value);
 			}
         }
+    }
+
+    for (int i = toRemove.size() - 1; i >= 0; --i) {
+        mappings.remove(toRemove[i]);
     }
 }
 
@@ -1023,8 +1138,9 @@ void ModMatrixPanel::initializeDefaults() {
 	int ids[] 	 = { TimeSurfId, HarmMagId,  HarmPhsId,  VolEnvId, 	  PitchEnvId, ScratchEnvId };
 
     for (int i = 0; i < numElementsInArray(groups); ++i) {
-        for (int j = 0; j < lib.getLayerGroup(groups[i]).size(); ++j)
-            addDestination(ids[j] + 3 * i, false);
+        for (int j = 0; j < lib.getLayerGroup(groups[i]).size(); ++j) {
+            addDestination(ids[i] + getOutputStride(groups[i]) * j, false);
+        }
     }
 
 	addInput(VoiceTime,  false);

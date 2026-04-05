@@ -10,7 +10,7 @@ EqualizerUI::EqualizerUI(SingletonRepo* repo, Effect* effect) :
     GuilessEffect("EqualizerUI", "EQ", Equalizer::numParams, repo, effect,
                   EffectTypes::TypeEqualizer, UpdateSources::SourceEqualizer) {
     using namespace Ops;
-    double logTension = getConstant(LogTension);
+    double logTension = getConstant(FreqLogTension);
 
     StringFunction emptyStr;
     StringFunction decibel30(StringFunction(0).mul(2.0).add(-1.).mul(30.0));
@@ -42,8 +42,15 @@ void EqualizerUI::init() {
 
     equalizer = &getObj(SynthAudioSource).getEqualizer();
 
-    for (int i = 0; i < Equalizer::Band1Freq; ++i) {
-        paramGroup->setKnobValue(i, equalizer->getFrequencyTarget(i), false, false);
+    for (int i = Equalizer::Band1Gain; i <= Equalizer::Band5Gain; ++i) {
+        paramGroup->setKnobValue(i, Equalizer::calcGainKnobValue(equalizer->getGainTarget(i)), false, false);
+    }
+
+    double logTension = getConstant(FreqLogTension);
+    for (int i = Equalizer::Band1Freq; i <= Equalizer::Band5Freq; ++i) {
+        int partition = i - Equalizer::Band1Freq;
+        paramGroup->setKnobValue(i, Equalizer::calcKnobValue(equalizer->getFrequencyTarget(partition), logTension),
+                                 false, false);
     }
 }
 

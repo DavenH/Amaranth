@@ -39,7 +39,6 @@ CycleBasedVoice::CycleBasedVoice(SynthesizerVoice* parent, SingletonRepo* repo) 
     audioSource = &getObj(SynthAudioSource);
 
     unison = &audioSource->getUnison();
-    timeLayers = &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupTime);
 
     int unisonVoices = unison->getOrder(true);
     noteState.numUnisonVoices = unisonVoices;
@@ -69,6 +68,10 @@ CycleBasedVoice::CycleBasedVoice(SynthesizerVoice* parent, SingletonRepo* repo) 
     halfBuf.resize(half);
 }
 
+MeshLibrary::LayerGroup& CycleBasedVoice::getTimeLayerGroup() {
+    return getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupTime);
+}
+
 void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float velocity) {
     noteState.lastNoteNumber = midiNoteNumber;
     bool unisonEnabled = unison == nullptr ? false : unison->isEnabled();
@@ -84,7 +87,7 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
         unisonVoiceCountChanged();
     }
 
-    const int timeLayerSize = timeLayers->size();
+    const int timeLayerSize = getTimeLayerGroup().size();
     timeRasterizer.updateOffsetSeeds(timeLayerSize, GuideCurvePanel::tableSize);
 
     EnvRasterizer& pitchRast = parent->pitchGroup[0].rast;
@@ -756,7 +759,7 @@ double CycleBasedVoice::getAngleDelta(int midiNumber, float detuneCents, double 
     double pitchWheelSemis = parent ? parent->getPitchWheelValueSemitones() : 0;
 
     if (detuneCents == 0.f && pitchEnvVal == 0.5 && pitchWheelSemis == 0.) {
-        return audioSource->angleDeltas[midiNumber - getConstant(LowestMidiNote)] / 44100.0;
+        return audioSource->angleDeltas[midiNumber - Constants::LowestMidiNote] / 44100.0;
     }
 
     double pitchEnvSemis = NumberUtils::unitPitchToSemis(pitchEnvVal);
@@ -882,6 +885,14 @@ void CycleBasedVoice::updateValue(int outputId, int dim, float value) {
     MeshLibrary::GroupLayerPair groupPair = getObj(ModMatrixPanel).toLayerIndex(outputId);
 
     if (groupPair.isNotNull()) {
+        if (meshLib.getEnvProps(groupPair) == nullptr) {
+            auto message = "CycleBasedVoice::updateValue(): Group "
+                    + std::to_string(groupPair.groupId) + ", "
+                    + std::to_string(groupPair.layerIdx)
+                    + " does not exist";
+            throw std::runtime_error(message);
+        }
+
         MeshLibrary::EnvProps& props = *meshLib.getEnvProps(groupPair);
 
         EnvRastGroup& group = groupPair.groupId == LayerGroups::GroupVolume
@@ -953,7 +964,7 @@ void CycleBasedVoice::testNumLayersChanged() {
     for (int unisonIdx = 0; unisonIdx < noteState.numUnisonVoices; ++unisonIdx) {
         VoiceParameterGroup& group = groups[unisonIdx];
 
-        int numLayers = timeLayers->size();
+        int numLayers = getTimeLayerGroup().size();
 
         if (group.layerStates.size() != numLayers)
             group.layerStates.resize(numLayers);

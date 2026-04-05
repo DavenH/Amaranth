@@ -21,8 +21,9 @@ SynthUnisonVoice::SynthUnisonVoice(SynthesizerVoice* parent, SingletonRepo* repo
 
 void SynthUnisonVoice::testMeshConditions() {
     bool haveAnyValidTimeLayers = false;
-    for (int i = 0; i < timeLayers->size(); ++i) {
-        MeshLibrary::Layer& layer = timeLayers->layers[i];
+    auto& timeLayers = getTimeLayerGroup();
+    for (int i = 0; i < timeLayers.size(); ++i) {
+        MeshLibrary::Layer& layer = timeLayers.layers[i];
 
         if (layer.props->active && layer.mesh->hasEnoughCubesForCrossSection()) {
             haveAnyValidTimeLayers = true;
@@ -91,7 +92,7 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
     layerAccumBuffer[Left].withSize(samplingSize).zero();
     layerAccumBuffer[Right].withSize(samplingSize).zero();
 
-    int layerSize = timeLayers->size();
+    int layerSize = getTimeLayerGroup().size();
 
     for (int meshIdx = 0; meshIdx < layerSize; ++meshIdx) {
         MeshLibrary::Layer layer = parent->meshLib->getLayer(LayerGroups::GroupTime, meshIdx);

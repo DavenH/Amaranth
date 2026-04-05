@@ -236,6 +236,13 @@ public:
 
 private:
     void layerAddedOrRemoved(bool added, int type, int index);
+    int getOutputStride(int groupId);
+    int getOutputIdForLayer(int groupId, int layerIndex);
+    String describeOutputId(int outputId);
+    bool isValidInputId(int inputId);
+    bool isValidOutputId(int outputId);
+    bool isValidMapping(const Mapping& mapping);
+    void sanitizeMappings();
 
     friend class ModMatrix;
     friend class ModMatrixViewPort;

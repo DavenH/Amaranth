@@ -18,6 +18,10 @@ Interactor2D::Interactor2D(SingletonRepo* repo, const String& name, const Dimens
 }
 
 bool Interactor2D::locateClosestElement() {
+    if (getRasterizer() == nullptr) {
+        return Interactor::locateClosestElement();
+    }
+
     RasterizerData& rastData = getRasterizer()->getRastData();
 
     if (rastData.intercepts.empty() && depthVerts.empty()) {

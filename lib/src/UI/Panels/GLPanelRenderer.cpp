@@ -68,7 +68,7 @@ void GLPanelRenderer::drawFinalSelection() {
 
 void GLPanelRenderer::finishSurfaceBake() {
     if (surfaceCache != nullptr && currentContext != nullptr) {
-        surfaceCache->captureFromFramebuffer(currentContext->bounds.getHeight());
+        surfaceCache->captureFromFramebuffer(currentContext->bounds);
     }
 }
 

@@ -104,7 +104,7 @@ void MorphPanel::init() {
 
     setWantsKeyboardFocus(false);
 
-    midiRange = Range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    midiRange = Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote);
     updateHighlights();
 }
 

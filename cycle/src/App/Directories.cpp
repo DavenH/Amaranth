@@ -96,6 +96,7 @@ StringArray Directories::getPresetSearchDirs() const {
     }
 
     dirs.add(getUserPresetDir());
+    DBG("Directories::getPresetSearchDirs -> " + dirs.joinIntoString(" | "));
     return dirs;
 }
 

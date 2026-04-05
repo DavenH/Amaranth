@@ -125,6 +125,7 @@ protected:
     void updateChainAngleDelta(VoiceParameterGroup& group, bool unisonEnabled, bool useFirstEnvelopeIndex = false);
     void updateEnvelopes(int unisonIdx, int deltaSamples);
     float getScratchTime(int layerIndex, double cumePos);
+    MeshLibrary::LayerGroup& getTimeLayerGroup();
 
     int resamplingAlgo;
     int cycleCompositeAlgo;
@@ -163,8 +164,6 @@ protected:
 
     ScopedAlloc<Float32> lerpMemory;
     ScopedAlloc<Float32> halfBuf;				// copy buffer
-
-    MeshLibrary::LayerGroup* timeLayers;
 
     VoiceMeshRasterizer timeRasterizer;
     vector<VoiceParameterGroup> groups;

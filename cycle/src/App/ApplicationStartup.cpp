@@ -11,8 +11,17 @@ class AppClass : public JUCEApplication {
 
 public:
     void initialise(const String &commandLine) override {
+        DBG("AppClass::initialise commandLine=\"" + commandLine + "\"");
         mainWindow = std::make_unique<MainAppWindow>(commandLine);
         mainWindow->setVisible(true);
+        Component::SafePointer<MainAppWindow> safeWindow(mainWindow.get());
+
+        MessageManager::callAsync([safeWindow]() {
+            if (safeWindow != nullptr) {
+                DBG("AppClass::initialise async startup preset open");
+                safeWindow->openFile(String());
+            }
+        });
 
       #if ! JUCE_DEBUG
         mainWindow->maximiseButtonPressed();

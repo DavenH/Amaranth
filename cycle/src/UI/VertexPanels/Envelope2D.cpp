@@ -52,7 +52,7 @@ void Envelope2D::init() {
     speedApplicable		= false;
     guideCurveApplicable	= false;
     e2Interactor		= &getObj(EnvelopeInter2D);
-    interactor			= e2Interactor;
+    setInteractor(e2Interactor);
 
     zoomPanel->rect.w = 1.;
     zoomPanel->tendZoomToRight = false;

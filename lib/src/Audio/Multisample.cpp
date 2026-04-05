@@ -115,7 +115,7 @@ void Multisample::fillRanges() {
 
         j = 0;
         while (j < samples.size() && samples[j]->midiRange.getStart() == lowest) {
-            samples[j]->midiRange.setStart(getConstant(LowestMidiNote));
+            samples[j]->midiRange.setStart(Constants::LowestMidiNote);
             ++j;
         }
     }
@@ -239,7 +239,7 @@ void Multisample::parseRanges() {
 void Multisample::getModRanges(Range<int>& noteRange, Range<float>& velRange) {
     MorphPosition m = repo->getMorphPosition().getOffsetPosition(true);
 
-    Range range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    Range<int> range(Constants::LowestMidiNote, Constants::HighestMidiNote);
     float topVel = 1.f, bttmVel = 0.f;
     int bttmNote = range.getStart();
     int topNote = range.getEnd();
@@ -360,7 +360,7 @@ bool Multisample::readXML(const XmlElement* element) {
 void Multisample::performUpdate(UpdateType updateType) {
     if (updateType == Update) {
         MorphPosition pos = repo->getMorphPosition().getMorphPosition();
-        float midiNote = Arithmetic::getNoteForValue(pos.red, Range(getConstant(LowestMidiNote), getConstant(HighestMidiNote)));
+        float midiNote = Arithmetic::getNoteForValue(pos.red, Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
 
         current = getSampleForNote(midiNote, 1 - pos.blue);
 

@@ -39,7 +39,7 @@ void GuideCurvePanel::init() {
     curveIsBipolar         = true;
     vertsAreWaveApplicable = true;
 
-    float pad         = getConstant(GuideCurvePadding);
+    float pad         = getRealConstant(GuideCurvePadding);
     bgPaddingRight    = pad;
     bgPaddingLeft     = pad;
     zoomPanel->rect.w = 1.f - pad;
@@ -60,7 +60,7 @@ void GuideCurvePanel::init() {
     phaseOffset.setValue	(0, dontSendNotification);
     phaseOffset.setColour	(Colour(77, 143, 229));
 
-    samplingInterval = (1.f - 2 * getConstant(GuideCurvePadding)) / float(tableSize - 1);
+    samplingInterval = (1.f - 2 * getRealConstant(GuideCurvePadding)) / float(tableSize - 1);
 
     unsigned int seed(Time::currentTimeMillis());
     noiseArray = constMemory.place(tableSize);

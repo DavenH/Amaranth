@@ -2045,7 +2045,7 @@ void Interactor::initVertsWithDepthDims(
 MorphPosition Interactor::getCube() {
     MorphPosition pos = getOffsetPosition(true);
 
-    const float minLength = getConstant(MinLineLength);
+    const float minLength = getRealConstant(MinLineLength);
 
     pos.time.setValueDirect(jlimit(pos.time.getTargetValue(), 0.f, 1.f - minLength));
     pos.red.setValueDirect(jlimit(pos.red.getTargetValue(),   0.f, 1.f - minLength));

@@ -61,8 +61,7 @@ namespace Constants {
     ,   MaxNumVoices
     ,   BetaExpiry
     ,   ProductCode
-    ,   AmpTensionScale
-    ,   FreqTensionScale
+    ,   AmpLogTension
     ,   FreqMargin
     ,   EnvResolution
     ,   MaxBufferSize
@@ -70,7 +69,6 @@ namespace Constants {
     ,   MaxCyclePeriod
     ,   MaxUnisonOrder
     ,   GuideCurvePadding
-    ,   FFTLogTensionAmp
     ,   ResamplerLatency
     ,   IrModellerPadding
     ,   ControllerValueSaturation

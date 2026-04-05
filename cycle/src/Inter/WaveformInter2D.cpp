@@ -26,6 +26,11 @@ WaveformInter2D::WaveformInter2D(SingletonRepo* repo) :
     vertexProps.ampVsPhaseApplicable = true;
 }
 
+void WaveformInter2D::init() {
+    Interactor::init();
+    setRasterizer(&getObj(TimeRasterizer));
+}
+
 void WaveformInter2D::showCoordinates() {
     int lockId = -1;
     const vector <Column> &timeColumns = getObj(VisualDsp).getTimeColumns();

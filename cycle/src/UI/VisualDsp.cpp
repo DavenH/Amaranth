@@ -419,7 +419,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
     int colMagRatio    = (int) jmax(1., numColumns / double(magSize));
     int colPhaseRatio  = (int) jmax(1., numColumns / double(phaseSize));
     int primeDim       = getSetting(CurrentMorphAxis);
-    int midiKey        = primeDim == Vertex::Red ? getConstant(LowestMidiNote) : morphPanel.getCurrentMidiKey();
+    int midiKey        = primeDim == Vertex::Red ? Constants::LowestMidiNote : morphPanel.getCurrentMidiKey();
 
     getNumHarmonicsAndNextPower(numHarmonics, nextPow2, midiKey);
 
@@ -629,7 +629,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
         // todo do we need to store this data if stage >= postfx ? ? ?
         magBuf.copyTo(fftCol);
         fftCol.mul(2.f);
-        Arithmetic::applyLogMapping(fftCol, getConstant(LogTension));
+        Arithmetic::applyLogMapping(fftCol, getConstant(FreqLogTension));
 
         fftCol.threshGT(1.f);
 
@@ -918,7 +918,7 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
         Buffer magBuf(fft.getMagnitudes(), numHarmonics);
         Buffer phaseBuf(fft.getPhases(), numHarmonics);
 
-        Arithmetic::applyLogMapping(fft.getMagnitudes(), getConstant(FFTLogTensionAmp));
+        Arithmetic::applyLogMapping(fft.getMagnitudes(), getConstant(AmpLogTension));
 
         magBuf.threshGT(1.f);
         phaseBuf.add(MathConstants<float>::halfPi);
@@ -1143,7 +1143,7 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
     pitch.calcCrossPoints();
     pitch.setNoteOn();
 
-    Range midiRange(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    Range<int> midiRange(Constants::LowestMidiNote, Constants::HighestMidiNote);
 
     // pitch envelope scales with time
     float timePerColEnv	= 1.f / float(columns.size() - 1);
@@ -1452,7 +1452,7 @@ void VisualDsp::processThroughEffects(int numColumns) {
         copyArrayOrParts(fftPreFXCols, fftPostFXCols);
         copyArrayOrParts(phasePreFXCols, phasePostFXCols);
 
-        int tension = getConstant(LogTension);
+        int tension = getConstant(FreqLogTension);
 
         // need to first unmap amplitudes to apply volume scaling appropriately
         for (auto& fftPostFXCol: fftPostFXCols) {
@@ -1484,7 +1484,7 @@ void VisualDsp::processThroughEffects(int numColumns) {
             Buffer<float> magBuf(fft.getMagnitudes(), numHarmonics);
             magBuf.add(1e-11f);
 
-            Arithmetic::applyLogMapping(magBuf, getConstant(FFTLogTensionAmp));
+            Arithmetic::applyLogMapping(magBuf, getConstant(AmpLogTension));
 
             magBuf.copyTo(fftPostFXCols[i]);
             fft.getPhases().copyTo(phasePostFXCols[i]);
@@ -1675,7 +1675,7 @@ void VisualDsp::resizeArrays(const ResizeParams& params) {
         fftGridSize = 0;
 
         for (int i = 0; i < numColumns; ++i) {
-            key = i * (getConstant(HighestMidiNote) - getConstant(LowestMidiNote)) / numColumns + getConstant(LowestMidiNote);
+            key = i * (Constants::HighestMidiNote - Constants::LowestMidiNote) / numColumns + getConstant(LowestMidiNote);
             getNumHarmonicsAndNextPower(numHarmonics, nextPow2, key);
 
             timeSizes[i] 	= nextPow2;
@@ -1690,8 +1690,7 @@ void VisualDsp::resizeArrays(const ResizeParams& params) {
     // for e3 panel's benefit -- we still want the key values to span the range without adjusting column sizes
     else if (params.isEnvelope) {
         for (int i = 0; i < numColumns; ++i) {
-            keys[i] = i * (getConstant(HighestMidiNote) - getConstant(LowestMidiNote)) / numColumns + getConstant(
-                          LowestMidiNote);
+            keys[i] = i * (Constants::HighestMidiNote - Constants::LowestMidiNote) / numColumns + Constants::LowestMidiNote;
         }
     } else {
         keys.set(key);

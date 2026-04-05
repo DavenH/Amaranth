@@ -18,7 +18,7 @@ public:
 
     void init() override;
 
-    ~AudioSourceRepo() override = default;
+    ~AudioSourceRepo() override;
     explicit AudioSourceRepo(SingletonRepo* repo);
 
     [[nodiscard]] Ref<GraphicTableAudioSource> getTableAudioSource() const { return tableSource.get(); }

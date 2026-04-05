@@ -6,7 +6,7 @@
 class GLSurfaceCache {
 public:
     void allocate(bool transparent);
-    void captureFromFramebuffer(int componentHeight);
+    void captureFromFramebuffer(const juce::Rectangle<int>& componentBounds);
     void clear();
     void create();
     void draw() const;
@@ -15,6 +15,7 @@ public:
 
 private:
     TextureGL texture;
+    juce::Rectangle<int> activeBounds;
     bool transparent = false;
     mutable juce::CriticalSection snapshotLock;
     juce::Image snapshot;

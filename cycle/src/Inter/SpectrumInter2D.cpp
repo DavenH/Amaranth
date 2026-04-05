@@ -29,6 +29,7 @@ void SpectrumInter2D::init() {
     layerType = LayerGroups::GroupSpect;
     closestHarmonic = -1;
     scratchesTime = true;
+    setRasterizer(&getObj(SpectRasterizer));
 
     float freqMargin = getRealConstant(FreqMargin);
 
@@ -56,7 +57,7 @@ bool SpectrumInter2D::locateClosestElement() {
 
     Buffer <Float32> ramp = getObj(LogRegions).getRegion(columns[index].midiKey);
 
-    float freqTens = ramp.size() * getRealConstant(FreqTensionScale);
+    float freqTens = ramp.size() * getConstant(FreqLogTension);
     float invScale = Arithmetic::invLogMapping(freqTens, state.currentMouse.x, true);
     closestHarmonic = jlimit(0, ramp.size() - 1, int(invScale * ramp.size()));
 
@@ -98,7 +99,7 @@ void SpectrumInter2D::showCoordinates() {
     String yString;
     if (isMagnitudeMode) {
         float absAmp =
-                2 * Arithmetic::invLogMapping((float) getConstant(FFTLogTensionAmp) * MathConstants<float>::twoPi, col[currHarmonic]);
+                2 * Arithmetic::invLogMapping((float) getConstant(AmpLogTension) * MathConstants<float>::twoPi, col[currHarmonic]);
         yString = Util::getDecibelString(absAmp);
     } else {
         float phaseScale = powf(2, spectrum3D->getScaleFactor()) * sqrtf(currHarmonic + 1);

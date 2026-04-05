@@ -509,7 +509,7 @@ void MainPanel::updateSharedCanvasBounds() {
     }
 
     sharedCanvas->setBounds(getLocalBounds());
-    sharedCanvas->toFront(false);
+    sharedCanvas->toBack();
 }
 
 void MainPanel::updateSharedCanvasRegistry() {

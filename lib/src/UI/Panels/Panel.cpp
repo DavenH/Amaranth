@@ -211,6 +211,7 @@ void Panel::render() {
 
 void Panel::constrainZoom() {
     ZoomRect& rect = zoomPanel->rect;
+    zoomPanel->validateRect("Panel::constrainZoom-before", false);
     NumberUtils::constrain<float>(rect.w, 0.001f, rect.xMaximum - rect.xMinimum);
     NumberUtils::constrain<float>(rect.h, 0.005f, 1);
     NumberUtils::constrain<float>(rect.x, interactor->vertexLimits[interactor->dims.x]);
@@ -223,6 +224,8 @@ void Panel::constrainZoom() {
     if(rect.x + rect.w > rect.xMaximum) {
         rect.x = rect.xMaximum - rect.w;
     }
+
+    zoomPanel->validateRect("Panel::constrainZoom-after");
 }
 
 void Panel::drawBackground(bool fillBackground) {

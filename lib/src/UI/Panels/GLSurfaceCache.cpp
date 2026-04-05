@@ -24,26 +24,34 @@ void GLSurfaceCache::allocate(bool transparent) {
     );
 }
 
-void GLSurfaceCache::captureFromFramebuffer(int componentHeight) {
+void GLSurfaceCache::captureFromFramebuffer(const juce::Rectangle<int>& componentBounds) {
     glBindTexture(GL_TEXTURE_2D, texture.id);
 
-    const auto& rect = texture.rect;
-    int width = rect.getWidth();
-    int height = rect.getHeight();
+    int width = jmin(activeBounds.getWidth(), componentBounds.getWidth());
+    int height = jmin(activeBounds.getHeight(), componentBounds.getHeight());
+
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    int sourceX = componentBounds.getX();
+    int sourceY = componentBounds.getBottom() - height;
+    sourceY = jmax(0, sourceY);
+
     glCopyTexSubImage2D(
         GL_TEXTURE_2D,
         0,
         0,
         0,
-        0,
-        componentHeight - height,
+        sourceX,
+        sourceY,
         width,
         height
     );
 
     juce::HeapBlock<juce::uint8> pixels(width * height * 4);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, componentHeight - height, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
+    glReadPixels(sourceX, sourceY, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
 
     juce::Image image(juce::Image::ARGB, width, height, true);
     juce::Image::BitmapData bitmap(image, juce::Image::BitmapData::writeOnly);
@@ -68,6 +76,7 @@ void GLSurfaceCache::captureFromFramebuffer(int componentHeight) {
 
 void GLSurfaceCache::clear() {
     texture.clear();
+    activeBounds = {};
 
     const juce::ScopedLock sl(snapshotLock);
     snapshot = {};
@@ -114,5 +123,9 @@ bool GLSurfaceCache::paintSnapshot(juce::Graphics& g, const juce::Rectangle<int>
 }
 
 void GLSurfaceCache::setSize(int width, int height) {
-    texture.rect.setSize(width, height);
+    activeBounds.setSize(width, height);
+
+    if (texture.rect.getWidth() <= 0 || texture.rect.getHeight() <= 0) {
+        texture.rect.setSize(1024, 1024);
+    }
 }

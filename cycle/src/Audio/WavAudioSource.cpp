@@ -268,7 +268,7 @@ void WavAudioSource::reset() {
 
 bool WavAudioSource::SampleSound::appliesToNote(int midiNoteNumber) {
     return NumberUtils::within(midiNoteNumber,
-                               Range(getConstant(LowestMidiNote), getConstant(HighestMidiNote)));
+                               Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
 }
 
 bool WavAudioSource::SampleSound::appliesToChannel(int midiChannel) {

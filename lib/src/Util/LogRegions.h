@@ -23,8 +23,8 @@ public:
     void init() override {
         const double samplerate = 44100.0;
 
-        float ampTension = getConstant(LogTension);
-        midiRange = Range<int>(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+        float freqTension = getConstant(FreqLogTension);
+        midiRange = Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote);
 
         vector<int> sizes;
         int totalSize = 0;
@@ -44,11 +44,11 @@ public:
             Buffer<float>& ramp = frequencyRamps[i];
             ramp = memory.place(sizes[i]);
 
-            int size        = sizes[i];
-            float tension   = size * ampTension;
-            float leftOffset= (powf(tension + 1, 0.05f) - 1) / float(tension);
-            float ix        = (1.f - leftOffset) / float(size - 1.f);
-            float iln       = 1 / logf(tension + 1.f);
+            int size         = sizes[i];
+            float tension    = size * freqTension;
+            float leftOffset = (powf(tension + 1, 0.05f) - 1) / float(tension);
+            float ix         = (1.f - leftOffset) / float(size - 1.f);
+            float iln        = 1 / logf(tension + 1.f);
 
             ramp.ramp(leftOffset, ix).mul(tension).add(1.f).ln().mul(iln);
         }

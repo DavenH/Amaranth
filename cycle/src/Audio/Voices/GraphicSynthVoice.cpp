@@ -31,7 +31,7 @@ void GraphicSynthVoice::startNote(const int midiNoteNumber,
         return;
     }
 
-    jassert(midiNoteNumber >= getConstant(LowestMidiNote));
+    jassert(midiNoteNumber >= Constants::LowestMidiNote);
 
     groups[0].reset();
     noteState.scratchVoiceTime = getObj(PlaybackPanel).getX();

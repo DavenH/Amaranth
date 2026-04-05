@@ -39,15 +39,16 @@ void SpectrumInter3D::init() {
 
     selectionClient = std::make_unique<MeshSelectionClient3D>(this, repo, &getObj(EditWatcher), &getObj(MeshLibrary));
 
-    // by this point the rasterizer better be set!
-    selectionClient->initialise(this, rasterizer, layerType);
+    updateSelectionClient();
 }
 
 void SpectrumInter3D::initSelectionClient() {
 }
 
 void SpectrumInter3D::updateSelectionClient() {
-    selectionClient->initialise(this, rasterizer, layerType);
+    if (selectionClient != nullptr && rasterizer != nullptr) {
+        selectionClient->initialise(this, rasterizer, layerType);
+    }
 }
 
 void SpectrumInter3D::doExtraMouseUp() {
@@ -74,7 +75,7 @@ String SpectrumInter3D::getZString(float tableValue, int xIndex) {
 
     if (getSetting(MagnitudeDrawMode)) {
         float absAmp = 2 * Arithmetic::invLogMapping(
-            (float) getConstant(FFTLogTensionAmp) * MathConstants<float>::twoPi,
+            (float) getConstant(AmpLogTension) * MathConstants<float>::twoPi,
             tableValue
         );
         zString = Util::getDecibelString(absAmp);
@@ -88,7 +89,7 @@ String SpectrumInter3D::getZString(float tableValue, int xIndex) {
 }
 
 int SpectrumInter3D::getTableIndexY(float y, int size) {
-    float freqTens = size * getRealConstant(FreqTensionScale);
+    float freqTens = size * getConstant(FreqLogTension);
     int yIndex = jmax(0, int(Arithmetic::invLogMapping(freqTens, y, true) * (size - 1)));
 
     return yIndex;

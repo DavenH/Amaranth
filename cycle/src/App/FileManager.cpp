@@ -47,12 +47,15 @@ FileManager::FileManager(SingletonRepo* repo) :
   #if PLUGIN_MODE
     defaultPresetName = "Empty";
   #else
-    defaultPresetName = "BaroqueFlute";
+    defaultPresetName = "CalmingKeys";
   #endif
 
   #ifdef _DEBUG
-    defaultPresetName = "Empty";
+    defaultPresetName = "CalmingKeys";
+    // defaultPresetName = "Empty";
   #endif
+
+    DBG("FileManager ctor defaultPresetName=\"" + defaultPresetName + "\"");
 }
 
 void FileManager::loadPendingItem() {
@@ -61,22 +64,28 @@ void FileManager::loadPendingItem() {
 File FileManager::findFactoryPresetFile(const String& presetName) const {
     String filename = presetName + "." + getStrConstant(DocumentExt);
     StringArray searchDirs = getObj(Directories).getPresetSearchDirs();
+    DBG("FileManager::findFactoryPresetFile preset=\"" + presetName + "\" filename=\"" + filename + "\"");
 
     for (auto& dir : searchDirs) {
         File file(dir + filename);
+        DBG("  checking " + file.getFullPathName() + " exists=" + String(file.existsAsFile() ? "true" : "false"));
 
         if (file.existsAsFile()) {
+            DBG("  found preset at " + file.getFullPathName());
             return file;
         }
     }
 
+    DBG("  no preset found for \"" + presetName + "\"");
     return {};
 }
 
 void FileManager::openFactoryPreset(const String &presetName) {
+    DBG("FileManager::openFactoryPreset presetName=\"" + presetName + "\"");
     File file(findFactoryPresetFile(presetName));
 
     if (!file.existsAsFile()) {
+        DBG("FileManager::openFactoryPreset failed to resolve presetName=\"" + presetName + "\"");
         jassertfalse;
         showConsoleMsg("Couldn't find factory preset: " + presetName);
         return;
@@ -87,6 +96,7 @@ void FileManager::openFactoryPreset(const String &presetName) {
 
 void FileManager::openPreset(const File &file) {
     currentPresetName = file.getFullPathName();
+    DBG("FileManager::openPreset currentPresetName=\"" + currentPresetName + "\"");
 
     info("Opening preset: " << currentPresetName << "\n");
     openCurrentPreset();
@@ -103,6 +113,7 @@ void FileManager::saveCurrentPreset() {
 
 void FileManager::openCurrentPreset() {
     progressMark
+    DBG("FileManager::openCurrentPreset currentPresetName=\"" + currentPresetName + "\"");
 
     if(getSetting(DrawWave)) {
         getObj(SampleUtils).waveOverlayChanged(false);
@@ -122,7 +133,9 @@ void FileManager::openCurrentPreset() {
 
     // anything that depends on mesh or xml needs to be locked
 
+    DBG("FileManager::openCurrentPreset calling Document::open");
     getObj(Document).open(currentPresetName);
+    DBG("FileManager::openCurrentPreset Document::open returned");
     doPostPresetLoad();
 }
 
@@ -170,8 +183,8 @@ void FileManager::doPostPresetLoad() {
     getObj(PluginProcessor).documentHasLoaded();
     getObj(PluginProcessor).updateLatency();
   #else
-    getObj(AudioHub)		.resumeAudio();
     getObj(AudioSourceRepo)	.setAudioProcessor(AudioSourceRepo::SynthSource);
+    getObj(AudioHub)		.resumeAudio();
   #endif
 
     getObj(EnvelopeInter2D)	.switchedEnvelope(LayerGroups::GroupVolume, false, true);
@@ -255,12 +268,14 @@ void FileManager::unloadWav(bool doUpdate) {
 }
 
 void FileManager::openDefaultPreset() {
+    DBG("FileManager::openDefaultPreset shouldOpenDefaultPreset=" + String(shouldOpenDefaultPreset ? "true" : "false"));
     // some hosts want to call this after loading the state block,
     // which overwrites the preset
     if (shouldOpenDefaultPreset) {
         getSetting(IgnoringMessages) = false;
 
         String cmdUnquoted = getObj(Initializer).getCommandLine().trim().unquoted();
+        DBG("FileManager::openDefaultPreset commandLine=\"" + cmdUnquoted + "\" defaultPresetName=\"" + defaultPresetName + "\"");
 
         bool commandLineIsPreset =
                 cmdUnquoted.isNotEmpty() &&
@@ -273,32 +288,25 @@ void FileManager::openDefaultPreset() {
         if (commandLineIsPreset) {
             File openedPreset(cmdUnquoted);
             if (openedPreset.existsAsFile()) {
+                DBG("FileManager::openDefaultPreset opening command-line preset " + openedPreset.getFullPathName());
                 openPreset(openedPreset);
                 getObj(Initializer).setCommandLine(String());
 
                 return;
-            } else {
-                showImportant(cmdUnquoted + " could not be opened");
             }
+            DBG("FileManager::openDefaultPreset command-line preset missing");
+            showImportant(cmdUnquoted + " could not be opened");
         } else {
+            DBG("FileManager::openDefaultPreset opening factory preset \"" + defaultPresetName + "\"");
             openFactoryPreset(defaultPresetName);
         }
 
         getObj(PresetPage).updateCurrentPreset(defaultPresetName);
     }
 
-    if (getSetting(FirstLaunch)) {
-        noPlug(getObj(CycleTour).enter());
-    }
-
-//	if(getObj(Settings).getValidationState() == SerialChecker::betaVersion)
-//	{
-//		int64 smallTime = 0.001 * Time::currentTimeMillis();
-//		if(smallTime > getConstant(BetaExpiry))
-//		{
-//			showCritical("Beta expired, please update to the latest");
-//		}
-//	}
+    // if (getSetting(FirstLaunch)) {
+    //     noPlug(getObj(CycleTour).enter());
+    // }
 }
 
 void FileManager::doPostWaveLoad(Dialogs::OpenWaveInvoker invoker) {

@@ -10,6 +10,40 @@
 
 float ZoomPanel::zoomRatio = 1.259921f; // 2^0.25
 
+namespace {
+
+void logZoomRect(ZoomPanel* panel, const char* source, const char* level) {
+    auto& rect = panel->getZoomRect();
+    String panelName = panel->getZoomContext().panel != nullptr ? panel->getZoomContext().panel->getName() : "null";
+    DBG("ZoomPanel " + String(level) + " at " + String(source)
+        + " panel=" + panelName
+        + " rect=(" + String(rect.x) + "," + String(rect.y) + "," + String(rect.w) + "," + String(rect.h) + ")"
+        + " xLimits=(" + String(rect.xMinimum) + "," + String(rect.xMaximum) + ")"
+        + " yLimits=(" + String(rect.yMinimum) + "," + String(rect.yMaximum) + ")");
+}
+
+}
+
+bool ZoomPanel::validateRect(const char* source, bool assertOnFailure) const {
+    bool valid = rect.xMinimum <= rect.xMaximum &&
+                 rect.yMinimum <= rect.yMaximum &&
+                 rect.w >= 0.f &&
+                 rect.h >= 0.f &&
+                 rect.x >= rect.xMinimum &&
+                 rect.y >= rect.yMinimum &&
+                 rect.x + rect.w <= rect.xMaximum &&
+                 rect.y + rect.h <= rect.yMaximum;
+
+    if (!valid) {
+        logZoomRect(const_cast<ZoomPanel*>(this), source, "invalid");
+        if (assertOnFailure) {
+            jassertfalse;
+        }
+    }
+
+    return valid;
+}
+
 ZoomPanel::ZoomPanel(SingletonRepo* repo, ZoomContext context) :
         Bounded()
     ,   SingletonAccessor(repo, "ZoomPanel")
@@ -23,6 +57,7 @@ ZoomPanel::ZoomPanel(SingletonRepo* repo, ZoomContext context) :
     ,   tendZoomToCentre(true) {
 
     if(context.haveHorz) {
+        validateRect("ctor-horz");
         horz.setRangeLimits(rect.xMinimum, rect.xMaximum);
         horz.setCurrentRange(rect.x, rect.w);
         horz.addListener(this);
@@ -34,6 +69,7 @@ ZoomPanel::ZoomPanel(SingletonRepo* repo, ZoomContext context) :
     }
 
     if (context.haveVert) {
+        validateRect("ctor-vert");
         vert.setRangeLimits(rect.yMinimum, rect.yMaximum);
         vert.setCurrentRange(rect.y, rect.h);
         vert.addListener(this);
@@ -94,6 +130,8 @@ void ZoomPanel::mouseEnter(const MouseEvent& e) {
 }
 
 void ZoomPanel::scrollBarMoved(ScrollBar* bar, double newRangeStart) {
+    validateRect("scrollBarMoved-before", false);
+
     if (bar == &horz) {
         rect.x = newRangeStart;
         rect.w = horz.getCurrentRangeSize();
@@ -101,6 +139,8 @@ void ZoomPanel::scrollBarMoved(ScrollBar* bar, double newRangeStart) {
         rect.y = newRangeStart;
         rect.h = vert.getCurrentRangeSize();
     }
+
+    validateRect("scrollBarMoved-after");
 
     int updateSource = context.panel->getInteractor()->getUpdateSource();
     listeners.call(&ZoomListener::zoomUpdated, updateSource);
@@ -112,10 +152,14 @@ int ZoomPanel::getWidth()   { return Component::getWidth();     }
 int ZoomPanel::getHeight()  { return Component::getHeight();    }
 
 void ZoomPanel::panelZoomChanged(bool commandDown) {
+    validateRect("panelZoomChanged-entry", false);
     listeners.call(&ZoomListener::constrainZoom);
+    validateRect("panelZoomChanged-after-constrain");
     listeners.call(&ZoomListener::doZoomExtra, commandDown);
+    validateRect("panelZoomChanged-after-extra");
 
     if(context.haveHorz) {
+        validateRect("panelZoomChanged-horz");
         horz.removeListener (this);
         horz.setRangeLimits (rect.xMinimum, rect.xMaximum);
         horz.setCurrentRange(rect.x, rect.w);
@@ -123,6 +167,7 @@ void ZoomPanel::panelZoomChanged(bool commandDown) {
     }
 
     if (context.haveVert) {
+        validateRect("panelZoomChanged-vert");
         vert.removeListener (this);
         vert.setRangeLimits (rect.yMinimum, rect.yMaximum);
         vert.setCurrentRange(rect.y, rect.h);
@@ -147,6 +192,7 @@ void ZoomPanel::panelComponentChanged(Component* newComponent, Component* oldCom
 }
 
 void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
+    validateRect("zoomIn-entry");
     float oldZoom;
 
     if (cmdDown) {
@@ -186,10 +232,12 @@ void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
         }
     }
 
+    validateRect("zoomIn-before-panelZoomChanged");
     panelZoomChanged(cmdDown);
 }
 
 void ZoomPanel::zoomOut(bool cmdDown, int mouseX, int mouseY) {
+    validateRect("zoomOut-entry");
     float oldZoom;
 
     if (cmdDown) {
@@ -206,6 +254,7 @@ void ZoomPanel::zoomOut(bool cmdDown, int mouseX, int mouseY) {
         rect.x = x + (rect.x - x) * rect.w / oldZoom;
     }
 
+    validateRect("zoomOut-before-panelZoomChanged");
     panelZoomChanged(cmdDown);
 }
 

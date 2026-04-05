@@ -24,7 +24,7 @@ OpenGLPanel3D::~OpenGLPanel3D() {
 }
 
 void OpenGLPanel3D::init() {
-    surfaceCache.setSize(1024, 1024);
+    surfaceCache.setSize(jmax(1, getWidth()), jmax(1, getHeight()));
 
     commonGL = new CommonGL(panel, this);
     panelRenderer = std::make_unique<GLPanelRenderer>(commonGL, &surfaceCache);
@@ -121,6 +121,7 @@ void OpenGLPanel3D::newOpenGLContextCreated() {
 }
 
 void OpenGLPanel3D::resized() {
+    surfaceCache.setSize(jmax(1, getWidth()), jmax(1, getHeight()));
     panel->panelResized();
 }
 

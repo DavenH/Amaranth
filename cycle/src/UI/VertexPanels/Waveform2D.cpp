@@ -17,6 +17,7 @@
 
 #include "../Panels/Morphing/MorphPanel.h"
 #include "../VertexPanels/Waveform3D.h"
+#include "../../Inter/WaveformInter2D.h"
 #include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VisualDsp.h"
 #include "../../Util/CycleEnums.h"
@@ -45,6 +46,7 @@ void Waveform2D::init() {
     Panel2D::init();
 
     position = &getObj(PlaybackPanel);
+    setInteractor(&getObj(WaveformInter2D));
 }
 
 void Waveform2D::preDraw() {
