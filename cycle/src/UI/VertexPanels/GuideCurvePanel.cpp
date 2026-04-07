@@ -496,7 +496,8 @@ void GuideCurvePanel::reset() {
 }
 
 void GuideCurvePanel::doubleMesh() {
-    getCurrentMesh()->twin(getConstant(GuideCurvePadding), getConstant(GuideCurvePadding));
+    auto padding = getRealConstant(GuideCurvePadding);
+    getCurrentMesh()->twin(padding, padding);
     postUpdateMessage();
 }
 
@@ -525,8 +526,10 @@ void GuideCurvePanel::triggerButton(int id) {
 }
 
 void GuideCurvePanel::showCoordinates() {
-    float invSize = 1.f / float(1.f - 2.f * getConstant(GuideCurvePadding));
-    float xformX  = (state.currentMouse.x - getConstant(GuideCurvePadding)) * invSize;
+    auto padding = getRealConstant(GuideCurvePadding);
+
+    float invSize = 1.f / float(1.f - 2.f * padding);
+    float xformX  = (state.currentMouse.x - padding) * invSize;
 
     String message = String(xformX, 2) + ", " + String(state.currentMouse.y, 2);
     showConsoleMsg(message);

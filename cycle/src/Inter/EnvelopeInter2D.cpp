@@ -89,10 +89,19 @@ void EnvelopeInter2D::init() {
 
     vertexLimits[Vertex::Phase].setEnd(MathConstants<float>::sqrt2); //envPanel->zoom.wLimit;
 
-    // The updater can reach the envelope path during startup before the UI
-    // explicitly switches envelope types, so bind the current rasterizer now.
+    // Startup reaches here before Envelope2D has finished wiring its panel UI,
+    // so only seed the current rasterizer/mesh state. The full switchedEnvelope
+    // path also drives zoom/repaint and selector widgets, which is too early.
     layerType = getSetting(CurrentEnvGroup);
     setRasterizer(getRast(layerType));
+
+    if (layerType == LayerGroups::GroupWavePitch) {
+        if (PitchedSample* current = getObj(Multisample).getCurrentSample()) {
+            rasterizer->setMesh(current->mesh.get());
+        }
+    } else if (EnvRasterizer* envRast = getEnvRasterizer()) {
+        envRast->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(layerType));
+    }
 }
 
 void EnvelopeInter2D::doExtraMouseUp() {

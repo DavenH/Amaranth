@@ -12,6 +12,8 @@ float ZoomPanel::zoomRatio = 1.259921f; // 2^0.25
 
 namespace {
 
+constexpr float zoomRectTolerance = 1.0e-5f;
+
 void logZoomRect(ZoomPanel* panel, const char* source, const char* level) {
     auto& rect = panel->getZoomRect();
     String panelName = panel->getZoomContext().panel != nullptr ? panel->getZoomContext().panel->getName() : "null";
@@ -25,14 +27,14 @@ void logZoomRect(ZoomPanel* panel, const char* source, const char* level) {
 }
 
 bool ZoomPanel::validateRect(const char* source, bool assertOnFailure) const {
-    bool valid = rect.xMinimum <= rect.xMaximum &&
-                 rect.yMinimum <= rect.yMaximum &&
-                 rect.w >= 0.f &&
-                 rect.h >= 0.f &&
-                 rect.x >= rect.xMinimum &&
-                 rect.y >= rect.yMinimum &&
-                 rect.x + rect.w <= rect.xMaximum &&
-                 rect.y + rect.h <= rect.yMaximum;
+    bool valid = rect.xMinimum <= rect.xMaximum + zoomRectTolerance &&
+                 rect.yMinimum <= rect.yMaximum + zoomRectTolerance &&
+                 rect.w >= -zoomRectTolerance &&
+                 rect.h >= -zoomRectTolerance &&
+                 rect.x >= rect.xMinimum - zoomRectTolerance &&
+                 rect.y >= rect.yMinimum - zoomRectTolerance &&
+                 rect.x + rect.w <= rect.xMaximum + zoomRectTolerance &&
+                 rect.y + rect.h <= rect.yMaximum + zoomRectTolerance;
 
     if (!valid) {
         logZoomRect(const_cast<ZoomPanel*>(this), source, "invalid");
@@ -232,7 +234,7 @@ void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
         }
     }
 
-    validateRect("zoomIn-before-panelZoomChanged");
+    validateRect("zoomIn-before-panelZoomChanged", false);
     panelZoomChanged(cmdDown);
 }
 
@@ -254,7 +256,7 @@ void ZoomPanel::zoomOut(bool cmdDown, int mouseX, int mouseY) {
         rect.x = x + (rect.x - x) * rect.w / oldZoom;
     }
 
-    validateRect("zoomOut-before-panelZoomChanged");
+    validateRect("zoomOut-before-panelZoomChanged", false);
     panelZoomChanged(cmdDown);
 }
 

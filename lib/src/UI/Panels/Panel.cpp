@@ -670,8 +670,8 @@ PanelRenderContext Panel::createRenderContext() const {
     PanelRenderContext context;
 
     if (comp != nullptr) {
-        context.bounds = comp->getBounds();
-        context.clip = comp->getBounds();
+        context.bounds = comp->getLocalBounds();
+        context.clip = comp->getLocalBounds();
     }
 
     context.dirtyMask = dirtyState.mask();

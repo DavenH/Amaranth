@@ -1,3 +1,5 @@
+#include <climits>
+
 #include "GLSurfaceCache.h"
 
 #include "ScopedGL.h"
@@ -87,26 +89,42 @@ void GLSurfaceCache::create() {
 }
 
 void GLSurfaceCache::draw() const {
+    if (texture.id == UINT_MAX) {
+        return;
+    }
+
+    int activeWidth = activeBounds.getWidth();
+    int activeHeight = activeBounds.getHeight();
+    int backingWidth = (int) texture.rect.getWidth();
+    int backingHeight = (int) texture.rect.getHeight();
+
+    if (activeWidth <= 0 || activeHeight <= 0 || backingWidth <= 0 || backingHeight <= 0) {
+        return;
+    }
+
     ScopedEnable tex2d(GL_TEXTURE_2D);
 
     glBindTexture(GL_TEXTURE_2D, texture.id);
     glColor3f(1.f, 1.f, 1.f);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    const auto& rect = texture.rect;
+    float u2 = activeWidth / (float) backingWidth;
+    float v2 = activeHeight / (float) backingHeight;
 
     {
         ScopedElement glQuads(GL_QUADS);
 
         glTexCoord2f(0.f, 0.f);
-        glVertex2f(0.f, rect.getHeight());
+        glVertex2f(0.f, (float) activeHeight);
 
-        glTexCoord2f(1.f, 0.f);
-        glVertex2f(rect.getWidth(), rect.getHeight());
+        glTexCoord2f(u2, 0.f);
+        glVertex2f((float) activeWidth, (float) activeHeight);
 
-        glTexCoord2f(1.f, 1.f);
-        glVertex2f(rect.getWidth(), 0.f);
+        glTexCoord2f(u2, v2);
+        glVertex2f((float) activeWidth, 0.f);
 
-        glTexCoord2f(0.f, 1.f);
+        glTexCoord2f(0.f, v2);
         glVertex2f(0.f, 0.f);
     }
 }

@@ -343,6 +343,17 @@ void Panel3D::downsampleColumn(const Buffer<float>& column) {
 }
 
 void Panel3D::setColumnColourIndices() {
+    if (clrIndicesA.size() < draw.sizeY || clrIndicesB.size() < draw.sizeY) {
+        DBG("Panel3D::setColumnColourIndices size mismatch"
+            + String(" panel=") + getName()
+            + " sizeY=" + String(draw.sizeY)
+            + " colSourceSizeY=" + String(draw.colSourceSizeY)
+            + " clrA=" + String(clrIndicesA.size())
+            + " clrB=" + String(clrIndicesB.size())
+            + " reduced=" + String(draw.reduced ? 1 : 0));
+        jassertfalse;
+    }
+
     clrIndicesB
         .withSize(draw.sizeY)
         .copyTo(clrIndicesA.withSize(draw.sizeY));
@@ -639,6 +650,16 @@ void Panel3D::drawSurface() {
     scaledY.resize(draw.colSourceSizeY);
     scaledX.resize(draw.sizeX);
 
+    DBG("Panel3D::drawSurface sized buffers"
+        + String(" panel=") + getName()
+        + " sizeX=" + String(draw.sizeX)
+        + " sizeY=" + String(draw.sizeY)
+        + " colSourceSizeY=" + String(draw.colSourceSizeY)
+        + " clrA=" + String(clrIndicesA.size())
+        + " clrB=" + String(clrIndicesB.size())
+        + " downsampAcc=" + String(downsampAcc.size())
+        + " reduced=" + String(draw.reduced ? 1 : 0));
+
     float slope = (grid.back().x - grid.front().x) / float(draw.sizeX - 1);
 
     scaledX.ramp(0, slope);
@@ -776,6 +797,9 @@ void Panel3D::drawGuideCurveTags() {
 
 void Panel3D::zoomUpdated(int updateSource) {
     if (updateSource == interactor->getUpdateSource()) {
+        updateBackground(false);
+        bakeTexturesNextRepaint();
+        repaint();
     } else {
         Interactor* opposite = interactor->getOppositeInteractor();
         if (opposite != nullptr) {

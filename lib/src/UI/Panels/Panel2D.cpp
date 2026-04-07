@@ -380,6 +380,8 @@ bool Panel2D::isMeshEnabled() {
 
 void Panel2D::zoomUpdated(int updateSource) {
     if (updateSource == interactor->getUpdateSource()) {
+        updateBackground(false);
+        repaint();
     } else {
         Interactor* opposite = interactor->getOppositeInteractor();
 
