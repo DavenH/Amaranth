@@ -93,6 +93,9 @@ void SingletonRepo::init() {
     auto& document = getObj(Document);
 
     for(auto saveSource : saveSources) {
+        auto* saveAccessor = dynamic_cast<SingletonAccessor*>(saveSource);
+        DBG("SingletonRepo::init registerSavable "
+            + (saveAccessor != nullptr ? saveAccessor->getName() : String("<unknown>")));
         document.registerSavable(saveSource);
     }
 }
@@ -103,6 +106,7 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
     hashes.set(accessor->getName(), accessor);
 
     if(auto* savable = dynamic_cast<Savable*>(accessor)) {
+        DBG("SingletonRepo::add saveSource " + accessor->getName());
         saveSources.add(savable);
     }
 
@@ -120,6 +124,7 @@ void SingletonRepo::addExternal(SingletonAccessor* accessor, int order) {
     hashes.set(accessor->getName(), accessor);
 
     if(auto* savable = dynamic_cast<Savable*>(accessor)) {
+        DBG("SingletonRepo::addExternal saveSource " + accessor->getName());
         saveSources.add(savable);
     }
 

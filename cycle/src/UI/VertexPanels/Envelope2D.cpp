@@ -609,6 +609,8 @@ bool Envelope2D::readXML(const XmlElement* element) {
 
         group.layers.clear();
 
+        jassert(envProps != nullptr);
+
         for(auto elem : envProps->getChildWithTagNameIterator(envTypes.name + "Props")) {
             if(elem == nullptr) {
                 continue;

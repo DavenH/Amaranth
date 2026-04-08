@@ -43,7 +43,9 @@ public:
         [[nodiscard]] const Array<Node*>& getChildren() const    { return children;    }
         [[nodiscard]] const Array<Node*>& getMarkedNodes() const { return nodesToMark; }
         [[nodiscard]] Updateable* getTarget() const              { return toUpdate;    }
+        [[nodiscard]] const String& getDebugName() const         { return debugName;   }
         void markDirty() { dirty = true;    }
+        void setDebugName(const String& name) { debugName = name; }
 
         virtual void executeUpdate(UpdateType updateType);
 
@@ -51,6 +53,7 @@ public:
         bool updated;
         bool dirty;
 
+        String debugName;
         Array<Node*> parents;
         Array<Node*> children;
         Array<Node*> nodesToMark;
@@ -71,6 +74,7 @@ public:
         void addHeadNodes   (Array<Node*> nodes);
         void removeHeadNode (Node* node);
         void update         (Node* node);
+        void setUpdateContext(const String& context) { updateContext = context; }
 
         [[nodiscard]] const Array<Node*>& getHeadNodes() const { return headNodes; }
         void setUpdateType(UpdateType type)     { updateType = type; }
@@ -82,6 +86,7 @@ public:
         bool printsPath;
         UpdateType updateType;
         String lastPath;
+        String updateContext;
         Array<Node*> headNodes;
 
         void reset() override;

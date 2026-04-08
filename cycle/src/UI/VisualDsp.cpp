@@ -1670,6 +1670,20 @@ void VisualDsp::resizeArrays(const ResizeParams& params) {
 
     int key = params.overrideKey >= 0 ? params.overrideKey : getObj(MorphPanel).getCurrentMidiKey();
 
+  #ifdef JUCE_DEBUG
+    if (!params.isEnvelope && (params.freqColumns != nullptr || params.timeColumns != nullptr)) {
+        DBG("VisualDsp::resizeArrays"
+            + String(" numColumns=") + String(numColumns)
+            + " adjust=" + String(adjustColumnSizes ? 1 : 0)
+            + " drawWave=" + String(getSetting(DrawWave))
+            + " morphAxis=" + String(getSetting(CurrentMorphAxis))
+            + " key=" + String(key)
+            + " overridePow2=" + String(params.overridePow2)
+            + " overrideHarms=" + String(params.overrideHarms)
+            + " isEnvelope=" + String(params.isEnvelope ? 1 : 0));
+    }
+  #endif
+
     if (adjustColumnSizes) {
         fullGridSize = 0;
         fftGridSize = 0;
@@ -1743,6 +1757,17 @@ void VisualDsp::getNumHarmonicsAndNextPower(int& numHarmonics, int& nextPow2, in
     int midiKey  = key >= 0 ? key : getObj(MorphPanel).getCurrentMidiKey();
     numHarmonics = getObj(LogRegions).getRegion(midiKey).size();
     nextPow2     = NumberUtils::nextPower2(numHarmonics * 2);
+
+  #ifdef JUCE_DEBUG
+    static int logCount = 0;
+    if (logCount < 24) {
+        DBG("VisualDsp::getNumHarmonicsAndNextPower"
+            + String(" midiKey=") + String(midiKey)
+            + " numHarmonics=" + String(numHarmonics)
+            + " nextPow2=" + String(nextPow2));
+        ++logCount;
+    }
+  #endif
 
     jassert(midiKey > 0);
     jassert(numHarmonics > 0);
