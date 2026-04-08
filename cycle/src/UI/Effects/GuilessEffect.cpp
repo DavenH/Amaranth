@@ -1,4 +1,5 @@
 #include <App/EditWatcher.h>
+#include <App/Doc/PresetJson.h>
 #include <App/SingletonRepo.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Widgets/Knob.h>
@@ -144,6 +145,27 @@ bool GuilessEffect::readXML(const XmlElement* element) {
             paramGroup->setKnobValue(i, 0.5, false);
         }
     }
+
+    return true;
+}
+
+var GuilessEffect::writeJSON() const {
+    auto json = PresetJson::object();
+
+    json->setProperty("enabled", enabled);
+    json->setProperty("knobs", paramGroup->writeKnobJSON());
+
+    return PresetJson::toVar(json);
+}
+
+bool GuilessEffect::readJSON(const var& object) {
+    if (PresetJson::getObject(object) == nullptr) {
+        return false;
+    }
+
+    (void) paramGroup->readKnobJSON(PresetJson::property(object, "knobs"));
+    setEffectEnabled(PresetJson::boolProperty(object, "enabled", false), false, true);
+    repaint();
 
     return true;
 }

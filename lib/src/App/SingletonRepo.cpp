@@ -26,6 +26,9 @@
 SingletonRepo::SingletonRepo() :
         hasInstantiated (false)
     ,   hasInitialized  (false)
+    ,   suppressAudioDeviceInit(false)
+    ,   suppressSavableAutoRegistration(false)
+    ,   suppressInitializerInit(false)
     ,   debugStream     (nullptr)
     ,   statStream      (nullptr)
     ,   dummyStream     (nullptr)
@@ -87,13 +90,19 @@ void SingletonRepo::init() {
     ScopedLock sl(initLock);
 
     for (int i = 0; i < objects.size(); ++i) {
+        if (suppressInitializerInit && objects[i]->getName() == "Initializer") {
+            continue;
+        }
+
         objects[i]->init();
     }
 
-    auto& document = getObj(Document);
+    if (!suppressSavableAutoRegistration) {
+        auto& document = getObj(Document);
 
-    for(auto saveSource : saveSources) {
-        document.registerSavable(saveSource);
+        for(auto saveSource : saveSources) {
+            document.registerSavable(saveSource);
+        }
     }
 }
 

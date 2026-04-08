@@ -7,6 +7,7 @@
 
 #include <App/AppConstants.h>
 
+#include "../App/Doc/PresetJson.h"
 #include "../Definitions.h"
 
 using std::map;
@@ -266,6 +267,145 @@ bool Mesh::readXML(const XmlElement* repoElem) {
     }
 
     validate();
+
+    return true;
+}
+
+var Mesh::writeJSON() const {
+    auto json = PresetJson::object();
+    Array<var> vertexArray, cubeArray;
+
+    json->setProperty("name", name);
+    json->setProperty("version", version);
+
+    int count = 0;
+    map<Vertex*, int> idMap;
+
+    for (auto* vert : verts) {
+        auto vertex = PresetJson::object();
+
+        vertex->setProperty("time",  vert->values[Vertex::Time]);
+        vertex->setProperty("phase", vert->values[Vertex::Phase]);
+        vertex->setProperty("amp",   vert->values[Vertex::Amp]);
+        vertex->setProperty("key",   vert->values[Vertex::Red]);
+        vertex->setProperty("mod",   vert->values[Vertex::Blue]);
+        vertex->setProperty("weight", vert->values[Vertex::Curve]);
+        vertex->setProperty("id", count);
+
+        idMap[vert] = count++;
+        vertexArray.add(PresetJson::toVar(vertex));
+    }
+
+    for (auto* cube : cubes) {
+        auto cubeJson = PresetJson::object();
+        auto guides = PresetJson::object();
+        auto gains = PresetJson::object();
+        Array<var> vertexIds;
+
+        for (int i = 0; i < VertCube::numVerts; ++i) {
+            vertexIds.add(idMap[cube->getVertex(i)]);
+        }
+
+        guides->setProperty("time",  cube->guideCurveChans[Vertex::Time]);
+        guides->setProperty("key",   cube->guideCurveChans[Vertex::Red]);
+        guides->setProperty("mod",   cube->guideCurveChans[Vertex::Blue]);
+        guides->setProperty("phase", cube->guideCurveChans[Vertex::Phase]);
+        guides->setProperty("amp",   cube->guideCurveChans[Vertex::Amp]);
+        guides->setProperty("curve", cube->guideCurveChans[Vertex::Curve]);
+
+        gains->setProperty("time",  cube->guideCurveGains[Vertex::Time]);
+        gains->setProperty("key",   cube->guideCurveGains[Vertex::Red]);
+        gains->setProperty("mod",   cube->guideCurveGains[Vertex::Blue]);
+        gains->setProperty("phase", cube->guideCurveGains[Vertex::Phase]);
+        gains->setProperty("amp",   cube->guideCurveGains[Vertex::Amp]);
+        gains->setProperty("curve", cube->guideCurveGains[Vertex::Curve]);
+
+        cubeJson->setProperty("vertexIds", var(vertexIds));
+        cubeJson->setProperty("guides", PresetJson::toVar(guides));
+        cubeJson->setProperty("gains", PresetJson::toVar(gains));
+        cubeArray.add(PresetJson::toVar(cubeJson));
+    }
+
+    json->setProperty("vertices", var(vertexArray));
+    json->setProperty("cubes", var(cubeArray));
+
+    return PresetJson::toVar(json);
+}
+
+bool Mesh::readJSON(const var& object) {
+    const Array<var>* vertexArray = PresetJson::getArray(PresetJson::property(object, "vertices"));
+    const Array<var>* cubeArray = PresetJson::getArray(PresetJson::property(object, "cubes"));
+
+    if (PresetJson::getObject(object) == nullptr || vertexArray == nullptr || cubeArray == nullptr) {
+        return false;
+    }
+
+    destroy();
+
+    version = PresetJson::intProperty(object, "version", Constants::MeshFormatVersion);
+    name = PresetJson::stringProperty(object, "name", "unnamed");
+
+    map<int, Vertex*> idMap;
+
+    for (const auto& vertexValue : *vertexArray) {
+        auto* vert = new Vertex();
+
+        vert->values[Vertex::Time]  = PresetJson::doubleProperty(vertexValue, "time");
+        vert->values[Vertex::Phase] = PresetJson::doubleProperty(vertexValue, "phase");
+        vert->values[Vertex::Amp]   = PresetJson::doubleProperty(vertexValue, "amp");
+        vert->values[Vertex::Red]   = PresetJson::doubleProperty(vertexValue, "key");
+        vert->values[Vertex::Blue]  = PresetJson::doubleProperty(vertexValue, "mod");
+        vert->values[Vertex::Curve] = PresetJson::doubleProperty(vertexValue, "weight");
+
+        int id = PresetJson::intProperty(vertexValue, "id", (int) verts.size());
+
+        idMap[id] = vert;
+        verts.push_back(vert);
+    }
+
+    for (const auto& cubeValue : *cubeArray) {
+        const Array<var>* vertexIds = PresetJson::getArray(PresetJson::property(cubeValue, "vertexIds"));
+        auto guides = PresetJson::property(cubeValue, "guides");
+        auto gains = PresetJson::property(cubeValue, "gains");
+
+        if (vertexIds == nullptr || vertexIds->size() != VertCube::numVerts) {
+            continue;
+        }
+
+        auto* cube = new VertCube();
+
+        cube->guideCurveChans[Vertex::Time]  = PresetJson::intProperty(guides, "time", -1);
+        cube->guideCurveChans[Vertex::Red]   = PresetJson::intProperty(guides, "key", -1);
+        cube->guideCurveChans[Vertex::Blue]  = PresetJson::intProperty(guides, "mod", -1);
+        cube->guideCurveChans[Vertex::Phase] = PresetJson::intProperty(guides, "phase", -1);
+        cube->guideCurveChans[Vertex::Amp]   = PresetJson::intProperty(guides, "amp", -1);
+        cube->guideCurveChans[Vertex::Curve] = PresetJson::intProperty(guides, "curve", -1);
+
+        cube->guideCurveGains[Vertex::Time]  = PresetJson::doubleProperty(gains, "time", 0.5);
+        cube->guideCurveGains[Vertex::Red]   = PresetJson::doubleProperty(gains, "key", 0.5);
+        cube->guideCurveGains[Vertex::Blue]  = PresetJson::doubleProperty(gains, "mod", 0.5);
+        cube->guideCurveGains[Vertex::Phase] = PresetJson::doubleProperty(gains, "phase", 0.5);
+        cube->guideCurveGains[Vertex::Amp]   = PresetJson::doubleProperty(gains, "amp", 0.5);
+        cube->guideCurveGains[Vertex::Curve] = PresetJson::doubleProperty(gains, "curve", 0.5);
+
+        bool valid = true;
+
+        for (int i = 0; i < VertCube::numVerts; ++i) {
+            int vertexId = int(vertexIds->getReference(i));
+            auto it = idMap.find(vertexId);
+
+            if (it == idMap.end() || !cube->setVertex(it->second, i)) {
+                valid = false;
+                break;
+            }
+        }
+
+        if (valid) {
+            cubes.push_back(cube);
+        } else {
+            delete cube;
+        }
+    }
 
     return true;
 }

@@ -24,6 +24,8 @@ public:
     virtual void deepCopy(Mesh* mesh);
     void writeXML(XmlElement* element) const override;
     bool readXML(const XmlElement* element) override;
+    var writeJSON() const override;
+    bool readJSON(const var& object) override;
 
     vector<Vertex*>& getVerts()   { return verts; }
     vector<VertCube*>& getCubes() { return cubes; }

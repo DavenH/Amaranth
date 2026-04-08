@@ -12,4 +12,6 @@ public:
 
     bool readXML(const XmlElement* topElement) override;
     void writeXML(XmlElement* topElement) const override;
+    var writeJSON() const override;
+    bool readJSON(const var& object) override;
 };

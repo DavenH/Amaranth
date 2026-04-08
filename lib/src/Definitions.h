@@ -20,6 +20,7 @@
 #define getConstant(T)        getObj(AppConstants).getAppConstant(Constants::T)
 #define getStrConstant(T)     getObj(AppConstants).getStringAppConstant(Constants::T)
 #define getDocSetting(X)      getObj(Settings).getDocumentSetting(DocSettings::X)
+#define getSettingValue(T)    getObj(Settings).getGlobalSettingValue(AppSettings::T)
 #define getRealConstant(T)  getObj(AppConstants).getRealAppConstant(Constants::T)
 #define getSetting(T)         getObj(Settings).getGlobalSetting(AppSettings::T)
 #define getLayerMesh(T, S)  getObj(MeshLibrary).getLayer(LayerGroups::T, S)

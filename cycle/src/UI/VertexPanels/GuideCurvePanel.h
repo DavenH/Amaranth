@@ -67,6 +67,8 @@ public:
 
     bool readXML(const XmlElement* element) override;
     void writeXML(XmlElement* element) const override;
+    var writeJSON() const override;
+    bool readJSON(const var& object) override;
 
     float getTableValue(int guideIndex, float progress, const GuideCurveProvider::NoiseContext& context) override
     {

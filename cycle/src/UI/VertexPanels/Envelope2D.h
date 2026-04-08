@@ -61,9 +61,11 @@ public:
     void drawCurvesAndSurfaces() override;
     void setListenersForEditWatcher(EditWatcher* watcher);
 
-    /* callbacks */
+	/* callbacks */
 	bool readXML(const XmlElement* element) override;
     void writeXML(XmlElement* element) const override;
+    var writeJSON() const override;
+    bool readJSON(const var& object) override;
 
     Component* getComponent(int which) override;
     Component* getControlsComponent() { return &controls; }

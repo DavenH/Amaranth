@@ -477,8 +477,11 @@ bool IrModeller::doParamChange(int param, double value, bool doFurtherUpdate) {
         case Highpass: {
             bool changed = prefilt.setTargetValue(value);
 
-            if (changed)
+            if (changed) {
                 setPendingAction(prefilterChg);
+            }
+
+            return changed;
         }
         default:
             throw std::invalid_argument("Illegal param: " + std::to_string(param));

@@ -380,7 +380,15 @@ void Dialogs::getSizeFromSetting(int sizeEnum, int &width, int &height) {
             break;
     }
 
-    Rectangle<int> screenArea = Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;
+    auto* primaryDisplay = Desktop::getInstance().getDisplays().getPrimaryDisplay();
+
+    if (primaryDisplay == nullptr) {
+        width = 1280;
+        height = 800;
+        return;
+    }
+
+    Rectangle<int> screenArea = primaryDisplay->userArea;
 
   #if !PLUGIN_MODE
     screenArea.removeFromBottom(25);

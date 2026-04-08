@@ -1,5 +1,6 @@
 #include "JuceHeader.h"
 #include <Definitions.h>
+#include <App/Doc/PresetJson.h>
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
@@ -885,6 +886,79 @@ bool ModMatrixPanel::readXML(const XmlElement* element) {
     getObj(MorphPanel).setRedBlueStrings(getDimString(RedDim), getDimString(BlueDim));
 
 	return true;
+}
+
+var ModMatrixPanel::writeJSON() const {
+    auto json = PresetJson::object();
+    Array<var> inputsArray, outputsArray, mappingsArray;
+
+    for (auto& elem : inputs) {
+        inputsArray.add(elem.id);
+    }
+
+    for (auto& elem : outputs) {
+        outputsArray.add(elem.id);
+    }
+
+    for (auto& mapping : mappings) {
+        auto mappingJson = PresetJson::object();
+        mappingJson->setProperty("in", mapping.in);
+        mappingJson->setProperty("out", mapping.out);
+        mappingJson->setProperty("dim", mapping.dim);
+        mappingsArray.add(PresetJson::toVar(mappingJson));
+    }
+
+    json->setProperty("inputs", var(inputsArray));
+    json->setProperty("outputs", var(outputsArray));
+    json->setProperty("mappings", var(mappingsArray));
+
+    return PresetJson::toVar(json);
+}
+
+bool ModMatrixPanel::readJSON(const var& object) {
+    const Array<var>* inputsArray = PresetJson::getArray(PresetJson::property(object, "inputs"));
+    const Array<var>* outputsArray = PresetJson::getArray(PresetJson::property(object, "outputs"));
+    const Array<var>* mappingsArray = PresetJson::getArray(PresetJson::property(object, "mappings"));
+
+    if (inputsArray == nullptr || outputsArray == nullptr || mappingsArray == nullptr) {
+        initializeDefaults();
+        return false;
+    }
+
+    inputs.clear();
+    outputs.clear();
+    mappings.clear();
+
+    for (const auto& inputValue : *inputsArray) {
+        int id = int(inputValue);
+        HeaderElement elem(getInputName(id), id);
+        elem.shortName = getInputShortName(id);
+        inputs.add(elem);
+    }
+
+    TableHeaderComponent& header = modMatrix.getListbox().getHeader();
+    header.removeAllColumns();
+    int flags = TableHeaderComponent::visible | TableHeaderComponent::notResizableOrSortable;
+
+    for (const auto& outputValue : *outputsArray) {
+        int id = int(outputValue);
+        HeaderElement elem(getOutputName(id), id);
+        outputs.add(elem);
+        header.addColumn(elem.name, id, gridSize, gridSize, gridSize, flags);
+    }
+
+    for (const auto& mappingValue : *mappingsArray) {
+        Mapping mapping;
+        mapping.in = PresetJson::intProperty(mappingValue, "in", -1);
+        mapping.out = PresetJson::intProperty(mappingValue, "out", -1);
+        mapping.dim = PresetJson::intProperty(mappingValue, "dim", -1);
+        mappings.add(mapping);
+    }
+
+    modMatrix.getListbox().updateContent();
+    getObj(MorphPanel).setRedBlueStrings(getDimString(RedDim), getDimString(BlueDim));
+
+    return true;
 }
 
 int ModMatrixPanel::indexOfMapping(int inputId, int outputId) {

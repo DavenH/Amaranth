@@ -1,5 +1,6 @@
 #include <UI/IConsole.h>
 #include <App/EditWatcher.h>
+#include <App/Doc/PresetJson.h>
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
 #include <Curve/GuideCurveProvider.h>
@@ -262,6 +263,30 @@ bool WaveshaperUI::readXML(const XmlElement* registryElem) {
     paramGroup->readKnobXML(waveshaperElem);
 
     return true;
+}
+
+var WaveshaperUI::writeJSON() const {
+    auto json = PresetJson::object();
+
+    json->setProperty("enabled", isEffectEnabled());
+    json->setProperty("oversampleFactor", waveshaper->getOversampleFactor());
+    json->setProperty("knobs", paramGroup->writeKnobJSON());
+
+    return PresetJson::toVar(json);
+}
+
+bool WaveshaperUI::readJSON(const var& object) {
+    ScopedLock sl(renderLock);
+
+    if (PresetJson::getObject(object) == nullptr) {
+        return false;
+    }
+
+    isEnabled = PresetJson::boolProperty(object, "enabled", false);
+    enabledButton.setHighlit(isEnabled);
+    waveshaper->setPendingOversampleFactor(PresetJson::intProperty(object, "oversampleFactor", 1));
+
+    return paramGroup->readKnobJSON(PresetJson::property(object, "knobs"));
 }
 
 void WaveshaperUI::panelResized() {

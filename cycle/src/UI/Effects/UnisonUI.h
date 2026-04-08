@@ -61,6 +61,8 @@ public:
     void init() override;
     void writeXML(XmlElement* registryElem) const override;
     bool readXML(const XmlElement* element) override;
+    var writeJSON() const override;
+    bool readJSON(const var& object) override;
 
     enum UniMode
     {

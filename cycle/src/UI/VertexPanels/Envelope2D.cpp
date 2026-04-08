@@ -1,5 +1,6 @@
 #include <Algo/AutoModeller.h>
 #include <App/EditWatcher.h>
+#include <App/Doc/PresetJson.h>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
@@ -24,6 +25,45 @@
 #include "../../Inter/EnvelopeInter2D.h"
 #include "../../Inter/EnvelopeInter3D.h"
 #include "../../UI/Panels/PlaybackPanel.h"
+
+namespace {
+    struct EnvelopeGroupMapping {
+        int groupId;
+        const char* xmlTag;
+        const char* jsonKey;
+        const char* currentIndexAttr;
+    };
+
+    const EnvelopeGroupMapping envelopeMappings[] = {
+        { LayerGroups::GroupVolume, "VolumeProps", "volume", "volumeCurrentIndex" },
+        { LayerGroups::GroupPitch, "PitchProps", "pitch", "pitchCurrentIndex" },
+        { LayerGroups::GroupScratch, "ScratchProps", "scratch", "scratchCurrentIndex" },
+        { LayerGroups::GroupWavePitch, "WavePitchProps", "wavePitch", "wavePitchCurrentIndex" }
+    };
+
+    var writeEnvelopeGroupJson(MeshLibrary& meshLibrary, const EnvelopeGroupMapping& mapping) {
+        auto json = PresetJson::object();
+        Array<var> layers;
+        auto& group = meshLibrary.getLayerGroup(mapping.groupId);
+
+        json->setProperty("currentLayer", group.current);
+
+        for (const auto& layer : group.layers) {
+            auto layerJson = PresetJson::object();
+
+            layerJson->setProperty("mesh", layer.mesh->writeJSON());
+
+            if (layer.props != nullptr) {
+                layerJson->setProperty("properties", layer.props->writeJSON());
+            }
+
+            layers.add(PresetJson::toVar(layerJson));
+        }
+
+        json->setProperty("layers", var(layers));
+        return PresetJson::toVar(json);
+    }
+}
 
 Envelope2D::Envelope2D(SingletonRepo* repo) :
         SingletonAccessor(repo, "Envelope2D")
@@ -589,42 +629,137 @@ juce::Component* Envelope2D::getComponent(int which) {
 // }
 
 bool Envelope2D::readXML(const XmlElement* element) {
-    struct EnvClass {
-        int type;
-        String name;
-
-        EnvClass(int type, String name) : type(type), name(name) {}
-    };
-
-    EnvClass types[] = {
-            EnvClass(LayerGroups::GroupVolume,  "Volume")
-        ,	EnvClass(LayerGroups::GroupPitch,   "Pitch")
-        ,	EnvClass(LayerGroups::GroupScratch, "Scratch")
-    };
-
     XmlElement* envProps = element->getChildByName("EnvelopeProps");
-    for(auto& envTypes: types) {
-        MeshLibrary::LayerGroup& group = getObj(MeshLibrary).getLayerGroup(envTypes.type);
+
+    if (envProps == nullptr) {
+        return false;
+    }
+
+    auto& meshLibrary = getObj(MeshLibrary);
+
+    for (const auto& mapping : envelopeMappings) {
+        MeshLibrary::LayerGroup& group = meshLibrary.getLayerGroup(mapping.groupId);
 
         group.layers.clear();
 
-        for(auto elem : envProps->getChildWithTagNameIterator(envTypes.name + "Props")) {
-            if(elem == nullptr) {
+        for (auto elem : envProps->getChildWithTagNameIterator(mapping.xmlTag)) {
+            if (elem == nullptr) {
                 continue;
             }
-            bool defaultDynamic = false;
-            bool defaultActivity = false; 	// i == 0 ? lyr.getEnvMesh(LayerSources::GroupVolume)->active :
-                                            // 		    lyr.getEnvMesh(LayerSources::GroupPitch)->active;
-            MeshLibrary::Layer layer = getObj(MeshLibrary).instantiateLayer(elem, envTypes.type);
+
+            MeshLibrary::Layer layer = meshLibrary.instantiateLayer(elem, MeshLibrary::TypeEnvelope);
             group.layers.push_back(layer);
         }
+
+        if (group.layers.empty()) {
+            group.layers.push_back(meshLibrary.instantiateLayer(nullptr, MeshLibrary::TypeEnvelope));
+        }
+
+        group.current = jlimit(0, jmax(0, group.size() - 1), envProps->getIntAttribute(mapping.currentIndexAttr, 0));
     }
 
+    getSetting(CurrentEnvGroup) = envProps->getIntAttribute("currentEnvGroup", getSetting(CurrentEnvGroup));
     e2Interactor->enablementsChanged();
+    e2Interactor->switchedEnvelope(getSetting(CurrentEnvGroup), false, true);
 
     return true;
 }
 
 void Envelope2D::writeXML(XmlElement* element) const {
-    // TODO
+    auto* envProps = new XmlElement("EnvelopeProps");
+    auto& meshLibrary = const_cast<MeshLibrary&>(getObj(MeshLibrary));
+
+    envProps->setAttribute("currentEnvGroup", getSettingValue(CurrentEnvGroup));
+
+    for (const auto& mapping : envelopeMappings) {
+        const auto& group = meshLibrary.getLayerGroup(mapping.groupId);
+        envProps->setAttribute(mapping.currentIndexAttr, group.current);
+
+        for (const auto& layer : group.layers) {
+            auto* layerElem = new XmlElement(mapping.xmlTag);
+
+            layer.mesh->writeXML(layerElem);
+
+            if (layer.props != nullptr) {
+                layer.props->writeXML(layerElem);
+            }
+
+            envProps->addChildElement(layerElem);
+        }
+    }
+
+    element->addChildElement(envProps);
+}
+
+var Envelope2D::writeJSON() const {
+    auto json = PresetJson::object();
+    auto groups = PresetJson::object();
+    auto& meshLibrary = const_cast<MeshLibrary&>(getObj(MeshLibrary));
+
+    json->setProperty("currentGroup", getSettingValue(CurrentEnvGroup));
+
+    for (const auto& mapping : envelopeMappings) {
+        groups->setProperty(mapping.jsonKey, writeEnvelopeGroupJson(meshLibrary, mapping));
+    }
+
+    json->setProperty("groups", PresetJson::toVar(groups));
+    return PresetJson::toVar(json);
+}
+
+bool Envelope2D::readJSON(const var& object) {
+    auto* json = PresetJson::getObject(object);
+
+    if (json == nullptr) {
+        return false;
+    }
+
+    auto* groupsJson = PresetJson::getObject(PresetJson::property(object, "groups"));
+
+    if (groupsJson == nullptr) {
+        return false;
+    }
+
+    auto& meshLibrary = getObj(MeshLibrary);
+
+    for (const auto& mapping : envelopeMappings) {
+        var groupValue = groupsJson->getProperty(mapping.jsonKey);
+        auto* groupObject = PresetJson::getObject(groupValue);
+
+        if (groupObject == nullptr) {
+            continue;
+        }
+
+        MeshLibrary::LayerGroup& group = meshLibrary.getLayerGroup(mapping.groupId);
+        group.layers.clear();
+
+        if (const auto* layers = PresetJson::getArray(groupObject->getProperty("layers"))) {
+            for (const auto& layerValue : *layers) {
+                MeshLibrary::Layer layer = meshLibrary.instantiateLayer(nullptr, MeshLibrary::TypeEnvelope);
+
+                if (var meshValue = PresetJson::property(layerValue, "mesh"); !meshValue.isVoid()) {
+                    (void) layer.mesh->readJSON(meshValue);
+                }
+
+                if (layer.props != nullptr) {
+                    if (var propsValue = PresetJson::property(layerValue, "properties"); !propsValue.isVoid()) {
+                        (void) layer.props->readJSON(propsValue);
+                    }
+                }
+
+                group.layers.push_back(layer);
+            }
+        }
+
+        if (group.layers.empty()) {
+            group.layers.push_back(meshLibrary.instantiateLayer(nullptr, MeshLibrary::TypeEnvelope));
+        }
+
+        group.current = jlimit(0, jmax(0, group.size() - 1),
+                               PresetJson::intProperty(groupValue, "currentLayer", group.current));
+    }
+
+    getSetting(CurrentEnvGroup) = PresetJson::intProperty(object, "currentGroup", getSetting(CurrentEnvGroup));
+    e2Interactor->enablementsChanged();
+    e2Interactor->switchedEnvelope(getSetting(CurrentEnvGroup), false, true);
+    return true;
 }

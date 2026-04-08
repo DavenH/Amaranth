@@ -2,6 +2,7 @@
 #include "Vertex.h"
 #include "../Obj/MorphPosition.h"
 #include "VertCube.h"
+#include "../App/Doc/PresetJson.h"
 #include "../Definitions.h"
 
 EnvelopeMesh::EnvelopeMesh(const String& name) :
@@ -113,6 +114,72 @@ bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
     }
 
     if(sustainCubes.empty() && ! cubes.empty()) {
+        setSustainToRightmost();
+    }
+
+    return true;
+}
+
+var EnvelopeMesh::writeJSON() const {
+    auto json = PresetJson::object();
+    Array<var> loopIndices, sustainIndices;
+
+    json->setProperty("name", name);
+    json->setProperty("mainMesh", Mesh::writeJSON());
+
+    for (int i = 0; i < cubes.size(); ++i) {
+        VertCube* line = cubes[i];
+
+        if (loopCubes.find(line) != loopCubes.end()) {
+            loopIndices.add(i);
+        }
+
+        if (sustainCubes.find(line) != sustainCubes.end()) {
+            sustainIndices.add(i);
+        }
+    }
+
+    json->setProperty("loopIndices", var(loopIndices));
+    json->setProperty("sustainIndices", var(sustainIndices));
+
+    return PresetJson::toVar(json);
+}
+
+bool EnvelopeMesh::readJSON(const var& object) {
+    const Array<var>* loopIndices = PresetJson::getArray(PresetJson::property(object, "loopIndices"));
+    const Array<var>* sustainIndices = PresetJson::getArray(PresetJson::property(object, "sustainIndices"));
+
+    if (!Mesh::readJSON(PresetJson::property(object, "mainMesh"))) {
+        return false;
+    }
+
+    name = PresetJson::stringProperty(object, "name", name);
+    loopCubes.clear();
+    sustainCubes.clear();
+
+    if (loopIndices != nullptr) {
+        for (const auto& entry : *loopIndices) {
+            int index = int(entry);
+
+            if (isPositiveAndBelow(index, (int) cubes.size())) {
+                clampSharpness(cubes[index]);
+                loopCubes.insert(cubes[index]);
+            }
+        }
+    }
+
+    if (sustainIndices != nullptr) {
+        for (const auto& entry : *sustainIndices) {
+            int index = int(entry);
+
+            if (isPositiveAndBelow(index, (int) cubes.size())) {
+                clampSharpness(cubes[index]);
+                sustainCubes.insert(cubes[index]);
+            }
+        }
+    }
+
+    if (sustainCubes.empty() && !cubes.empty()) {
         setSustainToRightmost();
     }
 

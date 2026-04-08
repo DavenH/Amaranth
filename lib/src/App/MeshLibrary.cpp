@@ -2,6 +2,7 @@
 
 #include <Definitions.h>
 
+#include "Doc/PresetJson.h"
 #include "EditWatcher.h"
 #include "SingletonRepo.h"
 #include "../Curve/Mesh.h"
@@ -250,6 +251,81 @@ bool MeshLibrary::readXML(const XmlElement* element) {
     return true;
 }
 
+var MeshLibrary::writeJSON() const {
+    auto json = PresetJson::object();
+    Array<var> groups;
+
+    ScopedLock sl(arrayLock);
+
+    for (const auto& layerGroup : layerGroups) {
+        auto group = PresetJson::object();
+        Array<var> layers;
+
+        group->setProperty("meshType", layerGroup.meshType);
+
+        for (const auto& layer : layerGroup.layers) {
+            auto layerJson = PresetJson::object();
+
+            layerJson->setProperty("mesh", layer.mesh->writeJSON());
+
+            if (layer.props != nullptr) {
+                layerJson->setProperty("properties", layer.props->writeJSON());
+            }
+
+            layers.add(PresetJson::toVar(layerJson));
+        }
+
+        group->setProperty("layers", var(layers));
+        groups.add(PresetJson::toVar(group));
+    }
+
+    json->setProperty("groups", var(groups));
+
+    return PresetJson::toVar(json);
+}
+
+bool MeshLibrary::readJSON(const var& object) {
+    const Array<var>* groups = PresetJson::getArray(PresetJson::property(object, "groups"));
+
+    if (groups == nullptr) {
+        return false;
+    }
+
+    ScopedLock sl(arrayLock);
+
+    destroy();
+    layerGroups.clear();
+
+    for (const auto& groupValue : *groups) {
+        LayerGroup group(PresetJson::intProperty(groupValue, "meshType", TypeMesh));
+        const Array<var>* layers = PresetJson::getArray(PresetJson::property(groupValue, "layers"));
+
+        if (layers == nullptr) {
+            continue;
+        }
+
+        for (const auto& layerValue : *layers) {
+            Layer layer = instantiateLayer(nullptr, group.meshType);
+            var meshValue = PresetJson::property(layerValue, "mesh");
+            var propsValue = PresetJson::property(layerValue, "properties");
+
+            if (layer.mesh != nullptr) {
+                (void) layer.mesh->readJSON(meshValue);
+            }
+
+            if (layer.props != nullptr && !propsValue.isVoid()) {
+                (void) layer.props->readJSON(propsValue);
+            }
+
+            group.layers.push_back(layer);
+        }
+
+        layerGroups.push_back(group);
+    }
+
+    return true;
+}
+
 MeshLibrary::Properties::Properties() {
     smoothedParameters.emplace_back(&pan);
     smoothedParameters.emplace_back(&fineTune);
@@ -297,6 +373,37 @@ void MeshLibrary::Properties::writeXML(XmlElement* layerElem) const {
     layerElem->setAttribute("pan", pan.getTargetValue());
 }
 
+var MeshLibrary::Properties::writeJSON() const {
+    auto json = PresetJson::object();
+
+    json->setProperty("active", active);
+    json->setProperty("gain", gain);
+    json->setProperty("range", range);
+    json->setProperty("mode", mode);
+    json->setProperty("scratchChannel", scratchChan);
+    json->setProperty("fineTune", fineTune.getTargetValue());
+    json->setProperty("pan", pan.getTargetValue());
+
+    return PresetJson::toVar(json);
+}
+
+bool MeshLibrary::Properties::readJSON(const var& object) {
+    if (PresetJson::getObject(object) == nullptr) {
+        return false;
+    }
+
+    active = PresetJson::boolProperty(object, "active", active);
+    gain = PresetJson::doubleProperty(object, "gain", gain);
+    range = PresetJson::doubleProperty(object, "range", range);
+    mode = PresetJson::intProperty(object, "mode", mode);
+    scratchChan = PresetJson::intProperty(object, "scratchChannel", scratchChan);
+
+    fineTune.setTargetValue(PresetJson::doubleProperty(object, "fineTune", fineTune.getTargetValue()));
+    pan.setTargetValue(PresetJson::doubleProperty(object, "pan", pan.getTargetValue()));
+
+    return true;
+}
+
 void MeshLibrary::Properties::setDimValue(int index, int dim, float value) {
     if(dim == Vertex::Time) {
         pos[index][dim].setValueDirect(value);
@@ -336,6 +443,37 @@ void MeshLibrary::EnvProps::writeXML(XmlElement* layerElem) const {
     layerElem->setAttribute("global", global);
     layerElem->setAttribute("logarithmic", logarithmic);
     layerElem->setAttribute("scale", scale);
+}
+
+var MeshLibrary::EnvProps::writeJSON() const {
+    auto jsonValue = Properties::writeJSON();
+    auto* json = PresetJson::getObject(jsonValue);
+
+    if (json == nullptr) {
+        return {};
+    }
+
+    json->setProperty("dynamic", dynamic);
+    json->setProperty("tempoSync", tempoSync);
+    json->setProperty("global", global);
+    json->setProperty("logarithmic", logarithmic);
+    json->setProperty("scale", scale);
+
+    return jsonValue;
+}
+
+bool MeshLibrary::EnvProps::readJSON(const var& object) {
+    if (!Properties::readJSON(object)) {
+        return false;
+    }
+
+    dynamic = PresetJson::boolProperty(object, "dynamic", dynamic);
+    tempoSync = PresetJson::boolProperty(object, "tempoSync", tempoSync);
+    global = PresetJson::boolProperty(object, "global", global);
+    logarithmic = PresetJson::boolProperty(object, "logarithmic", logarithmic);
+    scale = PresetJson::intProperty(object, "scale", scale);
+
+    return true;
 }
 
 bool MeshLibrary::hasAnyValidLayers(int groupId) {
