@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "DocumentDetails.h"
+#include "PresetMigrator.h"
 #include "../SingletonAccessor.h"
 #include "../IValidator.h"
 #include "JuceHeader.h"
@@ -116,6 +117,9 @@ public:
     double getVersionValue()            { return details.getProductVersion(); }
 
 protected:
+    static Identifier getJsonSectionKey(Savable* savableItem);
+    static var createJsonRoot(DocumentDetails& details, const Array<Savable*>& savableItems);
+    bool applyJsonRoot(const var& root);
     bool validate();
 
     DocumentDetails details;
