@@ -1,4 +1,5 @@
 #include <App/EditWatcher.h>
+#include <App/Doc/PresetJson.h>
 #include <App/SingletonRepo.h>
 #include <Obj/Ref.h>
 #include <UI/Widgets/Knob.h>
@@ -335,6 +336,74 @@ bool UnisonUI::readXML(const XmlElement* element) {
             paramGroup->setKnobValue(i, 0.5, false);
     }
 
+    return true;
+}
+
+var UnisonUI::writeJSON() const {
+    auto json = PresetJson::object();
+    Array<var> voices;
+    const Unison::ParamGroup& group = unison->getGraphicParams();
+
+    json->setProperty("enabled", enabled);
+    json->setProperty("groupMode", isGroupMode());
+    json->setProperty("knobs", paramGroup->writeKnobJSON());
+
+    for (auto data : group.voices) {
+        auto voice = PresetJson::object();
+        voice->setProperty("fine",  data.finePct);
+        voice->setProperty("pan",   data.pan);
+        voice->setProperty("phase", data.phase);
+        voices.add(PresetJson::toVar(voice));
+    }
+
+    json->setProperty("voices", var(voices));
+
+    return PresetJson::toVar(json);
+}
+
+bool UnisonUI::readJSON(const var& object) {
+    const Array<var>* voices = PresetJson::getArray(PresetJson::property(object, "voices"));
+
+    if (PresetJson::getObject(object) == nullptr) {
+        return false;
+    }
+
+    bool oldWasGroup = modeBox.getSelectedId() == Group;
+    bool isGroup = PresetJson::boolProperty(object, "groupMode", true);
+
+    unison->reset();
+    setEffectEnabled(PresetJson::boolProperty(object, "enabled", false), false, true);
+
+    modeBox.setSelectedId(Group, dontSendNotification);
+    (void) paramGroup->readKnobJSON(PresetJson::property(object, "knobs"));
+    modeBox.setSelectedId(isGroup ? Group : Single, dontSendNotification);
+
+    if (voices != nullptr) {
+        vector<Unison::UnivoiceData> data;
+
+        for (const auto& voiceValue : *voices) {
+            float finePct = PresetJson::doubleProperty(voiceValue, "fine",  0.5);
+            float pan     = PresetJson::doubleProperty(voiceValue, "pan",   0.5);
+            float phase   = PresetJson::doubleProperty(voiceValue, "phase", 0.5);
+            data.emplace_back(pan, finePct, phase);
+        }
+
+        if (!data.empty() && !isGroup) {
+            unison->setVoices(data);
+        }
+    }
+
+    voiceSelector.currentIndex = 0;
+
+    if (!isGroup) {
+        voiceSelector.selectionChanged();
+    }
+
+    if (oldWasGroup != isGroup) {
+        modeChanged(false, false);
+    }
+
+    repaint();
     return true;
 }
 

@@ -1,4 +1,5 @@
 #include <App/EditWatcher.h>
+#include <App/Doc/PresetJson.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Design/Updating/Updater.h>
@@ -147,6 +148,17 @@ bool OscControlPanel::readXML(const XmlElement* element) {
     }
 
     return paramGroup->readKnobXML(ctrlsElem);
+}
+
+var OscControlPanel::writeJSON() const {
+    auto json = PresetJson::object();
+    json->setProperty("knobs", paramGroup->writeKnobJSON());
+
+    return PresetJson::toVar(json);
+}
+
+bool OscControlPanel::readJSON(const var& object) {
+    return paramGroup->readKnobJSON(PresetJson::property(object, "knobs"));
 }
 
 void OscControlPanel::setLengthInSeconds(float value) {

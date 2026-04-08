@@ -47,6 +47,8 @@ public:
 
     bool readKnobXML(const XmlElement* effectElem);
     void writeKnobXML(XmlElement* effectElem) const;
+    bool readKnobJSON(const var& json);
+    var writeKnobJSON() const;
 
     virtual bool paramTriggersAggregateUpdate(int knobIndex);
 

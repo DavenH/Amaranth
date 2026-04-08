@@ -58,6 +58,8 @@ public:
         ~Properties() override = default;
         bool readXML(const XmlElement* element) override;
         void writeXML(XmlElement* element) const override;
+        var writeJSON() const override;
+        bool readJSON(const var& object) override;
 
         // this is the result of mod matrix value automation
         void setDimValue(int index, int dim, float value);
@@ -77,6 +79,8 @@ public:
     struct EnvProps : Properties {
         bool readXML(const XmlElement* element) override;
         void writeXML(XmlElement* element) const override;
+        var writeJSON() const override;
+        bool readJSON(const var& object) override;
 
         [[nodiscard]] float getEffectiveScale() const { return scale < 0 ? 1.f / -scale : scale; }
         [[nodiscard]] bool isOperating() const { return dynamic || global || scale != 1 || tempoSync || logarithmic; }
@@ -135,6 +139,8 @@ public:
 
     bool readXML(const XmlElement* element) override;
     void writeXML(XmlElement* element) const override;
+    var writeJSON() const override;
+    bool readJSON(const var& object) override;
 
     void addGroup(int meshType);
     void addLayer(int group);

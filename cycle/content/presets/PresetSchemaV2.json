@@ -1,0 +1,316 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PresetV2",
+  "type": "object",
+  "required": ["format", "schemaVersion", "preset"],
+  "properties": {
+    "format": {
+      "const": "amaranth-preset"
+    },
+    "schemaVersion": {
+      "const": 2
+    },
+    "preset": {
+      "type": "object",
+      "properties": {
+        "details": { "$ref": "#/$defs/DocumentDetails" },
+        "meshLibrary": { "$ref": "#/$defs/MeshLibrary" },
+        "oscControls": { "$ref": "#/$defs/KnobSection" },
+        "effects": { "$ref": "#/$defs/Effects" },
+        "settings": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "mainPanel": {
+          "type": "object",
+          "properties": {
+            "collapsedView": {
+              "type": "object",
+              "properties": {
+                "wholeDragger": { "type": "number" },
+                "middleDragger": { "type": "number" },
+                "envSpectDragger": { "type": "number" },
+                "spectSurfDragger": { "type": "number" }
+              }
+            },
+            "unifiedView": {
+              "type": "object",
+              "properties": {
+                "wholeDragger": { "type": "number" },
+                "topBottomDragger": { "type": "number" },
+                "spectSurfDragger": { "type": "number" },
+                "envDeformerImpulseDragger": { "type": "number" },
+                "deformerImpulseDragger": { "type": "number" }
+              }
+            }
+          }
+        },
+        "modMatrix": {
+          "type": "object",
+          "properties": {
+            "inputs": {
+              "type": "array",
+              "items": { "type": "integer" }
+            },
+            "outputs": {
+              "type": "array",
+              "items": { "type": "integer" }
+            },
+            "mappings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "in": { "type": "integer" },
+                  "out": { "type": "integer" },
+                  "dim": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "guideCurveProps": {
+          "type": "object",
+          "properties": {
+            "guides": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "noiseLevel": { "type": "number" },
+                  "offsetLevel": { "type": "number" },
+                  "phaseLevel": { "type": "number" },
+                  "noiseSeed": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "morphPanel": {
+          "type": "object",
+          "description": "Reserved. Current XML persistence is effectively empty."
+        },
+        "envelopeProps": {
+          "type": "object",
+          "description": "Reserved. Current XML writer is still TODO."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "DocumentDetails": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "author": { "type": "string" },
+        "pack": { "type": "string" },
+        "rating": { "type": "number" },
+        "revision": { "type": "integer" },
+        "sizeBytes": { "type": "integer" },
+        "dateMillis": { "type": "integer" },
+        "modifiedMillis": { "type": "integer" },
+        "productVersion": { "type": "number" },
+        "remote": { "type": "boolean" },
+        "isWav": { "type": "boolean" },
+        "newlyDownloaded": { "type": "boolean" },
+        "filename": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "KnobSection": {
+      "type": "object",
+      "properties": {
+        "knobs": {
+          "type": "array",
+          "items": { "type": "number" }
+        }
+      }
+    },
+    "Effects": {
+      "type": "object",
+      "properties": {
+        "ImpulseModeller": { "$ref": "#/$defs/IrModeller" },
+        "Unison": { "$ref": "#/$defs/Unison" },
+        "Waveshaper": { "$ref": "#/$defs/Waveshaper" },
+        "Delay": { "$ref": "#/$defs/BasicEffect" },
+        "Reverb": { "$ref": "#/$defs/BasicEffect" },
+        "EQ": { "$ref": "#/$defs/BasicEffect" }
+      }
+    },
+    "BasicEffect": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "knobs": {
+          "type": "array",
+          "items": { "type": "number" }
+        }
+      }
+    },
+    "IrModeller": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "waveLoaded": { "type": "boolean" },
+        "wavePath": { "type": "string" },
+        "knobs": {
+          "type": "array",
+          "items": { "type": "number" }
+        }
+      }
+    },
+    "Waveshaper": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "oversampleFactor": { "type": "integer" },
+        "knobs": {
+          "type": "array",
+          "items": { "type": "number" }
+        }
+      }
+    },
+    "Unison": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "groupMode": { "type": "boolean" },
+        "knobs": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "voices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fine": { "type": "number" },
+              "pan": { "type": "number" },
+              "phase": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "MeshLibrary": {
+      "type": "object",
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "meshType": { "type": "integer" },
+              "layers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "mesh": {
+                      "oneOf": [
+                        { "$ref": "#/$defs/Mesh" },
+                        { "$ref": "#/$defs/EnvelopeMesh" }
+                      ]
+                    },
+                    "properties": { "$ref": "#/$defs/LayerProperties" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "LayerProperties": {
+      "type": "object",
+      "properties": {
+        "active": { "type": "boolean" },
+        "gain": { "type": "number" },
+        "range": { "type": "number" },
+        "mode": { "type": "integer" },
+        "scratchChannel": { "type": "integer" },
+        "fineTune": { "type": "number" },
+        "pan": { "type": "number" },
+        "dynamic": { "type": "boolean" },
+        "tempoSync": { "type": "boolean" },
+        "global": { "type": "boolean" },
+        "logarithmic": { "type": "boolean" },
+        "scale": { "type": "integer" }
+      }
+    },
+    "Mesh": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "integer" },
+        "vertices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "time": { "type": "number" },
+              "phase": { "type": "number" },
+              "amp": { "type": "number" },
+              "key": { "type": "number" },
+              "mod": { "type": "number" },
+              "weight": { "type": "number" }
+            }
+          }
+        },
+        "cubes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "vertexIds": {
+                "type": "array",
+                "items": { "type": "integer" }
+              },
+              "guides": {
+                "type": "object",
+                "properties": {
+                  "time": { "type": "integer" },
+                  "key": { "type": "integer" },
+                  "mod": { "type": "integer" },
+                  "phase": { "type": "integer" },
+                  "amp": { "type": "integer" },
+                  "curve": { "type": "integer" }
+                }
+              },
+              "gains": {
+                "type": "object",
+                "properties": {
+                  "time": { "type": "number" },
+                  "key": { "type": "number" },
+                  "mod": { "type": "number" },
+                  "phase": { "type": "number" },
+                  "amp": { "type": "number" },
+                  "curve": { "type": "number" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "EnvelopeMesh": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "mainMesh": { "$ref": "#/$defs/Mesh" },
+        "loopIndices": {
+          "type": "array",
+          "items": { "type": "integer" }
+        },
+        "sustainIndices": {
+          "type": "array",
+          "items": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

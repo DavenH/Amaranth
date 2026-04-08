@@ -69,6 +69,8 @@ public:
     void reset();
     bool readXML(const XmlElement* element) override;
     void writeXML(XmlElement* element) const override;
+    var writeJSON() const override;
+    bool readJSON(const var& object) override;
     bool operator<(const DocumentDetails& details) const;
     bool operator==(const DocumentDetails& deets) const;
     DocumentDetails& operator=(const DocumentDetails& other);

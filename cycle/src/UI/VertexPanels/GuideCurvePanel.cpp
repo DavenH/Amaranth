@@ -1,4 +1,5 @@
 #include <App/EditWatcher.h>
+#include <App/Doc/PresetJson.h>
 #include <App/MeshLibrary.h>
 #include <Curve/GuideCurveProvider.h>
 #include <Design/Updating/Updater.h>
@@ -451,6 +452,62 @@ void GuideCurvePanel::writeXML(XmlElement* element) const
     }
 
     element->addChildElement(guideCurveElem);
+}
+
+var GuideCurvePanel::writeJSON() const {
+    auto json = PresetJson::object();
+    Array<var> guides;
+
+    for (const auto& props : guideTables) {
+        auto guide = PresetJson::object();
+        guide->setProperty("noiseLevel", props.noiseLevel);
+        guide->setProperty("offsetLevel", props.vertOffsetLevel);
+        guide->setProperty("phaseLevel", props.phaseOffsetLevel);
+        guide->setProperty("noiseSeed", props.seed);
+        guides.add(PresetJson::toVar(guide));
+    }
+
+    json->setProperty("guides", var(guides));
+
+    return PresetJson::toVar(json);
+}
+
+bool GuideCurvePanel::readJSON(const var& object) {
+    const Array<var>* guides = PresetJson::getArray(PresetJson::property(object, "guides"));
+
+    guideTables.clear();
+    int index = 0;
+    int numMeshes = meshLib->getLayerGroup(layerType).size();
+
+    if (guides != nullptr) {
+        for (const auto& guideValue : *guides) {
+            if (guideTables.size() >= numMeshes) {
+                break;
+            }
+
+            float noiseLevel = PresetJson::doubleProperty(guideValue, "noiseLevel", 0);
+            float offsetLevel = PresetJson::doubleProperty(guideValue, "offsetLevel", 0);
+            float phaseLevel = PresetJson::doubleProperty(guideValue, "phaseLevel", 0);
+            int seed = PresetJson::intProperty(guideValue, "noiseSeed", -1);
+
+            if (seed == -1) {
+                seed = random.nextInt(tableSize);
+            }
+
+            guideTables.emplace_back(this, index++, noiseLevel, offsetLevel, phaseLevel, seed);
+        }
+    }
+
+    while ((int) guideTables.size() < numMeshes) {
+        guideTables.emplace_back(this, index++, 0, 0, 0, random.nextInt(tableSize));
+    }
+
+    panelControls->layerSelector->reset();
+    updateKnobsImplicit();
+    setGuideBuffers();
+    rasterizeAllTables();
+
+    return true;
 }
 
 void GuideCurvePanel::sampleDownAddNoise(int index,

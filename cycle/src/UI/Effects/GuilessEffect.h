@@ -57,6 +57,8 @@ public:
 
     void writeXML(XmlElement* element) const override;
     bool readXML(const XmlElement* element) override;
+    var writeJSON() const override;
+    bool readJSON(const var& object) override;
 
     [[nodiscard]] bool isEffectEnabled() const 		{ return enabled; 	}
     [[nodiscard]] const String& getEffectName() const { return name; 		}
