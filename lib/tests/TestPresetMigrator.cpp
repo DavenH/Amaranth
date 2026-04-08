@@ -53,6 +53,23 @@ TEST_CASE("PresetMigrator migrates current XML sections into V2 JSON", "[preset]
   <GuideCurveProps>
     <Properties noiseLevel="0.3" offsetLevel="0.4" phaseLevel="0.5" noiseSeed="19"/>
   </GuideCurveProps>
+  <EnvelopeProps currentEnvGroup="2" volumeCurrentIndex="0" pitchCurrentIndex="0" scratchCurrentIndex="0" wavePitchCurrentIndex="0">
+    <VolumeProps active="1" gain="0.5" range="0.6" mode="0" scratch-chan="-1" fine-tune="0.0" pan="0.1" dynamic="1" tempo-sync="1" global="0" logarithmic="1" scale="2">
+      <EnvelopeMesh name="VolEnv">
+        <MainMesh>
+          <Mesh name="VolEnvMain" version="2">
+            <Vertex time="0.12" phase="0.22" amp="0.32" key="0.42" mod="0.52" weight="0.62" id="9"/>
+          </Mesh>
+        </MainMesh>
+      </EnvelopeMesh>
+    </VolumeProps>
+  </EnvelopeProps>
+  <MorphPanel time="0.15" red="0.25" blue="0.35" pan="0.45"
+              timeViewDepth="0.55" redViewDepth="0.65" blueViewDepth="0.75"
+              timeInsertDepth="0.85" redInsertDepth="0.95" blueInsertDepth="1.05"
+              currentMorphAxis="1"
+              linkYellow="1" linkRed="0" linkBlue="1"
+              useYellowDepth="1" useRedDepth="0" useBlueDepth="1"/>
   <ModMatrix>
     <Inputs><input id="3"/></Inputs>
     <Outputs><output id="8"/></Outputs>
@@ -94,6 +111,19 @@ TEST_CASE("PresetMigrator migrates current XML sections into V2 JSON", "[preset]
     const auto& guides = requireArray(property(property(preset, "guideCurveProps"), "guides"));
     REQUIRE(guides.size() == 1);
     REQUIRE(int(property(guides.getReference(0), "noiseSeed")) == 19);
+
+    REQUIRE(int(property(property(preset, "envelopeProps"), "currentGroup")) == 2);
+    auto envelopeGroups = property(property(preset, "envelopeProps"), "groups");
+    const auto& volumeEnvLayers = requireArray(property(property(envelopeGroups, "volume"), "layers"));
+    REQUIRE(volumeEnvLayers.size() == 1);
+    REQUIRE(property(property(volumeEnvLayers.getReference(0), "mesh"), "name").toString() == "VolEnv");
+    REQUIRE(bool(property(property(volumeEnvLayers.getReference(0), "properties"), "tempoSync")));
+
+    var morphPanel = property(preset, "morphPanel");
+    REQUIRE(double(property(property(morphPanel, "position"), "time")) == Approx(0.15));
+    REQUIRE(int(property(morphPanel, "primaryAxis")) == 1);
+    REQUIRE(bool(property(property(morphPanel, "linking"), "time")));
+    REQUIRE(bool(property(property(morphPanel, "rangeEnabled"), "blue")));
 
     const auto& mappings = requireArray(property(property(preset, "modMatrix"), "mappings"));
     REQUIRE(mappings.size() == 1);

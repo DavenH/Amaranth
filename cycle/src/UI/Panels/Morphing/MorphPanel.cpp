@@ -1,4 +1,5 @@
 #include <App/AppConstants.h>
+#include <App/Doc/PresetJson.h>
 #include <App/EditWatcher.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
@@ -26,6 +27,16 @@
 #include "../../Widgets/MidiKeyboard.h"
 #include "../../../App/CycleTour.h"
 #include "../../VisualDsp.h"
+
+namespace {
+    var writeDimensionState(float time, float red, float blue) {
+        auto json = PresetJson::object();
+        json->setProperty("time", time);
+        json->setProperty("red", red);
+        json->setProperty("blue", blue);
+        return PresetJson::toVar(json);
+    }
+}
 
 MorphPanel::MorphPanel(SingletonRepo* repo) :
         SingletonAccessor(repo, "MorphPanel")
@@ -488,24 +499,143 @@ void MorphPanel::triggerClick(int button) {
 }
 
 bool MorphPanel::readXML(const XmlElement* element) {
-    // XmlElement* modElem = element->getChildByName("ModMapping");
-    //
-    // if(! modElem) {
-       //  return false;
-    // }
-    //
-    // int id = modElem->getIntAttribute("modMappingId", ModMappingId);
-    //
-    // ignoreNextEditMessage 	= true;
-    // setCurrentModMapping(id);
-    // updateHighlights();
+    XmlElement* morphElem = element->getChildByName("MorphPanel");
 
+    if (morphElem == nullptr) {
+        morphElem = element->getChildByName("ModMapping");
+    }
+
+    if (morphElem == nullptr) {
+        return false;
+    }
+
+    setValue(Vertex::Time, morphElem->getDoubleAttribute("time", getValue(Vertex::Time)));
+    setValue(Vertex::Red, morphElem->getDoubleAttribute("red", getValue(Vertex::Red)));
+    setValue(Vertex::Blue, morphElem->getDoubleAttribute("blue", getValue(Vertex::Blue)));
+    panSlider.setValue(morphElem->getDoubleAttribute("pan", panSlider.getValue()), dontSendNotification);
+
+    viewDepth[Vertex::Time] = morphElem->getDoubleAttribute("timeViewDepth", viewDepth[Vertex::Time]);
+    viewDepth[Vertex::Red] = morphElem->getDoubleAttribute("redViewDepth", viewDepth[Vertex::Red]);
+    viewDepth[Vertex::Blue] = morphElem->getDoubleAttribute("blueViewDepth", viewDepth[Vertex::Blue]);
+
+    insertDepth[Vertex::Time] = morphElem->getDoubleAttribute("timeInsertDepth", insertDepth[Vertex::Time]);
+    insertDepth[Vertex::Red] = morphElem->getDoubleAttribute("redInsertDepth", insertDepth[Vertex::Red]);
+    insertDepth[Vertex::Blue] = morphElem->getDoubleAttribute("blueInsertDepth", insertDepth[Vertex::Blue]);
+
+    if (morphElem->hasAttribute("currentMorphAxis")) {
+        getSetting(CurrentMorphAxis) = morphElem->getIntAttribute("currentMorphAxis", getSetting(CurrentMorphAxis));
+    }
+
+    if (morphElem->hasAttribute("linkYellow")) {
+        getSetting(LinkYellow) = morphElem->getBoolAttribute("linkYellow", getSetting(LinkYellow));
+        getSetting(LinkRed) = morphElem->getBoolAttribute("linkRed", getSetting(LinkRed));
+        getSetting(LinkBlue) = morphElem->getBoolAttribute("linkBlue", getSetting(LinkBlue));
+        getSetting(UseYellowDepth) = morphElem->getBoolAttribute("useYellowDepth", getSetting(UseYellowDepth));
+        getSetting(UseRedDepth) = morphElem->getBoolAttribute("useRedDepth", getSetting(UseRedDepth));
+        getSetting(UseBlueDepth) = morphElem->getBoolAttribute("useBlueDepth", getSetting(UseBlueDepth));
+    }
+
+    if (morphElem->getTagName() == "ModMapping") {
+        ignoreNextEditMessage = true;
+    }
+
+    updateHighlights();
+    updateCube();
     return true;
 }
 
 void MorphPanel::writeXML(XmlElement* element) const {
-//	jassert(element);
-//	int id = mappingBox.getSelectedId();
+    auto* morphElem = new XmlElement("MorphPanel");
+    auto& settings = const_cast<Settings&>(getObj(Settings));
+
+    morphElem->setAttribute("time", yllwSlider.getValue());
+    morphElem->setAttribute("red", redSlider.getValue());
+    morphElem->setAttribute("blue", blueSlider.getValue());
+    morphElem->setAttribute("pan", panSlider.getValue());
+
+    morphElem->setAttribute("timeViewDepth", viewDepth[Vertex::Time]);
+    morphElem->setAttribute("redViewDepth", viewDepth[Vertex::Red]);
+    morphElem->setAttribute("blueViewDepth", viewDepth[Vertex::Blue]);
+
+    morphElem->setAttribute("timeInsertDepth", insertDepth[Vertex::Time]);
+    morphElem->setAttribute("redInsertDepth", insertDepth[Vertex::Red]);
+    morphElem->setAttribute("blueInsertDepth", insertDepth[Vertex::Blue]);
+
+    morphElem->setAttribute("currentMorphAxis", settings.getGlobalSetting(AppSettings::CurrentMorphAxis));
+    morphElem->setAttribute("linkYellow", settings.getGlobalSetting(AppSettings::LinkYellow));
+    morphElem->setAttribute("linkRed", settings.getGlobalSetting(AppSettings::LinkRed));
+    morphElem->setAttribute("linkBlue", settings.getGlobalSetting(AppSettings::LinkBlue));
+    morphElem->setAttribute("useYellowDepth", settings.getGlobalSetting(AppSettings::UseYellowDepth));
+    morphElem->setAttribute("useRedDepth", settings.getGlobalSetting(AppSettings::UseRedDepth));
+    morphElem->setAttribute("useBlueDepth", settings.getGlobalSetting(AppSettings::UseBlueDepth));
+
+    element->addChildElement(morphElem);
+}
+
+var MorphPanel::writeJSON() const {
+    auto json = PresetJson::object();
+    auto links = PresetJson::object();
+    auto ranges = PresetJson::object();
+    auto& settings = const_cast<Settings&>(getObj(Settings));
+
+    json->setProperty("position", writeDimensionState(yllwSlider.getValue(), redSlider.getValue(), blueSlider.getValue()));
+    json->setProperty("pan", panSlider.getValue());
+    json->setProperty("viewDepth", writeDimensionState(viewDepth[Vertex::Time], viewDepth[Vertex::Red], viewDepth[Vertex::Blue]));
+    json->setProperty("insertDepth", writeDimensionState(insertDepth[Vertex::Time], insertDepth[Vertex::Red], insertDepth[Vertex::Blue]));
+    json->setProperty("primaryAxis", settings.getGlobalSetting(AppSettings::CurrentMorphAxis));
+
+    links->setProperty("time", bool(settings.getGlobalSetting(AppSettings::LinkYellow)));
+    links->setProperty("red", bool(settings.getGlobalSetting(AppSettings::LinkRed)));
+    links->setProperty("blue", bool(settings.getGlobalSetting(AppSettings::LinkBlue)));
+    json->setProperty("linking", PresetJson::toVar(links));
+
+    ranges->setProperty("time", bool(settings.getGlobalSetting(AppSettings::UseYellowDepth)));
+    ranges->setProperty("red", bool(settings.getGlobalSetting(AppSettings::UseRedDepth)));
+    ranges->setProperty("blue", bool(settings.getGlobalSetting(AppSettings::UseBlueDepth)));
+    json->setProperty("rangeEnabled", PresetJson::toVar(ranges));
+
+    return PresetJson::toVar(json);
+}
+
+bool MorphPanel::readJSON(const var& object) {
+    if (PresetJson::getObject(object) == nullptr) {
+        return false;
+    }
+
+    var position = PresetJson::property(object, "position");
+    var viewDepthJson = PresetJson::property(object, "viewDepth");
+    var insertDepthJson = PresetJson::property(object, "insertDepth");
+    var links = PresetJson::property(object, "linking");
+    var ranges = PresetJson::property(object, "rangeEnabled");
+
+    setValue(Vertex::Time, PresetJson::doubleProperty(position, "time", getValue(Vertex::Time)));
+    setValue(Vertex::Red, PresetJson::doubleProperty(position, "red", getValue(Vertex::Red)));
+    setValue(Vertex::Blue, PresetJson::doubleProperty(position, "blue", getValue(Vertex::Blue)));
+    panSlider.setValue(PresetJson::doubleProperty(object, "pan", panSlider.getValue()), dontSendNotification);
+
+    viewDepth[Vertex::Time] = PresetJson::doubleProperty(viewDepthJson, "time", viewDepth[Vertex::Time]);
+    viewDepth[Vertex::Red] = PresetJson::doubleProperty(viewDepthJson, "red", viewDepth[Vertex::Red]);
+    viewDepth[Vertex::Blue] = PresetJson::doubleProperty(viewDepthJson, "blue", viewDepth[Vertex::Blue]);
+
+    insertDepth[Vertex::Time] = PresetJson::doubleProperty(insertDepthJson, "time", insertDepth[Vertex::Time]);
+    insertDepth[Vertex::Red] = PresetJson::doubleProperty(insertDepthJson, "red", insertDepth[Vertex::Red]);
+    insertDepth[Vertex::Blue] = PresetJson::doubleProperty(insertDepthJson, "blue", insertDepth[Vertex::Blue]);
+
+    getSetting(CurrentMorphAxis) = PresetJson::intProperty(object, "primaryAxis", getSetting(CurrentMorphAxis));
+    getSetting(LinkYellow) = PresetJson::boolProperty(links, "time", getSetting(LinkYellow));
+    getSetting(LinkRed) = PresetJson::boolProperty(links, "red", getSetting(LinkRed));
+    getSetting(LinkBlue) = PresetJson::boolProperty(links, "blue", getSetting(LinkBlue));
+    getSetting(UseYellowDepth) = PresetJson::boolProperty(ranges, "time", getSetting(UseYellowDepth));
+    getSetting(UseRedDepth) = PresetJson::boolProperty(ranges, "red", getSetting(UseRedDepth));
+    getSetting(UseBlueDepth) = PresetJson::boolProperty(ranges, "blue", getSetting(UseBlueDepth));
+
+    if (!PresetJson::property(object, "modMappingId").isVoid()) {
+        ignoreNextEditMessage = true;
+    }
+
+    updateHighlights();
+    updateCube();
+    return true;
 }
 
 //bool MorphPanel::isCurrentModMappingVelocity()

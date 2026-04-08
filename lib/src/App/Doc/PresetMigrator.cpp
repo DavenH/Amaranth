@@ -497,6 +497,50 @@ namespace {
         return PresetJson::toVar(json);
     }
 
+    var parseEnvelopeProps(XmlElement* presetElement) {
+        auto json = PresetJson::object();
+        auto groups = PresetJson::object();
+        XmlElement* envProps = presetElement == nullptr ? nullptr : presetElement->getChildByName("EnvelopeProps");
+
+        if (envProps == nullptr) {
+            return {};
+        }
+
+        struct EnvelopeGroupMapping {
+            const char* xmlTag;
+            const char* jsonKey;
+            const char* currentIndexAttr;
+        };
+
+        const EnvelopeGroupMapping mappings[] = {
+            { "VolumeProps", "volume", "volumeCurrentIndex" },
+            { "PitchProps", "pitch", "pitchCurrentIndex" },
+            { "ScratchProps", "scratch", "scratchCurrentIndex" },
+            { "WavePitchProps", "wavePitch", "wavePitchCurrentIndex" }
+        };
+
+        for (const auto& mapping : mappings) {
+            auto group = PresetJson::object();
+            Array<var> layers;
+
+            group->setProperty("currentLayer", envProps->getIntAttribute(mapping.currentIndexAttr, 0));
+
+            for (auto layerElem : envProps->getChildWithTagNameIterator(mapping.xmlTag)) {
+                auto layer = PresetJson::object();
+                layer->setProperty("mesh", parseEnvelopeMesh(layerElem));
+                layer->setProperty("properties", parseLayerProperties(layerElem, true));
+                layers.add(PresetJson::toVar(layer));
+            }
+
+            group->setProperty("layers", var(layers));
+            groups->setProperty(mapping.jsonKey, PresetJson::toVar(group));
+        }
+
+        json->setProperty("currentGroup", envProps->getIntAttribute("currentEnvGroup", LayerGroups::GroupVolume));
+        json->setProperty("groups", PresetJson::toVar(groups));
+        return PresetJson::toVar(json);
+    }
+
     var parseModMatrix(XmlElement* presetElement) {
         auto json = PresetJson::object();
         Array<var> inputs, outputs, mappings;
@@ -647,7 +691,47 @@ namespace {
     }
 
     var parseMorphPanel(XmlElement* presetElement) {
-        XmlElement* morphElem = presetElement == nullptr ? nullptr : presetElement->getChildByName("ModMapping");
+        XmlElement* morphElem = presetElement == nullptr ? nullptr : presetElement->getChildByName("MorphPanel");
+
+        if (morphElem != nullptr) {
+            auto json = PresetJson::object();
+            auto position = PresetJson::object();
+            auto viewDepth = PresetJson::object();
+            auto insertDepth = PresetJson::object();
+            auto linking = PresetJson::object();
+            auto rangeEnabled = PresetJson::object();
+
+            position->setProperty("time", morphElem->getDoubleAttribute("time", 0.0));
+            position->setProperty("red", morphElem->getDoubleAttribute("red", 0.0));
+            position->setProperty("blue", morphElem->getDoubleAttribute("blue", 0.0));
+
+            viewDepth->setProperty("time", morphElem->getDoubleAttribute("timeViewDepth", 1.0));
+            viewDepth->setProperty("red", morphElem->getDoubleAttribute("redViewDepth", 1.0));
+            viewDepth->setProperty("blue", morphElem->getDoubleAttribute("blueViewDepth", 1.0));
+
+            insertDepth->setProperty("time", morphElem->getDoubleAttribute("timeInsertDepth", 1.0));
+            insertDepth->setProperty("red", morphElem->getDoubleAttribute("redInsertDepth", 1.0));
+            insertDepth->setProperty("blue", morphElem->getDoubleAttribute("blueInsertDepth", 1.0));
+
+            linking->setProperty("time", morphElem->getBoolAttribute("linkYellow", false));
+            linking->setProperty("red", morphElem->getBoolAttribute("linkRed", false));
+            linking->setProperty("blue", morphElem->getBoolAttribute("linkBlue", false));
+
+            rangeEnabled->setProperty("time", morphElem->getBoolAttribute("useYellowDepth", false));
+            rangeEnabled->setProperty("red", morphElem->getBoolAttribute("useRedDepth", false));
+            rangeEnabled->setProperty("blue", morphElem->getBoolAttribute("useBlueDepth", false));
+
+            json->setProperty("position", PresetJson::toVar(position));
+            json->setProperty("pan", morphElem->getDoubleAttribute("pan", 0.5));
+            json->setProperty("viewDepth", PresetJson::toVar(viewDepth));
+            json->setProperty("insertDepth", PresetJson::toVar(insertDepth));
+            json->setProperty("primaryAxis", morphElem->getIntAttribute("currentMorphAxis", Vertex::Time));
+            json->setProperty("linking", PresetJson::toVar(linking));
+            json->setProperty("rangeEnabled", PresetJson::toVar(rangeEnabled));
+            return PresetJson::toVar(json);
+        }
+
+        morphElem = presetElement == nullptr ? nullptr : presetElement->getChildByName("ModMapping");
 
         if (morphElem == nullptr) {
             return {};
@@ -697,6 +781,10 @@ var PresetMigrator::migrateV1XmlToCurrentJson(const XmlElement* presetElement, c
 
         if (var guideCurves = parseGuideCurves(const_cast<XmlElement*>(presetElement)); !guideCurves.isVoid()) {
             preset->setProperty("guideCurveProps", guideCurves);
+        }
+
+        if (var envelopeProps = parseEnvelopeProps(const_cast<XmlElement*>(presetElement)); !envelopeProps.isVoid()) {
+            preset->setProperty("envelopeProps", envelopeProps);
         }
 
         if (var morphPanel = parseMorphPanel(const_cast<XmlElement*>(presetElement)); !morphPanel.isVoid()) {

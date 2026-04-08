@@ -290,15 +290,6 @@ void FileManager::openDefaultPreset() {
     if (getSetting(FirstLaunch)) {
         noPlug(getObj(CycleTour).enter());
     }
-
-//	if(getObj(Settings).getValidationState() == SerialChecker::betaVersion)
-//	{
-//		int64 smallTime = 0.001 * Time::currentTimeMillis();
-//		if(smallTime > getConstant(BetaExpiry))
-//		{
-//			showCritical("Beta expired, please update to the latest");
-//		}
-//	}
 }
 
 void FileManager::doPostWaveLoad(Dialogs::OpenWaveInvoker invoker) {

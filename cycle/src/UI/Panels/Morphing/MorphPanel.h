@@ -88,6 +88,8 @@ public:
     /* Persistence */
     void writeXML(XmlElement* element) const override;
     bool readXML(const XmlElement* element) override;
+    var writeJSON() const override;
+    bool readJSON(const var& object) override;
 
 private:
     bool ignoreNextEditMessage;

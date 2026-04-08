@@ -88,11 +88,34 @@
         },
         "morphPanel": {
           "type": "object",
-          "description": "Reserved. Current XML persistence is effectively empty."
+          "properties": {
+            "position": { "$ref": "#/$defs/DimensionTriplet" },
+            "pan": { "type": "number" },
+            "viewDepth": { "$ref": "#/$defs/DimensionTriplet" },
+            "insertDepth": { "$ref": "#/$defs/DimensionTriplet" },
+            "primaryAxis": { "type": "integer" },
+            "linking": { "$ref": "#/$defs/DimensionToggleTriplet" },
+            "rangeEnabled": { "$ref": "#/$defs/DimensionToggleTriplet" },
+            "modMappingId": {
+              "type": "integer",
+              "description": "Legacy V1 compatibility field preserved only during XML migration."
+            }
+          }
         },
         "envelopeProps": {
           "type": "object",
-          "description": "Reserved. Current XML writer is still TODO."
+          "properties": {
+            "currentGroup": { "type": "integer" },
+            "groups": {
+              "type": "object",
+              "properties": {
+                "volume": { "$ref": "#/$defs/EnvelopeGroupState" },
+                "pitch": { "$ref": "#/$defs/EnvelopeGroupState" },
+                "scratch": { "$ref": "#/$defs/EnvelopeGroupState" },
+                "wavePitch": { "$ref": "#/$defs/EnvelopeGroupState" }
+              }
+            }
+          }
         }
       }
     }
@@ -127,6 +150,22 @@
           "type": "array",
           "items": { "type": "number" }
         }
+      }
+    },
+    "DimensionTriplet": {
+      "type": "object",
+      "properties": {
+        "time": { "type": "number" },
+        "red": { "type": "number" },
+        "blue": { "type": "number" }
+      }
+    },
+    "DimensionToggleTriplet": {
+      "type": "object",
+      "properties": {
+        "time": { "type": "boolean" },
+        "red": { "type": "boolean" },
+        "blue": { "type": "boolean" }
       }
     },
     "Effects": {
@@ -219,6 +258,22 @@
                   }
                 }
               }
+            }
+          }
+        }
+      }
+    },
+    "EnvelopeGroupState": {
+      "type": "object",
+      "properties": {
+        "currentLayer": { "type": "integer" },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "mesh": { "$ref": "#/$defs/EnvelopeMesh" },
+              "properties": { "$ref": "#/$defs/LayerProperties" }
             }
           }
         }
