@@ -34,8 +34,10 @@ void Settings::init() {
     createSettingsFile(path);
 
     // TODO need to decouple this with a listener
-    XmlElement* midiSettings = settingsFileElem ? settingsFileElem->getChildByName("DEVICESETUP") : nullptr;
-    getObj(AudioHub).initialiseAudioDevice(midiSettings);
+    if (!repo->shouldSuppressAudioDeviceInit()) {
+        XmlElement* midiSettings = settingsFileElem ? settingsFileElem->getChildByName("DEVICESETUP") : nullptr;
+        getObj(AudioHub).initialiseAudioDevice(midiSettings);
+    }
 }
 
 void Settings::initialiseSettings() {

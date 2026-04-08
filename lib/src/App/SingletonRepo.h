@@ -31,12 +31,18 @@ public:
     void setDebugStream(OutputStream* output)           { this->debugStream.reset(output);   }
     void setMorphPositioner(MorphPositioner* positioner){ this->positioner = positioner;     }
     void setConsole(IConsole* console)                  { this->console = console;           }
+    void setSuppressAudioDeviceInit(bool shouldSuppress){ suppressAudioDeviceInit = shouldSuppress; }
+    void setSuppressSavableAutoRegistration(bool shouldSuppress) { suppressSavableAutoRegistration = shouldSuppress; }
+    void setSuppressInitializerInit(bool shouldSuppress) { suppressInitializerInit = shouldSuppress; }
     void setGuideCurveProvider(GuideCurveProvider* guideCurveProvider);
 
     PluginProcessor& getPluginProcessor()               { jassert(plugin != nullptr); return *plugin; }
     MorphPositioner& getMorphPosition()                 { return *positioner;   }
     IConsole& getConsole()                              { return *console;      }
     GuideCurveProvider& getGuideCurveProvider()         { return *guideCurveProvider;  }
+    bool shouldSuppressAudioDeviceInit() const          { return suppressAudioDeviceInit; }
+    bool shouldSuppressSavableAutoRegistration() const  { return suppressSavableAutoRegistration; }
+    bool shouldSuppressInitializerInit() const          { return suppressInitializerInit; }
 
     /* ----------------------------------------------------------------------------- */
 
@@ -60,6 +66,9 @@ public:
 
 protected:
     bool hasInstantiated, hasInitialized;
+    bool suppressAudioDeviceInit;
+    bool suppressSavableAutoRegistration;
+    bool suppressInitializerInit;
     int64 lastDebugTime;
 
     SingletonRepo* repo;

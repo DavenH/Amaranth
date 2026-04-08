@@ -44,7 +44,7 @@ public:
 
         if (code == magicValue) {
             int deetsSize = stream->readInt();
-            jassert(deetsSize > 0 && deetsSize <= headerSizeBytes - 2);
+            jassert(deetsSize > 0 && deetsSize <= headerSizeBytes - 8);
 
             String detailsString(stream->readString());
             XmlDocument deetsDoc(detailsString);
@@ -93,20 +93,17 @@ public:
         String detailsString = detailsElem->toString();
         int deetsSize = detailsString.getNumBytesAsUTF8() + 1;
 
-        std::unique_ptr out(file.createOutputStream());
-
-        bool didSet = out->setPosition(0);
+        bool didSet = stream->setPosition(0);
         jassert(didSet);
 
-        out->writeInt(magicValue);
-        detailsElem->writeTo(*out);
-        out->writeInt(deetsSize);
-        out->writeString(detailsString);
+        stream->writeInt(magicValue);
+        stream->writeInt(deetsSize);
+        stream->writeString(detailsString);
 
-        int remainder = jmax(0, headerSizeBytes - 2 - deetsSize);
+        int remainder = jmax(0, headerSizeBytes - 8 - deetsSize);
 
-        out->writeRepeatedByte(0, remainder);
-        jassert(out->getPosition() == headerSizeBytes);
+        stream->writeRepeatedByte(0, remainder);
+        jassert(stream->getPosition() == headerSizeBytes);
 
         return true;
     }

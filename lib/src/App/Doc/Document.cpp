@@ -189,7 +189,7 @@ bool Document::open(InputStream* stream) {
     // from plugin's config settings
     int64 startPosition = stream->getPosition();
 
-    if (!readHeader(stream, details, Constants::DocMagicCode)) {
+    if (!readHeader(stream, details, getConstant(DocMagicCode))) {
         return false;
     }
 
