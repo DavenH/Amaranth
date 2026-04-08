@@ -668,9 +668,8 @@ bool Envelope2D::readXML(const XmlElement* element) {
 void Envelope2D::writeXML(XmlElement* element) const {
     auto* envProps = new XmlElement("EnvelopeProps");
     auto& meshLibrary = const_cast<MeshLibrary&>(getObj(MeshLibrary));
-    auto& settings = const_cast<Settings&>(getObj(Settings));
 
-    envProps->setAttribute("currentEnvGroup", settings.getGlobalSetting(AppSettings::CurrentEnvGroup));
+    envProps->setAttribute("currentEnvGroup", getSettingValue(CurrentEnvGroup));
 
     for (const auto& mapping : envelopeMappings) {
         const auto& group = meshLibrary.getLayerGroup(mapping.groupId);
@@ -696,9 +695,8 @@ var Envelope2D::writeJSON() const {
     auto json = PresetJson::object();
     auto groups = PresetJson::object();
     auto& meshLibrary = const_cast<MeshLibrary&>(getObj(MeshLibrary));
-    auto& settings = const_cast<Settings&>(getObj(Settings));
 
-    json->setProperty("currentGroup", settings.getGlobalSetting(AppSettings::CurrentEnvGroup));
+    json->setProperty("currentGroup", getSettingValue(CurrentEnvGroup));
 
     for (const auto& mapping : envelopeMappings) {
         groups->setProperty(mapping.jsonKey, writeEnvelopeGroupJson(meshLibrary, mapping));

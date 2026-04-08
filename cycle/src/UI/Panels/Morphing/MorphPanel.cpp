@@ -546,7 +546,6 @@ bool MorphPanel::readXML(const XmlElement* element) {
 
 void MorphPanel::writeXML(XmlElement* element) const {
     auto* morphElem = new XmlElement("MorphPanel");
-    auto& settings = const_cast<Settings&>(getObj(Settings));
 
     morphElem->setAttribute("time", yllwSlider.getValue());
     morphElem->setAttribute("red", redSlider.getValue());
@@ -561,13 +560,13 @@ void MorphPanel::writeXML(XmlElement* element) const {
     morphElem->setAttribute("redInsertDepth", insertDepth[Vertex::Red]);
     morphElem->setAttribute("blueInsertDepth", insertDepth[Vertex::Blue]);
 
-    morphElem->setAttribute("currentMorphAxis", settings.getGlobalSetting(AppSettings::CurrentMorphAxis));
-    morphElem->setAttribute("linkYellow", settings.getGlobalSetting(AppSettings::LinkYellow));
-    morphElem->setAttribute("linkRed", settings.getGlobalSetting(AppSettings::LinkRed));
-    morphElem->setAttribute("linkBlue", settings.getGlobalSetting(AppSettings::LinkBlue));
-    morphElem->setAttribute("useYellowDepth", settings.getGlobalSetting(AppSettings::UseYellowDepth));
-    morphElem->setAttribute("useRedDepth", settings.getGlobalSetting(AppSettings::UseRedDepth));
-    morphElem->setAttribute("useBlueDepth", settings.getGlobalSetting(AppSettings::UseBlueDepth));
+    morphElem->setAttribute("currentMorphAxis", getSettingValue(CurrentMorphAxis));
+    morphElem->setAttribute("linkYellow", getSettingValue(LinkYellow));
+    morphElem->setAttribute("linkRed", getSettingValue(LinkRed));
+    morphElem->setAttribute("linkBlue", getSettingValue(LinkBlue));
+    morphElem->setAttribute("useYellowDepth", getSettingValue(UseYellowDepth));
+    morphElem->setAttribute("useRedDepth", getSettingValue(UseRedDepth));
+    morphElem->setAttribute("useBlueDepth", getSettingValue(UseBlueDepth));
 
     element->addChildElement(morphElem);
 }
@@ -576,22 +575,21 @@ var MorphPanel::writeJSON() const {
     auto json = PresetJson::object();
     auto links = PresetJson::object();
     auto ranges = PresetJson::object();
-    auto& settings = const_cast<Settings&>(getObj(Settings));
 
     json->setProperty("position", writeDimensionState(yllwSlider.getValue(), redSlider.getValue(), blueSlider.getValue()));
     json->setProperty("pan", panSlider.getValue());
     json->setProperty("viewDepth", writeDimensionState(viewDepth[Vertex::Time], viewDepth[Vertex::Red], viewDepth[Vertex::Blue]));
     json->setProperty("insertDepth", writeDimensionState(insertDepth[Vertex::Time], insertDepth[Vertex::Red], insertDepth[Vertex::Blue]));
-    json->setProperty("primaryAxis", settings.getGlobalSetting(AppSettings::CurrentMorphAxis));
+    json->setProperty("primaryAxis", getSettingValue(CurrentMorphAxis));
 
-    links->setProperty("time", bool(settings.getGlobalSetting(AppSettings::LinkYellow)));
-    links->setProperty("red", bool(settings.getGlobalSetting(AppSettings::LinkRed)));
-    links->setProperty("blue", bool(settings.getGlobalSetting(AppSettings::LinkBlue)));
+    links->setProperty("time", bool(getSettingValue(LinkYellow)));
+    links->setProperty("red", bool(getSettingValue(LinkRed)));
+    links->setProperty("blue", bool(getSettingValue(LinkBlue)));
     json->setProperty("linking", PresetJson::toVar(links));
 
-    ranges->setProperty("time", bool(settings.getGlobalSetting(AppSettings::UseYellowDepth)));
-    ranges->setProperty("red", bool(settings.getGlobalSetting(AppSettings::UseRedDepth)));
-    ranges->setProperty("blue", bool(settings.getGlobalSetting(AppSettings::UseBlueDepth)));
+    ranges->setProperty("time", bool(getSettingValue(UseYellowDepth)));
+    ranges->setProperty("red", bool(getSettingValue(UseRedDepth)));
+    ranges->setProperty("blue", bool(getSettingValue(UseBlueDepth)));
     json->setProperty("rangeEnabled", PresetJson::toVar(ranges));
 
     return PresetJson::toVar(json);
