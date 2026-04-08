@@ -1,0 +1,359 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Preset",
+  "type": "object",
+  "properties": {
+    "VersionValue": {
+      "type": "integer"
+    },
+    "AllMeshes": {
+      "type": "object",
+      "properties": {
+        "TimeLayer": {
+          "type": "object",
+          "properties": {
+            "TimeLayerSize": { "type": "integer" },
+            "meshes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/NamedMesh" }
+            }
+          }
+        },
+        "FreqLayer": {
+          "type": "object",
+          "properties": {
+            "FreqLayerSize": { "type": "integer" },
+            "meshes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/NamedMesh" }
+            }
+          }
+        },
+        "PhaseLayer": {
+          "type": "object",
+          "properties": {
+            "PhaseLayerSize": { "type": "integer" },
+            "meshes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/NamedMesh" }
+            }
+          }
+        },
+        "GuideLayer": {
+          "type": "object",
+          "properties": {
+            "GuideLayerSize": { "type": "integer" },
+            "meshes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/NamedMesh" }
+            }
+          }
+        },
+        "EnvLayer": {
+          "type": "object",
+          "properties": {
+            "EnvLayerSize": { "type": "integer" },
+            "EnvVolumeMesh": { "$ref": "#/$defs/EnvelopeMeshWrapper" },
+            "EnvPitchMesh":  { "$ref": "#/$defs/EnvelopeMeshWrapper" },
+            "EnvSpeedMesh":  { "$ref": "#/$defs/EnvelopeMeshWrapper" },
+            "EnvWavePitchMesh": { "$ref": "#/$defs/EnvelopeMeshWrapper" },
+            "EnvTimeMesh":   { "$ref": "#/$defs/EnvelopeMeshWrapper" },
+            "EnvFreqMesh":   { "$ref": "#/$defs/EnvelopeMeshWrapper" },
+            "EnvPhaseMesh":  { "$ref": "#/$defs/EnvelopeMeshWrapper" },
+            "EnvGuideMesh":  { "$ref": "#/$defs/EnvelopeMeshWrapper" },
+            "EnvEnvMesh":    { "$ref": "#/$defs/EnvelopeMeshWrapper" }
+          }
+        },
+        "WaveShaperLayer": {
+          "type": "object",
+          "properties": {
+            "WaveShaperLayerSize": { "type": "integer" },
+            "meshes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/NamedMesh" }
+            }
+          }
+        },
+        "TubeModelLayer": {
+          "type": "object",
+          "properties": {
+            "TubeModelLayerSize": { "type": "integer" },
+            "meshes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/NamedMesh" }
+            }
+          }
+        },
+        "OtherLayer": {
+          "type": "object",
+          "properties": {
+            "OtherLayerSize": { "type": "integer" },
+            "meshes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/NamedMesh" }
+            }
+          }
+        }
+      }
+    },
+    "OscControls": {
+      "type": "object",
+      "properties": {
+        "Knobs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Knob" }
+        }
+      }
+    },
+    "Effects": {
+      "type": "object",
+      "properties": {
+        "ImpulseModeller": {
+          "type": "object",
+          "properties": {
+            "enabled":          { "type": "integer", "enum": [0, 1] },
+            "latencySamplesId": { "type": "integer" },
+            "waveLoaded":       { "type": "integer", "enum": [0, 1] },
+            "wavePath":         { "type": "string" },
+            "Knobs": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/Knob" }
+            }
+          }
+        },
+        "Unison": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "integer", "enum": [0, 1] },
+            "Knobs": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/Knob" }
+            }
+          }
+        },
+        "Waveshaper": {
+          "type": "object",
+          "properties": {
+            "enabled":          { "type": "integer", "enum": [0, 1] },
+            "oversampleFactor": { "type": "integer" },
+            "Knobs": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/Knob" }
+            }
+          }
+        },
+        "Delay": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "integer", "enum": [0, 1] },
+            "Knobs": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/Knob" }
+            }
+          }
+        },
+        "Reverb": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "integer", "enum": [0, 1] },
+            "Knobs": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/Knob" }
+            }
+          }
+        },
+        "EQ": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "integer", "enum": [0, 1] },
+            "Knobs": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/Knob" }
+            }
+          }
+        }
+      }
+    },
+    "Settings": {
+      "type": "object",
+      "properties": {
+        "Declick":               { "type": "integer", "enum": [0, 1] },
+        "SubsampleRltm":         { "type": "integer", "enum": [0, 1] },
+        "SubsampleRend":         { "type": "integer", "enum": [0, 1] },
+        "ControlFreq":           { "type": "integer" },
+        "OversampleFactorRltm":  { "type": "integer" },
+        "OversampleFactorRend":  { "type": "integer" },
+        "ResamplingAlgoRltm":    { "type": "integer" },
+        "ResamplingAlgoRend":    { "type": "integer" },
+        "UseCycleCache":         { "type": "integer", "enum": [0, 1] },
+        "PitchBendRange":        { "type": "integer" }
+      }
+    },
+    "EnabledSections": {
+      "type": "object",
+      "properties": {
+        "time":   { "type": "integer", "enum": [0, 1] },
+        "phase":  { "type": "integer", "enum": [0, 1] },
+        "filter": { "type": "integer", "enum": [0, 1] }
+      }
+    },
+    "TimeDomainProperties": {
+      "type": "object",
+      "properties": {
+        "TimeProperties": {
+          "type": "object",
+          "properties": {
+            "pan":       { "type": "number" },
+            "fine":      { "type": "number" },
+            "isEnabled": { "type": "integer", "enum": [0, 1] }
+          }
+        }
+      }
+    },
+    "DeformerProps": {
+      "type": "object",
+      "properties": {
+        "Properties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "noiseLevel": { "type": "number" },
+              "noiseSeed":  { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "FreqDomainProperties": {
+      "type": "object",
+      "properties": {
+        "MagsPropertiesSet": {
+          "type": "object",
+          "properties": {
+            "MagnitudeProperties": {
+              "type": "object",
+              "properties": {
+                "additive":     { "type": "integer", "enum": [0, 1] },
+                "pan":          { "type": "number" },
+                "dynamicRange": { "type": "number" },
+                "isEnabled":    { "type": "integer", "enum": [0, 1] }
+              }
+            }
+          }
+        },
+        "PhasePropertiesSet": {
+          "type": "object",
+          "properties": {
+            "PhaseProperties": {
+              "type": "object",
+              "properties": {
+                "pan":          { "type": "number" },
+                "dynamicRange": { "type": "number" },
+                "isEnabled":    { "type": "integer", "enum": [0, 1] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ModMapping": {
+      "type": "object",
+      "properties": {
+        "modMappingId": { "type": "integer" }
+      }
+    }
+  },
+
+  "$defs": {
+    "Vertex": {
+      "type": "object",
+      "required": ["time", "phase", "amp", "key", "mod", "weight", "id"],
+      "properties": {
+        "time":   { "type": "number", "minimum": 0, "maximum": 1 },
+        "phase":  { "type": "number" },
+        "amp":    { "type": "number" },
+        "key":    { "type": "integer" },
+        "mod":    { "type": "integer" },
+        "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "id":     { "type": "integer", "minimum": 0 }
+      }
+    },
+    "LineVertex": {
+      "type": "object",
+      "required": ["lineVertexNumber", "vertexId"],
+      "properties": {
+        "lineVertexNumber": { "type": "integer", "minimum": 0 },
+        "vertexId":         { "type": "integer", "minimum": 0 }
+      }
+    },
+    "LineCube": {
+      "type": "object",
+      "properties": {
+        "timeGuide":  { "type": "integer" },
+        "keyGuide":   { "type": "integer" },
+        "modGuide":   { "type": "integer" },
+        "phaseGuide": { "type": "integer" },
+        "ampGuide":   { "type": "integer" },
+        "curveGuide": { "type": "integer" },
+        "vertices": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/LineVertex" }
+        }
+      }
+    },
+    "NamedMesh": {
+      "type": "object",
+      "properties": {
+        "name":      { "type": "string" },
+        "vertices":  { "type": "array", "items": { "$ref": "#/$defs/Vertex" } },
+        "lineCubes": { "type": "array", "items": { "$ref": "#/$defs/LineCube" } }
+      }
+    },
+    "EnvelopeMesh": {
+      "type": "object",
+      "properties": {
+        "name":           { "type": "string" },
+        "primaryEnabled": { "type": "integer", "enum": [0, 1] },
+        "MainMesh": {
+          "type": "object",
+          "properties": {
+            "mesh": { "$ref": "#/$defs/NamedMesh" }
+          }
+        },
+        "LoopIndices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": { "type": "integer" }
+            }
+          }
+        },
+        "SustIndices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "EnvelopeMeshWrapper": {
+      "type": "object",
+      "properties": {
+        "EnvelopeMesh": { "$ref": "#/$defs/EnvelopeMesh" }
+      }
+    },
+    "Knob": {
+      "type": "object",
+      "required": ["value", "number"],
+      "properties": {
+        "value":  { "type": "number", "minimum": 0, "maximum": 1 },
+        "number": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

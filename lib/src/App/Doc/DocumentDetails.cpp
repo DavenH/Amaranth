@@ -1,4 +1,5 @@
 #include "DocumentDetails.h"
+#include "PresetJson.h"
 #include "../../Util/Util.h"
 
 int DocumentDetails::sortColumn = DocumentDetails::Name;
@@ -95,6 +96,50 @@ void DocumentDetails::writeXML(XmlElement* detailsElem) const {
 
 
 //  element->addChildElement(detailsElem);
+}
+
+var DocumentDetails::writeJSON() const {
+    auto json = PresetJson::object();
+
+    json->setProperty("name", name);
+    json->setProperty("author", author);
+    json->setProperty("pack", pack);
+    json->setProperty("rating", rating);
+    json->setProperty("revision", revision);
+    json->setProperty("sizeBytes", sizeBytes);
+    json->setProperty("dateMillis", dateMillis);
+    json->setProperty("modifiedMillis", modifiedMillis);
+    json->setProperty("productVersion", productVersion);
+    json->setProperty("remote", remote);
+    json->setProperty("isWav", isWav);
+    json->setProperty("newlyDownloaded", newlyDownloaded);
+    json->setProperty("filename", filename);
+    json->setProperty("tags", PresetJson::fromStringArray(tags));
+
+    return PresetJson::toVar(json);
+}
+
+bool DocumentDetails::readJSON(const var& object) {
+    if (PresetJson::getObject(object) == nullptr) {
+        return false;
+    }
+
+    name            = PresetJson::stringProperty(object, "name", "Untitled");
+    author          = PresetJson::stringProperty(object, "author", "Anonymous");
+    pack            = PresetJson::stringProperty(object, "pack", "none");
+    rating          = PresetJson::doubleProperty(object, "rating", 0.0);
+    revision        = PresetJson::intProperty(object, "revision", 0);
+    sizeBytes       = PresetJson::intProperty(object, "sizeBytes", 0);
+    dateMillis      = int64(PresetJson::doubleProperty(object, "dateMillis", 0));
+    modifiedMillis  = int64(PresetJson::doubleProperty(object, "modifiedMillis", 0));
+    productVersion  = PresetJson::doubleProperty(object, "productVersion", 1.0);
+    remote          = PresetJson::boolProperty(object, "remote", false);
+    isWav           = PresetJson::boolProperty(object, "isWav", false);
+    newlyDownloaded = PresetJson::boolProperty(object, "newlyDownloaded", false);
+    filename        = PresetJson::stringProperty(object, "filename");
+    tags            = PresetJson::stringArray(PresetJson::property(object, "tags"));
+
+    return true;
 }
 
 void DocumentDetails::reset() {

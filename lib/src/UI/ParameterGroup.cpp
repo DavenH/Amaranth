@@ -2,6 +2,7 @@
 
 #include <Definitions.h>
 
+#include "../App/Doc/PresetJson.h"
 #include "../App/EditWatcher.h"
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
@@ -131,6 +132,40 @@ void ParameterGroup::writeKnobXML(XmlElement* effectElem) const {
     }
 
     effectElem->addChildElement(knobsElem);
+}
+
+bool ParameterGroup::readKnobJSON(const var& json) {
+    const Array<var>* knobValues = PresetJson::getArray(json);
+
+    if (knobValues == nullptr) {
+        return false;
+    }
+
+    ScopedBooleanSwitcher sbs(updatingAllSliders);
+
+    for (int i = 0; i < jmin(knobs.size(), knobValues->size()); ++i) {
+        const var& value = knobValues->getReference(i);
+        double knobValue = value.isObject()
+                         ? PresetJson::doubleProperty(value, "value", knobs[i]->getValue())
+                         : double(value);
+
+        worker->overrideValueOptionally(i, knobValue);
+        setKnobValue(i, knobValue, false);
+    }
+
+    worker->finishedUpdatingAllSliders();
+
+    return true;
+}
+
+var ParameterGroup::writeKnobJSON() const {
+    Array<var> values;
+
+    for (int knobIdx = 0; knobIdx < knobs.size(); ++knobIdx) {
+        values.add(knobs[knobIdx]->getValue());
+    }
+
+    return var(values);
 }
 
 void ParameterGroup::listenToKnobs() {

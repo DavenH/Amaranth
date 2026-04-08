@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <utility>
+#include "Doc/PresetJson.h"
 #include "SingletonRepo.h"
 #include "../Inter/Interactor.h"
 #include "../Audio/AudioHub.h"
@@ -33,8 +34,10 @@ void Settings::init() {
     createSettingsFile(path);
 
     // TODO need to decouple this with a listener
-    XmlElement* midiSettings = settingsFileElem ? settingsFileElem->getChildByName("DEVICESETUP") : nullptr;
-    getObj(AudioHub).initialiseAudioDevice(midiSettings);
+    if (!repo->shouldSuppressAudioDeviceInit()) {
+        XmlElement* midiSettings = settingsFileElem ? settingsFileElem->getChildByName("DEVICESETUP") : nullptr;
+        getObj(AudioHub).initialiseAudioDevice(midiSettings);
+    }
 }
 
 void Settings::initialiseSettings() {
@@ -123,6 +126,30 @@ bool Settings::readXML(const XmlElement* element) {
         Setting& setting = settingPair.second;
 
         setting.value = prstElem->getIntAttribute(setting.key, setting.value);
+    }
+
+    return true;
+}
+
+var Settings::writeJSON() const {
+    auto json = PresetJson::object();
+
+    for (const auto& settingPair : documentSettingsMap) {
+        const Setting& setting = settingPair.second;
+        json->setProperty(setting.key, setting.value);
+    }
+
+    return PresetJson::toVar(json);
+}
+
+bool Settings::readJSON(const var& object) {
+    if (PresetJson::getObject(object) == nullptr) {
+        return false;
+    }
+
+    for (auto& settingPair : documentSettingsMap) {
+        Setting& setting = settingPair.second;
+        setting.value = PresetJson::intProperty(object, setting.key, setting.value);
     }
 
     return true;

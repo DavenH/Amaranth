@@ -1,4 +1,5 @@
 #include <App/EditWatcher.h>
+#include <App/Doc/PresetJson.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Algo/FFT.h>
@@ -438,6 +439,41 @@ bool IrModellerUI::readXML(const XmlElement* registryElem) {
 
     panelControls->enableCurrent.setHighlit(isEnabled);
 
+    return true;
+}
+
+var IrModellerUI::writeJSON() const {
+    auto json = PresetJson::object();
+
+    json->setProperty("enabled", isEffectEnabled());
+    json->setProperty("waveLoaded", irModeller->isWavLoaded());
+    json->setProperty("wavePath", waveImpulsePath);
+    json->setProperty("knobs", paramGroup->writeKnobJSON());
+
+    return PresetJson::toVar(json);
+}
+
+bool IrModellerUI::readJSON(const var& object) {
+    if (PresetJson::getObject(object) == nullptr) {
+        return false;
+    }
+
+    paramGroup->setKnobValue(IrModeller::Highpass, 0, false, false);
+    isEnabled = PresetJson::boolProperty(object, "enabled", false);
+    (void) paramGroup->readKnobJSON(PresetJson::property(object, "knobs"));
+
+    if (PresetJson::boolProperty(object, "waveLoaded", false)) {
+        String path = PresetJson::stringProperty(object, "wavePath");
+
+        if (File(path).existsAsFile()) {
+            int result = irModeller->getWrapper().load(path);
+            if (result >= 0) {
+                irModeller->doPostWaveLoad();
+            }
+        }
+    }
+
+    panelControls->enableCurrent.setHighlit(isEnabled);
     return true;
 }
 

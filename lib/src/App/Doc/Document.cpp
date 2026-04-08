@@ -3,6 +3,7 @@
 
 #include <Util/ScopedFunction.h>
 
+#include "PresetJson.h"
 #include "Savable.h"
 #include "../AppConstants.h"
 #include "../SingletonRepo.h"
@@ -13,80 +14,104 @@
 Document::Document(SingletonRepo* repo) : SingletonAccessor(repo, "Document"), validator(nullptr) {
 }
 
-bool Document::readHeader(InputStream* stream, DocumentDetails& deets, int magicValue) {
-    if (stream == nullptr) {
-        return false;
+Identifier Document::getJsonSectionKey(Savable* savableItem) {
+    auto* accessor = dynamic_cast<SingletonAccessor*>(savableItem);
+
+    if (accessor == nullptr) {
+        return {};
     }
 
-    int code = stream->readInt();
+    const String& name = accessor->getName();
 
-    if (code == magicValue) {
-        int deetsSize = stream->readInt();
-        jassert(deetsSize > 0 && deetsSize <= headerSizeBytes - 2);
-
-        String detailsString(stream->readString());
-        XmlDocument deetsDoc(detailsString);
-        std::unique_ptr deetsElem(deetsDoc.getDocumentElement());
-
-        jassert(deetsDoc.getLastParseError().isEmpty());
-        jassert(deetsElem != nullptr);
-
-        if (deetsElem == nullptr) {
-            return false;
-        }
-
-        stream->setPosition(headerSizeBytes);
-
-        deets.readXML(deetsElem.get());
-        return true;
+    if (name == "MeshLibrary") {
+        return "meshLibrary";
     }
 
-    return false;
+    if (name == "OscControlPanel") {
+        return "oscControls";
+    }
+
+    if (name == "EffectGuiRegistry") {
+        return "effects";
+    }
+
+    if (name == "Settings") {
+        return "settings";
+    }
+
+    if (name == "MainPanel") {
+        return "mainPanel";
+    }
+
+    if (name == "ModMatrixPanel") {
+        return "modMatrix";
+    }
+
+    if (name == "GuideCurvePanel") {
+        return "guideCurveProps";
+    }
+
+    if (name == "MorphPanel") {
+        return "morphPanel";
+    }
+
+    if (name == "Envelope2D") {
+        return "envelopeProps";
+    }
+
+    return {};
 }
 
-bool Document::saveHeader(OutputStream* stream,
-                          DocumentDetails& updatedDetails,
-                          int magicValue,
-                          bool preserveRevision,
-                          bool preserveDate) {
-    const String& filename = updatedDetails.getFilename();
+var Document::createJsonRoot(DocumentDetails& details, const Array<Savable*>& savableItems) {
+    auto root = PresetJson::object();
+    auto preset = PresetJson::object();
 
-    File file(filename);
-    if (! file.existsAsFile()) {
-        jassertfalse;
+    root->setProperty("format", "amaranth-preset");
+    root->setProperty("schemaVersion", 2);
+    preset->setProperty("details", details.writeJSON());
+
+    for (auto savableItem : savableItems) {
+        Identifier sectionKey = getJsonSectionKey(savableItem);
+
+        if (sectionKey.isNull()) {
+            continue;
+        }
+
+        var sectionJson = savableItem->writeJSON();
+
+        if (!sectionJson.isVoid()) {
+            preset->setProperty(sectionKey, sectionJson);
+        }
+    }
+
+    root->setProperty("preset", PresetJson::toVar(preset));
+    return PresetJson::toVar(root);
+}
+
+bool Document::applyJsonRoot(const var& root) {
+    var preset = PresetJson::property(root, "preset");
+
+    if (PresetJson::getObject(root) == nullptr || PresetJson::getObject(preset) == nullptr) {
         return false;
     }
 
-    std::unique_ptr<InputStream> in(file.createInputStream());
-
-    int firstByte = in->readInt();
-    if (firstByte != magicValue) {
-        return false;
+    if (var detailsJson = PresetJson::property(preset, "details"); !detailsJson.isVoid()) {
+        (void) details.readJSON(detailsJson);
     }
 
-    ScopedValueSetter revisionSuppressor(updatedDetails.getSuppressRevFlag(), ! preserveRevision, false);
-    ScopedValueSetter dateSuppressor(updatedDetails.getSuppressDateFlag(), ! preserveDate, false);
-    std::unique_ptr<XmlElement> detailsElem(new XmlElement("PresetDetails"));
+    for (auto savableItem : savableItems) {
+        Identifier sectionKey = getJsonSectionKey(savableItem);
 
-    updatedDetails.writeXML(detailsElem.get());
+        if (sectionKey.isNull()) {
+            continue;
+        }
 
-    String detailsString = detailsElem->toString();
-    int deetsSize = detailsString.getNumBytesAsUTF8() + 1;
+        var sectionJson = PresetJson::property(preset, sectionKey);
 
-    std::unique_ptr out(file.createOutputStream());
-
-    bool didSet = out->setPosition(0);
-    jassert(didSet);
-
-    out->writeInt(magicValue);
-    detailsElem->writeTo(*out);
-    out->writeInt(deetsSize);
-    out->writeString(detailsString);
-
-    int remainder = jmax(0, headerSizeBytes - 2 - deetsSize);
-
-    out->writeRepeatedByte(0, remainder);
-    jassert(out->getPosition() == headerSizeBytes);
+        if (!sectionJson.isVoid()) {
+            (void) savableItem->readJSON(sectionJson);
+        }
+    }
 
     return true;
 }
@@ -144,16 +169,8 @@ void Document::save(OutputStream* outStream) {
         return;
     }
 
-    std::unique_ptr<XmlElement> topelem(new XmlElement("Preset"));
-    topelem->setAttribute("VersionValue", getRealConstant(ProductVersion));
-
-    for (auto savableItem: savableItems) {
-        savableItem->writeXML(topelem.get());
-    }
-
     saveHeader(outStream, details, getConstant(DocMagicCode));
-
-    String docString = topelem->toString();
+    String docString = JSON::toString(createJsonRoot(details, savableItems), true);
     CharPointer_UTF8 utf8Data = docString.toUTF8();
 
     GZIPCompressorOutputStream gzipStream(outStream, 5);
@@ -163,14 +180,7 @@ void Document::save(OutputStream* outStream) {
 
 #ifdef JUCE_DEBUG
 String Document::getPresetString() {
-    std::unique_ptr<XmlElement> topelem(new XmlElement("Preset"));
-    topelem->setAttribute("VersionValue", getRealConstant(ProductVersion));
-
-    for (auto savableItem: savableItems) {
-        savableItem->writeXML(topelem.get());
-    }
-
-    return topelem->toString();
+    return JSON::toString(createJsonRoot(details, savableItems), true);
 }
 #endif
 
@@ -192,25 +202,23 @@ bool Document::open(InputStream* stream) {
 
     GZIPDecompressorInputStream decompStream(stream, false);
     String presetDocString(decompStream.readEntireStreamAsString());
-    DBG("Document::open preset XML:\n" + presetDocString);
+    String trimmed = presetDocString.trimStart();
+    var jsonRoot;
 
-    XmlDocument presetDoc(presetDocString);
-    std::unique_ptr topelem(presetDoc.getDocumentElement());
+    if (trimmed.startsWithChar('{')) {
+        jsonRoot = JSON::parse(trimmed);
+    } else {
+        XmlDocument presetDoc(presetDocString);
+        std::unique_ptr<XmlElement> topelem(presetDoc.getDocumentElement());
 
-    String parseError = presetDoc.getLastParseError();
-    if (parseError.isNotEmpty()) {
-        DBG("Document::open parse error: " + parseError);
-    }
-
-    jassert(topelem != nullptr);
-
-    if (topelem) {
-        for (auto savableItem: savableItems) {
-            (void) savableItem->readXML(topelem.get());
+        if (topelem == nullptr) {
+            return false;
         }
+
+        jsonRoot = PresetMigrator::migrateXmlToCurrentJson(topelem.get(), details);
     }
 
-    return true;
+    return applyJsonRoot(jsonRoot);
 }
 
 bool Document::saveHeaderValidated(DocumentDetails& updatedDetails) {

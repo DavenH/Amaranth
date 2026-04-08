@@ -1,4 +1,5 @@
 #include <iterator>
+#include <App/Doc/PresetJson.h>
 #include <Design/Updating/Updater.h>
 #include <UI/IConsole.h>
 #include <UI/Layout/Bounded.h>
@@ -1028,6 +1029,50 @@ bool MainPanel::readXML(const XmlElement* element) {
     xv_spectSurfPortion = mainXml->getDoubleAttribute("XV_SpectSurfDragger", xv_spectSurfPortion);
     xv_dfrmImpPortion	= mainXml->getDoubleAttribute("XV_DfrmImpDragger",   xv_dfrmImpPortion);
     xv_envDfmImpPortion	= mainXml->getDoubleAttribute("XV_EnvDfmImpDragger", xv_envDfmImpPortion);
+
+    return true;
+}
+
+var MainPanel::writeJSON() const {
+    auto json = PresetJson::object();
+    auto collapsedView = PresetJson::object();
+    auto unifiedView = PresetJson::object();
+
+    collapsedView->setProperty("wholeDragger", cv_wholeDragger->getPair()->getPortion());
+    collapsedView->setProperty("middleDragger", cv_middleDragger->getPair()->getPortion());
+    collapsedView->setProperty("envSpectDragger", cv_envSpectDragger->getPair()->getPortion());
+    collapsedView->setProperty("spectSurfDragger", cv_spectSurfDragger->getPair()->getPortion());
+
+    unifiedView->setProperty("wholeDragger", xv_wholeDragger->getPair()->getPortion());
+    unifiedView->setProperty("topBottomDragger", xv_topBotDragger->getPair()->getPortion());
+    unifiedView->setProperty("spectSurfDragger", xv_spectSurfDragger->getPair()->getPortion());
+    unifiedView->setProperty("envDeformerImpulseDragger", xv_envDfmImpDragger->getPair()->getPortion());
+    unifiedView->setProperty("deformerImpulseDragger", xv_dfmImpDragger->getPair()->getPortion());
+
+    json->setProperty("collapsedView", PresetJson::toVar(collapsedView));
+    json->setProperty("unifiedView", PresetJson::toVar(unifiedView));
+
+    return PresetJson::toVar(json);
+}
+
+bool MainPanel::readJSON(const var& object) {
+    var collapsedView = PresetJson::property(object, "collapsedView");
+    var unifiedView = PresetJson::property(object, "unifiedView");
+
+    if (PresetJson::getObject(collapsedView) == nullptr || PresetJson::getObject(unifiedView) == nullptr) {
+        return false;
+    }
+
+    cv_wholePortion = PresetJson::doubleProperty(collapsedView, "wholeDragger", cv_wholePortion);
+    cv_middlePortion = PresetJson::doubleProperty(collapsedView, "middleDragger", cv_middlePortion);
+    cv_surfEnvPortion = PresetJson::doubleProperty(collapsedView, "envSpectDragger", cv_surfEnvPortion);
+    cv_spectSurfPortion = PresetJson::doubleProperty(collapsedView, "spectSurfDragger", cv_spectSurfPortion);
+
+    xv_wholePortion = PresetJson::doubleProperty(unifiedView, "wholeDragger", xv_wholePortion);
+    xv_topBttmPortion = PresetJson::doubleProperty(unifiedView, "topBottomDragger", xv_topBttmPortion);
+    xv_spectSurfPortion = PresetJson::doubleProperty(unifiedView, "spectSurfDragger", xv_spectSurfPortion);
+    xv_envDfmImpPortion = PresetJson::doubleProperty(unifiedView, "envDeformerImpulseDragger", xv_envDfmImpPortion);
+    xv_dfrmImpPortion = PresetJson::doubleProperty(unifiedView, "deformerImpulseDragger", xv_dfrmImpPortion);
 
     return true;
 }
