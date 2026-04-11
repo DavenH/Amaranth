@@ -7,6 +7,16 @@
 #include "../Orchestration/V2RasterizerPipeline.h"
 #include "../Orchestration/V2RasterizerControls.h"
 
+/*
+ * Voice rasterizers generate the audio-rate waveform for cycle playback.
+ *
+ * Contract:
+ * - chain consecutive cycles without introducing a step at the phase boundary,
+ * - treat the first call as a possible priming step,
+ * - remain finite and phase-valid on every render,
+ * - preserve continuity as morph and mesh state evolve across blocks.
+ */
+
 class V2VoiceRasterizer :
         public V2RasterizerPipeline {
 public:

@@ -37,6 +37,10 @@ void V2VoiceRasterizer::setMeshSnapshot(const Mesh* meshSnapshot) noexcept {
 
 void V2VoiceRasterizer::updateControlData(const V2VoiceControlSnapshot& snapshot) noexcept {
     controls = snapshot;
+
+    // while we aren't cyclic, we do wrap the x-values of the intercepts; this flag is being reused, which is a
+    // code smell, yet I don't think it's worth introducing a very similar "wrapsPhase" flag (interpolator stage)
+    // to the positioner-level
     controls.cyclic = true;
 }
 

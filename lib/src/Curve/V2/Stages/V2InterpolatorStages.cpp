@@ -74,26 +74,16 @@ bool runInterpolator(
         }
 
         switch (mode) {
-            case V2InterpolatorMode::TrilinearFast: {
-                int dim = context.primaryDimension;
-                float independent = getPrimaryMorphValue(context.morph, dim);
-
-                cube->getInterceptsFast(dim, reduction, context.morph);
-
-                if (! reduction.pointOverlaps) {
-                    continue;
-                }
-
-                VertCube::vertexAt(independent, dim, &reduction.v0, &reduction.v1, &reduction.v);
-                appendInterceptFromVertex(reduction.v, cube, context.wrapPhases, outIntercepts);
-                break;
-            }
-
+            case V2InterpolatorMode::TrilinearFast:
             case V2InterpolatorMode::TrilinearAccurate: {
                 int dim = context.primaryDimension;
                 float independent = getPrimaryMorphValue(context.morph, dim);
 
-                cube->getInterceptsAccurate(dim, reduction, context.morph);
+                if (mode == V2InterpolatorMode::TrilinearFast) {
+                    cube->getInterceptsFast(dim, reduction, context.morph);
+                } else {
+                    cube->getInterceptsAccurate(dim, reduction, context.morph);
+                }
 
                 if (! reduction.pointOverlaps) {
                     continue;
