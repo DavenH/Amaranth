@@ -106,10 +106,11 @@ void Initializer::init() {
     setConstants();
     setDefaultSettings();
     instantiate();
+    seedMeshLibrary();
 
     repo->setMorphPositioner(&getObj(MorphPanel));
     repo->init();
-    init2();
+    doPostInitWiring();
 
     if (instanceId == 1) {
         getObj(PresetPage).downloadCommunityDocumentDetails();
@@ -118,7 +119,38 @@ void Initializer::init() {
     getObj(Dialogs).showDeviceErrorApplicably();
 }
 
-void Initializer::init2() {
+void Initializer::seedMeshLibrary() {
+    MeshLibrary* meshLib = &getObj(MeshLibrary);
+    if (meshLib->getNumGroups() > 0) {
+        DBG("Layer Groups not populated, cannot seed mesh library");
+        return;
+    }
+
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeEnvelope);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+    meshLib->addGroup(MeshLibrary::TypeMesh);
+
+    meshLib->addLayer(LayerGroups::GroupVolume);
+    meshLib->addLayer(LayerGroups::GroupPitch);
+    meshLib->addLayer(LayerGroups::GroupScratch);
+    meshLib->addLayer(LayerGroups::GroupGuideCurve);
+    meshLib->addLayer(LayerGroups::GroupTime);
+    meshLib->addLayer(LayerGroups::GroupSpect);
+    meshLib->addLayer(LayerGroups::GroupPhase);
+    meshLib->addLayer(LayerGroups::GroupWavePitch);
+    meshLib->addLayer(LayerGroups::GroupWaveshaper);
+    meshLib->addLayer(LayerGroups::GroupIrModeller);
+}
+
+void Initializer::doPostInitWiring() {
     KeyboardInputHandler* handler = &getObj(KeyboardInputHandler);
     MainPanel* main               = &getObj(MainPanel);
     MorphPanel* morph             = &getObj(MorphPanel);
@@ -126,6 +158,10 @@ void Initializer::init2() {
 
     main->addKeyListener(handler);
     morph->addKeyListener(handler);
+
+    getObj(AudioHub).addListener(&getObj(IrModeller));
+    getObj(IrModeller).samplerateChanged(getObj(AudioHub).getSampleRate());
+    getObj(IrModeller).bufferSizeChanged(getObj(AudioHub).getBufferSize());
 
     getObj(PresetPage).addKeyListener(handler);
     getObj(GeneralControls).addKeyListener(handler);
@@ -143,28 +179,6 @@ void Initializer::init2() {
     meshLib->addListener(&getObj(VersionConsiliator));
     meshLib->addListener(&getObj(Spectrum3D));
     meshLib->addListener(&getObj(Waveform3D));
-
-    meshLib->addGroup(MeshLibrary::TypeEnvelope);
-    meshLib->addGroup(MeshLibrary::TypeEnvelope);
-    meshLib->addGroup(MeshLibrary::TypeEnvelope);
-    meshLib->addGroup(MeshLibrary::TypeMesh);
-    meshLib->addGroup(MeshLibrary::TypeMesh);
-    meshLib->addGroup(MeshLibrary::TypeMesh);
-    meshLib->addGroup(MeshLibrary::TypeMesh);
-    meshLib->addGroup(MeshLibrary::TypeEnvelope);
-    meshLib->addGroup(MeshLibrary::TypeMesh);
-    meshLib->addGroup(MeshLibrary::TypeMesh);
-
-    meshLib->addLayer(LayerGroups::GroupVolume);
-    meshLib->addLayer(LayerGroups::GroupPitch);
-    meshLib->addLayer(LayerGroups::GroupScratch);
-    meshLib->addLayer(LayerGroups::GroupGuideCurve);
-    meshLib->addLayer(LayerGroups::GroupTime);
-    meshLib->addLayer(LayerGroups::GroupSpect);
-    meshLib->addLayer(LayerGroups::GroupPhase);
-    meshLib->addLayer(LayerGroups::GroupWavePitch);
-    meshLib->addLayer(LayerGroups::GroupWaveshaper);
-    meshLib->addLayer(LayerGroups::GroupIrModeller);
 
     getObj(CycleUpdater).finishInitialization();
 
@@ -210,16 +224,26 @@ void Initializer::setConstants() {
     auto &constants = getObj(AppConstants);
     constants.setConstant(WaveshaperPadding, 	0.0625);
     constants.setConstant(IrModellerPadding, 	0.0625);
+    constants.setConstant(FreqMargin,           0.05);
+    constants.setConstant(SpectralMargin,       0.05);
+    constants.setConstant(GuideCurvePadding,    0.05);
+    constants.setConstant(MinLineLength, 		0.001);
     constants.setConstant(DocMagicCode, 	 	(int) 0xc0dedbad);
+    constants.setConstant(BuildNumber,          0);
+    constants.setConstant(BetaExpiry,           0);
+    constants.setConstant(ProductCode,          String(ProjectInfo::versionNumber));
     constants.setConstant(ProductName, 	 		String(ProjectInfo::projectName));
     constants.setConstant(DocumentExt, 	 		"cyc");
     constants.setConstant(MaxNumVoices, 	 	12);
     constants.setConstant(MaxUnisonOrder, 		10);
+    constants.setConstant(MaxDetune, 		    70);
     constants.setConstant(MaxCyclePeriod, 		4096);
-    constants.setConstant(FFTLogTensionAmp, 	500);
+    constants.setConstant(MaxBufferSize, 		8192);
+    constants.setConstant(AmpLogTension, 	    500);
     constants.setConstant(EnvResolution, 		128);
     constants.setConstant(ResamplerLatency, 	32);
-    constants.setConstant(MinLineLength, 		0.001);
+    constants.setConstant(FreqLogTension, 		50);
+    constants.setConstant(ControllerValueSaturation, 127);
     constants.setConstant(FontFace,             fontFace);
 }
 
@@ -369,7 +393,7 @@ void Initializer::instantiate() {
     repo->add(new EnvPitchRast   (repo, guideCurvePanel, "EnvPitchRast"));
     repo->add(new EnvScratchRast (repo, guideCurvePanel, "EnvScratchRast"));
 
-    repo->add(this);
+    repo->addExternal(this);
 }
 
 Initializer::~Initializer() {
