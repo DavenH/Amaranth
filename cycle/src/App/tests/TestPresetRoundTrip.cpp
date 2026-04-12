@@ -79,10 +79,9 @@ namespace {
             initializer->setDefaultSettings();
             initializer->instantiate();
             repo->setMorphPositioner(&repo->get<MorphPanel>("MorphPanel"));
-            repo->setConsole(&repo->get<Console>("Console"));
-            repo->setGuideCurveProvider(&repo->get<GuideCurvePanel>("GuideCurvePanel"));
-            repo->init();
             seedDefaultMeshLibrary(*repo);
+            repo->init();
+            initializer->doPostInitWiring();
 
             auto& document = repo->get<Document>("Document");
             document.registerSavable(&repo->get<MeshLibrary>("MeshLibrary"));

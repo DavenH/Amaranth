@@ -10,6 +10,7 @@
 #include <Array/ScopedAlloc.h>
 #include <Array/StereoBuffer.h>
 #include <Audio/PitchedSample.h>
+#include <Audio/AudioHub.h>
 #include <Audio/SmoothedParameter.h>
 #include <Curve/FXRasterizer.h>
 #include <Design/Updating/Updateable.h>
@@ -25,6 +26,7 @@ class IrModellerUI;
 
 class IrModeller:
     public Effect
+    ,   public AudioHub::SettingListener
 {
     class ConvState;
 
