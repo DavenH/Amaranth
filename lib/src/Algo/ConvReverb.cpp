@@ -212,6 +212,7 @@ BlockConvolver::BlockConvolver() :
 
 void BlockConvolver::init(int sizeOfBlock, const Buffer<float>& kernel, bool usesNoise) {
     reset();
+    jassert(sizeOfBlock > 0);
 
     sizeOfBlock     = NumberUtils::nextPower2(sizeOfBlock);
     useNoise        = usesNoise;

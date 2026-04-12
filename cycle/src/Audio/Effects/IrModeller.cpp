@@ -37,9 +37,9 @@ IrModeller::IrModeller(SingletonRepo *repo) :
     prefilt.setSmoothingActivity(false);
     oversampler.setOversampleFactor(2);
 
+    pendingActions.add(&blockSizeAction);
     pendingActions.add(&impulseSizeAction);
     pendingActions.add(&convSizeAction);
-    pendingActions.add(&blockSizeAction);
     pendingActions.add(&unloadWavAction);
     pendingActions.add(&prefiltAction);
     pendingActions.add(&rasterizeAction);
@@ -140,7 +140,7 @@ void IrModeller::rasterizeGraphicImpulse() {
     }
 
     filterImpulse(graphic);
-    graphicConv.init(graphicConv.getBlockSize(), graphic.impulse);
+    // graphicConv.init(graphicConv.getBlockSize(), graphic.impulse);
 }
 
 void IrModeller::filterImpulse(ConvState& chan) {
@@ -239,8 +239,22 @@ void IrModeller::checkForPendingUpdates() {
     bool oldEnabled = enabled;
     enabled = ui->isEffectEnabled();
 
-    if (oldEnabled != enabled)
+    if (oldEnabled != enabled) {
         resetIndices();
+    }
+
+    if (bufferSizeAction.isPending()) {
+        setAudioBlockSize(bufferSizeAction.getValue());
+        bufferSizeAction.dismiss();
+    }
+
+    if (sampleRateAction.isPending()) {
+        sampleRateAction.dismiss();
+    }
+
+    if (rareSamplerateAction.isPending()) {
+        rareSamplerateAction.dismiss();
+    }
 
     for (int i = 0; i < pendingActions.size(); ++i) {
         PendingAction *action = pendingActions.getReference(i);
@@ -283,6 +297,7 @@ void IrModeller::checkForPendingUpdates() {
 
 void IrModeller::processVertexBuffer(Buffer <Float32> inputBuffer) {
     if (!graphic.impulse.empty()) {
+        jassert(graphicConv.getBlockSize() > 0);
         graphicConv.process(inputBuffer, inputBuffer);
     }
 
@@ -370,18 +385,17 @@ void IrModeller::setMesh(Mesh *mesh) {
 void IrModeller::setUI(IrModellerUI *comp) {
     ui = comp;
 
-//	setMesh(ui->getRasterizer()->getMesh());
+	setMesh(ui->getRasterizer()->getMesh());
 //	setPendingRasterize();
 }
 
 void IrModeller::setConvBufferSize(int newConvBufSize) {
-//	if(! Util::assignAndWereDifferent(convBufferSize, newConvBufSize))
-//	{
-//		return;
-//	}
+	if(! Util::assignAndWereDifferent(convBufferSize, newConvBufSize)) {
+		return;
+	}
 
-//	for(int i = 0; i < numElementsInArray(convStates); ++i)
-//		updateConvState(convStates[i], convBufferSize);
+	// for(int i = 0; i < numElementsInArray(convStates); ++i)
+	// 	updateConvState(convStates[i], convBufferSize);
 
 //	if(audioBlockSize > 0)
 //	{
@@ -449,7 +463,7 @@ void IrModeller::updateGraphicConvState(int graphicRes, bool force) {
     if (Util::assignAndWereDifferent(graphic.blockSize, graphicRes) || force) {
         graphicConv.init(graphicRes, graphic.impulse);
 
-        //	updateConvState(graphicConvState, graphicRes);
+        	// updateConvState(graphicConvState, graphicRes);
     }
 }
 

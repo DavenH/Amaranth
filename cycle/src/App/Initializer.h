@@ -15,7 +15,7 @@ public:
     ~Initializer() override;
 
     void init() override;
-    void init2();
+    void doPostInitWiring();
     void initSingletons();
     void resetAll();
     void setConstants();

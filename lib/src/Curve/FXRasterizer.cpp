@@ -36,6 +36,7 @@ void FXRasterizer::calcCrossPoints() {
     }
 
     std::sort(icpts.begin(), icpts.end());
+    restrictIntercepts(icpts);
 
     curves.clear();
 

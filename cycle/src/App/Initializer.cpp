@@ -110,7 +110,7 @@ void Initializer::init() {
 
     repo->setMorphPositioner(&getObj(MorphPanel));
     repo->init();
-    init2();
+    doPostInitWiring();
 
     if (instanceId == 1) {
         getObj(PresetPage).downloadCommunityDocumentDetails();
@@ -150,7 +150,7 @@ void Initializer::seedMeshLibrary() {
     meshLib->addLayer(LayerGroups::GroupIrModeller);
 }
 
-void Initializer::init2() {
+void Initializer::doPostInitWiring() {
     KeyboardInputHandler* handler = &getObj(KeyboardInputHandler);
     MainPanel* main               = &getObj(MainPanel);
     MorphPanel* morph             = &getObj(MorphPanel);
@@ -158,6 +158,10 @@ void Initializer::init2() {
 
     main->addKeyListener(handler);
     morph->addKeyListener(handler);
+
+    getObj(AudioHub).addListener(&getObj(IrModeller));
+    getObj(IrModeller).samplerateChanged(getObj(AudioHub).getSampleRate());
+    getObj(IrModeller).bufferSizeChanged(getObj(AudioHub).getBufferSize());
 
     getObj(PresetPage).addKeyListener(handler);
     getObj(GeneralControls).addKeyListener(handler);
