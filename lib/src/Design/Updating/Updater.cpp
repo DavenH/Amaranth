@@ -67,6 +67,9 @@ void Updater::setThrottling(bool doThrottle, int threshMillis) {
 
 void Updater::handleAsyncUpdate() {
     if (!pendingUpdates.empty()) {
+        // TODO optimization to collapse these:
+        // - multiple equal UpdateTypes
+        // - idempotent sequences of UpdateType e.g. [reduceDetail, Update, restoreDetail] => [Update]
         PendingUpdate pu = pendingUpdates.front();
         pendingUpdates.pop_front();
 

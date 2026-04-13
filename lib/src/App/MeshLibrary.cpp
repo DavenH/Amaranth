@@ -23,6 +23,14 @@ MeshLibrary::~MeshLibrary() {
 
 void MeshLibrary::destroyLayer(Layer& layer, bool notifyEditWatcher) {
     if (layer.mesh != nullptr) {
+        if (auto* envMesh = dynamic_cast<EnvelopeMesh*>(layer.mesh)) {
+            DBG(String::formatted("MeshLibrary::destroyLayer deleting env mesh=%p name=%s verts=%d cubes=%d",
+                                  envMesh,
+                                  envMesh->getName().toRawUTF8(),
+                                  envMesh->getNumVerts(),
+                                  envMesh->getNumCubes()));
+        }
+
         layer.mesh->destroy();
         delete layer.mesh;
 

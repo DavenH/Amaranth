@@ -106,7 +106,7 @@ void Curve::calcTable() {
     for (int r = 0; r < resolutions; ++r) {
         for (int i = 0; i < numCurvelets; ++i) {
             x = double(i) / numCurvelets;
-            sx = 2 * pi * (2 * x - x * x);
+            sx = pi / 2 * (2 * x - x * x);
             tn = ::tan(sx);
             res = resolution >> r;
 
@@ -212,8 +212,9 @@ void Curve::recalculateCurve() {
     distbd      = (b.x - tp.d.x) * (b.x - tp.d.x) + (b.y - tp.d.y) * (b.y - tp.d.y);
     diff        = distbd - distbi;
 
-    if (diff < 0)
+    if (diff < 0) {
         diff = 0;
+    }
 
     diff = std::sqrt(diff);
     tp.shear = diff * tp.dpole * tp.ypole;
@@ -237,35 +238,23 @@ void Curve::recalculateCurve() {
     float* t2 = actuallyShouldInterpolate ? table[resIndex][tableCurveIdx + 1] : nullptr;
     Buffer tx(transformX, res);
     Buffer ty(transformY, res);
-    tx.set(a.x);
 
+    tx.set(a.x);
     VecOps::addProd(t,       ma * alpha, transformX, res);
     VecOps::addProd(t + res, mb * alpha, transformX, res);
-
-    // ippsSet_32f         (a.x, transformX, res);
-    // ippsAddProductC_32f (t,         ma * alpha, transformX, res);
-    // ippsAddProductC_32f (t + res,   mb * alpha, transformX, res);
 
     if (actuallyShouldInterpolate) {
         VecOps::addProd(t2,       ma * (1 - alpha), transformX, res);
         VecOps::addProd(t2 + res, mb * (1 - alpha), transformX, res);
-        // ippsAddProductC_32f (t2,        ma * (1 - alpha), transformX, res);
-        // ippsAddProductC_32f (t2 + res,  mb * (1 - alpha), transformX, res);
     }
 
     ty.set(a.y);
     VecOps::addProd(t,       mc * alpha, transformY, res);
     VecOps::addProd(t + res, md * alpha, transformY, res);
-    // ippsSet_32f         (a.y, transformY, res);
-    // ippsAddProductC_32f (t,         mc * alpha, transformY, res);
-    // ippsAddProductC_32f (t + res,   md * alpha, transformY, res);
 
     if (actuallyShouldInterpolate) {
         VecOps::addProd(t2,       mc * (1 - alpha), transformY, res);
         VecOps::addProd(t2 + res, md * (1 - alpha), transformY, res);
-
-        // ippsAddProductC_32f (t2,        mc * (1 - alpha), transformY, res);
-        // ippsAddProductC_32f (t2 + res,  md * (1 - alpha), transformY, res);
     }
 }
 
@@ -275,8 +264,6 @@ void Curve::recalculatedPadded() {
     Buffer ty(transformY, res);
     tx.set(b.x);
     ty.set(b.y);
-    // ippsSet_32f(b.x, transformX, res);
-    // ippsSet_32f(b.y, transformY, res);
 }
 
 float Curve::getCentreX() {

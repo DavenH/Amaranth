@@ -650,15 +650,15 @@ void Panel3D::drawSurface() {
     scaledY.resize(draw.colSourceSizeY);
     scaledX.resize(draw.sizeX);
 
-    DBG("Panel3D::drawSurface sized buffers"
-        + String(" panel=") + getName()
-        + " sizeX=" + String(draw.sizeX)
-        + " sizeY=" + String(draw.sizeY)
-        + " colSourceSizeY=" + String(draw.colSourceSizeY)
-        + " clrA=" + String(clrIndicesA.size())
-        + " clrB=" + String(clrIndicesB.size())
-        + " downsampAcc=" + String(downsampAcc.size())
-        + " reduced=" + String(draw.reduced ? 1 : 0));
+    // DBG("Panel3D::drawSurface sized buffers"
+    //     + String(" panel=") + getName()
+    //     + " sizeX=" + String(draw.sizeX)
+    //     + " sizeY=" + String(draw.sizeY)
+    //     + " colSourceSizeY=" + String(draw.colSourceSizeY)
+    //     + " clrA=" + String(clrIndicesA.size())
+    //     + " clrB=" + String(clrIndicesB.size())
+    //     + " downsampAcc=" + String(downsampAcc.size())
+    //     + " reduced=" + String(draw.reduced ? 1 : 0));
 
     float slope = (grid.back().x - grid.front().x) / float(draw.sizeX - 1);
 

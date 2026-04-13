@@ -82,7 +82,7 @@ void MeshRasterizer::calcWaveformFrom(vector<Intercept>& icpts) {
 }
 
 void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
-    if (!usedMesh || usedMesh->getNumCubes() == 0) {
+    if (usedMesh == nullptr || usedMesh->getNumCubes() == 0) {
         cleanUp();
         return;
     }
@@ -237,8 +237,9 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
 
     processIntercepts(icpts);
 
-    if(Util::assignAndWereDifferent(needsResorting, false))
+    if(Util::assignAndWereDifferent(needsResorting, false)) {
         std::sort(icpts.begin(), icpts.end());
+    }
 
     int end = icpts.size() - 1;
     if (end < 0) {
@@ -262,8 +263,8 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
         Intercept& curr = icpts[i];
         Intercept& next = icpts[i + 1];
         bool pad        = curr.cube != nullptr && curr.cube->getCompGuideCurve() >= 0;
-        curr.padBefore     = pad;
-        next.padAfter     = pad;
+        curr.padBefore  = pad;
+        next.padAfter   = pad;
 
         padAny |= pad;
     }
@@ -801,10 +802,10 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
     frontIcpts.clear();
     backIcpts.clear();
 
-    float frontier         = 0.f;
-    float offset         = -1.f;
+    float frontier      = 0.f;
+    float offset        = -1.f;
     int idx             = end;
-    int remainingIters     = 2;
+    int remainingIters  = 2;
 
     frontIcpts.emplace_back(intercepts[1]);
     frontIcpts.emplace_back(intercepts[0]);
@@ -818,23 +819,23 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
             --remainingIters;
         }
 
-        frontier             = intercepts[idx].x + offset;
-        Intercept padIcpt     = intercepts[idx];
-        padIcpt.x             += offset;
+        frontier            = intercepts[idx].x + offset;
+        Intercept padIcpt   = intercepts[idx];
+        padIcpt.x           += offset;
 
         frontIcpts.emplace_back(padIcpt);
         --idx;
 
         if (idx < 0) {
             idx = end;
-            offset             -= 1.f;
+            offset -= 1.f;
         }
     }
 
-    remainingIters             = 2;
-    idx                     = 0;
-    frontier                 = 1.f;
-    offset                     = 1;
+    remainingIters = 2;
+    idx            = 0;
+    frontier       = 1.f;
+    offset         = 1;
 
     backIcpts.emplace_back(intercepts[end - 1]);
     backIcpts.emplace_back(intercepts[end]);
@@ -848,9 +849,9 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
             --remainingIters;
         }
 
-        frontier             = intercepts[idx].x + offset;
-        Intercept padIcpt     = intercepts[idx];
-        padIcpt.x             += offset;
+        frontier           = intercepts[idx].x + offset;
+        Intercept padIcpt  = intercepts[idx];
+        padIcpt.x          += offset;
 
         backIcpts.emplace_back(padIcpt);
         ++idx;
@@ -1046,12 +1047,12 @@ void MeshRasterizer::cleanUp() {
     waveX.nullify();
     waveY.nullify();
 
-    colorPoints    .clear();
+    colorPoints.clear();
 
     // for when layer change and there are no intercepts in new layer, we don't want the old ones carrying over
-    icpts        .clear();
-    frontIcpts    .clear();
-    backIcpts    .clear();
+    icpts.clear();
+    frontIcpts.clear();
+    backIcpts.clear();
     guideCurveRegions.clear();
 
     if(! batchMode) {

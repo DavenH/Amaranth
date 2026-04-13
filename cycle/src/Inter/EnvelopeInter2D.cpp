@@ -30,6 +30,19 @@
 #include "../UI/VertexPanels/Waveform2D.h"
 #include "../UI/VertexPanels/Waveform3D.h"
 
+namespace {
+MeshLibrary::EnvProps* getRequiredEnvProps(SingletonRepo* repo, int envEnum, const char* context) {
+    auto* props = repo->get<MeshLibrary>("MeshLibrary").getCurrentEnvProps(envEnum);
+
+    if (props == nullptr) {
+        DBG(String::formatted("EnvelopeInter2D::%s missing env props for group=%d", context, envEnum));
+        jassertfalse;
+    }
+
+    return props;
+}
+}
+
 EnvelopeInter2D::EnvelopeInter2D(SingletonRepo* repo) : 
 		Interactor2D		(repo, "EnvelopeInter2D", Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Red, Vertex::Blue))
 	,	SingletonAccessor	(repo, "EnvelopeInter2D")
@@ -235,7 +248,11 @@ EnvelopeMesh* EnvelopeInter2D::getCurrentMesh() {
 
 void EnvelopeInter2D::showCoordinates() {
     int envEnum = getSetting(CurrentEnvGroup);
-    MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(envEnum);
+    MeshLibrary::EnvProps* props = getRequiredEnvProps(repo, envEnum, "showCoordinates");
+
+    if (props == nullptr) {
+        return;
+    }
 
     int beats = 4;
     float length = getObj(OscControlPanel).getLengthInSeconds();
@@ -730,7 +747,12 @@ bool EnvelopeInter2D::doesMeshChangeWarrantGlobalUpdate() {
 bool EnvelopeInter2D::isCurrentMeshActive() {
     int envType = getSetting(CurrentEnvGroup);
     if (envType != LayerGroups::GroupWavePitch) {
-        MeshLibrary::Properties* props = getObj(MeshLibrary).getCurrentEnvProps(envType);
+        MeshLibrary::Properties* props = getRequiredEnvProps(repo, envType, "isCurrentMeshActive");
+
+        if (props == nullptr) {
+            return false;
+        }
+
         return props->active;
     }
 

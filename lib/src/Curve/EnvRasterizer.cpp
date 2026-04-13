@@ -7,6 +7,19 @@
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
 
+namespace {
+    String describeEnvelopeMesh(const EnvelopeMesh* mesh) {
+        if (mesh == nullptr) {
+            return "mesh=null";
+        }
+
+        return String::formatted("mesh=%p name=%s verts=%d cubes=%d",
+                                 mesh,
+                                 mesh->getName().toRawUTF8(),
+                                 mesh->getNumVerts(),
+                                 mesh->getNumCubes());
+    }
+}
 
 EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurveProvider, const String& name) :
         SingletonAccessor(repo, name)
@@ -67,12 +80,20 @@ void EnvRasterizer::setMesh(Mesh* mesh) {
     MeshRasterizer::setMesh(mesh);
 
     envMesh = dynamic_cast<EnvelopeMesh*>(mesh);
+
+    DBG(String::formatted("EnvRasterizer[%s] setMesh(Mesh*) %s",
+                          MeshRasterizer::name.toRawUTF8(),
+                          describeEnvelopeMesh(envMesh).toRawUTF8()));
 }
 
 void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
     MeshRasterizer::setMesh(envelopeMesh);
 
     envMesh = envelopeMesh;
+
+    DBG(String::formatted("EnvRasterizer[%s] setMesh(EnvelopeMesh*) %s",
+                          MeshRasterizer::name.toRawUTF8(),
+                          describeEnvelopeMesh(envMesh).toRawUTF8()));
 }
 
 bool EnvRasterizer::hasReleaseCurve() {
@@ -597,6 +618,19 @@ bool EnvRasterizer::simulateRender(
     double& lastPosition,
     const MeshLibrary::EnvProps& props,
     float tempoScale) {
+    jassert(! icpts.empty());
+    jassert(state == Releasing || isPositiveAndBelow(sustainIndex, (int) icpts.size()));
+
+    if (icpts.empty() || (state != Releasing && ! isPositiveAndBelow(sustainIndex, (int) icpts.size()))) {
+        DBG(String::formatted("EnvRasterizer[%s] simulateRender invalid state mesh=%p icpts=%d sustain=%d state=%d",
+                              MeshRasterizer::name.toRawUTF8(),
+                              envMesh,
+                              (int) icpts.size(),
+                              sustainIndex,
+                              state));
+        return false;
+    }
+
     double newAdvancement = advancement;
 
     if (props.tempoSync) {

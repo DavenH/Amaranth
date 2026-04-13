@@ -1672,15 +1672,15 @@ void VisualDsp::resizeArrays(const ResizeParams& params) {
 
   #ifdef JUCE_DEBUG
     if (!params.isEnvelope && (params.freqColumns != nullptr || params.timeColumns != nullptr)) {
-        DBG("VisualDsp::resizeArrays"
-            + String(" numColumns=") + String(numColumns)
-            + " adjust=" + String(adjustColumnSizes ? 1 : 0)
-            + " drawWave=" + String(getSetting(DrawWave))
-            + " morphAxis=" + String(getSetting(CurrentMorphAxis))
-            + " key=" + String(key)
-            + " overridePow2=" + String(params.overridePow2)
-            + " overrideHarms=" + String(params.overrideHarms)
-            + " isEnvelope=" + String(params.isEnvelope ? 1 : 0));
+        // DBG("VisualDsp::resizeArrays"
+        //     + String(" numColumns=") + String(numColumns)
+        //     + " adjust=" + String(adjustColumnSizes ? 1 : 0)
+        //     + " drawWave=" + String(getSetting(DrawWave))
+        //     + " morphAxis=" + String(getSetting(CurrentMorphAxis))
+        //     + " key=" + String(key)
+        //     + " overridePow2=" + String(params.overridePow2)
+        //     + " overrideHarms=" + String(params.overrideHarms)
+        //     + " isEnvelope=" + String(params.isEnvelope ? 1 : 0));
     }
   #endif
 
@@ -1761,10 +1761,10 @@ void VisualDsp::getNumHarmonicsAndNextPower(int& numHarmonics, int& nextPow2, in
   #ifdef JUCE_DEBUG
     static int logCount = 0;
     if (logCount < 24) {
-        DBG("VisualDsp::getNumHarmonicsAndNextPower"
-            + String(" midiKey=") + String(midiKey)
-            + " numHarmonics=" + String(numHarmonics)
-            + " nextPow2=" + String(nextPow2));
+        // DBG("VisualDsp::getNumHarmonicsAndNextPower"
+        //     + String(" midiKey=") + String(midiKey)
+        //     + " numHarmonics=" + String(numHarmonics)
+        //     + " nextPow2=" + String(nextPow2));
         ++logCount;
     }
   #endif

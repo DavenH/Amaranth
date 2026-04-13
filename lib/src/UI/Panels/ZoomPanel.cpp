@@ -239,7 +239,7 @@ void ZoomPanel::zoomIn(bool cmdDown, int mouseX, int mouseY) {
 }
 
 void ZoomPanel::zoomOut(bool cmdDown, int mouseX, int mouseY) {
-    validateRect("zoomOut-entry");
+    // validateRect("zoomOut-entry");
     float oldZoom;
 
     if (cmdDown) {
@@ -256,7 +256,7 @@ void ZoomPanel::zoomOut(bool cmdDown, int mouseX, int mouseY) {
         rect.x = x + (rect.x - x) * rect.w / oldZoom;
     }
 
-    validateRect("zoomOut-before-panelZoomChanged", false);
+    // validateRect("zoomOut-before-panelZoomChanged", false);
     panelZoomChanged(cmdDown);
 }
 
