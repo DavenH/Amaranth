@@ -33,6 +33,18 @@
 
 #define componentName "IrModellerUI"
 
+namespace {
+    String describeEffectMesh(Mesh* mesh) {
+        if (mesh == nullptr) {
+            return "mesh=null";
+        }
+
+        return "mesh=" + String::toHexString((pointer_sized_int) mesh)
+            + " verts=" + String(mesh->getNumVerts())
+            + " cubes=" + String(mesh->getNumCubes());
+    }
+}
+
 IrModellerUI::IrModellerUI(SingletonRepo* repo) :
         EffectPanel      (repo, componentName, true)
     ,	SingletonAccessor(repo, componentName)
@@ -173,6 +185,8 @@ bool IrModellerUI::paramTriggersAggregateUpdate(int knobIndex) {
 }
 
 void IrModellerUI::setMeshAndUpdate(Mesh* mesh, bool doRepaint) {
+    DBG("IrModellerUI::setMeshAndUpdate " + describeEffectMesh(mesh)
+        + " repaint=" + String((int) doRepaint));
     rasterizer->cleanUp();
     rasterizer->setMesh(mesh);
     irModeller->setMesh(mesh);

@@ -20,6 +20,18 @@
 
 const int WaveshaperUI::oversampFactors[5] = { 1, 1, 2, 4, 8 };
 
+namespace {
+    String describeEffectMesh(Mesh* mesh) {
+        if (mesh == nullptr) {
+            return "mesh=null";
+        }
+
+        return "mesh=" + String::toHexString((pointer_sized_int) mesh)
+            + " verts=" + String(mesh->getNumVerts())
+            + " cubes=" + String(mesh->getNumCubes());
+    }
+}
+
 WaveshaperUI::WaveshaperUI(SingletonRepo* repo) :
         EffectPanel		(repo, "WaveshaperUI", true)
     ,	SingletonAccessor(repo, "WaveshaperUI")
@@ -150,6 +162,7 @@ void WaveshaperUI::postCurveDraw() {
 }
 
 void WaveshaperUI::setMeshAndUpdate(Mesh* mesh) {
+    DBG("WaveshaperUI::setMeshAndUpdate " + describeEffectMesh(mesh));
     mesh->updateToVersion(ProjectInfo::versionNumber);
 
     rasterizer->cleanUp();

@@ -156,6 +156,7 @@ void FileManager::doPostPresetLoad() {
     progressMark
 
     auto& source = getObj(SynthAudioSource);
+    auto& meshLibrary = getObj(MeshLibrary);
 
     source.setEnvelopeMeshes(true);
     source.enablementChanged();
@@ -169,6 +170,15 @@ void FileManager::doPostPresetLoad() {
     getObj(Spectrum3D)		.validateScratchChannels();
     getObj(Waveform3D)		.validateScratchChannels();
     getObj(GuideCurvePanel)	.rasterizeAllTables();
+
+    if (Mesh* irMesh = meshLibrary.getCurrentMesh(LayerGroups::GroupIrModeller)) {
+        getObj(IrModellerUI).setMeshAndUpdate(irMesh, false);
+    }
+
+    if (Mesh* waveshaperMesh = meshLibrary.getCurrentMesh(LayerGroups::GroupWaveshaper)) {
+        getObj(WaveshaperUI).setMeshAndUpdate(waveshaperMesh);
+    }
+
     getObj(IrModellerUI)	.updateDspSync();
     getObj(WaveshaperUI)	.updateDspSync();
     getObj(Waveform3D)		.updateBackground(false);

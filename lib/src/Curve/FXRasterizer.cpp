@@ -1,6 +1,18 @@
 #include <algorithm>
 #include "FXRasterizer.h"
 
+namespace {
+    String describeFxMesh(Mesh* mesh) {
+        if (mesh == nullptr) {
+            return "mesh=null";
+        }
+
+        return "mesh=" + String::toHexString((pointer_sized_int) mesh)
+            + " verts=" + String(mesh->getNumVerts())
+            + " cubes=" + String(mesh->getNumCubes());
+    }
+}
+
 FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
         SingletonAccessor(repo, name),
         MeshRasterizer(name) {
@@ -13,9 +25,12 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 
 void FXRasterizer::calcCrossPoints() {
     if (mesh == nullptr || mesh->getNumVerts() == 0) {
+        DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup empty " + describeFxMesh(mesh));
         cleanUp();
         return;
     }
+
+    DBG(MeshRasterizer::getName() + "::calcCrossPoints begin " + describeFxMesh(mesh));
 
     icpts.clear();
     for(auto vert : mesh->getVerts()) {
@@ -31,6 +46,7 @@ void FXRasterizer::calcCrossPoints() {
     }
 
     if (icpts.empty()) {
+        DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup no-intercepts " + describeFxMesh(mesh));
         cleanUp();
         return;
     }
@@ -41,6 +57,8 @@ void FXRasterizer::calcCrossPoints() {
     curves.clear();
 
     if (icpts.size() < 2) {
+        DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup too-few-intercepts count=" + String((int) icpts.size())
+            + " " + describeFxMesh(mesh));
         cleanUp();
         return;
     }
@@ -49,6 +67,11 @@ void FXRasterizer::calcCrossPoints() {
     updateCurves();
 
     unsampleable = false;
+    DBG(MeshRasterizer::getName() + "::calcCrossPoints ready icpts=" + String((int) icpts.size())
+        + " curves=" + String((int) curves.size())
+        + " waveX=" + String(waveX.size())
+        + " waveY=" + String(waveY.size())
+        + " " + describeFxMesh(mesh));
 }
 
 void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
@@ -83,6 +106,7 @@ void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
 }
 
 void FXRasterizer::setMesh(Mesh* newMesh) {
+    DBG(MeshRasterizer::getName() + "::setMesh " + describeFxMesh(newMesh));
     mesh = newMesh;
 }
 
@@ -93,6 +117,8 @@ void FXRasterizer::cleanUp() {
     curves.clear();
     icpts.clear();
     unsampleable = true;
+
+    DBG(MeshRasterizer::getName() + "::cleanUp");
 }
 
 int FXRasterizer::getNumDims() {

@@ -21,6 +21,12 @@ PanelRenderer* getRenderer(Panel2D* panel) {
     return panel->getPanelRenderer();
 }
 
+bool shouldLogCurveDraw(const String& panelName) {
+    return panelName == "WaveshaperUI"
+        || panelName == "IrModellerUI"
+        || panelName == "GuideCurvePanel";
+}
+
 }
 
 Panel2D::Panel2D(SingletonRepo* repo,
@@ -64,6 +70,7 @@ void Panel2D::drawCurvesAndSurfaces() {
         return;
     }
 
+    const bool shouldLog = shouldLogCurveDraw(panelName);
     Range<float> xLimit  = interactor->vertexLimits[interactor->dims.x];
     bool extendsX        = xLimit.getLength() > 1.f;
     bool reduceAlpha     = !isMeshEnabled();
@@ -82,6 +89,12 @@ void Panel2D::drawCurvesAndSurfaces() {
         waveY = data.waveY;
 
         if(waveX.size() < 2) {
+            if (shouldLog) {
+                DBG(panelName + "::drawCurvesAndSurfaces skip waveX=" + String(waveX.size())
+                    + " waveY=" + String(waveY.size())
+                    + " zeroIndex=" + String(data.zeroIndex)
+                    + " oneIndex=" + String(data.oneIndex));
+            }
             return;
         }
 
@@ -97,6 +110,15 @@ void Panel2D::drawCurvesAndSurfaces() {
         waveX = waveX.section(istart, iend - istart);
         waveY = waveY.section(istart, iend - istart);
 
+        if (shouldLog) {
+            DBG(panelName + "::drawCurvesAndSurfaces raw section istart=" + String(istart)
+                + " iend=" + String(iend)
+                + " size=" + String(waveX.size())
+                + " xLimit=[" + String(xLimit.getStart()) + "," + String(xLimit.getEnd()) + "]"
+                + " extendsX=" + String((int) extendsX)
+                + " enabled=" + String((int) isMeshEnabled()));
+        }
+
         int size = waveX.size();
         prepareBuffers(size, size);
 
@@ -107,6 +129,26 @@ void Panel2D::drawCurvesAndSurfaces() {
     prepareAlpha    (xy.y, a, colourA.alpha());
     applyScaleX     (xy.x);
     applyScaleY     (xy.y);
+
+    if (shouldLog && xy.size() > 0) {
+        float minX = xy.x[0];
+        float maxX = xy.x[0];
+        float minY = xy.y[0];
+        float maxY = xy.y[0];
+
+        for (int i = 1; i < xy.size(); ++i) {
+            minX = jmin(minX, xy.x[i]);
+            maxX = jmax(maxX, xy.x[i]);
+            minY = jmin(minY, xy.y[i]);
+            maxY = jmax(maxY, xy.y[i]);
+        }
+
+        DBG(panelName + "::drawCurvesAndSurfaces scaled size=" + String(xy.size())
+            + " screenX=[" + String(minX) + "," + String(maxX) + "]"
+            + " screenY=[" + String(minY) + "," + String(maxY) + "]"
+            + " panel=[" + String(getWidth()) + "x" + String(getHeight()) + "]");
+    }
+
     drawCurvesFrom  (xy, a, colourA, colourB);
 }
 

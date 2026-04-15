@@ -454,6 +454,9 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 void SynthMenuBarModel::init() {
 	miscGfx = &getObj(MiscGraphics);
 	source = &getObj(SynthAudioSource);
+	fileMgr = &getObj(FileManager);
+	editWatcher = &getObj(EditWatcher);
+	dialogs = &getObj(Dialogs);
 
 	File tutorialDir(getObj(Directories).getTutorialDir());
 	tutorialDir.findChildFiles(tutorials, File::findFiles, false, "*.xml");
