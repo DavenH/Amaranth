@@ -14,9 +14,18 @@
 MiscGraphics::MiscGraphics(SingletonRepo* repo) : SingletonAccessor(repo, "MiscGraphics") {
 }
 
-void MiscGraphics::init() {
+void MiscGraphics::ensureIconsLoaded() {
+    if (! icons.isNull()) {
+        return;
+    }
+
     icons = PNGImageFormat::loadFrom(Images::icons_png, Images::icons_pngSize);
+    DBG("Icons loaded");
     jassert(! icons.isNull());
+}
+
+void MiscGraphics::init() {
+    ensureIconsLoaded();
 
     powerIcon = getIcon(5, 5);
     powerIcon.duplicateIfShared();
@@ -146,6 +155,7 @@ void MiscGraphics::addPulloutIcon(Image& image, bool horz) {
 }
 
 Image MiscGraphics::getIcon(int x, int y) const {
+    const_cast<MiscGraphics*>(this)->ensureIconsLoaded();
     return icons.getClippedImage(Rectangle<int>(x * 24, y * 24, 24, 24));
 }
 
@@ -178,4 +188,3 @@ void MiscGraphics::drawJustifiedText(Graphics& g, const String& text,
                       Rectangle(topLeft.getBounds().getTopLeft(), botRight.getBounds().getBottomRight()),
                       above, parent);
 }
-

@@ -109,7 +109,7 @@ namespace {
             vertices.add(PresetJson::toVar(vertex));
         }
 
-        for (auto cubeElem : meshElem->getChildWithTagNameIterator("VertCube")) {
+        auto appendCube = [&cubes](const XmlElement* cubeElem) {
             auto cube = PresetJson::object();
             auto guides = PresetJson::object();
             auto gains = PresetJson::object();
@@ -147,6 +147,14 @@ namespace {
             cube->setProperty("guides", PresetJson::toVar(guides));
             cube->setProperty("gains", PresetJson::toVar(gains));
             cubes.add(PresetJson::toVar(cube));
+        };
+
+        for (auto cubeElem : meshElem->getChildWithTagNameIterator("VertCube")) {
+            appendCube(cubeElem);
+        }
+
+        for (auto cubeElem : meshElem->getChildWithTagNameIterator("LineCube")) {
+            appendCube(cubeElem);
         }
 
         json->setProperty("vertices", var(vertices));
@@ -632,9 +640,17 @@ namespace {
         return PresetJson::toVar(json);
     }
 
-    var parseEffect(XmlElement* effectsElem, const String& xmlName, bool addWave = false,
-                    bool addOversample = false, bool addVoices = false) {
-        XmlElement* effectElem = effectsElem == nullptr ? nullptr : effectsElem->getChildByName(xmlName);
+    var parseEffect(XmlElement* effectsElem,
+                    const String& primaryXmlName,
+                    bool addWave = false,
+                    bool addOversample = false,
+                    bool addVoices = false,
+                    const String& legacyAlias = {}) {
+        XmlElement* effectElem = effectsElem == nullptr ? nullptr : effectsElem->getChildByName(primaryXmlName);
+
+        if (effectElem == nullptr && legacyAlias.isNotEmpty()) {
+            effectElem = effectsElem->getChildByName(legacyAlias);
+        }
 
         if (effectElem == nullptr) {
             return {};
@@ -682,11 +698,11 @@ namespace {
         }
 
         json->setProperty("ImpulseModeller", parseEffect(effectsElem, "ImpulseModeller", true));
-        json->setProperty("Unison", parseEffect(effectsElem, "UnisonUI", false, false, true));
-        json->setProperty("Waveshaper", parseEffect(effectsElem, "WaveshaperUI", false, true));
-        json->setProperty("Delay", parseEffect(effectsElem, "DelayUI"));
-        json->setProperty("Reverb", parseEffect(effectsElem, "ReverbUI"));
-        json->setProperty("EQ", parseEffect(effectsElem, "EqualizerUI"));
+        json->setProperty("Unison", parseEffect(effectsElem, "Unison", false, false, true, "UnisonUI"));
+        json->setProperty("Waveshaper", parseEffect(effectsElem, "Waveshaper", false, true, false, "WaveshaperUI"));
+        json->setProperty("Delay", parseEffect(effectsElem, "Delay", false, false, false, "DelayUI"));
+        json->setProperty("Reverb", parseEffect(effectsElem, "Reverb", false, false, false, "ReverbUI"));
+        json->setProperty("EQ", parseEffect(effectsElem, "EQ", false, false, false, "EqualizerUI"));
         return PresetJson::toVar(json);
     }
 

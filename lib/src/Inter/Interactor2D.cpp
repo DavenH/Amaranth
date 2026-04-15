@@ -191,8 +191,8 @@ void Interactor2D::doExtraMouseDrag(const MouseEvent& e) {
 }
 
 // needed to resolve case when an objectively closer vertex to the mouse belongs to
-// another line, yet the mouse is closer yet to the a line's intercept in the 2D panel.
-// intuitively the intercept's closest vertex along it's parent line should be selected
+// another line, yet the mouse is closer yet to the line's intercept in the 2D panel.
+// intuitively the intercept's closest vertex along its parent line should be selected
 void Interactor2D::setExtraElements(float /*x*/) {
     ScopedLock sl(vertexLock);
 

@@ -248,8 +248,6 @@ void PlaybackPanel::setProgress(float unitX, bool updateMorphPanel) {
 								  getSetting(CurrentEnvGroup)));
 			jassertfalse;
 		} else if (props->active) {
-			envRast->performUpdate(Update);
-
 			const auto& icpts = envRast->getRastData().intercepts;
 			bool canSimulate = envRast->hasEnoughCubesForCrossSection();
 
@@ -260,7 +258,7 @@ void PlaybackPanel::setProgress(float unitX, bool updateMorphPanel) {
 			}
 
 			if (canSimulate && !icpts.empty()) {
-				envRast->simulateStart(envPos);
+				envRast->simulateStart(envPos); // TODO check if this is necessary
 				envRast->simulateRender(x, envPos, *props, 1.f);
 			}
 		}
@@ -431,8 +429,6 @@ void PlaybackPanel::timerCallback(int id) {
 		bool isAlive = props->active;
 
 		if(isAlive) {
-			envRast->performUpdate(Update);
-
 			const auto& icpts = envRast->getRastData().intercepts;
 			bool canSimulate = envRast->hasEnoughCubesForCrossSection();
 

@@ -30,6 +30,18 @@
 #include "../UI/Widgets/HSlider.h"
 #include "../Util/CycleEnums.h"
 
+namespace {
+const char* envGroupName(int envGroup) {
+    switch (envGroup) {
+        case LayerGroups::GroupVolume: return "volume";
+        case LayerGroups::GroupPitch: return "pitch";
+        case LayerGroups::GroupScratch: return "scratch";
+        case LayerGroups::GroupWavePitch: return "wavePitch";
+        default: return "unknown";
+    }
+}
+}
+
 VisualDsp::VisualDsp(SingletonRepo* repo) :
         SingletonAccessor(repo, "VisualDsp")
     ,	timeProcessor	(this, repo, TimeStage)
@@ -106,14 +118,14 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
             }
         }
 
-        // restore curve for viewing
+        // restore curve for viewing. TODO, Why share state? Envelope2D can own a rasterizer
         if (doRestore) {
             rasterizer.setMode(EnvRasterizer::NormalState);
             rasterizer.setLowresCurves(false);
             rasterizer.setCalcDepthDimensions(true);
             rasterizer.update(Update);
         }
-    } else {
+    } else { // we are calculating envelopes across a
         float time = getObj(MorphPanel).getValue(Vertex::Time);
 
         if(props->active) {
@@ -166,14 +178,30 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
 //	dout << "Rasterizing envelope " << envEnum << " with size: " << numColumns << "\n";
 
     if(envEnum == LayerGroups::GroupWavePitch) {
+        DBG("VisualDsp::rasterizeEnv skipping wavePitch");
         return;
     }
+
+    auto logRasterizerState = [envEnum](const char* context, EnvRasterizer& rast) {
+        const auto& icpts = rast.getRastData().intercepts;
+        Mesh* mesh = rast.getCurrentMesh();
+        DBG(String::formatted("VisualDsp::rasterizeEnv %s env=%s(%d) rast=%p mesh=%p cubesEnough=%d icpts=%d sampleable=%d",
+                              context,
+                              envGroupName(envEnum),
+                              envEnum,
+                              &rast,
+                              mesh,
+                              mesh != nullptr ? (rast.hasEnoughCubesForCrossSection() ? 1 : 0) : -1,
+                              (int) icpts.size(),
+                              rast.isSampleable() ? 1 : 0));
+    };
 
     ScopedAlloc<Float32>* buff;
     EnvRasterizer* rast;
     EnvType type;
 
     if (envEnum == LayerGroups::GroupVolume) {
+        logRasterizerState("consume-volume-before", getObj(EnvVolumeRast));
         volumeEnv.resize(numColumns);
         rasterizeEnv(
             volumeEnv,
@@ -188,6 +216,12 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
         }
     } else if (envEnum == LayerGroups::GroupPitch) {
         rast = &getObj(EnvPitchRast);
+        logRasterizerState("prepare-pitch-before-inline", *rast);
+
+        if (rast->getCurrentMesh() == nullptr) {
+            DBG("VisualDsp::rasterizeEnv pitch rasterizer has no mesh bound");
+            return;
+        }
 
         // calculates graphic curve (update() makes a copy)
         rast->setNoteOn();
@@ -197,9 +231,11 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
         rast->setDecoupleComponentDfrm(false);
         rast->setLowresCurves(false);
         rast->update(Update);
+        logRasterizerState("prepare-pitch-after-inline", *rast);
     } else if (envEnum == LayerGroups::GroupScratch) {
         rast = &getObj(EnvScratchRast);
         type = ScratchType;
+        logRasterizerState("prepare-scratch-before-inline", *rast);
 
         auto& meshLib = getObj(MeshLibrary);
         MeshLibrary::LayerGroup& scratchGroup = meshLib.getLayerGroup(LayerGroups::GroupScratch);
@@ -230,6 +266,7 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
             LayerGroups::GroupScratch,
             *rast
         );
+        logRasterizerState("prepare-scratch-after-inline", *rast);
 
         Resampling::linResample(
             scratchEnv.withSize(numScratchLayers * numColumns),
@@ -465,9 +502,11 @@ void VisualDsp::calcSpectrogram(int numColumns) {
 
     batchState.scalingType = MeshRasterizer::Unipolar;
     spectRasterizer->restoreStateFrom(batchState);
-    // TODO what are the current layer sizes?
-    phaseRasterizer->updateOffsetSeeds(0, GuideCurvePanel::tableSize);
-    spectRasterizer->updateOffsetSeeds(0, GuideCurvePanel::tableSize);
+
+    int numPhaseLayers = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupPhase).size();
+    int numSpectLayers = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupSpect).size();
+    phaseRasterizer->updateOffsetSeeds(numPhaseLayers, GuideCurvePanel::tableSize);
+    spectRasterizer->updateOffsetSeeds(numSpectLayers, GuideCurvePanel::tableSize);
 
     Buffer magBuf(fft.getMagnitudes(), numHarmonics);
     Buffer phaseBuf(fft.getPhases(), numHarmonics);
@@ -510,7 +549,6 @@ void VisualDsp::calcSpectrogram(int numColumns) {
         if (isFilterEnabled) {
             int fftIdx = jmin(zoomProgress.size() - 1, colIdx * fftProcInc);
 
-            MeshRasterizer& rasterizer = *spectRasterizer;
             spectRasterizer->getMorphPosition()[primeDim] = zoomProgress[fftIdx];
 
             for (int i = 0; i < magnGroup.size(); ++i) {
@@ -533,16 +571,16 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                 }
 
                 if (colIdx % colMagRatio == 0) {
-                    rasterizer.setNoiseSeed(colIdx * 1997);
-                    rasterizer.setYellow(scratchTime);
-                    rasterizer.calcCrossPoints(spectLayer.mesh, 0.f);
+                    spectRasterizer->setNoiseSeed(colIdx * 1997);
+                    spectRasterizer->setYellow(scratchTime);
+                    spectRasterizer->calcCrossPoints(spectLayer.mesh, 0.f);
 
-                    if (!rasterizer.isSampleable()) {
+                    if (!spectRasterizer->isSampleable()) {
                         localBuffer.zero();
                         continue;
                     }
 
-                    rasterizer.sampleAtIntervals(fftRamp, localBuffer);
+                    spectRasterizer->sampleAtIntervals(fftRamp, localBuffer);
 
                     float dynamicRange = std::sqrt(Spectrum3D::calcDynamicRangeScale(spectLayer.props->range));
                     float multiplicand = relativePan;
@@ -580,7 +618,6 @@ void VisualDsp::calcSpectrogram(int numColumns) {
             int fftIdx = jmin(zoomProgress.size() - 1, colIdx * fftProcInc);
 
             phaseRasterizer->getMorphPosition()[primeDim] = zoomProgress[fftIdx];
-            MeshRasterizer& rasterizer = *phaseRasterizer;
             workBuffer.zero();
 
             for (int i = 0; i < phaseGroup.size(); ++i) {
@@ -598,12 +635,12 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                                     scratchContexts[layer.props->scratchChan].gridBuffer[fftIdx];
 
                 if(colIdx % colPhaseRatio == 0) {
-                    rasterizer.setNoiseSeed(colIdx * 671);
-                    rasterizer.setYellow(scratchTime);
-                    rasterizer.calcCrossPoints(layer.mesh, 0.f);
+                    phaseRasterizer->setNoiseSeed(colIdx * 671);
+                    phaseRasterizer->setYellow(scratchTime);
+                    phaseRasterizer->calcCrossPoints(layer.mesh, 0.f);
 
-                    if(rasterizer.isSampleable()) {
-                        rasterizer.sampleAtIntervals(fftRamp, localBuffer);
+                    if(phaseRasterizer->isSampleable()) {
+                        phaseRasterizer->sampleAtIntervals(fftRamp, localBuffer);
 
                         double relativePan 	= Arithmetic::getRelativePan(layer.props->pan, modPan);
                         float phaseAmpScale = Spectrum3D::calcPhaseOffsetScale(layer.props->range);
@@ -1016,8 +1053,8 @@ void VisualDsp::processThroughEnvelopes(int numColumns) {
     bool areBeforeFX = stage < ViewStages::PostFX;
 
     // we want to include the fft stuff in the unison if it exists
-//	bool haveUnison = stage >= ViewStages::PostFX && unison->getOrder(Unison::graphicParamIndex) > 1
-//			&& ! (getSetting(FilterEnabled) || getSetting(PhaseEnabled));
+	bool haveUnison = stage >= ViewStages::PostFX && unison->getOrder(false) > 1
+			&& ! (getSetting(FilterEnabled) || getSetting(PhaseEnabled));
 
     int reductionFactor = getSetting(ReductionFactor);
     int envInc = envProcessor.isDetailReduced() ? reductionFactor : 1;
@@ -1174,9 +1211,10 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
                 continue;
             }
 
-            if(pitchProps->active)
+            if(pitchProps->active) {
                 getObj(EnvPitchRast).renderToBuffer(samplesPerCol, unitPortionPerSample,
                                                     EnvRasterizer::headUnisonIndex + i, *pitchProps, 1.f);
+            }
 
             float relativePan = 1.f, unisonCents = 0, uniPhase = 0;
 

@@ -143,11 +143,11 @@ void Interactor::mouseDown(const MouseEvent& e) {
     if(getSetting(Tool) == Tools::Selector) {
         setMouseDownStateSelectorTool(e);
     } else if (getSetting(Tool) == Tools::Pencil) {
-        bool leftIsDown     = e.mods.isLeftButtonDown();
-        bool rightIsDown     = e.mods.isRightButtonDown();
+        bool leftIsDown  = e.mods.isLeftButtonDown();
+        bool rightIsDown = e.mods.isRightButtonDown();
 
-        action = (leftIsDown && selectWithRight   || rightIsDown && ! selectWithRight)     ? PanelState::PaintingCreate :
-                 (leftIsDown && ! selectWithRight || rightIsDown && selectWithRight)     ? PanelState::PaintingEdit : PanelState::Idle;
+        action = (leftIsDown && selectWithRight   || rightIsDown && ! selectWithRight) ? PanelState::PaintingCreate :
+                 (leftIsDown && ! selectWithRight || rightIsDown && selectWithRight)   ? PanelState::PaintingEdit : PanelState::Idle;
 
         if (actionIs(PaintingEdit)) {
             vertexTransformUndoer.start();
@@ -313,8 +313,9 @@ void Interactor::copyVertexPositions() {
     if (Mesh* mesh = getMesh()) {
         state.positions.clear();
 
-        for(auto vert : mesh->getVerts())
+        for(auto vert : mesh->getVerts()) {
             state.positions.push_back(*vert);
+        }
     }
 }
 
@@ -329,9 +330,9 @@ void Interactor::addToArray(const Array<Vertex*>& src, vector<VertexFrame>& dst)
 void Interactor::updateSelectionFrames() {
     copyVertexPositions();
 
-    state.singleHorz    .clear();
-    state.singleXY        .clear();
-    state.singleAll        .clear();
+    state.singleHorz.clear();
+    state.singleXY.clear();
+    state.singleAll.clear();
 
     MorphPosition morph = getModPosition();
 
@@ -359,11 +360,12 @@ void Interactor::updateSelectionFrames() {
     }
 
     float x, y;
-    float leftX = 100,     centreX = 0, rightX = 0;
-    float topY     = 0,     centreY = 0, lowY     = 1;
-    bool wrapsPhase     = getRasterizer()->wrapsVertices();
-    bool ignoresTime    = vertexProps.isEnvelope;
-    int numGood         = 0;
+    float leftX = 100, centreX = 0, rightX = 0;
+    float topY  = 0,   centreY = 0, lowY   = 1;
+
+    bool wrapsPhase = getRasterizer()->wrapsVertices();
+    bool ignoresTime = vertexProps.isEnvelope;
+    int numGood = 0;
 
     vector<Vertex*>& selected = getSelected();
 
@@ -387,8 +389,8 @@ void Interactor::updateSelectionFrames() {
             x -= 1;
         }
 
-        if (x < leftX)    leftX  = x;
-        if (x > rightX)    rightX = x;
+        if (x < leftX)   leftX  = x;
+        if (x > rightX)  rightX = x;
         if (y < lowY)    lowY   = y;
         if (y > topY)    topY   = y;
 
@@ -403,11 +405,11 @@ void Interactor::updateSelectionFrames() {
     centreX *= 1 / float(numGood);
     centreY *= 1 / float(numGood);
 
-    state.pivots[PanelState::TopPivot]         = Vertex2(centreX,     topY);
-    state.pivots[PanelState::BottomPivot]     = Vertex2(centreX,     lowY);
+    state.pivots[PanelState::TopPivot]      = Vertex2(centreX,   topY);
+    state.pivots[PanelState::BottomPivot]   = Vertex2(centreX,   lowY);
     state.pivots[PanelState::LeftPivot]     = Vertex2(leftX,     centreY);
-    state.pivots[PanelState::RightPivot]     = Vertex2(rightX,     centreY);
-    state.pivots[PanelState::CentrePivot]     = Vertex2(centreX,     centreY);
+    state.pivots[PanelState::RightPivot]    = Vertex2(rightX,    centreY);
+    state.pivots[PanelState::CentrePivot]   = Vertex2(centreX,   centreY);
 
     listeners.call(&InteractorListener::selectionChanged, getMesh(), state.selectedFrame);
 }
@@ -519,11 +521,11 @@ Vertex* Interactor::findClosestVertex(const Vertex2& posXY) {
     Vertex pos;
 
     // envelope panel will specialize this to disregard 'time' value
-    pos[Vertex::Amp  ]     = -1;
-    pos[Vertex::Phase]     = -1;
-    pos[Vertex::Time ]     = morphPos.time;
-    pos[Vertex::Red  ]     = morphPos.red;
-    pos[Vertex::Blue ]     = morphPos.blue;
+    pos[Vertex::Amp  ] = -1;
+    pos[Vertex::Phase] = -1;
+    pos[Vertex::Time ] = morphPos.time;
+    pos[Vertex::Red  ] = morphPos.red;
+    pos[Vertex::Blue ] = morphPos.blue;
 
     float minDist = 1000;
     float dist;
@@ -546,8 +548,9 @@ Vertex* Interactor::findClosestVertex(const Vertex2& posXY) {
         dist = 0;
 
         for (int i = 0; i < 5; ++i) {
-            if (pos[i] < 0)
+            if (pos[i] < 0) {
                 continue;
+            }
 
             float val = vert->values[i];
 
@@ -866,12 +869,12 @@ void Interactor::doDragCorner(const MouseEvent& e) {
         vertexTransformUndoer.start();
     }
 
-    int corner             = getStateValue(HighlitCorner);
-    bool pivotAtCentre     = e.mods.isCommandDown();
-    float boxUnitW         = panel->invertScaleXNoZoom(finalSelection.getWidth());
-    float boxUnitH         = panel->invertScaleYNoZoom(finalSelection.getHeight()) - 1.f;
+    int corner          = getStateValue(HighlitCorner);
+    bool pivotAtCentre  = e.mods.isCommandDown();
+    float boxUnitW      = panel->invertScaleXNoZoom(finalSelection.getWidth());
+    float boxUnitH      = panel->invertScaleYNoZoom(finalSelection.getHeight()) - 1.f;
     Vertex2 disp        = state.currentMouse - state.start;
-    ZoomRect& rect         = panel->zoomPanel->rect;
+    ZoomRect& rect      = panel->zoomPanel->rect;
 
     float squashFactor = 1, unitOrigin = 0, origin = 0;
 
@@ -903,13 +906,14 @@ void Interactor::doDragCorner(const MouseEvent& e) {
             unitOrigin   = state.pivots[PanelState::LeftPivot].x;
         }
 
-        if (pivotAtCentre)
+        if (pivotAtCentre) {
             unitOrigin = state.pivots[PanelState::CentrePivot].x;
+        }
 
         for (auto& it : state.selectedFrame) {
-            Vertex* vert     = it.vert;
-            float& val         = vert->values[dims.x];
-            val             = (it.origin.x - unitOrigin) * squashFactor + unitOrigin;
+            Vertex* vert  = it.vert;
+            float& val    = vert->values[dims.x];
+            val           = (it.origin.x - unitOrigin) * squashFactor + unitOrigin;
 
             Range<float> xLimits = getVertexPhaseLimits(vert);
             NumberUtils::constrain<float>(val, xLimits);
@@ -917,8 +921,9 @@ void Interactor::doDragCorner(const MouseEvent& e) {
 
         origin = panel->sx(unitOrigin);
 
-        for (int i = 0; i < (int) selectionCorners.size(); ++i)
+        for (int i = 0; i < (int) selectionCorners.size(); ++i) {
             selectionCorners[i].x = (state.cornersStart[i].x - origin) * squashFactor + origin;
+        }
     } else if (corner == PanelState::TopPivot || corner == PanelState::BottomPivot) {
         if (corner == PanelState::TopPivot) {
             squashFactor = 1 + disp.y / boxUnitH;
@@ -1031,18 +1036,21 @@ void Interactor::setMouseDownStateSelectorTool(const MouseEvent& e) {
 
 
 void Interactor::doDragVertex(const MouseEvent& e) {
-    if (mouseFlag(FirstMove))
+    if (mouseFlag(FirstMove)) {
         vertexTransformUndoer.start();
+    }
 
     Vertex2 diff = state.currentMouse - state.lastMouse;
 
-    if(e.mods.isCommandDown())
+    if(e.mods.isCommandDown()) {
         diff.x = 0;
-    else if(e.mods.isShiftDown())
+    } else if(e.mods.isShiftDown()) {
         diff.y = 0;
+    }
 
-    if(diff.x != 0 || diff.y != 0)
+    if(diff.x != 0 || diff.y != 0) {
         flag(LoweredRes) = ! getSelected().empty();
+    }
 
     moveSelectedVerts(diff);
 
@@ -1168,8 +1176,9 @@ void Interactor::selectConnectedVerts(set<Vertex*>& alreadySeen, Vertex* current
     vector<Vertex*>& selected = getSelected();
 
     for (auto cube : current->owners) {
-        if (cube == nullptr)
+        if (cube == nullptr) {
             continue;
+        }
 
         Vertex* v = cube->getOtherVertexAlong(dims.x, current);
 
@@ -1226,11 +1235,11 @@ void Interactor::snapToGrid(Vertex2& toSnap) {
     int sizeY = NumberUtils::nextPower2(roundToInt(0.7 * panel->horzMinorLines.size()));
 
     toSnap.x *= sizeX;
-    toSnap.x  = (float)(int)(toSnap.x + 0.5f);
+    toSnap.x  = (float) roundToInt(toSnap.x);
     toSnap.x /= sizeX;
 
     toSnap.y *= sizeY;
-    toSnap.y  = (float)(int)(toSnap.y + 0.5f);
+    toSnap.y  = (float) roundToInt(toSnap.y);
     toSnap.y /= sizeY;
 }
 
@@ -1322,9 +1331,9 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
         return;
     }
 
-    vector<VertexFrame>& movingX     = state.singleHorz;
-    vector<VertexFrame>& movingXY     = state.singleXY;
-    vector<VertexFrame>& movingAll    = state.singleAll;
+    vector<VertexFrame>& movingX    = state.singleHorz;
+    vector<VertexFrame>& movingXY   = state.singleXY;
+    vector<VertexFrame>& movingAll  = state.singleAll;
 
     Vertex2 candidate(state.currentVertex->values[dims.x], state.currentVertex->values[dims.y]);
     Vertex2 old(candidate);
@@ -1374,7 +1383,7 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
     translateVerts(movingX, Vertex2(limitedDiff.x, 0));
 
     if (!shouldDoDimensionCheck()) {
-        flag(DidMeshChange) |= !(candidate == old);
+        flag(DidMeshChange) |= candidate != old;
         return;
     }
 
@@ -1396,11 +1405,11 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
 
         for (int i = 0; i < refiningIterations; ++i) {
             Vertex2 targetValue     = passed ? bestNew : bestOld;
-            Vertex2& valueToUpdate     = passed ? bestOld : bestNew;
+            Vertex2& valueToUpdate  = passed ? bestOld : bestNew;
 
-            valueToUpdate     = candidate;
-            candidate         = (candidate + targetValue) * 0.5f;
-            currentDiff     = candidate - old;
+            valueToUpdate = candidate;
+            candidate     = (candidate + targetValue) * 0.5f;
+            currentDiff   = candidate - old;
 
             // move vertices
             for (auto& allIter : movingAll) {
@@ -1467,7 +1476,7 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
     validateLinePhases();
 
     // only set flag if we've actually moved the damned verts after all that
-    flag(DidMeshChange) |= ! (candidate == old);
+    flag(DidMeshChange) |= candidate != old;
 }
 
 void Interactor::updateLastValid(vector<VertexFrame>& verts) const {
@@ -1482,13 +1491,13 @@ void Interactor::translateVerts(vector<VertexFrame>& verts, const Vertex2& diff)
 
     for (auto& it : verts) {
         Vertex* vert = it.vert;
-        VertCube* line     = getClosestLine(vert);
+        VertCube* line = getClosestLine(vert);
 
         Range<float> xLimits = getVertexPhaseLimits(vert);
 
-        float& x     = vert->values[dims.x];
-        float oldX     = x;
-        float newX     = x + diff.x;
+        float& x   = vert->values[dims.x];
+        float oldX = x;
+        float newX = x + diff.x;
 
         NumberUtils::constrain(newX, xLimits);
 
@@ -1565,8 +1574,9 @@ bool Interactor::doCreateVertex() {
     vertex->values[Vertex::Phase] = 0.5f;
     vertex->values[Vertex::Amp] = 0.5f;
 
-    for(int i = 0; i < dims.numHidden(); ++i)
+    for(int i = 0; i < dims.numHidden(); ++i) {
         vertex->values[dims.hidden[i]] = positioner->getValue(dims.hidden[i]);
+    }
 
     vertex->values[dims.x] = state.currentMouse.x;
     vertex->values[dims.y] = state.currentMouse.y;
@@ -2048,7 +2058,7 @@ MorphPosition Interactor::getCube() {
     const float minLength = getRealConstant(MinLineLength);
 
     pos.time.setValueDirect(jlimit(pos.time.getTargetValue(), 0.f, 1.f - minLength));
-    pos.red.setValueDirect(jlimit(pos.red.getTargetValue(),   0.f, 1.f - minLength));
+    pos.red .setValueDirect(jlimit(pos.red .getTargetValue(), 0.f, 1.f - minLength));
     pos.blue.setValueDirect(jlimit(pos.blue.getTargetValue(), 0.f, 1.f - minLength));
     NumberUtils::constrain(pos.timeDepth,   minLength, 1.f - pos.time);
     NumberUtils::constrain(pos.redDepth,    minLength, 1.f - pos.red);
@@ -2058,18 +2068,19 @@ MorphPosition Interactor::getCube() {
 }
 
 Vertex* Interactor::findLinesClosestVertex(VertCube* cube, const Vertex2& mouseXY, Vertex& pos) {
-    float minDist = 100000;
+    float minDist = std::numeric_limits<float>::max();
     float dist;
 
     pos.values[dims.x] = mouseXY.x;
 
     // don't want to factor in amplitude position in 2D selection
-    if(dims.y != Vertex::Amp)
+    if(dims.y != Vertex::Amp) {
         pos.values[dims.y] = mouseXY.y;
+    }
 
-    Vertex* closest = 0;
+    Vertex* closest = nullptr;
 
-    float invWidth     = 1 / float(display->getWidth());
+    float invWidth  = 1 / float(display->getWidth());
     float invHeight = 1 / float(display->getHeight());
     float syPos     = panel->sy(pos[dims.y]);
     float sxPos     = panel->sx(pos[dims.x]);

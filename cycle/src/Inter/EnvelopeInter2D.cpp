@@ -633,10 +633,9 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
         if (PitchedSample* current = getObj(Multisample).getCurrentSample()) {
             rast->setMesh(current->mesh.get());
         }
-    } else if (envEnum == LayerGroups::GroupPitch) {
-        if (EnvRasterizer* envRast = getEnvRasterizer()) {
-            envRast->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(LayerGroups::GroupPitch));
-        }
+    } else if (EnvRasterizer* envRast = getEnvRasterizer()) {
+        // this got changed from specifically Pitch env, not the current one
+        envRast->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(envEnum));
     }
 
     enableButton.setHighlit(isCurrentMeshActive());

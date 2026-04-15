@@ -202,15 +202,15 @@ bool Mesh::readXML(const XmlElement* repoElem) {
     vector<Vertex*> failedVerts;
     vector<VertCube*> failedLines;
 
-    for(auto currentCube : meshElem->getChildWithTagNameIterator("VertCube")) {
+    auto readCube = [this, &idMap, &failedVerts, &failedLines](const XmlElement* currentCube) -> void {
         auto* cube = new VertCube();
 
-        cube->guideCurveGains[Vertex::Amp]   = currentCube->getDoubleAttribute("ampGain",     0.5);
-        cube->guideCurveGains[Vertex::Blue]  = currentCube->getDoubleAttribute("modGain",     0.5);
-        cube->guideCurveGains[Vertex::Curve] = currentCube->getDoubleAttribute("curveGain",   0.5);
-        cube->guideCurveGains[Vertex::Phase] = currentCube->getDoubleAttribute("phaseGain",   0.5);
-        cube->guideCurveGains[Vertex::Red]   = currentCube->getDoubleAttribute("keyGain",     0.5);
-        cube->guideCurveGains[Vertex::Time]  = currentCube->getDoubleAttribute("avpGain",     0.5);
+        cube->guideCurveGains[Vertex::Amp]   = currentCube->getDoubleAttribute("ampGain",   0.5);
+        cube->guideCurveGains[Vertex::Blue]  = currentCube->getDoubleAttribute("modGain",   0.5);
+        cube->guideCurveGains[Vertex::Curve] = currentCube->getDoubleAttribute("curveGain", 0.5);
+        cube->guideCurveGains[Vertex::Phase] = currentCube->getDoubleAttribute("phaseGain", 0.5);
+        cube->guideCurveGains[Vertex::Red]   = currentCube->getDoubleAttribute("keyGain",   0.5);
+        cube->guideCurveGains[Vertex::Time]  = currentCube->getDoubleAttribute("avpGain",   0.5);
 
         cube->guideCurveChans[Vertex::Amp]   = currentCube->getIntAttribute("ampGuide",   -1);
         cube->guideCurveChans[Vertex::Blue]  = currentCube->getIntAttribute("modGuide",   -1);
@@ -229,7 +229,8 @@ bool Mesh::readXML(const XmlElement* repoElem) {
         for(auto currentVert : currentCube->getChildWithTagNameIterator("Vertex")) {
             if (currentVert == nullptr) {
                 jassertfalse;
-                return false;
+                failed = true;
+                break;
             }
 
             int num = currentVert->getIntAttribute("lineVertexNumber",  -1);
@@ -264,6 +265,14 @@ bool Mesh::readXML(const XmlElement* repoElem) {
         } else {
             cubes.push_back(cube);
         }
+    };
+
+    for(auto currentCube : meshElem->getChildWithTagNameIterator("VertCube")) {
+        readCube(currentCube);
+    }
+
+    for(auto currentCube : meshElem->getChildWithTagNameIterator("LineCube")) {
+        readCube(currentCube);
     }
 
     validate();
@@ -284,11 +293,11 @@ var Mesh::writeJSON() const {
     for (auto* vert : verts) {
         auto vertex = PresetJson::object();
 
-        vertex->setProperty("time",  vert->values[Vertex::Time]);
-        vertex->setProperty("phase", vert->values[Vertex::Phase]);
-        vertex->setProperty("amp",   vert->values[Vertex::Amp]);
-        vertex->setProperty("key",   vert->values[Vertex::Red]);
-        vertex->setProperty("mod",   vert->values[Vertex::Blue]);
+        vertex->setProperty("time",   vert->values[Vertex::Time]);
+        vertex->setProperty("phase",  vert->values[Vertex::Phase]);
+        vertex->setProperty("amp",    vert->values[Vertex::Amp]);
+        vertex->setProperty("key",    vert->values[Vertex::Red]);
+        vertex->setProperty("mod",    vert->values[Vertex::Blue]);
         vertex->setProperty("weight", vert->values[Vertex::Curve]);
         vertex->setProperty("id", count);
 
@@ -345,6 +354,12 @@ bool Mesh::readJSON(const var& object) {
     version = PresetJson::intProperty(object, "version", Constants::MeshFormatVersion);
     name = PresetJson::stringProperty(object, "name", "unnamed");
 
+    DBG(String::formatted("Mesh::readJSON name=%s version=%d vertices=%d cubes=%d",
+                          name.toRawUTF8(),
+                          version,
+                          vertexArray != nullptr ? vertexArray->size() : -1,
+                          cubeArray != nullptr ? cubeArray->size() : -1));
+
     map<int, Vertex*> idMap;
 
     for (const auto& vertexValue : *vertexArray) {
@@ -363,49 +378,74 @@ bool Mesh::readJSON(const var& object) {
         verts.push_back(vert);
     }
 
-    for (const auto& cubeValue : *cubeArray) {
-        const Array<var>* vertexIds = PresetJson::getArray(PresetJson::property(cubeValue, "vertexIds"));
-        auto guides = PresetJson::property(cubeValue, "guides");
-        auto gains = PresetJson::property(cubeValue, "gains");
+    int skippedWrongVertexCount = 0;
+    int skippedInvalidMapping = 0;
 
-        if (vertexIds == nullptr || vertexIds->size() != VertCube::numVerts) {
-            continue;
-        }
+    if (cubeArray != nullptr) {
+        for (const auto& cubeValue : *cubeArray) {
+            const Array<var>* vertexIds = PresetJson::getArray(PresetJson::property(cubeValue, "vertexIds"));
+            auto guides = PresetJson::property(cubeValue, "guides");
+            auto gains = PresetJson::property(cubeValue, "gains");
 
-        auto* cube = new VertCube();
+            if (vertexIds == nullptr || vertexIds->size() != VertCube::numVerts) {
+                ++skippedWrongVertexCount;
+                DBG(String::formatted("Mesh::readJSON skipping cube in %s: vertexIds size=%d expected=%d",
+                                      name.toRawUTF8(),
+                                      vertexIds != nullptr ? vertexIds->size() : -1,
+                                      VertCube::numVerts));
+                continue;
+            }
 
-        cube->guideCurveChans[Vertex::Time]  = PresetJson::intProperty(guides, "time", -1);
-        cube->guideCurveChans[Vertex::Red]   = PresetJson::intProperty(guides, "key", -1);
-        cube->guideCurveChans[Vertex::Blue]  = PresetJson::intProperty(guides, "mod", -1);
-        cube->guideCurveChans[Vertex::Phase] = PresetJson::intProperty(guides, "phase", -1);
-        cube->guideCurveChans[Vertex::Amp]   = PresetJson::intProperty(guides, "amp", -1);
-        cube->guideCurveChans[Vertex::Curve] = PresetJson::intProperty(guides, "curve", -1);
+            auto* cube = new VertCube();
 
-        cube->guideCurveGains[Vertex::Time]  = PresetJson::doubleProperty(gains, "time", 0.5);
-        cube->guideCurveGains[Vertex::Red]   = PresetJson::doubleProperty(gains, "key", 0.5);
-        cube->guideCurveGains[Vertex::Blue]  = PresetJson::doubleProperty(gains, "mod", 0.5);
-        cube->guideCurveGains[Vertex::Phase] = PresetJson::doubleProperty(gains, "phase", 0.5);
-        cube->guideCurveGains[Vertex::Amp]   = PresetJson::doubleProperty(gains, "amp", 0.5);
-        cube->guideCurveGains[Vertex::Curve] = PresetJson::doubleProperty(gains, "curve", 0.5);
+            cube->guideCurveChans[Vertex::Time]  = PresetJson::intProperty(guides, "time", -1);
+            cube->guideCurveChans[Vertex::Red]   = PresetJson::intProperty(guides, "key", -1);
+            cube->guideCurveChans[Vertex::Blue]  = PresetJson::intProperty(guides, "mod", -1);
+            cube->guideCurveChans[Vertex::Phase] = PresetJson::intProperty(guides, "phase", -1);
+            cube->guideCurveChans[Vertex::Amp]   = PresetJson::intProperty(guides, "amp", -1);
+            cube->guideCurveChans[Vertex::Curve] = PresetJson::intProperty(guides, "curve", -1);
 
-        bool valid = true;
+            cube->guideCurveGains[Vertex::Time]  = PresetJson::doubleProperty(gains, "time", 0.5);
+            cube->guideCurveGains[Vertex::Red]   = PresetJson::doubleProperty(gains, "key", 0.5);
+            cube->guideCurveGains[Vertex::Blue]  = PresetJson::doubleProperty(gains, "mod", 0.5);
+            cube->guideCurveGains[Vertex::Phase] = PresetJson::doubleProperty(gains, "phase", 0.5);
+            cube->guideCurveGains[Vertex::Amp]   = PresetJson::doubleProperty(gains, "amp", 0.5);
+            cube->guideCurveGains[Vertex::Curve] = PresetJson::doubleProperty(gains, "curve", 0.5);
 
-        for (int i = 0; i < VertCube::numVerts; ++i) {
-            int vertexId = int(vertexIds->getReference(i));
-            auto it = idMap.find(vertexId);
+            bool valid = true;
 
-            if (it == idMap.end() || !cube->setVertex(it->second, i)) {
-                valid = false;
-                break;
+            for (int i = 0; i < VertCube::numVerts; ++i) {
+                int vertexId = int(vertexIds->getReference(i));
+                auto it = idMap.find(vertexId);
+
+                if (it == idMap.end() || !cube->setVertex(it->second, i)) {
+                    DBG(String::formatted("Mesh::readJSON invalid cube mapping in %s: cubeVertex=%d vertexId=%d found=%d",
+                                          name.toRawUTF8(),
+                                          i,
+                                          vertexId,
+                                          it != idMap.end() ? 1 : 0));
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (valid) {
+                cubes.push_back(cube);
+            } else {
+                ++skippedInvalidMapping;
+                delete cube;
             }
         }
-
-        if (valid) {
-            cubes.push_back(cube);
-        } else {
-            delete cube;
-        }
+    } else {
+        DBG("cubeArray is empty");
     }
+
+    DBG(String::formatted("Mesh::readJSON complete name=%s verts=%d cubes=%d skippedWrongVertexCount=%d skippedInvalidMapping=%d",
+                          name.toRawUTF8(),
+                          (int) verts.size(),
+                          (int) cubes.size(),
+                          skippedWrongVertexCount,
+                          skippedInvalidMapping));
 
     return true;
 }

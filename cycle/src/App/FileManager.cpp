@@ -64,14 +64,14 @@ void FileManager::loadPendingItem() {
 File FileManager::findFactoryPresetFile(const String& presetName) const {
     String filename = presetName + "." + getStrConstant(DocumentExt);
     StringArray searchDirs = getObj(Directories).getPresetSearchDirs();
-    DBG("FileManager::findFactoryPresetFile preset=\"" + presetName + "\" filename=\"" + filename + "\"");
+    // DBG("FileManager::findFactoryPresetFile preset=\"" + presetName + "\" filename=\"" + filename + "\"");
 
     for (auto& dir : searchDirs) {
         File file(dir + filename);
-        DBG("  checking " + file.getFullPathName() + " exists=" + String(file.existsAsFile() ? "true" : "false"));
+        // DBG("  checking " + file.getFullPathName() + " exists=" + String(file.existsAsFile() ? "true" : "false"));
 
         if (file.existsAsFile()) {
-            DBG("  found preset at " + file.getFullPathName());
+            // DBG("  found preset at " + file.getFullPathName());
             return file;
         }
     }
@@ -137,6 +137,7 @@ void FileManager::openCurrentPreset() {
     getObj(Document).open(currentPresetName);
     DBG("FileManager::openCurrentPreset Document::open returned");
     doPostPresetLoad();
+    DBG("FileManager::openCurrentPreset finish post-preset updates");
 }
 
 bool FileManager::canSaveOverCurrentPreset() {

@@ -162,4 +162,3 @@ void PulloutComponent::removeBoxFromDesktop() {
     popup.setVisible(false);
     popup.removeFromDesktop();
 }
-
