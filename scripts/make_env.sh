@@ -35,8 +35,8 @@ prompt_directory() {
     return 0
   fi
 
-  echo -e "${BLUE}${prompt}${NC}"
-  echo -n "Default [${default}]: "
+  echo -e "${BLUE}${prompt}${NC}" >&2
+  printf "Default [%s]: " "$default" >&2
   read -r result
   if [ -z "$result" ]; then
     echo "$default"

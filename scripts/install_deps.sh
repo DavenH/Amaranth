@@ -174,6 +174,13 @@ install_juce() {
 install_vst3() {
   if confirm "Install/Update VST3 SDK?"; then
     clone_or_update "https://github.com/steinbergmedia/vst3sdk.git" "vst3sdk" "true"
+    if $IS_MACOS; then
+      if ! xcodebuild -version >/dev/null 2>&1; then
+        echo -e "${GREEN}Skipping VST3 SDK build on macOS.${NC} Command Line Tools are available, but the Steinberg SDK build expects full Xcode."
+        echo "The Amaranth build only needs VST3_SDK_DIR to point at ${INSTALL_ROOT}/vst3sdk."
+        return 0
+      fi
+    fi
     cmake -S "${INSTALL_ROOT}/vst3sdk" -B "${INSTALL_ROOT}/vst3sdk/build"
     cmake --build "${INSTALL_ROOT}/vst3sdk/build" -j
   fi
