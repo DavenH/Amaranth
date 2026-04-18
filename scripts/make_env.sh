@@ -29,15 +29,26 @@ prompt_directory() {
   local prompt="$1"
   local default="$2"
   local result=""
+  local tty="/dev/tty"
+
+  if [ -d "$default" ]; then
+    echo "$default"
+    return 0
+  fi
 
   if [ -n "$NONINTERACTIVE" ] && [ "$NONINTERACTIVE" != "0" ]; then
     echo "$default"
     return 0
   fi
 
-  echo -e "${BLUE}${prompt}${NC}" >&2
-  printf "Default [%s]: " "$default" >&2
-  read -r result
+  if [ ! -r "$tty" ] || [ ! -w "$tty" ]; then
+    echo "$default"
+    return 0
+  fi
+
+  printf "%b\n" "${BLUE}${prompt}${NC}" > "$tty"
+  printf "Default [%s]: " "$default" > "$tty"
+  read -r result < "$tty"
   if [ -z "$result" ]; then
     echo "$default"
   else
@@ -96,8 +107,8 @@ mkdir -p "$(dirname "$INSTALL_ROOT")"
   echo "CATCH2_CMAKE_DIR=${CATCH2_DIR}"
   if $IS_MACOS; then
     echo "MACOS=1"
-    echo "VDSP=1               # macOS uses Accelerate/vDSP"
-    echo "IPP_DIR=             # unused on macOS"
+    echo "VDSP=1"
+    echo "IPP_DIR="
   else
     echo "LINUX=1"
     echo "IPP_DIR=${IPP_DIR}"

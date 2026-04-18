@@ -496,12 +496,12 @@ void MeshRasterizer::calcWaveform() {
             Intercept& nextCentre = nextCurve.b;
 
             GuideCurveProvider::NoiseContext noise;
-            noise.noiseSeed   = noiseSeed < 0 ? morph.time.getCurrentValue() * INT_MAX : noiseSeed;
+            noise.noiseSeed   = noiseSeed < 0 ? morph.time.getCurrentValue() * std::numeric_limits<int>::max() : noiseSeed;
             noise.phaseOffset = phaseOffsetSeeds[compDfrm];
             noise.vertOffset  = vertOffsetSeeds[compDfrm];
 
-            Buffer<Float32> yPortion(waveY + waveIdx, curveRes);
-            Buffer<Float32> xPortion(waveX + waveIdx, curveRes);
+            Buffer yPortion(waveY + waveIdx, curveRes);
+            Buffer xPortion(waveX + waveIdx, curveRes);
 
             float multiplier = thisCentre.shp * cube->guideCurveAbsGain(Vertex::Time);
 

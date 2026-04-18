@@ -37,9 +37,21 @@ endif()
 # Environment
 file(STRINGS .env ENV_FILE)
 foreach(VAR ${ENV_FILE})
-    string(REGEX MATCH "^[^=]*" KEY ${VAR})
-    string(REGEX REPLACE "^[^=]*=" "" VALUE ${VAR})
-    set(ENV{${KEY}} ${VALUE})
+    string(STRIP "${VAR}" VAR)
+    if(VAR STREQUAL "" OR VAR MATCHES "^#")
+        continue()
+    endif()
+
+    string(REGEX MATCH "^[^=]*" KEY "${VAR}")
+    string(REGEX REPLACE "^[^=]*=" "" VALUE "${VAR}")
+    string(STRIP "${KEY}" KEY)
+    string(STRIP "${VALUE}" VALUE)
+
+    if(KEY STREQUAL "")
+        continue()
+    endif()
+
+    set(ENV{${KEY}} "${VALUE}")
 endforeach()
 
 # Global settings

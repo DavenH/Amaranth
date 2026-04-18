@@ -10,6 +10,7 @@ set -euo pipefail
 
 DEFAULT_INSTALL_ROOT="${HOME}/SDKs"
 INSTALL_ROOT="${INSTALL_ROOT:-$DEFAULT_INSTALL_ROOT}"
+JUCE_REF="${JUCE_REF:-8.0.4}"
 
 OS_NAME="$(uname -s || echo unknown)"
 IS_MACOS=false
@@ -89,20 +90,35 @@ clone_or_update() {
   local repo_url="$1"
   local dir_name="$2"
   local recursive="${3:-false}"
+  local ref="${4:-}"
 
   cd "$INSTALL_ROOT"
   if [ -d "$dir_name/.git" ]; then
     echo -e "${BLUE}Updating $dir_name...${NC}"
-    git -C "$dir_name" pull --ff-only
+    if [ -n "$ref" ]; then
+      git -C "$dir_name" fetch --depth=1 origin "refs/tags/${ref}:refs/tags/${ref}" 2>/dev/null \
+        || git -C "$dir_name" fetch --depth=1 origin "$ref"
+      git -C "$dir_name" checkout "$ref"
+    else
+      git -C "$dir_name" pull --ff-only
+    fi
     if [ "$recursive" = "true" ]; then
       git -C "$dir_name" submodule update --init --recursive
     fi
   else
     echo -e "${BLUE}Cloning $dir_name...${NC}"
     if [ "$recursive" = "true" ]; then
-      git clone --depth=1 --recursive "$repo_url" "$dir_name"
+      if [ -n "$ref" ]; then
+        git clone --depth=1 --branch "$ref" --recursive "$repo_url" "$dir_name"
+      else
+        git clone --depth=1 --recursive "$repo_url" "$dir_name"
+      fi
     else
-      git clone --depth=1 "$repo_url" "$dir_name"
+      if [ -n "$ref" ]; then
+        git clone --depth=1 --branch "$ref" "$repo_url" "$dir_name"
+      else
+        git clone --depth=1 "$repo_url" "$dir_name"
+      fi
     fi
   fi
 }
@@ -165,7 +181,7 @@ install_catch2() {
 
 install_juce() {
   if confirm "Install/Update JUCE?"; then
-    clone_or_update "https://github.com/juce-framework/JUCE.git" "JUCE" "false"
+    clone_or_update "https://github.com/juce-framework/JUCE.git" "JUCE" "false" "$JUCE_REF"
     cmake -S "${INSTALL_ROOT}/JUCE" -B "${INSTALL_ROOT}/JUCE/build" -DJUCE_BUILD_EXAMPLES=OFF -DJUCE_BUILD_EXTRAS=OFF
     cmake --build "${INSTALL_ROOT}/JUCE/build" -j
   fi
