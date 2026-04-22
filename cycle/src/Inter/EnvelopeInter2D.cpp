@@ -512,67 +512,64 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
         EnvelopeMesh* currentMesh = getCurrentMesh();
 
         if (currentMesh == nullptr) {
+            jassertfalse;
             return;
         }
 
         bool onlyShallowUpdate = true;
 
-        if (!currentMesh) {
-            jassertfalse;
+        if (getSetting(DrawWave)) {
+            showConsoleMsg("Cannot set loop in wave draw mode");
         } else {
-            if (getSetting(DrawWave)) {
-                showConsoleMsg("Cannot set loop in wave draw mode");
-            } else {
-                IconButton &bttn = isLoop ? loopIcon : sustainIcon;
-                Vertex* vert = selected.front();
-                VertCube* cube = nullptr;
+            IconButton &bttn = isLoop ? loopIcon : sustainIcon;
+            Vertex* vert = selected.front();
+            VertCube* cube = nullptr;
 
-                const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
-                for (const auto& icpt : icpts) {
-                    for (int j = 0; j < vert->getNumOwners(); ++j) {
-                        VertCube* vertCube = vert->owners[j];
+            const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
+            for (const auto& icpt : icpts) {
+                for (int j = 0; j < vert->getNumOwners(); ++j) {
+                    VertCube* vertCube = vert->owners[j];
 
-                        if (icpt.cube == vertCube && vertCube != nullptr) {
-                            cube = vertCube;
-                        }
-                        break;
+                    if (icpt.cube == vertCube && vertCube != nullptr) {
+                        cube = vertCube;
                     }
+                    break;
                 }
+            }
 
-                jassert(cube != nullptr);
+            jassert(cube != nullptr);
 
-                if (cube == nullptr) {
-                    return;
-                }
+            if (cube == nullptr) {
+                return;
+            }
 
-                set < VertCube * > &envLines = isLoop ? currentMesh->loopCubes : currentMesh->sustainCubes;
+            set < VertCube * > &envLines = isLoop ? currentMesh->loopCubes : currentMesh->sustainCubes;
 
-                bool wasAlreadySet = envLines.find(cube) != envLines.end();
-                bool didAnything = false;
+            bool wasAlreadySet = envLines.find(cube) != envLines.end();
+            bool didAnything = false;
 
-                removeCurrentEnvLine(isLoop);
+            removeCurrentEnvLine(isLoop);
 
-                if (!wasAlreadySet) {
-                    envLines.insert(cube);
-                }
+            if (!wasAlreadySet) {
+                envLines.insert(cube);
+            }
 
-                getEnvRasterizer()->evaluateLoopSustainIndices();
-                didAnything |= synchronizeEnvPoints(vert, true);
+            getEnvRasterizer()->evaluateLoopSustainIndices();
+            didAnything |= synchronizeEnvPoints(vert, true);
 
-                bool isNowSet = envLines.find(cube) != envLines.end();
-                didAnything |= isNowSet != wasAlreadySet;
+            bool isNowSet = envLines.find(cube) != envLines.end();
+            didAnything |= isNowSet != wasAlreadySet;
 
-                onlyShallowUpdate = !didAnything;
-                bttn.setHighlit(isNowSet);
+            onlyShallowUpdate = !didAnything;
+            bttn.setHighlit(isNowSet);
 
-                if (onlyShallowUpdate) {
-                    performUpdate(Update);
-                } else {
-                    getObj(EditWatcher).setHaveEditedWithoutUndo(true);
-                    flag(DidMeshChange) = true;
+            if (onlyShallowUpdate) {
+                performUpdate(Update);
+            } else {
+                getObj(EditWatcher).setHaveEditedWithoutUndo(true);
+                flag(DidMeshChange) = true;
 
-                    refresh();
-                }
+                refresh();
             }
         }
     }

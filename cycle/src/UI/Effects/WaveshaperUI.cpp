@@ -32,6 +32,7 @@ WaveshaperUI::WaveshaperUI(SingletonRepo* repo) :
 
 void WaveshaperUI::init() {
     EffectPanel::init();
+    getObj(MeshLibrary).addListener(this);
 
     updateSource			= UpdateSources::SourceWaveshaper;
     layerType 				= LayerGroups::GroupWaveshaper;
@@ -95,8 +96,7 @@ void WaveshaperUI::init() {
     waveshaper->setRasterizer(rasterizer);
 
     rasterizer->setGuideCurveProvider(&getObj(GuideCurvePanel));
-    rasterizer->setMesh(getMesh());
-    rasterizer->performUpdate(Update);
+    setMeshAndUpdate(getObj(MeshLibrary).getEffectiveMesh(layerType));
 
     selector = std::make_unique<MeshSelector<Mesh>>(repo, this, "ws", false, true, true);
 
@@ -149,6 +149,13 @@ void WaveshaperUI::postCurveDraw() {
 }
 
 void WaveshaperUI::setMeshAndUpdate(Mesh* mesh) {
+    if (mesh == nullptr) {
+        rasterizer->cleanUp();
+        rasterizer->setMesh(nullptr);
+        repaint();
+        return;
+    }
+
     mesh->updateToVersion(ProjectInfo::versionNumber);
 
     rasterizer->cleanUp();
@@ -160,8 +167,6 @@ void WaveshaperUI::setMeshAndUpdate(Mesh* mesh) {
 }
 
 void WaveshaperUI::setCurrentMesh(Mesh* mesh) {
-    setMeshAndUpdate(mesh);
-
     getObj(EditWatcher).setHaveEditedWithoutUndo(true);
     getObj(MeshLibrary).setCurrentMesh(layerType, mesh);
 
@@ -170,15 +175,21 @@ void WaveshaperUI::setCurrentMesh(Mesh* mesh) {
 }
 
 void WaveshaperUI::previewMesh(Mesh* mesh) {
-    ScopedLock sl(panel->getRenderLock());
-
-    setMeshAndUpdate(mesh);
+    getObj(MeshLibrary).beginPreviewMesh(layerType, mesh);
 }
 
 void WaveshaperUI::previewMeshEnded(Mesh* oldMesh) {
-    ScopedLock sl(panel->getRenderLock());
+    ignoreUnused(oldMesh);
+    getObj(MeshLibrary).endPreviewMesh(layerType);
+}
 
-    setMeshAndUpdate(oldMesh);
+void WaveshaperUI::effectiveMeshChanged(int layerGroup, Mesh* mesh) {
+    if (layerGroup != layerType) {
+        return;
+    }
+
+    ScopedLock sl(panel->getRenderLock());
+    setMeshAndUpdate(mesh);
 }
 
 void WaveshaperUI::enterClientLock() {

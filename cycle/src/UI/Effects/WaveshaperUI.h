@@ -1,5 +1,6 @@
 #pragma once
 
+#include <App/MeshLibrary.h>
 #include <App/Doc/Savable.h>
 #include <App/SingletonAccessor.h>
 #include <Obj/Ref.h>
@@ -25,6 +26,7 @@ class WaveshaperUI :
     ,	public ParameterGroup::Worker
     ,	public Savable
     ,	public TourGuide
+    ,   public MeshLibrary::Listener
 {
 public:
     explicit WaveshaperUI(SingletonRepo* repo);
@@ -69,6 +71,7 @@ public:
     void setCurrentMesh		(Mesh* mesh) override;
     void previewMesh		(Mesh* mesh) override;
     void previewMeshEnded	(Mesh* oldMesh) override;
+    void effectiveMeshChanged(int layerGroup, Mesh* mesh) override;
     void doubleMesh() override;
 
     Mesh* getCurrentMesh() override;

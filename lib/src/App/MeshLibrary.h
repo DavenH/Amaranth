@@ -48,6 +48,7 @@ public:
         virtual void layerAdded(int layerGroup, int index) {}
         virtual void layerRemoved(int layerGroup, int index) {}
         virtual void layerChanged(int layerGroup, int index) {}
+        virtual void effectiveMeshChanged(int layerGroup, Mesh* mesh) {}
         virtual void instantiateLayer(XmlElement* layerElem, int meshType) {}
     };
 
@@ -98,7 +99,8 @@ public:
     struct LayerGroup {
         explicit LayerGroup(int type)
             : meshType(type),
-              current(0) {
+              current(0),
+              previewMesh(nullptr) {
         }
 
         [[nodiscard]] int size() const { return layers.size(); }
@@ -114,6 +116,7 @@ public:
 
         int current;
         int meshType;
+        Mesh* previewMesh;
 
         map<int, Array<int>> sources;
         vector<Layer> layers;
@@ -152,6 +155,8 @@ public:
     bool canPasteTo(int type) const;
     void copyToClipboard(Mesh* mesh, int type);
     void pasteFromClipboardTo(Mesh* mesh, int type);
+    void beginPreviewMesh(int groupId, Mesh* mesh);
+    void endPreviewMesh(int groupId);
     bool layerRemoved(int layerGroup, int index);
     bool layerChanged(int layerGroup, int index);
 
@@ -171,6 +176,7 @@ public:
     [[nodiscard]] int           getCurrentIndex(int group)      { return getLayerGroup(group).current;  }
     [[nodiscard]] Mesh*         getMesh(int group, int index)   { return getLayer(group, index).mesh;   }
     [[nodiscard]] Mesh*         getCurrentMesh(int group)       { return getCurrentLayer(group).mesh;   }
+    [[nodiscard]] Mesh*         getEffectiveMesh(int group);
     [[nodiscard]] Layer&        getLayer(int group, int index)  { return getLayerGroup(group).layers[index]; }
     [[nodiscard]] Properties*   getProps(int group, int index)  { return getLayer(group, index).props;  }
     [[nodiscard]] Properties*   getCurrentProps(int group)      { return getCurrentLayer(group).props;  }
@@ -185,6 +191,8 @@ public:
     void updateAllSmoothedParamsToTarget(int voiceIndex) const;
 
 protected:
+    void notifyEffectiveMeshChanged(int groupId, Mesh* mesh);
+
     CriticalSection arrayLock;
     ClipboardMesh clipboardMesh;
 
