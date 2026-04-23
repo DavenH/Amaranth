@@ -189,6 +189,18 @@ void FileManager::doPostPresetLoad() {
     getObj(PresetPage)		.updatePresetIndex();
     getObj(MorphPanel)		.setSelectedCube(nullptr, nullptr, -1, false);
 
+    if (getSetting(WaveLoaded)) {
+        auto& multisample = getObj(Multisample);
+
+        for (int i = 0; i < multisample.size(); ++i) {
+            if (PitchedSample* sample = multisample.getSampleAt(i)) {
+                sample->createPeriodsFromEnv(meshLibrary, &getObj(EnvPitchRast));
+            }
+        }
+
+        multisample.performUpdate(Update);
+    }
+
   #if PLUGIN_MODE
     getObj(PluginProcessor).suspendProcessing(false);
     getObj(PluginProcessor).documentHasLoaded();

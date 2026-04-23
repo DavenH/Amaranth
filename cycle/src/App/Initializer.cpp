@@ -239,10 +239,10 @@ void Initializer::setConstants() {
     constants.setConstant(MaxDetune, 		    70);
     constants.setConstant(MaxCyclePeriod, 		4096);
     constants.setConstant(MaxBufferSize, 		8192);
-    constants.setConstant(AmpLogTension, 	    500);
+    constants.setConstant(AmpTensionScale, 	    500);
     constants.setConstant(EnvResolution, 		128);
     constants.setConstant(ResamplerLatency, 	32);
-    constants.setConstant(FreqLogTension, 		50);
+    constants.setConstant(FreqTensionScale, 		50);
     constants.setConstant(ControllerValueSaturation, 127);
     constants.setConstant(FontFace,             fontFace);
 }

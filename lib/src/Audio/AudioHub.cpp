@@ -22,22 +22,31 @@ AudioHub::AudioHub(SingletonRepo* repo) :
 
 AudioHub::~AudioHub() {
   #if !PLUGIN_MODE
-    audioDeviceManager.removeAudioCallback(this);
-    audioDeviceManager.removeMidiInputDeviceCallback(String(), &midiCollector);
+    audioDeviceManager->removeAudioCallback(this);
+    audioDeviceManager->removeMidiInputDeviceCallback(String(), &midiCollector);
   #endif
 
     currentProcessor = nullptr;
     audioSourcePlayer.setSource(nullptr);
-    audioDeviceManager.closeAudioDevice();
+    audioDeviceManager->closeAudioDevice();
+}
+
+AudioDeviceManager& AudioHub::ensureAudioDeviceManager() {
+    if (audioDeviceManager == nullptr) {
+        audioDeviceManager = std::make_unique<AudioDeviceManager>();
+    }
+
+    return *audioDeviceManager;
 }
 
 void AudioHub::initialiseAudioDevice(XmlElement* midiSettings) {
   #if !PLUGIN_MODE
-    const String error(audioDeviceManager.initialise(1, 2, midiSettings, true));
-    AudioIODevice* device = audioDeviceManager.getCurrentAudioDevice();
+    auto& deviceManager = ensureAudioDeviceManager();
+    const String error(deviceManager.initialise(1, 2, midiSettings, true));
+    AudioIODevice* device = deviceManager.getCurrentAudioDevice();
     AudioDeviceManager::AudioDeviceSetup setup;
 
-    audioDeviceManager.getAudioDeviceSetup(setup);
+    deviceManager.getAudioDeviceSetup(setup);
     bufferSize = setup.bufferSize;
     sampleRate = setup.sampleRate;
 
@@ -48,8 +57,8 @@ void AudioHub::initialiseAudioDevice(XmlElement* midiSettings) {
         deviceError = error;
     } else {
         // start the IO device pulling its data from our callback.
-        audioDeviceManager.addAudioCallback(this);
-        audioDeviceManager.addMidiInputDeviceCallback ({}, &midiCollector);
+        deviceManager.addAudioCallback(this);
+        deviceManager.addMidiInputDeviceCallback ({}, &midiCollector);
         audioSourcePlayer.setSource(this);
     }
 
@@ -60,13 +69,21 @@ void AudioHub::initialiseAudioDevice(XmlElement* midiSettings) {
 #if !PLUGIN_MODE
 
 void AudioHub::suspendAudio() {
-    audioDeviceManager.removeAudioCallback(this);
-    audioDeviceManager.removeMidiInputDeviceCallback(String(), &midiCollector);
+    if (audioDeviceManager == nullptr) {
+        return;
+    }
+
+    audioDeviceManager->removeAudioCallback(this);
+    audioDeviceManager->removeMidiInputDeviceCallback(String(), &midiCollector);
 }
 
 void AudioHub::resumeAudio() {
-    audioDeviceManager.addAudioCallback(this);
-    audioDeviceManager.addMidiInputDeviceCallback({}, &midiCollector);
+    if (audioDeviceManager == nullptr) {
+        return;
+    }
+
+    audioDeviceManager->addAudioCallback(this);
+    audioDeviceManager->removeMidiInputDeviceCallback(String(), &midiCollector);
 }
 
 void AudioHub::audioDeviceIOCallbackWithContext(
@@ -96,12 +113,16 @@ void AudioHub::audioDeviceStopped() {
 }
 
 AudioDeviceManager* AudioHub::getAudioDeviceManager() {
-    return &audioDeviceManager;
+    return &ensureAudioDeviceManager();
 }
 
 void AudioHub::stopAudio() {
-    audioDeviceManager.removeAudioCallback(this);
-    audioDeviceManager.closeAudioDevice();
+    if (audioDeviceManager == nullptr) {
+        return;
+    }
+
+    audioDeviceManager->removeAudioCallback(this);
+    audioDeviceManager->closeAudioDevice();
 
     deviceListeners.call(&DeviceListener::audioDeviceIsUnready);
 }
@@ -149,14 +170,6 @@ void AudioHub::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
 
     if(currentProcessor != nullptr) {
         currentProcessor->processBlock(buffer, midiMessages);
-    }
-}
-
-void AudioHub::setAudioSourceProcessor(AudioSourceProcessor* processor) {
-    currentProcessor = processor;
-
-    if (currentProcessor != nullptr && sampleRate > 0 && bufferSize > 0) {
-        currentProcessor->prepareToPlay(bufferSize, sampleRate);
     }
 }
 

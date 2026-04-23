@@ -651,12 +651,12 @@ bool Envelope2D::readXML(const XmlElement* element) {
                 continue;
             }
 
-            MeshLibrary::Layer layer = meshLibrary.instantiateLayer(elem, MeshLibrary::TypeEnvelope);
+            MeshLibrary::Layer layer = meshLibrary.instantiateLayer(elem, group.meshType);
             group.layers.push_back(layer);
         }
 
         if (group.layers.empty()) {
-            group.layers.push_back(meshLibrary.instantiateLayer(nullptr, MeshLibrary::TypeEnvelope));
+            group.layers.push_back(meshLibrary.instantiateLayer(nullptr, group.meshType));
         }
 
         group.current = jlimit(0, jmax(0, group.size() - 1), envProps->getIntAttribute(mapping.currentIndexAttr, 0));
@@ -728,6 +728,7 @@ bool Envelope2D::readJSON(const var& object) {
     // TODO: Envelope meshes are currently rebuilt here after MeshLibrary has already
     // restored its own copy from the preset. Unify this so there is a single
     // authoritative env-mesh restore path and rasterizers only need rebinding.
+    // Update: might be done after merge
     for (const auto& mapping : envelopeMappings) {
         var groupValue = groupsJson->getProperty(mapping.jsonKey);
         auto* groupObject = PresetJson::getObject(groupValue);
@@ -737,15 +738,15 @@ bool Envelope2D::readJSON(const var& object) {
         }
 
         MeshLibrary::LayerGroup& group = meshLibrary.getLayerGroup(mapping.groupId);
-        for (auto& layer : group.layers) {
-            meshLibrary.destroyLayer(layer, false);
-        }
+        // for (auto& layer : group.layers) {
+        //     meshLibrary.destroyLayer(layer, false);
+        // }
 
         group.layers.clear();
 
         if (const auto* layers = PresetJson::getArray(groupObject->getProperty("layers"))) {
             for (const auto& layerValue : *layers) {
-                MeshLibrary::Layer layer = meshLibrary.instantiateLayer(nullptr, MeshLibrary::TypeEnvelope);
+                MeshLibrary::Layer layer = meshLibrary.instantiateLayer(nullptr, group.meshType);
 
                 if (var meshValue = PresetJson::property(layerValue, "mesh"); !meshValue.isVoid()) {
                     (void) layer.mesh->readJSON(meshValue);
@@ -762,32 +763,33 @@ bool Envelope2D::readJSON(const var& object) {
         }
 
         if (group.layers.empty()) {
-            group.layers.push_back(meshLibrary.instantiateLayer(nullptr, MeshLibrary::TypeEnvelope));
+            group.layers.push_back(meshLibrary.instantiateLayer(nullptr, group.meshType));
         }
 
         group.current = jlimit(0, jmax(0, group.size() - 1),
                                PresetJson::intProperty(groupValue, "currentLayer", group.current));
     }
 
-    auto bindEnvRasterizer = [this, &meshLibrary](int groupId, const char* label) {
-        auto* rast = static_cast<EnvRasterizer*>(e2Interactor->getRast(groupId));
-        auto* mesh = meshLibrary.getCurrentEnvMesh(groupId);
-
-        DBG(String::formatted("Envelope2D::readJSON rebinding %s rast=%p mesh=%p verts=%d cubes=%d",
-                              label,
-                              rast,
-                              mesh,
-                              mesh != nullptr ? mesh->getNumVerts() : -1,
-                              mesh != nullptr ? mesh->getNumCubes() : -1));
-
-        jassert(rast != nullptr);
-        rast->setMesh(mesh);
-        rast->performUpdate(Update);
-    };
-
-    bindEnvRasterizer(LayerGroups::GroupVolume, "volume");
-    bindEnvRasterizer(LayerGroups::GroupPitch, "pitch");
-    bindEnvRasterizer(LayerGroups::GroupScratch, "scratch");
+    // TODO re-evaluate this after mesh-listener cleanup merge
+    // auto bindEnvRasterizer = [this, &meshLibrary](int groupId, const char* label) {
+    //     auto* rast = static_cast<EnvRasterizer*>(e2Interactor->getRast(groupId));
+    //     auto* mesh = meshLibrary.getCurrentEnvMesh(groupId);
+    //
+    //     DBG(String::formatted("Envelope2D::readJSON rebinding %s rast=%p mesh=%p verts=%d cubes=%d",
+    //                           label,
+    //                           rast,
+    //                           mesh,
+    //                           mesh != nullptr ? mesh->getNumVerts() : -1,
+    //                           mesh != nullptr ? mesh->getNumCubes() : -1));
+    //
+    //     jassert(rast != nullptr);
+    //     rast->setMesh(mesh);
+    //     rast->performUpdate(Update);
+    // };
+    //
+    // bindEnvRasterizer(LayerGroups::GroupVolume, "volume");
+    // bindEnvRasterizer(LayerGroups::GroupPitch, "pitch");
+    // bindEnvRasterizer(LayerGroups::GroupScratch, "scratch");
 
     getSetting(CurrentEnvGroup) = PresetJson::intProperty(object, "currentGroup", getSetting(CurrentEnvGroup));
     e2Interactor->enablementsChanged();

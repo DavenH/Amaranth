@@ -92,8 +92,6 @@ void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
 
         while ((sample = multisample->getSampleAt(index++)) != nullptr) {
             samples.push_back(sample);
-
-            jassert(sample->mesh != nullptr);
         }
     } else {
         samples.push_back(multisample->getCurrentSample());
@@ -189,9 +187,10 @@ void SampleUtils::waveNoteChanged(PitchedSample* sample, bool isMulti, bool invo
     }
 
     auto& pitchRast = getObj(EnvPitchRast);
+    auto& meshLibrary = getObj(MeshLibrary);
 
-    sample->createEnvFromPeriods(isMulti);
-    sample->createPeriodsFromEnv(static_cast<MeshRasterizer*>(&pitchRast));
+    sample->createEnvFromPeriods(meshLibrary, isMulti);
+    sample->createPeriodsFromEnv(meshLibrary, static_cast<MeshRasterizer*>(&pitchRast));
 }
 
 

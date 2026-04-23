@@ -4,14 +4,6 @@
 #include <App/AppConstants.h>
 #include <App/Settings.h>
 
-namespace LayerGroups {
-    enum {
-        GroupWavePitch = numDefaultGroups,
-        GroupWaveshaper,
-        GroupIrModeller
-    };
-}
-
 namespace UpdateSources {
     enum {
         SourceNull,

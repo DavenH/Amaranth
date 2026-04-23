@@ -1,5 +1,6 @@
 #pragma once
 
+#include <App/MeshLibrary.h>
 #include <App/Doc/Savable.h>
 #include <Obj/Ref.h>
 #include <UI/ColorGradient.h>
@@ -32,6 +33,7 @@ class IrModellerUI:
     ,	public EffectPanel
     ,	public ParameterGroup::Worker
     ,	public MeshSelectionClient<Mesh>
+    ,   public MeshLibrary::Listener
 {
 public:
     explicit IrModellerUI(SingletonRepo* repo);
@@ -78,6 +80,7 @@ public:
     void setCurrentMesh(Mesh* mesh) override;
     void previewMesh(Mesh* mesh) override;
     void previewMeshEnded(Mesh* oldMesh) override;
+    void effectiveMeshChanged(int layerGroup, Mesh* mesh) override;
     void setMeshAndUpdate(Mesh* mesh, bool repaint = true);
     void setMeshAndUpdateNoRepaint(Mesh* mesh);
     void exitClientLock() override;

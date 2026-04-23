@@ -21,6 +21,10 @@ MeshLibrary::~MeshLibrary() {
     destroy();
 }
 
+void MeshLibrary::notifyEffectiveMeshChanged(int groupId, Mesh* mesh) {
+    listeners.call(&Listener::effectiveMeshChanged, groupId, mesh);
+}
+
 void MeshLibrary::destroyLayer(Layer& layer, bool notifyEditWatcher) {
     if (layer.mesh != nullptr) {
         if (auto* envMesh = dynamic_cast<EnvelopeMesh*>(layer.mesh)) {
@@ -92,18 +96,94 @@ MeshLibrary::LayerGroup& MeshLibrary::getLayerGroup(int group) {
 
 void MeshLibrary::addLayer(int groupId) {
     LayerGroup& group = getLayerGroup(groupId);
+    Mesh* effectiveMesh = nullptr;
 
     ScopedLock sl(arrayLock);
     group.layers.push_back(instantiateLayer(nullptr, group.meshType));
+    effectiveMesh = group.previewMesh != nullptr ? group.previewMesh : group.getCurrentMesh();
 
     int index = group.layers.size() - 1;
     listeners.call(&Listener::layerAdded, groupId, index);
+    notifyEffectiveMeshChanged(groupId, effectiveMesh);
 }
 
 void MeshLibrary::setCurrentMesh(int groupId, Mesh* mesh) {
-    ScopedLock sl(arrayLock);
+    Mesh* oldEffectiveMesh = nullptr;
+    Mesh* newEffectiveMesh = nullptr;
 
-    getCurrentLayer(groupId).mesh = mesh;
+    {
+        ScopedLock sl(arrayLock);
+
+        LayerGroup& group = getLayerGroup(groupId);
+        oldEffectiveMesh = group.previewMesh != nullptr ? group.previewMesh : group.getCurrentMesh();
+        getCurrentLayer(groupId).mesh = mesh;
+        newEffectiveMesh = group.previewMesh != nullptr ? group.previewMesh : group.getCurrentMesh();
+    }
+
+    if (oldEffectiveMesh != newEffectiveMesh) {
+        notifyEffectiveMeshChanged(groupId, newEffectiveMesh);
+    }
+}
+
+void MeshLibrary::beginPreviewMesh(int groupId, Mesh* mesh) {
+    Mesh* oldEffectiveMesh = nullptr;
+    Mesh* newEffectiveMesh = nullptr;
+
+    {
+        ScopedLock sl(arrayLock);
+
+        LayerGroup& group = getLayerGroup(groupId);
+        oldEffectiveMesh = group.previewMesh != nullptr ? group.previewMesh : group.getCurrentMesh();
+        group.previewMesh = mesh;
+        newEffectiveMesh = group.previewMesh != nullptr ? group.previewMesh : group.getCurrentMesh();
+    }
+
+    if (oldEffectiveMesh != newEffectiveMesh) {
+        notifyEffectiveMeshChanged(groupId, newEffectiveMesh);
+    }
+}
+
+void MeshLibrary::endPreviewMesh(int groupId) {
+    Mesh* oldEffectiveMesh = nullptr;
+    Mesh* newEffectiveMesh = nullptr;
+
+    {
+        ScopedLock sl(arrayLock);
+
+        LayerGroup& group = getLayerGroup(groupId);
+        oldEffectiveMesh = group.previewMesh != nullptr ? group.previewMesh : group.getCurrentMesh();
+        group.previewMesh = nullptr;
+        newEffectiveMesh = group.previewMesh != nullptr ? group.previewMesh : group.getCurrentMesh();
+    }
+
+    if (oldEffectiveMesh != newEffectiveMesh) {
+        notifyEffectiveMeshChanged(groupId, newEffectiveMesh);
+    }
+}
+
+void MeshLibrary::setCurrentIndex(int groupId, int layerIndex) {
+    Mesh* oldEffectiveMesh = nullptr;
+    Mesh* newEffectiveMesh = nullptr;
+
+    {
+        ScopedLock sl(arrayLock);
+
+        LayerGroup& group = getLayerGroup(groupId);
+
+        if (!isPositiveAndBelow(layerIndex, (int) group.layers.size()) || group.current == layerIndex) {
+            return;
+        }
+
+        oldEffectiveMesh = group.previewMesh != nullptr ? group.previewMesh : group.getCurrentMesh();
+        group.current = layerIndex;
+        newEffectiveMesh = group.previewMesh != nullptr ? group.previewMesh : group.getCurrentMesh();
+    }
+
+    listeners.call(&Listener::layerChanged, groupId, layerIndex);
+
+    if (oldEffectiveMesh != newEffectiveMesh) {
+        notifyEffectiveMeshChanged(groupId, newEffectiveMesh);
+    }
 }
 
 MeshLibrary::Layer& MeshLibrary::getCurrentLayer(int groupId) {
@@ -114,6 +194,11 @@ MeshLibrary::Layer& MeshLibrary::getCurrentLayer(int groupId) {
     }
 
     return dummyLayer;
+}
+
+Mesh* MeshLibrary::getEffectiveMesh(int groupId) {
+    LayerGroup& group = getLayerGroup(groupId);
+    return group.previewMesh != nullptr ? group.previewMesh : getCurrentLayer(groupId).mesh;
 }
 
 void MeshLibrary::copyToClipboard(Mesh* mesh, int type) {
@@ -232,32 +317,39 @@ void MeshLibrary::writeXML(XmlElement* element) const {
 
 bool MeshLibrary::readXML(const XmlElement* element) {
     XmlElement* repoElem = element->getChildByName("MeshLibrary");
+    vector<Mesh*> effectiveMeshes;
 
     if (repoElem == nullptr) {
         return false;
     }
 
-    ScopedLock sl(arrayLock);
+    {
+        ScopedLock sl(arrayLock);
 
-    destroy();
-    for(auto& layerGroup : layerGroups) {
-        listeners.call(&Listener::layerGroupDeleted, layerGroup.meshType);
-    }
-    layerGroups.clear();
+        destroy();
+        layerGroups.clear();
 
-    for(auto groupElem : repoElem->getChildWithTagNameIterator("Group")) {
-        LayerGroup group(groupElem->getIntAttribute("mesh-type", TypeMesh));
+        for(auto groupElem : repoElem->getChildWithTagNameIterator("Group")) {
+            LayerGroup group(groupElem->getIntAttribute("mesh-type", TypeMesh));
 
-        for(auto layerElem : groupElem->getChildWithTagNameIterator("Layer")) {
-            Layer layer = instantiateLayer(layerElem, group.meshType);
-            group.layers.push_back(layer);
+            for(auto layerElem : groupElem->getChildWithTagNameIterator("Layer")) {
+                Layer layer = instantiateLayer(layerElem, group.meshType);
+                group.layers.push_back(layer);
+            }
+
+            layerGroups.push_back(group);
         }
 
-        layerGroups.push_back(group);
+        for (int i = 0; i < (int) layerGroups.size(); ++i) {
+            effectiveMeshes.emplace_back(layerGroups[i].getCurrentMesh());
+        }
     }
-    for(auto& layerGroup : layerGroups) {
-        listeners.call(&Listener::layerGroupAdded, layerGroup.meshType);
+
+    for (int i = 0; i < (int) layerGroups.size(); ++i) {
+        listeners.call(&Listener::layerGroupAdded, i);
+        notifyEffectiveMeshChanged(i, effectiveMeshes[i]);
     }
+
     return true;
 }
 
@@ -296,41 +388,53 @@ var MeshLibrary::writeJSON() const {
 
 bool MeshLibrary::readJSON(const var& object) {
     const Array<var>* groups = PresetJson::getArray(PresetJson::property(object, "groups"));
+    vector<Mesh*> effectiveMeshes;
 
     if (groups == nullptr) {
         return false;
     }
 
-    ScopedLock sl(arrayLock);
+    {
+        ScopedLock sl(arrayLock);
 
-    destroy();
-    layerGroups.clear();
+        destroy();
+        layerGroups.clear();
 
-    for (const auto& groupValue : *groups) {
-        LayerGroup group(PresetJson::intProperty(groupValue, "meshType", TypeMesh));
-        const Array<var>* layers = PresetJson::getArray(PresetJson::property(groupValue, "layers"));
+        for (const auto& groupValue : *groups) {
+            LayerGroup group(PresetJson::intProperty(groupValue, "meshType", TypeMesh));
+            const Array<var>* layers = PresetJson::getArray(PresetJson::property(groupValue, "layers"));
 
-        if (layers == nullptr) {
-            continue;
-        }
-
-        for (const auto& layerValue : *layers) {
-            Layer layer = instantiateLayer(nullptr, group.meshType);
-            var meshValue = PresetJson::property(layerValue, "mesh");
-            var propsValue = PresetJson::property(layerValue, "properties");
-
-            if (layer.mesh != nullptr) {
-                (void) layer.mesh->readJSON(meshValue);
+            if (layers == nullptr) {
+                continue;
             }
 
-            if (layer.props != nullptr && !propsValue.isVoid()) {
-                (void) layer.props->readJSON(propsValue);
+            for (const auto& layerValue : *layers) {
+                Layer layer = instantiateLayer(nullptr, group.meshType);
+                var meshValue = PresetJson::property(layerValue, "mesh");
+                var propsValue = PresetJson::property(layerValue, "properties");
+
+                if (layer.mesh != nullptr) {
+                    (void) layer.mesh->readJSON(meshValue);
+                }
+
+                if (layer.props != nullptr && !propsValue.isVoid()) {
+                    (void) layer.props->readJSON(propsValue);
+                }
+
+                group.layers.push_back(layer);
             }
 
-            group.layers.push_back(layer);
+            layerGroups.push_back(group);
         }
 
-        layerGroups.push_back(group);
+        for (int i = 0; i < (int) layerGroups.size(); ++i) {
+            effectiveMeshes.emplace_back(layerGroups[i].getCurrentMesh());
+        }
+    }
+
+    for (int i = 0; i < (int) layerGroups.size(); ++i) {
+        listeners.call(&Listener::layerGroupAdded, i);
+        notifyEffectiveMeshChanged(i, effectiveMeshes[i]);
     }
 
     return true;

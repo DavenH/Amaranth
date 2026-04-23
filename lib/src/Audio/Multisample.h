@@ -47,6 +47,8 @@ public:
     void performUpdate(UpdateType updateType) override;
     void writeXML(XmlElement* element) const override;
     bool readXML(const XmlElement* element) override;
+    var writeJSON() const override;
+    bool readJSON(const var& object) override;
 
     PitchedSample* addSample(const File& file, int defaultNote = -1);
     PitchedSample* getSampleForNote(int midiNote, float velocity);
@@ -61,10 +63,12 @@ public:
     void setWaveRasterizer(MeshRasterizer* rasterizer) { waveRasterizer = rasterizer; }
     int size()                          { return samples.size();    }
     PitchedSample* getCurrentSample()   { return current;           }
+    Mesh* getCurrentMesh();
     CriticalSection& getLock()          { return audioLock;         }
 
 private:
     void getModRanges(Range<int>& noteRange, Range<float>& velRange);
+    void ensureSampleHasMeshLayer(PitchedSample* sample, int preferredIndex = -1);
 
     MeshRasterizer* waveRasterizer;
     PitchedSample* current;

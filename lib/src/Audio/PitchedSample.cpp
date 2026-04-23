@@ -3,7 +3,10 @@
 #include <memory>
 #include "../Algo/AutoModeller.h"
 #include "../App/AppConstants.h"
+#include "../App/Doc/PresetJson.h"
+#include "../App/MeshLibrary.h"
 #include "../Curve/EnvRasterizer.h"
+#include "../Curve/Mesh.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
 #include "../Curve/MeshRasterizer.h"
@@ -13,6 +16,7 @@
 PitchedSample::PitchedSample() :
         samplerate  (44100)
     ,   fundNote    (-1)
+    ,   meshLayerIndex(CommonEnums::Null)
     ,   playbackPos (0)
     ,   audio       (2)
     ,   phaseOffset (0.f) {
@@ -20,8 +24,6 @@ PitchedSample::PitchedSample() :
     midiLimits  = Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote);
     veloRange   = Range<float>(0, 1.f);
     midiRange   = midiLimits;
-
-    mesh = std::make_unique<Mesh>();
 }
 
 PitchedSample::PitchedSample(const Buffer<float>& sample) :
@@ -39,8 +41,7 @@ void PitchedSample::writeXML(XmlElement* sampleElem) const {
     sampleElem->setAttribute("vel-start",   veloRange.getStart());
     sampleElem->setAttribute("vel-end",     veloRange.getEnd());
     sampleElem->setAttribute("phase-offset",phaseOffset);
-
-    mesh->writeXML(sampleElem);
+    sampleElem->setAttribute("mesh-layer-index", meshLayerIndex);
 }
 
 bool PitchedSample::readXML(const XmlElement* sampleElem) {
@@ -53,8 +54,7 @@ bool PitchedSample::readXML(const XmlElement* sampleElem) {
 
     veloRange.setStart  (sampleElem->getDoubleAttribute("vel-start", 0.f));
     veloRange.setEnd    (sampleElem->getDoubleAttribute("vel-end",   1.f));
-
-    mesh->readXML(sampleElem);
+    meshLayerIndex = sampleElem->getIntAttribute("mesh-layer-index", CommonEnums::Null);
 
     if(load(file.getFullPathName()) < 0) {
         return false;
@@ -65,7 +65,53 @@ bool PitchedSample::readXML(const XmlElement* sampleElem) {
 
 PitchedSample::~PitchedSample() {
     clear();
-    mesh->destroy();
+}
+
+var PitchedSample::writeJSON() const {
+    auto json = PresetJson::object();
+
+    json->setProperty("path", lastLoadedFilePath);
+    json->setProperty("fundNote", fundNote);
+    json->setProperty("midiStart", midiRange.getStart());
+    json->setProperty("midiEnd", midiRange.getEnd());
+    json->setProperty("velStart", veloRange.getStart());
+    json->setProperty("velEnd", veloRange.getEnd());
+    json->setProperty("phaseOffset", phaseOffset);
+    json->setProperty("meshLayerIndex", meshLayerIndex);
+
+    return PresetJson::toVar(json);
+}
+
+bool PitchedSample::readJSON(const var& object) {
+    if (PresetJson::getObject(object) == nullptr) {
+        return false;
+    }
+
+    lastLoadedFilePath = PresetJson::stringProperty(object, "path", lastLoadedFilePath);
+    fundNote = PresetJson::intProperty(object, "fundNote", fundNote);
+    phaseOffset = PresetJson::doubleProperty(object, "phaseOffset", phaseOffset);
+    meshLayerIndex = PresetJson::intProperty(object, "meshLayerIndex", meshLayerIndex);
+
+    midiRange.setStart(PresetJson::intProperty(object, "midiStart", midiRange.getStart()));
+    midiRange.setEnd(PresetJson::intProperty(object, "midiEnd", midiRange.getEnd()));
+    veloRange.setStart(PresetJson::doubleProperty(object, "velStart", veloRange.getStart()));
+    veloRange.setEnd(PresetJson::doubleProperty(object, "velEnd", veloRange.getEnd()));
+
+    if (lastLoadedFilePath.isEmpty()) {
+        return false;
+    }
+
+    return load(lastLoadedFilePath) >= 0;
+}
+
+Mesh* PitchedSample::getMesh(MeshLibrary& meshLibrary) const {
+    auto& waveGroup = meshLibrary.getLayerGroup(LayerGroups::GroupWavePitch);
+
+    if (!isPositiveAndBelow(meshLayerIndex, waveGroup.size())) {
+        return nullptr;
+    }
+
+    return meshLibrary.getMesh(LayerGroups::GroupWavePitch, meshLayerIndex);
 }
 
 void PitchedSample::createDefaultPeriods() {
@@ -93,8 +139,14 @@ void PitchedSample::createDefaultPeriods() {
 }
 
 
-void PitchedSample::createEnvFromPeriods(bool isMulti) {
+void PitchedSample::createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti) {
     if (periods.size() < 3 || size() < 2048) {
+        return;
+    }
+
+    Mesh* mesh = getMesh(meshLibrary);
+
+    if (mesh == nullptr) {
         return;
     }
 
@@ -120,7 +172,6 @@ void PitchedSample::createEnvFromPeriods(bool isMulti) {
         path.emplace_back(frame.sampleOffset * isamples, yValue);
     }
 
-    jassert(mesh != nullptr);
     mesh->destroy();
 
     float thresh = isMulti ? 0.002 : 0.0005;
@@ -133,7 +184,7 @@ void PitchedSample::createEnvFromPeriods(bool isMulti) {
     }
 }
 
-void PitchedSample::createPeriodsFromEnv(MeshRasterizer* rast) {
+void PitchedSample::createPeriodsFromEnv(MeshLibrary& meshLibrary, MeshRasterizer* rast) {
     jassert(fundNote > 0);
     progressMark
 
@@ -144,8 +195,13 @@ void PitchedSample::createPeriodsFromEnv(MeshRasterizer* rast) {
     int currentIndex = 0;
     float position = 0;
     float defaultFreq = NumberUtils::noteToFrequency(fundNote, 0);
+    Mesh* mesh = getMesh(meshLibrary);
 
-    rast->setMesh(mesh.get());
+    if (mesh == nullptr) {
+        return;
+    }
+
+    rast->setMesh(mesh);
     rast->calcCrossPoints();
     rast->makeCopy();
 
