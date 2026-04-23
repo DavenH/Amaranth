@@ -59,6 +59,10 @@ Identifier Document::getJsonSectionKey(Savable* savableItem) {
         return "envelopeProps";
     }
 
+    if (name == "Multisample") {
+        return "multisample";
+    }
+
     return {};
 }
 

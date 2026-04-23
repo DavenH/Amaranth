@@ -106,7 +106,7 @@ void EnvelopeInter2D::doExtraMouseUp() {
          */
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
-                sample->createPeriodsFromEnv(&getObj(EnvPitchRast));
+                sample->createPeriodsFromEnv(getObj(MeshLibrary), &getObj(EnvPitchRast));
             }
 
             doUpdate(SourceSpectrum3D);
@@ -601,8 +601,8 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
     }
 
     if (envEnum == LayerGroups::GroupWavePitch) {
-        if (PitchedSample* current = getObj(Multisample).getCurrentSample()) {
-            rast->setMesh(current->mesh.get());
+        if (Mesh* mesh = getObj(MeshLibrary).getEffectiveMesh(LayerGroups::GroupWavePitch)) {
+            rast->setMesh(mesh);
         }
     } else if (envEnum == LayerGroups::GroupPitch) {
         if (EnvRasterizer* envRast = getEnvRasterizer()) {
@@ -655,7 +655,7 @@ void EnvelopeInter2D::doExtraMouseDrag(const MouseEvent &e) {
     if (actionIs(DraggingVertex) || actionIs(ReshapingCurve) || actionIs(DraggingCorner)) {
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
-                sample->createPeriodsFromEnv(&getObj(EnvPitchRast));
+                sample->createPeriodsFromEnv(getObj(MeshLibrary), &getObj(EnvPitchRast));
             }
         }
 
@@ -676,8 +676,8 @@ Mesh* EnvelopeInter2D::getMesh() {
         return envRast->getCurrentMesh();
     }
 
-    if (PitchedSample* current = getObj(Multisample).getCurrentSample()) {
-        return current->mesh.get();
+    if (Mesh* mesh = getObj(MeshLibrary).getEffectiveMesh(LayerGroups::GroupWavePitch)) {
+        return mesh;
     }
 
     jassertfalse;

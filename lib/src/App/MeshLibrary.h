@@ -25,6 +25,12 @@ namespace LayerGroups {
     ,   GroupPhase
     ,   GroupOscPhase
     ,   numDefaultGroups
+    // TODO(daven): These application layer-group ids were pulled into lib so shared
+    // mesh ownership/persistence code can compile. Revisit this when app-specific
+    // config/header injection or a proper extension registry exists.
+    ,   GroupWavePitch = numDefaultGroups
+    ,   GroupWaveshaper
+    ,   GroupIrModeller
     };
 }
 class MeshLibrary :
@@ -157,6 +163,7 @@ public:
     void pasteFromClipboardTo(Mesh* mesh, int type);
     void beginPreviewMesh(int groupId, Mesh* mesh);
     void endPreviewMesh(int groupId);
+    void setCurrentIndex(int groupId, int layerIndex);
     bool layerRemoved(int layerGroup, int index);
     bool layerChanged(int layerGroup, int index);
 

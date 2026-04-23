@@ -151,6 +151,31 @@ void MeshLibrary::endPreviewMesh(int groupId) {
     }
 }
 
+void MeshLibrary::setCurrentIndex(int groupId, int layerIndex) {
+    Mesh* oldEffectiveMesh = nullptr;
+    Mesh* newEffectiveMesh = nullptr;
+
+    {
+        ScopedLock sl(arrayLock);
+
+        LayerGroup& group = getLayerGroup(groupId);
+
+        if (!isPositiveAndBelow(layerIndex, (int) group.layers.size()) || group.current == layerIndex) {
+            return;
+        }
+
+        oldEffectiveMesh = group.previewMesh != nullptr ? group.previewMesh : group.getCurrentMesh();
+        group.current = layerIndex;
+        newEffectiveMesh = group.previewMesh != nullptr ? group.previewMesh : group.getCurrentMesh();
+    }
+
+    listeners.call(&Listener::layerChanged, groupId, layerIndex);
+
+    if (oldEffectiveMesh != newEffectiveMesh) {
+        notifyEffectiveMeshChanged(groupId, newEffectiveMesh);
+    }
+}
+
 MeshLibrary::Layer& MeshLibrary::getCurrentLayer(int groupId) {
     LayerGroup& group = getLayerGroup(groupId);
 

@@ -12,7 +12,7 @@ LayerSelectorPanel::LayerSelectorPanel(SingletonRepo* repo, LayerSelectionClient
 }
 
 void LayerSelectorPanel::rowClicked(int row) {
-    getObj(MeshLibrary).getLayerGroup(client->getLayerType()).current = row;
+    getObj(MeshLibrary).setCurrentIndex(client->getLayerType(), row);
 }
 
 void LayerSelectorPanel::selectionChanged() {

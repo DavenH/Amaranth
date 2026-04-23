@@ -27,6 +27,7 @@ public:
     bool isEnabled() const override;
     int getLatencySamples();
     void rasterizeTable();
+    void clearTable() { table.zero(); }
     void processBuffer(AudioSampleBuffer& audioBuffer) override;
     void processVertexBuffer(Buffer<Float32> outputBuffer);
     void updateSmoothedParameters(int deltaSamples);

@@ -4,11 +4,13 @@
 #include "../Array/StereoBuffer.h"
 #include "../Obj/MorphPosition.h"
 #include "../App/Doc/Savable.h"
+#include "../Util/CommonEnums.h"
 
 using std::vector;
 
 class SingletonRepo;
 class Mesh;
+class MeshLibrary;
 class MeshRasterizer;
 
 class PitchFrame {
@@ -58,14 +60,17 @@ public:
     [[nodiscard]] MorphPosition getAveragePosition() const;
     MorphPosition getBox();
 
-    void createEnvFromPeriods(bool isMulti);
-    void createPeriodsFromEnv(MeshRasterizer* rast);
+    void createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti);
+    void createPeriodsFromEnv(MeshLibrary& meshLibrary, MeshRasterizer* rast);
     void shiftOctave(bool up);
 
     void writeXML(XmlElement* element) const override;
     bool readXML(const XmlElement* element) override;
+    var writeJSON() const override;
+    bool readJSON(const var& object) override;
 
     int load(const String& filename);
+    [[nodiscard]] Mesh* getMesh(MeshLibrary& meshLibrary) const;
 
 
     /* ----------------------------------------------------------------------------- */
@@ -77,7 +82,7 @@ public:
     StereoBuffer audio;
 
     vector<PitchFrame> periods;
-    std::unique_ptr<Mesh> mesh;
+    int meshLayerIndex;
 
     Range<int>   midiLimits;
     Range<int>   midiRange;

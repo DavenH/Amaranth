@@ -21,6 +21,7 @@ public:
     void init();
     void instantiate();
     void add(SingletonAccessor* client, int order = 0);
+    void addExternal(SingletonAccessor* client);
     void clearSingletons();
     void resetSingletons();
 

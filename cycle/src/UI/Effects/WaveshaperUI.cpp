@@ -152,6 +152,7 @@ void WaveshaperUI::setMeshAndUpdate(Mesh* mesh) {
     if (mesh == nullptr) {
         rasterizer->cleanUp();
         rasterizer->setMesh(nullptr);
+        waveshaper->clearTable();
         repaint();
         return;
     }
@@ -160,8 +161,13 @@ void WaveshaperUI::setMeshAndUpdate(Mesh* mesh) {
 
     rasterizer->cleanUp();
     rasterizer->setMesh(mesh);
-    rasterizer->performUpdate(Update);
-    waveshaper->rasterizeTable();
+
+    if (mesh->getNumVerts() > 0) {
+        rasterizer->performUpdate(Update);
+        waveshaper->rasterizeTable();
+    } else {
+        waveshaper->clearTable();
+    }
 
     repaint();
 }
