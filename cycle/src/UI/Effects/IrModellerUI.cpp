@@ -94,6 +94,7 @@ void IrModellerUI::init() {
     EffectPanel::init();
 
     irModeller = &getObj(SynthAudioSource).getIrModeller();
+    getObj(MeshLibrary).addListener(this);
 
     zoomPanel->tendZoomToBottom = false;
     zoomPanel->tendZoomToLeft   = false;
@@ -117,8 +118,7 @@ void IrModellerUI::init() {
     panelControls->addSlider(hpSlider);
     panelControls->addMeshSelector(selector.get());
 
-    rasterizer->setMesh(getMesh());
-    irModeller->setMesh(rasterizer->getMesh());
+    setMeshAndUpdate(getObj(MeshLibrary).getEffectiveMesh(layerType), false);
 
     bufSizeLabel.setFont(*getObj(MiscGraphics).getSilkscreen());
     bufSizeLabel.setColour(Label::textColourId, Colour::greyLevel(0.55f));
@@ -132,10 +132,6 @@ void IrModellerUI::initControls() {
 void IrModellerUI::setCurrentMesh(Mesh* mesh) {
     panelControls->enableCurrent.setHighlit(isEnabled);
 
-    rasterizer->cleanUp();
-    rasterizer->setMesh(mesh);
-    irModeller->setMesh(mesh);
-
     getObj(EditWatcher).setHaveEditedWithoutUndo(true);
     getObj(MeshLibrary).setCurrentMesh(layerType, mesh);
 
@@ -144,15 +140,21 @@ void IrModellerUI::setCurrentMesh(Mesh* mesh) {
 }
 
 void IrModellerUI::previewMesh(Mesh* mesh) {
-    ScopedLock sl(renderLock);
-
-    setMeshAndUpdate(mesh);
+    getObj(MeshLibrary).beginPreviewMesh(layerType, mesh);
 }
 
 void IrModellerUI::previewMeshEnded(Mesh* oldMesh) {
-    ScopedLock sl(renderLock);
+    ignoreUnused(oldMesh);
+    getObj(MeshLibrary).endPreviewMesh(layerType);
+}
 
-    setMeshAndUpdate(oldMesh);
+void IrModellerUI::effectiveMeshChanged(int groupId, Mesh* mesh) {
+    if (groupId != layerType) {
+        return;
+    }
+
+    ScopedLock sl(renderLock);
+    setMeshAndUpdate(mesh);
 }
 
 void IrModellerUI::doGlobalUIUpdate(bool force) {
@@ -175,7 +177,10 @@ void IrModellerUI::setMeshAndUpdate(Mesh* mesh, bool doRepaint) {
     rasterizer->cleanUp();
     rasterizer->setMesh(mesh);
     irModeller->setMesh(mesh);
-    irModeller->setPendingAction(IrModeller::rasterize);
+
+    if (mesh != nullptr) {
+        irModeller->setPendingAction(IrModeller::rasterize);
+    }
 
     if(doRepaint) {
         repaint();

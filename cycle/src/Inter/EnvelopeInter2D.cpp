@@ -106,7 +106,7 @@ void EnvelopeInter2D::doExtraMouseUp() {
          */
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
-                sample->createPeriodsFromEnv(&getObj(EnvPitchRast));
+                sample->createPeriodsFromEnv(getObj(MeshLibrary), &getObj(EnvPitchRast));
             }
 
             doUpdate(SourceSpectrum3D);
@@ -512,67 +512,64 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
         EnvelopeMesh* currentMesh = getCurrentMesh();
 
         if (currentMesh == nullptr) {
+            jassertfalse;
             return;
         }
 
         bool onlyShallowUpdate = true;
 
-        if (!currentMesh) {
-            jassertfalse;
+        if (getSetting(DrawWave)) {
+            showConsoleMsg("Cannot set loop in wave draw mode");
         } else {
-            if (getSetting(DrawWave)) {
-                showConsoleMsg("Cannot set loop in wave draw mode");
-            } else {
-                IconButton &bttn = isLoop ? loopIcon : sustainIcon;
-                Vertex* vert = selected.front();
-                VertCube* cube = nullptr;
+            IconButton &bttn = isLoop ? loopIcon : sustainIcon;
+            Vertex* vert = selected.front();
+            VertCube* cube = nullptr;
 
-                const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
-                for (const auto& icpt : icpts) {
-                    for (int j = 0; j < vert->getNumOwners(); ++j) {
-                        VertCube* vertCube = vert->owners[j];
+            const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
+            for (const auto& icpt : icpts) {
+                for (int j = 0; j < vert->getNumOwners(); ++j) {
+                    VertCube* vertCube = vert->owners[j];
 
-                        if (icpt.cube == vertCube && vertCube != nullptr) {
-                            cube = vertCube;
-                        }
-                        break;
+                    if (icpt.cube == vertCube && vertCube != nullptr) {
+                        cube = vertCube;
                     }
+                    break;
                 }
+            }
 
-                jassert(cube != nullptr);
+            jassert(cube != nullptr);
 
-                if (cube == nullptr) {
-                    return;
-                }
+            if (cube == nullptr) {
+                return;
+            }
 
-                set < VertCube * > &envLines = isLoop ? currentMesh->loopCubes : currentMesh->sustainCubes;
+            set < VertCube * > &envLines = isLoop ? currentMesh->loopCubes : currentMesh->sustainCubes;
 
-                bool wasAlreadySet = envLines.find(cube) != envLines.end();
-                bool didAnything = false;
+            bool wasAlreadySet = envLines.find(cube) != envLines.end();
+            bool didAnything = false;
 
-                removeCurrentEnvLine(isLoop);
+            removeCurrentEnvLine(isLoop);
 
-                if (!wasAlreadySet) {
-                    envLines.insert(cube);
-                }
+            if (!wasAlreadySet) {
+                envLines.insert(cube);
+            }
 
-                getEnvRasterizer()->evaluateLoopSustainIndices();
-                didAnything |= synchronizeEnvPoints(vert, true);
+            getEnvRasterizer()->evaluateLoopSustainIndices();
+            didAnything |= synchronizeEnvPoints(vert, true);
 
-                bool isNowSet = envLines.find(cube) != envLines.end();
-                didAnything |= isNowSet != wasAlreadySet;
+            bool isNowSet = envLines.find(cube) != envLines.end();
+            didAnything |= isNowSet != wasAlreadySet;
 
-                onlyShallowUpdate = !didAnything;
-                bttn.setHighlit(isNowSet);
+            onlyShallowUpdate = !didAnything;
+            bttn.setHighlit(isNowSet);
 
-                if (onlyShallowUpdate) {
-                    performUpdate(Update);
-                } else {
-                    getObj(EditWatcher).setHaveEditedWithoutUndo(true);
-                    flag(DidMeshChange) = true;
+            if (onlyShallowUpdate) {
+                performUpdate(Update);
+            } else {
+                getObj(EditWatcher).setHaveEditedWithoutUndo(true);
+                flag(DidMeshChange) = true;
 
-                    refresh();
-                }
+                refresh();
             }
         }
     }
@@ -604,8 +601,8 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
     }
 
     if (envEnum == LayerGroups::GroupWavePitch) {
-        if (PitchedSample* current = getObj(Multisample).getCurrentSample()) {
-            rast->setMesh(current->mesh.get());
+        if (Mesh* mesh = getObj(MeshLibrary).getEffectiveMesh(LayerGroups::GroupWavePitch)) {
+            rast->setMesh(mesh);
         }
     } else if (envEnum == LayerGroups::GroupPitch) {
         if (EnvRasterizer* envRast = getEnvRasterizer()) {
@@ -658,7 +655,7 @@ void EnvelopeInter2D::doExtraMouseDrag(const MouseEvent &e) {
     if (actionIs(DraggingVertex) || actionIs(ReshapingCurve) || actionIs(DraggingCorner)) {
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
-                sample->createPeriodsFromEnv(&getObj(EnvPitchRast));
+                sample->createPeriodsFromEnv(getObj(MeshLibrary), &getObj(EnvPitchRast));
             }
         }
 
@@ -679,8 +676,8 @@ Mesh* EnvelopeInter2D::getMesh() {
         return envRast->getCurrentMesh();
     }
 
-    if (PitchedSample* current = getObj(Multisample).getCurrentSample()) {
-        return current->mesh.get();
+    if (Mesh* mesh = getObj(MeshLibrary).getEffectiveMesh(LayerGroups::GroupWavePitch)) {
+        return mesh;
     }
 
     jassertfalse;

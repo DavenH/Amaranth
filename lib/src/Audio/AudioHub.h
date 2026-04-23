@@ -97,10 +97,12 @@ public:
     MidiKeyboardState& getKeyboardState()       { return keyboardState;             }
 
 protected:
+    AudioDeviceManager& ensureAudioDeviceManager();
+
     int sampleRate, bufferSize;
 
     String               deviceError;
-    AudioDeviceManager   audioDeviceManager;
+    std::unique_ptr<AudioDeviceManager> audioDeviceManager;
     AudioSourcePlayer    audioSourcePlayer;
     MidiMessageCollector midiCollector;
     MidiKeyboardState    keyboardState;

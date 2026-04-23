@@ -1,5 +1,6 @@
 #pragma once
 
+#include <App/MeshLibrary.h>
 #include <Curve/GuideCurveProvider.h>
 #include <Curve/Mesh.h>
 #include <Obj/Ref.h>
@@ -19,6 +20,7 @@ class GuideCurvePanel :
         public EffectPanel
     ,	public Slider::Listener
     ,	public Button::Listener
+    ,   public MeshLibrary::Listener
     ,	public LayerSelectionClient
     ,	public MeshSelectionClient<Mesh>
     ,	public Savable
@@ -43,6 +45,7 @@ public:
     void buttonClicked(Button* button) override;
     void doubleMesh() override;
     void enterClientLock() override;
+    void effectiveMeshChanged(int layerGroup, Mesh* mesh) override;
     void exitClientLock() override;
     void init() override;
     void layerChanged() override;

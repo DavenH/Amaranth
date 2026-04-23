@@ -647,12 +647,12 @@ bool Envelope2D::readXML(const XmlElement* element) {
                 continue;
             }
 
-            MeshLibrary::Layer layer = meshLibrary.instantiateLayer(elem, MeshLibrary::TypeEnvelope);
+            MeshLibrary::Layer layer = meshLibrary.instantiateLayer(elem, group.meshType);
             group.layers.push_back(layer);
         }
 
         if (group.layers.empty()) {
-            group.layers.push_back(meshLibrary.instantiateLayer(nullptr, MeshLibrary::TypeEnvelope));
+            group.layers.push_back(meshLibrary.instantiateLayer(nullptr, group.meshType));
         }
 
         group.current = jlimit(0, jmax(0, group.size() - 1), envProps->getIntAttribute(mapping.currentIndexAttr, 0));
@@ -734,7 +734,7 @@ bool Envelope2D::readJSON(const var& object) {
 
         if (const auto* layers = PresetJson::getArray(groupObject->getProperty("layers"))) {
             for (const auto& layerValue : *layers) {
-                MeshLibrary::Layer layer = meshLibrary.instantiateLayer(nullptr, MeshLibrary::TypeEnvelope);
+                MeshLibrary::Layer layer = meshLibrary.instantiateLayer(nullptr, group.meshType);
 
                 if (var meshValue = PresetJson::property(layerValue, "mesh"); !meshValue.isVoid()) {
                     (void) layer.mesh->readJSON(meshValue);
@@ -751,7 +751,7 @@ bool Envelope2D::readJSON(const var& object) {
         }
 
         if (group.layers.empty()) {
-            group.layers.push_back(meshLibrary.instantiateLayer(nullptr, MeshLibrary::TypeEnvelope));
+            group.layers.push_back(meshLibrary.instantiateLayer(nullptr, group.meshType));
         }
 
         group.current = jlimit(0, jmax(0, group.size() - 1),

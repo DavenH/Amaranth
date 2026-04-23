@@ -32,7 +32,9 @@ GuideCurvePanel::GuideCurvePanel(SingletonRepo* repo) :
 void GuideCurvePanel::init() {
     EffectPanel::init();
 
-    meshLib                = &getObj(MeshLibrary);
+    meshLib = &getObj(MeshLibrary);
+    meshLib->addListener(this);
+
     updateSource           = UpdateSources::SourceGuideCurve;
     layerType              = LayerGroups::GroupGuideCurve;
     nameCornerPos          = juce::Point<float>(-25, 5);
@@ -73,8 +75,7 @@ void GuideCurvePanel::init() {
     setGuideBuffers();
 
     rasterizer->cleanUp();
-    rasterizer->setMesh(meshLib->getCurrentMesh(LayerGroups::GroupGuideCurve));
-    rasterizer->performUpdate(Update);
+    setMeshAndUpdate(meshLib->getEffectiveMesh(LayerGroups::GroupGuideCurve));
     rasterizer->setGuideCurveProvider(this);
 
     meshSelector = std::make_unique<MeshSelector<Mesh>>(repo, this, "gc", true, false, true);
@@ -328,25 +329,37 @@ void GuideCurvePanel::setCurrentMesh(Mesh* mesh) {
     meshLib->setCurrentMesh(layerType, mesh);
 
     clearSelectedAndCurrent();
-    setMeshAndUpdate(mesh);
     rasterizeTable();
 
     triggerRefreshUpdate();
 }
 
 void GuideCurvePanel::previewMesh(Mesh* mesh) {
-    ScopedLock sl(renderLock);
-
-    setMeshAndUpdate(mesh);
+    meshLib->beginPreviewMesh(layerType, mesh);
 }
 
 void GuideCurvePanel::previewMeshEnded(Mesh* oldMesh) {
-    ScopedLock sl(renderLock);
+    ignoreUnused(oldMesh);
+    meshLib->endPreviewMesh(layerType);
+}
 
-    setMeshAndUpdate(oldMesh);
+void GuideCurvePanel::effectiveMeshChanged(int layerGroup, Mesh* mesh) {
+    if (layerGroup != layerType) {
+        return;
+    }
+
+    ScopedLock sl(renderLock);
+    setMeshAndUpdate(mesh);
 }
 
 void GuideCurvePanel::setMeshAndUpdate(Mesh* mesh) {
+    if (mesh == nullptr) {
+        rasterizer->cleanUp();
+        rasterizer->setMesh(nullptr);
+        repaint();
+        return;
+    }
+
     mesh->updateToVersion(ProjectInfo::versionNumber);
 
     rasterizer->cleanUp();
@@ -366,7 +379,7 @@ void GuideCurvePanel::exitClientLock() {
 }
 
 Mesh* GuideCurvePanel::getCurrentMesh() {
-    return Interactor::getMesh();
+    return meshLib->getEffectiveMesh(layerType);
 }
 
 bool GuideCurvePanel::setGuideBuffers() {

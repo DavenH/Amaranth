@@ -1,5 +1,6 @@
 #pragma once
 
+#include <App/MeshLibrary.h>
 #include <App/SingletonAccessor.h>
 #include <App/EditWatcher.h>
 #include <App/Settings.h>
@@ -31,7 +32,8 @@ protected:
 
 class MeshSelectionClient3D :
         public MeshSelectionClient<Mesh>
-        , public SingletonAccessor {
+        , public SingletonAccessor
+        , public MeshLibrary::Listener {
 private:
     Ref<EditWatcher> watcher;
     Ref<MeshLibrary> meshLib;
@@ -52,6 +54,7 @@ public:
                                                   , watcher(watcher)
                                                   , meshLib(meshLib)
                                                   , usedToViewVertsOnHover(true) {
+        meshLib->addListener(this);
     }
 
     void enterClientLock() override {
@@ -81,35 +84,37 @@ public:
             opposite->resetState();
         }
 
-        //		meshLib->setCurrentMeshForLayer(layerType, mesh);
-        meshLib->setCurrentMesh(layerType, mesh);
         interactor->clearSelectedAndCurrent();
-
-        updateEverything(mesh);
-        owner->meshSelectionFinished();
+        meshLib->setCurrentMesh(layerType, mesh);
 
         getSetting(ViewVertsOnlyOnHover) = usedToViewVertsOnHover;
-
         watcher->setHaveEditedWithoutUndo(true);
+        owner->meshSelectionFinished();
         interactor->triggerRefreshUpdate();
-
         owner->exitClientLock(true);
     }
 
     void previewMesh(Mesh* mesh) override {
         owner->enterClientLock(false);
         getSetting(ViewVertsOnlyOnHover) = false;
-
-        updateEverything(mesh);
+        meshLib->beginPreviewMesh(layerType, mesh);
         owner->exitClientLock(false);
     }
 
     void previewMeshEnded(Mesh* originalMesh) override {
+        ignoreUnused(originalMesh);
         owner->enterClientLock(false);
         getSetting(ViewVertsOnlyOnHover) = usedToViewVertsOnHover;
-
-        updateEverything(originalMesh);
+        meshLib->endPreviewMesh(layerType);
         owner->exitClientLock(false);
+    }
+
+    void effectiveMeshChanged(int groupId, Mesh* mesh) override {
+        if (groupId != layerType) {
+            return;
+        }
+
+        updateEverything(mesh);
     }
 
     void updateEverything(Mesh* mesh) {
@@ -120,9 +125,7 @@ public:
     }
 
     Mesh* getCurrentMesh() override {
-        Mesh* mesh = rasterizer->getMesh();
-
-        return mesh;
+        return meshLib->getEffectiveMesh(layerType);
     }
 
     CriticalSection& getClientLock() {

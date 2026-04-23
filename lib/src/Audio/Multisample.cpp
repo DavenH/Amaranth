@@ -3,6 +3,8 @@
 #include "../Design/Updating/Updater.h"
 #include "../Algo/PitchTracker.h"
 #include "../App/AppConstants.h"
+#include "../App/Doc/PresetJson.h"
+#include "../App/MeshLibrary.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
@@ -14,6 +16,30 @@ Multisample::Multisample(SingletonRepo* repo, MeshRasterizer* rasterizer) :
         SingletonAccessor(repo, "Multisample")
     ,   current(nullptr)
     ,   waveRasterizer(rasterizer) {
+}
+
+void Multisample::ensureSampleHasMeshLayer(PitchedSample* sample, int preferredIndex) {
+    if (sample == nullptr) {
+        return;
+    }
+
+    auto& meshLibrary = getObj(MeshLibrary);
+    auto& waveGroup = meshLibrary.getLayerGroup(LayerGroups::GroupWavePitch);
+    int targetIndex = preferredIndex >= 0 ? preferredIndex : sample->meshLayerIndex;
+
+    if (targetIndex == CommonEnums::Null) {
+        targetIndex = samples.indexOf(sample);
+    }
+
+    if (targetIndex < 0) {
+        targetIndex = waveGroup.size();
+    }
+
+    while (waveGroup.size() <= targetIndex) {
+        meshLibrary.addLayer(LayerGroups::GroupWavePitch);
+    }
+
+    sample->meshLayerIndex = targetIndex;
 }
 
 PitchedSample* Multisample::getSampleForNote(int midiNote, float velocity) {
@@ -47,6 +73,7 @@ void Multisample::createFromDirectory(const File& directory) {
         std::unique_ptr<PitchedSample> sample(new PitchedSample());
 
         if (sample->load(file.getFullPathName()) >= 0) {
+            ensureSampleHasMeshLayer(sample.get(), samples.size());
             samples.add(sample.release());
         }
     }
@@ -300,6 +327,7 @@ PitchedSample* Multisample::addSample(const File& file, int defaultNote) {
         }
 
         samples.add(current);
+        ensureSampleHasMeshLayer(current, samples.size() - 1);
         fillRanges();
 
         return current;
@@ -343,9 +371,57 @@ bool Multisample::readXML(const XmlElement* element) {
 
     for(auto sampleElem : element->getChildWithTagNameIterator("Sample")) {
         std::unique_ptr<PitchedSample> sample(new PitchedSample());
-        sample->readXML(sampleElem);
-        sample->createPeriodsFromEnv(waveRasterizer);
+        if (!sample->readXML(sampleElem)) {
+            continue;
+        }
 
+        ensureSampleHasMeshLayer(sample.get(),
+                                 sample->meshLayerIndex >= 0 ? sample->meshLayerIndex : samples.size());
+        sample->createPeriodsFromEnv(getObj(MeshLibrary), waveRasterizer);
+
+        samples.add(sample.release());
+    }
+
+    if (samples.size() > 0) {
+        listeners.call(&Listener::setWaveLoaded, true);
+        performUpdate(Update);
+    }
+
+    return true;
+}
+
+var Multisample::writeJSON() const {
+    auto json = PresetJson::object();
+    Array<var> sampleValues;
+
+    for (auto sample : samples) {
+        sampleValues.add(sample->writeJSON());
+    }
+
+    json->setProperty("samples", var(sampleValues));
+    return PresetJson::toVar(json);
+}
+
+bool Multisample::readJSON(const var& object) {
+    const Array<var>* sampleValues = PresetJson::getArray(PresetJson::property(object, "samples"));
+
+    if (sampleValues == nullptr) {
+        return false;
+    }
+
+    ScopedLock sl(audioLock);
+
+    current = nullptr;
+    samples.clear();
+
+    for (int i = 0; i < sampleValues->size(); ++i) {
+        std::unique_ptr<PitchedSample> sample(new PitchedSample());
+
+        if (!sample->readJSON(sampleValues->getReference(i))) {
+            continue;
+        }
+
+        ensureSampleHasMeshLayer(sample.get(), sample->meshLayerIndex >= 0 ? sample->meshLayerIndex : i);
         samples.add(sample.release());
     }
 
@@ -364,14 +440,10 @@ void Multisample::performUpdate(UpdateType updateType) {
 
         current = getSampleForNote(midiNote, 1 - pos.blue);
 
-        Mesh* mesh = nullptr;
-
         if (current != nullptr) {
-            mesh = current->mesh.get();
             listeners.call(&Listener::setMidiRange, current->midiRange);
+            getObj(MeshLibrary).setCurrentIndex(LayerGroups::GroupWavePitch, current->meshLayerIndex);
         }
-
-        listeners.call(&Listener::setSampleMesh, mesh);
     }
 }
 
@@ -389,9 +461,13 @@ void Multisample::shiftAllByOctave(bool up) {
     for (auto sample : samples) {
         sample->shiftOctave(up);
         PitchTracker::refineFrames(sample, sample->getAveragePeriod());
-        sample->createEnvFromPeriods(true);
-        sample->createPeriodsFromEnv(waveRasterizer);
+        sample->createEnvFromPeriods(getObj(MeshLibrary), true);
+        sample->createPeriodsFromEnv(getObj(MeshLibrary), waveRasterizer);
     }
 
     fillRanges();
+}
+
+Mesh* Multisample::getCurrentMesh() {
+    return getObj(MeshLibrary).getEffectiveMesh(LayerGroups::GroupWavePitch);
 }

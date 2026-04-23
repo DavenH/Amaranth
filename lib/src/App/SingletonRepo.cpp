@@ -124,6 +124,14 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
     }
 }
 
+void SingletonRepo::addExternal(SingletonAccessor* accessor) {
+    if (accessor == nullptr) {
+        return;
+    }
+
+    hashes.set(accessor->getName(), accessor);
+}
+
 OutputStream& SingletonRepo::getDebugStream() {
   #ifdef JUCE_DEBUG
     if(debugStream == nullptr) {
