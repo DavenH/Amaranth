@@ -242,7 +242,7 @@ void Initializer::setConstants() {
     constants.setConstant(AmpTensionScale, 	    500);
     constants.setConstant(EnvResolution, 		128);
     constants.setConstant(ResamplerLatency, 	32);
-    constants.setConstant(FreqTensionScale, 		50);
+    constants.setConstant(FreqTensionScale, 	50);
     constants.setConstant(ControllerValueSaturation, 127);
     constants.setConstant(FontFace,             fontFace);
 }

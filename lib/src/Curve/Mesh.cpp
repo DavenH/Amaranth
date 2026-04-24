@@ -447,6 +447,8 @@ bool Mesh::readJSON(const var& object) {
                           skippedWrongVertexCount,
                           skippedInvalidMapping));
 
+    validate();
+
     return true;
 }
 

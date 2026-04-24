@@ -75,7 +75,7 @@ String SpectrumInter3D::getZString(float tableValue, int xIndex) {
 
     if (getSetting(MagnitudeDrawMode)) {
         float absAmp = 2 * Arithmetic::invLogMapping(
-            (float) getConstant(AmpLogTension) * MathConstants<float>::twoPi,
+            (float) getConstant(AmpTensionScale) * MathConstants<float>::twoPi,
             tableValue
         );
         zString = Util::getDecibelString(absAmp);
@@ -89,7 +89,7 @@ String SpectrumInter3D::getZString(float tableValue, int xIndex) {
 }
 
 int SpectrumInter3D::getTableIndexY(float y, int size) {
-    float freqTens = size * getConstant(FreqLogTension);
+    float freqTens = size * getConstant(FreqTensionScale);
     int yIndex = jmax(0, int(Arithmetic::invLogMapping(freqTens, y, true) * (size - 1)));
 
     return yIndex;

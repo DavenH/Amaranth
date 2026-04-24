@@ -28,26 +28,31 @@ void CollisionDetector::update(Mesh* mesh) {
         return;
     }
 
-    numMeshCubes = mesh->getNumCubes();
     int numSelectedLines = selectedLines.size();
 
     vector<VertCube*> uniqueMeshCubes;
-    uniqueMeshCubes.reserve(numMeshCubes);
+    uniqueMeshCubes.reserve(mesh->getNumCubes());
 
     for (auto& it : mesh->getCubes()) {
-        if(selectedLines.find(it) != selectedLines.end()) {
+        if(selectedLines.find(it) == selectedLines.end()) {
             uniqueMeshCubes.push_back(it);
         }
     }
 
+    numMeshCubes = uniqueMeshCubes.size();
+
     // nothing to collide with
-    if(numSelectedLines == 0 || uniqueMeshCubes.size() <= 1) {
+    if(numSelectedLines == 0 || numMeshCubes <= 1) {
+        DBG(String::formatted("CollisionDetector::update skipping collision test selectedLines=%d comparisonCubes=%d totalCubes=%d",
+                              numSelectedLines,
+                              numMeshCubes,
+                              mesh->getNumCubes()));
         return;
     }
 
     Vertex* currVert;
 
-    meshVerts.resize(uniqueMeshCubes.size() * nVerts * nDims);
+    meshVerts.resize(numMeshCubes * nVerts * nDims);
     selectedVerts.resize(numSelectedLines * nVerts * nDims);
 
     int index = 0;
@@ -161,6 +166,15 @@ void CollisionDetector::setNonintersectingDimension(CollisionDim dim) {
  */
 bool CollisionDetector::validate() {
     if (!enabled) {
+        return true;
+    }
+
+    if (numMeshCubes <= 1 || selectedLines.empty() || meshVerts.empty() || selectedVerts.empty()) {
+        DBG(String::formatted("CollisionDetector::validate early exit selectedLines=%d numMeshCubes=%d meshVerts=%d selectedVerts=%d",
+                              (int) selectedLines.size(),
+                              numMeshCubes,
+                              meshVerts.size(),
+                              selectedVerts.size()));
         return true;
     }
 

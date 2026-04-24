@@ -666,7 +666,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
         // todo do we need to store this data if stage >= postfx ? ? ?
         magBuf.copyTo(fftCol);
         fftCol.mul(2.f);
-        Arithmetic::applyLogMapping(fftCol, getConstant(FreqLogTension));
+        Arithmetic::applyLogMapping(fftCol, getConstant(FreqTensionScale));
 
         fftCol.threshGT(1.f);
 
@@ -955,7 +955,7 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
         Buffer magBuf(fft.getMagnitudes(), numHarmonics);
         Buffer phaseBuf(fft.getPhases(), numHarmonics);
 
-        Arithmetic::applyLogMapping(fft.getMagnitudes(), getConstant(AmpLogTension));
+        Arithmetic::applyLogMapping(fft.getMagnitudes(), getConstant(AmpTensionScale));
 
         magBuf.threshGT(1.f);
         phaseBuf.add(MathConstants<float>::halfPi);
@@ -1490,7 +1490,7 @@ void VisualDsp::processThroughEffects(int numColumns) {
         copyArrayOrParts(fftPreFXCols, fftPostFXCols);
         copyArrayOrParts(phasePreFXCols, phasePostFXCols);
 
-        int tension = getConstant(FreqLogTension);
+        int tension = getConstant(FreqTensionScale);
 
         // need to first unmap amplitudes to apply volume scaling appropriately
         for (auto& fftPostFXCol: fftPostFXCols) {
@@ -1522,7 +1522,7 @@ void VisualDsp::processThroughEffects(int numColumns) {
             Buffer<float> magBuf(fft.getMagnitudes(), numHarmonics);
             magBuf.add(1e-11f);
 
-            Arithmetic::applyLogMapping(magBuf, getConstant(AmpLogTension));
+            Arithmetic::applyLogMapping(magBuf, getConstant(AmpTensionScale));
 
             magBuf.copyTo(fftPostFXCols[i]);
             fft.getPhases().copyTo(phasePostFXCols[i]);

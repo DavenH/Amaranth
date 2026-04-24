@@ -173,6 +173,14 @@ void AudioHub::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
     }
 }
 
+void AudioHub::setAudioSourceProcessor(AudioSourceProcessor* processor) {
+    currentProcessor = processor;
+
+    if (currentProcessor != nullptr && sampleRate > 0 && bufferSize > 0) {
+        currentProcessor->prepareToPlay(bufferSize, sampleRate);
+    }
+}
+
 String AudioHub::getDeviceErrorAndReset() {
     String copy = deviceError;
     deviceError = String();

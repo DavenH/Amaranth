@@ -53,7 +53,7 @@ namespace Constants {
     ,   MaxNumVoices
     ,   BetaExpiry
     ,   ProductCode
-    ,   AmpLogTension
+    ,   AmpTensionScale
     ,   FreqMargin
     ,   EnvResolution
     ,   MaxBufferSize

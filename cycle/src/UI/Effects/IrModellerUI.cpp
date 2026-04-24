@@ -259,7 +259,7 @@ void IrModellerUI::preDraw() {
     Buffer<float> yScale = yBuffer.withSize(sizeY);
 
     yScale.ramp(0.f, 1.f / float(yScale.size() - 1));
-    Arithmetic::applyLogMapping(yScale, getConstant(FreqLogTension));
+    Arithmetic::applyLogMapping(yScale, getConstant(FreqTensionScale));
     jassert(yScale[yScale.size() - 1] <= 1.f);
 
     applyNoZoomScaleY(yScale);

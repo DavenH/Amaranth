@@ -60,7 +60,7 @@ void Spectrum2D::init() {
         value *= 0.5;
     }
 
-    Arithmetic::applyLogMapping(decibelLines, getConstant(AmpLogTension));
+    Arithmetic::applyLogMapping(decibelLines, getConstant(AmpTensionScale));
 }
 
 void Spectrum2D::preDraw() {
@@ -500,7 +500,7 @@ void Spectrum2D::createScales() {
 
     for (float decibelLine : decibelLines) {
         int oldPos 	 = position;
-        float absAmp = 2 * Arithmetic::invLogMapping(getConstant(AmpLogTension) * MathConstants<float>::twoPi, decibelLine);
+        float absAmp = 2 * Arithmetic::invLogMapping(getConstant(AmpTensionScale) * MathConstants<float>::twoPi, decibelLine);
         String text  = String(roundToInt(NumberUtils::toDecibels(absAmp)));
         int width 	 = Util::getStringWidth(font, text) + 1;
 

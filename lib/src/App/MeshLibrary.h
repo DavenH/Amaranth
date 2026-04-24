@@ -113,7 +113,7 @@ public:
         Layer& operator[](const int idx) { return layers[idx]; }
 
         [[nodiscard]] Mesh* getCurrentMesh() const {
-            if (current < 0) {
+            if (!isPositiveAndBelow(current, (int) layers.size())) {
                 return nullptr;
             }
 

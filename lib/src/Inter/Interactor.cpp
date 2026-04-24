@@ -25,6 +25,57 @@
 #include "../Util/Util.h"
 #include "../Definitions.h"
 
+namespace {
+    const char* actionName(PanelState::ActionState action) {
+        switch (action) {
+            case PanelState::Idle:              return "Idle";
+            case PanelState::ClickSelecting:    return "ClickSelecting";
+            case PanelState::DraggingVertex:    return "DraggingVertex";
+            case PanelState::CreatingVertex:    return "CreatingVertex";
+            case PanelState::ReshapingCurve:    return "ReshapingCurve";
+            case PanelState::BoxSelecting:      return "BoxSelecting";
+            case PanelState::DraggingCorner:    return "DraggingCorner";
+            case PanelState::SelectingConnected:return "SelectingConnected";
+            case PanelState::Rotating:          return "Rotating";
+            case PanelState::Extruding:         return "Extruding";
+            case PanelState::Copying:           return "Copying";
+            case PanelState::Cutting:           return "Cutting";
+            case PanelState::Stretching:        return "Stretching";
+            case PanelState::PaintingCreate:    return "PaintingCreate";
+            case PanelState::PaintingEdit:      return "PaintingEdit";
+            case PanelState::Nudging:           return "Nudging";
+            case PanelState::MiddleZooming:     return "MiddleZooming";
+            default:                            return "Unknown";
+        }
+    }
+
+    String describeMouseButtons(const MouseEvent& e) {
+        StringArray parts;
+
+        if (e.mods.isLeftButtonDown()) {
+            parts.add("L");
+        }
+
+        if (e.mods.isRightButtonDown()) {
+            parts.add("R");
+        }
+
+        if (e.mods.isMiddleButtonDown()) {
+            parts.add("M");
+        }
+
+        if (e.mods.isShiftDown()) {
+            parts.add("Shift");
+        }
+
+        if (e.mods.isCommandDown()) {
+            parts.add("Cmd");
+        }
+
+        return parts.isEmpty() ? "none" : parts.joinIntoString("+");
+    }
+}
+
 Interactor::Interactor(SingletonRepo* repo, const String& name, const Dimensions& d) :
         SingletonAccessor       (repo, name)
     ,   dims                    (d)
@@ -168,6 +219,14 @@ void Interactor::mouseDown(const MouseEvent& e) {
         doClickSelect(e);
     }
 
+    info(getName() << "::mouseDown action=" << actionName(action)
+                   << " buttons=" << describeMouseButtons(e)
+                   << " x=" << state.currentMouse.x
+                   << " y=" << state.currentMouse.y
+                   << " layerType=" << layerType
+                   << " currentVertex=" << (int64) state.currentVertex
+                   << " currentCube=" << (int64) state.currentCube);
+
     panel->setCursor();
     doExtraMouseDown(e);
 
@@ -208,6 +267,12 @@ void Interactor::mouseUp(const MouseEvent& e) {
     if (flag(DidMeshChange) && doesMeshChangeWarrantGlobalUpdate()) {
         triggerRestoreUpdate();
     }
+
+    info(getName() << "::mouseUp action=" << actionName(state.actionState)
+                   << " buttons=" << describeMouseButtons(e)
+                   << " didMeshChange=" << flag(DidMeshChange)
+                   << " selected=" << (int) getSelected().size()
+                   << " moving=" << (int) state.selectedFrame.size());
 
     refresh();
 
@@ -269,12 +334,18 @@ void Interactor::mouseEnter(const MouseEvent& e) {
     repo->getConsole().setMouseUsage(getMouseUsage());
     repo->getConsole().setKeys(keys);
 
+    info(getName() << "::mouseEnter buttons=" << describeMouseButtons(e)
+                   << " layerType=" << layerType);
+
     focusGained();
     display->repaint();
 }
 
 void Interactor::mouseExit(const MouseEvent& e) {
     state.resetMouseFlags();
+
+    info(getName() << "::mouseExit buttons=" << describeMouseButtons(e)
+                   << " layerType=" << layerType);
 
     display->repaint();
 }
@@ -1038,6 +1109,14 @@ void Interactor::setMouseDownStateSelectorTool(const MouseEvent& e) {
 void Interactor::doDragVertex(const MouseEvent& e) {
     if (mouseFlag(FirstMove)) {
         vertexTransformUndoer.start();
+
+        info(getName() << "::dragStart selected=" << (int) getSelected().size()
+                       << " movingAll=" << (int) state.singleAll.size()
+                       << " movingXY=" << (int) state.singleXY.size()
+                       << " movingHorz=" << (int) state.singleHorz.size()
+                       << " currentVertex=" << (int64) state.currentVertex
+                       << " currentCube=" << (int64) state.currentCube
+                       << " buttons=" << describeMouseButtons(e));
     }
 
     Vertex2 diff = state.currentMouse - state.lastMouse;
@@ -1526,6 +1605,11 @@ Mesh* Interactor::getMesh() {
 }
 
 void Interactor::doClickSelect(const MouseEvent& e) {
+    info(getName() << "::doClickSelect before selected=" << (int) getSelected().size()
+                   << " currentVertex=" << (int64) state.currentVertex
+                   << " currentCube=" << (int64) state.currentCube
+                   << " buttons=" << describeMouseButtons(e));
+
     Vertex* v = state.currentVertex;
 
     if(v == nullptr) {

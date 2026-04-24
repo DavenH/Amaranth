@@ -64,7 +64,7 @@ bool Equalizer::doParamChange(int index, double value, bool doFurtherUpdate) {
     if (index >= Band1Gain && index <= Band5Gain) {
         didChange = partitions[partIdx].gainDB.setTargetValue(calcGain(value));
     } else {
-        didChange = partitions[partIdx].centreFreq.setTargetValue(calcFreq(value, getConstant(FreqLogTension)));
+        didChange = partitions[partIdx].centreFreq.setTargetValue(calcFreq(value, getConstant(FreqTensionScale)));
     }
 
     if (doFurtherUpdate && didChange) {
@@ -220,7 +220,7 @@ void Equalizer::updateParametersToTarget() {
 //
 //         fft.forward(buffers);
 //
-//         Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(AmpLogTension));
+//         Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(AmpTensionScale));
 //         // getObj(CsvFile).addValues(fft.getMagnitudes(), i);
 //     }
 //
@@ -230,7 +230,7 @@ void Equalizer::updateParametersToTarget() {
 //         ippsCopy_32f(audioBuffer.getWritePointer(i), buffers, size);
 //         fft.forward(buffers);
 //
-//         Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(AmpLogTension));
+//         Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(AmpTensionScale));
 //         // getObj(CsvFile).addValues(fft.getMagnitudes(), i + 2);
 //     }
 //

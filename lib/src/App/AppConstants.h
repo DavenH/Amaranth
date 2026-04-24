@@ -28,7 +28,7 @@ namespace Constants {
     ,   ProductName
     ,   DocumentsDir
     ,   PropertiesPath
-    ,   FreqLogTension  // the log spacing of frequency bins
+    ,   FreqTensionScale  // the log spacing of frequency bins
 
     ,   numAppConstants
     };
