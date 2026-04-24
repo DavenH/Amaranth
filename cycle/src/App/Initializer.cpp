@@ -11,7 +11,7 @@
 #include "CycleTour.h"
 #include "Dialogs.h"
 #include "Directories.h"
-#include "EffectMeshDefaults.h"
+#include "MeshDefaults.h"
 #include "FileManager.h"
 #include "Initializer.h"
 
@@ -111,6 +111,13 @@ void Initializer::init() {
 
     repo->setMorphPositioner(&getObj(MorphPanel));
     repo->init();
+    auto& meshLibrary = getObj(MeshLibrary);
+    MeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupVolume,
+                                     meshLibrary.getCurrentMesh(LayerGroups::GroupVolume));
+    MeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupPitch,
+                                     meshLibrary.getCurrentMesh(LayerGroups::GroupPitch));
+    MeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupScratch,
+                                     meshLibrary.getCurrentMesh(LayerGroups::GroupScratch));
     doPostInitWiring();
 
     if (instanceId == 1) {
@@ -150,12 +157,12 @@ void Initializer::seedMeshLibrary() {
     meshLib->addLayer(LayerGroups::GroupWaveshaper);
     meshLib->addLayer(LayerGroups::GroupIrModeller);
 
-    EffectMeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupGuideCurve,
-                                           meshLib->getCurrentMesh(LayerGroups::GroupGuideCurve));
-    EffectMeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupWaveshaper,
-                                           meshLib->getCurrentMesh(LayerGroups::GroupWaveshaper));
-    EffectMeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupIrModeller,
-                                           meshLib->getCurrentMesh(LayerGroups::GroupIrModeller));
+    MeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupGuideCurve,
+                                     meshLib->getCurrentMesh(LayerGroups::GroupGuideCurve));
+    MeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupWaveshaper,
+                                     meshLib->getCurrentMesh(LayerGroups::GroupWaveshaper));
+    MeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupIrModeller,
+                                     meshLib->getCurrentMesh(LayerGroups::GroupIrModeller));
 }
 
 void Initializer::doPostInitWiring() {

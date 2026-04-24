@@ -18,6 +18,7 @@
 #include "EnvelopeInter2D.h"
 #include "../App/CycleTour.h"
 #include "../App/Initializer.h"
+#include "../App/MeshDefaults.h"
 #include "../Audio/SynthAudioSource.h"
 #include "../Inter/WaveformInter3D.h"
 #include "../CycleDefs.h"
@@ -406,6 +407,8 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
 
             if (button == &addRemover.add) {
                 getObj(MeshLibrary).addLayer(layerType);
+                MeshLibrary::LayerGroup& group = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch);
+                MeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupScratch, group.layers.back().mesh);
             } else if (button == &addRemover.remove) {
                 MeshLibrary::LayerGroup &group = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch);
                 bool isLast = group.size() == 1;

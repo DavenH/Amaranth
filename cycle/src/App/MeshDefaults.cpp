@@ -1,4 +1,4 @@
-#include "EffectMeshDefaults.h"
+#include "MeshDefaults.h"
 
 #include <JuceHeader.h>
 
@@ -7,8 +7,11 @@
 #include <Definitions.h>
 #include <App/AppConstants.h>
 #include <App/SingletonRepo.h>
+#include <Curve/EnvelopeMesh.h>
+#include <Curve/EnvRasterizer.h>
 #include <Curve/Mesh.h>
 #include <Curve/Vertex.h>
+#include <Inter/EnvelopeInter2D.h>
 
 #include "../Util/CycleEnums.h"
 
@@ -50,7 +53,7 @@ namespace {
         float padding = getRealConstant(IrModellerPadding);
         auto& verts = mesh->getVerts();
 
-        verts.push_back(new Vertex(padding * 0.5f,  0.5f));
+        verts.push_back(new Vertex(padding * 0.5f,   0.5f));
         verts.push_back(new Vertex(padding - 0.001f, 0.5f));
         verts.push_back(new Vertex(padding + 0.001f, 0.5f));
         verts.push_back(new Vertex(padding + 0.003f, 0.5f));
@@ -94,13 +97,98 @@ namespace {
         verts[0]->setMaxSharpness();
         verts[1]->setMaxSharpness();
     }
+
+    EnvRasterizer* getEnvelopeRasterizer(SingletonRepo* repo, int layerType) {
+        switch (layerType) {
+            case LayerGroups::GroupVolume:  return &repo->get<EnvRasterizer>("EnvVolumeRast");
+            case LayerGroups::GroupPitch:   return &repo->get<EnvRasterizer>("EnvPitchRast");
+            case LayerGroups::GroupScratch: return &repo->get<EnvRasterizer>("EnvScratchRast");
+            default:                        return nullptr;
+        }
+    }
+
+    void initEnvelopeMesh(SingletonRepo* repo, int layerType, EnvelopeMesh* mesh) {
+        if (mesh == nullptr || mesh->getNumCubes() > 0 || mesh->getNumVerts() > 0) {
+            return;
+        }
+
+        auto& interactor = repo->get<EnvelopeInter2D>("EnvelopeInter2D");
+        EnvRasterizer* rast = getEnvelopeRasterizer(repo, layerType);
+
+        if (rast == nullptr) {
+            return;
+        }
+
+        int originalEnv = getSetting(CurrentEnvGroup);
+        int originalLayerType = interactor.layerType;
+        bool originalCollision = getSetting(CollisionDetection);
+        bool originalSuspendUndo = interactor.suspendUndo;
+        MeshRasterizer* originalRast = interactor.getRasterizer();
+
+        rast->setMesh(mesh);
+        rast->setMode(EnvRasterizer::NormalState);
+        interactor.setRasterizer(rast);
+        interactor.layerType = layerType;
+        interactor.suspendUndo = true;
+
+        rast->setCalcDepthDimensions(false);
+        rast->update(Update);
+
+        getSetting(CollisionDetection) = false;
+        getSetting(CurrentEnvGroup) = layerType;
+
+        switch (layerType) {
+            case LayerGroups::GroupVolume:
+                interactor.addNewCube(0.f, 0.f,    0.f,  1.f);
+                interactor.addNewCube(0.f, 0.05f,  1.f,  0.5f);
+                interactor.addNewCube(0.f, 0.7f,   0.8f, 0.3f);
+                interactor.addNewCube(0.f, 0.999f, 0.8f, 1.f);
+                mesh->setSustainToLast();
+                interactor.addNewCube(0.f, 1.075f, 0.6f, -1.f);
+                interactor.addNewCube(0.f, 1.15f,  0.f,  -1.f);
+                interactor.addNewCube(0.f, 1.25f,  0.f,  -1.f);
+                break;
+
+            case LayerGroups::GroupPitch:
+                interactor.addNewCube(0.f, 0.f,    0.5f, -1.f);
+                interactor.addNewCube(0.f, 0.999f, 0.5f, -1.f);
+                mesh->setSustainToLast();
+                break;
+
+            case LayerGroups::GroupScratch:
+                interactor.addNewCube(0.f, 0.f,    0.f, 1.f);
+                interactor.addNewCube(0.f, 0.999f, 1.f, 1.f);
+                mesh->setSustainToLast();
+                break;
+
+            default:
+                break;
+        }
+
+        interactor.resetState();
+        interactor.suspendUndo = originalSuspendUndo;
+        getSetting(CollisionDetection) = originalCollision;
+
+        rast->update(Update);
+        rast->setCalcDepthDimensions(true);
+
+        getSetting(CurrentEnvGroup) = originalEnv;
+        interactor.layerType = originalLayerType;
+
+        if (originalRast != nullptr) {
+            interactor.setRasterizer(originalRast);
+        }
+    }
 }
 
-void EffectMeshDefaults::initialiseIfNeeded(SingletonRepo* repo, int layerType, Mesh* mesh) {
-    // TODO(daven): This legacy effect-mesh bootstrap is application-specific and
+void MeshDefaults::initialiseIfNeeded(SingletonRepo* repo, int layerType, Mesh* mesh) {
+    // TODO(daven): This legacy Cycle mesh bootstrap is application-specific and
     // should move behind an explicit app extension hook instead of being invoked
-    // ad hoc from cycle startup/UI code.
+    // ad hoc from startup/UI code.
     switch (layerType) {
+        case LayerGroups::GroupVolume: initEnvelopeMesh(repo, layerType, dynamic_cast<EnvelopeMesh*>(mesh)); break;
+        case LayerGroups::GroupPitch: initEnvelopeMesh(repo, layerType, dynamic_cast<EnvelopeMesh*>(mesh)); break;
+        case LayerGroups::GroupScratch: initEnvelopeMesh(repo, layerType, dynamic_cast<EnvelopeMesh*>(mesh)); break;
         case LayerGroups::GroupGuideCurve: initGuideMesh(repo, mesh); break;
         case LayerGroups::GroupWaveshaper: initWaveshaperMesh(repo, mesh); break;
         case LayerGroups::GroupIrModeller: initTubeModelMesh(repo, mesh); break;
@@ -108,7 +196,7 @@ void EffectMeshDefaults::initialiseIfNeeded(SingletonRepo* repo, int layerType, 
     }
 }
 
-void EffectMeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerType, Mesh* mesh) {
+void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerType, Mesh* mesh) {
     // TODO(daven): This app-specific migration should eventually live behind an
     // explicit app extension/migration hook rather than Cycle post-load code.
     if (mesh == nullptr || mesh->getNumVerts() == 0) {

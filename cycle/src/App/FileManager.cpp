@@ -14,7 +14,7 @@
 #include "CycleTour.h"
 #include "Directories.h"
 #include "Dialogs.h"
-#include "EffectMeshDefaults.h"
+#include "MeshDefaults.h"
 #include "FileManager.h"
 
 #include "../App/Initializer.h"
@@ -163,7 +163,7 @@ void FileManager::doPostPresetLoad() {
         auto& layerGroup = meshLibrary.getLayerGroup(group);
 
         for (auto& layer : layerGroup.layers) {
-            EffectMeshDefaults::migrateLegacyPaddingIfNeeded(repo, group, layer.mesh);
+            MeshDefaults::migrateLegacyPaddingIfNeeded(repo, group, layer.mesh);
         }
     }
 
