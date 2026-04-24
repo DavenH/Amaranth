@@ -14,6 +14,7 @@
 #include "CycleTour.h"
 #include "Directories.h"
 #include "Dialogs.h"
+#include "EffectMeshDefaults.h"
 #include "FileManager.h"
 
 #include "../App/Initializer.h"
@@ -157,6 +158,14 @@ void FileManager::doPostPresetLoad() {
 
     auto& source = getObj(SynthAudioSource);
     auto& meshLibrary = getObj(MeshLibrary);
+
+    for (int group : { LayerGroups::GroupGuideCurve, LayerGroups::GroupWaveshaper, LayerGroups::GroupIrModeller }) {
+        auto& layerGroup = meshLibrary.getLayerGroup(group);
+
+        for (auto& layer : layerGroup.layers) {
+            EffectMeshDefaults::migrateLegacyPaddingIfNeeded(repo, group, layer.mesh);
+        }
+    }
 
     source.setEnvelopeMeshes(true);
     source.enablementChanged();

@@ -1,5 +1,6 @@
 #include "PresetMigrator.h"
 
+#include "../AppConstants.h"
 #include "PresetJson.h"
 #include "../MeshLibrary.h"
 
@@ -163,6 +164,65 @@ namespace {
         return PresetJson::toVar(json);
     }
 
+    void migrateLegacyPhaseAmpMesh(var meshValue) {
+        auto* mesh = PresetJson::getObject(meshValue);
+
+        if (mesh == nullptr) {
+            return;
+        }
+
+        int version = int(mesh->getProperty("version"));
+        auto* vertices = PresetJson::getArray(mesh->getProperty("vertices"));
+
+        if (version < 1 || version >= Constants::MeshFormatVersion || vertices == nullptr) {
+            return;
+        }
+
+        for (auto& vertexValue : *vertices) {
+            auto* vertex = vertexValue.getDynamicObject();
+
+            if (vertex == nullptr) {
+                continue;
+            }
+
+            double time = double(vertex->getProperty("time"));
+            double phase = double(vertex->getProperty("phase"));
+
+            vertex->setProperty("amp", phase);
+            vertex->setProperty("phase", time);
+            vertex->setProperty("time", 0.0);
+        }
+
+    }
+
+    void migrateLegacyGroups(Array<var>& groups, std::initializer_list<int> groupIndices) {
+        for (int groupIndex : groupIndices) {
+            if (!isPositiveAndBelow(groupIndex, groups.size())) {
+                continue;
+            }
+
+            var& groupValue = groups.getReference(groupIndex);
+            auto* group = PresetJson::getObject(groupValue);
+            auto* layers = group == nullptr ? nullptr : PresetJson::getArray(group->getProperty("layers"));
+
+            if (layers == nullptr) {
+                continue;
+            }
+
+            for (auto& layerValue : *layers) {
+                auto* layer = layerValue.getDynamicObject();
+
+                if (layer == nullptr) {
+                    continue;
+                }
+
+                var meshValue = layer->getProperty("mesh");
+                migrateLegacyPhaseAmpMesh(meshValue);
+                layer->setProperty("mesh", meshValue);
+            }
+        }
+    }
+
     var parseEnvelopeMesh(const XmlElement* wrapper) {
         auto json = PresetJson::object();
         XmlElement* envMeshElem = wrapper == nullptr ? nullptr : wrapper->getChildByName("EnvelopeMesh");
@@ -252,6 +312,12 @@ namespace {
             group->setProperty("layers", var(layers));
             groups.add(PresetJson::toVar(group));
         }
+
+        migrateLegacyGroups(groups, {
+            LayerGroups::GroupGuideCurve,
+            GroupWaveshaperCurrent,
+            GroupIrModellerCurrent
+        });
 
         json->setProperty("groups", var(groups));
         return PresetJson::toVar(json);
@@ -476,6 +542,12 @@ namespace {
             layersArray.add(PresetJson::toVar(layer));
             group->setProperty("layers", var(layersArray));
         }
+
+        migrateLegacyGroups(groups, {
+            LayerGroups::GroupGuideCurve,
+            GroupWaveshaperCurrent,
+            GroupIrModellerCurrent
+        });
 
         json->setProperty("groups", var(groups));
         return PresetJson::toVar(json);

@@ -171,8 +171,6 @@ void WaveshaperUI::setMeshAndUpdate(Mesh* mesh) {
         return;
     }
 
-    mesh->updateToVersion(ProjectInfo::versionNumber);
-
     rasterizer->cleanUp();
     rasterizer->setMesh(mesh);
 

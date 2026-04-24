@@ -14,6 +14,7 @@
 #include "../Widgets/Controls/LayerAddRemover.h"
 #include "../Widgets/Controls/MeshSelector.h"
 #include "../../App/CycleTour.h"
+#include "../../App/EffectMeshDefaults.h"
 #include "../../Audio/SynthAudioSource.h"
 #include "../CycleDefs.h"
 #include "../../Util/CycleEnums.h"
@@ -226,6 +227,9 @@ void GuideCurvePanel::buttonClicked(Button* button) {
 
 void GuideCurvePanel::addNewLayer(bool update) {
     meshLib->addLayer(LayerGroups::GroupGuideCurve);
+    EffectMeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupGuideCurve,
+                                           meshLib->getLayer(LayerGroups::GroupGuideCurve,
+                                                             meshLib->getLayerGroup(LayerGroups::GroupGuideCurve).size() - 1).mesh);
 
     // incremented by the above
     int currentLayer = meshLib->getLayerGroup(LayerGroups::GroupGuideCurve).current;
@@ -360,8 +364,6 @@ void GuideCurvePanel::setMeshAndUpdate(Mesh* mesh) {
         repaint();
         return;
     }
-
-    mesh->updateToVersion(ProjectInfo::versionNumber);
 
     rasterizer->cleanUp();
     rasterizer->setMesh(mesh);

@@ -11,6 +11,7 @@
 #include "CycleTour.h"
 #include "Dialogs.h"
 #include "Directories.h"
+#include "EffectMeshDefaults.h"
 #include "FileManager.h"
 #include "Initializer.h"
 
@@ -148,6 +149,13 @@ void Initializer::seedMeshLibrary() {
     meshLib->addLayer(LayerGroups::GroupWavePitch);
     meshLib->addLayer(LayerGroups::GroupWaveshaper);
     meshLib->addLayer(LayerGroups::GroupIrModeller);
+
+    EffectMeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupGuideCurve,
+                                           meshLib->getCurrentMesh(LayerGroups::GroupGuideCurve));
+    EffectMeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupWaveshaper,
+                                           meshLib->getCurrentMesh(LayerGroups::GroupWaveshaper));
+    EffectMeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupIrModeller,
+                                           meshLib->getCurrentMesh(LayerGroups::GroupIrModeller));
 }
 
 void Initializer::doPostInitWiring() {

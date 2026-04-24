@@ -152,7 +152,7 @@ public:
     virtual void drawDepthLinesAndVerts() = 0;
     virtual void bakeTextures()                 {}
     virtual void drawCurvesAndSurfaces()        {}
-    virtual void drawGuideCurveTags()             {}
+    virtual void drawGuideCurveTags()           {}
     virtual void drawInterceptLines()           {}
     virtual void drawVerticalLine()             {}
     virtual void highlightCurrentIntercept()    {}

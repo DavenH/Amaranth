@@ -351,7 +351,7 @@ bool Mesh::readJSON(const var& object) {
 
     destroy();
 
-    version = PresetJson::intProperty(object, "version", Constants::MeshFormatVersion);
+    version = PresetJson::doubleProperty(object, "version", Constants::MeshFormatVersion);
     name = PresetJson::stringProperty(object, "name", "unnamed");
 
     DBG(String::formatted("Mesh::readJSON name=%s version=%d vertices=%d cubes=%d",
@@ -440,14 +440,15 @@ bool Mesh::readJSON(const var& object) {
         DBG("cubeArray is empty");
     }
 
-    DBG(String::formatted("Mesh::readJSON complete name=%s verts=%d cubes=%d skippedWrongVertexCount=%d skippedInvalidMapping=%d",
+    validate();
+
+    DBG(String::formatted("Mesh::readJSON complete name=%s version=%d verts=%d cubes=%d skippedWrongVertexCount=%d skippedInvalidMapping=%d",
                           name.toRawUTF8(),
+                          version,
                           (int) verts.size(),
                           (int) cubes.size(),
                           skippedWrongVertexCount,
                           skippedInvalidMapping));
-
-    validate();
 
     return true;
 }

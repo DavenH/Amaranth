@@ -31,8 +31,11 @@ public:
     vector<VertCube*>& getCubes() { return cubes; }
 
     [[nodiscard]] const String& getName() const { return name; }
+    [[nodiscard]] int getVersion() const        { return version; }
     [[nodiscard]] int getNumCubes() const    { return (int) cubes.size(); }
     [[nodiscard]] int getNumVerts() const    { return (int) verts.size(); }
+
+    void setVersion(int newVersion) { version = newVersion; }
 
     void addCube(VertCube* cube) { cubes.insert(cubes.end(), cube); }
     void addVertex(Vertex* vert) { verts.insert(verts.end(), vert); }
