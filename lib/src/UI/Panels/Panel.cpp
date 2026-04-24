@@ -296,10 +296,13 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
         int endIdx      = ceilf(zoomRight / fineInc.x);
         float offset    = bgPaddingLeft + startIdx * fineInc.x;
         int maxSize     = jmin(int(maxMinorSize), (int) ceilf(xScale / fineInc.x));
-        int numLines    = jmin(maxSize, endIdx - startIdx) + 1;
+        int numLines    = jmax(0, jmin(maxSize, endIdx - startIdx) + 1);
+        DBG(String::formatted("Panel::%s num vert minor lines=%d", name.toUTF8(), numLines));
 
         vertMinorLines.resize(numLines);
-        vertMinorLines.ramp(offset, fineInc.x);
+        if (numLines > 0) {
+            vertMinorLines.ramp(offset, fineInc.x);
+        }
     }
 
     // coarse
@@ -308,10 +311,12 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
         int endIdx      = ceilf(zoomRight / crsInc.x);
         float offset    = bgPaddingLeft + startIdx * crsInc.x;
         int maxSize     = jmin(int(maxMajorSize), (int) ceilf(xScale / crsInc.x));
-        int numLines    = jmin(maxSize, endIdx - startIdx);
+        int numLines    = jmax(0, jmin(maxSize, endIdx - startIdx));
 
         vertMajorLines.resize(numLines);
-        vertMajorLines.ramp(offset, crsInc.x);
+        if (numLines > 0) {
+            vertMajorLines.ramp(offset, crsInc.x);
+        }
     }
 
     float ratio = float(w * 0.8) / float(jmax(1, h));
@@ -324,7 +329,9 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
             fineInc.y    = yScale / numLines;
 
             horzMinorLines.resize(numLines);
-            horzMinorLines.ramp(bgPaddingBttm + fineInc.y, fineInc.y);
+            if (numLines > 0) {
+                horzMinorLines.ramp(bgPaddingBttm + fineInc.y, fineInc.y);
+            }
         }
 
         {
@@ -333,7 +340,9 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
             crsInc.y     = yScale / numLines;
 
             horzMajorLines.resize(numLines - 1);
-            horzMajorLines.ramp(bgPaddingBttm + crsInc.y, crsInc.y);
+            if (numLines > 1) {
+                horzMajorLines.ramp(bgPaddingBttm + crsInc.y, crsInc.y);
+            }
         }
     } else {
         // nb: not nullify; want to keep pointer

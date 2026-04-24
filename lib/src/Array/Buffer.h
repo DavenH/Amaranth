@@ -139,7 +139,7 @@ public:
     operator T*()               { return ptr;       }
     operator const T*() const   { return ptr;       }
 
-    [[nodiscard]] bool empty() const    { return sz == 0;   }
+    [[nodiscard]] bool empty() const    { return sz <= 0;   }
     [[nodiscard]] int size() const      { return sz;        }
 
     void nullify() {
@@ -202,7 +202,11 @@ public:
 
     Buffer& operator=(const Buffer& other) = default;
 
-    virtual bool resize(int newSize) { sz = newSize; return true; }
+    virtual bool resize(int newSize) {
+        jassert(newSize >= 0);
+        sz = jmax(0, newSize);
+        return true;
+    }
 
     template<class S>
     Buffer<S> toType() const {

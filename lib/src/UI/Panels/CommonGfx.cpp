@@ -75,26 +75,30 @@ void CommonGfx::drawBackground(const Rectangle<int>& bounds, bool fillBackground
         xMajor = panel->vertMajorLines;
         yMajor = panel->horzMajorLines;
 
-        float left = jmax(xMinor.front(), panel->invertScaleX(0));
-        float right = jmin(xMinor.back(), panel->invertScaleX(panel->comp->getWidth()));
-
-        leftMinorIdx = jmax(0, Arithmetic::binarySearch(left, xMinor));
-        rightMinorIdx = jmin(xMinor.size() - 1, Arithmetic::binarySearch(right, xMinor));
-
-        panel->xBuffer.ensureSize(rightMinorIdx - leftMinorIdx);
-
-        xMinScaled = panel->xBuffer.withSize(rightMinorIdx - leftMinorIdx);
-
         float leftNZ = panel->sx(panel->bgPaddingLeft);
         float rightNZ = panel->sx(1 - panel->bgPaddingRight);
 
-        if (!xMinScaled.empty()) {
-            xMinor.offset(leftMinorIdx).copyTo(xMinScaled);
-            panel->applyScaleX(xMinScaled);
+        if (!xMinor.empty()) {
+            float left = jmax(xMinor.front(), panel->invertScaleX(0));
+            float right = jmin(xMinor.back(), panel->invertScaleX(panel->comp->getWidth()));
 
-            for (float i : xMinScaled) {
-                drawLine(i, topY, i, botY, false);
+            leftMinorIdx = jmax(0, Arithmetic::binarySearch(left, xMinor));
+            rightMinorIdx = jmin(xMinor.size() - 1, Arithmetic::binarySearch(right, xMinor));
+
+            panel->xBuffer.ensureSize(rightMinorIdx - leftMinorIdx);
+            xMinScaled = panel->xBuffer.withSize(rightMinorIdx - leftMinorIdx);
+
+            if (!xMinScaled.empty()) {
+                xMinor.offset(leftMinorIdx).copyTo(xMinScaled);
+                panel->applyScaleX(xMinScaled);
+
+                for (float i : xMinScaled) {
+                    drawLine(i, topY, i, botY, false);
+                }
             }
+        } else {
+            DBG(String::formatted("CommonGfx::drawBackground panel=%s has empty vertical background lines",
+                                  panel->getName().toRawUTF8()));
         }
 
         for (float i : yMinor) {
