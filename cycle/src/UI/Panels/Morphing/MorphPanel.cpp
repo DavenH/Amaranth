@@ -59,6 +59,8 @@ MorphPanel::MorphPanel(SingletonRepo* repo) :
 void MorphPanel::init() {
 //	mappingBox.setSelectedId(ModMappingId, true);
 
+    midiRange = Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote);
+
     yllwSlider.dim = Vertex::Time;
     redSlider.dim  = Vertex::Red;
     blueSlider.dim = Vertex::Blue;
@@ -115,7 +117,6 @@ void MorphPanel::init() {
 
     setWantsKeyboardFocus(false);
 
-    midiRange = Range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
     updateHighlights();
 }
 
@@ -264,6 +265,10 @@ void MorphPanel::sliderValueChanged(Slider* slider) {
 
 void MorphPanel::updateModPosition(int dim, float value) {
     if (dim == Vertex::Red) {
+        DBG("MorphPanel::updateModPosition red=" + String(value));
+    }
+
+    if (dim == Vertex::Red) {
         getObj(MidiKeyboard).setAuditionKey(getCurrentMidiKey());
     }
 
@@ -364,6 +369,7 @@ int MorphPanel::getCurrentMidiKey() {
 }
 
 void MorphPanel::setKeyValueForNote(int midiNote) {
+    DBG("MorphPanel::setKeyValueForNote midiNote=" + String(midiNote));
     redSlider.setValue(Arithmetic::getUnitValueForGraphicNote(midiNote, midiRange), dontSendNotification);
 }
 
@@ -466,7 +472,10 @@ void MorphPanel::setViewDepth(int dim, float depth) {
 void MorphPanel::setValue(int dim, float value) {
     switch (dim) {
         case Vertex::Time:	yllwSlider.setValue(value, dontSendNotification); 	break;
-        case Vertex::Red: 	redSlider.setValue(value, dontSendNotification);	break;
+        case Vertex::Red:
+            DBG("MorphPanel::setValue red=" + String(value));
+            redSlider.setValue(value, dontSendNotification);
+            break;
         case Vertex::Blue: 	blueSlider.setValue(value, dontSendNotification);	break;
         default: break;
     }
@@ -475,7 +484,10 @@ void MorphPanel::setValue(int dim, float value) {
 void MorphPanel::triggerValue(int dim, float value) {
     switch (dim) {
         case Vertex::Time:	yllwSlider.setValue(value, sendNotificationAsync);	break;
-        case Vertex::Red: 	redSlider.setValue(value, sendNotificationAsync);	break;
+        case Vertex::Red:
+            DBG("MorphPanel::triggerValue red=" + String(value));
+            redSlider.setValue(value, sendNotificationAsync);
+            break;
         case Vertex::Blue: 	blueSlider.setValue(value, sendNotificationAsync);	break;
         default: break;
     }
@@ -642,6 +654,7 @@ bool MorphPanel::readJSON(const var& object) {
 //}
 
 void MorphPanel::redDimUpdated(float value) {
+    DBG("MorphPanel::redDimUpdated value=" + String(value));
     redSlider.setCurrentValue(value);
 }
 

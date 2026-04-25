@@ -10,7 +10,8 @@ EditWatcher::EditWatcher(SingletonRepo* repo) :
 }
 
 void EditWatcher::update(bool justUpdateTitle) {
-    String currPreset   = getStrConstant(DocumentName);
+    String currPreset = getObj(Document).getDetails().getName();
+    // String currPreset   = getStrConstant(DocumentName);
     String prodName     = getStrConstant(ProductName);
 
     String titleBar = (prodName + " - ") + currPreset;

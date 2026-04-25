@@ -85,7 +85,7 @@ public:
     void processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages) override;
 
     AudioSourceProcessor* getAudioSourceProcessor() const { return currentProcessor; }
-    void setAudioSourceProcessor(AudioSourceProcessor* processor) { currentProcessor = processor; }
+    void setAudioSourceProcessor(AudioSourceProcessor* processor);
 
     String getDeviceErrorAndReset();
 

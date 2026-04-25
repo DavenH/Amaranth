@@ -1,4 +1,5 @@
 #include "CommonGL.h"
+#include "GLPanelRenderer.h"
 #include "OpenGLPanel.h"
 
 #include <Definitions.h>
@@ -21,9 +22,11 @@ OpenGLPanel::~OpenGLPanel() {
 
 void OpenGLPanel::init() {
     commonGL = new CommonGL(panel, this);
+    panelRenderer = std::make_unique<GLPanelRenderer>(commonGL);
 
     panel->setComponent(this);
     panel->setGraphicsHelper(commonGL);
+    panel->setPanelRenderer(panelRenderer.get());
     panel->setRenderHelper(this);
 }
 

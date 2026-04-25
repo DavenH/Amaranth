@@ -21,20 +21,20 @@
 #define getStrConstant(T)     getObj(AppConstants).getStringAppConstant(Constants::T)
 #define getDocSetting(X)      getObj(Settings).getDocumentSetting(DocSettings::X)
 #define getSettingValue(T)    getObj(Settings).getGlobalSettingValue(AppSettings::T)
-#define getRealConstant(T)  getObj(AppConstants).getRealAppConstant(Constants::T)
+#define getRealConstant(T)    getObj(AppConstants).getRealAppConstant(Constants::T)
 #define getSetting(T)         getObj(Settings).getGlobalSetting(AppSettings::T)
-#define getLayerMesh(T, S)  getObj(MeshLibrary).getLayer(LayerGroups::T, S)
-#define getLayerProps(T, S) getObj(MeshLibrary).getProps(LayerGroups::T, S)
+#define getLayerMesh(T, S)    getObj(MeshLibrary).getLayer(LayerGroups::T, S)
+#define getLayerProps(T, S)   getObj(MeshLibrary).getProps(LayerGroups::T, S)
 
-#define showConsoleMsg(T)             repo->getConsole().write(T)
-#define showImportant(T)    repo->getConsole().write(T, IConsole::ImportantPriority)
-#define showCritical(T)     repo->getConsole().write(T, IConsole::CriticalPriority)
+#define showConsoleMsg(T)     repo->getConsole().write(T)
+#define showImportant(T)      repo->getConsole().write(T, IConsole::ImportantPriority)
+#define showCritical(T)       repo->getConsole().write(T, IConsole::CriticalPriority)
 
-#define flag(X)                 state.flags[PanelState::X]
+#define flag(X)               state.flags[PanelState::X]
 #define mouseFlag(X)          state.mouseFlags[PanelState::X]
 #define realValue(X)          state.realValues[PanelState::X]
 #define actionIs(X)           (state.actionState == PanelState::X)
-#define getStateValue(X)    state.values[PanelState::X]
+#define getStateValue(X)      state.values[PanelState::X]
 
 #if defined(BUILD_TESTING) && (BUILD_TESTING == 1)
   #define PLUGIN_MODE 0

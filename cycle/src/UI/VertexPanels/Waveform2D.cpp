@@ -17,6 +17,7 @@
 
 #include "../Panels/Morphing/MorphPanel.h"
 #include "../VertexPanels/Waveform3D.h"
+#include "../../Inter/WaveformInter2D.h"
 #include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VisualDsp.h"
 #include "../../Util/CycleEnums.h"
@@ -45,6 +46,7 @@ void Waveform2D::init() {
     Panel2D::init();
 
     position = &getObj(PlaybackPanel);
+    setInteractor(&getObj(WaveformInter2D));
 }
 
 void Waveform2D::preDraw() {
@@ -179,12 +181,12 @@ void Waveform2D::drawIfftCycle() {
 }
 
 void Waveform2D::drawHistory() {
-    Panel3D::Renderer* renderer = getObj(Waveform3D).getRenderer();
-    const vector<Column>& columns = renderer->getColumns();
+    Panel3D& waveform3D = getObj(Waveform3D);
+    const vector<Column>& columns = waveform3D.getColumns();
     float width 	= getObj(MorphPanel).getDepth(getSetting(CurrentMorphAxis));
     int numCols 	= (int) columns.size();
 
-    ScopedLock sl(renderer->getGridLock());
+    ScopedLock sl(waveform3D.getGridLock());
 
     if(numCols == 0) {
         return;

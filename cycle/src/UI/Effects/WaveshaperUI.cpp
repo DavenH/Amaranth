@@ -5,6 +5,7 @@
 #include <App/SingletonRepo.h>
 #include <Curve/GuideCurveProvider.h>
 #include <UI/MiscGraphics.h>
+#include <UI/Panels/CommonGfx.h>
 #include <UI/Widgets/Knob.h>
 
 #include "WaveshaperUI.h"
@@ -18,6 +19,18 @@
 #include "../../UI/VertexPanels/GuideCurvePanel.h"
 
 const int WaveshaperUI::oversampFactors[5] = { 1, 1, 2, 4, 8 };
+
+namespace {
+    String describeEffectMesh(Mesh* mesh) {
+        if (mesh == nullptr) {
+            return "mesh=null";
+        }
+
+        return "mesh=" + String::toHexString((pointer_sized_int) mesh)
+            + " verts=" + String(mesh->getNumVerts())
+            + " cubes=" + String(mesh->getNumCubes());
+    }
+}
 
 WaveshaperUI::WaveshaperUI(SingletonRepo* repo) :
         EffectPanel		(repo, "WaveshaperUI", true)
@@ -149,6 +162,7 @@ void WaveshaperUI::postCurveDraw() {
 }
 
 void WaveshaperUI::setMeshAndUpdate(Mesh* mesh) {
+    DBG("WaveshaperUI::setMeshAndUpdate " + describeEffectMesh(mesh));
     if (mesh == nullptr) {
         rasterizer->cleanUp();
         rasterizer->setMesh(nullptr);
@@ -156,8 +170,6 @@ void WaveshaperUI::setMeshAndUpdate(Mesh* mesh) {
         repaint();
         return;
     }
-
-    mesh->updateToVersion(ProjectInfo::versionNumber);
 
     rasterizer->cleanUp();
     rasterizer->setMesh(mesh);

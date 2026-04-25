@@ -109,7 +109,7 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 	}
 
     if (state->callCount == 0) {
-	    state->advancement = getConstant(MinLineLength) * 1.1f;
+	    state->advancement = getRealConstant(MinLineLength) * 1.1f;
     }
 
     // the first call is just padding for curves

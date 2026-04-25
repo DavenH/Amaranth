@@ -243,9 +243,24 @@ void PlaybackPanel::setProgress(float unitX, bool updateMorphPanel) {
 	if (EnvRasterizer* envRast = getObj(EnvelopeInter2D).getEnvRasterizer()) {
 		MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(getSetting(CurrentEnvGroup));
 
-		if (props->active) {
-			envPos = 0;
-			envRast->simulateRender(x, envPos, *props, 1.f);
+		if (props == nullptr) {
+			DBG(String::formatted("PlaybackPanel::setProgress missing env props for group=%d",
+								  getSetting(CurrentEnvGroup)));
+			jassertfalse;
+		} else if (props->active) {
+			const auto& icpts = envRast->getRastData().intercepts;
+			bool canSimulate = envRast->hasEnoughCubesForCrossSection();
+
+			if (canSimulate && icpts.empty()) {
+				DBG(String::formatted("PlaybackPanel::setProgress env rasterizer %s has cubes but no intercepts",
+									  envRast->MeshRasterizer::getName().toRawUTF8()));
+				jassertfalse;
+			}
+
+			if (canSimulate && !icpts.empty()) {
+				envRast->simulateStart(envPos); // TODO check if this is necessary
+				envRast->simulateRender(x, envPos, *props, 1.f);
+			}
 		}
 	}
 
@@ -344,7 +359,7 @@ void PlaybackPanel::update() {
 void PlaybackPanel::startAudio() {
 	if (x < 1) {
 		midiKeyPlaying = getObj(MidiKeyboard).getAuditionKey();
-		NumberUtils::constrain(midiKeyPlaying, getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+		NumberUtils::constrain<int>(midiKeyPlaying, Constants::LowestMidiNote, Constants::HighestMidiNote);
 
 		float velocity = 0.8f;
 
@@ -403,10 +418,29 @@ void PlaybackPanel::timerCallback(int id) {
 		stopTimer(ReleaseTimerId);
 	} else {
 		MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(getSetting(CurrentEnvGroup));
+		if (props == nullptr) {
+			DBG(String::formatted("PlaybackPanel::timerCallback missing env props for group=%d",
+								  getSetting(CurrentEnvGroup)));
+			jassertfalse;
+			stopTimer(ReleaseTimerId);
+			return;
+		}
+
 		bool isAlive = props->active;
 
 		if(isAlive) {
-			isAlive = envRast->simulateRender(inc, envPos, *props, 1.f);
+			const auto& icpts = envRast->getRastData().intercepts;
+			bool canSimulate = envRast->hasEnoughCubesForCrossSection();
+
+			if (canSimulate && icpts.empty()) {
+				DBG(String::formatted("PlaybackPanel::timerCallback env rasterizer %s has cubes but no intercepts",
+									  envRast->MeshRasterizer::getName().toRawUTF8()));
+				jassertfalse;
+				stopTimer(ReleaseTimerId);
+				return;
+			}
+
+			isAlive = canSimulate && !icpts.empty() && envRast->simulateRender(inc, envPos, *props, 1.f);
 		}
 
 		if(! isAlive) {

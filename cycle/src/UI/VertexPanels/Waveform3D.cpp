@@ -48,7 +48,9 @@ void Waveform3D::init() {
     Image blue 		= PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
     surfInteractor 	= &getObj(WaveformInter3D);
     interactor3D  	= surfInteractor;
-    interactor		= interactor3D;
+    setInteractor(interactor3D);
+    interactor3D->setRasterizer(&getObj(TimeRasterizer));
+    surfInteractor->updateSelectionClient();
 
     zoomPanel->tendZoomToCentre = false;
     zoomPanel->panelComponentChanged(openGL.get(), nullptr);

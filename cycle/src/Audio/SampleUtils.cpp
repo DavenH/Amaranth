@@ -103,7 +103,7 @@ void SampleUtils::processWav(bool isMulti, bool invokerIsDialog) {
     if(isMulti)
         fundDiff = calcFundDelta();
 
-    Range midiRange(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    Range<int> midiRange(Constants::LowestMidiNote, Constants::HighestMidiNote);
 
     for (auto & i : samples) {
         PitchedSample* sample = i;

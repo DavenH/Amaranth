@@ -17,7 +17,6 @@
 SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo) :
         CycleBasedVoice(parent, repo)
 {
-    timeLayers	= &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupTime);
     freqLayers	= &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupSpect);
     phaseLayers	= &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupPhase);
 
@@ -153,7 +152,7 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
 
     Buffer timeBuf(rastBuffer, samplingSize);
 
-    int layerSize = timeLayers->size();
+    int layerSize = getTimeLayerGroup().size();
 
     for (int layerIdx = 0; layerIdx < layerSize; ++layerIdx) {
         MeshLibrary::Layer& layer = parent->meshLib->getLayer(LayerGroups::GroupTime, layerIdx);

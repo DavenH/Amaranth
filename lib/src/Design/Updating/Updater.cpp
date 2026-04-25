@@ -3,6 +3,21 @@
 #include "../../App/SingletonRepo.h"
 #include "../../Definitions.h"
 
+namespace {
+
+const char* getUpdateTypeName(UpdateType type) {
+    switch (type) {
+        case Null:          return "Null";
+        case Update:        return "Update";
+        case ReduceDetail:  return "ReduceDetail";
+        case RestoreDetail: return "RestoreDetail";
+        case Repaint:       return "Repaint";
+        default:            return "Unknown";
+    }
+}
+
+}
+
 Updater::Updater(SingletonRepo* repo) :
         SingletonAccessor   (repo, "Updater")
     ,   graph               (repo)
@@ -36,6 +51,9 @@ void Updater::update(int code, UpdateType type) {
         lastUpdateMillis = Time::currentTimeMillis();
 
         graph.setUpdateType(type);
+        graph.setUpdateContext(String(getUpdateTypeName(type)) + " from " +
+                               (node != nullptr && node->getDebugName().isNotEmpty() ? node->getDebugName()
+                                                                                     : "unnamed"));
         graph.update(node);
 
         sendChangeMessage();
@@ -49,6 +67,9 @@ void Updater::setThrottling(bool doThrottle, int threshMillis) {
 
 void Updater::handleAsyncUpdate() {
     if (!pendingUpdates.empty()) {
+        // TODO optimization to collapse these:
+        // - multiple equal UpdateTypes
+        // - idempotent sequences of UpdateType e.g. [reduceDetail, Update, restoreDetail] => [Update]
         PendingUpdate pu = pendingUpdates.front();
         pendingUpdates.pop_front();
 
@@ -77,10 +98,14 @@ void Updater::Graph::update(Node* startingNode) {
     }
 
     if(printsPath) {
-        String action = getUpdateString();
+        String action = updateContext;
+
+        if (String extra = getUpdateString(); extra.isNotEmpty()) {
+            action << " " << extra;
+        }
 
         path = "Update: " + action + "\t" + path;
-        info(path << "\n");
+        DBG(path);
 
         lastPath = path;
     }
@@ -115,6 +140,9 @@ Updater::Node::Node(Updateable* objectToUpdate) :
         updated(false)
     ,   dirty(false)
     ,   toUpdate(objectToUpdate) {
+    if (toUpdate != nullptr) {
+        debugName = toUpdate->getUpdateName();
+    }
 }
 
 void Updater::Node::updatesAfter(Node* parent) {
@@ -164,7 +192,8 @@ void Updater::Node::performUpdate(String& updatePath, UpdateType updateType, boo
     // we can get here by a parent updating this
     if (!updated) {
         if(shouldPrintPath && toUpdate != nullptr) {
-            updatePath << toUpdate->getUpdateName() << " ";
+            String name = debugName.isNotEmpty() ? debugName : toUpdate->getUpdateName();
+            updatePath << name << " ";
         }
 
         executeUpdate(updateType);

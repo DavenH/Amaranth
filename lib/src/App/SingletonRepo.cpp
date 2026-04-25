@@ -112,6 +112,7 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
     hashes.set(accessor->getName(), accessor);
 
     if(auto* savable = dynamic_cast<Savable*>(accessor)) {
+        // DBG("SingletonRepo::add saveSource " + accessor->getName());
         saveSources.add(savable);
     }
 
@@ -124,12 +125,22 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
     }
 }
 
-void SingletonRepo::addExternal(SingletonAccessor* accessor) {
-    if (accessor == nullptr) {
-        return;
+void SingletonRepo::addExternal(SingletonAccessor* accessor, int order) {
+    accessor->setInitOrder(order);
+    hashes.set(accessor->getName(), accessor);
+
+    if(auto* savable = dynamic_cast<Savable*>(accessor)) {
+        // DBG("SingletonRepo::addExternal saveSource " + accessor->getName());
+        saveSources.add(savable);
     }
 
-    hashes.set(accessor->getName(), accessor);
+    if(auto* panel = dynamic_cast<Panel*>(accessor)) {
+        panels.add(panel);
+    }
+
+    if(auto* rasterizer = dynamic_cast<MeshRasterizer*>(accessor)) {
+        rasterizers.add(rasterizer);
+    }
 }
 
 OutputStream& SingletonRepo::getDebugStream() {

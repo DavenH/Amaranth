@@ -1,5 +1,6 @@
 #include "PresetMigrator.h"
 
+#include "../AppConstants.h"
 #include "PresetJson.h"
 #include "../MeshLibrary.h"
 
@@ -109,7 +110,7 @@ namespace {
             vertices.add(PresetJson::toVar(vertex));
         }
 
-        for (auto cubeElem : meshElem->getChildWithTagNameIterator("VertCube")) {
+        auto appendCube = [&cubes](const XmlElement* cubeElem) {
             auto cube = PresetJson::object();
             auto guides = PresetJson::object();
             auto gains = PresetJson::object();
@@ -147,12 +148,79 @@ namespace {
             cube->setProperty("guides", PresetJson::toVar(guides));
             cube->setProperty("gains", PresetJson::toVar(gains));
             cubes.add(PresetJson::toVar(cube));
+        };
+
+        for (auto cubeElem : meshElem->getChildWithTagNameIterator("VertCube")) {
+            appendCube(cubeElem);
+        }
+
+        for (auto cubeElem : meshElem->getChildWithTagNameIterator("LineCube")) {
+            appendCube(cubeElem);
         }
 
         json->setProperty("vertices", var(vertices));
         json->setProperty("cubes", var(cubes));
 
         return PresetJson::toVar(json);
+    }
+
+    void migrateLegacyPhaseAmpMesh(var meshValue) {
+        auto* mesh = PresetJson::getObject(meshValue);
+
+        if (mesh == nullptr) {
+            return;
+        }
+
+        int version = int(mesh->getProperty("version"));
+        auto* vertices = PresetJson::getArray(mesh->getProperty("vertices"));
+
+        if (version < 1 || version >= Constants::MeshFormatVersion || vertices == nullptr) {
+            return;
+        }
+
+        for (auto& vertexValue : *vertices) {
+            auto* vertex = vertexValue.getDynamicObject();
+
+            if (vertex == nullptr) {
+                continue;
+            }
+
+            double time = double(vertex->getProperty("time"));
+            double phase = double(vertex->getProperty("phase"));
+
+            vertex->setProperty("amp", phase);
+            vertex->setProperty("phase", time);
+            vertex->setProperty("time", 0.0);
+        }
+
+    }
+
+    void migrateLegacyGroups(Array<var>& groups, std::initializer_list<int> groupIndices) {
+        for (int groupIndex : groupIndices) {
+            if (!isPositiveAndBelow(groupIndex, groups.size())) {
+                continue;
+            }
+
+            var& groupValue = groups.getReference(groupIndex);
+            auto* group = PresetJson::getObject(groupValue);
+            auto* layers = group == nullptr ? nullptr : PresetJson::getArray(group->getProperty("layers"));
+
+            if (layers == nullptr) {
+                continue;
+            }
+
+            for (auto& layerValue : *layers) {
+                auto* layer = layerValue.getDynamicObject();
+
+                if (layer == nullptr) {
+                    continue;
+                }
+
+                var meshValue = layer->getProperty("mesh");
+                migrateLegacyPhaseAmpMesh(meshValue);
+                layer->setProperty("mesh", meshValue);
+            }
+        }
     }
 
     var parseEnvelopeMesh(const XmlElement* wrapper) {
@@ -244,6 +312,12 @@ namespace {
             group->setProperty("layers", var(layers));
             groups.add(PresetJson::toVar(group));
         }
+
+        migrateLegacyGroups(groups, {
+            LayerGroups::GroupGuideCurve,
+            GroupWaveshaperCurrent,
+            GroupIrModellerCurrent
+        });
 
         json->setProperty("groups", var(groups));
         return PresetJson::toVar(json);
@@ -469,6 +543,12 @@ namespace {
             group->setProperty("layers", var(layersArray));
         }
 
+        migrateLegacyGroups(groups, {
+            LayerGroups::GroupGuideCurve,
+            GroupWaveshaperCurrent,
+            GroupIrModellerCurrent
+        });
+
         json->setProperty("groups", var(groups));
         return PresetJson::toVar(json);
     }
@@ -632,9 +712,17 @@ namespace {
         return PresetJson::toVar(json);
     }
 
-    var parseEffect(XmlElement* effectsElem, const String& xmlName, bool addWave = false,
-                    bool addOversample = false, bool addVoices = false) {
-        XmlElement* effectElem = effectsElem == nullptr ? nullptr : effectsElem->getChildByName(xmlName);
+    var parseEffect(XmlElement* effectsElem,
+                    const String& primaryXmlName,
+                    bool addWave = false,
+                    bool addOversample = false,
+                    bool addVoices = false,
+                    const String& legacyAlias = {}) {
+        XmlElement* effectElem = effectsElem == nullptr ? nullptr : effectsElem->getChildByName(primaryXmlName);
+
+        if (effectElem == nullptr && legacyAlias.isNotEmpty()) {
+            effectElem = effectsElem->getChildByName(legacyAlias);
+        }
 
         if (effectElem == nullptr) {
             return {};
@@ -682,11 +770,11 @@ namespace {
         }
 
         json->setProperty("ImpulseModeller", parseEffect(effectsElem, "ImpulseModeller", true));
-        json->setProperty("Unison", parseEffect(effectsElem, "UnisonUI", false, false, true));
-        json->setProperty("Waveshaper", parseEffect(effectsElem, "WaveshaperUI", false, true));
-        json->setProperty("Delay", parseEffect(effectsElem, "DelayUI"));
-        json->setProperty("Reverb", parseEffect(effectsElem, "ReverbUI"));
-        json->setProperty("EQ", parseEffect(effectsElem, "EqualizerUI"));
+        json->setProperty("Unison", parseEffect(effectsElem, "Unison", false, false, true, "UnisonUI"));
+        json->setProperty("Waveshaper", parseEffect(effectsElem, "Waveshaper", false, true, false, "WaveshaperUI"));
+        json->setProperty("Delay", parseEffect(effectsElem, "Delay", false, false, false, "DelayUI"));
+        json->setProperty("Reverb", parseEffect(effectsElem, "Reverb", false, false, false, "ReverbUI"));
+        json->setProperty("EQ", parseEffect(effectsElem, "EQ", false, false, false, "EqualizerUI"));
         return PresetJson::toVar(json);
     }
 

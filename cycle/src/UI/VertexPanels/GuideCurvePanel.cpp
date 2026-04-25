@@ -4,6 +4,7 @@
 #include <Curve/GuideCurveProvider.h>
 #include <Design/Updating/Updater.h>
 #include <UI/IConsole.h>
+#include <UI/Panels/CommonGfx.h>
 
 #include "GuideCurvePanel.h"
 
@@ -13,6 +14,7 @@
 #include "../Widgets/Controls/LayerAddRemover.h"
 #include "../Widgets/Controls/MeshSelector.h"
 #include "../../App/CycleTour.h"
+#include "../../App/MeshDefaults.h"
 #include "../../Audio/SynthAudioSource.h"
 #include "../CycleDefs.h"
 #include "../../Util/CycleEnums.h"
@@ -41,7 +43,7 @@ void GuideCurvePanel::init() {
     curveIsBipolar         = true;
     vertsAreWaveApplicable = true;
 
-    float pad         = getConstant(GuideCurvePadding);
+    float pad         = getRealConstant(GuideCurvePadding);
     bgPaddingRight    = pad;
     bgPaddingLeft     = pad;
     zoomPanel->rect.w = 1.f - pad;
@@ -62,7 +64,7 @@ void GuideCurvePanel::init() {
     phaseOffset.setValue	(0, dontSendNotification);
     phaseOffset.setColour	(Colour(77, 143, 229));
 
-    samplingInterval = (1.f - 2 * getConstant(GuideCurvePadding)) / float(tableSize - 1);
+    samplingInterval = (1.f - 2 * getRealConstant(GuideCurvePadding)) / float(tableSize - 1);
 
     unsigned int seed(Time::currentTimeMillis());
     noiseArray = constMemory.place(tableSize);
@@ -225,6 +227,9 @@ void GuideCurvePanel::buttonClicked(Button* button) {
 
 void GuideCurvePanel::addNewLayer(bool update) {
     meshLib->addLayer(LayerGroups::GroupGuideCurve);
+    MeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupGuideCurve,
+                                     meshLib->getLayer(LayerGroups::GroupGuideCurve,
+                                                       meshLib->getLayerGroup(LayerGroups::GroupGuideCurve).size() - 1).mesh);
 
     // incremented by the above
     int currentLayer = meshLib->getLayerGroup(LayerGroups::GroupGuideCurve).current;
@@ -359,8 +364,6 @@ void GuideCurvePanel::setMeshAndUpdate(Mesh* mesh) {
         repaint();
         return;
     }
-
-    mesh->updateToVersion(ProjectInfo::versionNumber);
 
     rasterizer->cleanUp();
     rasterizer->setMesh(mesh);
@@ -565,7 +568,8 @@ void GuideCurvePanel::reset() {
 }
 
 void GuideCurvePanel::doubleMesh() {
-    getCurrentMesh()->twin(getConstant(GuideCurvePadding), getConstant(GuideCurvePadding));
+    auto padding = getRealConstant(GuideCurvePadding);
+    getCurrentMesh()->twin(padding, padding);
     postUpdateMessage();
 }
 
@@ -594,8 +598,10 @@ void GuideCurvePanel::triggerButton(int id) {
 }
 
 void GuideCurvePanel::showCoordinates() {
-    float invSize = 1.f / float(1.f - 2.f * getConstant(GuideCurvePadding));
-    float xformX  = (state.currentMouse.x - getConstant(GuideCurvePadding)) * invSize;
+    auto padding = getRealConstant(GuideCurvePadding);
+
+    float invSize = 1.f / float(1.f - 2.f * padding);
+    float xformX  = (state.currentMouse.x - padding) * invSize;
 
     String message = String(xformX, 2) + ", " + String(state.currentMouse.y, 2);
     showConsoleMsg(message);

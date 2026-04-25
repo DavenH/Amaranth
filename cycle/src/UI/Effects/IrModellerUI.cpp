@@ -10,6 +10,7 @@
 #include <Obj/Ref.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/MiscGraphics.h>
+#include <UI/Panels/CommonGfx.h>
 #include <UI/Panels/Texture.h>
 #include <UI/Panels/ZoomPanel.h>
 #include <Util/Arithmetic.h>
@@ -31,6 +32,18 @@
 #include "../../Curve/GraphicRasterizer.h"
 
 #define componentName "IrModellerUI"
+
+namespace {
+    String describeEffectMesh(Mesh* mesh) {
+        if (mesh == nullptr) {
+            return "mesh=null";
+        }
+
+        return "mesh=" + String::toHexString((pointer_sized_int) mesh)
+            + " verts=" + String(mesh->getNumVerts())
+            + " cubes=" + String(mesh->getNumCubes());
+    }
+}
 
 IrModellerUI::IrModellerUI(SingletonRepo* repo) :
         EffectPanel      (repo, componentName, true)
@@ -174,6 +187,8 @@ bool IrModellerUI::paramTriggersAggregateUpdate(int knobIndex) {
 }
 
 void IrModellerUI::setMeshAndUpdate(Mesh* mesh, bool doRepaint) {
+    DBG("IrModellerUI::setMeshAndUpdate " + describeEffectMesh(mesh)
+        + " repaint=" + String((int) doRepaint));
     rasterizer->cleanUp();
     rasterizer->setMesh(mesh);
     irModeller->setMesh(mesh);
@@ -230,7 +245,7 @@ void IrModellerUI::preDraw() {
     int bottom 		= 0;
     int top 		= getHeight();
 //	int increment 	= jmax(1, int(mags.size() / height));
-    int innerLeft 	= sx(getConstant(IrModellerPadding));
+    int innerLeft 	= sx(getRealConstant(IrModellerPadding));
 
     gfx->setCurrentColour(0.1f, 0.1f, 0.1f, 0.5f);
     gfx->fillRect(left, top, innerLeft, bottom, false);
@@ -244,12 +259,12 @@ void IrModellerUI::preDraw() {
     Buffer<float> yScale = yBuffer.withSize(sizeY);
 
     yScale.ramp(0.f, 1.f / float(yScale.size() - 1));
-    Arithmetic::applyLogMapping(yScale, getConstant(LogTension));
+    Arithmetic::applyLogMapping(yScale, getConstant(FreqTensionScale));
     jassert(yScale[yScale.size() - 1] <= 1.f);
 
     applyNoZoomScaleY(yScale);
 
-    float firstX = sx(getConstant(IrModellerPadding));
+    float firstX = sx(getRealConstant(IrModellerPadding));
     float lastX  = sx(1.f);
 
     vector<Color> colors;
@@ -266,7 +281,7 @@ void IrModellerUI::preDraw() {
     impulse.copyTo(xy.y);
     Arithmetic::unpolarize(xy.y);
 
-    xy.x.ramp(getConstant(IrModellerPadding), (1.f - getConstant(IrModellerPadding)) / (float) sizeX);
+    xy.x.ramp(getRealConstant(IrModellerPadding), (1.f - getRealConstant(IrModellerPadding)) / (float) sizeX);
 
     gfx->enableSmoothing();
     gfx->setCurrentColour(0.8f, 0.4f, 0.5f, 0.4f);
@@ -274,6 +289,8 @@ void IrModellerUI::preDraw() {
 }
 
 void IrModellerUI::postCurveDraw() {
+    double padding = getRealConstant(IrModellerPadding);
+
     if (irModeller->isWavLoaded()) {
         PitchedSample& wav = irModeller->getWrapper();
 
@@ -286,8 +303,8 @@ void IrModellerUI::postCurveDraw() {
 
         Buffer<float> alpha = cBuffer.withSize(chanSize);
 
-        float ix = (1.f - getConstant(IrModellerPadding)) / (float) nextPow2;
-        xy.x.ramp(getConstant(IrModellerPadding), ix);
+        float ix = (1.f - padding) / (float) nextPow2;
+        xy.x.ramp(padding, ix);
         channel.copyTo(xy.y);
 
         prepareAlpha(xy.y, alpha, 0.3f);
@@ -301,7 +318,7 @@ void IrModellerUI::postCurveDraw() {
     }
 
     int left = 0;
-    int innerLeft = sx(getConstant(IrModellerPadding));
+    int innerLeft = sx(padding);
     int bottom = 0;
     int top = getHeight();
 
@@ -389,7 +406,7 @@ String IrModellerUI::getKnobName(int index) const {
 }
 
 void IrModellerUI::showCoordinates() {
-    float x = (state.currentMouse.x - getConstant(IrModellerPadding)) / (1.f - getConstant(IrModellerPadding));
+    float x = (state.currentMouse.x - getRealConstant(IrModellerPadding)) / (1.f - getRealConstant(IrModellerPadding));
     int sampleNum = IrModeller::calcLength(paramGroup->getKnobValue(IrModeller::Length)) * x;
 
     float y = (state.currentMouse.y - 0.5f) * 2.f;
@@ -689,14 +706,14 @@ void IrModellerUI::deconvolve() {
     }
 
     AutoModeller modeller;
-    modeller.modelToInteractor(impSignal, this, false, getConstant(IrModellerPadding), 0.1f);
+    modeller.modelToInteractor(impSignal, this, false, getRealConstant(IrModellerPadding), 0.1f);
 
     float scaleFactor = pow2Size / float(cycSize);
     Mesh* mesh = getMesh();
 
     for(auto& vert : mesh->getVerts()) {
         float& phase = vert->values[Vertex::Phase];
-        phase = (phase - getConstant(IrModellerPadding)) * scaleFactor + getConstant(IrModellerPadding);
+        phase = (phase - getRealConstant(IrModellerPadding)) * scaleFactor + getRealConstant(IrModellerPadding);
     }
 
     paramGroup->setKnobValue(IrModeller::Length, irModeller->calcKnobValue(pow2Size), false);
@@ -712,7 +729,7 @@ void IrModellerUI::doZoomAction(int action) {
     ZoomPanel* zoomPanel = getZoomPanel();
 
     if (action == ZoomPanel::ZoomToAttack) {
-        zoomPanel->rect.x = getConstant(IrModellerPadding);
+        zoomPanel->rect.x = getRealConstant(IrModellerPadding);
         zoomPanel->rect.w *= 0.2f;
     } else if (action == ZoomPanel::ZoomToFull) {
         zoomPanel->rect.x = 0;
@@ -723,7 +740,7 @@ void IrModellerUI::doZoomAction(int action) {
 }
 
 void IrModellerUI::doubleMesh() {
-    getCurrentMesh()->twin(getConstant(IrModellerPadding), 0);
+    getCurrentMesh()->twin(getRealConstant(IrModellerPadding), 0);
     postUpdateMessage();
 }
 
@@ -761,7 +778,7 @@ void IrModellerUI::createScales() {
     int size = IrModeller::calcLength(paramGroup->getKnobValue(IrModeller::Length));
 
     for (float vertMajorLine: vertMajorLines) {
-        float x = (vertMajorLine - getConstant(IrModellerPadding)) / (1.f - getConstant(IrModellerPadding));
+        float x = (vertMajorLine - getRealConstant(IrModellerPadding)) / (1.f - getRealConstant(IrModellerPadding));
         int samples = roundToInt(size * x);
 
         String text;

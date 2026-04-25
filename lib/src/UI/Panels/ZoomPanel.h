@@ -55,9 +55,7 @@ public:
     /* ----------------------------------------------------------------------------- */
 
     ZoomPanel(SingletonRepo* repo, ZoomContext panel);
-    ~ZoomPanel() override {
-        Component::~Component();
-    }
+    ~ZoomPanel() override;
 
     [[nodiscard]] Rectangle<int> getBounds() const override {
         return Component::getBounds();
@@ -75,6 +73,7 @@ public:
     void doZoomAction(int action);
     void zoomToAttack();
     void zoomToFull();
+    bool validateRect(const char* source, bool assertOnFailure = true) const;
 
     int getX() override;
     int getY() override;
@@ -82,9 +81,11 @@ public:
     int getHeight() override;
 
     void setZoomContext(const ZoomContext context) { this->context = context; }
-    void addListener(ZoomListener* listener) { listeners.add(listener);  }
-    ZoomRect& getZoomRect()                  { return rect;              }
-    Component* getComponent(bool h)          { return h ? &horz : &vert; }
+    void addListener(ZoomListener* listener)       { listeners.add(listener);  }
+    void removeListener(ZoomListener* listener)    { listeners.remove(listener); }
+    ZoomRect& getZoomRect()                        { return rect;              }
+    const ZoomContext& getZoomContext() const      { return context;          }
+    Component* getComponent(bool h)                { return h ? &horz : &vert; }
 
     ZoomRect rect;
 

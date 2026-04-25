@@ -54,7 +54,7 @@ void Spectrum3D::init() {
     interactor3D = &getObj(SpectrumInter3D);
     meshLib      = &getObj(MeshLibrary);
     spect2D      = &getObj(Spectrum2D);
-    interactor   = interactor3D;
+    setInteractor(interactor3D);
 
     float margin = getRealConstant(SpectralMargin);
 
@@ -88,6 +88,8 @@ void Spectrum3D::init() {
     panelControls->enableCurrent.setHighlit(true);
     panelControls->drawLabel = true;
 
+    modeChanged(getSetting(MagnitudeDrawMode) == 1, false);
+
     juce::Component* tempMode[] = { &magsIcon, 	 &phaseIcon };
     juce::Component* tempOper[] = { &additiveIcon, &subtractiveIcon };
 
@@ -118,7 +120,8 @@ void Spectrum3D::init() {
     dynStr = StringFunction().mul(12.f).sub(-4.f).powRev(2.f).abs().log().mul(6.f / logf(2.f));
     dynRangeKnob->setStringFunctions(dynStr, dynStr.withPostString(" dB"));
 
-    magsIcon.setHighlit(true);
+    magsIcon.setHighlit(getSetting(MagnitudeDrawMode) == 1);
+    phaseIcon.setHighlit(getSetting(MagnitudeDrawMode) == 0);
 }
 
 void Spectrum3D::drawPlaybackLine() {

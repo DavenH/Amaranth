@@ -78,7 +78,7 @@ void SynthesizerVoice::startNote(const int midiNoteNumber,
                                  const int currentPitchWheelPosition) {
     adjustedMidiNote = midiNoteNumber + octave * 12;
 
-    Range midiRange(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    Range<int> midiRange(Constants::LowestMidiNote, Constants::HighestMidiNote);
     if (!NumberUtils::within(adjustedMidiNote, midiRange)) {
         stop(false);
         return;
@@ -265,7 +265,7 @@ void SynthesizerVoice::controllerMoved(const int controllerNumber, const int new
 }
 
 float SynthesizerVoice::normalizeKey(int noteNumber) {
-    Range midiRange(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    Range<int> midiRange(Constants::LowestMidiNote, Constants::HighestMidiNote);
     float value = Arithmetic::getUnitValueForNote(noteNumber, midiRange);
     NumberUtils::constrain<float>(value, 0.f, 1.f);
 

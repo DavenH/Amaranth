@@ -212,3 +212,86 @@ TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups
 
     REQUIRE(int(property(property(preset, "morphPanel"), "modMappingId")) == 6);
 }
+
+TEST_CASE("PresetMigrator preserves legacy LineCube topology and standard effect names", "[preset][migration]") {
+    auto presetXml = parseXml(R"xml(
+<Preset>
+  <AllMeshes>
+    <TimeLayer>
+      <TimeMesh0>
+        <Mesh name="TimeMesh" version="1">
+          <Vertex time="0.0" phase="0.1" amp="0.2" key="0" mod="0" weight="0.5" id="0"/>
+          <Vertex time="0.0" phase="0.1" amp="0.2" key="0" mod="1" weight="0.5" id="1"/>
+          <Vertex time="0.0" phase="0.1" amp="0.2" key="1" mod="0" weight="0.5" id="2"/>
+          <Vertex time="0.0" phase="0.1" amp="0.2" key="1" mod="1" weight="0.5" id="3"/>
+          <Vertex time="1.0" phase="0.9" amp="0.8" key="0" mod="0" weight="0.5" id="4"/>
+          <Vertex time="1.0" phase="0.9" amp="0.8" key="0" mod="1" weight="0.5" id="5"/>
+          <Vertex time="1.0" phase="0.9" amp="0.8" key="1" mod="0" weight="0.5" id="6"/>
+          <Vertex time="1.0" phase="0.9" amp="0.8" key="1" mod="1" weight="0.5" id="7"/>
+          <LineCube timeGuide="-1" keyGuide="-1" modGuide="-1" phaseGuide="-1" ampGuide="-1" curveGuide="-1">
+            <Vertex lineVertexNumber="0" vertexId="0"/>
+            <Vertex lineVertexNumber="1" vertexId="1"/>
+            <Vertex lineVertexNumber="2" vertexId="2"/>
+            <Vertex lineVertexNumber="3" vertexId="3"/>
+            <Vertex lineVertexNumber="4" vertexId="4"/>
+            <Vertex lineVertexNumber="5" vertexId="5"/>
+            <Vertex lineVertexNumber="6" vertexId="6"/>
+            <Vertex lineVertexNumber="7" vertexId="7"/>
+          </LineCube>
+        </Mesh>
+      </TimeMesh0>
+    </TimeLayer>
+  </AllMeshes>
+  <Effects>
+    <ImpulseModeller enabled="1">
+      <Knobs><Knob number="0" value="0.1"/></Knobs>
+    </ImpulseModeller>
+    <Unison enabled="1" mode="0">
+      <Knobs><Knob number="0" value="0.2"/></Knobs>
+      <VoiceData><data fine="0.3" pan="0.4" phase="0.5"/></VoiceData>
+    </Unison>
+    <Waveshaper enabled="1" oversampleFactor="4">
+      <Knobs><Knob number="1" value="0.6"/></Knobs>
+    </Waveshaper>
+    <Delay enabled="1">
+      <Knobs><Knob number="2" value="0.7"/></Knobs>
+    </Delay>
+    <Reverb enabled="0">
+      <Knobs><Knob number="3" value="0.8"/></Knobs>
+    </Reverb>
+    <EQ enabled="1">
+      <Knobs><Knob number="4" value="0.9"/></Knobs>
+    </EQ>
+  </Effects>
+</Preset>
+)xml");
+
+    REQUIRE(presetXml != nullptr);
+
+    DocumentDetails details;
+    details.setName("Legacy topology/effects");
+
+    var root = PresetMigrator::migrateV1XmlToCurrentJson(presetXml.get(), details);
+    var preset = property(root, "preset");
+
+    const auto& groups = requireArray(property(property(preset, "meshLibrary"), "groups"));
+    const auto& timeLayers = requireArray(property(groups.getReference(LayerGroups::GroupTime), "layers"));
+    const auto& cubes = requireArray(property(property(timeLayers.getReference(0), "mesh"), "cubes"));
+    REQUIRE(cubes.size() == 1);
+
+    const auto& vertexIds = requireArray(property(cubes.getReference(0), "vertexIds"));
+    REQUIRE(vertexIds.size() == 8);
+    REQUIRE(int(vertexIds.getReference(7)) == 7);
+
+    var effects = property(preset, "effects");
+    REQUIRE(bool(property(property(effects, "ImpulseModeller"), "enabled")));
+    REQUIRE(bool(property(property(effects, "Unison"), "enabled")));
+    REQUIRE(bool(property(property(effects, "Waveshaper"), "enabled")));
+    REQUIRE(bool(property(property(effects, "Delay"), "enabled")));
+    REQUIRE_FALSE(bool(property(property(effects, "Reverb"), "enabled")));
+    REQUIRE(bool(property(property(effects, "EQ"), "enabled")));
+
+    const auto& voices = requireArray(property(property(effects, "Unison"), "voices"));
+    REQUIRE(voices.size() == 1);
+    REQUIRE(double(property(voices.getReference(0), "phase")) == Approx(0.5));
+}

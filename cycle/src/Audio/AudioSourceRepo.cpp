@@ -14,6 +14,12 @@ AudioSourceRepo::AudioSourceRepo(SingletonRepo* repo) :
     getObj(AudioHub).addListener(this);
 }
 
+AudioSourceRepo::~AudioSourceRepo() {
+    if (audioHub != nullptr) {
+        audioHub->setAudioSourceProcessor(nullptr);
+    }
+}
+
 void AudioSourceRepo::init() {
     synthSource = &getObj(SynthAudioSource);
     audioHub 	= &getObj(AudioHub);

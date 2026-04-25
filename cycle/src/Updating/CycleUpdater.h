@@ -76,6 +76,7 @@ private:
     Node* spectUIs;
 
     Ref<Updater> updater;
+    OwnedArray<Node> ownedNodes;
 
     bool graphCreated;
     int lastViewStage;
@@ -84,4 +85,7 @@ private:
     std::unique_ptr<SpectDelegate> spectDelegate;
     std::unique_ptr<MorphUpdate> morphUpdate;
     std::unique_ptr<ScratchUpdate> scratchUpdate;
+
+    Node* createNode();
+    Node* createNode(Updateable* updateable);
 };

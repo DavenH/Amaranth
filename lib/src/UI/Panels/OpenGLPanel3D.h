@@ -1,20 +1,21 @@
 #pragma once
 
 #include "Panel3D.h"
+#include "GLSurfaceCache.h"
 #include "OpenGLBase.h"
 #include "PanelOwner.h"
-#include "Texture.h"
 #include "../../App/SingletonAccessor.h"
 
 using std::vector;
 
 class CommonGL;
+class GLPanelRenderer;
 class Interactor3D;
 
 class OpenGLPanel3D :
         public OpenGLBase
     ,   public PanelOwner<Panel3D>
-    ,   public Panel3D::Renderer
+    ,   public Panel3D::ContextHelper
     ,   public OpenGLRenderer
     ,   public Component
     ,   public virtual SingletonAccessor {
@@ -23,8 +24,6 @@ public:
     ~OpenGLPanel3D() override;
 
     void init() override;
-    void drawSurfaceColumn(int x) override;
-    void drawCurvesAndSurfaces();
     void resized() override;
     void drawCircle();
     void initRender();
@@ -33,21 +32,15 @@ public:
     void activateContext();
     void deactivateContext();
 
-    static void disableClientArrays();
-    static void enableClientArrays();
     void newOpenGLContextCreated() override;
     void openGLContextClosing() override;
     void renderOpenGL() override;
-    void textureBakeFinished() override;
+    bool paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const;
 
     // panel3d renderer
     void clear() override;
     void activate() override { activateContext(); }
     void deactivate() override { deactivateContext(); }
-
-    CriticalSection& getGridLock() override         { return columnLock; }
-    Buffer<float> getColumnArray() override         { return dataRetriever->getColumnArray(); }
-    const vector<Column>& getColumns() override     { return dataRetriever->getColumns(); }
 
 protected:
 
@@ -56,10 +49,10 @@ protected:
 
     bool usePixels;
 
-    TextureGL backTex;
+    GLSurfaceCache surfaceCache;
     StringArray extensions;
-    CriticalSection columnLock;
     Ref<Panel3D::DataRetriever> dataRetriever;
+    std::unique_ptr<GLPanelRenderer> panelRenderer;
 
     void populateExtensions();
     bool isSupported(const String& extension);

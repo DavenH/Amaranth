@@ -202,6 +202,10 @@ void PresetPage::addFilesToDefaultArray(const String& path, const String& patter
 
 void PresetPage::addFilesToArray(Array<DocumentDetails, CriticalSection>& list,
                                  const String& path, const String& extension) {
+    if (path.isEmpty() || extension.isEmpty()) {
+        return;
+    }
+
     bool isWave = false;
 
     if (String("wav.flac.mp3.aiff.ogg").containsIgnoreCase(extension)) {
@@ -210,8 +214,12 @@ void PresetPage::addFilesToArray(Array<DocumentDetails, CriticalSection>& list,
 
     File dir(path);
 
+    if (!dir.exists() || !dir.isDirectory()) {
+        return;
+    }
+
     Array<File> allResults;
-    dir.findChildFiles(allResults, File::findFiles, false, "*." + extension);
+    dir.findChildFiles(allResults, File::findFiles, false, "*." + extension, File::FollowSymlinks::no);
 
     for(auto& file : allResults) {
         DocumentDetails details;

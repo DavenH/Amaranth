@@ -71,7 +71,7 @@ void MidiKeyboard::drawWhiteNote(int midiNoteNumber, Graphics& g, int x, int y,
         g.drawImage(keys, x, y, w, h, offset, keys.getHeight() - h, w, h, false);
     }
 
-    Range<int> range(getConstant(LowestMidiNote), getConstant(HighestMidiNote));
+    Range<int> range(Constants::LowestMidiNote, Constants::HighestMidiNote);
 
     if (midiRange.contains(midiNoteNumber) && midiRange != range) {
         g.setOpacity(0.3);

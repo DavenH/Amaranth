@@ -7,6 +7,7 @@ class WaveformInter2D :
 {
 public:
     explicit WaveformInter2D(SingletonRepo* mgr);
+    void init() override;
     bool isCurrentMeshActive() override;
 
     void showCoordinates() override;

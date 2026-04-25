@@ -18,6 +18,7 @@
 #include "EnvelopeInter2D.h"
 #include "../App/CycleTour.h"
 #include "../App/Initializer.h"
+#include "../App/MeshDefaults.h"
 #include "../Audio/SynthAudioSource.h"
 #include "../Inter/WaveformInter3D.h"
 #include "../CycleDefs.h"
@@ -30,7 +31,20 @@
 #include "../UI/VertexPanels/Waveform2D.h"
 #include "../UI/VertexPanels/Waveform3D.h"
 
-EnvelopeInter2D::EnvelopeInter2D(SingletonRepo* repo) : 
+namespace {
+MeshLibrary::EnvProps* getRequiredEnvProps(SingletonRepo* repo, int envEnum, const char* context) {
+    auto* props = repo->get<MeshLibrary>("MeshLibrary").getCurrentEnvProps(envEnum);
+
+    if (props == nullptr) {
+        DBG(String::formatted("EnvelopeInter2D::%s missing env props for group=%d", context, envEnum));
+        jassertfalse;
+    }
+
+    return props;
+}
+}
+
+EnvelopeInter2D::EnvelopeInter2D(SingletonRepo* repo) :
 		Interactor2D		(repo, "EnvelopeInter2D", Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Red, Vertex::Blue))
 	,	SingletonAccessor	(repo, "EnvelopeInter2D")
 	,	LayerSelectionClient(repo)
@@ -89,10 +103,20 @@ void EnvelopeInter2D::init() {
 
     vertexLimits[Vertex::Phase].setEnd(MathConstants<float>::sqrt2); //envPanel->zoom.wLimit;
 
-    // The updater can reach the envelope path during startup before the UI
-    // explicitly switches envelope types, so bind the current rasterizer now.
+    // Startup reaches here before Envelope2D has finished wiring its panel UI,
+    // so only seed the current rasterizer/mesh state. The full switchedEnvelope
+    // path also drives zoom/repaint and selector widgets, which is too early.
     layerType = getSetting(CurrentEnvGroup);
     setRasterizer(getRast(layerType));
+
+    // TODO re-evaluate post mesh listener cleanup
+    // if (layerType == LayerGroups::GroupWavePitch) {
+    //     if (PitchedSample* current = getObj(Multisample).getCurrentSample()) {
+    //         rasterizer->setMesh(current->mesh.get());
+    //     }
+    // } else if (EnvRasterizer* envRast = getEnvRasterizer()) {
+    //     envRast->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(layerType));
+    // }
 }
 
 void EnvelopeInter2D::doExtraMouseUp() {
@@ -228,6 +252,10 @@ void EnvelopeInter2D::showCoordinates() {
     int envEnum = getSetting(CurrentEnvGroup);
     MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(envEnum);
 
+    if (props == nullptr) {
+        DBG("ShowCoordinates: Env props are null");
+        return;
+    }
     int beats = 4;
     float length = getObj(OscControlPanel).getLengthInSeconds();
     float tempoScale = getObj(SynthAudioSource).getTempoScale();
@@ -379,6 +407,8 @@ void EnvelopeInter2D::buttonClicked(Button* button) {
 
             if (button == &addRemover.add) {
                 getObj(MeshLibrary).addLayer(layerType);
+                MeshLibrary::LayerGroup& group = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch);
+                MeshDefaults::initialiseIfNeeded(repo, LayerGroups::GroupScratch, group.layers.back().mesh);
             } else if (button == &addRemover.remove) {
                 MeshLibrary::LayerGroup &group = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupScratch);
                 bool isLast = group.size() == 1;
@@ -604,10 +634,9 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
         if (Mesh* mesh = getObj(MeshLibrary).getEffectiveMesh(LayerGroups::GroupWavePitch)) {
             rast->setMesh(mesh);
         }
-    } else if (envEnum == LayerGroups::GroupPitch) {
-        if (EnvRasterizer* envRast = getEnvRasterizer()) {
-            envRast->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(LayerGroups::GroupPitch));
-        }
+    } else if (EnvRasterizer* envRast = getEnvRasterizer()) {
+        // this got changed from specifically Pitch env, not the current one
+        envRast->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(envEnum));
     }
 
     enableButton.setHighlit(isCurrentMeshActive());
@@ -719,6 +748,10 @@ bool EnvelopeInter2D::isCurrentMeshActive() {
     int envType = getSetting(CurrentEnvGroup);
     if (envType != LayerGroups::GroupWavePitch) {
         MeshLibrary::Properties* props = getObj(MeshLibrary).getCurrentEnvProps(envType);
+        if (props == nullptr) {
+            DBG("Env props are null");
+            return false;
+        }
         return props->active;
     }
 

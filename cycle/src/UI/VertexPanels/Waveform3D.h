@@ -46,7 +46,7 @@ public:
     void reset() override;
 
     /* Events */
-    bool shouldDrawGrid();
+    bool shouldDrawGrid() override;
     bool shouldTriggerGlobalUpdate(Slider* slider) override;
     bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
     bool validateScratchChannels();
@@ -79,6 +79,7 @@ public:
 
     Buffer<float> getColumnArray() override;
     const vector<Column>& getColumns() override;
+    CriticalSection& getGridLock() override { return layerLock; }
 
     /* Accessors */
     int getLayerType() override;

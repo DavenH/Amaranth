@@ -26,6 +26,11 @@ WaveformInter2D::WaveformInter2D(SingletonRepo* repo) :
     vertexProps.ampVsPhaseApplicable = true;
 }
 
+void WaveformInter2D::init() {
+    Interactor::init();
+    setRasterizer(&getObj(TimeRasterizer));
+}
+
 void WaveformInter2D::showCoordinates() {
     int lockId = -1;
     const vector <Column> &timeColumns = getObj(VisualDsp).getTimeColumns();
@@ -66,7 +71,7 @@ void WaveformInter2D::modelAudioCycle() {
         const vector <Column> &timeColumns = getObj(VisualDsp).getTimeColumns();
         float progress = getObj(PlaybackPanel).getProgress();
         const Column &column = timeColumns[progress * ((int) timeColumns.size() - 1)];
-        CriticalSection &lock = getObj(Spectrum3D).getRenderer()->getGridLock();
+        CriticalSection &lock = getObj(Spectrum3D).getGridLock();
 
         ScopedLock sl(lock);
 

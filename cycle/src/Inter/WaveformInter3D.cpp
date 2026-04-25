@@ -95,11 +95,16 @@ void WaveformInter3D::init() {
     Interactor3D::init();
     selectionClient = std::make_unique<MeshSelectionClient3D>(this, repo, &getObj(EditWatcher), &getObj(MeshLibrary));
 
-    // by this point the rasterizer better be set!
-    selectionClient->initialise(this, rasterizer, layerType);
+    updateSelectionClient();
 }
 
 void WaveformInter3D::initSelectionClient() {
+}
+
+void WaveformInter3D::updateSelectionClient() {
+    if (selectionClient != nullptr && rasterizer != nullptr) {
+        selectionClient->initialise(this, rasterizer, layerType);
+    }
 }
 
 void WaveformInter3D::meshSelectionChanged(Mesh* mesh) {

@@ -72,6 +72,7 @@ public:
 
 	/* Arithmetic */
 	static double calcGain(double value)		{ return 60. * (value - 0.5); }
+	static double calcGainKnobValue(double gainDb) { return jlimit(0., 1., gainDb / 60. + 0.5); }
 	static double calcFreq(double value, double logTension);
 	static double calcKnobValue(double value, double logTension);
 

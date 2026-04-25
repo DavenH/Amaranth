@@ -113,7 +113,7 @@ public:
         Layer& operator[](const int idx) { return layers[idx]; }
 
         [[nodiscard]] Mesh* getCurrentMesh() const {
-            if (current < 0) {
+            if (!isPositiveAndBelow(current, (int) layers.size())) {
                 return nullptr;
             }
 
@@ -154,7 +154,7 @@ public:
     void addGroup(int meshType);
     void addLayer(int group);
     void destroy();
-    void destroyLayer(Layer& layer);
+    void destroyLayer(Layer& layer, bool notifyEditWatcher = true);
     void moveLayer(int layerId, int fromIndex, int toIndex);
     bool removeLayerKeepingOne(int group, int layer);
     bool hasAnyValidLayers(int groupId);
@@ -191,7 +191,13 @@ public:
     [[nodiscard]] EnvelopeMesh* getCurrentEnvMesh(int group);
 
     [[nodiscard]] CriticalSection& getLock()                    { return arrayLock;                     }
-    [[nodiscard]] vector<Vertex*>& getSelectedByType(int type)  { return layerGroups[type].selected;    }
+    [[nodiscard]] vector<Vertex*>& getSelectedByType(int type) {
+        if (!isPositiveAndBelow(type, (int) layerGroups.size())) {
+            return dummyGroup.selected;
+        }
+
+        return layerGroups[type].selected;
+    }
 
     void addListener(Listener* listener) { listeners.add(listener); }
     void updateSmoothedParameters(int voiceIndex, int numSamples44k) const;

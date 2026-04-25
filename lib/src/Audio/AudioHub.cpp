@@ -21,19 +21,14 @@ AudioHub::AudioHub(SingletonRepo* repo) :
 }
 
 AudioHub::~AudioHub() {
-    std::unique_ptr<ScopedLock> sl;
-
-    if(currentProcessor != nullptr) {
-        sl = std::make_unique<ScopedLock>(currentProcessor->getLock());
-    }
-
-    audioSourcePlayer.setSource(nullptr);
-
-    if (audioDeviceManager != nullptr) {
-        audioDeviceManager->closeAudioDevice();
-    }
+  #if !PLUGIN_MODE
+    audioDeviceManager->removeAudioCallback(this);
+    audioDeviceManager->removeMidiInputDeviceCallback(String(), &midiCollector);
+  #endif
 
     currentProcessor = nullptr;
+    audioSourcePlayer.setSource(nullptr);
+    audioDeviceManager->closeAudioDevice();
 }
 
 AudioDeviceManager& AudioHub::ensureAudioDeviceManager() {
@@ -175,6 +170,14 @@ void AudioHub::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
 
     if(currentProcessor != nullptr) {
         currentProcessor->processBlock(buffer, midiMessages);
+    }
+}
+
+void AudioHub::setAudioSourceProcessor(AudioSourceProcessor* processor) {
+    currentProcessor = processor;
+
+    if (currentProcessor != nullptr && sampleRate > 0 && bufferSize > 0) {
+        currentProcessor->prepareToPlay(bufferSize, sampleRate);
     }
 }
 

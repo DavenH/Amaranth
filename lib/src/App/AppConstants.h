@@ -1,5 +1,8 @@
 #pragma once
 
+#include <unordered_map>
+#include <variant>
+
 #include "JuceHeader.h"
 #include "SingletonAccessor.h"
 
@@ -8,7 +11,6 @@ using namespace juce;
 namespace Constants {
     enum {
         GuideCurveTableSize = 8192
-    ,   LogTension          = 50
     ,   LowestMidiNote      = 20
     ,   TitleBarHeight      = 24
     ,   HighestMidiNote     = 127
@@ -26,6 +28,7 @@ namespace Constants {
     ,   ProductName
     ,   DocumentsDir
     ,   PropertiesPath
+    ,   FreqTensionScale  // the log spacing of frequency bins
 
     ,   numAppConstants
     };
@@ -34,12 +37,14 @@ namespace Constants {
 
 class AppConstants: public SingletonAccessor  {
 public:
+    using ConstantValue = std::variant<int, double, String>;
+
     explicit AppConstants(SingletonRepo* repo);
     ~AppConstants() override = default;
 
-    void setConstant(int key, int value)            { values    .set(key, value);   }
-    void setConstant(int key, double value)         { realValues.set(key, value);   }
-    void setConstant(int key, const String& value)  { strValues .set(key, value);   }
+    void setConstant(int key, int value)            { values[key] = ConstantValue(value);   }
+    void setConstant(int key, double value)         { values[key] = ConstantValue(value);   }
+    void setConstant(int key, const String& value)  { values[key] = ConstantValue(value);   }
 
     [[nodiscard]] int getAppConstant(int key) const;
     [[nodiscard]] double getRealAppConstant(int key) const;
@@ -47,7 +52,7 @@ public:
 
 protected:
 
-    HashMap<int, int>    values;
-    HashMap<int, double> realValues;
-    HashMap<int, String> strValues;
+    [[nodiscard]] const ConstantValue& getStoredValue(int key) const;
+
+    std::unordered_map<int, ConstantValue> values;
 };

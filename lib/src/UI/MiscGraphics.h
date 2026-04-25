@@ -97,6 +97,8 @@ public:
     void setExtension(Extension* extension) { this->extension = extension; }
 
 protected:
+    void ensureIconsLoaded();
+
     Font* silkscreen;
     Font* verdana12;
     Font* verdana16;

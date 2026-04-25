@@ -64,7 +64,7 @@ bool Equalizer::doParamChange(int index, double value, bool doFurtherUpdate) {
     if (index >= Band1Gain && index <= Band5Gain) {
         didChange = partitions[partIdx].gainDB.setTargetValue(calcGain(value));
     } else {
-        didChange = partitions[partIdx].centreFreq.setTargetValue(calcFreq(value, getConstant(LogTension)));
+        didChange = partitions[partIdx].centreFreq.setTargetValue(calcFreq(value, getConstant(FreqTensionScale)));
     }
 
     if (doFurtherUpdate && didChange) {
@@ -85,18 +85,20 @@ void Equalizer::updatePartition(int idx) {
     //	progressMark
 
     EqPartition& part = partitions[idx];
+    double centreFreq = jlimit<double>(20.0, samplerate * 0.45, part.centreFreq.getCurrentValue());
+    double gainDb = jlimit<double>(-30.0, 30.0, part.gainDB.getCurrentValue());
 
     switch (idx) {
         case lowShelfPartition:
-            lsFilter.setup(filterOrder, samplerate, part.centreFreq, part.gainDB);
+            lsFilter.setup(filterOrder, samplerate, centreFreq, gainDb);
             break;
 
         case highShelfPartition:
-            hsFilter.setup(filterOrder, samplerate, part.centreFreq, part.gainDB);
+            hsFilter.setup(filterOrder, samplerate, centreFreq, gainDb);
             break;
 
         default:
-            bsFilter[idx - 1].setup(filterOrder, samplerate, part.centreFreq, part.centreFreq * 0.7f, part.gainDB);
+            bsFilter[idx - 1].setup(filterOrder, samplerate, centreFreq, centreFreq * 0.7f, gainDb);
             break;
     }
     part.iir.updateFromCascade(*part.cascade);
@@ -218,7 +220,7 @@ void Equalizer::updateParametersToTarget() {
 //
 //         fft.forward(buffers);
 //
-//         Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(FFTLogTensionAmp));
+//         Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(AmpTensionScale));
 //         // getObj(CsvFile).addValues(fft.getMagnitudes(), i);
 //     }
 //
@@ -228,7 +230,7 @@ void Equalizer::updateParametersToTarget() {
 //         ippsCopy_32f(audioBuffer.getWritePointer(i), buffers, size);
 //         fft.forward(buffers);
 //
-//         Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(FFTLogTensionAmp));
+//         Arithmetic::applyLogMapping(fft.getMagnitudes(), (float) getConstant(AmpTensionScale));
 //         // getObj(CsvFile).addValues(fft.getMagnitudes(), i + 2);
 //     }
 //

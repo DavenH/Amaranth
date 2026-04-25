@@ -11,6 +11,43 @@ namespace {
             + " verts=" + String(mesh->getNumVerts())
             + " cubes=" + String(mesh->getNumCubes());
     }
+
+    String describeFxIntercepts(const vector<Intercept>& icpts) {
+        if (icpts.empty()) {
+            return "icpts=0";
+        }
+
+        float minX = icpts.front().x;
+        float maxX = icpts.front().x;
+        float minY = icpts.front().y;
+        float maxY = icpts.front().y;
+        String parts;
+
+        for (int i = 0; i < (int) icpts.size(); ++i) {
+            const Intercept& icpt = icpts[i];
+            minX = jmin(minX, icpt.x);
+            maxX = jmax(maxX, icpt.x);
+            minY = jmin(minY, icpt.y);
+            maxY = jmax(maxY, icpt.y);
+
+            if (i < 6) {
+                if (parts.isNotEmpty()) {
+                    parts += ", ";
+                }
+
+                parts += "#" + String(i)
+                    + "(" + String(icpt.x, 4)
+                    + "," + String(icpt.y, 4)
+                    + " shp=" + String(icpt.shp, 4)
+                    + ")";
+            }
+        }
+
+        return "icpts=" + String((int) icpts.size())
+            + " x=[" + String(minX, 4) + "," + String(maxX, 4) + "]"
+            + " y=[" + String(minY, 4) + "," + String(maxY, 4) + "]"
+            + " first={" + parts + "}";
+    }
 }
 
 FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
@@ -84,6 +121,8 @@ void FXRasterizer::calcCrossPoints() {
 
     std::sort(icpts.begin(), icpts.end());
     restrictIntercepts(icpts);
+
+    DBG(MeshRasterizer::getName() + "::calcCrossPoints intercepts " + describeFxIntercepts(icpts));
 
     curves.clear();
 

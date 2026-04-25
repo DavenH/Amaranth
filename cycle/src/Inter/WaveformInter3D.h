@@ -18,6 +18,7 @@ public:
     void doPhaseShift(float shift);
     void doCommitPencilEditPath() override;
     void initSelectionClient();
+    void updateSelectionClient();
     void meshSelectionChanged(Mesh* mesh) override;
     bool isCurrentMeshActive() override;
     void doExtraMouseUp() override;
