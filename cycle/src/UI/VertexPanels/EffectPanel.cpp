@@ -12,6 +12,22 @@
 
 #include "../../Audio/Effects/IrModeller.h"
 
+namespace {
+    String describeEffectVertex(Vertex* vertex) {
+        if (vertex == nullptr) {
+            return "vertex=null";
+        }
+
+        return "vertex=" + String::toHexString((pointer_sized_int) vertex)
+            + " time=" + String(vertex->values[Vertex::Time], 4)
+            + " phase=" + String(vertex->values[Vertex::Phase], 4)
+            + " amp=" + String(vertex->values[Vertex::Amp], 4)
+            + " red=" + String(vertex->values[Vertex::Red], 4)
+            + " blue=" + String(vertex->values[Vertex::Blue], 4)
+            + " curve=" + String(vertex->values[Vertex::Curve], 4);
+    }
+}
+
 EffectPanel::EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZoom) :
         Panel2D			 (repo, name, true, haveVertZoom)
     ,	Interactor2D	 (repo, name, Dimensions(Vertex::Phase, Vertex::Amp))
@@ -79,6 +95,7 @@ void EffectPanel::performUpdate(UpdateType updateType) {
 
 bool EffectPanel::addNewCube(float startTime, float x, float y, float curve) {
     ScopedLock sl(vertexLock);
+    ignoreUnused(startTime);
 
     vector<Vertex*>& verts = getMesh()->getVerts();
     vector<Vertex*> beforeVerts;
@@ -92,6 +109,12 @@ bool EffectPanel::addNewCube(float startTime, float x, float y, float curve) {
     state.currentVertex = vertex;
 
     verts.push_back(vertex);
+
+    DBG(getName() + "::addNewVertex"
+        + " mesh=" + String::toHexString((pointer_sized_int) getMesh())
+        + " count=" + String((int) verts.size())
+        + " click=(" + String(x, 4) + "," + String(y, 4) + ") "
+        + describeEffectVertex(vertex));
 
     if(!suspendUndo) {
         vector<Vertex*>& afterVerts = verts;

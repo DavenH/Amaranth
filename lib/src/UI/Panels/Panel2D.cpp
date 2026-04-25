@@ -70,7 +70,7 @@ void Panel2D::drawCurvesAndSurfaces() {
         return;
     }
 
-    const bool shouldLog = shouldLogCurveDraw(panelName);
+    const bool shouldLog = false; // shouldLogCurveDraw(panelName);
     Range<float> xLimit  = interactor->vertexLimits[interactor->dims.x];
     bool extendsX        = xLimit.getLength() > 1.f;
     bool reduceAlpha     = !isMeshEnabled();

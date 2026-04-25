@@ -26,6 +26,8 @@
 #include "../Definitions.h"
 
 namespace {
+    constexpr int cycleCollisionDetectionSetting = AppSettings::numSettings + 13;
+
     const char* actionName(PanelState::ActionState action) {
         switch (action) {
             case PanelState::Idle:              return "Idle";
@@ -73,6 +75,11 @@ namespace {
         }
 
         return parts.isEmpty() ? "none" : parts.joinIntoString("+");
+    }
+
+    bool shouldValidateCollisions(SingletonRepo* repo) {
+        // TODO: Decouple shared interactor code from Cycle-specific global settings.
+        return repo->get<Settings>("Settings").getGlobalSetting(cycleCollisionDetectionSetting) == 1;
     }
 }
 
@@ -218,6 +225,16 @@ void Interactor::mouseDown(const MouseEvent& e) {
     if (actionIs(ClickSelecting)) {
         doClickSelect(e);
     }
+
+    DBG(getName() + "::mouseDown action=" + actionName(action)
+        + " buttons=" + describeMouseButtons(e)
+        + " raw=(" + String(e.x) + "," + String(e.y) + ")"
+        + " scaled=(" + String(state.currentMouse.x, 4) + "," + String(state.currentMouse.y, 4) + ")"
+        + " left=" + String((int) e.mods.isLeftButtonDown())
+        + " right=" + String((int) e.mods.isRightButtonDown())
+        + " layerType=" + String(layerType)
+        + " currentVertex=" + String::toHexString((int64) state.currentVertex)
+        + " currentCube=" + String::toHexString((int64) state.currentCube));
 
     info(getName() << "::mouseDown action=" << actionName(action)
                    << " buttons=" << describeMouseButtons(e)
@@ -1026,7 +1043,7 @@ void Interactor::doDragCorner(const MouseEvent& e) {
         }
     }
 
-    if (!collisionDetector.validate()) {
+    if (shouldValidateCollisions(repo) && !collisionDetector.validate()) {
         for (auto &frame: state.selectedFrame) {
             frame.vert->values[dims.x] = frame.lastValid.x;
             frame.vert->values[dims.y] = frame.lastValid.y;
@@ -1466,8 +1483,10 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
         return;
     }
 
-    collisionDetector.setCurrentSelection(mesh, movingAll);
-    passed = collisionDetector.validate();
+    if (shouldValidateCollisions(repo)) {
+        collisionDetector.setCurrentSelection(mesh, movingAll);
+        passed = collisionDetector.validate();
+    }
     Range<float> yLimits = vertexLimits[dims.y];
 
     if (!passed) {
@@ -1507,7 +1526,7 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
             }
 
             // see if there are still no collisions
-            passed = collisionDetector.validate();
+            passed = !shouldValidateCollisions(repo) || collisionDetector.validate();
 
             Vertex2 diffToLast = last - candidate;
 
@@ -1532,7 +1551,7 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
                 }
             }
 
-            jassert(collisionDetector.validate());
+            jassert(!shouldValidateCollisions(repo) || collisionDetector.validate());
         }
 
         // if y movements are free from possibility of collision
@@ -1762,8 +1781,20 @@ bool Interactor::commitCubeAdditionIfValid(VertCube*& addedCube,
 
     afterCubes.push_back(addedCube);
 
-    collisionDetector.setCurrentSelection(mesh, addedCube);
-    bool passed = collisionDetector.validate();
+    bool passed = true;
+
+    if (shouldValidateCollisions(repo)) {
+        collisionDetector.setCurrentSelection(mesh, addedCube);
+        passed = collisionDetector.validate();
+    }
+
+    DBG(getName() + "::commitCubeAdditionIfValid"
+        + " mesh=" + String::toHexString((int64) mesh)
+        + " beforeVerts=" + String((int) beforeVerts.size())
+        + " beforeCubes=" + String((int) beforeCubes.size())
+        + " afterVerts=" + String((int) afterVerts.size())
+        + " afterCubes=" + String((int) afterCubes.size())
+        + " passed=" + String((int) passed));
 
     if (passed) {
         bool haveCubes = dims.numHidden() > 0;
@@ -1797,6 +1828,11 @@ bool Interactor::commitCubeAdditionIfValid(VertCube*& addedCube,
 
     state.currentVertex = nullptr;
     state.currentCube = nullptr;
+
+    DBG(getName() + "::commitCubeAdditionIfValid rejected"
+        + " mesh=" + String::toHexString((int64) mesh)
+        + " restoredVerts=" + String(mesh->getNumVerts())
+        + " restoredCubes=" + String(mesh->getNumCubes()));
 
     showImportant("Could not add line due to collision");
 
@@ -1898,6 +1934,10 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
     Mesh* mesh = getMesh();
 
     if(mesh == nullptr) {
+        DBG(getName() + "::addNewCube abort mesh=null"
+            + " startTime=" + String(startTime, 4)
+            + " phase=" + String(phase, 4)
+            + " amp=" + String(amp, 4));
         return false;
     }
 
@@ -1911,6 +1951,16 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
     auto* addedLine = new VertCube(mesh);
 
     const vector<Intercept>& icpts = is3D ? icpts3D : rasterizer->getRastData().intercepts;
+
+    DBG(getName() + "::addNewCube begin"
+        + " mesh=" + String::toHexString((int64) mesh)
+        + " verts=" + String(mesh->getNumVerts())
+        + " cubes=" + String(mesh->getNumCubes())
+        + " intercepts=" + String((int) icpts.size())
+        + " startTime=" + String(startTime, 4)
+        + " phase=" + String(phase, 4)
+        + " amp=" + String(amp, 4)
+        + " box=(" + String(box.time, 4) + "," + String(box.red, 4) + "," + String(box.blue, 4) + ")");
 
     if (icpts.empty()) {
         initVertsWithDepthDims(addedLine, dims.hidden, phase, amp, box);
@@ -1973,6 +2023,14 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
     } else {
         succeeded = commitCubeAdditionIfValid(addedLine, beforeCubes, beforeVerts);
     }
+
+    DBG(getName() + "::addNewCube end"
+        + " succeeded=" + String((int) succeeded)
+        + " mesh=" + String::toHexString((int64) mesh)
+        + " verts=" + String(mesh->getNumVerts())
+        + " cubes=" + String(mesh->getNumCubes())
+        + " currentVertex=" + String::toHexString((int64) state.currentVertex)
+        + " currentCube=" + String::toHexString((int64) state.currentCube));
 
     return succeeded;
 }

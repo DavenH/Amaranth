@@ -404,6 +404,10 @@ bool Interactor2D::doCreateVertex() {
 
     float startTime = getYellow();
     // todo what is the curve shape?
+    DBG(getName() + "::doCreateVertex begin"
+        + " mesh=" + String::toHexString((int64) getMesh())
+        + " startTime=" + String(startTime, 4)
+        + " mouse=(" + String(state.currentMouse.x, 4) + "," + String(state.currentMouse.y, 4) + ")");
     bool succeeded = addNewCube(startTime, state.currentMouse.x, state.currentMouse.y, 0.f);
 
     if (state.currentVertex != nullptr) {
@@ -412,6 +416,15 @@ bool Interactor2D::doCreateVertex() {
     }
 
     updateSelectionFrames();
+
+    Mesh* mesh = getMesh();
+    DBG(getName() + "::doCreateVertex end"
+        + " succeeded=" + String((int) succeeded)
+        + " mesh=" + String::toHexString((int64) mesh)
+        + " verts=" + String(mesh != nullptr ? mesh->getNumVerts() : -1)
+        + " cubes=" + String(mesh != nullptr ? mesh->getNumCubes() : -1)
+        + " currentVertex=" + String::toHexString((int64) state.currentVertex)
+        + " currentCube=" + String::toHexString((int64) state.currentCube));
 
     return succeeded;
 }

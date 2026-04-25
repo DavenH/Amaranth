@@ -16,6 +16,18 @@
 #include "../Util/CycleEnums.h"
 
 namespace {
+    String layerGroupName(int layerType) {
+        switch (layerType) {
+            case LayerGroups::GroupVolume: return "Volume";
+            case LayerGroups::GroupPitch: return "Pitch";
+            case LayerGroups::GroupScratch: return "Scratch";
+            case LayerGroups::GroupGuideCurve: return "GuideCurve";
+            case LayerGroups::GroupWaveshaper: return "Waveshaper";
+            case LayerGroups::GroupIrModeller: return "IrModeller";
+            default: return "Unknown(" + String(layerType) + ")";
+        }
+    }
+
     struct VertexRange {
         float min{};
         float max{};
@@ -31,6 +43,46 @@ namespace {
         }
 
         return range;
+    }
+
+    String describeMeshGeometry(Mesh* mesh) {
+        if (mesh == nullptr) {
+            return "mesh=null";
+        }
+
+        StringArray pieces;
+        pieces.add("mesh=" + String::toHexString((pointer_sized_int) mesh));
+        pieces.add("version=" + String(mesh->getVersion()));
+        pieces.add("verts=" + String(mesh->getNumVerts()));
+        pieces.add("cubes=" + String(mesh->getNumCubes()));
+
+        if (mesh->getNumVerts() > 0) {
+            VertexRange phaseRange = getVertexRange(mesh, Vertex::Phase);
+            VertexRange ampRange = getVertexRange(mesh, Vertex::Amp);
+            VertexRange timeRange = getVertexRange(mesh, Vertex::Time);
+
+            pieces.add(String::formatted("phase=[%.4f, %.4f]", phaseRange.min, phaseRange.max));
+            pieces.add(String::formatted("amp=[%.4f, %.4f]", ampRange.min, ampRange.max));
+            pieces.add(String::formatted("time=[%.4f, %.4f]", timeRange.min, timeRange.max));
+
+            StringArray verts;
+            int index = 0;
+
+            for (auto* vert : mesh->getVerts()) {
+                verts.add(String::formatted("#%d(t=%.4f p=%.4f a=%.4f r=%.4f b=%.4f c=%.4f)",
+                                            index++,
+                                            vert->values[Vertex::Time],
+                                            vert->values[Vertex::Phase],
+                                            vert->values[Vertex::Amp],
+                                            vert->values[Vertex::Red],
+                                            vert->values[Vertex::Blue],
+                                            vert->values[Vertex::Curve]));
+            }
+
+            pieces.add("vertices={" + verts.joinIntoString(", ") + "}");
+        }
+
+        return pieces.joinIntoString(" ");
     }
 
     void remapVertexRange(Mesh* mesh, int dim, float minValue, float maxValue) {
@@ -200,8 +252,13 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
     // TODO(daven): This app-specific migration should eventually live behind an
     // explicit app extension/migration hook rather than Cycle post-load code.
     if (mesh == nullptr || mesh->getNumVerts() == 0) {
+        DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
+            + " reason=empty " + describeMeshGeometry(mesh));
         return;
     }
+
+    DBG("MeshDefaults::migrateLegacyPaddingIfNeeded before group=" + layerGroupName(layerType)
+        + " " + describeMeshGeometry(mesh));
 
     switch (layerType) {
         case LayerGroups::GroupGuideCurve: {
@@ -209,6 +266,8 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
             VertexRange xRange = getVertexRange(mesh, Vertex::Phase);
 
             if (xRange.min >= padding * 0.75f && xRange.max <= 1.f - padding * 0.75f) {
+                DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
+                    + " reason=already-padded padding=" + String(padding));
                 return;
             }
 
@@ -223,6 +282,8 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
 
             if (xRange.min >= padding * 0.75f && xRange.max <= 1.f - padding * 0.75f &&
                 yRange.min >= padding * 0.75f && yRange.max <= 1.f - padding * 0.75f) {
+                DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
+                    + " reason=already-padded padding=" + String(padding));
                 return;
             }
 
@@ -236,6 +297,8 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
             VertexRange xRange = getVertexRange(mesh, Vertex::Phase);
 
             if (xRange.min >= padding * 0.75f) {
+                DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
+                    + " reason=already-padded padding=" + String(padding));
                 return;
             }
 
@@ -244,9 +307,14 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
         }
 
         default:
+            DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
+                + " reason=unsupported");
             return;
     }
 
     mesh->setVersion(Constants::MeshFormatVersion);
     mesh->validate();
+
+    DBG("MeshDefaults::migrateLegacyPaddingIfNeeded after group=" + layerGroupName(layerType)
+        + " " + describeMeshGeometry(mesh));
 }
