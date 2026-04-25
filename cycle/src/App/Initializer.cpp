@@ -287,6 +287,9 @@ void Initializer::setDefaultSettings() {
     getSetting(UseRedDepth) 			= false;
     getSetting(UseBlueDepth) 			= false;
     getSetting(UseLargerPoints) 		= false;
+    getSetting(TimeEnabled) 			= true;
+    getSetting(FilterEnabled) 			= true;
+    getSetting(PhaseEnabled) 			= true;
     getSetting(ReductionFactor) 		= 5;
     getSetting(ViewStage) 				= ViewStages::PostFX;
     getSetting(WindowSize) 				= WindowSizes::FullSize;

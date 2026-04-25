@@ -109,6 +109,8 @@ void FXRasterizer::calcCrossPoints() {
             icpt.y = 2.f * icpt.y - 1.f;
         }
 
+        icpt.adjustedX = icpt.x;
+
         // time and phase are x and y in this context
         icpts.push_back(icpt);
     }
