@@ -673,7 +673,14 @@ void VisualDsp::calcSpectrogram(int numColumns) {
         phaseBuf.copyTo(phasePreFXCols[colIdx]);
 
         if (doInverseFFT) {
-            phaseBuf.add(-MathConstants<float>::twoPi);
+            phaseBuf.add(-MathConstants<float>::halfPi);
+
+            int numBinsToClear = halfPow2 - numHarmonics;
+            if (numBinsToClear > 0) {
+                ffts[sizeIndex].getMagnitudes().offset(numHarmonics).withSize(numBinsToClear).zero();
+                ffts[sizeIndex].getPhases().offset(numHarmonics).withSize(numBinsToClear).zero();
+            }
+
             ffts[sizeIndex].inverse(timeColumns[timeColIdx]);
 
             jassert(timeColumns[timeColIdx].front() == timeColumns[timeColIdx].front());

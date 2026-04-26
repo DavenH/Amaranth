@@ -736,7 +736,9 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
 
     std::unique_ptr<ScopedLock> sl;
 
-    if(adjustSpeed) {
+    bool lockedPathRepo = adjustSpeed;
+
+    if(lockedPathRepo) {
         getObj(PathRepo).getLock().enter();
     }
 
@@ -752,8 +754,11 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     }
 
     if(speedEnv.empty()) {
-        getObj(PathRepo).getLock().exit();
+        if (lockedPathRepo) {
+            getObj(PathRepo).getLock().exit();
+        }
         adjustSpeed = false;
+        lockedPathRepo = false;
     }
 
     float xSlope = (second.x - first.x) * invSize;
@@ -862,7 +867,9 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             xy.y.add(ramp.ramp(first.y, ySlope));
         }
     }
-    getObj(PathRepo).getLock().exit();
+    if (lockedPathRepo) {
+        getObj(PathRepo).getLock().exit();
+    }
 
     return true;
 }

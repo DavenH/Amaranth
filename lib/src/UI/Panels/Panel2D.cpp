@@ -6,6 +6,7 @@
 #include "OpenGLPanel.h"
 #include "Panel3D.h"
 #include "Texture.h"
+#include "../../App/MeshLibrary.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Array/Buffer.h"
 #include "../../Curve/Intercept.h"
@@ -323,6 +324,13 @@ void Panel2D::drawDepthLinesAndVerts() {
     int dim;
     float offsets[]     = { 0, 0, 0, -0.5f, 0.5f };
     int scratchChannel  = getLayerScratchChannel();
+    bool haveSpeed      = false;
+
+    if (scratchChannel != CommonEnums::Null && isScratchApplicable()) {
+        if (MeshLibrary::Properties* props = getLayerProps(GroupScratch, scratchChannel)) {
+            haveSpeed = props->active;
+        }
+    }
 
     PanelRenderer* renderer = getRenderer(this);
     jassert(renderer != nullptr);
@@ -337,15 +345,30 @@ void Panel2D::drawDepthLinesAndVerts() {
 
         clr = pointColours[dim];
 
-        // translate these points to icpt's point
-        Vertex2 curr (sx(point.before.x) + offsets[dim], sy(point.before.y));
-        Vertex2 next (sx(point.mid.x) + offsets[dim], sy(point.mid.y));
-        Vertex2 next2(sx(point.after.x)  + offsets[dim], sy(point.after.y));
+        if(createLinePath(point.before, point.after, point.cube, dim, haveSpeed)) {
+            Vertex2 first = point.before;
+            Vertex2 last  = point.after;
 
-        Color c = clr.withAlpha(0.5f);
+            Vertex2 realFirst(xy.front());
+            Vertex2 realLast(xy.back());
 
-        renderer->drawLine(curr.x, curr.y, next.x, next.y, c, clr);
-        renderer->drawLine(next.x, next.y, next2.x, next2.y, clr, c);
+            renderer->setCurrentColour(clr.withAlpha(0.5f));
+            renderer->drawLineStrip(xy, true);
+
+            renderer->setCurrentColour(0.4f, 0.4f, 0.4f, 0.5f);
+            renderer->drawLine(first.x, first.y, realFirst.x, realFirst.y, true);
+            renderer->drawLine(realLast.x, realLast.y, last.x, last.y, true);
+        } else {
+            // translate these points to icpt's point
+            Vertex2 curr (sx(point.before.x) + offsets[dim], sy(point.before.y));
+            Vertex2 next (sx(point.mid.x) + offsets[dim], sy(point.mid.y));
+            Vertex2 next2(sx(point.after.x)  + offsets[dim], sy(point.after.y));
+
+            Color c = clr.withAlpha(0.5f);
+
+            renderer->drawLine(curr.x, curr.y, next.x, next.y, c, clr);
+            renderer->drawLine(next.x, next.y, next2.x, next2.y, clr, c);
+        }
     }
 
     for (auto& p : points) {
