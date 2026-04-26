@@ -16,7 +16,7 @@
     - Plugin Debug: `cmake --preset plugin-debug && cmake --build --preset plugin-debug`
     - Tests: `cmake --preset tests && cmake --build --preset tests`
 - Run tests: `ctest --test-dir build/tests -V` (Catch2 discovery is enabled).
-- Capture Cycle UI screenshots for regression checks and UI bug fixes: `scripts/capture_cycle_ui.sh /tmp/cycle-ui.png`.
+- Capture Cycle UI screenshots and filtered launch logs for regression checks and UI bug fixes: `scripts/capture_cycle_ui.sh /tmp/cycle-ui.png /tmp/cycle-logs.txt`. The script also writes the complete unfiltered log to `/tmp/cycle-logs.txt.raw`; inspect the filtered log first to avoid unnecessary token use.
 
 ## Coding Style & Naming Conventions
 - C++17, 4‑space indentation, braces on the same line; always brace single statements.
@@ -43,7 +43,7 @@
 - Locations: `lib/tests/*.cpp`, `cycle/tests/*.cpp`, `oscillo/tests/*.cpp`.
 - Naming: begin test files with `Test*.cpp` or place under a `tests/` subfolder.
 - Coverage: prefer tests for new DSP modules and bugfixes; include edge‑rate/sample‑rate cases.
-- UI regressions: use `scripts/capture_cycle_ui.sh /tmp/cycle-ui.png` to capture the Cycle UI before/after visual changes or when investigating UI bugs.
+- UI regressions: use `scripts/capture_cycle_ui.sh /tmp/cycle-ui.png /tmp/cycle-logs.txt` to capture the Cycle UI and filtered launch logs before/after visual changes or when investigating UI bugs. Read `/tmp/cycle-logs.txt` first; only read `/tmp/cycle-logs.txt.raw` when detailed rasterizer/mesh logs are needed.
 
 ## Commit & Pull Request Guidelines
 - Commits: short, imperative subject (“Fix buffer wraparound”), optional body for context.
