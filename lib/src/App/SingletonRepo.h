@@ -24,6 +24,7 @@ public:
     void addExternal(SingletonAccessor* client, int order = 0);
     void clearSingletons();
     void resetSingletons();
+    void resizeVertices();
 
     OutputStream& getDebugStream();
     OutputStream& getStatStream();

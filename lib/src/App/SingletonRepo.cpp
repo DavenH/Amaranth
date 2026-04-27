@@ -177,6 +177,14 @@ void SingletonRepo::resetSingletons() {
     }
 }
 
+void SingletonRepo::resizeVertices() {
+    for (auto* panel : panels) {
+        panel->updateVertexSizes();
+        panel->triggerPendingScaleUpdate();
+        panel->triggerPendingDeformUpdate();
+    }
+}
+
 void SingletonRepo::clearSingletons() {
     objects.clear(true);
 }

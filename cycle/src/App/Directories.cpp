@@ -24,19 +24,51 @@ namespace {
         return appDataDir + "/Preferences/com.amaranthaudio." + ProjectInfo::projectName + ".presets.xml";
       #endif
     }
+
+    String getDefaultContentDir() {
+      #ifdef JUCE_MAC
+        File baseDir = File::getSpecialLocation(File::userApplicationDataDirectory)
+                .getChildFile("Application Support");
+      #else
+        File baseDir = File::getSpecialLocation(File::userDocumentsDirectory);
+      #endif
+
+        return baseDir.getFullPathName()
+               + File::getSeparatorString() + ProjectInfo::companyName
+               + File::getSeparatorString() + ProjectInfo::projectName
+               + File::getSeparatorString();
+    }
+
+    String getLegacyDocumentsContentDir() {
+        File documentsDir = File::getSpecialLocation(File::userDocumentsDirectory);
+
+        return documentsDir.getFullPathName()
+               + File::getSeparatorString() + ProjectInfo::companyName
+               + File::getSeparatorString() + ProjectInfo::projectName
+               + File::getSeparatorString();
+    }
+
+    String getLegacyLibraryContentDir() {
+        File libraryDir = File::getSpecialLocation(File::userApplicationDataDirectory);
+
+        return libraryDir.getFullPathName()
+               + File::getSeparatorString() + ProjectInfo::companyName
+               + File::getSeparatorString() + ProjectInfo::projectName
+               + File::getSeparatorString();
+    }
 }
 
 void Directories::init() {
     contentDir = getObj(Settings).getProperty("ContentDir");
 
+  #ifdef JUCE_MAC
+    if (contentDir == getLegacyDocumentsContentDir() || contentDir == getLegacyLibraryContentDir()) {
+        contentDir = {};
+    }
+  #endif
+
     if (contentDir.isEmpty()) {
-        String productName(getStrConstant(ProductName));
-
-        contentDir = File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName()
-                     + File::getSeparatorString() + ProjectInfo::companyName
-                     + File::getSeparatorString() + productName
-                     + File::getSeparatorString();
-
+        contentDir = getDefaultContentDir();
         if (!File(contentDir).exists()) {
             (void) File(contentDir).createDirectory();
         }

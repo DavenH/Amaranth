@@ -1,6 +1,9 @@
 #include <iterator>
 #include <App/Doc/PresetJson.h>
 #include <Design/Updating/Updater.h>
+#include <Inter/EnvelopeInter3D.h>
+#include <Inter/SpectrumInter3D.h>
+#include <Inter/WaveformInter3D.h>
 #include <UI/IConsole.h>
 #include <UI/Layout/Bounded.h>
 #include <UI/Layout/BoundWrapper.h>
@@ -12,6 +15,7 @@
 #include <UI/Panels/SharedPanelCanvas.h>
 #include <UI/Panels/ZoomPanel.h>
 #include <Util/ScopedBooleanSwitcher.h>
+#include <Util/Util.h>
 
 #include "BannerPanel.h"
 #include "Console.h"
@@ -1149,7 +1153,33 @@ juce::Component* MainPanel::getComponent(int which) {
     return nullptr;
 }
 
-void MainPanel::setPrimaryDimension(int view, bool performUpdate) {}
+void MainPanel::setPrimaryDimension(int view, bool performUpdate) {
+    int& currentAxis = getSetting(CurrentMorphAxis);
+    int oldAxis = currentAxis;
+
+    if (!Util::assignAndWereDifferent(currentAxis, view)) {
+        return;
+    }
+
+    if (view != Vertex::Time || oldAxis != Vertex::Time) {
+        toggleEnvPanel(view != Vertex::Time);
+        getObj(Spectrum3D).changedToOrFromTimeDimension();
+    }
+
+    getObj(WaveformInter3D).primaryDimensionChanged();
+    getObj(SpectrumInter3D).primaryDimensionChanged();
+
+    if (view != Vertex::Time) {
+        getObj(EnvelopeInter3D).primaryDimensionChanged();
+    }
+
+    getObj(PlaybackPanel).primaryDimensionChanged();
+    getObj(MorphPanel).updateHighlights();
+
+    if (performUpdate) {
+        doUpdate(SourceMorph);
+    }
+}
 
 
 void MainPanel::envelopeVisibilityChanged() {
