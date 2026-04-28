@@ -17,12 +17,14 @@
 #include "../Widgets/Controls/Spacers.h"
 #include "../../App/CycleTour.h"
 #include "../../Audio/SynthAudioSource.h"
+#include "../../Curve/GraphicRasterizer.h"
 #include "../../Inter/WaveformInter2D.h"
 #include "../../Inter/WaveformInter3D.h"
 #include "../../UI/Effects/IrModellerUI.h"
 #include "../../UI/Panels/ModMatrixPanel.h"
 #include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VisualDsp.h"
+#include "Spectrum3D.h"
 #include "../../Util/CycleEnums.h"
 
 #define panelName "Waveform3D"
@@ -50,6 +52,7 @@ void Waveform3D::init() {
     interactor3D  	= surfInteractor;
     setInteractor(interactor3D);
     interactor3D->setRasterizer(&getObj(TimeRasterizer));
+    surfInteractor->updateRastDims();
     surfInteractor->updateSelectionClient();
 
     zoomPanel->tendZoomToCentre = false;
@@ -91,6 +94,31 @@ void Waveform3D::panelResized() {
     Panel::panelResized();
 
     getObj(VisualDsp).surfaceResized();
+}
+
+void Waveform3D::zoomUpdated(int updateSource) {
+    Panel3D::zoomUpdated(updateSource);
+
+    if (updateSource != UpdateSources::SourceWaveform3D &&
+        updateSource != UpdateSources::SourceSpectrum3D) {
+        return;
+    }
+
+    Spectrum3D& spectrum = getObj(Spectrum3D);
+    ZoomRect& source = updateSource == UpdateSources::SourceWaveform3D
+                           ? getZoomPanel()->rect
+                           : spectrum.getZoomPanel()->rect;
+    ZoomRect& dest = updateSource == UpdateSources::SourceWaveform3D
+                         ? spectrum.getZoomPanel()->rect
+                         : getZoomPanel()->rect;
+
+    dest.x = source.x;
+    dest.w = source.w;
+
+    spectrum.getZoomPanel()->panelZoomChanged(false);
+    spectrum.updateBackground(false);
+    spectrum.bakeTexturesNextRepaint();
+    spectrum.repaint();
 }
 
 void Waveform3D::buttonClicked(Button* button) {
@@ -347,4 +375,22 @@ Buffer<float> Waveform3D::getColumnArray() {
 
 const vector <Column>& Waveform3D::getColumns() {
     return getObj(VisualDsp).getTimeColumns();
+}
+
+CriticalSection& Waveform3D::getGridLock() {
+    int stage = getSetting(ViewStage);
+
+    if (stage == ViewStages::PostFX) {
+        return getObj(VisualDsp).getColumnLock(VisualDsp::FXColType);
+    }
+    if (stage == ViewStages::PreProcessing) {
+        return getObj(VisualDsp).getColumnLock(VisualDsp::TimeColType);
+    }
+
+    return getObj(VisualDsp).getColumnLock(VisualDsp::EnvColType);
+}
+
+bool Waveform3D::isSurfaceDetailReduced() {
+    auto* rasterizer = dynamic_cast<GraphicRasterizer*>(interactor->getRasterizer());
+    return rasterizer != nullptr && rasterizer->isDetailReduced();
 }

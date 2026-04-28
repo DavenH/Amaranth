@@ -239,7 +239,7 @@ void Initializer::setConstants() {
     auto &constants = getObj(AppConstants);
     constants.setConstant(WaveshaperPadding, 	0.0625);
     constants.setConstant(IrModellerPadding, 	0.0625);
-    constants.setConstant(FreqMargin,           0.05);
+    constants.setConstant(FreqMargin,           0.5);
     constants.setConstant(SpectralMargin,       0.05);
     constants.setConstant(GuideCurvePadding,    0.05);
     constants.setConstant(MinLineLength, 		0.001);
@@ -257,7 +257,7 @@ void Initializer::setConstants() {
     constants.setConstant(AmpTensionScale, 	    500);
     constants.setConstant(EnvResolution, 		128);
     constants.setConstant(ResamplerLatency, 	32);
-    constants.setConstant(FreqTensionScale, 	50);
+    constants.setConstant(FreqTensionScale, 	10);
     constants.setConstant(ControllerValueSaturation, 127);
     constants.setConstant(FontFace,             fontFace);
 }

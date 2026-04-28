@@ -213,12 +213,12 @@ void Panel::constrainZoom() {
     ZoomRect& rect = zoomPanel->rect;
     // zoomPanel->validateRect("Panel::constrainZoom-before", false);
     NumberUtils::constrain<float>(rect.w, 0.001f, rect.xMaximum - rect.xMinimum);
-    NumberUtils::constrain<float>(rect.h, 0.005f, 1);
+    NumberUtils::constrain<float>(rect.h, 0.005f, rect.yMaximum - rect.yMinimum);
     NumberUtils::constrain<float>(rect.x, interactor->vertexLimits[interactor->dims.x]);
-    NumberUtils::constrain<float>(rect.y, 0, 1);
+    NumberUtils::constrain<float>(rect.y, rect.yMinimum, rect.yMaximum);
 
-    if(rect.y + rect.h > 1) {
-        rect.y = 1 - rect.h;
+    if(rect.y + rect.h > rect.yMaximum) {
+        rect.y = rect.yMaximum - rect.h;
     }
 
     if(rect.x + rect.w > rect.xMaximum) {
@@ -297,7 +297,7 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
         float offset    = bgPaddingLeft + startIdx * fineInc.x;
         int maxSize     = jmin(int(maxMinorSize), (int) ceilf(xScale / fineInc.x));
         int numLines    = jmax(0, jmin(maxSize, endIdx - startIdx) + 1);
-        DBG(String::formatted("Panel::%s num vert minor lines=%d", name.toUTF8(), numLines));
+        // DBG(String::formatted("Panel::%s num vert minor lines=%d", name.toUTF8(), numLines));
 
         vertMinorLines.resize(numLines);
         if (numLines > 0) {

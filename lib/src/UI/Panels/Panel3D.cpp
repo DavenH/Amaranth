@@ -1,3 +1,5 @@
+#include <cstdlib>
+
 #include "Panel3D.h"
 #include "Texture.h"
 #include "ZoomPanel.h"
@@ -17,6 +19,11 @@ namespace {
 
 PanelRenderer* getPanelRenderer(Panel3D* panel) {
     return panel->getPanelRenderer();
+}
+
+bool shouldDumpPanel3DDiagnostics() {
+    static bool shouldDump = std::getenv("CYCLE_DUMP_3D_GRIDS") != nullptr;
+    return shouldDump;
 }
 
 }
@@ -268,6 +275,165 @@ void Panel3D::drawLinSurface(const vector<Column>& grid) {
     }
 }
 
+void Panel3D::dumpGridPngOnce(const vector<Column>& grid) {
+    if (!shouldDumpPanel3DDiagnostics() || hasDumpedGridPng || grid.empty()) {
+        return;
+    }
+
+    ++gridDumpDraws;
+
+    int width = (int) grid.size();
+    int height = 0;
+    bool hasFiniteValue = false;
+    float minValue = 1.e30f;
+    float maxValue = -1.e30f;
+
+    for (const Column& column: grid) {
+        height = jmax(height, column.size());
+
+        for (int row = 0; row < column.size(); ++row) {
+            float value = column[row];
+
+            if (value == value) {
+                hasFiniteValue = true;
+                minValue = jmin(minValue, value);
+                maxValue = jmax(maxValue, value);
+            }
+        }
+    }
+
+    if (width <= 0 || height <= 0 || !hasFiniteValue) {
+        return;
+    }
+
+    if (gridDumpDraws > gridDumpFrameCount) {
+        return;
+    }
+
+    float maxAbsValue = jmax(maxValue, -minValue);
+    float valueRange = maxValue - minValue;
+    bool isNearZero = maxAbsValue < 1.e-9f && valueRange < 1.e-9f;
+    if (isNearZero) {
+        ++gridDumpZeroCount;
+    }
+
+    Image image(Image::RGB, width, height, true);
+    Image::BitmapData bitmap(image, Image::BitmapData::writeOnly);
+    float scale = maxValue > minValue ? 1.f / (maxValue - minValue) : 1.f;
+
+    for (int col = 0; col < width; ++col) {
+        const Column& column = grid[col];
+
+        for (int row = 0; row < column.size(); ++row) {
+            float value = column[row];
+            int y = height - 1 - row;
+
+            if (value != value) {
+                bitmap.setPixelColour(col, y, Colours::magenta);
+                continue;
+            }
+
+            float normalized = maxValue > minValue ? (value - minValue) * scale : value;
+            uint8 level = (uint8) roundToInt(jlimit(0.f, 1.f, normalized) * 255.f);
+            bitmap.setPixelColour(col, y, Colour(level, level, level));
+        }
+    }
+
+    File file = File("/tmp").getChildFile(
+        "cycle-grid-" + getName() + "-draw" + String(gridDumpDraws).paddedLeft('0', 3) + ".png");
+    (void) file.deleteFile();
+
+    std::unique_ptr<FileOutputStream> stream(file.createOutputStream());
+    if (stream != nullptr) {
+        PNGImageFormat png;
+        bool wrote = png.writeImageToStream(image, *stream);
+
+        if (wrote && gridDumpDraws >= gridDumpFrameCount) {
+            File finalFile = File("/tmp").getChildFile("cycle-grid-" + getName() + ".png");
+            (void) finalFile.deleteFile();
+            (void) file.copyFileTo(finalFile);
+            hasDumpedGridPng = true;
+        }
+    }
+
+    DBG("Panel3D::dumpGridPngOnce"
+        + String(" panel=") + getName()
+        + " path=" + file.getFullPathName()
+        + " width=" + String(width)
+        + " height=" + String(height)
+        + " draws=" + String(gridDumpDraws)
+        + " zeroSkips=" + String(gridDumpZeroCount)
+        + " min=" + String(minValue, 6)
+        + " max=" + String(maxValue, 6)
+        + " nearZero=" + String(isNearZero ? 1 : 0)
+        + " wrote=" + String(hasDumpedGridPng ? 1 : 0));
+}
+
+void Panel3D::dumpSurfaceColumnPngOnce(int column) {
+    if (!shouldDumpPanel3DDiagnostics() ||
+        hasDumpedSurfaceColumnPng || !useVertices || column < 1 || colours.empty()) {
+        return;
+    }
+
+    Image image(Image::RGB, 2, draw.sizeY + 1, true);
+    Image::BitmapData bitmap(image, Image::BitmapData::writeOnly);
+    Int8u* colorPtr = colours;
+
+    for (int row = 0; row < draw.sizeY + 1; ++row) {
+        int y = draw.sizeY - row;
+        Colour left(colorPtr[0], colorPtr[1], colorPtr[2]);
+        colorPtr += draw.stride;
+
+        Colour right(colorPtr[0], colorPtr[1], colorPtr[2]);
+        colorPtr += draw.stride;
+
+        bitmap.setPixelColour(0, y, left);
+        bitmap.setPixelColour(1, y, right);
+    }
+
+    File file = File("/tmp").getChildFile("cycle-surface-colours-" + getName() + ".png");
+    (void) file.deleteFile();
+
+    std::unique_ptr<FileOutputStream> stream(file.createOutputStream());
+    if (stream != nullptr) {
+        PNGImageFormat png;
+        hasDumpedSurfaceColumnPng = png.writeImageToStream(image, *stream);
+    }
+
+    DBG("Panel3D::dumpSurfaceColumnPngOnce"
+        + String(" panel=") + getName()
+        + " path=" + file.getFullPathName()
+        + " column=" + String(column)
+        + " sizeY=" + String(draw.sizeY)
+        + " stride=" + String(draw.stride)
+        + " wrote=" + String(hasDumpedSurfaceColumnPng ? 1 : 0));
+}
+
+void Panel3D::logGridNaNsOnce(const vector<Column>& grid) {
+    if (hasLoggedGridNaN) {
+        return;
+    }
+
+    for (int col = 0; col < (int) grid.size(); ++col) {
+        const Column& column = grid[col];
+
+        for (int row = 0; row < column.size(); ++row) {
+            float value = column[row];
+
+            if (value != value) {
+                hasLoggedGridNaN = true;
+                DBG("Panel3D::drawSurface grid contains NaN"
+                    + String(" panel=") + getName()
+                    + " col=" + String(col)
+                    + " row=" + String(row)
+                    + " cols=" + String((int) grid.size())
+                    + " rows=" + String(column.size()));
+                return;
+            }
+        }
+    }
+}
+
 void Panel3D::doColumnDraw(Buffer<Int8u> pxBuf, Buffer<float> grd32f, int i) {
     resizeArrays();
     setColumnColourIndices();
@@ -287,6 +453,7 @@ void Panel3D::doColumnDraw(Buffer<Int8u> pxBuf, Buffer<float> grd32f, int i) {
     if (i > 0 && useVertices) {
         doColourLookup8u(pxBuf, colours);
         setVertices(i, vertices);
+        dumpSurfaceColumnPngOnce(i);
     }
 
     PanelRenderer* panelRenderer = ::getPanelRenderer(this);
@@ -361,11 +528,11 @@ void Panel3D::setColumnColourIndices() {
     Buffer downsampAccum(downsampAcc.withSize(draw.sizeY));
     downsampAccum.mul(volumeScale)
         .add(volumeTrans)
-        .clip(0, gradientWidth/(float)(gradientWidth - 1))
+        .clip(0, (gradientWidth - 1) / (float) gradientWidth)
         .mul(gradientWidth);
 
     VecOps::roundDown(downsampAccum, clrIndicesB.withSize(draw.sizeY));
-    clrIndicesA.mul(draw.stride);
+    clrIndicesB.mul(draw.stride);
 }
 
 void Panel3D::setVertices(int column, Buffer<float> vertices) const {
@@ -630,6 +797,8 @@ void Panel3D::drawSurface() {
     }
 
     ScopedLock sl(getGridLock());
+    logGridNaNsOnce(grid);
+    dumpGridPngOnce(grid);
 
     draw.lastSizeY      = 0;
     draw.lastKey        = 0;

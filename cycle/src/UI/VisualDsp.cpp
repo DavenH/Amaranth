@@ -55,6 +55,7 @@ VisualDsp::VisualDsp(SingletonRepo* repo) :
         int size = 8 << fftOrderIdx;
         sizeToIndex[size] = fftOrderIdx;
         ffts[fftOrderIdx].allocate(size, Transform::DivFwdByN, true);
+        ffts[fftOrderIdx].setRemovesOffset(true);
     }
 }
 
@@ -1134,7 +1135,8 @@ float VisualDsp::getVoiceFrequencyCents(int unisonIndex) {
     // possibly updated by parameter smoothing
     double pitchEnvVal = 0.5;
 
-    if (meshLib->getCurrentProps(LayerGroups::GroupPitch)) {
+    MeshLibrary::Properties* pitchProps = meshLib->getCurrentProps(LayerGroups::GroupPitch);
+    if (pitchProps != nullptr && pitchProps->active) {
         float y = getObj(EnvPitchRast).getSustainLevel(EnvRasterizer::headUnisonIndex + unisonIndex);
 
         NumberUtils::constrain(y, 0.01f, 0.99f);
@@ -1440,7 +1442,7 @@ void VisualDsp::processThroughEffects(int numColumns) {
     bool haveWaveshaper 	= waveshaper.isEnabled();
     bool haveIrModeller 	= tubeModel.willBeEnabled();
     bool haveEqualizer		= equalizer.isEnabled();
-    bool haveUnison 		= unison->getOrder(false) > 1;
+    bool haveUnison 		= unison->isEnabled() && unison->getOrder(false) > 1;
     float volumeScale 		= getObj(OscControlPanel).getVolumeScale();
 
     for (auto & postFXCol : postFXCols) {
@@ -1612,6 +1614,11 @@ void VisualDsp::GraphicProcessor::performUpdate(UpdateType update) {
             case FXStage:
                 processor->processThroughEffects(numColumns); break;
         }
+
+        getObj(Waveform3D).bakeTexturesNextRepaint();
+        getObj(Spectrum3D).bakeTexturesNextRepaint();
+        getObj(Waveform3D).repaint();
+        getObj(Spectrum3D).repaint();
     }
 }
 

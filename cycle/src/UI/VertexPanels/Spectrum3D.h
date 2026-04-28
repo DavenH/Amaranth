@@ -73,6 +73,7 @@ public:
     bool shouldTriggerGlobalUpdate(Slider* slider) override;
     void restoreDetail() override;
     void reduceDetail() override;
+    void zoomUpdated(int updateSource) override;
     void doGlobalUIUpdate(bool force) override;
     void updateKnobValue();
     void updateSmoothedParameters(int deltaSamples);
@@ -91,7 +92,9 @@ public:
 
     Buffer<float> getColumnArray() override;
     const vector<Column>& getColumns() override;
-    CriticalSection& getGridLock() override { return layerLock; }
+    CriticalSection& getGridLock() override;
+    bool isSurfaceDetailReduced() override;
+    bool willAdjustSurfaceColumns() override;
 
     MeshLibrary::Properties* getPropertiesForLayer(int layerIdx, bool isFreq);
     MeshLibrary::Properties* getCurrentProperties();

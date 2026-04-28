@@ -102,6 +102,9 @@ protected:
     void doColourLookup8u       (Buffer<Int8u> grd, Buffer<Int8u> colors);
     void doColumnDraw           (Buffer<Int8u> grd8u, Buffer<float> grd32f, int i);
     void downsampleColumn       (const Buffer<float>& column);
+    void dumpGridPngOnce        (const vector<Column>& grid);
+    void dumpSurfaceColumnPngOnce(int column);
+    void logGridNaNsOnce        (const vector<Column>& grid);
     void resampleColours        (Buffer<float> srcColors, Buffer<float> dstColors);
     void setVertices            (int column, Buffer<float> verts) const;
     void resizeArrays           ();
@@ -113,9 +116,15 @@ protected:
     static const int maxHorzLines    = 512;
     static const int vertsPerQuad    = 2;
     static const int coordsPerVert   = 2;
+    static const int gridDumpFrameCount = 4;
     static const int gradientWidth   = 512;
 
     bool useVertices, haveLogarithmicY, haveHorzZoom;
+    bool hasLoggedGridNaN = false;
+    bool hasDumpedGridPng = false;
+    bool hasDumpedSurfaceColumnPng = false;
+    int gridDumpDraws = 0;
+    int gridDumpZeroCount = 0;
     int updateSource;
     float volumeScale, volumeTrans;
 

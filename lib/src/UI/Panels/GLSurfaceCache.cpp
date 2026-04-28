@@ -29,15 +29,15 @@ void GLSurfaceCache::allocate(bool transparent) {
 void GLSurfaceCache::captureFromFramebuffer(const juce::Rectangle<int>& componentBounds) {
     glBindTexture(GL_TEXTURE_2D, texture.id);
 
-    int width = jmin(activeBounds.getWidth(), componentBounds.getWidth());
-    int height = jmin(activeBounds.getHeight(), componentBounds.getHeight());
+    int width = jmin(activePixelBounds.getWidth(), roundToInt(componentBounds.getWidth() * renderScale));
+    int height = jmin(activePixelBounds.getHeight(), roundToInt(componentBounds.getHeight() * renderScale));
 
     if (width <= 0 || height <= 0) {
         return;
     }
 
-    int sourceX = componentBounds.getX();
-    int sourceY = componentBounds.getBottom() - height;
+    int sourceX = roundToInt(componentBounds.getX() * renderScale);
+    int sourceY = roundToInt(componentBounds.getBottom() * renderScale) - height;
     sourceY = jmax(0, sourceY);
 
     glCopyTexSubImage2D(
@@ -79,6 +79,7 @@ void GLSurfaceCache::captureFromFramebuffer(const juce::Rectangle<int>& componen
 void GLSurfaceCache::clear() {
     texture.clear();
     activeBounds = {};
+    activePixelBounds = {};
 
     const juce::ScopedLock sl(snapshotLock);
     snapshot = {};
@@ -95,10 +96,14 @@ void GLSurfaceCache::draw() const {
 
     int activeWidth = activeBounds.getWidth();
     int activeHeight = activeBounds.getHeight();
+    int activePixelWidth = activePixelBounds.getWidth();
+    int activePixelHeight = activePixelBounds.getHeight();
     int backingWidth = (int) texture.rect.getWidth();
     int backingHeight = (int) texture.rect.getHeight();
 
-    if (activeWidth <= 0 || activeHeight <= 0 || backingWidth <= 0 || backingHeight <= 0) {
+    if (activeWidth <= 0 || activeHeight <= 0 ||
+        activePixelWidth <= 0 || activePixelHeight <= 0 ||
+        backingWidth <= 0 || backingHeight <= 0) {
         return;
     }
 
@@ -109,8 +114,8 @@ void GLSurfaceCache::draw() const {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    float u2 = activeWidth / (float) backingWidth;
-    float v2 = activeHeight / (float) backingHeight;
+    float u2 = activePixelWidth / (float) backingWidth;
+    float v2 = activePixelHeight / (float) backingHeight;
 
     {
         ScopedElement glQuads(GL_QUADS);
@@ -142,8 +147,28 @@ bool GLSurfaceCache::paintSnapshot(juce::Graphics& g, const juce::Rectangle<int>
 
 void GLSurfaceCache::setSize(int width, int height) {
     activeBounds.setSize(width, height);
+    updatePixelBounds();
+}
+
+void GLSurfaceCache::setRenderScale(double scale) {
+    renderScale = jmax(1.0, scale);
+    updatePixelBounds();
+
+    if (texture.id != UINT_MAX &&
+        (texture.rect.getWidth() != activePixelBounds.getWidth() ||
+         texture.rect.getHeight() != activePixelBounds.getHeight())) {
+        texture.rect.setSize(activePixelBounds.getWidth(), activePixelBounds.getHeight());
+        allocate(transparent);
+    }
+}
+
+void GLSurfaceCache::updatePixelBounds() {
+    activePixelBounds.setSize(
+        jmax(1, roundToInt(activeBounds.getWidth() * renderScale)),
+        jmax(1, roundToInt(activeBounds.getHeight() * renderScale))
+    );
 
     if (texture.rect.getWidth() <= 0 || texture.rect.getHeight() <= 0) {
-        texture.rect.setSize(1024, 1024);
+        texture.rect.setSize(activePixelBounds.getWidth(), activePixelBounds.getHeight());
     }
 }

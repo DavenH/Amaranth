@@ -18,5 +18,5 @@ public:
 
 protected:
 
-    bool detailIsReduced;
+    bool detailIsReduced = false;
 };

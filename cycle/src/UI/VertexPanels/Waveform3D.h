@@ -68,7 +68,7 @@ public:
     void updateScratchComboBox();
     void updateSmoothedParameters(int deltaSamples);
     void updateSmoothParametersToTarget(int voiceIndex);
-    void zoomUpdated();
+    void zoomUpdated(int updateSource) override;
     void doZoomExtra(bool commandDown) override;
 
     void buttonClicked(Button* button) override;
@@ -79,7 +79,8 @@ public:
 
     Buffer<float> getColumnArray() override;
     const vector<Column>& getColumns() override;
-    CriticalSection& getGridLock() override { return layerLock; }
+    CriticalSection& getGridLock() override;
+    bool isSurfaceDetailReduced() override;
 
     /* Accessors */
     int getLayerType() override;

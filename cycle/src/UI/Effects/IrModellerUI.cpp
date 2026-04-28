@@ -214,6 +214,11 @@ void IrModellerUI::preDraw() {
         return;
     }
 
+    ScopedAlloc<Float32> magsCopy;
+    magsCopy.resize(mags.size());
+    mags.copyTo(magsCopy);
+    mags = magsCopy;
+
     vector<Color>& grd = gradient.getColours();
 
     ScopedAlloc<Float32> reducedMags, accum;
@@ -239,7 +244,7 @@ void IrModellerUI::preDraw() {
 
     ScopedAlloc<Int16s> indices(mags.size());
 
-    VecOps::roundDown(mags.mul(511.f), indices);
+    VecOps::roundDown(mags.clip(0.f, 1.f).mul(511.f), indices);
 
     int left 		= 0;
     int bottom 		= 0;

@@ -93,6 +93,7 @@ void OpenGLPanel3D::clear() {
 }
 
 void OpenGLPanel3D::renderOpenGL() {
+    surfaceCache.setRenderScale(context.getRenderingScale());
     panel->render();
     printErrors(repo);
 }
