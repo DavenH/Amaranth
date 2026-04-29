@@ -186,6 +186,17 @@ void Waveform3D::reset() {
     panelControls->resetSelector();
 }
 
+void Waveform3D::reconcileLoadedState() {
+    if (panelControls == nullptr) {
+        return;
+    }
+
+    panelControls->resetSelector();
+    panelControls->enableCurrent.setHighlit(getCurrentProperties()->active);
+    updateScratchComboBox();
+    setKnobValuesImplicit();
+}
+
 void Waveform3D::layerChanged() {
     progressMark
 
@@ -195,10 +206,7 @@ void Waveform3D::layerChanged() {
     getObj(WaveformInter2D).state.reset();
     getObj(VertexPropertiesPanel).updateSliderValues(true);
 
-    panelControls->enableCurrent.setHighlit(getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime)->active);
-
-    updateScratchComboBox();
-    setKnobValuesImplicit();
+    reconcileLoadedState();
 
     // TODO: setMesh() ?? I thought MeshLibrary served all of this and notified.
     getObj(TimeRasterizer).setMesh(interactor->getMesh());
@@ -249,8 +257,11 @@ void Waveform3D::doGlobalUIUpdate(bool force) {
 }
 
 void Waveform3D::layerChanged(int layerGroup, int index) {
-    panelControls->resetSelector();
-    setKnobValuesImplicit();
+    if (layerGroup != LayerGroups::GroupTime) {
+        return;
+    }
+
+    reconcileLoadedState();
 }
 
 void Waveform3D::layerGroupAdded(int layerGroup) {

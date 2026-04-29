@@ -50,6 +50,7 @@ public:
 
     void reset() override;
     void panelResized() override;
+    void reconcileLoadedState() override;
     bool haveAnyValidLayers(bool isMags, bool haveAnyValidTimeLayers);
 
     /* Events */

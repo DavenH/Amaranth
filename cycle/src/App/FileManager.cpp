@@ -231,6 +231,8 @@ void FileManager::doPostPresetLoad() {
 
     getObj(Updater).update(UpdateSources::SourceAll, RestoreDetail);
     getObj(Initializer).resetAll();
+    getObj(Waveform3D).reconcileLoadedState();
+    getObj(Spectrum3D).reconcileLoadedState();
     getObj(UnisonUI).reconcileLoadedState(true);
     getObj(EditWatcher).update();
 }

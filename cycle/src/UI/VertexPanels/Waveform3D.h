@@ -43,6 +43,7 @@ public:
 
     /* UI */
     void panelResized() override;
+    void reconcileLoadedState() override;
     void reset() override;
 
     /* Events */

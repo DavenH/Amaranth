@@ -180,6 +180,18 @@ void Spectrum3D::reset() {
     panelControls->resetSelector();
 }
 
+void Spectrum3D::reconcileLoadedState() {
+    if (panelControls == nullptr) {
+        return;
+    }
+
+    panelControls->resetSelector();
+    modeChanged(getSetting(MagnitudeDrawMode) == 1, false);
+    setIconHighlightImplicit();
+    updateKnobValue();
+    enablementsChanged();
+}
+
 void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
     interactor->layerType = isMags ? LayerGroups::GroupSpect : LayerGroups::GroupPhase;
 
@@ -396,12 +408,7 @@ void Spectrum3D::layerChanged(int layerGroup, int index) {
     if(layerGroup != (int) LayerGroups::GroupSpect && layerGroup != LayerGroups::GroupPhase) {
         return;
     }
-    panelControls->resetSelector(); //resetLayerBox();
-
-    modeChanged(getSetting(MagnitudeDrawMode) == 1, false);
-    setIconHighlightImplicit();
-    updateKnobValue();
-    enablementsChanged();
+    reconcileLoadedState();
 }
 
 bool Spectrum3D::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) {

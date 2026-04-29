@@ -194,19 +194,19 @@ void Interactor::mouseMove(const MouseEvent& e) {
 
     refresh();
 
-    DBG(getName() + "::mouseMove"
-        + " event=" + String(eventId)
-        + " source=event"
-        + " raw=(" + String(localPos.x) + "," + String(localPos.y) + ")"
-        + " scaled=(" + String(state.currentMouse.x, 4) + "," + String(state.currentMouse.y, 4) + ")"
-        + " changed=" + String((int) changedVertex)
-        + " mouseOver=" + String((int) mouseFlag(MouseOver))
-        + " reshape=" + String((int) mouseFlag(WithinReshapeThresh))
-        + " currentIcpt=" + String(state.currentIcpt)
-        + " currentFreeVert=" + String(state.currentFreeVert)
-        + " currentVertex=" + String::toHexString((int64) state.currentVertex)
-        + " currentCube=" + String::toHexString((int64) state.currentCube)
-        + " component=" + (display != nullptr ? display->getName() : String("<none>")));
+    // DBG(getName() + "::mouseMove"
+    //     + " event=" + String(eventId)
+    //     + " source=event"
+    //     + " raw=(" + String(localPos.x) + "," + String(localPos.y) + ")"
+    //     + " scaled=(" + String(state.currentMouse.x, 4) + "," + String(state.currentMouse.y, 4) + ")"
+    //     + " changed=" + String((int) changedVertex)
+    //     + " mouseOver=" + String((int) mouseFlag(MouseOver))
+    //     + " reshape=" + String((int) mouseFlag(WithinReshapeThresh))
+    //     + " currentIcpt=" + String(state.currentIcpt)
+    //     + " currentFreeVert=" + String(state.currentFreeVert)
+    //     + " currentVertex=" + String::toHexString((int64) state.currentVertex)
+    //     + " currentCube=" + String::toHexString((int64) state.currentCube)
+    //     + " component=" + (display != nullptr ? display->getName() : String("<none>")));
 }
 
 void Interactor::timerCallback() {
