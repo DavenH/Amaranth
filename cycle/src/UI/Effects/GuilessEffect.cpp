@@ -111,14 +111,19 @@ void GuilessEffect::buttonClicked(Button* button) {
 }
 
 void GuilessEffect::restoreDetail() {
+    DBG(name + "::restoreDetail source=" + String(updateSource));
     getObj(Updater).update(updateSource, RestoreDetail);
 }
 
 void GuilessEffect::reduceDetail() {
+    DBG(name + "::reduceDetail source=" + String(updateSource));
     getObj(Updater).update(updateSource, ReduceDetail);
 }
 
 void GuilessEffect::doGlobalUIUpdate(bool force) {
+    DBG(name + "::doGlobalUIUpdate"
+        + String(" source=") + String(updateSource)
+        + " force=" + String(force ? 1 : 0));
     getObj(Updater).update(updateSource);
 }
 
@@ -174,15 +179,15 @@ void GuilessEffect::resized() {
     bool tiny = getWidth() < 250;
     bool big = getWidth() > 400;
     int vertPad = (getHeight() - 36) / 3;
-    int rightSize = jmax(minTitleSize, 5 + title.getFullSize());
+    int titleWidth = title.getFullSize() + 4;
+    int rightSize = jmax(minTitleSize, 10 + titleWidth);
 
     Rectangle<int> r = getLocalBounds();
     Rectangle<int> right = r.removeFromRight(rightSize);
     right.removeFromRight(5);
-    right.removeFromLeft(-5);
 
     right.removeFromTop(vertPad);
-    title.setBounds(right.removeFromTop(12).removeFromRight(title.getFullSize()));
+    title.setBounds(right.removeFromTop(12).removeFromRight(jmin(titleWidth, right.getWidth())));
 
     right.removeFromBottom(jmin(5, vertPad));
     enableButton.setBounds(right.removeFromRight(24).removeFromBottom(24));
@@ -210,6 +215,11 @@ void GuilessEffect::layoutKnobs(Rectangle<int> rect, Array<int>& knobIdcs, int k
 }
 
 void GuilessEffect::effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdate) {
+    DBG(name + "::effectEnablementChanged"
+        + String(" enabled=") + String(enabled ? 1 : 0)
+        + " ui=" + String(sendUIUpdate ? 1 : 0)
+        + " dsp=" + String(sendDspUpdate ? 1 : 0));
+
     if (sendUIUpdate) {
         paramGroup->forceNextUIUpdate = true;
         paramGroup->triggerRefreshUpdate();
@@ -217,7 +227,16 @@ void GuilessEffect::effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdat
 }
 
 bool GuilessEffect::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) {
-    return effect->paramChanged(knobIndex, knobValue, doFurtherUpdate);
+    DBG(name + "::updateDsp"
+        + String(" knob=") + String(knobIndex)
+        + " value=" + String(knobValue, 6)
+        + " further=" + String(doFurtherUpdate ? 1 : 0)
+        + " enabled=" + String(enabled ? 1 : 0));
+
+    bool changed = effect->paramChanged(knobIndex, knobValue, doFurtherUpdate);
+    DBG(name + "::updateDsp result changed=" + String(changed ? 1 : 0));
+
+    return changed;
 }
 
 bool GuilessEffect::shouldTriggerGlobalUpdate(Slider* slider) {

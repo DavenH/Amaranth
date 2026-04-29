@@ -1168,8 +1168,9 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
     bool isTimeDimension = getSetting(CurrentMorphAxis) == Vertex::Time;
     bool interpolate 	 = ! timeRasterizer->isDetailReduced();
     float time 			 = getObj(MorphPanel).getValue(Vertex::Time);
-    float unisonScale 	 = powf(2.f, -(unison->getOrder(false) - 1) * 0.14f);
-    int unisonOrder 	 = processUnison ? unison->getOrder(false) : 1;
+    int rawUnisonOrder   = unison->getOrder(false);
+    float unisonScale 	 = powf(2.f, -(rawUnisonOrder - 1) * 0.14f);
+    int unisonOrder 	 = processUnison ? rawUnisonOrder : 1;
 
     vector<MeshRasterizer::GuideCurveContext> contexts(unisonOrder);
 

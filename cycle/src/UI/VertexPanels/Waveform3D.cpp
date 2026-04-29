@@ -2,13 +2,13 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
+#include <Binary/Gradients.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/Layout/DynamicSizeContainer.h>
-#include <Binary/Gradients.h>
+#include <UI/Panels/OpenGLPanel3D.h>
 
 #include "Waveform3D.h"
-
-#include <UI/Panels/OpenGLPanel3D.h>
+#include "Spectrum3D.h"
 
 #include "../CycleDefs.h"
 #include "../Panels/Morphing/MorphPanel.h"
@@ -24,13 +24,11 @@
 #include "../../UI/Panels/ModMatrixPanel.h"
 #include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VisualDsp.h"
-#include "Spectrum3D.h"
 #include "../../Util/CycleEnums.h"
 
 #define panelName "Waveform3D"
 
-
-Waveform3D::Waveform3D(SingletonRepo* repo) : 
+Waveform3D::Waveform3D(SingletonRepo* repo) :
         Panel3D				(repo, panelName, this, UpdateSources::SourceWaveform3D, false, true)
     ,	SingletonAccessor	(repo, panelName)
     ,	LayerSelectionClient(repo)
@@ -104,6 +102,7 @@ void Waveform3D::zoomUpdated(int updateSource) {
         return;
     }
 
+    // TODO: this seems to be better served with some kind of publisher/listener pattern
     Spectrum3D& spectrum = getObj(Spectrum3D);
     ZoomRect& source = updateSource == UpdateSources::SourceWaveform3D
                            ? getZoomPanel()->rect
@@ -201,7 +200,9 @@ void Waveform3D::layerChanged() {
     updateScratchComboBox();
     setKnobValuesImplicit();
 
+    // TODO: setMesh() ?? I thought MeshLibrary served all of this and notified.
     getObj(TimeRasterizer).setMesh(interactor->getMesh());
+    // TODO: two updates is slightly weird
     getObj(TimeRasterizer).update(Update);
     getObj(WaveformInter2D).update(Update);
     getObj(WaveformInter3D).shallowUpdate();

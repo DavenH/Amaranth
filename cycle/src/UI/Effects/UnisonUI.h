@@ -45,6 +45,7 @@ public:
     int getCurrentIndex() { return voiceSelector.getCurrentIndex(); }
     void modeChanged(bool updateAudio, bool graphicUpdate);
     void orderChangedTo(int order);
+    void reconcileLoadedState(bool sendUIUpdate);
     void updateSelection();
 
     void setExtraTitleElements(Rectangle<int>& r) override;

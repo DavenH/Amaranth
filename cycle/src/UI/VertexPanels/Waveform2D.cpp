@@ -256,8 +256,5 @@ void Waveform2D::componentChanged() {
 }
 
 void Waveform2D::doZoomExtra(bool commandDown) {
-    if (commandDown) {
-        zoomPanel->rect.y = 0.25f;
-        zoomPanel->rect.h = 0.5f;
-    }
+    ignoreUnused(commandDown);
 }

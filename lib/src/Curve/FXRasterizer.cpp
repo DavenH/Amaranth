@@ -116,7 +116,7 @@ void FXRasterizer::calcCrossPoints() {
     }
 
     if (icpts.empty()) {
-        DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup no-intercepts " + describeFxMesh(mesh));
+        // DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup no-intercepts " + describeFxMesh(mesh));
         cleanUp();
         return;
     }
@@ -124,13 +124,13 @@ void FXRasterizer::calcCrossPoints() {
     std::sort(icpts.begin(), icpts.end());
     restrictIntercepts(icpts);
 
-    DBG(MeshRasterizer::getName() + "::calcCrossPoints intercepts " + describeFxIntercepts(icpts));
+    // DBG(MeshRasterizer::getName() + "::calcCrossPoints intercepts " + describeFxIntercepts(icpts));
 
     curves.clear();
 
     if (icpts.size() < 2) {
-        DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup too-few-intercepts count=" + String((int) icpts.size())
-            + " " + describeFxMesh(mesh));
+        // DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup too-few-intercepts count=" + String((int) icpts.size())
+        //     + " " + describeFxMesh(mesh));
         cleanUp();
         return;
     }
@@ -139,11 +139,11 @@ void FXRasterizer::calcCrossPoints() {
     updateCurves();
 
     unsampleable = false;
-    DBG(MeshRasterizer::getName() + "::calcCrossPoints ready icpts=" + String((int) icpts.size())
-        + " curves=" + String((int) curves.size())
-        + " waveX=" + String(waveX.size())
-        + " waveY=" + String(waveY.size())
-        + " " + describeFxMesh(mesh));
+    // DBG(MeshRasterizer::getName() + "::calcCrossPoints ready icpts=" + String((int) icpts.size())
+    //     + " curves=" + String((int) curves.size())
+    //     + " waveX=" + String(waveX.size())
+    //     + " waveY=" + String(waveY.size())
+    //     + " " + describeFxMesh(mesh));
 }
 
 void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {

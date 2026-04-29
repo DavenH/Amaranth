@@ -10,7 +10,8 @@ Unison::Unison(SingletonRepo* repo) : Effect(repo, "Unison")
                                       , addVoiceAction(AddVoice)
                                       , changeOrderAction(ChangeOrder)
                                       , updateAllAction(UpdateAll)
-                                      , setVoicesAction(SetVoices) {
+                                      , setVoicesAction(SetVoices)
+                                      , groupMode(true) {
     actions.add(&removeVoiceAction);
     actions.add(&addVoiceAction);
     actions.add(&changeOrderAction);
@@ -68,7 +69,7 @@ int Unison::getOrder(bool isAudio) {
     }
 
     ParamGroup& group = isAudio ? audioParams : graphicParams;
-    return ui->isGroupMode() ? group.groupModeOrder : group.voices.size();
+    return isGroupMode() ? group.groupModeOrder : group.voices.size();
 }
 
 void Unison::updateTunings(bool isAudio, bool force) {
@@ -77,7 +78,7 @@ void Unison::updateTunings(bool isAudio, bool force) {
 
     jassert(group.voices.size() >= order);
 
-    if (ui->isGroupMode() || force) {
+    if (isGroupMode() || force) {
         if (order == 1) {
             group.voices.front().fine = 0.;
         } else {
@@ -107,7 +108,7 @@ void Unison::updatePanning(bool isAudio, bool force) {
 
     jassert(group.voices.size() >= order);
 
-    if (ui->isGroupMode() || force) {
+    if (isGroupMode() || force) {
         if (order == 1) {
             group.voices.front().pan = 0.5;
             return;
@@ -135,7 +136,7 @@ void Unison::updatePhases(bool isAudio, bool force) {
 
     jassert(group.voices.size() >= order);
 
-    if (ui->isGroupMode() || force) {
+    if (isGroupMode() || force) {
         if (order == 1) {
             group.voices.front().phase = 0.;
         } else {
@@ -164,6 +165,10 @@ bool Unison::isEnabled() const {
     return ui->isEffectEnabled();
 }
 
+bool Unison::isGroupMode() const {
+    return groupMode;
+}
+
 double Unison::getDetune(int unisonIndex, bool isAudio) {
     ParamGroup& group = isAudio ? audioParams : graphicParams;
 
@@ -185,7 +190,7 @@ double Unison::getPan(int unisonIndex, bool isAudio) {
 }
 
 bool Unison::isStereo() {
-    if (!ui->isGroupMode()) {
+    if (!isGroupMode()) {
         if (audioParams.voices.size() == 1) {
             return false;
         }
@@ -204,7 +209,7 @@ bool Unison::isStereo() {
 }
 
 bool Unison::isPhased() {
-    if (!ui->isGroupMode()) {
+    if (!isGroupMode()) {
         if (audioParams.voices.size() == 1) {
             return false;
         }
@@ -248,7 +253,7 @@ void Unison::audioThreadUpdate() {
 
                 increaseVoicesToGroupOrder(true);
 
-                if (ui->isGroupMode()) {
+                if (isGroupMode()) {
                     updateAll(true);
                 }
 
@@ -276,7 +281,7 @@ void Unison::audioThreadUpdate() {
 }
 
 bool Unison::doParamChange(int index, double value, bool doFurtherUpdate) {
-    if (ui->isGroupMode()) {
+    if (isGroupMode()) {
         if (index == Order) {
             changeOrderFromValue(false, value);
 
@@ -363,15 +368,66 @@ bool Unison::doParamChange(int index, double value, bool doFurtherUpdate) {
 }
 
 void Unison::changeAllOrdersImplicit() {
-    ParamGroup* groups[] = { &audioParams, &graphicParams };
-
     changeOrderTo(true, -1);
     changeOrderTo(false, -1);
 }
 
+double Unison::getUIKnobValue(int param) {
+    if (ui == nullptr) {
+        return 0.5;
+    }
+
+    if (auto* slider = ui->getParamGroup().getKnob<Slider>(param)) {
+        return slider->getValue();
+    }
+
+    return ui->getParamGroup().getKnobValue(param);
+}
+
+void Unison::syncParamsFromUI() {
+    if (isGroupMode()) {
+        ParamGroup* groups[] = { &audioParams, &graphicParams };
+
+        for (int i = 0; i < 2; ++i) {
+            ParamGroup& group = *groups[i];
+            group.width       = getUIKnobValue(Width) * getConstant(MaxDetune);
+            group.panScale    = getUIKnobValue(PanSpread);
+            group.phaseScale  = getUIKnobValue(Phase);
+            group.jitterScale = getUIKnobValue(Jitter);
+        }
+
+        int newOrder = isEnabled() ? calcOrder(getUIKnobValue(Order)) : 1;
+        changeOrderTo(true, newOrder);
+        changeOrderTo(false, newOrder);
+        updateAll(false, true);
+        return;
+    }
+
+    int uniIndex = ui->getCurrentIndex();
+
+    if (!isPositiveAndBelow(uniIndex, (int) graphicParams.voices.size())) {
+        return;
+    }
+
+    ParamGroup* groups[] = { &audioParams, &graphicParams };
+    for (auto* group : groups) {
+        group->width = getUIKnobValue(Width) * getConstant(MaxDetune);
+
+        while (!isPositiveAndBelow(uniIndex, (int) group->voices.size())) {
+            group->voices.emplace_back();
+        }
+
+        UnivoiceData& data = group->voices[uniIndex];
+        data.finePct = getUIKnobValue(Fine);
+        data.fine    = group->width * (2.f * data.finePct - 1.f);
+        data.pan     = getUIKnobValue(Pan);
+        data.phase   = getUIKnobValue(Phase);
+    }
+}
+
 bool Unison::changeOrderFromValue(bool isAudio, double orderValue) {
     if (orderValue < 0) {
-        orderValue = ui->getParamGroup().getKnobValue(Order);
+        orderValue = getUIKnobValue(Order);
     }
 
     int newOrder = isEnabled() ? calcOrder(orderValue) : 1;
@@ -381,10 +437,9 @@ bool Unison::changeOrderFromValue(bool isAudio, double orderValue) {
 
 bool Unison::changeOrderTo(bool isAudio, int newOrder) {
     if (newOrder < 0) {
-        double orderValue = ui->getParamGroup().getKnobValue(Order);
+        double orderValue = getUIKnobValue(Order);
         newOrder = isEnabled() ? calcOrder(orderValue) : 1;
     }
-
     ParamGroup& group = isAudio ? audioParams : graphicParams;
     int oldOrder = getOrder(isAudio); // group.groupModeOrder;
 
@@ -399,6 +454,10 @@ bool Unison::changeOrderTo(bool isAudio, int newOrder) {
     }
 
     return oldOrder != newOrder;
+}
+
+void Unison::setGroupMode(bool isGroupMode) {
+    groupMode = isGroupMode;
 }
 
 void Unison::updateAll(bool isAudio, bool force) {
@@ -432,7 +491,7 @@ void Unison::setVoiceData(int unisonIdx, float fine, float pan, float phase) {
         data = UnivoiceData(pan, fine, phase);
         data.fine = group.width * (2.f * data.finePct - 1.f);
 
-        if (!ui->isGroupMode()) {
+        if (!isGroupMode()) {
             group.groupModeOrder = group.voices.size();
         }
     }
@@ -476,7 +535,7 @@ void Unison::modeChanged() {
         return;
     }
 
-    numVoices = ui->isGroupMode()
+    numVoices = isGroupMode()
                     ? jmin<int>(maxUnisonOrder, (int) graphicParams.voices.size())
                     : jmax<int>((int) graphicParams.voices.size(),
                                 calcOrder(ui->getParamGroup().getKnobValue(Unison::Order)));
@@ -486,14 +545,14 @@ void Unison::modeChanged() {
 
     ui->orderChangedTo(numVoices);
 
-    if (!ui->isGroupMode()) {
+    if (!isGroupMode()) {
         updateAll(false, true);
         ui->updateSelection();
     }
 }
 
 void Unison::setVoices(vector<UnivoiceData>& data) {
-    jassert(! ui->isGroupMode());
+    jassert(! isGroupMode());
 
     graphicParams.voices = data;
     updateTunings(false);

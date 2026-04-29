@@ -18,7 +18,10 @@ public:
         Worker(SingletonRepo* repo, const String& name);
         virtual void overrideValueOptionally(int number, double& value) {}
         virtual void finishedUpdatingAllSliders()                       {}
+        virtual void doGlobalUIUpdate(bool force)                       {}
         virtual void doLocalUIUpdate()                                  {}
+        virtual void reduceDetail()                                     {}
+        virtual void restoreDetail()                                    {}
         virtual bool shouldTriggerGlobalUpdate(Slider* slider)          { return true; }
         virtual bool shouldTriggerLocalUpdate(Slider* slider)           { return true; }
         virtual int getUpdateSource()                                   { return CommonEnums::Null; }
@@ -38,6 +41,9 @@ public:
     void sliderValueChanged (Slider* slider) override;
     void sliderDragStarted  (Slider* slider) override;
     void sliderDragEnded    (Slider* slider) override;
+    void doGlobalUIUpdate(bool force) override;
+    void reduceDetail() override;
+    void restoreDetail() override;
 
     [[nodiscard]] int getNumParams() const { return knobs.size(); }
     void addKnobsTo(Component* component);

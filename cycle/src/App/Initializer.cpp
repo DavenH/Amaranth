@@ -404,8 +404,8 @@ void Initializer::instantiate() {
     repo->add(new Envelope3D(repo));
 
     repo->add(new TimeRasterizer (repo, timeInter, 	"TimeRasterizer", 	LayerGroups::GroupTime,  true, 0));
-    repo->add(new SpectRasterizer(repo, spectInter, "SpectRasterizer", 	LayerGroups::GroupSpect, true, 0));
-    repo->add(new PhaseRasterizer(repo, spectInter, "PhaseRasterizer", 	LayerGroups::GroupPhase, true, 0));
+    repo->add(new SpectRasterizer(repo, spectInter, "SpectRasterizer", 	LayerGroups::GroupSpect, false, 0));
+    repo->add(new PhaseRasterizer(repo, spectInter, "PhaseRasterizer", 	LayerGroups::GroupPhase, false, 0));
 
     repo->add(new EnvVolumeRast  (repo, guideCurvePanel, "EnvVolumeRast"));
     repo->add(new EnvPitchRast   (repo, guideCurvePanel, "EnvPitchRast"));

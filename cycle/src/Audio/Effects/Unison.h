@@ -74,6 +74,7 @@ public:
     void setUI(UnisonUI* comp);
     void setVoiceData(int voiceIndex, float fine, float pan, float phase);
     void setVoices(vector<UnivoiceData>& data);
+    void setGroupMode(bool isGroupMode);
     void modeChanged();
     void reset() override;
     bool removeVoice(int unisonIdx);
@@ -82,10 +83,12 @@ public:
     bool isStereo();
     bool isPhased();
     bool isEnabled() const override;
+    bool isGroupMode() const;
     bool changeOrderFromValue(bool isAudio, double orderValue);
     bool changeOrderTo(bool isAudio, int newOrder);
 
     void changeAllOrdersImplicit();
+    void syncParamsFromUI();
     void trimVoicesToOrder();
 
     [[nodiscard]] const ParamGroup& getGraphicParams() const	{ return graphicParams; }
@@ -105,6 +108,8 @@ protected:
     bool doParamChange(int index, double value, bool doFutherUpdate) override;
 
 private:
+    double getUIKnobValue(int param);
+
     PendingActionValue<bool> updateAllAction;
     PendingActionValue<int> changeOrderAction;
     PendingActionValue<int> removeVoiceAction;
@@ -113,6 +118,8 @@ private:
 
     Ref<UnisonUI> ui;
     Array<PendingAction*> actions;
+
+    bool groupMode;
 
     ParamGroup graphicParams;
     ParamGroup audioParams;

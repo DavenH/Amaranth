@@ -213,9 +213,10 @@ void Panel::constrainZoom() {
     ZoomRect& rect = zoomPanel->rect;
     // zoomPanel->validateRect("Panel::constrainZoom-before", false);
     NumberUtils::constrain<float>(rect.w, 0.001f, rect.xMaximum - rect.xMinimum);
-    NumberUtils::constrain<float>(rect.h, 0.005f, rect.yMaximum - rect.yMinimum);
+    NumberUtils::constrain<float>(rect.h, 0.005f, 1.f);
     NumberUtils::constrain<float>(rect.x, interactor->vertexLimits[interactor->dims.x]);
-    NumberUtils::constrain<float>(rect.y, rect.yMinimum, rect.yMaximum);
+    NumberUtils::constrain<float>(rect.y, 0, 1);
+    // NumberUtils::constrain<float>(rect.y, rect.yMinimum, rect.yMaximum);
 
     if(rect.y + rect.h > rect.yMaximum) {
         rect.y = rect.yMaximum - rect.h;
@@ -753,6 +754,13 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
         ampTable = guideCurveProvider->getTable(ampChan);
     }
 
+    if ((adjustPhase && phaseTable.empty()) || (adjustAmp && ampTable.empty())) {
+        if (lockedPathRepo) {
+            getObj(PathRepo).getLock().exit();
+        }
+        return false;
+    }
+
     if(speedEnv.empty()) {
         if (lockedPathRepo) {
             getObj(PathRepo).getLock().exit();
@@ -773,22 +781,26 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
         if (adjustSpeed) {
             int     speedEnvIdx;
             float   scaleX      = second.x - first.x;
-            int     offsetIdx   = first.x * float(speedEnv.size() - 1);
+            float   offsetIdx   = first.x * float(speedEnv.size() - 1);
+            float   indexScale  = scaleX * float(speedEnv.size() - 1) * invSize;
             float   speed;
 
             if (phsVsTimeChan >= 0) {
                 for (int i = 0; i < linestripRes; ++i) {
-                    speedEnvIdx = scaleX * i + offsetIdx;       // todo Lerp it
+                    speedEnvIdx = jlimit(0, speedEnv.size() - 1, int(offsetIdx + indexScale * i)); // todo Lerp it
                     speed       = speedEnv[speedEnvIdx];
+                    ramp[i]     = speed;
                     idx         = int((phaseTable.size() - 1) * speed);
                     xy.y[i]     = phaseGain * phaseTable[idx]; // + speed * (second.y - first.y);
                 }
 
-                xy.y.addProduct(speedEnv, second.y - first.y).add(first.y + redOffset + blueOffset);
+                xy.y.addProduct(ramp, second.y - first.y).add(first.y + redOffset + blueOffset);
             } else {
                 if (scaleX < 0.99f) {
-                    for(int i = 0; i < linestripRes; ++i)
-                        xy.y[i] = speedEnv[int(scaleX * i) + offsetIdx];        // todo Lerp it
+                    for(int i = 0; i < linestripRes; ++i) {
+                        speedEnvIdx = jlimit(0, speedEnv.size() - 1, int(offsetIdx + indexScale * i)); // todo Lerp it
+                        xy.y[i] = speedEnv[speedEnvIdx];
+                    }
                 } else {
                     speedEnv.copyTo(xy.y);
                 }

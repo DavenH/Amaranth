@@ -9,6 +9,17 @@
 #include "../Inter/UndoableActions.h"
 #include "../Util/ScopedBooleanSwitcher.h"
 
+namespace {
+    String describeSlider(Slider* slider) {
+        if (slider == nullptr) {
+            return "null";
+        }
+
+        String name = slider->getName();
+        return name.isEmpty() ? "unnamed" : name;
+    }
+}
+
 ParameterGroup::ParameterGroup(SingletonRepo* repo, const String& name, Worker* worker) :
         SingletonAccessor   (repo, name)
     ,   worker              (worker)
@@ -33,15 +44,34 @@ void ParameterGroup::sliderValueChanged(Slider* slider) {
 
     knobUIUpdater.knobValues[knobIndex] = slider->getValue();
 
-    bool didAnythingSignificant = worker->updateDsp(knobIndex, slider->getValue(),
-                                                    paramTriggersAggregateUpdate(knobIndex));
+    bool aggregateUpdate = paramTriggersAggregateUpdate(knobIndex);
+    DBG("ParameterGroup::sliderValueChanged"
+        + String(" group=") + getName()
+        + " knob=" + String(knobIndex)
+        + " slider=" + describeSlider(slider)
+        + " value=" + String(slider->getValue(), 6)
+        + " aggregate=" + String(aggregateUpdate ? 1 : 0)
+        + " realtime=" + String(getSetting(UpdateGfxRealtime) ? 1 : 0));
+
+    bool didAnythingSignificant = worker->updateDsp(knobIndex, slider->getValue(), aggregateUpdate);
+    bool globalUpdate = worker->shouldTriggerGlobalUpdate(slider);
+    bool localUpdate  = worker->shouldTriggerLocalUpdate(slider);
+
+    DBG("ParameterGroup::sliderValueChanged result"
+        + String(" group=") + getName()
+        + " knob=" + String(knobIndex)
+        + " changed=" + String(didAnythingSignificant ? 1 : 0)
+        + " global=" + String(globalUpdate ? 1 : 0)
+        + " local=" + String(localUpdate ? 1 : 0));
 
     if(didAnythingSignificant) {
-        if(worker->shouldTriggerGlobalUpdate(slider) && getSetting(UpdateGfxRealtime)) {
+        if(globalUpdate && getSetting(UpdateGfxRealtime)) {
+            DBG("ParameterGroup::sliderValueChanged triggerRefreshUpdate group=" + getName());
             triggerRefreshUpdate();
         }
 
-        else if(worker->shouldTriggerLocalUpdate(slider)) {
+        else if(localUpdate) {
+            DBG("ParameterGroup::sliderValueChanged doLocalUIUpdate group=" + getName());
             worker->doLocalUIUpdate();
         }
     }
@@ -49,8 +79,16 @@ void ParameterGroup::sliderValueChanged(Slider* slider) {
 
 void ParameterGroup::sliderDragStarted(Slider* slider) {
     sliderStartingValue = slider->getValue();
+    bool globalUpdate = worker->shouldTriggerGlobalUpdate(slider);
 
-    if(worker->shouldTriggerGlobalUpdate(slider) && getSetting(UpdateGfxRealtime)) {
+    DBG("ParameterGroup::sliderDragStarted"
+        + String(" group=") + getName()
+        + " slider=" + describeSlider(slider)
+        + " value=" + String(sliderStartingValue, 6)
+        + " global=" + String(globalUpdate ? 1 : 0)
+        + " realtime=" + String(getSetting(UpdateGfxRealtime) ? 1 : 0));
+
+    if(globalUpdate && getSetting(UpdateGfxRealtime)) {
         triggerReduceUpdate();
     }
 }
@@ -60,9 +98,35 @@ void ParameterGroup::sliderDragEnded(Slider* slider) {
                                                 slider, sliderStartingValue);
     getObj(EditWatcher).addAction(action, true);
 
-    if(worker->shouldTriggerGlobalUpdate(slider)) {
+    bool globalUpdate = worker->shouldTriggerGlobalUpdate(slider);
+    DBG("ParameterGroup::sliderDragEnded"
+        + String(" group=") + getName()
+        + " slider=" + describeSlider(slider)
+        + " start=" + String(sliderStartingValue, 6)
+        + " end=" + String(slider->getValue(), 6)
+        + " global=" + String(globalUpdate ? 1 : 0));
+
+    if(globalUpdate) {
         triggerRestoreUpdate();
     }
+}
+
+void ParameterGroup::doGlobalUIUpdate(bool force) {
+    DBG("ParameterGroup::doGlobalUIUpdate"
+        + String(" group=") + getName()
+        + " force=" + String(force ? 1 : 0));
+
+    worker->doGlobalUIUpdate(force);
+}
+
+void ParameterGroup::reduceDetail() {
+    DBG("ParameterGroup::reduceDetail group=" + getName());
+    worker->reduceDetail();
+}
+
+void ParameterGroup::restoreDetail() {
+    DBG("ParameterGroup::restoreDetail group=" + getName());
+    worker->restoreDetail();
 }
 
 /*
@@ -72,7 +136,16 @@ void ParameterGroup::setKnobValue(int knobIndex, double knobValue,
                                   bool doGlobalUIUpdate, bool isAutomation) {
     jassert(knobIndex < knobs.size());
 
-    bool didAnythingSignificant = worker->updateDsp(knobIndex, knobValue, paramTriggersAggregateUpdate(knobIndex));
+    bool aggregateUpdate = paramTriggersAggregateUpdate(knobIndex);
+    DBG("ParameterGroup::setKnobValue"
+        + String(" group=") + getName()
+        + " knob=" + String(knobIndex)
+        + " value=" + String(knobValue, 6)
+        + " aggregate=" + String(aggregateUpdate ? 1 : 0)
+        + " doGlobal=" + String(doGlobalUIUpdate ? 1 : 0)
+        + " automation=" + String(isAutomation ? 1 : 0));
+
+    bool didAnythingSignificant = worker->updateDsp(knobIndex, knobValue, aggregateUpdate);
     knobUIUpdater.setKnobUpdate(knobIndex, knobValue);
 
     if(isAutomation) {
@@ -81,7 +154,15 @@ void ParameterGroup::setKnobValue(int knobIndex, double knobValue,
         knobs[knobIndex]->setValue(knobValue, dontSendNotification);
     }
 
-    if(doGlobalUIUpdate && didAnythingSignificant && worker->shouldTriggerGlobalUpdate(knobs[knobIndex])) {
+    bool globalUpdate = worker->shouldTriggerGlobalUpdate(knobs[knobIndex]);
+    DBG("ParameterGroup::setKnobValue result"
+        + String(" group=") + getName()
+        + " knob=" + String(knobIndex)
+        + " changed=" + String(didAnythingSignificant ? 1 : 0)
+        + " global=" + String(globalUpdate ? 1 : 0));
+
+    if(doGlobalUIUpdate && didAnythingSignificant && globalUpdate) {
+        DBG("ParameterGroup::setKnobValue triggerRefreshUpdate group=" + getName());
         triggerRefreshUpdate();
     }
 }
