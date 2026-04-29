@@ -107,6 +107,7 @@ void Panel::setGraphicsHelper(CommonGfx* gfx) {
 
 void Panel::setComponent(Component* comp) {
     this->comp = comp;
+    componentChanged();
     bindInteractorToComponent();
 }
 

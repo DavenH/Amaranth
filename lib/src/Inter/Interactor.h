@@ -32,6 +32,7 @@ typedef vector<DepthVert>::iterator DepthIter;
 class Interactor :
         public Updateable
     ,   public MouseListener
+    ,   public Timer
     ,   public virtual AsyncUIUpdater
     ,   public virtual SingletonAccessor {
 public:
@@ -145,6 +146,7 @@ public:
     void mouseExit      (const MouseEvent& e) override;
     void mouseMove      (const MouseEvent& e) override;
     void mouseWheelMove (const MouseEvent& e, const MouseWheelDetails& wheel) override;
+    void timerCallback  () override;
     virtual void commitPath         (const MouseEvent& e);
 
     virtual void doExtraMouseUp     () {}
@@ -157,6 +159,7 @@ public:
     virtual void doExtraMouseDown   (const MouseEvent& e);
     virtual void doExtraMouseDrag   (const MouseEvent& e) {}
     virtual void doExtraMouseMove   (const MouseEvent& e);
+    virtual void doExtraMouseMoveAt (Point<int> localPos);
     virtual void doReshapeCurve     (const MouseEvent& e);
 
     virtual bool locateClosestElement();
@@ -226,8 +229,11 @@ protected:
 
     bool ignoresTime, scratchesTime;
     bool exitBacktrackEarly;
+    bool wasPollingMouseOver;
 
     int updateSource;
+
+    Point<int> lastPolledMouse;
 
     MorphPositioner*    positioner;
     MeshRasterizer*     rasterizer;

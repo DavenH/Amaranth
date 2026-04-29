@@ -40,6 +40,42 @@ const char* envGroupName(int envGroup) {
         default: return "unknown";
     }
 }
+
+bool logColumnNaNOnce(const char* label, const Column& column, int col) {
+    static StringArray loggedLabels;
+
+    for (int row = 0; row < column.size(); ++row) {
+        float value = column[row];
+
+        if (value != value) {
+            if (!loggedLabels.contains(label)) {
+                loggedLabels.add(label);
+                DBG("VisualDsp column contains NaN"
+                    + String(" label=") + label
+                    + " col=" + String(col)
+                    + " row=" + String(row)
+                    + " rows=" + String(column.size())
+                    + " midiKey=" + String(column.midiKey)
+                    + " x=" + String(column.x, 6));
+            }
+
+            jassertfalse;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool logColumnsNaNOnce(const char* label, const vector<Column>& columns) {
+    for (int col = 0; col < (int) columns.size(); ++col) {
+        if (logColumnNaNOnce(label, columns[col], col)) {
+            return true;
+        }
+    }
+
+    return false;
+}
 }
 
 VisualDsp::VisualDsp(SingletonRepo* repo) :
@@ -441,6 +477,11 @@ void VisualDsp::calcSpectrogram(int numColumns) {
     vector<Column>& timeColumns = stage == ViewStages::PreProcessing ? preEnvCols : postEnvCols;
     auto& morphPanel = getObj(MorphPanel);
 
+    logColumnsNaNOnce(stage == ViewStages::PreProcessing
+                      ? "calcSpectrogram input preEnvCols"
+                      : "calcSpectrogram input postEnvCols",
+                      timeColumns);
+
     int nextPow2, numHarmonics;
 
     int numPixels  = surface->getWindowWidthPixels();
@@ -540,6 +581,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
         }
 
         if (doForwardFFT) {
+            logColumnNaNOnce("calcSpectrogram before forward timeColumn", timeColumns[timeColIdx], timeColIdx);
             ffts[sizeIndex].forward(timeColumns[timeColIdx]);
             phaseBuf.add(MathConstants<float>::halfPi);
         } else {
@@ -674,6 +716,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
         phaseBuf.copyTo(phasePreFXCols[colIdx]);
 
         if (doInverseFFT) {
+            logColumnNaNOnce("calcSpectrogram before inverse fftPreFXCol", fftPreFXCols[colIdx], colIdx);
             phaseBuf.add(-MathConstants<float>::halfPi);
 
             int numBinsToClear = halfPow2 - numHarmonics;
@@ -684,7 +727,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
 
             ffts[sizeIndex].inverse(timeColumns[timeColIdx]);
 
-            jassert(timeColumns[timeColIdx].front() == timeColumns[timeColIdx].front());
+            logColumnNaNOnce("calcSpectrogram after inverse timeColumn", timeColumns[timeColIdx], timeColIdx);
         }
     }
 
@@ -1129,6 +1172,8 @@ void VisualDsp::processThroughEnvelopes(int numColumns) {
     if(stage == ViewStages::PostEnvelopes) {
         processFrequency(postEnvCols, false);
     }
+
+    logColumnsNaNOnce("processThroughEnvelopes output postEnvCols", postEnvCols);
 }
 
 float VisualDsp::getVoiceFrequencyCents(int unisonIndex) {

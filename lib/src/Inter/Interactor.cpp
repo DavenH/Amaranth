@@ -28,6 +28,8 @@
 namespace {
     constexpr int cycleCollisionDetectionSetting = AppSettings::numSettings + 13;
 
+    int mouseEventCounter = 0;
+
     const char* actionName(PanelState::ActionState action) {
         switch (action) {
             case PanelState::Idle:              return "Idle";
@@ -90,6 +92,8 @@ Interactor::Interactor(SingletonRepo* repo, const String& name, const Dimensions
     ,   suspendUndo             (false)
     ,   ignoresTime             (false)
     ,   scratchesTime           (false)
+    ,   wasPollingMouseOver     (false)
+    ,   lastPolledMouse         (-1, -1)
     ,   vertexTransformUndoer   (this)
     ,   updateSource            (CommonEnums::Null)
     ,   layerType               (CommonEnums::Null)
@@ -148,15 +152,20 @@ void Interactor::clearSelectedAndRepaint() {
 }
 
 void Interactor::mouseMove(const MouseEvent& e) {
+    auto localEvent = display != nullptr ? e.getEventRelativeTo(display.get()) : e;
+    Point<int> localPos = localEvent.getPosition();
+    int eventId = ++mouseEventCounter;
+
     mouseFlag(MouseOver) = true;
     flag(DidMeshChange) = false;
 
     state.lastMouse = state.currentMouse;
-    state.currentMouse = Vertex2(panel->invertScaleX(e.x), panel->invertScaleY(e.y));
+    state.currentMouse = Vertex2(panel->invertScaleX(localPos.x), panel->invertScaleY(localPos.y));
 
     NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
 
     bool changedVertex = locateClosestElement();
+
     if(changedVertex && !getSetting(ViewVertsOnlyOnHover)) {
         if (Interactor * itr = getOppositeInteractor()) {
             if (is3DInteractor())
@@ -174,7 +183,7 @@ void Interactor::mouseMove(const MouseEvent& e) {
     bool wroteMessage = false;
 
     setHighlitCorner(e, wroteMessage);
-    doExtraMouseMove(e);
+    doExtraMouseMoveAt(localPos);
 
     if(! wroteMessage) {
         showCoordinates();
@@ -184,6 +193,87 @@ void Interactor::mouseMove(const MouseEvent& e) {
     flag(SimpleRepaint) |= getSetting(Tool) == Tools::Axe || actionIs(Cutting);
 
     refresh();
+
+    DBG(getName() + "::mouseMove"
+        + " event=" + String(eventId)
+        + " source=event"
+        + " raw=(" + String(localPos.x) + "," + String(localPos.y) + ")"
+        + " scaled=(" + String(state.currentMouse.x, 4) + "," + String(state.currentMouse.y, 4) + ")"
+        + " changed=" + String((int) changedVertex)
+        + " mouseOver=" + String((int) mouseFlag(MouseOver))
+        + " reshape=" + String((int) mouseFlag(WithinReshapeThresh))
+        + " currentIcpt=" + String(state.currentIcpt)
+        + " currentFreeVert=" + String(state.currentFreeVert)
+        + " currentVertex=" + String::toHexString((int64) state.currentVertex)
+        + " currentCube=" + String::toHexString((int64) state.currentCube)
+        + " component=" + (display != nullptr ? display->getName() : String("<none>")));
+}
+
+void Interactor::timerCallback() {
+    if (display == nullptr || panel == nullptr || !display->isShowing()) {
+        return;
+    }
+
+    ModifierKeys mods = ModifierKeys::getCurrentModifiersRealtime();
+    if (mods.isAnyMouseButtonDown()) {
+        return;
+    }
+
+    Point<int> localPos = display->getLocalPoint(nullptr, Desktop::getMousePosition());
+    bool isOver = display->getLocalBounds().contains(localPos);
+
+    if (!isOver) {
+        if (wasPollingMouseOver || mouseFlag(MouseOver)) {
+            state.resetMouseFlags();
+            display->repaint();
+        }
+
+        wasPollingMouseOver = false;
+        lastPolledMouse = Point<int>(-1, -1);
+        return;
+    }
+
+    if (wasPollingMouseOver && localPos == lastPolledMouse) {
+        return;
+    }
+
+    wasPollingMouseOver = true;
+    lastPolledMouse = localPos;
+
+    int eventId = ++mouseEventCounter;
+
+    mouseFlag(MouseOver) = true;
+    flag(DidMeshChange) = false;
+
+    state.lastMouse = state.currentMouse;
+    state.currentMouse = Vertex2(panel->invertScaleX(localPos.x), panel->invertScaleY(localPos.y));
+
+    NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
+
+    bool changedVertex = locateClosestElement();
+
+    doExtraMouseMoveAt(localPos);
+
+    showCoordinates();
+
+    panel->setCursor();
+    flag(SimpleRepaint) |= getSetting(Tool) == Tools::Axe || actionIs(Cutting);
+
+    refresh();
+
+    DBG(getName() + "::mouseMove"
+        + " event=" + String(eventId)
+        + " source=poll"
+        + " raw=(" + String(localPos.x) + "," + String(localPos.y) + ")"
+        + " scaled=(" + String(state.currentMouse.x, 4) + "," + String(state.currentMouse.y, 4) + ")"
+        + " changed=" + String((int) changedVertex)
+        + " mouseOver=" + String((int) mouseFlag(MouseOver))
+        + " reshape=" + String((int) mouseFlag(WithinReshapeThresh))
+        + " currentIcpt=" + String(state.currentIcpt)
+        + " currentFreeVert=" + String(state.currentFreeVert)
+        + " currentVertex=" + String::toHexString((int64) state.currentVertex)
+        + " currentCube=" + String::toHexString((int64) state.currentCube)
+        + " component=" + display->getName());
 }
 
 void Interactor::mouseDown(const MouseEvent& e) {
@@ -236,14 +326,6 @@ void Interactor::mouseDown(const MouseEvent& e) {
         + " currentVertex=" + String::toHexString((int64) state.currentVertex)
         + " currentCube=" + String::toHexString((int64) state.currentCube));
 
-    info(getName() << "::mouseDown action=" << actionName(action)
-                   << " buttons=" << describeMouseButtons(e)
-                   << " x=" << state.currentMouse.x
-                   << " y=" << state.currentMouse.y
-                   << " layerType=" << layerType
-                   << " currentVertex=" << (int64) state.currentVertex
-                   << " currentCube=" << (int64) state.currentCube);
-
     panel->setCursor();
     doExtraMouseDown(e);
 
@@ -285,9 +367,9 @@ void Interactor::mouseUp(const MouseEvent& e) {
         triggerRestoreUpdate();
     }
 
-    info(getName() << "::mouseUp action=" << actionName(state.actionState)
+    DBG(getName() << "::mouseUp action=" << actionName(state.actionState)
                    << " buttons=" << describeMouseButtons(e)
-                   << " didMeshChange=" << flag(DidMeshChange)
+                   << " didMeshChange=" << (int)flag(DidMeshChange)
                    << " selected=" << (int) getSelected().size()
                    << " moving=" << (int) state.selectedFrame.size());
 
@@ -345,24 +427,39 @@ void Interactor::mouseDrag(const MouseEvent& e) {
 }
 
 void Interactor::mouseEnter(const MouseEvent& e) {
+    auto localEvent = display != nullptr ? e.getEventRelativeTo(display.get()) : e;
+    Point<int> localPos = localEvent.getPosition();
+    int eventId = ++mouseEventCounter;
     mouseFlag(MouseOver) = true;
 
     String keys = is3DInteractor() ? "a, c, e, del" : "a, del";
     repo->getConsole().setMouseUsage(getMouseUsage());
     repo->getConsole().setKeys(keys);
 
-    info(getName() << "::mouseEnter buttons=" << describeMouseButtons(e)
-                   << " layerType=" << layerType);
+    DBG(getName() + "::mouseEnter"
+        + " event=" + String(eventId)
+        + " raw=(" + String(localPos.x) + "," + String(localPos.y) + ")"
+        + " buttons=" + describeMouseButtons(e)
+        + " component=" + (display != nullptr ? display->getName() : String("<none>")));
+
 
     focusGained();
     display->repaint();
 }
 
 void Interactor::mouseExit(const MouseEvent& e) {
+    auto localEvent = display != nullptr ? e.getEventRelativeTo(display.get()) : e;
+    Point<int> localPos = localEvent.getPosition();
+    int eventId = ++mouseEventCounter;
     state.resetMouseFlags();
+    wasPollingMouseOver = false;
+    lastPolledMouse = Point<int>(-1, -1);
 
-    info(getName() << "::mouseExit buttons=" << describeMouseButtons(e)
-                   << " layerType=" << layerType);
+    DBG(getName() + "::mouseExit"
+        + " event=" + String(eventId)
+        + " raw=(" + String(localPos.x) + "," + String(localPos.y) + ")"
+        + " buttons=" + describeMouseButtons(e)
+        + " component=" + (display != nullptr ? display->getName() : String("<none>")));
 
     display->repaint();
 }
@@ -585,6 +682,10 @@ void Interactor::eraseSelected() {
 
 void Interactor::associateTo(Panel* panel) {
     if (display != nullptr) {
+        Component* currentDisplay = display.get();
+        DBG(getName() + "::associateTo removeMouseListener"
+            + " component=" + display->getName()
+            + " ptr=" + String::toHexString((int64) currentDisplay));
         display->removeMouseListener(this);
     }
 
@@ -592,7 +693,15 @@ void Interactor::associateTo(Panel* panel) {
     this->display = panel->comp;
 
     if (display != nullptr) {
+        Component* currentDisplay = display.get();
+        DBG(getName() + "::associateTo addMouseListener"
+            + " component=" + display->getName()
+            + " ptr=" + String::toHexString((int64) currentDisplay)
+            + " panel=" + (panel != nullptr ? panel->getName() : String("<none>")));
         display->addMouseListener(this, false);
+        startTimerHz(30);
+    } else {
+        stopTimer();
     }
 }
 
@@ -615,7 +724,7 @@ Vertex* Interactor::findClosestVertex(const Vertex2& posXY) {
     pos[Vertex::Red  ] = morphPos.red;
     pos[Vertex::Blue ] = morphPos.blue;
 
-    float minDist = 1000;
+    float minDist = 1e20f;
     float dist;
     pos[dims.x] = posXY.x;
 
@@ -624,7 +733,7 @@ Vertex* Interactor::findClosestVertex(const Vertex2& posXY) {
         pos[dims.y] = posXY.y;
     }
 
-    Vertex* closest = 0;
+    Vertex* closest = nullptr;
     Mesh* mesh = getMesh();
 
     if (mesh->getNumVerts() == 0) {
@@ -688,6 +797,12 @@ void Interactor::commitPath(const MouseEvent& e) {
 }
 
 void Interactor::doExtraMouseMove(const MouseEvent& e) {
+    auto localEvent = display != nullptr ? e.getEventRelativeTo(display.get()) : e;
+    doExtraMouseMoveAt(localEvent.getPosition());
+}
+
+void Interactor::doExtraMouseMoveAt(Point<int> localPos) {
+    ignoreUnused(localPos);
 }
 
 void Interactor::doExtraMouseDown(const MouseEvent& e) {

@@ -11,6 +11,7 @@ public:
     Interactor2D(SingletonRepo* repo, const String& name, const Dimensions& d);
 
     void doExtraMouseMove(const MouseEvent& e) override;
+    void doExtraMouseMoveAt(Point<int> localPos) override;
     void removeLinesInRange(Range<float> phsRange, const MorphPosition& pos);
     void setSuspendUndo(bool suspend) { suspendUndo = suspend; }
     float getVertexClickProximityThres() override;

@@ -12,6 +12,7 @@ SmoothedParameter::SmoothedParameter(float initialValue) :
         halflifeSamples(128)
     ,   targetValue(initialValue)
     ,   currentValue(initialValue)
+    ,   pastCurrentValue(initialValue)
     ,   smoothingActive(true) {
 }
 
@@ -87,4 +88,3 @@ void SmoothedParameter::updateToTarget() {
 bool SmoothedParameter::hasRamp() const {
     return smoothingActive ? fabsf(pastCurrentValue - currentValue) > 0.001f : false;
 }
-

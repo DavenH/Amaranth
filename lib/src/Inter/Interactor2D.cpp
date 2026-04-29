@@ -35,6 +35,8 @@ bool Interactor2D::locateClosestElement() {
 
     int oldIcptIdx = state.currentIcpt;
     int oldFreeIdx = state.currentFreeVert;
+    Vertex* oldVertex = state.currentVertex;
+    VertCube* oldCube = state.currentCube;
 
     int icptIdx = -1;
     int freeIdx = -1;
@@ -54,11 +56,11 @@ bool Interactor2D::locateClosestElement() {
             dist = fabsf(vert.x - x);
             freeIdx = i;
         }
+        ++i;
     }
 
     ScopedLock sl(vertexLock);
 
-    Vertex* lastCurrent = state.currentVertex;
     state.currentCube = nullptr;
 
     if(freeIdx != -1) {
@@ -92,17 +94,27 @@ bool Interactor2D::locateClosestElement() {
         getStateValue(CurrentCurve) = icptIdx + rasterizer->getPaddingSize();
     }
 
-    if(icptIdx != oldIcptIdx || freeIdx != oldFreeIdx) {
-        flag(SimpleRepaint) = true;
-    }
-
     // call virtual function that subclasses can use if wanted
     setExtraElements(x);
 
-    return state.currentVertex != lastCurrent;
+    bool changed = oldVertex != state.currentVertex
+                || oldCube != state.currentCube
+                || icptIdx != oldIcptIdx
+                || freeIdx != oldFreeIdx;
+
+    if(changed) {
+        flag(SimpleRepaint) = true;
+    }
+
+    return changed;
 }
 
 void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
+    auto localEvent = display != nullptr ? e.getEventRelativeTo(display.get()) : e;
+    doExtraMouseMoveAt(localEvent.getPosition());
+}
+
+void Interactor2D::doExtraMouseMoveAt(Point<int> localPos) {
     ScopedLock sl(vertexLock);
 
     const float distThresPX = 7.f;
@@ -111,7 +123,9 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 
     Buffer<Float32> waveX = rastData.waveX;
     Buffer<Float32> waveY = rastData.waveY;
-    bool inSelection     = finalSelection.contains(e.getPosition());
+    bool inSelection     = finalSelection.contains(localPos);
+
+    mouseFlag(WithinReshapeThresh) = false;
 
     if(inSelection || waveX.empty() || waveY.empty()) {
         return;
@@ -146,8 +160,6 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
     panel->applyScaleY(xy.y);
 
     float distToCurve;
-
-    mouseFlag(WithinReshapeThresh) = false;
 
     const Vertex2& c(scaledMouse);
 
