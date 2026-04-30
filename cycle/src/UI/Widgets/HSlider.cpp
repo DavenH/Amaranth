@@ -82,7 +82,8 @@ void HSlider::paintSecond(Graphics& g) {
         int width = Util::getStringWidth(*silkscreen, name);
         g.drawSingleLineText(name, getWidth() - width - 4, getHeight() / 2 + 3);
     } else {
-        AffineTransform transform(AffineTransform::rotation(2*3.1415926535).translated(getWidth() / 2 - 2, 5));
+        AffineTransform transform(AffineTransform::rotation(MathConstants<float>::halfPi)
+                                      .translated(getWidth() / 2 - 2, 5));
         Graphics::ScopedSaveState sss(g);
 
         g.addTransform(transform);

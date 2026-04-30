@@ -304,7 +304,7 @@ void VertexPropertiesPanel::updateComboBoxes() {
 
 	for (auto box : boxes) {
 		box->clear(dontSendNotification);
-		box->addItem(String(L"\u2013"), NullGuideCurveId);
+		box->addItem(" ", NullGuideCurveId);
 
 		for (int j = 0; j < numGuideCurveLayers; ++j) {
 			box->addItem(String(j + 1), j + 2);
@@ -771,8 +771,9 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 		guideCurveChanBox->addListener(panel);
 		guideCurveChanBox->setWantsKeyboardFocus(false);
 		guideCurveChanBox->setMouseClickGrabsKeyboardFocus(false);
-		guideCurveChanBox->setTextWhenNothingSelected(String(L"\u2013"));
+		guideCurveChanBox->setTextWhenNothingSelected(" ");
 		guideCurveChanBox->setColour(ComboBox::outlineColourId, Colours::black);
+		guideCurveChanBox->getProperties().set("iconOnlyCombo", true);
 
 		int srcId, destId;
 		panel->getSourceDestDimensionIds(id, srcId, destId);

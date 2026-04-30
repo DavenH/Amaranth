@@ -220,6 +220,7 @@ void PanelControls::addMeshSelector(Component* selector) {
 
 void PanelControls::addScratchSelector() {
     scratchSelector.setColour(ComboBox::outlineColourId, Colours::black);
+	scratchSelector.getProperties().set("iconOnlyCombo", true);
 	scratchSelector.addListener(this);
 	scratchSelector.setWantsKeyboardFocus(false);
 

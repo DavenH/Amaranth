@@ -54,6 +54,7 @@
 #include "../UI/Panels/PlayerComponent.h"
 #include "../UI/Panels/SynthMenuBarModel.h"
 #include "../UI/Panels/VertexPropertiesPanel.h"
+#include "../UI/SynthLookAndFeel.h"
 #include "../UI/VertexPanels/GuideCurvePanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
 #include "../UI/VertexPanels/Envelope3D.h"
@@ -340,6 +341,7 @@ void Initializer::instantiate() {
     audioSource->setDelay(delay);
 
     // UI
+    repo->add(new SynthLookAndFeel  (repo), -500);
     repo->add(new Dialogs			(repo));
     repo->add(new CycleTour			(repo));
     repo->add(new WaveDragTarget	(repo));

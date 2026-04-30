@@ -12,6 +12,7 @@
 #include "Initializer.h"
 #include "../CycleDefs.h"
 #include "../UI/Panels/MainPanel.h"
+#include "../UI/SynthLookAndFeel.h"
 
 MainAppWindow::MainAppWindow(const String& commandLine) :
         DocumentWindow("Cycle", Colours::black, allButtons, true)
@@ -27,6 +28,7 @@ MainAppWindow::MainAppWindow(const String& commandLine) :
     initializer->setCommandLine(commandLine);
     initializer->init();
 
+    setLookAndFeel(&getObj(AmaranthLookAndFeel));
     setContentNonOwned(&getObj(MainPanel), true);
     setResizeLimits(960, 650, 1920, 1200);
 }

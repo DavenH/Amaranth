@@ -26,17 +26,17 @@ public:
     void setMidiRange(const Range<int>& range);
 
 protected:
-    void drawBlackNote(int midiNoteNumber, Graphics &g, int x, int y, int w, int h, bool isDown,
-            bool isOver, const Colour& noteFillColour);
+    void drawBlackNote(int midiNoteNumber, Graphics& g, Rectangle<float> area,
+                       bool isDown, bool isOver, Colour noteFillColour) override;
 
-    void drawWhiteNote(int midiNoteNumber, Graphics &g, int x, int y, int w, int h, bool isDown,
-            bool isOver, const Colour& lineColourDefault,
-            const Colour &textColour);
+    void drawWhiteNote(int midiNoteNumber, Graphics& g, Rectangle<float> area,
+                       bool isDown, bool isOver, Colour lineColourDefault,
+                       Colour textColour) override;
 
     void drawUpDownButton(Graphics& g, int w, int h, bool isMouseOver, bool isButtonPressed,
             bool movesOctavesUp) override;
 
-    void getKeyPosition(int midiNoteNumber, float keyWidth, int& x, int& w) const;
+    Range<float> getKeyPosition(int midiNoteNumber, float keyWidth) const override;
     bool mouseDownOnKey(int midiNoteNumber, const MouseEvent& e) override;
     bool mouseDraggedToKey(int midiNoteNumber, const MouseEvent& e) override;
     void updateNote(const Point<float>&);

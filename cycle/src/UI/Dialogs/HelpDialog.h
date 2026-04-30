@@ -24,8 +24,7 @@ public:
 		closeButton.addListener(this);
 		addAndMakeVisible(&closeButton);
 
-		logo 		= PNGImageFormat::loadFrom(CycleImages::cyclelogo_png, CycleImages::cyclelogo_pngSize);
-		bert 		= PNGImageFormat::loadFrom(CycleImages::cyclebert_png, CycleImages::cyclebert_pngSize);
+		logo = PNGImageFormat::loadFrom(CycleImages::cyclelogo_png, CycleImages::cyclelogo_pngSize);
 	}
 
 	void paint(Graphics& g) override {
@@ -52,9 +51,6 @@ public:
 
 		r.removeFromTop(20);
 		getObj(MiscGraphics).drawCentredText(g, r.removeFromTop(25), "by Amaranth Audio, 2024", Justification::centred);
-
-//		g.drawImageAt(bert, 0, 0);
-		g.drawImageTransformed(bert, AffineTransform::rotation(-0.5).translated(getWidth() * 0.65, getHeight() * 0.7));
 	}
 
 	void resized() override {
@@ -73,6 +69,6 @@ public:
 		delete this;
 	}
 
-	Image logo, bert;
+	Image logo;
 	TextButton closeButton;
 };

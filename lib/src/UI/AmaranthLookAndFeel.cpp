@@ -699,25 +699,35 @@ void AmaranthLookAndFeel::drawComboBox(Graphics& g, int width, int height,
                                        ComboBox& box) {
     g.fillAll(box.findColour(ComboBox::backgroundColourId));
 
-    //const float outlineThickness = box.isEnabled() ? (isButtonDown ? 1.2f : 0.5f) : 0.3f;
+    const float outlineThickness = box.isEnabled() ? (isButtonDown ? 1.2f : 0.5f) : 0.3f;
 
     g.setColour(Colour::greyLevel(0.5f));
 
-    int imageX = width - arrowImg.getWidth() - 3;
-    int imageY = height - arrowImg.getHeight() - 4;
+    Path arrow;
+    const bool iconOnly = box.getProperties().contains("iconOnlyCombo");
+    const bool compact = iconOnly || width <= 32;
+    const float arrowWidth = compact ? 5.f : 7.f;
+    const float arrowHeight = compact ? 3.f : 4.f;
+    const float centreX = compact ? width * 0.5f : width - 8.f;
+    const float centreY = height * 0.5f + 1.f;
 
-    g.setOpacity(0.7f);
-    g.drawImageAt(arrowImg, imageX, imageY);
+    arrow.addTriangle(centreX - arrowWidth * 0.5f, centreY - arrowHeight * 0.5f,
+                      centreX + arrowWidth * 0.5f, centreY - arrowHeight * 0.5f,
+                      centreX, centreY + arrowHeight * 0.5f);
+
+    g.setOpacity(0.75f);
+    g.fillPath(arrow);
     g.setOpacity(1.f);
     g.setColour(box.findColour(ComboBox::outlineColourId));
-
     getObj(MiscGraphics).drawCorneredRectangle(g, Rectangle<int>(0, 0, width - 1, height - 1));
 }
 
 void AmaranthLookAndFeel::positionComboBoxText(ComboBox& box, Label& label) {
-    if (box.getWidth() < 80) {
-        label.setBounds(0, 2,
-                        box.getWidth() - 3,
+    if (box.getProperties().contains("iconOnlyCombo") || box.getWidth() <= 32) {
+        label.setBounds(0, 2, 0, box.getHeight() - 2);
+    } else if (box.getWidth() < 80) {
+        label.setBounds(1, 1,
+                        box.getWidth() - 14,
                         box.getHeight() - 2);
     } else {
         label.setBounds(1, 1,
@@ -799,6 +809,12 @@ void AmaranthLookAndFeel::drawAlertBox(Graphics& g, AlertWindow& alert, const Re
 }
 
 void AmaranthLookAndFeel::drawLabel(Graphics& g, Label& label) {
+    if (auto* comboBox = dynamic_cast<ComboBox*>(label.getParentComponent())) {
+        if (comboBox->getProperties().contains("iconOnlyCombo") || comboBox->getWidth() <= 32) {
+            return;
+        }
+    }
+
     Colour textColour(Colour::greyLevel(0.64f));
 
     label.setColour(TextEditor::textColourId, textColour);
