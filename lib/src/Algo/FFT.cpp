@@ -141,10 +141,11 @@ void Transform::forward(Buffer<float> src) {
 void Transform::inverse(const Buffer<Complex32>& fftInput, const Buffer<float>& dest) {
   #ifdef USE_ACCELERATE
     int size = 1 << order;
+    int packedComplexSize = size / 2 + 1;
+    jassert(fftInput.size() == packedComplexSize);
+
     // this mutates the fftBuffer, referenced by the splitComplex real/imag pointers
     vDSP_ctoz(reinterpret_cast<DSPComplex *>(fftInput.get()), 1, &splitComplex, 1, size / 2);
-
-    jassert(fftInput.size() == size + 1);
   #elif defined(USE_IPP)
     Buffer<float> oldBuffer = fftBuffer;
     fftBuffer = fftInput.toType<Ipp32f>();

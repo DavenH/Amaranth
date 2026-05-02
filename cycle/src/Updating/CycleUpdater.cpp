@@ -163,6 +163,7 @@ void CycleUpdater::createUpdateGraph() {
     eqlzerUI	->marks(effectsProc);
     env2Itr		->marks(envDlg);
     env3Itr		->marks(envDlg);
+    unisonItr	->marks(timeProc);
 
     Node* universalNodes[] 	= { morphNode, spectDlg, envDlg, guideCurveRast, wshpRast, irModelRast,
                                 scratchRast, irModelDsp, unison, timeProc, time2Rast, synthNode };

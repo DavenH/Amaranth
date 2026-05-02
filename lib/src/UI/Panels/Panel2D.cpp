@@ -150,7 +150,7 @@ void Panel2D::drawCurvesAndSurfaces() {
             + " panel=[" + String(getWidth()) + "x" + String(getHeight()) + "]");
     }
 
-    drawCurvesFrom  (xy, a, colourA, colourB);
+    drawCurvesFrom(xy, a, colourA, colourB);
 }
 
 void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,

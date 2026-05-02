@@ -238,7 +238,7 @@ void Initializer::setConstants() {
     const String fontFace = platformSplit("Verdana", "Helvetica", "Ubuntu");
 
     auto &constants = getObj(AppConstants);
-    constants.setConstant(WaveshaperPadding, 	0.0625);
+    constants.setConstant(WaveshaperPadding, 	0.125);
     constants.setConstant(IrModellerPadding, 	0.0625);
     constants.setConstant(FreqMargin,           0.5);
     constants.setConstant(SpectralMargin,       0.05);

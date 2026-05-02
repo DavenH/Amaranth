@@ -16,6 +16,10 @@
 #include "../Util/CycleEnums.h"
 
 namespace {
+    constexpr float legacyGuideCurvePadding = 0.05f;
+    constexpr float legacyIrModellerGeometryPadding = 0.0625f;
+    constexpr float legacyWaveshaperGeometryPadding = 0.125f;
+
     String layerGroupName(int layerType) {
         switch (layerType) {
             case LayerGroups::GroupVolume: return "Volume";
@@ -97,12 +101,28 @@ namespace {
         }
     }
 
+    bool rangeAlreadyUsesEffectPadding(const VertexRange& range, float padding, bool hasRightPadding) {
+        float leftTolerance = padding * 0.375f;
+        float expectedMin = padding * 0.5f;
+
+        if (range.min < expectedMin - leftTolerance) {
+            return false;
+        }
+
+        if (!hasRightPadding) {
+            return true;
+        }
+
+        float expectedMax = 1.f - padding * 0.5f;
+        return range.max <= expectedMax + leftTolerance;
+    }
+
     void initTubeModelMesh(SingletonRepo* repo, Mesh* mesh) {
         if (mesh == nullptr || mesh->getNumVerts() > 0) {
             return;
         }
 
-        float padding = getRealConstant(IrModellerPadding);
+        float padding = legacyIrModellerGeometryPadding;
         auto& verts = mesh->getVerts();
 
         verts.push_back(new Vertex(padding * 0.5f,   0.5f));
@@ -122,7 +142,7 @@ namespace {
             return;
         }
 
-        float padding = getRealConstant(WaveshaperPadding);
+        float padding = legacyWaveshaperGeometryPadding;
         auto& verts = mesh->getVerts();
 
         verts.push_back(new Vertex(padding * 0.5f,       padding * 0.5f));
@@ -140,7 +160,7 @@ namespace {
             return;
         }
 
-        float padding = getRealConstant(GuideCurvePadding);
+        float padding = legacyGuideCurvePadding;
         auto& verts = mesh->getVerts();
 
         verts.push_back(new Vertex(padding,       0.5f));
@@ -262,7 +282,7 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
 
     switch (layerType) {
         case LayerGroups::GroupGuideCurve: {
-            float padding = getRealConstant(GuideCurvePadding);
+            float padding = legacyGuideCurvePadding;
             VertexRange xRange = getVertexRange(mesh, Vertex::Phase);
 
             if (xRange.min >= padding * 0.75f && xRange.max <= 1.f - padding * 0.75f) {
@@ -276,12 +296,12 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
         }
 
         case LayerGroups::GroupWaveshaper: {
-            float padding = getRealConstant(WaveshaperPadding);
+            float padding = legacyWaveshaperGeometryPadding;
             VertexRange xRange = getVertexRange(mesh, Vertex::Phase);
             VertexRange yRange = getVertexRange(mesh, Vertex::Amp);
 
-            if (xRange.min >= padding * 0.75f && xRange.max <= 1.f - padding * 0.75f &&
-                yRange.min >= padding * 0.75f && yRange.max <= 1.f - padding * 0.75f) {
+            if (rangeAlreadyUsesEffectPadding(xRange, padding, true) &&
+                rangeAlreadyUsesEffectPadding(yRange, padding, true)) {
                 DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
                     + " reason=already-padded padding=" + String(padding));
                 return;
@@ -293,10 +313,10 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
         }
 
         case LayerGroups::GroupIrModeller: {
-            float padding = getRealConstant(IrModellerPadding);
+            float padding = legacyIrModellerGeometryPadding;
             VertexRange xRange = getVertexRange(mesh, Vertex::Phase);
 
-            if (xRange.min >= padding * 0.75f) {
+            if (rangeAlreadyUsesEffectPadding(xRange, padding, false)) {
                 DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
                     + " reason=already-padded padding=" + String(padding));
                 return;

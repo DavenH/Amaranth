@@ -1,4 +1,3 @@
-#include <cstdlib>
 #include <utility>
 #include "Panel.h"
 
@@ -18,7 +17,6 @@
 #include "../../Curve/RasterizerData.h"
 #include "../../Inter/Interactor.h"
 #include "../../Obj/Color.h"
-#include "../../Thread/LockTracer.h"
 #include "../../Util/MicroTimer.h"
 #include "../../Util/Util.h"
 
@@ -69,7 +67,7 @@ Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
 
     ,   nameTexA                (nullptr)
     ,   nameTexB                (nullptr)
-    ,   guideCurveTex                 (nullptr)
+    ,   guideCurveTex           (nullptr)
     ,   grabTex                 (nullptr)
     ,   scalesTex               (nullptr)
 

@@ -83,14 +83,14 @@ void Dialogs::showPresetSaveAsDialog() {
     }
 
     String presetsStr("Presets");
-    WildcardFileFilter filter(presetStr, String(), presetsStr);
+    fileFilter = std::make_unique<WildcardFileFilter>(presetStr, String(), presetsStr);
     String filename = getObj(Directories).getUserPresetDir() + deets.getName();
     File absfile = File::getCurrentWorkingDirectory().getChildFile(filename);
 
     auto browser = std::make_unique<FileBrowserComponent>(
             FileBrowserComponent::saveMode | FileBrowserComponent::canSelectFiles
                 | FileBrowserComponent::warnAboutOverwriting,
-            absfile, &filter, nullptr);
+            absfile, fileFilter.get(), nullptr);
 
     auto* dialogBox = new FileChooserDialog("Save Preset", String(), std::move(browser),
                                             true, Colour::greyLevel(0.08f), deets);
