@@ -218,9 +218,9 @@ public:
     void setOverridingDim(int dim)                  { overridingDim = dim;              }
     void setScalingMode(ScalingType type)           { scalingType   = type;             }
     void setToOverrideDim(bool does)                { overrideDim   = does;             }
-    void setYellow(float yellow)                    { morph.time    = yellow;           }
-    void setBlue(float blue)                        { morph.blue    = blue;             }
-    virtual void setRed(float red)                  { morph.red     = red;              }
+    void setYellow(float yellow)                    { morph.time.setValueDirect(yellow);}
+    void setBlue(float blue)                        { morph.blue.setValueDirect(blue);  }
+    virtual void setRed(float red)                  { morph.red.setValueDirect(red);    }
     void setMorphPosition(const MorphPosition& m)   { morph         = m;                }
     void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
 

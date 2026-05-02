@@ -33,6 +33,13 @@ MainAppWindow::MainAppWindow(const String& commandLine) :
     setResizeLimits(960, 650, 1920, 1200);
 }
 
+MainAppWindow::~MainAppWindow() {
+    DBG("MainAppWindow ~MainAppWindow");
+
+    setLookAndFeel(nullptr);
+    initializer = nullptr;
+}
+
 void MainAppWindow::openFile(const String &commandLine) {
     DBG("MainAppWindow::openFile commandLine=\"" + commandLine + "\"");
     initializer->setCommandLine(commandLine);
@@ -40,6 +47,7 @@ void MainAppWindow::openFile(const String &commandLine) {
 }
 
 void MainAppWindow::closeButtonPressed() {
+    DBG("MainAppWindow::closeButtonPressed closeButton");
     getObj(Dialogs).promptForSaveModally([this](bool shouldContinue) {
         if (shouldContinue) {
             JUCEApplication::getInstance()->systemRequestedQuit();

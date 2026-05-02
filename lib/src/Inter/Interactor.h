@@ -76,6 +76,8 @@ public:
     void addNewCubeForMultipleIntercepts(VertCube* addedLine, float startTime, float phase, float amp);
     void addNewCubeForOneIntercept(VertCube* addedLine, float startTime, float phase, float amp, const MorphPosition& box);
     void addToArray(const Array<Vertex*>& src, vector<VertexFrame>& dst);
+    void addListener(InteractorListener* listener) { listeners.add(listener); }
+    void removeListener(InteractorListener* listener) { listeners.remove(listener); }
     void associateTo(Panel* panel);
     void clearSelectedAndCurrent();
     void clearSelectedAndRepaint();

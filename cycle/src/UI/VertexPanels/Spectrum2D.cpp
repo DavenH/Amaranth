@@ -56,8 +56,7 @@ void Spectrum2D::init() {
     double value = 1.f;
 
     for(float& decibelLine : decibelLines) {
-        decibelLine = value;
-        value *= 0.5;
+        decibelLine = (value *= 0.5);
     }
 
     Arithmetic::applyLogMapping(decibelLines, getConstant(AmpTensionScale));

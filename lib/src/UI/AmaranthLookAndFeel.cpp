@@ -154,6 +154,7 @@ void AmaranthLookAndFeel::drawScrollbarButton(
 
 void AmaranthLookAndFeel::drawFileBrowserRow(
         Graphics& g, int width, int height,
+        const File&,
         const String& filename, Image* icon,
         const String& fileSizeDescription,
         const String& fileTimeDescription,
@@ -571,7 +572,8 @@ void AmaranthLookAndFeel::drawTableHeaderBackground(Graphics& g, TableHeaderComp
     g.fillAll(Colour::greyLevel(0.08));
 }
 
-void AmaranthLookAndFeel::drawTableHeaderColumn(Graphics& g, const String& columnName, int /*columnId*/,
+void AmaranthLookAndFeel::drawTableHeaderColumn(Graphics& g, TableHeaderComponent&, const String& columnName,
+                                                int /*columnId*/,
                                                 int width, int height, bool isMouseOver, bool isMouseDown,
                                                 int columnFlags) {
     float level = isMouseDown ? 0.3f : isMouseOver ? 0.4f : 0.25f;

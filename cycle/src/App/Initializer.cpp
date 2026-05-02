@@ -258,7 +258,8 @@ void Initializer::setConstants() {
     constants.setConstant(AmpTensionScale, 	    500);
     constants.setConstant(EnvResolution, 		128);
     constants.setConstant(ResamplerLatency, 	32);
-    constants.setConstant(FreqTensionScale, 	10);
+    constants.setConstant(FreqTensionScale, 	50);
+    constants.setConstant(LogFreqTensionScale, 0.5);
     constants.setConstant(ControllerValueSaturation, 127);
     constants.setConstant(FontFace,             fontFace);
 }
@@ -272,6 +273,18 @@ void Initializer::setDefaultSettings() {
         "/" + companyName + "/" + projectName
     );
     getObj(Settings).setPropertiesPath(path);
+
+    getObj(Settings).addDocumentSetting(DocSettings::Declick,              "Declick",              true);
+    getObj(Settings).addDocumentSetting(DocSettings::ControlFreq,          "ControlFreq",          8);
+    getObj(Settings).addDocumentSetting(DocSettings::SubsampleRend,        "SubsampleRend",        true);
+    getObj(Settings).addDocumentSetting(DocSettings::SubsampleRltm,        "SubsampleRltm",        false);
+    getObj(Settings).addDocumentSetting(DocSettings::PitchBendRange,       "PitchBendRange",       2);
+    getObj(Settings).addDocumentSetting(DocSettings::DynamicEnvelopes,     "DynamicEnvelopes",     false);
+    getObj(Settings).addDocumentSetting(DocSettings::ParameterSmoothing,   "ParameterSmoothing",   true);
+    getObj(Settings).addDocumentSetting(DocSettings::ResamplingAlgoRltm,   "ResamplingAlgoRltm",   Resampling::Hermite);
+    getObj(Settings).addDocumentSetting(DocSettings::ResamplingAlgoRend,   "ResamplingAlgoRend",   Resampling::Sinc);
+    getObj(Settings).addDocumentSetting(DocSettings::OversampleFactorRltm, "OversampleFactorRltm", 1);
+    getObj(Settings).addDocumentSetting(DocSettings::OversampleFactorRend, "OversampleFactorRend", 2);
 
     getSetting(IgnoringMessages) 		= true;
     getSetting(MagnitudeDrawMode) 		= true;

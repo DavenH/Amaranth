@@ -228,13 +228,20 @@ void Dialogs::showOpenPresetDialog() {
 
 #if !PLUGIN_MODE
 void Dialogs::showAudioSettings() {
-    AudioDeviceSelectorComponent audioSettingsComp(
+    auto* audioSettingsComp = new AudioDeviceSelectorComponent(
             *(getObj(AudioHub).getAudioDeviceManager()), 0, 1, 2, 2, true, false, true, false);
 
-    audioSettingsComp.setSize(600, 500);
-    DialogWindow::showDialog("Audio Settings", &audioSettingsComp,
-                             mainPanel, Colour::greyLevel(0.08f),
-                             true, true, true);
+    audioSettingsComp->setSize(600, 500);
+
+    DialogWindow::LaunchOptions options;
+    options.dialogTitle = "Audio Settings";
+    options.content.setOwned(audioSettingsComp);
+    options.componentToCentreAround = mainPanel;
+    options.dialogBackgroundColour = Colour::greyLevel(0.08f);
+    options.escapeKeyTriggersCloseButton = true;
+    options.resizable = true;
+    options.useBottomRightCornerResizer = true;
+    options.launchAsync();
 }
 #endif
 
@@ -297,7 +304,8 @@ void Dialogs::promptForSaveModally(const std::function<void(bool)>& completionCa
     progressMark
 
     if (! watcher->getHaveEdited()) {
-        completionCallback(false);
+        DBG("Dialogs::promptForSaveModally haven't edited");
+        completionCallback(true);
         return;
     }
 

@@ -1120,8 +1120,9 @@ void EnvelopeInter2D::enablementsChanged() {
 
     MeshLibrary::EnvProps* props = meshLib.getCurrentEnvProps(getSetting(CurrentEnvGroup));
 
-    if (props != nullptr)
+    if (props != nullptr) {
         configIcon.setPowered(props->dynamic || props->global || props->scale != 1 || props->tempoSync);
+    }
 }
 
 

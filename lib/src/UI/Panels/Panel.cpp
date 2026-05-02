@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <utility>
 #include "Panel.h"
 
@@ -95,6 +96,18 @@ PanelRenderer* getRenderer(Panel* panel) {
     return panel->getPanelRenderer();
 }
 
+bool shouldDrawPanelPass(const char* passName) {
+    const char* ablation = std::getenv("CYCLE_PANEL_ABLATE");
+
+    if (ablation == nullptr) {
+        return true;
+    }
+
+    String flags(ablation);
+    return ! flags.containsIgnoreCase("all")
+        && ! flags.containsIgnoreCase(passName);
+}
+
 }
 
 Panel::~Panel() {
@@ -143,41 +156,63 @@ void Panel::render() {
     bool sharedCanvasSurface = usesSharedCanvasSurface();
 
     clear();
-    if (!sharedCanvasBackground) {
+    if (!sharedCanvasBackground && shouldDrawPanelPass("background")) {
         drawBackground();
     }
 
-    if (shouldBakeTextures && !sharedCanvasSurface) {
+    if (shouldBakeTextures && !sharedCanvasSurface && shouldDrawPanelPass("baked-textures")) {
         bakeTextures();
     }
 
     bool drawVerts = ! getSetting(ViewVertsOnlyOnHover) || mouseFlag(MouseOver);
 
-    preDraw();
+    if (shouldDrawPanelPass("pre-draw")) {
+        preDraw();
+    }
 
-    if(! drawLinesAfterFill && drawVerts) {
+    if(! drawLinesAfterFill && drawVerts && shouldDrawPanelPass("intercept-lines")) {
         drawInterceptLines();
     }
 
-    drawCurvesAndSurfaces();
+    if (shouldDrawPanelPass("curves")) {
+        drawCurvesAndSurfaces();
+    }
 
-    if(drawLinesAfterFill && drawVerts) {
+    if(drawLinesAfterFill && drawVerts && shouldDrawPanelPass("intercept-lines")) {
         drawInterceptLines();
     }
 
-    drawOutline();
-    postCurveDraw();
+    if (shouldDrawPanelPass("outline")) {
+        drawOutline();
+    }
+
+    if (shouldDrawPanelPass("post-curve")) {
+        postCurveDraw();
+    }
 
     if (drawVerts) {
-        drawDepthLinesAndVerts();
-        drawInterceptsAndHighlightClosest();
-        drawViewableVerts();
-        highlightSelectedVerts();
+        if (shouldDrawPanelPass("depth-lines")) {
+            drawDepthLinesAndVerts();
+        }
+
+        if (shouldDrawPanelPass("intercept-points")) {
+            drawInterceptsAndHighlightClosest();
+        }
+
+        if (shouldDrawPanelPass("viewable-verts")) {
+            drawViewableVerts();
+        }
+
+        if (shouldDrawPanelPass("selected-verts")) {
+            highlightSelectedVerts();
+        }
     }
 
-    postVertsDraw();
+    if (shouldDrawPanelPass("post-verts")) {
+        postVertsDraw();
+    }
 
-    if (mouseFlag(MouseOver) && getSetting(DrawScales)) {
+    if (mouseFlag(MouseOver) && getSetting(DrawScales) && shouldDrawPanelPass("scales")) {
         PanelRenderer* renderer = getRenderer(this);
         jassert(renderer != nullptr);
         renderer->setCurrentColour(Color(1, 1, 1));
@@ -187,13 +222,15 @@ void Panel::render() {
         drawGuideCurveTags();
     }
 
-    if (mouseFlag(MouseOver)) {
+    if (mouseFlag(MouseOver) && shouldDrawPanelPass("final-selection")) {
         drawFinalSelection();
     }
 
-    drawPencilPath();
+    if (shouldDrawPanelPass("pencil")) {
+        drawPencilPath();
+    }
 
-    if(actionIs(BoxSelecting)) {
+    if(actionIs(BoxSelecting) && shouldDrawPanelPass("selection-rect")) {
         drawSelectionRectangle();
     }
 

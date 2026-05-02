@@ -57,7 +57,7 @@ bool SpectrumInter2D::locateClosestElement() {
 
     Buffer <Float32> ramp = getObj(LogRegions).getRegion(columns[index].midiKey);
 
-    float freqTens = ramp.size() * getConstant(FreqTensionScale);
+    float freqTens = ramp.size() * getRealConstant(LogFreqTensionScale);
     float invScale = Arithmetic::invLogMapping(freqTens, state.currentMouse.x, true);
     closestHarmonic = jlimit(0, ramp.size() - 1, int(invScale * ramp.size()));
 

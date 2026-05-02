@@ -378,7 +378,7 @@ void MorphPanel::buttonClicked(Button* button) {
 
     if (button == &primeYllw || button == &primeRed || button == &primeBlue) {
         getObj(MainPanel).setPrimaryDimension(button == &primeYllw ? Vertex::Time :
-                                              button == &primeRed ? Vertex::Red : Vertex::Blue, true);
+                                              button == &primeRed ? Vertex::Red : Vertex::Blue, false);
         doUpdate(SourceMorph);
     } else if (button == &linkYllw) {
         getSetting(LinkYellow) ^= true;
@@ -664,7 +664,6 @@ void MorphPanel::blueDimUpdated(float value) {
 
 void MorphPanel::setSelectedCube(Vertex* vert, VertCube* cube, int scratchChannel, bool isEnvelope) {
     int selectedIdx = cube == nullptr ? -1 : cube->indexOf(vert);
-
     cubeDisplay->update(cube, selectedIdx, scratchChannel, isEnvelope);
 }
 

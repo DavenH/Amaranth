@@ -89,7 +89,7 @@ String SpectrumInter3D::getZString(float tableValue, int xIndex) {
 }
 
 int SpectrumInter3D::getTableIndexY(float y, int size) {
-    float freqTens = size * getConstant(FreqTensionScale);
+    float freqTens = size * getRealConstant(LogFreqTensionScale);
     int yIndex = jmax(0, int(Arithmetic::invLogMapping(freqTens, y, true) * (size - 1)));
 
     return yIndex;

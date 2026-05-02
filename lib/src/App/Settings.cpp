@@ -59,6 +59,11 @@ void Settings::initialiseSettings() {
     addSetting(ViewVertsOnlyOnHover,    false);
 }
 
+void Settings::addDocumentSetting(int setting, const String& key, int defaultValue) {
+    jassert(! key.isEmpty());
+    documentSettingsMap[setting] = Setting(key, defaultValue);
+}
+
 void Settings::readGlobalSettings(XmlElement* settingsDocElem) {
     XmlElement* bodyElem = formatSplit(settingsFileElem.get(), settingsDocElem->getChildByName("SettingsDocument"));
 

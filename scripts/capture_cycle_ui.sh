@@ -12,6 +12,7 @@ REUSE_EXISTING="${CYCLE_REUSE_EXISTING:-0}"
 QUIT_AFTER_CAPTURE="${CYCLE_QUIT_AFTER_CAPTURE:-1}"
 QUIT_WAIT_SECONDS="${CYCLE_QUIT_WAIT_SECONDS:-3}"
 FILTER_LOGS="${CYCLE_FILTER_LOGS:-1}"
+DIRECT_LAUNCH="${CYCLE_DIRECT_LAUNCH:-1}"
 
 if [[ ! -d "$APP_PATH" ]]; then
     echo "Cycle app not found: $APP_PATH" >&2
@@ -19,6 +20,13 @@ if [[ ! -d "$APP_PATH" ]]; then
 fi
 
 APP_BUNDLE_ID="${CYCLE_APP_BUNDLE_ID:-$(plutil -extract CFBundleIdentifier raw -o - "$APP_PATH/Contents/Info.plist")}"
+APP_EXECUTABLE_NAME="${CYCLE_APP_EXECUTABLE_NAME:-$(plutil -extract CFBundleExecutable raw -o - "$APP_PATH/Contents/Info.plist")}"
+APP_EXECUTABLE_PATH="$APP_PATH/Contents/MacOS/$APP_EXECUTABLE_NAME"
+
+if [[ "$DIRECT_LAUNCH" == "1" && ! -x "$APP_EXECUTABLE_PATH" ]]; then
+    echo "Cycle executable not found: $APP_EXECUTABLE_PATH" >&2
+    exit 1
+fi
 
 mkdir -p "$(dirname "$OUT_PATH")"
 mkdir -p "$(dirname "$LOG_PATH")"
@@ -47,7 +55,13 @@ if [[ "$REUSE_EXISTING" != "1" ]] && process_exists; then
     done
 fi
 
-open -n -o "$RAW_LOG_PATH" --stderr "$RAW_LOG_PATH" "$APP_PATH"
+if [[ "$DIRECT_LAUNCH" == "1" ]]; then
+    "$APP_EXECUTABLE_PATH" > "$RAW_LOG_PATH" 2>&1 &
+    APP_PID=$!
+else
+    open -n -o "$RAW_LOG_PATH" --stderr "$RAW_LOG_PATH" "$APP_PATH"
+    APP_PID=""
+fi
 
 deadline=$((SECONDS + WAIT_SECONDS))
 while (( SECONDS < deadline )); do
@@ -92,6 +106,10 @@ if [[ "$QUIT_AFTER_CAPTURE" == "1" ]]; then
         fi
         sleep 0.25
     done
+
+    if [[ -n "$APP_PID" ]] && kill -0 "$APP_PID" 2>/dev/null; then
+        kill "$APP_PID" 2>/dev/null || true
+    fi
 fi
 
 if [[ "$FILTER_LOGS" == "1" ]]; then

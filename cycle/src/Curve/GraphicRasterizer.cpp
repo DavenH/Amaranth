@@ -27,7 +27,17 @@ void GraphicRasterizer::pullModPositionAndAdjust() {
 
     MeshLibrary::Properties* props = getObj(MeshLibrary).getCurrentProps(layerGroup);
 
-    if (props->scratchChan != CommonEnums::Null) {
+    if (props == nullptr || props->scratchChan == CommonEnums::Null) {
+        return;
+    }
+
+    if (layerGroup == LayerGroups::GroupTime && getSetting(CurrentMorphAxis) != Vertex::Time) {
+        return;
+    }
+
+    if (layerGroup == LayerGroups::GroupTime ||
+        layerGroup == LayerGroups::GroupSpect ||
+        layerGroup == LayerGroups::GroupPhase) {
         morph.time = getObj(VisualDsp).getScratchPosition(props->scratchChan);
     }
 }

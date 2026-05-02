@@ -193,20 +193,6 @@ void Interactor::mouseMove(const MouseEvent& e) {
     flag(SimpleRepaint) |= getSetting(Tool) == Tools::Axe || actionIs(Cutting);
 
     refresh();
-
-    // DBG(getName() + "::mouseMove"
-    //     + " event=" + String(eventId)
-    //     + " source=event"
-    //     + " raw=(" + String(localPos.x) + "," + String(localPos.y) + ")"
-    //     + " scaled=(" + String(state.currentMouse.x, 4) + "," + String(state.currentMouse.y, 4) + ")"
-    //     + " changed=" + String((int) changedVertex)
-    //     + " mouseOver=" + String((int) mouseFlag(MouseOver))
-    //     + " reshape=" + String((int) mouseFlag(WithinReshapeThresh))
-    //     + " currentIcpt=" + String(state.currentIcpt)
-    //     + " currentFreeVert=" + String(state.currentFreeVert)
-    //     + " currentVertex=" + String::toHexString((int64) state.currentVertex)
-    //     + " currentCube=" + String::toHexString((int64) state.currentCube)
-    //     + " component=" + (display != nullptr ? display->getName() : String("<none>")));
 }
 
 void Interactor::timerCallback() {
@@ -260,20 +246,6 @@ void Interactor::timerCallback() {
     flag(SimpleRepaint) |= getSetting(Tool) == Tools::Axe || actionIs(Cutting);
 
     refresh();
-
-    DBG(getName() + "::mouseMove"
-        + " event=" + String(eventId)
-        + " source=poll"
-        + " raw=(" + String(localPos.x) + "," + String(localPos.y) + ")"
-        + " scaled=(" + String(state.currentMouse.x, 4) + "," + String(state.currentMouse.y, 4) + ")"
-        + " changed=" + String((int) changedVertex)
-        + " mouseOver=" + String((int) mouseFlag(MouseOver))
-        + " reshape=" + String((int) mouseFlag(WithinReshapeThresh))
-        + " currentIcpt=" + String(state.currentIcpt)
-        + " currentFreeVert=" + String(state.currentFreeVert)
-        + " currentVertex=" + String::toHexString((int64) state.currentVertex)
-        + " currentCube=" + String::toHexString((int64) state.currentCube)
-        + " component=" + display->getName());
 }
 
 void Interactor::mouseDown(const MouseEvent& e) {
@@ -2443,7 +2415,7 @@ VertCube* Interactor::getClosestLine(Vertex* vert) {
         for (auto cube : vert->owners) {
             float dist = pos.distanceTo(cube->getCentroid(vertexProps.isEnvelope));
             if (dist < minPos) {
-                closest = nullptr;
+                closest = cube;
                 minPos = dist;
             }
         }

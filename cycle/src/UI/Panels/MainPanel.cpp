@@ -763,6 +763,11 @@ void MainPanel::toggleEnvPanel(bool wantToShow3D) {
 void MainPanel::mouseEnter(const MouseEvent& e) {
 }
 
+static bool isEventFromPanelComponent(Component* panelComponent, Component* eventComponent) {
+    return panelComponent != nullptr
+        && (panelComponent == eventComponent || panelComponent->isParentOf(eventComponent));
+}
+
 void MainPanel::mouseDown(const MouseEvent& e) {
     grabKeyboardFocus();
 
@@ -774,7 +779,7 @@ void MainPanel::mouseDown(const MouseEvent& e) {
             continue;
         }
 
-        if (group->panel->getComponent() == origin) {
+        if (isEventFromPanelComponent(group->panel->getComponent(), origin)) {
             focusedPanel = group->bounds;
             getObj(VertexPropertiesPanel).setSelectedAndCaller(group->panel->getInteractor());
         }
@@ -920,6 +925,12 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
     guideCurveGroup	= PanelGroup(guideCurvePanel,		guideCurvePair, 	guideCurvePanel->getOpenglPanel());
     spectGroup2	= PanelGroup(spectrum2D, 	spectrum2D->getZoomPanel(), spectrum2D->getOpenglPanel());
     envGroup3	= PanelGroup(envelope3D, 	envelope3D->getZoomPanel(), envelope3D->getOpenglPanel());
+
+    for (auto group : panelGroups) {
+        if (group != nullptr && group->panel != nullptr && group->panel->getInteractor() != nullptr) {
+            group->panel->getInteractor()->addListener(vtxPropsPanel);
+        }
+    }
 
     attachVisibleComponents();
 

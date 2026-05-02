@@ -59,6 +59,7 @@ public:
     [[nodiscard]] int getGlobalSettingValue(int setting) const { return globalSettingsMap.at(setting).value; }
     [[nodiscard]] int getDocumentSettingValue(int setting) const { return documentSettingsMap.at(setting).value; }
     void setPropertiesPath(const String& path) { this->propertiesPath = path; }
+    void addDocumentSetting(int setting, const String& key, int defaultValue);
 
 protected:
     class Setting {

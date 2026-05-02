@@ -130,7 +130,7 @@ void Multisample::fillRanges() {
         samples[j - 1]->veloRange.setEnd(1.f);
 
         // fill note range
-        int nextNote = j < samples.size() ? samples[j]->midiRange.getStart() : getConstant(HighestMidiNote);
+        int nextNote = j < samples.size() ? samples[j]->midiRange.getStart() : Constants::HighestMidiNote;
 
     for (auto& velocity : velocities)
         velocity->midiRange.setEnd(nextNote);
