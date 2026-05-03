@@ -48,6 +48,23 @@ float PathRepo::getScratchPosition(int scratchChannel, float defaultPos) {
 void PathRepo::performUpdate(UpdateType updateType) {
 }
 
+void PathRepo::setScratchContexts(Buffer<float> gridBuffer, Buffer<float> panelBuffer,
+                                  int numContexts, int gridSize, int panelSize) {
+    ScopedLock sl(calcLock);
+    contexts.clear();
+
+    if (numContexts <= 0 || gridSize <= 0 || panelSize <= 0) {
+        return;
+    }
+
+    contexts.resize(numContexts);
+
+    for (int i = 0; i < numContexts; ++i) {
+        contexts[i].gridBuffer   = gridBuffer.section(i * gridSize, gridSize);
+        contexts[i].panelBuffer  = panelBuffer.section(i * panelSize, panelSize);
+    }
+}
+
 void PathRepo::updateCache(int groupId, int layer) {
     int numGroups = meshes->getNumGroups();
 

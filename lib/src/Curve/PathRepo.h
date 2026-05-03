@@ -38,6 +38,8 @@ public:
 
     void init() override;
     void performUpdate(UpdateType updateType) override;
+    void setScratchContexts(Buffer<float> gridBuffer, Buffer<float> panelBuffer,
+                            int numContexts, int gridSize, int panelSize);
     void updateCache(int group, int layer);
     void resetCaches();
     float getScratchPosition(int scratchChannel, float defaultPos = 0.f);

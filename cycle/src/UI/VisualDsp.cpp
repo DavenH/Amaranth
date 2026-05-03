@@ -5,6 +5,7 @@
 #include <Audio/Multisample.h>
 #include <Audio/PitchedSample.h>
 #include <Curve/EnvelopeMesh.h>
+#include <Curve/PathRepo.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <Thread/LockTracer.h>
@@ -313,6 +314,14 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
         Resampling::linResample(
             scratchEnv.withSize(numScratchLayers * numColumns),
             scratchEnvPanel.withSize(numScratchLayers * Panel::linestripRes)
+        );
+
+        getObj(PathRepo).setScratchContexts(
+            scratchEnv.withSize(numScratchLayers * numColumns),
+            scratchEnvPanel.withSize(numScratchLayers * Panel::linestripRes),
+            numScratchLayers,
+            numColumns,
+            Panel::linestripRes
         );
 
         updateScratchContexts(numColumns);
