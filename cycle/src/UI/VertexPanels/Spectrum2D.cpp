@@ -480,6 +480,10 @@ int Spectrum2D::getLayerScratchChannel() {
     return spectrum3D->getLayerScratchChannel();
 }
 
+bool Spectrum2D::isScratchApplicable() {
+    return getSetting(ViewStage) >= ViewStages::PostEnvelopes;
+}
+
 void Spectrum2D::createScales() {
     info("creating scales for Spectrum2D\n");
 

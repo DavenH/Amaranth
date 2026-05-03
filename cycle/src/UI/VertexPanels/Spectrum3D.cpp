@@ -428,6 +428,10 @@ bool Spectrum3D::shouldTriggerGlobalUpdate(Slider* slider) {
     return (getSetting(ViewStage) >= ViewStages::PostSpectrum) && layerEnabled;
 }
 
+bool Spectrum3D::isScratchApplicable() {
+    return getSetting(ViewStage) >= ViewStages::PostEnvelopes;
+}
+
 void Spectrum3D::restoreDetail() {
     interactor->restoreDetail();
 }

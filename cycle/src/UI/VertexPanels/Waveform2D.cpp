@@ -246,6 +246,10 @@ bool Waveform2D::shouldDrawCurve() {
 //			interactor->mouseFlag(MouseOver) || ;
 }
 
+bool Waveform2D::isScratchApplicable() {
+    return getSetting(ViewStage) >= ViewStages::PostEnvelopes;
+}
+
 int Waveform2D::getLayerScratchChannel() {
     return getObj(Waveform3D).getLayerScratchChannel();
 }

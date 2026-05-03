@@ -13,6 +13,7 @@ QUIT_AFTER_CAPTURE="${CYCLE_QUIT_AFTER_CAPTURE:-1}"
 QUIT_WAIT_SECONDS="${CYCLE_QUIT_WAIT_SECONDS:-3}"
 FILTER_LOGS="${CYCLE_FILTER_LOGS:-1}"
 DIRECT_LAUNCH="${CYCLE_DIRECT_LAUNCH:-1}"
+CAPTURE_RECT="${CYCLE_CAPTURE_RECT:-}"
 
 if [[ ! -d "$APP_PATH" ]]; then
     echo "Cycle app not found: $APP_PATH" >&2
@@ -94,7 +95,11 @@ if ! process_frontmost; then
     exit 1
 fi
 
-screencapture -x "$OUT_PATH"
+if [[ -n "$CAPTURE_RECT" ]]; then
+    screencapture -x -R "$CAPTURE_RECT" "$OUT_PATH"
+else
+    screencapture -x "$OUT_PATH"
+fi
 
 if [[ "$QUIT_AFTER_CAPTURE" == "1" ]]; then
     osascript -e "tell application \"$PROCESS_NAME\" to quit" || true

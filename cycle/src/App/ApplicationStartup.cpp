@@ -16,10 +16,10 @@ public:
         mainWindow->setVisible(true);
         Component::SafePointer<MainAppWindow> safeWindow(mainWindow.get());
 
-        MessageManager::callAsync([safeWindow]() {
+        MessageManager::callAsync([safeWindow, commandLine]() {
             if (safeWindow != nullptr) {
                 DBG("AppClass::initialise async startup preset open");
-                safeWindow->openFile(String());
+                safeWindow->openFile(commandLine);
             }
         });
 

@@ -242,6 +242,10 @@ bool Waveform3D::shouldTriggerGlobalUpdate(Slider* slider) {
     return (getSetting(ViewStage) >= ViewStages::PostEnvelopes && layerEnabled);
 }
 
+bool Waveform3D::isScratchApplicable() {
+    return getSetting(ViewStage) >= ViewStages::PostEnvelopes;
+}
+
 void Waveform3D::restoreDetail() {
     interactor->restoreDetail();
 }

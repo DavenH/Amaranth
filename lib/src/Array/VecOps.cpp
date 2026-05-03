@@ -167,7 +167,7 @@ template<> void VecOps::interleave(Buffer<Float32> x, Buffer<Float32> y, Buffer<
     z.realp = x.get();
     z.imagp = y.get();
     auto* xp = reinterpret_cast<DSPComplex*>(dst.get());
-    vDSP_ztoc(&z, 1, xp, 1, x.size());
+    vDSP_ztoc(&z, 1, xp, 2, x.size());
 }
 
 template<> void VecOps::interleave(Buffer<Float64> x, Buffer<Float64> y, Buffer<Float64> dst) {
@@ -177,7 +177,7 @@ template<> void VecOps::interleave(Buffer<Float64> x, Buffer<Float64> y, Buffer<
     z.realp = x.get();
     z.imagp = y.get();
     auto* xp = reinterpret_cast<DSPDoubleComplex*>(dst.get());
-    vDSP_ztocD(&z, 1, xp, 1, x.size());
+    vDSP_ztocD(&z, 1, xp, 2, x.size());
 }
 
 #define defineAllocate(T) template<> T* VecOps::allocate<T>(int size) { return (T*) malloc(size * sizeof(T)); }

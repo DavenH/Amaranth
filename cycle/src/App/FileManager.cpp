@@ -49,11 +49,11 @@ FileManager::FileManager(SingletonRepo* repo) :
   #if PLUGIN_MODE
     defaultPresetName = "Empty";
   #else
-    defaultPresetName = "CalmingKeys";
+    defaultPresetName = "AfricanHorn";
   #endif
 
   #ifdef _DEBUG
-    defaultPresetName = "CalmingKeys";
+    // defaultPresetName = "CalmingKeys";
     // defaultPresetName = "Empty";
   #endif
 
