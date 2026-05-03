@@ -289,8 +289,10 @@ void IrModellerUI::preDraw() {
     xy.x.ramp(getRealConstant(IrModellerPadding), (1.f - getRealConstant(IrModellerPadding)) / (float) sizeX);
 
     gfx->enableSmoothing();
-    gfx->setCurrentColour(0.8f, 0.4f, 0.5f, 0.4f);
+    gfx->setCurrentLineWidth(1.5f);
+    gfx->setCurrentColour(1.f, 0.62f, 0.7f, 0.75f);
     gfx->drawLineStrip(xy, true, true);
+    gfx->setCurrentLineWidth(1.f);
 }
 
 void IrModellerUI::postCurveDraw() {
@@ -773,10 +775,11 @@ void IrModellerUI::createScales() {
     auto& mg = getObj(MiscGraphics);
     int fontScale 	 = getSetting(PointSizeScale);
     Font& font 		 = *mg.getAppropriateFont(fontScale);
-    float alpha 	 = fontScale == ScaleSizes::ScaleSmall ? 0.5f : 0.65f;
+    float alpha 	 = fontScale == ScaleSizes::ScaleSmall ? 0.65f : 0.85f;
 
-    scalesImage = Image(Image::ARGB, 256, 16, true);
+    scalesImage = Image(Image::ARGB, 256 * textTextureScale, 16 * textTextureScale, true);
     Graphics g(scalesImage);
+    g.addTransform(AffineTransform::scale((float) textTextureScale));
     g.setFont(font);
 
     int position = 0;

@@ -261,6 +261,11 @@ void CommonGL::initializeTextures() {
     textures.add(scales = new TextureGL(panel->scalesImage));
     textures.add(guideCurve = new TextureGL(panel->guideCurveImage));
 
+    nameA->imageScale = Panel::textTextureScale;
+    nameB->imageScale = Panel::textTextureScale;
+    scales->imageScale = Panel::textTextureScale;
+    guideCurve->imageScale = Panel::textTextureScale;
+
     grab->src = Rectangle<float>(0, 0, 24.f, 24.f);
 
     for (auto texture : textures) {

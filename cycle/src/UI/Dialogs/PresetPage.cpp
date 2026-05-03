@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include <App/Doc/Document.h>
+#include <App/Doc/PresetJson.h>
 #include <App/AppConstants.h>
 #include <App/EditWatcher.h>
 #include <App/Settings.h>
@@ -22,6 +23,37 @@
 #include "../../App/Directories.h"
 #include "../../App/FileManager.h"
 #include "../../Util/CycleEnums.h"
+
+namespace {
+    bool readPresetDetails(const File& file,
+                           DocumentDetails& details,
+                           int magicValue) {
+        std::unique_ptr<InputStream> stream(file.createInputStream());
+
+        if (stream == nullptr) {
+            return false;
+        }
+
+        if (Document::readHeader(stream.get(), details, magicValue)) {
+            return true;
+        }
+
+        stream->setPosition(0);
+
+        GZIPDecompressorInputStream decompStream(stream.get(), false);
+        String presetDocString(decompStream.readEntireStreamAsString().trimStart());
+
+        if (!presetDocString.startsWithChar('{')) {
+            return false;
+        }
+
+        var jsonRoot = JSON::parse(presetDocString);
+        var preset = PresetJson::property(jsonRoot, "preset");
+        var detailsJson = PresetJson::property(preset, "details");
+
+        return details.readJSON(detailsJson);
+    }
+}
 
 
 PresetPage::PresetPage(SingletonRepo* repo) : 
@@ -231,9 +263,7 @@ void PresetPage::addFilesToArray(Array<DocumentDetails, CriticalSection>& list,
         details.setDateMillis(millis);
 
         if (extension == getStrConstant(DocumentExt)) {
-            std::unique_ptr<InputStream> stream(file.createInputStream());
-
-            if (Document::readHeader(stream.get(), details, getConstant(DocMagicCode))) {
+            if (readPresetDetails(file, details, getConstant(DocMagicCode))) {
                 int code = details.getKey().hashCode();
 
                 if (dismissedSet.find(code) != dismissedSet.end()) {
@@ -1018,7 +1048,9 @@ void PresetPage::updatePresetIndex() {
 }
 
 void PresetPage::componentVisibilityChanged() {
-    listBox->scrollToEnsureRowIsOnscreen(currPresetFiltIndex);
+    if (currPresetFiltIndex >= 0) {
+        listBox->scrollToEnsureRowIsOnscreen(currPresetFiltIndex);
+    }
 }
 
 bool PresetPage::haveKeyAndEqualRevision(int code, int revision) {

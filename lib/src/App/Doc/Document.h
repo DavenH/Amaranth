@@ -73,16 +73,19 @@ public:
         const String& filename = updatedDetails.getFilename();
 
         File file(filename);
-        if(! file.existsAsFile()) {
-            jassertfalse;
-            return false;
+        if (preserveRevision || preserveDate) {
+            if (!file.existsAsFile()) {
+                jassertfalse;
+                return false;
+            }
+
+            std::unique_ptr<InputStream> in(file.createInputStream());
+
+            int firstByte = in->readInt();
+            if(firstByte != magicValue) {
+                return false;
+            }
         }
-
-        std::unique_ptr<InputStream> in(file.createInputStream());
-
-        int firstByte = in->readInt();
-        if(firstByte != magicValue)
-            return false;
 
         ScopedValueSetter revisionSuppressor(updatedDetails.getSuppressRevFlag(), ! preserveRevision, false);
         ScopedValueSetter dateSuppressor(updatedDetails.getSuppressDateFlag(),  ! preserveDate,     false);

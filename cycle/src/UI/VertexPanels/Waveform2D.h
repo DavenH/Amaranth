@@ -12,6 +12,7 @@ public:
     explicit Waveform2D(SingletonRepo* repo);
 
     bool shouldDrawCurve() override;
+    bool isScratchApplicable() override;
     int getLayerScratchChannel() override;
     void componentChanged() override;
     void drawBackground(bool fillBackground) override;

@@ -84,6 +84,8 @@ public:
     };
 
     struct EnvProps : Properties {
+        EnvProps();
+
         bool readXML(const XmlElement* element) override;
         void writeXML(XmlElement* element) const override;
         var writeJSON() const override;

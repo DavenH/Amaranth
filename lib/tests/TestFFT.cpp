@@ -175,6 +175,79 @@ TEST_CASE("Transform Cartesian Conversion", "[transform][polar-to-cart]") {
     }
 }
 
+TEST_CASE("Transform Cartesian Round Trip", "[transform][polar-to-cart][identity]") {
+    Transform fft;
+    const int size = 256;
+    fft.allocate(size, Transform::DivFwdByN, true);
+
+    SECTION("Dirac impulse preserves amplitude") {
+        ScopedAlloc<float> signal(size);
+        ScopedAlloc<float> output(size);
+
+        signal.zero();
+        signal.front() = 1.f;
+        output.zero();
+
+        fft.forward(signal);
+        fft.inverse(output);
+
+        for (int i = 0; i < size; ++i) {
+            REQUIRE(output[i] == Catch::Approx(signal[i]).margin(1e-5f));
+        }
+    }
+
+    SECTION("Signal preserves amplitude") {
+        ScopedAlloc<float> signal(size);
+        ScopedAlloc<float> output(size);
+
+        signal.ramp(-1.f, 2.f / float(size - 1));
+        output.zero();
+
+        fft.forward(signal);
+        fft.inverse(output);
+
+        for (int i = 0; i < size; ++i) {
+            REQUIRE(output[i] == Catch::Approx(signal[i]).margin(1e-5f));
+        }
+    }
+
+    SECTION("Copied complex spectrum preserves amplitude") {
+        ScopedAlloc<float> memory(size + size + size + 2);
+        Buffer<float> signal = memory.place(size);
+        Buffer<float> output = memory.place(size);
+        Buffer<Complex32> spectrum = memory.place(size + 2).toType<Complex32>();
+
+        signal.ramp(-1.f, 2.f / float(size - 1));
+        output.zero();
+
+        fft.forward(signal);
+        fft.getComplex().copyTo(spectrum);
+        fft.inverse(spectrum, output);
+
+        for (int i = 0; i < size; ++i) {
+            REQUIRE(output[i] == Catch::Approx(signal[i]).margin(1e-5f));
+        }
+    }
+
+    SECTION("Inverse-scaled transform preserves amplitude") {
+        Transform inverseScaled;
+        inverseScaled.allocate(size, Transform::DivInvByN, true);
+
+        ScopedAlloc<float> signal(size);
+        ScopedAlloc<float> output(size);
+
+        signal.ramp(-0.5f, 1.f / float(size - 1));
+        output.zero();
+
+        inverseScaled.forward(signal);
+        inverseScaled.inverse(output);
+
+        for (int i = 0; i < size; ++i) {
+            REQUIRE(output[i] == Catch::Approx(signal[i]).margin(1e-5f));
+        }
+    }
+}
+
 TEST_CASE("Transform Standard Functions", "[transform][functions]") {
     Transform fft;
     const int size = 512;

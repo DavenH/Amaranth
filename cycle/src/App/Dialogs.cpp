@@ -351,6 +351,7 @@ void Dialogs::showPresetBrowserModal() {
   #endif
 
     getObj(PresetPage).setSize(800, 600);
+    getObj(PresetPage).refresh();
 
     juce::Component* c = mainPanel;
     if (playerView) {

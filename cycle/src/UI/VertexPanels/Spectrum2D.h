@@ -22,6 +22,7 @@ public:
     void drawHistory();
     void drawScales() override;
     void createScales() override;
+    bool isScratchApplicable() override;
     int getLayerScratchChannel() override;
 
     explicit Spectrum2D(SingletonRepo* repo);

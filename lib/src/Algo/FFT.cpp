@@ -141,11 +141,11 @@ void Transform::forward(Buffer<float> src) {
 void Transform::inverse(const Buffer<Complex32>& fftInput, const Buffer<float>& dest) {
   #ifdef USE_ACCELERATE
     int size = 1 << order;
-    int packedComplexSize = size / 2 + 1;
-    jassert(fftInput.size() == packedComplexSize);
+    int packedComplexSize = size / 2;
+    jassert(fftInput.size() >= packedComplexSize);
 
     // this mutates the fftBuffer, referenced by the splitComplex real/imag pointers
-    vDSP_ctoz(reinterpret_cast<DSPComplex *>(fftInput.get()), 1, &splitComplex, 1, size / 2);
+    vDSP_ctoz(reinterpret_cast<DSPComplex *>(fftInput.get()), 2, &splitComplex, 1, packedComplexSize);
   #elif defined(USE_IPP)
     Buffer<float> oldBuffer = fftBuffer;
     fftBuffer = fftInput.toType<Ipp32f>();
@@ -187,9 +187,9 @@ void Transform::inverse(Buffer<float> dest) {
     }
 
     vDSP_fft_zrip(fftSetup, &splitComplex, 1, order, FFT_INVERSE);
-    // vDSP implicitly div's the output by N
-    if (scaleType == NoDivByAny) {
-        fftBuffer.toType<Float32>().mul(size);
+    // Match the legacy IPP scale policies explicitly after vDSP's unscaled inverse.
+    if (scaleType == DivInvByN) {
+        fftBuffer.toType<Float32>().mul(1.f / float(size));
     }
     vDSP_ztoc(&splitComplex, 1, (DSPComplex*) dest.get(), 2, size / 2);
 

@@ -28,6 +28,7 @@ class Panel :
     ,   public ZoomPanel::ZoomListener {
 public:
     static constexpr int linestripRes = 256;
+    static constexpr int textTextureScale = 2;
 
     enum { maxMajorSize = 64, maxMinorSize = 256 };
     enum { GrabTexture, NameTexture, NameTextureB, BackTexture, ScalesTexture, numTextures  };

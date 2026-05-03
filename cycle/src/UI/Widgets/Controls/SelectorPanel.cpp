@@ -47,7 +47,7 @@ void SelectorPanel::paint(Graphics& g) {
 
 	g.setFont(font);
 	g.setColour(Colour::greyLevel(smallCnd ? 0.8f : 0.74f));
-	g.drawSingleLineText(text, (getWidth() - width) / 2 + (smallCnd ? -6 : smallList ? -4 : 1), getHeight() / 2 + 3);
+	g.drawSingleLineText(text, (getWidth() - width) / 2 + (smallCnd ? -6 : smallList ? -6 : 1), getHeight() / 2 + 3);
 	g.setFont(*getObj(MiscGraphics).getSilkscreen());
 
 	g.setColour(Colour::greyLevel(0.45f));
@@ -143,6 +143,10 @@ void SelectorPanel::constrainIndex(int& num) {
 }
 
 void SelectorPanel::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
+    if (wheel.isInertial || approximatelyEqual(wheel.deltaY, 0.0f)) {
+        return;
+    }
+
     float yInc = wheel.deltaY;
 
 	draggedListIndex(yInc > 0 ? 1 : -1);
@@ -177,6 +181,7 @@ void SelectorPanel::doSelectionChange() {
 
     indexDragged = 0;
 
+    rowClicked(currentIndex);
     selectionChanged();
 }
 

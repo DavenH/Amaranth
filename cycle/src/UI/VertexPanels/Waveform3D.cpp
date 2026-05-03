@@ -191,7 +191,7 @@ void Waveform3D::reconcileLoadedState() {
         return;
     }
 
-    panelControls->resetSelector();
+    panelControls->refreshSelector();
     panelControls->enableCurrent.setHighlit(getCurrentProperties()->active);
     updateScratchComboBox();
     setKnobValuesImplicit();
@@ -240,6 +240,10 @@ bool Waveform3D::shouldTriggerGlobalUpdate(Slider* slider) {
     bool layerEnabled = panelControls->enableCurrent.isHighlit();
 
     return (getSetting(ViewStage) >= ViewStages::PostEnvelopes && layerEnabled);
+}
+
+bool Waveform3D::isScratchApplicable() {
+    return getSetting(ViewStage) >= ViewStages::PostEnvelopes;
 }
 
 void Waveform3D::restoreDetail() {

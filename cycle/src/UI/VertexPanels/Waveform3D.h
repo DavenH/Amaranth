@@ -49,6 +49,7 @@ public:
     /* Events */
     bool shouldDrawGrid() override;
     bool shouldTriggerGlobalUpdate(Slider* slider) override;
+    bool isScratchApplicable() override;
     bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
     bool validateScratchChannels();
 

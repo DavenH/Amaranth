@@ -455,6 +455,15 @@ MeshLibrary::Properties::Properties() {
     }
 }
 
+MeshLibrary::EnvProps::EnvProps() :
+        dynamic     (false)
+    ,   tempoSync   (false)
+    ,   global      (false)
+    ,   logarithmic (false)
+    ,   scale       (1)
+    ,   tempoScale  (1.f) {
+}
+
 bool MeshLibrary::Properties::readXML(const XmlElement* layerElem) {
     active      = layerElem->getBoolAttribute("active", active);
     gain        = layerElem->getDoubleAttribute("gain", gain);

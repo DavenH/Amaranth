@@ -12,10 +12,13 @@ public:
 
     Image image;
     Rectangle<float> rect;
+    float imageScale = 1.f;
 
     virtual void create() {}
     virtual void clear() {}
     virtual void bind() {}
+
+    void setImage(Image imageToUse, float scale = 1.f);
 };
 
 
@@ -34,4 +37,3 @@ public:
     void bind() override;
     void clear() override;
 };
-

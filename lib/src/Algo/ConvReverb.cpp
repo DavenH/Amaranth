@@ -7,6 +7,34 @@
 #include "../Util/Arithmetic.h"
 #include "../Definitions.h"
 
+namespace {
+    float realPart(const Complex32& value) {
+        return perfSplit(value.re, value.real());
+    }
+
+    float imagPart(const Complex32& value) {
+        return perfSplit(value.im, value.imag());
+    }
+
+    void setComplex(Complex32& value, float real, float imag) {
+        perfSplit(value.re = real; value.im = imag, value.real(real); value.imag(imag));
+    }
+
+    void addRealFftProduct(Buffer<Complex32> dest, Buffer<Complex32> left, Buffer<Complex32> right) {
+        if (dest.empty()) {
+            return;
+        }
+
+        float dc = realPart(dest[0]) + realPart(left[0]) * realPart(right[0]);
+        float nyquist = imagPart(dest[0]) + imagPart(left[0]) * imagPart(right[0]);
+        setComplex(dest[0], dc, nyquist);
+
+        if (dest.size() > 1) {
+            dest.offset(1).addProduct(left.offset(1), right.offset(1));
+        }
+    }
+}
+
 ConvReverb::ConvReverb(SingletonRepo* repo) :
         SingletonAccessor(repo, "ConvReverb")
     ,   outBuffer(2)
@@ -288,12 +316,12 @@ void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
                 int kernIndex   = i;
                 int inputIndex  = (currSegment + i) % numBlocks;
 
-                sumBuffer.addProduct(kernelBlocks[kernIndex], inputBlocks[inputIndex]);
+                addRealFftProduct(sumBuffer, kernelBlocks[kernIndex], inputBlocks[inputIndex]);
             }
         }
 
         sumBuffer.copyTo(convBuffer);
-        convBuffer.addProduct(kernelBlocks[0], inputBlocks[currSegment]);
+        addRealFftProduct(convBuffer, kernelBlocks[0], inputBlocks[currSegment]);
         
         fft.inverse(convBuffer, fftBuffer);
         VecOps::add(
@@ -467,4 +495,3 @@ void ConvReverb::test(int inputSize, int irSize,
 //           << "\n";
     }
 }
-

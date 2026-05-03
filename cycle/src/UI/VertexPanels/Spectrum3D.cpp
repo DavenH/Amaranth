@@ -72,7 +72,7 @@ void Spectrum3D::init() {
     dynRangeKnob->setValue(0.5, dontSendNotification);
     paramGroup	->listenToKnobs();
 
-    createNameImage("Magn. Spectrogram");
+    createNameImage("Magnitude Spectrogram");
     createNameImage("Phase Spectrogram", true);
 
     zoomPanel->rect.h = 0.95;
@@ -185,7 +185,7 @@ void Spectrum3D::reconcileLoadedState() {
         return;
     }
 
-    panelControls->resetSelector();
+    panelControls->refreshSelector();
     modeChanged(getSetting(MagnitudeDrawMode) == 1, false);
     setIconHighlightImplicit();
     updateKnobValue();
@@ -426,6 +426,10 @@ bool Spectrum3D::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate
 bool Spectrum3D::shouldTriggerGlobalUpdate(Slider* slider) {
     bool layerEnabled = panelControls->enableCurrent.isHighlit();
     return (getSetting(ViewStage) >= ViewStages::PostSpectrum) && layerEnabled;
+}
+
+bool Spectrum3D::isScratchApplicable() {
+    return getSetting(ViewStage) >= ViewStages::PostEnvelopes;
 }
 
 void Spectrum3D::restoreDetail() {

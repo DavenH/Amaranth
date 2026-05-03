@@ -707,15 +707,22 @@ void AmaranthLookAndFeel::drawComboBox(Graphics& g, int width, int height,
 
     Path arrow;
     const bool iconOnly = box.getProperties().contains("iconOnlyCombo");
+    const bool indexedCombo = box.getProperties().contains("indexedCombo");
     const bool compact = iconOnly || width <= 32;
     const float arrowWidth = compact ? 5.f : 7.f;
     const float arrowHeight = compact ? 3.f : 4.f;
-    const float centreX = compact ? width * 0.5f : width - 8.f;
+    const float centreX = indexedCombo ? width - 6.f : (compact ? width * 0.5f : width - 8.f);
     const float centreY = height * 0.5f + 1.f;
 
-    arrow.addTriangle(centreX - arrowWidth * 0.5f, centreY - arrowHeight * 0.5f,
-                      centreX + arrowWidth * 0.5f, centreY - arrowHeight * 0.5f,
-                      centreX, centreY + arrowHeight * 0.5f);
+    if (indexedCombo) {
+        arrow.addTriangle(centreX - arrowHeight * 0.5f, centreY - arrowWidth * 0.5f,
+                          centreX - arrowHeight * 0.5f, centreY + arrowWidth * 0.5f,
+                          centreX + arrowHeight * 0.5f, centreY);
+    } else {
+        arrow.addTriangle(centreX - arrowWidth * 0.5f, centreY - arrowHeight * 0.5f,
+                          centreX + arrowWidth * 0.5f, centreY - arrowHeight * 0.5f,
+                          centreX, centreY + arrowHeight * 0.5f);
+    }
 
     g.setOpacity(0.75f);
     g.fillPath(arrow);
@@ -725,7 +732,10 @@ void AmaranthLookAndFeel::drawComboBox(Graphics& g, int width, int height,
 }
 
 void AmaranthLookAndFeel::positionComboBoxText(ComboBox& box, Label& label) {
-    if (box.getProperties().contains("iconOnlyCombo") || box.getWidth() <= 32) {
+    if (box.getProperties().contains("indexedCombo")) {
+        int arrowReserve = box.getProperties().contains("compactIndexedCombo") ? 7 : 10;
+        label.setBounds(1, 1, box.getWidth() - arrowReserve, box.getHeight() - 2);
+    } else if (box.getProperties().contains("iconOnlyCombo") || box.getWidth() <= 32) {
         label.setBounds(0, 2, 0, box.getHeight() - 2);
     } else if (box.getWidth() < 80) {
         label.setBounds(1, 1,
@@ -738,7 +748,12 @@ void AmaranthLookAndFeel::positionComboBoxText(ComboBox& box, Label& label) {
 
     }
 
-    label.setFont(getComboBoxFont(box));
+    Font font = getComboBoxFont(box);
+    if (box.getProperties().contains("compactIndexedCombo")) {
+        font.setHeight(jmin(12.f, font.getHeight()));
+    }
+
+    label.setFont(font);
 }
 
 
@@ -748,8 +763,9 @@ int AmaranthLookAndFeel::getMenuWindowFlags() {
 
 void AmaranthLookAndFeel::drawAlertBox(Graphics& g, AlertWindow& alert, const Rectangle<int>& textArea,
                                        TextLayout& textLayout) {
-//  getObj(MiscGraphics).fillBlackground(&alert, g);
-//  g.fillAll (alert.findColour (AlertWindow::backgroundColourId));
+    g.fillAll(Colour::greyLevel(0.02f));
+    g.setColour(alert.findColour(AlertWindow::backgroundColourId).withAlpha(0.95f));
+    g.fillRect(alert.getLocalBounds().reduced(2));
 
     int iconSpaceUsed = 0;
     Justification alignment(Justification::horizontallyCentred);
@@ -812,7 +828,8 @@ void AmaranthLookAndFeel::drawAlertBox(Graphics& g, AlertWindow& alert, const Re
 
 void AmaranthLookAndFeel::drawLabel(Graphics& g, Label& label) {
     if (auto* comboBox = dynamic_cast<ComboBox*>(label.getParentComponent())) {
-        if (comboBox->getProperties().contains("iconOnlyCombo") || comboBox->getWidth() <= 32) {
+        if (!comboBox->getProperties().contains("indexedCombo")
+            && (comboBox->getProperties().contains("iconOnlyCombo") || comboBox->getWidth() <= 32)) {
             return;
         }
     }

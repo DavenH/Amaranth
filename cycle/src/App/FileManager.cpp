@@ -49,11 +49,11 @@ FileManager::FileManager(SingletonRepo* repo) :
   #if PLUGIN_MODE
     defaultPresetName = "Empty";
   #else
-    defaultPresetName = "CalmingKeys";
+    defaultPresetName = "AfricanHorn";
   #endif
 
   #ifdef _DEBUG
-    defaultPresetName = "CalmingKeys";
+    // defaultPresetName = "CalmingKeys";
     // defaultPresetName = "Empty";
   #endif
 
@@ -221,6 +221,7 @@ void FileManager::doPostPresetLoad() {
   #endif
 
     getObj(EnvelopeInter2D)	.switchedEnvelope(LayerGroups::GroupVolume, false, true);
+    getObj(EnvelopeInter2D)	.enablementsChanged();
     getObj(EnvelopeInter2D)	.waveOverlayChanged();
     getObj(MeshLibrary)		.layerChanged(LayerGroups::GroupScratch, -1);
     getObj(MeshLibrary)		.layerChanged(LayerGroups::GroupGuideCurve, -1);

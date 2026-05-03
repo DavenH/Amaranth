@@ -311,10 +311,12 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
         );
         logRasterizerState("prepare-scratch-after-inline", *rast);
 
-        Resampling::linResample(
-            scratchEnv.withSize(numScratchLayers * numColumns),
-            scratchEnvPanel.withSize(numScratchLayers * Panel::linestripRes)
-        );
+        for (int i = 0; i < numScratchLayers; ++i) {
+            Resampling::linResample(
+                scratchEnv.section(i * numColumns, numColumns),
+                scratchEnvPanel.section(i * Panel::linestripRes, Panel::linestripRes)
+            );
+        }
 
         getObj(PathRepo).setScratchContexts(
             scratchEnv.withSize(numScratchLayers * numColumns),

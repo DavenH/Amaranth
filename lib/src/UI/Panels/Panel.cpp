@@ -288,8 +288,8 @@ void Panel::updateNameTexturePos() {
     }
 
     bool fromBottom = nameCornerPos.getY() < 0;
-    int w = nameImage.getWidth();
-    int h = nameImage.getHeight();
+    int w = nameImage.getWidth() / textTextureScale;
+    int h = nameImage.getHeight() / textTextureScale;
 
     Rectangle<int> bounds = comp->getLocalBounds();
     nameTexA->rect = (fromBottom ?  bounds.removeFromRight(w).removeFromBottom(h) :
@@ -485,7 +485,7 @@ void Panel::highlightSelectedVerts() {
 void Panel::handlePendingUpdates() {
     if (Util::assignAndWereDifferent(pendingScaleUpdate, false)) {
         createScales();
-        scalesTex->image = scalesImage;
+        scalesTex->setImage(scalesImage, textTextureScale);
 
         PanelRenderer* renderer = getRenderer(this);
         jassert(renderer != nullptr);
@@ -494,20 +494,21 @@ void Panel::handlePendingUpdates() {
     }
 
     if (Util::assignAndWereDifferent(pendingNameUpdate, false)) {
-        nameTexA->image = nameImage;
-        nameTexB->image = nameImageB;
+        nameTexA->setImage(nameImage, textTextureScale);
+        nameTexB->setImage(nameImageB, textTextureScale);
 
         PanelRenderer* renderer = getRenderer(this);
         jassert(renderer != nullptr);
         renderer->updateTexture(nameTexA);
         renderer->updateTexture(nameTexB);
+        updateNameTexturePos();
         dirtyState.clear(PanelDirtyState::Flag::StaticVisual);
     }
 
     if (Util::assignAndWereDifferent(pendingDeformUpdate, false)) {
         createGuideCurveTags();
 
-        guideCurveTex->image = guideCurveImage;
+        guideCurveTex->setImage(guideCurveImage, textTextureScale);
 
         PanelRenderer* renderer = getRenderer(this);
         jassert(renderer != nullptr);
@@ -927,30 +928,34 @@ void Panel::componentChanged() {
 }
 
 void Panel::createNameImage(const String& displayName, bool isSecondImage, bool brighter) {
-    Font font(FontOptions(getStrConstant(FontFace), 20, Font::plain));
-    font.setExtraKerningFactor(-0.02);
+    Font font(FontOptions(getStrConstant(FontFace), 16, Font::plain));
 
     String lcName   = displayName.toLowerCase();
     int width       = roundToInt(Util::getStringWidth(font, lcName));
     int pow2        = NumberUtils::nextPower2(width + 3);
-    Image tempImg   = Image(Image::ARGB, pow2, 64, true);
+    Image tempImg   = Image(Image::ARGB, pow2 * textTextureScale, 64 * textTextureScale, true);
 
-    Graphics tempG(tempImg);
     Rectangle r(0, 0, pow2 - 2, 64);
 
-    tempG.setFont(font);
-    tempG.setColour(Colours::black);
-    tempG.drawText(lcName, r, Justification::topRight, false);
+    {
+        Graphics tempG(tempImg);
+        tempG.addTransform(AffineTransform::scale((float) textTextureScale));
+        tempG.setFont(font);
+        tempG.setColour(Colours::black);
+        tempG.drawText(lcName, r, Justification::topRight, false);
+    }
 
     GlowEffect shadow;
     shadow.setGlowProperties(1.5f, Colours::black);
+    Graphics tempG(tempImg);
     shadow.applyEffect(tempImg, tempG, 0.8f, 1.f);
 
     Image& dest = isSecondImage ? nameImageB : nameImage;
-    dest = Image(Image::ARGB, pow2, 64, true);
+    dest = Image(Image::ARGB, pow2 * textTextureScale, 64 * textTextureScale, true);
     Graphics g(dest);
 
     g.drawImageAt(tempImg, 0, 0);
+    g.addTransform(AffineTransform::scale((float) textTextureScale));
     g.setFont(font);
     g.setColour(Colour::greyLevel(1.f).withAlpha(brighter ? 0.65f : 0.6f));
     g.drawText(lcName, r, Justification::topRight, false);
@@ -964,9 +969,10 @@ void Panel::createGuideCurveTags() {
     auto& mg = getObj(MiscGraphics);
     Font& font = *mg.getAppropriateFont(fontScale);
 
-    Image tempImage(Image::ARGB, 512, 16, true);
+    Image tempImage(Image::ARGB, 512 * textTextureScale, 16 * textTextureScale, true);
     Graphics tempG(tempImage);
 
+    tempG.addTransform(AffineTransform::scale((float) textTextureScale));
     tempG.setFont(font);
     tempG.setColour(Colours::black);
 
@@ -978,10 +984,11 @@ void Panel::createGuideCurveTags() {
         position += width;
     }
 
-    guideCurveImage = Image(Image::ARGB, 512, 16, true);
+    guideCurveImage = Image(Image::ARGB, 512 * textTextureScale, 16 * textTextureScale, true);
     Graphics g(guideCurveImage);
 
     g.drawImageAt(tempImage, 1, 1);
+    g.addTransform(AffineTransform::scale((float) textTextureScale));
     g.setFont(font);
     g.setColour(Colour::greyLevel(1.f));
 

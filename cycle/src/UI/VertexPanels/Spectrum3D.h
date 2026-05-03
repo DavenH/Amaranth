@@ -52,6 +52,7 @@ public:
     void panelResized() override;
     void reconcileLoadedState() override;
     bool haveAnyValidLayers(bool isMags, bool haveAnyValidTimeLayers);
+    bool isScratchApplicable() override;
 
     /* Events */
     void layerChanged() override;

@@ -50,7 +50,7 @@ void Spectrum2D::init() {
     zoomPanel->tendZoomToTop = false;
     zoomPanel->validateRect("Spectrum2D::init");
 
-    createNameImage("Magn. Spectrum", false);
+    createNameImage("Magnitude Spectrum", false);
     createNameImage("Phase Spectrum", true);
 
     double value = 1.f;
@@ -380,7 +380,7 @@ void Spectrum2D::drawPartials() {
     for (i = start; i < widthMostSix; ++i) {
         x 	= scaledRamp[i];
         dx 	= (scaledRamp[i + 1] - x) - 2;
-        y 	= (int) scaledCol[i];
+        y 	= (int) scaledCol[i] + 1;
 
         gfx->drawLine(x, y, x + dx, y, false);
     }
@@ -388,7 +388,7 @@ void Spectrum2D::drawPartials() {
     for (; i < widthMostThree; ++i) {
         x = scaledRamp[i];
         dx = (scaledRamp[i + 1] - x) - 2;
-        y = (int) scaledCol[i];
+        y = (int) scaledCol[i] + 1;
 
         negAlpha = (widthMostThree - i) / float(widthMostThree - widthMostSix);
         negAlpha *= negAlpha;
@@ -403,7 +403,7 @@ void Spectrum2D::drawPartials() {
     for (i = start; i < widthMostSix; ++i) {
         x = scaledRamp[i];
         dx 	= scaledRamp[i + 1] - x - 2;
-        y 	= (int) scaledCol[i];
+        y 	= (int) scaledCol[i] + 1;
 
         gfx->drawLine(x, base, x, y, false);
         gfx->drawLine(x + dx, base, x + dx, y, false);
@@ -416,14 +416,14 @@ void Spectrum2D::drawPartials() {
 
         x 	= scaledRamp[i];
         dx 	= (scaledRamp[i + 1] - x) - 1;
-        y 	= (int) scaledCol[i];
+        y 	= (int) scaledCol[i] + 1;
 
         gfx->setCurrentColour(lineColor.withAlpha(negAlpha * 0.4f));
         gfx->drawLine(x, y, x, base, false);
         gfx->drawLine(x + dx - 1, y, x + dx - 1, base, false);
 
         gfx->setCurrentColour(black.withAlpha(negAlpha));
-        gfx->drawLine(x + dx, base, x + dx, jmin((int)y, (int) scaledCol[i + 1]), false);
+        gfx->drawLine(x + dx, base, x + dx, jmin((int)y, (int) scaledCol[i + 1] + 1), false);
     }
 }
 
@@ -480,18 +480,23 @@ int Spectrum2D::getLayerScratchChannel() {
     return spectrum3D->getLayerScratchChannel();
 }
 
+bool Spectrum2D::isScratchApplicable() {
+    return getSetting(ViewStage) >= ViewStages::PostEnvelopes;
+}
+
 void Spectrum2D::createScales() {
     info("creating scales for Spectrum2D\n");
 
     vector<Rectangle<float> > newScales;
 
-    scalesImage = Image(Image::ARGB, 1024, 16, true);
+    scalesImage = Image(Image::ARGB, 1024 * textTextureScale, 16 * textTextureScale, true);
     Graphics g(scalesImage);
+    g.addTransform(AffineTransform::scale((float) textTextureScale));
 
     auto& mg = getObj(MiscGraphics);
     int fontScale 	 = getSetting(PointSizeScale);
     Font& font 		 = *mg.getAppropriateFont(fontScale);
-    float alpha 	 = fontScale == 1 ? 0.35f : 0.6f;
+    float alpha 	 = fontScale == 1 ? 0.45f : 0.78f;
 
     g.setFont(font);
 
