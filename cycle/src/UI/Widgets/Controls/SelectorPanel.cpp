@@ -47,7 +47,7 @@ void SelectorPanel::paint(Graphics& g) {
 
 	g.setFont(font);
 	g.setColour(Colour::greyLevel(smallCnd ? 0.8f : 0.74f));
-	g.drawSingleLineText(text, (getWidth() - width) / 2 + (smallCnd ? -6 : smallList ? -4 : 1), getHeight() / 2 + 3);
+	g.drawSingleLineText(text, (getWidth() - width) / 2 + (smallCnd ? -6 : smallList ? -6 : 1), getHeight() / 2 + 3);
 	g.setFont(*getObj(MiscGraphics).getSilkscreen());
 
 	g.setColour(Colour::greyLevel(0.45f));

@@ -380,7 +380,7 @@ void Spectrum2D::drawPartials() {
     for (i = start; i < widthMostSix; ++i) {
         x 	= scaledRamp[i];
         dx 	= (scaledRamp[i + 1] - x) - 2;
-        y 	= (int) scaledCol[i];
+        y 	= (int) scaledCol[i] + 1;
 
         gfx->drawLine(x, y, x + dx, y, false);
     }
@@ -388,7 +388,7 @@ void Spectrum2D::drawPartials() {
     for (; i < widthMostThree; ++i) {
         x = scaledRamp[i];
         dx = (scaledRamp[i + 1] - x) - 2;
-        y = (int) scaledCol[i];
+        y = (int) scaledCol[i] + 1;
 
         negAlpha = (widthMostThree - i) / float(widthMostThree - widthMostSix);
         negAlpha *= negAlpha;
@@ -403,7 +403,7 @@ void Spectrum2D::drawPartials() {
     for (i = start; i < widthMostSix; ++i) {
         x = scaledRamp[i];
         dx 	= scaledRamp[i + 1] - x - 2;
-        y 	= (int) scaledCol[i];
+        y 	= (int) scaledCol[i] + 1;
 
         gfx->drawLine(x, base, x, y, false);
         gfx->drawLine(x + dx, base, x + dx, y, false);
@@ -416,14 +416,14 @@ void Spectrum2D::drawPartials() {
 
         x 	= scaledRamp[i];
         dx 	= (scaledRamp[i + 1] - x) - 1;
-        y 	= (int) scaledCol[i];
+        y 	= (int) scaledCol[i] + 1;
 
         gfx->setCurrentColour(lineColor.withAlpha(negAlpha * 0.4f));
         gfx->drawLine(x, y, x, base, false);
         gfx->drawLine(x + dx - 1, y, x + dx - 1, base, false);
 
         gfx->setCurrentColour(black.withAlpha(negAlpha));
-        gfx->drawLine(x + dx, base, x + dx, jmin((int)y, (int) scaledCol[i + 1]), false);
+        gfx->drawLine(x + dx, base, x + dx, jmin((int)y, (int) scaledCol[i + 1] + 1), false);
     }
 }
 
