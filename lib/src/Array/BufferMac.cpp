@@ -295,6 +295,8 @@ template<> Buffer<Complex32>& Buffer<Complex32>::addProduct(Buffer src1, Buffer 
     int size = jmin(sz, src1.size(), src2.size());
     CPLX_TRIADIC_SETUP(src1, src2, (*this));
 
+    // dest uses interleaved real/imag pointers with stride 2, so vDSP writes
+    // directly into ptr as std::complex<float> storage. Do not repack after.
     vDSP_zvma(&srcA, 2, &srcB, 2, &dest, 2, &dest, 2, vDSP_Length(size));
     return *this;
 }
