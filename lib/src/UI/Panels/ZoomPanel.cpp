@@ -305,8 +305,15 @@ void ZoomPanel::doZoomAction(int action) {
         rect.x = 0;
         rect.w *= 0.2f;
     } else if (action == ZoomToFull) {
-        rect.x = 0;
-        rect.w = 1.f;
+        if (context.haveHorz) {
+            rect.x = rect.xMinimum;
+            rect.w = rect.xMaximum - rect.xMinimum;
+        }
+
+        if (context.haveVert) {
+            rect.y = rect.yMinimum;
+            rect.h = rect.yMaximum - rect.yMinimum;
+        }
     }
 
     panelZoomChanged(false);

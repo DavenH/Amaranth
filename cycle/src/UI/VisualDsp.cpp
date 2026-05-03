@@ -5,6 +5,7 @@
 #include <Audio/Multisample.h>
 #include <Audio/PitchedSample.h>
 #include <Curve/EnvelopeMesh.h>
+#include <Curve/PathRepo.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <Thread/LockTracer.h>
@@ -40,6 +41,42 @@ const char* envGroupName(int envGroup) {
         default: return "unknown";
     }
 }
+
+bool logColumnNaNOnce(const char* label, const Column& column, int col) {
+    static StringArray loggedLabels;
+
+    for (int row = 0; row < column.size(); ++row) {
+        float value = column[row];
+
+        if (value != value) {
+            if (!loggedLabels.contains(label)) {
+                loggedLabels.add(label);
+                DBG("VisualDsp column contains NaN"
+                    + String(" label=") + label
+                    + " col=" + String(col)
+                    + " row=" + String(row)
+                    + " rows=" + String(column.size())
+                    + " midiKey=" + String(column.midiKey)
+                    + " x=" + String(column.x, 6));
+            }
+
+            jassertfalse;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool logColumnsNaNOnce(const char* label, const vector<Column>& columns) {
+    for (int col = 0; col < (int) columns.size(); ++col) {
+        if (logColumnNaNOnce(label, columns[col], col)) {
+            return true;
+        }
+    }
+
+    return false;
+}
 }
 
 VisualDsp::VisualDsp(SingletonRepo* repo) :
@@ -55,6 +92,7 @@ VisualDsp::VisualDsp(SingletonRepo* repo) :
         int size = 8 << fftOrderIdx;
         sizeToIndex[size] = fftOrderIdx;
         ffts[fftOrderIdx].allocate(size, Transform::DivFwdByN, true);
+        ffts[fftOrderIdx].setRemovesOffset(true);
     }
 }
 
@@ -76,22 +114,26 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
                              Buffer<Float32> zoomArray,
                              int layerGroup,
                              EnvRasterizer& rasterizer,
-                             bool doRestore)
+                             bool doRestore,
+                             MeshLibrary::EnvProps* propsOverride)
 {
-    MeshLibrary::EnvProps* props = meshLib->getCurrentEnvProps(layerGroup);
+    MeshLibrary::EnvProps* props = propsOverride != nullptr ? propsOverride
+                                                            : meshLib->getCurrentEnvProps(layerGroup);
 
     if(props == nullptr) {
         return;
     }
 
     int dim = getSetting(CurrentMorphAxis);
+    bool isScratchGroup = layerGroup == LayerGroups::GroupScratch;
+    bool isPitchGroup = layerGroup == LayerGroups::GroupPitch;
 
     if (dim == Vertex::Time) {
         if (props->active) {
             // degrade curve for surface rendering (accuracy not important)
             rasterizer.updateOffsetSeeds(getObj(MeshLibrary).getLayerGroup(layerGroup).size(), GuideCurvePanel::tableSize);
             rasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-            rasterizer.setLowresCurves(layerGroup != ScratchType && layerGroup != ScratchPanelType);
+            rasterizer.setLowresCurves(!isScratchGroup);
             rasterizer.setCalcDepthDimensions(false);
             rasterizer.setMode(EnvRasterizer::NormalState);
             rasterizer.calcCrossPoints();
@@ -109,12 +151,10 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
                 env.clip(0, 1);
             }
         } else {
-            if (layerGroup == ScratchType) {
+            if (isScratchGroup) {
                 zoomArray.copyTo(env);
-            } else if (layerGroup == ScratchPanelType) {
-                env.ramp(0, 1.f / float(Panel::linestripRes));
             } else {
-                env.set((layerGroup == PitchType) ? 0.5f : 1.f);
+                env.set(isPitchGroup ? 0.5f : 1.f);
             }
         }
 
@@ -254,7 +294,8 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
                 zoomProgress,
                 LayerGroups::GroupScratch,
                 *rast,
-                false
+                false,
+                meshLib.getEnvProps(LayerGroups::GroupScratch, i)
             );
         }
 
@@ -264,13 +305,23 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
             scratchEnv.section(scratchGroup.current * numColumns, numColumns),
             zoomProgress,
             LayerGroups::GroupScratch,
-            *rast
+            *rast,
+            true,
+            meshLib.getEnvProps(LayerGroups::GroupScratch, scratchGroup.current)
         );
         logRasterizerState("prepare-scratch-after-inline", *rast);
 
         Resampling::linResample(
             scratchEnv.withSize(numScratchLayers * numColumns),
             scratchEnvPanel.withSize(numScratchLayers * Panel::linestripRes)
+        );
+
+        getObj(PathRepo).setScratchContexts(
+            scratchEnv.withSize(numScratchLayers * numColumns),
+            scratchEnvPanel.withSize(numScratchLayers * Panel::linestripRes),
+            numScratchLayers,
+            numColumns,
+            Panel::linestripRes
         );
 
         updateScratchContexts(numColumns);
@@ -383,9 +434,7 @@ void VisualDsp::calcTimeDomain(int numColumns) {
 
         timeRasterizer->getMorphPosition()[primeDim].setValueDirect(zoomProgress[timeColIdx]);
 
-        if (numActiveLayers > 1) {
-            sumBuffer.zero();
-        }
+        sumBuffer.zero();
 
         for (int i = 0; i < timeGroup.size(); ++i) {
             Buffer<float> localBuffer = numActiveLayers == 1
@@ -400,10 +449,11 @@ void VisualDsp::calcTimeDomain(int numColumns) {
                 continue;
             }
 
-            float scratchTime =
-                    primeDim != Vertex::Time ? modTime :
-                    props->scratchChan == CommonEnums::Null || stage < ViewStages::PostEnvelopes ?
-                    zoomProgress[timeColIdx] : scratchContexts[props->scratchChan].gridBuffer[timeColIdx];
+            float scratchTime = primeDim != Vertex::Time ? modTime : zoomProgress[timeColIdx];
+
+            if (primeDim == Vertex::Time && stage >= ViewStages::PostEnvelopes) {
+                getScratchTimeForLayer(props, timeColIdx, zoomProgress[timeColIdx], scratchTime);
+            }
 
             rasterizer.setNoiseSeed(colIdx * 6197);
             rasterizer.setYellow(scratchTime);
@@ -439,6 +489,11 @@ void VisualDsp::calcSpectrogram(int numColumns) {
 
     vector<Column>& timeColumns = stage == ViewStages::PreProcessing ? preEnvCols : postEnvCols;
     auto& morphPanel = getObj(MorphPanel);
+
+    logColumnsNaNOnce(stage == ViewStages::PreProcessing
+                      ? "calcSpectrogram input preEnvCols"
+                      : "calcSpectrogram input postEnvCols",
+                      timeColumns);
 
     int nextPow2, numHarmonics;
 
@@ -539,6 +594,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
         }
 
         if (doForwardFFT) {
+            logColumnNaNOnce("calcSpectrogram before forward timeColumn", timeColumns[timeColIdx], timeColIdx);
             ffts[sizeIndex].forward(timeColumns[timeColIdx]);
             phaseBuf.add(MathConstants<float>::halfPi);
         } else {
@@ -559,10 +615,11 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                     continue;
                 }
 
-                float scratchTime = primeDim != Vertex::Time ? modTime :
-                                    spectLayer.props->scratchChan == CommonEnums::Null || stage < ViewStages::PostEnvelopes ?
-                                    zoomProgress[colIdx * fftProcInc] :
-                                    scratchContexts[spectLayer.props->scratchChan].gridBuffer[fftIdx];
+                float scratchTime = primeDim != Vertex::Time ? modTime : zoomProgress[colIdx * fftProcInc];
+
+                if (primeDim == Vertex::Time && stage >= ViewStages::PostEnvelopes) {
+                    getScratchTimeForLayer(spectLayer.props, fftIdx, zoomProgress[colIdx * fftProcInc], scratchTime);
+                }
 
                 float relativePan = Arithmetic::getRelativePan(spectLayer.props->pan, modPan);
 
@@ -629,10 +686,11 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                     continue;
                 }
 
-                float scratchTime = primeDim != Vertex::Time ? modTime :
-                                    layer.props->scratchChan == CommonEnums::Null || stage < ViewStages::PostEnvelopes ?
-                                    zoomProgress[colIdx * fftProcInc] :
-                                    scratchContexts[layer.props->scratchChan].gridBuffer[fftIdx];
+                float scratchTime = primeDim != Vertex::Time ? modTime : zoomProgress[colIdx * fftProcInc];
+
+                if (primeDim == Vertex::Time && stage >= ViewStages::PostEnvelopes) {
+                    getScratchTimeForLayer(layer.props, fftIdx, zoomProgress[colIdx * fftProcInc], scratchTime);
+                }
 
                 if(colIdx % colPhaseRatio == 0) {
                     phaseRasterizer->setNoiseSeed(colIdx * 671);
@@ -666,17 +724,25 @@ void VisualDsp::calcSpectrogram(int numColumns) {
         // todo do we need to store this data if stage >= postfx ? ? ?
         magBuf.copyTo(fftCol);
         fftCol.mul(2.f);
-        Arithmetic::applyLogMapping(fftCol, getConstant(FreqTensionScale));
+        Arithmetic::applyLogMapping(fftCol, getConstant(AmpTensionScale));
 
         fftCol.threshGT(1.f);
 
         phaseBuf.copyTo(phasePreFXCols[colIdx]);
 
         if (doInverseFFT) {
-            phaseBuf.add(-MathConstants<float>::twoPi);
+            logColumnNaNOnce("calcSpectrogram before inverse fftPreFXCol", fftPreFXCols[colIdx], colIdx);
+            phaseBuf.add(-MathConstants<float>::halfPi);
+
+            int numBinsToClear = halfPow2 - numHarmonics;
+            if (numBinsToClear > 0) {
+                ffts[sizeIndex].getMagnitudes().offset(numHarmonics).withSize(numBinsToClear).zero();
+                ffts[sizeIndex].getPhases().offset(numHarmonics).withSize(numBinsToClear).zero();
+            }
+
             ffts[sizeIndex].inverse(timeColumns[timeColIdx]);
 
-            jassert(timeColumns[timeColIdx].front() == timeColumns[timeColIdx].front());
+            logColumnNaNOnce("calcSpectrogram after inverse timeColumn", timeColumns[timeColIdx], timeColIdx);
         }
     }
 
@@ -747,6 +813,38 @@ void VisualDsp::updateScratchContexts(int numColumns) {
 
         scratchContexts.push_back(context);
     }
+}
+
+bool VisualDsp::getScratchTimeForLayer(MeshLibrary::Properties* props,
+                                       int sampleIndex,
+                                       float fallback,
+                                       float& scratchTime) {
+    scratchTime = fallback;
+
+    if (props == nullptr || props->scratchChan == CommonEnums::Null) {
+        return false;
+    }
+
+    if (!isPositiveAndBelow(props->scratchChan, (int) scratchContexts.size())) {
+        return false;
+    }
+
+    MeshLibrary::EnvProps* scratchProps = meshLib->getEnvProps(LayerGroups::GroupScratch, props->scratchChan);
+    EnvelopeMesh* scratchMesh = meshLib->getEnvMesh(LayerGroups::GroupScratch, props->scratchChan);
+
+    if (scratchProps == nullptr || scratchMesh == nullptr || !scratchProps->active ||
+        !scratchMesh->hasEnoughCubesForCrossSection()) {
+        return false;
+    }
+
+    Buffer<float> scratchBuffer = scratchContexts[props->scratchChan].gridBuffer;
+
+    if (!isPositiveAndBelow(sampleIndex, scratchBuffer.size())) {
+        return false;
+    }
+
+    scratchTime = scratchBuffer[sampleIndex];
+    return true;
 }
 
 void VisualDsp::calcWaveSpectrogram(int numColumns) {
@@ -1121,13 +1219,16 @@ void VisualDsp::processThroughEnvelopes(int numColumns) {
     if(stage == ViewStages::PostEnvelopes) {
         processFrequency(postEnvCols, false);
     }
+
+    logColumnsNaNOnce("processThroughEnvelopes output postEnvCols", postEnvCols);
 }
 
 float VisualDsp::getVoiceFrequencyCents(int unisonIndex) {
     // possibly updated by parameter smoothing
     double pitchEnvVal = 0.5;
 
-    if (meshLib->getCurrentProps(LayerGroups::GroupPitch)) {
+    MeshLibrary::Properties* pitchProps = meshLib->getCurrentProps(LayerGroups::GroupPitch);
+    if (pitchProps != nullptr && pitchProps->active) {
         float y = getObj(EnvPitchRast).getSustainLevel(EnvRasterizer::headUnisonIndex + unisonIndex);
 
         NumberUtils::constrain(y, 0.01f, 0.99f);
@@ -1159,8 +1260,9 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
     bool isTimeDimension = getSetting(CurrentMorphAxis) == Vertex::Time;
     bool interpolate 	 = ! timeRasterizer->isDetailReduced();
     float time 			 = getObj(MorphPanel).getValue(Vertex::Time);
-    float unisonScale 	 = powf(2.f, -(unison->getOrder(false) - 1) * 0.14f);
-    int unisonOrder 	 = processUnison ? unison->getOrder(false) : 1;
+    int rawUnisonOrder   = unison->getOrder(false);
+    float unisonScale 	 = powf(2.f, -(rawUnisonOrder - 1) * 0.14f);
+    int unisonOrder 	 = processUnison ? rawUnisonOrder : 1;
 
     vector<MeshRasterizer::GuideCurveContext> contexts(unisonOrder);
 
@@ -1433,7 +1535,7 @@ void VisualDsp::processThroughEffects(int numColumns) {
     bool haveWaveshaper 	= waveshaper.isEnabled();
     bool haveIrModeller 	= tubeModel.willBeEnabled();
     bool haveEqualizer		= equalizer.isEnabled();
-    bool haveUnison 		= unison->getOrder(false) > 1;
+    bool haveUnison 		= unison->isEnabled() && unison->getOrder(false) > 1;
     float volumeScale 		= getObj(OscControlPanel).getVolumeScale();
 
     for (auto & postFXCol : postFXCols) {
@@ -1490,7 +1592,7 @@ void VisualDsp::processThroughEffects(int numColumns) {
         copyArrayOrParts(fftPreFXCols, fftPostFXCols);
         copyArrayOrParts(phasePreFXCols, phasePostFXCols);
 
-        int tension = getConstant(FreqTensionScale);
+        int tension = getConstant(AmpTensionScale);
 
         // need to first unmap amplitudes to apply volume scaling appropriately
         for (auto& fftPostFXCol: fftPostFXCols) {
@@ -1605,6 +1707,11 @@ void VisualDsp::GraphicProcessor::performUpdate(UpdateType update) {
             case FXStage:
                 processor->processThroughEffects(numColumns); break;
         }
+
+        getObj(Waveform3D).bakeTexturesNextRepaint();
+        getObj(Spectrum3D).bakeTexturesNextRepaint();
+        getObj(Waveform3D).repaint();
+        getObj(Spectrum3D).repaint();
     }
 }
 
@@ -1727,7 +1834,7 @@ void VisualDsp::resizeArrays(const ResizeParams& params) {
         fftGridSize = 0;
 
         for (int i = 0; i < numColumns; ++i) {
-            key = i * (Constants::HighestMidiNote - Constants::LowestMidiNote) / numColumns + getConstant(LowestMidiNote);
+            key = i * (Constants::HighestMidiNote - Constants::LowestMidiNote) / numColumns + Constants::LowestMidiNote;
             getNumHarmonicsAndNextPower(numHarmonics, nextPow2, key);
 
             timeSizes[i] 	= nextPow2;

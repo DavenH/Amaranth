@@ -64,7 +64,7 @@ bool Equalizer::doParamChange(int index, double value, bool doFurtherUpdate) {
     if (index >= Band1Gain && index <= Band5Gain) {
         didChange = partitions[partIdx].gainDB.setTargetValue(calcGain(value));
     } else {
-        didChange = partitions[partIdx].centreFreq.setTargetValue(calcFreq(value, getConstant(FreqTensionScale)));
+        didChange = partitions[partIdx].centreFreq.setTargetValue(calcFreq(value, getConstant(AmpTensionScale)));
     }
 
     if (doFurtherUpdate && didChange) {

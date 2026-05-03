@@ -1103,15 +1103,15 @@ void EnvelopeInter2D::enablementsChanged() {
     MeshLibrary::LayerGroup& pitchGroup = meshLib.getLayerGroup(LayerGroups::GroupPitch);
 
     for (int i = 0; i < (int) scratchGroup.layers.size(); ++i) {
-        anyScratchActive |= meshLib.getCurrentProps(i)->active;
+        anyScratchActive |= scratchGroup.layers[i].props->active;
     }
 
     for (int i = 0; i < (int) volumeGroup.layers.size(); ++i) {
-        anyVolumeActive |= meshLib.getCurrentProps(i)->active;
+        anyVolumeActive |= volumeGroup.layers[i].props->active;
     }
 
     for (int i = 0; i < (int) pitchGroup.layers.size(); ++i) {
-        anyPitchActive |= meshLib.getCurrentProps(i)->active;
+        anyPitchActive |= pitchGroup.layers[i].props->active;
     }
 
     scratchIcon.setPowered(anyScratchActive);
@@ -1120,8 +1120,9 @@ void EnvelopeInter2D::enablementsChanged() {
 
     MeshLibrary::EnvProps* props = meshLib.getCurrentEnvProps(getSetting(CurrentEnvGroup));
 
-    if (props != nullptr)
+    if (props != nullptr) {
         configIcon.setPowered(props->dynamic || props->global || props->scale != 1 || props->tempoSync);
+    }
 }
 
 

@@ -115,11 +115,16 @@ void Transform::forward(Buffer<float> src) {
     if (convertToCart) {
         DSPSplitComplex temp;
         int hsize = size / 2;
+        int complexBins = hsize - 1;
         temp.realp = fftBuffer.get() + 1;
         temp.imagp = fftBuffer.get() + hsize + 1;
-        vDSP_zvmags(&temp, 1, magnitudes, 1, hsize);
-        vvsqrtf(magnitudes.get(), magnitudes.get(), &hsize);
-        vDSP_zvphas(&temp, 1, phases, 1, hsize);
+        vDSP_zvmags(&temp, 1, magnitudes, 1, complexBins);
+        vvsqrtf(magnitudes.get(), magnitudes.get(), &complexBins);
+        vDSP_zvphas(&temp, 1, phases, 1, complexBins);
+
+        float nyquist = fftBuffer[hsize];
+        magnitudes[hsize - 1] = nyquist < 0.f ? -nyquist : nyquist;
+        phases[hsize - 1] = nyquist < 0.f ? MathConstants<float>::pi : 0.f;
     }
   #else
     ippsFFTFwd_RToCCS_32f(src, fftBuffer, spec, workBuff);
@@ -136,10 +141,11 @@ void Transform::forward(Buffer<float> src) {
 void Transform::inverse(const Buffer<Complex32>& fftInput, const Buffer<float>& dest) {
   #ifdef USE_ACCELERATE
     int size = 1 << order;
+    int packedComplexSize = size / 2 + 1;
+    jassert(fftInput.size() == packedComplexSize);
+
     // this mutates the fftBuffer, referenced by the splitComplex real/imag pointers
     vDSP_ctoz(reinterpret_cast<DSPComplex *>(fftInput.get()), 1, &splitComplex, 1, size / 2);
-
-    jassert(fftInput.size() == size + 1);
   #elif defined(USE_IPP)
     Buffer<float> oldBuffer = fftBuffer;
     fftBuffer = fftInput.toType<Ipp32f>();
@@ -163,12 +169,21 @@ void Transform::inverse(Buffer<float> dest) {
   #ifdef USE_ACCELERATE
     if (convertToCart) {
         int hsize = size / 2;
+        int complexBins = hsize - 1;
         float* real = fftBuffer.get() + 1;
         float* imag = fftBuffer.get() + hsize + 1;
-        vvcosf(real, phases.get(), &hsize);
-        vvsinf(imag, phases.get(), &hsize);
-        vDSP_vmul(real, 1, magnitudes.get(), 1, real, 1, hsize);
-        vDSP_vmul(imag, 1, magnitudes.get(), 1, imag, 1, hsize);
+        vvcosf(real, phases.get(), &complexBins);
+        vvsinf(imag, phases.get(), &complexBins);
+        vDSP_vmul(real, 1, magnitudes.get(), 1, real, 1, complexBins);
+        vDSP_vmul(imag, 1, magnitudes.get(), 1, imag, 1, complexBins);
+
+        float nyquistPhase = phases[hsize - 1];
+        float nyquistSign = (nyquistPhase < -MathConstants<float>::halfPi || nyquistPhase > MathConstants<float>::halfPi) ? -1.f : 1.f;
+        fftBuffer[hsize] = magnitudes[hsize - 1] * nyquistSign;
+    }
+
+    if (removeOffset) {
+        fftBuffer[0] = 0;
     }
 
     vDSP_fft_zrip(fftSetup, &splitComplex, 1, order, FFT_INVERSE);
@@ -181,6 +196,9 @@ void Transform::inverse(Buffer<float> dest) {
   #else
     if (convertToCart) {
         ippsPolarToCart_32fc(magnitudes, phases, (Complex32*)fftBuffer.get() + 1, size/2);
+    }
+    if (removeOffset) {
+        fftBuffer[0] = 0;
     }
     ippsFFTInv_CCSToR_32f(fftBuffer, dest, spec, workBuff);
   #endif

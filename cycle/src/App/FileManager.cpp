@@ -27,6 +27,7 @@
 #include "../Inter/EnvelopeInter2D.h"
 #include "../UI/Dialogs/PresetPage.h"
 #include "../UI/Effects/IrModellerUI.h"
+#include "../UI/Effects/UnisonUI.h"
 #include "../UI/Effects/WaveshaperUI.h"
 #include "../UI/Panels/GeneralControls.h"
 #include "../UI/Panels/MainPanel.h"
@@ -230,6 +231,9 @@ void FileManager::doPostPresetLoad() {
 
     getObj(Updater).update(UpdateSources::SourceAll, RestoreDetail);
     getObj(Initializer).resetAll();
+    getObj(Waveform3D).reconcileLoadedState();
+    getObj(Spectrum3D).reconcileLoadedState();
+    getObj(UnisonUI).reconcileLoadedState(true);
     getObj(EditWatcher).update();
 }
 

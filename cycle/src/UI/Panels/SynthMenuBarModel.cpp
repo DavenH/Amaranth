@@ -368,6 +368,7 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 			}
 
 			if (Util::assignAndWereDifferent(size, newSize)) {
+				repo->resizeVertices();
 				getObj(Updater).update(UpdateSources::SourceAll, Repaint);
 			}
 		} else if (item >= Reduction1x && item <= Reduction5x) {

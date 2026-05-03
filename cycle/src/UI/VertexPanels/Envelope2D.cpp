@@ -771,25 +771,25 @@ bool Envelope2D::readJSON(const var& object) {
     }
 
     // TODO re-evaluate this after mesh-listener cleanup merge
-    // auto bindEnvRasterizer = [this, &meshLibrary](int groupId, const char* label) {
-    //     auto* rast = static_cast<EnvRasterizer*>(e2Interactor->getRast(groupId));
-    //     auto* mesh = meshLibrary.getCurrentEnvMesh(groupId);
+    auto bindEnvRasterizer = [this, &meshLibrary](int groupId, const char* label) {
+        auto* rast = static_cast<EnvRasterizer*>(e2Interactor->getRast(groupId));
+        auto* mesh = meshLibrary.getCurrentEnvMesh(groupId);
+
+        DBG(String::formatted("Envelope2D::readJSON rebinding %s rast=%p mesh=%p verts=%d cubes=%d",
+                              label,
+                              rast,
+                              mesh,
+                              mesh != nullptr ? mesh->getNumVerts() : -1,
+                              mesh != nullptr ? mesh->getNumCubes() : -1));
+
+        jassert(rast != nullptr);
+        rast->setMesh(mesh);
+        rast->performUpdate(Update);
+    };
     //
-    //     DBG(String::formatted("Envelope2D::readJSON rebinding %s rast=%p mesh=%p verts=%d cubes=%d",
-    //                           label,
-    //                           rast,
-    //                           mesh,
-    //                           mesh != nullptr ? mesh->getNumVerts() : -1,
-    //                           mesh != nullptr ? mesh->getNumCubes() : -1));
-    //
-    //     jassert(rast != nullptr);
-    //     rast->setMesh(mesh);
-    //     rast->performUpdate(Update);
-    // };
-    //
-    // bindEnvRasterizer(LayerGroups::GroupVolume, "volume");
-    // bindEnvRasterizer(LayerGroups::GroupPitch, "pitch");
-    // bindEnvRasterizer(LayerGroups::GroupScratch, "scratch");
+    bindEnvRasterizer(LayerGroups::GroupVolume, "volume");
+    bindEnvRasterizer(LayerGroups::GroupPitch, "pitch");
+    bindEnvRasterizer(LayerGroups::GroupScratch, "scratch");
 
     getSetting(CurrentEnvGroup) = PresetJson::intProperty(object, "currentGroup", getSetting(CurrentEnvGroup));
     e2Interactor->enablementsChanged();

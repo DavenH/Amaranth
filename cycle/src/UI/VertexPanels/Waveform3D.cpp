@@ -2,13 +2,13 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
+#include <Binary/Gradients.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/Layout/DynamicSizeContainer.h>
-#include <Binary/Gradients.h>
+#include <UI/Panels/OpenGLPanel3D.h>
 
 #include "Waveform3D.h"
-
-#include <UI/Panels/OpenGLPanel3D.h>
+#include "Spectrum3D.h"
 
 #include "../CycleDefs.h"
 #include "../Panels/Morphing/MorphPanel.h"
@@ -17,6 +17,7 @@
 #include "../Widgets/Controls/Spacers.h"
 #include "../../App/CycleTour.h"
 #include "../../Audio/SynthAudioSource.h"
+#include "../../Curve/GraphicRasterizer.h"
 #include "../../Inter/WaveformInter2D.h"
 #include "../../Inter/WaveformInter3D.h"
 #include "../../UI/Effects/IrModellerUI.h"
@@ -27,8 +28,7 @@
 
 #define panelName "Waveform3D"
 
-
-Waveform3D::Waveform3D(SingletonRepo* repo) : 
+Waveform3D::Waveform3D(SingletonRepo* repo) :
         Panel3D				(repo, panelName, this, UpdateSources::SourceWaveform3D, false, true)
     ,	SingletonAccessor	(repo, panelName)
     ,	LayerSelectionClient(repo)
@@ -50,6 +50,7 @@ void Waveform3D::init() {
     interactor3D  	= surfInteractor;
     setInteractor(interactor3D);
     interactor3D->setRasterizer(&getObj(TimeRasterizer));
+    surfInteractor->updateRastDims();
     surfInteractor->updateSelectionClient();
 
     zoomPanel->tendZoomToCentre = false;
@@ -91,6 +92,32 @@ void Waveform3D::panelResized() {
     Panel::panelResized();
 
     getObj(VisualDsp).surfaceResized();
+}
+
+void Waveform3D::zoomUpdated(int updateSource) {
+    Panel3D::zoomUpdated(updateSource);
+
+    if (updateSource != UpdateSources::SourceWaveform3D &&
+        updateSource != UpdateSources::SourceSpectrum3D) {
+        return;
+    }
+
+    // TODO: this seems to be better served with some kind of publisher/listener pattern
+    Spectrum3D& spectrum = getObj(Spectrum3D);
+    ZoomRect& source = updateSource == UpdateSources::SourceWaveform3D
+                           ? getZoomPanel()->rect
+                           : spectrum.getZoomPanel()->rect;
+    ZoomRect& dest = updateSource == UpdateSources::SourceWaveform3D
+                         ? spectrum.getZoomPanel()->rect
+                         : getZoomPanel()->rect;
+
+    dest.x = source.x;
+    dest.w = source.w;
+
+    spectrum.getZoomPanel()->panelZoomChanged(false);
+    spectrum.updateBackground(false);
+    spectrum.bakeTexturesNextRepaint();
+    spectrum.repaint();
 }
 
 void Waveform3D::buttonClicked(Button* button) {
@@ -159,6 +186,17 @@ void Waveform3D::reset() {
     panelControls->resetSelector();
 }
 
+void Waveform3D::reconcileLoadedState() {
+    if (panelControls == nullptr) {
+        return;
+    }
+
+    panelControls->resetSelector();
+    panelControls->enableCurrent.setHighlit(getCurrentProperties()->active);
+    updateScratchComboBox();
+    setKnobValuesImplicit();
+}
+
 void Waveform3D::layerChanged() {
     progressMark
 
@@ -168,12 +206,11 @@ void Waveform3D::layerChanged() {
     getObj(WaveformInter2D).state.reset();
     getObj(VertexPropertiesPanel).updateSliderValues(true);
 
-    panelControls->enableCurrent.setHighlit(getObj(MeshLibrary).getCurrentProps(LayerGroups::GroupTime)->active);
+    reconcileLoadedState();
 
-    updateScratchComboBox();
-    setKnobValuesImplicit();
-
+    // TODO: setMesh() ?? I thought MeshLibrary served all of this and notified.
     getObj(TimeRasterizer).setMesh(interactor->getMesh());
+    // TODO: two updates is slightly weird
     getObj(TimeRasterizer).update(Update);
     getObj(WaveformInter2D).update(Update);
     getObj(WaveformInter3D).shallowUpdate();
@@ -220,8 +257,11 @@ void Waveform3D::doGlobalUIUpdate(bool force) {
 }
 
 void Waveform3D::layerChanged(int layerGroup, int index) {
-    panelControls->resetSelector();
-    setKnobValuesImplicit();
+    if (layerGroup != LayerGroups::GroupTime) {
+        return;
+    }
+
+    reconcileLoadedState();
 }
 
 void Waveform3D::layerGroupAdded(int layerGroup) {
@@ -347,4 +387,22 @@ Buffer<float> Waveform3D::getColumnArray() {
 
 const vector <Column>& Waveform3D::getColumns() {
     return getObj(VisualDsp).getTimeColumns();
+}
+
+CriticalSection& Waveform3D::getGridLock() {
+    int stage = getSetting(ViewStage);
+
+    if (stage == ViewStages::PostFX) {
+        return getObj(VisualDsp).getColumnLock(VisualDsp::FXColType);
+    }
+    if (stage == ViewStages::PreProcessing) {
+        return getObj(VisualDsp).getColumnLock(VisualDsp::TimeColType);
+    }
+
+    return getObj(VisualDsp).getColumnLock(VisualDsp::EnvColType);
+}
+
+bool Waveform3D::isSurfaceDetailReduced() {
+    auto* rasterizer = dynamic_cast<GraphicRasterizer*>(interactor->getRasterizer());
+    return rasterizer != nullptr && rasterizer->isDetailReduced();
 }

@@ -140,7 +140,10 @@ void IrModeller::rasterizeGraphicImpulse() {
     }
 
     filterImpulse(graphic);
-    // graphicConv.init(graphicConv.getBlockSize(), graphic.impulse);
+
+    if (graphicConv.getBlockSize() > 0) {
+        graphicConv.init(graphicConv.getBlockSize(), graphic.impulse);
+    }
 }
 
 void IrModeller::filterImpulse(ConvState& chan) {

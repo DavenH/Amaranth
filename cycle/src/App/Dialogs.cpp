@@ -83,14 +83,14 @@ void Dialogs::showPresetSaveAsDialog() {
     }
 
     String presetsStr("Presets");
-    WildcardFileFilter filter(presetStr, String(), presetsStr);
+    fileFilter = std::make_unique<WildcardFileFilter>(presetStr, String(), presetsStr);
     String filename = getObj(Directories).getUserPresetDir() + deets.getName();
     File absfile = File::getCurrentWorkingDirectory().getChildFile(filename);
 
     auto browser = std::make_unique<FileBrowserComponent>(
             FileBrowserComponent::saveMode | FileBrowserComponent::canSelectFiles
                 | FileBrowserComponent::warnAboutOverwriting,
-            absfile, &filter, nullptr);
+            absfile, fileFilter.get(), nullptr);
 
     auto* dialogBox = new FileChooserDialog("Save Preset", String(), std::move(browser),
                                             true, Colour::greyLevel(0.08f), deets);
@@ -228,13 +228,20 @@ void Dialogs::showOpenPresetDialog() {
 
 #if !PLUGIN_MODE
 void Dialogs::showAudioSettings() {
-    AudioDeviceSelectorComponent audioSettingsComp(
+    auto* audioSettingsComp = new AudioDeviceSelectorComponent(
             *(getObj(AudioHub).getAudioDeviceManager()), 0, 1, 2, 2, true, false, true, false);
 
-    audioSettingsComp.setSize(600, 500);
-    DialogWindow::showDialog("Audio Settings", &audioSettingsComp,
-                             mainPanel, Colour::greyLevel(0.08f),
-                             true, true, true);
+    audioSettingsComp->setSize(600, 500);
+
+    DialogWindow::LaunchOptions options;
+    options.dialogTitle = "Audio Settings";
+    options.content.setOwned(audioSettingsComp);
+    options.componentToCentreAround = mainPanel;
+    options.dialogBackgroundColour = Colour::greyLevel(0.08f);
+    options.escapeKeyTriggersCloseButton = true;
+    options.resizable = true;
+    options.useBottomRightCornerResizer = true;
+    options.launchAsync();
 }
 #endif
 
@@ -297,7 +304,8 @@ void Dialogs::promptForSaveModally(const std::function<void(bool)>& completionCa
     progressMark
 
     if (! watcher->getHaveEdited()) {
-        completionCallback(false);
+        DBG("Dialogs::promptForSaveModally haven't edited");
+        completionCallback(true);
         return;
     }
 

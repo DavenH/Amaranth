@@ -32,7 +32,7 @@ UnisonUI::UnisonUI(SingletonRepo* repo, Effect* effect) :
     int maxDetune = getConstant(MaxDetune);
 
     using namespace Ops;
-    StringFunction ordString(StringFunction(0).mul(maxOrder).add(1).max(maxOrder));
+    StringFunction ordString(StringFunction(0).mul(maxOrder).add(1).min(maxOrder));
     StringFunction fineString(StringFunction(1).mul(2.f).sub(1.f));
     StringFunction detString(StringFunction(1).mul(maxDetune));
 
@@ -93,6 +93,16 @@ void UnisonUI::effectEnablementChanged(bool sendUIUpdate, bool sendDspUpdate) {
     }
 }
 
+void UnisonUI::reconcileLoadedState(bool sendUIUpdate) {
+    unison->setGroupMode(isGroupMode());
+    unison->syncParamsFromUI();
+
+    if (sendUIUpdate && enabled) {
+        paramGroup->forceNextUIUpdate = true;
+        paramGroup->triggerRefreshUpdate();
+    }
+}
+
 void UnisonUI::comboBoxChanged(ComboBox* box) {
     if (box == &modeBox) {
         getObj(EditWatcher).setHaveEditedWithoutUndo(true);
@@ -105,6 +115,8 @@ void UnisonUI::modeChanged(bool updateAudio, bool graphicUpdate) {
 
     bool falseIfGroupMode = id != Group;
     bool trueIfGroupMode = id == Group;
+
+    unison->setGroupMode(trueIfGroupMode);
 
     addRemover.setVisible(falseIfGroupMode);
     voiceSelector.setVisible(falseIfGroupMode);
@@ -284,9 +296,11 @@ bool UnisonUI::readXML(const XmlElement* element) {
 
         // so that group knobs get set
         modeBox.setSelectedId(Group, dontSendNotification);
+        unison->setGroupMode(true);
         paramGroup->readKnobXML(effectElem);
 
         modeBox.setSelectedId(isGroup ? Group : Single, dontSendNotification);
+        unison->setGroupMode(isGroup);
 
         XmlElement* voiceDataElem = effectElem->getChildByName("VoiceData");
         if(voiceDataElem != nullptr) {
@@ -328,12 +342,15 @@ bool UnisonUI::readXML(const XmlElement* element) {
             modeChanged(false, false);
         }
 
+        reconcileLoadedState(true);
         repaint();
     } else if (isGroupMode()) {
         ScopedBooleanSwitcher sbs(paramGroup->updatingAllSliders);
 
         for (int i = 0; i <= Unison::Jitter; ++i)
             paramGroup->setKnobValue(i, 0.5, false);
+
+        reconcileLoadedState(false);
     }
 
     return true;
@@ -375,8 +392,10 @@ bool UnisonUI::readJSON(const var& object) {
     setEffectEnabled(PresetJson::boolProperty(object, "enabled", false), false, true);
 
     modeBox.setSelectedId(Group, dontSendNotification);
+    unison->setGroupMode(true);
     (void) paramGroup->readKnobJSON(PresetJson::property(object, "knobs"));
     modeBox.setSelectedId(isGroup ? Group : Single, dontSendNotification);
+    unison->setGroupMode(isGroup);
 
     if (voices != nullptr) {
         vector<Unison::UnivoiceData> data;
@@ -403,6 +422,7 @@ bool UnisonUI::readJSON(const var& object) {
         modeChanged(false, false);
     }
 
+    reconcileLoadedState(true);
     repaint();
     return true;
 }

@@ -441,6 +441,10 @@ bool MeshLibrary::readJSON(const var& object) {
 }
 
 MeshLibrary::Properties::Properties() {
+    active = true;
+    range = 0.5f;
+    pan.setValueDirect(0.5f);
+
     smoothedParameters.emplace_back(&pan);
     smoothedParameters.emplace_back(&fineTune);
 
@@ -458,8 +462,8 @@ bool MeshLibrary::Properties::readXML(const XmlElement* layerElem) {
     range       = layerElem->getDoubleAttribute("range", range);
     scratchChan = layerElem->getIntAttribute("scratch-chan", scratchChan);
 
-    fineTune.setTargetValue(layerElem->getDoubleAttribute("fine-tune", fineTune.getTargetValue()));
-    pan.setTargetValue(layerElem->getDoubleAttribute("pan", pan.getTargetValue()));
+    fineTune.setValueDirect(layerElem->getDoubleAttribute("fine-tune", fineTune.getTargetValue()));
+    pan.setValueDirect(layerElem->getDoubleAttribute("pan", pan.getTargetValue()));
 
     return true;
 }
@@ -512,8 +516,8 @@ bool MeshLibrary::Properties::readJSON(const var& object) {
     mode = PresetJson::intProperty(object, "mode", mode);
     scratchChan = PresetJson::intProperty(object, "scratchChannel", scratchChan);
 
-    fineTune.setTargetValue(PresetJson::doubleProperty(object, "fineTune", fineTune.getTargetValue()));
-    pan.setTargetValue(PresetJson::doubleProperty(object, "pan", pan.getTargetValue()));
+    fineTune.setValueDirect(PresetJson::doubleProperty(object, "fineTune", fineTune.getTargetValue()));
+    pan.setValueDirect(PresetJson::doubleProperty(object, "pan", pan.getTargetValue()));
 
     return true;
 }

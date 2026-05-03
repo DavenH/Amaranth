@@ -13,7 +13,7 @@ void Dragger::mouseDown(const MouseEvent& e) {
     listeners.call(&Listener::dragStarted);
 
     if (type == Horz) {
-        startY = getScreenY() - getConstant(TitleBarHeight);
+        startY = getScreenY() - Constants::TitleBarHeight;
         startAH = pair->one->getHeight();
         startBH = pair->two->getHeight();
         startBY = pair->two->getY();

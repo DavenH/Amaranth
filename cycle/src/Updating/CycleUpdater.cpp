@@ -163,6 +163,7 @@ void CycleUpdater::createUpdateGraph() {
     eqlzerUI	->marks(effectsProc);
     env2Itr		->marks(envDlg);
     env3Itr		->marks(envDlg);
+    unisonItr	->marks(timeProc);
 
     Node* universalNodes[] 	= { morphNode, spectDlg, envDlg, guideCurveRast, wshpRast, irModelRast,
                                 scratchRast, irModelDsp, unison, timeProc, time2Rast, synthNode };
@@ -191,7 +192,8 @@ void CycleUpdater::createUpdateGraph() {
     envDlg		->updatesAfter(morphNode);
 
     Node* startingNodes[]	= { morphNode, time2Rast, envDlg, irModelDsp, wshpDsp, effectsProc, timeProc,
-                                unisonItr, synthNode, irModelRast, wshpRast, guideCurveRast, scratchRast, spectDlg };
+                                unison, unisonItr, synthNode, irModelRast, wshpRast, guideCurveRast,
+                                scratchRast, spectDlg };
 
     updater->getGraph().addHeadNodes(Array<Node*>(startingNodes, numElementsInArray(startingNodes)));
 
@@ -336,6 +338,7 @@ void CycleUpdater::viewStageChanged(bool force) {
     if (force || (viewStage >= ViewStages::PostFX) != (lastViewStage >= ViewStages::PostFX)) {
         if (viewStage >= ViewStages::PostFX) {
             envProc		->updatesAfter	(unison);
+            spectProc	->updatesAfter	(unison);
             spectUIs	->updatesAfter	(effectsProc);
             spectUIs	->doesntUpdateAfter	(spectProc);
             effectsProc	->updatesAfter	(spectProc);
@@ -345,6 +348,7 @@ void CycleUpdater::viewStageChanged(bool force) {
             setDspFXConnections();
         } else {
             envProc	->doesntUpdateAfter		(unison);
+            spectProc->doesntUpdateAfter	(unison);
             spectUIs->updatesAfter			(spectProc);
             spectUIs->doesntUpdateAfter		(effectsProc);
             effectsProc	->doesntUpdateAfter	(spectProc);

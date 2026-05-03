@@ -17,7 +17,6 @@
 #include "../../Curve/RasterizerData.h"
 #include "../../Inter/Interactor.h"
 #include "../../Obj/Color.h"
-#include "../../Thread/LockTracer.h"
 #include "../../Util/MicroTimer.h"
 #include "../../Util/Util.h"
 
@@ -68,7 +67,7 @@ Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
 
     ,   nameTexA                (nullptr)
     ,   nameTexB                (nullptr)
-    ,   guideCurveTex                 (nullptr)
+    ,   guideCurveTex           (nullptr)
     ,   grabTex                 (nullptr)
     ,   scalesTex               (nullptr)
 
@@ -95,6 +94,18 @@ PanelRenderer* getRenderer(Panel* panel) {
     return panel->getPanelRenderer();
 }
 
+bool shouldDrawPanelPass(const char* passName) {
+    const char* ablation = std::getenv("CYCLE_PANEL_ABLATE");
+
+    if (ablation == nullptr) {
+        return true;
+    }
+
+    String flags(ablation);
+    return ! flags.containsIgnoreCase("all")
+        && ! flags.containsIgnoreCase(passName);
+}
+
 }
 
 Panel::~Panel() {
@@ -107,6 +118,7 @@ void Panel::setGraphicsHelper(CommonGfx* gfx) {
 
 void Panel::setComponent(Component* comp) {
     this->comp = comp;
+    componentChanged();
     bindInteractorToComponent();
 }
 
@@ -142,41 +154,63 @@ void Panel::render() {
     bool sharedCanvasSurface = usesSharedCanvasSurface();
 
     clear();
-    if (!sharedCanvasBackground) {
+    if (!sharedCanvasBackground && shouldDrawPanelPass("background")) {
         drawBackground();
     }
 
-    if (shouldBakeTextures && !sharedCanvasSurface) {
+    if (shouldBakeTextures && !sharedCanvasSurface && shouldDrawPanelPass("baked-textures")) {
         bakeTextures();
     }
 
     bool drawVerts = ! getSetting(ViewVertsOnlyOnHover) || mouseFlag(MouseOver);
 
-    preDraw();
+    if (shouldDrawPanelPass("pre-draw")) {
+        preDraw();
+    }
 
-    if(! drawLinesAfterFill && drawVerts) {
+    if(! drawLinesAfterFill && drawVerts && shouldDrawPanelPass("intercept-lines")) {
         drawInterceptLines();
     }
 
-    drawCurvesAndSurfaces();
+    if (shouldDrawPanelPass("curves")) {
+        drawCurvesAndSurfaces();
+    }
 
-    if(drawLinesAfterFill && drawVerts) {
+    if(drawLinesAfterFill && drawVerts && shouldDrawPanelPass("intercept-lines")) {
         drawInterceptLines();
     }
 
-    drawOutline();
-    postCurveDraw();
+    if (shouldDrawPanelPass("outline")) {
+        drawOutline();
+    }
+
+    if (shouldDrawPanelPass("post-curve")) {
+        postCurveDraw();
+    }
 
     if (drawVerts) {
-        drawDepthLinesAndVerts();
-        drawInterceptsAndHighlightClosest();
-        drawViewableVerts();
-        highlightSelectedVerts();
+        if (shouldDrawPanelPass("depth-lines")) {
+            drawDepthLinesAndVerts();
+        }
+
+        if (shouldDrawPanelPass("intercept-points")) {
+            drawInterceptsAndHighlightClosest();
+        }
+
+        if (shouldDrawPanelPass("viewable-verts")) {
+            drawViewableVerts();
+        }
+
+        if (shouldDrawPanelPass("selected-verts")) {
+            highlightSelectedVerts();
+        }
     }
 
-    postVertsDraw();
+    if (shouldDrawPanelPass("post-verts")) {
+        postVertsDraw();
+    }
 
-    if (mouseFlag(MouseOver) && getSetting(DrawScales)) {
+    if (mouseFlag(MouseOver) && getSetting(DrawScales) && shouldDrawPanelPass("scales")) {
         PanelRenderer* renderer = getRenderer(this);
         jassert(renderer != nullptr);
         renderer->setCurrentColour(Color(1, 1, 1));
@@ -186,13 +220,15 @@ void Panel::render() {
         drawGuideCurveTags();
     }
 
-    if (mouseFlag(MouseOver)) {
+    if (mouseFlag(MouseOver) && shouldDrawPanelPass("final-selection")) {
         drawFinalSelection();
     }
 
-    drawPencilPath();
+    if (shouldDrawPanelPass("pencil")) {
+        drawPencilPath();
+    }
 
-    if(actionIs(BoxSelecting)) {
+    if(actionIs(BoxSelecting) && shouldDrawPanelPass("selection-rect")) {
         drawSelectionRectangle();
     }
 
@@ -213,12 +249,13 @@ void Panel::constrainZoom() {
     ZoomRect& rect = zoomPanel->rect;
     // zoomPanel->validateRect("Panel::constrainZoom-before", false);
     NumberUtils::constrain<float>(rect.w, 0.001f, rect.xMaximum - rect.xMinimum);
-    NumberUtils::constrain<float>(rect.h, 0.005f, 1);
+    NumberUtils::constrain<float>(rect.h, 0.005f, 1.f);
     NumberUtils::constrain<float>(rect.x, interactor->vertexLimits[interactor->dims.x]);
     NumberUtils::constrain<float>(rect.y, 0, 1);
+    // NumberUtils::constrain<float>(rect.y, rect.yMinimum, rect.yMaximum);
 
-    if(rect.y + rect.h > 1) {
-        rect.y = 1 - rect.h;
+    if(rect.y + rect.h > rect.yMaximum) {
+        rect.y = rect.yMaximum - rect.h;
     }
 
     if(rect.x + rect.w > rect.xMaximum) {
@@ -297,7 +334,7 @@ void Panel::updateBackground(bool onlyVerticalBackground) {
         float offset    = bgPaddingLeft + startIdx * fineInc.x;
         int maxSize     = jmin(int(maxMinorSize), (int) ceilf(xScale / fineInc.x));
         int numLines    = jmax(0, jmin(maxSize, endIdx - startIdx) + 1);
-        DBG(String::formatted("Panel::%s num vert minor lines=%d", name.toUTF8(), numLines));
+        // DBG(String::formatted("Panel::%s num vert minor lines=%d", name.toUTF8(), numLines));
 
         vertMinorLines.resize(numLines);
         if (numLines > 0) {
@@ -736,7 +773,9 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
 
     std::unique_ptr<ScopedLock> sl;
 
-    if(adjustSpeed) {
+    bool lockedPathRepo = adjustSpeed;
+
+    if(lockedPathRepo) {
         getObj(PathRepo).getLock().enter();
     }
 
@@ -751,9 +790,19 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
         ampTable = guideCurveProvider->getTable(ampChan);
     }
 
+    if ((adjustPhase && phaseTable.empty()) || (adjustAmp && ampTable.empty())) {
+        if (lockedPathRepo) {
+            getObj(PathRepo).getLock().exit();
+        }
+        return false;
+    }
+
     if(speedEnv.empty()) {
-        getObj(PathRepo).getLock().exit();
+        if (lockedPathRepo) {
+            getObj(PathRepo).getLock().exit();
+        }
         adjustSpeed = false;
+        lockedPathRepo = false;
     }
 
     float xSlope = (second.x - first.x) * invSize;
@@ -768,22 +817,26 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
         if (adjustSpeed) {
             int     speedEnvIdx;
             float   scaleX      = second.x - first.x;
-            int     offsetIdx   = first.x * float(speedEnv.size() - 1);
+            float   offsetIdx   = first.x * float(speedEnv.size() - 1);
+            float   indexScale  = scaleX * float(speedEnv.size() - 1) * invSize;
             float   speed;
 
             if (phsVsTimeChan >= 0) {
                 for (int i = 0; i < linestripRes; ++i) {
-                    speedEnvIdx = scaleX * i + offsetIdx;       // todo Lerp it
+                    speedEnvIdx = jlimit(0, speedEnv.size() - 1, int(offsetIdx + indexScale * i)); // todo Lerp it
                     speed       = speedEnv[speedEnvIdx];
+                    ramp[i]     = speed;
                     idx         = int((phaseTable.size() - 1) * speed);
                     xy.y[i]     = phaseGain * phaseTable[idx]; // + speed * (second.y - first.y);
                 }
 
-                xy.y.addProduct(speedEnv, second.y - first.y).add(first.y + redOffset + blueOffset);
+                xy.y.addProduct(ramp, second.y - first.y).add(first.y + redOffset + blueOffset);
             } else {
                 if (scaleX < 0.99f) {
-                    for(int i = 0; i < linestripRes; ++i)
-                        xy.y[i] = speedEnv[int(scaleX * i) + offsetIdx];        // todo Lerp it
+                    for(int i = 0; i < linestripRes; ++i) {
+                        speedEnvIdx = jlimit(0, speedEnv.size() - 1, int(offsetIdx + indexScale * i)); // todo Lerp it
+                        xy.y[i] = speedEnv[speedEnvIdx];
+                    }
                 } else {
                     speedEnv.copyTo(xy.y);
                 }
@@ -862,7 +915,9 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             xy.y.add(ramp.ramp(first.y, ySlope));
         }
     }
-    getObj(PathRepo).getLock().exit();
+    if (lockedPathRepo) {
+        getObj(PathRepo).getLock().exit();
+    }
 
     return true;
 }

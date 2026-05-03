@@ -8,14 +8,8 @@ namespace CycleImages
     extern const char*  bannertitle_png;
     const int           bannertitle_pngSize = 10239;
 
-    extern const char*  beatlogo_png;
-    const int           beatlogo_pngSize = 7223;
-
     extern const char*  blackground_png;
     const int           blackground_pngSize = 7674;
-
-    extern const char*  cyclebert_png;
-    const int           cyclebert_pngSize = 25718;
 
     extern const char*  cycleicon_png;
     const int           cycleicon_pngSize = 3986;

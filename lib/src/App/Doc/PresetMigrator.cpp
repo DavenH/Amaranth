@@ -268,11 +268,11 @@ namespace {
 
         json->setProperty("active", getAttributeBool(layerElem, "active", true));
         json->setProperty("gain", getAttributeDouble(layerElem, "gain", 0.0));
-        json->setProperty("range", getAttributeDouble(layerElem, "range", 0.0));
+        json->setProperty("range", getAttributeDouble(layerElem, "range", 0.5));
         json->setProperty("mode", getAttributeInt(layerElem, "mode", 0));
         json->setProperty("scratchChannel", getAttributeInt(layerElem, "scratch-chan", 0));
         json->setProperty("fineTune", getAttributeDouble(layerElem, "fine-tune", 0.0));
-        json->setProperty("pan", getAttributeDouble(layerElem, "pan", 0.0));
+        json->setProperty("pan", getAttributeDouble(layerElem, "pan", 0.5));
 
         if (isEnvelope) {
             json->setProperty("dynamic", getAttributeBool(layerElem, "dynamic", false));
@@ -378,11 +378,12 @@ namespace {
         }
 
         if (propsElem->hasAttribute("dynamicRange")) {
-            propsJson->setProperty("range", getAttributeDouble(propsElem, "dynamicRange", 0.0));
+            propsJson->setProperty("range", getAttributeDouble(propsElem, "dynamicRange", 0.5));
         }
 
         if (isMagnitude && propsElem->hasAttribute("additive")) {
-            propsJson->setProperty("mode", getAttributeInt(propsElem, "additive", 0));
+            bool isAdditive = getAttributeBool(propsElem, "additive", true);
+            propsJson->setProperty("mode", isAdditive ? 0 : 1);
         }
     }
 
@@ -395,11 +396,11 @@ namespace {
             auto props = PresetJson::object();
             props->setProperty("active", true);
             props->setProperty("gain", 0.0);
-            props->setProperty("range", 0.0);
+            props->setProperty("range", 0.5);
             props->setProperty("mode", 0);
             props->setProperty("scratchChannel", 0);
             props->setProperty("fineTune", 0.0);
-            props->setProperty("pan", 0.0);
+            props->setProperty("pan", 0.5);
 
             if (isEnvelope) {
                 props->setProperty("dynamic", false);

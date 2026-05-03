@@ -29,14 +29,19 @@ MidiKeyboard::MidiKeyboard(
     keys = PNGImageFormat::loadFrom(Images::keys2_png, Images::keys2_pngSize);
 }
 
-void MidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, int x, int y,
-                                 int w, int h, bool isDown, bool isOver,
-                                 const Colour& noteFillColour) {
+void MidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, Rectangle<float> area,
+                                 bool isDown, bool isOver, Colour noteFillColour) {
+    const int x = roundToInt(area.getX());
+    const int y = roundToInt(area.getY());
+    const int w = roundToInt(area.getWidth());
+    const int h = roundToInt(area.getHeight());
+
     g.setOpacity(1.f);
     g.drawImage(keys, x, y, w, h, pxGreyBlack, keys.getHeight() - h, w, h, false);
 
-    if(midiNoteNumber != auditionKey)
+    if (midiNoteNumber != auditionKey) {
         g.setOpacity(jmin(1.f, getVelocityA() / 0.7f));
+    }
 
     if (isDown || isOver || shouldDrawAuditionKey(midiNoteNumber)) {
         int offset = isDown ? pxOrangeBlack : pxBlueBlack;
@@ -57,14 +62,19 @@ void MidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, int x, int y,
     }
 }
 
-void MidiKeyboard::drawWhiteNote(int midiNoteNumber, Graphics& g, int x, int y,
-                                 int w, int h, bool isDown, bool isOver,
-                                 const Colour& lineColourDefault,
-                                 const Colour& textColour) {
+void MidiKeyboard::drawWhiteNote(int midiNoteNumber, Graphics& g, Rectangle<float> area,
+                                 bool isDown, bool isOver, Colour lineColourDefault,
+                                 Colour textColour) {
+    const int x = roundToInt(area.getX());
+    const int y = roundToInt(area.getY());
+    const int w = roundToInt(area.getWidth());
+    const int h = roundToInt(area.getHeight());
+
     g.drawImage(keys, x, y, w, h, pxGreyWhite, keys.getHeight() - h, w, h, false);
 
-    if(midiNoteNumber != auditionKey)
+    if (midiNoteNumber != auditionKey) {
         g.setOpacity(getVelocityA());
+    }
 
     if (isDown || isOver || shouldDrawAuditionKey(midiNoteNumber)) {
         int offset = isDown ? pxOrangeWhite : pxBlueWhite;
@@ -122,7 +132,7 @@ String MidiKeyboard::getText(int note) {
     return letter[letterIdx] << String(note / 12 - 1);
 }
 
-void MidiKeyboard::getKeyPosition(int midiNoteNumber, float keyWidth, int& x, int& w) const {
+Range<float> MidiKeyboard::getKeyPosition(int midiNoteNumber, float keyWidth) const {
     jassert(midiNoteNumber >= 0 && midiNoteNumber < 128);
 
     static const float blackNoteWidth = 0.7f;
@@ -145,8 +155,10 @@ void MidiKeyboard::getKeyPosition(int midiNoteNumber, float keyWidth, int& x, in
     const int octave = midiNoteNumber / 12;
     const int note = midiNoteNumber % 12;
 
-    x = int(octave * 7.0f * keyWidth + notePos [note] * keyWidth + offsets[note] + 0.5f);
-    w = int(widths [note] * keyWidth + 0.5f);
+    const float x = octave * 7.0f * keyWidth + notePos[note] * keyWidth + offsets[note] + 0.5f;
+    const float w = widths[note] * keyWidth + 0.5f;
+
+    return { x, x + w };
 }
 
 void MidiKeyboard::mouseEnter(const MouseEvent& e) {

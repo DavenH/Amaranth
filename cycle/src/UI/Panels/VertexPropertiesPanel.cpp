@@ -139,6 +139,7 @@ void VertexPropertiesPanel::resized() {
 	bounds.removeFromLeft(4);
 	bounds.removeFromTop(5);
 
+	bounds.removeFromTop(10);
 	Rectangle<int> labelBounds = bounds.removeFromRight(rightSize);
 
 	bounds.removeFromRight(4);
@@ -289,6 +290,14 @@ void VertexPropertiesPanel::setSelectedAndCaller(Interactor* interactor)
 	updateSliderValues(true);
 }
 
+void VertexPropertiesPanel::focusGained(Interactor* interactor) {
+	setSelectedAndCaller(interactor);
+}
+
+void VertexPropertiesPanel::selectionChanged(Mesh*, const vector<VertexFrame>&) {
+	updateSliderValues(true);
+}
+
 void VertexPropertiesPanel::updateComboBoxes() {
 	auto& meshLib = getObj(MeshLibrary);
 
@@ -304,7 +313,7 @@ void VertexPropertiesPanel::updateComboBoxes() {
 
 	for (auto box : boxes) {
 		box->clear(dontSendNotification);
-		box->addItem(String(L"\u2013"), NullGuideCurveId);
+		box->addItem(" ", NullGuideCurveId);
 
 		for (int j = 0; j < numGuideCurveLayers; ++j) {
 			box->addItem(String(j + 1), j + 2);
@@ -343,6 +352,7 @@ void VertexPropertiesPanel::updateSliderValues(bool ignoreChangeMessage)
 			}
 		}
 
+		getObj(MorphPanel).setSelectedCube(nullptr, nullptr, CommonEnums::Null, false);
 		return;
 	}
 
@@ -771,8 +781,9 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 		guideCurveChanBox->addListener(panel);
 		guideCurveChanBox->setWantsKeyboardFocus(false);
 		guideCurveChanBox->setMouseClickGrabsKeyboardFocus(false);
-		guideCurveChanBox->setTextWhenNothingSelected(String(L"\u2013"));
+		guideCurveChanBox->setTextWhenNothingSelected(" ");
 		guideCurveChanBox->setColour(ComboBox::outlineColourId, Colours::black);
+		guideCurveChanBox->getProperties().set("iconOnlyCombo", true);
 
 		int srcId, destId;
 		panel->getSourceDestDimensionIds(id, srcId, destId);

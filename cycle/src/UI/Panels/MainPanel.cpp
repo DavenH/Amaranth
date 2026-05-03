@@ -1,6 +1,9 @@
 #include <iterator>
 #include <App/Doc/PresetJson.h>
 #include <Design/Updating/Updater.h>
+#include <Inter/EnvelopeInter3D.h>
+#include <Inter/SpectrumInter3D.h>
+#include <Inter/WaveformInter3D.h>
 #include <UI/IConsole.h>
 #include <UI/Layout/Bounded.h>
 #include <UI/Layout/BoundWrapper.h>
@@ -12,6 +15,7 @@
 #include <UI/Panels/SharedPanelCanvas.h>
 #include <UI/Panels/ZoomPanel.h>
 #include <Util/ScopedBooleanSwitcher.h>
+#include <Util/Util.h>
 
 #include "BannerPanel.h"
 #include "Console.h"
@@ -759,6 +763,11 @@ void MainPanel::toggleEnvPanel(bool wantToShow3D) {
 void MainPanel::mouseEnter(const MouseEvent& e) {
 }
 
+static bool isEventFromPanelComponent(Component* panelComponent, Component* eventComponent) {
+    return panelComponent != nullptr
+        && (panelComponent == eventComponent || panelComponent->isParentOf(eventComponent));
+}
+
 void MainPanel::mouseDown(const MouseEvent& e) {
     grabKeyboardFocus();
 
@@ -770,7 +779,7 @@ void MainPanel::mouseDown(const MouseEvent& e) {
             continue;
         }
 
-        if (group->panel->getComponent() == origin) {
+        if (isEventFromPanelComponent(group->panel->getComponent(), origin)) {
             focusedPanel = group->bounds;
             getObj(VertexPropertiesPanel).setSelectedAndCaller(group->panel->getInteractor());
         }
@@ -916,6 +925,12 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
     guideCurveGroup	= PanelGroup(guideCurvePanel,		guideCurvePair, 	guideCurvePanel->getOpenglPanel());
     spectGroup2	= PanelGroup(spectrum2D, 	spectrum2D->getZoomPanel(), spectrum2D->getOpenglPanel());
     envGroup3	= PanelGroup(envelope3D, 	envelope3D->getZoomPanel(), envelope3D->getOpenglPanel());
+
+    for (auto group : panelGroups) {
+        if (group != nullptr && group->panel != nullptr && group->panel->getInteractor() != nullptr) {
+            group->panel->getInteractor()->addListener(vtxPropsPanel);
+        }
+    }
 
     attachVisibleComponents();
 
@@ -1149,7 +1164,33 @@ juce::Component* MainPanel::getComponent(int which) {
     return nullptr;
 }
 
-void MainPanel::setPrimaryDimension(int view, bool performUpdate) {}
+void MainPanel::setPrimaryDimension(int view, bool performUpdate) {
+    int& currentAxis = getSetting(CurrentMorphAxis);
+    int oldAxis = currentAxis;
+
+    if (!Util::assignAndWereDifferent(currentAxis, view)) {
+        return;
+    }
+
+    if (view != Vertex::Time || oldAxis != Vertex::Time) {
+        toggleEnvPanel(view != Vertex::Time);
+        getObj(Spectrum3D).changedToOrFromTimeDimension();
+    }
+
+    getObj(WaveformInter3D).primaryDimensionChanged();
+    getObj(SpectrumInter3D).primaryDimensionChanged();
+
+    if (view != Vertex::Time) {
+        getObj(EnvelopeInter3D).primaryDimensionChanged();
+    }
+
+    getObj(PlaybackPanel).primaryDimensionChanged();
+    getObj(MorphPanel).updateHighlights();
+
+    if (performUpdate) {
+        doUpdate(SourceMorph);
+    }
+}
 
 
 void MainPanel::envelopeVisibilityChanged() {

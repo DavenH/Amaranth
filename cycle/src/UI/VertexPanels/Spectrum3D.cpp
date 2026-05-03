@@ -147,12 +147,49 @@ void Spectrum3D::panelResized() {
     Panel::panelResized();
 }
 
+void Spectrum3D::zoomUpdated(int updateSource) {
+    Panel3D::zoomUpdated(updateSource);
+
+    if (updateSource != UpdateSources::SourceWaveform3D &&
+        updateSource != UpdateSources::SourceSpectrum3D) {
+        return;
+    }
+
+    Waveform3D& waveform = getObj(Waveform3D);
+    ZoomRect& source = updateSource == UpdateSources::SourceSpectrum3D
+                           ? getZoomPanel()->rect
+                           : waveform.getZoomPanel()->rect;
+    ZoomRect& dest = updateSource == UpdateSources::SourceSpectrum3D
+                         ? waveform.getZoomPanel()->rect
+                         : getZoomPanel()->rect;
+
+    dest.x = source.x;
+    dest.w = source.w;
+
+    waveform.getZoomPanel()->panelZoomChanged(false);
+    waveform.updateBackground(false);
+    waveform.bakeTexturesNextRepaint();
+    waveform.repaint();
+}
+
 vector <Color>& Spectrum3D::getGradientColours() {
     return getSetting(MagnitudeDrawMode) ? gradient.getColours() : phaseGradient.getColours();
 }
 
 void Spectrum3D::reset() {
     panelControls->resetSelector();
+}
+
+void Spectrum3D::reconcileLoadedState() {
+    if (panelControls == nullptr) {
+        return;
+    }
+
+    panelControls->resetSelector();
+    modeChanged(getSetting(MagnitudeDrawMode) == 1, false);
+    setIconHighlightImplicit();
+    updateKnobValue();
+    enablementsChanged();
 }
 
 void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
@@ -368,15 +405,10 @@ void Spectrum3D::updateColours() {
 }
 
 void Spectrum3D::layerChanged(int layerGroup, int index) {
-    if(layerGroup != (int) LayerGroups::GroupSpect || layerGroup != LayerGroups::GroupPhase) {
+    if(layerGroup != (int) LayerGroups::GroupSpect && layerGroup != LayerGroups::GroupPhase) {
         return;
     }
-    panelControls->resetSelector(); //resetLayerBox();
-
-    modeChanged(getSetting(MagnitudeDrawMode) == 1, false);
-    setIconHighlightImplicit();
-    updateKnobValue();
-    enablementsChanged();
+    reconcileLoadedState();
 }
 
 bool Spectrum3D::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) {
@@ -569,4 +601,18 @@ Buffer<float> Spectrum3D::getColumnArray() {
 
 const vector <Column>& Spectrum3D::getColumns() {
     return getObj(VisualDsp).getFreqColumns();
+}
+
+CriticalSection& Spectrum3D::getGridLock() {
+    bool postFX = getSetting(ViewStage) >= ViewStages::PostFX;
+    return getObj(VisualDsp).getColumnLock(postFX ? VisualDsp::FXColType : VisualDsp::FreqColType);
+}
+
+bool Spectrum3D::isSurfaceDetailReduced() {
+    auto* rasterizer = dynamic_cast<GraphicRasterizer*>(interactor->getRasterizer());
+    return rasterizer != nullptr && rasterizer->isDetailReduced();
+}
+
+bool Spectrum3D::willAdjustSurfaceColumns() {
+    return !getSetting(DrawWave) && getSetting(CurrentMorphAxis) == Vertex::Red;
 }

@@ -39,6 +39,7 @@ public:
     void drawFileBrowserRow(
             Graphics& g,
             int width, int height,
+            const File& file,
             const String& filename,
             Image* icon,
             const String& fileSizeDescription,
@@ -46,7 +47,7 @@ public:
             bool isDirectory,
             bool isItemSelected,
             int /*itemIndex*/,
-            DirectoryContentsDisplayComponent&);
+            DirectoryContentsDisplayComponent&) override;
 
     void drawGlassLozenge(
             Graphics& g,
@@ -118,10 +119,10 @@ public:
 
     void drawTableHeaderBackground (Graphics& g, TableHeaderComponent& header) override;
 
-    void drawTableHeaderColumn (Graphics& g, const String& columnName, int columnId,
-                                        int width, int height,
-                                        bool isMouseOver, bool isMouseDown,
-                                        int columnFlags);
+    void drawTableHeaderColumn (Graphics& g, TableHeaderComponent& header, const String& columnName,
+                                int columnId, int width, int height,
+                                bool isMouseOver, bool isMouseDown,
+                                int columnFlags) override;
 
     void drawComboBox (Graphics& g, int width, int height,
                                     bool isButtonDown,

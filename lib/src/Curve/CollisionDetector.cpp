@@ -42,7 +42,7 @@ void CollisionDetector::update(Mesh* mesh) {
     numMeshCubes = uniqueMeshCubes.size();
 
     // nothing to collide with
-    if(numSelectedLines == 0 || numMeshCubes <= 1) {
+    if(numSelectedLines == 0 || numMeshCubes == 0) {
         DBG(String::formatted("CollisionDetector::update skipping collision test selectedLines=%d comparisonCubes=%d totalCubes=%d",
                               numSelectedLines,
                               numMeshCubes,
@@ -169,7 +169,7 @@ bool CollisionDetector::validate() {
         return true;
     }
 
-    if (numMeshCubes <= 1 || selectedLines.empty() || meshVerts.empty() || selectedVerts.empty()) {
+    if (numMeshCubes == 0 || selectedLines.empty() || meshVerts.empty() || selectedVerts.empty()) {
         DBG(String::formatted("CollisionDetector::validate early exit selectedLines=%d numMeshCubes=%d meshVerts=%d selectedVerts=%d",
                               (int) selectedLines.size(),
                               numMeshCubes,
@@ -332,10 +332,10 @@ bool CollisionDetector::validate() {
                         // ippsMulC_32f        (minV, 1 - yDimValue, b, 4);
                         // ippsAddProductC_32f (maxV,     yDimValue, b, 4);
 
-                        VecOps::mul    (&meshVerts[baseIndexM + nDims * 0], 1 - xDimValue, minV, 4);
-                        VecOps::addProd(&meshVerts[baseIndexM + nDims * 1],     xDimValue, minV, 4);
-                        VecOps::mul    (&meshVerts[baseIndexM + nDims * 2], 1 - xDimValue, maxV, 4);
-                        VecOps::addProd(&meshVerts[baseIndexM + nDims * 3],     xDimValue, maxV, 4);
+                        VecOps::mul    (&selectedVerts[baseIndexM + nDims * 0], 1 - xDimValue, minV, 4);
+                        VecOps::addProd(&selectedVerts[baseIndexM + nDims * 1],     xDimValue, minV, 4);
+                        VecOps::mul    (&selectedVerts[baseIndexM + nDims * 2], 1 - xDimValue, maxV, 4);
+                        VecOps::addProd(&selectedVerts[baseIndexM + nDims * 3],     xDimValue, maxV, 4);
                         // ippsMulC_32f        (&meshVerts[baseIndexM + nDims * 0], 1 - xDimValue, minV, 4);
                         // ippsAddProductC_32f (&meshVerts[baseIndexM + nDims * 1],     xDimValue, minV, 4);
                         // ippsMulC_32f        (&meshVerts[baseIndexM + nDims * 2], 1 - xDimValue, maxV, 4);
@@ -346,10 +346,10 @@ bool CollisionDetector::validate() {
                         // ippsMulC_32f        (minV, 1 - yDimValue, c, 4);
                         // ippsAddProductC_32f (maxV,     yDimValue, c, 4);
 
-                        VecOps::mul    (&meshVerts[baseIndexL + nDims * 4], 1 - xDimValue, minV, 4);
-                        VecOps::addProd(&meshVerts[baseIndexL + nDims * 5],     xDimValue, minV, 4);
-                        VecOps::mul    (&meshVerts[baseIndexL + nDims * 6], 1 - xDimValue, minV, 4);
-                        VecOps::addProd(&meshVerts[baseIndexL + nDims * 7],     xDimValue, minV, 4);
+                        VecOps::mul    (&selectedVerts[baseIndexM + nDims * 4], 1 - xDimValue, minV, 4);
+                        VecOps::addProd(&selectedVerts[baseIndexM + nDims * 5],     xDimValue, minV, 4);
+                        VecOps::mul    (&selectedVerts[baseIndexM + nDims * 6], 1 - xDimValue, maxV, 4);
+                        VecOps::addProd(&selectedVerts[baseIndexM + nDims * 7],     xDimValue, maxV, 4);
                         // ippsMulC_32f        (&meshVerts[baseIndexM + nDims * 4], 1 - xDimValue, minV, 4);
                         // ippsAddProductC_32f (&meshVerts[baseIndexM + nDims * 5],     xDimValue, minV, 4);
                         // ippsMulC_32f        (&meshVerts[baseIndexM + nDims * 6], 1 - xDimValue, maxV, 4);
@@ -370,13 +370,13 @@ bool CollisionDetector::validate() {
                         // ippsMulC_32f        (&meshVerts[baseIndexL + nDims * 0], 1 - xDimValue, b, 4);
                         // ippsAddProductC_32f (&meshVerts[baseIndexL + nDims * 1],     xDimValue, b, 4);
 
-                        VecOps::mul    (&meshVerts[baseIndexM + nDims * 0], 1 - xDimValue, c, 4);
-                        VecOps::addProd(&meshVerts[baseIndexM + nDims * 1],     xDimValue, c, 4);
+                        VecOps::mul    (&selectedVerts[baseIndexM + nDims * 0], 1 - xDimValue, c, 4);
+                        VecOps::addProd(&selectedVerts[baseIndexM + nDims * 1],     xDimValue, c, 4);
                         // ippsMulC_32f        (&selectedVerts[baseIndexM + nDims * 0], 1 - xDimValue, c, 4);
                         // ippsAddProductC_32f (&selectedVerts[baseIndexM + nDims * 1],     xDimValue, c, 4);
 
-                        VecOps::mul    (&meshVerts[baseIndexM + nDims * 2], 1 - xDimValue, d, 4);
-                        VecOps::addProd(&meshVerts[baseIndexM + nDims * 3],     xDimValue, d, 4);
+                        VecOps::mul    (&selectedVerts[baseIndexM + nDims * 2], 1 - xDimValue, d, 4);
+                        VecOps::addProd(&selectedVerts[baseIndexM + nDims * 3],     xDimValue, d, 4);
                         // ippsMulC_32f        (&selectedVerts[baseIndexM + nDims * 2], 1 - xDimValue, d, 4);
                         // ippsAddProductC_32f (&selectedVerts[baseIndexM + nDims * 3],     xDimValue, d, 4);
                     }

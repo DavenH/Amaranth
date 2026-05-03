@@ -54,6 +54,7 @@
 #include "../UI/Panels/PlayerComponent.h"
 #include "../UI/Panels/SynthMenuBarModel.h"
 #include "../UI/Panels/VertexPropertiesPanel.h"
+#include "../UI/SynthLookAndFeel.h"
 #include "../UI/VertexPanels/GuideCurvePanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
 #include "../UI/VertexPanels/Envelope3D.h"
@@ -237,9 +238,9 @@ void Initializer::setConstants() {
     const String fontFace = platformSplit("Verdana", "Helvetica", "Ubuntu");
 
     auto &constants = getObj(AppConstants);
-    constants.setConstant(WaveshaperPadding, 	0.0625);
+    constants.setConstant(WaveshaperPadding, 	0.125);
     constants.setConstant(IrModellerPadding, 	0.0625);
-    constants.setConstant(FreqMargin,           0.05);
+    constants.setConstant(FreqMargin,           0.5);
     constants.setConstant(SpectralMargin,       0.05);
     constants.setConstant(GuideCurvePadding,    0.05);
     constants.setConstant(MinLineLength, 		0.001);
@@ -258,6 +259,7 @@ void Initializer::setConstants() {
     constants.setConstant(EnvResolution, 		128);
     constants.setConstant(ResamplerLatency, 	32);
     constants.setConstant(FreqTensionScale, 	50);
+    constants.setConstant(LogFreqTensionScale, 0.5);
     constants.setConstant(ControllerValueSaturation, 127);
     constants.setConstant(FontFace,             fontFace);
 }
@@ -271,6 +273,18 @@ void Initializer::setDefaultSettings() {
         "/" + companyName + "/" + projectName
     );
     getObj(Settings).setPropertiesPath(path);
+
+    getObj(Settings).addDocumentSetting(DocSettings::Declick,              "Declick",              true);
+    getObj(Settings).addDocumentSetting(DocSettings::ControlFreq,          "ControlFreq",          8);
+    getObj(Settings).addDocumentSetting(DocSettings::SubsampleRend,        "SubsampleRend",        true);
+    getObj(Settings).addDocumentSetting(DocSettings::SubsampleRltm,        "SubsampleRltm",        false);
+    getObj(Settings).addDocumentSetting(DocSettings::PitchBendRange,       "PitchBendRange",       2);
+    getObj(Settings).addDocumentSetting(DocSettings::DynamicEnvelopes,     "DynamicEnvelopes",     false);
+    getObj(Settings).addDocumentSetting(DocSettings::ParameterSmoothing,   "ParameterSmoothing",   true);
+    getObj(Settings).addDocumentSetting(DocSettings::ResamplingAlgoRltm,   "ResamplingAlgoRltm",   Resampling::Hermite);
+    getObj(Settings).addDocumentSetting(DocSettings::ResamplingAlgoRend,   "ResamplingAlgoRend",   Resampling::Sinc);
+    getObj(Settings).addDocumentSetting(DocSettings::OversampleFactorRltm, "OversampleFactorRltm", 1);
+    getObj(Settings).addDocumentSetting(DocSettings::OversampleFactorRend, "OversampleFactorRend", 2);
 
     getSetting(IgnoringMessages) 		= true;
     getSetting(MagnitudeDrawMode) 		= true;
@@ -287,6 +301,9 @@ void Initializer::setDefaultSettings() {
     getSetting(UseRedDepth) 			= false;
     getSetting(UseBlueDepth) 			= false;
     getSetting(UseLargerPoints) 		= false;
+    getSetting(TimeEnabled) 			= true;
+    getSetting(FilterEnabled) 			= true;
+    getSetting(PhaseEnabled) 			= true;
     getSetting(ReductionFactor) 		= 5;
     getSetting(ViewStage) 				= ViewStages::PostFX;
     getSetting(WindowSize) 				= WindowSizes::FullSize;
@@ -337,6 +354,7 @@ void Initializer::instantiate() {
     audioSource->setDelay(delay);
 
     // UI
+    repo->add(new SynthLookAndFeel  (repo), -500);
     repo->add(new Dialogs			(repo));
     repo->add(new CycleTour			(repo));
     repo->add(new WaveDragTarget	(repo));
@@ -401,8 +419,8 @@ void Initializer::instantiate() {
     repo->add(new Envelope3D(repo));
 
     repo->add(new TimeRasterizer (repo, timeInter, 	"TimeRasterizer", 	LayerGroups::GroupTime,  true, 0));
-    repo->add(new SpectRasterizer(repo, spectInter, "SpectRasterizer", 	LayerGroups::GroupSpect, true, 0));
-    repo->add(new PhaseRasterizer(repo, spectInter, "PhaseRasterizer", 	LayerGroups::GroupPhase, true, 0));
+    repo->add(new SpectRasterizer(repo, spectInter, "SpectRasterizer", 	LayerGroups::GroupSpect, false, 0));
+    repo->add(new PhaseRasterizer(repo, spectInter, "PhaseRasterizer", 	LayerGroups::GroupPhase, false, 0));
 
     repo->add(new EnvVolumeRast  (repo, guideCurvePanel, "EnvVolumeRast"));
     repo->add(new EnvPitchRast   (repo, guideCurvePanel, "EnvPitchRast"));

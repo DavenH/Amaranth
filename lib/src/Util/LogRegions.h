@@ -23,7 +23,7 @@ public:
     void init() override {
         const double samplerate = 44100.0;
 
-        float freqTension = getConstant(FreqTensionScale);
+        float freqTension = getRealConstant(LogFreqTensionScale);
         midiRange = Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote);
 
         vector<int> sizes;

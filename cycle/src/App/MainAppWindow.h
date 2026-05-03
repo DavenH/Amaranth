@@ -13,6 +13,7 @@ class MainAppWindow:
 {
 public:
 	explicit MainAppWindow(const String& commandLine);
+	~MainAppWindow();
 	void openFile(const String& commandLine);
 	void closeButtonPressed() override;
 	void maximiseButtonPressed() override;

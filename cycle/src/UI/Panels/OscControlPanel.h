@@ -48,9 +48,9 @@ public:
     /* Events */
     bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
     bool shouldTriggerGlobalUpdate(Slider* slider) override;
-    void restoreDetail();
-    void reduceDetail();
-    void doGlobalUIUpdate(bool force);
+    void restoreDetail() override;
+    void reduceDetail() override;
+    void doGlobalUIUpdate(bool force) override;
     void sliderValueChanged (Slider* slider);
     void setLengthInSeconds(float value);
     void timerCallback() override;

@@ -21,6 +21,7 @@ bool NamedUndoableAction::undo() {
 
 bool NamedUndoableAction::perform() {
     if (!haveUndone) {
+        performExtra();
         return true;
     }
 

@@ -5,6 +5,7 @@
 
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
+#include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonAccessor.h>
 #include <Design/Updating/Updateable.h>
@@ -19,8 +20,6 @@ class Spectrum3D;
 class PhaseTrackingTest;
 class Waveform3D;
 class Unison;
-class MeshLibrary;
-
 using std::map;
 
 class ResizeParams {
@@ -123,7 +122,8 @@ public:
     void resizeArrays(const ResizeParams& params);
     void rasterizeEnv(Buffer<Float32> env, Buffer<Float32> zoomArray,
                       int type, EnvRasterizer& rasterizer,
-                      bool doRestore = true);
+                      bool doRestore = true,
+                      MeshLibrary::EnvProps* propsOverride = nullptr);
 
     CriticalSection& getCalculationLock();
     CriticalSection& getEnvelopeLock() { return graphicEnvLock; }
@@ -156,6 +156,7 @@ private:
     void checkEnvWavColumns		(int numColumns, int nextPow2, int overrideKey);
 
     bool areAnyFXActive();
+    bool getScratchTimeForLayer(MeshLibrary::Properties* props, int sampleIndex, float fallback, float& scratchTime);
     void updateScratchContexts(int numColumns);
 
     /* ----------------------------------------------------------------------------- */

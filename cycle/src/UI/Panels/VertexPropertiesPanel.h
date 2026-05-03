@@ -2,6 +2,7 @@
 
 #include <App/SingletonAccessor.h>
 #include <Obj/Ref.h>
+#include <Inter/InteractorListener.h>
 #include <UI/MouseOverMessager.h>
 #include <UI/Widgets/InsetLabel.h>
 #include "JuceHeader.h"
@@ -27,6 +28,7 @@ class VertexPropertiesPanel :
     ,	public Button::Listener
     ,	public ComboBox::Listener
     ,	public TourGuide
+    ,	public InteractorListener
     ,	public AsyncUpdater
     ,	public SingletonAccessor
 {
@@ -39,6 +41,7 @@ public:
     void comboBoxChanged (ComboBox* comboBoxThatHasChanged) override;
     void drawJustifiedText(Graphics& g, String text, Component* component, int y);
     void drawSidewaysTextAndLines(Graphics& g, String text, Component* top, Component* bottom);
+    void focusGained(Interactor* interactor) override;
     void gainChanged(Slider* slider, int changeType);
     void getSourceDestDimensionIds(int id, int& srcId, int& destId);
     void handleAsyncUpdate() override;
@@ -48,6 +51,7 @@ public:
     void paint(Graphics & g) override;
     void refreshCube(set<VertCube*>& lines);
     void resized() override;
+    void selectionChanged(Mesh* mesh, const vector<VertexFrame>& frames) override;
     void setSelectedAndCaller(Interactor* interactor);
     void sliderDragEnded(Slider* slider) override;
     void sliderDragStarted(Slider* slider) override;

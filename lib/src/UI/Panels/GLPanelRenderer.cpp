@@ -49,6 +49,7 @@ void GLPanelRenderer::drawCachedTexture(Texture* texture, const juce::Rectangle<
 void GLPanelRenderer::drawSurfaceColumn(Buffer<Int8u> colours, Buffer<float> vertices, int stride, int sizeY) {
     ignoreUnused(sizeY);
 
+    glDisable(GL_TEXTURE_2D);
     glColorPointer(stride, GL_UNSIGNED_BYTE, 0, colours);
     glVertexPointer(2, GL_FLOAT, 0, vertices);
     glDrawArrays(GL_QUAD_STRIP, 0, (sizeY + 1) * 2);

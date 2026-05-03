@@ -37,10 +37,10 @@ public:
     /* Updating */
     bool shouldTriggerGlobalUpdate(Slider* slider) override;
     bool updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) override;
-    void doGlobalUIUpdate(bool force);
+    void doGlobalUIUpdate(bool force) override;
     void makeKnobsVisibleAndListen();
-    void reduceDetail();
-    void restoreDetail();
+    void reduceDetail() override;
+    void restoreDetail() override;
 
     /* Events */
     virtual Array<Rectangle<int> > getOutlinableRects();
