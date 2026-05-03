@@ -127,6 +127,41 @@ TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
         CHECK(TestConvReverb::verifyConvolution(output, reference, absTolerance, relTolerance));
     }
 
+    SECTION("Dirac impulse response preserves amplitude") {
+        const int inputSize = 512;
+        const int bufferSize = 64;
+        const int irSize = bufferSize;
+
+        ScopedAlloc<float> memory(inputSize + irSize + bufferSize + inputSize);
+        Buffer<float> input = memory.place(inputSize);
+        Buffer<float> ir = memory.place(irSize);
+        Buffer<float> buffer = memory.place(bufferSize);
+        Buffer<float> output = memory.place(inputSize);
+
+        input.ramp(-1.f, 2.f / float(inputSize - 1));
+        ir.zero();
+        ir.front() = 1.f;
+        output.zero();
+
+        BlockConvolver convolver;
+        convolver.init(bufferSize, ir);
+
+        int processed = 0;
+        while (processed < inputSize) {
+            int toProcess = std::min(bufferSize, inputSize - processed);
+            Buffer<float> subBuffer = buffer.withSize(toProcess);
+
+            input.section(processed, toProcess).copyTo(subBuffer);
+            convolver.process(subBuffer, output.section(processed, toProcess));
+
+            processed += toProcess;
+        }
+
+        for (int i = 0; i < inputSize; ++i) {
+            CHECK(fabsf(output[i] - input[i]) <= 1e-4f);
+        }
+    }
+
     SECTION("Two-stage convolution accuracy") {
         const int inputSize = 44100;
         const int irSize = 4096;

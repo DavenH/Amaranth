@@ -191,7 +191,7 @@ void Waveform3D::reconcileLoadedState() {
         return;
     }
 
-    panelControls->resetSelector();
+    panelControls->refreshSelector();
     panelControls->enableCurrent.setHighlit(getCurrentProperties()->active);
     updateScratchComboBox();
     setKnobValuesImplicit();

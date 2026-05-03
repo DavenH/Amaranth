@@ -296,7 +296,6 @@ template<> Buffer<Complex32>& Buffer<Complex32>::addProduct(Buffer src1, Buffer 
     CPLX_TRIADIC_SETUP(src1, src2, (*this));
 
     vDSP_zvma(&srcA, 2, &srcB, 2, &dest, 2, &dest, 2, vDSP_Length(size));
-    vDSP_ztoc(&dest, 2, (DSPComplex*) ptr, 2, size);
     return *this;
 }
 

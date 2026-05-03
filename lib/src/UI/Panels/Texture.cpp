@@ -18,6 +18,11 @@ TextureGL::TextureGL(Image& image, int blendFunc) :
     TextureGL::create();
 }
 
+void Texture::setImage(Image imageToUse, float scale) {
+    image = imageToUse;
+    imageScale = scale;
+}
+
 void TextureGL::bind() {
     if (image.isNull()) {
         return;
@@ -25,9 +30,9 @@ void TextureGL::bind() {
 
     jassert(id != UINT_MAX);
 
-    rect.setWidth(image.getWidth());
-    rect.setHeight(image.getHeight());
-    src = rect.withPosition(0, 0);
+    rect.setWidth(image.getWidth() / imageScale);
+    rect.setHeight(image.getHeight() / imageScale);
+    src = Rectangle<float>(0, 0, image.getWidth(), image.getHeight());
 
     glBindTexture(GL_TEXTURE_2D, id);
 
@@ -41,8 +46,8 @@ void TextureGL::bind() {
         GL_TEXTURE_2D,
         0,
         GL_RGBA,
-        rect.getWidth(),
-        rect.getHeight(),
+        image.getWidth(),
+        image.getHeight(),
         0,
         GL_RGBA,
         GL_UNSIGNED_BYTE,
@@ -68,8 +73,9 @@ void TextureGL::draw() {
     glDisable(GL_LINE_SMOOTH);
 //  glColor4f(1, 1, 1, 1);
     glBindTexture(GL_TEXTURE_2D, id);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    GLint filter = imageScale > 1.f ? GL_LINEAR : GL_NEAREST;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
 
     ScopedEnable tex2d(GL_TEXTURE_2D);
 
@@ -101,6 +107,9 @@ void TextureGL::draw() {
 }
 
 void TextureGL::drawSubImage(const Rectangle<float>& pos) {
-    src = pos;
+    src = Rectangle<float>(pos.getX() * imageScale,
+                           pos.getY() * imageScale,
+                           pos.getWidth() * imageScale,
+                           pos.getHeight() * imageScale);
     draw();
 }

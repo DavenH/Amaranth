@@ -220,7 +220,7 @@ void PanelControls::addMeshSelector(Component* selector) {
 
 void PanelControls::addScratchSelector() {
     scratchSelector.setColour(ComboBox::outlineColourId, Colours::black);
-	scratchSelector.getProperties().set("iconOnlyCombo", true);
+	scratchSelector.getProperties().set("indexedCombo", true);
 	scratchSelector.addListener(this);
 	scratchSelector.setWantsKeyboardFocus(false);
 
@@ -291,4 +291,3 @@ void PanelControls::moveLayer(bool up) const {
 	    layerSelector->moveCurrentLayer(up);
     }
 }
-

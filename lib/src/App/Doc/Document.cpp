@@ -153,6 +153,7 @@ void Document::save(const String& filename) {
     }
 
     File saveFile(filename);
+    details.setFilename(filename);
 
     if (saveFile.existsAsFile()) {
         (void) saveFile.deleteFile();
@@ -173,7 +174,11 @@ void Document::save(OutputStream* outStream) {
         return;
     }
 
-    saveHeader(outStream, details, getConstant(DocMagicCode));
+    if (!saveHeader(outStream, details, getConstant(DocMagicCode))) {
+        showConsoleMsg("Problem saving preset header");
+        return;
+    }
+
     String docString = JSON::toString(createJsonRoot(details, savableItems), true);
     CharPointer_UTF8 utf8Data = docString.toUTF8();
 
@@ -192,17 +197,18 @@ bool Document::open(InputStream* stream) {
     // stream can have additional header info
     // from plugin's config settings
     int64 startPosition = stream->getPosition();
+    bool hasHeader = readHeader(stream, details, getConstant(DocMagicCode));
 
-    if (!readHeader(stream, details, getConstant(DocMagicCode))) {
-        return false;
+    if (hasHeader) {
+        stream->setPosition(startPosition + (int64) headerSizeBytes);
+    } else {
+        stream->setPosition(startPosition);
     }
 
     ScopedLambda loadToggle(
         [this] { listeners.call(&Listener::documentAboutToLoad); },
         [this] { listeners.call(&Listener::documentHasLoaded); }
     );
-
-    stream->setPosition(startPosition + (int64) headerSizeBytes);
 
     GZIPDecompressorInputStream decompStream(stream, false);
     String presetDocString(decompStream.readEntireStreamAsString());

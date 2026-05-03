@@ -783,7 +783,8 @@ VertexPropertiesPanel::VertexProperties::VertexProperties(
 		guideCurveChanBox->setMouseClickGrabsKeyboardFocus(false);
 		guideCurveChanBox->setTextWhenNothingSelected(" ");
 		guideCurveChanBox->setColour(ComboBox::outlineColourId, Colours::black);
-		guideCurveChanBox->getProperties().set("iconOnlyCombo", true);
+		guideCurveChanBox->getProperties().set("indexedCombo", true);
+		guideCurveChanBox->getProperties().set("compactIndexedCombo", true);
 
 		int srcId, destId;
 		panel->getSourceDestDimensionIds(id, srcId, destId);

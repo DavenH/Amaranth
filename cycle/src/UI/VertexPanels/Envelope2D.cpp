@@ -524,7 +524,7 @@ void Envelope2D::createScales()
     float tempoScale = getObj(SynthAudioSource).getTempoScale();
     int position 	 = 0;
     int beats 		 = 4;
-    float alpha 	 = fontScale == ScaleSizes::ScaleSmall ? 0.35f : 0.6f;
+    float alpha 	 = fontScale == ScaleSizes::ScaleSmall ? 0.45f : 0.78f;
 
   #if PLUGIN_MODE
     AudioPlayHead::CurrentPositionInfo info = getObj(PluginProcessor).getCurrentPosition();
@@ -537,8 +537,9 @@ void Envelope2D::createScales()
         lengthSecs *= props->getEffectiveScale();
     }
 
-    scalesImage = Image(Image::ARGB, 256, 16, true);
+    scalesImage = Image(Image::ARGB, 256 * textTextureScale, 16 * textTextureScale, true);
     Graphics g(scalesImage);
+    g.addTransform(AffineTransform::scale((float) textTextureScale));
     g.setFont(font);
 
     for (float vertMajorLine : vertMajorLines) {

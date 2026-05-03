@@ -143,6 +143,10 @@ void SelectorPanel::constrainIndex(int& num) {
 }
 
 void SelectorPanel::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
+    if (wheel.isInertial || approximatelyEqual(wheel.deltaY, 0.0f)) {
+        return;
+    }
+
     float yInc = wheel.deltaY;
 
 	draggedListIndex(yInc > 0 ? 1 : -1);
@@ -177,6 +181,7 @@ void SelectorPanel::doSelectionChange() {
 
     indexDragged = 0;
 
+    rowClicked(currentIndex);
     selectionChanged();
 }
 

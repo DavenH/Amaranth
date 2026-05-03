@@ -64,8 +64,8 @@ public:
         int size = 1 << (order - 1);
       #ifdef USE_ACCELERATE
         jassert(complex.size() >= size);
-        vDSP_ztoc(&splitComplex, 1, (DSPComplex*) complex.get(), 2, complex.size());
-        return complex;
+        vDSP_ztoc(&splitComplex, 1, (DSPComplex*) complex.get(), 2, size);
+        return complex.withSize(size);
       #else
         jassert(fftBuffer.size() >= size * 2 + 2);
 

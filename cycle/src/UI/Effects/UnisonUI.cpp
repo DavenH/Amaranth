@@ -430,8 +430,6 @@ bool UnisonUI::readJSON(const var& object) {
 Array<Rectangle<int> > UnisonUI::getOutlinableRects() {
     Array<Rectangle<int> > a;
 
-    a.add(enableButton.getBounds());
-
     if (!isGroupMode()) {
         a.add(voiceSelector.getBounds());
         a.add(addRemover.getBounds());

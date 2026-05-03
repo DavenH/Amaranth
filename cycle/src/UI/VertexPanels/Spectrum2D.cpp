@@ -50,7 +50,7 @@ void Spectrum2D::init() {
     zoomPanel->tendZoomToTop = false;
     zoomPanel->validateRect("Spectrum2D::init");
 
-    createNameImage("Magn. Spectrum", false);
+    createNameImage("Magnitude Spectrum", false);
     createNameImage("Phase Spectrum", true);
 
     double value = 1.f;
@@ -489,13 +489,14 @@ void Spectrum2D::createScales() {
 
     vector<Rectangle<float> > newScales;
 
-    scalesImage = Image(Image::ARGB, 1024, 16, true);
+    scalesImage = Image(Image::ARGB, 1024 * textTextureScale, 16 * textTextureScale, true);
     Graphics g(scalesImage);
+    g.addTransform(AffineTransform::scale((float) textTextureScale));
 
     auto& mg = getObj(MiscGraphics);
     int fontScale 	 = getSetting(PointSizeScale);
     Font& font 		 = *mg.getAppropriateFont(fontScale);
-    float alpha 	 = fontScale == 1 ? 0.35f : 0.6f;
+    float alpha 	 = fontScale == 1 ? 0.45f : 0.78f;
 
     g.setFont(font);
 
