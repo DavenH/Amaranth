@@ -16,6 +16,7 @@
 
 using std::vector;
 
+class AutomationInspectable;
 class Panel;
 class Interactor;
 
@@ -535,6 +536,7 @@ public:
 	Interactor* areaToInteractor(int which);
 	Component* 	getComponent(int which);
 	Component* 	getComponent(const String& areaName, const String& targetName);
+	AutomationInspectable* getAutomationInspectable(const String& areaName, const String& targetName);
 	TourGuide* 	getTourGuide(Area area);
 
 	class Tutorial {

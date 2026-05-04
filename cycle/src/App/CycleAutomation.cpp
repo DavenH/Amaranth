@@ -595,7 +595,7 @@ var CycleAutomation::componentState(Component* component, const String& area, co
             json->setProperty("controlType", "component");
         }
 
-        if (auto* inspectable = dynamic_cast<AutomationInspectable*>(component)) {
+        if (auto* inspectable = const_cast<CycleTour&>(getObj(CycleTour)).getAutomationInspectable(area, target)) {
             json->setProperty("automationState", inspectable->exportAutomationState());
         }
     } else {

@@ -282,7 +282,7 @@ Planned serialization boundary:
 - Rich Cycle components expose automation-specific state through an optional
   interface, tentatively `AutomationInspectable`.
 - `AutomationInspectable` is implemented and currently attached to
-  `MorphPanel` and `GeneralControls`.
+  `MorphPanel`, `GeneralControls`, and `Waveform3D`.
 - Full preset/model JSON continues to flow through explicit `Savable` export
   via `exportState`, not implicit target inspection.
 - `inspectTargets` may later accept an option such as `includeSavable` or
@@ -306,6 +306,9 @@ the `AutomationInspectable` interface.
     axis, and current MIDI key under `automationState`.
   - `GeneralControls.v1` reports current tool, view stage, transport state,
     surface-view flags, and button applicability/highlight state.
+  - `Waveform3D.v1` reports time-layer index/counts, current layer properties,
+    current mesh counts, view stage, wave-overlay flags, grid status, and render
+    width.
 - Expand `snapshotState` to include:
   - document/preset name,
   - current view stage,
@@ -455,6 +458,7 @@ scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-screenshot.json /private
 CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tmp/cycle-agent-waveform3d-os.png scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json /private/tmp/cycle-agent-waveform3d-os-report.json /private/tmp/cycle-agent-waveform3d-os-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-general-controls.json /private/tmp/cycle-agent-general-controls-report.json /private/tmp/cycle-agent-general-controls-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-state.json /private/tmp/cycle-agent-waveform3d-state-report.json /private/tmp/cycle-agent-waveform3d-state-logs.txt
 ```
 
 Current verified behavior:
@@ -476,6 +480,8 @@ Current verified behavior:
   `inspectTargets` reports the resulting value.
 - `GeneralControls` reports `GeneralControls.v1`; a `SwitchToTool` action
   updates `automationState.tools.name` to `pencil`.
+- `Waveform3D` reports `Waveform3D.v1`; setting `TargPan` updates
+  `automationState.layer.currentProperties.pan`.
 - Cycle exits cleanly when `quit` is true.
 
 ## Open Questions

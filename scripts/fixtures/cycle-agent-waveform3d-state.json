@@ -1,0 +1,24 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaWfrmWaveform3D"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargPan"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargPan",
+      "value": 0.75
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaWfrmWaveform3D"
+    }
+  ],
+  "quit": true
+}

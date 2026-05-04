@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <App/AutomationInspectable.h>
 #include <UI/AsyncUIUpdater.h>
 #include <UI/Panels/Panel3D.h>
 #include <UI/ParameterGroup.h>
@@ -34,7 +35,8 @@ class Waveform3D:
     ,	public LayerSelectionClient
     ,	public ControlsClient
     ,	public AsyncUIUpdater
-    ,	public TourGuide {
+    ,	public TourGuide
+    ,	public AutomationInspectable {
 public:
     explicit Waveform3D(SingletonRepo*);
     ~Waveform3D() override;
@@ -83,6 +85,7 @@ public:
     const vector<Column>& getColumns() override;
     CriticalSection& getGridLock() override;
     bool isSurfaceDetailReduced() override;
+    var exportAutomationState() const override;
 
     /* Accessors */
     int getLayerType() override;

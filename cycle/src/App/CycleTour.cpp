@@ -1,4 +1,5 @@
 #include <App/MeshLibrary.h>
+#include <App/AutomationInspectable.h>
 #include <App/SingletonRepo.h>
 #include <Curve/VertCube.h>
 #include <Design/Updating/Updater.h>
@@ -1246,6 +1247,20 @@ juce::Component* CycleTour::getComponent(const String& areaName, const String& t
     }
 
     return nullptr;
+}
+
+AutomationInspectable* CycleTour::getAutomationInspectable(const String& areaName, const String& targetName) {
+    if (auto* component = getComponent(areaName, targetName)) {
+        if (auto* inspectable = dynamic_cast<AutomationInspectable*>(component)) {
+            return inspectable;
+        }
+    }
+
+    if (targetName.isNotEmpty() || !areaStrings.contains(areaName)) {
+        return nullptr;
+    }
+
+    return dynamic_cast<AutomationInspectable*>(getTourGuide(areaStrings[areaName]));
 }
 
 Panel* CycleTour::areaToPanel(int which) {
