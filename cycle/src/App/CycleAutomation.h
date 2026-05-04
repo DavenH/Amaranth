@@ -8,6 +8,7 @@ class CycleAutomation :
     ,   public SingletonAccessor {
 public:
     explicit CycleAutomation(SingletonRepo* repo);
+    ~CycleAutomation() override;
 
     static String stripAutomationArgs(const String& commandLine);
 
@@ -16,9 +17,13 @@ public:
 private:
     struct Options {
         bool hasScript{false};
+        bool hasSession{false};
         String scriptPath;
         String reportPath;
+        String sessionPath;
     };
+
+    class SessionServer;
 
     static Options parseOptions(const String& commandLine);
     static void appendResult(Array<var>& results, const String& type, bool ok, const String& message, const var& data = {});
@@ -26,6 +31,9 @@ private:
     void timerCallback() override;
     void runScript();
     void runCommand(const var& command, Array<var>& results);
+    var runCommandResult(const var& command);
+    var handleSessionRequest(const var& request);
+    void startSessionServer();
 
     bool runTourAction(const var& command, String& message);
     bool captureScreenshot(const var& command, String& message, var& data);
@@ -44,6 +52,7 @@ private:
     bool listMeshTargets(const var& command, String& message, var& data);
     bool exportMeshState(const var& command, String& message, var& data);
     bool mutateMeshVertex(const var& command, String& message, var& data);
+    bool meshSelectionGesture(const var& command, String& message, var& data);
     bool waitForIdle(const var& command, String& message, var& data);
     var  snapshotState();
 
@@ -60,5 +69,6 @@ private:
     void annotateTourTarget(DynamicObject& json, Component* component) const;
 
     Options options;
+    std::unique_ptr<SessionServer> sessionServer;
     bool hasRun{false};
 };

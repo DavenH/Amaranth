@@ -1,0 +1,62 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "CalmingKeys"
+    },
+    {
+      "command": "meshSelectionGesture",
+      "gesture": "boxSelect",
+      "group": "time",
+      "fromX": 0.0,
+      "fromY": 0.0,
+      "toX": 1.0,
+      "toY": 1.0,
+      "waitForIdle": true
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.selectedCount",
+      "greaterThan": 1
+    },
+    {
+      "command": "meshSelectionGesture",
+      "gesture": "dragHandle",
+      "group": "time",
+      "handle": "right",
+      "dx": 8.0,
+      "dy": 0.0,
+      "waitForIdle": true
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.selectedCount",
+      "greaterThan": 1
+    },
+    {
+      "command": "meshSelectionGesture",
+      "gesture": "moveSelection",
+      "group": "time",
+      "dx": 0.0,
+      "dy": 4.0,
+      "waitForIdle": true
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.selectedCount",
+      "greaterThan": 1
+    },
+    {
+      "command": "meshSelectionGesture",
+      "gesture": "clear",
+      "group": "time",
+      "waitForIdle": true
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.selectedCount",
+      "equals": 0
+    }
+  ],
+  "quit": true
+}

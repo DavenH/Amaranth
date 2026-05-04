@@ -65,6 +65,9 @@ Implemented:
   - `assertTarget`,
   - `assertState`,
   - `listAssertionPaths`,
+  - `listMeshTargets`,
+  - `exportMeshState`,
+  - `meshSelectionGesture`,
   - `waitForIdle`,
   - `action`.
 - `CycleTour` bridge for semantic action execution.
@@ -80,7 +83,8 @@ Known gaps:
 - `snapshotState` is useful for core UI state but does not yet include stable
   vertex handles or all dialog/modal visibility.
 - No CTest integration yet.
-- Mesh-focused helpers for current layer/group still need stable addressing.
+- Mesh-focused helpers for current layer/group have stable group/layer
+  addressing, but vertex handles are still index-based.
 - No keyboard playback yet.
 - No long-running IPC/session mode yet.
 
@@ -471,6 +475,11 @@ layer-level mesh JSON export are implemented.
   drives the active interactor with synthetic mouse/key events. Explicit
   `mode: "patch"` remains available for non-e2e preset generation, and
   `mode: "tour"` remains available for the older `CycleTour` action bridge.
+- Add selection-frame gestures. Done with `meshSelectionGesture` for
+  `boxSelect`, `dragHandle`, `moveSelection`, and `clear`; this exercises
+  `doBoxSelect`, `setHighlitCorner`, `DraggingCorner`, `doDragCorner`,
+  `resizeFinalBoxSelection`, and selection-frame updates. Axe-specific
+  gestures remain out of scope for now.
 - Add low-level pointer/key/wheel commands only for interaction regressions.
   Done for pointer click/down/up/drag/move/doubleClick/wheel events.
 - Pointer commands should target named components plus local coordinates. Done
@@ -492,6 +501,9 @@ Status: partially implemented with an opt-in local smoke runner.
     its vertex/cube counts. Covered by `cycle-agent-calmingkeys-mesh.json`.
   - adding, selecting, moving, and deleting a time-layer vertex/cube edit.
     Covered by `cycle-agent-mesh-mutations.json`.
+  - box-selecting a mesh vertex group, dragging a selection edge, moving the
+    selection widget, and clearing selection. Covered by
+    `cycle-agent-mesh-selection-gesture.json`.
   - exporting `MeshLibrary`. Covered by `cycle-agent-readonly.json`.
   - setting morph position. Covered by `cycle-agent-set-morph-slider.json`.
   - setting broader master/effect/layer controls. Covered by
@@ -537,6 +549,7 @@ scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-assertion-paths.json /pr
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-mesh-targets.json /private/tmp/cycle-agent-mesh-targets-report.json /private/tmp/cycle-agent-mesh-targets-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-calmingkeys-mesh.json /private/tmp/cycle-agent-calmingkeys-mesh-report.json /private/tmp/cycle-agent-calmingkeys-mesh-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-mesh-mutations.json /private/tmp/cycle-agent-mesh-mutations-report.json /private/tmp/cycle-agent-mesh-mutations-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-mesh-selection-gesture.json /private/tmp/cycle-agent-mesh-selection-gesture-report.json /private/tmp/cycle-agent-mesh-selection-gesture-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-screenshot.json /private/tmp/cycle-agent-screenshot-report.json /private/tmp/cycle-agent-screenshot-logs.txt
 CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tmp/cycle-agent-waveform3d-os.png scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json /private/tmp/cycle-agent-waveform3d-os-report.json /private/tmp/cycle-agent-waveform3d-os-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
@@ -606,6 +619,10 @@ Current verified behavior:
   programmatic preset generation. The focused mutation fixture covers
   CalmingKeys `time[0]`: add changes 16/2 to 24/3, select reports one selected
   vertex, move preserves 24/3, and delete returns the mesh to 16/2.
+- `meshSelectionGesture` drives group selection with synthetic mouse gestures.
+  The focused fixture box-selects two CalmingKeys time vertices, verifies the
+  16-entry moving selection frame, drags the right selection edge, drags the
+  move handle, and clears selection.
 - `waitForIdle` performs an explicit fixed message-loop drain/delay command.
 - Cycle exits cleanly when `quit` is true.
 

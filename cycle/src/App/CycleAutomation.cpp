@@ -21,6 +21,14 @@
 
 #include "../UI/Panels/MainPanel.h"
 
+#if JUCE_MAC || JUCE_LINUX
+  #include <cerrno>
+  #include <cstring>
+  #include <sys/socket.h>
+  #include <sys/un.h>
+  #include <unistd.h>
+#endif
+
 namespace {
     const char* const kInspectableAreas[] = {
         "AreaMain",
@@ -825,14 +833,32 @@ namespace {
         return CycleTour::AreaNull;
     }
 
-    ModifierKeys meshGestureModifiers(bool buttonDown, bool rightButton) {
+    ModifierKeys meshGestureModifiers(bool buttonDown, bool rightButton, bool shiftDown, bool commandDown) {
         ModifierKeys modifiers = ModifierKeys::currentModifiers.withoutMouseButtons();
 
         if (!buttonDown) {
+            if (shiftDown) {
+                modifiers = modifiers.withFlags(ModifierKeys::shiftModifier);
+            }
+
+            if (commandDown) {
+                modifiers = modifiers.withFlags(ModifierKeys::commandModifier);
+            }
+
             return modifiers;
         }
 
-        return modifiers.withFlags(rightButton ? ModifierKeys::rightButtonModifier : ModifierKeys::leftButtonModifier);
+        modifiers = modifiers.withFlags(rightButton ? ModifierKeys::rightButtonModifier : ModifierKeys::leftButtonModifier);
+
+        if (shiftDown) {
+            modifiers = modifiers.withFlags(ModifierKeys::shiftModifier);
+        }
+
+        if (commandDown) {
+            modifiers = modifiers.withFlags(ModifierKeys::commandModifier);
+        }
+
+        return modifiers;
     }
 
     MouseEvent makeMeshGestureEvent(Component& component,
@@ -840,13 +866,15 @@ namespace {
                                     Point<float> downPosition,
                                     bool buttonDown,
                                     bool rightButton,
-                                    bool wasDragged) {
+                                    bool wasDragged,
+                                    bool shiftDown = false,
+                                    bool commandDown = false) {
         Time now = Time::getCurrentTime();
 
         return {
             Desktop::getInstance().getMainMouseSource(),
             position,
-            meshGestureModifiers(buttonDown, rightButton),
+            meshGestureModifiers(buttonDown, rightButton, shiftDown, commandDown),
             MouseInputSource::defaultPressure,
             0.0f, 0.0f, 0.0f, 0.0f,
             &component,
@@ -903,12 +931,16 @@ namespace {
         return true;
     }
 
-    void dispatchMeshClick(Interactor& interactor, Point<float> position, bool rightButton) {
+    void dispatchMeshClick(Interactor& interactor,
+                           Point<float> position,
+                           bool rightButton,
+                           bool shiftDown = false,
+                           bool commandDown = false) {
         Component& component = *interactor.display.get();
-        MouseEvent enterEvent = makeMeshGestureEvent(component, position, position, false, rightButton, false);
-        MouseEvent moveEvent = makeMeshGestureEvent(component, position, position, false, rightButton, false);
-        MouseEvent downEvent = makeMeshGestureEvent(component, position, position, true, rightButton, false);
-        MouseEvent upEvent = makeMeshGestureEvent(component, position, position, false, rightButton, false);
+        MouseEvent enterEvent = makeMeshGestureEvent(component, position, position, false, rightButton, false, shiftDown, commandDown);
+        MouseEvent moveEvent = makeMeshGestureEvent(component, position, position, false, rightButton, false, shiftDown, commandDown);
+        MouseEvent downEvent = makeMeshGestureEvent(component, position, position, true, rightButton, false, shiftDown, commandDown);
+        MouseEvent upEvent = makeMeshGestureEvent(component, position, position, false, rightButton, false, shiftDown, commandDown);
 
         interactor.mouseEnter(enterEvent);
         interactor.mouseMove(moveEvent);
@@ -919,15 +951,17 @@ namespace {
     void dispatchMeshDrag(Interactor& interactor,
                           Point<float> startPosition,
                           Point<float> endPosition,
-                          bool rightButton) {
+                          bool rightButton,
+                          bool shiftDown = false,
+                          bool commandDown = false) {
         Component& component = *interactor.display.get();
         Point<float> midpoint = startPosition + (endPosition - startPosition) * 0.5f;
-        MouseEvent enterEvent = makeMeshGestureEvent(component, startPosition, startPosition, false, rightButton, false);
-        MouseEvent moveEvent = makeMeshGestureEvent(component, startPosition, startPosition, false, rightButton, false);
-        MouseEvent downEvent = makeMeshGestureEvent(component, startPosition, startPosition, true, rightButton, false);
-        MouseEvent dragMidEvent = makeMeshGestureEvent(component, midpoint, startPosition, true, rightButton, true);
-        MouseEvent dragEndEvent = makeMeshGestureEvent(component, endPosition, startPosition, true, rightButton, true);
-        MouseEvent upEvent = makeMeshGestureEvent(component, endPosition, startPosition, false, rightButton, true);
+        MouseEvent enterEvent = makeMeshGestureEvent(component, startPosition, startPosition, false, rightButton, false, shiftDown, commandDown);
+        MouseEvent moveEvent = makeMeshGestureEvent(component, startPosition, startPosition, false, rightButton, false, shiftDown, commandDown);
+        MouseEvent downEvent = makeMeshGestureEvent(component, startPosition, startPosition, true, rightButton, false, shiftDown, commandDown);
+        MouseEvent dragMidEvent = makeMeshGestureEvent(component, midpoint, startPosition, true, rightButton, true, shiftDown, commandDown);
+        MouseEvent dragEndEvent = makeMeshGestureEvent(component, endPosition, startPosition, true, rightButton, true, shiftDown, commandDown);
+        MouseEvent upEvent = makeMeshGestureEvent(component, endPosition, startPosition, false, rightButton, true, shiftDown, commandDown);
 
         interactor.mouseEnter(enterEvent);
         interactor.mouseMove(moveEvent);
@@ -1031,6 +1065,91 @@ namespace {
         return true;
     }
 
+    Interactor* resolveMeshGestureInteractor(CycleTour& tour,
+                                             MeshLibrary& meshLibrary,
+                                             const var& command,
+                                             const String& area,
+                                             String& message) {
+        int areaId = tourAreaForMeshArea(area);
+        Interactor* interactor = areaId != CycleTour::AreaNull ? tour.areaToInteractor(areaId) : nullptr;
+
+        if (interactor == nullptr || interactor->panel == nullptr || interactor->display == nullptr) {
+            message = "Mesh gesture target could not be resolved: " + area;
+            return nullptr;
+        }
+
+        if (!interactor->display->isShowing()) {
+            message = "Mesh gesture target is not showing: " + area;
+            return nullptr;
+        }
+
+        int groupId = meshGroupIdForMutationCommand(command, meshLibrary, area);
+
+        if (groupId == CommonEnums::Null || groupId != interactor->layerType) {
+            message = "Mesh gesture group does not match target interactor";
+            return nullptr;
+        }
+
+        MeshLibrary::LayerGroup& group = meshLibrary.getLayerGroup(groupId);
+        int layerIndex = meshLayerIndexForCommand(command, group);
+
+        if (layerIndex == CommonEnums::Null || layerIndex != group.current) {
+            message = "Mesh gesture requires the current visible layer";
+            return nullptr;
+        }
+
+        return interactor;
+    }
+
+    int selectionHandleForName(const String& handle) {
+        if (handle == "left") {
+            return PanelState::Left;
+        }
+
+        if (handle == "top") {
+            return PanelState::Top;
+        }
+
+        if (handle == "right") {
+            return PanelState::Right;
+        }
+
+        if (handle == "bottom" || handle == "bot") {
+            return PanelState::Bot;
+        }
+
+        if (handle == "move" || handle == "center" || handle == "centre") {
+            return PanelState::MoveHandle;
+        }
+
+        return CommonEnums::Null;
+    }
+
+    Point<float> selectionHandlePoint(Interactor& interactor, int handle) {
+        if (handle == PanelState::MoveHandle) {
+            return interactor.finalSelection.getCentre().toFloat();
+        }
+
+        if (!isPositiveAndBelow(handle, int(interactor.selectionCorners.size()))) {
+            return {};
+        }
+
+        Vertex2 start = interactor.selectionCorners[handle];
+        Vertex2 end = interactor.selectionCorners[(handle + 1) % interactor.selectionCorners.size()];
+        Vertex2 midpoint = (start + end) * 0.5f;
+
+        return { midpoint.x, midpoint.y };
+    }
+
+    var meshSelectionState(Interactor& interactor) {
+        auto json = PresetJson::object();
+        json->setProperty("selectedCount", int(interactor.getSelected().size()));
+        json->setProperty("selectedFrameCount", int(interactor.state.selectedFrame.size()));
+        json->setProperty("highlitCorner", interactor.getStateValue(HighlitCorner));
+        json->setProperty("finalSelection", rectangleState(interactor.finalSelection));
+        return PresetJson::toVar(json);
+    }
+
     var meshSummary(Mesh* mesh) {
         auto json = PresetJson::object();
         json->setProperty("resolved", mesh != nullptr);
@@ -1100,6 +1219,149 @@ CycleAutomation::CycleAutomation(SingletonRepo* repo) :
         SingletonAccessor(repo, "CycleAutomation") {
 }
 
+CycleAutomation::~CycleAutomation() {
+    sessionServer = nullptr;
+}
+
+class CycleAutomation::SessionServer :
+        public Thread {
+public:
+    SessionServer(CycleAutomation& owner, String socketPath) :
+            Thread("CycleAutomationSession")
+        ,   owner(owner)
+        ,   socketPath(std::move(socketPath)) {
+    }
+
+    ~SessionServer() override {
+        signalThreadShouldExit();
+        closeServerSocket();
+        stopThread(1000);
+        File(socketPath).deleteFile();
+    }
+
+    bool start(String& message) {
+      #if JUCE_MAC || JUCE_LINUX
+        File(socketPath).deleteFile();
+
+        serverFd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+
+        if (serverFd < 0) {
+            message = "Could not create session socket: " + String(std::strerror(errno));
+            return false;
+        }
+
+        sockaddr_un address{};
+        address.sun_family = AF_UNIX;
+        String::CharPointerType pathChars = socketPath.getCharPointer();
+        std::strncpy(address.sun_path, pathChars.getAddress(), sizeof(address.sun_path) - 1);
+
+        if (::bind(serverFd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0) {
+            message = "Could not bind session socket: " + String(std::strerror(errno));
+            closeServerSocket();
+            return false;
+        }
+
+        if (::listen(serverFd, 8) != 0) {
+            message = "Could not listen on session socket: " + String(std::strerror(errno));
+            closeServerSocket();
+            return false;
+        }
+
+        startThread();
+        message = "Cycle automation session listening: " + socketPath;
+        return true;
+      #else
+        ignoreUnused(message);
+        return false;
+      #endif
+    }
+
+    void run() override {
+      #if JUCE_MAC || JUCE_LINUX
+        while (!threadShouldExit()) {
+            int clientFd = ::accept(serverFd, nullptr, nullptr);
+
+            if (clientFd < 0) {
+                if (!threadShouldExit()) {
+                    Thread::sleep(25);
+                }
+
+                continue;
+            }
+
+            handleClient(clientFd);
+            ::close(clientFd);
+        }
+      #endif
+    }
+
+private:
+    void closeServerSocket() {
+      #if JUCE_MAC || JUCE_LINUX
+        if (serverFd >= 0) {
+            ::shutdown(serverFd, SHUT_RDWR);
+            ::close(serverFd);
+            serverFd = -1;
+        }
+      #endif
+    }
+
+    void handleClient(int clientFd) {
+      #if JUCE_MAC || JUCE_LINUX
+        String requestText;
+        char buffer[1024];
+
+        while (!threadShouldExit()) {
+            ssize_t count = ::read(clientFd, buffer, sizeof(buffer));
+
+            if (count <= 0) {
+                break;
+            }
+
+            requestText += String::fromUTF8(buffer, int(count));
+
+            if (requestText.containsChar('\n')) {
+                requestText = requestText.upToFirstOccurrenceOf("\n", false, false);
+                break;
+            }
+        }
+
+        var request = JSON::parse(requestText);
+        auto completed = std::make_shared<WaitableEvent>();
+        auto response = std::make_shared<var>();
+
+        bool dispatched = MessageManager::callAsync([this, request, response, completed] {
+            *response = owner.handleSessionRequest(request);
+            completed->signal();
+        });
+
+        if (dispatched) {
+            if (!completed->wait(30000)) {
+                auto error = PresetJson::object();
+                error->setProperty("ok", false);
+                error->setProperty("message", "Timed out waiting for message thread");
+                *response = PresetJson::toVar(error);
+            }
+        } else {
+            auto error = PresetJson::object();
+            error->setProperty("ok", false);
+            error->setProperty("message", "Could not dispatch session request to message thread");
+            *response = PresetJson::toVar(error);
+        }
+
+        String responseText = JSON::toString(*response, true) + "\n";
+        CharPointer_UTF8 utf8 = responseText.toUTF8();
+        ::write(clientFd, utf8.getAddress(), std::strlen(utf8.getAddress()));
+      #else
+        ignoreUnused(clientFd);
+      #endif
+    }
+
+    CycleAutomation& owner;
+    String socketPath;
+    int serverFd{-1};
+};
+
 CycleAutomation::Options CycleAutomation::parseOptions(const String& commandLine) {
     Options parsed;
     StringArray tokens;
@@ -1120,6 +1382,12 @@ CycleAutomation::Options CycleAutomation::parseOptions(const String& commandLine
             parsed.reportPath = tokens[++i].unquoted();
         } else if (token.startsWith("--agent-report=")) {
             parsed.reportPath = token.fromFirstOccurrenceOf("=", false, false).unquoted();
+        } else if (token == "--agent-session" && i + 1 < tokens.size()) {
+            parsed.hasSession = true;
+            parsed.sessionPath = tokens[++i].unquoted();
+        } else if (token.startsWith("--agent-session=")) {
+            parsed.hasSession = true;
+            parsed.sessionPath = token.fromFirstOccurrenceOf("=", false, false).unquoted();
         }
     }
 
@@ -1137,12 +1405,12 @@ String CycleAutomation::stripAutomationArgs(const String& commandLine) {
     for (int i = 0; i < tokens.size(); ++i) {
         const String& token = tokens[i];
 
-        if ((token == "--agent-script" || token == "--agent-report") && i + 1 < tokens.size()) {
+        if ((token == "--agent-script" || token == "--agent-report" || token == "--agent-session") && i + 1 < tokens.size()) {
             ++i;
             continue;
         }
 
-        if (token.startsWith("--agent-script=") || token.startsWith("--agent-report=")) {
+        if (token.startsWith("--agent-script=") || token.startsWith("--agent-report=") || token.startsWith("--agent-session=")) {
             continue;
         }
 
@@ -1155,9 +1423,30 @@ String CycleAutomation::stripAutomationArgs(const String& commandLine) {
 void CycleAutomation::beginFromCommandLine(const String& commandLine) {
     options = parseOptions(commandLine);
 
+    if (options.hasSession) {
+        startSessionServer();
+    }
+
     if (options.hasScript && !hasRun) {
         startTimer(500);
     }
+}
+
+void CycleAutomation::startSessionServer() {
+    if (sessionServer != nullptr) {
+        return;
+    }
+
+    String message;
+    sessionServer = std::make_unique<SessionServer>(*this, options.sessionPath);
+
+    if (!sessionServer->start(message)) {
+        DBG(message);
+        sessionServer = nullptr;
+        return;
+    }
+
+    DBG(message);
 }
 
 void CycleAutomation::appendResult(Array<var>& results, const String& type, bool ok, const String& message, const var& data) {
@@ -1214,6 +1503,10 @@ void CycleAutomation::runScript() {
 }
 
 void CycleAutomation::runCommand(const var& command, Array<var>& results) {
+    results.add(runCommandResult(command));
+}
+
+var CycleAutomation::runCommandResult(const var& command) {
     String type = getString(command, "command", getString(command, "type"));
     String message;
     var data;
@@ -1253,17 +1546,56 @@ void CycleAutomation::runCommand(const var& command, Array<var>& results) {
         ok = exportMeshState(command, message, data);
     } else if (type == "selectVertex" || type == "addVertex" || type == "moveVertex" || type == "deleteVertex") {
         ok = mutateMeshVertex(command, message, data);
+    } else if (type == "meshSelectionGesture") {
+        ok = meshSelectionGesture(command, message, data);
     } else if (type == "waitForIdle") {
         ok = waitForIdle(command, message, data);
     } else if (type == "snapshotState") {
         ok = true;
         data = snapshotState();
         message = "Snapshot captured";
+    } else if (type == "ping") {
+        ok = true;
+        message = "pong";
+    } else if (type == "quit") {
+        ok = true;
+        message = "Quit requested";
+        MessageManager::callAsync([] {
+            JUCEApplication::getInstance()->systemRequestedQuit();
+        });
     } else {
         message = "Unknown automation command: " + type;
     }
 
-    appendResult(results, type, ok, message, data);
+    return makeResult(type, ok, message, data);
+}
+
+var CycleAutomation::handleSessionRequest(const var& request) {
+    auto response = PresetJson::object();
+    response->setProperty("ok", false);
+
+    if (request.isVoid()) {
+        response->setProperty("message", "Invalid JSON request");
+        return PresetJson::toVar(response);
+    }
+
+    var id = PresetJson::property(request, "id");
+
+    if (!id.isVoid()) {
+        response->setProperty("id", id);
+    }
+
+    var command = PresetJson::property(request, "command");
+
+    if (command.isVoid()) {
+        command = request;
+    }
+
+    var result = runCommandResult(command);
+    bool ok = PresetJson::boolProperty(result, "ok");
+    response->setProperty("ok", ok);
+    response->setProperty("result", result);
+    return PresetJson::toVar(response);
 }
 
 bool CycleAutomation::runTourAction(const var& command, String& message) {
@@ -2090,6 +2422,82 @@ bool CycleAutomation::mutateMeshVertex(const var& command, String& message, var&
     }
 
     message = "Mesh mutation executed: " + type;
+    return true;
+}
+
+bool CycleAutomation::meshSelectionGesture(const var& command, String& message, var& data) {
+    String area = meshAreaForCommand(command);
+    String gesture = getString(command, "gesture", getString(command, "action", "boxSelect"));
+
+    if (area.isEmpty()) {
+        message = "meshSelectionGesture requires a supported area or group";
+        return false;
+    }
+
+    MeshLibrary& meshLibrary = getObj(MeshLibrary);
+    Settings& settings = getObj(Settings);
+    Interactor* interactor = resolveMeshGestureInteractor(getObj(CycleTour), meshLibrary, command, area, message);
+
+    if (interactor == nullptr) {
+        return false;
+    }
+
+    const bool selectWithRight = settings.getGlobalSetting(AppSettings::SelectWithRight) == 1;
+    const bool selectButtonIsRight = selectWithRight;
+    const bool boxButtonIsRight = !selectWithRight;
+    int previousTool = settings.getGlobalSetting(AppSettings::Tool);
+    settings.getGlobalSetting(AppSettings::Tool) = Tools::Selector;
+    getObj(KeyboardInputHandler).setFocusedInteractor(interactor, true);
+
+    if (gesture == "clear" || gesture == "deselectAll") {
+        interactor->deselectAll(true);
+    } else if (gesture == "boxSelect") {
+        Point<float> from = meshPointToLocal(*interactor,
+                                             float(getDouble(command, "fromX", getDouble(command, "x1", 0.0))),
+                                             float(getDouble(command, "fromY", getDouble(command, "y1", 0.0))));
+        Point<float> to = meshPointToLocal(*interactor,
+                                           float(getDouble(command, "toX", getDouble(command, "x2", 1.0))),
+                                           float(getDouble(command, "toY", getDouble(command, "y2", 1.0))));
+
+        dispatchMeshDrag(*interactor, from, to, boxButtonIsRight, true, getBool(command, "command"));
+    } else if (gesture == "dragHandle" || gesture == "moveSelection") {
+        String handleName = gesture == "moveSelection" ? "move" : getString(command, "handle", "move");
+        int handle = selectionHandleForName(handleName);
+
+        if (handle == CommonEnums::Null || interactor->selectionCorners.empty()) {
+            settings.getGlobalSetting(AppSettings::Tool) = previousTool;
+            message = "meshSelectionGesture requires an active selection handle";
+            return false;
+        }
+
+        Point<float> from = selectionHandlePoint(*interactor, handle);
+        Point<float> to = from + Point<float>(float(getDouble(command, "dx", 0.0)),
+                                             float(getDouble(command, "dy", 0.0)));
+        var toX = PresetJson::property(command, "toX");
+        var toY = PresetJson::property(command, "toY");
+
+        if (!toX.isVoid() && !toY.isVoid()) {
+            to = meshPointToLocal(*interactor, float(double(toX)), float(double(toY)));
+        }
+
+        dispatchMeshDrag(*interactor, from, to, selectButtonIsRight, false, getBool(command, "command"));
+    } else {
+        settings.getGlobalSetting(AppSettings::Tool) = previousTool;
+        message = "Unknown mesh selection gesture: " + gesture;
+        return false;
+    }
+
+    settings.getGlobalSetting(AppSettings::Tool) = previousTool;
+    drainMessageLoopIfRequested(command);
+
+    auto json = PresetJson::object();
+    json->setProperty("gesture", gesture);
+    json->setProperty("area", area);
+    json->setProperty("selection", meshSelectionState(*interactor));
+    json->setProperty("meshTargets", listMeshTargets(command, message, data) ? data : var());
+    data = PresetJson::toVar(json);
+
+    message = "Mesh selection gesture executed: " + gesture;
     return true;
 }
 
