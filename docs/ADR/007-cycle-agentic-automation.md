@@ -36,6 +36,13 @@ long-term API for tests or external agents.
 We will build a deterministic in-app automation layer for Cycle and expose the
 first milestone through CLI JSON scripts and structured JSON reports.
 
+Standalone automation must launch Cycle as a normal GUI application. On macOS,
+test runners should use LaunchServices (`open ... --args ...`) or an equivalent
+bundle-aware launcher rather than invoking `Cycle.app/Contents/MacOS/Cycle`
+directly. Direct executable launch can fail during AppKit application
+registration before Cycle reaches its own startup code. The automation command
+model should therefore be independent of the process launch mechanism.
+
 The automation core will be extracted or generalized from the non-tutorial
 parts of `CycleTour`. `CycleTour` may continue to use the same registry and
 action execution facilities, but tutorial rendering and automation execution
@@ -82,6 +89,19 @@ a thin adapter over the same automation core, with tools such as
 `cycle.run_actions`, `cycle.inspect`, `cycle.snapshot`, and
 `cycle.screenshot`.
 
+Future session-based interactivity should follow the same rule: launch Cycle as
+a GUI app first, then connect to a local IPC endpoint after startup. Interactive
+agents should not depend on stdin/stdout from a raw executable launch. The
+expected model is:
+
+- launch Cycle through the platform GUI launcher with an automation server or
+  endpoint argument,
+- let Cycle complete normal window creation and initial preset loading,
+- have `CycleAutomation` publish readiness through a report file, port file, or
+  socket path,
+- connect over local IPC,
+- execute the same semantic command schema on the JUCE message thread.
+
 ## Consequences
 
 ### Positive
@@ -97,6 +117,10 @@ a thin adapter over the same automation core, with tools such as
 - Future agent workflows can reuse the same command model for live control and
   preset creation.
 - Existing JUCE layout, focus, and interaction code remains authoritative.
+- LaunchServices-based startup matches how macOS expects a GUI app bundle to
+  register with AppKit.
+- Future interactive sessions can share the same automation executor instead of
+  creating a separate control plane.
 - `CycleTour` can keep its guided UI role while sharing target registration and
   semantic actions.
 
@@ -111,6 +135,10 @@ a thin adapter over the same automation core, with tools such as
   incidental vertex order.
 - Some desired region-level exports may require small adapters when the current
   `Savable` boundary is coarser than the UI region an agent asks for.
+- Test runners need a small platform-aware launch wrapper instead of invoking
+  the standalone executable directly.
+- Long-running sessions require readiness, timeout, and shutdown semantics in
+  addition to the one-shot command schema.
 - Pointer-level tests still require care because they intentionally exercise
   layout and event-routing behavior.
 
@@ -152,6 +180,15 @@ lifecycle, security, concurrency, and shutdown behavior before the command
 schema is stable. It can be added later as another adapter over the same
 automation core.
 
+### Use stdin/stdout from direct executable launch for sessions
+
+Rejected.
+
+Cycle is a GUI application. On macOS, direct executable launch can bypass normal
+bundle registration and fail in AppKit before application startup. Even where it
+works, stdin/stdout is a poor fit for a GUI app launched through platform tools.
+Interactive control should use local IPC after GUI startup instead.
+
 ## Implementation Plan
 
 ### Phase 1: Separate automation from tutorial UI
@@ -166,6 +203,8 @@ automation core.
 
 - Add standalone-app command-line options for an automation script path and
   report output path.
+- Add a test-runner script that launches the app bundle through the platform GUI
+  launcher and passes automation arguments with `--args`.
 - Parse an ordered JSON action list into validated automation commands.
 - Execute commands after startup and requested preset loading are complete.
 - Write structured success, failure, timing, and diagnostic output.
@@ -203,6 +242,11 @@ automation core.
 
 - Add an MCP server or socket API only after the CLI schema and automation
   reports are stable.
+- Start long-running adapters only after normal GUI startup and initial preset
+  loading.
+- Publish readiness through a report file, port file, or socket path so external
+  agents know when to connect.
+- Prefer local TCP/WebSocket or a local socket/named pipe over stdin/stdout.
 - Keep external adapters thin; they should call the same automation service
   instead of reimplementing command behavior.
 
@@ -219,5 +263,7 @@ automation core.
 - `CycleTour` tutorial behavior remains intact.
 - Automation failures report the command, reason, current state snapshot, and
   enough context to reproduce the failure locally.
+- Automation test launch uses the platform GUI launcher rather than direct
+  executable invocation on macOS.
 - The same automation core can later be exposed through MCP without redesigning
   command semantics.
