@@ -18,6 +18,12 @@
     {
       "command": "inspectTargets",
       "area": "AreaWfrmWaveform3D"
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaWfrmWaveform3D",
+      "path": "automationState.layer.currentProperties.pan",
+      "equals": 0.75
     }
   ],
   "quit": true

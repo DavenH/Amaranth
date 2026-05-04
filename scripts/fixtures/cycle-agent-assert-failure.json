@@ -1,0 +1,11 @@
+{
+  "commands": [
+    {
+      "command": "assertTarget",
+      "area": "AreaGenControls",
+      "path": "automationState.tools.name",
+      "equals": "not-a-tool"
+    }
+  ],
+  "quit": true
+}

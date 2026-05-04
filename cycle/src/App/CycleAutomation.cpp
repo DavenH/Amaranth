@@ -192,6 +192,120 @@ namespace {
         json->setProperty("height", bounds.getHeight());
         return PresetJson::toVar(json);
     }
+
+    bool getPathSegmentValue(const var& source, const String& segment, var& result) {
+        String propertyName = segment;
+        int bracketIndex = propertyName.indexOfChar('[');
+        int arrayIndex = -1;
+
+        if (bracketIndex >= 0 && propertyName.endsWithChar(']')) {
+            String indexString = propertyName.substring(bracketIndex + 1, propertyName.length() - 1);
+            propertyName = propertyName.substring(0, bracketIndex);
+            arrayIndex = indexString.getIntValue();
+        }
+
+        result = propertyName.isEmpty() ? source : PresetJson::property(source, propertyName);
+
+        if (result.isVoid()) {
+            return false;
+        }
+
+        if (arrayIndex >= 0) {
+            if (auto* values = result.getArray()) {
+                if (isPositiveAndBelow(arrayIndex, values->size())) {
+                    result = values->getReference(arrayIndex);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    bool getPathValue(const var& source, const String& path, var& result) {
+        if (path.isEmpty()) {
+            result = source;
+            return true;
+        }
+
+        StringArray segments;
+        segments.addTokens(path, ".", {});
+        result = source;
+
+        for (const auto& segment : segments) {
+            if (!getPathSegmentValue(result, segment, result)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool numbersEqual(double lhs, double rhs, double tolerance) {
+        return std::abs(lhs - rhs) <= tolerance;
+    }
+
+    bool compareVars(const var& actual, const String& op, const var& expected, double tolerance) {
+        if (op == "exists") {
+            return !actual.isVoid();
+        }
+
+        if (op == "notEquals") {
+            return !compareVars(actual, "equals", expected, tolerance);
+        }
+
+        if (op == "equals") {
+            if (actual.isDouble() || actual.isInt() || actual.isInt64() ||
+                expected.isDouble() || expected.isInt() || expected.isInt64()) {
+                return numbersEqual(double(actual), double(expected), tolerance);
+            }
+
+            return actual.toString() == expected.toString();
+        }
+
+        double actualNumber = double(actual);
+        double expectedNumber = double(expected);
+
+        if (op == "lessThan") {
+            return actualNumber < expectedNumber;
+        }
+
+        if (op == "lessThanOrEqual") {
+            return actualNumber <= expectedNumber || numbersEqual(actualNumber, expectedNumber, tolerance);
+        }
+
+        if (op == "greaterThan") {
+            return actualNumber > expectedNumber;
+        }
+
+        if (op == "greaterThanOrEqual") {
+            return actualNumber >= expectedNumber || numbersEqual(actualNumber, expectedNumber, tolerance);
+        }
+
+        return false;
+    }
+
+    String assertionOperator(const var& command) {
+        static const char* const operators[] = {
+            "equals",
+            "notEquals",
+            "lessThan",
+            "lessThanOrEqual",
+            "greaterThan",
+            "greaterThanOrEqual",
+            "exists",
+        };
+
+        for (auto* op : operators) {
+            if (!PresetJson::property(command, op).isVoid()) {
+                return op;
+            }
+        }
+
+        return {};
+    }
 }
 
 CycleAutomation::CycleAutomation(SingletonRepo* repo) :
@@ -327,6 +441,8 @@ void CycleAutomation::runCommand(const var& command, Array<var>& results) {
         ok = inspectTargets(command, message, data);
     } else if (type == "setControl") {
         ok = setControl(command, message, data);
+    } else if (type == "assertTarget") {
+        ok = assertTarget(command, message, data);
     } else if (type == "snapshotState") {
         ok = true;
         data = snapshotState();
@@ -543,6 +659,70 @@ bool CycleAutomation::setControl(const var& command, String& message, var& data)
     message = "Control target is not a supported Slider or Button";
     data = componentState(component, getString(command, "area"), getString(command, "target"));
     return false;
+}
+
+bool CycleAutomation::assertTarget(const var& command, String& message, var& data) {
+    String area = getString(command, "area");
+    String target = getString(command, "target");
+    String path = getString(command, "path");
+    String op = assertionOperator(command);
+    double tolerance = getDouble(command, "tolerance", 0.000001);
+    Component* component = resolveComponent(command);
+
+    if (component == nullptr) {
+        message = "Assertion target could not be resolved";
+        return false;
+    }
+
+    if (path.isEmpty()) {
+        message = "assertTarget requires path";
+        return false;
+    }
+
+    if (op.isEmpty()) {
+        message = "assertTarget requires an assertion operator";
+        return false;
+    }
+
+    var state = componentState(component, area, target);
+    var actual;
+    bool pathFound = getPathValue(state, path, actual);
+    var expected = PresetJson::property(command, op);
+
+    auto json = PresetJson::object();
+    json->setProperty("area", area);
+    json->setProperty("target", target);
+    json->setProperty("path", path);
+    json->setProperty("operator", op);
+    json->setProperty("pathFound", pathFound);
+
+    if (pathFound) {
+        json->setProperty("actual", actual);
+    }
+
+    if (op != "exists") {
+        json->setProperty("expected", expected);
+    }
+
+    data = PresetJson::toVar(json);
+
+    if (!pathFound) {
+        message = "Assertion path not found: " + path;
+        return false;
+    }
+
+    if (!compareVars(actual, op, expected, tolerance)) {
+        message = "Assertion failed for path " + path + ": actual=" + actual.toString();
+
+        if (op != "exists") {
+            message += " expected=" + expected.toString();
+        }
+
+        return false;
+    }
+
+    message = "Assertion passed";
+    return true;
 }
 
 var CycleAutomation::snapshotState() {

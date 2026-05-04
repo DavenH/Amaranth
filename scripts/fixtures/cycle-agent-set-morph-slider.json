@@ -19,6 +19,12 @@
     {
       "command": "inspectTargets",
       "area": "AreaMorphPanel"
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaMorphPanel",
+      "path": "automationState.sliders.time",
+      "equals": 0.25
     }
   ],
   "quit": true

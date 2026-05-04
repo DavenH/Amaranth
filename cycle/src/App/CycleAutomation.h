@@ -32,6 +32,7 @@ private:
     bool exportState(const var& command, String& message);
     bool inspectTargets(const var& command, String& message, var& data);
     bool setControl(const var& command, String& message, var& data);
+    bool assertTarget(const var& command, String& message, var& data);
     var  snapshotState();
 
     Component* resolveComponent(const var& command);

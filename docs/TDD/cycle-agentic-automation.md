@@ -294,8 +294,8 @@ Planned serialization boundary:
 
 Supports milestones: 3, 4, 5, and 6.
 
-Status: partially started through richer `inspectTargets` control metadata and
-the `AutomationInspectable` interface.
+Status: partially implemented through richer `inspectTargets` control metadata,
+the `AutomationInspectable` interface, and `assertTarget`.
 
 - Add an automation-state interface for rich UI components:
   - `exportAutomationState()` for transient UI state that is useful to agents,
@@ -319,6 +319,8 @@ the `AutomationInspectable` interface.
   - selected vertex ids/counts,
   - effect enablement,
   - update-idle status.
+- Add `assertTarget` with simple operators. Done for target-scoped component
+  state paths.
 - Add `assertState` with simple operators:
   - equals,
   - notEquals,
@@ -328,7 +330,7 @@ the `AutomationInspectable` interface.
   - greaterThanOrEqual,
   - exists.
 - Assertions should operate on snapshot paths and report the actual value on
-  failure.
+  failure. Done for `assertTarget`; report-wide `assertState` remains pending.
 
 ### Phase 4: Update-Idle Barrier
 
@@ -459,6 +461,7 @@ CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tm
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-general-controls.json /private/tmp/cycle-agent-general-controls-report.json /private/tmp/cycle-agent-general-controls-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-state.json /private/tmp/cycle-agent-waveform3d-state-report.json /private/tmp/cycle-agent-waveform3d-state-logs.txt
+CYCLE_AGENT_ALLOW_FAILURES=1 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-assert-failure.json /private/tmp/cycle-agent-assert-failure-report.json /private/tmp/cycle-agent-assert-failure-logs.txt
 ```
 
 Current verified behavior:
@@ -482,6 +485,8 @@ Current verified behavior:
   updates `automationState.tools.name` to `pencil`.
 - `Waveform3D` reports `Waveform3D.v1`; setting `TargPan` updates
   `automationState.layer.currentProperties.pan`.
+- `assertTarget` validates target-scoped dot paths and reports actual/expected
+  values on failure.
 - Cycle exits cleanly when `quit` is true.
 
 ## Open Questions

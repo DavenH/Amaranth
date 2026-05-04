@@ -12,6 +12,12 @@
     {
       "command": "inspectTargets",
       "area": "AreaGenControls"
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaGenControls",
+      "path": "automationState.tools.name",
+      "equals": "pencil"
     }
   ],
   "quit": true
