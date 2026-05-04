@@ -64,6 +64,7 @@ Implemented:
   - `pointer`,
   - `assertTarget`,
   - `assertState`,
+  - `listAssertionPaths`,
   - `waitForIdle`,
   - `action`.
 - `CycleTour` bridge for semantic action execution.
@@ -152,23 +153,31 @@ Verified:
 
 Goal: an agent can set ordinary UI control values without pointer dragging.
 
-Status: started with generic `setControl` support for named slider and button
-targets.
+Status: partially implemented with generic `setControl` support for named
+slider, button, and ComboBox targets, plus semantic layer enablement actions.
 
 Acceptance:
 
-- Set morph sliders by axis.
-- Set effect/master knobs by parameter id.
+- Set morph sliders by axis. Done.
+- Set effect/master knobs by parameter id. Done for representative master,
+  waveshaper, Waveform3D, and impulse slider/knob targets.
 - Set vertex property sliders for selected vertices.
-- Enable/disable layers and effects.
-- Assert resulting values through `snapshotState` or scoped JSON export.
-- Avoid pixel coordinates for normal value-setting commands.
+- Enable/disable layers and effects. Done for Waveform3D current-layer
+  enable/disable through semantic `Enable`/`Disable` actions; effect
+  enablement command coverage remains pending.
+- Assert resulting values through `snapshotState` or scoped JSON export. Done
+  through `assertTarget`/`assertState`.
+- Avoid pixel coordinates for normal value-setting commands. Done for current
+  slider, button, ComboBox, and semantic action paths.
 
 Verified:
 
 - `scripts/fixtures/cycle-agent-set-morph-slider.json` sets
   `AreaMorphPanel` / `TargSliderY` to `0.25` and reports the resulting slider
   value through `inspectTargets`.
+- `scripts/fixtures/cycle-agent-broader-controls.json` covers master slider,
+  waveshaper knob, ComboBox controls, Waveform3D layer pan, and current-layer
+  enable/disable.
 
 ### Milestone 4: Dialogs, Menus, And View Navigation
 
@@ -359,6 +368,9 @@ the `AutomationInspectable` interface, enriched `snapshotState`, and assertions.
   - exists.
 - Assertions should operate on snapshot paths and report the actual value on
   failure. Done for `assertTarget` and `assertState`.
+- Add assertion path discovery. Done with `listAssertionPaths`, which flattens
+  `snapshotState` or target `componentState` into paths, current values, value
+  types, and compatible assertion operators.
 
 ### Phase 4: Update-Idle Barrier
 
@@ -453,8 +465,12 @@ Status: partially implemented with an opt-in local smoke runner.
 
 - Add repeatable smoke scripts for:
   - opening the default preset. Covered by `cycle-agent-readonly.json`.
+  - discovering assertion paths. Covered by
+    `cycle-agent-assertion-paths.json`.
   - exporting `MeshLibrary`. Covered by `cycle-agent-readonly.json`.
   - setting morph position. Covered by `cycle-agent-set-morph-slider.json`.
+  - setting broader master/effect/layer controls. Covered by
+    `cycle-agent-broader-controls.json`.
   - opening a named factory preset. Covered by
     `cycle-agent-factory-preset.json`.
   - capturing a named panel. Covered by `cycle-agent-screenshot.json`.
@@ -492,9 +508,11 @@ Repository smoke fixtures:
 
 ```sh
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-readonly.json /private/tmp/cycle-agent-readonly-report.json /private/tmp/cycle-agent-readonly-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-assertion-paths.json /private/tmp/cycle-agent-assertion-paths-report.json /private/tmp/cycle-agent-assertion-paths-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-screenshot.json /private/tmp/cycle-agent-screenshot-report.json /private/tmp/cycle-agent-screenshot-logs.txt
 CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tmp/cycle-agent-waveform3d-os.png scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json /private/tmp/cycle-agent-waveform3d-os-report.json /private/tmp/cycle-agent-waveform3d-os-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-broader-controls.json /private/tmp/cycle-agent-broader-controls-report.json /private/tmp/cycle-agent-broader-controls-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-factory-preset.json /private/tmp/cycle-agent-factory-preset-report.json /private/tmp/cycle-agent-factory-preset-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-general-controls.json /private/tmp/cycle-agent-general-controls-report.json /private/tmp/cycle-agent-general-controls-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-state.json /private/tmp/cycle-agent-waveform3d-state-report.json /private/tmp/cycle-agent-waveform3d-state-logs.txt
@@ -529,6 +547,9 @@ Current verified behavior:
   relative to JUCE screen bounds; 441 x 368 bounds produced an 882 x 736 PNG.
 - `setControl` sets `AreaMorphPanel` / `TargSliderY` to `0.25` and
   `inspectTargets` reports the resulting value.
+- `setControl` also covers representative master sliders, effect knobs,
+  ComboBoxes, and Waveform3D layer pan; semantic `Enable`/`Disable` actions
+  cover the current Waveform3D layer active toggle.
 - `GeneralControls` reports `GeneralControls.v1`; a `SwitchToTool` action
   updates `automationState.tools.name` to `pencil`.
 - `pointer` can click a named GeneralControls button target and update
@@ -539,6 +560,8 @@ Current verified behavior:
   values on failure.
 - `assertState` validates report snapshot dot paths and reports actual/expected
   values on failure.
+- `listAssertionPaths` discovers assertable snapshot or target paths with
+  current values, value types, and compatible operators.
 - `waitForIdle` performs an explicit fixed message-loop drain/delay command.
 - Cycle exits cleanly when `quit` is true.
 

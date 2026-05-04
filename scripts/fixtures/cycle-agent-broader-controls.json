@@ -1,0 +1,93 @@
+{
+  "commands": [
+    {
+      "command": "setControl",
+      "area": "AreaMasterCtrls",
+      "target": "TargMasterVol",
+      "value": 0.42
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaMasterCtrls",
+      "target": "TargMasterVol",
+      "path": "value",
+      "equals": 0.42
+    },
+    {
+      "command": "setControl",
+      "area": "AreaWaveshaper",
+      "target": "TargWaveshaperPre",
+      "value": 0.33
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaWaveshaper",
+      "target": "TargWaveshaperPre",
+      "path": "value",
+      "equals": 0.33
+    },
+    {
+      "command": "setControl",
+      "area": "AreaWaveshaper",
+      "target": "TargWaveshaperOvsp",
+      "selectedId": 2
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaWaveshaper",
+      "target": "TargWaveshaperOvsp",
+      "path": "selectedId",
+      "equals": 2
+    },
+    {
+      "command": "setControl",
+      "area": "AreaUnison",
+      "target": "TargUniMode",
+      "text": "Single"
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaUnison",
+      "target": "TargUniMode",
+      "path": "text",
+      "equals": "Single"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargPan",
+      "value": 0.65
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaWfrmWaveform3D",
+      "path": "automationState.layer.currentProperties.pan",
+      "equals": 0.65
+    },
+    {
+      "command": "action",
+      "actionType": "Disable",
+      "area": "AreaWfrmWaveform3D",
+      "id": "IdBttnEnable"
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaWfrmWaveform3D",
+      "path": "automationState.layer.currentProperties.active",
+      "equals": false
+    },
+    {
+      "command": "action",
+      "actionType": "Enable",
+      "area": "AreaWfrmWaveform3D",
+      "id": "IdBttnEnable"
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaWfrmWaveform3D",
+      "path": "automationState.layer.currentProperties.active",
+      "equals": true
+    }
+  ],
+  "quit": true
+}

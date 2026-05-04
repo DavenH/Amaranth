@@ -40,6 +40,7 @@ private:
     bool pointer(const var& command, String& message, var& data);
     bool assertTarget(const var& command, String& message, var& data);
     bool assertState(const var& command, String& message, var& data);
+    bool listAssertionPaths(const var& command, String& message, var& data);
     bool waitForIdle(const var& command, String& message, var& data);
     var  snapshotState();
 

@@ -1,0 +1,27 @@
+{
+  "commands": [
+    {
+      "command": "listAssertionPaths",
+      "scope": "snapshot",
+      "maxDepth": 5
+    },
+    {
+      "command": "assertState",
+      "path": "currentTool",
+      "exists": true
+    },
+    {
+      "command": "listAssertionPaths",
+      "scope": "target",
+      "area": "AreaWfrmWaveform3D",
+      "maxDepth": 6
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaWfrmWaveform3D",
+      "path": "automationState.layer.currentProperties.pan",
+      "exists": true
+    }
+  ],
+  "quit": true
+}

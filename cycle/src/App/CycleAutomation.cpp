@@ -290,6 +290,96 @@ namespace {
         return false;
     }
 
+    String varTypeName(const var& value) {
+        if (value.isBool()) {
+            return "boolean";
+        }
+
+        if (value.isDouble() || value.isInt() || value.isInt64()) {
+            return "number";
+        }
+
+        if (value.isString()) {
+            return "string";
+        }
+
+        if (value.isArray()) {
+            return "array";
+        }
+
+        if (value.isObject()) {
+            return "object";
+        }
+
+        if (value.isVoid()) {
+            return "void";
+        }
+
+        return "unknown";
+    }
+
+    var assertionOperatorsForValue(const var& value) {
+        Array<var> operators;
+        operators.add("equals");
+        operators.add("notEquals");
+        operators.add("exists");
+
+        if (value.isDouble() || value.isInt() || value.isInt64()) {
+            operators.add("lessThan");
+            operators.add("lessThanOrEqual");
+            operators.add("greaterThan");
+            operators.add("greaterThanOrEqual");
+        }
+
+        return var(operators);
+    }
+
+    void appendAssertionPath(Array<var>& paths, const String& path, const var& value) {
+        if (path.isEmpty()) {
+            return;
+        }
+
+        auto json = PresetJson::object();
+        json->setProperty("path", path);
+        json->setProperty("type", varTypeName(value));
+        json->setProperty("value", value);
+        json->setProperty("assertions", assertionOperatorsForValue(value));
+        paths.add(PresetJson::toVar(json));
+    }
+
+    void flattenAssertionPaths(const var& value, const String& path, Array<var>& paths, int depth, int maxDepth) {
+        if (depth > maxDepth) {
+            return;
+        }
+
+        if (auto* object = PresetJson::getObject(value)) {
+            appendAssertionPath(paths, path, value);
+            const NamedValueSet& properties = object->getProperties();
+
+            for (int i = 0; i < properties.size(); ++i) {
+                String childPath = path.isEmpty()
+                    ? properties.getName(i).toString()
+                    : path + "." + properties.getName(i).toString();
+
+                flattenAssertionPaths(properties.getValueAt(i), childPath, paths, depth + 1, maxDepth);
+            }
+
+            return;
+        }
+
+        if (auto* array = value.getArray()) {
+            appendAssertionPath(paths, path, value);
+
+            for (int i = 0; i < array->size(); ++i) {
+                flattenAssertionPaths(array->getReference(i), path + "[" + String(i) + "]", paths, depth + 1, maxDepth);
+            }
+
+            return;
+        }
+
+        appendAssertionPath(paths, path, value);
+    }
+
     String assertionOperator(const var& command) {
         static const char* const operators[] = {
             "equals",
@@ -615,6 +705,8 @@ void CycleAutomation::runCommand(const var& command, Array<var>& results) {
         ok = assertTarget(command, message, data);
     } else if (type == "assertState") {
         ok = assertState(command, message, data);
+    } else if (type == "listAssertionPaths") {
+        ok = listAssertionPaths(command, message, data);
     } else if (type == "waitForIdle") {
         ok = waitForIdle(command, message, data);
     } else if (type == "snapshotState") {
@@ -985,7 +1077,44 @@ bool CycleAutomation::setControl(const var& command, String& message, var& data)
         return true;
     }
 
-    message = "Control target is not a supported Slider or Button";
+    if (auto* comboBox = dynamic_cast<ComboBox*>(component)) {
+        var selectedId = PresetJson::property(command, "selectedId");
+        var selectedIndex = PresetJson::property(command, "selectedIndex");
+        String text = getString(command, "text");
+
+        if (!selectedId.isVoid()) {
+            comboBox->setSelectedId(int(selectedId), notification);
+        } else if (!selectedIndex.isVoid()) {
+            comboBox->setSelectedItemIndex(int(selectedIndex), notification);
+        } else if (text.isNotEmpty()) {
+            int matchingId = 0;
+
+            for (int i = 0; i < comboBox->getNumItems(); ++i) {
+                if (comboBox->getItemText(i) == text) {
+                    matchingId = comboBox->getItemId(i);
+                    break;
+                }
+            }
+
+            if (matchingId == 0) {
+                message = "ComboBox item text was not found: " + text;
+                data = componentState(component, getString(command, "area"), getString(command, "target"));
+                return false;
+            }
+
+            comboBox->setSelectedId(matchingId, notification);
+        } else {
+            message = "ComboBox control requires selectedId, selectedIndex, or text";
+            data = componentState(component, getString(command, "area"), getString(command, "target"));
+            return false;
+        }
+
+        data = componentState(component, getString(command, "area"), getString(command, "target"));
+        message = "ComboBox control set";
+        return true;
+    }
+
+    message = "Control target is not a supported Slider, Button, or ComboBox";
     data = componentState(component, getString(command, "area"), getString(command, "target"));
     return false;
 }
@@ -1181,6 +1310,43 @@ bool CycleAutomation::assertState(const var& command, String& message, var& data
     return true;
 }
 
+bool CycleAutomation::listAssertionPaths(const var& command, String& message, var& data) {
+    String scope = getString(command, "scope", "snapshot");
+    int maxDepth = jlimit(1, 16, int(getDouble(command, "maxDepth", 8.0)));
+    var source;
+
+    if (scope == "target") {
+        Component* component = resolveComponent(command);
+
+        if (component == nullptr) {
+            message = "Assertion path target could not be resolved";
+            return false;
+        }
+
+        source = componentState(component, getString(command, "area"), getString(command, "target"));
+    } else if (scope == "snapshot") {
+        source = snapshotState();
+    } else {
+        message = "Unknown assertion path scope: " + scope;
+        return false;
+    }
+
+    Array<var> paths;
+    flattenAssertionPaths(source, {}, paths, 0, maxDepth);
+
+    auto json = PresetJson::object();
+    json->setProperty("scope", scope);
+    json->setProperty("area", getString(command, "area"));
+    json->setProperty("target", getString(command, "target"));
+    json->setProperty("maxDepth", maxDepth);
+    json->setProperty("count", paths.size());
+    json->setProperty("paths", var(paths));
+    data = PresetJson::toVar(json);
+
+    message = "Listed " + String(paths.size()) + " assertion paths";
+    return true;
+}
+
 bool CycleAutomation::waitForIdle(const var& command, String& message, var& data) {
     int delayMs = getIdleDelayMs(command);
     bool dispatched = drainMessageLoop(delayMs);
@@ -1255,20 +1421,36 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("localBounds", rectangleState(component->getLocalBounds()));
         json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
 
-        if (auto* slider = dynamic_cast<Slider*>(component)) {
-            json->setProperty("controlType", "slider");
-            json->setProperty("value", slider->getValue());
-            json->setProperty("minimum", slider->getMinimum());
-            json->setProperty("maximum", slider->getMaximum());
-            json->setProperty("interval", slider->getInterval());
-            json->setProperty("text", slider->getTextFromValue(slider->getValue()));
-        } else if (auto* button = dynamic_cast<Button*>(component)) {
-            json->setProperty("controlType", "button");
-            json->setProperty("toggleState", button->getToggleState());
-            json->setProperty("buttonText", button->getButtonText());
-        } else {
-            json->setProperty("controlType", "component");
+    if (auto* slider = dynamic_cast<Slider*>(component)) {
+        json->setProperty("controlType", "slider");
+        json->setProperty("value", slider->getValue());
+        json->setProperty("minimum", slider->getMinimum());
+        json->setProperty("maximum", slider->getMaximum());
+        json->setProperty("interval", slider->getInterval());
+        json->setProperty("text", slider->getTextFromValue(slider->getValue()));
+    } else if (auto* button = dynamic_cast<Button*>(component)) {
+        json->setProperty("controlType", "button");
+        json->setProperty("toggleState", button->getToggleState());
+        json->setProperty("buttonText", button->getButtonText());
+    } else if (auto* comboBox = dynamic_cast<ComboBox*>(component)) {
+        Array<var> items;
+
+        for (int i = 0; i < comboBox->getNumItems(); ++i) {
+            auto item = PresetJson::object();
+            item->setProperty("index", i);
+            item->setProperty("id", comboBox->getItemId(i));
+            item->setProperty("text", comboBox->getItemText(i));
+            items.add(PresetJson::toVar(item));
         }
+
+        json->setProperty("controlType", "comboBox");
+        json->setProperty("selectedId", comboBox->getSelectedId());
+        json->setProperty("selectedIndex", comboBox->getSelectedItemIndex());
+        json->setProperty("text", comboBox->getText());
+        json->setProperty("items", var(items));
+    } else {
+        json->setProperty("controlType", "component");
+    }
 
         if (auto* inspectable = const_cast<CycleTour&>(getObj(CycleTour)).getAutomationInspectable(area, target)) {
             json->setProperty("automationState", inspectable->exportAutomationState());
