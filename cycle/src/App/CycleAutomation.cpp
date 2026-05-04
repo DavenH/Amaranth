@@ -6,12 +6,18 @@
 #include <App/Doc/Document.h>
 #include <App/Doc/PresetJson.h>
 #include <App/MeshLibrary.h>
+#include <App/Settings.h>
 #include <Curve/Mesh.h>
+#include <Curve/MeshRasterizer.h>
+#include <Curve/Vertex.h>
+#include <Curve/VertCube.h>
 #include <Definitions.h>
+#include <Inter/Interactor.h>
 #include <UI/Panels/Panel.h>
 
 #include "CycleTour.h"
 #include "FileManager.h"
+#include "KeyboardInputHandler.h"
 
 #include "../UI/Panels/MainPanel.h"
 
@@ -601,6 +607,430 @@ namespace {
         return int(requested) == group;
     }
 
+    int meshGroupIdForCommand(const var& command, MeshLibrary& meshLibrary) {
+        var requested = PresetJson::property(command, "group");
+
+        if (requested.isVoid()) {
+            requested = PresetJson::property(command, "groupId");
+        }
+
+        if (requested.isVoid()) {
+            return CommonEnums::Null;
+        }
+
+        if (!requested.isString()) {
+            int groupId = int(requested);
+            return isPositiveAndBelow(groupId, meshLibrary.getNumGroups()) ? groupId : CommonEnums::Null;
+        }
+
+        String groupName = requested.toString();
+
+        for (int groupId = 0; groupId < meshLibrary.getNumGroups(); ++groupId) {
+            if (meshLayerGroupName(groupId) == groupName) {
+                return groupId;
+            }
+        }
+
+        return CommonEnums::Null;
+    }
+
+    int meshLayerIndexForCommand(const var& command, const MeshLibrary::LayerGroup& group) {
+        var requested = PresetJson::property(command, "layer");
+
+        if (requested.isVoid()) {
+            requested = PresetJson::property(command, "layerIndex");
+        }
+
+        if (requested.isVoid() || requested.toString() == "current") {
+            return group.current;
+        }
+
+        int layerIndex = int(requested);
+        return isPositiveAndBelow(layerIndex, group.size()) ? layerIndex : CommonEnums::Null;
+    }
+
+    int meshGroupIdForMutationCommand(const var& command, MeshLibrary& meshLibrary, const String& area) {
+        int groupId = meshGroupIdForCommand(command, meshLibrary);
+
+        if (groupId != CommonEnums::Null) {
+            return groupId;
+        }
+
+        if (area == "AreaWfrmWaveform3D") {
+            return isPositiveAndBelow(LayerGroups::GroupTime, meshLibrary.getNumGroups())
+                ? LayerGroups::GroupTime
+                : CommonEnums::Null;
+        }
+
+        return CommonEnums::Null;
+    }
+
+    String meshAreaForCommand(const var& command) {
+        String area = getString(command, "area");
+
+        if (area.isNotEmpty()) {
+            return area;
+        }
+
+        String group = getString(command, "group");
+
+        if (group == "time" || group.isEmpty()) {
+            return "AreaWfrmWaveform3D";
+        }
+
+        if (group == "waveshaper") {
+            return "AreaWshpEditor";
+        }
+
+        if (group == "guideCurve") {
+            return "AreaGuideCurves";
+        }
+
+        return {};
+    }
+
+    bool runMeshTourAction(CycleTour& tour,
+                           const String& actionType,
+                           const String& area,
+                           int data1,
+                           float pointX,
+                           float pointY,
+                           float value,
+                           bool updates) {
+        XmlElement actionElem("Action");
+        actionElem.setAttribute("type", actionType);
+        actionElem.setAttribute("area", area);
+        actionElem.setAttribute("data1", data1);
+        actionElem.setAttribute("point-x", pointX);
+        actionElem.setAttribute("point-y", pointY);
+        actionElem.setAttribute("value", value);
+        actionElem.setAttribute("updates", updates);
+
+        CycleTour::Action action;
+        tour.readAction(action, &actionElem);
+        tour.performAction(action);
+        return action.hasExecuted || actionType == "SelectPoint" || actionType == "DeselectPoints";
+    }
+
+    bool moveMeshVertexDirectly(MeshLibrary& meshLibrary,
+                                const var& command,
+                                const String& area,
+                                int vertexIndex,
+                                float dx,
+                                float dy) {
+        ScopedLock sl(meshLibrary.getLock());
+        int groupId = meshGroupIdForMutationCommand(command, meshLibrary, area);
+
+        if (groupId == CommonEnums::Null) {
+            return false;
+        }
+
+        MeshLibrary::LayerGroup& group = meshLibrary.getLayerGroup(groupId);
+        int layerIndex = meshLayerIndexForCommand(command, group);
+
+        if (layerIndex == CommonEnums::Null) {
+            return false;
+        }
+
+        Mesh* mesh = group.layers[layerIndex].mesh;
+
+        if (mesh == nullptr || !isPositiveAndBelow(vertexIndex, mesh->getNumVerts())) {
+            return false;
+        }
+
+        Vertex* vertex = mesh->getVerts()[vertexIndex];
+        vertex->values[Vertex::Phase] += dx;
+        vertex->values[Vertex::Amp] += dy;
+        mesh->validate();
+        return true;
+    }
+
+    bool deleteMeshVertexDirectly(MeshLibrary& meshLibrary,
+                                  const var& command,
+                                  const String& area,
+                                  int vertexIndex) {
+        ScopedLock sl(meshLibrary.getLock());
+        int groupId = meshGroupIdForMutationCommand(command, meshLibrary, area);
+
+        if (groupId == CommonEnums::Null) {
+            return false;
+        }
+
+        MeshLibrary::LayerGroup& group = meshLibrary.getLayerGroup(groupId);
+        int layerIndex = meshLayerIndexForCommand(command, group);
+
+        if (layerIndex == CommonEnums::Null) {
+            return false;
+        }
+
+        Mesh* mesh = group.layers[layerIndex].mesh;
+
+        if (mesh == nullptr || !isPositiveAndBelow(vertexIndex, mesh->getNumVerts())) {
+            return false;
+        }
+
+        Vertex* vertex = mesh->getVerts()[vertexIndex];
+        Array<VertCube*> cubesToDelete = vertex->owners;
+
+        for (auto* cube : cubesToDelete) {
+            if (cube == nullptr || !mesh->removeCube(cube)) {
+                continue;
+            }
+
+            for (int i = 0; i < VertCube::numVerts; ++i) {
+                Vertex* cubeVertex = cube->getVertex(i);
+
+                if (cubeVertex == nullptr) {
+                    continue;
+                }
+
+                if (cubeVertex->getNumOwners() == 1) {
+                    mesh->removeVert(cubeVertex);
+                } else {
+                    cubeVertex->removeOwner(cube);
+                }
+            }
+        }
+
+        group.selected.clear();
+        mesh->validate();
+        return true;
+    }
+
+    int tourAreaForMeshArea(const String& area) {
+        if (area == "AreaWfrmWaveform3D") {
+            return CycleTour::AreaWfrmWaveform3D;
+        }
+
+        if (area == "AreaWshpEditor") {
+            return CycleTour::AreaWshpEditor;
+        }
+
+        if (area == "AreaGuideCurves") {
+            return CycleTour::AreaGuideCurves;
+        }
+
+        if (area == "AreaSpectrogram") {
+            return CycleTour::AreaSpectrogram;
+        }
+
+        if (area == "AreaSpectrum") {
+            return CycleTour::AreaSpectrum;
+        }
+
+        if (area == "AreaEnvelopes") {
+            return CycleTour::AreaEnvelopes;
+        }
+
+        return CycleTour::AreaNull;
+    }
+
+    ModifierKeys meshGestureModifiers(bool buttonDown, bool rightButton) {
+        ModifierKeys modifiers = ModifierKeys::currentModifiers.withoutMouseButtons();
+
+        if (!buttonDown) {
+            return modifiers;
+        }
+
+        return modifiers.withFlags(rightButton ? ModifierKeys::rightButtonModifier : ModifierKeys::leftButtonModifier);
+    }
+
+    MouseEvent makeMeshGestureEvent(Component& component,
+                                    Point<float> position,
+                                    Point<float> downPosition,
+                                    bool buttonDown,
+                                    bool rightButton,
+                                    bool wasDragged) {
+        Time now = Time::getCurrentTime();
+
+        return {
+            Desktop::getInstance().getMainMouseSource(),
+            position,
+            meshGestureModifiers(buttonDown, rightButton),
+            MouseInputSource::defaultPressure,
+            0.0f, 0.0f, 0.0f, 0.0f,
+            &component,
+            &component,
+            now,
+            downPosition,
+            now,
+            1,
+            wasDragged,
+        };
+    }
+
+    Point<float> meshPointToLocal(Interactor& interactor, float x, float y) {
+        Panel* panel = interactor.panel.get();
+
+        if (panel == nullptr || panel->getComponent() == nullptr) {
+            return {};
+        }
+
+        Rectangle<int> bounds = panel->getComponent()->getLocalBounds();
+        float localX = jlimit(0.0f, float(jmax(0, bounds.getWidth() - 1)), panel->sx(x));
+        float localY = jlimit(0.0f, float(jmax(0, bounds.getHeight() - 1)), panel->sy(y));
+
+        return { localX, localY };
+    }
+
+    bool meshVertexPointToLocal(Interactor& interactor, int vertexIndex, Point<float>& position) {
+        Mesh* mesh = interactor.getMesh();
+
+        if (mesh == nullptr || !isPositiveAndBelow(vertexIndex, mesh->getNumVerts())) {
+            return false;
+        }
+
+        Vertex* vertex = mesh->getVerts()[vertexIndex];
+
+        if (vertex == nullptr) {
+            return false;
+        }
+
+        float x = vertex->values[interactor.dims.x];
+        float y = vertex->values[interactor.dims.y];
+
+        if (interactor.getRasterizer() != nullptr && interactor.getRasterizer()->wrapsVertices()) {
+            if (interactor.dims.x == Vertex::Phase && x > 1.0f) {
+                x -= 1.0f;
+            }
+
+            if (interactor.dims.y == Vertex::Phase && y > 1.0f) {
+                y -= 1.0f;
+            }
+        }
+
+        position = meshPointToLocal(interactor, x, y);
+        return true;
+    }
+
+    void dispatchMeshClick(Interactor& interactor, Point<float> position, bool rightButton) {
+        Component& component = *interactor.display.get();
+        MouseEvent enterEvent = makeMeshGestureEvent(component, position, position, false, rightButton, false);
+        MouseEvent moveEvent = makeMeshGestureEvent(component, position, position, false, rightButton, false);
+        MouseEvent downEvent = makeMeshGestureEvent(component, position, position, true, rightButton, false);
+        MouseEvent upEvent = makeMeshGestureEvent(component, position, position, false, rightButton, false);
+
+        interactor.mouseEnter(enterEvent);
+        interactor.mouseMove(moveEvent);
+        interactor.mouseDown(downEvent);
+        interactor.mouseUp(upEvent);
+    }
+
+    void dispatchMeshDrag(Interactor& interactor,
+                          Point<float> startPosition,
+                          Point<float> endPosition,
+                          bool rightButton) {
+        Component& component = *interactor.display.get();
+        Point<float> midpoint = startPosition + (endPosition - startPosition) * 0.5f;
+        MouseEvent enterEvent = makeMeshGestureEvent(component, startPosition, startPosition, false, rightButton, false);
+        MouseEvent moveEvent = makeMeshGestureEvent(component, startPosition, startPosition, false, rightButton, false);
+        MouseEvent downEvent = makeMeshGestureEvent(component, startPosition, startPosition, true, rightButton, false);
+        MouseEvent dragMidEvent = makeMeshGestureEvent(component, midpoint, startPosition, true, rightButton, true);
+        MouseEvent dragEndEvent = makeMeshGestureEvent(component, endPosition, startPosition, true, rightButton, true);
+        MouseEvent upEvent = makeMeshGestureEvent(component, endPosition, startPosition, false, rightButton, true);
+
+        interactor.mouseEnter(enterEvent);
+        interactor.mouseMove(moveEvent);
+        interactor.mouseDown(downEvent);
+        interactor.mouseDrag(dragMidEvent);
+        interactor.mouseDrag(dragEndEvent);
+        interactor.mouseUp(upEvent);
+    }
+
+    bool runMeshGesture(CycleTour& tour,
+                        KeyboardInputHandler& keyboard,
+                        MeshLibrary& meshLibrary,
+                        Settings& settings,
+                        const var& command,
+                        const String& type,
+                        const String& area,
+                        int vertexIndex,
+                        float x,
+                        float y,
+                        float dx,
+                        float dy,
+                        String& message) {
+        int areaId = tourAreaForMeshArea(area);
+        Interactor* interactor = areaId != CycleTour::AreaNull ? tour.areaToInteractor(areaId) : nullptr;
+
+        if (interactor == nullptr || interactor->panel == nullptr || interactor->display == nullptr) {
+            message = "Mesh gesture target could not be resolved: " + area;
+            return false;
+        }
+
+        if (!interactor->display->isShowing()) {
+            message = "Mesh gesture target is not showing: " + area;
+            return false;
+        }
+
+        int groupId = meshGroupIdForMutationCommand(command, meshLibrary, area);
+
+        if (groupId == CommonEnums::Null || groupId != interactor->layerType) {
+            message = "Mesh gesture group does not match target interactor";
+            return false;
+        }
+
+        MeshLibrary::LayerGroup& group = meshLibrary.getLayerGroup(groupId);
+        int layerIndex = meshLayerIndexForCommand(command, group);
+
+        if (layerIndex == CommonEnums::Null || layerIndex != group.current) {
+            message = "Mesh gesture requires the current visible layer";
+            return false;
+        }
+
+        const bool selectWithRight = settings.getGlobalSetting(AppSettings::SelectWithRight) == 1;
+        const bool selectButtonIsRight = selectWithRight;
+        const bool createButtonIsRight = !selectWithRight;
+        int previousTool = settings.getGlobalSetting(AppSettings::Tool);
+        settings.getGlobalSetting(AppSettings::Tool) = Tools::Selector;
+        keyboard.setFocusedInteractor(interactor, true);
+
+        if (type == "addVertex") {
+            dispatchMeshClick(*interactor, meshPointToLocal(*interactor, x, y), createButtonIsRight);
+        } else if (type == "selectVertex") {
+            Point<float> position;
+
+            if (!meshVertexPointToLocal(*interactor, vertexIndex, position)) {
+                settings.getGlobalSetting(AppSettings::Tool) = previousTool;
+                message = "selectVertex could not resolve vertex";
+                return false;
+            }
+
+            dispatchMeshClick(*interactor, position, selectButtonIsRight);
+        } else if (type == "moveVertex") {
+            Point<float> startPosition;
+
+            if (!meshVertexPointToLocal(*interactor, vertexIndex, startPosition)) {
+                settings.getGlobalSetting(AppSettings::Tool) = previousTool;
+                message = "moveVertex could not resolve vertex";
+                return false;
+            }
+
+            Vertex2 startMesh(interactor->panel->invertScaleX(int(startPosition.x)),
+                              interactor->panel->invertScaleY(int(startPosition.y)));
+            Point<float> endPosition = meshPointToLocal(*interactor, startMesh.x + dx, startMesh.y + dy);
+            dispatchMeshDrag(*interactor, startPosition, endPosition, selectButtonIsRight);
+        } else if (type == "deleteVertex") {
+            Point<float> position;
+
+            if (!meshVertexPointToLocal(*interactor, vertexIndex, position)) {
+                settings.getGlobalSetting(AppSettings::Tool) = previousTool;
+                message = "deleteVertex could not resolve vertex";
+                return false;
+            }
+
+            dispatchMeshClick(*interactor, position, selectButtonIsRight);
+            keyboard.keyPressed(KeyPress(KeyPress::deleteKey), interactor->display.get());
+        } else {
+            settings.getGlobalSetting(AppSettings::Tool) = previousTool;
+            message = "Unknown mesh gesture command: " + type;
+            return false;
+        }
+
+        settings.getGlobalSetting(AppSettings::Tool) = previousTool;
+        return true;
+    }
+
     var meshSummary(Mesh* mesh) {
         auto json = PresetJson::object();
         json->setProperty("resolved", mesh != nullptr);
@@ -624,6 +1054,37 @@ namespace {
         json->setProperty("current", layerIndex == currentIndex);
         json->setProperty("address", groupName + "[" + String(layerIndex) + "]");
         json->setProperty("mesh", meshSummary(layer.mesh));
+
+        if (layer.props != nullptr) {
+            json->setProperty("properties", layer.props->writeJSON());
+        } else {
+            json->setProperty("properties", {});
+        }
+
+        return PresetJson::toVar(json);
+    }
+
+    var exportedMeshLayerState(int groupId,
+                               const String& groupName,
+                               int meshType,
+                               int layerIndex,
+                               int currentIndex,
+                               const MeshLibrary::Layer& layer) {
+        auto json = PresetJson::object();
+        json->setProperty("groupId", groupId);
+        json->setProperty("group", groupName);
+        json->setProperty("meshType", meshType);
+        json->setProperty("meshTypeName", meshTypeName(meshType));
+        json->setProperty("layerIndex", layerIndex);
+        json->setProperty("current", layerIndex == currentIndex);
+        json->setProperty("address", groupName + "[" + String(layerIndex) + "]");
+        json->setProperty("summary", layerSummary(groupId, groupName, layerIndex, currentIndex, layer));
+
+        if (layer.mesh != nullptr) {
+            json->setProperty("mesh", layer.mesh->writeJSON());
+        } else {
+            json->setProperty("mesh", {});
+        }
 
         if (layer.props != nullptr) {
             json->setProperty("properties", layer.props->writeJSON());
@@ -788,6 +1249,10 @@ void CycleAutomation::runCommand(const var& command, Array<var>& results) {
         ok = listAssertionPaths(command, message, data);
     } else if (type == "listMeshTargets") {
         ok = listMeshTargets(command, message, data);
+    } else if (type == "exportMeshState") {
+        ok = exportMeshState(command, message, data);
+    } else if (type == "selectVertex" || type == "addVertex" || type == "moveVertex" || type == "deleteVertex") {
+        ok = mutateMeshVertex(command, message, data);
     } else if (type == "waitForIdle") {
         ok = waitForIdle(command, message, data);
     } else if (type == "snapshotState") {
@@ -1491,6 +1956,140 @@ bool CycleAutomation::listMeshTargets(const var& command, String& message, var& 
     }
 
     message = "Listed " + String(groups.size()) + " mesh target groups";
+    return true;
+}
+
+bool CycleAutomation::exportMeshState(const var& command, String& message, var& data) {
+    MeshLibrary& meshLibrary = getObj(MeshLibrary);
+    String path = getString(command, "path");
+    int groupId = CommonEnums::Null;
+    int layerIndex = CommonEnums::Null;
+
+    {
+        ScopedLock sl(meshLibrary.getLock());
+
+        groupId = meshGroupIdForCommand(command, meshLibrary);
+
+        if (groupId == CommonEnums::Null) {
+            message = "exportMeshState requires a valid group or groupId";
+            return false;
+        }
+
+        MeshLibrary::LayerGroup& group = meshLibrary.getLayerGroup(groupId);
+        layerIndex = meshLayerIndexForCommand(command, group);
+
+        if (layerIndex == CommonEnums::Null) {
+            message = "exportMeshState requires a valid layer or layerIndex";
+            return false;
+        }
+
+        data = exportedMeshLayerState(groupId,
+                                      meshLayerGroupName(groupId),
+                                      group.meshType,
+                                      layerIndex,
+                                      group.current,
+                                      group.layers[layerIndex]);
+    }
+
+    if (path.isNotEmpty()) {
+        File(path).replaceWithText(JSON::toString(data, true));
+    }
+
+    message = path.isNotEmpty()
+        ? "Mesh state exported: " + path
+        : "Mesh state exported";
+    return true;
+}
+
+bool CycleAutomation::mutateMeshVertex(const var& command, String& message, var& data) {
+    String type = getString(command, "command", getString(command, "type"));
+    String area = meshAreaForCommand(command);
+    int vertexIndex = int(getDouble(command, "vertexIndex", getDouble(command, "index", -1.0)));
+    float x = float(getDouble(command, "x", getDouble(command, "phase", 0.5)));
+    float y = float(getDouble(command, "y", getDouble(command, "amp", 0.5)));
+    float dx = float(getDouble(command, "dx", getDouble(command, "deltaX", 0.0)));
+    float dy = float(getDouble(command, "dy", getDouble(command, "deltaY", 0.0)));
+    float curve = float(getDouble(command, "curve", getDouble(command, "value", 0.0)));
+    bool updates = getBool(command, "updates", true);
+    String mode = getString(command, "mode", getString(command, "driver", "gesture"));
+    String actionType;
+    bool ok = false;
+
+    if (area.isEmpty()) {
+        message = "Mesh mutation requires a supported area or group";
+        return false;
+    }
+
+    if (type == "selectVertex") {
+        actionType = "SelectPoint";
+    } else if (type == "addVertex") {
+        actionType = "AddPoint";
+    } else if (type == "moveVertex") {
+        actionType = "MovePoint";
+        x = dx;
+        y = dy;
+    } else if (type == "deleteVertex") {
+        actionType = "DeletePoint";
+    } else {
+        message = "Unknown mesh mutation command: " + type;
+        return false;
+    }
+
+    if (type != "addVertex" && vertexIndex < 0) {
+        message = type + " requires vertexIndex or index";
+        return false;
+    }
+
+    if (mode == "patch") {
+        if (type == "moveVertex") {
+            ok = moveMeshVertexDirectly(getObj(MeshLibrary), command, area, vertexIndex, dx, dy);
+        } else if (type == "deleteVertex") {
+            ok = deleteMeshVertexDirectly(getObj(MeshLibrary), command, area, vertexIndex);
+        } else {
+            ok = runMeshTourAction(getObj(CycleTour), actionType, area, vertexIndex, x, y, curve, updates);
+        }
+    } else if (mode == "tour") {
+        ok = runMeshTourAction(getObj(CycleTour), actionType, area, vertexIndex, x, y, curve, updates);
+    } else if (mode == "gesture") {
+        ok = runMeshGesture(getObj(CycleTour),
+                            getObj(KeyboardInputHandler),
+                            getObj(MeshLibrary),
+                            getObj(Settings),
+                            command,
+                            type,
+                            area,
+                            vertexIndex,
+                            x,
+                            y,
+                            dx,
+                            dy,
+                            message);
+    } else {
+        message = "Unknown mesh mutation mode: " + mode;
+        return false;
+    }
+
+    drainMessageLoopIfRequested(command);
+
+    auto json = PresetJson::object();
+    json->setProperty("command", type);
+    json->setProperty("actionType", actionType);
+    json->setProperty("mode", mode);
+    json->setProperty("area", area);
+    json->setProperty("vertexIndex", vertexIndex);
+    json->setProperty("x", x);
+    json->setProperty("y", y);
+    json->setProperty("curve", curve);
+    json->setProperty("updates", updates);
+    json->setProperty("meshTargets", listMeshTargets(command, message, data) ? data : var());
+    data = PresetJson::toVar(json);
+
+    if (!ok) {
+        message = "Mesh mutation did not execute: " + type;
+        return false;
+    }
+
+    message = "Mesh mutation executed: " + type;
     return true;
 }
 

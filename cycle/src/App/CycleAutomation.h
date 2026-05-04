@@ -42,6 +42,8 @@ private:
     bool assertState(const var& command, String& message, var& data);
     bool listAssertionPaths(const var& command, String& message, var& data);
     bool listMeshTargets(const var& command, String& message, var& data);
+    bool exportMeshState(const var& command, String& message, var& data);
+    bool mutateMeshVertex(const var& command, String& message, var& data);
     bool waitForIdle(const var& command, String& message, var& data);
     var  snapshotState();
 

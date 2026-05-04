@@ -484,6 +484,7 @@ var Waveform3D::exportAutomationState() const {
     layer->setProperty("current", currentLayer);
     layer->setProperty("count", group.size());
     layer->setProperty("activeCount", const_cast<Waveform3D*>(this)->getNumActiveLayers());
+    layer->setProperty("selectedCount", int(group.selected.size()));
     layer->setProperty("scratchChannel", const_cast<Waveform3D*>(this)->getLayerScratchChannel());
     layer->setProperty("currentProperties", layerPropsState(meshLib.getCurrentProps(LayerGroups::GroupTime)));
     layer->setProperty("currentMesh", meshState(meshLib.getCurrentMesh(LayerGroups::GroupTime)));

@@ -202,13 +202,15 @@ Goal: an agent can create and edit the core Cycle sound-design data.
 
 Status: partially available through `CycleTour` mesh actions, but needs richer
 state reporting. Mesh target discovery is now available through
-`listMeshTargets`.
+`listMeshTargets`, and full current-layer mesh export is available through
+`exportMeshState`.
 
 Acceptance:
 
 - Add, move, select, deselect, and delete vertices using normalized coordinates.
 - Set vertex parameters and guide-curve assignments.
-- Export current mesh/layer JSON.
+- Export current mesh/layer JSON. Done for addressed mesh layers with
+  `exportMeshState`.
 - Snapshot mesh counts, selected vertices, and stable vertex handles. Mesh group
   and layer discovery now reports group ids/names, current layer, layer count,
   selected count, compact mesh counts, and layer properties.
@@ -439,14 +441,16 @@ path selection.
 - Add optional JSON path selection for subtrees of exported savable state. Done
   with `jsonPath`/`statePath`.
 - Add mesh-focused helpers for current layer/group once stable addressing is
-  defined. Done for read-only discovery with `listMeshTargets`.
+  defined. Done for read-only discovery with `listMeshTargets`; full layer
+  JSON export is available through `exportMeshState`.
 
 ### Phase 7: Mesh And Pointer Commands
 
 Supports milestone: 5.
 
-Status: partially covered through `CycleTour` actions and target-local pointer
-events. Read-only mesh target discovery is implemented.
+Status: partially covered through semantic mesh gestures, `CycleTour` actions,
+and target-local pointer events. Read-only mesh target discovery and
+layer-level mesh JSON export are implemented.
 
 - Keep semantic mesh edits as primary:
   - add vertex,
@@ -458,6 +462,15 @@ events. Read-only mesh target discovery is implemented.
 - Add `listMeshTargets` for stable mesh group/layer addressing. Done with
   group ids/names, current layer, layer count, selected count, compact
   current/effective mesh summaries, and per-layer mesh/property summaries.
+- Add `exportMeshState` for addressed layer export. Done for `group`/`groupId`
+  plus `layer`/`layerIndex`, defaulting `layer` to `current`; output includes
+  compact summary plus full `Mesh::writeJSON()` and layer
+  `Properties::writeJSON()` state.
+- Add semantic mesh mutation commands. Done for `selectVertex`, `addVertex`,
+  `moveVertex`, and `deleteVertex`; the default `mode` is `gesture`, which
+  drives the active interactor with synthetic mouse/key events. Explicit
+  `mode: "patch"` remains available for non-e2e preset generation, and
+  `mode: "tour"` remains available for the older `CycleTour` action bridge.
 - Add low-level pointer/key/wheel commands only for interaction regressions.
   Done for pointer click/down/up/drag/move/doubleClick/wheel events.
 - Pointer commands should target named components plus local coordinates. Done
@@ -473,7 +486,12 @@ Status: partially implemented with an opt-in local smoke runner.
   - opening the default preset. Covered by `cycle-agent-readonly.json`.
   - discovering assertion paths. Covered by
     `cycle-agent-assertion-paths.json`.
-  - discovering mesh targets. Covered by `cycle-agent-mesh-targets.json`.
+  - discovering mesh targets and exporting addressed mesh state. Covered by
+    `cycle-agent-mesh-targets.json`.
+  - opening `CalmingKeys`, exporting the current time-layer mesh, and asserting
+    its vertex/cube counts. Covered by `cycle-agent-calmingkeys-mesh.json`.
+  - adding, selecting, moving, and deleting a time-layer vertex/cube edit.
+    Covered by `cycle-agent-mesh-mutations.json`.
   - exporting `MeshLibrary`. Covered by `cycle-agent-readonly.json`.
   - setting morph position. Covered by `cycle-agent-set-morph-slider.json`.
   - setting broader master/effect/layer controls. Covered by
@@ -517,6 +535,8 @@ Repository smoke fixtures:
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-readonly.json /private/tmp/cycle-agent-readonly-report.json /private/tmp/cycle-agent-readonly-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-assertion-paths.json /private/tmp/cycle-agent-assertion-paths-report.json /private/tmp/cycle-agent-assertion-paths-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-mesh-targets.json /private/tmp/cycle-agent-mesh-targets-report.json /private/tmp/cycle-agent-mesh-targets-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-calmingkeys-mesh.json /private/tmp/cycle-agent-calmingkeys-mesh-report.json /private/tmp/cycle-agent-calmingkeys-mesh-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-mesh-mutations.json /private/tmp/cycle-agent-mesh-mutations-report.json /private/tmp/cycle-agent-mesh-mutations-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-screenshot.json /private/tmp/cycle-agent-screenshot-report.json /private/tmp/cycle-agent-screenshot-logs.txt
 CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tmp/cycle-agent-waveform3d-os.png scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json /private/tmp/cycle-agent-waveform3d-os-report.json /private/tmp/cycle-agent-waveform3d-os-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
@@ -573,6 +593,19 @@ Current verified behavior:
 - `listMeshTargets` discovers mesh groups/layers with stable ids/names, current
   layer, layer count, selected count, compact mesh counts, and Savable layer
   property JSON.
+- `exportMeshState` exports an addressed mesh layer to report data and an
+  optional JSON file, reusing `Mesh::writeJSON()` and
+  `Properties::writeJSON()`.
+- `cycle-agent-calmingkeys-mesh.json` opens `CalmingKeys`, exports `time[0]`,
+  and asserts the current time mesh has 16 vertices and 2 cubes.
+- `selectVertex`, `addVertex`, `moveVertex`, and `deleteVertex` provide
+  semantic mesh mutation. Default gesture mode resolves the active interactor,
+  maps mesh coordinates through the panel scale, and sends synthetic
+  mouse/key events so e2e tests exercise hover, hit-testing, selection, drag,
+  delete, update, undo, and repaint paths. Explicit patch mode is reserved for
+  programmatic preset generation. The focused mutation fixture covers
+  CalmingKeys `time[0]`: add changes 16/2 to 24/3, select reports one selected
+  vertex, move preserves 24/3, and delete returns the mesh to 16/2.
 - `waitForIdle` performs an explicit fixed message-loop drain/delay command.
 - Cycle exits cleanly when `quit` is true.
 

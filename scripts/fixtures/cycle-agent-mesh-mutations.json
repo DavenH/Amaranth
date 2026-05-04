@@ -1,0 +1,88 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "CalmingKeys"
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.currentMesh.vertices",
+      "equals": 16
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.currentMesh.cubes",
+      "equals": 2
+    },
+    {
+      "command": "addVertex",
+      "group": "time",
+      "x": 0.35,
+      "y": 0.55,
+      "curve": 0.0,
+      "waitForIdle": true
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.currentMesh.vertices",
+      "equals": 24
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.currentMesh.cubes",
+      "equals": 3
+    },
+    {
+      "command": "selectVertex",
+      "group": "time",
+      "vertexIndex": 16,
+      "waitForIdle": true
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.selectedCount",
+      "equals": 1
+    },
+    {
+      "command": "moveVertex",
+      "group": "time",
+      "vertexIndex": 16,
+      "dx": 0.02,
+      "dy": 0.01,
+      "waitForIdle": true
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.currentMesh.vertices",
+      "equals": 24
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.currentMesh.cubes",
+      "equals": 3
+    },
+    {
+      "command": "deleteVertex",
+      "group": "time",
+      "vertexIndex": 16,
+      "waitForIdle": true
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.currentMesh.vertices",
+      "equals": 16
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.currentMesh.cubes",
+      "equals": 2
+    },
+    {
+      "command": "exportMeshState",
+      "group": "time",
+      "layer": "current",
+      "path": "/private/tmp/cycle-agent-mutated-time-mesh-state.json"
+    }
+  ],
+  "quit": true
+}
