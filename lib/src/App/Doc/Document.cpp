@@ -120,6 +120,31 @@ bool Document::applyJsonRoot(const var& root) {
     return true;
 }
 
+var Document::exportSavableJSON(const String& savableName) const {
+    for (auto* savableItem : savableItems) {
+        auto* accessor = dynamic_cast<SingletonAccessor*>(savableItem);
+
+        if (accessor == nullptr || accessor->getName() != savableName) {
+            continue;
+        }
+
+        var json = savableItem->writeJSON();
+
+        if (!json.isVoid()) {
+            return json;
+        }
+
+        std::unique_ptr<XmlElement> xml(new XmlElement(savableName));
+        savableItem->writeXML(xml.get());
+
+        auto fallback = PresetJson::object();
+        fallback->setProperty("xml", xml->toString());
+        return PresetJson::toVar(fallback);
+    }
+
+    return {};
+}
+
 bool Document::open(const String& filename) {
     File file(filename);
 

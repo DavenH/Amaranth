@@ -1226,6 +1226,28 @@ juce::Component* CycleTour::getComponent(int which) {
     return nullptr;
 }
 
+juce::Component* CycleTour::getComponent(const String& areaName, const String& targetName) {
+    if (!areaStrings.contains(areaName)) {
+        return nullptr;
+    }
+
+    Area area = areaStrings[areaName];
+
+    if (targetName.isEmpty() || targetName == "TargNull") {
+        return getComponent(area);
+    }
+
+    if (!subareaStrings.contains(targetName)) {
+        return nullptr;
+    }
+
+    if (auto* guide = getTourGuide(area)) {
+        return guide->getComponent(subareaStrings[targetName]);
+    }
+
+    return nullptr;
+}
+
 Panel* CycleTour::areaToPanel(int which) {
     switch(which) {
         case AreaWshpEditor:     return &getObj(Waveform2D);
@@ -1388,4 +1410,3 @@ bool CycleTour::readXML(const XmlElement* element) {
 
     return true;
 }
-

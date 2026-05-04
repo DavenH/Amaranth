@@ -8,6 +8,7 @@
 #include "JuceHeader.h"
 
 #include "MainAppWindow.h"
+#include "CycleAutomation.h"
 #include "FileManager.h"
 #include "Initializer.h"
 #include "../CycleDefs.h"
@@ -25,7 +26,7 @@ MainAppWindow::MainAppWindow(const String& commandLine) :
     repo = initializer->getSingletonRepo();
     repo->addExternal(this);
 
-    initializer->setCommandLine(commandLine);
+    initializer->setCommandLine(CycleAutomation::stripAutomationArgs(commandLine));
     initializer->init();
 
     setLookAndFeel(&getObj(AmaranthLookAndFeel));
@@ -42,8 +43,9 @@ MainAppWindow::~MainAppWindow() {
 
 void MainAppWindow::openFile(const String &commandLine) {
     DBG("MainAppWindow::openFile commandLine=\"" + commandLine + "\"");
-    initializer->setCommandLine(commandLine);
+    initializer->setCommandLine(CycleAutomation::stripAutomationArgs(commandLine));
     getObj(FileManager).openDefaultPreset();
+    getObj(CycleAutomation).beginFromCommandLine(commandLine);
 }
 
 void MainAppWindow::closeButtonPressed() {

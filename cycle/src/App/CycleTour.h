@@ -534,6 +534,7 @@ public:
 	Panel* 		areaToPanel(int which);
 	Interactor* areaToInteractor(int which);
 	Component* 	getComponent(int which);
+	Component* 	getComponent(const String& areaName, const String& targetName);
 	TourGuide* 	getTourGuide(Area area);
 
 	class Tutorial {
