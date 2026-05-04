@@ -229,6 +229,23 @@ TEST_CASE("Transform Cartesian Round Trip", "[transform][polar-to-cart][identity
         }
     }
 
+    SECTION("Copied real FFT spectrum preserves amplitude") {
+        ScopedAlloc<float> memory(size + size + size + 2);
+        Buffer<float> signal = memory.place(size);
+        Buffer<float> output = memory.place(size);
+        RealFftSpectrum spectrum(memory.place(size + 2).toType<Complex32>(), size / 2);
+
+        signal.ramp(-1.f, 2.f / float(size - 1));
+        output.zero();
+
+        fft.forwardReal(signal).copyTo(spectrum);
+        fft.inverseReal(spectrum, output);
+
+        for (int i = 0; i < size; ++i) {
+            REQUIRE(output[i] == Catch::Approx(signal[i]).margin(1e-5f));
+        }
+    }
+
     SECTION("Inverse-scaled transform preserves amplitude") {
         Transform inverseScaled;
         inverseScaled.allocate(size, Transform::DivInvByN, true);
@@ -246,6 +263,34 @@ TEST_CASE("Transform Cartesian Round Trip", "[transform][polar-to-cart][identity
             REQUIRE(output[i] == Catch::Approx(signal[i]).margin(1e-5f));
         }
     }
+}
+
+TEST_CASE("RealFftSpectrum Endpoint Arithmetic", "[transform][real-spectrum]") {
+    ScopedAlloc<Complex32> memory(9);
+    RealFftSpectrum dest(memory.place(3));
+    RealFftSpectrum left(memory.place(3));
+    RealFftSpectrum right(memory.place(3));
+
+    dest.getStorage()[0] = makeComplex(1.f, 2.f);
+    dest.getStorage()[1] = makeComplex(3.f, 4.f);
+    dest.getStorage()[2] = makeComplex(5.f, 6.f);
+
+    left.getStorage()[0] = makeComplex(7.f, 11.f);
+    left.getStorage()[1] = makeComplex(2.f, 3.f);
+    left.getStorage()[2] = makeComplex(4.f, 5.f);
+
+    right.getStorage()[0] = makeComplex(13.f, 17.f);
+    right.getStorage()[1] = makeComplex(6.f, 7.f);
+    right.getStorage()[2] = makeComplex(8.f, 9.f);
+
+    dest.addProduct(left, right);
+
+    REQUIRE(dest.getDC() == Catch::Approx(92.f));
+    REQUIRE(dest.getNyquist() == Catch::Approx(189.f));
+    REQUIRE(real(dest.getBin(1)) == Catch::Approx(-6.f));
+    REQUIRE(imag(dest.getBin(1)) == Catch::Approx(36.f));
+    REQUIRE(real(dest.getBin(2)) == Catch::Approx(-8.f));
+    REQUIRE(imag(dest.getBin(2)) == Catch::Approx(82.f));
 }
 
 TEST_CASE("Transform Standard Functions", "[transform][functions]") {

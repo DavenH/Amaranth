@@ -10,6 +10,89 @@
 #include <ipp.h>
 #endif
 
+class ComplexSpectrum {
+public:
+    ComplexSpectrum() = default;
+    explicit ComplexSpectrum(Buffer<Complex32> storage) : storage(storage) {}
+
+    [[nodiscard]] bool empty() const { return storage.empty(); }
+    [[nodiscard]] int size() const { return storage.size(); }
+
+    Buffer<Complex32> getStorage() const { return storage; }
+
+private:
+    Buffer<Complex32> storage;
+};
+
+class RealFftSpectrum {
+public:
+    RealFftSpectrum() : packedSize(0) {}
+    explicit RealFftSpectrum(Buffer<Complex32> storage) :
+            storage     (storage)
+        ,   packedSize  (storage.size()) {}
+    RealFftSpectrum(Buffer<Complex32> storage, int packedSize) :
+            storage     (storage)
+        ,   packedSize  (packedSize) {
+        jassert(packedSize <= storage.size());
+    }
+
+    [[nodiscard]] bool empty() const { return storage.empty(); }
+    [[nodiscard]] int size() const { return packedSize; }
+
+    float getDC() const { return realPart(storage[0]); }
+    float getNyquist() const { return imagPart(storage[0]); }
+    Complex32 getBin(int index) const { return storage[index]; }
+    Buffer<Complex32> getStorage() const { return storage; }
+
+    Buffer<Complex32> getOrdinaryComplexBins() const {
+        return packedSize > 1 ? Buffer<Complex32>(storage.get() + 1, packedSize - 1) : Buffer<Complex32>();
+    }
+
+    void setDC(float dc) { setPackedEndpoint(dc, getNyquist()); }
+    void setNyquist(float nyquist) { setPackedEndpoint(getDC(), nyquist); }
+
+    void zero() { storage.zero(); }
+
+    void copyTo(RealFftSpectrum dest) const {
+        storage.copyTo(dest.getStorage());
+    }
+
+    void addProduct(RealFftSpectrum left, RealFftSpectrum right) {
+        if (storage.empty()) {
+            return;
+        }
+
+        setPackedEndpoint(
+            getDC() + left.getDC() * right.getDC(),
+            getNyquist() + left.getNyquist() * right.getNyquist()
+        );
+
+        getOrdinaryComplexBins().addProduct(
+            left.getOrdinaryComplexBins(),
+            right.getOrdinaryComplexBins()
+        );
+    }
+
+private:
+    static float realPart(const Complex32& value) {
+        return perfSplit(value.re, value.real());
+    }
+
+    static float imagPart(const Complex32& value) {
+        return perfSplit(value.im, value.imag());
+    }
+
+    void setPackedEndpoint(float dc, float nyquist) {
+        perfSplit(
+            storage[0].re = dc; storage[0].im = nyquist,
+            storage[0].real(dc); storage[0].imag(nyquist)
+        );
+    }
+
+    Buffer<Complex32> storage;
+    int packedSize;
+};
+
 class Transform {
 public:
     enum ScaleType {
@@ -41,6 +124,7 @@ public:
      * - DivInvByN  => N/A
      */
     void forward(Buffer<float> src);
+    RealFftSpectrum forwardReal(Buffer<float> src);
 
     /*
      * Performs the inverse FFT transform. Scales the results according to the scaleType:
@@ -49,6 +133,7 @@ public:
      * - DivInvByN  => output is scaled by 1 / bufferSize
      */
     void inverse(Buffer<float> dst);
+    void inverseReal(RealFftSpectrum fftInput, const Buffer<float>& dest);
 
     /*
      * Perform the inverse FFT transform upon the provided complex input and store the real output in the dest buffer
@@ -61,15 +146,19 @@ public:
     void setRemovesOffset(bool does) { removeOffset = does; }
 
     Buffer<Complex32> getComplex() const {
+        return getRealSpectrum().getStorage();
+    }
+
+    RealFftSpectrum getRealSpectrum() const {
         int size = 1 << (order - 1);
       #ifdef USE_ACCELERATE
         jassert(complex.size() >= size);
         vDSP_ztoc(&splitComplex, 1, (DSPComplex*) complex.get(), 2, size);
-        return complex.withSize(size);
+        return RealFftSpectrum(complex.withSize(size));
       #else
         jassert(fftBuffer.size() >= size * 2 + 2);
 
-        return fftBuffer.toType<Complex32>();
+        return RealFftSpectrum(fftBuffer.toType<Complex32>(), size);
       #endif
     }
 

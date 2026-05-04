@@ -20,18 +20,6 @@ public:
 private:
     void init(int sizeOfBlock, const Buffer<float>& kernel, bool useNoise);
 
-    static bool isProbablyEmpty(const Buffer<Complex32>& buffer) {
-        if(buffer.empty())
-            return true;
-
-        Complex32 sum = buffer.sum();
-        bool isEmpty = perfSplit(
-            std::abs(sum.im) < 1e-6f && std::abs(sum.re) < 1e-6f,
-            std::abs(sum.imag()) < 1e-6f && std::abs(sum.real()) < 1e-6f
-        );
-        return isEmpty;
-    }
-
     bool useNoise, active;
     int blockSize, numBlocks, currSegment, inputBufferPos;
     unsigned seed;
@@ -44,9 +32,9 @@ private:
     ScopedAlloc<Complex32> cplxMemory;
 
     Buffer<float>       fftBuffer, overlapBuffer, inputBuffer, decayLevels;
-    Buffer<Complex32>   sumBuffer, mulBuffer, convBuffer, noiseBuffer;
+    RealFftSpectrum     sumBuffer, mulBuffer, convBuffer, noiseBuffer;
 
-    vector<Buffer<Complex32>> inputBlocks, kernelBlocks;
+    vector<RealFftSpectrum> inputBlocks, kernelBlocks;
 
     Complex32 baseNoiseLevel;
 
