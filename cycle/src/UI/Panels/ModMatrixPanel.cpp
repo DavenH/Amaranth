@@ -285,10 +285,10 @@ void ModMatrixPanel::resized() {
 
 	right.reduce(20, 20);
 
-	int utilHeight = 13 + jmax(0, getHeight() - 400) / 20;
+    int utilHeight = 13 + jmax(0, getHeight() - 400) / 20;
 
     for (int i = 0; i < paramGroup->getNumParams(); ++i) {
-		paramGroup->getKnob<Knob>(i)->setBounds(right.removeFromTop(utilHeight));
+		paramGroup->getKnob<Slider>(i)->setBounds(right.removeFromTop(utilHeight));
 		right.removeFromTop(4);
 	}
 
@@ -983,6 +983,11 @@ bool ModMatrixPanel::readXML(const XmlElement* element) {
 
     sanitizeMappings();
 
+    if (inputs.isEmpty() || outputs.isEmpty()) {
+        initializeDefaults();
+        return false;
+    }
+
     modMatrix.getListbox().updateContent();
     getObj(MorphPanel).setRedBlueStrings(getDimString(RedDim), getDimString(BlueDim));
 
@@ -1043,6 +1048,13 @@ bool ModMatrixPanel::readJSON(const var& object) {
 
     for (const auto& outputValue : *outputsArray) {
         int id = int(outputValue);
+        if (!isValidOutputId(id)) {
+            String message = "Warning: skipping invalid mod output " + describeOutputId(id);
+            showImportant(message);
+            DBG("ModMatrixPanel::readJSON " + message);
+            continue;
+        }
+
         HeaderElement elem(getOutputName(id), id);
         outputs.add(elem);
         header.addColumn(elem.name, id, gridSize, gridSize, gridSize, flags);
@@ -1053,7 +1065,22 @@ bool ModMatrixPanel::readJSON(const var& object) {
         mapping.in = PresetJson::intProperty(mappingValue, "in", -1);
         mapping.out = PresetJson::intProperty(mappingValue, "out", -1);
         mapping.dim = PresetJson::intProperty(mappingValue, "dim", -1);
-        mappings.add(mapping);
+        if (isValidMapping(mapping)) {
+            mappings.add(mapping);
+        } else {
+            String message = "Warning: skipping invalid mod mapping in="
+                + String(mapping.in) + " out=" + String(mapping.out) + " dim=" + String(mapping.dim)
+                + " " + describeOutputId(mapping.out);
+            showImportant(message);
+            DBG("ModMatrixPanel::readJSON " + message);
+        }
+    }
+
+    sanitizeMappings();
+
+    if (inputs.isEmpty() || outputs.isEmpty()) {
+        initializeDefaults();
+        return false;
     }
 
     modMatrix.getListbox().updateContent();
