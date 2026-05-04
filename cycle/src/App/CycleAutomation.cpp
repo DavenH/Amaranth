@@ -1236,12 +1236,16 @@ public:
         signalThreadShouldExit();
         closeServerSocket();
         stopThread(1000);
+      #if JUCE_MAC || JUCE_LINUX
+        ::unlink(socketPath.toRawUTF8());
+      #else
         File(socketPath).deleteFile();
+      #endif
     }
 
     bool start(String& message) {
       #if JUCE_MAC || JUCE_LINUX
-        File(socketPath).deleteFile();
+        ::unlink(socketPath.toRawUTF8());
 
         serverFd = ::socket(AF_UNIX, SOCK_STREAM, 0);
 

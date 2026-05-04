@@ -48,8 +48,13 @@ Implemented:
 - Standalone CLI args:
   - `--agent-script`
   - `--agent-report`
+  - `--agent-session`
 - `scripts/run_cycle_agent.sh`, which launches the app bundle through
   LaunchServices and passes automation args with `--args`.
+- `scripts/run_cycle_agent_session.sh`, which launches Cycle in session mode
+  and waits for the Unix-domain socket.
+- `scripts/cycle_agent_session.py`, which sends one JSON command to a running
+  Cycle session and prints the JSON response.
 - JSON command dispatch for:
   - `snapshotState`,
   - `exportState`,
@@ -68,6 +73,8 @@ Implemented:
   - `listMeshTargets`,
   - `exportMeshState`,
   - `meshSelectionGesture`,
+  - `ping`,
+  - `quit`,
   - `waitForIdle`,
   - `action`.
 - `CycleTour` bridge for semantic action execution.
@@ -86,7 +93,8 @@ Known gaps:
 - Mesh-focused helpers for current layer/group have stable group/layer
   addressing, but vertex handles are still index-based.
 - No keyboard playback yet.
-- No long-running IPC/session mode yet.
+- Long-running IPC/session mode is available as an initial Unix-domain socket
+  implementation; an MCP adapter remains pending.
 
 ## Command Schema
 
@@ -246,16 +254,22 @@ Acceptance:
 Goal: an external agent can control a running Cycle instance over a persistent
 local transport.
 
-Status: deferred.
+Status: initial implementation complete.
 
 Acceptance:
 
 - Launch Cycle through the platform GUI launcher with a session endpoint arg.
-- Publish readiness through a report file, port file, or socket path.
-- Accept commands over local IPC.
-- Execute the same semantic command schema as one-shot scripts.
-- Support screenshots and scoped state exports during the session.
-- Shut down cleanly on command.
+  Done with `--agent-session`.
+- Publish readiness through a report file, port file, or socket path. Done by
+  creating the Unix-domain socket path.
+- Accept commands over local IPC. Done with newline-delimited JSON over a
+  Unix-domain socket.
+- Execute the same semantic command schema as one-shot scripts. Done through
+  shared `CycleAutomation` command dispatch.
+- Support screenshots and scoped state exports during the session. Done through
+  existing `screenshot`, `exportState`, `exportPreset`, and `exportMeshState`
+  commands.
+- Shut down cleanly on command. Done with the `quit` command.
 
 ## Implementation Plan
 
@@ -524,14 +538,18 @@ Status: partially implemented with an opt-in local smoke runner.
 
 Supports milestone: 7.
 
-Status: deferred.
+Status: initial implementation complete.
 
-- Add an automation server mode only after one-shot commands stabilize.
-- Launch through the platform GUI launcher with an endpoint argument.
-- Publish readiness through a report file, port file, or socket path.
-- Use local TCP/WebSocket or a local socket/named pipe.
+- Add an automation server mode only after one-shot commands stabilize. Done.
+- Launch through the platform GUI launcher with an endpoint argument. Done with
+  `scripts/run_cycle_agent_session.sh`.
+- Publish readiness through a report file, port file, or socket path. Done via
+  socket creation.
+- Use local TCP/WebSocket or a local socket/named pipe. Done with a
+  Unix-domain socket on macOS/Linux.
 - Keep MCP as a thin adapter over `CycleAutomation`.
-- Execute all commands on the JUCE message thread.
+- Execute all commands on the JUCE message thread. Done by marshalling session
+  requests onto the message thread before command dispatch.
 
 ## Verification
 
@@ -539,6 +557,8 @@ Current verified command:
 
 ```sh
 scripts/run_cycle_agent.sh /private/tmp/cycle-agent-smoke.json /private/tmp/cycle-agent-report.json /private/tmp/cycle-agent-logs.txt
+scripts/run_cycle_agent_session.sh /private/tmp/cycle-agent.sock /private/tmp/cycle-agent-session.log
+scripts/cycle_agent_session.py /private/tmp/cycle-agent.sock -c '{"command":"ping"}'
 ```
 
 Repository smoke fixtures:
@@ -623,6 +643,11 @@ Current verified behavior:
   The focused fixture box-selects two CalmingKeys time vertices, verifies the
   16-entry moving selection frame, drags the right selection edge, drags the
   move handle, and clears selection.
+- `--agent-session` starts a Unix-domain socket server that accepts one
+  newline-delimited JSON request per client connection, dispatches the command
+  on the JUCE message thread, and returns one JSON response.
+- `scripts/cycle_agent_session.py` can send `ping`, `snapshotState`,
+  `openFactoryPreset`, `meshSelectionGesture`, and `quit` to a running session.
 - `waitForIdle` performs an explicit fixed message-loop drain/delay command.
 - Cycle exits cleanly when `quit` is true.
 
