@@ -1,5 +1,7 @@
 #include "CycleAutomation.h"
 
+#include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include <App/AutomationInspectable.h>
@@ -7,6 +9,8 @@
 #include <App/Doc/PresetJson.h>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
+#include <Array/ScopedAlloc.h>
+#include <Audio/AudioHub.h>
 #include <Curve/Mesh.h>
 #include <Curve/MeshRasterizer.h>
 #include <Curve/Vertex.h>
@@ -1213,6 +1217,178 @@ namespace {
 
         return PresetJson::toVar(json);
     }
+
+    struct ScheduledMidiEvent {
+        int sampleOffset{};
+        MidiMessage message;
+    };
+
+    int midiEventSample(const var& event, double sampleRate, int totalSamples) {
+        var sampleValue = PresetJson::property(event, "sample");
+
+        if (!sampleValue.isVoid()) {
+            return jlimit(0, totalSamples, int(sampleValue));
+        }
+
+        double timeMs = getDouble(event, "timeMs", getDouble(event, "time", 0.0));
+        return jlimit(0, totalSamples, int(std::round(timeMs * sampleRate / 1000.0)));
+    }
+
+    bool addScheduledMidiEvent(Array<ScheduledMidiEvent>& events,
+                               const MidiMessage& midiMessage,
+                               int sampleOffset) {
+        ScheduledMidiEvent event;
+        event.sampleOffset = sampleOffset;
+        event.message = midiMessage;
+        events.add(event);
+        return true;
+    }
+
+    bool addScheduledMidiEvent(Array<ScheduledMidiEvent>& events,
+                               const var& event,
+                               double sampleRate,
+                               int totalSamples,
+                               String& message) {
+        String type = getString(event, "type", getString(event, "event", "noteOn"));
+        int channel = jlimit(1, 16, int(getDouble(event, "channel", 1.0)));
+        int sampleOffset = midiEventSample(event, sampleRate, totalSamples);
+
+        if (type == "noteOn" || type == "note") {
+            int note = jlimit(0, 127, int(getDouble(event, "note", 60.0)));
+            float velocity = jlimit(0.0f, 1.0f, float(getDouble(event, "velocity", 0.8)));
+            return addScheduledMidiEvent(events, MidiMessage::noteOn(channel, note, velocity), sampleOffset);
+        }
+
+        if (type == "noteOff") {
+            int note = jlimit(0, 127, int(getDouble(event, "note", 60.0)));
+            return addScheduledMidiEvent(events, MidiMessage::noteOff(channel, note), sampleOffset);
+        }
+
+        if (type == "controller") {
+            int controller = jlimit(0, 127, int(getDouble(event, "controller", getDouble(event, "number", 0.0))));
+            int value = jlimit(0, 127, int(getDouble(event, "value", 0.0)));
+            return addScheduledMidiEvent(events, MidiMessage::controllerEvent(channel, controller, value), sampleOffset);
+        }
+
+        if (type == "pitchWheel") {
+            int value = jlimit(0, 16383, int(getDouble(event, "value", 8192.0)));
+            return addScheduledMidiEvent(events, MidiMessage::pitchWheel(channel, value), sampleOffset);
+        }
+
+        if (type == "allNotesOff") {
+            return addScheduledMidiEvent(events, MidiMessage::allNotesOff(channel), sampleOffset);
+        }
+
+        message = "Unsupported MIDI event type: " + type;
+        return false;
+    }
+
+    bool buildMidiSchedule(const var& command,
+                           Array<ScheduledMidiEvent>& events,
+                           double sampleRate,
+                           int totalSamples,
+                           String& message) {
+        var commandEvents = PresetJson::property(command, "events");
+
+        if (const Array<var>* eventArray = PresetJson::getArray(commandEvents)) {
+            for (const auto& event : *eventArray) {
+                if (!addScheduledMidiEvent(events, event, sampleRate, totalSamples, message)) {
+                    return false;
+                }
+            }
+        }
+
+        var noteValue = PresetJson::property(command, "note");
+
+        if (!noteValue.isVoid()) {
+            int channel = jlimit(1, 16, int(getDouble(command, "channel", 1.0)));
+            int note = jlimit(0, 127, int(noteValue));
+            float velocity = jlimit(0.0f, 1.0f, float(getDouble(command, "velocity", 0.8)));
+            int noteOffSample = midiEventSample(command, sampleRate, totalSamples);
+            noteOffSample += int(std::round(getDouble(command, "noteDurationMs", 800.0) * sampleRate / 1000.0));
+            noteOffSample = jlimit(0, totalSamples, noteOffSample);
+
+            addScheduledMidiEvent(events, MidiMessage::noteOn(channel, note, velocity), 0);
+            addScheduledMidiEvent(events, MidiMessage::noteOff(channel, note), noteOffSample);
+        }
+
+        std::sort(events.begin(), events.end(), [](const ScheduledMidiEvent& lhs, const ScheduledMidiEvent& rhs) {
+            return lhs.sampleOffset < rhs.sampleOffset;
+        });
+
+        return true;
+    }
+
+    var audioCaptureMetrics(AudioSampleBuffer& capture, double sampleRate) {
+        int channels = capture.getNumChannels();
+        int totalSamples = capture.getNumSamples();
+        double sumSquares = 0.0;
+        float peak = 0.0f;
+        Array<var> channelMetrics;
+
+        for (int ch = 0; ch < channels; ++ch) {
+            Buffer<float> samples(capture, ch);
+            ScopedAlloc<float> magnitudes(totalSamples);
+            samples.copyTo(magnitudes);
+            magnitudes.abs();
+
+            float channelPeak = totalSamples > 0 ? magnitudes.max() : 0.0f;
+            double channelNorm = totalSamples > 0 ? double(samples.normL2()) : 0.0;
+            double channelRms = totalSamples > 0 ? channelNorm / std::sqrt(double(totalSamples)) : 0.0;
+
+            peak = jmax(peak, channelPeak);
+            sumSquares += channelNorm * channelNorm;
+
+            auto channelJson = PresetJson::object();
+            channelJson->setProperty("channel", ch);
+            channelJson->setProperty("peak", channelPeak);
+            channelJson->setProperty("rms", channelRms);
+            channelMetrics.add(PresetJson::toVar(channelJson));
+        }
+
+        double rmsDenominator = double(jmax(1, channels * totalSamples));
+        double rms = std::sqrt(sumSquares / rmsDenominator);
+
+        auto json = PresetJson::object();
+        json->setProperty("sampleRate", sampleRate);
+        json->setProperty("channels", channels);
+        json->setProperty("samples", totalSamples);
+        json->setProperty("durationMs", sampleRate > 0.0 ? 1000.0 * double(totalSamples) / sampleRate : 0.0);
+        json->setProperty("peak", peak);
+        json->setProperty("rms", rms);
+        json->setProperty("channelMetrics", var(channelMetrics));
+        return PresetJson::toVar(json);
+    }
+
+    bool checkAudioThreshold(const var& command,
+                             const var& metrics,
+                             const String& commandProperty,
+                             const String& metricProperty,
+                             const String& op,
+                             String& message) {
+        var expected = PresetJson::property(command, commandProperty);
+
+        if (expected.isVoid()) {
+            return true;
+        }
+
+        var actual = PresetJson::property(metrics, metricProperty);
+
+        if (compareVars(actual, op, expected, 0.0)) {
+            return true;
+        }
+
+        message = "Audio assertion failed: " + metricProperty + " " + actual.toString()
+                + " was not " + op + " " + expected.toString();
+        return false;
+    }
+
+    bool checkAudioThresholds(const var& command, const var& metrics, String& message) {
+        return checkAudioThreshold(command, metrics, "peakGreaterThan", "peak", "greaterThan", message)
+            && checkAudioThreshold(command, metrics, "peakLessThan", "peak", "lessThan", message)
+            && checkAudioThreshold(command, metrics, "rmsGreaterThan", "rms", "greaterThan", message)
+            && checkAudioThreshold(command, metrics, "rmsLessThan", "rms", "lessThan", message);
+    }
 }
 
 CycleAutomation::CycleAutomation(SingletonRepo* repo) :
@@ -1520,6 +1696,8 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = runTourAction(command, message);
     } else if (type == "screenshot") {
         ok = captureScreenshot(command, message, data);
+    } else if (type == "captureAudio") {
+        ok = captureAudio(command, message, data);
     } else if (type == "exportState") {
         ok = exportState(command, message);
     } else if (type == "exportPreset") {
@@ -1692,6 +1870,127 @@ bool CycleAutomation::captureScreenshot(const var& command, String& message, var
 
     data = PresetJson::toVar(json);
     message = "Screenshot written: " + path;
+    return true;
+}
+
+bool CycleAutomation::captureAudio(const var& command, String& message, var& data) {
+    AudioHub& audioHub = getObj(AudioHub);
+    AudioSourceProcessor* processor = audioHub.getAudioSourceProcessor();
+
+    if (processor == nullptr) {
+        message = "No audio source processor is active";
+        return false;
+    }
+
+    const double originalSampleRate = audioHub.getSampleRate();
+    const int originalBufferSize = audioHub.getBufferSize();
+    const double sampleRate = getDouble(command, "sampleRate", originalSampleRate > 0.0 ? originalSampleRate : 44100.0);
+    const int blockSize = jlimit(16, 8192, int(getDouble(command, "blockSize", originalBufferSize > 0 ? originalBufferSize : 512)));
+    const int channels = jlimit(1, 8, int(getDouble(command, "channels", 2.0)));
+    const double durationMs = jlimit(1.0, 60000.0, getDouble(command, "durationMs", 1000.0));
+    const int totalSamples = jmax(1, int(std::round(durationMs * sampleRate / 1000.0)));
+    const String path = getString(command, "path");
+    Array<ScheduledMidiEvent> midiEvents;
+
+    if (!buildMidiSchedule(command, midiEvents, sampleRate, totalSamples, message)) {
+        return false;
+    }
+
+  #if ! PLUGIN_MODE
+    audioHub.suspendAudio();
+  #endif
+
+    struct RestoreAudioState {
+        AudioHub& audioHub;
+        double sampleRate;
+        int bufferSize;
+
+        ~RestoreAudioState() {
+            if (sampleRate > 0.0 && bufferSize > 0) {
+                audioHub.prepareToPlay(bufferSize, sampleRate);
+            }
+
+          #if ! PLUGIN_MODE
+            audioHub.resumeAudio();
+          #endif
+        }
+    } restoreAudioState{ audioHub, originalSampleRate, originalBufferSize };
+
+    audioHub.resetKeyboardState();
+    audioHub.prepareToPlay(blockSize, sampleRate);
+
+    AudioSampleBuffer capture(channels, totalSamples);
+    AudioSampleBuffer block(channels, blockSize);
+    int eventIndex = 0;
+
+    for (int startSample = 0; startSample < totalSamples; startSample += blockSize) {
+        int blockSamples = jmin(blockSize, totalSamples - startSample);
+        MidiBuffer midiBuffer;
+        block.setSize(channels, blockSamples, false, false, true);
+        block.clear();
+
+        while (eventIndex < midiEvents.size() && midiEvents.getReference(eventIndex).sampleOffset < startSample) {
+            ++eventIndex;
+        }
+
+        for (int i = eventIndex; i < midiEvents.size(); ++i) {
+            const ScheduledMidiEvent& event = midiEvents.getReference(i);
+
+            if (event.sampleOffset >= startSample + blockSamples) {
+                break;
+            }
+
+            midiBuffer.addEvent(event.message, event.sampleOffset - startSample);
+        }
+
+        processor->processBlock(block, midiBuffer);
+
+        for (int ch = 0; ch < channels; ++ch) {
+            capture.copyFrom(ch, startSample, block, ch, 0, blockSamples);
+        }
+    }
+
+    data = audioCaptureMetrics(capture, sampleRate);
+    auto* dataObject = PresetJson::getObject(data);
+
+    if (dataObject != nullptr) {
+        dataObject->setProperty("path", path);
+        dataObject->setProperty("events", midiEvents.size());
+        dataObject->setProperty("blockSize", blockSize);
+    }
+
+    if (path.isNotEmpty()) {
+        File file(path);
+        file.getParentDirectory().createDirectory();
+        std::unique_ptr<FileOutputStream> stream(file.createOutputStream());
+
+        if (stream == nullptr || !stream->openedOk()) {
+            message = "Could not open audio capture path: " + path;
+            return false;
+        }
+
+        WavAudioFormat wavFormat;
+        std::unique_ptr<AudioFormatWriter> writer(
+            wavFormat.createWriterFor(stream.get(), sampleRate, uint32(channels), 24, {}, 0));
+
+        if (writer == nullptr) {
+            message = "Could not create WAV writer: " + path;
+            return false;
+        }
+
+        stream.release();
+
+        if (!writer->writeFromAudioSampleBuffer(capture, 0, totalSamples)) {
+            message = "Could not write WAV capture: " + path;
+            return false;
+        }
+    }
+
+    if (!checkAudioThresholds(command, data, message)) {
+        return false;
+    }
+
+    message = path.isNotEmpty() ? "Audio captured: " + path : "Audio captured";
     return true;
 }
 

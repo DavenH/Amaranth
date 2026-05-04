@@ -21,8 +21,12 @@ OS_SCREENSHOT_PATH="${CYCLE_OS_SCREENSHOT_PATH:-}"
 OS_SCREENSHOT_QUIT_AFTER="${CYCLE_OS_SCREENSHOT_QUIT_AFTER:-1}"
 CAPTURE_CRASH_REPORTS="${CYCLE_CAPTURE_CRASH_REPORTS:-1}"
 DISMISS_CRASH_DIALOG="${CYCLE_DISMISS_CRASH_DIALOG:-1}"
+SUPPRESS_CRASH_DIALOG="${CYCLE_SUPPRESS_CRASH_DIALOG:-1}"
 CRASH_REPORT_WAIT_SECONDS="${CYCLE_CRASH_REPORT_WAIT_SECONDS:-5}"
 CRASH_REPORT_PATH="${CYCLE_CRASH_REPORT_PATH:-$LOG_PATH.ips}"
+CRASH_REPORTER_DOMAIN="com.apple.CrashReporter"
+CRASH_REPORTER_ORIGINAL_DIALOG_TYPE=""
+CRASH_REPORTER_HAD_DIALOG_TYPE=0
 
 if [[ -z "$SCRIPT_PATH" ]]; then
     echo "Usage: scripts/run_cycle_agent.sh <script.json> [report.json] [log.txt]" >&2
@@ -58,6 +62,28 @@ rm -f "$REPORT_PATH"
 : > "$LOG_PATH"
 : > "$RAW_LOG_PATH"
 rm -f "$CRASH_REPORT_PATH"
+
+restore_crash_reporter_dialog_type() {
+    [[ "$SUPPRESS_CRASH_DIALOG" == "1" && "$DISMISS_CRASH_DIALOG" == "1" ]] || return 0
+
+    if [[ "$CRASH_REPORTER_HAD_DIALOG_TYPE" == "1" ]]; then
+        defaults write "$CRASH_REPORTER_DOMAIN" DialogType "$CRASH_REPORTER_ORIGINAL_DIALOG_TYPE" >/dev/null 2>&1 || true
+    else
+        defaults delete "$CRASH_REPORTER_DOMAIN" DialogType >/dev/null 2>&1 || true
+    fi
+}
+
+trap restore_crash_reporter_dialog_type EXIT
+
+suppress_crash_reporter_dialog_type() {
+    [[ "$SUPPRESS_CRASH_DIALOG" == "1" && "$DISMISS_CRASH_DIALOG" == "1" ]] || return 0
+
+    if CRASH_REPORTER_ORIGINAL_DIALOG_TYPE="$(defaults read "$CRASH_REPORTER_DOMAIN" DialogType 2>/dev/null)"; then
+        CRASH_REPORTER_HAD_DIALOG_TYPE=1
+    fi
+
+    defaults write "$CRASH_REPORTER_DOMAIN" DialogType none >/dev/null 2>&1 || true
+}
 
 open_privacy_pane() {
     local pane="$1"
@@ -139,23 +165,55 @@ dismiss_crash_dialog() {
 on run argv
     set appName to item 1 of argv
 
+    set crashPhrases to {appName & " quit unexpectedly", appName & " unexpectedly", "quit unexpectedly", "crashed"}
+    set buttonNames to {"Ignore", "OK", "Close", "Cancel", "Done", "Don't Reopen", "Do Not Reopen", "Report...", "Report"}
+
+    tell application "System Events"
+        repeat with proc in application processes
+            repeat with win in windows of proc
+                set winName to ""
+                try
+                    set winName to name of win as text
+                end try
+
+                set combinedText to winName
+                try
+                    repeat with txt in static texts of win
+                        set combinedText to combinedText & " " & (value of txt as text)
+                    end repeat
+                end try
+
+                repeat with phrase in crashPhrases
+                    if combinedText contains (phrase as text) then
+                        repeat with buttonName in buttonNames
+                            try
+                                if exists button (buttonName as text) of win then
+                                    click button (buttonName as text) of win
+                                    return "Dismissed crash dialog: " & winName
+                                end if
+                            end try
+                        end repeat
+
+                        try
+                            click button 1 of win
+                            return "Dismissed crash dialog with first button: " & winName
+                        end try
+                    end if
+                end repeat
+            end repeat
+        end repeat
+    end tell
+
     tell application "System Events"
         repeat with proc in application processes
             set procName to name of proc as text
 
-            if procName is "Problem Reporter" or procName is "ReportCrash" or procName contains "Problem" then
+            if procName is "Problem Reporter" or procName is "ReportCrash" or procName contains "Problem" or procName contains "Crash" then
                 repeat with win in windows of proc
                     set winName to name of win as text
 
-                    if winName contains appName and winName contains "quit unexpectedly" then
-                        if exists button "Ignore" of win then
-                            click button "Ignore" of win
-                        else if exists button "OK" of win then
-                            click button "OK" of win
-                        else
-                            click button 1 of win
-                        end if
-
+                    if winName contains appName or winName contains "quit unexpectedly" then
+                        click button 1 of win
                         return "Dismissed crash dialog: " & winName
                     end if
                 end repeat
@@ -292,6 +350,8 @@ if [[ "$PREFLIGHT_PERMISSIONS" == "1" ]]; then
         preflight_screen_capture_permission
     fi
 fi
+
+suppress_crash_reporter_dialog_type
 
 if [[ "$REUSE_EXISTING" != "1" ]] && process_exists; then
     quit_process

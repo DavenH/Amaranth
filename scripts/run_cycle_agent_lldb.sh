@@ -14,6 +14,10 @@ QUIT_WAIT_SECONDS="${CYCLE_QUIT_WAIT_SECONDS:-3}"
 LAUNCH_DELAY_SECONDS="${CYCLE_LLDB_LAUNCH_DELAY_SECONDS:-0.5}"
 AUTO_CONTINUE="${CYCLE_LLDB_AUTO_CONTINUE:-1}"
 RECORD_SESSION="${CYCLE_LLDB_RECORD_SESSION:-1}"
+SUPPRESS_CRASH_DIALOG="${CYCLE_SUPPRESS_CRASH_DIALOG:-1}"
+CRASH_REPORTER_DOMAIN="com.apple.CrashReporter"
+CRASH_REPORTER_ORIGINAL_DIALOG_TYPE=""
+CRASH_REPORTER_HAD_DIALOG_TYPE=0
 
 if [[ -z "$SCRIPT_PATH" ]]; then
     echo "Usage: scripts/run_cycle_agent_lldb.sh <script.json> [lldb-commands.txt|-] [report.json] [app-log.txt] [lldb-log.txt]" >&2
@@ -62,6 +66,26 @@ rm -f "$REPORT_PATH"
 : > "$RAW_LOG_PATH"
 : > "$LLDB_LOG_PATH"
 
+restore_crash_reporter_dialog_type() {
+    [[ "$SUPPRESS_CRASH_DIALOG" == "1" ]] || return 0
+
+    if [[ "$CRASH_REPORTER_HAD_DIALOG_TYPE" == "1" ]]; then
+        defaults write "$CRASH_REPORTER_DOMAIN" DialogType "$CRASH_REPORTER_ORIGINAL_DIALOG_TYPE" >/dev/null 2>&1 || true
+    else
+        defaults delete "$CRASH_REPORTER_DOMAIN" DialogType >/dev/null 2>&1 || true
+    fi
+}
+
+suppress_crash_reporter_dialog_type() {
+    [[ "$SUPPRESS_CRASH_DIALOG" == "1" ]] || return 0
+
+    if CRASH_REPORTER_ORIGINAL_DIALOG_TYPE="$(defaults read "$CRASH_REPORTER_DOMAIN" DialogType 2>/dev/null)"; then
+        CRASH_REPORTER_HAD_DIALOG_TYPE=1
+    fi
+
+    defaults write "$CRASH_REPORTER_DOMAIN" DialogType none >/dev/null 2>&1 || true
+}
+
 process_exists() {
     osascript -e "tell application \"System Events\" to exists process \"$PROCESS_NAME\"" 2>/dev/null | grep -q true
 }
@@ -80,6 +104,7 @@ quit_process() {
 
 DRIVER_PATH="$(mktemp "${TMPDIR:-/tmp}/cycle-agent-lldb.XXXXXX")"
 cleanup() {
+    restore_crash_reporter_dialog_type
     rm -f "$DRIVER_PATH"
 }
 trap cleanup EXIT
@@ -103,6 +128,8 @@ trap cleanup EXIT
 if [[ "$REUSE_EXISTING" != "1" ]] && process_exists; then
     quit_process
 fi
+
+suppress_crash_reporter_dialog_type
 
 echo "LLDB driver: $DRIVER_PATH"
 echo "App log: $LOG_PATH"

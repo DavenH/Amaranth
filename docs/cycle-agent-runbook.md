@@ -106,6 +106,8 @@ Common command families:
 - `setControl`: set sliders, combo boxes, buttons, and target-backed controls.
 - `screenshot`: capture a registered panel/target using app-side component
   rendering.
+- `captureAudio`: render scheduled MIDI events offline, optionally write a WAV,
+  and return amplitude metrics for assertions.
 - `exportState`, `exportPreset`, `exportMeshState`: export scoped JSON, reusing
   existing `Savable::writeJSON()` boundaries where available.
 - `listMeshTargets`: discover mesh groups/layers and stable target ids.
@@ -147,10 +149,47 @@ On macOS, the wrapper preflights Accessibility permission by default and
 preflights Screen Recording when OS screenshots are requested. If permission is
 missing, it opens the relevant System Settings pane and exits with instructions.
 
+## Audio Capture
+
+Use `captureAudio` when a bug or regression needs proof from the rendered
+signal rather than only UI state. The command temporarily suspends the live
+standalone audio callback, prepares the synth for an offline render, sends the
+scheduled MIDI events, writes a WAV when `path` is supplied, and restores the
+previous audio sample rate and buffer size.
+
+Minimal fixture command:
+
+```json
+{
+  "command": "captureAudio",
+  "path": "/private/tmp/cycle-agent-note.wav",
+  "durationMs": 1500,
+  "sampleRate": 44100,
+  "blockSize": 512,
+  "channels": 2,
+  "events": [
+    { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.8 },
+    { "type": "noteOff", "timeMs": 850, "note": 60 }
+  ],
+  "peakGreaterThan": 0.0001,
+  "rmsGreaterThan": 0.00001,
+  "peakLessThan": 1.5
+}
+```
+
+Supported event types are `noteOn`, `noteOff`, `controller`, `pitchWheel`, and
+`allNotesOff`. The report data includes `peak`, `rms`, per-channel metrics,
+sample rate, duration, event count, and output path. Use the numeric threshold
+fields for first-pass assertions; reserve perceptual or similarity checks for a
+separate external analysis step that consumes the WAV artifact.
+
 ## Crash And Assertion Triage
 
 If Cycle crashes before writing a report, `scripts/run_cycle_agent.sh` can:
 
+- temporarily suppress CrashReporter UI by setting `com.apple.CrashReporter`
+  `DialogType=none` for the duration of the run, then restoring the original
+  value,
 - detect and dismiss the macOS "Cycle quit unexpectedly" dialog,
 - copy the newest matching DiagnosticReports `.ips` file next to the logs,
 - append the crash report header to the raw log.
@@ -200,7 +239,8 @@ expr outputs.size()
 Keep `continue` out of the breakpoint file unless you deliberately want custom
 control; the wrapper continues automatically by default. Set
 `CYCLE_LLDB_AUTO_CONTINUE=0` to attach and source breakpoints without starting
-the automation run.
+the automation run. Set `CYCLE_SUPPRESS_CRASH_DIALOG=0` if you explicitly want
+macOS to show its crash dialog during a runner or LLDB session.
 
 ## Long-Running Sessions
 
