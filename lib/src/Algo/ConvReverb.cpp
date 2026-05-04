@@ -7,34 +7,6 @@
 #include "../Util/Arithmetic.h"
 #include "../Definitions.h"
 
-namespace {
-    float realPart(const Complex32& value) {
-        return perfSplit(value.re, value.real());
-    }
-
-    float imagPart(const Complex32& value) {
-        return perfSplit(value.im, value.imag());
-    }
-
-    void setComplex(Complex32& value, float real, float imag) {
-        perfSplit(value.re = real; value.im = imag, value.real(real); value.imag(imag));
-    }
-
-    void addRealFftProduct(Buffer<Complex32> dest, Buffer<Complex32> left, Buffer<Complex32> right) {
-        if (dest.empty()) {
-            return;
-        }
-
-        float dc = realPart(dest[0]) + realPart(left[0]) * realPart(right[0]);
-        float nyquist = imagPart(dest[0]) + imagPart(left[0]) * imagPart(right[0]);
-        setComplex(dest[0], dc, nyquist);
-
-        if (dest.size() > 1) {
-            dest.offset(1).addProduct(left.offset(1), right.offset(1));
-        }
-    }
-}
-
 ConvReverb::ConvReverb(SingletonRepo* repo) :
         SingletonAccessor(repo, "ConvReverb")
     ,   outBuffer(2)
@@ -261,8 +233,8 @@ void BlockConvolver::init(int sizeOfBlock, const Buffer<float>& kernel, bool use
     cplxMemory  .zero();
     memory      .zero();
 
-    sumBuffer     = cplxMemory.place(complexSize);
-    convBuffer    = cplxMemory.place(complexSize);
+    sumBuffer     = RealFftSpectrum(cplxMemory.place(complexSize), blockSize);
+    convBuffer    = RealFftSpectrum(cplxMemory.place(complexSize), blockSize);
 
     overlapBuffer = memory.place(blockSize);
     inputBuffer   = memory.place(blockSize);
@@ -272,18 +244,17 @@ void BlockConvolver::init(int sizeOfBlock, const Buffer<float>& kernel, bool use
     inputBlocks.clear();
 
     for (int i = 0; i < numBlocks; ++i) {
-        Buffer<Complex32> segment = cplxMemory.place(complexSize);
+        RealFftSpectrum segment(cplxMemory.place(complexSize), blockSize);
 
         int remaining = kernel.size() - (i * blockSize);
         int fftLen = (remaining >= blockSize) ? blockSize : remaining;
 
-        Buffer<Complex32> irSegment = cplxMemory.place(complexSize);
+        RealFftSpectrum irSegment(cplxMemory.place(complexSize), blockSize);
 
         kernel.section(i * blockSize, fftLen).copyTo(fftBuffer);
 
         fftBuffer.offset(fftLen).zero();
-        fft.forward(fftBuffer);
-        fft.getComplex().copyTo(irSegment);
+        fft.forwardReal(fftBuffer).copyTo(irSegment);
 
         kernelBlocks.push_back(irSegment);
         inputBlocks.push_back(segment);
@@ -306,8 +277,7 @@ void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
         
         inputBuffer.copyTo(fftBuffer);
         fftBuffer.offset(blockSize).zero();
-        fft.forward(fftBuffer);
-        fft.getComplex().copyTo(inputBlocks[currSegment]);
+        fft.forwardReal(fftBuffer).copyTo(inputBlocks[currSegment]);
 
         if (inputWasEmpty) {
             sumBuffer.zero();
@@ -316,14 +286,14 @@ void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
                 int kernIndex   = i;
                 int inputIndex  = (currSegment + i) % numBlocks;
 
-                addRealFftProduct(sumBuffer, kernelBlocks[kernIndex], inputBlocks[inputIndex]);
+                sumBuffer.addProduct(kernelBlocks[kernIndex], inputBlocks[inputIndex]);
             }
         }
 
         sumBuffer.copyTo(convBuffer);
-        addRealFftProduct(convBuffer, kernelBlocks[0], inputBlocks[currSegment]);
+        convBuffer.addProduct(kernelBlocks[0], inputBlocks[currSegment]);
         
-        fft.inverse(convBuffer, fftBuffer);
+        fft.inverseReal(convBuffer, fftBuffer);
         VecOps::add(
             fftBuffer + inputBufferPos,
             overlapBuffer + inputBufferPos,

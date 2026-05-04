@@ -138,6 +138,15 @@ void Transform::forward(Buffer<float> src) {
   #endif
 }
 
+RealFftSpectrum Transform::forwardReal(Buffer<float> src) {
+    forward(src);
+    return getRealSpectrum();
+}
+
+void Transform::inverseReal(RealFftSpectrum fftInput, const Buffer<float>& dest) {
+    inverse(fftInput.getStorage(), dest);
+}
+
 void Transform::inverse(const Buffer<Complex32>& fftInput, const Buffer<float>& dest) {
   #ifdef USE_ACCELERATE
     int size = 1 << order;
