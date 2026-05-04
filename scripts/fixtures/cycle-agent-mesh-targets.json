@@ -1,0 +1,17 @@
+{
+  "commands": [
+    {
+      "command": "listMeshTargets"
+    },
+    {
+      "command": "listMeshTargets",
+      "group": "time"
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.count",
+      "greaterThan": 0
+    }
+  ],
+  "quit": true
+}

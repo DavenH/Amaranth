@@ -18,6 +18,7 @@ run_fixture() {
 
 run_fixture readonly scripts/fixtures/cycle-agent-readonly.json
 run_fixture assertion-paths scripts/fixtures/cycle-agent-assertion-paths.json
+run_fixture mesh-targets scripts/fixtures/cycle-agent-mesh-targets.json
 run_fixture screenshot scripts/fixtures/cycle-agent-screenshot.json
 run_fixture set-morph-slider scripts/fixtures/cycle-agent-set-morph-slider.json
 run_fixture broader-controls scripts/fixtures/cycle-agent-broader-controls.json

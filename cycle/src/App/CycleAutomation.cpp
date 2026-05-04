@@ -5,6 +5,8 @@
 #include <App/AutomationInspectable.h>
 #include <App/Doc/Document.h>
 #include <App/Doc/PresetJson.h>
+#include <App/MeshLibrary.h>
+#include <Curve/Mesh.h>
 #include <Definitions.h>
 #include <UI/Panels/Panel.h>
 
@@ -554,6 +556,83 @@ namespace {
             object.setProperty(name, value);
         }
     }
+
+    String meshLayerGroupName(int group) {
+        switch (group) {
+            case LayerGroups::GroupVolume:       return "volume";
+            case LayerGroups::GroupPitch:        return "pitch";
+            case LayerGroups::GroupScratch:      return "scratch";
+            case LayerGroups::GroupGuideCurve:   return "guideCurve";
+            case LayerGroups::GroupTime:         return "time";
+            case LayerGroups::GroupSpect:        return "spect";
+            case LayerGroups::GroupPhase:        return "phase";
+            case LayerGroups::GroupOscPhase:     return "oscPhase";
+            case LayerGroups::GroupWavePitch:    return "wavePitch";
+            case LayerGroups::GroupWaveshaper:   return "waveshaper";
+            case LayerGroups::GroupIrModeller:   return "irModeller";
+            default:                             return "group" + String(group);
+        }
+    }
+
+    String meshTypeName(int type) {
+        switch (type) {
+            case MeshLibrary::TypeMesh:      return "mesh";
+            case MeshLibrary::TypeMesh2D:    return "mesh2D";
+            case MeshLibrary::TypeEnvelope:  return "envelope";
+            default:                         return "unknown";
+        }
+    }
+
+    bool meshGroupMatches(const var& command, int group, const String& name) {
+        var requested = PresetJson::property(command, "group");
+
+        if (requested.isVoid()) {
+            requested = PresetJson::property(command, "groupId");
+        }
+
+        if (requested.isVoid()) {
+            return true;
+        }
+
+        if (requested.isString()) {
+            return requested.toString() == name;
+        }
+
+        return int(requested) == group;
+    }
+
+    var meshSummary(Mesh* mesh) {
+        auto json = PresetJson::object();
+        json->setProperty("resolved", mesh != nullptr);
+
+        if (mesh != nullptr) {
+            json->setProperty("name", mesh->getName());
+            json->setProperty("version", mesh->getVersion());
+            json->setProperty("vertices", mesh->getNumVerts());
+            json->setProperty("cubes", mesh->getNumCubes());
+            json->setProperty("hasEnoughCubesForCrossSection", mesh->hasEnoughCubesForCrossSection());
+        }
+
+        return PresetJson::toVar(json);
+    }
+
+    var layerSummary(int groupId, const String& groupName, int layerIndex, int currentIndex, const MeshLibrary::Layer& layer) {
+        auto json = PresetJson::object();
+        json->setProperty("groupId", groupId);
+        json->setProperty("group", groupName);
+        json->setProperty("index", layerIndex);
+        json->setProperty("current", layerIndex == currentIndex);
+        json->setProperty("address", groupName + "[" + String(layerIndex) + "]");
+        json->setProperty("mesh", meshSummary(layer.mesh));
+
+        if (layer.props != nullptr) {
+            json->setProperty("properties", layer.props->writeJSON());
+        } else {
+            json->setProperty("properties", {});
+        }
+
+        return PresetJson::toVar(json);
+    }
 }
 
 CycleAutomation::CycleAutomation(SingletonRepo* repo) :
@@ -707,6 +786,8 @@ void CycleAutomation::runCommand(const var& command, Array<var>& results) {
         ok = assertState(command, message, data);
     } else if (type == "listAssertionPaths") {
         ok = listAssertionPaths(command, message, data);
+    } else if (type == "listMeshTargets") {
+        ok = listMeshTargets(command, message, data);
     } else if (type == "waitForIdle") {
         ok = waitForIdle(command, message, data);
     } else if (type == "snapshotState") {
@@ -1344,6 +1425,72 @@ bool CycleAutomation::listAssertionPaths(const var& command, String& message, va
     data = PresetJson::toVar(json);
 
     message = "Listed " + String(paths.size()) + " assertion paths";
+    return true;
+}
+
+bool CycleAutomation::listMeshTargets(const var& command, String& message, var& data) {
+    bool includeLayers = getBool(command, "includeLayers", true);
+    MeshLibrary& meshLibrary = getObj(MeshLibrary);
+    Array<var> groups;
+
+    {
+        ScopedLock sl(meshLibrary.getLock());
+
+        for (int groupId = 0; groupId < meshLibrary.getNumGroups(); ++groupId) {
+            String groupName = meshLayerGroupName(groupId);
+
+            if (!meshGroupMatches(command, groupId, groupName)) {
+                continue;
+            }
+
+            MeshLibrary::LayerGroup& group = meshLibrary.getLayerGroup(groupId);
+            auto groupJson = PresetJson::object();
+
+            groupJson->setProperty("id", groupId);
+            groupJson->setProperty("name", groupName);
+            groupJson->setProperty("meshType", group.meshType);
+            groupJson->setProperty("meshTypeName", meshTypeName(group.meshType));
+            groupJson->setProperty("currentLayer", group.current);
+            groupJson->setProperty("layerCount", group.size());
+            groupJson->setProperty("selectedCount", int(group.selected.size()));
+            groupJson->setProperty("hasPreviewMesh", group.previewMesh != nullptr);
+            groupJson->setProperty("currentMesh", meshSummary(group.getCurrentMesh()));
+            groupJson->setProperty("effectiveMesh", meshSummary(meshLibrary.getEffectiveMesh(groupId)));
+
+            if (isPositiveAndBelow(group.current, group.size())) {
+                MeshLibrary::Layer& currentLayer = group.layers[group.current];
+
+                if (currentLayer.props != nullptr) {
+                    groupJson->setProperty("currentProperties", currentLayer.props->writeJSON());
+                }
+            }
+
+            if (includeLayers) {
+                Array<var> layers;
+
+                for (int layerIndex = 0; layerIndex < group.size(); ++layerIndex) {
+                    layers.add(layerSummary(groupId, groupName, layerIndex, group.current, group.layers[layerIndex]));
+                }
+
+                groupJson->setProperty("layers", var(layers));
+            }
+
+            groups.add(PresetJson::toVar(groupJson));
+        }
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("count", groups.size());
+    json->setProperty("groups", var(groups));
+    json->setProperty("includeLayers", includeLayers);
+    data = PresetJson::toVar(json);
+
+    if (groups.isEmpty()) {
+        message = "No mesh target groups matched";
+        return false;
+    }
+
+    message = "Listed " + String(groups.size()) + " mesh target groups";
     return true;
 }
 

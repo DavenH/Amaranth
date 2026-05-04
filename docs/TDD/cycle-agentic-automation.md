@@ -201,14 +201,17 @@ Acceptance:
 Goal: an agent can create and edit the core Cycle sound-design data.
 
 Status: partially available through `CycleTour` mesh actions, but needs richer
-state reporting.
+state reporting. Mesh target discovery is now available through
+`listMeshTargets`.
 
 Acceptance:
 
 - Add, move, select, deselect, and delete vertices using normalized coordinates.
 - Set vertex parameters and guide-curve assignments.
 - Export current mesh/layer JSON.
-- Snapshot mesh counts, selected vertices, and stable vertex handles.
+- Snapshot mesh counts, selected vertices, and stable vertex handles. Mesh group
+  and layer discovery now reports group ids/names, current layer, layer count,
+  selected count, compact mesh counts, and layer properties.
 - Validate changes with assertions rather than visual inspection only.
 - Keep pointer-level mesh interactions as a separate regression path.
 
@@ -436,14 +439,14 @@ path selection.
 - Add optional JSON path selection for subtrees of exported savable state. Done
   with `jsonPath`/`statePath`.
 - Add mesh-focused helpers for current layer/group once stable addressing is
-  defined.
+  defined. Done for read-only discovery with `listMeshTargets`.
 
 ### Phase 7: Mesh And Pointer Commands
 
 Supports milestone: 5.
 
 Status: partially covered through `CycleTour` actions and target-local pointer
-events.
+events. Read-only mesh target discovery is implemented.
 
 - Keep semantic mesh edits as primary:
   - add vertex,
@@ -452,6 +455,9 @@ events.
   - select vertex,
   - set vertex param.
 - Add stable vertex handles to snapshots and reports.
+- Add `listMeshTargets` for stable mesh group/layer addressing. Done with
+  group ids/names, current layer, layer count, selected count, compact
+  current/effective mesh summaries, and per-layer mesh/property summaries.
 - Add low-level pointer/key/wheel commands only for interaction regressions.
   Done for pointer click/down/up/drag/move/doubleClick/wheel events.
 - Pointer commands should target named components plus local coordinates. Done
@@ -467,6 +473,7 @@ Status: partially implemented with an opt-in local smoke runner.
   - opening the default preset. Covered by `cycle-agent-readonly.json`.
   - discovering assertion paths. Covered by
     `cycle-agent-assertion-paths.json`.
+  - discovering mesh targets. Covered by `cycle-agent-mesh-targets.json`.
   - exporting `MeshLibrary`. Covered by `cycle-agent-readonly.json`.
   - setting morph position. Covered by `cycle-agent-set-morph-slider.json`.
   - setting broader master/effect/layer controls. Covered by
@@ -509,6 +516,7 @@ Repository smoke fixtures:
 ```sh
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-readonly.json /private/tmp/cycle-agent-readonly-report.json /private/tmp/cycle-agent-readonly-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-assertion-paths.json /private/tmp/cycle-agent-assertion-paths-report.json /private/tmp/cycle-agent-assertion-paths-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-mesh-targets.json /private/tmp/cycle-agent-mesh-targets-report.json /private/tmp/cycle-agent-mesh-targets-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-screenshot.json /private/tmp/cycle-agent-screenshot-report.json /private/tmp/cycle-agent-screenshot-logs.txt
 CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tmp/cycle-agent-waveform3d-os.png scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json /private/tmp/cycle-agent-waveform3d-os-report.json /private/tmp/cycle-agent-waveform3d-os-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
@@ -562,6 +570,9 @@ Current verified behavior:
   values on failure.
 - `listAssertionPaths` discovers assertable snapshot or target paths with
   current values, value types, and compatible operators.
+- `listMeshTargets` discovers mesh groups/layers with stable ids/names, current
+  layer, layer count, selected count, compact mesh counts, and Savable layer
+  property JSON.
 - `waitForIdle` performs an explicit fixed message-loop drain/delay command.
 - Cycle exits cleanly when `quit` is true.
 
