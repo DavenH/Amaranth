@@ -15,6 +15,10 @@
       "command": "inspectTargets",
       "area": "AreaMorphPanel",
       "target": "TargSliderY"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaMorphPanel"
     }
   ],
   "quit": true

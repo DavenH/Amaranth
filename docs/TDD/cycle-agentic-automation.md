@@ -281,6 +281,8 @@ Planned serialization boundary:
     later `ComboBox`/`TextEditor` if needed.
 - Rich Cycle components expose automation-specific state through an optional
   interface, tentatively `AutomationInspectable`.
+- `AutomationInspectable` is implemented and currently attached to
+  `MorphPanel` and `GeneralControls`.
 - Full preset/model JSON continues to flow through explicit `Savable` export
   via `exportState`, not implicit target inspection.
 - `inspectTargets` may later accept an option such as `includeSavable` or
@@ -292,12 +294,18 @@ Planned serialization boundary:
 
 Supports milestones: 3, 4, 5, and 6.
 
-Status: partially started through richer `inspectTargets` control metadata.
+Status: partially started through richer `inspectTargets` control metadata and
+the `AutomationInspectable` interface.
 
 - Add an automation-state interface for rich UI components:
   - `exportAutomationState()` for transient UI state that is useful to agents,
   - optional apply/control hooks only where generic `setControl` is not enough,
   - no automatic full `Savable` dump from every inspected component.
+- Implemented:
+  - `MorphPanel.v1` reports morph slider values, linking, range flags, primary
+    axis, and current MIDI key under `automationState`.
+  - `GeneralControls.v1` reports current tool, view stage, transport state,
+    surface-view flags, and button applicability/highlight state.
 - Expand `snapshotState` to include:
   - document/preset name,
   - current view stage,
@@ -446,6 +454,7 @@ scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-readonly.json /private/t
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-screenshot.json /private/tmp/cycle-agent-screenshot-report.json /private/tmp/cycle-agent-screenshot-logs.txt
 CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tmp/cycle-agent-waveform3d-os.png scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json /private/tmp/cycle-agent-waveform3d-os-report.json /private/tmp/cycle-agent-waveform3d-os-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-general-controls.json /private/tmp/cycle-agent-general-controls-report.json /private/tmp/cycle-agent-general-controls-logs.txt
 ```
 
 Current verified behavior:
@@ -465,6 +474,8 @@ Current verified behavior:
   relative to JUCE screen bounds; 441 x 368 bounds produced an 882 x 736 PNG.
 - `setControl` sets `AreaMorphPanel` / `TargSliderY` to `0.25` and
   `inspectTargets` reports the resulting value.
+- `GeneralControls` reports `GeneralControls.v1`; a `SwitchToTool` action
+  updates `automationState.tools.name` to `pencil`.
 - Cycle exits cleanly when `quit` is true.
 
 ## Open Questions

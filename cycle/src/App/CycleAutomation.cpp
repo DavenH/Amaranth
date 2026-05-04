@@ -1,5 +1,6 @@
 #include "CycleAutomation.h"
 
+#include <App/AutomationInspectable.h>
 #include <App/Doc/Document.h>
 #include <App/Doc/PresetJson.h>
 #include <Definitions.h>
@@ -592,6 +593,10 @@ var CycleAutomation::componentState(Component* component, const String& area, co
             json->setProperty("buttonText", button->getButtonText());
         } else {
             json->setProperty("controlType", "component");
+        }
+
+        if (auto* inspectable = dynamic_cast<AutomationInspectable*>(component)) {
+            json->setProperty("automationState", inspectable->exportAutomationState());
         }
     } else {
         json->setProperty("error", "Target could not be resolved");

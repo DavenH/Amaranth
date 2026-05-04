@@ -1,5 +1,6 @@
 #pragma once
 
+#include <App/AutomationInspectable.h>
 #include <App/Doc/Savable.h>
 #include <App/SingletonAccessor.h>
 #include <Inter/MorphPositioner.h>
@@ -24,7 +25,8 @@ class MorphPanel :
     ,	public Savable
     ,	public TourGuide
     ,	public SingletonAccessor
-    ,	public MorphPositioner {
+    ,	public MorphPositioner
+    ,	public AutomationInspectable {
 public:
     explicit MorphPanel(SingletonRepo* repo);
     void init() override;
@@ -64,7 +66,7 @@ public:
     bool 	usesLineDepthFor(int dim) override;
 
     int 	getPrimaryDimension() override;
-    int 	getCurrentMidiKey();
+    int 	getCurrentMidiKey() const;
 
     float 	getValue(int index) override;
     float 	getPrimaryViewDepth();
@@ -90,6 +92,9 @@ public:
     bool readXML(const XmlElement* element) override;
     var writeJSON() const override;
     bool readJSON(const var& object) override;
+
+    /* Automation */
+    var exportAutomationState() const override;
 
 private:
     bool ignoreNextEditMessage;

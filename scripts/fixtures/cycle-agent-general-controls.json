@@ -1,0 +1,18 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaGenControls"
+    },
+    {
+      "command": "action",
+      "actionType": "SwitchToTool",
+      "id": "IdToolPencil"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaGenControls"
+    }
+  ],
+  "quit": true
+}
