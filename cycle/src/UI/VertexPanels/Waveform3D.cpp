@@ -1,8 +1,10 @@
 #include <App/EditWatcher.h>
+#include <App/Doc/PresetJson.h>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Binary/Gradients.h>
+#include <Curve/Mesh.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/Layout/DynamicSizeContainer.h>
 #include <UI/Panels/OpenGLPanel3D.h>
@@ -27,6 +29,52 @@
 #include "../../Util/CycleEnums.h"
 
 #define panelName "Waveform3D"
+
+namespace {
+    String viewStageName(int stage) {
+        switch (stage) {
+            case ViewStages::PreProcessing:    return "preProcessing";
+            case ViewStages::PostEnvelopes:    return "postEnvelopes";
+            case ViewStages::PostSpectrum:     return "postSpectrum";
+            case ViewStages::PostFX:           return "postFX";
+            default:                           break;
+        }
+
+        return "unknown";
+    }
+
+    var layerPropsState(MeshLibrary::Properties* props) {
+        auto json = PresetJson::object();
+
+        if (props == nullptr) {
+            json->setProperty("resolved", false);
+            return PresetJson::toVar(json);
+        }
+
+        json->setProperty("resolved", true);
+        json->setProperty("active", props->active);
+        json->setProperty("mode", props->mode);
+        json->setProperty("scratchChannel", props->scratchChan);
+        json->setProperty("pan", props->pan.getTargetValue());
+        json->setProperty("fineTune", props->fineTune.getTargetValue());
+        json->setProperty("gain", props->gain);
+        json->setProperty("range", props->range);
+        return PresetJson::toVar(json);
+    }
+
+    var meshState(Mesh* mesh) {
+        auto json = PresetJson::object();
+        json->setProperty("resolved", mesh != nullptr);
+
+        if (mesh != nullptr) {
+            json->setProperty("vertices", mesh->getNumVerts());
+            json->setProperty("cubes", mesh->getNumCubes());
+            json->setProperty("hasEnoughCubesForCrossSection", mesh->hasEnoughCubesForCrossSection());
+        }
+
+        return PresetJson::toVar(json);
+    }
+}
 
 Waveform3D::Waveform3D(SingletonRepo* repo) :
         Panel3D				(repo, panelName, this, UpdateSources::SourceWaveform3D, false, true)
@@ -409,4 +457,38 @@ CriticalSection& Waveform3D::getGridLock() {
 bool Waveform3D::isSurfaceDetailReduced() {
     auto* rasterizer = dynamic_cast<GraphicRasterizer*>(interactor->getRasterizer());
     return rasterizer != nullptr && rasterizer->isDetailReduced();
+}
+
+var Waveform3D::exportAutomationState() const {
+    auto json = PresetJson::object();
+    auto view = PresetJson::object();
+    auto layer = PresetJson::object();
+
+    auto& meshLib = const_cast<MeshLibrary&>(getObj(MeshLibrary));
+    auto& group = meshLib.getLayerGroup(LayerGroups::GroupTime);
+    int currentLayer = meshLib.getCurrentIndex(LayerGroups::GroupTime);
+    int viewStage = getSettingValue(ViewStage);
+
+    json->setProperty("schema", "Waveform3D.v1");
+    json->setProperty("layerGroup", LayerGroups::GroupTime);
+    json->setProperty("layerGroupName", "time");
+
+    view->setProperty("viewStage", viewStage);
+    view->setProperty("viewStageName", viewStageName(viewStage));
+    view->setProperty("drawWave", bool(getSettingValue(DrawWave)));
+    view->setProperty("waveLoaded", bool(getSettingValue(WaveLoaded)));
+    view->setProperty("shouldDrawGrid", const_cast<Waveform3D*>(this)->shouldDrawGrid());
+    view->setProperty("windowWidthPixels", const_cast<Waveform3D*>(this)->getWindowWidthPixels());
+    json->setProperty("view", PresetJson::toVar(view));
+
+    layer->setProperty("current", currentLayer);
+    layer->setProperty("count", group.size());
+    layer->setProperty("activeCount", const_cast<Waveform3D*>(this)->getNumActiveLayers());
+    layer->setProperty("selectedCount", int(group.selected.size()));
+    layer->setProperty("scratchChannel", const_cast<Waveform3D*>(this)->getLayerScratchChannel());
+    layer->setProperty("currentProperties", layerPropsState(meshLib.getCurrentProps(LayerGroups::GroupTime)));
+    layer->setProperty("currentMesh", meshState(meshLib.getCurrentMesh(LayerGroups::GroupTime)));
+    json->setProperty("layer", PresetJson::toVar(layer));
+
+    return PresetJson::toVar(json);
 }

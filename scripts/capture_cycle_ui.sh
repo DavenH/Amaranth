@@ -14,6 +14,7 @@ QUIT_WAIT_SECONDS="${CYCLE_QUIT_WAIT_SECONDS:-3}"
 FILTER_LOGS="${CYCLE_FILTER_LOGS:-1}"
 DIRECT_LAUNCH="${CYCLE_DIRECT_LAUNCH:-1}"
 CAPTURE_RECT="${CYCLE_CAPTURE_RECT:-}"
+PREFLIGHT_PERMISSIONS="${CYCLE_PREFLIGHT_PERMISSIONS:-1}"
 
 if [[ ! -d "$APP_PATH" ]]; then
     echo "Cycle app not found: $APP_PATH" >&2
@@ -36,13 +37,49 @@ mkdir -p "$(dirname "$RAW_LOG_PATH")"
 : > "$LOG_PATH"
 : > "$RAW_LOG_PATH"
 
+open_privacy_pane() {
+    local pane="$1"
+    open "x-apple.systempreferences:com.apple.preference.security?$pane" >/dev/null 2>&1 || true
+}
+
+preflight_accessibility_permission() {
+    if osascript -e 'tell application "System Events" to get name of first process' >/dev/null 2>&1; then
+        return 0
+    fi
+
+    echo "Cycle UI capture requires macOS Accessibility permission for the calling terminal/app." >&2
+    echo "Grant permission in System Settings > Privacy & Security > Accessibility, then rerun this script." >&2
+    open_privacy_pane "Privacy_Accessibility"
+    return 1
+}
+
+preflight_screen_capture_permission() {
+    local probe_path="${TMPDIR:-/tmp}/cycle-ui-screen-permission-probe.png"
+    rm -f "$probe_path"
+
+    if screencapture -x "$probe_path" >/dev/null 2>&1 && [[ -s "$probe_path" ]]; then
+        rm -f "$probe_path"
+        return 0
+    fi
+
+    echo "Cycle UI capture requires macOS Screen Recording permission for the calling terminal/app." >&2
+    echo "Grant permission in System Settings > Privacy & Security > Screen Recording, then rerun this script." >&2
+    open_privacy_pane "Privacy_ScreenCapture"
+    return 1
+}
+
 process_exists() {
-    osascript -e "tell application \"System Events\" to exists process \"$PROCESS_NAME\"" | grep -q true
+    osascript -e "tell application \"System Events\" to exists process \"$PROCESS_NAME\"" 2>/dev/null | grep -q true
 }
 
 process_frontmost() {
     osascript -e "tell application \"System Events\" to frontmost of process \"$PROCESS_NAME\"" 2>/dev/null | grep -q true
 }
+
+if [[ "$PREFLIGHT_PERMISSIONS" == "1" ]]; then
+    preflight_accessibility_permission
+    preflight_screen_capture_permission
+fi
 
 if [[ "$REUSE_EXISTING" != "1" ]] && process_exists; then
     osascript -e "tell application \"$PROCESS_NAME\" to quit" || true

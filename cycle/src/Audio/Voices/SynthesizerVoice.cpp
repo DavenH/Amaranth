@@ -283,7 +283,8 @@ void SynthesizerVoice::initialiseEnvMeshes() {
             MeshLibrary::EnvProps* props = meshLib->getEnvProps(rastGroup.layerGroup, i);
             rast.sampleable = false;
 
-            if (props->active && rast.rast.hasEnoughCubesForCrossSection()) {
+            if (props->active && rast.rast.getCurrentMesh() != nullptr &&
+                rast.rast.hasEnoughCubesForCrossSection()) {
                 rast.rast.calcCrossPoints();
                 rast.sampleable = rast.rast.isSampleable();
             }
@@ -409,7 +410,8 @@ void SynthesizerVoice::calcEnvelopeBuffers(int numSamples) {
         EnvRasterizer& envRast = context.rast;
         MeshLibrary::EnvProps* props = meshLib->getEnvProps(LayerGroups::GroupVolume, context.layerIndex);
 
-        if (props->active && envRast.hasEnoughCubesForCrossSection()) {
+        if (props->active && envRast.getCurrentMesh() != nullptr &&
+            envRast.hasEnoughCubesForCrossSection()) {
             bool stillActive = envRast.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, *props, 1.f);
             // TODO
             anyActive |= stillActive;
@@ -456,7 +458,10 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
             }
         } else {
             for (int i = 0; i < group.size(); ++i) {
-                envRasterizers.push_back(&group.envGroup[i].rast);
+                EnvRenderContext& context = group.envGroup[i];
+                MeshLibrary::Layer layer = meshLib->getLayer(group.layerGroup, context.layerIndex);
+                context.rast.setMesh(dynamic_cast<EnvelopeMesh*>(layer.mesh));
+                envRasterizers.push_back(&context.rast);
             }
         }
     }
@@ -469,8 +474,10 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
     for (auto rast: envRasterizers) {
         rast->setCalcDepthDimensions(false);
         rast->setToOverrideDim(true);
-        rast->calcCrossPoints();
-        rast->validateState();
+        if (rast->getCurrentMesh() != nullptr) {
+            rast->calcCrossPoints();
+            rast->validateState();
+        }
     }
 }
 

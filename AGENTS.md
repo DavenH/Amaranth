@@ -17,6 +17,7 @@
     - Tests: `cmake --preset tests && cmake --build --preset tests`
 - Run tests: `ctest --test-dir build/tests -V` (Catch2 discovery is enabled).
 - Capture Cycle UI screenshots and filtered launch logs for regression checks and UI bug fixes: `scripts/capture_cycle_ui.sh /tmp/cycle-ui.png /tmp/cycle-logs.txt`. The script also writes the complete unfiltered log to `/tmp/cycle-logs.txt.raw`; inspect the filtered log first to avoid unnecessary token use.
+- Cycle agent automation runbook: `docs/cycle-agent-runbook.md`. Use this for targeted UI bug reproduction, focused fixture runs, agent screenshots, state export/assertions, OpenGL panel capture, crash `.ips` collection, and long-running session IPC.
 
 ## Coding Style & Naming Conventions
 - C++17, 4‑space indentation, braces on the same line; always brace single statements.
@@ -44,6 +45,7 @@
 - Naming: begin test files with `Test*.cpp` or place under a `tests/` subfolder.
 - Coverage: prefer tests for new DSP modules and bugfixes; include edge‑rate/sample‑rate cases.
 - UI regressions: use `scripts/capture_cycle_ui.sh /tmp/cycle-ui.png /tmp/cycle-logs.txt` to capture the Cycle UI and filtered launch logs before/after visual changes or when investigating UI bugs. Read `/tmp/cycle-logs.txt` first; only read `/tmp/cycle-logs.txt.raw` when detailed rasterizer/mesh logs are needed.
+- UI automation: prefer a focused fixture with `scripts/run_cycle_agent.sh` over the full smoke suite while debugging. Add small, stable fixtures under `scripts/fixtures/` for regressions that agents should be able to reproduce. See `docs/cycle-agent-runbook.md`.
 
 ## Commit & Pull Request Guidelines
 - Commits: short, imperative subject (“Fix buffer wraparound”), optional body for context.

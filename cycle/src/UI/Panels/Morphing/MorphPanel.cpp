@@ -364,7 +364,7 @@ void MorphPanel::doGlobalUIUpdate(bool force) {
     getObj(Updater).update(UpdateSources::SourceMorph, Update);
 }
 
-int MorphPanel::getCurrentMidiKey() {
+int MorphPanel::getCurrentMidiKey() const {
     return Arithmetic::getGraphicNoteForValue(redSlider.getValue(), midiRange);
 }
 
@@ -593,6 +593,36 @@ var MorphPanel::writeJSON() const {
     json->setProperty("viewDepth", writeDimensionState(viewDepth[Vertex::Time], viewDepth[Vertex::Red], viewDepth[Vertex::Blue]));
     json->setProperty("insertDepth", writeDimensionState(insertDepth[Vertex::Time], insertDepth[Vertex::Red], insertDepth[Vertex::Blue]));
     json->setProperty("primaryAxis", getSettingValue(CurrentMorphAxis));
+
+    links->setProperty("time", bool(getSettingValue(LinkYellow)));
+    links->setProperty("red", bool(getSettingValue(LinkRed)));
+    links->setProperty("blue", bool(getSettingValue(LinkBlue)));
+    json->setProperty("linking", PresetJson::toVar(links));
+
+    ranges->setProperty("time", bool(getSettingValue(UseYellowDepth)));
+    ranges->setProperty("red", bool(getSettingValue(UseRedDepth)));
+    ranges->setProperty("blue", bool(getSettingValue(UseBlueDepth)));
+    json->setProperty("rangeEnabled", PresetJson::toVar(ranges));
+
+    return PresetJson::toVar(json);
+}
+
+var MorphPanel::exportAutomationState() const {
+    auto json = PresetJson::object();
+    auto sliders = PresetJson::object();
+    auto links = PresetJson::object();
+    auto ranges = PresetJson::object();
+
+    json->setProperty("schema", "MorphPanel.v1");
+
+    sliders->setProperty("time", yllwSlider.getValue());
+    sliders->setProperty("red", redSlider.getValue());
+    sliders->setProperty("blue", blueSlider.getValue());
+    sliders->setProperty("pan", panSlider.getValue());
+    json->setProperty("sliders", PresetJson::toVar(sliders));
+
+    json->setProperty("primaryAxis", getSettingValue(CurrentMorphAxis));
+    json->setProperty("currentMidiKey", getCurrentMidiKey());
 
     links->setProperty("time", bool(getSettingValue(LinkYellow)));
     links->setProperty("red", bool(getSettingValue(LinkRed)));

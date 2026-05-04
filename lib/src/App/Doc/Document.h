@@ -35,6 +35,8 @@ public:
     void addListener(Listener* listener)        { listeners.add(listener);      }
     void registerSavable(Savable* toSave)       { savableItems.add(toSave);     }
     void setValidator(IValidator* validator)    { this->validator = validator;  }
+    var exportSavableJSON(const String& savableName) const;
+    var exportPresetJSON();
 
     static bool readHeader(InputStream* stream, DocumentDetails& deets, int magicValue) {
         if (stream == nullptr)

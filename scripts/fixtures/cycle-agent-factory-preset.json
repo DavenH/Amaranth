@@ -1,0 +1,17 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "CalmingKeys"
+    },
+    {
+      "command": "assertState",
+      "path": "document",
+      "equals": "CalmingKeys"
+    },
+    {
+      "command": "snapshotState"
+    }
+  ],
+  "quit": true
+}

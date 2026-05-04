@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <App/AutomationInspectable.h>
 #include <App/SingletonAccessor.h>
 #include <Obj/Ref.h>
 #include <UI/Widgets/IconButton.h>
@@ -25,6 +26,7 @@ class GeneralControls :
     ,	public Slider::Listener
     ,	public TourGuide
     , 	public SingletonAccessor
+    ,   public AutomationInspectable
 {
 public:
     enum Stages { AStage, BStage, CStage, DStage };
@@ -44,6 +46,7 @@ public:
     void triggerClick(int stage);
     void setLinkHighlight(bool highlit) { linkYellow.setHighlit(highlit); }
     Component* getComponent(int which) override;
+    var exportAutomationState() const override;
 
     explicit GeneralControls(SingletonRepo* repo);
     ~GeneralControls() override = default;

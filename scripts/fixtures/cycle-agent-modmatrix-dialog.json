@@ -1,0 +1,16 @@
+{
+  "commands": [
+    {
+      "command": "action",
+      "actionType": "ShowArea",
+      "area": "AreaModMatrix",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaModMatrix"
+    }
+  ],
+  "quit": true
+}

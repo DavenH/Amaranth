@@ -1,4 +1,5 @@
 #include <App/Doc/Document.h>
+#include <App/Doc/PresetJson.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Inter/Interactor.h>
@@ -26,6 +27,40 @@
 #include "../../Inter/SpectrumInter3D.h"
 #include "../CycleGraphicsUtils.h"
 
+namespace {
+    String toolName(int tool) {
+        switch (tool) {
+            case Tools::Selector:   return "selector";
+            case Tools::Pencil:     return "pencil";
+            case Tools::Axe:        return "axe";
+            case Tools::Nudge:      return "nudge";
+            default:                break;
+        }
+
+        return "unknown";
+    }
+
+    String viewStageName(int stage) {
+        switch (stage) {
+            case ViewStages::PreProcessing:    return "preProcessing";
+            case ViewStages::PostEnvelopes:    return "postEnvelopes";
+            case ViewStages::PostSpectrum:     return "postSpectrum";
+            case ViewStages::PostFX:           return "postFX";
+            default:                           break;
+        }
+
+        return "unknown";
+    }
+
+    var buttonState(const IconButton& button) {
+        auto json = PresetJson::object();
+        json->setProperty("highlit", button.isHighlit());
+        json->setProperty("applicable", button.isApplicable());
+        json->setProperty("visible", button.isVisible());
+        json->setProperty("enabled", button.isEnabled());
+        return PresetJson::toVar(json);
+    }
+}
 
 GeneralControls::GeneralControls(SingletonRepo* repo) : 
         SingletonAccessor(repo, "GeneralControls")
@@ -198,6 +233,52 @@ void GeneralControls::setNumCommunityPresets(int num) {
     tableIcon.setPendingItems(num);
 
     repaint();
+}
+
+var GeneralControls::exportAutomationState() const {
+    auto json = PresetJson::object();
+    auto tools = PresetJson::object();
+    auto surfaceView = PresetJson::object();
+    auto transport = PresetJson::object();
+    auto buttons = PresetJson::object();
+
+    int currentTool = getSettingValue(Tool);
+    int currentViewStage = getSettingValue(ViewStage);
+
+    json->setProperty("schema", "GeneralControls.v1");
+
+    tools->setProperty("current", currentTool);
+    tools->setProperty("name", toolName(currentTool));
+    tools->setProperty("selector", buttonState(pointer));
+    tools->setProperty("pencil", buttonState(pencil));
+    tools->setProperty("axe", buttonState(axe));
+    tools->setProperty("nudge", buttonState(nudge));
+    json->setProperty("tools", PresetJson::toVar(tools));
+
+    surfaceView->setProperty("drawWave", bool(getSettingValue(DrawWave)));
+    surfaceView->setProperty("waveLoaded", bool(getSettingValue(WaveLoaded)));
+    surfaceView->setProperty("waveVerts", buttonState(waveVerts));
+    surfaceView->setProperty("verts", buttonState(verts));
+    json->setProperty("surfaceView", PresetJson::toVar(surfaceView));
+
+    transport->setProperty("state", play.isFirstState() ? "stopped" : "playing");
+    transport->setProperty("play", buttonState(play));
+    transport->setProperty("rewind", buttonState(rewind));
+    transport->setProperty("ffwd", buttonState(ffwd));
+    json->setProperty("transport", PresetJson::toVar(transport));
+
+    buttons->setProperty("save", buttonState(save));
+    buttons->setProperty("previousPreset", buttonState(prev));
+    buttons->setProperty("nextPreset", buttonState(next));
+    buttons->setProperty("presetBrowser", buttonState(tableIcon));
+    buttons->setProperty("linkYellow", buttonState(linkYellow));
+    buttons->setProperty("pendingCommunityPresets", tableIcon.getPendingItems());
+    json->setProperty("buttons", PresetJson::toVar(buttons));
+
+    json->setProperty("viewStage", currentViewStage);
+    json->setProperty("viewStageName", viewStageName(currentViewStage));
+
+    return PresetJson::toVar(json);
 }
 
 void GeneralControls::updateHighlights() {

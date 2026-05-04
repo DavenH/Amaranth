@@ -613,7 +613,11 @@ void Interactor::eraseSelected() {
                         mesh->removeVert(vert);
 
                         // remove now so that only free vert are left
-                        selected.erase(std::find(selected.begin(), selected.end(), vert));
+                        auto selectedIter = std::find(selected.begin(), selected.end(), vert);
+
+                        if (selectedIter != selected.end()) {
+                            selected.erase(selectedIter);
+                        }
                     } else {
                         vert->removeOwner(cube);
                     }

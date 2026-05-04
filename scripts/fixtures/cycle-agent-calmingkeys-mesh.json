@@ -1,0 +1,34 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "CalmingKeys"
+    },
+    {
+      "command": "assertState",
+      "path": "document",
+      "equals": "CalmingKeys"
+    },
+    {
+      "command": "listMeshTargets",
+      "group": "time"
+    },
+    {
+      "command": "exportMeshState",
+      "group": "time",
+      "layer": "current",
+      "path": "/private/tmp/cycle-agent-calmingkeys-time-mesh-state.json"
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.currentMesh.vertices",
+      "equals": 16
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.currentMesh.cubes",
+      "equals": 2
+    }
+  ],
+  "quit": true
+}

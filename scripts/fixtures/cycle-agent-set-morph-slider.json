@@ -1,0 +1,33 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaMorphPanel",
+      "target": "TargSliderY"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMorphPanel",
+      "target": "TargSliderY",
+      "value": 0.25
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaMorphPanel",
+      "target": "TargSliderY"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaMorphPanel"
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaMorphPanel",
+      "path": "automationState.sliders.time",
+      "waitForIdle": true,
+      "idleDelayMs": 50,
+      "equals": 0.25
+    }
+  ],
+  "quit": true
+}

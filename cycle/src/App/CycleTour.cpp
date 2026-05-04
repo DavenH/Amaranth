@@ -1,4 +1,5 @@
 #include <App/MeshLibrary.h>
+#include <App/AutomationInspectable.h>
 #include <App/SingletonRepo.h>
 #include <Curve/VertCube.h>
 #include <Design/Updating/Updater.h>
@@ -1226,6 +1227,42 @@ juce::Component* CycleTour::getComponent(int which) {
     return nullptr;
 }
 
+juce::Component* CycleTour::getComponent(const String& areaName, const String& targetName) {
+    if (!areaStrings.contains(areaName)) {
+        return nullptr;
+    }
+
+    Area area = areaStrings[areaName];
+
+    if (targetName.isEmpty() || targetName == "TargNull") {
+        return getComponent(area);
+    }
+
+    if (!subareaStrings.contains(targetName)) {
+        return nullptr;
+    }
+
+    if (auto* guide = getTourGuide(area)) {
+        return guide->getComponent(subareaStrings[targetName]);
+    }
+
+    return nullptr;
+}
+
+AutomationInspectable* CycleTour::getAutomationInspectable(const String& areaName, const String& targetName) {
+    if (auto* component = getComponent(areaName, targetName)) {
+        if (auto* inspectable = dynamic_cast<AutomationInspectable*>(component)) {
+            return inspectable;
+        }
+    }
+
+    if (targetName.isNotEmpty() || !areaStrings.contains(areaName)) {
+        return nullptr;
+    }
+
+    return dynamic_cast<AutomationInspectable*>(getTourGuide(areaStrings[areaName]));
+}
+
 Panel* CycleTour::areaToPanel(int which) {
     switch(which) {
         case AreaWshpEditor:     return &getObj(Waveform2D);
@@ -1388,4 +1425,3 @@ bool CycleTour::readXML(const XmlElement* element) {
 
     return true;
 }
-

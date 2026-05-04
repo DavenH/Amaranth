@@ -1,0 +1,79 @@
+{
+  "commands": [
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 50
+    },
+    {
+      "command": "assertState",
+      "path": "document",
+      "exists": true
+    },
+    {
+      "command": "assertState",
+      "path": "automationRan",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "currentTool",
+      "exists": true
+    },
+    {
+      "command": "assertState",
+      "path": "viewStageName",
+      "exists": true
+    },
+    {
+      "command": "assertState",
+      "path": "panels.morphPanel.sliders.time",
+      "exists": true
+    },
+    {
+      "command": "assertState",
+      "path": "panels.waveform3D.layer.count",
+      "greaterThan": 0
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaMorphPanel"
+    },
+    {
+      "command": "exportState",
+      "source": "meshLibrary",
+      "path": "/private/tmp/cycle-agent-mesh.json"
+    },
+    {
+      "command": "exportState",
+      "source": "meshLibrary",
+      "jsonPath": "groups[0]",
+      "path": "/private/tmp/cycle-agent-mesh-group0.json"
+    },
+    {
+      "command": "exportPreset",
+      "path": "/private/tmp/cycle-agent-preset.json"
+    },
+    {
+      "command": "exportPreset",
+      "jsonPath": "preset.details",
+      "path": "/private/tmp/cycle-agent-preset-details.json"
+    },
+    {
+      "command": "savePreset",
+      "path": "/private/tmp/cycle-agent-saved.cyc"
+    },
+    {
+      "command": "openPreset",
+      "path": "/private/tmp/cycle-agent-saved.cyc"
+    },
+    {
+      "command": "assertState",
+      "path": "document",
+      "exists": true
+    }
+  ],
+  "quit": true
+}

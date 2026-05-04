@@ -1,0 +1,16 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaMorphPanel"
+    },
+    {
+      "command": "screenshot",
+      "area": "AreaMorphPanel",
+      "waitForIdle": true,
+      "idleDelayMs": 50,
+      "path": "/private/tmp/cycle-agent-morph-panel.png"
+    }
+  ],
+  "quit": true
+}

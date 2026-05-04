@@ -9,6 +9,7 @@
 #include <UI/Panels/Panel3D.h>
 
 #include "CycleTour.h"
+#include "CycleAutomation.h"
 #include "Dialogs.h"
 #include "Directories.h"
 #include "MeshDefaults.h"
@@ -357,6 +358,7 @@ void Initializer::instantiate() {
     repo->add(new SynthLookAndFeel  (repo), -500);
     repo->add(new Dialogs			(repo));
     repo->add(new CycleTour			(repo));
+    repo->add(new CycleAutomation	(repo));
     repo->add(new WaveDragTarget	(repo));
     repo->add(new Waveform2D		(repo));
     repo->add(new Spectrum2D		(repo));
