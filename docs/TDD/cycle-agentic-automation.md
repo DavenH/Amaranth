@@ -195,15 +195,17 @@ Acceptance:
 Goal: an agent can build or modify a preset and save/export reproducible state.
 
 Status: partially available through control mutation, state export, screenshots,
-and smoke artifacts; full preset save/reopen remains pending.
+and smoke artifacts; full preset save/export/reopen verification is implemented.
 
 Acceptance:
 
 - Start from an empty or known factory preset.
 - Apply semantic edits to controls, layers, effects, and meshes.
 - Set preset metadata where supported.
-- Save to a caller-provided preset path or export complete preset JSON.
-- Reopen the saved preset and verify expected state.
+- Save to a caller-provided preset path or export complete preset JSON. Done
+  with `savePreset` and `exportPreset`.
+- Reopen the saved preset and verify expected state. Done with `openPreset`
+  followed by assertions.
 - Produce report artifacts: final snapshot, exported state, screenshots, and
   logs.
 
@@ -403,7 +405,8 @@ path selection.
 
 Supports milestone: 5.
 
-Status: partially covered through `CycleTour` actions.
+Status: partially covered through `CycleTour` actions and target-local pointer
+events.
 
 - Keep semantic mesh edits as primary:
   - add vertex,
@@ -413,7 +416,9 @@ Status: partially covered through `CycleTour` actions.
   - set vertex param.
 - Add stable vertex handles to snapshots and reports.
 - Add low-level pointer/key/wheel commands only for interaction regressions.
-- Pointer commands should target named components plus local coordinates.
+  Done for pointer click/down/up/drag/move/doubleClick/wheel events.
+- Pointer commands should target named components plus local coordinates. Done
+  with local `x`/`y`, normalized coordinates, and center-point default.
 
 ### Phase 8: E2E Integration
 
@@ -477,6 +482,9 @@ Current verified behavior:
 - `inspectTargets` resolves `AreaMorphPanel` and returns bounds.
 - `exportState` writes `MeshLibrary` JSON through the `meshLibrary` alias and
   can export a selected subtree through `jsonPath`.
+- `exportPreset` writes full preset JSON or a selected subtree; `savePreset`
+  writes a compressed `.cyc` preset file; `openPreset` reopens a saved preset
+  for verification.
 - `screenshot` captures `AreaMorphPanel` as a 370 x 165 PNG in the current
   standalone-debug layout.
 - `inspectTargets` resolves `AreaWfrmWaveform3D` to an `OpenGLPanel3D`.
@@ -489,6 +497,8 @@ Current verified behavior:
   `inspectTargets` reports the resulting value.
 - `GeneralControls` reports `GeneralControls.v1`; a `SwitchToTool` action
   updates `automationState.tools.name` to `pencil`.
+- `pointer` can click a named GeneralControls button target and update
+  `automationState.tools.name`.
 - `Waveform3D` reports `Waveform3D.v1`; setting `TargPan` updates
   `automationState.layer.currentProperties.pan`.
 - `assertTarget` validates target-scoped dot paths and reports actual/expected

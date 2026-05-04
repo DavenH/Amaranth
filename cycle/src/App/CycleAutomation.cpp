@@ -1,5 +1,7 @@
 #include "CycleAutomation.h"
 
+#include <utility>
+
 #include <App/AutomationInspectable.h>
 #include <App/Doc/Document.h>
 #include <App/Doc/PresetJson.h>
@@ -330,6 +332,79 @@ namespace {
         return true;
     }
 
+    Point<float> getPointerPosition(const var& command, Component& component, const String& xName, const String& yName) {
+        Rectangle<int> bounds = component.getLocalBounds();
+        var xValue = PresetJson::property(command, xName);
+        var yValue = PresetJson::property(command, yName);
+
+        if (!xValue.isVoid() && !yValue.isVoid()) {
+            return { float(double(xValue)), float(double(yValue)) };
+        }
+
+        var normalizedX = PresetJson::property(command, "normalizedX");
+        var normalizedY = PresetJson::property(command, "normalizedY");
+
+        if (!normalizedX.isVoid() && !normalizedY.isVoid()) {
+            return {
+                bounds.getWidth() * float(double(normalizedX)),
+                bounds.getHeight() * float(double(normalizedY)),
+            };
+        }
+
+        return bounds.getCentre().toFloat();
+    }
+
+    ModifierKeys getPointerModifiers(const var& command, bool buttonDown) {
+        ModifierKeys modifiers = ModifierKeys::currentModifiers.withoutMouseButtons();
+
+        if (buttonDown) {
+            modifiers = modifiers.withFlags(ModifierKeys::leftButtonModifier);
+        }
+
+        if (getBool(command, "shift")) {
+            modifiers = modifiers.withFlags(ModifierKeys::shiftModifier);
+        }
+
+        if (getBool(command, "command")) {
+            modifiers = modifiers.withFlags(ModifierKeys::commandModifier);
+        }
+
+        if (getBool(command, "ctrl")) {
+            modifiers = modifiers.withFlags(ModifierKeys::ctrlModifier);
+        }
+
+        if (getBool(command, "alt")) {
+            modifiers = modifiers.withFlags(ModifierKeys::altModifier);
+        }
+
+        return modifiers;
+    }
+
+    MouseEvent makePointerEvent(Component& component,
+                                Point<float> position,
+                                Point<float> downPosition,
+                                const var& command,
+                                bool buttonDown,
+                                bool wasDragged,
+                                int clickCount) {
+        Time now = Time::getCurrentTime();
+
+        return {
+            Desktop::getInstance().getMainMouseSource(),
+            position,
+            getPointerModifiers(command, buttonDown),
+            MouseInputSource::defaultPressure,
+            0.0f, 0.0f, 0.0f, 0.0f,
+            &component,
+            &component,
+            now,
+            downPosition,
+            now,
+            clickCount,
+            wasDragged,
+        };
+    }
+
     String resolveSavableSourceName(const String& source) {
         static const std::pair<const char*, const char*> aliases[] = {
             { "meshLibrary",    "MeshLibrary" },
@@ -483,10 +558,18 @@ void CycleAutomation::runCommand(const var& command, Array<var>& results) {
         ok = captureScreenshot(command, message, data);
     } else if (type == "exportState") {
         ok = exportState(command, message);
+    } else if (type == "exportPreset") {
+        ok = exportPreset(command, message);
+    } else if (type == "savePreset") {
+        ok = savePreset(command, message, data);
+    } else if (type == "openPreset") {
+        ok = openPreset(command, message, data);
     } else if (type == "inspectTargets") {
         ok = inspectTargets(command, message, data);
     } else if (type == "setControl") {
         ok = setControl(command, message, data);
+    } else if (type == "pointer") {
+        ok = pointer(command, message, data);
     } else if (type == "assertTarget") {
         ok = assertTarget(command, message, data);
     } else if (type == "assertState") {
@@ -638,6 +721,92 @@ bool CycleAutomation::exportState(const var& command, String& message) {
     return true;
 }
 
+bool CycleAutomation::exportPreset(const var& command, String& message) {
+    String path = getString(command, "path");
+    String jsonPath = getString(command, "jsonPath", getString(command, "statePath"));
+    var exported = getObj(Document).exportPresetJSON();
+
+    if (jsonPath.isNotEmpty()) {
+        var selected;
+
+        if (!getPathValue(exported, jsonPath, selected)) {
+            message = "Preset JSON path not found: " + jsonPath;
+            return false;
+        }
+
+        exported = selected;
+    }
+
+    String json = JSON::toString(exported, true);
+
+    if (path.isNotEmpty()) {
+        File(path).replaceWithText(json);
+        message = "Preset JSON exported: " + path;
+    } else {
+        message = json;
+    }
+
+    return true;
+}
+
+bool CycleAutomation::savePreset(const var& command, String& message, var& data) {
+    String path = getString(command, "path");
+
+    if (path.isEmpty()) {
+        message = "savePreset requires path";
+        return false;
+    }
+
+    File file(path);
+    getObj(Document).save(path);
+
+    auto json = PresetJson::object();
+    json->setProperty("path", path);
+    json->setProperty("exists", file.existsAsFile());
+    json->setProperty("sizeBytes", file.existsAsFile() ? file.getSize() : 0);
+    data = PresetJson::toVar(json);
+
+    if (!file.existsAsFile()) {
+        message = "Preset was not written: " + path;
+        return false;
+    }
+
+    message = "Preset saved: " + path;
+    return true;
+}
+
+bool CycleAutomation::openPreset(const var& command, String& message, var& data) {
+    String path = getString(command, "path");
+
+    if (path.isEmpty()) {
+        message = "openPreset requires path";
+        return false;
+    }
+
+    File file(path);
+
+    if (!file.existsAsFile()) {
+        message = "Preset file does not exist: " + path;
+        return false;
+    }
+
+    bool opened = getObj(Document).open(path);
+
+    auto json = PresetJson::object();
+    json->setProperty("path", path);
+    json->setProperty("opened", opened);
+    json->setProperty("document", getObj(Document).getDocumentName());
+    data = PresetJson::toVar(json);
+
+    if (!opened) {
+        message = "Preset could not be opened: " + path;
+        return false;
+    }
+
+    message = "Preset opened: " + path;
+    return true;
+}
+
 bool CycleAutomation::inspectTargets(const var& command, String& message, var& data) {
     String requestedArea = getString(command, "area");
     String requestedTarget = getString(command, "target");
@@ -724,6 +893,77 @@ bool CycleAutomation::setControl(const var& command, String& message, var& data)
     message = "Control target is not a supported Slider or Button";
     data = componentState(component, getString(command, "area"), getString(command, "target"));
     return false;
+}
+
+bool CycleAutomation::pointer(const var& command, String& message, var& data) {
+    Component* component = resolveComponent(command);
+
+    if (component == nullptr) {
+        message = "Pointer target could not be resolved";
+        return false;
+    }
+
+    if (!component->isShowing()) {
+        message = "Pointer target is not showing";
+        data = componentState(component, getString(command, "area"), getString(command, "target"));
+        return false;
+    }
+
+    Rectangle<int> bounds = component->getLocalBounds();
+
+    if (bounds.isEmpty()) {
+        message = "Pointer target has empty bounds";
+        data = componentState(component, getString(command, "area"), getString(command, "target"));
+        return false;
+    }
+
+    String eventType = getString(command, "event", getString(command, "pointerEvent", "click"));
+    Point<float> position = getPointerPosition(command, *component, "x", "y");
+    Point<float> downPosition = getPointerPosition(command, *component, "downX", "downY");
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
+
+    if (eventType == "click") {
+        component->mouseDown(makePointerEvent(*component, position, position, command, true, false, 1));
+        component->mouseUp(makePointerEvent(*component, position, position, command, false, false, 1));
+    } else if (eventType == "doubleClick") {
+        component->mouseDoubleClick(makePointerEvent(*component, position, position, command, true, false, 2));
+    } else if (eventType == "down") {
+        component->mouseDown(makePointerEvent(*component, position, position, command, true, false, 1));
+    } else if (eventType == "up") {
+        component->mouseUp(makePointerEvent(*component, position, downPosition, command, false, false, 1));
+    } else if (eventType == "drag") {
+        component->mouseDrag(makePointerEvent(*component, position, downPosition, command, true, true, 1));
+    } else if (eventType == "move") {
+        component->mouseMove(makePointerEvent(*component, position, position, command, false, false, 0));
+    } else if (eventType == "wheel") {
+        MouseWheelDetails wheel {
+            float(getDouble(command, "deltaX")),
+            float(getDouble(command, "deltaY")),
+            getBool(command, "reversed"),
+            getBool(command, "smooth", true),
+            getBool(command, "inertial"),
+        };
+
+        component->mouseWheelMove(makePointerEvent(*component, position, position, command, false, false, 0), wheel);
+    } else {
+        message = "Unknown pointer event: " + eventType;
+        data = componentState(component, getString(command, "area"), getString(command, "target"));
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("event", eventType);
+    json->setProperty("area", getString(command, "area"));
+    json->setProperty("target", getString(command, "target"));
+    json->setProperty("x", position.x);
+    json->setProperty("y", position.y);
+    json->setProperty("waitedForIdle", waitedForIdle);
+    json->setProperty("localBounds", rectangleState(bounds));
+    json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
+    data = PresetJson::toVar(json);
+
+    message = "Pointer event executed";
+    return true;
 }
 
 bool CycleAutomation::assertTarget(const var& command, String& message, var& data) {

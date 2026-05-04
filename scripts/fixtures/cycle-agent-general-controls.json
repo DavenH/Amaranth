@@ -18,6 +18,20 @@
       "area": "AreaGenControls",
       "path": "automationState.tools.name",
       "equals": "pencil"
+    },
+    {
+      "command": "pointer",
+      "area": "AreaGenControls",
+      "target": "TargSelector",
+      "event": "click",
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaGenControls",
+      "path": "automationState.tools.name",
+      "equals": "selector"
     }
   ],
   "quit": true

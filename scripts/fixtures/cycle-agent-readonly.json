@@ -31,6 +31,28 @@
       "source": "meshLibrary",
       "jsonPath": "groups[0]",
       "path": "/private/tmp/cycle-agent-mesh-group0.json"
+    },
+    {
+      "command": "exportPreset",
+      "path": "/private/tmp/cycle-agent-preset.json"
+    },
+    {
+      "command": "exportPreset",
+      "jsonPath": "preset.details",
+      "path": "/private/tmp/cycle-agent-preset-details.json"
+    },
+    {
+      "command": "savePreset",
+      "path": "/private/tmp/cycle-agent-saved.cyc"
+    },
+    {
+      "command": "openPreset",
+      "path": "/private/tmp/cycle-agent-saved.cyc"
+    },
+    {
+      "command": "assertState",
+      "path": "document",
+      "exists": true
     }
   ],
   "quit": true

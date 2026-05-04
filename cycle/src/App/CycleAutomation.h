@@ -30,8 +30,12 @@ private:
     bool runTourAction(const var& command, String& message);
     bool captureScreenshot(const var& command, String& message, var& data);
     bool exportState(const var& command, String& message);
+    bool exportPreset(const var& command, String& message);
+    bool savePreset(const var& command, String& message, var& data);
+    bool openPreset(const var& command, String& message, var& data);
     bool inspectTargets(const var& command, String& message, var& data);
     bool setControl(const var& command, String& message, var& data);
+    bool pointer(const var& command, String& message, var& data);
     bool assertTarget(const var& command, String& message, var& data);
     bool assertState(const var& command, String& message, var& data);
     bool waitForIdle(const var& command, String& message, var& data);

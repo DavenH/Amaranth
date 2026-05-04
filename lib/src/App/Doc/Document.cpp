@@ -145,6 +145,10 @@ var Document::exportSavableJSON(const String& savableName) const {
     return {};
 }
 
+var Document::exportPresetJSON() {
+    return createJsonRoot(details, savableItems);
+}
+
 bool Document::open(const String& filename) {
     File file(filename);
 
