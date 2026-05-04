@@ -5,6 +5,12 @@
       "area": "AreaGenControls"
     },
     {
+      "command": "inspectTree",
+      "area": "AreaGenControls",
+      "maxDepth": 3,
+      "maxNodes": 120
+    },
+    {
       "command": "action",
       "actionType": "SwitchToTool",
       "id": "IdToolPencil"

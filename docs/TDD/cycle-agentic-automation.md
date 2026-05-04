@@ -240,6 +240,11 @@ Status: mostly complete.
   relying on direct executable launch.
 - Improve failure reports so parse errors, missing command fields, and invalid
   targets are reported as command failures rather than assertions.
+- Handle startup crashes before in-app automation starts:
+  - dismiss the macOS “Cycle quit unexpectedly” Problem Reporter dialog when
+    Accessibility permission allows it,
+  - copy a fresh `Cycle-*.ips` from `~/Library/Logs/DiagnosticReports`,
+  - append crash-report path and header content to the raw/filtered logs.
 
 ### Phase 2: Target Inspection
 
@@ -249,6 +254,8 @@ Status: partially implemented.
 
 - Add `inspectTargets`.
 - Return registered areas and targets known to `CycleTour`.
+- Add `inspectTree` for bounded live child-tree discovery from a resolved
+  root.
 - For each resolved target include:
   - area,
   - target,
@@ -270,6 +277,10 @@ Current limitations:
   targets, not a live iteration over the private registry.
 - Component class names currently use C++ RTTI names, which are useful for
   debugging but not stable public identifiers.
+- `inspectTree` returns roles, bounds, child paths, and CycleTour area/target
+  annotations where a live component matches the registry. It also includes a
+  `registeredTargets` side table for named target rectangles scoped to the
+  requested area/root.
 - Generic JUCE control metadata is intentionally limited to lightweight,
   stable widget state. Do not keep expanding `CycleAutomation::componentState`
   with every concrete Cycle component type.
@@ -477,9 +488,13 @@ scripts/run_cycle_agent_smokes.sh
 Current verified behavior:
 
 - Cycle launches through LaunchServices.
+- Startup crash handling is runner-side: `scripts/run_cycle_agent.sh` can
+  dismiss the macOS crash dialog and copy a fresh `.ips` beside the logs.
 - Default preset `AfricanHorn` opens.
 - `snapshotState` reports the document name.
 - `inspectTargets` resolves `AreaMorphPanel` and returns bounds.
+- `inspectTree` reports a bounded component tree with roles, rectangles,
+  CycleTour area/target annotations, and a `registeredTargets` side table.
 - `exportState` writes `MeshLibrary` JSON through the `meshLibrary` alias and
   can export a selected subtree through `jsonPath`.
 - `exportPreset` writes full preset JSON or a selected subtree; `savePreset`

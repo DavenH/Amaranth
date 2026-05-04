@@ -19,6 +19,10 @@ OS_SCREENSHOT_AREA="${CYCLE_OS_SCREENSHOT_AREA:-}"
 OS_SCREENSHOT_TARGET="${CYCLE_OS_SCREENSHOT_TARGET:-}"
 OS_SCREENSHOT_PATH="${CYCLE_OS_SCREENSHOT_PATH:-}"
 OS_SCREENSHOT_QUIT_AFTER="${CYCLE_OS_SCREENSHOT_QUIT_AFTER:-1}"
+CAPTURE_CRASH_REPORTS="${CYCLE_CAPTURE_CRASH_REPORTS:-1}"
+DISMISS_CRASH_DIALOG="${CYCLE_DISMISS_CRASH_DIALOG:-1}"
+CRASH_REPORT_WAIT_SECONDS="${CYCLE_CRASH_REPORT_WAIT_SECONDS:-5}"
+CRASH_REPORT_PATH="${CYCLE_CRASH_REPORT_PATH:-$LOG_PATH.ips}"
 
 if [[ -z "$SCRIPT_PATH" ]]; then
     echo "Usage: scripts/run_cycle_agent.sh <script.json> [report.json] [log.txt]" >&2
@@ -39,6 +43,7 @@ SCRIPT_PATH="${SCRIPT_PATH:A}"
 REPORT_PATH="${REPORT_PATH:A}"
 LOG_PATH="${LOG_PATH:A}"
 RAW_LOG_PATH="${RAW_LOG_PATH:A}"
+CRASH_REPORT_PATH="${CRASH_REPORT_PATH:A}"
 
 if [[ -n "$OS_SCREENSHOT_PATH" ]]; then
     OS_SCREENSHOT_PATH="${OS_SCREENSHOT_PATH:A}"
@@ -47,10 +52,12 @@ fi
 mkdir -p "$(dirname "$REPORT_PATH")"
 mkdir -p "$(dirname "$LOG_PATH")"
 mkdir -p "$(dirname "$RAW_LOG_PATH")"
+mkdir -p "$(dirname "$CRASH_REPORT_PATH")"
 
 rm -f "$REPORT_PATH"
 : > "$LOG_PATH"
 : > "$RAW_LOG_PATH"
+rm -f "$CRASH_REPORT_PATH"
 
 open_privacy_pane() {
     local pane="$1"
@@ -125,6 +132,115 @@ quit_process() {
     done
 }
 
+dismiss_crash_dialog() {
+    [[ "$DISMISS_CRASH_DIALOG" == "1" ]] || return 1
+
+    osascript - "$PROCESS_NAME" <<'APPLESCRIPT' 2>/dev/null
+on run argv
+    set appName to item 1 of argv
+
+    tell application "System Events"
+        repeat with proc in application processes
+            set procName to name of proc as text
+
+            if procName is "Problem Reporter" or procName is "ReportCrash" or procName contains "Problem" then
+                repeat with win in windows of proc
+                    set winName to name of win as text
+
+                    if winName contains appName and winName contains "quit unexpectedly" then
+                        if exists button "Ignore" of win then
+                            click button "Ignore" of win
+                        else if exists button "OK" of win then
+                            click button "OK" of win
+                        else
+                            click button 1 of win
+                        end if
+
+                        return "Dismissed crash dialog: " & winName
+                    end if
+                end repeat
+            end if
+        end repeat
+    end tell
+
+    return ""
+end run
+APPLESCRIPT
+}
+
+copy_recent_crash_report() {
+    [[ "$CAPTURE_CRASH_REPORTS" == "1" ]] || return 1
+
+    local launch_time="$1"
+    local deadline=$((SECONDS + CRASH_REPORT_WAIT_SECONDS))
+    local newest=""
+
+    while (( SECONDS <= deadline )); do
+        for report in "$HOME/Library/Logs/DiagnosticReports"/${PROCESS_NAME}-*.ips(N.om); do
+            local modified
+            modified="$(stat -f %m "$report" 2>/dev/null || echo 0)"
+            modified="${modified##*=}"
+
+            if (( modified + 5 >= launch_time )); then
+                newest="$report"
+                break
+            fi
+        done
+
+        if [[ -n "$newest" ]]; then
+            cp "$newest" "$CRASH_REPORT_PATH"
+
+            {
+                echo
+                echo "Cycle crash report copied: $CRASH_REPORT_PATH"
+                echo "Cycle crash report source: $newest"
+                echo
+                sed -n '1,220p' "$CRASH_REPORT_PATH"
+            } >> "$RAW_LOG_PATH"
+
+            return 0
+        fi
+
+        sleep 0.5
+    done
+
+    return 1
+}
+
+finalize_logs() {
+    if [[ "$FILTER_LOGS" == "1" ]]; then
+        awk '
+            function keep(line) {
+                return line ~ /(JUCE v|AppClass::|MainAppWindow|CycleAutomation|FileManager::|Directories::|Document::open|Update:|Error|error|Warning|warning|fail|Fail|assert|Assert|exception|Exception|crash|Crash|quit unexpectedly|DiagnosticReports|ips)/
+            }
+
+            /^Error Domain=/ {
+                in_error = 1
+                print
+                next
+            }
+
+            in_error {
+                if ($0 !~ /^[[:space:]")]/) {
+                    in_error = 0
+                } else {
+                    print
+                    if ($0 ~ /\}\}$/) {
+                        in_error = 0
+                    }
+                    next
+                }
+            }
+
+            keep($0) {
+                print
+            }
+        ' "$RAW_LOG_PATH" > "$LOG_PATH"
+    else
+        cp "$RAW_LOG_PATH" "$LOG_PATH"
+    fi
+}
+
 capture_os_screenshot() {
     local app_bundle_id="$1"
 
@@ -181,6 +297,8 @@ if [[ "$REUSE_EXISTING" != "1" ]] && process_exists; then
     quit_process
 fi
 
+LAUNCH_TIME="$(date +%s)"
+
 open -n \
     --stdout "$RAW_LOG_PATH" \
     --stderr "$RAW_LOG_PATH" \
@@ -198,8 +316,20 @@ while (( SECONDS < deadline )); do
         break
     fi
 
+    dialog_message="$(dismiss_crash_dialog || true)"
+
+    if [[ -n "$dialog_message" ]]; then
+        echo "$dialog_message" >> "$RAW_LOG_PATH"
+        copy_recent_crash_report "$LAUNCH_TIME" || true
+        break
+    fi
+
     if ! process_exists; then
         sleep 0.5
+        if [[ -s "$REPORT_PATH" ]]; then
+            break
+        fi
+        copy_recent_crash_report "$LAUNCH_TIME" || true
         break
     fi
 
@@ -207,13 +337,18 @@ while (( SECONDS < deadline )); do
 done
 
 if [[ ! -s "$REPORT_PATH" ]]; then
+    finalize_logs
     echo "Cycle agent report was not written within ${WAIT_SECONDS}s: $REPORT_PATH" >&2
     echo "$LOG_PATH" >&2
     echo "$RAW_LOG_PATH" >&2
+    if [[ -s "$CRASH_REPORT_PATH" ]]; then
+        echo "$CRASH_REPORT_PATH" >&2
+    fi
     exit 1
 fi
 
 if [[ "$ALLOW_FAILURES" != "1" ]] && grep -q '"ok": false' "$REPORT_PATH"; then
+    finalize_logs
     echo "Cycle agent report contains failed commands: $REPORT_PATH" >&2
     echo "$LOG_PATH" >&2
     echo "$RAW_LOG_PATH" >&2
@@ -228,37 +363,7 @@ if [[ -n "$OS_SCREENSHOT_AREA" || -n "$OS_SCREENSHOT_PATH" ]]; then
     fi
 fi
 
-if [[ "$FILTER_LOGS" == "1" ]]; then
-    awk '
-        function keep(line) {
-            return line ~ /(JUCE v|AppClass::|MainAppWindow|CycleAutomation|FileManager::|Directories::|Document::open|Update:|Error|error|Warning|warning|fail|Fail|assert|Assert|exception|Exception|crash|Crash)/
-        }
-
-        /^Error Domain=/ {
-            in_error = 1
-            print
-            next
-        }
-
-        in_error {
-            if ($0 !~ /^[[:space:]")]/) {
-                in_error = 0
-            } else {
-                print
-                if ($0 ~ /\}\}$/) {
-                    in_error = 0
-                }
-                next
-            }
-        }
-
-        keep($0) {
-            print
-        }
-    ' "$RAW_LOG_PATH" > "$LOG_PATH"
-else
-    cp "$RAW_LOG_PATH" "$LOG_PATH"
-fi
+finalize_logs
 
 echo "$REPORT_PATH"
 echo "$LOG_PATH"
@@ -266,4 +371,8 @@ echo "$RAW_LOG_PATH"
 
 if [[ -n "$OS_SCREENSHOT_PATH" ]]; then
     echo "$OS_SCREENSHOT_PATH"
+fi
+
+if [[ -s "$CRASH_REPORT_PATH" ]]; then
+    echo "$CRASH_REPORT_PATH"
 fi

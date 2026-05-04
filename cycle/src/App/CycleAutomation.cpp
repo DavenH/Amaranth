@@ -405,6 +405,34 @@ namespace {
         };
     }
 
+    String componentRole(Component* component) {
+        if (dynamic_cast<Slider*>(component) != nullptr) {
+            return "slider";
+        }
+
+        if (dynamic_cast<Button*>(component) != nullptr) {
+            return "button";
+        }
+
+        if (dynamic_cast<ComboBox*>(component) != nullptr) {
+            return "comboBox";
+        }
+
+        if (dynamic_cast<TextEditor*>(component) != nullptr) {
+            return "textEditor";
+        }
+
+        if (dynamic_cast<Label*>(component) != nullptr) {
+            return "label";
+        }
+
+        if (dynamic_cast<Viewport*>(component) != nullptr) {
+            return "viewport";
+        }
+
+        return "component";
+    }
+
     String resolveSavableSourceName(const String& source) {
         static const std::pair<const char*, const char*> aliases[] = {
             { "meshLibrary",    "MeshLibrary" },
@@ -566,6 +594,8 @@ void CycleAutomation::runCommand(const var& command, Array<var>& results) {
         ok = openPreset(command, message, data);
     } else if (type == "inspectTargets") {
         ok = inspectTargets(command, message, data);
+    } else if (type == "inspectTree") {
+        ok = inspectTree(command, message, data);
     } else if (type == "setControl") {
         ok = setControl(command, message, data);
     } else if (type == "pointer") {
@@ -840,6 +870,33 @@ bool CycleAutomation::inspectTargets(const var& command, String& message, var& d
     data = PresetJson::toVar(json);
     message = "Inspected " + String(targets.size()) + " targets";
 
+    return true;
+}
+
+bool CycleAutomation::inspectTree(const var& command, String& message, var& data) {
+    Component* root = resolveComponent(command);
+    String requestedArea = getString(command, "area");
+
+    if (root == nullptr) {
+        message = "Tree root could not be resolved";
+        return false;
+    }
+
+    int maxDepth = jlimit(0, 16, int(getDouble(command, "maxDepth", 5.0)));
+    int maxNodes = jlimit(1, 5000, int(getDouble(command, "maxNodes", 500.0)));
+    bool includeInvisible = getBool(command, "includeInvisible");
+    int nodeCount = 0;
+
+    auto json = PresetJson::object();
+    json->setProperty("root", componentTreeState(root, "root", 0, maxDepth, maxNodes, nodeCount, includeInvisible));
+    json->setProperty("registeredTargets", registeredTargetsForRoot(root, requestedArea));
+    json->setProperty("count", nodeCount);
+    json->setProperty("maxDepth", maxDepth);
+    json->setProperty("maxNodes", maxNodes);
+    json->setProperty("truncated", nodeCount >= maxNodes);
+
+    data = PresetJson::toVar(json);
+    message = "Inspected component tree with " + String(nodeCount) + " nodes";
     return true;
 }
 
@@ -1157,4 +1214,120 @@ var CycleAutomation::componentState(Component* component, const String& area, co
     }
 
     return PresetJson::toVar(json);
+}
+
+var CycleAutomation::registeredTargetsForRoot(Component* root, const String& requestedArea) const {
+    Array<var> targets;
+    Rectangle<int> rootBounds = root != nullptr ? root->getScreenBounds() : Rectangle<int>();
+    CycleTour& tour = const_cast<CycleTour&>(getObj(CycleTour));
+
+    if (root == nullptr) {
+        return var(targets);
+    }
+
+    for (auto* area : kTourGuideAreas) {
+        if (requestedArea.isNotEmpty() && requestedArea != area) {
+            continue;
+        }
+
+        for (auto* target : kInspectableTargets) {
+            Component* component = tour.getComponent(area, target);
+
+            if (component == nullptr) {
+                continue;
+            }
+
+            Rectangle<int> targetBounds = component->getScreenBounds();
+
+            if (component == root || root->isParentOf(component) || rootBounds.intersects(targetBounds)) {
+                targets.add(componentState(component, area, target));
+            }
+        }
+    }
+
+    return var(targets);
+}
+
+var CycleAutomation::componentTreeState(Component* component,
+                                        const String& path,
+                                        int depth,
+                                        int maxDepth,
+                                        int maxNodes,
+                                        int& nodeCount,
+                                        bool includeInvisible) const {
+    auto json = PresetJson::object();
+
+    if (component == nullptr || nodeCount >= maxNodes) {
+        json->setProperty("truncated", true);
+        return PresetJson::toVar(json);
+    }
+
+    ++nodeCount;
+
+    json->setProperty("path", path);
+    json->setProperty("depth", depth);
+    json->setProperty("name", component->getName());
+    json->setProperty("class", String(typeid(*component).name()));
+    json->setProperty("role", componentRole(component));
+    json->setProperty("visible", component->isVisible());
+    json->setProperty("showing", component->isShowing());
+    json->setProperty("enabled", component->isEnabled());
+    json->setProperty("localBounds", rectangleState(component->getLocalBounds()));
+    json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
+    annotateTourTarget(*json, component);
+
+    if (auto* slider = dynamic_cast<Slider*>(component)) {
+        json->setProperty("value", slider->getValue());
+        json->setProperty("minimum", slider->getMinimum());
+        json->setProperty("maximum", slider->getMaximum());
+        json->setProperty("text", slider->getTextFromValue(slider->getValue()));
+    } else if (auto* button = dynamic_cast<Button*>(component)) {
+        json->setProperty("toggleState", button->getToggleState());
+        json->setProperty("buttonText", button->getButtonText());
+    }
+
+    if (depth >= maxDepth || nodeCount >= maxNodes) {
+        json->setProperty("childrenTruncated", component->getNumChildComponents() > 0);
+        return PresetJson::toVar(json);
+    }
+
+    Array<var> children;
+
+    for (int i = 0; i < component->getNumChildComponents() && nodeCount < maxNodes; ++i) {
+        Component* child = component->getChildComponent(i);
+
+        if (child == nullptr) {
+            continue;
+        }
+
+        if (!includeInvisible && !child->isVisible()) {
+            continue;
+        }
+
+        children.add(componentTreeState(child, path + "/" + String(i), depth + 1, maxDepth, maxNodes, nodeCount, includeInvisible));
+    }
+
+    json->setProperty("children", var(children));
+    return PresetJson::toVar(json);
+}
+
+void CycleAutomation::annotateTourTarget(DynamicObject& json, Component* component) const {
+    CycleTour& tour = const_cast<CycleTour&>(getObj(CycleTour));
+
+    for (auto* area : kInspectableAreas) {
+        if (tour.getComponent(area, {}) == component) {
+            json.setProperty("area", area);
+            break;
+        }
+    }
+
+    for (auto* area : kTourGuideAreas) {
+        for (auto* target : kInspectableTargets) {
+            if (tour.getComponent(area, target) == component) {
+                json.setProperty("area", area);
+                json.setProperty("target", target);
+                return;
+            }
+        }
+    }
 }

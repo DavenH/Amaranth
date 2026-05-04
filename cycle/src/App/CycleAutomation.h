@@ -34,6 +34,7 @@ private:
     bool savePreset(const var& command, String& message, var& data);
     bool openPreset(const var& command, String& message, var& data);
     bool inspectTargets(const var& command, String& message, var& data);
+    bool inspectTree(const var& command, String& message, var& data);
     bool setControl(const var& command, String& message, var& data);
     bool pointer(const var& command, String& message, var& data);
     bool assertTarget(const var& command, String& message, var& data);
@@ -43,6 +44,15 @@ private:
 
     Component* resolveComponent(const var& command);
     var componentState(Component* component, const String& area, const String& target) const;
+    var registeredTargetsForRoot(Component* root, const String& requestedArea) const;
+    var componentTreeState(Component* component,
+                           const String& path,
+                           int depth,
+                           int maxDepth,
+                           int maxNodes,
+                           int& nodeCount,
+                           bool includeInvisible) const;
+    void annotateTourTarget(DynamicObject& json, Component* component) const;
 
     Options options;
     bool hasRun{false};
