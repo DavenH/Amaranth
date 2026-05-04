@@ -15,6 +15,7 @@ Cycle needs a deterministic automation surface for UI-heavy workflows:
 - end-to-end tests,
 - focused panel screenshots,
 - scoped JSON state export,
+- MIDI-triggered audio capture,
 - future preset creation,
 - future interactive agent sessions.
 
@@ -29,6 +30,7 @@ test/agent control surface.
 - Reuse `CycleTour` target/action mappings where they already exist.
 - Reuse `Savable::writeJSON()` and `writeXML()` for scoped state export.
 - Capture full-window and named-panel screenshots.
+- Capture offline rendered audio from scheduled MIDI events.
 - Produce structured JSON reports for tests and bug reports.
 - Keep the command model transport-independent so MCP or socket control can be
   added later.
@@ -63,6 +65,7 @@ Implemented:
   - `openPreset`,
   - `openFactoryPreset`,
   - `screenshot`,
+  - `captureAudio`,
   - `inspectTargets`,
   - `inspectTree`,
   - `setControl`,
@@ -93,6 +96,10 @@ Known gaps:
 - Mesh-focused helpers for current layer/group have stable group/layer
   addressing, but vertex handles are still index-based.
 - No keyboard playback yet.
+- Audio capture can assert offline render amplitude and write WAV artifacts,
+  but it does not yet validate the live OS/audio-device output path.
+- No audio similarity/perceptual analysis yet; current audio assertions are
+  numeric peak/RMS thresholds.
 - Long-running IPC/session mode is available as an initial Unix-domain socket
   implementation; an MCP adapter remains pending.
 
@@ -109,6 +116,7 @@ Scripts are JSON objects with a `commands` array and optional `quit` flag:
     { "command": "exportState", "source": "meshLibrary", "path": "/tmp/mesh.json" },
     { "command": "openFactoryPreset", "preset": "CalmingKeys" },
     { "command": "screenshot", "area": "AreaMorphPanel", "path": "/tmp/morph.png" },
+    { "command": "captureAudio", "note": 60, "path": "/tmp/note.wav", "peakGreaterThan": 0.0001 },
     { "command": "assertState", "path": "document", "exists": true },
     { "command": "action", "actionType": "SetMorphRange", "area": "AreaMorphPanel", "id": "IdYellow", "value": 0.5 }
   ],
@@ -270,6 +278,35 @@ Acceptance:
   existing `screenshot`, `exportState`, `exportPreset`, and `exportMeshState`
   commands.
 - Shut down cleanly on command. Done with the `quit` command.
+
+### Milestone 8: MIDI And Audio Capture
+
+Goal: an agent can trigger synth playback deterministically and capture the
+rendered signal as a test artifact.
+
+Status: initial implementation complete for offline render capture.
+
+Acceptance:
+
+- Trigger MIDI note on/off events without relying on the OS audio device. Done
+  with `captureAudio` scheduled `noteOn`/`noteOff` events.
+- Support common MIDI events for audio regressions. Done for `noteOn`,
+  `noteOff`, `controller`, `pitchWheel`, and `allNotesOff`.
+- Render a bounded duration through the active synth processor. Done with
+  command-provided `durationMs`, `sampleRate`, `blockSize`, and `channels`.
+- Write a WAV artifact when requested. Done with the `path` field.
+- Return simple metrics for assertions. Done for total `peak`, total `rms`,
+  and per-channel peak/RMS.
+- Assert non-silence or clipping thresholds in the same automation report. Done
+  with `peakGreaterThan`, `peakLessThan`, `rmsGreaterThan`, and `rmsLessThan`.
+- Distinguish offline synth rendering from live audio-device output. Done by
+  suspending the standalone live callback during capture and restoring the
+  previous audio preparation afterward.
+- Validate live OS output capture. Pending; this requires a separate loopback,
+  virtual audio device, or platform-level capture strategy.
+- Add waveform similarity or perceptual assertions. Pending; this should
+  consume the WAV artifact as a separate analysis step after basic amplitude
+  coverage is stable.
 
 ## Implementation Plan
 
@@ -501,7 +538,7 @@ layer-level mesh JSON export are implemented.
 
 ### Phase 8: E2E Integration
 
-Supports milestones: 1 through 6.
+Supports milestones: 1 through 8.
 
 Status: partially implemented with an opt-in local smoke runner.
 
@@ -524,6 +561,8 @@ Status: partially implemented with an opt-in local smoke runner.
     `cycle-agent-broader-controls.json`.
   - opening a named factory preset. Covered by
     `cycle-agent-factory-preset.json`.
+  - triggering MIDI and capturing offline rendered audio. Covered by
+    `cycle-agent-audio-capture.json`.
   - capturing a named panel. Covered by `cycle-agent-screenshot.json`.
   - executing a `CycleTour` action. Covered by
     `cycle-agent-general-controls.json`.
@@ -577,6 +616,7 @@ scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-broader-controls.json /p
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-factory-preset.json /private/tmp/cycle-agent-factory-preset-report.json /private/tmp/cycle-agent-factory-preset-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-general-controls.json /private/tmp/cycle-agent-general-controls-report.json /private/tmp/cycle-agent-general-controls-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-state.json /private/tmp/cycle-agent-waveform3d-state-report.json /private/tmp/cycle-agent-waveform3d-state-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-audio-capture.json /private/tmp/cycle-agent-audio-capture-report.json /private/tmp/cycle-agent-audio-capture-logs.txt
 CYCLE_AGENT_ALLOW_FAILURES=1 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-assert-failure.json /private/tmp/cycle-agent-assert-failure-report.json /private/tmp/cycle-agent-assert-failure-logs.txt
 scripts/run_cycle_agent_smokes.sh
 ```
@@ -643,6 +683,11 @@ Current verified behavior:
   The focused fixture box-selects two CalmingKeys time vertices, verifies the
   16-entry moving selection frame, drags the right selection edge, drags the
   move handle, and clears selection.
+- `captureAudio` triggers scheduled MIDI events, renders offline through the
+  active synth processor, writes an optional WAV artifact, and reports peak/RMS
+  metrics. The focused fixture opens `AfricanHorn`, sends C4 note on/off,
+  writes `/private/tmp/cycle-agent-africanhorn-c4.wav`, and asserts non-silent
+  output plus a conservative peak ceiling.
 - `--agent-session` starts a Unix-domain socket server that accepts one
   newline-delimited JSON request per client connection, dispatches the command
   on the JUCE message thread, and returns one JSON response.
