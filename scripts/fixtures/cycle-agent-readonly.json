@@ -1,0 +1,17 @@
+{
+  "commands": [
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaMorphPanel"
+    },
+    {
+      "command": "exportState",
+      "source": "MeshLibrary",
+      "path": "/private/tmp/cycle-agent-mesh.json"
+    }
+  ],
+  "quit": true
+}

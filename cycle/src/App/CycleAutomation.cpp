@@ -10,6 +10,140 @@
 #include "../UI/Panels/MainPanel.h"
 
 namespace {
+    const char* const kInspectableAreas[] = {
+        "AreaMain",
+        "AreaWshpEditor",
+        "AreaWfrmWaveform3D",
+        "AreaSpectrum",
+        "AreaSpectrogram",
+        "AreaEnvelopes",
+        "AreaMorphPanel",
+        "AreaVertexProps",
+        "AreaGenControls",
+        "AreaPlayback",
+        "AreaGuideCurves",
+        "AreaImpulse",
+        "AreaWaveshaper",
+        "AreaUnison",
+        "AreaReverb",
+        "AreaDelay",
+        "AreaEQ",
+        "AreaModMatrix",
+        "AreaMasterCtrls",
+    };
+
+    const char* const kTourGuideAreas[] = {
+        "AreaWfrmWaveform3D",
+        "AreaSpectrogram",
+        "AreaEnvelopes",
+        "AreaMorphPanel",
+        "AreaVertexProps",
+        "AreaGenControls",
+        "AreaImpulse",
+        "AreaWaveshaper",
+        "AreaGuideCurves",
+        "AreaUnison",
+        "AreaModMatrix",
+        "AreaMasterCtrls",
+    };
+
+    const char* const kInspectableTargets[] = {
+        "TargMatrixGrid",
+        "TargMatrixUtility",
+        "TargMatrixSource",
+        "TargMatrixDest",
+        "TargMatrixAddDest",
+        "TargMatrixAddSource",
+        "TargUniMode",
+        "TargUniVoiceSlct",
+        "TargUniAddRemove",
+        "TargDfrmNoise",
+        "TargDfrmOffset",
+        "TargDfrmPhase",
+        "TargDfrmMeshSlct",
+        "TargDfrmLayerAdd",
+        "TargDfrmLayerSlct",
+        "TargImpLength",
+        "TargImpGain",
+        "TargImpHP",
+        "TargImpZoom",
+        "TargImpLoadWav",
+        "TargImpUnloadWav",
+        "TargImpModelWav",
+        "TargWaveshaperOvsp",
+        "TargWaveshaperPre",
+        "TargWaveshaperPost",
+        "TargWaveshaperSlct",
+        "TargSliderArea",
+        "TargTimeSlider",
+        "TargPhsSlider",
+        "TargAmpSlider",
+        "TargKeySlider",
+        "TargMorphSlider",
+        "TargCrvSlider",
+        "TargBoxArea",
+        "TargPhsBox",
+        "TargAmpBox",
+        "TargKeyBox",
+        "TargModBox",
+        "TargCrvBox",
+        "TargAvpBox",
+        "TargGainArea",
+        "TargPhsGain",
+        "TargAmpGain",
+        "TargKeyGain",
+        "TargModGain",
+        "TargCrvGain",
+        "TargAvpGain",
+        "TargVol",
+        "TargScratch",
+        "TargPitch",
+        "TargWavPitch",
+        "TargScratchLyr",
+        "TargSustLoop",
+        "TargDomains",
+        "TargLayerEnable",
+        "TargLayerMode",
+        "TargLayerAdder",
+        "TargLayerMover",
+        "TargLayerSlct",
+        "TargScratchBox",
+        "TargDeconv",
+        "TargPhaseUp",
+        "TargPan",
+        "TargRange",
+        "TargMeshSelector",
+        "TargModelCycle",
+        "TargSelector",
+        "TargPencil",
+        "TargAxe",
+        "TargNudge",
+        "TargWaveVerts",
+        "TargVerts",
+        "TargLinkYellow",
+        "TargVertCube",
+        "TargPrimeArea",
+        "TargPrimeY",
+        "TargPrimeB",
+        "TargPrimeR",
+        "TargLinkArea",
+        "TargLinkY",
+        "TargLinkB",
+        "TargLinkR",
+        "TargRangeArea",
+        "TargRangeY",
+        "TargRangeB",
+        "TargRangeR",
+        "TargSlidersArea",
+        "TargSliderY",
+        "TargSliderB",
+        "TargSliderR",
+        "TargSliderPan",
+        "TargMasterVol",
+        "TargMasterOct",
+        "TargMasterLen",
+    };
+
     String getString(const var& object, const Identifier& name, const String& fallback = {}) {
         return PresetJson::stringProperty(object, name, fallback);
     }
@@ -18,12 +152,26 @@ namespace {
         return PresetJson::boolProperty(object, name, fallback);
     }
 
-    var makeResult(const String& type, bool ok, const String& message) {
+    var makeResult(const String& type, bool ok, const String& message, const var& data = {}) {
         auto result = PresetJson::object();
         result->setProperty("type", type);
         result->setProperty("ok", ok);
         result->setProperty("message", message);
+
+        if (!data.isVoid()) {
+            result->setProperty("data", data);
+        }
+
         return PresetJson::toVar(result);
+    }
+
+    var rectangleState(const Rectangle<int>& bounds) {
+        auto json = PresetJson::object();
+        json->setProperty("x", bounds.getX());
+        json->setProperty("y", bounds.getY());
+        json->setProperty("width", bounds.getWidth());
+        json->setProperty("height", bounds.getHeight());
+        return PresetJson::toVar(json);
     }
 }
 
@@ -91,8 +239,8 @@ void CycleAutomation::beginFromCommandLine(const String& commandLine) {
     }
 }
 
-void CycleAutomation::appendResult(Array<var>& results, const String& type, bool ok, const String& message) {
-    results.add(makeResult(type, ok, message));
+void CycleAutomation::appendResult(Array<var>& results, const String& type, bool ok, const String& message, const var& data) {
+    results.add(makeResult(type, ok, message, data));
 }
 
 void CycleAutomation::timerCallback() {
@@ -147,22 +295,26 @@ void CycleAutomation::runScript() {
 void CycleAutomation::runCommand(const var& command, Array<var>& results) {
     String type = getString(command, "command", getString(command, "type"));
     String message;
+    var data;
     bool ok = false;
 
     if (type == "action") {
         ok = runTourAction(command, message);
     } else if (type == "screenshot") {
-        ok = captureScreenshot(command, message);
+        ok = captureScreenshot(command, message, data);
     } else if (type == "exportState") {
         ok = exportState(command, message);
+    } else if (type == "inspectTargets") {
+        ok = inspectTargets(command, message, data);
     } else if (type == "snapshotState") {
         ok = true;
-        message = JSON::toString(snapshotState(), true);
+        data = snapshotState();
+        message = "Snapshot captured";
     } else {
         message = "Unknown automation command: " + type;
     }
 
-    appendResult(results, type, ok, message);
+    appendResult(results, type, ok, message, data);
 }
 
 bool CycleAutomation::runTourAction(const var& command, String& message) {
@@ -205,7 +357,7 @@ bool CycleAutomation::runTourAction(const var& command, String& message) {
     return true;
 }
 
-bool CycleAutomation::captureScreenshot(const var& command, String& message) {
+bool CycleAutomation::captureScreenshot(const var& command, String& message, var& data) {
     String path = getString(command, "path");
 
     if (path.isEmpty()) {
@@ -242,6 +394,16 @@ bool CycleAutomation::captureScreenshot(const var& command, String& message) {
         return false;
     }
 
+    auto json = PresetJson::object();
+    json->setProperty("path", path);
+    json->setProperty("width", image.getWidth());
+    json->setProperty("height", image.getHeight());
+    json->setProperty("area", getString(command, "area"));
+    json->setProperty("target", getString(command, "target"));
+    json->setProperty("localBounds", rectangleState(component->getLocalBounds()));
+    json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
+
+    data = PresetJson::toVar(json);
     message = "Screenshot written: " + path;
     return true;
 }
@@ -274,6 +436,42 @@ bool CycleAutomation::exportState(const var& command, String& message) {
     return true;
 }
 
+bool CycleAutomation::inspectTargets(const var& command, String& message, var& data) {
+    String requestedArea = getString(command, "area");
+    String requestedTarget = getString(command, "target");
+    Array<var> targets;
+
+    if (requestedArea.isNotEmpty()) {
+        if (requestedTarget.isNotEmpty()) {
+            targets.add(componentState(resolveComponent(command), requestedArea, requestedTarget));
+        } else {
+            targets.add(componentState(resolveComponent(command), requestedArea, {}));
+        }
+    } else {
+        for (auto* area : kInspectableAreas) {
+            targets.add(componentState(getObj(CycleTour).getComponent(area, {}), area, {}));
+        }
+
+        for (auto* area : kTourGuideAreas) {
+            for (auto* target : kInspectableTargets) {
+                Component* component = getObj(CycleTour).getComponent(area, target);
+
+                if (component != nullptr) {
+                    targets.add(componentState(component, area, target));
+                }
+            }
+        }
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("targets", var(targets));
+    json->setProperty("count", targets.size());
+    data = PresetJson::toVar(json);
+    message = "Inspected " + String(targets.size()) + " targets";
+
+    return true;
+}
+
 var CycleAutomation::snapshotState() {
     auto snapshot = PresetJson::object();
 
@@ -292,4 +490,25 @@ Component* CycleAutomation::resolveComponent(const var& command) {
     }
 
     return &getObj(MainPanel);
+}
+
+var CycleAutomation::componentState(Component* component, const String& area, const String& target) const {
+    auto json = PresetJson::object();
+    json->setProperty("area", area);
+    json->setProperty("target", target);
+    json->setProperty("resolved", component != nullptr);
+
+    if (component != nullptr) {
+        json->setProperty("name", component->getName());
+        json->setProperty("class", String(typeid(*component).name()));
+        json->setProperty("visible", component->isVisible());
+        json->setProperty("showing", component->isShowing());
+        json->setProperty("enabled", component->isEnabled());
+        json->setProperty("localBounds", rectangleState(component->getLocalBounds()));
+        json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
+    } else {
+        json->setProperty("error", "Target could not be resolved");
+    }
+
+    return PresetJson::toVar(json);
 }

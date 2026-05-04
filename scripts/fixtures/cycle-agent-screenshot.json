@@ -1,0 +1,14 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaMorphPanel"
+    },
+    {
+      "command": "screenshot",
+      "area": "AreaMorphPanel",
+      "path": "/private/tmp/cycle-agent-morph-panel.png"
+    }
+  ],
+  "quit": true
+}

@@ -21,18 +21,20 @@ private:
     };
 
     static Options parseOptions(const String& commandLine);
-    static void appendResult(Array<var>& results, const String& type, bool ok, const String& message);
+    static void appendResult(Array<var>& results, const String& type, bool ok, const String& message, const var& data = {});
 
     void timerCallback() override;
     void runScript();
     void runCommand(const var& command, Array<var>& results);
 
     bool runTourAction(const var& command, String& message);
-    bool captureScreenshot(const var& command, String& message);
+    bool captureScreenshot(const var& command, String& message, var& data);
     bool exportState(const var& command, String& message);
+    bool inspectTargets(const var& command, String& message, var& data);
     var  snapshotState();
 
     Component* resolveComponent(const var& command);
+    var componentState(Component* component, const String& area, const String& target) const;
 
     Options options;
     bool hasRun{false};
