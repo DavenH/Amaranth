@@ -306,6 +306,52 @@ namespace {
 
         return {};
     }
+
+    int getIdleDelayMs(const var& command) {
+        double timeoutMs = getDouble(command, "timeoutMs", 50.0);
+        return jlimit(0, 10000, int(getDouble(command, "idleDelayMs", getDouble(command, "delayMs", timeoutMs))));
+    }
+
+    bool drainMessageLoop(int delayMs) {
+        if (MessageManager::getInstance()->isThisTheMessageThread()) {
+            return MessageManager::getInstance()->runDispatchLoopUntil(delayMs);
+        }
+
+        Thread::sleep(delayMs);
+        return false;
+    }
+
+    bool drainMessageLoopIfRequested(const var& command) {
+        if (!getBool(command, "waitForIdle")) {
+            return false;
+        }
+
+        drainMessageLoop(getIdleDelayMs(command));
+        return true;
+    }
+
+    String resolveSavableSourceName(const String& source) {
+        static const std::pair<const char*, const char*> aliases[] = {
+            { "meshLibrary",    "MeshLibrary" },
+            { "morphPanel",     "MorphPanel" },
+            { "mainPanel",      "MainPanel" },
+            { "effects",        "EffectGuiRegistry" },
+            { "modMatrix",      "ModMatrixPanel" },
+            { "envelopes",      "Envelope2D" },
+            { "envelopeProps",  "Envelope2D" },
+            { "guideCurves",    "GuideCurvePanel" },
+            { "oscControls",    "OscControlPanel" },
+            { "settings",       "Settings" },
+        };
+
+        for (const auto& alias : aliases) {
+            if (source == alias.first) {
+                return alias.second;
+            }
+        }
+
+        return source;
+    }
 }
 
 CycleAutomation::CycleAutomation(SingletonRepo* repo) :
@@ -443,6 +489,10 @@ void CycleAutomation::runCommand(const var& command, Array<var>& results) {
         ok = setControl(command, message, data);
     } else if (type == "assertTarget") {
         ok = assertTarget(command, message, data);
+    } else if (type == "assertState") {
+        ok = assertState(command, message, data);
+    } else if (type == "waitForIdle") {
+        ok = waitForIdle(command, message, data);
     } else if (type == "snapshotState") {
         ok = true;
         data = snapshotState();
@@ -502,6 +552,7 @@ bool CycleAutomation::captureScreenshot(const var& command, String& message, var
         return false;
     }
 
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
     Component* component = resolveComponent(command);
 
     if (component == nullptr) {
@@ -537,6 +588,7 @@ bool CycleAutomation::captureScreenshot(const var& command, String& message, var
     json->setProperty("height", image.getHeight());
     json->setProperty("area", getString(command, "area"));
     json->setProperty("target", getString(command, "target"));
+    json->setProperty("waitedForIdle", waitedForIdle);
     json->setProperty("localBounds", rectangleState(component->getLocalBounds()));
     json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
 
@@ -546,10 +598,12 @@ bool CycleAutomation::captureScreenshot(const var& command, String& message, var
 }
 
 bool CycleAutomation::exportState(const var& command, String& message) {
-    String source = getString(command, "source", getString(command, "target"));
+    String requestedSource = getString(command, "source", getString(command, "target"));
+    String source = resolveSavableSourceName(requestedSource);
+    String jsonPath = getString(command, "jsonPath", getString(command, "statePath"));
     String path = getString(command, "path");
 
-    if (source.isEmpty()) {
+    if (requestedSource.isEmpty()) {
         message = "Export command requires source";
         return false;
     }
@@ -559,6 +613,17 @@ bool CycleAutomation::exportState(const var& command, String& message) {
     if (exported.isVoid()) {
         message = "No savable source found: " + source;
         return false;
+    }
+
+    if (jsonPath.isNotEmpty()) {
+        var selected;
+
+        if (!getPathValue(exported, jsonPath, selected)) {
+            message = "Export JSON path not found: " + jsonPath;
+            return false;
+        }
+
+        exported = selected;
     }
 
     String json = JSON::toString(exported, true);
@@ -667,6 +732,7 @@ bool CycleAutomation::assertTarget(const var& command, String& message, var& dat
     String path = getString(command, "path");
     String op = assertionOperator(command);
     double tolerance = getDouble(command, "tolerance", 0.000001);
+    drainMessageLoopIfRequested(command);
     Component* component = resolveComponent(command);
 
     if (component == nullptr) {
@@ -722,6 +788,74 @@ bool CycleAutomation::assertTarget(const var& command, String& message, var& dat
     }
 
     message = "Assertion passed";
+    return true;
+}
+
+bool CycleAutomation::assertState(const var& command, String& message, var& data) {
+    String path = getString(command, "path");
+    String op = assertionOperator(command);
+    double tolerance = getDouble(command, "tolerance", 0.000001);
+    drainMessageLoopIfRequested(command);
+
+    if (path.isEmpty()) {
+        message = "assertState requires path";
+        return false;
+    }
+
+    if (op.isEmpty()) {
+        message = "assertState requires an assertion operator";
+        return false;
+    }
+
+    var state = snapshotState();
+    var actual;
+    bool pathFound = getPathValue(state, path, actual);
+    var expected = PresetJson::property(command, op);
+
+    auto json = PresetJson::object();
+    json->setProperty("path", path);
+    json->setProperty("operator", op);
+    json->setProperty("pathFound", pathFound);
+
+    if (pathFound) {
+        json->setProperty("actual", actual);
+    }
+
+    if (op != "exists") {
+        json->setProperty("expected", expected);
+    }
+
+    data = PresetJson::toVar(json);
+
+    if (!pathFound) {
+        message = "Assertion path not found: " + path;
+        return false;
+    }
+
+    if (!compareVars(actual, op, expected, tolerance)) {
+        message = "Assertion failed for path " + path + ": actual=" + actual.toString();
+
+        if (op != "exists") {
+            message += " expected=" + expected.toString();
+        }
+
+        return false;
+    }
+
+    message = "Assertion passed";
+    return true;
+}
+
+bool CycleAutomation::waitForIdle(const var& command, String& message, var& data) {
+    int delayMs = getIdleDelayMs(command);
+    bool dispatched = drainMessageLoop(delayMs);
+
+    auto json = PresetJson::object();
+    json->setProperty("delayMs", delayMs);
+    json->setProperty("messageLoopDispatched", dispatched);
+    data = PresetJson::toVar(json);
+
+    message = "Idle wait completed";
     return true;
 }
 

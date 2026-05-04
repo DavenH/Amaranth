@@ -194,7 +194,8 @@ Acceptance:
 
 Goal: an agent can build or modify a preset and save/export reproducible state.
 
-Status: not started.
+Status: partially available through control mutation, state export, screenshots,
+and smoke artifacts; full preset save/reopen remains pending.
 
 Acceptance:
 
@@ -321,7 +322,7 @@ the `AutomationInspectable` interface, and `assertTarget`.
   - update-idle status.
 - Add `assertTarget` with simple operators. Done for target-scoped component
   state paths.
-- Add `assertState` with simple operators:
+- Add `assertState` with simple operators. Done for report snapshot paths:
   - equals,
   - notEquals,
   - lessThan,
@@ -330,19 +331,21 @@ the `AutomationInspectable` interface, and `assertTarget`.
   - greaterThanOrEqual,
   - exists.
 - Assertions should operate on snapshot paths and report the actual value on
-  failure. Done for `assertTarget`; report-wide `assertState` remains pending.
+  failure. Done for `assertTarget` and `assertState`.
 
 ### Phase 4: Update-Idle Barrier
 
 Supports milestones: 2 through 7.
 
-Status: not started.
+Status: partially implemented with an explicit conservative `waitForIdle`
+command.
 
-- Add `waitForIdle`.
-- Ensure screenshots and assertions can request an idle wait first.
+- Add `waitForIdle`. Done for a fixed message-loop drain/delay command.
+- Ensure screenshots and assertions can request an idle wait first. Done with
+  `waitForIdle: true` and optional `idleDelayMs`.
 - Define idle conservatively at first:
   - JUCE message queue has processed the command,
-  - any requested fixed delay has elapsed,
+  - any requested fixed delay has elapsed. Done.
   - no known pending automation timer remains.
 - Later refine this with explicit `CycleUpdater` state if needed.
 
@@ -380,21 +383,19 @@ OpenGL-backed panel capture works through runner-side OS crop capture.
 
 Supports milestones: 1, 5, and 6.
 
-Status: whole-savable export implemented.
+Status: whole-savable export implemented with source aliases and optional JSON
+path selection.
 
 - Keep whole-source export by registered savable name.
 - Treat `Savable` JSON as durable document/model state, not generic UI
   component state.
 - Do not call full `saveJson` implicitly from `inspectTargets`; use explicit
   `exportState` or a future opt-in inspection flag when large state is wanted.
-- Add source aliases for common agent-facing names:
-  - `meshLibrary`,
-  - `morphPanel`,
-  - `mainPanel`,
-  - `effects`,
-  - `modMatrix`,
-  - `envelopes`.
-- Add optional JSON path selection for subtrees of exported savable state.
+- Add source aliases for common agent-facing names. Done for `meshLibrary`,
+  `morphPanel`, `mainPanel`, `effects`, `modMatrix`, `envelopes`, and related
+  preset section names.
+- Add optional JSON path selection for subtrees of exported savable state. Done
+  with `jsonPath`/`statePath`.
 - Add mesh-focused helpers for current layer/group once stable addressing is
   defined.
 
@@ -418,18 +419,21 @@ Status: partially covered through `CycleTour` actions.
 
 Supports milestones: 1 through 6.
 
-Status: not started.
+Status: partially implemented with an opt-in local smoke runner.
 
 - Add repeatable smoke scripts for:
-  - opening the default preset,
-  - exporting `MeshLibrary`,
-  - setting morph position,
-  - capturing a named panel,
-  - executing a `CycleTour` action.
+  - opening the default preset. Covered by `cycle-agent-readonly.json`.
+  - exporting `MeshLibrary`. Covered by `cycle-agent-readonly.json`.
+  - setting morph position. Covered by `cycle-agent-set-morph-slider.json`.
+  - capturing a named panel. Covered by `cycle-agent-screenshot.json`.
+  - executing a `CycleTour` action. Covered by
+    `cycle-agent-general-controls.json`.
 - Add a local test command that runs these through `scripts/run_cycle_agent.sh`.
+  Done with `scripts/run_cycle_agent_smokes.sh`.
 - Keep GUI e2e tests opt-in if CI cannot launch app bundles.
 - Save report, filtered log, raw log, screenshots, and exported JSON as test
-  artifacts where possible.
+  artifacts where possible. Done under `CYCLE_AGENT_ARTIFACT_DIR`, defaulting
+  to `/private/tmp/cycle-agent-smokes`.
 
 ### Phase 9: Long-Running Session Mode
 
@@ -462,6 +466,7 @@ scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /p
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-general-controls.json /private/tmp/cycle-agent-general-controls-report.json /private/tmp/cycle-agent-general-controls-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-state.json /private/tmp/cycle-agent-waveform3d-state-report.json /private/tmp/cycle-agent-waveform3d-state-logs.txt
 CYCLE_AGENT_ALLOW_FAILURES=1 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-assert-failure.json /private/tmp/cycle-agent-assert-failure-report.json /private/tmp/cycle-agent-assert-failure-logs.txt
+scripts/run_cycle_agent_smokes.sh
 ```
 
 Current verified behavior:
@@ -470,7 +475,8 @@ Current verified behavior:
 - Default preset `AfricanHorn` opens.
 - `snapshotState` reports the document name.
 - `inspectTargets` resolves `AreaMorphPanel` and returns bounds.
-- `exportState` writes `MeshLibrary` JSON.
+- `exportState` writes `MeshLibrary` JSON through the `meshLibrary` alias and
+  can export a selected subtree through `jsonPath`.
 - `screenshot` captures `AreaMorphPanel` as a 370 x 165 PNG in the current
   standalone-debug layout.
 - `inspectTargets` resolves `AreaWfrmWaveform3D` to an `OpenGLPanel3D`.
@@ -487,6 +493,9 @@ Current verified behavior:
   `automationState.layer.currentProperties.pan`.
 - `assertTarget` validates target-scoped dot paths and reports actual/expected
   values on failure.
+- `assertState` validates report snapshot dot paths and reports actual/expected
+  values on failure.
+- `waitForIdle` performs an explicit fixed message-loop drain/delay command.
 - Cycle exits cleanly when `quit` is true.
 
 ## Open Questions

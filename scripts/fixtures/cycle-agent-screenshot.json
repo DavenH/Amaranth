@@ -7,6 +7,8 @@
     {
       "command": "screenshot",
       "area": "AreaMorphPanel",
+      "waitForIdle": true,
+      "idleDelayMs": 50,
       "path": "/private/tmp/cycle-agent-morph-panel.png"
     }
   ],

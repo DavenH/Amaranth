@@ -24,6 +24,8 @@
       "command": "assertTarget",
       "area": "AreaMorphPanel",
       "path": "automationState.sliders.time",
+      "waitForIdle": true,
+      "idleDelayMs": 50,
       "equals": 0.25
     }
   ],
