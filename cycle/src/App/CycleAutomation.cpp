@@ -9,6 +9,7 @@
 #include <UI/Panels/Panel.h>
 
 #include "CycleTour.h"
+#include "FileManager.h"
 
 #include "../UI/Panels/MainPanel.h"
 
@@ -455,6 +456,14 @@ namespace {
 
         return source;
     }
+
+    void setIfPathExists(DynamicObject& object, const Identifier& name, const var& source, const String& path) {
+        var value;
+
+        if (getPathValue(source, path, value)) {
+            object.setProperty(name, value);
+        }
+    }
 }
 
 CycleAutomation::CycleAutomation(SingletonRepo* repo) :
@@ -592,6 +601,8 @@ void CycleAutomation::runCommand(const var& command, Array<var>& results) {
         ok = savePreset(command, message, data);
     } else if (type == "openPreset") {
         ok = openPreset(command, message, data);
+    } else if (type == "openFactoryPreset") {
+        ok = openFactoryPreset(command, message, data);
     } else if (type == "inspectTargets") {
         ok = inspectTargets(command, message, data);
     } else if (type == "inspectTree") {
@@ -834,6 +845,33 @@ bool CycleAutomation::openPreset(const var& command, String& message, var& data)
     }
 
     message = "Preset opened: " + path;
+    return true;
+}
+
+bool CycleAutomation::openFactoryPreset(const var& command, String& message, var& data) {
+    String preset = getString(command, "preset", getString(command, "name"));
+
+    if (preset.isEmpty()) {
+        message = "openFactoryPreset requires preset";
+        return false;
+    }
+
+    File file = getObj(FileManager).findFactoryPresetFile(preset);
+
+    if (!file.existsAsFile()) {
+        message = "Factory preset file does not exist: " + preset;
+        return false;
+    }
+
+    getObj(FileManager).openFactoryPreset(preset);
+
+    auto json = PresetJson::object();
+    json->setProperty("preset", preset);
+    json->setProperty("path", file.getFullPathName());
+    json->setProperty("document", getObj(Document).getDocumentName());
+    data = PresetJson::toVar(json);
+
+    message = "Factory preset opened: " + preset;
     return true;
 }
 
@@ -1158,9 +1196,35 @@ bool CycleAutomation::waitForIdle(const var& command, String& message, var& data
 
 var CycleAutomation::snapshotState() {
     auto snapshot = PresetJson::object();
+    auto panels = PresetJson::object();
 
     snapshot->setProperty("document", getObj(Document).getDocumentName());
     snapshot->setProperty("automationRan", hasRun);
+
+    if (auto* controls = getObj(CycleTour).getAutomationInspectable("AreaGenControls", {})) {
+        var state = controls->exportAutomationState();
+        panels->setProperty("generalControls", state);
+        setIfPathExists(*snapshot, "currentTool", state, "tools.name");
+        setIfPathExists(*snapshot, "currentToolId", state, "tools.current");
+        setIfPathExists(*snapshot, "viewStage", state, "viewStage");
+        setIfPathExists(*snapshot, "viewStageName", state, "viewStageName");
+    }
+
+    if (auto* morphPanel = getObj(CycleTour).getAutomationInspectable("AreaMorphPanel", {})) {
+        var state = morphPanel->exportAutomationState();
+        panels->setProperty("morphPanel", state);
+        setIfPathExists(*snapshot, "morphPosition", state, "sliders");
+        setIfPathExists(*snapshot, "morphLinking", state, "linking");
+        setIfPathExists(*snapshot, "morphRangeEnabled", state, "rangeEnabled");
+    }
+
+    if (auto* waveform3D = getObj(CycleTour).getAutomationInspectable("AreaWfrmWaveform3D", {})) {
+        var state = waveform3D->exportAutomationState();
+        panels->setProperty("waveform3D", state);
+        setIfPathExists(*snapshot, "timeLayer", state, "layer");
+    }
+
+    snapshot->setProperty("panels", PresetJson::toVar(panels));
 
     return PresetJson::toVar(snapshot);
 }

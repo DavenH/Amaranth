@@ -18,6 +18,26 @@
       "equals": true
     },
     {
+      "command": "assertState",
+      "path": "currentTool",
+      "exists": true
+    },
+    {
+      "command": "assertState",
+      "path": "viewStageName",
+      "exists": true
+    },
+    {
+      "command": "assertState",
+      "path": "panels.morphPanel.sliders.time",
+      "exists": true
+    },
+    {
+      "command": "assertState",
+      "path": "panels.waveform3D.layer.count",
+      "greaterThan": 0
+    },
+    {
       "command": "inspectTargets",
       "area": "AreaMorphPanel"
     },

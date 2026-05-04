@@ -19,6 +19,7 @@ run_fixture() {
 run_fixture readonly scripts/fixtures/cycle-agent-readonly.json
 run_fixture screenshot scripts/fixtures/cycle-agent-screenshot.json
 run_fixture set-morph-slider scripts/fixtures/cycle-agent-set-morph-slider.json
+run_fixture factory-preset scripts/fixtures/cycle-agent-factory-preset.json
 run_fixture general-controls scripts/fixtures/cycle-agent-general-controls.json
 run_fixture waveform3d-state scripts/fixtures/cycle-agent-waveform3d-state.json
 

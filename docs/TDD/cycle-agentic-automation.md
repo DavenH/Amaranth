@@ -53,25 +53,34 @@ Implemented:
 - JSON command dispatch for:
   - `snapshotState`,
   - `exportState`,
+  - `exportPreset`,
+  - `savePreset`,
+  - `openPreset`,
+  - `openFactoryPreset`,
   - `screenshot`,
   - `inspectTargets`,
+  - `inspectTree`,
+  - `setControl`,
+  - `pointer`,
+  - `assertTarget`,
+  - `assertState`,
+  - `waitForIdle`,
   - `action`.
 - `CycleTour` bridge for semantic action execution.
 - Named `CycleTour` area/target component lookup for screenshot targeting.
 - `Document::exportSavableJSON(...)`, using `Savable::writeJSON()` with
   `writeXML()` fallback.
-- LaunchServices smoke covering `snapshotState`, `inspectTargets`,
-  `MeshLibrary` state export, and named-panel screenshot capture.
+- LaunchServices smoke covering read-only state, assertions, tree inspection,
+  `MeshLibrary`/preset export, preset save/reopen, factory preset loading,
+  control mutation, pointer input, and named-panel screenshot capture.
 
 Known gaps:
 
-- `snapshotState` is minimal.
-- No assertion command yet.
-- No update-idle barrier before assertions/screenshots.
+- `snapshotState` is useful for core UI state but does not yet include stable
+  vertex handles or all dialog/modal visibility.
 - No CTest integration yet.
-- Scoped export currently targets whole registered `Savable` sources, not
-  subregions/subtrees.
-- No pointer/key/wheel playback yet.
+- Mesh-focused helpers for current layer/group still need stable addressing.
+- No keyboard playback yet.
 - No long-running IPC/session mode yet.
 
 ## Command Schema
@@ -83,8 +92,11 @@ Scripts are JSON objects with a `commands` array and optional `quit` flag:
   "commands": [
     { "command": "snapshotState" },
     { "command": "inspectTargets", "area": "AreaMorphPanel" },
-    { "command": "exportState", "source": "MeshLibrary", "path": "/tmp/mesh.json" },
+    { "command": "inspectTree", "area": "AreaGenControls", "maxDepth": 3 },
+    { "command": "exportState", "source": "meshLibrary", "path": "/tmp/mesh.json" },
+    { "command": "openFactoryPreset", "preset": "CalmingKeys" },
     { "command": "screenshot", "area": "AreaMorphPanel", "path": "/tmp/morph.png" },
+    { "command": "assertState", "path": "document", "exists": true },
     { "command": "action", "actionType": "SetMorphRange", "area": "AreaMorphPanel", "id": "IdYellow", "value": 0.5 }
   ],
   "quit": true
@@ -170,7 +182,8 @@ Acceptance:
 - Open and close supported dialogs or panels, including the mod matrix and
   preset browser where feasible.
 - Switch view stages.
-- Open a factory or explicit preset.
+- Open a factory or explicit preset. Done with `openFactoryPreset` and
+  `openPreset`.
 - Capture a dialog or panel screenshot after opening it.
 - Report modal/dialog visibility in target inspection or snapshots.
 
@@ -199,7 +212,8 @@ and smoke artifacts; full preset save/export/reopen verification is implemented.
 
 Acceptance:
 
-- Start from an empty or known factory preset.
+- Start from an empty or known factory preset. Done for named factory presets
+  through `openFactoryPreset`.
 - Apply semantic edits to controls, layers, effects, and meshes.
 - Set preset metadata where supported.
 - Save to a caller-provided preset path or export complete preset JSON. Done
@@ -309,7 +323,7 @@ Planned serialization boundary:
 Supports milestones: 3, 4, 5, and 6.
 
 Status: partially implemented through richer `inspectTargets` control metadata,
-the `AutomationInspectable` interface, and `assertTarget`.
+the `AutomationInspectable` interface, enriched `snapshotState`, and assertions.
 
 - Add an automation-state interface for rich UI components:
   - `exportAutomationState()` for transient UI state that is useful to agents,
@@ -324,12 +338,12 @@ the `AutomationInspectable` interface, and `assertTarget`.
     current mesh counts, view stage, wave-overlay flags, grid status, and render
     width.
 - Expand `snapshotState` to include:
-  - document/preset name,
-  - current view stage,
-  - current tool,
+  - document/preset name. Done.
+  - current view stage. Done.
+  - current tool. Done.
   - selected panel/layer where available,
-  - morph position and range/link state,
-  - mesh counts by layer group,
+  - morph position and range/link state. Done.
+  - mesh counts by layer group. Done for Waveform3D time layer.
   - selected vertex ids/counts,
   - effect enablement,
   - update-idle status.
@@ -441,6 +455,8 @@ Status: partially implemented with an opt-in local smoke runner.
   - opening the default preset. Covered by `cycle-agent-readonly.json`.
   - exporting `MeshLibrary`. Covered by `cycle-agent-readonly.json`.
   - setting morph position. Covered by `cycle-agent-set-morph-slider.json`.
+  - opening a named factory preset. Covered by
+    `cycle-agent-factory-preset.json`.
   - capturing a named panel. Covered by `cycle-agent-screenshot.json`.
   - executing a `CycleTour` action. Covered by
     `cycle-agent-general-controls.json`.
@@ -479,6 +495,7 @@ scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-readonly.json /private/t
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-screenshot.json /private/tmp/cycle-agent-screenshot-report.json /private/tmp/cycle-agent-screenshot-logs.txt
 CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tmp/cycle-agent-waveform3d-os.png scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json /private/tmp/cycle-agent-waveform3d-os-report.json /private/tmp/cycle-agent-waveform3d-os-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-factory-preset.json /private/tmp/cycle-agent-factory-preset-report.json /private/tmp/cycle-agent-factory-preset-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-general-controls.json /private/tmp/cycle-agent-general-controls-report.json /private/tmp/cycle-agent-general-controls-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-state.json /private/tmp/cycle-agent-waveform3d-state-report.json /private/tmp/cycle-agent-waveform3d-state-logs.txt
 CYCLE_AGENT_ALLOW_FAILURES=1 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-assert-failure.json /private/tmp/cycle-agent-assert-failure-report.json /private/tmp/cycle-agent-assert-failure-logs.txt
@@ -491,7 +508,8 @@ Current verified behavior:
 - Startup crash handling is runner-side: `scripts/run_cycle_agent.sh` can
   dismiss the macOS crash dialog and copy a fresh `.ips` beside the logs.
 - Default preset `AfricanHorn` opens.
-- `snapshotState` reports the document name.
+- `snapshotState` reports the document name, current tool/view stage, morph
+  state, and Waveform3D time-layer state.
 - `inspectTargets` resolves `AreaMorphPanel` and returns bounds.
 - `inspectTree` reports a bounded component tree with roles, rectangles,
   CycleTour area/target annotations, and a `registeredTargets` side table.
@@ -500,6 +518,7 @@ Current verified behavior:
 - `exportPreset` writes full preset JSON or a selected subtree; `savePreset`
   writes a compressed `.cyc` preset file; `openPreset` reopens a saved preset
   for verification.
+- `openFactoryPreset` opens a named factory preset by preset name.
 - `screenshot` captures `AreaMorphPanel` as a 370 x 165 PNG in the current
   standalone-debug layout.
 - `inspectTargets` resolves `AreaWfrmWaveform3D` to an `OpenGLPanel3D`.
