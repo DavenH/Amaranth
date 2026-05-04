@@ -1,0 +1,33 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "AfricanHorn",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "action",
+      "actionType": "SetNoteOn",
+      "data1": 60,
+      "value": 0.8,
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 1000
+    },
+    {
+      "command": "action",
+      "actionType": "SetNoteOff",
+      "data1": 60,
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "snapshotState"
+    }
+  ],
+  "quit": true
+}

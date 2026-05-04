@@ -29,6 +29,7 @@ run_fixture factory-preset scripts/fixtures/cycle-agent-factory-preset.json
 run_fixture general-controls scripts/fixtures/cycle-agent-general-controls.json
 run_fixture waveform3d-state scripts/fixtures/cycle-agent-waveform3d-state.json
 run_fixture modmatrix-dialog scripts/fixtures/cycle-agent-modmatrix-dialog.json
+run_fixture midi-note scripts/fixtures/cycle-agent-midi-note.json
 
 CYCLE_AGENT_ALLOW_FAILURES=1 run_fixture assert-failure scripts/fixtures/cycle-agent-assert-failure.json
 
