@@ -166,6 +166,42 @@ scripts/run_cycle_agent.sh \
     /private/tmp/cycle-agent-modmatrix-dialog-logs.txt
 ```
 
+If the `.ips` or filtered log identifies a useful breakpoint, rerun the same
+fixture under LLDB instead of changing the normal unattended flow:
+
+```sh
+scripts/run_cycle_agent_lldb.sh \
+    scripts/fixtures/cycle-agent-modmatrix-dialog.json \
+    /private/tmp/cycle-agent-modmatrix-breakpoints.lldb \
+    /private/tmp/cycle-agent-modmatrix-lldb-report.json \
+    /private/tmp/cycle-agent-modmatrix-lldb-app.log \
+    /private/tmp/cycle-agent-modmatrix-lldb.log
+```
+
+Example breakpoint file:
+
+```lldb
+breakpoint set --name ModMatrixPanel::resized
+breakpoint set --name Dialogs::showModMatrix
+```
+
+The LLDB runner starts `lldb` in `process attach --waitfor` mode, launches
+Cycle through `open ... --args`, sources the breakpoint file after attach, then
+continues. If the process stops at an assertion, signal, or breakpoint, inspect
+live state with commands such as:
+
+```lldb
+bt
+frame variable
+expr inputs.size()
+expr outputs.size()
+```
+
+Keep `continue` out of the breakpoint file unless you deliberately want custom
+control; the wrapper continues automatically by default. Set
+`CYCLE_LLDB_AUTO_CONTINUE=0` to attach and source breakpoints without starting
+the automation run.
+
 ## Long-Running Sessions
 
 Use a one-shot fixture for most bug work. Use session mode when an agent needs
