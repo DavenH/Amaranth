@@ -140,7 +140,8 @@ Verified:
 
 Goal: an agent can set ordinary UI control values without pointer dragging.
 
-Status: partially available through existing `CycleTour` actions.
+Status: started with generic `setControl` support for named slider and button
+targets.
 
 Acceptance:
 
@@ -150,6 +151,12 @@ Acceptance:
 - Enable/disable layers and effects.
 - Assert resulting values through `snapshotState` or scoped JSON export.
 - Avoid pixel coordinates for normal value-setting commands.
+
+Verified:
+
+- `scripts/fixtures/cycle-agent-set-morph-slider.json` sets
+  `AreaMorphPanel` / `TargSliderY` to `0.25` and reports the resulting slider
+  value through `inspectTargets`.
 
 ### Milestone 4: Dialogs, Menus, And View Navigation
 
@@ -248,6 +255,9 @@ Status: partially implemented.
   - enabled state,
   - local bounds,
   - screen bounds.
+- For supported controls, include:
+  - slider value/min/max/interval/text,
+  - button toggle state and label.
 - Include unresolved targets with an error field so missing registry coverage is
   visible in reports.
 
@@ -257,13 +267,37 @@ Current limitations:
   targets, not a live iteration over the private registry.
 - Component class names currently use C++ RTTI names, which are useful for
   debugging but not stable public identifiers.
+- Generic JUCE control metadata is intentionally limited to lightweight,
+  stable widget state. Do not keep expanding `CycleAutomation::componentState`
+  with every concrete Cycle component type.
+
+Planned serialization boundary:
+
+- `componentState` remains the generic fallback:
+  - identity,
+  - visibility/enabled/showing,
+  - bounds,
+  - stable JUCE control state for common controls such as `Slider`, `Button`,
+    later `ComboBox`/`TextEditor` if needed.
+- Rich Cycle components expose automation-specific state through an optional
+  interface, tentatively `AutomationInspectable`.
+- Full preset/model JSON continues to flow through explicit `Savable` export
+  via `exportState`, not implicit target inspection.
+- `inspectTargets` may later accept an option such as `includeSavable` or
+  `stateDepth: "full"` to opt into larger durable state payloads.
+- Mutations should remain semantic commands where possible; generic
+  `setControl` is the fallback for ordinary widgets, not the only control path.
 
 ### Phase 3: Rich Snapshots And Assertions
 
 Supports milestones: 3, 4, 5, and 6.
 
-Status: not started.
+Status: partially started through richer `inspectTargets` control metadata.
 
+- Add an automation-state interface for rich UI components:
+  - `exportAutomationState()` for transient UI state that is useful to agents,
+  - optional apply/control hooks only where generic `setControl` is not enough,
+  - no automatic full `Savable` dump from every inspected component.
 - Expand `snapshotState` to include:
   - document/preset name,
   - current view stage,
@@ -303,15 +337,31 @@ Status: not started.
 
 Supports milestone: 2.
 
-Status: named-panel screenshot smoke is passing; needs hardening.
+Status: named-panel screenshot smoke is passing for normal JUCE-rendered panels;
+OpenGL-backed panel capture works through runner-side OS crop capture.
 
 - Smoke-test full-window screenshot.
 - Smoke-test named panel screenshot. Done for `AreaMorphPanel`.
+- Smoke-test OpenGL-backed panel screenshot. Done for `AreaWfrmWaveform3D`:
+  target resolution succeeds and runner-side `screencapture -R` captures the
+  rendered waveform surface.
 - Add target-region screenshots by `area` plus `target`.
 - Report final image dimensions and target bounds.
 - Fail cleanly for hidden, zero-size, or unresolved targets.
-- Decide whether OpenGL-backed panel snapshots need a compositor-specific
-  capture path if JUCE component snapshots are blank.
+- Keep OpenGL-safe capture as a runner-side OS screenshot path for now:
+  - preferred: renderer/compositor-owned readback for the named panel region,
+  - current local GUI smoke: runner-level OS screenshot after confirmed
+    focus and screen-capture permission,
+  - avoid in-app `screencapture` as the default app command path because it failed
+    in automation and ties app behavior to macOS permissions.
+- Preflight macOS permissions before OS-level capture:
+  `scripts/capture_cycle_ui.sh` checks Accessibility and Screen Recording;
+  `scripts/run_cycle_agent.sh` checks Accessibility by default and can also
+  check Screen Recording with `CYCLE_PREFLIGHT_SCREEN_CAPTURE=1`.
+- Runner-side OS screenshot crop is available for one named inspected target:
+  set `CYCLE_OS_SCREENSHOT_AREA`, optional `CYCLE_OS_SCREENSHOT_TARGET`, and
+  `CYCLE_OS_SCREENSHOT_PATH`. The runner crops the target's reported
+  `screenBounds` with `screencapture -R`.
 
 ### Phase 6: Scoped State Export
 
@@ -320,6 +370,10 @@ Supports milestones: 1, 5, and 6.
 Status: whole-savable export implemented.
 
 - Keep whole-source export by registered savable name.
+- Treat `Savable` JSON as durable document/model state, not generic UI
+  component state.
+- Do not call full `saveJson` implicitly from `inspectTargets`; use explicit
+  `exportState` or a future opt-in inspection flag when large state is wanted.
 - Add source aliases for common agent-facing names:
   - `meshLibrary`,
   - `morphPanel`,
@@ -390,6 +444,8 @@ Repository smoke fixtures:
 ```sh
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-readonly.json /private/tmp/cycle-agent-readonly-report.json /private/tmp/cycle-agent-readonly-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-screenshot.json /private/tmp/cycle-agent-screenshot-report.json /private/tmp/cycle-agent-screenshot-logs.txt
+CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tmp/cycle-agent-waveform3d-os.png scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json /private/tmp/cycle-agent-waveform3d-os-report.json /private/tmp/cycle-agent-waveform3d-os-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
 ```
 
 Current verified behavior:
@@ -401,6 +457,14 @@ Current verified behavior:
 - `exportState` writes `MeshLibrary` JSON.
 - `screenshot` captures `AreaMorphPanel` as a 370 x 165 PNG in the current
   standalone-debug layout.
+- `inspectTargets` resolves `AreaWfrmWaveform3D` to an `OpenGLPanel3D`.
+- App-side `screenshot` currently captures only a blank OpenGL component
+  snapshot for `AreaWfrmWaveform3D`.
+- Runner-side OS capture resolves `AreaWfrmWaveform3D` bounds and captures a
+  nonblank OpenGL screenshot. On Retina displays, the output PNG can be scaled
+  relative to JUCE screen bounds; 441 x 368 bounds produced an 882 x 736 PNG.
+- `setControl` sets `AreaMorphPanel` / `TargSliderY` to `0.25` and
+  `inspectTargets` reports the resulting value.
 - Cycle exits cleanly when `quit` is true.
 
 ## Open Questions
@@ -410,7 +474,10 @@ Current verified behavior:
   - Daven: Remain opt-in for now
 - Should screenshot capture use JUCE component snapshots, OS screenshots, or a
   panel compositor capture path for OpenGL-backed panels? 
-  - Daven: JUCE component snapshots, unless we find they miss actual UI content (i.e. blank for some reason)
+  - Daven: JUCE component snapshots, unless we find they miss actual UI content
+    (i.e. blank for some reason)
+  - Current finding: `AreaWfrmWaveform3D` is blank through JUCE component
+    snapshots, so OpenGL panels use runner-side OS crop capture for now.
 - Which fields are the minimum useful `snapshotState` contract for v1 e2e tests?
   - Daven: to be determined. 
 - Should scoped JSON subtree selection use a simple dot path, JSON pointer, or a

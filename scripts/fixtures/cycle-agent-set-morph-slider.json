@@ -1,0 +1,21 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaMorphPanel",
+      "target": "TargSliderY"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMorphPanel",
+      "target": "TargSliderY",
+      "value": 0.25
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaMorphPanel",
+      "target": "TargSliderY"
+    }
+  ],
+  "quit": true
+}

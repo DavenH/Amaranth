@@ -1,0 +1,9 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaWfrmWaveform3D"
+    }
+  ],
+  "quit": false
+}

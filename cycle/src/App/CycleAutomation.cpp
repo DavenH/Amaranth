@@ -152,6 +152,24 @@ namespace {
         return PresetJson::boolProperty(object, name, fallback);
     }
 
+    double getDouble(const var& object, const Identifier& name, double fallback = 0.0) {
+        return PresetJson::doubleProperty(object, name, fallback);
+    }
+
+    NotificationType getNotificationType(const var& object) {
+        String notification = getString(object, "notification", "sync");
+
+        if (notification == "none") {
+            return dontSendNotification;
+        }
+
+        if (notification == "async") {
+            return sendNotificationAsync;
+        }
+
+        return sendNotificationSync;
+    }
+
     var makeResult(const String& type, bool ok, const String& message, const var& data = {}) {
         auto result = PresetJson::object();
         result->setProperty("type", type);
@@ -306,6 +324,8 @@ void CycleAutomation::runCommand(const var& command, Array<var>& results) {
         ok = exportState(command, message);
     } else if (type == "inspectTargets") {
         ok = inspectTargets(command, message, data);
+    } else if (type == "setControl") {
+        ok = setControl(command, message, data);
     } else if (type == "snapshotState") {
         ok = true;
         data = snapshotState();
@@ -472,6 +492,58 @@ bool CycleAutomation::inspectTargets(const var& command, String& message, var& d
     return true;
 }
 
+bool CycleAutomation::setControl(const var& command, String& message, var& data) {
+    Component* component = resolveComponent(command);
+
+    if (component == nullptr) {
+        message = "Control target could not be resolved";
+        return false;
+    }
+
+    NotificationType notification = getNotificationType(command);
+
+    if (auto* slider = dynamic_cast<Slider*>(component)) {
+        var valueVar = PresetJson::property(command, "value");
+
+        if (valueVar.isVoid()) {
+            message = "Slider control requires value";
+            return false;
+        }
+
+        slider->setValue(getDouble(command, "value"), notification);
+        data = componentState(component, getString(command, "area"), getString(command, "target"));
+        message = "Slider value set";
+        return true;
+    }
+
+    if (auto* button = dynamic_cast<Button*>(component)) {
+        if (getBool(command, "click")) {
+            button->triggerClick();
+        } else {
+            var stateVar = PresetJson::property(command, "toggleState");
+
+            if (stateVar.isVoid()) {
+                stateVar = PresetJson::property(command, "value");
+            }
+
+            if (stateVar.isVoid()) {
+                message = "Button control requires click, toggleState, or value";
+                return false;
+            }
+
+            button->setToggleState(bool(stateVar), notification);
+        }
+
+        data = componentState(component, getString(command, "area"), getString(command, "target"));
+        message = "Button control set";
+        return true;
+    }
+
+    message = "Control target is not a supported Slider or Button";
+    data = componentState(component, getString(command, "area"), getString(command, "target"));
+    return false;
+}
+
 var CycleAutomation::snapshotState() {
     auto snapshot = PresetJson::object();
 
@@ -506,6 +578,21 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("enabled", component->isEnabled());
         json->setProperty("localBounds", rectangleState(component->getLocalBounds()));
         json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
+
+        if (auto* slider = dynamic_cast<Slider*>(component)) {
+            json->setProperty("controlType", "slider");
+            json->setProperty("value", slider->getValue());
+            json->setProperty("minimum", slider->getMinimum());
+            json->setProperty("maximum", slider->getMaximum());
+            json->setProperty("interval", slider->getInterval());
+            json->setProperty("text", slider->getTextFromValue(slider->getValue()));
+        } else if (auto* button = dynamic_cast<Button*>(component)) {
+            json->setProperty("controlType", "button");
+            json->setProperty("toggleState", button->getToggleState());
+            json->setProperty("buttonText", button->getButtonText());
+        } else {
+            json->setProperty("controlType", "component");
+        }
     } else {
         json->setProperty("error", "Target could not be resolved");
     }
