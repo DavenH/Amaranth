@@ -36,7 +36,7 @@ void MorphUpdate::performUpdate(UpdateType updateType) {
             getObj(PhaseRasterizer).pullModPositionAndAdjust();
 
             MorphPosition m = getObj(MorphPanel).getMorphPosition();
-            m.time = 0;
+            m.resetTime();
 
             getObj(Multisample).performUpdate(updateType);
             getObj(EnvPitchRast).setMorphPosition(m);

@@ -50,25 +50,44 @@ void CollisionDetector::update(Mesh* mesh) {
         return;
     }
 
-    Vertex* currVert;
-
     meshVerts.resize(numMeshCubes * nVerts * nDims);
     selectedVerts.resize(numSelectedLines * nVerts * nDims);
+    updateSelectedVerts();
 
-    int index = 0;
+    int lineIdx = 0;
+    for (auto cube : uniqueMeshCubes) {
+        int baseIndex;
+        for (int i = 0; i < nVerts; ++i) {
+            Vertex* currVert = cube->getVertex(i);
+
+            baseIndex = lineIdx * nVerts * nDims + i * nDims;
+            meshVerts[baseIndex + Time ] = currVert->values[Vertex::Time];
+            meshVerts[baseIndex + Key  ] = currVert->values[Vertex::Red];
+            meshVerts[baseIndex + Mod  ] = currVert->values[Vertex::Blue];
+            meshVerts[baseIndex + Phase] = currVert->values[Vertex::Phase];
+        }
+
+        // todo
+        // create phantom verts where the line splices
+
+        ++lineIdx;
+    }
+}
+
+void CollisionDetector::updateSelectedVerts() {
+    selectedVerts.resize((int) selectedLines.size() * nVerts * nDims);
 
     for (int i = 0; i < numIndepDims; ++i) {
         selectMinima[i] = 1;
         selectMaxima[i] = 0;
     }
 
+    int index = 0;
     for (auto cube : selectedLines) {
-        int baseIndex;
-
         for (int i = 0; i < nVerts; ++i) {
-            currVert = cube->getVertex(i);
+            Vertex* currVert = cube->getVertex(i);
+            int baseIndex = index * nVerts * nDims + i * nDims;
 
-            baseIndex = index * nVerts * nDims + i * nDims;
             selectedVerts[baseIndex + Time ] = currVert->values[Vertex::Time];
             selectedVerts[baseIndex + Key  ] = currVert->values[Vertex::Red];
             selectedVerts[baseIndex + Mod  ] = currVert->values[Vertex::Blue];
@@ -88,25 +107,6 @@ void CollisionDetector::update(Mesh* mesh) {
 
     for(int i = 0; i < numIndepDims; ++i) {
         sliceSpacings[i] = sliceSpacing * (selectMaxima[i] - selectMinima[i]);
-    }
-
-    int lineIdx = 0;
-    for (auto cube : uniqueMeshCubes) {
-        int baseIndex;
-        for (int i = 0; i < nVerts; ++i) {
-            currVert = cube->getVertex(i);
-
-            baseIndex = lineIdx * nVerts * nDims + i * nDims;
-            meshVerts[baseIndex + Time ] = currVert->values[Vertex::Time];
-            meshVerts[baseIndex + Key  ] = currVert->values[Vertex::Red];
-            meshVerts[baseIndex + Mod  ] = currVert->values[Vertex::Blue];
-            meshVerts[baseIndex + Phase] = currVert->values[Vertex::Phase];
-        }
-
-        // todo
-        // create phantom verts where the line splices
-
-        ++lineIdx;
     }
 }
 
@@ -177,6 +177,8 @@ bool CollisionDetector::validate() {
                               selectedVerts.size()));
         return true;
     }
+
+    updateSelectedVerts();
 
     bool meshLineIsInSlice, selectedLineIsInSlice;
     float axes[numIndepDims];

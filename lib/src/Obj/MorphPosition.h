@@ -25,7 +25,7 @@ public:
     [[nodiscard]] float redEnd()  const { return jmin(1.f, red.getCurrentValue()  + redDepth ); }
     [[nodiscard]] float blueEnd() const { return jmin(1.f, blue.getCurrentValue() + blueDepth); }
 
-    void resetTime()      { time = 0; }
+    void resetTime()      { time.setValueDirect(0.f); }
 
     static void getOtherDims(int dim, int& dimX, int& dimY) {
         switch (dim) {

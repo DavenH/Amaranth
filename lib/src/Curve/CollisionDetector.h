@@ -76,5 +76,6 @@ private:
         }
     }
 
+    void updateSelectedVerts();
     bool validate(Mesh* mesh, const std::set<VertCube*>& vertex);
 };
