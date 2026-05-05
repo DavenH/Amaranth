@@ -117,11 +117,14 @@ void FileManager::openCurrentPreset() {
     progressMark
     DBG("FileManager::openCurrentPreset currentPresetName=\"" + currentPresetName + "\"");
 
+    getSetting(IgnoringMessages) = true;
+    getSetting(IgnoringEditMessages) = true;
+    getObj(Updater).clearPendingUpdates();
+
     if(getSetting(DrawWave)) {
         getObj(SampleUtils).waveOverlayChanged(false);
     }
 
-    getSetting(IgnoringMessages) = true;
     getObj(SynthAudioSource).allNotesOff();
 
     formatSplit(getObj(AudioHub).suspendAudio(),
@@ -229,9 +232,9 @@ void FileManager::doPostPresetLoad() {
     getObj(GeneralControls)	.repaint();
 
     getSetting(IgnoringMessages) = false;
+    getSetting(IgnoringEditMessages) = false;
 
-    getObj(Updater).update(UpdateSources::SourceAll, RestoreDetail);
-    getObj(Initializer).resetAll();
+    getObj(Initializer).resetAll(true);
     getObj(Waveform3D).reconcileLoadedState();
     getObj(Spectrum3D).reconcileLoadedState();
     getObj(UnisonUI).reconcileLoadedState(true);

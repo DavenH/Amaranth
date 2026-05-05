@@ -464,11 +464,14 @@ Initializer::~Initializer() {
   #endif
 }
 
-void Initializer::resetAll() {
+void Initializer::resetAll(bool performUpdate) {
     progressMark
 
     repo->resetSingletons();
-    doUpdate(SourceAll);
+
+    if (performUpdate) {
+        doUpdate(SourceAll);
+    }
 }
 
 void Initializer::takeLocks() {

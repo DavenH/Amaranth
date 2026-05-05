@@ -36,13 +36,8 @@ void Updater::update(int code, UpdateType type) {
     if(node != nullptr) {
         int64 millis = Time::currentTimeMillis();
 
-        if (lastUpdateMillis > 0 && millis - lastUpdateMillis < millisThresh) {
-            PendingUpdate newUpdate(code, type);
-
-            if (pendingUpdates.empty() || pendingUpdates.back() != newUpdate) {
-                pendingUpdates.push_back(newUpdate);
-            }
-
+        if (throttleUpdates && lastUpdateMillis > 0 && millis - lastUpdateMillis < millisThresh) {
+            queuePendingUpdate(PendingUpdate(code, type));
             triggerAsyncUpdate();
 
             return;
@@ -65,11 +60,53 @@ void Updater::setThrottling(bool doThrottle, int threshMillis) {
     millisThresh = threshMillis;
 }
 
+void Updater::clearPendingUpdates() {
+    pendingUpdates.clear();
+    cancelPendingUpdate();
+}
+
+void Updater::queuePendingUpdate(const PendingUpdate& update) {
+    pendingUpdates.push_back(update);
+    optimizePendingUpdates();
+}
+
+void Updater::optimizePendingUpdates() {
+    deque<PendingUpdate> optimized;
+
+    for (const auto& update : pendingUpdates) {
+        if (! optimized.empty() && optimized.back() == update) {
+            continue;
+        }
+
+        optimized.push_back(update);
+
+        while (optimized.size() >= 3) {
+            auto restoreIt = optimized.end();
+            --restoreIt;
+            auto updateIt = restoreIt;
+            --updateIt;
+            auto reduceIt = updateIt;
+            --reduceIt;
+
+            if (reduceIt->source != updateIt->source || updateIt->source != restoreIt->source) {
+                break;
+            }
+
+            if (reduceIt->type != ReduceDetail || updateIt->type != Update || restoreIt->type != RestoreDetail) {
+                break;
+            }
+
+            int source = updateIt->source;
+            optimized.erase(reduceIt, optimized.end());
+            optimized.push_back(PendingUpdate(source, Update));
+        }
+    }
+
+    pendingUpdates.swap(optimized);
+}
+
 void Updater::handleAsyncUpdate() {
     if (!pendingUpdates.empty()) {
-        // TODO optimization to collapse these:
-        // - multiple equal UpdateTypes
-        // - idempotent sequences of UpdateType e.g. [reduceDetail, Update, restoreDetail] => [Update]
         PendingUpdate pu = pendingUpdates.front();
         pendingUpdates.pop_front();
 
