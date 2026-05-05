@@ -17,7 +17,7 @@ public:
     void init() override;
     void doPostInitWiring();
     void initSingletons();
-    void resetAll();
+    void resetAll(bool performUpdate = true);
     void setConstants();
     void setDefaultSettings();
     void instantiate();

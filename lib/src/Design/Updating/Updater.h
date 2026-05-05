@@ -110,6 +110,7 @@ public:
 
     void setThrottling(bool doThrottle, int threshMillis);
     void update(int code, UpdateType type = Update);
+    void clearPendingUpdates();
     void handleAsyncUpdate() override;
     void addListener(ChangeListener* listener) { listeners.add(listener); }
     void setStartingNode(int code, Node* node);
@@ -126,4 +127,7 @@ protected:
     map<int, Node*> startingNodes;
     Array<ChangeListener*> listeners;
     deque<PendingUpdate> pendingUpdates;
+
+    void queuePendingUpdate(const PendingUpdate& update);
+    void optimizePendingUpdates();
 };
