@@ -13,6 +13,16 @@
 #include "../../UI/VertexPanels/Spectrum3D.h"
 #include "../../UI/VertexPanels/Waveform3D.h"
 
+namespace {
+    int toVertexDim(int dim) {
+        switch (dim) {
+            case CommonEnums::YellowDim: return Vertex::Time;
+            case CommonEnums::RedDim:    return Vertex::Red;
+            case CommonEnums::BlueDim:   return Vertex::Blue;
+            default:                     return CommonEnums::Null;
+        }
+    }
+}
 
 SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo) :
         CycleBasedVoice(parent, repo)
@@ -371,6 +381,11 @@ void SynthFilterVoice::updateValue(int outputId, int dim, float value) {
     MeshLibrary::GroupLayerPair pair = getObj(ModMatrixPanel).toLayerIndex(outputId);
 
     if (pair.isNotNull()) {
-        parent->meshLib->getProps(pair.groupId, pair.layerIdx)->setDimValue(parent->voiceIndex, dim, value);
+        MeshLibrary::Properties* props = parent->meshLib->getProps(pair.groupId, pair.layerIdx);
+        int vertexDim = toVertexDim(dim);
+
+        if (props != nullptr && vertexDim != CommonEnums::Null) {
+            props->setDimValue(parent->voiceIndex, vertexDim, value);
+        }
     }
 }

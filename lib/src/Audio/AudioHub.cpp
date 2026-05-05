@@ -22,13 +22,17 @@ AudioHub::AudioHub(SingletonRepo* repo) :
 
 AudioHub::~AudioHub() {
   #if !PLUGIN_MODE
-    audioDeviceManager->removeAudioCallback(this);
-    audioDeviceManager->removeMidiInputDeviceCallback(String(), &midiCollector);
+    if (audioDeviceManager != nullptr) {
+        audioDeviceManager->removeAudioCallback(this);
+        audioDeviceManager->removeMidiInputDeviceCallback(String(), &midiCollector);
+    }
   #endif
 
     currentProcessor = nullptr;
     audioSourcePlayer.setSource(nullptr);
-    audioDeviceManager->closeAudioDevice();
+    if (audioDeviceManager != nullptr) {
+        audioDeviceManager->closeAudioDevice();
+    }
 }
 
 AudioDeviceManager& AudioHub::ensureAudioDeviceManager() {

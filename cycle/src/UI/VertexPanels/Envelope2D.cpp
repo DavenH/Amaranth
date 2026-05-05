@@ -739,9 +739,9 @@ bool Envelope2D::readJSON(const var& object) {
         }
 
         MeshLibrary::LayerGroup& group = meshLibrary.getLayerGroup(mapping.groupId);
-        // for (auto& layer : group.layers) {
-        //     meshLibrary.destroyLayer(layer, false);
-        // }
+        for (auto& layer : group.layers) {
+            meshLibrary.destroyLayer(layer, false);
+        }
 
         group.layers.clear();
 
