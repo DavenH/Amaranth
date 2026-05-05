@@ -105,7 +105,7 @@ bool EnvRasterizer::hasReleaseCurve() {
 }
 
 void EnvRasterizer::calcCrossPoints() {
-    morph.time = 0;
+    morph.resetTime();
     MeshRasterizer::calcCrossPoints(envMesh, 0.f);
 
     // do this even if we can't loop right now just in case
