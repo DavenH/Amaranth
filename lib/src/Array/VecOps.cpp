@@ -1,6 +1,9 @@
 #include "VecOps.h"
 #include "ArrayDefs.h"
 #include "ScopedAlloc.h"
+
+#include <cstring>
+
 int globalVecOpsSizeErrorCount = 0;
 
 #define ERROR_COUNTER globalVecOpsSizeErrorCount
@@ -19,10 +22,24 @@ int globalVecOpsSizeErrorCount = 0;
     template<> void VecOps::op(SRCA_SRCB_DST(Complex32)) { CPLX_TRIADIC_SETUP(src1, src2, dst); vDSP_zv##op(CPLX_ARG_PATTERN conjArg); }
 
 // a add b -> c
-// a sub b -> c
 // a mul b -> c
-// a div b -> c
-defineAddSubMulDiv(declareForF32_F64_Cplx)
+declareForF32_F64_Cplx(add, )
+declareForF32_F64_Cplx(mul, mulConjArg)
+
+template<> void VecOps::sub(Buffer<Float32> src1, Buffer<Float32> src2, Buffer<Float32> dst) {
+    BUFFS_DST_CHECK
+    vDSP_vsub(src2.get(), 1, src1.get(), 1, dst.get(), 1, vDSP_Length(dst.size()));
+}
+
+template<> void VecOps::sub(Buffer<Float64> src1, Buffer<Float64> src2, Buffer<Float64> dst) {
+    BUFFS_DST_CHECK
+    vDSP_vsubD(src2.get(), 1, src1.get(), 1, dst.get(), 1, vDSP_Length(dst.size()));
+}
+
+template<> void VecOps::sub(Buffer<Complex32> src1, Buffer<Complex32> src2, Buffer<Complex32> dst) {
+    CPLX_TRIADIC_SETUP(src1, src2, dst);
+    vDSP_zvsub(&srcA, 2, &srcB, 2, &dest, 2, vDSP_Length(dst.size()));
+}
 
 
 template<>
@@ -85,11 +102,13 @@ void VecOps::splitFrac(Buffer<Float64> src, Buffer<Float64> whole, Buffer<Float6
     frac.sub(whole);
 }
 
-#define declareForF32_F64(op, fn) \
-    template<> void VecOps::op(SRC_DST(Float32)) { BUFFS_EQ_CHECK vDSP_##fn(MOVE_ARG_PATTERN); } \
-    template<> void VecOps::op(SRC_DST(Float64)) { BUFFS_EQ_CHECK vDSP_##fn##D(MOVE_ARG_PATTERN); }
+template<> void VecOps::move(Buffer<Float32> src, Buffer<Float32> dst) {
+    std::memmove(dst.get(), src.get(), jmin(src.size(), dst.size()) * sizeof(Float32));
+}
 
-declareForF32_F64(move, mmov)
+template<> void VecOps::move(Buffer<Float64> src, Buffer<Float64> dst) {
+    std::memmove(dst.get(), src.get(), jmin(src.size(), dst.size()) * sizeof(Float64));
+}
 
 template<> void VecOps::roundDown(Buffer<Float32> src, Buffer<Int8s> dst)  { vDSP_vfix8(src, 1, reinterpret_cast<char*>(dst.get()), 1, src.size()); }
 template<> void VecOps::roundDown(Buffer<Float32> src, Buffer<Int8u> dst)  {

@@ -7,6 +7,7 @@
 #define VIMAGE_H
 #include <Accelerate/Accelerate.h>
 #include <algorithm>
+#include <cmath>
 #include <random>
 
 #define ERROR_COUNTER globalBufferMacSizeErrorCount
@@ -194,28 +195,94 @@ template<> Buffer<Float64>& Buffer<Float64>::sort() { EMPTY_CHECK vDSP_vsortD(pt
 template<>
 Buffer<Float32> &Buffer<Float32>::hann() {
     if (sz == 0) return *this;
-    vDSP_hann_window(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    if (sz == 1) {
+        ptr[0] = 1.f;
+        return *this;
+    }
+
+    constexpr Float32 start = 0.f;
+    const Float32 step = Float32(2.0 * M_PI / double(sz - 1));
+    const Float32 scale = -0.5f;
+    const Float32 offset = 0.5f;
+    int size = sz;
+
+    vDSP_vramp(&start, &step, ptr, 1, vDSP_Length(sz));
+    vvcosf(ptr, ptr, &size);
+    vDSP_vsmsa(ptr, 1, &scale, &offset, ptr, 1, vDSP_Length(sz));
     return *this;
 }
 
 template<>
 Buffer<Float64> &Buffer<Float64>::hann() {
     if (sz == 0) return *this;
-    vDSP_hann_windowD(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    if (sz == 1) {
+        ptr[0] = 1.0;
+        return *this;
+    }
+
+    constexpr Float64 start = 0.0;
+    const Float64 step = 2.0 * M_PI / double(sz - 1);
+    const Float64 scale = -0.5;
+    const Float64 offset = 0.5;
+    int size = sz;
+
+    vDSP_vrampD(&start, &step, ptr, 1, vDSP_Length(sz));
+    vvcos(ptr, ptr, &size);
+    vDSP_vsmsaD(ptr, 1, &scale, &offset, ptr, 1, vDSP_Length(sz));
     return *this;
 }
 
 template<>
 Buffer<Float32> &Buffer<Float32>::blackman() {
     if (sz == 0) return *this;
-    vDSP_blkman_window(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    if (sz == 1) {
+        ptr[0] = 1.f;
+        return *this;
+    }
+
+    ScopedAlloc<Float32> cos2Mem(sz);
+    Buffer<Float32> cos2(cos2Mem, sz);
+    constexpr Float32 start = 0.f;
+    constexpr Float32 two = 2.f;
+    const Float32 step = Float32(2.0 * M_PI / double(sz - 1));
+    const Float32 a0 = 0.42f;
+    const Float32 a1 = -0.5f;
+    const Float32 a2 = 0.08f;
+    int size = sz;
+
+    vDSP_vramp(&start, &step, ptr, 1, vDSP_Length(sz));
+    vDSP_vsmul(ptr, 1, &two, cos2.get(), 1, vDSP_Length(sz));
+    vvcosf(ptr, ptr, &size);
+    vvcosf(cos2.get(), cos2.get(), &size);
+    vDSP_vsmsa(ptr, 1, &a1, &a0, ptr, 1, vDSP_Length(sz));
+    vDSP_vsma(cos2.get(), 1, &a2, ptr, 1, ptr, 1, vDSP_Length(sz));
     return *this;
 }
 
 template<>
 Buffer<Float64> &Buffer<Float64>::blackman() {
     if (sz == 0) return *this;
-    vDSP_blkman_windowD(ptr, vDSP_Length(sz), vDSP_HANN_DENORM);
+    if (sz == 1) {
+        ptr[0] = 1.0;
+        return *this;
+    }
+
+    ScopedAlloc<Float64> cos2Mem(sz);
+    Buffer<Float64> cos2(cos2Mem, sz);
+    constexpr Float64 start = 0.0;
+    constexpr Float64 two = 2.0;
+    const Float64 step = 2.0 * M_PI / double(sz - 1);
+    const Float64 a0 = 0.42;
+    const Float64 a1 = -0.5;
+    const Float64 a2 = 0.08;
+    int size = sz;
+
+    vDSP_vrampD(&start, &step, ptr, 1, vDSP_Length(sz));
+    vDSP_vsmulD(ptr, 1, &two, cos2.get(), 1, vDSP_Length(sz));
+    vvcos(ptr, ptr, &size);
+    vvcos(cos2.get(), cos2.get(), &size);
+    vDSP_vsmsaD(ptr, 1, &a1, &a0, ptr, 1, vDSP_Length(sz));
+    vDSP_vsmaD(cos2.get(), 1, &a2, ptr, 1, ptr, 1, vDSP_Length(sz));
     return *this;
 }
 
@@ -246,9 +313,7 @@ Float64 Buffer<Float64>::dot(Buffer buff) const {
 template<>
 Float32 Buffer<Float32>::normL1() const {
     Float32 sum = 0;
-    for (int i = 0; i < sz; ++i) {
-        sum += std::abs(ptr[i]);
-    }
+    vDSP_svemg(ptr, 1, &sum, vDSP_Length(sz));
     return sum;
 }
 
@@ -437,19 +502,35 @@ Buffer<Float64>& Buffer<Float64>::powCRev(Float64 k) {
 
 // statistics
 
-#define defineStddev(T) \
-    template<> T Buffer<T>::stddev() const { \
-        T variance = 0; \
-        T meanVal = mean(); \
-        for (int i = 0; i < sz; ++i) { \
-            variance += (ptr[i] - meanVal) * (ptr[i] - meanVal); \
-        } \
-        variance /= T(sz - 1); \
-        return std::sqrt(variance); \
-    }
+template<>
+Float32 Buffer<Float32>::stddev() const {
+    EMPTY_CHECK_ZERO
+    Float32 variance = 0;
+    Float32 meanVal = mean();
+    Float32 negMean = -meanVal;
+    ScopedAlloc<Float32> diffMem(sz);
+    Buffer<Float32> diff(diffMem, sz);
 
-defineStddev(Float32);
-defineStddev(Float64);
+    vDSP_vsadd(ptr, 1, &negMean, diff.get(), 1, vDSP_Length(sz));
+    vDSP_measqv(diff.get(), 1, &variance, vDSP_Length(sz));
+    variance *= Float32(sz) / Float32(sz - 1);
+    return std::sqrt(variance);
+}
+
+template<>
+Float64 Buffer<Float64>::stddev() const {
+    EMPTY_CHECK_ZERO
+    Float64 variance = 0;
+    Float64 meanVal = mean();
+    Float64 negMean = -meanVal;
+    ScopedAlloc<Float64> diffMem(sz);
+    Buffer<Float64> diff(diffMem, sz);
+
+    vDSP_vsaddD(ptr, 1, &negMean, diff.get(), 1, vDSP_Length(sz));
+    vDSP_measqvD(diff.get(), 1, &variance, vDSP_Length(sz));
+    variance *= Float64(sz) / Float64(sz - 1);
+    return std::sqrt(variance);
+}
 
 // vector ramp
 template<>
@@ -595,18 +676,26 @@ int Buffer<Float32>::downsampleFrom(Buffer<Float32> buff, int factor, int phase)
 
     const float offset = 0;
     const int srcLen = buff.size();
-    const int dstLen = srcLen / factor;
+    phase = phase % factor;
+
+    if (phase < 0) {
+        phase += factor;
+    }
+
+    const int dstLen = phase < srcLen ? jmin(sz, (srcLen + factor - 1 - phase) / factor) : 0;
 
     // Extract samples at the specified phase
     // This is equivalent to taking every nth sample where n = factor
-    vDSP_vsadd(buff.get() + phase,  // Source buffer starting at phase
-               factor,              // Source stride = factor
-               &offset,             // Add zero (no offset needed)
-               ptr,                 // Destination buffer
-               1,                   // Destination stride
-               dstLen);             // Number of elements to process
+    if (dstLen > 0) {
+        vDSP_vsadd(buff.get() + phase,  // Source buffer starting at phase
+                   factor,              // Source stride = factor
+                   &offset,             // Add zero (no offset needed)
+                   ptr,                 // Destination buffer
+                   1,                   // Destination stride
+                   dstLen);             // Number of elements to process
+    }
 
-    return phase;
+    return (factor + phase - srcLen % factor) % factor;
 }
 
 #define implementOperators(T)                                  \

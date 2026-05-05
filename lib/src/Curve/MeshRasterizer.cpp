@@ -609,9 +609,9 @@ void MeshRasterizer::calcWaveform() {
     Buffer<float> dif = diffX.withSize(resSubOne);
     Buffer<float> are = area.withSize(resSubOne);
 
-    VecOps::sub(waveX, waveX + 1, dif);
-    VecOps::sub(waveY, waveY + 1, slp);
-    VecOps::sub(waveY, waveY + 1, are);
+    VecOps::sub(waveX + 1, waveX, dif);
+    VecOps::sub(waveY + 1, waveY, slp);
+    VecOps::sub(waveY + 1, waveY, are);
     dif.threshLT(1e-6f);
     slp.div(dif);
     are.mul(dif).mul(0.5f);
@@ -1297,4 +1297,3 @@ void MeshRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
         phaseOffsetSeeds[i] = rand.nextInt(tableSize);
     }
 }
-

@@ -141,6 +141,21 @@ namespace {
       #ifdef JUCE_DEBUG
         var parsed = JSON::parse(document.getPresetString());
         REQUIRE_FALSE(parsed.isVoid());
+
+        auto* root = parsed.getDynamicObject();
+        REQUIRE(root != nullptr);
+
+        var preset = root->getProperty("preset");
+        auto* presetObject = preset.getDynamicObject();
+        REQUIRE(presetObject != nullptr);
+
+        var details = presetObject->getProperty("details");
+        auto* detailsObject = details.getDynamicObject();
+        REQUIRE(detailsObject != nullptr);
+
+        detailsObject->setProperty("modifiedMillis", 0);
+        presetObject->removeProperty("modMatrix");
+
         return JSON::toString(parsed, true);
       #else
         ignoreUnused(document);

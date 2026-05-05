@@ -885,6 +885,12 @@ void CycleBasedVoice::updateValue(int outputId, int dim, float value) {
     MeshLibrary::GroupLayerPair groupPair = getObj(ModMatrixPanel).toLayerIndex(outputId);
 
     if (groupPair.isNotNull()) {
+        if (groupPair.groupId != LayerGroups::GroupVolume
+            && groupPair.groupId != LayerGroups::GroupPitch
+            && groupPair.groupId != LayerGroups::GroupScratch) {
+            return;
+        }
+
         if (meshLib.getEnvProps(groupPair) == nullptr) {
             auto message = "CycleBasedVoice::updateValue(): Group "
                     + std::to_string(groupPair.groupId) + ", "
@@ -901,8 +907,9 @@ void CycleBasedVoice::updateValue(int outputId, int dim, float value) {
                                         ? parent->pitchGroup
                                         : parent->scratchGroup;
 
-        if (group.envGroup.empty())
+        if (group.envGroup.empty()) {
             return;
+        }
 
         int realIndex = CommonEnums::Null;
         for (int i = 0; i < group.size(); ++i) {
