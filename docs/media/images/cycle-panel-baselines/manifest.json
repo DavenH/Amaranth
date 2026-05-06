@@ -1,0 +1,36 @@
+{
+  "preset": "AfricanHorn",
+  "capturedAt": "2026-05-06T15:06:55Z",
+  "osCroppedScreenshots": [
+    {
+      "area": "AreaWshpEditor",
+      "path": "waveform2d-africanhorn.png",
+      "notes": "Waveform2D OS crop using automation-reported screen bounds."
+    },
+    {
+      "area": "AreaSpectrum",
+      "path": "spectrum2d-africanhorn.png",
+      "notes": "Spectrum2D OS crop using automation-reported screen bounds."
+    },
+    {
+      "area": "AreaWfrmWaveform3D",
+      "path": "waveform3d-africanhorn.png",
+      "notes": "Waveform3D OS crop using automation-reported screen bounds."
+    },
+    {
+      "area": "AreaSpectrogram",
+      "path": "spectrum3d-africanhorn.png",
+      "notes": "Spectrum3D OS crop using automation-reported screen bounds."
+    },
+    {
+      "area": "AreaGuideCurves",
+      "path": "guidecurves-africanhorn.png",
+      "notes": "Guide curve panel OS crop using automation-reported screen bounds."
+    },
+    {
+      "area": "AreaWaveshaper",
+      "path": "waveshaper-fx-africanhorn.png",
+      "notes": "Waveshaper FX panel OS crop using automation-reported screen bounds."
+    }
+  ]
+}

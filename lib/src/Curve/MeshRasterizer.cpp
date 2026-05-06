@@ -8,6 +8,7 @@
 #include "VertCube.h"
 #include "Rasterization/Policies/DepthProjectionPolicy.h"
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
+#include "Rasterization/Policies/PaddingPolicy.h"
 #include "Rasterization/Policies/PointScalingPolicy.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
@@ -711,93 +712,20 @@ void MeshRasterizer::reset() {
 }
 
 void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves) {
-    int size = intercepts.size();
-    int end = size - 1;
+    int end = intercepts.size() - 1;
 
-    if(end < 1) {
+    if (end < 1) {
         return;
     }
 
-    frontIcpts.clear();
-    backIcpts.clear();
+    Rasterization::PaddingPolicyContext context;
+    context.interceptPadding = interceptPadding;
 
-    float frontier      = 0.f;
-    float offset        = -1.f;
-    int idx             = end;
-    int remainingIters  = 2;
-
-    frontIcpts.emplace_back(intercepts[1]);
-    frontIcpts.emplace_back(intercepts[0]);
-
-    for (;;) {
-        if(remainingIters <= 0) {
-            break;
-        }
-
-        if(frontier < -interceptPadding) {
-            --remainingIters;
-        }
-
-        frontier            = intercepts[idx].x + offset;
-        Intercept padIcpt   = intercepts[idx];
-        padIcpt.x           += offset;
-
-        frontIcpts.emplace_back(padIcpt);
-        --idx;
-
-        if (idx < 0) {
-            idx = end;
-            offset -= 1.f;
-        }
-    }
-
-    remainingIters = 2;
-    idx            = 0;
-    frontier       = 1.f;
-    offset         = 1;
-
-    backIcpts.emplace_back(intercepts[end - 1]);
-    backIcpts.emplace_back(intercepts[end]);
-
-    for(;;) {
-        if(remainingIters <= 0) {
-            break;
-        }
-
-        if(frontier > 1.f + interceptPadding) {
-            --remainingIters;
-        }
-
-        frontier           = intercepts[idx].x + offset;
-        Intercept padIcpt  = intercepts[idx];
-        padIcpt.x          += offset;
-
-        backIcpts.emplace_back(padIcpt);
-        ++idx;
-
-        if (idx > end) {
-            idx = 0;
-            offset += 1.f;
-        }
-    }
-
-    paddingSize = frontIcpts.size() - 3;
-
-    curves.clear();
-    curves.reserve(intercepts.size() + frontIcpts.size() - 2 + backIcpts.size() - 2);
-
-    for (int i = 0; i < (int) frontIcpts.size() - 2; ++i) {
-        int idx = frontIcpts.size() - 1 - i;
-        curves.emplace_back(frontIcpts[idx], frontIcpts[idx - 1], frontIcpts[idx - 2]);
-    }
-
-    for (int i = 0; i < (int) intercepts.size() - 2; ++i) {
-        curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
-    }
-
-    for (int i = 0; i < (int) backIcpts.size() - 2; ++i) {
-        curves.emplace_back(backIcpts[i], backIcpts[i + 1], backIcpts[i + 2]);
-    }
+    paddingSize = Rasterization::CyclicPaddingPolicy(context).build(
+            intercepts,
+            curves,
+            frontIcpts,
+            backIcpts);
 }
 
 void MeshRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curves) {
@@ -811,40 +739,12 @@ void MeshRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curv
         return;
     }
 
-    float maxX = -1, minX = 1;
-    for (auto& icpt : icpts) {
-        float x = icpt.x;
-        maxX = x > maxX ? x : maxX;
-        minX = x < minX ? x : minX;
-    }
+    Rasterization::PaddingPolicyContext context;
+    context.minimumX = xMinimum;
+    context.maximumX = xMaximum;
+    context.boundsIntercepts = &icpts;
 
-    minX = jmin(xMinimum - 0.25f, minX);
-    maxX = jmax(xMaximum + 0.25f, maxX);
-
-    paddingSize = 2;
-
-    Intercept front1(minX - 0.08f,     intercepts[0].y);
-    Intercept front2(minX - 0.16f,     intercepts[0].y);
-    Intercept front3(minX - 0.24f,     intercepts[0].y);
-
-    Intercept back1(maxX + 0.08f,     intercepts[end].y);
-    Intercept back2(maxX + 0.16f,     intercepts[end].y);
-    Intercept back3(maxX + 0.24f,     intercepts[end].y);
-
-    curves.clear();
-    curves.reserve(intercepts.size() + 6);
-    curves.emplace_back(front3, front2, front1);
-    curves.emplace_back(front2, front1, intercepts[0]);
-    curves.emplace_back(front1, intercepts[0], intercepts[1]);
-
-    jassert(intercepts[0].y == intercepts[0].y);
-    for(int i = 0; i < (int) intercepts.size() - 2; ++i) {
-        curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
-    }
-
-    curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
-    curves.emplace_back(intercepts[end], back1, back2);
-    curves.emplace_back(back1, back2, back3);
+    paddingSize = Rasterization::NonCyclicPaddingPolicy(context).build(intercepts, curves);
 }
 
 void MeshRasterizer::validateCurves() {

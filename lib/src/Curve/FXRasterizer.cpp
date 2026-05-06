@@ -1,5 +1,6 @@
 #include <algorithm>
 #include "FXRasterizer.h"
+#include "Rasterization/Policies/PaddingPolicy.h"
 #include "Rasterization/Policies/PointScalingPolicy.h"
 
 namespace {
@@ -116,34 +117,7 @@ void FXRasterizer::calcCrossPoints() {
 }
 
 void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
-    paddingSize = 1;
-    int end = icpts.size() - 1;
-
-    Intercept front1(-1.0f, icpts[0].y);
-    Intercept front2(-0.5f, icpts[0].y);
-
-    Intercept back1(1.5f, icpts[end].y);
-    Intercept back2(2.0f, icpts[end].y);
-
-    for(auto& curve : curves) {
-        curve.destruct();
-    }
-
-    curves.clear();
-    curves.reserve(icpts.size() + 2);
-    curves.emplace_back(front1, front2, icpts[0]);
-    curves.emplace_back(front2, icpts[0], icpts[1]);
-
-    for(int i = 0; i < (int) icpts.size() - 2; ++i) {
-        curves.emplace_back(icpts[i], icpts[i + 1], icpts[i + 2]);
-    }
-
-    curves.emplace_back(icpts[end - 1], icpts[end], back1);
-    curves.emplace_back(icpts[end], back1, back2);
-
-    for(auto& curve : curves) {
-        curve.construct();
-    }
+    paddingSize = Rasterization::FxPaddingPolicy().build(icpts, curves);
 }
 
 void FXRasterizer::setMesh(Mesh* newMesh) {
