@@ -1,29 +1,30 @@
 #pragma once
 
-#include <algorithm>
 #include "Intercept.h"
 #include "Curve.h"
 #include "MeshRasterizer.h"
+#include "Rasterization/Sources/PointListSource.h"
 
 class Rasterizer2D: public MeshRasterizer {
 public:
     explicit Rasterizer2D(vector<Intercept>& verts, bool cyclic = false)
-            : verts(verts), cyclic(cyclic) {
+            : pointSource(verts), cyclic(cyclic) {
         unsampleable = false;
     }
 
     void calcCrossPoints() override {
-        if (verts.empty()) {
+        if (pointSource.empty()) {
             cleanUp();
             return;
         }
 
-        std::sort(verts.begin(), verts.end());
+        pointSource.sortByX();
+        vector<Intercept>& sourceIntercepts = pointSource.intercepts();
 
         if(cyclic) {
-            padIcptsWrapped(verts, curves);
+            padIcptsWrapped(sourceIntercepts, curves);
         } else {
-            padIcpts(verts, curves);
+            padIcpts(sourceIntercepts, curves);
         }
 
         float base = 0.1f / float(Curve::resolution);
@@ -144,8 +145,8 @@ public:
     static int getPaddingSize()         { return 2;             }
 
 protected:
+    Rasterization::PointListSource pointSource;
     bool cyclic;
-    vector<Intercept>& verts;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Rasterizer2D)
 };
