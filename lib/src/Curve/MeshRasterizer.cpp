@@ -10,8 +10,7 @@
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
 #include "Rasterization/Policies/PointScalingPolicy.h"
-#include "Rasterization/Policies/CurveResolutionPolicy.h"
-#include "Rasterization/Builders/WaveformBuilder.h"
+#include "Rasterization/Facades/MeshRasterizerFacade.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
 #include "../Array/ScopedAlloc.h"
@@ -48,7 +47,8 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    scalingType         (Unipolar)
     ,    needsResorting      (false)
     ,    interpolateCurves   (false)
-    ,    batchMode           (false) {
+    ,    batchMode           (false)
+    ,    facade              (new Rasterization::MeshRasterizerFacade) {
     initialise();
 }
 
@@ -335,7 +335,7 @@ void MeshRasterizer::updateCurves() {
     resolutionContext.integralSampling = integralSampling;
     resolutionContext.interpolateCurves = interpolateCurves;
     resolutionContext.paddingSize = paddingSize;
-    Rasterization::CurveResolutionPolicy().apply(curves, resolutionContext);
+    facade->applyCurveResolution(curves, resolutionContext);
 
     adjustDeformingSharpness();
 
@@ -362,8 +362,7 @@ void MeshRasterizer::calcWaveform() {
     context.vertOffsetSeeds = vertOffsetSeeds;
     context.transferTable = transferTable;
 
-    Rasterization::WaveformBuilder builder;
-    int totalRes = builder.prepare(curves, context);
+    int totalRes = facade->prepareWaveform(curves, context);
     updateBuffers(totalRes);
 
     context.waveX = waveX;
@@ -373,7 +372,7 @@ void MeshRasterizer::calcWaveform() {
     context.area = area;
     context.zeroIndex = &zeroIndex;
     context.oneIndex = &oneIndex;
-    builder.bake(curves, context);
+    facade->bakeWaveform(curves, context);
 
     unsampleable = false;
 }
@@ -724,7 +723,7 @@ void MeshRasterizer::cleanUp() {
 }
 
 void MeshRasterizer::setResolutionIndices(float base) {
-    Rasterization::CurveResolutionPolicy::applyResolutionIndices(curves, base, getPaddingSize());
+    facade->applyResolutionIndices(curves, base, getPaddingSize());
 }
 
 
@@ -734,6 +733,9 @@ void MeshRasterizer::preCleanup() {
 
 MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
 //    jassertfalse;
+    if (facade == nullptr) {
+        facade.reset(new Rasterization::MeshRasterizerFacade);
+    }
 
     this->xMinimum               = copy.xMinimum;
     this->xMaximum               = copy.xMaximum;
@@ -763,7 +765,8 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     return *this;
 }
 
-MeshRasterizer::MeshRasterizer(const MeshRasterizer& copy) {
+MeshRasterizer::MeshRasterizer(const MeshRasterizer& copy) :
+        facade(new Rasterization::MeshRasterizerFacade) {
 //    jassertfalse;
 
     operator=(copy);
@@ -879,31 +882,16 @@ void MeshRasterizer::updateBuffers(int size) {
 }
 
 void MeshRasterizer::makeCopy() {
-//    lockTrace(&rastArrays.lock);
-    ScopedLock sl(rastArrays.lock);
+    Rasterization::RasterizerSnapshotSource source;
+    source.intercepts = &icpts;
+    source.colorPoints = &colorPoints;
+    source.curves = &curves;
+    source.waveX = waveX;
+    source.waveY = waveY;
+    source.zeroIndex = zeroIndex;
+    source.oneIndex = oneIndex;
 
-    int size = waveX.size();
-
-    rastArrays.intercepts     = icpts;
-    rastArrays.colorPoints    = colorPoints;
-    rastArrays.curves         = curves;
-
-    if (size > 0) {
-        rastArrays.buffer.ensureSize(size * 2);
-
-        rastArrays.waveX      = rastArrays.buffer.place(size);
-        rastArrays.waveY      = rastArrays.buffer.place(size);
-        rastArrays.oneIndex  = oneIndex;
-        rastArrays.zeroIndex = zeroIndex;
-
-        waveX.copyTo(rastArrays.waveX);
-        waveY.copyTo(rastArrays.waveY);
-    } else {
-        rastArrays.waveX.nullify();
-        rastArrays.waveY.nullify();
-        rastArrays.oneIndex = 0;
-        rastArrays.zeroIndex = 0;
-    }
+    facade->publishSnapshot(rastArrays, source);
 }
 
 void MeshRasterizer::restoreStateFrom(RenderState& src) {

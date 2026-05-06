@@ -10,13 +10,12 @@
 
 #include "VoiceMeshRasterizer.h"
 #include "CycleState.h"
-#include "Rasterization/Policies/VoiceChainedPaddingPolicy.h"
-#include "Rasterization/Policies/VoicePointPositionPolicy.h"
 #include "../Util/CycleEnums.h"
 
 
 VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
-		SingletonAccessor(repo, "VoiceMeshRasterizer"), state(nullptr) {
+		SingletonAccessor(repo, "VoiceMeshRasterizer")
+    ,   state(nullptr) {
 	unsampleable = true;
 	overrideDim = true;
 	scalingType = Bipolar;
@@ -50,7 +49,7 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
         pointContext.voiceTime = voiceTime;
         pointContext.oscPhase = oscPhase;
 
-        auto point = Cycle::Rasterization::VoicePointPositionPolicy().resolve(
+        auto point = Cycle::Rasterization::VoiceRasterizerFacade().resolvePoint(
                 pointContext,
                 reduct.pointOverlaps,
                 a,
@@ -93,7 +92,7 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 
     // the first call is just padding for curves
     if (state->callCount > 0) {
-        paddingSize = Cycle::Rasterization::VoiceChainedPaddingPolicy().build(
+        paddingSize = Cycle::Rasterization::VoiceRasterizerFacade().buildChainedPadding(
                 icpts,
                 state->backIcpts,
                 *state,

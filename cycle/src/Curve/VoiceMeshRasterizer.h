@@ -2,6 +2,7 @@
 
 #include <Curve/MeshRasterizer.h>
 #include <Obj/Ref.h>
+#include "Rasterization/Facades/VoiceRasterizerFacade.h"
 
 class SingletonAccessor;
 class CycleState;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 #include "Curve.h"
 #include "Mesh.h"
@@ -17,6 +18,10 @@ using std::vector;
 
 class Interactor;
 class GuideCurveProvider;
+
+namespace Rasterization {
+    class MeshRasterizerFacade;
+}
 
 typedef vector<Intercept>::iterator IcptIter;
 typedef vector<Intercept>::const_iterator ConstIcptIter;
@@ -273,6 +278,7 @@ protected:
     MicroTimer timer;
     MorphPosition morph;
     RasterizerData rastArrays;
+    std::unique_ptr<Rasterization::MeshRasterizerFacade> facade;
 
     vector<Intercept> frontIcpts, backIcpts, icpts;
     vector<ColorPoint> colorPoints;

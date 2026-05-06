@@ -4,10 +4,23 @@
 
 #include "EnvelopeMesh.h"
 #include "GuideCurveProvider.h"
+#include "Rasterization/Facades/EnvRasterizerFacade.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
 
 namespace {
+    Rasterization::EnvelopePaddingContext::State toEnvelopePaddingState(int state) {
+        if (state == EnvRasterizer::Looping) {
+            return Rasterization::EnvelopePaddingContext::Looping;
+        }
+
+        if (state == EnvRasterizer::Releasing) {
+            return Rasterization::EnvelopePaddingContext::Releasing;
+        }
+
+        return Rasterization::EnvelopePaddingContext::NormalState;
+    }
+
     String describeEnvelopeMesh(const EnvelopeMesh* mesh) {
         if (mesh == nullptr) {
             return "mesh=null";
@@ -155,157 +168,36 @@ void EnvRasterizer::processIntercepts(vector<Intercept>& intercepts) {
 }
 
 void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curve>& curves) {
-    int end = (int) intercepts.size() - 1;
+    Rasterization::EnvelopePaddingContext context;
+    context.state             = toEnvelopePaddingState(state);
+    context.loopMinSizeIcpts  = loopMinSizeIcpts;
+    context.loopIndex         = loopIndex;
+    context.sustainIndex      = sustainIndex;
+    context.loopLength        = getLoopLength();
+    context.canLoop           = canLoop();
+    context.hasReleaseCurve   = hasReleaseCurve();
 
-    if (end <= 0) {
+    if (!Rasterization::EnvRasterizerFacade().buildRenderPadding(intercepts, curves, context)) {
         waveX.nullify();
         waveY.nullify();
         unsampleable = true;
-
-        return;
-    }
-
-    Intercept loopBackIcptA, loopBackIcptB;
-
-    int numLoopPoints = sustainIndex - loopIndex;
-    bool loopable = state != Releasing && canLoop() && numLoopPoints > 1;
-    float loopLength = loopable ? getLoopLength() : 0;
-
-    if (loopable) {
-        jassert(loopIndex + loopMinSizeIcpts <= sustainIndex);
-
-        loopBackIcptA = Intercept(intercepts[loopIndex + 1]);
-        loopBackIcptA.x += loopLength;
-
-        loopBackIcptB = Intercept(intercepts[loopIndex + 2]);
-        loopBackIcptB.x += loopLength;
-    }
-
-    if (state == NormalState || state == Releasing) {
-        Intercept front1(-0.05f, intercepts[0].y);
-        Intercept front2(-0.075f, intercepts[0].y);
-        Intercept front3(-0.1f, intercepts[0].y);
-        Intercept back1, back2, back3;
-
-        const Intercept& endIcpt = intercepts[end];
-
-        if (state == NormalState) {
-            if (loopable) {
-                back1 = loopBackIcptA;
-                back2 = numLoopPoints > 1 ? loopBackIcptB : loopBackIcptA;
-            } else {
-                back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y);
-                back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y);
-                back3 = Intercept(endIcpt.x + 2.5f, endIcpt.y);
-            }
-        } else {
-            back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y);
-            back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y);
-            back3 = Intercept(endIcpt.x + 0.003f, endIcpt.y);
-        }
-
-        curves.clear();
-        curves.reserve(icpts.size() + 6);
-
-        curves.emplace_back(front3, front2, front1);
-        curves.emplace_back(front2, front1, intercepts[0]);
-        curves.emplace_back(front1, intercepts[0], intercepts[1]);
-
-        for (int i = 0; i < (int) icpts.size() - 2; ++i) {
-            curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
-        }
-
-        curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
-        curves.emplace_back(intercepts[end], back1, back2);
-
-        if (state == Releasing || !loopable)
-            curves.emplace_back(back1, back2, back3);
-    } else if (state == Looping && loopable) {
-        vector<Intercept> loopIcpts;
-
-        jassert(envMesh && ! envMesh->loopCubes.empty());
-        jassert(loopIndex >= 0);
-        jassert(loopLength > 0);
-        jassert(sustainIndex >= 2);
-
-        loopIcpts.emplace_back(intercepts[sustainIndex - 2]);
-        loopIcpts.emplace_back(intercepts[sustainIndex - 1]);
-
-        loopIcpts[0].x -= loopLength;
-        loopIcpts[1].x -= loopLength;
-
-        for (int i = loopIndex; i <= sustainIndex; ++i) {
-            loopIcpts.emplace_back(intercepts[i]);
-        }
-
-        loopIcpts.emplace_back(loopBackIcptA);
-        loopIcpts.emplace_back(loopBackIcptB);
-
-        curves.clear();
-        curves.reserve(loopIcpts.size());
-
-        for (int i = 0; i < (int) loopIcpts.size() - 2; ++i) {
-            curves.emplace_back(loopIcpts[i], loopIcpts[i + 1], loopIcpts[i + 2]);
-        }
-    } else {
-        MeshRasterizer::padIcpts(intercepts, curves);
     }
 }
 
 void EnvRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
-    int end = (int) icpts.size() - 1;
+    Rasterization::EnvelopePaddingContext context;
+    context.state             = toEnvelopePaddingState(state);
+    context.loopMinSizeIcpts  = loopMinSizeIcpts;
+    context.loopIndex         = loopIndex;
+    context.sustainIndex      = sustainIndex;
+    context.loopLength        = getLoopLength();
+    context.canLoop           = canLoop();
+    context.hasReleaseCurve   = hasReleaseCurve();
 
-    if (end <= 0) {
+    if (!Rasterization::EnvRasterizerFacade().buildDisplayPadding(icpts, curves, context)) {
         waveX.nullify();
         waveY.nullify();
         unsampleable = true;
-        return;
-    }
-
-    Intercept& firstIcpt = icpts[0];
-
-    Intercept front1(-0.05f, firstIcpt.y);
-    Intercept front2(-0.075f, firstIcpt.y);
-    Intercept front3(-0.1f, firstIcpt.y);
-    Intercept back1, back2, back3;
-
-    const Intercept& endIcpt = icpts[end];
-
-    bool loopable = canLoop();
-    bool haveRelease = hasReleaseCurve();
-
-    int numLoopPoints = sustainIndex - loopIndex;
-    if (loopable && !haveRelease && numLoopPoints >= 2) {
-        back1 = Intercept(icpts[loopIndex + 1]);
-        back2 = Intercept(icpts[loopIndex + 2]);
-
-        float loopLength = getLoopLength();
-        back1.x += loopLength;
-        back2.x += loopLength;
-    } else {
-        back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y, 0, 0);
-        back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y, 0, 0);
-    }
-
-    // further padding to ensure the endIcpt.x position is sampleable
-    back3 = Intercept(endIcpt.x + 0.003f, endIcpt.y, 0, 0);
-
-    curves.clear();
-    curves.reserve(icpts.size() + 5);
-
-    curves.emplace_back(front3, front2, front1);
-    curves.emplace_back(front2, front1, icpts[0]);
-    curves.emplace_back(front1, icpts[0], icpts[1]);
-
-    for (int i = 0; i < (int) icpts.size() - 2; ++i) {
-        curves.emplace_back(icpts[i], icpts[i + 1], icpts[i + 2]);
-    }
-
-    curves.emplace_back(icpts[end - 1], icpts[end], back1);
-    curves.emplace_back(icpts[end], back1, back2);
-
-    if (haveRelease || !loopable) {
-        curves.emplace_back(back1, back2, back3);
     }
 }
 
@@ -708,43 +600,9 @@ bool EnvRasterizer::simulateRender(
 }
 
 void EnvRasterizer::evaluateLoopSustainIndices() {
-    //    progressMark
-
-    int end = (int) icpts.size() - 1;
-
-    loopIndex = -1;
-    sustainIndex = -1;
-
-    if (icpts.empty()) {
-        return;
-    }
-
-    set<VertCube*>& loopLines = envMesh->loopCubes;
-    set<VertCube*>& sustLines = envMesh->sustainCubes;
-
-    for (int i = 0; i < (int) icpts.size(); ++i) {
-        VertCube* cube = icpts[i].cube;
-
-        if (cube == nullptr) {
-            continue;
-        }
-
-        if (loopLines.find(cube) != loopLines.end())
-            loopIndex = i;
-
-        if (sustLines.find(cube) != sustLines.end()) {
-            sustainIndex = i;
-        }
-    }
-
-    if (sustainIndex < 0) {
-        sustainIndex = end;
-    }
-
-    if (loopIndex >= 0 && sustainIndex >= 0 && sustainIndex - loopIndex < loopMinSizeIcpts) {
-        // need at least 1 icpt padding to the right to loop
-        loopIndex = -1;
-    }
+    auto markers = Rasterization::EnvRasterizerFacade().evaluateMarkers(icpts, envMesh, loopMinSizeIcpts);
+    loopIndex = markers.loopIndex;
+    sustainIndex = markers.sustainIndex;
 }
 
 void EnvRasterizer::changedToRelease() {

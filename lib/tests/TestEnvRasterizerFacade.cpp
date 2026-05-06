@@ -1,0 +1,92 @@
+#include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
+
+#include "../src/Curve/EnvelopeMesh.h"
+#include "../src/Curve/Rasterization/Facades/EnvRasterizerFacade.h"
+
+namespace {
+    std::vector<Intercept> makeIntercepts() {
+        return {
+            Intercept(0.10f, 0.20f, nullptr, 0.30f),
+            Intercept(0.35f, 0.75f, nullptr, 0.40f),
+            Intercept(0.70f, 0.40f, nullptr, 0.80f),
+            Intercept(0.92f, 0.62f, nullptr, 0.50f),
+        };
+    }
+
+    Rasterization::EnvelopePaddingContext makeLoopContext() {
+        Rasterization::EnvelopePaddingContext context;
+        context.loopIndex = 1;
+        context.sustainIndex = 3;
+        context.loopLength = 0.57f;
+        context.canLoop = true;
+        context.hasReleaseCurve = false;
+
+        return context;
+    }
+}
+
+TEST_CASE("EnvRasterizerFacade evaluates envelope marker indices", "[rasterization][env][facade]") {
+    EnvelopeMesh mesh("EnvelopeMarkerMesh");
+    VertCube loopCube;
+    VertCube sustainCube;
+
+    auto intercepts = makeIntercepts();
+    intercepts[1].cube = &loopCube;
+    intercepts[3].cube = &sustainCube;
+
+    mesh.loopCubes.insert(&loopCube);
+    mesh.sustainCubes.insert(&sustainCube);
+
+    auto result = Rasterization::EnvRasterizerFacade().evaluateMarkers(intercepts, &mesh, 1);
+
+    REQUIRE(result.loopIndex == 1);
+    REQUIRE(result.sustainIndex == 3);
+}
+
+TEST_CASE("EnvRasterizerFacade falls back to last envelope intercept when sustain is unmarked", "[rasterization][env][facade]") {
+    EnvelopeMesh mesh("EnvelopeMarkerMesh");
+    auto intercepts = makeIntercepts();
+
+    auto result = Rasterization::EnvRasterizerFacade().evaluateMarkers(intercepts, &mesh, 1);
+
+    REQUIRE(result.loopIndex == -1);
+    REQUIRE(result.sustainIndex == 3);
+}
+
+TEST_CASE("EnvRasterizerFacade builds display padding for looping envelopes", "[rasterization][env][facade]") {
+    auto intercepts = makeIntercepts();
+    std::vector<Curve> curves;
+
+    bool sampleable = Rasterization::EnvRasterizerFacade().buildDisplayPadding(
+            intercepts,
+            curves,
+            makeLoopContext());
+
+    REQUIRE(sampleable);
+    REQUIRE(curves.size() == 7);
+    REQUIRE(curves.front().a.x == Catch::Approx(-0.10f));
+    REQUIRE(curves.front().c.x == Catch::Approx(-0.05f));
+    REQUIRE(curves.back().b.x == Catch::Approx(intercepts[2].x + 0.57f));
+    REQUIRE(curves.back().c.x == Catch::Approx(intercepts[3].x + 0.57f));
+}
+
+TEST_CASE("EnvRasterizerFacade builds release render padding with terminal tail", "[rasterization][env][facade]") {
+    auto intercepts = makeIntercepts();
+    std::vector<Curve> curves;
+
+    auto context = makeLoopContext();
+    context.state = Rasterization::EnvelopePaddingContext::Releasing;
+    context.hasReleaseCurve = true;
+
+    bool sampleable = Rasterization::EnvRasterizerFacade().buildRenderPadding(
+            intercepts,
+            curves,
+            context);
+
+    REQUIRE(sampleable);
+    REQUIRE(curves.size() == 8);
+    REQUIRE(curves.back().a.x == Catch::Approx(intercepts.back().x + 0.001f));
+    REQUIRE(curves.back().b.x == Catch::Approx(intercepts.back().x + 0.002f));
+    REQUIRE(curves.back().c.x == Catch::Approx(intercepts.back().x + 0.003f));
+}

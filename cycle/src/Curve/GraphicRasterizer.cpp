@@ -11,37 +11,35 @@ GraphicRasterizer::GraphicRasterizer(
             SingletonRepo* repo
         ,   Interactor* interactor
         ,   const String& name
-        ,   int layerGroup
-        ,   bool isCyclic
-        ,   float margin) : SingletonAccessor(repo, name)
-    ,   MeshRasterizer(name)
-    ,   layerGroup(layerGroup)
-    ,   interactor(interactor) {
+	        ,   int layerGroup
+	        ,   bool isCyclic
+	        ,   float margin) : SingletonAccessor(repo, name)
+	    ,   MeshRasterizer(name)
+	    ,   layerGroup(layerGroup)
+	    ,   interactor(interactor) {
     cyclic = isCyclic;
     addListener(this);
     setLimits(-margin, 1 + margin);
 }
 
 void GraphicRasterizer::pullModPositionAndAdjust() {
-    morph = getObj(MorphPanel).getMorphPosition();
+    Cycle::Rasterization::GraphicMorphPositionPolicy::Context context;
+    context.panelMorph = getObj(MorphPanel).getMorphPosition();
+    context.layerGroup = layerGroup;
+    context.currentMorphAxis = getSetting(CurrentMorphAxis);
 
     MeshLibrary::Properties* props = getObj(MeshLibrary).getCurrentProps(layerGroup);
 
     if (props == nullptr || props->scratchChan == CommonEnums::Null) {
+        morph = Cycle::Rasterization::GraphicRasterizerFacade().resolveMorphPosition(context);
         return;
     }
 
-    if (layerGroup == LayerGroups::GroupTime && getSetting(CurrentMorphAxis) != Vertex::Time) {
-        return;
-    }
-
-    if (layerGroup == LayerGroups::GroupTime ||
-        layerGroup == LayerGroups::GroupSpect ||
-        layerGroup == LayerGroups::GroupPhase) {
-        morph.time = getObj(VisualDsp).getScratchPosition(props->scratchChan);
-    }
+    context.scratchChannel = props->scratchChan;
+    context.scratchPosition = getObj(VisualDsp).getScratchPosition(props->scratchChan);
+    morph = Cycle::Rasterization::GraphicRasterizerFacade().resolveMorphPosition(context);
 }
 
 int GraphicRasterizer::getPrimaryViewDimension() {
-    return getSetting(CurrentMorphAxis);
+    return Cycle::Rasterization::GraphicRasterizerFacade().primaryViewDimension(getSetting(CurrentMorphAxis));
 }
