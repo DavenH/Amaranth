@@ -6,6 +6,7 @@
 #include "MeshRasterizer.h"
 
 #include "VertCube.h"
+#include "Rasterization/Policies/DepthProjectionPolicy.h"
 #include "Rasterization/Policies/PointScalingPolicy.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
@@ -96,11 +97,6 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
     float independent = zDim == Vertex::Time ? morph.time :
                         zDim == Vertex::Red ?  morph.red  : morph.blue;
 
-    float poleA[3];
-    float poleB[3];
-    int indDims[3] = { Vertex::Time, Vertex::Red, Vertex::Blue };
-
-    Vertex middle;
     Intercept midIcpt;
 
     // must be set before applyGuides call
@@ -161,59 +157,26 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
             applyGuideCurves(intercept, morph);
             icpts.emplace_back(intercept);
 
-            int currentlyVisibleRYBDim = getPrimaryViewDimension();
             if (calcDepthDims) {
-                midIcpt.cube = cube;
-                midIcpt.adjustedX = midIcpt.x;
-                applyGuideCurves(midIcpt, morph);
+                Rasterization::DepthProjectionPolicy::Context context;
+                context.enabled          = calcDepthDims;
+                context.cyclic           = cyclic;
+                context.visibleDimension = getPrimaryViewDimension();
+                context.sliceDimension   = zDim;
+                context.independent      = independent;
+                context.oscPhase         = oscPhase;
+                context.dims             = dims;
+                context.morph            = morph;
 
-                for (int i = 0; i < dims.numHidden(); ++i) {
-                    Vertex2 midCopy(midIcpt.adjustedX, midIcpt.y);
-
-                    int hiddenDim = dims.hidden[i];
-
-                    for (int j = 0; j < numElementsInArray(indDims); ++j) {
-                        poleA[j] = hiddenDim == indDims[j] ? 0.f : morph[indDims[j]];
-                        poleB[j] = hiddenDim == indDims[j] ? 1.f : morph[indDims[j]];
-                    }
-
-                    MorphPosition posA(poleA[0], poleA[1], poleA[2]);
-                    cube->getFinalIntercept(reduct, posA);
-                    Intercept beforeIcpt(reduct.v.values[dims.x], reduct.v.values[dims.y], cube);
-                    beforeIcpt.adjustedX = beforeIcpt.x;
-                    applyGuideCurves(beforeIcpt, posA, hiddenDim == currentlyVisibleRYBDim);
-
-                    MorphPosition posB(poleB[0], poleB[1], poleB[2]);
-                    cube->getFinalIntercept(reduct, posB);
-                    Intercept afterIcpt(reduct.v.values[dims.x], reduct.v.values[dims.y], cube);
-                    afterIcpt.adjustedX = afterIcpt.x;
-                    applyGuideCurves(afterIcpt, posB, hiddenDim == currentlyVisibleRYBDim);
-
-                    Vertex2 before(beforeIcpt.adjustedX, beforeIcpt.y);
-                    Vertex2 after(afterIcpt.adjustedX, afterIcpt.y);
-
-                    if (cyclic) {
-                        if ((before.x > 1) != (after.x > 1)) {
-                            Vertex2 before2 = before;
-                            Vertex2 after2    = after;
-                            Vertex2 mid2     = midCopy;
-
-                            after2.x  -= 1.f;
-                            before2.x -= 1.f;
-                            mid2.x       -= 1.f;
-
-                            colorPoints.emplace_back(cube, before2, mid2, after2, hiddenDim);
-                        }
-
-                        if (before.x > 1 && after.x > 1) {
-                            after.x   -= 1.f;
-                            before.x  -= 1.f;
-                            midCopy.x -= 1.f;
-                        }
-                    }
-
-                    colorPoints.emplace_back(cube, before, midCopy, after, hiddenDim);
-                }
+                Rasterization::DepthProjectionPolicy(calcDepthDims).project(
+                        context,
+                        cube,
+                        reduct,
+                        midIcpt,
+                        [this](Intercept& point, const MorphPosition& position, bool noOffsetAtEnds) {
+                            applyGuideCurves(point, position, noOffsetAtEnds);
+                        },
+                        colorPoints);
             }
         }
     }
