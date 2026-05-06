@@ -3,6 +3,7 @@
 #include <App/SingletonAccessor.h>
 
 #include "MeshRasterizer.h"
+#include "Rasterization/Sources/VertexListSource.h"
 
 class FXRasterizer:
         public MeshRasterizer
@@ -16,5 +17,9 @@ public:
     void calcCrossPoints() override;
     void cleanUp() override;
     void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) override;
+    void setVertices(vector<Vertex*>* vertices);
     void setMesh(Mesh* newMesh) override;
+
+private:
+    Rasterization::VertexListSource vertexSource;
 };

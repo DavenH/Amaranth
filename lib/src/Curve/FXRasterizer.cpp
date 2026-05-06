@@ -14,75 +14,35 @@ namespace {
             + " cubes=" + String(mesh->getNumCubes());
     }
 
-    String describeFxIntercepts(const vector<Intercept>& icpts) {
-        if (icpts.empty()) {
-            return "icpts=0";
-        }
-
-        float minX = icpts.front().x;
-        float maxX = icpts.front().x;
-        float minY = icpts.front().y;
-        float maxY = icpts.front().y;
-        String parts;
-
-        for (int i = 0; i < (int) icpts.size(); ++i) {
-            const Intercept& icpt = icpts[i];
-            minX = jmin(minX, icpt.x);
-            maxX = jmax(maxX, icpt.x);
-            minY = jmin(minY, icpt.y);
-            maxY = jmax(maxY, icpt.y);
-
-            if (i < 6) {
-                if (parts.isNotEmpty()) {
-                    parts += ", ";
-                }
-
-                parts += "#" + String(i)
-                    + "(" + String(icpt.x, 4)
-                    + "," + String(icpt.y, 4)
-                    + " shp=" + String(icpt.shp, 4)
-                    + ")";
-            }
-        }
-
-        return "icpts=" + String((int) icpts.size())
-            + " x=[" + String(minX, 4) + "," + String(maxX, 4) + "]"
-            + " y=[" + String(minY, 4) + "," + String(maxY, 4) + "]"
-            + " first={" + parts + "}";
+    String describeFxSource(Mesh* mesh, const Rasterization::VertexListSource& source) {
+        return describeFxMesh(mesh) + " sourceVerts=" + String(source.size());
     }
 }
 
 FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
-        SingletonAccessor(repo, name),
-        MeshRasterizer(name) {
+        MeshRasterizer(name)
+    ,   SingletonAccessor(repo, name) {
     cyclic = false;
     calcDepthDims = false;
 
     dims.x = Vertex::Phase;
     dims.y = Vertex::Amp;
+    vertexSource.setDimensions(dims.x, dims.y);
 }
 
 void FXRasterizer::calcCrossPoints() {
-    if (mesh == nullptr || mesh->getNumVerts() == 0) {
-        DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup empty " + describeFxMesh(mesh));
+    if (vertexSource.empty()) {
+        DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup empty " + describeFxSource(mesh, vertexSource));
         cleanUp();
         return;
     }
 
-    DBG(MeshRasterizer::getName() + "::calcCrossPoints begin " + describeFxMesh(mesh));
+    DBG(MeshRasterizer::getName() + "::calcCrossPoints begin " + describeFxSource(mesh, vertexSource));
 
-    icpts.clear();
-    for(auto vert : mesh->getVerts()) {
-        float* values = vert->values;
-        Intercept icpt(values[dims.x], values[dims.y], 0, values[Vertex::Curve]);
-
-        icpt.y = Rasterization::PointScalingPolicy::fromLegacyFxScalingType(scalingType)
-                .scale(icpt.y);
-
-        icpt.adjustedX = icpt.x;
-
-        // time and phase are x and y in this context
-        icpts.push_back(icpt);
+    vertexSource.copyInterceptsTo(icpts);
+    auto pointScaling = Rasterization::PointScalingPolicy::fromLegacyFxScalingType(scalingType);
+    for(auto& icpt : icpts) {
+        icpt.y = pointScaling.scale(icpt.y);
     }
 
     if (icpts.empty()) {
@@ -123,6 +83,13 @@ void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
 void FXRasterizer::setMesh(Mesh* newMesh) {
     DBG(MeshRasterizer::getName() + "::setMesh " + describeFxMesh(newMesh));
     mesh = newMesh;
+    vertexSource.setVertices(newMesh == nullptr ? nullptr : &newMesh->getVerts());
+}
+
+void FXRasterizer::setVertices(vector<Vertex*>* vertices) {
+    DBG(MeshRasterizer::getName() + "::setVertices verts=" + String(vertices == nullptr ? 0 : (int) vertices->size()));
+    mesh = nullptr;
+    vertexSource.setVertices(vertices);
 }
 
 void FXRasterizer::cleanUp() {
@@ -141,5 +108,5 @@ int FXRasterizer::getNumDims() {
 }
 
 bool FXRasterizer::hasEnoughCubesForCrossSection() {
-    return mesh->getNumVerts() > 1;
+    return vertexSource.size() > 1;
 }
