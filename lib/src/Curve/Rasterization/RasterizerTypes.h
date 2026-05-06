@@ -1,0 +1,62 @@
+#pragma once
+
+class VertCube;
+
+namespace Rasterization {
+    struct RasterPointSource {
+        enum class Type {
+            None,
+            MeshCube,
+            EnvelopeMarker,
+            FxVertex,
+            ExternalPoint
+        };
+
+        Type type {};
+        int marker {};
+
+        static RasterPointSource none() { return { Type::None, 0 }; }
+        static RasterPointSource meshCube(int marker = 0) { return { Type::MeshCube, marker }; }
+        static RasterPointSource envelopeMarker(int marker) { return { Type::EnvelopeMarker, marker }; }
+        static RasterPointSource fxVertex(int marker) { return { Type::FxVertex, marker }; }
+        static RasterPointSource externalPoint(int marker = 0) { return { Type::ExternalPoint, marker }; }
+    };
+
+    inline bool operator==(const RasterPointSource& a, const RasterPointSource& b) {
+        return a.type == b.type && a.marker == b.marker;
+    }
+
+    inline bool operator!=(const RasterPointSource& a, const RasterPointSource& b) {
+        return !(a == b);
+    }
+
+    struct RasterPoint {
+        float x {};
+        float y {};
+        float sharpness {};
+        float adjustedX {};
+        bool padBefore {};
+        bool padAfter {};
+        bool isWrapped {};
+        RasterPointSource source;
+    };
+
+    inline bool operator==(const RasterPoint& a, const RasterPoint& b) {
+        return a.x == b.x
+            && a.y == b.y
+            && a.sharpness == b.sharpness
+            && a.adjustedX == b.adjustedX
+            && a.padBefore == b.padBefore
+            && a.padAfter == b.padAfter
+            && a.isWrapped == b.isWrapped
+            && a.source == b.source;
+    }
+
+    inline bool operator!=(const RasterPoint& a, const RasterPoint& b) {
+        return !(a == b);
+    }
+
+    struct MeshPointSourceRef {
+        VertCube* cube {};
+    };
+}
