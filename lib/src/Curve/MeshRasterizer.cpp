@@ -10,6 +10,8 @@
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
 #include "Rasterization/Policies/PointScalingPolicy.h"
+#include "Rasterization/Policies/CurveResolutionPolicy.h"
+#include "Rasterization/Builders/WaveformBuilder.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
 #include "../Array/ScopedAlloc.h"
@@ -328,20 +330,12 @@ void MeshRasterizer::updateCurves() {
         return;
     }
 
-    if (lowResCurves && curves.size() > 8) {
-        for (auto & curve : curves) {
-            curve.resIndex = Curve::resolutions - 1;
-            curve.setShouldInterpolate(false);
-        }
-    } else {
-        for(auto & curve : curves)
-            curve.setShouldInterpolate(! lowResCurves && interpolateCurves);
-
-        float baseFactor = lowResCurves ? 0.4f : integralSampling ? 0.05f : 0.1f;
-        float base          = baseFactor / float(Curve::resolution);
-
-        setResolutionIndices(base);
-    }
+    Rasterization::CurveResolutionPolicy::Context resolutionContext;
+    resolutionContext.lowResCurves = lowResCurves;
+    resolutionContext.integralSampling = integralSampling;
+    resolutionContext.interpolateCurves = interpolateCurves;
+    resolutionContext.paddingSize = paddingSize;
+    Rasterization::CurveResolutionPolicy().apply(curves, resolutionContext);
 
     adjustDeformingSharpness();
 
@@ -353,188 +347,33 @@ void MeshRasterizer::updateCurves() {
 }
 
 void MeshRasterizer::calcWaveform() {
-    int res = Curve::resolution / 2;
-    int totalRes = 0;
-
     if(decoupleComponentDfrms) {
         guideCurveRegions.clear();
     }
 
-    int tableSize = Constants::GuideCurveTableSize;
+    Rasterization::WaveformBakePolicy::Context context;
+    context.lowResCurves = lowResCurves;
+    context.decoupleComponentDfrms = decoupleComponentDfrms;
+    context.noiseSeed = noiseSeed;
+    context.morph = morph;
+    context.guideCurveProvider = guideCurveProvider;
+    context.guideCurveRegions = &guideCurveRegions;
+    context.phaseOffsetSeeds = phaseOffsetSeeds;
+    context.vertOffsetSeeds = vertOffsetSeeds;
+    context.transferTable = transferTable;
 
-    for (int i = 0; i < (int) curves.size() - 1; ++i) {
-        Curve& thisCurve = curves[i];
-        VertCube* cube     = thisCurve.b.cube;
-
-        int thisRes     = res >> thisCurve.resIndex;
-        int nextRes     = res >> curves[i + 1].resIndex;
-
-        if(cube != nullptr && guideCurveProvider != nullptr && cube->getCompGuideCurve() >= 0) {
-            int numVerts         = guideCurveProvider->getTableDensity(cube->getCompGuideCurve());
-            int desiredRes       = thisRes * (int) ((lowResCurves ? 2 : 8) * sqrtf(numVerts) + 0.49f);
-            float scaleRatio     = tableSize / float(desiredRes);
-
-            if(curves.size() == 6)
-                scaleRatio /= 2;
-
-            int truncRatio         = jlimit(1, 256, int(scaleRatio + 0.5));
-            thisCurve.curveRes     = tableSize / truncRatio;
-        } else {
-            // take the minimum of adjacent curves
-            thisCurve.curveRes = jmin(thisRes, nextRes);
-        }
-
-        totalRes += thisCurve.curveRes;
-    }
-
+    Rasterization::WaveformBuilder builder;
+    int totalRes = builder.prepare(curves, context);
     updateBuffers(totalRes);
 
-    zeroIndex   = 0;
-    oneIndex    = INT_MAX / 2;
-    int waveIdx = 0;
-    int cumeRes = 0;
-
-    for (int c = 0; c < (int) curves.size() - 1; ++c) {
-        Curve& thisCurve = curves[c];
-        Curve& nextCurve = curves[c + 1];
-
-        VertCube* cube = thisCurve.b.cube;
-
-        int indexA = 0, indexB = 0;
-        int curveRes = thisCurve.curveRes;
-        int offset   = res >> thisCurve.resIndex;
-        int xferInc  = Curve::resolution / curveRes;
-
-        int thisShift = jmax(0, (nextCurve.resIndex - thisCurve.resIndex));
-        int nextShift = jmax(0, (thisCurve.resIndex - nextCurve.resIndex));
-
-        thisCurve.waveIdx = waveIdx;
-
-        if (cube != nullptr && guideCurveProvider != nullptr && cube->getCompGuideCurve() >= 0) {
-            int compDfrm = cube->getCompGuideCurve();
-
-            Intercept& thisCentre = thisCurve.b;
-            Intercept& nextCentre = nextCurve.b;
-
-            GuideCurveProvider::NoiseContext noise;
-            noise.noiseSeed   = noiseSeed < 0 ? morph.time.getCurrentValue() * INT_MAX : noiseSeed;
-            noise.phaseOffset = phaseOffsetSeeds[compDfrm];
-            noise.vertOffset  = vertOffsetSeeds[compDfrm];
-
-            Buffer<Float32> yPortion(waveY + waveIdx, curveRes);
-            Buffer<Float32> xPortion(waveX + waveIdx, curveRes);
-
-            float multiplier = thisCentre.shp * cube->guideCurveAbsGain(Vertex::Time);
-
-            if (decoupleComponentDfrms) {
-                yPortion.zero();
-
-                GuideCurveRegion region;
-                region.amplitude   = multiplier;
-                region.guideIndex  = cube->getCompGuideCurve();
-                region.start       = thisCentre;
-                region.end         = nextCentre;
-
-                guideCurveRegions.emplace_back(region);
-            } else {
-                guideCurveProvider->sampleDownAddNoise(cube->getCompGuideCurve(), yPortion, noise);
-                yPortion.mul(multiplier);
-            }
-
-            float invSize = 1 / float(curveRes);
-            float curveSlope = invSize * (nextCentre.y - thisCentre.y);
-
-            // NB reusing the X array, no meaning to its name here
-            Buffer<float> temp = xPortion;
-            temp.ramp(thisCentre.y, curveSlope);
-            yPortion.add(temp);
-
-            float minX = jmin(thisCentre.x, nextCentre.x);
-            float maxX = jmax(thisCentre.x, nextCentre.x);
-
-            curveSlope = (maxX - minX) * invSize;
-            xPortion.ramp(minX, curveSlope);
-
-            waveIdx += curveRes;
-        } else {
-            float xferValue;
-            float t1x = 0, t1y = 0;
-            float t2x = 0, t2y = 0;
-
-            for (int i = 0; i < curveRes; ++i) {
-                xferValue   = transferTable[i * xferInc];
-                indexA      = (i << thisShift) + offset;
-                indexB      = (i << nextShift);
-
-                t1x         = thisCurve.transformX[indexA] * (1 - xferValue);
-                t1y         = thisCurve.transformY[indexA] * (1 - xferValue);
-                t2x         = nextCurve.transformX[indexB] * xferValue;
-                t2y         = nextCurve.transformY[indexB] * xferValue;
-
-                waveX[waveIdx] = t1x + t2x;
-                waveY[waveIdx] = t1y + t2y;
-
-                ++waveIdx;
-            }
-        }
-
-        if(cumeRes > 0 && waveX[cumeRes - 1] <= 0 && waveX[cumeRes] > 0) {
-            zeroIndex = cumeRes - 1;
-        }
-
-        else if (waveX[cumeRes] <= 0 && waveX[cumeRes + curveRes - 1] > 0) {
-            for (int i = cumeRes; i < cumeRes + curveRes - 1; ++i) {
-                if (waveX[i] <= 0 && waveX[i + 1] > 0) {
-                    zeroIndex = i;
-                    break;
-                }
-            }
-        }
-
-        if (cumeRes > 0 && waveX[cumeRes - 1] < 1 && waveX[cumeRes] >= 1) {
-            oneIndex = cumeRes - 1;
-        }
-
-        else if (waveX[cumeRes] < 1 && waveX[cumeRes + curveRes - 1] >= 1) {
-            for (int i = cumeRes; i < cumeRes + curveRes - 1; ++i) {
-                if (waveX[i] < 1 && waveX[i + 1] >= 1) {
-                    oneIndex = i;
-                    break;
-                }
-            }
-        }
-
-        cumeRes += curveRes;
-    }
-
-    jassert(waveX.front() == waveX.front());
-
-    if (zeroIndex == 0) {
-        // this means that something screwed up with the curves
-//        jassertfalse;
-
-        if (waveX.front() < 0 && waveX.back() > 0) {
-            for (int i = 0; i < cumeRes - 1; ++i) {
-                if(waveX[i] <= 0 && waveX[i + 1] > 0)
-                    zeroIndex = i;
-            }
-        }
-    }
-
-    jassert(cumeRes == waveX.size());
-
-    int resSubOne = cumeRes - 1;
-
-    Buffer<float> slp = slope.withSize(resSubOne);
-    Buffer<float> dif = diffX.withSize(resSubOne);
-    Buffer<float> are = area.withSize(resSubOne);
-
-    VecOps::sub(waveX + 1, waveX, dif);
-    VecOps::sub(waveY + 1, waveY, slp);
-    VecOps::sub(waveY + 1, waveY, are);
-    dif.threshLT(1e-6f);
-    slp.div(dif);
-    are.mul(dif).mul(0.5f);
+    context.waveX = waveX;
+    context.waveY = waveY;
+    context.diffX = diffX;
+    context.slope = slope;
+    context.area = area;
+    context.zeroIndex = &zeroIndex;
+    context.oneIndex = &oneIndex;
+    builder.bake(curves, context);
 
     unsampleable = false;
 }
@@ -885,26 +724,7 @@ void MeshRasterizer::cleanUp() {
 }
 
 void MeshRasterizer::setResolutionIndices(float base) {
-    float dx;
-    int res;
-    int lastIdx = curves.size() - 1;
-
-    for (int i = 1; i < curves.size() - 1; ++i) {
-        dx = (curves[i + 1].c.x - curves[i - 1].a.x);
-
-        for (int j = 0; j < Curve::resolutions; ++j) {
-            res = Curve::resolution >> j;
-
-            if (dx < base * float(res)) {
-                curves[i].resIndex = j;
-            }
-        }
-    }
-
-    int padding = getPaddingSize();
-
-    curves.front().resIndex = curves[lastIdx - 2 * (padding - 1)].resIndex;
-    curves.back().resIndex = curves[2 * padding - 1].resIndex;
+    Rasterization::CurveResolutionPolicy::applyResolutionIndices(curves, base, getPaddingSize());
 }
 
 
