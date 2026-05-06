@@ -23,6 +23,8 @@ public:
 
 protected:
     void clearAndOrtho(int width, int height);
+    void traceOpenGLAttach(Component* attachedComponent) const;
+    void traceOpenGLDetach(Component* detachedComponent) const;
 
     bool smoothLines;
     Ref<CommonGL> commonGL;

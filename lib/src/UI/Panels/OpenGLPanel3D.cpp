@@ -1,5 +1,8 @@
 #include "OpenGLPanel3D.h"
 
+#include <atomic>
+#include <cstdlib>
+
 #include <Definitions.h>
 
 #include "GLPanelRenderer.h"
@@ -10,6 +13,13 @@
 #include "../../UI/Panels/ScopedGL.h"
 
 using namespace gl;
+
+namespace {
+bool shouldTraceOpenGLRenderers() {
+    static bool shouldTrace = std::getenv("CYCLE_TRACE_OPENGL_RENDERERS") != nullptr;
+    return shouldTrace;
+}
+}
 
 OpenGLPanel3D::OpenGLPanel3D(SingletonRepo* repo, Panel3D* panel3D, Panel3D::DataRetriever* retriever) :
         PanelOwner          (panel3D)
@@ -93,6 +103,15 @@ void OpenGLPanel3D::clear() {
 }
 
 void OpenGLPanel3D::renderOpenGL() {
+    if (shouldTraceOpenGLRenderers()) {
+        static std::atomic<int> traceCount { 0 };
+        int count = traceCount.fetch_add(1);
+
+        if (count < 8) {
+            DBG("CycleOpenGLTrace renderer=OpenGLPanel3D panel=" + panel->getName() + " call=" + String(count));
+        }
+    }
+
     surfaceCache.setRenderScale(context.getRenderingScale());
     panel->render();
     printErrors(repo);

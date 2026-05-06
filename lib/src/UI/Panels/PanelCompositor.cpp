@@ -94,19 +94,15 @@ void PanelCompositor::syncWithPanels() {
         }
 
         entry.dirtyMask |= entry.panel->getDirtyState().mask();
+        entry.usesCachedSurface = entry.panel->usesCachedSurface();
 
+        // Bounds are registered by the owner in shared-canvas coordinates.
+        // Component bounds here are local to each component's parent.
         Component* component = entry.panel->getComponent();
-        juce::Rectangle<int> bounds;
-        bool visible = false;
+        bool visible = component != nullptr && component->isVisible();
 
-        if (component != nullptr) {
-            bounds = component->getBounds();
-            visible = component->isVisible();
-        }
-
-        if (entry.bounds != bounds || entry.visible != visible) {
+        if (entry.visible != visible) {
             orphanedDirtyBounds.add(entry.bounds);
-            entry.bounds = bounds;
             entry.visible = visible;
             entry.dirtyMask |= static_cast<uint32_t>(PanelDirtyState::Flag::Layout);
         }

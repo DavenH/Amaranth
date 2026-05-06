@@ -26,7 +26,10 @@ void GLSurfaceCache::allocate(bool transparent) {
     );
 }
 
-void GLSurfaceCache::captureFromFramebuffer(const juce::Rectangle<int>& componentBounds) {
+void GLSurfaceCache::captureFromFramebuffer(
+    const juce::Rectangle<int>& componentBounds,
+    juce::Point<int> framebufferOriginPixels
+) {
     glBindTexture(GL_TEXTURE_2D, texture.id);
 
     int width = jmin(activePixelBounds.getWidth(), roundToInt(componentBounds.getWidth() * renderScale));
@@ -36,8 +39,8 @@ void GLSurfaceCache::captureFromFramebuffer(const juce::Rectangle<int>& componen
         return;
     }
 
-    int sourceX = roundToInt(componentBounds.getX() * renderScale);
-    int sourceY = roundToInt(componentBounds.getBottom() * renderScale) - height;
+    int sourceX = framebufferOriginPixels.x + roundToInt(componentBounds.getX() * renderScale);
+    int sourceY = framebufferOriginPixels.y + roundToInt(componentBounds.getBottom() * renderScale) - height;
     sourceY = jmax(0, sourceY);
 
     glCopyTexSubImage2D(
@@ -72,8 +75,6 @@ void GLSurfaceCache::captureFromFramebuffer(const juce::Rectangle<int>& componen
         const juce::ScopedLock sl(snapshotLock);
         snapshot = image;
     }
-
-    glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void GLSurfaceCache::clear() {

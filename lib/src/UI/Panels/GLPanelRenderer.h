@@ -52,9 +52,12 @@ public:
     void setTransform(const juce::AffineTransform& transform) override;
     void updateTexture(Texture* texture) override;
 
+    void setFramebufferOriginPixels(juce::Point<int> origin) { framebufferOriginPixels = origin; }
+
 private:
     Ref<CommonGfx> gfx;
     GLSurfaceCache* surfaceCache;
     const PanelRenderContext* currentContext = nullptr;
+    juce::Point<int> framebufferOriginPixels;
     RenderResourceCache resourceCache;
 };

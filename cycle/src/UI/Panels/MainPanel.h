@@ -90,7 +90,8 @@ public:
 
     enum TimerIds {
         BoundsCheckId,
-        DelayedRepaint
+        DelayedRepaint,
+        SharedEditorOpenGLAttach
     };
 
     enum {
@@ -160,6 +161,8 @@ public:
     bool readJSON(const var& object) override;
 
 private:
+    void attachSharedEditorOpenGL();
+    void detachSharedEditorOpenGL();
     void attachComponent(PanelGroup& group);
     void detachComponent(PanelGroup& group);
     void updateSharedCanvasBounds();
@@ -313,6 +316,7 @@ private:
     Ref<EqualizerUI> eqUI;
     Ref<MidiKeyboard> keyboard;
     std::unique_ptr<SharedPanelCanvas> sharedCanvas;
+    std::unique_ptr<juce::OpenGLContext> sharedEditorContext;
 
     PanelGroup wave2DGroup, surfGroup, spectGroup2, spectGroup3, envGroup2, envGroup3, wshpGroup, irGroup, guideCurveGroup;
     Array<PanelGroup*> panelGroups;

@@ -6,7 +6,10 @@
 class GLSurfaceCache {
 public:
     void allocate(bool transparent);
-    void captureFromFramebuffer(const juce::Rectangle<int>& componentBounds);
+    void captureFromFramebuffer(
+        const juce::Rectangle<int>& componentBounds,
+        juce::Point<int> framebufferOriginPixels = {}
+    );
     void clear();
     void create();
     void draw() const;

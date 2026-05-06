@@ -69,7 +69,7 @@ void GLPanelRenderer::drawFinalSelection() {
 
 void GLPanelRenderer::finishSurfaceBake() {
     if (surfaceCache != nullptr && currentContext != nullptr) {
-        surfaceCache->captureFromFramebuffer(currentContext->bounds);
+        surfaceCache->captureFromFramebuffer(currentContext->bounds, framebufferOriginPixels);
     }
 }
 

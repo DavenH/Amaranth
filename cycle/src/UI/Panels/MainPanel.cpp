@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <cstring>
 #include <iterator>
 #include <App/Doc/PresetJson.h>
 #include <Design/Updating/Updater.h>
@@ -55,6 +57,18 @@
 #include "../../Audio/Effects/Reverb.h"
 #include "../../Audio/Effects/WaveShaper.h"
 
+namespace {
+bool shouldUseSharedPanelOpenGL() {
+    const char* value = std::getenv("CYCLE_USE_MAIN_PANEL_OPENGL");
+    return value != nullptr && (std::strcmp(value, "1") == 0 || std::strcmp(value, "true") == 0);
+}
+
+bool shouldAttachSharedEditorOpenGL() {
+    const char* value = std::getenv("CYCLE_USE_MAIN_PANEL_OPENGL");
+    return value != nullptr && std::strcmp(value, "unsafe") == 0;
+}
+}
+
 MainPanel::MainPanel(SingletonRepo* repo) : 
         ComponentMovementWatcher(this)
     ,	SingletonAccessor	(repo, "MainPanel")
@@ -83,6 +97,8 @@ MainPanel::MainPanel(SingletonRepo* repo) :
 MainPanel::~MainPanel() {
     stopTimer(BoundsCheckId);
     stopTimer(DelayedRepaint);
+    stopTimer(SharedEditorOpenGLAttach);
+    detachSharedEditorOpenGL();
     detachVisibleComponents();
 
     removeListeners();
@@ -482,6 +498,16 @@ void MainPanel::detachComponent(PanelGroup& group) {
 }
 
 void MainPanel::attachComponent(PanelGroup& group) {
+    if (sharedEditorContext != nullptr || shouldUseSharedPanelOpenGL()) {
+        return;
+    }
+
+    if (group.panel != nullptr) {
+        if (Component* component = group.panel->getComponent()) {
+            component->setAlpha(1.f);
+        }
+    }
+
     OpenGLBase* parent = group.gl;
     if (parent != nullptr) {
         parent->attach();
@@ -490,6 +516,13 @@ void MainPanel::attachComponent(PanelGroup& group) {
 
 void MainPanel::attachVisibleComponents() {
     info("Attaching visible components\n");
+
+    if (sharedEditorContext != nullptr || shouldUseSharedPanelOpenGL()) {
+        detachVisibleComponents();
+        updateSharedCanvasRegistry();
+        attachSharedEditorOpenGL();
+        return;
+    }
 
     for (auto group : panelGroups) {
         attachComponent(*group);
@@ -505,7 +538,61 @@ void MainPanel::detachVisibleComponents() {
         }
 
         group->panel->deactivateContext();
+
+        if (shouldUseSharedPanelOpenGL()) {
+            group->gl->detach();
+        }
+
+        if (shouldUseSharedPanelOpenGL()) {
+            if (Component* component = group->panel->getComponent()) {
+                component->setAlpha(0.f);
+            }
+        }
     }
+}
+
+void MainPanel::attachSharedEditorOpenGL() {
+    if (shouldUseSharedPanelOpenGL()) {
+        if (sharedCanvas == nullptr || sharedCanvas->isOpenGLAttached()) {
+            return;
+        }
+
+        detachVisibleComponents();
+        updateSharedCanvasBounds();
+        updateSharedCanvasRegistry();
+        sharedCanvas->attachOpenGL(*this, true);
+        return;
+    }
+
+    if (sharedEditorContext != nullptr) {
+        return;
+    }
+
+    if (!shouldAttachSharedEditorOpenGL()) {
+        return;
+    }
+
+    detachVisibleComponents();
+
+    sharedEditorContext = std::make_unique<juce::OpenGLContext>();
+    sharedEditorContext->setComponentPaintingEnabled(true);
+    sharedEditorContext->attachTo(*this);
+
+    repaintAll();
+    sharedEditorContext->triggerRepaint();
+}
+
+void MainPanel::detachSharedEditorOpenGL() {
+    if (sharedCanvas != nullptr) {
+        sharedCanvas->detachOpenGL();
+    }
+
+    if (sharedEditorContext == nullptr) {
+        return;
+    }
+
+    sharedEditorContext->detach();
+    sharedEditorContext = nullptr;
 }
 
 void MainPanel::updateSharedCanvasBounds() {
@@ -535,12 +622,12 @@ void MainPanel::updateSharedCanvasRegistry() {
         Rectangle<int> bounds;
         bool visible = false;
 
-        if (group->bounds != nullptr) {
+        if (Component* component = group->panel->getComponent()) {
+            bounds = getLocalArea(component->getParentComponent(), component->getBounds());
+            visible = component->isVisible() && bounds.getWidth() > 0 && bounds.getHeight() > 0;
+        } else if (group->bounds != nullptr) {
             bounds = group->bounds->getBounds();
             visible = bounds.getWidth() > 0 && bounds.getHeight() > 0;
-        } else if (Component* component = group->panel->getComponent()) {
-            bounds = component->getBounds();
-            visible = component->isVisible();
         }
 
         sharedCanvas->registerOrUpdatePanel(group->panel, bounds, visible);
@@ -560,7 +647,7 @@ void MainPanel::updateSharedCanvasRegistry() {
 }
 
 void MainPanel::paint(Graphics& g) {
-    if (isShowing() && !gainedFocus && !hasKeyboardFocus(true)) {
+    if (!shouldUseSharedPanelOpenGL() && !shouldAttachSharedEditorOpenGL() && isShowing() && !gainedFocus && !hasKeyboardFocus(true)) {
         if (getScreenBounds().contains(Desktop::getMousePosition())) {
             grabKeyboardFocus();
             gainedFocus = true;
@@ -944,6 +1031,10 @@ void MainPanel::switchedRenderingMode(bool shouldDoUpdate) {
 
     panelComponentsChanged();
 
+    if (shouldUseSharedPanelOpenGL() || shouldAttachSharedEditorOpenGL()) {
+        startTimer(SharedEditorOpenGLAttach, 1000);
+    }
+
     if (shouldDoUpdate) {
         ScopedBooleanSwitcher sbs(forceResize);
 
@@ -1140,6 +1231,9 @@ void MainPanel::timerCallback(int timerId) {
 
         repaintAll();
         stopTimer(DelayedRepaint);
+    } else if (timerId == SharedEditorOpenGLAttach) {
+        stopTimer(SharedEditorOpenGLAttach);
+        attachSharedEditorOpenGL();
     }
 }
 

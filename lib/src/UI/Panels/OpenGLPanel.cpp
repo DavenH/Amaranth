@@ -2,6 +2,9 @@
 #include "GLPanelRenderer.h"
 #include "OpenGLPanel.h"
 
+#include <atomic>
+#include <cstdlib>
+
 #include <Definitions.h>
 
 #include "Panel.h"
@@ -9,6 +12,13 @@
 #include "../../App/SingletonRepo.h"
 
 using namespace gl;
+
+namespace {
+bool shouldTraceOpenGLRenderers() {
+    static bool shouldTrace = std::getenv("CYCLE_TRACE_OPENGL_RENDERERS") != nullptr;
+    return shouldTrace;
+}
+}
 
 OpenGLPanel::OpenGLPanel(SingletonRepo* repo, Panel2D* panel2D) :
         PanelOwner(panel2D)
@@ -60,6 +70,15 @@ void OpenGLPanel::openGLContextClosing() {
 }
 
 void OpenGLPanel::renderOpenGL() {
+    if (shouldTraceOpenGLRenderers()) {
+        static std::atomic<int> traceCount { 0 };
+        int count = traceCount.fetch_add(1);
+
+        if (count < 8) {
+            DBG("CycleOpenGLTrace renderer=OpenGLPanel panel=" + panel->getName() + " call=" + String(count));
+        }
+    }
+
     panel->render();
     printErrors(repo);
 }
