@@ -1,0 +1,30 @@
+{
+  "commands": [
+    {
+      "command": "assertState",
+      "path": "document",
+      "equals": "AfricanHorn"
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 100
+    },
+    {
+      "command": "openFactoryPreset",
+      "preset": "Icycle"
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "document",
+      "equals": "Icycle"
+    },
+    {
+      "command": "snapshotState"
+    }
+  ],
+  "quit": true
+}

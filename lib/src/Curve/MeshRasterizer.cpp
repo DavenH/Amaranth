@@ -7,6 +7,7 @@
 
 #include "VertCube.h"
 #include "Rasterization/Policies/DepthProjectionPolicy.h"
+#include "Rasterization/Policies/InterceptRestrictionPolicy.h"
 #include "Rasterization/Policies/PointScalingPolicy.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
@@ -279,46 +280,12 @@ void MeshRasterizer::restrictIntercepts(vector<Intercept>& intercepts) {
         return;
     }
 
-    for (auto & intercept : intercepts) {
-        NumberUtils::constrain(intercept.adjustedX, xMinimum, xMaximum);
-    }
+    Rasterization::InterceptRestrictionPolicy::Context context;
+    context.cyclic = cyclic;
+    context.minimumX = xMinimum;
+    context.maximumX = xMaximum;
 
-    // ensure strict sort order
-    for (int i = 1; i < (int) intercepts.size(); ++i) {
-        Intercept& a = intercepts[i - 1];
-        Intercept& b = intercepts[i];
-
-        if (b.adjustedX < a.adjustedX) {
-            if(b.isWrapped == a.isWrapped) {
-                b.adjustedX = a.adjustedX + 0.0001f;
-            }
-        }
-    }
-
-    for (auto & intercept : intercepts) {
-        intercept.x = intercept.adjustedX;
-    }
-
-    if (intercepts.back().x >= xMaximum) {
-        for (int i = intercepts.size() - 1; i >= 1; --i) {
-            Intercept& left = intercepts[i - 1];
-            Intercept& right = intercepts[i];
-
-            if(left.x >= right.x)
-                left.x = right.x - 0.0001f;
-        }
-    }
-
-//    if(intercepts.front().x <= 0)
-    {
-        for (int i = 1; i < (int) intercepts.size(); ++i) {
-            Intercept& left = intercepts[i - 1];
-            Intercept& right = intercepts[i];
-
-            if(right.x <= left.x)
-                right.x = left.x + 0.0001f;
-        }
-    }
+    Rasterization::InterceptRestrictionPolicy(context).restrict(intercepts);
 
   #ifdef _DEBUG
     for(int i = 0; i < intercepts.size() - 1; ++i)
