@@ -7,6 +7,7 @@
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/MeshRasterizer.h"
 #include "../src/Curve/VertCube.h"
+#include "RasterizerCompare.h"
 
 namespace {
     struct MeshDeleter {
@@ -101,6 +102,12 @@ namespace {
             REQUIRE(buffer[i] + tolerance >= buffer[i - 1]);
         }
     }
+
+    void configureWaveRasterizer(MeshRasterizer& rasterizer, Mesh* mesh) {
+        rasterizer.setMesh(mesh);
+        rasterizer.setMorphPosition(MorphPosition(0.5f, 0.5f, 0.5f));
+        rasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Time, Vertex::Red, Vertex::Blue));
+    }
 }
 
 TEST_CASE("MeshRasterizer creates finite monotonic wave buffers for a synthetic mesh", "[meshrasterizer][wave]") {
@@ -148,4 +155,106 @@ TEST_CASE("MeshRasterizer can sample evenly after max-sharpness waveform generat
 
     requireFinite(samples);
 
+}
+
+TEST_CASE("MeshRasterizer characterization snapshot is deterministic", "[meshrasterizer][characterization]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+
+    MeshRasterizer first("SyntheticMeshRasterizerA");
+    MeshRasterizer second("SyntheticMeshRasterizerB");
+    configureWaveRasterizer(first, mesh.get());
+    configureWaveRasterizer(second, mesh.get());
+
+    first.calcCrossPoints();
+    first.makeCopy();
+    second.calcCrossPoints();
+    second.makeCopy();
+
+    RasterizerCompare::requireSnapshotNear(
+            RasterizerCompare::capture(first),
+            RasterizerCompare::capture(second));
+
+    ScopedAlloc<Float32> firstMemory;
+    ScopedAlloc<Float32> secondMemory;
+    firstMemory.ensureSize(128);
+    secondMemory.ensureSize(128);
+
+    Buffer<float> firstSamples = firstMemory.place(128);
+    Buffer<float> secondSamples = secondMemory.place(128);
+    first.sampleEvenlyTo(firstSamples);
+    second.sampleEvenlyTo(secondSamples);
+
+    RasterizerCompare::requireBufferNear(
+            RasterizerCompare::copyBuffer(firstSamples),
+            RasterizerCompare::copyBuffer(secondSamples));
+}
+
+TEST_CASE("MeshRasterizer characterizes hidden-dimension color points", "[meshrasterizer][characterization][colorpoints]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+
+    MeshRasterizer rasterizer("SyntheticMeshRasterizer");
+    configureWaveRasterizer(rasterizer, mesh.get());
+    rasterizer.calcCrossPoints();
+    rasterizer.makeCopy();
+
+    const auto& colorPoints = rasterizer.getColorPoints();
+    REQUIRE(colorPoints.size() == mesh->getNumCubes() * 3);
+
+    int timePoints = 0;
+    int redPoints = 0;
+    int bluePoints = 0;
+
+    for (const auto& point : colorPoints) {
+        INFO("hiddenDim=" << point.num);
+        REQUIRE(point.cube != nullptr);
+        REQUIRE(std::isfinite(point.before.x));
+        REQUIRE(std::isfinite(point.before.y));
+        REQUIRE(std::isfinite(point.mid.x));
+        REQUIRE(std::isfinite(point.mid.y));
+        REQUIRE(std::isfinite(point.after.x));
+        REQUIRE(std::isfinite(point.after.y));
+
+        if (point.num == Vertex::Time) {
+            ++timePoints;
+        } else if (point.num == Vertex::Red) {
+            ++redPoints;
+        } else if (point.num == Vertex::Blue) {
+            ++bluePoints;
+        } else {
+            FAIL("unexpected hidden dimension");
+        }
+    }
+
+    REQUIRE(timePoints == mesh->getNumCubes());
+    REQUIRE(redPoints == mesh->getNumCubes());
+    REQUIRE(bluePoints == mesh->getNumCubes());
+    REQUIRE(rasterizer.getRastData().colorPoints.size() == colorPoints.size());
+}
+
+TEST_CASE("MeshRasterizer characterizes intercept restriction spacing", "[meshrasterizer][characterization][restriction]") {
+    MeshRasterizer rasterizer("RestrictionRasterizer");
+
+    vector<Intercept> intercepts {
+        Intercept(0.2f, 0.1f),
+        Intercept(0.2f, 0.2f),
+        Intercept(0.1f, 0.3f),
+        Intercept(1.2f, 0.4f),
+    };
+
+    for (auto& intercept : intercepts) {
+        intercept.adjustedX = intercept.x;
+    }
+
+    rasterizer.restrictIntercepts(intercepts);
+
+    REQUIRE(intercepts.front().x >= 0.f);
+    REQUIRE(intercepts.back().x <= 1.f);
+
+    for (int i = 1; i < (int) intercepts.size(); ++i) {
+        INFO("index=" << i << " left=" << intercepts[i - 1].x << " right=" << intercepts[i].x);
+        REQUIRE(intercepts[i].x > intercepts[i - 1].x);
+        REQUIRE(intercepts[i].x - intercepts[i - 1].x >= Catch::Approx(0.0001f).margin(1e-6f));
+    }
 }

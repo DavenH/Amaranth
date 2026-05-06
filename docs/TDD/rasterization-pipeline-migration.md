@@ -647,7 +647,26 @@ Tests:
 
 - `cmake --preset tests && cmake --build --preset tests`,
 - `ctest --test-dir build/tests -V`,
-- `scripts/capture_cycle_ui.sh docs/media/images/cycle-default-ui-rasterization-baseline.png /tmp/cycle-default-ui-rasterization-baseline-logs.txt`.
+- create the baseline screenshot once if it does not already exist,
+- otherwise capture repeat validation screenshots to `/tmp` so the preserved
+  baseline is not overwritten.
+
+Initial baseline command:
+
+```sh
+test -f docs/media/images/cycle-default-ui-rasterization-baseline.png \
+    || scripts/capture_cycle_ui.sh \
+        docs/media/images/cycle-default-ui-rasterization-baseline.png \
+        /tmp/cycle-default-ui-rasterization-baseline-logs.txt
+```
+
+Repeat validation command:
+
+```sh
+scripts/capture_cycle_ui.sh \
+    /tmp/cycle-default-ui-rasterization-candidate.png \
+    /tmp/cycle-default-ui-rasterization-candidate-logs.txt
+```
 
 Acceptance:
 
@@ -976,9 +995,10 @@ after phases that touch:
 Baseline command:
 
 ```sh
-scripts/capture_cycle_ui.sh \
-    docs/media/images/cycle-default-ui-rasterization-baseline.png \
-    /tmp/cycle-default-ui-rasterization-baseline-logs.txt
+test -f docs/media/images/cycle-default-ui-rasterization-baseline.png \
+    || scripts/capture_cycle_ui.sh \
+        docs/media/images/cycle-default-ui-rasterization-baseline.png \
+        /tmp/cycle-default-ui-rasterization-baseline-logs.txt
 ```
 
 The full UI screenshot is a broad smoke artifact. It includes the menu bar,
