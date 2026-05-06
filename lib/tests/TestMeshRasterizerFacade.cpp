@@ -36,8 +36,8 @@ TEST_CASE("MeshRasterizerFacade can skip snapshot publication", "[rasterization]
 
     Rasterization::RasterizerSnapshotSource source;
     source.intercepts = &intercepts;
-    source.zeroIndex = 1;
-    source.oneIndex = 2;
+    source.waveform.zeroIndex = 1;
+    source.waveform.oneIndex = 2;
 
     Rasterization::MeshRasterizerFacade facade;
     facade.skipSnapshot(data, source);

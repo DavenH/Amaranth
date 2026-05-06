@@ -6,6 +6,8 @@
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/MeshRasterizer.h"
+#include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
+#include "../src/Curve/Rasterization/Sources/MeshCubeSource.h"
 #include "../src/Curve/VertCube.h"
 #include "RasterizerCompare.h"
 
@@ -231,6 +233,40 @@ TEST_CASE("MeshRasterizer characterizes hidden-dimension color points", "[meshra
     REQUIRE(redPoints == mesh->getNumCubes());
     REQUIRE(bluePoints == mesh->getNumCubes());
     REQUIRE(rasterizer.getRastData().colorPoints.size() == colorPoints.size());
+}
+
+TEST_CASE("MeshSlicePipeline matches MeshRasterizer intercept and color-point slicing", "[meshrasterizer][pipeline][slice]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+
+    MeshRasterizer rasterizer("SyntheticMeshRasterizer");
+    configureWaveRasterizer(rasterizer, mesh.get());
+    rasterizer.calcCrossPoints();
+    rasterizer.makeCopy();
+
+    Rasterization::MeshSlicePipeline pipeline;
+    Rasterization::MeshCubeSource source(mesh.get());
+    Rasterization::RasterizationRequest request = rasterizer.createRasterizationRequest();
+    const auto& output = pipeline.render(
+            source,
+            request,
+            0.f,
+            [](Intercept&, const MorphPosition&, bool) {});
+
+    REQUIRE(output.sampleable);
+    REQUIRE(output.intercepts.size() == rasterizer.getRastData().intercepts.size());
+
+    for (int i = 0; i < (int) output.intercepts.size(); ++i) {
+        INFO("intercept=" << i);
+        RasterizerCompare::requireInterceptNear(output.intercepts[i], rasterizer.getRastData().intercepts[i]);
+    }
+
+    REQUIRE(output.colorPoints.size() == rasterizer.getRastData().colorPoints.size());
+
+    for (int i = 0; i < (int) output.colorPoints.size(); ++i) {
+        INFO("colorPoint=" << i);
+        RasterizerCompare::requireColorPointNear(output.colorPoints[i], rasterizer.getRastData().colorPoints[i]);
+    }
 }
 
 TEST_CASE("MeshRasterizer characterizes intercept restriction spacing", "[meshrasterizer][characterization][restriction]") {

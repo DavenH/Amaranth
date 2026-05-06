@@ -3,9 +3,9 @@
 #include <vector>
 
 #include "RasterizerTypes.h"
+#include "WaveformBuffers.h"
 #include "../Curve.h"
 #include "../Intercept.h"
-#include "../../Array/Buffer.h"
 #include "../../Obj/ColorPoint.h"
 
 namespace Rasterization {
@@ -23,13 +23,7 @@ namespace Rasterization {
     };
 
     struct WaveformResult {
-        Buffer<float> waveX;
-        Buffer<float> waveY;
-        Buffer<float> diffX;
-        Buffer<float> slope;
-        Buffer<float> area;
-        int zeroIndex {};
-        int oneIndex {};
+        WaveformBuffers waveform;
         bool sampleable {};
     };
 }

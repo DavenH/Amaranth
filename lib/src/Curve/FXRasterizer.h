@@ -3,6 +3,7 @@
 #include <App/SingletonAccessor.h>
 
 #include "MeshRasterizer.h"
+#include "Rasterization/Pipelines/FxRasterizationPipeline.h"
 #include "Rasterization/Sources/VertexListSource.h"
 
 class FXRasterizer:
@@ -21,5 +22,8 @@ public:
     void setMesh(Mesh* newMesh) override;
 
 private:
+    void publishPipelineOutput(const Rasterization::FxRasterizationPipeline::Output& output);
+
+    Rasterization::FxRasterizationPipeline pipeline;
     Rasterization::VertexListSource vertexSource;
 };

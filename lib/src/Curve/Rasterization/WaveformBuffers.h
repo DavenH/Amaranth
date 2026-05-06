@@ -1,0 +1,111 @@
+#pragma once
+
+#include "../../Array/Buffer.h"
+#include "../../Array/ScopedAlloc.h"
+
+namespace Rasterization {
+    struct WaveformBuffers {
+        Buffer<float> waveX;
+        Buffer<float> waveY;
+        Buffer<float> diffX;
+        Buffer<float> slope;
+        Buffer<float> area;
+
+        int zeroIndex {};
+        int oneIndex {};
+
+        WaveformBuffers() = default;
+
+        WaveformBuffers(
+                Buffer<float> waveX,
+                Buffer<float> waveY,
+                Buffer<float> diffX,
+                Buffer<float> slope,
+                Buffer<float> area,
+                int zeroIndex,
+                int oneIndex) :
+                waveX(waveX)
+            ,   waveY(waveY)
+            ,   diffX(diffX)
+            ,   slope(slope)
+            ,   area(area)
+            ,   zeroIndex(zeroIndex)
+            ,   oneIndex(oneIndex) {
+        }
+
+        void place(ScopedAlloc<float>& memory, int size) {
+            memory.ensureSize(size * 5);
+            waveX = memory.place(size);
+            waveY = memory.place(size);
+            diffX = memory.place(size);
+            slope = memory.place(size);
+            area = memory.place(size);
+        }
+
+        void nullify() {
+            waveX.nullify();
+            waveY.nullify();
+            diffX.nullify();
+            slope.nullify();
+            area.nullify();
+            zeroIndex = 0;
+            oneIndex = 0;
+        }
+
+        bool isSampleable() const {
+            return !waveX.empty() && !waveY.empty();
+        }
+    };
+
+    struct WaveformBufferRefs {
+        Buffer<float>* waveX {};
+        Buffer<float>* waveY {};
+        Buffer<float>* diffX {};
+        Buffer<float>* slope {};
+        Buffer<float>* area {};
+
+        int* zeroIndex {};
+        int* oneIndex {};
+
+        WaveformBufferRefs() = default;
+
+        WaveformBufferRefs(
+                Buffer<float>& waveX,
+                Buffer<float>& waveY,
+                Buffer<float>& diffX,
+                Buffer<float>& slope,
+                Buffer<float>& area,
+                int& zeroIndex,
+                int& oneIndex) :
+                waveX(&waveX)
+            ,   waveY(&waveY)
+            ,   diffX(&diffX)
+            ,   slope(&slope)
+            ,   area(&area)
+            ,   zeroIndex(&zeroIndex)
+            ,   oneIndex(&oneIndex) {
+        }
+
+        bool isBound() const {
+            return waveX != nullptr
+                && waveY != nullptr
+                && diffX != nullptr
+                && slope != nullptr
+                && area != nullptr
+                && zeroIndex != nullptr
+                && oneIndex != nullptr;
+        }
+
+        void assignFrom(const WaveformBuffers& source) const {
+            jassert(isBound());
+
+            *waveX = source.waveX;
+            *waveY = source.waveY;
+            *diffX = source.diffX;
+            *slope = source.slope;
+            *area = source.area;
+            *zeroIndex = source.zeroIndex;
+            *oneIndex = source.oneIndex;
+        }
+    };
+}

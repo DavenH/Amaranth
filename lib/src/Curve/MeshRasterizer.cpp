@@ -10,6 +10,7 @@
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
 #include "Rasterization/Policies/PointScalingPolicy.h"
+#include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Facades/MeshRasterizerFacade.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
@@ -77,6 +78,54 @@ void MeshRasterizer::calcCrossPointsAtTime(float x) {
 
 void MeshRasterizer::calcCrossPoints() {
     calcCrossPoints(mesh, 0.f);
+}
+
+Rasterization::RasterizationRequest MeshRasterizer::createRasterizationRequest() {
+    Rasterization::RasterizationRequest request;
+    request.dims                      = dims;
+    request.morph                     = morph;
+    request.scalingMode               = Rasterization::pointScalingModeFromLegacy(scalingType);
+    request.batchMode                 = batchMode;
+    request.calcDepthDimensions       = calcDepthDims;
+    request.calcInterceptsOnly        = calcInterceptsOnly;
+    request.cyclic                    = cyclic;
+    request.decoupleComponentDeforms  = decoupleComponentDfrms;
+    request.integralSampling          = integralSampling;
+    request.interpolateCurves         = interpolateCurves;
+    request.lowResCurves              = lowResCurves;
+    request.overrideDimension         = overrideDim;
+    request.publishSnapshot           = !batchMode;
+    request.noiseSeed                 = noiseSeed;
+    request.overridingDimension       = overridingDim;
+    request.primaryViewDimension      = overrideDim ? overridingDim : getPrimaryViewDimension();
+    request.paddingSize               = paddingSize;
+    request.interceptPadding          = interceptPadding;
+    request.xMinimum                  = xMinimum;
+    request.xMaximum                  = xMaximum;
+
+    return request;
+}
+
+Rasterization::RasterizerRuntime MeshRasterizer::createRasterizerRuntime() {
+    Rasterization::RasterizerRuntime runtime;
+    runtime.intercepts      = &icpts;
+    runtime.curves          = &curves;
+    runtime.frontPadding    = &frontIcpts;
+    runtime.backPadding     = &backIcpts;
+    runtime.colorPoints     = &colorPoints;
+    runtime.waveform        = Rasterization::WaveformBufferRefs(
+            waveX,
+            waveY,
+            diffX,
+            slope,
+            area,
+            zeroIndex,
+            oneIndex);
+    runtime.paddingSize     = &paddingSize;
+    runtime.unsampleable    = &unsampleable;
+    runtime.needsResorting  = &needsResorting;
+
+    return runtime;
 }
 
 void MeshRasterizer::calcWaveformFrom(vector<Intercept>& icpts) {
@@ -263,16 +312,8 @@ void MeshRasterizer::calcTransferTable() {
         return;
     }
 
-    const float pi = MathConstants<float>::pi;
-
-    double isize = 1 / double(Curve::resolution);
-    double x;
     for (int i = 0; i < Curve::resolution; ++i) {
-        x = i * isize;
-        transferTable[i] = x -
-                0.2180285f * sinf(2.f * pi * x) +
-                0.0322599f * sinf(4.f * pi * x) -
-                0.0018794f * sinf(6.f * pi * x);
+        transferTable[i] = Rasterization::TransferTable::values()[i];
     }
 
     alreadyCalculated = true;
@@ -299,7 +340,7 @@ void MeshRasterizer::restrictIntercepts(vector<Intercept>& intercepts) {
 }
 
 /*
- * set curve after a amp-vs-phase guideCurveProvider to full sharpness
+ * set curve after a amp-vs-phase (component curve) guide curve, to full sharpness
  * so that waveX is continuous. At < 1 sharpness, the trailing
  * x-values of the curve create a discontinuity
  */
@@ -365,13 +406,14 @@ void MeshRasterizer::calcWaveform() {
     int totalRes = facade->prepareWaveform(curves, context);
     updateBuffers(totalRes);
 
-    context.waveX = waveX;
-    context.waveY = waveY;
-    context.diffX = diffX;
-    context.slope = slope;
-    context.area = area;
-    context.zeroIndex = &zeroIndex;
-    context.oneIndex = &oneIndex;
+    context.waveform = Rasterization::WaveformBufferRefs(
+            waveX,
+            waveY,
+            diffX,
+            slope,
+            area,
+            zeroIndex,
+            oneIndex);
     facade->bakeWaveform(curves, context);
 
     unsampleable = false;
@@ -886,10 +928,14 @@ void MeshRasterizer::makeCopy() {
     source.intercepts = &icpts;
     source.colorPoints = &colorPoints;
     source.curves = &curves;
-    source.waveX = waveX;
-    source.waveY = waveY;
-    source.zeroIndex = zeroIndex;
-    source.oneIndex = oneIndex;
+    source.waveform = Rasterization::WaveformBuffers(
+            waveX,
+            waveY,
+            diffX,
+            slope,
+            area,
+            zeroIndex,
+            oneIndex);
 
     facade->publishSnapshot(rastArrays, source);
 }

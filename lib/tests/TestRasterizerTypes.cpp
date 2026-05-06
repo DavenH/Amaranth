@@ -3,7 +3,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Curve/Rasterization/RasterizerConversion.h"
+#include "../src/Curve/Rasterization/RasterizationRequest.h"
 #include "../src/Curve/Rasterization/RasterizerResult.h"
+#include "../src/Curve/Rasterization/RasterizerRuntime.h"
+#include "../src/Curve/MeshRasterizer.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/VertCube.h"
 
@@ -80,8 +83,8 @@ TEST_CASE("Rasterizer result shapes expose stage outputs without behavior", "[ra
     curves.backPadding.emplace_back(2.f, 0.8f);
     curves.paddingSize = 1;
 
-    waveform.zeroIndex = 5;
-    waveform.oneIndex = 9;
+    waveform.waveform.zeroIndex = 5;
+    waveform.waveform.oneIndex = 9;
     waveform.sampleable = true;
 
     REQUIRE(intercepts.points.size() == 1);
@@ -92,7 +95,104 @@ TEST_CASE("Rasterizer result shapes expose stage outputs without behavior", "[ra
     REQUIRE(curves.backPadding.size() == 1);
     REQUIRE(curves.paddingSize == 1);
 
-    REQUIRE(waveform.zeroIndex == 5);
-    REQUIRE(waveform.oneIndex == 9);
+    REQUIRE(waveform.waveform.zeroIndex == 5);
+    REQUIRE(waveform.waveform.oneIndex == 9);
     REQUIRE(waveform.sampleable);
+}
+
+TEST_CASE("RasterizationRequest defaults match MeshRasterizer compatibility defaults", "[rasterization][request]") {
+    RasterizationRequest request;
+
+    REQUIRE(request.scalingMode == PointScalingMode::Unipolar);
+    REQUIRE(request.cyclic);
+    REQUIRE(request.calcDepthDimensions);
+    REQUIRE_FALSE(request.calcInterceptsOnly);
+    REQUIRE_FALSE(request.lowResCurves);
+    REQUIRE_FALSE(request.integralSampling);
+    REQUIRE(request.noiseSeed == -1);
+    REQUIRE(request.overridingDimension == Vertex::Time);
+    REQUIRE(request.primaryViewDimension == Vertex::Time);
+    REQUIRE(request.paddingSize == 2);
+    REQUIRE(request.xMinimum == 0.f);
+    REQUIRE(request.xMaximum == 1.f);
+}
+
+TEST_CASE("MeshRasterizer exposes current state as RasterizationRequest", "[rasterization][request]") {
+    MeshRasterizer rasterizer("RequestRasterizer");
+    rasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Red));
+    rasterizer.setMorphPosition(MorphPosition(0.25f, 0.5f, 0.75f));
+    rasterizer.setScalingMode(MeshRasterizer::HalfBipolar);
+    rasterizer.setBatchMode(true);
+    rasterizer.setWrapsEnds(false);
+    rasterizer.setCalcDepthDimensions(false);
+    rasterizer.setCalcInterceptsOnly(true);
+    rasterizer.setIntegralSampling(true);
+    rasterizer.setInterpolatesCurves(true);
+    rasterizer.setLowresCurves(true);
+    rasterizer.setDecoupleComponentDfrm(true);
+    rasterizer.setNoiseSeed(17);
+    rasterizer.setToOverrideDim(true);
+    rasterizer.setOverridingDim(Vertex::Blue);
+    rasterizer.setInterceptPadding(0.125f);
+    rasterizer.setLimits(-0.5f, 1.5f);
+
+    RasterizationRequest request = rasterizer.createRasterizationRequest();
+
+    REQUIRE(request.dims.x == Vertex::Phase);
+    REQUIRE(request.dims.y == Vertex::Amp);
+    REQUIRE(request.dims.hidden.size() == 1);
+    REQUIRE(request.dims.hidden.front() == Vertex::Red);
+    REQUIRE(request.morph.time.getTargetValue() == 0.25f);
+    REQUIRE(request.morph.red.getTargetValue() == 0.5f);
+    REQUIRE(request.morph.blue.getTargetValue() == 0.75f);
+    REQUIRE(request.scalingMode == PointScalingMode::HalfBipolar);
+    REQUIRE(request.batchMode);
+    REQUIRE_FALSE(request.cyclic);
+    REQUIRE_FALSE(request.calcDepthDimensions);
+    REQUIRE(request.calcInterceptsOnly);
+    REQUIRE(request.integralSampling);
+    REQUIRE(request.interpolateCurves);
+    REQUIRE(request.lowResCurves);
+    REQUIRE(request.decoupleComponentDeforms);
+    REQUIRE_FALSE(request.publishSnapshot);
+    REQUIRE(request.noiseSeed == 17);
+    REQUIRE(request.overrideDimension);
+    REQUIRE(request.overridingDimension == Vertex::Blue);
+    REQUIRE(request.primaryViewDimension == Vertex::Blue);
+    REQUIRE(request.interceptPadding == 0.125f);
+    REQUIRE(request.xMinimum == -0.5f);
+    REQUIRE(request.xMaximum == 1.5f);
+}
+
+TEST_CASE("RasterizerRuntime defaults to an unbound compatibility view", "[rasterization][runtime]") {
+    RasterizerRuntime runtime;
+
+    REQUIRE_FALSE(runtime.isBound());
+    REQUIRE_FALSE(runtime.isSampleable());
+}
+
+TEST_CASE("MeshRasterizer exposes mutable storage as RasterizerRuntime", "[rasterization][runtime]") {
+    MeshRasterizer rasterizer("RuntimeRasterizer");
+    RasterizerRuntime runtime = rasterizer.createRasterizerRuntime();
+
+    REQUIRE(runtime.isBound());
+    REQUIRE(runtime.intercepts != nullptr);
+    REQUIRE(runtime.curves != nullptr);
+    REQUIRE(runtime.frontPadding != nullptr);
+    REQUIRE(runtime.backPadding != nullptr);
+    REQUIRE(runtime.colorPoints == &rasterizer.getColorPoints());
+    REQUIRE(runtime.waveform.waveX != nullptr);
+    REQUIRE(runtime.waveform.waveY != nullptr);
+    REQUIRE(runtime.waveform.diffX != nullptr);
+    REQUIRE(runtime.waveform.slope != nullptr);
+    REQUIRE(runtime.waveform.zeroIndex != nullptr);
+    REQUIRE(runtime.waveform.oneIndex != nullptr);
+    REQUIRE(runtime.paddingSize != nullptr);
+    REQUIRE(runtime.unsampleable != nullptr);
+
+    runtime.intercepts->emplace_back(0.25f, 0.75f);
+    *runtime.paddingSize = 3;
+
+    REQUIRE(runtime.intercepts->size() == 1);
+    REQUIRE(rasterizer.getPaddingSize() == 3);
 }

@@ -5,6 +5,8 @@
 #include "Curve.h"
 #include "Mesh.h"
 #include "RasterizerData.h"
+#include "Rasterization/RasterizationRequest.h"
+#include "Rasterization/RasterizerRuntime.h"
 #include "SurfaceLine.h"
 #include "VertCube.h"
 #include "../Array/ScopedAlloc.h"
@@ -97,6 +99,8 @@ public:
 
     void restoreStateFrom(RenderState& src);
     void saveStateTo(RenderState& src);
+    Rasterization::RasterizationRequest createRasterizationRequest();
+    Rasterization::RasterizerRuntime createRasterizerRuntime();
 
     bool isSampleable();
     bool isSampleableAt(float x);

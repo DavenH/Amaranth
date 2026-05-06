@@ -8,6 +8,7 @@
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/FXRasterizer.h"
 #include "../src/Curve/Mesh.h"
+#include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sources/VertexListSource.h"
 #include "RasterizerCompare.h"
 
@@ -158,4 +159,37 @@ TEST_CASE("FXRasterizer mesh adapter matches direct vertex list rasterization", 
     directRasterizer.sampleEvenlyTo(directBuffer);
 
     RasterizerCompare::requireBufferNear(copyBuffer(directBuffer), copyBuffer(meshBuffer));
+}
+
+TEST_CASE("RasterizerComposer builds an FX rasterizer without a Mesh", "[rasterization][fx][composer]") {
+    CurveTableScope curveTableScope;
+    std::vector<std::unique_ptr<Vertex>> ownedVertices;
+    std::vector<Vertex*> vertices;
+
+    ownedVertices.emplace_back(makeOwnedVertex(0.08f, 0.20f, 0.15f));
+    ownedVertices.emplace_back(makeOwnedVertex(0.35f, 0.82f, 0.40f));
+    ownedVertices.emplace_back(makeOwnedVertex(0.72f, 0.38f, 0.65f));
+    ownedVertices.emplace_back(makeOwnedVertex(0.94f, 0.60f, 0.25f));
+
+    for (auto& vertex : ownedVertices) {
+        vertices.emplace_back(vertex.get());
+    }
+
+    Rasterization::RasterizationRequest request;
+    request.scalingMode = Rasterization::PointScalingMode::Bipolar;
+
+    auto rasterizer = Rasterization::RasterizerComposer::fx()
+            .withVertices(&vertices)
+            .withRequest(request)
+            .build();
+
+    const auto& output = rasterizer.render();
+
+    REQUIRE(rasterizer.getSource().size() == 4);
+    REQUIRE_FALSE(rasterizer.getRequest().cyclic);
+    REQUIRE_FALSE(rasterizer.getRequest().calcDepthDimensions);
+    REQUIRE(output.sampleable);
+    REQUIRE(output.intercepts.front().y == Catch::Approx(-0.6f));
+    REQUIRE_FALSE(output.waveform.waveX.empty());
+    REQUIRE(output.waveform.waveY.size() == output.waveform.waveX.size());
 }

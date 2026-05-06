@@ -962,6 +962,219 @@ Acceptance:
 - envelope render output matches baseline within tolerance,
 - loop/release state transitions match existing behavior.
 
+## Composer Migration
+
+The first migration sequence drains specialized behavior out of subclasses into
+facades and policies. The next sequence changes the ownership model: subclasses
+should become compatibility adapters over a composed rasterization pipeline.
+
+The target configuration style is:
+
+```cpp
+auto rasterizer = RasterizerComposer::mesh()
+    .withSource(MeshCubeSource(mesh))
+    .withSlicer(TrilinearMeshSlicer())
+    .withMorphProvider(GraphicMorphPositionPolicy(...))
+    .withPadding(CyclicPaddingPolicy(...))
+    .withSnapshot(RasterizerDataSnapshot())
+    .build();
+```
+
+This builder API is the desired direction, but migration phases must keep
+existing public rasterizer classes buildable and behavior-compatible until
+callers have moved to narrower interfaces.
+
+### Phase 14: Introduce `RasterizationRequest`
+
+Code changes:
+
+- add `RasterizationRequest` as the immutable render input/config shape,
+- include dimensions, morph position, x limits, scaling mode, wrapping,
+  low-resolution, depth-projection, and snapshot flags,
+- add conversion helpers from the current `MeshRasterizer` state,
+- keep existing fields on `MeshRasterizer` for compatibility.
+
+Tests:
+
+- request defaults are explicit and match current rasterizer defaults,
+- conversion from `MeshRasterizer` state preserves values,
+- existing mesh rasterizer characterization tests remain unchanged.
+
+Acceptance:
+
+- no caller is forced to construct the new request yet,
+- no behavior changes.
+
+### Phase 15: Introduce `RasterizerRuntime`
+
+Code changes:
+
+- add a runtime/state bundle for mutable pipeline outputs:
+  intercepts, curves, color points, front/back padding, guide-curve regions,
+  waveform buffers, sample indices, and sampleability state,
+- provide a compatibility view over existing `MeshRasterizer` storage first,
+- do not move buffer ownership until tests prove equivalence.
+
+Tests:
+
+- runtime view exposes the same vectors/buffers as `MeshRasterizer`,
+- snapshot publication can consume runtime data,
+- existing sampling tests remain unchanged.
+
+Acceptance:
+
+- runtime shape is available to pipeline code,
+- `MeshRasterizer` still owns storage for this phase.
+
+### Phase 16: Introduce `RasterizationPipeline`
+
+Code changes:
+
+- add a composed pipeline object that orchestrates:
+  source, slicer/interpolator, point processing, restriction, padding,
+  curve resolution, waveform building, and snapshot publication,
+- begin with a point-list pipeline because it has the smallest dependency
+  surface,
+- add an FX pipeline as the first non-`Mesh` vertex-list pipeline; it should
+  consume `VertexListSource`, apply FX scaling, restrict x values, use
+  `FxPaddingPolicy`, and bake the waveform without requiring a `Mesh`,
+- share common waveform transfer-table setup through a small builder/helper
+  rather than duplicating table initialization per pipeline,
+- keep policy objects stateless or explicitly configured.
+
+Tests:
+
+- point-list pipeline output matches `Rasterizer2D`,
+- FX vertex-list output still matches `FXRasterizer`,
+- empty and single-point inputs become unsampleable without assertions.
+
+Acceptance:
+
+- a non-subclass pipeline can render a simple point-list waveform,
+- existing rasterizers still use their legacy paths.
+
+### Phase 17: Add `RasterizerComposer`
+
+Code changes:
+
+- add a fluent builder that configures a `RasterizationPipeline`,
+- support an initial point-list composer and a mesh composer stub,
+- make unsupported builder combinations fail at compile time where practical,
+  or at construction time with clear assertions during migration.
+
+Tests:
+
+- composer can build a point-list rasterizer with explicit padding,
+- composer API supports the desired mesh shape without changing behavior,
+- built pipeline remains deterministic.
+
+Acceptance:
+
+- new code can choose composition instead of subclassing for point-list/FX
+  rasterization,
+- mesh composer API exists as the target seam for later phases.
+
+### Phase 18: Rebuild Plain `MeshRasterizer` On The Pipeline
+
+Code changes:
+
+- first extract mesh slicing into `MeshSlicePipeline`, including cube source,
+  default vertex wrapping, point scaling, intercept restriction, and explicit
+  depth/color projection,
+- characterize `MeshSlicePipeline` against the old `MeshRasterizer` intercept
+  and `colorPoints` output before wiring it into runtime behavior; keep the
+  first implementation as a non-runtime characterization seam if Cycle teardown
+  or preset validation reveals lifecycle coupling,
+- make `MeshRasterizer::calcCrossPoints()` assemble a request/runtime view and
+  delegate mesh slicing to the pipeline only after the lifecycle coupling is
+  understood,
+- preserve legacy virtual hooks by adapting them to delegates temporarily,
+- leave padding, curve resolution, waveform baking, subclass hooks, and
+  snapshot publication on the legacy path until their own characterization
+  tests are in place,
+- keep `MeshRasterizer` getters and setters source-compatible.
+
+Tests:
+
+- all existing `TestMeshRasterizer` characterization tests,
+- `MeshSlicePipeline` output matches `MeshRasterizer` intercepts and
+  hidden-dimension `colorPoints`,
+- Waveform2D/Spectrum2D panel baseline comparison,
+- read-only/default UI automation fixture.
+
+Acceptance:
+
+- plain mesh rasterization behavior is equivalent,
+- `MeshRasterizer` no longer directly owns orchestration logic.
+
+### Phase 19: Convert Subclasses To Composer Factories
+
+Code changes:
+
+- first turn `FXRasterizer` into a configured adapter over
+  `FxRasterizationPipeline`, because FX can rasterize a direct vertex list
+  without depending on cube slicing or `Mesh`,
+- expose that path as `RasterizerComposer::fx().withVertices(...).build()` so
+  new callers can bypass inheritance immediately,
+- then turn `GraphicRasterizer`, `VoiceMeshRasterizer`, and `EnvRasterizer`
+  into configured adapters over composer-built pipelines,
+- move subclass-specific virtual overrides into source, padding, morph,
+  marker, and state-machine delegates,
+- keep old class names while callers migrate.
+
+Tests:
+
+- FX direct vertex and mesh-adapter tests,
+- graphic panel PSNR baselines,
+- voice offline audio capture,
+- envelope preset round-trip and audio capture.
+
+Acceptance:
+
+- subclass-specific heavy lifting lives in delegates,
+- subclasses no longer need protected access to base pipeline state.
+
+### Phase 20: Introduce Narrow Consumer Interfaces
+
+Code changes:
+
+- add small consumer-facing interfaces such as `RasterizerSampler`,
+  `RasterizerSnapshotProvider`, `EnvelopeRenderer`, and `WaveformProvider`,
+- migrate callers away from concrete `MeshRasterizer*` where they only need a
+  narrow capability,
+- keep compatibility adapters at module boundaries.
+
+Tests:
+
+- compile-time migration coverage through touched callers,
+- audio and UI fixtures for each migrated capability.
+
+Acceptance:
+
+- most code no longer requires `MeshRasterizer` or a subclass type,
+- future rasterizer implementations can be composed without inheriting.
+
+### Phase 21: Retire Subclass Overrides
+
+Code changes:
+
+- delete virtual hooks that have delegate equivalents,
+- remove subclasses that are now only named configurations,
+- keep type aliases or factory functions where public names are still useful.
+
+Tests:
+
+- full test suite,
+- standalone build,
+- focused UI automation and audio capture fixtures,
+- panel PSNR baselines where screenshot capture is available.
+
+Acceptance:
+
+- rasterization specialization is expressed through composition,
+- `MeshRasterizer` is no longer a god object and can be removed or retained as
+  a small compatibility shell.
+
 ## Regression Baselines
 
 ### Unit And Integration Baseline

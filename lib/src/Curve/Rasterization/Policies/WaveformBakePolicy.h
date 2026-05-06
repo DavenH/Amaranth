@@ -6,6 +6,7 @@
 #include <App/AppConstants.h>
 #include <Array/VecOps.h>
 
+#include "../WaveformBuffers.h"
 #include "../../Curve.h"
 #include "../../GuideCurveProvider.h"
 #include "../../MeshRasterizer.h"
@@ -25,14 +26,7 @@ namespace Rasterization {
             const short* vertOffsetSeeds {};
             const float* transferTable {};
 
-            Buffer<float> waveX;
-            Buffer<float> waveY;
-            Buffer<float> diffX;
-            Buffer<float> slope;
-            Buffer<float> area;
-
-            int* zeroIndex {};
-            int* oneIndex {};
+            WaveformBufferRefs waveform;
         };
 
         int prepare(std::vector<Curve>& curves, const Context& context) const {
@@ -73,8 +67,8 @@ namespace Rasterization {
             int waveIdx = 0;
             int cumeRes = 0;
 
-            *context.zeroIndex = 0;
-            *context.oneIndex = INT_MAX / 2;
+            *context.waveform.zeroIndex = 0;
+            *context.waveform.oneIndex = INT_MAX / 2;
 
             for (int c = 0; c < (int) curves.size() - 1; ++c) {
                 Curve& thisCurve = curves[c];
@@ -118,8 +112,11 @@ namespace Rasterization {
             noise.phaseOffset = context.phaseOffsetSeeds[compDfrm];
             noise.vertOffset  = context.vertOffsetSeeds[compDfrm];
 
-            Buffer<Float32> yPortion(context.waveY + waveIdx, curveRes);
-            Buffer<Float32> xPortion(context.waveX + waveIdx, curveRes);
+            Buffer<float>& waveX = *context.waveform.waveX;
+            Buffer<float>& waveY = *context.waveform.waveY;
+
+            Buffer<Float32> yPortion(waveY + waveIdx, curveRes);
+            Buffer<Float32> xPortion(waveX + waveIdx, curveRes);
             float multiplier = thisCentre.shp * cube->guideCurveAbsGain(Vertex::Time);
 
             if (context.decoupleComponentDfrms) {
@@ -174,31 +171,33 @@ namespace Rasterization {
                 float t2x = nextCurve.transformX[indexB] * xferValue;
                 float t2y = nextCurve.transformY[indexB] * xferValue;
 
-                context.waveX[waveIdx] = t1x + t2x;
-                context.waveY[waveIdx] = t1y + t2y;
+                (*context.waveform.waveX)[waveIdx] = t1x + t2x;
+                (*context.waveform.waveY)[waveIdx] = t1y + t2y;
 
                 ++waveIdx;
             }
         }
 
         static void updateBoundaryIndices(Context& context, int cumeRes, int curveRes) {
-            if (cumeRes > 0 && context.waveX[cumeRes - 1] <= 0.f && context.waveX[cumeRes] > 0.f) {
-                *context.zeroIndex = cumeRes - 1;
-            } else if (context.waveX[cumeRes] <= 0.f && context.waveX[cumeRes + curveRes - 1] > 0.f) {
+            Buffer<float>& waveX = *context.waveform.waveX;
+
+            if (cumeRes > 0 && waveX[cumeRes - 1] <= 0.f && waveX[cumeRes] > 0.f) {
+                *context.waveform.zeroIndex = cumeRes - 1;
+            } else if (waveX[cumeRes] <= 0.f && waveX[cumeRes + curveRes - 1] > 0.f) {
                 for (int i = cumeRes; i < cumeRes + curveRes - 1; ++i) {
-                    if (context.waveX[i] <= 0.f && context.waveX[i + 1] > 0.f) {
-                        *context.zeroIndex = i;
+                    if (waveX[i] <= 0.f && waveX[i + 1] > 0.f) {
+                        *context.waveform.zeroIndex = i;
                         break;
                     }
                 }
             }
 
-            if (cumeRes > 0 && context.waveX[cumeRes - 1] < 1.f && context.waveX[cumeRes] >= 1.f) {
-                *context.oneIndex = cumeRes - 1;
-            } else if (context.waveX[cumeRes] < 1.f && context.waveX[cumeRes + curveRes - 1] >= 1.f) {
+            if (cumeRes > 0 && waveX[cumeRes - 1] < 1.f && waveX[cumeRes] >= 1.f) {
+                *context.waveform.oneIndex = cumeRes - 1;
+            } else if (waveX[cumeRes] < 1.f && waveX[cumeRes + curveRes - 1] >= 1.f) {
                 for (int i = cumeRes; i < cumeRes + curveRes - 1; ++i) {
-                    if (context.waveX[i] < 1.f && context.waveX[i + 1] >= 1.f) {
-                        *context.oneIndex = i;
+                    if (waveX[i] < 1.f && waveX[i + 1] >= 1.f) {
+                        *context.waveform.oneIndex = i;
                         break;
                     }
                 }
@@ -206,27 +205,33 @@ namespace Rasterization {
         }
 
         static void finalizeBuffers(Context& context, int cumeRes) {
-            jassert(context.waveX.front() == context.waveX.front());
+            Buffer<float>& waveX = *context.waveform.waveX;
+            Buffer<float>& waveY = *context.waveform.waveY;
+            Buffer<float>& diffX = *context.waveform.diffX;
+            Buffer<float>& slope = *context.waveform.slope;
+            Buffer<float>& area = *context.waveform.area;
 
-            if (*context.zeroIndex == 0 && context.waveX.front() < 0.f && context.waveX.back() > 0.f) {
+            jassert(waveX.front() == waveX.front());
+
+            if (*context.waveform.zeroIndex == 0 && waveX.front() < 0.f && waveX.back() > 0.f) {
                 for (int i = 0; i < cumeRes - 1; ++i) {
-                    if (context.waveX[i] <= 0.f && context.waveX[i + 1] > 0.f) {
-                        *context.zeroIndex = i;
+                    if (waveX[i] <= 0.f && waveX[i + 1] > 0.f) {
+                        *context.waveform.zeroIndex = i;
                     }
                 }
             }
 
-            jassert(cumeRes == context.waveX.size());
+            jassert(cumeRes == waveX.size());
 
             int resSubOne = cumeRes - 1;
 
-            Buffer<float> slp = context.slope.withSize(resSubOne);
-            Buffer<float> dif = context.diffX.withSize(resSubOne);
-            Buffer<float> are = context.area.withSize(resSubOne);
+            Buffer<float> slp = slope.withSize(resSubOne);
+            Buffer<float> dif = diffX.withSize(resSubOne);
+            Buffer<float> are = area.withSize(resSubOne);
 
-            VecOps::sub(context.waveX + 1, context.waveX, dif);
-            VecOps::sub(context.waveY + 1, context.waveY, slp);
-            VecOps::sub(context.waveY + 1, context.waveY, are);
+            VecOps::sub(waveX + 1, waveX, dif);
+            VecOps::sub(waveY + 1, waveY, slp);
+            VecOps::sub(waveY + 1, waveY, are);
             dif.threshLT(1e-6f);
             slp.div(dif);
             are.mul(dif).mul(0.5f);

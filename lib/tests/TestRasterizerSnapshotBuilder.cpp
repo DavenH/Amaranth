@@ -49,10 +49,14 @@ TEST_CASE("RasterizerSnapshotBuilder publishes RasterizerData contents", "[raste
     source.intercepts = &intercepts;
     source.colorPoints = &colorPoints;
     source.curves = &curves;
-    source.waveX = waveX;
-    source.waveY = waveY;
-    source.zeroIndex = 1;
-    source.oneIndex = 3;
+    source.waveform = Rasterization::WaveformBuffers(
+            waveX,
+            waveY,
+            Buffer<float>(),
+            Buffer<float>(),
+            Buffer<float>(),
+            1,
+            3);
 
     RasterizerData data;
     Rasterization::RasterizerSnapshotBuilder().publish(data, source);
@@ -62,8 +66,8 @@ TEST_CASE("RasterizerSnapshotBuilder publishes RasterizerData contents", "[raste
     REQUIRE(data.curves.size() == curves.size());
     REQUIRE(data.waveX.size() == waveX.size());
     REQUIRE(data.waveY.size() == waveY.size());
-    REQUIRE(data.zeroIndex == source.zeroIndex);
-    REQUIRE(data.oneIndex == source.oneIndex);
+    REQUIRE(data.zeroIndex == source.waveform.zeroIndex);
+    REQUIRE(data.oneIndex == source.waveform.oneIndex);
 
     REQUIRE(copyBuffer(data.waveX) == copyBuffer(waveX));
     REQUIRE(copyBuffer(data.waveY) == copyBuffer(waveY));
@@ -87,8 +91,8 @@ TEST_CASE("NoSnapshot leaves RasterizerData unchanged", "[rasterization][snapsho
 
     Rasterization::RasterizerSnapshotSource source;
     source.intercepts = &intercepts;
-    source.zeroIndex = 1;
-    source.oneIndex = 2;
+    source.waveform.zeroIndex = 1;
+    source.waveform.oneIndex = 2;
 
     Rasterization::RasterizerSnapshotBuilder<Rasterization::NoSnapshot>().publish(data, source);
 
