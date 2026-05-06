@@ -6,6 +6,7 @@
 #include "MeshRasterizer.h"
 
 #include "VertCube.h"
+#include "Rasterization/Policies/PointScalingPolicy.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
 #include "../Array/ScopedAlloc.h"
@@ -154,20 +155,8 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
             if(!(intercept.y == intercept.y))
                 intercept.y = 0.5f;
 
-            switch (scalingType) {
-                case Unipolar:
-                    break;
-
-                case Bipolar:
-                    intercept.y = 2 * intercept.y - 1;
-                    break;
-
-                case HalfBipolar:
-                    intercept.y -= 0.5f;
-                    break;
-
-                default: break;
-            }
+            intercept.y = Rasterization::PointScalingPolicy::fromLegacyScalingType(scalingType)
+                    .scale(intercept.y);
 
             applyGuideCurves(intercept, morph);
             icpts.emplace_back(intercept);
@@ -985,8 +974,11 @@ void MeshRasterizer::applyGuideCurves(Intercept& icpt, const MorphPosition& morp
         noise.phaseOffset = phaseOffsetSeeds[guideIndex];
 
         if (!ignore) {
+            Rasterization::PointScalingPolicy scalingPolicy =
+                    Rasterization::PointScalingPolicy::fromLegacyScalingType(scalingType);
+
             icpt.y += cube->guideCurveAbsGain(Vertex::Amp) * guideCurveProvider->getTableValue(guideIndex, progress, noise);
-            NumberUtils::constrain(icpt.y, (scalingType != Unipolar ? -1.f : 0.f), 1.f);
+            NumberUtils::constrain(icpt.y, scalingPolicy.minimum(), scalingPolicy.maximum());
         }
     }
 

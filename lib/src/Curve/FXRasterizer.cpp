@@ -1,5 +1,6 @@
 #include <algorithm>
 #include "FXRasterizer.h"
+#include "Rasterization/Policies/PointScalingPolicy.h"
 
 namespace {
     String describeFxMesh(Mesh* mesh) {
@@ -70,44 +71,12 @@ void FXRasterizer::calcCrossPoints() {
     DBG(MeshRasterizer::getName() + "::calcCrossPoints begin " + describeFxMesh(mesh));
 
     icpts.clear();
-    /*
-        mesh pointer is junk at this point.
-
-        We need to ensure that when the meshlibrary creates a mesh it gets populated everywhere that needs it.
-        What if we have listeners to a group? Gets notified whenever we load a mesh.
-
-        MeshSelectionClient kind of does this. It's a set of callbacks around mesh assignment, if not lifecycle.
-
-
-        FXRasterizer::calcCrossPoints() FXRasterizer.cpp:36
-        MeshRasterizer::performUpdate(UpdateType) MeshRasterizer.cpp:1187
-        IrModeller::rasterizeImpulse(Buffer<…>, FXRasterizer &, bool) IrModeller.cpp:176
-        IrModeller::rasterizeGraphicImpulse() IrModeller.cpp:139
-        IrModeller::setImpulseLength(IrModeller::ConvState &, int) IrModeller.cpp:332
-        IrModeller::setGraphicImpulseLength(int) IrModeller.cpp:341
-        IrModeller::setPendingAction(IrModeller::PendingUpdate, int) IrModeller.cpp:350
-        IrModeller::doParamChange(int, double, bool) IrModeller.cpp:483
-        IrModellerUI::updateDsp(int, double, bool) IrModellerUI.cpp:325
-        ParameterGroup::setKnobValue(int, double, bool, bool) ParameterGroup.cpp:75
-        ParameterGroup::readKnobJSON(const juce::var &) ParameterGroup.cpp:153
-        IrModellerUI::readJSON(const juce::var &) IrModellerUI.cpp:477
-        EffectGuiRegistry::readJSON(const juce::var &) EffectGuiRegistry.cpp:73
-        Document::applyJsonRoot(const juce::var &) Document.cpp:112
-        Document::open(juce::InputStream *) Document.cpp:221
-        Document::open(const juce::String &) Document.cpp:130
-        FileManager::openCurrentPreset() FileManager.cpp:137
-        FileManager::openPreset(const juce::File &) FileManager.cpp:102
-        FileManager::openFactoryPreset(const juce::String &) FileManager.cpp:94
-        FileManager::openDefaultPreset() FileManager.cpp:312
-        MainAppWindow::openFile(const juce::String &) MainAppWindow.cpp:37
-     */
     for(auto vert : mesh->getVerts()) {
         float* values = vert->values;
         Intercept icpt(values[dims.x], values[dims.y], 0, values[Vertex::Curve]);
 
-        if(scalingType) {
-            icpt.y = 2.f * icpt.y - 1.f;
-        }
+        icpt.y = Rasterization::PointScalingPolicy::fromLegacyFxScalingType(scalingType)
+                .scale(icpt.y);
 
         icpt.adjustedX = icpt.x;
 
