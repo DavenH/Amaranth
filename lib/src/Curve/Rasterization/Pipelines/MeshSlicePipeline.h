@@ -23,6 +23,32 @@ namespace Rasterization {
             bool sampleable {};
         };
 
+        static void applyPaddingFlags(std::vector<Intercept>& intercepts) {
+            bool padAny = false;
+
+            for (int i = 0; i < (int) intercepts.size() - 1; ++i) {
+                Intercept& current = intercepts[i];
+                Intercept& next = intercepts[i + 1];
+                bool pad = current.cube != nullptr && current.cube->getCompGuideCurve() >= 0;
+                current.padBefore = pad;
+                next.padAfter = pad;
+
+                padAny |= pad;
+            }
+
+            if (!padAny) {
+                return;
+            }
+
+            for (int i = 1; i < (int) intercepts.size(); ++i) {
+                intercepts[i].padBefore &= !intercepts[i - 1].padBefore;
+            }
+
+            for (int i = 0; i < (int) intercepts.size() - 1; ++i) {
+                intercepts[i].padAfter &= !intercepts[i + 1].padAfter;
+            }
+        }
+
         template<typename GuideApplier>
         const Output& render(
                 const MeshCubeSource& source,
@@ -155,7 +181,7 @@ namespace Rasterization {
             intercept.shp = vertex->values[Vertex::Curve];
             intercept.adjustedX = intercept.x;
 
-            if (std::isnan(intercept.y)) {
+            if (!(intercept.y == intercept.y)) {
                 intercept.y = 0.5f;
             }
 
@@ -198,32 +224,6 @@ namespace Rasterization {
             context.maximumX = request.xMaximum;
 
             InterceptRestrictionPolicy(context).restrict(intercepts);
-        }
-
-        static void applyPaddingFlags(std::vector<Intercept>& intercepts) {
-            bool padAny = false;
-
-            for (int i = 0; i < (int) intercepts.size() - 1; ++i) {
-                Intercept& current = intercepts[i];
-                Intercept& next = intercepts[i + 1];
-                bool pad = current.cube != nullptr && current.cube->getCompGuideCurve() >= 0;
-                current.padBefore = pad;
-                next.padAfter = pad;
-
-                padAny |= pad;
-            }
-
-            if (!padAny) {
-                return;
-            }
-
-            for (int i = 1; i < (int) intercepts.size(); ++i) {
-                intercepts[i].padBefore &= !intercepts[i - 1].padBefore;
-            }
-
-            for (int i = 0; i < (int) intercepts.size() - 1; ++i) {
-                intercepts[i].padAfter &= !intercepts[i + 1].padAfter;
-            }
         }
 
         Output output;

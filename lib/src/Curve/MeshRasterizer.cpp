@@ -12,6 +12,8 @@
 #include "Rasterization/Policies/PointScalingPolicy.h"
 #include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Facades/MeshRasterizerFacade.h"
+#include "Rasterization/Pipelines/MeshSlicePipeline.h"
+#include "Rasterization/Sources/MeshCubeSource.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
 #include "../Array/ScopedAlloc.h"
@@ -145,100 +147,26 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
     icpts.clear();
     preCleanup();
 
-    int zDim = overrideDim ? overridingDim : getPrimaryViewDimension();
-
-    float independent = zDim == Vertex::Time ? morph.time :
-                        zDim == Vertex::Red ?  morph.red  : morph.blue;
-
-    Intercept midIcpt;
-
-    // must be set before applyGuides call
     needsResorting = false;
 
+    Rasterization::MeshSlicePipeline slicePipeline;
+    Rasterization::MeshCubeSource source(usedMesh);
+    Rasterization::RasterizationRequest request = createRasterizationRequest();
+
+    const auto& output = slicePipeline.renderWithReduction(
+            source,
+            request,
+            oscPhase,
+            [this](Intercept& point, const MorphPosition& position, bool noOffsetAtEnds) {
+                applyGuideCurves(point, position, noOffsetAtEnds);
+            },
+            reduct);
+
+    icpts = output.intercepts;
+
     if (calcDepthDims) {
-        colorPoints.clear();
+        colorPoints = output.colorPoints;
     }
-
-    for (auto cube : usedMesh->getCubes()) {
-        cube->getInterceptsFast(zDim, reduct, morph);
-
-        if (reduct.pointOverlaps) {
-            Vertex* a = &reduct.v0;
-            Vertex* b = &reduct.v1;
-            Vertex* vertex = &reduct.v;
-
-            if (calcDepthDims) {
-                VertCube::vertexAt(independent, zDim, a, b, vertex);
-
-                midIcpt.x = vertex->values[Vertex::Phase] + oscPhase;
-                midIcpt.y = vertex->values[Vertex::Amp];
-            }
-
-            wrapVertices(a->values[zDim], a->values[Vertex::Phase],
-                         b->values[zDim], b->values[Vertex::Phase],
-                         independent);
-
-            VertCube::vertexAt(independent, zDim, a, b, vertex);
-
-            float x = vertex->values[Vertex::Phase] + oscPhase;
-
-            if (cyclic) {
-                while (x >= 1.f) x -= 1.f;
-                while (x < 0.f) x += 1.f;
-
-                jassert(x >= 0.f && x < 1.f);
-                jassert(xMaximum == 1.f && xMinimum == 0.f);
-            } else {
-                NumberUtils::constrain(x, xMinimum, xMaximum);
-            }
-
-            Intercept intercept(x, vertex->values[Vertex::Amp], cube);
-
-            intercept.shp = vertex->values[Vertex::Curve];
-            intercept.adjustedX = intercept.x;
-
-            jassert(intercept.y == intercept.y);
-            jassert(intercept.x == intercept.x);
-
-            // can be NaN, short circuit here so it doesn't propagate
-            if(!(intercept.y == intercept.y))
-                intercept.y = 0.5f;
-
-            intercept.y = Rasterization::PointScalingPolicy::fromLegacyScalingType(scalingType)
-                    .scale(intercept.y);
-
-            applyGuideCurves(intercept, morph);
-            icpts.emplace_back(intercept);
-
-            if (calcDepthDims) {
-                Rasterization::DepthProjectionPolicy::Context context;
-                context.enabled          = calcDepthDims;
-                context.cyclic           = cyclic;
-                context.visibleDimension = getPrimaryViewDimension();
-                context.sliceDimension   = zDim;
-                context.independent      = independent;
-                context.oscPhase         = oscPhase;
-                context.dims             = dims;
-                context.morph            = morph;
-
-                Rasterization::DepthProjectionPolicy(calcDepthDims).project(
-                        context,
-                        cube,
-                        reduct,
-                        midIcpt,
-                        [this](Intercept& point, const MorphPosition& position, bool noOffsetAtEnds) {
-                            applyGuideCurves(point, position, noOffsetAtEnds);
-                        },
-                        colorPoints);
-            }
-        }
-    }
-
-    // sorts by x-value, not adjusted x,
-    std::sort(icpts.begin(), icpts.end());
-
-    // and set x = adjustedX
-    restrictIntercepts(icpts);
 
     processIntercepts(icpts);
 
@@ -262,25 +190,7 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
         unsampleable = true;
     }
 
-    bool padAny = false;
-
-    for (int i = 0; i < (int) icpts.size() - 1; ++i) {
-        Intercept& curr = icpts[i];
-        Intercept& next = icpts[i + 1];
-        bool pad        = curr.cube != nullptr && curr.cube->getCompGuideCurve() >= 0;
-        curr.padBefore  = pad;
-        next.padAfter   = pad;
-
-        padAny |= pad;
-    }
-
-    if (padAny) {
-        for(int i = 1; i < icpts.size(); ++i)
-            icpts[i].padBefore &= ! icpts[i - 1].padBefore;
-
-        for(int i = 0; i < (int) icpts.size() - 1; ++i)
-            icpts[i].padAfter &= ! icpts[i + 1].padAfter;
-    }
+    Rasterization::MeshSlicePipeline::applyPaddingFlags(icpts);
 
     if (!calcInterceptsOnly) {
         curves.clear();

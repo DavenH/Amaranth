@@ -207,6 +207,7 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
     MeshRasterizer* rast = isMags ?
             (MeshRasterizer*) &getObj(SpectRasterizer) :
             (MeshRasterizer*) &getObj(PhaseRasterizer);
+    rast->setMesh(meshLib->getEffectiveMesh(interactor->layerType));
 
     StringFunction shortStr = isMags ? dynStr : StringFunction().mul(5.f).pow(M_E);
     StringFunction longStr = isMags ? shortStr.withPostString(" dB") : shortStr.withPostString(L" \u03c0");

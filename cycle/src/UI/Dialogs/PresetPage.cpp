@@ -941,7 +941,7 @@ void PresetPage::timerCallback(int id) {
         }
 
         case DownloadPresetsId: {
-            downloadDeetsThread.startThread(Thread::Priority::low);
+            // downloadDeetsThread.startThread(Thread::Priority::low);
             stopTimer(id);
             break;
         }

@@ -49,7 +49,7 @@ FileManager::FileManager(SingletonRepo* repo) :
   #if PLUGIN_MODE
     defaultPresetName = "empty";
   #else
-    defaultPresetName = "afcn-horn";
+    defaultPresetName = "ooh-aah";
   #endif
 
   #ifdef _DEBUG
