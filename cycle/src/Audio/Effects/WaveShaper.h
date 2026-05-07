@@ -4,6 +4,7 @@
 #include <Array/ScopedAlloc.h>
 #include <Audio/SmoothedParameter.h>
 #include <Curve/MeshRasterizer.h>
+#include <Curve/Rasterization/Interfaces/MeshRasterizerSamplerAdapter.h>
 #include <Obj/Ref.h>
 #include <Util/NumberUtils.h>
 
@@ -36,7 +37,7 @@ public:
     void clearGraphicDelayLine();
 
     void setPendingOversampleFactor(int factor);
-    void setRasterizer(MeshRasterizer* rasterizer)	{ this->rasterizer = rasterizer; 				 			}
+    void setRasterizer(MeshRasterizer* rasterizer);
     void setUI(WaveshaperUI* comp)					{ this->ui = comp; 								 			}
     int getOversampleFactor() const					{ return oversamplers[0]->getOversampleFactor(); 			}
 
@@ -54,7 +55,8 @@ private:
     static const int graphicOvspIndex = 2;
     int pendingOversampleFactor;
 
-    Ref<MeshRasterizer> rasterizer;
+    Ref<MeshRasterizer> rasterizerOwner;
+    Rasterization::MeshRasterizerSamplerAdapter rasterizer;
     Ref<WaveshaperUI> ui;
 
     Buffer<float> workBuffer;

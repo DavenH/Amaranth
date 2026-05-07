@@ -5,6 +5,7 @@
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/MeshRasterizer.h"
+#include "../src/Curve/Rasterization/Interfaces/MeshRasterizerSamplerAdapter.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sources/MeshCubeSource.h"
@@ -157,6 +158,26 @@ TEST_CASE("MeshRasterizer can sample evenly after max-sharpness waveform generat
 
     requireFinite(samples);
 
+}
+
+TEST_CASE("MeshRasterizerSamplerAdapter exposes only waveform sampling", "[meshrasterizer][sampling]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+
+    MeshRasterizer rasterizer("SyntheticMeshSamplerAdapter");
+    configureWaveRasterizer(rasterizer, mesh.get());
+    rasterizer.calcCrossPoints();
+
+    Rasterization::MeshRasterizerSamplerAdapter sampler(&rasterizer);
+
+    REQUIRE(sampler.getRasterizer() == &rasterizer);
+    REQUIRE(sampler.isSampleable());
+    REQUIRE(sampler.sampleAt(0.5) == rasterizer.sampleAt(0.5));
+
+    int adapterIndex = rasterizer.getZeroIndex();
+    int rasterizerIndex = rasterizer.getZeroIndex();
+    REQUIRE(sampler.sampleAt(0.5, adapterIndex) == rasterizer.sampleAt(0.5, rasterizerIndex));
+    REQUIRE(adapterIndex == rasterizerIndex);
 }
 
 TEST_CASE("MeshRasterizer characterization snapshot is deterministic", "[meshrasterizer][characterization]") {
