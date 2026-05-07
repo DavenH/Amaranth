@@ -19,3 +19,6 @@ lib/tests/debug_output/*
 node_modules
 package.json
 package-lock.json
+ui-bugs.md
+audio-bugs.md
+refactors.md

@@ -113,7 +113,7 @@ void IrModellerUI::init() {
     zoomPanel->tendZoomToLeft   = false;
     zoomPanel->tendZoomToTop    = false;
 
-    selector = std::make_unique<MeshSelector<Mesh>>(repo.get(), this, String("ir"), true, false, true);
+    selector = std::make_unique<MeshSelector<Mesh>>(repo.get(), this, "ir-modeller", "mesh", true, false, true);
 
     juce::Component* wavArr[] = { &openWave, &removeWave, &modelWave };
     juce::Component* zoomArr[]= { &attkZoomIcon, &zoomOutIcon };

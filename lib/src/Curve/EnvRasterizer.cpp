@@ -81,9 +81,9 @@ void EnvRasterizer::setMesh(Mesh* mesh) {
 
     envMesh = dynamic_cast<EnvelopeMesh*>(mesh);
 
-    DBG(String::formatted("EnvRasterizer[%s] setMesh(Mesh*) %s",
-                          MeshRasterizer::name.toRawUTF8(),
-                          describeEnvelopeMesh(envMesh).toRawUTF8()));
+    // DBG(String::formatted("EnvRasterizer[%s] setMesh(Mesh*) %s",
+    //                       MeshRasterizer::name.toRawUTF8(),
+    //                       describeEnvelopeMesh(envMesh).toRawUTF8()));
 }
 
 void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
@@ -91,9 +91,9 @@ void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
 
     envMesh = envelopeMesh;
 
-    DBG(String::formatted("EnvRasterizer[%s] setMesh(EnvelopeMesh*) %s",
-                          MeshRasterizer::name.toRawUTF8(),
-                          describeEnvelopeMesh(envMesh).toRawUTF8()));
+    // DBG(String::formatted("EnvRasterizer[%s] setMesh(EnvelopeMesh*) %s",
+    //                       MeshRasterizer::name.toRawUTF8(),
+    //                       describeEnvelopeMesh(envMesh).toRawUTF8()));
 }
 
 bool EnvRasterizer::hasReleaseCurve() {

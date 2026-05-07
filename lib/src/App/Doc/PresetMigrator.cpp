@@ -349,19 +349,24 @@ namespace {
     }
 
     void applyLegacyScalarLayerProps(Array<var>& groups, int groupIndex, const XmlElement* propsElem,
-                                     bool isEnabledDefault = true, bool isMagnitude = false) {
+                                     int layerIndex, bool isEnabledDefault = true, bool isMagnitude = false) {
         if (!isPositiveAndBelow(groupIndex, groups.size())) {
             return;
         }
 
         auto* group = PresetJson::getObject(groups.getReference(groupIndex));
-        auto* layers = PresetJson::getArray(group->getProperty("layers"));
 
-        if (group == nullptr || layers == nullptr || layers->isEmpty()) {
+        if (group == nullptr) {
             return;
         }
 
-        auto layerValue = layers->getReference(0);
+        auto* layers = PresetJson::getArray(group->getProperty("layers"));
+
+        if (layers == nullptr || !isPositiveAndBelow(layerIndex, layers->size())) {
+            return;
+        }
+
+        var layerValue = layers->getReference(layerIndex);
         auto* layer = PresetJson::getObject(layerValue);
         auto props = PresetJson::property(layerValue, "properties");
         auto* propsJson = PresetJson::getObject(props);
@@ -372,6 +377,7 @@ namespace {
 
         propsJson->setProperty("active", getAttributeBool(propsElem, "isEnabled", isEnabledDefault));
         propsJson->setProperty("pan", getAttributeDouble(propsElem, "pan", 0.5));
+        propsJson->setProperty("scratchChannel", getAttributeInt(propsElem, "scratchChannel", 0));
 
         if (propsElem->hasAttribute("fine")) {
             propsJson->setProperty("fineTune", getAttributeDouble(propsElem, "fine", 0.0));
@@ -384,6 +390,19 @@ namespace {
         if (isMagnitude && propsElem->hasAttribute("additive")) {
             bool isAdditive = getAttributeBool(propsElem, "additive", true);
             propsJson->setProperty("mode", isAdditive ? 0 : 1);
+        }
+    }
+
+    void applyLegacyScalarLayerProps(Array<var>& groups, int groupIndex, const XmlElement* propsParent,
+                                     const String& propTag, bool isEnabledDefault = true, bool isMagnitude = false) {
+        if (propsParent == nullptr) {
+            return;
+        }
+
+        int layerIndex = 0;
+        for (auto propsElem : propsParent->getChildWithTagNameIterator(propTag)) {
+            applyLegacyScalarLayerProps(groups, groupIndex, propsElem, layerIndex, isEnabledDefault, isMagnitude);
+            ++layerIndex;
         }
     }
 
@@ -481,7 +500,7 @@ namespace {
 
         if (XmlElement* timeDomain = presetElement->getChildByName("TimeDomainProperties")) {
             applyLegacyScalarLayerProps(groups, LayerGroups::GroupTime,
-                                        timeDomain->getChildByName("TimeProperties"));
+                                        timeDomain, "TimeProperties");
         }
 
         if (XmlElement* freqDomain = presetElement->getChildByName("FreqDomainProperties")) {
@@ -489,15 +508,15 @@ namespace {
             XmlElement* phaseProps = nullptr;
 
             if (XmlElement* mags = freqDomain->getChildByName("MagsPropertiesSet")) {
-                magnitudeProps = mags->getChildByName("MagnitudeProperties");
+                magnitudeProps = mags;
             }
 
             if (XmlElement* phase = freqDomain->getChildByName("PhasePropertiesSet")) {
-                phaseProps = phase->getChildByName("PhaseProperties");
+                phaseProps = phase;
             }
 
-            applyLegacyScalarLayerProps(groups, LayerGroups::GroupSpect, magnitudeProps, true, true);
-            applyLegacyScalarLayerProps(groups, LayerGroups::GroupPhase, phaseProps);
+            applyLegacyScalarLayerProps(groups, LayerGroups::GroupSpect, magnitudeProps, "MagnitudeProperties", true, true);
+            applyLegacyScalarLayerProps(groups, LayerGroups::GroupPhase, phaseProps, "PhaseProperties");
         }
 
         const int requiredGroups[] = {

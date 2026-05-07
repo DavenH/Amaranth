@@ -141,6 +141,18 @@ TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups
         </Mesh>
       </TimeMesh>
     </TimeLayer>
+    <FreqLayer>
+      <FreqMesh0>
+        <Mesh name="FreqMesh0" version="2">
+          <Vertex time="0.1" phase="0.2" amp="0.3" key="0.4" mod="0.5" weight="0.6" id="1"/>
+        </Mesh>
+      </FreqMesh0>
+      <FreqMesh1>
+        <Mesh name="FreqMesh1" version="2">
+          <Vertex time="0.7" phase="0.8" amp="0.9" key="0.1" mod="0.2" weight="0.3" id="2"/>
+        </Mesh>
+      </FreqMesh1>
+    </FreqLayer>
     <WaveShaperLayer>
       <ShaperMesh>
         <Mesh name="WaveShaperMesh" version="1">
@@ -163,6 +175,12 @@ TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups
   <TimeDomainProperties>
     <TimeProperties isEnabled="0" pan="0.125" fine="0.75" dynamicRange="0.9"/>
   </TimeDomainProperties>
+  <FreqDomainProperties>
+    <MagsPropertiesSet>
+      <MagnitudeProperties additive="1" pan="0.25" dynamicRange="0.5" isEnabled="1"/>
+      <MagnitudeProperties additive="0" pan="0.75" dynamicRange="0.65" isEnabled="1"/>
+    </MagsPropertiesSet>
+  </FreqDomainProperties>
   <DeformerProps>
     <Properties noiseLevel="0.7" offsetLevel="0.8" phaseLevel="0.9" noiseSeed="41"/>
   </DeformerProps>
@@ -188,6 +206,13 @@ TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups
     REQUIRE(double(property(property(timeLayers.getReference(0), "properties"), "pan")) == Approx(0.125));
     REQUIRE(double(property(property(timeLayers.getReference(0), "properties"), "fineTune")) == Approx(0.75));
     REQUIRE(double(property(property(timeLayers.getReference(0), "properties"), "range")) == Approx(0.9));
+
+    const auto& spectLayers = requireArray(property(groups.getReference(LayerGroups::GroupSpect), "layers"));
+    REQUIRE(spectLayers.size() == 2);
+    REQUIRE(property(property(spectLayers.getReference(1), "mesh"), "name").toString() == "FreqMesh1");
+    REQUIRE(int(property(property(spectLayers.getReference(0), "properties"), "mode")) == 0);
+    REQUIRE(int(property(property(spectLayers.getReference(1), "properties"), "mode")) == 1);
+    REQUIRE(double(property(property(spectLayers.getReference(1), "properties"), "range")) == Approx(0.65));
 
     const auto& volumeLayers = requireArray(property(groups.getReference(0), "layers"));
     REQUIRE(int(property(groups.getReference(0), "meshType")) == MeshLibrary::TypeEnvelope);
