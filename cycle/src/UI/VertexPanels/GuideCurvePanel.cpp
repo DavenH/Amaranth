@@ -80,7 +80,7 @@ void GuideCurvePanel::init() {
     setMeshAndUpdate(meshLib->getEffectiveMesh(LayerGroups::GroupGuideCurve));
     rasterizer->setGuideCurveProvider(this);
 
-    meshSelector = std::make_unique<MeshSelector<Mesh>>(repo, this, "gc", true, false, true);
+    meshSelector = std::make_unique<MeshSelector<Mesh>>(repo, this, "guide-curves", "mesh", true, false, true);
 
     panelControls = std::make_unique<PanelControls>(repo, this, this, this, "Guide Curve");
     panelControls->addLayerItems(this, false, true);
@@ -99,6 +99,8 @@ void GuideCurvePanel::updateDspSync() {
 }
 
 void GuideCurvePanel::rasterizeAllTables() {
+    ensureGuideTableCount();
+
     enterClientLock();
 
     MeshLibrary::LayerGroup& guideCurveGroup = meshLib->getLayerGroup(LayerGroups::GroupGuideCurve);
@@ -126,6 +128,10 @@ void GuideCurvePanel::rasterizeTable() {
     ScopedLock sl(renderLock);
 
     int currentLayer = meshLib->getLayerGroup(LayerGroups::GroupGuideCurve).current;
+
+    if (! isPositiveAndBelow(currentLayer, (int) guideTables.size())) {
+        return;
+    }
 
     GuideCurveProps& props = guideTables[currentLayer];
 
@@ -282,6 +288,10 @@ void GuideCurvePanel::sliderValueChanged(Slider* slider) {
 
     int currentLayer = meshLib->getLayerGroup(LayerGroups::GroupGuideCurve).current;
 
+    if (! isPositiveAndBelow(currentLayer, (int) guideTables.size())) {
+        return;
+    }
+
     GuideCurveProps& props = guideTables[currentLayer];
 
     if (slider == &noise) {
@@ -353,8 +363,20 @@ void GuideCurvePanel::effectiveMeshChanged(int layerGroup, Mesh* mesh) {
         return;
     }
 
+    ensureGuideTableCount();
+
     ScopedLock sl(renderLock);
     setMeshAndUpdate(mesh);
+}
+
+void GuideCurvePanel::layerGroupAdded(int layerGroup) {
+    if (layerGroup != layerType) {
+        return;
+    }
+
+    if (ensureGuideTableCount()) {
+        rasterizeAllTables();
+    }
 }
 
 void GuideCurvePanel::setMeshAndUpdate(Mesh* mesh) {
@@ -394,6 +416,23 @@ bool GuideCurvePanel::setGuideBuffers() {
 
     for (auto& guideTable : guideTables) {
         guideTable.table = dynMemory.place(tableSize);
+    }
+
+    return changed;
+}
+
+bool GuideCurvePanel::ensureGuideTableCount() {
+    int numMeshes = meshLib->getLayerGroup(layerType).size();
+    bool changed = false;
+
+    while ((int) guideTables.size() < numMeshes) {
+        int index = (int) guideTables.size();
+        guideTables.emplace_back(this, index, 0, 0, 0, random.nextInt(tableSize));
+        changed = true;
+    }
+
+    if (changed) {
+        setGuideBuffers();
     }
 
     return changed;
@@ -444,6 +483,10 @@ bool GuideCurvePanel::readXML(const XmlElement* element) {
 }
 
 int GuideCurvePanel::getTableDensity(int index) {
+    if (! isPositiveAndBelow(index, meshLib->getLayerGroup(layerType).size())) {
+        return 0;
+    }
+
     MeshLibrary::Layer& layer = meshLib->getLayer(layerType, index);
 
     if (layer.mesh == nullptr) {
@@ -530,6 +573,11 @@ void GuideCurvePanel::sampleDownAddNoise(int index,
                                        Buffer<float> dest,
                                        const NoiseContext& context) {
     int length = dest.size();
+
+    if (! isPositiveAndBelow(index, (int) guideTables.size())) {
+        dest.zero();
+        return;
+    }
 
     GuideCurveProps& props 	= guideTables[index];
     Buffer<Float32> table = props.table;

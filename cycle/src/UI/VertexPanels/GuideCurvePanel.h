@@ -48,6 +48,7 @@ public:
     void effectiveMeshChanged(int layerGroup, Mesh* mesh) override;
     void exitClientLock() override;
     void init() override;
+    void layerGroupAdded(int layerGroup) override;
     void layerChanged() override;
     void panelResized() override;
     void preDraw() override;
@@ -75,9 +76,9 @@ public:
 
     float getTableValue(int guideIndex, float progress, const GuideCurveProvider::NoiseContext& context) override
     {
-        jassert(guideIndex < guideTables.size());
-        if(guideIndex >= guideTables.size())
+        if(! isPositiveAndBelow(guideIndex, (int) guideTables.size())) {
             return 0;
+        }
 
         float position  = progress * (GuideCurvePanel::tableSize - 1);
         int idx 		= (int) position;
@@ -93,8 +94,13 @@ public:
 
     Buffer<Float32> getTable(int index) override
     {
-        if(index < 0)
+        if(index < 0) {
             return Buffer<Float32>();
+        }
+
+        if(index >= (int) guideTables.size()) {
+            return Buffer<Float32>();
+        }
 
         return guideTables[index].table;
     }
@@ -139,4 +145,6 @@ private:
     HSlider noise;
     HSlider vertOffset;
     HSlider phaseOffset;
+
+    bool ensureGuideTableCount();
 };

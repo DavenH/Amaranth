@@ -35,6 +35,10 @@
 - Only if `Buffer`/`VecOps` cannot express an operation should we introduce scalar fallback logic.
 - Before finalizing a change touching DSP or visualization paths, run a self-check on modified files for scalar `std::<math>` usage in hot loops and fix violations.
 
+## Refactors
+
+If confusing code patterns, reuse possibilities, or better abstractions are detected, check `docs/TDD/refactors.md` if a suggestion to fix it is already present. If not record refactor wishes there.
+
 ## Testing Guidelines
 - Framework: Catch2.
 - Locations: `lib/tests/*.cpp`, `cycle/tests/*.cpp`, `oscillo/tests/*.cpp`.
@@ -42,6 +46,7 @@
 - Coverage: prefer tests for new DSP modules and bugfixes; include edge‑rate/sample‑rate cases.
 - UI regressions: use `scripts/capture_cycle_ui.sh /tmp/cycle-ui.png /tmp/cycle-logs.txt` to capture the Cycle UI and filtered launch logs before/after visual changes or when investigating UI bugs. Read `/tmp/cycle-logs.txt` first; only read `/tmp/cycle-logs.txt.raw` when detailed rasterizer/mesh logs are needed.
 - UI automation: prefer a focused fixture with `scripts/run_cycle_agent.sh` over the full smoke suite while debugging. Add small, stable fixtures under `scripts/fixtures/` for regressions that agents should be able to reproduce. See `docs/cycle-agent-runbook.md`.
+- When assertions, crashes, or suspicious runtime failures appear incidentally and are not the direct cause of the current feature/fix work, record a concise note in `docs/TDD/ui-bugs.md` or `docs/TDD/audio-bugs.md` as appropriate. Use `audio-bugs.md` for realtime audio pipeline issues; otherwise prefer `ui-bugs.md`. Include the assertion text, context, repro artifact/log path when available, and whether it is still open or was addressed.
 
 ## Commit & Pull Request Guidelines
 - Commits: short, imperative subject (“Fix buffer wraparound”), optional body for context.
