@@ -47,9 +47,9 @@ FileManager::FileManager(SingletonRepo* repo) :
         SingletonAccessor(repo, "FileManager")
     ,	shouldOpenDefaultPreset(true) {
   #if PLUGIN_MODE
-    defaultPresetName = "Empty";
+    defaultPresetName = "empty";
   #else
-    defaultPresetName = "AfricanHorn";
+    defaultPresetName = "afcn-horn";
   #endif
 
   #ifdef _DEBUG

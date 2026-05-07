@@ -106,7 +106,7 @@ void Spectrum3D::init() {
     panelControls->addLeftItem(&spacer6);
     panelControls->addScratchSelector();
 
-    meshSelector = std::make_unique<MeshSelector<Mesh>>(repo, getObj(SpectrumInter3D).getSelectionClient(), "f3d", true, true);
+    meshSelector = std::make_unique<MeshSelector<Mesh>>(repo, getObj(SpectrumInter3D).getSelectionClient(), "spectrum", "mesh", true, true);
     panelControls->addMeshSelector(meshSelector.get());
 
     additiveIcon.setHighlit(true);

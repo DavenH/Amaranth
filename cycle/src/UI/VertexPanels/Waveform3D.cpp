@@ -126,7 +126,7 @@ void Waveform3D::init() {
     panelControls->addSlider(layerPan);
     panelControls->drawLabel = true;
 
-    meshSelector = std::make_unique<MeshSelector<Mesh>>(repo, surfInteractor->getSelectionClient(), "surf", true, true);
+    meshSelector = std::make_unique<MeshSelector<Mesh>>(repo, surfInteractor->getSelectionClient(), "waveform", "mesh", true, true);
     panelControls->addMeshSelector(meshSelector.get());
 
     layerFine->setRange(0, 1, 0.025);

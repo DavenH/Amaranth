@@ -28,8 +28,9 @@ class SaveItem :
     ,	public Timer
     , 	public SingletonAccessor {
 public:
-    SaveItem(SingletonRepo* repo, String  extension, MeshSelector<MeshType>* selector) :
+    SaveItem(SingletonRepo* repo, String meshFolder, String extension, MeshSelector<MeshType>* selector) :
             SingletonAccessor(repo, "SaveItem")
+        ,	meshFolder	(std::move(meshFolder))
         ,	extension	(std::move(extension))
         ,	selector	(selector)
         ,	saveButton	("Save")
@@ -57,7 +58,7 @@ public:
         folderEditor.setEditable(true);
         folderEditor.setInterceptsMouseClicks(true, false);
 
-        savePath = getObj(Directories).getUserMeshDir() + extension + File::getSeparatorChar();
+        savePath = getObj(Directories).getUserMeshDir() + meshFolder + File::getSeparatorChar();
     }
 
     void paint(Graphics& g) override {
@@ -122,7 +123,7 @@ public:
     String getCurrentFilename() {
         String editorText = nameEditor.getText();
 
-        if(! editorText.endsWith(extension))
+        if(! editorText.endsWith(String(".") + extension))
             editorText += String(".") + extension;
 
         return editorText;
@@ -180,6 +181,7 @@ private:
 
     String overwriteMessage;
     String savePath;
+    String meshFolder;
     String extension;
 };
 
@@ -212,13 +214,25 @@ public:
                  bool saveAtTop,
                  bool updateMeshVersions = false,
                  bool meshDoubleApplic = true) :
+            MeshSelector(repo, client, extension, extension, horz, saveAtTop, updateMeshVersions, meshDoubleApplic)
+    {}
+
+    MeshSelector(SingletonRepo* repo,
+                 MeshSelectionClient<MeshType>* client,
+                 String meshFolder,
+                 String fileExtension,
+                 bool horz,
+                 bool saveAtTop,
+                 bool updateMeshVersions = false,
+                 bool meshDoubleApplic = true) :
             HoverSelector	(repo, 4, 0, horz)
         ,	itemCount		(1)
         ,	ignoreMouseExit	(false)
         ,	meshDoubleApplic(meshDoubleApplic)
         ,	oldMesh			(nullptr)
         ,	client			(client)
-        ,	extension		(std::move(extension))
+        ,	meshFolder		(std::move(meshFolder))
+        ,	fileExtension	(std::move(fileExtension))
         ,	saveAtTop		(saveAtTop)
         ,	updateMeshVersion(updateMeshVersions) {
         jassert(client != nullptr);
@@ -230,8 +244,8 @@ public:
         itemCount = 1;
         oldMesh 	= nullptr;
 
-        String parentPath 		= getObj(Directories).getMeshDir() 	+ extension + File::getSeparatorChar();
-        String parentUserPath 	= getObj(Directories).getUserMeshDir() + extension + File::getSeparatorChar();
+        String parentPath 		= getObj(Directories).getMeshDir() 	+ meshFolder + File::getSeparatorChar();
+        String parentUserPath 	= getObj(Directories).getUserMeshDir() + meshFolder + File::getSeparatorChar();
 
         File parentFile 		= File(parentPath);
         File parentUserFile 	= File(parentUserPath);
@@ -309,7 +323,7 @@ public:
         }
 
         Array<File> results;
-        child.findChildFiles(results, File::findFiles, false, String("*.") + extension);
+        child.findChildFiles(results, File::findFiles, false, String("*.") + fileExtension);
 
         if(results.size() == 0) {
             return false;
@@ -377,7 +391,7 @@ public:
     void itemWasSelected(int itemId) override {
         switch (itemId) {
             case MeshSave: {
-                auto saveItem = std::make_unique<SaveItem<MeshType>>(repo, extension, this);
+                auto saveItem = std::make_unique<SaveItem<MeshType>>(repo, meshFolder, fileExtension, this);
                 saveItem->setFolder(client->getDefaultFolder());
                 saveItem->setSize(180, 50);
 
@@ -522,7 +536,8 @@ private:
     bool updateMeshVersion;
     bool meshDoubleApplic;
 
-    String extension;
+    String meshFolder;
+    String fileExtension;
     OwnedArray<SelectorCallback> callbacks;
 
     Ref<MeshSelectionClient<MeshType>> client;

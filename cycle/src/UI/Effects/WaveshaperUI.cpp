@@ -111,7 +111,7 @@ void WaveshaperUI::init() {
     rasterizer->setGuideCurveProvider(&getObj(GuideCurvePanel));
     setMeshAndUpdate(getObj(MeshLibrary).getEffectiveMesh(layerType));
 
-    selector = std::make_unique<MeshSelector<Mesh>>(repo, this, "ws", false, true, true);
+    selector = std::make_unique<MeshSelector<Mesh>>(repo, this, "waveshaper", "mesh", false, true, true);
 
     controls.addDynamicSizeComponent(new ClearSpacer(8, false));
     controls.addButton(&enabledButton);

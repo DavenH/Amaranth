@@ -104,7 +104,7 @@ void Envelope2D::init() {
 
     createNameImage("Envelopes");
 
-    meshSelector = std::make_unique<MeshSelector<EnvelopeMesh>>(repo, e2Interactor, "env", true, false, false, false);
+    meshSelector = std::make_unique<MeshSelector<EnvelopeMesh>>(repo, e2Interactor, "envelope", "env", true, false, false, false);
 
     EnvelopeInter2D* e2 = e2Interactor;
 

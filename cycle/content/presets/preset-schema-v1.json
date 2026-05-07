@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Preset",
+  "$comment": "This schema documents the legacy XML-shaped v1 preset format as discovered from factory presets. It is descriptive rather than authoritative; some sections were originally inferred from only a few presets. Repeated XML child elements are represented here as object-or-array forms, with migration notes where later preset-sweep findings diverged from the first draft.",
   "type": "object",
   "properties": {
     "VersionValue": {
@@ -201,29 +202,24 @@
       "type": "object",
       "properties": {
         "TimeProperties": {
-          "type": "object",
-          "properties": {
-            "pan":       { "type": "number" },
-            "fine":      { "type": "number" },
-            "isEnabled": { "type": "integer", "enum": [0, 1] }
-          }
+          "$comment": "Preset sweep finding: this may occur once per TimeLayer. PresetMigrator applies these to time layers in document order, not only to layer 0.",
+          "oneOf": [
+            { "$ref": "#/$defs/LegacyScalarLayerProperties" },
+            {
+              "type": "array",
+              "items": { "$ref": "#/$defs/LegacyScalarLayerProperties" }
+            }
+          ]
         }
       }
     },
     "DeformerProps": {
-      "type": "object",
-      "properties": {
-        "Properties": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "noiseLevel": { "type": "number" },
-              "noiseSeed":  { "type": "integer" }
-            }
-          }
-        }
-      }
+      "$ref": "#/$defs/LegacyGuideCurveProperties",
+      "$comment": "Older name for GuideCurveProps; PresetMigrator accepts either tag."
+    },
+    "GuideCurveProps": {
+      "$ref": "#/$defs/LegacyGuideCurveProperties",
+      "$comment": "Newer legacy XML name for guide curve properties; some older presets use DeformerProps instead."
     },
     "FreqDomainProperties": {
       "type": "object",
@@ -232,13 +228,14 @@
           "type": "object",
           "properties": {
             "MagnitudeProperties": {
-              "type": "object",
-              "properties": {
-                "additive":     { "type": "integer", "enum": [0, 1] },
-                "pan":          { "type": "number" },
-                "dynamicRange": { "type": "number" },
-                "isEnabled":    { "type": "integer", "enum": [0, 1] }
-              }
+              "$comment": "Preset sweep finding: this may occur once per FreqLayer. PresetMigrator maps additive=1 to current spectral-add mode and additive=0 to spectral-filtering mode per matching magnitude layer.",
+              "oneOf": [
+                { "$ref": "#/$defs/LegacyMagnitudeLayerProperties" },
+                {
+                  "type": "array",
+                  "items": { "$ref": "#/$defs/LegacyMagnitudeLayerProperties" }
+                }
+              ]
             }
           }
         },
@@ -246,12 +243,14 @@
           "type": "object",
           "properties": {
             "PhaseProperties": {
-              "type": "object",
-              "properties": {
-                "pan":          { "type": "number" },
-                "dynamicRange": { "type": "number" },
-                "isEnabled":    { "type": "integer", "enum": [0, 1] }
-              }
+              "$comment": "Preset sweep finding: this may occur once per PhaseLayer. PresetMigrator applies these to phase layers in document order, not only to layer 0.",
+              "oneOf": [
+                { "$ref": "#/$defs/LegacyScalarLayerProperties" },
+                {
+                  "type": "array",
+                  "items": { "$ref": "#/$defs/LegacyScalarLayerProperties" }
+                }
+              ]
             }
           }
         }
@@ -266,6 +265,23 @@
   },
 
   "$defs": {
+    "LegacyGuideCurveProperties": {
+      "type": "object",
+      "properties": {
+        "Properties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "noiseLevel":  { "type": "number" },
+              "offsetLevel": { "type": "number" },
+              "phaseLevel":  { "type": "number" },
+              "noiseSeed":   { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
     "Vertex": {
       "type": "object",
       "required": ["time", "phase", "amp", "key", "mod", "weight", "id"],
@@ -354,6 +370,27 @@
         "value":  { "type": "number", "minimum": 0, "maximum": 1 },
         "number": { "type": "integer", "minimum": 0 }
       }
+    },
+    "LegacyScalarLayerProperties": {
+      "type": "object",
+      "properties": {
+        "pan":            { "type": "number" },
+        "fine":           { "type": "number" },
+        "dynamicRange":   { "type": "number" },
+        "scratchChannel": { "type": "integer" },
+        "isEnabled":      { "type": "integer", "enum": [0, 1] }
+      }
+    },
+    "LegacyMagnitudeLayerProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/LegacyScalarLayerProperties" },
+        {
+          "type": "object",
+          "properties": {
+            "additive": { "type": "integer", "enum": [0, 1] }
+          }
+        }
+      ]
     }
   }
 }
