@@ -4,7 +4,7 @@ This runbook is for agents using Cycle's in-app automation to reproduce UI
 bugs, write focused regression fixtures, inspect state, and capture screenshots.
 For architecture and command-model background, see
 `docs/ADR/007-cycle-agentic-automation.md` and
-`docs/TDD/cycle-agentic-automation.md`.
+`docs/TDD/cycle-agentic-automation.md`. In general, it's not required reading.
 
 ## When To Use It
 
@@ -84,7 +84,8 @@ Useful command sequence for a UI bug:
 
 Use `inspectTargets`, `inspectTree`, and `listAssertionPaths` before inventing
 new selectors. They reveal the current registry names, rectangles, component
-classes, state paths, and assertion-compatible values.
+classes, state paths, and assertion-compatible values. If a target does not exist
+in the tree, but exists on the UI, and you want to trigger it, wire it up! 
 
 Use `assertState` or `assertTarget` once the path is known. Do not validate by
 visually reading a screenshot if a state assertion can prove the behavior.

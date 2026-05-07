@@ -739,7 +739,6 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
         return false;
     }
 
-    int phsVsTimeChan = cube->guideCurveAt(Vertex::Time);
     int ampChan       = cube->guideCurveAt(Vertex::Amp);
     int phsVsRedChan  = cube->guideCurveAt(Vertex::Red);
     int phsVsBlueChan = cube->guideCurveAt(Vertex::Blue);
@@ -749,7 +748,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
 
     int phaseDim            = isTime ? Vertex::Phase : isRed ? Vertex::Red : Vertex::Blue;
     int phaseSrcDim         = isTime ? Vertex::Time : phaseDim;
-    int phaseChan           = isTime ? phsVsTimeChan : isRed ? phsVsRedChan : phsVsBlueChan;
+    int phaseChan           = isTime ? -1 : isRed ? phsVsRedChan : phsVsBlueChan;
     bool adjustSpeed        = haveSpeed && speedApplicable && isTime;
     bool adjustPhase        = phaseSrcDim == pointDim && phaseChan >= 0;
     bool adjustAmp          = ampChan >= 0 && isTime;
@@ -822,28 +821,16 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             float   indexScale  = scaleX * float(speedEnv.size() - 1) * invSize;
             float   speed;
 
-            if (phsVsTimeChan >= 0) {
-                for (int i = 0; i < linestripRes; ++i) {
+            if (scaleX < 0.99f) {
+                for(int i = 0; i < linestripRes; ++i) {
                     speedEnvIdx = jlimit(0, speedEnv.size() - 1, int(offsetIdx + indexScale * i)); // todo Lerp it
-                    speed       = speedEnv[speedEnvIdx];
-                    ramp[i]     = speed;
-                    idx         = int((phaseTable.size() - 1) * speed);
-                    xy.y[i]     = phaseGain * phaseTable[idx]; // + speed * (second.y - first.y);
+                    xy.y[i] = speedEnv[speedEnvIdx];
                 }
-
-                xy.y.addProduct(ramp, second.y - first.y).add(first.y + redOffset + blueOffset);
             } else {
-                if (scaleX < 0.99f) {
-                    for(int i = 0; i < linestripRes; ++i) {
-                        speedEnvIdx = jlimit(0, speedEnv.size() - 1, int(offsetIdx + indexScale * i)); // todo Lerp it
-                        xy.y[i] = speedEnv[speedEnvIdx];
-                    }
-                } else {
-                    speedEnv.copyTo(xy.y);
-                }
-
-                xy.y.mul(second.y - first.y).add(first.y + redOffset + blueOffset);
+                speedEnv.copyTo(xy.y);
             }
+
+            xy.y.mul(second.y - first.y).add(first.y + redOffset + blueOffset);
         } else {
             if (adjustPhase) {
                 xy.y.downsampleFrom(phaseTable);

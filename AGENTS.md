@@ -35,6 +35,10 @@
 - Only if `Buffer`/`VecOps` cannot express an operation should we introduce scalar fallback logic.
 - Before finalizing a change touching DSP or visualization paths, run a self-check on modified files for scalar `std::<math>` usage in hot loops and fix violations.
 
+## Refactors
+
+If confusing code patterns, reuse possibilities, or better abstractions are detected, check `docs/TDD/refactors.md` if a suggestion to fix it is already present. If not record refactor wishes there.
+
 ## Testing Guidelines
 - Framework: Catch2.
 - Locations: `lib/tests/*.cpp`, `cycle/tests/*.cpp`, `oscillo/tests/*.cpp`.
