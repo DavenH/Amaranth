@@ -12,7 +12,7 @@
 #include "Rasterization/Policies/PointScalingPolicy.h"
 #include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Facades/MeshRasterizerFacade.h"
-#include "Rasterization/Pipelines/MeshSlicePipeline.h"
+#include "Rasterization/RasterizerComposer.h"
 #include "Rasterization/Sources/MeshCubeSource.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
@@ -149,13 +149,15 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
 
     needsResorting = false;
 
-    Rasterization::MeshSlicePipeline slicePipeline;
     Rasterization::MeshCubeSource source(usedMesh);
     Rasterization::RasterizationRequest request = createRasterizationRequest();
 
-    const auto& output = slicePipeline.renderWithReduction(
-            source,
-            request,
+    auto composedRasterizer = Rasterization::RasterizerComposer::mesh()
+            .withSource(source)
+            .withRequest(request)
+            .build();
+
+    const auto& output = composedRasterizer.renderWithReduction(
             oscPhase,
             [this](Intercept& point, const MorphPosition& position, bool noOffsetAtEnds) {
                 applyGuideCurves(point, position, noOffsetAtEnds);

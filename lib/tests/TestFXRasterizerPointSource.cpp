@@ -77,6 +77,23 @@ namespace {
 
         return values;
     }
+
+    RasterizerCompare::Snapshot captureFxPipelineOutput(
+            const Rasterization::FxRasterizationPipeline::Output& output) {
+        RasterizerCompare::Snapshot snapshot;
+
+        snapshot.waveX      = copyBuffer(output.waveform.waveX);
+        snapshot.waveY      = copyBuffer(output.waveform.waveY);
+        snapshot.diffX      = copyBuffer(output.waveform.diffX);
+        snapshot.slope      = copyBuffer(output.waveform.slope);
+        snapshot.curves     = output.curves;
+        snapshot.intercepts = output.intercepts;
+        snapshot.zeroIndex  = output.waveform.zeroIndex;
+        snapshot.oneIndex   = output.waveform.oneIndex;
+        snapshot.sampleable = output.sampleable;
+
+        return snapshot;
+    }
 }
 
 TEST_CASE("VertexListSource exposes FX vertices without a Mesh", "[rasterization][fx]") {
@@ -192,4 +209,40 @@ TEST_CASE("RasterizerComposer builds an FX rasterizer without a Mesh", "[rasteri
     REQUIRE(output.intercepts.front().y == Catch::Approx(-0.6f));
     REQUIRE_FALSE(output.waveform.waveX.empty());
     REQUIRE(output.waveform.waveY.size() == output.waveform.waveX.size());
+}
+
+TEST_CASE("FXRasterizer is a compatibility adapter over the FX composer", "[rasterization][fx][composer]") {
+    CurveTableScope curveTableScope;
+    std::vector<std::unique_ptr<Vertex>> ownedVertices;
+    std::vector<Vertex*> vertices;
+
+    ownedVertices.emplace_back(makeOwnedVertex(0.08f, 0.20f, 0.15f));
+    ownedVertices.emplace_back(makeOwnedVertex(0.35f, 0.82f, 0.40f));
+    ownedVertices.emplace_back(makeOwnedVertex(0.72f, 0.38f, 0.65f));
+    ownedVertices.emplace_back(makeOwnedVertex(0.94f, 0.60f, 0.25f));
+
+    for (auto& vertex : ownedVertices) {
+        vertices.emplace_back(vertex.get());
+    }
+
+    FXRasterizer adapter(nullptr, "FxComposerAdapter");
+    adapter.setVertices(&vertices);
+    adapter.calcCrossPoints();
+    adapter.makeCopy();
+
+    Rasterization::RasterizationRequest request = adapter.createRasterizationRequest();
+    request.cyclic = false;
+    request.calcDepthDimensions = false;
+    request.scalingMode = Rasterization::pointScalingModeFromLegacyFx(MeshRasterizer::Unipolar);
+
+    auto composed = Rasterization::RasterizerComposer::fx()
+            .withVertices(&vertices)
+            .withRequest(request)
+            .build();
+
+    const auto& output = composed.render();
+
+    RasterizerCompare::requireSnapshotNear(
+            RasterizerCompare::capture(adapter),
+            captureFxPipelineOutput(output));
 }

@@ -1,5 +1,4 @@
 #include <cmath>
-
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Array/ScopedAlloc.h"
@@ -7,6 +6,7 @@
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/MeshRasterizer.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
+#include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sources/MeshCubeSource.h"
 #include "../src/Curve/VertCube.h"
 #include "RasterizerCompare.h"
@@ -267,6 +267,29 @@ TEST_CASE("MeshSlicePipeline matches MeshRasterizer intercept and color-point sl
         INFO("colorPoint=" << i);
         RasterizerCompare::requireColorPointNear(output.colorPoints[i], rasterizer.getRastData().colorPoints[i]);
     }
+}
+
+TEST_CASE("RasterizerComposer builds a mesh slice rasterizer", "[meshrasterizer][pipeline][composer]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+
+    MeshRasterizer rasterizer("SyntheticMeshComposerReference");
+    configureWaveRasterizer(rasterizer, mesh.get());
+    Rasterization::RasterizationRequest request = rasterizer.createRasterizationRequest();
+
+    auto composed = Rasterization::RasterizerComposer::mesh()
+            .withSource(Rasterization::MeshCubeSource(mesh.get()))
+            .withSlicer(Rasterization::TrilinearMeshSlicer())
+            .withRequest(request)
+            .build();
+
+    const auto& output = composed.render(
+            0.f,
+            [](Intercept&, const MorphPosition&, bool) {});
+
+    REQUIRE(output.sampleable);
+    REQUIRE(output.intercepts.size() == mesh->getNumCubes());
+    REQUIRE(output.colorPoints.size() == mesh->getNumCubes() * 3);
 }
 
 TEST_CASE("MeshRasterizer characterizes intercept restriction spacing", "[meshrasterizer][characterization][restriction]") {

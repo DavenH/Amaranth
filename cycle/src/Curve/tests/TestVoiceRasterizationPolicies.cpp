@@ -5,6 +5,7 @@
 
 #include "../CycleState.h"
 #include "../Rasterization/Policies/VoiceChainedPaddingPolicy.h"
+#include "../Rasterization/Policies/VoiceCurveResolutionPolicy.h"
 #include "../Rasterization/Policies/VoicePointPositionPolicy.h"
 
 namespace {
@@ -23,6 +24,16 @@ namespace {
             Intercept(0.12f, -0.40f, nullptr, 0.25f),
             Intercept(0.46f, 0.40f, nullptr, 0.45f),
             Intercept(0.86f, 0.10f, nullptr, 0.65f),
+        };
+    }
+
+    std::vector<Curve> makeVoiceCurves() {
+        return {
+            Curve(Intercept(-0.10f, -0.50f), Intercept(-0.05f, -0.25f), Intercept(0.10f, -0.50f)),
+            Curve(Intercept(-0.05f, -0.25f), Intercept(0.10f, -0.50f), Intercept(0.42f, 0.25f)),
+            Curve(Intercept(0.10f, -0.50f), Intercept(0.42f, 0.25f), Intercept(0.78f, -0.10f)),
+            Curve(Intercept(0.42f, 0.25f), Intercept(0.78f, -0.10f), Intercept(1.12f, -0.40f)),
+            Curve(Intercept(0.78f, -0.10f), Intercept(1.12f, -0.40f), Intercept(1.46f, 0.40f)),
         };
     }
 
@@ -58,6 +69,17 @@ namespace {
             INFO("curve=" << i);
             requireCurveNear(actual[i], expected[i]);
         }
+    }
+
+    void applyLegacyVoiceCurveResolution(std::vector<Curve>& curves) {
+        ::Rasterization::CurveResolutionPolicy::applyResolutionIndices(
+                curves,
+                0.05f / float(Curve::resolution),
+                1);
+
+        int lastIdx = (int) curves.size() - 1;
+        curves[0].resIndex = curves[1].resIndex;
+        curves[lastIdx].resIndex = curves[lastIdx - 1].resIndex;
     }
 
     void buildLegacyChainedPadding(
@@ -183,4 +205,22 @@ TEST_CASE("VoiceChainedPaddingPolicy matches legacy chaining curve padding", "[c
     requireInterceptNear(policyState.frontC, legacyState.frontC);
     requireInterceptNear(policyState.frontB, legacyState.frontB);
     requireInterceptNear(policyState.frontA, legacyState.frontA);
+}
+
+TEST_CASE("VoiceCurveResolutionPolicy matches legacy voice resolution endpoint handling", "[cycle][rasterization][voice]") {
+    std::vector<Curve> legacyCurves = makeVoiceCurves();
+    std::vector<Curve> policyCurves = makeVoiceCurves();
+
+    applyLegacyVoiceCurveResolution(legacyCurves);
+    Cycle::Rasterization::VoiceCurveResolutionPolicy().apply(policyCurves);
+
+    REQUIRE(policyCurves.size() == legacyCurves.size());
+
+    for (int i = 0; i < (int) policyCurves.size(); ++i) {
+        INFO("curve=" << i);
+        REQUIRE(policyCurves[i].resIndex == legacyCurves[i].resIndex);
+    }
+
+    REQUIRE(policyCurves.front().resIndex == policyCurves[1].resIndex);
+    REQUIRE(policyCurves.back().resIndex == policyCurves[policyCurves.size() - 2].resIndex);
 }

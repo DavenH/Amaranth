@@ -206,6 +206,36 @@ TEST_CASE("RasterizerComposer builds a non-cyclic point-list rasterizer", "[rast
     REQUIRE(points.front().x == Catch::Approx(0.05f));
 }
 
+TEST_CASE("Rasterizer2D is a compatibility adapter over the point-list composer", "[rasterization][pointlist][composer]") {
+    CurveTableScope curveTableScope;
+    std::vector<Intercept> adapterPoints = makePointList();
+    std::vector<Intercept> composerPoints = makePointList();
+
+    Rasterizer2D adapter(adapterPoints, true);
+    adapter.calcCrossPoints();
+
+    Rasterization::RasterizationRequest request = adapter.createRasterizationRequest();
+    request.cyclic = true;
+
+    auto composed = Rasterization::RasterizerComposer::pointList()
+            .withSource(composerPoints)
+            .withRequest(request)
+            .build();
+
+    const auto& output = composed.render();
+
+    REQUIRE(output.sampleable == adapter.isSampleable());
+    REQUIRE(output.waveform.waveX.size() == adapter.getWaveX().size());
+    REQUIRE(output.waveform.waveY.size() == adapter.getWaveY().size());
+    REQUIRE(output.paddingSize == adapter.getPaddingSize());
+
+    for (int i = 0; i < output.waveform.waveX.size(); ++i) {
+        INFO("index=" << i);
+        REQUIRE(output.waveform.waveX[i] == Catch::Approx(adapter.getWaveX()[i]).margin(1e-5f));
+        REQUIRE(output.waveform.waveY[i] == Catch::Approx(adapter.getWaveY()[i]).margin(1e-5f));
+    }
+}
+
 TEST_CASE("RasterizerComposer exposes the target mesh source and slicer shape", "[rasterization][composer]") {
     Mesh mesh("ComposerMesh");
     auto* cube = new VertCube(&mesh);

@@ -54,6 +54,36 @@ TEST_CASE("EnvRasterizerFacade falls back to last envelope intercept when sustai
     REQUIRE(result.sustainIndex == 3);
 }
 
+TEST_CASE("EnvRasterizerFacade applies unipolar sustain floor point", "[rasterization][env][facade]") {
+    auto intercepts = makeIntercepts();
+
+    Rasterization::EnvelopeSustainPointContext context;
+    context.sustainIndex = 1;
+    context.addFloorPoint = true;
+
+    bool needsResorting = Rasterization::EnvRasterizerFacade().applySustainPoint(intercepts, context);
+
+    REQUIRE(needsResorting);
+    REQUIRE(intercepts.size() == 5);
+    REQUIRE(intercepts.back().cube == nullptr);
+    REQUIRE(intercepts.back().x == Catch::Approx(0.3501f));
+    REQUIRE(intercepts.back().y == Catch::Approx(0.75f));
+    REQUIRE(intercepts.back().shp == Catch::Approx(1.f));
+}
+
+TEST_CASE("EnvRasterizerFacade skips sustain floor point for terminal sustain", "[rasterization][env][facade]") {
+    auto intercepts = makeIntercepts();
+
+    Rasterization::EnvelopeSustainPointContext context;
+    context.sustainIndex = 3;
+    context.addFloorPoint = true;
+
+    bool needsResorting = Rasterization::EnvRasterizerFacade().applySustainPoint(intercepts, context);
+
+    REQUIRE_FALSE(needsResorting);
+    REQUIRE(intercepts.size() == 4);
+}
+
 TEST_CASE("EnvRasterizerFacade builds display padding for looping envelopes", "[rasterization][env][facade]") {
     auto intercepts = makeIntercepts();
     std::vector<Curve> curves;

@@ -148,23 +148,11 @@ void EnvRasterizer::calcCrossPoints() {
 void EnvRasterizer::processIntercepts(vector<Intercept>& intercepts) {
     evaluateLoopSustainIndices();
 
-    if (scalingType != Bipolar) {
-        if (sustainIndex >= 0 && sustainIndex != intercepts.size() - 1) {
-            Intercept sustIcpt = intercepts[sustainIndex];
-            sustIcpt.cube = nullptr;
-            sustIcpt.x += 0.0001f;
+    Rasterization::EnvelopeSustainPointContext context;
+    context.sustainIndex = sustainIndex;
+    context.addFloorPoint = scalingType != Bipolar;
 
-            if (sustIcpt.y < 0.5f) {
-                sustIcpt.y = 0.5f;
-            }
-
-            sustIcpt.shp = 1.f;
-
-            intercepts.emplace_back(sustIcpt);
-
-            needsResorting = true;
-        }
-    }
+    needsResorting |= Rasterization::EnvRasterizerFacade().applySustainPoint(intercepts, context);
 }
 
 void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curve>& curves) {

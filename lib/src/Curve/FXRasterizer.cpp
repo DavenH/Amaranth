@@ -1,4 +1,3 @@
-#include <algorithm>
 #include "FXRasterizer.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
 
@@ -38,12 +37,13 @@ void FXRasterizer::calcCrossPoints() {
 
     DBG(MeshRasterizer::getName() + "::calcCrossPoints begin " + describeFxSource(mesh, vertexSource));
 
-    Rasterization::RasterizationRequest request = createRasterizationRequest();
-    request.cyclic = false;
-    request.calcDepthDimensions = false;
-    request.scalingMode = Rasterization::pointScalingModeFromLegacyFx(scalingType);
+    composedRasterizer.reset(new Rasterization::ComposedFxRasterizer(
+            Rasterization::RasterizerComposer::fx()
+                    .withSource(vertexSource)
+                    .withRequest(createFxRequest())
+                    .build()));
 
-    const auto& output = pipeline.render(vertexSource, request);
+    const auto& output = composedRasterizer->render();
     if (!output.sampleable) {
         cleanUp();
         return;
@@ -55,6 +55,15 @@ void FXRasterizer::calcCrossPoints() {
     //     + " waveX=" + String(waveX.size())
     //     + " waveY=" + String(waveY.size())
     //     + " " + describeFxMesh(mesh));
+}
+
+Rasterization::RasterizationRequest FXRasterizer::createFxRequest() {
+    Rasterization::RasterizationRequest request = createRasterizationRequest();
+    request.cyclic = false;
+    request.calcDepthDimensions = false;
+    request.scalingMode = Rasterization::pointScalingModeFromLegacyFx(scalingType);
+
+    return request;
 }
 
 void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
@@ -97,6 +106,7 @@ void FXRasterizer::cleanUp() {
     curves.clear();
     icpts.clear();
     unsampleable = true;
+    composedRasterizer.reset();
 
     DBG(MeshRasterizer::getName() + "::cleanUp");
 }

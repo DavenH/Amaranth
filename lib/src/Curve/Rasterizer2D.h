@@ -3,6 +3,7 @@
 #include "Intercept.h"
 #include "Curve.h"
 #include "MeshRasterizer.h"
+#include "Rasterization/RasterizerComposer.h"
 #include "Rasterization/Sources/PointListSource.h"
 
 class Rasterizer2D: public MeshRasterizer {
@@ -18,24 +19,35 @@ public:
             return;
         }
 
-        pointSource.sortByX();
-        vector<Intercept>& sourceIntercepts = pointSource.intercepts();
+        Rasterization::RasterizationRequest request = createRasterizationRequest();
+        request.cyclic = cyclic;
 
-        if(cyclic) {
-            padIcptsWrapped(sourceIntercepts, curves);
-        } else {
-            padIcpts(sourceIntercepts, curves);
+        auto composedRasterizer = Rasterization::RasterizerComposer::pointList()
+                .withSource(pointSource.intercepts())
+                .withRequest(request)
+                .build();
+
+        const auto& output = composedRasterizer.render();
+        if (!output.sampleable) {
+            cleanUp();
+            return;
         }
 
-        float base = 0.1f / float(Curve::resolution);
+        frontIcpts = output.frontPadding;
+        backIcpts = output.backPadding;
+        curves = output.curves;
 
-        setResolutionIndices(base);
+        updateBuffers(output.waveform.waveX.size());
+        output.waveform.waveX.copyTo(waveX);
+        output.waveform.waveY.copyTo(waveY);
+        output.waveform.diffX.copyTo(diffX);
+        output.waveform.slope.copyTo(slope);
+        output.waveform.area.copyTo(area);
+        zeroIndex = output.waveform.zeroIndex;
+        oneIndex = output.waveform.oneIndex;
 
-        for(auto & curve : curves) {
-            curve.recalculateCurve();
-        }
+        paddingSize = output.paddingSize;
 
-        calcWaveform();
         unsampleable = false;
     }
 

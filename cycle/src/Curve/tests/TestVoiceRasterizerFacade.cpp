@@ -3,9 +3,47 @@
 
 #include "../CycleState.h"
 #include "../Rasterization/Facades/VoiceRasterizerFacade.h"
+#include <Curve/Mesh.h>
+#include <Curve/Rasterization/Sources/MeshCubeSource.h>
+#include <Curve/VertCube.h>
 
 namespace {
     using Catch::Approx;
+
+    void setCubeAsVoicePoint(
+            VertCube* cube,
+            float lowPhase,
+            float highPhase,
+            float lowAmp,
+            float highAmp,
+            float sharpness) {
+        for (int i = 0; i < (int) VertCube::numVerts; ++i) {
+            bool time, red, blue;
+            VertCube::getPoles(i, time, red, blue);
+
+            Vertex* vertex = cube->getVertex(i);
+            vertex->values[Vertex::Time]  = time ? 1.f : 0.f;
+            vertex->values[Vertex::Red]   = red  ? 1.f : 0.f;
+            vertex->values[Vertex::Blue]  = blue ? 1.f : 0.f;
+            vertex->values[Vertex::Phase] = time ? highPhase : lowPhase;
+            vertex->values[Vertex::Amp]   = time ? highAmp   : lowAmp;
+            vertex->values[Vertex::Curve] = sharpness;
+        }
+    }
+
+    VertCube* addVoiceCube(
+            Mesh& mesh,
+            float lowPhase,
+            float highPhase,
+            float lowAmp,
+            float highAmp,
+            float sharpness) {
+        auto* cube = new VertCube(&mesh);
+        setCubeAsVoicePoint(cube, lowPhase, highPhase, lowAmp, highAmp, sharpness);
+        mesh.addCube(cube);
+
+        return cube;
+    }
 }
 
 TEST_CASE("VoiceRasterizerFacade resolves wrapped voice point positions", "[cycle][rasterization][voice]") {
@@ -69,4 +107,32 @@ TEST_CASE("VoiceRasterizerFacade builds chained padding without caller-side poli
     REQUIRE(curves.size() == 10);
     REQUIRE(state.frontA.x == Approx(-0.22f));
     REQUIRE(state.frontB.x == Approx(-0.58f));
+}
+
+TEST_CASE("VoiceRasterizerFacade builds voice slice intercepts", "[cycle][rasterization][voice]") {
+    Mesh mesh("VoiceSliceFacadeMesh");
+    addVoiceCube(mesh, 0.20f, 0.80f, 0.25f, 0.75f, 0.35f);
+    addVoiceCube(mesh, 0.10f, 0.40f, 0.10f, 0.30f, 0.55f);
+
+    ::Rasterization::MeshCubeSource source(&mesh);
+    VertCube::ReductionData reductionData;
+
+    auto output = Cycle::Rasterization::VoiceRasterizerFacade().buildIntercepts(
+            source,
+            MorphPosition(0.50f, 0.50f, 0.50f),
+            0.f,
+            0.85f,
+            [](Intercept&, const MorphPosition&) {},
+            reductionData);
+
+    REQUIRE(output.sampleable);
+    REQUIRE(output.intercepts.size() == 2);
+    REQUIRE(output.intercepts[0].x == Approx(0.10f));
+    REQUIRE(output.intercepts[0].y == Approx(-0.60f));
+    REQUIRE(output.intercepts[0].shp == Approx(0.55f));
+    REQUIRE(output.intercepts[1].x == Approx(0.35f));
+    REQUIRE(output.intercepts[1].y == Approx(0.f));
+    REQUIRE(output.intercepts[1].shp == Approx(0.35f));
+
+    mesh.destroy();
 }

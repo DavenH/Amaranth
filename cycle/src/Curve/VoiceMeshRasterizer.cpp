@@ -4,6 +4,7 @@
 #include <App/SingletonRepo.h>
 #include <Curve/Intercept.h>
 #include <Curve/Mesh.h>
+#include <Curve/Rasterization/Sources/MeshCubeSource.h>
 #include <Curve/VertCube.h>
 #include <Obj/MorphPosition.h>
 #include <Definitions.h>
@@ -36,38 +37,18 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 
     needsResorting = false;
 
-	for(auto cube : mesh->getCubes()) {
-        float voiceTime = jmin(1.f, morph.time + state->advancement);
+    ::Rasterization::MeshCubeSource source(mesh);
+    auto output = Cycle::Rasterization::VoiceRasterizerFacade().buildIntercepts(
+            source,
+            morph,
+            state->advancement,
+            oscPhase,
+            [this](Intercept& intercept, const MorphPosition& position) {
+                applyGuideCurves(intercept, position);
+            },
+            reduct);
 
-		cube->getInterceptsFast(Vertex::Time, reduct, MorphPosition(voiceTime, morph.red, morph.blue));
-
-		Vertex* a = &reduct.v0;
-		Vertex* b = &reduct.v1;
-		Vertex* vertex = &reduct.v;
-
-        Cycle::Rasterization::VoicePointPositionPolicy::Context pointContext;
-        pointContext.voiceTime = voiceTime;
-        pointContext.oscPhase = oscPhase;
-
-        auto point = Cycle::Rasterization::VoiceRasterizerFacade().resolvePoint(
-                pointContext,
-                reduct.pointOverlaps,
-                a,
-                b,
-                vertex);
-
-        if (point.intersects) {
-            Intercept intercept(point.phase, 2.f * vertex->values[Vertex::Amp] - 1.f, cube, 0);
-			intercept.shp = vertex->values[Vertex::Curve];
-			intercept.adjustedX = intercept.x;
-
-			applyGuideCurves(intercept, morph);
-
-			state->backIcpts.push_back(intercept);
-		}
-	}
-
-	std::sort(state->backIcpts.begin(), state->backIcpts.end());
+    state->backIcpts = output.intercepts;
 
 	// and set x = adjustedX
 	restrictIntercepts(state->backIcpts);
@@ -112,13 +93,7 @@ void VoiceMeshRasterizer::updateCurves() {
 		return;
 	}
 
-	float base = 0.05f / float(Curve::resolution);
-	setResolutionIndices(base);
-
-	int lastIdx = curves.size() - 1;
-
-	curves[0].resIndex = curves[1].resIndex;
-	curves[lastIdx].resIndex = curves[lastIdx - 1].resIndex;
+    Cycle::Rasterization::VoiceRasterizerFacade().applyCurveResolution(curves);
 
 	adjustDeformingSharpness();
 

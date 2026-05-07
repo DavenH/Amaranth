@@ -119,6 +119,40 @@ namespace Rasterization {
         RasterizationRequest request;
     };
 
+    class ComposedMeshRasterizer {
+    public:
+        ComposedMeshRasterizer(
+                    MeshCubeSource source
+                ,   TrilinearMeshSlicer slicer
+                ,   RasterizationRequest request) :
+                source(source)
+            ,   slicer(slicer)
+            ,   request(request) {
+        }
+
+        template<typename GuideApplier>
+        const MeshSlicePipeline::Output& render(float oscPhase, GuideApplier&& applyGuide) {
+            return pipeline.render(source, request, oscPhase, applyGuide);
+        }
+
+        template<typename GuideApplier>
+        const MeshSlicePipeline::Output& renderWithReduction(
+                float oscPhase,
+                GuideApplier&& applyGuide,
+                VertCube::ReductionData& reductionData) {
+            return pipeline.renderWithReduction(source, request, oscPhase, applyGuide, reductionData);
+        }
+
+        const MeshCubeSource& getSource() const { return source; }
+        const RasterizationRequest& getRequest() const { return request; }
+
+    private:
+        MeshCubeSource source;
+        TrilinearMeshSlicer slicer;
+        RasterizationRequest request;
+        MeshSlicePipeline pipeline;
+    };
+
     class MeshComposer {
     public:
         MeshComposer& withSource(MeshCubeSource newSource) {
@@ -138,6 +172,10 @@ namespace Rasterization {
 
         const MeshCubeSource& getSource() const { return source; }
         const RasterizationRequest& getRequest() const { return request; }
+
+        ComposedMeshRasterizer build() const {
+            return ComposedMeshRasterizer(source, slicer, request);
+        }
 
     private:
         MeshCubeSource source;

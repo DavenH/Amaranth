@@ -2,6 +2,7 @@
 
 #include "../Policies/EnvelopeMarkerPolicy.h"
 #include "../Policies/EnvelopePaddingPolicy.h"
+#include "../Policies/EnvelopeSustainPointPolicy.h"
 
 namespace Rasterization {
     class EnvRasterizerFacade {
@@ -11,6 +12,10 @@ namespace Rasterization {
                 const EnvelopeMesh* mesh,
                 int loopMinSizeIcpts) const {
             return markerPolicy.evaluate(intercepts, mesh, loopMinSizeIcpts);
+        }
+
+        bool applySustainPoint(std::vector<Intercept>& intercepts, const EnvelopeSustainPointContext& context) const {
+            return sustainPointPolicy.apply(intercepts, context);
         }
 
         bool buildDisplayPadding(
@@ -30,5 +35,6 @@ namespace Rasterization {
     private:
         EnvelopeMarkerPolicy markerPolicy;
         EnvelopePaddingPolicy paddingPolicy;
+        EnvelopeSustainPointPolicy sustainPointPolicy;
     };
 }
