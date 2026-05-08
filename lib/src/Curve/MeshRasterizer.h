@@ -182,11 +182,8 @@ protected:
     void copyWaveform(const Rasterization::WaveformBuffers& waveform);
     Rasterization::GuideCurvePolicyContext createGuideCurvePolicyContext();
     void setResolutionIndices(float base);
-    static void calcTransferTable();
 
     /* ----------------------------------------------------------------------------- */
-
-    static float transferTable[Curve::resolution];
 
     // flags
 

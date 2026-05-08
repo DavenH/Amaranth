@@ -1,5 +1,4 @@
 #include <iterator>
-#include <cmath>
 #include <climits>
 #include "GuideCurveProvider.h"
 #include "Mesh.h"
@@ -24,8 +23,6 @@
 #include "../Design/Updating/Updater.h"
 #include "../Util/CommonEnums.h"
 #include "../Util/Util.h"
-
-float MeshRasterizer::transferTable[Curve::resolution];
 
 Rasterization::ScopedMeshRasterizerRenderState::ScopedMeshRasterizerRenderState(
         MeshRasterizer* rasterizer,
@@ -229,19 +226,6 @@ void MeshRasterizer::calcIntercepts() {
     makeCopy();
 }
 
-void MeshRasterizer::calcTransferTable() {
-    static bool alreadyCalculated = false;
-    if(alreadyCalculated) {
-        return;
-    }
-
-    for (int i = 0; i < Curve::resolution; ++i) {
-        transferTable[i] = Rasterization::TransferTable::values()[i];
-    }
-
-    alreadyCalculated = true;
-}
-
 void MeshRasterizer::restrictIntercepts(vector<Intercept>& intercepts) {
     if (intercepts.empty()) {
         return;
@@ -306,7 +290,7 @@ void MeshRasterizer::calcWaveform() {
     context.guideCurveRegions = &guideCurveRegions;
     context.phaseOffsetSeeds = phaseOffsetSeeds;
     context.vertOffsetSeeds = vertOffsetSeeds;
-    context.transferTable = transferTable;
+    context.transferTable = Rasterization::TransferTable::values();
 
     int totalRes = facade->prepareWaveform(curves, context);
     updateBuffers(totalRes);
@@ -567,7 +551,6 @@ void MeshRasterizer::initialise() {
     std::memset(vertOffsetSeeds, 0, numElementsInArray(vertOffsetSeeds) * sizeof(short));
     std::memset(phaseOffsetSeeds, 0, numElementsInArray(phaseOffsetSeeds) * sizeof(short));
 
-    calcTransferTable();
     updateBuffers(2048);
 }
 

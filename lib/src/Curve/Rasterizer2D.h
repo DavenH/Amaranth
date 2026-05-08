@@ -3,6 +3,7 @@
 #include "Intercept.h"
 #include "Curve.h"
 #include "MeshRasterizer.h"
+#include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/RasterizerComposer.h"
 #include "Rasterization/Sources/PointListSource.h"
 
@@ -104,6 +105,8 @@ public:
             float xferValue;
             float t1x = 0, t1y = 0;
             float t2x = 0, t2y = 0;
+
+            const float* transferTable = Rasterization::TransferTable::values();
 
             for (int i = 0; i < minCurveRes; ++i) {
                 xferValue = transferTable[i * xferInc];
