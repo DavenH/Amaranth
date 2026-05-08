@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
 #include <Curve/Intercept.h>
@@ -12,6 +10,7 @@
 
 #include "VoiceMeshRasterizer.h"
 #include "CycleState.h"
+#include "Rasterization/Policies/VoiceChainingPolicy.h"
 #include "../Util/CycleEnums.h"
 
 
@@ -31,12 +30,8 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 	    return;
     }
 
-    if (state->callCount > 0) {
-        std::swap(state->backIcpts, icpts);
-		state->backIcpts.clear();
-	}
-
-    needsResorting = false;
+    Cycle::Rasterization::VoiceChainingPolicy chainingPolicy(&needsResorting);
+    chainingPolicy.beginCall(*state, icpts);
 
     ::Rasterization::MeshCubeSource source(currentMesh);
     ::Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
@@ -49,17 +44,14 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
             guideApplier,
             reduct);
 
-    state->backIcpts = output.intercepts;
+    chainingPolicy.publishNextIntercepts(
+            output,
+            *state,
+            [this](std::vector<Intercept>& intercepts) {
+                restrictIntercepts(intercepts);
+            });
 
-	// and set x = adjustedX
-	restrictIntercepts(state->backIcpts);
-
-    if (needsResorting) {
-        std::sort(state->backIcpts.begin(), state->backIcpts.end());
-        needsResorting = false;
-    }
-
-    if (state->backIcpts.size() < 2 || icpts.size() < 2) {
+    if (!chainingPolicy.canBuildChainedCurves(*state, icpts)) {
 		state->callCount++;
 		markWaveformUnsampleable();
 

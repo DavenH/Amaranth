@@ -3,6 +3,7 @@
 
 #include "../CycleState.h"
 #include "../Rasterization/Facades/VoiceRasterizerFacade.h"
+#include "../Rasterization/Policies/VoiceChainingPolicy.h"
 #include <Curve/Mesh.h>
 #include <Curve/Rasterization/Sources/MeshCubeSource.h>
 #include <Curve/VertCube.h>
@@ -107,6 +108,50 @@ TEST_CASE("VoiceRasterizerFacade builds chained padding without caller-side poli
     REQUIRE(curves.size() == 10);
     REQUIRE(state.frontA.x == Approx(-0.22f));
     REQUIRE(state.frontB.x == Approx(-0.58f));
+}
+
+TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows", "[cycle][rasterization][voice]") {
+    CycleState state;
+    state.callCount = 1;
+    state.backIcpts = {
+        Intercept(0.10f, -0.50f),
+        Intercept(0.42f, 0.25f),
+    };
+
+    std::vector<Intercept> currentIntercepts {
+        Intercept(0.20f, -0.25f),
+    };
+
+    bool needsResorting = true;
+    Cycle::Rasterization::VoiceChainingPolicy policy(&needsResorting);
+    policy.beginCall(state, currentIntercepts);
+
+    REQUIRE_FALSE(needsResorting);
+    REQUIRE(currentIntercepts.size() == 2);
+    REQUIRE(currentIntercepts[0].x == Approx(0.10f));
+    REQUIRE(state.backIcpts.empty());
+
+    Cycle::Rasterization::VoiceSlicePipeline::Output output;
+    output.intercepts = {
+        Intercept(0.60f, 0.10f),
+        Intercept(0.30f, 0.40f),
+    };
+
+    needsResorting = true;
+    bool canPublish = policy.publishNextIntercepts(
+            output,
+            state,
+            [](std::vector<Intercept>& intercepts) {
+                for (auto& intercept : intercepts) {
+                    intercept.adjustedX = intercept.x;
+                }
+            });
+
+    REQUIRE(canPublish);
+    REQUIRE_FALSE(needsResorting);
+    REQUIRE(state.backIcpts.size() == 2);
+    REQUIRE(state.backIcpts[0].x == Approx(0.30f));
+    REQUIRE(policy.canBuildChainedCurves(state, currentIntercepts));
 }
 
 TEST_CASE("VoiceRasterizerFacade builds voice slice intercepts", "[cycle][rasterization][voice]") {
