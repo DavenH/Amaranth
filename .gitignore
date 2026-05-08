@@ -22,3 +22,5 @@ package-lock.json
 ui-bugs.md
 audio-bugs.md
 refactors.md
+source-map.md
+cycle-default-ui-rasterization-baseline.png
