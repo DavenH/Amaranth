@@ -24,6 +24,19 @@
 #include "../Util/CommonEnums.h"
 #include "../Util/Util.h"
 
+namespace {
+    Rasterization::ComposedMeshRasterizer buildMeshSliceRasterizer(
+            Mesh* usedMesh,
+            const Rasterization::RasterizationRequest& request) {
+        Rasterization::MeshCubeSource source(usedMesh);
+
+        return Rasterization::RasterizerComposer::mesh()
+                .withSource(source)
+                .withRequest(request)
+                .build();
+    }
+}
+
 Rasterization::ScopedMeshRasterizerRenderState::ScopedMeshRasterizerRenderState(
         MeshRasterizer* rasterizer,
         MeshRasterizerRenderState* state) :
@@ -157,14 +170,8 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
 }
 
 Rasterization::MeshSlicePipeline::Output MeshRasterizer::renderMeshSlice(Mesh* usedMesh, float oscPhase) {
-    Rasterization::MeshCubeSource source(usedMesh);
     Rasterization::RasterizationRequest request = createRasterizationRequest();
-
-    auto composedRasterizer = Rasterization::RasterizerComposer::mesh()
-            .withSource(source)
-            .withRequest(request)
-            .build();
-
+    auto composedRasterizer = buildMeshSliceRasterizer(usedMesh, request);
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
 
     const auto& output = composedRasterizer.renderWithReduction(
