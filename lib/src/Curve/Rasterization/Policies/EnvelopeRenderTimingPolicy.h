@@ -20,7 +20,7 @@ namespace Rasterization {
     class EnvelopeRenderTimingPolicy {
     public:
         EnvelopeRenderTiming prepare(const EnvelopeRenderTimingContext& context) const {
-            jassert(context.deltaX > 0);
+            jassert(context.deltaX >= 0);
             jassert(context.props != nullptr);
 
             EnvelopeRenderTiming result;
@@ -36,6 +36,10 @@ namespace Rasterization {
 
             if (context.props->scale != 1) {
                 result.effectiveDelta /= (double) context.props->getEffectiveScale();
+            }
+
+            if (result.effectiveDelta <= 0.) {
+                return result;
             }
 
             double loopLength = jmax<double>(2. * result.effectiveDelta, context.loopLength);

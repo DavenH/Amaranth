@@ -190,3 +190,17 @@ TEST_CASE("EnvelopeRenderTimingPolicy applies tempo and scale before partitionin
     REQUIRE(timing.effectiveDelta == Catch::Approx(0.01));
     REQUIRE(timing.maxSamplesPerBuffer == 50);
 }
+
+TEST_CASE("EnvelopeRenderTimingPolicy allows zero advancement for clamped UI simulation", "[rasterization][env][facade]") {
+    MeshLibrary::EnvProps props;
+    props.active = true;
+
+    Rasterization::EnvelopeRenderTimingContext context;
+    context.deltaX = 0.;
+    context.props = &props;
+
+    auto timing = Rasterization::EnvelopeRenderTimingPolicy().prepare(context);
+
+    REQUIRE(timing.effectiveDelta == Catch::Approx(0.));
+    REQUIRE(timing.maxSamplesPerBuffer == 1);
+}
