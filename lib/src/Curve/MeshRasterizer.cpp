@@ -10,6 +10,7 @@
 #include "Rasterization/Policies/DepthProjectionPolicy.h"
 #include "Rasterization/Policies/GuideCurvePolicy.h"
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
+#include "Rasterization/Policies/MeshSliceOutputPolicy.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
 #include "Rasterization/Policies/PointScalingPolicy.h"
 #include "Rasterization/Builders/TransferTable.h"
@@ -180,11 +181,7 @@ void MeshRasterizer::beginCrossPointCalculation() {
 }
 
 void MeshRasterizer::publishMeshSliceOutput(const Rasterization::MeshSlicePipeline::Output& output) {
-    icpts = output.intercepts;
-
-    if (calcDepthDims) {
-        colorPoints = output.colorPoints;
-    }
+    Rasterization::MeshSliceOutputPolicy(calcDepthDims).publish(output, icpts, colorPoints);
 }
 
 void MeshRasterizer::finishCrossPointCalculation() {

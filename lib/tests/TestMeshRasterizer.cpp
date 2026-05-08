@@ -12,6 +12,7 @@
 #include "../src/Curve/Rasterization/Policies/ComponentGuideSharpnessPolicy.h"
 #include "../src/Curve/Rasterization/Policies/CurveWaveformPreparationPolicy.h"
 #include "../src/Curve/Rasterization/Policies/GuideCurvePolicy.h"
+#include "../src/Curve/Rasterization/Policies/MeshSliceOutputPolicy.h"
 #include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sampling/GuideCurveSampler.h"
 #include "../src/Curve/Rasterization/Sampling/WaveformSampler.h"
@@ -445,6 +446,32 @@ TEST_CASE("MeshSlicePipeline matches MeshRasterizer intercept and color-point sl
         INFO("colorPoint=" << i);
         RasterizerCompare::requireColorPointNear(output.colorPoints[i], rasterizer.getRastData().colorPoints[i]);
     }
+}
+
+TEST_CASE("MeshSliceOutputPolicy publishes intercepts and optional color points", "[meshrasterizer][pipeline][slice]") {
+    Rasterization::MeshSlicePipeline::Output output;
+    Vertex2 before(0.f, 0.f);
+    Vertex2 mid(0.5f, 0.5f);
+    Vertex2 after(1.f, 1.f);
+    output.intercepts.emplace_back(0.25f, 0.5f);
+    output.colorPoints.emplace_back(nullptr, before, mid, after, Vertex::Red);
+
+    vector<Intercept> intercepts;
+    vector<ColorPoint> colorPoints {
+        ColorPoint(nullptr, before, mid, after, Vertex::Blue),
+    };
+
+    Rasterization::MeshSliceOutputPolicy(false).publish(output, intercepts, colorPoints);
+
+    REQUIRE(intercepts.size() == 1);
+    REQUIRE(intercepts[0].x == Catch::Approx(0.25f));
+    REQUIRE(colorPoints.size() == 1);
+    REQUIRE(colorPoints[0].num == Vertex::Blue);
+
+    Rasterization::MeshSliceOutputPolicy(true).publish(output, intercepts, colorPoints);
+
+    REQUIRE(colorPoints.size() == 1);
+    REQUIRE(colorPoints[0].num == Vertex::Red);
 }
 
 TEST_CASE("AccurateMeshSlicer remains available as a dormant mesh slicing strategy", "[meshrasterizer][pipeline][slice]") {
