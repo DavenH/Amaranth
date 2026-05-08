@@ -299,13 +299,16 @@ void MeshRasterizer::updateCurves() {
     Rasterization::CurveResolutionPolicy::Context resolutionContext = createCurveResolutionContext();
     facade->applyCurveResolution(curves, resolutionContext);
 
+    prepareCurvesForWaveform();
+    calcWaveform();
+}
+
+void MeshRasterizer::prepareCurvesForWaveform() {
     adjustDeformingSharpness();
 
     for (auto & curve : curves) {
         curve.recalculateCurve();
     }
-
-    calcWaveform();
 }
 
 Rasterization::CurveResolutionPolicy::Context MeshRasterizer::createCurveResolutionContext() const {

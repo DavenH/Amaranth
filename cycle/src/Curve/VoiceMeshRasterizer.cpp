@@ -94,12 +94,7 @@ void VoiceMeshRasterizer::updateCurves() {
 
     Cycle::Rasterization::VoiceRasterizerFacade().applyCurveResolution(curves);
 
-	adjustDeformingSharpness();
-
-	for(auto& curve : curves) {
-		curve.recalculateCurve();
-	}
-
+    prepareCurvesForWaveform();
 	calcWaveform();
 
 	unsampleable = false;
