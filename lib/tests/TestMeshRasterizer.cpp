@@ -12,6 +12,7 @@
 #include "../src/Curve/Rasterization/Policies/ComponentGuideSharpnessPolicy.h"
 #include "../src/Curve/Rasterization/Policies/CurveWaveformPreparationPolicy.h"
 #include "../src/Curve/Rasterization/Policies/GuideCurvePolicy.h"
+#include "../src/Curve/Rasterization/Policies/InterceptSortPolicy.h"
 #include "../src/Curve/Rasterization/Policies/MeshSliceOutputPolicy.h"
 #include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sampling/GuideCurveSampler.h"
@@ -472,6 +473,27 @@ TEST_CASE("MeshSliceOutputPolicy publishes intercepts and optional color points"
 
     REQUIRE(colorPoints.size() == 1);
     REQUIRE(colorPoints[0].num == Vertex::Red);
+}
+
+TEST_CASE("InterceptSortPolicy sorts only when requested", "[meshrasterizer][pipeline][intercepts]") {
+    vector<Intercept> intercepts {
+        Intercept(0.75f, 0.1f),
+        Intercept(0.25f, 0.2f),
+    };
+
+    bool needsResorting = false;
+    Rasterization::InterceptSortPolicy(&needsResorting).sortIfNeeded(intercepts);
+
+    REQUIRE(intercepts[0].x == Catch::Approx(0.75f));
+    REQUIRE(intercepts[1].x == Catch::Approx(0.25f));
+    REQUIRE_FALSE(needsResorting);
+
+    needsResorting = true;
+    Rasterization::InterceptSortPolicy(&needsResorting).sortIfNeeded(intercepts);
+
+    REQUIRE(intercepts[0].x == Catch::Approx(0.25f));
+    REQUIRE(intercepts[1].x == Catch::Approx(0.75f));
+    REQUIRE_FALSE(needsResorting);
 }
 
 TEST_CASE("AccurateMeshSlicer remains available as a dormant mesh slicing strategy", "[meshrasterizer][pipeline][slice]") {

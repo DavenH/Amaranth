@@ -9,6 +9,7 @@
 #include "Rasterization/Policies/CurveWaveformPreparationPolicy.h"
 #include "Rasterization/Policies/DepthProjectionPolicy.h"
 #include "Rasterization/Policies/GuideCurvePolicy.h"
+#include "Rasterization/Policies/InterceptSortPolicy.h"
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
 #include "Rasterization/Policies/MeshSliceOutputPolicy.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
@@ -23,7 +24,6 @@
 #include "../Array/ScopedAlloc.h"
 #include "../Design/Updating/Updater.h"
 #include "../Util/CommonEnums.h"
-#include "../Util/Util.h"
 
 Rasterization::ScopedMeshRasterizerRenderState::ScopedMeshRasterizerRenderState(
         MeshRasterizer* rasterizer,
@@ -217,9 +217,7 @@ bool MeshRasterizer::handleDegenerateInterceptOutput() {
 }
 
 void MeshRasterizer::sortInterceptsIfNeeded() {
-    if (Util::assignAndWereDifferent(needsResorting, false)) {
-        std::sort(icpts.begin(), icpts.end());
-    }
+    Rasterization::InterceptSortPolicy(&needsResorting).sortIfNeeded(icpts);
 }
 
 void MeshRasterizer::rebuildCurvesFromIntercepts() {
