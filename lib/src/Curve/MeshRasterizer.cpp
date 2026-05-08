@@ -144,15 +144,12 @@ void MeshRasterizer::calcWaveformFrom(vector<Intercept>& icpts) {
 }
 
 void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
-    if (usedMesh == nullptr || usedMesh->getNumCubes() == 0) {
+    if (!canRasterizeMesh(usedMesh)) {
         cleanUp();
         return;
     }
 
-    icpts.clear();
-    preCleanup();
-
-    needsResorting = false;
+    beginCrossPointCalculation();
 
     Rasterization::MeshCubeSource source(usedMesh);
     Rasterization::RasterizationRequest request = createRasterizationRequest();
@@ -174,6 +171,17 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
 
     publishMeshSliceOutput(output);
     finishCrossPointCalculation();
+}
+
+bool MeshRasterizer::canRasterizeMesh(Mesh* usedMesh) const {
+    return usedMesh != nullptr && usedMesh->getNumCubes() > 0;
+}
+
+void MeshRasterizer::beginCrossPointCalculation() {
+    icpts.clear();
+    preCleanup();
+
+    needsResorting = false;
 }
 
 void MeshRasterizer::publishMeshSliceOutput(const Rasterization::MeshSlicePipeline::Output& output) {

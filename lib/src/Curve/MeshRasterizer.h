@@ -179,6 +179,8 @@ public:
 
 protected:
     void markWaveformUnsampleable();
+    bool canRasterizeMesh(Mesh* usedMesh) const;
+    void beginCrossPointCalculation();
     void updateBuffers(int size);
     void calcWaveform();
     Rasterization::CurveResolutionPolicy::Context createCurveResolutionContext() const;
