@@ -178,6 +178,7 @@ protected:
     void markWaveformUnsampleable();
     void updateBuffers(int size);
     void calcWaveform();
+    void finishCrossPointCalculation();
     Rasterization::WaveformBuffers createWaveformView() const;
     Rasterization::WaveformBufferRefs createWaveformRefs();
     void assignWaveform(const Rasterization::WaveformBuffers& waveform);

@@ -178,6 +178,10 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
         colorPoints = output.colorPoints;
     }
 
+    finishCrossPointCalculation();
+}
+
+void MeshRasterizer::finishCrossPointCalculation() {
     processIntercepts(icpts);
 
     if(Util::assignAndWereDifferent(needsResorting, false)) {
