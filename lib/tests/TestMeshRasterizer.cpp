@@ -9,6 +9,7 @@
 #include "../src/Curve/Rasterization/Interfaces/MeshRasterizerSnapshotAdapter.h"
 #include "../src/Curve/Rasterization/Interpolation/AccurateMeshSlicer.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
+#include "../src/Curve/Rasterization/Policies/GuideCurvePolicy.h"
 #include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sources/MeshCubeSource.h"
 #include "../src/Curve/VertCube.h"
@@ -38,6 +39,27 @@ namespace {
         }
 
         inline static int refCount = 0;
+    };
+
+    class ConstantGuideCurveProvider :
+            public GuideCurveProvider {
+    public:
+        float getTableValue(int guideIndex, float, const GuideCurveProvider::NoiseContext&) override {
+            return values[guideIndex];
+        }
+
+        void sampleDownAddNoise(int, Buffer<float>, const GuideCurveProvider::NoiseContext&) override {
+        }
+
+        Buffer<Float32> getTable(int) override {
+            return {};
+        }
+
+        int getTableDensity(int) override {
+            return GuideCurveProvider::tableSize;
+        }
+
+        float values[128] {};
     };
 
     void setCubeAsConstantPoint(
@@ -333,6 +355,40 @@ TEST_CASE("AccurateMeshSlicer remains available as a dormant mesh slicing strate
         REQUIRE(accurateData.v0.values[dim] == Catch::Approx(trilinearData.v0.values[dim]));
         REQUIRE(accurateData.v1.values[dim] == Catch::Approx(trilinearData.v1.values[dim]));
     }
+}
+
+TEST_CASE("GuideCurvePolicy applies phase wrapping and amplitude clamping", "[meshrasterizer][pipeline][guide]") {
+    auto mesh = createSyntheticWaveMesh();
+    VertCube* cube = mesh->getCubes().front();
+    cube->guideCurveAt(Vertex::Phase) = 0;
+    cube->guideCurveAt(Vertex::Amp) = 1;
+
+    ConstantGuideCurveProvider provider;
+    provider.values[0] = 0.10f;
+    provider.values[1] = 2.00f;
+
+    VertCube::ReductionData reduction;
+    MorphPosition position(0.5f, 0.5f, 0.5f);
+    Rasterization::TrilinearMeshSlicer().slice(*cube, Vertex::Time, reduction, position);
+    VertCube::vertexAt(position.time, Vertex::Time, &reduction.v0, &reduction.v1, &reduction.v);
+
+    bool needsResorting = false;
+    Intercept intercept(0.95f, 0.9f, cube, 0.5f);
+    intercept.adjustedX = intercept.x;
+
+    Rasterization::GuideCurvePolicyContext context;
+    context.guideCurveProvider = &provider;
+    context.reduction = &reduction;
+    context.scalingMode = Rasterization::PointScalingMode::Bipolar;
+    context.cyclic = true;
+    context.needsResorting = &needsResorting;
+
+    Rasterization::GuideCurvePolicy(context).apply(intercept, position);
+
+    REQUIRE(intercept.adjustedX == Catch::Approx(0.05f).margin(1e-6f));
+    REQUIRE(intercept.isWrapped);
+    REQUIRE(needsResorting);
+    REQUIRE(intercept.y == Catch::Approx(1.f));
 }
 
 TEST_CASE("RasterizerComposer builds a mesh slice rasterizer", "[meshrasterizer][pipeline][composer]") {

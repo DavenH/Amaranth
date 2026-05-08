@@ -4,6 +4,7 @@
 #include <App/SingletonRepo.h>
 #include <Curve/Intercept.h>
 #include <Curve/Mesh.h>
+#include <Curve/Rasterization/Policies/GuideCurvePolicy.h>
 #include <Curve/Rasterization/Sources/MeshCubeSource.h>
 #include <Curve/VertCube.h>
 #include <Obj/MorphPosition.h>
@@ -38,13 +39,24 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
     needsResorting = false;
 
     ::Rasterization::MeshCubeSource source(mesh);
+    ::Rasterization::GuideCurvePolicyContext guideContext;
+    guideContext.guideCurveProvider = guideCurveProvider;
+    guideContext.reduction = &reduct;
+    guideContext.scalingMode = ::Rasterization::pointScalingModeFromLegacy(scalingType);
+    guideContext.cyclic = cyclic;
+    guideContext.needsResorting = &needsResorting;
+    guideContext.noiseSeed = noiseSeed;
+    guideContext.phaseOffsetSeeds = phaseOffsetSeeds;
+    guideContext.vertOffsetSeeds = vertOffsetSeeds;
+
     auto output = Cycle::Rasterization::VoiceRasterizerFacade().buildIntercepts(
             source,
             morph,
             state->advancement,
             oscPhase,
-            [this](Intercept& intercept, const MorphPosition& position) {
-                applyGuideCurves(intercept, position);
+            [&guideContext](Intercept& intercept, const MorphPosition& position) {
+                guideContext.noOffsetAtEnds = false;
+                ::Rasterization::GuideCurvePolicy(guideContext).apply(intercept, position);
             },
             reduct);
 

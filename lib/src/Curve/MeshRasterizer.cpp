@@ -7,6 +7,7 @@
 
 #include "VertCube.h"
 #include "Rasterization/Policies/DepthProjectionPolicy.h"
+#include "Rasterization/Policies/GuideCurvePolicy.h"
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
 #include "Rasterization/Policies/PointScalingPolicy.h"
@@ -157,10 +158,21 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
             .withRequest(request)
             .build();
 
+    Rasterization::GuideCurvePolicyContext guideContext;
+    guideContext.guideCurveProvider = guideCurveProvider;
+    guideContext.reduction = &reduct;
+    guideContext.scalingMode = Rasterization::pointScalingModeFromLegacy(scalingType);
+    guideContext.cyclic = cyclic;
+    guideContext.needsResorting = &needsResorting;
+    guideContext.noiseSeed = noiseSeed;
+    guideContext.phaseOffsetSeeds = phaseOffsetSeeds;
+    guideContext.vertOffsetSeeds = vertOffsetSeeds;
+
     const auto& output = composedRasterizer.renderWithReduction(
             oscPhase,
-            [this](Intercept& point, const MorphPosition& position, bool noOffsetAtEnds) {
-                applyGuideCurves(point, position, noOffsetAtEnds);
+            [&guideContext](Intercept& point, const MorphPosition& position, bool noOffsetAtEnds) {
+                guideContext.noOffsetAtEnds = noOffsetAtEnds;
+                Rasterization::GuideCurvePolicy(guideContext).apply(point, position);
             },
             reduct);
 
@@ -549,92 +561,18 @@ void MeshRasterizer::validateCurves() {
 // NB: set the intercept's adjustedX property rather than x
 // it will be used to re-sort and then assign the x property
 void MeshRasterizer::applyGuideCurves(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds) {
-    if(icpt.cube == nullptr || guideCurveProvider == nullptr) {
-        return;
-    }
+    Rasterization::GuideCurvePolicyContext context;
+    context.guideCurveProvider = guideCurveProvider;
+    context.reduction = &reduct;
+    context.scalingMode = Rasterization::pointScalingModeFromLegacy(scalingType);
+    context.cyclic = cyclic;
+    context.noOffsetAtEnds = noOffsetAtEnds;
+    context.needsResorting = &needsResorting;
+    context.noiseSeed = noiseSeed;
+    context.phaseOffsetSeeds = phaseOffsetSeeds;
+    context.vertOffsetSeeds = vertOffsetSeeds;
 
-    VertCube* cube = icpt.cube;
-
-    GuideCurveProvider::NoiseContext noise;
-    noise.noiseSeed = noiseSeed;
-
-    if (cube->guideCurveAt(Vertex::Red) >= 0) {
-        int guideIndex = cube->guideCurveAt(Vertex::Red);
-        float progress = cube->getPortionAlong(Vertex::Red, morph);
-
-        noise.vertOffset  = vertOffsetSeeds [guideIndex];
-        noise.phaseOffset = phaseOffsetSeeds[guideIndex];
-
-        icpt.adjustedX += cube->guideCurveAbsGain(Vertex::Red) * guideCurveProvider->getTableValue(guideIndex, progress, noise);
-    }
-
-    if (cube->guideCurveAt(Vertex::Blue) >= 0) {
-        int guideIndex = cube->guideCurveAt(Vertex::Blue);
-        float progress = cube->getPortionAlong(Vertex::Blue, morph);
-
-        noise.vertOffset  = vertOffsetSeeds [guideIndex];
-        noise.phaseOffset = phaseOffsetSeeds[guideIndex];
-
-        icpt.adjustedX += cube->guideCurveAbsGain(Vertex::Blue) * guideCurveProvider->getTableValue(guideIndex, progress, noise);
-    }
-
-    float timeMin = reduct.v0.values[Vertex::Time];
-    float timeMax = reduct.v1.values[Vertex::Time];
-
-    if(timeMin > timeMax) {
-        std::swap(timeMin, timeMax);
-    }
-
-    float diffTime = timeMax - timeMin;
-    float progress = diffTime == 0.f ? 0.f : fabsf(reduct.v.values[Vertex::Time] - timeMin) / diffTime;
-
-    bool ignore = (noOffsetAtEnds && (progress == 0 || progress == 1.f));
-
-    if (cube->guideCurveAt(Vertex::Amp) >= 0) {
-        int guideIndex = cube->guideCurveAt(Vertex::Amp);
-        noise.vertOffset  = vertOffsetSeeds [guideIndex];
-        noise.phaseOffset = phaseOffsetSeeds[guideIndex];
-
-        if (!ignore) {
-            Rasterization::PointScalingPolicy scalingPolicy =
-                    Rasterization::PointScalingPolicy::fromLegacyScalingType(scalingType);
-
-            icpt.y += cube->guideCurveAbsGain(Vertex::Amp) * guideCurveProvider->getTableValue(guideIndex, progress, noise);
-            NumberUtils::constrain(icpt.y, scalingPolicy.minimum(), scalingPolicy.maximum());
-        }
-    }
-
-    if (cube->guideCurveAt(Vertex::Phase) >= 0) {
-        int guideIndex = cube->guideCurveAt(Vertex::Phase);
-        noise.vertOffset  = vertOffsetSeeds [guideIndex];
-        noise.phaseOffset = phaseOffsetSeeds[guideIndex];
-
-        if (!ignore) {
-            icpt.adjustedX += cube->guideCurveAbsGain(Vertex::Phase) * guideCurveProvider->getTableValue(guideIndex, progress, noise);
-
-            if (cyclic) {
-                float lastAdjX = icpt.adjustedX;
-
-                while(icpt.adjustedX >= 1.f)     { icpt.adjustedX -= 1.f; }
-                while(icpt.adjustedX < 0.f)     { icpt.adjustedX += 1.f; }
-
-                if (lastAdjX != icpt.adjustedX) {
-                    icpt.isWrapped = true;
-                    needsResorting = true;
-                }
-            }
-        }
-    }
-
-    if (cube->guideCurveAt(Vertex::Curve) >= 0) {
-        int guideIndex = cube->guideCurveAt(Vertex::Curve);
-        noise.vertOffset  = vertOffsetSeeds[guideIndex];
-        noise.phaseOffset = phaseOffsetSeeds[guideIndex];
-
-        icpt.shp += 2 * cube->guideCurveAbsGain(Vertex::Curve) * guideCurveProvider->getTableValue(guideIndex, progress, noise);
-
-        NumberUtils::constrain(icpt.shp, 0.f, 1.f);
-    }
+    Rasterization::GuideCurvePolicy(context).apply(icpt, morph);
 }
 
 void MeshRasterizer::handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube) {
