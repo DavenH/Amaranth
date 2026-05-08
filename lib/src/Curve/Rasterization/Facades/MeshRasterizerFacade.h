@@ -3,7 +3,6 @@
 #include <vector>
 
 #include "../Builders/RasterizerSnapshotBuilder.h"
-#include "../Builders/WaveformBuilder.h"
 #include "../Policies/CurveResolutionPolicy.h"
 
 namespace Rasterization {
@@ -19,14 +18,6 @@ namespace Rasterization {
             CurveResolutionPolicy::applyResolutionIndices(curves, base, paddingSize);
         }
 
-        int prepareWaveform(std::vector<Curve>& curves, const WaveformBakePolicy::Context& context) const {
-            return waveformBuilder.prepare(curves, context);
-        }
-
-        void bakeWaveform(std::vector<Curve>& curves, WaveformBakePolicy::Context& context) const {
-            waveformBuilder.bake(curves, context);
-        }
-
         void publishSnapshot(RasterizerData& target, const RasterizerSnapshotSource& source) const {
             RasterizerSnapshotBuilder().publish(target, source);
         }
@@ -37,6 +28,5 @@ namespace Rasterization {
 
     private:
         CurveResolutionPolicy curveResolutionPolicy;
-        WaveformBuilder waveformBuilder;
     };
 }

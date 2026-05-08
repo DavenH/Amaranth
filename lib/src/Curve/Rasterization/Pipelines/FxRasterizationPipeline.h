@@ -10,6 +10,7 @@
 #include "../Policies/InterceptRestrictionPolicy.h"
 #include "../Policies/PaddingPolicy.h"
 #include "../Policies/PointScalingPolicy.h"
+#include "../Policies/WaveformBuildPolicy.h"
 #include "../RasterizationRequest.h"
 #include "../WaveformBuffers.h"
 #include "../Sources/VertexListSource.h"
@@ -96,20 +97,17 @@ namespace Rasterization {
             context.offsetSeeds = &guideCurveOffsetSeeds;
             context.transferTable = TransferTable::values();
 
-            int totalRes = waveformBuilder.prepare(output.curves, context);
-            if (totalRes <= 0) {
-                return;
-            }
-
-            output.waveform.place(output.memory, totalRes);
-            context.waveform = WaveformBufferRefs(output.waveform);
-
-            waveformBuilder.bake(output.curves, context);
-            output.sampleable = output.waveform.isSampleable();
+            output.sampleable = waveformBuilder.build(
+                    output.curves,
+                    context,
+                    [this](int totalRes) {
+                        output.waveform.place(output.memory, totalRes);
+                        return WaveformBufferRefs(output.waveform);
+                    });
         }
 
         Output output;
-        WaveformBuilder waveformBuilder;
+        WaveformBuildPolicy waveformBuilder;
         GuideCurveOffsetSeeds guideCurveOffsetSeeds;
     };
 }

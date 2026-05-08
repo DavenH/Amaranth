@@ -122,6 +122,10 @@ namespace Rasterization {
                 && oneIndex != nullptr;
         }
 
+        bool isSampleable() const {
+            return waveX != nullptr && !waveX->empty();
+        }
+
         void assignFrom(const WaveformBuffers& source) const {
             jassert(isBound());
 

@@ -18,6 +18,7 @@
 #include "Rasterization/Policies/PointScalingPolicy.h"
 #include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Facades/MeshRasterizerFacade.h"
+#include "Rasterization/Policies/WaveformBuildPolicy.h"
 #include "Rasterization/Pipelines/MeshSliceRenderer.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
@@ -302,13 +303,15 @@ void MeshRasterizer::calcWaveform() {
 
     Rasterization::WaveformBakePolicy::Context context = createWaveformBakeContext();
 
-    int totalRes = facade->prepareWaveform(curves, context);
-    updateBuffers(totalRes);
+    bool sampleable = Rasterization::WaveformBuildPolicy().build(
+            curves,
+            context,
+            [this](int totalRes) {
+                updateBuffers(totalRes);
+                return createWaveformRefs();
+            });
 
-    context.waveform = createWaveformRefs();
-    facade->bakeWaveform(curves, context);
-
-    unsampleable = false;
+    unsampleable = !sampleable;
 }
 
 Rasterization::WaveformBakePolicy::Context MeshRasterizer::createWaveformBakeContext() {

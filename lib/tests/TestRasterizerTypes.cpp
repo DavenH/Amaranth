@@ -170,10 +170,13 @@ TEST_CASE("WaveformBuffers groups waveform storage and reference assignment", "[
 
     WaveformBuffers assigned(0, 0);
     WaveformBufferRefs refs(assigned);
+    REQUIRE_FALSE(refs.isSampleable());
+
     refs.assignFrom(source);
 
     REQUIRE(assigned.zeroIndex == 1);
     REQUIRE(assigned.oneIndex == 3);
+    REQUIRE(refs.isSampleable());
     REQUIRE(assigned.waveX.get() == source.waveX.get());
     REQUIRE(assigned.waveY.get() == source.waveY.get());
     REQUIRE(assigned.diffX.get() == source.diffX.get());
