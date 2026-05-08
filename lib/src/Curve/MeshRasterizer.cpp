@@ -194,10 +194,7 @@ void MeshRasterizer::publishMeshSliceOutput(const Rasterization::MeshSlicePipeli
 
 void MeshRasterizer::finishCrossPointCalculation() {
     processIntercepts(icpts);
-
-    if(Util::assignAndWereDifferent(needsResorting, false)) {
-        std::sort(icpts.begin(), icpts.end());
-    }
+    sortInterceptsIfNeeded();
 
     int end = icpts.size() - 1;
     if (end < 0) {
@@ -215,16 +212,26 @@ void MeshRasterizer::finishCrossPointCalculation() {
     Rasterization::MeshSlicePipeline::applyPaddingFlags(icpts);
 
     if (!calcInterceptsOnly) {
-        curves.clear();
-
-        if (cyclic) {
-            padIcptsWrapped(icpts, curves);
-        } else {
-            padIcpts(icpts, curves);
-        }
-
-        updateCurves();
+        rebuildCurvesFromIntercepts();
     }
+}
+
+void MeshRasterizer::sortInterceptsIfNeeded() {
+    if (Util::assignAndWereDifferent(needsResorting, false)) {
+        std::sort(icpts.begin(), icpts.end());
+    }
+}
+
+void MeshRasterizer::rebuildCurvesFromIntercepts() {
+    curves.clear();
+
+    if (cyclic) {
+        padIcptsWrapped(icpts, curves);
+    } else {
+        padIcpts(icpts, curves);
+    }
+
+    updateCurves();
 }
 
 int MeshRasterizer::getPrimaryViewDimension() {

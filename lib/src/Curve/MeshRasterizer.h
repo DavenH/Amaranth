@@ -186,6 +186,8 @@ protected:
     Rasterization::CurveResolutionPolicy::Context createCurveResolutionContext() const;
     Rasterization::WaveformBakePolicy::Context createWaveformBakeContext();
     void publishMeshSliceOutput(const Rasterization::MeshSlicePipeline::Output& output);
+    void sortInterceptsIfNeeded();
+    void rebuildCurvesFromIntercepts();
     void finishCrossPointCalculation();
     Rasterization::WaveformBuffers createWaveformView() const;
     Rasterization::WaveformBufferRefs createWaveformRefs();
