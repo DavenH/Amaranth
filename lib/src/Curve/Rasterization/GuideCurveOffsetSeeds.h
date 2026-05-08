@@ -7,8 +7,8 @@ namespace Rasterization {
         static constexpr int capacity = 128;
 
         void reset() {
-            std::fill(phaseSeeds, phaseSeeds + capacity, short());
-            std::fill(verticalSeeds, verticalSeeds + capacity, short());
+            std::fill_n(phaseSeeds, capacity, short());
+            std::fill_n(verticalSeeds, capacity, short());
         }
 
         template<typename RandomSource>
