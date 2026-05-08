@@ -159,8 +159,7 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
             .withRequest(request)
             .build();
 
-    Rasterization::GuideCurvePolicyContext guideContext = createGuideCurvePolicyContext();
-    Rasterization::GuideCurveApplier guideApplier(guideContext);
+    Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
 
     const auto& output = composedRasterizer.renderWithReduction(
             oscPhase,
@@ -685,6 +684,10 @@ Rasterization::GuideCurvePolicyContext MeshRasterizer::createGuideCurvePolicyCon
     context.offsetSeeds = &guideCurveOffsetSeeds;
 
     return context;
+}
+
+Rasterization::GuideCurveApplier MeshRasterizer::createGuideCurveApplier() {
+    return Rasterization::GuideCurveApplier(createGuideCurvePolicyContext());
 }
 
 void MeshRasterizer::makeCopy() {

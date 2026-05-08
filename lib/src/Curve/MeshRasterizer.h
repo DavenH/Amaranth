@@ -28,6 +28,7 @@ class Interactor;
 class GuideCurveProvider;
 
 namespace Rasterization {
+    class GuideCurveApplier;
     struct GuideCurvePolicyContext;
     class MeshRasterizerFacade;
 }
@@ -194,6 +195,7 @@ protected:
     void assignWaveform(const Rasterization::WaveformBuffers& waveform);
     void copyWaveform(const Rasterization::WaveformBuffers& waveform);
     Rasterization::GuideCurvePolicyContext createGuideCurvePolicyContext();
+    Rasterization::GuideCurveApplier createGuideCurveApplier();
     void setResolutionIndices(float base);
 
     /* ----------------------------------------------------------------------------- */
