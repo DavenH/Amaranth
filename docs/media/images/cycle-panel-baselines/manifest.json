@@ -1,36 +1,55 @@
 {
-  "preset": "AfricanHorn",
-  "capturedAt": "2026-05-06T15:06:55Z",
+  "preset": "bongo",
+  "document": "Bongo",
+  "capturedAt": "2026-05-08T01:50:02Z",
   "osCroppedScreenshots": [
     {
       "area": "AreaWshpEditor",
-      "path": "waveform2d-africanhorn.png",
-      "notes": "Waveform2D OS crop using automation-reported screen bounds."
-    },
-    {
-      "area": "AreaSpectrum",
-      "path": "spectrum2d-africanhorn.png",
-      "notes": "Spectrum2D OS crop using automation-reported screen bounds."
+      "path": "waveform2d-bongo.png",
+      "state": "magnitude",
+      "notes": "Waveform2D OS crop after opening bongo."
     },
     {
       "area": "AreaWfrmWaveform3D",
-      "path": "waveform3d-africanhorn.png",
-      "notes": "Waveform3D OS crop using automation-reported screen bounds."
-    },
-    {
-      "area": "AreaSpectrogram",
-      "path": "spectrum3d-africanhorn.png",
-      "notes": "Spectrum3D OS crop using automation-reported screen bounds."
+      "path": "waveform3d-bongo.png",
+      "state": "magnitude",
+      "notes": "Waveform3D OS crop after opening bongo."
     },
     {
       "area": "AreaGuideCurves",
-      "path": "guidecurves-africanhorn.png",
-      "notes": "Guide curve panel OS crop using automation-reported screen bounds."
+      "path": "guidecurves-bongo.png",
+      "state": "magnitude",
+      "notes": "Guide curve panel OS crop after opening bongo."
     },
     {
       "area": "AreaWaveshaper",
-      "path": "waveshaper-fx-africanhorn.png",
-      "notes": "Waveshaper FX panel OS crop using automation-reported screen bounds."
+      "path": "waveshaper-fx-bongo.png",
+      "state": "magnitude",
+      "notes": "Waveshaper FX panel OS crop after opening bongo."
+    },
+    {
+      "area": "AreaSpectrum",
+      "path": "spectrum2d-bongo-magnitude.png",
+      "state": "magnitude",
+      "notes": "Spectrum2D OS crop after switching Spectrum3D to magnitude mode."
+    },
+    {
+      "area": "AreaSpectrogram",
+      "path": "spectrum3d-bongo-magnitude.png",
+      "state": "magnitude",
+      "notes": "Spectrum3D OS crop after switching Spectrum3D to magnitude mode."
+    },
+    {
+      "area": "AreaSpectrum",
+      "path": "spectrum2d-bongo-phase.png",
+      "state": "phase",
+      "notes": "Spectrum2D OS crop after switching Spectrum3D to phase mode."
+    },
+    {
+      "area": "AreaSpectrogram",
+      "path": "spectrum3d-bongo-phase.png",
+      "state": "phase",
+      "notes": "Spectrum3D OS crop after switching Spectrum3D to phase mode."
     }
   ]
 }
