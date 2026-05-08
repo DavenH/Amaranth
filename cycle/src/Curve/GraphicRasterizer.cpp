@@ -17,7 +17,7 @@ GraphicRasterizer::GraphicRasterizer(
 	    ,   MeshRasterizer(name)
 	    ,   layerGroup(layerGroup)
 	    ,   interactor(interactor) {
-    cyclic = isCyclic;
+    setWrapsEnds(isCyclic);
     addListener(this);
     setLimits(-margin, 1 + margin);
 }
@@ -31,13 +31,13 @@ void GraphicRasterizer::pullModPositionAndAdjust() {
     MeshLibrary::Properties* props = getObj(MeshLibrary).getCurrentProps(layerGroup);
 
     if (props == nullptr || props->scratchChan == CommonEnums::Null) {
-        morph = Cycle::Rasterization::GraphicRasterizerFacade().resolveMorphPosition(context);
+        setMorphPosition(Cycle::Rasterization::GraphicRasterizerFacade().resolveMorphPosition(context));
         return;
     }
 
     context.scratchChannel = props->scratchChan;
     context.scratchPosition = getObj(VisualDsp).getScratchPosition(props->scratchChan);
-    morph = Cycle::Rasterization::GraphicRasterizerFacade().resolveMorphPosition(context);
+    setMorphPosition(Cycle::Rasterization::GraphicRasterizerFacade().resolveMorphPosition(context));
 }
 
 int GraphicRasterizer::getPrimaryViewDimension() {

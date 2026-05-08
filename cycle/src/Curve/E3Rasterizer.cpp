@@ -12,11 +12,11 @@
 E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
         SingletonAccessor(repo, "E3Rasterizer")
     ,	MeshRasterizer("E3Rasterizer") {
-    lowResCurves 	= true;
-    cyclic 			= false;
-    calcDepthDims 	= false;
-    scalingType		= HalfBipolar;
-    xMaximum 		= 10.f;
+    setLowresCurves(true);
+    setWrapsEnds(false);
+    setCalcDepthDimensions(false);
+    setScalingMode(HalfBipolar);
+    setLimits(0.f, 10.f);
 }
 
 void E3Rasterizer::init() {
@@ -58,7 +58,7 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
     params.setExtraParams(res, -1, -1, true);
 
     ScopedLock sl(arrayLock);
-    mesh = getObj(MeshLibrary).getCurrentMesh(getObj(EnvelopeInter2D).layerType);
+    Mesh* currentMesh = getObj(MeshLibrary).getCurrentMesh(getObj(EnvelopeInter2D).layerType);
     getObj(VisualDsp).resizeArrays(params);
     int dependentAxis = getSetting(CurrentMorphAxis);
 
@@ -67,7 +67,7 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
 
         MorphPosition& p = getMorphPosition();
         p[dependentAxis].setValueDirect(colIdx * invGrid);
-        calcCrossPoints(mesh, 0.f);
+        calcCrossPoints(currentMesh, 0.f);
 
         if (isSampleable()) {
             sampleWithInterval(col, invCol, 0.f);

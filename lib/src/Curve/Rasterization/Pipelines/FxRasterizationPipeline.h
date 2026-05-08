@@ -102,14 +102,7 @@ namespace Rasterization {
             }
 
             output.waveform.place(output.memory, totalRes);
-            context.waveform = WaveformBufferRefs(
-                    output.waveform.waveX,
-                    output.waveform.waveY,
-                    output.waveform.diffX,
-                    output.waveform.slope,
-                    output.waveform.area,
-                    output.waveform.zeroIndex,
-                    output.waveform.oneIndex);
+            context.waveform = WaveformBufferRefs(output.waveform);
 
             waveformBuilder.bake(output.curves, context);
             output.sampleable = output.waveform.isSampleable();
