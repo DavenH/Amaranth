@@ -144,6 +144,30 @@ TEST_CASE("VoiceRasterizerFacade can publish chained padding through runtime", "
     REQUIRE_FALSE(curves.empty());
 }
 
+TEST_CASE("VoiceRasterizerFacade can apply curve resolution through runtime", "[cycle][rasterization][voice]") {
+    std::vector<Intercept> intercepts {
+        Intercept(-0.10f, -0.50f),
+        Intercept(0.10f, -0.25f),
+        Intercept(0.45f, 0.25f),
+        Intercept(0.80f, -0.10f),
+        Intercept(1.10f, 0.20f),
+    };
+
+    std::vector<Curve> curves {
+        Curve(intercepts[0], intercepts[1], intercepts[2]),
+        Curve(intercepts[1], intercepts[2], intercepts[3]),
+        Curve(intercepts[2], intercepts[3], intercepts[4]),
+    };
+
+    ::Rasterization::RasterizerRuntime runtime;
+    runtime.curves = &curves;
+
+    Cycle::Rasterization::VoiceRasterizerFacade().applyCurveResolution(runtime);
+
+    REQUIRE(curves.front().resIndex == curves[1].resIndex);
+    REQUIRE(curves.back().resIndex == curves[curves.size() - 2].resIndex);
+}
+
 TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows", "[cycle][rasterization][voice]") {
     CycleState state;
     state.callCount = 1;

@@ -84,7 +84,7 @@ void VoiceMeshRasterizer::updateCurves() {
 		return;
 	}
 
-    Cycle::Rasterization::VoiceRasterizerFacade().applyCurveResolution(curves);
+    Cycle::Rasterization::VoiceRasterizerFacade().applyCurveResolution(createRasterizerRuntime());
 
     prepareCurvesForWaveform();
 	calcWaveform();

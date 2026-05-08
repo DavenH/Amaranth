@@ -69,6 +69,12 @@ namespace Cycle::Rasterization {
             curveResolutionPolicy.apply(curves);
         }
 
+        void applyCurveResolution(::Rasterization::RasterizerRuntime runtime) const {
+            jassert(runtime.curves != nullptr);
+
+            curveResolutionPolicy.apply(*runtime.curves);
+        }
+
     private:
         VoicePointPositionPolicy pointPositionPolicy;
         VoiceChainedPaddingPolicy chainedPaddingPolicy;
