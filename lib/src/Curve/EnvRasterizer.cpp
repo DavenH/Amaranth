@@ -6,6 +6,7 @@
 #include "GuideCurveProvider.h"
 #include "Rasterization/Facades/EnvRasterizerFacade.h"
 #include "Rasterization/Policies/EnvelopePlaybackPolicy.h"
+#include "Rasterization/Policies/EnvelopeReleasePolicy.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
 
@@ -534,9 +535,13 @@ bool EnvRasterizer::simulateRender(
 
     if (sampleReleaseNextCall) {
         sampleReleaseNextCall = false;
-        int releaseIdx = getScalingType() == Bipolar ? sustainIndex : sustainIndex + 1;
-        float releasePosX = icpts[releaseIdx].x;
-        lastPosition = releasePosX;
+
+        Rasterization::EnvelopeReleaseContext releaseContext;
+        releaseContext.bipolar = getScalingType() == Bipolar;
+        releaseContext.sustainIndex = sustainIndex;
+
+        int releaseIdx = Rasterization::EnvelopeReleasePolicy().releaseIndex(releaseContext);
+        lastPosition = icpts[releaseIdx].x;
     }
 
     switch (state) {
@@ -604,16 +609,25 @@ void EnvRasterizer::changedToRelease() {
     }
 
     float lastLevel = params[headUnisonIndex].sustainLevel;
-    int releaseIdx = getScalingType() == Bipolar ? sustainIndex : sustainIndex + 1;
-    float releasePosX = icpts[releaseIdx].x;
-    float initialReleaseLevel = jmax(0.5f, sampleAt(releasePosX));
 
-    releaseScale = lastLevel / initialReleaseLevel;
+    Rasterization::EnvelopeReleaseContext releaseContext;
+    releaseContext.bipolar = getScalingType() == Bipolar;
+    releaseContext.sustainIndex = sustainIndex;
+
+    int releaseIdx = Rasterization::EnvelopeReleasePolicy().releaseIndex(releaseContext);
+    float sampledReleaseLevel = sampleAt(icpts[releaseIdx].x);
+    auto release = Rasterization::EnvelopeReleasePolicy().start(
+            icpts,
+            releaseContext,
+            lastLevel,
+            sampledReleaseLevel);
+
+    releaseScale = release.scale;
 
     dbg("release scale: " << releaseScale);
 
     for (int i = headUnisonIndex; i < (int) params.size(); ++i) {
-        params[i].samplePosition = releasePosX;
+        params[i].samplePosition = release.position;
     }
 }
 

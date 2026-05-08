@@ -4,6 +4,7 @@
 #include "../src/Curve/EnvelopeMesh.h"
 #include "../src/Curve/Rasterization/Facades/EnvRasterizerFacade.h"
 #include "../src/Curve/Rasterization/Policies/EnvelopePlaybackPolicy.h"
+#include "../src/Curve/Rasterization/Policies/EnvelopeReleasePolicy.h"
 
 namespace {
     std::vector<Intercept> makeIntercepts() {
@@ -138,4 +139,25 @@ TEST_CASE("EnvelopePlaybackPolicy resolves release state and loop boundaries", "
 
     context.releasing = true;
     REQUIRE(policy.boundary(intercepts, context) == Catch::Approx(intercepts.back().x));
+}
+
+TEST_CASE("EnvelopeReleasePolicy resolves release intercept and scale", "[rasterization][env][facade]") {
+    auto intercepts = makeIntercepts();
+
+    Rasterization::EnvelopeReleaseContext context;
+    context.bipolar = false;
+    context.sustainIndex = 1;
+
+    Rasterization::EnvelopeReleasePolicy policy;
+
+    REQUIRE(policy.releaseIndex(context) == 2);
+
+    auto release = policy.start(intercepts, context, 0.75f, 0.25f);
+
+    REQUIRE(release.index == 2);
+    REQUIRE(release.position == Catch::Approx(0.70f));
+    REQUIRE(release.scale == Catch::Approx(1.5f));
+
+    context.bipolar = true;
+    REQUIRE(policy.releaseIndex(context) == 1);
 }
