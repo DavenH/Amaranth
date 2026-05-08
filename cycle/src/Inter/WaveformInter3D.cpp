@@ -126,7 +126,7 @@ void WaveformInter3D::doExtraMouseUp() {
 }
 
 void WaveformInter3D::updateRastDims() {
-    rasterizer->setDims(getObj(WaveformInter2D).dims);
+    setRasterizerDims(getObj(WaveformInter2D).dims);
 }
 
 Interactor* WaveformInter3D::getOppositeInteractor() {

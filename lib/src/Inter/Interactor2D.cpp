@@ -18,7 +18,7 @@ Interactor2D::Interactor2D(SingletonRepo* repo, const String& name, const Dimens
 }
 
 bool Interactor2D::locateClosestElement() {
-    if (getRasterizer() == nullptr) {
+    if (!hasRasterizer()) {
         return Interactor::locateClosestElement();
     }
 
@@ -91,7 +91,7 @@ bool Interactor2D::locateClosestElement() {
     }
 
     if (icptIdx != -1) {
-        getStateValue(CurrentCurve) = icptIdx + rasterizer->getPaddingSize();
+        getStateValue(CurrentCurve) = icptIdx + getRasterizerPaddingSize();
     }
 
     // call virtual function that subclasses can use if wanted

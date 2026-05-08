@@ -8,6 +8,7 @@ namespace Rasterization {
         virtual ~RasterizerSampler() = default;
 
         virtual bool isSampleable() = 0;
+        virtual bool isSampleableAt(float x) = 0;
         virtual float sampleAt(double angle) = 0;
         virtual float sampleAt(double angle, int& currentIndex) = 0;
         virtual float samplePerfectly(double delta, Buffer<float> buffer, double phase) = 0;

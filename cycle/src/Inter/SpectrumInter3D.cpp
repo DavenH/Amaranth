@@ -106,7 +106,7 @@ String SpectrumInter3D::getYString(float yVal, int yIndex, const Column &col, fl
 }
 
 void SpectrumInter3D::updateRastDims() {
-    rasterizer->setDims(getObj(SpectrumInter2D).dims);
+    setRasterizerDims(getObj(SpectrumInter2D).dims);
 }
 
 Interactor* SpectrumInter3D::getOppositeInteractor() {
@@ -132,4 +132,3 @@ void SpectrumInter3D::exitClientLock(bool audioThreadApplicable) {
         getObj(SynthAudioSource).getLock().exit();
     }
 }
-

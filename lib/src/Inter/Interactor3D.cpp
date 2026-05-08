@@ -1082,15 +1082,15 @@ void Interactor3D::primaryDimensionChanged() {
 void Interactor3D::updateRastDims() {
     progressMark
 
-    if (rasterizer == nullptr) {
+    if (!hasRasterizer()) {
         return;
     }
 
-    rasterizer->setDims(dims);
+    setRasterizerDims(dims);
 }
 
 void Interactor3D::updateInterceptsWithMesh(Mesh* mesh) {
-    if (rasterizer == nullptr) {
+    if (!hasRasterizer()) {
         return;
     }
 
@@ -1099,7 +1099,7 @@ void Interactor3D::updateInterceptsWithMesh(Mesh* mesh) {
 
     MorphPosition pos = getModPosition();
 
-    bool wrapsVerts = getRasterizer()->wrapsVertices();
+    bool wrapsVerts = rasterizerWrapsVertices();
 
     if(mesh == nullptr) {
         return;

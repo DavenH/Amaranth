@@ -25,12 +25,15 @@ using std::set;
 
 class Panel;
 class GuideCurveProvider;
+class Mesh;
 struct RasterizerData;
 class Vertex;
 class MeshRasterizer;
 
 namespace Rasterization {
+    class MeshRasterizerSamplerAdapter;
     class MeshRasterizerSnapshotAdapter;
+    class RasterizerSampler;
     class RasterizerSnapshotProvider;
 }
 
@@ -130,7 +133,15 @@ public:
     MeshRasterizer*     getRasterizer() const                 { return rasterizer;          }
     bool                hasRasterizer() const                 { return rasterizer != nullptr; }
     bool                rasterizerWrapsVertices() const;
+    int                 getRasterizerPaddingSize() const;
     GuideCurveProvider* getGuideCurveProvider() const;
+    void                setRasterizerDims(const Dimensions& newDims);
+    void                setRasterizerMesh(Mesh* mesh);
+    void                performRasterizerUpdate(UpdateType updateType);
+    void                updateRasterizer(UpdateType updateType);
+    Rasterization::RasterizerSampler* getRasterizerSampler() const;
+    bool                isRasterizerSampleableAt(float x) const;
+    float               sampleRasterizerAt(double angle) const;
     Rasterization::RasterizerSnapshotProvider* getSnapshotProvider() const;
     RasterizerData&     getRasterizerData() const;
     MorphPosition       getOffsetPosition(bool withDepths)    { return positioner->getOffsetPosition(withDepths); }
@@ -252,6 +263,7 @@ protected:
 
     MorphPositioner*    positioner;
     MeshRasterizer*     rasterizer;
+    std::unique_ptr<Rasterization::MeshRasterizerSamplerAdapter> samplerAdapter;
     std::unique_ptr<Rasterization::MeshRasterizerSnapshotAdapter> snapshotAdapter;
 
     CriticalSection     vertexLock;

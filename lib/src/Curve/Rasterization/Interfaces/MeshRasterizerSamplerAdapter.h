@@ -23,6 +23,10 @@ namespace Rasterization {
             return rasterizer != nullptr && rasterizer->isSampleable();
         }
 
+        bool isSampleableAt(float x) override {
+            return rasterizer != nullptr && rasterizer->isSampleableAt(x);
+        }
+
         float sampleAt(double angle) override {
             jassert(rasterizer != nullptr);
             return rasterizer != nullptr ? rasterizer->sampleAt(angle) : 0.5f;

@@ -270,8 +270,8 @@ void EnvelopeInter2D::showCoordinates() {
     }
 
     float time = length * state.currentMouse.x;
-    bool sampleable = rasterizer->isSampleableAt(state.currentMouse.x);
-    float envY = sampleable ? rasterizer->sampleAt(state.currentMouse.x) : 0;
+    bool sampleable = isRasterizerSampleableAt(state.currentMouse.x);
+    float envY = sampleable ? sampleRasterizerAt(state.currentMouse.x) : 0;
 
     String yString;
 
@@ -1079,7 +1079,7 @@ void EnvelopeInter2D::delegateUpdate(bool shouldDoUpdate) {
                 envRast->setWantOneSamplePerCycle(false);
             }
 
-            rasterizer->performUpdate(Update);
+            performRasterizerUpdate(Update);
             performUpdate(Update);
         }
 

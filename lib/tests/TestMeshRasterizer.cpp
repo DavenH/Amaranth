@@ -173,6 +173,7 @@ TEST_CASE("MeshRasterizerSamplerAdapter exposes only waveform sampling", "[meshr
 
     REQUIRE(sampler.getRasterizer() == &rasterizer);
     REQUIRE(sampler.isSampleable());
+    REQUIRE(sampler.isSampleableAt(0.5f));
     REQUIRE(sampler.sampleAt(0.5) == rasterizer.sampleAt(0.5));
 
     int adapterIndex = rasterizer.getZeroIndex();
