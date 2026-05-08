@@ -15,6 +15,7 @@
 #include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Facades/MeshRasterizerFacade.h"
 #include "Rasterization/RasterizerComposer.h"
+#include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
 #include "Rasterization/Sources/MeshCubeSource.h"
 #include "../App/AppConstants.h"
@@ -22,7 +23,6 @@
 #include "../Array/ScopedAlloc.h"
 #include "../Design/Updating/Updater.h"
 #include "../Util/CommonEnums.h"
-#include "../Util/NumberUtils.h"
 #include "../Util/Util.h"
 
 float MeshRasterizer::transferTable[Curve::resolution];
@@ -338,26 +338,14 @@ float MeshRasterizer::sampleAt(double angle) {
  * For single sample per cycle rasterization, e.g. envelopes
  */
 float MeshRasterizer::sampleAtDecoupled(double angle, GuideCurveContext& context) {
-    float val = sampleAt(angle, context.currentIndex);
-
-    for(auto& region : guideCurveRegions) {
-        if (NumberUtils::within<float>(angle, region.start.x, region.end.x)) {
-            float diff = region.end.x - region.start.x;
-
-            if (diff > 0) {
-                GuideCurveProvider::NoiseContext noise;
-                noise.noiseSeed     = noiseSeed;
-                noise.phaseOffset     = context.phaseOffsetSeed;
-                noise.vertOffset     = context.vertOffsetSeed;
-
-                float progress = (angle - region.start.x) / diff;
-
-                return val + region.amplitude * guideCurveProvider->getTableValue(region.guideIndex, progress, noise);
-            }
-        }
-    }
-
-    return val;
+    return Rasterization::GuideCurveSampler::sampleDecoupled(
+            Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+            unsampleable,
+            angle,
+            context,
+            guideCurveRegions,
+            guideCurveProvider,
+            noiseSeed);
 }
 
 // make damn sure that the last element in waveX is greater than 1 before calling this

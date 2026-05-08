@@ -12,6 +12,7 @@
 #include "../src/Curve/Rasterization/Policies/ComponentGuideSharpnessPolicy.h"
 #include "../src/Curve/Rasterization/Policies/GuideCurvePolicy.h"
 #include "../src/Curve/Rasterization/RasterizerComposer.h"
+#include "../src/Curve/Rasterization/Sampling/GuideCurveSampler.h"
 #include "../src/Curve/Rasterization/Sampling/WaveformSampler.h"
 #include "../src/Curve/Rasterization/Sources/MeshCubeSource.h"
 #include "../src/Curve/VertCube.h"
@@ -247,6 +248,61 @@ TEST_CASE("WaveformSampler matches MeshRasterizer sampling adapters", "[meshrast
     Rasterization::WaveformSampler::sampleAtIntervals(waveform, intervals, direct);
     rasterizer.sampleAtIntervals(intervals, adapter);
     RasterizerCompare::requireBufferNear(RasterizerCompare::copyBuffer(direct), RasterizerCompare::copyBuffer(adapter));
+}
+
+TEST_CASE("GuideCurveSampler adds decoupled guide regions to waveform sampling", "[meshrasterizer][sampling][guide]") {
+    ScopedAlloc<Float32> memory;
+    memory.ensureSize(5);
+    Buffer<float> waveX = memory.place(2);
+    Buffer<float> waveY = memory.place(2);
+
+    waveX[0] = 0.f;
+    waveX[1] = 1.f;
+    waveY[0] = 0.25f;
+    waveY[1] = 0.25f;
+
+    Buffer<float> diffX;
+    Buffer<float> slope;
+    Buffer<float> area;
+
+    diffX.nullify();
+    slope = memory.place(1);
+    area.nullify();
+    slope[0] = 0.f;
+
+    Rasterization::WaveformBuffers waveform(waveX, waveY, diffX, slope, area, 0, 1);
+
+    ConstantGuideCurveProvider provider;
+    provider.values[3] = 0.5f;
+
+    Rasterization::GuideCurveRegion region;
+    region.guideIndex = 3;
+    region.amplitude = 0.2f;
+    region.start.x = 0.25f;
+    region.end.x = 0.75f;
+
+    std::vector<Rasterization::GuideCurveRegion> regions;
+    regions.emplace_back(region);
+
+    Rasterization::GuideCurveContext context;
+
+    REQUIRE(Rasterization::GuideCurveSampler::sampleDecoupled(
+            waveform,
+            false,
+            0.5,
+            context,
+            regions,
+            &provider,
+            7) == Catch::Approx(0.35f));
+
+    REQUIRE(Rasterization::GuideCurveSampler::sampleDecoupled(
+            waveform,
+            false,
+            0.9,
+            context,
+            regions,
+            &provider,
+            7) == Catch::Approx(0.25f));
 }
 
 TEST_CASE("MeshRasterizerSnapshotAdapter exposes only published rasterizer data", "[meshrasterizer][snapshot]") {

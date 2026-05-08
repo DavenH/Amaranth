@@ -9,7 +9,8 @@
 #include "../WaveformBuffers.h"
 #include "../../Curve.h"
 #include "../../GuideCurveProvider.h"
-#include "../../MeshRasterizer.h"
+#include "../../../Obj/MorphPosition.h"
+#include "../Sampling/GuideCurveSampler.h"
 
 namespace Rasterization {
     class WaveformBakePolicy {
@@ -21,7 +22,7 @@ namespace Rasterization {
 
             MorphPosition morph;
             GuideCurveProvider* guideCurveProvider {};
-            std::vector<MeshRasterizer::GuideCurveRegion>* guideCurveRegions {};
+            std::vector<GuideCurveRegion>* guideCurveRegions {};
             const short* phaseOffsetSeeds {};
             const short* vertOffsetSeeds {};
             const float* transferTable {};
@@ -122,7 +123,7 @@ namespace Rasterization {
             if (context.decoupleComponentDfrms) {
                 yPortion.zero();
 
-                MeshRasterizer::GuideCurveRegion region;
+                GuideCurveRegion region;
                 region.amplitude   = multiplier;
                 region.guideIndex  = cube->getCompGuideCurve();
                 region.start       = thisCentre;

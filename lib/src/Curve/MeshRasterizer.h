@@ -7,6 +7,7 @@
 #include "RasterizerData.h"
 #include "Rasterization/RasterizationRequest.h"
 #include "Rasterization/RasterizerRuntime.h"
+#include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "SurfaceLine.h"
 #include "VertCube.h"
 #include "../Array/ScopedAlloc.h"
@@ -33,19 +34,8 @@ class MeshRasterizer :
 public:
     enum ScalingType { Unipolar, Bipolar, HalfBipolar };
 
-    struct GuideCurveContext {
-        int phaseOffsetSeed;
-        int vertOffsetSeed;
-        int currentIndex;
-
-        GuideCurveContext() : phaseOffsetSeed(0), vertOffsetSeed(0), currentIndex(0) {}
-    };
-
-    struct GuideCurveRegion {
-        int guideIndex;
-        float amplitude;
-        Intercept start, end;
-    };
+    using GuideCurveContext = Rasterization::GuideCurveContext;
+    using GuideCurveRegion = Rasterization::GuideCurveRegion;
 
     struct RenderState {
         bool batchMode;
