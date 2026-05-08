@@ -200,6 +200,8 @@ protected:
     void calcWaveform();
     Rasterization::WaveformBuffers createWaveformView() const;
     Rasterization::WaveformBufferRefs createWaveformRefs();
+    void assignWaveform(const Rasterization::WaveformBuffers& waveform);
+    void copyWaveform(const Rasterization::WaveformBuffers& waveform);
     void setResolutionIndices(float base);
     static void calcTransferTable();
 

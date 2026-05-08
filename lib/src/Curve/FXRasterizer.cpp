@@ -74,14 +74,7 @@ void FXRasterizer::publishPipelineOutput(const Rasterization::FxRasterizationPip
     icpts = output.intercepts;
     curves = output.curves;
 
-    Rasterization::WaveformBufferRefs(
-            waveX,
-            waveY,
-            diffX,
-            slope,
-            area,
-            zeroIndex,
-            oneIndex).assignFrom(output.waveform);
+    assignWaveform(output.waveform);
 
     paddingSize = output.paddingSize;
     unsampleable = !output.sampleable;

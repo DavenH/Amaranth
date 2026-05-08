@@ -38,13 +38,7 @@ public:
         curves = output.curves;
 
         updateBuffers(output.waveform.waveX.size());
-        output.waveform.waveX.copyTo(waveX);
-        output.waveform.waveY.copyTo(waveY);
-        output.waveform.diffX.copyTo(diffX);
-        output.waveform.slope.copyTo(slope);
-        output.waveform.area.copyTo(area);
-        zeroIndex = output.waveform.zeroIndex;
-        oneIndex = output.waveform.oneIndex;
+        copyWaveform(output.waveform);
 
         paddingSize = output.paddingSize;
 

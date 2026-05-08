@@ -653,6 +653,20 @@ Rasterization::WaveformBufferRefs MeshRasterizer::createWaveformRefs() {
             oneIndex);
 }
 
+void MeshRasterizer::assignWaveform(const Rasterization::WaveformBuffers& waveform) {
+    createWaveformRefs().assignFrom(waveform);
+}
+
+void MeshRasterizer::copyWaveform(const Rasterization::WaveformBuffers& waveform) {
+    waveform.waveX.copyTo(waveX);
+    waveform.waveY.copyTo(waveY);
+    waveform.diffX.copyTo(diffX);
+    waveform.slope.copyTo(slope);
+    waveform.area.copyTo(area);
+    zeroIndex = waveform.zeroIndex;
+    oneIndex = waveform.oneIndex;
+}
+
 void MeshRasterizer::makeCopy() {
     Rasterization::RasterizerSnapshotSource source;
     source.intercepts = &icpts;
