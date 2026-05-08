@@ -151,6 +151,12 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
 
     beginCrossPointCalculation();
 
+    Rasterization::MeshSlicePipeline::Output output = renderMeshSlice(usedMesh, oscPhase);
+    publishMeshSliceOutput(output);
+    finishCrossPointCalculation();
+}
+
+Rasterization::MeshSlicePipeline::Output MeshRasterizer::renderMeshSlice(Mesh* usedMesh, float oscPhase) {
     Rasterization::MeshCubeSource source(usedMesh);
     Rasterization::RasterizationRequest request = createRasterizationRequest();
 
@@ -166,8 +172,7 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
             guideApplier,
             reduct);
 
-    publishMeshSliceOutput(output);
-    finishCrossPointCalculation();
+    return output;
 }
 
 bool MeshRasterizer::canRasterizeMesh(Mesh* usedMesh) const {
