@@ -169,5 +169,55 @@ namespace Rasterization {
 
             return phase;
         }
+
+        template<typename T>
+        static T sampleWithInterval(
+                const WaveformBuffers& waveform,
+                Buffer<float> buffer,
+                T delta,
+                T phase) {
+            float* dest = buffer.get();
+            int size = buffer.size();
+
+            if (waveform.waveX.empty()) {
+                buffer.set(0.5f);
+                return 0;
+            }
+
+            auto lastAngle = (float) (size * delta + phase);
+
+            jassert(waveform.waveX.front() < phase && waveform.waveX.back() > lastAngle);
+
+            if (waveform.waveX.front() > phase || waveform.waveX.back() < lastAngle) {
+                buffer.zero();
+                phase += delta * size;
+            } else {
+                int currentIndex = jmax(0, waveform.zeroIndex - 1);
+
+                while (phase < waveform.waveX[currentIndex] && currentIndex > 0) {
+                    currentIndex--;
+                }
+
+                jassert(phase > waveform.waveX[currentIndex]);
+
+                for (int i = 0; i < size; ++i) {
+                    while (phase >= waveform.waveX[currentIndex + 1]) {
+                        currentIndex++;
+                    }
+
+                    dest[i] = ((float) phase - waveform.waveX[currentIndex])
+                            * waveform.slope[currentIndex]
+                            + waveform.waveY[currentIndex];
+
+                    phase += delta;
+                }
+            }
+
+            if (phase > 0.5) {
+                phase -= 1;
+            }
+
+            return phase;
+        }
     };
 }

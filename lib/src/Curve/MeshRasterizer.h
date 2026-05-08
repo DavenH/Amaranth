@@ -115,45 +115,11 @@ public:
 
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
-        float* dest = buffer.get();
-        int size = buffer.size();
-
-        if(waveX.empty()) {
-            buffer.set(0.5f);
-            return 0;
-        }
-
-        auto lastAngle = (float) (size * delta + phase);
-
-        jassert(waveX.front() < phase && waveX.back() > lastAngle);
-
-        if (waveX.front() > phase || waveX.back() < lastAngle) {
-            buffer.zero();
-            phase += delta * size;
-        } else {
-            int currentIndex = jmax(0, zeroIndex - 1);
-
-            while(phase < waveX[currentIndex] && currentIndex > 0)
-                currentIndex--;
-
-            jassert(phase > waveX[currentIndex]);
-
-            for(int i = 0; i < size; ++i) {
-                while (phase >= waveX[currentIndex + 1]) {
-                    currentIndex++;
-                }
-
-                dest[i] = ((float) phase - waveX[currentIndex]) * slope[currentIndex] + waveY[currentIndex];
-
-                phase += delta;
-            }
-        }
-
-        if(phase > 0.5) {
-            phase -= 1;
-        }
-
-        return phase;
+        return Rasterization::WaveformSampler::sampleWithInterval(
+                Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+                buffer,
+                delta,
+                phase);
     }
 
     /* ----------------------------------------------------------------------------- */

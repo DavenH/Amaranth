@@ -236,7 +236,7 @@ TEST_CASE("WaveformSampler matches MeshRasterizer sampling adapters", "[meshrast
     REQUIRE(directIndex == rasterizerIndex);
 
     ScopedAlloc<Float32> memory;
-    memory.ensureSize(192);
+    memory.ensureSize(256);
     Buffer<float> intervals = memory.place(64);
     Buffer<float> direct = memory.place(64);
     Buffer<float> adapter = memory.place(64);
@@ -248,6 +248,18 @@ TEST_CASE("WaveformSampler matches MeshRasterizer sampling adapters", "[meshrast
     Rasterization::WaveformSampler::sampleAtIntervals(waveform, intervals, direct);
     rasterizer.sampleAtIntervals(intervals, adapter);
     RasterizerCompare::requireBufferNear(RasterizerCompare::copyBuffer(direct), RasterizerCompare::copyBuffer(adapter));
+
+    Buffer<float> directEven = memory.place(32);
+    Buffer<float> adapterEven = memory.place(32);
+    float delta = 1.f / float(directEven.size() - 1);
+
+    auto directPhase = Rasterization::WaveformSampler::sampleWithInterval(waveform, directEven, delta, 0.f);
+    auto adapterPhase = rasterizer.sampleWithInterval(adapterEven, delta, 0.f);
+
+    REQUIRE(directPhase == adapterPhase);
+    RasterizerCompare::requireBufferNear(
+            RasterizerCompare::copyBuffer(directEven),
+            RasterizerCompare::copyBuffer(adapterEven));
 }
 
 TEST_CASE("GuideCurveSampler adds decoupled guide regions to waveform sampling", "[meshrasterizer][sampling][guide]") {
