@@ -7,6 +7,7 @@
 #include <Array/VecOps.h>
 
 #include "../WaveformBuffers.h"
+#include "../GuideCurveOffsetSeeds.h"
 #include "../../Curve.h"
 #include "../../GuideCurveProvider.h"
 #include "../../../Obj/MorphPosition.h"
@@ -23,8 +24,7 @@ namespace Rasterization {
             MorphPosition morph;
             GuideCurveProvider* guideCurveProvider {};
             std::vector<GuideCurveRegion>* guideCurveRegions {};
-            const short* phaseOffsetSeeds {};
-            const short* vertOffsetSeeds {};
+            const GuideCurveOffsetSeeds* offsetSeeds {};
             const float* transferTable {};
 
             WaveformBufferRefs waveform;
@@ -110,8 +110,11 @@ namespace Rasterization {
 
             GuideCurveProvider::NoiseContext noise;
             noise.noiseSeed   = context.noiseSeed < 0 ? context.morph.time.getCurrentValue() * (float) INT_MAX : context.noiseSeed;
-            noise.phaseOffset = context.phaseOffsetSeeds[compDfrm];
-            noise.vertOffset  = context.vertOffsetSeeds[compDfrm];
+
+            if (context.offsetSeeds != nullptr) {
+                noise.phaseOffset = context.offsetSeeds->phaseAt(compDfrm);
+                noise.vertOffset = context.offsetSeeds->verticalAt(compDfrm);
+            }
 
             Buffer<float>& waveX = *context.waveform.waveX;
             Buffer<float>& waveY = *context.waveform.waveY;

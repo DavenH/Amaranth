@@ -24,7 +24,20 @@ namespace Rasterization {
         const short* phase() const    { return phaseSeeds;     }
         const short* vertical() const { return verticalSeeds;  }
 
+        short phaseAt(int index) const {
+            return isInRange(index) ? phaseSeeds[index] : short();
+        }
+
+        short verticalAt(int index) const {
+            return isInRange(index) ? verticalSeeds[index] : short();
+        }
+
         short phaseSeeds[capacity] {};
         short verticalSeeds[capacity] {};
+
+    private:
+        static bool isInRange(int index) {
+            return index >= 0 && index < capacity;
+        }
     };
 }

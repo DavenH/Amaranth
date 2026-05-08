@@ -288,8 +288,7 @@ void MeshRasterizer::calcWaveform() {
     context.morph = morph;
     context.guideCurveProvider = guideCurveProvider;
     context.guideCurveRegions = &guideCurveRegions;
-    context.phaseOffsetSeeds = guideCurveOffsetSeeds.phase();
-    context.vertOffsetSeeds = guideCurveOffsetSeeds.vertical();
+    context.offsetSeeds = &guideCurveOffsetSeeds;
     context.transferTable = Rasterization::TransferTable::values();
 
     int totalRes = facade->prepareWaveform(curves, context);
@@ -653,8 +652,7 @@ Rasterization::GuideCurvePolicyContext MeshRasterizer::createGuideCurvePolicyCon
     context.cyclic = cyclic;
     context.needsResorting = &needsResorting;
     context.noiseSeed = noiseSeed;
-    context.phaseOffsetSeeds = guideCurveOffsetSeeds.phase();
-    context.vertOffsetSeeds = guideCurveOffsetSeeds.vertical();
+    context.offsetSeeds = &guideCurveOffsetSeeds;
 
     return context;
 }

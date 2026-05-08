@@ -79,8 +79,7 @@ namespace Rasterization {
             WaveformBakePolicy::Context context;
             context.lowResCurves = request.lowResCurves;
             context.morph = request.morph;
-            context.phaseOffsetSeeds = guideCurveOffsetSeeds.phase();
-            context.vertOffsetSeeds = guideCurveOffsetSeeds.vertical();
+            context.offsetSeeds = &guideCurveOffsetSeeds;
             context.transferTable = TransferTable::values();
 
             int totalRes = waveformBuilder.prepare(output.curves, context);

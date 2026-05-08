@@ -5,6 +5,7 @@
 #include "../../GuideCurveProvider.h"
 #include "../../Intercept.h"
 #include "../../VertCube.h"
+#include "../GuideCurveOffsetSeeds.h"
 #include "../Policies/PointScalingPolicy.h"
 #include "../../../Obj/MorphPosition.h"
 #include "../../../Util/NumberUtils.h"
@@ -19,8 +20,7 @@ namespace Rasterization {
         bool* needsResorting {};
 
         int noiseSeed {};
-        const short* phaseOffsetSeeds {};
-        const short* vertOffsetSeeds {};
+        const GuideCurveOffsetSeeds* offsetSeeds {};
     };
 
     class GuideCurvePolicy {
@@ -173,12 +173,9 @@ namespace Rasterization {
         }
 
         void applyNoiseOffsets(GuideCurveProvider::NoiseContext& noise, int guideIndex) const {
-            if (context.vertOffsetSeeds != nullptr) {
-                noise.vertOffset = context.vertOffsetSeeds[guideIndex];
-            }
-
-            if (context.phaseOffsetSeeds != nullptr) {
-                noise.phaseOffset = context.phaseOffsetSeeds[guideIndex];
+            if (context.offsetSeeds != nullptr) {
+                noise.vertOffset = context.offsetSeeds->verticalAt(guideIndex);
+                noise.phaseOffset = context.offsetSeeds->phaseAt(guideIndex);
             }
         }
     };
