@@ -6,6 +6,7 @@
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/MeshRasterizer.h"
 #include "../src/Curve/Rasterization/Interfaces/MeshRasterizerSamplerAdapter.h"
+#include "../src/Curve/Rasterization/Interfaces/MeshRasterizerSnapshotAdapter.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sources/MeshCubeSource.h"
@@ -178,6 +179,23 @@ TEST_CASE("MeshRasterizerSamplerAdapter exposes only waveform sampling", "[meshr
     int rasterizerIndex = rasterizer.getZeroIndex();
     REQUIRE(sampler.sampleAt(0.5, adapterIndex) == rasterizer.sampleAt(0.5, rasterizerIndex));
     REQUIRE(adapterIndex == rasterizerIndex);
+}
+
+TEST_CASE("MeshRasterizerSnapshotAdapter exposes only published rasterizer data", "[meshrasterizer][snapshot]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+
+    MeshRasterizer rasterizer("SyntheticMeshSnapshotAdapter");
+    configureWaveRasterizer(rasterizer, mesh.get());
+    rasterizer.calcCrossPoints();
+    rasterizer.makeCopy();
+
+    Rasterization::MeshRasterizerSnapshotAdapter snapshot(&rasterizer);
+
+    REQUIRE(snapshot.getRasterizer() == &rasterizer);
+    REQUIRE(&snapshot.getRasterizerData() == &rasterizer.getRastData());
+    REQUIRE(snapshot.getRasterizerData().intercepts.size() == rasterizer.getRastData().intercepts.size());
+    REQUIRE(snapshot.getRasterizerData().waveX.size() == rasterizer.getRastData().waveX.size());
 }
 
 TEST_CASE("MeshRasterizer characterization snapshot is deterministic", "[meshrasterizer][characterization]") {

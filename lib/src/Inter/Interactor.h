@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <vector>
 #include <set>
 #include "Dimensions.h"
@@ -23,8 +24,15 @@ using std::vector;
 using std::set;
 
 class Panel;
+class GuideCurveProvider;
+struct RasterizerData;
 class Vertex;
 class MeshRasterizer;
+
+namespace Rasterization {
+    class MeshRasterizerSnapshotAdapter;
+    class RasterizerSnapshotProvider;
+}
 
 typedef vector<Vertex2>::iterator CoordIter;
 typedef vector<DepthVert>::iterator DepthIter;
@@ -69,7 +77,7 @@ public:
     /* ----------------------------------------------------------------------------- */
 
     Interactor(SingletonRepo* repo, const String& name, const Dimensions& d);
-    ~Interactor() override = default;
+    ~Interactor() override;
     void init() override;
 
     virtual bool addNewCube(float startTime, float phase, float amp, float shape);
@@ -120,6 +128,11 @@ public:
     CollisionDetector&  getCollisionDetector()                { return collisionDetector;   }
     CriticalSection&    getLock()                             { return vertexLock;          }
     MeshRasterizer*     getRasterizer() const                 { return rasterizer;          }
+    bool                hasRasterizer() const                 { return rasterizer != nullptr; }
+    bool                rasterizerWrapsVertices() const;
+    GuideCurveProvider* getGuideCurveProvider() const;
+    Rasterization::RasterizerSnapshotProvider* getSnapshotProvider() const;
+    RasterizerData&     getRasterizerData() const;
     MorphPosition       getOffsetPosition(bool withDepths)    { return positioner->getOffsetPosition(withDepths); }
     MorphPosition       getMorphPosition()                    { return positioner->getMorphPosition(); }
 
@@ -239,6 +252,7 @@ protected:
 
     MorphPositioner*    positioner;
     MeshRasterizer*     rasterizer;
+    std::unique_ptr<Rasterization::MeshRasterizerSnapshotAdapter> snapshotAdapter;
 
     CriticalSection     vertexLock;
     CollisionDetector   collisionDetector;

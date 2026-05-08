@@ -9,12 +9,17 @@
 #include "../../App/MeshLibrary.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Array/Buffer.h"
+#include "../../Curve/Curve.h"
 #include "../../Curve/Intercept.h"
-#include "../../Curve/MeshRasterizer.h"
+#include "../../Obj/ColorPoint.h"
+#include "../../Obj/CurveLine.h"
+#include "../../Curve/RasterizerData.h"
 #include "../../Inter/Interactor.h"
 #include "../../Util/Arithmetic.h"
 #include "../../Util/Geometry.h"
 #include "../../UI/Layout/BoundWrapper.h"
+
+using std::ostream;
 
 namespace {
 
@@ -60,7 +65,7 @@ void Panel2D::init() {
 }
 
 void Panel2D::contractToRange(bool includeX) {
-    RasterizerData& data = interactor->getRasterizer()->getRastData();
+    RasterizerData& data = interactor->getRasterizerData();
     ScopedLock dataLock(data.lock);
 
     zoomPanel->contractToRange(data.waveY);
@@ -77,7 +82,7 @@ void Panel2D::drawCurvesAndSurfaces() {
     bool reduceAlpha     = !isMeshEnabled();
     Color colourA        = colorA.withAlpha(reduceAlpha ? 0.55f : 1.f);
     Color colourB        = colorB.withAlpha(reduceAlpha ? 0.55f : 1.f);
-    RasterizerData& data = interactor->getRasterizer()->getRastData();
+    RasterizerData& data = interactor->getRasterizerData();
 
     Buffer<float> a;
 
@@ -210,7 +215,7 @@ void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
 
 void Panel2D::drawInterceptLines() {
     {
-        RasterizerData& rastData = interactor->getRasterizer()->getRastData();
+        RasterizerData& rastData = interactor->getRasterizerData();
         ScopedLock sl(rastData.lock);
         const vector<Intercept>& intercepts = rastData.intercepts;
 
@@ -270,7 +275,7 @@ void Panel2D::highlightCurrentIntercept()
         point.x = verts[freeIdx].x;
         point.y = verts[freeIdx].y;
     } else {
-        RasterizerData& data = interactor->getRasterizer()->getRastData();
+        RasterizerData& data = interactor->getRasterizerData();
         ScopedLock dataLock(data.lock);
 
         const vector<Intercept>& icpts = data.intercepts;
@@ -307,7 +312,7 @@ void Panel2D::prepareAlpha(const Buffer<float>& y, Buffer<float> alpha, float ba
 }
 
 void Panel2D::drawDepthLinesAndVerts() {
-    RasterizerData& data = interactor->getRasterizer()->getRastData();
+    RasterizerData& data = interactor->getRasterizerData();
 
     if(data.colorPoints.empty()) {
         return;
@@ -379,7 +384,7 @@ void Panel2D::drawDepthLinesAndVerts() {
 }
 
 void Panel2D::drawGuideCurveTags() {
-    RasterizerData& data  = interactor->getRasterizer()->getRastData();
+    RasterizerData& data  = interactor->getRasterizerData();
     vector<Curve>& curves = data.curves;
 
     Color colors[Vertex::numElements];

@@ -11,12 +11,15 @@
 #include "../../App/Settings.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Binary/Images.h"
+#include "../../Curve/Curve.h"
 #include "../../Curve/GuideCurveProvider.h"
-#include "../../Curve/MeshRasterizer.h"
+#include "../../Curve/Intercept.h"
 #include "../../Curve/PathRepo.h"
+#include "../../Obj/Color.h"
+#include "../../Obj/ColorPoint.h"
+#include "../../Obj/CurveLine.h"
 #include "../../Curve/RasterizerData.h"
 #include "../../Inter/Interactor.h"
-#include "../../Obj/Color.h"
 #include "../../Util/MicroTimer.h"
 #include "../../Util/Util.h"
 
@@ -139,7 +142,7 @@ void Panel::render() {
     // should only be held on mesh deletions
     ScopedLock sl(renderLock);
 
-    if (interactor == nullptr || comp == nullptr || interactor->getRasterizer() == nullptr) {
+    if (interactor == nullptr || comp == nullptr || !interactor->hasRasterizer()) {
         return;
     }
 
@@ -453,7 +456,7 @@ void Panel::highlightSelectedVerts() {
             return;
         }
 
-        bool wrapsVerts = interactor->getRasterizer()->wrapsVertices();
+        bool wrapsVerts = interactor->rasterizerWrapsVertices();
 
         size = selected.size();
         prepareBuffers(size);
@@ -518,7 +521,7 @@ void Panel::handlePendingUpdates() {
 }
 
 void Panel::drawInterceptsAndHighlightClosest() {
-    RasterizerData& data = interactor->getRasterizer()->getRastData();
+    RasterizerData& data = interactor->getRasterizerData();
     const vector<Intercept>& intercepts = data.intercepts;
 
     int size = 0;
@@ -785,7 +788,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     Buffer<float> speedEnv  = scratchContext.panelBuffer;
     Buffer<float> ramp      = cBuffer.withSize(linestripRes);
 
-    if(GuideCurveProvider* guideCurveProvider = interactor->getRasterizer()->getGuideCurveProvider()) {
+    if(GuideCurveProvider* guideCurveProvider = interactor->getGuideCurveProvider()) {
         phaseTable = guideCurveProvider->getTable(phaseChan);
         ampTable = guideCurveProvider->getTable(ampChan);
     }
