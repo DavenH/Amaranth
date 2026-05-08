@@ -179,4 +179,27 @@ namespace Rasterization {
             }
         }
     };
+
+    class GuideCurveApplier {
+    public:
+        explicit GuideCurveApplier(const GuideCurvePolicyContext& context) :
+                context(context) {
+        }
+
+        void operator()(Intercept& intercept, const MorphPosition& morph) {
+            apply(intercept, morph, false);
+        }
+
+        void operator()(Intercept& intercept, const MorphPosition& morph, bool noOffsetAtEnds) {
+            apply(intercept, morph, noOffsetAtEnds);
+        }
+
+    private:
+        GuideCurvePolicyContext context;
+
+        void apply(Intercept& intercept, const MorphPosition& morph, bool noOffsetAtEnds) {
+            context.noOffsetAtEnds = noOffsetAtEnds;
+            GuideCurvePolicy(context).apply(intercept, morph);
+        }
+    };
 }

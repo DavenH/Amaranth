@@ -40,16 +40,14 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 
     ::Rasterization::MeshCubeSource source(mesh);
     ::Rasterization::GuideCurvePolicyContext guideContext = createGuideCurvePolicyContext();
+    ::Rasterization::GuideCurveApplier guideApplier(guideContext);
 
     auto output = Cycle::Rasterization::VoiceRasterizerFacade().buildIntercepts(
             source,
             morph,
             state->advancement,
             oscPhase,
-            [&guideContext](Intercept& intercept, const MorphPosition& position) {
-                guideContext.noOffsetAtEnds = false;
-                ::Rasterization::GuideCurvePolicy(guideContext).apply(intercept, position);
-            },
+            guideApplier,
             reduct);
 
     state->backIcpts = output.intercepts;

@@ -160,13 +160,11 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
             .build();
 
     Rasterization::GuideCurvePolicyContext guideContext = createGuideCurvePolicyContext();
+    Rasterization::GuideCurveApplier guideApplier(guideContext);
 
     const auto& output = composedRasterizer.renderWithReduction(
             oscPhase,
-            [&guideContext](Intercept& point, const MorphPosition& position, bool noOffsetAtEnds) {
-                guideContext.noOffsetAtEnds = noOffsetAtEnds;
-                Rasterization::GuideCurvePolicy(guideContext).apply(point, position);
-            },
+            guideApplier,
             reduct);
 
     publishMeshSliceOutput(output);
