@@ -261,11 +261,7 @@ void MeshRasterizer::updateCurves() {
         return;
     }
 
-    Rasterization::CurveResolutionPolicy::Context resolutionContext;
-    resolutionContext.lowResCurves = lowResCurves;
-    resolutionContext.integralSampling = integralSampling;
-    resolutionContext.interpolateCurves = interpolateCurves;
-    resolutionContext.paddingSize = paddingSize;
+    Rasterization::CurveResolutionPolicy::Context resolutionContext = createCurveResolutionContext();
     facade->applyCurveResolution(curves, resolutionContext);
 
     adjustDeformingSharpness();
@@ -275,6 +271,16 @@ void MeshRasterizer::updateCurves() {
     }
 
     calcWaveform();
+}
+
+Rasterization::CurveResolutionPolicy::Context MeshRasterizer::createCurveResolutionContext() const {
+    Rasterization::CurveResolutionPolicy::Context context;
+    context.lowResCurves = lowResCurves;
+    context.integralSampling = integralSampling;
+    context.interpolateCurves = interpolateCurves;
+    context.paddingSize = paddingSize;
+
+    return context;
 }
 
 void MeshRasterizer::calcWaveform() {
