@@ -63,10 +63,8 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
     }
 
     if (state->backIcpts.size() < 2 || icpts.size() < 2) {
-        waveX.nullify();
-		waveY.nullify();
 		state->callCount++;
-		unsampleable = true;
+		markWaveformUnsampleable();
 
 		return;
 	}

@@ -194,10 +194,7 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
     if (end == 0) {
         curves.clear();
 
-        waveX.nullify();
-        waveY.nullify();
-
-        unsampleable = true;
+        markWaveformUnsampleable();
     }
 
     Rasterization::MeshSlicePipeline::applyPaddingFlags(icpts);
@@ -353,11 +350,9 @@ void MeshRasterizer::reset() {
     frontIcpts.clear();
     backIcpts.clear();
 
-    waveX.nullify();
-    waveY.nullify();
     colorPoints.clear();
 
-    unsampleable = true;
+    markWaveformUnsampleable();
 }
 
 void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves) {
@@ -381,9 +376,7 @@ void MeshRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curv
     int end = intercepts.size() - 1;
 
     if (end == 0) {
-        waveX.nullify();
-        waveY.nullify();
-        unsampleable = true;
+        markWaveformUnsampleable();
 
         return;
     }
@@ -433,8 +426,7 @@ void MeshRasterizer::wrapVertices(float& ax, float& ay,
 }
 
 void MeshRasterizer::cleanUp() {
-    waveX.nullify();
-    waveY.nullify();
+    markWaveformUnsampleable();
 
     colorPoints.clear();
 
@@ -448,7 +440,6 @@ void MeshRasterizer::cleanUp() {
         makeCopy();
     }
 
-    unsampleable = true;
 }
 
 void MeshRasterizer::setResolutionIndices(float base) {
@@ -606,6 +597,13 @@ void MeshRasterizer::updateBuffers(int size) {
     diffX     = memoryBuffer.place(size);
     slope     = memoryBuffer.place(size);
     area    = memoryBuffer.place(size);
+}
+
+void MeshRasterizer::markWaveformUnsampleable() {
+    waveX.nullify();
+    waveY.nullify();
+
+    unsampleable = true;
 }
 
 Rasterization::WaveformBuffers MeshRasterizer::createWaveformView() const {

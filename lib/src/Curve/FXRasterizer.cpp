@@ -93,12 +93,9 @@ void FXRasterizer::setVertices(vector<Vertex*>* vertices) {
 }
 
 void FXRasterizer::cleanUp() {
-    waveX.nullify();
-    waveY.nullify();
-
     curves.clear();
     icpts.clear();
-    unsampleable = true;
+    markWaveformUnsampleable();
     composedRasterizer.reset();
 
     DBG(MeshRasterizer::getName() + "::cleanUp");

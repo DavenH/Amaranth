@@ -175,6 +175,7 @@ public:
 
 
 protected:
+    void markWaveformUnsampleable();
     void updateBuffers(int size);
     void calcWaveform();
     Rasterization::WaveformBuffers createWaveformView() const;

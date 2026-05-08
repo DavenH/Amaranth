@@ -166,9 +166,7 @@ void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curv
     context.hasReleaseCurve   = hasReleaseCurve();
 
     if (!Rasterization::EnvRasterizerFacade().buildRenderPadding(intercepts, curves, context)) {
-        waveX.nullify();
-        waveY.nullify();
-        unsampleable = true;
+        markWaveformUnsampleable();
     }
 }
 
@@ -183,9 +181,7 @@ void EnvRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
     context.hasReleaseCurve   = hasReleaseCurve();
 
     if (!Rasterization::EnvRasterizerFacade().buildDisplayPadding(icpts, curves, context)) {
-        waveX.nullify();
-        waveY.nullify();
-        unsampleable = true;
+        markWaveformUnsampleable();
     }
 }
 
