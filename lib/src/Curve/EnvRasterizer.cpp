@@ -6,6 +6,7 @@
 #include "GuideCurveProvider.h"
 #include "Rasterization/Facades/EnvRasterizerFacade.h"
 #include "Rasterization/Policies/EnvelopePlaybackPolicy.h"
+#include "Rasterization/Policies/EnvelopeRenderTimingPolicy.h"
 #include "Rasterization/Policies/EnvelopeReleasePolicy.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
@@ -257,15 +258,14 @@ bool EnvRasterizer::renderToBuffer(
 
     jassert(deltaX > 0);
 
-    double newDelta = deltaX;
+    Rasterization::EnvelopeRenderTimingContext timingContext;
+    timingContext.numSamples = numSamples;
+    timingContext.deltaX = deltaX;
+    timingContext.tempoScale = tempoScale;
+    timingContext.loopLength = getLoopLength();
+    timingContext.props = &props;
 
-    if (props.tempoSync) {
-        newDelta /= tempoScale;
-    }
-
-    if (props.scale != 1) {
-        newDelta /= (double) props.getEffectiveScale();
-    }
+    auto timing = Rasterization::EnvelopeRenderTimingPolicy().prepare(timingContext);
 
     if (!oneSamplePerCycle) {
         // should happen extremely rarely�only when buffer sizes > 8192
@@ -273,24 +273,12 @@ bool EnvRasterizer::renderToBuffer(
         renderBuffer = preallocated.withSize(numSamples);
     }
 
-    // todo adjust this according to loop length? must be less than loop length in time
-    // also depends on deltaX, if it's very large, the granularity must be increased
-    auto loopLength = jmax<float>(2.f * newDelta, getLoopLength()); //88
-    float maxIterativeAdvancement = 0.5f;
-    int maxSamplesPerBuf = 512;
-
-    if (loopLength > 2 * newDelta){
-        maxIterativeAdvancement = 0.9f * loopLength; //130
-    }
-
-    maxSamplesPerBuf = jlimit(1, maxSamplesPerBuf, int(maxIterativeAdvancement / newDelta));
-
     int bufferPos = 0;
     bool stillAlive = true;
 
     // partition buffers because state may change within buffer
     while (numSamples - bufferPos > 0) {
-        int maxSamples = jmin(maxSamplesPerBuf, numSamples - bufferPos);
+        int maxSamples = jmin(timing.maxSamplesPerBuffer, numSamples - bufferPos);
         int samplesRendered = maxSamples;
 
         Buffer<float> buffer;
@@ -299,7 +287,7 @@ bool EnvRasterizer::renderToBuffer(
         }
 
         if (stillAlive) {
-            samplesRendered = vectorizedRenderToBuffer(buffer, maxSamples, newDelta, paramIndex);
+            samplesRendered = vectorizedRenderToBuffer(buffer, maxSamples, timing.effectiveDelta, paramIndex);
 
             stillAlive &= samplesRendered == maxSamples;
         }

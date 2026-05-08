@@ -4,6 +4,7 @@
 #include "../src/Curve/EnvelopeMesh.h"
 #include "../src/Curve/Rasterization/Facades/EnvRasterizerFacade.h"
 #include "../src/Curve/Rasterization/Policies/EnvelopePlaybackPolicy.h"
+#include "../src/Curve/Rasterization/Policies/EnvelopeRenderTimingPolicy.h"
 #include "../src/Curve/Rasterization/Policies/EnvelopeReleasePolicy.h"
 
 namespace {
@@ -160,4 +161,32 @@ TEST_CASE("EnvelopeReleasePolicy resolves release intercept and scale", "[raster
 
     context.bipolar = true;
     REQUIRE(policy.releaseIndex(context) == 1);
+}
+
+TEST_CASE("EnvelopeRenderTimingPolicy applies tempo and scale before partitioning", "[rasterization][env][facade]") {
+    MeshLibrary::EnvProps props;
+    props.active = true;
+    props.tempoSync = true;
+    props.scale = 2.f;
+
+    Rasterization::EnvelopeRenderTimingContext context;
+    context.numSamples = 2048;
+    context.deltaX = 0.01;
+    context.tempoScale = 2.f;
+    context.loopLength = 0.25f;
+    context.props = &props;
+
+    auto timing = Rasterization::EnvelopeRenderTimingPolicy().prepare(context);
+
+    REQUIRE(timing.effectiveDelta == Catch::Approx(0.0025));
+    REQUIRE(timing.maxSamplesPerBuffer == 90);
+
+    props.tempoSync = false;
+    props.scale = 1.f;
+    context.loopLength = -1.f;
+
+    timing = Rasterization::EnvelopeRenderTimingPolicy().prepare(context);
+
+    REQUIRE(timing.effectiveDelta == Catch::Approx(0.01));
+    REQUIRE(timing.maxSamplesPerBuffer == 50);
 }
