@@ -5,6 +5,7 @@
 #include "Curve.h"
 #include "Mesh.h"
 #include "RasterizerData.h"
+#include "Rasterization/MeshRasterizerState.h"
 #include "Rasterization/RasterizationRequest.h"
 #include "Rasterization/RasterizerRuntime.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
@@ -37,32 +38,8 @@ public:
     using GuideCurveContext = Rasterization::GuideCurveContext;
     using GuideCurveRegion = Rasterization::GuideCurveRegion;
 
-    struct RenderState {
-        bool batchMode;
-        bool lowResCurves;
-        bool calcDepthDims;
-        ScalingType scalingType;
-        MorphPosition pos;
-
-        RenderState() : batchMode(false), lowResCurves(false), calcDepthDims(false), scalingType(Bipolar) {}
-        RenderState(bool batch, bool lowres, bool calcDepth, ScalingType scaling, const MorphPosition& pos) :
-            batchMode(batch), lowResCurves(lowres), calcDepthDims(calcDepth), scalingType(scaling), pos(pos) {}
-    };
-
-    class ScopedRenderState {
-    public:
-        MeshRasterizer* rasterizer;
-        RenderState* state;
-
-        ScopedRenderState(MeshRasterizer* rast, RenderState* state) :
-            rasterizer(rast), state(state) {
-            rasterizer->saveStateTo(*state);
-        }
-
-        ~ScopedRenderState() {
-            rasterizer->restoreStateFrom(*state);
-        }
-    };
+    using RenderState = Rasterization::MeshRasterizerRenderState;
+    using ScopedRenderState = Rasterization::ScopedMeshRasterizerRenderState;
 
     typedef vector<GuideCurveRegion>::iterator GuideCurveIter;
 

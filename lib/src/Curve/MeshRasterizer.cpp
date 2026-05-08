@@ -27,6 +27,18 @@
 
 float MeshRasterizer::transferTable[Curve::resolution];
 
+Rasterization::ScopedMeshRasterizerRenderState::ScopedMeshRasterizerRenderState(
+        MeshRasterizer* rasterizer,
+        MeshRasterizerRenderState* state) :
+        rasterizer(rasterizer)
+    ,   state(state) {
+    rasterizer->saveStateTo(*state);
+}
+
+Rasterization::ScopedMeshRasterizerRenderState::~ScopedMeshRasterizerRenderState() {
+    rasterizer->restoreStateFrom(*state);
+}
+
 MeshRasterizer::MeshRasterizer(const String& name) :
          name                (name)
     ,    mesh                (nullptr)
@@ -681,7 +693,7 @@ void MeshRasterizer::restoreStateFrom(RenderState& src) {
     lowResCurves         = src.lowResCurves;
     calcDepthDims         = src.calcDepthDims;
     morph                = src.pos;
-    scalingType            = src.scalingType;
+    scalingType            = (ScalingType) src.scalingType;
     batchMode            = src.batchMode;
 }
 
