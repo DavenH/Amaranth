@@ -39,6 +39,11 @@ scripts/run_cycle_agent.sh \
     /private/tmp/cycle-agent-modmatrix-dialog-logs.txt
 ```
 
+Run GUI automation fixtures sequentially. The wrapper launches Cycle through
+LaunchServices and writes one report/log pair per app instance; concurrent runs
+can race over the foreground app process and leave one wrapper waiting for a
+missing report.
+
 Inspect artifacts in this order:
 
 1. Report JSON: command success/failure, snapshot, exported command data.
