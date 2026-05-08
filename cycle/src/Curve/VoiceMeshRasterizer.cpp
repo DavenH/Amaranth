@@ -96,8 +96,6 @@ void VoiceMeshRasterizer::updateCurves() {
 
     prepareCurvesForWaveform();
 	calcWaveform();
-
-	unsampleable = false;
 }
 
 void VoiceMeshRasterizer::orphanOldVerts() {
