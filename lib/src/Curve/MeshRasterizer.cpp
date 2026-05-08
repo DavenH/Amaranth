@@ -198,11 +198,23 @@ void MeshRasterizer::finishCrossPointCalculation() {
     processIntercepts(icpts);
     sortInterceptsIfNeeded();
 
+    if (handleDegenerateInterceptOutput()) {
+        return;
+    }
+
+    Rasterization::MeshSlicePipeline::applyPaddingFlags(icpts);
+
+    if (!calcInterceptsOnly) {
+        rebuildCurvesFromIntercepts();
+    }
+}
+
+bool MeshRasterizer::handleDegenerateInterceptOutput() {
     int end = icpts.size() - 1;
     if (end < 0) {
         cleanUp();
 
-        return;
+        return true;
     }
 
     if (end == 0) {
@@ -211,11 +223,7 @@ void MeshRasterizer::finishCrossPointCalculation() {
         markWaveformUnsampleable();
     }
 
-    Rasterization::MeshSlicePipeline::applyPaddingFlags(icpts);
-
-    if (!calcInterceptsOnly) {
-        rebuildCurvesFromIntercepts();
-    }
+    return false;
 }
 
 void MeshRasterizer::sortInterceptsIfNeeded() {

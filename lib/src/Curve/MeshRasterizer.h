@@ -189,6 +189,7 @@ protected:
     Rasterization::MeshSlicePipeline::Output renderMeshSlice(Mesh* usedMesh, float oscPhase);
     void publishMeshSliceOutput(const Rasterization::MeshSlicePipeline::Output& output);
     void sortInterceptsIfNeeded();
+    bool handleDegenerateInterceptOutput();
     void rebuildCurvesFromIntercepts();
     void finishCrossPointCalculation();
     Rasterization::WaveformBuffers createWaveformView() const;
