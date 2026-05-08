@@ -1,10 +1,7 @@
 #pragma once
 
-#include <vector>
-
 #include "../Pipelines/MeshSlicePipeline.h"
-#include "../../Intercept.h"
-#include "../../../Obj/ColorPoint.h"
+#include "../RasterizerRuntime.h"
 
 namespace Rasterization {
     class MeshSliceOutputPolicy {
@@ -13,14 +10,14 @@ namespace Rasterization {
                 publishColorPoints(publishColorPoints) {
         }
 
-        void publish(
-                const MeshSlicePipeline::Output& output,
-                std::vector<Intercept>& intercepts,
-                std::vector<ColorPoint>& colorPoints) const {
-            intercepts = output.intercepts;
+        void publish(const MeshSlicePipeline::Output& output, RasterizerRuntime runtime) const {
+            jassert(runtime.intercepts != nullptr);
+
+            *runtime.intercepts = output.intercepts;
 
             if (publishColorPoints) {
-                colorPoints = output.colorPoints;
+                jassert(runtime.colorPoints != nullptr);
+                *runtime.colorPoints = output.colorPoints;
             }
         }
 

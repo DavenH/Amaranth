@@ -459,18 +459,34 @@ TEST_CASE("MeshSliceOutputPolicy publishes intercepts and optional color points"
     output.colorPoints.emplace_back(nullptr, before, mid, after, Vertex::Red);
 
     vector<Intercept> intercepts;
+    vector<Curve> curves;
+    vector<Intercept> frontPadding;
+    vector<Intercept> backPadding;
     vector<ColorPoint> colorPoints {
         ColorPoint(nullptr, before, mid, after, Vertex::Blue),
     };
+    Rasterization::WaveformBuffers waveform(0, 0);
+    int paddingSize {};
+    bool unsampleable {};
 
-    Rasterization::MeshSliceOutputPolicy(false).publish(output, intercepts, colorPoints);
+    Rasterization::RasterizerRuntime runtime;
+    runtime.intercepts = &intercepts;
+    runtime.curves = &curves;
+    runtime.frontPadding = &frontPadding;
+    runtime.backPadding = &backPadding;
+    runtime.colorPoints = &colorPoints;
+    runtime.waveform = Rasterization::WaveformBufferRefs(waveform);
+    runtime.paddingSize = &paddingSize;
+    runtime.unsampleable = &unsampleable;
+
+    Rasterization::MeshSliceOutputPolicy(false).publish(output, runtime);
 
     REQUIRE(intercepts.size() == 1);
     REQUIRE(intercepts[0].x == Catch::Approx(0.25f));
     REQUIRE(colorPoints.size() == 1);
     REQUIRE(colorPoints[0].num == Vertex::Blue);
 
-    Rasterization::MeshSliceOutputPolicy(true).publish(output, intercepts, colorPoints);
+    Rasterization::MeshSliceOutputPolicy(true).publish(output, runtime);
 
     REQUIRE(colorPoints.size() == 1);
     REQUIRE(colorPoints[0].num == Vertex::Red);

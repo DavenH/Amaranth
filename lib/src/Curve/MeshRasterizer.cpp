@@ -179,7 +179,7 @@ void MeshRasterizer::beginCrossPointCalculation() {
 }
 
 void MeshRasterizer::publishMeshSliceOutput(const Rasterization::MeshSlicePipeline::Output& output) {
-    Rasterization::MeshSliceOutputPolicy(calcDepthDims).publish(output, icpts, colorPoints);
+    Rasterization::MeshSliceOutputPolicy(calcDepthDims).publish(output, createRasterizerRuntime());
 }
 
 void MeshRasterizer::finishCrossPointCalculation() {
