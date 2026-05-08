@@ -12,6 +12,7 @@
 #include "Rasterization/Policies/InterceptSortPolicy.h"
 #include "Rasterization/Policies/InterceptPaddingFlagPolicy.h"
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
+#include "Rasterization/Policies/RasterizerCleanupPolicy.h"
 #include "Rasterization/Policies/MeshSliceOutputPolicy.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
 #include "Rasterization/Policies/PointScalingPolicy.h"
@@ -372,14 +373,8 @@ float MeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double
 }
 
 void MeshRasterizer::reset() {
-    curves.clear();
-    icpts.clear();
-    frontIcpts.clear();
-    backIcpts.clear();
-
-    colorPoints.clear();
-
-    markWaveformUnsampleable();
+    Rasterization::RasterizerCleanupPolicy().clean(createRasterizerRuntime());
+    guideCurveRegions.clear();
 }
 
 void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves) {
@@ -451,14 +446,10 @@ void MeshRasterizer::wrapVertices(float& ax, float& ay,
 }
 
 void MeshRasterizer::cleanUp() {
-    markWaveformUnsampleable();
+    Rasterization::RasterizerCleanupOptions options;
+    options.clearCurves = false;
 
-    colorPoints.clear();
-
-    // for when layer change and there are no intercepts in new layer, we don't want the old ones carrying over
-    icpts.clear();
-    frontIcpts.clear();
-    backIcpts.clear();
+    Rasterization::RasterizerCleanupPolicy(options).clean(createRasterizerRuntime());
     guideCurveRegions.clear();
 
     if(! batchMode) {
@@ -618,10 +609,7 @@ void MeshRasterizer::updateBuffers(int size) {
 }
 
 void MeshRasterizer::markWaveformUnsampleable() {
-    waveform.waveX.nullify();
-    waveform.waveY.nullify();
-
-    unsampleable = true;
+    Rasterization::RasterizerCleanupPolicy::markWaveformUnsampleable(createRasterizerRuntime());
 }
 
 Rasterization::WaveformBuffers MeshRasterizer::createWaveformView() const {

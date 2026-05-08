@@ -5,6 +5,7 @@
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Curve/Rasterization/RasterizerConversion.h"
 #include "../src/Curve/Rasterization/GuideCurveOffsetSeeds.h"
+#include "../src/Curve/Rasterization/Policies/RasterizerCleanupPolicy.h"
 #include "../src/Curve/Rasterization/RasterizationRequest.h"
 #include "../src/Curve/Rasterization/RasterizerResult.h"
 #include "../src/Curve/Rasterization/RasterizerRuntime.h"
@@ -288,4 +289,52 @@ TEST_CASE("MeshRasterizer exposes mutable storage as RasterizerRuntime", "[raste
 
     REQUIRE(runtime.intercepts->size() == 1);
     REQUIRE(rasterizer.getPaddingSize() == 3);
+}
+
+TEST_CASE("RasterizerCleanupPolicy clears selected runtime storage and marks waveform unsampleable", "[rasterization][runtime]") {
+    MeshRasterizer rasterizer("CleanupRasterizer");
+    RasterizerRuntime runtime = rasterizer.createRasterizerRuntime();
+
+    runtime.intercepts->emplace_back(0.25f, 0.75f);
+    runtime.curves->emplace_back(Intercept(0.f, 0.f), Intercept(0.5f, 0.5f), Intercept(1.f, 1.f));
+    runtime.frontPadding->emplace_back(-1.f, 0.f);
+    runtime.backPadding->emplace_back(2.f, 1.f);
+    runtime.colorPoints->emplace_back(nullptr, Vertex2(), Vertex2(), Vertex2(), 0);
+    *runtime.unsampleable = false;
+
+    RasterizerCleanupPolicy().clean(runtime);
+
+    REQUIRE(runtime.intercepts->empty());
+    REQUIRE(runtime.curves->empty());
+    REQUIRE(runtime.frontPadding->empty());
+    REQUIRE(runtime.backPadding->empty());
+    REQUIRE(runtime.colorPoints->empty());
+    REQUIRE(*runtime.unsampleable);
+    REQUIRE(runtime.waveform.waveX->empty());
+    REQUIRE(runtime.waveform.waveY->empty());
+}
+
+TEST_CASE("RasterizerCleanupPolicy can preserve optional runtime storage", "[rasterization][runtime]") {
+    MeshRasterizer rasterizer("PartialCleanupRasterizer");
+    RasterizerRuntime runtime = rasterizer.createRasterizerRuntime();
+
+    runtime.curves->emplace_back(Intercept(0.f, 0.f), Intercept(0.5f, 0.5f), Intercept(1.f, 1.f));
+    runtime.frontPadding->emplace_back(-1.f, 0.f);
+    runtime.backPadding->emplace_back(2.f, 1.f);
+    runtime.colorPoints->emplace_back(nullptr, Vertex2(), Vertex2(), Vertex2(), 0);
+    *runtime.unsampleable = false;
+
+    RasterizerCleanupOptions options;
+    options.clearCurves = false;
+    options.clearFrontPadding = false;
+    options.clearBackPadding = false;
+    options.clearColorPoints = false;
+
+    RasterizerCleanupPolicy(options).clean(runtime);
+
+    REQUIRE_FALSE(runtime.curves->empty());
+    REQUIRE_FALSE(runtime.frontPadding->empty());
+    REQUIRE_FALSE(runtime.backPadding->empty());
+    REQUIRE_FALSE(runtime.colorPoints->empty());
+    REQUIRE(*runtime.unsampleable);
 }

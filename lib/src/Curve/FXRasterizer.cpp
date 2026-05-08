@@ -1,5 +1,6 @@
 #include "FXRasterizer.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
+#include "Rasterization/Policies/RasterizerCleanupPolicy.h"
 #include "Rasterization/Policies/RasterizerOutputPolicy.h"
 
 namespace {
@@ -89,9 +90,12 @@ void FXRasterizer::setVertices(vector<Vertex*>* vertices) {
 }
 
 void FXRasterizer::cleanUp() {
-    curves.clear();
-    icpts.clear();
-    markWaveformUnsampleable();
+    Rasterization::RasterizerCleanupOptions options;
+    options.clearFrontPadding = false;
+    options.clearBackPadding = false;
+    options.clearColorPoints = false;
+
+    Rasterization::RasterizerCleanupPolicy(options).clean(createRasterizerRuntime());
     composedRasterizer.reset();
 
     DBG(MeshRasterizer::getName() + "::cleanUp");
