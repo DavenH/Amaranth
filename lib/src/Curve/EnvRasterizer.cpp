@@ -8,6 +8,7 @@
 #include "Rasterization/Policies/EnvelopePlaybackPolicy.h"
 #include "Rasterization/Policies/EnvelopeRenderTimingPolicy.h"
 #include "Rasterization/Policies/EnvelopeReleasePolicy.h"
+#include "Rasterization/Policies/EnvelopeStateValidationPolicy.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
 
@@ -616,53 +617,26 @@ void EnvRasterizer::changedToRelease() {
 }
 
 void EnvRasterizer::validateState() {
-    if (waveform.waveX.empty()) {
-        state = NormalState;
-    }
+    Rasterization::EnvelopeStateValidationContext context;
+    context.state = state == Looping
+            ? Rasterization::EnvelopeStateValidationContext::Looping
+            : state == Releasing
+                    ? Rasterization::EnvelopeStateValidationContext::Releasing
+                    : Rasterization::EnvelopeStateValidationContext::NormalState;
+    context.headIndex = headUnisonIndex;
+    context.waveformSize = waveform.waveX.size();
+    context.waveformEnd = waveform.waveX.empty() ? 0. : waveform.waveX.back();
+    context.loopLength = getLoopLength();
+    context.loopStart = loopIndex >= 0 && loopIndex < (int) icpts.size() ? icpts[loopIndex].x : 0.;
+    context.loopEnd = sustainIndex >= 0 && sustainIndex < (int) icpts.size() ? icpts[sustainIndex].x : 0.;
 
-    for (auto& p: params) {
-        if (waveform.waveX.empty()) {
-            p.samplePosition = 0;
-            p.sampleIndex = 0;
-        } else {
-            if (p.samplePosition > waveform.waveX.back()) {
-                p.samplePosition = waveform.waveX.back();
-                p.sampleIndex = waveform.waveX.size() - 1;
-            }
-        }
-    }
+    auto result = Rasterization::EnvelopeStateValidationPolicy().validate(params, context);
 
-    if (state == Looping) {
-        float loopLength = getLoopLength();
-
-        if (loopLength <= 0) {
-            state = NormalState;
-        } else {
-            for (int i = headUnisonIndex; i < params.size(); ++i) {
-                double low = icpts[loopIndex].x;
-                double high = icpts[sustainIndex].x;
-
-                double& pos = params[i].samplePosition;
-
-                if (pos > high) {
-                    pos = jmax(low, pos - loopLength);
-                }
-
-                else if (pos < low) {
-                    pos = jmin(high, pos + loopLength);
-                }
-            }
-        }
-    } else if (state == NormalState) {
-        float length = getLoopLength();
-
-        if (length > 0) {
-            if (NumberUtils::within((float) params[headUnisonIndex].samplePosition,
-                                    icpts[loopIndex].x, icpts[sustainIndex].x)) {
-                state = Looping;
-            }
-        }
-    }
+    state = result == Rasterization::EnvelopeStateValidationContext::Looping
+            ? Looping
+            : result == Rasterization::EnvelopeStateValidationContext::Releasing
+                    ? Releasing
+                    : NormalState;
 }
 
 void EnvRasterizer::ensureParamSize(int numUnisonVoices) {

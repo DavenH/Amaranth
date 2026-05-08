@@ -6,8 +6,14 @@
 #include "../src/Curve/Rasterization/Policies/EnvelopePlaybackPolicy.h"
 #include "../src/Curve/Rasterization/Policies/EnvelopeRenderTimingPolicy.h"
 #include "../src/Curve/Rasterization/Policies/EnvelopeReleasePolicy.h"
+#include "../src/Curve/Rasterization/Policies/EnvelopeStateValidationPolicy.h"
 
 namespace {
+    struct TestEnvelopeParam {
+        int sampleIndex {};
+        double samplePosition {};
+    };
+
     std::vector<Intercept> makeIntercepts() {
         return {
             Intercept(0.10f, 0.20f, nullptr, 0.30f),
@@ -203,4 +209,68 @@ TEST_CASE("EnvelopeRenderTimingPolicy allows zero advancement for clamped UI sim
 
     REQUIRE(timing.effectiveDelta == Catch::Approx(0.));
     REQUIRE(timing.maxSamplesPerBuffer == 1);
+}
+
+TEST_CASE("EnvelopeStateValidationPolicy clamps empty and overlong waveform positions", "[rasterization][env][facade]") {
+    std::vector<TestEnvelopeParam> params {
+        { 2, 0.25 },
+        { 4, 1.50 },
+    };
+
+    Rasterization::EnvelopeStateValidationContext context;
+    context.state = Rasterization::EnvelopeStateValidationContext::Looping;
+
+    auto state = Rasterization::EnvelopeStateValidationPolicy().validate(params, context);
+
+    REQUIRE(state == Rasterization::EnvelopeStateValidationContext::NormalState);
+    REQUIRE(params[0].samplePosition == Catch::Approx(0.));
+    REQUIRE(params[0].sampleIndex == 0);
+    REQUIRE(params[1].samplePosition == Catch::Approx(0.));
+    REQUIRE(params[1].sampleIndex == 0);
+
+    params = {
+        { 2, 0.25 },
+        { 4, 1.50 },
+    };
+    context.state = Rasterization::EnvelopeStateValidationContext::NormalState;
+    context.waveformSize = 8;
+    context.waveformEnd = 1.0;
+
+    state = Rasterization::EnvelopeStateValidationPolicy().validate(params, context);
+
+    REQUIRE(state == Rasterization::EnvelopeStateValidationContext::NormalState);
+    REQUIRE(params[0].samplePosition == Catch::Approx(0.25));
+    REQUIRE(params[1].samplePosition == Catch::Approx(1.0));
+    REQUIRE(params[1].sampleIndex == 7);
+}
+
+TEST_CASE("EnvelopeStateValidationPolicy normalizes loop state positions", "[rasterization][env][facade]") {
+    std::vector<TestEnvelopeParam> params {
+        { 0, 0.40 },
+        { 0, 1.05 },
+        { 0, 0.10 },
+    };
+
+    Rasterization::EnvelopeStateValidationContext context;
+    context.state = Rasterization::EnvelopeStateValidationContext::Looping;
+    context.headIndex = 1;
+    context.waveformSize = 8;
+    context.waveformEnd = 1.2;
+    context.loopStart = 0.25;
+    context.loopEnd = 0.75;
+    context.loopLength = 0.50;
+
+    auto state = Rasterization::EnvelopeStateValidationPolicy().validate(params, context);
+
+    REQUIRE(state == Rasterization::EnvelopeStateValidationContext::Looping);
+    REQUIRE(params[0].samplePosition == Catch::Approx(0.40));
+    REQUIRE(params[1].samplePosition == Catch::Approx(0.55));
+    REQUIRE(params[2].samplePosition == Catch::Approx(0.60));
+
+    context.state = Rasterization::EnvelopeStateValidationContext::NormalState;
+    params[1].samplePosition = 0.45;
+
+    state = Rasterization::EnvelopeStateValidationPolicy().validate(params, context);
+
+    REQUIRE(state == Rasterization::EnvelopeStateValidationContext::Looping);
 }
