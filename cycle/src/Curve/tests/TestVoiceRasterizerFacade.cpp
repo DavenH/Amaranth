@@ -4,6 +4,7 @@
 #include "../CycleState.h"
 #include "../Rasterization/Facades/VoiceRasterizerFacade.h"
 #include "../Rasterization/Policies/VoiceChainingPolicy.h"
+#include "../Rasterization/Pipelines/VoiceRasterizationPipeline.h"
 #include <Curve/Mesh.h>
 #include <Curve/Rasterization/RasterizerRuntime.h>
 #include <Curve/Rasterization/Sources/MeshCubeSource.h>
@@ -246,6 +247,65 @@ TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows",
     REQUIRE(state.backIcpts.size() == 2);
     REQUIRE(state.backIcpts[0].x == Approx(0.30f));
     REQUIRE(policy.canBuildChainedCurves(state, runtime));
+}
+
+TEST_CASE("VoiceRasterizationPipeline advances chained state and requests waveform update", "[cycle][rasterization][voice]") {
+    Mesh mesh("VoiceRasterizationPipelineMesh");
+    addVoiceCube(mesh, 0.20f, 0.80f, 0.25f, 0.75f, 0.35f);
+    addVoiceCube(mesh, 0.10f, 0.40f, 0.10f, 0.30f, 0.55f);
+
+    CycleState state;
+    state.callCount = 1;
+    state.backIcpts = {
+        Intercept(0.10f, -0.50f),
+        Intercept(0.42f, 0.25f),
+    };
+
+    std::vector<Intercept> intercepts;
+    std::vector<Curve> curves;
+    int paddingSize {};
+    bool needsResorting {};
+    bool unsampleable {};
+    bool updateCalled {};
+    VertCube::ReductionData reductionData;
+
+    ::Rasterization::RasterizerRuntime runtime;
+    runtime.intercepts = &intercepts;
+    runtime.curves = &curves;
+    runtime.paddingSize = &paddingSize;
+    runtime.unsampleable = &unsampleable;
+    runtime.needsResorting = &needsResorting;
+
+    Cycle::Rasterization::VoiceRasterizationPipeline::Context context;
+    context.mesh = &mesh;
+    context.state = &state;
+    context.runtime = runtime;
+    context.reductionData = &reductionData;
+    context.oscPhase = 0.85f;
+    context.interceptPadding = 0.05f;
+    context.initialAdvancement = 0.01f;
+
+    bool rendered = Cycle::Rasterization::VoiceRasterizationPipeline().render(
+            context,
+            [](Intercept&, const MorphPosition&) {},
+            [](std::vector<Intercept>&) {},
+            [&unsampleable](::Rasterization::RasterizerRuntime) {
+                unsampleable = true;
+            },
+            [&updateCalled]() {
+                updateCalled = true;
+            });
+
+    REQUIRE(rendered);
+    REQUIRE(updateCalled);
+    REQUIRE_FALSE(unsampleable);
+    REQUIRE(state.callCount == 2);
+    REQUIRE(paddingSize == 2);
+    REQUIRE_FALSE(intercepts.empty());
+    REQUIRE_FALSE(state.backIcpts.empty());
+    REQUIRE_FALSE(curves.empty());
+
+    mesh.destroy();
 }
 
 TEST_CASE("VoiceRasterizerFacade builds voice slice intercepts", "[cycle][rasterization][voice]") {

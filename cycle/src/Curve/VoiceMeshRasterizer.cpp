@@ -3,14 +3,12 @@
 #include <Curve/Intercept.h>
 #include <Curve/Mesh.h>
 #include <Curve/Rasterization/Policies/GuideCurvePolicy.h>
-#include <Curve/Rasterization/Sources/MeshCubeSource.h>
-#include <Curve/VertCube.h>
-#include <Obj/MorphPosition.h>
+#include <Curve/Rasterization/Policies/RasterizerCleanupPolicy.h>
 #include <Definitions.h>
 
 #include "VoiceMeshRasterizer.h"
 #include "CycleState.h"
-#include "Rasterization/Policies/VoiceChainingPolicy.h"
+#include "Rasterization/Pipelines/VoiceRasterizationPipeline.h"
 #include "../Util/CycleEnums.h"
 
 
@@ -25,55 +23,28 @@ VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
 }
 
 void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
-    Mesh* currentMesh = getMesh();
-    if (currentMesh == nullptr || currentMesh->getNumCubes() == 0 || state == nullptr) {
-	    return;
-    }
+    Cycle::Rasterization::VoiceRasterizationPipeline::Context context;
+    context.mesh = getMesh();
+    context.state = state;
+    context.morph = getMorphPosition();
+    context.runtime = createRasterizerRuntime();
+    context.reductionData = &reduct;
+    context.oscPhase = oscPhase;
+    context.interceptPadding = interceptPadding;
+    context.initialAdvancement = getRealConstant(MinLineLength) * 1.1f;
 
-    Cycle::Rasterization::VoiceChainingPolicy chainingPolicy(&needsResorting);
-    auto runtime = createRasterizerRuntime();
-    chainingPolicy.beginCall(*state, runtime);
-
-    ::Rasterization::MeshCubeSource source(currentMesh);
-    ::Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
-
-    auto output = Cycle::Rasterization::VoiceRasterizerFacade().buildIntercepts(
-            source,
-            getMorphPosition(),
-            state->advancement,
-            oscPhase,
-            guideApplier,
-            reduct);
-
-    chainingPolicy.publishNextIntercepts(
-            output,
-            *state,
+    Cycle::Rasterization::VoiceRasterizationPipeline().render(
+            context,
+            createGuideCurveApplier(),
             [this](std::vector<Intercept>& intercepts) {
                 restrictIntercepts(intercepts);
+            },
+            [](::Rasterization::RasterizerRuntime runtime) {
+                ::Rasterization::RasterizerCleanupPolicy::markWaveformUnsampleable(runtime);
+            },
+            [this]() {
+                updateCurves();
             });
-
-    if (!chainingPolicy.canBuildChainedCurves(*state, runtime)) {
-		state->callCount++;
-		markWaveformUnsampleable();
-
-		return;
-	}
-
-    if (state->callCount == 0) {
-	    state->advancement = getRealConstant(MinLineLength) * 1.1f;
-    }
-
-    // the first call is just padding for curves
-    if (state->callCount > 0) {
-        Cycle::Rasterization::VoiceRasterizerFacade().buildChainedPadding(
-                *state,
-                runtime,
-                interceptPadding);
-
-		updateCurves();
-	}
-
-	++state->callCount;
 }
 
 void VoiceMeshRasterizer::updateCurves() {
