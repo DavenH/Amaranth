@@ -9,6 +9,7 @@
 #include "VoiceMeshRasterizer.h"
 #include "CycleState.h"
 #include "Rasterization/Pipelines/VoiceRasterizationPipeline.h"
+#include "Rasterization/Policies/VoiceWaveformUpdatePolicy.h"
 #include "../Util/CycleEnums.h"
 
 
@@ -48,17 +49,17 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 }
 
 void VoiceMeshRasterizer::updateCurves() {
-    auto runtime = createRasterizerRuntime();
-    if (!runtime.hasAtLeastIntercepts(2)) {
-        cleanUp();
-
-		return;
-	}
-
-    Cycle::Rasterization::VoiceRasterizerFacade().applyCurveResolution(runtime);
-
-    prepareCurvesForWaveform();
-	calcWaveform();
+    Cycle::Rasterization::VoiceWaveformUpdatePolicy().update(
+            createRasterizerRuntime(),
+            [this]() {
+                cleanUp();
+            },
+            [this]() {
+                prepareCurvesForWaveform();
+            },
+            [this]() {
+                calcWaveform();
+            });
 }
 
 void VoiceMeshRasterizer::orphanOldVerts() {

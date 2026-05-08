@@ -4,6 +4,7 @@
 #include "../CycleState.h"
 #include "../Rasterization/Facades/VoiceRasterizerFacade.h"
 #include "../Rasterization/Policies/VoiceChainingPolicy.h"
+#include "../Rasterization/Policies/VoiceWaveformUpdatePolicy.h"
 #include "../Rasterization/Pipelines/VoiceRasterizationPipeline.h"
 #include <Curve/Mesh.h>
 #include <Curve/Rasterization/RasterizerRuntime.h>
@@ -306,6 +307,65 @@ TEST_CASE("VoiceRasterizationPipeline advances chained state and requests wavefo
     REQUIRE_FALSE(curves.empty());
 
     mesh.destroy();
+}
+
+TEST_CASE("VoiceWaveformUpdatePolicy gates voice waveform baking on runtime intercepts", "[cycle][rasterization][voice]") {
+    std::vector<Intercept> intercepts {
+        Intercept(0.10f, -0.50f),
+        Intercept(0.42f, 0.25f),
+        Intercept(0.78f, -0.10f),
+    };
+
+    std::vector<Curve> curves {
+        Curve(intercepts[0], intercepts[1], intercepts[2]),
+    };
+
+    bool cleanedUp {};
+    bool prepared {};
+    bool baked {};
+
+    ::Rasterization::RasterizerRuntime runtime;
+    runtime.intercepts = &intercepts;
+    runtime.curves = &curves;
+
+    bool updated = Cycle::Rasterization::VoiceWaveformUpdatePolicy().update(
+            runtime,
+            [&cleanedUp]() {
+                cleanedUp = true;
+            },
+            [&prepared]() {
+                prepared = true;
+            },
+            [&baked]() {
+                baked = true;
+            });
+
+    REQUIRE(updated);
+    REQUIRE_FALSE(cleanedUp);
+    REQUIRE(prepared);
+    REQUIRE(baked);
+
+    intercepts.resize(1);
+    cleanedUp = false;
+    prepared = false;
+    baked = false;
+
+    updated = Cycle::Rasterization::VoiceWaveformUpdatePolicy().update(
+            runtime,
+            [&cleanedUp]() {
+                cleanedUp = true;
+            },
+            [&prepared]() {
+                prepared = true;
+            },
+            [&baked]() {
+                baked = true;
+            });
+
+    REQUIRE_FALSE(updated);
+    REQUIRE(cleanedUp);
+    REQUIRE_FALSE(prepared);
+    REQUIRE_FALSE(baked);
 }
 
 TEST_CASE("VoiceRasterizerFacade builds voice slice intercepts", "[cycle][rasterization][voice]") {
