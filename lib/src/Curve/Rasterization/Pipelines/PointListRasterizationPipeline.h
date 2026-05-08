@@ -4,6 +4,7 @@
 
 #include "../Builders/TransferTable.h"
 #include "../Builders/WaveformBuilder.h"
+#include "../GuideCurveOffsetSeeds.h"
 #include "../Policies/CurveResolutionPolicy.h"
 #include "../Policies/PaddingPolicy.h"
 #include "../RasterizationRequest.h"
@@ -78,8 +79,8 @@ namespace Rasterization {
             WaveformBakePolicy::Context context;
             context.lowResCurves = request.lowResCurves;
             context.morph = request.morph;
-            context.phaseOffsetSeeds = phaseOffsetSeeds;
-            context.vertOffsetSeeds = vertOffsetSeeds;
+            context.phaseOffsetSeeds = guideCurveOffsetSeeds.phase();
+            context.vertOffsetSeeds = guideCurveOffsetSeeds.vertical();
             context.transferTable = TransferTable::values();
 
             int totalRes = waveformBuilder.prepare(output.curves, context);
@@ -103,7 +104,6 @@ namespace Rasterization {
 
         Output output;
         WaveformBuilder waveformBuilder;
-        short phaseOffsetSeeds[128] {};
-        short vertOffsetSeeds[128] {};
+        GuideCurveOffsetSeeds guideCurveOffsetSeeds;
     };
 }

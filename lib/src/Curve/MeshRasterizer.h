@@ -6,6 +6,7 @@
 #include "Mesh.h"
 #include "RasterizerData.h"
 #include "Rasterization/MeshRasterizerState.h"
+#include "Rasterization/GuideCurveOffsetSeeds.h"
 #include "Rasterization/RasterizationRequest.h"
 #include "Rasterization/RasterizerRuntime.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
@@ -205,8 +206,7 @@ protected:
     int paddingSize;
     int zeroIndex;
 
-    short phaseOffsetSeeds[128];
-    short vertOffsetSeeds[128];
+    Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
 
     float interceptPadding;
     float xMaximum, xMinimum;

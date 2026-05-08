@@ -3,6 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Curve/Rasterization/RasterizerConversion.h"
+#include "../src/Curve/Rasterization/GuideCurveOffsetSeeds.h"
 #include "../src/Curve/Rasterization/RasterizationRequest.h"
 #include "../src/Curve/Rasterization/RasterizerResult.h"
 #include "../src/Curve/Rasterization/RasterizerRuntime.h"
@@ -11,6 +12,19 @@
 #include "../src/Curve/VertCube.h"
 
 using namespace Rasterization;
+
+namespace {
+    class CountingRandom {
+    public:
+        int nextInt(int range) {
+            int value = nextValue % range;
+            ++nextValue;
+            return value;
+        }
+
+        int nextValue {};
+    };
+}
 
 TEST_CASE("RasterPoint converts legacy Intercept fields losslessly", "[rasterization][types]") {
     Intercept intercept(0.25f, 0.75f, nullptr, 0.5f);
@@ -69,6 +83,27 @@ TEST_CASE("RasterizerTypes remains lightweight for point-list users", "[rasteriz
     REQUIRE(std::is_trivially_copyable<RasterPointSource>::value);
     REQUIRE(std::is_trivially_copyable<RasterPoint>::value);
     REQUIRE(std::is_trivially_copyable<MeshPointSourceRef>::value);
+}
+
+TEST_CASE("GuideCurveOffsetSeeds owns paired phase and vertical seed arrays", "[rasterization][guide]") {
+    GuideCurveOffsetSeeds seeds;
+    CountingRandom random;
+
+    seeds.randomize(3, 32, random);
+
+    REQUIRE(seeds.vertical()[0] == 0);
+    REQUIRE(seeds.phase()[0] == 1);
+    REQUIRE(seeds.vertical()[1] == 2);
+    REQUIRE(seeds.phase()[1] == 3);
+    REQUIRE(seeds.vertical()[2] == 4);
+    REQUIRE(seeds.phase()[2] == 5);
+    REQUIRE(seeds.vertical()[3] == 0);
+    REQUIRE(seeds.phase()[3] == 0);
+
+    seeds.reset();
+
+    REQUIRE(seeds.vertical()[0] == 0);
+    REQUIRE(seeds.phase()[0] == 0);
 }
 
 TEST_CASE("Rasterizer result shapes expose stage outputs without behavior", "[rasterization][types]") {

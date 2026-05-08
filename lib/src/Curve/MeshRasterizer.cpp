@@ -288,8 +288,8 @@ void MeshRasterizer::calcWaveform() {
     context.morph = morph;
     context.guideCurveProvider = guideCurveProvider;
     context.guideCurveRegions = &guideCurveRegions;
-    context.phaseOffsetSeeds = phaseOffsetSeeds;
-    context.vertOffsetSeeds = vertOffsetSeeds;
+    context.phaseOffsetSeeds = guideCurveOffsetSeeds.phase();
+    context.vertOffsetSeeds = guideCurveOffsetSeeds.vertical();
     context.transferTable = Rasterization::TransferTable::values();
 
     int totalRes = facade->prepareWaveform(curves, context);
@@ -548,8 +548,7 @@ void MeshRasterizer::oversamplingChanged() {
 #undef new
 
 void MeshRasterizer::initialise() {
-    std::memset(vertOffsetSeeds, 0, numElementsInArray(vertOffsetSeeds) * sizeof(short));
-    std::memset(phaseOffsetSeeds, 0, numElementsInArray(phaseOffsetSeeds) * sizeof(short));
+    guideCurveOffsetSeeds.reset();
 
     updateBuffers(2048);
 }
@@ -654,8 +653,8 @@ Rasterization::GuideCurvePolicyContext MeshRasterizer::createGuideCurvePolicyCon
     context.cyclic = cyclic;
     context.needsResorting = &needsResorting;
     context.noiseSeed = noiseSeed;
-    context.phaseOffsetSeeds = phaseOffsetSeeds;
-    context.vertOffsetSeeds = vertOffsetSeeds;
+    context.phaseOffsetSeeds = guideCurveOffsetSeeds.phase();
+    context.vertOffsetSeeds = guideCurveOffsetSeeds.vertical();
 
     return context;
 }
@@ -697,9 +696,5 @@ void MeshRasterizer::updateValue(int dim, float value) {
 
 void MeshRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
     Random rand(Time::currentTimeMillis());
-
-    for (int i = 0; i < layerSize; ++i) {
-        vertOffsetSeeds[i]  = rand.nextInt(tableSize);
-        phaseOffsetSeeds[i] = rand.nextInt(tableSize);
-    }
+    guideCurveOffsetSeeds.randomize(layerSize, tableSize, rand);
 }
