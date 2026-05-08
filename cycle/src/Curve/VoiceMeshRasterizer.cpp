@@ -64,11 +64,11 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 
     // the first call is just padding for curves
     if (state->callCount > 0) {
-        paddingSize = Cycle::Rasterization::VoiceRasterizerFacade().buildChainedPadding(
+        Cycle::Rasterization::VoiceRasterizerFacade().buildChainedPadding(
                 icpts,
                 state->backIcpts,
                 *state,
-                curves,
+                createRasterizerRuntime(),
                 interceptPadding);
 
 		updateCurves();

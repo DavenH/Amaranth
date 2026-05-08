@@ -5,6 +5,7 @@
 #include "../Rasterization/Facades/VoiceRasterizerFacade.h"
 #include "../Rasterization/Policies/VoiceChainingPolicy.h"
 #include <Curve/Mesh.h>
+#include <Curve/Rasterization/RasterizerRuntime.h>
 #include <Curve/Rasterization/Sources/MeshCubeSource.h>
 #include <Curve/VertCube.h>
 
@@ -108,6 +109,39 @@ TEST_CASE("VoiceRasterizerFacade builds chained padding without caller-side poli
     REQUIRE(curves.size() == 10);
     REQUIRE(state.frontA.x == Approx(-0.22f));
     REQUIRE(state.frontB.x == Approx(-0.58f));
+}
+
+TEST_CASE("VoiceRasterizerFacade can publish chained padding through runtime", "[cycle][rasterization][voice]") {
+    std::vector<Intercept> intercepts {
+        Intercept(0.10f, -0.50f, nullptr, 0.20f),
+        Intercept(0.42f, 0.25f, nullptr, 0.35f),
+        Intercept(0.78f, -0.10f, nullptr, 0.50f),
+    };
+
+    std::vector<Intercept> nextIntercepts {
+        Intercept(0.12f, -0.40f, nullptr, 0.25f),
+        Intercept(0.46f, 0.40f, nullptr, 0.45f),
+        Intercept(0.86f, 0.10f, nullptr, 0.65f),
+    };
+
+    CycleState state;
+    std::vector<Curve> curves;
+    int paddingSize {};
+
+    ::Rasterization::RasterizerRuntime runtime;
+    runtime.curves = &curves;
+    runtime.paddingSize = &paddingSize;
+
+    int returnedPaddingSize = Cycle::Rasterization::VoiceRasterizerFacade().buildChainedPadding(
+            intercepts,
+            nextIntercepts,
+            state,
+            runtime,
+            0.05f);
+
+    REQUIRE(returnedPaddingSize == 2);
+    REQUIRE(paddingSize == 2);
+    REQUIRE_FALSE(curves.empty());
 }
 
 TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows", "[cycle][rasterization][voice]") {

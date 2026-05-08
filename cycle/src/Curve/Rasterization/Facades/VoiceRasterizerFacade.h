@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Curve/Rasterization/RasterizerRuntime.h>
 #include <Curve/Rasterization/Sources/MeshCubeSource.h>
 
 #include "../Pipelines/VoiceSlicePipeline.h"
@@ -43,6 +44,25 @@ namespace Cycle::Rasterization {
                 std::vector<Curve>& curves,
                 float interceptPadding) const {
             return chainedPaddingPolicy.build(intercepts, nextIntercepts, state, curves, interceptPadding);
+        }
+
+        int buildChainedPadding(
+                std::vector<Intercept>& intercepts,
+                std::vector<Intercept>& nextIntercepts,
+                CycleState& state,
+                ::Rasterization::RasterizerRuntime runtime,
+                float interceptPadding) const {
+            jassert(runtime.curves != nullptr);
+            jassert(runtime.paddingSize != nullptr);
+
+            *runtime.paddingSize = chainedPaddingPolicy.build(
+                    intercepts,
+                    nextIntercepts,
+                    state,
+                    *runtime.curves,
+                    interceptPadding);
+
+            return *runtime.paddingSize;
         }
 
         void applyCurveResolution(std::vector<Curve>& curves) const {
