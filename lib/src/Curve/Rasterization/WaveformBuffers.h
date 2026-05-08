@@ -16,6 +16,11 @@ namespace Rasterization {
 
         WaveformBuffers() = default;
 
+        WaveformBuffers(int zeroIndex, int oneIndex) :
+                zeroIndex(zeroIndex)
+            ,   oneIndex(oneIndex) {
+        }
+
         WaveformBuffers(
                 Buffer<float> waveX,
                 Buffer<float> waveY,
@@ -55,6 +60,16 @@ namespace Rasterization {
         bool isSampleable() const {
             return !waveX.empty() && !waveY.empty();
         }
+
+        void copyFrom(const WaveformBuffers& source) {
+            source.waveX.copyTo(waveX);
+            source.waveY.copyTo(waveY);
+            source.diffX.copyTo(diffX);
+            source.slope.copyTo(slope);
+            source.area.copyTo(area);
+            zeroIndex = source.zeroIndex;
+            oneIndex = source.oneIndex;
+        }
     };
 
     struct WaveformBufferRefs {
@@ -68,6 +83,17 @@ namespace Rasterization {
         int* oneIndex {};
 
         WaveformBufferRefs() = default;
+
+        explicit WaveformBufferRefs(WaveformBuffers& waveform) :
+                WaveformBufferRefs(
+                        waveform.waveX,
+                        waveform.waveY,
+                        waveform.diffX,
+                        waveform.slope,
+                        waveform.area,
+                        waveform.zeroIndex,
+                        waveform.oneIndex) {
+        }
 
         WaveformBufferRefs(
                 Buffer<float>& waveX,

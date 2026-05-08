@@ -43,9 +43,7 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    mesh                (nullptr)
     ,    guideCurveProvider  (nullptr)
 
-    ,    zeroIndex           (0)
     ,    paddingSize         (2)
-    ,    oneIndex            (INT_MAX / 2)
     ,    noiseSeed           (-1)
     ,    overridingDim       (Vertex::Time)
 
@@ -65,17 +63,14 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    needsResorting      (false)
     ,    interpolateCurves   (false)
     ,    batchMode           (false)
+    ,    waveform            (0, INT_MAX / 2)
     ,    facade              (new Rasterization::MeshRasterizerFacade) {
     initialise();
 }
 
 
 MeshRasterizer::~MeshRasterizer() {
-    waveX.nullify();
-    waveY.nullify();
-    diffX.nullify();
-    slope.nullify();
-    area.nullify();
+    waveform.nullify();
 
     memoryBuffer.clear();
 
@@ -494,8 +489,8 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     this->lowResCurves           = copy.lowResCurves;
     this->scalingType            = copy.scalingType;
     this->name                   = copy.name;
-    this->zeroIndex              = 0;
-    this->oneIndex               = INT_MAX / 2;
+    this->waveform.zeroIndex     = 0;
+    this->waveform.oneIndex      = INT_MAX / 2;
 
     // flags
     this->overrideDim            = copy.overrideDim;
@@ -619,57 +614,30 @@ void MeshRasterizer::print(OutputStream& dout) {
 }
 
 void MeshRasterizer::updateBuffers(int size) {
-    const int numBuffers = 5;
-    memoryBuffer.ensureSize(size * numBuffers);
-
-    waveX     = memoryBuffer.place(size);
-    waveY     = memoryBuffer.place(size);
-    diffX     = memoryBuffer.place(size);
-    slope     = memoryBuffer.place(size);
-    area    = memoryBuffer.place(size);
+    waveform.place(memoryBuffer, size);
 }
 
 void MeshRasterizer::markWaveformUnsampleable() {
-    waveX.nullify();
-    waveY.nullify();
+    waveform.waveX.nullify();
+    waveform.waveY.nullify();
 
     unsampleable = true;
 }
 
 Rasterization::WaveformBuffers MeshRasterizer::createWaveformView() const {
-    return Rasterization::WaveformBuffers(
-            waveX,
-            waveY,
-            diffX,
-            slope,
-            area,
-            zeroIndex,
-            oneIndex);
+    return waveform;
 }
 
 Rasterization::WaveformBufferRefs MeshRasterizer::createWaveformRefs() {
-    return Rasterization::WaveformBufferRefs(
-            waveX,
-            waveY,
-            diffX,
-            slope,
-            area,
-            zeroIndex,
-            oneIndex);
+    return Rasterization::WaveformBufferRefs(waveform);
 }
 
-void MeshRasterizer::assignWaveform(const Rasterization::WaveformBuffers& waveform) {
-    createWaveformRefs().assignFrom(waveform);
+void MeshRasterizer::assignWaveform(const Rasterization::WaveformBuffers& source) {
+    waveform = source;
 }
 
-void MeshRasterizer::copyWaveform(const Rasterization::WaveformBuffers& waveform) {
-    waveform.waveX.copyTo(waveX);
-    waveform.waveY.copyTo(waveY);
-    waveform.diffX.copyTo(diffX);
-    waveform.slope.copyTo(slope);
-    waveform.area.copyTo(area);
-    zeroIndex = waveform.zeroIndex;
-    oneIndex = waveform.oneIndex;
+void MeshRasterizer::copyWaveform(const Rasterization::WaveformBuffers& source) {
+    waveform.copyFrom(source);
 }
 
 Rasterization::GuideCurvePolicyContext MeshRasterizer::createGuideCurvePolicyContext() {

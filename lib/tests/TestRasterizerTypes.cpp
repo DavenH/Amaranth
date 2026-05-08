@@ -2,6 +2,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "../src/Array/ScopedAlloc.h"
 #include "../src/Curve/Rasterization/RasterizerConversion.h"
 #include "../src/Curve/Rasterization/GuideCurveOffsetSeeds.h"
 #include "../src/Curve/Rasterization/RasterizationRequest.h"
@@ -137,6 +138,46 @@ TEST_CASE("Rasterizer result shapes expose stage outputs without behavior", "[ra
     REQUIRE(waveform.waveform.zeroIndex == 5);
     REQUIRE(waveform.waveform.oneIndex == 9);
     REQUIRE(waveform.sampleable);
+}
+
+TEST_CASE("WaveformBuffers groups waveform storage and reference assignment", "[rasterization][types][waveform]") {
+    ScopedAlloc<float> sourceMemory;
+    ScopedAlloc<float> targetMemory;
+
+    WaveformBuffers source(1, 3);
+    WaveformBuffers target(0, 0);
+    source.place(sourceMemory, 4);
+    target.place(targetMemory, 4);
+
+    for (int i = 0; i < source.waveX.size(); ++i) {
+        source.waveX[i] = float(i);
+        source.waveY[i] = float(i) + 0.25f;
+        source.diffX[i] = float(i) + 0.5f;
+        source.slope[i] = float(i) + 0.75f;
+        source.area[i] = float(i) + 1.f;
+    }
+
+    target.copyFrom(source);
+
+    REQUIRE(target.zeroIndex == 1);
+    REQUIRE(target.oneIndex == 3);
+    REQUIRE(target.waveX[2] == source.waveX[2]);
+    REQUIRE(target.waveY[2] == source.waveY[2]);
+    REQUIRE(target.diffX[2] == source.diffX[2]);
+    REQUIRE(target.slope[2] == source.slope[2]);
+    REQUIRE(target.area[2] == source.area[2]);
+
+    WaveformBuffers assigned(0, 0);
+    WaveformBufferRefs refs(assigned);
+    refs.assignFrom(source);
+
+    REQUIRE(assigned.zeroIndex == 1);
+    REQUIRE(assigned.oneIndex == 3);
+    REQUIRE(assigned.waveX.get() == source.waveX.get());
+    REQUIRE(assigned.waveY.get() == source.waveY.get());
+    REQUIRE(assigned.diffX.get() == source.diffX.get());
+    REQUIRE(assigned.slope.get() == source.slope.get());
+    REQUIRE(assigned.area.get() == source.area.get());
 }
 
 TEST_CASE("RasterizationRequest defaults match MeshRasterizer compatibility defaults", "[rasterization][request]") {

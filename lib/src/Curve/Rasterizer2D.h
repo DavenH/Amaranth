@@ -119,8 +119,8 @@ public:
                 t2x = nextCurve.transformX[indexB] * xferValue;
                 t2y = nextCurve.transformY[indexB] * xferValue;
 
-                waveX[waveIdx] = t1x + t2x;
-                waveY[waveIdx] = t1y + t2y;
+                waveform.waveX[waveIdx] = t1x + t2x;
+                waveform.waveY[waveIdx] = t1y + t2y;
 
                 ++waveIdx;
             }
@@ -130,14 +130,14 @@ public:
         int waveEnd     = waveIdx;
         int size        = waveEnd - waveStart;
 
-        if(waveEnd == waveX.size()) {
+        if(waveEnd == waveform.waveX.size()) {
             --size;
         }
 
-        Buffer<Float32> ex   = waveX.section(waveStart, size);
-        Buffer<float> why   = waveY.section(waveStart, size);
-        Buffer<float> diffx = diffX.section(waveStart, size);
-        Buffer<float> slp   = slope.section(waveStart, size);
+        Buffer<Float32> ex   = waveform.waveX.section(waveStart, size);
+        Buffer<float> why   = waveform.waveY.section(waveStart, size);
+        Buffer<float> diffx = waveform.diffX.section(waveStart, size);
+        Buffer<float> slp   = waveform.slope.section(waveStart, size);
 
         VecOps::diff(ex, diffx);
         diffx.threshLT(1e-6f);

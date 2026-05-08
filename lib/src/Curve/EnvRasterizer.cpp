@@ -124,7 +124,7 @@ void EnvRasterizer::calcCrossPoints() {
     // do this even if we can't loop right now just in case
     // loopability changes by the time release curve is going
     // to be recalculated
-    int size = waveX.size();
+    int size = waveform.waveX.size();
 
     if (size > 0) {
         waveformMemory.ensureSize(3 * size);
@@ -133,9 +133,9 @@ void EnvRasterizer::calcCrossPoints() {
         waveYCopy = waveformMemory.place(size);
         slopeCopy = waveformMemory.place(size);
 
-        waveX.copyTo(waveXCopy);
-        waveY.copyTo(waveYCopy);
-        slope.copyTo(slopeCopy);
+        waveform.waveX.copyTo(waveXCopy);
+        waveform.waveY.copyTo(waveYCopy);
+        waveform.slope.copyTo(slopeCopy);
     } else {
         waveXCopy.nullify();
         waveYCopy.nullify();
@@ -409,7 +409,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
             } else {
                 jassert(numSamples > 0);
 
-                group.sampleIndex = zeroIndex;
+                group.sampleIndex = waveform.zeroIndex;
 
                 for (int i = 0; i < numSamples; ++i) {
                     buffer[i] = sampleAt(group.samplePosition, group.sampleIndex);
@@ -595,9 +595,9 @@ void EnvRasterizer::changedToRelease() {
     dbg("recalculating release");
 
     if (canLoop()) {
-        waveX = waveXCopy;
-        waveY = waveYCopy;
-        slope = slopeCopy;
+        waveform.waveX = waveXCopy;
+        waveform.waveY = waveYCopy;
+        waveform.slope = slopeCopy;
     }
 
     float lastLevel = params[headUnisonIndex].sustainLevel;
@@ -615,18 +615,18 @@ void EnvRasterizer::changedToRelease() {
 }
 
 void EnvRasterizer::validateState() {
-    if (waveX.empty()) {
+    if (waveform.waveX.empty()) {
         state = NormalState;
     }
 
     for (auto& p: params) {
-        if (waveX.empty()) {
+        if (waveform.waveX.empty()) {
             p.samplePosition = 0;
             p.sampleIndex = 0;
         } else {
-            if (p.samplePosition > waveX.back()) {
-                p.samplePosition = waveX.back();
-                p.sampleIndex = waveX.size() - 1;
+            if (p.samplePosition > waveform.waveX.back()) {
+                p.samplePosition = waveform.waveX.back();
+                p.sampleIndex = waveform.waveX.size() - 1;
             }
         }
     }

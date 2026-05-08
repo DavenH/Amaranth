@@ -134,15 +134,15 @@ public:
 
     MorphPosition& getMorphPosition()               { return morph;                     }
 
-    Buffer<float> getWaveX()                        { return waveX;                     }
-    Buffer<float> getWaveY()                        { return waveY;                     }
-    Buffer<float> getSlopes()                       { return slope;                     }
-    Buffer<float> getDiffX()                        { return diffX;                     }
+    Buffer<float> getWaveX()                        { return waveform.waveX;            }
+    Buffer<float> getWaveY()                        { return waveform.waveY;            }
+    Buffer<float> getSlopes()                       { return waveform.slope;            }
+    Buffer<float> getDiffX()                        { return waveform.diffX;            }
 
     const String& getName() const                   { return name;                      }
     int getPaddingSize() const                      { return paddingSize;               }
-    int getOneIndex() const                         { return oneIndex;                  }
-    int getZeroIndex() const                        { return zeroIndex;                 }
+    int getOneIndex() const                         { return waveform.oneIndex;         }
+    int getZeroIndex() const                        { return waveform.zeroIndex;        }
 
     const vector<Curve>& getCurves() const          { return curves;                    }
     const vector<Intercept>& getFrontIcpts() const  { return frontIcpts;                }
@@ -218,10 +218,8 @@ protected:
     bool unsampleable;
 
     int noiseSeed;
-    int oneIndex;
     int overridingDim;
     int paddingSize;
-    int zeroIndex;
 
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
 
@@ -245,7 +243,7 @@ protected:
     ScopedAlloc<float> memoryBuffer;
     ScopedAlloc<Int8u> alignedBytes;
 
-    Buffer<float> waveX, waveY, diffX, slope, area;
+    Rasterization::WaveformBuffers waveform;
     VertCube::ReductionData reduct;
     GuideCurveProvider* guideCurveProvider;
     Mesh* mesh;
