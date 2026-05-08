@@ -10,6 +10,7 @@
 #include "../src/Curve/Rasterization/Interpolation/AccurateMeshSlicer.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "../src/Curve/Rasterization/Policies/ComponentGuideSharpnessPolicy.h"
+#include "../src/Curve/Rasterization/Policies/CurveWaveformPreparationPolicy.h"
 #include "../src/Curve/Rasterization/Policies/GuideCurvePolicy.h"
 #include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sampling/GuideCurveSampler.h"
@@ -531,6 +532,32 @@ TEST_CASE("ComponentGuideSharpnessPolicy preserves component guide continuity be
     REQUIRE(curves[2].a.shp == 1.f);
     REQUIRE(curves[1].c.shp == 0.6f);
     REQUIRE(curves[2].b.shp == 0.8f);
+}
+
+TEST_CASE("CurveWaveformPreparationPolicy prepares curves before waveform baking", "[meshrasterizer][pipeline][waveform]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+    VertCube* componentCube = mesh->getCubes().front();
+    VertCube* plainCube = mesh->getCubes().back();
+    componentCube->getCompGuideCurve() = 0;
+
+    vector<Curve> curves {
+        Curve(
+                Intercept(0.0f, 0.0f),
+                Intercept(0.1f, 0.1f, componentCube, 0.2f),
+                Intercept(0.2f, 0.2f, componentCube, 0.3f)),
+        Curve(
+                Intercept(0.2f, 0.2f, componentCube, 0.4f),
+                Intercept(0.3f, 0.3f, plainCube, 0.5f),
+                Intercept(0.4f, 0.4f, plainCube, 0.6f)),
+    };
+
+    Rasterization::CurveWaveformPreparationPolicy().apply(curves);
+
+    REQUIRE(curves[0].c.shp == 1.f);
+    REQUIRE(curves[1].b.shp == 1.f);
+    REQUIRE(std::isfinite(curves[1].transformX[0]));
+    REQUIRE(std::isfinite(curves[1].transformY[0]));
 }
 
 TEST_CASE("RasterizerComposer builds a mesh slice rasterizer", "[meshrasterizer][pipeline][composer]") {

@@ -6,6 +6,7 @@
 
 #include "VertCube.h"
 #include "Rasterization/Policies/ComponentGuideSharpnessPolicy.h"
+#include "Rasterization/Policies/CurveWaveformPreparationPolicy.h"
 #include "Rasterization/Policies/DepthProjectionPolicy.h"
 #include "Rasterization/Policies/GuideCurvePolicy.h"
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
@@ -304,11 +305,7 @@ void MeshRasterizer::updateCurves() {
 }
 
 void MeshRasterizer::prepareCurvesForWaveform() {
-    adjustDeformingSharpness();
-
-    for (auto & curve : curves) {
-        curve.recalculateCurve();
-    }
+    Rasterization::CurveWaveformPreparationPolicy().apply(curves);
 }
 
 Rasterization::CurveResolutionPolicy::Context MeshRasterizer::createCurveResolutionContext() const {
