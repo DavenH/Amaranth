@@ -18,16 +18,16 @@
 VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
 		SingletonAccessor(repo, "VoiceMeshRasterizer")
     ,   state(nullptr) {
-	unsampleable = true;
-	overrideDim = true;
-	scalingType = Bipolar;
-	calcDepthDims = false;
+	setToOverrideDim(true);
+	setScalingMode(Bipolar);
+	setCalcDepthDimensions(false);
 
 	oversamplingChanged();
 }
 
 void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
-    if (mesh->getNumCubes() == 0 || state == nullptr) {
+    Mesh* currentMesh = getMesh();
+    if (currentMesh == nullptr || currentMesh->getNumCubes() == 0 || state == nullptr) {
 	    return;
     }
 
@@ -38,12 +38,12 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 
     needsResorting = false;
 
-    ::Rasterization::MeshCubeSource source(mesh);
+    ::Rasterization::MeshCubeSource source(currentMesh);
     ::Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
 
     auto output = Cycle::Rasterization::VoiceRasterizerFacade().buildIntercepts(
             source,
-            morph,
+            getMorphPosition(),
             state->advancement,
             oscPhase,
             guideApplier,

@@ -46,16 +46,14 @@ EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurve
     ,    releaseScale    (1.f)
     ,    preallocated    (8192)
     ,    waveformMemory  (4096) {
-    cyclic = false;
-    xMaximum = 10.f;
+    setWrapsEnds(false);
+    setLimits(0.f, 10.f);
 
     // graphic params
     params.emplace_back();
 
     // head unison index
     params.emplace_back();
-
-    paddingSize = 2;
 
     setGuideCurveProvider(guideCurveProvider);
 }
@@ -118,7 +116,7 @@ bool EnvRasterizer::hasReleaseCurve() {
 }
 
 void EnvRasterizer::calcCrossPoints() {
-    morph.resetTime();
+    getMorphPosition().resetTime();
     MeshRasterizer::calcCrossPoints(envMesh, 0.f);
 
     // do this even if we can't loop right now just in case
@@ -150,7 +148,7 @@ void EnvRasterizer::processIntercepts(vector<Intercept>& intercepts) {
 
     Rasterization::EnvelopeSustainPointContext context;
     context.sustainIndex = sustainIndex;
-    context.addFloorPoint = scalingType != Bipolar;
+    context.addFloorPoint = getScalingType() != Bipolar;
 
     needsResorting |= Rasterization::EnvRasterizerFacade().applySustainPoint(intercepts, context);
 }
@@ -206,7 +204,7 @@ void EnvRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
 
 void EnvRasterizer::setWantOneSamplePerCycle(bool does) {
     oneSamplePerCycle = does;
-    decoupleComponentDfrms = does;
+    setDecoupleComponentDfrm(does);
 }
 
 bool EnvRasterizer::canLoop() const {
@@ -225,7 +223,7 @@ float EnvRasterizer::getLoopLength() const {
 void EnvRasterizer::setNoteOn() {
     state = NormalState;
 
-    dbg("\tnote on for " << MeshRasterizer::name);
+    dbg("\tnote on for " << MeshRasterizer::getName());
 
     sampleReleaseNextCall = false;
 
@@ -339,7 +337,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
     int paramIndex) {
     EnvParams& group = params[paramIndex];
 
-    dbg("\n\n" << MeshRasterizer::name << "(" << paramIndex << ")");
+    dbg("\n\n" << MeshRasterizer::getName() << "(" << paramIndex << ")");
 
     double advancement = numSamples * deltaX;
     double boundary = (state == Releasing) ? icpts.back().x : icpts[sustainIndex].x;
@@ -499,7 +497,7 @@ bool EnvRasterizer::simulateRender(
 
     if (icpts.empty() || (state != Releasing && ! isPositiveAndBelow(sustainIndex, (int) icpts.size()))) {
         DBG(String::formatted("EnvRasterizer[%s] simulateRender invalid state mesh=%p icpts=%d sustain=%d state=%d",
-                              MeshRasterizer::name.toRawUTF8(),
+                              MeshRasterizer::getName().toRawUTF8(),
                               envMesh,
                               (int) icpts.size(),
                               sustainIndex,
@@ -531,7 +529,7 @@ bool EnvRasterizer::simulateRender(
 
     if (sampleReleaseNextCall) {
         sampleReleaseNextCall = false;
-        int releaseIdx = scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
+        int releaseIdx = getScalingType() == Bipolar ? sustainIndex : sustainIndex + 1;
         float releasePosX = icpts[releaseIdx].x;
         lastPosition = releasePosX;
     }
@@ -601,7 +599,7 @@ void EnvRasterizer::changedToRelease() {
     }
 
     float lastLevel = params[headUnisonIndex].sustainLevel;
-    int releaseIdx = scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
+    int releaseIdx = getScalingType() == Bipolar ? sustainIndex : sustainIndex + 1;
     float releasePosX = icpts[releaseIdx].x;
     float initialReleaseLevel = jmax(0.5f, sampleAt(releasePosX));
 
