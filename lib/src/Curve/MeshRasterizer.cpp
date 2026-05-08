@@ -6,6 +6,7 @@
 #include "MeshRasterizer.h"
 
 #include "VertCube.h"
+#include "Rasterization/Policies/ComponentGuideSharpnessPolicy.h"
 #include "Rasterization/Policies/DepthProjectionPolicy.h"
 #include "Rasterization/Policies/GuideCurvePolicy.h"
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
@@ -269,25 +270,7 @@ void MeshRasterizer::restrictIntercepts(vector<Intercept>& intercepts) {
  * x-values of the curve create a discontinuity
  */
 void MeshRasterizer::adjustDeformingSharpness() {
-    for (int i = 0; i < (int) curves.size(); ++i) {
-        Curve& curve = curves[i];
-
-        if (i < (int) curves.size() - 1 && curve.b.cube != nullptr) {
-            if (curve.b.cube->getCompGuideCurve() >= 0) {
-                Curve& next = curves[i + 1];
-
-                if (next.b.cube == nullptr || next.b.cube->getCompGuideCurve() < 0) {
-                    curve.c.shp = 1;
-                    next.b.shp = 1;
-                    next.updateCurrentIndex();
-
-                    if (i < (int) curves.size() - 2) {
-                        curves[i + 2].a.shp = 1;
-                    }
-                }
-            }
-        }
-    }
+    Rasterization::ComponentGuideSharpnessPolicy().apply(curves);
 }
 
 void MeshRasterizer::updateCurves() {
