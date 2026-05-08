@@ -14,29 +14,15 @@
 #include "Rasterization/Policies/PointScalingPolicy.h"
 #include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Facades/MeshRasterizerFacade.h"
-#include "Rasterization/RasterizerComposer.h"
+#include "Rasterization/Pipelines/MeshSliceRenderer.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
-#include "Rasterization/Sources/MeshCubeSource.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
 #include "../Array/ScopedAlloc.h"
 #include "../Design/Updating/Updater.h"
 #include "../Util/CommonEnums.h"
 #include "../Util/Util.h"
-
-namespace {
-    Rasterization::ComposedMeshRasterizer buildMeshSliceRasterizer(
-            Mesh* usedMesh,
-            const Rasterization::RasterizationRequest& request) {
-        Rasterization::MeshCubeSource source(usedMesh);
-
-        return Rasterization::RasterizerComposer::mesh()
-                .withSource(source)
-                .withRequest(request)
-                .build();
-    }
-}
 
 Rasterization::ScopedMeshRasterizerRenderState::ScopedMeshRasterizerRenderState(
         MeshRasterizer* rasterizer,
@@ -171,16 +157,15 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
 }
 
 Rasterization::MeshSlicePipeline::Output MeshRasterizer::renderMeshSlice(Mesh* usedMesh, float oscPhase) {
-    Rasterization::RasterizationRequest request = createRasterizationRequest();
-    auto composedRasterizer = buildMeshSliceRasterizer(usedMesh, request);
+    Rasterization::MeshSliceRenderer::Context context;
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
+    context.mesh = usedMesh;
+    context.request = createRasterizationRequest();
+    context.guideApplier = &guideApplier;
+    context.reduction = &reduct;
+    context.oscPhase = oscPhase;
 
-    const auto& output = composedRasterizer.renderWithReduction(
-            oscPhase,
-            guideApplier,
-            reduct);
-
-    return output;
+    return Rasterization::MeshSliceRenderer().render(context);
 }
 
 bool MeshRasterizer::canRasterizeMesh(Mesh* usedMesh) const {
