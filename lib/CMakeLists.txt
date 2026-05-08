@@ -9,6 +9,11 @@ file(GLOB_RECURSE LIB_SOURCES
         "${JUCE_DIR}/*.c"
 )
 
+if(BUILD_TYPE STREQUAL "Standalone")
+    # These compile to empty objects in standalone/test builds, which only adds ranlib noise.
+    list(FILTER LIB_SOURCES EXCLUDE REGEX ".*/(PluginProcessor|include_juce_audio_processors_(ara|lv2_libs))\\.cpp$")
+endif()
+
 if(APPLE)
     file(GLOB JUCE_OBJCXX_SOURCES
         "${JUCE_DIR}/*.cpp"
@@ -21,6 +26,12 @@ if(APPLE)
         COMPILE_FLAGS "-x objective-c++"
     )
 endif()
+
+set_source_files_properties(
+    "${JUCE_DIR}/include_juce_graphics_Harfbuzz.cpp"
+    PROPERTIES
+    COMPILE_OPTIONS "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang>:-Wno-nontrivial-memcall>"
+)
 
 add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
