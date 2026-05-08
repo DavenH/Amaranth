@@ -12,6 +12,7 @@
 #include "../src/Curve/Rasterization/Policies/ComponentGuideSharpnessPolicy.h"
 #include "../src/Curve/Rasterization/Policies/CurveWaveformPreparationPolicy.h"
 #include "../src/Curve/Rasterization/Policies/GuideCurvePolicy.h"
+#include "../src/Curve/Rasterization/Policies/InterceptDegeneracyPolicy.h"
 #include "../src/Curve/Rasterization/Policies/InterceptPaddingFlagPolicy.h"
 #include "../src/Curve/Rasterization/Policies/InterceptSortPolicy.h"
 #include "../src/Curve/Rasterization/Policies/MeshSliceOutputPolicy.h"
@@ -511,6 +512,15 @@ TEST_CASE("InterceptSortPolicy sorts only when requested", "[meshrasterizer][pip
     REQUIRE(intercepts[0].x == Catch::Approx(0.25f));
     REQUIRE(intercepts[1].x == Catch::Approx(0.75f));
     REQUIRE_FALSE(needsResorting);
+}
+
+TEST_CASE("InterceptDegeneracyPolicy classifies empty and single intercept outputs", "[meshrasterizer][pipeline][intercepts]") {
+    Rasterization::InterceptDegeneracyPolicy policy;
+
+    REQUIRE(policy.classify(0) == Rasterization::InterceptDegeneracyAction::CleanUp);
+    REQUIRE(policy.classify(1) == Rasterization::InterceptDegeneracyAction::MarkUnsampleable);
+    REQUIRE(policy.classify(2) == Rasterization::InterceptDegeneracyAction::Continue);
+    REQUIRE(policy.classify(3) == Rasterization::InterceptDegeneracyAction::Continue);
 }
 
 TEST_CASE("InterceptPaddingFlagPolicy marks consolidated component-guide padding spans", "[meshrasterizer][pipeline][intercepts]") {

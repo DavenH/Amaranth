@@ -9,6 +9,7 @@
 #include "Rasterization/Policies/CurveWaveformPreparationPolicy.h"
 #include "Rasterization/Policies/DepthProjectionPolicy.h"
 #include "Rasterization/Policies/GuideCurvePolicy.h"
+#include "Rasterization/Policies/InterceptDegeneracyPolicy.h"
 #include "Rasterization/Policies/InterceptSortPolicy.h"
 #include "Rasterization/Policies/InterceptPaddingFlagPolicy.h"
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
@@ -198,17 +199,16 @@ void MeshRasterizer::finishCrossPointCalculation() {
 }
 
 bool MeshRasterizer::handleDegenerateInterceptOutput() {
-    int end = icpts.size() - 1;
-    if (end < 0) {
-        cleanUp();
-
-        return true;
-    }
-
-    if (end == 0) {
-        curves.clear();
-
-        markWaveformUnsampleable();
+    switch (Rasterization::InterceptDegeneracyPolicy().classify(icpts.size())) {
+        case Rasterization::InterceptDegeneracyAction::CleanUp:
+            cleanUp();
+            return true;
+        case Rasterization::InterceptDegeneracyAction::MarkUnsampleable:
+            curves.clear();
+            markWaveformUnsampleable();
+            return false;
+        case Rasterization::InterceptDegeneracyAction::Continue:
+            return false;
     }
 
     return false;
