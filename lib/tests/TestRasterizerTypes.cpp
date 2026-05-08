@@ -178,6 +178,19 @@ TEST_CASE("WaveformBuffers groups waveform storage and reference assignment", "[
     REQUIRE(assigned.diffX.get() == source.diffX.get());
     REQUIRE(assigned.slope.get() == source.slope.get());
     REQUIRE(assigned.area.get() == source.area.get());
+
+    WaveformBuffers copied(0, 0);
+    copied.place(targetMemory, 4);
+    WaveformBufferRefs copyRefs(copied);
+    copyRefs.copyFrom(source);
+
+    REQUIRE(copied.zeroIndex == 1);
+    REQUIRE(copied.oneIndex == 3);
+    REQUIRE(copied.waveX[2] == source.waveX[2]);
+    REQUIRE(copied.waveY[2] == source.waveY[2]);
+    REQUIRE(copied.diffX[2] == source.diffX[2]);
+    REQUIRE(copied.slope[2] == source.slope[2]);
+    REQUIRE(copied.area[2] == source.area[2]);
 }
 
 TEST_CASE("RasterizationRequest defaults match MeshRasterizer compatibility defaults", "[rasterization][request]") {

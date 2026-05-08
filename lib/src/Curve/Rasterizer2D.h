@@ -4,6 +4,7 @@
 #include "Curve.h"
 #include "MeshRasterizer.h"
 #include "Rasterization/Builders/TransferTable.h"
+#include "Rasterization/Policies/RasterizerOutputPolicy.h"
 #include "Rasterization/RasterizerComposer.h"
 #include "Rasterization/Sources/PointListSource.h"
 
@@ -34,16 +35,9 @@ public:
             return;
         }
 
-        frontIcpts = output.frontPadding;
-        backIcpts = output.backPadding;
-        curves = output.curves;
-
         updateBuffers(output.waveform.waveX.size());
-        copyWaveform(output.waveform);
-
-        paddingSize = output.paddingSize;
-
-        unsampleable = false;
+        Rasterization::PointListOutputPolicy(Rasterization::WaveformPublication::Copy)
+                .publish(output, createRasterizerRuntime());
     }
 
     void updateCurve(int index, const Intercept& position) {

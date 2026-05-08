@@ -133,5 +133,17 @@ namespace Rasterization {
             *zeroIndex = source.zeroIndex;
             *oneIndex = source.oneIndex;
         }
+
+        void copyFrom(const WaveformBuffers& source) const {
+            jassert(isBound());
+
+            source.waveX.copyTo(*waveX);
+            source.waveY.copyTo(*waveY);
+            source.diffX.copyTo(*diffX);
+            source.slope.copyTo(*slope);
+            source.area.copyTo(*area);
+            *zeroIndex = source.zeroIndex;
+            *oneIndex = source.oneIndex;
+        }
     };
 }

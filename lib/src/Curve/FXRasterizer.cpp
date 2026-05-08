@@ -1,5 +1,6 @@
 #include "FXRasterizer.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
+#include "Rasterization/Policies/RasterizerOutputPolicy.h"
 
 namespace {
     String describeFxMesh(Mesh* mesh) {
@@ -71,13 +72,8 @@ void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
 }
 
 void FXRasterizer::publishPipelineOutput(const Rasterization::FxRasterizationPipeline::Output& output) {
-    icpts = output.intercepts;
-    curves = output.curves;
-
-    assignWaveform(output.waveform);
-
-    paddingSize = output.paddingSize;
-    unsampleable = !output.sampleable;
+    Rasterization::FxOutputPolicy(Rasterization::WaveformPublication::Assign)
+            .publish(output, createRasterizerRuntime());
 }
 
 void FXRasterizer::setMesh(Mesh* newMesh) {

@@ -196,8 +196,6 @@ protected:
     void finishCrossPointCalculation();
     Rasterization::WaveformBuffers createWaveformView() const;
     Rasterization::WaveformBufferRefs createWaveformRefs();
-    void assignWaveform(const Rasterization::WaveformBuffers& waveform);
-    void copyWaveform(const Rasterization::WaveformBuffers& waveform);
     Rasterization::GuideCurvePolicyContext createGuideCurvePolicyContext();
     Rasterization::GuideCurveApplier createGuideCurveApplier();
     void setResolutionIndices(float base);

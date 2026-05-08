@@ -632,14 +632,6 @@ Rasterization::WaveformBufferRefs MeshRasterizer::createWaveformRefs() {
     return Rasterization::WaveformBufferRefs(waveform);
 }
 
-void MeshRasterizer::assignWaveform(const Rasterization::WaveformBuffers& source) {
-    waveform = source;
-}
-
-void MeshRasterizer::copyWaveform(const Rasterization::WaveformBuffers& source) {
-    waveform.copyFrom(source);
-}
-
 Rasterization::GuideCurvePolicyContext MeshRasterizer::createGuideCurvePolicyContext() {
     Rasterization::GuideCurvePolicyContext context;
     context.guideCurveProvider = guideCurveProvider;
