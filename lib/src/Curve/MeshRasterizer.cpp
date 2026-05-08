@@ -172,13 +172,16 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
             },
             reduct);
 
+    publishMeshSliceOutput(output);
+    finishCrossPointCalculation();
+}
+
+void MeshRasterizer::publishMeshSliceOutput(const Rasterization::MeshSlicePipeline::Output& output) {
     icpts = output.intercepts;
 
     if (calcDepthDims) {
         colorPoints = output.colorPoints;
     }
-
-    finishCrossPointCalculation();
 }
 
 void MeshRasterizer::finishCrossPointCalculation() {

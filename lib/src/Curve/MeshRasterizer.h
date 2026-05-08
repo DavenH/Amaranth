@@ -11,6 +11,7 @@
 #include "Rasterization/RasterizerRuntime.h"
 #include "Rasterization/Policies/CurveResolutionPolicy.h"
 #include "Rasterization/Policies/WaveformBakePolicy.h"
+#include "Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "SurfaceLine.h"
 #include "VertCube.h"
@@ -182,6 +183,7 @@ protected:
     void calcWaveform();
     Rasterization::CurveResolutionPolicy::Context createCurveResolutionContext() const;
     Rasterization::WaveformBakePolicy::Context createWaveformBakeContext();
+    void publishMeshSliceOutput(const Rasterization::MeshSlicePipeline::Output& output);
     void finishCrossPointCalculation();
     Rasterization::WaveformBuffers createWaveformView() const;
     Rasterization::WaveformBufferRefs createWaveformRefs();
