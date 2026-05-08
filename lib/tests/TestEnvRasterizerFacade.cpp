@@ -3,6 +3,7 @@
 
 #include "../src/Curve/EnvelopeMesh.h"
 #include "../src/Curve/Rasterization/Facades/EnvRasterizerFacade.h"
+#include "../src/Curve/Rasterization/Policies/EnvelopePlaybackPolicy.h"
 
 namespace {
     std::vector<Intercept> makeIntercepts() {
@@ -119,4 +120,22 @@ TEST_CASE("EnvRasterizerFacade builds release render padding with terminal tail"
     REQUIRE(curves.back().a.x == Catch::Approx(intercepts.back().x + 0.001f));
     REQUIRE(curves.back().b.x == Catch::Approx(intercepts.back().x + 0.002f));
     REQUIRE(curves.back().c.x == Catch::Approx(intercepts.back().x + 0.003f));
+}
+
+TEST_CASE("EnvelopePlaybackPolicy resolves release state and loop boundaries", "[rasterization][env][facade]") {
+    auto intercepts = makeIntercepts();
+
+    Rasterization::EnvelopePlaybackContext context;
+    context.loopIndex = 1;
+    context.sustainIndex = 2;
+
+    Rasterization::EnvelopePlaybackPolicy policy;
+
+    REQUIRE_FALSE(policy.hasReleaseCurve(intercepts, 3));
+    REQUIRE(policy.hasReleaseCurve(intercepts, 2));
+    REQUIRE(policy.loopLength(intercepts, context) == Catch::Approx(0.35f));
+    REQUIRE(policy.boundary(intercepts, context) == Catch::Approx(0.70f));
+
+    context.releasing = true;
+    REQUIRE(policy.boundary(intercepts, context) == Catch::Approx(intercepts.back().x));
 }

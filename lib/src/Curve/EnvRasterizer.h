@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MeshRasterizer.h"
+#include "Rasterization/Policies/EnvelopePaddingPolicy.h"
 #include "../App/MeshLibrary.h"
 
 class SingletonRepo;
@@ -90,6 +91,7 @@ public:
 
 private:
     void changedToRelease();
+    Rasterization::EnvelopePaddingContext createPaddingContext() const;
     void padIcptsForRender(vector<Intercept>& icpts, vector<Curve>& curves);
 
     bool canLoop() const;

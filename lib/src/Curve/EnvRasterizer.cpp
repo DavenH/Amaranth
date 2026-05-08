@@ -5,6 +5,7 @@
 #include "EnvelopeMesh.h"
 #include "GuideCurveProvider.h"
 #include "Rasterization/Facades/EnvRasterizerFacade.h"
+#include "Rasterization/Policies/EnvelopePlaybackPolicy.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
 
@@ -108,11 +109,7 @@ void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
 }
 
 bool EnvRasterizer::hasReleaseCurve() {
-    if (icpts.empty()) {
-        return false;
-    }
-
-    return sustainIndex != (int) icpts.size() - 1;
+    return Rasterization::EnvelopePlaybackPolicy().hasReleaseCurve(icpts, sustainIndex);
 }
 
 void EnvRasterizer::calcCrossPoints() {
@@ -154,14 +151,7 @@ void EnvRasterizer::processIntercepts(vector<Intercept>& intercepts) {
 }
 
 void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curve>& curves) {
-    Rasterization::EnvelopePaddingContext context;
-    context.state             = toEnvelopePaddingState(state);
-    context.loopMinSizeIcpts  = loopMinSizeIcpts;
-    context.loopIndex         = loopIndex;
-    context.sustainIndex      = sustainIndex;
-    context.loopLength        = getLoopLength();
-    context.canLoop           = canLoop();
-    context.hasReleaseCurve   = hasReleaseCurve();
+    Rasterization::EnvelopePaddingContext context = createPaddingContext();
 
     if (!Rasterization::EnvRasterizerFacade().buildRenderPadding(intercepts, curves, context)) {
         markWaveformUnsampleable();
@@ -169,14 +159,7 @@ void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curv
 }
 
 void EnvRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
-    Rasterization::EnvelopePaddingContext context;
-    context.state             = toEnvelopePaddingState(state);
-    context.loopMinSizeIcpts  = loopMinSizeIcpts;
-    context.loopIndex         = loopIndex;
-    context.sustainIndex      = sustainIndex;
-    context.loopLength        = getLoopLength();
-    context.canLoop           = canLoop();
-    context.hasReleaseCurve   = hasReleaseCurve();
+    Rasterization::EnvelopePaddingContext context = createPaddingContext();
 
     if (!Rasterization::EnvRasterizerFacade().buildDisplayPadding(icpts, curves, context)) {
         markWaveformUnsampleable();
@@ -212,12 +195,24 @@ bool EnvRasterizer::canLoop() const {
 }
 
 float EnvRasterizer::getLoopLength() const {
-    if (loopIndex >= 0 && loopIndex < (icpts.size() - 1)
-        && sustainIndex >= 0 && sustainIndex < icpts.size()) {
-        return icpts[sustainIndex].x - icpts[loopIndex].x;
-    }
+    Rasterization::EnvelopePlaybackContext context;
+    context.loopIndex = loopIndex;
+    context.sustainIndex = sustainIndex;
 
-    return -1.f;
+    return Rasterization::EnvelopePlaybackPolicy().loopLength(icpts, context);
+}
+
+Rasterization::EnvelopePaddingContext EnvRasterizer::createPaddingContext() const {
+    Rasterization::EnvelopePaddingContext context;
+    context.state             = toEnvelopePaddingState(state);
+    context.loopMinSizeIcpts  = loopMinSizeIcpts;
+    context.loopIndex         = loopIndex;
+    context.sustainIndex      = sustainIndex;
+    context.loopLength        = getLoopLength();
+    context.canLoop           = canLoop();
+    context.hasReleaseCurve   = Rasterization::EnvelopePlaybackPolicy().hasReleaseCurve(icpts, sustainIndex);
+
+    return context;
 }
 
 void EnvRasterizer::setNoteOn() {
@@ -340,7 +335,12 @@ int EnvRasterizer::vectorizedRenderToBuffer(
     dbg("\n\n" << MeshRasterizer::getName() << "(" << paramIndex << ")");
 
     double advancement = numSamples * deltaX;
-    double boundary = (state == Releasing) ? icpts.back().x : icpts[sustainIndex].x;
+    Rasterization::EnvelopePlaybackContext context;
+    context.loopIndex = loopIndex;
+    context.sustainIndex = sustainIndex;
+    context.releasing = state == Releasing;
+
+    double boundary = Rasterization::EnvelopePlaybackPolicy().boundary(icpts, context);
     double nextPosition = group.samplePosition + advancement;
     bool overextends = nextPosition > boundary;
     bool loopable = canLoop();
@@ -517,7 +517,12 @@ bool EnvRasterizer::simulateRender(
 
     advancement = newAdvancement;
 
-    double boundary = (state == Releasing) ? icpts.back().x : icpts[sustainIndex].x;
+    Rasterization::EnvelopePlaybackContext context;
+    context.loopIndex = loopIndex;
+    context.sustainIndex = sustainIndex;
+    context.releasing = state == Releasing;
+
+    double boundary = Rasterization::EnvelopePlaybackPolicy().boundary(icpts, context);
     double nextPosition = lastPosition + advancement;
     bool overextends = nextPosition > boundary;
     bool loopable = canLoop();
