@@ -15,6 +15,7 @@
 #include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Facades/MeshRasterizerFacade.h"
 #include "Rasterization/RasterizerComposer.h"
+#include "Rasterization/Sampling/WaveformSampler.h"
 #include "Rasterization/Sources/MeshCubeSource.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
@@ -327,8 +328,10 @@ void MeshRasterizer::calcWaveform() {
 }
 
 float MeshRasterizer::sampleAt(double angle) {
-    int currentIndex = Arithmetic::binarySearch(angle, waveX);
-    return sampleAt(angle, currentIndex);
+    return Rasterization::WaveformSampler::sampleAt(
+            Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+            unsampleable,
+            angle);
 }
 
 /*
@@ -359,130 +362,28 @@ float MeshRasterizer::sampleAtDecoupled(double angle, GuideCurveContext& context
 
 // make damn sure that the last element in waveX is greater than 1 before calling this
 float MeshRasterizer::sampleAt(double angle, int& currentIndex) {
-    if (unsampleable || (float) angle >= waveX.back() || (float) angle < waveX.front()) {
-        jassertfalse;
-        return angle;
-    }
-
-    if (currentIndex >= (int) waveX.size()) {
-        currentIndex = 0;
-    }
-
-    if (currentIndex > 0) {
-        while (angle < waveX[currentIndex - 1]) {
-            --currentIndex;
-            if(currentIndex == 0)
-                currentIndex = waveX.size() - 1;
-        }
-    }
-
-    while (angle >= waveX[currentIndex]) {
-        ++currentIndex;
-
-        if(currentIndex >= (int) waveX.size()) {
-            currentIndex = 0;
-        }
-    }
-
-    if(currentIndex == 0) {
-        return waveY[0];
-    }
-
-    return (angle - waveX[currentIndex - 1]) * slope[currentIndex - 1] + waveY[currentIndex - 1];
+    return Rasterization::WaveformSampler::sampleAt(
+            Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+            unsampleable,
+            angle,
+            currentIndex);
 }
 
 
 void MeshRasterizer::sampleAtIntervals(Buffer<float> intervals, Buffer<float> dest) {
-    jassert(intervals.size() >= dest.size());
-
-    if (waveX.empty()) {
-        dest.set(0.5f);
-
-        return;
-    }
-
-    float* destPtr = dest.get();
-    const float* intervalsPtr = intervals.get();
-
-    jassert(waveX.front() < intervals.front() && waveX.back() > intervals[dest.size() - 1]);
-
-    int currentIndex = zeroIndex;
-
-    for (int i = 0; i < (int) dest.size(); ++i) {
-        while (intervalsPtr[i] >= waveX[currentIndex]) {
-            currentIndex++;
-        }
-
-        destPtr[i] = (intervalsPtr[i] - waveX[currentIndex - 1]) * slope[currentIndex - 1] + waveY[currentIndex - 1];
-    }
+    Rasterization::WaveformSampler::sampleAtIntervals(
+            Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+            intervals,
+            dest);
 }
 
 
 float MeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
-    float* dest = buffer.get();
-    int size     = buffer.size();
-
-    double areaScale = 1. / delta;
-    double halfDiff = 0.5 * delta;
-    double accum = phase - halfDiff;
-
-    jassert(waveX.front() <= accum);
-    jassert(accum + (size + 0.5) * delta <= waveX.back());
-
-    int currentIndex = zeroIndex;
-
-    while(accum < waveX[currentIndex] && currentIndex > 0) {
-        --currentIndex;
-    }
-    while(accum >= waveX[currentIndex + 1] && currentIndex < waveX.size()) {
-        ++currentIndex;
-    }
-
-    jassert(waveX[currentIndex] <= accum && waveX[currentIndex + 1] >= accum);
-
-    if(accum < waveX.front()) {
-        accum = waveX.front();
-        currentIndex = 0;
-    }
-
-    int prevIdx, diffIdx;
-    float x, diffX;
-
-    for (int i = 0; i < size; ++i) {
-        prevIdx = currentIndex;
-        accum += delta;
-
-        while(accum >= waveX[currentIndex]) {
-            ++currentIndex;
-        }
-
-        --currentIndex;
-        diffIdx = currentIndex - prevIdx;
-
-        if(diffIdx == 0) {
-            dest[i] = ((accum - halfDiff - waveX[currentIndex]) * slope[currentIndex] + waveY[currentIndex]);
-        } else {
-            x = accum - delta;
-            dest[i] = 0.5f * (slope[prevIdx] * (x - waveX[prevIdx]) + waveY[prevIdx] + waveY[prevIdx + 1]) * (waveX[prevIdx + 1] - x);
-
-            for(int j = 0; j < diffIdx - 1; ++j) {
-                dest[i] += area[prevIdx + j + 1];
-            }
-
-            diffX = accum - waveX[currentIndex];
-            dest[i] += (0.5f * slope[currentIndex] * diffX + waveY[currentIndex]) * diffX;
-
-            dest[i] *= areaScale;
-        }
-    }
-
-    phase = accum + halfDiff;
-
-    if(phase > 0.5) {
-        phase -= 1;
-    }
-
-    return phase;
+    return Rasterization::WaveformSampler::samplePerfectly(
+            Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+            delta,
+            buffer,
+            phase);
 }
 
 void MeshRasterizer::reset() {

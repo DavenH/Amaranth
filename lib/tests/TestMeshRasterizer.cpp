@@ -12,6 +12,7 @@
 #include "../src/Curve/Rasterization/Policies/ComponentGuideSharpnessPolicy.h"
 #include "../src/Curve/Rasterization/Policies/GuideCurvePolicy.h"
 #include "../src/Curve/Rasterization/RasterizerComposer.h"
+#include "../src/Curve/Rasterization/Sampling/WaveformSampler.h"
 #include "../src/Curve/Rasterization/Sources/MeshCubeSource.h"
 #include "../src/Curve/VertCube.h"
 #include "RasterizerCompare.h"
@@ -204,6 +205,48 @@ TEST_CASE("MeshRasterizerSamplerAdapter exposes only waveform sampling", "[meshr
     int rasterizerIndex = rasterizer.getZeroIndex();
     REQUIRE(sampler.sampleAt(0.5, adapterIndex) == rasterizer.sampleAt(0.5, rasterizerIndex));
     REQUIRE(adapterIndex == rasterizerIndex);
+}
+
+TEST_CASE("WaveformSampler matches MeshRasterizer sampling adapters", "[meshrasterizer][sampling]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+
+    MeshRasterizer rasterizer("SyntheticWaveformSampler");
+    configureWaveRasterizer(rasterizer, mesh.get());
+    rasterizer.calcCrossPoints();
+
+    Rasterization::WaveformBuffers waveform(
+            rasterizer.getWaveX(),
+            rasterizer.getWaveY(),
+            rasterizer.getDiffX(),
+            rasterizer.getSlopes(),
+            Buffer<float>(),
+            rasterizer.getZeroIndex(),
+            rasterizer.getOneIndex());
+
+    REQUIRE(Rasterization::WaveformSampler::isSampleable(waveform));
+    REQUIRE(Rasterization::WaveformSampler::isSampleableAt(waveform, 0.5f));
+    REQUIRE(Rasterization::WaveformSampler::sampleAt(waveform, false, 0.5) == rasterizer.sampleAt(0.5));
+
+    int directIndex = rasterizer.getZeroIndex();
+    int rasterizerIndex = rasterizer.getZeroIndex();
+    REQUIRE(Rasterization::WaveformSampler::sampleAt(waveform, false, 0.5, directIndex)
+            == rasterizer.sampleAt(0.5, rasterizerIndex));
+    REQUIRE(directIndex == rasterizerIndex);
+
+    ScopedAlloc<Float32> memory;
+    memory.ensureSize(192);
+    Buffer<float> intervals = memory.place(64);
+    Buffer<float> direct = memory.place(64);
+    Buffer<float> adapter = memory.place(64);
+
+    for (int i = 0; i < intervals.size(); ++i) {
+        intervals[i] = float(i) / float(intervals.size() - 1);
+    }
+
+    Rasterization::WaveformSampler::sampleAtIntervals(waveform, intervals, direct);
+    rasterizer.sampleAtIntervals(intervals, adapter);
+    RasterizerCompare::requireBufferNear(RasterizerCompare::copyBuffer(direct), RasterizerCompare::copyBuffer(adapter));
 }
 
 TEST_CASE("MeshRasterizerSnapshotAdapter exposes only published rasterizer data", "[meshrasterizer][snapshot]") {
