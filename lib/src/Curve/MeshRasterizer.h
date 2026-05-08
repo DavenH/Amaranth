@@ -9,6 +9,7 @@
 #include "Rasterization/GuideCurveOffsetSeeds.h"
 #include "Rasterization/RasterizationRequest.h"
 #include "Rasterization/RasterizerRuntime.h"
+#include "Rasterization/Policies/WaveformBakePolicy.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "SurfaceLine.h"
 #include "VertCube.h"
@@ -178,6 +179,7 @@ protected:
     void markWaveformUnsampleable();
     void updateBuffers(int size);
     void calcWaveform();
+    Rasterization::WaveformBakePolicy::Context createWaveformBakeContext();
     void finishCrossPointCalculation();
     Rasterization::WaveformBuffers createWaveformView() const;
     Rasterization::WaveformBufferRefs createWaveformRefs();

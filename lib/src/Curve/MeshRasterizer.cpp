@@ -282,6 +282,18 @@ void MeshRasterizer::calcWaveform() {
         guideCurveRegions.clear();
     }
 
+    Rasterization::WaveformBakePolicy::Context context = createWaveformBakeContext();
+
+    int totalRes = facade->prepareWaveform(curves, context);
+    updateBuffers(totalRes);
+
+    context.waveform = createWaveformRefs();
+    facade->bakeWaveform(curves, context);
+
+    unsampleable = false;
+}
+
+Rasterization::WaveformBakePolicy::Context MeshRasterizer::createWaveformBakeContext() {
     Rasterization::WaveformBakePolicy::Context context;
     context.lowResCurves = lowResCurves;
     context.decoupleComponentDfrms = decoupleComponentDfrms;
@@ -292,13 +304,7 @@ void MeshRasterizer::calcWaveform() {
     context.offsetSeeds = &guideCurveOffsetSeeds;
     context.transferTable = Rasterization::TransferTable::values();
 
-    int totalRes = facade->prepareWaveform(curves, context);
-    updateBuffers(totalRes);
-
-    context.waveform = createWaveformRefs();
-    facade->bakeWaveform(curves, context);
-
-    unsampleable = false;
+    return context;
 }
 
 float MeshRasterizer::sampleAt(double angle) {
