@@ -116,7 +116,7 @@ public:
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
         return Rasterization::WaveformSampler::sampleWithInterval(
-                Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+                createWaveformView(),
                 buffer,
                 delta,
                 phase);
@@ -198,6 +198,8 @@ public:
 protected:
     void updateBuffers(int size);
     void calcWaveform();
+    Rasterization::WaveformBuffers createWaveformView() const;
+    Rasterization::WaveformBufferRefs createWaveformRefs();
     void setResolutionIndices(float base);
     static void calcTransferTable();
 

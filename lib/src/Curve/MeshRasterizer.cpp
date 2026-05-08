@@ -118,14 +118,7 @@ Rasterization::RasterizerRuntime MeshRasterizer::createRasterizerRuntime() {
     runtime.frontPadding    = &frontIcpts;
     runtime.backPadding     = &backIcpts;
     runtime.colorPoints     = &colorPoints;
-    runtime.waveform        = Rasterization::WaveformBufferRefs(
-            waveX,
-            waveY,
-            diffX,
-            slope,
-            area,
-            zeroIndex,
-            oneIndex);
+    runtime.waveform        = createWaveformRefs();
     runtime.paddingSize     = &paddingSize;
     runtime.unsampleable    = &unsampleable;
     runtime.needsResorting  = &needsResorting;
@@ -314,14 +307,7 @@ void MeshRasterizer::calcWaveform() {
     int totalRes = facade->prepareWaveform(curves, context);
     updateBuffers(totalRes);
 
-    context.waveform = Rasterization::WaveformBufferRefs(
-            waveX,
-            waveY,
-            diffX,
-            slope,
-            area,
-            zeroIndex,
-            oneIndex);
+    context.waveform = createWaveformRefs();
     facade->bakeWaveform(curves, context);
 
     unsampleable = false;
@@ -329,7 +315,7 @@ void MeshRasterizer::calcWaveform() {
 
 float MeshRasterizer::sampleAt(double angle) {
     return Rasterization::WaveformSampler::sampleAt(
-            Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+            createWaveformView(),
             unsampleable,
             angle);
 }
@@ -339,7 +325,7 @@ float MeshRasterizer::sampleAt(double angle) {
  */
 float MeshRasterizer::sampleAtDecoupled(double angle, GuideCurveContext& context) {
     return Rasterization::GuideCurveSampler::sampleDecoupled(
-            Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+            createWaveformView(),
             unsampleable,
             angle,
             context,
@@ -351,7 +337,7 @@ float MeshRasterizer::sampleAtDecoupled(double angle, GuideCurveContext& context
 // make damn sure that the last element in waveX is greater than 1 before calling this
 float MeshRasterizer::sampleAt(double angle, int& currentIndex) {
     return Rasterization::WaveformSampler::sampleAt(
-            Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+            createWaveformView(),
             unsampleable,
             angle,
             currentIndex);
@@ -360,7 +346,7 @@ float MeshRasterizer::sampleAt(double angle, int& currentIndex) {
 
 void MeshRasterizer::sampleAtIntervals(Buffer<float> intervals, Buffer<float> dest) {
     Rasterization::WaveformSampler::sampleAtIntervals(
-            Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+            createWaveformView(),
             intervals,
             dest);
 }
@@ -368,7 +354,7 @@ void MeshRasterizer::sampleAtIntervals(Buffer<float> intervals, Buffer<float> de
 
 float MeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
     return Rasterization::WaveformSampler::samplePerfectly(
-            Rasterization::WaveformBuffers(waveX, waveY, diffX, slope, area, zeroIndex, oneIndex),
+            createWaveformView(),
             delta,
             buffer,
             phase);
@@ -645,12 +631,8 @@ void MeshRasterizer::updateBuffers(int size) {
     area    = memoryBuffer.place(size);
 }
 
-void MeshRasterizer::makeCopy() {
-    Rasterization::RasterizerSnapshotSource source;
-    source.intercepts = &icpts;
-    source.colorPoints = &colorPoints;
-    source.curves = &curves;
-    source.waveform = Rasterization::WaveformBuffers(
+Rasterization::WaveformBuffers MeshRasterizer::createWaveformView() const {
+    return Rasterization::WaveformBuffers(
             waveX,
             waveY,
             diffX,
@@ -658,6 +640,25 @@ void MeshRasterizer::makeCopy() {
             area,
             zeroIndex,
             oneIndex);
+}
+
+Rasterization::WaveformBufferRefs MeshRasterizer::createWaveformRefs() {
+    return Rasterization::WaveformBufferRefs(
+            waveX,
+            waveY,
+            diffX,
+            slope,
+            area,
+            zeroIndex,
+            oneIndex);
+}
+
+void MeshRasterizer::makeCopy() {
+    Rasterization::RasterizerSnapshotSource source;
+    source.intercepts = &icpts;
+    source.colorPoints = &colorPoints;
+    source.curves = &curves;
+    source.waveform = createWaveformView();
 
     facade->publishSnapshot(rastArrays, source);
 }
