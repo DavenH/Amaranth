@@ -1,10 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <string>
+
 #include <App/Doc/Document.h>
 #include <App/Doc/DocumentDetails.h>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
+#include <Design/Updating/Updater.h>
 #include <Curve/Curve.h>
 #include <JuceHeader.h>
 
@@ -37,6 +40,7 @@ namespace {
         meshLib.addGroup(MeshLibrary::TypeEnvelope);
         meshLib.addGroup(MeshLibrary::TypeMesh);
         meshLib.addGroup(MeshLibrary::TypeMesh);
+        meshLib.addGroup(MeshLibrary::TypeMesh);
 
         meshLib.addLayer(LayerGroups::GroupVolume);
         meshLib.addLayer(LayerGroups::GroupPitch);
@@ -56,6 +60,25 @@ namespace {
         repo.get<IrModellerUI>("IrModellerUI").getRasterizer()->setMesh(irModellerMesh);
         repo.get<IrModeller>("IrModeller").setMesh(irModellerMesh);
     }
+
+    class ScopedPresetLoadSuppression {
+    public:
+        explicit ScopedPresetLoadSuppression(SingletonRepo& repo) :
+                updater                     (repo.get<Updater>("Updater"))
+            ,   ignoringEditMessages        (repo.get<Settings>("Settings").getGlobalSetting(AppSettings::IgnoringEditMessages), true)
+            ,   ignoringMessages            (repo.get<Settings>("Settings").getGlobalSetting(AppSettings::IgnoringMessages), true) {
+            updater.clearPendingUpdates();
+        }
+
+        ~ScopedPresetLoadSuppression() {
+            updater.clearPendingUpdates();
+        }
+
+    private:
+        Updater& updater;
+        ScopedValueSetter<int> ignoringEditMessages;
+        ScopedValueSetter<int> ignoringMessages;
+    };
 
     class CycleTestHarness {
     public:
@@ -180,29 +203,33 @@ TEST_CASE("Legacy presets round trip through Document into stable current JSON",
         }
 
         DYNAMIC_SECTION("Round trip " << presetFile.getFileName().toStdString()) {
-            CycleTestHarness firstHarness;
-            auto& firstRepo = firstHarness.getRepo();
-            auto& firstDocument = firstRepo.get<Document>("Document");
+            CycleTestHarness harness;
+            auto& repo = harness.getRepo();
+            auto& document = repo.get<Document>("Document");
+            std::string firstSnapshot;
 
-            REQUIRE(firstDocument.open(presetFile.getFullPathName()));
-            firstDocument.getDetails().setFilename(presetFile.getFullPathName());
-
-            String firstSnapshot = normalisedPresetJson(firstDocument);
+            {
+                ScopedPresetLoadSuppression suppressPresetUpdates(repo);
+                REQUIRE(document.open(presetFile.getFullPathName()));
+                document.getDetails().setFilename(presetFile.getFullPathName());
+                firstSnapshot = normalisedPresetJson(document).toStdString();
+            }
 
             MemoryOutputStream savedPreset;
-            firstDocument.save(&savedPreset);
+            document.save(&savedPreset);
             REQUIRE(savedPreset.getDataSize() > Document::headerSizeBytes);
 
             MemoryInputStream savedInput(savedPreset.getData(), savedPreset.getDataSize(), false);
 
-            CycleTestHarness secondHarness;
-            auto& secondRepo = secondHarness.getRepo();
-            auto& secondDocument = secondRepo.get<Document>("Document");
+            std::string secondSnapshot;
+            {
+                ScopedPresetLoadSuppression suppressPresetUpdates(repo);
+                REQUIRE(document.open(&savedInput));
+                secondSnapshot = normalisedPresetJson(document).toStdString();
+            }
 
-            REQUIRE(secondDocument.open(&savedInput));
-
-            String secondSnapshot = normalisedPresetJson(secondDocument);
-            REQUIRE(secondSnapshot == firstSnapshot);
+            const bool snapshotsMatch = secondSnapshot == firstSnapshot;
+            REQUIRE(snapshotsMatch);
 
             ++exercisedPresetCount;
         }
