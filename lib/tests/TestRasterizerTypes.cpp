@@ -6,6 +6,7 @@
 #include "../src/Curve/Rasterization/RasterizerConversion.h"
 #include "../src/Curve/Rasterization/GuideCurveOffsetSeeds.h"
 #include "../src/Curve/Rasterization/Policies/RasterizerCleanupPolicy.h"
+#include "../src/Curve/Rasterization/Policies/SnapshotPolicy.h"
 #include "../src/Curve/Rasterization/RasterizationRequest.h"
 #include "../src/Curve/Rasterization/RasterizerResult.h"
 #include "../src/Curve/Rasterization/RasterizerRuntime.h"
@@ -292,6 +293,28 @@ TEST_CASE("MeshRasterizer exposes mutable storage as RasterizerRuntime", "[raste
 
     REQUIRE(runtime.intercepts->size() == 1);
     REQUIRE(rasterizer.getPaddingSize() == 3);
+}
+
+TEST_CASE("RasterizerRuntime can expose a snapshot source view", "[rasterization][runtime][snapshot]") {
+    MeshRasterizer rasterizer("RuntimeSnapshotRasterizer");
+    RasterizerRuntime runtime = rasterizer.createRasterizerRuntime();
+
+    runtime.intercepts->emplace_back(0.25f, 0.75f);
+    runtime.curves->emplace_back(Intercept(0.f, 0.f), Intercept(0.5f, 0.5f), Intercept(1.f, 1.f));
+    runtime.colorPoints->emplace_back(nullptr, Vertex2(), Vertex2(), Vertex2(), Vertex::Time);
+
+    RasterizerSnapshotSource source = createRasterizerSnapshotSource(runtime);
+
+    REQUIRE(source.intercepts == runtime.intercepts);
+    REQUIRE(source.curves == runtime.curves);
+    REQUIRE(source.colorPoints == runtime.colorPoints);
+    REQUIRE(source.waveform.waveX.get() == runtime.waveform.waveX->get());
+    REQUIRE(source.waveform.waveY.get() == runtime.waveform.waveY->get());
+    REQUIRE(source.waveform.diffX.get() == runtime.waveform.diffX->get());
+    REQUIRE(source.waveform.slope.get() == runtime.waveform.slope->get());
+    REQUIRE(source.waveform.area.get() == runtime.waveform.area->get());
+    REQUIRE(source.waveform.zeroIndex == *runtime.waveform.zeroIndex);
+    REQUIRE(source.waveform.oneIndex == *runtime.waveform.oneIndex);
 }
 
 TEST_CASE("RasterizerCleanupPolicy clears selected runtime storage and marks waveform unsampleable", "[rasterization][runtime]") {

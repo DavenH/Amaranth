@@ -126,6 +126,21 @@ namespace Rasterization {
             return waveX != nullptr && !waveX->empty();
         }
 
+        WaveformBuffers view() const {
+            if (!isBound()) {
+                return WaveformBuffers();
+            }
+
+            return WaveformBuffers(
+                    *waveX,
+                    *waveY,
+                    *diffX,
+                    *slope,
+                    *area,
+                    *zeroIndex,
+                    *oneIndex);
+        }
+
         void assignFrom(const WaveformBuffers& source) const {
             jassert(isBound());
 

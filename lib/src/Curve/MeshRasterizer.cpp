@@ -17,6 +17,7 @@
 #include "Rasterization/Policies/MeshSliceOutputPolicy.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
 #include "Rasterization/Policies/PointScalingPolicy.h"
+#include "Rasterization/Policies/SnapshotPolicy.h"
 #include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Facades/MeshRasterizerFacade.h"
 #include "Rasterization/Policies/WaveformBuildPolicy.h"
@@ -641,12 +642,8 @@ Rasterization::GuideCurveApplier MeshRasterizer::createGuideCurveApplier() {
 }
 
 void MeshRasterizer::makeCopy() {
-    Rasterization::RasterizerSnapshotSource source;
-    source.intercepts = &icpts;
-    source.colorPoints = &colorPoints;
-    source.curves = &curves;
-    source.waveform = createWaveformView();
-
+    Rasterization::RasterizerSnapshotSource source =
+            Rasterization::createRasterizerSnapshotSource(createRasterizerRuntime());
     facade->publishSnapshot(rastArrays, source);
 }
 
