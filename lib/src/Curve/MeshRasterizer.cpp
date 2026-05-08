@@ -593,11 +593,11 @@ bool MeshRasterizer::hasEnoughCubesForCrossSection() {
 }
 
 bool MeshRasterizer::isSampleable() {
-    return !waveX.empty();
+    return Rasterization::WaveformSampler::isSampleable(createWaveformView());
 }
 
 bool MeshRasterizer::isSampleableAt(float x) {
-    return !waveX.empty() && waveX.front() <= x && waveX.back() > x;
+    return Rasterization::WaveformSampler::isSampleableAt(createWaveformView(), x);
 }
 
 Mesh* MeshRasterizer::getCrossPointsMesh() {
