@@ -10,6 +10,7 @@
 #include "Rasterization/Policies/DepthProjectionPolicy.h"
 #include "Rasterization/Policies/GuideCurvePolicy.h"
 #include "Rasterization/Policies/InterceptSortPolicy.h"
+#include "Rasterization/Policies/InterceptPaddingFlagPolicy.h"
 #include "Rasterization/Policies/InterceptRestrictionPolicy.h"
 #include "Rasterization/Policies/MeshSliceOutputPolicy.h"
 #include "Rasterization/Policies/PaddingPolicy.h"
@@ -192,7 +193,7 @@ void MeshRasterizer::finishCrossPointCalculation() {
         return;
     }
 
-    Rasterization::MeshSlicePipeline::applyPaddingFlags(icpts);
+    Rasterization::InterceptPaddingFlagPolicy().apply(icpts);
 
     if (!calcInterceptsOnly) {
         rebuildCurvesFromIntercepts();

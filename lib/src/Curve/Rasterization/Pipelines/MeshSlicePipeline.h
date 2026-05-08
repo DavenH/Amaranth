@@ -5,6 +5,7 @@
 
 #include "../Policies/DefaultVertexWrapPolicy.h"
 #include "../Policies/DepthProjectionPolicy.h"
+#include "../Policies/InterceptPaddingFlagPolicy.h"
 #include "../Policies/InterceptRestrictionPolicy.h"
 #include "../Policies/PointScalingPolicy.h"
 #include "../RasterizationRequest.h"
@@ -23,32 +24,6 @@ namespace Rasterization {
             bool needsResort {};
             bool sampleable {};
         };
-
-        static void applyPaddingFlags(std::vector<Intercept>& intercepts) {
-            bool padAny = false;
-
-            for (int i = 0; i < (int) intercepts.size() - 1; ++i) {
-                Intercept& current = intercepts[i];
-                Intercept& next = intercepts[i + 1];
-                bool pad = current.cube != nullptr && current.cube->getCompGuideCurve() >= 0;
-                current.padBefore = pad;
-                next.padAfter = pad;
-
-                padAny |= pad;
-            }
-
-            if (!padAny) {
-                return;
-            }
-
-            for (int i = 1; i < (int) intercepts.size(); ++i) {
-                intercepts[i].padBefore &= !intercepts[i - 1].padBefore;
-            }
-
-            for (int i = 0; i < (int) intercepts.size() - 1; ++i) {
-                intercepts[i].padAfter &= !intercepts[i + 1].padAfter;
-            }
-        }
 
         template<typename GuideApplier>
         const Output& render(
@@ -98,7 +73,7 @@ namespace Rasterization {
             std::sort(output.intercepts.begin(), output.intercepts.end());
             restrict(output.intercepts, request);
 
-            applyPaddingFlags(output.intercepts);
+            InterceptPaddingFlagPolicy().apply(output.intercepts);
             output.sampleable = output.intercepts.size() >= 2;
 
             return output;

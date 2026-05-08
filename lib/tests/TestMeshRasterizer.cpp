@@ -12,6 +12,7 @@
 #include "../src/Curve/Rasterization/Policies/ComponentGuideSharpnessPolicy.h"
 #include "../src/Curve/Rasterization/Policies/CurveWaveformPreparationPolicy.h"
 #include "../src/Curve/Rasterization/Policies/GuideCurvePolicy.h"
+#include "../src/Curve/Rasterization/Policies/InterceptPaddingFlagPolicy.h"
 #include "../src/Curve/Rasterization/Policies/InterceptSortPolicy.h"
 #include "../src/Curve/Rasterization/Policies/MeshSliceOutputPolicy.h"
 #include "../src/Curve/Rasterization/RasterizerComposer.h"
@@ -494,6 +495,44 @@ TEST_CASE("InterceptSortPolicy sorts only when requested", "[meshrasterizer][pip
     REQUIRE(intercepts[0].x == Catch::Approx(0.25f));
     REQUIRE(intercepts[1].x == Catch::Approx(0.75f));
     REQUIRE_FALSE(needsResorting);
+}
+
+TEST_CASE("InterceptPaddingFlagPolicy marks consolidated component-guide padding spans", "[meshrasterizer][pipeline][intercepts]") {
+    auto mesh = createSyntheticWaveMesh();
+    VertCube* componentCube = mesh->getCubes().front();
+    VertCube* plainCube = mesh->getCubes().back();
+    componentCube->getCompGuideCurve() = 0;
+
+    vector<Intercept> intercepts {
+        Intercept(0.1f, 0.1f, componentCube),
+        Intercept(0.2f, 0.2f, componentCube),
+        Intercept(0.3f, 0.3f, plainCube),
+        Intercept(0.4f, 0.4f, plainCube),
+    };
+
+    Rasterization::InterceptPaddingFlagPolicy().apply(intercepts);
+
+    REQUIRE(intercepts[0].padBefore);
+    REQUIRE_FALSE(intercepts[1].padBefore);
+    REQUIRE_FALSE(intercepts[2].padBefore);
+    REQUIRE_FALSE(intercepts[3].padBefore);
+    REQUIRE_FALSE(intercepts[0].padAfter);
+    REQUIRE_FALSE(intercepts[1].padAfter);
+    REQUIRE(intercepts[2].padAfter);
+    REQUIRE_FALSE(intercepts[3].padAfter);
+
+    vector<Intercept> plainIntercepts {
+        Intercept(0.1f, 0.1f, plainCube),
+        Intercept(0.2f, 0.2f, plainCube),
+        Intercept(0.3f, 0.3f, plainCube),
+    };
+
+    Rasterization::InterceptPaddingFlagPolicy().apply(plainIntercepts);
+
+    for (const Intercept& intercept : plainIntercepts) {
+        REQUIRE_FALSE(intercept.padBefore);
+        REQUIRE_FALSE(intercept.padAfter);
+    }
 }
 
 TEST_CASE("AccurateMeshSlicer remains available as a dormant mesh slicing strategy", "[meshrasterizer][pipeline][slice]") {
