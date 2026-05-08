@@ -1,12 +1,9 @@
 #pragma once
 
-#include <memory>
-
 #include <App/SingletonAccessor.h>
 
 #include "MeshRasterizer.h"
-#include "Rasterization/RasterizerComposer.h"
-#include "Rasterization/Sources/VertexListSource.h"
+#include "Rasterization/Adapters/FxRasterizerAdapter.h"
 
 class FXRasterizer:
         public MeshRasterizer
@@ -25,8 +22,6 @@ public:
 
 private:
     Rasterization::RasterizationRequest createFxRequest();
-    void publishPipelineOutput(const Rasterization::FxRasterizationPipeline::Output& output);
 
-    Rasterization::VertexListSource vertexSource;
-    std::unique_ptr<Rasterization::ComposedFxRasterizer> composedRasterizer;
+    Rasterization::FxRasterizerAdapter adapter;
 };

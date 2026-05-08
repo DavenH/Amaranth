@@ -8,6 +8,8 @@
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/FXRasterizer.h"
 #include "../src/Curve/Mesh.h"
+#include "../src/Curve/MeshRasterizer.h"
+#include "../src/Curve/Rasterization/Adapters/FxRasterizerAdapter.h"
 #include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sources/VertexListSource.h"
 #include "RasterizerCompare.h"
@@ -209,6 +211,42 @@ TEST_CASE("RasterizerComposer builds an FX rasterizer without a Mesh", "[rasteri
     REQUIRE(output.intercepts.front().y == Catch::Approx(-0.6f));
     REQUIRE_FALSE(output.waveform.waveX.empty());
     REQUIRE(output.waveform.waveY.size() == output.waveform.waveX.size());
+}
+
+TEST_CASE("FxRasterizerAdapter publishes composed FX output through runtime", "[rasterization][fx][composer]") {
+    CurveTableScope curveTableScope;
+    std::vector<std::unique_ptr<Vertex>> ownedVertices;
+    std::vector<Vertex*> vertices;
+
+    ownedVertices.emplace_back(makeOwnedVertex(0.08f, 0.20f, 0.15f));
+    ownedVertices.emplace_back(makeOwnedVertex(0.35f, 0.82f, 0.40f));
+    ownedVertices.emplace_back(makeOwnedVertex(0.72f, 0.38f, 0.65f));
+    ownedVertices.emplace_back(makeOwnedVertex(0.94f, 0.60f, 0.25f));
+
+    for (auto& vertex : ownedVertices) {
+        vertices.emplace_back(vertex.get());
+    }
+
+    MeshRasterizer storage("FxAdapterStorage");
+    Rasterization::RasterizationRequest request = storage.createRasterizationRequest();
+    request.cyclic = false;
+    request.calcDepthDimensions = false;
+    request.scalingMode = Rasterization::PointScalingMode::Bipolar;
+
+    Rasterization::FxRasterizerAdapter adapter;
+    adapter.setVertices(&vertices);
+
+    REQUIRE(adapter.hasEnoughCubesForCrossSection());
+    REQUIRE(adapter.render(request, storage.createRasterizerRuntime()));
+    REQUIRE(storage.isSampleable());
+    REQUIRE(storage.getCurves().size() > 0);
+    REQUIRE(storage.getWaveX().size() > 0);
+    REQUIRE(storage.getWaveY().size() == storage.getWaveX().size());
+
+    adapter.setVertices(nullptr);
+    REQUIRE_FALSE(adapter.render(request, storage.createRasterizerRuntime()));
+    REQUIRE(storage.wasCleanedUp());
+    REQUIRE(storage.getWaveX().empty());
 }
 
 TEST_CASE("FXRasterizer is a compatibility adapter over the FX composer", "[rasterization][fx][composer]") {

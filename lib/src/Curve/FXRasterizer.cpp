@@ -1,7 +1,4 @@
 #include "FXRasterizer.h"
-#include "Rasterization/Policies/PaddingPolicy.h"
-#include "Rasterization/Policies/RasterizerCleanupPolicy.h"
-#include "Rasterization/Policies/RasterizerOutputPolicy.h"
 
 namespace {
     String describeFxMesh(Mesh* mesh) {
@@ -14,8 +11,8 @@ namespace {
             + " cubes=" + String(mesh->getNumCubes());
     }
 
-    String describeFxSource(Mesh* mesh, const Rasterization::VertexListSource& source) {
-        return describeFxMesh(mesh) + " sourceVerts=" + String(source.size());
+    String describeFxSource(Mesh* mesh, int sourceSize) {
+        return describeFxMesh(mesh) + " sourceVerts=" + String(sourceSize);
     }
 }
 
@@ -27,31 +24,11 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 
     Dimensions fxDimensions(Vertex::Phase, Vertex::Amp);
     setDims(fxDimensions);
-    vertexSource.setDimensions(fxDimensions.x, fxDimensions.y);
 }
 
 void FXRasterizer::calcCrossPoints() {
-    if (vertexSource.empty()) {
-        DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup empty " + describeFxSource(getMesh(), vertexSource));
-        cleanUp();
-        return;
-    }
-
-    DBG(MeshRasterizer::getName() + "::calcCrossPoints begin " + describeFxSource(getMesh(), vertexSource));
-
-    composedRasterizer.reset(new Rasterization::ComposedFxRasterizer(
-            Rasterization::RasterizerComposer::fx()
-                    .withSource(vertexSource)
-                    .withRequest(createFxRequest())
-                    .build()));
-
-    const auto& output = composedRasterizer->render();
-    if (!output.sampleable) {
-        cleanUp();
-        return;
-    }
-
-    publishPipelineOutput(output);
+    DBG(MeshRasterizer::getName() + "::calcCrossPoints begin " + describeFxSource(getMesh(), adapter.sourceSize()));
+    adapter.render(createFxRequest(), createRasterizerRuntime());
     // DBG(MeshRasterizer::getName() + "::calcCrossPoints ready icpts=" + String((int) icpts.size())
     //     + " curves=" + String((int) curves.size())
     //     + " waveX=" + String(waveX.size())
@@ -69,34 +46,23 @@ Rasterization::RasterizationRequest FXRasterizer::createFxRequest() {
 }
 
 void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
-    paddingSize = Rasterization::FxPaddingPolicy().build(icpts, curves);
-}
-
-void FXRasterizer::publishPipelineOutput(const Rasterization::FxRasterizationPipeline::Output& output) {
-    Rasterization::FxOutputPolicy(Rasterization::WaveformPublication::Assign)
-            .publish(output, createRasterizerRuntime());
+    adapter.buildPadding(icpts, curves, paddingSize);
 }
 
 void FXRasterizer::setMesh(Mesh* newMesh) {
     DBG(MeshRasterizer::getName() + "::setMesh " + describeFxMesh(newMesh));
     MeshRasterizer::setMesh(newMesh);
-    vertexSource.setVertices(newMesh == nullptr ? nullptr : &newMesh->getVerts());
+    adapter.setMesh(newMesh);
 }
 
 void FXRasterizer::setVertices(vector<Vertex*>* vertices) {
     DBG(MeshRasterizer::getName() + "::setVertices verts=" + String(vertices == nullptr ? 0 : (int) vertices->size()));
     MeshRasterizer::setMesh(nullptr);
-    vertexSource.setVertices(vertices);
+    adapter.setVertices(vertices);
 }
 
 void FXRasterizer::cleanUp() {
-    Rasterization::RasterizerCleanupOptions options;
-    options.clearFrontPadding = false;
-    options.clearBackPadding = false;
-    options.clearColorPoints = false;
-
-    Rasterization::RasterizerCleanupPolicy(options).clean(createRasterizerRuntime());
-    composedRasterizer.reset();
+    adapter.clean(createRasterizerRuntime());
 
     DBG(MeshRasterizer::getName() + "::cleanUp");
 }
@@ -106,5 +72,5 @@ int FXRasterizer::getNumDims() {
 }
 
 bool FXRasterizer::hasEnoughCubesForCrossSection() {
-    return vertexSource.size() > 1;
+    return adapter.hasEnoughCubesForCrossSection();
 }
