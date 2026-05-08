@@ -430,10 +430,8 @@ void MeshRasterizer::validateCurves() {
 // NB: set the intercept's adjustedX property rather than x
 // it will be used to re-sort and then assign the x property
 void MeshRasterizer::applyGuideCurves(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds) {
-    Rasterization::GuideCurvePolicyContext context = createGuideCurvePolicyContext();
-    context.noOffsetAtEnds = noOffsetAtEnds;
-
-    Rasterization::GuideCurvePolicy(context).apply(icpt, morph);
+    Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
+    guideApplier(icpt, morph, noOffsetAtEnds);
 }
 
 void MeshRasterizer::handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube) {
