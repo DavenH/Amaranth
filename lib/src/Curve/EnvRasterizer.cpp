@@ -494,17 +494,13 @@ bool EnvRasterizer::simulateRender(
         return false;
     }
 
-    double newAdvancement = advancement;
+    Rasterization::EnvelopeRenderTimingContext timingContext;
+    timingContext.deltaX = advancement;
+    timingContext.tempoScale = tempoScale;
+    timingContext.loopLength = getLoopLength();
+    timingContext.props = &props;
 
-    if (props.tempoSync) {
-        newAdvancement /= tempoScale;
-    }
-
-    if (props.scale != 1) {
-        newAdvancement /= (double) props.getEffectiveScale();
-    }
-
-    advancement = newAdvancement;
+    advancement = Rasterization::EnvelopeRenderTimingPolicy().prepare(timingContext).effectiveDelta;
 
     Rasterization::EnvelopePlaybackContext context;
     context.loopIndex = loopIndex;
