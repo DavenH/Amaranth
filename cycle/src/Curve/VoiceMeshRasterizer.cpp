@@ -39,15 +39,7 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
     needsResorting = false;
 
     ::Rasterization::MeshCubeSource source(mesh);
-    ::Rasterization::GuideCurvePolicyContext guideContext;
-    guideContext.guideCurveProvider = guideCurveProvider;
-    guideContext.reduction = &reduct;
-    guideContext.scalingMode = ::Rasterization::pointScalingModeFromLegacy(scalingType);
-    guideContext.cyclic = cyclic;
-    guideContext.needsResorting = &needsResorting;
-    guideContext.noiseSeed = noiseSeed;
-    guideContext.phaseOffsetSeeds = phaseOffsetSeeds;
-    guideContext.vertOffsetSeeds = vertOffsetSeeds;
+    ::Rasterization::GuideCurvePolicyContext guideContext = createGuideCurvePolicyContext();
 
     auto output = Cycle::Rasterization::VoiceRasterizerFacade().buildIntercepts(
             source,

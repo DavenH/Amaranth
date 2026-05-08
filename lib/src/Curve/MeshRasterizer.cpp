@@ -165,15 +165,7 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
             .withRequest(request)
             .build();
 
-    Rasterization::GuideCurvePolicyContext guideContext;
-    guideContext.guideCurveProvider = guideCurveProvider;
-    guideContext.reduction = &reduct;
-    guideContext.scalingMode = Rasterization::pointScalingModeFromLegacy(scalingType);
-    guideContext.cyclic = cyclic;
-    guideContext.needsResorting = &needsResorting;
-    guideContext.noiseSeed = noiseSeed;
-    guideContext.phaseOffsetSeeds = phaseOffsetSeeds;
-    guideContext.vertOffsetSeeds = vertOffsetSeeds;
+    Rasterization::GuideCurvePolicyContext guideContext = createGuideCurvePolicyContext();
 
     const auto& output = composedRasterizer.renderWithReduction(
             oscPhase,
@@ -431,16 +423,8 @@ void MeshRasterizer::validateCurves() {
 // NB: set the intercept's adjustedX property rather than x
 // it will be used to re-sort and then assign the x property
 void MeshRasterizer::applyGuideCurves(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds) {
-    Rasterization::GuideCurvePolicyContext context;
-    context.guideCurveProvider = guideCurveProvider;
-    context.reduction = &reduct;
-    context.scalingMode = Rasterization::pointScalingModeFromLegacy(scalingType);
-    context.cyclic = cyclic;
+    Rasterization::GuideCurvePolicyContext context = createGuideCurvePolicyContext();
     context.noOffsetAtEnds = noOffsetAtEnds;
-    context.needsResorting = &needsResorting;
-    context.noiseSeed = noiseSeed;
-    context.phaseOffsetSeeds = phaseOffsetSeeds;
-    context.vertOffsetSeeds = vertOffsetSeeds;
 
     Rasterization::GuideCurvePolicy(context).apply(icpt, morph);
 }
@@ -677,6 +661,20 @@ void MeshRasterizer::copyWaveform(const Rasterization::WaveformBuffers& waveform
     waveform.area.copyTo(area);
     zeroIndex = waveform.zeroIndex;
     oneIndex = waveform.oneIndex;
+}
+
+Rasterization::GuideCurvePolicyContext MeshRasterizer::createGuideCurvePolicyContext() {
+    Rasterization::GuideCurvePolicyContext context;
+    context.guideCurveProvider = guideCurveProvider;
+    context.reduction = &reduct;
+    context.scalingMode = Rasterization::pointScalingModeFromLegacy(scalingType);
+    context.cyclic = cyclic;
+    context.needsResorting = &needsResorting;
+    context.noiseSeed = noiseSeed;
+    context.phaseOffsetSeeds = phaseOffsetSeeds;
+    context.vertOffsetSeeds = vertOffsetSeeds;
+
+    return context;
 }
 
 void MeshRasterizer::makeCopy() {
