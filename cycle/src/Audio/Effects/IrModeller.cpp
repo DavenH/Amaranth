@@ -1,4 +1,5 @@
 #include <Array/Buffer.h>
+#include <Curve/Rasterization/Interfaces/MeshRasterizerWaveformProviderAdapter.h>
 #include <Util/StatusChecker.h>
 #include <Util/Util.h>
 #include "IrModeller.h"
@@ -85,10 +86,14 @@ void IrModeller::trimWave() {
     int threshIdx = size - 1;
 
     Buffer<float> channel = wavImpulse.audio.left;
+    ScopedAlloc<float> absMemory(size);
+    Buffer<float> magnitudes = absMemory.place(size);
+    channel.copyTo(magnitudes);
+    magnitudes.abs();
 
     for (int i = 0; i < size; ++i) {
         threshIdx = size - i - 1;
-        movingAverage = 0.95f * movingAverage + 0.05f * fabsf(channel[threshIdx]);
+        movingAverage = 0.95f * movingAverage + 0.05f * magnitudes[threshIdx];
 
         if (movingAverage > trimThres) {
             break;
@@ -110,7 +115,8 @@ void IrModeller::trimWave() {
 }
 
 void IrModeller::rasterizeImpulseDirect() {
-    rasterizeImpulse(audio.rawImpulse, audioThdRasterizer, true);
+    Rasterization::MeshRasterizerWaveformProviderAdapter waveform(&audioThdRasterizer);
+    rasterizeImpulse(audio.rawImpulse, waveform, true);
     filterImpulse(audio);
 
     for (auto & conv : convolvers) {
@@ -132,11 +138,16 @@ void IrModeller::rasterizeGraphicImpulse() {
         Buffer<float> channel = wavImpulse.audio.left;
         channel.copyTo(impulse);
 
-        if (maxSamples < impulse.size())
+        if (maxSamples < impulse.size()) {
             impulse.offset(maxSamples).zero();
+        }
     } else {
-        FXRasterizer &graphicRast = *dynamic_cast<FXRasterizer *>(ui->getRasterizer());
-        rasterizeImpulse(impulse, graphicRast, false);
+        Rasterization::MeshRasterizerWaveformProviderAdapter waveform(ui->getRasterizer());
+        if (!waveform.canRasterizeWaveform()) {
+            return;
+        }
+
+        rasterizeImpulse(impulse, waveform, false);
     }
 
     filterImpulse(graphic);
@@ -164,7 +175,10 @@ void IrModeller::filterImpulse(ConvState& chan) {
     }
 }
 
-void IrModeller::rasterizeImpulse(Buffer<float> impulse, FXRasterizer &rast, bool isAudioThread) {
+void IrModeller::rasterizeImpulse(
+        Buffer<float> impulse,
+        Rasterization::WaveformProvider& waveform,
+        bool isAudioThread) {
     if (impulse.empty()) {
         return;
     }
@@ -172,11 +186,11 @@ void IrModeller::rasterizeImpulse(Buffer<float> impulse, FXRasterizer &rast, boo
     Float32 sum = 0;
 
     if (!usingWavFile) {
-        if (!rast.hasEnoughCubesForCrossSection()) {
+        if (!waveform.canRasterizeWaveform()) {
             return;
         }
 
-        rast.performUpdate(Update);
+        waveform.updateWaveform(Update);
 
         double delta = (1.f - getRealConstant(IrModellerPadding)) / double(impulse.size() - 1);
         double phase = getRealConstant(IrModellerPadding);
@@ -186,14 +200,14 @@ void IrModeller::rasterizeImpulse(Buffer<float> impulse, FXRasterizer &rast, boo
             int samplingSize = impulse.size() * oversampler.getOversampleFactor();
 
             Buffer<Float32> buff = oversampler.getMemoryBuffer(samplingSize);
-            rast.samplePerfectly(delta, buff, phase);
+            waveform.samplePerfectly(delta, buff, phase);
 
             oversampler.sampleDown(buff, impulse);
         } else {
-            rast.sampleWithInterval(impulse, delta, phase);
+            waveform.sampleWithInterval(impulse, delta, phase);
         }
 
-        if (!rast.isBipolar()) {
+        if (!waveform.isBipolar()) {
             impulse.mul(2.f).add(-1.f);
         }
 
@@ -454,7 +468,8 @@ void IrModeller::unloadWave() {
     waveLoaded = false;
 
     setAudioImpulseLength(calcLength(ui->getParamGroup().getKnobValue(Length)));
-    rasterizeImpulse(audio.rawImpulse, audioThdRasterizer, true);
+    Rasterization::MeshRasterizerWaveformProviderAdapter waveform(&audioThdRasterizer);
+    rasterizeImpulse(audio.rawImpulse, waveform, true);
     filterImpulse(audio);
 }
 

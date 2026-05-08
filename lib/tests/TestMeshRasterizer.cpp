@@ -7,6 +7,7 @@
 #include "../src/Curve/MeshRasterizer.h"
 #include "../src/Curve/Rasterization/Interfaces/MeshRasterizerSamplerAdapter.h"
 #include "../src/Curve/Rasterization/Interfaces/MeshRasterizerSnapshotAdapter.h"
+#include "../src/Curve/Rasterization/Interfaces/MeshRasterizerWaveformProviderAdapter.h"
 #include "../src/Curve/Rasterization/Interpolation/AccurateMeshSlicer.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "../src/Curve/Rasterization/Policies/ComponentGuideSharpnessPolicy.h"
@@ -211,6 +212,32 @@ TEST_CASE("MeshRasterizerSamplerAdapter exposes only waveform sampling", "[meshr
     int rasterizerIndex = rasterizer.getZeroIndex();
     REQUIRE(sampler.sampleAt(0.5, adapterIndex) == rasterizer.sampleAt(0.5, rasterizerIndex));
     REQUIRE(adapterIndex == rasterizerIndex);
+}
+
+TEST_CASE("MeshRasterizerWaveformProviderAdapter exposes rasterized waveform playback", "[meshrasterizer][sampling]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+
+    MeshRasterizer rasterizer("SyntheticWaveformProviderAdapter");
+    configureWaveRasterizer(rasterizer, mesh.get());
+
+    Rasterization::MeshRasterizerWaveformProviderAdapter waveform(&rasterizer);
+
+    REQUIRE(waveform.getRasterizer() == &rasterizer);
+    REQUIRE(waveform.canRasterizeWaveform());
+    REQUIRE(waveform.isBipolar() == rasterizer.isBipolar());
+
+    waveform.updateWaveform(Update);
+    REQUIRE(rasterizer.isSampleable());
+
+    ScopedAlloc<Float32> sampleMemory;
+    sampleMemory.ensureSize(32);
+    Buffer<float> samples = sampleMemory.place(32);
+
+    double nextPhase = waveform.sampleWithInterval(samples, 1.0 / double(samples.size() - 1), 0.0);
+
+    REQUIRE(nextPhase > 0.0);
+    requireFinite(samples);
 }
 
 TEST_CASE("WaveformSampler matches MeshRasterizer sampling adapters", "[meshrasterizer][sampling]") {
