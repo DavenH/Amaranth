@@ -131,6 +131,7 @@ public:
     bool isBipolar() const                          { return scalingType == Bipolar || scalingType == HalfBipolar;  }
     bool doesIntegralSampling() const               { return integralSampling;          }
     bool doesCalcDepthDimensions() const            { return calcDepthDims;             }
+    ScalingType getScalingType() const              { return scalingType;               }
 
     MorphPosition& getMorphPosition()               { return morph;                     }
 

@@ -20,22 +20,22 @@ namespace {
 FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
         MeshRasterizer(name)
     ,   SingletonAccessor(repo, name) {
-    cyclic = false;
-    calcDepthDims = false;
+    setWrapsEnds(false);
+    setCalcDepthDimensions(false);
 
-    dims.x = Vertex::Phase;
-    dims.y = Vertex::Amp;
-    vertexSource.setDimensions(dims.x, dims.y);
+    Dimensions fxDimensions(Vertex::Phase, Vertex::Amp);
+    setDims(fxDimensions);
+    vertexSource.setDimensions(fxDimensions.x, fxDimensions.y);
 }
 
 void FXRasterizer::calcCrossPoints() {
     if (vertexSource.empty()) {
-        DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup empty " + describeFxSource(mesh, vertexSource));
+        DBG(MeshRasterizer::getName() + "::calcCrossPoints cleanup empty " + describeFxSource(getMesh(), vertexSource));
         cleanUp();
         return;
     }
 
-    DBG(MeshRasterizer::getName() + "::calcCrossPoints begin " + describeFxSource(mesh, vertexSource));
+    DBG(MeshRasterizer::getName() + "::calcCrossPoints begin " + describeFxSource(getMesh(), vertexSource));
 
     composedRasterizer.reset(new Rasterization::ComposedFxRasterizer(
             Rasterization::RasterizerComposer::fx()
@@ -61,7 +61,7 @@ Rasterization::RasterizationRequest FXRasterizer::createFxRequest() {
     Rasterization::RasterizationRequest request = createRasterizationRequest();
     request.cyclic = false;
     request.calcDepthDimensions = false;
-    request.scalingMode = Rasterization::pointScalingModeFromLegacyFx(scalingType);
+    request.scalingMode = Rasterization::pointScalingModeFromLegacyFx(getScalingType());
 
     return request;
 }
@@ -82,13 +82,13 @@ void FXRasterizer::publishPipelineOutput(const Rasterization::FxRasterizationPip
 
 void FXRasterizer::setMesh(Mesh* newMesh) {
     DBG(MeshRasterizer::getName() + "::setMesh " + describeFxMesh(newMesh));
-    mesh = newMesh;
+    MeshRasterizer::setMesh(newMesh);
     vertexSource.setVertices(newMesh == nullptr ? nullptr : &newMesh->getVerts());
 }
 
 void FXRasterizer::setVertices(vector<Vertex*>* vertices) {
     DBG(MeshRasterizer::getName() + "::setVertices verts=" + String(vertices == nullptr ? 0 : (int) vertices->size()));
-    mesh = nullptr;
+    MeshRasterizer::setMesh(nullptr);
     vertexSource.setVertices(vertices);
 }
 
