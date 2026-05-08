@@ -7,6 +7,7 @@
 #include "../src/Curve/MeshRasterizer.h"
 #include "../src/Curve/Rasterization/Interfaces/MeshRasterizerSamplerAdapter.h"
 #include "../src/Curve/Rasterization/Interfaces/MeshRasterizerSnapshotAdapter.h"
+#include "../src/Curve/Rasterization/Interpolation/AccurateMeshSlicer.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sources/MeshCubeSource.h"
@@ -285,10 +286,12 @@ TEST_CASE("MeshSlicePipeline matches MeshRasterizer intercept and color-point sl
     rasterizer.makeCopy();
 
     Rasterization::MeshSlicePipeline pipeline;
+    Rasterization::TrilinearMeshSlicer slicer;
     Rasterization::MeshCubeSource source(mesh.get());
     Rasterization::RasterizationRequest request = rasterizer.createRasterizationRequest();
     const auto& output = pipeline.render(
             source,
+            slicer,
             request,
             0.f,
             [](Intercept&, const MorphPosition&, bool) {});
@@ -306,6 +309,29 @@ TEST_CASE("MeshSlicePipeline matches MeshRasterizer intercept and color-point sl
     for (int i = 0; i < (int) output.colorPoints.size(); ++i) {
         INFO("colorPoint=" << i);
         RasterizerCompare::requireColorPointNear(output.colorPoints[i], rasterizer.getRastData().colorPoints[i]);
+    }
+}
+
+TEST_CASE("AccurateMeshSlicer remains available as a dormant mesh slicing strategy", "[meshrasterizer][pipeline][slice]") {
+    auto mesh = createSyntheticWaveMesh();
+    VertCube* cube = mesh->getCubes().front();
+
+    VertCube::ReductionData accurateData;
+    VertCube::ReductionData trilinearData;
+    MorphPosition position(0.5f, 0.5f, 0.5f);
+
+    Rasterization::AccurateMeshSlicer accurateSlicer;
+    Rasterization::TrilinearMeshSlicer trilinearSlicer;
+
+    REQUIRE(accurateSlicer.slice(*cube, Vertex::Time, accurateData, position));
+    REQUIRE(trilinearSlicer.slice(*cube, Vertex::Time, trilinearData, position));
+    REQUIRE(accurateData.pointOverlaps);
+    REQUIRE(accurateData.lineOverlaps);
+
+    for (int dim = 0; dim <= Vertex::Curve; ++dim) {
+        INFO("dim=" << dim);
+        REQUIRE(accurateData.v0.values[dim] == Catch::Approx(trilinearData.v0.values[dim]));
+        REQUIRE(accurateData.v1.values[dim] == Catch::Approx(trilinearData.v1.values[dim]));
     }
 }
 

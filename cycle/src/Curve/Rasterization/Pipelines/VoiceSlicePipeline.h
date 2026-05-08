@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <Curve/Intercept.h>
+#include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
 #include <Curve/Rasterization/Sources/MeshCubeSource.h>
 #include <Curve/VertCube.h>
 #include <Obj/MorphPosition.h>
@@ -61,7 +62,7 @@ namespace Cycle::Rasterization {
                 GuideApplier&& applyGuide,
                 VertCube::ReductionData& reductionData,
                 std::vector<Intercept>& intercepts) const {
-            cube->getInterceptsFast(Vertex::Time, reductionData, MorphPosition(voiceTime, morph.red, morph.blue));
+            slicer.slice(*cube, Vertex::Time, reductionData, MorphPosition(voiceTime, morph.red, morph.blue));
 
             Vertex* a = &reductionData.v0;
             Vertex* b = &reductionData.v1;
@@ -91,5 +92,6 @@ namespace Cycle::Rasterization {
         }
 
         VoicePointPositionPolicy pointPositionPolicy;
+        ::Rasterization::TrilinearMeshSlicer slicer;
     };
 }

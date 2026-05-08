@@ -132,7 +132,7 @@ namespace Rasterization {
 
         template<typename GuideApplier>
         const MeshSlicePipeline::Output& render(float oscPhase, GuideApplier&& applyGuide) {
-            return pipeline.render(source, request, oscPhase, applyGuide);
+            return pipeline.render(source, slicer, request, oscPhase, applyGuide);
         }
 
         template<typename GuideApplier>
@@ -140,7 +140,7 @@ namespace Rasterization {
                 float oscPhase,
                 GuideApplier&& applyGuide,
                 VertCube::ReductionData& reductionData) {
-            return pipeline.renderWithReduction(source, request, oscPhase, applyGuide, reductionData);
+            return pipeline.renderWithReduction(source, slicer, request, oscPhase, applyGuide, reductionData);
         }
 
         const MeshCubeSource& getSource() const { return source; }

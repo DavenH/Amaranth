@@ -6,6 +6,7 @@
 #include "../Curve/EnvelopeMesh.h"
 #include "../Curve/CollisionDetector.h"
 #include "../Curve/SimpleIcpt.h"
+#include "../Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h"
 #include "../Inter/UndoableMeshProcess.h"
 #include "../Obj/Ref.h"
 #include "../Thread/LockTracer.h"
@@ -757,10 +758,11 @@ void Interactor3D::sliceLines(const Vertex2& start, const Vertex2& end) {
     MorphPosition pos = getOffsetPosition(true);
 
     for (auto* cube : mesh->getCubes()) {
-        if(! cube->intersectsMorphRect(dims.x, reduceData, pos))
+        if(! cube->intersectsMorphRect(dims.x, reduceData, pos)) {
             continue;
+        }
 
-        cube->getInterceptsFast(dims.x, reduceData, pos);
+        Rasterization::TrilinearMeshSlicer().slice(*cube, dims.x, reduceData, pos);
 
         SurfaceLine line(&reduceData.v0, &reduceData.v1, dims.x);
         Vertex2 point = line.getCrossPoint(start, end, dims.x, dims.y);
@@ -1106,7 +1108,7 @@ void Interactor3D::updateInterceptsWithMesh(Mesh* mesh) {
     }
 
     for (auto& lit : mesh->getCubes()) {
-        lit->getInterceptsFast(dims.x, reduceData, pos);
+        Rasterization::TrilinearMeshSlicer().slice(*lit, dims.x, reduceData, pos);
 
         if(! reduceData.lineOverlaps) {
             continue;

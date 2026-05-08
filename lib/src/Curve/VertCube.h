@@ -103,10 +103,6 @@ public:
                               float& blueLow, float& blueHigh,
                               const MorphPosition& pos) const;
 
-    void getInterceptsAccurate(int primeDim,
-            ReductionData& data,
-            const MorphPosition& pos) const;
-
     char& guideCurveAt(int dim) { return guideCurveChans[dim]; }
     float& guideCurveGainAt(int dim) { return guideCurveGains[dim]; }
 

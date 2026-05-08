@@ -8,6 +8,7 @@
 #include "../Policies/InterceptRestrictionPolicy.h"
 #include "../Policies/PointScalingPolicy.h"
 #include "../RasterizationRequest.h"
+#include "../Interpolation/TrilinearMeshSlicer.h"
 #include "../Sources/MeshCubeSource.h"
 #include "../../VertCube.h"
 #include "../../../Obj/ColorPoint.h"
@@ -52,15 +53,17 @@ namespace Rasterization {
         template<typename GuideApplier>
         const Output& render(
                 const MeshCubeSource& source,
+                const TrilinearMeshSlicer& slicer,
                 const RasterizationRequest& request,
                 float oscPhase,
                 GuideApplier&& applyGuide) {
-            return renderWithReduction(source, request, oscPhase, applyGuide, reduction);
+            return renderWithReduction(source, slicer, request, oscPhase, applyGuide, reduction);
         }
 
         template<typename GuideApplier>
         const Output& renderWithReduction(
                 const MeshCubeSource& source,
+                const TrilinearMeshSlicer& slicer,
                 const RasterizationRequest& request,
                 float oscPhase,
                 GuideApplier&& applyGuide,
@@ -81,6 +84,7 @@ namespace Rasterization {
             for (int i = 0; i < source.size(); ++i) {
                 appendCubeIntercept(
                         source.cubeAt(i),
+                        slicer,
                         sliceDimension,
                         independent,
                         oscPhase,
@@ -110,6 +114,7 @@ namespace Rasterization {
         template<typename GuideApplier>
         void appendCubeIntercept(
                 VertCube* cube,
+                const TrilinearMeshSlicer& slicer,
                 int sliceDimension,
                 float independent,
                 float oscPhase,
@@ -118,7 +123,7 @@ namespace Rasterization {
                 const DefaultVertexWrapPolicy& wrapPolicy,
                 GuideApplier&& applyGuide,
                 VertCube::ReductionData& reductionData) {
-            cube->getInterceptsFast(sliceDimension, reductionData, request.morph);
+            slicer.slice(*cube, sliceDimension, reductionData, request.morph);
             if (!reductionData.pointOverlaps) {
                 return;
             }
