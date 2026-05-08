@@ -65,6 +65,24 @@ namespace Cycle::Rasterization {
             return *runtime.paddingSize;
         }
 
+        int buildChainedPadding(
+                CycleState& state,
+                ::Rasterization::RasterizerRuntime runtime,
+                float interceptPadding) const {
+            jassert(runtime.intercepts != nullptr);
+            jassert(runtime.curves != nullptr);
+            jassert(runtime.paddingSize != nullptr);
+
+            *runtime.paddingSize = chainedPaddingPolicy.build(
+                    *runtime.intercepts,
+                    state.backIcpts,
+                    state,
+                    *runtime.curves,
+                    interceptPadding);
+
+            return *runtime.paddingSize;
+        }
+
         void applyCurveResolution(std::vector<Curve>& curves) const {
             curveResolutionPolicy.apply(curves);
         }

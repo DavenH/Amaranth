@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <vector>
 
 #include "WaveformBuffers.h"
@@ -31,6 +32,20 @@ namespace Rasterization {
 
         bool isSampleable() const {
             return unsampleable != nullptr && !*unsampleable;
+        }
+
+        std::size_t interceptCount() const {
+            return intercepts != nullptr ? intercepts->size() : 0;
+        }
+
+        bool hasAtLeastIntercepts(std::size_t count) const {
+            return interceptCount() >= count;
+        }
+
+        void clearIntercepts() const {
+            if (intercepts != nullptr) {
+                intercepts->clear();
+            }
         }
     };
 }

@@ -144,6 +144,38 @@ TEST_CASE("VoiceRasterizerFacade can publish chained padding through runtime", "
     REQUIRE_FALSE(curves.empty());
 }
 
+TEST_CASE("VoiceRasterizerFacade can publish chained padding from runtime intercepts", "[cycle][rasterization][voice]") {
+    std::vector<Intercept> intercepts {
+        Intercept(0.10f, -0.50f, nullptr, 0.20f),
+        Intercept(0.42f, 0.25f, nullptr, 0.35f),
+        Intercept(0.78f, -0.10f, nullptr, 0.50f),
+    };
+
+    CycleState state;
+    state.backIcpts = {
+        Intercept(0.12f, -0.40f, nullptr, 0.25f),
+        Intercept(0.46f, 0.40f, nullptr, 0.45f),
+        Intercept(0.86f, 0.10f, nullptr, 0.65f),
+    };
+
+    std::vector<Curve> curves;
+    int paddingSize {};
+
+    ::Rasterization::RasterizerRuntime runtime;
+    runtime.intercepts = &intercepts;
+    runtime.curves = &curves;
+    runtime.paddingSize = &paddingSize;
+
+    int returnedPaddingSize = Cycle::Rasterization::VoiceRasterizerFacade().buildChainedPadding(
+            state,
+            runtime,
+            0.05f);
+
+    REQUIRE(returnedPaddingSize == 2);
+    REQUIRE(paddingSize == 2);
+    REQUIRE_FALSE(curves.empty());
+}
+
 TEST_CASE("VoiceRasterizerFacade can apply curve resolution through runtime", "[cycle][rasterization][voice]") {
     std::vector<Intercept> intercepts {
         Intercept(-0.10f, -0.50f),
@@ -182,7 +214,11 @@ TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows",
 
     bool needsResorting = true;
     Cycle::Rasterization::VoiceChainingPolicy policy(&needsResorting);
-    policy.beginCall(state, currentIntercepts);
+
+    ::Rasterization::RasterizerRuntime runtime;
+    runtime.intercepts = &currentIntercepts;
+
+    policy.beginCall(state, runtime);
 
     REQUIRE_FALSE(needsResorting);
     REQUIRE(currentIntercepts.size() == 2);
@@ -209,7 +245,7 @@ TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows",
     REQUIRE_FALSE(needsResorting);
     REQUIRE(state.backIcpts.size() == 2);
     REQUIRE(state.backIcpts[0].x == Approx(0.30f));
-    REQUIRE(policy.canBuildChainedCurves(state, currentIntercepts));
+    REQUIRE(policy.canBuildChainedCurves(state, runtime));
 }
 
 TEST_CASE("VoiceRasterizerFacade builds voice slice intercepts", "[cycle][rasterization][voice]") {

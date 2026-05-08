@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <Curve/Intercept.h>
+#include <Curve/Rasterization/RasterizerRuntime.h>
 
 #include "../../CycleState.h"
 #include "../Pipelines/VoiceSlicePipeline.h"
@@ -26,6 +27,14 @@ namespace Cycle::Rasterization {
             }
         }
 
+        void beginCall(
+                CycleState& state,
+                ::Rasterization::RasterizerRuntime runtime) const {
+            jassert(runtime.intercepts != nullptr);
+
+            beginCall(state, *runtime.intercepts);
+        }
+
         template<typename RestrictIntercepts>
         bool publishNextIntercepts(
                 const VoiceSlicePipeline::Output& output,
@@ -43,6 +52,12 @@ namespace Cycle::Rasterization {
                 const CycleState& state,
                 const std::vector<Intercept>& currentIntercepts) const {
             return state.backIcpts.size() >= 2 && currentIntercepts.size() >= 2;
+        }
+
+        bool canBuildChainedCurves(
+                const CycleState& state,
+                ::Rasterization::RasterizerRuntime runtime) const {
+            return state.backIcpts.size() >= 2 && runtime.hasAtLeastIntercepts(2);
         }
 
     private:

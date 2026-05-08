@@ -31,7 +31,8 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
     }
 
     Cycle::Rasterization::VoiceChainingPolicy chainingPolicy(&needsResorting);
-    chainingPolicy.beginCall(*state, icpts);
+    auto runtime = createRasterizerRuntime();
+    chainingPolicy.beginCall(*state, runtime);
 
     ::Rasterization::MeshCubeSource source(currentMesh);
     ::Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
@@ -51,7 +52,7 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
                 restrictIntercepts(intercepts);
             });
 
-    if (!chainingPolicy.canBuildChainedCurves(*state, icpts)) {
+    if (!chainingPolicy.canBuildChainedCurves(*state, runtime)) {
 		state->callCount++;
 		markWaveformUnsampleable();
 
@@ -65,10 +66,8 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
     // the first call is just padding for curves
     if (state->callCount > 0) {
         Cycle::Rasterization::VoiceRasterizerFacade().buildChainedPadding(
-                icpts,
-                state->backIcpts,
                 *state,
-                createRasterizerRuntime(),
+                runtime,
                 interceptPadding);
 
 		updateCurves();
@@ -78,18 +77,19 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 }
 
 void VoiceMeshRasterizer::updateCurves() {
-    if (icpts.size() < 2) {
+    auto runtime = createRasterizerRuntime();
+    if (!runtime.hasAtLeastIntercepts(2)) {
         cleanUp();
 
 		return;
 	}
 
-    Cycle::Rasterization::VoiceRasterizerFacade().applyCurveResolution(createRasterizerRuntime());
+    Cycle::Rasterization::VoiceRasterizerFacade().applyCurveResolution(runtime);
 
     prepareCurvesForWaveform();
 	calcWaveform();
 }
 
 void VoiceMeshRasterizer::orphanOldVerts() {
-    icpts.clear();
+    createRasterizerRuntime().clearIntercepts();
 }

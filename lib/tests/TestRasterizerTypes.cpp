@@ -292,7 +292,14 @@ TEST_CASE("MeshRasterizer exposes mutable storage as RasterizerRuntime", "[raste
     *runtime.paddingSize = 3;
 
     REQUIRE(runtime.intercepts->size() == 1);
+    REQUIRE(runtime.interceptCount() == 1);
+    REQUIRE(runtime.hasAtLeastIntercepts(1));
+    REQUIRE_FALSE(runtime.hasAtLeastIntercepts(2));
     REQUIRE(rasterizer.getPaddingSize() == 3);
+
+    runtime.clearIntercepts();
+
+    REQUIRE(runtime.intercepts->empty());
 }
 
 TEST_CASE("RasterizerRuntime can expose a snapshot source view", "[rasterization][runtime][snapshot]") {
