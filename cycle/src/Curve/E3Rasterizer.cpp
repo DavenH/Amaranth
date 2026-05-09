@@ -1,4 +1,5 @@
 #include <App/MeshLibrary.h>
+#include <App/Settings.h>
 #include <Curve/EnvelopeMesh.h>
 #include <Design/Updating/Updater.h>
 
@@ -17,6 +18,10 @@ E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
     setCalcDepthDimensions(false);
     setScalingMode(HalfBipolar);
     setLimits(0.f, 10.f);
+    setPrimaryViewDimensionProvider([repo]() {
+        return repo->get<Settings>("Settings").getGlobalSetting(
+                AppSettings::CurrentMorphAxis);
+    });
 }
 
 void E3Rasterizer::init() {
@@ -24,10 +29,6 @@ void E3Rasterizer::init() {
 
 int E3Rasterizer::getIncrement() {
     return getObj(EnvelopeInter3D).isDetailReduced() ? 6 : 1;
-}
-
-int E3Rasterizer::getPrimaryViewDimension() {
-    return getSetting(CurrentMorphAxis);
 }
 
 void E3Rasterizer::performUpdate(UpdateType updateType) {

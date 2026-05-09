@@ -20,6 +20,10 @@ GraphicRasterizer::GraphicRasterizer(
     setWrapsEnds(isCyclic);
     addListener(this);
     setLimits(-margin, 1 + margin);
+    setPrimaryViewDimensionProvider([repo]() {
+        return Cycle::Rasterization::GraphicRasterizerFacade().primaryViewDimension(
+                repo->get<Settings>("Settings").getGlobalSetting(AppSettings::CurrentMorphAxis));
+    });
 }
 
 void GraphicRasterizer::pullModPositionAndAdjust() {
@@ -38,8 +42,4 @@ void GraphicRasterizer::pullModPositionAndAdjust() {
     context.scratchChannel = props->scratchChan;
     context.scratchPosition = getObj(VisualDsp).getScratchPosition(props->scratchChan);
     setMorphPosition(Cycle::Rasterization::GraphicRasterizerFacade().resolveMorphPosition(context));
-}
-
-int GraphicRasterizer::getPrimaryViewDimension() {
-    return Cycle::Rasterization::GraphicRasterizerFacade().primaryViewDimension(getSetting(CurrentMorphAxis));
 }

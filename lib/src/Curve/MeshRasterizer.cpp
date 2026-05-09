@@ -50,6 +50,7 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    paddingSize         (2)
     ,    noiseSeed           (-1)
     ,    overridingDim       (Vertex::Time)
+    ,    primaryViewDimensionProvider()
 
     ,    interceptPadding    (0.f)
     ,    xMinimum            (0.f)
@@ -232,6 +233,10 @@ void MeshRasterizer::rebuildCurvesFromIntercepts() {
 }
 
 int MeshRasterizer::getPrimaryViewDimension() {
+    if (primaryViewDimensionProvider != nullptr) {
+        return primaryViewDimensionProvider();
+    }
+
     return Vertex::Time;
 }
 
@@ -490,6 +495,7 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     // flags
     this->overrideDim            = copy.overrideDim;
     this->overridingDim          = copy.overridingDim;
+    this->primaryViewDimensionProvider  = nullptr;
     this->cyclic                 = copy.cyclic;
     this->guideCurveProvider     = copy.guideCurveProvider;
     this->calcInterceptsOnly     = copy.calcInterceptsOnly;

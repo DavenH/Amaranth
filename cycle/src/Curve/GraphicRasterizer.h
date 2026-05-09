@@ -16,7 +16,6 @@ public:
                       bool cyclic, float margin);
 
     void pullModPositionAndAdjust();
-    int getPrimaryViewDimension() override;
 
     Interactor* getInteractor() const { return interactor; }
 

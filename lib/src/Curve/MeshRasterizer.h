@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <vector>
 #include "Curve.h"
@@ -122,7 +123,7 @@ public:
 
     virtual bool hasEnoughCubesForCrossSection();
     virtual int getNumDims();
-    virtual int getPrimaryViewDimension();
+    int getPrimaryViewDimension();
     Mesh* getCrossPointsMesh();
 
     /* ----------------------------------------------------------------------------- */
@@ -164,6 +165,9 @@ public:
     void setLowresCurves(bool areLow)               { lowResCurves  = areLow;           }
     void setNoiseSeed(int seed)                     { noiseSeed     = seed;             }
     void setOverridingDim(int dim)                  { overridingDim = dim;              }
+    void setPrimaryViewDimensionProvider(std::function<int()> provider) {
+        primaryViewDimensionProvider = provider;
+    }
     void setScalingMode(ScalingType type)           { scalingType   = type;             }
     void setToOverrideDim(bool does)                { overrideDim   = does;             }
     void setYellow(float yellow)                    { morph.time.setValueDirect(yellow);}
@@ -218,6 +222,7 @@ protected:
     int noiseSeed;
     int overridingDim;
     int paddingSize;
+    std::function<int()> primaryViewDimensionProvider;
 
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
 

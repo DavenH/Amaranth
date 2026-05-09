@@ -262,6 +262,22 @@ TEST_CASE("MeshRasterizer exposes current state as RasterizationRequest", "[rast
     REQUIRE(request.xMaximum == 1.5f);
 }
 
+TEST_CASE("MeshRasterizer primary view dimension can be supplied by a provider", "[rasterization][request]") {
+    MeshRasterizer rasterizer("RequestRasterizer");
+    rasterizer.setPrimaryViewDimensionProvider([]() { return Vertex::Red; });
+
+    RasterizationRequest request = rasterizer.createRasterizationRequest();
+
+    REQUIRE(request.primaryViewDimension == Vertex::Red);
+
+    rasterizer.setToOverrideDim(true);
+    rasterizer.setOverridingDim(Vertex::Blue);
+
+    RasterizationRequest overrideRequest = rasterizer.createRasterizationRequest();
+
+    REQUIRE(overrideRequest.primaryViewDimension == Vertex::Blue);
+}
+
 TEST_CASE("RasterizerRuntime defaults to an unbound compatibility view", "[rasterization][runtime]") {
     RasterizerRuntime runtime;
 
