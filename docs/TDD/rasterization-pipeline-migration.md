@@ -1343,7 +1343,193 @@ Acceptance:
 - envelope and voice paths depend on their domain interfaces rather than base
   protected state.
 
-### Phase 26: Rename Or Delete The Compatibility Shell
+### Phase 26: Split Interactor Rasterizer Binding
+
+Intent:
+
+- remove the largest remaining non-domain use of `MeshRasterizer*`,
+- let panels and interactors depend on the precise capabilities they need:
+  mesh binding, update dispatch, sampling, and snapshot reading.
+
+Code changes:
+
+- introduce narrow interfaces only where the existing interactor surface proves
+  they are necessary:
+  - `MeshBindableRasterizer` for `setMesh`, `getMesh`, and mesh-availability
+    queries,
+  - `RasterizerUpdateTarget` for `performUpdate`, `reset`, and optional
+    lifecycle hooks,
+  - `RasterizerVertexDomain` or equivalent only if wrapping, padding size, and
+    dimensional setup cannot live on an existing binding interface,
+- update `Interactor` to store those narrow interface pointers instead of one
+  `MeshRasterizer*`,
+- keep `getRasterizer()` only as a temporary compatibility accessor for callers
+  that have not yet migrated, and mark the callers in this TDD as remaining
+  work,
+- keep `RasterizerSampler` and `RasterizerSnapshotProvider` as the read-only UI
+  channels for panels,
+- remove casts in callers as their required capability becomes explicit.
+
+Tests:
+
+- compile-time coverage for all interactor callers,
+- `cycle-agent-africanhorn-icycle-preset-switch`,
+- `cycle-agent-midi-note`,
+- panel PSNR baselines for the bongo/default rasterizer-heavy preset suite,
+- full `ctest`.
+
+Acceptance:
+
+- `Interactor` no longer stores a single all-powerful `MeshRasterizer*` for new
+  code paths,
+- effect panels can bind FX rasterization through narrow interfaces,
+- remaining compatibility accessors are explicitly enumerated and scoped.
+
+### Phase 27: Remove FXRasterizer Inheritance
+
+Intent:
+
+- finish the FX path that Phase 24 and Phase 25 prepared,
+- prove that a production UI/audio rasterizer can be composed directly without
+  `MeshRasterizer` while still supporting mesh editing and waveform sampling.
+
+Code changes:
+
+- make `FXRasterizer` own:
+  - `RasterizerStorage`,
+  - `RasterizerController` if provider dispatch remains useful,
+  - `FxRasterizerAdapter` or the composed FX pipeline directly,
+- implement the narrow interfaces required by `EffectPanel`,
+  `Waveshaper`, and `IrModeller`,
+- remove `public MeshRasterizer` from `FXRasterizer`,
+- delete FX-only provider plumbing that only existed to drive the
+  `MeshRasterizer` base,
+- keep any temporary adapter from FX to an interactor interface in a clearly
+  named compatibility file, not in the core pipeline.
+
+Tests:
+
+- `TestFXRasterizerPointSource`,
+- `TestPaddingPolicy` FX coverage,
+- Waveshaper and IrModeller UI automation or focused state fixtures,
+- `cycle-agent-africanhorn-icycle-preset-switch`,
+- full `ctest`.
+
+Acceptance:
+
+- `FXRasterizer` no longer derives from `MeshRasterizer`,
+- FX audio consumers depend on `WaveformProvider`,
+- FX UI mesh editing does not require a full mesh-rasterizer base pointer.
+
+### Phase 28: Replace Graphic Rasterizer Subclasses
+
+Intent:
+
+- move the visual time/spectrum/phase rasterizers to composed graphic
+  pipelines,
+- keep visual regression detection tight because this phase touches the most
+  visible OpenGL panels.
+
+Code changes:
+
+- make `GraphicRasterizer` own storage/controller/facade dependencies directly,
+- move remaining graphic-specific behavior into named collaborators:
+  - axis/morph position policy,
+  - mesh source and trilinear slicer,
+  - hidden-dimension depth projection,
+  - guide-curve application,
+  - snapshot publication,
+- remove inheritance from `GraphicRasterizer`,
+- update `E3Rasterizer` separately after the core graphic rasterizer is stable;
+  it may become a batch/column renderer over a composed graphic or envelope
+  facade instead of a mesh-rasterizer subclass,
+- remove `static_cast<MeshRasterizer*>` usages in `VisualDsp` and
+  `Spectrum3D`.
+
+Tests:
+
+- `TestGraphicRasterizerPolicies`,
+- mesh slice and depth projection tests,
+- bongo/default panel PSNR baselines, including magnitude-to-phase switching,
+- `cycle-agent-africanhorn-icycle-preset-switch`,
+- full `ctest`.
+
+Acceptance:
+
+- `GraphicRasterizer` and `E3Rasterizer` no longer inherit from
+  `MeshRasterizer`,
+- Spectrum2D/Spectrum3D/Waveform2D/Waveform3D still publish equivalent
+  snapshots,
+- visual baselines stay within the established PSNR threshold.
+
+### Phase 29: Replace Voice Rasterizer Subclass
+
+Intent:
+
+- remove the audio-thread `VoiceMeshRasterizer` dependency on inherited mutable
+  base state,
+- keep the change separately verifiable with MIDI automation.
+
+Code changes:
+
+- make `VoiceMeshRasterizer` own composed voice pipeline dependencies directly,
+- keep chained intercept windows, curve-resolution behavior, and waveform
+  update gating inside voice-specific policies/facades,
+- implement only the interfaces required by synth voice callers and
+  `Multisample`,
+- migrate `SampleUtils` and `PitchedSample` away from `MeshRasterizer*` where
+  they only need waveform sampling or period creation,
+- remove inherited protected-state access from voice code.
+
+Tests:
+
+- `TestVoiceRasterizerFacade`,
+- `cycle-agent-midi-note`,
+- offline audio capture if available,
+- preset round-trip,
+- full `ctest`.
+
+Acceptance:
+
+- `VoiceMeshRasterizer` no longer inherits from `MeshRasterizer`,
+- MIDI note automation remains clean,
+- voice/chaining behavior remains covered by policy tests and one end-to-end
+  automation fixture.
+
+### Phase 30: Replace EnvRasterizer Subclass
+
+Intent:
+
+- migrate the most stateful rasterizer last, after storage, controller,
+  waveform, interactor, FX, graphic, and voice seams are proven.
+
+Code changes:
+
+- make `EnvRasterizer` own the envelope facade and render/playback policies
+  directly,
+- introduce an `EnvelopeRenderer` interface for callers that simulate or render
+  envelope output,
+- migrate `EnvelopeInter2D`, `PlaybackPanel`, and envelope 3D paths from
+  `MeshRasterizer*` to envelope-specific interfaces,
+- keep sustain/loop/release marker behavior in envelope policy groups,
+- remove remaining inherited base helper calls from envelope rendering.
+
+Tests:
+
+- `TestEnvRasterizerFacade`,
+- envelope loop/release tests,
+- `cycle-agent-africanhorn-icycle-preset-switch`,
+- `cycle-agent-midi-note`,
+- preset round-trip,
+- full `ctest`.
+
+Acceptance:
+
+- `EnvRasterizer` no longer inherits from `MeshRasterizer`,
+- envelope display, simulation, and render-time paths use envelope interfaces,
+- no remaining production concrete rasterizer inherits from `MeshRasterizer`.
+
+### Phase 31: Rename Or Delete The Compatibility Shell
 
 Intent:
 
@@ -1380,6 +1566,63 @@ Acceptance:
   policies, and sources,
 - deleted or renamed compatibility shell cannot be used accidentally for new
   rasterizer work.
+
+### Phase 32: Final Cleanup Review
+
+Intent:
+
+- pay down migration scaffolding and navigation cost after the behavioral
+  migration is complete,
+- make the new rasterization tree discoverable without needing to know exact
+  class names.
+
+Code changes:
+
+- review every file under `Rasterization/` and classify it as:
+  - permanent public interface,
+  - permanent source/interpolation/builder/sampling component,
+  - domain-specific facade/pipeline,
+  - temporary compatibility adapter,
+  - obsolete migration scaffolding,
+- delete obsolete adapters, duplicate facade wrappers, unused provider setters,
+  and one-off tests that only characterized deleted compatibility paths,
+- consolidate policy files into logical groups where that improves navigation:
+  - `Policies/Core/`: scaling, wrapping, sorting, restriction, degeneracy,
+    cleanup,
+  - `Policies/Curves/`: curve resolution, waveform preparation, waveform bake,
+    padding flags,
+  - `Policies/Mesh/`: guide curves, component-guide sharpness, depth
+    projection, mesh-slice output,
+  - `Policies/Envelope/`: marker, playback, release, render timing, state
+    validation, sustain point, envelope padding,
+  - `Policies/FX/`: FX padding/scaling adapters if they remain distinct,
+  - `cycle/src/Curve/Rasterization/Policies/Graphic/` and
+    `cycle/src/Curve/Rasterization/Policies/Voice/` for Cycle-only graphic and
+    voice policies,
+- add short umbrella headers or README files for the policy groups if they make
+  discovery easier without creating another god include,
+- update includes mechanically and keep moves in dedicated commits to make
+  review easy,
+- update ADR 002 and this TDD with the final file hierarchy and any
+  intentionally retained compatibility layer.
+
+Tests:
+
+- build after each mechanical move group,
+- full `ctest`,
+- standalone build,
+- plugin build if public include paths changed,
+- focused UI automation fixtures,
+- bongo/default panel PSNR baselines.
+
+Acceptance:
+
+- policy files are grouped by domain and responsibility rather than living in
+  one long flat directory,
+- no unused migration adapters/classes remain,
+- the final hierarchy communicates where to look even when the exact class name
+  is unknown,
+- ADR 002 and this TDD match the implemented architecture.
 
 ## Regression Baselines
 
