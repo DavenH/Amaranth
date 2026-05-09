@@ -1,6 +1,12 @@
 {
   "commands": [
     {
+      "command": "openFactoryPreset",
+      "preset": "african-horn",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
       "command": "assertState",
       "path": "document",
       "equals": "AfricanHorn"
