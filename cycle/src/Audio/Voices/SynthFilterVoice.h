@@ -3,10 +3,10 @@
 #include <App/MeshLibrary.h>
 #include <Array/ScopedAlloc.h>
 #include <Algo/Convolver.h>
+#include <Curve/Rasterization/MeshWaveformRasterizer.h>
 #include <Obj/Ref.h>
 #include "CycleBasedVoice.h"
 #include "VoiceParameterGroup.h"
-#include "../../Curve/Rasterization/Facades/SpectralFilterRasterizer.h"
 
 class Mesh;
 class SynthesizerVoice;
@@ -30,8 +30,8 @@ public:
 	void updateValue(int outputId, int dim, float value) override;
 
 private:
-	Cycle::Rasterization::SpectralFilterRasterizer freqRasterizer;
-	Cycle::Rasterization::SpectralFilterRasterizer phaseRasterizer;
+	::Rasterization::MeshWaveformRasterizer freqRasterizer;
+	::Rasterization::MeshWaveformRasterizer phaseRasterizer;
 
 	// TODO use stereo buffers, use some workbuffer for allocation
 	ScopedAlloc<Float32> magnitudes[2];

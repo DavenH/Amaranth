@@ -2,10 +2,11 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../CycleState.h"
-#include "../Rasterization/Facades/VoiceRasterizerFacade.h"
+#include "../Rasterization/Policies/Voice/VoiceChainedPaddingPolicy.h"
 #include "../Rasterization/Policies/Voice/VoiceChainingPolicy.h"
-#include "../Rasterization/Policies/Voice/VoiceWaveformUpdatePolicy.h"
-#include "../Rasterization/Pipelines/VoiceRasterizationPipeline.h"
+#include "../Rasterization/Policies/Voice/VoiceCurveResolutionPolicy.h"
+#include "../Rasterization/Policies/Voice/VoicePointPositionPolicy.h"
+#include "../Rasterization/Pipelines/VoiceSlicePipeline.h"
 #include <Curve/Mesh.h>
 #include <Curve/Rasterization/RasterizerRuntime.h>
 #include <Curve/Rasterization/Sources/MeshCubeSource.h>
@@ -50,7 +51,7 @@ namespace {
     }
 }
 
-TEST_CASE("VoiceRasterizerFacade resolves wrapped voice point positions", "[cycle][rasterization][voice]") {
+TEST_CASE("VoicePointPositionPolicy resolves wrapped voice point positions", "[cycle][rasterization][voice]") {
     Vertex a(0.20f, 0.25f);
     Vertex b(0.80f, 0.75f);
     Vertex vertex;
@@ -66,7 +67,7 @@ TEST_CASE("VoiceRasterizerFacade resolves wrapped voice point positions", "[cycl
     context.voiceTime = 0.5f;
     context.oscPhase = 0.85f;
 
-    auto result = Cycle::Rasterization::VoiceRasterizerFacade().resolvePoint(
+    auto result = Cycle::Rasterization::VoicePointPositionPolicy().resolve(
             context,
             true,
             &a,
@@ -78,7 +79,7 @@ TEST_CASE("VoiceRasterizerFacade resolves wrapped voice point positions", "[cycl
     REQUIRE(vertex.values[Vertex::Amp] == Approx(0.50f));
 }
 
-TEST_CASE("VoiceRasterizerFacade builds chained padding without caller-side policy construction", "[cycle][rasterization][voice]") {
+TEST_CASE("VoiceChainedPaddingPolicy builds chained padding", "[cycle][rasterization][voice]") {
     std::vector<Intercept> intercepts {
         Intercept(0.10f, -0.50f, nullptr, 0.20f),
         Intercept(0.42f, 0.25f, nullptr, 0.35f),
@@ -100,7 +101,7 @@ TEST_CASE("VoiceRasterizerFacade builds chained padding without caller-side poli
 
     std::vector<Curve> curves;
 
-    int paddingSize = Cycle::Rasterization::VoiceRasterizerFacade().buildChainedPadding(
+    int paddingSize = Cycle::Rasterization::VoiceChainedPaddingPolicy().build(
             intercepts,
             nextIntercepts,
             state,
@@ -113,72 +114,7 @@ TEST_CASE("VoiceRasterizerFacade builds chained padding without caller-side poli
     REQUIRE(state.frontB.x == Approx(-0.58f));
 }
 
-TEST_CASE("VoiceRasterizerFacade can publish chained padding through runtime", "[cycle][rasterization][voice]") {
-    std::vector<Intercept> intercepts {
-        Intercept(0.10f, -0.50f, nullptr, 0.20f),
-        Intercept(0.42f, 0.25f, nullptr, 0.35f),
-        Intercept(0.78f, -0.10f, nullptr, 0.50f),
-    };
-
-    std::vector<Intercept> nextIntercepts {
-        Intercept(0.12f, -0.40f, nullptr, 0.25f),
-        Intercept(0.46f, 0.40f, nullptr, 0.45f),
-        Intercept(0.86f, 0.10f, nullptr, 0.65f),
-    };
-
-    CycleState state;
-    std::vector<Curve> curves;
-    int paddingSize {};
-
-    ::Rasterization::RasterizerRuntime runtime;
-    runtime.curves = &curves;
-    runtime.paddingSize = &paddingSize;
-
-    int returnedPaddingSize = Cycle::Rasterization::VoiceRasterizerFacade().buildChainedPadding(
-            intercepts,
-            nextIntercepts,
-            state,
-            runtime,
-            0.05f);
-
-    REQUIRE(returnedPaddingSize == 2);
-    REQUIRE(paddingSize == 2);
-    REQUIRE_FALSE(curves.empty());
-}
-
-TEST_CASE("VoiceRasterizerFacade can publish chained padding from runtime intercepts", "[cycle][rasterization][voice]") {
-    std::vector<Intercept> intercepts {
-        Intercept(0.10f, -0.50f, nullptr, 0.20f),
-        Intercept(0.42f, 0.25f, nullptr, 0.35f),
-        Intercept(0.78f, -0.10f, nullptr, 0.50f),
-    };
-
-    CycleState state;
-    state.backIcpts = {
-        Intercept(0.12f, -0.40f, nullptr, 0.25f),
-        Intercept(0.46f, 0.40f, nullptr, 0.45f),
-        Intercept(0.86f, 0.10f, nullptr, 0.65f),
-    };
-
-    std::vector<Curve> curves;
-    int paddingSize {};
-
-    ::Rasterization::RasterizerRuntime runtime;
-    runtime.intercepts = &intercepts;
-    runtime.curves = &curves;
-    runtime.paddingSize = &paddingSize;
-
-    int returnedPaddingSize = Cycle::Rasterization::VoiceRasterizerFacade().buildChainedPadding(
-            state,
-            runtime,
-            0.05f);
-
-    REQUIRE(returnedPaddingSize == 2);
-    REQUIRE(paddingSize == 2);
-    REQUIRE_FALSE(curves.empty());
-}
-
-TEST_CASE("VoiceRasterizerFacade can apply curve resolution through runtime", "[cycle][rasterization][voice]") {
+TEST_CASE("VoiceCurveResolutionPolicy applies voice endpoint resolution", "[cycle][rasterization][voice]") {
     std::vector<Intercept> intercepts {
         Intercept(-0.10f, -0.50f),
         Intercept(0.10f, -0.25f),
@@ -193,10 +129,7 @@ TEST_CASE("VoiceRasterizerFacade can apply curve resolution through runtime", "[
         Curve(intercepts[2], intercepts[3], intercepts[4]),
     };
 
-    ::Rasterization::RasterizerRuntime runtime;
-    runtime.curves = &curves;
-
-    Cycle::Rasterization::VoiceRasterizerFacade().applyCurveResolution(runtime);
+    Cycle::Rasterization::VoiceCurveResolutionPolicy().apply(curves);
 
     REQUIRE(curves.front().resIndex == curves[1].resIndex);
     REQUIRE(curves.back().resIndex == curves[curves.size() - 2].resIndex);
@@ -250,133 +183,15 @@ TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows",
     REQUIRE(policy.canBuildChainedCurves(state, runtime));
 }
 
-TEST_CASE("VoiceRasterizationPipeline advances chained state and requests waveform update", "[cycle][rasterization][voice]") {
-    Mesh mesh("VoiceRasterizationPipelineMesh");
-    addVoiceCube(mesh, 0.20f, 0.80f, 0.25f, 0.75f, 0.35f);
-    addVoiceCube(mesh, 0.10f, 0.40f, 0.10f, 0.30f, 0.55f);
-
-    CycleState state;
-    state.callCount = 1;
-    state.backIcpts = {
-        Intercept(0.10f, -0.50f),
-        Intercept(0.42f, 0.25f),
-    };
-
-    std::vector<Intercept> intercepts;
-    std::vector<Curve> curves;
-    int paddingSize {};
-    bool needsResorting {};
-    bool unsampleable {};
-    bool updateCalled {};
-    VertCube::ReductionData reductionData;
-
-    ::Rasterization::RasterizerRuntime runtime;
-    runtime.intercepts = &intercepts;
-    runtime.curves = &curves;
-    runtime.paddingSize = &paddingSize;
-    runtime.unsampleable = &unsampleable;
-    runtime.needsResorting = &needsResorting;
-
-    Cycle::Rasterization::VoiceRasterizationPipeline::Context context;
-    context.mesh = &mesh;
-    context.state = &state;
-    context.runtime = runtime;
-    context.reductionData = &reductionData;
-    context.oscPhase = 0.85f;
-    context.interceptPadding = 0.05f;
-    context.initialAdvancement = 0.01f;
-
-    bool rendered = Cycle::Rasterization::VoiceRasterizationPipeline().render(
-            context,
-            [](Intercept&, const MorphPosition&) {},
-            [](std::vector<Intercept>&) {},
-            [&unsampleable](::Rasterization::RasterizerRuntime) {
-                unsampleable = true;
-            },
-            [&updateCalled]() {
-                updateCalled = true;
-            });
-
-    REQUIRE(rendered);
-    REQUIRE(updateCalled);
-    REQUIRE_FALSE(unsampleable);
-    REQUIRE(state.callCount == 2);
-    REQUIRE(paddingSize == 2);
-    REQUIRE_FALSE(intercepts.empty());
-    REQUIRE_FALSE(state.backIcpts.empty());
-    REQUIRE_FALSE(curves.empty());
-
-    mesh.destroy();
-}
-
-TEST_CASE("VoiceWaveformUpdatePolicy gates voice waveform baking on runtime intercepts", "[cycle][rasterization][voice]") {
-    std::vector<Intercept> intercepts {
-        Intercept(0.10f, -0.50f),
-        Intercept(0.42f, 0.25f),
-        Intercept(0.78f, -0.10f),
-    };
-
-    std::vector<Curve> curves {
-        Curve(intercepts[0], intercepts[1], intercepts[2]),
-    };
-
-    bool cleanedUp {};
-    bool prepared {};
-    bool baked {};
-
-    ::Rasterization::RasterizerRuntime runtime;
-    runtime.intercepts = &intercepts;
-    runtime.curves = &curves;
-
-    bool updated = Cycle::Rasterization::VoiceWaveformUpdatePolicy().update(
-            runtime,
-            [&cleanedUp]() {
-                cleanedUp = true;
-            },
-            [&prepared]() {
-                prepared = true;
-            },
-            [&baked]() {
-                baked = true;
-            });
-
-    REQUIRE(updated);
-    REQUIRE_FALSE(cleanedUp);
-    REQUIRE(prepared);
-    REQUIRE(baked);
-
-    intercepts.resize(1);
-    cleanedUp = false;
-    prepared = false;
-    baked = false;
-
-    updated = Cycle::Rasterization::VoiceWaveformUpdatePolicy().update(
-            runtime,
-            [&cleanedUp]() {
-                cleanedUp = true;
-            },
-            [&prepared]() {
-                prepared = true;
-            },
-            [&baked]() {
-                baked = true;
-            });
-
-    REQUIRE_FALSE(updated);
-    REQUIRE(cleanedUp);
-    REQUIRE_FALSE(prepared);
-    REQUIRE_FALSE(baked);
-}
-
-TEST_CASE("VoiceRasterizerFacade builds voice slice intercepts", "[cycle][rasterization][voice]") {
-    Mesh mesh("VoiceSliceFacadeMesh");
+TEST_CASE("VoiceSlicePipeline builds voice slice intercepts", "[cycle][rasterization][voice]") {
+    Mesh mesh("VoiceSlicePipelineMesh");
     addVoiceCube(mesh, 0.20f, 0.80f, 0.25f, 0.75f, 0.35f);
     addVoiceCube(mesh, 0.10f, 0.40f, 0.10f, 0.30f, 0.55f);
 
     ::Rasterization::MeshCubeSource source(&mesh);
     VertCube::ReductionData reductionData;
 
-    auto output = Cycle::Rasterization::VoiceRasterizerFacade().buildIntercepts(
+    auto output = Cycle::Rasterization::VoiceSlicePipeline().render(
             source,
             MorphPosition(0.50f, 0.50f, 0.50f),
             0.f,

@@ -9,8 +9,6 @@
 #include "../src/Curve/FXRasterizer.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/MeshRasterizer.h"
-#include "../src/Curve/Rasterization/Adapters/FxRasterizerAdapter.h"
-#include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sources/VertexListSource.h"
 #include "RasterizerCompare.h"
 
@@ -80,22 +78,6 @@ namespace {
         return values;
     }
 
-    RasterizerCompare::Snapshot captureFxPipelineOutput(
-            const Rasterization::FxRasterizationPipeline::Output& output) {
-        RasterizerCompare::Snapshot snapshot;
-
-        snapshot.waveX      = copyBuffer(output.waveform.waveX);
-        snapshot.waveY      = copyBuffer(output.waveform.waveY);
-        snapshot.diffX      = copyBuffer(output.waveform.diffX);
-        snapshot.slope      = copyBuffer(output.waveform.slope);
-        snapshot.curves     = output.curves;
-        snapshot.intercepts = output.intercepts;
-        snapshot.zeroIndex  = output.waveform.zeroIndex;
-        snapshot.oneIndex   = output.waveform.oneIndex;
-        snapshot.sampleable = output.sampleable;
-
-        return snapshot;
-    }
 }
 
 TEST_CASE("VertexListSource exposes FX vertices without a Mesh", "[rasterization][fx]") {
@@ -179,109 +161,4 @@ TEST_CASE("FXRasterizer mesh adapter matches direct vertex list rasterization", 
     directRasterizer.sampleEvenlyTo(directBuffer);
 
     RasterizerCompare::requireBufferNear(copyBuffer(directBuffer), copyBuffer(meshBuffer));
-}
-
-TEST_CASE("RasterizerComposer builds an FX rasterizer without a Mesh", "[rasterization][fx][composer]") {
-    CurveTableScope curveTableScope;
-    std::vector<std::unique_ptr<Vertex>> ownedVertices;
-    std::vector<Vertex*> vertices;
-
-    ownedVertices.emplace_back(makeOwnedVertex(0.08f, 0.20f, 0.15f));
-    ownedVertices.emplace_back(makeOwnedVertex(0.35f, 0.82f, 0.40f));
-    ownedVertices.emplace_back(makeOwnedVertex(0.72f, 0.38f, 0.65f));
-    ownedVertices.emplace_back(makeOwnedVertex(0.94f, 0.60f, 0.25f));
-
-    for (auto& vertex : ownedVertices) {
-        vertices.emplace_back(vertex.get());
-    }
-
-    Rasterization::RasterizationRequest request;
-    request.scalingMode = Rasterization::PointScalingMode::Bipolar;
-
-    auto rasterizer = Rasterization::RasterizerComposer::fx()
-            .withVertices(&vertices)
-            .withRequest(request)
-            .build();
-
-    const auto& output = rasterizer.render();
-
-    REQUIRE(rasterizer.getSource().size() == 4);
-    REQUIRE_FALSE(rasterizer.getRequest().cyclic);
-    REQUIRE_FALSE(rasterizer.getRequest().calcDepthDimensions);
-    REQUIRE(output.sampleable);
-    REQUIRE(output.intercepts.front().y == Catch::Approx(-0.6f));
-    REQUIRE_FALSE(output.waveform.waveX.empty());
-    REQUIRE(output.waveform.waveY.size() == output.waveform.waveX.size());
-}
-
-TEST_CASE("FxRasterizerAdapter publishes composed FX output through runtime", "[rasterization][fx][composer]") {
-    CurveTableScope curveTableScope;
-    std::vector<std::unique_ptr<Vertex>> ownedVertices;
-    std::vector<Vertex*> vertices;
-
-    ownedVertices.emplace_back(makeOwnedVertex(0.08f, 0.20f, 0.15f));
-    ownedVertices.emplace_back(makeOwnedVertex(0.35f, 0.82f, 0.40f));
-    ownedVertices.emplace_back(makeOwnedVertex(0.72f, 0.38f, 0.65f));
-    ownedVertices.emplace_back(makeOwnedVertex(0.94f, 0.60f, 0.25f));
-
-    for (auto& vertex : ownedVertices) {
-        vertices.emplace_back(vertex.get());
-    }
-
-    MeshRasterizer storage("FxAdapterStorage");
-    Rasterization::RasterizationRequest request = storage.createRasterizationRequest();
-    request.cyclic = false;
-    request.calcDepthDimensions = false;
-    request.scalingMode = Rasterization::PointScalingMode::Bipolar;
-
-    Rasterization::FxRasterizerAdapter adapter;
-    adapter.setVertices(&vertices);
-
-    REQUIRE(adapter.hasEnoughCubesForCrossSection());
-    REQUIRE(adapter.render(request, storage.createRasterizerRuntime()));
-    REQUIRE(storage.isSampleable());
-    REQUIRE(storage.getCurves().size() > 0);
-    REQUIRE(storage.getWaveX().size() > 0);
-    REQUIRE(storage.getWaveY().size() == storage.getWaveX().size());
-
-    adapter.setVertices(nullptr);
-    REQUIRE_FALSE(adapter.render(request, storage.createRasterizerRuntime()));
-    REQUIRE(storage.wasCleanedUp());
-    REQUIRE(storage.getWaveX().empty());
-}
-
-TEST_CASE("FXRasterizer is a compatibility adapter over the FX composer", "[rasterization][fx][composer]") {
-    CurveTableScope curveTableScope;
-    std::vector<std::unique_ptr<Vertex>> ownedVertices;
-    std::vector<Vertex*> vertices;
-
-    ownedVertices.emplace_back(makeOwnedVertex(0.08f, 0.20f, 0.15f));
-    ownedVertices.emplace_back(makeOwnedVertex(0.35f, 0.82f, 0.40f));
-    ownedVertices.emplace_back(makeOwnedVertex(0.72f, 0.38f, 0.65f));
-    ownedVertices.emplace_back(makeOwnedVertex(0.94f, 0.60f, 0.25f));
-
-    for (auto& vertex : ownedVertices) {
-        vertices.emplace_back(vertex.get());
-    }
-
-    FXRasterizer adapter(nullptr, "FxComposerAdapter");
-    adapter.setVertices(&vertices);
-    adapter.calcCrossPoints();
-    adapter.makeCopy();
-
-    Rasterization::RasterizationRequest request = adapter.createRasterizationRequest();
-    request.cyclic = false;
-    request.calcDepthDimensions = false;
-    request.scalingMode = Rasterization::pointScalingModeFromLegacyFx(MeshRasterizer::Unipolar);
-
-    auto composed = Rasterization::RasterizerComposer::fx()
-            .withVertices(&vertices)
-            .withRequest(request)
-            .build();
-
-    const auto& output = composed.render();
-
-    RasterizerCompare::requireSnapshotNear(
-            RasterizerCompare::capture(adapter),
-            captureFxPipelineOutput(output));
 }

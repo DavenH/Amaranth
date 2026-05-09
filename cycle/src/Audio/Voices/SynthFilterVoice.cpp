@@ -45,8 +45,21 @@ SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo
 
     auto& guideCurvePanel = getObj(GuideCurvePanel);
 
-    freqRasterizer.configureMagnitude(&guideCurvePanel, (float) spectMargin);
-    phaseRasterizer.configurePhase(&guideCurvePanel, (float) spectMargin);
+    freqRasterizer.setGuideCurveProvider(&guideCurvePanel);
+    auto& freqRequest = freqRasterizer.getRequest();
+    freqRequest.cyclic = false;
+    freqRequest.calcDepthDimensions = false;
+    freqRequest.xMinimum = -(float) spectMargin;
+    freqRequest.xMaximum = 1.f + (float) spectMargin;
+
+    phaseRasterizer.setGuideCurveProvider(&guideCurvePanel);
+    auto& phaseRequest = phaseRasterizer.getRequest();
+    phaseRequest.cyclic = false;
+    phaseRequest.calcDepthDimensions = false;
+    phaseRequest.xMinimum = -(float) spectMargin;
+    phaseRequest.xMaximum = 1.f + (float) spectMargin;
+    phaseRequest.scalingMode = ::Rasterization::PointScalingMode::Bipolar;
+    phaseRequest.interpolateCurves = true;
 
     cycleCompositeAlgo = Interpolate;
 }
@@ -209,9 +222,10 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
 
         float progress = getScratchTime(props.scratchChan, frame.frontier);
 
-        freqRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
-        freqRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-        freqRasterizer.calcCrossPoints(layer.mesh);
+        auto& request = freqRasterizer.getRequest();
+        request.morph = props.pos[parent->voiceIndex].withTime(progress);
+        request.noiseSeed = random.nextInt(GuideCurvePanel::tableSize);
+        freqRasterizer.render(layer.mesh);
 
         if (freqRasterizer.isSampleable()) {
             freqRasterizer.sampleAtIntervals(fftRamp, harmRast);
@@ -340,9 +354,10 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 
             float progress = getScratchTime(props.scratchChan, frame.frontier);
 
-            phaseRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
-            phaseRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-            phaseRasterizer.calcCrossPoints(layer.mesh);
+            auto& request = phaseRasterizer.getRequest();
+            request.morph = props.pos[parent->voiceIndex].withTime(progress);
+            request.noiseSeed = random.nextInt(GuideCurvePanel::tableSize);
+            phaseRasterizer.render(layer.mesh);
 
             if (phaseRasterizer.isSampleable()) {
                 phaseRasterizer.sampleAtIntervals(fftRamp, harmRast);

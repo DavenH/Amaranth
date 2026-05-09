@@ -4,35 +4,22 @@
 
 #include "../GuideCurveOffsetSeeds.h"
 #include "../Policies/Core/PaddingPolicy.h"
+#include "../RenderResult.h"
 #include "CurveWaveformPipeline.h"
 #include "../RasterizationRequest.h"
-#include "../WaveformBuffers.h"
 #include "../Sources/PointListSource.h"
 #include "../../Curve.h"
-#include "../../../Array/ScopedAlloc.h"
 
 namespace Rasterization {
     class PointListRasterizationPipeline {
     public:
-        struct Output {
-            std::vector<Intercept> frontPadding;
-            std::vector<Intercept> backPadding;
-            std::vector<Curve> curves;
-
-            ScopedAlloc<float> memory;
-            WaveformBuffers waveform;
-            std::vector<GuideCurveRegion> guideCurveRegions;
-
-            int paddingSize { 2 };
-            bool sampleable {};
-        };
-
-        const Output& render(
+        const RenderResult& render(
                 std::vector<Intercept>& points,
                 const RasterizationRequest& request,
                 GuideCurveProvider* guideCurveProvider = nullptr,
                 GuideCurveOffsetSeeds* offsetSeeds = nullptr) {
-            output = Output();
+            output.clear();
+            output.paddingSize = 2;
 
             PointListSource source(points);
             if (source.empty()) {
@@ -82,12 +69,12 @@ namespace Rasterization {
                     output.curves,
                     context,
                     [this](int totalRes) {
-                        output.waveform.place(output.memory, totalRes);
+                        output.waveform.place(output.waveformMemory, totalRes);
                         return WaveformBufferRefs(output.waveform);
                     });
         }
 
-        Output output;
+        RenderResult output;
         CurveWaveformPipeline curveWaveformPipeline;
         GuideCurveOffsetSeeds guideCurveOffsetSeeds;
     };

@@ -24,10 +24,6 @@ using std::vector;
 
 class IrModellerUI;
 
-namespace Rasterization {
-    class WaveformProvider;
-}
-
 class IrModeller:
     public Effect
     ,   public AudioHub::SettingListener
@@ -98,7 +94,7 @@ public:
 
 private:
     void filterImpulse(ConvState& chan);
-    void rasterizeImpulse(Buffer<float> impulse, Rasterization::WaveformProvider& waveform, bool isAudioThread);
+    void rasterizeImpulse(Buffer<float> impulse, FXRasterizer& waveform, bool isAudioThread);
     void unloadWave();
     void setImpulseLength(ConvState& state, int length);
     void setAudioImpulseLength(int length);

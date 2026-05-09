@@ -39,7 +39,6 @@ class GuideCurveProvider;
 namespace Rasterization {
     class GuideCurveApplier;
     struct GuideCurvePolicyContext;
-    class MeshRasterizerFacade;
 }
 
 typedef vector<Intercept>::iterator IcptIter;
@@ -291,7 +290,6 @@ protected:
     Dimensions dims;
     MicroTimer timer;
     MorphPosition morph;
-    std::unique_ptr<Rasterization::MeshRasterizerFacade> facade;
 
     Rasterization::RasterizerStorage storage;
 

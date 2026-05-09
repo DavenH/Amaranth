@@ -83,7 +83,7 @@ public:
     void effectiveMeshChanged(int layerGroup, Mesh* mesh) override;
     void setMeshAndUpdate(Mesh* mesh, bool repaint = true);
     void setMeshAndUpdateNoRepaint(Mesh* mesh);
-    Rasterization::WaveformProvider* getWaveformProvider() { return &localRasterizer; }
+    FXRasterizer* getLocalRasterizer() { return &localRasterizer; }
     void exitClientLock() override;
     void enterClientLock() override;
     void doubleMesh() override;

@@ -3,17 +3,19 @@
 #include <vector>
 
 #include "GuideCurveOffsetSeeds.h"
+#include "Interpolation/TrilinearMeshSlicer.h"
 #include "Policies/Core/SnapshotPolicy.h"
+#include "Pipelines/MeshSlicePipeline.h"
 #include "Pipelines/PointListRasterizationPipeline.h"
 #include "Policies/Mesh/GuideCurvePolicy.h"
-#include "RasterizerComposer.h"
 #include "Sampling/WaveformSampler.h"
+#include "Sources/MeshCubeSource.h"
 
 class GuideCurveProvider;
 class Mesh;
 
 namespace Rasterization {
-    class ComposedMeshWaveformRasterizer {
+    class MeshWaveformRasterizer {
     public:
         RasterizationRequest& getRequest() { return request; }
         const RasterizationRequest& getRequest() const { return request; }
@@ -37,16 +39,16 @@ namespace Rasterization {
                 return;
             }
 
-            auto rasterizer = RasterizerComposer::mesh()
-                    .withSource(MeshCubeSource(mesh))
-                    .withSlicer(TrilinearMeshSlicer())
-                    .withRequest(request)
-                    .build();
-
             bool needsResorting = false;
 
             GuideCurveApplier guideApplier = createGuideCurveApplier(reduction, &needsResorting);
-            meshOutput = rasterizer.renderWithReduction(oscPhase, guideApplier, reduction);
+            meshOutput = meshPipeline.renderWithReduction(
+                    MeshCubeSource(mesh),
+                    TrilinearMeshSlicer(),
+                    request,
+                    oscPhase,
+                    guideApplier,
+                    reduction);
 
             meshIntercepts = meshOutput.intercepts;
             waveformOutput = &waveformPipeline.render(
@@ -136,7 +138,7 @@ namespace Rasterization {
             return meshOutput;
         }
 
-        const PointListRasterizationPipeline::Output* getWaveformOutput() const {
+        const RenderResult* getWaveformOutput() const {
             return waveformOutput;
         }
 
@@ -149,8 +151,9 @@ namespace Rasterization {
 
         RasterizationRequest request;
         GuideCurveOffsetSeeds guideCurveOffsetSeeds;
+        MeshSlicePipeline meshPipeline;
         PointListRasterizationPipeline waveformPipeline;
-        PointListRasterizationPipeline::Output const* waveformOutput {};
+        RenderResult const* waveformOutput {};
         MeshSlicePipeline::Output meshOutput;
 
         std::vector<Intercept> meshIntercepts;

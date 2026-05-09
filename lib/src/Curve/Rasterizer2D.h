@@ -3,8 +3,7 @@
 #include "Intercept.h"
 #include "Curve.h"
 #include "Rasterization/Builders/TransferTable.h"
-#include "Rasterization/Policies/Core/RasterizerOutputPolicy.h"
-#include "Rasterization/RasterizerComposer.h"
+#include "Rasterization/Pipelines/PointListRasterizationPipeline.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
 #include "Rasterization/Sources/PointListSource.h"
 #include "Rasterization/State/RasterizerStorage.h"
@@ -160,21 +159,6 @@ public:
         return request;
     }
 
-    Rasterization::RasterizerRuntime createRasterizerRuntime() {
-        Rasterization::RasterizerRuntime runtime;
-        runtime.intercepts      = &storage.intercepts.intercepts;
-        runtime.curves          = &storage.curves.curves;
-        runtime.frontPadding    = &storage.intercepts.frontPadding;
-        runtime.backPadding     = &storage.intercepts.backPadding;
-        runtime.colorPoints     = &storage.intercepts.colorPoints;
-        runtime.waveform        = Rasterization::WaveformBufferRefs(storage.waveform.waveform);
-        runtime.paddingSize     = &paddingSize;
-        runtime.unsampleable    = &unsampleable;
-        runtime.needsResorting  = &needsResorting;
-
-        return runtime;
-    }
-
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
         return Rasterization::WaveformSampler::sampleWithInterval(
@@ -220,18 +204,18 @@ inline void Rasterizer2D::renderPointListCrossPoints() {
     Rasterization::RasterizationRequest request = createRasterizationRequest();
     request.cyclic = cyclic;
 
-    auto composedRasterizer = Rasterization::RasterizerComposer::pointList()
-            .withSource(pointSource.intercepts())
-            .withRequest(request)
-            .build();
-
-    const auto& output = composedRasterizer.render();
+    Rasterization::PointListRasterizationPipeline pipeline;
+    const auto& output = pipeline.render(pointSource.intercepts(), request);
     if (!output.sampleable) {
         cleanUp();
         return;
     }
 
     updateBuffers(output.waveform.waveX.size());
-    Rasterization::PointListOutputPolicy(Rasterization::WaveformPublication::Copy)
-            .publish(output, createRasterizerRuntime());
+    storage.intercepts.frontPadding = output.frontPadding;
+    storage.intercepts.backPadding = output.backPadding;
+    storage.curves.curves = output.curves;
+    paddingSize = output.paddingSize;
+    unsampleable = !output.sampleable;
+    storage.waveform.waveform.copyFrom(output.waveform);
 }

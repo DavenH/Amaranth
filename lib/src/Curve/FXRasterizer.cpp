@@ -1,6 +1,12 @@
 #include "FXRasterizer.h"
 
+#include <algorithm>
+
 #include "Rasterization/Builders/RasterizerSnapshotBuilder.h"
+#include "Rasterization/GuideCurveOffsetSeeds.h"
+#include "Rasterization/Pipelines/CurveWaveformPipeline.h"
+#include "Rasterization/Policies/Core/InterceptRestrictionPolicy.h"
+#include "Rasterization/Policies/Core/PaddingPolicy.h"
 #include "Rasterization/Policies/Core/PointScalingPolicy.h"
 #include "Rasterization/Policies/Core/SnapshotPolicy.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
@@ -26,18 +32,14 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 }
 
 void FXRasterizer::calcCrossPoints() {
-    DBG(getName() + "::calcCrossPoints begin " + describeFxSource(mesh, adapter.sourceSize()));
+    DBG(getName() + "::calcCrossPoints begin " + describeFxSource(mesh, source.size()));
 
-    if (!adapter.render(createFxRequest(), createRasterizerRuntime())) {
-        publishSnapshot();
-        return;
-    }
-
+    renderFx(createFxRequest());
     publishSnapshot();
 }
 
 void FXRasterizer::cleanUp() {
-    adapter.clean(createRasterizerRuntime());
+    result.clear();
     publishSnapshot();
 
     DBG(getName() + "::cleanUp");
@@ -64,21 +66,21 @@ void FXRasterizer::reset() {
 void FXRasterizer::setMesh(Mesh* newMesh) {
     mesh = newMesh;
     DBG(getName() + "::setMesh " + describeFxMesh(newMesh));
-    adapter.setMesh(newMesh);
+    source.setVertices(newMesh == nullptr ? nullptr : &newMesh->getVerts());
 }
 
 void FXRasterizer::setVertices(vector<Vertex*>* vertices) {
     DBG(getName() + "::setVertices verts=" + String(vertices == nullptr ? 0 : (int) vertices->size()));
     mesh = nullptr;
-    adapter.setVertices(vertices);
+    source.setVertices(vertices);
 }
 
 bool FXRasterizer::canRasterizeWaveform() const {
-    return adapter.hasEnoughCubesForCrossSection();
+    return source.size() > 1;
 }
 
 bool FXRasterizer::hasEnoughCubesForCrossSection() {
-    return adapter.hasEnoughCubesForCrossSection();
+    return source.size() > 1;
 }
 
 bool FXRasterizer::isBipolar() const {
@@ -86,11 +88,11 @@ bool FXRasterizer::isBipolar() const {
 }
 
 bool FXRasterizer::isSampleable() {
-    return !unsampleable && Rasterization::WaveformSampler::isSampleable(storage.waveform.waveform);
+    return result.sampler().isSampleable();
 }
 
 bool FXRasterizer::isSampleableAt(float x) {
-    return !unsampleable && Rasterization::WaveformSampler::isSampleableAt(storage.waveform.waveform, x);
+    return result.sampler().isSampleableAt(x);
 }
 
 void FXRasterizer::updateWaveform(UpdateType updateType) {
@@ -98,27 +100,19 @@ void FXRasterizer::updateWaveform(UpdateType updateType) {
 }
 
 float FXRasterizer::sampleAt(double angle) {
-    return Rasterization::WaveformSampler::sampleAt(storage.waveform.waveform, unsampleable, angle);
+    return result.sampler().sampleAt(angle);
 }
 
 float FXRasterizer::sampleAt(double angle, int& currentIndex) {
-    return Rasterization::WaveformSampler::sampleAt(storage.waveform.waveform, unsampleable, angle, currentIndex);
+    return result.sampler().sampleAt(angle, currentIndex);
 }
 
 double FXRasterizer::sampleWithInterval(Buffer<float> buffer, double delta, double phase) {
-    return Rasterization::WaveformSampler::sampleWithInterval(
-            storage.waveform.waveform,
-            buffer,
-            delta,
-            phase);
+    return result.sampler().sampleWithInterval(buffer, delta, phase);
 }
 
 float FXRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
-    return Rasterization::WaveformSampler::samplePerfectly(
-            storage.waveform.waveform,
-            delta,
-            buffer,
-            phase);
+    return result.sampler().samplePerfectly(delta, buffer, phase);
 }
 
 void FXRasterizer::sampleEvenlyTo(const Buffer<float>& dest) {
@@ -130,7 +124,7 @@ void FXRasterizer::sampleEvenlyTo(const Buffer<float>& dest) {
 }
 
 void FXRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curves) {
-    adapter.buildPadding(intercepts, curves, paddingSize);
+    result.paddingSize = Rasterization::FxPaddingPolicy().build(intercepts, curves);
 }
 
 Rasterization::RasterizationRequest FXRasterizer::createFxRequest() const {
@@ -143,23 +137,63 @@ Rasterization::RasterizationRequest FXRasterizer::createFxRequest() const {
     return request;
 }
 
-Rasterization::RasterizerRuntime FXRasterizer::createRasterizerRuntime() {
-    Rasterization::RasterizerRuntime runtime;
-    runtime.intercepts      = &storage.intercepts.intercepts;
-    runtime.curves          = &storage.curves.curves;
-    runtime.frontPadding    = &storage.intercepts.frontPadding;
-    runtime.backPadding     = &storage.intercepts.backPadding;
-    runtime.colorPoints     = &storage.intercepts.colorPoints;
-    runtime.waveform        = Rasterization::WaveformBufferRefs(storage.waveform.waveform);
-    runtime.paddingSize     = &paddingSize;
-    runtime.unsampleable    = &unsampleable;
-    runtime.needsResorting  = &needsResorting;
+bool FXRasterizer::renderFx(const Rasterization::RasterizationRequest& request) {
+    result.clear();
 
-    return runtime;
+    if (source.empty()) {
+        return false;
+    }
+
+    source.copyInterceptsTo(result.intercepts);
+
+    Rasterization::PointScalingPolicy pointScaling(request.scalingMode);
+    for (auto& intercept : result.intercepts) {
+        intercept.y = pointScaling.scale(intercept.y);
+    }
+
+    if (result.intercepts.empty()) {
+        return false;
+    }
+
+    std::sort(result.intercepts.begin(), result.intercepts.end());
+
+    Rasterization::InterceptRestrictionPolicy::Context context;
+    context.cyclic = false;
+    context.minimumX = request.xMinimum;
+    context.maximumX = request.xMaximum;
+    Rasterization::InterceptRestrictionPolicy(context).restrict(result.intercepts);
+
+    if (result.intercepts.size() < 2) {
+        return false;
+    }
+
+    result.paddingSize = Rasterization::FxPaddingPolicy().build(result.intercepts, result.curves);
+    bakeWaveform(request);
+
+    return result.sampleable;
+}
+
+void FXRasterizer::bakeWaveform(const Rasterization::RasterizationRequest& request) {
+    Rasterization::CurveWaveformPipeline::Context context;
+    context.request = &request;
+    context.offsetSeeds = &guideCurveOffsetSeeds;
+    context.paddingSize = result.paddingSize;
+
+    result.sampleable = curveWaveformPipeline.render(
+            result.curves,
+            context,
+            [this](int totalRes) {
+                result.waveform.place(result.waveformMemory, totalRes);
+                return Rasterization::WaveformBufferRefs(result.waveform);
+            });
 }
 
 void FXRasterizer::publishSnapshot() {
-    Rasterization::RasterizerSnapshotSource source =
-            Rasterization::createRasterizerSnapshotSource(createRasterizerRuntime());
-    Rasterization::RasterizerSnapshotBuilder().publish(storage.snapshot.rasterizerData, source);
+    Rasterization::RasterizerSnapshotSource snapshot;
+    snapshot.intercepts = &result.intercepts;
+    snapshot.colorPoints = &result.colorPoints;
+    snapshot.curves = &result.curves;
+    snapshot.waveform = result.waveform;
+
+    Rasterization::RasterizerSnapshotBuilder().publish(rasterizerData, snapshot);
 }

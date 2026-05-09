@@ -4,7 +4,7 @@
 #include <App/SingletonRepo.h>
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
-#include <Curve/Rasterization/ComposedMeshWaveformRasterizer.h>
+#include <Curve/Rasterization/MeshWaveformRasterizer.h>
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
 #include <Curve/Rasterization/Interfaces/GuideCurveBindableRasterizer.h>
 #include <Curve/Rasterization/Interfaces/MeshBindableRasterizer.h>
@@ -66,7 +66,7 @@ private:
     void publishSnapshot(const ::Rasterization::MeshSlicePipeline::Output& meshOutput);
 
     Mesh* mesh {};
-    ::Rasterization::ComposedMeshWaveformRasterizer rasterizer;
+    ::Rasterization::MeshWaveformRasterizer rasterizer;
     RasterizerData rasterizerData;
 
     vector<Column> columns;

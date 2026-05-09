@@ -5,8 +5,8 @@
 #include "EnvelopeMesh.h"
 #include "GuideCurveProvider.h"
 #include "Rasterization/Builders/TransferTable.h"
-#include "Rasterization/Facades/EnvRasterizerFacade.h"
-#include "Rasterization/Pipelines/MeshSliceRenderer.h"
+#include "Rasterization/Interpolation/TrilinearMeshSlicer.h"
+#include "Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "Rasterization/Policies/Core/InterceptDegeneracyPolicy.h"
 #include "Rasterization/Policies/Core/InterceptRestrictionPolicy.h"
 #include "Rasterization/Policies/Core/InterceptSortPolicy.h"
@@ -17,13 +17,17 @@
 #include "Rasterization/Policies/Curves/WaveformBakePolicy.h"
 #include "Rasterization/Policies/Curves/WaveformBuildPolicy.h"
 #include "Rasterization/Policies/Envelope/EnvelopePlaybackPolicy.h"
+#include "Rasterization/Policies/Envelope/EnvelopeMarkerPolicy.h"
+#include "Rasterization/Policies/Envelope/EnvelopePaddingPolicy.h"
 #include "Rasterization/Policies/Envelope/EnvelopeRenderTimingPolicy.h"
 #include "Rasterization/Policies/Envelope/EnvelopeReleasePolicy.h"
 #include "Rasterization/Policies/Envelope/EnvelopeStateValidationPolicy.h"
+#include "Rasterization/Policies/Envelope/EnvelopeSustainPointPolicy.h"
 #include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "Rasterization/Policies/Mesh/MeshSliceOutputPolicy.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
+#include "Rasterization/Sources/MeshCubeSource.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/CommonEnums.h"
@@ -154,7 +158,7 @@ void EnvRasterizer::renderEnvelopeCrossPoints() {
 void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curve>& curves) {
     Rasterization::EnvelopePaddingContext context = createPaddingContext();
 
-    if (!Rasterization::EnvRasterizerFacade().buildRenderPadding(intercepts, curves, context)) {
+    if (!Rasterization::EnvelopePaddingPolicy().buildRenderPadding(intercepts, curves, context)) {
         Rasterization::RasterizerCleanupPolicy::markWaveformUnsampleable(runtime());
     }
 }
@@ -262,15 +266,15 @@ void EnvRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
     storage.curves.guideCurveRegions.clear();
     needsResorting = false;
 
-    Rasterization::MeshSliceRenderer::Context context;
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
-    context.mesh = mesh;
-    context.request = request;
-    context.guideApplier = &guideApplier;
-    context.reduction = &reduction;
-    context.oscPhase = oscPhase;
 
-    Rasterization::MeshSlicePipeline::Output output = Rasterization::MeshSliceRenderer().render(context);
+    Rasterization::MeshSlicePipeline::Output output = Rasterization::MeshSlicePipeline().renderWithReduction(
+            Rasterization::MeshCubeSource(mesh),
+            Rasterization::TrilinearMeshSlicer(),
+            request,
+            oscPhase,
+            guideApplier,
+            reduction);
     Rasterization::MeshSliceOutputPolicy(request.calcDepthDimensions).publish(output, runtime());
 
     processEnvelopeIntercepts(storage.intercepts.intercepts);
@@ -690,7 +694,7 @@ bool EnvRasterizer::simulateRender(
 }
 
 void EnvRasterizer::evaluateLoopSustainIndices() {
-    auto markers = Rasterization::EnvRasterizerFacade().evaluateMarkers(*runtime().intercepts, envMesh, loopMinSizeIcpts);
+    auto markers = Rasterization::EnvelopeMarkerPolicy().evaluate(*runtime().intercepts, envMesh, loopMinSizeIcpts);
     loopIndex = markers.loopIndex;
     sustainIndex = markers.sustainIndex;
 }
@@ -702,7 +706,7 @@ void EnvRasterizer::processEnvelopeIntercepts(vector<Intercept>& intercepts) {
     context.sustainIndex = sustainIndex;
     context.addFloorPoint = getScalingType() != Rasterization::PointScalingMode::Bipolar;
 
-    needsResorting |= Rasterization::EnvRasterizerFacade().applySustainPoint(intercepts, context);
+    needsResorting |= Rasterization::EnvelopeSustainPointPolicy().apply(intercepts, context);
 }
 
 void EnvRasterizer::rebuildCurvesFromIntercepts() {
@@ -710,7 +714,7 @@ void EnvRasterizer::rebuildCurvesFromIntercepts() {
 
     Rasterization::EnvelopePaddingContext context = createPaddingContext();
 
-    if (!Rasterization::EnvRasterizerFacade().buildDisplayPadding(
+    if (!Rasterization::EnvelopePaddingPolicy().buildDisplayPadding(
             storage.intercepts.intercepts,
             storage.curves.curves,
             context)) {

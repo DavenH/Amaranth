@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
-#include <Curve/Rasterization/ComposedMeshWaveformRasterizer.h>
+#include <Curve/Rasterization/MeshWaveformRasterizer.h>
 #include <Curve/Rasterization/Interfaces/GuideCurveBindableRasterizer.h>
 #include <Curve/Rasterization/Interfaces/MeshBindableRasterizer.h>
 #include <Curve/Rasterization/Interfaces/RasterizerSampler.h>
@@ -14,7 +14,8 @@
 #include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
 
-#include "Rasterization/Facades/GraphicRasterizerFacade.h"
+#include "Rasterization/Policies/Graphic/GraphicAxisPolicy.h"
+#include "Rasterization/Policies/Graphic/GraphicMorphPositionPolicy.h"
 #include "../Updating/DynamicDetailUpdater.h"
 
 class Interactor;
@@ -129,7 +130,7 @@ private:
     int primaryViewDimension();
 
     Mesh* mesh {};
-    Rasterization::ComposedMeshWaveformRasterizer rasterizer;
+    Rasterization::MeshWaveformRasterizer rasterizer;
     RasterizerData rasterizerData;
 
     int layerGroup;

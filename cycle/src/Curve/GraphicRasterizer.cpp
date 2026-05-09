@@ -47,13 +47,13 @@ void GraphicRasterizer::pullModPositionAndAdjust() {
     MeshLibrary::Properties* props = getObj(MeshLibrary).getCurrentProps(layerGroup);
 
     if (props == nullptr || props->scratchChan == CommonEnums::Null) {
-        setMorphPosition(Cycle::Rasterization::GraphicRasterizerFacade().resolveMorphPosition(context));
+        setMorphPosition(Cycle::Rasterization::GraphicMorphPositionPolicy().resolve(context));
         return;
     }
 
     context.scratchChannel = props->scratchChan;
     context.scratchPosition = getObj(VisualDsp).getScratchPosition(props->scratchChan);
-    setMorphPosition(Cycle::Rasterization::GraphicRasterizerFacade().resolveMorphPosition(context));
+    setMorphPosition(Cycle::Rasterization::GraphicMorphPositionPolicy().resolve(context));
 }
 
 void GraphicRasterizer::restoreStateFrom(RenderState& state) {
@@ -134,6 +134,6 @@ void GraphicRasterizer::publishSnapshot() {
 }
 
 int GraphicRasterizer::primaryViewDimension() {
-    return Cycle::Rasterization::GraphicRasterizerFacade().primaryViewDimension(
+    return Cycle::Rasterization::GraphicAxisPolicy().primaryViewDimension(
             repo->get<Settings>("Settings").getGlobalSetting(AppSettings::CurrentMorphAxis));
 }

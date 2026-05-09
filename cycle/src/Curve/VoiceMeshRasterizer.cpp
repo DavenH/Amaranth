@@ -14,8 +14,10 @@
 
 #include "VoiceMeshRasterizer.h"
 #include "CycleState.h"
-#include "Rasterization/Pipelines/VoiceRasterizationPipeline.h"
-#include "Rasterization/Policies/Voice/VoiceWaveformUpdatePolicy.h"
+#include "Rasterization/Pipelines/VoiceSlicePipeline.h"
+#include "Rasterization/Policies/Voice/VoiceChainedPaddingPolicy.h"
+#include "Rasterization/Policies/Voice/VoiceChainingPolicy.h"
+#include "Rasterization/Policies/Voice/VoiceCurveResolutionPolicy.h"
 #include "../Util/CycleEnums.h"
 
 
@@ -40,34 +42,58 @@ VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
 }
 
 void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
-    Cycle::Rasterization::VoiceRasterizationPipeline::Context context;
-    context.mesh = mesh;
-    context.state = state;
-    context.morph = rasterizer.getRequest().morph;
-    context.runtime = createChainRuntime();
-    context.reductionData = &chainReduction;
-    context.oscPhase = oscPhase;
-    context.interceptPadding = rasterizer.getRequest().interceptPadding;
-    context.initialAdvancement = getRealConstant(MinLineLength) * 1.1f;
+    Rasterization::RasterizerRuntime runtime = createChainRuntime();
 
-    chainedOutputActive = true;
-
-    bool rendered = Cycle::Rasterization::VoiceRasterizationPipeline().render(
-            context,
-            rasterizer.createGuideCurveApplier(chainReduction, &chainNeedsResorting),
-            [this](std::vector<Intercept>& intercepts) { restrictIntercepts(intercepts); },
-            [](::Rasterization::RasterizerRuntime runtime) {
-                ::Rasterization::RasterizerCleanupPolicy::markWaveformUnsampleable(runtime);
-            },
-            [this]() {
-                bakeChainedWaveform();
-            });
-
-    if (!rendered) {
+    if (mesh == nullptr || mesh->getNumCubes() == 0 || state == nullptr || runtime.intercepts == nullptr) {
         cleanUp();
         return;
     }
 
+    chainedOutputActive = true;
+
+    Cycle::Rasterization::VoiceChainingPolicy chainingPolicy(runtime.needsResorting);
+    chainingPolicy.beginCall(*state, runtime);
+
+    auto output = Cycle::Rasterization::VoiceSlicePipeline().render(
+            Rasterization::MeshCubeSource(mesh),
+            rasterizer.getRequest().morph,
+            state->advancement,
+            oscPhase,
+            rasterizer.createGuideCurveApplier(chainReduction, &chainNeedsResorting),
+            chainReduction);
+
+    chainingPolicy.publishNextIntercepts(
+            output,
+            *state,
+            [this](std::vector<Intercept>& intercepts) { restrictIntercepts(intercepts); });
+
+    if (!chainingPolicy.canBuildChainedCurves(*state, runtime)) {
+        ++state->callCount;
+        Rasterization::RasterizerCleanupPolicy::markWaveformUnsampleable(runtime);
+        publishSnapshot();
+        return;
+    }
+
+    if (state->callCount == 0) {
+        state->advancement = getRealConstant(MinLineLength) * 1.1f;
+    }
+
+    if (state->callCount > 0) {
+        jassert(runtime.intercepts != nullptr);
+        jassert(runtime.curves != nullptr);
+        jassert(runtime.paddingSize != nullptr);
+
+        *runtime.paddingSize = Cycle::Rasterization::VoiceChainedPaddingPolicy().build(
+                *runtime.intercepts,
+                state->backIcpts,
+                *state,
+                *runtime.curves,
+                rasterizer.getRequest().interceptPadding);
+
+        bakeChainedWaveform();
+    }
+
+    ++state->callCount;
     publishSnapshot();
 }
 
@@ -165,33 +191,33 @@ Rasterization::WaveformBuffers VoiceMeshRasterizer::currentWaveform() const {
 }
 
 void VoiceMeshRasterizer::bakeChainedWaveform() {
-    Cycle::Rasterization::VoiceWaveformUpdatePolicy().update(
-            createChainRuntime(),
-            [this]() {
-                Rasterization::RasterizerCleanupPolicy().clean(createChainRuntime());
-                chainStorage.curves.guideCurveRegions.clear();
-            },
-            [this]() {
-                Rasterization::CurveWaveformPreparationPolicy().apply(chainStorage.curves.curves);
-            },
-            [this]() {
-                Rasterization::WaveformBakePolicy::Context context;
-                context.lowResCurves = rasterizer.getRequest().lowResCurves;
-                context.decoupleComponentDfrms = rasterizer.getRequest().decoupleComponentDeforms;
-                context.noiseSeed = rasterizer.getRequest().noiseSeed;
-                context.morph = rasterizer.getRequest().morph;
-                context.guideCurveProvider = rasterizer.getGuideCurveProvider();
-                context.guideCurveRegions = &chainStorage.curves.guideCurveRegions;
-                context.offsetSeeds = nullptr;
-                context.transferTable = Rasterization::TransferTable::values();
+    Rasterization::RasterizerRuntime runtime = createChainRuntime();
 
-                chainUnsampleable = !Rasterization::WaveformBuildPolicy().build(
-                        chainStorage.curves.curves,
-                        context,
-                        [this](int totalRes) {
-                            updateChainBuffers(totalRes);
-                            return Rasterization::WaveformBufferRefs(chainStorage.waveform.waveform);
-                        });
+    if (!runtime.hasAtLeastIntercepts(2)) {
+        Rasterization::RasterizerCleanupPolicy().clean(runtime);
+        chainStorage.curves.guideCurveRegions.clear();
+        return;
+    }
+
+    Cycle::Rasterization::VoiceCurveResolutionPolicy().apply(chainStorage.curves.curves);
+    Rasterization::CurveWaveformPreparationPolicy().apply(chainStorage.curves.curves);
+
+    Rasterization::WaveformBakePolicy::Context context;
+    context.lowResCurves = rasterizer.getRequest().lowResCurves;
+    context.decoupleComponentDfrms = rasterizer.getRequest().decoupleComponentDeforms;
+    context.noiseSeed = rasterizer.getRequest().noiseSeed;
+    context.morph = rasterizer.getRequest().morph;
+    context.guideCurveProvider = rasterizer.getGuideCurveProvider();
+    context.guideCurveRegions = &chainStorage.curves.guideCurveRegions;
+    context.offsetSeeds = nullptr;
+    context.transferTable = Rasterization::TransferTable::values();
+
+    chainUnsampleable = !Rasterization::WaveformBuildPolicy().build(
+            chainStorage.curves.curves,
+            context,
+            [this](int totalRes) {
+                updateChainBuffers(totalRes);
+                return Rasterization::WaveformBufferRefs(chainStorage.waveform.waveform);
             });
 }
 

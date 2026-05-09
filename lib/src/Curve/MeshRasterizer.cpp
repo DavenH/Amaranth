@@ -18,12 +18,14 @@
 #include "Rasterization/Policies/Core/PaddingPolicy.h"
 #include "Rasterization/Policies/Core/PointScalingPolicy.h"
 #include "Rasterization/Policies/Core/SnapshotPolicy.h"
+#include "Rasterization/Builders/RasterizerSnapshotBuilder.h"
 #include "Rasterization/Builders/TransferTable.h"
-#include "Rasterization/Facades/MeshRasterizerFacade.h"
+#include "Rasterization/Interpolation/TrilinearMeshSlicer.h"
 #include "Rasterization/Policies/Curves/WaveformBuildPolicy.h"
-#include "Rasterization/Pipelines/MeshSliceRenderer.h"
+#include "Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
+#include "Rasterization/Sources/MeshCubeSource.h"
 #include "../App/AppConstants.h"
 #include "../App/MeshLibrary.h"
 #include "../Array/ScopedAlloc.h"
@@ -68,7 +70,6 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    needsResorting      (false)
     ,    interpolateCurves   (false)
     ,    batchMode           (false)
-    ,    facade              (new Rasterization::MeshRasterizerFacade)
     ,    storage()
     ,    rastArrays          (storage.snapshot.rasterizerData)
     ,    frontIcpts          (storage.intercepts.frontPadding)
@@ -171,15 +172,15 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
 }
 
 Rasterization::MeshSlicePipeline::Output MeshRasterizer::renderMeshSlice(Mesh* usedMesh, float oscPhase) {
-    Rasterization::MeshSliceRenderer::Context context;
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
-    context.mesh = usedMesh;
-    context.request = createRasterizationRequest();
-    context.guideApplier = &guideApplier;
-    context.reduction = &reduct;
-    context.oscPhase = oscPhase;
 
-    return Rasterization::MeshSliceRenderer().render(context);
+    return Rasterization::MeshSlicePipeline().renderWithReduction(
+            Rasterization::MeshCubeSource(usedMesh),
+            Rasterization::TrilinearMeshSlicer(),
+            createRasterizationRequest(),
+            oscPhase,
+            guideApplier,
+            reduct);
 }
 
 bool MeshRasterizer::canRasterizeMesh(Mesh* usedMesh) const {
@@ -302,7 +303,7 @@ void MeshRasterizer::updateCurves() {
     }
 
     Rasterization::CurveResolutionPolicy::Context resolutionContext = createCurveResolutionContext();
-    facade->applyCurveResolution(curves, resolutionContext);
+    Rasterization::CurveResolutionPolicy().apply(curves, resolutionContext);
 
     prepareCurvesForWaveform();
     calcWaveform();
@@ -496,7 +497,7 @@ void MeshRasterizer::cleanUp() {
 }
 
 void MeshRasterizer::setResolutionIndices(float base) {
-    facade->applyResolutionIndices(curves, base, getPaddingSize());
+    Rasterization::CurveResolutionPolicy::applyResolutionIndices(curves, base, getPaddingSize());
 }
 
 
@@ -506,10 +507,6 @@ void MeshRasterizer::preCleanup() {
 
 MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
 //    jassertfalse;
-    if (facade == nullptr) {
-        facade.reset(new Rasterization::MeshRasterizerFacade);
-    }
-
     this->xMinimum               = copy.xMinimum;
     this->xMaximum               = copy.xMaximum;
     this->mesh                   = copy.mesh;
@@ -690,7 +687,7 @@ Rasterization::GuideCurveApplier MeshRasterizer::createLegacyGuideCurveApplier()
 void MeshRasterizer::makeCopy() {
     Rasterization::RasterizerSnapshotSource source =
             Rasterization::createRasterizerSnapshotSource(createRasterizerRuntime());
-    facade->publishSnapshot(rastArrays, source);
+    Rasterization::RasterizerSnapshotBuilder().publish(rastArrays, source);
 }
 
 void MeshRasterizer::restoreStateFrom(RenderState& src) {

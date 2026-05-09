@@ -4,7 +4,8 @@
 #include <App/MeshLibrary.h>
 #include <Curve/Vertex.h>
 
-#include "../Rasterization/Facades/GraphicRasterizerFacade.h"
+#include "../Rasterization/Policies/Graphic/GraphicAxisPolicy.h"
+#include "../Rasterization/Policies/Graphic/GraphicMorphPositionPolicy.h"
 
 namespace {
     using Catch::Approx;
@@ -46,17 +47,4 @@ TEST_CASE("GraphicMorphPositionPolicy preserves time layer morph when axis is no
     MorphPosition morph = Cycle::Rasterization::GraphicMorphPositionPolicy().resolve(context);
 
     REQUIRE(morph.time.getTargetValue() == Approx(0.25f));
-}
-
-TEST_CASE("GraphicRasterizerFacade composes graphic axis and morph policies", "[cycle][rasterization][graphic]") {
-    Cycle::Rasterization::GraphicRasterizerFacade facade;
-    Cycle::Rasterization::GraphicMorphPositionPolicy::Context context;
-    context.panelMorph.time = 0.1f;
-    context.layerGroup = LayerGroups::GroupPhase;
-    context.currentMorphAxis = Vertex::Blue;
-    context.scratchChannel = 5;
-    context.scratchPosition = 0.6f;
-
-    REQUIRE(facade.primaryViewDimension(Vertex::Blue) == Vertex::Blue);
-    REQUIRE(facade.resolveMorphPosition(context).time.getTargetValue() == Approx(0.6f));
 }

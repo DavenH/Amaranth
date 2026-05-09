@@ -1,9 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Curve/Curve.h"
-#include "../src/Curve/Rasterization/Facades/MeshRasterizerFacade.h"
+#include "../src/Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h"
+#include "../src/Curve/Rasterization/Policies/Curves/CurveResolutionPolicy.h"
 
-TEST_CASE("MeshRasterizerFacade applies shared curve resolution policy", "[rasterization][facade]") {
+TEST_CASE("CurveResolutionPolicy applies shared curve resolution", "[rasterization][curves]") {
     std::vector<Curve> curves;
 
     for (int i = 0; i < 9; ++i) {
@@ -16,15 +17,14 @@ TEST_CASE("MeshRasterizerFacade applies shared curve resolution policy", "[raste
     Rasterization::CurveResolutionPolicy::Context context;
     context.lowResCurves = true;
 
-    Rasterization::MeshRasterizerFacade facade;
-    facade.applyCurveResolution(curves, context);
+    Rasterization::CurveResolutionPolicy().apply(curves, context);
 
     for (const auto& curve : curves) {
         REQUIRE(curve.resIndex == Curve::resolutions - 1);
     }
 }
 
-TEST_CASE("MeshRasterizerFacade can skip snapshot publication", "[rasterization][facade]") {
+TEST_CASE("RasterizerSnapshotBuilder can skip snapshot publication", "[rasterization][snapshot]") {
     RasterizerData data;
     data.zeroIndex = 11;
     data.oneIndex = 13;
@@ -39,8 +39,7 @@ TEST_CASE("MeshRasterizerFacade can skip snapshot publication", "[rasterization]
     source.waveform.zeroIndex = 1;
     source.waveform.oneIndex = 2;
 
-    Rasterization::MeshRasterizerFacade facade;
-    facade.skipSnapshot(data, source);
+    Rasterization::RasterizerSnapshotBuilder<Rasterization::NoSnapshot>().publish(data, source);
 
     REQUIRE(data.intercepts.empty());
     REQUIRE(data.zeroIndex == 11);

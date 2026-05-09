@@ -140,7 +140,7 @@ void IrModeller::rasterizeGraphicImpulse() {
             impulse.offset(maxSamples).zero();
         }
     } else {
-        Rasterization::WaveformProvider* waveform = ui->getWaveformProvider();
+        FXRasterizer* waveform = ui->getLocalRasterizer();
         if (waveform == nullptr || !waveform->canRasterizeWaveform()) {
             return;
         }
@@ -175,7 +175,7 @@ void IrModeller::filterImpulse(ConvState& chan) {
 
 void IrModeller::rasterizeImpulse(
         Buffer<float> impulse,
-        Rasterization::WaveformProvider& waveform,
+        FXRasterizer& waveform,
         bool isAudioThread) {
     if (impulse.empty()) {
         return;

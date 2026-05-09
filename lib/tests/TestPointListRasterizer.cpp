@@ -7,7 +7,6 @@
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Rasterizer2D.h"
 #include "../src/Curve/Rasterization/Interpolation/LinearPointInterpolator.h"
-#include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Pipelines/PointListRasterizationPipeline.h"
 #include "../src/Curve/Rasterization/Sources/PointListSource.h"
 
@@ -185,80 +184,6 @@ TEST_CASE("PointListRasterizationPipeline marks empty and single-point inputs un
 
     std::vector<Intercept> singlePoint { Intercept(0.5f, 0.5f) };
     REQUIRE_FALSE(pipeline.render(singlePoint, request).sampleable);
-}
-
-TEST_CASE("RasterizerComposer builds a non-cyclic point-list rasterizer", "[rasterization][pointlist][composer]") {
-    CurveTableScope curveTableScope;
-    std::vector<Intercept> points = makePointList();
-
-    auto rasterizer = Rasterization::RasterizerComposer::pointList()
-            .withSource(points)
-            .withNonCyclicPadding(-0.25f, 1.25f)
-            .build();
-
-    const auto& output = rasterizer.render();
-
-    REQUIRE_FALSE(rasterizer.getRequest().cyclic);
-    REQUIRE(rasterizer.getRequest().xMinimum == Catch::Approx(-0.25f));
-    REQUIRE(rasterizer.getRequest().xMaximum == Catch::Approx(1.25f));
-    REQUIRE(output.sampleable);
-    REQUIRE_FALSE(output.waveform.waveX.empty());
-    REQUIRE(points.front().x == Catch::Approx(0.05f));
-}
-
-TEST_CASE("Rasterizer2D is a compatibility adapter over the point-list composer", "[rasterization][pointlist][composer]") {
-    CurveTableScope curveTableScope;
-    std::vector<Intercept> adapterPoints = makePointList();
-    std::vector<Intercept> composerPoints = makePointList();
-
-    Rasterizer2D adapter(adapterPoints, true);
-    adapter.calcCrossPoints();
-
-    Rasterization::RasterizationRequest request = adapter.createRasterizationRequest();
-    request.cyclic = true;
-
-    auto composed = Rasterization::RasterizerComposer::pointList()
-            .withSource(composerPoints)
-            .withRequest(request)
-            .build();
-
-    const auto& output = composed.render();
-
-    REQUIRE(output.sampleable == adapter.isSampleable());
-    REQUIRE(output.waveform.waveX.size() == adapter.getWaveX().size());
-    REQUIRE(output.waveform.waveY.size() == adapter.getWaveY().size());
-    REQUIRE(output.paddingSize == adapter.getPaddingSize());
-
-    for (int i = 0; i < output.waveform.waveX.size(); ++i) {
-        INFO("index=" << i);
-        REQUIRE(output.waveform.waveX[i] == Catch::Approx(adapter.getWaveX()[i]).margin(1e-5f));
-        REQUIRE(output.waveform.waveY[i] == Catch::Approx(adapter.getWaveY()[i]).margin(1e-5f));
-    }
-}
-
-TEST_CASE("RasterizerComposer exposes the target mesh source and slicer shape", "[rasterization][composer]") {
-    Mesh mesh("ComposerMesh");
-    auto* cube = new VertCube(&mesh);
-    mesh.addCube(cube);
-
-    Rasterization::RasterizationRequest request;
-    request.lowResCurves = true;
-
-    auto composer = Rasterization::RasterizerComposer::mesh()
-            .withSource(Rasterization::MeshCubeSource(&mesh))
-            .withSlicer(Rasterization::TrilinearMeshSlicer())
-            .withRequest(request)
-            .withMorphPosition(MorphPosition())
-            .withPadding(Rasterization::CyclicPaddingPolicy())
-            .withSnapshot(Rasterization::RasterizerDataSnapshot());
-
-    REQUIRE_FALSE(composer.getSource().empty());
-    REQUIRE(composer.getSource().size() == 1);
-    REQUIRE(composer.getRequest().lowResCurves);
-    REQUIRE(composer.getRequest().cyclic);
-    REQUIRE(composer.getRequest().publishSnapshot);
-
-    mesh.destroy();
 }
 
 TEST_CASE("Rasterizer2D updates a partial waveform after a point edit", "[rasterization][pointlist]") {

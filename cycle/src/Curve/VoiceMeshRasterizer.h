@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Array/ScopedAlloc.h>
-#include <Curve/Rasterization/ComposedMeshWaveformRasterizer.h>
+#include <Curve/Rasterization/MeshWaveformRasterizer.h>
 #include <Curve/Rasterization/Interfaces/GuideCurveBindableRasterizer.h>
 #include <Curve/Rasterization/Interfaces/MeshBindableRasterizer.h>
 #include <Curve/Rasterization/Interfaces/RasterizerSampler.h>
@@ -14,8 +14,6 @@
 #include <Curve/RasterizerData.h>
 #include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
-
-#include "Rasterization/Facades/VoiceRasterizerFacade.h"
 
 class SingletonAccessor;
 class CycleState;
@@ -101,7 +99,7 @@ private:
     void restrictIntercepts(std::vector<Intercept>& intercepts);
 
     Mesh* mesh {};
-    Rasterization::ComposedMeshWaveformRasterizer rasterizer;
+    Rasterization::MeshWaveformRasterizer rasterizer;
     Rasterization::RasterizerStorage chainStorage;
     RasterizerData rasterizerData;
     ScopedAlloc<Float32> chainWaveformMemory;

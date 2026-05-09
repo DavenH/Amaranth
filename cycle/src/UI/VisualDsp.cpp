@@ -1289,7 +1289,6 @@ void VisualDsp::trackWavePhaseEnvelope() {
         }
     }
 
-    oscPhaseRasterizer.rasterize(wavePhase);
 }
 
 Buffer<float> VisualDsp::getFreqColumn(float position, bool isMags) {

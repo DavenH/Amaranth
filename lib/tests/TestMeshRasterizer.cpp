@@ -5,7 +5,7 @@
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/MeshRasterizer.h"
-#include "../src/Curve/Rasterization/ComposedMeshWaveformRasterizer.h"
+#include "../src/Curve/Rasterization/MeshWaveformRasterizer.h"
 #include "../src/Curve/Rasterization/Interpolation/AccurateMeshSlicer.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "../src/Curve/Rasterization/Policies/Mesh/ComponentGuideSharpnessPolicy.h"
@@ -15,7 +15,6 @@
 #include "../src/Curve/Rasterization/Policies/Curves/InterceptPaddingFlagPolicy.h"
 #include "../src/Curve/Rasterization/Policies/Core/InterceptSortPolicy.h"
 #include "../src/Curve/Rasterization/Policies/Mesh/MeshSliceOutputPolicy.h"
-#include "../src/Curve/Rasterization/RasterizerComposer.h"
 #include "../src/Curve/Rasterization/Sampling/GuideCurveSampler.h"
 #include "../src/Curve/Rasterization/Sampling/WaveformSampler.h"
 #include "../src/Curve/Rasterization/Sources/MeshCubeSource.h"
@@ -636,30 +635,7 @@ TEST_CASE("CurveWaveformPreparationPolicy prepares curves before waveform baking
     REQUIRE(std::isfinite(curves[1].transformY[0]));
 }
 
-TEST_CASE("RasterizerComposer builds a mesh slice rasterizer", "[meshrasterizer][pipeline][composer]") {
-    CurveTableScope curveTableScope;
-    auto mesh = createSyntheticWaveMesh();
-
-    MeshRasterizer rasterizer("SyntheticMeshComposerReference");
-    configureWaveRasterizer(rasterizer, mesh.get());
-    Rasterization::RasterizationRequest request = rasterizer.createRasterizationRequest();
-
-    auto composed = Rasterization::RasterizerComposer::mesh()
-            .withSource(Rasterization::MeshCubeSource(mesh.get()))
-            .withSlicer(Rasterization::TrilinearMeshSlicer())
-            .withRequest(request)
-            .build();
-
-    const auto& output = composed.render(
-            0.f,
-            [](Intercept&, const MorphPosition&, bool) {});
-
-    REQUIRE(output.sampleable);
-    REQUIRE(output.intercepts.size() == mesh->getNumCubes());
-    REQUIRE(output.colorPoints.size() == mesh->getNumCubes() * 3);
-}
-
-TEST_CASE("ComposedMeshWaveformRasterizer preserves component guide waveform baking", "[meshrasterizer][pipeline][composer][guide]") {
+TEST_CASE("MeshWaveformRasterizer preserves component guide waveform baking", "[meshrasterizer][pipeline][composer][guide]") {
     CurveTableScope curveTableScope;
     auto mesh = createSyntheticWaveMesh();
     mesh->getCubes().front()->getCompGuideCurve() = 0;
@@ -672,7 +648,7 @@ TEST_CASE("ComposedMeshWaveformRasterizer preserves component guide waveform bak
     reference.setGuideCurveProvider(&provider);
     reference.calcCrossPoints();
 
-    Rasterization::ComposedMeshWaveformRasterizer composed;
+    Rasterization::MeshWaveformRasterizer composed;
     composed.getRequest() = reference.createRasterizationRequest();
     composed.setGuideCurveProvider(&provider);
     composed.render(mesh.get());
