@@ -15,7 +15,7 @@ public:
                       const String& name, int layerGroup,
                       bool cyclic, float margin);
 
-    void pullModPositionAndAdjust() override;
+    void pullModPositionAndAdjust();
     int getPrimaryViewDimension() override;
 
     Interactor* getInteractor() const { return interactor; }

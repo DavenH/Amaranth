@@ -115,7 +115,6 @@ public:
     virtual void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
     virtual void preCleanup();
     virtual void processIntercepts(vector<Intercept>& intercepts) {}
-    virtual void pullModPositionAndAdjust() {}
     virtual void reset();
     void performUpdate(UpdateType updateType) override;
     virtual void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
