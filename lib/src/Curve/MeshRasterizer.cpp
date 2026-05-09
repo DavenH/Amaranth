@@ -50,6 +50,8 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    paddingSize         (2)
     ,    noiseSeed           (-1)
     ,    overridingDim       (Vertex::Time)
+    ,    numDimensionsProvider()
+    ,    crossSectionAvailabilityProvider()
     ,    primaryViewDimensionProvider()
 
     ,    interceptPadding    (0.f)
@@ -495,6 +497,8 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     // flags
     this->overrideDim            = copy.overrideDim;
     this->overridingDim          = copy.overridingDim;
+    this->numDimensionsProvider  = nullptr;
+    this->crossSectionAvailabilityProvider = nullptr;
     this->primaryViewDimensionProvider  = nullptr;
     this->cyclic                 = copy.cyclic;
     this->guideCurveProvider     = copy.guideCurveProvider;
@@ -579,10 +583,18 @@ void MeshRasterizer::performUpdate(UpdateType updateType) {
 }
 
 int MeshRasterizer::getNumDims() {
+    if (numDimensionsProvider != nullptr) {
+        return numDimensionsProvider();
+    }
+
     return 3;
 }
 
 bool MeshRasterizer::hasEnoughCubesForCrossSection() {
+    if (crossSectionAvailabilityProvider != nullptr) {
+        return crossSectionAvailabilityProvider();
+    }
+
     return mesh->getNumCubes() > 1;
 }
 

@@ -12,8 +12,6 @@ class FXRasterizer:
 
 public:
     explicit FXRasterizer(SingletonRepo* repo, const String& name = String());
-    bool hasEnoughCubesForCrossSection() override;
-    int  getNumDims() override;
     void calcCrossPoints() override;
     void cleanUp() override;
     void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) override;

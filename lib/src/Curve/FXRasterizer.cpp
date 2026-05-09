@@ -24,6 +24,10 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 
     Dimensions fxDimensions(Vertex::Phase, Vertex::Amp);
     setDims(fxDimensions);
+    setNumDimensionsProvider([]() { return 1; });
+    setCrossSectionAvailabilityProvider([this]() {
+        return adapter.hasEnoughCubesForCrossSection();
+    });
 }
 
 void FXRasterizer::calcCrossPoints() {
@@ -65,12 +69,4 @@ void FXRasterizer::cleanUp() {
     adapter.clean(createRasterizerRuntime());
 
     DBG(MeshRasterizer::getName() + "::cleanUp");
-}
-
-int FXRasterizer::getNumDims() {
-    return 1;
-}
-
-bool FXRasterizer::hasEnoughCubesForCrossSection() {
-    return adapter.hasEnoughCubesForCrossSection();
 }

@@ -121,8 +121,8 @@ public:
     void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
     virtual void updateCurves();
 
-    virtual bool hasEnoughCubesForCrossSection();
-    virtual int getNumDims();
+    bool hasEnoughCubesForCrossSection();
+    int getNumDims();
     int getPrimaryViewDimension();
     Mesh* getCrossPointsMesh();
 
@@ -164,7 +164,13 @@ public:
     void setLimits(float min, float max)            { xMinimum = min; xMaximum = max;   }
     void setLowresCurves(bool areLow)               { lowResCurves  = areLow;           }
     void setNoiseSeed(int seed)                     { noiseSeed     = seed;             }
+    void setNumDimensionsProvider(std::function<int()> provider) {
+        numDimensionsProvider = provider;
+    }
     void setOverridingDim(int dim)                  { overridingDim = dim;              }
+    void setCrossSectionAvailabilityProvider(std::function<bool()> provider) {
+        crossSectionAvailabilityProvider = provider;
+    }
     void setPrimaryViewDimensionProvider(std::function<int()> provider) {
         primaryViewDimensionProvider = provider;
     }
@@ -222,6 +228,8 @@ protected:
     int noiseSeed;
     int overridingDim;
     int paddingSize;
+    std::function<int()> numDimensionsProvider;
+    std::function<bool()> crossSectionAvailabilityProvider;
     std::function<int()> primaryViewDimensionProvider;
 
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
