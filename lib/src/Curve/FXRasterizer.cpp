@@ -28,6 +28,11 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
     setCrossSectionAvailabilityProvider([this]() {
         return adapter.hasEnoughCubesForCrossSection();
     });
+    setCleanupProvider([this](Rasterization::RasterizerRuntime runtime) {
+        adapter.clean(runtime);
+
+        DBG(MeshRasterizer::getName() + "::cleanUp");
+    });
 }
 
 void FXRasterizer::calcCrossPoints() {
@@ -63,10 +68,4 @@ void FXRasterizer::setVertices(vector<Vertex*>* vertices) {
     DBG(MeshRasterizer::getName() + "::setVertices verts=" + String(vertices == nullptr ? 0 : (int) vertices->size()));
     MeshRasterizer::setMesh(nullptr);
     adapter.setVertices(vertices);
-}
-
-void FXRasterizer::cleanUp() {
-    adapter.clean(createRasterizerRuntime());
-
-    DBG(MeshRasterizer::getName() + "::cleanUp");
 }

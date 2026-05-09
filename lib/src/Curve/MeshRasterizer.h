@@ -110,7 +110,7 @@ public:
 
     virtual void calcCrossPoints();
     void calcCrossPointsAtTime(float x);
-    virtual void cleanUp();
+    void cleanUp();
     void handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube);
     virtual void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);
     virtual void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
@@ -163,6 +163,9 @@ public:
     void setInterpolatesCurves(bool should)         { interpolateCurves = should;       }
     void setLimits(float min, float max)            { xMinimum = min; xMaximum = max;   }
     void setLowresCurves(bool areLow)               { lowResCurves  = areLow;           }
+    void setCleanupProvider(std::function<void(Rasterization::RasterizerRuntime)> provider) {
+        cleanupProvider = provider;
+    }
     void setNoiseSeed(int seed)                     { noiseSeed     = seed;             }
     void setNumDimensionsProvider(std::function<int()> provider) {
         numDimensionsProvider = provider;
@@ -228,6 +231,7 @@ protected:
     int noiseSeed;
     int overridingDim;
     int paddingSize;
+    std::function<void(Rasterization::RasterizerRuntime)> cleanupProvider;
     std::function<int()> numDimensionsProvider;
     std::function<bool()> crossSectionAvailabilityProvider;
     std::function<int()> primaryViewDimensionProvider;

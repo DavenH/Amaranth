@@ -50,6 +50,7 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    paddingSize         (2)
     ,    noiseSeed           (-1)
     ,    overridingDim       (Vertex::Time)
+    ,    cleanupProvider()
     ,    numDimensionsProvider()
     ,    crossSectionAvailabilityProvider()
     ,    primaryViewDimensionProvider()
@@ -457,6 +458,11 @@ void MeshRasterizer::wrapVertices(float& ax, float& ay,
 }
 
 void MeshRasterizer::cleanUp() {
+    if (cleanupProvider != nullptr) {
+        cleanupProvider(createRasterizerRuntime());
+        return;
+    }
+
     Rasterization::RasterizerCleanupOptions options;
     options.clearCurves = false;
 
@@ -497,6 +503,7 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     // flags
     this->overrideDim            = copy.overrideDim;
     this->overridingDim          = copy.overridingDim;
+    this->cleanupProvider        = nullptr;
     this->numDimensionsProvider  = nullptr;
     this->crossSectionAvailabilityProvider = nullptr;
     this->primaryViewDimensionProvider  = nullptr;
