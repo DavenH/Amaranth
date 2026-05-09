@@ -204,10 +204,10 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
     f2.vertexProps.dimensionNames.set(Vertex::Amp, isMags ? "Magn" : "Phase");
     f3.vertexProps.dimensionNames = f2.vertexProps.dimensionNames;
 
-    MeshRasterizer* rast = isMags ?
-            (MeshRasterizer*) &getObj(SpectRasterizer) :
-            (MeshRasterizer*) &getObj(PhaseRasterizer);
-    rast->setMesh(meshLib->getEffectiveMesh(interactor->layerType));
+    MeshRasterizer* rasterizer = isMags ?
+            static_cast<MeshRasterizer*>(&getObj(SpectRasterizer)) :
+            static_cast<MeshRasterizer*>(&getObj(PhaseRasterizer));
+    rasterizer->setMesh(meshLib->getEffectiveMesh(interactor->layerType));
 
     StringFunction shortStr = isMags ? dynStr : StringFunction().mul(5.f).pow(M_E);
     StringFunction longStr = isMags ? shortStr.withPostString(" dB") : shortStr.withPostString(L" \u03c0");
@@ -228,8 +228,8 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
 
     dynRangeKnob->setName(isMags ? "range" : "width");
 
-    f3.setRasterizer(rast);
-    f2.setRasterizer(rast);
+    f3.setRasterizer(rasterizer);
+    f2.setRasterizer(rasterizer);
     f3.updateSelectionClient();
     panelControls->refreshSelector();
 
