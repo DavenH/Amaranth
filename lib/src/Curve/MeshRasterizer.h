@@ -174,6 +174,9 @@ public:
     void setPaddingProvider(std::function<void(vector<Intercept>&, vector<Curve>&)> provider) {
         paddingProvider = provider;
     }
+    void setMeshAssignmentProvider(std::function<void(Mesh*)> provider) {
+        meshAssignmentProvider = provider;
+    }
     void setCrossSectionAvailabilityProvider(std::function<bool()> provider) {
         crossSectionAvailabilityProvider = provider;
     }
@@ -189,7 +192,13 @@ public:
     void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
 
     virtual Mesh* getMesh()                         { return mesh;                      }
-    virtual void setMesh(Mesh* mesh)                { this->mesh = mesh;                }
+    virtual void setMesh(Mesh* mesh) {
+        this->mesh = mesh;
+
+        if (meshAssignmentProvider != nullptr) {
+            meshAssignmentProvider(mesh);
+        }
+    }
     bool wrapsVertices() const                      { return cyclic;                    }
     virtual void updateOffsetSeeds(int layerSize, int tableSize);
 
@@ -236,6 +245,7 @@ protected:
     int paddingSize;
     std::function<void(Rasterization::RasterizerRuntime)> cleanupProvider;
     std::function<void(vector<Intercept>&, vector<Curve>&)> paddingProvider;
+    std::function<void(Mesh*)> meshAssignmentProvider;
     std::function<int()> numDimensionsProvider;
     std::function<bool()> crossSectionAvailabilityProvider;
     std::function<int()> primaryViewDimensionProvider;

@@ -14,7 +14,6 @@ public:
     explicit FXRasterizer(SingletonRepo* repo, const String& name = String());
     void calcCrossPoints() override;
     void setVertices(vector<Vertex*>* vertices);
-    void setMesh(Mesh* newMesh) override;
 
 private:
     Rasterization::RasterizationRequest createFxRequest();

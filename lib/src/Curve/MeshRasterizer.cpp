@@ -52,6 +52,7 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    overridingDim       (Vertex::Time)
     ,    cleanupProvider()
     ,    paddingProvider()
+    ,    meshAssignmentProvider()
     ,    numDimensionsProvider()
     ,    crossSectionAvailabilityProvider()
     ,    primaryViewDimensionProvider()
@@ -511,6 +512,7 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     this->overridingDim          = copy.overridingDim;
     this->cleanupProvider        = nullptr;
     this->paddingProvider        = nullptr;
+    this->meshAssignmentProvider = nullptr;
     this->numDimensionsProvider  = nullptr;
     this->crossSectionAvailabilityProvider = nullptr;
     this->primaryViewDimensionProvider  = nullptr;
