@@ -404,16 +404,16 @@ void VisualDsp::calcTimeDomain(int numColumns) {
 
     int timeInc	= timeProcessor.isDetailReduced() ? reductionFactor : 1;
 
-    MeshRasterizer::RenderState timeState;
-    MeshRasterizer::ScopedRenderState scopedState(&timeRasterizer->legacyRasterizer(), &timeState);
+    GraphicRasterizer::RenderState timeState;
+    auto scopedState = timeRasterizer->preserveState(timeState);
 
-    MeshRasterizer::RenderState batchState(true, true, false, MeshRasterizer::HalfBipolar, timeState.pos);
+    auto batchState = GraphicRasterizer::createBatchRenderState(
+            GraphicRasterizer::Scaling::HalfBipolar,
+            timeState.pos);
     batchState.pos.time = 0;
 
     timeRasterizer->restoreStateFrom(batchState);
     timeRasterizer->updateOffsetSeeds(timeGroup.size(), GuideCurvePanel::tableSize);
-
-    MeshRasterizer& rasterizer = timeRasterizer->legacyRasterizer();
 
     int numActiveLayers = surface->getNumActiveLayers();
 
@@ -457,16 +457,16 @@ void VisualDsp::calcTimeDomain(int numColumns) {
                 getScratchTimeForLayer(props, timeColIdx, zoomProgress[timeColIdx], scratchTime);
             }
 
-            rasterizer.setNoiseSeed(colIdx * 6197);
-            rasterizer.setYellow(scratchTime);
-            rasterizer.calcCrossPoints(mesh, 0.f);
+            timeRasterizer->setNoiseSeed(colIdx * 6197);
+            timeRasterizer->setYellow(scratchTime);
+            timeRasterizer->calcCrossPoints(mesh, 0.f);
 
-            if (!rasterizer.isSampleable()) {
+            if (!timeRasterizer->isSampleable()) {
                 localBuffer.zero();
                 continue;
             }
 
-            rasterizer.sampleWithInterval(localBuffer, delta, 0.0);
+            timeRasterizer->sampleWithInterval(localBuffer, delta, 0.0);
 
             float relativePan = Arithmetic::getRelativePan(props->pan, modPan);
 
@@ -549,15 +549,17 @@ void VisualDsp::calcSpectrogram(int numColumns) {
 
     phaseScaleRamp.ramp(1.f, 1.f).sqrt();
 
-    MeshRasterizer::RenderState freqState, phaseState;
-    MeshRasterizer::ScopedRenderState freqStateScoped(&spectRasterizer->legacyRasterizer(), &freqState);
-    MeshRasterizer::ScopedRenderState phaseStateScoped(&phaseRasterizer->legacyRasterizer(), &phaseState);
-    MeshRasterizer::RenderState batchState(true, true, false, MeshRasterizer::Bipolar, freqState.pos);
+    GraphicRasterizer::RenderState freqState, phaseState;
+    auto freqStateScoped = spectRasterizer->preserveState(freqState);
+    auto phaseStateScoped = phaseRasterizer->preserveState(phaseState);
+    auto batchState = GraphicRasterizer::createBatchRenderState(
+            GraphicRasterizer::Scaling::Bipolar,
+            freqState.pos);
 
     batchState.pos.time = 0;
     phaseRasterizer->restoreStateFrom(batchState);
 
-    batchState.scalingType = MeshRasterizer::Unipolar;
+    batchState.scalingType = static_cast<int>(GraphicRasterizer::Scaling::Unipolar);
     spectRasterizer->restoreStateFrom(batchState);
 
     int numPhaseLayers = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupPhase).size();
@@ -1266,7 +1268,7 @@ void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
     float unisonScale 	 = powf(2.f, -(rawUnisonOrder - 1) * 0.14f);
     int unisonOrder 	 = processUnison ? rawUnisonOrder : 1;
 
-    vector<MeshRasterizer::GuideCurveContext> contexts(unisonOrder);
+    vector<Rasterization::GuideCurveContext> contexts(unisonOrder);
 
     ScopedAlloc<double> cumePhases(unisonOrder);
     cumePhases.zero();
@@ -1453,8 +1455,7 @@ void VisualDsp::trackWavePhaseEnvelope() {
         }
     }
 
-    oscPhaseRasterizer.setMesh(wavePhase);
-    oscPhaseRasterizer.calcCrossPoints();
+    oscPhaseRasterizer.rasterize(wavePhase);
 }
 
 Buffer<float> VisualDsp::getFreqColumn(float position, bool isMags) {

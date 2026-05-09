@@ -15,14 +15,24 @@ class GraphicRasterizer :
     ,   public Rasterization::RasterizerUpdateTarget
     ,   public Rasterization::RasterizerVertexDomain {
 public:
+    using RenderState = Rasterization::MeshRasterizerRenderState;
+    using ScopedRenderState = Rasterization::ScopedMeshRasterizerRenderState;
+
+    enum class Scaling {
+        Unipolar = MeshRasterizer::Unipolar,
+        Bipolar = MeshRasterizer::Bipolar,
+        HalfBipolar = MeshRasterizer::HalfBipolar
+    };
+
     GraphicRasterizer(SingletonRepo* repo,
                       Interactor* interactor,
                       const String& name, int layerGroup,
                       bool cyclic, float margin);
 
     void pullModPositionAndAdjust();
-    void restoreStateFrom(MeshRasterizer::RenderState& state) { rasterizer.restoreStateFrom(state); }
-    void saveStateTo(MeshRasterizer::RenderState& state) { rasterizer.saveStateTo(state); }
+    void restoreStateFrom(RenderState& state) { rasterizer.restoreStateFrom(state); }
+    void saveStateTo(RenderState& state) { rasterizer.saveStateTo(state); }
+    ScopedRenderState preserveState(RenderState& state) { return ScopedRenderState(&rasterizer, &state); }
 
     void calcCrossPoints(Mesh* mesh, float oscPhase) { rasterizer.calcCrossPoints(mesh, oscPhase); }
     void cleanUp() override { rasterizer.cleanUp(); }
@@ -54,10 +64,23 @@ public:
     RasterizerData& getRasterizerData() override { return rasterizer.getRasterizerData(); }
     const RasterizerData& getRasterizerData() const override { return rasterizer.getRasterizerData(); }
     RasterizerData& getRastData() { return rasterizer.getRastData(); }
-    MeshRasterizer::RenderState createRenderState() {
-        MeshRasterizer::RenderState state;
+    RenderState createRenderState() {
+        RenderState state;
         saveStateTo(state);
         return state;
+    }
+
+    static RenderState createBatchRenderState(
+            Scaling scaling,
+            const MorphPosition& morphPosition,
+            bool lowResCurves = true,
+            bool calcDepthDimensions = false) {
+        return RenderState(
+                true,
+                lowResCurves,
+                calcDepthDimensions,
+                static_cast<int>(scaling),
+                morphPosition);
     }
 
     MorphPosition& getMorphPosition() { return rasterizer.getMorphPosition(); }

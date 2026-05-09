@@ -13,6 +13,7 @@
 
 #include "../Updating/DynamicDetailUpdater.h"
 #include "../Curve/GraphicRasterizer.h"
+#include "../Curve/Rasterization/Facades/OscPhaseRasterizer.h"
 #include "../Curve/ScratchContext.h"
 
 class EnvRasterizer;
@@ -177,7 +178,7 @@ private:
     Ref<TimeRasterizer>  timeRasterizer;
     Ref<SpectRasterizer> spectRasterizer;
     Ref<PhaseRasterizer> phaseRasterizer;
-    MeshRasterizer oscPhaseRasterizer;
+    Cycle::Rasterization::OscPhaseRasterizer oscPhaseRasterizer;
 
     ScopedAlloc<Float32> zoomProgress;
     ScopedAlloc<Float32> fftPreFXArray, fftPostFXArray;			  // fft

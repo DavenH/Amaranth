@@ -32,7 +32,7 @@ IrModeller::IrModeller(SingletonRepo *repo) :
     ,   audioThdRasterizer(repo, "ImpulseRasterizerAudioThd")
     ,   oversampler(repo, 8) {
     setConvBufferSize(convBufferSize);
-    audioThdRasterizer.setScalingMode(MeshRasterizer::Bipolar);
+    audioThdRasterizer.setScalingMode(FXRasterizer::Bipolar);
 
     prefilt.setSmoothingActivity(false);
     oversampler.setOversampleFactor(2);

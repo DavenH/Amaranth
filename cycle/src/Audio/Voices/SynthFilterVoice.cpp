@@ -26,6 +26,8 @@ namespace {
 
 SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo) :
         CycleBasedVoice(parent, repo)
+    ,   freqRasterizer("SynthFilterMagnitudeRasterizer")
+    ,   phaseRasterizer("SynthFilterPhaseRasterizer")
 {
     freqLayers	= &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupSpect);
     phaseLayers	= &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupPhase);
@@ -45,17 +47,8 @@ SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo
 
     auto& guideCurvePanel = getObj(GuideCurvePanel);
 
-    freqRasterizer.setWrapsEnds(false);
-    freqRasterizer.setGuideCurveProvider(&guideCurvePanel);
-    freqRasterizer.setCalcDepthDimensions(false);
-    freqRasterizer.setLimits(-spectMargin, 1 + spectMargin);
-
-    phaseRasterizer.setWrapsEnds(false);
-    phaseRasterizer.setScalingMode(MeshRasterizer::Bipolar);
-    phaseRasterizer.setGuideCurveProvider(&guideCurvePanel);
-    phaseRasterizer.setCalcDepthDimensions(false);
-    phaseRasterizer.setInterpolatesCurves(true);
-    phaseRasterizer.setLimits(-spectMargin, 1 + spectMargin);
+    freqRasterizer.configureMagnitude(&guideCurvePanel, (float) spectMargin);
+    phaseRasterizer.configurePhase(&guideCurvePanel, (float) spectMargin);
 
     cycleCompositeAlgo = Interpolate;
 }
@@ -220,7 +213,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
 
         freqRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
         freqRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-        freqRasterizer.calcCrossPoints(layer.mesh, 0.f);
+        freqRasterizer.calcCrossPoints(layer.mesh);
 
         if (freqRasterizer.isSampleable()) {
             freqRasterizer.sampleAtIntervals(fftRamp, harmRast);
@@ -351,7 +344,7 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 
             phaseRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
             phaseRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-            phaseRasterizer.calcCrossPoints(layer.mesh, 0.f);
+            phaseRasterizer.calcCrossPoints(layer.mesh);
 
             if (phaseRasterizer.isSampleable()) {
                 phaseRasterizer.sampleAtIntervals(fftRamp, harmRast);
