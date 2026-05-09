@@ -15,52 +15,53 @@
 
 VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
 		SingletonAccessor(repo, "VoiceMeshRasterizer")
+    ,   rasterizer("VoiceMeshRasterizer")
     ,   state(nullptr) {
-	setToOverrideDim(true);
-	setScalingMode(Bipolar);
-	setCalcDepthDimensions(false);
+	rasterizer.setToOverrideDim(true);
+	rasterizer.setScalingMode(MeshRasterizer::Bipolar);
+	rasterizer.setCalcDepthDimensions(false);
 
-	oversamplingChanged();
-    setUpdateCurvesProvider([this]() {
+	rasterizer.oversamplingChanged();
+    rasterizer.setUpdateCurvesProvider([this]() {
         Cycle::Rasterization::VoiceWaveformUpdatePolicy().update(
-                createRasterizerRuntime(),
+                rasterizer.createRasterizerRuntime(),
                 [this]() {
                     cleanUp();
                 },
                 [this]() {
-                    prepareCurvesForWaveform();
+                    rasterizer.prepareLegacyCurvesForWaveform();
                 },
                 [this]() {
-                    calcWaveform();
+                    rasterizer.calcLegacyWaveform();
                 });
     });
 }
 
 void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
     Cycle::Rasterization::VoiceRasterizationPipeline::Context context;
-    context.mesh = getMesh();
+    context.mesh = rasterizer.getMesh();
     context.state = state;
-    context.morph = getMorphPosition();
-    context.runtime = createRasterizerRuntime();
-    context.reductionData = &reduct;
+    context.morph = rasterizer.getMorphPosition();
+    context.runtime = rasterizer.createRasterizerRuntime();
+    context.reductionData = &rasterizer.getReductionData();
     context.oscPhase = oscPhase;
-    context.interceptPadding = interceptPadding;
+    context.interceptPadding = rasterizer.getInterceptPadding();
     context.initialAdvancement = getRealConstant(MinLineLength) * 1.1f;
 
     Cycle::Rasterization::VoiceRasterizationPipeline().render(
             context,
-            createGuideCurveApplier(),
+            rasterizer.createLegacyGuideCurveApplier(),
             [this](std::vector<Intercept>& intercepts) {
-                restrictIntercepts(intercepts);
+                rasterizer.restrictIntercepts(intercepts);
             },
             [](::Rasterization::RasterizerRuntime runtime) {
                 ::Rasterization::RasterizerCleanupPolicy::markWaveformUnsampleable(runtime);
             },
             [this]() {
-                updateCurves();
+                rasterizer.updateCurves();
             });
 }
 
 void VoiceMeshRasterizer::orphanOldVerts() {
-    createRasterizerRuntime().clearIntercepts();
+    rasterizer.createRasterizerRuntime().clearIntercepts();
 }

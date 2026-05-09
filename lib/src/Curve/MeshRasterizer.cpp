@@ -683,6 +683,10 @@ Rasterization::GuideCurveApplier MeshRasterizer::createGuideCurveApplier() {
     return Rasterization::GuideCurveApplier(createGuideCurvePolicyContext());
 }
 
+Rasterization::GuideCurveApplier MeshRasterizer::createLegacyGuideCurveApplier() {
+    return createGuideCurveApplier();
+}
+
 void MeshRasterizer::makeCopy() {
     Rasterization::RasterizerSnapshotSource source =
             Rasterization::createRasterizerSnapshotSource(createRasterizerRuntime());

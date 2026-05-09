@@ -227,6 +227,11 @@ public:
     }
     bool wrapsVertices() const override             { return cyclic;                    }
     void updateOffsetSeeds(int layerSize, int tableSize);
+    float getInterceptPadding() const               { return interceptPadding;          }
+    VertCube::ReductionData& getReductionData()     { return reduct;                    }
+    Rasterization::GuideCurveApplier createLegacyGuideCurveApplier();
+    void prepareLegacyCurvesForWaveform()           { prepareCurvesForWaveform();       }
+    void calcLegacyWaveform()                       { calcWaveform();                   }
 
 
 protected:
