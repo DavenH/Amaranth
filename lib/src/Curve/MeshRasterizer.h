@@ -119,7 +119,7 @@ public:
     void reset();
     void performUpdate(UpdateType updateType) override;
     void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
-    virtual void updateCurves();
+    void updateCurves();
 
     bool hasEnoughCubesForCrossSection();
     int getNumDims();
@@ -168,6 +168,9 @@ public:
     }
     void setCrossPointProvider(std::function<void()> provider) {
         crossPointProvider = provider;
+    }
+    void setUpdateCurvesProvider(std::function<void()> provider) {
+        updateCurvesProvider = provider;
     }
     void setNoiseSeed(int seed)                     { noiseSeed     = seed;             }
     void setNumDimensionsProvider(std::function<int()> provider) {
@@ -247,6 +250,7 @@ protected:
     int overridingDim;
     int paddingSize;
     std::function<void()> crossPointProvider;
+    std::function<void()> updateCurvesProvider;
     std::function<void(Rasterization::RasterizerRuntime)> cleanupProvider;
     std::function<void(vector<Intercept>&, vector<Curve>&)> paddingProvider;
     std::function<void(Mesh*)> meshAssignmentProvider;

@@ -24,7 +24,6 @@ public:
 	 * This provides 100% continuity between cycles
 	 */
 	void calcCrossPointsChaining(float phase);
-	void updateCurves() override;
 	void orphanOldVerts();
 	void setState(CycleState* state) { this->state = state; }
 };

@@ -21,6 +21,19 @@ VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
 	setCalcDepthDimensions(false);
 
 	oversamplingChanged();
+    setUpdateCurvesProvider([this]() {
+        Cycle::Rasterization::VoiceWaveformUpdatePolicy().update(
+                createRasterizerRuntime(),
+                [this]() {
+                    cleanUp();
+                },
+                [this]() {
+                    prepareCurvesForWaveform();
+                },
+                [this]() {
+                    calcWaveform();
+                });
+    });
 }
 
 void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
@@ -45,20 +58,6 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
             },
             [this]() {
                 updateCurves();
-            });
-}
-
-void VoiceMeshRasterizer::updateCurves() {
-    Cycle::Rasterization::VoiceWaveformUpdatePolicy().update(
-            createRasterizerRuntime(),
-            [this]() {
-                cleanUp();
-            },
-            [this]() {
-                prepareCurvesForWaveform();
-            },
-            [this]() {
-                calcWaveform();
             });
 }
 

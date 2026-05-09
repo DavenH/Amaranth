@@ -51,6 +51,7 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    noiseSeed           (-1)
     ,    overridingDim       (Vertex::Time)
     ,    crossPointProvider()
+    ,    updateCurvesProvider()
     ,    cleanupProvider()
     ,    paddingProvider()
     ,    meshAssignmentProvider()
@@ -288,6 +289,11 @@ void MeshRasterizer::adjustDeformingSharpness() {
 }
 
 void MeshRasterizer::updateCurves() {
+    if (updateCurvesProvider != nullptr) {
+        updateCurvesProvider();
+        return;
+    }
+
     if (icpts.size() < 2) {
         return;
     }
@@ -517,6 +523,7 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     this->overrideDim            = copy.overrideDim;
     this->overridingDim          = copy.overridingDim;
     this->crossPointProvider     = nullptr;
+    this->updateCurvesProvider   = nullptr;
     this->cleanupProvider        = nullptr;
     this->paddingProvider        = nullptr;
     this->meshAssignmentProvider = nullptr;
