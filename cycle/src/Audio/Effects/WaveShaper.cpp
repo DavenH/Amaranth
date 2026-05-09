@@ -33,7 +33,7 @@ void Waveshaper::init() {
 
 void Waveshaper::setRasterizer(MeshRasterizer* rasterizer) {
     rasterizerOwner = rasterizer;
-    this->rasterizer.setRasterizer(rasterizer);
+    waveformProvider.setRasterizer(rasterizer);
 }
 
 void Waveshaper::rasterizeTable() {
@@ -45,7 +45,7 @@ void Waveshaper::rasterizeTable() {
     double phase = padding + 0.5 * delta;
 
     Buffer<float> halfTable(table + halfRes, halfRes);
-    rasterizer.samplePerfectly(delta, halfTable, phase);
+    waveformProvider.samplePerfectly(delta, halfTable, phase);
 
     halfTable.add(-padding).mul(1.f / (1.f - 2.f * padding));
 

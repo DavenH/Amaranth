@@ -4,7 +4,7 @@
 #include <Array/ScopedAlloc.h>
 #include <Audio/SmoothedParameter.h>
 #include <Curve/MeshRasterizer.h>
-#include <Curve/Rasterization/Interfaces/MeshRasterizerSamplerAdapter.h>
+#include <Curve/Rasterization/Interfaces/MeshRasterizerWaveformProviderAdapter.h>
 #include <Obj/Ref.h>
 #include <Util/NumberUtils.h>
 
@@ -56,7 +56,7 @@ private:
     int pendingOversampleFactor;
 
     Ref<MeshRasterizer> rasterizerOwner;
-    Rasterization::MeshRasterizerSamplerAdapter rasterizer;
+    Rasterization::MeshRasterizerWaveformProviderAdapter waveformProvider;
     Ref<WaveshaperUI> ui;
 
     Buffer<float> workBuffer;
