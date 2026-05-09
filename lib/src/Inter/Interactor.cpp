@@ -14,10 +14,11 @@
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
 #include "../Curve/MeshRasterizer.h"
-#include "../Curve/Rasterization/Interfaces/MeshRasterizerSamplerAdapter.h"
-#include "../Curve/Rasterization/Interfaces/MeshRasterizerSnapshotAdapter.h"
+#include "../Curve/Rasterization/Interfaces/MeshBindableRasterizer.h"
 #include "../Curve/Rasterization/Interfaces/RasterizerSampler.h"
 #include "../Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h"
+#include "../Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h"
+#include "../Curve/Rasterization/Interfaces/RasterizerVertexDomain.h"
 #include "../Curve/Vertex.h"
 #include "../Design/Updating/Updater.h"
 #include "../Obj/CurveLine.h"
@@ -100,8 +101,6 @@ Interactor::Interactor(SingletonRepo* repo, const String& name, const Dimensions
     ,   lastPolledMouse         (-1, -1)
     ,   vertexTransformUndoer   (this)
     ,   rasterizer              (nullptr)
-    ,   samplerAdapter          (new Rasterization::MeshRasterizerSamplerAdapter)
-    ,   snapshotAdapter         (new Rasterization::MeshRasterizerSnapshotAdapter)
     ,   updateSource            (CommonEnums::Null)
     ,   layerType               (CommonEnums::Null)
     ,   collisionDetector       (repo, CollisionDetector::Time) {
@@ -1441,94 +1440,83 @@ void Interactor::snapToGrid(Vertex2& toSnap) {
 
 void Interactor::setRasterizer(MeshRasterizer* rasterizer) {
     this->rasterizer = rasterizer;
-    samplerAdapter->setRasterizer(rasterizer);
-    snapshotAdapter->setRasterizer(rasterizer);
+    meshRasterizer = rasterizer;
+    rasterizerSampler = rasterizer;
+    snapshotProvider = rasterizer;
+    rasterizerUpdateTarget = rasterizer;
+    rasterizerVertexDomain = rasterizer;
 
-    if (this->rasterizer != nullptr) {
+    if (rasterizerVertexDomain != nullptr) {
         setRasterizerDims(dims);
     }
 }
 
 bool Interactor::rasterizerWrapsVertices() const {
-    return rasterizer != nullptr && rasterizer->wrapsVertices();
+    return rasterizerVertexDomain != nullptr && rasterizerVertexDomain->wrapsVertices();
 }
 
 int Interactor::getRasterizerPaddingSize() const {
-    return rasterizer != nullptr ? rasterizer->getPaddingSize() : 0;
+    return rasterizerVertexDomain != nullptr ? rasterizerVertexDomain->getPaddingSize() : 0;
 }
 
 GuideCurveProvider* Interactor::getGuideCurveProvider() const {
-    return rasterizer != nullptr ? rasterizer->getGuideCurveProvider() : nullptr;
+    return rasterizerVertexDomain != nullptr ? rasterizerVertexDomain->getGuideCurveProvider() : nullptr;
 }
 
 void Interactor::setRasterizerDims(const Dimensions& newDims) {
-    if (rasterizer != nullptr) {
-        rasterizer->setDims(newDims);
+    if (rasterizerVertexDomain != nullptr) {
+        rasterizerVertexDomain->setDims(newDims);
     }
 }
 
 void Interactor::setRasterizerMesh(Mesh* mesh) {
-    if (rasterizer != nullptr) {
-        rasterizer->setMesh(mesh);
+    if (meshRasterizer != nullptr) {
+        meshRasterizer->setMesh(mesh);
     }
 }
 
 void Interactor::performRasterizerUpdate(UpdateType updateType) {
-    if (rasterizer != nullptr) {
-        rasterizer->performUpdate(updateType);
+    if (rasterizerUpdateTarget != nullptr) {
+        rasterizerUpdateTarget->performUpdate(updateType);
     }
 }
 
 void Interactor::updateRasterizer(UpdateType updateType) {
-    if (rasterizer != nullptr) {
-        rasterizer->update(updateType);
+    if (rasterizerUpdateTarget != nullptr) {
+        rasterizerUpdateTarget->updateRasterizer(updateType);
     }
 }
 
 Rasterization::RasterizerSampler* Interactor::getRasterizerSampler() const {
-    return samplerAdapter.get();
+    return rasterizerSampler;
 }
 
 bool Interactor::isRasterizerSampleableAt(float x) const {
-    if (rasterizer == nullptr) {
+    if (rasterizerSampler == nullptr) {
         return false;
     }
 
-    if (samplerAdapter->getRasterizer() != rasterizer) {
-        samplerAdapter->setRasterizer(rasterizer);
-    }
-
-    return samplerAdapter->isSampleableAt(x);
+    return rasterizerSampler->isSampleableAt(x);
 }
 
 float Interactor::sampleRasterizerAt(double angle) const {
-    if (rasterizer == nullptr) {
+    if (rasterizerSampler == nullptr) {
         return 0.f;
     }
 
-    if (samplerAdapter->getRasterizer() != rasterizer) {
-        samplerAdapter->setRasterizer(rasterizer);
-    }
-
-    return samplerAdapter->sampleAt(angle);
+    return rasterizerSampler->sampleAt(angle);
 }
 
 Rasterization::RasterizerSnapshotProvider* Interactor::getSnapshotProvider() const {
-    return snapshotAdapter.get();
+    return snapshotProvider;
 }
 
 RasterizerData& Interactor::getRasterizerData() const {
     static RasterizerData emptyData;
 
-    if (rasterizer == nullptr) {
-        return emptyData;
-    }
-
     auto* provider = getSnapshotProvider();
-    jassert(provider != nullptr);
-
-    if (snapshotAdapter->getRasterizer() != rasterizer) {
-        snapshotAdapter->setRasterizer(rasterizer);
+    if (provider == nullptr) {
+        return emptyData;
     }
 
     return provider->getRasterizerData();

@@ -9,6 +9,11 @@
 #include "Rasterization/MeshRasterizerState.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
 #include "Rasterization/Interfaces/GuideCurveBindableRasterizer.h"
+#include "Rasterization/Interfaces/MeshBindableRasterizer.h"
+#include "Rasterization/Interfaces/RasterizerSampler.h"
+#include "Rasterization/Interfaces/RasterizerSnapshotProvider.h"
+#include "Rasterization/Interfaces/RasterizerUpdateTarget.h"
+#include "Rasterization/Interfaces/RasterizerVertexDomain.h"
 #include "Rasterization/RasterizerController.h"
 #include "Rasterization/RasterizationRequest.h"
 #include "Rasterization/RasterizerRuntime.h"
@@ -42,7 +47,12 @@ typedef vector<Intercept>::const_iterator ConstIcptIter;
 
 class MeshRasterizer :
         public Updateable
-    ,   public Rasterization::GuideCurveBindableRasterizer {
+    ,   public Rasterization::GuideCurveBindableRasterizer
+    ,   public Rasterization::MeshBindableRasterizer
+    ,   public Rasterization::RasterizerSampler
+    ,   public Rasterization::RasterizerSnapshotProvider
+    ,   public Rasterization::RasterizerUpdateTarget
+    ,   public Rasterization::RasterizerVertexDomain {
 public:
     enum ScalingType { Unipolar, Bipolar, HalfBipolar };
 
@@ -80,14 +90,14 @@ public:
     Rasterization::RasterizationRequest createRasterizationRequest();
     Rasterization::RasterizerRuntime createRasterizerRuntime();
 
-    bool isSampleable();
-    bool isSampleableAt(float x);
+    bool isSampleable() override;
+    bool isSampleableAt(float x) override;
     bool wasCleanedUp() const { return unsampleable; }
 
-    float sampleAt(double angle);
-    float sampleAt(double angle, int& currentIndex);
+    float sampleAt(double angle) override;
+    float sampleAt(double angle, int& currentIndex) override;
     float sampleAtDecoupled(double angle, GuideCurveContext& context);
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase);
+    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override;
     void sampleAtIntervals(Buffer<float> deltas, Buffer<float> dest);
 
     /* ----------------------------------------------------------------------------- */
@@ -114,18 +124,19 @@ public:
 
     void calcCrossPoints();
     void calcCrossPointsAtTime(float x);
-    void cleanUp();
+    void cleanUp() override;
     void handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube);
     void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);
     void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
     void preCleanup();
     void processIntercepts(vector<Intercept>& intercepts);
-    void reset();
+    void reset() override;
     void performUpdate(UpdateType updateType) override;
+    void updateRasterizer(UpdateType updateType) override { update(updateType); }
     void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
     void updateCurves();
 
-    bool hasEnoughCubesForCrossSection();
+    bool hasEnoughCubesForCrossSection() override;
     int getNumDims();
     int getPrimaryViewDimension();
     Mesh* getCrossPointsMesh();
@@ -145,7 +156,7 @@ public:
     Buffer<float> getDiffX()                        { return waveform.diffX;            }
 
     const String& getName() const                   { return name;                      }
-    int getPaddingSize() const                      { return paddingSize;               }
+    int getPaddingSize() const override             { return paddingSize;               }
     int getOneIndex() const                         { return waveform.oneIndex;         }
     int getZeroIndex() const                        { return waveform.zeroIndex;        }
 
@@ -154,14 +165,16 @@ public:
     const vector<Intercept>& getBackIcpts() const   { return backIcpts;                 }
     vector<ColorPoint>& getColorPoints()            { return colorPoints;               }
     RasterizerData& getRastData()                   { return rastArrays;                }
-    GuideCurveProvider* getGuideCurveProvider() const  { return guideCurveProvider;        }
+    RasterizerData& getRasterizerData() override    { return rastArrays;                }
+    const RasterizerData& getRasterizerData() const override { return rastArrays;        }
+    GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
 
     void setBatchMode(bool batch)                   { batchMode = batch;                }
     void setWrapsEnds(bool wraps)                   { cyclic = wraps;                   }
     void setCalcDepthDimensions(bool calc)          { calcDepthDims = calc;             }
     void setCalcInterceptsOnly(bool calc)           { calcInterceptsOnly = calc;        }
     void setDecoupleComponentDfrm(bool does)        { decoupleComponentDfrms = does;    }
-    void setDims(const Dimensions& dims)            { this->dims = dims;                }
+    void setDims(const Dimensions& dims) override   { this->dims = dims;                }
     void setIntegralSampling(bool does)             { this->integralSampling = does;    }
     void setInterceptPadding(float value)           { interceptPadding = value;         }
     void setInterpolatesCurves(bool should)         { interpolateCurves = should;       }
@@ -207,12 +220,12 @@ public:
     void setMorphPosition(const MorphPosition& m)   { morph         = m;                }
     void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }
 
-    virtual Mesh* getMesh()                         { return mesh;                      }
-    void setMesh(Mesh* mesh) {
+    Mesh* getMesh() override                        { return mesh;                      }
+    void setMesh(Mesh* mesh) override {
         this->mesh = mesh;
         controller.meshAssigned(mesh);
     }
-    bool wrapsVertices() const                      { return cyclic;                    }
+    bool wrapsVertices() const override             { return cyclic;                    }
     void updateOffsetSeeds(int layerSize, int tableSize);
 
 

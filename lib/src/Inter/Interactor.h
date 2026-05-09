@@ -31,10 +31,11 @@ class Vertex;
 class MeshRasterizer;
 
 namespace Rasterization {
-    class MeshRasterizerSamplerAdapter;
-    class MeshRasterizerSnapshotAdapter;
+    class MeshBindableRasterizer;
     class RasterizerSampler;
     class RasterizerSnapshotProvider;
+    class RasterizerUpdateTarget;
+    class RasterizerVertexDomain;
 }
 
 typedef vector<Vertex2>::iterator CoordIter;
@@ -263,8 +264,11 @@ protected:
 
     MorphPositioner*    positioner;
     MeshRasterizer*     rasterizer;
-    std::unique_ptr<Rasterization::MeshRasterizerSamplerAdapter> samplerAdapter;
-    std::unique_ptr<Rasterization::MeshRasterizerSnapshotAdapter> snapshotAdapter;
+    Rasterization::MeshBindableRasterizer* meshRasterizer {};
+    Rasterization::RasterizerSampler* rasterizerSampler {};
+    Rasterization::RasterizerSnapshotProvider* snapshotProvider {};
+    Rasterization::RasterizerUpdateTarget* rasterizerUpdateTarget {};
+    Rasterization::RasterizerVertexDomain* rasterizerVertexDomain {};
 
     CriticalSection     vertexLock;
     CollisionDetector   collisionDetector;
