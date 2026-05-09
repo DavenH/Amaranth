@@ -171,6 +171,9 @@ public:
         numDimensionsProvider = provider;
     }
     void setOverridingDim(int dim)                  { overridingDim = dim;              }
+    void setPaddingProvider(std::function<void(vector<Intercept>&, vector<Curve>&)> provider) {
+        paddingProvider = provider;
+    }
     void setCrossSectionAvailabilityProvider(std::function<bool()> provider) {
         crossSectionAvailabilityProvider = provider;
     }
@@ -232,6 +235,7 @@ protected:
     int overridingDim;
     int paddingSize;
     std::function<void(Rasterization::RasterizerRuntime)> cleanupProvider;
+    std::function<void(vector<Intercept>&, vector<Curve>&)> paddingProvider;
     std::function<int()> numDimensionsProvider;
     std::function<bool()> crossSectionAvailabilityProvider;
     std::function<int()> primaryViewDimensionProvider;

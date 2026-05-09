@@ -13,7 +13,6 @@ class FXRasterizer:
 public:
     explicit FXRasterizer(SingletonRepo* repo, const String& name = String());
     void calcCrossPoints() override;
-    void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) override;
     void setVertices(vector<Vertex*>* vertices);
     void setMesh(Mesh* newMesh) override;
 

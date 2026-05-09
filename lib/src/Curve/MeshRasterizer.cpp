@@ -51,6 +51,7 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    noiseSeed           (-1)
     ,    overridingDim       (Vertex::Time)
     ,    cleanupProvider()
+    ,    paddingProvider()
     ,    numDimensionsProvider()
     ,    crossSectionAvailabilityProvider()
     ,    primaryViewDimensionProvider()
@@ -407,6 +408,11 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
 }
 
 void MeshRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curves) {
+    if (paddingProvider != nullptr) {
+        paddingProvider(intercepts, curves);
+        return;
+    }
+
     int end = intercepts.size() - 1;
 
     if (end == 0) {
@@ -504,6 +510,7 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     this->overrideDim            = copy.overrideDim;
     this->overridingDim          = copy.overridingDim;
     this->cleanupProvider        = nullptr;
+    this->paddingProvider        = nullptr;
     this->numDimensionsProvider  = nullptr;
     this->crossSectionAvailabilityProvider = nullptr;
     this->primaryViewDimensionProvider  = nullptr;

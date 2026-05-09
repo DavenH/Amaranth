@@ -33,6 +33,9 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 
         DBG(MeshRasterizer::getName() + "::cleanUp");
     });
+    setPaddingProvider([this](vector<Intercept>& intercepts, vector<Curve>& curves) {
+        adapter.buildPadding(intercepts, curves, paddingSize);
+    });
 }
 
 void FXRasterizer::calcCrossPoints() {
@@ -52,10 +55,6 @@ Rasterization::RasterizationRequest FXRasterizer::createFxRequest() {
     request.scalingMode = Rasterization::pointScalingModeFromLegacyFx(getScalingType());
 
     return request;
-}
-
-void FXRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
-    adapter.buildPadding(icpts, curves, paddingSize);
 }
 
 void FXRasterizer::setMesh(Mesh* newMesh) {
