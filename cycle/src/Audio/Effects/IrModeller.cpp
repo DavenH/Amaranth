@@ -1,5 +1,4 @@
 #include <Array/Buffer.h>
-#include <Curve/Rasterization/Interfaces/MeshRasterizerWaveformProviderAdapter.h>
 #include <Util/StatusChecker.h>
 #include <Util/Util.h>
 #include "IrModeller.h"
@@ -115,8 +114,7 @@ void IrModeller::trimWave() {
 }
 
 void IrModeller::rasterizeImpulseDirect() {
-    Rasterization::MeshRasterizerWaveformProviderAdapter waveform(&audioThdRasterizer);
-    rasterizeImpulse(audio.rawImpulse, waveform, true);
+    rasterizeImpulse(audio.rawImpulse, audioThdRasterizer, true);
     filterImpulse(audio);
 
     for (auto & conv : convolvers) {
@@ -142,12 +140,12 @@ void IrModeller::rasterizeGraphicImpulse() {
             impulse.offset(maxSamples).zero();
         }
     } else {
-        Rasterization::MeshRasterizerWaveformProviderAdapter waveform(ui->getRasterizer());
-        if (!waveform.canRasterizeWaveform()) {
+        Rasterization::WaveformProvider* waveform = ui->getWaveformProvider();
+        if (waveform == nullptr || !waveform->canRasterizeWaveform()) {
             return;
         }
 
-        rasterizeImpulse(impulse, waveform, false);
+        rasterizeImpulse(impulse, *waveform, false);
     }
 
     filterImpulse(graphic);
@@ -468,8 +466,7 @@ void IrModeller::unloadWave() {
     waveLoaded = false;
 
     setAudioImpulseLength(calcLength(ui->getParamGroup().getKnobValue(Length)));
-    Rasterization::MeshRasterizerWaveformProviderAdapter waveform(&audioThdRasterizer);
-    rasterizeImpulse(audio.rawImpulse, waveform, true);
+    rasterizeImpulse(audio.rawImpulse, audioThdRasterizer, true);
     filterImpulse(audio);
 }
 
