@@ -21,12 +21,17 @@ namespace Rasterization {
 
             ScopedAlloc<float> memory;
             WaveformBuffers waveform;
+            std::vector<GuideCurveRegion> guideCurveRegions;
 
             int paddingSize { 2 };
             bool sampleable {};
         };
 
-        const Output& render(std::vector<Intercept>& points, const RasterizationRequest& request) {
+        const Output& render(
+                std::vector<Intercept>& points,
+                const RasterizationRequest& request,
+                GuideCurveProvider* guideCurveProvider = nullptr,
+                GuideCurveOffsetSeeds* offsetSeeds = nullptr) {
             output = Output();
 
             PointListSource source(points);
@@ -56,16 +61,21 @@ namespace Rasterization {
                 return output;
             }
 
-            bakeWaveform(request);
+            bakeWaveform(request, guideCurveProvider, offsetSeeds);
 
             return output;
         }
 
     private:
-        void bakeWaveform(const RasterizationRequest& request) {
+        void bakeWaveform(
+                const RasterizationRequest& request,
+                GuideCurveProvider* guideCurveProvider,
+                GuideCurveOffsetSeeds* offsetSeeds) {
             CurveWaveformPipeline::Context context;
             context.request = &request;
-            context.offsetSeeds = &guideCurveOffsetSeeds;
+            context.offsetSeeds = offsetSeeds != nullptr ? offsetSeeds : &guideCurveOffsetSeeds;
+            context.guideCurveProvider = guideCurveProvider;
+            context.guideCurveRegions = &output.guideCurveRegions;
             context.paddingSize = output.paddingSize;
 
             output.sampleable = curveWaveformPipeline.render(

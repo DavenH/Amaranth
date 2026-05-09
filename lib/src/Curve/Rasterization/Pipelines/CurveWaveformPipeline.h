@@ -5,6 +5,7 @@
 #include "../Builders/TransferTable.h"
 #include "../GuideCurveOffsetSeeds.h"
 #include "../Policies/Curves/CurveResolutionPolicy.h"
+#include "../Policies/Curves/CurveWaveformPreparationPolicy.h"
 #include "../Policies/Curves/WaveformBuildPolicy.h"
 #include "../RasterizationRequest.h"
 #include "../../Curve.h"
@@ -15,6 +16,8 @@ namespace Rasterization {
         struct Context {
             const RasterizationRequest* request {};
             GuideCurveOffsetSeeds* offsetSeeds {};
+            GuideCurveProvider* guideCurveProvider {};
+            std::vector<GuideCurveRegion>* guideCurveRegions {};
             int paddingSize { 2 };
         };
 
@@ -24,7 +27,13 @@ namespace Rasterization {
             jassert(context.offsetSeeds != nullptr);
 
             applyResolution(curves, *context.request, context.paddingSize);
-            return bakeWaveform(curves, *context.request, *context.offsetSeeds, allocateTarget);
+            return bakeWaveform(
+                    curves,
+                    *context.request,
+                    *context.offsetSeeds,
+                    context.guideCurveProvider,
+                    context.guideCurveRegions,
+                    allocateTarget);
         }
 
     private:
@@ -39,9 +48,7 @@ namespace Rasterization {
             context.paddingSize = paddingSize;
             CurveResolutionPolicy().apply(curves, context);
 
-            for (auto& curve : curves) {
-                curve.recalculateCurve();
-            }
+            CurveWaveformPreparationPolicy().apply(curves);
         }
 
         template<typename AllocateTarget>
@@ -49,14 +56,20 @@ namespace Rasterization {
                 std::vector<Curve>& curves,
                 const RasterizationRequest& request,
                 GuideCurveOffsetSeeds& offsetSeeds,
+                GuideCurveProvider* guideCurveProvider,
+                std::vector<GuideCurveRegion>* guideCurveRegions,
                 AllocateTarget allocateTarget) const {
-            WaveformBakePolicy::Context context;
-            context.lowResCurves = request.lowResCurves;
-            context.morph = request.morph;
-            context.offsetSeeds = &offsetSeeds;
-            context.transferTable = TransferTable::values();
+            WaveformBakePolicy::Context bakeContext;
+            bakeContext.lowResCurves = request.lowResCurves;
+            bakeContext.morph = request.morph;
+            bakeContext.decoupleComponentDfrms = request.decoupleComponentDeforms;
+            bakeContext.noiseSeed = request.noiseSeed;
+            bakeContext.guideCurveProvider = guideCurveProvider;
+            bakeContext.guideCurveRegions = guideCurveRegions;
+            bakeContext.offsetSeeds = &offsetSeeds;
+            bakeContext.transferTable = TransferTable::values();
 
-            return waveformBuilder.build(curves, context, allocateTarget);
+            return waveformBuilder.build(curves, bakeContext, allocateTarget);
         }
 
         WaveformBuildPolicy waveformBuilder;

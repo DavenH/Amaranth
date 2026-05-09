@@ -49,7 +49,11 @@ namespace Rasterization {
             meshOutput = rasterizer.renderWithReduction(oscPhase, guideApplier, reduction);
 
             meshIntercepts = meshOutput.intercepts;
-            waveformOutput = &waveformPipeline.render(meshIntercepts, request);
+            waveformOutput = &waveformPipeline.render(
+                    meshIntercepts,
+                    request,
+                    guideCurveProvider,
+                    &guideCurveOffsetSeeds);
         }
 
         void clean() {

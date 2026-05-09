@@ -5,6 +5,7 @@
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/MeshRasterizer.h"
+#include "../src/Curve/Rasterization/ComposedMeshWaveformRasterizer.h"
 #include "../src/Curve/Rasterization/Interpolation/AccurateMeshSlicer.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "../src/Curve/Rasterization/Policies/Mesh/ComponentGuideSharpnessPolicy.h"
@@ -54,7 +55,8 @@ namespace {
             return values[guideIndex];
         }
 
-        void sampleDownAddNoise(int, Buffer<float>, const GuideCurveProvider::NoiseContext&) override {
+        void sampleDownAddNoise(int guideIndex, Buffer<float> dest, const GuideCurveProvider::NoiseContext&) override {
+            dest.set(values[guideIndex]);
         }
 
         Buffer<Float32> getTable(int) override {
@@ -655,6 +657,36 @@ TEST_CASE("RasterizerComposer builds a mesh slice rasterizer", "[meshrasterizer]
     REQUIRE(output.sampleable);
     REQUIRE(output.intercepts.size() == mesh->getNumCubes());
     REQUIRE(output.colorPoints.size() == mesh->getNumCubes() * 3);
+}
+
+TEST_CASE("ComposedMeshWaveformRasterizer preserves component guide waveform baking", "[meshrasterizer][pipeline][composer][guide]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+    mesh->getCubes().front()->getCompGuideCurve() = 0;
+
+    ConstantGuideCurveProvider provider;
+    provider.values[0] = 0.25f;
+
+    MeshRasterizer reference("ComponentGuideReference");
+    configureWaveRasterizer(reference, mesh.get());
+    reference.setGuideCurveProvider(&provider);
+    reference.calcCrossPoints();
+
+    Rasterization::ComposedMeshWaveformRasterizer composed;
+    composed.getRequest() = reference.createRasterizationRequest();
+    composed.setGuideCurveProvider(&provider);
+    composed.render(mesh.get());
+
+    REQUIRE(reference.isSampleable());
+    REQUIRE(composed.isSampleable());
+    REQUIRE(composed.waveform().waveX.size() == reference.getWaveX().size());
+
+    RasterizerCompare::requireBufferNear(
+            RasterizerCompare::copyBuffer(reference.getWaveX()),
+            RasterizerCompare::copyBuffer(composed.waveform().waveX));
+    RasterizerCompare::requireBufferNear(
+            RasterizerCompare::copyBuffer(reference.getWaveY()),
+            RasterizerCompare::copyBuffer(composed.waveform().waveY));
 }
 
 TEST_CASE("MeshRasterizer characterizes intercept restriction spacing", "[meshrasterizer][characterization][restriction]") {
