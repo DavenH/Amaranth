@@ -26,8 +26,6 @@ namespace {
 
 SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo) :
         CycleBasedVoice(parent, repo)
-    ,   freqRasterizer("SynthFilterMagnitudeRasterizer")
-    ,   phaseRasterizer("SynthFilterPhaseRasterizer")
 {
     freqLayers	= &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupSpect);
     phaseLayers	= &getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupPhase);
@@ -181,7 +179,7 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
                     timeRasterizer.sampleWithInterval(timeBuf, samplingDelta, 0.);
 
             float layerPan = props.pan;
-            noteState.isStereo |= std::abs(layerPan - 0.5f) > 0.03f;
+            noteState.isStereo |= fabsf(layerPan - 0.5f) > 0.03f;
 
             float leftPan, rightPan;
             Arithmetic::getPans(layerPan, leftPan, rightPan);
@@ -233,7 +231,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
             Arithmetic::getPans(layerPan, leftPan, rightPan);
 
             float dynamicRange = Spectrum3D::calcDynamicRangeScale(props.range);
-            dynamicRange = std::sqrt(dynamicRange);
+            dynamicRange = sqrtf(dynamicRange);
 
             float multiplicand = powf(2.f, dynamicRange);
             float thresh = powf(1e-19f, 1.f / dynamicRange);

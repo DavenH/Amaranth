@@ -12,7 +12,6 @@
 #include <Array/ScopedAlloc.h>
 #include <Audio/AudioHub.h>
 #include <Curve/Mesh.h>
-#include <Curve/MeshRasterizer.h>
 #include <Curve/Vertex.h>
 #include <Curve/VertCube.h>
 #include <Definitions.h>

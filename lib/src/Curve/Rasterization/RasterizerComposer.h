@@ -6,6 +6,8 @@
 #include "Pipelines/FxRasterizationPipeline.h"
 #include "Pipelines/MeshSlicePipeline.h"
 #include "Pipelines/PointListRasterizationPipeline.h"
+#include "Policies/Core/PaddingPolicy.h"
+#include "Policies/Core/SnapshotPolicy.h"
 #include "Sources/MeshCubeSource.h"
 #include "Sources/PointListSource.h"
 #include "Sources/VertexListSource.h"
@@ -167,6 +169,56 @@ namespace Rasterization {
 
         MeshComposer& withRequest(const RasterizationRequest& newRequest) {
             request = newRequest;
+            return *this;
+        }
+
+        MeshComposer& withMorphPosition(const MorphPosition& morphPosition) {
+            request.morph = morphPosition;
+            return *this;
+        }
+
+        template<typename MorphProvider>
+        MeshComposer& withMorphProvider(const MorphProvider& morphProvider) {
+            request.morph = morphProvider.resolve();
+            return *this;
+        }
+
+        template<typename MorphProvider, typename Context>
+        MeshComposer& withMorphProvider(const MorphProvider& morphProvider, const Context& context) {
+            request.morph = morphProvider.resolve(context);
+            return *this;
+        }
+
+        MeshComposer& withPadding(const CyclicPaddingPolicy&) {
+            request.cyclic = true;
+            return *this;
+        }
+
+        MeshComposer& withPadding(const NonCyclicPaddingPolicy&) {
+            request.cyclic = false;
+            return *this;
+        }
+
+        MeshComposer& withCyclicPadding(float interceptPadding = 0.f) {
+            request.cyclic = true;
+            request.interceptPadding = interceptPadding;
+            return *this;
+        }
+
+        MeshComposer& withNonCyclicPadding(float minimumX = 0.f, float maximumX = 1.f) {
+            request.cyclic = false;
+            request.xMinimum = minimumX;
+            request.xMaximum = maximumX;
+            return *this;
+        }
+
+        MeshComposer& withSnapshot(const RasterizerDataSnapshot&) {
+            request.publishSnapshot = true;
+            return *this;
+        }
+
+        MeshComposer& withSnapshot(const NoSnapshot&) {
+            request.publishSnapshot = false;
             return *this;
         }
 

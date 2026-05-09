@@ -145,7 +145,6 @@ private:
     void processFrequency(vector<Column>& columns, bool processUnison);
     void processThroughEnvelopes(int numColumns);
     void trackWavePhaseEnvelope();
-    float getVoiceFrequencyCents(int unisonIndex);
 
     void checkFFTColumns 	 (int numColumns);
     void checkEffectsColumns (int numColumns);

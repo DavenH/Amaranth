@@ -455,7 +455,7 @@ CriticalSection& Waveform3D::getGridLock() {
 }
 
 bool Waveform3D::isSurfaceDetailReduced() {
-    auto* detailProvider = dynamic_cast<DynamicDetailUpdateable*>(interactor->getRasterizer());
+    auto* detailProvider = dynamic_cast<DynamicDetailUpdateable*>(interactor->getMeshBindableRasterizer());
     return detailProvider != nullptr && detailProvider->isDetailReduced();
 }
 

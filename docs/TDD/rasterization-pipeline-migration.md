@@ -1690,6 +1690,457 @@ Implemented state:
 - ADR 002 and this TDD describe the retained compatibility shell and final
   policy hierarchy.
 
+### Phase 33: Remove Direct Legacy Ownership From Leaf Callers
+
+Intent:
+
+- remove the remaining low-risk direct `MeshRasterizer` ownership and enum
+  leakage from concrete leaf callers,
+- keep compatibility internals hidden behind narrow domain facades while the
+  heavier batch paths are extracted separately.
+
+Code changes:
+
+- wrap `SynthFilterVoice`'s magnitude and phase filter rasterizers in a
+  `SpectralFilterRasterizer` facade that exposes only:
+  - magnitude/phase configuration,
+  - morph position and noise seed,
+  - mesh cross-point calculation at osc phase zero,
+  - sampleability and interval sampling,
+- wrap `VisualDsp`'s osc-phase helper in an `OscPhaseRasterizer` facade with a
+  single `rasterize(Mesh*)` operation,
+- replace uses of `MeshRasterizer` enum constants in `FXRasterizer` callers
+  with the owning rasterizer's own enum or a neutral scaling policy type,
+- avoid changing the generated wave, spectrum, or envelope data in this phase.
+
+Tests:
+
+- `cmake --build --preset tests --target Cycle_tests`,
+- `cmake --build --preset standalone-debug --target Cycle`,
+- focused rasterizer/voice test subset,
+- `cycle-agent-midi-note`,
+- filtered launch logs inspected for assertions/crashes.
+
+Acceptance:
+
+- `SynthFilterVoice` no longer includes or owns `MeshRasterizer` directly,
+- `VisualDsp` no longer owns a plain osc-phase `MeshRasterizer`,
+- FX callers do not reference `MeshRasterizer::ScalingType` for FX scaling,
+- voice MIDI automation remains clean.
+
+### Phase 34: Hide Graphic Render-State Compatibility
+
+Intent:
+
+- stop leaking `MeshRasterizer::RenderState` and
+  `MeshRasterizer::ScopedRenderState` into graphic callers,
+- make `GraphicRasterizer` the compatibility boundary for batch rendering
+  until the batch paths have their own composed renderer.
+
+Code changes:
+
+- add `GraphicRasterizer::RenderState`,
+  `GraphicRasterizer::ScopedRenderState`, and named graphic scaling values,
+- add helpers for preserving/restoring state and constructing batch render
+  state,
+- update `VisualDsp` batch setup to use `GraphicRasterizer` helpers rather
+  than direct `MeshRasterizer` types,
+- replace direct `legacyRasterizer()` usage in the time-domain batch loop with
+  `GraphicRasterizer` forwarding methods,
+- use `Rasterization::GuideCurveContext` directly where guide-curve sampling
+  context is needed.
+
+Tests:
+
+- focused rasterizer/graphic test subset,
+- standalone build,
+- `cycle-agent-midi-note`,
+- bongo/default panel PSNR fixture if the change touches rendered output
+  rather than only type boundaries.
+
+Acceptance:
+
+- `VisualDsp` does not mention `MeshRasterizer` for render-state setup,
+- remaining `legacyRasterizer()` usage is explicitly limited to paths that
+  still need deeper batch extraction,
+- rendered panels are behavior-compatible.
+
+### Phase 35: Extract `VisualDsp` Batch Rasterizers
+
+Intent:
+
+- move the densest remaining visual-DSP rasterization logic out of
+  `VisualDsp`,
+- make time and frequency column rendering testable without using
+  `VisualDsp` as the owner of all scratch state,
+- reduce duplication between time, magnitude, phase, and unison batch paths.
+
+Code changes:
+
+- add small batch renderers under `cycle/src/Curve/Rasterization/` or
+  `cycle/src/UI/VisualDsp/` only if they are truly UI-owned:
+  - `TimeColumnRasterizer`,
+  - `FrequencyColumnRasterizer`,
+  - `UnisonPhaseColumnRenderer` or equivalent if the unison path remains
+    distinct,
+- factor shared column inputs into explicit context structs:
+  - layer group,
+  - morph axis,
+  - zoom progress,
+  - scratch context lookup,
+  - FFT/log-region buffers,
+  - pan and unison options,
+- keep `VisualDsp` responsible for orchestration, locks, and publication of
+  column vectors,
+- keep the first extraction behavior-preserving; do not rewrite the math and
+  the ownership boundary in the same step,
+- remove remaining `legacyRasterizer()` calls from `VisualDsp` once the batch
+  renderers own the compatibility boundary.
+
+Tests:
+
+- add unit or characterization tests for the new batch renderer context where
+  practical,
+- bongo/default cropped panel PSNR baselines for Waveform2D, Spectrum2D,
+  Spectrum3D magnitude, and Spectrum3D phase,
+- `cycle-agent-spectrum-mode-switch`,
+- `cycle-agent-africanhorn-icycle-preset-switch`,
+- full `ctest`.
+
+Acceptance:
+
+- `VisualDsp` no longer contains the full mesh-rasterization inner loops,
+- remaining visual batch logic is organized around explicit renderer/context
+  shapes,
+- no visual regression in panel baselines.
+
+Implemented state:
+
+- the time-domain column mesh-rasterization loop is extracted into
+  `Cycle::Rasterization::TimeColumnRasterizer`,
+- the pitch/unison phase-shift column pass is extracted into
+  `Cycle::Rasterization::UnisonPhaseColumnRenderer`,
+- `VisualDsp` still owns allocation, locks, and column publication,
+- magnitude/phase frequency column rendering remains to be extracted.
+
+### Phase 36: Migrate Remaining Library Callers To Narrow Interfaces
+
+Intent:
+
+- remove non-UI library dependencies on concrete `MeshRasterizer*`,
+- prevent compatibility-shell requirements from leaking back into audio and
+  sample utilities.
+
+Code changes:
+
+- audit and migrate:
+  - `Multisample`,
+  - `PitchedSample`,
+  - sample-import period creation,
+  - any audio utility that only needs waveform sampling,
+- replace concrete rasterizer pointers with the smallest existing interface:
+  - `WaveformProvider`,
+  - `RasterizerSampler`,
+  - `RasterizerSnapshotProvider`,
+  - `MeshBindableRasterizer` only where mesh binding is actually required,
+- add adapter methods only at module boundaries and name them as compatibility
+  adapters,
+- avoid broadening the existing interfaces to match `MeshRasterizer`.
+
+Tests:
+
+- compile-time coverage from affected callers,
+- sample import/period creation tests if available,
+- `cycle-agent-midi-note`,
+- offline audio capture fixture where the changed path affects render output,
+- full `ctest`.
+
+Acceptance:
+
+- library audio/sample utilities do not require `MeshRasterizer*` unless they
+  genuinely bind a mesh,
+- voice and sample paths depend on waveform or sampling capabilities rather
+  than base rasterizer state.
+
+Implemented state:
+
+- `Multisample` and `PitchedSample` no longer expose concrete
+  `MeshRasterizer*` overloads,
+- current production callers pass `MeshBindableRasterizer`,
+  `RasterizerUpdateTarget`, and `RasterizerSampler` explicitly.
+
+### Phase 37: Complete Interactor Binding Split
+
+Intent:
+
+- finish separating mesh editing from sampling/snapshot/update access,
+- remove the largest UI-side reason for keeping `MeshRasterizer` as a concrete
+  common type.
+
+Code changes:
+
+- update `Interactor` storage to hold explicit capability pointers instead of
+  one concrete rasterizer pointer,
+- migrate callers of `Interactor::getRasterizer()` to the narrow capability
+  they actually use,
+- preserve `getRasterizer()` only as a temporary compatibility accessor while
+  the last callers are being migrated, and enumerate those callers in this
+  phase before deleting it,
+- update mesh-selection clients and keyboard/automation helpers to consume the
+  narrow interfaces.
+
+Tests:
+
+- compile-time coverage for all interactor clients,
+- mesh selection gesture fixture,
+- bongo/default panel PSNR baselines,
+- `cycle-agent-africanhorn-icycle-preset-switch`,
+- full `ctest`.
+
+Acceptance:
+
+- new interactor code does not store or request `MeshRasterizer*`,
+- mesh editing still works for graphic, envelope, and FX panels,
+- remaining compatibility callers are explicitly listed or deleted.
+
+Implemented state:
+
+- `Interactor` no longer stores a concrete `MeshRasterizer*`,
+- the old `setRasterizer(MeshRasterizer*)` and `getRasterizer()` compatibility
+  accessors are removed,
+- 3D detail-reduction callers now use `getMeshBindableRasterizer()` and
+  dynamic-cast only for the optional detail capability.
+
+### Phase 38: Consolidate Facades, Policies, And Compatibility Adapters
+
+Intent:
+
+- reduce the line-count and navigation cost introduced during migration,
+- keep reusable concepts reusable and delete one-off wrappers that only served
+  an intermediate phase,
+- verify that the new narrow rasterization interfaces are genuinely useful and
+  have not simply recreated `MeshRasterizer` as several always-used fragments,
+- evaluate current implementation against the desired composer configuration
+  style and record the remaining delta.
+
+Code changes:
+
+- audit every new rasterization class for one of these outcomes:
+  - keep as a permanent domain abstraction,
+  - merge into a nearby facade because it has only one caller and no test seam,
+  - move into a policy group README as documented behavior rather than code,
+  - delete as obsolete compatibility scaffolding,
+- look specifically for duplicated context structs, forwarding methods,
+  waveform-copy helpers, and policy wrappers that differ only by enum naming,
+- group tiny related policies only when grouping improves discovery without
+  creating a new god header,
+- prefer deleting code over creating umbrella abstractions that hide important
+  specialization details,
+- audit each rasterization interface and classify it as:
+  - **kept-disjoint**: at least one real caller needs this capability without
+    needing most of the others,
+  - **compatibility-only**: implemented broadly today only because the
+    migration is draining legacy callers,
+  - **merge candidate**: overlaps another interface enough that separate
+    existence creates noise,
+  - **delete candidate**: no production caller remains after compatibility
+    adapters are removed.
+
+Interface audit questions:
+
+- Does the caller need to bind or inspect a `Mesh`, or only sample an existing
+  waveform?
+- Does the caller need update lifecycle (`cleanUp`, `performUpdate`, `reset`),
+  or is lifecycle owned by a surrounding facade?
+- Does the caller need panel snapshot data, or only numeric samples?
+- Does the caller need vertex-domain mutation (`setDims`, wrapping, padding
+  size), or should that be construction-time composer configuration?
+- Is guide-curve binding a global registration concern, a construction-time
+  dependency, or a runtime mutator?
+- If nearly every remaining concrete rasterizer still implements an interface,
+  is that because the domain genuinely needs it, or because an old caller has
+  not yet been migrated?
+
+Current interface expectations to verify:
+
+- `WaveformProvider` should be kept only if audio/effect consumers such as
+  Waveshaper and IrModeller can depend on waveform rendering without mesh
+  binding, snapshots, or panel lifecycle.
+- `RasterizerSampler` should be kept only if there are callers that need random
+  sampling of an already-baked waveform without update ownership.
+- `RasterizerSnapshotProvider` should remain panel/read-only UI facing and
+  should not imply mesh binding or mutation.
+- `MeshBindableRasterizer` should remain only for mesh editing/import paths,
+  not for FX point-list or audio-only consumers.
+- `RasterizerUpdateTarget` should remain only where the updater/interactor
+  truly owns lifecycle dispatch.
+- `RasterizerVertexDomain` is a likely merge or redesign candidate because it
+  groups wrapping, padding size, guide-provider access, and dimension mutation;
+  decide whether those belong in construction-time options, a domain descriptor,
+  or separate narrow capabilities.
+- `GuideCurveBindableRasterizer` should be checked against `SingletonRepo`
+  registration. If guide-curve provider binding is no longer global mutation,
+  prefer construction-time dependencies or composer configuration.
+
+Composer target audit:
+
+- compare current implementation to the target shape:
+
+  ```cpp
+  auto rasterizer = RasterizerComposer::mesh()
+      .withSource(MeshCubeSource(mesh))
+      .withSlicer(TrilinearMeshSlicer())
+      .withMorphProvider(GraphicMorphPositionPolicy(...))
+      .withPadding(CyclicPaddingPolicy(...))
+      .withSnapshot(RasterizerDataSnapshot())
+      .build();
+  ```
+
+- document which builder hooks exist today, which are stubs, and which are
+  still hidden behind compatibility classes,
+- verify whether `withSource(...)` accepts lightweight non-`Mesh` sources for
+  FX/point-list paths and mesh cube sources for graphic/voice paths,
+- verify whether `withSlicer(...)` has a real mesh slicer implementation or
+  whether trilinear logic still lives in `VertCube`/legacy helpers,
+- verify whether morph position is construction-time policy, per-render request
+  data, or still pulled from panels inside a compatibility class,
+- verify whether padding is an explicit policy choice or still implied by
+  rasterizer type and mutable flags,
+- verify whether snapshot publication is optional and explicit, especially for
+  non-UI/audio paths,
+- identify the next smallest production caller that can be built directly from
+  the composer rather than through a legacy facade.
+
+Tests:
+
+- build after each mechanical deletion/move group,
+- full `ctest`,
+- standalone build,
+- affected focused UI fixtures,
+- PSNR baselines if files moved across graphic render paths.
+
+Acceptance:
+
+- rasterization LOC decreases or the remaining lines have clear ownership,
+- no duplicate policy/facade pair exists without a reason documented in the
+  TDD or a README,
+- the directory hierarchy remains navigable by domain and responsibility,
+- each remaining rasterization interface has at least one concrete caller story
+  that does not require most of the other interfaces, or it is marked for merge
+  or deletion,
+- the TDD records a composer gap analysis: implemented hooks, missing hooks,
+  and the next concrete caller to migrate to the desired configuration style.
+
+Implemented state:
+
+- mesh composer exposes target-style hooks for source, slicer, morph position
+  or morph provider, padding policy, and snapshot policy,
+- the hooks currently map onto `RasterizationRequest`; they do not yet publish
+  a full snapshot directly from `ComposedMeshRasterizer`,
+- the `GraphicRasterizer::legacyRasterizer()` escape hatch is removed after
+  migrating the last production caller,
+- `OscPhaseRasterizer` and `SpectralFilterRasterizer` no longer own
+  compatibility `MeshRasterizer` instances; they build from the composed mesh
+  slicer and, for spectral filters, the point-list waveform pipeline,
+- `E3Rasterizer`, `GraphicRasterizer`, and `VoiceMeshRasterizer` no longer own
+  compatibility `MeshRasterizer` instances,
+- `ComposedMeshWaveformRasterizer` now provides the shared mesh-slice to
+  waveform primitive, including snapshot-source publication and target-style
+  guide-curve applier creation for domain pipelines,
+- `VoiceMeshRasterizer` keeps the voice-specific chained pipeline and storage
+  directly, rather than routing chained audio through a generic compatibility
+  rasterizer,
+- interface audit has removed concrete audio/import and interactor
+  compatibility paths that no longer had production callers.
+
+### Phase 39: Retire Or Rename `MeshRasterizer`
+
+Intent:
+
+- make accidental new usage of the compatibility shell difficult,
+- finish the migration from inheritance reuse to composition.
+
+Code changes:
+
+- after Phases 35-37 remove the last production direct callers,
+- choose one final outcome:
+  - delete `MeshRasterizer` if tests and callers no longer need it, or
+  - rename it to `LegacyMeshRasterizerAdapter` if characterization tests or a
+    small compatibility path still need it,
+- move any remaining reusable pieces into storage, controller, policies,
+  sources, slicers, samplers, or composer factories,
+- update public includes and comments so new code reaches for the composed
+  rasterizer APIs first,
+- update ADR 002 with the final decision.
+
+Tests:
+
+- full `ctest`,
+- standalone build,
+- plugin build if affected public headers cross plugin targets,
+- bongo/default PSNR baseline suite,
+- `cycle-agent-africanhorn-icycle-preset-switch`,
+- `cycle-agent-midi-note`,
+- audio capture fixture.
+
+Acceptance:
+
+- no production concrete rasterizer derives from or owns `MeshRasterizer`,
+- either no `MeshRasterizer` type remains, or the retained type is explicitly
+  named and documented as legacy-only,
+- new rasterizer construction goes through composer/facade/domain types.
+
+Implemented state:
+
+- the smallest audio/phase compatibility facades have been drained:
+  `OscPhaseRasterizer`, `SpectralFilterRasterizer`, `E3Rasterizer`,
+  `GraphicRasterizer`, and `VoiceMeshRasterizer`,
+- the remaining production owner is the highest-state envelope shell:
+  `EnvRasterizer`,
+- the next deletion work needs to replace those shells one at a time with
+  composed runtime/storage ownership rather than simply moving call sites.
+
+### Phase 40: Final Duplication And Regression Review
+
+Intent:
+
+- close the refactor with an explicit reuse, dead-code, and regression audit,
+- avoid carrying the migration's temporary scaffolding as permanent architecture.
+
+Code changes:
+
+- run a final search for:
+  - direct `MeshRasterizer` mentions,
+  - `legacyRasterizer()`,
+  - duplicated `WaveformResult`/buffer-copy code,
+  - duplicated point scaling, padding, restriction, and snapshot code,
+  - compatibility adapters with no production caller,
+  - tests that only cover deleted migration seams,
+- compare rough rasterization LOC before/after this cleanup slice and explain
+  intentional increases,
+- update `docs/ADR/002-rasterization-pipeline.md`,
+  `docs/TDD/rasterization-pipeline-migration.md`, and policy READMEs with the
+  final structure,
+- keep any remaining compatibility exceptions in a short explicit list.
+
+Tests:
+
+- full `ctest`,
+- standalone build,
+- plugin build if available,
+- focused UI automation fixtures,
+- bongo/default panel PSNR baselines,
+- audio capture fixture,
+- manual visual review only for cases automation cannot currently inspect.
+
+Acceptance:
+
+- no unused migration scaffolding remains,
+- duplication is either removed or documented as deliberate domain separation,
+- final docs describe the implemented architecture rather than the migration
+  path alone,
+- rasterizer changes are ready to stop being treated as an active migration.
+
 ## Regression Baselines
 
 ### Unit And Integration Baseline

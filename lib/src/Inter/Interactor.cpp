@@ -13,7 +13,6 @@
 #include "../App/MeshLibrary.h"
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
-#include "../Curve/MeshRasterizer.h"
 #include "../Curve/Rasterization/Interfaces/MeshBindableRasterizer.h"
 #include "../Curve/Rasterization/Interfaces/RasterizerSampler.h"
 #include "../Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h"
@@ -100,7 +99,6 @@ Interactor::Interactor(SingletonRepo* repo, const String& name, const Dimensions
     ,   wasPollingMouseOver     (false)
     ,   lastPolledMouse         (-1, -1)
     ,   vertexTransformUndoer   (this)
-    ,   rasterizer              (nullptr)
     ,   updateSource            (CommonEnums::Null)
     ,   layerType               (CommonEnums::Null)
     ,   collisionDetector       (repo, CollisionDetector::Time) {
@@ -1438,16 +1436,6 @@ void Interactor::snapToGrid(Vertex2& toSnap) {
     toSnap.y /= sizeY;
 }
 
-void Interactor::setRasterizer(MeshRasterizer* rasterizer) {
-    setRasterizer(
-            rasterizer,
-            rasterizer,
-            rasterizer,
-            rasterizer,
-            rasterizer);
-    this->rasterizer = rasterizer;
-}
-
 void Interactor::setRasterizer(Rasterization::MeshBindableRasterizer* rasterizer) {
     setRasterizer(
             rasterizer,
@@ -1463,7 +1451,6 @@ void Interactor::setRasterizer(
         Rasterization::RasterizerSnapshotProvider* snapshot,
         Rasterization::RasterizerUpdateTarget* updateTarget,
         Rasterization::RasterizerVertexDomain* vertexDomain) {
-    this->rasterizer = nullptr;
     this->meshRasterizer = meshRasterizer;
     rasterizerSampler = sampler;
     snapshotProvider = snapshot;

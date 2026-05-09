@@ -1,8 +1,23 @@
 #pragma once
 
-#include <Curve/MeshRasterizer.h>
+#include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
+#include <Curve/Rasterization/ComposedMeshWaveformRasterizer.h>
+#include <Curve/Rasterization/Interfaces/GuideCurveBindableRasterizer.h>
+#include <Curve/Rasterization/Interfaces/MeshBindableRasterizer.h>
+#include <Curve/Rasterization/Interfaces/RasterizerSampler.h>
+#include <Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h>
+#include <Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h>
+#include <Curve/Rasterization/Interfaces/RasterizerVertexDomain.h>
+#include <Curve/Rasterization/MeshRasterizerState.h>
+#include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
+#include <Curve/RasterizerData.h>
+#include <Design/Updating/Updateable.h>
+#include <Obj/Ref.h>
+
 #include "Rasterization/Facades/GraphicRasterizerFacade.h"
 #include "../Updating/DynamicDetailUpdater.h"
+
+class Interactor;
 
 class GraphicRasterizer :
         public Updateable
@@ -16,12 +31,21 @@ class GraphicRasterizer :
     ,   public Rasterization::RasterizerVertexDomain {
 public:
     using RenderState = Rasterization::MeshRasterizerRenderState;
-    using ScopedRenderState = Rasterization::ScopedMeshRasterizerRenderState;
 
     enum class Scaling {
-        Unipolar = MeshRasterizer::Unipolar,
-        Bipolar = MeshRasterizer::Bipolar,
-        HalfBipolar = MeshRasterizer::HalfBipolar
+        Unipolar = 0,
+        Bipolar = 1,
+        HalfBipolar = 2
+    };
+
+    class ScopedRenderState {
+    public:
+        ScopedRenderState(GraphicRasterizer* rasterizer, RenderState* state);
+        ~ScopedRenderState();
+
+    private:
+        GraphicRasterizer* rasterizer {};
+        RenderState* state {};
     };
 
     GraphicRasterizer(SingletonRepo* repo,
@@ -30,20 +54,20 @@ public:
                       bool cyclic, float margin);
 
     void pullModPositionAndAdjust();
-    void restoreStateFrom(RenderState& state) { rasterizer.restoreStateFrom(state); }
-    void saveStateTo(RenderState& state) { rasterizer.saveStateTo(state); }
-    ScopedRenderState preserveState(RenderState& state) { return ScopedRenderState(&rasterizer, &state); }
+    void restoreStateFrom(RenderState& state);
+    void saveStateTo(RenderState& state);
+    ScopedRenderState preserveState(RenderState& state) { return ScopedRenderState(this, &state); }
 
-    void calcCrossPoints(Mesh* mesh, float oscPhase) { rasterizer.calcCrossPoints(mesh, oscPhase); }
-    void cleanUp() override { rasterizer.cleanUp(); }
-    void performUpdate(UpdateType updateType) override { rasterizer.performUpdate(updateType); }
-    void reset() override { rasterizer.reset(); }
-    void updateRasterizer(UpdateType updateType) override { update(updateType); }
+    void calcCrossPoints(Mesh* mesh, float oscPhase);
+    void cleanUp() override;
+    void performUpdate(UpdateType updateType) override;
+    void reset() override { cleanUp(); }
+    void updateRasterizer(UpdateType updateType) override { Updateable::update(updateType); }
 
-    bool hasEnoughCubesForCrossSection() override { return rasterizer.hasEnoughCubesForCrossSection(); }
+    bool hasEnoughCubesForCrossSection() override;
     bool isSampleable() override { return rasterizer.isSampleable(); }
     bool isSampleableAt(float x) override { return rasterizer.isSampleableAt(x); }
-    bool wrapsVertices() const override { return rasterizer.wrapsVertices(); }
+    bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
     float sampleAt(double angle) override { return rasterizer.sampleAt(angle); }
     float sampleAt(double angle, int& currentIndex) override { return rasterizer.sampleAt(angle, currentIndex); }
@@ -57,13 +81,13 @@ public:
         return rasterizer.sampleWithInterval(buffer, delta, phase);
     }
 
-    Mesh* getMesh() override { return rasterizer.getMesh(); }
-    void setMesh(Mesh* mesh) override { rasterizer.setMesh(mesh); }
+    Mesh* getMesh() override { return mesh; }
+    void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override { return rasterizer.getPaddingSize(); }
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() override { return rasterizer.getRasterizerData(); }
-    const RasterizerData& getRasterizerData() const override { return rasterizer.getRasterizerData(); }
-    RasterizerData& getRastData() { return rasterizer.getRastData(); }
+    RasterizerData& getRasterizerData() override { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
+    RasterizerData& getRastData() { return rasterizerData; }
     RenderState createRenderState() {
         RenderState state;
         saveStateTo(state);
@@ -72,9 +96,9 @@ public:
 
     static RenderState createBatchRenderState(
             Scaling scaling,
-            const MorphPosition& morphPosition,
-            bool lowResCurves = true,
-            bool calcDepthDimensions = false) {
+                const MorphPosition& morphPosition,
+                bool lowResCurves = true,
+                bool calcDepthDimensions = false) {
         return RenderState(
                 true,
                 lowResCurves,
@@ -83,23 +107,31 @@ public:
                 morphPosition);
     }
 
-    MorphPosition& getMorphPosition() { return rasterizer.getMorphPosition(); }
-    MeshRasterizer& legacyRasterizer() { return rasterizer; }
+    MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
 
     Interactor* getInteractor() const { return interactor; }
 
-    void setBatchMode(bool batch) { rasterizer.setBatchMode(batch); }
-    void setBlue(float blue) { rasterizer.setBlue(blue); }
-    void setDims(const Dimensions& dims) override { rasterizer.setDims(dims); }
+    void setBatchMode(bool batch) { rasterizer.getRequest().batchMode = batch; }
+    void setBlue(float blue) { rasterizer.getRequest().morph.blue.setValueDirect(blue); }
+    void setDims(const Dimensions& dims) override { rasterizer.getRequest().dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) override { rasterizer.setGuideCurveProvider(provider); }
-    void setMorphPosition(const MorphPosition& morph) { rasterizer.setMorphPosition(morph); }
-    void setNoiseSeed(int seed) { rasterizer.setNoiseSeed(seed); }
-    void setRed(float red) { rasterizer.setRed(red); }
-    void setYellow(float yellow) { rasterizer.setYellow(yellow); }
+    void setMorphPosition(const MorphPosition& morph) { rasterizer.getRequest().morph = morph; }
+    void setNoiseSeed(int seed) { rasterizer.getRequest().noiseSeed = seed; }
+    void setRed(float red) { rasterizer.getRequest().morph.red.setValueDirect(red); }
+    void setYellow(float yellow) { rasterizer.getRequest().morph.time.setValueDirect(yellow); }
     void updateOffsetSeeds(int layerSize, int tableSize) { rasterizer.updateOffsetSeeds(layerSize, tableSize); }
 
 private:
-    MeshRasterizer rasterizer;
+    static Rasterization::PointScalingMode scalingModeFromRenderState(int scalingType);
+    static int renderStateScalingType(Rasterization::PointScalingMode scalingMode);
+
+    void publishSnapshot();
+    int primaryViewDimension();
+
+    Mesh* mesh {};
+    Rasterization::ComposedMeshWaveformRasterizer rasterizer;
+    RasterizerData rasterizerData;
+
     int layerGroup;
     Interactor* interactor;
 };

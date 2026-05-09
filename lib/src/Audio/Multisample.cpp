@@ -6,20 +6,11 @@
 #include "../App/Doc/PresetJson.h"
 #include "../App/MeshLibrary.h"
 #include "../App/SingletonRepo.h"
-#include "../Curve/MeshRasterizer.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
 #include "../Util/Util.h"
 #include "../Inter/MorphPositioner.h"
 #include "../Definitions.h"
-
-Multisample::Multisample(SingletonRepo* repo, MeshRasterizer* rasterizer) :
-        SingletonAccessor(repo, "Multisample")
-    ,   meshRasterizer(rasterizer)
-    ,   rasterizerUpdateTarget(rasterizer)
-    ,   rasterizerSampler(rasterizer)
-    ,   current(nullptr) {
-}
 
 Multisample::Multisample(
         SingletonRepo* repo,
@@ -31,12 +22,6 @@ Multisample::Multisample(
     ,   rasterizerUpdateTarget(updateTarget)
     ,   rasterizerSampler(sampler)
     ,   current(nullptr) {
-}
-
-void Multisample::setWaveRasterizer(MeshRasterizer* rasterizer) {
-    meshRasterizer = rasterizer;
-    rasterizerUpdateTarget = rasterizer;
-    rasterizerSampler = rasterizer;
 }
 
 void Multisample::ensureSampleHasMeshLayer(PitchedSample* sample, int preferredIndex) {

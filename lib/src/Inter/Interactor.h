@@ -28,7 +28,6 @@ class GuideCurveProvider;
 class Mesh;
 struct RasterizerData;
 class Vertex;
-class MeshRasterizer;
 
 namespace Rasterization {
     class MeshBindableRasterizer;
@@ -109,7 +108,6 @@ public:
     void setAxeSize(float size);
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
-    void setRasterizer(MeshRasterizer* rasterizer);
     void setRasterizer(Rasterization::MeshBindableRasterizer* rasterizer);
     void setRasterizer(
             Rasterization::MeshBindableRasterizer* meshRasterizer,
@@ -138,7 +136,6 @@ public:
     const vector<VertexFrame>& getSelectedMovingVerts() const { return state.selectedFrame;     }
     CollisionDetector&  getCollisionDetector()                { return collisionDetector;   }
     CriticalSection&    getLock()                             { return vertexLock;          }
-    MeshRasterizer*     getRasterizer() const                 { return rasterizer;          }
     bool                hasRasterizer() const                 { return meshRasterizer != nullptr; }
     Rasterization::MeshBindableRasterizer* getMeshBindableRasterizer() const { return meshRasterizer; }
     Rasterization::RasterizerUpdateTarget* getRasterizerUpdateTarget() const { return rasterizerUpdateTarget; }
@@ -272,7 +269,6 @@ protected:
     Point<int> lastPolledMouse;
 
     MorphPositioner*    positioner;
-    MeshRasterizer*     rasterizer;
     Rasterization::MeshBindableRasterizer* meshRasterizer {};
     Rasterization::RasterizerSampler* rasterizerSampler {};
     Rasterization::RasterizerSnapshotProvider* snapshotProvider {};

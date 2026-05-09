@@ -9,7 +9,6 @@
 #include "../Curve/Mesh.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
-#include "../Curve/MeshRasterizer.h"
 #include "../Util/Util.h"
 #include "../Definitions.h"
 
@@ -182,10 +181,6 @@ void PitchedSample::createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti)
 
         mesh->addVertex(vertex);
     }
-}
-
-void PitchedSample::createPeriodsFromEnv(MeshLibrary& meshLibrary, MeshRasterizer* rast) {
-    createPeriodsFromEnv(meshLibrary, rast, rast, rast);
 }
 
 void PitchedSample::createPeriodsFromEnv(

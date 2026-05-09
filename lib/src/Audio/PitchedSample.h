@@ -14,7 +14,6 @@ using std::vector;
 class SingletonRepo;
 class Mesh;
 class MeshLibrary;
-class MeshRasterizer;
 
 class PitchFrame {
 public:
@@ -64,7 +63,6 @@ public:
     MorphPosition getBox();
 
     void createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti);
-    void createPeriodsFromEnv(MeshLibrary& meshLibrary, MeshRasterizer* rast);
     void createPeriodsFromEnv(
             MeshLibrary& meshLibrary,
             Rasterization::MeshBindableRasterizer* meshRasterizer,

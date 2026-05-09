@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Curve/MeshRasterizer.h>
+#include <Curve/Rasterization/ComposedMeshWaveformRasterizer.h>
 
 class GuideCurveProvider;
 class Mesh;
@@ -8,9 +8,7 @@ class Mesh;
 namespace Cycle::Rasterization {
     class SpectralFilterRasterizer {
     public:
-        explicit SpectralFilterRasterizer(const String& name = String()) :
-                rasterizer(name) {
-        }
+        SpectralFilterRasterizer() = default;
 
         void configureMagnitude(GuideCurveProvider* guideCurveProvider, float spectralMargin) {
             configure(guideCurveProvider, spectralMargin);
@@ -18,8 +16,8 @@ namespace Cycle::Rasterization {
 
         void configurePhase(GuideCurveProvider* guideCurveProvider, float spectralMargin) {
             configure(guideCurveProvider, spectralMargin);
-            rasterizer.setScalingMode(MeshRasterizer::Bipolar);
-            rasterizer.setInterpolatesCurves(true);
+            rasterizer.getRequest().scalingMode = ::Rasterization::PointScalingMode::Bipolar;
+            rasterizer.getRequest().interpolateCurves = true;
         }
 
         void updateOffsetSeeds(int layerSize, int tableSize) {
@@ -27,15 +25,15 @@ namespace Cycle::Rasterization {
         }
 
         void setMorphPosition(const MorphPosition& morphPosition) {
-            rasterizer.setMorphPosition(morphPosition);
+            rasterizer.getRequest().morph = morphPosition;
         }
 
         void setNoiseSeed(int seed) {
-            rasterizer.setNoiseSeed(seed);
+            rasterizer.getRequest().noiseSeed = seed;
         }
 
         void calcCrossPoints(Mesh* mesh) {
-            rasterizer.calcCrossPoints(mesh, 0.f);
+            rasterizer.render(mesh);
         }
 
         bool isSampleable() {
@@ -48,12 +46,13 @@ namespace Cycle::Rasterization {
 
     private:
         void configure(GuideCurveProvider* guideCurveProvider, float spectralMargin) {
-            rasterizer.setWrapsEnds(false);
             rasterizer.setGuideCurveProvider(guideCurveProvider);
-            rasterizer.setCalcDepthDimensions(false);
-            rasterizer.setLimits(-spectralMargin, 1.f + spectralMargin);
+            rasterizer.getRequest().cyclic = false;
+            rasterizer.getRequest().calcDepthDimensions = false;
+            rasterizer.getRequest().xMinimum = -spectralMargin;
+            rasterizer.getRequest().xMaximum = 1.f + spectralMargin;
         }
 
-        MeshRasterizer rasterizer;
+        ::Rasterization::ComposedMeshWaveformRasterizer rasterizer;
     };
 }

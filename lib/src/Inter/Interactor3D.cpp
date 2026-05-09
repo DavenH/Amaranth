@@ -15,7 +15,6 @@
 #include "../Util/NumberUtils.h"
 #include "../Util/CommonEnums.h"
 #include "../Curve/SurfaceLine.h"
-#include "../Curve/MeshRasterizer.h"
 #include "../Design/Updating/Updater.h"
 #include "../Definitions.h"
 

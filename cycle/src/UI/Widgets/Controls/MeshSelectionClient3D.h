@@ -66,10 +66,6 @@ public:
     void exitClientLock() override {
     }
 
-    void initialise(Interactor* itr, MeshRasterizer* rast, int layerType) {
-        initialise(itr, rast, rast, layerType);
-    }
-
     void initialise(
             Interactor* itr,
             Rasterization::MeshBindableRasterizer* rast,

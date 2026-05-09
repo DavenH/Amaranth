@@ -4,7 +4,14 @@
 #include <App/SingletonRepo.h>
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
-#include <Curve/MeshRasterizer.h>
+#include <Curve/Rasterization/ComposedMeshWaveformRasterizer.h>
+#include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
+#include <Curve/Rasterization/Interfaces/GuideCurveBindableRasterizer.h>
+#include <Curve/Rasterization/Interfaces/MeshBindableRasterizer.h>
+#include <Curve/Rasterization/Interfaces/RasterizerSampler.h>
+#include <Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h>
+#include <Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h>
+#include <Curve/Rasterization/Interfaces/RasterizerVertexDomain.h>
 #include <vector>
 
 using std::vector;
@@ -24,40 +31,44 @@ public:
     int getIncrement();
     void init() override;
     void performUpdate(UpdateType updateType) override;
-    void cleanUp() override { rasterizer.cleanUp(); }
-    void reset() override { rasterizer.reset(); }
+    void cleanUp() override;
+    void reset() override { cleanUp(); }
     void updateRasterizer(UpdateType updateType) override { update(updateType); }
 
-    bool hasEnoughCubesForCrossSection() override { return rasterizer.hasEnoughCubesForCrossSection(); }
-    bool isSampleable() override { return rasterizer.isSampleable(); }
-    bool isSampleableAt(float x) override { return rasterizer.isSampleableAt(x); }
-    bool wrapsVertices() const override { return rasterizer.wrapsVertices(); }
+    bool hasEnoughCubesForCrossSection() override;
+    bool isSampleable() override;
+    bool isSampleableAt(float x) override;
+    bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
-    float sampleAt(double angle) override { return rasterizer.sampleAt(angle); }
-    float sampleAt(double angle, int& currentIndex) override { return rasterizer.sampleAt(angle, currentIndex); }
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override {
-        return rasterizer.samplePerfectly(delta, buffer, phase);
-    }
+    float sampleAt(double angle) override;
+    float sampleAt(double angle, int& currentIndex) override;
+    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override;
 
-    Mesh* getMesh() override { return rasterizer.getMesh(); }
-    void setMesh(Mesh* mesh) override { rasterizer.setMesh(mesh); }
-    int getPaddingSize() const override { return rasterizer.getPaddingSize(); }
+    Mesh* getMesh() override { return mesh; }
+    void setMesh(Mesh* mesh) override { this->mesh = mesh; }
+    int getPaddingSize() const override;
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() override { return rasterizer.getRasterizerData(); }
-    const RasterizerData& getRasterizerData() const override { return rasterizer.getRasterizerData(); }
+    RasterizerData& getRasterizerData() override { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
 
     vector<Column>& getColumns() { return columns; }
     Buffer<float> getArray() { return columnArray; }
 
     CriticalSection& getArrayLock() { return arrayLock; }
-    MorphPosition& getMorphPosition() { return rasterizer.getMorphPosition(); }
-    void setDims(const Dimensions& dims) override { rasterizer.setDims(dims); }
+    MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
+    void setDims(const Dimensions& dims) override { rasterizer.getRequest().dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) override { rasterizer.setGuideCurveProvider(provider); }
-    void setMorphPosition(const MorphPosition& morph) { rasterizer.setMorphPosition(morph); }
+    void setMorphPosition(const MorphPosition& morph) { rasterizer.getRequest().morph = morph; }
 
     enum { E3LockId = 0x17b1eed5 };
 private:
-    MeshRasterizer rasterizer;
+    void renderMesh(Mesh* mesh);
+    void publishSnapshot(const ::Rasterization::MeshSlicePipeline::Output& meshOutput);
+
+    Mesh* mesh {};
+    ::Rasterization::ComposedMeshWaveformRasterizer rasterizer;
+    RasterizerData rasterizerData;
+
     vector<Column> columns;
     ScopedAlloc<Float32> columnArray;
 

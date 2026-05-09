@@ -12,7 +12,6 @@ using std::set;
 
 class Mesh;
 class PitchedSample;
-class MeshRasterizer;
 
 class Multisample :
         public Savable
@@ -37,7 +36,6 @@ public:
 
     /* -------------------------------------------------------------------------- */
 
-    Multisample(SingletonRepo* repo, MeshRasterizer* rasterizer);
     Multisample(
             SingletonRepo* repo,
             Rasterization::MeshBindableRasterizer* meshRasterizer,
@@ -68,7 +66,6 @@ public:
         return nullptr;
     }
 
-    void setWaveRasterizer(MeshRasterizer* rasterizer);
     int size()                          { return samples.size();    }
     PitchedSample* getCurrentSample()   { return current;           }
     Mesh* getCurrentMesh();

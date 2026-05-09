@@ -1,7 +1,20 @@
 #pragma once
 
-#include <Curve/MeshRasterizer.h>
+#include <Array/ScopedAlloc.h>
+#include <Curve/Rasterization/ComposedMeshWaveformRasterizer.h>
+#include <Curve/Rasterization/Interfaces/GuideCurveBindableRasterizer.h>
+#include <Curve/Rasterization/Interfaces/MeshBindableRasterizer.h>
+#include <Curve/Rasterization/Interfaces/RasterizerSampler.h>
+#include <Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h>
+#include <Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h>
+#include <Curve/Rasterization/Interfaces/RasterizerVertexDomain.h>
+#include <Curve/Rasterization/RasterizerRuntime.h>
+#include <Curve/Rasterization/Sampling/WaveformSampler.h>
+#include <Curve/Rasterization/State/RasterizerStorage.h>
+#include <Curve/RasterizerData.h>
+#include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
+
 #include "Rasterization/Facades/VoiceRasterizerFacade.h"
 
 class SingletonAccessor;
@@ -31,48 +44,71 @@ public:
 	void orphanOldVerts();
 	void setState(CycleState* state) { this->state = state; }
 
-    void calcCrossPoints(Mesh* mesh, float oscPhase) { rasterizer.calcCrossPoints(mesh, oscPhase); }
-    void cleanUp() override { rasterizer.cleanUp(); }
-    void performUpdate(UpdateType updateType) override { rasterizer.performUpdate(updateType); }
-    void reset() override { rasterizer.reset(); }
-    void updateRasterizer(UpdateType updateType) override { rasterizer.updateRasterizer(updateType); }
+    void calcCrossPoints(Mesh* mesh, float oscPhase);
+    void cleanUp() override;
+    void performUpdate(UpdateType updateType) override;
+    void reset() override { cleanUp(); }
+    void updateRasterizer(UpdateType updateType) override { performUpdate(updateType); }
 
-    bool doesCalcDepthDimensions() const { return rasterizer.doesCalcDepthDimensions(); }
-    bool doesIntegralSampling() const { return rasterizer.doesIntegralSampling(); }
-    bool hasEnoughCubesForCrossSection() override { return rasterizer.hasEnoughCubesForCrossSection(); }
-    bool isSampleable() override { return rasterizer.isSampleable(); }
-    bool isSampleableAt(float x) override { return rasterizer.isSampleableAt(x); }
-    bool wrapsVertices() const override { return rasterizer.wrapsVertices(); }
+    bool doesCalcDepthDimensions() const { return rasterizer.getRequest().calcDepthDimensions; }
+    bool doesIntegralSampling() const { return rasterizer.getRequest().integralSampling; }
+    bool hasEnoughCubesForCrossSection() override;
+    bool isSampleable() override;
+    bool isSampleableAt(float x) override;
+    bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
-    float sampleAt(double angle) override { return rasterizer.sampleAt(angle); }
-    float sampleAt(double angle, int& currentIndex) override { return rasterizer.sampleAt(angle, currentIndex); }
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override {
-        return rasterizer.samplePerfectly(delta, buffer, phase);
-    }
+    float sampleAt(double angle) override;
+    float sampleAt(double angle, int& currentIndex) override;
+    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override;
 
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
-        return rasterizer.sampleWithInterval(buffer, delta, phase);
+        if (!chainedOutputActive) {
+            return rasterizer.sampleWithInterval(buffer, delta, phase);
+        }
+
+        return Rasterization::WaveformSampler::sampleWithInterval(
+                chainStorage.waveform.waveform,
+                buffer,
+                delta,
+                phase);
     }
 
-    Mesh* getMesh() override { return rasterizer.getMesh(); }
-    void setMesh(Mesh* mesh) override { rasterizer.setMesh(mesh); }
-    int getPaddingSize() const override { return rasterizer.getPaddingSize(); }
+    Mesh* getMesh() override { return mesh; }
+    void setMesh(Mesh* mesh) override { this->mesh = mesh; }
+    int getPaddingSize() const override;
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() override { return rasterizer.getRasterizerData(); }
-    const RasterizerData& getRasterizerData() const override { return rasterizer.getRasterizerData(); }
+    RasterizerData& getRasterizerData() override { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
 
-    MorphPosition& getMorphPosition() { return rasterizer.getMorphPosition(); }
-    void setCalcDepthDimensions(bool calc) { rasterizer.setCalcDepthDimensions(calc); }
-    void setDims(const Dimensions& dims) override { rasterizer.setDims(dims); }
+    MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
+    void setCalcDepthDimensions(bool calc) { rasterizer.getRequest().calcDepthDimensions = calc; }
+    void setDims(const Dimensions& dims) override { rasterizer.getRequest().dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) override { rasterizer.setGuideCurveProvider(provider); }
-    void setIntegralSampling(bool does) { rasterizer.setIntegralSampling(does); }
-    void setInterceptPadding(float value) { rasterizer.setInterceptPadding(value); }
-    void setMorphPosition(const MorphPosition& morph) { rasterizer.setMorphPosition(morph); }
-    void setNoiseSeed(int seed) { rasterizer.setNoiseSeed(seed); }
-    void setWrapsEnds(bool wraps) { rasterizer.setWrapsEnds(wraps); }
+    void setIntegralSampling(bool does) { rasterizer.getRequest().integralSampling = does; }
+    void setInterceptPadding(float value) { rasterizer.getRequest().interceptPadding = value; }
+    void setMorphPosition(const MorphPosition& morph) { rasterizer.getRequest().morph = morph; }
+    void setNoiseSeed(int seed) { rasterizer.getRequest().noiseSeed = seed; }
+    void setWrapsEnds(bool wraps) { rasterizer.getRequest().cyclic = wraps; }
     void updateOffsetSeeds(int layerSize, int tableSize) { rasterizer.updateOffsetSeeds(layerSize, tableSize); }
 
 private:
-    MeshRasterizer rasterizer;
+    Rasterization::RasterizerRuntime createChainRuntime();
+    Rasterization::WaveformBuffers currentWaveform() const;
+    void bakeChainedWaveform();
+    void publishSnapshot();
+    void updateChainBuffers(int size);
+    void restrictIntercepts(std::vector<Intercept>& intercepts);
+
+    Mesh* mesh {};
+    Rasterization::ComposedMeshWaveformRasterizer rasterizer;
+    Rasterization::RasterizerStorage chainStorage;
+    RasterizerData rasterizerData;
+    ScopedAlloc<Float32> chainWaveformMemory;
+    VertCube::ReductionData chainReduction;
+
+    int chainPaddingSize { 2 };
+    bool chainUnsampleable { true };
+    bool chainNeedsResorting {};
+    bool chainedOutputActive {};
 };

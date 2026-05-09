@@ -11,17 +11,14 @@
 #include "../Util/CycleEnums.h"
 
 E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
-        SingletonAccessor(repo, "E3Rasterizer")
-    ,   rasterizer("E3Rasterizer") {
-    rasterizer.setLowresCurves(true);
-    rasterizer.setWrapsEnds(false);
-    rasterizer.setCalcDepthDimensions(false);
-    rasterizer.setScalingMode(MeshRasterizer::HalfBipolar);
-    rasterizer.setLimits(0.f, 10.f);
-    rasterizer.setPrimaryViewDimensionProvider([repo]() {
-        return repo->get<Settings>("Settings").getGlobalSetting(
-                AppSettings::CurrentMorphAxis);
-    });
+        SingletonAccessor(repo, "E3Rasterizer") {
+    auto& request = rasterizer.getRequest();
+    request.lowResCurves = true;
+    request.cyclic = false;
+    request.calcDepthDimensions = false;
+    request.scalingMode = Rasterization::PointScalingMode::HalfBipolar;
+    request.xMinimum = 0.f;
+    request.xMaximum = 10.f;
 }
 
 void E3Rasterizer::init() {
@@ -60,20 +57,79 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
 
     ScopedLock sl(arrayLock);
     Mesh* currentMesh = getObj(MeshLibrary).getCurrentMesh(getObj(EnvelopeInter2D).layerType);
+    setMesh(currentMesh);
     getObj(VisualDsp).resizeArrays(params);
     int dependentAxis = getSetting(CurrentMorphAxis);
+    rasterizer.getRequest().primaryViewDimension = dependentAxis;
 
     for (int colIdx = 0; colIdx < gridSize; ++colIdx) {
         Column& col = columns[colIdx];
 
-        MorphPosition& p = rasterizer.getMorphPosition();
+        MorphPosition& p = getMorphPosition();
         p[dependentAxis].setValueDirect(colIdx * invGrid);
-        rasterizer.calcCrossPoints(currentMesh, 0.f);
+        renderMesh(currentMesh);
 
-        if (rasterizer.isSampleable()) {
-            rasterizer.sampleWithInterval(col, invCol, 0.f);
+        if (isSampleable()) {
+            rasterizer.samplePerfectly(invCol, col, 0.f);
         } else {
             col.zero();
         }
     }
+}
+
+void E3Rasterizer::cleanUp() {
+    rasterizer.clean();
+
+    ScopedLock sl(rasterizerData.lock);
+    rasterizerData.zeroIndex = 0;
+    rasterizerData.oneIndex = 0;
+    rasterizerData.buffer.clear();
+    rasterizerData.waveX.nullify();
+    rasterizerData.waveY.nullify();
+    rasterizerData.colorPoints.clear();
+    rasterizerData.intercepts.clear();
+    rasterizerData.curves.clear();
+}
+
+bool E3Rasterizer::hasEnoughCubesForCrossSection() {
+    return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
+}
+
+bool E3Rasterizer::isSampleable() {
+    return rasterizer.isSampleable();
+}
+
+bool E3Rasterizer::isSampleableAt(float x) {
+    return rasterizer.isSampleableAt(x);
+}
+
+float E3Rasterizer::sampleAt(double angle) {
+    return rasterizer.sampleAt(angle);
+}
+
+float E3Rasterizer::sampleAt(double angle, int& currentIndex) {
+    return rasterizer.sampleAt(angle, currentIndex);
+}
+
+float E3Rasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
+    return rasterizer.samplePerfectly(delta, buffer, phase);
+}
+
+int E3Rasterizer::getPaddingSize() const {
+    return rasterizer.getPaddingSize();
+}
+
+void E3Rasterizer::renderMesh(Mesh* mesh) {
+    if (mesh == nullptr || mesh->getNumCubes() == 0) {
+        cleanUp();
+        return;
+    }
+
+    rasterizer.render(mesh);
+    publishSnapshot(rasterizer.getMeshOutput());
+}
+
+void E3Rasterizer::publishSnapshot(const Rasterization::MeshSlicePipeline::Output& meshOutput) {
+    ignoreUnused(meshOutput);
+    Rasterization::RasterizerSnapshotBuilder().publish(rasterizerData, rasterizer.createSnapshotSource());
 }

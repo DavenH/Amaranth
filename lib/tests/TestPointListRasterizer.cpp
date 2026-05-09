@@ -247,11 +247,16 @@ TEST_CASE("RasterizerComposer exposes the target mesh source and slicer shape", 
     auto composer = Rasterization::RasterizerComposer::mesh()
             .withSource(Rasterization::MeshCubeSource(&mesh))
             .withSlicer(Rasterization::TrilinearMeshSlicer())
-            .withRequest(request);
+            .withRequest(request)
+            .withMorphPosition(MorphPosition())
+            .withPadding(Rasterization::CyclicPaddingPolicy())
+            .withSnapshot(Rasterization::RasterizerDataSnapshot());
 
     REQUIRE_FALSE(composer.getSource().empty());
     REQUIRE(composer.getSource().size() == 1);
     REQUIRE(composer.getRequest().lowResCurves);
+    REQUIRE(composer.getRequest().cyclic);
+    REQUIRE(composer.getRequest().publishSnapshot);
 
     mesh.destroy();
 }

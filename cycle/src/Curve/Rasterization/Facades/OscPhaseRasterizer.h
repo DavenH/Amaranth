@@ -1,22 +1,26 @@
 #pragma once
 
-#include <Curve/MeshRasterizer.h>
+#include <Curve/Rasterization/RasterizerComposer.h>
 
 class Mesh;
 
 namespace Cycle::Rasterization {
     class OscPhaseRasterizer {
     public:
-        explicit OscPhaseRasterizer(const String& name = String()) :
-                rasterizer(name) {
-        }
+        OscPhaseRasterizer() = default;
 
         void rasterize(Mesh* mesh) {
-            rasterizer.setMesh(mesh);
-            rasterizer.calcCrossPoints();
+            auto rasterizer = ::Rasterization::RasterizerComposer::mesh()
+                    .withSource(::Rasterization::MeshCubeSource(mesh))
+                    .withSlicer(::Rasterization::TrilinearMeshSlicer())
+                    .withRequest(request)
+                    .build();
+
+            output = rasterizer.render(0.f, [](Intercept&, const MorphPosition&, bool) {});
         }
 
     private:
-        MeshRasterizer rasterizer;
+        ::Rasterization::RasterizationRequest request;
+        ::Rasterization::MeshSlicePipeline::Output output;
     };
 }
