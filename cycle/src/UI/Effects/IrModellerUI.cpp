@@ -668,26 +668,6 @@ void IrModellerUI::deconvolve() {
 
     synthRast.ramp(1, -2 / float(pow2Size));
 
-    /*
-    GraphicTimeRasterizer& timeRast = getObj(GraphicTimeRasterizer);
-    MeshRasterizer::RenderState rendState;
-    MeshRasterizer::ScopedRenderState scopeState(&timeRast, &rendState);
-
-    timeRast.yellow = position;
-    timeRast.setLowresCurves(false);
-    timeRast.setCalcDepthDimensions(false);
-    timeRast.setScalingMode(MeshRasterizer::Bipolar);
-    timeRast.calcCrossPoints();
-
-    if(! timeRast.isSampleable())
-    {
-        showConsoleMsg("A waveshape must be defined");
-        return;
-    }
-
-    timeRast.samplePerfectly(1 / float(tSize), synthRast, 0);
-    */
-
     Transform fft;
     fft.allocate(pow2Size);
     fft.forward(synthRast);

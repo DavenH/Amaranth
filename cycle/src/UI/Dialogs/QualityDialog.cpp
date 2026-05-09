@@ -1,5 +1,6 @@
 #include <App/SingletonRepo.h>
 #include <App/EditWatcher.h>
+#include <Audio/PluginProcessor.h>
 #include "QualityDialog.h"
 #include <App/Settings.h>
 #include <Util/Util.h>

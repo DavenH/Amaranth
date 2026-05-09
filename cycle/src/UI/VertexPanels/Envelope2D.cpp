@@ -4,6 +4,7 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
+#include <Audio/PluginProcessor.h>
 #include <Curve/EnvRasterizer.h>
 #include <Curve/EnvelopeMesh.h>
 #include <Obj/ColorPos.h>

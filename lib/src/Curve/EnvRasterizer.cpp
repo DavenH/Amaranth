@@ -4,14 +4,29 @@
 
 #include "EnvelopeMesh.h"
 #include "GuideCurveProvider.h"
+#include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Facades/EnvRasterizerFacade.h"
+#include "Rasterization/Pipelines/MeshSliceRenderer.h"
+#include "Rasterization/Policies/Core/InterceptDegeneracyPolicy.h"
+#include "Rasterization/Policies/Core/InterceptRestrictionPolicy.h"
+#include "Rasterization/Policies/Core/InterceptSortPolicy.h"
 #include "Rasterization/Policies/Core/RasterizerCleanupPolicy.h"
+#include "Rasterization/Policies/Curves/CurveResolutionPolicy.h"
+#include "Rasterization/Policies/Curves/CurveWaveformPreparationPolicy.h"
+#include "Rasterization/Policies/Curves/InterceptPaddingFlagPolicy.h"
+#include "Rasterization/Policies/Curves/WaveformBakePolicy.h"
+#include "Rasterization/Policies/Curves/WaveformBuildPolicy.h"
 #include "Rasterization/Policies/Envelope/EnvelopePlaybackPolicy.h"
 #include "Rasterization/Policies/Envelope/EnvelopeRenderTimingPolicy.h"
 #include "Rasterization/Policies/Envelope/EnvelopeReleasePolicy.h"
 #include "Rasterization/Policies/Envelope/EnvelopeStateValidationPolicy.h"
+#include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
+#include "Rasterization/Policies/Mesh/MeshSliceOutputPolicy.h"
+#include "Rasterization/Sampling/GuideCurveSampler.h"
+#include "Rasterization/Sampling/WaveformSampler.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
+#include "../Util/CommonEnums.h"
 
 namespace {
     Rasterization::EnvelopePaddingContext::State toEnvelopePaddingState(int state) {
@@ -49,10 +64,20 @@ EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurve
     ,    releaseScale    (1.f)
     ,    envMesh         (nullptr)
     ,    preallocated    (8192)
+    ,    rasterizerMemory(4096)
     ,    waveformMemory  (4096)
-    ,    rasterizer      (name) {
+    ,    guideCurveProvider(nullptr)
+    ,    request()
+    ,    storage()
+    ,    guideCurveOffsetSeeds()
+    ,    rasterizerData()
+    ,    reduction()
+    ,    paddingSize(2)
+    ,    unsampleable(true)
+    ,    needsResorting(false) {
     setWrapsEnds(false);
     setLimits(0.f, 10.f);
+    updateBuffers(2048);
 
     // graphic params
     params.emplace_back();
@@ -61,13 +86,9 @@ EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurve
     params.emplace_back();
 
     setGuideCurveProvider(guideCurveProvider);
-    installEnvelopeProviders();
 }
 
 EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
-    rasterizer = copy.rasterizer;
-    installEnvelopeProviders();
-
     this->sampleReleaseNextCall = copy.sampleReleaseNextCall;
     this->envMesh               = copy.envMesh;
     this->oneSamplePerCycle     = copy.oneSamplePerCycle;
@@ -75,16 +96,21 @@ EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
     this->sustainIndex          = copy.sustainIndex;
     this->state                 = copy.state;
     this->releaseScale          = copy.releaseScale;
+    this->guideCurveProvider    = copy.guideCurveProvider;
+    this->request               = copy.request;
+    this->paddingSize           = copy.paddingSize;
+    this->unsampleable          = true;
+    this->needsResorting        = false;
 
     params = copy.params;
 
     preallocated.ensureSize(8192);
+    updateBuffers(2048);
     return *this;
 }
 
 EnvRasterizer::EnvRasterizer(const EnvRasterizer& copy) :
-        SingletonAccessor(copy)
-    ,   rasterizer(copy.rasterizer) {
+        SingletonAccessor(copy) {
     operator=(copy);
 }
 
@@ -94,55 +120,19 @@ EnvRasterizer::~EnvRasterizer() {
 }
 
 void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
-    rasterizer.setMesh(envelopeMesh);
-
     envMesh = envelopeMesh;
 
     // DBG(String::formatted("EnvRasterizer[%s] setMesh(EnvelopeMesh*) %s",
-    //                       MeshRasterizer::name.toRawUTF8(),
+    //                       getName().toRawUTF8(),
     //                       describeEnvelopeMesh(envMesh).toRawUTF8()));
 }
 
+void EnvRasterizer::setMesh(Mesh* mesh) {
+    envMesh = dynamic_cast<EnvelopeMesh*>(mesh);
+    jassert(mesh == nullptr || envMesh != nullptr);
+}
+
 void EnvRasterizer::installEnvelopeProviders() {
-    rasterizer.setMeshAssignmentProvider([this](Mesh* assignedMesh) {
-        envMesh = dynamic_cast<EnvelopeMesh*>(assignedMesh);
-        jassert(assignedMesh == nullptr || envMesh != nullptr);
-    });
-    rasterizer.setProcessInterceptsProvider([this](vector<Intercept>& intercepts) {
-        evaluateLoopSustainIndices();
-
-        Rasterization::EnvelopeSustainPointContext context;
-        context.sustainIndex = sustainIndex;
-        context.addFloorPoint = getScalingType() != MeshRasterizer::Bipolar;
-
-        auto state = runtime();
-        *state.needsResorting |= Rasterization::EnvRasterizerFacade().applySustainPoint(intercepts, context);
-    });
-    rasterizer.setPaddingProvider([this](vector<Intercept>& intercepts, vector<Curve>& curves) {
-        Rasterization::EnvelopePaddingContext context = createPaddingContext();
-
-        if (!Rasterization::EnvRasterizerFacade().buildDisplayPadding(intercepts, curves, context)) {
-            Rasterization::RasterizerCleanupPolicy::markWaveformUnsampleable(runtime());
-        }
-    });
-    rasterizer.setOffsetSeedsProvider([this](int layerSize, int tableSize) {
-        if (oneSamplePerCycle) {
-            Random rand(Time::currentTimeMillis());
-
-            for (auto& param: params) {
-                GuideCurveContext& context = param.guideCurveContext;
-                context.phaseOffsetSeed = rand.nextInt(tableSize);
-                context.vertOffsetSeed = rand.nextInt(tableSize);
-            }
-
-            return;
-        }
-
-        rasterizer.randomizeLegacyGuideCurveOffsetSeeds(layerSize, tableSize);
-    });
-    rasterizer.setCrossPointProvider([this]() {
-        renderEnvelopeCrossPoints();
-    });
 }
 
 bool EnvRasterizer::hasReleaseCurve() {
@@ -151,29 +141,12 @@ bool EnvRasterizer::hasReleaseCurve() {
 
 void EnvRasterizer::renderEnvelopeCrossPoints() {
     getMorphPosition().resetTime();
-    rasterizer.calcCrossPoints(envMesh, 0.f);
+    calcCrossPoints(envMesh, 0.f);
 
     // do this even if we can't loop right now just in case
     // loopability changes by the time release curve is going
     // to be recalculated
-    auto waveform = runtime().waveform.view();
-    int size = waveform.waveX.size();
-
-    if (size > 0) {
-        waveformMemory.ensureSize(3 * size);
-
-        waveXCopy = waveformMemory.place(size);
-        waveYCopy = waveformMemory.place(size);
-        slopeCopy = waveformMemory.place(size);
-
-        waveform.waveX.copyTo(waveXCopy);
-        waveform.waveY.copyTo(waveYCopy);
-        waveform.slope.copyTo(slopeCopy);
-    } else {
-        waveXCopy.nullify();
-        waveYCopy.nullify();
-        slopeCopy.nullify();
-    }
+    copyWaveformForRelease();
 
     //    evaluateLoopSustainIndices();
 }
@@ -222,11 +195,22 @@ Rasterization::EnvelopePaddingContext EnvRasterizer::createPaddingContext() cons
 }
 
 Rasterization::RasterizerRuntime EnvRasterizer::runtime() {
-    return rasterizer.createRasterizerRuntime();
+    Rasterization::RasterizerRuntime state;
+    state.intercepts = &storage.intercepts.intercepts;
+    state.curves = &storage.curves.curves;
+    state.frontPadding = &storage.intercepts.frontPadding;
+    state.backPadding = &storage.intercepts.backPadding;
+    state.colorPoints = &storage.intercepts.colorPoints;
+    state.waveform = Rasterization::WaveformBufferRefs(storage.waveform.waveform);
+    state.paddingSize = &paddingSize;
+    state.unsampleable = &unsampleable;
+    state.needsResorting = &needsResorting;
+
+    return state;
 }
 
 Rasterization::RasterizerRuntime EnvRasterizer::runtime() const {
-    return const_cast<MeshRasterizer&>(rasterizer).createRasterizerRuntime();
+    return const_cast<EnvRasterizer*>(this)->runtime();
 }
 
 void EnvRasterizer::setNoteOn() {
@@ -256,6 +240,117 @@ void EnvRasterizer::resetGraphicParams() {
 
 Mesh* EnvRasterizer::getCurrentMesh() {
     return envMesh;
+}
+
+void EnvRasterizer::calcCrossPoints() {
+    renderEnvelopeCrossPoints();
+}
+
+void EnvRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
+    EnvelopeMesh* envelopeMesh = dynamic_cast<EnvelopeMesh*>(mesh);
+    jassert(mesh == nullptr || envelopeMesh != nullptr);
+
+    if (mesh == nullptr || mesh->getNumCubes() == 0 || envelopeMesh == nullptr) {
+        cleanUp();
+        return;
+    }
+
+    envMesh = envelopeMesh;
+    storage.intercepts.intercepts.clear();
+    storage.intercepts.colorPoints.clear();
+    storage.curves.curves.clear();
+    storage.curves.guideCurveRegions.clear();
+    needsResorting = false;
+
+    Rasterization::MeshSliceRenderer::Context context;
+    Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
+    context.mesh = mesh;
+    context.request = request;
+    context.guideApplier = &guideApplier;
+    context.reduction = &reduction;
+    context.oscPhase = oscPhase;
+
+    Rasterization::MeshSlicePipeline::Output output = Rasterization::MeshSliceRenderer().render(context);
+    Rasterization::MeshSliceOutputPolicy(request.calcDepthDimensions).publish(output, runtime());
+
+    processEnvelopeIntercepts(storage.intercepts.intercepts);
+    Rasterization::InterceptSortPolicy(&needsResorting).sortIfNeeded(storage.intercepts.intercepts);
+
+    switch (Rasterization::InterceptDegeneracyPolicy().classify(storage.intercepts.intercepts.size())) {
+        case Rasterization::InterceptDegeneracyAction::CleanUp:
+            cleanUp();
+            return;
+        case Rasterization::InterceptDegeneracyAction::MarkUnsampleable:
+            storage.curves.curves.clear();
+            Rasterization::RasterizerCleanupPolicy::markWaveformUnsampleable(runtime());
+            publishSnapshot();
+            return;
+        case Rasterization::InterceptDegeneracyAction::Continue:
+            break;
+    }
+
+    Rasterization::InterceptPaddingFlagPolicy().apply(storage.intercepts.intercepts);
+
+    if (!request.calcInterceptsOnly) {
+        rebuildCurvesFromIntercepts();
+    }
+
+    publishSnapshot();
+}
+
+void EnvRasterizer::calcIntercepts() {
+    ScopedValueSetter calcInterceptsOnly(request.calcInterceptsOnly, true, request.calcInterceptsOnly);
+    calcCrossPoints();
+    publishSnapshot();
+}
+
+void EnvRasterizer::cleanUp() {
+    Rasterization::RasterizerCleanupOptions options;
+    options.clearCurves = false;
+    Rasterization::RasterizerCleanupPolicy(options).clean(runtime());
+    storage.curves.guideCurveRegions.clear();
+    publishSnapshot();
+}
+
+void EnvRasterizer::performUpdate(UpdateType updateType) {
+    if (updateType == Update) {
+        calcCrossPoints();
+    }
+}
+
+bool EnvRasterizer::hasEnoughCubesForCrossSection() {
+    return envMesh != nullptr && envMesh->hasEnoughCubesForCrossSection();
+}
+
+bool EnvRasterizer::isSampleable() {
+    return Rasterization::WaveformSampler::isSampleable(storage.waveform.waveform);
+}
+
+bool EnvRasterizer::isSampleableAt(float x) {
+    return Rasterization::WaveformSampler::isSampleableAt(storage.waveform.waveform, x);
+}
+
+float EnvRasterizer::sampleAt(double angle) {
+    return Rasterization::WaveformSampler::sampleAt(storage.waveform.waveform, unsampleable, angle);
+}
+
+float EnvRasterizer::sampleAt(double angle, int& currentIndex) {
+    return Rasterization::WaveformSampler::sampleAt(storage.waveform.waveform, unsampleable, angle, currentIndex);
+}
+
+float EnvRasterizer::sampleAtDecoupled(double angle, GuideCurveContext& context) {
+    return Rasterization::GuideCurveSampler::sampleDecoupled(
+            storage.waveform.waveform,
+            unsampleable,
+            angle,
+            context,
+            storage.curves.guideCurveRegions,
+            guideCurveProvider,
+            request.noiseSeed);
+}
+
+float EnvRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
+    return Rasterization::WaveformSampler::samplePerfectly(storage.waveform.waveform, delta, buffer, phase);
 }
 
 bool EnvRasterizer::renderToBuffer(
@@ -360,7 +455,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
         state = Looping;
 
         padIcptsForRender(intercepts, curves);
-        rasterizer.updateCurves();
+        bakeWaveform();
     }
 
     if (sampleReleaseNextCall) {
@@ -540,7 +635,7 @@ bool EnvRasterizer::simulateRender(
         sampleReleaseNextCall = false;
 
         Rasterization::EnvelopeReleaseContext releaseContext;
-        releaseContext.bipolar = getScalingType() == MeshRasterizer::Bipolar;
+        releaseContext.bipolar = getScalingType() == Rasterization::PointScalingMode::Bipolar;
         releaseContext.sustainIndex = sustainIndex;
 
         int releaseIdx = Rasterization::EnvelopeReleasePolicy().releaseIndex(releaseContext);
@@ -600,6 +695,117 @@ void EnvRasterizer::evaluateLoopSustainIndices() {
     sustainIndex = markers.sustainIndex;
 }
 
+void EnvRasterizer::processEnvelopeIntercepts(vector<Intercept>& intercepts) {
+    evaluateLoopSustainIndices();
+
+    Rasterization::EnvelopeSustainPointContext context;
+    context.sustainIndex = sustainIndex;
+    context.addFloorPoint = getScalingType() != Rasterization::PointScalingMode::Bipolar;
+
+    needsResorting |= Rasterization::EnvRasterizerFacade().applySustainPoint(intercepts, context);
+}
+
+void EnvRasterizer::rebuildCurvesFromIntercepts() {
+    storage.curves.curves.clear();
+
+    Rasterization::EnvelopePaddingContext context = createPaddingContext();
+
+    if (!Rasterization::EnvRasterizerFacade().buildDisplayPadding(
+            storage.intercepts.intercepts,
+            storage.curves.curves,
+            context)) {
+        Rasterization::RasterizerCleanupPolicy::markWaveformUnsampleable(runtime());
+        return;
+    }
+
+    bakeWaveform();
+}
+
+void EnvRasterizer::bakeWaveform() {
+    if (storage.curves.curves.size() < 2) {
+        return;
+    }
+
+    Rasterization::CurveResolutionPolicy::Context resolutionContext;
+    resolutionContext.lowResCurves = request.lowResCurves;
+    resolutionContext.integralSampling = request.integralSampling;
+    resolutionContext.interpolateCurves = request.interpolateCurves;
+    resolutionContext.paddingSize = paddingSize;
+    Rasterization::CurveResolutionPolicy().apply(storage.curves.curves, resolutionContext);
+
+    Rasterization::CurveWaveformPreparationPolicy().apply(storage.curves.curves);
+
+    if (request.decoupleComponentDeforms) {
+        storage.curves.guideCurveRegions.clear();
+    }
+
+    Rasterization::WaveformBakePolicy::Context context;
+    context.lowResCurves = request.lowResCurves;
+    context.decoupleComponentDfrms = request.decoupleComponentDeforms;
+    context.noiseSeed = request.noiseSeed;
+    context.morph = request.morph;
+    context.guideCurveProvider = guideCurveProvider;
+    context.guideCurveRegions = &storage.curves.guideCurveRegions;
+    context.offsetSeeds = &guideCurveOffsetSeeds;
+    context.transferTable = Rasterization::TransferTable::values();
+
+    unsampleable = !Rasterization::WaveformBuildPolicy().build(
+            storage.curves.curves,
+            context,
+            [this](int totalRes) {
+                updateBuffers(totalRes);
+                return Rasterization::WaveformBufferRefs(storage.waveform.waveform);
+            });
+}
+
+void EnvRasterizer::copyWaveformForRelease() {
+    auto waveform = runtime().waveform.view();
+    int size = waveform.waveX.size();
+
+    if (size > 0) {
+        waveformMemory.ensureSize(3 * size);
+
+        waveXCopy = waveformMemory.place(size);
+        waveYCopy = waveformMemory.place(size);
+        slopeCopy = waveformMemory.place(size);
+
+        waveform.waveX.copyTo(waveXCopy);
+        waveform.waveY.copyTo(waveYCopy);
+        waveform.slope.copyTo(slopeCopy);
+    } else {
+        waveXCopy.nullify();
+        waveYCopy.nullify();
+        slopeCopy.nullify();
+    }
+}
+
+void EnvRasterizer::publishSnapshot() {
+    Rasterization::RasterizerSnapshotSource source;
+    source.intercepts = &storage.intercepts.intercepts;
+    source.colorPoints = &storage.intercepts.colorPoints;
+    source.curves = &storage.curves.curves;
+    source.waveform = storage.waveform.waveform;
+
+    Rasterization::RasterizerSnapshotBuilder().publish(rasterizerData, source);
+}
+
+void EnvRasterizer::updateBuffers(int size) {
+    storage.waveform.waveform.place(rasterizerMemory, size);
+}
+
+Rasterization::GuideCurveApplier EnvRasterizer::createGuideCurveApplier() {
+    Rasterization::GuideCurvePolicyContext context;
+    context.guideCurveProvider = guideCurveProvider;
+    context.reduction = &reduction;
+    context.scalingMode = request.scalingMode;
+    context.cyclic = request.cyclic;
+    context.needsResorting = &needsResorting;
+    context.noiseSeed = request.noiseSeed;
+    context.offsetSeeds = &guideCurveOffsetSeeds;
+
+    return Rasterization::GuideCurveApplier(context);
+}
+
 void EnvRasterizer::changedToRelease() {
     jassert(state == Releasing);
 
@@ -618,7 +824,7 @@ void EnvRasterizer::changedToRelease() {
     float lastLevel = params[headUnisonIndex].sustainLevel;
 
     Rasterization::EnvelopeReleaseContext releaseContext;
-    releaseContext.bipolar = getScalingType() == MeshRasterizer::Bipolar;
+    releaseContext.bipolar = getScalingType() == Rasterization::PointScalingMode::Bipolar;
     releaseContext.sustainIndex = sustainIndex;
 
     int releaseIdx = Rasterization::EnvelopeReleasePolicy().releaseIndex(releaseContext);
@@ -672,5 +878,31 @@ void EnvRasterizer::ensureParamSize(int numUnisonVoices) {
 
     while (params.size() < numUnisonVoices + 1) {
         params.emplace_back();
+    }
+}
+
+void EnvRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
+    if (oneSamplePerCycle) {
+        Random rand(Time::currentTimeMillis());
+
+        for (auto& param: params) {
+            GuideCurveContext& context = param.guideCurveContext;
+            context.phaseOffsetSeed = rand.nextInt(tableSize);
+            context.vertOffsetSeed = rand.nextInt(tableSize);
+        }
+
+        return;
+    }
+
+    Random rand(Time::currentTimeMillis());
+    guideCurveOffsetSeeds.randomize(layerSize, tableSize, rand);
+}
+
+void EnvRasterizer::updateValue(int dim, float value) {
+    switch (dim) {
+        case CommonEnums::YellowDim: request.morph.time = value; break;
+        case CommonEnums::RedDim:    request.morph.red = value;  break;
+        case CommonEnums::BlueDim:   request.morph.blue = value; break;
+        default: break;
     }
 }

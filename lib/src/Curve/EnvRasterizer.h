@@ -1,9 +1,30 @@
 #pragma once
 
-#include "MeshRasterizer.h"
+#include <climits>
+#include <vector>
+
+#include "../Array/ScopedAlloc.h"
+#include "../Design/Updating/Updateable.h"
+#include "EnvelopeMesh.h"
+#include "Rasterization/Builders/RasterizerSnapshotBuilder.h"
+#include "Rasterization/GuideCurveOffsetSeeds.h"
+#include "Rasterization/Interfaces/GuideCurveBindableRasterizer.h"
+#include "Rasterization/Interfaces/MeshBindableRasterizer.h"
+#include "Rasterization/Interfaces/RasterizerSampler.h"
+#include "Rasterization/Interfaces/RasterizerSnapshotProvider.h"
+#include "Rasterization/Interfaces/RasterizerUpdateTarget.h"
+#include "Rasterization/Interfaces/RasterizerVertexDomain.h"
 #include "Rasterization/Policies/Envelope/EnvelopePaddingPolicy.h"
+#include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
+#include "Rasterization/RasterizationRequest.h"
+#include "Rasterization/RasterizerRuntime.h"
+#include "Rasterization/Sampling/GuideCurveSampler.h"
+#include "Rasterization/State/RasterizerStorage.h"
 #include "../App/MeshLibrary.h"
 
+using std::vector;
+
+class GuideCurveProvider;
 class SingletonRepo;
 
 /**
@@ -84,57 +105,56 @@ public:
 
     Mesh* getCurrentMesh();
 
-    void calcCrossPoints() { rasterizer.calcCrossPoints(); }
-    void calcCrossPoints(Mesh* mesh, float oscPhase) { rasterizer.calcCrossPoints(mesh, oscPhase); }
-    void calcIntercepts() { rasterizer.calcIntercepts(); }
-    void cleanUp() override { rasterizer.cleanUp(); }
-    void performUpdate(UpdateType updateType) override { rasterizer.performUpdate(updateType); }
-    void reset() override { rasterizer.reset(); }
-    void updateRasterizer(UpdateType updateType) override { rasterizer.updateRasterizer(updateType); }
+    void calcCrossPoints();
+    void calcCrossPoints(Mesh* mesh, float oscPhase);
+    void calcIntercepts();
+    void cleanUp() override;
+    void performUpdate(UpdateType updateType) override;
+    void reset() override { cleanUp(); }
+    void updateRasterizer(UpdateType updateType) override { update(updateType); }
 
-    bool hasEnoughCubesForCrossSection() override { return rasterizer.hasEnoughCubesForCrossSection(); }
-    bool isSampleable() override { return rasterizer.isSampleable(); }
-    bool isSampleableAt(float x) override { return rasterizer.isSampleableAt(x); }
-    bool wrapsVertices() const override { return rasterizer.wrapsVertices(); }
+    bool hasEnoughCubesForCrossSection() override;
+    bool isSampleable() override;
+    bool isSampleableAt(float x) override;
+    bool wrapsVertices() const override { return request.cyclic; }
 
-    float sampleAt(double angle) override { return rasterizer.sampleAt(angle); }
-    float sampleAt(double angle, int& currentIndex) override { return rasterizer.sampleAt(angle, currentIndex); }
-    float sampleAtDecoupled(double angle, GuideCurveContext& context) {
-        return rasterizer.sampleAtDecoupled(angle, context);
-    }
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override {
-        return rasterizer.samplePerfectly(delta, buffer, phase);
-    }
+    float sampleAt(double angle) override;
+    float sampleAt(double angle, int& currentIndex) override;
+    float sampleAtDecoupled(double angle, GuideCurveContext& context);
+    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override;
 
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
-        return rasterizer.sampleWithInterval(buffer, delta, phase);
+        return Rasterization::WaveformSampler::sampleWithInterval(
+                storage.waveform.waveform,
+                buffer,
+                delta,
+                phase);
     }
 
-    Mesh* getMesh() override { return rasterizer.getMesh(); }
-    void setMesh(Mesh* mesh) override { rasterizer.setMesh(mesh); }
-    GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    int getPaddingSize() const override { return rasterizer.getPaddingSize(); }
-    RasterizerData& getRasterizerData() override { return rasterizer.getRasterizerData(); }
-    const RasterizerData& getRasterizerData() const override { return rasterizer.getRasterizerData(); }
-    RasterizerData& getRastData() { return rasterizer.getRastData(); }
+    Mesh* getMesh() override { return envMesh; }
+    void setMesh(Mesh* mesh) override;
+    GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
+    int getPaddingSize() const override { return paddingSize; }
+    RasterizerData& getRasterizerData() override { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
+    RasterizerData& getRastData() { return rasterizerData; }
 
-    const String& getName() override { return rasterizer.getName(); }
-    MorphPosition& getMorphPosition() { return rasterizer.getMorphPosition(); }
-    MeshRasterizer::ScalingType getScalingType() const { return rasterizer.getScalingType(); }
-    void setCalcDepthDimensions(bool calc) { rasterizer.setCalcDepthDimensions(calc); }
-    void setDecoupleComponentDfrm(bool does) { rasterizer.setDecoupleComponentDfrm(does); }
-    void setDims(const Dimensions& dims) override { rasterizer.setDims(dims); }
-    void setGuideCurveProvider(GuideCurveProvider* provider) override { rasterizer.setGuideCurveProvider(provider); }
-    void setLimits(float min, float max) { rasterizer.setLimits(min, max); }
-    void setLowresCurves(bool areLow) { rasterizer.setLowresCurves(areLow); }
-    void setMorphPosition(const MorphPosition& morph) { rasterizer.setMorphPosition(morph); }
-    void setNoiseSeed(int seed) { rasterizer.setNoiseSeed(seed); }
-    void setToOverrideDim(bool does) { rasterizer.setToOverrideDim(does); }
-    void setWrapsEnds(bool wraps) { rasterizer.setWrapsEnds(wraps); }
+    MorphPosition& getMorphPosition() { return request.morph; }
+    Rasterization::PointScalingMode getScalingType() const { return request.scalingMode; }
+    void setCalcDepthDimensions(bool calc) { request.calcDepthDimensions = calc; }
+    void setDecoupleComponentDfrm(bool does) { request.decoupleComponentDeforms = does; }
+    void setDims(const Dimensions& dims) override { request.dims = dims; }
+    void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }
+    void setLimits(float min, float max) { request.xMinimum = min; request.xMaximum = max; }
+    void setLowresCurves(bool areLow) { request.lowResCurves = areLow; }
+    void setMorphPosition(const MorphPosition& morph) { request.morph = morph; }
+    void setNoiseSeed(int seed) { request.noiseSeed = seed; }
+    void setToOverrideDim(bool does) { request.overrideDimension = does; }
+    void setWrapsEnds(bool wraps) { request.cyclic = wraps; }
     void update(UpdateType updateType) { Updateable::update(updateType); }
-    void updateOffsetSeeds(int layerSize, int tableSize) { rasterizer.updateOffsetSeeds(layerSize, tableSize); }
-    void updateValue(int dim, float value) { rasterizer.updateValue(dim, value); }
+    void updateOffsetSeeds(int layerSize, int tableSize);
+    void updateValue(int dim, float value);
 
     const EnvelopeMesh* getEnvMesh() const      { return envMesh;                           }
     float getSustainLevel(int paramIndex) const { return params[paramIndex].sustainLevel;   }
@@ -150,6 +170,13 @@ private:
     void installEnvelopeProviders();
     void padIcptsForRender(vector<Intercept>& icpts, vector<Curve>& curves);
     void renderEnvelopeCrossPoints();
+    void processEnvelopeIntercepts(vector<Intercept>& intercepts);
+    void rebuildCurvesFromIntercepts();
+    void bakeWaveform();
+    void copyWaveformForRelease();
+    void publishSnapshot();
+    void updateBuffers(int size);
+    Rasterization::GuideCurveApplier createGuideCurveApplier();
 
     bool canLoop() const;
     Rasterization::RasterizerRuntime runtime();
@@ -169,10 +196,19 @@ private:
     vector<EnvParams> params;
 
     ScopedAlloc<float> preallocated;
+    ScopedAlloc<float> rasterizerMemory;
     ScopedAlloc<float> waveformMemory;
     Buffer<float> waveXCopy, waveYCopy, slopeCopy, renderBuffer;
 
-    MeshRasterizer rasterizer;
+    GuideCurveProvider* guideCurveProvider;
+    Rasterization::RasterizationRequest request;
+    Rasterization::RasterizerStorage storage;
+    Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
+    RasterizerData rasterizerData;
+    VertCube::ReductionData reduction;
+
+    int paddingSize;
+    bool unsampleable, needsResorting;
 
     JUCE_LEAK_DETECTOR(EnvRasterizer)
 };

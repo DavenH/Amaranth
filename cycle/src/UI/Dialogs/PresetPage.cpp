@@ -6,6 +6,7 @@
 #include <App/EditWatcher.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
+#include <Audio/PluginProcessor.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <Util/Arithmetic.h>

@@ -425,9 +425,11 @@ namespace {
     }
 
     bool drainMessageLoop(int delayMs) {
+#if JUCE_MODAL_LOOPS_PERMITTED
         if (MessageManager::getInstance()->isThisTheMessageThread()) {
             return MessageManager::getInstance()->runDispatchLoopUntil(delayMs);
         }
+#endif
 
         Thread::sleep(delayMs);
         return false;

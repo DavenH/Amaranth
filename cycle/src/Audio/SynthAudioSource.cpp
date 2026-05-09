@@ -1,6 +1,7 @@
 #include <App/Doc/Document.h>
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
+#include <Audio/PluginProcessor.h>
 #include <Util/Arithmetic.h>
 
 #include "SynthAudioSource.h"

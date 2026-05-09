@@ -3,6 +3,7 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Array/Buffer.h>
+#include <Audio/PluginProcessor.h>
 #include <Curve/EnvelopeMesh.h>
 #include <Util/Arithmetic.h>
 

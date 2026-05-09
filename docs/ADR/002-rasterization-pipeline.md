@@ -43,12 +43,13 @@ compatibility facades during migration. The work will be staged so every phase
 builds, existing tests continue to pass, and visual/audio behavior is validated
 before moving to the next phase.
 
-The migration completed the inheritance removal in favor of composition:
-`FXRasterizer`, `GraphicRasterizer`, `E3Rasterizer`, `VoiceMeshRasterizer`, and
-`EnvRasterizer` no longer derive from `MeshRasterizer`. `MeshRasterizer` remains
-for now as a compatibility shell and shared adapter used by a few legacy direct
-callers, but new rasterizer work should prefer the source, pipeline, policy,
-storage, runtime, and narrow-interface types under `Rasterization/`.
+The migration completed the inheritance and ownership removal in favor of
+composition: `FXRasterizer`, `GraphicRasterizer`, `E3Rasterizer`,
+`VoiceMeshRasterizer`, and `EnvRasterizer` no longer derive from or own
+`MeshRasterizer`. `MeshRasterizer` remains for now as a characterization-tested
+compatibility shell, but production rasterizers should prefer the source,
+pipeline, policy, storage, runtime, and narrow-interface types under
+`Rasterization/`.
 
 ## Consequences
 
@@ -67,8 +68,8 @@ storage, runtime, and narrow-interface types under `Rasterization/`.
 ### Negative
 
 - The migration introduces more named concepts and files.
-- Compatibility facades coexist with the retained `MeshRasterizer` shell until
-  the remaining direct callers are replaced or renamed.
+- Compatibility tests coexist with the retained `MeshRasterizer` shell until it
+  is deleted or renamed in a later legacy cleanup.
 - Some policy boundaries, especially guide curves, wrapping, and depth
   projection, are tightly coupled in the current code and must be extracted
   carefully.

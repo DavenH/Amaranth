@@ -1,9 +1,13 @@
 #include <App/SingletonRepo.h>
+#include <App/Settings.h>
+#include <Audio/PluginProcessor.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/Widgets/IconButton.h>
 #include <Definitions.h>
 
 #include "ResizerPullout.h"
+#include "../PluginWindow.h"
+#include "../../Util/CycleEnums.h"
 
 #if PLUGIN_MODE
   using namespace WindowSizes;
@@ -35,9 +39,9 @@ void ResizerPullout::buttonClicked(Button* button) {
     int oldSize = getSetting(WindowSize);
 
     int size =
-            button == smallIcon ? SmallSize :
-            button == medIcon     ? MedSize     :
-            button == fullIcon     ? FullSize     :
+            button == smallIcon.get() ? SmallSize :
+            button == medIcon.get()   ? MedSize   :
+            button == fullIcon.get()  ? FullSize  :
                                   PlayerSize;
 
     updateHighlight(size);

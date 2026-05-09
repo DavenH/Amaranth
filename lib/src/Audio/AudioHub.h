@@ -70,14 +70,12 @@ public:
 
     void audioDeviceAboutToStart(AudioIODevice* device) override;
     void audioDeviceStopped() override;
+  #endif
+
     void resumeAudio();
-
-
     void stopAudio();
     void suspendAudio();
-
     AudioDeviceManager* getAudioDeviceManager();
-  #endif
 
     void releaseResources() override;
     void initialiseAudioDevice(XmlElement*);

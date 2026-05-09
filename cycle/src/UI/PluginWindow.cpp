@@ -13,7 +13,6 @@
 #include "PluginWindow.h"
 
 #include <App/Dialogs.h>
-#include <Vst/PluginWindow.h>
 
 #include "VisualDsp.h"
 #include "SynthLookAndFeel.h"
@@ -60,6 +59,10 @@ PluginWindow::PluginWindow (PluginProcessor* proc) :
 		mainPanel->triggerDelayedRepaint();
 	  #endif
 	}
+}
+
+AudioProcessorEditor* PluginProcessor::createEditor() {
+    return new PluginWindow(this);
 }
 
 PluginWindow::~PluginWindow() {

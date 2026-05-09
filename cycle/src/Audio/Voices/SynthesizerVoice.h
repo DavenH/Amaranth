@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
 
+#include "JuceHeader.h"
+
 #include "SynthUnisonVoice.h"
 #include "SynthFilterVoice.h"
 #include "SynthState.h"
@@ -9,7 +11,7 @@
 #include <Array/ScopedAlloc.h>
 #include <Audio/SmoothedParameter.h>
 #include <Curve/EnvRasterizer.h>
-#include "JuceHeader.h"
+#include <Util/MicroTimer.h>
 
 #include "../../Curve/EnvRenderContext.h"
 #include "../../UI/Panels/ModMatrixPanel.h"

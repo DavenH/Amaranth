@@ -1,4 +1,5 @@
 #include <App/SingletonRepo.h>
+#include <Audio/PluginProcessor.h>
 #include <Util/Util.h>
 
 #include "Delay.h"
@@ -310,4 +311,3 @@ void CycDelay::recalculateWetBuffers(bool print) {
         info("\n" << "\n");
     }
 }
-

@@ -3,6 +3,7 @@
 #include <App/Doc/PresetJson.h>
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
+#include <Audio/PluginProcessor.h>
 #include <Curve/GuideCurveProvider.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Panels/CommonGfx.h>

@@ -1,6 +1,6 @@
-#if PLUGIN_MODE
-
 #include "PluginProcessor.h"
+
+#if PLUGIN_MODE
 
 #include <App/AppConstants.h>
 #include <UI/IConsole.h>
@@ -173,6 +173,10 @@ void PluginProcessor::setCurrentProgram(int index) {
     getObj(DocumentLibrary).triggerAsyncLoad(index);
 }
 
+void PluginProcessor::documentHasLoaded() {
+    presetHasLoaded();
+}
+
 const String PluginProcessor::getProgramName(int index) {
     return getObj(DocumentLibrary).getProgramName(index);
 }
@@ -209,4 +213,3 @@ void PluginProcessor::presetHasLoaded() {
 }
 
 #endif
-

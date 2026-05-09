@@ -2035,21 +2035,24 @@ Implemented state:
 
 - mesh composer exposes target-style hooks for source, slicer, morph position
   or morph provider, padding policy, and snapshot policy,
-- the hooks currently map onto `RasterizationRequest`; they do not yet publish
-  a full snapshot directly from `ComposedMeshRasterizer`,
+- the hooks currently map onto `RasterizationRequest`; shared snapshot-source
+  publication is available through `ComposedMeshWaveformRasterizer`,
 - the `GraphicRasterizer::legacyRasterizer()` escape hatch is removed after
   migrating the last production caller,
 - `OscPhaseRasterizer` and `SpectralFilterRasterizer` no longer own
   compatibility `MeshRasterizer` instances; they build from the composed mesh
   slicer and, for spectral filters, the point-list waveform pipeline,
-- `E3Rasterizer`, `GraphicRasterizer`, and `VoiceMeshRasterizer` no longer own
-  compatibility `MeshRasterizer` instances,
+- `E3Rasterizer`, `GraphicRasterizer`, `VoiceMeshRasterizer`, and
+  `EnvRasterizer` no longer own compatibility `MeshRasterizer` instances,
 - `ComposedMeshWaveformRasterizer` now provides the shared mesh-slice to
   waveform primitive, including snapshot-source publication and target-style
   guide-curve applier creation for domain pipelines,
 - `VoiceMeshRasterizer` keeps the voice-specific chained pipeline and storage
   directly, rather than routing chained audio through a generic compatibility
   rasterizer,
+- `EnvRasterizer` owns explicit envelope request, storage, runtime, guide-curve
+  offset seeds, waveform baking, render-time padding, decoupled guide sampling,
+  and snapshot publication directly,
 - interface audit has removed concrete audio/import and interactor
   compatibility paths that no longer had production callers.
 
@@ -2094,11 +2097,11 @@ Implemented state:
 
 - the smallest audio/phase compatibility facades have been drained:
   `OscPhaseRasterizer`, `SpectralFilterRasterizer`, `E3Rasterizer`,
-  `GraphicRasterizer`, and `VoiceMeshRasterizer`,
-- the remaining production owner is the highest-state envelope shell:
-  `EnvRasterizer`,
-- the next deletion work needs to replace those shells one at a time with
-  composed runtime/storage ownership rather than simply moving call sites.
+  `GraphicRasterizer`, `VoiceMeshRasterizer`, and `EnvRasterizer`,
+- no production concrete rasterizer derives from or owns `MeshRasterizer`,
+- `MeshRasterizer` is retained under its current name as a
+  characterization-tested compatibility shell for now; production rasterizer
+  construction has moved to composer/facade/domain-owned primitives.
 
 ### Phase 40: Final Duplication And Regression Review
 
@@ -2140,6 +2143,21 @@ Acceptance:
 - final docs describe the implemented architecture rather than the migration
   path alone,
 - rasterizer changes are ready to stop being treated as an active migration.
+
+Implemented state:
+
+- final production ownership scan found no concrete rasterizer deriving from or
+  owning `MeshRasterizer`,
+- remaining `MeshRasterizer` mentions are legacy compatibility tests, the
+  retained compatibility shell, naming in `MeshRasterizerState`, and domain type
+  names such as `VoiceMeshRasterizer`,
+- duplicated mesh-to-waveform rendering for graphic, spectral, oscillator phase,
+  and E3 paths is consolidated through `ComposedMeshWaveformRasterizer`,
+- voice and envelope keep separate domain-owned storage because chaining,
+  release, loop, and decoupled guide-curve playback are not the same lifecycle
+  as stateless panel mesh slicing,
+- parallel Cycle agent UI fixture runs still contend on macOS application
+  activation; run those fixtures serially.
 
 ## Regression Baselines
 
