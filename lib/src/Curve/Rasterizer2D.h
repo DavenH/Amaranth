@@ -13,31 +13,9 @@ public:
     explicit Rasterizer2D(vector<Intercept>& verts, bool cyclic = false)
             : pointSource(verts), cyclic(cyclic) {
         unsampleable = false;
-    }
-
-    void calcCrossPoints() override {
-        if (pointSource.empty()) {
-            cleanUp();
-            return;
-        }
-
-        Rasterization::RasterizationRequest request = createRasterizationRequest();
-        request.cyclic = cyclic;
-
-        auto composedRasterizer = Rasterization::RasterizerComposer::pointList()
-                .withSource(pointSource.intercepts())
-                .withRequest(request)
-                .build();
-
-        const auto& output = composedRasterizer.render();
-        if (!output.sampleable) {
-            cleanUp();
-            return;
-        }
-
-        updateBuffers(output.waveform.waveX.size());
-        Rasterization::PointListOutputPolicy(Rasterization::WaveformPublication::Copy)
-                .publish(output, createRasterizerRuntime());
+        setCrossPointProvider([this]() {
+            renderPointListCrossPoints();
+        });
     }
 
     void updateCurve(int index, const Intercept& position) {
@@ -147,9 +125,37 @@ public:
     bool isCyclic() const               { return cyclic;        }
     static int getPaddingSize()         { return 2;             }
 
+private:
+    void renderPointListCrossPoints();
+
 protected:
     Rasterization::PointListSource pointSource;
     bool cyclic;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Rasterizer2D)
 };
+
+inline void Rasterizer2D::renderPointListCrossPoints() {
+    if (pointSource.empty()) {
+        cleanUp();
+        return;
+    }
+
+    Rasterization::RasterizationRequest request = createRasterizationRequest();
+    request.cyclic = cyclic;
+
+    auto composedRasterizer = Rasterization::RasterizerComposer::pointList()
+            .withSource(pointSource.intercepts())
+            .withRequest(request)
+            .build();
+
+    const auto& output = composedRasterizer.render();
+    if (!output.sampleable) {
+        cleanUp();
+        return;
+    }
+
+    updateBuffers(output.waveform.waveX.size());
+    Rasterization::PointListOutputPolicy(Rasterization::WaveformPublication::Copy)
+            .publish(output, createRasterizerRuntime());
+}
