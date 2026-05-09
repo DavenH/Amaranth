@@ -77,8 +77,16 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    needsResorting      (false)
     ,    interpolateCurves   (false)
     ,    batchMode           (false)
-    ,    waveform            (0, INT_MAX / 2)
-    ,    facade              (new Rasterization::MeshRasterizerFacade) {
+    ,    facade              (new Rasterization::MeshRasterizerFacade)
+    ,    storage()
+    ,    rastArrays          (storage.snapshot.rasterizerData)
+    ,    frontIcpts          (storage.intercepts.frontPadding)
+    ,    backIcpts           (storage.intercepts.backPadding)
+    ,    icpts               (storage.intercepts.intercepts)
+    ,    colorPoints         (storage.intercepts.colorPoints)
+    ,    curves              (storage.curves.curves)
+    ,    guideCurveRegions   (storage.curves.guideCurveRegions)
+    ,    waveform            (storage.waveform.waveform) {
     initialise();
 }
 
@@ -556,7 +564,7 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
 }
 
 MeshRasterizer::MeshRasterizer(const MeshRasterizer& copy) :
-        facade(new Rasterization::MeshRasterizerFacade) {
+        MeshRasterizer(copy.name) {
 //    jassertfalse;
 
     operator=(copy);

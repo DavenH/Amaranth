@@ -14,6 +14,7 @@
 #include "Rasterization/Policies/WaveformBakePolicy.h"
 #include "Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
+#include "Rasterization/State/RasterizerStorage.h"
 #include "SurfaceLine.h"
 #include "VertCube.h"
 #include "../Array/ScopedAlloc.h"
@@ -278,18 +279,22 @@ protected:
     Dimensions dims;
     MicroTimer timer;
     MorphPosition morph;
-    RasterizerData rastArrays;
     std::unique_ptr<Rasterization::MeshRasterizerFacade> facade;
 
-    vector<Intercept> frontIcpts, backIcpts, icpts;
-    vector<ColorPoint> colorPoints;
-    vector<Curve> curves;
-    vector<GuideCurveRegion> guideCurveRegions;
+    Rasterization::RasterizerStorage storage;
+
+    RasterizerData& rastArrays;
+    vector<Intercept>& frontIcpts;
+    vector<Intercept>& backIcpts;
+    vector<Intercept>& icpts;
+    vector<ColorPoint>& colorPoints;
+    vector<Curve>& curves;
+    vector<GuideCurveRegion>& guideCurveRegions;
 
     ScopedAlloc<float> memoryBuffer;
     ScopedAlloc<Int8u> alignedBytes;
 
-    Rasterization::WaveformBuffers waveform;
+    Rasterization::WaveformBuffers& waveform;
     VertCube::ReductionData reduct;
     GuideCurveProvider* guideCurveProvider;
     Mesh* mesh;
