@@ -2,14 +2,14 @@
 #include <App/SingletonRepo.h>
 #include <Curve/Intercept.h>
 #include <Curve/Mesh.h>
-#include <Curve/Rasterization/Policies/GuideCurvePolicy.h>
-#include <Curve/Rasterization/Policies/RasterizerCleanupPolicy.h>
+#include <Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h>
+#include <Curve/Rasterization/Policies/Core/RasterizerCleanupPolicy.h>
 #include <Definitions.h>
 
 #include "VoiceMeshRasterizer.h"
 #include "CycleState.h"
 #include "Rasterization/Pipelines/VoiceRasterizationPipeline.h"
-#include "Rasterization/Policies/VoiceWaveformUpdatePolicy.h"
+#include "Rasterization/Policies/Voice/VoiceWaveformUpdatePolicy.h"
 #include "../Util/CycleEnums.h"
 
 

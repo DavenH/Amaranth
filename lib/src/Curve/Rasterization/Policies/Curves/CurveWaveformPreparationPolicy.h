@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "ComponentGuideSharpnessPolicy.h"
-#include "../../Curve.h"
+#include "../Mesh/ComponentGuideSharpnessPolicy.h"
+#include "../../../Curve.h"
 
 namespace Rasterization {
     class CurveWaveformPreparationPolicy {

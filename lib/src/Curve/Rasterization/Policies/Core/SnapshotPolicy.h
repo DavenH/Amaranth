@@ -2,12 +2,12 @@
 
 #include <vector>
 
-#include "../RasterizerRuntime.h"
-#include "../WaveformBuffers.h"
-#include "../../Curve.h"
-#include "../../Intercept.h"
-#include "../../RasterizerData.h"
-#include "../../../Obj/ColorPoint.h"
+#include "../../RasterizerRuntime.h"
+#include "../../WaveformBuffers.h"
+#include "../../../Curve.h"
+#include "../../../Intercept.h"
+#include "../../../RasterizerData.h"
+#include "../../../../Obj/ColorPoint.h"
 
 namespace Rasterization {
     struct RasterizerSnapshotSource {

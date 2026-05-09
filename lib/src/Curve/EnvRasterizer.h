@@ -1,7 +1,7 @@
 #pragma once
 
 #include "MeshRasterizer.h"
-#include "Rasterization/Policies/EnvelopePaddingPolicy.h"
+#include "Rasterization/Policies/Envelope/EnvelopePaddingPolicy.h"
 #include "../App/MeshLibrary.h"
 
 class SingletonRepo;

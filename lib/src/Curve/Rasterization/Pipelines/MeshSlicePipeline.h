@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <vector>
 
-#include "../Policies/DefaultVertexWrapPolicy.h"
-#include "../Policies/DepthProjectionPolicy.h"
-#include "../Policies/InterceptPaddingFlagPolicy.h"
-#include "../Policies/InterceptRestrictionPolicy.h"
-#include "../Policies/PointScalingPolicy.h"
+#include "../Policies/Core/DefaultVertexWrapPolicy.h"
+#include "../Policies/Mesh/DepthProjectionPolicy.h"
+#include "../Policies/Curves/InterceptPaddingFlagPolicy.h"
+#include "../Policies/Core/InterceptRestrictionPolicy.h"
+#include "../Policies/Core/PointScalingPolicy.h"
 #include "../RasterizationRequest.h"
 #include "../Interpolation/TrilinearMeshSlicer.h"
 #include "../Sources/MeshCubeSource.h"

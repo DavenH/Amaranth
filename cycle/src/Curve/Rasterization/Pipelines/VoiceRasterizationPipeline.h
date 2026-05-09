@@ -10,7 +10,7 @@
 
 #include "../../CycleState.h"
 #include "../Facades/VoiceRasterizerFacade.h"
-#include "../Policies/VoiceChainingPolicy.h"
+#include "../Policies/Voice/VoiceChainingPolicy.h"
 
 namespace Cycle::Rasterization {
     class VoiceRasterizationPipeline {

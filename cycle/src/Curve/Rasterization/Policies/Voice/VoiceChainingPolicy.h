@@ -6,8 +6,8 @@
 #include <Curve/Intercept.h>
 #include <Curve/Rasterization/RasterizerRuntime.h>
 
-#include "../../CycleState.h"
-#include "../Pipelines/VoiceSlicePipeline.h"
+#include "../../../CycleState.h"
+#include "../../Pipelines/VoiceSlicePipeline.h"
 
 namespace Cycle::Rasterization {
     class VoiceChainingPolicy {

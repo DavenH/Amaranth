@@ -4,9 +4,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../CycleState.h"
-#include "../Rasterization/Policies/VoiceChainedPaddingPolicy.h"
-#include "../Rasterization/Policies/VoiceCurveResolutionPolicy.h"
-#include "../Rasterization/Policies/VoicePointPositionPolicy.h"
+#include "../Rasterization/Policies/Voice/VoiceChainedPaddingPolicy.h"
+#include "../Rasterization/Policies/Voice/VoiceCurveResolutionPolicy.h"
+#include "../Rasterization/Policies/Voice/VoicePointPositionPolicy.h"
 
 namespace {
     using Catch::Approx;

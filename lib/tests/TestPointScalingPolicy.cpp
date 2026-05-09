@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Curve/MeshRasterizer.h"
-#include "../src/Curve/Rasterization/Policies/PointScalingPolicy.h"
+#include "../src/Curve/Rasterization/Policies/Core/PointScalingPolicy.h"
 
 using Catch::Approx;
 using namespace Rasterization;

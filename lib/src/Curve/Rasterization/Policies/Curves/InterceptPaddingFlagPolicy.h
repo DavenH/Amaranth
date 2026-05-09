@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "../../Intercept.h"
+#include "../../../Intercept.h"
 
 namespace Rasterization {
     class InterceptPaddingFlagPolicy {

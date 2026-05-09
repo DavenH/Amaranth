@@ -5,7 +5,7 @@
 #include <Curve/Curve.h>
 #include <Curve/Intercept.h>
 
-#include "../../CycleState.h"
+#include "../../../CycleState.h"
 
 namespace Cycle::Rasterization {
     class VoiceChainedPaddingPolicy {

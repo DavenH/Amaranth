@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "../../EnvelopeMesh.h"
-#include "../../Intercept.h"
+#include "../../../EnvelopeMesh.h"
+#include "../../../Intercept.h"
 
 namespace Rasterization {
     struct EnvelopeMarkerResult {

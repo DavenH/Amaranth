@@ -1,7 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Curve/Rasterization/Policies/InterceptRestrictionPolicy.h"
+#include "../src/Curve/Rasterization/Policies/Core/InterceptRestrictionPolicy.h"
 #include "../src/Curve/MeshRasterizer.h"
 #include "../src/Util/NumberUtils.h"
 

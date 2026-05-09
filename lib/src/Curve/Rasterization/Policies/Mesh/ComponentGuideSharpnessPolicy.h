@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "../../Curve.h"
+#include "../../../Curve.h"
 
 namespace Rasterization {
     class ComponentGuideSharpnessPolicy {

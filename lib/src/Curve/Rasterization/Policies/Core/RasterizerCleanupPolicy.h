@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../RasterizerRuntime.h"
+#include "../../RasterizerRuntime.h"
 
 namespace Rasterization {
     struct RasterizerCleanupOptions {

@@ -3,10 +3,10 @@
 
 #include "../src/Curve/EnvelopeMesh.h"
 #include "../src/Curve/Rasterization/Facades/EnvRasterizerFacade.h"
-#include "../src/Curve/Rasterization/Policies/EnvelopePlaybackPolicy.h"
-#include "../src/Curve/Rasterization/Policies/EnvelopeRenderTimingPolicy.h"
-#include "../src/Curve/Rasterization/Policies/EnvelopeReleasePolicy.h"
-#include "../src/Curve/Rasterization/Policies/EnvelopeStateValidationPolicy.h"
+#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopePlaybackPolicy.h"
+#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopeRenderTimingPolicy.h"
+#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopeReleasePolicy.h"
+#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopeStateValidationPolicy.h"
 
 namespace {
     struct TestEnvelopeParam {

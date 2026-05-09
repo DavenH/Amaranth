@@ -3,8 +3,8 @@
 
 #include "../CycleState.h"
 #include "../Rasterization/Facades/VoiceRasterizerFacade.h"
-#include "../Rasterization/Policies/VoiceChainingPolicy.h"
-#include "../Rasterization/Policies/VoiceWaveformUpdatePolicy.h"
+#include "../Rasterization/Policies/Voice/VoiceChainingPolicy.h"
+#include "../Rasterization/Policies/Voice/VoiceWaveformUpdatePolicy.h"
 #include "../Rasterization/Pipelines/VoiceRasterizationPipeline.h"
 #include <Curve/Mesh.h>
 #include <Curve/Rasterization/RasterizerRuntime.h>

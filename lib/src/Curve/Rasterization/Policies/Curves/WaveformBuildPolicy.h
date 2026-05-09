@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Builders/WaveformBuilder.h"
+#include "../../Builders/WaveformBuilder.h"
 
 namespace Rasterization {
     class WaveformBuildPolicy {

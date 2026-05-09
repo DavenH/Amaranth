@@ -2,13 +2,13 @@
 
 #include <algorithm>
 
-#include "../../GuideCurveProvider.h"
-#include "../../Intercept.h"
-#include "../../VertCube.h"
-#include "../GuideCurveOffsetSeeds.h"
-#include "../Policies/PointScalingPolicy.h"
-#include "../../../Obj/MorphPosition.h"
-#include "../../../Util/NumberUtils.h"
+#include "../../../GuideCurveProvider.h"
+#include "../../../Intercept.h"
+#include "../../../VertCube.h"
+#include "../../GuideCurveOffsetSeeds.h"
+#include "../Core/PointScalingPolicy.h"
+#include "../../../../Obj/MorphPosition.h"
+#include "../../../../Util/NumberUtils.h"
 
 namespace Rasterization {
     struct GuideCurvePolicyContext {

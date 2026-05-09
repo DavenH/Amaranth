@@ -4,9 +4,9 @@
 #include <Curve/Rasterization/Sources/MeshCubeSource.h>
 
 #include "../Pipelines/VoiceSlicePipeline.h"
-#include "../Policies/VoiceChainedPaddingPolicy.h"
-#include "../Policies/VoiceCurveResolutionPolicy.h"
-#include "../Policies/VoicePointPositionPolicy.h"
+#include "../Policies/Voice/VoiceChainedPaddingPolicy.h"
+#include "../Policies/Voice/VoiceCurveResolutionPolicy.h"
+#include "../Policies/Voice/VoicePointPositionPolicy.h"
 
 namespace Cycle::Rasterization {
     class VoiceRasterizerFacade {

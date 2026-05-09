@@ -3,7 +3,7 @@
 #include "Intercept.h"
 #include "Curve.h"
 #include "Rasterization/Builders/TransferTable.h"
-#include "Rasterization/Policies/RasterizerOutputPolicy.h"
+#include "Rasterization/Policies/Core/RasterizerOutputPolicy.h"
 #include "Rasterization/RasterizerComposer.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
 #include "Rasterization/Sources/PointListSource.h"

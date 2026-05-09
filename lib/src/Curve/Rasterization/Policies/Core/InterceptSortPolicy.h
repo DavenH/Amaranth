@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "../../Intercept.h"
-#include "../../../Util/Util.h"
+#include "../../../Intercept.h"
+#include "../../../../Util/Util.h"
 
 namespace Rasterization {
     class InterceptSortPolicy {

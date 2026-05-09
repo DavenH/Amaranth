@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../Policies/EnvelopeMarkerPolicy.h"
-#include "../Policies/EnvelopePaddingPolicy.h"
-#include "../Policies/EnvelopeSustainPointPolicy.h"
+#include "../Policies/Envelope/EnvelopeMarkerPolicy.h"
+#include "../Policies/Envelope/EnvelopePaddingPolicy.h"
+#include "../Policies/Envelope/EnvelopeSustainPointPolicy.h"
 
 namespace Rasterization {
     class EnvRasterizerFacade {

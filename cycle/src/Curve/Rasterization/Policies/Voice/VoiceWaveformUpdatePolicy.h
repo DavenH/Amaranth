@@ -4,7 +4,7 @@
 
 #include <Curve/Rasterization/RasterizerRuntime.h>
 
-#include "../Facades/VoiceRasterizerFacade.h"
+#include "../../Facades/VoiceRasterizerFacade.h"
 
 namespace Cycle::Rasterization {
     class VoiceWaveformUpdatePolicy {

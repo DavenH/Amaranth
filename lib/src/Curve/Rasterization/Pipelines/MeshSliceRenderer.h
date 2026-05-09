@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Policies/GuideCurvePolicy.h"
+#include "../Policies/Mesh/GuideCurvePolicy.h"
 #include "../RasterizationRequest.h"
 #include "../RasterizerComposer.h"
 #include "../../Mesh.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Policies/SnapshotPolicy.h"
+#include "../Policies/Core/SnapshotPolicy.h"
 
 namespace Rasterization {
     template<class Policy = RasterizerDataSnapshot>

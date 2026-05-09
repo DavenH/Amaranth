@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "../Builders/RasterizerSnapshotBuilder.h"
-#include "../Policies/CurveResolutionPolicy.h"
+#include "../Policies/Curves/CurveResolutionPolicy.h"
 
 namespace Rasterization {
     class MeshRasterizerFacade {

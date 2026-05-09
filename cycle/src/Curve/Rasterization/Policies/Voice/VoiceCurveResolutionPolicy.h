@@ -3,7 +3,7 @@
 #include <vector>
 
 #include <Curve/Curve.h>
-#include <Curve/Rasterization/Policies/CurveResolutionPolicy.h>
+#include <Curve/Rasterization/Policies/Curves/CurveResolutionPolicy.h>
 
 namespace Cycle::Rasterization {
     class VoiceCurveResolutionPolicy {

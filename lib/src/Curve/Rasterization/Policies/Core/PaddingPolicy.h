@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "../../Curve.h"
-#include "../../Intercept.h"
+#include "../../../Curve.h"
+#include "../../../Intercept.h"
 
 namespace Rasterization {
     struct PaddingPolicyContext {

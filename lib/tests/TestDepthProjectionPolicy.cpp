@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Curve/Mesh.h"
-#include "../src/Curve/Rasterization/Policies/DepthProjectionPolicy.h"
+#include "../src/Curve/Rasterization/Policies/Mesh/DepthProjectionPolicy.h"
 #include "../src/Curve/VertCube.h"
 
 using namespace Rasterization;

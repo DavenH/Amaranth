@@ -3,9 +3,9 @@
 #include <memory>
 #include <vector>
 
-#include "../Policies/PaddingPolicy.h"
-#include "../Policies/RasterizerCleanupPolicy.h"
-#include "../Policies/RasterizerOutputPolicy.h"
+#include "../Policies/Core/PaddingPolicy.h"
+#include "../Policies/Core/RasterizerCleanupPolicy.h"
+#include "../Policies/Core/RasterizerOutputPolicy.h"
 #include "../RasterizerComposer.h"
 #include "../RasterizerRuntime.h"
 #include "../Sources/VertexListSource.h"

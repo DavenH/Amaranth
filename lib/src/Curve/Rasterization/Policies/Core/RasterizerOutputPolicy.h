@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../Pipelines/FxRasterizationPipeline.h"
-#include "../Pipelines/PointListRasterizationPipeline.h"
-#include "../RasterizerRuntime.h"
+#include "../../Pipelines/FxRasterizationPipeline.h"
+#include "../../Pipelines/PointListRasterizationPipeline.h"
+#include "../../RasterizerRuntime.h"
 
 namespace Rasterization {
     enum class WaveformPublication {

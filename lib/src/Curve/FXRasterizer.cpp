@@ -1,8 +1,8 @@
 #include "FXRasterizer.h"
 
 #include "Rasterization/Builders/RasterizerSnapshotBuilder.h"
-#include "Rasterization/Policies/PointScalingPolicy.h"
-#include "Rasterization/Policies/SnapshotPolicy.h"
+#include "Rasterization/Policies/Core/PointScalingPolicy.h"
+#include "Rasterization/Policies/Core/SnapshotPolicy.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
 
 namespace {

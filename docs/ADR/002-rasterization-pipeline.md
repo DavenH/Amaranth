@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -43,6 +43,13 @@ compatibility facades during migration. The work will be staged so every phase
 builds, existing tests continue to pass, and visual/audio behavior is validated
 before moving to the next phase.
 
+The migration completed the inheritance removal in favor of composition:
+`FXRasterizer`, `GraphicRasterizer`, `E3Rasterizer`, `VoiceMeshRasterizer`, and
+`EnvRasterizer` no longer derive from `MeshRasterizer`. `MeshRasterizer` remains
+for now as a compatibility shell and shared adapter used by a few legacy direct
+callers, but new rasterizer work should prefer the source, pipeline, policy,
+storage, runtime, and narrow-interface types under `Rasterization/`.
+
 ## Consequences
 
 ### Positive
@@ -60,12 +67,14 @@ before moving to the next phase.
 ### Negative
 
 - The migration introduces more named concepts and files.
-- Compatibility facades will temporarily coexist with the old implementation.
+- Compatibility facades coexist with the retained `MeshRasterizer` shell until
+  the remaining direct callers are replaced or renamed.
 - Some policy boundaries, especially guide curves, wrapping, and depth
   projection, are tightly coupled in the current code and must be extracted
   carefully.
 - Envelope and voice rasterization should migrate late because they include
   domain-specific playback and chaining behavior.
+- Policy files are grouped by domain to keep the added names navigable.
 
 ## Implementation Plan
 
@@ -81,6 +90,8 @@ The high-level sequence is:
 5. Introduce facades behind existing rasterizer classes.
 6. Migrate graphic, voice, and envelope rasterizers only after shared stages are
    proven.
+7. Group policy files by responsibility and keep the retained compatibility
+   shell out of new rasterizer APIs.
 
 ## Validation
 

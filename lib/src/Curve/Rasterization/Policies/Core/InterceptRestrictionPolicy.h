@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "../../Intercept.h"
-#include "../../../Util/NumberUtils.h"
+#include "../../../Intercept.h"
+#include "../../../../Util/NumberUtils.h"
 
 namespace Rasterization {
     class InterceptRestrictionPolicy {

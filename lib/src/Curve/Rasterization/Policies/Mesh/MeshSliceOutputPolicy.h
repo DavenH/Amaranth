@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../Pipelines/MeshSlicePipeline.h"
-#include "../RasterizerRuntime.h"
+#include "../../Pipelines/MeshSlicePipeline.h"
+#include "../../RasterizerRuntime.h"
 
 namespace Rasterization {
     class MeshSliceOutputPolicy {

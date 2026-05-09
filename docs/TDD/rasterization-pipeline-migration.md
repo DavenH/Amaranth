@@ -223,16 +223,35 @@ lib/src/Curve/Rasterization/
     LinearPointInterpolator.h
 
   Policies/
-    AxisPolicy.h
-    PointScalingPolicy.h
-    WrapPolicy.h
-    GuideCurvePolicy.h
-    DepthProjectionPolicy.h
-    InterceptRestrictionPolicy.h
-    PaddingPolicy.h
-    CurveResolutionPolicy.h
-    WaveformBakePolicy.h
-    SnapshotPolicy.h
+    Core/
+      DefaultVertexWrapPolicy.h
+      InterceptDegeneracyPolicy.h
+      InterceptRestrictionPolicy.h
+      InterceptSortPolicy.h
+      PaddingPolicy.h
+      PointScalingPolicy.h
+      RasterizerCleanupPolicy.h
+      RasterizerOutputPolicy.h
+      SnapshotPolicy.h
+    Curves/
+      CurveResolutionPolicy.h
+      CurveWaveformPreparationPolicy.h
+      InterceptPaddingFlagPolicy.h
+      WaveformBakePolicy.h
+      WaveformBuildPolicy.h
+    Mesh/
+      ComponentGuideSharpnessPolicy.h
+      DepthProjectionPolicy.h
+      GuideCurvePolicy.h
+      MeshSliceOutputPolicy.h
+    Envelope/
+      EnvelopeMarkerPolicy.h
+      EnvelopePaddingPolicy.h
+      EnvelopePlaybackPolicy.h
+      EnvelopeReleasePolicy.h
+      EnvelopeRenderTimingPolicy.h
+      EnvelopeStateValidationPolicy.h
+      EnvelopeSustainPointPolicy.h
 
   Builders/
     InterceptBuilder.h
@@ -251,6 +270,21 @@ lib/src/Curve/Rasterization/
     EnvelopeRasterizerFacade.h
     VoiceRasterizerFacade.h
     FxRasterizerFacade.h
+```
+
+Cycle-only policies live under:
+
+```text
+cycle/src/Curve/Rasterization/Policies/
+  Graphic/
+    GraphicAxisPolicy.h
+    GraphicMorphPositionPolicy.h
+  Voice/
+    VoiceChainedPaddingPolicy.h
+    VoiceChainingPolicy.h
+    VoiceCurveResolutionPolicy.h
+    VoicePointPositionPolicy.h
+    VoiceWaveformUpdatePolicy.h
 ```
 
 The first files added should be data types and policy extractions, not new
@@ -1529,6 +1563,18 @@ Acceptance:
 - envelope display, simulation, and render-time paths use envelope interfaces,
 - no remaining production concrete rasterizer inherits from `MeshRasterizer`.
 
+Implemented state:
+
+- `EnvRasterizer` owns a contained compatibility rasterizer and forwards narrow
+  mesh binding, sampling, snapshot, update, guide-curve, and vertex-domain
+  interfaces,
+- `EnvelopeInter2D`, `EnvelopeDelegate`, `PlaybackPanel`, sample import, and
+  preset/bootstrap paths no longer require `EnvRasterizer` to be a
+  `MeshRasterizer*`,
+- validation used focused envelope tests, preset round trip coverage,
+  `cycle-agent-africanhorn-icycle-preset-switch`, `cycle-agent-midi-note`,
+  standalone build, and full `ctest`.
+
 ### Phase 31: Rename Or Delete The Compatibility Shell
 
 Intent:
@@ -1566,6 +1612,15 @@ Acceptance:
   policies, and sources,
 - deleted or renamed compatibility shell cannot be used accidentally for new
   rasterizer work.
+
+Implemented state:
+
+- no production concrete rasterizer inherits from `MeshRasterizer`,
+- `MeshRasterizer` is retained under its current name as a compatibility shell
+  because a few direct legacy callers still own plain rasterizers or need
+  legacy render-state helpers,
+- new rasterizer-facing call sites use narrow interfaces, domain rasterizer
+  classes, composer/pipeline components, storage/runtime views, or policies.
 
 ### Phase 32: Final Cleanup Review
 
@@ -1623,6 +1678,15 @@ Acceptance:
 - the final hierarchy communicates where to look even when the exact class name
   is unknown,
 - ADR 002 and this TDD match the implemented architecture.
+
+Implemented state:
+
+- shared policies are grouped under `Policies/Core`, `Policies/Curves`,
+  `Policies/Mesh`, and `Policies/Envelope`,
+- Cycle-only policies are grouped under `Policies/Graphic` and `Policies/Voice`,
+- short README files at both policy roots describe the grouping boundary,
+- ADR 002 and this TDD describe the retained compatibility shell and final
+  policy hierarchy.
 
 ## Regression Baselines
 
@@ -1792,8 +1856,9 @@ The migration is complete when:
 - `colorPoints` are produced only by an explicit depth projection policy,
 - envelope and voice code compose shared builders instead of depending on base
   protected state,
-- old public class names either wrap facades or are removed after all callers
-  migrate,
+- old public class names either wrap composed internals or are removed after
+  all callers migrate; the retained `MeshRasterizer` shell is explicitly
+  treated as compatibility-only,
 - default UI screenshot and existing e2e fixtures remain stable.
 
 ## Open Questions

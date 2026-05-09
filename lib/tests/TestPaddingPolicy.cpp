@@ -4,7 +4,7 @@
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/FXRasterizer.h"
 #include "../src/Curve/MeshRasterizer.h"
-#include "../src/Curve/Rasterization/Policies/PaddingPolicy.h"
+#include "../src/Curve/Rasterization/Policies/Core/PaddingPolicy.h"
 
 namespace {
     struct CurveTableScope {

@@ -6,12 +6,12 @@
 #include <App/AppConstants.h>
 #include <Array/VecOps.h>
 
-#include "../WaveformBuffers.h"
-#include "../GuideCurveOffsetSeeds.h"
-#include "../../Curve.h"
-#include "../../GuideCurveProvider.h"
-#include "../../../Obj/MorphPosition.h"
-#include "../Sampling/GuideCurveSampler.h"
+#include "../../WaveformBuffers.h"
+#include "../../GuideCurveOffsetSeeds.h"
+#include "../../../Curve.h"
+#include "../../../GuideCurveProvider.h"
+#include "../../../../Obj/MorphPosition.h"
+#include "../../Sampling/GuideCurveSampler.h"
 
 namespace Rasterization {
     class WaveformBakePolicy {

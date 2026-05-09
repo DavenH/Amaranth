@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../Policies/GraphicAxisPolicy.h"
-#include "../Policies/GraphicMorphPositionPolicy.h"
+#include "../Policies/Graphic/GraphicAxisPolicy.h"
+#include "../Policies/Graphic/GraphicMorphPositionPolicy.h"
 
 namespace Cycle::Rasterization {
     class GraphicRasterizerFacade {

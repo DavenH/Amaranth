@@ -2,11 +2,11 @@
 
 #include <vector>
 
-#include "../../Intercept.h"
-#include "../../VertCube.h"
-#include "../../../Inter/Dimensions.h"
-#include "../../../Obj/ColorPoint.h"
-#include "../../../Obj/MorphPosition.h"
+#include "../../../Intercept.h"
+#include "../../../VertCube.h"
+#include "../../../../Inter/Dimensions.h"
+#include "../../../../Obj/ColorPoint.h"
+#include "../../../../Obj/MorphPosition.h"
 
 namespace Rasterization {
     class DepthProjectionPolicy {
