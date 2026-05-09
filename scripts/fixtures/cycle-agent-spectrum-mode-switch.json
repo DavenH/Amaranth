@@ -1,0 +1,41 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaSpectrum"
+    },
+    {
+      "command": "action",
+      "actionType": "SwitchMode",
+      "area": "AreaSpectrum",
+      "id": "IdModeMagn",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaSpectrum"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaSpectrogram"
+    },
+    {
+      "command": "action",
+      "actionType": "SwitchMode",
+      "area": "AreaSpectrum",
+      "id": "IdModePhase",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaSpectrum"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaSpectrogram"
+    }
+  ],
+  "quit": true
+}
