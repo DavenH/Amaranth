@@ -40,16 +40,11 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
         DBG(MeshRasterizer::getName() + "::setMesh " + describeFxMesh(newMesh));
         adapter.setMesh(newMesh);
     });
-}
-
-void FXRasterizer::calcCrossPoints() {
-    DBG(MeshRasterizer::getName() + "::calcCrossPoints begin " + describeFxSource(getMesh(), adapter.sourceSize()));
-    adapter.render(createFxRequest(), createRasterizerRuntime());
-    // DBG(MeshRasterizer::getName() + "::calcCrossPoints ready icpts=" + String((int) icpts.size())
-    //     + " curves=" + String((int) curves.size())
-    //     + " waveX=" + String(waveX.size())
-    //     + " waveY=" + String(waveY.size())
-    //     + " " + describeFxMesh(mesh));
+    setCrossPointProvider([this]() {
+        DBG(MeshRasterizer::getName() + "::calcCrossPoints begin "
+            + describeFxSource(getMesh(), adapter.sourceSize()));
+        adapter.render(createFxRequest(), createRasterizerRuntime());
+    });
 }
 
 Rasterization::RasterizationRequest FXRasterizer::createFxRequest() {

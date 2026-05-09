@@ -166,6 +166,9 @@ public:
     void setCleanupProvider(std::function<void(Rasterization::RasterizerRuntime)> provider) {
         cleanupProvider = provider;
     }
+    void setCrossPointProvider(std::function<void()> provider) {
+        crossPointProvider = provider;
+    }
     void setNoiseSeed(int seed)                     { noiseSeed     = seed;             }
     void setNumDimensionsProvider(std::function<int()> provider) {
         numDimensionsProvider = provider;
@@ -243,6 +246,7 @@ protected:
     int noiseSeed;
     int overridingDim;
     int paddingSize;
+    std::function<void()> crossPointProvider;
     std::function<void(Rasterization::RasterizerRuntime)> cleanupProvider;
     std::function<void(vector<Intercept>&, vector<Curve>&)> paddingProvider;
     std::function<void(Mesh*)> meshAssignmentProvider;

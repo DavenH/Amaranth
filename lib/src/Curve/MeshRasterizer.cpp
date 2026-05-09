@@ -50,6 +50,7 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    paddingSize         (2)
     ,    noiseSeed           (-1)
     ,    overridingDim       (Vertex::Time)
+    ,    crossPointProvider()
     ,    cleanupProvider()
     ,    paddingProvider()
     ,    meshAssignmentProvider()
@@ -98,6 +99,11 @@ void MeshRasterizer::calcCrossPointsAtTime(float x) {
 }
 
 void MeshRasterizer::calcCrossPoints() {
+    if (crossPointProvider != nullptr) {
+        crossPointProvider();
+        return;
+    }
+
     calcCrossPoints(mesh, 0.f);
 }
 
@@ -510,6 +516,7 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     // flags
     this->overrideDim            = copy.overrideDim;
     this->overridingDim          = copy.overridingDim;
+    this->crossPointProvider     = nullptr;
     this->cleanupProvider        = nullptr;
     this->paddingProvider        = nullptr;
     this->meshAssignmentProvider = nullptr;

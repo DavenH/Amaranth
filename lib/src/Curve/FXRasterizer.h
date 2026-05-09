@@ -12,7 +12,6 @@ class FXRasterizer:
 
 public:
     explicit FXRasterizer(SingletonRepo* repo, const String& name = String());
-    void calcCrossPoints() override;
     void setVertices(vector<Vertex*>* vertices);
 
 private:
