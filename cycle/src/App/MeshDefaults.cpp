@@ -195,7 +195,7 @@ namespace {
         int originalLayerType = interactor.layerType;
         bool originalCollision = getSetting(CollisionDetection);
         bool originalSuspendUndo = interactor.suspendUndo;
-        MeshRasterizer* originalRast = interactor.getRasterizer();
+        EnvRasterizer* originalRast = interactor.getRast(originalEnv);
 
         rast->setMesh(mesh);
         rast->setMode(EnvRasterizer::NormalState);
@@ -247,9 +247,7 @@ namespace {
         getSetting(CurrentEnvGroup) = originalEnv;
         interactor.layerType = originalLayerType;
 
-        if (originalRast != nullptr) {
-            interactor.setRasterizer(originalRast);
-        }
+        interactor.setRasterizer(originalRast);
     }
 }
 

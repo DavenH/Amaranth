@@ -773,7 +773,7 @@ bool Envelope2D::readJSON(const var& object) {
 
     // TODO re-evaluate this after mesh-listener cleanup merge
     auto bindEnvRasterizer = [this, &meshLibrary](int groupId, const char* label) {
-        auto* rast = static_cast<EnvRasterizer*>(e2Interactor->getRast(groupId));
+        auto* rast = e2Interactor->getRast(groupId);
         auto* mesh = meshLibrary.getCurrentEnvMesh(groupId);
 
         DBG(String::formatted("Envelope2D::readJSON rebinding %s rast=%p mesh=%p verts=%d cubes=%d",

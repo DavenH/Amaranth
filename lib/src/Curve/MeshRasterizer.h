@@ -232,6 +232,9 @@ public:
     Rasterization::GuideCurveApplier createLegacyGuideCurveApplier();
     void prepareLegacyCurvesForWaveform()           { prepareCurvesForWaveform();       }
     void calcLegacyWaveform()                       { calcWaveform();                   }
+    void randomizeLegacyGuideCurveOffsetSeeds(int layerSize, int tableSize) {
+        randomizeGuideCurveOffsetSeeds(layerSize, tableSize);
+    }
 
 
 protected:

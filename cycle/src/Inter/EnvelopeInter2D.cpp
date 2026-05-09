@@ -135,7 +135,8 @@ void EnvelopeInter2D::doExtraMouseUp() {
          */
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
-                sample->createPeriodsFromEnv(getObj(MeshLibrary), &getObj(EnvPitchRast));
+                auto& pitchRast = getObj(EnvPitchRast);
+                sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast, &pitchRast, &pitchRast);
             }
 
             doUpdate(SourceSpectrum3D);
@@ -628,7 +629,7 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
 
     updateHighlights();
 
-    MeshRasterizer* rast = getRast(envEnum);
+    EnvRasterizer* rast = getRast(envEnum);
     if (envEnum == LayerGroups::GroupWavePitch) {
         auto* wavePitchRast = &getObj(EnvWavePitchRast);
         setRasterizer(wavePitchRast, wavePitchRast, wavePitchRast, wavePitchRast, wavePitchRast);
@@ -694,7 +695,8 @@ void EnvelopeInter2D::doExtraMouseDrag(const MouseEvent &e) {
     if (actionIs(DraggingVertex) || actionIs(ReshapingCurve) || actionIs(DraggingCorner)) {
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
-                sample->createPeriodsFromEnv(getObj(MeshLibrary), &getObj(EnvPitchRast));
+                auto& pitchRast = getObj(EnvPitchRast);
+                sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast, &pitchRast, &pitchRast);
             }
         }
 
@@ -711,7 +713,7 @@ int EnvelopeInter2D::getUpdateSource() {
 }
 
 Mesh* EnvelopeInter2D::getMesh() {
-    if (auto* envRast = dynamic_cast<EnvRasterizer*>(getRasterizer())) {
+    if (auto* envRast = getEnvRasterizer()) {
         return envRast->getCurrentMesh();
     }
 
@@ -893,7 +895,15 @@ void EnvelopeInter2D::updatePhaseLimit(float limit) {
 }
 
 EnvRasterizer* EnvelopeInter2D::getEnvRasterizer() {
-    return dynamic_cast<EnvRasterizer*>(rasterizer);
+    switch (getSetting(CurrentEnvGroup)) {
+        case LayerGroups::GroupVolume:    return &getObj(EnvVolumeRast);
+        case LayerGroups::GroupPitch:     return &getObj(EnvPitchRast);
+        case LayerGroups::GroupScratch:   return &getObj(EnvScratchRast);
+        default:
+            break;
+    }
+
+    return nullptr;
 }
 
 void EnvelopeInter2D::transferLineProperties(VertCube* from, VertCube* to1, VertCube* to2) {
@@ -1087,8 +1097,6 @@ void EnvelopeInter2D::delegateUpdate(bool shouldDoUpdate) {
         }
     } else {
         if (shouldDoUpdate) {
-            jassert(rasterizer == getRasterizer());
-
             if (EnvRasterizer* envRast = getEnvRasterizer()) {
                 envRast->setWantOneSamplePerCycle(false);
             }
@@ -1152,7 +1160,7 @@ void EnvelopeInter2D::triggerButton(int id) {
     }
 }
 
-MeshRasterizer* EnvelopeInter2D::getRast(int envEnum) {
+EnvRasterizer* EnvelopeInter2D::getRast(int envEnum) {
     switch (envEnum) {
         case LayerGroups::GroupVolume:    return &getObj(EnvVolumeRast);
         case LayerGroups::GroupPitch:     return &getObj(EnvPitchRast);

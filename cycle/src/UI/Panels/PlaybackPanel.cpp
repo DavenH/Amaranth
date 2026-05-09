@@ -253,7 +253,7 @@ void PlaybackPanel::setProgress(float unitX, bool updateMorphPanel) {
 
 			if (canSimulate && icpts.empty()) {
 				DBG(String::formatted("PlaybackPanel::setProgress env rasterizer %s has cubes but no intercepts",
-									  envRast->MeshRasterizer::getName().toRawUTF8()));
+                                                                          envRast->getName().toRawUTF8()));
 				jassertfalse;
 			}
 
@@ -434,7 +434,7 @@ void PlaybackPanel::timerCallback(int id) {
 
 			if (canSimulate && icpts.empty()) {
 				DBG(String::formatted("PlaybackPanel::timerCallback env rasterizer %s has cubes but no intercepts",
-									  envRast->MeshRasterizer::getName().toRawUTF8()));
+                                                                          envRast->getName().toRawUTF8()));
 				jassertfalse;
 				stopTimer(ReleaseTimerId);
 				return;
