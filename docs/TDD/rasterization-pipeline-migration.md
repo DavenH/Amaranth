@@ -1,5 +1,10 @@
 # Rasterization Pipeline Migration TDD
 
+> Superseded: this document captured the incremental extraction/draining
+> migration. The active plan is now
+> [Rasterization Simplification TDD](rasterization-simplification.md), which
+> targets a smaller wholesale composed rasterizer and net code reduction.
+
 ## Overview
 
 This document describes a staged migration from the current `MeshRasterizer`
