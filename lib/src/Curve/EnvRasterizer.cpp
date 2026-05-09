@@ -115,6 +115,13 @@ void EnvRasterizer::installEnvelopeProviders() {
 
         needsResorting |= Rasterization::EnvRasterizerFacade().applySustainPoint(intercepts, context);
     });
+    setPaddingProvider([this](vector<Intercept>& intercepts, vector<Curve>& curves) {
+        Rasterization::EnvelopePaddingContext context = createPaddingContext();
+
+        if (!Rasterization::EnvRasterizerFacade().buildDisplayPadding(intercepts, curves, context)) {
+            markWaveformUnsampleable();
+        }
+    });
 }
 
 bool EnvRasterizer::hasReleaseCurve() {
@@ -153,14 +160,6 @@ void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curv
     Rasterization::EnvelopePaddingContext context = createPaddingContext();
 
     if (!Rasterization::EnvRasterizerFacade().buildRenderPadding(intercepts, curves, context)) {
-        markWaveformUnsampleable();
-    }
-}
-
-void EnvRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
-    Rasterization::EnvelopePaddingContext context = createPaddingContext();
-
-    if (!Rasterization::EnvRasterizerFacade().buildDisplayPadding(icpts, curves, context)) {
         markWaveformUnsampleable();
     }
 }

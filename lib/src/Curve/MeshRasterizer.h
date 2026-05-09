@@ -112,8 +112,8 @@ public:
     void calcCrossPointsAtTime(float x);
     void cleanUp();
     void handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube);
-    virtual void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);
-    virtual void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
+    void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);
+    void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
     void preCleanup();
     void processIntercepts(vector<Intercept>& intercepts);
     void reset();

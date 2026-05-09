@@ -55,7 +55,6 @@ public:
     void ensureParamSize(int numUnisonVoices);
     void evaluateLoopSustainIndices();
     void getIndices(int& loopIdx, int& sustIdx) const;
-    void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) override;
     void resetGraphicParams();
     void setMesh(EnvelopeMesh* mesh);
     void setNoteOff();
