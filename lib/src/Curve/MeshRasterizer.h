@@ -8,6 +8,7 @@
 #include "RasterizerData.h"
 #include "Rasterization/MeshRasterizerState.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
+#include "Rasterization/RasterizerController.h"
 #include "Rasterization/RasterizationRequest.h"
 #include "Rasterization/RasterizerRuntime.h"
 #include "Rasterization/Policies/CurveResolutionPolicy.h"
@@ -165,36 +166,36 @@ public:
     void setLimits(float min, float max)            { xMinimum = min; xMaximum = max;   }
     void setLowresCurves(bool areLow)               { lowResCurves  = areLow;           }
     void setCleanupProvider(std::function<void(Rasterization::RasterizerRuntime)> provider) {
-        cleanupProvider = provider;
+        controller.setCleanupProvider(provider);
     }
     void setCrossPointProvider(std::function<void()> provider) {
-        crossPointProvider = provider;
+        controller.setCrossPointProvider(provider);
     }
     void setUpdateCurvesProvider(std::function<void()> provider) {
-        updateCurvesProvider = provider;
+        controller.setUpdateCurvesProvider(provider);
     }
     void setNoiseSeed(int seed)                     { noiseSeed     = seed;             }
     void setNumDimensionsProvider(std::function<int()> provider) {
-        numDimensionsProvider = provider;
+        controller.setNumDimensionsProvider(provider);
     }
     void setOverridingDim(int dim)                  { overridingDim = dim;              }
     void setPaddingProvider(std::function<void(vector<Intercept>&, vector<Curve>&)> provider) {
-        paddingProvider = provider;
+        controller.setPaddingProvider(provider);
     }
     void setProcessInterceptsProvider(std::function<void(vector<Intercept>&)> provider) {
-        processInterceptsProvider = provider;
+        controller.setProcessInterceptsProvider(provider);
     }
     void setMeshAssignmentProvider(std::function<void(Mesh*)> provider) {
-        meshAssignmentProvider = provider;
+        controller.setMeshAssignmentProvider(provider);
     }
     void setCrossSectionAvailabilityProvider(std::function<bool()> provider) {
-        crossSectionAvailabilityProvider = provider;
+        controller.setCrossSectionAvailabilityProvider(provider);
     }
     void setPrimaryViewDimensionProvider(std::function<int()> provider) {
-        primaryViewDimensionProvider = provider;
+        controller.setPrimaryViewDimensionProvider(provider);
     }
     void setOffsetSeedsProvider(std::function<void(int, int)> provider) {
-        offsetSeedsProvider = provider;
+        controller.setOffsetSeedsProvider(provider);
     }
     void setScalingMode(ScalingType type)           { scalingType   = type;             }
     void setToOverrideDim(bool does)                { overrideDim   = does;             }
@@ -207,10 +208,7 @@ public:
     virtual Mesh* getMesh()                         { return mesh;                      }
     void setMesh(Mesh* mesh) {
         this->mesh = mesh;
-
-        if (meshAssignmentProvider != nullptr) {
-            meshAssignmentProvider(mesh);
-        }
+        controller.meshAssigned(mesh);
     }
     bool wrapsVertices() const                      { return cyclic;                    }
     void updateOffsetSeeds(int layerSize, int tableSize);
@@ -257,16 +255,7 @@ protected:
     int noiseSeed;
     int overridingDim;
     int paddingSize;
-    std::function<void()> crossPointProvider;
-    std::function<void()> updateCurvesProvider;
-    std::function<void(Rasterization::RasterizerRuntime)> cleanupProvider;
-    std::function<void(vector<Intercept>&, vector<Curve>&)> paddingProvider;
-    std::function<void(vector<Intercept>&)> processInterceptsProvider;
-    std::function<void(Mesh*)> meshAssignmentProvider;
-    std::function<int()> numDimensionsProvider;
-    std::function<bool()> crossSectionAvailabilityProvider;
-    std::function<int()> primaryViewDimensionProvider;
-    std::function<void(int, int)> offsetSeedsProvider;
+    Rasterization::RasterizerController controller;
 
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
 

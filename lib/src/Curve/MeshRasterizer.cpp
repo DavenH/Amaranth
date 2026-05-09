@@ -50,16 +50,7 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    paddingSize         (2)
     ,    noiseSeed           (-1)
     ,    overridingDim       (Vertex::Time)
-    ,    crossPointProvider()
-    ,    updateCurvesProvider()
-    ,    cleanupProvider()
-    ,    paddingProvider()
-    ,    processInterceptsProvider()
-    ,    meshAssignmentProvider()
-    ,    numDimensionsProvider()
-    ,    crossSectionAvailabilityProvider()
-    ,    primaryViewDimensionProvider()
-    ,    offsetSeedsProvider()
+    ,    controller()
 
     ,    interceptPadding    (0.f)
     ,    xMinimum            (0.f)
@@ -110,8 +101,7 @@ void MeshRasterizer::calcCrossPointsAtTime(float x) {
 }
 
 void MeshRasterizer::calcCrossPoints() {
-    if (crossPointProvider != nullptr) {
-        crossPointProvider();
+    if (controller.calcCrossPoints()) {
         return;
     }
 
@@ -223,9 +213,7 @@ void MeshRasterizer::finishCrossPointCalculation() {
 }
 
 void MeshRasterizer::processIntercepts(vector<Intercept>& intercepts) {
-    if (processInterceptsProvider != nullptr) {
-        processInterceptsProvider(intercepts);
-    }
+    controller.processIntercepts(intercepts);
 }
 
 bool MeshRasterizer::handleDegenerateInterceptOutput() {
@@ -261,8 +249,8 @@ void MeshRasterizer::rebuildCurvesFromIntercepts() {
 }
 
 int MeshRasterizer::getPrimaryViewDimension() {
-    if (primaryViewDimensionProvider != nullptr) {
-        return primaryViewDimensionProvider();
+    if (controller.hasPrimaryViewDimensionProvider()) {
+        return controller.primaryViewDimension();
     }
 
     return Vertex::Time;
@@ -305,8 +293,7 @@ void MeshRasterizer::adjustDeformingSharpness() {
 }
 
 void MeshRasterizer::updateCurves() {
-    if (updateCurvesProvider != nullptr) {
-        updateCurvesProvider();
+    if (controller.updateCurves()) {
         return;
     }
 
@@ -437,8 +424,7 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
 }
 
 void MeshRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curves) {
-    if (paddingProvider != nullptr) {
-        paddingProvider(intercepts, curves);
+    if (controller.pad(intercepts, curves)) {
         return;
     }
 
@@ -493,8 +479,7 @@ void MeshRasterizer::wrapVertices(float& ax, float& ay,
 }
 
 void MeshRasterizer::cleanUp() {
-    if (cleanupProvider != nullptr) {
-        cleanupProvider(createRasterizerRuntime());
+    if (controller.clean(createRasterizerRuntime())) {
         return;
     }
 
@@ -538,16 +523,7 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     // flags
     this->overrideDim            = copy.overrideDim;
     this->overridingDim          = copy.overridingDim;
-    this->crossPointProvider     = nullptr;
-    this->updateCurvesProvider   = nullptr;
-    this->cleanupProvider        = nullptr;
-    this->paddingProvider        = nullptr;
-    this->processInterceptsProvider  = nullptr;
-    this->meshAssignmentProvider = nullptr;
-    this->numDimensionsProvider  = nullptr;
-    this->crossSectionAvailabilityProvider = nullptr;
-    this->primaryViewDimensionProvider  = nullptr;
-    this->offsetSeedsProvider    = nullptr;
+    this->controller.resetProviders();
     this->cyclic                 = copy.cyclic;
     this->guideCurveProvider     = copy.guideCurveProvider;
     this->calcInterceptsOnly     = copy.calcInterceptsOnly;
@@ -631,16 +607,16 @@ void MeshRasterizer::performUpdate(UpdateType updateType) {
 }
 
 int MeshRasterizer::getNumDims() {
-    if (numDimensionsProvider != nullptr) {
-        return numDimensionsProvider();
+    if (controller.hasNumDimensionsProvider()) {
+        return controller.numDimensions();
     }
 
     return 3;
 }
 
 bool MeshRasterizer::hasEnoughCubesForCrossSection() {
-    if (crossSectionAvailabilityProvider != nullptr) {
-        return crossSectionAvailabilityProvider();
+    if (controller.hasCrossSectionAvailabilityProvider()) {
+        return controller.hasEnoughCubesForCrossSection();
     }
 
     return mesh->getNumCubes() > 1;
@@ -739,8 +715,7 @@ void MeshRasterizer::updateValue(int dim, float value) {
 }
 
 void MeshRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
-    if (offsetSeedsProvider != nullptr) {
-        offsetSeedsProvider(layerSize, tableSize);
+    if (controller.updateOffsetSeeds(layerSize, tableSize)) {
         return;
     }
 
