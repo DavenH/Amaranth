@@ -1175,6 +1175,212 @@ Acceptance:
 - `MeshRasterizer` is no longer a god object and can be removed or retained as
   a small compatibility shell.
 
+### Phase 22: Extract Rasterizer Storage
+
+Intent:
+
+- make shared rasterizer state explicit and movable before deleting the
+  compatibility shell,
+- stop using `MeshRasterizer` itself as the owner of waveform, intercept,
+  curve, color, guide-region, and snapshot storage.
+
+Code changes:
+
+- add `Rasterization/State/RasterizerStorage.h`,
+- move the obvious state bundles into named structs:
+  - `RasterizerInterceptStorage`: `icpts`, `frontIcpts`, `backIcpts`,
+    `colorPoints`,
+  - `RasterizerCurveStorage`: `curves`, guide-curve regions, resolution state
+    needed to rebuild curves,
+  - `RasterizerWaveformStorage`: `WaveformBuffers` plus zero/one indices and
+    sampleability state,
+  - `RasterizerSnapshotStorage`: `RasterizerData` and snapshot-publication
+    scratch state,
+- initially let `MeshRasterizer` own one `RasterizerStorage` member and expose
+  its existing public getters as forwarding accessors,
+- avoid moving algorithms in this phase except where a helper constructor hides
+  mechanical member copying,
+- keep public class names, function signatures, and data flow stable.
+
+Tests:
+
+- compile-time coverage through existing callers,
+- `TestMeshRasterizer` characterization tests,
+- `WaveformBuffers` and snapshot adapter tests,
+- full `ctest --test-dir build/tests --output-on-failure`.
+
+Acceptance:
+
+- storage can be passed as `RasterizerStorage&` to policies and adapters,
+- `MeshRasterizer` no longer contains unrelated storage bundles as loose
+  member fields,
+- all existing UI and audio behavior remains unchanged.
+
+### Phase 23: Extract Rasterizer Controller
+
+Intent:
+
+- move provider dispatch and pipeline orchestration out of the compatibility
+  class,
+- leave `MeshRasterizer` as a thin owner/adapter over storage plus controller.
+
+Code changes:
+
+- add `Rasterization/RasterizerController.h`,
+- move provider members from `MeshRasterizer` into a controller configuration:
+  - cross-point provider,
+  - cleanup provider,
+  - padding provider,
+  - intercept-processing provider,
+  - mesh-assignment provider,
+  - dimension and availability providers,
+  - offset-seed provider,
+- make the controller operate on:
+  - `RasterizerStorage&`,
+  - `RasterizationRequest`,
+  - `RasterizerRuntime`,
+  - explicit helper delegates for guide-curve application and waveform baking
+    where those are not yet fully decoupled,
+- keep `MeshRasterizer` setters such as `setCrossPointProvider(...)` as
+  forwarding compatibility APIs,
+- move `calcCrossPoints`, `cleanUp`, `padIcpts`, `processIntercepts`,
+  `updateCurves`, and `updateOffsetSeeds` dispatch into controller methods
+  where feasible,
+- keep any still-coupled waveform helper private in `MeshRasterizer` only until
+  it has a named policy/controller dependency.
+
+Tests:
+
+- focused tests for each provider dispatch path,
+- existing FX, point-list, voice, and envelope compatibility tests,
+- `cycle-agent-africanhorn-icycle-preset-switch`,
+- `cycle-agent-midi-note`,
+- full `ctest`.
+
+Acceptance:
+
+- `MeshRasterizer` mostly forwards to `RasterizerController`,
+- new composed rasterizers can own a controller without inheriting from
+  `MeshRasterizer`,
+- no behavior change in existing adapters.
+
+### Phase 24: Compose Concrete Rasterizers Without Inheritance
+
+Intent:
+
+- prove the replacement shape by making at least one concrete rasterizer own the
+  storage/controller pair directly,
+- avoid a risky all-at-once deletion of the legacy class.
+
+Code changes:
+
+- choose the lowest-risk concrete class first, preferably `FXRasterizer` or
+  `Rasterizer2D`,
+- replace `public MeshRasterizer` inheritance with owned
+  `RasterizerStorage` + `RasterizerController`,
+- expose only the methods that real callers need, forwarding to the composed
+  controller/storage,
+- keep a temporary adapter if a caller still requires `MeshRasterizer*`,
+- repeat for the other concrete rasterizers in this order unless evidence
+  suggests otherwise:
+  1. `Rasterizer2D`,
+  2. `FXRasterizer`,
+  3. `GraphicRasterizer` / `E3Rasterizer`,
+  4. `VoiceMeshRasterizer`,
+  5. `EnvRasterizer`,
+- keep each class migration in its own commit.
+
+Tests:
+
+- class-specific unit tests for the migrated rasterizer,
+- affected UI fixture:
+  - FX: broader controls plus Waveshaper/IrModeller coverage,
+  - point-list: `TestPointListRasterizer`,
+  - graphic: Spectrum/Waveform panel fixtures and PSNR baselines,
+  - voice: `cycle-agent-midi-note` and audio capture where available,
+  - envelope: preset switch, MIDI note, envelope loop/release tests,
+- full `ctest` after each concrete class migration.
+
+Acceptance:
+
+- at least one production rasterizer no longer derives from `MeshRasterizer`,
+- temporary adapters are narrow and explicitly marked as compatibility only,
+- validation remains incremental and reversible.
+
+### Phase 25: Migrate Callers To Narrow Interfaces
+
+Intent:
+
+- remove the need for callers to traffic in `MeshRasterizer*` when they only
+  need one capability,
+- prevent the compatibility shell from re-forming as a new god interface.
+
+Code changes:
+
+- introduce narrow interfaces only when a real caller requires polymorphism:
+  - `RasterizerWaveformProvider` / `IWaveformSampler` for sampling,
+  - `RasterizerSnapshotProvider` for UI panels that read published data,
+  - `MeshBindableRasterizer` only where a real `Mesh*` binding is required,
+  - `EnvelopeRenderer` for envelope render/simulate calls,
+  - `RasterizerUpdateTarget` only if updater integration needs it,
+- migrate call sites from concrete `MeshRasterizer*` to the smallest required
+  interface,
+- delete compatibility casts and downcasts as they become unnecessary,
+- keep ownership boundaries explicit: UI panels should read snapshots or
+  waveform providers, not mutate full rasterizer state.
+
+Tests:
+
+- compile-time coverage for migrated call sites,
+- focused fixtures for each migrated UI/audio path,
+- preset round-trip test to catch serialization side effects,
+- full `ctest`.
+
+Acceptance:
+
+- most call sites no longer mention `MeshRasterizer`,
+- FX and point-list paths do not depend on `Mesh`,
+- envelope and voice paths depend on their domain interfaces rather than base
+  protected state.
+
+### Phase 26: Rename Or Delete The Compatibility Shell
+
+Intent:
+
+- make the final architectural state explicit: either no `MeshRasterizer`, or a
+  clearly named legacy adapter with no ownership of core rasterization logic.
+
+Code changes:
+
+- if no callers need it, delete `MeshRasterizer`,
+- otherwise rename it to `LegacyMeshRasterizerAdapter` or similar and keep it
+  out of new code paths,
+- move remaining reusable behavior into:
+  - `RasterizerStorage`,
+  - `RasterizerController`,
+  - named policies,
+  - concrete composer factories,
+- remove provider setters that only existed for subclass migration once no
+  compatibility adapter uses them,
+- update ADR 002 and this TDD with the completed target hierarchy.
+
+Tests:
+
+- full test suite,
+- standalone build,
+- plugin build if the deleted API crosses plugin targets,
+- focused UI automation fixtures,
+- panel PSNR baselines for bongo/default rasterizer-heavy presets,
+- offline audio capture for voice/envelope-sensitive changes.
+
+Acceptance:
+
+- no concrete rasterizer inherits from `MeshRasterizer`,
+- reusable rasterization behavior is composed through storage, controller,
+  policies, and sources,
+- deleted or renamed compatibility shell cannot be used accidentally for new
+  rasterizer work.
+
 ## Regression Baselines
 
 ### Unit And Integration Baseline
