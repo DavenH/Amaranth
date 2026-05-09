@@ -3,6 +3,9 @@
 #include <set>
 #include "../App/Doc/Savable.h"
 #include "../App/SingletonAccessor.h"
+#include "../Curve/Rasterization/Interfaces/MeshBindableRasterizer.h"
+#include "../Curve/Rasterization/Interfaces/RasterizerSampler.h"
+#include "../Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h"
 #include "../Design/Updating/Updateable.h"
 
 using std::set;
@@ -35,6 +38,11 @@ public:
     /* -------------------------------------------------------------------------- */
 
     Multisample(SingletonRepo* repo, MeshRasterizer* rasterizer);
+    Multisample(
+            SingletonRepo* repo,
+            Rasterization::MeshBindableRasterizer* meshRasterizer,
+            Rasterization::RasterizerUpdateTarget* updateTarget,
+            Rasterization::RasterizerSampler* sampler);
 
     void clear();
     void createFromDirectory(const File& directory);
@@ -60,7 +68,7 @@ public:
         return nullptr;
     }
 
-    void setWaveRasterizer(MeshRasterizer* rasterizer) { waveRasterizer = rasterizer; }
+    void setWaveRasterizer(MeshRasterizer* rasterizer);
     int size()                          { return samples.size();    }
     PitchedSample* getCurrentSample()   { return current;           }
     Mesh* getCurrentMesh();
@@ -70,7 +78,9 @@ private:
     void getModRanges(Range<int>& noteRange, Range<float>& velRange);
     void ensureSampleHasMeshLayer(PitchedSample* sample, int preferredIndex = -1);
 
-    MeshRasterizer* waveRasterizer;
+    Rasterization::MeshBindableRasterizer* meshRasterizer;
+    Rasterization::RasterizerUpdateTarget* rasterizerUpdateTarget;
+    Rasterization::RasterizerSampler* rasterizerSampler;
     PitchedSample* current;
     CriticalSection audioLock;
     ListenerList<Listener> listeners;

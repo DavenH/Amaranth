@@ -107,7 +107,12 @@ void EnvelopeInter2D::init() {
     // so only seed the current rasterizer/mesh state. The full switchedEnvelope
     // path also drives zoom/repaint and selector widgets, which is too early.
     layerType = getSetting(CurrentEnvGroup);
-    setRasterizer(getRast(layerType));
+    if (layerType == LayerGroups::GroupWavePitch) {
+        auto* rast = &getObj(EnvWavePitchRast);
+        setRasterizer(rast, rast, rast, rast, rast);
+    } else {
+        setRasterizer(getRast(layerType));
+    }
 
     // TODO re-evaluate post mesh listener cleanup
     // if (layerType == LayerGroups::GroupWavePitch) {
@@ -624,7 +629,12 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
     updateHighlights();
 
     MeshRasterizer* rast = getRast(envEnum);
-    setRasterizer(rast);
+    if (envEnum == LayerGroups::GroupWavePitch) {
+        auto* wavePitchRast = &getObj(EnvWavePitchRast);
+        setRasterizer(wavePitchRast, wavePitchRast, wavePitchRast, wavePitchRast, wavePitchRast);
+    } else {
+        setRasterizer(rast);
+    }
 
     if (getSetting(CurrentMorphAxis) == Vertex::Time && changedToOrFromVol) {
         envPanel->updateBackground(false);
@@ -632,7 +642,7 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
 
     if (envEnum == LayerGroups::GroupWavePitch) {
         if (Mesh* mesh = getObj(MeshLibrary).getEffectiveMesh(LayerGroups::GroupWavePitch)) {
-            rast->setMesh(mesh);
+            getObj(EnvWavePitchRast).setMesh(mesh);
         }
     } else if (EnvRasterizer* envRast = getEnvRasterizer()) {
         // this got changed from specifically Pitch env, not the current one
@@ -991,7 +1001,11 @@ void EnvelopeInter2D::layerChanged() {
     clearSelectedAndCurrent();
 
     int envEnum = getSetting(CurrentEnvGroup);
-    getRast(envEnum)->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(envEnum));
+    if (envEnum == LayerGroups::GroupWavePitch) {
+        getObj(EnvWavePitchRast).setMesh(getObj(MeshLibrary).getCurrentEnvMesh(envEnum));
+    } else {
+        getRast(envEnum)->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(envEnum));
+    }
     getObj(VertexPropertiesPanel).updateSliderValues(true);
 
     enableButton.setHighlit(isCurrentMeshActive());
@@ -1143,7 +1157,6 @@ MeshRasterizer* EnvelopeInter2D::getRast(int envEnum) {
         case LayerGroups::GroupVolume:    return &getObj(EnvVolumeRast);
         case LayerGroups::GroupPitch:     return &getObj(EnvPitchRast);
         case LayerGroups::GroupScratch:   return &getObj(EnvScratchRast);
-        case LayerGroups::GroupWavePitch: return &getObj(EnvWavePitchRast);
         default:
             break;
     }

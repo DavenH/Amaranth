@@ -1439,14 +1439,29 @@ void Interactor::snapToGrid(Vertex2& toSnap) {
 }
 
 void Interactor::setRasterizer(MeshRasterizer* rasterizer) {
+    setRasterizer(
+            rasterizer,
+            rasterizer,
+            rasterizer,
+            rasterizer,
+            rasterizer);
     this->rasterizer = rasterizer;
-    meshRasterizer = rasterizer;
-    rasterizerSampler = rasterizer;
-    snapshotProvider = rasterizer;
-    rasterizerUpdateTarget = rasterizer;
-    rasterizerVertexDomain = rasterizer;
+}
 
-    if (rasterizerVertexDomain != nullptr) {
+void Interactor::setRasterizer(
+        Rasterization::MeshBindableRasterizer* meshRasterizer,
+        Rasterization::RasterizerSampler* sampler,
+        Rasterization::RasterizerSnapshotProvider* snapshot,
+        Rasterization::RasterizerUpdateTarget* updateTarget,
+        Rasterization::RasterizerVertexDomain* vertexDomain) {
+    this->rasterizer = nullptr;
+    this->meshRasterizer = meshRasterizer;
+    rasterizerSampler = sampler;
+    snapshotProvider = snapshot;
+    rasterizerUpdateTarget = updateTarget;
+    rasterizerVertexDomain = vertexDomain;
+
+    if (this->rasterizerVertexDomain != nullptr) {
         setRasterizerDims(dims);
     }
 }

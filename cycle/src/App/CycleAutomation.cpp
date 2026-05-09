@@ -921,7 +921,7 @@ namespace {
         float x = vertex->values[interactor.dims.x];
         float y = vertex->values[interactor.dims.y];
 
-        if (interactor.getRasterizer() != nullptr && interactor.getRasterizer()->wrapsVertices()) {
+        if (interactor.rasterizerWrapsVertices()) {
             if (interactor.dims.x == Vertex::Phase && x > 1.0f) {
                 x -= 1.0f;
             }

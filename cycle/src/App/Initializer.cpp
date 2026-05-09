@@ -330,7 +330,7 @@ void Initializer::instantiate() {
     repo->add(new MidiKeyboard(repo, getObj(AudioHub).getKeyboardState(), MidiKeyboardComponent::horizontalKeyboard));
     repo->add(pitchRast);
     repo->add(audioSource = new SynthAudioSource(repo));
-    repo->add(new Multisample(repo, pitchRast));
+    repo->add(new Multisample(repo, pitchRast, pitchRast, pitchRast));
 
     auto* delay		 = new CycDelay(repo);
     auto* unison 	 = new Unison(repo);

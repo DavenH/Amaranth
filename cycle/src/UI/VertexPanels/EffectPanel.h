@@ -19,6 +19,7 @@ public:
     bool addNewCube(float startTime, float x, float y, float curve) override;
 
     float getDragMovementScale();
+    FXRasterizer* getEffectRasterizer() { return &localRasterizer; }
 
     /* Effect callbacks */
     virtual bool isEffectEnabled() const = 0;

@@ -189,8 +189,8 @@ bool IrModellerUI::paramTriggersAggregateUpdate(int knobIndex) {
 void IrModellerUI::setMeshAndUpdate(Mesh* mesh, bool doRepaint) {
     DBG("IrModellerUI::setMeshAndUpdate " + describeEffectMesh(mesh)
         + " repaint=" + String((int) doRepaint));
-    rasterizer->cleanUp();
-    rasterizer->setMesh(mesh);
+    localRasterizer.cleanUp();
+    localRasterizer.setMesh(mesh);
     irModeller->setMesh(mesh);
 
     if (mesh != nullptr) {
@@ -350,7 +350,7 @@ bool IrModellerUI::updateDsp(int knobIndex, double knobValue, bool doFurtherUpda
 }
 
 void IrModellerUI::updateDspSync() {
-    irModeller->setMesh(rasterizer->getMesh());
+    irModeller->setMesh(localRasterizer.getMesh());
     irModeller->setPendingAction(IrModeller::rasterize);
 }
 

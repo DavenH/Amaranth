@@ -110,6 +110,12 @@ public:
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
     void setRasterizer(MeshRasterizer* rasterizer);
+    void setRasterizer(
+            Rasterization::MeshBindableRasterizer* meshRasterizer,
+            Rasterization::RasterizerSampler* sampler,
+            Rasterization::RasterizerSnapshotProvider* snapshot,
+            Rasterization::RasterizerUpdateTarget* updateTarget,
+            Rasterization::RasterizerVertexDomain* vertexDomain);
     void snapToGrid(Vertex2& toSnap);
     void translateVerts(vector<VertexFrame>& verts, const Vertex2& diff);
     void updateSelectionFrames();

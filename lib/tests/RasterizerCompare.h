@@ -34,7 +34,8 @@ namespace RasterizerCompare {
         return values;
     }
 
-    inline Snapshot capture(MeshRasterizer& rasterizer) {
+    template<typename Rasterizer>
+    inline Snapshot capture(Rasterizer& rasterizer) {
         Snapshot snapshot;
 
         snapshot.waveX       = copyBuffer(rasterizer.getWaveX());

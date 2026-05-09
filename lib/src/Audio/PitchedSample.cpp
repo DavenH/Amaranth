@@ -185,10 +185,18 @@ void PitchedSample::createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti)
 }
 
 void PitchedSample::createPeriodsFromEnv(MeshLibrary& meshLibrary, MeshRasterizer* rast) {
+    createPeriodsFromEnv(meshLibrary, rast, rast, rast);
+}
+
+void PitchedSample::createPeriodsFromEnv(
+        MeshLibrary& meshLibrary,
+        Rasterization::MeshBindableRasterizer* meshRasterizer,
+        Rasterization::RasterizerUpdateTarget* updateTarget,
+        Rasterization::RasterizerSampler* sampler) {
     jassert(fundNote > 0);
     progressMark
 
-    if(fundNote < 0) {
+    if(fundNote < 0 || meshRasterizer == nullptr || updateTarget == nullptr || sampler == nullptr) {
         return;
     }
 
@@ -201,11 +209,10 @@ void PitchedSample::createPeriodsFromEnv(MeshLibrary& meshLibrary, MeshRasterize
         return;
     }
 
-    rast->setMesh(mesh);
-    rast->calcCrossPoints();
-    rast->makeCopy();
+    meshRasterizer->setMesh(mesh);
+    updateTarget->performUpdate(Update);
 
-    if(rast->isSampleable())
+    if(sampler->isSampleable())
     {
         periods.clear();
 
@@ -217,8 +224,8 @@ void PitchedSample::createPeriodsFromEnv(MeshLibrary& meshLibrary, MeshRasterize
         while ((int) position < sz) {
             float x = position / float(sz);
 
-            if (rast->isSampleableAt(x)) {
-                float y = rast->sampleAt(x, currentIndex);
+            if (sampler->isSampleableAt(x)) {
+                float y = sampler->sampleAt(x, currentIndex);
 
                 NumberUtils::constrain(y, 0.1f, 0.9f);
                 float value = NumberUtils::unitPitchToSemis(y);

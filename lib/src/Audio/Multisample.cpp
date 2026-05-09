@@ -6,6 +6,7 @@
 #include "../App/Doc/PresetJson.h"
 #include "../App/MeshLibrary.h"
 #include "../App/SingletonRepo.h"
+#include "../Curve/MeshRasterizer.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
 #include "../Util/Util.h"
@@ -14,8 +15,28 @@
 
 Multisample::Multisample(SingletonRepo* repo, MeshRasterizer* rasterizer) :
         SingletonAccessor(repo, "Multisample")
-    ,   current(nullptr)
-    ,   waveRasterizer(rasterizer) {
+    ,   meshRasterizer(rasterizer)
+    ,   rasterizerUpdateTarget(rasterizer)
+    ,   rasterizerSampler(rasterizer)
+    ,   current(nullptr) {
+}
+
+Multisample::Multisample(
+        SingletonRepo* repo,
+        Rasterization::MeshBindableRasterizer* meshRasterizer,
+        Rasterization::RasterizerUpdateTarget* updateTarget,
+        Rasterization::RasterizerSampler* sampler) :
+        SingletonAccessor(repo, "Multisample")
+    ,   meshRasterizer(meshRasterizer)
+    ,   rasterizerUpdateTarget(updateTarget)
+    ,   rasterizerSampler(sampler)
+    ,   current(nullptr) {
+}
+
+void Multisample::setWaveRasterizer(MeshRasterizer* rasterizer) {
+    meshRasterizer = rasterizer;
+    rasterizerUpdateTarget = rasterizer;
+    rasterizerSampler = rasterizer;
 }
 
 void Multisample::ensureSampleHasMeshLayer(PitchedSample* sample, int preferredIndex) {
@@ -377,7 +398,11 @@ bool Multisample::readXML(const XmlElement* element) {
 
         ensureSampleHasMeshLayer(sample.get(),
                                  sample->meshLayerIndex >= 0 ? sample->meshLayerIndex : samples.size());
-        sample->createPeriodsFromEnv(getObj(MeshLibrary), waveRasterizer);
+        sample->createPeriodsFromEnv(
+                getObj(MeshLibrary),
+                meshRasterizer,
+                rasterizerUpdateTarget,
+                rasterizerSampler);
 
         samples.add(sample.release());
     }
@@ -462,7 +487,11 @@ void Multisample::shiftAllByOctave(bool up) {
         sample->shiftOctave(up);
         PitchTracker::refineFrames(sample, sample->getAveragePeriod());
         sample->createEnvFromPeriods(getObj(MeshLibrary), true);
-        sample->createPeriodsFromEnv(getObj(MeshLibrary), waveRasterizer);
+        sample->createPeriodsFromEnv(
+                getObj(MeshLibrary),
+                meshRasterizer,
+                rasterizerUpdateTarget,
+                rasterizerSampler);
     }
 
     fillRanges();

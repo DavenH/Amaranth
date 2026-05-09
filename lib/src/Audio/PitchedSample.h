@@ -4,6 +4,9 @@
 #include "../Array/StereoBuffer.h"
 #include "../Obj/MorphPosition.h"
 #include "../App/Doc/Savable.h"
+#include "../Curve/Rasterization/Interfaces/MeshBindableRasterizer.h"
+#include "../Curve/Rasterization/Interfaces/RasterizerSampler.h"
+#include "../Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h"
 #include "../Util/CommonEnums.h"
 
 using std::vector;
@@ -62,6 +65,11 @@ public:
 
     void createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti);
     void createPeriodsFromEnv(MeshLibrary& meshLibrary, MeshRasterizer* rast);
+    void createPeriodsFromEnv(
+            MeshLibrary& meshLibrary,
+            Rasterization::MeshBindableRasterizer* meshRasterizer,
+            Rasterization::RasterizerUpdateTarget* updateTarget,
+            Rasterization::RasterizerSampler* sampler);
     void shiftOctave(bool up);
 
     void writeXML(XmlElement* element) const override;

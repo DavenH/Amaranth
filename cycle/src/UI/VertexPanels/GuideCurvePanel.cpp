@@ -76,9 +76,9 @@ void GuideCurvePanel::init() {
     guideTables.emplace_back(this, 0, 0, 0, 0, 0);
     setGuideBuffers();
 
-    rasterizer->cleanUp();
+    localRasterizer.cleanUp();
     setMeshAndUpdate(meshLib->getEffectiveMesh(LayerGroups::GroupGuideCurve));
-    rasterizer->setGuideCurveProvider(this);
+    localRasterizer.setGuideCurveProvider(this);
 
     meshSelector = std::make_unique<MeshSelector<Mesh>>(repo, this, "guide-curves", "mesh", true, false, true);
 
@@ -108,18 +108,20 @@ void GuideCurvePanel::rasterizeAllTables() {
     for(int i = 0; i < guideCurveGroup.size(); ++i) {
         Mesh* mesh = guideCurveGroup.layers[i].mesh;
 
-        rasterizer->cleanUp();
-        rasterizer->setMesh(mesh);
-        rasterizer->performUpdate(Update);
-        rasterizer->sampleWithInterval(guideTables[i].table,
-                                       samplingInterval, (float) getRealConstant(GuideCurvePadding));
+        localRasterizer.cleanUp();
+        localRasterizer.setMesh(mesh);
+        localRasterizer.performUpdate(Update);
+        localRasterizer.sampleWithInterval(
+                guideTables[i].table,
+                samplingInterval,
+                (float) getRealConstant(GuideCurvePadding));
 
         guideTables[i].table.add(-0.5f);
     }
 
-    rasterizer->cleanUp();
-    rasterizer->setMesh(guideCurveGroup.getCurrentMesh());
-    rasterizer->performUpdate(Update);
+    localRasterizer.cleanUp();
+    localRasterizer.setMesh(guideCurveGroup.getCurrentMesh());
+    localRasterizer.performUpdate(Update);
 
     exitClientLock();
 }
@@ -135,9 +137,9 @@ void GuideCurvePanel::rasterizeTable() {
 
     GuideCurveProps& props = guideTables[currentLayer];
 
-    rasterizer->performUpdate(Update);
-    if (rasterizer->hasEnoughCubesForCrossSection()) {
-        rasterizer->sampleWithInterval(props.table, samplingInterval, (float) getRealConstant(GuideCurvePadding));
+    localRasterizer.performUpdate(Update);
+    if (localRasterizer.hasEnoughCubesForCrossSection()) {
+        localRasterizer.sampleWithInterval(props.table, samplingInterval, (float) getRealConstant(GuideCurvePadding));
 
         props.table.add(-0.5f);
     } else {
@@ -310,13 +312,13 @@ void GuideCurvePanel::sliderValueChanged(Slider* slider) {
 void GuideCurvePanel::layerChanged() {
     progressMark
 
-    rasterizer->cleanUp();
-    rasterizer->setMesh(meshLib->getCurrentMesh(layerType));
+    localRasterizer.cleanUp();
+    localRasterizer.setMesh(meshLib->getCurrentMesh(layerType));
     clearSelectedAndCurrent();
 
     meshLib->layerChanged(LayerGroups::GroupGuideCurve, -1);
     updateKnobsImplicit();
-    getRasterizer()->performUpdate(Update);
+    getEffectRasterizer()->performUpdate(Update);
     performUpdate(Update);
     // this should only trigger updates to self if before envelope viewstage
     //	postUpdateMessage();
@@ -381,15 +383,15 @@ void GuideCurvePanel::layerGroupAdded(int layerGroup) {
 
 void GuideCurvePanel::setMeshAndUpdate(Mesh* mesh) {
     if (mesh == nullptr) {
-        rasterizer->cleanUp();
-        rasterizer->setMesh(nullptr);
+        localRasterizer.cleanUp();
+        localRasterizer.setMesh(nullptr);
         repaint();
         return;
     }
 
-    rasterizer->cleanUp();
-    rasterizer->setMesh(mesh);
-    rasterizer->performUpdate(Update);
+    localRasterizer.cleanUp();
+    localRasterizer.setMesh(mesh);
+    localRasterizer.performUpdate(Update);
     repaint();
 }
 
