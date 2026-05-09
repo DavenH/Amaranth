@@ -6,11 +6,15 @@
 class Savable;
 class PluginProcessor;
 class SingletonAccessor;
-class MeshRasterizer;
 class MorphPositioner;
 class IConsole;
 class GuideCurveProvider;
 class Panel;
+
+namespace Rasterization {
+    class GuideCurveBindableRasterizer;
+}
+
 using namespace juce;
 
 class SingletonRepo {
@@ -87,7 +91,7 @@ protected:
 
     Array<Savable*> saveSources;
     Array<Panel*> panels;
-    Array<MeshRasterizer*> rasterizers;
+    Array<Rasterization::GuideCurveBindableRasterizer*> rasterizers;
 
     HashMap<String, SingletonAccessor*> hashes;
     OwnedArray<SingletonAccessor> objects;

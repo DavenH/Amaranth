@@ -8,6 +8,7 @@
 #include "RasterizerData.h"
 #include "Rasterization/MeshRasterizerState.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
+#include "Rasterization/Interfaces/GuideCurveBindableRasterizer.h"
 #include "Rasterization/RasterizerController.h"
 #include "Rasterization/RasterizationRequest.h"
 #include "Rasterization/RasterizerRuntime.h"
@@ -40,7 +41,8 @@ typedef vector<Intercept>::iterator IcptIter;
 typedef vector<Intercept>::const_iterator ConstIcptIter;
 
 class MeshRasterizer :
-        public Updateable {
+        public Updateable
+    ,   public Rasterization::GuideCurveBindableRasterizer {
 public:
     enum ScalingType { Unipolar, Bipolar, HalfBipolar };
 
@@ -203,7 +205,7 @@ public:
     void setBlue(float blue)                        { morph.blue.setValueDirect(blue);  }
     void setRed(float red)                          { morph.red.setValueDirect(red);    }
     void setMorphPosition(const MorphPosition& m)   { morph         = m;                }
-    void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
+    void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }
 
     virtual Mesh* getMesh()                         { return mesh;                      }
     void setMesh(Mesh* mesh) {

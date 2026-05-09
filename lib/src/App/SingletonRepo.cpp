@@ -15,7 +15,7 @@
 #include "../App/Settings.h"
 #include "../Audio/AudioHub.h"
 #include "../Audio/PluginProcessor.h"
-#include "../Curve/MeshRasterizer.h"
+#include "../Curve/Rasterization/Interfaces/GuideCurveBindableRasterizer.h"
 #include "../Curve/PathRepo.h"
 #include "../Design/Updating/Updater.h"
 #include "../UI/Panels/Panel.h"
@@ -121,7 +121,7 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
         panels.add(panel);
     }
 
-    if(auto* rasterizer = dynamic_cast<MeshRasterizer*>(accessor)) {
+    if(auto* rasterizer = dynamic_cast<Rasterization::GuideCurveBindableRasterizer*>(accessor)) {
         rasterizers.add(rasterizer);
     }
 }
@@ -139,7 +139,7 @@ void SingletonRepo::addExternal(SingletonAccessor* accessor, int order) {
         panels.add(panel);
     }
 
-    if(auto* rasterizer = dynamic_cast<MeshRasterizer*>(accessor)) {
+    if(auto* rasterizer = dynamic_cast<Rasterization::GuideCurveBindableRasterizer*>(accessor)) {
         rasterizers.add(rasterizer);
     }
 }
