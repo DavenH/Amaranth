@@ -31,12 +31,16 @@ void Waveshaper::init() {
     oversamplers[graphicOvspIndex]->setMemoryBuf(graphicOversampleBuf);
 }
 
-void Waveshaper::setRasterizer(MeshRasterizer* rasterizer) {
-    rasterizerOwner = rasterizer;
-    waveformProvider.setRasterizer(rasterizer);
+void Waveshaper::setRasterizer(Rasterization::WaveformProvider* rasterizer) {
+    waveformProvider = rasterizer;
 }
 
 void Waveshaper::rasterizeTable() {
+    if (waveformProvider == nullptr) {
+        clearTable();
+        return;
+    }
+
     ScopedLock sl1(getObj(SynthAudioSource).getLock());
 
     int halfRes = tableResolution / 2;
@@ -45,7 +49,7 @@ void Waveshaper::rasterizeTable() {
     double phase = padding + 0.5 * delta;
 
     Buffer<float> halfTable(table + halfRes, halfRes);
-    waveformProvider.samplePerfectly(delta, halfTable, phase);
+    waveformProvider->samplePerfectly(delta, halfTable, phase);
 
     halfTable.add(-padding).mul(1.f / (1.f - 2.f * padding));
 

@@ -61,3 +61,23 @@ void FXRasterizer::setVertices(vector<Vertex*>* vertices) {
     MeshRasterizer::setMesh(nullptr);
     adapter.setVertices(vertices);
 }
+
+bool FXRasterizer::canRasterizeWaveform() const {
+    return adapter.hasEnoughCubesForCrossSection();
+}
+
+bool FXRasterizer::isBipolar() const {
+    return MeshRasterizer::isBipolar();
+}
+
+void FXRasterizer::updateWaveform(UpdateType updateType) {
+    performUpdate(updateType);
+}
+
+double FXRasterizer::sampleWithInterval(Buffer<float> buffer, double delta, double phase) {
+    return MeshRasterizer::sampleWithInterval(buffer, delta, phase);
+}
+
+float FXRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
+    return MeshRasterizer::samplePerfectly(delta, buffer, phase);
+}

@@ -106,7 +106,7 @@ void WaveshaperUI::init() {
     createNameImage("Waveshaper", false, true);
 
     waveshaper = &getObj(SynthAudioSource).getWaveshaper();
-    waveshaper->setRasterizer(rasterizer);
+    waveshaper->setRasterizer(&localRasterizer);
 
     rasterizer->setGuideCurveProvider(&getObj(GuideCurvePanel));
     setMeshAndUpdate(getObj(MeshLibrary).getEffectiveMesh(layerType));
