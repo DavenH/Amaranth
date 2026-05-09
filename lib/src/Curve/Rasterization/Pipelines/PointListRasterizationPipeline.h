@@ -2,12 +2,9 @@
 
 #include <vector>
 
-#include "../Builders/TransferTable.h"
-#include "../Builders/WaveformBuilder.h"
 #include "../GuideCurveOffsetSeeds.h"
-#include "../Policies/Curves/CurveResolutionPolicy.h"
 #include "../Policies/Core/PaddingPolicy.h"
-#include "../Policies/Curves/WaveformBuildPolicy.h"
+#include "CurveWaveformPipeline.h"
 #include "../RasterizationRequest.h"
 #include "../WaveformBuffers.h"
 #include "../Sources/PointListSource.h"
@@ -59,17 +56,6 @@ namespace Rasterization {
                 return output;
             }
 
-            CurveResolutionPolicy::Context resolutionContext;
-            resolutionContext.lowResCurves = request.lowResCurves;
-            resolutionContext.integralSampling = request.integralSampling;
-            resolutionContext.interpolateCurves = request.interpolateCurves;
-            resolutionContext.paddingSize = output.paddingSize;
-            CurveResolutionPolicy().apply(output.curves, resolutionContext);
-
-            for (auto& curve : output.curves) {
-                curve.recalculateCurve();
-            }
-
             bakeWaveform(request);
 
             return output;
@@ -77,13 +63,12 @@ namespace Rasterization {
 
     private:
         void bakeWaveform(const RasterizationRequest& request) {
-            WaveformBakePolicy::Context context;
-            context.lowResCurves = request.lowResCurves;
-            context.morph = request.morph;
+            CurveWaveformPipeline::Context context;
+            context.request = &request;
             context.offsetSeeds = &guideCurveOffsetSeeds;
-            context.transferTable = TransferTable::values();
+            context.paddingSize = output.paddingSize;
 
-            output.sampleable = waveformBuilder.build(
+            output.sampleable = curveWaveformPipeline.render(
                     output.curves,
                     context,
                     [this](int totalRes) {
@@ -93,7 +78,7 @@ namespace Rasterization {
         }
 
         Output output;
-        WaveformBuildPolicy waveformBuilder;
+        CurveWaveformPipeline curveWaveformPipeline;
         GuideCurveOffsetSeeds guideCurveOffsetSeeds;
     };
 }

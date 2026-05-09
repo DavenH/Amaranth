@@ -8,7 +8,6 @@
 #include "../src/Curve/Rasterization/Policies/Core/RasterizerCleanupPolicy.h"
 #include "../src/Curve/Rasterization/Policies/Core/SnapshotPolicy.h"
 #include "../src/Curve/Rasterization/RasterizationRequest.h"
-#include "../src/Curve/Rasterization/RasterizerResult.h"
 #include "../src/Curve/Rasterization/RasterizerRuntime.h"
 #include "../src/Curve/MeshRasterizer.h"
 #include "../src/Curve/Mesh.h"
@@ -111,35 +110,6 @@ TEST_CASE("GuideCurveOffsetSeeds owns paired phase and vertical seed arrays", "[
 
     REQUIRE(seeds.vertical()[0] == 0);
     REQUIRE(seeds.phase()[0] == 0);
-}
-
-TEST_CASE("Rasterizer result shapes expose stage outputs without behavior", "[rasterization][types]") {
-    InterceptBuildResult intercepts;
-    CurveBuildResult curves;
-    WaveformResult waveform;
-
-    intercepts.points.push_back({ 0.1f, 0.2f, 0.3f, 0.4f, true, false, true, RasterPointSource::fxVertex(4) });
-    intercepts.needsResort = true;
-
-    curves.frontPadding.emplace_back(-1.f, 0.2f);
-    curves.backPadding.emplace_back(2.f, 0.8f);
-    curves.paddingSize = 1;
-
-    waveform.waveform.zeroIndex = 5;
-    waveform.waveform.oneIndex = 9;
-    waveform.sampleable = true;
-
-    REQUIRE(intercepts.points.size() == 1);
-    REQUIRE(intercepts.points.front().source == RasterPointSource::fxVertex(4));
-    REQUIRE(intercepts.needsResort);
-
-    REQUIRE(curves.frontPadding.size() == 1);
-    REQUIRE(curves.backPadding.size() == 1);
-    REQUIRE(curves.paddingSize == 1);
-
-    REQUIRE(waveform.waveform.zeroIndex == 5);
-    REQUIRE(waveform.waveform.oneIndex == 9);
-    REQUIRE(waveform.sampleable);
 }
 
 TEST_CASE("WaveformBuffers groups waveform storage and reference assignment", "[rasterization][types][waveform]") {

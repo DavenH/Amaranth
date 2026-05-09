@@ -3,14 +3,11 @@
 #include <algorithm>
 #include <vector>
 
-#include "../Builders/TransferTable.h"
-#include "../Builders/WaveformBuilder.h"
 #include "../GuideCurveOffsetSeeds.h"
-#include "../Policies/Curves/CurveResolutionPolicy.h"
 #include "../Policies/Core/InterceptRestrictionPolicy.h"
 #include "../Policies/Core/PaddingPolicy.h"
 #include "../Policies/Core/PointScalingPolicy.h"
-#include "../Policies/Curves/WaveformBuildPolicy.h"
+#include "CurveWaveformPipeline.h"
 #include "../RasterizationRequest.h"
 #include "../WaveformBuffers.h"
 #include "../Sources/VertexListSource.h"
@@ -53,7 +50,6 @@ namespace Rasterization {
             }
 
             output.paddingSize = FxPaddingPolicy().build(output.intercepts, output.curves);
-            applyResolution(request);
             bakeWaveform(request);
 
             return output;
@@ -77,27 +73,13 @@ namespace Rasterization {
             InterceptRestrictionPolicy(context).restrict(intercepts);
         }
 
-        void applyResolution(const RasterizationRequest& request) {
-            CurveResolutionPolicy::Context context;
-            context.lowResCurves = request.lowResCurves;
-            context.integralSampling = request.integralSampling;
-            context.interpolateCurves = request.interpolateCurves;
-            context.paddingSize = output.paddingSize;
-            CurveResolutionPolicy().apply(output.curves, context);
-
-            for (auto& curve : output.curves) {
-                curve.recalculateCurve();
-            }
-        }
-
         void bakeWaveform(const RasterizationRequest& request) {
-            WaveformBakePolicy::Context context;
-            context.lowResCurves = request.lowResCurves;
-            context.morph = request.morph;
+            CurveWaveformPipeline::Context context;
+            context.request = &request;
             context.offsetSeeds = &guideCurveOffsetSeeds;
-            context.transferTable = TransferTable::values();
+            context.paddingSize = output.paddingSize;
 
-            output.sampleable = waveformBuilder.build(
+            output.sampleable = curveWaveformPipeline.render(
                     output.curves,
                     context,
                     [this](int totalRes) {
@@ -107,7 +89,7 @@ namespace Rasterization {
         }
 
         Output output;
-        WaveformBuildPolicy waveformBuilder;
+        CurveWaveformPipeline curveWaveformPipeline;
         GuideCurveOffsetSeeds guideCurveOffsetSeeds;
     };
 }

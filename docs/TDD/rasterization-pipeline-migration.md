@@ -207,7 +207,6 @@ new systems can coexist during migration.
 ```text
 lib/src/Curve/Rasterization/
   RasterizerTypes.h
-  RasterizerResult.h
   RasterizerOptions.h
   RasterizerCompare.h
 
@@ -234,6 +233,7 @@ lib/src/Curve/Rasterization/
       RasterizerOutputPolicy.h
       SnapshotPolicy.h
     Curves/
+      CurveTripletPolicy.h
       CurveResolutionPolicy.h
       CurveWaveformPreparationPolicy.h
       InterceptPaddingFlagPolicy.h
@@ -258,6 +258,9 @@ lib/src/Curve/Rasterization/
     CurveBuilder.h
     WaveformBuilder.h
     RasterizerSnapshotBuilder.h
+
+  Pipelines/
+    CurveWaveformPipeline.h
 
   Sampling/
     WaveformSampler.h
@@ -713,7 +716,6 @@ Acceptance:
 Code changes:
 
 - add `RasterizerTypes.h`,
-- add `RasterizerResult.h`,
 - add `RasterizerOptions.h` only if options are clearer than passing base
   rasterizer state directly,
 - add test-only `RasterizerCompare.h` if it was not added in Phase 0,

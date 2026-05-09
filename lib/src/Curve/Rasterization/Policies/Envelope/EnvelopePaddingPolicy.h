@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "../Curves/CurveTripletPolicy.h"
 #include "../../../Curve.h"
 #include "../../../Intercept.h"
 
@@ -128,9 +129,7 @@ namespace Rasterization {
 
     private:
         static void addInteriorCurves(const std::vector<Intercept>& intercepts, std::vector<Curve>& curves) {
-            for (int i = 0; i < (int) intercepts.size() - 2; ++i) {
-                curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
-            }
+            CurveTripletPolicy::appendAdjacent(intercepts, curves);
         }
 
         static void buildNormalOrReleaseRenderPadding(

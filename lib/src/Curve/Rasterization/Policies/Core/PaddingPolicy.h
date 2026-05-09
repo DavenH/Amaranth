@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "../Curves/CurveTripletPolicy.h"
 #include "../../../Curve.h"
 #include "../../../Intercept.h"
 
@@ -119,18 +120,9 @@ namespace Rasterization {
             curves.clear();
             curves.reserve(intercepts.size() + frontPadding.size() - 2 + backPadding.size() - 2);
 
-            for (int i = 0; i < (int) frontPadding.size() - 2; ++i) {
-                int idx = (int) frontPadding.size() - 1 - i;
-                curves.emplace_back(frontPadding[idx], frontPadding[idx - 1], frontPadding[idx - 2]);
-            }
-
-            for (int i = 0; i < (int) intercepts.size() - 2; ++i) {
-                curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
-            }
-
-            for (int i = 0; i < (int) backPadding.size() - 2; ++i) {
-                curves.emplace_back(backPadding[i], backPadding[i + 1], backPadding[i + 2]);
-            }
+            CurveTripletPolicy::appendAdjacentReversed(frontPadding, curves);
+            CurveTripletPolicy::appendAdjacent(intercepts, curves);
+            CurveTripletPolicy::appendAdjacent(backPadding, curves);
         }
 
         PaddingPolicyContext context;
@@ -179,9 +171,7 @@ namespace Rasterization {
             curves.emplace_back(front1, intercepts[0], intercepts[1]);
 
             jassert(intercepts[0].y == intercepts[0].y);
-            for (int i = 0; i < (int) intercepts.size() - 2; ++i) {
-                curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
-            }
+            CurveTripletPolicy::appendAdjacent(intercepts, curves);
 
             curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
             curves.emplace_back(intercepts[end], back1, back2);
@@ -218,9 +208,7 @@ namespace Rasterization {
             curves.emplace_back(front1, front2, intercepts[0]);
             curves.emplace_back(front2, intercepts[0], intercepts[1]);
 
-            for (int i = 0; i < (int) intercepts.size() - 2; ++i) {
-                curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
-            }
+            CurveTripletPolicy::appendAdjacent(intercepts, curves);
 
             curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
             curves.emplace_back(intercepts[end], back1, back2);

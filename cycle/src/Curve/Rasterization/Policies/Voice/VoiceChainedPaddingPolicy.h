@@ -4,6 +4,7 @@
 
 #include <Curve/Curve.h>
 #include <Curve/Intercept.h>
+#include <Curve/Rasterization/Policies/Curves/CurveTripletPolicy.h>
 
 #include "../../../CycleState.h"
 
@@ -49,9 +50,7 @@ namespace Cycle::Rasterization {
             curves.emplace_back(state.frontB, state.frontA, intercepts[0]);
             curves.emplace_back(state.frontA, intercepts[0], intercepts[1]);
 
-            for (int i = 0; i < (int) intercepts.size() - 2; ++i) {
-                curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
-            }
+            ::Rasterization::CurveTripletPolicy::appendAdjacent(intercepts, curves);
 
             curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
             curves.emplace_back(intercepts[end], back1, back2);
