@@ -60,10 +60,12 @@ EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurve
     params.emplace_back();
 
     setGuideCurveProvider(guideCurveProvider);
+    installEnvelopeProviders();
 }
 
 EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
     MeshRasterizer::operator =(copy);
+    installEnvelopeProviders();
 
     this->sampleReleaseNextCall = copy.sampleReleaseNextCall;
     this->envMesh               = copy.envMesh;
@@ -89,18 +91,6 @@ EnvRasterizer::~EnvRasterizer() {
     waveformMemory.clear();
 }
 
-void EnvRasterizer::setMesh(Mesh* mesh) {
-    jassertfalse;
-
-    MeshRasterizer::setMesh(mesh);
-
-    envMesh = dynamic_cast<EnvelopeMesh*>(mesh);
-
-    // DBG(String::formatted("EnvRasterizer[%s] setMesh(Mesh*) %s",
-    //                       MeshRasterizer::name.toRawUTF8(),
-    //                       describeEnvelopeMesh(envMesh).toRawUTF8()));
-}
-
 void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
     MeshRasterizer::setMesh(envelopeMesh);
 
@@ -109,6 +99,13 @@ void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
     // DBG(String::formatted("EnvRasterizer[%s] setMesh(EnvelopeMesh*) %s",
     //                       MeshRasterizer::name.toRawUTF8(),
     //                       describeEnvelopeMesh(envMesh).toRawUTF8()));
+}
+
+void EnvRasterizer::installEnvelopeProviders() {
+    setMeshAssignmentProvider([this](Mesh* assignedMesh) {
+        envMesh = dynamic_cast<EnvelopeMesh*>(assignedMesh);
+        jassert(assignedMesh == nullptr || envMesh != nullptr);
+    });
 }
 
 bool EnvRasterizer::hasReleaseCurve() {

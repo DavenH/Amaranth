@@ -198,7 +198,7 @@ public:
     void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
 
     virtual Mesh* getMesh()                         { return mesh;                      }
-    virtual void setMesh(Mesh* mesh) {
+    void setMesh(Mesh* mesh) {
         this->mesh = mesh;
 
         if (meshAssignmentProvider != nullptr) {

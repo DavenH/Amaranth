@@ -49,6 +49,8 @@ public:
     EnvRasterizer(const EnvRasterizer& copy);
     ~EnvRasterizer() override;
 
+    using MeshRasterizer::setMesh;
+
     void calcCrossPoints() override;
     void ensureParamSize(int numUnisonVoices);
     void evaluateLoopSustainIndices();
@@ -57,7 +59,6 @@ public:
     void processIntercepts(vector<Intercept>& intercepts) override;
     void resetGraphicParams();
     void setMesh(EnvelopeMesh* mesh);
-    void setMesh(Mesh* mesh) override;
     void setNoteOff();
     void setNoteOn();
     void setWantOneSamplePerCycle(bool does);
@@ -92,6 +93,7 @@ public:
 private:
     void changedToRelease();
     Rasterization::EnvelopePaddingContext createPaddingContext() const;
+    void installEnvelopeProviders();
     void padIcptsForRender(vector<Intercept>& icpts, vector<Curve>& curves);
 
     bool canLoop() const;
