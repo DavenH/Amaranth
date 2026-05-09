@@ -115,7 +115,7 @@ public:
     virtual void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);
     virtual void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
     void preCleanup();
-    virtual void processIntercepts(vector<Intercept>& intercepts) {}
+    void processIntercepts(vector<Intercept>& intercepts);
     void reset();
     void performUpdate(UpdateType updateType) override;
     void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
@@ -179,6 +179,9 @@ public:
     void setOverridingDim(int dim)                  { overridingDim = dim;              }
     void setPaddingProvider(std::function<void(vector<Intercept>&, vector<Curve>&)> provider) {
         paddingProvider = provider;
+    }
+    void setProcessInterceptsProvider(std::function<void(vector<Intercept>&)> provider) {
+        processInterceptsProvider = provider;
     }
     void setMeshAssignmentProvider(std::function<void(Mesh*)> provider) {
         meshAssignmentProvider = provider;
@@ -253,6 +256,7 @@ protected:
     std::function<void()> updateCurvesProvider;
     std::function<void(Rasterization::RasterizerRuntime)> cleanupProvider;
     std::function<void(vector<Intercept>&, vector<Curve>&)> paddingProvider;
+    std::function<void(vector<Intercept>&)> processInterceptsProvider;
     std::function<void(Mesh*)> meshAssignmentProvider;
     std::function<int()> numDimensionsProvider;
     std::function<bool()> crossSectionAvailabilityProvider;

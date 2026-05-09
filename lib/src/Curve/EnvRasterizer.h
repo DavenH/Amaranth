@@ -56,7 +56,6 @@ public:
     void evaluateLoopSustainIndices();
     void getIndices(int& loopIdx, int& sustIdx) const;
     void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) override;
-    void processIntercepts(vector<Intercept>& intercepts) override;
     void resetGraphicParams();
     void setMesh(EnvelopeMesh* mesh);
     void setNoteOff();

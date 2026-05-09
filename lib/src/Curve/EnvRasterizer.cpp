@@ -106,6 +106,15 @@ void EnvRasterizer::installEnvelopeProviders() {
         envMesh = dynamic_cast<EnvelopeMesh*>(assignedMesh);
         jassert(assignedMesh == nullptr || envMesh != nullptr);
     });
+    setProcessInterceptsProvider([this](vector<Intercept>& intercepts) {
+        evaluateLoopSustainIndices();
+
+        Rasterization::EnvelopeSustainPointContext context;
+        context.sustainIndex = sustainIndex;
+        context.addFloorPoint = getScalingType() != Bipolar;
+
+        needsResorting |= Rasterization::EnvRasterizerFacade().applySustainPoint(intercepts, context);
+    });
 }
 
 bool EnvRasterizer::hasReleaseCurve() {
@@ -138,16 +147,6 @@ void EnvRasterizer::calcCrossPoints() {
     }
 
     //    evaluateLoopSustainIndices();
-}
-
-void EnvRasterizer::processIntercepts(vector<Intercept>& intercepts) {
-    evaluateLoopSustainIndices();
-
-    Rasterization::EnvelopeSustainPointContext context;
-    context.sustainIndex = sustainIndex;
-    context.addFloorPoint = getScalingType() != Bipolar;
-
-    needsResorting |= Rasterization::EnvRasterizerFacade().applySustainPoint(intercepts, context);
 }
 
 void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curve>& curves) {

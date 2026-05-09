@@ -54,6 +54,7 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    updateCurvesProvider()
     ,    cleanupProvider()
     ,    paddingProvider()
+    ,    processInterceptsProvider()
     ,    meshAssignmentProvider()
     ,    numDimensionsProvider()
     ,    crossSectionAvailabilityProvider()
@@ -209,6 +210,12 @@ void MeshRasterizer::finishCrossPointCalculation() {
 
     if (!calcInterceptsOnly) {
         rebuildCurvesFromIntercepts();
+    }
+}
+
+void MeshRasterizer::processIntercepts(vector<Intercept>& intercepts) {
+    if (processInterceptsProvider != nullptr) {
+        processInterceptsProvider(intercepts);
     }
 }
 
@@ -526,6 +533,7 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     this->updateCurvesProvider   = nullptr;
     this->cleanupProvider        = nullptr;
     this->paddingProvider        = nullptr;
+    this->processInterceptsProvider  = nullptr;
     this->meshAssignmentProvider = nullptr;
     this->numDimensionsProvider  = nullptr;
     this->crossSectionAvailabilityProvider = nullptr;
