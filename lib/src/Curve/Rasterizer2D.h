@@ -2,23 +2,26 @@
 
 #include "Intercept.h"
 #include "Curve.h"
-#include "MeshRasterizer.h"
 #include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Policies/RasterizerOutputPolicy.h"
 #include "Rasterization/RasterizerComposer.h"
+#include "Rasterization/Sampling/WaveformSampler.h"
 #include "Rasterization/Sources/PointListSource.h"
+#include "Rasterization/State/RasterizerStorage.h"
+#include "../Array/ScopedAlloc.h"
+#include "../Design/Updating/Updateable.h"
 
-class Rasterizer2D: public MeshRasterizer {
+class Rasterizer2D {
 public:
     explicit Rasterizer2D(vector<Intercept>& verts, bool cyclic = false)
             : pointSource(verts), cyclic(cyclic) {
         unsampleable = false;
-        setCrossPointProvider([this]() {
-            renderPointListCrossPoints();
-        });
     }
 
     void updateCurve(int index, const Intercept& position) {
+        vector<Curve>& curves = storage.curves.curves;
+        Rasterization::WaveformBuffers& waveform = storage.waveform.waveform;
+
         jassert(index < curves.size());
 
         if(index < 1 || index > (int) curves.size() - 2) {
@@ -52,6 +55,9 @@ public:
     }
 
     void updateWaveform(int index) {
+        vector<Curve>& curves = storage.curves.curves;
+        Rasterization::WaveformBuffers& waveform = storage.waveform.waveform;
+
         int res         = Curve::resolution / 2;
         int startIdx    = jmax(0, index - 1);
         int endIdx      = jmin((int) curves.size() - 1, index + 2);
@@ -121,15 +127,85 @@ public:
         // ippsDiv_32f_I(diffx, slp, size);
     }
 
+    void performUpdate(UpdateType updateType) {
+        if (updateType == Update) {
+            calcCrossPoints();
+        }
+    }
+
+    void calcCrossPoints() {
+        renderPointListCrossPoints();
+    }
+
+    void cleanUp() {
+        storage.clear();
+        paddingSize = getPaddingSize();
+        unsampleable = true;
+    }
+
+    void validateCurves() {
+        const vector<Curve>& curves = storage.curves.curves;
+
+        for (int i = 0; i < (int) curves.size() - 1; ++i) {
+            jassert(curves[i].b.x == curves[i + 1].a.x);
+            jassert(curves[i].c.x == curves[i + 1].b.x);
+        }
+    }
+
+    Rasterization::RasterizationRequest createRasterizationRequest() const {
+        Rasterization::RasterizationRequest request;
+        request.cyclic = cyclic;
+        request.paddingSize = paddingSize;
+
+        return request;
+    }
+
+    Rasterization::RasterizerRuntime createRasterizerRuntime() {
+        Rasterization::RasterizerRuntime runtime;
+        runtime.intercepts      = &storage.intercepts.intercepts;
+        runtime.curves          = &storage.curves.curves;
+        runtime.frontPadding    = &storage.intercepts.frontPadding;
+        runtime.backPadding     = &storage.intercepts.backPadding;
+        runtime.colorPoints     = &storage.intercepts.colorPoints;
+        runtime.waveform        = Rasterization::WaveformBufferRefs(storage.waveform.waveform);
+        runtime.paddingSize     = &paddingSize;
+        runtime.unsampleable    = &unsampleable;
+        runtime.needsResorting  = &needsResorting;
+
+        return runtime;
+    }
+
+    template<typename T>
+    T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
+        return Rasterization::WaveformSampler::sampleWithInterval(
+                storage.waveform.waveform,
+                buffer,
+                delta,
+                phase);
+    }
+
+    bool isSampleable() const {
+        return !unsampleable && Rasterization::WaveformSampler::isSampleable(storage.waveform.waveform);
+    }
+
+    Buffer<float> getWaveX() { return storage.waveform.waveform.waveX; }
+    Buffer<float> getWaveY() { return storage.waveform.waveform.waveY; }
+
     void setCyclicity(bool isCyclic)    { cyclic = isCyclic;    }
     bool isCyclic() const               { return cyclic;        }
     static int getPaddingSize()         { return 2;             }
 
 private:
     void renderPointListCrossPoints();
+    void updateBuffers(int size) { storage.waveform.waveform.place(memoryBuffer, size); }
 
 protected:
+    Rasterization::RasterizerStorage storage;
+    ScopedAlloc<float> memoryBuffer;
     Rasterization::PointListSource pointSource;
+    int paddingSize { getPaddingSize() };
+    bool needsResorting {};
+    bool unsampleable { true };
     bool cyclic;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Rasterizer2D)

@@ -15,6 +15,7 @@
 #include "../App/Settings.h"
 #include "../Audio/AudioHub.h"
 #include "../Audio/PluginProcessor.h"
+#include "../Curve/MeshRasterizer.h"
 #include "../Curve/PathRepo.h"
 #include "../Design/Updating/Updater.h"
 #include "../UI/Panels/Panel.h"
