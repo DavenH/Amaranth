@@ -108,22 +108,22 @@ public:
     /* ----------------------------------------------------------------------------- */
 
     virtual void calcCrossPoints();
-    virtual void calcCrossPointsAtTime(float x);
+    void calcCrossPointsAtTime(float x);
     virtual void cleanUp();
-    virtual void handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube);
+    void handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube);
     virtual void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);
     virtual void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
-    virtual void preCleanup();
+    void preCleanup();
     virtual void processIntercepts(vector<Intercept>& intercepts) {}
-    virtual void reset();
+    void reset();
     void performUpdate(UpdateType updateType) override;
-    virtual void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
+    void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
     virtual void updateCurves();
 
     virtual bool hasEnoughCubesForCrossSection();
     virtual int getNumDims();
     virtual int getPrimaryViewDimension();
-    virtual Mesh* getCrossPointsMesh();
+    Mesh* getCrossPointsMesh();
 
     /* ----------------------------------------------------------------------------- */
 
@@ -168,13 +168,13 @@ public:
     void setToOverrideDim(bool does)                { overrideDim   = does;             }
     void setYellow(float yellow)                    { morph.time.setValueDirect(yellow);}
     void setBlue(float blue)                        { morph.blue.setValueDirect(blue);  }
-    virtual void setRed(float red)                  { morph.red.setValueDirect(red);    }
+    void setRed(float red)                          { morph.red.setValueDirect(red);    }
     void setMorphPosition(const MorphPosition& m)   { morph         = m;                }
     void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
 
     virtual Mesh* getMesh()                         { return mesh;                      }
     virtual void setMesh(Mesh* mesh)                { this->mesh = mesh;                }
-    virtual bool wrapsVertices() const              { return cyclic;                    }
+    bool wrapsVertices() const                      { return cyclic;                    }
     virtual void updateOffsetSeeds(int layerSize, int tableSize);
 
 
