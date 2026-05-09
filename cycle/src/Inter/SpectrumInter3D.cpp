@@ -46,8 +46,12 @@ void SpectrumInter3D::initSelectionClient() {
 }
 
 void SpectrumInter3D::updateSelectionClient() {
-    if (selectionClient != nullptr && rasterizer != nullptr) {
-        selectionClient->initialise(this, rasterizer, layerType);
+    if (selectionClient != nullptr && hasRasterizer()) {
+        selectionClient->initialise(
+                this,
+                getMeshBindableRasterizer(),
+                getRasterizerUpdateTarget(),
+                layerType);
     }
 }
 

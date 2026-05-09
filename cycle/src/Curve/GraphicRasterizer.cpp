@@ -14,13 +14,13 @@ GraphicRasterizer::GraphicRasterizer(
 	        ,   int layerGroup
 	        ,   bool isCyclic
 	        ,   float margin) : SingletonAccessor(repo, name)
-	    ,   MeshRasterizer(name)
+        ,   rasterizer(name)
 	    ,   layerGroup(layerGroup)
 	    ,   interactor(interactor) {
-    setWrapsEnds(isCyclic);
+    rasterizer.setWrapsEnds(isCyclic);
     addListener(this);
-    setLimits(-margin, 1 + margin);
-    setPrimaryViewDimensionProvider([repo]() {
+    rasterizer.setLimits(-margin, 1 + margin);
+    rasterizer.setPrimaryViewDimensionProvider([repo]() {
         return Cycle::Rasterization::GraphicRasterizerFacade().primaryViewDimension(
                 repo->get<Settings>("Settings").getGlobalSetting(AppSettings::CurrentMorphAxis));
     });

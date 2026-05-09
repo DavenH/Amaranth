@@ -110,6 +110,7 @@ public:
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
     void setRasterizer(MeshRasterizer* rasterizer);
+    void setRasterizer(Rasterization::MeshBindableRasterizer* rasterizer);
     void setRasterizer(
             Rasterization::MeshBindableRasterizer* meshRasterizer,
             Rasterization::RasterizerSampler* sampler,
@@ -138,7 +139,9 @@ public:
     CollisionDetector&  getCollisionDetector()                { return collisionDetector;   }
     CriticalSection&    getLock()                             { return vertexLock;          }
     MeshRasterizer*     getRasterizer() const                 { return rasterizer;          }
-    bool                hasRasterizer() const                 { return rasterizer != nullptr; }
+    bool                hasRasterizer() const                 { return meshRasterizer != nullptr; }
+    Rasterization::MeshBindableRasterizer* getMeshBindableRasterizer() const { return meshRasterizer; }
+    Rasterization::RasterizerUpdateTarget* getRasterizerUpdateTarget() const { return rasterizerUpdateTarget; }
     bool                rasterizerWrapsVertices() const;
     int                 getRasterizerPaddingSize() const;
     GuideCurveProvider* getGuideCurveProvider() const;

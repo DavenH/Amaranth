@@ -405,7 +405,7 @@ void VisualDsp::calcTimeDomain(int numColumns) {
     int timeInc	= timeProcessor.isDetailReduced() ? reductionFactor : 1;
 
     MeshRasterizer::RenderState timeState;
-    MeshRasterizer::ScopedRenderState scopedState(timeRasterizer, &timeState);
+    MeshRasterizer::ScopedRenderState scopedState(&timeRasterizer->legacyRasterizer(), &timeState);
 
     MeshRasterizer::RenderState batchState(true, true, false, MeshRasterizer::HalfBipolar, timeState.pos);
     batchState.pos.time = 0;
@@ -413,7 +413,7 @@ void VisualDsp::calcTimeDomain(int numColumns) {
     timeRasterizer->restoreStateFrom(batchState);
     timeRasterizer->updateOffsetSeeds(timeGroup.size(), GuideCurvePanel::tableSize);
 
-    MeshRasterizer& rasterizer = *timeRasterizer;
+    MeshRasterizer& rasterizer = timeRasterizer->legacyRasterizer();
 
     int numActiveLayers = surface->getNumActiveLayers();
 
@@ -550,8 +550,8 @@ void VisualDsp::calcSpectrogram(int numColumns) {
     phaseScaleRamp.ramp(1.f, 1.f).sqrt();
 
     MeshRasterizer::RenderState freqState, phaseState;
-    MeshRasterizer::ScopedRenderState freqStateScoped(spectRasterizer, &freqState);
-    MeshRasterizer::ScopedRenderState phaseStateScoped(phaseRasterizer, &phaseState);
+    MeshRasterizer::ScopedRenderState freqStateScoped(&spectRasterizer->legacyRasterizer(), &freqState);
+    MeshRasterizer::ScopedRenderState phaseStateScoped(&phaseRasterizer->legacyRasterizer(), &phaseState);
     MeshRasterizer::RenderState batchState(true, true, false, MeshRasterizer::Bipolar, freqState.pos);
 
     batchState.pos.time = 0;
@@ -1645,9 +1645,9 @@ void VisualDsp::processThroughEffects(int numColumns) {
 void VisualDsp::reset() {
     destroyArrays();
 
-    ((MeshRasterizer*)timeRasterizer)->reset();
-    ((MeshRasterizer*)spectRasterizer)->reset();
-    ((MeshRasterizer*)phaseRasterizer)->reset();
+    timeRasterizer->reset();
+    spectRasterizer->reset();
+    phaseRasterizer->reset();
 }
 
 void VisualDsp::destroyArrays() {

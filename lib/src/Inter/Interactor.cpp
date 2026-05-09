@@ -1448,6 +1448,15 @@ void Interactor::setRasterizer(MeshRasterizer* rasterizer) {
     this->rasterizer = rasterizer;
 }
 
+void Interactor::setRasterizer(Rasterization::MeshBindableRasterizer* rasterizer) {
+    setRasterizer(
+            rasterizer,
+            dynamic_cast<Rasterization::RasterizerSampler*>(rasterizer),
+            dynamic_cast<Rasterization::RasterizerSnapshotProvider*>(rasterizer),
+            dynamic_cast<Rasterization::RasterizerUpdateTarget*>(rasterizer),
+            dynamic_cast<Rasterization::RasterizerVertexDomain*>(rasterizer));
+}
+
 void Interactor::setRasterizer(
         Rasterization::MeshBindableRasterizer* meshRasterizer,
         Rasterization::RasterizerSampler* sampler,

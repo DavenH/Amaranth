@@ -204,9 +204,7 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
     f2.vertexProps.dimensionNames.set(Vertex::Amp, isMags ? "Magn" : "Phase");
     f3.vertexProps.dimensionNames = f2.vertexProps.dimensionNames;
 
-    MeshRasterizer* rasterizer = isMags ?
-            static_cast<MeshRasterizer*>(&getObj(SpectRasterizer)) :
-            static_cast<MeshRasterizer*>(&getObj(PhaseRasterizer));
+    GraphicRasterizer* rasterizer = isMags ? &getObj(SpectRasterizer) : &getObj(PhaseRasterizer);
     rasterizer->setMesh(meshLib->getEffectiveMesh(interactor->layerType));
 
     StringFunction shortStr = isMags ? dynStr : StringFunction().mul(5.f).pow(M_E);

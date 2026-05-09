@@ -12,13 +12,13 @@
 
 E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
         SingletonAccessor(repo, "E3Rasterizer")
-    ,	MeshRasterizer("E3Rasterizer") {
-    setLowresCurves(true);
-    setWrapsEnds(false);
-    setCalcDepthDimensions(false);
-    setScalingMode(HalfBipolar);
-    setLimits(0.f, 10.f);
-    setPrimaryViewDimensionProvider([repo]() {
+    ,   rasterizer("E3Rasterizer") {
+    rasterizer.setLowresCurves(true);
+    rasterizer.setWrapsEnds(false);
+    rasterizer.setCalcDepthDimensions(false);
+    rasterizer.setScalingMode(MeshRasterizer::HalfBipolar);
+    rasterizer.setLimits(0.f, 10.f);
+    rasterizer.setPrimaryViewDimensionProvider([repo]() {
         return repo->get<Settings>("Settings").getGlobalSetting(
                 AppSettings::CurrentMorphAxis);
     });
@@ -66,12 +66,12 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
     for (int colIdx = 0; colIdx < gridSize; ++colIdx) {
         Column& col = columns[colIdx];
 
-        MorphPosition& p = getMorphPosition();
+        MorphPosition& p = rasterizer.getMorphPosition();
         p[dependentAxis].setValueDirect(colIdx * invGrid);
-        calcCrossPoints(currentMesh, 0.f);
+        rasterizer.calcCrossPoints(currentMesh, 0.f);
 
-        if (isSampleable()) {
-            sampleWithInterval(col, invCol, 0.f);
+        if (rasterizer.isSampleable()) {
+            rasterizer.sampleWithInterval(col, invCol, 0.f);
         } else {
             col.zero();
         }
