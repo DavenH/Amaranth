@@ -137,13 +137,16 @@ void EnvRasterizer::installEnvelopeProviders() {
 
         randomizeGuideCurveOffsetSeeds(layerSize, tableSize);
     });
+    setCrossPointProvider([this]() {
+        renderEnvelopeCrossPoints();
+    });
 }
 
 bool EnvRasterizer::hasReleaseCurve() {
     return Rasterization::EnvelopePlaybackPolicy().hasReleaseCurve(icpts, sustainIndex);
 }
 
-void EnvRasterizer::calcCrossPoints() {
+void EnvRasterizer::renderEnvelopeCrossPoints() {
     getMorphPosition().resetTime();
     MeshRasterizer::calcCrossPoints(envMesh, 0.f);
 

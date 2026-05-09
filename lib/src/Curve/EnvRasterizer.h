@@ -51,7 +51,6 @@ public:
 
     using MeshRasterizer::setMesh;
 
-    void calcCrossPoints() override;
     void ensureParamSize(int numUnisonVoices);
     void evaluateLoopSustainIndices();
     void getIndices(int& loopIdx, int& sustIdx) const;
@@ -92,6 +91,7 @@ private:
     Rasterization::EnvelopePaddingContext createPaddingContext() const;
     void installEnvelopeProviders();
     void padIcptsForRender(vector<Intercept>& icpts, vector<Curve>& curves);
+    void renderEnvelopeCrossPoints();
 
     bool canLoop() const;
     int vectorizedRenderToBuffer(Buffer<float> buffer, int numSamples, double deltaX, int unisonIdx);

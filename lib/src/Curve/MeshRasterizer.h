@@ -108,7 +108,7 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-    virtual void calcCrossPoints();
+    void calcCrossPoints();
     void calcCrossPointsAtTime(float x);
     void cleanUp();
     void handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube);
