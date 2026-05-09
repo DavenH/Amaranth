@@ -59,6 +59,7 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    numDimensionsProvider()
     ,    crossSectionAvailabilityProvider()
     ,    primaryViewDimensionProvider()
+    ,    offsetSeedsProvider()
 
     ,    interceptPadding    (0.f)
     ,    xMinimum            (0.f)
@@ -538,6 +539,7 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     this->numDimensionsProvider  = nullptr;
     this->crossSectionAvailabilityProvider = nullptr;
     this->primaryViewDimensionProvider  = nullptr;
+    this->offsetSeedsProvider    = nullptr;
     this->cyclic                 = copy.cyclic;
     this->guideCurveProvider     = copy.guideCurveProvider;
     this->calcInterceptsOnly     = copy.calcInterceptsOnly;
@@ -729,6 +731,15 @@ void MeshRasterizer::updateValue(int dim, float value) {
 }
 
 void MeshRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
+    if (offsetSeedsProvider != nullptr) {
+        offsetSeedsProvider(layerSize, tableSize);
+        return;
+    }
+
+    randomizeGuideCurveOffsetSeeds(layerSize, tableSize);
+}
+
+void MeshRasterizer::randomizeGuideCurveOffsetSeeds(int layerSize, int tableSize) {
     Random rand(Time::currentTimeMillis());
     guideCurveOffsetSeeds.randomize(layerSize, tableSize, rand);
 }

@@ -192,6 +192,9 @@ public:
     void setPrimaryViewDimensionProvider(std::function<int()> provider) {
         primaryViewDimensionProvider = provider;
     }
+    void setOffsetSeedsProvider(std::function<void(int, int)> provider) {
+        offsetSeedsProvider = provider;
+    }
     void setScalingMode(ScalingType type)           { scalingType   = type;             }
     void setToOverrideDim(bool does)                { overrideDim   = does;             }
     void setYellow(float yellow)                    { morph.time.setValueDirect(yellow);}
@@ -209,11 +212,12 @@ public:
         }
     }
     bool wrapsVertices() const                      { return cyclic;                    }
-    virtual void updateOffsetSeeds(int layerSize, int tableSize);
+    void updateOffsetSeeds(int layerSize, int tableSize);
 
 
 protected:
     void markWaveformUnsampleable();
+    void randomizeGuideCurveOffsetSeeds(int layerSize, int tableSize);
     bool canRasterizeMesh(Mesh* usedMesh) const;
     void beginCrossPointCalculation();
     void updateBuffers(int size);
@@ -261,6 +265,7 @@ protected:
     std::function<int()> numDimensionsProvider;
     std::function<bool()> crossSectionAvailabilityProvider;
     std::function<int()> primaryViewDimensionProvider;
+    std::function<void(int, int)> offsetSeedsProvider;
 
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
 

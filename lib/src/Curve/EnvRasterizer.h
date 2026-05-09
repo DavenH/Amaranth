@@ -61,7 +61,6 @@ public:
     void setNoteOn();
     void setWantOneSamplePerCycle(bool does);
     void simulateStart(double& lastPosition);
-    void updateOffsetSeeds(int layerSize, int tableSize) override;
     void validateState();
 
     bool hasReleaseCurve();

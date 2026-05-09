@@ -122,6 +122,21 @@ void EnvRasterizer::installEnvelopeProviders() {
             markWaveformUnsampleable();
         }
     });
+    setOffsetSeedsProvider([this](int layerSize, int tableSize) {
+        if (oneSamplePerCycle) {
+            Random rand(Time::currentTimeMillis());
+
+            for (auto& param: params) {
+                GuideCurveContext& context = param.guideCurveContext;
+                context.phaseOffsetSeed = rand.nextInt(tableSize);
+                context.vertOffsetSeed = rand.nextInt(tableSize);
+            }
+
+            return;
+        }
+
+        randomizeGuideCurveOffsetSeeds(layerSize, tableSize);
+    });
 }
 
 bool EnvRasterizer::hasReleaseCurve() {
@@ -167,20 +182,6 @@ void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curv
 void EnvRasterizer::getIndices(int& loopIdx, int& sustIdx) const {
     loopIdx = loopIndex;
     sustIdx = sustainIndex;
-}
-
-void EnvRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
-    if (oneSamplePerCycle) {
-        Random rand(Time::currentTimeMillis());
-
-        for (auto& param: params) {
-            GuideCurveContext& context = param.guideCurveContext;
-            context.phaseOffsetSeed = rand.nextInt(tableSize);
-            context.vertOffsetSeed = rand.nextInt(tableSize);
-        }
-    } else {
-        MeshRasterizer::updateOffsetSeeds(layerSize, tableSize);
-    }
 }
 
 void EnvRasterizer::setWantOneSamplePerCycle(bool does) {
