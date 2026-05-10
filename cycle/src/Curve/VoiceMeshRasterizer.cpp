@@ -179,7 +179,6 @@ void VoiceMeshRasterizer::bakeChainedWaveform() {
     context.guideCurveProvider = rasterizer.getGuideCurveProvider();
     context.guideCurveRegions = &chainResult.guideCurveRegions;
     context.offsetSeeds = nullptr;
-    context.transferTable = Rasterization::TransferTable::values();
 
     chainUnsampleable = !Rasterization::WaveformBakePolicy().build(
             chainResult.curves,

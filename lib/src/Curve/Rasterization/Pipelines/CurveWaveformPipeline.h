@@ -65,7 +65,6 @@ namespace Rasterization {
             bakeContext.guideCurveProvider = guideCurveProvider;
             bakeContext.guideCurveRegions = guideCurveRegions;
             bakeContext.offsetSeeds = &offsetSeeds;
-            bakeContext.transferTable = TransferTable::values();
 
             return waveformBuilder.build(curves, bakeContext, allocateTarget);
         }

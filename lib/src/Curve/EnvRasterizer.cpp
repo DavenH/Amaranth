@@ -717,7 +717,6 @@ void EnvRasterizer::bakeWaveform() {
     context.guideCurveProvider = guideCurveProvider;
     context.guideCurveRegions = &result.guideCurveRegions;
     context.offsetSeeds = &guideCurveOffsetSeeds;
-    context.transferTable = Rasterization::TransferTable::values();
 
     unsampleable = !Rasterization::WaveformBakePolicy().build(
             result.curves,

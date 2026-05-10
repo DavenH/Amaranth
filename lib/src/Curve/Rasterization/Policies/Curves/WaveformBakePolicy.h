@@ -8,6 +8,7 @@
 
 #include "../../WaveformBuffers.h"
 #include "../../GuideCurveOffsetSeeds.h"
+#include "CurvePolicies.h"
 #include "../../../Curve.h"
 #include "../../../GuideCurveProvider.h"
 #include "../../../../Obj/MorphPosition.h"
@@ -25,7 +26,6 @@ namespace Rasterization {
             GuideCurveProvider* guideCurveProvider {};
             std::vector<GuideCurveRegion>* guideCurveRegions {};
             const GuideCurveOffsetSeeds* offsetSeeds {};
-            const float* transferTable {};
 
             WaveformBufferRefs waveform;
         };
@@ -177,9 +177,10 @@ namespace Rasterization {
             int xferInc = Curve::resolution / curveRes;
             int thisShift = jmax(0, nextCurve.resIndex - thisCurve.resIndex);
             int nextShift = jmax(0, thisCurve.resIndex - nextCurve.resIndex);
+            const float* transferTable = TransferTable::values();
 
             for (int i = 0; i < curveRes; ++i) {
-                float xferValue = context.transferTable[i * xferInc];
+                float xferValue = transferTable[i * xferInc];
                 int indexA = (i << thisShift) + offset;
                 int indexB = i << nextShift;
 

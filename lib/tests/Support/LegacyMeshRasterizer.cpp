@@ -286,7 +286,6 @@ Rasterization::WaveformBakePolicy::Context MeshRasterizer::createWaveformBakeCon
     context.guideCurveProvider = guideCurveProvider;
     context.guideCurveRegions = &guideCurveRegions;
     context.offsetSeeds = &guideCurveOffsetSeeds;
-    context.transferTable = Rasterization::TransferTable::values();
 
     return context;
 }
