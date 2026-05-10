@@ -98,7 +98,7 @@ void Waveform3D::init() {
     interactor3D  	= surfInteractor;
     setInteractor(interactor3D);
     auto* rasterizer = &getObj(TimeRasterizer);
-    interactor3D->setRasterizer(rasterizer, rasterizer, rasterizer, rasterizer, rasterizer);
+    interactor3D->setRasterizer(rasterizer, rasterizer, &rasterizer->getRasterizerData(), rasterizer, rasterizer);
     surfInteractor->updateRastDims();
     surfInteractor->updateSelectionClient();
 

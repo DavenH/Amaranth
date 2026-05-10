@@ -35,7 +35,6 @@ class MeshRasterizer :
     ,   public Rasterization::GuideCurveBindableRasterizer
     ,   public Rasterization::MeshBindableRasterizer
     ,   public Rasterization::RasterizerSampler
-    ,   public Rasterization::RasterizerSnapshotProvider
     ,   public Rasterization::RasterizerUpdateTarget
     ,   public Rasterization::RasterizerVertexDomain {
 public:
@@ -166,8 +165,8 @@ public:
     const vector<Intercept>& getBackIcpts() const   { return backIcpts;                 }
     vector<ColorPoint>& getColorPoints()            { return colorPoints;               }
     RasterizerData& getRastData()                   { return rastArrays;                }
-    RasterizerData& getRasterizerData() override    { return rastArrays;                }
-    const RasterizerData& getRasterizerData() const override { return rastArrays;        }
+    RasterizerData& getRasterizerData()    { return rastArrays;                }
+    const RasterizerData& getRasterizerData() const { return rastArrays;        }
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
 
     void setBatchMode(bool batch)                   { batchMode = batch;                }

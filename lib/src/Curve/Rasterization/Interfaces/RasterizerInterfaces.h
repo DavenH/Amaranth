@@ -36,14 +36,6 @@ namespace Rasterization {
         virtual float samplePerfectly(double delta, Buffer<float> buffer, double phase) = 0;
     };
 
-    class RasterizerSnapshotProvider {
-    public:
-        virtual ~RasterizerSnapshotProvider() = default;
-
-        virtual RasterizerData& getRasterizerData() = 0;
-        virtual const RasterizerData& getRasterizerData() const = 0;
-    };
-
     class RasterizerUpdateTarget {
     public:
         virtual ~RasterizerUpdateTarget() = default;

@@ -1436,12 +1436,12 @@ void Interactor::snapToGrid(Vertex2& toSnap) {
 void Interactor::setRasterizer(
         Rasterization::MeshBindableRasterizer* meshRasterizer,
         Rasterization::RasterizerSampler* sampler,
-        Rasterization::RasterizerSnapshotProvider* snapshot,
+        RasterizerData* snapshot,
         Rasterization::RasterizerUpdateTarget* updateTarget,
         Rasterization::RasterizerVertexDomain* vertexDomain) {
     this->meshRasterizer = meshRasterizer;
     rasterizerSampler = sampler;
-    snapshotProvider = snapshot;
+    rasterizerData = snapshot;
     rasterizerUpdateTarget = updateTarget;
     rasterizerVertexDomain = vertexDomain;
 
@@ -1506,19 +1506,14 @@ float Interactor::sampleRasterizerAt(double angle) const {
     return rasterizerSampler->sampleAt(angle);
 }
 
-Rasterization::RasterizerSnapshotProvider* Interactor::getSnapshotProvider() const {
-    return snapshotProvider;
-}
-
 RasterizerData& Interactor::getRasterizerData() const {
     static RasterizerData emptyData;
 
-    auto* provider = getSnapshotProvider();
-    if (provider == nullptr) {
+    if (rasterizerData == nullptr) {
         return emptyData;
     }
 
-    return provider->getRasterizerData();
+    return *rasterizerData;
 }
 
 float Interactor::getDragMovementScale(VertCube* cube) {

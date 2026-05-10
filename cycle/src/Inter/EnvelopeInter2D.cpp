@@ -109,10 +109,10 @@ void EnvelopeInter2D::init() {
     layerType = getSetting(CurrentEnvGroup);
     if (layerType == LayerGroups::GroupWavePitch) {
         auto* rast = &getObj(EnvWavePitchRast);
-        setRasterizer(rast, rast, rast, rast, rast);
+        setRasterizer(rast, rast, &rast->getRasterizerData(), rast, rast);
     } else {
         auto* rast = getRast(layerType);
-        setRasterizer(rast, rast, rast, rast, rast);
+        setRasterizer(rast, rast, &rast->getRasterizerData(), rast, rast);
     }
 
     // TODO re-evaluate post mesh listener cleanup
@@ -633,9 +633,9 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
     EnvRasterizer* rast = getRast(envEnum);
     if (envEnum == LayerGroups::GroupWavePitch) {
         auto* wavePitchRast = &getObj(EnvWavePitchRast);
-        setRasterizer(wavePitchRast, wavePitchRast, wavePitchRast, wavePitchRast, wavePitchRast);
+        setRasterizer(wavePitchRast, wavePitchRast, &wavePitchRast->getRasterizerData(), wavePitchRast, wavePitchRast);
     } else {
-        setRasterizer(rast, rast, rast, rast, rast);
+        setRasterizer(rast, rast, &rast->getRasterizerData(), rast, rast);
     }
 
     if (getSetting(CurrentMorphAxis) == Vertex::Time && changedToOrFromVol) {

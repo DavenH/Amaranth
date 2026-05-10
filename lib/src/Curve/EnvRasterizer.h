@@ -34,7 +34,6 @@ class EnvRasterizer :
     ,   public Rasterization::GuideCurveBindableRasterizer
     ,   public Rasterization::MeshBindableRasterizer
     ,   public Rasterization::RasterizerSampler
-    ,   public Rasterization::RasterizerSnapshotProvider
     ,   public Rasterization::RasterizerUpdateTarget
     ,   public Rasterization::RasterizerVertexDomain
     ,   public SingletonAccessor {
@@ -130,8 +129,8 @@ public:
     void setMesh(Mesh* mesh) override;
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
     int getPaddingSize() const override { return paddingSize; }
-    RasterizerData& getRasterizerData() override { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
+    RasterizerData& getRasterizerData() { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const { return rasterizerData; }
     RasterizerData& getRastData() { return rasterizerData; }
 
     MorphPosition& getMorphPosition() { return request.morph; }

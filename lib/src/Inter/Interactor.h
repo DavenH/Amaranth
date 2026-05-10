@@ -32,7 +32,6 @@ class Vertex;
 namespace Rasterization {
     class MeshBindableRasterizer;
     class RasterizerSampler;
-    class RasterizerSnapshotProvider;
     class RasterizerUpdateTarget;
     class RasterizerVertexDomain;
 }
@@ -111,7 +110,7 @@ public:
     void setRasterizer(
             Rasterization::MeshBindableRasterizer* meshRasterizer,
             Rasterization::RasterizerSampler* sampler,
-            Rasterization::RasterizerSnapshotProvider* snapshot,
+            RasterizerData* snapshot,
             Rasterization::RasterizerUpdateTarget* updateTarget,
             Rasterization::RasterizerVertexDomain* vertexDomain);
     void snapToGrid(Vertex2& toSnap);
@@ -148,7 +147,6 @@ public:
     Rasterization::RasterizerSampler* getRasterizerSampler() const;
     bool                isRasterizerSampleableAt(float x) const;
     float               sampleRasterizerAt(double angle) const;
-    Rasterization::RasterizerSnapshotProvider* getSnapshotProvider() const;
     RasterizerData&     getRasterizerData() const;
     MorphPosition       getOffsetPosition(bool withDepths)    { return positioner->getOffsetPosition(withDepths); }
     MorphPosition       getMorphPosition()                    { return positioner->getMorphPosition(); }
@@ -270,7 +268,7 @@ protected:
     MorphPositioner*    positioner;
     Rasterization::MeshBindableRasterizer* meshRasterizer {};
     Rasterization::RasterizerSampler* rasterizerSampler {};
-    Rasterization::RasterizerSnapshotProvider* snapshotProvider {};
+    RasterizerData* rasterizerData {};
     Rasterization::RasterizerUpdateTarget* rasterizerUpdateTarget {};
     Rasterization::RasterizerVertexDomain* rasterizerVertexDomain {};
 

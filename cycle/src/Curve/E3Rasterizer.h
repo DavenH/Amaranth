@@ -17,7 +17,6 @@ class E3Rasterizer :
     ,   public Rasterization::GuideCurveBindableRasterizer
     ,   public Rasterization::MeshBindableRasterizer
     ,   public Rasterization::RasterizerSampler
-    ,   public Rasterization::RasterizerSnapshotProvider
     ,   public Rasterization::RasterizerUpdateTarget
     ,   public Rasterization::RasterizerVertexDomain {
 public:
@@ -43,8 +42,8 @@ public:
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override;
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() override { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
+    RasterizerData& getRasterizerData() { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const { return rasterizerData; }
 
     vector<Column>& getColumns() { return columns; }
     Buffer<float> getArray() { return columnArray; }

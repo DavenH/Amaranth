@@ -48,7 +48,7 @@ EffectPanel::EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZ
     setRasterizer(
             &localRasterizer,
             &localRasterizer,
-            &localRasterizer,
+            &localRasterizer.getRasterizerData(),
             &localRasterizer,
             &localRasterizer);
     interactor = this;
