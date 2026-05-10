@@ -6,7 +6,7 @@
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Rasterizer2D.h"
-#include "../src/Curve/Rasterization/Pipelines/PointListRasterizationPipeline.h"
+#include "../src/Curve/Rasterization/Pipelines/CurveWaveformPipeline.h"
 
 namespace {
     struct CurveTableScope {
@@ -59,7 +59,7 @@ namespace {
     }
 }
 
-TEST_CASE("Rasterizer2D rasterizes non-cyclic point lists through point-list pipeline", "[rasterization][pointlist]") {
+TEST_CASE("Rasterizer2D rasterizes non-cyclic point lists through curve waveform pipeline", "[rasterization][pointlist]") {
     CurveTableScope curveTableScope;
     std::vector<Intercept> points = makePointList();
 
@@ -75,7 +75,7 @@ TEST_CASE("Rasterizer2D rasterizes non-cyclic point lists through point-list pip
     REQUIRE(points.back().x == Catch::Approx(0.85f));
 }
 
-TEST_CASE("Rasterizer2D rasterizes cyclic point lists through point-list pipeline", "[rasterization][pointlist]") {
+TEST_CASE("Rasterizer2D rasterizes cyclic point lists through curve waveform pipeline", "[rasterization][pointlist]") {
     CurveTableScope curveTableScope;
     std::vector<Intercept> points = makePointList();
 
@@ -91,7 +91,7 @@ TEST_CASE("Rasterizer2D rasterizes cyclic point lists through point-list pipelin
     REQUIRE(rasterizer.getWaveX().back() > 1.f);
 }
 
-TEST_CASE("PointListRasterizationPipeline matches non-cyclic Rasterizer2D output", "[rasterization][pointlist][pipeline]") {
+TEST_CASE("CurveWaveformPipeline matches non-cyclic Rasterizer2D output", "[rasterization][pointlist][pipeline]") {
     CurveTableScope curveTableScope;
     std::vector<Intercept> referencePoints = makePointList();
     std::vector<Intercept> pipelinePoints = makePointList();
@@ -101,8 +101,9 @@ TEST_CASE("PointListRasterizationPipeline matches non-cyclic Rasterizer2D output
 
     Rasterization::RasterizationRequest request;
     request.cyclic = false;
-    Rasterization::PointListRasterizationPipeline pipeline;
-    const auto& output = pipeline.render(pipelinePoints, request);
+    Rasterization::CurveWaveformPipeline pipeline;
+    Rasterization::RenderResult output;
+    pipeline.renderIntercepts(pipelinePoints, output, request);
 
     REQUIRE(output.sampleable);
     REQUIRE(output.waveform.waveX.size() == reference.getWaveX().size());
@@ -115,7 +116,7 @@ TEST_CASE("PointListRasterizationPipeline matches non-cyclic Rasterizer2D output
     }
 }
 
-TEST_CASE("PointListRasterizationPipeline matches cyclic Rasterizer2D output", "[rasterization][pointlist][pipeline]") {
+TEST_CASE("CurveWaveformPipeline matches cyclic Rasterizer2D output", "[rasterization][pointlist][pipeline]") {
     CurveTableScope curveTableScope;
     std::vector<Intercept> referencePoints = makePointList();
     std::vector<Intercept> pipelinePoints = makePointList();
@@ -125,8 +126,9 @@ TEST_CASE("PointListRasterizationPipeline matches cyclic Rasterizer2D output", "
 
     Rasterization::RasterizationRequest request;
     request.cyclic = true;
-    Rasterization::PointListRasterizationPipeline pipeline;
-    const auto& output = pipeline.render(pipelinePoints, request);
+    Rasterization::CurveWaveformPipeline pipeline;
+    Rasterization::RenderResult output;
+    pipeline.renderIntercepts(pipelinePoints, output, request);
 
     REQUIRE(output.sampleable);
     REQUIRE(output.waveform.waveX.size() == reference.getWaveX().size());
@@ -141,16 +143,17 @@ TEST_CASE("PointListRasterizationPipeline matches cyclic Rasterizer2D output", "
     }
 }
 
-TEST_CASE("PointListRasterizationPipeline marks empty and single-point inputs unsampleable", "[rasterization][pointlist][pipeline]") {
+TEST_CASE("CurveWaveformPipeline marks empty and single-point inputs unsampleable", "[rasterization][pointlist][pipeline]") {
     CurveTableScope curveTableScope;
-    Rasterization::PointListRasterizationPipeline pipeline;
+    Rasterization::CurveWaveformPipeline pipeline;
     Rasterization::RasterizationRequest request;
+    Rasterization::RenderResult output;
 
     std::vector<Intercept> emptyPoints;
-    REQUIRE_FALSE(pipeline.render(emptyPoints, request).sampleable);
+    REQUIRE_FALSE(pipeline.renderIntercepts(emptyPoints, output, request).sampleable);
 
     std::vector<Intercept> singlePoint { Intercept(0.5f, 0.5f) };
-    REQUIRE_FALSE(pipeline.render(singlePoint, request).sampleable);
+    REQUIRE_FALSE(pipeline.renderIntercepts(singlePoint, output, request).sampleable);
 }
 
 TEST_CASE("Rasterizer2D updates a partial waveform after a point edit", "[rasterization][pointlist]") {

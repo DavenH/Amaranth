@@ -5,8 +5,8 @@
 #include "Builders/RasterizerSnapshotBuilder.h"
 #include "GuideCurveOffsetSeeds.h"
 #include "Interpolation/TrilinearMeshSlicer.h"
+#include "Pipelines/CurveWaveformPipeline.h"
 #include "Pipelines/MeshSlicePipeline.h"
-#include "Pipelines/PointListRasterizationPipeline.h"
 #include "Policies/Mesh/GuideCurvePolicy.h"
 #include "Sampling/WaveformSampler.h"
 
@@ -51,8 +51,9 @@ namespace Rasterization {
 
             meshIntercepts = meshOutput.intercepts;
             meshColorPoints = meshOutput.colorPoints;
-            waveformOutput = &waveformPipeline.render(
+            waveformOutput = &waveformPipeline.renderIntercepts(
                     meshIntercepts,
+                    waveformResult,
                     request,
                     guideCurveProvider,
                     &guideCurveOffsetSeeds);
@@ -148,7 +149,8 @@ namespace Rasterization {
         RasterizationRequest request;
         GuideCurveOffsetSeeds guideCurveOffsetSeeds;
         MeshSlicePipeline meshPipeline;
-        PointListRasterizationPipeline waveformPipeline;
+        CurveWaveformPipeline waveformPipeline;
+        RenderResult waveformResult;
         RenderResult const* waveformOutput {};
 
         std::vector<Intercept> meshIntercepts;

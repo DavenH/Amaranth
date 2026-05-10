@@ -2,7 +2,7 @@
 
 #include "Intercept.h"
 #include "Curve.h"
-#include "Rasterization/Pipelines/PointListRasterizationPipeline.h"
+#include "Rasterization/Pipelines/CurveWaveformPipeline.h"
 #include "Rasterization/Policies/Curves/CurvePolicies.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
@@ -180,7 +180,6 @@ public:
 
 private:
     void renderPointListCrossPoints();
-    void updateBuffers(int size) { result.waveform.place(result.waveformMemory, size); }
 
 protected:
     Rasterization::RenderResult result;
@@ -202,18 +201,13 @@ inline void Rasterizer2D::renderPointListCrossPoints() {
     Rasterization::RasterizationRequest request = createRasterizationRequest();
     request.cyclic = cyclic;
 
-    Rasterization::PointListRasterizationPipeline pipeline;
-    const auto& output = pipeline.render(points, request);
-    if (!output.sampleable) {
+    Rasterization::CurveWaveformPipeline pipeline;
+    pipeline.renderIntercepts(points, result, request);
+    if (!result.sampleable) {
         cleanUp();
         return;
     }
 
-    updateBuffers(output.waveform.waveX.size());
-    result.frontPadding = output.frontPadding;
-    result.backPadding = output.backPadding;
-    result.curves = output.curves;
-    paddingSize = output.paddingSize;
-    unsampleable = !output.sampleable;
-    result.waveform.copyFrom(output.waveform);
+    paddingSize = result.paddingSize;
+    unsampleable = false;
 }

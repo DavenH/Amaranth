@@ -1,11 +1,14 @@
 #pragma once
 
+#include <algorithm>
 #include <vector>
 
 #include "../GuideCurveOffsetSeeds.h"
+#include "../Policies/Core/PaddingPolicy.h"
 #include "../Policies/Curves/CurvePolicies.h"
 #include "../Policies/Curves/WaveformBakePolicy.h"
 #include "../RasterizationRequest.h"
+#include "../RenderResult.h"
 #include "../../Curve.h"
 
 namespace Rasterization {
@@ -34,7 +37,65 @@ namespace Rasterization {
                     allocateTarget);
         }
 
+        const RenderResult& renderIntercepts(
+                std::vector<Intercept>& intercepts,
+                RenderResult& output,
+                const RasterizationRequest& request,
+                GuideCurveProvider* guideCurveProvider = nullptr,
+                GuideCurveOffsetSeeds* offsetSeeds = nullptr) {
+            output.clear();
+            output.paddingSize = 2;
+
+            if (intercepts.empty()) {
+                return output;
+            }
+
+            std::sort(intercepts.begin(), intercepts.end());
+            buildCurves(intercepts, output, request);
+
+            if (output.curves.size() < 2) {
+                return output;
+            }
+
+            Context context;
+            context.request = &request;
+            context.offsetSeeds = offsetSeeds != nullptr ? offsetSeeds : &fallbackOffsetSeeds;
+            context.guideCurveProvider = guideCurveProvider;
+            context.guideCurveRegions = &output.guideCurveRegions;
+            context.paddingSize = output.paddingSize;
+
+            output.sampleable = render(
+                    output.curves,
+                    context,
+                    [&output](int totalRes) {
+                        output.waveform.place(output.waveformMemory, totalRes);
+                        return WaveformBufferRefs(output.waveform);
+                    });
+
+            return output;
+        }
+
     private:
+        static void buildCurves(
+                std::vector<Intercept>& intercepts,
+                RenderResult& output,
+                const RasterizationRequest& request) {
+            if (request.cyclic) {
+                PaddingPolicyContext context;
+                context.interceptPadding = request.interceptPadding;
+                output.paddingSize = CyclicPaddingPolicy(context).build(
+                        intercepts,
+                        output.curves,
+                        output.frontPadding,
+                        output.backPadding);
+            } else {
+                PaddingPolicyContext context;
+                context.minimumX = request.xMinimum;
+                context.maximumX = request.xMaximum;
+                output.paddingSize = NonCyclicPaddingPolicy(context).build(intercepts, output.curves);
+            }
+        }
+
         static void applyResolution(
                 std::vector<Curve>& curves,
                 const RasterizationRequest& request,
@@ -70,5 +131,6 @@ namespace Rasterization {
         }
 
         WaveformBakePolicy waveformBuilder;
+        GuideCurveOffsetSeeds fallbackOffsetSeeds;
     };
 }

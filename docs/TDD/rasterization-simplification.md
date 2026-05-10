@@ -21,10 +21,10 @@ replacement is still domain-shaped:
 
 - `FXRasterizer` uses `FxRasterizerAdapter`, `ComposedFxRasterizer`,
   `FxComposer`, and `FxRasterizationPipeline`.
-- mesh waveform paths use `ComposedMeshWaveformRasterizer`, `MeshComposer`,
-  `ComposedMeshRasterizer`, `MeshSlicePipeline`, and
-  `PointListRasterizationPipeline`.
-- voice paths use separate voice slice and rasterization pipelines.
+- mesh waveform paths now share `CurveWaveformPipeline` for curve/waveform
+  construction, but still retain a separate `MeshSlicePipeline`.
+- voice paths no longer have a separate voice slice pipeline, but
+  `VoiceMeshRasterizer` still has a rasterizer-shaped owner surface.
 - envelope paths still combine rasterization, playback state, marker handling,
   loop/release behavior, and audio rendering.
 - many small interfaces mirror the old broad `MeshRasterizer` public surface:
@@ -380,7 +380,6 @@ Initial transitional deletion targets:
 - `ComposedMeshRasterizer`,
 - `MeshComposer`,
 - `VoiceRasterizationPipeline`,
-- `VoiceSlicePipeline`,
 - facade wrappers that only forward to policies,
 - interface headers whose callers are not genuinely disjoint.
 
@@ -448,6 +447,8 @@ Tasks:
 
 - delete `ComposedPointListRasterizer` and `PointListComposer`,
 - replace `PointListRasterizationPipeline::Output` with `RenderResult`,
+- delete `PointListRasterizationPipeline` after `CurveWaveformPipeline` owns
+  generic intercept-to-waveform rendering,
 - replace `RasterizerComposer::fx()` and `pointList()` with one composer entry
   point or thin factory that returns the same concrete rasterizer shape,
 - keep domain-specific helper functions only as thin presets if they reduce
