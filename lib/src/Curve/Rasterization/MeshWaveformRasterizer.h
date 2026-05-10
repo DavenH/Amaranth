@@ -2,9 +2,9 @@
 
 #include <vector>
 
+#include "Builders/RasterizerSnapshotBuilder.h"
 #include "GuideCurveOffsetSeeds.h"
 #include "Interpolation/TrilinearMeshSlicer.h"
-#include "Policies/Core/SnapshotPolicy.h"
 #include "Pipelines/MeshSlicePipeline.h"
 #include "Pipelines/PointListRasterizationPipeline.h"
 #include "Policies/Mesh/GuideCurvePolicy.h"

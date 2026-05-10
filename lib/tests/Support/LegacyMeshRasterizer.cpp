@@ -15,7 +15,6 @@
 #include <Curve/Rasterization/Policies/Core/InterceptRestrictionPolicy.h>
 #include <Curve/Rasterization/Policies/Core/PaddingPolicy.h>
 #include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
-#include <Curve/Rasterization/Policies/Core/SnapshotPolicy.h>
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
 #include <Curve/Rasterization/Builders/TransferTable.h>
 #include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>

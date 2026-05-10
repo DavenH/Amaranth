@@ -8,7 +8,6 @@
 #include "Rasterization/Policies/Core/InterceptRestrictionPolicy.h"
 #include "Rasterization/Policies/Core/PaddingPolicy.h"
 #include "Rasterization/Policies/Core/PointScalingPolicy.h"
-#include "Rasterization/Policies/Core/SnapshotPolicy.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
 
 namespace {
