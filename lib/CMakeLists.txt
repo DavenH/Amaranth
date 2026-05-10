@@ -9,6 +9,8 @@ file(GLOB_RECURSE LIB_SOURCES
         "${JUCE_DIR}/*.c"
 )
 
+list(FILTER LIB_SOURCES EXCLUDE REGEX ".*/Curve/MeshRasterizer\\.cpp$")
+
 if(BUILD_TYPE STREQUAL "Standalone")
     # These compile to empty objects in standalone/test builds, which only adds ranlib noise.
     list(FILTER LIB_SOURCES EXCLUDE REGEX ".*/(PluginProcessor|include_juce_audio_processors_(ara|lv2_libs))\\.cpp$")
@@ -145,6 +147,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         file(GLOB_RECURSE TEST_SOURCES
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h"
+        )
+        list(APPEND TEST_SOURCES
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/Curve/MeshRasterizer.cpp"
         )
 
 #        list(APPEND TEST_SOURCES ${IM_SOURCES})
