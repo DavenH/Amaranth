@@ -208,7 +208,7 @@ void FileManager::doPostPresetLoad() {
         for (int i = 0; i < multisample.size(); ++i) {
             if (PitchedSample* sample = multisample.getSampleAt(i)) {
                 auto& pitchRast = getObj(EnvPitchRast);
-                sample->createPeriodsFromEnv(meshLibrary, &pitchRast, &pitchRast, &pitchRast);
+                sample->createPeriodsFromEnv(meshLibrary, &pitchRast);
             }
         }
 

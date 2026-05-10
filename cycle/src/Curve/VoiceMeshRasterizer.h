@@ -20,11 +20,7 @@ class CycleState;
 
 class VoiceMeshRasterizer :
         public SingletonAccessor
-    ,   public Rasterization::GuideCurveBindableRasterizer
-    ,   public Rasterization::MeshBindableRasterizer
-    ,   public Rasterization::RasterizerSampler
-    ,   public Rasterization::RasterizerUpdateTarget
-    ,   public Rasterization::RasterizerVertexDomain {
+    ,   public Rasterization::Rasterizer {
 private:
 	JUCE_LEAK_DETECTOR(VoiceMeshRasterizer)
 
@@ -75,8 +71,8 @@ public:
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override;
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const { return rasterizerData; }
+    RasterizerData& getRasterizerData() override { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
 
     MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
     void setCalcDepthDimensions(bool calc) { rasterizer.getRequest().calcDepthDimensions = calc; }

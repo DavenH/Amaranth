@@ -31,11 +31,7 @@ class SingletonRepo;
  */
 class EnvRasterizer :
         public Updateable
-    ,   public Rasterization::GuideCurveBindableRasterizer
-    ,   public Rasterization::MeshBindableRasterizer
-    ,   public Rasterization::RasterizerSampler
-    ,   public Rasterization::RasterizerUpdateTarget
-    ,   public Rasterization::RasterizerVertexDomain
+    ,   public Rasterization::Rasterizer
     ,   public SingletonAccessor {
 public:
     using GuideCurveContext = Rasterization::GuideCurveContext;
@@ -129,8 +125,8 @@ public:
     void setMesh(Mesh* mesh) override;
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
     int getPaddingSize() const override { return paddingSize; }
-    RasterizerData& getRasterizerData() { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const { return rasterizerData; }
+    RasterizerData& getRasterizerData() override { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
     RasterizerData& getRastData() { return rasterizerData; }
 
     MorphPosition& getMorphPosition() { return request.morph; }

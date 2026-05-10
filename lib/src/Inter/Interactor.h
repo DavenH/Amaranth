@@ -30,10 +30,7 @@ struct RasterizerData;
 class Vertex;
 
 namespace Rasterization {
-    class MeshBindableRasterizer;
-    class RasterizerSampler;
-    class RasterizerUpdateTarget;
-    class RasterizerVertexDomain;
+    class Rasterizer;
 }
 
 typedef vector<Vertex2>::iterator CoordIter;
@@ -107,12 +104,7 @@ public:
     void setAxeSize(float size);
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
-    void setRasterizer(
-            Rasterization::MeshBindableRasterizer* meshRasterizer,
-            Rasterization::RasterizerSampler* sampler,
-            RasterizerData* snapshot,
-            Rasterization::RasterizerUpdateTarget* updateTarget,
-            Rasterization::RasterizerVertexDomain* vertexDomain);
+    void setRasterizer(Rasterization::Rasterizer* rasterizer);
     void snapToGrid(Vertex2& toSnap);
     void translateVerts(vector<VertexFrame>& verts, const Vertex2& diff);
     void updateSelectionFrames();
@@ -134,9 +126,8 @@ public:
     const vector<VertexFrame>& getSelectedMovingVerts() const { return state.selectedFrame;     }
     CollisionDetector&  getCollisionDetector()                { return collisionDetector;   }
     CriticalSection&    getLock()                             { return vertexLock;          }
-    bool                hasRasterizer() const                 { return meshRasterizer != nullptr; }
-    Rasterization::MeshBindableRasterizer* getMeshBindableRasterizer() const { return meshRasterizer; }
-    Rasterization::RasterizerUpdateTarget* getRasterizerUpdateTarget() const { return rasterizerUpdateTarget; }
+    bool                hasRasterizer() const                 { return rasterizer != nullptr; }
+    Rasterization::Rasterizer* getRasterizer() const          { return rasterizer; }
     bool                rasterizerWrapsVertices() const;
     int                 getRasterizerPaddingSize() const;
     GuideCurveProvider* getGuideCurveProvider() const;
@@ -144,7 +135,6 @@ public:
     void                setRasterizerMesh(Mesh* mesh);
     void                performRasterizerUpdate(UpdateType updateType);
     void                updateRasterizer(UpdateType updateType);
-    Rasterization::RasterizerSampler* getRasterizerSampler() const;
     bool                isRasterizerSampleableAt(float x) const;
     float               sampleRasterizerAt(double angle) const;
     RasterizerData&     getRasterizerData() const;
@@ -266,11 +256,7 @@ protected:
     Point<int> lastPolledMouse;
 
     MorphPositioner*    positioner;
-    Rasterization::MeshBindableRasterizer* meshRasterizer {};
-    Rasterization::RasterizerSampler* rasterizerSampler {};
-    RasterizerData* rasterizerData {};
-    Rasterization::RasterizerUpdateTarget* rasterizerUpdateTarget {};
-    Rasterization::RasterizerVertexDomain* rasterizerVertexDomain {};
+    Rasterization::Rasterizer* rasterizer {};
 
     CriticalSection     vertexLock;
     CollisionDetector   collisionDetector;

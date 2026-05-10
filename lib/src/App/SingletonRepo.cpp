@@ -121,7 +121,7 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
         panels.add(panel);
     }
 
-    if(auto* rasterizer = dynamic_cast<Rasterization::GuideCurveBindableRasterizer*>(accessor)) {
+    if(auto* rasterizer = dynamic_cast<Rasterization::Rasterizer*>(accessor)) {
         rasterizers.add(rasterizer);
     }
 }
@@ -139,7 +139,7 @@ void SingletonRepo::addExternal(SingletonAccessor* accessor, int order) {
         panels.add(panel);
     }
 
-    if(auto* rasterizer = dynamic_cast<Rasterization::GuideCurveBindableRasterizer*>(accessor)) {
+    if(auto* rasterizer = dynamic_cast<Rasterization::Rasterizer*>(accessor)) {
         rasterizers.add(rasterizer);
     }
 }

@@ -109,10 +109,10 @@ void EnvelopeInter2D::init() {
     layerType = getSetting(CurrentEnvGroup);
     if (layerType == LayerGroups::GroupWavePitch) {
         auto* rast = &getObj(EnvWavePitchRast);
-        setRasterizer(rast, rast, &rast->getRasterizerData(), rast, rast);
+        setRasterizer(rast);
     } else {
         auto* rast = getRast(layerType);
-        setRasterizer(rast, rast, &rast->getRasterizerData(), rast, rast);
+        setRasterizer(rast);
     }
 
     // TODO re-evaluate post mesh listener cleanup
@@ -137,7 +137,7 @@ void EnvelopeInter2D::doExtraMouseUp() {
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
                 auto& pitchRast = getObj(EnvPitchRast);
-                sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast, &pitchRast, &pitchRast);
+                sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast);
             }
 
             doUpdate(SourceSpectrum3D);
@@ -633,9 +633,9 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
     EnvRasterizer* rast = getRast(envEnum);
     if (envEnum == LayerGroups::GroupWavePitch) {
         auto* wavePitchRast = &getObj(EnvWavePitchRast);
-        setRasterizer(wavePitchRast, wavePitchRast, &wavePitchRast->getRasterizerData(), wavePitchRast, wavePitchRast);
+        setRasterizer(wavePitchRast);
     } else {
-        setRasterizer(rast, rast, &rast->getRasterizerData(), rast, rast);
+        setRasterizer(rast);
     }
 
     if (getSetting(CurrentMorphAxis) == Vertex::Time && changedToOrFromVol) {
@@ -697,7 +697,7 @@ void EnvelopeInter2D::doExtraMouseDrag(const MouseEvent &e) {
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
                 auto& pitchRast = getObj(EnvPitchRast);
-                sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast, &pitchRast, &pitchRast);
+                sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast);
             }
         }
 

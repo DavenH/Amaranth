@@ -63,9 +63,7 @@ public:
     void createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti);
     void createPeriodsFromEnv(
             MeshLibrary& meshLibrary,
-            Rasterization::MeshBindableRasterizer* meshRasterizer,
-            Rasterization::RasterizerUpdateTarget* updateTarget,
-            Rasterization::RasterizerSampler* sampler);
+            Rasterization::Rasterizer* rasterizer);
     void shiftOctave(bool up);
 
     void writeXML(XmlElement* element) const override;

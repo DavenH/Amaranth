@@ -17,11 +17,7 @@ class GraphicRasterizer :
         public Updateable
     ,	public DynamicDetailUpdateable
     ,	public virtual SingletonAccessor
-    ,   public Rasterization::GuideCurveBindableRasterizer
-    ,   public Rasterization::MeshBindableRasterizer
-    ,   public Rasterization::RasterizerSampler
-    ,   public Rasterization::RasterizerUpdateTarget
-    ,   public Rasterization::RasterizerVertexDomain {
+    ,   public Rasterization::Rasterizer {
 public:
     enum class Scaling {
         Unipolar = 0,
@@ -101,8 +97,8 @@ public:
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override { return rasterizer.getPaddingSize(); }
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const { return rasterizerData; }
+    RasterizerData& getRasterizerData() override { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
     RasterizerData& getRastData() { return rasterizerData; }
     RenderState createRenderState() {
         RenderState state;

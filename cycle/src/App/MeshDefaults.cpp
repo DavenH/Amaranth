@@ -199,7 +199,7 @@ namespace {
 
         rast->setMesh(mesh);
         rast->setMode(EnvRasterizer::NormalState);
-        interactor.setRasterizer(rast, rast, &rast->getRasterizerData(), rast, rast);
+        interactor.setRasterizer(rast);
         interactor.layerType = layerType;
         interactor.suspendUndo = true;
 
@@ -247,7 +247,7 @@ namespace {
         getSetting(CurrentEnvGroup) = originalEnv;
         interactor.layerType = originalLayerType;
 
-        interactor.setRasterizer(originalRast, originalRast, &originalRast->getRasterizerData(), originalRast, originalRast);
+        interactor.setRasterizer(originalRast);
     }
 }
 

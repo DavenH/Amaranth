@@ -226,8 +226,8 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
 
     dynRangeKnob->setName(isMags ? "range" : "width");
 
-    f3.setRasterizer(rasterizer, rasterizer, &rasterizer->getRasterizerData(), rasterizer, rasterizer);
-    f2.setRasterizer(rasterizer, rasterizer, &rasterizer->getRasterizerData(), rasterizer, rasterizer);
+    f3.setRasterizer(rasterizer);
+    f2.setRasterizer(rasterizer);
     f3.updateSelectionClient();
     panelControls->refreshSelector();
 
@@ -612,7 +612,7 @@ CriticalSection& Spectrum3D::getGridLock() {
 }
 
 bool Spectrum3D::isSurfaceDetailReduced() {
-    auto* detailProvider = dynamic_cast<DynamicDetailUpdateable*>(interactor->getMeshBindableRasterizer());
+    auto* detailProvider = dynamic_cast<DynamicDetailUpdateable*>(interactor->getRasterizer());
     return detailProvider != nullptr && detailProvider->isDetailReduced();
 }
 

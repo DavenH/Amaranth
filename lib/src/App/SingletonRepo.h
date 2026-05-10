@@ -12,7 +12,7 @@ class GuideCurveProvider;
 class Panel;
 
 namespace Rasterization {
-    class GuideCurveBindableRasterizer;
+    class Rasterizer;
 }
 
 using namespace juce;
@@ -91,7 +91,7 @@ protected:
 
     Array<Savable*> saveSources;
     Array<Panel*> panels;
-    Array<Rasterization::GuideCurveBindableRasterizer*> rasterizers;
+    Array<Rasterization::Rasterizer*> rasterizers;
 
     HashMap<String, SingletonAccessor*> hashes;
     OwnedArray<SingletonAccessor> objects;

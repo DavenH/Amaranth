@@ -19,11 +19,7 @@ using std::vector;
 class FXRasterizer :
         public Updateable
     ,   public SingletonAccessor
-    ,   public Rasterization::GuideCurveBindableRasterizer
-    ,   public Rasterization::MeshBindableRasterizer
-    ,   public Rasterization::RasterizerSampler
-    ,   public Rasterization::RasterizerUpdateTarget
-    ,   public Rasterization::RasterizerVertexDomain {
+    ,   public Rasterization::Rasterizer {
     JUCE_LEAK_DETECTOR(FXRasterizer)
 
 public:
@@ -65,8 +61,8 @@ public:
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
     const vector<Curve>& getCurves() const { return result.curves; }
     vector<ColorPoint>& getColorPoints() { return result.colorPoints; }
-    RasterizerData& getRasterizerData() { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const { return rasterizerData; }
+    RasterizerData& getRasterizerData() override { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
     RasterizerData& getRastData() { return rasterizerData; }
 
     void setDims(const Dimensions& dims) override { this->dims = dims; }

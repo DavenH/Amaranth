@@ -185,13 +185,11 @@ void PitchedSample::createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti)
 
 void PitchedSample::createPeriodsFromEnv(
         MeshLibrary& meshLibrary,
-        Rasterization::MeshBindableRasterizer* meshRasterizer,
-        Rasterization::RasterizerUpdateTarget* updateTarget,
-        Rasterization::RasterizerSampler* sampler) {
+        Rasterization::Rasterizer* rasterizer) {
     jassert(fundNote > 0);
     progressMark
 
-    if(fundNote < 0 || meshRasterizer == nullptr || updateTarget == nullptr || sampler == nullptr) {
+    if(fundNote < 0 || rasterizer == nullptr) {
         return;
     }
 
@@ -204,10 +202,10 @@ void PitchedSample::createPeriodsFromEnv(
         return;
     }
 
-    meshRasterizer->setMesh(mesh);
-    updateTarget->performUpdate(Update);
+    rasterizer->setMesh(mesh);
+    rasterizer->performUpdate(Update);
 
-    if(sampler->isSampleable())
+    if(rasterizer->isSampleable())
     {
         periods.clear();
 
@@ -219,8 +217,8 @@ void PitchedSample::createPeriodsFromEnv(
         while ((int) position < sz) {
             float x = position / float(sz);
 
-            if (sampler->isSampleableAt(x)) {
-                float y = sampler->sampleAt(x, currentIndex);
+            if (rasterizer->isSampleableAt(x)) {
+                float y = rasterizer->sampleAt(x, currentIndex);
 
                 NumberUtils::constrain(y, 0.1f, 0.9f);
                 float value = NumberUtils::unitPitchToSemis(y);

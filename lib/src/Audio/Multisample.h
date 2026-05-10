@@ -36,9 +36,7 @@ public:
 
     Multisample(
             SingletonRepo* repo,
-            Rasterization::MeshBindableRasterizer* meshRasterizer,
-            Rasterization::RasterizerUpdateTarget* updateTarget,
-            Rasterization::RasterizerSampler* sampler);
+            Rasterization::Rasterizer* pitchRasterizer);
 
     void clear();
     void createFromDirectory(const File& directory);
@@ -73,9 +71,7 @@ private:
     void getModRanges(Range<int>& noteRange, Range<float>& velRange);
     void ensureSampleHasMeshLayer(PitchedSample* sample, int preferredIndex = -1);
 
-    Rasterization::MeshBindableRasterizer* meshRasterizer;
-    Rasterization::RasterizerUpdateTarget* rasterizerUpdateTarget;
-    Rasterization::RasterizerSampler* rasterizerSampler;
+    Rasterization::Rasterizer* pitchRasterizer;
     PitchedSample* current;
     CriticalSection audioLock;
     ListenerList<Listener> listeners;

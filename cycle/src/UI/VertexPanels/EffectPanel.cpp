@@ -45,12 +45,7 @@ EffectPanel::EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZ
     colorA = Color(0.8f, 0.8, 0.9f);
     colorB = Color(0.8f, 0.8, 0.9f);
 
-    setRasterizer(
-            &localRasterizer,
-            &localRasterizer,
-            &localRasterizer.getRasterizerData(),
-            &localRasterizer,
-            &localRasterizer);
+    setRasterizer(&localRasterizer);
     interactor = this;
 
     vertexProps.sliderApplicable[Vertex::Time] 	= false;

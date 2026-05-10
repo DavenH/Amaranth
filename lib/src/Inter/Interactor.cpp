@@ -1433,87 +1433,74 @@ void Interactor::snapToGrid(Vertex2& toSnap) {
     toSnap.y /= sizeY;
 }
 
-void Interactor::setRasterizer(
-        Rasterization::MeshBindableRasterizer* meshRasterizer,
-        Rasterization::RasterizerSampler* sampler,
-        RasterizerData* snapshot,
-        Rasterization::RasterizerUpdateTarget* updateTarget,
-        Rasterization::RasterizerVertexDomain* vertexDomain) {
-    this->meshRasterizer = meshRasterizer;
-    rasterizerSampler = sampler;
-    rasterizerData = snapshot;
-    rasterizerUpdateTarget = updateTarget;
-    rasterizerVertexDomain = vertexDomain;
+void Interactor::setRasterizer(Rasterization::Rasterizer* rasterizer) {
+    this->rasterizer = rasterizer;
 
-    if (this->rasterizerVertexDomain != nullptr) {
+    if (this->rasterizer != nullptr) {
         setRasterizerDims(dims);
     }
 }
 
 bool Interactor::rasterizerWrapsVertices() const {
-    return rasterizerVertexDomain != nullptr && rasterizerVertexDomain->wrapsVertices();
+    return rasterizer != nullptr && rasterizer->wrapsVertices();
 }
 
 int Interactor::getRasterizerPaddingSize() const {
-    return rasterizerVertexDomain != nullptr ? rasterizerVertexDomain->getPaddingSize() : 0;
+    return rasterizer != nullptr ? rasterizer->getPaddingSize() : 0;
 }
 
 GuideCurveProvider* Interactor::getGuideCurveProvider() const {
-    return rasterizerVertexDomain != nullptr ? rasterizerVertexDomain->getGuideCurveProvider() : nullptr;
+    return rasterizer != nullptr ? rasterizer->getGuideCurveProvider() : nullptr;
 }
 
 void Interactor::setRasterizerDims(const Dimensions& newDims) {
-    if (rasterizerVertexDomain != nullptr) {
-        rasterizerVertexDomain->setDims(newDims);
+    if (rasterizer != nullptr) {
+        rasterizer->setDims(newDims);
     }
 }
 
 void Interactor::setRasterizerMesh(Mesh* mesh) {
-    if (meshRasterizer != nullptr) {
-        meshRasterizer->setMesh(mesh);
+    if (rasterizer != nullptr) {
+        rasterizer->setMesh(mesh);
     }
 }
 
 void Interactor::performRasterizerUpdate(UpdateType updateType) {
-    if (rasterizerUpdateTarget != nullptr) {
-        rasterizerUpdateTarget->performUpdate(updateType);
+    if (rasterizer != nullptr) {
+        rasterizer->performUpdate(updateType);
     }
 }
 
 void Interactor::updateRasterizer(UpdateType updateType) {
-    if (rasterizerUpdateTarget != nullptr) {
-        rasterizerUpdateTarget->updateRasterizer(updateType);
+    if (rasterizer != nullptr) {
+        rasterizer->updateRasterizer(updateType);
     }
-}
-
-Rasterization::RasterizerSampler* Interactor::getRasterizerSampler() const {
-    return rasterizerSampler;
 }
 
 bool Interactor::isRasterizerSampleableAt(float x) const {
-    if (rasterizerSampler == nullptr) {
+    if (rasterizer == nullptr) {
         return false;
     }
 
-    return rasterizerSampler->isSampleableAt(x);
+    return rasterizer->isSampleableAt(x);
 }
 
 float Interactor::sampleRasterizerAt(double angle) const {
-    if (rasterizerSampler == nullptr) {
+    if (rasterizer == nullptr) {
         return 0.f;
     }
 
-    return rasterizerSampler->sampleAt(angle);
+    return rasterizer->sampleAt(angle);
 }
 
 RasterizerData& Interactor::getRasterizerData() const {
     static RasterizerData emptyData;
 
-    if (rasterizerData == nullptr) {
+    if (rasterizer == nullptr) {
         return emptyData;
     }
 
-    return *rasterizerData;
+    return rasterizer->getRasterizerData();
 }
 
 float Interactor::getDragMovementScale(VertCube* cube) {

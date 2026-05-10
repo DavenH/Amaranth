@@ -14,13 +14,9 @@
 
 Multisample::Multisample(
         SingletonRepo* repo,
-        Rasterization::MeshBindableRasterizer* meshRasterizer,
-        Rasterization::RasterizerUpdateTarget* updateTarget,
-        Rasterization::RasterizerSampler* sampler) :
+        Rasterization::Rasterizer* pitchRasterizer) :
         SingletonAccessor(repo, "Multisample")
-    ,   meshRasterizer(meshRasterizer)
-    ,   rasterizerUpdateTarget(updateTarget)
-    ,   rasterizerSampler(sampler)
+    ,   pitchRasterizer(pitchRasterizer)
     ,   current(nullptr) {
 }
 
@@ -385,9 +381,7 @@ bool Multisample::readXML(const XmlElement* element) {
                                  sample->meshLayerIndex >= 0 ? sample->meshLayerIndex : samples.size());
         sample->createPeriodsFromEnv(
                 getObj(MeshLibrary),
-                meshRasterizer,
-                rasterizerUpdateTarget,
-                rasterizerSampler);
+                pitchRasterizer);
 
         samples.add(sample.release());
     }
@@ -474,9 +468,7 @@ void Multisample::shiftAllByOctave(bool up) {
         sample->createEnvFromPeriods(getObj(MeshLibrary), true);
         sample->createPeriodsFromEnv(
                 getObj(MeshLibrary),
-                meshRasterizer,
-                rasterizerUpdateTarget,
-                rasterizerSampler);
+                pitchRasterizer);
     }
 
     fillRanges();

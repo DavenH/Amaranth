@@ -190,7 +190,7 @@ void SampleUtils::waveNoteChanged(PitchedSample* sample, bool isMulti, bool invo
     auto& meshLibrary = getObj(MeshLibrary);
 
     sample->createEnvFromPeriods(meshLibrary, isMulti);
-    sample->createPeriodsFromEnv(meshLibrary, &pitchRast, &pitchRast, &pitchRast);
+    sample->createPeriodsFromEnv(meshLibrary, &pitchRast);
 }
 
 

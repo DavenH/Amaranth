@@ -14,11 +14,7 @@ using std::vector;
 class E3Rasterizer :
         public SingletonAccessor
     ,   public Updateable
-    ,   public Rasterization::GuideCurveBindableRasterizer
-    ,   public Rasterization::MeshBindableRasterizer
-    ,   public Rasterization::RasterizerSampler
-    ,   public Rasterization::RasterizerUpdateTarget
-    ,   public Rasterization::RasterizerVertexDomain {
+    ,   public Rasterization::Rasterizer {
 public:
     explicit E3Rasterizer(SingletonRepo* repo);
     ~E3Rasterizer() override = default;
@@ -42,8 +38,8 @@ public:
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override;
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const { return rasterizerData; }
+    RasterizerData& getRasterizerData() override { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
 
     vector<Column>& getColumns() { return columns; }
     Buffer<float> getArray() { return columnArray; }
