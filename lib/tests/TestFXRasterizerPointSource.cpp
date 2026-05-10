@@ -77,6 +77,10 @@ namespace {
         return values;
     }
 
+    void sampleEvenly(FXRasterizer& rasterizer, Buffer<float> dest) {
+        rasterizer.samplerView().sampleWithInterval(dest, 1.f / float(dest.size() - 1), 0.f);
+    }
+
     RasterizerCompare::Snapshot captureFx(FXRasterizer& rasterizer) {
         const auto& result = rasterizer.getRenderResult();
 
@@ -124,7 +128,7 @@ TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx
 
     std::array<float, 32> samples {};
     Buffer<float> sampleBuffer(samples.data(), (int) samples.size());
-    rasterizer.sampleEvenlyTo(sampleBuffer);
+    sampleEvenly(rasterizer, sampleBuffer);
 
     REQUIRE(copyBuffer(sampleBuffer).front() == Catch::Approx(rasterizer.samplerView().sampleAt(0.0)));
 }
@@ -153,8 +157,8 @@ TEST_CASE("FXRasterizer mesh adapter matches direct vertex list rasterization", 
     Buffer<float> meshBuffer(meshSamples.data(), (int) meshSamples.size());
     Buffer<float> directBuffer(directSamples.data(), (int) directSamples.size());
 
-    meshRasterizer.sampleEvenlyTo(meshBuffer);
-    directRasterizer.sampleEvenlyTo(directBuffer);
+    sampleEvenly(meshRasterizer, meshBuffer);
+    sampleEvenly(directRasterizer, directBuffer);
 
     RasterizerCompare::requireBufferNear(copyBuffer(directBuffer), copyBuffer(meshBuffer));
 }

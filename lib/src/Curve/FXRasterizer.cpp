@@ -82,14 +82,6 @@ void FXRasterizer::updateWaveform(UpdateType updateType) {
     performUpdate(updateType);
 }
 
-void FXRasterizer::sampleEvenlyTo(const Buffer<float>& dest) {
-    if (dest.empty()) {
-        return;
-    }
-
-    samplerView().sampleWithInterval(dest, 1.f / float(dest.size() - 1), 0.f);
-}
-
 Rasterization::RasterizationRequest FXRasterizer::createFxRequest() const {
     Rasterization::RasterizationRequest request;
     request.dims = dims;
