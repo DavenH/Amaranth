@@ -48,7 +48,6 @@ public:
     void clear();
 
     const RenderResult& result() const;
-    WaveformView waveform() const;
     SnapshotView snapshot() const;
     SamplerView sampler() const;
 };
@@ -97,24 +96,6 @@ sites use it for envelope playback because it advances loop/release/sustain
 state while filling a buffer. That belongs on an envelope playback/render
 service that consumes a sampler and envelope state.
 
-`WaveformView` should expose the generated waveform buffers used for sampling
-and curve drawing:
-
-```cpp
-class WaveformView {
-public:
-    Buffer<float> x() const;
-    Buffer<float> y() const;
-    Buffer<float> diffX() const;
-    Buffer<float> slope() const;
-    Buffer<float> area() const;
-
-    int zeroIndex() const;
-    int oneIndex() const;
-    bool empty() const;
-};
-```
-
 `SnapshotView` is the panel-facing projection snapshot. It replaces the current
 mixed `RasterizerData` access pattern for drawing, hit-testing, and UI
 inspection:
@@ -122,8 +103,6 @@ inspection:
 ```cpp
 class SnapshotView {
 public:
-    WaveformView waveform() const;
-
     Span<const Intercept> intercepts() const;
     Span<const Curve> curves() const;
     Span<const ColorPoint> colorPoints() const;
@@ -134,8 +113,8 @@ public:
 
 The distinction is intent rather than storage duplication:
 
-- `WaveformView` is the generated sampleable curve representation.
-- `SamplerView` is behavior over a `WaveformView`.
+- `SamplerView` is behavior over the generated waveform buffers owned by
+  `RenderResult`.
 - `SnapshotView` is the UI projection: waveform trace plus intercept markers,
   curve handles, and hidden-dimension `ColorPoint` depth/color overlays.
 - `RenderResult` owns the data; views only borrow it.
@@ -162,7 +141,6 @@ struct RenderResult {
 
     void clear();
 
-    WaveformView waveformView() const;
     SamplerView sampler() const;
     SnapshotView snapshot() const;
 };
@@ -185,7 +163,7 @@ runtime bundles. The normal flow should be:
 
 1. stage code fills a `RenderResult`,
 2. the rasterizer stores it as the latest result,
-3. panels/audio consume `snapshot()`, `waveformView()`, or `sampler()`,
+3. panels/audio consume `snapshot()` or `sampler()`,
 4. legacy `RasterizerData` is populated only at compatibility boundaries until
    those panels move to `SnapshotView`.
 
@@ -229,7 +207,8 @@ Each implementation phase should:
 
 There should be no infrastructure-only phase. `RenderResult`, `SamplerView`,
 `SnapshotView`, and the generic `Rasterizer` are introduced as part of deleting
-real old code, not as speculative scaffolding.
+real old code, not as speculative scaffolding. If a proposed view has no real
+caller, delete it rather than keeping a target-shaped placeholder.
 
 ## Target File Shape
 
@@ -262,7 +241,6 @@ lib/src/Curve/Rasterization/
         EnvelopePolicies.h
 
     Views/
-        WaveformView.h
         SnapshotView.h
         SamplerView.h
 ```
@@ -407,8 +385,8 @@ Tasks:
 - delete `ComposedFxRasterizer` and `FxComposer`,
 - introduce `RenderResult` as the owned replacement for the deleted FX pipeline
   output,
-- introduce `WaveformView` and `SamplerView` only far enough to support the FX,
-  `IrModeller`, and `Waveshaper` call sites,
+- introduce `SamplerView` only far enough to support the FX, `IrModeller`, and
+  `Waveshaper` call sites,
 - make `FXRasterizer` directly own the generic point-list rasterizer path,
 - keep `FXRasterizer` as the public owner for current UI/audio callers, but
   shrink it to source binding, request creation, render, sampling, and snapshot
@@ -487,7 +465,7 @@ Tasks:
 
 - replace broad internal use of `RasterizerSampler`,
   `RasterizerSnapshotProvider`, `RasterizerVertexDomain`, and
-  `WaveformProvider` with `SamplerView`, `SnapshotView`, and `WaveformView`,
+  `WaveformProvider` with `SamplerView` and `SnapshotView`,
 - move `sampleAt`, `sampleAtIntervals`, `sampleWithInterval`, and
   `samplePerfectly` behind `SamplerView` rather than exposing them directly on
   the generic rasterizer,
