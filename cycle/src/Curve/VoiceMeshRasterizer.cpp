@@ -113,13 +113,13 @@ bool VoiceMeshRasterizer::hasEnoughCubesForCrossSection() {
     return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
 }
 
-bool VoiceMeshRasterizer::isSampleable() {
+bool VoiceMeshRasterizer::isSampleable() const {
     return chainedOutputActive
            ? Rasterization::WaveformSampler::isSampleable(chainResult.waveform)
            : rasterizer.isSampleable();
 }
 
-bool VoiceMeshRasterizer::isSampleableAt(float x) {
+bool VoiceMeshRasterizer::isSampleableAt(float x) const {
     return chainedOutputActive
            ? Rasterization::WaveformSampler::isSampleableAt(chainResult.waveform, x)
            : rasterizer.isSampleableAt(x);

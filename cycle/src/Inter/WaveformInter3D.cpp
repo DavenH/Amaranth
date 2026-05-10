@@ -105,7 +105,6 @@ void WaveformInter3D::updateSelectionClient() {
     if (selectionClient != nullptr && hasRasterizer()) {
         selectionClient->initialise(
                 this,
-                getRasterizer(),
                 layerType);
     }
 }

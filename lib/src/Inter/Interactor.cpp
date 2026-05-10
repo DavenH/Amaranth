@@ -1476,7 +1476,7 @@ bool Interactor::isRasterizerSampleableAt(float x) const {
         return false;
     }
 
-    return rasterizer->isSampleableAt(x);
+    return rasterizer->samplerView().isSampleableAt(x);
 }
 
 float Interactor::sampleRasterizerAt(double angle) const {
@@ -1484,7 +1484,7 @@ float Interactor::sampleRasterizerAt(double angle) const {
         return 0.f;
     }
 
-    return rasterizer->sampleAt(angle);
+    return rasterizer->samplerView().sampleAt(angle);
 }
 
 RasterizerData& Interactor::getRasterizerData() const {
@@ -1494,7 +1494,7 @@ RasterizerData& Interactor::getRasterizerData() const {
         return emptyData;
     }
 
-    return rasterizer->getRasterizerData();
+    return rasterizer->snapshotView().rasterizerData();
 }
 
 float Interactor::getDragMovementScale(VertCube* cube) {

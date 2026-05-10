@@ -293,11 +293,11 @@ bool EnvRasterizer::hasEnoughCubesForCrossSection() {
     return envMesh != nullptr && envMesh->hasEnoughCubesForCrossSection();
 }
 
-bool EnvRasterizer::isSampleable() {
+bool EnvRasterizer::isSampleable() const {
     return Rasterization::WaveformSampler::isSampleable(result.waveform);
 }
 
-bool EnvRasterizer::isSampleableAt(float x) {
+bool EnvRasterizer::isSampleableAt(float x) const {
     return Rasterization::WaveformSampler::isSampleableAt(result.waveform, x);
 }
 

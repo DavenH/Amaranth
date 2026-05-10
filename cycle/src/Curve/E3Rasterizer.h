@@ -25,20 +25,24 @@ public:
     void reset() override { cleanUp(); }
 
     bool hasEnoughCubesForCrossSection();
-    bool isSampleable() override;
-    bool isSampleableAt(float x) override;
+    bool isSampleable() const;
+    bool isSampleableAt(float x) const;
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
-    float sampleAt(double angle) override;
-    float sampleAt(double angle, int& currentIndex) override;
+    Rasterization::SamplerView samplerView() const override { return rasterizer.sampler(); }
+    Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
+    Rasterization::WaveformView waveformView() const override { return rasterizer.waveformView(); }
+
+    float sampleAt(double angle);
+    float sampleAt(double angle, int& currentIndex);
     float samplePerfectly(double delta, Buffer<float> buffer, double phase);
 
     Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override;
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() override { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
+    RasterizerData& getRasterizerData() { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const { return rasterizerData; }
 
     vector<Column>& getColumns() { return columns; }
     Buffer<float> getArray() { return columnArray; }

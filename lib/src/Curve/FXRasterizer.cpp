@@ -86,11 +86,11 @@ bool FXRasterizer::isBipolar() const {
     return scalingType == Bipolar || scalingType == HalfBipolar;
 }
 
-bool FXRasterizer::isSampleable() {
+bool FXRasterizer::isSampleable() const {
     return result.sampler().isSampleable();
 }
 
-bool FXRasterizer::isSampleableAt(float x) {
+bool FXRasterizer::isSampleableAt(float x) const {
     return result.sampler().isSampleableAt(x);
 }
 

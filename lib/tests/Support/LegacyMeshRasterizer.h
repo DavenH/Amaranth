@@ -93,12 +93,16 @@ public:
     void saveStateTo(RenderState& src);
     Rasterization::RasterizationRequest createRasterizationRequest();
 
-    bool isSampleable() override;
-    bool isSampleableAt(float x) override;
+    bool isSampleable() const;
+    bool isSampleableAt(float x) const;
     bool wasCleanedUp() const { return unsampleable; }
 
-    float sampleAt(double angle) override;
-    float sampleAt(double angle, int& currentIndex) override;
+    Rasterization::SamplerView samplerView() const override { return Rasterization::SamplerView(createWaveformView(), isSampleable()); }
+    Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rastArrays); }
+    Rasterization::WaveformView waveformView() const override { return Rasterization::WaveformView(createWaveformView()); }
+
+    float sampleAt(double angle);
+    float sampleAt(double angle, int& currentIndex);
     float sampleAtDecoupled(double angle, GuideCurveContext& context);
     float samplePerfectly(double delta, Buffer<float> buffer, double phase);
     void sampleAtIntervals(Buffer<float> deltas, Buffer<float> dest);
@@ -159,8 +163,8 @@ public:
     const vector<Intercept>& getFrontIcpts() const  { return frontIcpts;                }
     const vector<Intercept>& getBackIcpts() const   { return backIcpts;                 }
     vector<ColorPoint>& getColorPoints()            { return colorPoints;               }
-    RasterizerData& getRasterizerData() override     { return rastArrays;                }
-    const RasterizerData& getRasterizerData() const override { return rastArrays;        }
+    RasterizerData& getRasterizerData()              { return rastArrays;                }
+    const RasterizerData& getRasterizerData() const  { return rastArrays;                }
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
 
     void setBatchMode(bool batch)                   { batchMode = batch;                }

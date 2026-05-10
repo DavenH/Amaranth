@@ -6,7 +6,6 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Audio/AudioSourceProcessor.h>
-#include <Curve/Rasterization/Rasterizer.h>
 #include <Inter/Interactor.h>
 #include <Obj/Ref.h>
 #include "JuceHeader.h"
@@ -41,7 +40,6 @@ private:
     Ref<SelectionClientOwner> owner;
 
     Interactor* interactor {};
-    Rasterization::Rasterizer* rasterizer {};
 
     bool usedToViewVertsOnHover;
     int layerType {};
@@ -66,10 +64,8 @@ public:
 
     void initialise(
             Interactor* itr,
-            Rasterization::Rasterizer* rast,
             int layerType) {
         interactor = itr;
-        rasterizer = rast;
 
         this->layerType = layerType;
     }
@@ -122,8 +118,8 @@ public:
     }
 
     void updateEverything(Mesh* mesh) {
-        rasterizer->setMesh(mesh);
-        rasterizer->performUpdate(Update);
+        interactor->setRasterizerMesh(mesh);
+        interactor->performRasterizerUpdate(Update);
 
         owner->meshSelectionChanged(mesh);
     }

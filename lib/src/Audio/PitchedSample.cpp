@@ -205,7 +205,8 @@ void PitchedSample::createPeriodsFromEnv(
     rasterizer->setMesh(mesh);
     rasterizer->performUpdate(Update);
 
-    if(rasterizer->isSampleable())
+    auto sampler = rasterizer->samplerView();
+    if(sampler.isSampleable())
     {
         periods.clear();
 
@@ -217,8 +218,8 @@ void PitchedSample::createPeriodsFromEnv(
         while ((int) position < sz) {
             float x = position / float(sz);
 
-            if (rasterizer->isSampleableAt(x)) {
-                float y = rasterizer->sampleAt(x, currentIndex);
+            if (sampler.isSampleableAt(x)) {
+                float y = sampler.sampleAt(x, currentIndex);
 
                 NumberUtils::constrain(y, 0.1f, 0.9f);
                 float value = NumberUtils::unitPitchToSemis(y);

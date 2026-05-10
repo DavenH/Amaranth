@@ -45,12 +45,16 @@ public:
     bool doesCalcDepthDimensions() const { return rasterizer.getRequest().calcDepthDimensions; }
     bool doesIntegralSampling() const { return rasterizer.getRequest().integralSampling; }
     bool hasEnoughCubesForCrossSection();
-    bool isSampleable() override;
-    bool isSampleableAt(float x) override;
+    bool isSampleable() const;
+    bool isSampleableAt(float x) const;
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
-    float sampleAt(double angle) override;
-    float sampleAt(double angle, int& currentIndex) override;
+    Rasterization::SamplerView samplerView() const override { return Rasterization::SamplerView(currentWaveform(), isSampleable()); }
+    Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
+    Rasterization::WaveformView waveformView() const override { return Rasterization::WaveformView(currentWaveform()); }
+
+    float sampleAt(double angle);
+    float sampleAt(double angle, int& currentIndex);
     float samplePerfectly(double delta, Buffer<float> buffer, double phase);
 
     template<typename T>
@@ -70,8 +74,8 @@ public:
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override;
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() override { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
+    RasterizerData& getRasterizerData() { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const { return rasterizerData; }
 
     MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
     void setCalcDepthDimensions(bool calc) { rasterizer.getRequest().calcDepthDimensions = calc; }

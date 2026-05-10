@@ -95,11 +95,11 @@ bool E3Rasterizer::hasEnoughCubesForCrossSection() {
     return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
 }
 
-bool E3Rasterizer::isSampleable() {
+bool E3Rasterizer::isSampleable() const {
     return rasterizer.isSampleable();
 }
 
-bool E3Rasterizer::isSampleableAt(float x) {
+bool E3Rasterizer::isSampleableAt(float x) const {
     return rasterizer.isSampleableAt(x);
 }
 

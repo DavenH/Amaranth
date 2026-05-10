@@ -72,6 +72,14 @@ namespace Rasterization {
             return isSampleable() && WaveformSampler::isSampleableAt(waveform(), x);
         }
 
+        SamplerView sampler() const {
+            return SamplerView(waveform(), isSampleable());
+        }
+
+        WaveformView waveformView() const {
+            return WaveformView(waveform());
+        }
+
         float sampleAt(double angle) const {
             return WaveformSampler::sampleAt(waveform(), !isSampleable(), angle);
         }

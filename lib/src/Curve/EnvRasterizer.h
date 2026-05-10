@@ -102,12 +102,16 @@ public:
     void reset() override { cleanUp(); }
 
     bool hasEnoughCubesForCrossSection();
-    bool isSampleable() override;
-    bool isSampleableAt(float x) override;
+    bool isSampleable() const;
+    bool isSampleableAt(float x) const;
     bool wrapsVertices() const override { return request.cyclic; }
 
-    float sampleAt(double angle) override;
-    float sampleAt(double angle, int& currentIndex) override;
+    Rasterization::SamplerView samplerView() const override { return result.sampler(); }
+    Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
+    Rasterization::WaveformView waveformView() const override { return result.waveformView(); }
+
+    float sampleAt(double angle);
+    float sampleAt(double angle, int& currentIndex);
     float sampleAtDecoupled(double angle, GuideCurveContext& context);
     float samplePerfectly(double delta, Buffer<float> buffer, double phase);
 
@@ -124,8 +128,8 @@ public:
     void setMesh(Mesh* mesh) override;
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
     int getPaddingSize() const override { return paddingSize; }
-    RasterizerData& getRasterizerData() override { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
+    RasterizerData& getRasterizerData() { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const { return rasterizerData; }
 
     MorphPosition& getMorphPosition() { return request.morph; }
     Rasterization::PointScalingMode getScalingType() const { return request.scalingMode; }

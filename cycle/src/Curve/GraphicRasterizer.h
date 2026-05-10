@@ -76,12 +76,16 @@ public:
     void reset() override { cleanUp(); }
 
     bool hasEnoughCubesForCrossSection();
-    bool isSampleable() override { return rasterizer.isSampleable(); }
-    bool isSampleableAt(float x) override { return rasterizer.isSampleableAt(x); }
+    bool isSampleable() const { return rasterizer.isSampleable(); }
+    bool isSampleableAt(float x) const { return rasterizer.isSampleableAt(x); }
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
-    float sampleAt(double angle) override { return rasterizer.sampleAt(angle); }
-    float sampleAt(double angle, int& currentIndex) override { return rasterizer.sampleAt(angle, currentIndex); }
+    Rasterization::SamplerView samplerView() const override { return rasterizer.sampler(); }
+    Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
+    Rasterization::WaveformView waveformView() const override { return rasterizer.waveformView(); }
+
+    float sampleAt(double angle) { return rasterizer.sampleAt(angle); }
+    float sampleAt(double angle, int& currentIndex) { return rasterizer.sampleAt(angle, currentIndex); }
     float samplePerfectly(double delta, Buffer<float> buffer, double phase) {
         return rasterizer.samplePerfectly(delta, buffer, phase);
     }
@@ -96,8 +100,8 @@ public:
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override { return rasterizer.getPaddingSize(); }
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() override { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
+    RasterizerData& getRasterizerData() { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const { return rasterizerData; }
     RenderState createRenderState() {
         RenderState state;
         saveStateTo(state);

@@ -39,13 +39,17 @@ public:
     bool canRasterizeWaveform() const;
     bool hasEnoughCubesForCrossSection();
     bool isBipolar() const;
-    bool isSampleable() override;
-    bool isSampleableAt(float x) override;
+    bool isSampleable() const;
+    bool isSampleableAt(float x) const;
     void updateWaveform(UpdateType updateType);
     bool wrapsVertices() const override { return false; }
 
-    float sampleAt(double angle) override;
-    float sampleAt(double angle, int& currentIndex) override;
+    Rasterization::SamplerView samplerView() const override { return result.sampler(); }
+    Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
+    Rasterization::WaveformView waveformView() const override { return result.waveformView(); }
+
+    float sampleAt(double angle);
+    float sampleAt(double angle, int& currentIndex);
     double sampleWithInterval(Buffer<float> buffer, double delta, double phase);
     float samplePerfectly(double delta, Buffer<float> buffer, double phase);
     void sampleEvenlyTo(const Buffer<float>& dest);
@@ -60,8 +64,8 @@ public:
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
     const vector<Curve>& getCurves() const { return result.curves; }
     vector<ColorPoint>& getColorPoints() { return result.colorPoints; }
-    RasterizerData& getRasterizerData() override { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const override { return rasterizerData; }
+    RasterizerData& getRasterizerData() { return rasterizerData; }
+    const RasterizerData& getRasterizerData() const { return rasterizerData; }
 
     void setDims(const Dimensions& dims) override { this->dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }

@@ -458,11 +458,11 @@ bool MeshRasterizer::hasEnoughCubesForCrossSection() {
     return mesh->getNumCubes() > 1;
 }
 
-bool MeshRasterizer::isSampleable() {
+bool MeshRasterizer::isSampleable() const {
     return Rasterization::WaveformSampler::isSampleable(createWaveformView());
 }
 
-bool MeshRasterizer::isSampleableAt(float x) {
+bool MeshRasterizer::isSampleableAt(float x) const {
     return Rasterization::WaveformSampler::isSampleableAt(createWaveformView(), x);
 }
 
