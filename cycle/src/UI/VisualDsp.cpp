@@ -234,7 +234,7 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
                               envEnum,
                               &rast,
                               mesh,
-                              mesh != nullptr ? (rast.hasEnoughCubesForCrossSection() ? 1 : 0) : -1,
+                              mesh != nullptr ? (rast.canRasterizeWaveform() ? 1 : 0) : -1,
                               (int) icpts.size(),
                               rast.samplerView().isSampleable() ? 1 : 0));
     };

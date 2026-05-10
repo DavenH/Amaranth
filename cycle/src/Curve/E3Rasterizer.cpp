@@ -92,7 +92,7 @@ void E3Rasterizer::cleanUp() {
     rasterizerData.curves.clear();
 }
 
-bool E3Rasterizer::hasEnoughCubesForCrossSection() {
+bool E3Rasterizer::canRasterizeWaveform() {
     return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
 }
 

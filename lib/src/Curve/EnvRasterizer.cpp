@@ -289,7 +289,7 @@ void EnvRasterizer::performUpdate(UpdateType updateType) {
     }
 }
 
-bool EnvRasterizer::hasEnoughCubesForCrossSection() {
+bool EnvRasterizer::canRasterizeWaveform() {
     return envMesh != nullptr && envMesh->hasEnoughCubesForCrossSection();
 }
 

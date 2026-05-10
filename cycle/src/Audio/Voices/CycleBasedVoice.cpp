@@ -845,7 +845,7 @@ inline void CycleBasedVoice::updateChainAngleDelta(VoiceParameterGroup& group,
         EnvRasterizer& pitchRast = pitchGroup.envGroup.front().rast;
         MeshLibrary::EnvProps* props = parent->meshLib->getEnvProps(pitchGroup.layerGroup, 0);
 
-        if (props != nullptr && props->active && pitchRast.hasEnoughCubesForCrossSection()) {
+        if (props != nullptr && props->active && pitchRast.canRasterizeWaveform()) {
             int rastIndex = EnvRasterizer::headUnisonIndex + (useFirstEnvelopeIndex ? 0 : group.unisonIndex);
             float y = pitchRast.getSustainLevel(rastIndex);
 

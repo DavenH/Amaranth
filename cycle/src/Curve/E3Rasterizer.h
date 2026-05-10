@@ -24,7 +24,7 @@ public:
     void cleanUp();
     void reset() override { cleanUp(); }
 
-    bool hasEnoughCubesForCrossSection();
+    bool canRasterizeWaveform();
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
     Rasterization::SamplerView samplerView() const override { return rasterizer.samplerView(); }

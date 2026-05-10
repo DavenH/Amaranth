@@ -112,7 +112,7 @@ void GraphicRasterizer::performUpdate(UpdateType updateType) {
     }
 }
 
-bool GraphicRasterizer::hasEnoughCubesForCrossSection() {
+bool GraphicRasterizer::canRasterizeWaveform() {
     return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
 }
 

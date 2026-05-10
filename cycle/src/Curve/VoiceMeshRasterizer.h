@@ -44,7 +44,7 @@ public:
 
     bool doesCalcDepthDimensions() const { return rasterizer.getRequest().calcDepthDimensions; }
     bool doesIntegralSampling() const { return rasterizer.getRequest().integralSampling; }
-    bool hasEnoughCubesForCrossSection();
+    bool canRasterizeWaveform();
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
     Rasterization::SamplerView samplerView() const override {

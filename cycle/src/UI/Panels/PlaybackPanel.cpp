@@ -249,7 +249,7 @@ void PlaybackPanel::setProgress(float unitX, bool updateMorphPanel) {
 			jassertfalse;
 		} else if (props->active) {
 			const auto& icpts = envRast->getRasterizerData().intercepts;
-			bool canSimulate = envRast->hasEnoughCubesForCrossSection();
+			bool canSimulate = envRast->canRasterizeWaveform();
 
 			if (canSimulate && icpts.empty()) {
 				DBG(String::formatted("PlaybackPanel::setProgress env rasterizer %s has cubes but no intercepts",
@@ -301,8 +301,8 @@ bool PlaybackPanel::startPlayback() {
 	} else {
 		incrementScale = 1.f / getObj(OscControlPanel).getLengthInSeconds();
 
-		canStart = timeRasterizer->hasEnoughCubesForCrossSection() ||
-				   freqRasterizer->hasEnoughCubesForCrossSection();
+		canStart = timeRasterizer->canRasterizeWaveform() ||
+				   freqRasterizer->canRasterizeWaveform();
 	}
 
 	if (x >= 1.f) {
@@ -430,7 +430,7 @@ void PlaybackPanel::timerCallback(int id) {
 
 		if(isAlive) {
 			const auto& icpts = envRast->getRasterizerData().intercepts;
-			bool canSimulate = envRast->hasEnoughCubesForCrossSection();
+			bool canSimulate = envRast->canRasterizeWaveform();
 
 			if (canSimulate && icpts.empty()) {
 				DBG(String::formatted("PlaybackPanel::timerCallback env rasterizer %s has cubes but no intercepts",

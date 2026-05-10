@@ -285,7 +285,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
             rast.sampleable = false;
 
             if (props->active && rast.rast.getCurrentMesh() != nullptr &&
-                rast.rast.hasEnoughCubesForCrossSection()) {
+                rast.rast.canRasterizeWaveform()) {
                 rast.rast.calcCrossPoints();
                 rast.sampleable = rast.rast.samplerView().isSampleable();
             }
@@ -412,7 +412,7 @@ void SynthesizerVoice::calcEnvelopeBuffers(int numSamples) {
         MeshLibrary::EnvProps* props = meshLib->getEnvProps(LayerGroups::GroupVolume, context.layerIndex);
 
         if (props->active && envRast.getCurrentMesh() != nullptr &&
-            envRast.hasEnoughCubesForCrossSection()) {
+            envRast.canRasterizeWaveform()) {
             bool stillActive = envRast.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, *props, 1.f);
             // TODO
             anyActive |= stillActive;

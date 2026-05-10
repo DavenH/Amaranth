@@ -109,7 +109,7 @@ void VoiceMeshRasterizer::performUpdate(UpdateType updateType) {
     }
 }
 
-bool VoiceMeshRasterizer::hasEnoughCubesForCrossSection() {
+bool VoiceMeshRasterizer::canRasterizeWaveform() {
     return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
 }
 
