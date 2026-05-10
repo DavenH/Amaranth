@@ -31,7 +31,7 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 }
 
 void FXRasterizer::calcCrossPoints() {
-    DBG(getName() + "::calcCrossPoints begin " + describeFxSource(mesh, source.size()));
+    DBG(getName() + "::calcCrossPoints begin " + describeFxSource(mesh, vertexCount()));
 
     renderFx(createFxRequest());
     publishSnapshot();
@@ -65,21 +65,21 @@ void FXRasterizer::reset() {
 void FXRasterizer::setMesh(Mesh* newMesh) {
     mesh = newMesh;
     DBG(getName() + "::setMesh " + describeFxMesh(newMesh));
-    source.setVertices(newMesh == nullptr ? nullptr : &newMesh->getVerts());
+    vertices = newMesh == nullptr ? nullptr : &newMesh->getVerts();
 }
 
 void FXRasterizer::setVertices(vector<Vertex*>* vertices) {
     DBG(getName() + "::setVertices verts=" + String(vertices == nullptr ? 0 : (int) vertices->size()));
     mesh = nullptr;
-    source.setVertices(vertices);
+    this->vertices = vertices;
 }
 
 bool FXRasterizer::canRasterizeWaveform() const {
-    return source.size() > 1;
+    return vertexCount() > 1;
 }
 
 bool FXRasterizer::hasEnoughCubesForCrossSection() {
-    return source.size() > 1;
+    return vertexCount() > 1;
 }
 
 bool FXRasterizer::isBipolar() const {
@@ -136,14 +136,29 @@ Rasterization::RasterizationRequest FXRasterizer::createFxRequest() const {
     return request;
 }
 
+Intercept FXRasterizer::interceptAt(Vertex* vertex) const {
+    jassert(vertex != nullptr);
+
+    float* values = vertex->values;
+
+    Intercept intercept(
+            values[Vertex::Phase],
+            values[Vertex::Amp],
+            nullptr,
+            values[Vertex::Curve]);
+    intercept.adjustedX = intercept.x;
+
+    return intercept;
+}
+
 bool FXRasterizer::renderFx(const Rasterization::RasterizationRequest& request) {
     result.clear();
 
-    if (source.empty()) {
+    if (vertexCount() == 0) {
         return false;
     }
 
-    source.copyInterceptsTo(result.intercepts);
+    copyVertexInterceptsTo(result.intercepts);
 
     Rasterization::PointScalingPolicy pointScaling(request.scalingMode);
     for (auto& intercept : result.intercepts) {
@@ -172,6 +187,22 @@ bool FXRasterizer::renderFx(const Rasterization::RasterizationRequest& request) 
     return result.sampleable;
 }
 
+void FXRasterizer::copyVertexInterceptsTo(vector<Intercept>& intercepts) const {
+    intercepts.clear();
+
+    if (vertices == nullptr) {
+        return;
+    }
+
+    intercepts.reserve(vertices->size());
+
+    for (Vertex* vertex : *vertices) {
+        if (vertex != nullptr) {
+            intercepts.emplace_back(interceptAt(vertex));
+        }
+    }
+}
+
 void FXRasterizer::bakeWaveform(const Rasterization::RasterizationRequest& request) {
     Rasterization::CurveWaveformPipeline::Context context;
     context.request = &request;
@@ -185,6 +216,10 @@ void FXRasterizer::bakeWaveform(const Rasterization::RasterizationRequest& reque
                 result.waveform.place(result.waveformMemory, totalRes);
                 return Rasterization::WaveformBufferRefs(result.waveform);
             });
+}
+
+int FXRasterizer::vertexCount() const {
+    return vertices == nullptr ? 0 : (int) vertices->size();
 }
 
 void FXRasterizer::publishSnapshot() {

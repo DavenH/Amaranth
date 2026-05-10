@@ -9,7 +9,6 @@
 #include "../src/Curve/FXRasterizer.h"
 #include "../src/Curve/Mesh.h"
 #include "Support/LegacyMeshRasterizer.h"
-#include "../src/Curve/Rasterization/Sources/VertexListSource.h"
 #include "RasterizerCompare.h"
 
 namespace {
@@ -78,25 +77,6 @@ namespace {
         return values;
     }
 
-}
-
-TEST_CASE("VertexListSource exposes FX intercepts without a Mesh", "[rasterization][fx]") {
-    std::vector<std::unique_ptr<Vertex>> ownedVertices;
-    ownedVertices.emplace_back(makeOwnedVertex(0.25f, 0.75f, 0.50f));
-
-    std::vector<Vertex*> vertices { ownedVertices.front().get() };
-    Rasterization::VertexListSource source(&vertices);
-
-    REQUIRE_FALSE(source.empty());
-    REQUIRE(source.size() == 1);
-
-    Intercept intercept = source.interceptAt(0);
-
-    REQUIRE(intercept.x == Catch::Approx(0.25f));
-    REQUIRE(intercept.y == Catch::Approx(0.75f));
-    REQUIRE(intercept.shp == Catch::Approx(0.50f));
-    REQUIRE(intercept.adjustedX == Catch::Approx(0.25f));
-    REQUIRE(intercept.cube == nullptr);
 }
 
 TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx]") {

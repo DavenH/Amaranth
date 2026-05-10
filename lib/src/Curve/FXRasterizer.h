@@ -11,7 +11,6 @@
 #include "Rasterization/Pipelines/CurveWaveformPipeline.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/RasterizationRequest.h"
-#include "Rasterization/Sources/VertexListSource.h"
 #include "../Design/Updating/Updateable.h"
 #include "../Inter/Dimensions.h"
 
@@ -82,14 +81,17 @@ public:
 
 private:
     Rasterization::RasterizationRequest createFxRequest() const;
+    Intercept interceptAt(Vertex* vertex) const;
     bool renderFx(const Rasterization::RasterizationRequest& request);
     void bakeWaveform(const Rasterization::RasterizationRequest& request);
+    void copyVertexInterceptsTo(vector<Intercept>& intercepts) const;
     void publishSnapshot();
+    int vertexCount() const;
 
     Mesh* mesh {};
     GuideCurveProvider* guideCurveProvider {};
     Dimensions dims { Vertex::Phase, Vertex::Amp };
-    Rasterization::VertexListSource source;
+    vector<Vertex*>* vertices {};
     Rasterization::RenderResult result;
     RasterizerData rasterizerData;
     Rasterization::CurveWaveformPipeline curveWaveformPipeline;
