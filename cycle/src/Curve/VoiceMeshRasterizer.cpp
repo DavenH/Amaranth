@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
 #include <Curve/Intercept.h>
@@ -11,7 +13,6 @@
 
 #include "VoiceMeshRasterizer.h"
 #include "CycleState.h"
-#include "Rasterization/Pipelines/VoiceSlicePipeline.h"
 #include "Rasterization/Policies/Voice/VoicePolicies.h"
 #include "../Util/CycleEnums.h"
 
@@ -46,13 +47,7 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
     Cycle::Rasterization::VoiceChainingPolicy chainingPolicy(&chainNeedsResorting);
     chainingPolicy.beginCall(*state, chainResult.intercepts);
 
-    auto output = Cycle::Rasterization::VoiceSlicePipeline().render(
-            mesh,
-            rasterizer.getRequest().morph,
-            state->advancement,
-            oscPhase,
-            rasterizer.createGuideCurveApplier(chainReduction, &chainNeedsResorting),
-            chainReduction);
+    auto output = renderVoiceSlice(oscPhase);
 
     chainingPolicy.publishNextIntercepts(
             output,
@@ -194,6 +189,66 @@ void VoiceMeshRasterizer::cleanChainedOutput() {
     chainPaddingSize = 2;
     chainUnsampleable = true;
     chainNeedsResorting = false;
+}
+
+Rasterization::RenderResult VoiceMeshRasterizer::renderVoiceSlice(float oscPhase) {
+    Rasterization::RenderResult output;
+
+    if (mesh == nullptr || mesh->getNumCubes() == 0 || state == nullptr) {
+        return output;
+    }
+
+    float voiceTime = jmin(1.f, rasterizer.getRequest().morph.time + state->advancement);
+    auto guideApplier = rasterizer.createGuideCurveApplier(chainReduction, &chainNeedsResorting);
+
+    auto& cubes = mesh->getCubes();
+    for (int i = 0; i < (int) cubes.size(); ++i) {
+        appendVoiceCubeIntercept(cubes[i], voiceTime, oscPhase, guideApplier, output.intercepts);
+    }
+
+    std::sort(output.intercepts.begin(), output.intercepts.end());
+    output.sampleable = output.intercepts.size() >= 2;
+
+    return output;
+}
+
+void VoiceMeshRasterizer::appendVoiceCubeIntercept(
+        VertCube* cube,
+        float voiceTime,
+        float oscPhase,
+        Rasterization::GuideCurveApplier& applyGuide,
+        std::vector<Intercept>& intercepts) {
+    voiceSlicer.slice(
+            *cube,
+            Vertex::Time,
+            chainReduction,
+            MorphPosition(voiceTime, rasterizer.getRequest().morph.red, rasterizer.getRequest().morph.blue));
+
+    Vertex* a = &chainReduction.v0;
+    Vertex* b = &chainReduction.v1;
+    Vertex* vertex = &chainReduction.v;
+
+    Cycle::Rasterization::VoicePointPositionPolicy::Context pointContext;
+    pointContext.voiceTime = voiceTime;
+    pointContext.oscPhase = oscPhase;
+
+    auto point = voicePointPositionPolicy.resolve(
+            pointContext,
+            chainReduction.pointOverlaps,
+            a,
+            b,
+            vertex);
+
+    if (!point.intersects) {
+        return;
+    }
+
+    Intercept intercept(point.phase, 2.f * vertex->values[Vertex::Amp] - 1.f, cube, 0);
+    intercept.shp = vertex->values[Vertex::Curve];
+    intercept.adjustedX = intercept.x;
+
+    applyGuide(intercept, rasterizer.getRequest().morph);
+    intercepts.push_back(intercept);
 }
 
 void VoiceMeshRasterizer::markChainedWaveformUnsampleable() {

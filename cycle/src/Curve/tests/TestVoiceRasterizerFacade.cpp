@@ -2,13 +2,24 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../CycleState.h"
+#include "../VoiceMeshRasterizer.h"
 #include "../Rasterization/Policies/Voice/VoicePolicies.h"
-#include "../Rasterization/Pipelines/VoiceSlicePipeline.h"
+#include <Curve/Curve.h>
 #include <Curve/Mesh.h>
 #include <Curve/VertCube.h>
 
 namespace {
     using Catch::Approx;
+
+    struct CurveTableScope {
+        CurveTableScope() {
+            Curve::calcTable();
+        }
+
+        ~CurveTableScope() {
+            Curve::deleteTable();
+        }
+    };
 
     void setCubeAsVoicePoint(
             VertCube* cube,
@@ -175,29 +186,29 @@ TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows",
     REQUIRE(policy.canBuildChainedCurves(state, currentIntercepts));
 }
 
-TEST_CASE("VoiceSlicePipeline builds voice slice intercepts", "[cycle][rasterization][voice]") {
-    Mesh mesh("VoiceSlicePipelineMesh");
+TEST_CASE("VoiceMeshRasterizer builds chained voice slice intercepts", "[cycle][rasterization][voice]") {
+    CurveTableScope curveTable;
+    Mesh mesh("VoiceSliceMesh");
     addVoiceCube(mesh, 0.20f, 0.80f, 0.25f, 0.75f, 0.35f);
     addVoiceCube(mesh, 0.10f, 0.40f, 0.10f, 0.30f, 0.55f);
 
-    VertCube::ReductionData reductionData;
+    CycleState state;
+    VoiceMeshRasterizer rasterizer(nullptr);
+    rasterizer.setMesh(&mesh);
+    rasterizer.setState(&state);
+    rasterizer.setMorphPosition(MorphPosition(0.50f, 0.50f, 0.50f));
 
-    auto output = Cycle::Rasterization::VoiceSlicePipeline().render(
-            &mesh,
-            MorphPosition(0.50f, 0.50f, 0.50f),
-            0.f,
-            0.85f,
-            [](Intercept&, const MorphPosition&) {},
-            reductionData);
+    rasterizer.calcCrossPointsChaining(0.85f);
+    rasterizer.calcCrossPointsChaining(0.85f);
 
-    REQUIRE(output.sampleable);
-    REQUIRE(output.intercepts.size() == 2);
-    REQUIRE(output.intercepts[0].x == Approx(0.10f));
-    REQUIRE(output.intercepts[0].y == Approx(-0.60f));
-    REQUIRE(output.intercepts[0].shp == Approx(0.55f));
-    REQUIRE(output.intercepts[1].x == Approx(0.35f));
-    REQUIRE(output.intercepts[1].y == Approx(0.f));
-    REQUIRE(output.intercepts[1].shp == Approx(0.35f));
+    const auto& data = rasterizer.getRasterizerData();
+    REQUIRE(data.intercepts.size() == 2);
+    REQUIRE(data.intercepts[0].x == Approx(0.10f));
+    REQUIRE(data.intercepts[0].y == Approx(-0.60f));
+    REQUIRE(data.intercepts[0].shp == Approx(0.55f));
+    REQUIRE(data.intercepts[1].x == Approx(0.35f));
+    REQUIRE(data.intercepts[1].y == Approx(0.f));
+    REQUIRE(data.intercepts[1].shp == Approx(0.35f));
 
     mesh.destroy();
 }

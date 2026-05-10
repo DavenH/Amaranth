@@ -1,13 +1,19 @@
 #pragma once
 
 #include <Array/ScopedAlloc.h>
+#include <Curve/Intercept.h>
+#include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
 #include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
 #include <Curve/Rasterization/MeshWaveformRasterizer.h>
+#include <Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h>
 #include <Curve/Rasterization/RenderResult.h>
 #include <Curve/Rasterization/Sampling/WaveformSampler.h>
 #include <Curve/RasterizerData.h>
+#include <Curve/VertCube.h>
 #include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
+
+#include "Rasterization/Policies/Voice/VoicePolicies.h"
 
 class SingletonAccessor;
 class CycleState;
@@ -88,6 +94,13 @@ private:
     Rasterization::WaveformBuffers currentWaveform() const;
     void bakeChainedWaveform();
     void cleanChainedOutput();
+    Rasterization::RenderResult renderVoiceSlice(float oscPhase);
+    void appendVoiceCubeIntercept(
+            VertCube* cube,
+            float voiceTime,
+            float oscPhase,
+            Rasterization::GuideCurveApplier& applyGuide,
+            std::vector<Intercept>& intercepts);
     void markChainedWaveformUnsampleable();
     void publishSnapshot();
     void updateChainBuffers(int size);
@@ -98,6 +111,8 @@ private:
     Rasterization::RenderResult chainResult;
     RasterizerData rasterizerData;
     VertCube::ReductionData chainReduction;
+    Rasterization::TrilinearMeshSlicer voiceSlicer;
+    Cycle::Rasterization::VoicePointPositionPolicy voicePointPositionPolicy;
 
     int chainPaddingSize { 2 };
     bool chainUnsampleable { true };
