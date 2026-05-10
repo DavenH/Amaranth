@@ -8,8 +8,7 @@
 #include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
 
-#include "Rasterization/Policies/Graphic/GraphicAxisPolicy.h"
-#include "Rasterization/Policies/Graphic/GraphicMorphPositionPolicy.h"
+#include "Rasterization/Policies/Graphic/GraphicPolicies.h"
 #include "../Updating/DynamicDetailUpdater.h"
 
 class Interactor;

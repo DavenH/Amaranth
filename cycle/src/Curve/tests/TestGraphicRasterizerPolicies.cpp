@@ -4,8 +4,7 @@
 #include <App/MeshLibrary.h>
 #include <Curve/Vertex.h>
 
-#include "../Rasterization/Policies/Graphic/GraphicAxisPolicy.h"
-#include "../Rasterization/Policies/Graphic/GraphicMorphPositionPolicy.h"
+#include "../Rasterization/Policies/Graphic/GraphicPolicies.h"
 
 namespace {
     using Catch::Approx;
