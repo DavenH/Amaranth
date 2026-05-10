@@ -11,6 +11,7 @@
 #include "../App/SingletonAccessor.h"
 #include "../Curve/CollisionDetector.h"
 #include "../Curve/DepthVert.h"
+#include "../Curve/Rasterization/RasterizerViews.h"
 #include "../Curve/VertCube.h"
 #include "../Curve/Vertex2.h"
 #include "../Design/Updating/Updateable.h"
@@ -135,7 +136,7 @@ public:
     void                performRasterizerUpdate(UpdateType updateType);
     bool                isRasterizerSampleableAt(float x) const;
     float               sampleRasterizerAt(double angle) const;
-    RasterizerData&     getRasterizerData() const;
+    Rasterization::SnapshotView rasterizerSnapshot() const;
     MorphPosition       getOffsetPosition(bool withDepths)    { return positioner->getOffsetPosition(withDepths); }
     MorphPosition       getMorphPosition()                    { return positioner->getMorphPosition(); }
 

@@ -23,7 +23,7 @@ bool Interactor2D::locateClosestElement() {
         return Interactor::locateClosestElement();
     }
 
-    RasterizerData& rastData = getRasterizerData();
+    RasterizerData& rastData = rasterizerSnapshot().rasterizerData();
 
     if (rastData.intercepts.empty() && depthVerts.empty()) {
         return Interactor::locateClosestElement();
@@ -120,7 +120,7 @@ void Interactor2D::doExtraMouseMoveAt(Point<int> localPos) {
 
     const float distThresPX = 7.f;
 
-    RasterizerData& rastData = getRasterizerData();
+    RasterizerData& rastData = rasterizerSnapshot().rasterizerData();
 
     Buffer<Float32> waveX = rastData.waveX;
     Buffer<Float32> waveY = rastData.waveY;
@@ -238,7 +238,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 
         flag(DidMeshChange) = true;
     } else if (actionIs(PaintingEdit)) {
-        const vector<Intercept>& icpts = getRasterizerData().intercepts;
+        const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
 
         float diff;
 
@@ -327,7 +327,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 }
 
 void Interactor2D::doReshapeCurve(const MouseEvent& e) {
-    RasterizerData& data = getRasterizerData();
+    RasterizerData& data = rasterizerSnapshot().rasterizerData();
 
     if (data.curves.empty()) {
         return;
@@ -451,7 +451,7 @@ float Interactor2D::getVertexClickProximityThres() {
 
 Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
     vector<Vertex*>& selected   = getSelected();
-    RasterizerData& rastData    = getRasterizerData();
+    RasterizerData& rastData    = rasterizerSnapshot().rasterizerData();
     ModifierKeys keys           = ModifierKeys::getCurrentModifiers();
 
     bool testAdjacent = keys.isAltDown() && selected.size() == 1 && ! rastData.intercepts.empty();

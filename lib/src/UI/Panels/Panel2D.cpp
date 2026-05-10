@@ -65,7 +65,7 @@ void Panel2D::init() {
 }
 
 void Panel2D::contractToRange(bool includeX) {
-    RasterizerData& data = interactor->getRasterizerData();
+    RasterizerData& data = interactor->rasterizerSnapshot().rasterizerData();
     ScopedLock dataLock(data.lock);
 
     zoomPanel->contractToRange(data.waveY);
@@ -82,7 +82,7 @@ void Panel2D::drawCurvesAndSurfaces() {
     bool reduceAlpha     = !isMeshEnabled();
     Color colourA        = colorA.withAlpha(reduceAlpha ? 0.55f : 1.f);
     Color colourB        = colorB.withAlpha(reduceAlpha ? 0.55f : 1.f);
-    RasterizerData& data = interactor->getRasterizerData();
+    RasterizerData& data = interactor->rasterizerSnapshot().rasterizerData();
 
     Buffer<float> a;
 
@@ -215,7 +215,7 @@ void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
 
 void Panel2D::drawInterceptLines() {
     {
-        RasterizerData& rastData = interactor->getRasterizerData();
+        RasterizerData& rastData = interactor->rasterizerSnapshot().rasterizerData();
         ScopedLock sl(rastData.lock);
         const vector<Intercept>& intercepts = rastData.intercepts;
 
@@ -275,7 +275,7 @@ void Panel2D::highlightCurrentIntercept()
         point.x = verts[freeIdx].x;
         point.y = verts[freeIdx].y;
     } else {
-        RasterizerData& data = interactor->getRasterizerData();
+        RasterizerData& data = interactor->rasterizerSnapshot().rasterizerData();
         ScopedLock dataLock(data.lock);
 
         const vector<Intercept>& icpts = data.intercepts;
@@ -312,7 +312,7 @@ void Panel2D::prepareAlpha(const Buffer<float>& y, Buffer<float> alpha, float ba
 }
 
 void Panel2D::drawDepthLinesAndVerts() {
-    RasterizerData& data = interactor->getRasterizerData();
+    RasterizerData& data = interactor->rasterizerSnapshot().rasterizerData();
 
     if(data.colorPoints.empty()) {
         return;
@@ -384,7 +384,7 @@ void Panel2D::drawDepthLinesAndVerts() {
 }
 
 void Panel2D::drawGuideCurveTags() {
-    RasterizerData& data  = interactor->getRasterizerData();
+    RasterizerData& data  = interactor->rasterizerSnapshot().rasterizerData();
     vector<Curve>& curves = data.curves;
 
     Color colors[Vertex::numElements];

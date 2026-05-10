@@ -159,7 +159,7 @@ void EnvelopeInter2D::doExtraMouseUp() {
 
     if (isSingleVertex) {
         Vertex* vert = selected.front();
-        const vector<Intercept>& icpts = getRasterizerData().intercepts;
+        const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
 
         if (!icpts.empty()) {
             int icptIndex = -1;
@@ -562,7 +562,7 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
             Vertex* vert = selected.front();
             VertCube* cube = nullptr;
 
-            const vector<Intercept>& icpts = getRasterizerData().intercepts;
+            const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
             for (const auto& icpt : icpts) {
                 for (int j = 0; j < vert->getNumOwners(); ++j) {
                     VertCube* vertCube = vert->owners[j];
@@ -944,7 +944,7 @@ void EnvelopeInter2D::transferLineProperties(VertCube* from, VertCube* to1, Vert
 }
 
 void EnvelopeInter2D::removeCurrentEnvLine(bool isLoop) {
-    const vector<Intercept>& icpts = getRasterizerData().intercepts;
+    const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
     EnvelopeMesh* envMesh = getCurrentMesh();
 
     if (envMesh == nullptr) {
@@ -1205,7 +1205,7 @@ bool EnvelopeInter2D::addNewCube(float startTime, float x, float y, float curve)
 
 vector<VertCube*> EnvelopeInter2D::getLinesToSlideOnSingleSelect() {
     vector <VertCube*> cubes;
-    const vector<Intercept>& icpts = getRasterizerData().intercepts;
+    const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
         if (!icpts.empty()) {

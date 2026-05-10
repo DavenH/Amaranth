@@ -521,7 +521,7 @@ void Panel::handlePendingUpdates() {
 }
 
 void Panel::drawInterceptsAndHighlightClosest() {
-    RasterizerData& data = interactor->getRasterizerData();
+    RasterizerData& data = interactor->rasterizerSnapshot().rasterizerData();
     const vector<Intercept>& intercepts = data.intercepts;
 
     int size = 0;

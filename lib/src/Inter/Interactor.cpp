@@ -1001,7 +1001,7 @@ void Interactor::doBoxSelect(const MouseEvent& e) {
                 }
             }
         } else {
-            const vector<Intercept>& icpts = getRasterizerData().intercepts;
+            const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
 
             for (const auto& icpt : icpts) {
                 int xx = roundToInt(panel->sx(icpt.x));
@@ -1487,14 +1487,14 @@ float Interactor::sampleRasterizerAt(double angle) const {
     return rasterizer->samplerView().sampleAt(angle);
 }
 
-RasterizerData& Interactor::getRasterizerData() const {
+Rasterization::SnapshotView Interactor::rasterizerSnapshot() const {
     static RasterizerData emptyData;
 
     if (rasterizer == nullptr) {
-        return emptyData;
+        return Rasterization::SnapshotView(emptyData);
     }
 
-    return rasterizer->snapshotView().rasterizerData();
+    return rasterizer->snapshotView();
 }
 
 float Interactor::getDragMovementScale(VertCube* cube) {
@@ -2075,7 +2075,7 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
 
     if (is3DInteractor()) {
         if (Interactor * itr2D = getOppositeInteractor()) {
-            icpts3D = itr2D->getRasterizerData().intercepts;
+            icpts3D = itr2D->rasterizerSnapshot().intercepts();
             is3D = true;
         }
     }
@@ -2103,7 +2103,7 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
 
     auto* addedLine = new VertCube(mesh);
 
-    const vector<Intercept>& icpts = is3D ? icpts3D : getRasterizerData().intercepts;
+    const vector<Intercept>& icpts = is3D ? icpts3D : rasterizerSnapshot().intercepts();
 
     DBG(getName() + "::addNewCube begin"
         + " mesh=" + String::toHexString((int64) mesh)
@@ -2229,7 +2229,7 @@ void Interactor::addNewCubeForMultipleIntercepts(
         float startTime,
         float phase,
         float amp) {
-    const vector<Intercept>& icpts = getRasterizerData().intercepts;
+    const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
 
     VertCube* rightLine = nullptr;
     VertCube* leftLine = nullptr;
