@@ -3,7 +3,6 @@
 #include <climits>
 #include <vector>
 
-#include "RasterizerViews.h"
 #include "Sampling/GuideCurveSampler.h"
 #include "WaveformBuffers.h"
 #include "../Curve.h"
