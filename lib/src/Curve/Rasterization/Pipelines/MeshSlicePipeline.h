@@ -5,7 +5,7 @@
 
 #include "../Policies/Mesh/DepthProjectionPolicy.h"
 #include "../Policies/Curves/InterceptPaddingFlagPolicy.h"
-#include "../Policies/Core/InterceptRestrictionPolicy.h"
+#include "../Policies/Core/InterceptPolicies.h"
 #include "../Policies/Core/PointScalingPolicy.h"
 #include "../RasterizationRequest.h"
 #include "../RenderResult.h"

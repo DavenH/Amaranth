@@ -5,7 +5,7 @@
 #include "Rasterization/Builders/RasterizerSnapshotBuilder.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
 #include "Rasterization/Pipelines/CurveWaveformPipeline.h"
-#include "Rasterization/Policies/Core/InterceptRestrictionPolicy.h"
+#include "Rasterization/Policies/Core/InterceptPolicies.h"
 #include "Rasterization/Policies/Core/PaddingPolicy.h"
 #include "Rasterization/Policies/Core/PointScalingPolicy.h"
 #include "Rasterization/Sampling/WaveformSampler.h"

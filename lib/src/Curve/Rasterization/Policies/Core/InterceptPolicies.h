@@ -1,11 +1,35 @@
 #pragma once
 
+#include <algorithm>
+#include <cstddef>
 #include <vector>
 
 #include "../../../Intercept.h"
 #include "../../../../Util/NumberUtils.h"
+#include "../../../../Util/Util.h"
 
 namespace Rasterization {
+    enum class InterceptDegeneracyAction {
+        Continue,
+        CleanUp,
+        MarkUnsampleable
+    };
+
+    class InterceptDegeneracyPolicy {
+    public:
+        InterceptDegeneracyAction classify(std::size_t interceptCount) const {
+            if (interceptCount == 0) {
+                return InterceptDegeneracyAction::CleanUp;
+            }
+
+            if (interceptCount == 1) {
+                return InterceptDegeneracyAction::MarkUnsampleable;
+            }
+
+            return InterceptDegeneracyAction::Continue;
+        }
+    };
+
     class InterceptRestrictionPolicy {
     public:
         struct Context {
@@ -91,5 +115,25 @@ namespace Rasterization {
         }
 
         Context context;
+    };
+
+    class InterceptSortPolicy {
+    public:
+        explicit InterceptSortPolicy(bool* needsResorting) :
+                needsResorting(needsResorting) {
+        }
+
+        void sortIfNeeded(std::vector<Intercept>& intercepts) const {
+            if (needsResorting == nullptr) {
+                return;
+            }
+
+            if (Util::assignAndWereDifferent(*needsResorting, false)) {
+                std::sort(intercepts.begin(), intercepts.end());
+            }
+        }
+
+    private:
+        bool* needsResorting {};
     };
 }
