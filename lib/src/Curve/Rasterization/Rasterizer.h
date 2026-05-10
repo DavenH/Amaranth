@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../../Array/Buffer.h"
 #include "../../Design/Updating/UpdateType.h"
 
 class Dimensions;
@@ -16,17 +15,13 @@ namespace Rasterization {
         virtual void setGuideCurveProvider(GuideCurveProvider* guideCurveProvider) = 0;
         virtual Mesh* getMesh() = 0;
         virtual void setMesh(Mesh* mesh) = 0;
-        virtual bool hasEnoughCubesForCrossSection() = 0;
 
         virtual bool isSampleable() = 0;
         virtual bool isSampleableAt(float x) = 0;
         virtual float sampleAt(double angle) = 0;
         virtual float sampleAt(double angle, int& currentIndex) = 0;
-        virtual float samplePerfectly(double delta, Buffer<float> buffer, double phase) = 0;
 
-        virtual void cleanUp() = 0;
         virtual void performUpdate(UpdateType updateType) = 0;
-        virtual void reset() = 0;
         virtual void updateRasterizer(UpdateType updateType) = 0;
 
         virtual bool wrapsVertices() const = 0;

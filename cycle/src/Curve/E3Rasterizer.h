@@ -21,18 +21,18 @@ public:
     int getIncrement();
     void init() override;
     void performUpdate(UpdateType updateType) override;
-    void cleanUp() override;
+    void cleanUp();
     void reset() override { cleanUp(); }
     void updateRasterizer(UpdateType updateType) override { update(updateType); }
 
-    bool hasEnoughCubesForCrossSection() override;
+    bool hasEnoughCubesForCrossSection();
     bool isSampleable() override;
     bool isSampleableAt(float x) override;
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
     float sampleAt(double angle) override;
     float sampleAt(double angle, int& currentIndex) override;
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override;
+    float samplePerfectly(double delta, Buffer<float> buffer, double phase);
 
     Mesh* getMesh() override { return mesh; }
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }

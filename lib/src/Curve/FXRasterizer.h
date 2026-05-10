@@ -28,7 +28,7 @@ public:
     explicit FXRasterizer(SingletonRepo* repo, const String& name = String());
 
     void calcCrossPoints();
-    void cleanUp() override;
+    void cleanUp();
     Rasterization::RasterizationRequest createRasterizationRequest() const;
     void makeCopy();
     void performUpdate(UpdateType updateType) override;
@@ -38,7 +38,7 @@ public:
     void setVertices(vector<Vertex*>* vertices);
 
     bool canRasterizeWaveform() const;
-    bool hasEnoughCubesForCrossSection() override;
+    bool hasEnoughCubesForCrossSection();
     bool isBipolar() const;
     bool isSampleable() override;
     bool isSampleableAt(float x) override;
@@ -48,7 +48,7 @@ public:
     float sampleAt(double angle) override;
     float sampleAt(double angle, int& currentIndex) override;
     double sampleWithInterval(Buffer<float> buffer, double delta, double phase);
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override;
+    float samplePerfectly(double delta, Buffer<float> buffer, double phase);
     void sampleEvenlyTo(const Buffer<float>& dest);
 
     Mesh* getMesh() override { return mesh; }

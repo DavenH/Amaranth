@@ -100,7 +100,7 @@ public:
     float sampleAt(double angle) override;
     float sampleAt(double angle, int& currentIndex) override;
     float sampleAtDecoupled(double angle, GuideCurveContext& context);
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override;
+    float samplePerfectly(double delta, Buffer<float> buffer, double phase);
     void sampleAtIntervals(Buffer<float> deltas, Buffer<float> dest);
 
     /* ----------------------------------------------------------------------------- */
@@ -126,15 +126,15 @@ public:
     /* ----------------------------------------------------------------------------- */
 
     void calcCrossPoints();
-    void cleanUp() override;
+    void cleanUp();
     void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);
     void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
-    void reset() override;
+    void reset();
     void performUpdate(UpdateType updateType) override;
     void updateRasterizer(UpdateType updateType) override { update(updateType); }
     void updateCurves();
 
-    bool hasEnoughCubesForCrossSection() override;
+    bool hasEnoughCubesForCrossSection();
     int getPrimaryViewDimension();
 
     /* ----------------------------------------------------------------------------- */

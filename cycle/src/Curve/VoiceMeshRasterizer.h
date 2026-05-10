@@ -38,21 +38,21 @@ public:
 	void setState(CycleState* state) { this->state = state; }
 
     void calcCrossPoints(Mesh* mesh, float oscPhase);
-    void cleanUp() override;
+    void cleanUp();
     void performUpdate(UpdateType updateType) override;
     void reset() override { cleanUp(); }
     void updateRasterizer(UpdateType updateType) override { performUpdate(updateType); }
 
     bool doesCalcDepthDimensions() const { return rasterizer.getRequest().calcDepthDimensions; }
     bool doesIntegralSampling() const { return rasterizer.getRequest().integralSampling; }
-    bool hasEnoughCubesForCrossSection() override;
+    bool hasEnoughCubesForCrossSection();
     bool isSampleable() override;
     bool isSampleableAt(float x) override;
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
     float sampleAt(double angle) override;
     float sampleAt(double angle, int& currentIndex) override;
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override;
+    float samplePerfectly(double delta, Buffer<float> buffer, double phase);
 
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {

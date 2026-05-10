@@ -71,19 +71,19 @@ public:
     ScopedRenderState preserveState(RenderState& state) { return ScopedRenderState(this, &state); }
 
     void calcCrossPoints(Mesh* mesh, float oscPhase);
-    void cleanUp() override;
+    void cleanUp();
     void performUpdate(UpdateType updateType) override;
     void reset() override { cleanUp(); }
     void updateRasterizer(UpdateType updateType) override { Updateable::update(updateType); }
 
-    bool hasEnoughCubesForCrossSection() override;
+    bool hasEnoughCubesForCrossSection();
     bool isSampleable() override { return rasterizer.isSampleable(); }
     bool isSampleableAt(float x) override { return rasterizer.isSampleableAt(x); }
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
     float sampleAt(double angle) override { return rasterizer.sampleAt(angle); }
     float sampleAt(double angle, int& currentIndex) override { return rasterizer.sampleAt(angle, currentIndex); }
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override {
+    float samplePerfectly(double delta, Buffer<float> buffer, double phase) {
         return rasterizer.samplePerfectly(delta, buffer, phase);
     }
     void sampleAtIntervals(Buffer<float> deltas, Buffer<float> dest) { rasterizer.sampleAtIntervals(deltas, dest); }

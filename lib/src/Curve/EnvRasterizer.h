@@ -97,12 +97,12 @@ public:
     void calcCrossPoints();
     void calcCrossPoints(Mesh* mesh, float oscPhase);
     void calcIntercepts();
-    void cleanUp() override;
+    void cleanUp();
     void performUpdate(UpdateType updateType) override;
     void reset() override { cleanUp(); }
     void updateRasterizer(UpdateType updateType) override { update(updateType); }
 
-    bool hasEnoughCubesForCrossSection() override;
+    bool hasEnoughCubesForCrossSection();
     bool isSampleable() override;
     bool isSampleableAt(float x) override;
     bool wrapsVertices() const override { return request.cyclic; }
@@ -110,7 +110,7 @@ public:
     float sampleAt(double angle) override;
     float sampleAt(double angle, int& currentIndex) override;
     float sampleAtDecoupled(double angle, GuideCurveContext& context);
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase) override;
+    float samplePerfectly(double delta, Buffer<float> buffer, double phase);
 
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
