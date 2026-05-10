@@ -29,7 +29,8 @@ void SpectrumInter2D::init() {
     layerType = LayerGroups::GroupSpect;
     closestHarmonic = -1;
     scratchesTime = true;
-    setRasterizer(&getObj(SpectRasterizer));
+    auto* rasterizer = &getObj(SpectRasterizer);
+    setRasterizer(rasterizer, rasterizer, rasterizer, rasterizer, rasterizer);
 
     float freqMargin = getRealConstant(FreqMargin);
 

@@ -226,8 +226,8 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
 
     dynRangeKnob->setName(isMags ? "range" : "width");
 
-    f3.setRasterizer(rasterizer);
-    f2.setRasterizer(rasterizer);
+    f3.setRasterizer(rasterizer, rasterizer, rasterizer, rasterizer, rasterizer);
+    f2.setRasterizer(rasterizer, rasterizer, rasterizer, rasterizer, rasterizer);
     f3.updateSelectionClient();
     panelControls->refreshSelector();
 

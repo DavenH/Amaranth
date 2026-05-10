@@ -108,7 +108,6 @@ public:
     void setAxeSize(float size);
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
-    void setRasterizer(Rasterization::MeshBindableRasterizer* rasterizer);
     void setRasterizer(
             Rasterization::MeshBindableRasterizer* meshRasterizer,
             Rasterization::RasterizerSampler* sampler,

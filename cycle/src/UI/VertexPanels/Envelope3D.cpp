@@ -36,5 +36,6 @@ void Envelope3D::init() {
     Panel3D::init();
     interactor3D = &getObj(EnvelopeInter3D);
     setInteractor(interactor3D);
-    interactor3D->setRasterizer(&getObj(E3Rasterizer));
+    auto* rasterizer = &getObj(E3Rasterizer);
+    interactor3D->setRasterizer(rasterizer, rasterizer, rasterizer, rasterizer, rasterizer);
 }
