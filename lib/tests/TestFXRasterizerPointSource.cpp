@@ -77,6 +77,24 @@ namespace {
         return values;
     }
 
+    RasterizerCompare::Snapshot captureFx(FXRasterizer& rasterizer) {
+        const auto& result = rasterizer.getRenderResult();
+
+        RasterizerCompare::Snapshot snapshot;
+        snapshot.waveX       = copyBuffer(result.waveform.waveX);
+        snapshot.waveY       = copyBuffer(result.waveform.waveY);
+        snapshot.diffX       = copyBuffer(result.waveform.diffX);
+        snapshot.slope       = copyBuffer(result.waveform.slope);
+        snapshot.curves      = result.curves;
+        snapshot.intercepts  = result.intercepts;
+        snapshot.colorPoints = result.colorPoints;
+        snapshot.zeroIndex   = result.waveform.zeroIndex;
+        snapshot.oneIndex    = result.waveform.oneIndex;
+        snapshot.sampleable  = rasterizer.samplerView().isSampleable();
+
+        return snapshot;
+    }
+
 }
 
 TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx]") {
@@ -98,11 +116,11 @@ TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx
     rasterizer.calcCrossPoints();
 
     REQUIRE(rasterizer.getMesh() == nullptr);
-    REQUIRE(rasterizer.getNumDims() == 1);
     REQUIRE(rasterizer.hasEnoughCubesForCrossSection());
     REQUIRE(rasterizer.samplerView().isSampleable());
-    REQUIRE(rasterizer.getWaveX().size() > 0);
-    REQUIRE(rasterizer.getWaveY().size() == rasterizer.getWaveX().size());
+    REQUIRE(rasterizer.getRenderResult().waveform.waveX.size() > 0);
+    REQUIRE(rasterizer.getRenderResult().waveform.waveY.size()
+            == rasterizer.getRenderResult().waveform.waveX.size());
 
     std::array<float, 32> samples {};
     Buffer<float> sampleBuffer(samples.data(), (int) samples.size());
@@ -128,8 +146,8 @@ TEST_CASE("FXRasterizer mesh adapter matches direct vertex list rasterization", 
     directRasterizer.makeCopy();
 
     RasterizerCompare::requireSnapshotNear(
-            RasterizerCompare::capture(directRasterizer),
-            RasterizerCompare::capture(meshRasterizer));
+            captureFx(directRasterizer),
+            captureFx(meshRasterizer));
 
     std::array<float, 64> meshSamples {};
     std::array<float, 64> directSamples {};

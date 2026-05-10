@@ -51,22 +51,13 @@ public:
     Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override;
     void padIcpts(vector<Intercept>& intercepts, vector<Curve>& curves);
-    int getNumDims() { return 1; }
     int getPaddingSize() const override { return result.paddingSize; }
-    int getOneIndex() const { return result.waveform.oneIndex; }
-    int getZeroIndex() const { return result.waveform.zeroIndex; }
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
-    const vector<Curve>& getCurves() const { return result.curves; }
-    vector<ColorPoint>& getColorPoints() { return result.colorPoints; }
+    const Rasterization::RenderResult& getRenderResult() const { return result; }
 
     void setDims(const Dimensions& dims) override { this->dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }
     void setScalingMode(int type) { scalingType = type; }
-
-    Buffer<float> getWaveX() { return result.waveform.waveX; }
-    Buffer<float> getWaveY() { return result.waveform.waveY; }
-    Buffer<float> getSlopes() { return result.waveform.slope; }
-    Buffer<float> getDiffX() { return result.waveform.diffX; }
 
 private:
     Rasterization::RasterizationRequest createFxRequest() const;
