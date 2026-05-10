@@ -68,42 +68,12 @@ namespace Rasterization {
             return waveformOutput != nullptr && waveformOutput->sampleable;
         }
 
-        bool isSampleableAt(float x) const {
-            return isSampleable() && WaveformSampler::isSampleableAt(waveform(), x);
-        }
-
         SamplerView samplerView() const {
             return SamplerView(waveform(), isSampleable());
         }
 
         WaveformView waveformView() const {
             return WaveformView(waveform());
-        }
-
-        float sampleAt(double angle) const {
-            return WaveformSampler::sampleAt(waveform(), !isSampleable(), angle);
-        }
-
-        float sampleAt(double angle, int& currentIndex) const {
-            return WaveformSampler::sampleAt(waveform(), !isSampleable(), angle, currentIndex);
-        }
-
-        void sampleAtIntervals(Buffer<float> intervals, Buffer<float> dest) const {
-            if (!isSampleable()) {
-                dest.set(0.5f);
-                return;
-            }
-
-            WaveformSampler::sampleAtIntervals(waveform(), intervals, dest);
-        }
-
-        float samplePerfectly(double delta, Buffer<float> buffer, double phase) const {
-            return WaveformSampler::samplePerfectly(waveform(), delta, buffer, phase);
-        }
-
-        template<typename T>
-        T sampleWithInterval(Buffer<float> buffer, T delta, T phase) const {
-            return WaveformSampler::sampleWithInterval(waveform(), buffer, delta, phase);
         }
 
         int getPaddingSize() const {

@@ -69,8 +69,9 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
         p[dependentAxis].setValueDirect(colIdx * invGrid);
         renderMesh(currentMesh);
 
-        if (isSampleable()) {
-            rasterizer.samplerView().samplePerfectly(invCol, col, 0.f);
+        auto sampler = rasterizer.samplerView();
+        if (sampler.isSampleable()) {
+            sampler.samplePerfectly(invCol, col, 0.f);
         } else {
             col.zero();
         }
@@ -93,26 +94,6 @@ void E3Rasterizer::cleanUp() {
 
 bool E3Rasterizer::hasEnoughCubesForCrossSection() {
     return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
-}
-
-bool E3Rasterizer::isSampleable() const {
-    return rasterizer.samplerView().isSampleable();
-}
-
-bool E3Rasterizer::isSampleableAt(float x) const {
-    return rasterizer.samplerView().isSampleableAt(x);
-}
-
-float E3Rasterizer::sampleAt(double angle) {
-    return rasterizer.samplerView().sampleAt(angle);
-}
-
-float E3Rasterizer::sampleAt(double angle, int& currentIndex) {
-    return rasterizer.samplerView().sampleAt(angle, currentIndex);
-}
-
-float E3Rasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
-    return rasterizer.samplerView().samplePerfectly(delta, buffer, phase);
 }
 
 int E3Rasterizer::getPaddingSize() const {

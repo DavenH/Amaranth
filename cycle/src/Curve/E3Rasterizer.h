@@ -25,17 +25,11 @@ public:
     void reset() override { cleanUp(); }
 
     bool hasEnoughCubesForCrossSection();
-    bool isSampleable() const;
-    bool isSampleableAt(float x) const;
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
     Rasterization::SamplerView samplerView() const override { return rasterizer.samplerView(); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
     Rasterization::WaveformView waveformView() const override { return rasterizer.waveformView(); }
-
-    float sampleAt(double angle);
-    float sampleAt(double angle, int& currentIndex);
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase);
 
     Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
