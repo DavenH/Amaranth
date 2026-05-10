@@ -60,7 +60,7 @@ namespace {
     }
 }
 
-TEST_CASE("PointListSource sorts and exposes external raster points", "[rasterization][pointlist]") {
+TEST_CASE("PointListSource sorts external intercepts", "[rasterization][pointlist]") {
     std::vector<Intercept> points = makePointList();
     Rasterization::PointListSource source(points);
 
@@ -69,12 +69,6 @@ TEST_CASE("PointListSource sorts and exposes external raster points", "[rasteriz
 
     REQUIRE(source.interceptAt(0).x == Catch::Approx(0.05f));
     REQUIRE(source.interceptAt(3).x == Catch::Approx(0.85f));
-
-    Rasterization::RasterPoint point = source.pointAt(2);
-    REQUIRE(point.x == Catch::Approx(source.interceptAt(2).x));
-    REQUIRE(point.y == Catch::Approx(source.interceptAt(2).y));
-    REQUIRE(point.source.type == Rasterization::RasterPointSource::Type::ExternalPoint);
-    REQUIRE(point.source.marker == 2);
 }
 
 TEST_CASE("Rasterizer2D rasterizes non-cyclic point lists through PointListSource", "[rasterization][pointlist]") {

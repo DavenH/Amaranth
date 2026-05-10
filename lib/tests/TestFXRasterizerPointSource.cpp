@@ -80,7 +80,7 @@ namespace {
 
 }
 
-TEST_CASE("VertexListSource exposes FX vertices without a Mesh", "[rasterization][fx]") {
+TEST_CASE("VertexListSource exposes FX intercepts without a Mesh", "[rasterization][fx]") {
     std::vector<std::unique_ptr<Vertex>> ownedVertices;
     ownedVertices.emplace_back(makeOwnedVertex(0.25f, 0.75f, 0.50f));
 
@@ -90,13 +90,13 @@ TEST_CASE("VertexListSource exposes FX vertices without a Mesh", "[rasterization
     REQUIRE_FALSE(source.empty());
     REQUIRE(source.size() == 1);
 
-    Rasterization::RasterPoint point = source.pointAt(0);
+    Intercept intercept = source.interceptAt(0);
 
-    REQUIRE(point.x == Catch::Approx(0.25f));
-    REQUIRE(point.y == Catch::Approx(0.75f));
-    REQUIRE(point.sharpness == Catch::Approx(0.50f));
-    REQUIRE(point.adjustedX == Catch::Approx(0.25f));
-    REQUIRE(point.source == Rasterization::RasterPointSource::fxVertex(0));
+    REQUIRE(intercept.x == Catch::Approx(0.25f));
+    REQUIRE(intercept.y == Catch::Approx(0.75f));
+    REQUIRE(intercept.shp == Catch::Approx(0.50f));
+    REQUIRE(intercept.adjustedX == Catch::Approx(0.25f));
+    REQUIRE(intercept.cube == nullptr);
 }
 
 TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx]") {

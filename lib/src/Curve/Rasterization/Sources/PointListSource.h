@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "../RasterizerConversion.h"
 #include "../../Intercept.h"
 
 namespace Rasterization {
@@ -22,10 +21,6 @@ namespace Rasterization {
 
         Intercept& interceptAt(int index) { return points[index]; }
         const Intercept& interceptAt(int index) const { return points[index]; }
-
-        RasterPoint pointAt(int index) const {
-            return toRasterPoint(points[index], RasterPointSource::externalPoint(index));
-        }
 
         std::vector<Intercept>& intercepts() { return points; }
         const std::vector<Intercept>& intercepts() const { return points; }

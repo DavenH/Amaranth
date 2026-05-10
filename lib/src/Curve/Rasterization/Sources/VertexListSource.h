@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "../RasterizerConversion.h"
+#include "../../Intercept.h"
 #include "../../Vertex.h"
 
 namespace Rasterization {
@@ -22,18 +22,18 @@ namespace Rasterization {
             return vertices == nullptr ? 0 : (int) vertices->size();
         }
 
-        RasterPoint pointAt(int index) const {
+        Intercept interceptAt(int index) const {
             Vertex* vertex = vertexAt(index);
             float* values = vertex->values;
 
-            RasterPoint point;
-            point.x = values[xDimension];
-            point.y = values[yDimension];
-            point.sharpness = values[Vertex::Curve];
-            point.adjustedX = point.x;
-            point.source = RasterPointSource::fxVertex(index);
+            Intercept intercept(
+                    values[xDimension],
+                    values[yDimension],
+                    nullptr,
+                    values[Vertex::Curve]);
+            intercept.adjustedX = intercept.x;
 
-            return point;
+            return intercept;
         }
 
         void copyInterceptsTo(std::vector<Intercept>& intercepts) const {
@@ -47,7 +47,7 @@ namespace Rasterization {
 
             for (int i = 0; i < (int) vertices->size(); ++i) {
                 if ((*vertices)[i] != nullptr) {
-                    intercepts.emplace_back(toIntercept(pointAt(i)));
+                    intercepts.emplace_back(interceptAt(i));
                 }
             }
         }
