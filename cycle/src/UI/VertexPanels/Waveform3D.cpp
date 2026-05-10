@@ -456,8 +456,7 @@ CriticalSection& Waveform3D::getGridLock() {
 }
 
 bool Waveform3D::isSurfaceDetailReduced() {
-    auto* detailProvider = dynamic_cast<DynamicDetailUpdateable*>(interactor->getRasterizer());
-    return detailProvider != nullptr && detailProvider->isDetailReduced();
+    return getObj(TimeRasterizer).isDetailReduced();
 }
 
 var Waveform3D::exportAutomationState() const {

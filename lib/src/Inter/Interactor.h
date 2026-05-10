@@ -127,7 +127,6 @@ public:
     CollisionDetector&  getCollisionDetector()                { return collisionDetector;   }
     CriticalSection&    getLock()                             { return vertexLock;          }
     bool                hasRasterizer() const                 { return rasterizer != nullptr; }
-    Rasterization::Rasterizer* getRasterizer() const          { return rasterizer; }
     bool                rasterizerWrapsVertices() const;
     int                 getRasterizerPaddingSize() const;
     GuideCurveProvider* getGuideCurveProvider() const;

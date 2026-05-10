@@ -612,8 +612,10 @@ CriticalSection& Spectrum3D::getGridLock() {
 }
 
 bool Spectrum3D::isSurfaceDetailReduced() {
-    auto* detailProvider = dynamic_cast<DynamicDetailUpdateable*>(interactor->getRasterizer());
-    return detailProvider != nullptr && detailProvider->isDetailReduced();
+    auto& rasterizer = getSetting(MagnitudeDrawMode) == 1
+            ? getObj(SpectRasterizer)
+            : getObj(PhaseRasterizer);
+    return rasterizer.isDetailReduced();
 }
 
 bool Spectrum3D::willAdjustSurfaceColumns() {
