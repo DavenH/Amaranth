@@ -83,12 +83,13 @@ namespace Cycle::Rasterization {
                     context.rasterizer->setYellow(scratchTime);
                     context.rasterizer->calcCrossPoints(mesh, 0.f);
 
-                    if (!context.rasterizer->isSampleable()) {
+                    auto sampler = context.rasterizer->samplerView();
+                    if (!sampler.isSampleable()) {
                         localBuffer.zero();
                         continue;
                     }
 
-                    context.rasterizer->sampleWithInterval(localBuffer, delta, 0.0);
+                    sampler.sampleWithInterval(localBuffer, delta, 0.0);
 
                     float relativePan = Arithmetic::getRelativePan(props->pan, context.panelPan);
                     localBuffer.mul(relativePan);

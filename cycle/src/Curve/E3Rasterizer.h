@@ -29,7 +29,7 @@ public:
     bool isSampleableAt(float x) const;
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
-    Rasterization::SamplerView samplerView() const override { return rasterizer.sampler(); }
+    Rasterization::SamplerView samplerView() const override { return rasterizer.samplerView(); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
     Rasterization::WaveformView waveformView() const override { return rasterizer.waveformView(); }
 

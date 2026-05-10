@@ -72,7 +72,7 @@ namespace Rasterization {
             return isSampleable() && WaveformSampler::isSampleableAt(waveform(), x);
         }
 
-        SamplerView sampler() const {
+        SamplerView samplerView() const {
             return SamplerView(waveform(), isSampleable());
         }
 
