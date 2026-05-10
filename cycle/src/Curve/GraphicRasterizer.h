@@ -34,7 +34,9 @@ public:
         bool batchMode {};
         bool lowResCurves {};
         bool calcDepthDims {};
+        bool restoreMesh {};
         int scalingType { 1 };
+        Mesh* mesh {};
         MorphPosition pos;
 
         RenderState() = default;
