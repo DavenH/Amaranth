@@ -2,7 +2,6 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Curve/Curve.h"
-#include "../src/Curve/FXRasterizer.h"
 #include "Support/LegacyMeshRasterizer.h"
 #include "../src/Curve/Rasterization/Policies/Core/PaddingPolicy.h"
 
@@ -123,21 +122,16 @@ TEST_CASE("NonCyclicPaddingPolicy matches MeshRasterizer non-cyclic padding", "[
     requireCurvesNear(policyCurves, forwardedCurves);
 }
 
-TEST_CASE("FxPaddingPolicy matches FXRasterizer padding", "[rasterization][padding][fx]") {
+TEST_CASE("FxPaddingPolicy builds FX padding", "[rasterization][padding][fx]") {
     CurveTableScope curveTableScope;
     std::vector<Intercept> intercepts = makeIntercepts();
-
-    FXRasterizer rasterizer(nullptr, "PaddingPolicyFxReference");
-    std::vector<Curve> forwardedCurves;
-    rasterizer.padIcpts(intercepts, forwardedCurves);
 
     std::vector<Curve> policyCurves;
     int paddingSize = Rasterization::FxPaddingPolicy().build(intercepts, policyCurves);
 
-    REQUIRE(paddingSize == rasterizer.getPaddingSize());
+    REQUIRE(paddingSize == 1);
     REQUIRE(policyCurves.front().a.x == Catch::Approx(-1.0f));
     REQUIRE(policyCurves.front().b.x == Catch::Approx(-0.5f));
     REQUIRE(policyCurves.back().b.x == Catch::Approx(1.5f));
     REQUIRE(policyCurves.back().c.x == Catch::Approx(2.0f));
-    requireCurvesNear(policyCurves, forwardedCurves);
 }

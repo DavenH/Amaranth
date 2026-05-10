@@ -98,10 +98,6 @@ void FXRasterizer::sampleEvenlyTo(const Buffer<float>& dest) {
     samplerView().sampleWithInterval(dest, 1.f / float(dest.size() - 1), 0.f);
 }
 
-void FXRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curves) {
-    result.paddingSize = Rasterization::FxPaddingPolicy().build(intercepts, curves);
-}
-
 Rasterization::RasterizationRequest FXRasterizer::createFxRequest() const {
     Rasterization::RasterizationRequest request;
     request.dims = dims;

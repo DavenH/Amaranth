@@ -50,7 +50,6 @@ public:
 
     Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override;
-    void padIcpts(vector<Intercept>& intercepts, vector<Curve>& curves);
     int getPaddingSize() const override { return result.paddingSize; }
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
     const Rasterization::RenderResult& getRenderResult() const { return result; }
