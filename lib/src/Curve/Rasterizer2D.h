@@ -2,7 +2,7 @@
 
 #include "Intercept.h"
 #include "Curve.h"
-#include "Rasterization/Pipelines/CurveWaveformPipeline.h"
+#include "Rasterization/Builders/CurveWaveformBuilder.h"
 #include "Rasterization/Policies/Curves/CurvePolicies.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
@@ -201,8 +201,8 @@ inline void Rasterizer2D::renderPointListCrossPoints() {
     Rasterization::RasterizationRequest request = createRasterizationRequest();
     request.cyclic = cyclic;
 
-    Rasterization::CurveWaveformPipeline pipeline;
-    pipeline.renderIntercepts(points, result, request);
+    Rasterization::CurveWaveformBuilder builder;
+    builder.renderIntercepts(points, result, request);
     if (!result.sampleable) {
         cleanUp();
         return;

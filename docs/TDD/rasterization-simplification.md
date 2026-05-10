@@ -19,9 +19,9 @@ types as it proceeds. A phase is not complete if it only adds another wrapper.
 Production rasterizers no longer derive from `MeshRasterizer`, but the
 replacement is still domain-shaped:
 
-- `FXRasterizer` uses `FxRasterizerAdapter`, `ComposedFxRasterizer`,
-  `FxComposer`, and `FxRasterizationPipeline`.
-- mesh waveform paths now share `CurveWaveformPipeline` for curve/waveform
+- `FXRasterizer` owns point-list rendering directly through `RenderResult` and
+  `CurveWaveformBuilder`, but still exposes the broad rasterizer interfaces.
+- mesh waveform paths now share `CurveWaveformBuilder` for curve/waveform
   construction, and mesh-wide slicing is owned by `TrilinearMeshSlicer`.
 - voice paths no longer have a separate voice slice pipeline, but
   `VoiceMeshRasterizer` still has a rasterizer-shaped owner surface.
@@ -371,15 +371,6 @@ Call-site review shows these separate consumer roles:
 
 Initial transitional deletion targets:
 
-- `FxRasterizerAdapter`,
-- `FxRasterizationPipeline`,
-- `ComposedFxRasterizer`,
-- `FxComposer`,
-- `ComposedPointListRasterizer`,
-- `PointListComposer`,
-- `ComposedMeshRasterizer`,
-- `MeshComposer`,
-- `VoiceRasterizationPipeline`,
 - facade wrappers that only forward to policies,
 - interface headers whose callers are not genuinely disjoint.
 
@@ -446,9 +437,8 @@ make point-list rasterization another configuration of the same shape.
 Tasks:
 
 - delete `ComposedPointListRasterizer` and `PointListComposer`,
-- replace `PointListRasterizationPipeline::Output` with `RenderResult`,
-- delete `PointListRasterizationPipeline` after `CurveWaveformPipeline` owns
-  generic intercept-to-waveform rendering,
+- replace point-list rendering outputs with `RenderResult`,
+- keep generic intercept-to-waveform rendering in `CurveWaveformBuilder`,
 - replace `RasterizerComposer::fx()` and `pointList()` with one composer entry
   point or thin factory that returns the same concrete rasterizer shape,
 - keep domain-specific helper functions only as thin presets if they reduce
@@ -548,8 +538,8 @@ Tasks:
 - move voice chaining state into a small voice owner/service,
 - express the slice, padding, waveform build, and sampling work through the
   generic rasterizer engine,
-- delete `VoiceRasterizationPipeline` and `VoiceSlicePipeline` if their logic
-  can be represented by stages/policies,
+- keep voice slicing local to the voice owner while looking for a smaller
+  voice-specific service boundary,
 - keep voice policy names only for genuinely voice-specific chaining behavior,
 - keep `renderToBuffer` out of the generic rasterizer surface.
 

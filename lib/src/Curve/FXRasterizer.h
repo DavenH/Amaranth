@@ -8,7 +8,7 @@
 #include "RasterizerData.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
 #include "Rasterization/Interfaces/RasterizerInterfaces.h"
-#include "Rasterization/Pipelines/CurveWaveformPipeline.h"
+#include "Rasterization/Builders/CurveWaveformBuilder.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/RasterizationRequest.h"
 #include "../Design/Updating/Updateable.h"
@@ -94,7 +94,7 @@ private:
     vector<Vertex*>* vertices {};
     Rasterization::RenderResult result;
     RasterizerData rasterizerData;
-    Rasterization::CurveWaveformPipeline curveWaveformPipeline;
+    Rasterization::CurveWaveformBuilder curveWaveformBuilder;
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
 
     int scalingType { Unipolar };

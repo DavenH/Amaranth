@@ -4,7 +4,7 @@
 
 #include "Rasterization/Builders/RasterizerSnapshotBuilder.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
-#include "Rasterization/Pipelines/CurveWaveformPipeline.h"
+#include "Rasterization/Builders/CurveWaveformBuilder.h"
 #include "Rasterization/Policies/Core/InterceptPolicies.h"
 #include "Rasterization/Policies/Core/PaddingPolicy.h"
 #include "Rasterization/Policies/Core/PointScalingPolicy.h"
@@ -204,12 +204,12 @@ void FXRasterizer::copyVertexInterceptsTo(vector<Intercept>& intercepts) const {
 }
 
 void FXRasterizer::bakeWaveform(const Rasterization::RasterizationRequest& request) {
-    Rasterization::CurveWaveformPipeline::Context context;
+    Rasterization::CurveWaveformBuilder::Context context;
     context.request = &request;
     context.offsetSeeds = &guideCurveOffsetSeeds;
     context.paddingSize = result.paddingSize;
 
-    result.sampleable = curveWaveformPipeline.render(
+    result.sampleable = curveWaveformBuilder.render(
             result.curves,
             context,
             [this](int totalRes) {

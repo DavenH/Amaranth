@@ -12,7 +12,7 @@
 #include "../../Curve.h"
 
 namespace Rasterization {
-    class CurveWaveformPipeline {
+    class CurveWaveformBuilder {
     public:
         struct Context {
             const RasterizationRequest* request {};

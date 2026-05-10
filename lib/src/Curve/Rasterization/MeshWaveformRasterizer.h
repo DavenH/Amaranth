@@ -5,7 +5,7 @@
 #include "Builders/RasterizerSnapshotBuilder.h"
 #include "GuideCurveOffsetSeeds.h"
 #include "Interpolation/TrilinearMeshSlicer.h"
-#include "Pipelines/CurveWaveformPipeline.h"
+#include "Builders/CurveWaveformBuilder.h"
 #include "Policies/Mesh/GuideCurvePolicy.h"
 #include "Sampling/WaveformSampler.h"
 
@@ -50,7 +50,7 @@ namespace Rasterization {
 
             meshIntercepts = meshOutput.intercepts;
             meshColorPoints = meshOutput.colorPoints;
-            waveformOutput = &waveformPipeline.renderIntercepts(
+            waveformOutput = &waveformBuilder.renderIntercepts(
                     meshIntercepts,
                     waveformResult,
                     request,
@@ -149,7 +149,7 @@ namespace Rasterization {
         GuideCurveOffsetSeeds guideCurveOffsetSeeds;
         TrilinearMeshSlicer meshSlicer;
         RenderResult meshSliceResult;
-        CurveWaveformPipeline waveformPipeline;
+        CurveWaveformBuilder waveformBuilder;
         RenderResult waveformResult;
         RenderResult const* waveformOutput {};
 
