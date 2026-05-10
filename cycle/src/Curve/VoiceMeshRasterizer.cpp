@@ -7,7 +7,6 @@
 #include <Curve/Rasterization/Policies/Core/InterceptPolicies.h>
 #include <Curve/Rasterization/Policies/Curves/CurveWaveformPreparationPolicy.h>
 #include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
-#include <Curve/Rasterization/Policies/Curves/WaveformBuildPolicy.h>
 #include <Curve/Rasterization/Sampling/WaveformSampler.h>
 #include <Definitions.h>
 
@@ -183,7 +182,7 @@ void VoiceMeshRasterizer::bakeChainedWaveform() {
     context.offsetSeeds = nullptr;
     context.transferTable = Rasterization::TransferTable::values();
 
-    chainUnsampleable = !Rasterization::WaveformBuildPolicy().build(
+    chainUnsampleable = !Rasterization::WaveformBakePolicy().build(
             chainResult.curves,
             context,
             [this](int totalRes) {

@@ -12,7 +12,6 @@
 #include "Rasterization/Policies/Curves/CurveWaveformPreparationPolicy.h"
 #include "Rasterization/Policies/Curves/InterceptPaddingFlagPolicy.h"
 #include "Rasterization/Policies/Curves/WaveformBakePolicy.h"
-#include "Rasterization/Policies/Curves/WaveformBuildPolicy.h"
 #include "Rasterization/Policies/Envelope/EnvelopePolicies.h"
 #include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
@@ -723,7 +722,7 @@ void EnvRasterizer::bakeWaveform() {
     context.offsetSeeds = &guideCurveOffsetSeeds;
     context.transferTable = Rasterization::TransferTable::values();
 
-    unsampleable = !Rasterization::WaveformBuildPolicy().build(
+    unsampleable = !Rasterization::WaveformBakePolicy().build(
             result.curves,
             context,
             [this](int totalRes) {

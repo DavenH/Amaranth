@@ -16,7 +16,7 @@
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
 #include <Curve/Rasterization/Builders/TransferTable.h>
 #include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
-#include <Curve/Rasterization/Policies/Curves/WaveformBuildPolicy.h>
+#include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
 #include <Curve/Rasterization/Pipelines/MeshSlicePipeline.h>
 #include <Curve/Rasterization/Sampling/GuideCurveSampler.h>
 #include <Curve/Rasterization/Sampling/WaveformSampler.h>
@@ -268,7 +268,7 @@ void MeshRasterizer::calcWaveform() {
 
     Rasterization::WaveformBakePolicy::Context context = createWaveformBakeContext();
 
-    bool sampleable = Rasterization::WaveformBuildPolicy().build(
+    bool sampleable = Rasterization::WaveformBakePolicy().build(
             curves,
             context,
             [this](int totalRes) {

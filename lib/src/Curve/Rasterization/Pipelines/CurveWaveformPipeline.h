@@ -6,7 +6,7 @@
 #include "../GuideCurveOffsetSeeds.h"
 #include "../Policies/Curves/CurveResolutionPolicy.h"
 #include "../Policies/Curves/CurveWaveformPreparationPolicy.h"
-#include "../Policies/Curves/WaveformBuildPolicy.h"
+#include "../Policies/Curves/WaveformBakePolicy.h"
 #include "../RasterizationRequest.h"
 #include "../../Curve.h"
 
@@ -72,6 +72,6 @@ namespace Rasterization {
             return waveformBuilder.build(curves, bakeContext, allocateTarget);
         }
 
-        WaveformBuildPolicy waveformBuilder;
+        WaveformBakePolicy waveformBuilder;
     };
 }

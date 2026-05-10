@@ -30,6 +30,19 @@ namespace Rasterization {
             WaveformBufferRefs waveform;
         };
 
+        template<typename AllocateTarget>
+        bool build(std::vector<Curve>& curves, Context& context, AllocateTarget allocateTarget) const {
+            int totalRes = prepare(curves, context);
+            if (totalRes <= 0) {
+                return false;
+            }
+
+            context.waveform = allocateTarget(totalRes);
+            bake(curves, context);
+
+            return context.waveform.isSampleable();
+        }
+
         int prepare(std::vector<Curve>& curves, const Context& context) const {
             int res = Curve::resolution / 2;
             int totalRes = 0;
