@@ -13,7 +13,6 @@
 #include <Curve/Rasterization/Policies/Core/PaddingPolicy.h>
 #include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
-#include <Curve/Rasterization/Builders/TransferTable.h>
 #include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
 #include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
 #include <Curve/Rasterization/Pipelines/MeshSlicePipeline.h>

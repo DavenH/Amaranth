@@ -2,8 +2,8 @@
 
 #include "Intercept.h"
 #include "Curve.h"
-#include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Pipelines/PointListRasterizationPipeline.h"
+#include "Rasterization/Policies/Curves/CurvePolicies.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
 #include "../Array/ScopedAlloc.h"

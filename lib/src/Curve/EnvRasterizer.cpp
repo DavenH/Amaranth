@@ -4,7 +4,6 @@
 
 #include "EnvelopeMesh.h"
 #include "GuideCurveProvider.h"
-#include "Rasterization/Builders/TransferTable.h"
 #include "Rasterization/Interpolation/TrilinearMeshSlicer.h"
 #include "Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "Rasterization/Policies/Core/InterceptPolicies.h"

@@ -2,7 +2,6 @@
 
 #include <vector>
 
-#include "../Builders/TransferTable.h"
 #include "../GuideCurveOffsetSeeds.h"
 #include "../Policies/Curves/CurvePolicies.h"
 #include "../Policies/Curves/WaveformBakePolicy.h"
