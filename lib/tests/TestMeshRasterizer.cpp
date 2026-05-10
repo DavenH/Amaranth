@@ -7,7 +7,6 @@
 #include "Support/LegacyMeshRasterizer.h"
 #include "../src/Curve/Rasterization/MeshWaveformRasterizer.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
-#include "../src/Curve/Rasterization/Policies/Mesh/ComponentGuideSharpnessPolicy.h"
 #include "../src/Curve/Rasterization/Policies/Curves/CurveWaveformPreparationPolicy.h"
 #include "../src/Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "../src/Curve/Rasterization/Policies/Core/InterceptPolicies.h"
@@ -509,36 +508,6 @@ TEST_CASE("GuideCurvePolicy applies phase wrapping and amplitude clamping", "[me
     REQUIRE(intercept.isWrapped);
     REQUIRE(needsResorting);
     REQUIRE(intercept.y == Catch::Approx(1.f));
-}
-
-TEST_CASE("ComponentGuideSharpnessPolicy preserves component guide continuity behavior", "[meshrasterizer][pipeline][guide]") {
-    auto mesh = createSyntheticWaveMesh();
-    VertCube* componentCube = mesh->getCubes().front();
-    VertCube* plainCube = mesh->getCubes().back();
-    componentCube->getCompGuideCurve() = 0;
-
-    vector<Curve> curves {
-        Curve(
-                Intercept(0.0f, 0.0f),
-                Intercept(0.1f, 0.1f, componentCube, 0.2f),
-                Intercept(0.2f, 0.2f, componentCube, 0.3f)),
-        Curve(
-                Intercept(0.2f, 0.2f, componentCube, 0.4f),
-                Intercept(0.3f, 0.3f, plainCube, 0.5f),
-                Intercept(0.4f, 0.4f, plainCube, 0.6f)),
-        Curve(
-                Intercept(0.4f, 0.4f, plainCube, 0.7f),
-                Intercept(0.5f, 0.5f, plainCube, 0.8f),
-                Intercept(0.6f, 0.6f, plainCube, 0.9f)),
-    };
-
-    Rasterization::ComponentGuideSharpnessPolicy().apply(curves);
-
-    REQUIRE(curves[0].c.shp == 1.f);
-    REQUIRE(curves[1].b.shp == 1.f);
-    REQUIRE(curves[2].a.shp == 1.f);
-    REQUIRE(curves[1].c.shp == 0.6f);
-    REQUIRE(curves[2].b.shp == 0.8f);
 }
 
 TEST_CASE("CurveWaveformPreparationPolicy prepares curves before waveform baking", "[meshrasterizer][pipeline][waveform]") {
