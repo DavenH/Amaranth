@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "../Policies/Core/DefaultVertexWrapPolicy.h"
 #include "../Policies/Mesh/DepthProjectionPolicy.h"
 #include "../Policies/Curves/InterceptPaddingFlagPolicy.h"
 #include "../Policies/Core/InterceptRestrictionPolicy.h"
@@ -47,7 +46,6 @@ namespace Rasterization {
                                ? request.overridingDimension
                                : request.primaryViewDimension;
             float independent = independentValue(sliceDimension, request.morph);
-            DefaultVertexWrapPolicy wrapPolicy(request.cyclic);
             PointScalingPolicy pointScaling(request.scalingMode);
 
             for (int i = 0; i < source.size(); ++i) {
@@ -59,7 +57,6 @@ namespace Rasterization {
                         oscPhase,
                         request,
                         pointScaling,
-                        wrapPolicy,
                         applyGuide,
                         reductionData);
             }
@@ -89,7 +86,6 @@ namespace Rasterization {
                 float oscPhase,
                 const RasterizationRequest& request,
                 const PointScalingPolicy& pointScaling,
-                const DefaultVertexWrapPolicy& wrapPolicy,
                 GuideApplier&& applyGuide,
                 VertCube::ReductionData& reductionData) {
             slicer.slice(*cube, sliceDimension, reductionData, request.morph);
@@ -108,7 +104,8 @@ namespace Rasterization {
                 midIntercept.y = vertex->values[Vertex::Amp];
             }
 
-            wrapPolicy.wrap(
+            wrapVertexPair(
+                    request.cyclic,
                     a->values[sliceDimension],
                     a->values[Vertex::Phase],
                     b->values[sliceDimension],
@@ -160,6 +157,29 @@ namespace Rasterization {
             }
 
             return intercept;
+        }
+
+        static void wrapVertexPair(
+                bool cyclic,
+                float& ax,
+                float& ay,
+                float& bx,
+                float& by,
+                float independent) {
+            if (!cyclic) {
+                return;
+            }
+
+            if (ay > 1.f && by > 1.f) {
+                ay -= 1.f;
+                by -= 1.f;
+            } else if ((ay > 1.f) != (by > 1.f)) {
+                float intercept = ax + (1.f - ay) / ((ay - by) / (ax - bx));
+                if (intercept > independent) {
+                    ay -= 1.f;
+                    by -= 1.f;
+                }
+            }
         }
 
         template<typename GuideApplier>
