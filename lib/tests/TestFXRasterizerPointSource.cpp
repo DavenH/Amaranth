@@ -81,24 +81,6 @@ namespace {
         rasterizer.samplerView().sampleWithInterval(dest, 1.f / float(dest.size() - 1), 0.f);
     }
 
-    RasterizerCompare::Snapshot captureFx(FXRasterizer& rasterizer) {
-        const auto& result = rasterizer.getRenderResult();
-
-        RasterizerCompare::Snapshot snapshot;
-        snapshot.waveX       = copyBuffer(result.waveform.waveX);
-        snapshot.waveY       = copyBuffer(result.waveform.waveY);
-        snapshot.diffX       = copyBuffer(result.waveform.diffX);
-        snapshot.slope       = copyBuffer(result.waveform.slope);
-        snapshot.curves      = result.curves;
-        snapshot.intercepts  = result.intercepts;
-        snapshot.colorPoints = result.colorPoints;
-        snapshot.zeroIndex   = result.waveform.zeroIndex;
-        snapshot.oneIndex    = result.waveform.oneIndex;
-        snapshot.sampleable  = rasterizer.samplerView().isSampleable();
-
-        return snapshot;
-    }
-
 }
 
 TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx]") {
@@ -122,9 +104,6 @@ TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx
     REQUIRE(rasterizer.getMesh() == nullptr);
     REQUIRE(rasterizer.canRasterizeWaveform());
     REQUIRE(rasterizer.samplerView().isSampleable());
-    REQUIRE(rasterizer.getRenderResult().waveform.waveX.size() > 0);
-    REQUIRE(rasterizer.getRenderResult().waveform.waveY.size()
-            == rasterizer.getRenderResult().waveform.waveX.size());
 
     std::array<float, 32> samples {};
     Buffer<float> sampleBuffer(samples.data(), (int) samples.size());
@@ -147,9 +126,26 @@ TEST_CASE("FXRasterizer mesh adapter matches direct vertex list rasterization", 
     directRasterizer.setVertices(&directVertices);
     directRasterizer.calcCrossPoints();
 
-    RasterizerCompare::requireSnapshotNear(
-            captureFx(directRasterizer),
-            captureFx(meshRasterizer));
+    const auto& directData = directRasterizer.snapshotView().rasterizerData();
+    const auto& meshData = meshRasterizer.snapshotView().rasterizerData();
+
+    REQUIRE(directData.intercepts.size() == meshData.intercepts.size());
+    for (int i = 0; i < (int) directData.intercepts.size(); ++i) {
+        INFO("intercept=" << i);
+        RasterizerCompare::requireInterceptNear(directData.intercepts[i], meshData.intercepts[i]);
+    }
+
+    REQUIRE(directData.curves.size() == meshData.curves.size());
+    for (int i = 0; i < (int) directData.curves.size(); ++i) {
+        INFO("curve=" << i);
+        RasterizerCompare::requireCurveNear(directData.curves[i], meshData.curves[i]);
+    }
+
+    REQUIRE(directData.colorPoints.size() == meshData.colorPoints.size());
+    for (int i = 0; i < (int) directData.colorPoints.size(); ++i) {
+        INFO("colorPoint=" << i);
+        RasterizerCompare::requireColorPointNear(directData.colorPoints[i], meshData.colorPoints[i]);
+    }
 
     std::array<float, 64> meshSamples {};
     std::array<float, 64> directSamples {};

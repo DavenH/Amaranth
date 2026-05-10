@@ -48,7 +48,6 @@ public:
     void setMesh(Mesh* mesh) override;
     int getPaddingSize() const override { return result.paddingSize; }
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
-    const Rasterization::RenderResult& getRenderResult() const { return result; }
 
     void setDims(const Dimensions& dims) override { this->dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }
