@@ -42,7 +42,9 @@ public:
     void updateWaveform(UpdateType updateType);
     bool wrapsVertices() const override { return false; }
 
-    Rasterization::SamplerView samplerView() const override { return result.sampler(); }
+    Rasterization::SamplerView samplerView() const override {
+        return Rasterization::SamplerView(result.waveform, result.sampleable);
+    }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
     void sampleEvenlyTo(const Buffer<float>& dest);
 

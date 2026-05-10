@@ -40,7 +40,5 @@ namespace Rasterization {
             sampleable = false;
             needsResorting = false;
         }
-
-        SamplerView sampler() const { return SamplerView(waveform, sampleable); }
     };
 }
