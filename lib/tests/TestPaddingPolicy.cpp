@@ -3,7 +3,7 @@
 
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/FXRasterizer.h"
-#include "../src/Curve/MeshRasterizer.h"
+#include "Support/LegacyMeshRasterizer.h"
 #include "../src/Curve/Rasterization/Policies/Core/PaddingPolicy.h"
 
 namespace {

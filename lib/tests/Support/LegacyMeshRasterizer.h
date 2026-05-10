@@ -2,28 +2,29 @@
 
 #include <memory>
 #include <vector>
-#include "Curve.h"
-#include "Mesh.h"
-#include "RasterizerData.h"
-#include "Rasterization/GuideCurveOffsetSeeds.h"
-#include "Rasterization/Interfaces/GuideCurveBindableRasterizer.h"
-#include "Rasterization/Interfaces/MeshBindableRasterizer.h"
-#include "Rasterization/Interfaces/RasterizerSampler.h"
-#include "Rasterization/Interfaces/RasterizerSnapshotProvider.h"
-#include "Rasterization/Interfaces/RasterizerUpdateTarget.h"
-#include "Rasterization/Interfaces/RasterizerVertexDomain.h"
-#include "Rasterization/RasterizationRequest.h"
-#include "Rasterization/Policies/Curves/CurveResolutionPolicy.h"
-#include "Rasterization/Policies/Curves/WaveformBakePolicy.h"
-#include "Rasterization/Pipelines/MeshSlicePipeline.h"
-#include "Rasterization/RenderState.h"
-#include "Rasterization/RenderResult.h"
-#include "Rasterization/Sampling/GuideCurveSampler.h"
-#include "VertCube.h"
-#include "../Design/Updating/Updateable.h"
-#include "../Inter/Dimensions.h"
-#include "../Obj/ColorPoint.h"
-#include "../Obj/MorphPosition.h"
+
+#include <Curve/Curve.h>
+#include <Curve/Mesh.h>
+#include <Curve/RasterizerData.h>
+#include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
+#include <Curve/Rasterization/Interfaces/GuideCurveBindableRasterizer.h>
+#include <Curve/Rasterization/Interfaces/MeshBindableRasterizer.h>
+#include <Curve/Rasterization/Interfaces/RasterizerSampler.h>
+#include <Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h>
+#include <Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h>
+#include <Curve/Rasterization/Interfaces/RasterizerVertexDomain.h>
+#include <Curve/Rasterization/RasterizationRequest.h>
+#include <Curve/Rasterization/Policies/Curves/CurveResolutionPolicy.h>
+#include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
+#include <Curve/Rasterization/Pipelines/MeshSlicePipeline.h>
+#include <Curve/Rasterization/RenderState.h>
+#include <Curve/Rasterization/RenderResult.h>
+#include <Curve/Rasterization/Sampling/GuideCurveSampler.h>
+#include <Curve/VertCube.h>
+#include <Design/Updating/Updateable.h>
+#include <Inter/Dimensions.h>
+#include <Obj/ColorPoint.h>
+#include <Obj/MorphPosition.h>
 
 using std::vector;
 

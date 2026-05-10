@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Curve/Rasterization/Policies/Core/InterceptRestrictionPolicy.h"
-#include "../src/Curve/MeshRasterizer.h"
+#include "Support/LegacyMeshRasterizer.h"
 #include "../src/Util/NumberUtils.h"
 
 namespace {

@@ -4,7 +4,7 @@
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Mesh.h"
-#include "../src/Curve/MeshRasterizer.h"
+#include "Support/LegacyMeshRasterizer.h"
 #include "../src/Curve/Rasterization/MeshWaveformRasterizer.h"
 #include "../src/Curve/Rasterization/Interpolation/AccurateMeshSlicer.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"

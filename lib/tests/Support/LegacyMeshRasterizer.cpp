@@ -1,29 +1,30 @@
 #include <iterator>
 #include <climits>
-#include "GuideCurveProvider.h"
-#include "Mesh.h"
-#include "MeshRasterizer.h"
 
-#include "VertCube.h"
-#include "Rasterization/Policies/Curves/CurveWaveformPreparationPolicy.h"
-#include "Rasterization/Policies/Mesh/DepthProjectionPolicy.h"
-#include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
-#include "Rasterization/Policies/Core/InterceptDegeneracyPolicy.h"
-#include "Rasterization/Policies/Core/InterceptSortPolicy.h"
-#include "Rasterization/Policies/Curves/InterceptPaddingFlagPolicy.h"
-#include "Rasterization/Policies/Core/InterceptRestrictionPolicy.h"
-#include "Rasterization/Policies/Core/PaddingPolicy.h"
-#include "Rasterization/Policies/Core/PointScalingPolicy.h"
-#include "Rasterization/Policies/Core/SnapshotPolicy.h"
-#include "Rasterization/Builders/RasterizerSnapshotBuilder.h"
-#include "Rasterization/Builders/TransferTable.h"
-#include "Rasterization/Interpolation/TrilinearMeshSlicer.h"
-#include "Rasterization/Policies/Curves/WaveformBuildPolicy.h"
-#include "Rasterization/Pipelines/MeshSlicePipeline.h"
-#include "Rasterization/Sampling/GuideCurveSampler.h"
-#include "Rasterization/Sampling/WaveformSampler.h"
-#include "Rasterization/Sources/MeshCubeSource.h"
-#include "../Util/CommonEnums.h"
+#include "LegacyMeshRasterizer.h"
+
+#include <Curve/GuideCurveProvider.h>
+#include <Curve/Mesh.h>
+#include <Curve/VertCube.h>
+#include <Curve/Rasterization/Policies/Curves/CurveWaveformPreparationPolicy.h>
+#include <Curve/Rasterization/Policies/Mesh/DepthProjectionPolicy.h>
+#include <Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h>
+#include <Curve/Rasterization/Policies/Core/InterceptDegeneracyPolicy.h>
+#include <Curve/Rasterization/Policies/Core/InterceptSortPolicy.h>
+#include <Curve/Rasterization/Policies/Curves/InterceptPaddingFlagPolicy.h>
+#include <Curve/Rasterization/Policies/Core/InterceptRestrictionPolicy.h>
+#include <Curve/Rasterization/Policies/Core/PaddingPolicy.h>
+#include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
+#include <Curve/Rasterization/Policies/Core/SnapshotPolicy.h>
+#include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
+#include <Curve/Rasterization/Builders/TransferTable.h>
+#include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
+#include <Curve/Rasterization/Policies/Curves/WaveformBuildPolicy.h>
+#include <Curve/Rasterization/Pipelines/MeshSlicePipeline.h>
+#include <Curve/Rasterization/Sampling/GuideCurveSampler.h>
+#include <Curve/Rasterization/Sampling/WaveformSampler.h>
+#include <Curve/Rasterization/Sources/MeshCubeSource.h>
+#include <Util/CommonEnums.h>
 
 MeshRasterizer::ScopedRenderState::ScopedRenderState(
         MeshRasterizer* rasterizer,

@@ -7,7 +7,7 @@
 #include "../src/Curve/Rasterization/GuideCurveOffsetSeeds.h"
 #include "../src/Curve/Rasterization/Policies/Core/SnapshotPolicy.h"
 #include "../src/Curve/Rasterization/RasterizationRequest.h"
-#include "../src/Curve/MeshRasterizer.h"
+#include "Support/LegacyMeshRasterizer.h"
 #include "../src/Curve/Mesh.h"
 #include "../src/Curve/VertCube.h"
 
