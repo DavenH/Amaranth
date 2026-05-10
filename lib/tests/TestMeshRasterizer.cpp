@@ -13,7 +13,6 @@
 #include "../src/Curve/Rasterization/Policies/Curves/InterceptPaddingFlagPolicy.h"
 #include "../src/Curve/Rasterization/Sampling/GuideCurveSampler.h"
 #include "../src/Curve/Rasterization/Sampling/WaveformSampler.h"
-#include "../src/Curve/Rasterization/Sources/MeshCubeSource.h"
 #include "../src/Curve/VertCube.h"
 #include "RasterizerCompare.h"
 
@@ -383,10 +382,9 @@ TEST_CASE("MeshSlicePipeline matches MeshRasterizer intercept and color-point sl
 
     Rasterization::MeshSlicePipeline pipeline;
     Rasterization::TrilinearMeshSlicer slicer;
-    Rasterization::MeshCubeSource source(mesh.get());
     Rasterization::RasterizationRequest request = rasterizer.createRasterizationRequest();
     const auto& output = pipeline.render(
-            source,
+            mesh.get(),
             slicer,
             request,
             0.f,

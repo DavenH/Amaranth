@@ -17,7 +17,6 @@
 #include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
-#include "Rasterization/Sources/MeshCubeSource.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/CommonEnums.h"
@@ -240,7 +239,7 @@ void EnvRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
 
     Rasterization::MeshSlicePipeline meshSlicePipeline;
     const Rasterization::RenderResult& output = meshSlicePipeline.renderWithReduction(
-            Rasterization::MeshCubeSource(mesh),
+            mesh,
             Rasterization::TrilinearMeshSlicer(),
             request,
             oscPhase,

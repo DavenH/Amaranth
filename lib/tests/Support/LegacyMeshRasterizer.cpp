@@ -20,7 +20,6 @@
 #include <Curve/Rasterization/Pipelines/MeshSlicePipeline.h>
 #include <Curve/Rasterization/Sampling/GuideCurveSampler.h>
 #include <Curve/Rasterization/Sampling/WaveformSampler.h>
-#include <Curve/Rasterization/Sources/MeshCubeSource.h>
 #include <Util/CommonEnums.h>
 
 MeshRasterizer::ScopedRenderState::ScopedRenderState(
@@ -133,7 +132,7 @@ const Rasterization::RenderResult& MeshRasterizer::renderMeshSlice(Mesh* usedMes
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
 
     return meshSlicePipeline.renderWithReduction(
-            Rasterization::MeshCubeSource(usedMesh),
+            usedMesh,
             Rasterization::TrilinearMeshSlicer(),
             createRasterizationRequest(),
             oscPhase,

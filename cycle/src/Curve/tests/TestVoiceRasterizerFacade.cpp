@@ -5,7 +5,6 @@
 #include "../Rasterization/Policies/Voice/VoicePolicies.h"
 #include "../Rasterization/Pipelines/VoiceSlicePipeline.h"
 #include <Curve/Mesh.h>
-#include <Curve/Rasterization/Sources/MeshCubeSource.h>
 #include <Curve/VertCube.h>
 
 namespace {
@@ -181,11 +180,10 @@ TEST_CASE("VoiceSlicePipeline builds voice slice intercepts", "[cycle][rasteriza
     addVoiceCube(mesh, 0.20f, 0.80f, 0.25f, 0.75f, 0.35f);
     addVoiceCube(mesh, 0.10f, 0.40f, 0.10f, 0.30f, 0.55f);
 
-    ::Rasterization::MeshCubeSource source(&mesh);
     VertCube::ReductionData reductionData;
 
     auto output = Cycle::Rasterization::VoiceSlicePipeline().render(
-            source,
+            &mesh,
             MorphPosition(0.50f, 0.50f, 0.50f),
             0.f,
             0.85f,

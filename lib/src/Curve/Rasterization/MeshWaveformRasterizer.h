@@ -9,7 +9,6 @@
 #include "Pipelines/PointListRasterizationPipeline.h"
 #include "Policies/Mesh/GuideCurvePolicy.h"
 #include "Sampling/WaveformSampler.h"
-#include "Sources/MeshCubeSource.h"
 
 class GuideCurveProvider;
 class Mesh;
@@ -43,7 +42,7 @@ namespace Rasterization {
 
             GuideCurveApplier guideApplier = createGuideCurveApplier(reduction, &needsResorting);
             const RenderResult& meshOutput = meshPipeline.renderWithReduction(
-                    MeshCubeSource(mesh),
+                    mesh,
                     TrilinearMeshSlicer(),
                     request,
                     oscPhase,

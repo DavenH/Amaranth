@@ -49,7 +49,7 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
     chainingPolicy.beginCall(*state, chainResult.intercepts);
 
     auto output = Cycle::Rasterization::VoiceSlicePipeline().render(
-            Rasterization::MeshCubeSource(mesh),
+            mesh,
             rasterizer.getRequest().morph,
             state->advancement,
             oscPhase,

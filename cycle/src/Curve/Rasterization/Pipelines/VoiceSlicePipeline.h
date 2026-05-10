@@ -4,9 +4,9 @@
 #include <vector>
 
 #include <Curve/Intercept.h>
+#include <Curve/Mesh.h>
 #include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
 #include <Curve/Rasterization/RenderResult.h>
-#include <Curve/Rasterization/Sources/MeshCubeSource.h>
 #include <Curve/VertCube.h>
 #include <Obj/MorphPosition.h>
 
@@ -17,7 +17,7 @@ namespace Cycle::Rasterization {
     public:
         template<typename GuideApplier>
         ::Rasterization::RenderResult render(
-                const ::Rasterization::MeshCubeSource& source,
+                Mesh* mesh,
                 const MorphPosition& morph,
                 float advancement,
                 float oscPhase,
@@ -25,15 +25,16 @@ namespace Cycle::Rasterization {
                 VertCube::ReductionData& reductionData) const {
             ::Rasterization::RenderResult output;
 
-            if (source.empty()) {
+            if (mesh == nullptr || mesh->getNumCubes() == 0) {
                 return output;
             }
 
             float voiceTime = jmin(1.f, morph.time + advancement);
 
-            for (int i = 0; i < source.size(); ++i) {
+            auto& cubes = mesh->getCubes();
+            for (int i = 0; i < (int) cubes.size(); ++i) {
                 appendCubeIntercept(
-                        source.cubeAt(i),
+                        cubes[i],
                         morph,
                         voiceTime,
                         oscPhase,

@@ -10,7 +10,7 @@
 #include "../RasterizationRequest.h"
 #include "../RenderResult.h"
 #include "../Interpolation/TrilinearMeshSlicer.h"
-#include "../Sources/MeshCubeSource.h"
+#include "../../Mesh.h"
 #include "../../VertCube.h"
 #include "../../../Obj/ColorPoint.h"
 #include "../../../Util/NumberUtils.h"
@@ -20,17 +20,17 @@ namespace Rasterization {
     public:
         template<typename GuideApplier>
         const RenderResult& render(
-                const MeshCubeSource& source,
+                Mesh* mesh,
                 const TrilinearMeshSlicer& slicer,
                 const RasterizationRequest& request,
                 float oscPhase,
                 GuideApplier&& applyGuide) {
-            return renderWithReduction(source, slicer, request, oscPhase, applyGuide, reduction);
+            return renderWithReduction(mesh, slicer, request, oscPhase, applyGuide, reduction);
         }
 
         template<typename GuideApplier>
         const RenderResult& renderWithReduction(
-                const MeshCubeSource& source,
+                Mesh* mesh,
                 const TrilinearMeshSlicer& slicer,
                 const RasterizationRequest& request,
                 float oscPhase,
@@ -38,7 +38,7 @@ namespace Rasterization {
                 VertCube::ReductionData& reductionData) {
             output.clear();
 
-            if (source.empty()) {
+            if (mesh == nullptr || mesh->getNumCubes() == 0) {
                 return output;
             }
 
@@ -48,9 +48,10 @@ namespace Rasterization {
             float independent = independentValue(sliceDimension, request.morph);
             PointScalingPolicy pointScaling(request.scalingMode);
 
-            for (int i = 0; i < source.size(); ++i) {
+            auto& cubes = mesh->getCubes();
+            for (int i = 0; i < (int) cubes.size(); ++i) {
                 appendCubeIntercept(
-                        source.cubeAt(i),
+                        cubes[i],
                         slicer,
                         sliceDimension,
                         independent,
