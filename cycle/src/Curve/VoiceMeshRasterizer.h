@@ -45,30 +45,13 @@ public:
     bool doesCalcDepthDimensions() const { return rasterizer.getRequest().calcDepthDimensions; }
     bool doesIntegralSampling() const { return rasterizer.getRequest().integralSampling; }
     bool hasEnoughCubesForCrossSection();
-    bool isSampleable() const;
-    bool isSampleableAt(float x) const;
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
-    Rasterization::SamplerView samplerView() const override { return Rasterization::SamplerView(currentWaveform(), isSampleable()); }
+    Rasterization::SamplerView samplerView() const override {
+        return Rasterization::SamplerView(currentWaveform(), currentWaveformIsSampleable());
+    }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
     Rasterization::WaveformView waveformView() const override { return Rasterization::WaveformView(currentWaveform()); }
-
-    float sampleAt(double angle);
-    float sampleAt(double angle, int& currentIndex);
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase);
-
-    template<typename T>
-    T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
-        if (!chainedOutputActive) {
-            return rasterizer.samplerView().sampleWithInterval(buffer, delta, phase);
-        }
-
-        return Rasterization::WaveformSampler::sampleWithInterval(
-                chainResult.waveform,
-                buffer,
-                delta,
-                phase);
-    }
 
     Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
@@ -90,6 +73,7 @@ public:
 
 private:
     Rasterization::WaveformBuffers currentWaveform() const;
+    bool currentWaveformIsSampleable() const;
     void bakeChainedWaveform();
     void cleanChainedOutput();
     Rasterization::RenderResult renderVoiceSlice(float oscPhase);

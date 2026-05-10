@@ -113,40 +113,10 @@ bool VoiceMeshRasterizer::hasEnoughCubesForCrossSection() {
     return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
 }
 
-bool VoiceMeshRasterizer::isSampleable() const {
+bool VoiceMeshRasterizer::currentWaveformIsSampleable() const {
     return chainedOutputActive
            ? Rasterization::WaveformSampler::isSampleable(chainResult.waveform)
            : rasterizer.samplerView().isSampleable();
-}
-
-bool VoiceMeshRasterizer::isSampleableAt(float x) const {
-    return chainedOutputActive
-           ? Rasterization::WaveformSampler::isSampleableAt(chainResult.waveform, x)
-           : rasterizer.samplerView().isSampleableAt(x);
-}
-
-float VoiceMeshRasterizer::sampleAt(double angle) {
-    if (!chainedOutputActive) {
-        return rasterizer.samplerView().sampleAt(angle);
-    }
-
-    return Rasterization::WaveformSampler::sampleAt(currentWaveform(), chainUnsampleable, angle);
-}
-
-float VoiceMeshRasterizer::sampleAt(double angle, int& currentIndex) {
-    if (!chainedOutputActive) {
-        return rasterizer.samplerView().sampleAt(angle, currentIndex);
-    }
-
-    return Rasterization::WaveformSampler::sampleAt(currentWaveform(), chainUnsampleable, angle, currentIndex);
-}
-
-float VoiceMeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
-    if (!chainedOutputActive) {
-        return rasterizer.samplerView().samplePerfectly(delta, buffer, phase);
-    }
-
-    return Rasterization::WaveformSampler::samplePerfectly(currentWaveform(), delta, buffer, phase);
 }
 
 int VoiceMeshRasterizer::getPaddingSize() const {
