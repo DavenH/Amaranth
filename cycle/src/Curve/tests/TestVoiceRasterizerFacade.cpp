@@ -156,7 +156,7 @@ TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows",
     REQUIRE(currentIntercepts[0].x == Approx(0.10f));
     REQUIRE(state.backIcpts.empty());
 
-    Cycle::Rasterization::VoiceSlicePipeline::Output output;
+    ::Rasterization::RenderResult output;
     output.intercepts = {
         Intercept(0.60f, 0.10f),
         Intercept(0.30f, 0.40f),

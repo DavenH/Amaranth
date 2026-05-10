@@ -4,9 +4,9 @@
 #include <vector>
 
 #include <Curve/Intercept.h>
+#include <Curve/Rasterization/RenderResult.h>
 
 #include "../../../CycleState.h"
-#include "../../Pipelines/VoiceSlicePipeline.h"
 
 namespace Cycle::Rasterization {
     class VoiceChainingPolicy {
@@ -28,7 +28,7 @@ namespace Cycle::Rasterization {
 
         template<typename RestrictIntercepts>
         bool publishNextIntercepts(
-                const VoiceSlicePipeline::Output& output,
+                const ::Rasterization::RenderResult& output,
                 CycleState& state,
                 RestrictIntercepts&& restrictIntercepts) const {
             state.backIcpts = output.intercepts;

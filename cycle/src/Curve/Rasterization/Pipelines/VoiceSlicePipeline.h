@@ -5,6 +5,7 @@
 
 #include <Curve/Intercept.h>
 #include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
+#include <Curve/Rasterization/RenderResult.h>
 #include <Curve/Rasterization/Sources/MeshCubeSource.h>
 #include <Curve/VertCube.h>
 #include <Obj/MorphPosition.h>
@@ -14,20 +15,15 @@
 namespace Cycle::Rasterization {
     class VoiceSlicePipeline {
     public:
-        struct Output {
-            std::vector<Intercept> intercepts;
-            bool sampleable {};
-        };
-
         template<typename GuideApplier>
-        Output render(
+        ::Rasterization::RenderResult render(
                 const ::Rasterization::MeshCubeSource& source,
                 const MorphPosition& morph,
                 float advancement,
                 float oscPhase,
                 GuideApplier&& applyGuide,
                 VertCube::ReductionData& reductionData) const {
-            Output output;
+            ::Rasterization::RenderResult output;
 
             if (source.empty()) {
                 return output;
