@@ -18,7 +18,6 @@
 #include "../../Obj/Color.h"
 #include "../../Obj/ColorPoint.h"
 #include "../../Obj/CurveLine.h"
-#include "../../Curve/RasterizerData.h"
 #include "../../Inter/Interactor.h"
 #include "../../Util/MicroTimer.h"
 #include "../../Util/Util.h"
@@ -521,8 +520,8 @@ void Panel::handlePendingUpdates() {
 }
 
 void Panel::drawInterceptsAndHighlightClosest() {
-    RasterizerData& data = interactor->rasterizerSnapshot().rasterizerData();
-    const vector<Intercept>& intercepts = data.intercepts;
+    auto snapshot = interactor->rasterizerSnapshot();
+    const vector<Intercept>& intercepts = snapshot.intercepts();
 
     int size = 0;
     if(intercepts.empty() && interactor->depthVerts.empty()) {
@@ -531,7 +530,7 @@ void Panel::drawInterceptsAndHighlightClosest() {
 
     // it's a bigger circle, so do it first
     highlightCurrentIntercept(); {
-        ScopedLock dataLock(data.lock);
+        ScopedLock dataLock(snapshot.lock());
         size = intercepts.size();
 
         //  && getSetting(DrawWave) == false

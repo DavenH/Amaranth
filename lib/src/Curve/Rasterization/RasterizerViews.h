@@ -77,6 +77,26 @@ namespace Rasterization {
             return rasterizerData().colorPoints;
         }
 
+        CriticalSection& lock() const {
+            return rasterizerData().lock;
+        }
+
+        Buffer<float> waveX() const {
+            return rasterizerData().waveX;
+        }
+
+        Buffer<float> waveY() const {
+            return rasterizerData().waveY;
+        }
+
+        int zeroIndex() const {
+            return rasterizerData().zeroIndex;
+        }
+
+        int oneIndex() const {
+            return rasterizerData().oneIndex;
+        }
+
     private:
         RasterizerData* data {};
     };

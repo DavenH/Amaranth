@@ -215,8 +215,8 @@ void Envelope2D::drawCurvesAndSurfaces() {
         return;
     }
 
-    RasterizerData& data = rast->snapshotView().rasterizerData();
-    ScopedLock dataLock(data.lock);
+    auto snapshot = rast->snapshotView();
+    ScopedLock dataLock(snapshot.lock());
 
     bool reduceAlpha = ! isMeshEnabled();
 
@@ -230,11 +230,11 @@ void Envelope2D::drawCurvesAndSurfaces() {
     float stopPosition 	   = 1;
 
     {
-        ScopedLock sl(data.lock);
+        ScopedLock sl(snapshot.lock());
 
-        const vector<Intercept>& icpts  = data.intercepts;
-        waveX = data.waveX;
-        waveY = data.waveY;
+        const vector<Intercept>& icpts  = snapshot.intercepts();
+        waveX = snapshot.waveX();
+        waveY = snapshot.waveY();
 
         float backEx = icpts.empty() ? 1.f : icpts.back().x;
         stopPosition = sx(backEx);
@@ -242,7 +242,7 @@ void Envelope2D::drawCurvesAndSurfaces() {
         if(waveX.empty() || icpts.empty())
             return;
 
-        int istart = jmax(0, data.zeroIndex - 4);
+        int istart = jmax(0, snapshot.zeroIndex() - 4);
         int size = waveX.size() - istart;
 
         prepareBuffers(size, size);
@@ -363,10 +363,10 @@ void Envelope2D::getLoopPoints(float& loopStart, float& sustain) {
         int loopIdx, sustIdx;
         rast->getIndices(loopIdx, sustIdx);
 
-        RasterizerData& data = rast->snapshotView().rasterizerData();
-        ScopedLock dataLock(data.lock);
+        auto snapshot = rast->snapshotView();
+        ScopedLock dataLock(snapshot.lock());
 
-        const vector<Intercept>& icpts = data.intercepts;
+        const vector<Intercept>& icpts = snapshot.intercepts();
 
         loopStart = -1;
         sustain = -1;

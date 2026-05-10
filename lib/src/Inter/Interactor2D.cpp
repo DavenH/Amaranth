@@ -3,7 +3,6 @@
 #include "../Algo/Resampling.h"
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
-#include "../Curve/RasterizerData.h"
 #include "../Array/BufferXY.h"
 #include "../Curve/VertCube.h"
 #include "../Inter/UndoableMeshProcess.h"
@@ -23,13 +22,13 @@ bool Interactor2D::locateClosestElement() {
         return Interactor::locateClosestElement();
     }
 
-    RasterizerData& rastData = rasterizerSnapshot().rasterizerData();
+    auto snapshot = rasterizerSnapshot();
 
-    if (rastData.intercepts.empty() && depthVerts.empty()) {
+    if (snapshot.intercepts().empty() && depthVerts.empty()) {
         return Interactor::locateClosestElement();
     }
 
-    const vector<Intercept>& icpts = rastData.intercepts;
+    const vector<Intercept>& icpts = snapshot.intercepts();
 
     float dist = 1e7f;
     float x = state.currentMouse.x;
@@ -120,10 +119,10 @@ void Interactor2D::doExtraMouseMoveAt(Point<int> localPos) {
 
     const float distThresPX = 7.f;
 
-    RasterizerData& rastData = rasterizerSnapshot().rasterizerData();
+    auto snapshot = rasterizerSnapshot();
 
-    Buffer<Float32> waveX = rastData.waveX;
-    Buffer<Float32> waveY = rastData.waveY;
+    Buffer<Float32> waveX = snapshot.waveX();
+    Buffer<Float32> waveY = snapshot.waveY();
     bool inSelection     = finalSelection.contains(localPos);
 
     mouseFlag(WithinReshapeThresh) = false;
@@ -327,15 +326,15 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 }
 
 void Interactor2D::doReshapeCurve(const MouseEvent& e) {
-    RasterizerData& data = rasterizerSnapshot().rasterizerData();
+    auto snapshot = rasterizerSnapshot();
 
-    if (data.curves.empty()) {
+    if (snapshot.curves().empty()) {
         return;
     }
 
     flag(LoweredRes) = true;
 
-    const vector<Curve>& curves = data.curves;
+    const vector<Curve>& curves = snapshot.curves();
 
     {
         ScopedLock sl(vertexLock);
@@ -451,15 +450,15 @@ float Interactor2D::getVertexClickProximityThres() {
 
 Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
     vector<Vertex*>& selected   = getSelected();
-    RasterizerData& rastData    = rasterizerSnapshot().rasterizerData();
+    auto snapshot               = rasterizerSnapshot();
     ModifierKeys keys           = ModifierKeys::getCurrentModifiers();
 
-    bool testAdjacent = keys.isAltDown() && selected.size() == 1 && ! rastData.intercepts.empty();
+    bool testAdjacent = keys.isAltDown() && selected.size() == 1 && ! snapshot.intercepts().empty();
 
     if (testAdjacent) {
         float maximum = panel->getZoomPanel()->rect.xMaximum;
 
-        const vector<Intercept>& icpts = rastData.intercepts;
+        const vector<Intercept>& icpts = snapshot.intercepts();
         Range<float> limits = vertexLimits[dims.x];
 
         for (int i = 0; i < (int) icpts.size(); ++i) {

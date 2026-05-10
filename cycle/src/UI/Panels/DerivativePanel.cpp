@@ -2,7 +2,6 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Binary/Gradients.h>
-#include <Curve/RasterizerData.h>
 #include <UI/IConsole.h>
 #include <Util/Arithmetic.h>
 
@@ -77,10 +76,10 @@ void DerivativePanel::mouseEnter(const MouseEvent& e) {
 
 void DerivativePanel::calcDerivative() {
     auto& timeRast = getObj(TimeRasterizer);
-    RasterizerData& data = timeRast.snapshotView().rasterizerData();
+    auto snapshot = timeRast.snapshotView();
 
-    Buffer<float> waveX = data.waveX;
-    Buffer<float> waveY = data.waveY;
+    Buffer<float> waveX = snapshot.waveX();
+    Buffer<float> waveY = snapshot.waveY();
     Buffer<float> num, dx, dy, ddy;
 
     int viewStage = getSetting(ViewStage);
@@ -137,8 +136,8 @@ void DerivativePanel::calcDerivative() {
             return;
         }
 
-        int start = data.zeroIndex;
-        int end = data.oneIndex;
+        int start = snapshot.zeroIndex();
+        int end = snapshot.oneIndex();
         size = end - start;
 
         if (size < 3 || end == INT_MAX) {
