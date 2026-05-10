@@ -5,7 +5,6 @@
 #include "MeshRasterizer.h"
 
 #include "VertCube.h"
-#include "Rasterization/Policies/Mesh/ComponentGuideSharpnessPolicy.h"
 #include "Rasterization/Policies/Curves/CurveWaveformPreparationPolicy.h"
 #include "Rasterization/Policies/Mesh/DepthProjectionPolicy.h"
 #include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
@@ -24,10 +23,6 @@
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
 #include "Rasterization/Sources/MeshCubeSource.h"
-#include "../App/AppConstants.h"
-#include "../App/MeshLibrary.h"
-#include "../Array/ScopedAlloc.h"
-#include "../Design/Updating/Updater.h"
 #include "../Util/CommonEnums.h"
 
 Rasterization::ScopedMeshRasterizerRenderState::ScopedMeshRasterizerRenderState(
@@ -121,14 +116,6 @@ Rasterization::RasterizationRequest MeshRasterizer::createRasterizationRequest()
     request.xMaximum                  = xMaximum;
 
     return request;
-}
-
-void MeshRasterizer::calcWaveformFrom(vector<Intercept>& icpts) {
-    this->icpts = icpts;
-
-    padIcpts(icpts, curves);
-    updateCurves();
-    makeCopy();
 }
 
 void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
@@ -251,15 +238,6 @@ void MeshRasterizer::restrictIntercepts(vector<Intercept>& intercepts) {
   #endif
 }
 
-/*
- * set curve after a amp-vs-phase (component curve) guide curve, to full sharpness
- * so that waveX is continuous. At < 1 sharpness, the trailing
- * x-values of the curve create a discontinuity
- */
-void MeshRasterizer::adjustDeformingSharpness() {
-    Rasterization::ComponentGuideSharpnessPolicy().apply(curves);
-}
-
 void MeshRasterizer::updateCurves() {
     if (icpts.size() < 2) {
         return;
@@ -298,7 +276,7 @@ void MeshRasterizer::calcWaveform() {
             context,
             [this](int totalRes) {
                 updateBuffers(totalRes);
-                return createWaveformRefs();
+                return Rasterization::WaveformBufferRefs(waveform);
             });
 
     unsampleable = !sampleable;
@@ -404,13 +382,6 @@ void MeshRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curv
     paddingSize = Rasterization::NonCyclicPaddingPolicy(context).build(intercepts, curves);
 }
 
-void MeshRasterizer::validateCurves() {
-    for (int i = 0; i < (int) curves.size() - 1; ++i) {
-        jassert(curves[i].b.x == curves[i + 1].a.x);
-        jassert(curves[i].c.x == curves[i + 1].b.x);
-    }
-}
-
 // NB: set the intercept's adjustedX property rather than x
 // it will be used to re-sort and then assign the x property
 void MeshRasterizer::applyGuideCurves(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds) {
@@ -471,44 +442,6 @@ MeshRasterizer::MeshRasterizer(const MeshRasterizer& copy) :
     initialise();
 }
 
-void MeshRasterizer::separateIntercepts(vector<Intercept>& intercepts, float minDx) {
-    float cumulativeRetract = 0;
-    float retractThisTime = 0;
-
-    int size = intercepts.size();
-
-    for (int i = 0; i < size - 1; ++i) {
-        retractThisTime = jmax(0.f, intercepts[i].x + minDx - intercepts[i + 1].x);
-        cumulativeRetract += retractThisTime;
-    }
-
-    // if we don't have room to space out the icpts, we need to reduce their volume
-    bool doFlatten = false;
-
-    if (cumulativeRetract > intercepts[0].x) {
-        float endSpace = (1 - intercepts.back().x) - minDx;
-        float maxSpread = intercepts[0].x + endSpace;
-
-        for(int i = 0; i < size; ++i) {
-            intercepts[i].x += endSpace;
-        }
-
-        if(cumulativeRetract > maxSpread) {
-            doFlatten = true;
-        }
-
-        cumulativeRetract = intercepts.front().x;
-    }
-
-    float mostMovable = doFlatten ? cumulativeRetract / (float)(intercepts.size() + 1) : minDx;
-
-    for (int i = 0; i < size - 1; ++i) {
-        retractThisTime     = jmax(0.f, intercepts[i].x + mostMovable - intercepts[i + 1].x);
-        intercepts[i].x     -= cumulativeRetract;
-        cumulativeRetract     -= retractThisTime;
-    }
-}
-
 #pragma push_macro("new")
 #undef new
 
@@ -527,10 +460,6 @@ void MeshRasterizer::performUpdate(UpdateType updateType) {
     }
 }
 
-int MeshRasterizer::getNumDims() {
-    return 3;
-}
-
 bool MeshRasterizer::hasEnoughCubesForCrossSection() {
     return mesh->getNumCubes() > 1;
 }
@@ -541,26 +470,6 @@ bool MeshRasterizer::isSampleable() {
 
 bool MeshRasterizer::isSampleableAt(float x) {
     return Rasterization::WaveformSampler::isSampleableAt(createWaveformView(), x);
-}
-
-Mesh* MeshRasterizer::getCrossPointsMesh() {
-    return mesh;
-}
-
-void MeshRasterizer::print(OutputStream& dout) {
-    dout << "time: " << morph.time << "\n";
-    dout << "key: " << morph.red << "\n";
-    dout << "mod: " << morph.blue << "\n";
-    dout << "wrap ends: " << cyclic << "\n";
-    dout << "low res: " << lowResCurves << "\n";
-    dout << "\n";
-
-    dout << "intercepts: " << "\n";
-    for(auto & icpt : icpts) {
-        dout << icpt.x << "\t" << icpt.y << "\n";
-    }
-
-    dout << "\n";
 }
 
 void MeshRasterizer::updateBuffers(int size) {
@@ -590,10 +499,6 @@ Rasterization::WaveformBuffers MeshRasterizer::createWaveformView() const {
     return waveform;
 }
 
-Rasterization::WaveformBufferRefs MeshRasterizer::createWaveformRefs() {
-    return Rasterization::WaveformBufferRefs(waveform);
-}
-
 Rasterization::GuideCurvePolicyContext MeshRasterizer::createGuideCurvePolicyContext() {
     Rasterization::GuideCurvePolicyContext context;
     context.guideCurveProvider = guideCurveProvider;
@@ -609,10 +514,6 @@ Rasterization::GuideCurvePolicyContext MeshRasterizer::createGuideCurvePolicyCon
 
 Rasterization::GuideCurveApplier MeshRasterizer::createGuideCurveApplier() {
     return Rasterization::GuideCurveApplier(createGuideCurvePolicyContext());
-}
-
-Rasterization::GuideCurveApplier MeshRasterizer::createLegacyGuideCurveApplier() {
-    return createGuideCurveApplier();
 }
 
 void MeshRasterizer::makeCopy() {

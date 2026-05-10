@@ -19,14 +19,11 @@
 #include "Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
-#include "SurfaceLine.h"
 #include "VertCube.h"
-#include "../Array/ScopedAlloc.h"
 #include "../Design/Updating/Updateable.h"
 #include "../Inter/Dimensions.h"
 #include "../Obj/ColorPoint.h"
 #include "../Obj/MorphPosition.h"
-#include "../Util/MicroTimer.h"
 
 using std::vector;
 
@@ -37,9 +34,6 @@ namespace Rasterization {
     class GuideCurveApplier;
     struct GuideCurvePolicyContext;
 }
-
-typedef vector<Intercept>::iterator IcptIter;
-typedef vector<Intercept>::const_iterator ConstIcptIter;
 
 class MeshRasterizer :
         public Updateable
@@ -67,18 +61,13 @@ public:
     MeshRasterizer& operator=(const MeshRasterizer& copy);
     ~MeshRasterizer() override;
 
-    void adjustDeformingSharpness();
     void applyGuideCurves(Intercept& icpt, const MorphPosition& morph, bool noOffsetAtEnds = false);
     void calcCrossPoints(Mesh* usedmesh, float oscPhase);
     void calcIntercepts();
-    void calcWaveformFrom(vector<Intercept>& icpts);
     void initialise();
     void makeCopy();
-    void print(OutputStream& stream);
     void restrictIntercepts(vector<Intercept>& intercepts);
-    void separateIntercepts(vector<Intercept>& intercepts, float minDx);
     void updateValue(int dim, float value);
-    void validateCurves();
 
     void restoreStateFrom(RenderState& src);
     void saveStateTo(RenderState& src);
@@ -126,9 +115,7 @@ public:
     void updateCurves();
 
     bool hasEnoughCubesForCrossSection() override;
-    int getNumDims();
     int getPrimaryViewDimension();
-    Mesh* getCrossPointsMesh();
 
     /* ----------------------------------------------------------------------------- */
 
@@ -187,13 +174,6 @@ public:
     void updateOffsetSeeds(int layerSize, int tableSize);
     float getInterceptPadding() const               { return interceptPadding;          }
     VertCube::ReductionData& getReductionData()     { return reduct;                    }
-    Rasterization::GuideCurveApplier createLegacyGuideCurveApplier();
-    void prepareLegacyCurvesForWaveform()           { prepareCurvesForWaveform();       }
-    void calcLegacyWaveform()                       { calcWaveform();                   }
-    void randomizeLegacyGuideCurveOffsetSeeds(int layerSize, int tableSize) {
-        randomizeGuideCurveOffsetSeeds(layerSize, tableSize);
-    }
-
 
 protected:
     void clearRasterizationResult(bool clearCurves);
@@ -213,7 +193,6 @@ protected:
     void rebuildCurvesFromIntercepts();
     void finishCrossPointCalculation();
     Rasterization::WaveformBuffers createWaveformView() const;
-    Rasterization::WaveformBufferRefs createWaveformRefs();
     Rasterization::GuideCurvePolicyContext createGuideCurvePolicyContext();
     Rasterization::GuideCurveApplier createGuideCurveApplier();
     void setResolutionIndices(float base);
@@ -248,7 +227,6 @@ protected:
     String name;
 
     Dimensions dims;
-    MicroTimer timer;
     MorphPosition morph;
 
     Rasterization::RenderResult result;
@@ -261,8 +239,6 @@ protected:
     vector<ColorPoint>& colorPoints;
     vector<Curve>& curves;
     vector<GuideCurveRegion>& guideCurveRegions;
-
-    ScopedAlloc<Int8u> alignedBytes;
 
     Rasterization::WaveformBuffers& waveform;
     VertCube::ReductionData reduct;
