@@ -10,7 +10,7 @@
 #include <Curve/VertCube.h>
 #include <Obj/MorphPosition.h>
 
-#include "../Policies/Voice/VoicePointPositionPolicy.h"
+#include "../Policies/Voice/VoicePolicies.h"
 
 namespace Cycle::Rasterization {
     class VoiceSlicePipeline {

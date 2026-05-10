@@ -14,9 +14,7 @@
 #include "VoiceMeshRasterizer.h"
 #include "CycleState.h"
 #include "Rasterization/Pipelines/VoiceSlicePipeline.h"
-#include "Rasterization/Policies/Voice/VoiceChainedPaddingPolicy.h"
-#include "Rasterization/Policies/Voice/VoiceChainingPolicy.h"
-#include "Rasterization/Policies/Voice/VoiceCurveResolutionPolicy.h"
+#include "Rasterization/Policies/Voice/VoicePolicies.h"
 #include "../Util/CycleEnums.h"
 
 

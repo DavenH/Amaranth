@@ -2,10 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../CycleState.h"
-#include "../Rasterization/Policies/Voice/VoiceChainedPaddingPolicy.h"
-#include "../Rasterization/Policies/Voice/VoiceChainingPolicy.h"
-#include "../Rasterization/Policies/Voice/VoiceCurveResolutionPolicy.h"
-#include "../Rasterization/Policies/Voice/VoicePointPositionPolicy.h"
+#include "../Rasterization/Policies/Voice/VoicePolicies.h"
 #include "../Rasterization/Pipelines/VoiceSlicePipeline.h"
 #include <Curve/Mesh.h>
 #include <Curve/Rasterization/Sources/MeshCubeSource.h>
