@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Builders/WaveformBuilder.h"
+#include "WaveformBakePolicy.h"
 
 namespace Rasterization {
     class WaveformBuildPolicy {
@@ -10,18 +10,18 @@ namespace Rasterization {
                 std::vector<Curve>& curves,
                 WaveformBakePolicy::Context& context,
                 AllocateTarget allocateTarget) const {
-            int totalRes = waveformBuilder.prepare(curves, context);
+            int totalRes = bakePolicy.prepare(curves, context);
             if (totalRes <= 0) {
                 return false;
             }
 
             context.waveform = allocateTarget(totalRes);
-            waveformBuilder.bake(curves, context);
+            bakePolicy.bake(curves, context);
 
             return context.waveform.isSampleable();
         }
 
     private:
-        WaveformBuilder waveformBuilder;
+        WaveformBakePolicy bakePolicy;
     };
 }

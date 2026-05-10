@@ -56,8 +56,8 @@ namespace {
         }
     }
 
-    std::unique_ptr<Mesh, MeshDeleter> createWaveformBuilderMesh() {
-        std::unique_ptr<Mesh, MeshDeleter> mesh(new Mesh("WaveformBuilderMesh"));
+    std::unique_ptr<Mesh, MeshDeleter> createWaveformBakeMesh() {
+        std::unique_ptr<Mesh, MeshDeleter> mesh(new Mesh("WaveformBakeMesh"));
 
         struct CubeData {
             float lowPhase, highPhase;
@@ -113,12 +113,12 @@ TEST_CASE("CurveResolutionPolicy applies low-resolution shortcut", "[rasterizati
     }
 }
 
-TEST_CASE("WaveformBuilder path keeps MeshRasterizer wave snapshots deterministic", "[rasterization][waveform]") {
+TEST_CASE("Waveform bake path keeps MeshRasterizer wave snapshots deterministic", "[rasterization][waveform]") {
     CurveTableScope curveTableScope;
-    auto mesh = createWaveformBuilderMesh();
+    auto mesh = createWaveformBakeMesh();
 
-    MeshRasterizer first("WaveformBuilderA");
-    MeshRasterizer second("WaveformBuilderB");
+    MeshRasterizer first("WaveformBakeA");
+    MeshRasterizer second("WaveformBakeB");
     configureRasterizer(first, mesh.get());
     configureRasterizer(second, mesh.get());
 
