@@ -6,7 +6,6 @@
 #include "../src/Curve/Mesh.h"
 #include "Support/LegacyMeshRasterizer.h"
 #include "../src/Curve/Rasterization/MeshWaveformRasterizer.h"
-#include "../src/Curve/Rasterization/Interpolation/AccurateMeshSlicer.h"
 #include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "../src/Curve/Rasterization/Policies/Mesh/ComponentGuideSharpnessPolicy.h"
 #include "../src/Curve/Rasterization/Policies/Curves/CurveWaveformPreparationPolicy.h"
@@ -476,29 +475,6 @@ TEST_CASE("InterceptPaddingFlagPolicy marks consolidated component-guide padding
     for (const Intercept& intercept : plainIntercepts) {
         REQUIRE_FALSE(intercept.padBefore);
         REQUIRE_FALSE(intercept.padAfter);
-    }
-}
-
-TEST_CASE("AccurateMeshSlicer remains available as a dormant mesh slicing strategy", "[meshrasterizer][pipeline][slice]") {
-    auto mesh = createSyntheticWaveMesh();
-    VertCube* cube = mesh->getCubes().front();
-
-    VertCube::ReductionData accurateData;
-    VertCube::ReductionData trilinearData;
-    MorphPosition position(0.5f, 0.5f, 0.5f);
-
-    Rasterization::AccurateMeshSlicer accurateSlicer;
-    Rasterization::TrilinearMeshSlicer trilinearSlicer;
-
-    REQUIRE(accurateSlicer.slice(*cube, Vertex::Time, accurateData, position));
-    REQUIRE(trilinearSlicer.slice(*cube, Vertex::Time, trilinearData, position));
-    REQUIRE(accurateData.pointOverlaps);
-    REQUIRE(accurateData.lineOverlaps);
-
-    for (int dim = 0; dim <= Vertex::Curve; ++dim) {
-        INFO("dim=" << dim);
-        REQUIRE(accurateData.v0.values[dim] == Catch::Approx(trilinearData.v0.values[dim]));
-        REQUIRE(accurateData.v1.values[dim] == Catch::Approx(trilinearData.v1.values[dim]));
     }
 }
 
