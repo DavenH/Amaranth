@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "../Policies/Mesh/DepthProjectionPolicy.h"
-#include "../Policies/Curves/InterceptPaddingFlagPolicy.h"
+#include "../Policies/Curves/CurvePolicies.h"
 #include "../Policies/Core/InterceptPolicies.h"
 #include "../Policies/Core/PointScalingPolicy.h"
 #include "../RasterizationRequest.h"

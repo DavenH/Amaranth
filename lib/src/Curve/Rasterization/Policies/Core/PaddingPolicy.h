@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "../Curves/CurveTripletPolicy.h"
+#include "../Curves/CurvePolicies.h"
 #include "../../../Curve.h"
 #include "../../../Intercept.h"
 

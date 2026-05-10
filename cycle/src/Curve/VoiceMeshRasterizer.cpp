@@ -5,7 +5,7 @@
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
 #include <Curve/Rasterization/Builders/TransferTable.h>
 #include <Curve/Rasterization/Policies/Core/InterceptPolicies.h>
-#include <Curve/Rasterization/Policies/Curves/CurveWaveformPreparationPolicy.h>
+#include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
 #include <Curve/Rasterization/Sampling/WaveformSampler.h>
 #include <Definitions.h>

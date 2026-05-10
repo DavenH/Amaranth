@@ -4,8 +4,7 @@
 
 #include "../Builders/TransferTable.h"
 #include "../GuideCurveOffsetSeeds.h"
-#include "../Policies/Curves/CurveResolutionPolicy.h"
-#include "../Policies/Curves/CurveWaveformPreparationPolicy.h"
+#include "../Policies/Curves/CurvePolicies.h"
 #include "../Policies/Curves/WaveformBakePolicy.h"
 #include "../RasterizationRequest.h"
 #include "../../Curve.h"

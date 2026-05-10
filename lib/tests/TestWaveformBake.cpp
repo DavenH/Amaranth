@@ -5,7 +5,7 @@
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Mesh.h"
 #include "Support/LegacyMeshRasterizer.h"
-#include "../src/Curve/Rasterization/Policies/Curves/CurveResolutionPolicy.h"
+#include "../src/Curve/Rasterization/Policies/Curves/CurvePolicies.h"
 #include "../src/Curve/VertCube.h"
 #include "RasterizerCompare.h"
 

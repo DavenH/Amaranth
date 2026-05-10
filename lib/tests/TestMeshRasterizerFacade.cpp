@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Curve/Curve.h"
-#include "../src/Curve/Rasterization/Policies/Curves/CurveResolutionPolicy.h"
+#include "../src/Curve/Rasterization/Policies/Curves/CurvePolicies.h"
 
 TEST_CASE("CurveResolutionPolicy applies shared curve resolution", "[rasterization][curves]") {
     std::vector<Curve> curves;

@@ -9,7 +9,7 @@
 #include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
 #include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
 #include <Curve/Rasterization/RasterizationRequest.h>
-#include <Curve/Rasterization/Policies/Curves/CurveResolutionPolicy.h>
+#include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
 #include <Curve/Rasterization/Pipelines/MeshSlicePipeline.h>
 #include <Curve/Rasterization/RenderResult.h>

@@ -5,8 +5,7 @@
 
 #include <Curve/Curve.h>
 #include <Curve/Intercept.h>
-#include <Curve/Rasterization/Policies/Curves/CurveResolutionPolicy.h>
-#include <Curve/Rasterization/Policies/Curves/CurveTripletPolicy.h>
+#include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Curve/Rasterization/RenderResult.h>
 #include <Curve/VertCube.h>
 #include <Curve/Vertex.h>

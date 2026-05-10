@@ -6,11 +6,10 @@
 #include <Curve/GuideCurveProvider.h>
 #include <Curve/Mesh.h>
 #include <Curve/VertCube.h>
-#include <Curve/Rasterization/Policies/Curves/CurveWaveformPreparationPolicy.h>
+#include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Curve/Rasterization/Policies/Mesh/DepthProjectionPolicy.h>
 #include <Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h>
 #include <Curve/Rasterization/Policies/Core/InterceptPolicies.h>
-#include <Curve/Rasterization/Policies/Curves/InterceptPaddingFlagPolicy.h>
 #include <Curve/Rasterization/Policies/Core/PaddingPolicy.h>
 #include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>

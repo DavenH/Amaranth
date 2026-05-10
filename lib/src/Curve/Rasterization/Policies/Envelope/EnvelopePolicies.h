@@ -5,7 +5,7 @@
 #include <App/MeshLibrary.h>
 #include <Definitions.h>
 
-#include "../Curves/CurveTripletPolicy.h"
+#include "../Curves/CurvePolicies.h"
 #include "../../../Curve.h"
 #include "../../../EnvelopeMesh.h"
 #include "../../../Intercept.h"
