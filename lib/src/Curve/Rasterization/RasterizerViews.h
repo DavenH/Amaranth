@@ -60,44 +60,44 @@ namespace Rasterization {
                 data(&data) {
         }
 
-        RasterizerData& rasterizerData() const {
+        std::vector<Intercept>& intercepts() const {
+            return dataRef().intercepts;
+        }
+
+        std::vector<Curve>& curves() const {
+            return dataRef().curves;
+        }
+
+        std::vector<ColorPoint>& colorPoints() const {
+            return dataRef().colorPoints;
+        }
+
+        CriticalSection& lock() const {
+            return dataRef().lock;
+        }
+
+        Buffer<float> waveX() const {
+            return dataRef().waveX;
+        }
+
+        Buffer<float> waveY() const {
+            return dataRef().waveY;
+        }
+
+        int zeroIndex() const {
+            return dataRef().zeroIndex;
+        }
+
+        int oneIndex() const {
+            return dataRef().oneIndex;
+        }
+
+    private:
+        RasterizerData& dataRef() const {
             jassert(data != nullptr);
             return *data;
         }
 
-        std::vector<Intercept>& intercepts() const {
-            return rasterizerData().intercepts;
-        }
-
-        std::vector<Curve>& curves() const {
-            return rasterizerData().curves;
-        }
-
-        std::vector<ColorPoint>& colorPoints() const {
-            return rasterizerData().colorPoints;
-        }
-
-        CriticalSection& lock() const {
-            return rasterizerData().lock;
-        }
-
-        Buffer<float> waveX() const {
-            return rasterizerData().waveX;
-        }
-
-        Buffer<float> waveY() const {
-            return rasterizerData().waveY;
-        }
-
-        int zeroIndex() const {
-            return rasterizerData().zeroIndex;
-        }
-
-        int oneIndex() const {
-            return rasterizerData().oneIndex;
-        }
-
-    private:
         RasterizerData* data {};
     };
 }

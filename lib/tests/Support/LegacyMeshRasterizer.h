@@ -162,8 +162,6 @@ public:
     const vector<Intercept>& getFrontIcpts() const  { return frontIcpts;                }
     const vector<Intercept>& getBackIcpts() const   { return backIcpts;                 }
     vector<ColorPoint>& getColorPoints()            { return colorPoints;               }
-    RasterizerData& getRasterizerData()              { return rastArrays;                }
-    const RasterizerData& getRasterizerData() const  { return rastArrays;                }
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
 
     void setBatchMode(bool batch)                   { batchMode = batch;                }

@@ -125,25 +125,25 @@ TEST_CASE("FXRasterizer mesh adapter matches direct vertex list rasterization", 
     directRasterizer.setVertices(&directVertices);
     directRasterizer.calcCrossPoints();
 
-    const auto& directData = directRasterizer.snapshotView().rasterizerData();
-    const auto& meshData = meshRasterizer.snapshotView().rasterizerData();
+    auto directSnapshot = directRasterizer.snapshotView();
+    auto meshSnapshot = meshRasterizer.snapshotView();
 
-    REQUIRE(directData.intercepts.size() == meshData.intercepts.size());
-    for (int i = 0; i < (int) directData.intercepts.size(); ++i) {
+    REQUIRE(directSnapshot.intercepts().size() == meshSnapshot.intercepts().size());
+    for (int i = 0; i < (int) directSnapshot.intercepts().size(); ++i) {
         INFO("intercept=" << i);
-        RasterizerCompare::requireInterceptNear(directData.intercepts[i], meshData.intercepts[i]);
+        RasterizerCompare::requireInterceptNear(directSnapshot.intercepts()[i], meshSnapshot.intercepts()[i]);
     }
 
-    REQUIRE(directData.curves.size() == meshData.curves.size());
-    for (int i = 0; i < (int) directData.curves.size(); ++i) {
+    REQUIRE(directSnapshot.curves().size() == meshSnapshot.curves().size());
+    for (int i = 0; i < (int) directSnapshot.curves().size(); ++i) {
         INFO("curve=" << i);
-        RasterizerCompare::requireCurveNear(directData.curves[i], meshData.curves[i]);
+        RasterizerCompare::requireCurveNear(directSnapshot.curves()[i], meshSnapshot.curves()[i]);
     }
 
-    REQUIRE(directData.colorPoints.size() == meshData.colorPoints.size());
-    for (int i = 0; i < (int) directData.colorPoints.size(); ++i) {
+    REQUIRE(directSnapshot.colorPoints().size() == meshSnapshot.colorPoints().size());
+    for (int i = 0; i < (int) directSnapshot.colorPoints().size(); ++i) {
         INFO("colorPoint=" << i);
-        RasterizerCompare::requireColorPointNear(directData.colorPoints[i], meshData.colorPoints[i]);
+        RasterizerCompare::requireColorPointNear(directSnapshot.colorPoints()[i], meshSnapshot.colorPoints()[i]);
     }
 
     std::array<float, 64> meshSamples {};
