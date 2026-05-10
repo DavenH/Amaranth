@@ -12,7 +12,6 @@
 #include <Curve/Rasterization/Policies/Curves/CurveResolutionPolicy.h>
 #include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
 #include <Curve/Rasterization/Pipelines/MeshSlicePipeline.h>
-#include <Curve/Rasterization/RenderState.h>
 #include <Curve/Rasterization/RenderResult.h>
 #include <Curve/Rasterization/Sampling/GuideCurveSampler.h>
 #include <Curve/VertCube.h>
@@ -45,7 +44,28 @@ public:
     using GuideCurveContext = Rasterization::GuideCurveContext;
     using GuideCurveRegion = Rasterization::GuideCurveRegion;
 
-    using RenderState = Rasterization::RasterizerRenderState;
+    struct RenderState {
+        bool batchMode {};
+        bool lowResCurves {};
+        bool calcDepthDims {};
+        int scalingType { 1 };
+        MorphPosition pos;
+
+        RenderState() = default;
+
+        RenderState(
+                bool batch,
+                bool lowres,
+                bool calcDepth,
+                int scaling,
+                const MorphPosition& pos) :
+                batchMode(batch)
+            ,   lowResCurves(lowres)
+            ,   calcDepthDims(calcDepth)
+            ,   scalingType(scaling)
+            ,   pos(pos) {
+        }
+    };
 
     class ScopedRenderState {
     public:

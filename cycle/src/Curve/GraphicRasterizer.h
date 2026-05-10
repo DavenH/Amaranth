@@ -4,7 +4,6 @@
 #include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
 #include <Curve/Rasterization/MeshWaveformRasterizer.h>
 #include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
-#include <Curve/Rasterization/RenderState.h>
 #include <Curve/RasterizerData.h>
 #include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
@@ -26,12 +25,33 @@ class GraphicRasterizer :
     ,   public Rasterization::RasterizerUpdateTarget
     ,   public Rasterization::RasterizerVertexDomain {
 public:
-    using RenderState = Rasterization::RasterizerRenderState;
-
     enum class Scaling {
         Unipolar = 0,
         Bipolar = 1,
         HalfBipolar = 2
+    };
+
+    struct RenderState {
+        bool batchMode {};
+        bool lowResCurves {};
+        bool calcDepthDims {};
+        int scalingType { 1 };
+        MorphPosition pos;
+
+        RenderState() = default;
+
+        RenderState(
+                bool batch,
+                bool lowres,
+                bool calcDepth,
+                int scaling,
+                const MorphPosition& pos) :
+                batchMode(batch)
+            ,   lowResCurves(lowres)
+            ,   calcDepthDims(calcDepth)
+            ,   scalingType(scaling)
+            ,   pos(pos) {
+        }
     };
 
     class ScopedRenderState {
