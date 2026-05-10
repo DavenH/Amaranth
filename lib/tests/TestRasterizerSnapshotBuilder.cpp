@@ -78,27 +78,3 @@ TEST_CASE("RasterizerSnapshotBuilder publishes RasterizerData contents", "[raste
     REQUIRE(data.waveX[0] == 0.f);
     REQUIRE(data.waveY[0] == 1.f);
 }
-
-TEST_CASE("NoSnapshot leaves RasterizerData unchanged", "[rasterization][snapshot]") {
-    RasterizerData data;
-    data.zeroIndex = 7;
-    data.oneIndex = 9;
-
-    std::vector<Intercept> intercepts {
-        Intercept(0.0f, 0.1f),
-        Intercept(1.0f, 0.2f),
-    };
-
-    Rasterization::RasterizerSnapshotSource source;
-    source.intercepts = &intercepts;
-    source.waveform.zeroIndex = 1;
-    source.waveform.oneIndex = 2;
-
-    Rasterization::RasterizerSnapshotBuilder<Rasterization::NoSnapshot>().publish(data, source);
-
-    REQUIRE(data.intercepts.empty());
-    REQUIRE(data.waveX.empty());
-    REQUIRE(data.waveY.empty());
-    REQUIRE(data.zeroIndex == 7);
-    REQUIRE(data.oneIndex == 9);
-}

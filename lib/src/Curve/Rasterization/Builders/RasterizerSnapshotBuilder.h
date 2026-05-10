@@ -16,13 +16,7 @@ namespace Rasterization {
         WaveformBuffers waveform;
     };
 
-    class NoSnapshot {
-    public:
-        void publish(RasterizerData&, const RasterizerSnapshotSource&) const {
-        }
-    };
-
-    class RasterizerDataSnapshot {
+    class RasterizerSnapshotBuilder {
     public:
         void publish(RasterizerData& target, const RasterizerSnapshotSource& source) const {
             ScopedLock sl(target.lock);
@@ -63,20 +57,5 @@ namespace Rasterization {
                 target.zeroIndex = 0;
             }
         }
-    };
-
-    template<class Policy = RasterizerDataSnapshot>
-    class RasterizerSnapshotBuilder {
-    public:
-        explicit RasterizerSnapshotBuilder(Policy policy = Policy()) :
-                policy(policy) {
-        }
-
-        void publish(RasterizerData& target, const RasterizerSnapshotSource& source) const {
-            policy.publish(target, source);
-        }
-
-    private:
-        Policy policy;
     };
 }
