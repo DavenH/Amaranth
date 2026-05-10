@@ -6,14 +6,13 @@
 #include "Rasterization/Pipelines/PointListRasterizationPipeline.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
-#include "Rasterization/Sources/PointListSource.h"
 #include "../Array/ScopedAlloc.h"
 #include "../Design/Updating/Updateable.h"
 
 class Rasterizer2D {
 public:
     explicit Rasterizer2D(vector<Intercept>& verts, bool cyclic = false)
-            : pointSource(verts), cyclic(cyclic) {
+            : points(verts), cyclic(cyclic) {
         unsampleable = false;
     }
 
@@ -185,7 +184,7 @@ private:
 
 protected:
     Rasterization::RenderResult result;
-    Rasterization::PointListSource pointSource;
+    vector<Intercept>& points;
     int paddingSize { getPaddingSize() };
     bool needsResorting {};
     bool unsampleable { true };
@@ -195,7 +194,7 @@ protected:
 };
 
 inline void Rasterizer2D::renderPointListCrossPoints() {
-    if (pointSource.empty()) {
+    if (points.empty()) {
         cleanUp();
         return;
     }
@@ -204,7 +203,7 @@ inline void Rasterizer2D::renderPointListCrossPoints() {
     request.cyclic = cyclic;
 
     Rasterization::PointListRasterizationPipeline pipeline;
-    const auto& output = pipeline.render(pointSource.intercepts(), request);
+    const auto& output = pipeline.render(points, request);
     if (!output.sampleable) {
         cleanUp();
         return;

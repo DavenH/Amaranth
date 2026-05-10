@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <vector>
 
 #include "../GuideCurveOffsetSeeds.h"
@@ -7,7 +8,6 @@
 #include "../RenderResult.h"
 #include "CurveWaveformPipeline.h"
 #include "../RasterizationRequest.h"
-#include "../Sources/PointListSource.h"
 #include "../../Curve.h"
 
 namespace Rasterization {
@@ -21,19 +21,17 @@ namespace Rasterization {
             output.clear();
             output.paddingSize = 2;
 
-            PointListSource source(points);
-            if (source.empty()) {
+            if (points.empty()) {
                 return output;
             }
 
-            source.sortByX();
-            std::vector<Intercept>& intercepts = source.intercepts();
+            std::sort(points.begin(), points.end());
 
             if (request.cyclic) {
                 PaddingPolicyContext context;
                 context.interceptPadding = request.interceptPadding;
                 output.paddingSize = CyclicPaddingPolicy(context).build(
-                        intercepts,
+                        points,
                         output.curves,
                         output.frontPadding,
                         output.backPadding);
@@ -41,7 +39,7 @@ namespace Rasterization {
                 PaddingPolicyContext context;
                 context.minimumX = request.xMinimum;
                 context.maximumX = request.xMaximum;
-                output.paddingSize = NonCyclicPaddingPolicy(context).build(intercepts, output.curves);
+                output.paddingSize = NonCyclicPaddingPolicy(context).build(points, output.curves);
             }
 
             if (output.curves.size() < 2) {

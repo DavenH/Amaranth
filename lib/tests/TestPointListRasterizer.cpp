@@ -7,7 +7,6 @@
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Rasterizer2D.h"
 #include "../src/Curve/Rasterization/Pipelines/PointListRasterizationPipeline.h"
-#include "../src/Curve/Rasterization/Sources/PointListSource.h"
 
 namespace {
     struct CurveTableScope {
@@ -60,18 +59,7 @@ namespace {
     }
 }
 
-TEST_CASE("PointListSource sorts external intercepts", "[rasterization][pointlist]") {
-    std::vector<Intercept> points = makePointList();
-    Rasterization::PointListSource source(points);
-
-    REQUIRE(source.size() == 4);
-    source.sortByX();
-
-    REQUIRE(source.interceptAt(0).x == Catch::Approx(0.05f));
-    REQUIRE(source.interceptAt(3).x == Catch::Approx(0.85f));
-}
-
-TEST_CASE("Rasterizer2D rasterizes non-cyclic point lists through PointListSource", "[rasterization][pointlist]") {
+TEST_CASE("Rasterizer2D rasterizes non-cyclic point lists through point-list pipeline", "[rasterization][pointlist]") {
     CurveTableScope curveTableScope;
     std::vector<Intercept> points = makePointList();
 
@@ -87,7 +75,7 @@ TEST_CASE("Rasterizer2D rasterizes non-cyclic point lists through PointListSourc
     REQUIRE(points.back().x == Catch::Approx(0.85f));
 }
 
-TEST_CASE("Rasterizer2D rasterizes cyclic point lists through PointListSource", "[rasterization][pointlist]") {
+TEST_CASE("Rasterizer2D rasterizes cyclic point lists through point-list pipeline", "[rasterization][pointlist]") {
     CurveTableScope curveTableScope;
     std::vector<Intercept> points = makePointList();
 
