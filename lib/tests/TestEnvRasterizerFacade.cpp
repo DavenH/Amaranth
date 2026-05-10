@@ -2,13 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Curve/EnvelopeMesh.h"
-#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopeMarkerPolicy.h"
-#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopePaddingPolicy.h"
-#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopePlaybackPolicy.h"
-#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopeRenderTimingPolicy.h"
-#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopeReleasePolicy.h"
-#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopeStateValidationPolicy.h"
-#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopeSustainPointPolicy.h"
+#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopePolicies.h"
 
 namespace {
     struct TestEnvelopeParam {

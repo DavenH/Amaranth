@@ -14,7 +14,7 @@
 #include "Rasterization/Interfaces/RasterizerSnapshotProvider.h"
 #include "Rasterization/Interfaces/RasterizerUpdateTarget.h"
 #include "Rasterization/Interfaces/RasterizerVertexDomain.h"
-#include "Rasterization/Policies/Envelope/EnvelopePaddingPolicy.h"
+#include "Rasterization/Policies/Envelope/EnvelopePolicies.h"
 #include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "Rasterization/RasterizationRequest.h"
 #include "Rasterization/RenderResult.h"
