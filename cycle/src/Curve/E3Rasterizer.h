@@ -30,12 +30,9 @@ public:
     Rasterization::SamplerView samplerView() const override { return rasterizer.samplerView(); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
-    Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override;
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const { return rasterizerData; }
 
     vector<Column>& getColumns() { return columns; }
     Buffer<float> getArray() { return columnArray; }
