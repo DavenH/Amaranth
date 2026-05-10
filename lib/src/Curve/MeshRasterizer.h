@@ -22,7 +22,6 @@
 #include "Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
-#include "Rasterization/State/RasterizerStorage.h"
 #include "SurfaceLine.h"
 #include "VertCube.h"
 #include "../Array/ScopedAlloc.h"
@@ -180,9 +179,6 @@ public:
     void setInterpolatesCurves(bool should)         { interpolateCurves = should;       }
     void setLimits(float min, float max)            { xMinimum = min; xMaximum = max;   }
     void setLowresCurves(bool areLow)               { lowResCurves  = areLow;           }
-    void setCleanupProvider(std::function<void(Rasterization::RasterizerRuntime)> provider) {
-        controller.setCleanupProvider(provider);
-    }
     void setCrossPointProvider(std::function<void()> provider) {
         controller.setCrossPointProvider(provider);
     }
@@ -293,7 +289,8 @@ protected:
     MicroTimer timer;
     MorphPosition morph;
 
-    Rasterization::RasterizerStorage storage;
+    Rasterization::RenderResult result;
+    RasterizerData rasterizerData;
 
     RasterizerData& rastArrays;
     vector<Intercept>& frontIcpts;
@@ -303,7 +300,6 @@ protected:
     vector<Curve>& curves;
     vector<GuideCurveRegion>& guideCurveRegions;
 
-    ScopedAlloc<float> memoryBuffer;
     ScopedAlloc<Int8u> alignedBytes;
 
     Rasterization::WaveformBuffers& waveform;

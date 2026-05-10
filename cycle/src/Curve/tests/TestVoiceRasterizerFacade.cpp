@@ -8,7 +8,6 @@
 #include "../Rasterization/Policies/Voice/VoicePointPositionPolicy.h"
 #include "../Rasterization/Pipelines/VoiceSlicePipeline.h"
 #include <Curve/Mesh.h>
-#include <Curve/Rasterization/RasterizerRuntime.h>
 #include <Curve/Rasterization/Sources/MeshCubeSource.h>
 #include <Curve/VertCube.h>
 
@@ -150,10 +149,7 @@ TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows",
     bool needsResorting = true;
     Cycle::Rasterization::VoiceChainingPolicy policy(&needsResorting);
 
-    ::Rasterization::RasterizerRuntime runtime;
-    runtime.intercepts = &currentIntercepts;
-
-    policy.beginCall(state, runtime);
+    policy.beginCall(state, currentIntercepts);
 
     REQUIRE_FALSE(needsResorting);
     REQUIRE(currentIntercepts.size() == 2);
@@ -180,7 +176,7 @@ TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows",
     REQUIRE_FALSE(needsResorting);
     REQUIRE(state.backIcpts.size() == 2);
     REQUIRE(state.backIcpts[0].x == Approx(0.30f));
-    REQUIRE(policy.canBuildChainedCurves(state, runtime));
+    REQUIRE(policy.canBuildChainedCurves(state, currentIntercepts));
 }
 
 TEST_CASE("VoiceSlicePipeline builds voice slice intercepts", "[cycle][rasterization][voice]") {

@@ -10,11 +10,9 @@ TEST_CASE("RasterizerController dispatches optional providers", "[rasterization]
     std::vector<Curve> curves;
 
     REQUIRE_FALSE(controller.calcCrossPoints());
-    REQUIRE_FALSE(controller.clean(RasterizerRuntime()));
     REQUIRE_FALSE(controller.pad(intercepts, curves));
 
     bool calculated = false;
-    bool cleaned = false;
     bool padded = false;
     bool processed = false;
     bool assigned = false;
@@ -22,9 +20,6 @@ TEST_CASE("RasterizerController dispatches optional providers", "[rasterization]
 
     controller.setCrossPointProvider([&]() {
         calculated = true;
-    });
-    controller.setCleanupProvider([&](RasterizerRuntime) {
-        cleaned = true;
     });
     controller.setPaddingProvider([&](std::vector<Intercept>&, std::vector<Curve>&) {
         padded = true;
@@ -40,14 +35,12 @@ TEST_CASE("RasterizerController dispatches optional providers", "[rasterization]
     });
 
     REQUIRE(controller.calcCrossPoints());
-    REQUIRE(controller.clean(RasterizerRuntime()));
     REQUIRE(controller.pad(intercepts, curves));
     REQUIRE(controller.processIntercepts(intercepts));
     REQUIRE(controller.updateOffsetSeeds(3, 9));
     controller.meshAssigned(nullptr);
 
     REQUIRE(calculated);
-    REQUIRE(cleaned);
     REQUIRE(padded);
     REQUIRE(processed);
     REQUIRE(assigned);
@@ -56,7 +49,6 @@ TEST_CASE("RasterizerController dispatches optional providers", "[rasterization]
     controller.resetProviders();
 
     REQUIRE_FALSE(controller.calcCrossPoints());
-    REQUIRE_FALSE(controller.clean(RasterizerRuntime()));
     REQUIRE_FALSE(controller.pad(intercepts, curves));
     REQUIRE_FALSE(controller.processIntercepts(intercepts));
     REQUIRE_FALSE(controller.updateOffsetSeeds(3, 9));

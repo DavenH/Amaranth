@@ -3,7 +3,6 @@
 #include <functional>
 #include <vector>
 
-#include "RasterizerRuntime.h"
 #include "../Curve.h"
 #include "../Intercept.h"
 #include "../Mesh.h"
@@ -11,10 +10,6 @@
 namespace Rasterization {
     class RasterizerController {
     public:
-        void setCleanupProvider(std::function<void(RasterizerRuntime)> provider) {
-            cleanupProvider = provider;
-        }
-
         void setCrossPointProvider(std::function<void()> provider) {
             crossPointProvider = provider;
         }
@@ -52,7 +47,6 @@ namespace Rasterization {
         }
 
         void resetProviders() {
-            cleanupProvider = nullptr;
             crossPointProvider = nullptr;
             updateCurvesProvider = nullptr;
             numDimensionsProvider = nullptr;
@@ -62,15 +56,6 @@ namespace Rasterization {
             crossSectionAvailabilityProvider = nullptr;
             primaryViewDimensionProvider = nullptr;
             offsetSeedsProvider = nullptr;
-        }
-
-        bool clean(RasterizerRuntime runtime) const {
-            if (cleanupProvider == nullptr) {
-                return false;
-            }
-
-            cleanupProvider(runtime);
-            return true;
         }
 
         bool calcCrossPoints() const {
@@ -149,7 +134,6 @@ namespace Rasterization {
         }
 
     private:
-        std::function<void(RasterizerRuntime)> cleanupProvider;
         std::function<void()> crossPointProvider;
         std::function<void()> updateCurvesProvider;
         std::function<int()> numDimensionsProvider;

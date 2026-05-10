@@ -70,23 +70,22 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    needsResorting      (false)
     ,    interpolateCurves   (false)
     ,    batchMode           (false)
-    ,    storage()
-    ,    rastArrays          (storage.snapshot.rasterizerData)
-    ,    frontIcpts          (storage.intercepts.frontPadding)
-    ,    backIcpts           (storage.intercepts.backPadding)
-    ,    icpts               (storage.intercepts.intercepts)
-    ,    colorPoints         (storage.intercepts.colorPoints)
-    ,    curves              (storage.curves.curves)
-    ,    guideCurveRegions   (storage.curves.guideCurveRegions)
-    ,    waveform            (storage.waveform.waveform) {
+    ,    result()
+    ,    rasterizerData()
+    ,    rastArrays          (rasterizerData)
+    ,    frontIcpts          (result.frontPadding)
+    ,    backIcpts           (result.backPadding)
+    ,    icpts               (result.intercepts)
+    ,    colorPoints         (result.colorPoints)
+    ,    curves              (result.curves)
+    ,    guideCurveRegions   (result.guideCurveRegions)
+    ,    waveform            (result.waveform) {
     initialise();
 }
 
 
 MeshRasterizer::~MeshRasterizer() {
     waveform.nullify();
-
-    memoryBuffer.clear();
 
     curves.clear();
     icpts.clear();
@@ -484,10 +483,6 @@ void MeshRasterizer::wrapVertices(float& ax, float& ay,
 }
 
 void MeshRasterizer::cleanUp() {
-    if (controller.clean(createRasterizerRuntime())) {
-        return;
-    }
-
     Rasterization::RasterizerCleanupOptions options;
     options.clearCurves = false;
 
@@ -652,7 +647,7 @@ void MeshRasterizer::print(OutputStream& dout) {
 }
 
 void MeshRasterizer::updateBuffers(int size) {
-    waveform.place(memoryBuffer, size);
+    waveform.place(result.waveformMemory, size);
 }
 
 void MeshRasterizer::markWaveformUnsampleable() {

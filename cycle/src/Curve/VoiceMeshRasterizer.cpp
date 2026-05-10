@@ -41,17 +41,15 @@ VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
 }
 
 void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
-    Rasterization::RasterizerRuntime runtime = createChainRuntime();
-
-    if (mesh == nullptr || mesh->getNumCubes() == 0 || state == nullptr || runtime.intercepts == nullptr) {
+    if (mesh == nullptr || mesh->getNumCubes() == 0 || state == nullptr) {
         cleanUp();
         return;
     }
 
     chainedOutputActive = true;
 
-    Cycle::Rasterization::VoiceChainingPolicy chainingPolicy(runtime.needsResorting);
-    chainingPolicy.beginCall(*state, runtime);
+    Cycle::Rasterization::VoiceChainingPolicy chainingPolicy(&chainNeedsResorting);
+    chainingPolicy.beginCall(*state, chainResult.intercepts);
 
     auto output = Cycle::Rasterization::VoiceSlicePipeline().render(
             Rasterization::MeshCubeSource(mesh),
@@ -66,9 +64,9 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
             *state,
             [this](std::vector<Intercept>& intercepts) { restrictIntercepts(intercepts); });
 
-    if (!chainingPolicy.canBuildChainedCurves(*state, runtime)) {
+    if (!chainingPolicy.canBuildChainedCurves(*state, chainResult.intercepts)) {
         ++state->callCount;
-        Rasterization::RasterizerCleanupPolicy::markWaveformUnsampleable(runtime);
+        markChainedWaveformUnsampleable();
         publishSnapshot();
         return;
     }
@@ -78,15 +76,11 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
     }
 
     if (state->callCount > 0) {
-        jassert(runtime.intercepts != nullptr);
-        jassert(runtime.curves != nullptr);
-        jassert(runtime.paddingSize != nullptr);
-
-        *runtime.paddingSize = Cycle::Rasterization::VoiceChainedPaddingPolicy().build(
-                *runtime.intercepts,
+        chainPaddingSize = Cycle::Rasterization::VoiceChainedPaddingPolicy().build(
+                chainResult.intercepts,
                 state->backIcpts,
                 *state,
-                *runtime.curves,
+                chainResult.curves,
                 rasterizer.getRequest().interceptPadding);
 
         bakeChainedWaveform();
@@ -97,7 +91,7 @@ void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
 }
 
 void VoiceMeshRasterizer::orphanOldVerts() {
-    createChainRuntime().clearIntercepts();
+    chainResult.intercepts.clear();
 }
 
 void VoiceMeshRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
@@ -115,8 +109,7 @@ void VoiceMeshRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
 
 void VoiceMeshRasterizer::cleanUp() {
     rasterizer.clean();
-    Rasterization::RasterizerCleanupPolicy().clean(createChainRuntime());
-    chainResult.guideCurveRegions.clear();
+    cleanChainedOutput();
     publishSnapshot();
 }
 
@@ -170,31 +163,13 @@ int VoiceMeshRasterizer::getPaddingSize() const {
     return chainedOutputActive ? chainPaddingSize : rasterizer.getPaddingSize();
 }
 
-Rasterization::RasterizerRuntime VoiceMeshRasterizer::createChainRuntime() {
-    Rasterization::RasterizerRuntime runtime;
-    runtime.intercepts = &chainResult.intercepts;
-    runtime.curves = &chainResult.curves;
-    runtime.frontPadding = &chainResult.frontPadding;
-    runtime.backPadding = &chainResult.backPadding;
-    runtime.colorPoints = &chainResult.colorPoints;
-    runtime.waveform = Rasterization::WaveformBufferRefs(chainResult.waveform);
-    runtime.paddingSize = &chainPaddingSize;
-    runtime.unsampleable = &chainUnsampleable;
-    runtime.needsResorting = &chainNeedsResorting;
-
-    return runtime;
-}
-
 Rasterization::WaveformBuffers VoiceMeshRasterizer::currentWaveform() const {
     return chainedOutputActive ? chainResult.waveform : rasterizer.waveform();
 }
 
 void VoiceMeshRasterizer::bakeChainedWaveform() {
-    Rasterization::RasterizerRuntime runtime = createChainRuntime();
-
-    if (!runtime.hasAtLeastIntercepts(2)) {
-        Rasterization::RasterizerCleanupPolicy().clean(runtime);
-        chainResult.guideCurveRegions.clear();
+    if (chainResult.intercepts.size() < 2) {
+        cleanChainedOutput();
         return;
     }
 
@@ -218,6 +193,19 @@ void VoiceMeshRasterizer::bakeChainedWaveform() {
                 updateChainBuffers(totalRes);
                 return Rasterization::WaveformBufferRefs(chainResult.waveform);
             });
+}
+
+void VoiceMeshRasterizer::cleanChainedOutput() {
+    chainResult.clear();
+    chainPaddingSize = 2;
+    chainUnsampleable = true;
+    chainNeedsResorting = false;
+}
+
+void VoiceMeshRasterizer::markChainedWaveformUnsampleable() {
+    chainResult.waveform.waveX.nullify();
+    chainResult.waveform.waveY.nullify();
+    chainUnsampleable = true;
 }
 
 void VoiceMeshRasterizer::publishSnapshot() {

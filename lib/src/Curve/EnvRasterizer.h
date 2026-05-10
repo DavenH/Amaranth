@@ -18,8 +18,8 @@
 #include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "Rasterization/RasterizationRequest.h"
 #include "Rasterization/RasterizerRuntime.h"
+#include "Rasterization/RenderResult.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
-#include "Rasterization/State/RasterizerStorage.h"
 #include "../App/MeshLibrary.h"
 
 using std::vector;
@@ -126,7 +126,7 @@ public:
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
         return Rasterization::WaveformSampler::sampleWithInterval(
-                storage.waveform.waveform,
+                result.waveform,
                 buffer,
                 delta,
                 phase);
@@ -196,13 +196,12 @@ private:
     vector<EnvParams> params;
 
     ScopedAlloc<float> preallocated;
-    ScopedAlloc<float> rasterizerMemory;
     ScopedAlloc<float> waveformMemory;
     Buffer<float> waveXCopy, waveYCopy, slopeCopy, renderBuffer;
 
     GuideCurveProvider* guideCurveProvider;
     Rasterization::RasterizationRequest request;
-    Rasterization::RasterizerStorage storage;
+    Rasterization::RenderResult result;
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
     RasterizerData rasterizerData;
     VertCube::ReductionData reduction;

@@ -8,7 +8,6 @@
 #include <Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h>
 #include <Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h>
 #include <Curve/Rasterization/Interfaces/RasterizerVertexDomain.h>
-#include <Curve/Rasterization/RasterizerRuntime.h>
 #include <Curve/Rasterization/RenderResult.h>
 #include <Curve/Rasterization/Sampling/WaveformSampler.h>
 #include <Curve/RasterizerData.h>
@@ -91,9 +90,10 @@ public:
     void updateOffsetSeeds(int layerSize, int tableSize) { rasterizer.updateOffsetSeeds(layerSize, tableSize); }
 
 private:
-    Rasterization::RasterizerRuntime createChainRuntime();
     Rasterization::WaveformBuffers currentWaveform() const;
     void bakeChainedWaveform();
+    void cleanChainedOutput();
+    void markChainedWaveformUnsampleable();
     void publishSnapshot();
     void updateChainBuffers(int size);
     void restrictIntercepts(std::vector<Intercept>& intercepts);
