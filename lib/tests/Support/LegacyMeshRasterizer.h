@@ -97,7 +97,7 @@ public:
     bool isSampleableAt(float x) const;
     bool wasCleanedUp() const { return unsampleable; }
 
-    Rasterization::SamplerView samplerView() const override { return Rasterization::SamplerView(createWaveformView(), isSampleable()); }
+    Rasterization::SamplerView samplerView() const override { return Rasterization::SamplerView(createWaveformBuffers(), isSampleable()); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rastArrays); }
 
     float sampleAt(double angle);
@@ -120,7 +120,7 @@ public:
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
         return Rasterization::WaveformSampler::sampleWithInterval(
-                createWaveformView(),
+                createWaveformBuffers(),
                 buffer,
                 delta,
                 phase);
@@ -213,7 +213,7 @@ protected:
     bool handleDegenerateInterceptOutput();
     void rebuildCurvesFromIntercepts();
     void finishCrossPointCalculation();
-    Rasterization::WaveformBuffers createWaveformView() const;
+    Rasterization::WaveformBuffers createWaveformBuffers() const;
     Rasterization::GuideCurvePolicyContext createGuideCurvePolicyContext();
     Rasterization::GuideCurveApplier createGuideCurveApplier();
     void setResolutionIndices(float base);

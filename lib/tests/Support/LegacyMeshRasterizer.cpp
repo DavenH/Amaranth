@@ -292,7 +292,7 @@ Rasterization::WaveformBakePolicy::Context MeshRasterizer::createWaveformBakeCon
 
 float MeshRasterizer::sampleAt(double angle) {
     return Rasterization::WaveformSampler::sampleAt(
-            createWaveformView(),
+            createWaveformBuffers(),
             unsampleable,
             angle);
 }
@@ -302,7 +302,7 @@ float MeshRasterizer::sampleAt(double angle) {
  */
 float MeshRasterizer::sampleAtDecoupled(double angle, GuideCurveContext& context) {
     return Rasterization::GuideCurveSampler::sampleDecoupled(
-            createWaveformView(),
+            createWaveformBuffers(),
             unsampleable,
             angle,
             context,
@@ -314,7 +314,7 @@ float MeshRasterizer::sampleAtDecoupled(double angle, GuideCurveContext& context
 // make damn sure that the last element in waveX is greater than 1 before calling this
 float MeshRasterizer::sampleAt(double angle, int& currentIndex) {
     return Rasterization::WaveformSampler::sampleAt(
-            createWaveformView(),
+            createWaveformBuffers(),
             unsampleable,
             angle,
             currentIndex);
@@ -323,7 +323,7 @@ float MeshRasterizer::sampleAt(double angle, int& currentIndex) {
 
 void MeshRasterizer::sampleAtIntervals(Buffer<float> intervals, Buffer<float> dest) {
     Rasterization::WaveformSampler::sampleAtIntervals(
-            createWaveformView(),
+            createWaveformBuffers(),
             intervals,
             dest);
 }
@@ -331,7 +331,7 @@ void MeshRasterizer::sampleAtIntervals(Buffer<float> intervals, Buffer<float> de
 
 float MeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
     return Rasterization::WaveformSampler::samplePerfectly(
-            createWaveformView(),
+            createWaveformBuffers(),
             delta,
             buffer,
             phase);
@@ -459,11 +459,11 @@ bool MeshRasterizer::hasEnoughCubesForCrossSection() {
 }
 
 bool MeshRasterizer::isSampleable() const {
-    return Rasterization::WaveformSampler::isSampleable(createWaveformView());
+    return Rasterization::WaveformSampler::isSampleable(createWaveformBuffers());
 }
 
 bool MeshRasterizer::isSampleableAt(float x) const {
-    return Rasterization::WaveformSampler::isSampleableAt(createWaveformView(), x);
+    return Rasterization::WaveformSampler::isSampleableAt(createWaveformBuffers(), x);
 }
 
 void MeshRasterizer::updateBuffers(int size) {
@@ -489,7 +489,7 @@ void MeshRasterizer::clearRasterizationResult(bool clearCurves) {
     }
 }
 
-Rasterization::WaveformBuffers MeshRasterizer::createWaveformView() const {
+Rasterization::WaveformBuffers MeshRasterizer::createWaveformBuffers() const {
     return waveform;
 }
 
