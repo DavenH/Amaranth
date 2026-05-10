@@ -44,14 +44,6 @@ void FXRasterizer::cleanUp() {
     DBG(getName() + "::cleanUp");
 }
 
-Rasterization::RasterizationRequest FXRasterizer::createRasterizationRequest() const {
-    return createFxRequest();
-}
-
-void FXRasterizer::makeCopy() {
-    publishSnapshot();
-}
-
 void FXRasterizer::performUpdate(UpdateType updateType) {
     if (updateType == Update) {
         calcCrossPoints();

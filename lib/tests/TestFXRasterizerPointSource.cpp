@@ -138,12 +138,10 @@ TEST_CASE("FXRasterizer mesh adapter matches direct vertex list rasterization", 
     FXRasterizer meshRasterizer(nullptr, "FxMeshAdapter");
     meshRasterizer.setMesh(&owner.mesh);
     meshRasterizer.calcCrossPoints();
-    meshRasterizer.makeCopy();
 
     FXRasterizer directRasterizer(nullptr, "FxDirectVertices");
     directRasterizer.setVertices(&directVertices);
     directRasterizer.calcCrossPoints();
-    directRasterizer.makeCopy();
 
     RasterizerCompare::requireSnapshotNear(
             captureFx(directRasterizer),

@@ -29,8 +29,6 @@ public:
 
     void calcCrossPoints();
     void cleanUp();
-    Rasterization::RasterizationRequest createRasterizationRequest() const;
-    void makeCopy();
     void performUpdate(UpdateType updateType) override;
     void reset() override;
 
