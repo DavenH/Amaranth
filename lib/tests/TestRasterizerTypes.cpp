@@ -2,7 +2,6 @@
 
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Curve/Rasterization/GuideCurveOffsetSeeds.h"
-#include "../src/Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h"
 #include "../src/Curve/Rasterization/RasterizationRequest.h"
 #include "Support/LegacyMeshRasterizer.h"
 #include "../src/Curve/Mesh.h"
