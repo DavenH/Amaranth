@@ -3,6 +3,7 @@
 #include "../Algo/Resampling.h"
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
+#include "../Curve/RasterizerData.h"
 #include "../Array/BufferXY.h"
 #include "../Curve/VertCube.h"
 #include "../Inter/UndoableMeshProcess.h"

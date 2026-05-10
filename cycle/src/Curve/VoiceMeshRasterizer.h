@@ -9,8 +9,8 @@
 #include <Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h>
 #include <Curve/Rasterization/Interfaces/RasterizerVertexDomain.h>
 #include <Curve/Rasterization/RasterizerRuntime.h>
+#include <Curve/Rasterization/RenderResult.h>
 #include <Curve/Rasterization/Sampling/WaveformSampler.h>
-#include <Curve/Rasterization/State/RasterizerStorage.h>
 #include <Curve/RasterizerData.h>
 #include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
@@ -66,7 +66,7 @@ public:
         }
 
         return Rasterization::WaveformSampler::sampleWithInterval(
-                chainStorage.waveform.waveform,
+                chainResult.waveform,
                 buffer,
                 delta,
                 phase);
@@ -100,9 +100,8 @@ private:
 
     Mesh* mesh {};
     Rasterization::MeshWaveformRasterizer rasterizer;
-    Rasterization::RasterizerStorage chainStorage;
+    Rasterization::RenderResult chainResult;
     RasterizerData rasterizerData;
-    ScopedAlloc<Float32> chainWaveformMemory;
     VertCube::ReductionData chainReduction;
 
     int chainPaddingSize { 2 };

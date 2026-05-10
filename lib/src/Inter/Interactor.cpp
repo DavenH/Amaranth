@@ -13,6 +13,7 @@
 #include "../App/MeshLibrary.h"
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
+#include "../Curve/RasterizerData.h"
 #include "../Curve/Rasterization/Interfaces/MeshBindableRasterizer.h"
 #include "../Curve/Rasterization/Interfaces/RasterizerSampler.h"
 #include "../Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h"

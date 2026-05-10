@@ -63,7 +63,7 @@ public:
     enum { E3LockId = 0x17b1eed5 };
 private:
     void renderMesh(Mesh* mesh);
-    void publishSnapshot(const ::Rasterization::MeshSlicePipeline::Output& meshOutput);
+    void publishSnapshot();
 
     Mesh* mesh {};
     ::Rasterization::MeshWaveformRasterizer rasterizer;

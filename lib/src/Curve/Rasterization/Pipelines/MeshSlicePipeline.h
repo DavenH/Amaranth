@@ -9,6 +9,7 @@
 #include "../Policies/Core/InterceptRestrictionPolicy.h"
 #include "../Policies/Core/PointScalingPolicy.h"
 #include "../RasterizationRequest.h"
+#include "../RenderResult.h"
 #include "../Interpolation/TrilinearMeshSlicer.h"
 #include "../Sources/MeshCubeSource.h"
 #include "../../VertCube.h"
@@ -18,15 +19,8 @@
 namespace Rasterization {
     class MeshSlicePipeline {
     public:
-        struct Output {
-            std::vector<Intercept> intercepts;
-            std::vector<ColorPoint> colorPoints;
-            bool needsResort {};
-            bool sampleable {};
-        };
-
         template<typename GuideApplier>
-        const Output& render(
+        const RenderResult& render(
                 const MeshCubeSource& source,
                 const TrilinearMeshSlicer& slicer,
                 const RasterizationRequest& request,
@@ -36,14 +30,14 @@ namespace Rasterization {
         }
 
         template<typename GuideApplier>
-        const Output& renderWithReduction(
+        const RenderResult& renderWithReduction(
                 const MeshCubeSource& source,
                 const TrilinearMeshSlicer& slicer,
                 const RasterizationRequest& request,
                 float oscPhase,
                 GuideApplier&& applyGuide,
                 VertCube::ReductionData& reductionData) {
-            output = Output();
+            output.clear();
 
             if (source.empty()) {
                 return output;
@@ -206,7 +200,7 @@ namespace Rasterization {
             InterceptRestrictionPolicy(context).restrict(intercepts);
         }
 
-        Output output;
+        RenderResult output;
         VertCube::ReductionData reduction;
     };
 }

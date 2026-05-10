@@ -14,7 +14,6 @@
 #include "../src/Curve/Rasterization/Policies/Core/InterceptDegeneracyPolicy.h"
 #include "../src/Curve/Rasterization/Policies/Curves/InterceptPaddingFlagPolicy.h"
 #include "../src/Curve/Rasterization/Policies/Core/InterceptSortPolicy.h"
-#include "../src/Curve/Rasterization/Policies/Mesh/MeshSliceOutputPolicy.h"
 #include "../src/Curve/Rasterization/Sampling/GuideCurveSampler.h"
 #include "../src/Curve/Rasterization/Sampling/WaveformSampler.h"
 #include "../src/Curve/Rasterization/Sources/MeshCubeSource.h"
@@ -410,48 +409,6 @@ TEST_CASE("MeshSlicePipeline matches MeshRasterizer intercept and color-point sl
         INFO("colorPoint=" << i);
         RasterizerCompare::requireColorPointNear(output.colorPoints[i], rasterizer.getRastData().colorPoints[i]);
     }
-}
-
-TEST_CASE("MeshSliceOutputPolicy publishes intercepts and optional color points", "[meshrasterizer][pipeline][slice]") {
-    Rasterization::MeshSlicePipeline::Output output;
-    Vertex2 before(0.f, 0.f);
-    Vertex2 mid(0.5f, 0.5f);
-    Vertex2 after(1.f, 1.f);
-    output.intercepts.emplace_back(0.25f, 0.5f);
-    output.colorPoints.emplace_back(nullptr, before, mid, after, Vertex::Red);
-
-    vector<Intercept> intercepts;
-    vector<Curve> curves;
-    vector<Intercept> frontPadding;
-    vector<Intercept> backPadding;
-    vector<ColorPoint> colorPoints {
-        ColorPoint(nullptr, before, mid, after, Vertex::Blue),
-    };
-    Rasterization::WaveformBuffers waveform(0, 0);
-    int paddingSize {};
-    bool unsampleable {};
-
-    Rasterization::RasterizerRuntime runtime;
-    runtime.intercepts = &intercepts;
-    runtime.curves = &curves;
-    runtime.frontPadding = &frontPadding;
-    runtime.backPadding = &backPadding;
-    runtime.colorPoints = &colorPoints;
-    runtime.waveform = Rasterization::WaveformBufferRefs(waveform);
-    runtime.paddingSize = &paddingSize;
-    runtime.unsampleable = &unsampleable;
-
-    Rasterization::MeshSliceOutputPolicy(false).publish(output, runtime);
-
-    REQUIRE(intercepts.size() == 1);
-    REQUIRE(intercepts[0].x == Catch::Approx(0.25f));
-    REQUIRE(colorPoints.size() == 1);
-    REQUIRE(colorPoints[0].num == Vertex::Blue);
-
-    Rasterization::MeshSliceOutputPolicy(true).publish(output, runtime);
-
-    REQUIRE(colorPoints.size() == 1);
-    REQUIRE(colorPoints[0].num == Vertex::Red);
 }
 
 TEST_CASE("InterceptSortPolicy sorts only when requested", "[meshrasterizer][pipeline][intercepts]") {

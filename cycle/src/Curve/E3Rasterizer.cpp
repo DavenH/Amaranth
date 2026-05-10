@@ -126,10 +126,9 @@ void E3Rasterizer::renderMesh(Mesh* mesh) {
     }
 
     rasterizer.render(mesh);
-    publishSnapshot(rasterizer.getMeshOutput());
+    publishSnapshot();
 }
 
-void E3Rasterizer::publishSnapshot(const Rasterization::MeshSlicePipeline::Output& meshOutput) {
-    ignoreUnused(meshOutput);
+void E3Rasterizer::publishSnapshot() {
     Rasterization::RasterizerSnapshotBuilder().publish(rasterizerData, rasterizer.createSnapshotSource());
 }

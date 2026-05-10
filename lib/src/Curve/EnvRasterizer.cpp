@@ -24,7 +24,6 @@
 #include "Rasterization/Policies/Envelope/EnvelopeStateValidationPolicy.h"
 #include "Rasterization/Policies/Envelope/EnvelopeSustainPointPolicy.h"
 #include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
-#include "Rasterization/Policies/Mesh/MeshSliceOutputPolicy.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
 #include "Rasterization/Sources/MeshCubeSource.h"
@@ -268,14 +267,19 @@ void EnvRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
 
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
 
-    Rasterization::MeshSlicePipeline::Output output = Rasterization::MeshSlicePipeline().renderWithReduction(
+    Rasterization::MeshSlicePipeline meshSlicePipeline;
+    const Rasterization::RenderResult& output = meshSlicePipeline.renderWithReduction(
             Rasterization::MeshCubeSource(mesh),
             Rasterization::TrilinearMeshSlicer(),
             request,
             oscPhase,
             guideApplier,
             reduction);
-    Rasterization::MeshSliceOutputPolicy(request.calcDepthDimensions).publish(output, runtime());
+    storage.intercepts.intercepts = output.intercepts;
+
+    if (request.calcDepthDimensions) {
+        storage.intercepts.colorPoints = output.colorPoints;
+    }
 
     processEnvelopeIntercepts(storage.intercepts.intercepts);
     Rasterization::InterceptSortPolicy(&needsResorting).sortIfNeeded(storage.intercepts.intercepts);

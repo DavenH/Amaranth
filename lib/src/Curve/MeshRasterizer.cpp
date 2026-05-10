@@ -14,7 +14,6 @@
 #include "Rasterization/Policies/Curves/InterceptPaddingFlagPolicy.h"
 #include "Rasterization/Policies/Core/InterceptRestrictionPolicy.h"
 #include "Rasterization/Policies/Core/RasterizerCleanupPolicy.h"
-#include "Rasterization/Policies/Mesh/MeshSliceOutputPolicy.h"
 #include "Rasterization/Policies/Core/PaddingPolicy.h"
 #include "Rasterization/Policies/Core/PointScalingPolicy.h"
 #include "Rasterization/Policies/Core/SnapshotPolicy.h"
@@ -53,6 +52,7 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    noiseSeed           (-1)
     ,    overridingDim       (Vertex::Time)
     ,    controller()
+    ,    meshSlicePipeline()
 
     ,    interceptPadding    (0.f)
     ,    xMinimum            (0.f)
@@ -166,15 +166,15 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
 
     beginCrossPointCalculation();
 
-    Rasterization::MeshSlicePipeline::Output output = renderMeshSlice(usedMesh, oscPhase);
+    const Rasterization::RenderResult& output = renderMeshSlice(usedMesh, oscPhase);
     publishMeshSliceOutput(output);
     finishCrossPointCalculation();
 }
 
-Rasterization::MeshSlicePipeline::Output MeshRasterizer::renderMeshSlice(Mesh* usedMesh, float oscPhase) {
+const Rasterization::RenderResult& MeshRasterizer::renderMeshSlice(Mesh* usedMesh, float oscPhase) {
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
 
-    return Rasterization::MeshSlicePipeline().renderWithReduction(
+    return meshSlicePipeline.renderWithReduction(
             Rasterization::MeshCubeSource(usedMesh),
             Rasterization::TrilinearMeshSlicer(),
             createRasterizationRequest(),
@@ -194,8 +194,12 @@ void MeshRasterizer::beginCrossPointCalculation() {
     needsResorting = false;
 }
 
-void MeshRasterizer::publishMeshSliceOutput(const Rasterization::MeshSlicePipeline::Output& output) {
-    Rasterization::MeshSliceOutputPolicy(calcDepthDims).publish(output, createRasterizerRuntime());
+void MeshRasterizer::publishMeshSliceOutput(const Rasterization::RenderResult& output) {
+    icpts = output.intercepts;
+
+    if (calcDepthDims) {
+        colorPoints = output.colorPoints;
+    }
 }
 
 void MeshRasterizer::finishCrossPointCalculation() {

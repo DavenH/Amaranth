@@ -20,6 +20,7 @@
 #include "Rasterization/Policies/Curves/CurveResolutionPolicy.h"
 #include "Rasterization/Policies/Curves/WaveformBakePolicy.h"
 #include "Rasterization/Pipelines/MeshSlicePipeline.h"
+#include "Rasterization/RenderResult.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "Rasterization/State/RasterizerStorage.h"
 #include "SurfaceLine.h"
@@ -246,8 +247,8 @@ protected:
     Rasterization::CurveResolutionPolicy::Context createCurveResolutionContext() const;
     Rasterization::WaveformBakePolicy::Context createWaveformBakeContext();
     void prepareCurvesForWaveform();
-    Rasterization::MeshSlicePipeline::Output renderMeshSlice(Mesh* usedMesh, float oscPhase);
-    void publishMeshSliceOutput(const Rasterization::MeshSlicePipeline::Output& output);
+    const Rasterization::RenderResult& renderMeshSlice(Mesh* usedMesh, float oscPhase);
+    void publishMeshSliceOutput(const Rasterization::RenderResult& output);
     void sortInterceptsIfNeeded();
     bool handleDegenerateInterceptOutput();
     void rebuildCurvesFromIntercepts();
@@ -278,6 +279,7 @@ protected:
     int overridingDim;
     int paddingSize;
     Rasterization::RasterizerController controller;
+    Rasterization::MeshSlicePipeline meshSlicePipeline;
 
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
 

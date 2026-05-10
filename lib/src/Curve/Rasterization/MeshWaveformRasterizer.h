@@ -42,7 +42,7 @@ namespace Rasterization {
             bool needsResorting = false;
 
             GuideCurveApplier guideApplier = createGuideCurveApplier(reduction, &needsResorting);
-            meshOutput = meshPipeline.renderWithReduction(
+            const RenderResult& meshOutput = meshPipeline.renderWithReduction(
                     MeshCubeSource(mesh),
                     TrilinearMeshSlicer(),
                     request,
@@ -51,6 +51,7 @@ namespace Rasterization {
                     reduction);
 
             meshIntercepts = meshOutput.intercepts;
+            meshColorPoints = meshOutput.colorPoints;
             waveformOutput = &waveformPipeline.render(
                     meshIntercepts,
                     request,
@@ -60,7 +61,7 @@ namespace Rasterization {
 
         void clean() {
             meshIntercepts.clear();
-            meshOutput = MeshSlicePipeline::Output();
+            meshColorPoints.clear();
             waveformOutput = nullptr;
         }
 
@@ -109,7 +110,7 @@ namespace Rasterization {
         RasterizerSnapshotSource createSnapshotSource() const {
             RasterizerSnapshotSource source;
             source.intercepts = &meshIntercepts;
-            source.colorPoints = &meshOutput.colorPoints;
+            source.colorPoints = &meshColorPoints;
 
             if (waveformOutput != nullptr) {
                 source.curves = &waveformOutput->curves;
@@ -134,10 +135,6 @@ namespace Rasterization {
             return GuideCurveApplier(context);
         }
 
-        const MeshSlicePipeline::Output& getMeshOutput() const {
-            return meshOutput;
-        }
-
         const RenderResult* getWaveformOutput() const {
             return waveformOutput;
         }
@@ -154,9 +151,9 @@ namespace Rasterization {
         MeshSlicePipeline meshPipeline;
         PointListRasterizationPipeline waveformPipeline;
         RenderResult const* waveformOutput {};
-        MeshSlicePipeline::Output meshOutput;
 
         std::vector<Intercept> meshIntercepts;
+        std::vector<ColorPoint> meshColorPoints;
         VertCube::ReductionData reduction;
     };
 }

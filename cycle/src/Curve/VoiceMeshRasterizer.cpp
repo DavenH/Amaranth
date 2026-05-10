@@ -25,9 +25,8 @@ VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
 		SingletonAccessor(repo, "VoiceMeshRasterizer")
     ,   mesh(nullptr)
     ,   rasterizer()
-    ,   chainStorage()
+    ,   chainResult()
     ,   rasterizerData()
-    ,   chainWaveformMemory()
     ,   chainReduction()
     ,   chainPaddingSize(2)
     ,   chainUnsampleable(true)
@@ -117,7 +116,7 @@ void VoiceMeshRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
 void VoiceMeshRasterizer::cleanUp() {
     rasterizer.clean();
     Rasterization::RasterizerCleanupPolicy().clean(createChainRuntime());
-    chainStorage.curves.guideCurveRegions.clear();
+    chainResult.guideCurveRegions.clear();
     publishSnapshot();
 }
 
@@ -133,13 +132,13 @@ bool VoiceMeshRasterizer::hasEnoughCubesForCrossSection() {
 
 bool VoiceMeshRasterizer::isSampleable() {
     return chainedOutputActive
-           ? Rasterization::WaveformSampler::isSampleable(chainStorage.waveform.waveform)
+           ? Rasterization::WaveformSampler::isSampleable(chainResult.waveform)
            : rasterizer.isSampleable();
 }
 
 bool VoiceMeshRasterizer::isSampleableAt(float x) {
     return chainedOutputActive
-           ? Rasterization::WaveformSampler::isSampleableAt(chainStorage.waveform.waveform, x)
+           ? Rasterization::WaveformSampler::isSampleableAt(chainResult.waveform, x)
            : rasterizer.isSampleableAt(x);
 }
 
@@ -173,12 +172,12 @@ int VoiceMeshRasterizer::getPaddingSize() const {
 
 Rasterization::RasterizerRuntime VoiceMeshRasterizer::createChainRuntime() {
     Rasterization::RasterizerRuntime runtime;
-    runtime.intercepts = &chainStorage.intercepts.intercepts;
-    runtime.curves = &chainStorage.curves.curves;
-    runtime.frontPadding = &chainStorage.intercepts.frontPadding;
-    runtime.backPadding = &chainStorage.intercepts.backPadding;
-    runtime.colorPoints = &chainStorage.intercepts.colorPoints;
-    runtime.waveform = Rasterization::WaveformBufferRefs(chainStorage.waveform.waveform);
+    runtime.intercepts = &chainResult.intercepts;
+    runtime.curves = &chainResult.curves;
+    runtime.frontPadding = &chainResult.frontPadding;
+    runtime.backPadding = &chainResult.backPadding;
+    runtime.colorPoints = &chainResult.colorPoints;
+    runtime.waveform = Rasterization::WaveformBufferRefs(chainResult.waveform);
     runtime.paddingSize = &chainPaddingSize;
     runtime.unsampleable = &chainUnsampleable;
     runtime.needsResorting = &chainNeedsResorting;
@@ -187,7 +186,7 @@ Rasterization::RasterizerRuntime VoiceMeshRasterizer::createChainRuntime() {
 }
 
 Rasterization::WaveformBuffers VoiceMeshRasterizer::currentWaveform() const {
-    return chainedOutputActive ? chainStorage.waveform.waveform : rasterizer.waveform();
+    return chainedOutputActive ? chainResult.waveform : rasterizer.waveform();
 }
 
 void VoiceMeshRasterizer::bakeChainedWaveform() {
@@ -195,12 +194,12 @@ void VoiceMeshRasterizer::bakeChainedWaveform() {
 
     if (!runtime.hasAtLeastIntercepts(2)) {
         Rasterization::RasterizerCleanupPolicy().clean(runtime);
-        chainStorage.curves.guideCurveRegions.clear();
+        chainResult.guideCurveRegions.clear();
         return;
     }
 
-    Cycle::Rasterization::VoiceCurveResolutionPolicy().apply(chainStorage.curves.curves);
-    Rasterization::CurveWaveformPreparationPolicy().apply(chainStorage.curves.curves);
+    Cycle::Rasterization::VoiceCurveResolutionPolicy().apply(chainResult.curves);
+    Rasterization::CurveWaveformPreparationPolicy().apply(chainResult.curves);
 
     Rasterization::WaveformBakePolicy::Context context;
     context.lowResCurves = rasterizer.getRequest().lowResCurves;
@@ -208,16 +207,16 @@ void VoiceMeshRasterizer::bakeChainedWaveform() {
     context.noiseSeed = rasterizer.getRequest().noiseSeed;
     context.morph = rasterizer.getRequest().morph;
     context.guideCurveProvider = rasterizer.getGuideCurveProvider();
-    context.guideCurveRegions = &chainStorage.curves.guideCurveRegions;
+    context.guideCurveRegions = &chainResult.guideCurveRegions;
     context.offsetSeeds = nullptr;
     context.transferTable = Rasterization::TransferTable::values();
 
     chainUnsampleable = !Rasterization::WaveformBuildPolicy().build(
-            chainStorage.curves.curves,
+            chainResult.curves,
             context,
             [this](int totalRes) {
                 updateChainBuffers(totalRes);
-                return Rasterization::WaveformBufferRefs(chainStorage.waveform.waveform);
+                return Rasterization::WaveformBufferRefs(chainResult.waveform);
             });
 }
 
@@ -225,10 +224,10 @@ void VoiceMeshRasterizer::publishSnapshot() {
     Rasterization::RasterizerSnapshotSource source;
 
     if (chainedOutputActive) {
-        source.intercepts = &chainStorage.intercepts.intercepts;
-        source.colorPoints = &chainStorage.intercepts.colorPoints;
-        source.curves = &chainStorage.curves.curves;
-        source.waveform = chainStorage.waveform.waveform;
+        source.intercepts = &chainResult.intercepts;
+        source.colorPoints = &chainResult.colorPoints;
+        source.curves = &chainResult.curves;
+        source.waveform = chainResult.waveform;
     } else {
         source = rasterizer.createSnapshotSource();
     }
@@ -237,7 +236,7 @@ void VoiceMeshRasterizer::publishSnapshot() {
 }
 
 void VoiceMeshRasterizer::updateChainBuffers(int size) {
-    chainStorage.waveform.waveform.place(chainWaveformMemory, size);
+    chainResult.waveform.place(chainResult.waveformMemory, size);
 }
 
 void VoiceMeshRasterizer::restrictIntercepts(std::vector<Intercept>& intercepts) {
