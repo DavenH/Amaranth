@@ -2,7 +2,6 @@
 
 #include <vector>
 
-#include "../../RasterizerRuntime.h"
 #include "../../WaveformBuffers.h"
 #include "../../../Curve.h"
 #include "../../../Intercept.h"
@@ -16,16 +15,6 @@ namespace Rasterization {
         const std::vector<Curve>* curves {};
         WaveformBuffers waveform;
     };
-
-    inline RasterizerSnapshotSource createRasterizerSnapshotSource(RasterizerRuntime runtime) {
-        RasterizerSnapshotSource source;
-        source.intercepts = runtime.intercepts;
-        source.colorPoints = runtime.colorPoints;
-        source.curves = runtime.curves;
-        source.waveform = runtime.waveform.view();
-
-        return source;
-    }
 
     class NoSnapshot {
     public:

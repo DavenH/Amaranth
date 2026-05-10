@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <vector>
 #include "Curve.h"
@@ -14,9 +13,7 @@
 #include "Rasterization/Interfaces/RasterizerSnapshotProvider.h"
 #include "Rasterization/Interfaces/RasterizerUpdateTarget.h"
 #include "Rasterization/Interfaces/RasterizerVertexDomain.h"
-#include "Rasterization/RasterizerController.h"
 #include "Rasterization/RasterizationRequest.h"
-#include "Rasterization/RasterizerRuntime.h"
 #include "Rasterization/Policies/Curves/CurveResolutionPolicy.h"
 #include "Rasterization/Policies/Curves/WaveformBakePolicy.h"
 #include "Rasterization/Pipelines/MeshSlicePipeline.h"
@@ -77,7 +74,6 @@ public:
     void calcWaveformFrom(vector<Intercept>& icpts);
     void initialise();
     void makeCopy();
-    void oversamplingChanged();
     void print(OutputStream& stream);
     void restrictIntercepts(vector<Intercept>& intercepts);
     void separateIntercepts(vector<Intercept>& intercepts, float minDx);
@@ -87,7 +83,6 @@ public:
     void restoreStateFrom(RenderState& src);
     void saveStateTo(RenderState& src);
     Rasterization::RasterizationRequest createRasterizationRequest();
-    Rasterization::RasterizerRuntime createRasterizerRuntime();
 
     bool isSampleable() override;
     bool isSampleableAt(float x) override;
@@ -122,17 +117,12 @@ public:
     /* ----------------------------------------------------------------------------- */
 
     void calcCrossPoints();
-    void calcCrossPointsAtTime(float x);
     void cleanUp() override;
-    void handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube);
     void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves);
     void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
-    void preCleanup();
-    void processIntercepts(vector<Intercept>& intercepts);
     void reset() override;
     void performUpdate(UpdateType updateType) override;
     void updateRasterizer(UpdateType updateType) override { update(updateType); }
-    void wrapVertices(float& ax, float& ay, float& bx, float& by, float indie);
     void updateCurves();
 
     bool hasEnoughCubesForCrossSection() override;
@@ -179,35 +169,8 @@ public:
     void setInterpolatesCurves(bool should)         { interpolateCurves = should;       }
     void setLimits(float min, float max)            { xMinimum = min; xMaximum = max;   }
     void setLowresCurves(bool areLow)               { lowResCurves  = areLow;           }
-    void setCrossPointProvider(std::function<void()> provider) {
-        controller.setCrossPointProvider(provider);
-    }
-    void setUpdateCurvesProvider(std::function<void()> provider) {
-        controller.setUpdateCurvesProvider(provider);
-    }
     void setNoiseSeed(int seed)                     { noiseSeed     = seed;             }
-    void setNumDimensionsProvider(std::function<int()> provider) {
-        controller.setNumDimensionsProvider(provider);
-    }
     void setOverridingDim(int dim)                  { overridingDim = dim;              }
-    void setPaddingProvider(std::function<void(vector<Intercept>&, vector<Curve>&)> provider) {
-        controller.setPaddingProvider(provider);
-    }
-    void setProcessInterceptsProvider(std::function<void(vector<Intercept>&)> provider) {
-        controller.setProcessInterceptsProvider(provider);
-    }
-    void setMeshAssignmentProvider(std::function<void(Mesh*)> provider) {
-        controller.setMeshAssignmentProvider(provider);
-    }
-    void setCrossSectionAvailabilityProvider(std::function<bool()> provider) {
-        controller.setCrossSectionAvailabilityProvider(provider);
-    }
-    void setPrimaryViewDimensionProvider(std::function<int()> provider) {
-        controller.setPrimaryViewDimensionProvider(provider);
-    }
-    void setOffsetSeedsProvider(std::function<void(int, int)> provider) {
-        controller.setOffsetSeedsProvider(provider);
-    }
     void setScalingMode(ScalingType type)           { scalingType   = type;             }
     void setToOverrideDim(bool does)                { overrideDim   = does;             }
     void setYellow(float yellow)                    { morph.time.setValueDirect(yellow);}
@@ -219,7 +182,6 @@ public:
     Mesh* getMesh() override                        { return mesh;                      }
     void setMesh(Mesh* mesh) override {
         this->mesh = mesh;
-        controller.meshAssigned(mesh);
     }
     bool wrapsVertices() const override             { return cyclic;                    }
     void updateOffsetSeeds(int layerSize, int tableSize);
@@ -234,6 +196,7 @@ public:
 
 
 protected:
+    void clearRasterizationResult(bool clearCurves);
     void markWaveformUnsampleable();
     void randomizeGuideCurveOffsetSeeds(int layerSize, int tableSize);
     bool canRasterizeMesh(Mesh* usedMesh) const;
@@ -274,7 +237,6 @@ protected:
     int noiseSeed;
     int overridingDim;
     int paddingSize;
-    Rasterization::RasterizerController controller;
     Rasterization::MeshSlicePipeline meshSlicePipeline;
 
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;

@@ -13,7 +13,6 @@
 #include "Rasterization/Policies/Core/InterceptSortPolicy.h"
 #include "Rasterization/Policies/Curves/InterceptPaddingFlagPolicy.h"
 #include "Rasterization/Policies/Core/InterceptRestrictionPolicy.h"
-#include "Rasterization/Policies/Core/RasterizerCleanupPolicy.h"
 #include "Rasterization/Policies/Core/PaddingPolicy.h"
 #include "Rasterization/Policies/Core/PointScalingPolicy.h"
 #include "Rasterization/Policies/Core/SnapshotPolicy.h"
@@ -51,7 +50,6 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    paddingSize         (2)
     ,    noiseSeed           (-1)
     ,    overridingDim       (Vertex::Time)
-    ,    controller()
     ,    meshSlicePipeline()
 
     ,    interceptPadding    (0.f)
@@ -95,16 +93,7 @@ MeshRasterizer::~MeshRasterizer() {
     makeCopy();
 }
 
-void MeshRasterizer::calcCrossPointsAtTime(float x) {
-    morph.time = x;
-    calcCrossPoints();
-}
-
 void MeshRasterizer::calcCrossPoints() {
-    if (controller.calcCrossPoints()) {
-        return;
-    }
-
     calcCrossPoints(mesh, 0.f);
 }
 
@@ -132,21 +121,6 @@ Rasterization::RasterizationRequest MeshRasterizer::createRasterizationRequest()
     request.xMaximum                  = xMaximum;
 
     return request;
-}
-
-Rasterization::RasterizerRuntime MeshRasterizer::createRasterizerRuntime() {
-    Rasterization::RasterizerRuntime runtime;
-    runtime.intercepts      = &icpts;
-    runtime.curves          = &curves;
-    runtime.frontPadding    = &frontIcpts;
-    runtime.backPadding     = &backIcpts;
-    runtime.colorPoints     = &colorPoints;
-    runtime.waveform        = createWaveformRefs();
-    runtime.paddingSize     = &paddingSize;
-    runtime.unsampleable    = &unsampleable;
-    runtime.needsResorting  = &needsResorting;
-
-    return runtime;
 }
 
 void MeshRasterizer::calcWaveformFrom(vector<Intercept>& icpts) {
@@ -188,7 +162,6 @@ bool MeshRasterizer::canRasterizeMesh(Mesh* usedMesh) const {
 
 void MeshRasterizer::beginCrossPointCalculation() {
     icpts.clear();
-    preCleanup();
 
     needsResorting = false;
 }
@@ -202,7 +175,6 @@ void MeshRasterizer::publishMeshSliceOutput(const Rasterization::RenderResult& o
 }
 
 void MeshRasterizer::finishCrossPointCalculation() {
-    processIntercepts(icpts);
     sortInterceptsIfNeeded();
 
     if (handleDegenerateInterceptOutput()) {
@@ -214,10 +186,6 @@ void MeshRasterizer::finishCrossPointCalculation() {
     if (!calcInterceptsOnly) {
         rebuildCurvesFromIntercepts();
     }
-}
-
-void MeshRasterizer::processIntercepts(vector<Intercept>& intercepts) {
-    controller.processIntercepts(intercepts);
 }
 
 bool MeshRasterizer::handleDegenerateInterceptOutput() {
@@ -253,10 +221,6 @@ void MeshRasterizer::rebuildCurvesFromIntercepts() {
 }
 
 int MeshRasterizer::getPrimaryViewDimension() {
-    if (controller.hasPrimaryViewDimensionProvider()) {
-        return controller.primaryViewDimension();
-    }
-
     return Vertex::Time;
 }
 
@@ -297,10 +261,6 @@ void MeshRasterizer::adjustDeformingSharpness() {
 }
 
 void MeshRasterizer::updateCurves() {
-    if (controller.updateCurves()) {
-        return;
-    }
-
     if (icpts.size() < 2) {
         return;
     }
@@ -406,7 +366,7 @@ float MeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double
 }
 
 void MeshRasterizer::reset() {
-    Rasterization::RasterizerCleanupPolicy().clean(createRasterizerRuntime());
+    clearRasterizationResult(true);
     guideCurveRegions.clear();
 }
 
@@ -428,10 +388,6 @@ void MeshRasterizer::padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve
 }
 
 void MeshRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curves) {
-    if (controller.pad(intercepts, curves)) {
-        return;
-    }
-
     int end = intercepts.size() - 1;
 
     if (end == 0) {
@@ -462,31 +418,8 @@ void MeshRasterizer::applyGuideCurves(Intercept& icpt, const MorphPosition& morp
     guideApplier(icpt, morph, noOffsetAtEnds);
 }
 
-void MeshRasterizer::handleOtherOverlappingLines(Vertex2 a, Vertex2 b, VertCube* cube) {
-}
-
-
-void MeshRasterizer::wrapVertices(float& ax, float& ay,
-                                  float& bx, float& by, float indie) {
-    if (cyclic) {
-        if (ay > 1 && by > 1) {
-            ay -= 1;
-            by -= 1;
-        } else if (ay > 1 != by > 1) {
-            float icpt = ax + (1 - ay) / ((ay - by) / (ax - bx));
-            if (icpt > indie) {
-                ay -= 1;
-                by -= 1;
-            }
-        }
-    }
-}
-
 void MeshRasterizer::cleanUp() {
-    Rasterization::RasterizerCleanupOptions options;
-    options.clearCurves = false;
-
-    Rasterization::RasterizerCleanupPolicy(options).clean(createRasterizerRuntime());
+    clearRasterizationResult(false);
     guideCurveRegions.clear();
 
     if(! batchMode) {
@@ -497,10 +430,6 @@ void MeshRasterizer::cleanUp() {
 
 void MeshRasterizer::setResolutionIndices(float base) {
     Rasterization::CurveResolutionPolicy::applyResolutionIndices(curves, base, getPaddingSize());
-}
-
-
-void MeshRasterizer::preCleanup() {
 }
 
 
@@ -519,7 +448,6 @@ MeshRasterizer& MeshRasterizer::operator=(const MeshRasterizer& copy) {
     // flags
     this->overrideDim            = copy.overrideDim;
     this->overridingDim          = copy.overridingDim;
-    this->controller.resetProviders();
     this->cyclic                 = copy.cyclic;
     this->guideCurveProvider     = copy.guideCurveProvider;
     this->calcInterceptsOnly     = copy.calcInterceptsOnly;
@@ -581,9 +509,6 @@ void MeshRasterizer::separateIntercepts(vector<Intercept>& intercepts, float min
     }
 }
 
-void MeshRasterizer::oversamplingChanged() {
-}
-
 #pragma push_macro("new")
 #undef new
 
@@ -603,18 +528,10 @@ void MeshRasterizer::performUpdate(UpdateType updateType) {
 }
 
 int MeshRasterizer::getNumDims() {
-    if (controller.hasNumDimensionsProvider()) {
-        return controller.numDimensions();
-    }
-
     return 3;
 }
 
 bool MeshRasterizer::hasEnoughCubesForCrossSection() {
-    if (controller.hasCrossSectionAvailabilityProvider()) {
-        return controller.hasEnoughCubesForCrossSection();
-    }
-
     return mesh->getNumCubes() > 1;
 }
 
@@ -651,7 +568,22 @@ void MeshRasterizer::updateBuffers(int size) {
 }
 
 void MeshRasterizer::markWaveformUnsampleable() {
-    Rasterization::RasterizerCleanupPolicy::markWaveformUnsampleable(createRasterizerRuntime());
+    waveform.waveX.nullify();
+    waveform.waveY.nullify();
+    unsampleable = true;
+}
+
+void MeshRasterizer::clearRasterizationResult(bool clearCurves) {
+    markWaveformUnsampleable();
+
+    icpts.clear();
+    frontIcpts.clear();
+    backIcpts.clear();
+    colorPoints.clear();
+
+    if (clearCurves) {
+        curves.clear();
+    }
 }
 
 Rasterization::WaveformBuffers MeshRasterizer::createWaveformView() const {
@@ -684,8 +616,12 @@ Rasterization::GuideCurveApplier MeshRasterizer::createLegacyGuideCurveApplier()
 }
 
 void MeshRasterizer::makeCopy() {
-    Rasterization::RasterizerSnapshotSource source =
-            Rasterization::createRasterizerSnapshotSource(createRasterizerRuntime());
+    Rasterization::RasterizerSnapshotSource source;
+    source.intercepts = &icpts;
+    source.colorPoints = &colorPoints;
+    source.curves = &curves;
+    source.waveform = waveform;
+
     Rasterization::RasterizerSnapshotBuilder().publish(rastArrays, source);
 }
 
@@ -715,10 +651,6 @@ void MeshRasterizer::updateValue(int dim, float value) {
 }
 
 void MeshRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
-    if (controller.updateOffsetSeeds(layerSize, tableSize)) {
-        return;
-    }
-
     randomizeGuideCurveOffsetSeeds(layerSize, tableSize);
 }
 

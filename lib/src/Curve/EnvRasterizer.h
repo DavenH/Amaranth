@@ -17,7 +17,6 @@
 #include "Rasterization/Policies/Envelope/EnvelopePaddingPolicy.h"
 #include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "Rasterization/RasterizationRequest.h"
-#include "Rasterization/RasterizerRuntime.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "../App/MeshLibrary.h"
@@ -166,6 +165,7 @@ public:
 
 private:
     void changedToRelease();
+    void clearRasterizationResult(bool clearCurves);
     Rasterization::EnvelopePaddingContext createPaddingContext() const;
     void installEnvelopeProviders();
     void padIcptsForRender(vector<Intercept>& icpts, vector<Curve>& curves);
@@ -179,8 +179,7 @@ private:
     Rasterization::GuideCurveApplier createGuideCurveApplier();
 
     bool canLoop() const;
-    Rasterization::RasterizerRuntime runtime();
-    Rasterization::RasterizerRuntime runtime() const;
+    void markWaveformUnsampleable();
     int vectorizedRenderToBuffer(Buffer<float> buffer, int numSamples, double deltaX, int unisonIdx);
     float getLoopLength() const;
 
