@@ -42,6 +42,5 @@ namespace Rasterization {
         }
 
         SamplerView sampler() const { return SamplerView(waveform, sampleable); }
-        WaveformView waveformView() const { return WaveformView(waveform); }
     };
 }

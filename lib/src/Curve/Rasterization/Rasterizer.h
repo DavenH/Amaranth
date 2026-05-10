@@ -18,7 +18,6 @@ namespace Rasterization {
 
         virtual SamplerView samplerView() const = 0;
         virtual SnapshotView snapshotView() = 0;
-        virtual WaveformView waveformView() const = 0;
 
         virtual void performUpdate(UpdateType updateType) = 0;
 

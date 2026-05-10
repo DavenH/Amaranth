@@ -108,7 +108,6 @@ public:
         return Rasterization::SamplerView(result.waveform, !unsampleable);
     }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
-    Rasterization::WaveformView waveformView() const override { return result.waveformView(); }
 
     Mesh* getMesh() { return envMesh; }
     void setMesh(Mesh* mesh) override;

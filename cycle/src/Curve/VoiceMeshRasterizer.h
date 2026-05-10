@@ -51,7 +51,6 @@ public:
         return Rasterization::SamplerView(currentWaveform(), currentWaveformIsSampleable());
     }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
-    Rasterization::WaveformView waveformView() const override { return Rasterization::WaveformView(currentWaveform()); }
 
     Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }

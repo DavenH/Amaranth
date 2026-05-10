@@ -53,22 +53,6 @@ namespace Rasterization {
         bool sampleable {};
     };
 
-    class WaveformView {
-    public:
-        WaveformView() = default;
-
-        explicit WaveformView(const WaveformBuffers& waveform) :
-                waveform(waveform) {
-        }
-
-        const WaveformBuffers& buffers() const {
-            return waveform;
-        }
-
-    private:
-        WaveformBuffers waveform;
-    };
-
     class SnapshotView {
     public:
         SnapshotView() = default;

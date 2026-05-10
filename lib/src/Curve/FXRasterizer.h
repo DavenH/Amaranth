@@ -44,7 +44,6 @@ public:
 
     Rasterization::SamplerView samplerView() const override { return result.sampler(); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
-    Rasterization::WaveformView waveformView() const override { return result.waveformView(); }
     void sampleEvenlyTo(const Buffer<float>& dest);
 
     Mesh* getMesh() { return mesh; }

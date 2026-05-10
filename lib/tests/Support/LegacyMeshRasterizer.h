@@ -99,7 +99,6 @@ public:
 
     Rasterization::SamplerView samplerView() const override { return Rasterization::SamplerView(createWaveformView(), isSampleable()); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rastArrays); }
-    Rasterization::WaveformView waveformView() const override { return Rasterization::WaveformView(createWaveformView()); }
 
     float sampleAt(double angle);
     float sampleAt(double angle, int& currentIndex);

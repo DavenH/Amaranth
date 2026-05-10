@@ -72,10 +72,6 @@ namespace Rasterization {
             return SamplerView(waveform(), isSampleable());
         }
 
-        WaveformView waveformView() const {
-            return WaveformView(waveform());
-        }
-
         int getPaddingSize() const {
             return waveformOutput != nullptr ? waveformOutput->paddingSize : request.paddingSize;
         }
