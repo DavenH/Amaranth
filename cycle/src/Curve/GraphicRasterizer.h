@@ -1,13 +1,8 @@
 #pragma once
 
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
+#include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
 #include <Curve/Rasterization/MeshWaveformRasterizer.h>
-#include <Curve/Rasterization/Interfaces/GuideCurveBindableRasterizer.h>
-#include <Curve/Rasterization/Interfaces/MeshBindableRasterizer.h>
-#include <Curve/Rasterization/Interfaces/RasterizerSampler.h>
-#include <Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h>
-#include <Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h>
-#include <Curve/Rasterization/Interfaces/RasterizerVertexDomain.h>
 #include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
 #include <Curve/Rasterization/RenderState.h>
 #include <Curve/RasterizerData.h>

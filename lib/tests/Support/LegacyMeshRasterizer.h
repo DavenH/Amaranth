@@ -7,12 +7,7 @@
 #include <Curve/Mesh.h>
 #include <Curve/RasterizerData.h>
 #include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
-#include <Curve/Rasterization/Interfaces/GuideCurveBindableRasterizer.h>
-#include <Curve/Rasterization/Interfaces/MeshBindableRasterizer.h>
-#include <Curve/Rasterization/Interfaces/RasterizerSampler.h>
-#include <Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h>
-#include <Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h>
-#include <Curve/Rasterization/Interfaces/RasterizerVertexDomain.h>
+#include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
 #include <Curve/Rasterization/RasterizationRequest.h>
 #include <Curve/Rasterization/Policies/Curves/CurveResolutionPolicy.h>
 #include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>

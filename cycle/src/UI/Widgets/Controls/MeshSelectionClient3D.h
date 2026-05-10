@@ -6,8 +6,7 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Audio/AudioSourceProcessor.h>
-#include <Curve/Rasterization/Interfaces/MeshBindableRasterizer.h>
-#include <Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h>
+#include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
 #include <Inter/Interactor.h>
 #include <Obj/Ref.h>
 #include "JuceHeader.h"

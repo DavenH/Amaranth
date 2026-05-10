@@ -4,14 +4,9 @@
 #include <App/SingletonRepo.h>
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
-#include <Curve/Rasterization/MeshWaveformRasterizer.h>
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
-#include <Curve/Rasterization/Interfaces/GuideCurveBindableRasterizer.h>
-#include <Curve/Rasterization/Interfaces/MeshBindableRasterizer.h>
-#include <Curve/Rasterization/Interfaces/RasterizerSampler.h>
-#include <Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h>
-#include <Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h>
-#include <Curve/Rasterization/Interfaces/RasterizerVertexDomain.h>
+#include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
+#include <Curve/Rasterization/MeshWaveformRasterizer.h>
 #include <vector>
 
 using std::vector;
