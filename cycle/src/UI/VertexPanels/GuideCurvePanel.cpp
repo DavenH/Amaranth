@@ -138,7 +138,7 @@ void GuideCurvePanel::rasterizeTable() {
     GuideCurveProps& props = guideTables[currentLayer];
 
     localRasterizer.performUpdate(Update);
-    if (localRasterizer.hasEnoughCubesForCrossSection()) {
+    if (localRasterizer.canRasterizeWaveform()) {
         localRasterizer.samplerView().sampleWithInterval(
                 props.table,
                 samplingInterval,

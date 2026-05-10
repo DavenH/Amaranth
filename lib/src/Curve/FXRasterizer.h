@@ -35,7 +35,6 @@ public:
     void setVertices(vector<Vertex*>* vertices);
 
     bool canRasterizeWaveform() const;
-    bool hasEnoughCubesForCrossSection();
     bool isBipolar() const;
     void updateWaveform(UpdateType updateType);
     bool wrapsVertices() const override { return false; }

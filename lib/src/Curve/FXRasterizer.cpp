@@ -70,10 +70,6 @@ bool FXRasterizer::canRasterizeWaveform() const {
     return vertexCount() > 1;
 }
 
-bool FXRasterizer::hasEnoughCubesForCrossSection() {
-    return vertexCount() > 1;
-}
-
 bool FXRasterizer::isBipolar() const {
     return scalingType == Bipolar || scalingType == HalfBipolar;
 }
