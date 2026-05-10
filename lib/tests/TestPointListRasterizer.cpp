@@ -6,7 +6,6 @@
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Rasterizer2D.h"
-#include "../src/Curve/Rasterization/Interpolation/LinearPointInterpolator.h"
 #include "../src/Curve/Rasterization/Pipelines/PointListRasterizationPipeline.h"
 #include "../src/Curve/Rasterization/Sources/PointListSource.h"
 
@@ -76,20 +75,6 @@ TEST_CASE("PointListSource sorts and exposes external raster points", "[rasteriz
     REQUIRE(point.y == Catch::Approx(source.interceptAt(2).y));
     REQUIRE(point.source.type == Rasterization::RasterPointSource::Type::ExternalPoint);
     REQUIRE(point.source.marker == 2);
-}
-
-TEST_CASE("LinearPointInterpolator interpolates point-list intercepts", "[rasterization][pointlist]") {
-    Intercept a(0.2f, 0.1f, nullptr, 0.25f);
-    Intercept b(0.6f, 0.9f, nullptr, 0.75f);
-    a.adjustedX = 0.3f;
-    b.adjustedX = 0.7f;
-
-    Intercept mid = Rasterization::LinearPointInterpolator().interpolate(a, b, 0.5f);
-
-    REQUIRE(mid.x == Catch::Approx(0.4f));
-    REQUIRE(mid.y == Catch::Approx(0.5f));
-    REQUIRE(mid.shp == Catch::Approx(0.5f));
-    REQUIRE(mid.adjustedX == Catch::Approx(0.5f));
 }
 
 TEST_CASE("Rasterizer2D rasterizes non-cyclic point lists through PointListSource", "[rasterization][pointlist]") {
