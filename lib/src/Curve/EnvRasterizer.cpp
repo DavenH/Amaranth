@@ -320,10 +320,6 @@ float EnvRasterizer::sampleAtDecoupled(double angle, GuideCurveContext& context)
             request.noiseSeed);
 }
 
-float EnvRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
-    return Rasterization::WaveformSampler::samplePerfectly(result.waveform, delta, buffer, phase);
-}
-
 bool EnvRasterizer::renderToBuffer(
     const int numSamples,
     const double deltaX,

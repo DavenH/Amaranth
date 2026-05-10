@@ -236,7 +236,7 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
                               mesh,
                               mesh != nullptr ? (rast.hasEnoughCubesForCrossSection() ? 1 : 0) : -1,
                               (int) icpts.size(),
-                              rast.isSampleable() ? 1 : 0));
+                              rast.samplerView().isSampleable() ? 1 : 0));
     };
 
     ScopedAlloc<Float32>* buff;

@@ -102,8 +102,6 @@ public:
     void reset() override { cleanUp(); }
 
     bool hasEnoughCubesForCrossSection();
-    bool isSampleable() const;
-    bool isSampleableAt(float x) const;
     bool wrapsVertices() const override { return request.cyclic; }
 
     Rasterization::SamplerView samplerView() const override {
@@ -111,20 +109,6 @@ public:
     }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
     Rasterization::WaveformView waveformView() const override { return result.waveformView(); }
-
-    float sampleAt(double angle);
-    float sampleAt(double angle, int& currentIndex);
-    float sampleAtDecoupled(double angle, GuideCurveContext& context);
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase);
-
-    template<typename T>
-    T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
-        return Rasterization::WaveformSampler::sampleWithInterval(
-                result.waveform,
-                buffer,
-                delta,
-                phase);
-    }
 
     Mesh* getMesh() { return envMesh; }
     void setMesh(Mesh* mesh) override;
@@ -173,7 +157,21 @@ private:
     Rasterization::GuideCurveApplier createGuideCurveApplier();
 
     bool canLoop() const;
+    bool isSampleable() const;
+    bool isSampleableAt(float x) const;
     void markWaveformUnsampleable();
+    float sampleAt(double angle);
+    float sampleAt(double angle, int& currentIndex);
+    float sampleAtDecoupled(double angle, GuideCurveContext& context);
+    template<typename T>
+    T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
+        return Rasterization::WaveformSampler::sampleWithInterval(
+                result.waveform,
+                buffer,
+                delta,
+                phase);
+    }
+
     int vectorizedRenderToBuffer(Buffer<float> buffer, int numSamples, double deltaX, int unisonIdx);
     float getLoopLength() const;
 
