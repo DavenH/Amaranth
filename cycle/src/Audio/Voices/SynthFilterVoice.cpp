@@ -186,10 +186,11 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
         timeRasterizer.setInterceptPadding((float) samplingDelta * 2);
         timeRasterizer.calcCrossPoints(layer.mesh, 0.f);
 
-        if (timeRasterizer.isSampleable()) {
+        auto sampler = timeRasterizer.samplerView();
+        if (sampler.isSampleable()) {
             timeRasterizer.doesIntegralSampling() ?
-                    timeRasterizer.samplePerfectly(samplingDelta, timeBuf, 0.) :
-                    timeRasterizer.sampleWithInterval(timeBuf, samplingDelta, 0.);
+                    sampler.samplePerfectly(samplingDelta, timeBuf, 0.) :
+                    sampler.sampleWithInterval(timeBuf, samplingDelta, 0.);
 
             float layerPan = props.pan;
             noteState.isStereo |= fabsf(layerPan - 0.5f) > 0.03f;
@@ -227,8 +228,9 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
         request.noiseSeed = random.nextInt(GuideCurvePanel::tableSize);
         freqRasterizer.render(layer.mesh);
 
-        if (freqRasterizer.isSampleable()) {
-            freqRasterizer.sampleAtIntervals(fftRamp, harmRast);
+        auto sampler = freqRasterizer.samplerView();
+        if (sampler.isSampleable()) {
+            sampler.sampleAtIntervals(fftRamp, harmRast);
 
             wasStereoBeforeLayer |= noteState.isStereo;
 
@@ -359,8 +361,9 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
             request.noiseSeed = random.nextInt(GuideCurvePanel::tableSize);
             phaseRasterizer.render(layer.mesh);
 
-            if (phaseRasterizer.isSampleable()) {
-                phaseRasterizer.sampleAtIntervals(fftRamp, harmRast);
+            auto sampler = phaseRasterizer.samplerView();
+            if (sampler.isSampleable()) {
+                sampler.sampleAtIntervals(fftRamp, harmRast);
 
                 float pans[2];
                 Arithmetic::getPans(props.pan, pans[0], pans[1]);

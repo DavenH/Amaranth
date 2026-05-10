@@ -140,7 +140,7 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
             rasterizer.setMode(EnvRasterizer::NormalState);
             rasterizer.calcCrossPoints();
 
-            if (rasterizer.isSampleable()) {
+            if (rasterizer.samplerView().isSampleable()) {
                 double delta = 1 / float(env.size());
 
                 float tempoScale = 1.0; // TODO
@@ -183,8 +183,9 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
                 p[dim] = zoomArray[i];
                 rasterizer.calcCrossPoints();
 
-                env[i] = rasterizer.isSampleableAt(time) ?
-                         rasterizer.sampleAt(time, index) : zoomArray[i];
+                auto sampler = rasterizer.samplerView();
+                env[i] = sampler.isSampleableAt(time) ?
+                         sampler.sampleAt(time, index) : zoomArray[i];
             }
 
             env.clip(0, 1);
@@ -603,12 +604,13 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                     spectRasterizer->setYellow(scratchTime);
                     spectRasterizer->calcCrossPoints(spectLayer.mesh, 0.f);
 
-                    if (!spectRasterizer->isSampleable()) {
+                    auto sampler = spectRasterizer->samplerView();
+                    if (!sampler.isSampleable()) {
                         localBuffer.zero();
                         continue;
                     }
 
-                    spectRasterizer->sampleAtIntervals(fftRamp, localBuffer);
+                    sampler.sampleAtIntervals(fftRamp, localBuffer);
 
                     float dynamicRange = sqrtf(Spectrum3D::calcDynamicRangeScale(spectLayer.props->range));
                     float multiplicand = relativePan;
@@ -668,8 +670,9 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                     phaseRasterizer->setYellow(scratchTime);
                     phaseRasterizer->calcCrossPoints(layer.mesh, 0.f);
 
-                    if(phaseRasterizer->isSampleable()) {
-                        phaseRasterizer->sampleAtIntervals(fftRamp, localBuffer);
+                    auto sampler = phaseRasterizer->samplerView();
+                    if(sampler.isSampleable()) {
+                        sampler.sampleAtIntervals(fftRamp, localBuffer);
 
                         double relativePan 	= Arithmetic::getRelativePan(layer.props->pan, modPan);
                         float phaseAmpScale = Spectrum3D::calcPhaseOffsetScale(layer.props->range);
@@ -1162,10 +1165,11 @@ void VisualDsp::processThroughEnvelopes(int numColumns) {
 
             auto& volRast = getObj(EnvVolumeRast);
 
-            if (volRast.isSampleable() && getSetting(CurrentMorphAxis) == Vertex::Time) {
+            auto sampler = volRast.samplerView();
+            if (sampler.isSampleable() && getSetting(CurrentMorphAxis) == Vertex::Time) {
                 int size = postEnvCols[0].size();
                 double delta = 1 / (double) volumeEnv.size() / double(size);
-                volRast.sampleWithInterval(phaseMoveBuffer, delta, 0.);
+                sampler.sampleWithInterval(phaseMoveBuffer, delta, 0.);
 
                 phaseMoveBuffer.mul(volumeScale);
                 postEnvCols[0].mul(phaseMoveBuffer);

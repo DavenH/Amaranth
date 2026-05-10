@@ -39,7 +39,7 @@ void SynthUnisonVoice::testMeshConditions() {
 void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float velocity) {
     for (int i = 0; i < parent->scratchGroup.size(); ++i) {
         EnvRenderContext& rast = parent->scratchGroup[i];
-        rast.scratchTime = rast.sampleable ? rast.rast.sampleAt(0) : 0;
+        rast.scratchTime = rast.sampleable ? rast.rast.samplerView().sampleAt(0) : 0;
     }
 
     for (int i = 0; i < noteState.numUnisonVoices; ++i) {
@@ -135,8 +135,9 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
         }
 
         Buffer<float> rastBuf(rastBuffer, samplingSize);
-        if (timeRasterizer.isSampleable()) {
-            state.spillover = timeRasterizer.sampleWithInterval(rastBuf, delta, spillover);
+        auto sampler = timeRasterizer.samplerView();
+        if (sampler.isSampleable()) {
+            state.spillover = sampler.sampleWithInterval(rastBuf, delta, spillover);
         } else {
             rastBuf.zero();
             double& spillover = state.spillover; //group.samplingSpillover[0];

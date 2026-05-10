@@ -198,11 +198,11 @@ void IrModeller::rasterizeImpulse(
             int samplingSize = impulse.size() * oversampler.getOversampleFactor();
 
             Buffer<Float32> buff = oversampler.getMemoryBuffer(samplingSize);
-            waveform.samplePerfectly(delta, buff, phase);
+            waveform.samplerView().samplePerfectly(delta, buff, phase);
 
             oversampler.sampleDown(buff, impulse);
         } else {
-            waveform.sampleWithInterval(impulse, delta, phase);
+            waveform.samplerView().sampleWithInterval(impulse, delta, phase);
         }
 
         if (!waveform.isBipolar()) {

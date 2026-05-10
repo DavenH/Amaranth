@@ -76,24 +76,26 @@ public:
     void reset() override { cleanUp(); }
 
     bool hasEnoughCubesForCrossSection();
-    bool isSampleable() const { return rasterizer.isSampleable(); }
-    bool isSampleableAt(float x) const { return rasterizer.isSampleableAt(x); }
+    bool isSampleable() const { return rasterizer.samplerView().isSampleable(); }
+    bool isSampleableAt(float x) const { return rasterizer.samplerView().isSampleableAt(x); }
     bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
     Rasterization::SamplerView samplerView() const override { return rasterizer.samplerView(); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
     Rasterization::WaveformView waveformView() const override { return rasterizer.waveformView(); }
 
-    float sampleAt(double angle) { return rasterizer.sampleAt(angle); }
-    float sampleAt(double angle, int& currentIndex) { return rasterizer.sampleAt(angle, currentIndex); }
+    float sampleAt(double angle) { return rasterizer.samplerView().sampleAt(angle); }
+    float sampleAt(double angle, int& currentIndex) { return rasterizer.samplerView().sampleAt(angle, currentIndex); }
     float samplePerfectly(double delta, Buffer<float> buffer, double phase) {
-        return rasterizer.samplePerfectly(delta, buffer, phase);
+        return rasterizer.samplerView().samplePerfectly(delta, buffer, phase);
     }
-    void sampleAtIntervals(Buffer<float> deltas, Buffer<float> dest) { rasterizer.sampleAtIntervals(deltas, dest); }
+    void sampleAtIntervals(Buffer<float> deltas, Buffer<float> dest) {
+        rasterizer.samplerView().sampleAtIntervals(deltas, dest);
+    }
 
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
-        return rasterizer.sampleWithInterval(buffer, delta, phase);
+        return rasterizer.samplerView().sampleWithInterval(buffer, delta, phase);
     }
 
     Mesh* getMesh() { return mesh; }

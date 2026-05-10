@@ -116,18 +116,18 @@ bool VoiceMeshRasterizer::hasEnoughCubesForCrossSection() {
 bool VoiceMeshRasterizer::isSampleable() const {
     return chainedOutputActive
            ? Rasterization::WaveformSampler::isSampleable(chainResult.waveform)
-           : rasterizer.isSampleable();
+           : rasterizer.samplerView().isSampleable();
 }
 
 bool VoiceMeshRasterizer::isSampleableAt(float x) const {
     return chainedOutputActive
            ? Rasterization::WaveformSampler::isSampleableAt(chainResult.waveform, x)
-           : rasterizer.isSampleableAt(x);
+           : rasterizer.samplerView().isSampleableAt(x);
 }
 
 float VoiceMeshRasterizer::sampleAt(double angle) {
     if (!chainedOutputActive) {
-        return rasterizer.sampleAt(angle);
+        return rasterizer.samplerView().sampleAt(angle);
     }
 
     return Rasterization::WaveformSampler::sampleAt(currentWaveform(), chainUnsampleable, angle);
@@ -135,7 +135,7 @@ float VoiceMeshRasterizer::sampleAt(double angle) {
 
 float VoiceMeshRasterizer::sampleAt(double angle, int& currentIndex) {
     if (!chainedOutputActive) {
-        return rasterizer.sampleAt(angle, currentIndex);
+        return rasterizer.samplerView().sampleAt(angle, currentIndex);
     }
 
     return Rasterization::WaveformSampler::sampleAt(currentWaveform(), chainUnsampleable, angle, currentIndex);
@@ -143,7 +143,7 @@ float VoiceMeshRasterizer::sampleAt(double angle, int& currentIndex) {
 
 float VoiceMeshRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
     if (!chainedOutputActive) {
-        return rasterizer.samplePerfectly(delta, buffer, phase);
+        return rasterizer.samplerView().samplePerfectly(delta, buffer, phase);
     }
 
     return Rasterization::WaveformSampler::samplePerfectly(currentWaveform(), delta, buffer, phase);

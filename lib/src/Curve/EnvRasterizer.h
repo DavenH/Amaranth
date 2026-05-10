@@ -106,7 +106,9 @@ public:
     bool isSampleableAt(float x) const;
     bool wrapsVertices() const override { return request.cyclic; }
 
-    Rasterization::SamplerView samplerView() const override { return result.sampler(); }
+    Rasterization::SamplerView samplerView() const override {
+        return Rasterization::SamplerView(result.waveform, !unsampleable);
+    }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
     Rasterization::WaveformView waveformView() const override { return result.waveformView(); }
 

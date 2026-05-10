@@ -60,7 +60,7 @@ public:
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
         if (!chainedOutputActive) {
-            return rasterizer.sampleWithInterval(buffer, delta, phase);
+            return rasterizer.samplerView().sampleWithInterval(buffer, delta, phase);
         }
 
         return Rasterization::WaveformSampler::sampleWithInterval(

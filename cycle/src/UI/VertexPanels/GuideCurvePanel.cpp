@@ -111,7 +111,7 @@ void GuideCurvePanel::rasterizeAllTables() {
         localRasterizer.cleanUp();
         localRasterizer.setMesh(mesh);
         localRasterizer.performUpdate(Update);
-        localRasterizer.sampleWithInterval(
+        localRasterizer.samplerView().sampleWithInterval(
                 guideTables[i].table,
                 samplingInterval,
                 (float) getRealConstant(GuideCurvePadding));
@@ -139,7 +139,10 @@ void GuideCurvePanel::rasterizeTable() {
 
     localRasterizer.performUpdate(Update);
     if (localRasterizer.hasEnoughCubesForCrossSection()) {
-        localRasterizer.sampleWithInterval(props.table, samplingInterval, (float) getRealConstant(GuideCurvePadding));
+        localRasterizer.samplerView().sampleWithInterval(
+                props.table,
+                samplingInterval,
+                (float) getRealConstant(GuideCurvePadding));
 
         props.table.add(-0.5f);
     } else {

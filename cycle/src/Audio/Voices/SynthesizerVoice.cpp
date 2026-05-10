@@ -287,7 +287,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
             if (props->active && rast.rast.getCurrentMesh() != nullptr &&
                 rast.rast.hasEnoughCubesForCrossSection()) {
                 rast.rast.calcCrossPoints();
-                rast.sampleable = rast.rast.isSampleable();
+                rast.sampleable = rast.rast.samplerView().isSampleable();
             }
         }
     }

@@ -512,7 +512,7 @@ void SynthAudioSource::modulationChanged(float value, int voiceIndex, int output
                         rast.calcCrossPoints();
                         rast.validateState();
 
-                        scratchRast.sampleable = rast.isSampleable();
+                        scratchRast.sampleable = rast.samplerView().isSampleable();
                     }
                 }
             }
@@ -583,7 +583,7 @@ void SynthAudioSource::rasterizeGlobalEnvs() {
         rast.calcCrossPoints();
         rast.validateState();
 
-        scratchRast.sampleable = rast.isSampleable();
+        scratchRast.sampleable = rast.samplerView().isSampleable();
 
         if(scratchRast.sampleable) {
             rast.setNoteOn();
