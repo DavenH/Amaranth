@@ -93,7 +93,7 @@ public:
         return rasterizer.sampleWithInterval(buffer, delta, phase);
     }
 
-    Mesh* getMesh() override { return mesh; }
+    Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override { return rasterizer.getPaddingSize(); }
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }

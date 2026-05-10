@@ -185,7 +185,7 @@ public:
     void setMorphPosition(const MorphPosition& m)   { morph         = m;                }
     void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }
 
-    Mesh* getMesh() override                        { return mesh;                      }
+    Mesh* getMesh()                        { return mesh;                      }
     void setMesh(Mesh* mesh) override {
         this->mesh = mesh;
     }

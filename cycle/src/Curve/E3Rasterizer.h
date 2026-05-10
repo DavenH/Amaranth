@@ -34,7 +34,7 @@ public:
     float sampleAt(double angle, int& currentIndex) override;
     float samplePerfectly(double delta, Buffer<float> buffer, double phase);
 
-    Mesh* getMesh() override { return mesh; }
+    Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override;
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }

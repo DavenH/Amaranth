@@ -13,7 +13,6 @@ namespace Rasterization {
         virtual ~Rasterizer() = default;
 
         virtual void setGuideCurveProvider(GuideCurveProvider* guideCurveProvider) = 0;
-        virtual Mesh* getMesh() = 0;
         virtual void setMesh(Mesh* mesh) = 0;
 
         virtual bool isSampleable() = 0;

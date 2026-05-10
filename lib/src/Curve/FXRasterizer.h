@@ -51,7 +51,7 @@ public:
     float samplePerfectly(double delta, Buffer<float> buffer, double phase);
     void sampleEvenlyTo(const Buffer<float>& dest);
 
-    Mesh* getMesh() override { return mesh; }
+    Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override;
     void padIcpts(vector<Intercept>& intercepts, vector<Curve>& curves);
     int getNumDims() { return 1; }

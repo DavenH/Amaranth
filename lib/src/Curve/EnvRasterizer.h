@@ -121,7 +121,7 @@ public:
                 phase);
     }
 
-    Mesh* getMesh() override { return envMesh; }
+    Mesh* getMesh() { return envMesh; }
     void setMesh(Mesh* mesh) override;
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
     int getPaddingSize() const override { return paddingSize; }
