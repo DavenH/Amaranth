@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../../Array/Buffer.h"
-#include "../../../Design/Updating/UpdateType.h"
+#include "../../Array/Buffer.h"
+#include "../../Design/Updating/UpdateType.h"
 
 class Dimensions;
 class GuideCurveProvider;

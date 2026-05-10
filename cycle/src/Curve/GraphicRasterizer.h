@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
-#include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
+#include <Curve/Rasterization/Rasterizer.h>
 #include <Curve/Rasterization/MeshWaveformRasterizer.h>
 #include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
 #include <Curve/RasterizerData.h>
@@ -99,7 +99,6 @@ public:
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
     RasterizerData& getRasterizerData() override { return rasterizerData; }
     const RasterizerData& getRasterizerData() const override { return rasterizerData; }
-    RasterizerData& getRastData() { return rasterizerData; }
     RenderState createRenderState() {
         RenderState state;
         saveStateTo(state);

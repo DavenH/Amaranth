@@ -3,7 +3,7 @@
 #include <Array/ScopedAlloc.h>
 #include <Curve/Intercept.h>
 #include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
-#include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
+#include <Curve/Rasterization/Rasterizer.h>
 #include <Curve/Rasterization/MeshWaveformRasterizer.h>
 #include <Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h>
 #include <Curve/Rasterization/RenderResult.h>

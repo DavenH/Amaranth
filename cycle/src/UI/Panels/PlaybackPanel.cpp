@@ -248,7 +248,7 @@ void PlaybackPanel::setProgress(float unitX, bool updateMorphPanel) {
 								  getSetting(CurrentEnvGroup)));
 			jassertfalse;
 		} else if (props->active) {
-			const auto& icpts = envRast->getRastData().intercepts;
+			const auto& icpts = envRast->getRasterizerData().intercepts;
 			bool canSimulate = envRast->hasEnoughCubesForCrossSection();
 
 			if (canSimulate && icpts.empty()) {
@@ -429,7 +429,7 @@ void PlaybackPanel::timerCallback(int id) {
 		bool isAlive = props->active;
 
 		if(isAlive) {
-			const auto& icpts = envRast->getRastData().intercepts;
+			const auto& icpts = envRast->getRasterizerData().intercepts;
 			bool canSimulate = envRast->hasEnoughCubesForCrossSection();
 
 			if (canSimulate && icpts.empty()) {

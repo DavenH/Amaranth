@@ -344,7 +344,7 @@ bool EnvelopeInter2D::synchronizeEnvPoints(Vertex* vertex, bool vertexIsLoopVert
     bool didAnything = false;
 
     if (EnvRasterizer* rast = getEnvRasterizer()) {
-        const vector <Intercept> &icpts = rast->getRastData().intercepts;
+        const vector <Intercept> &icpts = rast->getRasterizerData().intercepts;
 
         int loopIdx, sustIdx;
         rast->getIndices(loopIdx, sustIdx);
@@ -836,7 +836,7 @@ Range<float> EnvelopeInter2D::getVertexPhaseLimits(Vertex* vert) {
     Range<float> minRange = Interactor2D::getVertexPhaseLimits(vert);
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
-        const vector <Intercept>& icpts = envRast->getRastData().intercepts;
+        const vector <Intercept>& icpts = envRast->getRasterizerData().intercepts;
 
         if (icpts.empty() || vert == nullptr) {
             return Interactor2D::getVertexPhaseLimits(vert);

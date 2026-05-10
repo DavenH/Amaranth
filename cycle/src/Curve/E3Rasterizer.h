@@ -5,7 +5,7 @@
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
-#include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
+#include <Curve/Rasterization/Rasterizer.h>
 #include <Curve/Rasterization/MeshWaveformRasterizer.h>
 #include <vector>
 

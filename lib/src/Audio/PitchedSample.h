@@ -4,7 +4,7 @@
 #include "../Array/StereoBuffer.h"
 #include "../Obj/MorphPosition.h"
 #include "../App/Doc/Savable.h"
-#include "../Curve/Rasterization/Interfaces/RasterizerInterfaces.h"
+#include "../Curve/Rasterization/Rasterizer.h"
 #include "../Util/CommonEnums.h"
 
 using std::vector;

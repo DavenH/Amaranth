@@ -8,7 +8,7 @@
 #include "EnvelopeMesh.h"
 #include "Rasterization/Builders/RasterizerSnapshotBuilder.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
-#include "Rasterization/Interfaces/RasterizerInterfaces.h"
+#include "Rasterization/Rasterizer.h"
 #include "Rasterization/Policies/Envelope/EnvelopePolicies.h"
 #include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "Rasterization/RasterizationRequest.h"
@@ -127,7 +127,6 @@ public:
     int getPaddingSize() const override { return paddingSize; }
     RasterizerData& getRasterizerData() override { return rasterizerData; }
     const RasterizerData& getRasterizerData() const override { return rasterizerData; }
-    RasterizerData& getRastData() { return rasterizerData; }
 
     MorphPosition& getMorphPosition() { return request.morph; }
     Rasterization::PointScalingMode getScalingType() const { return request.scalingMode; }

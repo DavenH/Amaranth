@@ -7,7 +7,7 @@
 #include "Mesh.h"
 #include "RasterizerData.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
-#include "Rasterization/Interfaces/RasterizerInterfaces.h"
+#include "Rasterization/Rasterizer.h"
 #include "Rasterization/Builders/CurveWaveformBuilder.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/RasterizationRequest.h"
@@ -63,7 +63,6 @@ public:
     vector<ColorPoint>& getColorPoints() { return result.colorPoints; }
     RasterizerData& getRasterizerData() override { return rasterizerData; }
     const RasterizerData& getRasterizerData() const override { return rasterizerData; }
-    RasterizerData& getRastData() { return rasterizerData; }
 
     void setDims(const Dimensions& dims) override { this->dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }

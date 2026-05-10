@@ -7,7 +7,7 @@
 #include <Curve/Mesh.h>
 #include <Curve/RasterizerData.h>
 #include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
-#include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
+#include <Curve/Rasterization/Rasterizer.h>
 #include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
 #include <Curve/Rasterization/RasterizationRequest.h>
 #include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
@@ -160,7 +160,6 @@ public:
     const vector<Intercept>& getFrontIcpts() const  { return frontIcpts;                }
     const vector<Intercept>& getBackIcpts() const   { return backIcpts;                 }
     vector<ColorPoint>& getColorPoints()            { return colorPoints;               }
-    RasterizerData& getRastData()                   { return rastArrays;                }
     RasterizerData& getRasterizerData() override     { return rastArrays;                }
     const RasterizerData& getRasterizerData() const override { return rastArrays;        }
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }

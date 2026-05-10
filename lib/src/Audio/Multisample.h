@@ -3,7 +3,7 @@
 #include <set>
 #include "../App/Doc/Savable.h"
 #include "../App/SingletonAccessor.h"
-#include "../Curve/Rasterization/Interfaces/RasterizerInterfaces.h"
+#include "../Curve/Rasterization/Rasterizer.h"
 #include "../Design/Updating/Updateable.h"
 
 using std::set;

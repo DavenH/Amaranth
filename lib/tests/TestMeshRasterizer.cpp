@@ -367,7 +367,7 @@ TEST_CASE("MeshRasterizer characterizes hidden-dimension color points", "[meshra
     REQUIRE(timePoints == mesh->getNumCubes());
     REQUIRE(redPoints == mesh->getNumCubes());
     REQUIRE(bluePoints == mesh->getNumCubes());
-    REQUIRE(rasterizer.getRastData().colorPoints.size() == colorPoints.size());
+    REQUIRE(rasterizer.getRasterizerData().colorPoints.size() == colorPoints.size());
 }
 
 TEST_CASE("TrilinearMeshSlicer matches MeshRasterizer intercept and color-point slicing", "[meshrasterizer][pipeline][slice]") {
@@ -392,18 +392,18 @@ TEST_CASE("TrilinearMeshSlicer matches MeshRasterizer intercept and color-point 
             reduction);
 
     REQUIRE(output.sampleable);
-    REQUIRE(output.intercepts.size() == rasterizer.getRastData().intercepts.size());
+    REQUIRE(output.intercepts.size() == rasterizer.getRasterizerData().intercepts.size());
 
     for (int i = 0; i < (int) output.intercepts.size(); ++i) {
         INFO("intercept=" << i);
-        RasterizerCompare::requireInterceptNear(output.intercepts[i], rasterizer.getRastData().intercepts[i]);
+        RasterizerCompare::requireInterceptNear(output.intercepts[i], rasterizer.getRasterizerData().intercepts[i]);
     }
 
-    REQUIRE(output.colorPoints.size() == rasterizer.getRastData().colorPoints.size());
+    REQUIRE(output.colorPoints.size() == rasterizer.getRasterizerData().colorPoints.size());
 
     for (int i = 0; i < (int) output.colorPoints.size(); ++i) {
         INFO("colorPoint=" << i);
-        RasterizerCompare::requireColorPointNear(output.colorPoints[i], rasterizer.getRastData().colorPoints[i]);
+        RasterizerCompare::requireColorPointNear(output.colorPoints[i], rasterizer.getRasterizerData().colorPoints[i]);
     }
 }
 

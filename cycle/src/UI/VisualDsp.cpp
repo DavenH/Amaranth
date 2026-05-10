@@ -225,7 +225,7 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
     }
 
     auto logRasterizerState = [envEnum](const char* context, EnvRasterizer& rast) {
-        const auto& icpts = rast.getRastData().intercepts;
+        const auto& icpts = rast.getRasterizerData().intercepts;
         Mesh* mesh = rast.getCurrentMesh();
         DBG(String::formatted("VisualDsp::rasterizeEnv %s env=%s(%d) rast=%p mesh=%p cubesEnough=%d icpts=%d sampleable=%d",
                               context,

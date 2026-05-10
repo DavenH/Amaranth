@@ -13,7 +13,7 @@
 #include "../App/MeshLibrary.h"
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
-#include "../Curve/Rasterization/Interfaces/RasterizerInterfaces.h"
+#include "../Curve/Rasterization/Rasterizer.h"
 #include "../Curve/RasterizerData.h"
 #include "../Curve/Vertex.h"
 #include "../Design/Updating/Updater.h"

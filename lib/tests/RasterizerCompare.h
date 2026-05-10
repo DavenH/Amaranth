@@ -43,7 +43,7 @@ namespace RasterizerCompare {
         snapshot.diffX       = copyBuffer(rasterizer.getDiffX());
         snapshot.slope       = copyBuffer(rasterizer.getSlopes());
         snapshot.curves      = rasterizer.getCurves();
-        snapshot.intercepts  = rasterizer.getRastData().intercepts;
+        snapshot.intercepts  = rasterizer.getRasterizerData().intercepts;
         snapshot.colorPoints = rasterizer.getColorPoints();
         snapshot.zeroIndex   = rasterizer.getZeroIndex();
         snapshot.oneIndex    = rasterizer.getOneIndex();
