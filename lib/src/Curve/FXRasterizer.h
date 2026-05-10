@@ -58,8 +58,6 @@ public:
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
     const vector<Curve>& getCurves() const { return result.curves; }
     vector<ColorPoint>& getColorPoints() { return result.colorPoints; }
-    RasterizerData& getRasterizerData() { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const { return rasterizerData; }
 
     void setDims(const Dimensions& dims) override { this->dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }
