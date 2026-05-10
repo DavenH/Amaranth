@@ -100,7 +100,7 @@ TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx
     REQUIRE(rasterizer.getMesh() == nullptr);
     REQUIRE(rasterizer.getNumDims() == 1);
     REQUIRE(rasterizer.hasEnoughCubesForCrossSection());
-    REQUIRE(rasterizer.isSampleable());
+    REQUIRE(rasterizer.samplerView().isSampleable());
     REQUIRE(rasterizer.getWaveX().size() > 0);
     REQUIRE(rasterizer.getWaveY().size() == rasterizer.getWaveX().size());
 
@@ -108,7 +108,7 @@ TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx
     Buffer<float> sampleBuffer(samples.data(), (int) samples.size());
     rasterizer.sampleEvenlyTo(sampleBuffer);
 
-    REQUIRE(copyBuffer(sampleBuffer).front() == Catch::Approx(rasterizer.sampleAt(0.0)));
+    REQUIRE(copyBuffer(sampleBuffer).front() == Catch::Approx(rasterizer.samplerView().sampleAt(0.0)));
 }
 
 TEST_CASE("FXRasterizer mesh adapter matches direct vertex list rasterization", "[rasterization][fx]") {

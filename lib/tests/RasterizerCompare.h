@@ -47,7 +47,7 @@ namespace RasterizerCompare {
         snapshot.colorPoints = rasterizer.getColorPoints();
         snapshot.zeroIndex   = rasterizer.getZeroIndex();
         snapshot.oneIndex    = rasterizer.getOneIndex();
-        snapshot.sampleable  = rasterizer.isSampleable();
+        snapshot.sampleable  = rasterizer.samplerView().isSampleable();
 
         return snapshot;
     }

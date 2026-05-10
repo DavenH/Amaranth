@@ -86,32 +86,8 @@ bool FXRasterizer::isBipolar() const {
     return scalingType == Bipolar || scalingType == HalfBipolar;
 }
 
-bool FXRasterizer::isSampleable() const {
-    return result.sampler().isSampleable();
-}
-
-bool FXRasterizer::isSampleableAt(float x) const {
-    return result.sampler().isSampleableAt(x);
-}
-
 void FXRasterizer::updateWaveform(UpdateType updateType) {
     performUpdate(updateType);
-}
-
-float FXRasterizer::sampleAt(double angle) {
-    return result.sampler().sampleAt(angle);
-}
-
-float FXRasterizer::sampleAt(double angle, int& currentIndex) {
-    return result.sampler().sampleAt(angle, currentIndex);
-}
-
-double FXRasterizer::sampleWithInterval(Buffer<float> buffer, double delta, double phase) {
-    return result.sampler().sampleWithInterval(buffer, delta, phase);
-}
-
-float FXRasterizer::samplePerfectly(double delta, Buffer<float> buffer, double phase) {
-    return result.sampler().samplePerfectly(delta, buffer, phase);
 }
 
 void FXRasterizer::sampleEvenlyTo(const Buffer<float>& dest) {
@@ -119,7 +95,7 @@ void FXRasterizer::sampleEvenlyTo(const Buffer<float>& dest) {
         return;
     }
 
-    sampleWithInterval(dest, 1.f / float(dest.size() - 1), 0.0);
+    samplerView().sampleWithInterval(dest, 1.f / float(dest.size() - 1), 0.f);
 }
 
 void FXRasterizer::padIcpts(vector<Intercept>& intercepts, vector<Curve>& curves) {

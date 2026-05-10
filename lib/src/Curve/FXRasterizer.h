@@ -39,19 +39,12 @@ public:
     bool canRasterizeWaveform() const;
     bool hasEnoughCubesForCrossSection();
     bool isBipolar() const;
-    bool isSampleable() const;
-    bool isSampleableAt(float x) const;
     void updateWaveform(UpdateType updateType);
     bool wrapsVertices() const override { return false; }
 
     Rasterization::SamplerView samplerView() const override { return result.sampler(); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
     Rasterization::WaveformView waveformView() const override { return result.waveformView(); }
-
-    float sampleAt(double angle);
-    float sampleAt(double angle, int& currentIndex);
-    double sampleWithInterval(Buffer<float> buffer, double delta, double phase);
-    float samplePerfectly(double delta, Buffer<float> buffer, double phase);
     void sampleEvenlyTo(const Buffer<float>& dest);
 
     Mesh* getMesh() { return mesh; }
