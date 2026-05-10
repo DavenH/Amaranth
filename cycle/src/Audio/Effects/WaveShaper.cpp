@@ -31,7 +31,7 @@ void Waveshaper::init() {
     oversamplers[graphicOvspIndex]->setMemoryBuf(graphicOversampleBuf);
 }
 
-void Waveshaper::setRasterizer(FXRasterizer* rasterizer) {
+void Waveshaper::setRasterizer(Rasterization::Rasterizer* rasterizer) {
     waveformProvider = rasterizer;
 }
 
