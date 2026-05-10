@@ -8,8 +8,8 @@
 #include <Curve/Rasterization/Interfaces/RasterizerSnapshotProvider.h>
 #include <Curve/Rasterization/Interfaces/RasterizerUpdateTarget.h>
 #include <Curve/Rasterization/Interfaces/RasterizerVertexDomain.h>
-#include <Curve/Rasterization/MeshRasterizerState.h>
 #include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
+#include <Curve/Rasterization/RenderState.h>
 #include <Curve/RasterizerData.h>
 #include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
@@ -31,7 +31,7 @@ class GraphicRasterizer :
     ,   public Rasterization::RasterizerUpdateTarget
     ,   public Rasterization::RasterizerVertexDomain {
 public:
-    using RenderState = Rasterization::MeshRasterizerRenderState;
+    using RenderState = Rasterization::RasterizerRenderState;
 
     enum class Scaling {
         Unipolar = 0,
