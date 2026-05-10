@@ -1,9 +1,8 @@
 #pragma once
 
+#include "../RasterizerData.h"
 #include "Sampling/WaveformSampler.h"
 #include "WaveformBuffers.h"
-
-struct RasterizerData;
 
 namespace Rasterization {
     class SamplerView {
@@ -64,6 +63,18 @@ namespace Rasterization {
         RasterizerData& rasterizerData() const {
             jassert(data != nullptr);
             return *data;
+        }
+
+        std::vector<Intercept>& intercepts() const {
+            return rasterizerData().intercepts;
+        }
+
+        std::vector<Curve>& curves() const {
+            return rasterizerData().curves;
+        }
+
+        std::vector<ColorPoint>& colorPoints() const {
+            return rasterizerData().colorPoints;
         }
 
     private:

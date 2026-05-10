@@ -112,8 +112,6 @@ public:
     void setMesh(Mesh* mesh) override;
     GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
     int getPaddingSize() const override { return paddingSize; }
-    RasterizerData& getRasterizerData() { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const { return rasterizerData; }
 
     MorphPosition& getMorphPosition() { return request.morph; }
     Rasterization::PointScalingMode getScalingType() const { return request.scalingMode; }

@@ -344,7 +344,7 @@ bool EnvelopeInter2D::synchronizeEnvPoints(Vertex* vertex, bool vertexIsLoopVert
     bool didAnything = false;
 
     if (EnvRasterizer* rast = getEnvRasterizer()) {
-        const vector <Intercept> &icpts = rast->getRasterizerData().intercepts;
+        const vector <Intercept> &icpts = rast->snapshotView().intercepts();
 
         int loopIdx, sustIdx;
         rast->getIndices(loopIdx, sustIdx);
@@ -774,45 +774,57 @@ bool EnvelopeInter2D::isCurrentMeshActive() {
 void EnvelopeInter2D::validateMesh() {
     Interactor::validateMesh();
 
-//	EnvRasterizer* envRast = static_cast<EnvRasterizer*>(getRasterizer());
-//	EnvelopeMesh* envMesh = getCurrentMesh();
+    EnvRasterizer* envRast = getEnvRasterizer();
+    EnvelopeMesh* envMesh = getCurrentMesh();
 
-//	vector<VertCube*>& lines = envMesh->lines;
+    if (envRast == nullptr || envMesh == nullptr) {
+        return;
+    }
 
-// todo
-//	bool isContained = false;
-//	for(int i = 0; i < (int) lines.size(); ++i)
-//	{
-//		if(lines[i] == envMesh->loopLine)
-//		{
-//			isContained = true;
-//		}
-//	}
-//
-//	if(isContained)
-//	{
-//		// if a line has been deleted, the intercepts won't be updated at this point
-//		envRast->calcIntercepts();
-//		envRast->evaluateLoopSustainIndices();
-//
-//		const vector<Intercept>& icpts = envRast->getIntercepts();
-//		for(int i = 0; i < (int) icpts.size(); ++i)
-//		{
-//			if(envMesh->loopLines.find(icpts[i].cube) != envMesh->loopLines.end())
-//			{
-//				if(i > (icpts.size() - 1) - EnvRasterizer::loopMinSizeIcpts)
-//				{
-//					isContained = false;
-//				}
-//			}
-//		}
-//	}
-//
-//	if(! isContained)
-//	{
-//		envMesh->loopLine = nullptr;
-//		calcSustainLoopIndices();
-//	}
+    set<VertCube*> meshCubes;
+    for (VertCube* cube : envMesh->getCubes()) {
+        meshCubes.insert(cube);
+    }
+
+    bool changed = false;
+
+    auto removeMissingCubes = [&meshCubes, &changed](set<VertCube*>& markers) {
+        for (auto iter = markers.begin(); iter != markers.end();) {
+            if (meshCubes.find(*iter) == meshCubes.end()) {
+                iter = markers.erase(iter);
+                changed = true;
+            } else {
+                ++iter;
+            }
+        }
+    };
+
+    removeMissingCubes(envMesh->loopCubes);
+    removeMissingCubes(envMesh->sustainCubes);
+
+    envRast->calcIntercepts();
+    envRast->evaluateLoopSustainIndices();
+
+    int loopIdx, sustIdx;
+    envRast->getIndices(loopIdx, sustIdx);
+
+    if (sustIdx >= 0) {
+        const vector<Intercept>& icpts = envRast->snapshotView().intercepts();
+        for (int i = 0; i < (int) icpts.size(); ++i) {
+            VertCube* cube = icpts[i].cube;
+            if (cube != nullptr
+                && envMesh->loopCubes.find(cube) != envMesh->loopCubes.end()
+                && i > sustIdx - EnvRasterizer::loopMinSizeIcpts) {
+                envMesh->loopCubes.erase(cube);
+                changed = true;
+            }
+        }
+    }
+
+    if (changed) {
+        envRast->evaluateLoopSustainIndices();
+        envPanel->repaint();
+    }
 }
 
 String EnvelopeInter2D::getDefaultFolder() {
@@ -836,7 +848,7 @@ Range<float> EnvelopeInter2D::getVertexPhaseLimits(Vertex* vert) {
     Range<float> minRange = Interactor2D::getVertexPhaseLimits(vert);
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
-        const vector <Intercept>& icpts = envRast->getRasterizerData().intercepts;
+        const vector <Intercept>& icpts = envRast->snapshotView().intercepts();
 
         if (icpts.empty() || vert == nullptr) {
             return Interactor2D::getVertexPhaseLimits(vert);

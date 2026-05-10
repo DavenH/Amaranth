@@ -1,12 +1,13 @@
 #pragma once
+
 #include <vector>
+
 #include "../Array/ScopedAlloc.h"
+#include "../Obj/ColorPoint.h"
+#include "Curve.h"
+#include "Intercept.h"
 
 using std::vector;
-
-class ColorPoint;
-struct Intercept;
-class Curve;
 
 struct RasterizerData {
     RasterizerData() :

@@ -49,6 +49,24 @@ TEST_CASE("EnvelopeMarkerPolicy evaluates envelope marker indices", "[rasterizat
     REQUIRE(result.sustainIndex == 3);
 }
 
+TEST_CASE("EnvelopeMarkerPolicy rejects loop markers too close to sustain", "[rasterization][env]") {
+    EnvelopeMesh mesh("EnvelopeMarkerMesh");
+    VertCube loopCube;
+    VertCube sustainCube;
+
+    auto intercepts = makeIntercepts();
+    intercepts[2].cube = &loopCube;
+    intercepts[3].cube = &sustainCube;
+
+    mesh.loopCubes.insert(&loopCube);
+    mesh.sustainCubes.insert(&sustainCube);
+
+    auto result = Rasterization::EnvelopeMarkerPolicy().evaluate(intercepts, &mesh, 2);
+
+    REQUIRE(result.loopIndex == -1);
+    REQUIRE(result.sustainIndex == 3);
+}
+
 TEST_CASE("EnvelopeMarkerPolicy falls back to last envelope intercept when sustain is unmarked", "[rasterization][env]") {
     EnvelopeMesh mesh("EnvelopeMarkerMesh");
     auto intercepts = makeIntercepts();

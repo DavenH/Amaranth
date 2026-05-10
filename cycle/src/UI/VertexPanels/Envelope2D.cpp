@@ -215,7 +215,7 @@ void Envelope2D::drawCurvesAndSurfaces() {
         return;
     }
 
-    RasterizerData& data = rast->getRasterizerData();
+    RasterizerData& data = rast->snapshotView().rasterizerData();
     ScopedLock dataLock(data.lock);
 
     bool reduceAlpha = ! isMeshEnabled();
@@ -363,7 +363,7 @@ void Envelope2D::getLoopPoints(float& loopStart, float& sustain) {
         int loopIdx, sustIdx;
         rast->getIndices(loopIdx, sustIdx);
 
-        RasterizerData& data = rast->getRasterizerData();
+        RasterizerData& data = rast->snapshotView().rasterizerData();
         ScopedLock dataLock(data.lock);
 
         const vector<Intercept>& icpts = data.intercepts;
