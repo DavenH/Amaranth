@@ -773,46 +773,6 @@ bool EnvelopeInter2D::isCurrentMeshActive() {
 
 void EnvelopeInter2D::validateMesh() {
     Interactor::validateMesh();
-
-//	EnvRasterizer* envRast = static_cast<EnvRasterizer*>(getRasterizer());
-//	EnvelopeMesh* envMesh = getCurrentMesh();
-
-//	vector<VertCube*>& lines = envMesh->lines;
-
-// todo
-//	bool isContained = false;
-//	for(int i = 0; i < (int) lines.size(); ++i)
-//	{
-//		if(lines[i] == envMesh->loopLine)
-//		{
-//			isContained = true;
-//		}
-//	}
-//
-//	if(isContained)
-//	{
-//		// if a line has been deleted, the intercepts won't be updated at this point
-//		envRast->calcIntercepts();
-//		envRast->evaluateLoopSustainIndices();
-//
-//		const vector<Intercept>& icpts = envRast->getIntercepts();
-//		for(int i = 0; i < (int) icpts.size(); ++i)
-//		{
-//			if(envMesh->loopLines.find(icpts[i].cube) != envMesh->loopLines.end())
-//			{
-//				if(i > (icpts.size() - 1) - EnvRasterizer::loopMinSizeIcpts)
-//				{
-//					isContained = false;
-//				}
-//			}
-//		}
-//	}
-//
-//	if(! isContained)
-//	{
-//		envMesh->loopLine = nullptr;
-//		calcSustainLoopIndices();
-//	}
 }
 
 String EnvelopeInter2D::getDefaultFolder() {

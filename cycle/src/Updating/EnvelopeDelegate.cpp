@@ -65,12 +65,8 @@ void EnvelopeDelegate::performUpdate(UpdateType performUpdateType) {
                 DBG("EnvelopeDelegate::Update refreshing Envelope3D rasterizer");
                 getObj(E3Rasterizer).performUpdate(performUpdateType);
             } else {
-                auto* currentRasterizer = getObj(EnvelopeInter2D).getRasterizer();
-                DBG(String::formatted("EnvelopeDelegate::Update refreshing current EnvelopeInter2D rasterizer=%p",
-                                      currentRasterizer));
-                if (currentRasterizer != nullptr) {
-                    currentRasterizer->performUpdate(performUpdateType);
-                }
+                DBG("EnvelopeDelegate::Update refreshing current EnvelopeInter2D rasterizer");
+                getObj(EnvelopeInter2D).performRasterizerUpdate(performUpdateType);
             }
 
             DBG(String::formatted("EnvelopeDelegate::Update requesting VisualDsp::rasterizeEnv currentEnv=%s(%d)",
