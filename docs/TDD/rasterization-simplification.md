@@ -22,7 +22,7 @@ replacement is still domain-shaped:
 - `FXRasterizer` uses `FxRasterizerAdapter`, `ComposedFxRasterizer`,
   `FxComposer`, and `FxRasterizationPipeline`.
 - mesh waveform paths now share `CurveWaveformPipeline` for curve/waveform
-  construction, but still retain a separate `MeshSlicePipeline`.
+  construction, and mesh-wide slicing is owned by `TrilinearMeshSlicer`.
 - voice paths no longer have a separate voice slice pipeline, but
   `VoiceMeshRasterizer` still has a rasterizer-shaped owner surface.
 - envelope paths still combine rasterization, playback state, marker handling,

@@ -5,7 +5,6 @@
 #include "EnvelopeMesh.h"
 #include "GuideCurveProvider.h"
 #include "Rasterization/Interpolation/TrilinearMeshSlicer.h"
-#include "Rasterization/Pipelines/MeshSlicePipeline.h"
 #include "Rasterization/Policies/Core/InterceptPolicies.h"
 #include "Rasterization/Policies/Curves/CurvePolicies.h"
 #include "Rasterization/Policies/Curves/WaveformBakePolicy.h"
@@ -233,13 +232,13 @@ void EnvRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
 
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
 
-    Rasterization::MeshSlicePipeline meshSlicePipeline;
-    const Rasterization::RenderResult& output = meshSlicePipeline.renderWithReduction(
+    Rasterization::RenderResult sliceOutput;
+    const Rasterization::RenderResult& output = Rasterization::TrilinearMeshSlicer().sliceMesh(
             mesh,
-            Rasterization::TrilinearMeshSlicer(),
             request,
             oscPhase,
             guideApplier,
+            sliceOutput,
             reduction);
     result.intercepts = output.intercepts;
 

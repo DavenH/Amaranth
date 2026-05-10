@@ -6,7 +6,6 @@
 #include "GuideCurveOffsetSeeds.h"
 #include "Interpolation/TrilinearMeshSlicer.h"
 #include "Pipelines/CurveWaveformPipeline.h"
-#include "Pipelines/MeshSlicePipeline.h"
 #include "Policies/Mesh/GuideCurvePolicy.h"
 #include "Sampling/WaveformSampler.h"
 
@@ -41,12 +40,12 @@ namespace Rasterization {
             bool needsResorting = false;
 
             GuideCurveApplier guideApplier = createGuideCurveApplier(reduction, &needsResorting);
-            const RenderResult& meshOutput = meshPipeline.renderWithReduction(
+            const RenderResult& meshOutput = meshSlicer.sliceMesh(
                     mesh,
-                    TrilinearMeshSlicer(),
                     request,
                     oscPhase,
                     guideApplier,
+                    meshSliceResult,
                     reduction);
 
             meshIntercepts = meshOutput.intercepts;
@@ -148,7 +147,8 @@ namespace Rasterization {
 
         RasterizationRequest request;
         GuideCurveOffsetSeeds guideCurveOffsetSeeds;
-        MeshSlicePipeline meshPipeline;
+        TrilinearMeshSlicer meshSlicer;
+        RenderResult meshSliceResult;
         CurveWaveformPipeline waveformPipeline;
         RenderResult waveformResult;
         RenderResult const* waveformOutput {};

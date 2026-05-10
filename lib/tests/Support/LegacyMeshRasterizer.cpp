@@ -15,7 +15,6 @@
 #include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
 #include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
 #include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
-#include <Curve/Rasterization/Pipelines/MeshSlicePipeline.h>
 #include <Curve/Rasterization/Sampling/GuideCurveSampler.h>
 #include <Curve/Rasterization/Sampling/WaveformSampler.h>
 #include <Util/CommonEnums.h>
@@ -40,7 +39,8 @@ MeshRasterizer::MeshRasterizer(const String& name) :
     ,    paddingSize         (2)
     ,    noiseSeed           (-1)
     ,    overridingDim       (Vertex::Time)
-    ,    meshSlicePipeline()
+    ,    meshSlicer()
+    ,    meshSliceResult()
 
     ,    interceptPadding    (0.f)
     ,    xMinimum            (0.f)
@@ -129,12 +129,12 @@ void MeshRasterizer::calcCrossPoints(Mesh* usedMesh, float oscPhase) {
 const Rasterization::RenderResult& MeshRasterizer::renderMeshSlice(Mesh* usedMesh, float oscPhase) {
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
 
-    return meshSlicePipeline.renderWithReduction(
+    return meshSlicer.sliceMesh(
             usedMesh,
-            Rasterization::TrilinearMeshSlicer(),
             createRasterizationRequest(),
             oscPhase,
             guideApplier,
+            meshSliceResult,
             reduct);
 }
 

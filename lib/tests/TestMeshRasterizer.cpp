@@ -6,7 +6,7 @@
 #include "../src/Curve/Mesh.h"
 #include "Support/LegacyMeshRasterizer.h"
 #include "../src/Curve/Rasterization/MeshWaveformRasterizer.h"
-#include "../src/Curve/Rasterization/Pipelines/MeshSlicePipeline.h"
+#include "../src/Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h"
 #include "../src/Curve/Rasterization/Policies/Curves/CurvePolicies.h"
 #include "../src/Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "../src/Curve/Rasterization/Policies/Core/InterceptPolicies.h"
@@ -370,7 +370,7 @@ TEST_CASE("MeshRasterizer characterizes hidden-dimension color points", "[meshra
     REQUIRE(rasterizer.getRastData().colorPoints.size() == colorPoints.size());
 }
 
-TEST_CASE("MeshSlicePipeline matches MeshRasterizer intercept and color-point slicing", "[meshrasterizer][pipeline][slice]") {
+TEST_CASE("TrilinearMeshSlicer matches MeshRasterizer intercept and color-point slicing", "[meshrasterizer][pipeline][slice]") {
     CurveTableScope curveTableScope;
     auto mesh = createSyntheticWaveMesh();
 
@@ -379,15 +379,17 @@ TEST_CASE("MeshSlicePipeline matches MeshRasterizer intercept and color-point sl
     rasterizer.calcCrossPoints();
     rasterizer.makeCopy();
 
-    Rasterization::MeshSlicePipeline pipeline;
     Rasterization::TrilinearMeshSlicer slicer;
+    Rasterization::RenderResult output;
+    VertCube::ReductionData reduction;
     Rasterization::RasterizationRequest request = rasterizer.createRasterizationRequest();
-    const auto& output = pipeline.render(
+    slicer.sliceMesh(
             mesh.get(),
-            slicer,
             request,
             0.f,
-            [](Intercept&, const MorphPosition&, bool) {});
+            [](Intercept&, const MorphPosition&, bool) {},
+            output,
+            reduction);
 
     REQUIRE(output.sampleable);
     REQUIRE(output.intercepts.size() == rasterizer.getRastData().intercepts.size());

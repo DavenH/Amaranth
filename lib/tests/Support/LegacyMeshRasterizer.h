@@ -8,10 +8,10 @@
 #include <Curve/RasterizerData.h>
 #include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
 #include <Curve/Rasterization/Interfaces/RasterizerInterfaces.h>
+#include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
 #include <Curve/Rasterization/RasterizationRequest.h>
 #include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
-#include <Curve/Rasterization/Pipelines/MeshSlicePipeline.h>
 #include <Curve/Rasterization/RenderResult.h>
 #include <Curve/Rasterization/Sampling/GuideCurveSampler.h>
 #include <Curve/VertCube.h>
@@ -241,7 +241,8 @@ protected:
     int noiseSeed;
     int overridingDim;
     int paddingSize;
-    Rasterization::MeshSlicePipeline meshSlicePipeline;
+    Rasterization::TrilinearMeshSlicer meshSlicer;
+    Rasterization::RenderResult meshSliceResult;
 
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
 
