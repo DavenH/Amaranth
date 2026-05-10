@@ -5,7 +5,6 @@
 #include "Curve.h"
 #include "Mesh.h"
 #include "RasterizerData.h"
-#include "Rasterization/MeshRasterizerState.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
 #include "Rasterization/Interfaces/GuideCurveBindableRasterizer.h"
 #include "Rasterization/Interfaces/MeshBindableRasterizer.h"
@@ -17,6 +16,7 @@
 #include "Rasterization/Policies/Curves/CurveResolutionPolicy.h"
 #include "Rasterization/Policies/Curves/WaveformBakePolicy.h"
 #include "Rasterization/Pipelines/MeshSlicePipeline.h"
+#include "Rasterization/RenderState.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "VertCube.h"
@@ -49,8 +49,17 @@ public:
     using GuideCurveContext = Rasterization::GuideCurveContext;
     using GuideCurveRegion = Rasterization::GuideCurveRegion;
 
-    using RenderState = Rasterization::MeshRasterizerRenderState;
-    using ScopedRenderState = Rasterization::ScopedMeshRasterizerRenderState;
+    using RenderState = Rasterization::RasterizerRenderState;
+
+    class ScopedRenderState {
+    public:
+        ScopedRenderState(MeshRasterizer* rasterizer, RenderState* state);
+        ~ScopedRenderState();
+
+    private:
+        MeshRasterizer* rasterizer {};
+        RenderState* state {};
+    };
 
     typedef vector<GuideCurveRegion>::iterator GuideCurveIter;
 

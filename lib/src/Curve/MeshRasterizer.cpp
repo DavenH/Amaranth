@@ -25,15 +25,15 @@
 #include "Rasterization/Sources/MeshCubeSource.h"
 #include "../Util/CommonEnums.h"
 
-Rasterization::ScopedMeshRasterizerRenderState::ScopedMeshRasterizerRenderState(
+MeshRasterizer::ScopedRenderState::ScopedRenderState(
         MeshRasterizer* rasterizer,
-        MeshRasterizerRenderState* state) :
+        RenderState* state) :
         rasterizer(rasterizer)
     ,   state(state) {
     rasterizer->saveStateTo(*state);
 }
 
-Rasterization::ScopedMeshRasterizerRenderState::~ScopedMeshRasterizerRenderState() {
+MeshRasterizer::ScopedRenderState::~ScopedRenderState() {
     rasterizer->restoreStateFrom(*state);
 }
 
