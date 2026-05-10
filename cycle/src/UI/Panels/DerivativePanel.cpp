@@ -77,7 +77,7 @@ void DerivativePanel::mouseEnter(const MouseEvent& e) {
 
 void DerivativePanel::calcDerivative() {
     auto& timeRast = getObj(TimeRasterizer);
-    RasterizerData& data = timeRast.getRasterizerData();
+    RasterizerData& data = timeRast.snapshotView().rasterizerData();
 
     Buffer<float> waveX = data.waveX;
     Buffer<float> waveY = data.waveY;

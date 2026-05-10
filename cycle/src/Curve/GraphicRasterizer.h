@@ -84,8 +84,6 @@ public:
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override { return rasterizer.getPaddingSize(); }
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
-    RasterizerData& getRasterizerData() { return rasterizerData; }
-    const RasterizerData& getRasterizerData() const { return rasterizerData; }
     RenderState createRenderState() {
         RenderState state;
         saveStateTo(state);
