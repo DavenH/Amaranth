@@ -81,7 +81,6 @@ public:
     Rasterization::SamplerView samplerView() const override { return rasterizer.samplerView(); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
-    Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override { return rasterizer.getPaddingSize(); }
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }

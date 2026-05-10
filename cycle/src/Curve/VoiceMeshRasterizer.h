@@ -52,7 +52,6 @@ public:
     }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
-    Mesh* getMesh() { return mesh; }
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override;
     GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
