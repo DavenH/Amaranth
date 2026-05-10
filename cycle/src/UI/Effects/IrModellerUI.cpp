@@ -350,7 +350,7 @@ bool IrModellerUI::updateDsp(int knobIndex, double knobValue, bool doFurtherUpda
 }
 
 void IrModellerUI::updateDspSync() {
-    irModeller->setMesh(localRasterizer.getMesh());
+    irModeller->setMesh(getCurrentMesh());
     irModeller->setPendingAction(IrModeller::rasterize);
 }
 

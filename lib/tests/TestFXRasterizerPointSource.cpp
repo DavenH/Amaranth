@@ -101,7 +101,6 @@ TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx
     rasterizer.setVertices(&vertices);
     rasterizer.calcCrossPoints();
 
-    REQUIRE(rasterizer.getMesh() == nullptr);
     REQUIRE(rasterizer.canRasterizeWaveform());
     REQUIRE(rasterizer.samplerView().isSampleable());
 

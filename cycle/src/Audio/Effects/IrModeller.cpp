@@ -400,7 +400,7 @@ void IrModeller::setMesh(Mesh *mesh) {
 void IrModeller::setUI(IrModellerUI *comp) {
     ui = comp;
 
-	setMesh(ui->getEffectRasterizer()->getMesh());
+	setMesh(ui->getCurrentMesh());
 //	setPendingRasterize();
 }
 
