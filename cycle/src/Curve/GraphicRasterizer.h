@@ -74,7 +74,6 @@ public:
     void cleanUp();
     void performUpdate(UpdateType updateType) override;
     void reset() override { cleanUp(); }
-    void updateRasterizer(UpdateType updateType) override { Updateable::update(updateType); }
 
     bool hasEnoughCubesForCrossSection();
     bool isSampleable() override { return rasterizer.isSampleable(); }

@@ -100,7 +100,6 @@ public:
     void cleanUp();
     void performUpdate(UpdateType updateType) override;
     void reset() override { cleanUp(); }
-    void updateRasterizer(UpdateType updateType) override { update(updateType); }
 
     bool hasEnoughCubesForCrossSection();
     bool isSampleable() override;

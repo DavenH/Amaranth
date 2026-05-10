@@ -21,7 +21,6 @@ namespace Rasterization {
         virtual float sampleAt(double angle, int& currentIndex) = 0;
 
         virtual void performUpdate(UpdateType updateType) = 0;
-        virtual void updateRasterizer(UpdateType updateType) = 0;
 
         virtual bool wrapsVertices() const = 0;
         virtual int getPaddingSize() const = 0;

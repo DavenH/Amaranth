@@ -134,7 +134,6 @@ public:
     void                setRasterizerDims(const Dimensions& newDims);
     void                setRasterizerMesh(Mesh* mesh);
     void                performRasterizerUpdate(UpdateType updateType);
-    void                updateRasterizer(UpdateType updateType);
     bool                isRasterizerSampleableAt(float x) const;
     float               sampleRasterizerAt(double angle) const;
     RasterizerData&     getRasterizerData() const;

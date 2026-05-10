@@ -33,7 +33,6 @@ public:
     void makeCopy();
     void performUpdate(UpdateType updateType) override;
     void reset() override;
-    void updateRasterizer(UpdateType updateType) override { update(updateType); }
 
     void setVertices(vector<Vertex*>* vertices);
 

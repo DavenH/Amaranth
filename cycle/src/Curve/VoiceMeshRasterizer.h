@@ -41,7 +41,6 @@ public:
     void cleanUp();
     void performUpdate(UpdateType updateType) override;
     void reset() override { cleanUp(); }
-    void updateRasterizer(UpdateType updateType) override { performUpdate(updateType); }
 
     bool doesCalcDepthDimensions() const { return rasterizer.getRequest().calcDepthDimensions; }
     bool doesIntegralSampling() const { return rasterizer.getRequest().integralSampling; }

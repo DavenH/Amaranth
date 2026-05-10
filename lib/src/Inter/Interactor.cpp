@@ -1471,12 +1471,6 @@ void Interactor::performRasterizerUpdate(UpdateType updateType) {
     }
 }
 
-void Interactor::updateRasterizer(UpdateType updateType) {
-    if (rasterizer != nullptr) {
-        rasterizer->updateRasterizer(updateType);
-    }
-}
-
 bool Interactor::isRasterizerSampleableAt(float x) const {
     if (rasterizer == nullptr) {
         return false;

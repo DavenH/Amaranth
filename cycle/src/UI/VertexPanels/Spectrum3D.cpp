@@ -347,7 +347,7 @@ void Spectrum3D::layerChanged() {
     getObj(VertexPropertiesPanel).updateSliderValues(true);
 
     interactor->setRasterizerMesh(getObj(SpectrumInter3D).getMesh());
-    interactor->updateRasterizer(Update);
+    interactor->performRasterizerUpdate(Update);
 
     getObj(SpectrumInter2D).update(Update);
     getObj(SpectrumInter3D).shallowUpdate();

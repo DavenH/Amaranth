@@ -131,7 +131,6 @@ public:
     void padIcptsWrapped(vector<Intercept>& intercepts, vector<Curve>& curves);
     void reset();
     void performUpdate(UpdateType updateType) override;
-    void updateRasterizer(UpdateType updateType) override { update(updateType); }
     void updateCurves();
 
     bool hasEnoughCubesForCrossSection();

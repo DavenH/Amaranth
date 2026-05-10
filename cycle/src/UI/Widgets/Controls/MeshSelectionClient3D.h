@@ -123,7 +123,7 @@ public:
 
     void updateEverything(Mesh* mesh) {
         rasterizer->setMesh(mesh);
-        rasterizer->updateRasterizer(Update);
+        rasterizer->performUpdate(Update);
 
         owner->meshSelectionChanged(mesh);
     }
