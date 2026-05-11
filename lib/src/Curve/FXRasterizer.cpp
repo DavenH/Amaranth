@@ -28,6 +28,8 @@ namespace {
 
 FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
         SingletonAccessor(repo, name) {
+    rasterizerData.paddingSize = result.paddingSize;
+    rasterizerData.wrapsVertices = false;
 }
 
 void FXRasterizer::calcCrossPoints() {
@@ -180,6 +182,8 @@ void FXRasterizer::publishSnapshot() {
     snapshot.colorPoints = &result.colorPoints;
     snapshot.curves = &result.curves;
     snapshot.waveform = result.waveform;
+    snapshot.paddingSize = result.paddingSize;
+    snapshot.wrapsVertices = false;
 
     Rasterization::RasterizerSnapshotBuilder().publish(rasterizerData, snapshot);
 }

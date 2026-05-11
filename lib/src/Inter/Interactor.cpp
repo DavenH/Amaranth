@@ -1442,11 +1442,11 @@ void Interactor::setRasterizer(Rasterization::Rasterizer* rasterizer) {
 }
 
 bool Interactor::rasterizerWrapsVertices() const {
-    return rasterizer != nullptr && rasterizer->wrapsVertices();
+    return rasterizer != nullptr && rasterizer->snapshotView().wrapsVertices();
 }
 
 int Interactor::getRasterizerPaddingSize() const {
-    return rasterizer != nullptr ? rasterizer->getPaddingSize() : 0;
+    return rasterizer != nullptr ? rasterizer->snapshotView().paddingSize() : 0;
 }
 
 GuideCurveProvider* Interactor::getGuideCurveProvider() const {

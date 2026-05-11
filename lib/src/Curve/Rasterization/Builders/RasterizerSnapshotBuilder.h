@@ -14,12 +14,17 @@ namespace Rasterization {
         const std::vector<ColorPoint>* colorPoints {};
         const std::vector<Curve>* curves {};
         WaveformBuffers waveform;
+        int paddingSize {};
+        bool wrapsVertices {};
     };
 
     class RasterizerSnapshotBuilder {
     public:
         void publish(RasterizerData& target, const RasterizerSnapshotSource& source) const {
             ScopedLock sl(target.lock);
+
+            target.paddingSize = source.paddingSize;
+            target.wrapsVertices = source.wrapsVertices;
 
             if (source.intercepts != nullptr) {
                 target.intercepts = *source.intercepts;

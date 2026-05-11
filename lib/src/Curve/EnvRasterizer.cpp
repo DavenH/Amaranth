@@ -64,6 +64,8 @@ EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurve
     ,    needsResorting(false) {
     setWrapsEnds(false);
     setLimits(0.f, 10.f);
+    rasterizerData.paddingSize = paddingSize;
+    rasterizerData.wrapsVertices = request.cyclic;
     updateBuffers(2048);
 
     // graphic params
@@ -86,6 +88,8 @@ EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
     this->guideCurveProvider    = copy.guideCurveProvider;
     this->request               = copy.request;
     this->paddingSize           = copy.paddingSize;
+    this->rasterizerData.paddingSize = copy.rasterizerData.paddingSize;
+    this->rasterizerData.wrapsVertices = copy.rasterizerData.wrapsVertices;
     this->unsampleable          = true;
     this->needsResorting        = false;
 
@@ -749,6 +753,8 @@ void EnvRasterizer::publishSnapshot() {
     source.colorPoints = &result.colorPoints;
     source.curves = &result.curves;
     source.waveform = result.waveform;
+    source.paddingSize = paddingSize;
+    source.wrapsVertices = request.cyclic;
 
     Rasterization::RasterizerSnapshotBuilder().publish(rasterizerData, source);
 }

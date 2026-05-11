@@ -516,6 +516,8 @@ void MeshRasterizer::makeCopy() {
     source.colorPoints = &colorPoints;
     source.curves = &curves;
     source.waveform = waveform;
+    source.paddingSize = paddingSize;
+    source.wrapsVertices = cyclic;
 
     Rasterization::RasterizerSnapshotBuilder().publish(rastArrays, source);
 }

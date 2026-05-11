@@ -41,7 +41,6 @@ public:
     PluginProcessor& getPluginProcessor()               { jassert(plugin != nullptr); return *plugin; }
     MorphPositioner& getMorphPosition()                 { return *positioner;   }
     IConsole& getConsole()                              { return *console;      }
-    GuideCurveProvider& getGuideCurveProvider()         { return *guideCurveProvider;  }
     GuideCurveProvider* getGuideCurveProviderPtr() const { return guideCurveProvider.get(); }
     bool shouldSuppressAudioDeviceInit() const          { return suppressAudioDeviceInit; }
     bool shouldSuppressSavableAutoRegistration() const  { return suppressSavableAutoRegistration; }

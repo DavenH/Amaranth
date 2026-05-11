@@ -19,6 +19,8 @@ E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
     request.scalingMode = Rasterization::PointScalingMode::HalfBipolar;
     request.xMinimum = 0.f;
     request.xMaximum = 10.f;
+    rasterizerData.paddingSize = rasterizer.getPaddingSize();
+    rasterizerData.wrapsVertices = request.cyclic;
 }
 
 void E3Rasterizer::init() {
@@ -94,10 +96,6 @@ void E3Rasterizer::cleanUp() {
 
 bool E3Rasterizer::canRasterizeWaveform() {
     return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
-}
-
-int E3Rasterizer::getPaddingSize() const {
-    return rasterizer.getPaddingSize();
 }
 
 void E3Rasterizer::renderMesh(Mesh* mesh) {

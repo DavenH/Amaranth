@@ -154,7 +154,7 @@ public:
     Buffer<float> getDiffX()                        { return waveform.diffX;            }
 
     const String& getName() const                   { return name;                      }
-    int getPaddingSize() const override             { return paddingSize;               }
+    int getPaddingSize() const                      { return paddingSize;               }
     int getOneIndex() const                         { return waveform.oneIndex;         }
     int getZeroIndex() const                        { return waveform.zeroIndex;        }
 
@@ -162,10 +162,9 @@ public:
     const vector<Intercept>& getFrontIcpts() const  { return frontIcpts;                }
     const vector<Intercept>& getBackIcpts() const   { return backIcpts;                 }
     vector<ColorPoint>& getColorPoints()            { return colorPoints;               }
-    GuideCurveProvider* getGuideCurveProvider() const { return guideCurveProvider; }
 
     void setBatchMode(bool batch)                   { batchMode = batch;                }
-    void setWrapsEnds(bool wraps)                   { cyclic = wraps;                   }
+    void setWrapsEnds(bool wraps)                   { cyclic = wraps; rastArrays.wrapsVertices = wraps; }
     void setCalcDepthDimensions(bool calc)          { calcDepthDims = calc;             }
     void setCalcInterceptsOnly(bool calc)           { calcInterceptsOnly = calc;        }
     void setDecoupleComponentDfrm(bool does)        { decoupleComponentDfrms = does;    }
@@ -189,7 +188,6 @@ public:
     void setMesh(Mesh* mesh) override {
         this->mesh = mesh;
     }
-    bool wrapsVertices() const override             { return cyclic;                    }
     void updateOffsetSeeds(int layerSize, int tableSize);
     float getInterceptPadding() const               { return interceptPadding;          }
     VertCube::ReductionData& getReductionData()     { return reduct;                    }

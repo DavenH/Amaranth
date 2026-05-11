@@ -25,14 +25,11 @@ public:
     void reset() override { cleanUp(); }
 
     bool canRasterizeWaveform();
-    bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
     Rasterization::SamplerView samplerView() const override { return rasterizer.samplerView(); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
-    int getPaddingSize() const override;
-    GuideCurveProvider* getGuideCurveProvider() const { return rasterizer.getGuideCurveProvider(); }
 
     vector<Column>& getColumns() { return columns; }
     Buffer<float> getArray() { return columnArray; }

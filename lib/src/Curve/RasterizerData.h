@@ -15,6 +15,8 @@ struct RasterizerData {
     }
 
     int zeroIndex, oneIndex;
+    int paddingSize {};
+    bool wrapsVertices {};
     ScopedAlloc<float> buffer;
     Buffer<float> waveX, waveY;
 

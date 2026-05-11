@@ -37,7 +37,6 @@ public:
     bool canRasterizeWaveform() const;
     bool isBipolar() const;
     void updateWaveform(UpdateType updateType);
-    bool wrapsVertices() const override { return false; }
 
     Rasterization::SamplerView samplerView() const override {
         return Rasterization::SamplerView(result.waveform, result.sampleable);
@@ -45,8 +44,6 @@ public:
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
     void setMesh(Mesh* mesh) override;
-    int getPaddingSize() const override { return result.paddingSize; }
-    GuideCurveProvider* getGuideCurveProvider() const { return guideCurveProvider; }
 
     void setDims(const Dimensions& dims) override { this->dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }

@@ -92,6 +92,14 @@ namespace Rasterization {
             return dataRef().oneIndex;
         }
 
+        int paddingSize() const {
+            return dataRef().paddingSize;
+        }
+
+        bool wrapsVertices() const {
+            return dataRef().wrapsVertices;
+        }
+
     private:
         RasterizerData& dataRef() const {
             jassert(data != nullptr);

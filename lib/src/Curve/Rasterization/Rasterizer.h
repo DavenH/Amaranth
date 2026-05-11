@@ -19,8 +19,6 @@ namespace Rasterization {
 
         virtual void performUpdate(UpdateType updateType) = 0;
 
-        virtual bool wrapsVertices() const = 0;
-        virtual int getPaddingSize() const = 0;
         virtual void setDims(const Dimensions& dims) = 0;
     };
 }

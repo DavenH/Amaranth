@@ -45,7 +45,6 @@ public:
     bool doesCalcDepthDimensions() const { return rasterizer.getRequest().calcDepthDimensions; }
     bool doesIntegralSampling() const { return rasterizer.getRequest().integralSampling; }
     bool canRasterizeWaveform();
-    bool wrapsVertices() const override { return rasterizer.getRequest().cyclic; }
 
     Rasterization::SamplerView samplerView() const override {
         return Rasterization::SamplerView(currentWaveform(), currentWaveformIsSampleable());
@@ -53,8 +52,6 @@ public:
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
-    int getPaddingSize() const override;
-    GuideCurveProvider* getGuideCurveProvider() const { return rasterizer.getGuideCurveProvider(); }
 
     MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
     void setCalcDepthDimensions(bool calc) { rasterizer.getRequest().calcDepthDimensions = calc; }
@@ -64,7 +61,10 @@ public:
     void setInterceptPadding(float value) { rasterizer.getRequest().interceptPadding = value; }
     void setMorphPosition(const MorphPosition& morph) { rasterizer.getRequest().morph = morph; }
     void setNoiseSeed(int seed) { rasterizer.getRequest().noiseSeed = seed; }
-    void setWrapsEnds(bool wraps) { rasterizer.getRequest().cyclic = wraps; }
+    void setWrapsEnds(bool wraps) {
+        rasterizer.getRequest().cyclic = wraps;
+        rasterizerData.wrapsVertices = wraps;
+    }
     void updateOffsetSeeds(int layerSize, int tableSize) { rasterizer.updateOffsetSeeds(layerSize, tableSize); }
 
 private:

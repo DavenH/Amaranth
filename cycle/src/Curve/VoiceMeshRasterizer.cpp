@@ -33,6 +33,8 @@ VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
     request.overrideDimension = true;
     request.scalingMode = Rasterization::PointScalingMode::Bipolar;
     request.calcDepthDimensions = false;
+    rasterizerData.paddingSize = rasterizer.getPaddingSize();
+    rasterizerData.wrapsVertices = request.cyclic;
     updateChainBuffers(2048);
 }
 
@@ -117,10 +119,6 @@ bool VoiceMeshRasterizer::currentWaveformIsSampleable() const {
     return chainedOutputActive
            ? Rasterization::WaveformSampler::isSampleable(chainResult.waveform)
            : rasterizer.samplerView().isSampleable();
-}
-
-int VoiceMeshRasterizer::getPaddingSize() const {
-    return chainedOutputActive ? chainPaddingSize : rasterizer.getPaddingSize();
 }
 
 Rasterization::WaveformBuffers VoiceMeshRasterizer::currentWaveform() const {
@@ -235,6 +233,8 @@ void VoiceMeshRasterizer::publishSnapshot() {
         source.colorPoints = &chainResult.colorPoints;
         source.curves = &chainResult.curves;
         source.waveform = chainResult.waveform;
+        source.paddingSize = chainPaddingSize;
+        source.wrapsVertices = rasterizer.getRequest().cyclic;
     } else {
         source = rasterizer.createSnapshotSource();
     }

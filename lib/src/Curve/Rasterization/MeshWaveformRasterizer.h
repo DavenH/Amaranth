@@ -84,6 +84,8 @@ namespace Rasterization {
             RasterizerSnapshotSource source;
             source.intercepts = &meshIntercepts;
             source.colorPoints = &meshColorPoints;
+            source.paddingSize = getPaddingSize();
+            source.wrapsVertices = request.cyclic;
 
             if (waveformOutput != nullptr) {
                 source.curves = &waveformOutput->curves;

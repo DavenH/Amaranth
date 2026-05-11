@@ -102,7 +102,6 @@ public:
     void reset() override { cleanUp(); }
 
     bool canRasterizeWaveform();
-    bool wrapsVertices() const override { return request.cyclic; }
 
     Rasterization::SamplerView samplerView() const override {
         return Rasterization::SamplerView(result.waveform, !unsampleable);
@@ -110,8 +109,6 @@ public:
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
     void setMesh(Mesh* mesh) override;
-    GuideCurveProvider* getGuideCurveProvider() const { return guideCurveProvider; }
-    int getPaddingSize() const override { return paddingSize; }
 
     MorphPosition& getMorphPosition() { return request.morph; }
     Rasterization::PointScalingMode getScalingType() const { return request.scalingMode; }
@@ -124,7 +121,10 @@ public:
     void setMorphPosition(const MorphPosition& morph) { request.morph = morph; }
     void setNoiseSeed(int seed) { request.noiseSeed = seed; }
     void setToOverrideDim(bool does) { request.overrideDimension = does; }
-    void setWrapsEnds(bool wraps) { request.cyclic = wraps; }
+    void setWrapsEnds(bool wraps) {
+        request.cyclic = wraps;
+        rasterizerData.wrapsVertices = wraps;
+    }
     void update(UpdateType updateType) { Updateable::update(updateType); }
     void updateOffsetSeeds(int layerSize, int tableSize);
     void updateValue(int dim, float value);

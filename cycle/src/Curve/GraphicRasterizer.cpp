@@ -35,6 +35,8 @@ GraphicRasterizer::GraphicRasterizer(
     rasterizer.getRequest().cyclic = isCyclic;
     rasterizer.getRequest().xMinimum = -margin;
     rasterizer.getRequest().xMaximum = 1 + margin;
+    rasterizerData.paddingSize = rasterizer.getPaddingSize();
+    rasterizerData.wrapsVertices = isCyclic;
     addListener(this);
 }
 
