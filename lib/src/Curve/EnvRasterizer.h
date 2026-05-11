@@ -110,7 +110,7 @@ public:
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
     void setMesh(Mesh* mesh) override;
-    GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
+    GuideCurveProvider* getGuideCurveProvider() const { return guideCurveProvider; }
     int getPaddingSize() const override { return paddingSize; }
 
     MorphPosition& getMorphPosition() { return request.morph; }
@@ -118,7 +118,7 @@ public:
     void setCalcDepthDimensions(bool calc) { request.calcDepthDimensions = calc; }
     void setDecoupleComponentDfrm(bool does) { request.decoupleComponentDeforms = does; }
     void setDims(const Dimensions& dims) override { request.dims = dims; }
-    void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }
+    void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
     void setLimits(float min, float max) { request.xMinimum = min; request.xMaximum = max; }
     void setLowresCurves(bool areLow) { request.lowResCurves = areLow; }
     void setMorphPosition(const MorphPosition& morph) { request.morph = morph; }

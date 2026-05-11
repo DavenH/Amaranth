@@ -1450,7 +1450,7 @@ int Interactor::getRasterizerPaddingSize() const {
 }
 
 GuideCurveProvider* Interactor::getGuideCurveProvider() const {
-    return rasterizer != nullptr ? rasterizer->getGuideCurveProvider() : nullptr;
+    return repo != nullptr ? repo->getGuideCurveProviderPtr() : nullptr;
 }
 
 void Interactor::setRasterizerDims(const Dimensions& newDims) {

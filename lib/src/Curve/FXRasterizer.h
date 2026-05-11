@@ -46,10 +46,10 @@ public:
 
     void setMesh(Mesh* mesh) override;
     int getPaddingSize() const override { return result.paddingSize; }
-    GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
+    GuideCurveProvider* getGuideCurveProvider() const { return guideCurveProvider; }
 
     void setDims(const Dimensions& dims) override { this->dims = dims; }
-    void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }
+    void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
     void setScalingMode(int type) { scalingType = type; }
 
 private:

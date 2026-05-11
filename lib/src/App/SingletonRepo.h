@@ -11,10 +11,6 @@ class IConsole;
 class GuideCurveProvider;
 class Panel;
 
-namespace Rasterization {
-    class Rasterizer;
-}
-
 using namespace juce;
 
 class SingletonRepo {
@@ -46,6 +42,7 @@ public:
     MorphPositioner& getMorphPosition()                 { return *positioner;   }
     IConsole& getConsole()                              { return *console;      }
     GuideCurveProvider& getGuideCurveProvider()         { return *guideCurveProvider;  }
+    GuideCurveProvider* getGuideCurveProviderPtr() const { return guideCurveProvider.get(); }
     bool shouldSuppressAudioDeviceInit() const          { return suppressAudioDeviceInit; }
     bool shouldSuppressSavableAutoRegistration() const  { return suppressSavableAutoRegistration; }
     bool shouldSuppressInitializerInit() const          { return suppressInitializerInit; }
@@ -91,7 +88,6 @@ protected:
 
     Array<Savable*> saveSources;
     Array<Panel*> panels;
-    Array<Rasterization::Rasterizer*> rasterizers;
 
     HashMap<String, SingletonAccessor*> hashes;
     OwnedArray<SingletonAccessor> objects;

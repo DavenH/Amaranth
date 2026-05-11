@@ -83,7 +83,7 @@ public:
 
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override { return rasterizer.getPaddingSize(); }
-    GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
+    GuideCurveProvider* getGuideCurveProvider() const { return rasterizer.getGuideCurveProvider(); }
     RenderState createRenderState() {
         RenderState state;
         saveStateTo(state);
@@ -110,7 +110,7 @@ public:
     void setBatchMode(bool batch) { rasterizer.getRequest().batchMode = batch; }
     void setBlue(float blue) { rasterizer.getRequest().morph.blue.setValueDirect(blue); }
     void setDims(const Dimensions& dims) override { rasterizer.getRequest().dims = dims; }
-    void setGuideCurveProvider(GuideCurveProvider* provider) override { rasterizer.setGuideCurveProvider(provider); }
+    void setGuideCurveProvider(GuideCurveProvider* provider) { rasterizer.setGuideCurveProvider(provider); }
     void setMorphPosition(const MorphPosition& morph) { rasterizer.getRequest().morph = morph; }
     void setNoiseSeed(int seed) { rasterizer.getRequest().noiseSeed = seed; }
     void setRed(float red) { rasterizer.getRequest().morph.red.setValueDirect(red); }

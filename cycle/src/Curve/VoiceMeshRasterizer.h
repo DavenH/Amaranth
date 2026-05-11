@@ -54,12 +54,12 @@ public:
 
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override;
-    GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
+    GuideCurveProvider* getGuideCurveProvider() const { return rasterizer.getGuideCurveProvider(); }
 
     MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
     void setCalcDepthDimensions(bool calc) { rasterizer.getRequest().calcDepthDimensions = calc; }
     void setDims(const Dimensions& dims) override { rasterizer.getRequest().dims = dims; }
-    void setGuideCurveProvider(GuideCurveProvider* provider) override { rasterizer.setGuideCurveProvider(provider); }
+    void setGuideCurveProvider(GuideCurveProvider* provider) { rasterizer.setGuideCurveProvider(provider); }
     void setIntegralSampling(bool does) { rasterizer.getRequest().integralSampling = does; }
     void setInterceptPadding(float value) { rasterizer.getRequest().interceptPadding = value; }
     void setMorphPosition(const MorphPosition& morph) { rasterizer.getRequest().morph = morph; }

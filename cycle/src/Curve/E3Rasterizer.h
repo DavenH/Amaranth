@@ -32,7 +32,7 @@ public:
 
     void setMesh(Mesh* mesh) override { this->mesh = mesh; }
     int getPaddingSize() const override;
-    GuideCurveProvider* getGuideCurveProvider() const override { return rasterizer.getGuideCurveProvider(); }
+    GuideCurveProvider* getGuideCurveProvider() const { return rasterizer.getGuideCurveProvider(); }
 
     vector<Column>& getColumns() { return columns; }
     Buffer<float> getArray() { return columnArray; }
@@ -40,7 +40,7 @@ public:
     CriticalSection& getArrayLock() { return arrayLock; }
     MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
     void setDims(const Dimensions& dims) override { rasterizer.getRequest().dims = dims; }
-    void setGuideCurveProvider(GuideCurveProvider* provider) override { rasterizer.setGuideCurveProvider(provider); }
+    void setGuideCurveProvider(GuideCurveProvider* provider) { rasterizer.setGuideCurveProvider(provider); }
     void setMorphPosition(const MorphPosition& morph) { rasterizer.getRequest().morph = morph; }
 
     enum { E3LockId = 0x17b1eed5 };

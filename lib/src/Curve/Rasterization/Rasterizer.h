@@ -4,7 +4,6 @@
 #include "RasterizerViews.h"
 
 class Dimensions;
-class GuideCurveProvider;
 class Mesh;
 struct RasterizerData;
 
@@ -13,7 +12,6 @@ namespace Rasterization {
     public:
         virtual ~Rasterizer() = default;
 
-        virtual void setGuideCurveProvider(GuideCurveProvider* guideCurveProvider) = 0;
         virtual void setMesh(Mesh* mesh) = 0;
 
         virtual SamplerView samplerView() const = 0;
@@ -23,7 +21,6 @@ namespace Rasterization {
 
         virtual bool wrapsVertices() const = 0;
         virtual int getPaddingSize() const = 0;
-        virtual GuideCurveProvider* getGuideCurveProvider() const = 0;
         virtual void setDims(const Dimensions& dims) = 0;
     };
 }

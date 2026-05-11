@@ -121,9 +121,6 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
         panels.add(panel);
     }
 
-    if(auto* rasterizer = dynamic_cast<Rasterization::Rasterizer*>(accessor)) {
-        rasterizers.add(rasterizer);
-    }
 }
 
 void SingletonRepo::addExternal(SingletonAccessor* accessor, int order) {
@@ -139,9 +136,6 @@ void SingletonRepo::addExternal(SingletonAccessor* accessor, int order) {
         panels.add(panel);
     }
 
-    if(auto* rasterizer = dynamic_cast<Rasterization::Rasterizer*>(accessor)) {
-        rasterizers.add(rasterizer);
-    }
 }
 
 OutputStream& SingletonRepo::getDebugStream() {
@@ -192,10 +186,6 @@ void SingletonRepo::clearSingletons() {
 
 void SingletonRepo::setGuideCurveProvider(GuideCurveProvider* guideCurveProvider) {
     this->guideCurveProvider = guideCurveProvider;
-
-    for(auto rasterizer : rasterizers) {
-        rasterizer->setGuideCurveProvider(guideCurveProvider);
-    }
 }
 
 template<>

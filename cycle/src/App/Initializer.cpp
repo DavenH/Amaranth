@@ -186,6 +186,10 @@ void Initializer::doPostInitWiring() {
 
     repo->setConsole(&getObj(Console));
     repo->setGuideCurveProvider(&getObj(GuideCurvePanel));
+    getObj(TimeRasterizer).setGuideCurveProvider(&getObj(GuideCurvePanel));
+    getObj(SpectRasterizer).setGuideCurveProvider(&getObj(GuideCurvePanel));
+    getObj(PhaseRasterizer).setGuideCurveProvider(&getObj(GuideCurvePanel));
+    getObj(EnvWavePitchRast).setGuideCurveProvider(&getObj(GuideCurvePanel));
 
     int width, height;
 

@@ -162,7 +162,7 @@ public:
     const vector<Intercept>& getFrontIcpts() const  { return frontIcpts;                }
     const vector<Intercept>& getBackIcpts() const   { return backIcpts;                 }
     vector<ColorPoint>& getColorPoints()            { return colorPoints;               }
-    GuideCurveProvider* getGuideCurveProvider() const override { return guideCurveProvider; }
+    GuideCurveProvider* getGuideCurveProvider() const { return guideCurveProvider; }
 
     void setBatchMode(bool batch)                   { batchMode = batch;                }
     void setWrapsEnds(bool wraps)                   { cyclic = wraps;                   }
@@ -183,7 +183,7 @@ public:
     void setBlue(float blue)                        { morph.blue.setValueDirect(blue);  }
     void setRed(float red)                          { morph.red.setValueDirect(red);    }
     void setMorphPosition(const MorphPosition& m)   { morph         = m;                }
-    void setGuideCurveProvider(GuideCurveProvider* provider) override { guideCurveProvider = provider; }
+    void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
 
     Mesh* getMesh()                        { return mesh;                      }
     void setMesh(Mesh* mesh) override {
