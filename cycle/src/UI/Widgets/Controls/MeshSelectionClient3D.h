@@ -118,10 +118,8 @@ public:
     }
 
     void updateEverything(Mesh* mesh) {
-        interactor->setRasterizerMesh(mesh);
-        interactor->performRasterizerUpdate(Update);
-
         owner->meshSelectionChanged(mesh);
+        interactor->performRasterizerUpdate(Update);
     }
 
     Mesh* getCurrentMesh() override {

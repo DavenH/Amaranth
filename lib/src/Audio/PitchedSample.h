@@ -4,12 +4,13 @@
 #include "../Array/StereoBuffer.h"
 #include "../Obj/MorphPosition.h"
 #include "../App/Doc/Savable.h"
-#include "../Curve/Rasterization/Rasterizer.h"
 #include "../Util/CommonEnums.h"
 
 using std::vector;
 
 class SingletonRepo;
+class EnvRasterizer;
+class FXRasterizer;
 class Mesh;
 class MeshLibrary;
 
@@ -63,7 +64,10 @@ public:
     void createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti);
     void createPeriodsFromEnv(
             MeshLibrary& meshLibrary,
-            Rasterization::Rasterizer* rasterizer);
+            EnvRasterizer* rasterizer);
+    void createPeriodsFromEnv(
+            MeshLibrary& meshLibrary,
+            FXRasterizer* rasterizer);
     void shiftOctave(bool up);
 
     void writeXML(XmlElement* element) const override;

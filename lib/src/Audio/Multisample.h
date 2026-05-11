@@ -3,12 +3,12 @@
 #include <set>
 #include "../App/Doc/Savable.h"
 #include "../App/SingletonAccessor.h"
-#include "../Curve/Rasterization/Rasterizer.h"
 #include "../Design/Updating/Updateable.h"
 
 using std::set;
 
 class Mesh;
+class FXRasterizer;
 class PitchedSample;
 
 class Multisample :
@@ -36,7 +36,7 @@ public:
 
     Multisample(
             SingletonRepo* repo,
-            Rasterization::Rasterizer* pitchRasterizer);
+            FXRasterizer* pitchRasterizer);
 
     void clear();
     void createFromDirectory(const File& directory);
@@ -71,7 +71,7 @@ private:
     void getModRanges(Range<int>& noteRange, Range<float>& velRange);
     void ensureSampleHasMeshLayer(PitchedSample* sample, int preferredIndex = -1);
 
-    Rasterization::Rasterizer* pitchRasterizer;
+    FXRasterizer* pitchRasterizer;
     PitchedSample* current;
     CriticalSection audioLock;
     ListenerList<Listener> listeners;

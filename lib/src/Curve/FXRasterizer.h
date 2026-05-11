@@ -43,7 +43,7 @@ public:
     }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
-    void setMesh(Mesh* mesh) override;
+    void setMesh(Mesh* mesh);
 
     void setDims(const Dimensions& dims) { this->dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }

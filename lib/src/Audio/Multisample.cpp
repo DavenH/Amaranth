@@ -6,6 +6,7 @@
 #include "../App/Doc/PresetJson.h"
 #include "../App/MeshLibrary.h"
 #include "../App/SingletonRepo.h"
+#include "../Curve/FXRasterizer.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
 #include "../Util/Util.h"
@@ -14,7 +15,7 @@
 
 Multisample::Multisample(
         SingletonRepo* repo,
-        Rasterization::Rasterizer* pitchRasterizer) :
+        FXRasterizer* pitchRasterizer) :
         SingletonAccessor(repo, "Multisample")
     ,   pitchRasterizer(pitchRasterizer)
     ,   current(nullptr) {

@@ -1449,12 +1449,6 @@ GuideCurveProvider* Interactor::getGuideCurveProvider() const {
     return repo != nullptr ? repo->getGuideCurveProviderPtr() : nullptr;
 }
 
-void Interactor::setRasterizerMesh(Mesh* mesh) {
-    if (rasterizer != nullptr) {
-        rasterizer->setMesh(mesh);
-    }
-}
-
 void Interactor::performRasterizerUpdate(UpdateType updateType) {
     if (rasterizer != nullptr) {
         rasterizer->performUpdate(updateType);

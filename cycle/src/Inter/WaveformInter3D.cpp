@@ -110,6 +110,7 @@ void WaveformInter3D::updateSelectionClient() {
 }
 
 void WaveformInter3D::meshSelectionChanged(Mesh* mesh) {
+    getObj(TimeRasterizer).setMesh(mesh);
     updateInterceptsWithMesh(mesh);
 
     getObj(WaveformInter2D).update(Update);

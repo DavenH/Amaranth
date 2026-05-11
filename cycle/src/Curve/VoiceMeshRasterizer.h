@@ -51,7 +51,7 @@ public:
     }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
-    void setMesh(Mesh* mesh) override { this->mesh = mesh; }
+    void setMesh(Mesh* mesh) { this->mesh = mesh; }
 
     MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
     void setCalcDepthDimensions(bool calc) { rasterizer.getRequest().calcDepthDimensions = calc; }

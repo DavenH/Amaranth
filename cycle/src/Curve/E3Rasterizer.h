@@ -29,7 +29,7 @@ public:
     Rasterization::SamplerView samplerView() const override { return rasterizer.samplerView(); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
-    void setMesh(Mesh* mesh) override { this->mesh = mesh; }
+    void setMesh(Mesh* mesh) { this->mesh = mesh; }
 
     vector<Column>& getColumns() { return columns; }
     Buffer<float> getArray() { return columnArray; }

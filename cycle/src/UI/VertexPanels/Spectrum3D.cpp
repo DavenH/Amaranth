@@ -13,6 +13,7 @@
 #include "Spectrum2D.h"
 #include "Spectrum3D.h"
 
+#include "../../Curve/GraphicRasterizer.h"
 #include <UI/Panels/OpenGLPanel3D.h>
 
 #include "../CycleDefs.h"
@@ -346,8 +347,11 @@ void Spectrum3D::layerChanged() {
 
     getObj(VertexPropertiesPanel).updateSliderValues(true);
 
-    interactor->setRasterizerMesh(getObj(SpectrumInter3D).getMesh());
-    interactor->performRasterizerUpdate(Update);
+    GraphicRasterizer* rasterizer = getSetting(MagnitudeDrawMode) == 1
+            ? &getObj(SpectRasterizer)
+            : &getObj(PhaseRasterizer);
+    rasterizer->setMesh(getObj(SpectrumInter3D).getMesh());
+    rasterizer->performUpdate(Update);
 
     getObj(SpectrumInter2D).update(Update);
     getObj(SpectrumInter3D).shallowUpdate();

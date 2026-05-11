@@ -80,7 +80,7 @@ public:
     Rasterization::SamplerView samplerView() const override { return rasterizer.samplerView(); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
-    void setMesh(Mesh* mesh) override { this->mesh = mesh; }
+    void setMesh(Mesh* mesh) { this->mesh = mesh; }
     RenderState createRenderState() {
         RenderState state;
         saveStateTo(state);

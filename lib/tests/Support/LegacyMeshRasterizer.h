@@ -185,7 +185,7 @@ public:
     void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
 
     Mesh* getMesh()                        { return mesh;                      }
-    void setMesh(Mesh* mesh) override {
+    void setMesh(Mesh* mesh) {
         this->mesh = mesh;
     }
     void updateOffsetSeeds(int layerSize, int tableSize);

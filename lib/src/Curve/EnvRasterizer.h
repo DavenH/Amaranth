@@ -108,7 +108,7 @@ public:
     }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
-    void setMesh(Mesh* mesh) override;
+    void setMesh(Mesh* mesh);
 
     MorphPosition& getMorphPosition() { return request.morph; }
     Rasterization::PointScalingMode getScalingType() const { return request.scalingMode; }
