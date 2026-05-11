@@ -26,8 +26,6 @@ public:
     Buffer<float> getArray() { return columnArray; }
 
     CriticalSection& getArrayLock() { return arrayLock; }
-    void setDims(const Dimensions& dims) { rasterizer.getRequest().dims = dims; }
-    void setGuideCurveProvider(GuideCurveProvider* provider) { rasterizer.setGuideCurveProvider(provider); }
 
     enum { E3LockId = 0x17b1eed5 };
 private:

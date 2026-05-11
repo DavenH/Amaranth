@@ -94,10 +94,6 @@ public:
     Interactor* getInteractor() const { return interactor; }
 
     void setBatchMode(bool batch) { rasterizer.getRequest().batchMode = batch; }
-    void setDims(const Dimensions& dims) { rasterizer.getRequest().dims = dims; }
-    void setGuideCurveProvider(GuideCurveProvider* provider) { rasterizer.setGuideCurveProvider(provider); }
-    void setNoiseSeed(int seed) { rasterizer.getRequest().noiseSeed = seed; }
-    void updateOffsetSeeds(int layerSize, int tableSize) { rasterizer.updateOffsetSeeds(layerSize, tableSize); }
 
 private:
     static Rasterization::PointScalingMode scalingModeFromRenderState(int scalingType);

@@ -40,24 +40,9 @@ public:
     void performUpdate(UpdateType updateType) override;
     void reset() override { cleanUp(); }
 
-    bool doesCalcDepthDimensions() const { return rasterizer.getRequest().calcDepthDimensions; }
-    bool doesIntegralSampling() const { return rasterizer.getRequest().integralSampling; }
-
     Rasterization::SamplerView samplerView() const override {
         return Rasterization::SamplerView(currentWaveform(), currentWaveformIsSampleable());
     }
-
-    void setCalcDepthDimensions(bool calc) { rasterizer.getRequest().calcDepthDimensions = calc; }
-    void setDims(const Dimensions& dims) { rasterizer.getRequest().dims = dims; }
-    void setGuideCurveProvider(GuideCurveProvider* provider) { rasterizer.setGuideCurveProvider(provider); }
-    void setIntegralSampling(bool does) { rasterizer.getRequest().integralSampling = does; }
-    void setInterceptPadding(float value) { rasterizer.getRequest().interceptPadding = value; }
-    void setNoiseSeed(int seed) { rasterizer.getRequest().noiseSeed = seed; }
-    void setWrapsEnds(bool wraps) {
-        rasterizer.getRequest().cyclic = wraps;
-        rasterizerData.wrapsVertices = wraps;
-    }
-    void updateOffsetSeeds(int layerSize, int tableSize) { rasterizer.updateOffsetSeeds(layerSize, tableSize); }
 
 private:
     Rasterization::WaveformBuffers currentWaveform() const;
