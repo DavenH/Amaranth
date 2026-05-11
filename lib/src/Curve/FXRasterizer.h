@@ -5,9 +5,8 @@
 #include <App/SingletonAccessor.h>
 
 #include "Mesh.h"
-#include "RasterizerData.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
-#include "Rasterization/Rasterizer.h"
+#include "Rasterization/BaseRasterizer.h"
 #include "Rasterization/Builders/CurveWaveformBuilder.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/RasterizationRequest.h"
@@ -19,7 +18,7 @@ using std::vector;
 class FXRasterizer :
         public Updateable
     ,   public SingletonAccessor
-    ,   public Rasterization::Rasterizer {
+    ,   public Rasterization::BaseRasterizer {
     JUCE_LEAK_DETECTOR(FXRasterizer)
 
 public:
@@ -41,7 +40,6 @@ public:
     Rasterization::SamplerView samplerView() const override {
         return Rasterization::SamplerView(result.waveform, result.sampleable);
     }
-    Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
     void setMesh(Mesh* mesh);
 
@@ -63,7 +61,6 @@ private:
     Dimensions dims { Vertex::Phase, Vertex::Amp };
     vector<Vertex*>* vertices {};
     Rasterization::RenderResult result;
-    RasterizerData rasterizerData;
     Rasterization::CurveWaveformBuilder curveWaveformBuilder;
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
 

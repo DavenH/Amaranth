@@ -2,7 +2,6 @@
 
 #include <algorithm>
 
-#include "Rasterization/Builders/RasterizerSnapshotBuilder.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
 #include "Rasterization/Builders/CurveWaveformBuilder.h"
 #include "Rasterization/Policies/Core/InterceptPolicies.h"
@@ -185,5 +184,5 @@ void FXRasterizer::publishSnapshot() {
     snapshot.paddingSize = result.paddingSize;
     snapshot.wrapsVertices = false;
 
-    Rasterization::RasterizerSnapshotBuilder().publish(rasterizerData, snapshot);
+    Rasterization::BaseRasterizer::publishSnapshot(snapshot);
 }

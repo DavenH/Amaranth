@@ -81,21 +81,7 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
 }
 
 void E3Rasterizer::cleanUp() {
-    rasterizer.clean();
-
-    ScopedLock sl(rasterizerData.lock);
-    rasterizerData.zeroIndex = 0;
-    rasterizerData.oneIndex = 0;
-    rasterizerData.buffer.clear();
-    rasterizerData.waveX.nullify();
-    rasterizerData.waveY.nullify();
-    rasterizerData.colorPoints.clear();
-    rasterizerData.intercepts.clear();
-    rasterizerData.curves.clear();
-}
-
-bool E3Rasterizer::canRasterizeWaveform() {
-    return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
+    cleanTrilinearRasterization();
 }
 
 void E3Rasterizer::renderMesh(Mesh* mesh) {
@@ -105,9 +91,5 @@ void E3Rasterizer::renderMesh(Mesh* mesh) {
     }
 
     rasterizer.render(mesh);
-    publishSnapshot();
-}
-
-void E3Rasterizer::publishSnapshot() {
-    Rasterization::RasterizerSnapshotBuilder().publish(rasterizerData, rasterizer.createSnapshotSource());
+    publishTrilinearSnapshot();
 }

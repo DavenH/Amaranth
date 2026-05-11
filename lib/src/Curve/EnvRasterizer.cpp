@@ -57,7 +57,6 @@ EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurve
     ,    request()
     ,    result()
     ,    guideCurveOffsetSeeds()
-    ,    rasterizerData()
     ,    reduction()
     ,    paddingSize(2)
     ,    unsampleable(true)
@@ -756,7 +755,7 @@ void EnvRasterizer::publishSnapshot() {
     source.paddingSize = paddingSize;
     source.wrapsVertices = request.cyclic;
 
-    Rasterization::RasterizerSnapshotBuilder().publish(rasterizerData, source);
+    Rasterization::BaseRasterizer::publishSnapshot(source);
 }
 
 void EnvRasterizer::updateBuffers(int size) {

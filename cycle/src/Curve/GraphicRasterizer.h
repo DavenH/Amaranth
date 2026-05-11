@@ -1,10 +1,7 @@
 #pragma once
 
-#include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
-#include <Curve/Rasterization/Rasterizer.h>
-#include <Curve/Rasterization/MeshWaveformRasterizer.h>
 #include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
-#include <Curve/RasterizerData.h>
+#include <Curve/Rasterization/TrilinearMeshRasterizer.h>
 #include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
 
@@ -14,10 +11,10 @@
 class Interactor;
 
 class GraphicRasterizer :
-        public Updateable
+    public Updateable
     ,	public DynamicDetailUpdateable
     ,	public virtual SingletonAccessor
-    ,   public Rasterization::Rasterizer {
+    ,   public Rasterization::TrilinearMeshRasterizer {
 public:
     enum class Scaling {
         Unipolar = 0,
@@ -75,12 +72,6 @@ public:
     void performUpdate(UpdateType updateType) override;
     void reset() override { cleanUp(); }
 
-    bool canRasterizeWaveform();
-
-    Rasterization::SamplerView samplerView() const override { return rasterizer.samplerView(); }
-    Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
-
-    void setMesh(Mesh* mesh) { this->mesh = mesh; }
     RenderState createRenderState() {
         RenderState state;
         saveStateTo(state);
@@ -100,30 +91,19 @@ public:
                 morphPosition);
     }
 
-    MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
-
     Interactor* getInteractor() const { return interactor; }
 
     void setBatchMode(bool batch) { rasterizer.getRequest().batchMode = batch; }
-    void setBlue(float blue) { rasterizer.getRequest().morph.blue.setValueDirect(blue); }
     void setDims(const Dimensions& dims) { rasterizer.getRequest().dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) { rasterizer.setGuideCurveProvider(provider); }
-    void setMorphPosition(const MorphPosition& morph) { rasterizer.getRequest().morph = morph; }
     void setNoiseSeed(int seed) { rasterizer.getRequest().noiseSeed = seed; }
-    void setRed(float red) { rasterizer.getRequest().morph.red.setValueDirect(red); }
-    void setYellow(float yellow) { rasterizer.getRequest().morph.time.setValueDirect(yellow); }
     void updateOffsetSeeds(int layerSize, int tableSize) { rasterizer.updateOffsetSeeds(layerSize, tableSize); }
 
 private:
     static Rasterization::PointScalingMode scalingModeFromRenderState(int scalingType);
     static int renderStateScalingType(Rasterization::PointScalingMode scalingMode);
 
-    void publishSnapshot();
     int primaryViewDimension();
-
-    Mesh* mesh {};
-    Rasterization::MeshWaveformRasterizer rasterizer;
-    RasterizerData rasterizerData;
 
     int layerGroup;
     Interactor* interactor;

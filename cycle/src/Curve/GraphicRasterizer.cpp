@@ -27,9 +27,6 @@ GraphicRasterizer::GraphicRasterizer(
 	        ,   int layerGroup
 	        ,   bool isCyclic
 	        ,   float margin) : SingletonAccessor(repo, name)
-        ,   mesh(nullptr)
-        ,   rasterizer()
-        ,   rasterizerData()
 	    ,   layerGroup(layerGroup)
 	    ,   interactor(interactor) {
     rasterizer.getRequest().cyclic = isCyclic;
@@ -94,28 +91,23 @@ void GraphicRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
     rasterizer.render(mesh, oscPhase);
 
     if (!request.batchMode) {
-        publishSnapshot();
+        publishTrilinearSnapshot();
     }
 }
 
 void GraphicRasterizer::cleanUp() {
-    rasterizer.clean();
-
     if (rasterizer.getRequest().batchMode) {
+        rasterizer.clean();
         return;
     }
 
-    publishSnapshot();
+    cleanTrilinearRasterization();
 }
 
 void GraphicRasterizer::performUpdate(UpdateType updateType) {
     if (updateType == Update) {
         calcCrossPoints(mesh, 0.f);
     }
-}
-
-bool GraphicRasterizer::canRasterizeWaveform() {
-    return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
 }
 
 Rasterization::PointScalingMode GraphicRasterizer::scalingModeFromRenderState(int scalingType) {
@@ -135,10 +127,6 @@ int GraphicRasterizer::renderStateScalingType(Rasterization::PointScalingMode sc
     }
 
     return static_cast<int>(Scaling::Unipolar);
-}
-
-void GraphicRasterizer::publishSnapshot() {
-    Rasterization::RasterizerSnapshotBuilder().publish(rasterizerData, rasterizer.createSnapshotSource());
 }
 
 int GraphicRasterizer::primaryViewDimension() {

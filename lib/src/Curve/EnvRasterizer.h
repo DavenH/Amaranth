@@ -6,9 +6,8 @@
 #include "../Array/ScopedAlloc.h"
 #include "../Design/Updating/Updateable.h"
 #include "EnvelopeMesh.h"
-#include "Rasterization/Builders/RasterizerSnapshotBuilder.h"
+#include "Rasterization/BaseRasterizer.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
-#include "Rasterization/Rasterizer.h"
 #include "Rasterization/Policies/Envelope/EnvelopePolicies.h"
 #include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "Rasterization/RasterizationRequest.h"
@@ -31,7 +30,7 @@ class SingletonRepo;
  */
 class EnvRasterizer :
         public Updateable
-    ,   public Rasterization::Rasterizer
+    ,   public Rasterization::BaseRasterizer
     ,   public SingletonAccessor {
 public:
     using GuideCurveContext = Rasterization::GuideCurveContext;
@@ -106,7 +105,6 @@ public:
     Rasterization::SamplerView samplerView() const override {
         return Rasterization::SamplerView(result.waveform, !unsampleable);
     }
-    Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rasterizerData); }
 
     void setMesh(Mesh* mesh);
 
@@ -190,7 +188,6 @@ private:
     Rasterization::RasterizationRequest request;
     Rasterization::RenderResult result;
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
-    RasterizerData rasterizerData;
     VertCube::ReductionData reduction;
 
     int paddingSize;

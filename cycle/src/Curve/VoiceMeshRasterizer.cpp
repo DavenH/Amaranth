@@ -4,7 +4,6 @@
 #include <App/SingletonRepo.h>
 #include <Curve/Intercept.h>
 #include <Curve/Mesh.h>
-#include <Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h>
 #include <Curve/Rasterization/Policies/Core/InterceptPolicies.h>
 #include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
@@ -19,10 +18,7 @@
 
 VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
 		SingletonAccessor(repo, "VoiceMeshRasterizer")
-    ,   mesh(nullptr)
-    ,   rasterizer()
     ,   chainResult()
-    ,   rasterizerData()
     ,   chainReduction()
     ,   chainPaddingSize(2)
     ,   chainUnsampleable(true)
@@ -111,10 +107,6 @@ void VoiceMeshRasterizer::performUpdate(UpdateType updateType) {
     }
 }
 
-bool VoiceMeshRasterizer::canRasterizeWaveform() {
-    return mesh != nullptr && mesh->hasEnoughCubesForCrossSection();
-}
-
 bool VoiceMeshRasterizer::currentWaveformIsSampleable() const {
     return chainedOutputActive
            ? Rasterization::WaveformSampler::isSampleable(chainResult.waveform)
@@ -190,7 +182,7 @@ void VoiceMeshRasterizer::appendVoiceCubeIntercept(
             *cube,
             Vertex::Time,
             chainReduction,
-            MorphPosition(voiceTime, rasterizer.getRequest().morph.red, rasterizer.getRequest().morph.blue));
+            rasterizer.getRequest().morph.withTime(voiceTime));
 
     Vertex* a = &chainReduction.v0;
     Vertex* b = &chainReduction.v1;
@@ -239,7 +231,7 @@ void VoiceMeshRasterizer::publishSnapshot() {
         source = rasterizer.createSnapshotSource();
     }
 
-    Rasterization::RasterizerSnapshotBuilder().publish(rasterizerData, source);
+    Rasterization::BaseRasterizer::publishSnapshot(source);
 }
 
 void VoiceMeshRasterizer::updateChainBuffers(int size) {
