@@ -16,20 +16,20 @@ types as it proceeds. A phase is not complete if it only adds another wrapper.
 
 ## Current State
 
-Production rasterizers no longer derive from `MeshRasterizer`, but the
-replacement is still domain-shaped:
+Production rasterizers no longer derive from or own `MeshRasterizer`; the old
+implementation now exists only as the test fixture `LegacyMeshRasterizer`.
+The replacement is still domain-shaped:
 
 - `FXRasterizer` owns point-list rendering directly through `RenderResult` and
-  `CurveWaveformBuilder`, but still exposes the broad rasterizer interfaces.
+  `CurveWaveformBuilder`.
 - mesh waveform paths now share `CurveWaveformBuilder` for curve/waveform
   construction, and mesh-wide slicing is owned by `TrilinearMeshSlicer`.
 - voice paths no longer have a separate voice slice pipeline, but
   `VoiceMeshRasterizer` still has a rasterizer-shaped owner surface.
 - envelope paths still combine rasterization, playback state, marker handling,
   loop/release behavior, and audio rendering.
-- many small interfaces mirror the old broad `MeshRasterizer` public surface:
-  sampler, snapshot provider, mesh binding, guide binding, update target,
-  vertex domain, and waveform provider.
+- the remaining public surface is concentrated in `Rasterizer`, `SamplerView`,
+  `SnapshotView`, `BaseRasterizer`, and `TrilinearMeshRasterizer`.
 
 The result is safer than the original inheritance hierarchy, but not simpler.
 The branch is only worth keeping if the next work collapses these layers into
@@ -567,6 +567,15 @@ Acceptance:
 - no active rasterizer class derives from or mimics its full public surface,
 - tests still preserve behavior coverage through generic engine fixtures.
 
+Implemented state:
+
+- production code has no `MeshRasterizer` include, owner, or base class,
+- characterization coverage uses `lib/tests/Support/LegacyMeshRasterizer.*`,
+- production mesh-waveform owners share `TrilinearMeshRasterizer` for mesh,
+  morph-position, guide-curve, and request forwarding,
+- production non-mesh-waveform owners share `BaseRasterizer` for snapshot
+  storage and publication.
+
 ## Phase 9: Final Aesthetic Cleanup
 
 Goal: make the final tree navigable and smaller.
@@ -589,6 +598,14 @@ Acceptance:
 - the remaining files map directly to source, stage, policy, result, view, or
   owner roles,
 - full tests and visual validation pass.
+
+Implemented state:
+
+- `TestMeshRasterizerFacade.cpp` was renamed to the behavior it actually
+  tests: `TestCurveResolutionPolicy.cpp`,
+- ADR 002 now describes the final production state rather than a retained
+  production compatibility shell,
+- policy documentation points readers to the shared runtime surfaces.
 
 ## Stop Conditions
 

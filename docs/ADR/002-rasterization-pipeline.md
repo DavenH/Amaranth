@@ -6,13 +6,13 @@ Accepted
 
 ## Context
 
-`MeshRasterizer` currently combines mesh slicing, guide-curve deformation,
+The original `MeshRasterizer` combined mesh slicing, guide-curve deformation,
 point scaling, wrapping, hidden-dimension color projection, curve padding,
 waveform baking, sampling, panel snapshot publication, and mesh pointer cache
 state.
 
-Its subclasses reuse this behavior through inheritance, but most subclasses
-only need a subset of the work. This has made `MeshRasterizer` large, stateful,
+Its subclasses reused this behavior through inheritance, but most subclasses
+only needed a subset of the work. That made `MeshRasterizer` large, stateful,
 hard to unit test, and prone to abstraction leaks such as `colorPoints` living
 on the base rasterizer even though they are panel visualization output.
 
@@ -22,9 +22,9 @@ interpolated, padded, baked into curves, and sampled.
 
 ## Decision
 
-We will migrate rasterization toward a composable pipeline made of explicit
-sources, interpolators, policies, builders, samplers, and compatibility
-facades.
+We migrated rasterization toward a composable pipeline made of explicit
+sources, interpolators, policies, builders, samplers, and narrow rasterizer
+owners.
 
 The target model separates:
 
@@ -37,19 +37,18 @@ The target model separates:
 - builders for intercepts, curves, waveform buffers, and panel snapshots,
 - samplers for normal, integral, and guide-decoupled sampling.
 
-Existing public classes such as `MeshRasterizer`, `GraphicRasterizer`,
-`FXRasterizer`, `VoiceMeshRasterizer`, and `EnvRasterizer` will remain as
-compatibility facades during migration. The work will be staged so every phase
-builds, existing tests continue to pass, and visual/audio behavior is validated
-before moving to the next phase.
-
 The migration completed the inheritance and ownership removal in favor of
 composition: `FXRasterizer`, `GraphicRasterizer`, `E3Rasterizer`,
 `VoiceMeshRasterizer`, and `EnvRasterizer` no longer derive from or own
-`MeshRasterizer`. `MeshRasterizer` remains for now as a characterization-tested
-compatibility shell, but production rasterizers should prefer the source,
-pipeline, policy, storage, runtime, and narrow-interface types under
-`Rasterization/`.
+`MeshRasterizer`. Production code no longer includes or instantiates
+`MeshRasterizer`; characterization coverage now lives in the test-only
+`LegacyMeshRasterizer` fixture.
+
+Current production rasterizers share only non-leaky necessities:
+`Rasterizer` defines the runtime view surface, `BaseRasterizer` owns snapshot
+publication storage, and `TrilinearMeshRasterizer` centralizes the mesh,
+morph-position, guide-curve, and request forwarding that is intrinsically tied
+to trilinear mesh waveform rasterization.
 
 ## Consequences
 
@@ -60,16 +59,16 @@ pipeline, policy, storage, runtime, and narrow-interface types under
   base rasterizer state.
 - FX rasterization can move toward lightweight point-list inputs without
   depending on `Mesh`.
-- Subclasses can shrink into facades or domain owners instead of inheriting a
-  large protected state machine.
+- Former subclasses shrink into domain owners instead of inheriting a large
+  protected state machine.
 - The migration can be validated incrementally with characterization tests,
   dual-run comparisons, UI screenshots, and focused audio/UI fixtures.
 
 ### Negative
 
 - The migration introduces more named concepts and files.
-- Compatibility tests coexist with the retained `MeshRasterizer` shell until it
-  is deleted or renamed in a later legacy cleanup.
+- Characterization tests keep a test-only legacy fixture so extracted behavior
+  can still be compared against the old implementation.
 - Some policy boundaries, especially guide curves, wrapping, and depth
   projection, are tightly coupled in the current code and must be extracted
   carefully.
@@ -79,20 +78,20 @@ pipeline, policy, storage, runtime, and narrow-interface types under
 
 ## Implementation Plan
 
-Use the staged plan in
+The migration followed the staged plan in
 [Rasterization Pipeline Migration TDD](../TDD/rasterization-pipeline-migration.md).
 
-The high-level sequence is:
+The high-level sequence was:
 
 1. Add characterization baselines and a dual-run comparison harness.
 2. Introduce lightweight data shapes and conversion helpers.
 3. Extract policies and builders behind the existing APIs.
 4. Move simple point-list and FX paths off unnecessary mesh dependencies.
-5. Introduce facades behind existing rasterizer classes.
+5. Introduce narrow production rasterizer owners behind existing caller names.
 6. Migrate graphic, voice, and envelope rasterizers only after shared stages are
    proven.
-7. Group policy files by responsibility and keep the retained compatibility
-   shell out of new rasterizer APIs.
+7. Group policy files by responsibility and keep legacy behavior isolated to
+   tests.
 
 ## Validation
 
