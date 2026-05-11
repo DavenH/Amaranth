@@ -131,7 +131,6 @@ public:
     bool                rasterizerWrapsVertices() const;
     int                 getRasterizerPaddingSize() const;
     GuideCurveProvider* getGuideCurveProvider() const;
-    void                setRasterizerDims(const Dimensions& newDims);
     void                setRasterizerMesh(Mesh* mesh);
     void                performRasterizerUpdate(UpdateType updateType);
     bool                isRasterizerSampleableAt(float x) const;

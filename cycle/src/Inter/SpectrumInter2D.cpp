@@ -30,6 +30,8 @@ void SpectrumInter2D::init() {
     closestHarmonic = -1;
     scratchesTime = true;
     auto* rasterizer = &getObj(SpectRasterizer);
+    rasterizer->setDims(dims);
+    getObj(PhaseRasterizer).setDims(dims);
     setRasterizer(rasterizer);
 
     float freqMargin = getRealConstant(FreqMargin);

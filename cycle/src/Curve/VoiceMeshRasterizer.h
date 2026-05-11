@@ -55,7 +55,7 @@ public:
 
     MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
     void setCalcDepthDimensions(bool calc) { rasterizer.getRequest().calcDepthDimensions = calc; }
-    void setDims(const Dimensions& dims) override { rasterizer.getRequest().dims = dims; }
+    void setDims(const Dimensions& dims) { rasterizer.getRequest().dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) { rasterizer.setGuideCurveProvider(provider); }
     void setIntegralSampling(bool does) { rasterizer.getRequest().integralSampling = does; }
     void setInterceptPadding(float value) { rasterizer.getRequest().interceptPadding = value; }

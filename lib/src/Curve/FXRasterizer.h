@@ -45,7 +45,7 @@ public:
 
     void setMesh(Mesh* mesh) override;
 
-    void setDims(const Dimensions& dims) override { this->dims = dims; }
+    void setDims(const Dimensions& dims) { this->dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
     void setScalingMode(int type) { scalingType = type; }
 

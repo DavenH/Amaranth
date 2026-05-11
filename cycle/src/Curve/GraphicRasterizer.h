@@ -106,7 +106,7 @@ public:
 
     void setBatchMode(bool batch) { rasterizer.getRequest().batchMode = batch; }
     void setBlue(float blue) { rasterizer.getRequest().morph.blue.setValueDirect(blue); }
-    void setDims(const Dimensions& dims) override { rasterizer.getRequest().dims = dims; }
+    void setDims(const Dimensions& dims) { rasterizer.getRequest().dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) { rasterizer.setGuideCurveProvider(provider); }
     void setMorphPosition(const MorphPosition& morph) { rasterizer.getRequest().morph = morph; }
     void setNoiseSeed(int seed) { rasterizer.getRequest().noiseSeed = seed; }

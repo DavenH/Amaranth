@@ -108,7 +108,8 @@ String SpectrumInter3D::getYString(float yVal, int yIndex, const Column &col, fl
 }
 
 void SpectrumInter3D::updateRastDims() {
-    setRasterizerDims(getObj(SpectrumInter2D).dims);
+    getObj(SpectRasterizer).setDims(getObj(SpectrumInter2D).dims);
+    getObj(PhaseRasterizer).setDims(getObj(SpectrumInter2D).dims);
 }
 
 Interactor* SpectrumInter3D::getOppositeInteractor() {

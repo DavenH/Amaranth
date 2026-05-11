@@ -3,6 +3,7 @@
 #include <Util/Util.h>
 
 #include "../Inter/EnvelopeInter2D.h"
+#include "../Curve/E3Rasterizer.h"
 #include "../Util/CycleEnums.h"
 
 EnvelopeInter3D::EnvelopeInter3D(SingletonRepo* repo) :
@@ -32,4 +33,8 @@ void EnvelopeInter3D::transferLineProperties(VertCube* from, VertCube* to1, Vert
 
 Mesh* EnvelopeInter3D::getMesh() {
     return getObj(EnvelopeInter2D).getMesh();
+}
+
+void EnvelopeInter3D::updateRastDims() {
+    getObj(E3Rasterizer).setDims(dims);
 }

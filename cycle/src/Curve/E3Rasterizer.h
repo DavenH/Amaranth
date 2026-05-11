@@ -36,7 +36,7 @@ public:
 
     CriticalSection& getArrayLock() { return arrayLock; }
     MorphPosition& getMorphPosition() { return rasterizer.getRequest().morph; }
-    void setDims(const Dimensions& dims) override { rasterizer.getRequest().dims = dims; }
+    void setDims(const Dimensions& dims) { rasterizer.getRequest().dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) { rasterizer.setGuideCurveProvider(provider); }
     void setMorphPosition(const MorphPosition& morph) { rasterizer.getRequest().morph = morph; }
 

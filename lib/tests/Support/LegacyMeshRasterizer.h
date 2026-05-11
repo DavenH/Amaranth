@@ -168,7 +168,7 @@ public:
     void setCalcDepthDimensions(bool calc)          { calcDepthDims = calc;             }
     void setCalcInterceptsOnly(bool calc)           { calcInterceptsOnly = calc;        }
     void setDecoupleComponentDfrm(bool does)        { decoupleComponentDfrms = does;    }
-    void setDims(const Dimensions& dims) override   { this->dims = dims;                }
+    void setDims(const Dimensions& dims)            { this->dims = dims;                }
     void setIntegralSampling(bool does)             { this->integralSampling = does;    }
     void setInterceptPadding(float value)           { interceptPadding = value;         }
     void setInterpolatesCurves(bool should)         { interpolateCurves = should;       }

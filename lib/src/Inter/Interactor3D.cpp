@@ -1081,13 +1081,6 @@ void Interactor3D::primaryDimensionChanged() {
 }
 
 void Interactor3D::updateRastDims() {
-    progressMark
-
-    if (!hasRasterizer()) {
-        return;
-    }
-
-    setRasterizerDims(dims);
 }
 
 void Interactor3D::updateInterceptsWithMesh(Mesh* mesh) {

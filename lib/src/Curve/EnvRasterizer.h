@@ -114,7 +114,7 @@ public:
     Rasterization::PointScalingMode getScalingType() const { return request.scalingMode; }
     void setCalcDepthDimensions(bool calc) { request.calcDepthDimensions = calc; }
     void setDecoupleComponentDfrm(bool does) { request.decoupleComponentDeforms = does; }
-    void setDims(const Dimensions& dims) override { request.dims = dims; }
+    void setDims(const Dimensions& dims) { request.dims = dims; }
     void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
     void setLimits(float min, float max) { request.xMinimum = min; request.xMaximum = max; }
     void setLowresCurves(bool areLow) { request.lowResCurves = areLow; }

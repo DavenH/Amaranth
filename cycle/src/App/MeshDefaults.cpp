@@ -198,6 +198,7 @@ namespace {
         EnvRasterizer* originalRast = interactor.getRast(originalEnv);
 
         rast->setMesh(mesh);
+        rast->setDims(interactor.dims);
         rast->setMode(EnvRasterizer::NormalState);
         interactor.setRasterizer(rast);
         interactor.layerType = layerType;

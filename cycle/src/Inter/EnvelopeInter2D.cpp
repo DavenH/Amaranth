@@ -109,9 +109,11 @@ void EnvelopeInter2D::init() {
     layerType = getSetting(CurrentEnvGroup);
     if (layerType == LayerGroups::GroupWavePitch) {
         auto* rast = &getObj(EnvWavePitchRast);
+        rast->setDims(dims);
         setRasterizer(rast);
     } else {
         auto* rast = getRast(layerType);
+        rast->setDims(dims);
         setRasterizer(rast);
     }
 
@@ -633,8 +635,10 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
     EnvRasterizer* rast = getRast(envEnum);
     if (envEnum == LayerGroups::GroupWavePitch) {
         auto* wavePitchRast = &getObj(EnvWavePitchRast);
+        wavePitchRast->setDims(dims);
         setRasterizer(wavePitchRast);
     } else {
+        rast->setDims(dims);
         setRasterizer(rast);
     }
 

@@ -1435,10 +1435,6 @@ void Interactor::snapToGrid(Vertex2& toSnap) {
 
 void Interactor::setRasterizer(Rasterization::Rasterizer* rasterizer) {
     this->rasterizer = rasterizer;
-
-    if (this->rasterizer != nullptr) {
-        setRasterizerDims(dims);
-    }
 }
 
 bool Interactor::rasterizerWrapsVertices() const {
@@ -1451,12 +1447,6 @@ int Interactor::getRasterizerPaddingSize() const {
 
 GuideCurveProvider* Interactor::getGuideCurveProvider() const {
     return repo != nullptr ? repo->getGuideCurveProviderPtr() : nullptr;
-}
-
-void Interactor::setRasterizerDims(const Dimensions& newDims) {
-    if (rasterizer != nullptr) {
-        rasterizer->setDims(newDims);
-    }
 }
 
 void Interactor::setRasterizerMesh(Mesh* mesh) {

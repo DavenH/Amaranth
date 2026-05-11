@@ -11,4 +11,5 @@ public:
     void init() override;
     void transferLineProperties(VertCube* from, VertCube* to1, VertCube* to2);
     Mesh* getMesh() override;
+    void updateRastDims() override;
 };

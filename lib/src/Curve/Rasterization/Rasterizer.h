@@ -3,7 +3,6 @@
 #include "../../Design/Updating/UpdateType.h"
 #include "RasterizerViews.h"
 
-class Dimensions;
 class Mesh;
 struct RasterizerData;
 
@@ -19,6 +18,5 @@ namespace Rasterization {
 
         virtual void performUpdate(UpdateType updateType) = 0;
 
-        virtual void setDims(const Dimensions& dims) = 0;
     };
 }
