@@ -389,20 +389,30 @@ template<> void VecOps::flip(Buffer<Float64> src, Buffer<Float64> dst) { src.cop
 template<> void VecOps::sinc(Buffer<Float32> kernel, Buffer<Float32> window, float relFreq) {
     if (kernel.size() <= 1) { return; }
 
-    window.blackman();
+    ScopedAlloc<Float32> positionMemory(kernel.size());
+    Buffer<Float32> position(positionMemory, kernel.size());
 
-    float centre = 0.5f * float(kernel.size() - 1);
-    float sum = 0.f;
+    position.ramp(-0.5f * float(kernel.size() - 1), 1.f);
 
-    for (int i = 0; i < kernel.size(); ++i) {
-        float x = float(i) - centre;
-        float sinc = x == 0.f
-                ? 2.f * relFreq
-                : std::sin(2.f * float(M_PI) * relFreq * x) / (float(M_PI) * x);
+    position.copyTo(kernel);
+    kernel.mul(2.f * float(M_PI) * relFreq).sin();
 
-        kernel[i] = sinc * window[i];
-        sum += kernel[i];
+    position.mul(float(M_PI));
+
+    if (kernel.size() % 2 == 1) {
+        position[kernel.size() / 2] = 1.f;
     }
+
+    kernel.div(position);
+
+    if (kernel.size() % 2 == 1) {
+        kernel[kernel.size() / 2] = 2.f * relFreq;
+    }
+
+    window.blackman();
+    kernel.mul(window);
+
+    float sum = kernel.sum();
 
     if (sum != 0.f) {
         kernel.div(sum);
