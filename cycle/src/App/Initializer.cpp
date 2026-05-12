@@ -363,8 +363,10 @@ void Initializer::instantiate() {
     repo->add(new CycleTour			(repo));
     repo->add(new CycleAutomation	(repo));
     repo->add(new WaveDragTarget	(repo));
-    repo->add(new Waveform2D		(repo));
-    repo->add(new Spectrum2D		(repo));
+    auto* waveform2D = new Waveform2D(repo);
+    auto* spectrum2D = new Spectrum2D(repo);
+    repo->add(waveform2D);
+    repo->add(spectrum2D);
     repo->add(new DerivativePanel	(repo));
     repo->add(new VertexPropertiesPanel(repo));
     repo->add(new GeneralControls	(repo));
@@ -377,8 +379,10 @@ void Initializer::instantiate() {
     repo->add(new QualityDialog		(repo));
     repo->add(new EffectGuiRegistry	(repo));
     repo->add(new CycleGraphicsUtils(repo));
-    repo->add(new Waveform3D		(repo), 10);
-    repo->add(new Spectrum3D		(repo), 10);
+    auto* waveform3D = new Waveform3D(repo);
+    auto* spectrum3D = new Spectrum3D(repo);
+    repo->add(waveform3D, 10);
+    repo->add(spectrum3D, 10);
     repo->add(new MainPanel			(repo), 100);
     repo->add(new MorphPanel		(repo));
     repo->add(new PlaybackPanel		(repo));
@@ -420,8 +424,18 @@ void Initializer::instantiate() {
     repo->add(spectInter = new SpectrumInter2D(repo));
     repo->add(guideCurvePanel 	 = new GuideCurvePanel(repo));
 
-    repo->add(new Envelope2D(repo));
-    repo->add(new Envelope3D(repo));
+    auto* envelope2D = new Envelope2D(repo);
+    auto* envelope3D = new Envelope3D(repo);
+    repo->add(envelope2D);
+    repo->add(envelope3D);
+
+    lockingPanels.add(waveform2D);
+    lockingPanels.add(spectrum2D);
+    lockingPanels.add(waveform3D);
+    lockingPanels.add(spectrum3D);
+    lockingPanels.add(guideCurvePanel);
+    lockingPanels.add(envelope2D);
+    lockingPanels.add(envelope3D);
 
     repo->add(new TimeRasterizer (repo, timeInter, 	"TimeRasterizer", 	LayerGroups::GroupTime,  true, 0));
     repo->add(new SpectRasterizer(repo, spectInter, "SpectRasterizer", 	LayerGroups::GroupSpect, false, 0));
@@ -485,7 +499,7 @@ void Initializer::takeLocks() {
 
 void Initializer::releaseLocks() {
     for (int i = lockingPanels.size() - 1; i >= 0; --i) {
-        lockingPanels.getUnchecked(i)->getRenderLock().enter();
+        lockingPanels.getUnchecked(i)->getRenderLock().exit();
     }
 }
 

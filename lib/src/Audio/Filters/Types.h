@@ -63,22 +63,22 @@ struct ComplexPair : complex_pair_t
 
   bool isConjugate () const
   {
-    return second == std::conj (first);
+    return Dsp::almost_equal (second, std::conj (first));
   }
 
   bool isReal () const
   {
-    return first.imag() == 0 && second.imag() == 0;
+    return Dsp::is_effectively_real (first) && Dsp::is_effectively_real (second);
   }
 
   // Returns true if this is either a conjugate pair,
   // or a pair of reals where neither is zero.
   bool isMatchedPair () const
   {
-    if (first.imag() != 0)
-      return second == std::conj (first);
+    if (! Dsp::is_effectively_real (first))
+      return isConjugate();
     else
-      return second.imag () == 0 &&
+      return Dsp::is_effectively_real (second) &&
              second.real () != 0 &&
              first.real () != 0;
   }
