@@ -739,15 +739,12 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     }
 
     int ampChan       = cube->guideCurveAt(Vertex::Amp);
-    int phsVsRedChan  = cube->guideCurveAt(Vertex::Red);
-    int phsVsBlueChan = cube->guideCurveAt(Vertex::Blue);
 
     bool isTime = pointDim == Vertex::Time;
-    bool isRed  = pointDim == Vertex::Red;
 
-    int phaseDim            = isTime ? Vertex::Phase : isRed ? Vertex::Red : Vertex::Blue;
+    int phaseDim            = getLinePathPhaseGuideDimension(pointDim);
     int phaseSrcDim         = isTime ? Vertex::Time : phaseDim;
-    int phaseChan           = isTime ? -1 : isRed ? phsVsRedChan : phsVsBlueChan;
+    int phaseChan           = getLinePathPhaseGuideChannel(*cube, pointDim);
     bool adjustSpeed        = haveSpeed && speedApplicable && isTime;
     bool adjustPhase        = phaseSrcDim == pointDim && phaseChan >= 0;
     bool adjustAmp          = ampChan >= 0 && isTime;
@@ -820,16 +817,28 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             float   indexScale  = scaleX * float(speedEnv.size() - 1) * invSize;
             float   speed;
 
-            if (scaleX < 0.99f) {
-                for(int i = 0; i < linestripRes; ++i) {
+            if (adjustPhase) {
+                for (int i = 0; i < linestripRes; ++i) {
                     speedEnvIdx = jlimit(0, speedEnv.size() - 1, int(offsetIdx + indexScale * i)); // todo Lerp it
-                    xy.y[i] = speedEnv[speedEnvIdx];
+                    speed       = speedEnv[speedEnvIdx];
+                    ramp[i]     = speed;
+                    idx         = int((phaseTable.size() - 1) * speed);
+                    xy.y[i]     = phaseGain * phaseTable[idx];
                 }
-            } else {
-                speedEnv.copyTo(xy.y);
-            }
 
-            xy.y.mul(second.y - first.y).add(first.y + redOffset + blueOffset);
+                xy.y.addProduct(ramp, second.y - first.y).add(first.y + redOffset + blueOffset);
+            } else {
+                if (scaleX < 0.99f) {
+                    for(int i = 0; i < linestripRes; ++i) {
+                        speedEnvIdx = jlimit(0, speedEnv.size() - 1, int(offsetIdx + indexScale * i)); // todo Lerp it
+                        xy.y[i] = speedEnv[speedEnvIdx];
+                    }
+                } else {
+                    speedEnv.copyTo(xy.y);
+                }
+
+                xy.y.mul(second.y - first.y).add(first.y + redOffset + blueOffset);
+            }
         } else {
             if (adjustPhase) {
                 xy.y.downsampleFrom(phaseTable);
@@ -907,6 +916,22 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     }
 
     return true;
+}
+
+int Panel::getLinePathPhaseGuideChannel(const VertCube& cube, int pointDim) {
+    switch (pointDim) {
+        case Vertex::Time: return cube.guideCurveAt(Vertex::Phase);
+        case Vertex::Red:  return cube.guideCurveAt(Vertex::Red);
+        default:           return cube.guideCurveAt(Vertex::Blue);
+    }
+}
+
+int Panel::getLinePathPhaseGuideDimension(int pointDim) {
+    switch (pointDim) {
+        case Vertex::Time: return Vertex::Phase;
+        case Vertex::Red:  return Vertex::Red;
+        default:           return Vertex::Blue;
+    }
 }
 
 void Panel::componentChanged() {
