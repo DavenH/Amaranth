@@ -82,14 +82,14 @@ void SelectorPanel::mouseDown(const MouseEvent& e) {
 			menu.addItem(i + 1, String(i + 1), true, false);
 		}
 
-    	// TODO what happened to menu.show()?
-		menu.showMenuAsync(PopupMenu::Options());
-    	int id = 0;
-        if (id > 0) {
-			currentIndex = id - 1;
-			selectionChanged();
-			repaint();
-		}
+        SafePointer safeThis(this);
+		menu.showMenuAsync(PopupMenu::Options(), [safeThis](int id) {
+            if (safeThis == nullptr || id <= 0) {
+                return;
+            }
+
+            safeThis->clickedOnRow(id - 1);
+		});
 	}
 }
 

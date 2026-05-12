@@ -11,6 +11,7 @@
 #include "CycleAutomation.h"
 #include "FileManager.h"
 #include "Initializer.h"
+#include <App/EditWatcher.h>
 #include "../CycleDefs.h"
 #include "../UI/Panels/MainPanel.h"
 #include "../UI/SynthLookAndFeel.h"
@@ -28,6 +29,7 @@ MainAppWindow::MainAppWindow(const String& commandLine) :
 
     initializer->setCommandLine(CycleAutomation::stripAutomationArgs(commandLine));
     initializer->init();
+    getObj(EditWatcher).addClient(this);
 
     setLookAndFeel(&getObj(AmaranthLookAndFeel));
     setContentNonOwned(&getObj(MainPanel), true);
@@ -77,6 +79,10 @@ void MainAppWindow::maximiseButtonPressed() {
     }
 
     ++presses;
+}
+
+void MainAppWindow::updateTitle(const String& name) {
+    setName(name);
 }
 
 void MainAppWindow::handleMessage(const Message &message) {
