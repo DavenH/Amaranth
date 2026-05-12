@@ -38,7 +38,7 @@ public:
     void setPendingOversampleFactor(int factor);
     void setRasterizer(Rasterization::Rasterizer* rasterizer);
     void setUI(WaveshaperUI* comp)					{ this->ui = comp; 								 			}
-    int getOversampleFactor() const					{ return oversamplers[0]->getOversampleFactor(); 			}
+    int getOversampleFactor() const					{ return oversamplers[graphicOvspIndex]->getOversampleFactor(); }
 
     void linInterpTable(float& value) {
         float fval = value * (tableResolution - 1);
