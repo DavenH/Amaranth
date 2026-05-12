@@ -2041,7 +2041,7 @@ Implemented state:
 - mesh composer exposes target-style hooks for source, slicer, morph position
   or morph provider, padding policy, and snapshot policy,
 - the hooks currently map onto `RasterizationRequest`; shared snapshot-source
-  publication is available through `ComposedMeshWaveformRasterizer`,
+  publication is available through the trilinear rasterizer implementation,
 - the `GraphicRasterizer::legacyRasterizer()` escape hatch is removed after
   migrating the last production caller,
 - `OscPhaseRasterizer` and `SpectralFilterRasterizer` no longer own
@@ -2049,9 +2049,9 @@ Implemented state:
   slicer and, for spectral filters, the point-list waveform pipeline,
 - `E3Rasterizer`, `GraphicRasterizer`, `VoiceMeshRasterizer`, and
   `EnvRasterizer` no longer own compatibility `MeshRasterizer` instances,
-- `ComposedMeshWaveformRasterizer` now provides the shared mesh-slice to
-  waveform primitive, including snapshot-source publication and target-style
-  guide-curve applier creation for domain pipelines,
+- `TrilinearMeshRasterizer` now provides the shared mesh-slice to waveform
+  primitive, including snapshot-source publication and target-style guide-curve
+  applier creation for domain pipelines,
 - `VoiceMeshRasterizer` keeps the voice-specific chained pipeline and storage
   directly, rather than routing chained audio through a generic compatibility
   rasterizer,
@@ -2157,7 +2157,7 @@ Implemented state:
   retained compatibility shell, naming in `MeshRasterizerState`, and domain type
   names such as `VoiceMeshRasterizer`,
 - duplicated mesh-to-waveform rendering for graphic, spectral, oscillator phase,
-  and E3 paths is consolidated through `ComposedMeshWaveformRasterizer`,
+  and E3 paths is consolidated through `TrilinearMeshRasterizer`,
 - voice and envelope keep separate domain-owned storage because chaining,
   release, loop, and decoupled guide-curve playback are not the same lifecycle
   as stateless panel mesh slicing,

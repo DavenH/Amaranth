@@ -5,7 +5,7 @@
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Mesh.h"
 #include "Support/LegacyMeshRasterizer.h"
-#include "../src/Curve/Rasterization/MeshWaveformRasterizer.h"
+#include "../src/Curve/Rasterization/TrilinearMeshRasterizer.h"
 #include "../src/Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h"
 #include "../src/Curve/Rasterization/Policies/Curves/CurvePolicies.h"
 #include "../src/Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h"
@@ -535,7 +535,7 @@ TEST_CASE("CurveWaveformPreparationPolicy prepares curves before waveform baking
     REQUIRE(std::isfinite(curves[1].transformY[0]));
 }
 
-TEST_CASE("MeshWaveformRasterizer preserves component guide waveform baking", "[meshrasterizer][pipeline][composer][guide]") {
+TEST_CASE("TrilinearMeshRasterizer preserves component guide waveform baking", "[meshrasterizer][pipeline][composer][guide]") {
     CurveTableScope curveTableScope;
     auto mesh = createSyntheticWaveMesh();
     mesh->getCubes().front()->getCompGuideCurve() = 0;
@@ -548,10 +548,10 @@ TEST_CASE("MeshWaveformRasterizer preserves component guide waveform baking", "[
     reference.setGuideCurveProvider(&provider);
     reference.calcCrossPoints();
 
-    Rasterization::MeshWaveformRasterizer composed;
+    Rasterization::TrilinearMeshRasterizer composed;
     composed.getRequest() = reference.createRasterizationRequest();
     composed.setGuideCurveProvider(&provider);
-    composed.render(mesh.get());
+    composed.updateWaveform(mesh.get());
 
     REQUIRE(reference.isSampleable());
     REQUIRE(composed.isSampleable());

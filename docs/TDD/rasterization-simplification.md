@@ -444,8 +444,8 @@ Tasks:
 - replace mesh slice output publication with `RenderResult`,
 - keep `TrilinearMeshSlicer`, guide policies, and depth/color projection as
   stages or policies feeding the generic result,
-- keep `ComposedMeshWaveformRasterizer` only if it is renamed/scoped as a
-  temporary private implementation detail, otherwise delete it in this phase,
+- fold shared mesh-to-waveform rendering into the trilinear implementation
+  layer rather than keeping a separate mesh waveform adapter,
 - update callers to consume views rather than copying `waveX`, `waveY`,
   `diffX`, `slope`, `area`, `zeroIndex`, and `oneIndex` member-by-member.
 
@@ -505,7 +505,7 @@ Acceptance:
 - Spectrum2D/Spectrum3D, Waveform2D/Waveform3D, and Envelope3D visual captures
   match baselines,
 - switching magnitude/phase panels still refreshes the correct curve,
-- no graphic path owns `ComposedMeshWaveformRasterizer` directly.
+- no graphic path owns a separate mesh waveform adapter directly.
 
 ## Phase 6: Replace Voice Mesh Rasterizer With A Voice Owner Plus Generic Engine
 

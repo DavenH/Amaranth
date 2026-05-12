@@ -29,10 +29,10 @@ GraphicRasterizer::GraphicRasterizer(
 	        ,   float margin) : SingletonAccessor(repo, name)
 	    ,   layerGroup(layerGroup)
 	    ,   interactor(interactor) {
-    rasterizer.getRequest().cyclic = isCyclic;
-    rasterizer.getRequest().xMinimum = -margin;
-    rasterizer.getRequest().xMaximum = 1 + margin;
-    rasterizerData.paddingSize = rasterizer.getPaddingSize();
+    getRequest().cyclic = isCyclic;
+    getRequest().xMinimum = -margin;
+    getRequest().xMaximum = 1 + margin;
+    rasterizerData.paddingSize = getPaddingSize();
     rasterizerData.wrapsVertices = isCyclic;
     addListener(this);
 }
@@ -60,7 +60,7 @@ void GraphicRasterizer::restoreStateFrom(RenderState& state) {
         mesh = state.mesh;
     }
 
-    auto& request = rasterizer.getRequest();
+    auto& request = getRequest();
     request.lowResCurves = state.lowResCurves;
     request.calcDepthDimensions = state.calcDepthDims;
     request.morph = state.pos;
@@ -69,7 +69,7 @@ void GraphicRasterizer::restoreStateFrom(RenderState& state) {
 }
 
 void GraphicRasterizer::saveStateTo(RenderState& state) {
-    const auto& request = rasterizer.getRequest();
+    const auto& request = getRequest();
     state.lowResCurves = request.lowResCurves;
     state.calcDepthDims = request.calcDepthDimensions;
     state.restoreMesh = true;
@@ -96,9 +96,9 @@ void GraphicRasterizer::updateGeometryAtPhase(float oscPhase) {
         return;
     }
 
-    rasterizer.updateGeometry(mesh, oscPhase);
+    renderTrilinearGeometry(oscPhase);
 
-    if (!rasterizer.getRequest().batchMode) {
+    if (!getRequest().batchMode) {
         publishTrilinearSnapshot();
     }
 }
@@ -120,16 +120,16 @@ void GraphicRasterizer::updateWaveformAtPhase(float oscPhase) {
         return;
     }
 
-    rasterizer.updateWaveform(mesh, oscPhase);
+    renderTrilinearWaveform(oscPhase);
 
-    if (!rasterizer.getRequest().batchMode) {
+    if (!getRequest().batchMode) {
         publishTrilinearSnapshot();
     }
 }
 
 void GraphicRasterizer::cleanUp() {
-    if (rasterizer.getRequest().batchMode) {
-        rasterizer.clean();
+    if (getRequest().batchMode) {
+        clearTrilinearOutput();
         return;
     }
 
@@ -161,5 +161,5 @@ int GraphicRasterizer::primaryViewDimension() {
 }
 
 void GraphicRasterizer::prepareRequestForRender() {
-    rasterizer.getRequest().primaryViewDimension = primaryViewDimension();
+    getRequest().primaryViewDimension = primaryViewDimension();
 }

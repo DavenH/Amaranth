@@ -12,14 +12,14 @@
 
 E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
         SingletonAccessor(repo, "E3Rasterizer") {
-    auto& request = rasterizer.getRequest();
+    auto& request = getRequest();
     request.lowResCurves = true;
     request.cyclic = false;
     request.calcDepthDimensions = false;
     request.scalingMode = Rasterization::PointScalingMode::HalfBipolar;
     request.xMinimum = 0.f;
     request.xMaximum = 10.f;
-    rasterizerData.paddingSize = rasterizer.getPaddingSize();
+    rasterizerData.paddingSize = getPaddingSize();
     rasterizerData.wrapsVertices = request.cyclic;
 }
 
@@ -62,7 +62,7 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
     setMesh(currentMesh);
     getObj(VisualDsp).resizeArrays(params);
     int dependentAxis = getSetting(CurrentMorphAxis);
-    rasterizer.getRequest().primaryViewDimension = dependentAxis;
+    getRequest().primaryViewDimension = dependentAxis;
 
     for (int colIdx = 0; colIdx < gridSize; ++colIdx) {
         Column& col = columns[colIdx];
@@ -71,7 +71,7 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
         p[dependentAxis].setValueDirect(colIdx * invGrid);
         renderMesh(currentMesh);
 
-        auto sampler = rasterizer.samplerView();
+        auto sampler = samplerView();
         if (sampler.isSampleable()) {
             sampler.samplePerfectly(invCol, col, 0.f);
         } else {
@@ -90,6 +90,7 @@ void E3Rasterizer::renderMesh(Mesh* mesh) {
         return;
     }
 
-    rasterizer.render(mesh);
+    setMesh(mesh);
+    renderTrilinearWaveform(0.f);
     publishTrilinearSnapshot();
 }

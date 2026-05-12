@@ -25,11 +25,11 @@ VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
     ,   chainNeedsResorting(false)
     ,   chainedOutputActive(false)
     ,   state(nullptr) {
-    auto& request = rasterizer.getRequest();
+    auto& request = getRequest();
     request.overrideDimension = true;
     request.scalingMode = Rasterization::PointScalingMode::Bipolar;
     request.calcDepthDimensions = false;
-    rasterizerData.paddingSize = rasterizer.getPaddingSize();
+    rasterizerData.paddingSize = getPaddingSize();
     rasterizerData.wrapsVertices = request.cyclic;
     updateChainBuffers(2048);
 }
@@ -69,7 +69,7 @@ void VoiceMeshRasterizer::updateChainedWaveform(float oscPhase) {
                 state->backIcpts,
                 *state,
                 chainResult.curves,
-                rasterizer.getRequest().interceptPadding);
+                getRequest().interceptPadding);
 
         bakeChainedWaveform();
     }
@@ -83,7 +83,7 @@ void VoiceMeshRasterizer::orphanOldVerts() {
 }
 
 void VoiceMeshRasterizer::cleanUp() {
-    rasterizer.clean();
+    clearTrilinearOutput();
     cleanChainedOutput();
     publishSnapshot();
 }
@@ -91,11 +91,11 @@ void VoiceMeshRasterizer::cleanUp() {
 bool VoiceMeshRasterizer::currentWaveformIsSampleable() const {
     return chainedOutputActive
            ? Rasterization::WaveformSampler::isSampleable(chainResult.waveform)
-           : rasterizer.samplerView().isSampleable();
+           : Rasterization::TrilinearMeshRasterizer::samplerView().isSampleable();
 }
 
 Rasterization::WaveformBuffers VoiceMeshRasterizer::currentWaveform() const {
-    return chainedOutputActive ? chainResult.waveform : rasterizer.waveform();
+    return chainedOutputActive ? chainResult.waveform : waveform();
 }
 
 void VoiceMeshRasterizer::bakeChainedWaveform() {
@@ -108,11 +108,11 @@ void VoiceMeshRasterizer::bakeChainedWaveform() {
     Rasterization::CurveWaveformPreparationPolicy().apply(chainResult.curves);
 
     Rasterization::WaveformBakePolicy::Context context;
-    context.lowResCurves = rasterizer.getRequest().lowResCurves;
-    context.decoupleComponentDfrms = rasterizer.getRequest().decoupleComponentDeforms;
-    context.noiseSeed = rasterizer.getRequest().noiseSeed;
-    context.morph = rasterizer.getRequest().morph;
-    context.guideCurveProvider = rasterizer.getGuideCurveProvider();
+    context.lowResCurves = getRequest().lowResCurves;
+    context.decoupleComponentDfrms = getRequest().decoupleComponentDeforms;
+    context.noiseSeed = getRequest().noiseSeed;
+    context.morph = getRequest().morph;
+    context.guideCurveProvider = getGuideCurveProvider();
     context.guideCurveRegions = &chainResult.guideCurveRegions;
     context.offsetSeeds = nullptr;
 
@@ -139,8 +139,8 @@ Rasterization::RenderResult VoiceMeshRasterizer::renderVoiceSlice(float oscPhase
         return output;
     }
 
-    float voiceTime = jmin(1.f, rasterizer.getRequest().morph.time + state->advancement);
-    auto guideApplier = rasterizer.createGuideCurveApplier(chainReduction, &chainNeedsResorting);
+    float voiceTime = jmin(1.f, getRequest().morph.time + state->advancement);
+    auto guideApplier = createGuideCurveApplier(chainReduction, &chainNeedsResorting);
 
     auto& cubes = mesh->getCubes();
     for (int i = 0; i < (int) cubes.size(); ++i) {
@@ -163,7 +163,7 @@ void VoiceMeshRasterizer::appendVoiceCubeIntercept(
             *cube,
             Vertex::Time,
             chainReduction,
-            rasterizer.getRequest().morph.withTime(voiceTime));
+            getRequest().morph.withTime(voiceTime));
 
     Vertex* a = &chainReduction.v0;
     Vertex* b = &chainReduction.v1;
@@ -188,7 +188,7 @@ void VoiceMeshRasterizer::appendVoiceCubeIntercept(
     intercept.shp = vertex->values[Vertex::Curve];
     intercept.adjustedX = intercept.x;
 
-    applyGuide(intercept, rasterizer.getRequest().morph);
+    applyGuide(intercept, getRequest().morph);
     intercepts.push_back(intercept);
 }
 
@@ -207,9 +207,9 @@ void VoiceMeshRasterizer::publishSnapshot() {
         source.curves = &chainResult.curves;
         source.waveform = chainResult.waveform;
         source.paddingSize = chainPaddingSize;
-        source.wrapsVertices = rasterizer.getRequest().cyclic;
+        source.wrapsVertices = getRequest().cyclic;
     } else {
-        source = rasterizer.createSnapshotSource();
+        source = createSnapshotSource();
     }
 
     Rasterization::BaseRasterizer::publishSnapshot(source);
@@ -225,9 +225,9 @@ void VoiceMeshRasterizer::restrictIntercepts(std::vector<Intercept>& intercepts)
     }
 
     Rasterization::InterceptRestrictionPolicy::Context context;
-    context.cyclic = rasterizer.getRequest().cyclic;
-    context.minimumX = rasterizer.getRequest().xMinimum;
-    context.maximumX = rasterizer.getRequest().xMaximum;
+    context.cyclic = getRequest().cyclic;
+    context.minimumX = getRequest().xMinimum;
+    context.maximumX = getRequest().xMaximum;
 
     Rasterization::InterceptRestrictionPolicy(context).restrict(intercepts);
 }

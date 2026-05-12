@@ -93,7 +93,7 @@ public:
 
     Interactor* getInteractor() const { return interactor; }
 
-    void setBatchMode(bool batch) { rasterizer.getRequest().batchMode = batch; }
+    void setBatchMode(bool batch) { getRequest().batchMode = batch; }
 
 private:
     static Rasterization::PointScalingMode scalingModeFromRenderState(int scalingType);

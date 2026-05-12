@@ -223,10 +223,9 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
 
         float progress = getScratchTime(props.scratchChan, frame.frontier);
 
-        auto& request = freqRasterizer.getRequest();
-        request.morph = props.pos[parent->voiceIndex].withTime(progress);
-        request.noiseSeed = random.nextInt(GuideCurvePanel::tableSize);
-        freqRasterizer.render(layer.mesh);
+        freqRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
+        freqRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
+        freqRasterizer.updateWaveform(layer.mesh);
 
         auto sampler = freqRasterizer.samplerView();
         if (sampler.isSampleable()) {
@@ -356,10 +355,9 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 
             float progress = getScratchTime(props.scratchChan, frame.frontier);
 
-            auto& request = phaseRasterizer.getRequest();
-            request.morph = props.pos[parent->voiceIndex].withTime(progress);
-            request.noiseSeed = random.nextInt(GuideCurvePanel::tableSize);
-            phaseRasterizer.render(layer.mesh);
+            phaseRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
+            phaseRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
+            phaseRasterizer.updateWaveform(layer.mesh);
 
             auto sampler = phaseRasterizer.samplerView();
             if (sampler.isSampleable()) {
