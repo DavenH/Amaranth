@@ -462,6 +462,7 @@ bool Waveform3D::isSurfaceDetailReduced() {
 var Waveform3D::exportAutomationState() const {
     auto json = PresetJson::object();
     auto view = PresetJson::object();
+    auto zoom = PresetJson::object();
     auto layer = PresetJson::object();
 
     auto& meshLib = const_cast<MeshLibrary&>(getObj(MeshLibrary));
@@ -480,6 +481,21 @@ var Waveform3D::exportAutomationState() const {
     view->setProperty("shouldDrawGrid", const_cast<Waveform3D*>(this)->shouldDrawGrid());
     view->setProperty("windowWidthPixels", const_cast<Waveform3D*>(this)->getWindowWidthPixels());
     json->setProperty("view", PresetJson::toVar(view));
+
+    ZoomRect& zoomRect = const_cast<Waveform3D*>(this)->getZoomPanel()->getZoomRect();
+    zoom->setProperty("x", zoomRect.x);
+    zoom->setProperty("y", zoomRect.y);
+    zoom->setProperty("width", zoomRect.w);
+    zoom->setProperty("height", zoomRect.h);
+    json->setProperty("zoom", PresetJson::toVar(zoom));
+
+    auto spectrumZoom = PresetJson::object();
+    ZoomRect& spectrumZoomRect = const_cast<Spectrum3D&>(getObj(Spectrum3D)).getZoomPanel()->getZoomRect();
+    spectrumZoom->setProperty("x", spectrumZoomRect.x);
+    spectrumZoom->setProperty("y", spectrumZoomRect.y);
+    spectrumZoom->setProperty("width", spectrumZoomRect.w);
+    spectrumZoom->setProperty("height", spectrumZoomRect.h);
+    json->setProperty("spectrumZoom", PresetJson::toVar(spectrumZoom));
 
     layer->setProperty("current", currentLayer);
     layer->setProperty("count", group.size());

@@ -157,7 +157,7 @@ fi
 if [[ "$FILTER_LOGS" == "1" ]]; then
     awk '
         function keep(line) {
-            return line ~ /(JUCE v|AppClass::|MainAppWindow|FileManager::|Directories::|Document::open|Update:|Error|error|Warning|warning|fail|Fail|assert|Assert|exception|Exception|crash|Crash)/
+            return line ~ /(JUCE v|AppClass::|MainAppWindow|PlaybackPanel::|FileManager::|Directories::|Document::open|Update:|Error|error|Warning|warning|fail|Fail|assert|Assert|exception|Exception|crash|Crash)/
         }
 
         /^Error Domain=/ {

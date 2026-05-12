@@ -35,6 +35,29 @@
 #include "../../Util/CycleEnums.h"
 #include "../CycleDefs.h"
 
+namespace {
+    String zoomRectString(ZoomPanel* zoomPanel) {
+        ZoomRect& rect = zoomPanel->getZoomRect();
+        return "(" + String(rect.x) + "," + String(rect.y) + "," +
+               String(rect.w) + "," + String(rect.h) + ")";
+    }
+
+    void refreshZoomedSurface(Panel* panel) {
+        panel->updateBackground(false);
+        panel->bakeTexturesNextRepaint();
+        panel->repaint();
+    }
+
+    void syncSpectrumZoomFromWaveform(Waveform3D& waveform, Spectrum3D& spectrum) {
+        ZoomRect& source = waveform.getZoomPanel()->getZoomRect();
+        ZoomRect& dest = spectrum.getZoomPanel()->getZoomRect();
+
+        dest.x = source.x;
+        dest.w = source.w;
+        spectrum.getZoomPanel()->panelZoomChanged(false);
+    }
+}
+
 PlaybackPanel::PlaybackPanel(SingletonRepo* repo) :
 		SingletonAccessor(repo, "PlaybackPanel")
 	,	attkZoomIcon(6, 2, this, repo, "Zoom to attack")
@@ -47,21 +70,62 @@ PlaybackPanel::PlaybackPanel(SingletonRepo* repo) :
 }
 
 void PlaybackPanel::buttonClicked(Button* button) {
+    const char* buttonName = button == &attkZoomIcon ? "attack" :
+                             button == &zoomOutIcon  ? "full" : "unknown";
+
+    DBG("PlaybackPanel::buttonClicked button=" + String(buttonName)
+        + " axis=" + String(getSetting(CurrentMorphAxis))
+        + " x=" + String(x)
+        + " depth=" + String(morphPanel->getDepth(getSetting(CurrentMorphAxis)))
+        + " waveformZoom=" + zoomRectString(getObj(Waveform3D).getZoomPanel())
+        + " spectrumZoom=" + zoomRectString(getObj(Spectrum3D).getZoomPanel())
+        + " attackBounds=" + attkZoomIcon.getBounds().toString()
+        + " fullBounds=" + zoomOutIcon.getBounds().toString());
+
 	if (button == &attkZoomIcon) {
         zoomPrimaryRangeToAttack();
+        Waveform3D& waveform = getObj(Waveform3D);
+        Spectrum3D& spectrum = getObj(Spectrum3D);
+
+        waveform.getZoomPanel()->zoomToAttack();
+        syncSpectrumZoomFromWaveform(waveform, spectrum);
+        refreshZoomedSurface(&waveform);
+        refreshZoomedSurface(&spectrum);
 		getObj(Envelope2D).getZoomPanel()->zoomToAttack();
 	} else if (button == &zoomOutIcon) {
         zoomPrimaryRangeToFull();
+        Waveform3D& waveform = getObj(Waveform3D);
+        Spectrum3D& spectrum = getObj(Spectrum3D);
+
+        waveform.getZoomPanel()->zoomToFull();
+        spectrum.getZoomPanel()->zoomToFull();
+        syncSpectrumZoomFromWaveform(waveform, spectrum);
+        refreshZoomedSurface(&waveform);
+        refreshZoomedSurface(&spectrum);
 		getObj(Envelope2D).getZoomPanel()->zoomToFull();
 	}
+
+    DBG("PlaybackPanel::buttonClicked after button=" + String(buttonName)
+        + " x=" + String(x)
+        + " depth=" + String(morphPanel->getDepth(getSetting(CurrentMorphAxis)))
+        + " waveformZoom=" + zoomRectString(getObj(Waveform3D).getZoomPanel())
+        + " spectrumZoom=" + zoomRectString(getObj(Spectrum3D).getZoomPanel())
+        + " envZoom=(" + String(getObj(Envelope2D).getZoomPanel()->getZoomRect().x)
+        + "," + String(getObj(Envelope2D).getZoomPanel()->getZoomRect().w) + ")");
 
 	repaint();
 }
 
 void PlaybackPanel::zoomPrimaryRangeToAttack() {
     int dim = getSetting(CurrentMorphAxis);
+    float oldDepth = morphPanel->getDepth(dim);
     float depth = morphPanel->getDepth(dim) * 0.2f;
     NumberUtils::constrain<float>(depth, 0.001f, 1.f);
+
+    DBG("PlaybackPanel::zoomPrimaryRangeToAttack axis=" + String(dim)
+        + " oldX=" + String(x)
+        + " oldDepth=" + String(oldDepth)
+        + " newDepth=" + String(depth));
 
     morphPanel->setViewDepth(dim, depth);
     setProgress(0.f, true);
@@ -70,6 +134,11 @@ void PlaybackPanel::zoomPrimaryRangeToAttack() {
 
 void PlaybackPanel::zoomPrimaryRangeToFull() {
     int dim = getSetting(CurrentMorphAxis);
+    float oldDepth = morphPanel->getDepth(dim);
+
+    DBG("PlaybackPanel::zoomPrimaryRangeToFull axis=" + String(dim)
+        + " oldX=" + String(x)
+        + " oldDepth=" + String(oldDepth));
 
     morphPanel->setViewDepth(dim, 1.f);
     setProgress(0.f, true);
@@ -148,6 +217,12 @@ void PlaybackPanel::resized()
 }
 
 void PlaybackPanel::mouseDown(const MouseEvent& e) {
+    DBG("PlaybackPanel::mouseDown x=" + String(e.x)
+        + " y=" + String(e.y)
+        + " original=" + (e.originalComponent != nullptr ? e.originalComponent->getName() : String("<null>"))
+        + " attackBounds=" + attkZoomIcon.getBounds().toString()
+        + " fullBounds=" + zoomOutIcon.getBounds().toString());
+
 	update(e);
 	repaint();
 }
