@@ -401,6 +401,8 @@ juce::Component* Waveform3D::getComponent(int which) {
     switch (which) {
         case CycleTour::TargLayerEnable: 	return &panelControls->enableCurrent;
         case CycleTour::TargLayerAdder: 	return &panelControls->addRemover;
+        case CycleTour::TargLayerAddButton: return &panelControls->addRemover.add;
+        case CycleTour::TargLayerRemoveButton: return &panelControls->addRemover.remove;
         case CycleTour::TargScratchBox: 	return &panelControls->scratchSelector;
         case CycleTour::TargLayerSlct: 		return panelControls->layerSelector.get();
         case CycleTour::TargPan:			return layerPan;

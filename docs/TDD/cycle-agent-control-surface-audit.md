@@ -27,7 +27,7 @@ From `CycleAutomation.cpp`:
 - 19 inspectable areas are listed in `kInspectableAreas`.
 - 12 `TourGuide` areas are scanned for named targets in `kTourGuideAreas`.
 - 96 named targets are listed in `kInspectableTargets`.
-- 24 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
+- 25 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
 
 Named coverage is strongest for:
 
@@ -134,8 +134,12 @@ Needs target naming:
 
 - all effect enable buttons, not only semantic enablement,
 - all `LayerAddRemover` add/remove buttons as separate targets instead of only
-  container targets,
+  container targets. Started for waveform, spectrum, guide-curve, and unison
+  panels through shared `TargLayerAddButton` and `TargLayerRemoveButton`
+  targets,
 - all `LayerUpDownMover` up/down buttons,
+  started for spectrum panels through `TargLayerMoveUpButton` and
+  `TargLayerMoveDownButton`,
 - `ModMatrixPanel` close/add-source/add-destination buttons,
 - preset page previous/next/accept/cancel and search/filter controls,
 - quality dialog apply/close and combo controls,

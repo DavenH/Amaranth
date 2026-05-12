@@ -98,7 +98,9 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     B(TargScratchLyr),     B(TargSustLoop);
 
     B(TargDomains),        B(TargLayerEnable),   B(TargLayerMode),      B(TargLayerAdder);
-    B(TargLayerMover),     B(TargLayerSlct),     B(TargScratchBox),     B(TargDeconv);
+    B(TargLayerAddButton), B(TargLayerRemoveButton);
+    B(TargLayerMover),     B(TargLayerMoveUpButton), B(TargLayerMoveDownButton), B(TargLayerSlct);
+    B(TargScratchBox),     B(TargDeconv);
     B(TargPhaseUp),        B(TargPan),           B(TargRange),          B(TargMeshSelector);
     B(TargModelCycle);
 

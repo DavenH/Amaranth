@@ -1,0 +1,41 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargLayerAddButton"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargLayerRemoveButton"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargLayerAddButton",
+      "click": true,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "setControl",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargLayerRemoveButton",
+      "click": true,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaSpectrogram",
+      "target": "TargLayerMoveUpButton"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaSpectrogram",
+      "target": "TargLayerMoveDownButton"
+    }
+  ],
+  "quit": true
+}

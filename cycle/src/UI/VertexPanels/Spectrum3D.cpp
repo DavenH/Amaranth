@@ -580,7 +580,11 @@ juce::Component* Spectrum3D::getComponent(int which) {
         case CycleTour::TargLayerEnable: 	return &panelControls->enableCurrent;
         case CycleTour::TargScratchBox:		return &panelControls->scratchSelector;
         case CycleTour::TargLayerAdder:		return &panelControls->addRemover;
+        case CycleTour::TargLayerAddButton: return &panelControls->addRemover.add;
+        case CycleTour::TargLayerRemoveButton: return &panelControls->addRemover.remove;
         case CycleTour::TargLayerMover:		return &panelControls->upDownMover;
+        case CycleTour::TargLayerMoveUpButton: return &panelControls->upDownMover.up;
+        case CycleTour::TargLayerMoveDownButton: return &panelControls->upDownMover.down;
         case CycleTour::TargLayerSlct:		return panelControls->layerSelector.get();
         case CycleTour::TargMeshSelector:	return meshSelector.get();
         default: break;

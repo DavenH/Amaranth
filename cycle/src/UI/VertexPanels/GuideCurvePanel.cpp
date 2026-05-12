@@ -632,6 +632,8 @@ juce::Component* GuideCurvePanel::getComponent(int which) {
         case CycleTour::TargDfrmPhase: 		return &phaseOffset;
         case CycleTour::TargDfrmMeshSlct: 	return meshSelector.get();
         case CycleTour::TargDfrmLayerAdd:	return &panelControls->addRemover;
+        case CycleTour::TargLayerAddButton: return &panelControls->addRemover.add;
+        case CycleTour::TargLayerRemoveButton: return &panelControls->addRemover.remove;
         case CycleTour::TargDfrmLayerSlct:	return panelControls->layerSelector.get();
         default:
             break;
