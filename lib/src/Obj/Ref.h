@@ -19,6 +19,7 @@ public:
     T* operator->()             { return object;    }
     const T* operator->() const { return object;    }
     T* get()                    { return object;    }
+    T* get() const              { return object;    }
 
     Ref& operator=(T* pointer) {
         if (object == 0)

@@ -1,5 +1,9 @@
 #pragma once
 
+#include "JuceHeader.h"
+
+#include <Definitions.h>
+
 #if PLUGIN_MODE
 
 #include <vector>
@@ -43,6 +47,7 @@ public:
     void processBlock (AudioSampleBuffer& buffer, MidiBuffer& midiMessages) override;
     void documentAboutToLoad() override {}
     void documentHasLoaded() override;
+    void presetHasLoaded();
     void updateLatency();
 
     void setParameter (int index, float newValue) override;
@@ -80,7 +85,7 @@ public:
     const String getOutputChannelName (int channelIndex) const override { return String (channelIndex + 1); }
     const String getName() const override;
 
-    AudioProcessorEditor* createEditor() override = 0;
+    AudioProcessorEditor* createEditor() override;
 
 private:
     bool suspendStateRead;

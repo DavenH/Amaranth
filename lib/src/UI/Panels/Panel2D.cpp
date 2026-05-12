@@ -9,12 +9,16 @@
 #include "../../App/MeshLibrary.h"
 #include "../../App/SingletonRepo.h"
 #include "../../Array/Buffer.h"
+#include "../../Curve/Curve.h"
 #include "../../Curve/Intercept.h"
-#include "../../Curve/MeshRasterizer.h"
+#include "../../Obj/ColorPoint.h"
+#include "../../Obj/CurveLine.h"
 #include "../../Inter/Interactor.h"
 #include "../../Util/Arithmetic.h"
 #include "../../Util/Geometry.h"
 #include "../../UI/Layout/BoundWrapper.h"
+
+using std::ostream;
 
 namespace {
 
@@ -60,10 +64,10 @@ void Panel2D::init() {
 }
 
 void Panel2D::contractToRange(bool includeX) {
-    RasterizerData& data = interactor->getRasterizer()->getRastData();
-    ScopedLock dataLock(data.lock);
+    auto snapshot = interactor->rasterizerSnapshot();
+    ScopedLock dataLock(snapshot.lock());
 
-    zoomPanel->contractToRange(data.waveY);
+    zoomPanel->contractToRange(snapshot.waveY());
 }
 
 void Panel2D::drawCurvesAndSurfaces() {
@@ -77,30 +81,30 @@ void Panel2D::drawCurvesAndSurfaces() {
     bool reduceAlpha     = !isMeshEnabled();
     Color colourA        = colorA.withAlpha(reduceAlpha ? 0.55f : 1.f);
     Color colourB        = colorB.withAlpha(reduceAlpha ? 0.55f : 1.f);
-    RasterizerData& data = interactor->getRasterizer()->getRastData();
+    auto snapshot = interactor->rasterizerSnapshot();
 
     Buffer<float> a;
 
     {
         Buffer<float> waveY;
         Buffer<float> waveX;
-        ScopedLock sl(data.lock);
+        ScopedLock sl(snapshot.lock());
 
-        waveX = data.waveX;
-        waveY = data.waveY;
+        waveX = snapshot.waveX();
+        waveY = snapshot.waveY();
 
         if(waveX.size() < 2) {
             if (shouldLog) {
                 DBG(panelName + "::drawCurvesAndSurfaces skip waveX=" + String(waveX.size())
                     + " waveY=" + String(waveY.size())
-                    + " zeroIndex=" + String(data.zeroIndex)
-                    + " oneIndex=" + String(data.oneIndex));
+                    + " zeroIndex=" + String(snapshot.zeroIndex())
+                    + " oneIndex=" + String(snapshot.oneIndex()));
             }
             return;
         }
 
-        int istart  = extendsX ? Arithmetic::binarySearch(xLimit.getStart(), waveX) : data.zeroIndex;
-        int iend    = extendsX ? Arithmetic::binarySearch(xLimit.getEnd(), waveX) : jmin(waveX.size() - 1, data.oneIndex + 4);
+        int istart  = extendsX ? Arithmetic::binarySearch(xLimit.getStart(), waveX) : snapshot.zeroIndex();
+        int iend    = extendsX ? Arithmetic::binarySearch(xLimit.getEnd(), waveX) : jmin(waveX.size() - 1, snapshot.oneIndex() + 4);
 
         if(istart > 4) {
             istart -= 4;
@@ -210,9 +214,9 @@ void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
 
 void Panel2D::drawInterceptLines() {
     {
-        RasterizerData& rastData = interactor->getRasterizer()->getRastData();
-        ScopedLock sl(rastData.lock);
-        const vector<Intercept>& intercepts = rastData.intercepts;
+        auto snapshot = interactor->rasterizerSnapshot();
+        ScopedLock sl(snapshot.lock());
+        const vector<Intercept>& intercepts = snapshot.intercepts();
 
         if(intercepts.empty()) {
             return;
@@ -270,10 +274,10 @@ void Panel2D::highlightCurrentIntercept()
         point.x = verts[freeIdx].x;
         point.y = verts[freeIdx].y;
     } else {
-        RasterizerData& data = interactor->getRasterizer()->getRastData();
-        ScopedLock dataLock(data.lock);
+        auto snapshot = interactor->rasterizerSnapshot();
+        ScopedLock dataLock(snapshot.lock());
 
-        const vector<Intercept>& icpts = data.intercepts;
+        const vector<Intercept>& icpts = snapshot.intercepts();
 
         if(! isPositiveAndBelow(icptIdx, (int) icpts.size())) {
             return;
@@ -307,17 +311,17 @@ void Panel2D::prepareAlpha(const Buffer<float>& y, Buffer<float> alpha, float ba
 }
 
 void Panel2D::drawDepthLinesAndVerts() {
-    RasterizerData& data = interactor->getRasterizer()->getRastData();
+    auto snapshot = interactor->rasterizerSnapshot();
 
-    if(data.colorPoints.empty()) {
+    if(snapshot.colorPoints().empty()) {
         return;
     }
 
     vector<ColorPoint> points;
 
     {
-        ScopedLock sl(data.lock);
-        points = data.colorPoints;
+        ScopedLock sl(snapshot.lock());
+        points = snapshot.colorPoints();
     }
 
     Color clr;
@@ -379,8 +383,8 @@ void Panel2D::drawDepthLinesAndVerts() {
 }
 
 void Panel2D::drawGuideCurveTags() {
-    RasterizerData& data  = interactor->getRasterizer()->getRastData();
-    vector<Curve>& curves = data.curves;
+    auto snapshot         = interactor->rasterizerSnapshot();
+    vector<Curve>& curves = snapshot.curves();
 
     Color colors[Vertex::numElements];
     colors[Vertex::Time]  = Color(0.6f, 0.6f, 0.6f, 1.f);
@@ -390,7 +394,7 @@ void Panel2D::drawGuideCurveTags() {
     colors[Vertex::Blue]  = Color(0.3f, 0.4f, 0.65f, 1.f);
     colors[Vertex::Curve] = Color(0.7f, 0.5f, 0.8f, 1.f);
 
-    ScopedLock sl2(data.lock);
+    ScopedLock sl2(snapshot.lock());
 
     PanelRenderer* renderer = getRenderer(this);
     jassert(renderer != nullptr);

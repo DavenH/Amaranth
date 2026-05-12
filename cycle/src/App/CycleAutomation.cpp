@@ -12,7 +12,6 @@
 #include <Array/ScopedAlloc.h>
 #include <Audio/AudioHub.h>
 #include <Curve/Mesh.h>
-#include <Curve/MeshRasterizer.h>
 #include <Curve/Vertex.h>
 #include <Curve/VertCube.h>
 #include <Definitions.h>
@@ -426,9 +425,11 @@ namespace {
     }
 
     bool drainMessageLoop(int delayMs) {
+#if JUCE_MODAL_LOOPS_PERMITTED
         if (MessageManager::getInstance()->isThisTheMessageThread()) {
             return MessageManager::getInstance()->runDispatchLoopUntil(delayMs);
         }
+#endif
 
         Thread::sleep(delayMs);
         return false;
@@ -921,7 +922,7 @@ namespace {
         float x = vertex->values[interactor.dims.x];
         float y = vertex->values[interactor.dims.y];
 
-        if (interactor.getRasterizer() != nullptr && interactor.getRasterizer()->wrapsVertices()) {
+        if (interactor.rasterizerWrapsVertices()) {
             if (interactor.dims.x == Vertex::Phase && x > 1.0f) {
                 x -= 1.0f;
             }

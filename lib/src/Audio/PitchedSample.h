@@ -9,9 +9,10 @@
 using std::vector;
 
 class SingletonRepo;
+class EnvRasterizer;
+class FXRasterizer;
 class Mesh;
 class MeshLibrary;
-class MeshRasterizer;
 
 class PitchFrame {
 public:
@@ -61,7 +62,12 @@ public:
     MorphPosition getBox();
 
     void createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti);
-    void createPeriodsFromEnv(MeshLibrary& meshLibrary, MeshRasterizer* rast);
+    void createPeriodsFromEnv(
+            MeshLibrary& meshLibrary,
+            EnvRasterizer* rasterizer);
+    void createPeriodsFromEnv(
+            MeshLibrary& meshLibrary,
+            FXRasterizer* rasterizer);
     void shiftOctave(bool up);
 
     void writeXML(XmlElement* element) const override;

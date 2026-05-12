@@ -3,7 +3,7 @@
 #include <App/MeshLibrary.h>
 #include <Array/ScopedAlloc.h>
 #include <Algo/Convolver.h>
-#include <Curve/MeshRasterizer.h>
+#include <Curve/Rasterization/TrilinearMeshRasterizer.h>
 #include <Obj/Ref.h>
 #include "CycleBasedVoice.h"
 #include "VoiceParameterGroup.h"
@@ -30,8 +30,8 @@ public:
 	void updateValue(int outputId, int dim, float value) override;
 
 private:
-	MeshRasterizer freqRasterizer;
-	MeshRasterizer phaseRasterizer;
+	::Rasterization::TrilinearMeshRasterizer freqRasterizer;
+	::Rasterization::TrilinearMeshRasterizer phaseRasterizer;
 
 	// TODO use stereo buffers, use some workbuffer for allocation
 	ScopedAlloc<Float32> magnitudes[2];

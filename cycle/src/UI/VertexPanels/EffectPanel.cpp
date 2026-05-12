@@ -45,7 +45,8 @@ EffectPanel::EffectPanel(SingletonRepo* repo, const String& name, bool haveVertZ
     colorA = Color(0.8f, 0.8, 0.9f);
     colorB = Color(0.8f, 0.8, 0.9f);
 
-    rasterizer = &localRasterizer;
+    localRasterizer.setDims(dims);
+    setRasterizer(&localRasterizer);
     interactor = this;
 
     vertexProps.sliderApplicable[Vertex::Time] 	= false;
@@ -127,4 +128,3 @@ bool EffectPanel::addNewCube(float startTime, float x, float y, float curve) {
 bool EffectPanel::isMeshEnabled() const {
     return isEffectEnabled();
 }
-

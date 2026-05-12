@@ -3,7 +3,7 @@
 #include <App/Doc/PresetJson.h>
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
-#include <Curve/GuideCurveProvider.h>
+#include <Audio/PluginProcessor.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Panels/CommonGfx.h>
 #include <UI/Widgets/Knob.h>
@@ -106,9 +106,8 @@ void WaveshaperUI::init() {
     createNameImage("Waveshaper", false, true);
 
     waveshaper = &getObj(SynthAudioSource).getWaveshaper();
-    waveshaper->setRasterizer(rasterizer);
+    waveshaper->setRasterizer(&localRasterizer);
 
-    rasterizer->setGuideCurveProvider(&getObj(GuideCurvePanel));
     setMeshAndUpdate(getObj(MeshLibrary).getEffectiveMesh(layerType));
 
     selector = std::make_unique<MeshSelector<Mesh>>(repo, this, "waveshaper", "mesh", false, true, true);
@@ -164,18 +163,18 @@ void WaveshaperUI::postCurveDraw() {
 void WaveshaperUI::setMeshAndUpdate(Mesh* mesh) {
     DBG("WaveshaperUI::setMeshAndUpdate " + describeEffectMesh(mesh));
     if (mesh == nullptr) {
-        rasterizer->cleanUp();
-        rasterizer->setMesh(nullptr);
+        localRasterizer.cleanUp();
+        localRasterizer.setMesh(nullptr);
         waveshaper->clearTable();
         repaint();
         return;
     }
 
-    rasterizer->cleanUp();
-    rasterizer->setMesh(mesh);
+    localRasterizer.cleanUp();
+    localRasterizer.setMesh(mesh);
 
     if (mesh->getNumVerts() > 0) {
-        rasterizer->performUpdate(Update);
+        localRasterizer.performUpdate(Update);
         waveshaper->rasterizeTable();
     } else {
         waveshaper->clearTable();
@@ -247,10 +246,11 @@ bool WaveshaperUI::updateDsp(int knobIndex, double knobValue, bool doFurtherUpda
 }
 
 void WaveshaperUI::updateDspSync() {
-    rasterizer->performUpdate(Update);
+    localRasterizer.performUpdate(Update);
 
-    if (isEffectEnabled())
+    if (isEffectEnabled()) {
         waveshaper->rasterizeTable();
+    }
 }
 
 Mesh* WaveshaperUI::getCurrentMesh() {

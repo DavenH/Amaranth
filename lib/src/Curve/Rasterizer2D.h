@@ -1,44 +1,24 @@
 #pragma once
 
-#include <algorithm>
 #include "Intercept.h"
 #include "Curve.h"
-#include "MeshRasterizer.h"
+#include "Rasterization/PointListWaveformRasterizer.h"
+#include "Rasterization/Policies/Curves/CurvePolicies.h"
+#include "Rasterization/Sampling/WaveformSampler.h"
+#include "../Array/ScopedAlloc.h"
+#include "../Design/Updating/Updateable.h"
 
-class Rasterizer2D: public MeshRasterizer {
+class Rasterizer2D {
 public:
     explicit Rasterizer2D(vector<Intercept>& verts, bool cyclic = false)
-            : verts(verts), cyclic(cyclic) {
-        unsampleable = false;
-    }
-
-    void calcCrossPoints() override {
-        if (verts.empty()) {
-            cleanUp();
-            return;
-        }
-
-        std::sort(verts.begin(), verts.end());
-
-        if(cyclic) {
-            padIcptsWrapped(verts, curves);
-        } else {
-            padIcpts(verts, curves);
-        }
-
-        float base = 0.1f / float(Curve::resolution);
-
-        setResolutionIndices(base);
-
-        for(auto & curve : curves) {
-            curve.recalculateCurve();
-        }
-
-        calcWaveform();
+            : points(verts), cyclic(cyclic) {
         unsampleable = false;
     }
 
     void updateCurve(int index, const Intercept& position) {
+        vector<Curve>& curves = pointListRasterizer.result().curves;
+        Rasterization::WaveformBuffers& waveform = pointListRasterizer.result().waveform;
+
         jassert(index < curves.size());
 
         if(index < 1 || index > (int) curves.size() - 2) {
@@ -72,6 +52,9 @@ public:
     }
 
     void updateWaveform(int index) {
+        vector<Curve>& curves = pointListRasterizer.result().curves;
+        Rasterization::WaveformBuffers& waveform = pointListRasterizer.result().waveform;
+
         int res         = Curve::resolution / 2;
         int startIdx    = jmax(0, index - 1);
         int endIdx      = jmin((int) curves.size() - 1, index + 2);
@@ -98,6 +81,8 @@ public:
             float t1x = 0, t1y = 0;
             float t2x = 0, t2y = 0;
 
+            const float* transferTable = Rasterization::TransferTable::values();
+
             for (int i = 0; i < minCurveRes; ++i) {
                 xferValue = transferTable[i * xferInc];
                 indexA = (i << thisShift) + offset;
@@ -109,8 +94,8 @@ public:
                 t2x = nextCurve.transformX[indexB] * xferValue;
                 t2y = nextCurve.transformY[indexB] * xferValue;
 
-                waveX[waveIdx] = t1x + t2x;
-                waveY[waveIdx] = t1y + t2y;
+                waveform.waveX[waveIdx] = t1x + t2x;
+                waveform.waveY[waveIdx] = t1y + t2y;
 
                 ++waveIdx;
             }
@@ -120,14 +105,14 @@ public:
         int waveEnd     = waveIdx;
         int size        = waveEnd - waveStart;
 
-        if(waveEnd == waveX.size()) {
+        if(waveEnd == waveform.waveX.size()) {
             --size;
         }
 
-        Buffer<Float32> ex   = waveX.section(waveStart, size);
-        Buffer<float> why   = waveY.section(waveStart, size);
-        Buffer<float> diffx = diffX.section(waveStart, size);
-        Buffer<float> slp   = slope.section(waveStart, size);
+        Buffer<Float32> ex   = waveform.waveX.section(waveStart, size);
+        Buffer<float> why   = waveform.waveY.section(waveStart, size);
+        Buffer<float> diffx = waveform.diffX.section(waveStart, size);
+        Buffer<float> slp   = waveform.slope.section(waveStart, size);
 
         VecOps::diff(ex, diffx);
         diffx.threshLT(1e-6f);
@@ -139,13 +124,88 @@ public:
         // ippsDiv_32f_I(diffx, slp, size);
     }
 
+    void performUpdate(UpdateType updateType) {
+        if (updateType == Update) {
+            updateWaveform();
+        }
+    }
+
+    void updateWaveform() {
+        renderPointListWaveform();
+    }
+
+    void cleanUp() {
+        pointListRasterizer.cleanUp();
+        paddingSize = getPaddingSize();
+        unsampleable = true;
+    }
+
+    void validateCurves() {
+        const vector<Curve>& curves = pointListRasterizer.result().curves;
+
+        for (int i = 0; i < (int) curves.size() - 1; ++i) {
+            jassert(curves[i].b.x == curves[i + 1].a.x);
+            jassert(curves[i].c.x == curves[i + 1].b.x);
+        }
+    }
+
+    Rasterization::RasterizationRequest createRasterizationRequest() const {
+        Rasterization::RasterizationRequest request;
+        request.cyclic = cyclic;
+        request.paddingSize = paddingSize;
+
+        return request;
+    }
+
+    template<typename T>
+    T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
+        return Rasterization::WaveformSampler::sampleWithInterval(
+                pointListRasterizer.result().waveform,
+                buffer,
+                delta,
+                phase);
+    }
+
+    bool isSampleable() const {
+        return !unsampleable && pointListRasterizer.sampler().isSampleable();
+    }
+
+    Buffer<float> getWaveX() { return pointListRasterizer.result().waveform.waveX; }
+    Buffer<float> getWaveY() { return pointListRasterizer.result().waveform.waveY; }
+
     void setCyclicity(bool isCyclic)    { cyclic = isCyclic;    }
     bool isCyclic() const               { return cyclic;        }
     static int getPaddingSize()         { return 2;             }
 
+private:
+    void renderPointListWaveform();
+
 protected:
+    vector<Intercept>& points;
+    Rasterization::PointListWaveformRasterizer pointListRasterizer;
+    int paddingSize { getPaddingSize() };
+    bool needsResorting {};
+    bool unsampleable { true };
     bool cyclic;
-    vector<Intercept>& verts;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Rasterizer2D)
 };
+
+inline void Rasterizer2D::renderPointListWaveform() {
+    if (points.empty()) {
+        cleanUp();
+        return;
+    }
+
+    Rasterization::RasterizationRequest request = createRasterizationRequest();
+    request.cyclic = cyclic;
+
+    const auto& result = pointListRasterizer.renderIntercepts(points, request);
+    if (!result.sampleable) {
+        cleanUp();
+        return;
+    }
+
+    paddingSize = result.paddingSize;
+    unsampleable = false;
+}

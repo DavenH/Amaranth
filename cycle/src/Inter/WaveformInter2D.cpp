@@ -28,7 +28,9 @@ WaveformInter2D::WaveformInter2D(SingletonRepo* repo) :
 
 void WaveformInter2D::init() {
     Interactor::init();
-    setRasterizer(&getObj(TimeRasterizer));
+    auto* rasterizer = &getObj(TimeRasterizer);
+    rasterizer->setDims(dims);
+    setRasterizer(rasterizer);
 }
 
 void WaveformInter2D::showCoordinates() {

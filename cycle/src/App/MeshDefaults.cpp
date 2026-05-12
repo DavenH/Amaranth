@@ -195,9 +195,10 @@ namespace {
         int originalLayerType = interactor.layerType;
         bool originalCollision = getSetting(CollisionDetection);
         bool originalSuspendUndo = interactor.suspendUndo;
-        MeshRasterizer* originalRast = interactor.getRasterizer();
+        EnvRasterizer* originalRast = interactor.getRast(originalEnv);
 
         rast->setMesh(mesh);
+        rast->setDims(interactor.dims);
         rast->setMode(EnvRasterizer::NormalState);
         interactor.setRasterizer(rast);
         interactor.layerType = layerType;
@@ -247,9 +248,7 @@ namespace {
         getSetting(CurrentEnvGroup) = originalEnv;
         interactor.layerType = originalLayerType;
 
-        if (originalRast != nullptr) {
-            interactor.setRasterizer(originalRast);
-        }
+        interactor.setRasterizer(originalRast);
     }
 }
 
@@ -272,13 +271,13 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
     // TODO(daven): This app-specific migration should eventually live behind an
     // explicit app extension/migration hook rather than Cycle post-load code.
     if (mesh == nullptr || mesh->getNumVerts() == 0) {
-        DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
-            + " reason=empty " + describeMeshGeometry(mesh));
+        // DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
+        //     + " reason=empty " + describeMeshGeometry(mesh));
         return;
     }
 
-    DBG("MeshDefaults::migrateLegacyPaddingIfNeeded before group=" + layerGroupName(layerType)
-        + " " + describeMeshGeometry(mesh));
+    // DBG("MeshDefaults::migrateLegacyPaddingIfNeeded before group=" + layerGroupName(layerType)
+    //     + " " + describeMeshGeometry(mesh));
 
     switch (layerType) {
         case LayerGroups::GroupGuideCurve: {
@@ -286,8 +285,8 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
             VertexRange xRange = getVertexRange(mesh, Vertex::Phase);
 
             if (xRange.min >= padding * 0.75f && xRange.max <= 1.f - padding * 0.75f) {
-                DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
-                    + " reason=already-padded padding=" + String(padding));
+                // DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
+                //     + " reason=already-padded padding=" + String(padding));
                 return;
             }
 
@@ -302,8 +301,8 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
 
             if (rangeAlreadyUsesEffectPadding(xRange, padding, true) &&
                 rangeAlreadyUsesEffectPadding(yRange, padding, true)) {
-                DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
-                    + " reason=already-padded padding=" + String(padding));
+                // DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
+                //     + " reason=already-padded padding=" + String(padding));
                 return;
             }
 
@@ -317,8 +316,8 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
             VertexRange xRange = getVertexRange(mesh, Vertex::Phase);
 
             if (rangeAlreadyUsesEffectPadding(xRange, padding, false)) {
-                DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
-                    + " reason=already-padded padding=" + String(padding));
+                // DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
+                //     + " reason=already-padded padding=" + String(padding));
                 return;
             }
 
@@ -327,14 +326,14 @@ void MeshDefaults::migrateLegacyPaddingIfNeeded(SingletonRepo* repo, int layerTy
         }
 
         default:
-            DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
-                + " reason=unsupported");
+            // DBG("MeshDefaults::migrateLegacyPaddingIfNeeded skip group=" + layerGroupName(layerType)
+            //     + " reason=unsupported");
             return;
     }
 
     mesh->setVersion(Constants::MeshFormatVersion);
     mesh->validate();
 
-    DBG("MeshDefaults::migrateLegacyPaddingIfNeeded after group=" + layerGroupName(layerType)
-        + " " + describeMeshGeometry(mesh));
+    // DBG("MeshDefaults::migrateLegacyPaddingIfNeeded after group=" + layerGroupName(layerType)
+    //     + " " + describeMeshGeometry(mesh));
 }

@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openFactoryPreset",
-      "preset": "AfricanHorn",
+      "preset": "african-horn",
       "waitForIdle": true,
       "idleDelayMs": 300
     },

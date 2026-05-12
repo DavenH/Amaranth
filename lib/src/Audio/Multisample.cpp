@@ -6,16 +6,19 @@
 #include "../App/Doc/PresetJson.h"
 #include "../App/MeshLibrary.h"
 #include "../App/SingletonRepo.h"
+#include "../Curve/FXRasterizer.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
 #include "../Util/Util.h"
 #include "../Inter/MorphPositioner.h"
 #include "../Definitions.h"
 
-Multisample::Multisample(SingletonRepo* repo, MeshRasterizer* rasterizer) :
+Multisample::Multisample(
+        SingletonRepo* repo,
+        FXRasterizer* pitchRasterizer) :
         SingletonAccessor(repo, "Multisample")
-    ,   current(nullptr)
-    ,   waveRasterizer(rasterizer) {
+    ,   pitchRasterizer(pitchRasterizer)
+    ,   current(nullptr) {
 }
 
 void Multisample::ensureSampleHasMeshLayer(PitchedSample* sample, int preferredIndex) {
@@ -377,7 +380,9 @@ bool Multisample::readXML(const XmlElement* element) {
 
         ensureSampleHasMeshLayer(sample.get(),
                                  sample->meshLayerIndex >= 0 ? sample->meshLayerIndex : samples.size());
-        sample->createPeriodsFromEnv(getObj(MeshLibrary), waveRasterizer);
+        sample->createPeriodsFromEnv(
+                getObj(MeshLibrary),
+                pitchRasterizer);
 
         samples.add(sample.release());
     }
@@ -462,7 +467,9 @@ void Multisample::shiftAllByOctave(bool up) {
         sample->shiftOctave(up);
         PitchTracker::refineFrames(sample, sample->getAveragePeriod());
         sample->createEnvFromPeriods(getObj(MeshLibrary), true);
-        sample->createPeriodsFromEnv(getObj(MeshLibrary), waveRasterizer);
+        sample->createPeriodsFromEnv(
+                getObj(MeshLibrary),
+                pitchRasterizer);
     }
 
     fillRanges();

@@ -189,8 +189,8 @@ bool IrModellerUI::paramTriggersAggregateUpdate(int knobIndex) {
 void IrModellerUI::setMeshAndUpdate(Mesh* mesh, bool doRepaint) {
     DBG("IrModellerUI::setMeshAndUpdate " + describeEffectMesh(mesh)
         + " repaint=" + String((int) doRepaint));
-    rasterizer->cleanUp();
-    rasterizer->setMesh(mesh);
+    localRasterizer.cleanUp();
+    localRasterizer.setMesh(mesh);
     irModeller->setMesh(mesh);
 
     if (mesh != nullptr) {
@@ -350,7 +350,7 @@ bool IrModellerUI::updateDsp(int knobIndex, double knobValue, bool doFurtherUpda
 }
 
 void IrModellerUI::updateDspSync() {
-    irModeller->setMesh(rasterizer->getMesh());
+    irModeller->setMesh(getCurrentMesh());
     irModeller->setPendingAction(IrModeller::rasterize);
 }
 
@@ -667,26 +667,6 @@ void IrModellerUI::deconvolve() {
     Buffer<Complex32> waveComplex = wavFFT.getComplex() + 1;	// +1 removes dc offset bytes
 
     synthRast.ramp(1, -2 / float(pow2Size));
-
-    /*
-    GraphicTimeRasterizer& timeRast = getObj(GraphicTimeRasterizer);
-    MeshRasterizer::RenderState rendState;
-    MeshRasterizer::ScopedRenderState scopeState(&timeRast, &rendState);
-
-    timeRast.yellow = position;
-    timeRast.setLowresCurves(false);
-    timeRast.setCalcDepthDimensions(false);
-    timeRast.setScalingMode(MeshRasterizer::Bipolar);
-    timeRast.calcCrossPoints();
-
-    if(! timeRast.isSampleable())
-    {
-        showConsoleMsg("A waveshape must be defined");
-        return;
-    }
-
-    timeRast.samplePerfectly(1 / float(tSize), synthRast, 0);
-    */
 
     Transform fft;
     fft.allocate(pow2Size);

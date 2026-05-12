@@ -5,6 +5,7 @@
 #include "SpectrumInter3D.h"
 #include "../Audio/AudioSourceRepo.h"
 #include "../Audio/SynthAudioSource.h"
+#include "../Curve/GraphicRasterizer.h"
 #include "../Inter/SpectrumInter2D.h"
 #include "../UI/Widgets/MidiKeyboard.h"
 #include "../UI/Panels/Morphing/MorphPanel.h"
@@ -46,8 +47,10 @@ void SpectrumInter3D::initSelectionClient() {
 }
 
 void SpectrumInter3D::updateSelectionClient() {
-    if (selectionClient != nullptr && rasterizer != nullptr) {
-        selectionClient->initialise(this, rasterizer, layerType);
+    if (selectionClient != nullptr && hasRasterizer()) {
+        selectionClient->initialise(
+                this,
+                layerType);
     }
 }
 
@@ -58,6 +61,10 @@ void SpectrumInter3D::doExtraMouseUp() {
 }
 
 void SpectrumInter3D::meshSelectionChanged(Mesh* mesh) {
+    GraphicRasterizer* rasterizer = getSetting(MagnitudeDrawMode) == 1
+            ? &getObj(SpectRasterizer)
+            : &getObj(PhaseRasterizer);
+    rasterizer->setMesh(mesh);
     updateInterceptsWithMesh(mesh);
     display->repaint();
     getObj(SpectrumInter2D).update(Update);
@@ -106,7 +113,8 @@ String SpectrumInter3D::getYString(float yVal, int yIndex, const Column &col, fl
 }
 
 void SpectrumInter3D::updateRastDims() {
-    rasterizer->setDims(getObj(SpectrumInter2D).dims);
+    getObj(SpectRasterizer).setDims(getObj(SpectrumInter2D).dims);
+    getObj(PhaseRasterizer).setDims(getObj(SpectrumInter2D).dims);
 }
 
 Interactor* SpectrumInter3D::getOppositeInteractor() {
@@ -132,4 +140,3 @@ void SpectrumInter3D::exitClientLock(bool audioThreadApplicable) {
         getObj(SynthAudioSource).getLock().exit();
     }
 }
-

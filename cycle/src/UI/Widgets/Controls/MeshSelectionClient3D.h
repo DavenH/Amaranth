@@ -40,7 +40,6 @@ private:
     Ref<SelectionClientOwner> owner;
 
     Interactor* interactor {};
-    MeshRasterizer* rasterizer {};
 
     bool usedToViewVertsOnHover;
     int layerType {};
@@ -63,9 +62,10 @@ public:
     void exitClientLock() override {
     }
 
-    void initialise(Interactor* itr, MeshRasterizer* rast, int layerType) {
+    void initialise(
+            Interactor* itr,
+            int layerType) {
         interactor = itr;
-        rasterizer = rast;
 
         this->layerType = layerType;
     }
@@ -118,10 +118,8 @@ public:
     }
 
     void updateEverything(Mesh* mesh) {
-        rasterizer->setMesh(mesh);
-        rasterizer->update(Update);
-
         owner->meshSelectionChanged(mesh);
+        interactor->performRasterizerUpdate(Update);
     }
 
     Mesh* getCurrentMesh() override {

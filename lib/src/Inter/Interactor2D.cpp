@@ -18,17 +18,17 @@ Interactor2D::Interactor2D(SingletonRepo* repo, const String& name, const Dimens
 }
 
 bool Interactor2D::locateClosestElement() {
-    if (getRasterizer() == nullptr) {
+    if (!hasRasterizer()) {
         return Interactor::locateClosestElement();
     }
 
-    RasterizerData& rastData = getRasterizer()->getRastData();
+    auto snapshot = rasterizerSnapshot();
 
-    if (rastData.intercepts.empty() && depthVerts.empty()) {
+    if (snapshot.intercepts().empty() && depthVerts.empty()) {
         return Interactor::locateClosestElement();
     }
 
-    const vector<Intercept>& icpts = rastData.intercepts;
+    const vector<Intercept>& icpts = snapshot.intercepts();
 
     float dist = 1e7f;
     float x = state.currentMouse.x;
@@ -91,7 +91,7 @@ bool Interactor2D::locateClosestElement() {
     }
 
     if (icptIdx != -1) {
-        getStateValue(CurrentCurve) = icptIdx + rasterizer->getPaddingSize();
+        getStateValue(CurrentCurve) = icptIdx + getRasterizerPaddingSize();
     }
 
     // call virtual function that subclasses can use if wanted
@@ -119,10 +119,10 @@ void Interactor2D::doExtraMouseMoveAt(Point<int> localPos) {
 
     const float distThresPX = 7.f;
 
-    RasterizerData& rastData = rasterizer->getRastData();
+    auto snapshot = rasterizerSnapshot();
 
-    Buffer<Float32> waveX = rastData.waveX;
-    Buffer<Float32> waveY = rastData.waveY;
+    Buffer<Float32> waveX = snapshot.waveX();
+    Buffer<Float32> waveY = snapshot.waveY();
     bool inSelection     = finalSelection.contains(localPos);
 
     mouseFlag(WithinReshapeThresh) = false;
@@ -237,7 +237,7 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 
         flag(DidMeshChange) = true;
     } else if (actionIs(PaintingEdit)) {
-        const vector<Intercept>& icpts = rasterizer->getRastData().intercepts;
+        const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
 
         float diff;
 
@@ -326,15 +326,15 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 }
 
 void Interactor2D::doReshapeCurve(const MouseEvent& e) {
-    RasterizerData& data = rasterizer->getRastData();
+    auto snapshot = rasterizerSnapshot();
 
-    if (data.curves.empty()) {
+    if (snapshot.curves().empty()) {
         return;
     }
 
     flag(LoweredRes) = true;
 
-    const vector<Curve>& curves = data.curves;
+    const vector<Curve>& curves = snapshot.curves();
 
     {
         ScopedLock sl(vertexLock);
@@ -450,15 +450,15 @@ float Interactor2D::getVertexClickProximityThres() {
 
 Range<float> Interactor2D::getVertexPhaseLimits(Vertex* vert) {
     vector<Vertex*>& selected   = getSelected();
-    RasterizerData& rastData    = getRasterizer()->getRastData();
+    auto snapshot               = rasterizerSnapshot();
     ModifierKeys keys           = ModifierKeys::getCurrentModifiers();
 
-    bool testAdjacent = keys.isAltDown() && selected.size() == 1 && ! rastData.intercepts.empty();
+    bool testAdjacent = keys.isAltDown() && selected.size() == 1 && ! snapshot.intercepts().empty();
 
     if (testAdjacent) {
         float maximum = panel->getZoomPanel()->rect.xMaximum;
 
-        const vector<Intercept>& icpts = rastData.intercepts;
+        const vector<Intercept>& icpts = snapshot.intercepts();
         Range<float> limits = vertexLimits[dims.x];
 
         for (int i = 0; i < (int) icpts.size(); ++i) {

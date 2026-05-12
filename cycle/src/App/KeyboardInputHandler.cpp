@@ -2,7 +2,6 @@
 #include <App/EditWatcher.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Curve/MeshRasterizer.h>
 #include <Curve/Mesh.h>
 #include <Design/Updating/Updater.h>
 #include <Inter/UndoableMeshProcess.h>

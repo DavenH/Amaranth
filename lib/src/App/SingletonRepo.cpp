@@ -15,6 +15,7 @@
 #include "../App/Settings.h"
 #include "../Audio/AudioHub.h"
 #include "../Audio/PluginProcessor.h"
+#include "../Curve/Rasterization/Rasterizer.h"
 #include "../Curve/PathRepo.h"
 #include "../Design/Updating/Updater.h"
 #include "../UI/Panels/Panel.h"
@@ -120,9 +121,6 @@ void SingletonRepo::add(SingletonAccessor* accessor, int order) {
         panels.add(panel);
     }
 
-    if(auto* rasterizer = dynamic_cast<MeshRasterizer*>(accessor)) {
-        rasterizers.add(rasterizer);
-    }
 }
 
 void SingletonRepo::addExternal(SingletonAccessor* accessor, int order) {
@@ -138,9 +136,6 @@ void SingletonRepo::addExternal(SingletonAccessor* accessor, int order) {
         panels.add(panel);
     }
 
-    if(auto* rasterizer = dynamic_cast<MeshRasterizer*>(accessor)) {
-        rasterizers.add(rasterizer);
-    }
 }
 
 OutputStream& SingletonRepo::getDebugStream() {
@@ -191,10 +186,6 @@ void SingletonRepo::clearSingletons() {
 
 void SingletonRepo::setGuideCurveProvider(GuideCurveProvider* guideCurveProvider) {
     this->guideCurveProvider = guideCurveProvider;
-
-    for(auto rasterizer : rasterizers) {
-        rasterizer->setGuideCurveProvider(guideCurveProvider);
-    }
 }
 
 template<>

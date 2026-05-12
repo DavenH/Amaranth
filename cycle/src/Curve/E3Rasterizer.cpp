@@ -1,4 +1,5 @@
 #include <App/MeshLibrary.h>
+#include <App/Settings.h>
 #include <Curve/EnvelopeMesh.h>
 #include <Design/Updating/Updater.h>
 
@@ -10,13 +11,16 @@
 #include "../Util/CycleEnums.h"
 
 E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
-        SingletonAccessor(repo, "E3Rasterizer")
-    ,	MeshRasterizer("E3Rasterizer") {
-    lowResCurves 	= true;
-    cyclic 			= false;
-    calcDepthDims 	= false;
-    scalingType		= HalfBipolar;
-    xMaximum 		= 10.f;
+        SingletonAccessor(repo, "E3Rasterizer") {
+    auto& request = getRequest();
+    request.lowResCurves = true;
+    request.cyclic = false;
+    request.calcDepthDimensions = false;
+    request.scalingMode = Rasterization::PointScalingMode::HalfBipolar;
+    request.xMinimum = 0.f;
+    request.xMaximum = 10.f;
+    rasterizerData.paddingSize = getPaddingSize();
+    rasterizerData.wrapsVertices = request.cyclic;
 }
 
 void E3Rasterizer::init() {
@@ -24,10 +28,6 @@ void E3Rasterizer::init() {
 
 int E3Rasterizer::getIncrement() {
     return getObj(EnvelopeInter3D).isDetailReduced() ? 6 : 1;
-}
-
-int E3Rasterizer::getPrimaryViewDimension() {
-    return getSetting(CurrentMorphAxis);
 }
 
 void E3Rasterizer::performUpdate(UpdateType updateType) {
@@ -58,21 +58,39 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
     params.setExtraParams(res, -1, -1, true);
 
     ScopedLock sl(arrayLock);
-    mesh = getObj(MeshLibrary).getCurrentMesh(getObj(EnvelopeInter2D).layerType);
+    Mesh* currentMesh = getObj(MeshLibrary).getCurrentMesh(getObj(EnvelopeInter2D).layerType);
+    setMesh(currentMesh);
     getObj(VisualDsp).resizeArrays(params);
     int dependentAxis = getSetting(CurrentMorphAxis);
+    getRequest().primaryViewDimension = dependentAxis;
 
     for (int colIdx = 0; colIdx < gridSize; ++colIdx) {
         Column& col = columns[colIdx];
 
         MorphPosition& p = getMorphPosition();
         p[dependentAxis].setValueDirect(colIdx * invGrid);
-        calcCrossPoints(mesh, 0.f);
+        renderMesh(currentMesh);
 
-        if (isSampleable()) {
-            sampleWithInterval(col, invCol, 0.f);
+        auto waveformSampler = sampler();
+        if (waveformSampler.isSampleable()) {
+            waveformSampler.samplePerfectly(invCol, col, 0.f);
         } else {
             col.zero();
         }
     }
+}
+
+void E3Rasterizer::cleanUp() {
+    cleanTrilinearRasterization();
+}
+
+void E3Rasterizer::renderMesh(Mesh* mesh) {
+    if (mesh == nullptr || mesh->getNumCubes() == 0) {
+        cleanUp();
+        return;
+    }
+
+    setMesh(mesh);
+    renderTrilinearWaveform(0.f);
+    publishTrilinearSnapshot();
 }

@@ -6,6 +6,7 @@
 #include "../Curve/EnvelopeMesh.h"
 #include "../Curve/CollisionDetector.h"
 #include "../Curve/SimpleIcpt.h"
+#include "../Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h"
 #include "../Inter/UndoableMeshProcess.h"
 #include "../Obj/Ref.h"
 #include "../Thread/LockTracer.h"
@@ -14,7 +15,6 @@
 #include "../Util/NumberUtils.h"
 #include "../Util/CommonEnums.h"
 #include "../Curve/SurfaceLine.h"
-#include "../Curve/MeshRasterizer.h"
 #include "../Design/Updating/Updater.h"
 #include "../Definitions.h"
 
@@ -757,10 +757,11 @@ void Interactor3D::sliceLines(const Vertex2& start, const Vertex2& end) {
     MorphPosition pos = getOffsetPosition(true);
 
     for (auto* cube : mesh->getCubes()) {
-        if(! cube->intersectsMorphRect(dims.x, reduceData, pos))
+        if(! cube->intersectsMorphRect(dims.x, reduceData, pos)) {
             continue;
+        }
 
-        cube->getInterceptsFast(dims.x, reduceData, pos);
+        Rasterization::TrilinearMeshSlicer().slice(*cube, dims.x, reduceData, pos);
 
         SurfaceLine line(&reduceData.v0, &reduceData.v1, dims.x);
         Vertex2 point = line.getCrossPoint(start, end, dims.x, dims.y);
@@ -1080,17 +1081,10 @@ void Interactor3D::primaryDimensionChanged() {
 }
 
 void Interactor3D::updateRastDims() {
-    progressMark
-
-    if (rasterizer == nullptr) {
-        return;
-    }
-
-    rasterizer->setDims(dims);
 }
 
 void Interactor3D::updateInterceptsWithMesh(Mesh* mesh) {
-    if (rasterizer == nullptr) {
+    if (!hasRasterizer()) {
         return;
     }
 
@@ -1099,14 +1093,14 @@ void Interactor3D::updateInterceptsWithMesh(Mesh* mesh) {
 
     MorphPosition pos = getModPosition();
 
-    bool wrapsVerts = getRasterizer()->wrapsVertices();
+    bool wrapsVerts = rasterizerWrapsVertices();
 
     if(mesh == nullptr) {
         return;
     }
 
     for (auto& lit : mesh->getCubes()) {
-        lit->getInterceptsFast(dims.x, reduceData, pos);
+        Rasterization::TrilinearMeshSlicer().slice(*lit, dims.x, reduceData, pos);
 
         if(! reduceData.lineOverlaps) {
             continue;

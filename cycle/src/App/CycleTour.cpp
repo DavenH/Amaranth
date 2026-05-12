@@ -1260,7 +1260,25 @@ AutomationInspectable* CycleTour::getAutomationInspectable(const String& areaNam
         return nullptr;
     }
 
-    return dynamic_cast<AutomationInspectable*>(getTourGuide(areaStrings[areaName]));
+    Area area = areaStrings[areaName];
+
+    switch(area) {
+        case AreaWfrmWaveform3D:
+        case AreaMorphPanel:
+        case AreaVertexProps:
+        case AreaSpectrogram:
+        case AreaEnvelopes:
+        case AreaGenControls:
+        case AreaImpulse:
+        case AreaWaveshaper:
+        case AreaGuideCurves:
+        case AreaUnison:
+        case AreaModMatrix:
+        case AreaMasterCtrls:
+            return dynamic_cast<AutomationInspectable*>(getTourGuide(area));
+        default:
+            return nullptr;
+    }
 }
 
 Panel* CycleTour::areaToPanel(int which) {

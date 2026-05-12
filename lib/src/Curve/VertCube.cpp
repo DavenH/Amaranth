@@ -1,10 +1,9 @@
-#include "VertCube.h"
 #include "Mesh.h"
+#include "VertCube.h"
+#include "Rasterization/Interpolation/TrilinearMeshSlicer.h"
 #include "../Algo/Resampling.h"
 #include "../Obj/MorphPosition.h"
-#include "../Util/Arithmetic.h"
 #include "../Util/CommonEnums.h"
-#include "../Util/Geometry.h"
 #include "../Util/NumberUtils.h"
 
 VertCube::VertCube() {
@@ -178,99 +177,6 @@ void VertCube::getFinalIntercept(ReductionData& data, const MorphPosition& pos) 
     vertexAt(pos.time, arbitraryDimToUse, &data.v0, &data.v1, &data.v);
 }
 
-void VertCube::getInterceptsAccurate(int dim, ReductionData& data, const MorphPosition& pos) const {
-    data.pointOverlaps = true;
-    data.lineOverlaps = true;
-
-    Vertex2 poleA, poleB;
-    int dimX = 0, dimY = 0;
-
-    const bool poles[] = { LowPole, HighPole };
-
-    MorphPosition::getOtherDims(dim, dimX, dimY);
-    Vertex2 point(pos[dimX], pos[dimY]);
-    float primeVal = pos[dim];
-
-    for(int i = 0; i < 2; ++i) {
-        Face face = getFace(dim, poles[i]);
-
-        float xFracA = 1, xFracB = 1;
-        float yFracA = 1, yFracB = 1;
-
-        Vertex2 nnv(face.v00->values[dimX], face.v00->values[dimY]);
-        Vertex2 nxv(face.v01->values[dimX], face.v01->values[dimY]);
-        Vertex2 xnv(face.v10->values[dimX], face.v10->values[dimY]);
-        Vertex2 xxv(face.v11->values[dimX], face.v11->values[dimY]);
-
-        Vertex2 diffYminX = nxv - nnv;
-        Vertex2 diffXminY = xnv - nnv;
-        Vertex2 diffYmaxX = xxv - xnv;
-        Vertex2 diffXmaxY = xxv - nxv;
-
-        int intersectCount = 0;
-
-        float denom = (nnv - nxv).cross(xnv - xxv);
-        if (fabsf(denom) > 1e-4f) {
-            Vertex2 icptY = (nnv - nxv) * ((xxv - nxv).cross(xnv - xxv) / denom) + nxv;
-
-            if(Geometry::doLineSegmentsIntersect(icptY.x, icptY.y, point.x, point.y, nnv.x, nnv.y, nxv.x, nxv.y))
-                ++intersectCount;
-
-            float icptDenom = (point - icptY).cross(nnv - xnv);
-            xFracA = (xnv - icptY).cross(nnv - xnv) / icptDenom;
-
-            icptDenom = (point - icptY).cross(nxv - xxv);
-            xFracB = (xxv - icptY).cross(nxv - xxv) / icptDenom;
-        } else {
-            xFracA = xFracB = (point.x - nnv.x) / diffXminY.x;
-        }
-
-        if (xFracA >= 1 || xFracA < 0) {
-            data.pointOverlaps = false;
-            data.lineOverlaps = false;
-        }
-
-        denom = (nxv - xxv).cross(nnv - xnv);
-        if (fabsf(denom) > 1e-4f) {
-            Vertex2 icptX   = (nxv - xxv) * ((nxv - xxv).cross(nnv - xnv) / denom) + xxv;
-            Vertex2 diffPI  = point - icptX;
-
-            float icptDenom = (point - icptX).cross(nxv - nnv);
-            yFracA          = (nnv - icptX).cross(nxv - nnv) / icptDenom;
-
-            icptDenom       = (point - icptX).cross(xxv - xnv);
-            yFracB          = (xnv - icptX).cross(xxv - xnv) / icptDenom;
-        } else {
-            yFracA = yFracB = (point.y - nnv.y) / diffYminX.y;
-        }
-
-        if (xFracA >= 1 || xFracA < 0) {
-            data.pointOverlaps = false;
-            data.lineOverlaps = false;
-        }
-
-        float nnFrac = (1 - xFracA) * (1 - yFracA);
-        float xnFrac = xFracA       * (1 - yFracA);
-        float nxFrac = (1 - xFracB) * yFracB;
-        float xxFrac = xFracB       * yFracB;
-
-        data[i] = *face.v00 * nnFrac
-                  + *face.v10 * xnFrac
-                  + *face.v01 * nxFrac
-                  + *face.v11 * xxFrac;
-    }
-
-    if (data.pointOverlaps) {
-        float valA = data.v0.values[dim];
-        float valB = data.v1.values[dim];
-
-        // we want the containment test to include the lesser pointer and exclude the greater point
-        data.pointOverlaps &= (valA > valB) ?
-                valB <= primeVal && primeVal < valA :
-                valA <= primeVal && primeVal < valB;
-    }
-}
-
 bool VertCube::intersectsMorphRect(int dim, ReductionData& data, const MorphPosition& pos) const {
     Rectangle<float> rect = pos.toRect(dim);
 
@@ -294,65 +200,7 @@ bool VertCube::intersectsMorphRect(int dim, ReductionData& data, const MorphPosi
 }
 
 void VertCube::getInterceptsFast(int dim, ReductionData& data, const MorphPosition& pos) const {
-    data.pointOverlaps = false;
-    data.lineOverlaps = false;
-
-    int dimX = Vertex::Red, dimY = Vertex::Blue;
-
-    MorphPosition::getOtherDims(dim, dimX, dimY);
-    Vertex2 point(pos[dimX], pos[dimY]);
-
-    Face lowFace = getFace(dim, LowPole);
-
-    float nx = lowFace.v00->values[dimX];
-    float ny = lowFace.v00->values[dimY];
-    float xx = lowFace.v11->values[dimX];
-    float xy = lowFace.v11->values[dimY];
-
-    float x1 = jmin(nx, xx);
-    float y1 = jmin(ny, xy);
-    float x2 = jmax(nx, xx);
-    float y2 = jmax(ny, xy);
-
-    // only want upper inclusivity at the unit boundaries
-    if(x2 == 1.f) { x2 += 0.000001f; }
-    if(y2 == 1.f) { y2 += 0.000001f; }
-
-    if (point.x >= x1 && point.x < x2 && point.y >= y1 && point.y < y2) {
-        vertexAt(point.y, dimY, lowFace.v00, lowFace.v01, &data.v00);
-        vertexAt(point.y, dimY, lowFace.v10, lowFace.v11, &data.v10);
-        vertexAt(point.x, dimX, &data.v00,   &data.v10,   &data.v0);
-
-        Face highFace = getFace(dim, HighPole);
-
-        float nnx = highFace.v00->values[dimX];
-        float nny = highFace.v00->values[dimY];
-        float xxx = highFace.v11->values[dimX];
-        float xxy = highFace.v11->values[dimY];
-
-        x1 = jmin(nnx, xxx);
-        y1 = jmin(nny, xxy);
-        x2 = jmax(nnx, xxx);
-        y2 = jmax(nny, xxy);
-
-        if(x2 == 1.f) { x2 += 0.000001f; }
-        if(y2 == 1.f) { y2 += 0.000001f; }
-
-        if (point.x >= x1 && point.x < x2 && point.y >= y1 && point.y < y2) {
-            vertexAt(point.y, dimY, highFace.v00, highFace.v01, &data.v01);
-            vertexAt(point.y, dimY, highFace.v10, highFace.v11, &data.v11);
-            vertexAt(point.x, dimX, &data.v01,    &data.v11,    &data.v1);
-
-            data.lineOverlaps = true;
-
-            float primeVal = pos[dim];
-            float a = data.v0.values[dim];
-            float b = data.v1.values[dim];
-
-            data.pointOverlaps = (primeVal == 1.f || primeVal == 0.f) ?
-                    a == primeVal || b == primeVal : NumberUtils::withinExclUpper(primeVal, jmin(a, b), jmax(a, b));
-        }
-    }
+    Rasterization::TrilinearMeshSlicer().slice(*this, dim, data, pos);
 }
 
 void VertCube::getMultidimIntercept(

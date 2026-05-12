@@ -368,7 +368,7 @@ void VertexPropertiesPanel::updateSliderValues(bool ignoreChangeMessage)
 		props->previousGain = 0;
 	}
 
-	bool wrapsPhase = currentInteractor->getRasterizer()->wrapsVertices();
+    bool wrapsPhase = currentInteractor->rasterizerWrapsVertices();
 
 	set<VertCube*> lines;
 

@@ -13,6 +13,7 @@
 #include "Spectrum2D.h"
 #include "Spectrum3D.h"
 
+#include "../../Curve/GraphicRasterizer.h"
 #include <UI/Panels/OpenGLPanel3D.h>
 
 #include "../CycleDefs.h"
@@ -204,9 +205,8 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
     f2.vertexProps.dimensionNames.set(Vertex::Amp, isMags ? "Magn" : "Phase");
     f3.vertexProps.dimensionNames = f2.vertexProps.dimensionNames;
 
-    MeshRasterizer* rast = isMags ?
-            (MeshRasterizer*) &getObj(SpectRasterizer) :
-            (MeshRasterizer*) &getObj(PhaseRasterizer);
+    GraphicRasterizer* rasterizer = isMags ? &getObj(SpectRasterizer) : &getObj(PhaseRasterizer);
+    rasterizer->setMesh(meshLib->getEffectiveMesh(interactor->layerType));
 
     StringFunction shortStr = isMags ? dynStr : StringFunction().mul(5.f).pow(M_E);
     StringFunction longStr = isMags ? shortStr.withPostString(" dB") : shortStr.withPostString(L" \u03c0");
@@ -227,8 +227,8 @@ void Spectrum3D::modeChanged(bool isMags, bool updateInteractors) {
 
     dynRangeKnob->setName(isMags ? "range" : "width");
 
-    f3.setRasterizer(rast);
-    f2.setRasterizer(rast);
+    f3.setRasterizer(rasterizer);
+    f2.setRasterizer(rasterizer);
     f3.updateSelectionClient();
     panelControls->refreshSelector();
 
@@ -347,8 +347,11 @@ void Spectrum3D::layerChanged() {
 
     getObj(VertexPropertiesPanel).updateSliderValues(true);
 
-    interactor->getRasterizer()->setMesh(getObj(SpectrumInter3D).getMesh());
-    interactor->getRasterizer()->update(Update);
+    GraphicRasterizer* rasterizer = getSetting(MagnitudeDrawMode) == 1
+            ? &getObj(SpectRasterizer)
+            : &getObj(PhaseRasterizer);
+    rasterizer->setMesh(getObj(SpectrumInter3D).getMesh());
+    rasterizer->performUpdate(Update);
 
     getObj(SpectrumInter2D).update(Update);
     getObj(SpectrumInter3D).shallowUpdate();
@@ -613,8 +616,10 @@ CriticalSection& Spectrum3D::getGridLock() {
 }
 
 bool Spectrum3D::isSurfaceDetailReduced() {
-    auto* rasterizer = dynamic_cast<GraphicRasterizer*>(interactor->getRasterizer());
-    return rasterizer != nullptr && rasterizer->isDetailReduced();
+    auto& rasterizer = getSetting(MagnitudeDrawMode) == 1
+            ? getObj(SpectRasterizer)
+            : getObj(PhaseRasterizer);
+    return rasterizer.isDetailReduced();
 }
 
 bool Spectrum3D::willAdjustSurfaceColumns() {

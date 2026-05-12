@@ -4,6 +4,7 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
+#include <Audio/PluginProcessor.h>
 #include <Curve/EnvRasterizer.h>
 #include <Curve/EnvelopeMesh.h>
 #include <Obj/ColorPos.h>
@@ -214,8 +215,8 @@ void Envelope2D::drawCurvesAndSurfaces() {
         return;
     }
 
-    RasterizerData& data = rast->getRastData();
-    ScopedLock dataLock(data.lock);
+    auto snapshot = rast->snapshotView();
+    ScopedLock dataLock(snapshot.lock());
 
     bool reduceAlpha = ! isMeshEnabled();
 
@@ -229,11 +230,11 @@ void Envelope2D::drawCurvesAndSurfaces() {
     float stopPosition 	   = 1;
 
     {
-        ScopedLock sl(data.lock);
+        ScopedLock sl(snapshot.lock());
 
-        const vector<Intercept>& icpts  = data.intercepts;
-        waveX = data.waveX;
-        waveY = data.waveY;
+        const vector<Intercept>& icpts  = snapshot.intercepts();
+        waveX = snapshot.waveX();
+        waveY = snapshot.waveY();
 
         float backEx = icpts.empty() ? 1.f : icpts.back().x;
         stopPosition = sx(backEx);
@@ -241,7 +242,7 @@ void Envelope2D::drawCurvesAndSurfaces() {
         if(waveX.empty() || icpts.empty())
             return;
 
-        int istart = jmax(0, data.zeroIndex - 4);
+        int istart = jmax(0, snapshot.zeroIndex() - 4);
         int size = waveX.size() - istart;
 
         prepareBuffers(size, size);
@@ -362,10 +363,10 @@ void Envelope2D::getLoopPoints(float& loopStart, float& sustain) {
         int loopIdx, sustIdx;
         rast->getIndices(loopIdx, sustIdx);
 
-        RasterizerData& data = rast->getRastData();
-        ScopedLock dataLock(data.lock);
+        auto snapshot = rast->snapshotView();
+        ScopedLock dataLock(snapshot.lock());
 
-        const vector<Intercept>& icpts = data.intercepts;
+        const vector<Intercept>& icpts = snapshot.intercepts();
 
         loopStart = -1;
         sustain = -1;
@@ -773,7 +774,7 @@ bool Envelope2D::readJSON(const var& object) {
 
     // TODO re-evaluate this after mesh-listener cleanup merge
     auto bindEnvRasterizer = [this, &meshLibrary](int groupId, const char* label) {
-        auto* rast = static_cast<EnvRasterizer*>(e2Interactor->getRast(groupId));
+        auto* rast = e2Interactor->getRast(groupId);
         auto* mesh = meshLibrary.getCurrentEnvMesh(groupId);
 
         DBG(String::formatted("Envelope2D::readJSON rebinding %s rast=%p mesh=%p verts=%d cubes=%d",

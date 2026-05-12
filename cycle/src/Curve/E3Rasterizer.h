@@ -4,21 +4,22 @@
 #include <App/SingletonRepo.h>
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
-#include <Curve/MeshRasterizer.h>
+#include <Curve/Rasterization/TrilinearMeshRasterizer.h>
 #include <vector>
 
 using std::vector;
 
-class E3Rasterizer	:
-    public SingletonAccessor, public MeshRasterizer
-{
+class E3Rasterizer :
+        public SingletonAccessor
+    ,   public Rasterization::TrilinearMeshRasterizer {
 public:
     explicit E3Rasterizer(SingletonRepo* repo);
     ~E3Rasterizer() override = default;
     int getIncrement();
     void init() override;
     void performUpdate(UpdateType updateType) override;
-    int getPrimaryViewDimension() override;
+    void cleanUp();
+    void reset() override { cleanUp(); }
 
     vector<Column>& getColumns() { return columns; }
     Buffer<float> getArray() { return columnArray; }
@@ -27,6 +28,8 @@ public:
 
     enum { E3LockId = 0x17b1eed5 };
 private:
+    void renderMesh(Mesh* mesh);
+
     vector<Column> columns;
     ScopedAlloc<Float32> columnArray;
 

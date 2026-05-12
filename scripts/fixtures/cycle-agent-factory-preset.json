@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openFactoryPreset",
-      "preset": "CalmingKeys"
+      "preset": "calming-keys"
     },
     {
       "command": "assertState",

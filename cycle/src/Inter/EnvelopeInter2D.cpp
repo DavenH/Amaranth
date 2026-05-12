@@ -107,7 +107,15 @@ void EnvelopeInter2D::init() {
     // so only seed the current rasterizer/mesh state. The full switchedEnvelope
     // path also drives zoom/repaint and selector widgets, which is too early.
     layerType = getSetting(CurrentEnvGroup);
-    setRasterizer(getRast(layerType));
+    if (layerType == LayerGroups::GroupWavePitch) {
+        auto* rast = &getObj(EnvWavePitchRast);
+        rast->setDims(dims);
+        setRasterizer(rast);
+    } else {
+        auto* rast = getRast(layerType);
+        rast->setDims(dims);
+        setRasterizer(rast);
+    }
 
     // TODO re-evaluate post mesh listener cleanup
     // if (layerType == LayerGroups::GroupWavePitch) {
@@ -130,7 +138,8 @@ void EnvelopeInter2D::doExtraMouseUp() {
          */
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
-                sample->createPeriodsFromEnv(getObj(MeshLibrary), &getObj(EnvPitchRast));
+                auto& pitchRast = getObj(EnvPitchRast);
+                sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast);
             }
 
             doUpdate(SourceSpectrum3D);
@@ -152,7 +161,7 @@ void EnvelopeInter2D::doExtraMouseUp() {
 
     if (isSingleVertex) {
         Vertex* vert = selected.front();
-        const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
+        const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
 
         if (!icpts.empty()) {
             int icptIndex = -1;
@@ -270,8 +279,8 @@ void EnvelopeInter2D::showCoordinates() {
     }
 
     float time = length * state.currentMouse.x;
-    bool sampleable = rasterizer->isSampleableAt(state.currentMouse.x);
-    float envY = sampleable ? rasterizer->sampleAt(state.currentMouse.x) : 0;
+    bool sampleable = isRasterizerSampleableAt(state.currentMouse.x);
+    float envY = sampleable ? sampleRasterizerAt(state.currentMouse.x) : 0;
 
     String yString;
 
@@ -337,7 +346,7 @@ bool EnvelopeInter2D::synchronizeEnvPoints(Vertex* vertex, bool vertexIsLoopVert
     bool didAnything = false;
 
     if (EnvRasterizer* rast = getEnvRasterizer()) {
-        const vector <Intercept> &icpts = rast->getRastData().intercepts;
+        const vector <Intercept> &icpts = rast->snapshotView().intercepts();
 
         int loopIdx, sustIdx;
         rast->getIndices(loopIdx, sustIdx);
@@ -555,7 +564,7 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
             Vertex* vert = selected.front();
             VertCube* cube = nullptr;
 
-            const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
+            const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
             for (const auto& icpt : icpts) {
                 for (int j = 0; j < vert->getNumOwners(); ++j) {
                     VertCube* vertCube = vert->owners[j];
@@ -623,8 +632,15 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
 
     updateHighlights();
 
-    MeshRasterizer* rast = getRast(envEnum);
-    setRasterizer(rast);
+    EnvRasterizer* rast = getRast(envEnum);
+    if (envEnum == LayerGroups::GroupWavePitch) {
+        auto* wavePitchRast = &getObj(EnvWavePitchRast);
+        wavePitchRast->setDims(dims);
+        setRasterizer(wavePitchRast);
+    } else {
+        rast->setDims(dims);
+        setRasterizer(rast);
+    }
 
     if (getSetting(CurrentMorphAxis) == Vertex::Time && changedToOrFromVol) {
         envPanel->updateBackground(false);
@@ -632,7 +648,7 @@ void EnvelopeInter2D::switchedEnvelope(int envEnum, bool performUpdate, bool for
 
     if (envEnum == LayerGroups::GroupWavePitch) {
         if (Mesh* mesh = getObj(MeshLibrary).getEffectiveMesh(LayerGroups::GroupWavePitch)) {
-            rast->setMesh(mesh);
+            getObj(EnvWavePitchRast).setMesh(mesh);
         }
     } else if (EnvRasterizer* envRast = getEnvRasterizer()) {
         // this got changed from specifically Pitch env, not the current one
@@ -684,7 +700,8 @@ void EnvelopeInter2D::doExtraMouseDrag(const MouseEvent &e) {
     if (actionIs(DraggingVertex) || actionIs(ReshapingCurve) || actionIs(DraggingCorner)) {
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
-                sample->createPeriodsFromEnv(getObj(MeshLibrary), &getObj(EnvPitchRast));
+                auto& pitchRast = getObj(EnvPitchRast);
+                sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast);
             }
         }
 
@@ -701,7 +718,7 @@ int EnvelopeInter2D::getUpdateSource() {
 }
 
 Mesh* EnvelopeInter2D::getMesh() {
-    if (auto* envRast = dynamic_cast<EnvRasterizer*>(getRasterizer())) {
+    if (auto* envRast = getEnvRasterizer()) {
         return envRast->getCurrentMesh();
     }
 
@@ -761,45 +778,57 @@ bool EnvelopeInter2D::isCurrentMeshActive() {
 void EnvelopeInter2D::validateMesh() {
     Interactor::validateMesh();
 
-//	EnvRasterizer* envRast = static_cast<EnvRasterizer*>(getRasterizer());
-//	EnvelopeMesh* envMesh = getCurrentMesh();
+    EnvRasterizer* envRast = getEnvRasterizer();
+    EnvelopeMesh* envMesh = getCurrentMesh();
 
-//	vector<VertCube*>& lines = envMesh->lines;
+    if (envRast == nullptr || envMesh == nullptr) {
+        return;
+    }
 
-// todo
-//	bool isContained = false;
-//	for(int i = 0; i < (int) lines.size(); ++i)
-//	{
-//		if(lines[i] == envMesh->loopLine)
-//		{
-//			isContained = true;
-//		}
-//	}
-//
-//	if(isContained)
-//	{
-//		// if a line has been deleted, the intercepts won't be updated at this point
-//		envRast->calcIntercepts();
-//		envRast->evaluateLoopSustainIndices();
-//
-//		const vector<Intercept>& icpts = envRast->getIntercepts();
-//		for(int i = 0; i < (int) icpts.size(); ++i)
-//		{
-//			if(envMesh->loopLines.find(icpts[i].cube) != envMesh->loopLines.end())
-//			{
-//				if(i > (icpts.size() - 1) - EnvRasterizer::loopMinSizeIcpts)
-//				{
-//					isContained = false;
-//				}
-//			}
-//		}
-//	}
-//
-//	if(! isContained)
-//	{
-//		envMesh->loopLine = nullptr;
-//		calcSustainLoopIndices();
-//	}
+    set<VertCube*> meshCubes;
+    for (VertCube* cube : envMesh->getCubes()) {
+        meshCubes.insert(cube);
+    }
+
+    bool changed = false;
+
+    auto removeMissingCubes = [&meshCubes, &changed](set<VertCube*>& markers) {
+        for (auto iter = markers.begin(); iter != markers.end();) {
+            if (meshCubes.find(*iter) == meshCubes.end()) {
+                iter = markers.erase(iter);
+                changed = true;
+            } else {
+                ++iter;
+            }
+        }
+    };
+
+    removeMissingCubes(envMesh->loopCubes);
+    removeMissingCubes(envMesh->sustainCubes);
+
+    envRast->calcIntercepts();
+    envRast->evaluateLoopSustainIndices();
+
+    int loopIdx, sustIdx;
+    envRast->getIndices(loopIdx, sustIdx);
+
+    if (sustIdx >= 0) {
+        const vector<Intercept>& icpts = envRast->snapshotView().intercepts();
+        for (int i = 0; i < (int) icpts.size(); ++i) {
+            VertCube* cube = icpts[i].cube;
+            if (cube != nullptr
+                && envMesh->loopCubes.find(cube) != envMesh->loopCubes.end()
+                && i > sustIdx - EnvRasterizer::loopMinSizeIcpts) {
+                envMesh->loopCubes.erase(cube);
+                changed = true;
+            }
+        }
+    }
+
+    if (changed) {
+        envRast->evaluateLoopSustainIndices();
+        envPanel->repaint();
+    }
 }
 
 String EnvelopeInter2D::getDefaultFolder() {
@@ -823,7 +852,7 @@ Range<float> EnvelopeInter2D::getVertexPhaseLimits(Vertex* vert) {
     Range<float> minRange = Interactor2D::getVertexPhaseLimits(vert);
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
-        const vector <Intercept>& icpts = envRast->getRastData().intercepts;
+        const vector <Intercept>& icpts = envRast->snapshotView().intercepts();
 
         if (icpts.empty() || vert == nullptr) {
             return Interactor2D::getVertexPhaseLimits(vert);
@@ -883,7 +912,15 @@ void EnvelopeInter2D::updatePhaseLimit(float limit) {
 }
 
 EnvRasterizer* EnvelopeInter2D::getEnvRasterizer() {
-    return dynamic_cast<EnvRasterizer*>(rasterizer);
+    switch (getSetting(CurrentEnvGroup)) {
+        case LayerGroups::GroupVolume:    return &getObj(EnvVolumeRast);
+        case LayerGroups::GroupPitch:     return &getObj(EnvPitchRast);
+        case LayerGroups::GroupScratch:   return &getObj(EnvScratchRast);
+        default:
+            break;
+    }
+
+    return nullptr;
 }
 
 void EnvelopeInter2D::transferLineProperties(VertCube* from, VertCube* to1, VertCube* to2) {
@@ -911,7 +948,7 @@ void EnvelopeInter2D::transferLineProperties(VertCube* from, VertCube* to1, Vert
 }
 
 void EnvelopeInter2D::removeCurrentEnvLine(bool isLoop) {
-    const vector <Intercept> &icpts = rasterizer->getRastData().intercepts;
+    const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
     EnvelopeMesh* envMesh = getCurrentMesh();
 
     if (envMesh == nullptr) {
@@ -991,7 +1028,11 @@ void EnvelopeInter2D::layerChanged() {
     clearSelectedAndCurrent();
 
     int envEnum = getSetting(CurrentEnvGroup);
-    getRast(envEnum)->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(envEnum));
+    if (envEnum == LayerGroups::GroupWavePitch) {
+        getObj(EnvWavePitchRast).setMesh(getObj(MeshLibrary).getCurrentEnvMesh(envEnum));
+    } else {
+        getRast(envEnum)->setMesh(getObj(MeshLibrary).getCurrentEnvMesh(envEnum));
+    }
     getObj(VertexPropertiesPanel).updateSliderValues(true);
 
     enableButton.setHighlit(isCurrentMeshActive());
@@ -1073,13 +1114,11 @@ void EnvelopeInter2D::delegateUpdate(bool shouldDoUpdate) {
         }
     } else {
         if (shouldDoUpdate) {
-            jassert(rasterizer == getRasterizer());
-
             if (EnvRasterizer* envRast = getEnvRasterizer()) {
                 envRast->setWantOneSamplePerCycle(false);
             }
 
-            rasterizer->performUpdate(Update);
+            performRasterizerUpdate(Update);
             performUpdate(Update);
         }
 
@@ -1138,12 +1177,11 @@ void EnvelopeInter2D::triggerButton(int id) {
     }
 }
 
-MeshRasterizer* EnvelopeInter2D::getRast(int envEnum) {
+EnvRasterizer* EnvelopeInter2D::getRast(int envEnum) {
     switch (envEnum) {
         case LayerGroups::GroupVolume:    return &getObj(EnvVolumeRast);
         case LayerGroups::GroupPitch:     return &getObj(EnvPitchRast);
         case LayerGroups::GroupScratch:   return &getObj(EnvScratchRast);
-        case LayerGroups::GroupWavePitch: return &getObj(EnvWavePitchRast);
         default:
             break;
     }
@@ -1171,7 +1209,7 @@ bool EnvelopeInter2D::addNewCube(float startTime, float x, float y, float curve)
 
 vector<VertCube*> EnvelopeInter2D::getLinesToSlideOnSingleSelect() {
     vector <VertCube*> cubes;
-    const vector <Intercept>& icpts = rasterizer->getRastData().intercepts;
+    const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
         if (!icpts.empty()) {
@@ -1211,4 +1249,3 @@ vector<VertCube*> EnvelopeInter2D::getLinesToSlideOnSingleSelect() {
 
     return cubes;
 }
-

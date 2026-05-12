@@ -102,12 +102,15 @@ void WaveformInter3D::initSelectionClient() {
 }
 
 void WaveformInter3D::updateSelectionClient() {
-    if (selectionClient != nullptr && rasterizer != nullptr) {
-        selectionClient->initialise(this, rasterizer, layerType);
+    if (selectionClient != nullptr && hasRasterizer()) {
+        selectionClient->initialise(
+                this,
+                layerType);
     }
 }
 
 void WaveformInter3D::meshSelectionChanged(Mesh* mesh) {
+    getObj(TimeRasterizer).setMesh(mesh);
     updateInterceptsWithMesh(mesh);
 
     getObj(WaveformInter2D).update(Update);
@@ -126,7 +129,7 @@ void WaveformInter3D::doExtraMouseUp() {
 }
 
 void WaveformInter3D::updateRastDims() {
-    rasterizer->setDims(getObj(WaveformInter2D).dims);
+    getObj(TimeRasterizer).setDims(getObj(WaveformInter2D).dims);
 }
 
 Interactor* WaveformInter3D::getOppositeInteractor() {

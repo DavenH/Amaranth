@@ -2,7 +2,6 @@
 
 #include <Audio/Multisample.h>
 #include <Curve/EnvRasterizer.h>
-#include <Curve/MeshRasterizer.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <Obj/MorphPosition.h>

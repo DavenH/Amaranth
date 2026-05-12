@@ -190,7 +190,7 @@ void SampleUtils::waveNoteChanged(PitchedSample* sample, bool isMulti, bool invo
     auto& meshLibrary = getObj(MeshLibrary);
 
     sample->createEnvFromPeriods(meshLibrary, isMulti);
-    sample->createPeriodsFromEnv(meshLibrary, static_cast<MeshRasterizer*>(&pitchRast));
+    sample->createPeriodsFromEnv(meshLibrary, &pitchRast);
 }
 
 
@@ -287,4 +287,3 @@ void SampleUtils::waveOverlayChanged(bool shouldDrawWave) {
 float SampleUtils::getWavLengthSeconds() {
     return multisample->getGreatestLengthSeconds();
 }
-

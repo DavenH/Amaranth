@@ -1,4 +1,5 @@
 #include <Algo/Resampler.h>
+#include <Audio/PluginProcessor.h>
 #include <Curve/EnvRasterizer.h>
 #include <Curve/GuideCurveProvider.h>
 #include <Util/Arithmetic.h>
@@ -91,7 +92,7 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
     timeRasterizer.updateOffsetSeeds(timeLayerSize, GuideCurvePanel::tableSize);
 
     EnvRasterizer& pitchRast = parent->pitchGroup[0].rast;
-    float pitchEnvVal = parent->flags.havePitch ? pitchRast.sampleAt(0) : 0.5;
+    float pitchEnvVal = parent->flags.havePitch ? pitchRast.sampler().sampleAt(0) : 0.5;
 
     for (int i = 0; i < noteState.numUnisonVoices; ++i) {
         float unisonTune = unisonEnabled ? unison->getDetune(i) : 0;
@@ -844,7 +845,7 @@ inline void CycleBasedVoice::updateChainAngleDelta(VoiceParameterGroup& group,
         EnvRasterizer& pitchRast = pitchGroup.envGroup.front().rast;
         MeshLibrary::EnvProps* props = parent->meshLib->getEnvProps(pitchGroup.layerGroup, 0);
 
-        if (props != nullptr && props->active && pitchRast.hasEnoughCubesForCrossSection()) {
+        if (props != nullptr && props->active && pitchRast.canRasterizeWaveform()) {
             int rastIndex = EnvRasterizer::headUnisonIndex + (useFirstEnvelopeIndex ? 0 : group.unisonIndex);
             float y = pitchRast.getSustainLevel(rastIndex);
 
@@ -927,10 +928,10 @@ void CycleBasedVoice::updateValue(int outputId, int dim, float value) {
             envRast.updateValue(dim, value);
 
             if (props.dynamic) {
-                envRast.calcCrossPoints();
+                envRast.updateWaveform();
                 envRast.validateState();
 
-                renderRast.sampleable = envRast.isSampleable();
+                renderRast.sampleable = envRast.sampler().isSampleable();
             }
         }
     }

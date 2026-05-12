@@ -18,6 +18,8 @@ PREFLIGHT_SCREEN_CAPTURE="${CYCLE_PREFLIGHT_SCREEN_CAPTURE:-0}"
 OS_SCREENSHOT_AREA="${CYCLE_OS_SCREENSHOT_AREA:-}"
 OS_SCREENSHOT_TARGET="${CYCLE_OS_SCREENSHOT_TARGET:-}"
 OS_SCREENSHOT_PATH="${CYCLE_OS_SCREENSHOT_PATH:-}"
+OS_SCREENSHOT_PARK_MOUSE_POINT="${CYCLE_OS_SCREENSHOT_PARK_MOUSE_POINT:-}"
+OS_SCREENSHOT_PARK_MOUSE_SETTLE_SECONDS="${CYCLE_OS_SCREENSHOT_PARK_MOUSE_SETTLE_SECONDS:-0.2}"
 OS_SCREENSHOT_QUIT_AFTER="${CYCLE_OS_SCREENSHOT_QUIT_AFTER:-1}"
 CAPTURE_CRASH_REPORTS="${CYCLE_CAPTURE_CRASH_REPORTS:-1}"
 DISMISS_CRASH_DIALOG="${CYCLE_DISMISS_CRASH_DIALOG:-1}"
@@ -333,6 +335,32 @@ capture_os_screenshot() {
     if [[ -z "$rect" ]]; then
         echo "Could not find screenBounds for area '$OS_SCREENSHOT_AREA' target '$OS_SCREENSHOT_TARGET' in $REPORT_PATH." >&2
         return 1
+    fi
+
+    if [[ -n "$OS_SCREENSHOT_PARK_MOUSE_POINT" ]]; then
+        python3 - "$OS_SCREENSHOT_PARK_MOUSE_POINT" <<'PY'
+import ctypes
+import sys
+
+point = sys.argv[1].split(",", 1)
+x = float(point[0])
+y = float(point[1])
+
+core_graphics = ctypes.CDLL(
+        "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
+
+class CGPoint(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_double), ("y", ctypes.c_double)]
+
+core_graphics.CGWarpMouseCursorPosition.argtypes = [CGPoint]
+core_graphics.CGWarpMouseCursorPosition.restype = ctypes.c_int
+core_graphics.CGAssociateMouseAndMouseCursorPosition.argtypes = [ctypes.c_bool]
+core_graphics.CGAssociateMouseAndMouseCursorPosition.restype = ctypes.c_int
+
+core_graphics.CGWarpMouseCursorPosition(CGPoint(x, y))
+core_graphics.CGAssociateMouseAndMouseCursorPosition(True)
+PY
+        sleep "$OS_SCREENSHOT_PARK_MOUSE_SETTLE_SECONDS"
     fi
 
     screencapture -x -R "$rect" "$OS_SCREENSHOT_PATH"

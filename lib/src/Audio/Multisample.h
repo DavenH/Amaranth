@@ -8,8 +8,8 @@
 using std::set;
 
 class Mesh;
+class FXRasterizer;
 class PitchedSample;
-class MeshRasterizer;
 
 class Multisample :
         public Savable
@@ -34,7 +34,9 @@ public:
 
     /* -------------------------------------------------------------------------- */
 
-    Multisample(SingletonRepo* repo, MeshRasterizer* rasterizer);
+    Multisample(
+            SingletonRepo* repo,
+            FXRasterizer* pitchRasterizer);
 
     void clear();
     void createFromDirectory(const File& directory);
@@ -60,7 +62,6 @@ public:
         return nullptr;
     }
 
-    void setWaveRasterizer(MeshRasterizer* rasterizer) { waveRasterizer = rasterizer; }
     int size()                          { return samples.size();    }
     PitchedSample* getCurrentSample()   { return current;           }
     Mesh* getCurrentMesh();
@@ -70,7 +71,7 @@ private:
     void getModRanges(Range<int>& noteRange, Range<float>& velRange);
     void ensureSampleHasMeshLayer(PitchedSample* sample, int preferredIndex = -1);
 
-    MeshRasterizer* waveRasterizer;
+    FXRasterizer* pitchRasterizer;
     PitchedSample* current;
     CriticalSection audioLock;
     ListenerList<Listener> listeners;

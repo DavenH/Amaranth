@@ -248,12 +248,12 @@ void PlaybackPanel::setProgress(float unitX, bool updateMorphPanel) {
 								  getSetting(CurrentEnvGroup)));
 			jassertfalse;
 		} else if (props->active) {
-			const auto& icpts = envRast->getRastData().intercepts;
-			bool canSimulate = envRast->hasEnoughCubesForCrossSection();
+			const auto& icpts = envRast->snapshotView().intercepts();
+			bool canSimulate = envRast->canRasterizeWaveform();
 
 			if (canSimulate && icpts.empty()) {
 				DBG(String::formatted("PlaybackPanel::setProgress env rasterizer %s has cubes but no intercepts",
-									  envRast->MeshRasterizer::getName().toRawUTF8()));
+                                                                          envRast->getName().toRawUTF8()));
 				jassertfalse;
 			}
 
@@ -301,8 +301,8 @@ bool PlaybackPanel::startPlayback() {
 	} else {
 		incrementScale = 1.f / getObj(OscControlPanel).getLengthInSeconds();
 
-		canStart = timeRasterizer->hasEnoughCubesForCrossSection() ||
-				   freqRasterizer->hasEnoughCubesForCrossSection();
+		canStart = timeRasterizer->canRasterizeWaveform() ||
+				   freqRasterizer->canRasterizeWaveform();
 	}
 
 	if (x >= 1.f) {
@@ -429,12 +429,12 @@ void PlaybackPanel::timerCallback(int id) {
 		bool isAlive = props->active;
 
 		if(isAlive) {
-			const auto& icpts = envRast->getRastData().intercepts;
-			bool canSimulate = envRast->hasEnoughCubesForCrossSection();
+			const auto& icpts = envRast->snapshotView().intercepts();
+			bool canSimulate = envRast->canRasterizeWaveform();
 
 			if (canSimulate && icpts.empty()) {
 				DBG(String::formatted("PlaybackPanel::timerCallback env rasterizer %s has cubes but no intercepts",
-									  envRast->MeshRasterizer::getName().toRawUTF8()));
+                                                                          envRast->getName().toRawUTF8()));
 				jassertfalse;
 				stopTimer(ReleaseTimerId);
 				return;

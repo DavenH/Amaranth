@@ -45,17 +45,21 @@ SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo
 
     auto& guideCurvePanel = getObj(GuideCurvePanel);
 
-    freqRasterizer.setWrapsEnds(false);
     freqRasterizer.setGuideCurveProvider(&guideCurvePanel);
-    freqRasterizer.setCalcDepthDimensions(false);
-    freqRasterizer.setLimits(-spectMargin, 1 + spectMargin);
+    auto& freqRequest = freqRasterizer.getRequest();
+    freqRequest.cyclic = false;
+    freqRequest.calcDepthDimensions = false;
+    freqRequest.xMinimum = -(float) spectMargin;
+    freqRequest.xMaximum = 1.f + (float) spectMargin;
 
-    phaseRasterizer.setWrapsEnds(false);
-    phaseRasterizer.setScalingMode(MeshRasterizer::Bipolar);
     phaseRasterizer.setGuideCurveProvider(&guideCurvePanel);
-    phaseRasterizer.setCalcDepthDimensions(false);
-    phaseRasterizer.setInterpolatesCurves(true);
-    phaseRasterizer.setLimits(-spectMargin, 1 + spectMargin);
+    auto& phaseRequest = phaseRasterizer.getRequest();
+    phaseRequest.cyclic = false;
+    phaseRequest.calcDepthDimensions = false;
+    phaseRequest.xMinimum = -(float) spectMargin;
+    phaseRequest.xMaximum = 1.f + (float) spectMargin;
+    phaseRequest.scalingMode = ::Rasterization::PointScalingMode::Bipolar;
+    phaseRequest.interpolateCurves = true;
 
     cycleCompositeAlgo = Interpolate;
 }
@@ -180,15 +184,16 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
         timeRasterizer.setMorphPosition(position);
         timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
         timeRasterizer.setInterceptPadding((float) samplingDelta * 2);
-        timeRasterizer.calcCrossPoints(layer.mesh, 0.f);
+        timeRasterizer.updateWaveform(layer.mesh, 0.f);
 
-        if (timeRasterizer.isSampleable()) {
+        auto sampler = timeRasterizer.sampler();
+        if (sampler.isSampleable()) {
             timeRasterizer.doesIntegralSampling() ?
-                    timeRasterizer.samplePerfectly(samplingDelta, timeBuf, 0.) :
-                    timeRasterizer.sampleWithInterval(timeBuf, samplingDelta, 0.);
+                    sampler.samplePerfectly(samplingDelta, timeBuf, 0.) :
+                    sampler.sampleWithInterval(timeBuf, samplingDelta, 0.);
 
             float layerPan = props.pan;
-            noteState.isStereo |= std::abs(layerPan - 0.5f) > 0.03f;
+            noteState.isStereo |= fabsf(layerPan - 0.5f) > 0.03f;
 
             float leftPan, rightPan;
             Arithmetic::getPans(layerPan, leftPan, rightPan);
@@ -220,10 +225,11 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
 
         freqRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
         freqRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-        freqRasterizer.calcCrossPoints(layer.mesh, 0.f);
+        freqRasterizer.updateWaveform(layer.mesh);
 
-        if (freqRasterizer.isSampleable()) {
-            freqRasterizer.sampleAtIntervals(fftRamp, harmRast);
+        auto sampler = freqRasterizer.sampler();
+        if (sampler.isSampleable()) {
+            sampler.sampleAtIntervals(fftRamp, harmRast);
 
             wasStereoBeforeLayer |= noteState.isStereo;
 
@@ -240,7 +246,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
             Arithmetic::getPans(layerPan, leftPan, rightPan);
 
             float dynamicRange = Spectrum3D::calcDynamicRangeScale(props.range);
-            dynamicRange = std::sqrt(dynamicRange);
+            dynamicRange = sqrtf(dynamicRange);
 
             float multiplicand = powf(2.f, dynamicRange);
             float thresh = powf(1e-19f, 1.f / dynamicRange);
@@ -351,10 +357,11 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 
             phaseRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
             phaseRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-            phaseRasterizer.calcCrossPoints(layer.mesh, 0.f);
+            phaseRasterizer.updateWaveform(layer.mesh);
 
-            if (phaseRasterizer.isSampleable()) {
-                phaseRasterizer.sampleAtIntervals(fftRamp, harmRast);
+            auto sampler = phaseRasterizer.sampler();
+            if (sampler.isSampleable()) {
+                sampler.sampleAtIntervals(fftRamp, harmRast);
 
                 float pans[2];
                 Arithmetic::getPans(props.pan, pans[0], pans[1]);

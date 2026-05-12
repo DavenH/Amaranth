@@ -13,7 +13,8 @@
 #include "../App/MeshLibrary.h"
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
-#include "../Curve/MeshRasterizer.h"
+#include "../Curve/Rasterization/Rasterizer.h"
+#include "../Curve/RasterizerData.h"
 #include "../Curve/Vertex.h"
 #include "../Design/Updating/Updater.h"
 #include "../Obj/CurveLine.h"
@@ -104,6 +105,8 @@ Interactor::Interactor(SingletonRepo* repo, const String& name, const Dimensions
         vertexLimits[i] = Range(0.f, 1.f);
     }
 }
+
+Interactor::~Interactor() = default;
 
 bool Interactor::isDuplicateVertex(Vertex* v) {
     vector<Vertex*>& selected = getSelected();
@@ -520,7 +523,7 @@ void Interactor::updateSelectionFrames() {
     float leftX = 100, centreX = 0, rightX = 0;
     float topY  = 0,   centreY = 0, lowY   = 1;
 
-    bool wrapsPhase = getRasterizer()->wrapsVertices();
+    bool wrapsPhase = rasterizerWrapsVertices();
     bool ignoresTime = vertexProps.isEnvelope;
     int numGood = 0;
 
@@ -830,7 +833,7 @@ void Interactor::resizeFinalBoxSelection(bool recalculateFromVerts) {
         float unitX, unitY;
         int ix, iy;
 
-        bool wrapsPhase = getRasterizer()->wrapsVertices();
+        bool wrapsPhase = rasterizerWrapsVertices();
 
         for(auto vertex : selected) {
             if (vertex == nullptr || reinterpret_cast<uintptr_t>(vertex) < 4096) {
@@ -998,7 +1001,7 @@ void Interactor::doBoxSelect(const MouseEvent& e) {
                 }
             }
         } else {
-            const vector<Intercept>& icpts = getRasterizer()->getRastData().intercepts;
+            const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
 
             for (const auto& icpt : icpts) {
                 int xx = roundToInt(panel->sx(icpt.x));
@@ -1326,7 +1329,7 @@ void Interactor::validateMesh() {
 void Interactor::validateLinePhases() {
     Mesh* mesh = getMesh();
 
-    if (getRasterizer()->wrapsVertices()) {
+    if (rasterizerWrapsVertices()) {
         for (auto line : mesh->getCubes()) {
             bool allPhaseAboveOne = true;
             bool anyPhaseNegative = false;
@@ -1405,7 +1408,7 @@ void Interactor::doGlobalUIUpdate(bool force) {
 }
 
 void Interactor::updateDspSync() {
-    rasterizer->performUpdate(Update);
+    performRasterizerUpdate(Update);
 }
 
 void Interactor::postUpdateMessage() {
@@ -1430,9 +1433,52 @@ void Interactor::snapToGrid(Vertex2& toSnap) {
     toSnap.y /= sizeY;
 }
 
-void Interactor::setRasterizer(MeshRasterizer* rasterizer) {
+void Interactor::setRasterizer(Rasterization::Rasterizer* rasterizer) {
     this->rasterizer = rasterizer;
-    this->rasterizer->setDims(dims);
+}
+
+bool Interactor::rasterizerWrapsVertices() const {
+    return rasterizer != nullptr && rasterizer->snapshotView().wrapsVertices();
+}
+
+int Interactor::getRasterizerPaddingSize() const {
+    return rasterizer != nullptr ? rasterizer->snapshotView().paddingSize() : 0;
+}
+
+GuideCurveProvider* Interactor::getGuideCurveProvider() const {
+    return repo != nullptr ? repo->getGuideCurveProviderPtr() : nullptr;
+}
+
+void Interactor::performRasterizerUpdate(UpdateType updateType) {
+    if (rasterizer != nullptr) {
+        rasterizer->performUpdate(updateType);
+    }
+}
+
+bool Interactor::isRasterizerSampleableAt(float x) const {
+    if (rasterizer == nullptr) {
+        return false;
+    }
+
+    return rasterizer->sampler().isSampleableAt(x);
+}
+
+float Interactor::sampleRasterizerAt(double angle) const {
+    if (rasterizer == nullptr) {
+        return 0.f;
+    }
+
+    return rasterizer->sampler().sampleAt(angle);
+}
+
+Rasterization::SnapshotView Interactor::rasterizerSnapshot() const {
+    static RasterizerData emptyData;
+
+    if (rasterizer == nullptr) {
+        return Rasterization::SnapshotView(emptyData);
+    }
+
+    return rasterizer->snapshotView();
 }
 
 float Interactor::getDragMovementScale(VertCube* cube) {
@@ -1730,7 +1776,7 @@ void Interactor::doClickSelect(const MouseEvent& e) {
         return;
     }
 
-    bool wrapsPhase = getRasterizer()->wrapsVertices();
+    bool wrapsPhase = rasterizerWrapsVertices();
 
     float x      = v->values[dims.x];
     float y      = v->values[dims.y];
@@ -2013,7 +2059,7 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
 
     if (is3DInteractor()) {
         if (Interactor * itr2D = getOppositeInteractor()) {
-            icpts3D = itr2D->getRasterizer()->getRastData().intercepts;
+            icpts3D = itr2D->rasterizerSnapshot().intercepts();
             is3D = true;
         }
     }
@@ -2041,7 +2087,7 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
 
     auto* addedLine = new VertCube(mesh);
 
-    const vector<Intercept>& icpts = is3D ? icpts3D : rasterizer->getRastData().intercepts;
+    const vector<Intercept>& icpts = is3D ? icpts3D : rasterizerSnapshot().intercepts();
 
     DBG(getName() + "::addNewCube begin"
         + " mesh=" + String::toHexString((int64) mesh)
@@ -2167,7 +2213,7 @@ void Interactor::addNewCubeForMultipleIntercepts(
         float startTime,
         float phase,
         float amp) {
-    const vector<Intercept>& icpts = rasterizer->getRastData().intercepts;
+    const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
 
     VertCube* rightLine = nullptr;
     VertCube* leftLine = nullptr;
@@ -2215,7 +2261,7 @@ void Interactor::addNewCubeForMultipleIntercepts(
     float leftIcptPhs = leftIcpt->x;
     float rightIcptPhs = rightIcpt->x;
 
-    bool wraps = rasterizer->wrapsVertices();
+    bool wraps = rasterizerWrapsVertices();
 
     if (!wraps && phase > rightIcptPhs || phase < leftIcptPhs) {
         VertCube* toCopy = (phase > rightIcptPhs) ? rightLine : leftLine;

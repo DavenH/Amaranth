@@ -97,7 +97,8 @@ void Waveform3D::init() {
     surfInteractor 	= &getObj(WaveformInter3D);
     interactor3D  	= surfInteractor;
     setInteractor(interactor3D);
-    interactor3D->setRasterizer(&getObj(TimeRasterizer));
+    auto* rasterizer = &getObj(TimeRasterizer);
+    interactor3D->setRasterizer(rasterizer);
     surfInteractor->updateRastDims();
     surfInteractor->updateSelectionClient();
 
@@ -455,8 +456,7 @@ CriticalSection& Waveform3D::getGridLock() {
 }
 
 bool Waveform3D::isSurfaceDetailReduced() {
-    auto* rasterizer = dynamic_cast<GraphicRasterizer*>(interactor->getRasterizer());
-    return rasterizer != nullptr && rasterizer->isDetailReduced();
+    return getObj(TimeRasterizer).isDetailReduced();
 }
 
 var Waveform3D::exportAutomationState() const {

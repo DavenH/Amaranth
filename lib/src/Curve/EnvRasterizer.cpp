@@ -4,10 +4,31 @@
 
 #include "EnvelopeMesh.h"
 #include "GuideCurveProvider.h"
+#include "Rasterization/Interpolation/TrilinearMeshSlicer.h"
+#include "Rasterization/Policies/Core/InterceptPolicies.h"
+#include "Rasterization/Policies/Curves/CurvePolicies.h"
+#include "Rasterization/Policies/Curves/WaveformBakePolicy.h"
+#include "Rasterization/Policies/Envelope/EnvelopePolicies.h"
+#include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
+#include "Rasterization/Sampling/GuideCurveSampler.h"
+#include "Rasterization/Sampling/WaveformSampler.h"
 #include "../App/SingletonRepo.h"
 #include "../Util/Arithmetic.h"
+#include "../Util/CommonEnums.h"
 
 namespace {
+    Rasterization::EnvelopePaddingContext::State toEnvelopePaddingState(int state) {
+        if (state == EnvRasterizer::Looping) {
+            return Rasterization::EnvelopePaddingContext::Looping;
+        }
+
+        if (state == EnvRasterizer::Releasing) {
+            return Rasterization::EnvelopePaddingContext::Releasing;
+        }
+
+        return Rasterization::EnvelopePaddingContext::NormalState;
+    }
+
     String describeEnvelopeMesh(const EnvelopeMesh* mesh) {
         if (mesh == nullptr) {
             return "mesh=null";
@@ -23,18 +44,28 @@ namespace {
 
 EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurveProvider, const String& name) :
         SingletonAccessor(repo, name)
-    ,   MeshRasterizer   (name)
-    ,    envMesh         (nullptr)
     ,    sampleReleaseNextCall(false)
     ,    oneSamplePerCycle(false)
-    ,    state           (NormalState)
     ,    loopIndex       (-1)
     ,    sustainIndex    (-1)
+    ,    state           (NormalState)
     ,    releaseScale    (1.f)
+    ,    envMesh         (nullptr)
     ,    preallocated    (8192)
-    ,    waveformMemory  (4096) {
-    cyclic = false;
-    xMaximum = 10.f;
+    ,    waveformMemory  (4096)
+    ,    guideCurveProvider(nullptr)
+    ,    request()
+    ,    result()
+    ,    guideCurveOffsetSeeds()
+    ,    reduction()
+    ,    paddingSize(2)
+    ,    unsampleable(true)
+    ,    needsResorting(false) {
+    setWrapsEnds(false);
+    setLimits(0.f, 10.f);
+    rasterizerData.paddingSize = paddingSize;
+    rasterizerData.wrapsVertices = request.cyclic;
+    updateBuffers(2048);
 
     // graphic params
     params.emplace_back();
@@ -42,14 +73,10 @@ EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurve
     // head unison index
     params.emplace_back();
 
-    paddingSize = 2;
-
     setGuideCurveProvider(guideCurveProvider);
 }
 
 EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
-    MeshRasterizer::operator =(copy);
-
     this->sampleReleaseNextCall = copy.sampleReleaseNextCall;
     this->envMesh               = copy.envMesh;
     this->oneSamplePerCycle     = copy.oneSamplePerCycle;
@@ -57,15 +84,23 @@ EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
     this->sustainIndex          = copy.sustainIndex;
     this->state                 = copy.state;
     this->releaseScale          = copy.releaseScale;
+    this->guideCurveProvider    = copy.guideCurveProvider;
+    this->request               = copy.request;
+    this->paddingSize           = copy.paddingSize;
+    this->rasterizerData.paddingSize = copy.rasterizerData.paddingSize;
+    this->rasterizerData.wrapsVertices = copy.rasterizerData.wrapsVertices;
+    this->unsampleable          = true;
+    this->needsResorting        = false;
 
     params = copy.params;
 
     preallocated.ensureSize(8192);
+    updateBuffers(2048);
     return *this;
 }
 
-EnvRasterizer::EnvRasterizer(const EnvRasterizer& copy) : SingletonAccessor(copy), MeshRasterizer(copy) {
-    initialise();
+EnvRasterizer::EnvRasterizer(const EnvRasterizer& copy) :
+        SingletonAccessor(copy) {
     operator=(copy);
 }
 
@@ -74,238 +109,43 @@ EnvRasterizer::~EnvRasterizer() {
     waveformMemory.clear();
 }
 
-void EnvRasterizer::setMesh(Mesh* mesh) {
-    jassertfalse;
-
-    MeshRasterizer::setMesh(mesh);
-
-    envMesh = dynamic_cast<EnvelopeMesh*>(mesh);
-
-    // DBG(String::formatted("EnvRasterizer[%s] setMesh(Mesh*) %s",
-    //                       MeshRasterizer::name.toRawUTF8(),
-    //                       describeEnvelopeMesh(envMesh).toRawUTF8()));
-}
-
 void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
-    MeshRasterizer::setMesh(envelopeMesh);
-
     envMesh = envelopeMesh;
 
     // DBG(String::formatted("EnvRasterizer[%s] setMesh(EnvelopeMesh*) %s",
-    //                       MeshRasterizer::name.toRawUTF8(),
+    //                       getName().toRawUTF8(),
     //                       describeEnvelopeMesh(envMesh).toRawUTF8()));
 }
 
-bool EnvRasterizer::hasReleaseCurve() {
-    if (icpts.empty()) {
-        return false;
-    }
-
-    return sustainIndex != (int) icpts.size() - 1;
+void EnvRasterizer::setMesh(Mesh* mesh) {
+    envMesh = dynamic_cast<EnvelopeMesh*>(mesh);
+    jassert(mesh == nullptr || envMesh != nullptr);
 }
 
-void EnvRasterizer::calcCrossPoints() {
-    morph.resetTime();
-    MeshRasterizer::calcCrossPoints(envMesh, 0.f);
+void EnvRasterizer::installEnvelopeProviders() {
+}
+
+bool EnvRasterizer::hasReleaseCurve() {
+    return Rasterization::EnvelopePlaybackPolicy().hasReleaseCurve(result.intercepts, sustainIndex);
+}
+
+void EnvRasterizer::renderEnvelopeCrossPoints() {
+    getMorphPosition().resetTime();
+    updateWaveform(envMesh, 0.f);
 
     // do this even if we can't loop right now just in case
     // loopability changes by the time release curve is going
     // to be recalculated
-    int size = waveX.size();
-
-    if (size > 0) {
-        waveformMemory.ensureSize(3 * size);
-
-        waveXCopy = waveformMemory.place(size);
-        waveYCopy = waveformMemory.place(size);
-        slopeCopy = waveformMemory.place(size);
-
-        waveX.copyTo(waveXCopy);
-        waveY.copyTo(waveYCopy);
-        slope.copyTo(slopeCopy);
-    } else {
-        waveXCopy.nullify();
-        waveYCopy.nullify();
-        slopeCopy.nullify();
-    }
+    copyWaveformForRelease();
 
     //    evaluateLoopSustainIndices();
 }
 
-void EnvRasterizer::processIntercepts(vector<Intercept>& intercepts) {
-    evaluateLoopSustainIndices();
-
-    if (scalingType != Bipolar) {
-        if (sustainIndex >= 0 && sustainIndex != intercepts.size() - 1) {
-            Intercept sustIcpt = intercepts[sustainIndex];
-            sustIcpt.cube = nullptr;
-            sustIcpt.x += 0.0001f;
-
-            if (sustIcpt.y < 0.5f) {
-                sustIcpt.y = 0.5f;
-            }
-
-            sustIcpt.shp = 1.f;
-
-            intercepts.emplace_back(sustIcpt);
-
-            needsResorting = true;
-        }
-    }
-}
-
 void EnvRasterizer::padIcptsForRender(vector<Intercept>& intercepts, vector<Curve>& curves) {
-    int end = (int) intercepts.size() - 1;
+    Rasterization::EnvelopePaddingContext context = createPaddingContext();
 
-    if (end <= 0) {
-        waveX.nullify();
-        waveY.nullify();
-        unsampleable = true;
-
-        return;
-    }
-
-    Intercept loopBackIcptA, loopBackIcptB;
-
-    int numLoopPoints = sustainIndex - loopIndex;
-    bool loopable = state != Releasing && canLoop() && numLoopPoints > 1;
-    float loopLength = loopable ? getLoopLength() : 0;
-
-    if (loopable) {
-        jassert(loopIndex + loopMinSizeIcpts <= sustainIndex);
-
-        loopBackIcptA = Intercept(intercepts[loopIndex + 1]);
-        loopBackIcptA.x += loopLength;
-
-        loopBackIcptB = Intercept(intercepts[loopIndex + 2]);
-        loopBackIcptB.x += loopLength;
-    }
-
-    if (state == NormalState || state == Releasing) {
-        Intercept front1(-0.05f, intercepts[0].y);
-        Intercept front2(-0.075f, intercepts[0].y);
-        Intercept front3(-0.1f, intercepts[0].y);
-        Intercept back1, back2, back3;
-
-        const Intercept& endIcpt = intercepts[end];
-
-        if (state == NormalState) {
-            if (loopable) {
-                back1 = loopBackIcptA;
-                back2 = numLoopPoints > 1 ? loopBackIcptB : loopBackIcptA;
-            } else {
-                back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y);
-                back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y);
-                back3 = Intercept(endIcpt.x + 2.5f, endIcpt.y);
-            }
-        } else {
-            back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y);
-            back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y);
-            back3 = Intercept(endIcpt.x + 0.003f, endIcpt.y);
-        }
-
-        curves.clear();
-        curves.reserve(icpts.size() + 6);
-
-        curves.emplace_back(front3, front2, front1);
-        curves.emplace_back(front2, front1, intercepts[0]);
-        curves.emplace_back(front1, intercepts[0], intercepts[1]);
-
-        for (int i = 0; i < (int) icpts.size() - 2; ++i) {
-            curves.emplace_back(intercepts[i], intercepts[i + 1], intercepts[i + 2]);
-        }
-
-        curves.emplace_back(intercepts[end - 1], intercepts[end], back1);
-        curves.emplace_back(intercepts[end], back1, back2);
-
-        if (state == Releasing || !loopable)
-            curves.emplace_back(back1, back2, back3);
-    } else if (state == Looping && loopable) {
-        vector<Intercept> loopIcpts;
-
-        jassert(envMesh && ! envMesh->loopCubes.empty());
-        jassert(loopIndex >= 0);
-        jassert(loopLength > 0);
-        jassert(sustainIndex >= 2);
-
-        loopIcpts.emplace_back(intercepts[sustainIndex - 2]);
-        loopIcpts.emplace_back(intercepts[sustainIndex - 1]);
-
-        loopIcpts[0].x -= loopLength;
-        loopIcpts[1].x -= loopLength;
-
-        for (int i = loopIndex; i <= sustainIndex; ++i) {
-            loopIcpts.emplace_back(intercepts[i]);
-        }
-
-        loopIcpts.emplace_back(loopBackIcptA);
-        loopIcpts.emplace_back(loopBackIcptB);
-
-        curves.clear();
-        curves.reserve(loopIcpts.size());
-
-        for (int i = 0; i < (int) loopIcpts.size() - 2; ++i) {
-            curves.emplace_back(loopIcpts[i], loopIcpts[i + 1], loopIcpts[i + 2]);
-        }
-    } else {
-        MeshRasterizer::padIcpts(intercepts, curves);
-    }
-}
-
-void EnvRasterizer::padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) {
-    int end = (int) icpts.size() - 1;
-
-    if (end <= 0) {
-        waveX.nullify();
-        waveY.nullify();
-        unsampleable = true;
-        return;
-    }
-
-    Intercept& firstIcpt = icpts[0];
-
-    Intercept front1(-0.05f, firstIcpt.y);
-    Intercept front2(-0.075f, firstIcpt.y);
-    Intercept front3(-0.1f, firstIcpt.y);
-    Intercept back1, back2, back3;
-
-    const Intercept& endIcpt = icpts[end];
-
-    bool loopable = canLoop();
-    bool haveRelease = hasReleaseCurve();
-
-    int numLoopPoints = sustainIndex - loopIndex;
-    if (loopable && !haveRelease && numLoopPoints >= 2) {
-        back1 = Intercept(icpts[loopIndex + 1]);
-        back2 = Intercept(icpts[loopIndex + 2]);
-
-        float loopLength = getLoopLength();
-        back1.x += loopLength;
-        back2.x += loopLength;
-    } else {
-        back1 = Intercept(endIcpt.x + 0.001f, endIcpt.y, 0, 0);
-        back2 = Intercept(endIcpt.x + 0.002f, endIcpt.y, 0, 0);
-    }
-
-    // further padding to ensure the endIcpt.x position is sampleable
-    back3 = Intercept(endIcpt.x + 0.003f, endIcpt.y, 0, 0);
-
-    curves.clear();
-    curves.reserve(icpts.size() + 5);
-
-    curves.emplace_back(front3, front2, front1);
-    curves.emplace_back(front2, front1, icpts[0]);
-    curves.emplace_back(front1, icpts[0], icpts[1]);
-
-    for (int i = 0; i < (int) icpts.size() - 2; ++i) {
-        curves.emplace_back(icpts[i], icpts[i + 1], icpts[i + 2]);
-    }
-
-    curves.emplace_back(icpts[end - 1], icpts[end], back1);
-    curves.emplace_back(icpts[end], back1, back2);
-
-    if (haveRelease || !loopable) {
-        curves.emplace_back(back1, back2, back3);
+    if (!Rasterization::EnvelopePaddingPolicy().buildRenderPadding(intercepts, curves, context)) {
+        markWaveformUnsampleable();
     }
 }
 
@@ -314,23 +154,9 @@ void EnvRasterizer::getIndices(int& loopIdx, int& sustIdx) const {
     sustIdx = sustainIndex;
 }
 
-void EnvRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
-    if (oneSamplePerCycle) {
-        Random rand(Time::currentTimeMillis());
-
-        for (auto& param: params) {
-            GuideCurveContext& context = param.guideCurveContext;
-            context.phaseOffsetSeed = rand.nextInt(tableSize);
-            context.vertOffsetSeed = rand.nextInt(tableSize);
-        }
-    } else {
-        MeshRasterizer::updateOffsetSeeds(layerSize, tableSize);
-    }
-}
-
 void EnvRasterizer::setWantOneSamplePerCycle(bool does) {
     oneSamplePerCycle = does;
-    decoupleComponentDfrms = does;
+    setDecoupleComponentDfrm(does);
 }
 
 bool EnvRasterizer::canLoop() const {
@@ -338,18 +164,30 @@ bool EnvRasterizer::canLoop() const {
 }
 
 float EnvRasterizer::getLoopLength() const {
-    if (loopIndex >= 0 && loopIndex < (icpts.size() - 1)
-        && sustainIndex >= 0 && sustainIndex < icpts.size()) {
-        return icpts[sustainIndex].x - icpts[loopIndex].x;
-    }
+    Rasterization::EnvelopePlaybackContext context;
+    context.loopIndex = loopIndex;
+    context.sustainIndex = sustainIndex;
 
-    return -1.f;
+    return Rasterization::EnvelopePlaybackPolicy().loopLength(result.intercepts, context);
+}
+
+Rasterization::EnvelopePaddingContext EnvRasterizer::createPaddingContext() const {
+    Rasterization::EnvelopePaddingContext context;
+    context.state             = toEnvelopePaddingState(state);
+    context.loopMinSizeIcpts  = loopMinSizeIcpts;
+    context.loopIndex         = loopIndex;
+    context.sustainIndex      = sustainIndex;
+    context.loopLength        = getLoopLength();
+    context.canLoop           = canLoop();
+    context.hasReleaseCurve   = Rasterization::EnvelopePlaybackPolicy().hasReleaseCurve(result.intercepts, sustainIndex);
+
+    return context;
 }
 
 void EnvRasterizer::setNoteOn() {
     state = NormalState;
 
-    dbg("\tnote on for " << MeshRasterizer::name);
+    dbg("\tnote on for " << getName());
 
     sampleReleaseNextCall = false;
 
@@ -375,6 +213,119 @@ Mesh* EnvRasterizer::getCurrentMesh() {
     return envMesh;
 }
 
+void EnvRasterizer::updateWaveform(Mesh* mesh, float oscPhase) {
+    EnvelopeMesh* envelopeMesh = dynamic_cast<EnvelopeMesh*>(mesh);
+    jassert(mesh == nullptr || envelopeMesh != nullptr);
+
+    if (mesh == nullptr || mesh->getNumCubes() == 0 || envelopeMesh == nullptr) {
+        cleanUp();
+        return;
+    }
+
+    envMesh = envelopeMesh;
+    result.intercepts.clear();
+    result.colorPoints.clear();
+    result.curves.clear();
+    result.guideCurveRegions.clear();
+    needsResorting = false;
+
+    Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
+
+    Rasterization::RenderResult sliceOutput;
+    const Rasterization::RenderResult& output = Rasterization::TrilinearMeshSlicer().sliceMesh(
+            mesh,
+            request,
+            oscPhase,
+            guideApplier,
+            sliceOutput,
+            reduction);
+    result.intercepts = output.intercepts;
+
+    if (request.calcDepthDimensions) {
+        result.colorPoints = output.colorPoints;
+    }
+
+    processEnvelopeIntercepts(result.intercepts);
+    Rasterization::InterceptSortPolicy(&needsResorting).sortIfNeeded(result.intercepts);
+
+    switch (Rasterization::InterceptDegeneracyPolicy().classify(result.intercepts.size())) {
+        case Rasterization::InterceptDegeneracyAction::CleanUp:
+            cleanUp();
+            return;
+        case Rasterization::InterceptDegeneracyAction::MarkUnsampleable:
+            result.curves.clear();
+            markWaveformUnsampleable();
+            publishSnapshot();
+            return;
+        case Rasterization::InterceptDegeneracyAction::Continue:
+            break;
+    }
+
+    Rasterization::InterceptPaddingFlagPolicy().apply(result.intercepts);
+
+    if (!request.calcInterceptsOnly) {
+        rebuildCurvesFromIntercepts();
+    }
+
+    publishSnapshot();
+}
+
+void EnvRasterizer::calcIntercepts() {
+    ScopedValueSetter calcInterceptsOnly(request.calcInterceptsOnly, true, request.calcInterceptsOnly);
+    updateGeometry();
+}
+
+void EnvRasterizer::cleanUp() {
+    clearRasterizationResult(false);
+    result.guideCurveRegions.clear();
+    publishSnapshot();
+}
+
+void EnvRasterizer::updateGeometry() {
+    ScopedValueSetter calcInterceptsOnly(request.calcInterceptsOnly, true, request.calcInterceptsOnly);
+    updateWaveform(envMesh, 0.f);
+}
+
+void EnvRasterizer::updateGeometry(Mesh* mesh, float oscPhase) {
+    ScopedValueSetter calcInterceptsOnly(request.calcInterceptsOnly, true, request.calcInterceptsOnly);
+    updateWaveform(mesh, oscPhase);
+}
+
+void EnvRasterizer::updateWaveform() {
+    renderEnvelopeCrossPoints();
+}
+
+bool EnvRasterizer::canRasterizeWaveform() {
+    return envMesh != nullptr && envMesh->hasEnoughCubesForCrossSection();
+}
+
+bool EnvRasterizer::isSampleable() const {
+    return Rasterization::WaveformSampler::isSampleable(result.waveform);
+}
+
+bool EnvRasterizer::isSampleableAt(float x) const {
+    return Rasterization::WaveformSampler::isSampleableAt(result.waveform, x);
+}
+
+float EnvRasterizer::sampleAt(double angle) {
+    return Rasterization::WaveformSampler::sampleAt(result.waveform, unsampleable, angle);
+}
+
+float EnvRasterizer::sampleAt(double angle, int& currentIndex) {
+    return Rasterization::WaveformSampler::sampleAt(result.waveform, unsampleable, angle, currentIndex);
+}
+
+float EnvRasterizer::sampleAtDecoupled(double angle, GuideCurveContext& context) {
+    return Rasterization::GuideCurveSampler::sampleDecoupled(
+            result.waveform,
+            unsampleable,
+            angle,
+            context,
+            result.guideCurveRegions,
+            guideCurveProvider,
+            request.noiseSeed);
+}
+
 bool EnvRasterizer::renderToBuffer(
     const int numSamples,
     const double deltaX,
@@ -387,15 +338,14 @@ bool EnvRasterizer::renderToBuffer(
 
     jassert(deltaX > 0);
 
-    double newDelta = deltaX;
+    Rasterization::EnvelopeRenderTimingContext timingContext;
+    timingContext.numSamples = numSamples;
+    timingContext.deltaX = deltaX;
+    timingContext.tempoScale = tempoScale;
+    timingContext.loopLength = getLoopLength();
+    timingContext.props = &props;
 
-    if (props.tempoSync) {
-        newDelta /= tempoScale;
-    }
-
-    if (props.scale != 1) {
-        newDelta /= (double) props.getEffectiveScale();
-    }
+    auto timing = Rasterization::EnvelopeRenderTimingPolicy().prepare(timingContext);
 
     if (!oneSamplePerCycle) {
         // should happen extremely rarely�only when buffer sizes > 8192
@@ -403,24 +353,12 @@ bool EnvRasterizer::renderToBuffer(
         renderBuffer = preallocated.withSize(numSamples);
     }
 
-    // todo adjust this according to loop length? must be less than loop length in time
-    // also depends on deltaX, if it's very large, the granularity must be increased
-    auto loopLength = jmax<float>(2.f * newDelta, getLoopLength()); //88
-    float maxIterativeAdvancement = 0.5f;
-    int maxSamplesPerBuf = 512;
-
-    if (loopLength > 2 * newDelta){
-        maxIterativeAdvancement = 0.9f * loopLength; //130
-    }
-
-    maxSamplesPerBuf = jlimit(1, maxSamplesPerBuf, int(maxIterativeAdvancement / newDelta));
-
     int bufferPos = 0;
     bool stillAlive = true;
 
     // partition buffers because state may change within buffer
     while (numSamples - bufferPos > 0) {
-        int maxSamples = jmin(maxSamplesPerBuf, numSamples - bufferPos);
+        int maxSamples = jmin(timing.maxSamplesPerBuffer, numSamples - bufferPos);
         int samplesRendered = maxSamples;
 
         Buffer<float> buffer;
@@ -429,7 +367,7 @@ bool EnvRasterizer::renderToBuffer(
         }
 
         if (stillAlive) {
-            samplesRendered = vectorizedRenderToBuffer(buffer, maxSamples, newDelta, paramIndex);
+            samplesRendered = vectorizedRenderToBuffer(buffer, maxSamples, timing.effectiveDelta, paramIndex);
 
             stillAlive &= samplesRendered == maxSamples;
         }
@@ -461,12 +399,20 @@ int EnvRasterizer::vectorizedRenderToBuffer(
     const int numSamples,
     const double deltaX,
     int paramIndex) {
+    auto& intercepts = result.intercepts;
+    auto& curves = result.curves;
+    auto waveform = result.waveform;
     EnvParams& group = params[paramIndex];
 
-    dbg("\n\n" << MeshRasterizer::name << "(" << paramIndex << ")");
+    dbg("\n\n" << getName() << "(" << paramIndex << ")");
 
     double advancement = numSamples * deltaX;
-    double boundary = (state == Releasing) ? icpts.back().x : icpts[sustainIndex].x;
+    Rasterization::EnvelopePlaybackContext context;
+    context.loopIndex = loopIndex;
+    context.sustainIndex = sustainIndex;
+    context.releasing = state == Releasing;
+
+    double boundary = Rasterization::EnvelopePlaybackPolicy().boundary(intercepts, context);
     double nextPosition = group.samplePosition + advancement;
     bool overextends = nextPosition > boundary;
     bool loopable = canLoop();
@@ -480,8 +426,8 @@ int EnvRasterizer::vectorizedRenderToBuffer(
         dbg("calculating loop curves, state = looping");
         state = Looping;
 
-        padIcptsForRender(icpts, curves);
-        updateCurves();
+        padIcptsForRender(intercepts, curves);
+        bakeWaveform();
     }
 
     if (sampleReleaseNextCall) {
@@ -533,7 +479,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
             } else {
                 jassert(numSamples > 0);
 
-                group.sampleIndex = zeroIndex;
+                group.sampleIndex = waveform.zeroIndex;
 
                 for (int i = 0; i < numSamples; ++i) {
                     buffer[i] = sampleAt(group.samplePosition, group.sampleIndex);
@@ -606,7 +552,7 @@ bool EnvRasterizer::simulateStop(double& lastPosition) {
     setNoteOff();
 
     if (hasReleaseCurve()) {
-        lastPosition = icpts[sustainIndex].x;
+        lastPosition = result.intercepts[sustainIndex].x;
         return true;
     }
 
@@ -618,32 +564,35 @@ bool EnvRasterizer::simulateRender(
     double& lastPosition,
     const MeshLibrary::EnvProps& props,
     float tempoScale) {
-    jassert(! icpts.empty());
-    jassert(state == Releasing || isPositiveAndBelow(sustainIndex, (int) icpts.size()));
+    auto& intercepts = result.intercepts;
 
-    if (icpts.empty() || (state != Releasing && ! isPositiveAndBelow(sustainIndex, (int) icpts.size()))) {
+    jassert(! intercepts.empty());
+    jassert(state == Releasing || isPositiveAndBelow(sustainIndex, (int) intercepts.size()));
+
+    if (intercepts.empty() || (state != Releasing && ! isPositiveAndBelow(sustainIndex, (int) intercepts.size()))) {
         DBG(String::formatted("EnvRasterizer[%s] simulateRender invalid state mesh=%p icpts=%d sustain=%d state=%d",
-                              MeshRasterizer::name.toRawUTF8(),
+                              getName().toRawUTF8(),
                               envMesh,
-                              (int) icpts.size(),
+                              (int) intercepts.size(),
                               sustainIndex,
                               state));
         return false;
     }
 
-    double newAdvancement = advancement;
+    Rasterization::EnvelopeRenderTimingContext timingContext;
+    timingContext.deltaX = advancement;
+    timingContext.tempoScale = tempoScale;
+    timingContext.loopLength = getLoopLength();
+    timingContext.props = &props;
 
-    if (props.tempoSync) {
-        newAdvancement /= tempoScale;
-    }
+    advancement = Rasterization::EnvelopeRenderTimingPolicy().prepare(timingContext).effectiveDelta;
 
-    if (props.scale != 1) {
-        newAdvancement /= (double) props.getEffectiveScale();
-    }
+    Rasterization::EnvelopePlaybackContext context;
+    context.loopIndex = loopIndex;
+    context.sustainIndex = sustainIndex;
+    context.releasing = state == Releasing;
 
-    advancement = newAdvancement;
-
-    double boundary = (state == Releasing) ? icpts.back().x : icpts[sustainIndex].x;
+    double boundary = Rasterization::EnvelopePlaybackPolicy().boundary(intercepts, context);
     double nextPosition = lastPosition + advancement;
     bool overextends = nextPosition > boundary;
     bool loopable = canLoop();
@@ -655,9 +604,13 @@ bool EnvRasterizer::simulateRender(
 
     if (sampleReleaseNextCall) {
         sampleReleaseNextCall = false;
-        int releaseIdx = scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
-        float releasePosX = icpts[releaseIdx].x;
-        lastPosition = releasePosX;
+
+        Rasterization::EnvelopeReleaseContext releaseContext;
+        releaseContext.bipolar = getScalingType() == Rasterization::PointScalingMode::Bipolar;
+        releaseContext.sustainIndex = sustainIndex;
+
+        int releaseIdx = Rasterization::EnvelopeReleasePolicy().releaseIndex(releaseContext);
+        lastPosition = intercepts[releaseIdx].x;
     }
 
     switch (state) {
@@ -708,43 +661,140 @@ bool EnvRasterizer::simulateRender(
 }
 
 void EnvRasterizer::evaluateLoopSustainIndices() {
-    //    progressMark
+    auto markers = Rasterization::EnvelopeMarkerPolicy().evaluate(result.intercepts, envMesh, loopMinSizeIcpts);
+    loopIndex = markers.loopIndex;
+    sustainIndex = markers.sustainIndex;
+}
 
-    int end = (int) icpts.size() - 1;
+void EnvRasterizer::processEnvelopeIntercepts(vector<Intercept>& intercepts) {
+    evaluateLoopSustainIndices();
 
-    loopIndex = -1;
-    sustainIndex = -1;
+    Rasterization::EnvelopeSustainPointContext context;
+    context.sustainIndex = sustainIndex;
+    context.addFloorPoint = getScalingType() != Rasterization::PointScalingMode::Bipolar;
 
-    if (icpts.empty()) {
+    needsResorting |= Rasterization::EnvelopeSustainPointPolicy().apply(intercepts, context);
+}
+
+void EnvRasterizer::rebuildCurvesFromIntercepts() {
+    result.curves.clear();
+
+    Rasterization::EnvelopePaddingContext context = createPaddingContext();
+
+    if (!Rasterization::EnvelopePaddingPolicy().buildDisplayPadding(
+            result.intercepts,
+            result.curves,
+            context)) {
+        markWaveformUnsampleable();
         return;
     }
 
-    set<VertCube*>& loopLines = envMesh->loopCubes;
-    set<VertCube*>& sustLines = envMesh->sustainCubes;
+    bakeWaveform();
+}
 
-    for (int i = 0; i < (int) icpts.size(); ++i) {
-        VertCube* cube = icpts[i].cube;
-
-        if (cube == nullptr) {
-            continue;
-        }
-
-        if (loopLines.find(cube) != loopLines.end())
-            loopIndex = i;
-
-        if (sustLines.find(cube) != sustLines.end()) {
-            sustainIndex = i;
-        }
+void EnvRasterizer::bakeWaveform() {
+    if (result.curves.size() < 2) {
+        return;
     }
 
-    if (sustainIndex < 0) {
-        sustainIndex = end;
+    Rasterization::CurveResolutionPolicy::Context resolutionContext;
+    resolutionContext.lowResCurves = request.lowResCurves;
+    resolutionContext.integralSampling = request.integralSampling;
+    resolutionContext.interpolateCurves = request.interpolateCurves;
+    resolutionContext.paddingSize = paddingSize;
+    Rasterization::CurveResolutionPolicy().apply(result.curves, resolutionContext);
+
+    Rasterization::CurveWaveformPreparationPolicy().apply(result.curves);
+
+    if (request.decoupleComponentDeforms) {
+        result.guideCurveRegions.clear();
     }
 
-    if (loopIndex >= 0 && sustainIndex >= 0 && sustainIndex - loopIndex < loopMinSizeIcpts) {
-        // need at least 1 icpt padding to the right to loop
-        loopIndex = -1;
+    Rasterization::WaveformBakePolicy::Context context;
+    context.lowResCurves = request.lowResCurves;
+    context.decoupleComponentDfrms = request.decoupleComponentDeforms;
+    context.noiseSeed = request.noiseSeed;
+    context.morph = request.morph;
+    context.guideCurveProvider = guideCurveProvider;
+    context.guideCurveRegions = &result.guideCurveRegions;
+    context.offsetSeeds = &guideCurveOffsetSeeds;
+
+    unsampleable = !Rasterization::WaveformBakePolicy().build(
+            result.curves,
+            context,
+            [this](int totalRes) {
+                updateBuffers(totalRes);
+                return Rasterization::WaveformBufferRefs(result.waveform);
+            });
+}
+
+void EnvRasterizer::copyWaveformForRelease() {
+    auto waveform = result.waveform;
+    int size = waveform.waveX.size();
+
+    if (size > 0) {
+        waveformMemory.ensureSize(3 * size);
+
+        waveXCopy = waveformMemory.place(size);
+        waveYCopy = waveformMemory.place(size);
+        slopeCopy = waveformMemory.place(size);
+
+        waveform.waveX.copyTo(waveXCopy);
+        waveform.waveY.copyTo(waveYCopy);
+        waveform.slope.copyTo(slopeCopy);
+    } else {
+        waveXCopy.nullify();
+        waveYCopy.nullify();
+        slopeCopy.nullify();
     }
+}
+
+void EnvRasterizer::publishSnapshot() {
+    Rasterization::RasterizerSnapshotSource source;
+    source.intercepts = &result.intercepts;
+    source.colorPoints = &result.colorPoints;
+    source.curves = &result.curves;
+    source.waveform = result.waveform;
+    source.paddingSize = paddingSize;
+    source.wrapsVertices = request.cyclic;
+
+    Rasterization::BaseRasterizer::publishSnapshot(source);
+}
+
+void EnvRasterizer::updateBuffers(int size) {
+    result.waveform.place(result.waveformMemory, size);
+}
+
+void EnvRasterizer::markWaveformUnsampleable() {
+    result.waveform.waveX.nullify();
+    result.waveform.waveY.nullify();
+    unsampleable = true;
+}
+
+void EnvRasterizer::clearRasterizationResult(bool clearCurves) {
+    markWaveformUnsampleable();
+
+    result.intercepts.clear();
+    result.frontPadding.clear();
+    result.backPadding.clear();
+    result.colorPoints.clear();
+
+    if (clearCurves) {
+        result.curves.clear();
+    }
+}
+
+Rasterization::GuideCurveApplier EnvRasterizer::createGuideCurveApplier() {
+    Rasterization::GuideCurvePolicyContext context;
+    context.guideCurveProvider = guideCurveProvider;
+    context.reduction = &reduction;
+    context.scalingMode = request.scalingMode;
+    context.cyclic = request.cyclic;
+    context.needsResorting = &needsResorting;
+    context.noiseSeed = request.noiseSeed;
+    context.offsetSeeds = &guideCurveOffsetSeeds;
+
+    return Rasterization::GuideCurveApplier(context);
 }
 
 void EnvRasterizer::changedToRelease() {
@@ -752,74 +802,61 @@ void EnvRasterizer::changedToRelease() {
 
     dbg("recalculating release");
 
+    auto& intercepts = result.intercepts;
+
     if (canLoop()) {
-        waveX = waveXCopy;
-        waveY = waveYCopy;
-        slope = slopeCopy;
+        result.waveform.waveX = waveXCopy;
+        result.waveform.waveY = waveYCopy;
+        result.waveform.slope = slopeCopy;
     }
 
     float lastLevel = params[headUnisonIndex].sustainLevel;
-    int releaseIdx = scalingType == Bipolar ? sustainIndex : sustainIndex + 1;
-    float releasePosX = icpts[releaseIdx].x;
-    float initialReleaseLevel = jmax(0.5f, sampleAt(releasePosX));
 
-    releaseScale = lastLevel / initialReleaseLevel;
+    Rasterization::EnvelopeReleaseContext releaseContext;
+    releaseContext.bipolar = getScalingType() == Rasterization::PointScalingMode::Bipolar;
+    releaseContext.sustainIndex = sustainIndex;
+
+    int releaseIdx = Rasterization::EnvelopeReleasePolicy().releaseIndex(releaseContext);
+    float sampledReleaseLevel = sampleAt(intercepts[releaseIdx].x);
+    auto release = Rasterization::EnvelopeReleasePolicy().start(
+            intercepts,
+            releaseContext,
+            lastLevel,
+            sampledReleaseLevel);
+
+    releaseScale = release.scale;
 
     dbg("release scale: " << releaseScale);
 
     for (int i = headUnisonIndex; i < (int) params.size(); ++i) {
-        params[i].samplePosition = releasePosX;
+        params[i].samplePosition = release.position;
     }
 }
 
 void EnvRasterizer::validateState() {
-    if (waveX.empty()) {
-        state = NormalState;
-    }
+    auto& intercepts = result.intercepts;
+    auto waveform = result.waveform;
 
-    for (auto& p: params) {
-        if (waveX.empty()) {
-            p.samplePosition = 0;
-            p.sampleIndex = 0;
-        } else {
-            if (p.samplePosition > waveX.back()) {
-                p.samplePosition = waveX.back();
-                p.sampleIndex = waveX.size() - 1;
-            }
-        }
-    }
+    Rasterization::EnvelopeStateValidationContext context;
+    context.state = state == Looping
+            ? Rasterization::EnvelopeStateValidationContext::Looping
+            : state == Releasing
+                    ? Rasterization::EnvelopeStateValidationContext::Releasing
+                    : Rasterization::EnvelopeStateValidationContext::NormalState;
+    context.headIndex = headUnisonIndex;
+    context.waveformSize = waveform.waveX.size();
+    context.waveformEnd = waveform.waveX.empty() ? 0. : waveform.waveX.back();
+    context.loopLength = getLoopLength();
+    context.loopStart = loopIndex >= 0 && loopIndex < (int) intercepts.size() ? intercepts[loopIndex].x : 0.;
+    context.loopEnd = sustainIndex >= 0 && sustainIndex < (int) intercepts.size() ? intercepts[sustainIndex].x : 0.;
 
-    if (state == Looping) {
-        float loopLength = getLoopLength();
+    auto result = Rasterization::EnvelopeStateValidationPolicy().validate(params, context);
 
-        if (loopLength <= 0) {
-            state = NormalState;
-        } else {
-            for (int i = headUnisonIndex; i < params.size(); ++i) {
-                double low = icpts[loopIndex].x;
-                double high = icpts[sustainIndex].x;
-
-                double& pos = params[i].samplePosition;
-
-                if (pos > high) {
-                    pos = jmax(low, pos - loopLength);
-                }
-
-                else if (pos < low) {
-                    pos = jmin(high, pos + loopLength);
-                }
-            }
-        }
-    } else if (state == NormalState) {
-        float length = getLoopLength();
-
-        if (length > 0) {
-            if (NumberUtils::within((float) params[headUnisonIndex].samplePosition,
-                                    icpts[loopIndex].x, icpts[sustainIndex].x)) {
-                state = Looping;
-            }
-        }
-    }
+    state = result == Rasterization::EnvelopeStateValidationContext::Looping
+            ? Looping
+            : result == Rasterization::EnvelopeStateValidationContext::Releasing
+                    ? Releasing
+                    : NormalState;
 }
 
 void EnvRasterizer::ensureParamSize(int numUnisonVoices) {
@@ -829,5 +866,31 @@ void EnvRasterizer::ensureParamSize(int numUnisonVoices) {
 
     while (params.size() < numUnisonVoices + 1) {
         params.emplace_back();
+    }
+}
+
+void EnvRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
+    if (oneSamplePerCycle) {
+        Random rand(Time::currentTimeMillis());
+
+        for (auto& param: params) {
+            GuideCurveContext& context = param.guideCurveContext;
+            context.phaseOffsetSeed = rand.nextInt(tableSize);
+            context.vertOffsetSeed = rand.nextInt(tableSize);
+        }
+
+        return;
+    }
+
+    Random rand(Time::currentTimeMillis());
+    guideCurveOffsetSeeds.randomize(layerSize, tableSize, rand);
+}
+
+void EnvRasterizer::updateValue(int dim, float value) {
+    switch (dim) {
+        case CommonEnums::YellowDim: request.morph.time = value; break;
+        case CommonEnums::RedDim:    request.morph.red = value;  break;
+        case CommonEnums::BlueDim:   request.morph.blue = value; break;
+        default: break;
     }
 }

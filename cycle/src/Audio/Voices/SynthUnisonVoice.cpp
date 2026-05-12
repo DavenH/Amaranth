@@ -39,7 +39,7 @@ void SynthUnisonVoice::testMeshConditions() {
 void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float velocity) {
     for (int i = 0; i < parent->scratchGroup.size(); ++i) {
         EnvRenderContext& rast = parent->scratchGroup[i];
-        rast.scratchTime = rast.sampleable ? rast.rast.sampleAt(0) : 0;
+        rast.scratchTime = rast.sampleable ? rast.rast.sampler().sampleAt(0) : 0;
     }
 
     for (int i = 0; i < noteState.numUnisonVoices; ++i) {
@@ -68,11 +68,11 @@ void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float
             timeRasterizer.setWrapsEnds(true);
 
             if (cycleCompositeAlgo == Interpolate) {
-                timeRasterizer.calcCrossPoints(layer.mesh, oscPhase);
+                timeRasterizer.updateWaveform(layer.mesh, oscPhase);
             } else {
                 // prime rasterizer
                 timeRasterizer.setMesh(layer.mesh);
-                timeRasterizer.calcCrossPointsChaining(oscPhase);
+                timeRasterizer.updateChainedWaveform(oscPhase);
             }
         }
     }
@@ -124,19 +124,20 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
             state.advancement = 0.f;
 
             timeRasterizer.setInterceptPadding((float) delta);
-            timeRasterizer.calcCrossPoints(layer.mesh, totalPhase);
+            timeRasterizer.updateWaveform(layer.mesh, totalPhase);
         } else {
             delta = group.angleDelta / double(oversampleFactor);
             spillover = state.spillover; //group.samplingSpillover[0];
 
             timeRasterizer.setMesh(layer.mesh);
             timeRasterizer.setInterceptPadding(jmax(-spillover, delta));
-            timeRasterizer.calcCrossPointsChaining(totalPhase);
+            timeRasterizer.updateChainedWaveform(totalPhase);
         }
 
         Buffer<float> rastBuf(rastBuffer, samplingSize);
-        if (timeRasterizer.isSampleable()) {
-            state.spillover = timeRasterizer.sampleWithInterval(rastBuf, delta, spillover);
+        auto sampler = timeRasterizer.sampler();
+        if (sampler.isSampleable()) {
+            state.spillover = sampler.sampleWithInterval(rastBuf, delta, spillover);
         } else {
             rastBuf.zero();
             double& spillover = state.spillover; //group.samplingSpillover[0];

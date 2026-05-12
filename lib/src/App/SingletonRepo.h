@@ -6,11 +6,11 @@
 class Savable;
 class PluginProcessor;
 class SingletonAccessor;
-class MeshRasterizer;
 class MorphPositioner;
 class IConsole;
 class GuideCurveProvider;
 class Panel;
+
 using namespace juce;
 
 class SingletonRepo {
@@ -41,7 +41,7 @@ public:
     PluginProcessor& getPluginProcessor()               { jassert(plugin != nullptr); return *plugin; }
     MorphPositioner& getMorphPosition()                 { return *positioner;   }
     IConsole& getConsole()                              { return *console;      }
-    GuideCurveProvider& getGuideCurveProvider()         { return *guideCurveProvider;  }
+    GuideCurveProvider* getGuideCurveProviderPtr() const { return guideCurveProvider.get(); }
     bool shouldSuppressAudioDeviceInit() const          { return suppressAudioDeviceInit; }
     bool shouldSuppressSavableAutoRegistration() const  { return suppressSavableAutoRegistration; }
     bool shouldSuppressInitializerInit() const          { return suppressInitializerInit; }
@@ -87,7 +87,6 @@ protected:
 
     Array<Savable*> saveSources;
     Array<Panel*> panels;
-    Array<MeshRasterizer*> rasterizers;
 
     HashMap<String, SingletonAccessor*> hashes;
     OwnedArray<SingletonAccessor> objects;

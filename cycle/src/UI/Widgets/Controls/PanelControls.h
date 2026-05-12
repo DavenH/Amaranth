@@ -15,6 +15,7 @@
 #include "../HSlider.h"
 
 class EnvelopeMesh;
+class Interactor;
 class LayerSelectorPanel;
 class IDynamicSizeComponent;
 class Mesh;

@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <vector>
 #include <set>
 #include "Dimensions.h"
@@ -10,6 +11,7 @@
 #include "../App/SingletonAccessor.h"
 #include "../Curve/CollisionDetector.h"
 #include "../Curve/DepthVert.h"
+#include "../Curve/Rasterization/RasterizerViews.h"
 #include "../Curve/VertCube.h"
 #include "../Curve/Vertex2.h"
 #include "../Design/Updating/Updateable.h"
@@ -23,8 +25,14 @@ using std::vector;
 using std::set;
 
 class Panel;
+class GuideCurveProvider;
+class Mesh;
+struct RasterizerData;
 class Vertex;
-class MeshRasterizer;
+
+namespace Rasterization {
+    class Rasterizer;
+}
 
 typedef vector<Vertex2>::iterator CoordIter;
 typedef vector<DepthVert>::iterator DepthIter;
@@ -69,7 +77,7 @@ public:
     /* ----------------------------------------------------------------------------- */
 
     Interactor(SingletonRepo* repo, const String& name, const Dimensions& d);
-    ~Interactor() override = default;
+    ~Interactor() override;
     void init() override;
 
     virtual bool addNewCube(float startTime, float phase, float amp, float shape);
@@ -97,7 +105,7 @@ public:
     void setAxeSize(float size);
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
-    void setRasterizer(MeshRasterizer* rasterizer);
+    void setRasterizer(Rasterization::Rasterizer* rasterizer);
     void snapToGrid(Vertex2& toSnap);
     void translateVerts(vector<VertexFrame>& verts, const Vertex2& diff);
     void updateSelectionFrames();
@@ -119,7 +127,14 @@ public:
     const vector<VertexFrame>& getSelectedMovingVerts() const { return state.selectedFrame;     }
     CollisionDetector&  getCollisionDetector()                { return collisionDetector;   }
     CriticalSection&    getLock()                             { return vertexLock;          }
-    MeshRasterizer*     getRasterizer() const                 { return rasterizer;          }
+    bool                hasRasterizer() const                 { return rasterizer != nullptr; }
+    bool                rasterizerWrapsVertices() const;
+    int                 getRasterizerPaddingSize() const;
+    GuideCurveProvider* getGuideCurveProvider() const;
+    void                performRasterizerUpdate(UpdateType updateType);
+    bool                isRasterizerSampleableAt(float x) const;
+    float               sampleRasterizerAt(double angle) const;
+    Rasterization::SnapshotView rasterizerSnapshot() const;
     MorphPosition       getOffsetPosition(bool withDepths)    { return positioner->getOffsetPosition(withDepths); }
     MorphPosition       getMorphPosition()                    { return positioner->getMorphPosition(); }
 
@@ -238,7 +253,7 @@ protected:
     Point<int> lastPolledMouse;
 
     MorphPositioner*    positioner;
-    MeshRasterizer*     rasterizer;
+    Rasterization::Rasterizer* rasterizer {};
 
     CriticalSection     vertexLock;
     CollisionDetector   collisionDetector;

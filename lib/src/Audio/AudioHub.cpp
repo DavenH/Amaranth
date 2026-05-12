@@ -70,25 +70,29 @@ void AudioHub::initialiseAudioDevice(XmlElement* midiSettings) {
   #endif
 }
 
-#if !PLUGIN_MODE
-
 void AudioHub::suspendAudio() {
+#if !PLUGIN_MODE
     if (audioDeviceManager == nullptr) {
         return;
     }
 
     audioDeviceManager->removeAudioCallback(this);
     audioDeviceManager->removeMidiInputDeviceCallback(String(), &midiCollector);
+#endif
 }
 
 void AudioHub::resumeAudio() {
+#if !PLUGIN_MODE
     if (audioDeviceManager == nullptr) {
         return;
     }
 
     audioDeviceManager->addAudioCallback(this);
     audioDeviceManager->removeMidiInputDeviceCallback(String(), &midiCollector);
+#endif
 }
+
+#if !PLUGIN_MODE
 
 void AudioHub::audioDeviceIOCallbackWithContext(
     const float* const* inputChannelData,
@@ -116,6 +120,8 @@ void AudioHub::audioDeviceStopped() {
     audioSourcePlayer.audioDeviceStopped();
 }
 
+#endif
+
 AudioDeviceManager* AudioHub::getAudioDeviceManager() {
     return &ensureAudioDeviceManager();
 }
@@ -125,12 +131,13 @@ void AudioHub::stopAudio() {
         return;
     }
 
+#if !PLUGIN_MODE
     audioDeviceManager->removeAudioCallback(this);
+#endif
     audioDeviceManager->closeAudioDevice();
 
     deviceListeners.call(&DeviceListener::audioDeviceIsUnready);
 }
-#endif
 
 void AudioHub::prepareToPlay(int newBlockSize, double sampleRate) {
     ScopedLock sl(repo->getInitLock());

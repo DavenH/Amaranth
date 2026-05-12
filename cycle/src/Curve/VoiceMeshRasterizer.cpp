@@ -4,207 +4,230 @@
 #include <App/SingletonRepo.h>
 #include <Curve/Intercept.h>
 #include <Curve/Mesh.h>
-#include <Curve/VertCube.h>
-#include <Obj/MorphPosition.h>
+#include <Curve/Rasterization/Policies/Core/InterceptPolicies.h>
+#include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
+#include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
+#include <Curve/Rasterization/Sampling/WaveformSampler.h>
 #include <Definitions.h>
 
 #include "VoiceMeshRasterizer.h"
 #include "CycleState.h"
+#include "Rasterization/Policies/Voice/VoicePolicies.h"
 #include "../Util/CycleEnums.h"
 
 
 VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
-		SingletonAccessor(repo, "VoiceMeshRasterizer"), state(nullptr) {
-	unsampleable = true;
-	overrideDim = true;
-	scalingType = Bipolar;
-	calcDepthDims = false;
-
-	oversamplingChanged();
+		SingletonAccessor(repo, "VoiceMeshRasterizer")
+    ,   chainResult()
+    ,   chainReduction()
+    ,   chainPaddingSize(2)
+    ,   chainUnsampleable(true)
+    ,   chainNeedsResorting(false)
+    ,   chainedOutputActive(false)
+    ,   state(nullptr) {
+    auto& request = getRequest();
+    request.overrideDimension = true;
+    request.scalingMode = Rasterization::PointScalingMode::Bipolar;
+    request.calcDepthDimensions = false;
+    rasterizerData.paddingSize = getPaddingSize();
+    rasterizerData.wrapsVertices = request.cyclic;
+    updateChainBuffers(2048);
 }
 
-void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
-    if (mesh->getNumCubes() == 0 || state == nullptr) {
-	    return;
+void VoiceMeshRasterizer::updateChainedWaveform(float oscPhase) {
+    if (mesh == nullptr || mesh->getNumCubes() == 0 || state == nullptr) {
+        cleanUp();
+        return;
     }
 
-    if (state->callCount > 0) {
-        std::swap(state->backIcpts, icpts);
-		state->backIcpts.clear();
-	}
+    chainedOutputActive = true;
 
-    needsResorting = false;
+    Cycle::Rasterization::VoiceChainingPolicy chainingPolicy(&chainNeedsResorting);
+    chainingPolicy.beginCall(*state, chainResult.intercepts);
 
-	for(auto cube : mesh->getCubes()) {
-        float voiceTime = jmin(1.f, morph.time + state->advancement);
+    auto output = renderVoiceSlice(oscPhase);
 
-		cube->getInterceptsFast(Vertex::Time, reduct, MorphPosition(voiceTime, morph.red, morph.blue));
+    chainingPolicy.publishNextIntercepts(
+            output,
+            *state,
+            [this](std::vector<Intercept>& intercepts) { restrictIntercepts(intercepts); });
 
-		Vertex* a = &reduct.v0;
-		Vertex* b = &reduct.v1;
-		Vertex* vertex = &reduct.v;
-
-        // the points contain x
-		// todo wtf does 'the point contain x' mean. Overlaps all what?
-        if (reduct.pointOverlaps) {
-            jassert(a->values[Vertex::Phase] >= 0);
-
-            // rules are that both cannot be > 1, and both are always positive
-            if (a->values[Vertex::Phase] > 1 && b->values[Vertex::Phase] > 1) {
-                a->values[Vertex::Phase] -= 1;
-                b->values[Vertex::Phase] -= 1;
-            }
-
-            if ((a->values[Vertex::Phase] > 1) != (b->values[Vertex::Phase] > 1)) {
-                float icpt = a->values[Vertex::Time]
-                             + (1 - a->values[Vertex::Phase])
-                               / ((a->values[Vertex::Phase] - b->values[Vertex::Phase])
-                                  / (a->values[Vertex::Time] - b->values[Vertex::Time]));
-                if (icpt > voiceTime) {
-                    a->values[Vertex::Phase] -= 1;
-					b->values[Vertex::Phase] -= 1;
-				}
-			}
-
-            VertCube::vertexAt(voiceTime, Vertex::Time, a, b, vertex);
-
-            float phase = vertex->values[Vertex::Phase] + oscPhase;
-
-            while (phase >= 1) {
-	            phase -= 1;
-            }
-            while (phase < 0) {
-	            phase += 1;
-            }
-
-            jassert(phase >= 0 && phase < 1);
-
-            Intercept intercept(phase, 2.f * vertex->values[Vertex::Amp] - 1.f, cube, 0);
-			intercept.shp = vertex->values[Vertex::Curve];
-			intercept.adjustedX = intercept.x;
-
-			applyGuideCurves(intercept, morph);
-
-			state->backIcpts.push_back(intercept);
-		}
-	}
-
-	std::sort(state->backIcpts.begin(), state->backIcpts.end());
-
-	// and set x = adjustedX
-	restrictIntercepts(state->backIcpts);
-
-    if (needsResorting) {
-        std::sort(state->backIcpts.begin(), state->backIcpts.end());
-        needsResorting = false;
+    if (!chainingPolicy.canBuildChainedCurves(*state, chainResult.intercepts)) {
+        ++state->callCount;
+        markChainedWaveformUnsampleable();
+        publishSnapshot();
+        return;
     }
-
-    if (state->backIcpts.size() < 2 || icpts.size() < 2) {
-        waveX.nullify();
-		waveY.nullify();
-		state->callCount++;
-		unsampleable = true;
-
-		return;
-	}
 
     if (state->callCount == 0) {
-	    state->advancement = getRealConstant(MinLineLength) * 1.1f;
+        state->advancement = getRealConstant(MinLineLength) * 1.1f;
     }
 
-    // the first call is just padding for curves
     if (state->callCount > 0) {
-        paddingSize = 2;
+        chainPaddingSize = Cycle::Rasterization::VoiceChainedPaddingPolicy().build(
+                chainResult.intercepts,
+                state->backIcpts,
+                *state,
+                chainResult.curves,
+                getRequest().interceptPadding);
 
-        int end = icpts.size() - 1;
+        bakeChainedWaveform();
+    }
 
-		Intercept back1, back2, back3, back4, back5;
-		back1.assignWithTranslation(state->backIcpts[0], 1);
-		back2.assignWithTranslation(state->backIcpts[1], 1);
-		back3.assignBack(state->backIcpts, 3);
-		back4.assignBack(state->backIcpts, 4);
-		back5.assignBack(state->backIcpts, 5);
-
-		bool extraPadFront 	= state->frontB.x > -4 * interceptPadding;
-		bool padFront 		= state->frontA.x > -4 * interceptPadding;
-		bool padBack 		= back1.x < 1 + 4 * interceptPadding;
-		bool extraPadBack 	= back2.x < 1 + 4 * interceptPadding;
-
-		curves.clear();
-		curves.reserve(icpts.size() + 5 + int(extraPadFront) + int(padFront) + int(padBack) + int(extraPadBack));
-
-		if(extraPadFront) {
-			curves.emplace_back(state->frontE, state->frontD, state->frontC);
-		}
-
-		if(padFront) {
-			curves.emplace_back(state->frontD, state->frontC, state->frontB);
-		}
-
-		curves.emplace_back(state->frontC, state->frontB, state->frontA);
-		curves.emplace_back(state->frontB, state->frontA, icpts[0]);
-		curves.emplace_back(state->frontA, icpts[0], icpts[1]);
-
-		for(int i = 0; i < (int) icpts.size() - 2; ++i) {
-			curves.emplace_back(icpts[i], icpts[i + 1], icpts[i + 2]);
-		}
-
-		curves.emplace_back(icpts[end - 1], icpts[end], back1);
-		curves.emplace_back(icpts[end], back1, back2);
-		curves.emplace_back(back1, back2, back3);
-
-		if(padBack) {
-			curves.emplace_back(back2, back3, back4);
-		}
-
-		if(extraPadBack) {
-			curves.emplace_back(back3, back4, back5);
-		}
-
-		// update front
-		{
-			end = icpts.size() - 1;
-
-			// policy: icpt size is guaranteed to be >= 2 at this point
-			state->frontE.assignFront(icpts, 5);
-			state->frontD.assignFront(icpts, 4);
-			state->frontC.assignFront(icpts, 3);
-			state->frontB.assignWithTranslation(icpts[end - 1], -1);
-			state->frontA.assignWithTranslation(icpts[end], 	-1);
-		}
-
-		updateCurves();
-	}
-
-	++state->callCount;
-}
-
-void VoiceMeshRasterizer::updateCurves() {
-    if (icpts.size() < 2) {
-        cleanUp();
-
-		return;
-	}
-
-	float base = 0.05f / float(Curve::resolution);
-	setResolutionIndices(base);
-
-	int lastIdx = curves.size() - 1;
-
-	curves[0].resIndex = curves[1].resIndex;
-	curves[lastIdx].resIndex = curves[lastIdx - 1].resIndex;
-
-	adjustDeformingSharpness();
-
-	for(auto& curve : curves) {
-		curve.recalculateCurve();
-	}
-
-	calcWaveform();
-
-	unsampleable = false;
+    ++state->callCount;
+    publishSnapshot();
 }
 
 void VoiceMeshRasterizer::orphanOldVerts() {
-    icpts.clear();
+    chainResult.intercepts.clear();
+}
+
+void VoiceMeshRasterizer::cleanUp() {
+    clearTrilinearOutput();
+    cleanChainedOutput();
+    publishSnapshot();
+}
+
+bool VoiceMeshRasterizer::currentWaveformIsSampleable() const {
+    return chainedOutputActive
+           ? Rasterization::WaveformSampler::isSampleable(chainResult.waveform)
+           : Rasterization::TrilinearMeshRasterizer::sampler().isSampleable();
+}
+
+Rasterization::WaveformBuffers VoiceMeshRasterizer::currentWaveform() const {
+    return chainedOutputActive ? chainResult.waveform : waveform();
+}
+
+void VoiceMeshRasterizer::bakeChainedWaveform() {
+    if (chainResult.intercepts.size() < 2) {
+        cleanChainedOutput();
+        return;
+    }
+
+    Cycle::Rasterization::VoiceCurveResolutionPolicy().apply(chainResult.curves);
+    Rasterization::CurveWaveformPreparationPolicy().apply(chainResult.curves);
+
+    Rasterization::WaveformBakePolicy::Context context;
+    context.lowResCurves = getRequest().lowResCurves;
+    context.decoupleComponentDfrms = getRequest().decoupleComponentDeforms;
+    context.noiseSeed = getRequest().noiseSeed;
+    context.morph = getRequest().morph;
+    context.guideCurveProvider = getGuideCurveProvider();
+    context.guideCurveRegions = &chainResult.guideCurveRegions;
+    context.offsetSeeds = nullptr;
+
+    chainUnsampleable = !Rasterization::WaveformBakePolicy().build(
+            chainResult.curves,
+            context,
+            [this](int totalRes) {
+                updateChainBuffers(totalRes);
+                return Rasterization::WaveformBufferRefs(chainResult.waveform);
+            });
+}
+
+void VoiceMeshRasterizer::cleanChainedOutput() {
+    chainResult.clear();
+    chainPaddingSize = 2;
+    chainUnsampleable = true;
+    chainNeedsResorting = false;
+}
+
+Rasterization::RenderResult VoiceMeshRasterizer::renderVoiceSlice(float oscPhase) {
+    Rasterization::RenderResult output;
+
+    if (mesh == nullptr || mesh->getNumCubes() == 0 || state == nullptr) {
+        return output;
+    }
+
+    float voiceTime = jmin(1.f, getRequest().morph.time + state->advancement);
+    auto guideApplier = createGuideCurveApplier(chainReduction, &chainNeedsResorting);
+
+    auto& cubes = mesh->getCubes();
+    for (int i = 0; i < (int) cubes.size(); ++i) {
+        appendVoiceCubeIntercept(cubes[i], voiceTime, oscPhase, guideApplier, output.intercepts);
+    }
+
+    std::sort(output.intercepts.begin(), output.intercepts.end());
+    output.sampleable = output.intercepts.size() >= 2;
+
+    return output;
+}
+
+void VoiceMeshRasterizer::appendVoiceCubeIntercept(
+        VertCube* cube,
+        float voiceTime,
+        float oscPhase,
+        Rasterization::GuideCurveApplier& applyGuide,
+        std::vector<Intercept>& intercepts) {
+    voiceSlicer.slice(
+            *cube,
+            Vertex::Time,
+            chainReduction,
+            getRequest().morph.withTime(voiceTime));
+
+    Vertex* a = &chainReduction.v0;
+    Vertex* b = &chainReduction.v1;
+    Vertex* vertex = &chainReduction.v;
+
+    Cycle::Rasterization::VoicePointPositionPolicy::Context pointContext;
+    pointContext.voiceTime = voiceTime;
+    pointContext.oscPhase = oscPhase;
+
+    auto point = voicePointPositionPolicy.resolve(
+            pointContext,
+            chainReduction.pointOverlaps,
+            a,
+            b,
+            vertex);
+
+    if (!point.intersects) {
+        return;
+    }
+
+    Intercept intercept(point.phase, 2.f * vertex->values[Vertex::Amp] - 1.f, cube, 0);
+    intercept.shp = vertex->values[Vertex::Curve];
+    intercept.adjustedX = intercept.x;
+
+    applyGuide(intercept, getRequest().morph);
+    intercepts.push_back(intercept);
+}
+
+void VoiceMeshRasterizer::markChainedWaveformUnsampleable() {
+    chainResult.waveform.waveX.nullify();
+    chainResult.waveform.waveY.nullify();
+    chainUnsampleable = true;
+}
+
+void VoiceMeshRasterizer::publishSnapshot() {
+    Rasterization::RasterizerSnapshotSource source;
+
+    if (chainedOutputActive) {
+        source.intercepts = &chainResult.intercepts;
+        source.colorPoints = &chainResult.colorPoints;
+        source.curves = &chainResult.curves;
+        source.waveform = chainResult.waveform;
+        source.paddingSize = chainPaddingSize;
+        source.wrapsVertices = getRequest().cyclic;
+    } else {
+        source = createSnapshotSource();
+    }
+
+    Rasterization::BaseRasterizer::publishSnapshot(source);
+}
+
+void VoiceMeshRasterizer::updateChainBuffers(int size) {
+    chainResult.waveform.place(chainResult.waveformMemory, size);
+}
+
+void VoiceMeshRasterizer::restrictIntercepts(std::vector<Intercept>& intercepts) {
+    if (intercepts.empty()) {
+        return;
+    }
+
+    Rasterization::InterceptRestrictionPolicy::Context context;
+    context.cyclic = getRequest().cyclic;
+    context.minimumX = getRequest().xMinimum;
+    context.maximumX = getRequest().xMaximum;
+
+    Rasterization::InterceptRestrictionPolicy(context).restrict(intercepts);
 }

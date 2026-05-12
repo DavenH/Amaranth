@@ -1,8 +1,22 @@
 #pragma once
 
-#include "MeshRasterizer.h"
+#include <climits>
+#include <vector>
+
+#include "../Array/ScopedAlloc.h"
+#include "EnvelopeMesh.h"
+#include "Rasterization/BaseRasterizer.h"
+#include "Rasterization/GuideCurveOffsetSeeds.h"
+#include "Rasterization/Policies/Envelope/EnvelopePolicies.h"
+#include "Rasterization/Policies/Mesh/GuideCurvePolicy.h"
+#include "Rasterization/RasterizationRequest.h"
+#include "Rasterization/RenderResult.h"
+#include "Rasterization/Sampling/GuideCurveSampler.h"
 #include "../App/MeshLibrary.h"
 
+using std::vector;
+
+class GuideCurveProvider;
 class SingletonRepo;
 
 /**
@@ -14,9 +28,11 @@ class SingletonRepo;
  *
  */
 class EnvRasterizer :
-        public MeshRasterizer,
-        public SingletonAccessor {
+        public Rasterization::BaseRasterizer
+    ,   public SingletonAccessor {
 public:
+    using GuideCurveContext = Rasterization::GuideCurveContext;
+
     enum { loopMinSizeIcpts = 1, graphicIndex = 0, headUnisonIndex };
     enum { NormalState, Looping, Releasing };
 
@@ -48,20 +64,15 @@ public:
     EnvRasterizer(const EnvRasterizer& copy);
     ~EnvRasterizer() override;
 
-    void calcCrossPoints() override;
     void ensureParamSize(int numUnisonVoices);
     void evaluateLoopSustainIndices();
     void getIndices(int& loopIdx, int& sustIdx) const;
-    void padIcpts(vector<Intercept>& icpts, vector<Curve>& curves) override;
-    void processIntercepts(vector<Intercept>& intercepts) override;
     void resetGraphicParams();
     void setMesh(EnvelopeMesh* mesh);
-    void setMesh(Mesh* mesh) override;
     void setNoteOff();
     void setNoteOn();
     void setWantOneSamplePerCycle(bool does);
     void simulateStart(double& lastPosition);
-    void updateOffsetSeeds(int layerSize, int tableSize) override;
     void validateState();
 
     bool hasReleaseCurve();
@@ -80,6 +91,41 @@ public:
 
     Mesh* getCurrentMesh();
 
+    void calcIntercepts();
+    void cleanUp();
+    void updateGeometry() override;
+    void updateGeometry(Mesh* mesh, float oscPhase = 0.f);
+    void updateWaveform() override;
+    void updateWaveform(Mesh* mesh, float oscPhase = 0.f);
+    void reset() override { cleanUp(); }
+
+    bool canRasterizeWaveform();
+
+    Rasterization::SamplerView sampler() const override {
+        return Rasterization::SamplerView(result.waveform, !unsampleable);
+    }
+
+    void setMesh(Mesh* mesh);
+
+    MorphPosition& getMorphPosition() { return request.morph; }
+    Rasterization::PointScalingMode getScalingType() const { return request.scalingMode; }
+    void setCalcDepthDimensions(bool calc) { request.calcDepthDimensions = calc; }
+    void setDecoupleComponentDfrm(bool does) { request.decoupleComponentDeforms = does; }
+    void setDims(const Dimensions& dims) { request.dims = dims; }
+    void setGuideCurveProvider(GuideCurveProvider* provider) { guideCurveProvider = provider; }
+    void setLimits(float min, float max) { request.xMinimum = min; request.xMaximum = max; }
+    void setLowresCurves(bool areLow) { request.lowResCurves = areLow; }
+    void setMorphPosition(const MorphPosition& morph) { request.morph = morph; }
+    void setNoiseSeed(int seed) { request.noiseSeed = seed; }
+    void setToOverrideDim(bool does) { request.overrideDimension = does; }
+    void setWrapsEnds(bool wraps) {
+        request.cyclic = wraps;
+        rasterizerData.wrapsVertices = wraps;
+    }
+    void update(UpdateType updateType) { Updateable::update(updateType); }
+    void updateOffsetSeeds(int layerSize, int tableSize);
+    void updateValue(int dim, float value);
+
     const EnvelopeMesh* getEnvMesh() const      { return envMesh;                           }
     float getSustainLevel(int paramIndex) const { return params[paramIndex].sustainLevel;   }
     int getMode() const                         { return state;                             }
@@ -90,9 +136,35 @@ public:
 
 private:
     void changedToRelease();
+    void clearRasterizationResult(bool clearCurves);
+    Rasterization::EnvelopePaddingContext createPaddingContext() const;
+    void installEnvelopeProviders();
     void padIcptsForRender(vector<Intercept>& icpts, vector<Curve>& curves);
+    void renderEnvelopeCrossPoints();
+    void processEnvelopeIntercepts(vector<Intercept>& intercepts);
+    void rebuildCurvesFromIntercepts();
+    void bakeWaveform();
+    void copyWaveformForRelease();
+    void publishSnapshot();
+    void updateBuffers(int size);
+    Rasterization::GuideCurveApplier createGuideCurveApplier();
 
     bool canLoop() const;
+    bool isSampleable() const;
+    bool isSampleableAt(float x) const;
+    void markWaveformUnsampleable();
+    float sampleAt(double angle);
+    float sampleAt(double angle, int& currentIndex);
+    float sampleAtDecoupled(double angle, GuideCurveContext& context);
+    template<typename T>
+    T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
+        return Rasterization::WaveformSampler::sampleWithInterval(
+                result.waveform,
+                buffer,
+                delta,
+                phase);
+    }
+
     int vectorizedRenderToBuffer(Buffer<float> buffer, int numSamples, double deltaX, int unisonIdx);
     float getLoopLength() const;
 
@@ -111,6 +183,14 @@ private:
     ScopedAlloc<float> waveformMemory;
     Buffer<float> waveXCopy, waveYCopy, slopeCopy, renderBuffer;
 
+    GuideCurveProvider* guideCurveProvider;
+    Rasterization::RasterizationRequest request;
+    Rasterization::RenderResult result;
+    Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
+    VertCube::ReductionData reduction;
+
+    int paddingSize;
+    bool unsampleable, needsResorting;
 
     JUCE_LEAK_DETECTOR(EnvRasterizer)
 };

@@ -1,0 +1,290 @@
+#include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
+
+#include "../src/Curve/EnvelopeMesh.h"
+#include "../src/Curve/Rasterization/Policies/Envelope/EnvelopePolicies.h"
+
+namespace {
+    struct TestEnvelopeParam {
+        int sampleIndex {};
+        double samplePosition {};
+    };
+
+    std::vector<Intercept> makeIntercepts() {
+        return {
+            Intercept(0.10f, 0.20f, nullptr, 0.30f),
+            Intercept(0.35f, 0.75f, nullptr, 0.40f),
+            Intercept(0.70f, 0.40f, nullptr, 0.80f),
+            Intercept(0.92f, 0.62f, nullptr, 0.50f),
+        };
+    }
+
+    Rasterization::EnvelopePaddingContext makeLoopContext() {
+        Rasterization::EnvelopePaddingContext context;
+        context.loopIndex = 1;
+        context.sustainIndex = 3;
+        context.loopLength = 0.57f;
+        context.canLoop = true;
+        context.hasReleaseCurve = false;
+
+        return context;
+    }
+}
+
+TEST_CASE("EnvelopeMarkerPolicy evaluates envelope marker indices", "[rasterization][env]") {
+    EnvelopeMesh mesh("EnvelopeMarkerMesh");
+    VertCube loopCube;
+    VertCube sustainCube;
+
+    auto intercepts = makeIntercepts();
+    intercepts[1].cube = &loopCube;
+    intercepts[3].cube = &sustainCube;
+
+    mesh.loopCubes.insert(&loopCube);
+    mesh.sustainCubes.insert(&sustainCube);
+
+    auto result = Rasterization::EnvelopeMarkerPolicy().evaluate(intercepts, &mesh, 1);
+
+    REQUIRE(result.loopIndex == 1);
+    REQUIRE(result.sustainIndex == 3);
+}
+
+TEST_CASE("EnvelopeMarkerPolicy rejects loop markers too close to sustain", "[rasterization][env]") {
+    EnvelopeMesh mesh("EnvelopeMarkerMesh");
+    VertCube loopCube;
+    VertCube sustainCube;
+
+    auto intercepts = makeIntercepts();
+    intercepts[2].cube = &loopCube;
+    intercepts[3].cube = &sustainCube;
+
+    mesh.loopCubes.insert(&loopCube);
+    mesh.sustainCubes.insert(&sustainCube);
+
+    auto result = Rasterization::EnvelopeMarkerPolicy().evaluate(intercepts, &mesh, 2);
+
+    REQUIRE(result.loopIndex == -1);
+    REQUIRE(result.sustainIndex == 3);
+}
+
+TEST_CASE("EnvelopeMarkerPolicy falls back to last envelope intercept when sustain is unmarked", "[rasterization][env]") {
+    EnvelopeMesh mesh("EnvelopeMarkerMesh");
+    auto intercepts = makeIntercepts();
+
+    auto result = Rasterization::EnvelopeMarkerPolicy().evaluate(intercepts, &mesh, 1);
+
+    REQUIRE(result.loopIndex == -1);
+    REQUIRE(result.sustainIndex == 3);
+}
+
+TEST_CASE("EnvelopeSustainPointPolicy applies unipolar sustain floor point", "[rasterization][env]") {
+    auto intercepts = makeIntercepts();
+
+    Rasterization::EnvelopeSustainPointContext context;
+    context.sustainIndex = 1;
+    context.addFloorPoint = true;
+
+    bool needsResorting = Rasterization::EnvelopeSustainPointPolicy().apply(intercepts, context);
+
+    REQUIRE(needsResorting);
+    REQUIRE(intercepts.size() == 5);
+    REQUIRE(intercepts.back().cube == nullptr);
+    REQUIRE(intercepts.back().x == Catch::Approx(0.3501f));
+    REQUIRE(intercepts.back().y == Catch::Approx(0.75f));
+    REQUIRE(intercepts.back().shp == Catch::Approx(1.f));
+}
+
+TEST_CASE("EnvelopeSustainPointPolicy skips sustain floor point for terminal sustain", "[rasterization][env]") {
+    auto intercepts = makeIntercepts();
+
+    Rasterization::EnvelopeSustainPointContext context;
+    context.sustainIndex = 3;
+    context.addFloorPoint = true;
+
+    bool needsResorting = Rasterization::EnvelopeSustainPointPolicy().apply(intercepts, context);
+
+    REQUIRE_FALSE(needsResorting);
+    REQUIRE(intercepts.size() == 4);
+}
+
+TEST_CASE("EnvelopePaddingPolicy builds display padding for looping envelopes", "[rasterization][env]") {
+    auto intercepts = makeIntercepts();
+    std::vector<Curve> curves;
+
+    bool sampleable = Rasterization::EnvelopePaddingPolicy().buildDisplayPadding(
+            intercepts,
+            curves,
+            makeLoopContext());
+
+    REQUIRE(sampleable);
+    REQUIRE(curves.size() == 7);
+    REQUIRE(curves.front().a.x == Catch::Approx(-0.10f));
+    REQUIRE(curves.front().c.x == Catch::Approx(-0.05f));
+    REQUIRE(curves.back().b.x == Catch::Approx(intercepts[2].x + 0.57f));
+    REQUIRE(curves.back().c.x == Catch::Approx(intercepts[3].x + 0.57f));
+}
+
+TEST_CASE("EnvelopePaddingPolicy builds release render padding with terminal tail", "[rasterization][env]") {
+    auto intercepts = makeIntercepts();
+    std::vector<Curve> curves;
+
+    auto context = makeLoopContext();
+    context.state = Rasterization::EnvelopePaddingContext::Releasing;
+    context.hasReleaseCurve = true;
+
+    bool sampleable = Rasterization::EnvelopePaddingPolicy().buildRenderPadding(
+            intercepts,
+            curves,
+            context);
+
+    REQUIRE(sampleable);
+    REQUIRE(curves.size() == 8);
+    REQUIRE(curves.back().a.x == Catch::Approx(intercepts.back().x + 0.001f));
+    REQUIRE(curves.back().b.x == Catch::Approx(intercepts.back().x + 0.002f));
+    REQUIRE(curves.back().c.x == Catch::Approx(intercepts.back().x + 0.003f));
+}
+
+TEST_CASE("EnvelopePlaybackPolicy resolves release state and loop boundaries", "[rasterization][env][facade]") {
+    auto intercepts = makeIntercepts();
+
+    Rasterization::EnvelopePlaybackContext context;
+    context.loopIndex = 1;
+    context.sustainIndex = 2;
+
+    Rasterization::EnvelopePlaybackPolicy policy;
+
+    REQUIRE_FALSE(policy.hasReleaseCurve(intercepts, 3));
+    REQUIRE(policy.hasReleaseCurve(intercepts, 2));
+    REQUIRE(policy.loopLength(intercepts, context) == Catch::Approx(0.35f));
+    REQUIRE(policy.boundary(intercepts, context) == Catch::Approx(0.70f));
+
+    context.releasing = true;
+    REQUIRE(policy.boundary(intercepts, context) == Catch::Approx(intercepts.back().x));
+}
+
+TEST_CASE("EnvelopeReleasePolicy resolves release intercept and scale", "[rasterization][env][facade]") {
+    auto intercepts = makeIntercepts();
+
+    Rasterization::EnvelopeReleaseContext context;
+    context.bipolar = false;
+    context.sustainIndex = 1;
+
+    Rasterization::EnvelopeReleasePolicy policy;
+
+    REQUIRE(policy.releaseIndex(context) == 2);
+
+    auto release = policy.start(intercepts, context, 0.75f, 0.25f);
+
+    REQUIRE(release.index == 2);
+    REQUIRE(release.position == Catch::Approx(0.70f));
+    REQUIRE(release.scale == Catch::Approx(1.5f));
+
+    context.bipolar = true;
+    REQUIRE(policy.releaseIndex(context) == 1);
+}
+
+TEST_CASE("EnvelopeRenderTimingPolicy applies tempo and scale before partitioning", "[rasterization][env][facade]") {
+    MeshLibrary::EnvProps props;
+    props.active = true;
+    props.tempoSync = true;
+    props.scale = 2.f;
+
+    Rasterization::EnvelopeRenderTimingContext context;
+    context.numSamples = 2048;
+    context.deltaX = 0.01;
+    context.tempoScale = 2.f;
+    context.loopLength = 0.25f;
+    context.props = &props;
+
+    auto timing = Rasterization::EnvelopeRenderTimingPolicy().prepare(context);
+
+    REQUIRE(timing.effectiveDelta == Catch::Approx(0.0025));
+    REQUIRE(timing.maxSamplesPerBuffer == 90);
+
+    props.tempoSync = false;
+    props.scale = 1.f;
+    context.loopLength = -1.f;
+
+    timing = Rasterization::EnvelopeRenderTimingPolicy().prepare(context);
+
+    REQUIRE(timing.effectiveDelta == Catch::Approx(0.01));
+    REQUIRE(timing.maxSamplesPerBuffer == 50);
+}
+
+TEST_CASE("EnvelopeRenderTimingPolicy allows zero advancement for clamped UI simulation", "[rasterization][env][facade]") {
+    MeshLibrary::EnvProps props;
+    props.active = true;
+
+    Rasterization::EnvelopeRenderTimingContext context;
+    context.deltaX = 0.;
+    context.props = &props;
+
+    auto timing = Rasterization::EnvelopeRenderTimingPolicy().prepare(context);
+
+    REQUIRE(timing.effectiveDelta == Catch::Approx(0.));
+    REQUIRE(timing.maxSamplesPerBuffer == 1);
+}
+
+TEST_CASE("EnvelopeStateValidationPolicy clamps empty and overlong waveform positions", "[rasterization][env][facade]") {
+    std::vector<TestEnvelopeParam> params {
+        { 2, 0.25 },
+        { 4, 1.50 },
+    };
+
+    Rasterization::EnvelopeStateValidationContext context;
+    context.state = Rasterization::EnvelopeStateValidationContext::Looping;
+
+    auto state = Rasterization::EnvelopeStateValidationPolicy().validate(params, context);
+
+    REQUIRE(state == Rasterization::EnvelopeStateValidationContext::NormalState);
+    REQUIRE(params[0].samplePosition == Catch::Approx(0.));
+    REQUIRE(params[0].sampleIndex == 0);
+    REQUIRE(params[1].samplePosition == Catch::Approx(0.));
+    REQUIRE(params[1].sampleIndex == 0);
+
+    params = {
+        { 2, 0.25 },
+        { 4, 1.50 },
+    };
+    context.state = Rasterization::EnvelopeStateValidationContext::NormalState;
+    context.waveformSize = 8;
+    context.waveformEnd = 1.0;
+
+    state = Rasterization::EnvelopeStateValidationPolicy().validate(params, context);
+
+    REQUIRE(state == Rasterization::EnvelopeStateValidationContext::NormalState);
+    REQUIRE(params[0].samplePosition == Catch::Approx(0.25));
+    REQUIRE(params[1].samplePosition == Catch::Approx(1.0));
+    REQUIRE(params[1].sampleIndex == 7);
+}
+
+TEST_CASE("EnvelopeStateValidationPolicy normalizes loop state positions", "[rasterization][env][facade]") {
+    std::vector<TestEnvelopeParam> params {
+        { 0, 0.40 },
+        { 0, 1.05 },
+        { 0, 0.10 },
+    };
+
+    Rasterization::EnvelopeStateValidationContext context;
+    context.state = Rasterization::EnvelopeStateValidationContext::Looping;
+    context.headIndex = 1;
+    context.waveformSize = 8;
+    context.waveformEnd = 1.2;
+    context.loopStart = 0.25;
+    context.loopEnd = 0.75;
+    context.loopLength = 0.50;
+
+    auto state = Rasterization::EnvelopeStateValidationPolicy().validate(params, context);
+
+    REQUIRE(state == Rasterization::EnvelopeStateValidationContext::Looping);
+    REQUIRE(params[0].samplePosition == Catch::Approx(0.40));
+    REQUIRE(params[1].samplePosition == Catch::Approx(0.55));
+    REQUIRE(params[2].samplePosition == Catch::Approx(0.60));
+
+    context.state = Rasterization::EnvelopeStateValidationContext::NormalState;
+    params[1].samplePosition = 0.45;
+
+    state = Rasterization::EnvelopeStateValidationPolicy().validate(params, context);
+
+    REQUIRE(state == Rasterization::EnvelopeStateValidationContext::Looping);
+}

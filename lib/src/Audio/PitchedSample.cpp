@@ -6,10 +6,10 @@
 #include "../App/Doc/PresetJson.h"
 #include "../App/MeshLibrary.h"
 #include "../Curve/EnvRasterizer.h"
+#include "../Curve/FXRasterizer.h"
 #include "../Curve/Mesh.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
-#include "../Curve/MeshRasterizer.h"
 #include "../Util/Util.h"
 #include "../Definitions.h"
 
@@ -184,55 +184,73 @@ void PitchedSample::createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti)
     }
 }
 
-void PitchedSample::createPeriodsFromEnv(MeshLibrary& meshLibrary, MeshRasterizer* rast) {
-    jassert(fundNote > 0);
-    progressMark
+namespace {
+    template<class RasterizerType>
+    void createPeriodsFromEnv(
+            PitchedSample& sample,
+            MeshLibrary& meshLibrary,
+            RasterizerType* rasterizer) {
+        jassert(sample.fundNote > 0);
 
-    if(fundNote < 0) {
-        return;
-    }
+        if (sample.fundNote < 0 || rasterizer == nullptr) {
+            return;
+        }
 
-    int currentIndex = 0;
-    float position = 0;
-    float defaultFreq = NumberUtils::noteToFrequency(fundNote, 0);
-    Mesh* mesh = getMesh(meshLibrary);
+        int currentIndex = 0;
+        float position = 0;
+        float defaultFreq = NumberUtils::noteToFrequency(sample.fundNote, 0);
+        Mesh* mesh = sample.getMesh(meshLibrary);
 
-    if (mesh == nullptr) {
-        return;
-    }
+        if (mesh == nullptr) {
+            return;
+        }
 
-    rast->setMesh(mesh);
-    rast->calcCrossPoints();
-    rast->makeCopy();
+        rasterizer->setMesh(mesh);
+        rasterizer->performUpdate(Update);
 
-    if(rast->isSampleable())
-    {
-        periods.clear();
+        auto sampler = rasterizer->sampler();
+        if (sampler.isSampleable()) {
+            sample.periods.clear();
 
-        int sz          = size();
-        int maxPeriods  = 400;
-        float period    = samplerate / defaultFreq;
-        int decimFactor = jmax(1, sz / int (maxPeriods * period));
+            int sz          = sample.size();
+            int maxPeriods  = 400;
+            float period    = sample.samplerate / defaultFreq;
+            int decimFactor = jmax(1, sz / int (maxPeriods * period));
 
-        while ((int) position < sz) {
-            float x = position / float(sz);
+            while ((int) position < sz) {
+                float x = position / float(sz);
 
-            if (rast->isSampleableAt(x)) {
-                float y = rast->sampleAt(x, currentIndex);
+                if (sampler.isSampleableAt(x)) {
+                    float y = sampler.sampleAt(x, currentIndex);
 
-                NumberUtils::constrain(y, 0.1f, 0.9f);
-                float value = NumberUtils::unitPitchToSemis(y);
+                    NumberUtils::constrain(y, 0.1f, 0.9f);
+                    float value = NumberUtils::unitPitchToSemis(y);
 
-                float freq = NumberUtils::noteToFrequency(fundNote, 100 * value);
-                NumberUtils::constrain(freq, 20.f, 2500.f);
+                    float freq = NumberUtils::noteToFrequency(sample.fundNote, 100 * value);
+                    NumberUtils::constrain(freq, 20.f, 2500.f);
 
-                period = samplerate / freq;
+                    period = sample.samplerate / freq;
+                }
+
+                sample.periods.emplace_back(position, period, 0.2f);
+                position += period * decimFactor;
             }
-
-            periods.emplace_back(position, period, 0.2f);
-            position += period * decimFactor;
         }
     }
+}
+
+void PitchedSample::createPeriodsFromEnv(
+        MeshLibrary& meshLibrary,
+        EnvRasterizer* rasterizer) {
+    progressMark
+    ::createPeriodsFromEnv(*this, meshLibrary, rasterizer);
+}
+
+void PitchedSample::createPeriodsFromEnv(
+        MeshLibrary& meshLibrary,
+        FXRasterizer* rasterizer) {
+    progressMark
+    ::createPeriodsFromEnv(*this, meshLibrary, rasterizer);
 }
 
 void PitchedSample::shiftOctave(bool up) {

@@ -56,8 +56,8 @@ namespace {
         Mesh* waveshaperMesh = meshLib.getCurrentMesh(LayerGroups::GroupWaveshaper);
         Mesh* irModellerMesh = meshLib.getCurrentMesh(LayerGroups::GroupIrModeller);
 
-        repo.get<WaveshaperUI>("WaveshaperUI").getRasterizer()->setMesh(waveshaperMesh);
-        repo.get<IrModellerUI>("IrModellerUI").getRasterizer()->setMesh(irModellerMesh);
+        repo.get<WaveshaperUI>("WaveshaperUI").getEffectRasterizer()->setMesh(waveshaperMesh);
+        repo.get<IrModellerUI>("IrModellerUI").getEffectRasterizer()->setMesh(irModellerMesh);
         repo.get<IrModeller>("IrModeller").setMesh(irModellerMesh);
     }
 

@@ -3,6 +3,7 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Array/Buffer.h>
+#include <Audio/PluginProcessor.h>
 #include <Curve/EnvelopeMesh.h>
 #include <Util/Arithmetic.h>
 
@@ -284,9 +285,9 @@ void SynthesizerVoice::initialiseEnvMeshes() {
             rast.sampleable = false;
 
             if (props->active && rast.rast.getCurrentMesh() != nullptr &&
-                rast.rast.hasEnoughCubesForCrossSection()) {
-                rast.rast.calcCrossPoints();
-                rast.sampleable = rast.rast.isSampleable();
+                rast.rast.canRasterizeWaveform()) {
+                rast.rast.updateWaveform();
+                rast.sampleable = rast.rast.sampler().isSampleable();
             }
         }
     }
@@ -411,7 +412,7 @@ void SynthesizerVoice::calcEnvelopeBuffers(int numSamples) {
         MeshLibrary::EnvProps* props = meshLib->getEnvProps(LayerGroups::GroupVolume, context.layerIndex);
 
         if (props->active && envRast.getCurrentMesh() != nullptr &&
-            envRast.hasEnoughCubesForCrossSection()) {
+            envRast.canRasterizeWaveform()) {
             bool stillActive = envRast.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, *props, 1.f);
             // TODO
             anyActive |= stillActive;
@@ -475,7 +476,7 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
         rast->setCalcDepthDimensions(false);
         rast->setToOverrideDim(true);
         if (rast->getCurrentMesh() != nullptr) {
-            rast->calcCrossPoints();
+            rast->updateWaveform();
             rast->validateState();
         }
     }

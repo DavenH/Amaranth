@@ -144,7 +144,6 @@ private:
     void processFrequency(vector<Column>& columns, bool processUnison);
     void processThroughEnvelopes(int numColumns);
     void trackWavePhaseEnvelope();
-    float getVoiceFrequencyCents(int unisonIndex);
 
     void checkFFTColumns 	 (int numColumns);
     void checkEffectsColumns (int numColumns);
@@ -177,8 +176,6 @@ private:
     Ref<TimeRasterizer>  timeRasterizer;
     Ref<SpectRasterizer> spectRasterizer;
     Ref<PhaseRasterizer> phaseRasterizer;
-    MeshRasterizer oscPhaseRasterizer;
-
     ScopedAlloc<Float32> zoomProgress;
     ScopedAlloc<Float32> fftPreFXArray, fftPostFXArray;			  // fft
     ScopedAlloc<Float32> preEnvArray, postEnvArray, postFXArray;  // time

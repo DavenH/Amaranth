@@ -83,9 +83,9 @@ void CycleUpdater::createUpdateGraph() {
     getObj(GuideCurvePanel).setUpdateName("gcp");
 
     getObj(TimeRasterizer).setUpdateName("trst");
-    getObj(GuideCurvePanel).getRasterizer()->setUpdateName("grst");
-    getObj(IrModellerUI).getRasterizer()->setUpdateName("irst");
-    getObj(WaveshaperUI).getRasterizer()->setUpdateName("wrst");
+    getObj(GuideCurvePanel).getEffectRasterizer()->setUpdateName("grst");
+    getObj(IrModellerUI).getEffectRasterizer()->setUpdateName("irst");
+    getObj(WaveshaperUI).getEffectRasterizer()->setUpdateName("wrst");
 
     getObj(VisualDsp).getEnvProcessor()->setUpdateName("vden");
     getObj(VisualDsp).getTimeProcessor()->setUpdateName("vdtm");
@@ -110,9 +110,9 @@ void CycleUpdater::createUpdateGraph() {
     guideCurveItr   = createNode(&getObj(GuideCurvePanel));
 
     time2Rast       = createNode(&getObj(TimeRasterizer));
-    guideCurveRast  = createNode(getObj(GuideCurvePanel).getRasterizer());
-    irModelRast     = createNode(getObj(IrModellerUI).getRasterizer());
-    wshpRast        = createNode(getObj(WaveshaperUI).getRasterizer());
+    guideCurveRast  = createNode(getObj(GuideCurvePanel).getEffectRasterizer());
+    irModelRast     = createNode(getObj(IrModellerUI).getEffectRasterizer());
+    wshpRast        = createNode(getObj(WaveshaperUI).getEffectRasterizer());
 
     envProc         = createNode(getObj(VisualDsp).getEnvProcessor());
     timeProc        = createNode(getObj(VisualDsp).getTimeProcessor());
@@ -407,4 +407,3 @@ void CycleUpdater::refreshConnections(Node* destNode, const Array<int>& meshType
         }
     }
 }
-
