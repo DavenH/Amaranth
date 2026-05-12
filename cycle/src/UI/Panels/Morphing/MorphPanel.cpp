@@ -610,6 +610,7 @@ var MorphPanel::writeJSON() const {
 var MorphPanel::exportAutomationState() const {
     auto json = PresetJson::object();
     auto sliders = PresetJson::object();
+    auto viewDepthJson = PresetJson::object();
     auto links = PresetJson::object();
     auto ranges = PresetJson::object();
 
@@ -623,6 +624,11 @@ var MorphPanel::exportAutomationState() const {
 
     json->setProperty("primaryAxis", getSettingValue(CurrentMorphAxis));
     json->setProperty("currentMidiKey", getCurrentMidiKey());
+
+    viewDepthJson->setProperty("time", viewDepth[Vertex::Time]);
+    viewDepthJson->setProperty("red", viewDepth[Vertex::Red]);
+    viewDepthJson->setProperty("blue", viewDepth[Vertex::Blue]);
+    json->setProperty("viewDepth", PresetJson::toVar(viewDepthJson));
 
     links->setProperty("time", bool(getSettingValue(LinkYellow)));
     links->setProperty("red", bool(getSettingValue(LinkRed)));

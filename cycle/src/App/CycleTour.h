@@ -209,6 +209,12 @@ public:
 		TargImpModelWav,
 	};
 
+    enum PlaybackTargets
+    {
+        TargPlaybackZoomAttack,
+        TargPlaybackZoomFull,
+    };
+
 
 	enum WaveshaperTargets
 	{

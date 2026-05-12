@@ -81,6 +81,8 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     B(TargImpLength),      B(TargImpGain),       B(TargImpHP),          B(TargImpZoom);
     B(TargImpLoadWav),     B(TargImpUnloadWav),  B(TargImpModelWav);
 
+    B(TargPlaybackZoomAttack), B(TargPlaybackZoomFull);
+
     B(TargWaveshaperOvsp), B(TargWaveshaperPre), B(TargWaveshaperPost), B(TargWaveshaperSlct);
 
     B(TargSliderArea),     B(TargTimeSlider),    B(TargPhsSlider),      B(TargAmpSlider);
@@ -1240,6 +1242,10 @@ juce::Component* CycleTour::getComponent(const String& areaName, const String& t
 
     if (!subareaStrings.contains(targetName)) {
         return nullptr;
+    }
+
+    if (area == AreaPlayback) {
+        return getObj(PlaybackPanel).getComponent(subareaStrings[targetName]);
     }
 
     if (auto* guide = getTourGuide(area)) {

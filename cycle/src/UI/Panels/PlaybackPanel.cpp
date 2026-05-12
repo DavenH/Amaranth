@@ -14,6 +14,7 @@
 
 #include "PlaybackPanel.h"
 
+#include "../../App/CycleTour.h"
 #include "../VisualDsp.h"
 #include "../Panels/Console.h"
 
@@ -47,12 +48,40 @@ PlaybackPanel::PlaybackPanel(SingletonRepo* repo) :
 
 void PlaybackPanel::buttonClicked(Button* button) {
 	if (button == &attkZoomIcon) {
+        zoomPrimaryRangeToAttack();
 		getObj(Envelope2D).getZoomPanel()->zoomToAttack();
 	} else if (button == &zoomOutIcon) {
+        zoomPrimaryRangeToFull();
 		getObj(Envelope2D).getZoomPanel()->zoomToFull();
 	}
 
 	repaint();
+}
+
+void PlaybackPanel::zoomPrimaryRangeToAttack() {
+    int dim = getSetting(CurrentMorphAxis);
+    float depth = morphPanel->getDepth(dim) * 0.2f;
+    NumberUtils::constrain<float>(depth, 0.001f, 1.f);
+
+    morphPanel->setViewDepth(dim, depth);
+    setProgress(0.f, true);
+    morphPanel->repaint();
+}
+
+void PlaybackPanel::zoomPrimaryRangeToFull() {
+    int dim = getSetting(CurrentMorphAxis);
+
+    morphPanel->setViewDepth(dim, 1.f);
+    setProgress(0.f, true);
+    morphPanel->repaint();
+}
+
+juce::Component* PlaybackPanel::getComponent(int which) {
+    switch (which) {
+        case CycleTour::TargPlaybackZoomAttack: return &attkZoomIcon;
+        case CycleTour::TargPlaybackZoomFull:   return &zoomOutIcon;
+        default:                                return nullptr;
+    }
 }
 
 void PlaybackPanel::paint(Graphics& g) {

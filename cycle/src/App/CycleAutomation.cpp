@@ -93,6 +93,8 @@ namespace {
         "TargImpLoadWav",
         "TargImpUnloadWav",
         "TargImpModelWav",
+        "TargPlaybackZoomAttack",
+        "TargPlaybackZoomFull",
         "TargWaveshaperOvsp",
         "TargWaveshaperPre",
         "TargWaveshaperPost",
