@@ -31,12 +31,13 @@ namespace Rasterization {
             guideCurveOffsetSeeds.randomize(layerSize, tableSize, random);
         }
 
-        void render(Mesh* mesh, float oscPhase = 0.f) {
+        void updateGeometry(Mesh* mesh, float oscPhase = 0.f) {
             if (mesh == nullptr || mesh->getNumCubes() == 0) {
                 clean();
                 return;
             }
 
+            waveformOutput = nullptr;
             bool needsResorting = false;
 
             GuideCurveApplier guideApplier = createGuideCurveApplier(reduction, &needsResorting);
@@ -50,12 +51,25 @@ namespace Rasterization {
 
             meshIntercepts = meshOutput.intercepts;
             meshColorPoints = meshOutput.colorPoints;
+        }
+
+        void updateWaveform(Mesh* mesh, float oscPhase = 0.f) {
+            updateGeometry(mesh, oscPhase);
+
+            if (meshIntercepts.empty()) {
+                return;
+            }
+
             waveformOutput = &waveformBuilder.renderIntercepts(
                     meshIntercepts,
                     waveformResult,
                     request,
                     guideCurveProvider,
                     &guideCurveOffsetSeeds);
+        }
+
+        void render(Mesh* mesh, float oscPhase = 0.f) {
+            updateWaveform(mesh, oscPhase);
         }
 
         void clean() {

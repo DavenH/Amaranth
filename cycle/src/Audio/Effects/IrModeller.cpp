@@ -188,7 +188,7 @@ void IrModeller::rasterizeImpulse(
             return;
         }
 
-        waveform.updateWaveform(Update);
+        waveform.updateWaveform();
 
         double delta = (1.f - getRealConstant(IrModellerPadding)) / double(impulse.size() - 1);
         double phase = getRealConstant(IrModellerPadding);
@@ -287,7 +287,7 @@ void IrModeller::checkForPendingUpdates() {
                     break;
 
                 case rasterize: {
-                    audioThdRasterizer.calcCrossPoints();
+                    audioThdRasterizer.updateWaveform();
                     rasterizeImpulseDirect();
                     break;
                 }

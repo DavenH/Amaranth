@@ -70,7 +70,7 @@ namespace Cycle::Rasterization {
             pitch.setWantOneSamplePerCycle(true);
             pitch.setMode(EnvRasterizer::NormalState);
             pitch.setLowresCurves(true);
-            pitch.calcCrossPoints();
+            pitch.updateWaveform();
             pitch.setNoteOn();
 
             float timePerColEnv = 1.f / float(columns.size() - 1);

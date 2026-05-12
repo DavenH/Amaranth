@@ -2,7 +2,6 @@
 
 #include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
 #include <Curve/Rasterization/TrilinearMeshRasterizer.h>
-#include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
 
 #include "Rasterization/Policies/Graphic/GraphicPolicies.h"
@@ -11,8 +10,7 @@
 class Interactor;
 
 class GraphicRasterizer :
-    public Updateable
-    ,	public DynamicDetailUpdateable
+        public DynamicDetailUpdateable
     ,	public virtual SingletonAccessor
     ,   public Rasterization::TrilinearMeshRasterizer {
 public:
@@ -67,9 +65,11 @@ public:
     void saveStateTo(RenderState& state);
     ScopedRenderState preserveState(RenderState& state) { return ScopedRenderState(this, &state); }
 
-    void calcCrossPoints(Mesh* mesh, float oscPhase);
+    void updateGeometry() override;
+    void updateGeometry(Mesh* mesh, float oscPhase = 0.f);
+    void updateWaveform() override;
+    void updateWaveform(Mesh* mesh, float oscPhase = 0.f);
     void cleanUp();
-    void performUpdate(UpdateType updateType) override;
     void reset() override { cleanUp(); }
 
     RenderState createRenderState() {
@@ -100,6 +100,9 @@ private:
     static int renderStateScalingType(Rasterization::PointScalingMode scalingMode);
 
     int primaryViewDimension();
+    void prepareRequestForRender();
+    void updateGeometryAtPhase(float oscPhase);
+    void updateWaveformAtPhase(float oscPhase);
 
     int layerGroup;
     Interactor* interactor;

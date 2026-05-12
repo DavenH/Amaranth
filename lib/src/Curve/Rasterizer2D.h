@@ -127,12 +127,12 @@ public:
 
     void performUpdate(UpdateType updateType) {
         if (updateType == Update) {
-            calcCrossPoints();
+            updateWaveform();
         }
     }
 
-    void calcCrossPoints() {
-        renderPointListCrossPoints();
+    void updateWaveform() {
+        renderPointListWaveform();
     }
 
     void cleanUp() {
@@ -179,7 +179,7 @@ public:
     static int getPaddingSize()         { return 2;             }
 
 private:
-    void renderPointListCrossPoints();
+    void renderPointListWaveform();
 
 protected:
     Rasterization::RenderResult result;
@@ -192,7 +192,7 @@ protected:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Rasterizer2D)
 };
 
-inline void Rasterizer2D::renderPointListCrossPoints() {
+inline void Rasterizer2D::renderPointListWaveform() {
     if (points.empty()) {
         cleanUp();
         return;

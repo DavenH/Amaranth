@@ -184,7 +184,7 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
         timeRasterizer.setMorphPosition(position);
         timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
         timeRasterizer.setInterceptPadding((float) samplingDelta * 2);
-        timeRasterizer.calcCrossPoints(layer.mesh, 0.f);
+        timeRasterizer.updateWaveform(layer.mesh, 0.f);
 
         auto sampler = timeRasterizer.samplerView();
         if (sampler.isSampleable()) {

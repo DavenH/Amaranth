@@ -87,6 +87,14 @@ void MeshRasterizer::calcCrossPoints() {
     calcCrossPoints(mesh, 0.f);
 }
 
+void MeshRasterizer::updateGeometry() {
+    calcIntercepts();
+}
+
+void MeshRasterizer::updateWaveform() {
+    calcCrossPoints();
+}
+
 Rasterization::RasterizationRequest MeshRasterizer::createRasterizationRequest() {
     Rasterization::RasterizationRequest request;
     request.dims                      = dims;

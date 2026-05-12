@@ -131,7 +131,7 @@ bool EnvRasterizer::hasReleaseCurve() {
 
 void EnvRasterizer::renderEnvelopeCrossPoints() {
     getMorphPosition().resetTime();
-    calcCrossPoints(envMesh, 0.f);
+    updateWaveform(envMesh, 0.f);
 
     // do this even if we can't loop right now just in case
     // loopability changes by the time release curve is going
@@ -213,11 +213,7 @@ Mesh* EnvRasterizer::getCurrentMesh() {
     return envMesh;
 }
 
-void EnvRasterizer::calcCrossPoints() {
-    renderEnvelopeCrossPoints();
-}
-
-void EnvRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
+void EnvRasterizer::updateWaveform(Mesh* mesh, float oscPhase) {
     EnvelopeMesh* envelopeMesh = dynamic_cast<EnvelopeMesh*>(mesh);
     jassert(mesh == nullptr || envelopeMesh != nullptr);
 
@@ -276,8 +272,7 @@ void EnvRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
 
 void EnvRasterizer::calcIntercepts() {
     ScopedValueSetter calcInterceptsOnly(request.calcInterceptsOnly, true, request.calcInterceptsOnly);
-    calcCrossPoints();
-    publishSnapshot();
+    updateGeometry();
 }
 
 void EnvRasterizer::cleanUp() {
@@ -286,10 +281,18 @@ void EnvRasterizer::cleanUp() {
     publishSnapshot();
 }
 
-void EnvRasterizer::performUpdate(UpdateType updateType) {
-    if (updateType == Update) {
-        calcCrossPoints();
-    }
+void EnvRasterizer::updateGeometry() {
+    ScopedValueSetter calcInterceptsOnly(request.calcInterceptsOnly, true, request.calcInterceptsOnly);
+    updateWaveform(envMesh, 0.f);
+}
+
+void EnvRasterizer::updateGeometry(Mesh* mesh, float oscPhase) {
+    ScopedValueSetter calcInterceptsOnly(request.calcInterceptsOnly, true, request.calcInterceptsOnly);
+    updateWaveform(mesh, oscPhase);
+}
+
+void EnvRasterizer::updateWaveform() {
+    renderEnvelopeCrossPoints();
 }
 
 bool EnvRasterizer::canRasterizeWaveform() {

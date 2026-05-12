@@ -30,9 +30,7 @@ namespace Rasterization {
     struct GuideCurvePolicyContext;
 }
 
-class MeshRasterizer :
-        public Updateable
-    ,   public Rasterization::Rasterizer {
+class MeshRasterizer : public Rasterization::Rasterizer {
 public:
     enum ScalingType { Unipolar, Bipolar, HalfBipolar };
 
@@ -99,6 +97,8 @@ public:
 
     Rasterization::SamplerView samplerView() const override { return Rasterization::SamplerView(createWaveformBuffers(), isSampleable()); }
     Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rastArrays); }
+    void updateGeometry() override;
+    void updateWaveform() override;
 
     float sampleAt(double angle);
     float sampleAt(double angle, int& currentIndex);

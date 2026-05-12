@@ -138,7 +138,7 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
             rasterizer.setLowresCurves(!isScratchGroup);
             rasterizer.setCalcDepthDimensions(false);
             rasterizer.setMode(EnvRasterizer::NormalState);
-            rasterizer.calcCrossPoints();
+            rasterizer.updateWaveform();
 
             if (rasterizer.samplerView().isSampleable()) {
                 double delta = 1 / float(env.size());
@@ -181,7 +181,7 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
             int index = 0;
             for(int i = 0; i < env.size(); ++i) {
                 p[dim] = zoomArray[i];
-                rasterizer.calcCrossPoints();
+                rasterizer.updateWaveform();
 
                 auto sampler = rasterizer.samplerView();
                 env[i] = sampler.isSampleableAt(time) ?
@@ -602,7 +602,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                 if (colIdx % colMagRatio == 0) {
                     spectRasterizer->setNoiseSeed(colIdx * 1997);
                     spectRasterizer->setYellow(scratchTime);
-                    spectRasterizer->calcCrossPoints(spectLayer.mesh, 0.f);
+                    spectRasterizer->updateWaveform(spectLayer.mesh, 0.f);
 
                     auto sampler = spectRasterizer->samplerView();
                     if (!sampler.isSampleable()) {
@@ -668,7 +668,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                 if(colIdx % colPhaseRatio == 0) {
                     phaseRasterizer->setNoiseSeed(colIdx * 671);
                     phaseRasterizer->setYellow(scratchTime);
-                    phaseRasterizer->calcCrossPoints(layer.mesh, 0.f);
+                    phaseRasterizer->updateWaveform(layer.mesh, 0.f);
 
                     auto sampler = phaseRasterizer->samplerView();
                     if(sampler.isSampleable()) {

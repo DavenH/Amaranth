@@ -68,11 +68,11 @@ void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float
             timeRasterizer.setWrapsEnds(true);
 
             if (cycleCompositeAlgo == Interpolate) {
-                timeRasterizer.calcCrossPoints(layer.mesh, oscPhase);
+                timeRasterizer.updateWaveform(layer.mesh, oscPhase);
             } else {
                 // prime rasterizer
                 timeRasterizer.setMesh(layer.mesh);
-                timeRasterizer.calcCrossPointsChaining(oscPhase);
+                timeRasterizer.updateChainedWaveform(oscPhase);
             }
         }
     }
@@ -124,14 +124,14 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
             state.advancement = 0.f;
 
             timeRasterizer.setInterceptPadding((float) delta);
-            timeRasterizer.calcCrossPoints(layer.mesh, totalPhase);
+            timeRasterizer.updateWaveform(layer.mesh, totalPhase);
         } else {
             delta = group.angleDelta / double(oversampleFactor);
             spillover = state.spillover; //group.samplingSpillover[0];
 
             timeRasterizer.setMesh(layer.mesh);
             timeRasterizer.setInterceptPadding(jmax(-spillover, delta));
-            timeRasterizer.calcCrossPointsChaining(totalPhase);
+            timeRasterizer.updateChainedWaveform(totalPhase);
         }
 
         Buffer<float> rastBuf(rastBuffer, samplingSize);

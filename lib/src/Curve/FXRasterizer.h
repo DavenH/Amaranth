@@ -10,14 +10,12 @@
 #include "Rasterization/Builders/CurveWaveformBuilder.h"
 #include "Rasterization/RenderResult.h"
 #include "Rasterization/RasterizationRequest.h"
-#include "../Design/Updating/Updateable.h"
 #include "../Inter/Dimensions.h"
 
 using std::vector;
 
 class FXRasterizer :
-        public Updateable
-    ,   public SingletonAccessor
+        public SingletonAccessor
     ,   public Rasterization::BaseRasterizer {
     JUCE_LEAK_DETECTOR(FXRasterizer)
 
@@ -26,16 +24,15 @@ public:
 
     explicit FXRasterizer(SingletonRepo* repo, const String& name = String());
 
-    void calcCrossPoints();
     void cleanUp();
-    void performUpdate(UpdateType updateType) override;
+    void updateGeometry() override;
+    void updateWaveform() override;
     void reset() override;
 
     void setVertices(vector<Vertex*>* vertices);
 
     bool canRasterizeWaveform() const;
     bool isBipolar() const;
-    void updateWaveform(UpdateType updateType);
 
     Rasterization::SamplerView samplerView() const override {
         return Rasterization::SamplerView(result.waveform, result.sampleable);
@@ -50,7 +47,7 @@ public:
 private:
     Rasterization::RasterizationRequest createFxRequest() const;
     Intercept interceptAt(Vertex* vertex) const;
-    bool renderFx(const Rasterization::RasterizationRequest& request);
+    bool updateFxGeometry(const Rasterization::RasterizationRequest& request);
     void bakeWaveform(const Rasterization::RasterizationRequest& request);
     void copyVertexInterceptsTo(vector<Intercept>& intercepts) const;
     void publishSnapshot();

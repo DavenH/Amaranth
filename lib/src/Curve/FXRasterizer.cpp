@@ -31,13 +31,6 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
     rasterizerData.wrapsVertices = false;
 }
 
-void FXRasterizer::calcCrossPoints() {
-    DBG(getName() + "::calcCrossPoints begin " + describeFxSource(mesh, vertexCount()));
-
-    renderFx(createFxRequest());
-    publishSnapshot();
-}
-
 void FXRasterizer::cleanUp() {
     result.clear();
     publishSnapshot();
@@ -45,10 +38,22 @@ void FXRasterizer::cleanUp() {
     DBG(getName() + "::cleanUp");
 }
 
-void FXRasterizer::performUpdate(UpdateType updateType) {
-    if (updateType == Update) {
-        calcCrossPoints();
+void FXRasterizer::updateGeometry() {
+    DBG(getName() + "::updateGeometry begin " + describeFxSource(mesh, vertexCount()));
+
+    updateFxGeometry(createFxRequest());
+    publishSnapshot();
+}
+
+void FXRasterizer::updateWaveform() {
+    DBG(getName() + "::updateWaveform begin " + describeFxSource(mesh, vertexCount()));
+
+    auto request = createFxRequest();
+    if (updateFxGeometry(request)) {
+        bakeWaveform(request);
     }
+
+    publishSnapshot();
 }
 
 void FXRasterizer::reset() {
@@ -73,10 +78,6 @@ bool FXRasterizer::canRasterizeWaveform() const {
 
 bool FXRasterizer::isBipolar() const {
     return scalingType == Bipolar || scalingType == HalfBipolar;
-}
-
-void FXRasterizer::updateWaveform(UpdateType updateType) {
-    performUpdate(updateType);
 }
 
 Rasterization::RasterizationRequest FXRasterizer::createFxRequest() const {
@@ -104,7 +105,7 @@ Intercept FXRasterizer::interceptAt(Vertex* vertex) const {
     return intercept;
 }
 
-bool FXRasterizer::renderFx(const Rasterization::RasterizationRequest& request) {
+bool FXRasterizer::updateFxGeometry(const Rasterization::RasterizationRequest& request) {
     result.clear();
 
     if (vertexCount() == 0) {
@@ -135,9 +136,8 @@ bool FXRasterizer::renderFx(const Rasterization::RasterizationRequest& request) 
     }
 
     result.paddingSize = Rasterization::FxPaddingPolicy().build(result.intercepts, result.curves);
-    bakeWaveform(request);
 
-    return result.sampleable;
+    return true;
 }
 
 void FXRasterizer::copyVertexInterceptsTo(vector<Intercept>& intercepts) const {

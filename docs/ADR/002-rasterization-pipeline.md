@@ -45,10 +45,21 @@ composition: `FXRasterizer`, `GraphicRasterizer`, `E3Rasterizer`,
 `LegacyMeshRasterizer` fixture.
 
 Current production rasterizers share only non-leaky necessities:
-`Rasterizer` defines the runtime view surface, `BaseRasterizer` owns snapshot
+`Rasterizer` defines the staged runtime surface, `BaseRasterizer` owns snapshot
 publication storage, and `TrilinearMeshRasterizer` centralizes the mesh,
 morph-position, guide-curve, and request forwarding that is intrinsically tied
 to trilinear mesh waveform rasterization.
+
+The staged runtime surface is:
+
+- `updateGeometry()`: produce panel geometry such as intercepts and color
+  points without requiring sampleable waveform buffers,
+- `updateWaveform()`: run through waveform construction and publish sampleable
+  buffers when possible,
+- `samplerView()` and `snapshotView()`: expose sampled and panel-facing views
+  without putting sampling or snapshot storage on every concrete class,
+- `performUpdate(Update)`: retained as an update-system bridge that delegates
+  to `updateWaveform()`.
 
 ## Consequences
 

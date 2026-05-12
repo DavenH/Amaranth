@@ -79,18 +79,50 @@ void GraphicRasterizer::saveStateTo(RenderState& state) {
     state.batchMode = request.batchMode;
 }
 
-void GraphicRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
+void GraphicRasterizer::updateGeometry() {
+    updateGeometryAtPhase(0.f);
+}
+
+void GraphicRasterizer::updateGeometry(Mesh* mesh, float oscPhase) {
+    setMesh(mesh);
+    updateGeometryAtPhase(oscPhase);
+}
+
+void GraphicRasterizer::updateGeometryAtPhase(float oscPhase) {
+    prepareRequestForRender();
+
     if (mesh == nullptr || mesh->getNumCubes() == 0) {
         cleanUp();
         return;
     }
 
-    setMesh(mesh);
-    auto& request = rasterizer.getRequest();
-    request.primaryViewDimension = primaryViewDimension();
-    rasterizer.render(mesh, oscPhase);
+    rasterizer.updateGeometry(mesh, oscPhase);
 
-    if (!request.batchMode) {
+    if (!rasterizer.getRequest().batchMode) {
+        publishTrilinearSnapshot();
+    }
+}
+
+void GraphicRasterizer::updateWaveform() {
+    updateWaveformAtPhase(0.f);
+}
+
+void GraphicRasterizer::updateWaveform(Mesh* mesh, float oscPhase) {
+    setMesh(mesh);
+    updateWaveformAtPhase(oscPhase);
+}
+
+void GraphicRasterizer::updateWaveformAtPhase(float oscPhase) {
+    prepareRequestForRender();
+
+    if (mesh == nullptr || mesh->getNumCubes() == 0) {
+        cleanUp();
+        return;
+    }
+
+    rasterizer.updateWaveform(mesh, oscPhase);
+
+    if (!rasterizer.getRequest().batchMode) {
         publishTrilinearSnapshot();
     }
 }
@@ -102,12 +134,6 @@ void GraphicRasterizer::cleanUp() {
     }
 
     cleanTrilinearRasterization();
-}
-
-void GraphicRasterizer::performUpdate(UpdateType updateType) {
-    if (updateType == Update) {
-        calcCrossPoints(mesh, 0.f);
-    }
 }
 
 Rasterization::PointScalingMode GraphicRasterizer::scalingModeFromRenderState(int scalingType) {
@@ -132,4 +158,8 @@ int GraphicRasterizer::renderStateScalingType(Rasterization::PointScalingMode sc
 int GraphicRasterizer::primaryViewDimension() {
     return Cycle::Rasterization::GraphicAxisPolicy().primaryViewDimension(
             repo->get<Settings>("Settings").getGlobalSetting(AppSettings::CurrentMorphAxis));
+}
+
+void GraphicRasterizer::prepareRequestForRender() {
+    rasterizer.getRequest().primaryViewDimension = primaryViewDimension();
 }

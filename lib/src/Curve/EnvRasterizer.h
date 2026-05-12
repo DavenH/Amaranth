@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "../Array/ScopedAlloc.h"
-#include "../Design/Updating/Updateable.h"
 #include "EnvelopeMesh.h"
 #include "Rasterization/BaseRasterizer.h"
 #include "Rasterization/GuideCurveOffsetSeeds.h"
@@ -29,8 +28,7 @@ class SingletonRepo;
  *
  */
 class EnvRasterizer :
-        public Updateable
-    ,   public Rasterization::BaseRasterizer
+        public Rasterization::BaseRasterizer
     ,   public SingletonAccessor {
 public:
     using GuideCurveContext = Rasterization::GuideCurveContext;
@@ -93,11 +91,12 @@ public:
 
     Mesh* getCurrentMesh();
 
-    void calcCrossPoints();
-    void calcCrossPoints(Mesh* mesh, float oscPhase);
     void calcIntercepts();
     void cleanUp();
-    void performUpdate(UpdateType updateType) override;
+    void updateGeometry() override;
+    void updateGeometry(Mesh* mesh, float oscPhase = 0.f);
+    void updateWaveform() override;
+    void updateWaveform(Mesh* mesh, float oscPhase = 0.f);
     void reset() override { cleanUp(); }
 
     bool canRasterizeWaveform();

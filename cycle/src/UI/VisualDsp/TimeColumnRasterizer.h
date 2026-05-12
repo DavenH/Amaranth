@@ -81,7 +81,7 @@ namespace Cycle::Rasterization {
 
                     context.rasterizer->setNoiseSeed(colIdx * 6197);
                     context.rasterizer->setYellow(scratchTime);
-                    context.rasterizer->calcCrossPoints(mesh, 0.f);
+                    context.rasterizer->updateWaveform(mesh, 0.f);
 
                     auto sampler = context.rasterizer->samplerView();
                     if (!sampler.isSampleable()) {

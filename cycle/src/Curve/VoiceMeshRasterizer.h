@@ -31,13 +31,11 @@ public:
 	 * Chains the minimum necessary number of points from previous call to head of the subsequent call
 	 * This provides 100% continuity between cycles
 	 */
-	void calcCrossPointsChaining(float phase);
+	void updateChainedWaveform(float phase);
 	void orphanOldVerts();
 	void setState(CycleState* state) { this->state = state; }
 
-    void calcCrossPoints(Mesh* mesh, float oscPhase);
     void cleanUp();
-    void performUpdate(UpdateType updateType) override;
     void reset() override { cleanUp(); }
 
     Rasterization::SamplerView samplerView() const override {

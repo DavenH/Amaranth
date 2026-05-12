@@ -11,6 +11,24 @@ namespace Rasterization {
             return rasterizer.samplerView();
         }
 
+        void updateGeometry() override {
+            updateTrilinearGeometry(0.f);
+        }
+
+        void updateWaveform() override {
+            updateTrilinearWaveform(0.f);
+        }
+
+        void updateGeometry(Mesh* mesh, float oscPhase = 0.f) {
+            setMesh(mesh);
+            updateTrilinearGeometry(oscPhase);
+        }
+
+        void updateWaveform(Mesh* mesh, float oscPhase = 0.f) {
+            setMesh(mesh);
+            updateTrilinearWaveform(oscPhase);
+        }
+
         void setMesh(Mesh* mesh) {
             this->mesh = mesh;
         }
@@ -88,6 +106,26 @@ namespace Rasterization {
 
         void publishTrilinearSnapshot() {
             publishSnapshot(rasterizer.createSnapshotSource());
+        }
+
+        void updateTrilinearGeometry(float oscPhase) {
+            if (mesh == nullptr || mesh->getNumCubes() == 0) {
+                cleanTrilinearRasterization();
+                return;
+            }
+
+            rasterizer.updateGeometry(mesh, oscPhase);
+            publishTrilinearSnapshot();
+        }
+
+        void updateTrilinearWaveform(float oscPhase) {
+            if (mesh == nullptr || mesh->getNumCubes() == 0) {
+                cleanTrilinearRasterization();
+                return;
+            }
+
+            rasterizer.updateWaveform(mesh, oscPhase);
+            publishTrilinearSnapshot();
         }
 
         Mesh* mesh {};

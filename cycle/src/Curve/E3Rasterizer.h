@@ -11,7 +11,6 @@ using std::vector;
 
 class E3Rasterizer :
         public SingletonAccessor
-    ,   public Updateable
     ,   public Rasterization::TrilinearMeshRasterizer {
 public:
     explicit E3Rasterizer(SingletonRepo* repo);

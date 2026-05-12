@@ -34,7 +34,7 @@ VoiceMeshRasterizer::VoiceMeshRasterizer(SingletonRepo* repo) :
     updateChainBuffers(2048);
 }
 
-void VoiceMeshRasterizer::calcCrossPointsChaining(float oscPhase) {
+void VoiceMeshRasterizer::updateChainedWaveform(float oscPhase) {
     if (mesh == nullptr || mesh->getNumCubes() == 0 || state == nullptr) {
         cleanUp();
         return;
@@ -82,29 +82,10 @@ void VoiceMeshRasterizer::orphanOldVerts() {
     chainResult.intercepts.clear();
 }
 
-void VoiceMeshRasterizer::calcCrossPoints(Mesh* mesh, float oscPhase) {
-    chainedOutputActive = false;
-
-    if (mesh == nullptr || mesh->getNumCubes() == 0) {
-        cleanUp();
-        return;
-    }
-
-    setMesh(mesh);
-    rasterizer.render(mesh, oscPhase);
-    publishSnapshot();
-}
-
 void VoiceMeshRasterizer::cleanUp() {
     rasterizer.clean();
     cleanChainedOutput();
     publishSnapshot();
-}
-
-void VoiceMeshRasterizer::performUpdate(UpdateType updateType) {
-    if (updateType == Update) {
-        calcCrossPoints(mesh, 0.f);
-    }
 }
 
 bool VoiceMeshRasterizer::currentWaveformIsSampleable() const {

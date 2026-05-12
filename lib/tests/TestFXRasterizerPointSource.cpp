@@ -83,6 +83,29 @@ namespace {
 
 }
 
+TEST_CASE("FXRasterizer can stop after geometry update", "[rasterization][fx]") {
+    CurveTableScope curveTableScope;
+    std::vector<std::unique_ptr<Vertex>> ownedVertices;
+    std::vector<Vertex*> vertices;
+
+    ownedVertices.emplace_back(makeOwnedVertex(0.08f, 0.20f, 0.15f));
+    ownedVertices.emplace_back(makeOwnedVertex(0.35f, 0.82f, 0.40f));
+    ownedVertices.emplace_back(makeOwnedVertex(0.72f, 0.38f, 0.65f));
+
+    for (auto& vertex : ownedVertices) {
+        vertices.emplace_back(vertex.get());
+    }
+
+    FXRasterizer rasterizer(nullptr, "DirectFxGeometryOnly");
+    rasterizer.setVertices(&vertices);
+    rasterizer.updateGeometry();
+
+    auto snapshot = rasterizer.snapshotView();
+    REQUIRE(snapshot.intercepts().size() == vertices.size());
+    REQUIRE(snapshot.waveX().empty());
+    REQUIRE_FALSE(rasterizer.samplerView().isSampleable());
+}
+
 TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx]") {
     CurveTableScope curveTableScope;
     std::vector<std::unique_ptr<Vertex>> ownedVertices;
@@ -99,7 +122,7 @@ TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx
 
     FXRasterizer rasterizer(nullptr, "DirectFxVertexList");
     rasterizer.setVertices(&vertices);
-    rasterizer.calcCrossPoints();
+    rasterizer.updateWaveform();
 
     REQUIRE(rasterizer.canRasterizeWaveform());
     REQUIRE(rasterizer.samplerView().isSampleable());
@@ -119,11 +142,11 @@ TEST_CASE("FXRasterizer mesh adapter matches direct vertex list rasterization", 
 
     FXRasterizer meshRasterizer(nullptr, "FxMeshAdapter");
     meshRasterizer.setMesh(&owner.mesh);
-    meshRasterizer.calcCrossPoints();
+    meshRasterizer.updateWaveform();
 
     FXRasterizer directRasterizer(nullptr, "FxDirectVertices");
     directRasterizer.setVertices(&directVertices);
-    directRasterizer.calcCrossPoints();
+    directRasterizer.updateWaveform();
 
     auto directSnapshot = directRasterizer.snapshotView();
     auto meshSnapshot = meshRasterizer.snapshotView();

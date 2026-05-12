@@ -575,6 +575,11 @@ Implemented state:
   morph-position, guide-curve, and request forwarding,
 - production non-mesh-waveform owners share `BaseRasterizer` for snapshot
   storage and publication.
+- production rasterizers expose stage-oriented `updateGeometry()` and
+  `updateWaveform()` methods; `performUpdate(Update)` is now a compatibility
+  bridge that maps to the waveform stage,
+- the old `calcCrossPoints` name remains only in the test-only legacy
+  characterization fixture.
 
 ## Phase 9: Final Aesthetic Cleanup
 

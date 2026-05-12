@@ -64,7 +64,7 @@ TEST_CASE("Rasterizer2D rasterizes non-cyclic point lists through curve waveform
     std::vector<Intercept> points = makePointList();
 
     Rasterizer2D rasterizer(points, false);
-    rasterizer.calcCrossPoints();
+    rasterizer.updateWaveform();
 
     REQUIRE_FALSE(rasterizer.getWaveX().empty());
     REQUIRE(rasterizer.isSampleable());
@@ -80,7 +80,7 @@ TEST_CASE("Rasterizer2D rasterizes cyclic point lists through curve waveform pip
     std::vector<Intercept> points = makePointList();
 
     Rasterizer2D rasterizer(points, true);
-    rasterizer.calcCrossPoints();
+    rasterizer.updateWaveform();
 
     REQUIRE_FALSE(rasterizer.getWaveX().empty());
     REQUIRE(rasterizer.isSampleable());
@@ -97,7 +97,7 @@ TEST_CASE("CurveWaveformBuilder matches non-cyclic Rasterizer2D output", "[raste
     std::vector<Intercept> pipelinePoints = makePointList();
 
     Rasterizer2D reference(referencePoints, false);
-    reference.calcCrossPoints();
+    reference.updateWaveform();
 
     Rasterization::RasterizationRequest request;
     request.cyclic = false;
@@ -122,7 +122,7 @@ TEST_CASE("CurveWaveformBuilder matches cyclic Rasterizer2D output", "[rasteriza
     std::vector<Intercept> pipelinePoints = makePointList();
 
     Rasterizer2D reference(referencePoints, true);
-    reference.calcCrossPoints();
+    reference.updateWaveform();
 
     Rasterization::RasterizationRequest request;
     request.cyclic = true;
@@ -161,7 +161,7 @@ TEST_CASE("Rasterizer2D updates a partial waveform after a point edit", "[raster
     std::vector<Intercept> points = makePointList();
 
     Rasterizer2D rasterizer(points, false);
-    rasterizer.calcCrossPoints();
+    rasterizer.updateWaveform();
 
     std::vector<float> before = copyBuffer(rasterizer.getWaveY());
 

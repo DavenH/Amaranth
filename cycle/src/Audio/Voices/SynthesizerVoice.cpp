@@ -286,7 +286,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
 
             if (props->active && rast.rast.getCurrentMesh() != nullptr &&
                 rast.rast.canRasterizeWaveform()) {
-                rast.rast.calcCrossPoints();
+                rast.rast.updateWaveform();
                 rast.sampleable = rast.rast.samplerView().isSampleable();
             }
         }
@@ -476,7 +476,7 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
         rast->setCalcDepthDimensions(false);
         rast->setToOverrideDim(true);
         if (rast->getCurrentMesh() != nullptr) {
-            rast->calcCrossPoints();
+            rast->updateWaveform();
             rast->validateState();
         }
     }
