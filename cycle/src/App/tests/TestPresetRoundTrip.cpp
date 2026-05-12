@@ -4,6 +4,7 @@
 
 #include <App/Doc/Document.h>
 #include <App/Doc/DocumentDetails.h>
+#include <App/Doc/PresetJson.h>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
@@ -238,4 +239,43 @@ TEST_CASE("Legacy presets round trip through Document into stable current JSON",
     }
 
     REQUIRE(exercisedPresetCount > 0);
+}
+
+TEST_CASE("Guide curve noise contribution is bipolar", "[cycle][guide-curves]") {
+    CycleTestHarness harness;
+    auto& guidePanel = harness.getRepo().get<GuideCurvePanel>("GuideCurvePanel");
+
+    auto root = PresetJson::object();
+    Array<var> guides;
+    auto guide = PresetJson::object();
+    guide->setProperty("noiseLevel", 1.0);
+    guide->setProperty("offsetLevel", 0.0);
+    guide->setProperty("phaseLevel", 0.0);
+    guide->setProperty("noiseSeed", 0);
+    guides.add(PresetJson::toVar(guide));
+    root->setProperty("guides", var(guides));
+
+    REQUIRE(guidePanel.readJSON(PresetJson::toVar(root)));
+
+    constexpr float progress = 0.25f;
+    const int tableIndex = int(progress * (GuideCurvePanel::tableSize - 1));
+    Buffer<Float32> table = guidePanel.getTable(0);
+    REQUIRE_FALSE(table.empty());
+    REQUIRE(isPositiveAndBelow(tableIndex, table.size()));
+
+    const float baseValue = table[tableIndex];
+    float minimumDelta = 1.f;
+    float maximumDelta = -1.f;
+
+    for (int seed = 0; seed < 1024; ++seed) {
+        GuideCurveProvider::NoiseContext context;
+        context.noiseSeed = seed;
+
+        float delta = guidePanel.getTableValue(0, progress, context) - baseValue;
+        minimumDelta = jmin(minimumDelta, delta);
+        maximumDelta = jmax(maximumDelta, delta);
+    }
+
+    REQUIRE(minimumDelta < -0.01f);
+    REQUIRE(maximumDelta > 0.01f);
 }

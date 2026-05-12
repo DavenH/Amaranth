@@ -68,7 +68,7 @@ void GuideCurvePanel::init() {
 
     unsigned int seed(Time::currentTimeMillis());
     noiseArray = constMemory.place(tableSize);
-    noiseArray.rand(seed).mul(0.5f);
+    noiseArray.rand(seed).sub(0.5f);
     phaseMoveBuffer = constMemory.place(tableSize);
 
     createNameImage("Guide Curves");
