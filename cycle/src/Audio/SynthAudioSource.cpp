@@ -512,7 +512,7 @@ void SynthAudioSource::modulationChanged(float value, int voiceIndex, int output
                         rast.updateWaveform();
                         rast.validateState();
 
-                        scratchRast.sampleable = rast.samplerView().isSampleable();
+                        scratchRast.sampleable = rast.sampler().isSampleable();
                     }
                 }
             }
@@ -583,7 +583,7 @@ void SynthAudioSource::rasterizeGlobalEnvs() {
         rast.updateWaveform();
         rast.validateState();
 
-        scratchRast.sampleable = rast.samplerView().isSampleable();
+        scratchRast.sampleable = rast.sampler().isSampleable();
 
         if(scratchRast.sampleable) {
             rast.setNoteOn();

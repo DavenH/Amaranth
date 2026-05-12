@@ -23,7 +23,7 @@ namespace Rasterization {
         RenderResult& result() { return output; }
         const RenderResult& result() const { return output; }
 
-        SamplerView samplerView() const {
+        SamplerView sampler() const {
             return SamplerView(output.waveform, output.sampleable);
         }
 

@@ -1460,7 +1460,7 @@ bool Interactor::isRasterizerSampleableAt(float x) const {
         return false;
     }
 
-    return rasterizer->samplerView().isSampleableAt(x);
+    return rasterizer->sampler().isSampleableAt(x);
 }
 
 float Interactor::sampleRasterizerAt(double angle) const {
@@ -1468,7 +1468,7 @@ float Interactor::sampleRasterizerAt(double angle) const {
         return 0.f;
     }
 
-    return rasterizer->samplerView().sampleAt(angle);
+    return rasterizer->sampler().sampleAt(angle);
 }
 
 Rasterization::SnapshotView Interactor::rasterizerSnapshot() const {

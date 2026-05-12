@@ -78,7 +78,7 @@ namespace {
     }
 
     void sampleEvenly(FXRasterizer& rasterizer, Buffer<float> dest) {
-        rasterizer.samplerView().sampleWithInterval(dest, 1.f / float(dest.size() - 1), 0.f);
+        rasterizer.sampler().sampleWithInterval(dest, 1.f / float(dest.size() - 1), 0.f);
     }
 
 }
@@ -103,7 +103,7 @@ TEST_CASE("FXRasterizer can stop after geometry update", "[rasterization][fx]") 
     auto snapshot = rasterizer.snapshotView();
     REQUIRE(snapshot.intercepts().size() == vertices.size());
     REQUIRE(snapshot.waveX().empty());
-    REQUIRE_FALSE(rasterizer.samplerView().isSampleable());
+    REQUIRE_FALSE(rasterizer.sampler().isSampleable());
 }
 
 TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx]") {
@@ -125,13 +125,13 @@ TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx
     rasterizer.updateWaveform();
 
     REQUIRE(rasterizer.canRasterizeWaveform());
-    REQUIRE(rasterizer.samplerView().isSampleable());
+    REQUIRE(rasterizer.sampler().isSampleable());
 
     std::array<float, 32> samples {};
     Buffer<float> sampleBuffer(samples.data(), (int) samples.size());
     sampleEvenly(rasterizer, sampleBuffer);
 
-    REQUIRE(copyBuffer(sampleBuffer).front() == Catch::Approx(rasterizer.samplerView().sampleAt(0.0)));
+    REQUIRE(copyBuffer(sampleBuffer).front() == Catch::Approx(rasterizer.sampler().sampleAt(0.0)));
 }
 
 TEST_CASE("FXRasterizer mesh adapter matches direct vertex list rasterization", "[rasterization][fx]") {

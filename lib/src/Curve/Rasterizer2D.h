@@ -167,7 +167,7 @@ public:
     }
 
     bool isSampleable() const {
-        return !unsampleable && pointListRasterizer.samplerView().isSampleable();
+        return !unsampleable && pointListRasterizer.sampler().isSampleable();
     }
 
     Buffer<float> getWaveX() { return pointListRasterizer.result().waveform.waveX; }

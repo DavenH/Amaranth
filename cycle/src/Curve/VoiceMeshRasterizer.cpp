@@ -91,7 +91,7 @@ void VoiceMeshRasterizer::cleanUp() {
 bool VoiceMeshRasterizer::currentWaveformIsSampleable() const {
     return chainedOutputActive
            ? Rasterization::WaveformSampler::isSampleable(chainResult.waveform)
-           : Rasterization::TrilinearMeshRasterizer::samplerView().isSampleable();
+           : Rasterization::TrilinearMeshRasterizer::sampler().isSampleable();
 }
 
 Rasterization::WaveformBuffers VoiceMeshRasterizer::currentWaveform() const {

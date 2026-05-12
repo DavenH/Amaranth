@@ -287,7 +287,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
             if (props->active && rast.rast.getCurrentMesh() != nullptr &&
                 rast.rast.canRasterizeWaveform()) {
                 rast.rast.updateWaveform();
-                rast.sampleable = rast.rast.samplerView().isSampleable();
+                rast.sampleable = rast.rast.sampler().isSampleable();
             }
         }
     }

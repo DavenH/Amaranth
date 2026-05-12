@@ -16,7 +16,7 @@ namespace Rasterization {
         RasterizationRequest& getRequest() { return request; }
         const RasterizationRequest& getRequest() const { return request; }
 
-        SamplerView samplerView() const override {
+        SamplerView sampler() const override {
             return SamplerView(waveform(), isSampleable());
         }
 

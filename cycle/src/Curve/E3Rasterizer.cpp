@@ -71,9 +71,9 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
         p[dependentAxis].setValueDirect(colIdx * invGrid);
         renderMesh(currentMesh);
 
-        auto sampler = samplerView();
-        if (sampler.isSampleable()) {
-            sampler.samplePerfectly(invCol, col, 0.f);
+        auto waveformSampler = sampler();
+        if (waveformSampler.isSampleable()) {
+            waveformSampler.samplePerfectly(invCol, col, 0.f);
         } else {
             col.zero();
         }

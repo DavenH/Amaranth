@@ -140,7 +140,7 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
             rasterizer.setMode(EnvRasterizer::NormalState);
             rasterizer.updateWaveform();
 
-            if (rasterizer.samplerView().isSampleable()) {
+            if (rasterizer.sampler().isSampleable()) {
                 double delta = 1 / float(env.size());
 
                 float tempoScale = 1.0; // TODO
@@ -183,7 +183,7 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
                 p[dim] = zoomArray[i];
                 rasterizer.updateWaveform();
 
-                auto sampler = rasterizer.samplerView();
+                auto sampler = rasterizer.sampler();
                 env[i] = sampler.isSampleableAt(time) ?
                          sampler.sampleAt(time, index) : zoomArray[i];
             }
@@ -236,7 +236,7 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
                               mesh,
                               mesh != nullptr ? (rast.canRasterizeWaveform() ? 1 : 0) : -1,
                               (int) icpts.size(),
-                              rast.samplerView().isSampleable() ? 1 : 0));
+                              rast.sampler().isSampleable() ? 1 : 0));
     };
 
     ScopedAlloc<Float32>* buff;
@@ -604,7 +604,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                     spectRasterizer->setYellow(scratchTime);
                     spectRasterizer->updateWaveform(spectLayer.mesh, 0.f);
 
-                    auto sampler = spectRasterizer->samplerView();
+                    auto sampler = spectRasterizer->sampler();
                     if (!sampler.isSampleable()) {
                         localBuffer.zero();
                         continue;
@@ -670,7 +670,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                     phaseRasterizer->setYellow(scratchTime);
                     phaseRasterizer->updateWaveform(layer.mesh, 0.f);
 
-                    auto sampler = phaseRasterizer->samplerView();
+                    auto sampler = phaseRasterizer->sampler();
                     if(sampler.isSampleable()) {
                         sampler.sampleAtIntervals(fftRamp, localBuffer);
 
@@ -1165,7 +1165,7 @@ void VisualDsp::processThroughEnvelopes(int numColumns) {
 
             auto& volRast = getObj(EnvVolumeRast);
 
-            auto sampler = volRast.samplerView();
+            auto sampler = volRast.sampler();
             if (sampler.isSampleable() && getSetting(CurrentMorphAxis) == Vertex::Time) {
                 int size = postEnvCols[0].size();
                 double delta = 1 / (double) volumeEnv.size() / double(size);

@@ -92,7 +92,7 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
     timeRasterizer.updateOffsetSeeds(timeLayerSize, GuideCurvePanel::tableSize);
 
     EnvRasterizer& pitchRast = parent->pitchGroup[0].rast;
-    float pitchEnvVal = parent->flags.havePitch ? pitchRast.samplerView().sampleAt(0) : 0.5;
+    float pitchEnvVal = parent->flags.havePitch ? pitchRast.sampler().sampleAt(0) : 0.5;
 
     for (int i = 0; i < noteState.numUnisonVoices; ++i) {
         float unisonTune = unisonEnabled ? unison->getDetune(i) : 0;
@@ -931,7 +931,7 @@ void CycleBasedVoice::updateValue(int outputId, int dim, float value) {
                 envRast.updateWaveform();
                 envRast.validateState();
 
-                renderRast.sampleable = envRast.samplerView().isSampleable();
+                renderRast.sampleable = envRast.sampler().isSampleable();
             }
         }
     }

@@ -83,7 +83,7 @@ namespace Cycle::Rasterization {
                     context.rasterizer->setYellow(scratchTime);
                     context.rasterizer->updateWaveform(mesh, 0.f);
 
-                    auto sampler = context.rasterizer->samplerView();
+                    auto sampler = context.rasterizer->sampler();
                     if (!sampler.isSampleable()) {
                         localBuffer.zero();
                         continue;

@@ -101,7 +101,7 @@ public:
 
     bool canRasterizeWaveform();
 
-    Rasterization::SamplerView samplerView() const override {
+    Rasterization::SamplerView sampler() const override {
         return Rasterization::SamplerView(result.waveform, !unsampleable);
     }
 

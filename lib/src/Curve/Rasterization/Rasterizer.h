@@ -8,7 +8,7 @@ namespace Rasterization {
     public:
         virtual ~Rasterizer() = default;
 
-        virtual SamplerView samplerView() const = 0;
+        virtual SamplerView sampler() const = 0;
         virtual SnapshotView snapshotView() = 0;
 
         virtual void updateGeometry() = 0;

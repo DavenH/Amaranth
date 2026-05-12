@@ -49,7 +49,7 @@ void Waveshaper::rasterizeTable() {
     double phase = padding + 0.5 * delta;
 
     Buffer<float> halfTable(table + halfRes, halfRes);
-    waveformProvider->samplerView().samplePerfectly(delta, halfTable, phase);
+    waveformProvider->sampler().samplePerfectly(delta, halfTable, phase);
 
     halfTable.add(-padding).mul(1.f / (1.f - 2.f * padding));
 

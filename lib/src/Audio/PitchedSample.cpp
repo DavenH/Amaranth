@@ -208,7 +208,7 @@ namespace {
         rasterizer->setMesh(mesh);
         rasterizer->performUpdate(Update);
 
-        auto sampler = rasterizer->samplerView();
+        auto sampler = rasterizer->sampler();
         if (sampler.isSampleable()) {
             sample.periods.clear();
 

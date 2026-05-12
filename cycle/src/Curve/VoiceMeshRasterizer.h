@@ -38,7 +38,7 @@ public:
     void cleanUp();
     void reset() override { cleanUp(); }
 
-    Rasterization::SamplerView samplerView() const override {
+    Rasterization::SamplerView sampler() const override {
         return Rasterization::SamplerView(currentWaveform(), currentWaveformIsSampleable());
     }
 

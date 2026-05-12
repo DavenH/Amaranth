@@ -33,8 +33,8 @@ public:
     bool canRasterizeWaveform() const;
     bool isBipolar() const;
 
-    Rasterization::SamplerView samplerView() const override {
-        return pointListRasterizer.samplerView();
+    Rasterization::SamplerView sampler() const override {
+        return pointListRasterizer.sampler();
     }
 
     void setMesh(Mesh* mesh);
