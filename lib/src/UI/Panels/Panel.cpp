@@ -290,16 +290,22 @@ void Panel::updateNameTexturePos() {
     }
 
     bool fromBottom = nameCornerPos.getY() < 0;
-    int w = nameImage.getWidth() / textTextureScale;
-    int h = nameImage.getHeight() / textTextureScale;
+    int wA = nameImage.getWidth() / textTextureScale;
+    int hA = nameImage.getHeight() / textTextureScale;
+    int wB = nameImageB.getWidth() > 0 ? nameImageB.getWidth() / textTextureScale : wA;
+    int hB = nameImageB.getHeight() > 0 ? nameImageB.getHeight() / textTextureScale : hA;
 
     Rectangle<int> bounds = comp->getLocalBounds();
-    nameTexA->rect = (fromBottom ?  bounds.removeFromRight(w).removeFromBottom(h) :
-                                    bounds.removeFromRight(w).removeFromTop(h)).toFloat();
+    nameTexA->rect = (fromBottom ?  bounds.removeFromRight(wA).removeFromBottom(hA) :
+                                    bounds.removeFromRight(wA).removeFromTop(hA)).toFloat();
 
     Point<float> offset = nameCornerPos;
     nameTexA->rect.translate(offset.getX(), offset.getY());
-    nameTexB->rect = nameTexA->rect;
+
+    bounds = comp->getLocalBounds();
+    nameTexB->rect = (fromBottom ?  bounds.removeFromRight(wB).removeFromBottom(hB) :
+                                    bounds.removeFromRight(wB).removeFromTop(hB)).toFloat();
+    nameTexB->rect.translate(offset.getX(), offset.getY());
 }
 
 void Panel::updateBackground(bool onlyVerticalBackground) {

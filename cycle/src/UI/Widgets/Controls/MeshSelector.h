@@ -203,8 +203,7 @@ public:
 
     enum
     {
-        PopulateTimer = 1,
-        RevertTimer
+        RevertTimer = 1
     };
 
     MeshSelector(SingletonRepo* repo,
@@ -215,6 +214,17 @@ public:
                  bool updateMeshVersions = false,
                  bool meshDoubleApplic = true) :
             MeshSelector(repo, client, extension, extension, horz, saveAtTop, updateMeshVersions, meshDoubleApplic)
+    {}
+
+    MeshSelector(SingletonRepo* repo,
+                 MeshSelectionClient<MeshType>* client,
+                 const char* meshFolder,
+                 const char* fileExtension,
+                 bool horz,
+                 bool saveAtTop,
+                 bool updateMeshVersions = false,
+                 bool meshDoubleApplic = true) :
+            MeshSelector(repo, client, String(meshFolder), String(fileExtension), horz, saveAtTop, updateMeshVersions, meshDoubleApplic)
     {}
 
     MeshSelector(SingletonRepo* repo,
@@ -236,8 +246,6 @@ public:
         ,	saveAtTop		(saveAtTop)
         ,	updateMeshVersion(updateMeshVersions) {
         jassert(client != nullptr);
-
-        startTimer(PopulateTimer, 1000);
     }
 
     void populateMenu() override {
@@ -246,11 +254,17 @@ public:
 
         String parentPath 		= getObj(Directories).getMeshDir() 	+ meshFolder + File::getSeparatorChar();
         String parentUserPath 	= getObj(Directories).getUserMeshDir() + meshFolder + File::getSeparatorChar();
+        String repoMeshPath    = getObj(Directories).getRepoMeshDir();
+        String parentRepoPath  = repoMeshPath.isNotEmpty() ?
+                repoMeshPath + meshFolder + File::getSeparatorChar() :
+                String();
 
         File parentFile 		= File(parentPath);
         File parentUserFile 	= File(parentUserPath);
+        File parentRepoFile    = File(parentRepoPath);
 
         Array<File> categories;
+        parentRepoFile.findChildFiles(categories, File::findDirectories, false, "*");
         parentFile.findChildFiles(categories, File::findDirectories, false, "*");
         parentUserFile.findChildFiles(categories, File::findDirectories, false, "*");
 
@@ -269,10 +283,12 @@ public:
         destroyMeshes();
         callbacks.clear();
 
+        addFilesInDirectory(parentRepoFile, menu);
         addFilesInDirectory(parentFile, menu);
         addFilesInDirectory(parentUserFile, menu);
 
         for (const auto& category : uniqueCategs) {
+            File repoCateg(parentRepoPath + category);
             File categ(parentPath + category);
             File userCateg(parentUserPath + category);
 
@@ -284,6 +300,12 @@ public:
             }
 
             containsAny |= addFilesInDirectory(categ, subMenu);
+
+            if(containsAny) {
+                subMenu.addSeparator();
+            }
+
+            containsAny |= addFilesInDirectory(repoCateg, subMenu);
 
             if(containsAny) {
                 menu.addSubMenu(category, subMenu, true, Image(), false);
@@ -351,7 +373,7 @@ public:
             mesh->readXML(meshElem.get());
 
             if(updateMeshVersion) {
-                mesh->updateToVersion(getRealConstant(ProductVersion));
+                mesh->updateToVersion(Constants::MeshFormatVersion);
             }
 
             for(auto& cube : mesh->getCubes()) {
@@ -363,7 +385,7 @@ public:
             auto* callback = new SelectorCallback(itemCount, file.getFullPathName(), this);
             callbacks.add(callback);
 
-            subMenu.addCustomItem(itemCount, *callback, 200, 30, true);
+            subMenu.addCustomItem(itemCount, *callback, 200, 30, true, nullptr, file.getFileNameWithoutExtension());
 
             ++itemCount;
         }
@@ -451,7 +473,7 @@ public:
                 mesh->readXML(meshElem.get());
 
                 if(updateMeshVersion) {
-                    mesh->updateToVersion(getRealConstant(ProductVersion));
+                    mesh->updateToVersion(Constants::MeshFormatVersion);
                 }
 
                 for(auto& cube : mesh->getCubes()) {
@@ -479,6 +501,8 @@ public:
     }
 
     void prepareForPopup() override {
+        populateMenu();
+
         client->prepareForPopup();
 
         setOriginalMesh(client->getCurrentMesh());
@@ -510,9 +534,6 @@ public:
         if (id == RevertTimer) {
             stopTimer(RevertTimer);
             revert();
-        } else if (id == PopulateTimer) {
-            stopTimer(PopulateTimer);
-            populateMenu();
         }
     }
 

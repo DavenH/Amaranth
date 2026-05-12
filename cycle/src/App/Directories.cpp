@@ -144,6 +144,16 @@ String Directories::getMeshDir() const {
     return path + "mesh" + File::getSeparatorString();
 }
 
+String Directories::getRepoMeshDir() const {
+    File repoMeshDir = File(String(CYCLE_SOURCE_DIR)).getChildFile("content").getChildFile("mesh");
+
+    if (!repoMeshDir.isDirectory()) {
+        return {};
+    }
+
+    return repoMeshDir.getFullPathName() + File::getSeparatorString();
+}
+
 String Directories::getUserMeshDir() const {
     return getMeshDir() + "user" + File::getSeparatorString();
 }
