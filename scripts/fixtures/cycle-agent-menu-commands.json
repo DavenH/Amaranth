@@ -1,0 +1,24 @@
+{
+  "commands": [
+    {
+      "command": "listMenus"
+    },
+    {
+      "command": "listMenus",
+      "menu": "Graphics"
+    },
+    {
+      "command": "invokeMenuItem",
+      "menu": "Graphics",
+      "path": ["Displayed Processing Stage", "2. After envelopes"],
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "viewStageName",
+      "equals": "postEnvelopes"
+    }
+  ],
+  "quit": true
+}

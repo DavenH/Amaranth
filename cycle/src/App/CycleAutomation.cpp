@@ -23,6 +23,7 @@
 #include "KeyboardInputHandler.h"
 
 #include "../UI/Panels/MainPanel.h"
+#include "../UI/Panels/SynthMenuBarModel.h"
 
 #if JUCE_MAC || JUCE_LINUX
   #include <cerrno>
@@ -193,6 +194,163 @@ namespace {
         }
 
         return sendNotificationSync;
+    }
+
+    StringArray varPathToStringArray(const var& value) {
+        StringArray path;
+
+        if (const Array<var>* values = PresetJson::getArray(value)) {
+            for (const auto& entry : *values) {
+                path.add(entry.toString());
+            }
+        } else if (!value.isVoid()) {
+            String pathString = value.toString();
+
+            if (pathString.isNotEmpty()) {
+                path.addTokens(pathString, "/", {});
+            }
+        }
+
+        return path;
+    }
+
+    var pathToVar(const StringArray& path) {
+        Array<var> values;
+
+        for (const auto& part : path) {
+            values.add(part);
+        }
+
+        return var(values);
+    }
+
+    int findMenuIndex(SynthMenuBarModel& model, const String& menuName) {
+        StringArray names = model.getMenuBarNames();
+
+        for (int i = 0; i < names.size(); ++i) {
+            if (names[i] == menuName || names[i].equalsIgnoreCase(menuName)) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    String menuNameForIndex(SynthMenuBarModel& model, int menuIndex) {
+        StringArray names = model.getMenuBarNames();
+        return isPositiveAndBelow(menuIndex, names.size()) ? names[menuIndex] : String();
+    }
+
+    int commandMenuIndex(SynthMenuBarModel& model, const var& command) {
+        var index = PresetJson::property(command, "menuIndex");
+
+        if (index.isVoid()) {
+            index = PresetJson::property(command, "topLevelMenuIndex");
+        }
+
+        if (!index.isVoid()) {
+            return int(index);
+        }
+
+        return findMenuIndex(model, getString(command, "menu"));
+    }
+
+    StringArray commandMenuPath(const var& command) {
+        StringArray path = varPathToStringArray(PresetJson::property(command, "path"));
+
+        if (path.isEmpty()) {
+            String item = getString(command, "item", getString(command, "text"));
+
+            if (item.isNotEmpty()) {
+                path.add(item);
+            }
+        }
+
+        return path;
+    }
+
+    void appendMenuItems(Array<var>& items,
+                         const PopupMenu& menu,
+                         const String& menuName,
+                         int menuIndex,
+                         const StringArray& parentPath) {
+        PopupMenu::MenuItemIterator iterator(menu, false);
+
+        while (iterator.next()) {
+            const PopupMenu::Item& item = iterator.getItem();
+
+            if (item.isSeparator || item.isSectionHeader) {
+                continue;
+            }
+
+            StringArray itemPath(parentPath);
+            itemPath.add(item.text);
+
+            auto json = PresetJson::object();
+            json->setProperty("menu", menuName);
+            json->setProperty("menuIndex", menuIndex);
+            json->setProperty("text", item.text);
+            json->setProperty("itemId", item.itemID);
+            json->setProperty("enabled", item.isEnabled);
+            json->setProperty("ticked", item.isTicked);
+            json->setProperty("triggerable", item.itemID != 0);
+            json->setProperty("hasSubMenu", item.subMenu != nullptr);
+            json->setProperty("path", pathToVar(itemPath));
+            items.add(PresetJson::toVar(json));
+
+            if (item.subMenu != nullptr) {
+                appendMenuItems(items, *item.subMenu, menuName, menuIndex, itemPath);
+            }
+        }
+    }
+
+    bool findMenuItemByPath(const PopupMenu& menu,
+                            const StringArray& path,
+                            int depth,
+                            PopupMenu::Item& found) {
+        if (!isPositiveAndBelow(depth, path.size())) {
+            return false;
+        }
+
+        PopupMenu::MenuItemIterator iterator(menu, false);
+
+        while (iterator.next()) {
+            const PopupMenu::Item& item = iterator.getItem();
+
+            if (item.isSeparator || item.isSectionHeader || item.text != path[depth]) {
+                continue;
+            }
+
+            if (depth == path.size() - 1) {
+                found = item;
+                return true;
+            }
+
+            if (item.subMenu != nullptr && findMenuItemByPath(*item.subMenu, path, depth + 1, found)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool findMenuItemById(const PopupMenu& menu, int itemId, PopupMenu::Item& found) {
+        PopupMenu::MenuItemIterator iterator(menu, false);
+
+        while (iterator.next()) {
+            const PopupMenu::Item& item = iterator.getItem();
+
+            if (!item.isSeparator && !item.isSectionHeader && item.itemID == itemId) {
+                found = item;
+                return true;
+            }
+
+            if (item.subMenu != nullptr && findMenuItemById(*item.subMenu, itemId, found)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     var makeResult(const String& type, bool ok, const String& message, const var& data = {}) {
@@ -1711,6 +1869,10 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = openPreset(command, message, data);
     } else if (type == "openFactoryPreset") {
         ok = openFactoryPreset(command, message, data);
+    } else if (type == "listMenus") {
+        ok = listMenus(command, message, data);
+    } else if (type == "invokeMenuItem") {
+        ok = invokeMenuItem(command, message, data);
     } else if (type == "inspectTargets") {
         ok = inspectTargets(command, message, data);
     } else if (type == "inspectTree") {
@@ -2148,6 +2310,114 @@ bool CycleAutomation::openFactoryPreset(const var& command, String& message, var
     data = PresetJson::toVar(json);
 
     message = "Factory preset opened: " + preset;
+    return true;
+}
+
+bool CycleAutomation::listMenus(const var& command, String& message, var& data) {
+    SynthMenuBarModel& model = getObj(SynthMenuBarModel);
+    int requestedMenu = commandMenuIndex(model, command);
+    StringArray names = model.getMenuBarNames();
+    Array<var> menus;
+    Array<var> items;
+
+    for (int i = 0; i < names.size(); ++i) {
+        if (requestedMenu >= 0 && requestedMenu != i) {
+            continue;
+        }
+
+        PopupMenu menu = model.getMenuForIndex(i, names[i]);
+
+        auto menuJson = PresetJson::object();
+        menuJson->setProperty("name", names[i]);
+        menuJson->setProperty("menuIndex", i);
+        menuJson->setProperty("itemCount", menu.getNumItems());
+        menuJson->setProperty("hasActiveItems", menu.containsAnyActiveItems());
+        menus.add(PresetJson::toVar(menuJson));
+
+        appendMenuItems(items, menu, names[i], i, {});
+    }
+
+    if (requestedMenu >= names.size()) {
+        message = "Menu index out of range: " + String(requestedMenu);
+        return false;
+    }
+
+    if (requestedMenu < 0 && getString(command, "menu").isNotEmpty()) {
+        message = "Menu not found: " + getString(command, "menu");
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("menus", var(menus));
+    json->setProperty("items", var(items));
+    json->setProperty("menuCount", menus.size());
+    json->setProperty("itemCount", items.size());
+    data = PresetJson::toVar(json);
+
+    message = "Listed " + String(items.size()) + " menu items";
+    return true;
+}
+
+bool CycleAutomation::invokeMenuItem(const var& command, String& message, var& data) {
+    SynthMenuBarModel& model = getObj(SynthMenuBarModel);
+    int menuIndex = commandMenuIndex(model, command);
+    String menuName = menuNameForIndex(model, menuIndex);
+
+    if (menuIndex < 0 || menuName.isEmpty()) {
+        message = "Menu could not be resolved";
+        return false;
+    }
+
+    PopupMenu menu = model.getMenuForIndex(menuIndex, menuName);
+    PopupMenu::Item item;
+    StringArray path = commandMenuPath(command);
+    var itemIdVar = PresetJson::property(command, "itemId");
+
+    if (itemIdVar.isVoid()) {
+        itemIdVar = PresetJson::property(command, "id");
+    }
+
+    bool found = false;
+
+    if (!itemIdVar.isVoid()) {
+        found = findMenuItemById(menu, int(itemIdVar), item);
+    } else if (!path.isEmpty()) {
+        found = findMenuItemByPath(menu, path, 0, item);
+    }
+
+    if (!found) {
+        message = "Menu item could not be resolved";
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("menu", menuName);
+    json->setProperty("menuIndex", menuIndex);
+    json->setProperty("text", item.text);
+    json->setProperty("itemId", item.itemID);
+    json->setProperty("enabled", item.isEnabled);
+    json->setProperty("ticked", item.isTicked);
+    json->setProperty("path", pathToVar(path));
+
+    if (!item.isEnabled && !getBool(command, "allowDisabled")) {
+        data = PresetJson::toVar(json);
+        message = "Menu item is disabled: " + item.text;
+        return false;
+    }
+
+    if (item.itemID == 0) {
+        data = PresetJson::toVar(json);
+        message = "Menu item is not triggerable: " + item.text;
+        return false;
+    }
+
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
+    model.menuItemSelected(item.itemID, menuIndex);
+    drainMessageLoopIfRequested(command);
+
+    json->setProperty("waitedForIdle", waitedForIdle);
+    data = PresetJson::toVar(json);
+    message = "Menu item invoked: " + item.text;
     return true;
 }
 

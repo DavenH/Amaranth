@@ -64,6 +64,8 @@ Implemented:
   - `savePreset`,
   - `openPreset`,
   - `openFactoryPreset`,
+  - `listMenus`,
+  - `invokeMenuItem`,
   - `screenshot`,
   - `captureAudio`,
   - `inspectTargets`,
@@ -81,6 +83,7 @@ Implemented:
   - `waitForIdle`,
   - `action`.
 - `CycleTour` bridge for semantic action execution.
+- Main menu discovery and invocation through `SynthMenuBarModel`.
 - Named `CycleTour` area/target component lookup for screenshot targeting.
 - `Document::exportSavableJSON(...)`, using `Savable::writeJSON()` with
   `writeXML()` fallback.
@@ -92,6 +95,11 @@ Known gaps:
 
 - `snapshotState` is useful for core UI state but does not yet include stable
   vertex handles or all dialog/modal visibility.
+- Broad UI coverage is tracked in
+  [cycle-agent-control-surface-audit.md](cycle-agent-control-surface-audit.md):
+  every menu item, popup choice, button, knob/slider, tab, dialog, and custom
+  mouse surface needs stable addressing before a vehicle-inspection-style smoke
+  can claim near-total coverage.
 - No CTest integration yet.
 - Mesh-focused helpers for current layer/group have stable group/layer
   addressing, but vertex handles are still index-based.
@@ -564,6 +572,8 @@ Status: partially implemented with an opt-in local smoke runner.
   - triggering MIDI and capturing offline rendered audio. Covered by
     `cycle-agent-audio-capture.json`.
   - capturing a named panel. Covered by `cycle-agent-screenshot.json`.
+  - listing and invoking main menu items. Covered by
+    `cycle-agent-menu-commands.json`.
   - executing a `CycleTour` action. Covered by
     `cycle-agent-general-controls.json`.
 - Add a local test command that runs these through `scripts/run_cycle_agent.sh`.
@@ -611,6 +621,7 @@ scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-mesh-mutations.json /pri
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-mesh-selection-gesture.json /private/tmp/cycle-agent-mesh-selection-gesture-report.json /private/tmp/cycle-agent-mesh-selection-gesture-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-screenshot.json /private/tmp/cycle-agent-screenshot-report.json /private/tmp/cycle-agent-screenshot-logs.txt
 CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tmp/cycle-agent-waveform3d-os.png scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json /private/tmp/cycle-agent-waveform3d-os-report.json /private/tmp/cycle-agent-waveform3d-os-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-menu-commands.json /private/tmp/cycle-agent-menu-commands-report.json /private/tmp/cycle-agent-menu-commands-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-broader-controls.json /private/tmp/cycle-agent-broader-controls-report.json /private/tmp/cycle-agent-broader-controls-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-factory-preset.json /private/tmp/cycle-agent-factory-preset-report.json /private/tmp/cycle-agent-factory-preset-logs.txt
@@ -648,6 +659,13 @@ Current verified behavior:
   relative to JUCE screen bounds; 441 x 368 bounds produced an 882 x 736 PNG.
 - `setControl` sets `AreaMorphPanel` / `TargSliderY` to `0.25` and
   `inspectTargets` reports the resulting value.
+- `listMenus` reports top-level menu names and recursively lists
+  `PopupMenu::Item` ids, paths, enabled state, tick state, triggerability, and
+  submenu presence.
+- `invokeMenuItem` executes a resolved main menu item through
+  `SynthMenuBarModel::menuItemSelected(...)`; the focused fixture invokes
+  Graphics / Displayed Processing Stage / 2. After envelopes and asserts
+  `viewStageName == postEnvelopes`.
 - `setControl` also covers representative master sliders, effect knobs,
   ComboBoxes, and Waveform3D layer pan; semantic `Enable`/`Disable` actions
   cover the current Waveform3D layer active toggle.
