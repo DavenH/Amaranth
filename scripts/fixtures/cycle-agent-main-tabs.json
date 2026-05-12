@@ -1,0 +1,45 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaMain",
+      "target": "TargMainTopTabs"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMain",
+      "target": "TargMainTopTabs",
+      "text": "Guide Curves",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaMain",
+      "target": "TargMainTopTabs",
+      "path": "selectedIndex",
+      "equals": 1
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaMain",
+      "target": "TargMainBottomTabs"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMain",
+      "target": "TargMainBottomTabs",
+      "selectedIndex": 1,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaMain",
+      "target": "TargMainBottomTabs",
+      "path": "selectedIndex",
+      "equals": 1
+    }
+  ],
+  "quit": true
+}

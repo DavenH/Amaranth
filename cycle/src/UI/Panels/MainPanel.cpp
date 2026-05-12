@@ -51,6 +51,7 @@
 #include "../Widgets/MidiKeyboard.h"
 
 #include "../../App/Dialogs.h"
+#include "../../App/CycleTour.h"
 #include "../../App/KeyboardInputHandler.h"
 #include "../../Audio/Effects/Reverb.h"
 #include "../../Audio/Effects/WaveShaper.h"
@@ -1152,6 +1153,10 @@ void MainPanel::triggerDelayedRepaint() {
 
 juce::Component* MainPanel::getComponent(int which) {
     switch (which) {
+        case CycleTour::TargMainBottomTabs:
+            return bottomTabs;
+        case CycleTour::TargMainTopTabs:
+            return topTabs;
         case CompWaveform2DZoomH:
             return waveform2D->getZoomPanel()->getComponent(true);
         case CompWaveform2DZoomW:

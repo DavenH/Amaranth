@@ -112,6 +112,7 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     B(TargSliderPan);
 
     B(TargMasterVol),      B(TargMasterOct),     B(TargMasterLen);
+    B(TargMainBottomTabs), B(TargMainTopTabs);
 
     N(NullAction),         N(OpenFactoryPreset);
     N(LinkRange),          N(UnlinkRange),       N(TriggerButton),     N(SetVertexSize);
@@ -1246,6 +1247,10 @@ juce::Component* CycleTour::getComponent(const String& areaName, const String& t
 
     if (area == AreaPlayback) {
         return getObj(PlaybackPanel).getComponent(subareaStrings[targetName]);
+    }
+
+    if (area == AreaMain) {
+        return getObj(MainPanel).getComponent(subareaStrings[targetName]);
     }
 
     if (auto* guide = getTourGuide(area)) {

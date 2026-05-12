@@ -296,6 +296,12 @@ public:
 		TargMasterLen,
 	};
 
+    enum MainTargets
+    {
+        TargMainBottomTabs = 100,
+        TargMainTopTabs,
+    };
+
 	enum
 	{
 		IdZoomIn	,

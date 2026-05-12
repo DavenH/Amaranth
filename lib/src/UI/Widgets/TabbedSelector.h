@@ -26,6 +26,9 @@ public:
     void addTab(const String& name, Bounded* callbackComponent, const String& keys = String());
     void resized() override;
     [[nodiscard]] int getSelectedId() const { return selectedTab; }
+    [[nodiscard]] int getNumTabs() const { return int(tabs.size()); }
+    String getTabName(int index) const;
+    Rectangle<int> getTabBounds(int index) const;
 
     class Listener {
     public:
@@ -61,4 +64,3 @@ private:
 
     JUCE_LEAK_DETECTOR(TabbedSelector)
 };
-

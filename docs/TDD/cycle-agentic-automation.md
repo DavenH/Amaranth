@@ -574,6 +574,8 @@ Status: partially implemented with an opt-in local smoke runner.
   - capturing a named panel. Covered by `cycle-agent-screenshot.json`.
   - listing and invoking main menu items. Covered by
     `cycle-agent-menu-commands.json`.
+  - inspecting and selecting main panel tab controls. Covered by
+    `cycle-agent-main-tabs.json`.
   - executing a `CycleTour` action. Covered by
     `cycle-agent-general-controls.json`.
 - Add a local test command that runs these through `scripts/run_cycle_agent.sh`.
@@ -622,6 +624,7 @@ scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-mesh-selection-gesture.j
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-screenshot.json /private/tmp/cycle-agent-screenshot-report.json /private/tmp/cycle-agent-screenshot-logs.txt
 CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tmp/cycle-agent-waveform3d-os.png scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json /private/tmp/cycle-agent-waveform3d-os-report.json /private/tmp/cycle-agent-waveform3d-os-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-menu-commands.json /private/tmp/cycle-agent-menu-commands-report.json /private/tmp/cycle-agent-menu-commands-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-main-tabs.json /private/tmp/cycle-agent-main-tabs-report.json /private/tmp/cycle-agent-main-tabs-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-broader-controls.json /private/tmp/cycle-agent-broader-controls-report.json /private/tmp/cycle-agent-broader-controls-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-factory-preset.json /private/tmp/cycle-agent-factory-preset-report.json /private/tmp/cycle-agent-factory-preset-logs.txt
@@ -666,6 +669,9 @@ Current verified behavior:
   `SynthMenuBarModel::menuItemSelected(...)`; the focused fixture invokes
   Graphics / Displayed Processing Stage / 2. After envelopes and asserts
   `viewStageName == postEnvelopes`.
+- `TabbedSelector` targets report selected index, tab count, tab labels, and
+  tab-local bounds; `setControl` can select a tab by index or text. The focused
+  fixture covers the main top and bottom tab strips.
 - `setControl` also covers representative master sliders, effect knobs,
   ComboBoxes, and Waveform3D layer pan; semantic `Enable`/`Disable` actions
   cover the current Waveform3D layer active toggle.

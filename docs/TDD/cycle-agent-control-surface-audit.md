@@ -27,7 +27,7 @@ From `CycleAutomation.cpp`:
 - 19 inspectable areas are listed in `kInspectableAreas`.
 - 12 `TourGuide` areas are scanned for named targets in `kTourGuideAreas`.
 - 96 named targets are listed in `kInspectableTargets`.
-- 23 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
+- 24 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
 
 Named coverage is strongest for:
 
@@ -68,6 +68,8 @@ These should be added before trying to claim near-total UI coverage.
    - Add stable target names for every button-like, slider-like, selector-like,
      and tab-like component that is currently only visible through
      `inspectTree`.
+     Started for `MainPanel` top and bottom `TabbedSelector` controls, exposed
+     as `AreaMain` / `TargMainTopTabs` and `TargMainBottomTabs`.
    - Keep `CycleTour` as a client of the registry, not the only registry.
 
 4. Dialog commands.

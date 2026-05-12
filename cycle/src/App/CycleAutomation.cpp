@@ -17,6 +17,7 @@
 #include <Definitions.h>
 #include <Inter/Interactor.h>
 #include <UI/Panels/Panel.h>
+#include <UI/Widgets/TabbedSelector.h>
 
 #include "CycleTour.h"
 #include "FileManager.h"
@@ -168,6 +169,8 @@ namespace {
         "TargMasterVol",
         "TargMasterOct",
         "TargMasterLen",
+        "TargMainBottomTabs",
+        "TargMainTopTabs",
     };
 
     String getString(const var& object, const Identifier& name, const String& fallback = {}) {
@@ -2568,7 +2571,39 @@ bool CycleAutomation::setControl(const var& command, String& message, var& data)
         return true;
     }
 
-    message = "Control target is not a supported Slider, Button, or ComboBox";
+    if (auto* tabbedSelector = dynamic_cast<TabbedSelector*>(component)) {
+        var selectedIndex = PresetJson::property(command, "selectedIndex");
+        String text = getString(command, "text");
+        int tabIndex = -1;
+
+        if (!selectedIndex.isVoid()) {
+            tabIndex = int(selectedIndex);
+        } else if (text.isNotEmpty()) {
+            for (int i = 0; i < tabbedSelector->getNumTabs(); ++i) {
+                if (tabbedSelector->getTabName(i).equalsIgnoreCase(text)) {
+                    tabIndex = i;
+                    break;
+                }
+            }
+        } else {
+            message = "TabbedSelector control requires selectedIndex or text";
+            data = componentState(component, getString(command, "area"), getString(command, "target"));
+            return false;
+        }
+
+        if (!isPositiveAndBelow(tabIndex, tabbedSelector->getNumTabs())) {
+            message = "TabbedSelector tab was not found";
+            data = componentState(component, getString(command, "area"), getString(command, "target"));
+            return false;
+        }
+
+        tabbedSelector->selectTab(tabIndex);
+        data = componentState(component, getString(command, "area"), getString(command, "target"));
+        message = "TabbedSelector control set";
+        return true;
+    }
+
+    message = "Control target is not a supported Slider, Button, ComboBox, or TabbedSelector";
     data = componentState(component, getString(command, "area"), getString(command, "target"));
     return false;
 }
@@ -3178,6 +3213,22 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("selectedIndex", comboBox->getSelectedItemIndex());
         json->setProperty("text", comboBox->getText());
         json->setProperty("items", var(items));
+    } else if (auto* tabbedSelector = dynamic_cast<TabbedSelector*>(component)) {
+        Array<var> tabs;
+
+        for (int i = 0; i < tabbedSelector->getNumTabs(); ++i) {
+            auto item = PresetJson::object();
+            item->setProperty("index", i);
+            item->setProperty("text", tabbedSelector->getTabName(i));
+            item->setProperty("selected", tabbedSelector->getSelectedId() == i);
+            item->setProperty("localBounds", rectangleState(tabbedSelector->getTabBounds(i)));
+            tabs.add(PresetJson::toVar(item));
+        }
+
+        json->setProperty("controlType", "tabbedSelector");
+        json->setProperty("selectedIndex", tabbedSelector->getSelectedId());
+        json->setProperty("tabCount", tabbedSelector->getNumTabs());
+        json->setProperty("tabs", var(tabs));
     } else {
         json->setProperty("controlType", "component");
     }
@@ -3260,6 +3311,9 @@ var CycleAutomation::componentTreeState(Component* component,
     } else if (auto* button = dynamic_cast<Button*>(component)) {
         json->setProperty("toggleState", button->getToggleState());
         json->setProperty("buttonText", button->getButtonText());
+    } else if (auto* tabbedSelector = dynamic_cast<TabbedSelector*>(component)) {
+        json->setProperty("selectedIndex", tabbedSelector->getSelectedId());
+        json->setProperty("tabCount", tabbedSelector->getNumTabs());
     }
 
     if (depth >= maxDepth || nodeCount >= maxNodes) {

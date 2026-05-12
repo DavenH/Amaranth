@@ -232,3 +232,15 @@ void TabbedSelector::setSelectedTab(int tab) {
 
     repaint();
 }
+
+String TabbedSelector::getTabName(int index) const {
+    return isPositiveAndBelow(index, int(tabs.size())) ? tabs[index].name : String();
+}
+
+Rectangle<int> TabbedSelector::getTabBounds(int index) const {
+    if (!isPositiveAndBelow(index, int(tabs.size()))) {
+        return {};
+    }
+
+    return { 0, index * tabHeight, getWidth(), tabHeight };
+}
