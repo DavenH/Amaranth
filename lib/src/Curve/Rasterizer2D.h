@@ -2,9 +2,8 @@
 
 #include "Intercept.h"
 #include "Curve.h"
-#include "Rasterization/Builders/CurveWaveformBuilder.h"
+#include "Rasterization/PointListWaveformRasterizer.h"
 #include "Rasterization/Policies/Curves/CurvePolicies.h"
-#include "Rasterization/RenderResult.h"
 #include "Rasterization/Sampling/WaveformSampler.h"
 #include "../Array/ScopedAlloc.h"
 #include "../Design/Updating/Updateable.h"
@@ -17,8 +16,8 @@ public:
     }
 
     void updateCurve(int index, const Intercept& position) {
-        vector<Curve>& curves = result.curves;
-        Rasterization::WaveformBuffers& waveform = result.waveform;
+        vector<Curve>& curves = pointListRasterizer.result().curves;
+        Rasterization::WaveformBuffers& waveform = pointListRasterizer.result().waveform;
 
         jassert(index < curves.size());
 
@@ -53,8 +52,8 @@ public:
     }
 
     void updateWaveform(int index) {
-        vector<Curve>& curves = result.curves;
-        Rasterization::WaveformBuffers& waveform = result.waveform;
+        vector<Curve>& curves = pointListRasterizer.result().curves;
+        Rasterization::WaveformBuffers& waveform = pointListRasterizer.result().waveform;
 
         int res         = Curve::resolution / 2;
         int startIdx    = jmax(0, index - 1);
@@ -136,13 +135,13 @@ public:
     }
 
     void cleanUp() {
-        result.clear();
+        pointListRasterizer.cleanUp();
         paddingSize = getPaddingSize();
         unsampleable = true;
     }
 
     void validateCurves() {
-        const vector<Curve>& curves = result.curves;
+        const vector<Curve>& curves = pointListRasterizer.result().curves;
 
         for (int i = 0; i < (int) curves.size() - 1; ++i) {
             jassert(curves[i].b.x == curves[i + 1].a.x);
@@ -161,18 +160,18 @@ public:
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
         return Rasterization::WaveformSampler::sampleWithInterval(
-                result.waveform,
+                pointListRasterizer.result().waveform,
                 buffer,
                 delta,
                 phase);
     }
 
     bool isSampleable() const {
-        return !unsampleable && Rasterization::WaveformSampler::isSampleable(result.waveform);
+        return !unsampleable && pointListRasterizer.samplerView().isSampleable();
     }
 
-    Buffer<float> getWaveX() { return result.waveform.waveX; }
-    Buffer<float> getWaveY() { return result.waveform.waveY; }
+    Buffer<float> getWaveX() { return pointListRasterizer.result().waveform.waveX; }
+    Buffer<float> getWaveY() { return pointListRasterizer.result().waveform.waveY; }
 
     void setCyclicity(bool isCyclic)    { cyclic = isCyclic;    }
     bool isCyclic() const               { return cyclic;        }
@@ -182,8 +181,8 @@ private:
     void renderPointListWaveform();
 
 protected:
-    Rasterization::RenderResult result;
     vector<Intercept>& points;
+    Rasterization::PointListWaveformRasterizer pointListRasterizer;
     int paddingSize { getPaddingSize() };
     bool needsResorting {};
     bool unsampleable { true };
@@ -201,8 +200,7 @@ inline void Rasterizer2D::renderPointListWaveform() {
     Rasterization::RasterizationRequest request = createRasterizationRequest();
     request.cyclic = cyclic;
 
-    Rasterization::CurveWaveformBuilder builder;
-    builder.renderIntercepts(points, result, request);
+    const auto& result = pointListRasterizer.renderIntercepts(points, request);
     if (!result.sampleable) {
         cleanUp();
         return;

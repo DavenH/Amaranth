@@ -78,7 +78,6 @@ void GuideCurvePanel::init() {
 
     localRasterizer.cleanUp();
     setMeshAndUpdate(meshLib->getEffectiveMesh(LayerGroups::GroupGuideCurve));
-    localRasterizer.setGuideCurveProvider(this);
 
     meshSelector = std::make_unique<MeshSelector<Mesh>>(repo, this, "guide-curves", "mesh", true, false, true);
 

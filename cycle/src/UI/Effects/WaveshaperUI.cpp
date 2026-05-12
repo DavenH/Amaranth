@@ -4,7 +4,6 @@
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
 #include <Audio/PluginProcessor.h>
-#include <Curve/GuideCurveProvider.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Panels/CommonGfx.h>
 #include <UI/Widgets/Knob.h>
@@ -109,7 +108,6 @@ void WaveshaperUI::init() {
     waveshaper = &getObj(SynthAudioSource).getWaveshaper();
     waveshaper->setRasterizer(&localRasterizer);
 
-    localRasterizer.setGuideCurveProvider(&getObj(GuideCurvePanel));
     setMeshAndUpdate(getObj(MeshLibrary).getEffectiveMesh(layerType));
 
     selector = std::make_unique<MeshSelector<Mesh>>(repo, this, "waveshaper", "mesh", false, true, true);

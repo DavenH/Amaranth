@@ -1,14 +1,5 @@
 #include "FXRasterizer.h"
 
-#include <algorithm>
-
-#include "Rasterization/GuideCurveOffsetSeeds.h"
-#include "Rasterization/Builders/CurveWaveformBuilder.h"
-#include "Rasterization/Policies/Core/InterceptPolicies.h"
-#include "Rasterization/Policies/Core/PaddingPolicy.h"
-#include "Rasterization/Policies/Core/PointScalingPolicy.h"
-#include "Rasterization/Sampling/WaveformSampler.h"
-
 namespace {
     String describeFxMesh(Mesh* mesh) {
         if (mesh == nullptr) {
@@ -27,12 +18,12 @@ namespace {
 
 FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
         SingletonAccessor(repo, name) {
-    rasterizerData.paddingSize = result.paddingSize;
+    rasterizerData.paddingSize = result().paddingSize;
     rasterizerData.wrapsVertices = false;
 }
 
 void FXRasterizer::cleanUp() {
-    result.clear();
+    pointListRasterizer.cleanUp();
     publishSnapshot();
 
     DBG(getName() + "::cleanUp");
@@ -49,9 +40,12 @@ void FXRasterizer::updateWaveform() {
     DBG(getName() + "::updateWaveform begin " + describeFxSource(mesh, vertexCount()));
 
     auto request = createFxRequest();
-    if (updateFxGeometry(request)) {
-        bakeWaveform(request);
-    }
+    vector<Intercept> intercepts;
+    copyVertexInterceptsTo(intercepts);
+    pointListRasterizer.renderWaveform(
+            intercepts,
+            request,
+            Rasterization::PointListPaddingMode::Fx);
 
     publishSnapshot();
 }
@@ -106,38 +100,14 @@ Intercept FXRasterizer::interceptAt(Vertex* vertex) const {
 }
 
 bool FXRasterizer::updateFxGeometry(const Rasterization::RasterizationRequest& request) {
-    result.clear();
+    vector<Intercept> intercepts;
+    copyVertexInterceptsTo(intercepts);
+    pointListRasterizer.renderGeometry(
+            intercepts,
+            request,
+            Rasterization::PointListPaddingMode::Fx);
 
-    if (vertexCount() == 0) {
-        return false;
-    }
-
-    copyVertexInterceptsTo(result.intercepts);
-
-    Rasterization::PointScalingPolicy pointScaling(request.scalingMode);
-    for (auto& intercept : result.intercepts) {
-        intercept.y = pointScaling.scale(intercept.y);
-    }
-
-    if (result.intercepts.empty()) {
-        return false;
-    }
-
-    std::sort(result.intercepts.begin(), result.intercepts.end());
-
-    Rasterization::InterceptRestrictionPolicy::Context context;
-    context.cyclic = false;
-    context.minimumX = request.xMinimum;
-    context.maximumX = request.xMaximum;
-    Rasterization::InterceptRestrictionPolicy(context).restrict(result.intercepts);
-
-    if (result.intercepts.size() < 2) {
-        return false;
-    }
-
-    result.paddingSize = Rasterization::FxPaddingPolicy().build(result.intercepts, result.curves);
-
-    return true;
+    return result().curves.size() >= 2;
 }
 
 void FXRasterizer::copyVertexInterceptsTo(vector<Intercept>& intercepts) const {
@@ -156,32 +126,19 @@ void FXRasterizer::copyVertexInterceptsTo(vector<Intercept>& intercepts) const {
     }
 }
 
-void FXRasterizer::bakeWaveform(const Rasterization::RasterizationRequest& request) {
-    Rasterization::CurveWaveformBuilder::Context context;
-    context.request = &request;
-    context.offsetSeeds = &guideCurveOffsetSeeds;
-    context.paddingSize = result.paddingSize;
-
-    result.sampleable = curveWaveformBuilder.render(
-            result.curves,
-            context,
-            [this](int totalRes) {
-                result.waveform.place(result.waveformMemory, totalRes);
-                return Rasterization::WaveformBufferRefs(result.waveform);
-            });
-}
-
 int FXRasterizer::vertexCount() const {
     return vertices == nullptr ? 0 : (int) vertices->size();
 }
 
 void FXRasterizer::publishSnapshot() {
+    const auto& renderResult = result();
+
     Rasterization::RasterizerSnapshotSource snapshot;
-    snapshot.intercepts = &result.intercepts;
-    snapshot.colorPoints = &result.colorPoints;
-    snapshot.curves = &result.curves;
-    snapshot.waveform = result.waveform;
-    snapshot.paddingSize = result.paddingSize;
+    snapshot.intercepts = &renderResult.intercepts;
+    snapshot.colorPoints = &renderResult.colorPoints;
+    snapshot.curves = &renderResult.curves;
+    snapshot.waveform = renderResult.waveform;
+    snapshot.paddingSize = renderResult.paddingSize;
     snapshot.wrapsVertices = false;
 
     Rasterization::BaseRasterizer::publishSnapshot(snapshot);
