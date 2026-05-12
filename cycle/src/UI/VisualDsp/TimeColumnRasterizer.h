@@ -15,8 +15,12 @@ namespace Cycle::Rasterization {
     public:
         using ScratchTimeResolver = std::function<bool(MeshLibrary::Properties*, int, float, float&)>;
 
+        static int noiseSeedForLayer(int layerIndex) {
+            return layerIndex * 104729;
+        }
+
         static int noiseSeedForColumnLayer(int columnIndex, int layerIndex) {
-            return columnIndex * 6197 + layerIndex * 104729;
+            return columnIndex * 6197 + noiseSeedForLayer(layerIndex);
         }
 
         struct Context {

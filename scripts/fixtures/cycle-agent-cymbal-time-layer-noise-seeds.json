@@ -1,0 +1,57 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "cymbal",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "document",
+      "equals": "Cymbal"
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.count",
+      "greaterThanOrEqual": 2
+    },
+    {
+      "command": "action",
+      "actionType": "SetLayer",
+      "area": "AreaWfrmWaveform3D",
+      "data1": 0,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.current",
+      "equals": 0
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.rasterizerNoiseSeed",
+      "equals": 0
+    },
+    {
+      "command": "action",
+      "actionType": "SetLayer",
+      "area": "AreaWfrmWaveform3D",
+      "data1": 1,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.current",
+      "equals": 1
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.rasterizerNoiseSeed",
+      "equals": 104729
+    }
+  ],
+  "quit": true
+}

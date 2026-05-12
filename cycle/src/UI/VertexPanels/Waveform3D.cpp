@@ -26,6 +26,7 @@
 #include "../../UI/Panels/ModMatrixPanel.h"
 #include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VisualDsp.h"
+#include "../../UI/VisualDsp/TimeColumnRasterizer.h"
 #include "../../Util/CycleEnums.h"
 
 #define panelName "Waveform3D"
@@ -258,9 +259,12 @@ void Waveform3D::layerChanged() {
     reconcileLoadedState();
 
     // TODO: setMesh() ?? I thought MeshLibrary served all of this and notified.
-    getObj(TimeRasterizer).setMesh(interactor->getMesh());
+    TimeRasterizer& timeRasterizer = getObj(TimeRasterizer);
+    timeRasterizer.setMesh(interactor->getMesh());
+    timeRasterizer.setNoiseSeed(Cycle::Rasterization::TimeColumnRasterizer::noiseSeedForLayer(
+            getObj(MeshLibrary).getCurrentIndex(LayerGroups::GroupTime)));
     // TODO: two updates is slightly weird
-    getObj(TimeRasterizer).update(Update);
+    timeRasterizer.update(Update);
     getObj(WaveformInter2D).update(Update);
     getObj(WaveformInter3D).shallowUpdate();
 }
@@ -502,6 +506,7 @@ var Waveform3D::exportAutomationState() const {
     layer->setProperty("activeCount", const_cast<Waveform3D*>(this)->getNumActiveLayers());
     layer->setProperty("selectedCount", int(group.selected.size()));
     layer->setProperty("scratchChannel", const_cast<Waveform3D*>(this)->getLayerScratchChannel());
+    layer->setProperty("rasterizerNoiseSeed", getObj(TimeRasterizer).getNoiseSeed());
     layer->setProperty("currentProperties", layerPropsState(meshLib.getCurrentProps(LayerGroups::GroupTime)));
     layer->setProperty("currentMesh", meshState(meshLib.getCurrentMesh(LayerGroups::GroupTime)));
     json->setProperty("layer", PresetJson::toVar(layer));

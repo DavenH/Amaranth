@@ -63,6 +63,7 @@ void GraphicRasterizer::restoreStateFrom(RenderState& state) {
     auto& request = getRequest();
     request.lowResCurves = state.lowResCurves;
     request.calcDepthDimensions = state.calcDepthDims;
+    request.noiseSeed = state.noiseSeed;
     request.morph = state.pos;
     request.scalingMode = scalingModeFromRenderState(state.scalingType);
     request.batchMode = state.batchMode;
@@ -72,6 +73,7 @@ void GraphicRasterizer::saveStateTo(RenderState& state) {
     const auto& request = getRequest();
     state.lowResCurves = request.lowResCurves;
     state.calcDepthDims = request.calcDepthDimensions;
+    state.noiseSeed = request.noiseSeed;
     state.restoreMesh = true;
     state.mesh = mesh;
     state.pos = request.morph;
