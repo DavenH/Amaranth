@@ -48,6 +48,25 @@ const double doubleLn10 =2.3025850929940456840179914546844;//??????
 typedef std::complex<double> complex_t;
 typedef std::pair<complex_t, complex_t> complex_pair_t;
 
+inline bool almost_equal(double lhs, double rhs, double epsilon = 1e-12)
+{
+  double scale = 1.0;
+  scale = std::max(scale, fabs(lhs));
+  scale = std::max(scale, fabs(rhs));
+  return fabs(lhs - rhs) <= epsilon * scale;
+}
+
+inline bool almost_equal(const complex_t& lhs, const complex_t& rhs, double epsilon = 1e-12)
+{
+  return almost_equal(lhs.real(), rhs.real(), epsilon) &&
+         almost_equal(lhs.imag(), rhs.imag(), epsilon);
+}
+
+inline bool is_effectively_real(const complex_t& value, double epsilon = 1e-12)
+{
+  return almost_equal(value.imag(), 0.0, epsilon);
+}
+
 template<typename Real>
 inline std::complex<Real> solve_quadratic_1 (Real a, Real b, Real c)
 {

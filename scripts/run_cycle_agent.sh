@@ -271,7 +271,7 @@ finalize_logs() {
     if [[ "$FILTER_LOGS" == "1" ]]; then
         awk '
             function keep(line) {
-                return line ~ /(JUCE v|AppClass::|MainAppWindow|CycleAutomation|FileManager::|Directories::|Document::open|Update:|Error|error|Warning|warning|fail|Fail|assert|Assert|exception|Exception|crash|Crash|quit unexpectedly|DiagnosticReports|ips)/
+                return line ~ /(JUCE v|AppClass::|MainAppWindow|PlaybackPanel::|CycleAutomation|FileManager::|Directories::|Document::open|Update:|Error|error|Warning|warning|fail|Fail|assert|Assert|exception|Exception|crash|Crash|quit unexpectedly|DiagnosticReports|ips)/
             }
 
             /^Error Domain=/ {

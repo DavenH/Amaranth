@@ -15,6 +15,14 @@ namespace Cycle::Rasterization {
     public:
         using ScratchTimeResolver = std::function<bool(MeshLibrary::Properties*, int, float, float&)>;
 
+        static int noiseSeedForLayer(int layerIndex) {
+            return layerIndex * 104729;
+        }
+
+        static int noiseSeedForColumnLayer(int columnIndex, int layerIndex) {
+            return columnIndex * 6197 + noiseSeedForLayer(layerIndex);
+        }
+
         struct Context {
             MeshLibrary::LayerGroup* timeGroup {};
             TimeRasterizer* rasterizer {};
@@ -79,7 +87,7 @@ namespace Cycle::Rasterization {
                         context.resolveScratchTime(props, timeColIdx, context.zoomProgress[timeColIdx], scratchTime);
                     }
 
-                    context.rasterizer->setNoiseSeed(colIdx * 6197);
+                    context.rasterizer->setNoiseSeed(noiseSeedForColumnLayer(colIdx, layerIdx));
                     context.rasterizer->setYellow(scratchTime);
                     context.rasterizer->updateWaveform(mesh, 0.f);
 

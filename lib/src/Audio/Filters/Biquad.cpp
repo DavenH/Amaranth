@@ -136,8 +136,8 @@ void BiquadBase::setOnePole (complex_t pole, complex_t zero)
   pole = adjust_imag (pole);
   zero = adjust_imag (zero);
 #else
-  jassert (pole.imag() == 0);
-  jassert (zero.imag() == 0);
+  jassert (Dsp::is_effectively_real (pole));
+  jassert (Dsp::is_effectively_real (zero));
 #endif
   
   const double a0 = 1;
@@ -164,16 +164,16 @@ void BiquadBase::setTwoPole (complex_t pole1, complex_t zero1,
   double a1;
   double a2;
 
-  if (pole1.imag() != 0)
+  if (! Dsp::is_effectively_real (pole1))
   {
-    jassert (pole2 == std::conj (pole1));
+    jassert (Dsp::almost_equal (pole2, std::conj (pole1)));
 
     a1 = -2 * pole1.real();
     a2 = std::norm (pole1);
   }
   else
   {
-    jassert (pole2.imag() == 0);
+    jassert (Dsp::is_effectively_real (pole2));
 
     a1 = -(pole1.real() + pole2.real());
     a2 =   pole1.real() * pole2.real();
@@ -183,16 +183,16 @@ void BiquadBase::setTwoPole (complex_t pole1, complex_t zero1,
   double b1;
   double b2;
 
-  if (zero1.imag() != 0)
+  if (! Dsp::is_effectively_real (zero1))
   {
-    jassert (zero2 == std::conj (zero1));
+    jassert (Dsp::almost_equal (zero2, std::conj (zero1)));
 
     b1 = -2 * zero1.real();
     b2 = std::norm (zero1);
   }
   else
   {
-    jassert (zero2.imag() == 0);
+    jassert (Dsp::is_effectively_real (zero2));
 
     b1 = -(zero1.real() + zero2.real());
     b2 =   zero1.real() * zero2.real();

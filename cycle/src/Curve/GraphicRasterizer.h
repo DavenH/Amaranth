@@ -25,6 +25,7 @@ public:
         bool lowResCurves {};
         bool calcDepthDims {};
         bool restoreMesh {};
+        int noiseSeed { -1 };
         int scalingType { 1 };
         Mesh* mesh {};
         MorphPosition pos;
@@ -64,6 +65,8 @@ public:
     void restoreStateFrom(RenderState& state);
     void saveStateTo(RenderState& state);
     ScopedRenderState preserveState(RenderState& state) { return ScopedRenderState(this, &state); }
+
+    int getNoiseSeed() const { return getRequest().noiseSeed; }
 
     void updateGeometry() override;
     void updateGeometry(Mesh* mesh, float oscPhase = 0.f);

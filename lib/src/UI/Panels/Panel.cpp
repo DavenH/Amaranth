@@ -251,18 +251,9 @@ void Panel::constrainZoom() {
     ZoomRect& rect = zoomPanel->rect;
     // zoomPanel->validateRect("Panel::constrainZoom-before", false);
     NumberUtils::constrain<float>(rect.w, 0.001f, rect.xMaximum - rect.xMinimum);
-    NumberUtils::constrain<float>(rect.h, 0.005f, 1.f);
-    NumberUtils::constrain<float>(rect.x, interactor->vertexLimits[interactor->dims.x]);
-    NumberUtils::constrain<float>(rect.y, 0, 1);
-    // NumberUtils::constrain<float>(rect.y, rect.yMinimum, rect.yMaximum);
-
-    if(rect.y + rect.h > rect.yMaximum) {
-        rect.y = rect.yMaximum - rect.h;
-    }
-
-    if(rect.x + rect.w > rect.xMaximum) {
-        rect.x = rect.xMaximum - rect.w;
-    }
+    NumberUtils::constrain<float>(rect.h, 0.005f, rect.yMaximum - rect.yMinimum);
+    NumberUtils::constrain<float>(rect.x, rect.xMinimum, rect.xMaximum - rect.w);
+    NumberUtils::constrain<float>(rect.y, rect.yMinimum, rect.yMaximum - rect.h);
 
     // zoomPanel->validateRect("Panel::constrainZoom-after");
 }
@@ -290,16 +281,22 @@ void Panel::updateNameTexturePos() {
     }
 
     bool fromBottom = nameCornerPos.getY() < 0;
-    int w = nameImage.getWidth() / textTextureScale;
-    int h = nameImage.getHeight() / textTextureScale;
+    int wA = nameImage.getWidth() / textTextureScale;
+    int hA = nameImage.getHeight() / textTextureScale;
+    int wB = nameImageB.getWidth() > 0 ? nameImageB.getWidth() / textTextureScale : wA;
+    int hB = nameImageB.getHeight() > 0 ? nameImageB.getHeight() / textTextureScale : hA;
 
     Rectangle<int> bounds = comp->getLocalBounds();
-    nameTexA->rect = (fromBottom ?  bounds.removeFromRight(w).removeFromBottom(h) :
-                                    bounds.removeFromRight(w).removeFromTop(h)).toFloat();
+    nameTexA->rect = (fromBottom ?  bounds.removeFromRight(wA).removeFromBottom(hA) :
+                                    bounds.removeFromRight(wA).removeFromTop(hA)).toFloat();
 
     Point<float> offset = nameCornerPos;
     nameTexA->rect.translate(offset.getX(), offset.getY());
-    nameTexB->rect = nameTexA->rect;
+
+    bounds = comp->getLocalBounds();
+    nameTexB->rect = (fromBottom ?  bounds.removeFromRight(wB).removeFromBottom(hB) :
+                                    bounds.removeFromRight(wB).removeFromTop(hB)).toFloat();
+    nameTexB->rect.translate(offset.getX(), offset.getY());
 }
 
 void Panel::updateBackground(bool onlyVerticalBackground) {
@@ -742,15 +739,12 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     }
 
     int ampChan       = cube->guideCurveAt(Vertex::Amp);
-    int phsVsRedChan  = cube->guideCurveAt(Vertex::Red);
-    int phsVsBlueChan = cube->guideCurveAt(Vertex::Blue);
 
     bool isTime = pointDim == Vertex::Time;
-    bool isRed  = pointDim == Vertex::Red;
 
-    int phaseDim            = isTime ? Vertex::Phase : isRed ? Vertex::Red : Vertex::Blue;
+    int phaseDim            = getLinePathPhaseGuideDimension(pointDim);
     int phaseSrcDim         = isTime ? Vertex::Time : phaseDim;
-    int phaseChan           = isTime ? -1 : isRed ? phsVsRedChan : phsVsBlueChan;
+    int phaseChan           = getLinePathPhaseGuideChannel(*cube, pointDim);
     bool adjustSpeed        = haveSpeed && speedApplicable && isTime;
     bool adjustPhase        = phaseSrcDim == pointDim && phaseChan >= 0;
     bool adjustAmp          = ampChan >= 0 && isTime;
@@ -823,16 +817,28 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
             float   indexScale  = scaleX * float(speedEnv.size() - 1) * invSize;
             float   speed;
 
-            if (scaleX < 0.99f) {
-                for(int i = 0; i < linestripRes; ++i) {
+            if (adjustPhase) {
+                for (int i = 0; i < linestripRes; ++i) {
                     speedEnvIdx = jlimit(0, speedEnv.size() - 1, int(offsetIdx + indexScale * i)); // todo Lerp it
-                    xy.y[i] = speedEnv[speedEnvIdx];
+                    speed       = speedEnv[speedEnvIdx];
+                    ramp[i]     = speed;
+                    idx         = int((phaseTable.size() - 1) * speed);
+                    xy.y[i]     = phaseGain * phaseTable[idx];
                 }
-            } else {
-                speedEnv.copyTo(xy.y);
-            }
 
-            xy.y.mul(second.y - first.y).add(first.y + redOffset + blueOffset);
+                xy.y.addProduct(ramp, second.y - first.y).add(first.y + redOffset + blueOffset);
+            } else {
+                if (scaleX < 0.99f) {
+                    for(int i = 0; i < linestripRes; ++i) {
+                        speedEnvIdx = jlimit(0, speedEnv.size() - 1, int(offsetIdx + indexScale * i)); // todo Lerp it
+                        xy.y[i] = speedEnv[speedEnvIdx];
+                    }
+                } else {
+                    speedEnv.copyTo(xy.y);
+                }
+
+                xy.y.mul(second.y - first.y).add(first.y + redOffset + blueOffset);
+            }
         } else {
             if (adjustPhase) {
                 xy.y.downsampleFrom(phaseTable);
@@ -910,6 +916,22 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     }
 
     return true;
+}
+
+int Panel::getLinePathPhaseGuideChannel(const VertCube& cube, int pointDim) {
+    switch (pointDim) {
+        case Vertex::Time: return cube.guideCurveAt(Vertex::Phase);
+        case Vertex::Red:  return cube.guideCurveAt(Vertex::Red);
+        default:           return cube.guideCurveAt(Vertex::Blue);
+    }
+}
+
+int Panel::getLinePathPhaseGuideDimension(int pointDim) {
+    switch (pointDim) {
+        case Vertex::Time: return Vertex::Phase;
+        case Vertex::Red:  return Vertex::Red;
+        default:           return Vertex::Blue;
+    }
 }
 
 void Panel::componentChanged() {

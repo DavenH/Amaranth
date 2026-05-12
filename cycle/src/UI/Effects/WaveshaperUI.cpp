@@ -30,6 +30,15 @@ namespace {
             + " verts=" + String(mesh->getNumVerts())
             + " cubes=" + String(mesh->getNumCubes());
     }
+
+    int oversampleSelectedIdForFactor(int factor) {
+        switch (factor) {
+            case 2:  return 2;
+            case 4:  return 3;
+            case 8:  return 4;
+            default: return 1;
+        }
+    }
 }
 
 WaveshaperUI::WaveshaperUI(SingletonRepo* repo) :
@@ -282,12 +291,7 @@ bool WaveshaperUI::readXML(const XmlElement* registryElem) {
 
     enabledButton.setHighlit(isEnabled);
     waveshaper->setPendingOversampleFactor(factor);
-
-    for (int i = 1; i < 5; ++i) {
-        if (oversampFactors[i] == factor) {
-            oversampleBox.setSelectedId(i, dontSendNotification);
-        }
-    }
+    oversampleBox.setSelectedId(oversampleSelectedIdForFactor(factor), dontSendNotification);
 
     paramGroup->readKnobXML(waveshaperElem);
 
@@ -313,7 +317,9 @@ bool WaveshaperUI::readJSON(const var& object) {
 
     isEnabled = PresetJson::boolProperty(object, "enabled", false);
     enabledButton.setHighlit(isEnabled);
-    waveshaper->setPendingOversampleFactor(PresetJson::intProperty(object, "oversampleFactor", 1));
+    int factor = PresetJson::intProperty(object, "oversampleFactor", 1);
+    waveshaper->setPendingOversampleFactor(factor);
+    oversampleBox.setSelectedId(oversampleSelectedIdForFactor(factor), dontSendNotification);
 
     return paramGroup->readKnobJSON(PresetJson::property(object, "knobs"));
 }

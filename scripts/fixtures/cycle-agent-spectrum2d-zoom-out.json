@@ -1,0 +1,39 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaSpectrum"
+    },
+    {
+      "command": "pointer",
+      "area": "AreaSpectrum",
+      "event": "wheel",
+      "normalizedX": 0.02,
+      "normalizedY": 0.12,
+      "deltaY": -1,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "pointer",
+      "area": "AreaSpectrum",
+      "event": "wheel",
+      "normalizedX": 0.02,
+      "normalizedY": 0.12,
+      "deltaY": -1,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "pointer",
+      "area": "AreaSpectrum",
+      "event": "wheel",
+      "normalizedX": 0.02,
+      "normalizedY": 0.12,
+      "deltaY": -1,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    }
+  ],
+  "quit": true
+}

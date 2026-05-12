@@ -39,6 +39,7 @@ public:
     void getRange(float& lower, float& upper);
     void primaryDimensionChanged();
     void buttonClicked(Button* button) override;
+    Component* getComponent(int which);
 
     void init() override;
     float getProgress() const;
@@ -93,4 +94,7 @@ private:
 
     Image scrollCursor;
     Image eye;
+
+    void zoomPrimaryRangeToAttack();
+    void zoomPrimaryRangeToFull();
 };

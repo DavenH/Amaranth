@@ -23,6 +23,7 @@ public:
 	[[nodiscard]] const String& getLastPresetDir() const	 { return lastPresetDirectory; 	}
 
 	[[nodiscard]] String getMeshDir() const;
+    [[nodiscard]] String getRepoMeshDir() const;
 	[[nodiscard]] String getRepoPresetDir() const;
 	[[nodiscard]] String getPresetDir() const;
 	[[nodiscard]] StringArray getPresetSearchDirs() const;

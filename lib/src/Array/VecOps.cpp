@@ -388,9 +388,35 @@ template<> void VecOps::flip(Buffer<Float64> src, Buffer<Float64> dst) { src.cop
 
 template<> void VecOps::sinc(Buffer<Float32> kernel, Buffer<Float32> window, float relFreq) {
     if (kernel.size() <= 1) { return; }
-    kernel.ramp(0, relFreq * 2 * M_PI / kernel.size());
+
+    ScopedAlloc<Float32> positionMemory(kernel.size());
+    Buffer<Float32> position(positionMemory, kernel.size());
+
+    position.ramp(-0.5f * float(kernel.size() - 1), 1.f);
+
+    position.copyTo(kernel);
+    kernel.mul(2.f * float(M_PI) * relFreq).sin();
+
+    position.mul(float(M_PI));
+
+    if (kernel.size() % 2 == 1) {
+        position[kernel.size() / 2] = 1.f;
+    }
+
+    kernel.div(position);
+
+    if (kernel.size() % 2 == 1) {
+        kernel[kernel.size() / 2] = 2.f * relFreq;
+    }
+
     window.blackman();
     kernel.mul(window);
+
+    float sum = kernel.sum();
+
+    if (sum != 0.f) {
+        kernel.div(sum);
+    }
 }
 
 template<> void VecOps::fir(const Buffer<Float32>& src, Buffer<Float32> dst, float relFreq, bool trim) {

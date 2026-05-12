@@ -107,9 +107,9 @@ void Waveshaper::processVertexBuffer(Buffer<Float32> outputBuffer) {
 }
 
 bool Waveshaper::doesGraphicOversample() {
-    return oversamplers[graphicOvspIndex]->getOversampleFactor() > 1;
-    // TODO
-    // && ! getObj(VisualDsp).getFXProcessor()->isDetailReduced();
+    // Graphics columns are independent visualization slices, not continuous audio.
+    // Running the audio oversampler here can introduce render-only wall artifacts.
+    return false;
 }
 
 bool Waveshaper::doParamChange(int param, double value, bool doFurtherUpdate) {

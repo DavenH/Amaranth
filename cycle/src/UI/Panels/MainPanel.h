@@ -252,16 +252,6 @@ private:
 //	Bounded* envCtrlABounds;
 //	Bounded* envCtrlBBounds;
 
-    ZoomPanel* spectZoomPanel;
-    ZoomPanel* e3dZoomPanel;
-    ZoomPanel* envZoomPanel;
-    ZoomPanel* f2dZoomPanel;
-    ZoomPanel* wave3DZoomPanel;
-    ZoomPanel* wave2DZoomPanel;
-    ZoomPanel* tubeZoomPanel;
-    ZoomPanel* wsZoomPanel;
-    ZoomPanel* guideCurveZoomPanel;
-
     BoundWrapper* derivBounds;
     BoundWrapper* propsBounds;
     BoundWrapper* unisonBounds;

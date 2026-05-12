@@ -182,8 +182,8 @@ BandPassTransform::BandPassTransform (double fc,
 #ifndef NDEBUG
     ComplexPair p2 = transform (pair.poles.second);
     ComplexPair z2 = transform (pair.zeros.second);
-    jassert (p2.first == std::conj (p1.first));
-    jassert (p2.second == std::conj (p1.second));
+    jassert (Dsp::almost_equal (p2.first, std::conj (p1.first)));
+    jassert (Dsp::almost_equal (p2.second, std::conj (p1.second)));
 #endif
 
     digital.addPoleZeroConjugatePairs (p1.first, z1.first);

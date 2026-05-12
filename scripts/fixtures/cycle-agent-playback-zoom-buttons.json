@@ -1,0 +1,61 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaPlayback"
+    },
+    {
+      "command": "pointer",
+      "area": "AreaPlayback",
+      "target": "TargPlaybackZoomAttack",
+      "event": "click",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "panels.morphPanel.viewDepth.time",
+      "equals": 0.2,
+      "tolerance": 0.0001
+    },
+    {
+      "command": "assertState",
+      "path": "panels.waveform3D.zoom.width",
+      "equals": 0.2,
+      "tolerance": 0.0001
+    },
+    {
+      "command": "assertState",
+      "path": "panels.waveform3D.spectrumZoom.width",
+      "equals": 0.2,
+      "tolerance": 0.0001
+    },
+    {
+      "command": "pointer",
+      "area": "AreaPlayback",
+      "target": "TargPlaybackZoomFull",
+      "event": "click",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "panels.morphPanel.viewDepth.time",
+      "equals": 1.0,
+      "tolerance": 0.0001
+    },
+    {
+      "command": "assertState",
+      "path": "panels.waveform3D.zoom.width",
+      "equals": 1.0,
+      "tolerance": 0.0001
+    },
+    {
+      "command": "assertState",
+      "path": "panels.waveform3D.spectrumZoom.width",
+      "equals": 1.0,
+      "tolerance": 0.0001
+    }
+  ],
+  "quit": true
+}
