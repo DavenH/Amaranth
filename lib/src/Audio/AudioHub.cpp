@@ -88,7 +88,7 @@ void AudioHub::resumeAudio() {
     }
 
     audioDeviceManager->addAudioCallback(this);
-    audioDeviceManager->removeMidiInputDeviceCallback(String(), &midiCollector);
+    audioDeviceManager->addMidiInputDeviceCallback({}, &midiCollector);
 #endif
 }
 

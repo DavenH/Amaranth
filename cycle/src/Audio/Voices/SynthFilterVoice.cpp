@@ -67,14 +67,14 @@ SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo
 void SynthFilterVoice::initialiseNoteExtra(const int midiNoteNumber, const float velocity) {
 
     const bool smooth = getDocSetting(ParameterSmoothing);
-    auto* props = getObj(MeshLibrary).getProps(LayerGroups::GroupTime, parent->voiceIndex);
-    jassert(props != nullptr);
+    MeshLibrary::LayerGroup& timeGroup = getTimeLayerGroup();
 
-    if(props != nullptr) {
-        props->updateParameterSmoothing(smooth);
+    for (int i = 0; i < timeGroup.size(); ++i) {
+        if (timeGroup[i].props != nullptr) {
+            timeGroup[i].props->updateParameterSmoothing(smooth);
+        }
     }
 
-    // TODO
     freqRasterizer.updateOffsetSeeds(1, GuideCurvePanel::tableSize);
     phaseRasterizer.updateOffsetSeeds(1, GuideCurvePanel::tableSize);
 

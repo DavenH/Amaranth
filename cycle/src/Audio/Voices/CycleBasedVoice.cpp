@@ -438,6 +438,8 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
             }
 
             long samplesAdvanced = jmax(1L, (long) futureFrame.cumePos - pastPos);
+            int envelopeSamplesAdvanced = (int) jlimit(1L, (long) getConstant(MaxBufferSize),
+                                                       samplesAdvanced);
 
             // NB this position is for the future cycle
             noteState.absVoiceTime = jmin(futureFrame.cumePos * noteState.timePerOutputSample, 1.);
@@ -445,7 +447,8 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
             futureFrame.frontier = (long) futureFrame.cumePos;
 
             for (int i = 0; i < noteState.numUnisonVoices; ++i) {
-                updateEnvelopes(EnvRasterizer::headUnisonIndex + groups[i].unisonIndex, samplesAdvanced);
+                updateEnvelopes(EnvRasterizer::headUnisonIndex + groups[i].unisonIndex,
+                                envelopeSamplesAdvanced);
                 updateChainAngleDelta(groups[i], unisonEnabled, false);
             }
 
@@ -858,6 +861,12 @@ inline void CycleBasedVoice::updateChainAngleDelta(VoiceParameterGroup& group,
 }
 
 inline void CycleBasedVoice::updateEnvelopes(int paramIndex, int deltaSamples) {
+    if (deltaSamples <= 0) {
+        return;
+    }
+
+    deltaSamples = jmin(deltaSamples, getConstant(MaxBufferSize));
+
     for (int i = 0; i < parent->scratchGroup.size(); ++i) {
         parent->scratchGroup[i].scratchTime = noteState.absVoiceTime;
     }
