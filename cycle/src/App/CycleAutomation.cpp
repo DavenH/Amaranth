@@ -2164,6 +2164,10 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = inspectTree(command, message, data);
     } else if (type == "setControl") {
         ok = setControl(command, message, data);
+    } else if (type == "resetMainPanelView") {
+        ok = resetMainPanelView(command, message, data);
+    } else if (type == "dismissTransientUi") {
+        ok = dismissTransientUi(command, message, data);
     } else if (type == "setCalloutCollapsed") {
         ok = setCalloutCollapsed(command, message, data);
     } else if (type == "pointer") {
@@ -2224,6 +2228,8 @@ var CycleAutomation::handleSessionRequest(const var& request) {
     if (command.isVoid()) {
         command = request;
     }
+
+    hasRun = true;
 
     var result = runCommandResult(command);
     bool ok = PresetJson::boolProperty(result, "ok");
@@ -3329,6 +3335,30 @@ bool CycleAutomation::setControl(const var& command, String& message, var& data)
     message = "Control target is not a supported Slider, Button, ComboBox, or TabbedSelector";
     data = componentState(component, getString(command, "area"), getString(command, "target"));
     return false;
+}
+
+bool CycleAutomation::resetMainPanelView(const var& command, String& message, var& data) {
+    MainPanel& mainPanel = getObj(MainPanel);
+
+    mainPanel.resetTabToWaveform();
+    mainPanel.resized();
+    drainMessageLoopIfRequested(command);
+
+    data = componentState(&mainPanel, "AreaMain", {});
+    message = "Main panel view reset";
+    return true;
+}
+
+bool CycleAutomation::dismissTransientUi(const var& command, String& message, var& data) {
+    auto& modMatrix = getObj(ModMatrixPanel);
+
+    modMatrix.removeFromDesktop();
+    modMatrix.setVisible(false);
+    drainMessageLoopIfRequested(command);
+
+    data = componentState(&modMatrix, "AreaModMatrix", {});
+    message = "Transient UI dismissed";
+    return true;
 }
 
 bool CycleAutomation::setCalloutCollapsed(const var& command, String& message, var& data) {
