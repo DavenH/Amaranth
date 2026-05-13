@@ -1,0 +1,42 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaGenControls",
+      "target": "TargToolPullout"
+    },
+    {
+      "command": "setCalloutCollapsed",
+      "area": "AreaGenControls",
+      "target": "TargToolCallout",
+      "collapsed": true,
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "pointer",
+      "area": "AreaGenControls",
+      "target": "TargToolPullout",
+      "event": "enter",
+      "normalizedX": 0.5,
+      "normalizedY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaGenControls",
+      "target": "TargToolPullout",
+      "path": "popupVisible",
+      "equals": true
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaGenControls",
+      "target": "TargToolPullout",
+      "path": "popupButtonCount",
+      "equals": 4
+    }
+  ],
+  "quit": true
+}

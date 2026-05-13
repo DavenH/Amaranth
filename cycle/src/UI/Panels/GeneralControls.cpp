@@ -304,6 +304,14 @@ juce::Component* GeneralControls::getComponent(int which) {
         case CycleTour::TargWaveVerts:	return &waveVerts;
         case CycleTour::TargVerts:		return &verts;
         case CycleTour::TargLinkYellow:	return &linkYellow;
+        case CycleTour::TargToolPullout:	return toolPO.get();
+        case CycleTour::TargPresetPullout:	return prstPO.get();
+        case CycleTour::TargTransportPullout:	return transPO.get();
+        case CycleTour::TargWavePullout:	return wavePO.get();
+        case CycleTour::TargToolCallout:	return toolCO.get();
+        case CycleTour::TargPresetCallout:	return prstCO.get();
+        case CycleTour::TargTransportCallout:	return transCO.get();
+        case CycleTour::TargWaveCallout:	return waveCO.get();
         default:
             break;
     }

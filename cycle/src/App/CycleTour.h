@@ -283,16 +283,24 @@ public:
 		TargMeshSelector
 	};
 
-	enum GenControls
-	{
-		TargSelector,
-		TargPencil,
-		TargAxe,
-		TargNudge,
-		TargWaveVerts,
-		TargVerts,
-		TargLinkYellow
-	};
+    enum GenControls
+    {
+        TargSelector,
+        TargPencil,
+        TargAxe,
+        TargNudge,
+        TargWaveVerts,
+        TargVerts,
+        TargLinkYellow,
+        TargToolPullout,
+        TargPresetPullout,
+        TargTransportPullout,
+        TargWavePullout,
+        TargToolCallout,
+        TargPresetCallout,
+        TargTransportCallout,
+        TargWaveCallout
+    };
 
 	enum MasterCtrls
 	{

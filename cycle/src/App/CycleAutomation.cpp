@@ -20,6 +20,8 @@
 #include <UI/Layout/Dragger.h>
 #include <UI/Layout/PanelPair.h>
 #include <UI/Panels/Panel.h>
+#include <UI/Widgets/PulloutComponent.h>
+#include <UI/Widgets/RetractableCallout.h>
 #include <UI/Widgets/Controls/HoverSelector.h>
 #include <UI/Widgets/Controls/SelectorPanel.h>
 #include <UI/Widgets/MidiKeyboard.h>
@@ -167,6 +169,14 @@ namespace {
         "TargWaveVerts",
         "TargVerts",
         "TargLinkYellow",
+        "TargToolPullout",
+        "TargPresetPullout",
+        "TargTransportPullout",
+        "TargWavePullout",
+        "TargToolCallout",
+        "TargPresetCallout",
+        "TargTransportCallout",
+        "TargWaveCallout",
         "TargVertCube",
         "TargPrimeArea",
         "TargPrimeY",
@@ -2154,6 +2164,8 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = inspectTree(command, message, data);
     } else if (type == "setControl") {
         ok = setControl(command, message, data);
+    } else if (type == "setCalloutCollapsed") {
+        ok = setCalloutCollapsed(command, message, data);
     } else if (type == "pointer") {
         ok = pointer(command, message, data);
     } else if (type == "assertTarget") {
@@ -3319,6 +3331,31 @@ bool CycleAutomation::setControl(const var& command, String& message, var& data)
     return false;
 }
 
+bool CycleAutomation::setCalloutCollapsed(const var& command, String& message, var& data) {
+    Component* component = resolveComponent(command);
+
+    if (component == nullptr) {
+        message = "Callout target could not be resolved";
+        return false;
+    }
+
+    auto* callout = dynamic_cast<RetractableCallout*>(component);
+
+    if (callout == nullptr) {
+        message = "Target is not a RetractableCallout";
+        data = componentState(component, getString(command, "area"), getString(command, "target"));
+        return false;
+    }
+
+    callout->setAlwaysCollapsed(getBool(command, "collapsed", true));
+    callout->resized();
+    drainMessageLoopIfRequested(command);
+
+    data = componentState(callout, getString(command, "area"), getString(command, "target"));
+    message = "Callout collapsed state updated";
+    return true;
+}
+
 bool CycleAutomation::pointer(const var& command, String& message, var& data) {
     Component* component = resolveComponent(command);
 
@@ -3359,6 +3396,10 @@ bool CycleAutomation::pointer(const var& command, String& message, var& data) {
         component->mouseDrag(makePointerEvent(*component, position, downPosition, command, true, true, 1));
     } else if (eventType == "move") {
         component->mouseMove(makePointerEvent(*component, position, position, command, false, false, 0));
+    } else if (eventType == "enter") {
+        component->mouseEnter(makePointerEvent(*component, position, position, command, false, false, 0));
+    } else if (eventType == "exit") {
+        component->mouseExit(makePointerEvent(*component, position, position, command, false, false, 0));
     } else if (eventType == "wheel") {
         MouseWheelDetails wheel {
             float(getDouble(command, "deltaX")),
@@ -3970,6 +4011,19 @@ var CycleAutomation::componentState(Component* component, const String& area, co
             json->setProperty("orientation", pair->sideBySide ? "vertical" : "horizontal");
             json->setProperty("pairBounds", rectangleState(pair->getBounds()));
         }
+    } else if (auto* pullout = dynamic_cast<PulloutComponent*>(component)) {
+        json->setProperty("controlType", "pulloutComponent");
+        json->setProperty("orientation", pullout->isHorizontal() ? "horizontal" : "vertical");
+        json->setProperty("popupVisible", pullout->isPopupVisible());
+        json->setProperty("popupButtonCount", pullout->getPopupButtonCount());
+        json->setProperty("popupBounds", rectangleState(pullout->getPopupBounds()));
+    } else if (auto* callout = dynamic_cast<RetractableCallout*>(component)) {
+        json->setProperty("controlType", "retractableCallout");
+        json->setProperty("currentlyCollapsed", callout->isCurrentlyCollapsed());
+        json->setProperty("sizeCollapsed", callout->isCollapsed());
+        json->setProperty("alwaysCollapsed", callout->isAlwaysCollapsed());
+        json->setProperty("expandedSize", callout->getExpandedSize());
+        json->setProperty("collapsedSize", callout->getCollapsedSize());
     } else {
         json->setProperty("controlType", "component");
     }

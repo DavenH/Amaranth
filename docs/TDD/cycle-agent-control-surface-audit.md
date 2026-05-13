@@ -9,7 +9,8 @@ human moving the UI.
 
 The current automation command set already has useful primitives:
 
-- low-level pointer events: click, doubleClick, down, up, drag, move, wheel,
+- low-level pointer events: click, doubleClick, down, up, drag, move, enter,
+  exit, wheel,
 - generic `setControl` for named `Slider`, `Button`, and `ComboBox` targets,
 - semantic actions through `CycleTour`,
 - screenshots, assertions, mesh mutation, preset export/save/reopen, and audio
@@ -26,8 +27,8 @@ From `CycleAutomation.cpp`:
 
 - 19 inspectable areas are listed in `kInspectableAreas`.
 - 12 `TourGuide` areas are scanned for named targets in `kTourGuideAreas`.
-- 125 named targets are listed in `kInspectableTargets`.
-- 34 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
+- 133 named targets are listed in `kInspectableTargets`.
+- 35 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
 
 Named coverage is strongest for:
 
@@ -212,6 +213,9 @@ High-priority custom mouse surfaces:
   Started for the `MainPanel` unified/collapsed draggers with stable target
   names, dragger layout state inspection, and a focused fixture that sends
   down/drag/up events through the socket automation path.
+  Started for `GeneralControls` pullout icons with stable target names,
+  generic pointer `enter`/`exit` events, retractable-callout collapse control,
+  pullout popup state inspection, and a focused hover fixture.
 
 ## Preset Authoring Implications
 

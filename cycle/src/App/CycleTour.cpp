@@ -105,7 +105,9 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     B(TargModelCycle);
 
     B(TargSelector),       B(TargPencil),        B(TargAxe),            B(TargNudge);
-    B(TargWaveVerts),      B(TargVerts),         B(TargLinkYellow),     B(TargVertCube);
+    B(TargWaveVerts),      B(TargVerts),         B(TargLinkYellow),     B(TargToolPullout);
+    B(TargPresetPullout),  B(TargTransportPullout), B(TargWavePullout), B(TargToolCallout);
+    B(TargPresetCallout),  B(TargTransportCallout), B(TargWaveCallout), B(TargVertCube);
  
     B(TargPrimeArea),      B(TargPrimeY),        B(TargPrimeB),         B(TargPrimeR);
     B(TargLinkArea),       B(TargLinkY),         B(TargLinkB),          B(TargLinkR);
