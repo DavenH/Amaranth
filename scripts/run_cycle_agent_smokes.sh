@@ -26,6 +26,7 @@ run_fixture screenshot scripts/fixtures/cycle-agent-screenshot.json
 run_fixture menu-commands scripts/fixtures/cycle-agent-menu-commands.json
 run_fixture main-tabs scripts/fixtures/cycle-agent-main-tabs.json
 run_fixture layer-buttons scripts/fixtures/cycle-agent-layer-buttons.json
+run_fixture effect-targets scripts/fixtures/cycle-agent-effect-targets.json
 run_fixture set-morph-slider scripts/fixtures/cycle-agent-set-morph-slider.json
 run_fixture broader-controls scripts/fixtures/cycle-agent-broader-controls.json
 run_fixture factory-preset scripts/fixtures/cycle-agent-factory-preset.json

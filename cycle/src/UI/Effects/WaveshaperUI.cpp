@@ -426,6 +426,7 @@ juce::Component* WaveshaperUI::getComponent(int which) {
         case CycleTour::TargWaveshaperPre: return paramGroup->getKnob<Knob>(Waveshaper::Preamp);
         case CycleTour::TargWaveshaperPost: return paramGroup->getKnob<Knob>(Waveshaper::Postamp);
         case CycleTour::TargWaveshaperSlct: return selector.get();
+        case CycleTour::TargEffectEnable: return &enabledButton;
         default:
             break;
     }

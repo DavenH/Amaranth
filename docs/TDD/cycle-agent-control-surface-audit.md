@@ -27,7 +27,7 @@ From `CycleAutomation.cpp`:
 - 19 inspectable areas are listed in `kInspectableAreas`.
 - 12 `TourGuide` areas are scanned for named targets in `kTourGuideAreas`.
 - 96 named targets are listed in `kInspectableTargets`.
-- 25 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
+- 26 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
 
 Named coverage is strongest for:
 
@@ -108,7 +108,8 @@ Needs target naming or domain commands:
 
 - all `GuilessEffect` parameter knobs, especially delay, reverb, equalizer, and
   unison parameters that are only addressable by raw parameter index in the base
-  effect class,
+  effect class. Started with `TargEffectParam0` through `TargEffectParam9`
+  for delay, reverb, and equalizer,
 - hidden/conditional unison knobs that change visibility by mode,
 - all mod-matrix utility sliders,
 - all guide-curve and panel-control sliders when active area changes,
@@ -133,6 +134,7 @@ Currently named:
 Needs target naming:
 
 - all effect enable buttons, not only semantic enablement,
+  started with `TargEffectEnable` for `GuilessEffect` UIs and Waveshaper,
 - all `LayerAddRemover` add/remove buttons as separate targets instead of only
   container targets. Started for waveform, spectrum, guide-curve, and unison
   panels through shared `TargLayerAddButton` and `TargLayerRemoveButton`

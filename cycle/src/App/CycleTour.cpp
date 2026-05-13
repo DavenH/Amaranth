@@ -115,6 +115,9 @@ CycleTour::CycleTour(SingletonRepo* repo) :
 
     B(TargMasterVol),      B(TargMasterOct),     B(TargMasterLen);
     B(TargMainBottomTabs), B(TargMainTopTabs);
+    B(TargEffectParam0),   B(TargEffectParam1),  B(TargEffectParam2),   B(TargEffectParam3);
+    B(TargEffectParam4),   B(TargEffectParam5),  B(TargEffectParam6),   B(TargEffectParam7);
+    B(TargEffectParam8),   B(TargEffectParam9),  B(TargEffectEnable);
 
     N(NullAction),         N(OpenFactoryPreset);
     N(LinkRange),          N(UnlinkRange),       N(TriggerButton),     N(SetVertexSize);
@@ -1195,6 +1198,9 @@ TourGuide* CycleTour::getTourGuide(Area area) {
         case AreaWaveshaper:     return &getObj(WaveshaperUI);
         case AreaGuideCurves:      return &getObj(GuideCurvePanel);
         case AreaUnison:         return &getObj(UnisonUI);
+        case AreaReverb:         return &getObj(ReverbUI);
+        case AreaDelay:          return &getObj(DelayUI);
+        case AreaEQ:             return &getObj(EqualizerUI);
         case AreaModMatrix:      return &getObj(ModMatrixPanel);
         case AreaMasterCtrls:    return &getObj(OscControlPanel);
         default: break;

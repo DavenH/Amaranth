@@ -68,6 +68,9 @@ namespace {
         "AreaWaveshaper",
         "AreaGuideCurves",
         "AreaUnison",
+        "AreaReverb",
+        "AreaDelay",
+        "AreaEQ",
         "AreaModMatrix",
         "AreaMasterCtrls",
     };
@@ -175,6 +178,17 @@ namespace {
         "TargMasterLen",
         "TargMainBottomTabs",
         "TargMainTopTabs",
+        "TargEffectParam0",
+        "TargEffectParam1",
+        "TargEffectParam2",
+        "TargEffectParam3",
+        "TargEffectParam4",
+        "TargEffectParam5",
+        "TargEffectParam6",
+        "TargEffectParam7",
+        "TargEffectParam8",
+        "TargEffectParam9",
+        "TargEffectEnable",
     };
 
     String getString(const var& object, const Identifier& name, const String& fallback = {}) {

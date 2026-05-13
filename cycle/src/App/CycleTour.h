@@ -300,10 +300,26 @@ public:
 		TargMasterLen,
 	};
 
-    enum MainTargets
+	enum MainTargets
+	{
+		TargMainBottomTabs = 100,
+		TargMainTopTabs,
+	};
+
+    enum EffectTargets
     {
-        TargMainBottomTabs = 100,
-        TargMainTopTabs,
+        TargEffectParam0 = 0,
+        TargEffectParam1,
+        TargEffectParam2,
+        TargEffectParam3,
+        TargEffectParam4,
+        TargEffectParam5,
+        TargEffectParam6,
+        TargEffectParam7,
+        TargEffectParam8,
+        TargEffectParam9,
+
+        TargEffectEnable = 140,
     };
 
 	enum

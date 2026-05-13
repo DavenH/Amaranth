@@ -578,6 +578,8 @@ Status: partially implemented with an opt-in local smoke runner.
     `cycle-agent-main-tabs.json`.
   - resolving split layer add/remove/move button targets. Covered by
     `cycle-agent-layer-buttons.json`.
+  - resolving generic effect enable and parameter targets. Covered by
+    `cycle-agent-effect-targets.json`.
   - executing a `CycleTour` action. Covered by
     `cycle-agent-general-controls.json`.
 - Add a local test command that runs these through `scripts/run_cycle_agent.sh`.
@@ -628,6 +630,7 @@ CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D CYCLE_OS_SCREENSHOT_PATH=/private/tm
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-menu-commands.json /private/tmp/cycle-agent-menu-commands-report.json /private/tmp/cycle-agent-menu-commands-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-main-tabs.json /private/tmp/cycle-agent-main-tabs-report.json /private/tmp/cycle-agent-main-tabs-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-layer-buttons.json /private/tmp/cycle-agent-layer-buttons-report.json /private/tmp/cycle-agent-layer-buttons-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-effect-targets.json /private/tmp/cycle-agent-effect-targets-report.json /private/tmp/cycle-agent-effect-targets-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-set-morph-slider.json /private/tmp/cycle-agent-set-morph-slider-report.json /private/tmp/cycle-agent-set-morph-slider-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-broader-controls.json /private/tmp/cycle-agent-broader-controls-report.json /private/tmp/cycle-agent-broader-controls-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-factory-preset.json /private/tmp/cycle-agent-factory-preset-report.json /private/tmp/cycle-agent-factory-preset-logs.txt
@@ -677,6 +680,10 @@ Current verified behavior:
   fixture covers the main top and bottom tab strips.
 - Layer add/remove and move up/down compound controls now expose their child
   `IconButton` components as separate targets where the controls are present.
+- Generic effect parameter targets `TargEffectParam0` through
+  `TargEffectParam9` address `GuilessEffect` knobs by stable target name for
+  Delay, Reverb, and EQ. `TargEffectEnable` addresses the generic effect enable
+  button and the Waveshaper enable button.
 - `setControl` also covers representative master sliders, effect knobs,
   ComboBoxes, and Waveform3D layer pan; semantic `Enable`/`Disable` actions
   cover the current Waveform3D layer active toggle.
