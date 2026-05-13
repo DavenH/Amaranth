@@ -27,7 +27,7 @@ From `CycleAutomation.cpp`:
 - 19 inspectable areas are listed in `kInspectableAreas`.
 - 12 `TourGuide` areas are scanned for named targets in `kTourGuideAreas`.
 - 96 named targets are listed in `kInspectableTargets`.
-- 31 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
+- 32 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
 
 Named coverage is strongest for:
 
@@ -196,6 +196,8 @@ High-priority custom mouse surfaces:
 - `SelectorPanel`, `LayerSelectorPanel`, `HoverSelector`, and `MeshSelector`:
   selection, wheel, popup, and drag behavior.
 - `PlaybackPanel`: seek/drag behavior and zoom buttons.
+  Started with `AreaPlayback` / `TargPlaybackSurface` naming, playback-panel
+  inspection state, and a focused pointer seek fixture.
 - `MidiKeyboard`: key hover/click/drag.
   Started with `AreaMain` / `TargMidiKeyboard` naming plus generic pointer
   right-button support and a focused keyboard pointer fixture.

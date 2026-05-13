@@ -211,6 +211,7 @@ public:
 
     enum PlaybackTargets
     {
+        TargPlaybackSurface,
         TargPlaybackZoomAttack,
         TargPlaybackZoomFull,
     };

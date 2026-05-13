@@ -81,7 +81,7 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     B(TargImpLength),      B(TargImpGain),       B(TargImpHP),          B(TargImpZoom);
     B(TargImpLoadWav),     B(TargImpUnloadWav),  B(TargImpModelWav);
 
-    B(TargPlaybackZoomAttack), B(TargPlaybackZoomFull);
+    B(TargPlaybackSurface), B(TargPlaybackZoomAttack), B(TargPlaybackZoomFull);
 
     B(TargWaveshaperOvsp), B(TargWaveshaperPre), B(TargWaveshaperPost), B(TargWaveshaperSlct);
 

@@ -29,6 +29,7 @@
 
 #include "../UI/Panels/MainPanel.h"
 #include "../UI/Panels/ModMatrixPanel.h"
+#include "../UI/Panels/PlaybackPanel.h"
 #include "../UI/Panels/SynthMenuBarModel.h"
 
 #if JUCE_MAC || JUCE_LINUX
@@ -103,6 +104,7 @@ namespace {
         "TargImpLoadWav",
         "TargImpUnloadWav",
         "TargImpModelWav",
+        "TargPlaybackSurface",
         "TargPlaybackZoomAttack",
         "TargPlaybackZoomFull",
         "TargWaveshaperOvsp",
@@ -3929,6 +3931,11 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("controlType", "midiKeyboard");
         json->setProperty("auditionKey", midiKeyboard->getAuditionKey());
         json->setProperty("auditionKeyName", MidiKeyboard::getText(midiKeyboard->getAuditionKey()));
+    } else if (auto* playbackPanel = dynamic_cast<PlaybackPanel*>(component)) {
+        json->setProperty("controlType", "playbackPanel");
+        json->setProperty("progress", playbackPanel->getProgress());
+        json->setProperty("playing", playbackPanel->isPlaying());
+        json->setProperty("envelopePosition", playbackPanel->getEnvelopePos());
     } else {
         json->setProperty("controlType", "component");
     }
