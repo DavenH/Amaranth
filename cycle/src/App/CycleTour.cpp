@@ -114,7 +114,7 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     B(TargSliderPan);
 
     B(TargMasterVol),      B(TargMasterOct),     B(TargMasterLen);
-    B(TargMainBottomTabs), B(TargMainTopTabs);
+    B(TargMainBottomTabs), B(TargMainTopTabs),   B(TargMidiKeyboard);
     B(TargEffectParam0),   B(TargEffectParam1),  B(TargEffectParam2),   B(TargEffectParam3);
     B(TargEffectParam4),   B(TargEffectParam5),  B(TargEffectParam6),   B(TargEffectParam7);
     B(TargEffectParam8),   B(TargEffectParam9),  B(TargEffectEnable);

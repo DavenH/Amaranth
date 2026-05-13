@@ -1157,6 +1157,8 @@ juce::Component* MainPanel::getComponent(int which) {
             return bottomTabs;
         case CycleTour::TargMainTopTabs:
             return topTabs;
+        case CycleTour::TargMidiKeyboard:
+            return keyboard;
         case CompWaveform2DZoomH:
             return waveform2D->getZoomPanel()->getComponent(true);
         case CompWaveform2DZoomW:

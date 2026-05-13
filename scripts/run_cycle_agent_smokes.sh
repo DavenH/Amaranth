@@ -37,6 +37,7 @@ run_fixture modmatrix-menu scripts/fixtures/cycle-agent-modmatrix-menu.json
 run_fixture envelope-config-menu scripts/fixtures/cycle-agent-envelope-config-menu.json
 run_fixture selector-menu scripts/fixtures/cycle-agent-selector-menu.json
 run_fixture hover-selector-menu scripts/fixtures/cycle-agent-hover-selector-menu.json
+run_fixture midi-keyboard-pointer scripts/fixtures/cycle-agent-midi-keyboard-pointer.json
 run_fixture midi-note scripts/fixtures/cycle-agent-midi-note.json
 run_fixture audio-capture scripts/fixtures/cycle-agent-audio-capture.json
 

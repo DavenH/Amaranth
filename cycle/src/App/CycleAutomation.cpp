@@ -20,6 +20,7 @@
 #include <UI/Panels/Panel.h>
 #include <UI/Widgets/Controls/HoverSelector.h>
 #include <UI/Widgets/Controls/SelectorPanel.h>
+#include <UI/Widgets/MidiKeyboard.h>
 #include <UI/Widgets/TabbedSelector.h>
 
 #include "CycleTour.h"
@@ -182,6 +183,7 @@ namespace {
         "TargMasterLen",
         "TargMainBottomTabs",
         "TargMainTopTabs",
+        "TargMidiKeyboard",
         "TargEffectParam0",
         "TargEffectParam1",
         "TargEffectParam2",
@@ -849,7 +851,17 @@ namespace {
         ModifierKeys modifiers = ModifierKeys::currentModifiers.withoutMouseButtons();
 
         if (buttonDown) {
-            modifiers = modifiers.withFlags(ModifierKeys::leftButtonModifier);
+            String button = getString(command, "button", getString(command, "mouseButton")).toLowerCase();
+            bool rightButton = getBool(command, "right") || button == "right" || button == "secondary";
+            bool middleButton = getBool(command, "middle") || button == "middle";
+
+            if (rightButton) {
+                modifiers = modifiers.withFlags(ModifierKeys::rightButtonModifier);
+            } else if (middleButton) {
+                modifiers = modifiers.withFlags(ModifierKeys::middleButtonModifier);
+            } else {
+                modifiers = modifiers.withFlags(ModifierKeys::leftButtonModifier);
+            }
         }
 
         if (getBool(command, "shift")) {
@@ -3913,6 +3925,10 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("controlType", "hoverSelector");
         json->setProperty("menuActive", hoverSelector->menuActive);
         json->setProperty("horizontal", hoverSelector->horizontal);
+    } else if (auto* midiKeyboard = dynamic_cast<MidiKeyboard*>(component)) {
+        json->setProperty("controlType", "midiKeyboard");
+        json->setProperty("auditionKey", midiKeyboard->getAuditionKey());
+        json->setProperty("auditionKeyName", MidiKeyboard::getText(midiKeyboard->getAuditionKey()));
     } else {
         json->setProperty("controlType", "component");
     }
