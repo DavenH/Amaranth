@@ -66,6 +66,8 @@ Implemented:
   - `openFactoryPreset`,
   - `listMenus`,
   - `invokeMenuItem`,
+  - `listEnvelopeConfigMenu`,
+  - `invokeEnvelopeConfigMenu`,
   - `screenshot`,
   - `captureAudio`,
   - `inspectTargets`,

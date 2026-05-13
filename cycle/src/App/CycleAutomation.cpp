@@ -15,6 +15,7 @@
 #include <Curve/Vertex.h>
 #include <Curve/VertCube.h>
 #include <Definitions.h>
+#include <Inter/EnvelopeInter2D.h>
 #include <Inter/Interactor.h>
 #include <UI/Panels/Panel.h>
 #include <UI/Widgets/TabbedSelector.h>
@@ -460,6 +461,86 @@ namespace {
             json->setProperty("path", pathToVar(StringArray(dimensionItem.text)));
             items.add(PresetJson::toVar(json));
         }
+    }
+
+    int envelopeGroupForCommand(const var& command, int currentGroup) {
+        var groupId = PresetJson::property(command, "groupId");
+
+        if (!groupId.isVoid()) {
+            return int(groupId);
+        }
+
+        String group = getString(command, "group").toLowerCase();
+
+        if (group == "volume" || group == "vol") {
+            return LayerGroups::GroupVolume;
+        }
+
+        if (group == "pitch") {
+            return LayerGroups::GroupPitch;
+        }
+
+        if (group == "scratch") {
+            return LayerGroups::GroupScratch;
+        }
+
+        if (group == "wavepitch" || group == "wave-pitch" || group == "wave_pitch" || group == "oscphase") {
+            return LayerGroups::GroupWavePitch;
+        }
+
+        return currentGroup;
+    }
+
+    var envelopeConfigPropsState(int groupId, const MeshLibrary::EnvProps& props) {
+        auto groupName = [](int group) {
+            switch (group) {
+                case LayerGroups::GroupVolume:       return String("volume");
+                case LayerGroups::GroupPitch:        return String("pitch");
+                case LayerGroups::GroupScratch:      return String("scratch");
+                case LayerGroups::GroupWavePitch:    return String("wavePitch");
+                default:                             return "group" + String(group);
+            }
+        };
+
+        auto json = PresetJson::object();
+        json->setProperty("groupId", groupId);
+        json->setProperty("group", groupName(groupId));
+        json->setProperty("active", props.active);
+        json->setProperty("dynamic", props.dynamic);
+        json->setProperty("global", props.global);
+        json->setProperty("logarithmic", props.logarithmic);
+        json->setProperty("tempoSync", props.tempoSync);
+        json->setProperty("scale", props.scale);
+        json->setProperty("operating", props.isOperating());
+        return PresetJson::toVar(json);
+    }
+
+    PopupMenu envelopeConfigMenuForProps(int groupId, const MeshLibrary::EnvProps& props) {
+        PopupMenu menu;
+
+        if (groupId != LayerGroups::GroupVolume) {
+            menu.addItem(EnvelopeInter2D::CfgDynamic, "Dynamic while live", true, props.dynamic);
+        } else {
+            menu.addItem(EnvelopeInter2D::CfgLogarithmic, "Logarithmic", true, props.logarithmic);
+        }
+
+        if (groupId == LayerGroups::GroupScratch) {
+            menu.addItem(EnvelopeInter2D::CfgGlobal, "Globally triggered", true, props.global);
+        }
+
+        menu.addItem(EnvelopeInter2D::CfgSyncTempo, "Sync to host tempo", true, props.tempoSync);
+
+        PopupMenu scaleMenu;
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale1_16x, "1/16x", true, props.scale == -16);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale1_4x,  "1/4x",  true, props.scale == -4);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale1_2x,  "1/2x",  true, props.scale == -2);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale1x,    "1x",    true, props.scale == 1);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale2x,    "2x",    true, props.scale == 2);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale4x,    "4x",    true, props.scale == 4);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale16x,   "16x",   true, props.scale == 16);
+
+        menu.addSubMenu("Duration scale", scaleMenu, true);
+        return menu;
     }
 
     var makeResult(const String& type, bool ok, const String& message, const var& data = {}) {
@@ -1990,6 +2071,10 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = listModMatrixDimensionMenu(command, message, data);
     } else if (type == "invokeModMatrixDimensionMenu") {
         ok = invokeModMatrixDimensionMenu(command, message, data);
+    } else if (type == "listEnvelopeConfigMenu") {
+        ok = listEnvelopeConfigMenu(command, message, data);
+    } else if (type == "invokeEnvelopeConfigMenu") {
+        ok = invokeEnvelopeConfigMenu(command, message, data);
     } else if (type == "inspectTargets") {
         ok = inspectTargets(command, message, data);
     } else if (type == "inspectTree") {
@@ -2694,6 +2779,101 @@ bool CycleAutomation::invokeModMatrixDimensionMenu(const var& command, String& m
     data = PresetJson::toVar(json);
 
     message = "Mod matrix dimension menu item invoked";
+    return true;
+}
+
+bool CycleAutomation::listEnvelopeConfigMenu(const var& command, String& message, var& data) {
+    int currentGroup = getObj(EnvelopeInter2D).getLayerType();
+    int groupId = envelopeGroupForCommand(command, currentGroup);
+    MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(groupId);
+
+    if (props == nullptr) {
+        message = "Envelope config menu requires a valid envelope group";
+        return false;
+    }
+
+    PopupMenu menu = envelopeConfigMenuForProps(groupId, *props);
+    Array<var> items;
+    appendMenuItems(items, menu, "EnvelopeConfig", 0, {});
+
+    auto propsState = envelopeConfigPropsState(groupId, *props);
+    auto json = PresetJson::object();
+    json->setProperty("groupId", groupId);
+    json->setProperty("group", PresetJson::property(propsState, "group"));
+    json->setProperty("currentGroupId", currentGroup);
+    json->setProperty("itemCount", items.size());
+    json->setProperty("items", var(items));
+    json->setProperty("props", propsState);
+    data = PresetJson::toVar(json);
+
+    message = "Listed envelope config menu";
+    return true;
+}
+
+bool CycleAutomation::invokeEnvelopeConfigMenu(const var& command, String& message, var& data) {
+    auto& interactor = getObj(EnvelopeInter2D);
+    int currentGroup = interactor.getLayerType();
+    int groupId = envelopeGroupForCommand(command, currentGroup);
+    MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(groupId);
+
+    if (props == nullptr) {
+        message = "Envelope config menu requires a valid envelope group";
+        return false;
+    }
+
+    PopupMenu menu = envelopeConfigMenuForProps(groupId, *props);
+    PopupMenu::Item item;
+    StringArray path = commandMenuPath(command);
+    var itemIdVar = PresetJson::property(command, "itemId");
+
+    if (itemIdVar.isVoid()) {
+        itemIdVar = PresetJson::property(command, "id");
+    }
+
+    bool found = false;
+
+    if (!itemIdVar.isVoid()) {
+        found = findMenuItemById(menu, int(itemIdVar), item);
+    } else if (!path.isEmpty()) {
+        found = findMenuItemByPath(menu, path, 0, item);
+    }
+
+    if (!found) {
+        message = "Envelope config menu item could not be resolved";
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("groupId", groupId);
+    json->setProperty("currentGroupId", currentGroup);
+    json->setProperty("text", item.text);
+    json->setProperty("itemId", item.itemID);
+    json->setProperty("enabled", item.isEnabled);
+    json->setProperty("tickedBefore", item.isTicked);
+    json->setProperty("path", pathToVar(path));
+    json->setProperty("before", envelopeConfigPropsState(groupId, *props));
+
+    if (!item.isEnabled && !getBool(command, "allowDisabled")) {
+        data = PresetJson::toVar(json);
+        message = "Envelope config menu item is disabled: " + item.text;
+        return false;
+    }
+
+    if (item.itemID == 0) {
+        data = PresetJson::toVar(json);
+        message = "Envelope config menu item is not triggerable: " + item.text;
+        return false;
+    }
+
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
+    interactor.chooseConfigScale(item.itemID, props);
+    drainMessageLoopIfRequested(command);
+
+    json->setProperty("waitedForIdle", waitedForIdle);
+    json->setProperty("after", envelopeConfigPropsState(groupId, *props));
+    data = PresetJson::toVar(json);
+
+    message = "Envelope config menu item invoked: " + item.text;
     return true;
 }
 

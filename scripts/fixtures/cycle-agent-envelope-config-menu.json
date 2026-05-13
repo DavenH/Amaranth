@@ -1,0 +1,35 @@
+{
+  "commands": [
+    {
+      "command": "action",
+      "actionType": "ShowArea",
+      "area": "AreaEnvelopes",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "listEnvelopeConfigMenu",
+      "group": "volume"
+    },
+    {
+      "command": "invokeEnvelopeConfigMenu",
+      "group": "volume",
+      "path": ["Duration scale", "2x"],
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "exportState",
+      "source": "envelopeProps",
+      "jsonPath": "groups.volume.layers[0].properties.scale"
+    },
+    {
+      "command": "invokeEnvelopeConfigMenu",
+      "group": "volume",
+      "path": ["Duration scale", "1x"],
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    }
+  ],
+  "quit": true
+}

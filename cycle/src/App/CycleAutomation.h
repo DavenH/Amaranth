@@ -49,6 +49,8 @@ private:
     bool invokeModMatrixMenu(const var& command, String& message, var& data);
     bool listModMatrixDimensionMenu(const var& command, String& message, var& data);
     bool invokeModMatrixDimensionMenu(const var& command, String& message, var& data);
+    bool listEnvelopeConfigMenu(const var& command, String& message, var& data);
+    bool invokeEnvelopeConfigMenu(const var& command, String& message, var& data);
     bool inspectTargets(const var& command, String& message, var& data);
     bool inspectTree(const var& command, String& message, var& data);
     bool setControl(const var& command, String& message, var& data);
