@@ -9,6 +9,8 @@ RUN_OS_SCREENSHOT="${CYCLE_AGENT_SMOKE_OS_SCREENSHOT:-0}"
 RESET_PRESET="${CYCLE_AGENT_SMOKE_RESET_PRESET:-ooh-aah}"
 RESUME="${CYCLE_AGENT_SMOKE_RESUME:-0}"
 SKIP_MAIN_TAB_RESET="${CYCLE_AGENT_SMOKE_SKIP_MAIN_TAB_RESET:-0}"
+BOUNDARY_LOG="${CYCLE_AGENT_SMOKE_BOUNDARY_LOG:-0}"
+OPENGL_DIAGNOSTICS_EACH_FIXTURE="${CYCLE_AGENT_SMOKE_OPENGL_DIAGNOSTICS_EACH_FIXTURE:-0}"
 
 mkdir -p "$ARTIFACT_DIR"
 rm -f "$SESSION_LOG"
@@ -86,8 +88,21 @@ if [[ "$SKIP_MAIN_TAB_RESET" == "1" ]]; then
     tab_reset_args+=(--skip-main-tab-reset)
 fi
 
+boundary_log_args=()
+
+if [[ "$BOUNDARY_LOG" == "1" ]]; then
+    boundary_log_args+=(--boundary-log)
+fi
+
+opengl_diagnostic_args=()
+
+if [[ "$OPENGL_DIAGNOSTICS_EACH_FIXTURE" == "1" ]]; then
+    opengl_diagnostic_args+=(--opengl-diagnostics-each-fixture)
+fi
+
 scripts/run_cycle_agent_session.sh "$SOCKET_PATH" "$SESSION_LOG" >/dev/null
 
+set +e
 scripts/cycle_agent_smoke_session.py \
     "$SOCKET_PATH" \
     --report "$REPORT_PATH" \
@@ -95,9 +110,13 @@ scripts/cycle_agent_smoke_session.py \
     --expected-failure assert-failure \
     "${resume_args[@]}" \
     "${tab_reset_args[@]}" \
+    "${boundary_log_args[@]}" \
+    "${opengl_diagnostic_args[@]}" \
     "${fixtures[@]}"
+smoke_status=$?
+set -e
 
-if [[ "$RUN_OS_SCREENSHOT" == "1" ]]; then
+if [[ "$RUN_OS_SCREENSHOT" == "1" && "$smoke_status" == "0" ]]; then
     screenshot_path="$ARTIFACT_DIR/waveform3d-os.png"
     rect="$(jq -er '
         [
@@ -119,3 +138,5 @@ fi
 echo "$ARTIFACT_DIR"
 echo "$REPORT_PATH"
 echo "$SESSION_LOG"
+
+exit "$smoke_status"

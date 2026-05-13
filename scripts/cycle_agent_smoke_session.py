@@ -72,6 +72,51 @@ def make_skipped_result(fixture_name, index, command):
     }
 
 
+def run_boundary_command(args, fixture_name, phase, command_index, command):
+    try:
+        response = send_command(
+            args.socket_path,
+            command,
+            f"{fixture_name}:{phase}",
+            args.timeout,
+        )
+        ok = bool(response.get("ok"))
+        message = response.get("result", {}).get("message", response.get("message", ""))
+    except Exception as exc:
+        response = {
+            "ok": False,
+            "message": str(exc),
+        }
+        ok = False
+        message = str(exc)
+
+    return {
+        "fixture": fixture_name,
+        "commandIndex": command_index,
+        "command": command_name(command),
+        "ok": ok,
+        "message": message,
+        "diagnostic": True,
+        "phase": phase,
+        "response": response,
+    }
+
+
+def add_boundary_diagnostics(args, fixture_name, phase, command_index, results):
+    if args.boundary_log:
+        results.append(run_boundary_command(args, fixture_name, phase + ":log", command_index, {
+            "command": "logMessage",
+            "message": f"smoke {fixture_name} {phase}",
+        }))
+
+    if args.opengl_diagnostics_each_fixture:
+        results.append(run_boundary_command(args, fixture_name, phase + ":opengl", command_index, {
+            "command": "openGLDiagnostics",
+            "poll": True,
+            "phase": f"smoke-{fixture_name}-{phase}",
+        }))
+
+
 def run_fixture(args, fixture_name, fixture_path, expected_failure):
     commands = load_fixture(fixture_path)
     results = []
@@ -133,6 +178,8 @@ def run_fixture(args, fixture_name, fixture_path, expected_failure):
             skipped_after_failure = True
             break
 
+    add_boundary_diagnostics(args, fixture_name, "before", -100, results)
+
     for index, command in enumerate(commands):
         if skipped_after_failure:
             results.append(make_skipped_result(fixture_name, index, command))
@@ -167,6 +214,8 @@ def run_fixture(args, fixture_name, fixture_path, expected_failure):
         if not ok:
             saw_failure = True
             skipped_after_failure = True
+
+    add_boundary_diagnostics(args, fixture_name, "after", len(commands) + 100, results)
 
     fixture_ok = saw_failure if expected_failure else not saw_failure
 
@@ -216,6 +265,8 @@ def main():
     parser.add_argument("--resume", action="store_true", help="Keep existing report fixtures and skip names already recorded")
     parser.add_argument("--timeout", type=float, default=30.0, help="Socket command timeout in seconds")
     parser.add_argument("--command-delay", type=float, default=0.0, help="Delay after each fixture in seconds")
+    parser.add_argument("--boundary-log", action="store_true", help="Write fixture boundary markers into the app session log")
+    parser.add_argument("--opengl-diagnostics-each-fixture", action="store_true", help="Poll OpenGL diagnostics before and after every fixture")
     args = parser.parse_args()
 
     args.socket_path = str(Path(args.socket_path).expanduser())

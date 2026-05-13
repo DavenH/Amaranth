@@ -2180,6 +2180,8 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = listHoverSelectorMenu(command, message, data);
     } else if (type == "invokeHoverSelectorMenu") {
         ok = invokeHoverSelectorMenu(command, message, data);
+    } else if (type == "logMessage") {
+        ok = logMessage(command, message, data);
     } else if (type == "openGLDiagnostics") {
         ok = openGLDiagnostics(command, message, data);
     } else if (type == "inspectTargets") {
@@ -3174,6 +3176,25 @@ bool CycleAutomation::invokeHoverSelectorMenu(const var& command, String& messag
     data = PresetJson::toVar(json);
 
     message = "Hover selector menu item invoked: " + item.text;
+    return true;
+}
+
+bool CycleAutomation::logMessage(const var& command, String& message, var& data) {
+    String text = getString(command, "message");
+
+    if (text.isEmpty()) {
+        message = "Automation log message is empty";
+        return false;
+    }
+
+    String line = "CycleAutomation: " + text;
+    Logger::writeToLog(line);
+
+    auto json = PresetJson::object();
+    json->setProperty("message", text);
+    data = PresetJson::toVar(json);
+
+    message = "Automation log message written";
     return true;
 }
 
