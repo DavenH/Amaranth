@@ -76,11 +76,14 @@ else()
     add_definitions(-DUSE_IPP)
 endif()
 
-enable_testing()
+option(BUILD_TESTING "Build tests" OFF)
 
-list(APPEND CMAKE_MODULE_PATH $ENV{CATCH2_CMAKE_DIR})
+if(BUILD_TESTING)
+    enable_testing()
 
-find_package(Catch2 3 REQUIRED)
+    list(APPEND CMAKE_MODULE_PATH $ENV{CATCH2_CMAKE_DIR})
+    find_package(Catch2 3 REQUIRED)
+endif()
 
 if(UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
