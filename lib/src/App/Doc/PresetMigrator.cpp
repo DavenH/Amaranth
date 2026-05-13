@@ -34,6 +34,36 @@ namespace {
     Identifier schemaVersionKey("schemaVersion");
     Identifier presetKey("preset");
 
+    enum ModMatrixInputId {
+            VoiceTimeInput      = 1
+        ,   VelocityInput
+        ,   InvVelocityInput
+        ,   KeyScaleInput
+        ,   AftertouchInput
+        ,   MidiControllerInput = 100
+        ,   ModWheelInput
+    };
+
+    enum ModMatrixOutputId {
+            TimeSurfOutput      = 100
+        ,   HarmMagOutput       = 200
+        ,   HarmPhsOutput       = 300
+        ,   VolEnvOutput        = 400
+        ,   PitchEnvOutput      = 450
+        ,   ScratchEnvOutput    = 500
+    };
+
+    enum ModMatrixDimension {
+            NullDimension       = -1
+        ,   YellowDimension
+        ,   RedDimension
+        ,   BlueDimension
+    };
+
+    enum LegacyModMappingId {
+        LegacyModWheelMapping = 4
+    };
+
     String getAttributeString(const XmlElement* element, const String& name, const String& fallback = {}) {
         return element == nullptr ? fallback : element->getStringAttribute(name, fallback);
     }
@@ -48,6 +78,86 @@ namespace {
 
     bool getAttributeBool(const XmlElement* element, const String& name, bool fallback = false) {
         return element == nullptr ? fallback : element->getBoolAttribute(name, fallback);
+    }
+
+    int translateLegacyModMappingId(int legacyModMappingId) {
+        // Legacy MorphPanel stored combo-box ids, not current ModMatrix input ids.
+        switch (legacyModMappingId) {
+            case VelocityInput:     return VelocityInput;
+            case InvVelocityInput:  return VelocityInput;
+            case LegacyModWheelMapping:
+                                    return ModWheelInput;
+            case AftertouchInput:   return AftertouchInput;
+            default:                return ModWheelInput;
+        }
+    }
+
+    int layerCountForGroup(const var& meshLibrary, int groupIndex) {
+        const Array<var>* groups = PresetJson::getArray(PresetJson::property(meshLibrary, "groups"));
+
+        if (groups == nullptr || !isPositiveAndBelow(groupIndex, groups->size())) {
+            return 0;
+        }
+
+        const var& groupValue = groups->getReference(groupIndex);
+        const Array<var>* layers = PresetJson::getArray(PresetJson::property(groupValue, "layers"));
+        return layers == nullptr ? 0 : layers->size();
+    }
+
+    void addLegacyDefaultModMapping(Array<var>& mappings, int inputId, int outputId, int dim) {
+        auto mapping = PresetJson::object();
+        mapping->setProperty("in", inputId);
+        mapping->setProperty("out", outputId);
+        mapping->setProperty("dim", dim);
+        mappings.add(PresetJson::toVar(mapping));
+    }
+
+    var createLegacyDefaultModMatrix(const var& meshLibrary, int legacyModMappingId) {
+        auto json = PresetJson::object();
+        Array<var> inputs, outputs, mappings;
+        int blueInput = translateLegacyModMappingId(legacyModMappingId);
+
+        inputs.add(VoiceTimeInput);
+        inputs.add(VelocityInput);
+        inputs.add(KeyScaleInput);
+        inputs.add(ModWheelInput);
+        inputs.add(AftertouchInput);
+
+        struct OutputMapping {
+            int groupId;
+            int baseOutputId;
+            int stride;
+        };
+
+        const OutputMapping outputMappings[] = {
+            { LayerGroups::GroupTime,    TimeSurfOutput,   3 },
+            { LayerGroups::GroupSpect,   HarmMagOutput,    3 },
+            { LayerGroups::GroupPhase,   HarmPhsOutput,    3 },
+            { LayerGroups::GroupVolume,  VolEnvOutput,     2 },
+            { LayerGroups::GroupPitch,   PitchEnvOutput,   2 },
+            { LayerGroups::GroupScratch, ScratchEnvOutput, 2 }
+        };
+
+        for (const auto& outputMapping : outputMappings) {
+            int layerCount = layerCountForGroup(meshLibrary, outputMapping.groupId);
+
+            for (int layerIndex = 0; layerIndex < layerCount; ++layerIndex) {
+                int outputId = outputMapping.baseOutputId + layerIndex * outputMapping.stride;
+                outputs.add(outputId);
+
+                if (outputId < VolEnvOutput) {
+                    addLegacyDefaultModMapping(mappings, VoiceTimeInput, outputId, YellowDimension);
+                }
+
+                addLegacyDefaultModMapping(mappings, KeyScaleInput, outputId, RedDimension);
+                addLegacyDefaultModMapping(mappings, blueInput, outputId, BlueDimension);
+            }
+        }
+
+        json->setProperty("inputs", var(inputs));
+        json->setProperty("outputs", var(outputs));
+        json->setProperty("mappings", var(mappings));
+        return PresetJson::toVar(json);
     }
 
     XmlElement* getRequiredChild(XmlElement* parent, const String& name) {
@@ -861,10 +971,14 @@ var PresetMigrator::migrateV1XmlToCurrentJson(const XmlElement* presetElement, c
     preset->setProperty("details", details.writeJSON());
 
     if (presetElement != nullptr) {
+        var meshLibrary;
+
         if (XmlElement* meshLibraryElem = presetElement->getChildByName("MeshLibrary")) {
-            preset->setProperty("meshLibrary", parseCurrentMeshLibrary(meshLibraryElem));
+            meshLibrary = parseCurrentMeshLibrary(meshLibraryElem);
+            preset->setProperty("meshLibrary", meshLibrary);
         } else if (presetElement->getChildByName("AllMeshes") != nullptr) {
-            preset->setProperty("meshLibrary", migrateLegacyAllMeshes(const_cast<XmlElement*>(presetElement)));
+            meshLibrary = migrateLegacyAllMeshes(const_cast<XmlElement*>(presetElement));
+            preset->setProperty("meshLibrary", meshLibrary);
         }
 
         if (var oscControls = parseOscControls(const_cast<XmlElement*>(presetElement)); !oscControls.isVoid()) {
@@ -885,6 +999,9 @@ var PresetMigrator::migrateV1XmlToCurrentJson(const XmlElement* presetElement, c
 
         if (var modMatrix = parseModMatrix(const_cast<XmlElement*>(presetElement)); !modMatrix.isVoid()) {
             preset->setProperty("modMatrix", modMatrix);
+        } else if (XmlElement* modMapping = presetElement->getChildByName("ModMapping"); !meshLibrary.isVoid() && modMapping != nullptr) {
+            preset->setProperty("modMatrix",
+                                createLegacyDefaultModMatrix(meshLibrary, modMapping->getIntAttribute("modMappingId", 0)));
         }
 
         if (var guideCurves = parseGuideCurves(const_cast<XmlElement*>(presetElement)); !guideCurves.isVoid()) {

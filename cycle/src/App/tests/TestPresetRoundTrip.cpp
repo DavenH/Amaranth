@@ -186,6 +186,16 @@ namespace {
         FAIL("Round-trip test requires JUCE_DEBUG getPresetString()");
       #endif
     }
+
+    bool hasMapping(const Array<ModMatrixPanel::Mapping>& mappings, int inputId, int outputId, int dim) {
+        for (const auto& mapping : mappings) {
+            if (mapping.in == inputId && mapping.out == outputId && mapping.dim == dim) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
 
 TEST_CASE("Legacy presets round trip through Document into stable current JSON", "[cycle][preset][roundtrip]") {
@@ -239,6 +249,26 @@ TEST_CASE("Legacy presets round trip through Document into stable current JSON",
     }
 
     REQUIRE(exercisedPresetCount > 0);
+}
+
+TEST_CASE("Legacy pierce preset restores modulation matrix wiring", "[cycle][preset][mod-matrix]") {
+    CycleTestHarness harness;
+    auto& repo = harness.getRepo();
+    auto& document = repo.get<Document>("Document");
+    auto& modMatrix = repo.get<ModMatrixPanel>("ModMatrixPanel");
+    File presetFile(String(CYCLE_SOURCE_DIR) + "/content/presets/pierce.cyc");
+
+    REQUIRE(presetFile.existsAsFile());
+
+    {
+        ScopedPresetLoadSuppression suppressPresetUpdates(repo);
+        REQUIRE(document.open(presetFile.getFullPathName()));
+    }
+
+    REQUIRE_FALSE(modMatrix.mappings.isEmpty());
+    REQUIRE(hasMapping(modMatrix.mappings, ModMatrixPanel::VoiceTime, ModMatrixPanel::TimeSurfId, ModMatrixPanel::YellowDim));
+    REQUIRE(hasMapping(modMatrix.mappings, ModMatrixPanel::KeyScale, ModMatrixPanel::TimeSurfId, ModMatrixPanel::RedDim));
+    REQUIRE(hasMapping(modMatrix.mappings, ModMatrixPanel::ModWheel, ModMatrixPanel::TimeSurfId, ModMatrixPanel::BlueDim));
 }
 
 TEST_CASE("Guide curve noise contribution is bipolar", "[cycle][guide-curves]") {
