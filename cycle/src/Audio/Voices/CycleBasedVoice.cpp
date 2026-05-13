@@ -865,6 +865,8 @@ inline void CycleBasedVoice::updateEnvelopes(int paramIndex, int deltaSamples) {
         return;
     }
 
+    // TODO this is suspect. If we're not advancing by original deltaSamples,
+    // maybe we just have to increase MaxbufferSize
     deltaSamples = jmin(deltaSamples, getConstant(MaxBufferSize));
 
     for (int i = 0; i < parent->scratchGroup.size(); ++i) {

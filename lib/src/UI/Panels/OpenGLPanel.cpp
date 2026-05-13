@@ -39,6 +39,7 @@ void OpenGLPanel::clear() {
 }
 
 void OpenGLPanel::newOpenGLContextCreated() {
+    noteContextCreated();
     info(panel->getName() << " new context created\n");
 
     commonGL->initializeTextures();
@@ -54,14 +55,16 @@ void OpenGLPanel::newOpenGLContextCreated() {
 }
 
 void OpenGLPanel::openGLContextClosing() {
+    noteContextClosing();
     info(panel->getName() << " context closing, clearing textures\n");
 
-    printErrors(repo);
+    printErrors(repo, "contextClosing");
 }
 
 void OpenGLPanel::renderOpenGL() {
+    noteRender();
     panel->render();
-    printErrors(repo);
+    printErrors(repo, "render");
 }
 
 void OpenGLPanel::resized() {

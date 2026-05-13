@@ -1,0 +1,38 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaPlayback",
+      "target": "TargPlaybackSurface"
+    },
+    {
+      "command": "pointer",
+      "area": "AreaPlayback",
+      "target": "TargPlaybackSurface",
+      "event": "click",
+      "normalizedX": 0.8,
+      "normalizedY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaPlayback",
+      "target": "TargPlaybackSurface",
+      "path": "progress",
+      "greaterThan": 0.1
+    },
+    {
+      "command": "pointer",
+      "area": "AreaPlayback",
+      "target": "TargPlaybackSurface",
+      "event": "click",
+      "button": "middle",
+      "normalizedX": 0.8,
+      "normalizedY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    }
+  ],
+  "quit": true
+}

@@ -71,6 +71,10 @@ public:
     void removedFromDesktop();
     void resized() override;
     void setBackgroundOpacity(float opacity) { popup.setBackgroundOpacity(opacity); }
+    [[nodiscard]] bool isPopupVisible() const { return popup.isVisible(); }
+    [[nodiscard]] bool isHorizontal() const { return horz; }
+    [[nodiscard]] int getPopupButtonCount() const { return int(popup.buttons.size()); }
+    [[nodiscard]] Rectangle<int> getPopupBounds() const { return popup.getBounds(); }
 
     [[nodiscard]] int getExpandedSize() const override      { return 0; }
     [[nodiscard]] int getCollapsedSize() const override         { return 0; }

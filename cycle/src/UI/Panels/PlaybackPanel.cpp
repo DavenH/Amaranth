@@ -147,6 +147,7 @@ void PlaybackPanel::zoomPrimaryRangeToFull() {
 
 juce::Component* PlaybackPanel::getComponent(int which) {
     switch (which) {
+        case CycleTour::TargPlaybackSurface:    return this;
         case CycleTour::TargPlaybackZoomAttack: return &attkZoomIcon;
         case CycleTour::TargPlaybackZoomFull:   return &zoomOutIcon;
         default:                                return nullptr;

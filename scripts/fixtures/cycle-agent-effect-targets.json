@@ -1,0 +1,71 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaDelay",
+      "target": "TargEffectEnable"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaDelay",
+      "target": "TargEffectEnable",
+      "click": true,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "setControl",
+      "area": "AreaDelay",
+      "target": "TargEffectParam0",
+      "value": 0.35,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaDelay",
+      "target": "TargEffectParam0",
+      "path": "value",
+      "equals": 0.35,
+      "tolerance": 0.0001
+    },
+    {
+      "command": "setControl",
+      "area": "AreaReverb",
+      "target": "TargEffectParam4",
+      "value": 0.25,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaReverb",
+      "target": "TargEffectParam4",
+      "path": "value",
+      "equals": 0.25,
+      "tolerance": 0.0001
+    },
+    {
+      "command": "setControl",
+      "area": "AreaEQ",
+      "target": "TargEffectParam7",
+      "value": 0.65,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaEQ",
+      "target": "TargEffectParam7",
+      "path": "value",
+      "equals": 0.65,
+      "tolerance": 0.0001
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaWaveshaper",
+      "target": "TargEffectEnable"
+    }
+  ],
+  "quit": true
+}

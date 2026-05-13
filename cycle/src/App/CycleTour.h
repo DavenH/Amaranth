@@ -211,6 +211,7 @@ public:
 
     enum PlaybackTargets
     {
+        TargPlaybackSurface,
         TargPlaybackZoomAttack,
         TargPlaybackZoomFull,
     };
@@ -267,7 +268,11 @@ public:
 		TargLayerEnable,
 		TargLayerMode,
 		TargLayerAdder,
+        TargLayerAddButton = 120,
+        TargLayerRemoveButton,
 		TargLayerMover,
+        TargLayerMoveUpButton,
+        TargLayerMoveDownButton,
 		TargLayerSlct,
 		TargScratchBox,
 		TargDeconv,
@@ -278,16 +283,24 @@ public:
 		TargMeshSelector
 	};
 
-	enum GenControls
-	{
-		TargSelector,
-		TargPencil,
-		TargAxe,
-		TargNudge,
-		TargWaveVerts,
-		TargVerts,
-		TargLinkYellow
-	};
+    enum GenControls
+    {
+        TargSelector,
+        TargPencil,
+        TargAxe,
+        TargNudge,
+        TargWaveVerts,
+        TargVerts,
+        TargLinkYellow,
+        TargToolPullout,
+        TargPresetPullout,
+        TargTransportPullout,
+        TargWavePullout,
+        TargToolCallout,
+        TargPresetCallout,
+        TargTransportCallout,
+        TargWaveCallout
+    };
 
 	enum MasterCtrls
 	{
@@ -295,6 +308,39 @@ public:
 		TargMasterOct,
 		TargMasterLen,
 	};
+
+    enum MainTargets
+    {
+        TargMainBottomTabs = 100,
+        TargMainTopTabs,
+        TargMidiKeyboard,
+        TargMainBanner,
+        TargMainDraggerUnifiedTopBottom,
+        TargMainDraggerUnifiedSpectSurf,
+        TargMainDraggerUnifiedWhole,
+        TargMainDraggerUnifiedEnvDfmImp,
+        TargMainDraggerUnifiedDfmImp,
+        TargMainDraggerCollapsedWhole,
+        TargMainDraggerCollapsedMiddle,
+        TargMainDraggerCollapsedEnvSpect,
+        TargMainDraggerCollapsedSpectSurf,
+    };
+
+    enum EffectTargets
+    {
+        TargEffectParam0 = 0,
+        TargEffectParam1,
+        TargEffectParam2,
+        TargEffectParam3,
+        TargEffectParam4,
+        TargEffectParam5,
+        TargEffectParam6,
+        TargEffectParam7,
+        TargEffectParam8,
+        TargEffectParam9,
+
+        TargEffectEnable = 140,
+    };
 
 	enum
 	{

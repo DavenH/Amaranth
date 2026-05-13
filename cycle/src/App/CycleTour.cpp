@@ -81,7 +81,7 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     B(TargImpLength),      B(TargImpGain),       B(TargImpHP),          B(TargImpZoom);
     B(TargImpLoadWav),     B(TargImpUnloadWav),  B(TargImpModelWav);
 
-    B(TargPlaybackZoomAttack), B(TargPlaybackZoomFull);
+    B(TargPlaybackSurface), B(TargPlaybackZoomAttack), B(TargPlaybackZoomFull);
 
     B(TargWaveshaperOvsp), B(TargWaveshaperPre), B(TargWaveshaperPost), B(TargWaveshaperSlct);
 
@@ -98,12 +98,16 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     B(TargScratchLyr),     B(TargSustLoop);
 
     B(TargDomains),        B(TargLayerEnable),   B(TargLayerMode),      B(TargLayerAdder);
-    B(TargLayerMover),     B(TargLayerSlct),     B(TargScratchBox),     B(TargDeconv);
+    B(TargLayerAddButton), B(TargLayerRemoveButton);
+    B(TargLayerMover),     B(TargLayerMoveUpButton), B(TargLayerMoveDownButton), B(TargLayerSlct);
+    B(TargScratchBox),     B(TargDeconv);
     B(TargPhaseUp),        B(TargPan),           B(TargRange),          B(TargMeshSelector);
     B(TargModelCycle);
 
     B(TargSelector),       B(TargPencil),        B(TargAxe),            B(TargNudge);
-    B(TargWaveVerts),      B(TargVerts),         B(TargLinkYellow),     B(TargVertCube);
+    B(TargWaveVerts),      B(TargVerts),         B(TargLinkYellow),     B(TargToolPullout);
+    B(TargPresetPullout),  B(TargTransportPullout), B(TargWavePullout), B(TargToolCallout);
+    B(TargPresetCallout),  B(TargTransportCallout), B(TargWaveCallout), B(TargVertCube);
  
     B(TargPrimeArea),      B(TargPrimeY),        B(TargPrimeB),         B(TargPrimeR);
     B(TargLinkArea),       B(TargLinkY),         B(TargLinkB),          B(TargLinkR);
@@ -112,6 +116,14 @@ CycleTour::CycleTour(SingletonRepo* repo) :
     B(TargSliderPan);
 
     B(TargMasterVol),      B(TargMasterOct),     B(TargMasterLen);
+    B(TargMainBottomTabs), B(TargMainTopTabs),   B(TargMidiKeyboard),   B(TargMainBanner);
+    B(TargMainDraggerUnifiedTopBottom), B(TargMainDraggerUnifiedSpectSurf);
+    B(TargMainDraggerUnifiedWhole), B(TargMainDraggerUnifiedEnvDfmImp), B(TargMainDraggerUnifiedDfmImp);
+    B(TargMainDraggerCollapsedWhole), B(TargMainDraggerCollapsedMiddle);
+    B(TargMainDraggerCollapsedEnvSpect), B(TargMainDraggerCollapsedSpectSurf);
+    B(TargEffectParam0),   B(TargEffectParam1),  B(TargEffectParam2),   B(TargEffectParam3);
+    B(TargEffectParam4),   B(TargEffectParam5),  B(TargEffectParam6),   B(TargEffectParam7);
+    B(TargEffectParam8),   B(TargEffectParam9),  B(TargEffectEnable);
 
     N(NullAction),         N(OpenFactoryPreset);
     N(LinkRange),          N(UnlinkRange),       N(TriggerButton),     N(SetVertexSize);
@@ -1192,6 +1204,9 @@ TourGuide* CycleTour::getTourGuide(Area area) {
         case AreaWaveshaper:     return &getObj(WaveshaperUI);
         case AreaGuideCurves:      return &getObj(GuideCurvePanel);
         case AreaUnison:         return &getObj(UnisonUI);
+        case AreaReverb:         return &getObj(ReverbUI);
+        case AreaDelay:          return &getObj(DelayUI);
+        case AreaEQ:             return &getObj(EqualizerUI);
         case AreaModMatrix:      return &getObj(ModMatrixPanel);
         case AreaMasterCtrls:    return &getObj(OscControlPanel);
         default: break;
@@ -1246,6 +1261,10 @@ juce::Component* CycleTour::getComponent(const String& areaName, const String& t
 
     if (area == AreaPlayback) {
         return getObj(PlaybackPanel).getComponent(subareaStrings[targetName]);
+    }
+
+    if (area == AreaMain) {
+        return getObj(MainPanel).getComponent(subareaStrings[targetName]);
     }
 
     if (auto* guide = getTourGuide(area)) {

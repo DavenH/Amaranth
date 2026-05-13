@@ -1,0 +1,23 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaMain",
+      "target": "TargMainBanner"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaSharpBand"
+    },
+    {
+      "command": "pointer",
+      "area": "AreaSharpBand",
+      "event": "move",
+      "normalizedX": 0.5,
+      "normalizedY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    }
+  ],
+  "quit": true
+}

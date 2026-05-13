@@ -1,0 +1,31 @@
+{
+  "commands": [
+    {
+      "command": "openGLDiagnostics",
+      "phase": "smoke-start",
+      "poll": true
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaWfrmWaveform3D",
+      "path": "openGL.attached",
+      "equals": true
+    },
+    {
+      "command": "pointer",
+      "area": "AreaWfrmWaveform3D",
+      "event": "move",
+      "normalizedX": 0.5,
+      "normalizedY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "openGLDiagnostics",
+      "area": "AreaWfrmWaveform3D",
+      "phase": "smoke-after-pointer",
+      "poll": true
+    }
+  ],
+  "quit": true
+}

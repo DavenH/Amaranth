@@ -93,9 +93,10 @@ void OpenGLPanel3D::clear() {
 }
 
 void OpenGLPanel3D::renderOpenGL() {
+    noteRender();
     surfaceCache.setRenderScale(context.getRenderingScale());
     panel->render();
-    printErrors(repo);
+    printErrors(repo, "render");
 }
 
 bool OpenGLPanel3D::paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {
@@ -103,6 +104,7 @@ bool OpenGLPanel3D::paintSharedCanvasSurface(juce::Graphics& g, const juce::Rect
 }
 
 void OpenGLPanel3D::newOpenGLContextCreated() {
+    noteContextCreated();
     info(panel->getName() << " new context created\n");
 
     commonGL->initializeTextures();
@@ -140,11 +142,12 @@ void OpenGLPanel3D::deactivateContext() {
 }
 
 void OpenGLPanel3D::openGLContextClosing() {
+    noteContextClosing();
     info(panel->getName() << " context closing, clearing textures \n");
 
     surfaceCache.clear();
 
-    printErrors(repo);
+    printErrors(repo, "contextClosing");
 }
 
 void OpenGLPanel3D::initRender() {

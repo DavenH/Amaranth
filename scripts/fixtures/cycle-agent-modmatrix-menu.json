@@ -1,0 +1,50 @@
+{
+  "commands": [
+    {
+      "command": "action",
+      "actionType": "ShowArea",
+      "area": "AreaModMatrix",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "listModMatrixMenu",
+      "menu": "input"
+    },
+    {
+      "command": "invokeModMatrixMenu",
+      "menu": "input",
+      "path": ["Utility", "Utility #1"],
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "exportState",
+      "source": "modMatrix",
+      "jsonPath": "inputs[0]"
+    },
+    {
+      "command": "listModMatrixDimensionMenu",
+      "inputId": 200,
+      "outputId": 100
+    },
+    {
+      "command": "invokeModMatrixDimensionMenu",
+      "inputId": 200,
+      "outputId": 100,
+      "dimension": "red",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "exportState",
+      "source": "modMatrix",
+      "jsonPath": "mappings[0].dim"
+    },
+    {
+      "command": "listModMatrixMenu",
+      "menu": "output"
+    }
+  ],
+  "quit": true
+}

@@ -14,24 +14,99 @@ OpenGLBase::OpenGLBase(OpenGLRenderer* renderer, Component* component) :
     ,   component       (component) {
 }
 
-void OpenGLBase::printErrors(SingletonRepo* repo) {
-  #ifdef _DEBUG
-    int errorCode;
-    if((errorCode = glGetError()) != GL_NO_ERROR) {
-        const char* error = "Unknown error";
+namespace {
+    String openGLErrorName(int errorCode) {
         switch(errorCode) {
-            case GL_INVALID_ENUM: error      = "GL_INVALID_ENUM";       break;
-            case GL_INVALID_VALUE: error     = "GL_INVALID_VALUE";      break;
-            case GL_INVALID_OPERATION: error = "GL_INVALID_OPERATION";  break;
-            case GL_STACK_OVERFLOW: error    = "GL_STACK_OVERFLOW";     break;
-            case GL_STACK_UNDERFLOW: error   = "GL_STACK_UNDERFLOW";    break;
-            case GL_OUT_OF_MEMORY: error     = "GL_OUT_OF_MEMORY";      break;
-            default:
-                error = "Unknown error";
+            case GL_NO_ERROR:           return "GL_NO_ERROR";
+            case GL_INVALID_ENUM:       return "GL_INVALID_ENUM";
+            case GL_INVALID_VALUE:      return "GL_INVALID_VALUE";
+            case GL_INVALID_OPERATION:  return "GL_INVALID_OPERATION";
+            case GL_STACK_OVERFLOW:     return "GL_STACK_OVERFLOW";
+            case GL_STACK_UNDERFLOW:    return "GL_STACK_UNDERFLOW";
+            case GL_OUT_OF_MEMORY:      return "GL_OUT_OF_MEMORY";
+            default:                    break;
         }
-        info("OpenGL error " << errorCode << ": " << error << "\n");
+
+        return "Unknown error";
     }
-  #endif
+}
+
+void OpenGLBase::printErrors(SingletonRepo* repo, const String& phase) {
+    int errorCode = pollErrorNow(phase);
+
+    if (errorCode != GL_NO_ERROR) {
+        info("OpenGL error " << errorCode << ": " << openGLErrorName(errorCode)
+             << " phase=" << phase << "\n");
+    }
+}
+
+OpenGLBase::Diagnostics OpenGLBase::getDiagnostics(bool pollNow, const String& phase) {
+    Diagnostics diagnostics;
+    diagnostics.attached = context.isAttached();
+    diagnostics.width = component != nullptr ? component->getWidth() : 0;
+    diagnostics.height = component != nullptr ? component->getHeight() : 0;
+    diagnostics.renderingScale = context.getRenderingScale();
+    diagnostics.renderCount = renderCount;
+    diagnostics.contextCreateCount = contextCreateCount;
+    diagnostics.contextCloseCount = contextCloseCount;
+    diagnostics.errorCount = errorCount;
+    diagnostics.lastErrorCode = lastErrorCode;
+    diagnostics.lastErrorName = lastErrorName.isNotEmpty() ? lastErrorName : openGLErrorName(lastErrorCode);
+    diagnostics.lastErrorPhase = lastErrorPhase;
+
+    if (pollNow && context.isAttached()) {
+        int polledError = GL_NO_ERROR;
+        context.executeOnGLThread([this, &polledError, phase](OpenGLContext&) {
+            polledError = pollErrorNow(phase);
+        }, true);
+
+        diagnostics.pollSucceeded = true;
+        diagnostics.polledErrorCode = polledError;
+        diagnostics.polledErrorName = openGLErrorName(polledError);
+        diagnostics.errorCount = errorCount;
+        diagnostics.lastErrorCode = lastErrorCode;
+        diagnostics.lastErrorName = lastErrorName;
+        diagnostics.lastErrorPhase = lastErrorPhase;
+    } else {
+        diagnostics.polledErrorCode = GL_NO_ERROR;
+        diagnostics.polledErrorName = openGLErrorName(GL_NO_ERROR);
+    }
+
+    return diagnostics;
+}
+
+void OpenGLBase::noteContextCreated() {
+    ++contextCreateCount;
+}
+
+void OpenGLBase::noteContextClosing() {
+    ++contextCloseCount;
+}
+
+void OpenGLBase::noteRender() {
+    ++renderCount;
+}
+
+int OpenGLBase::pollErrorNow(const String& phase) {
+    int firstError = GL_NO_ERROR;
+    int errorCode = GL_NO_ERROR;
+
+    while ((errorCode = glGetError()) != GL_NO_ERROR) {
+        if (firstError == GL_NO_ERROR) {
+            firstError = errorCode;
+        }
+
+        recordError(errorCode, phase);
+    }
+
+    return firstError;
+}
+
+void OpenGLBase::recordError(int errorCode, const String& phase) {
+    ++errorCount;
+    lastErrorCode = errorCode;
+    lastErrorName = openGLErrorName(errorCode);
+    lastErrorPhase = phase;
 }
 
 void OpenGLBase::clearAndOrtho(int width, int height) {

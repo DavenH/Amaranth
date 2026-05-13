@@ -1,0 +1,43 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "cymbal",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.count",
+      "greaterThanOrEqual": 2
+    },
+    {
+      "command": "action",
+      "actionType": "ShowArea",
+      "area": "AreaWfrmWaveform3D",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "listSelectorMenu",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargLayerSlct"
+    },
+    {
+      "command": "invokeSelectorMenu",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargLayerSlct",
+      "itemId": 2,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargLayerSlct",
+      "path": "currentIndex",
+      "equals": 1
+    }
+  ],
+  "quit": true
+}

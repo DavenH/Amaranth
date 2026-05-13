@@ -7,6 +7,7 @@
 
 #include "GuilessEffect.h"
 
+#include "../../App/CycleTour.h"
 #include <Design/Updating/Updater.h>
 #include <Util/Util.h>
 
@@ -244,8 +245,13 @@ bool GuilessEffect::shouldTriggerGlobalUpdate(Slider* slider) {
 }
 
 Component* GuilessEffect::getComponent(int which) {
-    if (isPositiveAndBelow(which, paramGroup->getNumParams()))
+    if (isPositiveAndBelow(which, paramGroup->getNumParams())) {
         return paramGroup->getKnob<Slider>(which);
+    }
+
+    if (which == CycleTour::TargEffectEnable) {
+        return &enableButton;
+    }
 
     return nullptr;
 }

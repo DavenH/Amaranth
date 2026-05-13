@@ -112,6 +112,10 @@ Common command families:
 - `setControl`: set sliders, combo boxes, buttons, and target-backed controls.
 - `screenshot`: capture a registered panel/target using app-side component
   rendering.
+- `openGLDiagnostics`: poll OpenGL-backed panels on their GL thread and return
+  context attachment, render counts, context create/close counts, and the last
+  recorded GL error. Use this before/after suspect session gestures when panels
+  go black without an obvious automation failure.
 - `captureAudio`: render scheduled MIDI events offline, optionally write a WAV,
   and return amplitude metrics for assertions.
 - `exportState`, `exportPreset`, `exportMeshState`: export scoped JSON, reusing
@@ -280,10 +284,30 @@ Run all repository fixtures when changing automation infrastructure:
 scripts/run_cycle_agent_smokes.sh
 ```
 
+The smoke runner launches one Cycle `--agent-session`, sends each fixture's
+commands through that socket, writes one aggregate report, and keeps one app log
+for the whole run. If a command fails, the runner records the failure, skips the
+rest of that fixture, resets before the next fixture, and continues. The reset
+step dismisses transient UI such as the Mod Matrix desktop panel before opening
+the next preset.
+
 Artifacts default to `/private/tmp/cycle-agent-smokes`. Override with:
 
 ```sh
 CYCLE_AGENT_ARTIFACT_DIR=/private/tmp/my-cycle-smokes scripts/run_cycle_agent_smokes.sh
+```
+
+Run a focused subset by fixture name:
+
+```sh
+CYCLE_AGENT_SMOKE_FIXTURES="readonly pullout-hover" scripts/run_cycle_agent_smokes.sh
+```
+
+Resume from an existing aggregate report, skipping fixture names already
+recorded:
+
+```sh
+CYCLE_AGENT_SMOKE_RESUME=1 scripts/run_cycle_agent_smokes.sh
 ```
 
 OpenGL OS screenshot smoke is opt-in:

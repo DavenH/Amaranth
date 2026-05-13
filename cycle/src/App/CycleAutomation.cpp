@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <set>
 #include <utility>
 
 #include <App/AutomationInspectable.h>
@@ -15,14 +16,29 @@
 #include <Curve/Vertex.h>
 #include <Curve/VertCube.h>
 #include <Definitions.h>
+#include <Inter/EnvelopeInter2D.h>
 #include <Inter/Interactor.h>
+#include <UI/Layout/Dragger.h>
+#include <UI/Layout/PanelPair.h>
+#include <UI/Panels/OpenGLBase.h>
 #include <UI/Panels/Panel.h>
+#include <UI/Widgets/PulloutComponent.h>
+#include <UI/Widgets/RetractableCallout.h>
+#include <UI/Widgets/Controls/HoverSelector.h>
+#include <UI/Widgets/Controls/SelectorPanel.h>
+#include <UI/Widgets/MidiKeyboard.h>
+#include <UI/Widgets/TabbedSelector.h>
 
 #include "CycleTour.h"
 #include "FileManager.h"
 #include "KeyboardInputHandler.h"
 
 #include "../UI/Panels/MainPanel.h"
+#include "../UI/Panels/BannerPanel.h"
+#include "../UI/Panels/DerivativePanel.h"
+#include "../UI/Panels/ModMatrixPanel.h"
+#include "../UI/Panels/PlaybackPanel.h"
+#include "../UI/Panels/SynthMenuBarModel.h"
 
 #if JUCE_MAC || JUCE_LINUX
   #include <cerrno>
@@ -35,6 +51,7 @@
 namespace {
     const char* const kInspectableAreas[] = {
         "AreaMain",
+        "AreaSharpBand",
         "AreaWshpEditor",
         "AreaWfrmWaveform3D",
         "AreaSpectrum",
@@ -66,6 +83,9 @@ namespace {
         "AreaWaveshaper",
         "AreaGuideCurves",
         "AreaUnison",
+        "AreaReverb",
+        "AreaDelay",
+        "AreaEQ",
         "AreaModMatrix",
         "AreaMasterCtrls",
     };
@@ -93,6 +113,7 @@ namespace {
         "TargImpLoadWav",
         "TargImpUnloadWav",
         "TargImpModelWav",
+        "TargPlaybackSurface",
         "TargPlaybackZoomAttack",
         "TargPlaybackZoomFull",
         "TargWaveshaperOvsp",
@@ -130,7 +151,11 @@ namespace {
         "TargLayerEnable",
         "TargLayerMode",
         "TargLayerAdder",
+        "TargLayerAddButton",
+        "TargLayerRemoveButton",
         "TargLayerMover",
+        "TargLayerMoveUpButton",
+        "TargLayerMoveDownButton",
         "TargLayerSlct",
         "TargScratchBox",
         "TargDeconv",
@@ -146,6 +171,14 @@ namespace {
         "TargWaveVerts",
         "TargVerts",
         "TargLinkYellow",
+        "TargToolPullout",
+        "TargPresetPullout",
+        "TargTransportPullout",
+        "TargWavePullout",
+        "TargToolCallout",
+        "TargPresetCallout",
+        "TargTransportCallout",
+        "TargWaveCallout",
         "TargVertCube",
         "TargPrimeArea",
         "TargPrimeY",
@@ -167,6 +200,30 @@ namespace {
         "TargMasterVol",
         "TargMasterOct",
         "TargMasterLen",
+        "TargMainBottomTabs",
+        "TargMainTopTabs",
+        "TargMidiKeyboard",
+        "TargMainBanner",
+        "TargMainDraggerUnifiedTopBottom",
+        "TargMainDraggerUnifiedSpectSurf",
+        "TargMainDraggerUnifiedWhole",
+        "TargMainDraggerUnifiedEnvDfmImp",
+        "TargMainDraggerUnifiedDfmImp",
+        "TargMainDraggerCollapsedWhole",
+        "TargMainDraggerCollapsedMiddle",
+        "TargMainDraggerCollapsedEnvSpect",
+        "TargMainDraggerCollapsedSpectSurf",
+        "TargEffectParam0",
+        "TargEffectParam1",
+        "TargEffectParam2",
+        "TargEffectParam3",
+        "TargEffectParam4",
+        "TargEffectParam5",
+        "TargEffectParam6",
+        "TargEffectParam7",
+        "TargEffectParam8",
+        "TargEffectParam9",
+        "TargEffectEnable",
     };
 
     String getString(const var& object, const Identifier& name, const String& fallback = {}) {
@@ -195,6 +252,357 @@ namespace {
         return sendNotificationSync;
     }
 
+    StringArray varPathToStringArray(const var& value) {
+        StringArray path;
+
+        if (const Array<var>* values = PresetJson::getArray(value)) {
+            for (const auto& entry : *values) {
+                path.add(entry.toString());
+            }
+        } else if (!value.isVoid()) {
+            String pathString = value.toString();
+
+            if (pathString.isNotEmpty()) {
+                path.addTokens(pathString, "/", {});
+            }
+        }
+
+        return path;
+    }
+
+    var pathToVar(const StringArray& path) {
+        Array<var> values;
+
+        for (const auto& part : path) {
+            values.add(part);
+        }
+
+        return var(values);
+    }
+
+    int findMenuIndex(SynthMenuBarModel& model, const String& menuName) {
+        StringArray names = model.getMenuBarNames();
+
+        for (int i = 0; i < names.size(); ++i) {
+            if (names[i] == menuName || names[i].equalsIgnoreCase(menuName)) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    String menuNameForIndex(SynthMenuBarModel& model, int menuIndex) {
+        StringArray names = model.getMenuBarNames();
+        return isPositiveAndBelow(menuIndex, names.size()) ? names[menuIndex] : String();
+    }
+
+    int commandMenuIndex(SynthMenuBarModel& model, const var& command) {
+        var index = PresetJson::property(command, "menuIndex");
+
+        if (index.isVoid()) {
+            index = PresetJson::property(command, "topLevelMenuIndex");
+        }
+
+        if (!index.isVoid()) {
+            return int(index);
+        }
+
+        return findMenuIndex(model, getString(command, "menu"));
+    }
+
+    StringArray commandMenuPath(const var& command) {
+        StringArray path = varPathToStringArray(PresetJson::property(command, "path"));
+
+        if (path.isEmpty()) {
+            String item = getString(command, "item", getString(command, "text"));
+
+            if (item.isNotEmpty()) {
+                path.add(item);
+            }
+        }
+
+        return path;
+    }
+
+    void appendMenuItems(Array<var>& items,
+                         const PopupMenu& menu,
+                         const String& menuName,
+                         int menuIndex,
+                         const StringArray& parentPath) {
+        PopupMenu::MenuItemIterator iterator(menu, false);
+
+        while (iterator.next()) {
+            const PopupMenu::Item& item = iterator.getItem();
+
+            if (item.isSeparator || item.isSectionHeader) {
+                continue;
+            }
+
+            StringArray itemPath(parentPath);
+            itemPath.add(item.text);
+
+            auto json = PresetJson::object();
+            json->setProperty("menu", menuName);
+            json->setProperty("menuIndex", menuIndex);
+            json->setProperty("text", item.text);
+            json->setProperty("itemId", item.itemID);
+            json->setProperty("enabled", item.isEnabled);
+            json->setProperty("ticked", item.isTicked);
+            json->setProperty("triggerable", item.itemID != 0);
+            json->setProperty("hasSubMenu", item.subMenu != nullptr);
+            json->setProperty("path", pathToVar(itemPath));
+            items.add(PresetJson::toVar(json));
+
+            if (item.subMenu != nullptr) {
+                appendMenuItems(items, *item.subMenu, menuName, menuIndex, itemPath);
+            }
+        }
+    }
+
+    bool findMenuItemByPath(const PopupMenu& menu,
+                            const StringArray& path,
+                            int depth,
+                            PopupMenu::Item& found) {
+        if (!isPositiveAndBelow(depth, path.size())) {
+            return false;
+        }
+
+        PopupMenu::MenuItemIterator iterator(menu, false);
+
+        while (iterator.next()) {
+            const PopupMenu::Item& item = iterator.getItem();
+
+            if (item.isSeparator || item.isSectionHeader || item.text != path[depth]) {
+                continue;
+            }
+
+            if (depth == path.size() - 1) {
+                found = item;
+                return true;
+            }
+
+            if (item.subMenu != nullptr && findMenuItemByPath(*item.subMenu, path, depth + 1, found)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool findMenuItemById(const PopupMenu& menu, int itemId, PopupMenu::Item& found) {
+        PopupMenu::MenuItemIterator iterator(menu, false);
+
+        while (iterator.next()) {
+            const PopupMenu::Item& item = iterator.getItem();
+
+            if (!item.isSeparator && !item.isSectionHeader && item.itemID == itemId) {
+                found = item;
+                return true;
+            }
+
+            if (item.subMenu != nullptr && findMenuItemById(*item.subMenu, itemId, found)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    String modMatrixMenuKind(const var& command) {
+        String kind = getString(command, "menu", getString(command, "kind", getString(command, "popup")));
+
+        if (kind == "source" || kind == "input" || kind == "addInput") {
+            return "input";
+        }
+
+        if (kind == "destination" || kind == "dest" || kind == "output" || kind == "addDestination") {
+            return "output";
+        }
+
+        return {};
+    }
+
+    PopupMenu modMatrixMenuForKind(ModMatrixPanel& panel, const String& kind) {
+        if (kind == "input") {
+            return panel.getInputMenu();
+        }
+
+        if (kind == "output") {
+            return panel.getOutputMenu(ModMatrixPanel::MeshTypes);
+        }
+
+        return {};
+    }
+
+    int modMatrixDimensionForCommand(const var& command) {
+        var itemIdVar = PresetJson::property(command, "itemId");
+
+        if (itemIdVar.isVoid()) {
+            itemIdVar = PresetJson::property(command, "id");
+        }
+
+        if (!itemIdVar.isVoid()) {
+            return int(itemIdVar) - 2;
+        }
+
+        String dim = getString(command, "dimension", getString(command, "dim", getString(command, "text"))).toLowerCase();
+
+        if (dim == "none" || dim == "null" || dim == "off") {
+            return ModMatrixPanel::NullDim;
+        }
+
+        if (dim == "red") {
+            return ModMatrixPanel::RedDim;
+        }
+
+        if (dim == "blue") {
+            return ModMatrixPanel::BlueDim;
+        }
+
+        return ModMatrixPanel::YellowDim;
+    }
+
+    void appendModMatrixDimensionItems(Array<var>& items,
+                                       int inputId,
+                                       int outputId,
+                                       int oldDim,
+                                       bool active) {
+        struct DimensionItem {
+            int itemId;
+            int dim;
+            const char* text;
+        };
+
+        static const DimensionItem dimensionItems[] = {
+            { 1, ModMatrixPanel::NullDim, "None" },
+            { 3, ModMatrixPanel::RedDim,  "Red"  },
+            { 4, ModMatrixPanel::BlueDim, "Blue" },
+        };
+
+        for (const auto& dimensionItem : dimensionItems) {
+            auto json = PresetJson::object();
+            json->setProperty("menu", "ModMatrix:dimension");
+            json->setProperty("inputId", inputId);
+            json->setProperty("outputId", outputId);
+            json->setProperty("text", dimensionItem.text);
+            json->setProperty("itemId", dimensionItem.itemId);
+            json->setProperty("dimension", dimensionItem.dim);
+            json->setProperty("enabled", active);
+            json->setProperty("ticked", oldDim == dimensionItem.dim);
+            json->setProperty("triggerable", true);
+            json->setProperty("path", pathToVar(StringArray(dimensionItem.text)));
+            items.add(PresetJson::toVar(json));
+        }
+    }
+
+    int envelopeGroupForCommand(const var& command, int currentGroup) {
+        var groupId = PresetJson::property(command, "groupId");
+
+        if (!groupId.isVoid()) {
+            return int(groupId);
+        }
+
+        String group = getString(command, "group").toLowerCase();
+
+        if (group == "volume" || group == "vol") {
+            return LayerGroups::GroupVolume;
+        }
+
+        if (group == "pitch") {
+            return LayerGroups::GroupPitch;
+        }
+
+        if (group == "scratch") {
+            return LayerGroups::GroupScratch;
+        }
+
+        if (group == "wavepitch" || group == "wave-pitch" || group == "wave_pitch" || group == "oscphase") {
+            return LayerGroups::GroupWavePitch;
+        }
+
+        return currentGroup;
+    }
+
+    var envelopeConfigPropsState(int groupId, const MeshLibrary::EnvProps& props) {
+        auto groupName = [](int group) {
+            switch (group) {
+                case LayerGroups::GroupVolume:       return String("volume");
+                case LayerGroups::GroupPitch:        return String("pitch");
+                case LayerGroups::GroupScratch:      return String("scratch");
+                case LayerGroups::GroupWavePitch:    return String("wavePitch");
+                default:                             return "group" + String(group);
+            }
+        };
+
+        auto json = PresetJson::object();
+        json->setProperty("groupId", groupId);
+        json->setProperty("group", groupName(groupId));
+        json->setProperty("active", props.active);
+        json->setProperty("dynamic", props.dynamic);
+        json->setProperty("global", props.global);
+        json->setProperty("logarithmic", props.logarithmic);
+        json->setProperty("tempoSync", props.tempoSync);
+        json->setProperty("scale", props.scale);
+        json->setProperty("operating", props.isOperating());
+        return PresetJson::toVar(json);
+    }
+
+    PopupMenu envelopeConfigMenuForProps(int groupId, const MeshLibrary::EnvProps& props) {
+        PopupMenu menu;
+
+        if (groupId != LayerGroups::GroupVolume) {
+            menu.addItem(EnvelopeInter2D::CfgDynamic, "Dynamic while live", true, props.dynamic);
+        } else {
+            menu.addItem(EnvelopeInter2D::CfgLogarithmic, "Logarithmic", true, props.logarithmic);
+        }
+
+        if (groupId == LayerGroups::GroupScratch) {
+            menu.addItem(EnvelopeInter2D::CfgGlobal, "Globally triggered", true, props.global);
+        }
+
+        menu.addItem(EnvelopeInter2D::CfgSyncTempo, "Sync to host tempo", true, props.tempoSync);
+
+        PopupMenu scaleMenu;
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale1_16x, "1/16x", true, props.scale == -16);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale1_4x,  "1/4x",  true, props.scale == -4);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale1_2x,  "1/2x",  true, props.scale == -2);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale1x,    "1x",    true, props.scale == 1);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale2x,    "2x",    true, props.scale == 2);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale4x,    "4x",    true, props.scale == 4);
+        scaleMenu.addItem(EnvelopeInter2D::CfgScale16x,   "16x",   true, props.scale == 16);
+
+        menu.addSubMenu("Duration scale", scaleMenu, true);
+        return menu;
+    }
+
+    PopupMenu selectorMenuForPanel(SelectorPanel& selector) {
+        PopupMenu menu;
+        int size = selector.getSize();
+        int currentIndex = selector.getCurrentIndexExternal();
+
+        for (int i = 0; i < size; ++i) {
+            menu.addItem(i + 1, String(i + 1), true, i == currentIndex);
+        }
+
+        return menu;
+    }
+
+    var selectorState(SelectorPanel& selector) {
+        auto json = PresetJson::object();
+        json->setProperty("currentIndex", selector.getCurrentIndexExternal());
+        json->setProperty("displayIndex", selector.getCurrentIndexExternal() + 1);
+        json->setProperty("itemCount", selector.getSize());
+        return PresetJson::toVar(json);
+    }
+
+    var hoverSelectorState(HoverSelector& selector) {
+        auto json = PresetJson::object();
+        json->setProperty("menuActive", selector.menuActive);
+        json->setProperty("horizontal", selector.horizontal);
+        return PresetJson::toVar(json);
+    }
+
     var makeResult(const String& type, bool ok, const String& message, const var& data = {}) {
         auto result = PresetJson::object();
         result->setProperty("type", type);
@@ -214,6 +622,26 @@ namespace {
         json->setProperty("y", bounds.getY());
         json->setProperty("width", bounds.getWidth());
         json->setProperty("height", bounds.getHeight());
+        return PresetJson::toVar(json);
+    }
+
+    var openGLDiagnosticsState(OpenGLBase& openGL, bool pollNow, const String& phase) {
+        OpenGLBase::Diagnostics diagnostics = openGL.getDiagnostics(pollNow, phase);
+        auto json = PresetJson::object();
+        json->setProperty("attached", diagnostics.attached);
+        json->setProperty("pollSucceeded", diagnostics.pollSucceeded);
+        json->setProperty("width", diagnostics.width);
+        json->setProperty("height", diagnostics.height);
+        json->setProperty("renderingScale", diagnostics.renderingScale);
+        json->setProperty("renderCount", diagnostics.renderCount);
+        json->setProperty("contextCreateCount", diagnostics.contextCreateCount);
+        json->setProperty("contextCloseCount", diagnostics.contextCloseCount);
+        json->setProperty("errorCount", diagnostics.errorCount);
+        json->setProperty("lastErrorCode", diagnostics.lastErrorCode);
+        json->setProperty("lastErrorName", diagnostics.lastErrorName);
+        json->setProperty("lastErrorPhase", diagnostics.lastErrorPhase);
+        json->setProperty("polledErrorCode", diagnostics.polledErrorCode);
+        json->setProperty("polledErrorName", diagnostics.polledErrorName);
         return PresetJson::toVar(json);
     }
 
@@ -455,8 +883,15 @@ namespace {
             return { float(double(xValue)), float(double(yValue)) };
         }
 
-        var normalizedX = PresetJson::property(command, "normalizedX");
-        var normalizedY = PresetJson::property(command, "normalizedY");
+        String normalizedXName = xName == "downX" ? "normalizedDownX" : "normalizedX";
+        String normalizedYName = yName == "downY" ? "normalizedDownY" : "normalizedY";
+        var normalizedX = PresetJson::property(command, normalizedXName);
+        var normalizedY = PresetJson::property(command, normalizedYName);
+
+        if ((normalizedX.isVoid() || normalizedY.isVoid()) && xName != "x" && yName != "y") {
+            normalizedX = PresetJson::property(command, "normalizedX");
+            normalizedY = PresetJson::property(command, "normalizedY");
+        }
 
         if (!normalizedX.isVoid() && !normalizedY.isVoid()) {
             return {
@@ -472,7 +907,17 @@ namespace {
         ModifierKeys modifiers = ModifierKeys::currentModifiers.withoutMouseButtons();
 
         if (buttonDown) {
-            modifiers = modifiers.withFlags(ModifierKeys::leftButtonModifier);
+            String button = getString(command, "button", getString(command, "mouseButton")).toLowerCase();
+            bool rightButton = getBool(command, "right") || button == "right" || button == "secondary";
+            bool middleButton = getBool(command, "middle") || button == "middle";
+
+            if (rightButton) {
+                modifiers = modifiers.withFlags(ModifierKeys::rightButtonModifier);
+            } else if (middleButton) {
+                modifiers = modifiers.withFlags(ModifierKeys::middleButtonModifier);
+            } else {
+                modifiers = modifiers.withFlags(ModifierKeys::leftButtonModifier);
+            }
         }
 
         if (getBool(command, "shift")) {
@@ -1711,12 +2156,46 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = openPreset(command, message, data);
     } else if (type == "openFactoryPreset") {
         ok = openFactoryPreset(command, message, data);
+    } else if (type == "listMenus") {
+        ok = listMenus(command, message, data);
+    } else if (type == "invokeMenuItem") {
+        ok = invokeMenuItem(command, message, data);
+    } else if (type == "listModMatrixMenu") {
+        ok = listModMatrixMenu(command, message, data);
+    } else if (type == "invokeModMatrixMenu") {
+        ok = invokeModMatrixMenu(command, message, data);
+    } else if (type == "listModMatrixDimensionMenu") {
+        ok = listModMatrixDimensionMenu(command, message, data);
+    } else if (type == "invokeModMatrixDimensionMenu") {
+        ok = invokeModMatrixDimensionMenu(command, message, data);
+    } else if (type == "listEnvelopeConfigMenu") {
+        ok = listEnvelopeConfigMenu(command, message, data);
+    } else if (type == "invokeEnvelopeConfigMenu") {
+        ok = invokeEnvelopeConfigMenu(command, message, data);
+    } else if (type == "listSelectorMenu") {
+        ok = listSelectorMenu(command, message, data);
+    } else if (type == "invokeSelectorMenu") {
+        ok = invokeSelectorMenu(command, message, data);
+    } else if (type == "listHoverSelectorMenu") {
+        ok = listHoverSelectorMenu(command, message, data);
+    } else if (type == "invokeHoverSelectorMenu") {
+        ok = invokeHoverSelectorMenu(command, message, data);
+    } else if (type == "logMessage") {
+        ok = logMessage(command, message, data);
+    } else if (type == "openGLDiagnostics") {
+        ok = openGLDiagnostics(command, message, data);
     } else if (type == "inspectTargets") {
         ok = inspectTargets(command, message, data);
     } else if (type == "inspectTree") {
         ok = inspectTree(command, message, data);
     } else if (type == "setControl") {
         ok = setControl(command, message, data);
+    } else if (type == "resetMainPanelView") {
+        ok = resetMainPanelView(command, message, data);
+    } else if (type == "dismissTransientUi") {
+        ok = dismissTransientUi(command, message, data);
+    } else if (type == "setCalloutCollapsed") {
+        ok = setCalloutCollapsed(command, message, data);
     } else if (type == "pointer") {
         ok = pointer(command, message, data);
     } else if (type == "assertTarget") {
@@ -1775,6 +2254,8 @@ var CycleAutomation::handleSessionRequest(const var& request) {
     if (command.isVoid()) {
         command = request;
     }
+
+    hasRun = true;
 
     var result = runCommandResult(command);
     bool ok = PresetJson::boolProperty(result, "ok");
@@ -2151,6 +2632,634 @@ bool CycleAutomation::openFactoryPreset(const var& command, String& message, var
     return true;
 }
 
+bool CycleAutomation::listMenus(const var& command, String& message, var& data) {
+    SynthMenuBarModel& model = getObj(SynthMenuBarModel);
+    int requestedMenu = commandMenuIndex(model, command);
+    StringArray names = model.getMenuBarNames();
+    Array<var> menus;
+    Array<var> items;
+
+    for (int i = 0; i < names.size(); ++i) {
+        if (requestedMenu >= 0 && requestedMenu != i) {
+            continue;
+        }
+
+        PopupMenu menu = model.getMenuForIndex(i, names[i]);
+
+        auto menuJson = PresetJson::object();
+        menuJson->setProperty("name", names[i]);
+        menuJson->setProperty("menuIndex", i);
+        menuJson->setProperty("itemCount", menu.getNumItems());
+        menuJson->setProperty("hasActiveItems", menu.containsAnyActiveItems());
+        menus.add(PresetJson::toVar(menuJson));
+
+        appendMenuItems(items, menu, names[i], i, {});
+    }
+
+    if (requestedMenu >= names.size()) {
+        message = "Menu index out of range: " + String(requestedMenu);
+        return false;
+    }
+
+    if (requestedMenu < 0 && getString(command, "menu").isNotEmpty()) {
+        message = "Menu not found: " + getString(command, "menu");
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("menus", var(menus));
+    json->setProperty("items", var(items));
+    json->setProperty("menuCount", menus.size());
+    json->setProperty("itemCount", items.size());
+    data = PresetJson::toVar(json);
+
+    message = "Listed " + String(items.size()) + " menu items";
+    return true;
+}
+
+bool CycleAutomation::invokeMenuItem(const var& command, String& message, var& data) {
+    SynthMenuBarModel& model = getObj(SynthMenuBarModel);
+    int menuIndex = commandMenuIndex(model, command);
+    String menuName = menuNameForIndex(model, menuIndex);
+
+    if (menuIndex < 0 || menuName.isEmpty()) {
+        message = "Menu could not be resolved";
+        return false;
+    }
+
+    PopupMenu menu = model.getMenuForIndex(menuIndex, menuName);
+    PopupMenu::Item item;
+    StringArray path = commandMenuPath(command);
+    var itemIdVar = PresetJson::property(command, "itemId");
+
+    if (itemIdVar.isVoid()) {
+        itemIdVar = PresetJson::property(command, "id");
+    }
+
+    bool found = false;
+
+    if (!itemIdVar.isVoid()) {
+        found = findMenuItemById(menu, int(itemIdVar), item);
+    } else if (!path.isEmpty()) {
+        found = findMenuItemByPath(menu, path, 0, item);
+    }
+
+    if (!found) {
+        message = "Menu item could not be resolved";
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("menu", menuName);
+    json->setProperty("menuIndex", menuIndex);
+    json->setProperty("text", item.text);
+    json->setProperty("itemId", item.itemID);
+    json->setProperty("enabled", item.isEnabled);
+    json->setProperty("ticked", item.isTicked);
+    json->setProperty("path", pathToVar(path));
+
+    if (!item.isEnabled && !getBool(command, "allowDisabled")) {
+        data = PresetJson::toVar(json);
+        message = "Menu item is disabled: " + item.text;
+        return false;
+    }
+
+    if (item.itemID == 0) {
+        data = PresetJson::toVar(json);
+        message = "Menu item is not triggerable: " + item.text;
+        return false;
+    }
+
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
+    model.menuItemSelected(item.itemID, menuIndex);
+    drainMessageLoopIfRequested(command);
+
+    json->setProperty("waitedForIdle", waitedForIdle);
+    data = PresetJson::toVar(json);
+    message = "Menu item invoked: " + item.text;
+    return true;
+}
+
+bool CycleAutomation::listModMatrixMenu(const var& command, String& message, var& data) {
+    auto& panel = getObj(ModMatrixPanel);
+    String kind = modMatrixMenuKind(command);
+
+    if (kind.isEmpty()) {
+        message = "Mod matrix menu requires menu/kind input or output";
+        return false;
+    }
+
+    PopupMenu menu = modMatrixMenuForKind(panel, kind);
+    Array<var> items;
+    appendMenuItems(items, menu, "ModMatrix:" + kind, kind == "input" ? 0 : 1, {});
+
+    auto json = PresetJson::object();
+    json->setProperty("menu", kind);
+    json->setProperty("itemCount", items.size());
+    json->setProperty("items", var(items));
+    json->setProperty("inputCount", panel.inputs.size());
+    json->setProperty("outputCount", panel.outputs.size());
+    json->setProperty("mappingCount", panel.mappings.size());
+    data = PresetJson::toVar(json);
+
+    message = "Listed " + String(items.size()) + " modulation matrix " + kind + " menu items";
+    return true;
+}
+
+bool CycleAutomation::invokeModMatrixMenu(const var& command, String& message, var& data) {
+    auto& panel = getObj(ModMatrixPanel);
+    String kind = modMatrixMenuKind(command);
+
+    if (kind.isEmpty()) {
+        message = "Mod matrix menu requires menu/kind input or output";
+        return false;
+    }
+
+    PopupMenu menu = modMatrixMenuForKind(panel, kind);
+    PopupMenu::Item item;
+    StringArray path = commandMenuPath(command);
+    var itemIdVar = PresetJson::property(command, "itemId");
+
+    if (itemIdVar.isVoid()) {
+        itemIdVar = PresetJson::property(command, "id");
+    }
+
+    bool found = false;
+
+    if (!itemIdVar.isVoid()) {
+        found = findMenuItemById(menu, int(itemIdVar), item);
+    } else if (!path.isEmpty()) {
+        found = findMenuItemByPath(menu, path, 0, item);
+    }
+
+    if (!found) {
+        message = "Mod matrix menu item could not be resolved";
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("menu", kind);
+    json->setProperty("text", item.text);
+    json->setProperty("itemId", item.itemID);
+    json->setProperty("enabled", item.isEnabled);
+    json->setProperty("path", pathToVar(path));
+
+    if (!item.isEnabled && !getBool(command, "allowDisabled")) {
+        data = PresetJson::toVar(json);
+        message = "Mod matrix menu item is disabled: " + item.text;
+        return false;
+    }
+
+    if (item.itemID == 0) {
+        data = PresetJson::toVar(json);
+        message = "Mod matrix menu item is not triggerable: " + item.text;
+        return false;
+    }
+
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
+
+    if (kind == "input") {
+        panel.addInput(item.itemID);
+    } else {
+        panel.addDestination(item.itemID);
+    }
+
+    panel.selfSize();
+    drainMessageLoopIfRequested(command);
+
+    json->setProperty("waitedForIdle", waitedForIdle);
+    json->setProperty("inputCount", panel.inputs.size());
+    json->setProperty("outputCount", panel.outputs.size());
+    json->setProperty("mappingCount", panel.mappings.size());
+    data = PresetJson::toVar(json);
+
+    message = "Mod matrix " + kind + " menu item invoked: " + item.text;
+    return true;
+}
+
+bool CycleAutomation::listModMatrixDimensionMenu(const var& command, String& message, var& data) {
+    auto& panel = getObj(ModMatrixPanel);
+    int inputId = int(PresetJson::property(command, "inputId"));
+    int outputId = int(PresetJson::property(command, "outputId"));
+    int mappingIndex = panel.indexOfMapping(inputId, outputId);
+    int oldDim = mappingIndex < 0 ? ModMatrixPanel::NullDim : panel.mappings.getReference(mappingIndex).dim;
+    bool active = oldDim != ModMatrixPanel::YellowDim;
+    active &= !(inputId == ModMatrixPanel::VoiceTime && outputId >= ModMatrixPanel::VolEnvId);
+
+    Array<var> items;
+    appendModMatrixDimensionItems(items, inputId, outputId, oldDim, active);
+
+    auto json = PresetJson::object();
+    json->setProperty("inputId", inputId);
+    json->setProperty("outputId", outputId);
+    json->setProperty("mappingIndex", mappingIndex);
+    json->setProperty("currentDimension", oldDim);
+    json->setProperty("active", active);
+    json->setProperty("itemCount", items.size());
+    json->setProperty("items", var(items));
+    data = PresetJson::toVar(json);
+
+    message = "Listed modulation matrix dimension menu";
+    return true;
+}
+
+bool CycleAutomation::invokeModMatrixDimensionMenu(const var& command, String& message, var& data) {
+    auto& panel = getObj(ModMatrixPanel);
+    int inputId = int(PresetJson::property(command, "inputId"));
+    int outputId = int(PresetJson::property(command, "outputId"));
+    int newDim = modMatrixDimensionForCommand(command);
+    int mappingIndex = panel.indexOfMapping(inputId, outputId);
+    int oldDim = mappingIndex < 0 ? ModMatrixPanel::NullDim : panel.mappings.getReference(mappingIndex).dim;
+    bool active = oldDim != ModMatrixPanel::YellowDim;
+    active &= !(inputId == ModMatrixPanel::VoiceTime && outputId >= ModMatrixPanel::VolEnvId);
+
+    if (!active && !getBool(command, "allowInactive")) {
+        message = "Mod matrix dimension menu is inactive for this cell";
+        return false;
+    }
+
+    if (newDim != ModMatrixPanel::NullDim && newDim != ModMatrixPanel::RedDim && newDim != ModMatrixPanel::BlueDim) {
+        message = "Mod matrix dimension must be none, red, or blue";
+        return false;
+    }
+
+    if (oldDim != newDim) {
+        panel.mappingChanged(mappingIndex, inputId, outputId, oldDim, newDim);
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("inputId", inputId);
+    json->setProperty("outputId", outputId);
+    json->setProperty("oldDimension", oldDim);
+    json->setProperty("newDimension", newDim);
+    json->setProperty("mappingCount", panel.mappings.size());
+    data = PresetJson::toVar(json);
+
+    message = "Mod matrix dimension menu item invoked";
+    return true;
+}
+
+bool CycleAutomation::listEnvelopeConfigMenu(const var& command, String& message, var& data) {
+    int currentGroup = getObj(EnvelopeInter2D).getLayerType();
+    int groupId = envelopeGroupForCommand(command, currentGroup);
+    MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(groupId);
+
+    if (props == nullptr) {
+        message = "Envelope config menu requires a valid envelope group";
+        return false;
+    }
+
+    PopupMenu menu = envelopeConfigMenuForProps(groupId, *props);
+    Array<var> items;
+    appendMenuItems(items, menu, "EnvelopeConfig", 0, {});
+
+    auto propsState = envelopeConfigPropsState(groupId, *props);
+    auto json = PresetJson::object();
+    json->setProperty("groupId", groupId);
+    json->setProperty("group", PresetJson::property(propsState, "group"));
+    json->setProperty("currentGroupId", currentGroup);
+    json->setProperty("itemCount", items.size());
+    json->setProperty("items", var(items));
+    json->setProperty("props", propsState);
+    data = PresetJson::toVar(json);
+
+    message = "Listed envelope config menu";
+    return true;
+}
+
+bool CycleAutomation::invokeEnvelopeConfigMenu(const var& command, String& message, var& data) {
+    auto& interactor = getObj(EnvelopeInter2D);
+    int currentGroup = interactor.getLayerType();
+    int groupId = envelopeGroupForCommand(command, currentGroup);
+    MeshLibrary::EnvProps* props = getObj(MeshLibrary).getCurrentEnvProps(groupId);
+
+    if (props == nullptr) {
+        message = "Envelope config menu requires a valid envelope group";
+        return false;
+    }
+
+    PopupMenu menu = envelopeConfigMenuForProps(groupId, *props);
+    PopupMenu::Item item;
+    StringArray path = commandMenuPath(command);
+    var itemIdVar = PresetJson::property(command, "itemId");
+
+    if (itemIdVar.isVoid()) {
+        itemIdVar = PresetJson::property(command, "id");
+    }
+
+    bool found = false;
+
+    if (!itemIdVar.isVoid()) {
+        found = findMenuItemById(menu, int(itemIdVar), item);
+    } else if (!path.isEmpty()) {
+        found = findMenuItemByPath(menu, path, 0, item);
+    }
+
+    if (!found) {
+        message = "Envelope config menu item could not be resolved";
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("groupId", groupId);
+    json->setProperty("currentGroupId", currentGroup);
+    json->setProperty("text", item.text);
+    json->setProperty("itemId", item.itemID);
+    json->setProperty("enabled", item.isEnabled);
+    json->setProperty("tickedBefore", item.isTicked);
+    json->setProperty("path", pathToVar(path));
+    json->setProperty("before", envelopeConfigPropsState(groupId, *props));
+
+    if (!item.isEnabled && !getBool(command, "allowDisabled")) {
+        data = PresetJson::toVar(json);
+        message = "Envelope config menu item is disabled: " + item.text;
+        return false;
+    }
+
+    if (item.itemID == 0) {
+        data = PresetJson::toVar(json);
+        message = "Envelope config menu item is not triggerable: " + item.text;
+        return false;
+    }
+
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
+    interactor.chooseConfigScale(item.itemID, props);
+    drainMessageLoopIfRequested(command);
+
+    json->setProperty("waitedForIdle", waitedForIdle);
+    json->setProperty("after", envelopeConfigPropsState(groupId, *props));
+    data = PresetJson::toVar(json);
+
+    message = "Envelope config menu item invoked: " + item.text;
+    return true;
+}
+
+bool CycleAutomation::listSelectorMenu(const var& command, String& message, var& data) {
+    auto* selector = dynamic_cast<SelectorPanel*>(resolveComponent(command));
+
+    if (selector == nullptr) {
+        message = "Selector menu requires an area/target resolving to SelectorPanel";
+        return false;
+    }
+
+    PopupMenu menu = selectorMenuForPanel(*selector);
+    Array<var> items;
+    appendMenuItems(items, menu, "SelectorPanel", 0, {});
+
+    auto json = PresetJson::object();
+    json->setProperty("area", getString(command, "area"));
+    json->setProperty("target", getString(command, "target"));
+    json->setProperty("itemCount", items.size());
+    json->setProperty("items", var(items));
+    json->setProperty("selector", selectorState(*selector));
+    data = PresetJson::toVar(json);
+
+    message = "Listed selector menu";
+    return true;
+}
+
+bool CycleAutomation::invokeSelectorMenu(const var& command, String& message, var& data) {
+    auto* selector = dynamic_cast<SelectorPanel*>(resolveComponent(command));
+
+    if (selector == nullptr) {
+        message = "Selector menu requires an area/target resolving to SelectorPanel";
+        return false;
+    }
+
+    PopupMenu menu = selectorMenuForPanel(*selector);
+    PopupMenu::Item item;
+    StringArray path = commandMenuPath(command);
+    var itemIdVar = PresetJson::property(command, "itemId");
+
+    if (itemIdVar.isVoid()) {
+        itemIdVar = PresetJson::property(command, "id");
+    }
+
+    bool found = false;
+
+    if (!itemIdVar.isVoid()) {
+        found = findMenuItemById(menu, int(itemIdVar), item);
+    } else if (!path.isEmpty()) {
+        found = findMenuItemByPath(menu, path, 0, item);
+    }
+
+    if (!found) {
+        message = "Selector menu item could not be resolved";
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("area", getString(command, "area"));
+    json->setProperty("target", getString(command, "target"));
+    json->setProperty("text", item.text);
+    json->setProperty("itemId", item.itemID);
+    json->setProperty("enabled", item.isEnabled);
+    json->setProperty("tickedBefore", item.isTicked);
+    json->setProperty("path", pathToVar(path));
+    json->setProperty("before", selectorState(*selector));
+
+    if (!item.isEnabled && !getBool(command, "allowDisabled")) {
+        data = PresetJson::toVar(json);
+        message = "Selector menu item is disabled: " + item.text;
+        return false;
+    }
+
+    if (item.itemID == 0) {
+        data = PresetJson::toVar(json);
+        message = "Selector menu item is not triggerable: " + item.text;
+        return false;
+    }
+
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
+    selector->clickedOnRow(item.itemID - 1);
+    drainMessageLoopIfRequested(command);
+
+    json->setProperty("waitedForIdle", waitedForIdle);
+    json->setProperty("after", selectorState(*selector));
+    data = PresetJson::toVar(json);
+
+    message = "Selector menu item invoked: " + item.text;
+    return true;
+}
+
+bool CycleAutomation::listHoverSelectorMenu(const var& command, String& message, var& data) {
+    auto* selector = dynamic_cast<HoverSelector*>(resolveComponent(command));
+
+    if (selector == nullptr) {
+        message = "Hover selector menu requires an area/target resolving to HoverSelector";
+        return false;
+    }
+
+    selector->prepareForPopup();
+
+    Array<var> items;
+    appendMenuItems(items, selector->menu, "HoverSelector", 0, {});
+
+    auto json = PresetJson::object();
+    json->setProperty("area", getString(command, "area"));
+    json->setProperty("target", getString(command, "target"));
+    json->setProperty("itemCount", items.size());
+    json->setProperty("items", var(items));
+    json->setProperty("selector", hoverSelectorState(*selector));
+    data = PresetJson::toVar(json);
+
+    message = "Listed hover selector menu";
+    return true;
+}
+
+bool CycleAutomation::invokeHoverSelectorMenu(const var& command, String& message, var& data) {
+    auto* selector = dynamic_cast<HoverSelector*>(resolveComponent(command));
+
+    if (selector == nullptr) {
+        message = "Hover selector menu requires an area/target resolving to HoverSelector";
+        return false;
+    }
+
+    selector->prepareForPopup();
+
+    PopupMenu::Item item;
+    StringArray path = commandMenuPath(command);
+    var itemIdVar = PresetJson::property(command, "itemId");
+
+    if (itemIdVar.isVoid()) {
+        itemIdVar = PresetJson::property(command, "id");
+    }
+
+    bool found = false;
+
+    if (!itemIdVar.isVoid()) {
+        found = findMenuItemById(selector->menu, int(itemIdVar), item);
+    } else if (!path.isEmpty()) {
+        found = findMenuItemByPath(selector->menu, path, 0, item);
+    }
+
+    if (!found) {
+        message = "Hover selector menu item could not be resolved";
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("area", getString(command, "area"));
+    json->setProperty("target", getString(command, "target"));
+    json->setProperty("text", item.text);
+    json->setProperty("itemId", item.itemID);
+    json->setProperty("enabled", item.isEnabled);
+    json->setProperty("tickedBefore", item.isTicked);
+    json->setProperty("selection", selector->itemIsSelection(item.itemID));
+    json->setProperty("path", pathToVar(path));
+    json->setProperty("before", hoverSelectorState(*selector));
+
+    if (!item.isEnabled && !getBool(command, "allowDisabled")) {
+        data = PresetJson::toVar(json);
+        message = "Hover selector menu item is disabled: " + item.text;
+        return false;
+    }
+
+    if (!selector->itemIsSelection(item.itemID) && !getBool(command, "allowNonSelection")) {
+        data = PresetJson::toVar(json);
+        message = "Hover selector menu item is not a selection: " + item.text;
+        return false;
+    }
+
+    if (item.itemID == 0) {
+        data = PresetJson::toVar(json);
+        message = "Hover selector menu item is not triggerable: " + item.text;
+        return false;
+    }
+
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
+    selector->setSelectedId(item.itemID);
+    drainMessageLoopIfRequested(command);
+
+    json->setProperty("waitedForIdle", waitedForIdle);
+    json->setProperty("after", hoverSelectorState(*selector));
+    data = PresetJson::toVar(json);
+
+    message = "Hover selector menu item invoked: " + item.text;
+    return true;
+}
+
+bool CycleAutomation::logMessage(const var& command, String& message, var& data) {
+    String text = getString(command, "message");
+
+    if (text.isEmpty()) {
+        message = "Automation log message is empty";
+        return false;
+    }
+
+    String line = "CycleAutomation: " + text;
+    Logger::writeToLog(line);
+
+    auto json = PresetJson::object();
+    json->setProperty("message", text);
+    data = PresetJson::toVar(json);
+
+    message = "Automation log message written";
+    return true;
+}
+
+bool CycleAutomation::openGLDiagnostics(const var& command, String& message, var& data) {
+    String requestedArea = getString(command, "area");
+    String requestedTarget = getString(command, "target");
+    bool pollNow = getBool(command, "poll", true);
+    String phase = getString(command, "phase", "automation");
+    Array<var> panels;
+    std::set<Component*> seen;
+    CycleTour& tour = const_cast<CycleTour&>(getObj(CycleTour));
+
+    auto addComponent = [&](Component* component, const String& area, const String& target) {
+        if (component == nullptr || seen.count(component) != 0) {
+            return;
+        }
+
+        seen.insert(component);
+
+        if (auto* openGL = dynamic_cast<OpenGLBase*>(component)) {
+            auto json = PresetJson::object();
+            json->setProperty("area", area);
+            json->setProperty("target", target);
+            json->setProperty("class", String(typeid(*component).name()));
+            json->setProperty("localBounds", rectangleState(component->getLocalBounds()));
+            json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
+            json->setProperty("visible", component->isVisible());
+            json->setProperty("showing", component->isShowing());
+            json->setProperty("openGL", openGLDiagnosticsState(*openGL, pollNow, phase));
+            panels.add(PresetJson::toVar(json));
+        }
+    };
+
+    if (requestedArea.isNotEmpty()) {
+        Component* component = resolveComponent(command);
+
+        if (component == nullptr) {
+            message = "OpenGL diagnostic target could not be resolved";
+            return false;
+        }
+
+        addComponent(component, requestedArea, requestedTarget);
+    } else {
+        for (auto* area : kInspectableAreas) {
+            addComponent(tour.getComponent(area, {}), area, {});
+        }
+
+        for (auto* area : kTourGuideAreas) {
+            for (auto* target : kInspectableTargets) {
+                addComponent(tour.getComponent(area, target), area, target);
+            }
+        }
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("poll", pollNow);
+    json->setProperty("phase", phase);
+    json->setProperty("panels", var(panels));
+    json->setProperty("count", panels.size());
+    data = PresetJson::toVar(json);
+
+    message = "OpenGL diagnostics captured for " + String(panels.size()) + " panels";
+    return true;
+}
+
 bool CycleAutomation::inspectTargets(const var& command, String& message, var& data) {
     String requestedArea = getString(command, "area");
     String requestedTarget = getString(command, "target");
@@ -2298,9 +3407,90 @@ bool CycleAutomation::setControl(const var& command, String& message, var& data)
         return true;
     }
 
-    message = "Control target is not a supported Slider, Button, or ComboBox";
+    if (auto* tabbedSelector = dynamic_cast<TabbedSelector*>(component)) {
+        var selectedIndex = PresetJson::property(command, "selectedIndex");
+        String text = getString(command, "text");
+        int tabIndex = -1;
+
+        if (!selectedIndex.isVoid()) {
+            tabIndex = int(selectedIndex);
+        } else if (text.isNotEmpty()) {
+            for (int i = 0; i < tabbedSelector->getNumTabs(); ++i) {
+                if (tabbedSelector->getTabName(i).equalsIgnoreCase(text)) {
+                    tabIndex = i;
+                    break;
+                }
+            }
+        } else {
+            message = "TabbedSelector control requires selectedIndex or text";
+            data = componentState(component, getString(command, "area"), getString(command, "target"));
+            return false;
+        }
+
+        if (!isPositiveAndBelow(tabIndex, tabbedSelector->getNumTabs())) {
+            message = "TabbedSelector tab was not found";
+            data = componentState(component, getString(command, "area"), getString(command, "target"));
+            return false;
+        }
+
+        tabbedSelector->selectTab(tabIndex);
+        data = componentState(component, getString(command, "area"), getString(command, "target"));
+        message = "TabbedSelector control set";
+        return true;
+    }
+
+    message = "Control target is not a supported Slider, Button, ComboBox, or TabbedSelector";
     data = componentState(component, getString(command, "area"), getString(command, "target"));
     return false;
+}
+
+bool CycleAutomation::resetMainPanelView(const var& command, String& message, var& data) {
+    MainPanel& mainPanel = getObj(MainPanel);
+
+    mainPanel.resetTabToWaveform();
+    mainPanel.resized();
+    drainMessageLoopIfRequested(command);
+
+    data = componentState(&mainPanel, "AreaMain", {});
+    message = "Main panel view reset";
+    return true;
+}
+
+bool CycleAutomation::dismissTransientUi(const var& command, String& message, var& data) {
+    auto& modMatrix = getObj(ModMatrixPanel);
+
+    modMatrix.removeFromDesktop();
+    modMatrix.setVisible(false);
+    drainMessageLoopIfRequested(command);
+
+    data = componentState(&modMatrix, "AreaModMatrix", {});
+    message = "Transient UI dismissed";
+    return true;
+}
+
+bool CycleAutomation::setCalloutCollapsed(const var& command, String& message, var& data) {
+    Component* component = resolveComponent(command);
+
+    if (component == nullptr) {
+        message = "Callout target could not be resolved";
+        return false;
+    }
+
+    auto* callout = dynamic_cast<RetractableCallout*>(component);
+
+    if (callout == nullptr) {
+        message = "Target is not a RetractableCallout";
+        data = componentState(component, getString(command, "area"), getString(command, "target"));
+        return false;
+    }
+
+    callout->setAlwaysCollapsed(getBool(command, "collapsed", true));
+    callout->resized();
+    drainMessageLoopIfRequested(command);
+
+    data = componentState(callout, getString(command, "area"), getString(command, "target"));
+    message = "Callout collapsed state updated";
+    return true;
 }
 
 bool CycleAutomation::pointer(const var& command, String& message, var& data) {
@@ -2343,6 +3533,10 @@ bool CycleAutomation::pointer(const var& command, String& message, var& data) {
         component->mouseDrag(makePointerEvent(*component, position, downPosition, command, true, true, 1));
     } else if (eventType == "move") {
         component->mouseMove(makePointerEvent(*component, position, position, command, false, false, 0));
+    } else if (eventType == "enter") {
+        component->mouseEnter(makePointerEvent(*component, position, position, command, false, false, 0));
+    } else if (eventType == "exit") {
+        component->mouseExit(makePointerEvent(*component, position, position, command, false, false, 0));
     } else if (eventType == "wheel") {
         MouseWheelDetails wheel {
             float(getDouble(command, "deltaX")),
@@ -2881,6 +4075,10 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("localBounds", rectangleState(component->getLocalBounds()));
         json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
 
+    if (auto* openGL = dynamic_cast<OpenGLBase*>(component)) {
+        json->setProperty("openGL", openGLDiagnosticsState(*openGL, false, "componentState"));
+    }
+
     if (auto* slider = dynamic_cast<Slider*>(component)) {
         json->setProperty("controlType", "slider");
         json->setProperty("value", slider->getValue());
@@ -2908,6 +4106,65 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("selectedIndex", comboBox->getSelectedItemIndex());
         json->setProperty("text", comboBox->getText());
         json->setProperty("items", var(items));
+    } else if (auto* tabbedSelector = dynamic_cast<TabbedSelector*>(component)) {
+        Array<var> tabs;
+
+        for (int i = 0; i < tabbedSelector->getNumTabs(); ++i) {
+            auto item = PresetJson::object();
+            item->setProperty("index", i);
+            item->setProperty("text", tabbedSelector->getTabName(i));
+            item->setProperty("selected", tabbedSelector->getSelectedId() == i);
+            item->setProperty("localBounds", rectangleState(tabbedSelector->getTabBounds(i)));
+            tabs.add(PresetJson::toVar(item));
+        }
+
+        json->setProperty("controlType", "tabbedSelector");
+        json->setProperty("selectedIndex", tabbedSelector->getSelectedId());
+        json->setProperty("tabCount", tabbedSelector->getNumTabs());
+        json->setProperty("tabs", var(tabs));
+    } else if (auto* selector = dynamic_cast<SelectorPanel*>(component)) {
+        json->setProperty("controlType", "selectorPanel");
+        json->setProperty("currentIndex", selector->getCurrentIndexExternal());
+        json->setProperty("displayIndex", selector->getCurrentIndexExternal() + 1);
+        json->setProperty("itemCount", selector->getSize());
+    } else if (auto* hoverSelector = dynamic_cast<HoverSelector*>(component)) {
+        json->setProperty("controlType", "hoverSelector");
+        json->setProperty("menuActive", hoverSelector->menuActive);
+        json->setProperty("horizontal", hoverSelector->horizontal);
+    } else if (auto* midiKeyboard = dynamic_cast<MidiKeyboard*>(component)) {
+        json->setProperty("controlType", "midiKeyboard");
+        json->setProperty("auditionKey", midiKeyboard->getAuditionKey());
+        json->setProperty("auditionKeyName", MidiKeyboard::getText(midiKeyboard->getAuditionKey()));
+    } else if (auto* playbackPanel = dynamic_cast<PlaybackPanel*>(component)) {
+        json->setProperty("controlType", "playbackPanel");
+        json->setProperty("progress", playbackPanel->getProgress());
+        json->setProperty("playing", playbackPanel->isPlaying());
+        json->setProperty("envelopePosition", playbackPanel->getEnvelopePos());
+    } else if (dynamic_cast<BannerPanel*>(component) != nullptr) {
+        json->setProperty("controlType", "bannerPanel");
+    } else if (dynamic_cast<DerivativePanel*>(component) != nullptr) {
+        json->setProperty("controlType", "derivativePanel");
+    } else if (auto* dragger = dynamic_cast<Dragger*>(component)) {
+        json->setProperty("controlType", "dragger");
+
+        if (PanelPair* pair = dragger->getPair()) {
+            json->setProperty("portion", pair->getPortion());
+            json->setProperty("orientation", pair->sideBySide ? "vertical" : "horizontal");
+            json->setProperty("pairBounds", rectangleState(pair->getBounds()));
+        }
+    } else if (auto* pullout = dynamic_cast<PulloutComponent*>(component)) {
+        json->setProperty("controlType", "pulloutComponent");
+        json->setProperty("orientation", pullout->isHorizontal() ? "horizontal" : "vertical");
+        json->setProperty("popupVisible", pullout->isPopupVisible());
+        json->setProperty("popupButtonCount", pullout->getPopupButtonCount());
+        json->setProperty("popupBounds", rectangleState(pullout->getPopupBounds()));
+    } else if (auto* callout = dynamic_cast<RetractableCallout*>(component)) {
+        json->setProperty("controlType", "retractableCallout");
+        json->setProperty("currentlyCollapsed", callout->isCurrentlyCollapsed());
+        json->setProperty("sizeCollapsed", callout->isCollapsed());
+        json->setProperty("alwaysCollapsed", callout->isAlwaysCollapsed());
+        json->setProperty("expandedSize", callout->getExpandedSize());
+        json->setProperty("collapsedSize", callout->getCollapsedSize());
     } else {
         json->setProperty("controlType", "component");
     }
@@ -2990,6 +4247,9 @@ var CycleAutomation::componentTreeState(Component* component,
     } else if (auto* button = dynamic_cast<Button*>(component)) {
         json->setProperty("toggleState", button->getToggleState());
         json->setProperty("buttonText", button->getButtonText());
+    } else if (auto* tabbedSelector = dynamic_cast<TabbedSelector*>(component)) {
+        json->setProperty("selectedIndex", tabbedSelector->getSelectedId());
+        json->setProperty("tabCount", tabbedSelector->getNumTabs());
     }
 
     if (depth >= maxDepth || nodeCount >= maxNodes) {

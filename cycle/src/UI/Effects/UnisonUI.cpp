@@ -460,6 +460,8 @@ juce::Component* UnisonUI::getComponent(int which) {
         case CycleTour::TargUniVoiceSlct: return &voiceSelector;
         case CycleTour::TargUniMode:      return &modeBox;
         case CycleTour::TargUniAddRemove: return &addRemover;
+        case CycleTour::TargLayerAddButton: return &addRemover.add;
+        case CycleTour::TargLayerRemoveButton: return &addRemover.remove;
         default: break;
     }
 

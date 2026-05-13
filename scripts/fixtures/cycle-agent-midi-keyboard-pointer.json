@@ -1,0 +1,36 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaMain",
+      "target": "TargMidiKeyboard"
+    },
+    {
+      "command": "pointer",
+      "area": "AreaMain",
+      "target": "TargMidiKeyboard",
+      "event": "move",
+      "x": 0.5,
+      "y": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "pointer",
+      "area": "AreaMain",
+      "target": "TargMidiKeyboard",
+      "event": "click",
+      "button": "right",
+      "x": 0.5,
+      "y": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaMain",
+      "target": "TargMidiKeyboard"
+    }
+  ],
+  "quit": true
+}
