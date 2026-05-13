@@ -26,6 +26,7 @@ fixtures=(
     mesh-mutations=scripts/fixtures/cycle-agent-mesh-mutations.json
     mesh-selection-gesture=scripts/fixtures/cycle-agent-mesh-selection-gesture.json
     screenshot=scripts/fixtures/cycle-agent-screenshot.json
+    opengl-diagnostics=scripts/fixtures/cycle-agent-opengl-diagnostics.json
     menu-commands=scripts/fixtures/cycle-agent-menu-commands.json
     main-tabs=scripts/fixtures/cycle-agent-main-tabs.json
     layer-buttons=scripts/fixtures/cycle-agent-layer-buttons.json

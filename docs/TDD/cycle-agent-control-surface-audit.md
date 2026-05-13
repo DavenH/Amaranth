@@ -13,8 +13,8 @@ The current automation command set already has useful primitives:
   exit, wheel,
 - generic `setControl` for named `Slider`, `Button`, and `ComboBox` targets,
 - semantic actions through `CycleTour`,
-- screenshots, assertions, mesh mutation, preset export/save/reopen, and audio
-  capture.
+- screenshots, OpenGL diagnostics, assertions, mesh mutation, preset
+  export/save/reopen, and audio capture.
 
 The main coverage gap is target discovery and stable addressing. If a component
 cannot be resolved by area and target name, the `pointer` and `setControl`
@@ -28,7 +28,7 @@ From `CycleAutomation.cpp`:
 - 19 inspectable areas are listed in `kInspectableAreas`.
 - 12 `TourGuide` areas are scanned for named targets in `kTourGuideAreas`.
 - 133 named targets are listed in `kInspectableTargets`.
-- 35 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
+- 36 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
 
 Named coverage is strongest for:
 

@@ -112,6 +112,10 @@ Common command families:
 - `setControl`: set sliders, combo boxes, buttons, and target-backed controls.
 - `screenshot`: capture a registered panel/target using app-side component
   rendering.
+- `openGLDiagnostics`: poll OpenGL-backed panels on their GL thread and return
+  context attachment, render counts, context create/close counts, and the last
+  recorded GL error. Use this before/after suspect session gestures when panels
+  go black without an obvious automation failure.
 - `captureAudio`: render scheduled MIDI events offline, optionally write a WAV,
   and return amplitude metrics for assertions.
 - `exportState`, `exportPreset`, `exportMeshState`: export scoped JSON, reusing

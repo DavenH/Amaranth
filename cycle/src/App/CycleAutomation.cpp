@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <set>
 #include <utility>
 
 #include <App/AutomationInspectable.h>
@@ -19,6 +20,7 @@
 #include <Inter/Interactor.h>
 #include <UI/Layout/Dragger.h>
 #include <UI/Layout/PanelPair.h>
+#include <UI/Panels/OpenGLBase.h>
 #include <UI/Panels/Panel.h>
 #include <UI/Widgets/PulloutComponent.h>
 #include <UI/Widgets/RetractableCallout.h>
@@ -620,6 +622,26 @@ namespace {
         json->setProperty("y", bounds.getY());
         json->setProperty("width", bounds.getWidth());
         json->setProperty("height", bounds.getHeight());
+        return PresetJson::toVar(json);
+    }
+
+    var openGLDiagnosticsState(OpenGLBase& openGL, bool pollNow, const String& phase) {
+        OpenGLBase::Diagnostics diagnostics = openGL.getDiagnostics(pollNow, phase);
+        auto json = PresetJson::object();
+        json->setProperty("attached", diagnostics.attached);
+        json->setProperty("pollSucceeded", diagnostics.pollSucceeded);
+        json->setProperty("width", diagnostics.width);
+        json->setProperty("height", diagnostics.height);
+        json->setProperty("renderingScale", diagnostics.renderingScale);
+        json->setProperty("renderCount", diagnostics.renderCount);
+        json->setProperty("contextCreateCount", diagnostics.contextCreateCount);
+        json->setProperty("contextCloseCount", diagnostics.contextCloseCount);
+        json->setProperty("errorCount", diagnostics.errorCount);
+        json->setProperty("lastErrorCode", diagnostics.lastErrorCode);
+        json->setProperty("lastErrorName", diagnostics.lastErrorName);
+        json->setProperty("lastErrorPhase", diagnostics.lastErrorPhase);
+        json->setProperty("polledErrorCode", diagnostics.polledErrorCode);
+        json->setProperty("polledErrorName", diagnostics.polledErrorName);
         return PresetJson::toVar(json);
     }
 
@@ -2158,6 +2180,8 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = listHoverSelectorMenu(command, message, data);
     } else if (type == "invokeHoverSelectorMenu") {
         ok = invokeHoverSelectorMenu(command, message, data);
+    } else if (type == "openGLDiagnostics") {
+        ok = openGLDiagnostics(command, message, data);
     } else if (type == "inspectTargets") {
         ok = inspectTargets(command, message, data);
     } else if (type == "inspectTree") {
@@ -3153,6 +3177,68 @@ bool CycleAutomation::invokeHoverSelectorMenu(const var& command, String& messag
     return true;
 }
 
+bool CycleAutomation::openGLDiagnostics(const var& command, String& message, var& data) {
+    String requestedArea = getString(command, "area");
+    String requestedTarget = getString(command, "target");
+    bool pollNow = getBool(command, "poll", true);
+    String phase = getString(command, "phase", "automation");
+    Array<var> panels;
+    std::set<Component*> seen;
+    CycleTour& tour = const_cast<CycleTour&>(getObj(CycleTour));
+
+    auto addComponent = [&](Component* component, const String& area, const String& target) {
+        if (component == nullptr || seen.count(component) != 0) {
+            return;
+        }
+
+        seen.insert(component);
+
+        if (auto* openGL = dynamic_cast<OpenGLBase*>(component)) {
+            auto json = PresetJson::object();
+            json->setProperty("area", area);
+            json->setProperty("target", target);
+            json->setProperty("class", String(typeid(*component).name()));
+            json->setProperty("localBounds", rectangleState(component->getLocalBounds()));
+            json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
+            json->setProperty("visible", component->isVisible());
+            json->setProperty("showing", component->isShowing());
+            json->setProperty("openGL", openGLDiagnosticsState(*openGL, pollNow, phase));
+            panels.add(PresetJson::toVar(json));
+        }
+    };
+
+    if (requestedArea.isNotEmpty()) {
+        Component* component = resolveComponent(command);
+
+        if (component == nullptr) {
+            message = "OpenGL diagnostic target could not be resolved";
+            return false;
+        }
+
+        addComponent(component, requestedArea, requestedTarget);
+    } else {
+        for (auto* area : kInspectableAreas) {
+            addComponent(tour.getComponent(area, {}), area, {});
+        }
+
+        for (auto* area : kTourGuideAreas) {
+            for (auto* target : kInspectableTargets) {
+                addComponent(tour.getComponent(area, target), area, target);
+            }
+        }
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("poll", pollNow);
+    json->setProperty("phase", phase);
+    json->setProperty("panels", var(panels));
+    json->setProperty("count", panels.size());
+    data = PresetJson::toVar(json);
+
+    message = "OpenGL diagnostics captured for " + String(panels.size()) + " panels";
+    return true;
+}
+
 bool CycleAutomation::inspectTargets(const var& command, String& message, var& data) {
     String requestedArea = getString(command, "area");
     String requestedTarget = getString(command, "target");
@@ -3967,6 +4053,10 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("enabled", component->isEnabled());
         json->setProperty("localBounds", rectangleState(component->getLocalBounds()));
         json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
+
+    if (auto* openGL = dynamic_cast<OpenGLBase*>(component)) {
+        json->setProperty("openGL", openGLDiagnosticsState(*openGL, false, "componentState"));
+    }
 
     if (auto* slider = dynamic_cast<Slider*>(component)) {
         json->setProperty("controlType", "slider");
