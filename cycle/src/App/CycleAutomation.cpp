@@ -24,6 +24,7 @@
 #include "KeyboardInputHandler.h"
 
 #include "../UI/Panels/MainPanel.h"
+#include "../UI/Panels/ModMatrixPanel.h"
 #include "../UI/Panels/SynthMenuBarModel.h"
 
 #if JUCE_MAC || JUCE_LINUX
@@ -372,6 +373,93 @@ namespace {
         }
 
         return false;
+    }
+
+    String modMatrixMenuKind(const var& command) {
+        String kind = getString(command, "menu", getString(command, "kind", getString(command, "popup")));
+
+        if (kind == "source" || kind == "input" || kind == "addInput") {
+            return "input";
+        }
+
+        if (kind == "destination" || kind == "dest" || kind == "output" || kind == "addDestination") {
+            return "output";
+        }
+
+        return {};
+    }
+
+    PopupMenu modMatrixMenuForKind(ModMatrixPanel& panel, const String& kind) {
+        if (kind == "input") {
+            return panel.getInputMenu();
+        }
+
+        if (kind == "output") {
+            return panel.getOutputMenu(ModMatrixPanel::MeshTypes);
+        }
+
+        return {};
+    }
+
+    int modMatrixDimensionForCommand(const var& command) {
+        var itemIdVar = PresetJson::property(command, "itemId");
+
+        if (itemIdVar.isVoid()) {
+            itemIdVar = PresetJson::property(command, "id");
+        }
+
+        if (!itemIdVar.isVoid()) {
+            return int(itemIdVar) - 2;
+        }
+
+        String dim = getString(command, "dimension", getString(command, "dim", getString(command, "text"))).toLowerCase();
+
+        if (dim == "none" || dim == "null" || dim == "off") {
+            return ModMatrixPanel::NullDim;
+        }
+
+        if (dim == "red") {
+            return ModMatrixPanel::RedDim;
+        }
+
+        if (dim == "blue") {
+            return ModMatrixPanel::BlueDim;
+        }
+
+        return ModMatrixPanel::YellowDim;
+    }
+
+    void appendModMatrixDimensionItems(Array<var>& items,
+                                       int inputId,
+                                       int outputId,
+                                       int oldDim,
+                                       bool active) {
+        struct DimensionItem {
+            int itemId;
+            int dim;
+            const char* text;
+        };
+
+        static const DimensionItem dimensionItems[] = {
+            { 1, ModMatrixPanel::NullDim, "None" },
+            { 3, ModMatrixPanel::RedDim,  "Red"  },
+            { 4, ModMatrixPanel::BlueDim, "Blue" },
+        };
+
+        for (const auto& dimensionItem : dimensionItems) {
+            auto json = PresetJson::object();
+            json->setProperty("menu", "ModMatrix:dimension");
+            json->setProperty("inputId", inputId);
+            json->setProperty("outputId", outputId);
+            json->setProperty("text", dimensionItem.text);
+            json->setProperty("itemId", dimensionItem.itemId);
+            json->setProperty("dimension", dimensionItem.dim);
+            json->setProperty("enabled", active);
+            json->setProperty("ticked", oldDim == dimensionItem.dim);
+            json->setProperty("triggerable", true);
+            json->setProperty("path", pathToVar(StringArray(dimensionItem.text)));
+            items.add(PresetJson::toVar(json));
+        }
     }
 
     var makeResult(const String& type, bool ok, const String& message, const var& data = {}) {
@@ -1894,6 +1982,14 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = listMenus(command, message, data);
     } else if (type == "invokeMenuItem") {
         ok = invokeMenuItem(command, message, data);
+    } else if (type == "listModMatrixMenu") {
+        ok = listModMatrixMenu(command, message, data);
+    } else if (type == "invokeModMatrixMenu") {
+        ok = invokeModMatrixMenu(command, message, data);
+    } else if (type == "listModMatrixDimensionMenu") {
+        ok = listModMatrixDimensionMenu(command, message, data);
+    } else if (type == "invokeModMatrixDimensionMenu") {
+        ok = invokeModMatrixDimensionMenu(command, message, data);
     } else if (type == "inspectTargets") {
         ok = inspectTargets(command, message, data);
     } else if (type == "inspectTree") {
@@ -2439,6 +2535,165 @@ bool CycleAutomation::invokeMenuItem(const var& command, String& message, var& d
     json->setProperty("waitedForIdle", waitedForIdle);
     data = PresetJson::toVar(json);
     message = "Menu item invoked: " + item.text;
+    return true;
+}
+
+bool CycleAutomation::listModMatrixMenu(const var& command, String& message, var& data) {
+    auto& panel = getObj(ModMatrixPanel);
+    String kind = modMatrixMenuKind(command);
+
+    if (kind.isEmpty()) {
+        message = "Mod matrix menu requires menu/kind input or output";
+        return false;
+    }
+
+    PopupMenu menu = modMatrixMenuForKind(panel, kind);
+    Array<var> items;
+    appendMenuItems(items, menu, "ModMatrix:" + kind, kind == "input" ? 0 : 1, {});
+
+    auto json = PresetJson::object();
+    json->setProperty("menu", kind);
+    json->setProperty("itemCount", items.size());
+    json->setProperty("items", var(items));
+    json->setProperty("inputCount", panel.inputs.size());
+    json->setProperty("outputCount", panel.outputs.size());
+    json->setProperty("mappingCount", panel.mappings.size());
+    data = PresetJson::toVar(json);
+
+    message = "Listed " + String(items.size()) + " modulation matrix " + kind + " menu items";
+    return true;
+}
+
+bool CycleAutomation::invokeModMatrixMenu(const var& command, String& message, var& data) {
+    auto& panel = getObj(ModMatrixPanel);
+    String kind = modMatrixMenuKind(command);
+
+    if (kind.isEmpty()) {
+        message = "Mod matrix menu requires menu/kind input or output";
+        return false;
+    }
+
+    PopupMenu menu = modMatrixMenuForKind(panel, kind);
+    PopupMenu::Item item;
+    StringArray path = commandMenuPath(command);
+    var itemIdVar = PresetJson::property(command, "itemId");
+
+    if (itemIdVar.isVoid()) {
+        itemIdVar = PresetJson::property(command, "id");
+    }
+
+    bool found = false;
+
+    if (!itemIdVar.isVoid()) {
+        found = findMenuItemById(menu, int(itemIdVar), item);
+    } else if (!path.isEmpty()) {
+        found = findMenuItemByPath(menu, path, 0, item);
+    }
+
+    if (!found) {
+        message = "Mod matrix menu item could not be resolved";
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("menu", kind);
+    json->setProperty("text", item.text);
+    json->setProperty("itemId", item.itemID);
+    json->setProperty("enabled", item.isEnabled);
+    json->setProperty("path", pathToVar(path));
+
+    if (!item.isEnabled && !getBool(command, "allowDisabled")) {
+        data = PresetJson::toVar(json);
+        message = "Mod matrix menu item is disabled: " + item.text;
+        return false;
+    }
+
+    if (item.itemID == 0) {
+        data = PresetJson::toVar(json);
+        message = "Mod matrix menu item is not triggerable: " + item.text;
+        return false;
+    }
+
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
+
+    if (kind == "input") {
+        panel.addInput(item.itemID);
+    } else {
+        panel.addDestination(item.itemID);
+    }
+
+    panel.selfSize();
+    drainMessageLoopIfRequested(command);
+
+    json->setProperty("waitedForIdle", waitedForIdle);
+    json->setProperty("inputCount", panel.inputs.size());
+    json->setProperty("outputCount", panel.outputs.size());
+    json->setProperty("mappingCount", panel.mappings.size());
+    data = PresetJson::toVar(json);
+
+    message = "Mod matrix " + kind + " menu item invoked: " + item.text;
+    return true;
+}
+
+bool CycleAutomation::listModMatrixDimensionMenu(const var& command, String& message, var& data) {
+    auto& panel = getObj(ModMatrixPanel);
+    int inputId = int(PresetJson::property(command, "inputId"));
+    int outputId = int(PresetJson::property(command, "outputId"));
+    int mappingIndex = panel.indexOfMapping(inputId, outputId);
+    int oldDim = mappingIndex < 0 ? ModMatrixPanel::NullDim : panel.mappings.getReference(mappingIndex).dim;
+    bool active = oldDim != ModMatrixPanel::YellowDim;
+    active &= !(inputId == ModMatrixPanel::VoiceTime && outputId >= ModMatrixPanel::VolEnvId);
+
+    Array<var> items;
+    appendModMatrixDimensionItems(items, inputId, outputId, oldDim, active);
+
+    auto json = PresetJson::object();
+    json->setProperty("inputId", inputId);
+    json->setProperty("outputId", outputId);
+    json->setProperty("mappingIndex", mappingIndex);
+    json->setProperty("currentDimension", oldDim);
+    json->setProperty("active", active);
+    json->setProperty("itemCount", items.size());
+    json->setProperty("items", var(items));
+    data = PresetJson::toVar(json);
+
+    message = "Listed modulation matrix dimension menu";
+    return true;
+}
+
+bool CycleAutomation::invokeModMatrixDimensionMenu(const var& command, String& message, var& data) {
+    auto& panel = getObj(ModMatrixPanel);
+    int inputId = int(PresetJson::property(command, "inputId"));
+    int outputId = int(PresetJson::property(command, "outputId"));
+    int newDim = modMatrixDimensionForCommand(command);
+    int mappingIndex = panel.indexOfMapping(inputId, outputId);
+    int oldDim = mappingIndex < 0 ? ModMatrixPanel::NullDim : panel.mappings.getReference(mappingIndex).dim;
+    bool active = oldDim != ModMatrixPanel::YellowDim;
+    active &= !(inputId == ModMatrixPanel::VoiceTime && outputId >= ModMatrixPanel::VolEnvId);
+
+    if (!active && !getBool(command, "allowInactive")) {
+        message = "Mod matrix dimension menu is inactive for this cell";
+        return false;
+    }
+
+    if (newDim != ModMatrixPanel::NullDim && newDim != ModMatrixPanel::RedDim && newDim != ModMatrixPanel::BlueDim) {
+        message = "Mod matrix dimension must be none, red, or blue";
+        return false;
+    }
+
+    if (oldDim != newDim) {
+        panel.mappingChanged(mappingIndex, inputId, outputId, oldDim, newDim);
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("inputId", inputId);
+    json->setProperty("outputId", outputId);
+    json->setProperty("oldDimension", oldDim);
+    json->setProperty("newDimension", newDim);
+    json->setProperty("mappingCount", panel.mappings.size());
+    data = PresetJson::toVar(json);
+
+    message = "Mod matrix dimension menu item invoked";
     return true;
 }
 

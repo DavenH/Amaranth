@@ -45,6 +45,10 @@ private:
     bool openFactoryPreset(const var& command, String& message, var& data);
     bool listMenus(const var& command, String& message, var& data);
     bool invokeMenuItem(const var& command, String& message, var& data);
+    bool listModMatrixMenu(const var& command, String& message, var& data);
+    bool invokeModMatrixMenu(const var& command, String& message, var& data);
+    bool listModMatrixDimensionMenu(const var& command, String& message, var& data);
+    bool invokeModMatrixDimensionMenu(const var& command, String& message, var& data);
     bool inspectTargets(const var& command, String& message, var& data);
     bool inspectTree(const var& command, String& message, var& data);
     bool setControl(const var& command, String& message, var& data);

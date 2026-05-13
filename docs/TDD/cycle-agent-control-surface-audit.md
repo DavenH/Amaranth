@@ -27,7 +27,7 @@ From `CycleAutomation.cpp`:
 - 19 inspectable areas are listed in `kInspectableAreas`.
 - 12 `TourGuide` areas are scanned for named targets in `kTourGuideAreas`.
 - 96 named targets are listed in `kInspectableTargets`.
-- 26 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
+- 27 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
 
 Named coverage is strongest for:
 
@@ -57,6 +57,8 @@ These should be added before trying to claim near-total UI coverage.
      popup rows by pixels.
    - First targets:
      - `ModMatrixPanel` source, destination, and matrix-cell dimension menus.
+       Source/input, destination/output, and matrix-cell dimension menus are
+       started through mod-matrix menu commands.
      - `EnvelopeInter2D` layer config menu.
      - `SelectorPanel` layer selection menu.
      - `HoverSelector` and `MeshSelector` mesh menus.

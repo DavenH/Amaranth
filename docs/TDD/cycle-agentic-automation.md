@@ -580,6 +580,8 @@ Status: partially implemented with an opt-in local smoke runner.
     `cycle-agent-layer-buttons.json`.
   - resolving generic effect enable and parameter targets. Covered by
     `cycle-agent-effect-targets.json`.
+  - listing and invoking modulation-matrix source/destination popup menus.
+    Covered by `cycle-agent-modmatrix-menu.json`.
   - executing a `CycleTour` action. Covered by
     `cycle-agent-general-controls.json`.
 - Add a local test command that runs these through `scripts/run_cycle_agent.sh`.
@@ -636,6 +638,7 @@ scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-broader-controls.json /p
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-factory-preset.json /private/tmp/cycle-agent-factory-preset-report.json /private/tmp/cycle-agent-factory-preset-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-general-controls.json /private/tmp/cycle-agent-general-controls-report.json /private/tmp/cycle-agent-general-controls-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-waveform3d-state.json /private/tmp/cycle-agent-waveform3d-state-report.json /private/tmp/cycle-agent-waveform3d-state-logs.txt
+scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-modmatrix-menu.json /private/tmp/cycle-agent-modmatrix-menu-report.json /private/tmp/cycle-agent-modmatrix-menu-logs.txt
 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-audio-capture.json /private/tmp/cycle-agent-audio-capture-report.json /private/tmp/cycle-agent-audio-capture-logs.txt
 CYCLE_AGENT_ALLOW_FAILURES=1 scripts/run_cycle_agent.sh scripts/fixtures/cycle-agent-assert-failure.json /private/tmp/cycle-agent-assert-failure-report.json /private/tmp/cycle-agent-assert-failure-logs.txt
 scripts/run_cycle_agent_smokes.sh
@@ -684,6 +687,10 @@ Current verified behavior:
   `TargEffectParam9` address `GuilessEffect` knobs by stable target name for
   Delay, Reverb, and EQ. `TargEffectEnable` addresses the generic effect enable
   button and the Waveshaper enable button.
+- `listModMatrixMenu` and `invokeModMatrixMenu` expose the modulation matrix
+  source/input and destination/output popup models without requiring native
+  popup row coordinates. `listModMatrixDimensionMenu` and
+  `invokeModMatrixDimensionMenu` cover the cell dimension popup choices.
 - `setControl` also covers representative master sliders, effect knobs,
   ComboBoxes, and Waveform3D layer pan; semantic `Enable`/`Disable` actions
   cover the current Waveform3D layer active toggle.
