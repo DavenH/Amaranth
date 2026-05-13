@@ -1,0 +1,35 @@
+{
+  "commands": [
+    {
+      "command": "action",
+      "actionType": "ShowArea",
+      "area": "AreaWfrmWaveform3D",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "listHoverSelectorMenu",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargMeshSelector"
+    },
+    {
+      "command": "invokeHoverSelectorMenu",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargMeshSelector",
+      "itemId": 1,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargMeshSelector"
+    },
+    {
+      "command": "assertState",
+      "path": "timeLayer.currentMesh.vertices",
+      "greaterThan": 0
+    }
+  ],
+  "quit": true
+}

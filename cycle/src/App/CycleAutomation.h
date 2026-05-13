@@ -53,6 +53,8 @@ private:
     bool invokeEnvelopeConfigMenu(const var& command, String& message, var& data);
     bool listSelectorMenu(const var& command, String& message, var& data);
     bool invokeSelectorMenu(const var& command, String& message, var& data);
+    bool listHoverSelectorMenu(const var& command, String& message, var& data);
+    bool invokeHoverSelectorMenu(const var& command, String& message, var& data);
     bool inspectTargets(const var& command, String& message, var& data);
     bool inspectTree(const var& command, String& message, var& data);
     bool setControl(const var& command, String& message, var& data);

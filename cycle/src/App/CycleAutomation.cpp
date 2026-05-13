@@ -18,6 +18,7 @@
 #include <Inter/EnvelopeInter2D.h>
 #include <Inter/Interactor.h>
 #include <UI/Panels/Panel.h>
+#include <UI/Widgets/Controls/HoverSelector.h>
 #include <UI/Widgets/Controls/SelectorPanel.h>
 #include <UI/Widgets/TabbedSelector.h>
 
@@ -561,6 +562,13 @@ namespace {
         json->setProperty("currentIndex", selector.getCurrentIndexExternal());
         json->setProperty("displayIndex", selector.getCurrentIndexExternal() + 1);
         json->setProperty("itemCount", selector.getSize());
+        return PresetJson::toVar(json);
+    }
+
+    var hoverSelectorState(HoverSelector& selector) {
+        auto json = PresetJson::object();
+        json->setProperty("menuActive", selector.menuActive);
+        json->setProperty("horizontal", selector.horizontal);
         return PresetJson::toVar(json);
     }
 
@@ -2100,6 +2108,10 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = listSelectorMenu(command, message, data);
     } else if (type == "invokeSelectorMenu") {
         ok = invokeSelectorMenu(command, message, data);
+    } else if (type == "listHoverSelectorMenu") {
+        ok = listHoverSelectorMenu(command, message, data);
+    } else if (type == "invokeHoverSelectorMenu") {
+        ok = invokeHoverSelectorMenu(command, message, data);
     } else if (type == "inspectTargets") {
         ok = inspectTargets(command, message, data);
     } else if (type == "inspectTree") {
@@ -2990,6 +3002,103 @@ bool CycleAutomation::invokeSelectorMenu(const var& command, String& message, va
     return true;
 }
 
+bool CycleAutomation::listHoverSelectorMenu(const var& command, String& message, var& data) {
+    auto* selector = dynamic_cast<HoverSelector*>(resolveComponent(command));
+
+    if (selector == nullptr) {
+        message = "Hover selector menu requires an area/target resolving to HoverSelector";
+        return false;
+    }
+
+    selector->prepareForPopup();
+
+    Array<var> items;
+    appendMenuItems(items, selector->menu, "HoverSelector", 0, {});
+
+    auto json = PresetJson::object();
+    json->setProperty("area", getString(command, "area"));
+    json->setProperty("target", getString(command, "target"));
+    json->setProperty("itemCount", items.size());
+    json->setProperty("items", var(items));
+    json->setProperty("selector", hoverSelectorState(*selector));
+    data = PresetJson::toVar(json);
+
+    message = "Listed hover selector menu";
+    return true;
+}
+
+bool CycleAutomation::invokeHoverSelectorMenu(const var& command, String& message, var& data) {
+    auto* selector = dynamic_cast<HoverSelector*>(resolveComponent(command));
+
+    if (selector == nullptr) {
+        message = "Hover selector menu requires an area/target resolving to HoverSelector";
+        return false;
+    }
+
+    selector->prepareForPopup();
+
+    PopupMenu::Item item;
+    StringArray path = commandMenuPath(command);
+    var itemIdVar = PresetJson::property(command, "itemId");
+
+    if (itemIdVar.isVoid()) {
+        itemIdVar = PresetJson::property(command, "id");
+    }
+
+    bool found = false;
+
+    if (!itemIdVar.isVoid()) {
+        found = findMenuItemById(selector->menu, int(itemIdVar), item);
+    } else if (!path.isEmpty()) {
+        found = findMenuItemByPath(selector->menu, path, 0, item);
+    }
+
+    if (!found) {
+        message = "Hover selector menu item could not be resolved";
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("area", getString(command, "area"));
+    json->setProperty("target", getString(command, "target"));
+    json->setProperty("text", item.text);
+    json->setProperty("itemId", item.itemID);
+    json->setProperty("enabled", item.isEnabled);
+    json->setProperty("tickedBefore", item.isTicked);
+    json->setProperty("selection", selector->itemIsSelection(item.itemID));
+    json->setProperty("path", pathToVar(path));
+    json->setProperty("before", hoverSelectorState(*selector));
+
+    if (!item.isEnabled && !getBool(command, "allowDisabled")) {
+        data = PresetJson::toVar(json);
+        message = "Hover selector menu item is disabled: " + item.text;
+        return false;
+    }
+
+    if (!selector->itemIsSelection(item.itemID) && !getBool(command, "allowNonSelection")) {
+        data = PresetJson::toVar(json);
+        message = "Hover selector menu item is not a selection: " + item.text;
+        return false;
+    }
+
+    if (item.itemID == 0) {
+        data = PresetJson::toVar(json);
+        message = "Hover selector menu item is not triggerable: " + item.text;
+        return false;
+    }
+
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
+    selector->setSelectedId(item.itemID);
+    drainMessageLoopIfRequested(command);
+
+    json->setProperty("waitedForIdle", waitedForIdle);
+    json->setProperty("after", hoverSelectorState(*selector));
+    data = PresetJson::toVar(json);
+
+    message = "Hover selector menu item invoked: " + item.text;
+    return true;
+}
+
 bool CycleAutomation::inspectTargets(const var& command, String& message, var& data) {
     String requestedArea = getString(command, "area");
     String requestedTarget = getString(command, "target");
@@ -3800,6 +3909,10 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("currentIndex", selector->getCurrentIndexExternal());
         json->setProperty("displayIndex", selector->getCurrentIndexExternal() + 1);
         json->setProperty("itemCount", selector->getSize());
+    } else if (auto* hoverSelector = dynamic_cast<HoverSelector*>(component)) {
+        json->setProperty("controlType", "hoverSelector");
+        json->setProperty("menuActive", hoverSelector->menuActive);
+        json->setProperty("horizontal", hoverSelector->horizontal);
     } else {
         json->setProperty("controlType", "component");
     }

@@ -27,7 +27,7 @@ From `CycleAutomation.cpp`:
 - 19 inspectable areas are listed in `kInspectableAreas`.
 - 12 `TourGuide` areas are scanned for named targets in `kTourGuideAreas`.
 - 96 named targets are listed in `kInspectableTargets`.
-- 29 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
+- 30 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
 
 Named coverage is strongest for:
 
@@ -67,6 +67,8 @@ These should be added before trying to claim near-total UI coverage.
        Started with generic `listSelectorMenu` and `invokeSelectorMenu`
        commands for named `SelectorPanel` targets.
      - `HoverSelector` and `MeshSelector` mesh menus.
+       Started with generic `listHoverSelectorMenu` and
+       `invokeHoverSelectorMenu` commands for named hover-selector targets.
    - Each command should expose inspect and invoke modes: list available items,
      then select by path/text/id.
 
@@ -167,6 +169,8 @@ need either semantic commands or a shared popup-model adapter:
 - layer selector popup,
   started with generic selector list/invoke commands and a focused fixture,
 - hover selector and mesh selector menus,
+  started with generic hover-selector list/invoke commands and a focused
+  waveform mesh-selector fixture,
 - mesh save/copy/paste/double actions in `MeshSelector`,
 - tutorials submenu.
 
