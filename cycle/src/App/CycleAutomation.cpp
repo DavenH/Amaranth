@@ -28,6 +28,8 @@
 #include "KeyboardInputHandler.h"
 
 #include "../UI/Panels/MainPanel.h"
+#include "../UI/Panels/BannerPanel.h"
+#include "../UI/Panels/DerivativePanel.h"
 #include "../UI/Panels/ModMatrixPanel.h"
 #include "../UI/Panels/PlaybackPanel.h"
 #include "../UI/Panels/SynthMenuBarModel.h"
@@ -43,6 +45,7 @@
 namespace {
     const char* const kInspectableAreas[] = {
         "AreaMain",
+        "AreaSharpBand",
         "AreaWshpEditor",
         "AreaWfrmWaveform3D",
         "AreaSpectrum",
@@ -186,6 +189,7 @@ namespace {
         "TargMainBottomTabs",
         "TargMainTopTabs",
         "TargMidiKeyboard",
+        "TargMainBanner",
         "TargEffectParam0",
         "TargEffectParam1",
         "TargEffectParam2",
@@ -3936,6 +3940,10 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("progress", playbackPanel->getProgress());
         json->setProperty("playing", playbackPanel->isPlaying());
         json->setProperty("envelopePosition", playbackPanel->getEnvelopePos());
+    } else if (dynamic_cast<BannerPanel*>(component) != nullptr) {
+        json->setProperty("controlType", "bannerPanel");
+    } else if (dynamic_cast<DerivativePanel*>(component) != nullptr) {
+        json->setProperty("controlType", "derivativePanel");
     } else {
         json->setProperty("controlType", "component");
     }

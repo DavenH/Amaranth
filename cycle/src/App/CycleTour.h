@@ -306,6 +306,7 @@ public:
 		TargMainBottomTabs = 100,
 		TargMainTopTabs,
         TargMidiKeyboard,
+        TargMainBanner,
 	};
 
     enum EffectTargets

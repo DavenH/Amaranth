@@ -27,7 +27,7 @@ From `CycleAutomation.cpp`:
 - 19 inspectable areas are listed in `kInspectableAreas`.
 - 12 `TourGuide` areas are scanned for named targets in `kTourGuideAreas`.
 - 96 named targets are listed in `kInspectableTargets`.
-- 32 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
+- 33 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
 
 Named coverage is strongest for:
 
@@ -204,6 +204,9 @@ High-priority custom mouse surfaces:
 - `MainPanel`, `BannerPanel`, `DerivativePanel`, `VertexPropertiesPanel`, and
   `ZoomPanel`: hover/click paths that currently do not have stable automation
   assertions.
+  Started for `BannerPanel` naming via `AreaMain` / `TargMainBanner`, and for
+  visible `DerivativePanel` pointer coverage via `AreaSharpBand`, with a
+  focused hover-surface fixture.
 - `SamplePlacer`: sample placement mouse workflow.
 - `Dragger` and `PulloutComponent`: layout and pullout interactions.
 
