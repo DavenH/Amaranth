@@ -115,6 +115,10 @@ CycleTour::CycleTour(SingletonRepo* repo) :
 
     B(TargMasterVol),      B(TargMasterOct),     B(TargMasterLen);
     B(TargMainBottomTabs), B(TargMainTopTabs),   B(TargMidiKeyboard),   B(TargMainBanner);
+    B(TargMainDraggerUnifiedTopBottom), B(TargMainDraggerUnifiedSpectSurf);
+    B(TargMainDraggerUnifiedWhole), B(TargMainDraggerUnifiedEnvDfmImp), B(TargMainDraggerUnifiedDfmImp);
+    B(TargMainDraggerCollapsedWhole), B(TargMainDraggerCollapsedMiddle);
+    B(TargMainDraggerCollapsedEnvSpect), B(TargMainDraggerCollapsedSpectSurf);
     B(TargEffectParam0),   B(TargEffectParam1),  B(TargEffectParam2),   B(TargEffectParam3);
     B(TargEffectParam4),   B(TargEffectParam5),  B(TargEffectParam6),   B(TargEffectParam7);
     B(TargEffectParam8),   B(TargEffectParam9),  B(TargEffectEnable);

@@ -17,6 +17,8 @@
 #include <Definitions.h>
 #include <Inter/EnvelopeInter2D.h>
 #include <Inter/Interactor.h>
+#include <UI/Layout/Dragger.h>
+#include <UI/Layout/PanelPair.h>
 #include <UI/Panels/Panel.h>
 #include <UI/Widgets/Controls/HoverSelector.h>
 #include <UI/Widgets/Controls/SelectorPanel.h>
@@ -190,6 +192,15 @@ namespace {
         "TargMainTopTabs",
         "TargMidiKeyboard",
         "TargMainBanner",
+        "TargMainDraggerUnifiedTopBottom",
+        "TargMainDraggerUnifiedSpectSurf",
+        "TargMainDraggerUnifiedWhole",
+        "TargMainDraggerUnifiedEnvDfmImp",
+        "TargMainDraggerUnifiedDfmImp",
+        "TargMainDraggerCollapsedWhole",
+        "TargMainDraggerCollapsedMiddle",
+        "TargMainDraggerCollapsedEnvSpect",
+        "TargMainDraggerCollapsedSpectSurf",
         "TargEffectParam0",
         "TargEffectParam1",
         "TargEffectParam2",
@@ -840,8 +851,15 @@ namespace {
             return { float(double(xValue)), float(double(yValue)) };
         }
 
-        var normalizedX = PresetJson::property(command, "normalizedX");
-        var normalizedY = PresetJson::property(command, "normalizedY");
+        String normalizedXName = xName == "downX" ? "normalizedDownX" : "normalizedX";
+        String normalizedYName = yName == "downY" ? "normalizedDownY" : "normalizedY";
+        var normalizedX = PresetJson::property(command, normalizedXName);
+        var normalizedY = PresetJson::property(command, normalizedYName);
+
+        if ((normalizedX.isVoid() || normalizedY.isVoid()) && xName != "x" && yName != "y") {
+            normalizedX = PresetJson::property(command, "normalizedX");
+            normalizedY = PresetJson::property(command, "normalizedY");
+        }
 
         if (!normalizedX.isVoid() && !normalizedY.isVoid()) {
             return {
@@ -3944,6 +3962,14 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("controlType", "bannerPanel");
     } else if (dynamic_cast<DerivativePanel*>(component) != nullptr) {
         json->setProperty("controlType", "derivativePanel");
+    } else if (auto* dragger = dynamic_cast<Dragger*>(component)) {
+        json->setProperty("controlType", "dragger");
+
+        if (PanelPair* pair = dragger->getPair()) {
+            json->setProperty("portion", pair->getPortion());
+            json->setProperty("orientation", pair->sideBySide ? "vertical" : "horizontal");
+            json->setProperty("pairBounds", rectangleState(pair->getBounds()));
+        }
     } else {
         json->setProperty("controlType", "component");
     }

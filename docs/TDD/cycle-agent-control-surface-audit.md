@@ -26,8 +26,8 @@ From `CycleAutomation.cpp`:
 
 - 19 inspectable areas are listed in `kInspectableAreas`.
 - 12 `TourGuide` areas are scanned for named targets in `kTourGuideAreas`.
-- 96 named targets are listed in `kInspectableTargets`.
-- 33 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
+- 125 named targets are listed in `kInspectableTargets`.
+- 34 focused `scripts/fixtures/cycle-agent-*.json` fixtures exist.
 
 Named coverage is strongest for:
 
@@ -209,6 +209,9 @@ High-priority custom mouse surfaces:
   focused hover-surface fixture.
 - `SamplePlacer`: sample placement mouse workflow.
 - `Dragger` and `PulloutComponent`: layout and pullout interactions.
+  Started for the `MainPanel` unified/collapsed draggers with stable target
+  names, dragger layout state inspection, and a focused fixture that sends
+  down/drag/up events through the socket automation path.
 
 ## Preset Authoring Implications
 

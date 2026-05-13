@@ -1,0 +1,56 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaMain",
+      "target": "TargMainDraggerUnifiedTopBottom"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "AreaMain",
+      "target": "TargMainDraggerUnifiedSpectSurf"
+    },
+    {
+      "command": "pointer",
+      "area": "AreaMain",
+      "target": "TargMainDraggerUnifiedTopBottom",
+      "event": "down",
+      "normalizedX": 0.5,
+      "normalizedY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "pointer",
+      "area": "AreaMain",
+      "target": "TargMainDraggerUnifiedTopBottom",
+      "event": "drag",
+      "normalizedX": 0.5,
+      "normalizedY": 0.5,
+      "normalizedDownX": 0.5,
+      "normalizedDownY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "pointer",
+      "area": "AreaMain",
+      "target": "TargMainDraggerUnifiedTopBottom",
+      "event": "up",
+      "normalizedX": 0.5,
+      "normalizedY": 0.5,
+      "normalizedDownX": 0.5,
+      "normalizedDownY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaMain",
+      "target": "TargMainDraggerUnifiedTopBottom",
+      "path": "portion",
+      "exists": true
+    }
+  ],
+  "quit": true
+}

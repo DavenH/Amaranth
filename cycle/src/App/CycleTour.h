@@ -301,13 +301,22 @@ public:
 		TargMasterLen,
 	};
 
-	enum MainTargets
-	{
-		TargMainBottomTabs = 100,
-		TargMainTopTabs,
+    enum MainTargets
+    {
+        TargMainBottomTabs = 100,
+        TargMainTopTabs,
         TargMidiKeyboard,
         TargMainBanner,
-	};
+        TargMainDraggerUnifiedTopBottom,
+        TargMainDraggerUnifiedSpectSurf,
+        TargMainDraggerUnifiedWhole,
+        TargMainDraggerUnifiedEnvDfmImp,
+        TargMainDraggerUnifiedDfmImp,
+        TargMainDraggerCollapsedWhole,
+        TargMainDraggerCollapsedMiddle,
+        TargMainDraggerCollapsedEnvSpect,
+        TargMainDraggerCollapsedSpectSurf,
+    };
 
     enum EffectTargets
     {

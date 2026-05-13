@@ -1161,6 +1161,24 @@ juce::Component* MainPanel::getComponent(int which) {
             return keyboard;
         case CycleTour::TargMainBanner:
             return bannerPanel;
+        case CycleTour::TargMainDraggerUnifiedTopBottom:
+            return xv_topBotDragger;
+        case CycleTour::TargMainDraggerUnifiedSpectSurf:
+            return xv_spectSurfDragger;
+        case CycleTour::TargMainDraggerUnifiedWhole:
+            return xv_wholeDragger;
+        case CycleTour::TargMainDraggerUnifiedEnvDfmImp:
+            return xv_envDfmImpDragger;
+        case CycleTour::TargMainDraggerUnifiedDfmImp:
+            return xv_dfmImpDragger;
+        case CycleTour::TargMainDraggerCollapsedWhole:
+            return cv_wholeDragger;
+        case CycleTour::TargMainDraggerCollapsedMiddle:
+            return cv_middleDragger;
+        case CycleTour::TargMainDraggerCollapsedEnvSpect:
+            return cv_envSpectDragger;
+        case CycleTour::TargMainDraggerCollapsedSpectSurf:
+            return cv_spectSurfDragger;
         case CompWaveform2DZoomH:
             return waveform2D->getZoomPanel()->getComponent(true);
         case CompWaveform2DZoomW:

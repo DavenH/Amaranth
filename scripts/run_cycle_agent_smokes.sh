@@ -40,6 +40,7 @@ run_fixture hover-selector-menu scripts/fixtures/cycle-agent-hover-selector-menu
 run_fixture midi-keyboard-pointer scripts/fixtures/cycle-agent-midi-keyboard-pointer.json
 run_fixture playback-pointer scripts/fixtures/cycle-agent-playback-pointer.json
 run_fixture hover-surfaces scripts/fixtures/cycle-agent-hover-surfaces.json
+run_fixture main-draggers scripts/fixtures/cycle-agent-main-draggers.json
 run_fixture midi-note scripts/fixtures/cycle-agent-midi-note.json
 run_fixture audio-capture scripts/fixtures/cycle-agent-audio-capture.json
 
