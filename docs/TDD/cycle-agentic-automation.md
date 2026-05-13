@@ -68,6 +68,8 @@ Implemented:
   - `invokeMenuItem`,
   - `listEnvelopeConfigMenu`,
   - `invokeEnvelopeConfigMenu`,
+  - `listSelectorMenu`,
+  - `invokeSelectorMenu`,
   - `screenshot`,
   - `captureAudio`,
   - `inspectTargets`,

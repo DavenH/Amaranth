@@ -18,6 +18,7 @@
 #include <Inter/EnvelopeInter2D.h>
 #include <Inter/Interactor.h>
 #include <UI/Panels/Panel.h>
+#include <UI/Widgets/Controls/SelectorPanel.h>
 #include <UI/Widgets/TabbedSelector.h>
 
 #include "CycleTour.h"
@@ -541,6 +542,26 @@ namespace {
 
         menu.addSubMenu("Duration scale", scaleMenu, true);
         return menu;
+    }
+
+    PopupMenu selectorMenuForPanel(SelectorPanel& selector) {
+        PopupMenu menu;
+        int size = selector.getSize();
+        int currentIndex = selector.getCurrentIndexExternal();
+
+        for (int i = 0; i < size; ++i) {
+            menu.addItem(i + 1, String(i + 1), true, i == currentIndex);
+        }
+
+        return menu;
+    }
+
+    var selectorState(SelectorPanel& selector) {
+        auto json = PresetJson::object();
+        json->setProperty("currentIndex", selector.getCurrentIndexExternal());
+        json->setProperty("displayIndex", selector.getCurrentIndexExternal() + 1);
+        json->setProperty("itemCount", selector.getSize());
+        return PresetJson::toVar(json);
     }
 
     var makeResult(const String& type, bool ok, const String& message, const var& data = {}) {
@@ -2075,6 +2096,10 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = listEnvelopeConfigMenu(command, message, data);
     } else if (type == "invokeEnvelopeConfigMenu") {
         ok = invokeEnvelopeConfigMenu(command, message, data);
+    } else if (type == "listSelectorMenu") {
+        ok = listSelectorMenu(command, message, data);
+    } else if (type == "invokeSelectorMenu") {
+        ok = invokeSelectorMenu(command, message, data);
     } else if (type == "inspectTargets") {
         ok = inspectTargets(command, message, data);
     } else if (type == "inspectTree") {
@@ -2874,6 +2899,94 @@ bool CycleAutomation::invokeEnvelopeConfigMenu(const var& command, String& messa
     data = PresetJson::toVar(json);
 
     message = "Envelope config menu item invoked: " + item.text;
+    return true;
+}
+
+bool CycleAutomation::listSelectorMenu(const var& command, String& message, var& data) {
+    auto* selector = dynamic_cast<SelectorPanel*>(resolveComponent(command));
+
+    if (selector == nullptr) {
+        message = "Selector menu requires an area/target resolving to SelectorPanel";
+        return false;
+    }
+
+    PopupMenu menu = selectorMenuForPanel(*selector);
+    Array<var> items;
+    appendMenuItems(items, menu, "SelectorPanel", 0, {});
+
+    auto json = PresetJson::object();
+    json->setProperty("area", getString(command, "area"));
+    json->setProperty("target", getString(command, "target"));
+    json->setProperty("itemCount", items.size());
+    json->setProperty("items", var(items));
+    json->setProperty("selector", selectorState(*selector));
+    data = PresetJson::toVar(json);
+
+    message = "Listed selector menu";
+    return true;
+}
+
+bool CycleAutomation::invokeSelectorMenu(const var& command, String& message, var& data) {
+    auto* selector = dynamic_cast<SelectorPanel*>(resolveComponent(command));
+
+    if (selector == nullptr) {
+        message = "Selector menu requires an area/target resolving to SelectorPanel";
+        return false;
+    }
+
+    PopupMenu menu = selectorMenuForPanel(*selector);
+    PopupMenu::Item item;
+    StringArray path = commandMenuPath(command);
+    var itemIdVar = PresetJson::property(command, "itemId");
+
+    if (itemIdVar.isVoid()) {
+        itemIdVar = PresetJson::property(command, "id");
+    }
+
+    bool found = false;
+
+    if (!itemIdVar.isVoid()) {
+        found = findMenuItemById(menu, int(itemIdVar), item);
+    } else if (!path.isEmpty()) {
+        found = findMenuItemByPath(menu, path, 0, item);
+    }
+
+    if (!found) {
+        message = "Selector menu item could not be resolved";
+        return false;
+    }
+
+    auto json = PresetJson::object();
+    json->setProperty("area", getString(command, "area"));
+    json->setProperty("target", getString(command, "target"));
+    json->setProperty("text", item.text);
+    json->setProperty("itemId", item.itemID);
+    json->setProperty("enabled", item.isEnabled);
+    json->setProperty("tickedBefore", item.isTicked);
+    json->setProperty("path", pathToVar(path));
+    json->setProperty("before", selectorState(*selector));
+
+    if (!item.isEnabled && !getBool(command, "allowDisabled")) {
+        data = PresetJson::toVar(json);
+        message = "Selector menu item is disabled: " + item.text;
+        return false;
+    }
+
+    if (item.itemID == 0) {
+        data = PresetJson::toVar(json);
+        message = "Selector menu item is not triggerable: " + item.text;
+        return false;
+    }
+
+    bool waitedForIdle = drainMessageLoopIfRequested(command);
+    selector->clickedOnRow(item.itemID - 1);
+    drainMessageLoopIfRequested(command);
+
+    json->setProperty("waitedForIdle", waitedForIdle);
+    json->setProperty("after", selectorState(*selector));
+    data = PresetJson::toVar(json);
+
+    message = "Selector menu item invoked: " + item.text;
     return true;
 }
 
@@ -3682,6 +3795,11 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("selectedIndex", tabbedSelector->getSelectedId());
         json->setProperty("tabCount", tabbedSelector->getNumTabs());
         json->setProperty("tabs", var(tabs));
+    } else if (auto* selector = dynamic_cast<SelectorPanel*>(component)) {
+        json->setProperty("controlType", "selectorPanel");
+        json->setProperty("currentIndex", selector->getCurrentIndexExternal());
+        json->setProperty("displayIndex", selector->getCurrentIndexExternal() + 1);
+        json->setProperty("itemCount", selector->getSize());
     } else {
         json->setProperty("controlType", "component");
     }
