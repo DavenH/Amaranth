@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "productId": "oscillo",
+  "productName": "Oscillo",
+  "version": "0.0.1",
+  "companyName": "Amaranth Audio",
+  "packageName": "Oscillo",
+  "zipName": "Oscillo.zip",
+  "artifacts": [
+    {
+      "id": "standalone",
+      "name": "Standalone Application",
+      "sources": {
+        "mac": "Oscillo.app",
+        "linux": "Oscillo"
+      },
+      "required": false,
+      "destinations": {
+        "mac": [
+          {
+            "id": "applications",
+            "name": "Applications",
+            "path": "${applications}/Amaranth Audio",
+            "enabled": true
+          }
+        ],
+        "linux": [
+          {
+            "id": "local-bin",
+            "name": "User Applications",
+            "path": "${userHome}/.local/bin",
+            "enabled": true
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -190,10 +190,14 @@ void AmaranthLookAndFeel::drawFileBrowserRow(
         const int sizeX = roundToInt(width * 0.7f);
         const int dateX = roundToInt(width * 0.8f);
 
-        getObj(MiscGraphics).drawCentredText(g, Rectangle<int>(x, 0, sizeX - x, height), filename,
-                                             Justification::centredLeft);
+        MiscGraphics::drawCentredText(g, Rectangle<int>(x, 0, sizeX - x, height), filename,
+                                      Justification::centredLeft);
 //      g.drawFittedText(filename, x, 0, sizeX - x, height, Justification::centredLeft, 1);
-        g.setFont(*getObj(MiscGraphics).getSilkscreen());
+        if (getSingletonRepo() != nullptr) {
+            g.setFont(*getObj(MiscGraphics).getSilkscreen());
+        } else {
+            g.setFont(Font(FontOptions(10)));
+        }
         g.setColour(Colours::grey);
 
         if (!isDirectory) {
@@ -600,7 +604,7 @@ void AmaranthLookAndFeel::drawTableHeaderColumn(Graphics& g, TableHeaderComponen
 
     const int textX = 4;
 
-    getObj(MiscGraphics).drawShadowedText(g, columnName, textX, 3 * height / 4 - 2, g.getCurrentFont(), 0.65f);
+    MiscGraphics::drawShadowedText(g, columnName, textX, 3 * height / 4 - 2, g.getCurrentFont(), 0.65f);
 }
 
 void AmaranthLookAndFeel::drawPopupMenuItem(Graphics& g,
@@ -679,7 +683,7 @@ void AmaranthLookAndFeel::drawPopupMenuItem(Graphics& g,
         }
 
         r.removeFromRight(3);
-        getObj(MiscGraphics).drawCentredText(g, r, text, Justification::centredLeft);
+        MiscGraphics::drawCentredText(g, r, text, Justification::centredLeft);
 
         if (shortcutKeyText.isNotEmpty()) {
             Font f2(font);
@@ -687,7 +691,7 @@ void AmaranthLookAndFeel::drawPopupMenuItem(Graphics& g,
             f2.setHorizontalScale(0.95f);
 
             g.setFont(f2);
-            getObj(MiscGraphics).drawCentredText(g, r, shortcutKeyText, Justification::centredRight);
+            MiscGraphics::drawCentredText(g, r, shortcutKeyText, Justification::centredRight);
         }
 
     }
@@ -728,7 +732,7 @@ void AmaranthLookAndFeel::drawComboBox(Graphics& g, int width, int height,
     g.fillPath(arrow);
     g.setOpacity(1.f);
     g.setColour(box.findColour(ComboBox::outlineColourId));
-    getObj(MiscGraphics).drawCorneredRectangle(g, Rectangle<int>(0, 0, width - 1, height - 1));
+    MiscGraphics::drawCorneredRectangle(g, Rectangle<int>(0, 0, width - 1, height - 1));
 }
 
 void AmaranthLookAndFeel::positionComboBoxText(ComboBox& box, Label& label) {
