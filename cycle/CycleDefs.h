@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CycleVersion.h"
 #include "JuceHeader.h"
 #include <Definitions.h>
 #include <Util/Util.h>
@@ -32,6 +33,6 @@
 namespace ProjectInfo
 {
   const char* const  projectName    = "Cycle";
-  const char* const  versionString  = "1.9.0";
-  const int          versionNumber  = 0x10900;
+  const char* const  versionString  = CYCLE_VERSION_STRING;
+  const int          versionNumber  = CYCLE_VERSION_CODE;
 }

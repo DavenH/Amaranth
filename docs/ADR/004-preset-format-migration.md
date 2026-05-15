@@ -14,7 +14,7 @@ Cycle preset loading currently mixes three concerns:
 
 Recent debugging showed that the current preset readers no longer align cleanly
 with the old preset schema captured in
-[preset-schema-v1.json](/Users/daven.hughes/CLionProjects/Amaranth/cycle/content/presets/preset-schema-v1.json).
+[preset-schema-v1.json](../../cycle/content/presets/preset-schema-v1.json).
 Examples include:
 
 - the old `AllMeshes` schema versus the current `MeshLibrary` group/layer model,
@@ -151,7 +151,7 @@ The highest-risk migration areas are:
   in the new format rather than extended in the old XML model.
 
 The old schema in
-[preset-schema-v1.json](/Users/daven.hughes/CLionProjects/Amaranth/cycle/content/presets/preset-schema-v1.json)
+[preset-schema-v1.json](../../cycle/content/presets/preset-schema-v1.json)
 should be treated as a legacy migration reference, not as the target for new
 serializers.
 

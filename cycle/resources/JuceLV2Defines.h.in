@@ -1,0 +1,3 @@
+#pragma once
+
+#define JucePlugin_LV2URI "https://www.amaranthaudio.com/plugins/cycle"

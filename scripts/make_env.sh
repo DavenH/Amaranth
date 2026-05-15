@@ -69,10 +69,14 @@ echo
 DEFAULT_CATCH2_DIR="/usr/local/lib/cmake/Catch2"
 DEFAULT_IPP_DIR="/opt/intel/oneapi/ipp/latest"   # ignored on macOS
 DEFAULT_JUCE_MODULES_DIR="${INSTALL_ROOT}/JUCE/modules"
+DEFAULT_JUCE_ROOT="${INSTALL_ROOT}/JUCE"
 DEFAULT_VST3_DIR="${INSTALL_ROOT}/vst3sdk"
+DEFAULT_AUDIO_PLUGIN_HOST_BUILD_DIR="${INSTALL_ROOT}/AudioPluginHost-build"
 
 JUCE_DIR="$(prompt_directory "Enter JUCE modules directory" "${DEFAULT_JUCE_MODULES_DIR}")"
+JUCE_ROOT="$(prompt_directory "Enter JUCE root directory" "${DEFAULT_JUCE_ROOT}")"
 VST3_DIR="$(prompt_directory "Enter VST3 SDK directory" "${DEFAULT_VST3_DIR}")"
+AUDIO_PLUGIN_HOST_BUILD_DIR="$(prompt_directory "Enter AudioPluginHost build directory" "${DEFAULT_AUDIO_PLUGIN_HOST_BUILD_DIR}")"
 
 if $IS_MACOS; then
   # IPP is not used on macOS; vDSP/Accelerate is part of Xcode/CLT
@@ -92,8 +96,10 @@ mkdir -p "$(dirname "$INSTALL_ROOT")"
   echo "# Platform: ${OS_NAME}"
   echo
   echo "JUCE_MODULES_DIR=${JUCE_DIR}"
+  echo "JUCE_ROOT=${JUCE_ROOT}"
   echo "VST3_SDK_DIR=${VST3_DIR}"
   echo "CATCH2_CMAKE_DIR=${CATCH2_DIR}"
+  echo "AUDIO_PLUGIN_HOST_BUILD_DIR=${AUDIO_PLUGIN_HOST_BUILD_DIR}"
   if $IS_MACOS; then
     echo "MACOS=1"
     echo "VDSP=1               # macOS uses Accelerate/vDSP"
@@ -110,6 +116,7 @@ echo "Validating directories..."
 ERRORS=0
 
 validate_directory "$JUCE_DIR" "JUCE modules" "required" || ((ERRORS++))
+validate_directory "$JUCE_ROOT" "JUCE root" "required" || ((ERRORS++))
 validate_directory "$VST3_DIR" "VST3 SDK" "required" || ((ERRORS++))
 validate_directory "$CATCH2_DIR" "Catch2" "required" || ((ERRORS++))
 

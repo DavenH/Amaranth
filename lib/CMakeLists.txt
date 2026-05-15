@@ -84,7 +84,13 @@ set(COMMON_DEFINITIONS
 )
 
 if(BUILD_TYPE STREQUAL "Plugin")
-    list(APPEND COMMON_DEFINITIONS JUCE_STANDALONE_APPLICATION=0)
+    list(APPEND COMMON_DEFINITIONS
+        JUCE_STANDALONE_APPLICATION=0
+        JucePlugin_Build_AU=1
+        JucePlugin_Build_VST3=1
+        JucePlugin_Build_AAX=1
+        JucePlugin_Build_LV2=1
+    )
 else()
     list(APPEND COMMON_DEFINITIONS JUCE_STANDALONE_APPLICATION=1)
 endif()

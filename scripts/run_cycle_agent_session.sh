@@ -1,7 +1,9 @@
 #!/bin/zsh
 set -euo pipefail
 
-APP_PATH="${CYCLE_APP_PATH:-/Users/daven/repos/Amaranth/build/standalone-debug/cycle/Cycle.app}"
+SCRIPT_DIR="${0:A:h}"
+REPO_ROOT="${SCRIPT_DIR:h}"
+APP_PATH="${CYCLE_APP_PATH:-$REPO_ROOT/build/standalone-debug/cycle/Cycle.app}"
 SOCKET_PATH="${1:-${CYCLE_AGENT_SESSION:-/tmp/cycle-agent.sock}}"
 LOG_PATH="${2:-${CYCLE_LOG_PATH:-/tmp/cycle-agent-session.log}}"
 WAIT_SECONDS="${CYCLE_WAIT_SECONDS:-20}"

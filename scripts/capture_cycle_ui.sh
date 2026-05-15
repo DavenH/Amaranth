@@ -1,7 +1,9 @@
 #!/bin/zsh
 set -euo pipefail
 
-APP_PATH="${CYCLE_APP_PATH:-/Users/daven/repos/Amaranth/build/standalone-debug/cycle/Cycle.app}"
+SCRIPT_DIR="${0:A:h}"
+REPO_ROOT="${SCRIPT_DIR:h}"
+APP_PATH="${CYCLE_APP_PATH:-$REPO_ROOT/build/standalone-debug/cycle/Cycle.app}"
 OUT_PATH="${1:-/tmp/cycle-ui.png}"
 LOG_PATH="${2:-${CYCLE_LOG_PATH:-/tmp/cycle-logs.txt}}"
 RAW_LOG_PATH="${CYCLE_RAW_LOG_PATH:-$LOG_PATH.raw}"
