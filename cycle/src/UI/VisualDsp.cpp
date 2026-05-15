@@ -1418,9 +1418,7 @@ Buffer<Float32> VisualDsp::getFreqArray() {
 }
 
 void VisualDsp::processThroughEffects(int numColumns) {
-    jassert(getSetting(ViewStage) >= ViewStages::PostFX);
-
-    if (getSetting(DrawWave)) {
+    if (getSetting(ViewStage) < ViewStages::PostFX || getSetting(DrawWave)) {
         return;
     }
 
