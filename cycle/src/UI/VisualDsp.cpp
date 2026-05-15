@@ -1044,7 +1044,7 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
                     if (portion == 0.f) {
                         resampledPrev.copyTo(col);
                     } else {
-                        VecOps::mul(resampledPrev, 1 - portion, col);
+                        VecOps::mul(resampledPrev.withSize(nextPow2), 1 - portion, col);
                         col.addProduct(resampledNext, portion);
                     }
                 } else {
