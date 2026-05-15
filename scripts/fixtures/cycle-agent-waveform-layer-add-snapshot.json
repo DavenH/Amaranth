@@ -1,0 +1,23 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "AreaWfrmWaveform3D",
+      "target": "TargLayerAddButton"
+    },
+    {
+      "command": "action",
+      "actionType": "TriggerButton",
+      "area": "AreaWfrmWaveform3D",
+      "id": "IdBttnAdd",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "panels.waveform3D.layer.count",
+      "greaterThanOrEqual": 2
+    }
+  ],
+  "quit": true
+}
