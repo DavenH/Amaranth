@@ -205,7 +205,7 @@ void UnisonUI::buttonClicked(Button* button) {
 }
 
 void UnisonUI::setExtraTitleElements(Rectangle<int>& right) {
-    modeBox.setBounds(right.removeFromBottom(24));
+    modeBox.setBounds(right.removeFromBottom(24).removeFromRight(jmin(68, right.getWidth())));
 }
 
 void UnisonUI::setExtraRightElements(Rectangle<int>& r) {
