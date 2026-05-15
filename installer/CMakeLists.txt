@@ -1,6 +1,6 @@
 project(Installer VERSION 0.1.0)
 
-set(INSTALLER_DEFAULT_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/configs/cycle.json")
+set(INSTALLER_DEFAULT_MANIFEST "${CMAKE_SOURCE_DIR}/cycle/installer.json")
 
 file(GLOB_RECURSE INSTALLER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"

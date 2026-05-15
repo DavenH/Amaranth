@@ -123,6 +123,30 @@
         ],
         "linux": []
       }
+    },
+    {
+      "id": "factory-presets",
+      "name": "Factory Presets",
+      "source": "content/presets",
+      "required": false,
+      "destinations": {
+        "mac": [
+          {
+            "id": "cycle-content",
+            "name": "Cycle Content",
+            "path": "${userApplicationSupport}/Amaranth Audio/Cycle",
+            "enabled": true
+          }
+        ],
+        "linux": [
+          {
+            "id": "cycle-content",
+            "name": "Cycle Content",
+            "path": "${userDocuments}/Amaranth Audio/Cycle",
+            "enabled": true
+          }
+        ]
+      }
     }
   ]
 }

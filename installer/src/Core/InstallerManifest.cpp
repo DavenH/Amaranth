@@ -64,20 +64,27 @@ String InstallerManifest::resolvePath(const String& path) const {
     String resolved = path;
     const File home = File::getSpecialLocation(File::userHomeDirectory);
     const File applications = File::getSpecialLocation(File::globalApplicationsDirectory);
+    const File documents = File::getSpecialLocation(File::userDocumentsDirectory);
+    const File appData = File::getSpecialLocation(File::userApplicationDataDirectory);
 
     resolved = replaceToken(resolved, "userHome", home);
     resolved = replaceToken(resolved, "applications", applications);
     resolved = replaceToken(resolved, "userApplications", home.getChildFile("Applications"));
+    resolved = replaceToken(resolved, "userDocuments", documents);
+    resolved = replaceToken(resolved, "userApplicationData", appData);
 
   #if JUCE_MAC
     resolved = resolved.replace("${systemAudioPlugIns}", "/Library/Audio/Plug-Ins");
     resolved = resolved.replace("${userAudioPlugIns}", home.getChildFile("Library/Audio/Plug-Ins").getFullPathName());
+    resolved = resolved.replace("${userApplicationSupport}", appData.getChildFile("Application Support").getFullPathName());
   #elif JUCE_LINUX
     resolved = resolved.replace("${systemAudioPlugIns}", "/usr/lib");
     resolved = resolved.replace("${userAudioPlugIns}", home.getChildFile(".local/lib").getFullPathName());
+    resolved = resolved.replace("${userApplicationSupport}", appData.getFullPathName());
   #else
     resolved = resolved.replace("${systemAudioPlugIns}", home.getFullPathName());
     resolved = resolved.replace("${userAudioPlugIns}", home.getFullPathName());
+    resolved = resolved.replace("${userApplicationSupport}", appData.getFullPathName());
   #endif
 
     return resolved.replaceCharacter('\\', File::getSeparatorChar());

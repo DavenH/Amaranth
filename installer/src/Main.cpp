@@ -80,6 +80,13 @@ private:
                 return configRelative;
             }
 
+            const File productManifest = File(AMARANTH_SOURCE_DIR)
+                    .getChildFile(argumentFile.getFileNameWithoutExtension())
+                    .getChildFile("installer.json");
+            if (productManifest.existsAsFile()) {
+                return productManifest;
+            }
+
             return argumentFile;
         }
 
