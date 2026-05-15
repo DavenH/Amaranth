@@ -2,6 +2,36 @@
 project(Cycle VERSION 1.9.0)
 
 set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../lib/JuceLibraryCode")
+set(CYCLE_JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode")
+set(AAX_SDK_DIR "${JUCE_MODULES_DIR}/juce_audio_plugin_client/AAX/SDK")
+set(CYCLE_VERSION_BASE_REVISION 2603)
+set(CYCLE_VERSION_SOURCE_REVISION 503)
+
+find_package(Git QUIET)
+if(Git_FOUND)
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-list --count HEAD
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE CYCLE_GIT_COMMIT_COUNT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+
+    if(CYCLE_GIT_COMMIT_COUNT MATCHES "^[0-9]+$")
+        set(CYCLE_VERSION_SOURCE_REVISION "${CYCLE_GIT_COMMIT_COUNT}")
+    endif()
+endif()
+
+math(EXPR CYCLE_VERSION_REVISION "${CYCLE_VERSION_BASE_REVISION} + ${CYCLE_VERSION_SOURCE_REVISION}")
+set(CYCLE_VERSION_SHORT "${PROJECT_VERSION}")
+set(CYCLE_VERSION_STRING "${PROJECT_VERSION}.${CYCLE_VERSION_REVISION}")
+set(CYCLE_VERSION_CODE "0x10900")
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/CycleVersion.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/CycleVersion.h"
+    @ONLY
+)
 
 file(GLOB_RECURSE APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
@@ -24,6 +54,8 @@ if(APPLE)
     file(GLOB JUCE_OBJCXX_SOURCES
         "${JUCE_DIR}/*.cpp"
         "${JUCE_DIR}/*.mm"
+        "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_*.cpp"
+        "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_*.mm"
     )
 
     set_source_files_properties(
@@ -44,13 +76,37 @@ if(BUILD_TYPE STREQUAL "Standalone")
     add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${APP_SOURCES})
     set(TARGET_TYPE "Standalone")
 else()
-    add_library(${PROJECT_NAME} MODULE ${APP_SOURCES})
+    if(APPLE)
+        set(PLUGIN_CLIENT_SOURCES
+            "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_AAX.mm"
+            "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_AAX_utils.cpp"
+            "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_AU_1.mm"
+            "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_AU_2.mm"
+            "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_LV2.mm"
+            "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_VST3.mm"
+        )
+    else()
+        set(PLUGIN_CLIENT_SOURCES
+            "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_AAX.cpp"
+            "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_AAX_utils.cpp"
+            "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_LV2.cpp"
+            "${CYCLE_JUCE_DIR}/include_juce_audio_plugin_client_VST3.cpp"
+        )
+    endif()
+
+    add_library(${PROJECT_NAME} MODULE ${APP_SOURCES} ${PLUGIN_CLIENT_SOURCES})
     set(TARGET_TYPE "Plugin")
 endif()
 
 if(APPLE AND BUILD_TYPE STREQUAL "Standalone")
-    set(CYCLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/resources/Info.plist)
+    set(CYCLE_INFO_PLIST ${CMAKE_CURRENT_BINARY_DIR}/CycleInfo.plist)
     set(CYCLE_ICON ${CMAKE_CURRENT_SOURCE_DIR}/resources/Cycle.icns)
+
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/Info.plist.in"
+        "${CYCLE_INFO_PLIST}"
+        @ONLY
+    )
 
     if(EXISTS ${CYCLE_INFO_PLIST})
         set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -70,9 +126,17 @@ if(APPLE AND BUILD_TYPE STREQUAL "Standalone")
 endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${JUCE_DIR}
+    ${CYCLE_JUCE_DIR}
     ${JUCE_MODULES_DIR}
+    ${JUCE_MODULES_DIR}/juce_audio_plugin_client/AU
+    ${JUCE_MODULES_DIR}/juce_audio_processors/format_types/LV2_SDK
+    ${JUCE_MODULES_DIR}/juce_audio_processors/format_types/LV2_SDK/lv2
+    ${AAX_SDK_DIR}
+    ${AAX_SDK_DIR}/Interfaces
+    ${AAX_SDK_DIR}/Interfaces/ACF
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -93,7 +157,13 @@ if(BUILD_TYPE STREQUAL "Plugin")
     list(APPEND BASE_DEFINITIONS
         JUCE_STANDALONE_APPLICATION=0
         JucePlugin_Build_VST3=1
+        JucePlugin_Build_AAX=1
+        JucePlugin_Build_LV2=1
     )
+
+    if(APPLE)
+        list(APPEND BASE_DEFINITIONS JucePlugin_Build_AU=1)
+    endif()
 else()
     list(APPEND BASE_DEFINITIONS
         JUCE_STANDALONE_APPLICATION=1
@@ -110,6 +180,77 @@ elseif(APPLE)
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${BASE_DEFINITIONS})
+
+if(BUILD_TYPE STREQUAL "Plugin")
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/JuceLV2Defines.h.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/JuceLV2Defines.h"
+        @ONLY
+    )
+endif()
+
+if(APPLE AND BUILD_TYPE STREQUAL "Plugin")
+    set(PLUGIN_FORMAT_LOWER "vst3")
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/PluginInfo.plist.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/CycleVST3Info.plist"
+        @ONLY
+    )
+
+    set(PLUGIN_FORMAT_LOWER "aax")
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/PluginInfo.plist.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/CycleAAXInfo.plist"
+        @ONLY
+    )
+
+    set(PLUGIN_FORMAT_LOWER "au")
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/PluginInfo.plist.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/CycleAUInfo.plist"
+        @ONLY
+    )
+
+    set(AAX_BUNDLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/Cycle.aaxplugin")
+    set(AU_BUNDLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/Cycle.component")
+    set(LV2_BUNDLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/Cycle.lv2")
+
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        BUNDLE TRUE
+        BUNDLE_EXTENSION vst3
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/CycleVST3Info.plist"
+        OUTPUT_NAME "Cycle"
+        PREFIX ""
+        SUFFIX ".vst3"
+        XCODE_ATTRIBUTE_GENERATE_PKGINFO_FILE YES
+        XCODE_ATTRIBUTE_LIBRARY_STYLE Bundle
+        XCODE_ATTRIBUTE_WRAPPER_EXTENSION vst3
+    )
+
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E remove_directory "${AAX_BUNDLE_DIR}"
+        COMMAND "${CMAKE_COMMAND}" -E remove_directory "${AU_BUNDLE_DIR}"
+        COMMAND "${CMAKE_COMMAND}" -E remove_directory "${LV2_BUNDLE_DIR}"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${AAX_BUNDLE_DIR}/Contents/MacOS"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${AAX_BUNDLE_DIR}/Contents/Resources"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${AU_BUNDLE_DIR}/Contents/MacOS"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${AU_BUNDLE_DIR}/Contents/Resources"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${LV2_BUNDLE_DIR}"
+        COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${PROJECT_NAME}>" "${AAX_BUNDLE_DIR}/Contents/MacOS/Cycle"
+        COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_BINARY_DIR}/CycleAAXInfo.plist" "${AAX_BUNDLE_DIR}/Contents/Info.plist"
+        COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${PROJECT_NAME}>" "${AU_BUNDLE_DIR}/Contents/MacOS/Cycle"
+        COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_BINARY_DIR}/CycleAUInfo.plist" "${AU_BUNDLE_DIR}/Contents/Info.plist"
+        COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${PROJECT_NAME}>" "${LV2_BUNDLE_DIR}/Cycle"
+        COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_SOURCE_DIR}/resources/lv2/manifest.ttl" "${LV2_BUNDLE_DIR}/manifest.ttl"
+        COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_SOURCE_DIR}/resources/lv2/Cycle.ttl" "${LV2_BUNDLE_DIR}/Cycle.ttl"
+        VERBATIM
+    )
+
+    add_custom_target(${PROJECT_NAME}_AAX DEPENDS ${PROJECT_NAME})
+    add_custom_target(${PROJECT_NAME}_AU DEPENDS ${PROJECT_NAME})
+    add_custom_target(${PROJECT_NAME}_LV2 DEPENDS ${PROJECT_NAME})
+endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     AmaranthLib
@@ -162,6 +303,7 @@ if(BUILD_TESTING)
 
     target_include_directories(${PROJECT_NAME}_tests PRIVATE
             "/usr/local/include"
+            ${CMAKE_CURRENT_BINARY_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/src
             ${CMAKE_CURRENT_SOURCE_DIR}/tests
             ${JUCE_DIR}
@@ -208,7 +350,17 @@ elseif(APPLE)
         )
     else()
         install(TARGETS ${PROJECT_NAME}
+            BUNDLE DESTINATION "Library/Audio/Plug-Ins/VST3"
             LIBRARY DESTINATION "Library/Audio/Plug-Ins/VST3"
+        )
+        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Cycle.aaxplugin"
+            DESTINATION "Library/Application Support/Avid/Audio/Plug-Ins"
+        )
+        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Cycle.component"
+            DESTINATION "Library/Audio/Plug-Ins/Components"
+        )
+        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Cycle.lv2"
+            DESTINATION "Library/Audio/Plug-Ins/LV2"
         )
     endif()
 endif()

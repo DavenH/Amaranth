@@ -6,7 +6,7 @@
     },
     {
       "command": "openWave",
-      "path": "/Users/daven/repos/Amaranth/cycle/content/wav/sax-growl.wav",
+      "path": "content/wav/sax-growl.wav",
       "invoker": "dialog",
       "waitForIdle": true,
       "idleDelayMs": 250

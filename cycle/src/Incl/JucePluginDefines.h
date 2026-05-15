@@ -1,5 +1,7 @@
 #pragma once
 
+#include "CycleVersion.h"
+
 #define JucePlugin_Name                   "Cycle"
 #define JucePlugin_Desc                   "Spectral Synthesizer"
 #define JucePlugin_Manufacturer           "Amaranth Audio Inc"
@@ -21,7 +23,13 @@
 #define JucePlugin_EditorRequiresKeyboardFocus  1
 #define JucePlugin_VSTCategory            kPlugCategSynth
 #define JucePlugin_AUMainType             kAudioUnitType_MusicDevice
-#define JucePlugin_Version                1.9.0.2603
-#define JucePlugin_VersionString          "1.9.0.2603"
-#define JucePlugin_VersionCode            0x10900
+#define JucePlugin_AUExportPrefix         CycleAU
+#define JucePlugin_AUExportPrefixQuoted   "CycleAU"
+#define JucePlugin_AAXIdentifier          com.amaranth.cycle
+#define JucePlugin_AAXManufacturerCode    JucePlugin_ManufacturerCode
+#define JucePlugin_AAXProductId           JucePlugin_PluginCode
+#define JucePlugin_AAXCategory            AAX_ePlugInCategory_SWGenerators
+#define JucePlugin_Version                CYCLE_VERSION
+#define JucePlugin_VersionString          CYCLE_VERSION_STRING
+#define JucePlugin_VersionCode            CYCLE_VERSION_CODE
 #define JucePlugin_VSTUniqueID           JucePlugin_PluginCode

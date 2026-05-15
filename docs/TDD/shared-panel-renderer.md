@@ -4,7 +4,7 @@
 
 This document describes the technical design for migrating Cycle's panel rendering from multiple per-panel JUCE `OpenGLContext` instances to a shared compositor model.
 
-It is intended to implement [ADR 003](/Users/daven.hughes/CLionProjects/Amaranth/docs/ADR/003-shared-panel-renderer.md).
+It is intended to implement [ADR 003](../ADR/003-shared-panel-renderer.md).
 
 ## Problem Statement
 

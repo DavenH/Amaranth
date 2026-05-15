@@ -2652,6 +2652,10 @@ bool CycleAutomation::openWave(const var& command, String& message, var& data) {
 
     File file(path);
 
+    if (! File::isAbsolutePath(path)) {
+        file = File(String(CYCLE_SOURCE_DIR)).getChildFile(path);
+    }
+
     if (!file.exists()) {
         message = "Wave path does not exist: " + path;
         return false;
