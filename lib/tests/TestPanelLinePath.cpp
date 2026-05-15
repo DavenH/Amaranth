@@ -3,7 +3,7 @@
 #include <Curve/VertCube.h>
 #include <UI/Panels/Panel.h>
 
-TEST_CASE("Panel line paths use phase guide assignments for time rails", "[panel][guide]") {
+TEST_CASE("Panel line paths use phase guide assignments for time and frequency rails", "[panel][guide]") {
     VertCube cube;
     cube.guideCurveAt(Vertex::Time) = 2;
     cube.guideCurveAt(Vertex::Phase) = 5;
@@ -13,6 +13,9 @@ TEST_CASE("Panel line paths use phase guide assignments for time rails", "[panel
     REQUIRE(Panel::getLinePathPhaseGuideDimension(Vertex::Time) == Vertex::Phase);
     REQUIRE(Panel::getLinePathPhaseGuideChannel(cube, Vertex::Time) == 5);
     REQUIRE(Panel::getLinePathPhaseGuideChannel(cube, Vertex::Time) != 2);
+
+    REQUIRE(Panel::getLinePathPhaseGuideDimension(Vertex::Phase) == Vertex::Phase);
+    REQUIRE(Panel::getLinePathPhaseGuideChannel(cube, Vertex::Phase) == 5);
 
     REQUIRE(Panel::getLinePathPhaseGuideDimension(Vertex::Red) == Vertex::Red);
     REQUIRE(Panel::getLinePathPhaseGuideChannel(cube, Vertex::Red) == 7);
