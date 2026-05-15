@@ -870,8 +870,11 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
 
     VecOps::mul(wav->audio.left, pans[0], wavCombined);
 
-    if(wav->audio.numChannels > 1)
+    if(wav->audio.numChannels > 1) {
         wavCombined.addProduct(wav->audio.right, pans[1]);
+    }
+
+    wavCombined.mul(0.5f);
 
     auto wrapResampledCycle = [quarter, nextPow2, fadeInUp, fadeInDown](Buffer<float> cycle) {
         Buffer<float> cycleHead = cycle.withSize(quarter);

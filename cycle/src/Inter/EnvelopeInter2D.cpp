@@ -17,6 +17,7 @@
 
 #include "EnvelopeInter2D.h"
 #include "../App/CycleTour.h"
+#include "../App/FileManager.h"
 #include "../App/Initializer.h"
 #include "../App/MeshDefaults.h"
 #include "../Audio/SynthAudioSource.h"
@@ -140,6 +141,7 @@ void EnvelopeInter2D::doExtraMouseUp() {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
                 auto& pitchRast = getObj(EnvWavePitchRast);
                 sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast);
+                getObj(FileManager).saveWavePitchEnvelope(sample);
             }
 
             doUpdate(SourceSpectrum3D);
@@ -192,6 +194,12 @@ void EnvelopeInter2D::doExtraMouseUp() {
     loopIcon.setApplicable(isLoopApplicable);
     loopIcon.setHighlit(selectedVertIsLoop);
     sustainIcon.setHighlit(selectedVertIsSustain);
+
+    if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
+        if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
+            getObj(FileManager).saveWavePitchEnvelope(sample);
+        }
+    }
 }
 
 void EnvelopeInter2D::setCurrentMesh(EnvelopeMesh* mesh) {
