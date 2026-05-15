@@ -70,6 +70,7 @@ public:
 private:
     void getModRanges(Range<int>& noteRange, Range<float>& velRange);
     void ensureSampleHasMeshLayer(PitchedSample* sample, int preferredIndex = -1);
+    int findAvailableMeshLayerIndex(PitchedSample* sample, int preferredIndex);
 
     FXRasterizer* pitchRasterizer;
     PitchedSample* current;

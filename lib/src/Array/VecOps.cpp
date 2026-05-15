@@ -136,7 +136,8 @@ template<> void VecOps::mul(Float32* src, Float32 k, Float32* dst, int len) {
 }
 template<>
 void VecOps::mul(Buffer<Float64> src, Float64 k, Buffer<Float64> dst) {
-    vDSP_vsmulD(src.get(), 1, &k, dst.get(), 1, jmin(src.size(), dst.size()));
+    BUFFS_EQ_CHECK
+    vDSP_vsmulD(src.get(), 1, &k, dst.get(), 1, src.size());
 }
 
 template<>

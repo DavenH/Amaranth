@@ -4,6 +4,7 @@
 #include "Resampling.h"
 #include "../Algo/FFT.h"
 #include "../Audio/PitchedSample.h"
+#include "../Util/NumberUtils.h"
 #include "../../tests/TestDefs.h"
 
 #ifdef BUILD_TESTING
@@ -11,6 +12,92 @@
 #endif
 
 #include "../../tests/SignalDebugger.h"
+
+namespace {
+
+float averageAtonal(const vector<PitchFrame>& frames) {
+    if (frames.empty()) {
+        return 0.f;
+    }
+
+    float sum = 0.f;
+    for (const auto& frame: frames) {
+        sum += frame.atonal;
+    }
+
+    return sum / float(frames.size());
+}
+
+float averagePeriod(const vector<PitchFrame>& frames, int fallbackNote, int sampleRate) {
+    if (frames.empty()) {
+        return fallbackNote > 10
+            ? sampleRate / NumberUtils::noteToFrequency(fallbackNote)
+            : 0.f;
+    }
+
+    float sum = 0.f;
+    for (const auto& frame: frames) {
+        sum += frame.period;
+    }
+
+    return sum / float(frames.size());
+}
+
+void logPitchDecision(PitchedSample* sample,
+                      const String& decision,
+                      float confidence,
+                      float yinAtonicity = -1.f,
+                      float swipeAtonicity = -1.f) {
+    if (sample == nullptr) {
+        DBG("PitchTracker decision=" + decision + " sample=null");
+        return;
+    }
+
+    float period = averagePeriod(sample->periods, sample->fundNote, sample->samplerate);
+    float frequency = period > 0.f ? sample->samplerate / period : 0.f;
+    int detectedNote = frequency > 0.f ? roundToInt(NumberUtils::frequencyToNote(frequency)) : -1;
+
+    float minPeriod = 1.e30f;
+    float maxPeriod = 0.f;
+    float minOffset = 1.e30f;
+    float maxOffset = 0.f;
+
+    for (const auto& frame: sample->periods) {
+        minPeriod = jmin(minPeriod, frame.period);
+        maxPeriod = jmax(maxPeriod, frame.period);
+        minOffset = jmin(minOffset, (float) frame.sampleOffset);
+        maxOffset = jmax(maxOffset, (float) frame.sampleOffset);
+    }
+
+    if (sample->periods.empty()) {
+        minPeriod = 0.f;
+        minOffset = 0.f;
+    }
+
+    String name = sample->lastLoadedFilePath.isNotEmpty()
+        ? sample->lastLoadedFilePath
+        : sample->uniqueName;
+
+    DBG("PitchTracker decision"
+        + String(" algo=") + decision
+        + " sample=\"" + name + "\""
+        + " frames=" + String((int) sample->periods.size())
+        + " sr=" + String(sample->samplerate)
+        + " samples=" + String(sample->size())
+        + " fileFundNote=" + String(sample->fundNote)
+        + " detectedNote=" + String(detectedNote)
+        + " freqHz=" + String(frequency, 3)
+        + " avgPeriod=" + String(period, 3)
+        + " minPeriod=" + String(minPeriod, 3)
+        + " maxPeriod=" + String(maxPeriod, 3)
+        + " firstOffset=" + String(minOffset, 1)
+        + " lastOffset=" + String(maxOffset, 1)
+        + " confidence=" + String(confidence, 3)
+        + " yinAtonicity=" + String(yinAtonicity, 3)
+        + " swipeAtonicity=" + String(swipeAtonicity, 3));
+}
+
+}
 
 PitchTracker::PitchTracker() :
         algo(AlgoAuto)
@@ -881,35 +968,33 @@ void PitchTracker::swipe() {
 void PitchTracker::trackPitch() {
     if (algo == AlgoSwipe || sample->size() < 8192) {
         swipe();
+        logPitchDecision(sample, "swipe", confidence);
     } else if (algo == AlgoYin) {
         yin();
+        logPitchDecision(sample, "yin", confidence);
     } else {
         yin();
 
         float yinAtonicity = 0;
         vector<PitchFrame> yinFrames = sample->periods;
 
-        for(auto& yinFrame : yinFrames) {
-            yinAtonicity += yinFrame.atonal;
-        }
-
-        yinAtonicity /= float(yinFrames.size());
+        yinAtonicity = averageAtonal(yinFrames);
+        String decision = "auto-yin";
+        float swipeAtonicity = -1.f;
 
         if (yinAtonicity > 2.f) {
             swipe();
             vector<PitchFrame> swipeFrames = sample->periods;
 
-            float swipeAtonicity = 0;
-
-            for(auto& swipeFrame : swipeFrames) {
-                swipeAtonicity += swipeFrame.atonal;
-            }
-
-            swipeAtonicity /= float(swipeFrames.size());
+            swipeAtonicity = averageAtonal(swipeFrames);
+            decision = "auto-swipe";
 
             if(yinAtonicity < swipeAtonicity) {
                 sample->periods = yinFrames;
+                decision = "auto-yin-retained";
             }
         }
+
+        logPitchDecision(sample, decision, confidence, yinAtonicity, swipeAtonicity);
     }
 }

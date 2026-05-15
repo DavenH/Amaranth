@@ -1,0 +1,31 @@
+{
+  "commands": [
+    {
+      "command": "waitForIdle",
+      "delayMs": 1000
+    },
+    {
+      "command": "openWave",
+      "path": "/Users/daven/repos/Amaranth/cycle/content/wav/sax-growl.wav",
+      "invoker": "dialog",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "drawWave",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "waveLoaded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "wavePitchLayerCount",
+      "greaterThan": 0
+    }
+  ],
+  "quit": true
+}

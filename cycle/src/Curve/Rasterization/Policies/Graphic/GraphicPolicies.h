@@ -41,7 +41,7 @@ namespace Cycle::Rasterization {
             }
 
             if (axisPolicy.shouldUseScratchPosition(context.layerGroup, context.currentMorphAxis)) {
-                morph.time = context.scratchPosition;
+                morph.time.setValueDirect(context.scratchPosition);
             }
 
             return morph;

@@ -34,8 +34,11 @@
 #include "../Util/CycleEnums.h"
 
 SampleUtils::SampleUtils(SingletonRepo* repo) :
-        SingletonAccessor(repo, "SampleUtils") {
+        SingletonAccessor(repo, "SampleUtils")
+    ,   tracker(std::make_unique<PitchTracker>()) {
 }
+
+SampleUtils::~SampleUtils() = default;
 
 void SampleUtils::init() {
     multisample = &getObj(Multisample);
@@ -186,7 +189,7 @@ void SampleUtils::waveNoteChanged(PitchedSample* sample, bool isMulti, bool invo
         getObj(MorphPanel).setKeyValueForNote(sample->fundNote);
     }
 
-    auto& pitchRast = getObj(EnvPitchRast);
+    auto& pitchRast = getObj(EnvWavePitchRast);
     auto& meshLibrary = getObj(MeshLibrary);
 
     sample->createEnvFromPeriods(meshLibrary, isMulti);
@@ -243,7 +246,7 @@ void SampleUtils::resetWavOffset() {
     audioRepo->getWavAudioSource()->reset();
 }
 
-void SampleUtils::waveOverlayChanged(bool shouldDrawWave) {
+void SampleUtils::waveOverlayChanged(bool shouldDrawWave, bool forceUpdate) {
     progressMark
 
     getObj(PlaybackPanel).stopPlayback();
@@ -260,7 +263,9 @@ void SampleUtils::waveOverlayChanged(bool shouldDrawWave) {
         audioRepo->setAudioProcessor(AudioSourceRepo::SynthSource);
     }
 
-    if (Util::assignAndWereDifferent(getSetting(DrawWave), shouldDrawWave)) {
+    bool changed = Util::assignAndWereDifferent(getSetting(DrawWave), shouldDrawWave);
+
+    if (changed || forceUpdate) {
         getObj(SpectrumInter2D).setClosestHarmonic(0);
         getObj(EnvelopeInter2D).waveOverlayChanged();
 

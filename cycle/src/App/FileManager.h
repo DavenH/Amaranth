@@ -4,6 +4,8 @@
 #include <App/SingletonAccessor.h>
 #include "Dialogs.h"
 
+class PitchedSample;
+
 class FileManager :
 		public SingletonAccessor {
 public:
@@ -22,6 +24,8 @@ public:
 
 	bool openWave(const File& file, Dialogs::OpenWaveInvoker invoker, int defaultNote = -1);
 	void doPostWaveLoad(Dialogs::OpenWaveInvoker invoker);
+	bool loadWavePitchEnvelope(PitchedSample* sample);
+	bool saveWavePitchEnvelope(PitchedSample* sample);
 
 	//void launchCheatsheetDocument();
 	//void launchHelp();

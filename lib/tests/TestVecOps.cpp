@@ -6,6 +6,8 @@
 
 using namespace VecOps;
 
+extern int globalVecOpsSizeErrorCount;
+
 TEST_CASE("VecOps::zero", "[vecops]") {
     SECTION("Float32 array zeroing") {
         const int size = 100;
@@ -286,6 +288,34 @@ TEST_CASE("VecOps buffer K operations", "[vecops]") {
         }
 
         afterEach();
+    }
+}
+
+TEST_CASE("VecOps scalar multiply rejects mismatched buffer sizes", "[vecops]") {
+    SECTION("Float32") {
+        float srcData[5] = {1.f, 2.f, 3.f, 4.f, 5.f};
+        float dstData[3] = {-1.f, -2.f, -3.f};
+        int errorsBefore = globalVecOpsSizeErrorCount;
+
+        mul(Buffer<float>(srcData, 5), 2.f, Buffer<float>(dstData, 3));
+
+        REQUIRE(globalVecOpsSizeErrorCount == errorsBefore + 1);
+        REQUIRE(dstData[0] == -1.f);
+        REQUIRE(dstData[1] == -2.f);
+        REQUIRE(dstData[2] == -3.f);
+    }
+
+    SECTION("Float64") {
+        double srcData[5] = {1., 2., 3., 4., 5.};
+        double dstData[3] = {-1., -2., -3.};
+        int errorsBefore = globalVecOpsSizeErrorCount;
+
+        mul(Buffer<double>(srcData, 5), 2., Buffer<double>(dstData, 3));
+
+        REQUIRE(globalVecOpsSizeErrorCount == errorsBefore + 1);
+        REQUIRE(dstData[0] == -1.);
+        REQUIRE(dstData[1] == -2.);
+        REQUIRE(dstData[2] == -3.);
     }
 }
 

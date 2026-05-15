@@ -238,6 +238,10 @@ namespace {
         return PresetJson::doubleProperty(object, name, fallback);
     }
 
+    int getInt(const var& object, const Identifier& name, int fallback = 0) {
+        return PresetJson::intProperty(object, name, fallback);
+    }
+
     NotificationType getNotificationType(const var& object) {
         String notification = getString(object, "notification", "sync");
 
@@ -2038,7 +2042,9 @@ String CycleAutomation::stripAutomationArgs(const String& commandLine) {
             continue;
         }
 
-        if (token.startsWith("--agent-script=") || token.startsWith("--agent-report=") || token.startsWith("--agent-session=")) {
+        if (token.startsWith("--agent-script=") ||
+                token.startsWith("--agent-report=") ||
+                token.startsWith("--agent-session=")) {
             continue;
         }
 
@@ -2156,6 +2162,8 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = openPreset(command, message, data);
     } else if (type == "openFactoryPreset") {
         ok = openFactoryPreset(command, message, data);
+    } else if (type == "openWave") {
+        ok = openWave(command, message, data);
     } else if (type == "listMenus") {
         ok = listMenus(command, message, data);
     } else if (type == "invokeMenuItem") {
@@ -2629,6 +2637,62 @@ bool CycleAutomation::openFactoryPreset(const var& command, String& message, var
     data = PresetJson::toVar(json);
 
     message = "Factory preset opened: " + preset;
+    return true;
+}
+
+bool CycleAutomation::openWave(const var& command, String& message, var& data) {
+    String path = getString(command, "path");
+    String invokerName = getString(command, "invoker", "dialog");
+    int defaultNote = getInt(command, "defaultNote", -1);
+
+    if (path.isEmpty()) {
+        message = "openWave requires path";
+        return false;
+    }
+
+    File file(path);
+
+    if (!file.exists()) {
+        message = "Wave path does not exist: " + path;
+        return false;
+    }
+
+    Dialogs::OpenWaveInvoker invoker = invokerName == "preset" ? Dialogs::PresetSource
+                                                               : Dialogs::DialogSource;
+    bool opened = false;
+
+    if (invoker == Dialogs::DialogSource && defaultNote < 0) {
+        Dialogs::WaveOpenData waveData(&getObj(Dialogs),
+                                       nullptr,
+                                       DialogActions::TrackPitchAction,
+                                       Dialogs::DoNothing);
+        waveData.audioFile = file;
+        Dialogs::openWaveCallback(Dialogs::DialogSave, waveData);
+        opened = getSetting(WaveLoaded) != 0;
+    } else {
+        opened = getObj(FileManager).openWave(file, invoker, defaultNote);
+    }
+
+    drainMessageLoopIfRequested(command);
+    auto& meshLibrary = getObj(MeshLibrary);
+    auto& wavePitchGroup = meshLibrary.getLayerGroup(LayerGroups::GroupWavePitch);
+    auto json = PresetJson::object();
+
+    json->setProperty("path", file.getFullPathName());
+    json->setProperty("invoker", invokerName);
+    json->setProperty("opened", opened);
+    json->setProperty("drawWave", getSetting(DrawWave) != 0);
+    json->setProperty("waveLoaded", getSetting(WaveLoaded) != 0);
+    json->setProperty("wavePitchLayerCount", wavePitchGroup.size());
+    json->setProperty("wavePitchCurrentIndex", wavePitchGroup.current);
+    data = PresetJson::toVar(json);
+
+    if (!opened) {
+        message = "Wave could not be opened: " + path;
+        return false;
+    }
+
+    message = "Wave opened: " + file.getFullPathName();
     return true;
 }
 
@@ -4020,6 +4084,10 @@ var CycleAutomation::snapshotState() {
 
     snapshot->setProperty("document", getObj(Document).getDocumentName());
     snapshot->setProperty("automationRan", hasRun);
+    snapshot->setProperty("drawWave", getSetting(DrawWave) != 0);
+    snapshot->setProperty("waveLoaded", getSetting(WaveLoaded) != 0);
+    snapshot->setProperty("wavePitchLayerCount",
+                          getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupWavePitch).size());
 
     if (auto* controls = getObj(CycleTour).getAutomationInspectable("AreaGenControls", {})) {
         var state = controls->exportAutomationState();

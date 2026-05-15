@@ -747,7 +747,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
     int phaseChan           = getLinePathPhaseGuideChannel(*cube, pointDim);
     bool adjustSpeed        = haveSpeed && speedApplicable && isTime;
     bool adjustPhase        = phaseSrcDim == pointDim && phaseChan >= 0;
-    bool adjustAmp          = ampChan >= 0 && isTime;
+    bool adjustAmp          = ampChan >= 0 && (isTime || pointDim == Vertex::Amp);
     bool anyDfrmAdjustments = (adjustPhase || adjustAmp) && guideCurveApplicable;
     const Dimensions& dims  = interactor->dims;
 
@@ -921,6 +921,7 @@ bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube
 int Panel::getLinePathPhaseGuideChannel(const VertCube& cube, int pointDim) {
     switch (pointDim) {
         case Vertex::Time: return cube.guideCurveAt(Vertex::Phase);
+        case Vertex::Phase: return cube.guideCurveAt(Vertex::Phase);
         case Vertex::Red:  return cube.guideCurveAt(Vertex::Red);
         default:           return cube.guideCurveAt(Vertex::Blue);
     }
@@ -929,6 +930,7 @@ int Panel::getLinePathPhaseGuideChannel(const VertCube& cube, int pointDim) {
 int Panel::getLinePathPhaseGuideDimension(int pointDim) {
     switch (pointDim) {
         case Vertex::Time: return Vertex::Phase;
+        case Vertex::Phase: return Vertex::Phase;
         case Vertex::Red:  return Vertex::Red;
         default:           return Vertex::Blue;
     }

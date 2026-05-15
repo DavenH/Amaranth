@@ -1,12 +1,15 @@
 #include <Algo/PitchTracker.h>
 #include <App/AppConstants.h>
 #include <App/Doc/Document.h>
+#include <App/Doc/PresetJson.h>
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Audio/AudioHub.h>
 #include <Audio/Multisample.h>
+#include <Audio/PitchedSample.h>
+#include <Curve/Mesh.h>
 #include <Design/Updating/Updater.h>
 #include <UI/Panels/Panel2D.h>
 #include <Util/ScopedFunction.h>
@@ -34,6 +37,7 @@
 #include "../UI/Panels/Morphing/MorphPanel.h"
 #include "../UI/Panels/PlaybackPanel.h"
 #include "../UI/Panels/VertexPropertiesPanel.h"
+#include "../UI/Widgets/MidiKeyboard.h"
 #include "../UI/VertexPanels/GuideCurvePanel.h"
 #include "../UI/VertexPanels/Envelope2D.h"
 #include "../UI/VertexPanels/Envelope3D.h"
@@ -42,6 +46,32 @@
 #include "../UI/VisualDsp.h"
 #include "../Util/CycleEnums.h"
 #include <Definitions.h>
+
+namespace {
+    File getWavePitchEnvelopeFile(const PitchedSample& sample) {
+        if (sample.lastLoadedFilePath.isEmpty()) {
+            return {};
+        }
+
+        File waveFile(sample.lastLoadedFilePath);
+        return waveFile.getSiblingFile(waveFile.getFileNameWithoutExtension() + ".env");
+    }
+
+    var createWavePitchEnvelopeJson(PitchedSample& sample, MeshLibrary& meshLibrary) {
+        auto json = PresetJson::object();
+
+        json->setProperty("format", "CycleWavePitchEnvelope");
+        json->setProperty("version", 1);
+        json->setProperty("midiNote", sample.fundNote);
+        json->setProperty("phaseOffset", sample.phaseOffset);
+
+        if (Mesh* mesh = sample.getMesh(meshLibrary)) {
+            json->setProperty("mesh", mesh->writeJSON());
+        }
+
+        return PresetJson::toVar(json);
+    }
+}
 
 FileManager::FileManager(SingletonRepo* repo) :
         SingletonAccessor(repo, "FileManager")
@@ -61,6 +91,59 @@ FileManager::FileManager(SingletonRepo* repo) :
 }
 
 void FileManager::loadPendingItem() {
+}
+
+bool FileManager::loadWavePitchEnvelope(PitchedSample* sample) {
+    if (sample == nullptr) {
+        return false;
+    }
+
+    File sidecarFile = getWavePitchEnvelopeFile(*sample);
+
+    if (!sidecarFile.existsAsFile()) {
+        return false;
+    }
+
+    var json = JSON::parse(sidecarFile.loadFileAsString());
+    var meshJson = PresetJson::property(json, "mesh");
+    Mesh* mesh = sample->getMesh(getObj(MeshLibrary));
+    bool loaded = mesh != nullptr && mesh->readJSON(meshJson);
+
+    if (loaded) {
+        sample->fundNote = PresetJson::intProperty(json, "midiNote", sample->fundNote);
+        sample->phaseOffset = PresetJson::doubleProperty(json, "phaseOffset", sample->phaseOffset);
+
+        auto& pitchRast = getObj(EnvWavePitchRast);
+        sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast);
+        DBG("Loaded wave pitch envelope " + sidecarFile.getFullPathName());
+    } else {
+        DBG("Failed to load wave pitch envelope " + sidecarFile.getFullPathName());
+    }
+
+    return loaded;
+}
+
+bool FileManager::saveWavePitchEnvelope(PitchedSample* sample) {
+    if (sample == nullptr) {
+        return false;
+    }
+
+    File sidecarFile = getWavePitchEnvelopeFile(*sample);
+
+    if (sidecarFile == File()) {
+        return false;
+    }
+
+    String json = JSON::toString(createWavePitchEnvelopeJson(*sample, getObj(MeshLibrary)), true);
+    bool saved = sidecarFile.replaceWithText(json);
+
+    if (saved) {
+        DBG("Saved wave pitch envelope " + sidecarFile.getFullPathName());
+    } else {
+        DBG("Failed to save wave pitch envelope " + sidecarFile.getFullPathName());
+    }
+
+    return saved;
 }
 
 File FileManager::findFactoryPresetFile(const String& presetName) const {
@@ -207,7 +290,7 @@ void FileManager::doPostPresetLoad() {
 
         for (int i = 0; i < multisample.size(); ++i) {
             if (PitchedSample* sample = multisample.getSampleAt(i)) {
-                auto& pitchRast = getObj(EnvPitchRast);
+                auto& pitchRast = getObj(EnvWavePitchRast);
                 sample->createPeriodsFromEnv(meshLibrary, &pitchRast);
             }
         }
@@ -276,8 +359,18 @@ bool FileManager::openWave(const File &file, Dialogs::OpenWaveInvoker invoker, i
 
     if (invoker == Dialogs::DialogSource) {
         getObj(SampleUtils).processWav(isMulti, true);
+
+        if (PitchedSample* sample = multi.getCurrentSample()) {
+            if (!loadWavePitchEnvelope(sample)) {
+                saveWavePitchEnvelope(sample);
+            }
+
+            getObj(MidiKeyboard).setAuditionKey(sample->fundNote);
+            getObj(MorphPanel).setKeyValueForNote(sample->fundNote);
+        }
+
         getObj(MainPanel).setPrimaryDimension(Vertex::Time, false);
-        getObj(SampleUtils).waveOverlayChanged(true);
+        getObj(SampleUtils).waveOverlayChanged(true, true);
         getObj(PlaybackPanel).resetPlayback(false);
 
         doUpdate(SourceMorph);

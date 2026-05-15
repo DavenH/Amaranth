@@ -12,6 +12,7 @@
 SelectorPanel::SelectorPanel(SingletonRepo* repo) :
 		currentIndex(0)
 	,	indexDragged(0)
+    ,   wheelDeltaAccum(0.f)
 	,	SingletonAccessor(repo, "SelectorPanel") {
     setRepaintsOnMouseActivity(true);
 	setMouseCursor(MouseCursor::UpDownResizeCursor);
@@ -147,9 +148,23 @@ void SelectorPanel::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails&
         return;
     }
 
-    float yInc = wheel.deltaY;
+    if ((wheelDeltaAccum > 0.f && wheel.deltaY < 0.f) ||
+            (wheelDeltaAccum < 0.f && wheel.deltaY > 0.f)) {
+        wheelDeltaAccum = 0.f;
+    }
 
-	draggedListIndex(yInc > 0 ? 1 : -1);
+    wheelDeltaAccum += wheel.deltaY;
+
+    float threshold = getWheelStepThreshold();
+
+    if (wheelDeltaAccum < threshold && wheelDeltaAccum > -threshold) {
+        return;
+    }
+
+    int direction = wheelDeltaAccum > 0.f ? 1 : -1;
+    wheelDeltaAccum -= direction * threshold;
+
+	draggedListIndex(direction);
 	doSelectionChange();
 }
 

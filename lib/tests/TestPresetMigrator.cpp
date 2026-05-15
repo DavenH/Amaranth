@@ -26,6 +26,18 @@ namespace {
         return object;
     }
 
+    bool hasMapping(const Array<var>& mappings, int inputId, int outputId, int dim) {
+        for (const auto& mapping : mappings) {
+            if (int(property(mapping, "in")) == inputId &&
+                int(property(mapping, "out")) == outputId &&
+                int(property(mapping, "dim")) == dim) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     std::unique_ptr<XmlElement> parseXml(const String& xml) {
         XmlDocument document(xml);
         return std::unique_ptr<XmlElement>(document.getDocumentElement());
@@ -236,6 +248,63 @@ TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups
     REQUIRE(int(property(guides.getReference(0), "noiseSeed")) == 41);
 
     REQUIRE(int(property(property(preset, "morphPanel"), "modMappingId")) == 6);
+
+    const auto& modMatrixOutputs = requireArray(property(property(preset, "modMatrix"), "outputs"));
+    const auto& modMatrixMappings = requireArray(property(property(preset, "modMatrix"), "mappings"));
+    REQUIRE(modMatrixOutputs.size() == 7);
+    REQUIRE(hasMapping(modMatrixMappings, 1, 100, 0));
+    REQUIRE(hasMapping(modMatrixMappings, 4, 100, 1));
+    REQUIRE(hasMapping(modMatrixMappings, 101, 100, 2));
+    REQUIRE(hasMapping(modMatrixMappings, 4, 400, 1));
+    REQUIRE(hasMapping(modMatrixMappings, 101, 400, 2));
+}
+
+TEST_CASE("PresetMigrator converts legacy mod mapping into default mod matrix wiring", "[preset][migration]") {
+    auto presetXml = parseXml(R"xml(
+<Preset>
+  <AllMeshes>
+    <TimeLayer>
+      <TimeMesh0><Mesh name="TimeMesh0"/></TimeMesh0>
+      <TimeMesh1><Mesh name="TimeMesh1"/></TimeMesh1>
+    </TimeLayer>
+    <FreqLayer>
+      <FreqMesh0><Mesh name="FreqMesh0"/></FreqMesh0>
+    </FreqLayer>
+    <EnvLayer>
+      <EnvVolumeMesh>
+        <EnvelopeMesh name="VolEnv" primaryEnabled="1">
+          <MainMesh><Mesh name="VolEnv"/></MainMesh>
+        </EnvelopeMesh>
+      </EnvVolumeMesh>
+    </EnvLayer>
+  </AllMeshes>
+  <ModMapping modMappingId="4"/>
+</Preset>
+)xml");
+
+    REQUIRE(presetXml != nullptr);
+
+    DocumentDetails details;
+    details.setName("Legacy Mod Mapping");
+
+    var root = PresetMigrator::migrateV1XmlToCurrentJson(presetXml.get(), details);
+    var preset = property(root, "preset");
+    var modMatrix = property(preset, "modMatrix");
+    const auto& inputs = requireArray(property(modMatrix, "inputs"));
+    const auto& outputs = requireArray(property(modMatrix, "outputs"));
+    const auto& mappings = requireArray(property(modMatrix, "mappings"));
+
+    REQUIRE(inputs.contains(var(101)));
+    REQUIRE(outputs.contains(var(100)));
+    REQUIRE(outputs.contains(var(103)));
+    REQUIRE(outputs.contains(var(200)));
+    REQUIRE(outputs.contains(var(400)));
+    REQUIRE(hasMapping(mappings, 1, 100, 0));
+    REQUIRE(hasMapping(mappings, 4, 100, 1));
+    REQUIRE(hasMapping(mappings, 101, 100, 2));
+    REQUIRE(hasMapping(mappings, 101, 103, 2));
+    REQUIRE(hasMapping(mappings, 101, 400, 2));
+    REQUIRE_FALSE(hasMapping(mappings, 1, 400, 0));
 }
 
 TEST_CASE("PresetMigrator preserves legacy LineCube topology and standard effect names", "[preset][migration]") {

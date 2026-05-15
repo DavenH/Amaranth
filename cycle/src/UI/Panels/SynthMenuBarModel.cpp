@@ -76,7 +76,7 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 
 		menu.addSeparator();
 		menu.addItem(LoadSample, 	"Load reference sample...");
-		menu.addItem(LoadMultiSample,"Load multiSample...");
+		menu.addItem(LoadMultiSample,"Load multisample...");
 		menu.addItem(UnloadSample, 	"Unload sample");
 
 		menu.addSeparator();

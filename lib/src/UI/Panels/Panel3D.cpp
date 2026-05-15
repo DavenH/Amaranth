@@ -113,10 +113,11 @@ void Panel3D::drawInterceptLines() {
         }
     }
 
-    Vertex* currVert = nullptr;
+    VertCube* currentCube = nullptr;
 
-    if(Interactor* opp  = interactor->getOppositeInteractor())
-        currVert = opp->state.currentVertex;
+    if (Interactor* opp = interactor->getOppositeInteractor()) {
+        currentCube = opp->state.currentCube;
+    }
 
     float x1, y1, x2, y2;
 
@@ -142,7 +143,7 @@ void Panel3D::drawInterceptLines() {
             renderer->enableSmoothing();
 
             bool revertWidth = false;
-            if (currVert != nullptr && currVert->isOwnedBy(cube)) {
+            if (currentCube == cube) {
                 renderer->setCurrentLineWidth(2.f);
                 revertWidth = true;
             }
@@ -175,7 +176,7 @@ void Panel3D::drawInterceptLines() {
             renderer->enableSmoothing();
 
             bool revertWidth = false;
-            if (currVert != nullptr && currVert->isOwnedBy(cube)) {
+            if (currentCube == cube) {
                 renderer->setCurrentLineWidth(2.f);
                 revertWidth = true;
             }

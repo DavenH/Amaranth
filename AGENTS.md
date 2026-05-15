@@ -12,9 +12,10 @@
 - Write env file: `./scripts/make_env.sh` (creates `.env` with `JUCE_MODULES_DIR`, `VST3_SDK_DIR`, `CATCH2_CMAKE_DIR`, and optional `IPP_DIR`).
 - List presets: `cmake --list-presets`.
 - Configure + build (examples):
-    - Standalone Debug: `cmake --preset standalone-debug && cmake --build --preset standalone-debug`
-    - Plugin Debug: `cmake --preset plugin-debug && cmake --build --preset plugin-debug`
-    - Tests: `cmake --preset tests && cmake --build --preset tests`
+    - Standalone Debug: `cmake --preset standalone-debug && cmake --build --preset standalone-debug --parallel 10`
+    - Plugin Debug: `cmake --preset plugin-debug && cmake --build --preset plugin-debug --parallel 10`
+    - Tests: `cmake --preset tests && cmake --build --preset tests --parallel 10`
+- Always use `--parallel 10` or higher when running `cmake --build`.
 - Run tests: `ctest --test-dir build/tests -V` (Catch2 discovery is enabled).
 - Capture Cycle UI screenshots and filtered launch logs for regression checks and UI bug fixes: `scripts/capture_cycle_ui.sh /tmp/cycle-ui.png /tmp/cycle-logs.txt`. The script also writes the complete unfiltered log to `/tmp/cycle-logs.txt.raw`; inspect the filtered log first to avoid unnecessary token use.
 - Cycle agent automation runbook: `docs/cycle-agent-runbook.md`. Use this for targeted UI bug reproduction, focused fixture runs, agent screenshots, state export/assertions, OpenGL panel capture, crash `.ips` collection, and long-running session IPC.

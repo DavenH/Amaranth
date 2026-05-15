@@ -185,6 +185,44 @@ void PitchedSample::createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti)
 }
 
 namespace {
+    void logPeriodRebuild(const PitchedSample& sample,
+                          const char* context,
+                          bool sampleable,
+                          int oldCount,
+                          float oldAverage) {
+        float minPeriod = 1.e30f;
+        float maxPeriod = 0.f;
+        float average = 0.f;
+
+        for (const auto& frame: sample.periods) {
+            minPeriod = jmin(minPeriod, frame.period);
+            maxPeriod = jmax(maxPeriod, frame.period);
+            average += frame.period;
+        }
+
+        if (sample.periods.empty()) {
+            minPeriod = 0.f;
+        } else {
+            average /= float(sample.periods.size());
+        }
+
+        String name = sample.lastLoadedFilePath.isNotEmpty()
+            ? sample.lastLoadedFilePath
+            : sample.uniqueName;
+
+        DBG("PitchedSample periods"
+            + String(" context=") + context
+            + " sample=\"" + name + "\""
+            + " sampleable=" + String(sampleable ? 1 : 0)
+            + " oldFrames=" + String(oldCount)
+            + " frames=" + String((int) sample.periods.size())
+            + " oldAvgPeriod=" + String(oldAverage, 3)
+            + " avgPeriod=" + String(average, 3)
+            + " minPeriod=" + String(minPeriod, 3)
+            + " maxPeriod=" + String(maxPeriod, 3)
+            + " fundNote=" + String(sample.fundNote));
+    }
+
     template<class RasterizerType>
     void createPeriodsFromEnv(
             PitchedSample& sample,
@@ -199,9 +237,12 @@ namespace {
         int currentIndex = 0;
         float position = 0;
         float defaultFreq = NumberUtils::noteToFrequency(sample.fundNote, 0);
+        int oldCount = (int) sample.periods.size();
+        float oldAverage = sample.getAveragePeriod();
         Mesh* mesh = sample.getMesh(meshLibrary);
 
         if (mesh == nullptr) {
+            logPeriodRebuild(sample, "missing-mesh", false, oldCount, oldAverage);
             return;
         }
 
@@ -213,9 +254,7 @@ namespace {
             sample.periods.clear();
 
             int sz          = sample.size();
-            int maxPeriods  = 400;
             float period    = sample.samplerate / defaultFreq;
-            int decimFactor = jmax(1, sz / int (maxPeriods * period));
 
             while ((int) position < sz) {
                 float x = position / float(sz);
@@ -233,9 +272,11 @@ namespace {
                 }
 
                 sample.periods.emplace_back(position, period, 0.2f);
-                position += period * decimFactor;
+                position += period;
             }
         }
+
+        logPeriodRebuild(sample, "from-env", sampler.isSampleable(), oldCount, oldAverage);
     }
 }
 

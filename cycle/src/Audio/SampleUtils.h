@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <vector>
 #include <App/SingletonAccessor.h>
 
@@ -14,7 +15,7 @@ class SampleUtils :
 {
 public:
     explicit SampleUtils(SingletonRepo* repo);
-    ~SampleUtils() override = default;
+    ~SampleUtils() override;
 
     int calcFundDelta();
     void init() override;
@@ -25,11 +26,11 @@ public:
     void shiftWaveNoteOctave(bool up);
     float getWavLengthSeconds();
     void waveNoteChanged(PitchedSample*, bool isMulti, bool invokerIsDialog = true);
-    void waveOverlayChanged(bool shouldDrawWave);
+    void waveOverlayChanged(bool shouldDrawWave, bool forceUpdate = false);
     void updateMidiNoteNumber(int note);
 
 private:
     Ref<Multisample> multisample;
-    Ref<PitchTracker> tracker;
+    std::unique_ptr<PitchTracker> tracker;
     Ref<AudioSourceRepo> audioRepo;
 };
