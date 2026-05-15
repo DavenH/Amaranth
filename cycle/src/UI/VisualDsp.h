@@ -180,6 +180,7 @@ private:
     ScopedAlloc<Float32> fftPreFXArray, fftPostFXArray;			  // fft
     ScopedAlloc<Float32> preEnvArray, postEnvArray, postFXArray;  // time
     ScopedAlloc<Float32> phasePreFXArray, phasePostFXArray;		  // phase
+    ScopedAlloc<Float32> waveTimeArray, waveFFTArray, wavePhaseArray;
     ScopedAlloc<Float32> volumeEnv, scratchEnv, pitchEnv, scratchEnvPanel;
 
     CriticalSection timeColumnLock, envColumnLock, fftColumnLock,
@@ -190,4 +191,5 @@ private:
     vector<Column> preEnvCols, postEnvCols, postFXCols;
     vector<Column> fftPreFXCols, fftPostFXCols;
     vector<Column> phasePreFXCols, phasePostFXCols;
+    vector<Column> waveTimeCols, waveFFTCols, wavePhaseCols;
 };

@@ -615,6 +615,10 @@ const vector <Column>& Spectrum3D::getColumns() {
 }
 
 CriticalSection& Spectrum3D::getGridLock() {
+    if (getSetting(DrawWave)) {
+        return getObj(VisualDsp).getColumnLock(VisualDsp::FreqColType);
+    }
+
     bool postFX = getSetting(ViewStage) >= ViewStages::PostFX;
     return getObj(VisualDsp).getColumnLock(postFX ? VisualDsp::FXColType : VisualDsp::FreqColType);
 }

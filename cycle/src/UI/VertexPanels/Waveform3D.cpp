@@ -451,6 +451,10 @@ const vector <Column>& Waveform3D::getColumns() {
 CriticalSection& Waveform3D::getGridLock() {
     int stage = getSetting(ViewStage);
 
+    if (getSetting(DrawWave)) {
+        return getObj(VisualDsp).getColumnLock(VisualDsp::EnvColType);
+    }
+
     if (stage == ViewStages::PostFX) {
         return getObj(VisualDsp).getColumnLock(VisualDsp::FXColType);
     }

@@ -207,7 +207,7 @@ void FileManager::doPostPresetLoad() {
 
         for (int i = 0; i < multisample.size(); ++i) {
             if (PitchedSample* sample = multisample.getSampleAt(i)) {
-                auto& pitchRast = getObj(EnvPitchRast);
+                auto& pitchRast = getObj(EnvWavePitchRast);
                 sample->createPeriodsFromEnv(meshLibrary, &pitchRast);
             }
         }
@@ -277,7 +277,7 @@ bool FileManager::openWave(const File &file, Dialogs::OpenWaveInvoker invoker, i
     if (invoker == Dialogs::DialogSource) {
         getObj(SampleUtils).processWav(isMulti, true);
         getObj(MainPanel).setPrimaryDimension(Vertex::Time, false);
-        getObj(SampleUtils).waveOverlayChanged(true);
+        getObj(SampleUtils).waveOverlayChanged(true, true);
         getObj(PlaybackPanel).resetPlayback(false);
 
         doUpdate(SourceMorph);

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 APP_PATH="${CYCLE_APP_PATH:-/Users/daven/repos/Amaranth/build/standalone-debug/cycle/Cycle.app}"
+APP_ARGS="${CYCLE_APP_ARGS:-}"
 SCRIPT_PATH="${1:-${CYCLE_AGENT_SCRIPT:-}}"
 REPORT_PATH="${2:-${CYCLE_AGENT_REPORT:-/tmp/cycle-agent-report.json}}"
 LOG_PATH="${3:-${CYCLE_LOG_PATH:-/tmp/cycle-agent-logs.txt}}"
@@ -386,16 +387,32 @@ if [[ "$REUSE_EXISTING" != "1" ]] && process_exists; then
 fi
 
 LAUNCH_TIME="$(date +%s)"
-
-open -n \
-    --stdout "$RAW_LOG_PATH" \
-    --stderr "$RAW_LOG_PATH" \
-    "$APP_PATH" \
-    --args \
-    --agent-script "$SCRIPT_PATH" \
-    --agent-report "$REPORT_PATH"
-
 APP_BUNDLE_ID="$(plutil -extract CFBundleIdentifier raw -o - "$APP_PATH/Contents/Info.plist")"
+APP_EXECUTABLE_NAME="$(plutil -extract CFBundleExecutable raw -o - "$APP_PATH/Contents/Info.plist")"
+
+launch_args=(
+    ${(z)APP_ARGS}
+    --agent-script "$SCRIPT_PATH"
+    --agent-report "$REPORT_PATH"
+)
+
+if ! open -n \
+        --stdout "$RAW_LOG_PATH" \
+        --stderr "$RAW_LOG_PATH" \
+        "$APP_PATH" \
+        --args \
+        "${launch_args[@]}"; then
+    app_executable="$APP_PATH/Contents/MacOS/$APP_EXECUTABLE_NAME"
+
+    if [[ ! -x "$app_executable" ]]; then
+        echo "Cycle executable not found: $app_executable" >&2
+        exit 1
+    fi
+
+    echo "open failed; launching Cycle executable directly: $app_executable" >> "$RAW_LOG_PATH"
+    "$app_executable" "${launch_args[@]}" >> "$RAW_LOG_PATH" 2>&1 &
+fi
+
 focus_process "$APP_BUNDLE_ID" || true
 
 deadline=$((SECONDS + WAIT_SECONDS))

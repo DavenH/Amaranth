@@ -1,3 +1,5 @@
+#include <cstdlib>
+
 #include <Algo/AutoModeller.h>
 #include <App/AppConstants.h>
 #include <App/MeshLibrary.h>
@@ -42,6 +44,11 @@ const char* envGroupName(int envGroup) {
         case LayerGroups::GroupWavePitch: return "wavePitch";
         default: return "unknown";
     }
+}
+
+bool shouldLogWavePeriodMapping() {
+    static bool shouldLog = std::getenv("CYCLE_LOG_WAVE_PERIOD_MAPPING") != nullptr;
+    return shouldLog;
 }
 
 bool logColumnNaNOnce(const char* label, const Column& column, int col) {
@@ -843,14 +850,13 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
     Buffer<float> fadeOutUp   = fadeInMem.place(quarter);
     Buffer<float> fadeOutDown = fadeInMem.place(quarter);
 
-    ScopedAlloc<float> waveMemory(nextPow2 * 5 + 3 * quarter + wavLength);
+    ScopedAlloc<float> waveMemory(nextPow2 * 5 + 2 * quarter + wavLength);
     Buffer<float> waveRamp       = waveMemory.place(nextPow2);
     Buffer<float> paddedCyc      = waveMemory.place(nextPow2);
     Buffer<float> resampledNext  = waveMemory.place(nextPow2 + quarter);
     Buffer<float> resampledPrev  = waveMemory.place(nextPow2 + quarter);
     Buffer<float> wavCombined    = waveMemory.place(wavLength);
     Buffer<float> veryFirstCycle = waveMemory.place(nextPow2);
-    Buffer<float> quarterBuf     = waveMemory.place(quarter);
 
     double modPan = getObj(MorphPanel).getPanSlider()->getValue();
     float pans[2];
@@ -867,6 +873,14 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
     if(wav->audio.numChannels > 1)
         wavCombined.addProduct(wav->audio.right, pans[1]);
 
+    auto wrapResampledCycle = [quarter, nextPow2, fadeInUp, fadeInDown](Buffer<float> cycle) {
+        Buffer<float> cycleHead = cycle.withSize(quarter);
+        Buffer<float> cycleTail = (cycle + nextPow2).withSize(quarter);
+
+        cycleHead.mul(fadeInUp);
+        cycleHead.addProduct(cycleTail, fadeInDown);
+    };
+
     fadeOutUp.ramp().sqr();
     VecOps::subCRev(fadeOutUp, 1.f, fadeOutDown);
     VecOps::flip(fadeOutDown, fadeInUp);
@@ -874,8 +888,21 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
 
     jassert(getSetting(ViewStage) >= ViewStages::PostEnvelopes);
 
-    checkEnvWavColumns(numColumns, nextPow2, 	 midiNote);
-    checkFFTWavColumns(numColumns, numHarmonics, midiNote);
+    ScopedLock envLock(envColumnLock);
+    ScopedLock fftLock(fftColumnLock);
+
+    ResizeParams envParams(numColumns, &waveTimeArray, &waveTimeCols, nullptr, nullptr, nullptr, nullptr, nullptr);
+    envParams.setExtraParams(nextPow2, -1, midiNote, false);
+    resizeArrays(envParams);
+
+    ResizeParams fftParams(numColumns, nullptr, nullptr, &waveFFTArray, &waveFFTCols,
+                           &wavePhaseArray, &wavePhaseCols, nullptr);
+    fftParams.setExtraParams(-1, numHarmonics, midiNote, false);
+    resizeArrays(fftParams);
+
+    waveTimeArray .zero();
+    waveFFTArray  .zero();
+    wavePhaseArray.zero();
 
     if (wav->periods.size() < 3) {
         return;
@@ -897,6 +924,18 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
     int offsetSamples	= wav->phaseOffset * wav->getAveragePeriod();
 
     vector<PitchFrame>& periods = wav->periods;
+    String periodMappingLog;
+
+    if (shouldLogWavePeriodMapping()) {
+        periodMappingLog = "VisualDsp wave-period-map"
+            + String(" columns=") + String(numColumns)
+            + " periods=" + String((int) periods.size())
+            + " wavLength=" + String(wavLength)
+            + " longestSample=" + String(longestSample)
+            + " fundNote=" + String(midiNote)
+            + " avgPeriod=" + String(wav->getAveragePeriod(), 3)
+            + " samples=";
+    }
 
     for (int i = 0; i < numColumns; ++i) {
         position = i * xInc;
@@ -908,9 +947,9 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
         PitchFrame& nextFrame = periods[nextCycle];
 
         if (nextCycle < periods.size() && nextFrame.period < 10) {
-            postEnvCols[i] 	 .zero();
-            fftPreFXCols[i]	 .zero();
-            phasePreFXCols[i].zero();
+            waveTimeCols[i] .zero();
+            waveFFTCols[i]  .zero();
+            wavePhaseCols[i].zero();
 
             continue;
         }
@@ -939,10 +978,7 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
 
                     // wrap quarter at end to front of this cycle to eliminate click
                     if (wrapCycles) {
-                        resampledPrev.mul(fadeInUp);
-                        resampledPrev.addProduct(resampledPrev + nextPow2, fadeInDown);
-                        // quarterBuf.mul(resampledPrev + nextPow2, fadeInDown);
-                        // resampledPrev.add(quarterBuf);
+                        wrapResampledCycle(resampledPrev);
                     }
                 } else {
                     resampledPrev.zero(nextPow2);
@@ -967,12 +1003,8 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
                 Resampling::linResample(source, resampledNext);
 
                 // wrap quarter at end to front of this cycle to eliminate click
-                if(wrapCycles)
-                {
-                    resampledNext.mul(fadeInUp);
-                    resampledNext.addProduct(resampledNext + nextPow2, fadeInDown);
-                    // quarterBuf.mul(resampledNext + nextPow2, fadeInDown);
-                    // resampledNext.add(quarterBuf);
+                if(wrapCycles) {
+                    wrapResampledCycle(resampledNext);
                 }
             }
         }
@@ -983,8 +1015,22 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
         float diffCol 	= jmin(1.f, nextOffset * invWavLength) - prevPosX;
         float portion 	= jmin(1.f, diffX / diffCol);
 
-//		Float32* timePtr = postEnvCols[i];
-        Buffer<float> col = postEnvCols[i];
+        if (shouldLogWavePeriodMapping() &&
+            (i == 0 || i == numColumns / 8 || i == numColumns / 4 || i == numColumns / 2 ||
+             i == (3 * numColumns) / 4 || i == (7 * numColumns) / 8 || i == numColumns - 1)) {
+            periodMappingLog += String::formatted(
+                "[col=%d x=%.4f cycle=%d prev=%d next=%d period=%.3f portion=%.3f] ",
+                i,
+                position,
+                nextCycle,
+                prevOffset,
+                nextOffset,
+                nextFrame.period,
+                portion);
+        }
+
+//		Float32* timePtr = waveTimeCols[i];
+        Buffer<float> col = waveTimeCols[i];
 
         if(nextOffset + nextLength >= wavLength) {
             col.zero();
@@ -1012,16 +1058,20 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
         }
     }
 
+    if (shouldLogWavePeriodMapping()) {
+        DBG(periodMappingLog);
+    }
+
     int sizeIndex = sizeToIndex[nextPow2];
-    Transform& fft = ffts[nextPow2];
+    Transform& fft = ffts[sizeIndex];
 
     ScopedAlloc<Float32> magBuffer(nextPow2);
 
     for (int i = 0; i < numColumns; ++i) {
-        Buffer col = postEnvCols[i];
+        Buffer col = waveTimeCols[i];
 
-        Column prefxMag(fftPreFXCols[i]);
-        Column prefxPhs(phasePreFXCols[i]);
+        Column prefxMag(waveFFTCols[i]);
+        Column prefxPhs(wavePhaseCols[i]);
 
         ffts[sizeIndex].forward(col);
         Buffer magBuf(fft.getMagnitudes(), numHarmonics);
@@ -1040,9 +1090,9 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
     }
 
     if(getSetting(CurrentMorphAxis) == Vertex::Time) {
-        unwrapPhaseColumns(phasePreFXCols);
+        unwrapPhaseColumns(wavePhaseCols);
     } else {
-        phasePreFXArray.mul((float) M_1_PI * 0.5f).add(0.5f);
+        wavePhaseArray.mul((float) M_1_PI * 0.5f).add(0.5f);
     }
 }
 
@@ -1298,9 +1348,9 @@ void VisualDsp::trackWavePhaseEnvelope() {
 Buffer<float> VisualDsp::getFreqColumn(float position, bool isMags) {
     bool postFX = getSetting(ViewStage) >= ViewStages::PostFX;
 
-    vector<Column>& cols = isMags ?
-            postFX ? fftPostFXCols : fftPreFXCols :
-            postFX ? phasePostFXCols : phasePreFXCols;
+    vector<Column>& cols = isMags
+            ? (getSetting(DrawWave) ? waveFFTCols : (!postFX ? fftPreFXCols : fftPostFXCols))
+            : (getSetting(DrawWave) ? wavePhaseCols : (!postFX ? phasePreFXCols : phasePostFXCols));
 
     int index = jmin((int) cols.size() - 1, int(position * (cols.size() - 0.5)));
 
@@ -1316,6 +1366,10 @@ Buffer<float> VisualDsp::getFreqColumn(float position, bool isMags) {
 const vector<Column>& VisualDsp::getFreqColumns() {
     bool postFX = getSetting(ViewStage) >= ViewStages::PostFX;
 
+    if (getSetting(DrawWave)) {
+        return getSetting(MagnitudeDrawMode) ? waveFFTCols : wavePhaseCols;
+    }
+
     if (postFX) {
         return getSetting(MagnitudeDrawMode) ? fftPostFXCols : phasePostFXCols;
     }
@@ -1324,6 +1378,10 @@ const vector<Column>& VisualDsp::getFreqColumns() {
 
 const vector<Column>& VisualDsp::getTimeColumns() {
     int stage = getSetting(ViewStage);
+
+    if (getSetting(DrawWave)) {
+        return waveTimeCols;
+    }
 
     if (stage == ViewStages::PostFX) {
         return postFXCols;
@@ -1338,6 +1396,10 @@ const vector<Column>& VisualDsp::getTimeColumns() {
 Buffer<Float32> VisualDsp::getTimeArray() {
     int stage = getSetting(ViewStage);
 
+    if (getSetting(DrawWave)) {
+        return waveTimeArray;
+    }
+
     return stage == ViewStages::PostFX ?
             postFXArray : stage == ViewStages::PreProcessing ?
             preEnvArray : postEnvArray;
@@ -1345,6 +1407,10 @@ Buffer<Float32> VisualDsp::getTimeArray() {
 
 Buffer<Float32> VisualDsp::getFreqArray() {
     bool postFX = getSetting(ViewStage) >= ViewStages::PostFX;
+
+    if (getSetting(DrawWave)) {
+        return getSetting(MagnitudeDrawMode) ? waveFFTArray : wavePhaseArray;
+    }
 
     return getSetting(MagnitudeDrawMode)
                ? (postFX ? fftPostFXArray : fftPreFXArray)
@@ -1355,13 +1421,6 @@ void VisualDsp::processThroughEffects(int numColumns) {
     jassert(getSetting(ViewStage) >= ViewStages::PostFX);
 
     if (getSetting(DrawWave)) {
-        int nextPow2 	= postEnvCols.front().size();
-        int key 		= postEnvCols.front().midiKey;
-
-        checkEffectsWavColumns(numColumns, nextPow2, fftPreFXCols.front().size(), key);
-        copyArrayOrParts(fftPreFXCols, fftPostFXCols);
-        copyArrayOrParts(phasePreFXCols, phasePostFXCols);
-
         return;
     }
 
@@ -1501,6 +1560,9 @@ void VisualDsp::destroyArrays() {
     phasePreFXArray	.clear();
     phasePostFXArray.clear();
     preEnvArray		.clear();
+    waveTimeArray	.clear();
+    waveFFTArray	.clear();
+    wavePhaseArray	.clear();
 
     preEnvCols		.clear();
     postEnvCols		.clear();
@@ -1509,6 +1571,9 @@ void VisualDsp::destroyArrays() {
     fftPostFXCols	.clear();
     phasePreFXCols	.clear();
     phasePostFXCols	.clear();
+    waveTimeCols	.clear();
+    waveFFTCols		.clear();
+    wavePhaseCols	.clear();
 }
 
 VisualDsp::GraphicProcessor::GraphicProcessor(VisualDsp* processor, SingletonRepo* repo, VisualDsp::StageType stage)
@@ -1590,7 +1655,7 @@ void VisualDsp::checkEffectsColumns(int numColumns) {
 void VisualDsp::checkEnvWavColumns(int numColumns, int nextPow2, int overrideKey) {
     ScopedLock sl(envColumnLock);
 
-    ResizeParams params(numColumns, &postEnvArray, &postEnvCols, nullptr, nullptr, nullptr, nullptr, nullptr);
+    ResizeParams params(numColumns, &waveTimeArray, &waveTimeCols, nullptr, nullptr, nullptr, nullptr, nullptr);
     params.setExtraParams(nextPow2, -1, overrideKey, false);
     resizeArrays(params);
 }
@@ -1598,7 +1663,7 @@ void VisualDsp::checkEnvWavColumns(int numColumns, int nextPow2, int overrideKey
 void VisualDsp::checkFFTWavColumns(int numColumns, int numHarms, int overrideKey) {
     ScopedLock sl(fftColumnLock);
 
-    ResizeParams params(numColumns, nullptr, nullptr, &fftPreFXArray, &fftPreFXCols, &phasePreFXArray, &phasePreFXCols, nullptr);
+    ResizeParams params(numColumns, nullptr, nullptr, &waveFFTArray, &waveFFTCols, &wavePhaseArray, &wavePhaseCols, nullptr);
 
     params.setExtraParams(-1, numHarms, overrideKey, false);
     resizeArrays(params);

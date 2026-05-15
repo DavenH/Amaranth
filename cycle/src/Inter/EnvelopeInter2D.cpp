@@ -138,7 +138,7 @@ void EnvelopeInter2D::doExtraMouseUp() {
          */
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
-                auto& pitchRast = getObj(EnvPitchRast);
+                auto& pitchRast = getObj(EnvWavePitchRast);
                 sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast);
             }
 
@@ -700,7 +700,7 @@ void EnvelopeInter2D::doExtraMouseDrag(const MouseEvent &e) {
     if (actionIs(DraggingVertex) || actionIs(ReshapingCurve) || actionIs(DraggingCorner)) {
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch && getSetting(WaveLoaded)) {
             if (PitchedSample* sample = getObj(Multisample).getCurrentSample()) {
-                auto& pitchRast = getObj(EnvPitchRast);
+                auto& pitchRast = getObj(EnvWavePitchRast);
                 sample->createPeriodsFromEnv(getObj(MeshLibrary), &pitchRast);
             }
         }

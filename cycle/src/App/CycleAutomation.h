@@ -43,6 +43,7 @@ private:
     bool savePreset(const var& command, String& message, var& data);
     bool openPreset(const var& command, String& message, var& data);
     bool openFactoryPreset(const var& command, String& message, var& data);
+    bool openWave(const var& command, String& message, var& data);
     bool listMenus(const var& command, String& message, var& data);
     bool invokeMenuItem(const var& command, String& message, var& data);
     bool listModMatrixMenu(const var& command, String& message, var& data);

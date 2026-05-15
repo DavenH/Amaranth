@@ -21,6 +21,40 @@ Multisample::Multisample(
     ,   current(nullptr) {
 }
 
+int Multisample::findAvailableMeshLayerIndex(PitchedSample* sample, int preferredIndex) {
+    auto isAvailable = [this, sample](int layerIndex) {
+        if (layerIndex < 0) {
+            return false;
+        }
+
+        for (auto candidate : samples) {
+            if (candidate != sample && candidate->meshLayerIndex == layerIndex) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    if (isAvailable(preferredIndex)) {
+        return preferredIndex;
+    }
+
+    if (sample != nullptr && isAvailable(sample->meshLayerIndex)) {
+        return sample->meshLayerIndex;
+    }
+
+    auto& waveGroup = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupWavePitch);
+
+    for (int i = 0; i < waveGroup.size(); ++i) {
+        if (isAvailable(i)) {
+            return i;
+        }
+    }
+
+    return waveGroup.size();
+}
+
 void Multisample::ensureSampleHasMeshLayer(PitchedSample* sample, int preferredIndex) {
     if (sample == nullptr) {
         return;
@@ -28,15 +62,7 @@ void Multisample::ensureSampleHasMeshLayer(PitchedSample* sample, int preferredI
 
     auto& meshLibrary = getObj(MeshLibrary);
     auto& waveGroup = meshLibrary.getLayerGroup(LayerGroups::GroupWavePitch);
-    int targetIndex = preferredIndex >= 0 ? preferredIndex : sample->meshLayerIndex;
-
-    if (targetIndex == CommonEnums::Null) {
-        targetIndex = samples.indexOf(sample);
-    }
-
-    if (targetIndex < 0) {
-        targetIndex = waveGroup.size();
-    }
+    int targetIndex = findAvailableMeshLayerIndex(sample, preferredIndex);
 
     while (waveGroup.size() <= targetIndex) {
         meshLibrary.addLayer(LayerGroups::GroupWavePitch);
@@ -315,22 +341,29 @@ PitchedSample* Multisample::addSample(const File& file, int defaultNote) {
             sample->fundNote = defaultNote;
         }
 
-        current = sample.release();
-
+        PitchedSample* loadedSample = sample.get();
         vector<PitchedSample*> toRemove;
 
         for (auto cand : samples) {
-            if(sample->midiRange.intersects(cand->midiRange) && sample->veloRange.intersects(cand->veloRange)) {
+            if (loadedSample->midiRange.intersects(cand->midiRange) &&
+                    loadedSample->veloRange.intersects(cand->veloRange)) {
                 toRemove.push_back(cand);
             }
         }
 
+        int preferredMeshLayer = CommonEnums::Null;
+
         for(auto& i : toRemove) {
+            if (preferredMeshLayer == CommonEnums::Null) {
+                preferredMeshLayer = i->meshLayerIndex;
+            }
+
             samples.removeObject(i, true);
         }
 
+        current = sample.release();
         samples.add(current);
-        ensureSampleHasMeshLayer(current, samples.size() - 1);
+        ensureSampleHasMeshLayer(current, preferredMeshLayer);
         fillRanges();
 
         return current;
