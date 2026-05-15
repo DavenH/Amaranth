@@ -48,7 +48,7 @@ UnisonUI::UnisonUI(SingletonRepo* repo, Effect* effect) :
     paramGroup->addSlider(new Knob(repo, Unison::Pan, "Voice Pan", 0.5f));
     paramGroup->addSlider(fineKnob);
 
-    minTitleSize = 70;
+    minTitleSize = 115;
 
     modeBox.addItem("Group", Group);
     modeBox.addItem("Single", Single);
@@ -57,6 +57,12 @@ UnisonUI::UnisonUI(SingletonRepo* repo, Effect* effect) :
     modeBox.addListener(this);
     modeBox.setWantsKeyboardFocus(false);
 
+    addAndMakeVisible(&modeBox);
+    addAndMakeVisible(&voiceSelector);
+    addAndMakeVisible(&addRemover);
+
+    voiceSelector.setVisible(false);
+    addRemover.setVisible(false);
     voiceSelector.setItemName("Unison voice");
 }
 
