@@ -63,9 +63,10 @@ Result InstallJob::copySelection(const File& extractedRoot, const InstallSelecti
     const File destinationFile = destinationDirectory.getChildFile(sourceFile.getFileName());
     bool copied = false;
     if (sourceFile.isDirectory()) {
-        if (destinationFile.exists()) {
-            destinationFile.deleteRecursively();
+        if (destinationFile.existsAsFile()) {
+            return Result::fail("Cannot install directory over existing file: " + destinationFile.getFullPathName());
         }
+
         copied = sourceFile.copyDirectoryTo(destinationFile);
     } else {
         copied = sourceFile.copyFileTo(destinationFile);

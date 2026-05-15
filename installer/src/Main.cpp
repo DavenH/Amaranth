@@ -63,7 +63,24 @@ private:
     File getManifestFile(const String& commandLine) const {
         const StringArray arguments = StringArray::fromTokens(commandLine, true);
         if (! arguments.isEmpty()) {
-            return File(arguments[0]);
+            const File argumentFile(arguments[0]);
+            if (File::isAbsolutePath(arguments[0]) || argumentFile.existsAsFile()) {
+                return argumentFile;
+            }
+
+            const File sourceRelative = File(AMARANTH_SOURCE_DIR).getChildFile(arguments[0]);
+            if (sourceRelative.existsAsFile()) {
+                return sourceRelative;
+            }
+
+            const File configRelative = File(INSTALLER_DEFAULT_MANIFEST)
+                    .getParentDirectory()
+                    .getChildFile(argumentFile.getFileName());
+            if (configRelative.existsAsFile()) {
+                return configRelative;
+            }
+
+            return argumentFile;
         }
 
         return File(INSTALLER_DEFAULT_MANIFEST);
