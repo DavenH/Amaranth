@@ -18,6 +18,7 @@ public:
     int getCurrentIndexExternal() override;
     void selectionChanged() override;
     void rowClicked(int row) override;
+    float getWheelStepThreshold() const override { return 0.65f; }
 
 protected:
     Ref<LayerSelectionClient> client;

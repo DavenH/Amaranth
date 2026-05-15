@@ -43,11 +43,13 @@ public:
     virtual int getCurrentIndexExternal() = 0;
     virtual void selectionChanged() = 0;
     virtual void rowClicked(int row) {}
+    virtual float getWheelStepThreshold() const { return 0.2f; }
 
     int currentIndex;
 
 protected:
     int indexDragged;
+    float wheelDeltaAccum;
 
     Rectangle<int> prevRect;
     Rectangle<int> nextRect;
