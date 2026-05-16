@@ -263,9 +263,7 @@ TEST_CASE("PitchTracker validates reference wavs against curated sidecar midi no
         { "analogue2.wav",       1 },
         { "bagpipes.wav",        1 },
         { "deffbass.wav",        1 },
-        // TODO: Enable once the curated pitch envelope validation set is frozen.
-        // The current average-note check is too coarse for this onset-heavy sample.
-        // { "fatbass.wav",         1 },
+        { "fxbass.wav",          1 },
         { "noisy-flute.wav",     1 },
         { "powerchord3_2.wav",   1 },
         { "sax-growl.wav",       1 },
