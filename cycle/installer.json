@@ -1,0 +1,165 @@
+{
+  "schema": 1,
+  "productId": "cycle",
+  "productName": "Cycle",
+  "version": "1.9.0",
+  "companyName": "Amaranth Audio",
+  "packageName": "Cycle",
+  "zipName": "Cycle.zip",
+  "eula": {
+    "definitions": [
+      "\"Presets\" means files produced by the Software for storing program configuration, sound design, or content data.",
+      "\"Factory Presets\" means Presets included with the installation or distributed by Amaranth Audio.",
+      "For Cycle, \"Materials\" includes Factory Presets and bundled audio or mesh content."
+    ],
+    "restrictions": [
+      "You may not license, sell, or distribute the Factory Presets or derivatives that are not substantially different."
+    ],
+    "grants": [
+      "Use the Factory Presets and bundled content with Cycle for music and audio production."
+    ]
+  },
+  "artifacts": [
+    {
+      "id": "standalone",
+      "name": "Standalone Application",
+      "source": "Cycle.app",
+      "required": false,
+      "destinations": {
+        "mac": [
+          {
+            "id": "applications",
+            "name": "Applications",
+            "path": "${applications}/Amaranth Audio",
+            "enabled": true
+          }
+        ],
+        "linux": [
+          {
+            "id": "local-bin",
+            "name": "User Applications",
+            "path": "${userHome}/.local/share/applications/Amaranth Audio",
+            "enabled": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "au",
+      "name": "Audio Unit",
+      "source": "Cycle.component",
+      "required": false,
+      "destinations": {
+        "mac": [
+          {
+            "id": "system-au",
+            "name": "System Components",
+            "path": "${systemAudioPlugIns}/Components",
+            "enabled": true
+          },
+          {
+            "id": "user-au",
+            "name": "User Components",
+            "path": "${userAudioPlugIns}/Components",
+            "enabled": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "vst3",
+      "name": "VST3",
+      "source": "Cycle.vst3",
+      "required": false,
+      "destinations": {
+        "mac": [
+          {
+            "id": "system-vst3",
+            "name": "System VST3",
+            "path": "${systemAudioPlugIns}/VST3",
+            "enabled": true
+          },
+          {
+            "id": "user-vst3",
+            "name": "User VST3",
+            "path": "${userAudioPlugIns}/VST3",
+            "enabled": false
+          }
+        ],
+        "linux": [
+          {
+            "id": "user-vst3",
+            "name": "User VST3",
+            "path": "${userHome}/.vst3",
+            "enabled": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "lv2",
+      "name": "LV2",
+      "source": "Cycle.lv2",
+      "required": false,
+      "destinations": {
+        "mac": [
+          {
+            "id": "user-lv2",
+            "name": "User LV2",
+            "path": "${userAudioPlugIns}/LV2",
+            "enabled": false
+          }
+        ],
+        "linux": [
+          {
+            "id": "user-lv2",
+            "name": "User LV2",
+            "path": "${userHome}/.lv2",
+            "enabled": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "aax",
+      "name": "AAX",
+      "source": "Cycle.aaxplugin",
+      "required": false,
+      "destinations": {
+        "mac": [
+          {
+            "id": "system-aax",
+            "name": "System AAX",
+            "path": "/Library/Application Support/Avid/Audio/Plug-Ins",
+            "enabled": false
+          }
+        ],
+        "linux": []
+      }
+    },
+    {
+      "id": "factory-presets",
+      "name": "Factory Presets",
+      "source": "content/presets",
+      "required": false,
+      "destinations": {
+        "mac": [
+          {
+            "id": "cycle-content",
+            "name": "Cycle Content",
+            "path": "${userApplicationSupport}/Amaranth Audio/Cycle",
+            "enabled": true
+          }
+        ],
+        "linux": [
+          {
+            "id": "cycle-content",
+            "name": "Cycle Content",
+            "path": "${userDocuments}/Amaranth Audio/Cycle",
+            "enabled": true
+          }
+        ]
+      }
+    }
+  ]
+}

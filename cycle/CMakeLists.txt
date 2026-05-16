@@ -364,3 +364,19 @@ elseif(APPLE)
         )
     endif()
 endif()
+
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_FOUND)
+    add_custom_target(${PROJECT_NAME}_installer_zip
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_SOURCE_DIR}/build/packages"
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_SOURCE_DIR}/scripts/package_installer_zip.py"
+            "--manifest" "${CMAKE_CURRENT_SOURCE_DIR}/installer.json"
+            "--artifact-root" "${CMAKE_SOURCE_DIR}/build/standalone-release/cycle"
+            "--artifact-root" "${CMAKE_SOURCE_DIR}/build/plugin-release/cycle"
+            "--artifact-root" "${CMAKE_CURRENT_SOURCE_DIR}"
+            "--output" "${CMAKE_SOURCE_DIR}/build/packages/Cycle.zip"
+        COMMENT "Packaging Cycle installer zip"
+        VERBATIM
+    )
+endif()
