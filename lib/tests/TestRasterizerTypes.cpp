@@ -4,8 +4,8 @@
 #include "../src/Curve/Rasterization/GuideCurveOffsetSeeds.h"
 #include "../src/Curve/Rasterization/RasterizationRequest.h"
 #include "Support/LegacyMeshRasterizer.h"
-#include "../src/Curve/Mesh.h"
-#include "../src/Curve/VertCube.h"
+#include "../src/Curve/Mesh/Mesh.h"
+#include "../src/Curve/Mesh/VertCube.h"
 
 using namespace Rasterization;
 

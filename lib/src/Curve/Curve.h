@@ -5,9 +5,9 @@
 #include <iostream>
 #include <Array/Buffer.h>
 
-#include "Vertex.h"
-#include "Vertex2.h"
-#include "Intercept.h"
+#include "Mesh/Vertex.h"
+#include "Mesh/Vertex2.h"
+#include "Mesh/Intercept.h"
 
 using std::cout;
 using std::endl;

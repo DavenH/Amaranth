@@ -4,7 +4,7 @@
 
 #include "WaveformSampler.h"
 #include "../../GuideCurveProvider.h"
-#include "../../Intercept.h"
+#include <Curve/Mesh/Intercept.h>
 #include "../WaveformBuffers.h"
 #include "../../../Util/NumberUtils.h"
 

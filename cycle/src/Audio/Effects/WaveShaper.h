@@ -3,7 +3,7 @@
 #include <Algo/Oversampler.h>
 #include <Array/ScopedAlloc.h>
 #include <Audio/SmoothedParameter.h>
-#include <Curve/Rasterization/Rasterizer.h>
+#include <Curve/Rasterization/Rasterizer/Rasterizer.h>
 #include <Obj/Ref.h>
 #include <Util/NumberUtils.h>
 

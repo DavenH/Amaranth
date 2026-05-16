@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <App/MeshLibrary.h>
-#include <Curve/Vertex.h>
+#include <Curve/Mesh/Vertex.h>
 
 #include "../Rasterization/Policies/Graphic/GraphicPolicies.h"
 

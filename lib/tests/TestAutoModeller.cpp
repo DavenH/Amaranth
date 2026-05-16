@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "JuceHeader.h"
 using namespace juce;
-#include "../src/Curve/Vertex2.h"
+#include "../src/Curve/Mesh/Vertex2.h"
 
 #include <fstream>
 

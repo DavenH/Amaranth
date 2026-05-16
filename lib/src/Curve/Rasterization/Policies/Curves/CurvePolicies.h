@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "../../../Curve.h"
-#include "../../../Intercept.h"
+#include <Curve/Mesh/Intercept.h>
 
 namespace Rasterization {
     class TransferTable {

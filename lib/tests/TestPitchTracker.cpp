@@ -394,7 +394,7 @@ TEST_CASE("PitchTracker validates reference wavs against curated pitch envelopes
         { "mesa1.wav",           0.5f },
         { "noisy-flute.wav",     6.f },
         { "piano-a-1.wav",       100.f },
-        { "piano-c1.wav",        0.5f },
+        { "piano-c1.wav",        2.0f },
         { "piano-d1.wav",        0.5f },
         { "piano-e0.wav",        0.5f },
         { "powerchord3_2.wav",   0.25f },

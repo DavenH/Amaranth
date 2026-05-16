@@ -12,9 +12,9 @@
 #include <App/Settings.h>
 #include <Array/ScopedAlloc.h>
 #include <Audio/AudioHub.h>
-#include <Curve/Mesh.h>
-#include <Curve/Vertex.h>
-#include <Curve/VertCube.h>
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/Vertex.h>
+#include <Curve/Mesh/VertCube.h>
 #include <Definitions.h>
 #include <Inter/EnvelopeInter2D.h>
 #include <Inter/Interactor.h>

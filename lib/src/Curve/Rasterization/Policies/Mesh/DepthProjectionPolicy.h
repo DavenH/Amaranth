@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "../../../Intercept.h"
-#include "../../../VertCube.h"
+#include <Curve/Mesh/Intercept.h>
+#include <Curve/Mesh/VertCube.h>
 #include "../../../../Inter/Dimensions.h"
 #include "../../../../Obj/ColorPoint.h"
 #include "../../../../Obj/MorphPosition.h"

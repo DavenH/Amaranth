@@ -1,7 +1,7 @@
 #pragma once
 
 #include <App/MeshLibrary.h>
-#include <Curve/Vertex.h>
+#include <Curve/Mesh/Vertex.h>
 #include <Obj/MorphPosition.h>
 #include <Util/CommonEnums.h>
 

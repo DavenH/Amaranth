@@ -3,8 +3,8 @@
 #include <algorithm>
 
 #include "../../../GuideCurveProvider.h"
-#include "../../../Intercept.h"
-#include "../../../VertCube.h"
+#include <Curve/Mesh/Intercept.h>
+#include <Curve/Mesh/VertCube.h>
 #include "../../GuideCurveOffsetSeeds.h"
 #include "../Core/PointScalingPolicy.h"
 #include "../../../../Obj/MorphPosition.h"

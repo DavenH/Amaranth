@@ -4,7 +4,7 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Audio/Multisample.h>
-#include <Curve/VertCube.h>
+#include <Curve/Mesh/VertCube.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <Inter/Interactor.h>

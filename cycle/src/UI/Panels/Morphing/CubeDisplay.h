@@ -1,8 +1,8 @@
 #pragma once
 
 #include <App/SingletonAccessor.h>
-#include <Curve/Vertex.h>
-#include <Curve/Vertex2.h>
+#include <Curve/Mesh/Vertex.h>
+#include <Curve/Mesh/Vertex2.h>
 #include <Obj/MorphPosition.h>
 
 class VertCube;

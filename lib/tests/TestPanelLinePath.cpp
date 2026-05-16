@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <Curve/VertCube.h>
+#include <Curve/Mesh/VertCube.h>
 #include <UI/Panels/Panel.h>
 
 TEST_CASE("Panel line paths use phase guide assignments for time and frequency rails", "[panel][guide]") {

@@ -4,7 +4,7 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Binary/Gradients.h>
-#include <Curve/Mesh.h>
+#include <Curve/Mesh/Mesh.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/Widgets/IconButton.h>
 #include <Util/LogRegions.h>
@@ -13,7 +13,7 @@
 #include "Spectrum2D.h"
 #include "Spectrum3D.h"
 
-#include "../../Curve/GraphicRasterizer.h"
+#include "../../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include <UI/Panels/OpenGLPanel3D.h>
 
 #include "../CycleDefs.h"
@@ -25,7 +25,7 @@
 #include "../Widgets/Controls/Spacers.h"
 #include "../../App/CycleTour.h"
 #include "../../Audio/SynthAudioSource.h"
-#include "../../Curve/GraphicRasterizer.h"
+#include "../../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include "../../Inter/SpectrumInter2D.h"
 #include "../../Inter/SpectrumInter3D.h"
 #include "../../UI/Panels/ModMatrixPanel.h"

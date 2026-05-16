@@ -8,7 +8,7 @@
 #include "ScopedGL.h"
 #include "Texture.h"
 #include "../../Inter/Interactor.h"
-#include "../../Curve/Vertex2.h"
+#include "../../Curve/Mesh/Vertex2.h"
 
 using namespace gl;
 

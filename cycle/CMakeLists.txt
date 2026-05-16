@@ -144,6 +144,11 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/Incl/JucePluginDefines.h"
 )
 
+target_compile_options(${PROJECT_NAME} PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-include>
+    $<$<COMPILE_LANGUAGE:CXX>:App/CycleLayerGroups.h>
+)
+
 # Base definitions for both builds
 set(BASE_DEFINITIONS
     JUCE_PROJUCER_VERSION=0x80004
@@ -321,6 +326,11 @@ if(BUILD_TESTING)
         BUILD_TESTING=1
         CYCLE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
         JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/Incl/JucePluginDefines.h"
+    )
+
+    target_compile_options(${PROJECT_NAME}_tests PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-include>
+        $<$<COMPILE_LANGUAGE:CXX>:App/CycleLayerGroups.h>
     )
 
     target_link_libraries(${PROJECT_NAME}_tests PRIVATE

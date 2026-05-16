@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Color.h"
-#include "../Curve/Vertex2.h"
+#include "../Curve/Mesh/Vertex2.h"
 
 class ColorPoint {
 public:

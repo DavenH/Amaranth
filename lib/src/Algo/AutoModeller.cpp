@@ -2,7 +2,7 @@
 #include "AutoModeller.h"
 #include "Resampling.h"
 #include "../Curve/Curve.h"
-#include "../Curve/Rasterizer2D.h"
+#include "../Curve/Rasterization/Rasterizer/Rasterizer2D.h"
 #include "../Design/Updating/Updater.h"
 #include "../Inter/Interactor2D.h"
 #include "../UI/Panels/Panel.h"

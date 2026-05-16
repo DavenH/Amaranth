@@ -8,14 +8,15 @@ namespace {
     using namespace juce;
 
     enum CurrentGroupIndex {
-        GroupVolumeCurrent = LayerGroups::GroupVolume,
-        GroupPitchCurrent = LayerGroups::GroupPitch,
-        GroupScratchCurrent = LayerGroups::GroupScratch,
-        GroupGuideCurveCurrent = LayerGroups::GroupGuideCurve,
-        GroupTimeCurrent = LayerGroups::GroupTime,
-        GroupSpectCurrent = LayerGroups::GroupSpect,
-        GroupPhaseCurrent = LayerGroups::GroupPhase,
-        GroupWavePitchCurrent = LayerGroups::numDefaultGroups,
+        GroupVolumeCurrent,
+        GroupPitchCurrent,
+        GroupScratchCurrent,
+        GroupGuideCurveCurrent,
+        GroupTimeCurrent,
+        GroupSpectCurrent,
+        GroupPhaseCurrent,
+        GroupOscPhaseCurrent,
+        GroupWavePitchCurrent,
         GroupWaveshaperCurrent,
         GroupIrModellerCurrent
     };
@@ -130,12 +131,12 @@ namespace {
         };
 
         const OutputMapping outputMappings[] = {
-            { LayerGroups::GroupTime,    TimeSurfOutput,   3 },
-            { LayerGroups::GroupSpect,   HarmMagOutput,    3 },
-            { LayerGroups::GroupPhase,   HarmPhsOutput,    3 },
-            { LayerGroups::GroupVolume,  VolEnvOutput,     2 },
-            { LayerGroups::GroupPitch,   PitchEnvOutput,   2 },
-            { LayerGroups::GroupScratch, ScratchEnvOutput, 2 }
+            { GroupTimeCurrent,    TimeSurfOutput,   3 },
+            { GroupSpectCurrent,   HarmMagOutput,    3 },
+            { GroupPhaseCurrent,   HarmPhsOutput,    3 },
+            { GroupVolumeCurrent,  VolEnvOutput,     2 },
+            { GroupPitchCurrent,   PitchEnvOutput,   2 },
+            { GroupScratchCurrent, ScratchEnvOutput, 2 }
         };
 
         for (const auto& outputMapping : outputMappings) {
@@ -424,7 +425,7 @@ namespace {
         }
 
         migrateLegacyGroups(groups, {
-            LayerGroups::GroupGuideCurve,
+            GroupGuideCurveCurrent,
             GroupWaveshaperCurrent,
             GroupIrModellerCurrent
         });
@@ -554,10 +555,10 @@ namespace {
         };
 
         const LayerMapping mappings[] = {
-            { "GuideLayer",      LayerGroups::GroupGuideCurve,  MeshLibrary::TypeMesh,     false },
-            { "TimeLayer",       LayerGroups::GroupTime,        MeshLibrary::TypeMesh,     false },
-            { "FreqLayer",       LayerGroups::GroupSpect,       MeshLibrary::TypeMesh,     false },
-            { "PhaseLayer",      LayerGroups::GroupPhase,       MeshLibrary::TypeMesh,     false },
+            { "GuideLayer",      GroupGuideCurveCurrent,  MeshLibrary::TypeMesh,     false },
+            { "TimeLayer",       GroupTimeCurrent,        MeshLibrary::TypeMesh,     false },
+            { "FreqLayer",       GroupSpectCurrent,       MeshLibrary::TypeMesh,     false },
+            { "PhaseLayer",      GroupPhaseCurrent,       MeshLibrary::TypeMesh,     false },
             { "WaveShaperLayer", GroupWaveshaperCurrent,        MeshLibrary::TypeMesh,     false },
             { "TubeModelLayer",  GroupIrModellerCurrent,        MeshLibrary::TypeMesh,     false }
         };
@@ -586,9 +587,9 @@ namespace {
             };
 
             const EnvMapping envMappings[] = {
-                { "EnvVolumeMesh",    LayerGroups::GroupVolume },
-                { "EnvPitchMesh",     LayerGroups::GroupPitch },
-                { "EnvSpeedMesh",     LayerGroups::GroupScratch },
+                { "EnvVolumeMesh",    GroupVolumeCurrent },
+                { "EnvPitchMesh",     GroupPitchCurrent },
+                { "EnvSpeedMesh",     GroupScratchCurrent },
                 { "EnvWavePitchMesh", GroupWavePitchCurrent }
             };
 
@@ -609,7 +610,7 @@ namespace {
         }
 
         if (XmlElement* timeDomain = presetElement->getChildByName("TimeDomainProperties")) {
-            applyLegacyScalarLayerProps(groups, LayerGroups::GroupTime,
+            applyLegacyScalarLayerProps(groups, GroupTimeCurrent,
                                         timeDomain, "TimeProperties");
         }
 
@@ -625,18 +626,18 @@ namespace {
                 phaseProps = phase;
             }
 
-            applyLegacyScalarLayerProps(groups, LayerGroups::GroupSpect, magnitudeProps, "MagnitudeProperties", true, true);
-            applyLegacyScalarLayerProps(groups, LayerGroups::GroupPhase, phaseProps, "PhaseProperties");
+            applyLegacyScalarLayerProps(groups, GroupSpectCurrent, magnitudeProps, "MagnitudeProperties", true, true);
+            applyLegacyScalarLayerProps(groups, GroupPhaseCurrent, phaseProps, "PhaseProperties");
         }
 
         const int requiredGroups[] = {
-            LayerGroups::GroupVolume,
-            LayerGroups::GroupPitch,
-            LayerGroups::GroupScratch,
-            LayerGroups::GroupGuideCurve,
-            LayerGroups::GroupTime,
-            LayerGroups::GroupSpect,
-            LayerGroups::GroupPhase,
+            GroupVolumeCurrent,
+            GroupPitchCurrent,
+            GroupScratchCurrent,
+            GroupGuideCurveCurrent,
+            GroupTimeCurrent,
+            GroupSpectCurrent,
+            GroupPhaseCurrent,
             GroupWavePitchCurrent,
             GroupWaveshaperCurrent,
             GroupIrModellerCurrent
@@ -657,9 +658,9 @@ namespace {
                 continue;
             }
 
-            bool isEnvelope = requiredGroup == LayerGroups::GroupVolume ||
-                              requiredGroup == LayerGroups::GroupPitch ||
-                              requiredGroup == LayerGroups::GroupScratch ||
+            bool isEnvelope = requiredGroup == GroupVolumeCurrent ||
+                              requiredGroup == GroupPitchCurrent ||
+                              requiredGroup == GroupScratchCurrent ||
                               requiredGroup == GroupWavePitchCurrent;
 
             group->setProperty("meshType", isEnvelope ? MeshLibrary::TypeEnvelope : MeshLibrary::TypeMesh);
@@ -674,7 +675,7 @@ namespace {
         }
 
         migrateLegacyGroups(groups, {
-            LayerGroups::GroupGuideCurve,
+            GroupGuideCurveCurrent,
             GroupWaveshaperCurrent,
             GroupIrModellerCurrent
         });
@@ -746,7 +747,7 @@ namespace {
             groups->setProperty(mapping.jsonKey, PresetJson::toVar(group));
         }
 
-        json->setProperty("currentGroup", envProps->getIntAttribute("currentEnvGroup", LayerGroups::GroupVolume));
+        json->setProperty("currentGroup", envProps->getIntAttribute("currentEnvGroup", GroupVolumeCurrent));
         json->setProperty("groups", PresetJson::toVar(groups));
         return PresetJson::toVar(json);
     }

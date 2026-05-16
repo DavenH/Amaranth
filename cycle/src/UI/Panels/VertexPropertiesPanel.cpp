@@ -3,7 +3,7 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Curve/CollisionDetector.h>
+#include <Curve/Mesh/CollisionDetector.h>
 #include <Inter/Interactor.h>
 #include <Inter/Interactor3D.h>
 #include <Inter/UndoableActions.h>

@@ -5,8 +5,8 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Audio/PluginProcessor.h>
-#include <Curve/EnvRasterizer.h>
-#include <Curve/EnvelopeMesh.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
+#include <Curve/Mesh/EnvelopeMesh.h>
 #include <Obj/ColorPos.h>
 #include <UI/MiscGraphics.h>
 #include <UI/Panels/CommonGfx.h>
@@ -24,7 +24,7 @@
 
 #include "../../Audio/SynthAudioSource.h"
 #include "../../App/CycleTour.h"
-#include "../../Curve/E3Rasterizer.h"
+#include "../../Curve/Rasterization/Rasterizer/E3Rasterizer.h"
 #include "../../Inter/EnvelopeInter2D.h"
 #include "../../Inter/EnvelopeInter3D.h"
 #include "../../UI/Panels/PlaybackPanel.h"

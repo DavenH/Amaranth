@@ -1,7 +1,7 @@
 #include <App/MeshLibrary.h>
 #include <App/AutomationInspectable.h>
 #include <App/SingletonRepo.h>
-#include <Curve/VertCube.h>
+#include <Curve/Mesh/VertCube.h>
 #include <Design/Updating/Updater.h>
 #include <Inter/Interactor.h>
 #include <Inter/Interactor3D.h>

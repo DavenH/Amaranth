@@ -7,8 +7,8 @@
 
 #include "../Curves/CurvePolicies.h"
 #include "../../../Curve.h"
-#include "../../../EnvelopeMesh.h"
-#include "../../../Intercept.h"
+#include <Curve/Mesh/EnvelopeMesh.h>
+#include <Curve/Mesh/Intercept.h>
 
 namespace Rasterization {
     struct EnvelopeMarkerResult {

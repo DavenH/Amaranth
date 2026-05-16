@@ -29,7 +29,7 @@
 #include "../../App/CycleTour.h"
 #include "../../App/Dialogs.h"
 #include "../../Audio/SynthAudioSource.h"
-#include "../../Curve/GraphicRasterizer.h"
+#include "../../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 
 #define componentName "IrModellerUI"
 

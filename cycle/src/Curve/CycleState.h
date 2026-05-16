@@ -1,5 +1,5 @@
 #pragma once
-#include <Curve/Intercept.h>
+#include <Curve/Mesh/Intercept.h>
 
 class CycleState
 {

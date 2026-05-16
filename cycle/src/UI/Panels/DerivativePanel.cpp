@@ -11,7 +11,7 @@
 
 #include "../VertexPanels/Waveform2D.h"
 #include "../../Audio/AudioSourceRepo.h"
-#include "../../Curve/GraphicRasterizer.h"
+#include "../../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VisualDsp.h"
 #include "../../Util/CycleEnums.h"

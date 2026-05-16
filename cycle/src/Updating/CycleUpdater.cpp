@@ -11,8 +11,8 @@
 #include "SpectDelegate.h"
 
 #include "../App/Initializer.h"
-#include "../Curve/E3Rasterizer.h"
-#include "../Curve/GraphicRasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/E3Rasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include "../Inter/EnvelopeInter2D.h"
 #include "../Inter/EnvelopeInter3D.h"
 #include "../Inter/SpectrumInter2D.h"

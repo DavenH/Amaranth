@@ -2,11 +2,11 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../CycleState.h"
-#include "../VoiceMeshRasterizer.h"
+#include "../Rasterization/Rasterizer/VoiceMeshRasterizer.h"
 #include "../Rasterization/Policies/Voice/VoicePolicies.h"
 #include <Curve/Curve.h>
-#include <Curve/Mesh.h>
-#include <Curve/VertCube.h>
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/VertCube.h>
 
 namespace {
     using Catch::Approx;

@@ -12,7 +12,7 @@
 #include <Obj/Ref.h>
 
 #include "../Updating/DynamicDetailUpdater.h"
-#include "../Curve/GraphicRasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include "../Curve/ScratchContext.h"
 
 class EnvRasterizer;

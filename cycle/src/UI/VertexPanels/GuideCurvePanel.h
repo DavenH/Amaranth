@@ -2,7 +2,7 @@
 
 #include <App/MeshLibrary.h>
 #include <Curve/GuideCurveProvider.h>
-#include <Curve/Mesh.h>
+#include <Curve/Mesh/Mesh.h>
 #include <Obj/Ref.h>
 #include <UI/Widgets/Knob.h>
 

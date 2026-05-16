@@ -10,7 +10,7 @@
 #include "../../App/SingletonRepo.h"
 #include "../../Array/Buffer.h"
 #include "../../Curve/Curve.h"
-#include "../../Curve/Intercept.h"
+#include "../../Curve/Mesh/Intercept.h"
 #include "../../Obj/ColorPoint.h"
 #include "../../Obj/CurveLine.h"
 #include "../../Inter/Interactor.h"
@@ -331,8 +331,15 @@ void Panel2D::drawDepthLinesAndVerts() {
     bool haveSpeed      = false;
 
     if (scratchChannel != CommonEnums::Null && isScratchApplicable()) {
-        if (MeshLibrary::Properties* props = getLayerProps(GroupScratch, scratchChannel)) {
-            haveSpeed = props->active;
+        int scratchGroupId = getObj(MeshLibrary).getGroupBindings().scratch;
+
+        if (scratchGroupId != CommonEnums::Null) {
+            auto& scratchGroup = getObj(MeshLibrary).getLayerGroup(scratchGroupId);
+
+            if (isPositiveAndBelow(scratchChannel, scratchGroup.size())) {
+                MeshLibrary::Properties* props = getObj(MeshLibrary).getProps(scratchGroupId, scratchChannel);
+                haveSpeed = props != nullptr && props->active;
+            }
         }
     }
 

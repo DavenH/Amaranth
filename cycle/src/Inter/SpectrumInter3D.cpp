@@ -5,7 +5,7 @@
 #include "SpectrumInter3D.h"
 #include "../Audio/AudioSourceRepo.h"
 #include "../Audio/SynthAudioSource.h"
-#include "../Curve/GraphicRasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include "../Inter/SpectrumInter2D.h"
 #include "../UI/Widgets/MidiKeyboard.h"
 #include "../UI/Panels/Morphing/MorphPanel.h"

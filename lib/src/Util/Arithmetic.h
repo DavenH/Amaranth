@@ -4,7 +4,7 @@
 #include <vector>
 #include "NumberUtils.h"
 #include "../Array/Buffer.h"
-#include "../Curve/Vertex2.h"
+#include "../Curve/Mesh/Vertex2.h"
 
 using std::vector;
 

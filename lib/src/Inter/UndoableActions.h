@@ -2,10 +2,10 @@
 
 #include <vector>
 #include "../App/SingletonAccessor.h"
-#include "../Curve/Mesh.h"
+#include "../Curve/Mesh/Mesh.h"
 #include "JuceHeader.h"
-#include "../Curve/Vertex.h"
-#include "../Curve/VertCube.h"
+#include "../Curve/Mesh/Vertex.h"
+#include "../Curve/Mesh/VertCube.h"
 
 class Interactor;
 class Mesh;

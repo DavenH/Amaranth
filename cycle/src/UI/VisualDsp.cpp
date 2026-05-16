@@ -6,8 +6,8 @@
 #include <Array/StereoBuffer.h>
 #include <Audio/Multisample.h>
 #include <Audio/PitchedSample.h>
-#include <Curve/EnvelopeMesh.h>
-#include <Curve/PathRepo.h>
+#include <Curve/Mesh/EnvelopeMesh.h>
+#include <Curve/Mesh/PathRepo.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <Thread/LockTracer.h>
@@ -17,7 +17,7 @@
 #include <Util/Util.h>
 
 #include "VisualDsp.h"
-#include "VisualDsp/TimeColumnRasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/TimeColumnRasterizer.h"
 #include "VisualDsp/UnisonPhaseColumnRenderer.h"
 #include "Algo/Resampling.h"
 #include "../App/Initializer.h"

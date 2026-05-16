@@ -4,8 +4,8 @@
 #include "LegacyMeshRasterizer.h"
 
 #include <Curve/GuideCurveProvider.h>
-#include <Curve/Mesh.h>
-#include <Curve/VertCube.h>
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/VertCube.h>
 #include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Curve/Rasterization/Policies/Mesh/DepthProjectionPolicy.h>
 #include <Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h>

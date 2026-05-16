@@ -4,7 +4,7 @@
 #include "../App/Settings.h"
 #include "../App/SingletonRepo.h"
 #include "../Array/BufferXY.h"
-#include "../Curve/VertCube.h"
+#include "../Curve/Mesh/VertCube.h"
 #include "../Inter/UndoableMeshProcess.h"
 #include "../Thread/LockTracer.h"
 #include "../UI/Panels/Panel.h"

@@ -4,7 +4,7 @@
 
 #include "../Curves/CurvePolicies.h"
 #include "../../../Curve.h"
-#include "../../../Intercept.h"
+#include <Curve/Mesh/Intercept.h>
 
 namespace Rasterization {
     struct PaddingPolicyContext {

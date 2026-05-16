@@ -5,7 +5,7 @@
 #include <Definitions.h>
 
 #include "../App/EditWatcher.h"
-#include "../Curve/Mesh.h"
+#include "../Curve/Mesh/Mesh.h"
 #include "../App/SingletonRepo.h"
 
 VertexTransformUndo::VertexTransformUndo(Interactor* itr) :

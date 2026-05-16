@@ -6,8 +6,9 @@
 #include "../App/Doc/PresetJson.h"
 #include "../App/MeshLibrary.h"
 #include "../App/SingletonRepo.h"
-#include "../Curve/FXRasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/FXRasterizer.h"
 #include "../Util/Arithmetic.h"
+#include "../Util/CommonEnums.h"
 #include "../Util/NumberUtils.h"
 #include "../Util/Util.h"
 #include "../Inter/MorphPositioner.h"
@@ -44,7 +45,14 @@ int Multisample::findAvailableMeshLayerIndex(PitchedSample* sample, int preferre
         return sample->meshLayerIndex;
     }
 
-    auto& waveGroup = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupWavePitch);
+    auto& meshLibrary = getObj(MeshLibrary);
+    int wavePitchGroupId = meshLibrary.getGroupBindings().wavePitch;
+
+    if (wavePitchGroupId == CommonEnums::Null) {
+        return CommonEnums::Null;
+    }
+
+    auto& waveGroup = meshLibrary.getLayerGroup(wavePitchGroupId);
 
     for (int i = 0; i < waveGroup.size(); ++i) {
         if (isAvailable(i)) {
@@ -61,11 +69,17 @@ void Multisample::ensureSampleHasMeshLayer(PitchedSample* sample, int preferredI
     }
 
     auto& meshLibrary = getObj(MeshLibrary);
-    auto& waveGroup = meshLibrary.getLayerGroup(LayerGroups::GroupWavePitch);
+    int wavePitchGroupId = meshLibrary.getGroupBindings().wavePitch;
+
+    if (wavePitchGroupId == CommonEnums::Null) {
+        return;
+    }
+
+    auto& waveGroup = meshLibrary.getLayerGroup(wavePitchGroupId);
     int targetIndex = findAvailableMeshLayerIndex(sample, preferredIndex);
 
     while (waveGroup.size() <= targetIndex) {
-        meshLibrary.addLayer(LayerGroups::GroupWavePitch);
+        meshLibrary.addLayer(wavePitchGroupId);
     }
 
     sample->meshLayerIndex = targetIndex;
@@ -480,7 +494,12 @@ void Multisample::performUpdate(UpdateType updateType) {
 
         if (current != nullptr) {
             listeners.call(&Listener::setMidiRange, current->midiRange);
-            getObj(MeshLibrary).setCurrentIndex(LayerGroups::GroupWavePitch, current->meshLayerIndex);
+            auto& meshLibrary = getObj(MeshLibrary);
+            int wavePitchGroupId = meshLibrary.getGroupBindings().wavePitch;
+
+            if (wavePitchGroupId != CommonEnums::Null) {
+                meshLibrary.setCurrentIndex(wavePitchGroupId, current->meshLayerIndex);
+            }
         }
     }
 }
@@ -509,5 +528,7 @@ void Multisample::shiftAllByOctave(bool up) {
 }
 
 Mesh* Multisample::getCurrentMesh() {
-    return getObj(MeshLibrary).getEffectiveMesh(LayerGroups::GroupWavePitch);
+    auto& meshLibrary = getObj(MeshLibrary);
+    int wavePitchGroupId = meshLibrary.getGroupBindings().wavePitch;
+    return wavePitchGroupId == CommonEnums::Null ? nullptr : meshLibrary.getEffectiveMesh(wavePitchGroupId);
 }

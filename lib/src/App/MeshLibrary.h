@@ -14,25 +14,6 @@ class Mesh;
 class EnvelopeMesh;
 class Vertex;
 
-namespace LayerGroups {
-    enum {
-        GroupVolume
-    ,   GroupPitch
-    ,   GroupScratch
-    ,   GroupGuideCurve
-    ,   GroupTime
-    ,   GroupSpect
-    ,   GroupPhase
-    ,   GroupOscPhase
-    ,   numDefaultGroups
-    // TODO(daven): These application layer-group ids were pulled into lib so shared
-    // mesh ownership/persistence code can compile. Revisit this when app-specific
-    // config/header injection or a proper extension registry exists.
-    ,   GroupWavePitch = numDefaultGroups
-    ,   GroupWaveshaper
-    ,   GroupIrModeller
-    };
-}
 class MeshLibrary :
         public SingletonAccessor
     ,   public Savable {
@@ -143,6 +124,18 @@ public:
         [[nodiscard]] bool isNotNull() const { return groupId != CommonEnums::Null && layerIdx != CommonEnums::Null; }
     };
 
+    struct GroupBindings {
+        int scratch = CommonEnums::Null;
+        int guideCurve = CommonEnums::Null;
+        int wavePitch = CommonEnums::Null;
+        Array<int> scratchSourceGroups;
+        Array<int> guideCurveSourceGroups;
+
+        [[nodiscard]] bool hasScratch() const { return scratch != CommonEnums::Null; }
+        [[nodiscard]] bool hasGuideCurve() const { return guideCurve != CommonEnums::Null; }
+        [[nodiscard]] bool hasWavePitch() const { return wavePitch != CommonEnums::Null; }
+    };
+
     /* ----------------------------------------------------------------------------- */
 
     explicit MeshLibrary(SingletonRepo* repo);
@@ -154,6 +147,8 @@ public:
     bool readJSON(const var& object) override;
 
     void addGroup(int meshType);
+    void setGroupBindings(const GroupBindings& bindings);
+    [[nodiscard]] const GroupBindings& getGroupBindings() const { return groupBindings; }
     void addLayer(int group);
     void destroy();
     void destroyLayer(Layer& layer, bool notifyEditWatcher = true);
@@ -210,6 +205,7 @@ protected:
 
     CriticalSection arrayLock;
     ClipboardMesh clipboardMesh;
+    GroupBindings groupBindings;
 
     Layer dummyLayer;
     LayerGroup dummyGroup;

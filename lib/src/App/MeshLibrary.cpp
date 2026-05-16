@@ -5,8 +5,8 @@
 #include "Doc/PresetJson.h"
 #include "EditWatcher.h"
 #include "SingletonRepo.h"
-#include "../Curve/Mesh.h"
-#include "../Curve/EnvelopeMesh.h"
+#include "../Curve/Mesh/Mesh.h"
+#include "../Curve/Mesh/EnvelopeMesh.h"
 #include "../Util/CommonEnums.h"
 #include "../UI/IConsole.h"
 
@@ -70,6 +70,10 @@ void MeshLibrary::addGroup(int meshType) {
     layerGroups.push_back(group);
 
     getObj(EditWatcher).setHaveEditedWithoutUndo(true);
+}
+
+void MeshLibrary::setGroupBindings(const GroupBindings& bindings) {
+    groupBindings = bindings;
 }
 
 void MeshLibrary::moveLayer(int groupId, int fromIndex, int toIndex) {
@@ -635,38 +639,28 @@ EnvelopeMesh* MeshLibrary::getCurrentEnvMesh(int group) {
 bool MeshLibrary::layerRemoved(int layerGroup, int index) {
     bool changed = false;
 
-    switch (layerGroup) {
-        case LayerGroups::GroupGuideCurve: {
-            for (int i = 0; i < getNumGroups(); ++i) {
-                LayerGroup& group = layerGroups[i];
+    if (layerGroup == groupBindings.guideCurve) {
+        for (int i = 0; i < getNumGroups(); ++i) {
+            LayerGroup& group = layerGroups[i];
 
-                for (int j = 0; j < group.size(); ++j) {
-                    Layer& layer = group.layers[j];
+            for (int j = 0; j < group.size(); ++j) {
+                Layer& layer = group.layers[j];
 
-                    for(auto& cube : layer.mesh->getCubes()) {
-                        for (int k = Vertex::Time; k <= Vertex::Curve; ++k) {
-                            char& chan = cube->guideCurveAt(k);
+                for(auto& cube : layer.mesh->getCubes()) {
+                    for (int k = Vertex::Time; k <= Vertex::Curve; ++k) {
+                        char& chan = cube->guideCurveAt(k);
 
-                            if (chan > index) {
-                                --chan;
-                                changed = true;
-                            } else if (chan == index) {
-                                chan = -1;
-                                changed = true;
-                            }
+                        if (chan > index) {
+                            --chan;
+                            changed = true;
+                        } else if (chan == index) {
+                            chan = -1;
+                            changed = true;
                         }
                     }
                 }
             }
-
-            break;
         }
-
-        case LayerGroups::GroupScratch:
-            break;
-
-        default:
-            break;
     }
 
     listeners.call(&Listener::layerRemoved, layerGroup, index);
@@ -677,67 +671,55 @@ bool MeshLibrary::layerRemoved(int layerGroup, int index) {
 bool MeshLibrary::layerChanged(int layerGroup, int index) {
     LayerGroup& srcGroup = layerGroups[layerGroup];
 
-    switch (layerGroup) {
-        case LayerGroups::GroupScratch: {
-            int types[] = {
-                LayerGroups::GroupTime,
-                LayerGroups::GroupSpect,
-                LayerGroups::GroupPhase
-            };
+    if (layerGroup == groupBindings.scratch) {
+        srcGroup.sources.clear();
 
-            srcGroup.sources.clear();
-
-            for (int i = 0; i < numElementsInArray(types); ++i) {
-                LayerGroup& group = layerGroups[i];
-
-                for (int j = 0; j < group.size(); ++j) {
-                    int chan = group[j].props->scratchChan;
-
-                    if (chan != CommonEnums::Null) {
-                        srcGroup.sources[chan].add(types[i]);
-                    }
-                }
+        for (int groupId : groupBindings.scratchSourceGroups) {
+            if (!isPositiveAndBelow(groupId, (int) layerGroups.size())) {
+                continue;
             }
 
-            break;
-        }
+            LayerGroup& group = layerGroups[groupId];
 
-        case LayerGroups::GroupGuideCurve: {
-
-            int types[] = {
-                LayerGroups::GroupTime,
-                LayerGroups::GroupSpect,
-                LayerGroups::GroupPhase,
-                LayerGroups::GroupVolume,
-                LayerGroups::GroupPitch,
-                LayerGroups::GroupScratch
-            };
-
-            srcGroup.sources.clear();
-
-            for (int i = 0; i < numElementsInArray(types); ++i) {
-                if (i == LayerGroups::GroupGuideCurve) {
+            for (int j = 0; j < group.size(); ++j) {
+                if (group[j].props == nullptr) {
                     continue;
                 }
 
-                LayerGroup& group = layerGroups[i];
+                int chan = group[j].props->scratchChan;
 
-                for (int j = 0; j < group.size(); ++j) {
-                    for(auto& cube : group[j].mesh->getCubes()) {
-                        for (int d = 0; d <= Vertex::Curve; ++d) {
-                            char& guideIndex = cube->guideCurveAt(d);
+                if (chan != CommonEnums::Null) {
+                    srcGroup.sources[chan].add(groupId);
+                }
+            }
+        }
+    } else if (layerGroup == groupBindings.guideCurve) {
+        srcGroup.sources.clear();
 
-                            if (guideIndex >= 0) {
-                                group.sources[guideIndex].add(types[i]);
-                            }
+        for (int groupId : groupBindings.guideCurveSourceGroups) {
+            if (groupId == groupBindings.guideCurve
+                || !isPositiveAndBelow(groupId, (int) layerGroups.size())) {
+                continue;
+            }
+
+            LayerGroup& group = layerGroups[groupId];
+
+            for (int j = 0; j < group.size(); ++j) {
+                if (group[j].mesh == nullptr) {
+                    continue;
+                }
+
+                for(auto& cube : group[j].mesh->getCubes()) {
+                    for (int d = 0; d <= Vertex::Curve; ++d) {
+                        char& guideIndex = cube->guideCurveAt(d);
+
+                        if (guideIndex >= 0) {
+                            srcGroup.sources[guideIndex].add(groupId);
                         }
                     }
                 }
             }
-
-            break;
         }
-        default: break;
     }
 
     listeners.call(&Listener::layerChanged, layerGroup, index);

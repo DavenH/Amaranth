@@ -5,7 +5,7 @@
 #include <App/SingletonRepo.h>
 
 #include "SpectDelegate.h"
-#include "../Curve/GraphicRasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include "../Util/CycleEnums.h"
 
 SpectDelegate::SpectDelegate(SingletonRepo* repo) :

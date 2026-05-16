@@ -6,8 +6,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Curve/Curve.h"
-#include "../src/Curve/FXRasterizer.h"
-#include "../src/Curve/Mesh.h"
+#include "../src/Curve/Rasterization/Rasterizer/FXRasterizer.h"
+#include "../src/Curve/Mesh/Mesh.h"
 #include "Support/LegacyMeshRasterizer.h"
 #include "RasterizerCompare.h"
 

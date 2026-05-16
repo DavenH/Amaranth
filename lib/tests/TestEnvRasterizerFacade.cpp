@@ -1,7 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Curve/EnvelopeMesh.h"
+#include "../src/Curve/Mesh/EnvelopeMesh.h"
 #include "../src/Curve/Rasterization/Policies/Envelope/EnvelopePolicies.h"
 
 namespace {

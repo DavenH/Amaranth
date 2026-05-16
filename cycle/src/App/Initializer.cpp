@@ -12,6 +12,7 @@
 #include "CycleAutomation.h"
 #include "Dialogs.h"
 #include "Directories.h"
+#include "CycleMeshLibraryConfig.h"
 #include "MeshDefaults.h"
 #include "FileManager.h"
 #include "Initializer.h"
@@ -24,8 +25,8 @@
 #include "../Audio/AudioSourceRepo.h"
 #include "../Audio/SampleUtils.h"
 #include "../Audio/SynthAudioSource.h"
-#include "../Curve/E3Rasterizer.h"
-#include "../Curve/GraphicRasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/E3Rasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include "../CycleDefs.h"
 #include "../Inter/EnvelopeInter2D.h"
 #include "../Inter/EnvelopeInter3D.h"
@@ -67,7 +68,6 @@
 #include "../UI/Widgets/MidiKeyboard.h"
 #include "../Updating/CycleUpdater.h"
 #include "../Util/CycleEnums.h"
-#include "VersionConsiliator.h"
 
 Atomic<int> Initializer::numInstances = Atomic<int>(int(0));
 
@@ -136,6 +136,8 @@ void Initializer::seedMeshLibrary() {
         return;
     }
 
+    CycleMeshLibraryConfig::configure(*meshLib);
+
     meshLib->addGroup(MeshLibrary::TypeEnvelope);
     meshLib->addGroup(MeshLibrary::TypeEnvelope);
     meshLib->addGroup(MeshLibrary::TypeEnvelope);
@@ -196,7 +198,6 @@ void Initializer::doPostInitWiring() {
 
     meshLib->addListener(&getObj(CycleUpdater));
     meshLib->addListener(&getObj(ModMatrixPanel));
-    meshLib->addListener(&getObj(VersionConsiliator));
     meshLib->addListener(&getObj(Spectrum3D));
     meshLib->addListener(&getObj(Waveform3D));
 
@@ -325,7 +326,6 @@ void Initializer::instantiate() {
     repo->add(new Directories(repo), -50);
     repo->add(new FileManager(repo));
     repo->add(new KeyboardInputHandler(repo));
-    repo->add(new VersionConsiliator(repo));
 
     // AUDIO
     repo->add(new SampleUtils(repo));

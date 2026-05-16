@@ -7,7 +7,7 @@
 
 #include "../App/Initializer.h"
 #include "../Audio/SynthAudioSource.h"
-#include "../Curve/GraphicRasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include "../Inter/EnvelopeInter2D.h"
 #include "../UI/Panels/Morphing/MorphPanel.h"
 #include "../UI/VertexPanels/Waveform3D.h"

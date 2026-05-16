@@ -10,7 +10,7 @@
 #include <App/SingletonAccessor.h>
 #include <Array/ScopedAlloc.h>
 #include <Audio/SmoothedParameter.h>
-#include <Curve/EnvRasterizer.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 #include <Util/MicroTimer.h>
 
 #include "../../Curve/EnvRenderContext.h"

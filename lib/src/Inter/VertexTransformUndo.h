@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include "../Obj/Ref.h"
-#include "../Curve/Vertex.h"
+#include "../Curve/Mesh/Vertex.h"
 
 using std::vector;
 

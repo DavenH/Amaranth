@@ -7,7 +7,7 @@
 #include "../../App/MeshLibrary.h"
 #include "../../App/Settings.h"
 #include "../../App/SingletonRepo.h"
-#include "../../Curve/DepthVert.h"
+#include "../../Curve/Mesh/DepthVert.h"
 #include "../../Inter/Interactor3D.h"
 #include "../../UI/Layout/BoundWrapper.h"
 #include "../../Util/CommonEnums.h"
@@ -108,8 +108,15 @@ void Panel3D::drawInterceptLines() {
     int dim = getSetting(CurrentMorphAxis);
 
     if (scratchChannel != CommonEnums::Null && isScratchApplicable()) {
-        if (MeshLibrary::Properties* props = getLayerProps(GroupScratch, scratchChannel)) {
-            haveSpeed = props->active;
+        int scratchGroupId = getObj(MeshLibrary).getGroupBindings().scratch;
+
+        if (scratchGroupId != CommonEnums::Null) {
+            auto& scratchGroup = getObj(MeshLibrary).getLayerGroup(scratchGroupId);
+
+            if (isPositiveAndBelow(scratchChannel, scratchGroup.size())) {
+                MeshLibrary::Properties* props = getObj(MeshLibrary).getProps(scratchGroupId, scratchChannel);
+                haveSpeed = props != nullptr && props->active;
+            }
         }
     }
 
