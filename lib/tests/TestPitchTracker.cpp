@@ -1,9 +1,47 @@
 #include <catch2/catch_test_macros.hpp>
 #include "JuceHeader.h"
 using namespace juce;
-#include "../src/Algo/PitchTracker.h"
+#include "../src/Algo/Pitch/PitchTracker.h"
 #include "../src/Audio/PitchedSample.h"
 #include "../src/Array/Buffer.h"
+#include "../src/Util/NumberUtils.h"
+
+namespace {
+
+File getRepositoryRoot() {
+    return File(LIB_ROOT).getParentDirectory();
+}
+
+File getReferenceWaveFile(const String& fileName) {
+    return getRepositoryRoot().getChildFile("cycle/content/wav").getChildFile(fileName);
+}
+
+int readExpectedMidiNote(const File& waveFile) {
+    File envFile = waveFile.getSiblingFile(waveFile.getFileNameWithoutExtension() + ".env");
+    REQUIRE(envFile.existsAsFile());
+
+    var envelope = JSON::parse(envFile.loadFileAsString());
+    REQUIRE(envelope.isObject());
+
+    return envelope.getProperty("midiNote", -1);
+}
+
+int detectReferenceMidiNote(PitchTracker& tracker, const File& waveFile, int algorithm) {
+    PitchedSample sample;
+    REQUIRE(sample.load(waveFile.getFullPathName()) == 0);
+    REQUIRE(sample.size() > 0);
+
+    tracker.setSample(&sample);
+    tracker.setAlgo(algorithm);
+    tracker.trackPitch();
+
+    const float detectedPeriod = tracker.getAveragePeriod();
+    REQUIRE(detectedPeriod > 0.f);
+
+    return roundToInt(NumberUtils::frequencyToNote(sample.samplerate / detectedPeriod));
+}
+
+}
 
 void createSineWave(Buffer<float>& buff, float freq, float sampleRate) {
     buff.ramp(0, 2 * M_PI * freq / sampleRate).sin();
@@ -212,5 +250,38 @@ TEST_CASE("PitchTracker basic functionality", "[pitch][dsp][wip]") {
 
         // Should detect fundamental frequency, not harmonic
         CHECK(abs(detectedFreq - 440.0f) < 1.0f);
+    }
+}
+
+TEST_CASE("PitchTracker validates reference wavs against curated sidecar midi notes", "[pitch][dsp][reference]") {
+    struct ReferenceCase {
+        const char* fileName;
+        int toleranceSemis;
+    };
+
+    const ReferenceCase references[] = {
+        { "analogue2.wav",       1 },
+        { "bagpipes.wav",        1 },
+        { "deffbass.wav",        1 },
+        // TODO: Enable once the curated pitch envelope validation set is frozen.
+        // The current average-note check is too coarse for this onset-heavy sample.
+        // { "fatbass.wav",         1 },
+        { "noisy-flute.wav",     1 },
+        { "powerchord3_2.wav",   1 },
+        { "sax-growl.wav",       1 },
+        { "sitar3.wav",          1 },
+    };
+
+    PitchTracker tracker;
+
+    for (const auto& reference: references) {
+        File waveFile = getReferenceWaveFile(reference.fileName);
+        REQUIRE(waveFile.existsAsFile());
+
+        const int expectedMidi = readExpectedMidiNote(waveFile);
+        const int detectedMidi = detectReferenceMidiNote(tracker, waveFile, PitchTracker::AlgoAuto);
+
+        CAPTURE(reference.fileName, expectedMidi, detectedMidi);
+        CHECK(std::abs(detectedMidi - expectedMidi) <= reference.toleranceSemis);
     }
 }

@@ -1,11 +1,14 @@
 #pragma once
 
 #include <vector>
-#include "../Array/ScopedAlloc.h"
+#include "../../Array/ScopedAlloc.h"
+#include "PitchTrackingRequest.h"
 
 using std::vector;
 
 class PitchedSample;
+class SwipePitchDetector;
+class YinPitchDetector;
 
 class PitchTracker {
 public:
@@ -28,8 +31,6 @@ public:
     };
 
     struct TrackingData {
-        int     minFrequency;
-        int     maxFrequency;
         int     overlap;
         int     step;
         float   helperScale;
@@ -40,8 +41,6 @@ public:
 
         void reset()
         {
-            minFrequency    = 20;
-            maxFrequency    = 2000;
             overlap         = 4;
             step            = 1728;
             helperScale     = 0.1f;
@@ -76,12 +75,17 @@ public:
     vector<FrequencyBin>& getFrequencyBins();
 
     float getConfidence() const             { return confidence; }
+    const PitchTrackingRequest& getRequest() const { return request; }
     PitchedSample* getSample()              { return sample;     }
 
     void setAlgo(int algo)                  { this->algo = algo; }
+    void setRequest(const PitchTrackingRequest& request) { this->request = request; }
     void setSample(PitchedSample* wrapper)  { sample = wrapper;  }
 
 private:
+    friend class SwipePitchDetector;
+    friend class YinPitchDetector;
+
     struct StrengthColumn {
         float time;
         Buffer<float> column;
@@ -124,6 +128,7 @@ private:
     float confidence{}, aperiodicityThresh;
 
     CriticalSection paramLock;
+    PitchTrackingRequest request{};
     TrackingData data{};
     PitchedSample* sample{};
     vector<FrequencyBin> bins;

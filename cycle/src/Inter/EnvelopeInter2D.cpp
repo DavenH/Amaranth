@@ -1,5 +1,5 @@
 #include <Algo/AutoModeller.h>
-#include <Algo/PitchTracker.h>
+#include <Algo/Pitch/PitchTracker.h>
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
