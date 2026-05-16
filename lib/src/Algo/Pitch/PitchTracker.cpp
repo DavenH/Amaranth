@@ -1,6 +1,7 @@
 #include <Util/Arithmetic.h>
 #include <Array/VecOps.h>
 #include "PitchTracker.h"
+#include "PeriodSpectralPitchScorer.h"
 #include "PitchKernelBuilder.h"
 #include "SwipePitchDetector.h"
 #include "YinPitchDetector.h"
@@ -19,6 +20,8 @@
 namespace {
 
 constexpr float maxYinAtonicityForAuto = 10.f;
+constexpr float maxYinAtonicityForSubharmonicCheck = 40.f;
+constexpr float minSpectralSubharmonicImprovement = 0.65f;
 
 float averageAtonal(const vector<PitchFrame>& frames) {
     if (frames.empty()) {
@@ -46,6 +49,23 @@ float averagePeriod(const vector<PitchFrame>& frames, int fallbackNote, int samp
     }
 
     return sum / float(frames.size());
+}
+
+void retuneFramesToMidiNote(PitchedSample* sample, float currentAveragePeriod, int midiNote) {
+    if (sample == nullptr || currentAveragePeriod <= 0.f) {
+        return;
+    }
+
+    const float targetPeriod = sample->samplerate / (float) NumberUtils::noteToFrequency(midiNote);
+    const float scale = targetPeriod / currentAveragePeriod;
+
+    for (auto& frame: sample->periods) {
+        if (frame.period < currentAveragePeriod * 0.5f || frame.period > currentAveragePeriod * 1.5f) {
+            frame.period = targetPeriod;
+        } else {
+            frame.period *= scale;
+        }
+    }
 }
 
 void logPitchDecision(PitchedSample* sample,
@@ -452,6 +472,22 @@ void PitchTracker::trackPitch() {
             if(yinAtonicity < swipeAtonicity) {
                 sample->periods = yinFrames;
                 decision = "auto-yin-retained";
+            } else if (yinAtonicity < maxYinAtonicityForSubharmonicCheck) {
+                const float swipeAveragePeriod = averagePeriod(swipeFrames, sample->fundNote, sample->samplerate);
+                const int detectedMidiNote = roundToInt(
+                    NumberUtils::frequencyToNote(sample->samplerate / swipeAveragePeriod));
+
+                float currentSpectralScore = 0.f;
+                float bestSpectralScore = 0.f;
+                PeriodSpectralPitchScorer::Context spectralContext;
+                const int subharmonicMidiNote = PeriodSpectralPitchScorer::findBestSubharmonicMidiNote(
+                    *sample, detectedMidiNote, spectralContext, currentSpectralScore, bestSpectralScore);
+
+                if (subharmonicMidiNote < detectedMidiNote - 12
+                    && bestSpectralScore < currentSpectralScore * minSpectralSubharmonicImprovement) {
+                    retuneFramesToMidiNote(sample, swipeAveragePeriod, subharmonicMidiNote);
+                    decision = "auto-swipe-subharmonic";
+                }
             }
         }
 
