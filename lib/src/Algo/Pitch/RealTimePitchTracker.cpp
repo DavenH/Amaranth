@@ -4,6 +4,7 @@
 
 #include <limits>
 
+#include "CycleDiffPitchScorer.h"
 #include "PitchKernelBuilder.h"
 
 using std::vector;
@@ -112,11 +113,7 @@ int RealTimePitchTracker::updateSpectral() {
 }
 
 void RealTimePitchTracker::precomputePeriods(double frequencyOfA4, int sr) {
-    tauTable.resize(request.numMidiNotes);
-    for (int i = 0; i < request.numMidiNotes; ++i) {
-        const float freq = MidiMessage::getMidiNoteInHertz(i + request.firstMidiNote, frequencyOfA4);
-        tauTable[i] = jmax(2, roundToInt((float) sr / freq));
-    }
+    CycleDiffPitchScorer::precomputePeriods(request, frequencyOfA4, sr, tauTable);
 }
 
 int RealTimePitchTracker::updatePeriodic() {
@@ -131,54 +128,13 @@ int RealTimePitchTracker::updatePeriodic() {
         }
     }
 
-    float* sig = rawBlock.get();
-
-    for (int key = 0; key < request.numMidiNotes; ++key) {
-        const int tau           = tauTable[key];
-        const int numCycles     = blockSize / tau;
-
-        if (numCycles < 2) {
-            periodScores[key] = std::numeric_limits<float>::infinity();
-            continue;
-        }
-
-        const int numComparisons = numCycles - 1;
-        const int diffLen        = numComparisons * tau;
-
-        Buffer<float> base   (sig,       diffLen);
-        Buffer<float> lagged (sig + tau, diffLen);
-        Buffer<float> scratch(cycleDiffScratch.get(), diffLen);
-        VecOps::sub(lagged, base, scratch);
-
-        const float rawScore = scratch.normL2();
-
-        periodScores[key] = rawScore / (sqrtf((float) tau) * (float) numComparisons);
-    }
-
     constexpr float octaveTolerance = 1.08f;
-
-    for (int key = 0; key + 12 < request.numMidiNotes; ++key) {
-        if (periodScores[key] == std::numeric_limits<float>::infinity()) {
-            continue;
-        }
-        if (periodScores[key + 12] == std::numeric_limits<float>::infinity()) {
-            continue;
-        }
-
-        if (periodScores[key + 12] <= periodScores[key] * octaveTolerance) {
-            periodScores[key] *= 2.f;
-        }
-    }
+    CycleDiffPitchScorer::scorePeriods(rawBlock, tauTable, periodScores, cycleDiffScratch);
+    CycleDiffPitchScorer::preferHigherOctaves(periodScores, octaveTolerance);
 
     float minScore = std::numeric_limits<float>::infinity();
-    int bestKey = jlimit(0, request.numMidiNotes - 1, bestKeyIndex - request.firstMidiNote);
-
-    for (int key = 0; key < request.numMidiNotes; ++key) {
-        if (periodScores[key] < minScore) {
-            minScore = periodScores[key];
-            bestKey  = key;
-        }
-    }
+    int bestKey = CycleDiffPitchScorer::findBestScore(
+        periodScores, bestKeyIndex - request.firstMidiNote, minScore);
 
     constexpr float periodicityThreshold = 0.25f;
 

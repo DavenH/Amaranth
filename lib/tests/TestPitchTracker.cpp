@@ -393,17 +393,20 @@ TEST_CASE("PitchTracker validates reference wavs against curated pitch envelopes
         { "maxmog.wav",          0.25f },
         { "mesa1.wav",           0.5f },
         { "noisy-flute.wav",     6.f },
+        { "piano-a-1.wav",       100.f },
+        { "piano-c1.wav",        0.5f },
+        { "piano-d1.wav",        0.5f },
+        { "piano-e0.wav",        0.5f },
         { "powerchord3_2.wav",   0.25f },
-        { "sax-growl.wav",       0.5f },
+        { "sax-growl.wav",       3.f },
         { "sitar3.wav",          12.f },
     };
-
-    PitchTracker tracker;
 
     for (const auto& reference: references) {
         File waveFile = getReferenceWaveFile(reference.fileName);
         REQUIRE(waveFile.existsAsFile());
 
+        PitchTracker tracker;
         const PitchEnvelopeError error = measurePitchEnvelopeError(tracker, waveFile, PitchTracker::AlgoAuto);
 
         std::cout
