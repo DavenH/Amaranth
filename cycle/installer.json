@@ -6,6 +6,19 @@
   "companyName": "Amaranth Audio",
   "packageName": "Cycle",
   "zipName": "Cycle.zip",
+  "eula": {
+    "definitions": [
+      "\"Presets\" means files produced by the Software for storing program configuration, sound design, or content data.",
+      "\"Factory Presets\" means Presets included with the installation or distributed by Amaranth Audio.",
+      "For Cycle, \"Materials\" includes Factory Presets and bundled audio or mesh content."
+    ],
+    "restrictions": [
+      "You may not license, sell, or distribute the Factory Presets or derivatives that are not substantially different."
+    ],
+    "grants": [
+      "Use the Factory Presets and bundled content with Cycle for music and audio production."
+    ]
+  },
   "artifacts": [
     {
       "id": "standalone",

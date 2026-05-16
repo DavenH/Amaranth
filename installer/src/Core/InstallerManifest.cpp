@@ -36,6 +36,7 @@ Result InstallerManifest::loadFromFile(const File& manifestFile) {
     companyName = getPropertyString(*object, "companyName", "Amaranth Audio");
     packageName = getPropertyString(*object, "packageName", productName);
     zipName = getPropertyString(*object, "zipName", productName + ".zip");
+    parseEula(*object);
 
     if (productId.isEmpty() || productName.isEmpty()) {
         return Result::fail("Installer manifest requires productId and productName.");
@@ -127,6 +128,21 @@ Result InstallerManifest::parseArtifact(const var& artifactVar, InstallerArtifac
     return parseDestinations(object->getProperty("destinations"), artifact);
 }
 
+void InstallerManifest::parseEula(const DynamicObject& object) {
+    eulaDefinitions.clear();
+    eulaRestrictions.clear();
+    eulaGrants.clear();
+
+    auto* eulaObject = object.getProperty("eula").getDynamicObject();
+    if (eulaObject == nullptr) {
+        return;
+    }
+
+    eulaDefinitions = optionalStringArray(eulaObject->getProperty("definitions"));
+    eulaRestrictions = optionalStringArray(eulaObject->getProperty("restrictions"));
+    eulaGrants = optionalStringArray(eulaObject->getProperty("grants"));
+}
+
 Result InstallerManifest::parseDestinations(const var& destinationsVar, InstallerArtifact& artifact) const {
     auto* destinationsObject = destinationsVar.getDynamicObject();
     if (destinationsObject == nullptr) {
@@ -163,4 +179,20 @@ Result InstallerManifest::parseDestinations(const var& destinationsVar, Installe
 
 String InstallerManifest::requireString(const DynamicObject& object, const Identifier& key) {
     return getPropertyString(object, key);
+}
+
+StringArray InstallerManifest::optionalStringArray(const var& value) {
+    StringArray strings;
+    auto* array = value.getArray();
+    if (array == nullptr) {
+        return strings;
+    }
+
+    for (const auto& item : *array) {
+        if (item.isString()) {
+            strings.add(item.toString());
+        }
+    }
+
+    return strings;
 }

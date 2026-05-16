@@ -26,7 +26,7 @@ InstallerComponent::InstallerComponent(InstallerManifest manifestIn) :
     eula.setReadOnly(true);
     eula.setMultiLine(true);
     eula.setScrollbarsShown(true);
-    eula.setText(InstallerEula::text, dontSendNotification);
+    eula.setText(InstallerEula::buildText(manifest), dontSendNotification);
 
     installButton.setButtonText("Accept and Install");
     installButton.addListener(this);

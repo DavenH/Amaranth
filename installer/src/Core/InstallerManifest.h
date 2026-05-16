@@ -35,12 +35,17 @@ public:
     const File&   getManifestFile() const   { return sourceFile; }
 
     const Array<InstallerArtifact>& getArtifacts() const { return artifacts; }
+    const StringArray& getEulaDefinitions() const        { return eulaDefinitions; }
+    const StringArray& getEulaRestrictions() const       { return eulaRestrictions; }
+    const StringArray& getEulaGrants() const             { return eulaGrants; }
 
 private:
     Result parseArtifact(const var& artifactVar, InstallerArtifact& artifact) const;
     Result parseDestinations(const var& destinationsVar, InstallerArtifact& artifact) const;
+    void parseEula(const DynamicObject& object);
 
     static String requireString(const DynamicObject& object, const Identifier& key);
+    static StringArray optionalStringArray(const var& value);
 
     File sourceFile;
     String productId;
@@ -49,5 +54,8 @@ private:
     String companyName;
     String packageName;
     String zipName;
+    StringArray eulaDefinitions;
+    StringArray eulaRestrictions;
+    StringArray eulaGrants;
     Array<InstallerArtifact> artifacts;
 };
