@@ -18,6 +18,8 @@
 
 namespace {
 
+constexpr float maxYinAtonicityForAuto = 10.f;
+
 float averageAtonal(const vector<PitchFrame>& frames) {
     if (frames.empty()) {
         return 0.f;
@@ -314,9 +316,26 @@ void PitchTracker::fillFrequencyBins() {
 
             if(fabsf(float(intRatio) - currToAvgRatio) < 0.06f && intRatio > 0) {
                 frame.period /= intRatio;
-            } else {
+            } else if (frame.period < baseAverage) {
                 frame.period = baseAverage;
             }
+        }
+    }
+
+    int onsetEnd = 0;
+    while (onsetEnd < sample->periods.size()
+           && sample->periods[onsetEnd].period <= baseAverage * 1.02f
+           && sample->periods[onsetEnd].atonal > 0.6f) {
+        ++onsetEnd;
+    }
+
+    if (onsetEnd > 0
+        && onsetEnd < sample->periods.size()
+        && sample->periods[onsetEnd].period > baseAverage * 1.05f) {
+        const float periodDelta = sample->periods[onsetEnd].period - baseAverage;
+
+        for (int i = 0; i < onsetEnd; ++i) {
+            sample->periods[i].period = baseAverage + periodDelta * float(onsetEnd - i + 1);
         }
     }
 }
@@ -423,7 +442,7 @@ void PitchTracker::trackPitch() {
         String decision = "auto-yin";
         float swipeAtonicity = -1.f;
 
-        if (yinAtonicity > 2.f) {
+        if (yinAtonicity > maxYinAtonicityForAuto) {
             swipe();
             vector<PitchFrame> swipeFrames = sample->periods;
 
