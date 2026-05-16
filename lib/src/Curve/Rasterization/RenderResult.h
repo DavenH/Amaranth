@@ -6,7 +6,7 @@
 #include "Sampling/GuideCurveSampler.h"
 #include "WaveformBuffers.h"
 #include "../Curve.h"
-#include "../Intercept.h"
+#include <Curve/Mesh/Intercept.h>
 #include "../../Array/ScopedAlloc.h"
 #include "../../Obj/ColorPoint.h"
 

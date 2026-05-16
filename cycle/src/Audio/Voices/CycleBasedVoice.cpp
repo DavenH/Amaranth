@@ -1,6 +1,6 @@
 #include <Algo/Resampler.h>
 #include <Audio/PluginProcessor.h>
-#include <Curve/EnvRasterizer.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 #include <Curve/GuideCurveProvider.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegions.h>

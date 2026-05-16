@@ -5,7 +5,7 @@
 
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Curve/Curve.h"
-#include "../src/Curve/Rasterizer2D.h"
+#include "../src/Curve/Rasterization/Rasterizer/Rasterizer2D.h"
 #include "../src/Curve/Rasterization/Builders/CurveWaveformBuilder.h"
 
 namespace {

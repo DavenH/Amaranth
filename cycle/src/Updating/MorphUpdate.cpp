@@ -1,15 +1,15 @@
 #include "MorphUpdate.h"
 
 #include <Audio/Multisample.h>
-#include <Curve/EnvRasterizer.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 #include <Definitions.h>
 #include <Design/Updating/Updater.h>
 #include <Obj/MorphPosition.h>
 #include <UI/Panels/Panel.h>
 
 #include "../App/Initializer.h"
-#include "../Curve/E3Rasterizer.h"
-#include "../Curve/GraphicRasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/E3Rasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include "../UI/Panels/Morphing/MorphPanel.h"
 #include "../UI/VertexPanels/Spectrum2D.h"
 #include "../UI/VertexPanels/Spectrum3D.h"

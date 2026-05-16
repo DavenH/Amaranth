@@ -9,9 +9,9 @@
 #include "../Policies/Mesh/DepthProjectionPolicy.h"
 #include "../RasterizationRequest.h"
 #include "../RenderResult.h"
-#include "../../Mesh.h"
-#include "../../VertCube.h"
-#include "../../Vertex2.h"
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/VertCube.h>
+#include <Curve/Mesh/Vertex2.h>
 #include "../../../Obj/MorphPosition.h"
 #include "../../../Obj/ColorPoint.h"
 #include "../../../Util/NumberUtils.h"

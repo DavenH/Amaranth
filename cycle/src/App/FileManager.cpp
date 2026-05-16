@@ -9,7 +9,7 @@
 #include <Audio/AudioHub.h>
 #include <Audio/Multisample.h>
 #include <Audio/PitchedSample.h>
-#include <Curve/Mesh.h>
+#include <Curve/Mesh/Mesh.h>
 #include <Design/Updating/Updater.h>
 #include <UI/Panels/Panel2D.h>
 #include <Util/ScopedFunction.h>

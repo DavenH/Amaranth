@@ -7,10 +7,10 @@
 #include <Definitions.h>
 #include <App/AppConstants.h>
 #include <App/SingletonRepo.h>
-#include <Curve/EnvelopeMesh.h>
-#include <Curve/EnvRasterizer.h>
-#include <Curve/Mesh.h>
-#include <Curve/Vertex.h>
+#include <Curve/Mesh/EnvelopeMesh.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/Vertex.h>
 #include <Inter/EnvelopeInter2D.h>
 
 #include "../Util/CycleEnums.h"

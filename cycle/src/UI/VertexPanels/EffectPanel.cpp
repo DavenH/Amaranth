@@ -6,7 +6,7 @@
 #include <App/Doc/Document.h>
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
-#include <Curve/FXRasterizer.h>
+#include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
 #include <Util/Arithmetic.h>
 #include <Thread/LockTracer.h>
 

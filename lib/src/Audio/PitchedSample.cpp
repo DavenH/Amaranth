@@ -5,9 +5,9 @@
 #include "../App/AppConstants.h"
 #include "../App/Doc/PresetJson.h"
 #include "../App/MeshLibrary.h"
-#include "../Curve/EnvRasterizer.h"
-#include "../Curve/FXRasterizer.h"
-#include "../Curve/Mesh.h"
+#include "../Curve/Rasterization/Rasterizer/EnvRasterizer.h"
+#include "../Curve/Rasterization/Rasterizer/FXRasterizer.h"
+#include "../Curve/Mesh/Mesh.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
 #include "../Util/Util.h"
@@ -105,13 +105,19 @@ bool PitchedSample::readJSON(const var& object) {
 }
 
 Mesh* PitchedSample::getMesh(MeshLibrary& meshLibrary) const {
-    auto& waveGroup = meshLibrary.getLayerGroup(LayerGroups::GroupWavePitch);
+    int wavePitchGroupId = meshLibrary.getGroupBindings().wavePitch;
+
+    if (wavePitchGroupId == CommonEnums::Null) {
+        return nullptr;
+    }
+
+    auto& waveGroup = meshLibrary.getLayerGroup(wavePitchGroupId);
 
     if (!isPositiveAndBelow(meshLayerIndex, waveGroup.size())) {
         return nullptr;
     }
 
-    return meshLibrary.getMesh(LayerGroups::GroupWavePitch, meshLayerIndex);
+    return meshLibrary.getMesh(wavePitchGroupId, meshLayerIndex);
 }
 
 void PitchedSample::createDefaultPeriods() {

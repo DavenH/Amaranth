@@ -12,7 +12,7 @@
 #include <Audio/PitchedSample.h>
 #include <Audio/AudioHub.h>
 #include <Audio/SmoothedParameter.h>
-#include <Curve/FXRasterizer.h>
+#include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
 #include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
 #include <Thread/PendingAction.h>

@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <vector>
 
-#include "../../../Intercept.h"
+#include <Curve/Mesh/Intercept.h>
 #include "../../../../Util/NumberUtils.h"
 #include "../../../../Util/Util.h"
 

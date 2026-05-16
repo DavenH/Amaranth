@@ -4,7 +4,7 @@
 #include <App/SingletonRepo.h>
 #include <Array/Buffer.h>
 #include <Audio/PluginProcessor.h>
-#include <Curve/EnvelopeMesh.h>
+#include <Curve/Mesh/EnvelopeMesh.h>
 #include <Util/Arithmetic.h>
 
 #include "CycleBasedVoice.h"

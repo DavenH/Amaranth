@@ -1,6 +1,6 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Curve/VertCube.h>
+#include <Curve/Mesh/VertCube.h>
 
 #include "CubeDisplay.h"
 

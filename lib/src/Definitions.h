@@ -23,9 +23,6 @@
 #define getSettingValue(T)    getObj(Settings).getGlobalSettingValue(AppSettings::T)
 #define getRealConstant(T)    getObj(AppConstants).getRealAppConstant(Constants::T)
 #define getSetting(T)         getObj(Settings).getGlobalSetting(AppSettings::T)
-#define getLayerMesh(T, S)    getObj(MeshLibrary).getLayer(LayerGroups::T, S)
-#define getLayerProps(T, S)   getObj(MeshLibrary).getProps(LayerGroups::T, S)
-
 #define showConsoleMsg(T)     repo->getConsole().write(T)
 #define showImportant(T)      repo->getConsole().write(T, IConsole::ImportantPriority)
 #define showCritical(T)       repo->getConsole().write(T, IConsole::CriticalPriority)

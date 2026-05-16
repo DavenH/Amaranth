@@ -5,7 +5,7 @@
 #include "JuceHeader.h"
 #include "../../Array/Buffer.h"
 #include "../../Array/BufferXY.h"
-#include "../../Curve/Vertex2.h"
+#include "../../Curve/Mesh/Vertex2.h"
 #include "../../Obj/Color.h"
 #include "../../Obj/ColorPos.h"
 

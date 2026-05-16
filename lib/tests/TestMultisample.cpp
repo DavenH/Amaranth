@@ -14,6 +14,20 @@
 using namespace juce;
 
 namespace {
+    enum TestLayerGroup {
+        GroupVolume
+    ,   GroupPitch
+    ,   GroupScratch
+    ,   GroupGuideCurve
+    ,   GroupTime
+    ,   GroupSpect
+    ,   GroupPhase
+    ,   GroupOscPhase
+    ,   GroupWavePitch
+    ,   GroupWaveshaper
+    ,   GroupIrModeller
+    };
+
     class TestMorphPositioner :
             public MorphPositioner {
     public:
@@ -63,6 +77,9 @@ namespace {
 
     void seedDefaultMeshLibrary(SingletonRepo& repo) {
         auto& meshLib = repo.get<MeshLibrary>("MeshLibrary");
+        MeshLibrary::GroupBindings bindings;
+        bindings.wavePitch = GroupWavePitch;
+        meshLib.setGroupBindings(bindings);
 
         meshLib.addGroup(MeshLibrary::TypeEnvelope);
         meshLib.addGroup(MeshLibrary::TypeEnvelope);
@@ -76,7 +93,7 @@ namespace {
         meshLib.addGroup(MeshLibrary::TypeMesh);
         meshLib.addGroup(MeshLibrary::TypeMesh);
 
-        meshLib.addLayer(LayerGroups::GroupWavePitch);
+        meshLib.addLayer(GroupWavePitch);
     }
 
     File writeTestWaveFile() {

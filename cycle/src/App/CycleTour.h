@@ -4,8 +4,8 @@
 #include <vector>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
-#include <Curve/Vertex.h>
-#include <Curve/Vertex2.h>
+#include <Curve/Mesh/Vertex.h>
+#include <Curve/Mesh/Vertex2.h>
 #include "JuceHeader.h"
 #include <Util/CommonEnums.h>
 

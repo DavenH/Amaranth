@@ -9,9 +9,9 @@
 #include <Audio/Multisample.h>
 #include <Audio/PluginProcessor.h>
 #include <Audio/PitchedSample.h>
-#include <Curve/EnvelopeMesh.h>
-#include <Curve/EnvRasterizer.h>
-#include <Curve/Intercept.h>
+#include <Curve/Mesh/EnvelopeMesh.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
+#include <Curve/Mesh/Intercept.h>
 #include <UI/Panels/ZoomPanel.h>
 #include <UI/Widgets/IconButton.h>
 

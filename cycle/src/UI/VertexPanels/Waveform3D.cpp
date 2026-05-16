@@ -4,7 +4,7 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Binary/Gradients.h>
-#include <Curve/Mesh.h>
+#include <Curve/Mesh/Mesh.h>
 #include <UI/Widgets/CalloutUtils.h>
 #include <UI/Layout/DynamicSizeContainer.h>
 #include <UI/Panels/OpenGLPanel3D.h>
@@ -19,14 +19,14 @@
 #include "../Widgets/Controls/Spacers.h"
 #include "../../App/CycleTour.h"
 #include "../../Audio/SynthAudioSource.h"
-#include "../../Curve/GraphicRasterizer.h"
+#include "../../Curve/Rasterization/Rasterizer/GraphicRasterizer.h"
 #include "../../Inter/WaveformInter2D.h"
 #include "../../Inter/WaveformInter3D.h"
 #include "../../UI/Effects/IrModellerUI.h"
 #include "../../UI/Panels/ModMatrixPanel.h"
 #include "../../UI/Panels/PlaybackPanel.h"
 #include "../../UI/VisualDsp.h"
-#include "../../UI/VisualDsp/TimeColumnRasterizer.h"
+#include "../../Curve/Rasterization/Rasterizer/TimeColumnRasterizer.h"
 #include "../../Util/CycleEnums.h"
 
 #define panelName "Waveform3D"

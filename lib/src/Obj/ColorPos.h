@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Curve/Vertex2.h"
+#include "../Curve/Mesh/Vertex2.h"
 
 struct ColorPos {
     void update(const Vertex2& v, const Color& c) {

@@ -2,7 +2,7 @@
 #include <vector>
 #include "Interactor.h"
 #include "../Array/Column.h"
-#include "../Curve/SimpleIcpt.h"
+#include "../Curve/Mesh/SimpleIcpt.h"
 #include "../Design/Updating/Updater.h"
 #include "JuceHeader.h"
 

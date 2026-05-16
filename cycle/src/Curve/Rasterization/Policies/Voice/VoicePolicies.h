@@ -4,11 +4,11 @@
 #include <vector>
 
 #include <Curve/Curve.h>
-#include <Curve/Intercept.h>
+#include <Curve/Mesh/Intercept.h>
 #include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Curve/Rasterization/RenderResult.h>
-#include <Curve/VertCube.h>
-#include <Curve/Vertex.h>
+#include <Curve/Mesh/VertCube.h>
+#include <Curve/Mesh/Vertex.h>
 
 #include "../../../CycleState.h"
 

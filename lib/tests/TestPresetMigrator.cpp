@@ -10,6 +10,20 @@ using Catch::Approx;
 using namespace juce;
 
 namespace {
+    enum TestLayerGroup {
+        GroupVolume
+    ,   GroupPitch
+    ,   GroupScratch
+    ,   GroupGuideCurve
+    ,   GroupTime
+    ,   GroupSpect
+    ,   GroupPhase
+    ,   GroupOscPhase
+    ,   GroupWavePitch
+    ,   GroupWaveshaper
+    ,   GroupIrModeller
+    };
+
     var property(const var& object, const Identifier& name) {
         return PresetJson::property(object, name);
     }
@@ -219,7 +233,7 @@ TEST_CASE("PresetMigrator remaps legacy V1 XML sections into current mesh groups
     REQUIRE(double(property(property(timeLayers.getReference(0), "properties"), "fineTune")) == Approx(0.75));
     REQUIRE(double(property(property(timeLayers.getReference(0), "properties"), "range")) == Approx(0.9));
 
-    const auto& spectLayers = requireArray(property(groups.getReference(LayerGroups::GroupSpect), "layers"));
+    const auto& spectLayers = requireArray(property(groups.getReference(GroupSpect), "layers"));
     REQUIRE(spectLayers.size() == 2);
     REQUIRE(property(property(spectLayers.getReference(1), "mesh"), "name").toString() == "FreqMesh1");
     REQUIRE(int(property(property(spectLayers.getReference(0), "properties"), "mode")) == 0);
@@ -369,7 +383,7 @@ TEST_CASE("PresetMigrator preserves legacy LineCube topology and standard effect
     var preset = property(root, "preset");
 
     const auto& groups = requireArray(property(property(preset, "meshLibrary"), "groups"));
-    const auto& timeLayers = requireArray(property(groups.getReference(LayerGroups::GroupTime), "layers"));
+    const auto& timeLayers = requireArray(property(groups.getReference(GroupTime), "layers"));
     const auto& cubes = requireArray(property(property(timeLayers.getReference(0), "mesh"), "cubes"));
     REQUIRE(cubes.size() == 1);
 

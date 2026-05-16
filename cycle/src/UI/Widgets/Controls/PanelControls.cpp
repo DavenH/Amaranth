@@ -1,7 +1,7 @@
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
-#include <Curve/EnvelopeMesh.h>
-#include <Curve/EnvRasterizer.h>
+#include <Curve/Mesh/EnvelopeMesh.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 #include <Inter/Interactor.h>
 #include <UI/Layout/DynamicSizeContainer.h>
 #include <UI/Layout/IDynamicSizeComponent.h>

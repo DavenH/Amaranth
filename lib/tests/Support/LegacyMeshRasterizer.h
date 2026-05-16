@@ -4,17 +4,17 @@
 #include <vector>
 
 #include <Curve/Curve.h>
-#include <Curve/Mesh.h>
-#include <Curve/RasterizerData.h>
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Rasterization/Rasterizer/RasterizerData.h>
 #include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
-#include <Curve/Rasterization/Rasterizer.h>
+#include <Curve/Rasterization/Rasterizer/Rasterizer.h>
 #include <Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h>
 #include <Curve/Rasterization/RasterizationRequest.h>
 #include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Curve/Rasterization/Policies/Curves/WaveformBakePolicy.h>
 #include <Curve/Rasterization/RenderResult.h>
 #include <Curve/Rasterization/Sampling/GuideCurveSampler.h>
-#include <Curve/VertCube.h>
+#include <Curve/Mesh/VertCube.h>
 #include <Design/Updating/Updateable.h>
 #include <Inter/Dimensions.h>
 #include <Obj/ColorPoint.h>

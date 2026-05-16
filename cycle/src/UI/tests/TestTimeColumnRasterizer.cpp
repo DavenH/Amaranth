@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../VisualDsp/TimeColumnRasterizer.h"
+#include "../../Curve/Rasterization/Rasterizer/TimeColumnRasterizer.h"
 
 TEST_CASE("TimeColumnRasterizer varies guide noise seeds by layer", "[cycle][visual-dsp]") {
     using Cycle::Rasterization::TimeColumnRasterizer;

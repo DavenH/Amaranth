@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Curve/EnvRasterizer.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 
 class EnvRenderContext
 {

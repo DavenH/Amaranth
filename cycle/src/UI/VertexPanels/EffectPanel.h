@@ -1,5 +1,5 @@
 #pragma once
-#include <Curve/FXRasterizer.h>
+#include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
 #include <UI/Panels/OpenGLPanel.h>
 #include <UI/Panels/Panel2D.h>
 #include <Inter/Interactor2D.h>

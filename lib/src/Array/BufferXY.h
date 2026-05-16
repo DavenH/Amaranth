@@ -2,7 +2,7 @@
 
 #include "Buffer.h"
 #include "VecOps.h"
-#include "../Curve/Vertex2.h"
+#include "../Curve/Mesh/Vertex2.h"
 
 class BufferXY {
 public:

@@ -290,7 +290,11 @@ void GuideCurveAssignment::undoDelegate() {
 }
 
 void GuideCurveAssignment::doPostUpdateCheck() {
-    getObj(MeshLibrary).layerChanged(LayerGroups::GroupGuideCurve, -1);
+    int guideCurveGroupId = getObj(MeshLibrary).getGroupBindings().guideCurve;
+
+    if (guideCurveGroupId != CommonEnums::Null) {
+        getObj(MeshLibrary).layerChanged(guideCurveGroupId, -1);
+    }
 }
 
 ComboboxChangeAction::ComboboxChangeAction(ComboBox* box, int previousId) :

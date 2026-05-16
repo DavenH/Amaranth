@@ -1,8 +1,8 @@
 #pragma once
 
 #include <vector>
-#include "../Curve/Vertex.h"
-#include "../Curve/Vertex2.h"
+#include "../Curve/Mesh/Vertex.h"
+#include "../Curve/Mesh/Vertex2.h"
 
 using std::vector;
 

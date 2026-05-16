@@ -3,16 +3,16 @@
 
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Curve/Curve.h"
-#include "../src/Curve/Mesh.h"
+#include "../src/Curve/Mesh/Mesh.h"
 #include "Support/LegacyMeshRasterizer.h"
-#include "../src/Curve/Rasterization/TrilinearMeshRasterizer.h"
+#include "../src/Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h"
 #include "../src/Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h"
 #include "../src/Curve/Rasterization/Policies/Curves/CurvePolicies.h"
 #include "../src/Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h"
 #include "../src/Curve/Rasterization/Policies/Core/InterceptPolicies.h"
 #include "../src/Curve/Rasterization/Sampling/GuideCurveSampler.h"
 #include "../src/Curve/Rasterization/Sampling/WaveformSampler.h"
-#include "../src/Curve/VertCube.h"
+#include "../src/Curve/Mesh/VertCube.h"
 #include "RasterizerCompare.h"
 
 namespace {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Vertex.h"
+#include <Curve/Mesh/Vertex.h>
 #include "Policies/Core/PointScalingPolicy.h"
 #include "../../Inter/Dimensions.h"
 #include "../../Obj/MorphPosition.h"

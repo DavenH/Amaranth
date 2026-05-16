@@ -2,7 +2,7 @@
 
 #include <Audio/SmoothedParameter.h>
 
-#include "../Curve/Vertex.h"
+#include "../Curve/Mesh/Vertex.h"
 
 class MorphPosition {
 public:

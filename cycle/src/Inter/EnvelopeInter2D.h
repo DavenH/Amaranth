@@ -1,7 +1,7 @@
 #pragma once
 
 #include <map>
-#include <Curve/EnvRasterizer.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 #include <Inter/Interactor2D.h>
 #include <Obj/Ref.h>
 #include <UI/Widgets/IconButton.h>

@@ -5,7 +5,7 @@
 #include <Array/Buffer.h>
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
-#include <Curve/EnvRasterizer.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 #include <Util/Arithmetic.h>
 #include <Util/NumberUtils.h>
 

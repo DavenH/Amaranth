@@ -2,9 +2,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Curve/CollisionDetector.h"
-#include "../src/Curve/Mesh.h"
-#include "../src/Curve/VertCube.h"
+#include "../src/Curve/Mesh/CollisionDetector.h"
+#include "../src/Curve/Mesh/Mesh.h"
+#include "../src/Curve/Mesh/VertCube.h"
 
 namespace {
     struct MeshDeleter {
