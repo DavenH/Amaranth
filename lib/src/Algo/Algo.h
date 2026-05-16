@@ -7,8 +7,7 @@
 #include "GaussRand.h"
 #include "HermiteResampler.h"
 #include "Oversampler.h"
-#include "PitchTracker.h"
+#include "Pitch/PitchTracker.h"
 #include "Resampler.h"
 #include "Resampling.h"
 #include "Spectrogram.h"
-

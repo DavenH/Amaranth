@@ -4,7 +4,7 @@
 #include "../Util/WinHeader.h"
 #endif
 
-#include <Algo/PitchTracker.h>
+#include <Algo/Pitch/PitchTracker.h>
 #include <App/AppConstants.h>
 #include <App/EditWatcher.h>
 #include <App/Settings.h>

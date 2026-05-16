@@ -1,4 +1,4 @@
-#include <Algo/PitchTracker.h>
+#include <Algo/Pitch/PitchTracker.h>
 #include <App/AppConstants.h>
 #include <App/Doc/Document.h>
 #include <App/Doc/PresetJson.h>

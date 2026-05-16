@@ -1,7 +1,7 @@
 #include "Multisample.h"
 #include "PitchedSample.h"
 #include "../Design/Updating/Updater.h"
-#include "../Algo/PitchTracker.h"
+#include "../Algo/Pitch/PitchTracker.h"
 #include "../App/AppConstants.h"
 #include "../App/Doc/PresetJson.h"
 #include "../App/MeshLibrary.h"

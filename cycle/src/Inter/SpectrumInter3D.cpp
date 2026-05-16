@@ -1,4 +1,4 @@
-#include <Algo/PitchTracker.h>
+#include <Algo/Pitch/PitchTracker.h>
 #include <App/MeshLibrary.h>
 #include <Obj/Ref.h>
 #include <UI/Panels/Panel.h>
