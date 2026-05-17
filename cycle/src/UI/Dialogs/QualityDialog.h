@@ -14,6 +14,7 @@ public:
     void comboBoxChanged(ComboBox* box) override;
     void buttonClicked(Button* button) override;
     void updateSelections();
+    void paint(Graphics& g) override;
     void resized() override;
     void triggerOversample(int which);
 
@@ -50,6 +51,7 @@ public:
 private:
 
     ComboBox 		rltmOvsp, rendOvsp, ctrlFreqCmbo, rltmAlgoCmbo, rendAlgoCmbo;
-    Label 			rltmTitle, rendTitle, rltmLabel, paramSmoothLbl, ctrlFreqLbl, rltmHqLabel;
+    Label 			qualityTitle, modulationTitle, rltmTitle, rendTitle, rltmLabel, paramSmoothLbl;
+    Label           ctrlFreqLbl, rltmHqLabel;
     ToggleButton 	useSmooth;
 };

@@ -39,7 +39,8 @@ public:
     enum Menus {
         FileMenu,
         EditMenu,
-        GraphicsMenu,
+        TransportMenu,
+        ViewMenu,
         AudioMenu,
         HelpMenu
     };
@@ -58,7 +59,7 @@ public:
         ExitProgram
     };
 
-    enum GraphicsItem {
+    enum ViewItem {
         ShowSynth = 1,
         ShowBoth,
         ShowWave,
@@ -98,20 +99,7 @@ public:
         EraseVerts,
         ExtrudeVerts,
 
-        AudioConfigEdit,
-        SnapEdit,
-
-        CollisionDetection,
-        SelectWithRight,
-        NativeDialogs,
-        PitchOctaveUp,
-        PitchOctaveDown,
-        PitchAlgorithmAuto,
-        PitchAlgorithmYin,
-        PitchAlgorithmSwipe,
-
-        UpdateRealtime,
-        UpdateOnRelease,
+        SettingsDialog,
 
         DebugLogging,
     };
@@ -121,8 +109,7 @@ public:
     };
 
     enum AudioItem {
-        QualityOptions = 1,
-        ModMatrix,
+        ModMatrix = 1,
         Declick,
         BendRange2,
         BendRange6,
@@ -135,11 +122,6 @@ public:
 //		MapVel,
 
         DynamicEnvs,
-
-        OversampRltm1x,
-        OversampRltm2x,
-        OversampRltm4x,
-        OversampRltm16x,
     };
 
     enum HelpItem {

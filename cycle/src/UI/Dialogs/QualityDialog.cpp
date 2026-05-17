@@ -11,11 +11,14 @@
 
 QualityDialog::QualityDialog(SingletonRepo* repo) :
         SingletonAccessor(repo, "QualityDialog")
+    ,   qualityTitle("",    "Audio rendering")
+    ,   modulationTitle("", "Modulation")
     ,	rltmTitle("", 		"Realtime")
     ,	rendTitle("", 		"Render")
-    ,	rltmLabel("", 		"Oversample factor for grains")
-    ,	rltmHqLabel("", 	"Resampling algorithm")
-    ,	paramSmoothLbl("", 	"Modulation Parameter Smoothing")
+    ,	rltmLabel("", 		"Oversampling")
+    ,	rltmHqLabel("", 	"Resampling")
+    ,	ctrlFreqLbl("",     "Control update rate")
+    ,	paramSmoothLbl("", 	"Parameter smoothing")
 {
     rltmOvsp	.addItem("None", 	OversampRltm1x	);
     rltmOvsp	.addItem("2x", 		OversampRltm2x	);
@@ -42,6 +45,7 @@ QualityDialog::QualityDialog(SingletonRepo* repo) :
 //	rendAlgoCmbo.addItem("BSpline", ResampAlgoRendBspline);
     rendAlgoCmbo.addItem("Sinc", 	ResampAlgoRendSinc	 );
 
+    addAndMakeVisible(&qualityTitle );
     addAndMakeVisible(&rltmTitle	);
     addAndMakeVisible(&rltmOvsp		);
     addAndMakeVisible(&rltmAlgoCmbo	);
@@ -52,6 +56,7 @@ QualityDialog::QualityDialog(SingletonRepo* repo) :
     addAndMakeVisible(&rendOvsp		);
     addAndMakeVisible(&rendAlgoCmbo	);
 
+    addAndMakeVisible(&modulationTitle);
     addAndMakeVisible(&ctrlFreqCmbo	);
     addAndMakeVisible(&ctrlFreqLbl	);
 
@@ -66,9 +71,29 @@ QualityDialog::QualityDialog(SingletonRepo* repo) :
 //	useCache	.addListener(this);
     useSmooth	.addListener(this);
 
-    rltmTitle	.setFont(FontOptions(18));
-    rendTitle	.setFont(FontOptions(18));
+    qualityTitle.setFont(FontOptions(18));
+    modulationTitle.setFont(FontOptions(18));
+    rltmTitle	.setFont(FontOptions(15));
+    rendTitle	.setFont(FontOptions(15));
     rltmHqLabel	.setMinimumHorizontalScale(0.9f);
+
+    for (auto* label : { &qualityTitle, &modulationTitle }) {
+        label->setColour(Label::textColourId, Colour::greyLevel(0.88f));
+    }
+
+    for (auto* label : { &rltmTitle, &rendTitle }) {
+        label->setColour(Label::textColourId, Colour::greyLevel(0.68f));
+        label->setJustificationType(Justification::centredLeft);
+    }
+
+    for (auto* label : { &rltmLabel, &rltmHqLabel, &paramSmoothLbl, &ctrlFreqLbl }) {
+        label->setColour(Label::textColourId, Colour::greyLevel(0.76f));
+        label->setJustificationType(Justification::centredRight);
+    }
+
+    useSmooth.setColour(ToggleButton::textColourId, Colour::greyLevel(0.76f));
+    useSmooth.setColour(ToggleButton::tickColourId, Colours::orange);
+    useSmooth.setColour(ToggleButton::tickDisabledColourId, Colour::greyLevel(0.58f));
 
     setSize(500, 350);
 }
@@ -242,57 +267,69 @@ void QualityDialog::buttonClicked(Button* button) {
 }
 
 void QualityDialog::resized() {
-    Rectangle<int> bounds = getBounds().withPosition(0, 0);
-    bounds.reduce(50, 30);
+    Rectangle<int> bounds = getLocalBounds().reduced(64, 48);
 
-    int colSpace = 15;
-    int firstCol = bounds.getWidth() / 3 + 60 - colSpace;
-    int colWidth = (bounds.getWidth() - firstCol - 2 * colSpace) / 2;
+    if (bounds.getWidth() > 900) {
+        bounds = bounds.withSizeKeepingCentre(900, bounds.getHeight());
+    }
 
-    Rectangle<int> row 	= bounds.removeFromTop(25);
-    row			.removeFromLeft(firstCol);
-    row			.removeFromLeft(colSpace);
+    const int rowHeight = 34;
+    const int labelWidth = jlimit(220, 320, bounds.getWidth() / 3);
+    const int columnGap = 32;
+    const int controlWidth = (bounds.getWidth() - labelWidth - 2 * columnGap) / 2;
+    const int controlHeight = 30;
 
-    // titles
-    rltmTitle	.setBounds(row.removeFromLeft(colWidth));
-    row			.removeFromLeft(colSpace);
-    rendTitle	.setBounds(row);
+    qualityTitle.setBounds(bounds.removeFromTop(28));
+    bounds.removeFromTop(16);
 
-    bounds		.removeFromTop(10);
+    Rectangle<int> headerRow = bounds.removeFromTop(24);
+    headerRow.removeFromLeft(labelWidth + columnGap);
+    rltmTitle.setBounds(headerRow.removeFromLeft(controlWidth));
+    headerRow.removeFromLeft(columnGap);
+    rendTitle.setBounds(headerRow.removeFromLeft(controlWidth));
 
-    row 		= bounds.removeFromTop(36);
-    rltmLabel	.setBounds(row.removeFromLeft(firstCol));
-    row			.removeFromLeft(colSpace);
-    row			.reduce(0, 3);
-    rltmOvsp	.setBounds(row.removeFromLeft(colWidth));
-    row			.removeFromLeft(colSpace);
-    rendOvsp	.setBounds(row);
+    bounds.removeFromTop(8);
 
-    bounds		.removeFromTop(20);
+    auto layoutDualControlRow = [&](Label& label, ComboBox& realtime, ComboBox& render) {
+        Rectangle<int> row = bounds.removeFromTop(rowHeight);
+        label.setBounds(row.removeFromLeft(labelWidth));
+        row.removeFromLeft(columnGap);
+        realtime.setBounds(row.removeFromLeft(controlWidth).withSizeKeepingCentre(controlWidth, controlHeight));
+        row.removeFromLeft(columnGap);
+        render.setBounds(row.removeFromLeft(controlWidth).withSizeKeepingCentre(controlWidth, controlHeight));
+        bounds.removeFromTop(12);
+    };
 
-    row 		= bounds.removeFromTop(36);
-    rltmHqLabel	.setBounds(row.removeFromLeft(firstCol));
-    row			.removeFromLeft(colSpace);
-    row			.reduce(0, 3);
-    rltmAlgoCmbo.setBounds(row.removeFromLeft(colWidth));
-    row			.removeFromLeft(colSpace);
-    rendAlgoCmbo.setBounds(row);
+    auto layoutSingleControlRow = [&](Label& label, ComboBox& combo) {
+        Rectangle<int> row = bounds.removeFromTop(rowHeight);
+        label.setBounds(row.removeFromLeft(labelWidth));
+        row.removeFromLeft(columnGap);
+        combo.setBounds(row.removeFromLeft(controlWidth).withSizeKeepingCentre(controlWidth, controlHeight));
+        bounds.removeFromTop(12);
+    };
 
-    bounds		.removeFromTop(20);
+    layoutDualControlRow(rltmLabel, rltmOvsp, rendOvsp);
+    layoutDualControlRow(rltmHqLabel, rltmAlgoCmbo, rendAlgoCmbo);
+    layoutSingleControlRow(ctrlFreqLbl, ctrlFreqCmbo);
+
+    bounds.removeFromTop(10);
+    modulationTitle.setBounds(bounds.removeFromTop(28));
+    bounds.removeFromTop(16);
 
 //	row = bounds.removeFromTop(30);
 //	useCache	.setBounds(row.removeFromLeft(20));
 //	row	.removeFromLeft(1);
 //	useCacheLbl	.setBounds(row);
 
-    bounds		.removeFromTop(10);
-    row			= bounds.removeFromTop(36);
-    useSmooth	.setBounds(row.removeFromLeft(20));
-    row.removeFromLeft(1);
-    paramSmoothLbl.setBounds(row);
+    Rectangle<int> row = bounds.removeFromTop(rowHeight);
+    paramSmoothLbl.setBounds(row.removeFromLeft(labelWidth));
+    row.removeFromLeft(columnGap);
+    useSmooth.setBounds(row.removeFromLeft(28).withSizeKeepingCentre(22, 22));
 
-    ctrlFreqLbl	.setBounds(bounds.removeFromTop(20));
-    ctrlFreqCmbo.setBounds(bounds.removeFromTop(30).removeFromLeft(150));
+}
+
+void QualityDialog::paint(Graphics& g) {
+    g.fillAll(Colour::greyLevel(0.075f));
 }
 
 void QualityDialog::triggerOversample(int which) {

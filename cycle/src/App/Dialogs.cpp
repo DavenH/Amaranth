@@ -53,6 +53,200 @@ public:
     }
 };
 
+class CycleSettingsComponent :
+        public Component
+    ,   public Button::Listener
+    ,   public ComboBox::Listener
+    ,   public SingletonAccessor {
+public:
+    explicit CycleSettingsComponent(SingletonRepo* repo) :
+            SingletonAccessor(repo, "CycleSettingsComponent")
+        ,   tabs(TabbedButtonBar::TabsAtTop) {
+        setOpaque(true);
+        addAndMakeVisible(tabs);
+
+      #if ! PLUGIN_MODE
+        auto* audioSettingsComp = new AudioDeviceSelectorComponent(
+                *(getObj(AudioHub).getAudioDeviceManager()), 0, 1, 2, 2, true, false, true, false);
+        tabs.addTab("Audio", Colour::greyLevel(0.08f), audioSettingsComp, true);
+      #endif
+
+        visualPanel = new Component();
+        addSectionLabel(visualEditingLabel, "Editing", visualPanel);
+        addSettingButton(snapButton, "Snap to grid", getSetting(SnapMode) == 1);
+        addSettingButton(collisionButton, "Prevent line collisions", getSetting(CollisionDetection) == 1);
+        addSettingButton(realtimeUpdateButton, "Update graphics during drags", getSetting(UpdateGfxRealtime) == 1);
+        addSectionLabel(visualInputLabel, "Input and dialogs", visualPanel);
+        addSettingButton(selectWithRightButton, "Select with right click", getSetting(SelectWithRight) == 1);
+        addSettingButton(nativeDialogsButton, "Use native file dialogs", getSetting(NativeDialogs) == 1);
+        visualPanel->setSize(560, 280);
+        tabs.addTab("Visual", Colour::greyLevel(0.08f), visualPanel, true);
+
+        pitchPanel = new Component();
+        pitchAlgoLabel.setText("Tracking algorithm", dontSendNotification);
+        pitchAlgoLabel.setJustificationType(Justification::centredLeft);
+        pitchAlgoLabel.setColour(Label::textColourId, labelColour());
+        pitchAlgoBox.addItem("Auto", PitchAlgorithmAuto);
+        pitchAlgoBox.addItem("YIN", PitchAlgorithmYin);
+        pitchAlgoBox.addItem("Swipe", PitchAlgorithmSwipe);
+        pitchAlgoBox.setSelectedId(getPitchAlgorithmId(), dontSendNotification);
+        pitchAlgoBox.addListener(this);
+        pitchTipLabel.setText("Tip: right-click a MIDI key to set the sample's fundamental pitch.",
+                              dontSendNotification);
+        pitchTipLabel.setJustificationType(Justification::centredLeft);
+        pitchTipLabel.setColour(Label::textColourId, labelColour());
+        pitchPanel->addAndMakeVisible(pitchAlgoLabel);
+        pitchPanel->addAndMakeVisible(pitchAlgoBox);
+        pitchPanel->addAndMakeVisible(pitchTipLabel);
+        pitchPanel->setSize(560, 280);
+        tabs.addTab("Sample", Colour::greyLevel(0.08f), pitchPanel, true);
+
+        getObj(QualityDialog).updateSelections();
+        tabs.addTab("Quality", Colour::greyLevel(0.08f), &getObj(QualityDialog), false);
+
+        setSize(620, 500);
+    }
+
+    void resized() override {
+        tabs.setBounds(getLocalBounds());
+        layoutVisualPanel();
+        layoutPitchPanel();
+    }
+
+    void paint(Graphics& g) override {
+        g.fillAll(panelColour());
+
+        for (auto* panel : { visualPanel, pitchPanel }) {
+            if (panel != nullptr) {
+                Graphics::ScopedSaveState saveState(g);
+                g.reduceClipRegion(panel->getBounds());
+                g.setOrigin(panel->getPosition());
+                g.fillAll(panelColour());
+            }
+        }
+    }
+
+    void buttonClicked(Button* button) override {
+        if (button == &snapButton) {
+            getSetting(SnapMode) = snapButton.getToggleState();
+        } else if (button == &collisionButton) {
+            getSetting(CollisionDetection) = collisionButton.getToggleState();
+        } else if (button == &realtimeUpdateButton) {
+            getSetting(UpdateGfxRealtime) = realtimeUpdateButton.getToggleState();
+        } else if (button == &selectWithRightButton) {
+            getSetting(SelectWithRight) = selectWithRightButton.getToggleState();
+        } else if (button == &nativeDialogsButton) {
+            getSetting(NativeDialogs) = nativeDialogsButton.getToggleState();
+        }
+    }
+
+    void comboBoxChanged(ComboBox* box) override {
+        if (box == &pitchAlgoBox) {
+            switch (pitchAlgoBox.getSelectedId()) {
+                case PitchAlgorithmAuto:   getSetting(PitchAlgo) = PitchAlgos::AlgoAuto;  break;
+                case PitchAlgorithmYin:    getSetting(PitchAlgo) = PitchAlgos::AlgoYin;   break;
+                case PitchAlgorithmSwipe:  getSetting(PitchAlgo) = PitchAlgos::AlgoSwipe; break;
+                default: break;
+            }
+        }
+    }
+
+private:
+    enum PitchAlgorithmItem {
+        PitchAlgorithmAuto = 1,
+        PitchAlgorithmYin,
+        PitchAlgorithmSwipe
+    };
+
+    static Colour panelColour() { return Colour::greyLevel(0.075f); }
+    static Colour labelColour() { return Colour::greyLevel(0.76f); }
+    static Colour sectionColour() { return Colour::greyLevel(0.88f); }
+
+    void addSectionLabel(Label& label, const String& text, Component* panel) {
+        label.setText(text, dontSendNotification);
+        label.setJustificationType(Justification::centredLeft);
+        label.setFont(FontOptions(15.0f, Font::bold));
+        label.setColour(Label::textColourId, sectionColour());
+        panel->addAndMakeVisible(label);
+    }
+
+    void addSettingButton(ToggleButton& button, const String& text, bool selected) {
+        button.setButtonText(text);
+        button.setToggleState(selected, dontSendNotification);
+        button.setColour(ToggleButton::textColourId, labelColour());
+        button.setColour(ToggleButton::tickColourId, Colours::orange);
+        button.setColour(ToggleButton::tickDisabledColourId, Colour::greyLevel(0.58f));
+        button.addListener(this);
+        visualPanel->addAndMakeVisible(button);
+    }
+
+    int getPitchAlgorithmId() {
+        switch ((int) getSetting(PitchAlgo)) {
+            case PitchAlgos::AlgoYin:   return PitchAlgorithmYin;
+            case PitchAlgos::AlgoSwipe: return PitchAlgorithmSwipe;
+            case PitchAlgos::AlgoAuto:
+            default:                    return PitchAlgorithmAuto;
+        }
+    }
+
+    void layoutVisualPanel() {
+        if (visualPanel == nullptr) {
+            return;
+        }
+
+        Rectangle<int> r = visualPanel->getLocalBounds().reduced(24, 20);
+
+        visualEditingLabel.setBounds(r.removeFromTop(22));
+        r.removeFromTop(8);
+
+        for (auto* button : { &snapButton, &collisionButton, &realtimeUpdateButton }) {
+            button->setBounds(r.removeFromTop(32));
+            r.removeFromTop(6);
+        }
+
+        r.removeFromTop(14);
+        visualInputLabel.setBounds(r.removeFromTop(22));
+        r.removeFromTop(8);
+
+        for (auto* button : { &selectWithRightButton, &nativeDialogsButton }) {
+            button->setBounds(r.removeFromTop(32));
+            r.removeFromTop(6);
+        }
+    }
+
+    void layoutPitchPanel() {
+        if (pitchPanel == nullptr) {
+            return;
+        }
+
+        Rectangle<int> r = pitchPanel->getLocalBounds().reduced(24, 20);
+        Rectangle<int> row = r.removeFromTop(32);
+        pitchAlgoLabel.setBounds(row.removeFromLeft(170));
+        row.removeFromLeft(12);
+        pitchAlgoBox.setBounds(row.removeFromLeft(180));
+
+        r.removeFromTop(18);
+        pitchTipLabel.setBounds(r.removeFromTop(44));
+    }
+
+    TabbedComponent tabs;
+    Component* visualPanel = nullptr;
+    Component* pitchPanel = nullptr;
+
+    ToggleButton snapButton;
+    ToggleButton collisionButton;
+    ToggleButton realtimeUpdateButton;
+    ToggleButton selectWithRightButton;
+    ToggleButton nativeDialogsButton;
+
+    Label visualEditingLabel;
+    Label visualInputLabel;
+
+    Label pitchAlgoLabel;
+    Label pitchTipLabel;
+    ComboBox pitchAlgoBox;
+};
+
 void Dialogs::init() {
     watcher = &getObj(EditWatcher);
 
@@ -228,22 +422,32 @@ void Dialogs::showOpenPresetDialog() {
 
 #if !PLUGIN_MODE
 void Dialogs::showAudioSettings() {
-    auto* audioSettingsComp = new AudioDeviceSelectorComponent(
-            *(getObj(AudioHub).getAudioDeviceManager()), 0, 1, 2, 2, true, false, true, false);
+    showSettingsDialog();
+}
+#endif
 
-    audioSettingsComp->setSize(600, 500);
+void Dialogs::showSettingsDialog() {
+    auto* settingsComp = new CycleSettingsComponent(repo);
+    Component::SafePointer<Component> focusTarget(mainPanel.get());
 
     DialogWindow::LaunchOptions options;
-    options.dialogTitle = "Audio Settings";
-    options.content.setOwned(audioSettingsComp);
+    options.dialogTitle = "Settings";
+    options.content.setOwned(settingsComp);
     options.componentToCentreAround = mainPanel;
     options.dialogBackgroundColour = Colour::greyLevel(0.08f);
     options.escapeKeyTriggersCloseButton = true;
     options.resizable = true;
     options.useBottomRightCornerResizer = true;
-    options.launchAsync();
+
+    DialogWindow* window = options.create();
+    window->enterModalState(true, ModalCallbackFunction::create([focusTarget](int) {
+        MessageManager::callAsync([focusTarget] {
+            if (focusTarget != nullptr && focusTarget->isShowing()) {
+                focusTarget->grabKeyboardFocus();
+            }
+        });
+    }), true);
 }
-#endif
 
 void Dialogs::showQualityOptions() {
     if (QualityDialog* qd = &getObj(QualityDialog)) {

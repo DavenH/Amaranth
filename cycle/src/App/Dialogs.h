@@ -65,6 +65,7 @@ public:
 	void showOutputPopup();
 	void showPresetBrowserModal();
 	void showPresetSaveAsDialog();
+    void showSettingsDialog();
 	void showQualityOptions();
 	void showSamplePlacer();
 	void timerCallback() override;

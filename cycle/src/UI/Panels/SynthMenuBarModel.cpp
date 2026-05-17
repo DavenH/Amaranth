@@ -20,7 +20,6 @@
 #include "VertexPropertiesPanel.h"
 
 #include "../CycleDefs.h"
-#include "../Dialogs/QualityDialog.h"
 #include "../VertexPanels/Waveform2D.h"
 
 #include "../../App/CycleTour.h"
@@ -28,6 +27,7 @@
 #include "../../App/Dialogs.h"
 #include "../../App/Directories.h"
 #include "../../App/FileManager.h"
+#include "../../App/KeyboardInputHandler.h"
 #include "../../Audio/SampleUtils.h"
 #include "../../Audio/SynthAudioSource.h"
 #include "../../UI/VisualDsp.h"
@@ -42,7 +42,8 @@ StringArray SynthMenuBarModel::getMenuBarNames() {
 
 	array.add("File");
 	array.add("Edit");
-	array.add("Graphics");
+    array.add("Transport");
+	array.add("View");
 	array.add("Audio");
 	array.add("Help");
 
@@ -59,17 +60,15 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 	getSetting(LastPopupClickedTransp)	= false;
 
 	PopupMenu menu;
+    auto* commandManager = &getObj(KeyboardInputHandler).getCommandManager();
 
 	if (topLevelMenuIndex == FileMenu) {
-		bool haveEdited = getObj(EditWatcher).getHaveEdited();
-		bool canSaveAs = true;
-
-		menu.addItem(NewFile, 		"New");
-		menu.addItem(OpenFile, 		"Open");
+		menu.addCommandItem(commandManager, KeyboardInputHandler::CommandNewFile);
+		menu.addCommandItem(commandManager, KeyboardInputHandler::CommandOpenFile);
 
 		menu.addSeparator();
-		menu.addItem(SaveFile, 		"Save", 		haveEdited);
-		menu.addItem(SaveAsFile, 	"Save as...", 	canSaveAs);
+		menu.addCommandItem(commandManager, KeyboardInputHandler::CommandSaveFile);
+		menu.addCommandItem(commandManager, KeyboardInputHandler::CommandSaveAsFile);
 
 		menu.addSeparator();
 		menu.addItem(RevertToSaved, "Revert to saved");
@@ -92,55 +91,25 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 		const String& undoString = "Undo" + (canUndo ? " (" + undoManager.getUndoDescription() + ")" : String());
 		const String& redoString = "Redo" + (canRedo ? " (" + undoManager.getRedoDescription() + ")" : String());
 
-		menu.addItem(UndoEdit, 	undoString, 	canUndo, 	false);
-		menu.addItem(RedoEdit, 	redoString, 	canRedo,	false);
+		menu.addCommandItem(commandManager, KeyboardInputHandler::CommandUndo, undoString);
+		menu.addCommandItem(commandManager, KeyboardInputHandler::CommandRedo, redoString);
 		menu.addSeparator();
 
-		Interactor* itr 	= getObj(VertexPropertiesPanel).getCurrentInteractor();
-		bool haveSelected 	= itr != nullptr && ! itr->getSelected().empty();
-		bool canExtrude 	= itr != nullptr && itr->is3DInteractor();
-
-		menu.addItem(EraseVerts, 	"Erase selected (del)", haveSelected,	false);
-		menu.addItem(ExtrudeVerts, 	"Extrude selected (e)", canExtrude,		false);
+		menu.addCommandItem(commandManager, KeyboardInputHandler::CommandEraseSelected);
+		menu.addCommandItem(commandManager, KeyboardInputHandler::CommandExtrudeSelected);
 		menu.addSeparator();
 
-	  #if ! PLUGIN_MODE
-		menu.addItem(AudioConfigEdit, 	"Audio Settings", 	true, 	false);
-	  #endif
-
-		menu.addSeparator();
-		menu.addItem(SnapEdit, 			 "Snap to grid",			true, getSetting(SnapMode) == 1);
-		menu.addItem(CollisionDetection, "Prevent line collisions",	true, getSetting(CollisionDetection) == 1);
-
-		PopupMenu updateMenu;
-		updateMenu.addItem(UpdateRealtime, 	"All events",			true, getSetting(UpdateGfxRealtime) == 1);
-		updateMenu.addItem(UpdateOnRelease, "Drag release",			true, getSetting(UpdateGfxRealtime) != 1);
-
-		menu.addSubMenu("Update On", updateMenu);
-
-		menu.addSeparator();
-
-		menu.addItem(SelectWithRight, 	"Select with right click", 	true, getSetting(SelectWithRight) == 1);
-		menu.addItem(NativeDialogs, 	"Use native dialogs", 		true, getSetting(NativeDialogs) == 1);
-		menu.addSeparator();
-
-		PopupMenu pitchMenu;
-
-		PopupMenu algoMenu;
-		algoMenu.addItem(PitchAlgorithmAuto, 	"Auto",  true, getSetting(PitchAlgo) == PitchAlgos::AlgoAuto );
-		algoMenu.addItem(PitchAlgorithmYin, 	"YIN", 	 true, getSetting(PitchAlgo) == PitchAlgos::AlgoYin  );
-		algoMenu.addItem(PitchAlgorithmSwipe, 	"Swipe", true, getSetting(PitchAlgo) == PitchAlgos::AlgoSwipe);
-
-		PopupMenu setPitchMenu;
-
-		setPitchMenu.addItem(PitchOctaveDown, 	"Octave Down");
-		setPitchMenu.addItem(PitchOctaveUp, 	"Octave Up");
-
-		pitchMenu.addSubMenu("Tracking Algo", algoMenu);
-		pitchMenu.addSubMenu("Set Pitch", setPitchMenu);
-
-		menu.addSubMenu("Pitch Tracking", pitchMenu);
-	} else if (topLevelMenuIndex == GraphicsMenu) {
+		menu.addItem(SettingsDialog, "Settings...");
+	} else if (topLevelMenuIndex == TransportMenu) {
+        menu.addCommandItem(commandManager, KeyboardInputHandler::CommandTogglePlayback);
+        menu.addSeparator();
+        menu.addCommandItem(commandManager, KeyboardInputHandler::CommandTransportToStart);
+        menu.addCommandItem(commandManager, KeyboardInputHandler::CommandTransportToEnd);
+        menu.addSeparator();
+        menu.addCommandItem(commandManager, KeyboardInputHandler::CommandPreviousPreset);
+        menu.addCommandItem(commandManager, KeyboardInputHandler::CommandNextPreset);
+        menu.addCommandItem(commandManager, KeyboardInputHandler::CommandShowPresetBrowser);
+	} else if (topLevelMenuIndex == ViewMenu) {
 		menu.addItem(WaveformWaterfall, "Waveform waterfall", 		true, getSetting(Waterfall) == 1);
 		menu.addItem(DrawScales, 		"Draw scales and tags", 	true, getSetting(DrawScales) == 1);
 		menu.addItem(VertsOnHover, 		"Draw verts only on hover",	true, getSetting(ViewVertsOnlyOnHover) == 1);
@@ -198,13 +167,6 @@ PopupMenu SynthMenuBarModel::getMenuForIndex(int topLevelMenuIndex, const String
 		menu.addSubMenu("Pitch Bend Range", bendMenu, true, Image(), false);
 
 		menu.addItem(ModMatrix, "Modulation Matrix...");
-		menu.addItem(QualityOptions, "Quality options...");
-
-		PopupMenu oversampMenu;
-		oversampMenu.addItem(OversampRltm1x, "None", true);
-		oversampMenu.addItem(OversampRltm2x, "2x", true);
-		oversampMenu.addItem(OversampRltm4x, "4x", true);
-		menu.addSubMenu("Oversample", oversampMenu, true);
 
 	} else if(topLevelMenuIndex == HelpMenu) {
 		menu.addSeparator();
@@ -280,11 +242,9 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 		if (item == UndoEdit) editWatcher->undo();
 		else if (item == RedoEdit) editWatcher->redo();
 
-	  #if ! PLUGIN_MODE
-		else if (item == AudioConfigEdit) dialogs->showAudioSettings();
-	  #endif
-
-		else if (item == EraseVerts) {
+		else if (item == SettingsDialog) {
+			dialogs->showSettingsDialog();
+		} else if (item == EraseVerts) {
 			Interactor* itr = getObj(VertexPropertiesPanel).getCurrentInteractor();
 			if (itr != nullptr) {
 				itr->eraseSelected();
@@ -298,31 +258,12 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 			}
 		} else if (item == DebugLogging) {
 			getSetting(DebugLogging) ^= true;
-		} else if (item == SelectWithRight) {
-			getSetting(SelectWithRight) ^= true;
-		} else if (item == NativeDialogs) {
-			getSetting(NativeDialogs) ^= true;
-		} else if (item == SnapEdit) {
-			getSetting(SnapMode) ^= true;
-		} else if (item == CollisionDetection) {
-			getSetting(CollisionDetection) ^= true;
-		} else if (item == UpdateRealtime || item == UpdateOnRelease) {
-			getSetting(UpdateGfxRealtime) = item == UpdateRealtime;
-		} else if (item >= PitchAlgorithmAuto && item <= PitchAlgorithmSwipe) {
-			switch (item) {
-				case PitchAlgorithmAuto:	getSetting(PitchAlgo) = PitchAlgos::AlgoAuto;
-				case PitchAlgorithmYin:		getSetting(PitchAlgo) = PitchAlgos::AlgoYin;
-				case PitchAlgorithmSwipe:	getSetting(PitchAlgo) = PitchAlgos::AlgoSwipe;
-				default: break;
-			}
-		} else if (item == PitchOctaveUp || item == PitchOctaveDown) {
-			getObj(SampleUtils).shiftWaveNoteOctave(item == PitchOctaveUp);
 		} else if (item >= NoteStart) {
 			int midiNote = item - NoteStart;
 
 			getObj(SampleUtils).updateMidiNoteNumber(midiNote);
 		}
-	} else if (topLevelMenuIndex == GraphicsMenu) {
+	} else if (topLevelMenuIndex == ViewMenu) {
 		if (item == VertsOnHover) {
 			getSetting(ViewVertsOnlyOnHover) ^= true;
 			getObj(Updater).update(UpdateSources::SourceAll, Repaint);
@@ -395,13 +336,7 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 				doUpdate(SourceMorph);
 		}
 	} else if (topLevelMenuIndex == AudioMenu) {
-		if (item == QualityOptions) {
-			getObj(Dialogs).showQualityOptions();
-		} else if (item >= OversampRltm1x && item <= OversampRltm16x) {
-			int id = (item - OversampRltm1x) + QualityDialog::OversampRltm1x;
-
-			getObj(QualityDialog).triggerOversample(id);
-		} else if (item == ModMatrix) {
+		if (item == ModMatrix) {
 			getObj(Dialogs).showModMatrix();
 		} else if (item == Declick) {
 			getDocSetting(Declick) ^= true;
@@ -423,13 +358,11 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 			editedSomething = true;
 		}
 	} else if (topLevelMenuIndex == HelpMenu) {
-		if (item == About)
+		if (item == About) {
 			getObj(Dialogs).showAboutDialog();
-			//		else if(item == Help)		getObj(Dialogs).launchHelp();
-		else if (item == Tour)
+		} else if (item == Tour) {
 			getObj(CycleTour).enter();
-			//		else if(item == Cheatsheet)	getObj(Dialogs).launchCheatsheetDocument();
-		else if (item >= Tutorials) {
+		} else if (item >= Tutorials) {
 			int fileIndex = item - Tutorials;
 
 			jassert(fileIndex < tutorials.size());
@@ -441,8 +374,8 @@ void SynthMenuBarModel::menuItemSelected(int item, int topLevelMenuIndex) {
 
 			if (doc.getLastParseError().isEmpty()) {
 				getObj(CycleTour).readXML(top.get());
-			} else {
-				showCritical("Xml parse error: " + doc.getLastParseError());
+            } else {
+                showCritical("Xml parse error: " + doc.getLastParseError());
 			}
 		}
 	}
@@ -465,10 +398,10 @@ void SynthMenuBarModel::init() {
 
 void SynthMenuBarModel::triggerClick(int stage) {
 	switch (stage) {
-		case ViewStageA: menuItemSelected(ViewStageA, GraphicsMenu); break;
-		case ViewStageB: menuItemSelected(ViewStageB, GraphicsMenu); break;
-		case ViewStageC: menuItemSelected(ViewStageC, GraphicsMenu); break;
-		case ViewStageD: menuItemSelected(ViewStageD, GraphicsMenu); break;
+		case ViewStageA: menuItemSelected(ViewStageA, ViewMenu); break;
+		case ViewStageB: menuItemSelected(ViewStageB, ViewMenu); break;
+		case ViewStageC: menuItemSelected(ViewStageC, ViewMenu); break;
+		case ViewStageD: menuItemSelected(ViewStageD, ViewMenu); break;
 		default: break;
 	}
 }
@@ -484,4 +417,3 @@ void EditableItem::buttonClicked(Button* button) {
 
 void EditableItem::getIdealSize(int& idealWidth, int& idealHeight) {
 }
-
