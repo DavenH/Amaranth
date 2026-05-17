@@ -1,11 +1,11 @@
 # Oscillo
 
-Oscillo is Amaranth Audio's standalone piano tuner and pitch-analysis utility.
+Oscillo is a standalone piano tuner and pitch-analysis utility.
 It listens to microphone input, tracks the detected pitch in real time, and
 visualizes the signal as period history, spectral content, harmonic phase
 motion, pitch drift, and note history against a keyboard reference.
 
-![Oscillo main UI](../docs/media/images/oscillo-main-ui.png)
+![Oscillo main UI](../docs/media/images/oscillo-main-ui.jpg)
 
 ## Purpose
 
