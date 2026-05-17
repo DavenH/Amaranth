@@ -1,6 +1,7 @@
 #include "AmaranthLookAndFeel.h"
 
 #include <utility>
+#include <App/AppConstants.h>
 #include <Util/Util.h>
 
 #include "MiscGraphics.h"
@@ -8,6 +9,10 @@
 #include "../App/SingletonRepo.h"
 #include "../UI/IConsole.h"
 #include "../Definitions.h"
+
+AmaranthLookAndFeel::AmaranthLookAndFeel() :
+        AmaranthLookAndFeel(nullptr) {
+}
 
 AmaranthLookAndFeel::AmaranthLookAndFeel(SingletonRepo* repo) :
         SingletonAccessor(repo, "AmaranthLookAndFeel") {
@@ -48,6 +53,31 @@ AmaranthLookAndFeel::AmaranthLookAndFeel(SingletonRepo* repo) :
     setColour(ListBox::backgroundColourId, Colours::transparentBlack);
 
     setDefaultLookAndFeel(this);
+}
+
+std::unique_ptr<SingletonRepo> AmaranthLookAndFeel::createStandaloneUiRepo(
+        const String& companyName,
+        const String& projectName) {
+    auto repo = std::make_unique<SingletonRepo>();
+    repo->setSuppressAudioDeviceInit(true);
+    repo->setSuppressSavableAutoRegistration(true);
+
+    repo->add(new MiscGraphics(repo.get()), -500);
+    repo->add(new AppConstants(repo.get()), -400);
+    repo->add(new Settings(repo.get()), -200);
+
+    const String fontFace = platformSplit("Verdana", "Helvetica", "Ubuntu");
+    repo->get<AppConstants>("AppConstants").setConstant(Constants::FontFace, fontFace);
+
+    const String path = platformSplit(
+        "/" + companyName + "/" + projectName,
+        "/Application Support/" + companyName + "/" + projectName,
+        "/" + companyName + "/" + projectName
+    );
+    repo->get<Settings>("Settings").setPropertiesPath(path);
+
+    repo->init();
+    return repo;
 }
 
 void AmaranthLookAndFeel::init() {

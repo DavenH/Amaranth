@@ -1,6 +1,8 @@
 #pragma once
 #include <JuceHeader.h>
 #include <array>
+#include <UI/Widgets/AmaranthMidiKeyboard.h>
+
 #include "OscAudioProcessor.h"
 #include <Algo/FFT.h>
 
@@ -8,13 +10,12 @@
 #include "RealTimePitchTracker.h"
 #include "TempermentControls.h"
 
-class HighlightKeyboard : public MidiKeyboardComponent {
+class HighlightKeyboard : public AmaranthMidiKeyboard {
 public:
-    using MidiKeyboardComponent::MidiKeyboardComponent;
+    using AmaranthMidiKeyboard::AmaranthMidiKeyboard;
 
     void setHighlightedNote(int note) {
-        highlightedNote = note;
-        repaint();
+        AmaranthMidiKeyboard::setHighlightedNote(note);
     }
 
     std::function<void(int)> onArrowKey;
@@ -35,26 +36,6 @@ public:
         return false;
     }
 
-    void drawWhiteNote(int midiNoteNumber, Graphics& g, Rectangle<float> area,
-                       bool isDown, bool isOver, Colour lineColour, Colour textColour) override {
-        MidiKeyboardComponent::drawWhiteNote(midiNoteNumber, g, area, isDown, isOver, lineColour, textColour);
-        if (midiNoteNumber == highlightedNote) {
-            g.setColour(Colours::yellow.withAlpha(0.6f));
-            g.fillRect(area);
-        }
-    }
-
-    void drawBlackNote(int midiNoteNumber, Graphics& g, Rectangle<float> area,
-                       bool isDown, bool isOver, Colour noteFillColour) override {
-        MidiKeyboardComponent::drawBlackNote(midiNoteNumber, g, area, isDown, isOver, noteFillColour);
-        if (midiNoteNumber == highlightedNote) {
-            g.setColour(Colours::orange.withAlpha(0.7f));
-            g.fillRect(area);
-        }
-    }
-
-private:
-    int highlightedNote = -1;
 };
 
 class MainComponent : public Component,
@@ -71,6 +52,8 @@ public:
     void drawHarmonicPhaseVelocityPlot(Graphics& g, const Rectangle<int>& area);
     void showTemperamentDialog();
     void stepRootNote(int delta);
+    bool isRealtimePitchTrackingEnabled() const { return realtimePitchTrackingEnabled; }
+    void setRealtimePitchTrackingEnabled(bool shouldEnable);
 
     void resized() override;
     void timerCallback() override;
@@ -127,14 +110,13 @@ private:
 
     std::unique_ptr<OscAudioProcessor> processor;
     std::unique_ptr<HighlightKeyboard> keyboard;
-    std::unique_ptr<ToggleButton> pitchTrackingToggle;
     std::unique_ptr<TemperamentControls> temperamentControls;
     std::unique_ptr<RealTimePitchTracker> pitchTracker;
     std::unique_ptr<DialogWindow> temperamentDialog;
 
     int lastClickedMidiNote = 60;
     float trueDrift = 0.0f;
-    float keyboardKeyWidth = 24.0f;
+    float keyboardKeyWidth = 12.0f;
 
     Image phaseVelocityBar;
     Image cyclogram, spectrogram, phasigram;

@@ -4,6 +4,11 @@
 #include <cmath>
 
 namespace {
+const Colour kOscilloBackground = Colour(0xff15191d);
+const Colour kOscilloPanelBackground = Colour(0xff101417);
+const Colour kOscilloGrid = Colour(0xff34383c);
+const Colour kOscilloLabel = Colour(0xffd0d6dc);
+
 int toPaletteIndex(float normalized, int paletteSize) {
     const int maxIndex = jmax(0, paletteSize - 1);
     if (!std::isfinite(normalized)) {
@@ -31,23 +36,12 @@ MainComponent::MainComponent()
     keyboardState.addListener(this);
     keyboard = std::make_unique<HighlightKeyboard>(keyboardState, MidiKeyboardComponent::horizontalKeyboard);
     keyboard->setKeyWidth(keyboardKeyWidth);
+    keyboard->setColour(MidiKeyboardComponent::whiteNoteColourId, kOscilloBackground);
     keyboard->setAvailableRange(21, 108);
     keyboard->setOctaveForMiddleC(4);
     keyboard->setWantsKeyboardFocus(true);
     addAndMakeVisible(keyboard.get());
     keyboard->onArrowKey = [this](int delta) { stepRootNote(delta); };
-
-    pitchTrackingToggle = std::make_unique<ToggleButton>("Real-time pitch tracking");
-    pitchTrackingToggle->setClickingTogglesState(true);
-    pitchTrackingToggle->setToggleState(true, dontSendNotification);
-    pitchTrackingToggle->onClick = [this]() {
-        realtimePitchTrackingEnabled = pitchTrackingToggle->getToggleState();
-        if (!realtimePitchTrackingEnabled) {
-            pitchVoteActive = false;
-            pitchVoteFramesRemaining = 0;
-        }
-    };
-    addAndMakeVisible(pitchTrackingToggle.get());
 
     temperamentControls = std::make_unique<TemperamentControls>();
     temperamentControls->onTemperamentChanged = [this] {
@@ -64,7 +58,18 @@ MainComponent::MainComponent()
     pitchDebug  = Image(Image::RGB, kHistoryFrames, kPitchDebugHeight, true);
     phaseVelocityBar = Image(Image::RGB, 1, kNumPhasePartials, true);
 
-    pitchTracker = std::make_unique<RealTimePitchTracker>(RealTimePitchTracker::AlgoCycleDiff);
+    {
+        Graphics g1(cyclogram);
+        Graphics g2(spectrogram);
+        Graphics g3(phasigram);
+        Graphics g4(pitchDebug);
+        g1.fillAll(kOscilloPanelBackground);
+        g2.fillAll(kOscilloPanelBackground);
+        g3.fillAll(kOscilloPanelBackground);
+        g4.fillAll(kOscilloPanelBackground);
+    }
+
+    pitchTracker = std::make_unique<RealTimePitchTracker>(RealTimePitchTracker::AlgoSpectral);
 
     pitchTracker->setTraceListener(*this);
     processor = std::make_unique<OscAudioProcessor>(pitchTracker.get());
@@ -96,8 +101,16 @@ MainComponent::~MainComponent() {
 }
 
 void MainComponent::paint(Graphics& g) {
-    g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
+    g.fillAll(kOscilloBackground);
     drawHistoryImage(g);
+}
+
+void MainComponent::setRealtimePitchTrackingEnabled(bool shouldEnable) {
+    realtimePitchTrackingEnabled = shouldEnable;
+    if (!realtimePitchTrackingEnabled) {
+        pitchVoteActive = false;
+        pitchVoteFramesRemaining = 0;
+    }
 }
 
 void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>& area) {
@@ -105,18 +118,18 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
     if (numHarmonics == 0) return;
 
     // Draw background
-    g.setColour(Colours::black);
+    g.setColour(kOscilloPanelBackground);
     g.fillRect(area);
 
     // Draw axes
-    g.setColour(Colours::grey);
+    g.setColour(kOscilloGrid);
 
     // Vertical center line (zero velocity)
     const int centerX = area.getX() + area.getWidth() / 2;
     g.drawVerticalLine(centerX, area.getY(), area.getBottom());
 
     // Draw grid lines for velocity
-    g.setColour(Colours::darkgrey.withAlpha(0.5f));
+    g.setColour(kOscilloGrid.withAlpha(0.65f));
     // Quarter divisions
     g.drawVerticalLine(area.getX() + area.getWidth() / 4, area.getY(), area.getBottom());
     g.drawVerticalLine(area.getX() + area.getWidth() * 3 / 4, area.getY(), area.getBottom());
@@ -157,7 +170,7 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
         g.fillRect(barX, y, barWidth, (int)barHeight - 1);
 
         if (i % 4 == 0) {
-            g.setColour(Colours::white);
+            g.setColour(kOscilloLabel);
             g.setFont(10.0f);
             g.drawText(String(i + 1), area.getX() - 25, y, 20, (int)barHeight, Justification::centredRight);
         }
@@ -179,10 +192,10 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
 }
 
 void MainComponent::drawHarmonicPhaseVelocityPlot(Graphics& g, const Rectangle<int>& area) {
-    g.setColour(Colours::black);
+    g.setColour(kOscilloPanelBackground);
     g.fillRect(area);
 
-    g.setColour(Colours::darkgrey.withAlpha(0.5f));
+    g.setColour(kOscilloGrid.withAlpha(0.75f));
     g.drawHorizontalLine(area.getCentreY(), (float) area.getX(), (float) area.getRight());
     g.drawHorizontalLine(area.getY() + area.getHeight() / 4, (float) area.getX(), (float) area.getRight());
     g.drawHorizontalLine(area.getY() + area.getHeight() * 3 / 4, (float) area.getX(), (float) area.getRight());
@@ -235,10 +248,7 @@ void MainComponent::resized() {
     const int keyboardRegionHeight = roundToInt(keyboardHeight * 1.2f);
     auto keyboardRegion = area.removeFromBottom(keyboardRegionHeight);
 
-    auto toggleArea = keyboardRegion.removeFromLeft(jmin(240, keyboardRegion.getWidth() / 3)).reduced(6);
-    pitchTrackingToggle->setBounds(toggleArea.removeFromTop(28));
-
-    const int keyboardWidth = jmin((int) std::round(keyboard->getTotalKeyboardWidth() * 1.5f),
+    const int keyboardWidth = jmin((int) std::round(keyboard->getTotalKeyboardWidth()),
         keyboardRegion.getWidth());
     keyboard->setBounds(keyboardRegion.withSizeKeepingCentre(keyboardWidth, keyboardHeight));
     plotBounds = area.reduced(10);
@@ -269,11 +279,11 @@ void MainComponent::updateHistoryImage() {
     Graphics g3(phasigram);
     g3.drawImageAt(oldPhasigram, -effectiveColumns, 0);
 
-    g.setColour(Colours::black);
+    g.setColour(kOscilloPanelBackground);
     g.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, cyclogram.getHeight());
-    g2.setColour(Colours::black);
+    g2.setColour(kOscilloPanelBackground);
     g2.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, spectrogram.getHeight());
-    g3.setColour(Colours::black);
+    g3.setColour(kOscilloPanelBackground);
     g3.fillRect(kHistoryFrames - effectiveColumns, 0, effectiveColumns, phasigram.getHeight());
 
     Image::BitmapData pixelData(
@@ -412,7 +422,7 @@ void MainComponent::drawHistoryImage(Graphics& g) {
     Rectangle<int> middleColumn = local;
 
     Rectangle<int> phasigramArea = leftColumn.removeFromTop(leftColumn.getHeight() / 2).reduced(6);
-    Rectangle<int> spectrogramArea = leftColumn.reduced(6);
+    Rectangle<int> pitchDebugArea = leftColumn.reduced(6);
 
     Rectangle<int> phaseVelArea = middleColumn.removeFromTop(middleColumn.getHeight() / 2).reduced(6);
     Rectangle<int> harmonicPlotArea = middleColumn.reduced(6);
@@ -426,11 +436,8 @@ void MainComponent::drawHistoryImage(Graphics& g) {
         drawPhaseVelocityBarChart(g, phaseVelArea);
     }
 
-    // Draw spectrogram
-    {
-        g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-        g.drawImage(spectrogram, spectrogramArea.toFloat());
-    }
+    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+    g.drawImage(pitchDebug, pitchDebugArea.toFloat());
 
     {
         Graphics::ScopedSaveState state(g);
@@ -440,13 +447,10 @@ void MainComponent::drawHistoryImage(Graphics& g) {
     g.setImageResamplingQuality(Graphics::lowResamplingQuality);
     g.setOpacity(1.0f);
 
-    // g.drawImage(cyclogram, right.reduced(6).toFloat());
-
-    // Pitch debug (disabled):
     Rectangle<int> cyclogramArea = right.removeFromTop(right.getHeight() / 2).reduced(6);
-    Rectangle<int> pitchDebugArea = right.reduced(6);
+    Rectangle<int> spectrogramArea = right.reduced(6);
     g.drawImage(cyclogram, cyclogramArea.toFloat());
-    g.drawImage(pitchDebug, pitchDebugArea.toFloat());
+    g.drawImage(spectrogram, spectrogramArea.toFloat());
 }
 
 // --------- DSP stuff --------- //
@@ -569,7 +573,7 @@ void MainComponent::appendPitchDebugImage() {
     auto oldPitchDebug = pitchDebug.createCopy();
     Graphics g(pitchDebug);
     g.drawImageAt(oldPitchDebug, -1, 0);
-    g.setColour(Colours::black);
+    g.setColour(kOscilloPanelBackground);
     g.fillRect(kHistoryFrames - 1, 0, 1, pitchDebug.getHeight());
 
     Image::BitmapData pitchData(

@@ -3,6 +3,8 @@
 #include "JuceHeader.h"
 #include "../App/SingletonAccessor.h"
 
+#include <memory>
+
 class AmaranthLookAndFeel :
         public SingletonAccessor
     ,   public LookAndFeel_V3 {
@@ -12,7 +14,12 @@ private:
     Image arrowImg;
 
 public:
+    AmaranthLookAndFeel();
     explicit AmaranthLookAndFeel(SingletonRepo* repo);
+
+    static std::unique_ptr<SingletonRepo> createStandaloneUiRepo(
+            const String& companyName,
+            const String& projectName);
 
     void init() override;
 
