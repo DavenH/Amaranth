@@ -1,5 +1,9 @@
 #include <JuceHeader.h>
+#include <App/SingletonRepo.h>
+#include <UI/AmaranthLookAndFeel.h>
+
 #include <memory>
+
 #include "MainComponent.h"
 #include "AppSettings.h"
 #include "incl/JucePluginDefines.h"
@@ -14,6 +18,11 @@ public:
 
     void initialise(const String&) override {
         Process::makeForegroundProcess();
+        sharedUiRepo = AmaranthLookAndFeel::createStandaloneUiRepo(
+            JucePlugin_Manufacturer,
+            JucePlugin_Name
+        );
+        lookAndFeel = std::make_unique<AmaranthLookAndFeel>(sharedUiRepo.get());
         mainWindow = std::make_unique<MainWindow>(getApplicationName());
         mainWindow->setVisible(true);
         mainWindow->toFront(true);
@@ -27,6 +36,9 @@ public:
 
     void shutdown() override {
         mainWindow = nullptr;
+        LookAndFeel::setDefaultLookAndFeel(nullptr);
+        lookAndFeel = nullptr;
+        sharedUiRepo = nullptr;
         AppSettings::deleteInstance();
     }
 
@@ -34,7 +46,8 @@ public:
     public:
         enum MenuItemIds {
             kMenuTemperamentSettings = 1,
-            kMenuQuit = 2
+            kMenuRealtimePitchTracking = 2,
+            kMenuQuit = 3
         };
 
         class MainMenuModel : public MenuBarModel {
@@ -49,6 +62,10 @@ public:
             PopupMenu getMenuForIndex(int, const String&) override {
                 PopupMenu menu;
                 menu.addItem(kMenuTemperamentSettings, "Temperament Settings...");
+                if (auto* content = dynamic_cast<MainComponent*>(window.getContentComponent())) {
+                    menu.addItem(kMenuRealtimePitchTracking, "Real-time Pitch Tracking", true,
+                        content->isRealtimePitchTrackingEnabled());
+                }
                 menu.addSeparator();
                 menu.addItem(kMenuQuit, "Quit");
                 return menu;
@@ -58,6 +75,14 @@ public:
                 if (menuItemID == kMenuTemperamentSettings) {
                     if (auto* content = dynamic_cast<MainComponent*>(window.getContentComponent())) {
                         content->showTemperamentDialog();
+                    }
+                    return;
+                }
+
+                if (menuItemID == kMenuRealtimePitchTracking) {
+                    if (auto* content = dynamic_cast<MainComponent*>(window.getContentComponent())) {
+                        content->setRealtimePitchTrackingEnabled(!content->isRealtimePitchTrackingEnabled());
+                        menuItemsChanged();
                     }
                     return;
                 }
@@ -169,6 +194,8 @@ public:
     };
 
 private:
+    std::unique_ptr<SingletonRepo> sharedUiRepo;
+    std::unique_ptr<AmaranthLookAndFeel> lookAndFeel;
     std::unique_ptr<MainWindow> mainWindow;
 };
 
