@@ -32,12 +32,18 @@ ContentComponent::ContentComponent (const String& name,
         editors[i]->setMultiLine(false);
         editors[i]->setSelectAllWhenFocused(true);
         editors[i]->setReadOnly(false);
+        editors[i]->setColour(TextEditor::backgroundColourId, Colour::greyLevel(0.13f));
+        editors[i]->setColour(TextEditor::textColourId, Colour::greyLevel(0.72f));
+        editors[i]->setColour(TextEditor::outlineColourId, Colour::greyLevel(0.28f));
+        editors[i]->setColour(TextEditor::focusedOutlineColourId, Colours::orange.withAlpha(0.75f));
 
+        labels[i]->setColour(Label::textColourId, Colour::greyLevel(0.72f));
         labels[i]->attachToComponent(editors[i], true);
     }
 
     presetDetails.setJustificationType(Justification::centred);
     presetDetails.setFont(FontOptions(15, Font::bold));
+    presetDetails.setColour(Label::textColourId, Colour::greyLevel(0.78f));
     addAndMakeVisible(&presetDetails);
 
     addChildComponent(&newFolderButton);
@@ -49,7 +55,7 @@ void ContentComponent::paint (Graphics& g) {
 
     text.draw (g, getLocalBounds().reduced (6).removeFromTop ((int) text.getHeight()).toFloat());
 
-    g.setColour(Colours::black);
+    g.setColour(Colour::greyLevel(0.03f));
     g.fillRect(chooserComponent.getBounds().reduced(8, 30));
 }
 

@@ -52,6 +52,16 @@ AmaranthLookAndFeel::AmaranthLookAndFeel(SingletonRepo* repo) :
     setColour(ListBox::textColourId, textColour);
     setColour(ListBox::backgroundColourId, Colours::transparentBlack);
 
+    setColour(DirectoryContentsDisplayComponent::highlightColourId, Colour::greyLevel(0.22f));
+    setColour(DirectoryContentsDisplayComponent::textColourId, textColour);
+    setColour(DirectoryContentsDisplayComponent::highlightedTextColourId, Colour::greyLevel(0.86f));
+
+    setColour(FileBrowserComponent::currentPathBoxBackgroundColourId, darkGrey);
+    setColour(FileBrowserComponent::currentPathBoxTextColourId, textColour);
+    setColour(FileBrowserComponent::currentPathBoxArrowColourId, Colour::greyLevel(0.56f));
+    setColour(FileBrowserComponent::filenameBoxBackgroundColourId, darkGrey);
+    setColour(FileBrowserComponent::filenameBoxTextColourId, textColour);
+
     setDefaultLookAndFeel(this);
 }
 

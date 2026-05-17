@@ -9,6 +9,19 @@ FileChooserDialog::FileChooserDialog(const String& name,
     : ResizableWindow(name, backgroundColour, true),
       browserComponent(std::move(chooserComponent)),
       warnAboutOverwritingExistingFiles(warnAboutOverwritingExistingFiles_) {
+    const Colour panelColour = Colour::greyLevel(0.13f);
+    const Colour textColour = Colour::greyLevel(0.72f);
+
+    setColour(FileChooserDialog::titleTextColourId, Colour::greyLevel(0.78f));
+    browserComponent->setColour(FileBrowserComponent::currentPathBoxBackgroundColourId, panelColour);
+    browserComponent->setColour(FileBrowserComponent::currentPathBoxTextColourId, textColour);
+    browserComponent->setColour(FileBrowserComponent::currentPathBoxArrowColourId, Colour::greyLevel(0.56f));
+    browserComponent->setColour(FileBrowserComponent::filenameBoxBackgroundColourId, panelColour);
+    browserComponent->setColour(FileBrowserComponent::filenameBoxTextColourId, textColour);
+    browserComponent->setColour(DirectoryContentsDisplayComponent::highlightColourId, Colour::greyLevel(0.22f));
+    browserComponent->setColour(DirectoryContentsDisplayComponent::textColourId, textColour);
+    browserComponent->setColour(DirectoryContentsDisplayComponent::highlightedTextColourId, Colour::greyLevel(0.86f));
+
     content = new ContentComponent(name, instructions, *browserComponent);
 
     setAlwaysOnTop(true);
