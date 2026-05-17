@@ -15,38 +15,75 @@ class MainPanel;
 class Console;
 
 class KeyboardInputHandler :
-		public KeyListener
+        public KeyListener
+    ,   public ApplicationCommandTarget
 	,	public SingletonAccessor
 {
 public:
-	enum SpecialKeys
-	{
-		CtrlA		= 65,
-		CtrlF		= 70,
-		CtrlL 		= 76,
-		CtrlN		= 78,
-		CtrlP 		= 80,
-		CtrlR		= 82,
-		CtrlS 		= 83,
-		CtrlZ 		= 90,
+    enum Command : CommandID {
+        CommandNewFile = 0x2000,
+        CommandOpenFile,
+        CommandSaveFile,
+        CommandSaveAsFile,
+        CommandUndo,
+        CommandRedo,
+        CommandEraseSelected,
+        CommandExtrudeSelected,
 
-		Delete 		= 65582,
-		End			= 65571,
-		Home		= 65572,
-		PageUp		= 65569,
-		PageDown	= 65570,
-		LeftArrow	= 65573,
-		RightArrow	= 65575
-	};
+        CommandTogglePlayback,
+        CommandTransportToStart,
+        CommandTransportToEnd,
+        CommandRedToStart,
+        CommandRedToEnd,
+        CommandBlueToStart,
+        CommandBlueToEnd,
+        CommandNavigateMorph,
+        CommandNextPreset,
+        CommandPreviousPreset,
+        CommandShowFilterTab,
+        CommandShowResynthesisTab,
+        CommandTourPrevious,
+        CommandTourNext,
+        CommandSetAdditiveMode,
+        CommandSetFilterMode,
+        CommandShowPresetBrowser,
+        CommandDeselectAll,
+        CommandConnectSelected,
+        CommandToggleYellowLink,
+        CommandToggleRedLink,
+        CommandToggleBlueLink,
+        CommandSelectTool,
+        CommandPencilTool,
+        CommandAxeTool,
+        CommandTimeDimension,
+        CommandRedDimension,
+        CommandBlueDimension,
+        CommandToggleMagnitudeDraw,
+        CommandToggleWaveOverlay,
+        CommandEscape,
+        CommandCycleTool,
+        CommandDebugDumpPreset,
+        CommandDebugPrintMesh
+    };
 
 	KeyboardInputHandler(SingletonRepo* repo);
 
-	void init();
-	bool keyPressed(const KeyPress& key, Component* component);
+	void init() override;
+	bool keyPressed(const KeyPress& key, Component* component) override;
 	void setFocusedInteractor(Interactor* interactor, bool);
 	Interactor* getCurrentInteractor();
+    ApplicationCommandManager& getCommandManager();
+
+    ApplicationCommandTarget* getNextCommandTarget() override;
+    void getAllCommands(Array<CommandID>& commands) override;
+    void getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) override;
+    bool perform(const InvocationInfo& info) override;
 
 private:
+    bool performCommand(CommandID commandID, const KeyPress& key, Component* component);
+    void finishSelectionEdit(bool editedSomething, bool updateBlue);
+    void updateLinkedVertexHighlights();
+
 	Ref<Mesh> mesh;
 	Ref<PlaybackPanel> position;
 	Ref<WaveformInter3D> waveInter3D;
@@ -57,6 +94,7 @@ private:
 	Ref<Console> console;
 
 //	Panel* currentPanel;
+    ApplicationCommandManager commandManager;
 	bool isMeshInteractor;
 	Interactor* currentInteractor;
 };
