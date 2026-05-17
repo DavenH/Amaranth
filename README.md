@@ -1,93 +1,168 @@
-# **Repository Structure**
+# Amaranth
 
-This repository is a monorepo that contains multiple projects and a shared library.
+Amaranth is a JUCE/CMake monorepo for Amaranth Audio applications and their
+shared engine code. The root project builds four main areas:
 
-* **cycle/**: The main **Cycle** project.
-* **oscillo/**: A separate **Oscillo** project.
-* **lib/**: The **Amaranth** library, which contains shared code used by the other projects.
-* CMakeLists.txt: The root CMake file for the entire repository.
-* CMakePresets.json: A file containing preset configurations for CMake.
+- `lib/`: `AmaranthLib`, the shared application, DSP, mesh, UI, interaction,
+  audio, persistence, and utility code used by the apps.
+- `cycle/`: Cycle, the flagship synthesizer and plugin project.
+- `oscillo/`: Oscillo, a standalone piano tuner and pitch-analysis utility.
+- `installer/`: a general-use product installer that reads product manifests
+  such as `cycle/installer.json` and `oscillo/installer.json`.
 
-```
+![Cycle main UI](docs/media/images/cycle-master-ui.png)
+
+## Projects
+
+### Cycle
+
+Cycle is Amaranth Audio's flagship synthesizer. It uses editable waveform,
+spectral, envelope, guide-curve, and effect meshes to model evolving timbre over
+time, pitch, and performance dimensions. It builds as a standalone app and, for
+plugin presets, as a plugin target.
+
+Read more in [`cycle/README.md`](cycle/README.md).
+
+### Oscillo
+
+Oscillo is a standalone tuner and pitch-analysis tool for piano work. It listens
+to microphone input, tracks real-time pitch, and visualizes period, spectrum,
+phase, drift, and note history against a keyboard reference.
+
+Read more in [`oscillo/README.md`](oscillo/README.md).
+
+### AmaranthLib
+
+`AmaranthLib` is not a separate product. It is the common codebase for Amaranth
+apps: mesh geometry and rasterization, curve editing, vectorized buffers, FFT
+and convolution helpers, pitch tracking, UI panels/widgets, app settings,
+document persistence, undo/interaction infrastructure, and shared audio
+plumbing.
+
+### Installer
+
+The installer app is intentionally product-neutral. It owns the shared installer
+UI, EULA flow, manifest schema, saved field handling, and artifact-copy logic;
+each product owns its own manifest and package inputs.
+
+Read more in [`installer/README.md`](installer/README.md).
+
+## Repository Layout
+
+```text
 .
 ├── CMakeLists.txt
 ├── CMakePresets.json
 ├── cycle/
+├── docs/
+├── installer/
+├── lib/
 ├── oscillo/
-└── lib/
+└── scripts/
 ```
 
-# **Cycle**
+## Prerequisites
 
-Cycle is **Amaranth Audio**'s flagship audio synthesizer built with the JUCE framework and CMake. 
+For a normal developer checkout, do not install JUCE, the VST3 SDK, or Catch2 by
+hand first. Start from the repository root and use the scripts below.
 
-![A diagram showing the Cycle UI.](docs/media/images/cycle-master-ui.png)
+Required up front:
 
-## **Prerequisites**
+- Git
+- CMake 3.29 or newer
+- A C++17 compiler
+- macOS: Xcode Command Line Tools; builds use Accelerate/vDSP
+- Linux: common desktop/audio development packages plus Intel IPP
 
-Before you begin, you will need to install the following dependencies:
+The bootstrap script installs or updates the SDK-style dependencies under
+`$INSTALL_ROOT` or `~/SDKs` by default:
 
-* **CMake:** A cross-platform build system.
-* **A C++ compiler:** Such as GCC, Clang, or Visual Studio.
-* **Git:** For cloning the repository.
-* **JUCE:** The C++ framework used for the project.
-* **VST3 SDK:** The SDK for building VST3 plugins.
-* **Catch2:** A C++ test framework.
-* **Intel IPP (Linux only):** Intel Integrated Performance Primitives, for optimized performance.
+- JUCE
+- VST3 SDK
+- Catch2
+- Intel IPP on Linux
 
-## **Setup Instructions**
+## Setup
 
-1. **Clone the Repository:**  
-   `git clone https://github.com/DavenH/Amaranth.git`  
-   `cd cycle`
+From the repository root:
 
-2. **Install Dependencies:**
-   1. `./scripts/install_deps.sh`
-      . This will install these SDKs as needed: JUCE, VST3, Catch2, and Intel IPP (on linux)  
-   2. `./scripts/make_env.sh`
-   
-   The script will create a .env file with content similar to this:
-```bash
-   # Amaranth SDK Locations  
-   # Generated on <date>  
-   # Platform: <OS_NAME>
-
-   JUCE_MODULES_DIR=<path_to_juce_modules>  
-   VST3_SDK_DIR=<path_to_vst3_sdk>  
-   CATCH2_CMAKE_DIR=<path_to_catch2>
-
-   # Linux specific  
-   # IPP_DIR=<path_to_intel_ipp>
+```sh
+git clone https://github.com/DavenH/Amaranth.git
+cd Amaranth
+./scripts/install_deps.sh
+./scripts/make_env.sh
 ```
-## **Build Instructions**
 
-This project uses CMake for building. You can use the CMakePresets.json file for common build configurations, or you can build manually.
+`make_env.sh` writes the required root `.env` file with SDK paths such as:
 
-### **Using CMake Presets**
+```sh
+JUCE_MODULES_DIR=...
+JUCE_ROOT=...
+VST3_SDK_DIR=...
+CATCH2_CMAKE_DIR=...
+AUDIO_PLUGIN_HOST_BUILD_DIR=...
+IPP_DIR=...
+```
 
-To see the available presets, run:  
-`cmake --list-presets`
+On macOS, `IPP_DIR` is intentionally empty because the build uses
+Accelerate/vDSP.
 
-To configure and build with a specific preset, for example, `standalone-debug`, run:  
-`cmake --preset standalone-debug`  
-`cmake --build --preset standalone-debug`
+## Build
 
-## **Testing**
+List available presets:
 
-Use CTest as the canonical test entrypoint.
+```sh
+cmake --list-presets
+```
 
-1. Configure test build files:  
-   `cmake --preset tests`
-2. Build test executables (`AmaranthLib_tests`, `Oscillo_tests`, `Cycle_tests`):  
-   `cmake --build --preset tests`
-3. Run the full discovered test suite:  
-   `ctest --preset tests`
-4. More examples:
-   - `cmake --build --preset tests --target AmaranthLib_tests -- -j1`
-   - `ctest --preset tests -R "Buffer window functions"`
+Configure and build standalone debug apps:
 
-Notes:
-* Catch2 is the underlying test framework.
-* CTest discovers and runs Catch tests via `catch_discover_tests(...)`.
-* In IDEs, prefer the **CTest Application** run configuration for routine test runs.
-* In CLion, select the CMake profile based on the `tests` preset (commonly shown as `tests - tests`) before using green run buttons for test targets.
+```sh
+cmake --preset standalone-debug
+cmake --build --preset standalone-debug --parallel 10
+```
+
+Build the Cycle plugin target:
+
+```sh
+cmake --preset plugin-debug
+cmake --build --preset plugin-debug --parallel 10
+```
+
+Build all test executables:
+
+```sh
+cmake --preset tests
+cmake --build --preset tests --parallel 10
+```
+
+## Test
+
+CTest is the canonical test entrypoint:
+
+```sh
+ctest --preset tests
+```
+
+Useful focused examples:
+
+```sh
+cmake --build --preset tests --target AmaranthLib_tests --parallel 10
+ctest --preset tests -R "Buffer window functions"
+```
+
+Catch2 is the underlying test framework, with tests discovered through
+`catch_discover_tests(...)`.
+
+## Packaging
+
+The installer packaging targets create product zips from product manifests:
+
+```sh
+cmake --build --preset standalone-release --target Oscillo_installer_zip --parallel 10
+cmake --build --preset standalone-release --target Cycle_installer_zip --parallel 10
+```
+
+`Cycle_installer_zip` expects both standalone and plugin release artifacts to
+exist. Build `standalone-release` and `plugin-release` first for a complete
+Cycle package.
