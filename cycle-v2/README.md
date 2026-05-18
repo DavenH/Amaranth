@@ -43,6 +43,7 @@ The editor should feel like a studio canvas rather than a legacy panel UI:
 - large dark grid canvas with minimap navigation
 - soft, routed cables that avoid node bodies where possible
 - domain-colored ports and cables for time, spectral magnitude, spectral phase, envelope/control, mesh, pitch, and voice routing
+- explicit stereo split/join nodes for visible left/right channel routing
 - explicit scratch attachment ports so hidden Cycle 1.x scratch assignments become visible and traceable
 - rich per-node previews: trilinear mesh surfaces, 2D mesh slices, waveform/cyclogram views, spectrograms, spectral magnitude/phase graphs, envelopes, and meters
 - double-click expansion into a larger editor for the selected node
