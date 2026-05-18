@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 
+#include "../Graph/GraphEditor.h"
 #include "../Graph/NodeGraph.h"
 #include "../Runtime/GraphRuntime.h"
 
@@ -19,6 +20,7 @@ public:
     void resized() override;
     void mouseDown(const MouseEvent& event) override;
     void mouseDrag(const MouseEvent& event) override;
+    void mouseUp(const MouseEvent& event) override;
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override;
     bool keyPressed(const KeyPress& key) override;
 
@@ -39,7 +41,11 @@ private:
     Rectangle<float> dragStartNodeBounds;
     String selectedNodeId;
     String expandedNodeId;
+    String editStatusMessage;
+    PortAddress connectingPort;
+    Point<float> connectingPoint;
     bool draggingNode {};
+    bool connectingCable {};
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -48,6 +54,7 @@ private:
 
     void drawGrid(Graphics& g);
     void drawEdges(Graphics& g);
+    void drawConnectionPreview(Graphics& g);
     void drawNodes(Graphics& g);
     void drawNode(Graphics& g, const Node& node);
     void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
@@ -58,12 +65,15 @@ private:
     Point<float> toWorld(Point<float> p) const;
     Rectangle<float> toScreen(Rectangle<float> r) const;
     PortLocation getPortLocation(const Node& node, const Port& port) const;
+    PortLocation getPortLocation(const PortAddress& address) const;
+    bool findPortAt(Point<float> screenPosition, PortAddress& result) const;
     const Node* findNode(const String& id) const;
     Node* findMutableNode(const String& id);
     const Node* findNodeAt(Point<float> worldPosition) const;
     const Port* findPort(const Node& node, const String& portId, bool input) const;
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
     int executionIndexForNode(const String& nodeId) const;
+    void refreshCompiledState();
     bool clearSelection();
     Path createCablePath(Point<float> source, Point<float> dest, bool attachment) const;
 

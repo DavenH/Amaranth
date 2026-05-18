@@ -31,11 +31,7 @@ float portY(const Node& node, const Port& port) {
 
 NodeCanvas::NodeCanvas() :
         graph(NodeGraph::createDemoGraph()) {
-    compileResult = GraphCompiler().compile(graph);
-
-    if (compileResult.succeeded()) {
-        runtimeTrace = GraphRuntime().process(graph, compileResult.plan);
-    }
+    refreshCompiledState();
 
     setOpaque(true);
     setWantsKeyboardFocus(true);
@@ -53,6 +49,7 @@ NodeCanvas::~NodeCanvas() {
 void NodeCanvas::paint(Graphics& g) {
     drawGrid(g);
     drawEdges(g);
+    drawConnectionPreview(g);
     drawNodes(g);
     drawMiniMap(g);
 }
@@ -63,7 +60,20 @@ void NodeCanvas::resized() {
 
 void NodeCanvas::mouseDown(const MouseEvent& event) {
     grabKeyboardFocus();
+    editStatusMessage = {};
     dragStartPan = pan;
+
+    PortAddress hitPort;
+    if (findPortAt(event.position, hitPort)) {
+        connectingPort = hitPort;
+        connectingPoint = event.position;
+        connectingCable = true;
+        draggingNode = false;
+        selectedNodeId = hitPort.nodeId;
+        repaint();
+        return;
+    }
+
     const Node* hitNode = findNodeAt(toWorld(event.position));
     selectedNodeId = hitNode != nullptr ? hitNode->id : String();
     draggingNode = hitNode != nullptr;
@@ -82,7 +92,9 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
-    if (draggingNode) {
+    if (connectingCable) {
+        connectingPoint = event.position;
+    } else if (draggingNode) {
         Node* node = findMutableNode(selectedNodeId);
 
         if (node != nullptr) {
@@ -91,6 +103,30 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         }
     } else {
         pan = dragStartPan + event.getOffsetFromDragStart().toFloat();
+    }
+
+    repaint();
+}
+
+void NodeCanvas::mouseUp(const MouseEvent& event) {
+    if (!connectingCable) {
+        return;
+    }
+
+    PortAddress destPort;
+    connectingCable = false;
+
+    if (findPortAt(event.position, destPort)) {
+        auto result = GraphEditor().connect(graph, connectingPort, destPort);
+
+        if (result.succeeded()) {
+            refreshCompiledState();
+            editStatusMessage = "Connected";
+        } else if (result.code == GraphEditCode::ValidationRejected) {
+            editStatusMessage = "Incompatible connection";
+        } else {
+            editStatusMessage = "Connection cancelled";
+        }
     }
 
     repaint();
@@ -205,6 +241,35 @@ void NodeCanvas::drawEdges(Graphics& g) {
             g.strokePath(cable, PathStrokeType(3.f, PathStrokeType::curved, PathStrokeType::rounded));
         }
     }
+}
+
+void NodeCanvas::drawConnectionPreview(Graphics& g) {
+    if (!connectingCable) {
+        return;
+    }
+
+    const Node* node = findNode(connectingPort.nodeId);
+
+    if (node == nullptr) {
+        return;
+    }
+
+    const Port* port = findPort(*node, connectingPort.portId, connectingPort.input);
+
+    if (port == nullptr) {
+        return;
+    }
+
+    const auto start = getPortLocation(connectingPort).centre;
+    const auto source = connectingPort.input ? connectingPoint : start;
+    const auto dest = connectingPort.input ? start : connectingPoint;
+    const Path cable = createCablePath(source, dest, false);
+    const Colour colour = colourForDomain(port->domain);
+
+    g.setColour(colour.withAlpha(0.18f));
+    g.strokePath(cable, PathStrokeType(9.f, PathStrokeType::curved, PathStrokeType::rounded));
+    g.setColour(colour.withAlpha(0.88f));
+    g.strokePath(cable, PathStrokeType(3.f, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
 void NodeCanvas::drawNodes(Graphics& g) {
@@ -475,6 +540,15 @@ void NodeCanvas::drawMiniMap(Graphics& g) {
     g.fillRoundedRectangle(viewInMap, 3.f);
     g.setColour(Colour(0xff35d6d2).withAlpha(0.85f));
     g.drawRoundedRectangle(viewInMap, 3.f, 1.f);
+
+    if (editStatusMessage.isNotEmpty()) {
+        Rectangle<float> status(map.getX(), map.getBottom() + 8.f, map.getWidth(), 24.f);
+        g.setColour(Colour(0xaa0b0e13));
+        g.fillRoundedRectangle(status, 5.f);
+        g.setColour(kMutedText);
+        g.setFont(FontOptions(10.f));
+        g.drawText(editStatusMessage, status.reduced(8.f, 0.f), Justification::centredLeft);
+    }
 }
 
 Point<float> NodeCanvas::toScreen(Point<float> p) const {
@@ -496,6 +570,42 @@ NodeCanvas::PortLocation NodeCanvas::getPortLocation(const Node& node, const Por
     Point<float> centre = toScreen(Point<float>(x, portY(node, port)));
     Rectangle<float> bounds(centre.x - size * 0.5f, centre.y - size * 0.5f, size, size);
     return { bounds, centre };
+}
+
+NodeCanvas::PortLocation NodeCanvas::getPortLocation(const PortAddress& address) const {
+    const Node* node = findNode(address.nodeId);
+
+    if (node == nullptr) {
+        return {};
+    }
+
+    const Port* port = findPort(*node, address.portId, address.input);
+
+    if (port == nullptr) {
+        return {};
+    }
+
+    return getPortLocation(*node, *port);
+}
+
+bool NodeCanvas::findPortAt(Point<float> screenPosition, PortAddress& result) const {
+    for (const auto& node : graph.getNodes()) {
+        for (const auto& port : node.inputs) {
+            if (getPortLocation(node, port).bounds.expanded(5.f).contains(screenPosition)) {
+                result = { node.id, port.id, true };
+                return true;
+            }
+        }
+
+        for (const auto& port : node.outputs) {
+            if (getPortLocation(node, port).bounds.expanded(5.f).contains(screenPosition)) {
+                result = { node.id, port.id, false };
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 const Node* NodeCanvas::findNode(const String& id) const {
@@ -567,6 +677,15 @@ int NodeCanvas::executionIndexForNode(const String& nodeId) const {
     }
 
     return -1;
+}
+
+void NodeCanvas::refreshCompiledState() {
+    compileResult = GraphCompiler().compile(graph);
+    runtimeTrace = {};
+
+    if (compileResult.succeeded()) {
+        runtimeTrace = GraphRuntime().process(graph, compileResult.plan);
+    }
 }
 
 bool NodeCanvas::clearSelection() {
