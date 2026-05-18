@@ -12,6 +12,7 @@ enum class GraphValidationCode {
     MissingSourcePort,
     MissingDestinationPort,
     DomainMismatch,
+    ChannelLayoutMismatch,
     InvalidAttachmentSource,
     InvalidAttachmentDestination,
     ScratchPortRequiresAttachment,
@@ -31,6 +32,7 @@ public:
 private:
     bool isVoiceAwareDestination(const Port& port) const;
     bool domainsCompatible(const Port& source, const Port& dest) const;
+    bool channelLayoutsCompatible(const Port& source, const Port& dest) const;
 };
 
 }

@@ -65,3 +65,40 @@ TEST_CASE("Pitch cannot feed non voice-aware processors", "[cycle-v2][graph]") {
                     || issue.code == GraphValidationCode::PitchRequiresVoiceAwareDestination;
             }));
 }
+
+TEST_CASE("Audio signal edges require compatible channel layouts", "[cycle-v2][graph]") {
+    NodeGraph graph;
+
+    graph.addNode({
+            "source",
+            NodeKind::GenericProcessor,
+            "Source",
+            {},
+            {},
+            {},
+            {
+                    { "time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false }
+            }
+    });
+    graph.addNode({
+            "dest",
+            NodeKind::GenericProcessor,
+            "Dest",
+            {},
+            {},
+            {
+                    { "time", "Time Mono", PortDomain::TimeSignal, ChannelLayout::Mono, PortPurpose::Signal, true }
+            },
+            {}
+    });
+    graph.addEdge({ "source", "time", "dest", "time", PortDomain::TimeSignal, false });
+
+    const auto issues = GraphValidator().validate(graph);
+
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::ChannelLayoutMismatch;
+            }));
+}

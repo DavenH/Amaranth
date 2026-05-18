@@ -94,6 +94,12 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
                      "Domain mismatch: " + labelForDomain(source->domain) + " -> " + labelForDomain(dest->domain));
         }
 
+        if (!channelLayoutsCompatible(*source, *dest)) {
+            addIssue(issues, GraphValidationCode::ChannelLayoutMismatch,
+                     "Channel layout mismatch: " + edge.sourceNodeId + "." + source->id
+                         + " -> " + edge.destNodeId + "." + dest->id);
+        }
+
         if (source->domain == PortDomain::PitchSignal && !isVoiceAwareDestination(*dest)) {
             addIssue(issues, GraphValidationCode::PitchRequiresVoiceAwareDestination,
                      "Pitch can only feed voice-aware generators or processors: " + edge.destNodeId + "." + dest->id);
@@ -113,6 +119,22 @@ bool GraphValidator::isVoiceAwareDestination(const Port& port) const {
 
 bool GraphValidator::domainsCompatible(const Port& source, const Port& dest) const {
     return source.domain == dest.domain;
+}
+
+bool GraphValidator::channelLayoutsCompatible(const Port& source, const Port& dest) const {
+    if (source.domain != dest.domain) {
+        return true;
+    }
+
+    switch (source.domain) {
+        case PortDomain::TimeSignal:
+        case PortDomain::SpectralMagnitudeSignal:
+        case PortDomain::SpectralPhaseSignal:
+            return source.channelLayout == dest.channelLayout;
+
+        default:
+            return true;
+    }
 }
 
 }
