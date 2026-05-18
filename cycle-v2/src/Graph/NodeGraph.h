@@ -90,6 +90,7 @@ private:
 
 Colour colourForDomain(PortDomain domain);
 String labelForDomain(PortDomain domain);
+String labelForChannelLayout(ChannelLayout layout);
 String labelForNodeKind(NodeKind kind);
 
 }

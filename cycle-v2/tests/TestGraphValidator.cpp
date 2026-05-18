@@ -35,6 +35,14 @@ TEST_CASE("Demo graph exposes stable node kinds", "[cycle-v2][graph]") {
     REQUIRE(findKind("out") == NodeKind::Output);
 }
 
+TEST_CASE("Channel layouts have stable short labels", "[cycle-v2][graph]") {
+    REQUIRE(labelForChannelLayout(ChannelLayout::Mono) == "M");
+    REQUIRE(labelForChannelLayout(ChannelLayout::LinkedStereo) == "L/R");
+    REQUIRE(labelForChannelLayout(ChannelLayout::Left) == "L");
+    REQUIRE(labelForChannelLayout(ChannelLayout::Right) == "R");
+    REQUIRE(labelForChannelLayout(ChannelLayout::StereoPair) == "Pair");
+}
+
 TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     graph.addEdge({ "env", "env", "wave", "scratch", PortDomain::EnvelopeSignal, false });

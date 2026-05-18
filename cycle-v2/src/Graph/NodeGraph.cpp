@@ -200,6 +200,17 @@ String labelForDomain(PortDomain domain) {
     }
 }
 
+String labelForChannelLayout(ChannelLayout layout) {
+    switch (layout) {
+        case ChannelLayout::Mono:         return "M";
+        case ChannelLayout::LinkedStereo: return "L/R";
+        case ChannelLayout::Left:         return "L";
+        case ChannelLayout::Right:        return "R";
+        case ChannelLayout::StereoPair:   return "Pair";
+        default:                          return "?";
+    }
+}
+
 String labelForNodeKind(NodeKind kind) {
     switch (kind) {
         case NodeKind::GenericProcessor:             return "Generic Processor";

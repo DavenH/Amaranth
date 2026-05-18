@@ -260,8 +260,10 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
 
         g.setFont(FontOptions(9.5f * zoom));
         g.setColour(kMutedText);
-        g.drawText(port.label, labelBounds, port.input ? Justification::centredLeft
-                                                       : Justification::centredRight);
+        g.drawText(port.label + " " + labelForChannelLayout(port.channelLayout),
+                   labelBounds,
+                   port.input ? Justification::centredLeft
+                              : Justification::centredRight);
     };
 
     for (const auto& port : node.inputs) {
