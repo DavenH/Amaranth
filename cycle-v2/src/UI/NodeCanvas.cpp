@@ -793,6 +793,8 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
             { NodeKind::Ifft, "IFFT" },
             { NodeKind::Envelope, "Env" },
             { NodeKind::Multiply, "Mul" },
+            { NodeKind::StereoSplit, "Split" },
+            { NodeKind::StereoJoin, "Join" },
             { NodeKind::Output, "Out" }
     };
 
@@ -888,6 +890,8 @@ bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) 
             NodeKind::Ifft,
             NodeKind::Envelope,
             NodeKind::Multiply,
+            NodeKind::StereoSplit,
+            NodeKind::StereoJoin,
             NodeKind::Output
     };
 

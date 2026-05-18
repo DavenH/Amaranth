@@ -117,6 +117,8 @@ String GraphEditor::baseIdForKind(NodeKind kind) const {
         case NodeKind::Ifft:                         return "ifft";
         case NodeKind::Envelope:                     return "env";
         case NodeKind::Multiply:                     return "multiply";
+        case NodeKind::StereoSplit:                  return "split";
+        case NodeKind::StereoJoin:                   return "join";
         case NodeKind::Output:                       return "out";
         default:                                     return "processor";
     }

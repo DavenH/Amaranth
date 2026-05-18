@@ -29,6 +29,8 @@ enum class NodeKind {
     Ifft,
     Envelope,
     Multiply,
+    StereoSplit,
+    StereoJoin,
     Output
 };
 

@@ -22,6 +22,8 @@ String idForNodeKind(NodeKind kind) {
         case NodeKind::Ifft:                         return "ifft";
         case NodeKind::Envelope:                     return "envelope";
         case NodeKind::Multiply:                     return "multiply";
+        case NodeKind::StereoSplit:                  return "stereoSplit";
+        case NodeKind::StereoJoin:                   return "stereoJoin";
         case NodeKind::Output:                       return "output";
         default:                                     return "genericProcessor";
     }
@@ -51,6 +53,12 @@ NodeKind nodeKindForId(const String& id) {
     }
     if (id == "multiply") {
         return NodeKind::Multiply;
+    }
+    if (id == "stereoSplit") {
+        return NodeKind::StereoSplit;
+    }
+    if (id == "stereoJoin") {
+        return NodeKind::StereoJoin;
     }
     if (id == "output") {
         return NodeKind::Output;

@@ -93,6 +93,28 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             break;
 
+        case NodeKind::StereoSplit:
+            node.title = "Stereo Split";
+            node.subtitle = "L/R breakout";
+            node.bounds.setSize(220.f, 145.f);
+            node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            node.outputs = {
+                    output("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left),
+                    output("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right)
+            };
+            break;
+
+        case NodeKind::StereoJoin:
+            node.title = "Stereo Join";
+            node.subtitle = "L/R combine";
+            node.bounds.setSize(220.f, 145.f);
+            node.inputs = {
+                    input("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left),
+                    input("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right)
+            };
+            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            break;
+
         case NodeKind::Output:
             node.title = "Output";
             node.subtitle = "stereo meters";

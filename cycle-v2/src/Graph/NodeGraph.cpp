@@ -263,6 +263,8 @@ String labelForNodeKind(NodeKind kind) {
         case NodeKind::Ifft:                         return "IFFT";
         case NodeKind::Envelope:                     return "Envelope";
         case NodeKind::Multiply:                     return "Multiply";
+        case NodeKind::StereoSplit:                  return "Stereo Split";
+        case NodeKind::StereoJoin:                   return "Stereo Join";
         case NodeKind::Output:                       return "Output";
         default:                                     return "Unknown";
     }

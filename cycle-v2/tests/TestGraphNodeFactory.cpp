@@ -37,3 +37,19 @@ TEST_CASE("Graph editor adds nodes with unique ids", "[cycle-v2][graph]") {
     REQUIRE(graph.getNodes().back().id == "env2");
     REQUIRE(graph.getNodes().back().kind == NodeKind::Envelope);
 }
+
+TEST_CASE("Graph node factory creates stereo split and join nodes", "[cycle-v2][graph]") {
+    const Node split = GraphNodeFactory().createNode(NodeKind::StereoSplit, "split", {});
+    const Node join = GraphNodeFactory().createNode(NodeKind::StereoJoin, "join", {});
+
+    REQUIRE(split.inputs.size() == 1);
+    REQUIRE(split.inputs.front().channelLayout == ChannelLayout::LinkedStereo);
+    REQUIRE(split.outputs.size() == 2);
+    REQUIRE(split.outputs[0].channelLayout == ChannelLayout::Left);
+    REQUIRE(split.outputs[1].channelLayout == ChannelLayout::Right);
+
+    REQUIRE(join.inputs.size() == 2);
+    REQUIRE(join.inputs[0].channelLayout == ChannelLayout::Left);
+    REQUIRE(join.inputs[1].channelLayout == ChannelLayout::Right);
+    REQUIRE(join.outputs.front().channelLayout == ChannelLayout::LinkedStereo);
+}
