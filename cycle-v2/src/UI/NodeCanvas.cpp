@@ -31,6 +31,12 @@ float portY(const Node& node, const Port& port) {
 
 NodeCanvas::NodeCanvas() :
         graph(NodeGraph::createDemoGraph()) {
+    compileResult = GraphCompiler().compile(graph);
+
+    if (compileResult.succeeded()) {
+        runtimeTrace = GraphRuntime().process(graph, compileResult.plan);
+    }
+
     setOpaque(true);
     openGLContext.setRenderer(this);
     openGLContext.setContinuousRepainting(false);
@@ -178,6 +184,37 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     g.setFont(FontOptions(10.5f * zoom));
     g.setColour(kMutedText);
     g.drawText(node.subtitle, header.reduced(13.f * zoom, 4.f * zoom), Justification::centredRight);
+
+    const int executionIndex = executionIndexForNode(node.id);
+    if (executionIndex >= 0) {
+        Rectangle<float> badge = bounds.withSizeKeepingCentre(42.f * zoom, 20.f * zoom);
+        badge.setX(bounds.getRight() - badge.getWidth() - 11.f * zoom);
+        badge.setY(bounds.getY() + 49.f * zoom);
+
+        g.setColour(Colour(0xff0e1318));
+        g.fillRoundedRectangle(badge, 5.f * zoom);
+        g.setColour(Colour(0xff354050));
+        g.drawRoundedRectangle(badge, 5.f * zoom, 1.f);
+        g.setColour(kText);
+        g.setFont(FontOptions(10.f * zoom, Font::bold));
+        g.drawText("#" + String(executionIndex + 1), badge, Justification::centred);
+    }
+
+    const RuntimeNodeTrace* traceNode = findRuntimeTrace(node.id);
+    if (traceNode != nullptr && !traceNode->attachments.empty()) {
+        Rectangle<float> attachmentBadge = bounds.withSizeKeepingCentre(72.f * zoom, 20.f * zoom);
+        attachmentBadge.setX(bounds.getX() + 11.f * zoom);
+        attachmentBadge.setY(bounds.getY() + 49.f * zoom);
+
+        g.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.16f));
+        g.fillRoundedRectangle(attachmentBadge, 5.f * zoom);
+        g.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.64f));
+        g.drawRoundedRectangle(attachmentBadge, 5.f * zoom, 1.f);
+        g.setColour(kText);
+        g.setFont(FontOptions(9.f * zoom));
+        g.drawText("attach " + String((int) traceNode->attachments.size()),
+                   attachmentBadge, Justification::centred);
+    }
 
     auto nodeBounds = toScreen(node.bounds);
     auto preview = nodeBounds.reduced(13.f * zoom).withTrimmedTop(49.f * zoom).withTrimmedBottom(12.f * zoom);
@@ -346,6 +383,31 @@ const Port* NodeCanvas::findPort(const Node& node, const String& portId, bool in
     }
 
     return nullptr;
+}
+
+const RuntimeNodeTrace* NodeCanvas::findRuntimeTrace(const String& nodeId) const {
+    for (const auto& node : runtimeTrace.nodes) {
+        if (node.nodeId == nodeId) {
+            return &node;
+        }
+    }
+
+    return nullptr;
+}
+
+int NodeCanvas::executionIndexForNode(const String& nodeId) const {
+    if (!compileResult.succeeded()) {
+        return -1;
+    }
+
+    const auto& nodeOrder = compileResult.plan.nodeOrder;
+    for (int i = 0; i < (int) nodeOrder.size(); ++i) {
+        if (nodeOrder[(size_t) i] == nodeId) {
+            return i;
+        }
+    }
+
+    return -1;
 }
 
 Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool attachment) const {

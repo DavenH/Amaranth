@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "../Graph/NodeGraph.h"
+#include "../Runtime/GraphRuntime.h"
 
 namespace CycleV2 {
 
@@ -25,6 +26,8 @@ private:
 
     OpenGLContext openGLContext;
     NodeGraph graph;
+    GraphCompileResult compileResult;
+    RuntimeProcessTrace runtimeTrace;
 
     float zoom { 0.58f };
     Point<float> pan { 34.f, 38.f };
@@ -46,6 +49,8 @@ private:
     PortLocation getPortLocation(const Node& node, const Port& port) const;
     const Node* findNode(const String& id) const;
     const Port* findPort(const Node& node, const String& portId, bool input) const;
+    const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
+    int executionIndexForNode(const String& nodeId) const;
     Path createCablePath(Point<float> source, Point<float> dest, bool attachment) const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
