@@ -15,6 +15,7 @@ enum class GraphEditCode {
     Connected,
     MissingNode,
     MissingPort,
+    MissingEdge,
     DirectionMismatch,
     ValidationRejected
 };

@@ -101,3 +101,12 @@ TEST_CASE("Graph editor removes edges by index", "[cycle-v2][graph]") {
     REQUIRE(result.succeeded());
     REQUIRE(graph.getEdges().size() == edgeCount - 1);
 }
+
+TEST_CASE("Graph editor reports missing edge removal", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+
+    const auto result = GraphEditor().removeEdgeAt(graph, graph.getEdges().size());
+
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.code == GraphEditCode::MissingEdge);
+}
