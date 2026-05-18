@@ -63,6 +63,9 @@ private:
     void drawNodes(Graphics& g);
     void drawNode(Graphics& g, const Node& node);
     void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
+    void drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed);
+    void drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colour, int seed);
+    void drawEnvelopeCurve(Graphics& g, Rectangle<float> area);
     void drawExpandedEditor(Graphics& g, const Node& node);
     void drawMiniMap(Graphics& g);
     void drawGraphStatus(Graphics& g);

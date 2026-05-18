@@ -510,6 +510,38 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
         return;
     }
 
+    if (node.kind == NodeKind::Fft) {
+        auto magArea = area.reduced(8.f).removeFromTop((area.getHeight() - 20.f) * 0.5f);
+        auto phaseArea = area.reduced(8.f).withTrimmedTop((area.getHeight() - 20.f) * 0.5f + 8.f);
+        drawSpectrumBars(g, magArea, colourForDomain(PortDomain::SpectralMagnitudeSignal), node.id.hashCode());
+        drawPhaseTrace(g, phaseArea, colourForDomain(PortDomain::SpectralPhaseSignal), node.id.hashCode());
+        return;
+    }
+
+    if (node.kind == NodeKind::SpectralMagnitudeProcessor) {
+        drawSpectrumBars(g, area.reduced(8.f), colourForDomain(PortDomain::SpectralMagnitudeSignal), node.id.hashCode());
+        return;
+    }
+
+    if (node.kind == NodeKind::SpectralPhaseProcessor) {
+        drawPhaseTrace(g, area.reduced(8.f), colourForDomain(PortDomain::SpectralPhaseSignal), node.id.hashCode());
+        return;
+    }
+
+    if (node.kind == NodeKind::Envelope) {
+        drawEnvelopeCurve(g, area.reduced(8.f));
+        return;
+    }
+
+    if (node.kind == NodeKind::Multiply) {
+        g.setColour(Colour(0xff26313d));
+        g.drawEllipse(area.reduced(area.getWidth() * 0.32f, area.getHeight() * 0.22f), 1.2f);
+        g.setColour(kMutedText.withAlpha(0.74f));
+        g.setFont(FontOptions(jmin(42.f, area.getHeight() * 0.48f)));
+        g.drawText("x", area, Justification::centred);
+        return;
+    }
+
     Path curve;
     const int steps = 42;
     for (int i = 0; i < steps; ++i) {
@@ -540,6 +572,76 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
     g.fillPath(curve);
     g.setColour(colour.withAlpha(0.95f));
     g.strokePath(curve, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+void NodeCanvas::drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed) {
+    Random random(seed);
+    const int bars = 34;
+    const float barWidth = area.getWidth() / (float) bars;
+
+    g.setColour(colour.withAlpha(0.08f));
+    g.fillRect(area);
+
+    for (int i = 0; i < bars; ++i) {
+        const float t = (float) i / (float) (bars - 1);
+        const float falloff = 1.f - t * 0.72f;
+        const float jitter = 0.35f + random.nextFloat() * 0.55f;
+        const float height = area.getHeight() * jlimit(0.08f, 0.98f, falloff * jitter);
+        Rectangle<float> bar(
+                area.getX() + (float) i * barWidth,
+                area.getBottom() - height,
+                jmax(1.f, barWidth - 1.f),
+                height);
+
+        g.setColour(colour.withAlpha(0.28f));
+        g.fillRect(bar);
+        g.setColour(colour.withAlpha(0.82f));
+        g.drawVerticalLine(roundToInt(bar.getCentreX()), bar.getY(), bar.getBottom());
+    }
+}
+
+void NodeCanvas::drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colour, int seed) {
+    Random random(seed ^ 0x4f3759df);
+    Path trace;
+    const int steps = 48;
+
+    for (int i = 0; i < steps; ++i) {
+        const float t = (float) i / (float) (steps - 1);
+        const float y = 0.5f + (random.nextFloat() - 0.5f) * 0.72f;
+        Point<float> p(area.getX() + t * area.getWidth(), area.getY() + y * area.getHeight());
+
+        if (i == 0) {
+            trace.startNewSubPath(p);
+        } else {
+            trace.lineTo(p);
+        }
+    }
+
+    g.setColour(colour.withAlpha(0.10f));
+    g.fillRect(area);
+    g.setColour(colour.withAlpha(0.38f));
+    g.drawHorizontalLine(roundToInt(area.getCentreY()), area.getX(), area.getRight());
+    g.setColour(colour.withAlpha(0.90f));
+    g.strokePath(trace, PathStrokeType(1.8f, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+void NodeCanvas::drawEnvelopeCurve(Graphics& g, Rectangle<float> area) {
+    Path envelope;
+    envelope.startNewSubPath(area.getX(), area.getBottom());
+    envelope.lineTo(area.getX() + area.getWidth() * 0.16f, area.getY() + area.getHeight() * 0.12f);
+    envelope.lineTo(area.getX() + area.getWidth() * 0.46f, area.getY() + area.getHeight() * 0.12f);
+    envelope.cubicTo(
+            area.getX() + area.getWidth() * 0.58f,
+            area.getY() + area.getHeight() * 0.36f,
+            area.getX() + area.getWidth() * 0.70f,
+            area.getY() + area.getHeight() * 0.82f,
+            area.getRight(),
+            area.getBottom());
+
+    g.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.10f));
+    g.fillRect(area);
+    g.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.92f));
+    g.strokePath(envelope, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
 void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
