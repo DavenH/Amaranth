@@ -6,6 +6,8 @@
 
 namespace CycleV2 {
 
+using namespace juce;
+
 enum class PortDomain {
     TimeSignal,
     SpectralMagnitudeSignal,

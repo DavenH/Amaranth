@@ -321,7 +321,7 @@ Rectangle<float> NodeCanvas::toScreen(Rectangle<float> r) const {
 NodeCanvas::PortLocation NodeCanvas::getPortLocation(const Node& node, const Port& port) const {
     constexpr float size = 11.f;
     float x = port.input ? node.bounds.getX() : node.bounds.getRight();
-    Point<float> centre = toScreen({ x, portY(node, port) });
+    Point<float> centre = toScreen(Point<float>(x, portY(node, port)));
     Rectangle<float> bounds(centre.x - size * 0.5f, centre.y - size * 0.5f, size, size);
     return { bounds, centre };
 }

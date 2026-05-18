@@ -5,6 +5,8 @@
 #include "UI/NodeWorkspace.h"
 #include "incl/JucePluginDefines.h"
 
+using namespace juce;
+
 class CycleV2Application : public JUCEApplication {
 public:
     CycleV2Application() = default;
