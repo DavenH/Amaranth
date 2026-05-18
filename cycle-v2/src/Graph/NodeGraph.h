@@ -1,0 +1,69 @@
+#pragma once
+
+#include <JuceHeader.h>
+
+#include <vector>
+
+namespace CycleV2 {
+
+enum class PortDomain {
+    TimeSignal,
+    SpectralMagnitudeSignal,
+    SpectralPhaseSignal,
+    MeshField,
+    EnvelopeSignal,
+    PitchSignal,
+    VoiceControlSignal,
+    ControlSignal
+};
+
+enum class ChannelLayout {
+    Mono,
+    LinkedStereo,
+    Left,
+    Right,
+    StereoPair
+};
+
+struct Port {
+    String id;
+    String label;
+    PortDomain domain {};
+    ChannelLayout channelLayout { ChannelLayout::Mono };
+    bool input {};
+};
+
+struct Node {
+    String id;
+    String title;
+    String subtitle;
+    Rectangle<float> bounds;
+    std::vector<Port> inputs;
+    std::vector<Port> outputs;
+};
+
+struct Edge {
+    String sourceNodeId;
+    String sourcePortId;
+    String destNodeId;
+    String destPortId;
+    PortDomain domain {};
+    bool attachment {};
+};
+
+class NodeGraph {
+public:
+    const std::vector<Node>& getNodes() const { return nodes; }
+    const std::vector<Edge>& getEdges() const { return edges; }
+
+    static NodeGraph createDemoGraph();
+
+private:
+    std::vector<Node> nodes;
+    std::vector<Edge> edges;
+};
+
+Colour colourForDomain(PortDomain domain);
+String labelForDomain(PortDomain domain);
+
+}
