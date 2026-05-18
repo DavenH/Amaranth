@@ -13,6 +13,7 @@ set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraph.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCompiler.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEditor.cpp"
 )
 
 set(RUNTIME_SOURCES

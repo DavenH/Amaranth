@@ -1,5 +1,7 @@
 #include "NodeGraph.h"
 
+#include <algorithm>
+
 namespace CycleV2 {
 
 namespace {
@@ -38,6 +40,17 @@ void NodeGraph::addNode(Node nodeToAdd) {
 
 void NodeGraph::addEdge(Edge edgeToAdd) {
     edges.push_back(std::move(edgeToAdd));
+}
+
+void NodeGraph::removeEdgesToInput(const String& nodeId, const String& portId) {
+    edges.erase(
+            std::remove_if(
+                    edges.begin(),
+                    edges.end(),
+                    [&](const Edge& edge) {
+                        return edge.destNodeId == nodeId && edge.destPortId == portId;
+                    }),
+            edges.end());
 }
 
 NodeGraph NodeGraph::createDemoGraph() {

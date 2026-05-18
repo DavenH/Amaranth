@@ -78,9 +78,11 @@ public:
     const std::vector<Node>& getNodes() const { return nodes; }
     const std::vector<Edge>& getEdges() const { return edges; }
     std::vector<Node>& getNodesForEditing() { return nodes; }
+    std::vector<Edge>& getEdgesForEditing() { return edges; }
 
     void addNode(Node node);
     void addEdge(Edge edge);
+    void removeEdgesToInput(const String& nodeId, const String& portId);
 
     static NodeGraph createDemoGraph();
 
