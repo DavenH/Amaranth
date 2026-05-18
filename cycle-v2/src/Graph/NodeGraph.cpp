@@ -4,12 +4,17 @@ namespace CycleV2 {
 
 namespace {
 
-Port input(String id, String label, PortDomain domain, ChannelLayout layout = ChannelLayout::Mono) {
-    return { std::move(id), std::move(label), domain, layout, true };
+Port input(
+        String id,
+        String label,
+        PortDomain domain,
+        ChannelLayout layout = ChannelLayout::Mono,
+        PortPurpose purpose = PortPurpose::Signal) {
+    return { std::move(id), std::move(label), domain, layout, purpose, true };
 }
 
 Port output(String id, String label, PortDomain domain, ChannelLayout layout = ChannelLayout::Mono) {
-    return { std::move(id), std::move(label), domain, layout, false };
+    return { std::move(id), std::move(label), domain, layout, PortPurpose::Signal, false };
 }
 
 Node node(String id, String title, String subtitle, Rectangle<float> bounds,
@@ -26,13 +31,21 @@ Node node(String id, String title, String subtitle, Rectangle<float> bounds,
 
 }
 
+void NodeGraph::addNode(Node nodeToAdd) {
+    nodes.push_back(std::move(nodeToAdd));
+}
+
+void NodeGraph::addEdge(Edge edgeToAdd) {
+    edges.push_back(std::move(edgeToAdd));
+}
+
 NodeGraph NodeGraph::createDemoGraph() {
     NodeGraph graph;
 
-    graph.nodes.push_back(node(
+    graph.addNode(node(
             "voice",
             "Voice Context",
-            "6 voices · detune · pan · phase",
+            "6 voices / detune / pan / phase",
             { 80.f, 95.f, 250.f, 175.f },
             {},
             {
@@ -40,7 +53,7 @@ NodeGraph NodeGraph::createDemoGraph() {
                     output("voice", "Voice", PortDomain::VoiceControlSignal)
             }));
 
-    graph.nodes.push_back(node(
+    graph.addNode(node(
             "wave",
             "Trilinear Wave Surface",
             "pitch-aware generator",
@@ -48,14 +61,14 @@ NodeGraph NodeGraph::createDemoGraph() {
             {
                     input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("voice", "Voice", PortDomain::VoiceControlSignal),
-                    input("scratch", "Scratch", PortDomain::EnvelopeSignal)
+                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
             {
                     output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
                     output("mesh", "Mesh", PortDomain::MeshField)
             }));
 
-    graph.nodes.push_back(node(
+    graph.addNode(node(
             "fft",
             "FFT: 1 Cycle",
             "time -> mag + phase",
@@ -66,18 +79,18 @@ NodeGraph NodeGraph::createDemoGraph() {
                     output("phase", "Phase", PortDomain::SpectralPhaseSignal)
             }));
 
-    graph.nodes.push_back(node(
+    graph.addNode(node(
             "mag",
             "Magnitude Sculpt",
             "layer 2 scratch target",
             { 1120.f, 45.f, 285.f, 180.f },
             {
                     input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
-                    input("scratch", "Scratch", PortDomain::EnvelopeSignal)
+                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
             { output("mag", "Mag", PortDomain::SpectralMagnitudeSignal) }));
 
-    graph.nodes.push_back(node(
+    graph.addNode(node(
             "phase",
             "Phase Sculpt",
             "phase mesh filter",
@@ -85,7 +98,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             { input("phase", "Phase", PortDomain::SpectralPhaseSignal) },
             { output("phase", "Phase", PortDomain::SpectralPhaseSignal) }));
 
-    graph.nodes.push_back(node(
+    graph.addNode(node(
             "ifft",
             "IFFT",
             "cyclic mode",
@@ -96,7 +109,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             },
             { output("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }));
 
-    graph.nodes.push_back(node(
+    graph.addNode(node(
             "env",
             "Envelope",
             "volume curve",
@@ -104,7 +117,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             {},
             { output("env", "Env", PortDomain::EnvelopeSignal) }));
 
-    graph.nodes.push_back(node(
+    graph.addNode(node(
             "scratchEnv",
             "Envelope",
             "scratch attachment",
@@ -112,7 +125,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             {},
             { output("env", "Env", PortDomain::EnvelopeSignal) }));
 
-    graph.nodes.push_back(node(
+    graph.addNode(node(
             "multiply",
             "Multiply",
             "global volume",
@@ -123,7 +136,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             },
             { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }));
 
-    graph.nodes.push_back(node(
+    graph.addNode(node(
             "out",
             "Output",
             "stereo meters",

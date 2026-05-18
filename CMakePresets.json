@@ -111,7 +111,8 @@
       "targets": [
         "AmaranthLib_tests",
         "Oscillo_tests",
-        "Cycle_tests"
+        "Cycle_tests",
+        "CycleV2_tests"
       ],
       "jobs": 10
     },
@@ -121,7 +122,8 @@
       "targets": [
         "AmaranthLib_tests",
         "Oscillo_tests",
-        "Cycle_tests"
+        "Cycle_tests",
+        "CycleV2_tests"
       ],
       "jobs": 10
     }

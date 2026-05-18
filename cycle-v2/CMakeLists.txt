@@ -9,6 +9,11 @@ file(GLOB_RECURSE APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
 
+set(GRAPH_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraph.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
+)
+
 set(BASE_DEFINITIONS
     JUCE_PROJUCER_VERSION=0x80004
     JUCE_MODAL_LOOPS_PERMITTED=1
@@ -51,6 +56,35 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -g -ggdb -O0)
+
+    if(BUILD_TESTING)
+        file(GLOB_RECURSE TEST_SOURCES
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h"
+        )
+
+        add_executable(${PROJECT_NAME}_tests ${GRAPH_SOURCES} ${TEST_SOURCES})
+
+        target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
+            BUILD_TESTING=1
+            JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/incl/JucePluginDefines.h"
+        )
+
+        target_include_directories(${PROJECT_NAME}_tests PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${JUCE_MODULES_DIR}
+            ${IPP_DIR}/include/ipp
+        )
+
+        target_link_libraries(${PROJECT_NAME}_tests PRIVATE
+            AmaranthLib
+            Catch2::Catch2WithMain
+        )
+
+        include(CTest)
+        include(Catch)
+        catch_discover_tests(${PROJECT_NAME}_tests)
+    endif()
 else()
     target_compile_options(${PROJECT_NAME} PRIVATE -O3)
 endif()

@@ -27,11 +27,17 @@ enum class ChannelLayout {
     StereoPair
 };
 
+enum class PortPurpose {
+    Signal,
+    ScratchAttachment
+};
+
 struct Port {
     String id;
     String label;
     PortDomain domain {};
     ChannelLayout channelLayout { ChannelLayout::Mono };
+    PortPurpose purpose { PortPurpose::Signal };
     bool input {};
 };
 
@@ -57,6 +63,9 @@ class NodeGraph {
 public:
     const std::vector<Node>& getNodes() const { return nodes; }
     const std::vector<Edge>& getEdges() const { return edges; }
+
+    void addNode(Node node);
+    void addEdge(Edge edge);
 
     static NodeGraph createDemoGraph();
 
