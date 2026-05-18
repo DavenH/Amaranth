@@ -2,12 +2,18 @@
 
 namespace CycleV2 {
 
+GraphEditResult GraphEditor::addNode(NodeGraph& graph, NodeKind kind, Point<float> position) const {
+    const String nodeId = createUniqueNodeId(graph, kind);
+    graph.addNode(GraphNodeFactory().createNode(kind, nodeId, position));
+    return { GraphEditCode::Connected, nodeId, {} };
+}
+
 GraphEditResult GraphEditor::connect(
         NodeGraph& graph,
         const PortAddress& first,
         const PortAddress& second) const {
     if (first.input == second.input) {
-        return { GraphEditCode::DirectionMismatch, {} };
+        return { GraphEditCode::DirectionMismatch, {}, {} };
     }
 
     const PortAddress& sourceAddress = first.input ? second : first;
@@ -17,14 +23,14 @@ GraphEditResult GraphEditor::connect(
     const Node* destNode = findNode(graph, destAddress.nodeId);
 
     if (sourceNode == nullptr || destNode == nullptr) {
-        return { GraphEditCode::MissingNode, {} };
+        return { GraphEditCode::MissingNode, {}, {} };
     }
 
     const Port* source = findPort(*sourceNode, sourceAddress.portId, false);
     const Port* dest = findPort(*destNode, destAddress.portId, true);
 
     if (source == nullptr || dest == nullptr) {
-        return { GraphEditCode::MissingPort, {} };
+        return { GraphEditCode::MissingPort, {}, {} };
     }
 
     NodeGraph candidate = graph;
@@ -41,7 +47,7 @@ GraphEditResult GraphEditor::connect(
     auto issues = GraphValidator().validate(candidate);
 
     if (!issues.empty()) {
-        return { GraphEditCode::ValidationRejected, std::move(issues) };
+        return { GraphEditCode::ValidationRejected, {}, std::move(issues) };
     }
 
     graph = std::move(candidate);
@@ -50,7 +56,7 @@ GraphEditResult GraphEditor::connect(
 
 GraphEditResult GraphEditor::removeNode(NodeGraph& graph, const String& nodeId) const {
     if (findNode(graph, nodeId) == nullptr) {
-        return { GraphEditCode::MissingNode, {} };
+        return { GraphEditCode::MissingNode, {}, {} };
     }
 
     graph.removeNode(nodeId);
@@ -77,6 +83,34 @@ const Port* GraphEditor::findPort(const Node& node, const String& portId, bool i
     }
 
     return nullptr;
+}
+
+String GraphEditor::createUniqueNodeId(const NodeGraph& graph, NodeKind kind) const {
+    const String baseId = baseIdForKind(kind);
+    String candidate = baseId;
+    int suffix = 2;
+
+    while (findNode(graph, candidate) != nullptr) {
+        candidate = baseId + String(suffix);
+        ++suffix;
+    }
+
+    return candidate;
+}
+
+String GraphEditor::baseIdForKind(NodeKind kind) const {
+    switch (kind) {
+        case NodeKind::VoiceContext:                 return "voice";
+        case NodeKind::TrilinearWaveSurface:         return "wave";
+        case NodeKind::Fft:                          return "fft";
+        case NodeKind::SpectralMagnitudeProcessor:   return "mag";
+        case NodeKind::SpectralPhaseProcessor:       return "phase";
+        case NodeKind::Ifft:                         return "ifft";
+        case NodeKind::Envelope:                     return "env";
+        case NodeKind::Multiply:                     return "multiply";
+        case NodeKind::Output:                       return "out";
+        default:                                     return "processor";
+    }
 }
 
 }
