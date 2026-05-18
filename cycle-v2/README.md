@@ -19,9 +19,12 @@ open build/standalone-debug/cycle-v2/CycleV2.app
 - drag a node: move it
 - drag from one port to another: connect compatible ports
 - click palette item: add a node at the viewport center
+- click cable: select edge
 - double-click node: open or close the expanded node panel
 - click empty canvas or press `Esc`: dismiss expanded panel and selection
-- `Delete` / `Backspace`: delete selected node and incident edges
+- `Delete` / `Backspace`: delete selected node or edge
+- `Cmd/Ctrl+Z`: undo
+- `Cmd/Ctrl+Shift+Z` or `Cmd/Ctrl+Y`: redo
 - `Cmd/Ctrl+S`: save graph snapshot
 - `Cmd/Ctrl+O`: load graph snapshot
 
