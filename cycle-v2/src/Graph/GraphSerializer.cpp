@@ -1,5 +1,7 @@
 #include "GraphSerializer.h"
 
+#include <memory>
+
 namespace CycleV2 {
 
 namespace {
@@ -233,6 +235,26 @@ NodeGraph GraphSerializer::fromValueTree(const ValueTree& tree) const {
     }
 
     return graph;
+}
+
+String GraphSerializer::toXmlString(const NodeGraph& graph) const {
+    auto xml = toValueTree(graph).createXml();
+
+    if (xml == nullptr) {
+        return {};
+    }
+
+    return xml->toString();
+}
+
+NodeGraph GraphSerializer::fromXmlString(const String& xml) const {
+    std::unique_ptr<XmlElement> root = parseXML(xml);
+
+    if (root == nullptr) {
+        return {};
+    }
+
+    return fromValueTree(ValueTree::fromXml(*root));
 }
 
 }

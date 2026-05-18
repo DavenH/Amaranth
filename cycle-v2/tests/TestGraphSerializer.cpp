@@ -46,3 +46,15 @@ TEST_CASE("Graph serializer preserves attachment edges", "[cycle-v2][graph]") {
 
     REQUIRE(foundScratchAttachment);
 }
+
+TEST_CASE("Graph serializer round trips XML", "[cycle-v2][graph]") {
+    const NodeGraph source = NodeGraph::createDemoGraph();
+    const GraphSerializer serializer;
+    const String xml = serializer.toXmlString(source);
+    const NodeGraph restored = serializer.fromXmlString(xml);
+
+    REQUIRE(xml.contains("cycleV2Graph"));
+    REQUIRE(restored.getNodes().size() == source.getNodes().size());
+    REQUIRE(restored.getEdges().size() == source.getEdges().size());
+    REQUIRE(GraphValidator().isValid(restored));
+}
