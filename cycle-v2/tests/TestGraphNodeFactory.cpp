@@ -53,3 +53,14 @@ TEST_CASE("Graph node factory creates stereo split and join nodes", "[cycle-v2][
     REQUIRE(join.inputs[1].channelLayout == ChannelLayout::Right);
     REQUIRE(join.outputs.front().channelLayout == ChannelLayout::LinkedStereo);
 }
+
+TEST_CASE("Graph node factory sizes nodes from their content", "[cycle-v2][graph]") {
+    const Node wave = GraphNodeFactory().createNode(NodeKind::TrilinearWaveSurface, "wave", {});
+    const Node env = GraphNodeFactory().createNode(NodeKind::Envelope, "env", {});
+
+    REQUIRE(wave.bounds.getWidth() >= 380.f);
+    REQUIRE(wave.bounds.getHeight() >= 300.f);
+    REQUIRE(env.bounds.getWidth() >= 240.f);
+    REQUIRE(env.bounds.getHeight() >= 160.f);
+    REQUIRE(wave.bounds.getHeight() > env.bounds.getHeight());
+}

@@ -75,6 +75,11 @@ struct Edge {
     bool attachment {};
 };
 
+struct NodeNaturalSize {
+    float width {};
+    float height {};
+};
+
 class NodeGraph {
 public:
     const std::vector<Node>& getNodes() const { return nodes; }
@@ -99,5 +104,6 @@ Colour colourForDomain(PortDomain domain);
 String labelForDomain(PortDomain domain);
 String labelForChannelLayout(ChannelLayout layout);
 String labelForNodeKind(NodeKind kind);
+NodeNaturalSize naturalSizeForNode(const Node& node);
 
 }

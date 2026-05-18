@@ -461,40 +461,8 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     g.setColour(kMutedText);
     g.drawText(node.subtitle, header.reduced(13.f * zoom, 4.f * zoom), Justification::centredRight);
 
-    const int executionIndex = executionIndexForNode(node.id);
-    if (executionIndex >= 0) {
-        Rectangle<float> badge = bounds.withSizeKeepingCentre(42.f * zoom, 20.f * zoom);
-        badge.setX(bounds.getRight() - badge.getWidth() - 11.f * zoom);
-        badge.setY(bounds.getY() + 49.f * zoom);
-
-        g.setColour(Colour(0xff0e1318));
-        g.fillRoundedRectangle(badge, 5.f * zoom);
-        g.setColour(Colour(0xff354050));
-        g.drawRoundedRectangle(badge, 5.f * zoom, 1.f);
-        g.setColour(kText);
-        g.setFont(FontOptions(10.f * zoom, Font::bold));
-        g.drawText("#" + String(executionIndex + 1), badge, Justification::centred);
-    }
-
-    const RuntimeNodeTrace* traceNode = findRuntimeTrace(node.id);
-    if (traceNode != nullptr && !traceNode->attachments.empty()) {
-        Rectangle<float> attachmentBadge = bounds.withSizeKeepingCentre(72.f * zoom, 20.f * zoom);
-        attachmentBadge.setX(bounds.getX() + 11.f * zoom);
-        attachmentBadge.setY(bounds.getY() + 49.f * zoom);
-
-        g.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.16f));
-        g.fillRoundedRectangle(attachmentBadge, 5.f * zoom);
-        g.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.64f));
-        g.drawRoundedRectangle(attachmentBadge, 5.f * zoom, 1.f);
-        g.setColour(kText);
-        g.setFont(FontOptions(9.f * zoom));
-        g.drawText("attach " + String((int) traceNode->attachments.size()),
-                   attachmentBadge, Justification::centred);
-    }
-
     auto nodeBounds = toScreen(node.bounds);
-    const int portRows = jmax((int) node.inputs.size(), (int) node.outputs.size());
-    const float previewTop = (56.f + (float) portRows * 28.f + 10.f) * zoom;
+    const float previewTop = 56.f * zoom;
     auto preview = nodeBounds.reduced(13.f * zoom).withTrimmedTop(previewTop).withTrimmedBottom(12.f * zoom);
     drawPreview(g, node, preview);
 
@@ -517,7 +485,9 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
         }
 
         g.setFont(FontOptions(9.5f * zoom));
-        g.setColour(kMutedText);
+        g.setColour(Colour(0xff0e1318).withAlpha(0.56f));
+        g.fillRoundedRectangle(labelBounds.expanded(4.f * zoom, 2.f * zoom), 4.f * zoom);
+        g.setColour(kText.withAlpha(0.86f));
         g.drawText(port.label + " " + labelForChannelLayout(port.channelLayout),
                    labelBounds,
                    port.input ? Justification::centredLeft
@@ -1235,7 +1205,12 @@ Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool at
     const float deltaY = dest.y - source.y;
 
     if (std::abs(deltaX) < 145.f * zoom && std::abs(deltaY) < 180.f * zoom) {
-        path.lineTo(dest);
+        const float bend = jmax(24.f * zoom, std::abs(deltaX) * 0.42f);
+        const float verticalPull = jlimit(-34.f * zoom, 34.f * zoom, deltaY * 0.22f);
+        path.cubicTo(
+                { source.x + bend, source.y + verticalPull },
+                { dest.x - bend, dest.y - verticalPull },
+                dest);
         return path;
     }
 

@@ -12,7 +12,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::VoiceContext:
             node.title = "Voice Context";
             node.subtitle = "pitch / voice";
-            node.bounds.setSize(300.f, 220.f);
             node.outputs = {
                     output("pitch", "Pitch", PortDomain::PitchSignal),
                     output("voice", "Voice", PortDomain::VoiceControlSignal)
@@ -22,7 +21,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::TrilinearWaveSurface:
             node.title = "Trilinear Wave Surface";
             node.subtitle = "pitch-aware generator";
-            node.bounds.setSize(380.f, 280.f);
             node.inputs = {
                     input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("voice", "Voice", PortDomain::VoiceControlSignal),
@@ -37,7 +35,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::Fft:
             node.title = "FFT: 1 Cycle";
             node.subtitle = "time -> mag + phase";
-            node.bounds.setSize(260.f, 220.f);
             node.inputs = { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             node.outputs = {
                     output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
@@ -48,7 +45,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::SpectralMagnitudeProcessor:
             node.title = "Magnitude Sculpt";
             node.subtitle = "mesh filter";
-            node.bounds.setSize(320.f, 220.f);
             node.inputs = {
                     input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
@@ -59,7 +55,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::SpectralPhaseProcessor:
             node.title = "Phase Sculpt";
             node.subtitle = "phase mesh filter";
-            node.bounds.setSize(320.f, 220.f);
             node.inputs = { input("phase", "Phase", PortDomain::SpectralPhaseSignal) };
             node.outputs = { output("phase", "Phase", PortDomain::SpectralPhaseSignal) };
             break;
@@ -67,7 +62,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::Ifft:
             node.title = "IFFT";
             node.subtitle = "cyclic mode";
-            node.bounds.setSize(270.f, 230.f);
             node.inputs = {
                     input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     input("phase", "Phase", PortDomain::SpectralPhaseSignal)
@@ -78,14 +72,12 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::Envelope:
             node.title = "Envelope";
             node.subtitle = "control curve";
-            node.bounds.setSize(280.f, 180.f);
             node.outputs = { output("env", "Env", PortDomain::EnvelopeSignal) };
             break;
 
         case NodeKind::Multiply:
             node.title = "Multiply";
             node.subtitle = "signal scale";
-            node.bounds.setSize(280.f, 190.f);
             node.inputs = {
                     input("audio", "Audio", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
                     input("factor", "Factor", PortDomain::EnvelopeSignal)
@@ -96,7 +88,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::StereoSplit:
             node.title = "Stereo Split";
             node.subtitle = "L/R breakout";
-            node.bounds.setSize(260.f, 170.f);
             node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             node.outputs = {
                     output("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left),
@@ -107,7 +98,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::StereoJoin:
             node.title = "Stereo Join";
             node.subtitle = "L/R combine";
-            node.bounds.setSize(260.f, 170.f);
             node.inputs = {
                     input("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left),
                     input("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right)
@@ -118,7 +108,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::Output:
             node.title = "Output";
             node.subtitle = "stereo meters";
-            node.bounds.setSize(250.f, 170.f);
             node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             break;
 
@@ -130,6 +119,8 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             break;
     }
 
+    const auto naturalSize = naturalSizeForNode(node);
+    node.bounds.setSize(naturalSize.width, naturalSize.height);
     return node;
 }
 

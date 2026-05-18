@@ -21,7 +21,7 @@ Port output(String id, String label, PortDomain domain, ChannelLayout layout = C
 
 Node node(String id, NodeKind kind, String title, String subtitle, Rectangle<float> bounds,
           std::vector<Port> inputs, std::vector<Port> outputs) {
-    return {
+    Node result {
         std::move(id),
         kind,
         std::move(title),
@@ -30,6 +30,34 @@ Node node(String id, NodeKind kind, String title, String subtitle, Rectangle<flo
         std::move(inputs),
         std::move(outputs)
     };
+    const auto naturalSize = naturalSizeForNode(result);
+    result.bounds.setSize(naturalSize.width, naturalSize.height);
+    return result;
+}
+
+int longestPortLabelLength(const std::vector<Port>& ports) {
+    int length = 0;
+
+    for (const auto& port : ports) {
+        length = jmax(length, port.label.length() + 1 + labelForChannelLayout(port.channelLayout).length());
+    }
+
+    return length;
+}
+
+NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
+    switch (kind) {
+        case NodeKind::TrilinearWaveSurface:         return { 300.f, 150.f };
+        case NodeKind::VoiceContext:                 return { 230.f, 105.f };
+        case NodeKind::Fft:                          return { 190.f, 90.f };
+        case NodeKind::SpectralMagnitudeProcessor:   return { 240.f, 95.f };
+        case NodeKind::SpectralPhaseProcessor:       return { 240.f, 95.f };
+        case NodeKind::Ifft:                         return { 200.f, 95.f };
+        case NodeKind::Envelope:                     return { 220.f, 85.f };
+        case NodeKind::Multiply:                     return { 220.f, 90.f };
+        case NodeKind::Output:                       return { 190.f, 80.f };
+        default:                                     return { 190.f, 76.f };
+    }
 }
 
 }
@@ -268,6 +296,28 @@ String labelForNodeKind(NodeKind kind) {
         case NodeKind::Output:                       return "Output";
         default:                                     return "Unknown";
     }
+}
+
+NodeNaturalSize naturalSizeForNode(const Node& node) {
+    const int portRows = jmax((int) node.inputs.size(), (int) node.outputs.size());
+    const auto preview = minimumPreviewSizeForKind(node.kind);
+
+    const float titleWidth = (float) node.title.length() * 8.5f;
+    const float subtitleWidth = (float) node.subtitle.length() * 6.0f;
+    const float inputLabelWidth = (float) longestPortLabelLength(node.inputs) * 6.2f;
+    const float outputLabelWidth = (float) longestPortLabelLength(node.outputs) * 6.2f;
+
+    const float headerWidth = titleWidth + subtitleWidth + 72.f;
+    const float portWidth = inputLabelWidth + outputLabelWidth + 150.f;
+    const float previewWidth = preview.width + 26.f;
+    const float width = jmax(headerWidth, portWidth, previewWidth);
+
+    const float headerHeight = 42.f;
+    const float portHeight = 14.f + (float) portRows * 28.f;
+    const float previewHeight = preview.height + 26.f;
+    const float height = headerHeight + portHeight + previewHeight;
+
+    return { width, height };
 }
 
 }
