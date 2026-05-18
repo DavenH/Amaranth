@@ -68,6 +68,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
     if (hitNode != nullptr) {
         dragStartNodeBounds = hitNode->bounds;
+
+        if (event.getNumberOfClicks() >= 2) {
+            expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
+        }
     }
 
     repaint();
@@ -194,6 +198,10 @@ void NodeCanvas::drawEdges(Graphics& g) {
 void NodeCanvas::drawNodes(Graphics& g) {
     for (const auto& node : graph.getNodes()) {
         drawNode(g, node);
+    }
+
+    if (const Node* node = findNode(expandedNodeId)) {
+        drawExpandedEditor(g, *node);
     }
 }
 
@@ -354,6 +362,64 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
     g.fillPath(curve);
     g.setColour(colour.withAlpha(0.95f));
     g.strokePath(curve, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
+    Rectangle<float> anchor = toScreen(node.bounds);
+    Rectangle<float> panel(anchor.getRight() + 18.f, anchor.getY(), 360.f, 260.f);
+
+    if (panel.getRight() > (float) getWidth() - 18.f) {
+        panel.setRight(anchor.getX() - 18.f);
+    }
+
+    if (panel.getBottom() > (float) getHeight() - 18.f) {
+        panel.setBottom((float) getHeight() - 18.f);
+    }
+
+    g.setColour(Colours::black.withAlpha(0.38f));
+    g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
+    g.setColour(Colour(0xff141a21));
+    g.fillRoundedRectangle(panel, 8.f);
+    g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.72f));
+    g.drawRoundedRectangle(panel, 8.f, 1.5f);
+
+    auto header = panel.removeFromTop(44.f);
+    g.setColour(Colour(0xff202833));
+    g.fillRoundedRectangle(header, 8.f);
+    g.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+    g.setColour(kText);
+    g.setFont(FontOptions(15.f, Font::bold));
+    g.drawText(node.title, header.reduced(13.f, 4.f), Justification::centredLeft);
+    g.setColour(kMutedText);
+    g.setFont(FontOptions(10.5f));
+    g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
+
+    auto content = panel.reduced(13.f, 12.f);
+    auto preview = content.removeFromTop(126.f);
+    drawPreview(g, node, preview);
+    content.removeFromTop(10.f);
+
+    auto left = content.removeFromLeft(content.getWidth() * 0.48f);
+    auto right = content.withTrimmedLeft(12.f);
+
+    auto drawPorts = [&](Rectangle<float> area, const std::vector<Port>& ports, const String& title) {
+        g.setColour(kMutedText);
+        g.setFont(FontOptions(9.f, Font::bold));
+        g.drawText(title, area.removeFromTop(16.f), Justification::centredLeft);
+
+        for (const auto& port : ports) {
+            Rectangle<float> row = area.removeFromTop(18.f);
+            g.setColour(colourForDomain(port.domain));
+            g.fillEllipse(row.getX(), row.getCentreY() - 3.f, 6.f, 6.f);
+            g.setColour(kText);
+            g.setFont(FontOptions(9.5f));
+            g.drawText(port.label + " " + labelForChannelLayout(port.channelLayout),
+                       row.withTrimmedLeft(12.f), Justification::centredLeft);
+        }
+    };
+
+    drawPorts(left, node.inputs, "Inputs");
+    drawPorts(right, node.outputs, "Outputs");
 }
 
 void NodeCanvas::drawMiniMap(Graphics& g) {

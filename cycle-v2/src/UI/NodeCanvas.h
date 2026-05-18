@@ -37,6 +37,7 @@ private:
     Point<float> dragStartPan;
     Rectangle<float> dragStartNodeBounds;
     String selectedNodeId;
+    String expandedNodeId;
     bool draggingNode {};
 
     void newOpenGLContextCreated() override;
@@ -49,6 +50,7 @@ private:
     void drawNodes(Graphics& g);
     void drawNode(Graphics& g, const Node& node);
     void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
+    void drawExpandedEditor(Graphics& g, const Node& node);
     void drawMiniMap(Graphics& g);
 
     Point<float> toScreen(Point<float> p) const;
