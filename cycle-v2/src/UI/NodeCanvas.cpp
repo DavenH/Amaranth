@@ -69,9 +69,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
     NodeKind paletteKind;
     if (findPaletteKindAt(event.position, paletteKind)) {
+        const String beforeEdit = GraphSerializer().toXmlString(graph);
         auto result = GraphEditor().addNode(graph, paletteKind, viewportCentreWorld());
 
         if (result.succeeded()) {
+            pushUndoSnapshot(beforeEdit);
             selectedNodeId = result.nodeId;
             expandedNodeId = {};
             refreshCompiledState();
@@ -110,6 +112,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
     if (hitNode != nullptr) {
         dragStartNodeBounds = hitNode->bounds;
+        nodeDragUndoPushed = false;
 
         if (event.getNumberOfClicks() >= 2) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
@@ -128,6 +131,11 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         Node* node = findMutableNode(selectedNodeId);
 
         if (node != nullptr) {
+            if (!nodeDragUndoPushed) {
+                pushUndoSnapshot();
+                nodeDragUndoPushed = true;
+            }
+
             const auto offset = event.getOffsetFromDragStart().toFloat() / zoom;
             node->bounds = dragStartNodeBounds.translated(offset.x, offset.y);
         }
@@ -147,9 +155,11 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     connectingCable = false;
 
     if (findPortAt(event.position, destPort)) {
+        const String beforeEdit = GraphSerializer().toXmlString(graph);
         auto result = GraphEditor().connect(graph, connectingPort, destPort);
 
         if (result.succeeded()) {
+            pushUndoSnapshot(beforeEdit);
             refreshCompiledState();
             editStatusMessage = "Connected";
         } else if (result.code == GraphEditCode::ValidationRejected) {
@@ -180,6 +190,14 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
         return saveSnapshot();
     }
 
+    if (commandDown && keyChar == 'z') {
+        return key.getModifiers().isShiftDown() ? redo() : undo();
+    }
+
+    if (commandDown && keyChar == 'y') {
+        return redo();
+    }
+
     if (commandDown && keyChar == 'o') {
         return loadSnapshot();
     }
@@ -190,12 +208,14 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 
     if (key == KeyPress::deleteKey || key == KeyPress::backspaceKey) {
         if (selectedEdgeIndex >= 0) {
+            const String beforeEdit = GraphSerializer().toXmlString(graph);
             auto result = GraphEditor().removeEdgeAt(graph, (size_t) selectedEdgeIndex);
 
             if (!result.succeeded()) {
                 return false;
             }
 
+            pushUndoSnapshot(beforeEdit);
             selectedEdgeIndex = -1;
             refreshCompiledState();
             editStatusMessage = "Edge deleted";
@@ -207,12 +227,14 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
             return false;
         }
 
+        const String beforeEdit = GraphSerializer().toXmlString(graph);
         auto result = GraphEditor().removeNode(graph, selectedNodeId);
 
         if (!result.succeeded()) {
             return false;
         }
 
+        pushUndoSnapshot(beforeEdit);
         expandedNodeId = {};
         selectedNodeId = {};
         refreshCompiledState();
@@ -953,11 +975,77 @@ bool NodeCanvas::loadSnapshot() {
         return true;
     }
 
+    pushUndoSnapshot();
     graph = std::move(loaded);
     selectedNodeId = {};
     expandedNodeId = {};
+    selectedEdgeIndex = -1;
+    redoStack.clear();
     refreshCompiledState();
     editStatusMessage = "Loaded snapshot";
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::undo() {
+    if (undoStack.empty()) {
+        editStatusMessage = "Nothing to undo";
+        repaint();
+        return true;
+    }
+
+    redoStack.push_back(GraphSerializer().toXmlString(graph));
+    const String xml = undoStack.back();
+    undoStack.pop_back();
+    return restoreGraphXml(xml, "Undo");
+}
+
+bool NodeCanvas::redo() {
+    if (redoStack.empty()) {
+        editStatusMessage = "Nothing to redo";
+        repaint();
+        return true;
+    }
+
+    undoStack.push_back(GraphSerializer().toXmlString(graph));
+    const String xml = redoStack.back();
+    redoStack.pop_back();
+    return restoreGraphXml(xml, "Redo");
+}
+
+void NodeCanvas::pushUndoSnapshot() {
+    pushUndoSnapshot(GraphSerializer().toXmlString(graph));
+}
+
+void NodeCanvas::pushUndoSnapshot(String xml) {
+    if (xml.isEmpty()) {
+        return;
+    }
+
+    undoStack.push_back(std::move(xml));
+    redoStack.clear();
+
+    constexpr size_t maxUndoDepth = 64;
+    if (undoStack.size() > maxUndoDepth) {
+        undoStack.erase(undoStack.begin());
+    }
+}
+
+bool NodeCanvas::restoreGraphXml(const String& xml, const String& statusMessage) {
+    NodeGraph restored = GraphSerializer().fromXmlString(xml);
+
+    if (restored.getNodes().empty()) {
+        editStatusMessage = "Restore failed";
+        repaint();
+        return true;
+    }
+
+    graph = std::move(restored);
+    selectedNodeId = {};
+    expandedNodeId = {};
+    selectedEdgeIndex = -1;
+    refreshCompiledState();
+    editStatusMessage = statusMessage;
     repaint();
     return true;
 }

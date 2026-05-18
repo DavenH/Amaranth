@@ -35,6 +35,8 @@ private:
     NodeGraph graph;
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;
+    std::vector<String> undoStack;
+    std::vector<String> redoStack;
 
     float zoom { 0.58f };
     Point<float> pan { 34.f, 38.f };
@@ -48,6 +50,7 @@ private:
     Point<float> connectingPoint;
     bool draggingNode {};
     bool connectingCable {};
+    bool nodeDragUndoPushed {};
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -85,6 +88,11 @@ private:
     File snapshotFile() const;
     bool saveSnapshot();
     bool loadSnapshot();
+    bool undo();
+    bool redo();
+    void pushUndoSnapshot();
+    void pushUndoSnapshot(String xml);
+    bool restoreGraphXml(const String& xml, const String& statusMessage);
     bool clearSelection();
     Path createCablePath(Point<float> source, Point<float> dest, bool attachment) const;
 
