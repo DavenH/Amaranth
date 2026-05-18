@@ -42,6 +42,26 @@ void NodeGraph::addEdge(Edge edgeToAdd) {
     edges.push_back(std::move(edgeToAdd));
 }
 
+void NodeGraph::removeNode(const String& nodeId) {
+    nodes.erase(
+            std::remove_if(
+                    nodes.begin(),
+                    nodes.end(),
+                    [&](const Node& node) {
+                        return node.id == nodeId;
+                    }),
+            nodes.end());
+
+    edges.erase(
+            std::remove_if(
+                    edges.begin(),
+                    edges.end(),
+                    [&](const Edge& edge) {
+                        return edge.sourceNodeId == nodeId || edge.destNodeId == nodeId;
+                    }),
+            edges.end());
+}
+
 void NodeGraph::removeEdgesToInput(const String& nodeId, const String& portId) {
     edges.erase(
             std::remove_if(

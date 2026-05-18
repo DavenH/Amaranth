@@ -48,6 +48,15 @@ GraphEditResult GraphEditor::connect(
     return {};
 }
 
+GraphEditResult GraphEditor::removeNode(NodeGraph& graph, const String& nodeId) const {
+    if (findNode(graph, nodeId) == nullptr) {
+        return { GraphEditCode::MissingNode, {} };
+    }
+
+    graph.removeNode(nodeId);
+    return {};
+}
+
 const Node* GraphEditor::findNode(const NodeGraph& graph, const String& nodeId) const {
     for (const auto& node : graph.getNodes()) {
         if (node.id == nodeId) {

@@ -147,6 +147,25 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
         return clearSelection();
     }
 
+    if (key == KeyPress::deleteKey || key == KeyPress::backspaceKey) {
+        if (selectedNodeId.isEmpty()) {
+            return false;
+        }
+
+        auto result = GraphEditor().removeNode(graph, selectedNodeId);
+
+        if (!result.succeeded()) {
+            return false;
+        }
+
+        expandedNodeId = {};
+        selectedNodeId = {};
+        refreshCompiledState();
+        editStatusMessage = "Node deleted";
+        repaint();
+        return true;
+    }
+
     return false;
 }
 

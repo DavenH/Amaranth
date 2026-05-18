@@ -28,6 +28,7 @@ struct GraphEditResult {
 class GraphEditor {
 public:
     GraphEditResult connect(NodeGraph& graph, const PortAddress& first, const PortAddress& second) const;
+    GraphEditResult removeNode(NodeGraph& graph, const String& nodeId) const;
 
 private:
     const Node* findNode(const NodeGraph& graph, const String& nodeId) const;

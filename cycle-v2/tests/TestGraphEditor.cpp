@@ -65,3 +65,29 @@ TEST_CASE("Graph editor rejects incompatible connections", "[cycle-v2][graph]") 
     REQUIRE_FALSE(result.validationIssues.empty());
     REQUIRE(graph.getEdges().size() == edgeCount);
 }
+
+TEST_CASE("Graph editor removes nodes and incident edges", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+
+    const auto result = GraphEditor().removeNode(graph, "fft");
+
+    REQUIRE(result.succeeded());
+
+    for (const auto& node : graph.getNodes()) {
+        REQUIRE(node.id != "fft");
+    }
+
+    for (const auto& edge : graph.getEdges()) {
+        REQUIRE(edge.sourceNodeId != "fft");
+        REQUIRE(edge.destNodeId != "fft");
+    }
+}
+
+TEST_CASE("Graph editor reports missing node removal", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+
+    const auto result = GraphEditor().removeNode(graph, "missing");
+
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.code == GraphEditCode::MissingNode);
+}
