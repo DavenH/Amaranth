@@ -645,16 +645,10 @@ void NodeCanvas::drawEnvelopeCurve(Graphics& g, Rectangle<float> area) {
 }
 
 void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
-    Rectangle<float> anchor = toScreen(node.bounds);
-    Rectangle<float> panel(anchor.getRight() + 18.f, anchor.getY(), 360.f, 260.f);
-
-    if (panel.getRight() > (float) getWidth() - 18.f) {
-        panel.setRight(anchor.getX() - 18.f);
-    }
-
-    if (panel.getBottom() > (float) getHeight() - 18.f) {
-        panel.setBottom((float) getHeight() - 18.f);
-    }
+    const Rectangle<float> available = getLocalBounds().toFloat().reduced(28.f);
+    const float width = jmin(available.getWidth(), jmax(420.f, available.getWidth() * 0.80f));
+    const float height = jmin(available.getHeight(), jmax(300.f, available.getHeight() * 0.80f));
+    Rectangle<float> panel = Rectangle<float>(width, height).withCentre(available.getCentre());
 
     g.setColour(Colours::black.withAlpha(0.38f));
     g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
@@ -674,10 +668,10 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     g.setFont(FontOptions(10.5f));
     g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
 
-    auto content = panel.reduced(13.f, 12.f);
-    auto preview = content.removeFromTop(126.f);
+    auto content = panel.reduced(18.f, 16.f);
+    auto preview = content.removeFromTop(jmin(360.f, content.getHeight() * 0.66f));
     drawPreview(g, node, preview);
-    content.removeFromTop(10.f);
+    content.removeFromTop(14.f);
 
     auto left = content.removeFromLeft(content.getWidth() * 0.48f);
     auto right = content.withTrimmedLeft(12.f);
