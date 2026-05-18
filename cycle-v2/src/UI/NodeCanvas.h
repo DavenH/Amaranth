@@ -48,6 +48,7 @@ private:
     int selectedEdgeIndex { -1 };
     PortAddress connectingPort;
     Point<float> connectingPoint;
+    Point<float> lastMousePosition;
     bool draggingNode {};
     bool connectingCable {};
     bool nodeDragUndoPushed {};
@@ -87,6 +88,7 @@ private:
     int executionIndexForNode(const String& nodeId) const;
     int attachmentCount() const;
     Point<float> viewportCentreWorld() const;
+    Point<float> paletteCreationWorldPosition(Point<float> paletteClickPosition) const;
     void refreshCompiledState();
     File snapshotFile() const;
     bool saveSnapshot();

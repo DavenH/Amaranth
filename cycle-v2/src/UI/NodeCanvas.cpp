@@ -66,11 +66,12 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     grabKeyboardFocus();
     editStatusMessage = {};
     dragStartPan = pan;
+    lastMousePosition = event.position;
 
     NodeKind paletteKind;
     if (findPaletteKindAt(event.position, paletteKind)) {
         const String beforeEdit = GraphSerializer().toXmlString(graph);
-        auto result = GraphEditor().addNode(graph, paletteKind, viewportCentreWorld());
+        auto result = GraphEditor().addNode(graph, paletteKind, paletteCreationWorldPosition(event.position));
 
         if (result.succeeded()) {
             pushUndoSnapshot(beforeEdit);
@@ -99,6 +100,21 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     selectedEdgeIndex = findEdgeAt(event.position);
 
     if (selectedEdgeIndex >= 0) {
+        if (event.mods.isCtrlDown()) {
+            const String beforeEdit = GraphSerializer().toXmlString(graph);
+            auto result = GraphEditor().removeEdgeAt(graph, (size_t) selectedEdgeIndex);
+
+            if (result.succeeded()) {
+                pushUndoSnapshot(beforeEdit);
+                selectedEdgeIndex = -1;
+                refreshCompiledState();
+                editStatusMessage = "Edge cut";
+            }
+
+            repaint();
+            return;
+        }
+
         selectedNodeId = {};
         draggingNode = false;
         repaint();
@@ -125,8 +141,13 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
+    lastMousePosition = event.position;
+
     if (connectingCable) {
-        connectingPoint = event.position;
+        PortAddress hitPort;
+        connectingPoint = findPortAt(event.position, hitPort) && hitPort.input != connectingPort.input
+                ? getPortLocation(hitPort).centre
+                : event.position;
     } else if (draggingNode) {
         Node* node = findMutableNode(selectedNodeId);
 
@@ -147,6 +168,8 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseUp(const MouseEvent& event) {
+    lastMousePosition = event.position;
+
     if (!connectingCable) {
         return;
     }
@@ -174,6 +197,17 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
     const auto mouse = event.position;
+    const bool panGesture = std::abs(wheel.deltaX) > 0.0001f
+            || event.mods.isShiftDown()
+            || event.mods.isAltDown();
+
+    if (panGesture) {
+        constexpr float panScale = 720.f;
+        pan += Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale);
+        repaint();
+        return;
+    }
+
     const auto beforeZoom = toWorld(mouse);
     const float zoomFactor = std::pow(1.12f, wheel.deltaY * 6.f);
     zoom = jlimit(0.28f, 1.4f, zoom * zoomFactor);
@@ -184,21 +218,22 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
 
 bool NodeCanvas::keyPressed(const KeyPress& key) {
     const bool commandDown = key.getModifiers().isCommandDown() || key.getModifiers().isCtrlDown();
+    const int keyCode = key.getKeyCode();
     const juce_wchar keyChar = CharacterFunctions::toLowerCase(key.getTextCharacter());
 
-    if (commandDown && keyChar == 's') {
+    if (commandDown && (keyChar == 's' || keyCode == 's' || keyCode == 'S')) {
         return saveSnapshot();
     }
 
-    if (commandDown && keyChar == 'z') {
+    if (commandDown && (keyChar == 'z' || keyCode == 'z' || keyCode == 'Z')) {
         return key.getModifiers().isShiftDown() ? redo() : undo();
     }
 
-    if (commandDown && keyChar == 'y') {
+    if (commandDown && (keyChar == 'y' || keyCode == 'y' || keyCode == 'Y')) {
         return redo();
     }
 
-    if (commandDown && keyChar == 'o') {
+    if (commandDown && (keyChar == 'o' || keyCode == 'o' || keyCode == 'O')) {
         return loadSnapshot();
     }
 
@@ -1026,6 +1061,11 @@ int NodeCanvas::attachmentCount() const {
 
 Point<float> NodeCanvas::viewportCentreWorld() const {
     return toWorld(getLocalBounds().toFloat().getCentre());
+}
+
+Point<float> NodeCanvas::paletteCreationWorldPosition(Point<float> paletteClickPosition) const {
+    const float x = jmin((float) getWidth() - 280.f, 128.f);
+    return toWorld({ x, paletteClickPosition.y });
 }
 
 void NodeCanvas::refreshCompiledState() {
