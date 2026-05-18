@@ -60,6 +60,26 @@ void NodeCanvas::resized() {
     repaint();
 }
 
+void NodeCanvas::mouseDown(const MouseEvent& event) {
+    dragStartPan = pan;
+    ignoreUnused(event);
+}
+
+void NodeCanvas::mouseDrag(const MouseEvent& event) {
+    pan = dragStartPan + event.getOffsetFromDragStart().toFloat();
+    repaint();
+}
+
+void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
+    const auto mouse = event.position;
+    const auto beforeZoom = toWorld(mouse);
+    const float zoomFactor = std::pow(1.12f, wheel.deltaY * 6.f);
+    zoom = jlimit(0.28f, 1.4f, zoom * zoomFactor);
+    const auto afterZoom = toWorld(mouse);
+    pan += (afterZoom - beforeZoom) * zoom;
+    repaint();
+}
+
 void NodeCanvas::newOpenGLContextCreated() {
 }
 
@@ -348,6 +368,10 @@ void NodeCanvas::drawMiniMap(Graphics& g) {
 
 Point<float> NodeCanvas::toScreen(Point<float> p) const {
     return { pan.x + p.x * zoom, pan.y + p.y * zoom };
+}
+
+Point<float> NodeCanvas::toWorld(Point<float> p) const {
+    return { (p.x - pan.x) / zoom, (p.y - pan.y) / zoom };
 }
 
 Rectangle<float> NodeCanvas::toScreen(Rectangle<float> r) const {

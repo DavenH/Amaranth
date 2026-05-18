@@ -17,6 +17,9 @@ public:
 
     void paint(Graphics& g) override;
     void resized() override;
+    void mouseDown(const MouseEvent& event) override;
+    void mouseDrag(const MouseEvent& event) override;
+    void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override;
 
 private:
     struct PortLocation {
@@ -31,6 +34,7 @@ private:
 
     float zoom { 0.58f };
     Point<float> pan { 34.f, 38.f };
+    Point<float> dragStartPan;
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -45,6 +49,7 @@ private:
     void drawMiniMap(Graphics& g);
 
     Point<float> toScreen(Point<float> p) const;
+    Point<float> toWorld(Point<float> p) const;
     Rectangle<float> toScreen(Rectangle<float> r) const;
     PortLocation getPortLocation(const Node& node, const Port& port) const;
     const Node* findNode(const String& id) const;
