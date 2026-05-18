@@ -52,6 +52,7 @@ void NodeCanvas::paint(Graphics& g) {
     drawConnectionPreview(g);
     drawNodes(g);
     drawMiniMap(g);
+    drawGraphStatus(g);
 }
 
 void NodeCanvas::resized() {
@@ -570,6 +571,31 @@ void NodeCanvas::drawMiniMap(Graphics& g) {
     }
 }
 
+void NodeCanvas::drawGraphStatus(Graphics& g) {
+    Rectangle<float> status(18.f, (float) getHeight() - 42.f, 420.f, 24.f);
+
+    g.setColour(Colour(0xaa0b0e13));
+    g.fillRoundedRectangle(status, 5.f);
+    g.setColour(Colour(0xff354050));
+    g.drawRoundedRectangle(status, 5.f, 1.f);
+
+    const bool valid = compileResult.succeeded();
+    const String graphState = valid
+            ? "Graph valid"
+            : "Issues " + String((int) compileResult.validationIssues.size()
+                                  + (int) compileResult.compileIssues.size());
+    const String text = graphState
+            + "  /  Nodes " + String((int) graph.getNodes().size())
+            + "  /  Edges " + String((int) graph.getEdges().size())
+            + "  /  Attach " + String(attachmentCount());
+
+    g.setColour(valid ? Colour(0xff74e28a) : Colour(0xffff6b5a));
+    g.fillEllipse(status.getX() + 9.f, status.getCentreY() - 3.f, 6.f, 6.f);
+    g.setColour(kMutedText);
+    g.setFont(FontOptions(10.f));
+    g.drawText(text, status.withTrimmedLeft(23.f).reduced(0.f, 1.f), Justification::centredLeft);
+}
+
 Point<float> NodeCanvas::toScreen(Point<float> p) const {
     return { pan.x + p.x * zoom, pan.y + p.y * zoom };
 }
@@ -696,6 +722,18 @@ int NodeCanvas::executionIndexForNode(const String& nodeId) const {
     }
 
     return -1;
+}
+
+int NodeCanvas::attachmentCount() const {
+    int count = 0;
+
+    for (const auto& edge : graph.getEdges()) {
+        if (edge.attachment) {
+            ++count;
+        }
+    }
+
+    return count;
 }
 
 void NodeCanvas::refreshCompiledState() {

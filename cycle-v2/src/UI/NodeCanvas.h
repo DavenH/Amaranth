@@ -60,6 +60,7 @@ private:
     void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
     void drawExpandedEditor(Graphics& g, const Node& node);
     void drawMiniMap(Graphics& g);
+    void drawGraphStatus(Graphics& g);
 
     Point<float> toScreen(Point<float> p) const;
     Point<float> toWorld(Point<float> p) const;
@@ -73,6 +74,7 @@ private:
     const Port* findPort(const Node& node, const String& portId, bool input) const;
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
     int executionIndexForNode(const String& nodeId) const;
+    int attachmentCount() const;
     void refreshCompiledState();
     bool clearSelection();
     Path createCablePath(Point<float> source, Point<float> dest, bool attachment) const;
