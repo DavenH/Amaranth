@@ -61,6 +61,7 @@ private:
     void drawExpandedEditor(Graphics& g, const Node& node);
     void drawMiniMap(Graphics& g);
     void drawGraphStatus(Graphics& g);
+    void drawNodePalette(Graphics& g);
 
     Point<float> toScreen(Point<float> p) const;
     Point<float> toWorld(Point<float> p) const;
@@ -68,6 +69,7 @@ private:
     PortLocation getPortLocation(const Node& node, const Port& port) const;
     PortLocation getPortLocation(const PortAddress& address) const;
     bool findPortAt(Point<float> screenPosition, PortAddress& result) const;
+    bool findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const;
     const Node* findNode(const String& id) const;
     Node* findMutableNode(const String& id);
     const Node* findNodeAt(Point<float> worldPosition) const;
@@ -75,6 +77,7 @@ private:
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
     int executionIndexForNode(const String& nodeId) const;
     int attachmentCount() const;
+    Point<float> viewportCentreWorld() const;
     void refreshCompiledState();
     bool clearSelection();
     Path createCablePath(Point<float> source, Point<float> dest, bool attachment) const;

@@ -1,5 +1,7 @@
 #include "NodeCanvas.h"
 
+#include <iterator>
+
 namespace CycleV2 {
 
 namespace {
@@ -53,6 +55,7 @@ void NodeCanvas::paint(Graphics& g) {
     drawNodes(g);
     drawMiniMap(g);
     drawGraphStatus(g);
+    drawNodePalette(g);
 }
 
 void NodeCanvas::resized() {
@@ -63,6 +66,21 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     grabKeyboardFocus();
     editStatusMessage = {};
     dragStartPan = pan;
+
+    NodeKind paletteKind;
+    if (findPaletteKindAt(event.position, paletteKind)) {
+        auto result = GraphEditor().addNode(graph, paletteKind, viewportCentreWorld());
+
+        if (result.succeeded()) {
+            selectedNodeId = result.nodeId;
+            expandedNodeId = {};
+            refreshCompiledState();
+            editStatusMessage = "Node added";
+            repaint();
+        }
+
+        return;
+    }
 
     PortAddress hitPort;
     if (findPortAt(event.position, hitPort)) {
@@ -596,6 +614,49 @@ void NodeCanvas::drawGraphStatus(Graphics& g) {
     g.drawText(text, status.withTrimmedLeft(23.f).reduced(0.f, 1.f), Justification::centredLeft);
 }
 
+void NodeCanvas::drawNodePalette(Graphics& g) {
+    struct PaletteEntry {
+        NodeKind kind;
+        const char* label;
+    };
+
+    const PaletteEntry entries[] = {
+            { NodeKind::TrilinearWaveSurface, "Wave" },
+            { NodeKind::Fft, "FFT" },
+            { NodeKind::SpectralMagnitudeProcessor, "Mag" },
+            { NodeKind::SpectralPhaseProcessor, "Phase" },
+            { NodeKind::Ifft, "IFFT" },
+            { NodeKind::Envelope, "Env" },
+            { NodeKind::Multiply, "Mul" },
+            { NodeKind::Output, "Out" }
+    };
+
+    Rectangle<float> panel(18.f, 74.f, 74.f, 8.f + (float) std::size(entries) * 28.f);
+    g.setColour(Colour(0xaa0b0e13));
+    g.fillRoundedRectangle(panel, 6.f);
+    g.setColour(Colour(0xff354050));
+    g.drawRoundedRectangle(panel, 6.f, 1.f);
+
+    for (int i = 0; i < (int) std::size(entries); ++i) {
+        Rectangle<float> row(panel.getX() + 7.f, panel.getY() + 7.f + (float) i * 28.f, panel.getWidth() - 14.f, 22.f);
+        const Colour colour = colourForDomain(entries[i].kind == NodeKind::Envelope
+                ? PortDomain::EnvelopeSignal
+                : entries[i].kind == NodeKind::SpectralMagnitudeProcessor
+                        ? PortDomain::SpectralMagnitudeSignal
+                        : entries[i].kind == NodeKind::SpectralPhaseProcessor
+                                ? PortDomain::SpectralPhaseSignal
+                                : PortDomain::TimeSignal);
+
+        g.setColour(colour.withAlpha(0.12f));
+        g.fillRoundedRectangle(row, 4.f);
+        g.setColour(colour.withAlpha(0.48f));
+        g.drawRoundedRectangle(row, 4.f, 1.f);
+        g.setColour(kText);
+        g.setFont(FontOptions(9.5f));
+        g.drawText(entries[i].label, row, Justification::centred);
+    }
+}
+
 Point<float> NodeCanvas::toScreen(Point<float> p) const {
     return { pan.x + p.x * zoom, pan.y + p.y * zoom };
 }
@@ -647,6 +708,36 @@ bool NodeCanvas::findPortAt(Point<float> screenPosition, PortAddress& result) co
                 result = { node.id, port.id, false };
                 return true;
             }
+        }
+    }
+
+    return false;
+}
+
+bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const {
+    const NodeKind entries[] = {
+            NodeKind::TrilinearWaveSurface,
+            NodeKind::Fft,
+            NodeKind::SpectralMagnitudeProcessor,
+            NodeKind::SpectralPhaseProcessor,
+            NodeKind::Ifft,
+            NodeKind::Envelope,
+            NodeKind::Multiply,
+            NodeKind::Output
+    };
+
+    Rectangle<float> panel(18.f, 74.f, 74.f, 8.f + (float) std::size(entries) * 28.f);
+
+    if (!panel.contains(screenPosition)) {
+        return false;
+    }
+
+    for (int i = 0; i < (int) std::size(entries); ++i) {
+        Rectangle<float> row(panel.getX() + 7.f, panel.getY() + 7.f + (float) i * 28.f, panel.getWidth() - 14.f, 22.f);
+
+        if (row.contains(screenPosition)) {
+            kind = entries[i];
+            return true;
         }
     }
 
@@ -734,6 +825,10 @@ int NodeCanvas::attachmentCount() const {
     }
 
     return count;
+}
+
+Point<float> NodeCanvas::viewportCentreWorld() const {
+    return toWorld(getLocalBounds().toFloat().getCentre());
 }
 
 void NodeCanvas::refreshCompiledState() {
