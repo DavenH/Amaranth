@@ -447,12 +447,19 @@ void NodeCanvas::drawMiniMap(Graphics& g) {
     }
 
     graphBounds = graphBounds.expanded(120.f);
+    const float scale = jmin(map.getWidth() / graphBounds.getWidth(),
+                             map.getHeight() / graphBounds.getHeight());
+    const Rectangle<float> graphInMap(
+            map.getCentreX() - graphBounds.getWidth() * scale * 0.5f,
+            map.getCentreY() - graphBounds.getHeight() * scale * 0.5f,
+            graphBounds.getWidth() * scale,
+            graphBounds.getHeight() * scale);
 
     auto project = [&](Rectangle<float> r) {
-        float x = jmap(r.getX(), graphBounds.getX(), graphBounds.getRight(), map.getX(), map.getRight());
-        float y = jmap(r.getY(), graphBounds.getY(), graphBounds.getBottom(), map.getY(), map.getBottom());
-        float w = r.getWidth() / graphBounds.getWidth() * map.getWidth();
-        float h = r.getHeight() / graphBounds.getHeight() * map.getHeight();
+        const float x = graphInMap.getX() + (r.getX() - graphBounds.getX()) * scale;
+        const float y = graphInMap.getY() + (r.getY() - graphBounds.getY()) * scale;
+        const float w = r.getWidth() * scale;
+        const float h = r.getHeight() * scale;
         return Rectangle<float>(x, y, w, h);
     };
 
@@ -463,7 +470,7 @@ void NodeCanvas::drawMiniMap(Graphics& g) {
 
     Rectangle<float> viewWorld((-pan.x) / zoom, (-pan.y) / zoom,
                                (float) getWidth() / zoom, (float) getHeight() / zoom);
-    const Rectangle<float> viewInMap = project(viewWorld).getIntersection(map);
+    const Rectangle<float> viewInMap = project(viewWorld).getIntersection(graphInMap);
     g.setColour(Colour(0xff35d6d2).withAlpha(0.24f));
     g.fillRoundedRectangle(viewInMap, 3.f);
     g.setColour(Colour(0xff35d6d2).withAlpha(0.85f));
