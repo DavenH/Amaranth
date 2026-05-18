@@ -19,6 +19,7 @@ Port output(String id, PortDomain domain) {
 Node graphNode(String id, std::vector<Port> inputs, std::vector<Port> outputs) {
     return {
         id,
+        NodeKind::GenericProcessor,
         id,
         {},
         {},

@@ -17,10 +17,11 @@ Port output(String id, String label, PortDomain domain, ChannelLayout layout = C
     return { std::move(id), std::move(label), domain, layout, PortPurpose::Signal, false };
 }
 
-Node node(String id, String title, String subtitle, Rectangle<float> bounds,
+Node node(String id, NodeKind kind, String title, String subtitle, Rectangle<float> bounds,
           std::vector<Port> inputs, std::vector<Port> outputs) {
     return {
         std::move(id),
+        kind,
         std::move(title),
         std::move(subtitle),
         bounds,
@@ -44,6 +45,7 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "voice",
+            NodeKind::VoiceContext,
             "Voice Context",
             "6 voices / detune / pan / phase",
             { 80.f, 95.f, 250.f, 175.f },
@@ -55,6 +57,7 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "wave",
+            NodeKind::TrilinearWaveSurface,
             "Trilinear Wave Surface",
             "pitch-aware generator",
             { 410.f, 80.f, 310.f, 240.f },
@@ -70,6 +73,7 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "fft",
+            NodeKind::Fft,
             "FFT: 1 Cycle",
             "time -> mag + phase",
             { 810.f, 105.f, 220.f, 185.f },
@@ -81,6 +85,7 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "mag",
+            NodeKind::SpectralMagnitudeProcessor,
             "Magnitude Sculpt",
             "layer 2 scratch target",
             { 1120.f, 45.f, 285.f, 180.f },
@@ -92,6 +97,7 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "phase",
+            NodeKind::SpectralPhaseProcessor,
             "Phase Sculpt",
             "phase mesh filter",
             { 1120.f, 275.f, 285.f, 180.f },
@@ -100,6 +106,7 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "ifft",
+            NodeKind::Ifft,
             "IFFT",
             "cyclic mode",
             { 1495.f, 135.f, 230.f, 210.f },
@@ -111,6 +118,7 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "env",
+            NodeKind::Envelope,
             "Envelope",
             "volume curve",
             { 805.f, 440.f, 235.f, 155.f },
@@ -119,6 +127,7 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "scratchEnv",
+            NodeKind::Envelope,
             "Envelope",
             "scratch attachment",
             { 430.f, 405.f, 235.f, 155.f },
@@ -127,6 +136,7 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "multiply",
+            NodeKind::Multiply,
             "Multiply",
             "global volume",
             { 1810.f, 190.f, 235.f, 165.f },
@@ -138,6 +148,7 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "out",
+            NodeKind::Output,
             "Output",
             "stereo meters",
             { 2150.f, 205.f, 210.f, 145.f },
@@ -186,6 +197,22 @@ String labelForDomain(PortDomain domain) {
         case PortDomain::VoiceControlSignal:      return "Voice";
         case PortDomain::ControlSignal:           return "Control";
         default:                                  return "Unknown";
+    }
+}
+
+String labelForNodeKind(NodeKind kind) {
+    switch (kind) {
+        case NodeKind::GenericProcessor:             return "Generic Processor";
+        case NodeKind::VoiceContext:                 return "Voice Context";
+        case NodeKind::TrilinearWaveSurface:         return "Trilinear Wave Surface";
+        case NodeKind::Fft:                          return "FFT";
+        case NodeKind::SpectralMagnitudeProcessor:   return "Spectral Magnitude Processor";
+        case NodeKind::SpectralPhaseProcessor:       return "Spectral Phase Processor";
+        case NodeKind::Ifft:                         return "IFFT";
+        case NodeKind::Envelope:                     return "Envelope";
+        case NodeKind::Multiply:                     return "Multiply";
+        case NodeKind::Output:                       return "Output";
+        default:                                     return "Unknown";
     }
 }
 

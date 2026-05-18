@@ -226,7 +226,7 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
     g.setColour(Colour(0xff26313d));
     g.drawRoundedRectangle(area, 5.f, 1.f);
 
-    if (node.id == "wave") {
+    if (node.kind == NodeKind::TrilinearWaveSurface) {
         Path surface;
         for (int i = 0; i < 8; ++i) {
             float x0 = area.getX() + (float) i * area.getWidth() / 8.f;
@@ -257,7 +257,7 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
 
     Colour colour = node.outputs.empty() ? Colour(0xff9aa5b2) : colourForDomain(node.outputs.front().domain);
 
-    if (node.id == "out") {
+    if (node.kind == NodeKind::Output) {
         const float left = area.getHeight() * 0.62f;
         const float right = area.getHeight() * 0.44f;
         auto leftMeter = area.withHeight(left).withY(area.getBottom() - left);

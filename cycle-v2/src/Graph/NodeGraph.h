@@ -19,6 +19,19 @@ enum class PortDomain {
     ControlSignal
 };
 
+enum class NodeKind {
+    GenericProcessor,
+    VoiceContext,
+    TrilinearWaveSurface,
+    Fft,
+    SpectralMagnitudeProcessor,
+    SpectralPhaseProcessor,
+    Ifft,
+    Envelope,
+    Multiply,
+    Output
+};
+
 enum class ChannelLayout {
     Mono,
     LinkedStereo,
@@ -43,6 +56,7 @@ struct Port {
 
 struct Node {
     String id;
+    NodeKind kind { NodeKind::GenericProcessor };
     String title;
     String subtitle;
     Rectangle<float> bounds;
@@ -76,5 +90,6 @@ private:
 
 Colour colourForDomain(PortDomain domain);
 String labelForDomain(PortDomain domain);
+String labelForNodeKind(NodeKind kind);
 
 }

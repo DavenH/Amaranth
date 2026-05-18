@@ -12,6 +12,29 @@ TEST_CASE("Demo graph validates", "[cycle-v2][graph]") {
     REQUIRE(GraphValidator().isValid(graph));
 }
 
+TEST_CASE("Demo graph exposes stable node kinds", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    const auto& nodes = graph.getNodes();
+
+    const auto findKind = [&](const String& nodeId) {
+        const auto found = std::find_if(
+                nodes.begin(),
+                nodes.end(),
+                [&](const Node& node) {
+                    return node.id == nodeId;
+                });
+        REQUIRE(found != nodes.end());
+        return found->kind;
+    };
+
+    REQUIRE(findKind("voice") == NodeKind::VoiceContext);
+    REQUIRE(findKind("wave") == NodeKind::TrilinearWaveSurface);
+    REQUIRE(findKind("fft") == NodeKind::Fft);
+    REQUIRE(findKind("ifft") == NodeKind::Ifft);
+    REQUIRE(findKind("multiply") == NodeKind::Multiply);
+    REQUIRE(findKind("out") == NodeKind::Output);
+}
+
 TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     graph.addEdge({ "env", "env", "wave", "scratch", PortDomain::EnvelopeSignal, false });
