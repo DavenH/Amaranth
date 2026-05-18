@@ -463,10 +463,11 @@ void NodeCanvas::drawMiniMap(Graphics& g) {
 
     Rectangle<float> viewWorld((-pan.x) / zoom, (-pan.y) / zoom,
                                (float) getWidth() / zoom, (float) getHeight() / zoom);
+    const Rectangle<float> viewInMap = project(viewWorld).getIntersection(map);
     g.setColour(Colour(0xff35d6d2).withAlpha(0.24f));
-    g.fillRoundedRectangle(project(viewWorld), 3.f);
+    g.fillRoundedRectangle(viewInMap, 3.f);
     g.setColour(Colour(0xff35d6d2).withAlpha(0.85f));
-    g.drawRoundedRectangle(project(viewWorld), 3.f, 1.f);
+    g.drawRoundedRectangle(viewInMap, 3.f, 1.f);
 }
 
 Point<float> NodeCanvas::toScreen(Point<float> p) const {
