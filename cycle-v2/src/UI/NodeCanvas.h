@@ -4,6 +4,7 @@
 
 #include "../Graph/GraphEditor.h"
 #include "../Graph/NodeGraph.h"
+#include "../Graph/GraphSerializer.h"
 #include "../Runtime/GraphRuntime.h"
 
 namespace CycleV2 {
@@ -79,6 +80,9 @@ private:
     int attachmentCount() const;
     Point<float> viewportCentreWorld() const;
     void refreshCompiledState();
+    File snapshotFile() const;
+    bool saveSnapshot();
+    bool loadSnapshot();
     bool clearSelection();
     Path createCablePath(Point<float> source, Point<float> dest, bool attachment) const;
 

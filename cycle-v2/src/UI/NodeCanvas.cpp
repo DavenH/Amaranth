@@ -162,6 +162,17 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
 }
 
 bool NodeCanvas::keyPressed(const KeyPress& key) {
+    const bool commandDown = key.getModifiers().isCommandDown() || key.getModifiers().isCtrlDown();
+    const juce_wchar keyChar = CharacterFunctions::toLowerCase(key.getTextCharacter());
+
+    if (commandDown && keyChar == 's') {
+        return saveSnapshot();
+    }
+
+    if (commandDown && keyChar == 'o') {
+        return loadSnapshot();
+    }
+
     if (key == KeyPress::escapeKey) {
         return clearSelection();
     }
@@ -838,6 +849,53 @@ void NodeCanvas::refreshCompiledState() {
     if (compileResult.succeeded()) {
         runtimeTrace = GraphRuntime().process(graph, compileResult.plan);
     }
+}
+
+File NodeCanvas::snapshotFile() const {
+    return File::getSpecialLocation(File::userApplicationDataDirectory)
+            .getChildFile("CycleV2")
+            .getChildFile("graph-snapshot.xml");
+}
+
+bool NodeCanvas::saveSnapshot() {
+    const File file = snapshotFile();
+    file.getParentDirectory().createDirectory();
+
+    if (!file.replaceWithText(GraphSerializer().toXmlString(graph))) {
+        editStatusMessage = "Save failed";
+        repaint();
+        return true;
+    }
+
+    editStatusMessage = "Saved snapshot";
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::loadSnapshot() {
+    const File file = snapshotFile();
+
+    if (!file.existsAsFile()) {
+        editStatusMessage = "No snapshot";
+        repaint();
+        return true;
+    }
+
+    NodeGraph loaded = GraphSerializer().fromXmlString(file.loadFileAsString());
+
+    if (loaded.getNodes().empty()) {
+        editStatusMessage = "Load failed";
+        repaint();
+        return true;
+    }
+
+    graph = std::move(loaded);
+    selectedNodeId = {};
+    expandedNodeId = {};
+    refreshCompiledState();
+    editStatusMessage = "Loaded snapshot";
+    repaint();
+    return true;
 }
 
 bool NodeCanvas::clearSelection() {
