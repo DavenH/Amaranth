@@ -38,6 +38,7 @@ NodeCanvas::NodeCanvas() :
     }
 
     setOpaque(true);
+    setWantsKeyboardFocus(true);
     openGLContext.setRenderer(this);
     openGLContext.setContinuousRepainting(false);
     openGLContext.attachTo(*this);
@@ -61,6 +62,7 @@ void NodeCanvas::resized() {
 }
 
 void NodeCanvas::mouseDown(const MouseEvent& event) {
+    grabKeyboardFocus();
     dragStartPan = pan;
     const Node* hitNode = findNodeAt(toWorld(event.position));
     selectedNodeId = hitNode != nullptr ? hitNode->id : String();
@@ -102,6 +104,14 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
     const auto afterZoom = toWorld(mouse);
     pan += (afterZoom - beforeZoom) * zoom;
     repaint();
+}
+
+bool NodeCanvas::keyPressed(const KeyPress& key) {
+    if (key == KeyPress::escapeKey) {
+        return clearSelection();
+    }
+
+    return false;
 }
 
 void NodeCanvas::newOpenGLContextCreated() {
@@ -549,6 +559,17 @@ int NodeCanvas::executionIndexForNode(const String& nodeId) const {
     }
 
     return -1;
+}
+
+bool NodeCanvas::clearSelection() {
+    if (selectedNodeId.isEmpty() && expandedNodeId.isEmpty()) {
+        return false;
+    }
+
+    selectedNodeId = {};
+    expandedNodeId = {};
+    repaint();
+    return true;
 }
 
 Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool attachment) const {

@@ -20,6 +20,7 @@ public:
     void mouseDown(const MouseEvent& event) override;
     void mouseDrag(const MouseEvent& event) override;
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override;
+    bool keyPressed(const KeyPress& key) override;
 
 private:
     struct PortLocation {
@@ -63,6 +64,7 @@ private:
     const Port* findPort(const Node& node, const String& portId, bool input) const;
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
     int executionIndexForNode(const String& nodeId) const;
+    bool clearSelection();
     Path createCablePath(Point<float> source, Point<float> dest, bool attachment) const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
