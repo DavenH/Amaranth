@@ -72,6 +72,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (event.getNumberOfClicks() >= 2) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
         }
+    } else {
+        expandedNodeId = {};
     }
 
     repaint();
