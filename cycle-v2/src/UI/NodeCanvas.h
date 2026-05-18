@@ -43,6 +43,7 @@ private:
     String selectedNodeId;
     String expandedNodeId;
     String editStatusMessage;
+    int selectedEdgeIndex { -1 };
     PortAddress connectingPort;
     Point<float> connectingPoint;
     bool draggingNode {};
@@ -71,6 +72,7 @@ private:
     PortLocation getPortLocation(const PortAddress& address) const;
     bool findPortAt(Point<float> screenPosition, PortAddress& result) const;
     bool findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const;
+    int findEdgeAt(Point<float> screenPosition) const;
     const Node* findNode(const String& id) const;
     Node* findMutableNode(const String& id);
     const Node* findNodeAt(Point<float> worldPosition) const;

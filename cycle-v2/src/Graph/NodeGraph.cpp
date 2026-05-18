@@ -62,6 +62,14 @@ void NodeGraph::removeNode(const String& nodeId) {
             edges.end());
 }
 
+void NodeGraph::removeEdgeAt(size_t index) {
+    if (index >= edges.size()) {
+        return;
+    }
+
+    edges.erase(edges.begin() + (int) index);
+}
+
 void NodeGraph::removeEdgesToInput(const String& nodeId, const String& portId) {
     edges.erase(
             std::remove_if(

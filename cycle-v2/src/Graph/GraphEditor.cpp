@@ -63,6 +63,15 @@ GraphEditResult GraphEditor::removeNode(NodeGraph& graph, const String& nodeId) 
     return {};
 }
 
+GraphEditResult GraphEditor::removeEdgeAt(NodeGraph& graph, size_t index) const {
+    if (index >= graph.getEdges().size()) {
+        return { GraphEditCode::MissingPort, {}, {} };
+    }
+
+    graph.removeEdgeAt(index);
+    return {};
+}
+
 const Node* GraphEditor::findNode(const NodeGraph& graph, const String& nodeId) const {
     for (const auto& node : graph.getNodes()) {
         if (node.id == nodeId) {

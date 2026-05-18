@@ -83,6 +83,7 @@ public:
     void addNode(Node node);
     void addEdge(Edge edge);
     void removeNode(const String& nodeId);
+    void removeEdgeAt(size_t index);
     void removeEdgesToInput(const String& nodeId, const String& portId);
 
     static NodeGraph createDemoGraph();

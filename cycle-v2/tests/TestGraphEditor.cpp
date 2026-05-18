@@ -91,3 +91,13 @@ TEST_CASE("Graph editor reports missing node removal", "[cycle-v2][graph]") {
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.code == GraphEditCode::MissingNode);
 }
+
+TEST_CASE("Graph editor removes edges by index", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    const auto edgeCount = graph.getEdges().size();
+
+    const auto result = GraphEditor().removeEdgeAt(graph, 0);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(graph.getEdges().size() == edgeCount - 1);
+}

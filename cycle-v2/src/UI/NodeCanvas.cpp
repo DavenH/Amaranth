@@ -89,12 +89,23 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         connectingCable = true;
         draggingNode = false;
         selectedNodeId = hitPort.nodeId;
+        selectedEdgeIndex = -1;
+        repaint();
+        return;
+    }
+
+    selectedEdgeIndex = findEdgeAt(event.position);
+
+    if (selectedEdgeIndex >= 0) {
+        selectedNodeId = {};
+        draggingNode = false;
         repaint();
         return;
     }
 
     const Node* hitNode = findNodeAt(toWorld(event.position));
     selectedNodeId = hitNode != nullptr ? hitNode->id : String();
+    selectedEdgeIndex = -1;
     draggingNode = hitNode != nullptr;
 
     if (hitNode != nullptr) {
@@ -178,6 +189,20 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
     }
 
     if (key == KeyPress::deleteKey || key == KeyPress::backspaceKey) {
+        if (selectedEdgeIndex >= 0) {
+            auto result = GraphEditor().removeEdgeAt(graph, (size_t) selectedEdgeIndex);
+
+            if (!result.succeeded()) {
+                return false;
+            }
+
+            selectedEdgeIndex = -1;
+            refreshCompiledState();
+            editStatusMessage = "Edge deleted";
+            repaint();
+            return true;
+        }
+
         if (selectedNodeId.isEmpty()) {
             return false;
         }
@@ -254,7 +279,10 @@ void NodeCanvas::drawGrid(Graphics& g) {
 }
 
 void NodeCanvas::drawEdges(Graphics& g) {
-    for (const auto& edge : graph.getEdges()) {
+    const auto& edges = graph.getEdges();
+
+    for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
+        const auto& edge = edges[(size_t) edgeIndex];
         const Node* sourceNode = findNode(edge.sourceNodeId);
         const Node* destNode = findNode(edge.destNodeId);
 
@@ -274,20 +302,22 @@ void NodeCanvas::drawEdges(Graphics& g) {
         Path cable = createCablePath(source, dest, edge.attachment);
         Colour colour = colourForDomain(edge.domain);
 
+        const bool selected = edgeIndex == selectedEdgeIndex;
+
         if (edge.attachment) {
             Path dashedCable;
             PathStrokeType stroke(2.0f, PathStrokeType::curved, PathStrokeType::rounded);
             Array<float> dashes { 8.f, 7.f };
             stroke.createDashedStroke(dashedCable, cable, dashes.getRawDataPointer(), dashes.size());
-            g.setColour(colour.withAlpha(0.32f));
-            g.strokePath(dashedCable, PathStrokeType(7.f, PathStrokeType::curved, PathStrokeType::rounded));
+            g.setColour(colour.withAlpha(selected ? 0.46f : 0.32f));
+            g.strokePath(dashedCable, PathStrokeType(selected ? 10.f : 7.f, PathStrokeType::curved, PathStrokeType::rounded));
             g.setColour(colour.withAlpha(0.92f));
-            g.strokePath(dashedCable, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
+            g.strokePath(dashedCable, PathStrokeType(selected ? 3.f : 2.f, PathStrokeType::curved, PathStrokeType::rounded));
         } else {
-            g.setColour(colour.withAlpha(0.18f));
-            g.strokePath(cable, PathStrokeType(9.f, PathStrokeType::curved, PathStrokeType::rounded));
+            g.setColour(colour.withAlpha(selected ? 0.28f : 0.18f));
+            g.strokePath(cable, PathStrokeType(selected ? 12.f : 9.f, PathStrokeType::curved, PathStrokeType::rounded));
             g.setColour(colour.withAlpha(0.92f));
-            g.strokePath(cable, PathStrokeType(3.f, PathStrokeType::curved, PathStrokeType::rounded));
+            g.strokePath(cable, PathStrokeType(selected ? 4.f : 3.f, PathStrokeType::curved, PathStrokeType::rounded));
         }
     }
 }
@@ -755,6 +785,40 @@ bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) 
     return false;
 }
 
+int NodeCanvas::findEdgeAt(Point<float> screenPosition) const {
+    const auto& edges = graph.getEdges();
+
+    for (int edgeIndex = (int) edges.size() - 1; edgeIndex >= 0; --edgeIndex) {
+        const auto& edge = edges[(size_t) edgeIndex];
+        const Node* sourceNode = findNode(edge.sourceNodeId);
+        const Node* destNode = findNode(edge.destNodeId);
+
+        if (sourceNode == nullptr || destNode == nullptr) {
+            continue;
+        }
+
+        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
+        const Port* destPort = findPort(*destNode, edge.destPortId, true);
+
+        if (sourcePort == nullptr || destPort == nullptr) {
+            continue;
+        }
+
+        Path hitPath;
+        PathStrokeType(16.f, PathStrokeType::curved, PathStrokeType::rounded)
+                .createStrokedPath(hitPath, createCablePath(
+                        getPortLocation(*sourceNode, *sourcePort).centre,
+                        getPortLocation(*destNode, *destPort).centre,
+                        edge.attachment));
+
+        if (hitPath.contains(screenPosition)) {
+            return edgeIndex;
+        }
+    }
+
+    return -1;
+}
+
 const Node* NodeCanvas::findNode(const String& id) const {
     for (const auto& node : graph.getNodes()) {
         if (node.id == id) {
@@ -905,6 +969,7 @@ bool NodeCanvas::clearSelection() {
 
     selectedNodeId = {};
     expandedNodeId = {};
+    selectedEdgeIndex = -1;
     repaint();
     return true;
 }
