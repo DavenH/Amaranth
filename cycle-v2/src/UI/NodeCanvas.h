@@ -35,6 +35,9 @@ private:
     float zoom { 0.58f };
     Point<float> pan { 34.f, 38.f };
     Point<float> dragStartPan;
+    Rectangle<float> dragStartNodeBounds;
+    String selectedNodeId;
+    bool draggingNode {};
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -53,6 +56,8 @@ private:
     Rectangle<float> toScreen(Rectangle<float> r) const;
     PortLocation getPortLocation(const Node& node, const Port& port) const;
     const Node* findNode(const String& id) const;
+    Node* findMutableNode(const String& id);
+    const Node* findNodeAt(Point<float> worldPosition) const;
     const Port* findPort(const Node& node, const String& portId, bool input) const;
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
     int executionIndexForNode(const String& nodeId) const;

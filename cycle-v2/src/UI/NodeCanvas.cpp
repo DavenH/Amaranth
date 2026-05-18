@@ -62,11 +62,29 @@ void NodeCanvas::resized() {
 
 void NodeCanvas::mouseDown(const MouseEvent& event) {
     dragStartPan = pan;
-    ignoreUnused(event);
+    const Node* hitNode = findNodeAt(toWorld(event.position));
+    selectedNodeId = hitNode != nullptr ? hitNode->id : String();
+    draggingNode = hitNode != nullptr;
+
+    if (hitNode != nullptr) {
+        dragStartNodeBounds = hitNode->bounds;
+    }
+
+    repaint();
 }
 
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
-    pan = dragStartPan + event.getOffsetFromDragStart().toFloat();
+    if (draggingNode) {
+        Node* node = findMutableNode(selectedNodeId);
+
+        if (node != nullptr) {
+            const auto offset = event.getOffsetFromDragStart().toFloat() / zoom;
+            node->bounds = dragStartNodeBounds.translated(offset.x, offset.y);
+        }
+    } else {
+        pan = dragStartPan + event.getOffsetFromDragStart().toFloat();
+    }
+
     repaint();
 }
 
@@ -196,6 +214,11 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
 
     g.setColour(kNodeBorder);
     g.drawRoundedRectangle(toScreen(node.bounds), corner, 1.2f);
+
+    if (node.id == selectedNodeId) {
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.82f));
+        g.drawRoundedRectangle(toScreen(node.bounds).expanded(2.f), corner + 2.f, 2.f);
+    }
 
     g.setFont(FontOptions(15.f * zoom, Font::bold));
     g.setColour(kText);
@@ -392,6 +415,30 @@ NodeCanvas::PortLocation NodeCanvas::getPortLocation(const Node& node, const Por
 const Node* NodeCanvas::findNode(const String& id) const {
     for (const auto& node : graph.getNodes()) {
         if (node.id == id) {
+            return &node;
+        }
+    }
+
+    return nullptr;
+}
+
+Node* NodeCanvas::findMutableNode(const String& id) {
+    for (auto& node : graph.getNodesForEditing()) {
+        if (node.id == id) {
+            return &node;
+        }
+    }
+
+    return nullptr;
+}
+
+const Node* NodeCanvas::findNodeAt(Point<float> worldPosition) const {
+    const auto& nodes = graph.getNodes();
+
+    for (int i = (int) nodes.size() - 1; i >= 0; --i) {
+        const auto& node = nodes[(size_t) i];
+
+        if (node.bounds.contains(worldPosition)) {
             return &node;
         }
     }

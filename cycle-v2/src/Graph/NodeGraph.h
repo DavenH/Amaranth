@@ -77,6 +77,7 @@ class NodeGraph {
 public:
     const std::vector<Node>& getNodes() const { return nodes; }
     const std::vector<Edge>& getEdges() const { return edges; }
+    std::vector<Node>& getNodesForEditing() { return nodes; }
 
     void addNode(Node node);
     void addEdge(Edge edge);
