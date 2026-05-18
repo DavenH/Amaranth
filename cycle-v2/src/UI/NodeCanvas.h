@@ -23,6 +23,7 @@ public:
     void mouseDrag(const MouseEvent& event) override;
     void mouseUp(const MouseEvent& event) override;
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override;
+    void mouseMagnify(const MouseEvent& event, float scaleFactor) override;
     bool keyPressed(const KeyPress& key) override;
 
 private:

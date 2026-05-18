@@ -15,7 +15,8 @@ open build/standalone-debug/cycle-v2/CycleV2.app
 ## Current Editor Controls
 
 - drag empty canvas: pan
-- mouse wheel: zoom around cursor
+- trackpad scroll / mouse wheel: pan
+- trackpad pinch: zoom around cursor
 - drag a node: move it
 - drag from one port to another: connect compatible ports
 - click palette item: add a node at the viewport center

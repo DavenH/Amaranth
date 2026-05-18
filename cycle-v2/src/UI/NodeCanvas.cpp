@@ -196,21 +196,16 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
+    ignoreUnused(event);
+    constexpr float panScale = 720.f;
+    pan += Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale);
+    repaint();
+}
+
+void NodeCanvas::mouseMagnify(const MouseEvent& event, float scaleFactor) {
     const auto mouse = event.position;
-    const bool panGesture = std::abs(wheel.deltaX) > 0.0001f
-            || event.mods.isShiftDown()
-            || event.mods.isAltDown();
-
-    if (panGesture) {
-        constexpr float panScale = 720.f;
-        pan += Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale);
-        repaint();
-        return;
-    }
-
     const auto beforeZoom = toWorld(mouse);
-    const float zoomFactor = std::pow(1.12f, wheel.deltaY * 6.f);
-    zoom = jlimit(0.28f, 1.4f, zoom * zoomFactor);
+    zoom = jlimit(0.28f, 1.4f, zoom * scaleFactor);
     const auto afterZoom = toWorld(mouse);
     pan += (afterZoom - beforeZoom) * zoom;
     repaint();
