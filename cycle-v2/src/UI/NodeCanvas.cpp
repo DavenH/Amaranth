@@ -77,6 +77,9 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             pushUndoSnapshot(beforeEdit);
             selectedNodeId = result.nodeId;
             expandedNodeId = {};
+            selectedEdgeIndex = -1;
+            draggingNode = false;
+            connectingCable = false;
             refreshCompiledState();
             editStatusMessage = "Node added";
             repaint();
@@ -95,6 +98,20 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         selectedEdgeIndex = -1;
         repaint();
         return;
+    }
+
+    if (expandedNodeId.isNotEmpty()) {
+        const Rectangle<float> available = getLocalBounds().toFloat().reduced(28.f);
+        const float width = jmin(available.getWidth(), jmax(420.f, available.getWidth() * 0.80f));
+        const float height = jmin(available.getHeight(), jmax(300.f, available.getHeight() * 0.80f));
+        const auto panel = Rectangle<float>(width, height).withCentre(available.getCentre());
+        const auto closeButton = Rectangle<float>(24.f, 24.f).withCentre({ panel.getRight() - 24.f, panel.getY() + 22.f });
+
+        if (closeButton.contains(event.position)) {
+            expandedNodeId = {};
+            repaint();
+            return;
+        }
     }
 
     selectedEdgeIndex = findEdgeAt(event.position);
@@ -476,7 +493,9 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     }
 
     auto nodeBounds = toScreen(node.bounds);
-    auto preview = nodeBounds.reduced(13.f * zoom).withTrimmedTop(49.f * zoom).withTrimmedBottom(12.f * zoom);
+    const int portRows = jmax((int) node.inputs.size(), (int) node.outputs.size());
+    const float previewTop = (56.f + (float) portRows * 28.f + 10.f) * zoom;
+    auto preview = nodeBounds.reduced(13.f * zoom).withTrimmedTop(previewTop).withTrimmedBottom(12.f * zoom);
     drawPreview(g, node, preview);
 
     auto drawPort = [&](const Node& portNode, const Port& port) {
@@ -698,6 +717,17 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     g.setFont(FontOptions(10.5f));
     g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
 
+    Rectangle<float> closeButton = Rectangle<float>(24.f, 24.f).withCentre({ header.getRight() - 24.f, header.getCentreY() });
+    g.setColour(Colour(0xff0e1318));
+    g.fillEllipse(closeButton);
+    g.setColour(Colour(0xff354050));
+    g.drawEllipse(closeButton, 1.f);
+    g.setColour(kText);
+    g.drawLine(closeButton.getX() + 8.f, closeButton.getY() + 8.f,
+               closeButton.getRight() - 8.f, closeButton.getBottom() - 8.f, 1.4f);
+    g.drawLine(closeButton.getRight() - 8.f, closeButton.getY() + 8.f,
+               closeButton.getX() + 8.f, closeButton.getBottom() - 8.f, 1.4f);
+
     auto content = panel.reduced(18.f, 16.f);
     auto preview = content.removeFromTop(jmin(360.f, content.getHeight() * 0.66f));
     drawPreview(g, node, preview);
@@ -888,14 +918,14 @@ NodeCanvas::PortLocation NodeCanvas::getPortLocation(const PortAddress& address)
 bool NodeCanvas::findPortAt(Point<float> screenPosition, PortAddress& result) const {
     for (const auto& node : graph.getNodes()) {
         for (const auto& port : node.inputs) {
-            if (getPortLocation(node, port).bounds.expanded(5.f).contains(screenPosition)) {
+            if (getPortLocation(node, port).bounds.expanded(10.f).contains(screenPosition)) {
                 result = { node.id, port.id, true };
                 return true;
             }
         }
 
         for (const auto& port : node.outputs) {
-            if (getPortLocation(node, port).bounds.expanded(5.f).contains(screenPosition)) {
+            if (getPortLocation(node, port).bounds.expanded(10.f).contains(screenPosition)) {
                 result = { node.id, port.id, false };
                 return true;
             }
@@ -1201,7 +1231,15 @@ Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool at
     Path path;
     path.startNewSubPath(source);
 
-    float dx = jmax(90.f * zoom, std::abs(dest.x - source.x) * 0.45f);
+    const float deltaX = dest.x - source.x;
+    const float deltaY = dest.y - source.y;
+
+    if (std::abs(deltaX) < 145.f * zoom && std::abs(deltaY) < 180.f * zoom) {
+        path.lineTo(dest);
+        return path;
+    }
+
+    float dx = jmax(36.f * zoom, std::abs(deltaX) * 0.45f);
     float lift = attachment ? -30.f * zoom : 0.f;
     Point<float> c1(source.x + dx, source.y + lift);
     Point<float> c2(dest.x - dx, dest.y + lift);

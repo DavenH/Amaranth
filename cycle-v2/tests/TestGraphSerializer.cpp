@@ -24,7 +24,7 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
 
     REQUIRE(wave.id == "wave");
     REQUIRE(wave.kind == NodeKind::TrilinearWaveSurface);
-    REQUIRE(wave.bounds.getWidth() == 310.f);
+    REQUIRE(wave.bounds.getWidth() == 380.f);
     REQUIRE(wave.inputs.size() == 3);
     REQUIRE(wave.inputs[2].id == "scratch");
     REQUIRE(wave.inputs[2].purpose == PortPurpose::ScratchAttachment);

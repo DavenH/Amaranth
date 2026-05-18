@@ -89,7 +89,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::VoiceContext,
             "Voice Context",
             "6 voices / detune / pan / phase",
-            { 80.f, 95.f, 250.f, 175.f },
+            { 80.f, 95.f, 300.f, 220.f },
             {},
             {
                     output("pitch", "Pitch", PortDomain::PitchSignal),
@@ -101,7 +101,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::TrilinearWaveSurface,
             "Trilinear Wave Surface",
             "pitch-aware generator",
-            { 410.f, 80.f, 310.f, 240.f },
+            { 410.f, 80.f, 380.f, 280.f },
             {
                     input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("voice", "Voice", PortDomain::VoiceControlSignal),
