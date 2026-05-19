@@ -192,6 +192,19 @@ semantics before introducing a broader voice-lane architecture.
 
 General controls may be scalar, stepped, or event-like.
 
+Source domain is established by graph context, not by permanently naming a
+source node after one signal type. The first implementation should use a
+`VoiceContext` or equivalent voice/domain context node to choose whether a
+voice-aware source begins as waveform, spectral magnitude, spectral phase, or
+another supported source mode. That context may connect to a source node's
+domain/control port. A source such as a trilinear mesh or image then emits the
+domain implied by that context and its downstream connection.
+
+This keeps source nodes domain-agnostic where possible. A trilinear mesh is a
+mesh operand/source with Yellow, Red, and Blue axes; it is not inherently a
+"wave surface" or "spectral surface", and it should not expose hardcoded
+magnitude or phase outputs. FFT and IFFT nodes are explicit domain transforms.
+
 ### Explicit Assignments
 
 Some of Cycle's current behavior comes from assignments that are hard to see in
@@ -285,6 +298,14 @@ Examples:
 - FFT magnitude output to inverse FFT magnitude input: valid.
 - FFT phase output to inverse FFT phase input: valid.
 - `SpectralMagnitudeSignal` directly to `TimeSignal`: invalid.
+- `SpectralMagnitudeSignal` and `TimeSignal` into an ordinary add node:
+  invalid because the operand domains cannot be unified.
+- two `SpectralMagnitudeSignal` operands into add or multiply: valid.
+- `TimeSignal` plus a context-resolved mesh source in time mode: valid.
+- `SpectralMagnitudeSignal` plus a context-resolved mesh source in spectral
+  magnitude mode: valid.
+- a domain/context port into a trilinear mesh source: valid when the source is
+  voice/domain aware.
 - `EnvelopeSignal` to multiply node factor input: valid.
 - `EnvelopeSignal` to a mesh layer scratch port: valid as a
   `ProcessingAttachment`.
@@ -301,7 +322,10 @@ Examples:
 
 The first graph implementation should define node schemas for:
 
-- waveform source nodes backed by 2D and trilinear mesh rasterizers,
+- voice/domain context nodes that define voice count, unison-compatible
+  controls, pitch/control routing, and initial source domain,
+- source nodes backed by 2D mesh, trilinear mesh, image, or simpler waveform
+  generators,
 - domain-agnostic mesh source/filter nodes whose edge context determines
   whether they currently operate on time, spectral magnitude, spectral phase,
   or another compatible signal domain,
@@ -313,6 +337,13 @@ The first graph implementation should define node schemas for:
 - existing effects: unison, impulse modeller, waveshaper, convolution reverb,
   EQ, and delay with pan,
 - output node.
+
+Domain and operation naming should stay separate. Generic operations are named
+by what they do (`Add`, `Multiply`, `Clamp`, `Mesh`, `Image`, `Wave`) rather
+than by the domain currently flowing through them. The edge domain and compiler
+resolution decide whether a given operation instance is acting on time-domain
+audio, spectral magnitude, spectral phase, control, or another compatible data
+stream.
 
 The global volume envelope is represented as ordinary graph structure:
 
@@ -429,15 +460,26 @@ Preview defaults:
 - 2D mesh nodes show the active slice or curve graph,
 - spectrum nodes may show spectrogram or cyclogram-style previews where those
   views communicate the node's behavior better than a simple curve,
-- FFT nodes show magnitude and phase summaries,
-- inverse FFT nodes show the reconstructed waveform,
+- source nodes show the material they generate or expose; a trilinear mesh
+  preview should use Yellow, Red, and Blue axes rather than pitch/morph/phase
+  labels,
+- image source nodes show an image/raster preview when image data is present,
 - waveshaper nodes show transfer curve plus input/output preview,
 - convolution and impulse nodes show impulse response and wet/dry output
   summary,
 - EQ nodes show the EQ curve,
 - delay nodes show taps, feedback, and pan summary,
-- multiply and utility nodes show compact input/output wave summaries,
-- envelope nodes show the envelope curve with loop or sustain markers.
+- envelope nodes show Cycle-style point-curve envelopes with loop or sustain
+  markers where relevant,
+- FFT, inverse FFT, arithmetic, channel split/join, and output nodes are compact
+  non-preview nodes identified through iconography and port topology rather
+  than oversized placeholder preview regions.
+
+Generated mockups are inspirational visual references, not literal node-schema
+specifications. Controls shown in mockups should be treated as examples unless
+they match a defined node parameter. The visual style choices that should carry
+forward are the studio-canvas grid, rich but contained node previews, compact
+header controls, clear domain-colored ports, and cable-ready port affordances.
 
 Node previews should be generated from the same rasterizer or processing
 adapter used by graph execution where feasible. If a cheaper preview path is
@@ -460,7 +502,7 @@ Expanded editor behavior:
 Trilinear mesh expanded editor:
 
 - switchable 3D view and 2D slice view,
-- trilinear morph position widget,
+- trilinear position widget using Yellow, Red, and Blue axes,
 - current mesh/layer controls required for that node,
 - live preview of downstream impact through invalidated dependent nodes.
 
@@ -651,6 +693,11 @@ Acceptance:
 - validate that `PitchSignal` and `VoiceControlSignal` connect only to
   voice-aware nodes or explicit conversion nodes,
 - validate FFT/IFFT cycle-frame and overlap-mode schema,
+- validate source-domain resolution from `VoiceContext` or equivalent context
+  ports into mesh, image, and waveform sources,
+- validate that domain-agnostic source/filter nodes do not expose hardcoded
+  magnitude or phase outputs unless their schema is specifically a transform
+  such as FFT,
 - validate linked stereo, split left/right, and mono-to-linked-stereo cases,
 - reject illegal direct time/spectral connections,
 - serialize and deserialize graph identity, layout, edges, attachments, and
@@ -703,6 +750,7 @@ Acceptance:
   readable in representative patches,
 - attachment cables have a distinct lighter routed style from signal cables,
 - sprite-baked labels/icons render correctly at DPI scale,
+- compact utility nodes render without fake preview regions,
 - invalid edge attempts show visible feedback,
 - automation can capture a screenshot of the node workspace.
 
@@ -712,9 +760,11 @@ Goal: nodes show useful, updating content.
 
 Acceptance:
 
-- waveform, spectrum, envelope, utility, and output nodes display previews,
+- waveform, spectrum, envelope, mesh, image, and previewable effect nodes
+  display previews,
 - trilinear mesh nodes display a surface preview,
 - 2D mesh nodes display a curve or slice preview,
+- compact non-preview nodes remain visually identifiable through iconography,
 - spectrogram or cyclogram-style preview experiments exist for spectral and
   cycle-domain nodes,
 - upstream parameter or mesh edits invalidate downstream previews,
@@ -854,10 +904,14 @@ Acceptance:
 - Non-preview nodes such as `FFT`, `IFFT`, arithmetic, channel split/join, and
   output should be compact and identifiable through iconography rather than
   oversized placeholder preview regions.
-- Consider a first-class domain/source selector node for graphs that start
-  directly in a spectral domain, such as a trilinear mesh used as an initial
-  magnitude spectrum without an upstream FFT. Mesh generators should not imply a
-  permanent signal domain from their name alone.
+- Fold the initial domain/source selector into `VoiceContext` or equivalent
+  context state rather than adding separate `Start` nodes. This lets graphs
+  start directly in a spectral domain, such as a trilinear mesh used as an
+  initial magnitude spectrum without an upstream FFT, without making mesh
+  generators imply a permanent signal domain from their name alone.
+- Envelope nodes should follow Cycle 1.x point-curve semantics, not ADSR-first
+  envelope semantics. ADSR-style controls may appear only as a later preset or
+  convenience editing mode over the same point-curve model.
 - Guide curves should be visible as attachments to mesh nodes, with the target
   scope described more granularly than node-wide attachment. A later schema
   needs a way to address mesh sub-targets such as vertex cube and guided

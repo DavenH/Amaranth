@@ -90,6 +90,85 @@ TEST_CASE("Operation nodes reject mixed concrete signal domains", "[cycle-v2][gr
             }));
 }
 
+TEST_CASE("Operation nodes reject mixed resolved source domains", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = {
+            { "domain", "Start Domain", "spectral" }
+    };
+
+    graph.addNode({
+            "time",
+            NodeKind::GenericProcessor,
+            "Time",
+            {},
+            {},
+            {},
+            {},
+            { { "out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }
+    });
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "time", "out", "add", "left", PortDomain::TimeSignal, false });
+    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, false });
+
+    const auto issues = GraphValidator().validate(graph);
+
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::MixedOperationDomains;
+            }));
+}
+
+TEST_CASE("Context-resolved spectral sources cannot feed time-only transforms", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = {
+            { "domain", "Start Domain", "spectral" }
+    };
+
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 460.f, 0.f }));
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, false });
+
+    const auto issues = GraphValidator().validate(graph);
+
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::DomainMismatch;
+            }));
+}
+
+TEST_CASE("Context-resolved spectral sources can seed additive spectral graphs", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = {
+            { "domain", "Start Domain", "spectral" }
+    };
+
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, false });
+
+    REQUIRE(GraphValidator().isValid(graph));
+}
+
 TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     graph.addEdge({ "env", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal, false });

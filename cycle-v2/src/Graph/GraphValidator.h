@@ -33,6 +33,9 @@ public:
 private:
     bool isVoiceAwareDestination(const Port& port) const;
     bool concreteOperationDomain(PortDomain domain) const;
+    PortDomain domainFromContextInput(const NodeGraph& graph, const Node& node) const;
+    PortDomain firstResolvedInputDomain(const NodeGraph& graph, const String& nodeId, int depth) const;
+    PortDomain resolvedEdgeDomain(const NodeGraph& graph, const Edge& edge, int depth = 0) const;
     void validateOperationInputs(const NodeGraph& graph, std::vector<GraphValidationIssue>& issues) const;
     bool domainsCompatible(const Port& source, const Port& dest) const;
     bool channelLayoutsCompatible(const Port& source, const Port& dest) const;

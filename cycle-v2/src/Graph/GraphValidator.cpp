@@ -26,6 +26,37 @@ const Port* findPort(const Node& node, const String& id, bool input) {
     return nullptr;
 }
 
+bool isContextResolvedSource(const Node& node, const Port& port) {
+    if (port.id != "out") {
+        return false;
+    }
+
+    switch (node.kind) {
+        case NodeKind::WaveSource:
+        case NodeKind::ImageSource:
+        case NodeKind::TrilinearMesh:
+        case NodeKind::TrilinearWaveSurface:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+PortDomain domainFromVoiceContext(const Node& voiceNode) {
+    const String domain = parameterValueForNode(voiceNode, "domain", "waveform");
+
+    if (domain == "spectral" || domain == "spectralMagnitude") {
+        return PortDomain::SpectralMagnitudeSignal;
+    }
+
+    if (domain == "spectralPhase") {
+        return PortDomain::SpectralPhaseSignal;
+    }
+
+    return PortDomain::TimeSignal;
+}
+
 void addIssue(
         std::vector<GraphValidationIssue>& issues,
         GraphValidationCode code,
@@ -89,12 +120,21 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
             continue;
         }
 
-        if (!domainsCompatible(*source, *dest)) {
-            addIssue(issues, GraphValidationCode::DomainMismatch,
-                     "Domain mismatch: " + labelForDomain(source->domain) + " -> " + labelForDomain(dest->domain));
+        Port resolvedSource = *source;
+        resolvedSource.domain = resolvedEdgeDomain(graph, edge);
+
+        if (source->domain == PortDomain::ControlSignal
+                && dest->domain != PortDomain::ControlSignal
+                && resolvedSource.domain == dest->domain) {
+            resolvedSource.channelLayout = dest->channelLayout;
         }
 
-        if (!channelLayoutsCompatible(*source, *dest)) {
+        if (!domainsCompatible(resolvedSource, *dest)) {
+            addIssue(issues, GraphValidationCode::DomainMismatch,
+                     "Domain mismatch: " + labelForDomain(resolvedSource.domain) + " -> " + labelForDomain(dest->domain));
+        }
+
+        if (!channelLayoutsCompatible(resolvedSource, *dest)) {
             addIssue(issues, GraphValidationCode::ChannelLayoutMismatch,
                      "Channel layout mismatch: " + edge.sourceNodeId + "." + source->id
                          + " -> " + edge.destNodeId + "." + dest->id);
@@ -131,6 +171,84 @@ bool GraphValidator::concreteOperationDomain(PortDomain domain) const {
     }
 }
 
+PortDomain GraphValidator::domainFromContextInput(const NodeGraph& graph, const Node& node) const {
+    for (const auto& edge : graph.getEdges()) {
+        if (edge.attachment || edge.destNodeId != node.id || edge.destPortId != "context") {
+            continue;
+        }
+
+        const Node* sourceNode = findNode(graph, edge.sourceNodeId);
+        if (sourceNode != nullptr && sourceNode->kind == NodeKind::VoiceContext) {
+            return domainFromVoiceContext(*sourceNode);
+        }
+    }
+
+    return PortDomain::ControlSignal;
+}
+
+PortDomain GraphValidator::firstResolvedInputDomain(
+        const NodeGraph& graph,
+        const String& nodeId,
+        int depth) const {
+    if (depth > (int) graph.getNodes().size()) {
+        return PortDomain::ControlSignal;
+    }
+
+    for (const auto& edge : graph.getEdges()) {
+        if (edge.attachment || edge.destNodeId != nodeId) {
+            continue;
+        }
+
+        const PortDomain domain = resolvedEdgeDomain(graph, edge, depth + 1);
+        if (concreteOperationDomain(domain)) {
+            return domain;
+        }
+    }
+
+    return PortDomain::ControlSignal;
+}
+
+PortDomain GraphValidator::resolvedEdgeDomain(const NodeGraph& graph, const Edge& edge, int depth) const {
+    if (depth > (int) graph.getNodes().size()) {
+        return edge.domain;
+    }
+
+    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
+    const Node* destNode = findNode(graph, edge.destNodeId);
+
+    if (sourceNode == nullptr || destNode == nullptr) {
+        return edge.domain;
+    }
+
+    const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
+    const Port* dest = findPort(*destNode, edge.destPortId, true);
+
+    if (source == nullptr || dest == nullptr) {
+        return edge.domain;
+    }
+
+    PortDomain sourceDomain = source->domain;
+
+    if (sourceDomain == PortDomain::ControlSignal && isContextResolvedSource(*sourceNode, *source)) {
+        sourceDomain = domainFromContextInput(graph, *sourceNode);
+    }
+
+    if (sourceDomain == PortDomain::ControlSignal
+            && (sourceNode->kind == NodeKind::Add || sourceNode->kind == NodeKind::Multiply)) {
+        sourceDomain = firstResolvedInputDomain(graph, sourceNode->id, depth + 1);
+    }
+
+    if (sourceDomain != PortDomain::ControlSignal) {
+        return sourceDomain;
+    }
+
+    if (dest->domain != PortDomain::ControlSignal) {
+        return dest->domain;
+    }
+
+    return edge.domain;
+}
+
 void GraphValidator::validateOperationInputs(
         const NodeGraph& graph,
         std::vector<GraphValidationIssue>& issues) const {
@@ -147,17 +265,19 @@ void GraphValidator::validateOperationInputs(
                 continue;
             }
 
-            if (!concreteOperationDomain(edge.domain)) {
+            const PortDomain domain = resolvedEdgeDomain(graph, edge);
+
+            if (!concreteOperationDomain(domain)) {
                 continue;
             }
 
             if (!hasConcreteDomain) {
-                firstConcreteDomain = edge.domain;
+                firstConcreteDomain = domain;
                 hasConcreteDomain = true;
                 continue;
             }
 
-            if (edge.domain != firstConcreteDomain) {
+            if (domain != firstConcreteDomain) {
                 addIssue(issues, GraphValidationCode::MixedOperationDomains,
                          "Operation node mixes incompatible domains: " + node.id);
                 break;
