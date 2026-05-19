@@ -154,9 +154,9 @@ OperationPortLayout operationPortLayoutFor(const Node& node) {
 }
 
 Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
-    const float scale = portScaleForZoom(zoom);
-    return Rectangle<float>(18.f * scale, 18.f * scale)
-            .withCentre({ nodeBounds.getRight() - 18.f * scale, nodeBounds.getY() + 21.f * scale });
+    const float size = 18.f * zoom;
+    return Rectangle<float>(size, size)
+            .withCentre({ nodeBounds.getRight() - 18.f * zoom, nodeBounds.getY() + 21.f * zoom });
 }
 
 void drawOperationLayoutIcon(Graphics& g, Rectangle<float> button, OperationPortLayout layout, Colour colour) {
@@ -670,9 +670,6 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     const float uiScale = portScaleForZoom(zoom);
     const float corner = 8.f * uiScale;
 
-    g.setColour(Colours::black.withAlpha(0.32f));
-    g.fillRoundedRectangle(bounds.translated(0.f, 9.f * uiScale), corner);
-
     g.setColour(kNodeBackground);
     g.fillRoundedRectangle(bounds, corner);
 
@@ -1158,7 +1155,7 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
             { PortDomain::ControlSignal, "Universal", false }
     };
 
-    Rectangle<float> legend(18.f, (float) getHeight() - 174.f, 160.f, 138.f);
+    Rectangle<float> legend((float) getWidth() - 178.f, (float) getHeight() - 174.f, 160.f, 138.f);
 
     g.setColour(Colour(0xaa0b0e13));
     g.fillRoundedRectangle(legend, 5.f);
@@ -1281,7 +1278,7 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
             g.setColour(colour.withAlpha(0.48f));
             g.drawRoundedRectangle(row, 4.f, 1.f);
             g.setColour(kText);
-            g.setFont(FontOptions(10.5f, Font::bold));
+            g.setFont(FontOptions(12.6f, Font::bold));
             g.drawText(entry.label, row.reduced(8.f, 0.f), Justification::centredLeft);
             y += kPaletteRowHeight;
         }
@@ -1450,7 +1447,7 @@ bool NodeCanvas::findOperationLayoutButtonAt(Point<float> screenPosition, String
             continue;
         }
 
-        if (operationLayoutButtonBounds(toScreen(node.bounds), zoom).expanded(4.f * portScaleForZoom(zoom)).contains(screenPosition)) {
+        if (operationLayoutButtonBounds(toScreen(node.bounds), zoom).expanded(4.f * zoom).contains(screenPosition)) {
             nodeId = node.id;
             return true;
         }
