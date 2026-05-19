@@ -1402,7 +1402,8 @@ Point<float> NodeCanvas::viewportCentreWorld() const {
 }
 
 Point<float> NodeCanvas::paletteCreationWorldPosition(Point<float> paletteClickPosition) const {
-    const float x = jmin((float) getWidth() - 280.f, 128.f);
+    const float paletteRight = 18.f + kPaletteWidth;
+    const float x = jmin((float) getWidth() - 280.f, paletteRight + 32.f);
     return toWorld({ x, paletteClickPosition.y });
 }
 
