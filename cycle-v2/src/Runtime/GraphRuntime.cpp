@@ -2,6 +2,20 @@
 
 namespace CycleV2 {
 
+namespace {
+
+const GraphExecutionStep* findStep(const GraphExecutionPlan& plan, const String& nodeId) {
+    for (const auto& step : plan.steps) {
+        if (step.nodeId == nodeId) {
+            return &step;
+        }
+    }
+
+    return nullptr;
+}
+
+}
+
 RuntimeProcessTrace GraphRuntime::process(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan) const {
@@ -15,9 +29,15 @@ RuntimeProcessTrace GraphRuntime::process(
             continue;
         }
 
+        const GraphExecutionStep* step = findStep(plan, node->id);
+
         trace.nodes.push_back({
                 node->id,
                 node->kind,
+                step == nullptr ? AudioModuleRole::None : step->audioRole,
+                step == nullptr ? PreviewModuleRole::None : step->previewRole,
+                step != nullptr && step->previewable,
+                step != nullptr && step->cycle1AdapterBacked,
                 collectInputs(plan.signalEdges, node->id),
                 collectInputs(plan.attachments, node->id)
         });

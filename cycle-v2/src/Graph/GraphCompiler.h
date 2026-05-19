@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GraphValidator.h"
+#include "../Runtime/NodeModuleRegistry.h"
 
 #include <vector>
 
@@ -15,8 +16,18 @@ struct GraphCompileIssue {
     String message;
 };
 
+struct GraphExecutionStep {
+    String nodeId;
+    NodeKind kind { NodeKind::GenericProcessor };
+    AudioModuleRole audioRole { AudioModuleRole::None };
+    PreviewModuleRole previewRole { PreviewModuleRole::None };
+    bool previewable {};
+    bool cycle1AdapterBacked {};
+};
+
 struct GraphExecutionPlan {
     std::vector<String> nodeOrder;
+    std::vector<GraphExecutionStep> steps;
     std::vector<Edge> signalEdges;
     std::vector<Edge> attachments;
 };
@@ -35,6 +46,7 @@ public:
 
 private:
     GraphValidator validator;
+    NodeModuleRegistry moduleRegistry;
 };
 
 }

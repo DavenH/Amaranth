@@ -16,6 +16,10 @@ struct RuntimeInput {
 struct RuntimeNodeTrace {
     String nodeId;
     NodeKind kind { NodeKind::GenericProcessor };
+    AudioModuleRole audioRole { AudioModuleRole::None };
+    PreviewModuleRole previewRole { PreviewModuleRole::None };
+    bool previewable {};
+    bool cycle1AdapterBacked {};
     std::vector<RuntimeInput> signalInputs;
     std::vector<RuntimeInput> attachments;
 };

@@ -72,6 +72,36 @@ std::vector<String> buildNodeOrder(
     return order;
 }
 
+std::vector<GraphExecutionStep> buildExecutionSteps(
+        const NodeGraph& graph,
+        const std::vector<String>& nodeOrder,
+        const NodeModuleRegistry& moduleRegistry) {
+    std::vector<GraphExecutionStep> steps;
+    steps.reserve(nodeOrder.size());
+
+    for (const auto& nodeId : nodeOrder) {
+        const int nodeIndex = indexOfNode(graph.getNodes(), nodeId);
+
+        if (nodeIndex < 0) {
+            continue;
+        }
+
+        const Node& node = graph.getNodes()[static_cast<size_t>(nodeIndex)];
+        const auto descriptor = moduleRegistry.descriptorFor(node.kind);
+
+        steps.push_back({
+                node.id,
+                node.kind,
+                descriptor.audioRole,
+                descriptor.previewRole,
+                descriptor.previewable,
+                descriptor.cycle1AdapterBacked
+        });
+    }
+
+    return steps;
+}
+
 }
 
 bool GraphCompileResult::succeeded() const {
@@ -95,6 +125,10 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
     }
 
     result.plan.nodeOrder = buildNodeOrder(graph, result.compileIssues);
+
+    if (result.compileIssues.empty()) {
+        result.plan.steps = buildExecutionSteps(graph, result.plan.nodeOrder, moduleRegistry);
+    }
 
     if (!result.succeeded()) {
         result.plan = {};

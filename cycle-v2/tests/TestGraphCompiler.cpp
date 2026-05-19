@@ -42,6 +42,7 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(result.succeeded());
     REQUIRE(result.plan.attachments.size() == 2);
     REQUIRE(result.plan.signalEdges.size() == 11);
+    REQUIRE(result.plan.steps.size() == result.plan.nodeOrder.size());
 
     const auto& plan = result.plan;
     REQUIRE(orderIndex(plan, "voice") < orderIndex(plan, "waveMesh"));
@@ -57,6 +58,25 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(orderIndex(plan, "ifft") < orderIndex(plan, "multiply"));
     REQUIRE(orderIndex(plan, "env") < orderIndex(plan, "multiply"));
     REQUIRE(orderIndex(plan, "multiply") < orderIndex(plan, "out"));
+
+    const auto findStep = [&](const String& nodeId) -> const GraphExecutionStep& {
+        const auto found = std::find_if(
+                plan.steps.begin(),
+                plan.steps.end(),
+                [&](const GraphExecutionStep& step) {
+                    return step.nodeId == nodeId;
+                });
+        REQUIRE(found != plan.steps.end());
+        return *found;
+    };
+
+    REQUIRE(findStep("waveMesh").audioRole == AudioModuleRole::MeshSource);
+    REQUIRE(findStep("waveMesh").previewRole == PreviewModuleRole::MeshSurface);
+    REQUIRE(findStep("waveMesh").cycle1AdapterBacked);
+    REQUIRE(findStep("fft").audioRole == AudioModuleRole::Fft);
+    REQUIRE_FALSE(findStep("fft").previewable);
+    REQUIRE(findStep("multiply").audioRole == AudioModuleRole::Multiply);
+    REQUIRE(findStep("out").previewRole == PreviewModuleRole::OutputMeters);
 }
 
 TEST_CASE("Invalid graphs do not compile", "[cycle-v2][graph]") {
