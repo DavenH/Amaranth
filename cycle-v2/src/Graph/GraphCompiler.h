@@ -16,6 +16,22 @@ struct GraphCompileIssue {
     String message;
 };
 
+struct GraphStepInput {
+    String sourceNodeId;
+    String sourcePortId;
+    String destPortId;
+    PortDomain domain {};
+    ChannelLayout channelLayout { ChannelLayout::Mono };
+};
+
+struct GraphBufferPlan {
+    String id;
+    String sourceNodeId;
+    String sourcePortId;
+    PortDomain domain {};
+    ChannelLayout channelLayout { ChannelLayout::Mono };
+};
+
 struct GraphExecutionStep {
     String nodeId;
     NodeKind kind { NodeKind::GenericProcessor };
@@ -25,11 +41,13 @@ struct GraphExecutionStep {
     bool cycle1AdapterBacked {};
     String cycle1Reference;
     std::vector<NodeParameter> parameters;
+    std::vector<GraphStepInput> inputs;
 };
 
 struct GraphExecutionPlan {
     std::vector<String> nodeOrder;
     std::vector<GraphExecutionStep> steps;
+    std::vector<GraphBufferPlan> buffers;
     std::vector<Edge> signalEdges;
     std::vector<Edge> attachments;
 };

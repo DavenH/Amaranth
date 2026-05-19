@@ -38,6 +38,16 @@ const Port* findPort(const Node& node, const String& portId, bool input) {
     return nullptr;
 }
 
+int inputPortIndex(const Node& node, const String& portId) {
+    for (int i = 0; i < static_cast<int>(node.inputs.size()); ++i) {
+        if (node.inputs[static_cast<size_t>(i)].id == portId) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 bool isConcreteSignalDomain(PortDomain domain) {
     switch (domain) {
         case PortDomain::TimeSignal:
@@ -145,6 +155,28 @@ PortDomain resolvedEdgeDomain(
     return edge.domain;
 }
 
+ChannelLayout resolvedEdgeChannelLayout(const NodeGraph& graph, const Edge& edge) {
+    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
+    const Node* destNode = findNode(graph, edge.destNodeId);
+
+    if (sourceNode == nullptr || destNode == nullptr) {
+        return ChannelLayout::Mono;
+    }
+
+    const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
+    const Port* dest = findPort(*destNode, edge.destPortId, true);
+
+    if (source == nullptr || dest == nullptr) {
+        return ChannelLayout::Mono;
+    }
+
+    if (dest->domain != PortDomain::ControlSignal) {
+        return dest->channelLayout;
+    }
+
+    return source->channelLayout;
+}
+
 std::vector<String> buildNodeOrder(
         const NodeGraph& graph,
         std::vector<GraphCompileIssue>& issues) {
@@ -204,6 +236,7 @@ std::vector<String> buildNodeOrder(
 std::vector<GraphExecutionStep> buildExecutionSteps(
         const NodeGraph& graph,
         const std::vector<String>& nodeOrder,
+        const std::vector<Edge>& resolvedEdges,
         const NodeModuleRegistry& moduleRegistry) {
     std::vector<GraphExecutionStep> steps;
     steps.reserve(nodeOrder.size());
@@ -217,6 +250,28 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
 
         const Node& node = graph.getNodes()[static_cast<size_t>(nodeIndex)];
         const auto descriptor = moduleRegistry.descriptorFor(node.kind);
+        std::vector<GraphStepInput> inputs;
+
+        for (const auto& edge : resolvedEdges) {
+            if (edge.destNodeId != node.id) {
+                continue;
+            }
+
+            inputs.push_back({
+                    edge.sourceNodeId,
+                    edge.sourcePortId,
+                    edge.destPortId,
+                    edge.domain,
+                    resolvedEdgeChannelLayout(graph, edge)
+            });
+        }
+
+        std::sort(
+                inputs.begin(),
+                inputs.end(),
+                [&](const GraphStepInput& a, const GraphStepInput& b) {
+                    return inputPortIndex(node, a.destPortId) < inputPortIndex(node, b.destPortId);
+                });
 
         steps.push_back({
                 node.id,
@@ -226,7 +281,8 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 descriptor.previewable,
                 descriptor.cycle1AdapterBacked,
                 descriptor.cycle1Reference,
-                node.parameters
+                node.parameters,
+                std::move(inputs)
         });
     }
 
@@ -253,6 +309,45 @@ std::vector<Edge> resolveSignalEdges(
     return resolvedEdges;
 }
 
+bool hasBufferForSource(
+        const std::vector<GraphBufferPlan>& buffers,
+        const String& sourceNodeId,
+        const String& sourcePortId) {
+    for (const auto& buffer : buffers) {
+        if (buffer.sourceNodeId == sourceNodeId && buffer.sourcePortId == sourcePortId) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+std::vector<GraphBufferPlan> buildBufferPlan(
+        const NodeGraph& graph,
+        const std::vector<Edge>& resolvedEdges) {
+    std::vector<GraphBufferPlan> buffers;
+
+    for (const auto& edge : resolvedEdges) {
+        if (edge.domain == PortDomain::DomainContext) {
+            continue;
+        }
+
+        if (hasBufferForSource(buffers, edge.sourceNodeId, edge.sourcePortId)) {
+            continue;
+        }
+
+        buffers.push_back({
+                edge.sourceNodeId + "." + edge.sourcePortId,
+                edge.sourceNodeId,
+                edge.sourcePortId,
+                edge.domain,
+                resolvedEdgeChannelLayout(graph, edge)
+        });
+    }
+
+    return buffers;
+}
+
 }
 
 bool GraphCompileResult::succeeded() const {
@@ -271,6 +366,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
 
     if (result.compileIssues.empty()) {
         result.plan.signalEdges = resolveSignalEdges(graph, result.plan.nodeOrder);
+        result.plan.buffers = buildBufferPlan(graph, result.plan.signalEdges);
 
         for (const auto& edge : graph.getEdges()) {
             if (edge.attachment) {
@@ -278,7 +374,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
             }
         }
 
-        result.plan.steps = buildExecutionSteps(graph, result.plan.nodeOrder, moduleRegistry);
+        result.plan.steps = buildExecutionSteps(graph, result.plan.nodeOrder, result.plan.signalEdges, moduleRegistry);
     }
 
     if (!result.succeeded()) {

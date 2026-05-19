@@ -48,6 +48,30 @@ const Edge& findSignalEdge(const GraphExecutionPlan& plan, const String& sourceN
     return *found;
 }
 
+const GraphExecutionStep& findStep(const GraphExecutionPlan& plan, const String& nodeId) {
+    const auto found = std::find_if(
+            plan.steps.begin(),
+            plan.steps.end(),
+            [&](const GraphExecutionStep& step) {
+                return step.nodeId == nodeId;
+            });
+
+    REQUIRE(found != plan.steps.end());
+    return *found;
+}
+
+const GraphBufferPlan& findBuffer(const GraphExecutionPlan& plan, const String& sourceNodeId, const String& sourcePortId) {
+    const auto found = std::find_if(
+            plan.buffers.begin(),
+            plan.buffers.end(),
+            [&](const GraphBufferPlan& buffer) {
+                return buffer.sourceNodeId == sourceNodeId && buffer.sourcePortId == sourcePortId;
+            });
+
+    REQUIRE(found != plan.buffers.end());
+    return *found;
+}
+
 }
 
 TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]") {
@@ -56,6 +80,7 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(result.succeeded());
     REQUIRE(result.plan.attachments.size() == 2);
     REQUIRE(result.plan.signalEdges.size() == 11);
+    REQUIRE(result.plan.buffers.size() == 10);
     REQUIRE(result.plan.steps.size() == result.plan.nodeOrder.size());
 
     const auto& plan = result.plan;
@@ -73,28 +98,25 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(orderIndex(plan, "env") < orderIndex(plan, "multiply"));
     REQUIRE(orderIndex(plan, "multiply") < orderIndex(plan, "out"));
 
-    const auto findStep = [&](const String& nodeId) -> const GraphExecutionStep& {
-        const auto found = std::find_if(
-                plan.steps.begin(),
-                plan.steps.end(),
-                [&](const GraphExecutionStep& step) {
-                    return step.nodeId == nodeId;
-                });
-        REQUIRE(found != plan.steps.end());
-        return *found;
-    };
-
-    REQUIRE(parameterValueForNode({ "voice", NodeKind::VoiceContext, {}, {}, {}, findStep("voice").parameters, {}, {} },
+    REQUIRE(parameterValueForNode({ "voice", NodeKind::VoiceContext, {}, {}, {}, findStep(plan, "voice").parameters, {}, {} },
             "domain") == "waveform");
-    REQUIRE(findStep("waveMesh").audioRole == AudioModuleRole::MeshSource);
-    REQUIRE(findStep("waveMesh").previewRole == PreviewModuleRole::MeshSurface);
-    REQUIRE(findStep("waveMesh").cycle1AdapterBacked);
-    REQUIRE(findStep("waveMesh").cycle1Reference
+    REQUIRE(findStep(plan, "waveMesh").audioRole == AudioModuleRole::MeshSource);
+    REQUIRE(findStep(plan, "waveMesh").previewRole == PreviewModuleRole::MeshSurface);
+    REQUIRE(findStep(plan, "waveMesh").cycle1AdapterBacked);
+    REQUIRE(findStep(plan, "waveMesh").cycle1Reference
             == "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp");
-    REQUIRE(findStep("fft").audioRole == AudioModuleRole::Fft);
-    REQUIRE_FALSE(findStep("fft").previewable);
-    REQUIRE(findStep("multiply").audioRole == AudioModuleRole::Multiply);
-    REQUIRE(findStep("out").previewRole == PreviewModuleRole::OutputMeters);
+    REQUIRE(findStep(plan, "fft").audioRole == AudioModuleRole::Fft);
+    REQUIRE_FALSE(findStep(plan, "fft").previewable);
+    REQUIRE(findStep(plan, "multiply").audioRole == AudioModuleRole::Multiply);
+    REQUIRE(findStep(plan, "out").previewRole == PreviewModuleRole::OutputMeters);
+    REQUIRE(findStep(plan, "multiply").inputs.size() == 2);
+    REQUIRE(findStep(plan, "multiply").inputs[0].destPortId == "audio");
+    REQUIRE(findStep(plan, "multiply").inputs[0].domain == PortDomain::TimeSignal);
+    REQUIRE(findStep(plan, "multiply").inputs[0].channelLayout == ChannelLayout::LinkedStereo);
+    REQUIRE(findStep(plan, "multiply").inputs[1].destPortId == "factor");
+    REQUIRE(findStep(plan, "multiply").inputs[1].domain == PortDomain::EnvelopeSignal);
+    REQUIRE(findBuffer(plan, "ifft", "time").domain == PortDomain::TimeSignal);
+    REQUIRE(findBuffer(plan, "ifft", "time").channelLayout == ChannelLayout::LinkedStereo);
 }
 
 TEST_CASE("Invalid graphs do not compile", "[cycle-v2][graph]") {
@@ -131,6 +153,8 @@ TEST_CASE("Compiler resolves source domains from voice context parameters", "[cy
     REQUIRE(result.succeeded());
     REQUIRE(findSignalEdge(result.plan, "mesh", "add").domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(findSignalEdge(result.plan, "add", "next").domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(findStep(result.plan, "add").inputs.front().domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(findBuffer(result.plan, "mesh", "out").domain == PortDomain::SpectralMagnitudeSignal);
 }
 
 TEST_CASE("Compiler rejects processing cycles", "[cycle-v2][graph]") {

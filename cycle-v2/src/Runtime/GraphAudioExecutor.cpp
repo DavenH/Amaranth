@@ -23,12 +23,8 @@ GraphAudioResult GraphAudioExecutor::process(
         context.frameCount = frameCount;
         context.parameters = step.parameters;
 
-        for (const auto& edge : plan.signalEdges) {
-            if (edge.destNodeId != step.nodeId) {
-                continue;
-            }
-
-            const AudioProcessBlock* sourceOutput = findOutputForNode(outputs, edge.sourceNodeId);
+        for (const auto& input : step.inputs) {
+            const AudioProcessBlock* sourceOutput = findOutputForNode(outputs, input.sourceNodeId);
             if (sourceOutput != nullptr) {
                 context.inputs.push_back(*sourceOutput);
             }
