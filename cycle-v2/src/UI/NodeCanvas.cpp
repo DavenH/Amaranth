@@ -1326,27 +1326,15 @@ bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& se
     return GraphEditor().connect(candidate, first, second).succeeded();
 }
 
-Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool attachment) const {
+Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool) const {
     Path path;
     path.startNewSubPath(source);
 
     const float deltaX = dest.x - source.x;
-    const float deltaY = dest.y - source.y;
-
-    if (std::abs(deltaX) < 145.f * zoom && std::abs(deltaY) < 180.f * zoom) {
-        const float bend = jmax(24.f * zoom, std::abs(deltaX) * 0.42f);
-        const float verticalPull = jlimit(-34.f * zoom, 34.f * zoom, deltaY * 0.22f);
-        path.cubicTo(
-                { source.x + bend, source.y + verticalPull },
-                { dest.x - bend, dest.y - verticalPull },
-                dest);
-        return path;
-    }
-
-    float dx = jmax(36.f * zoom, std::abs(deltaX) * 0.45f);
-    float lift = attachment ? -30.f * zoom : 0.f;
-    Point<float> c1(source.x + dx, source.y + lift);
-    Point<float> c2(dest.x - dx, dest.y + lift);
+    const float dx = jmax(36.f * zoom, std::abs(deltaX) * 0.45f);
+    const float lift = -30.f * zoom;
+    const Point<float> c1(source.x + dx, source.y + lift);
+    const Point<float> c2(dest.x - dx, dest.y + lift);
     path.cubicTo(c1, c2, dest);
 
     return path;
