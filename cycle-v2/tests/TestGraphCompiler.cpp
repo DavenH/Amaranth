@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphNodeFactory.h"
 
 #include <algorithm>
 
@@ -33,6 +34,18 @@ int orderIndex(const GraphExecutionPlan& plan, const String& nodeId) {
     const auto found = std::find(plan.nodeOrder.begin(), plan.nodeOrder.end(), nodeId);
     REQUIRE(found != plan.nodeOrder.end());
     return static_cast<int>(std::distance(plan.nodeOrder.begin(), found));
+}
+
+const Edge& findSignalEdge(const GraphExecutionPlan& plan, const String& sourceNodeId, const String& destNodeId) {
+    const auto found = std::find_if(
+            plan.signalEdges.begin(),
+            plan.signalEdges.end(),
+            [&](const Edge& edge) {
+                return edge.sourceNodeId == sourceNodeId && edge.destNodeId == destNodeId;
+            });
+
+    REQUIRE(found != plan.signalEdges.end());
+    return *found;
 }
 
 }
@@ -92,6 +105,30 @@ TEST_CASE("Invalid graphs do not compile", "[cycle-v2][graph]") {
     REQUIRE_FALSE(result.validationIssues.empty());
     REQUIRE(result.compileIssues.empty());
     REQUIRE(result.plan.nodeOrder.empty());
+}
+
+TEST_CASE("Compiler resolves source domains from voice context parameters", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = {
+            { "domain", "Start Domain", "spectral" }
+    };
+
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 240.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", { 520.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Add, "next", { 760.f, 0.f }));
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, false });
+    graph.addEdge({ "add", "out", "next", "left", PortDomain::ControlSignal, false });
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(findSignalEdge(result.plan, "mesh", "add").domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(findSignalEdge(result.plan, "add", "next").domain == PortDomain::SpectralMagnitudeSignal);
 }
 
 TEST_CASE("Compiler rejects processing cycles", "[cycle-v2][graph]") {

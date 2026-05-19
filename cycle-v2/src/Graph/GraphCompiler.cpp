@@ -16,6 +16,135 @@ int indexOfNode(const std::vector<Node>& nodes, const String& nodeId) {
     return -1;
 }
 
+const Node* findNode(const NodeGraph& graph, const String& nodeId) {
+    const int index = indexOfNode(graph.getNodes(), nodeId);
+
+    if (index < 0) {
+        return nullptr;
+    }
+
+    return &graph.getNodes()[static_cast<size_t>(index)];
+}
+
+const Port* findPort(const Node& node, const String& portId, bool input) {
+    const auto& ports = input ? node.inputs : node.outputs;
+
+    for (const auto& port : ports) {
+        if (port.id == portId) {
+            return &port;
+        }
+    }
+
+    return nullptr;
+}
+
+bool isConcreteSignalDomain(PortDomain domain) {
+    switch (domain) {
+        case PortDomain::TimeSignal:
+        case PortDomain::SpectralMagnitudeSignal:
+        case PortDomain::SpectralPhaseSignal:
+        case PortDomain::EnvelopeSignal:
+        case PortDomain::MeshField:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+PortDomain domainFromVoiceContext(const Node& voiceNode) {
+    const String domain = parameterValueForNode(voiceNode, "domain", "waveform");
+
+    if (domain == "spectral" || domain == "spectralMagnitude") {
+        return PortDomain::SpectralMagnitudeSignal;
+    }
+
+    if (domain == "spectralPhase") {
+        return PortDomain::SpectralPhaseSignal;
+    }
+
+    return PortDomain::TimeSignal;
+}
+
+PortDomain domainFromContextInput(const NodeGraph& graph, const Node& node) {
+    for (const auto& edge : graph.getEdges()) {
+        if (edge.attachment || edge.destNodeId != node.id || edge.destPortId != "context") {
+            continue;
+        }
+
+        const Node* sourceNode = findNode(graph, edge.sourceNodeId);
+        if (sourceNode != nullptr && sourceNode->kind == NodeKind::VoiceContext) {
+            return domainFromVoiceContext(*sourceNode);
+        }
+    }
+
+    return PortDomain::ControlSignal;
+}
+
+PortDomain firstResolvedInputDomain(const std::vector<Edge>& resolvedEdges, const String& nodeId) {
+    for (const auto& edge : resolvedEdges) {
+        if (edge.destNodeId == nodeId && isConcreteSignalDomain(edge.domain)) {
+            return edge.domain;
+        }
+    }
+
+    return PortDomain::ControlSignal;
+}
+
+PortDomain resolvedControlOutputDomain(
+        const NodeGraph& graph,
+        const Node& sourceNode,
+        const Port& sourcePort,
+        const std::vector<Edge>& resolvedEdges) {
+    if (sourcePort.domain != PortDomain::ControlSignal) {
+        return sourcePort.domain;
+    }
+
+    if ((sourceNode.kind == NodeKind::WaveSource
+            || sourceNode.kind == NodeKind::ImageSource
+            || sourceNode.kind == NodeKind::TrilinearMesh)
+            && sourcePort.id == "out") {
+        return domainFromContextInput(graph, sourceNode);
+    }
+
+    if (sourceNode.kind == NodeKind::Add || sourceNode.kind == NodeKind::Multiply) {
+        return firstResolvedInputDomain(resolvedEdges, sourceNode.id);
+    }
+
+    return PortDomain::ControlSignal;
+}
+
+PortDomain resolvedEdgeDomain(
+        const NodeGraph& graph,
+        const Edge& edge,
+        const std::vector<Edge>& resolvedEdges) {
+    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
+    const Node* destNode = findNode(graph, edge.destNodeId);
+
+    if (sourceNode == nullptr || destNode == nullptr) {
+        return edge.domain;
+    }
+
+    const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
+    const Port* dest = findPort(*destNode, edge.destPortId, true);
+
+    if (source == nullptr || dest == nullptr) {
+        return edge.domain;
+    }
+
+    const PortDomain sourceDomain = resolvedControlOutputDomain(graph, *sourceNode, *source, resolvedEdges);
+
+    if (sourceDomain != PortDomain::ControlSignal) {
+        return sourceDomain;
+    }
+
+    if (dest->domain != PortDomain::ControlSignal) {
+        return dest->domain;
+    }
+
+    return edge.domain;
+}
+
 std::vector<String> buildNodeOrder(
         const NodeGraph& graph,
         std::vector<GraphCompileIssue>& issues) {
@@ -103,6 +232,26 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
     return steps;
 }
 
+std::vector<Edge> resolveSignalEdges(
+        const NodeGraph& graph,
+        const std::vector<String>& nodeOrder) {
+    std::vector<Edge> resolvedEdges;
+
+    for (const auto& nodeId : nodeOrder) {
+        for (const auto& edge : graph.getEdges()) {
+            if (edge.attachment || edge.sourceNodeId != nodeId) {
+                continue;
+            }
+
+            Edge resolved = edge;
+            resolved.domain = resolvedEdgeDomain(graph, edge, resolvedEdges);
+            resolvedEdges.push_back(std::move(resolved));
+        }
+    }
+
+    return resolvedEdges;
+}
+
 }
 
 bool GraphCompileResult::succeeded() const {
@@ -117,17 +266,17 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
         return result;
     }
 
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.attachment) {
-            result.plan.attachments.push_back(edge);
-        } else {
-            result.plan.signalEdges.push_back(edge);
-        }
-    }
-
     result.plan.nodeOrder = buildNodeOrder(graph, result.compileIssues);
 
     if (result.compileIssues.empty()) {
+        result.plan.signalEdges = resolveSignalEdges(graph, result.plan.nodeOrder);
+
+        for (const auto& edge : graph.getEdges()) {
+            if (edge.attachment) {
+                result.plan.attachments.push_back(edge);
+            }
+        }
+
         result.plan.steps = buildExecutionSteps(graph, result.plan.nodeOrder, moduleRegistry);
     }
 
