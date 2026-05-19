@@ -24,9 +24,18 @@ GraphAudioResult GraphAudioExecutor::process(
         context.parameters = step.parameters;
 
         for (const auto& input : step.inputs) {
+            if (input.destPortIndex < 0) {
+                continue;
+            }
+
+            const auto inputIndex = (size_t) input.destPortIndex;
+            if (context.inputs.size() <= inputIndex) {
+                context.inputs.resize(inputIndex + 1);
+            }
+
             const AudioProcessBlock* sourceOutput = findOutputForNode(outputs, input.sourceNodeId);
             if (sourceOutput != nullptr) {
-                context.inputs.push_back(*sourceOutput);
+                context.inputs[inputIndex] = *sourceOutput;
             }
         }
 

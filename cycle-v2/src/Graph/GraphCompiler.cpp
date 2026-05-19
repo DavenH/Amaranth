@@ -291,6 +291,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                     edge.sourceNodeId,
                     edge.sourcePortId,
                     edge.destPortId,
+                    inputPortIndex(node, edge.destPortId),
                     edge.domain,
                     resolvedEdgeChannelLayout(graph, edge)
             });
@@ -300,7 +301,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 inputs.begin(),
                 inputs.end(),
                 [&](const GraphStepInput& a, const GraphStepInput& b) {
-                    return inputPortIndex(node, a.destPortId) < inputPortIndex(node, b.destPortId);
+                    return a.destPortIndex < b.destPortIndex;
                 });
 
         steps.push_back({
