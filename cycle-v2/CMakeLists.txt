@@ -20,6 +20,7 @@ set(GRAPH_SOURCES
 
 set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphRuntime.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeModuleRegistry.cpp"
 )
 
 set(BASE_DEFINITIONS
