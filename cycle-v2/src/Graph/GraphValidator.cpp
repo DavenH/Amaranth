@@ -306,6 +306,13 @@ PortDomain GraphValidator::resolvedEdgeDomain(const NodeGraph& graph, const Edge
         return dest->domain;
     }
 
+    if (destNode->kind == NodeKind::Add || destNode->kind == NodeKind::Multiply) {
+        const PortDomain operationDomain = firstResolvedInputDomain(graph, destNode->id, depth + 1);
+        if (operationDomain != PortDomain::ControlSignal) {
+            return operationDomain;
+        }
+    }
+
     return edge.domain;
 }
 

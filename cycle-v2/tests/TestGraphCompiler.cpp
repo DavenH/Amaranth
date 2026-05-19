@@ -124,6 +124,10 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(findStep(plan, "multiply").inputs[1].destPortId == "factor");
     REQUIRE(findStep(plan, "multiply").inputs[1].destPortIndex == 1);
     REQUIRE(findStep(plan, "multiply").inputs[1].domain == PortDomain::EnvelopeSignal);
+    REQUIRE(findSignalEdge(plan, "magMesh", "addMag").domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(findSignalEdge(plan, "phaseMesh", "addPhase").domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(findBuffer(plan, "magMesh", "out").domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(findBuffer(plan, "phaseMesh", "out").domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(findBuffer(plan, "ifft", "time").domain == PortDomain::TimeSignal);
     REQUIRE(findBuffer(plan, "ifft", "time").channelLayout == ChannelLayout::LinkedStereo);
 }

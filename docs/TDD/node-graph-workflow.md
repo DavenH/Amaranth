@@ -209,6 +209,12 @@ connected to a `VoiceContext` that later switches to spectral mode, the edge
 should enter an invalid/error state and become valid again when the context
 returns to waveform mode.
 
+Resolved signal type is a property of traversal context, not of a mesh node's
+persistent schema. A mesh node may cache its currently resolved traversal domain
+for preview or DSP preparation, but that cache is derived state and must be
+invalidated when upstream context, consuming operation, or graph topology
+changes. The graph source of truth remains node schema plus typed edges.
+
 ### Explicit Assignments
 
 Some of Cycle's current behavior comes from assignments that are hard to see in

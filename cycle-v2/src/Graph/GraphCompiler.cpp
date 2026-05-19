@@ -184,6 +184,13 @@ PortDomain resolvedEdgeDomain(
         return dest->domain;
     }
 
+    if (destNode->kind == NodeKind::Add || destNode->kind == NodeKind::Multiply) {
+        const PortDomain operationDomain = firstResolvedInputDomain(resolvedEdges, destNode->id);
+        if (operationDomain != PortDomain::ControlSignal) {
+            return operationDomain;
+        }
+    }
+
     return edge.domain;
 }
 
@@ -339,6 +346,23 @@ std::vector<Edge> resolveSignalEdges(
             Edge resolved = edge;
             resolved.domain = resolvedEdgeDomain(graph, edge, resolvedEdges);
             resolvedEdges.push_back(std::move(resolved));
+        }
+    }
+
+    bool changed = true;
+    int remainingPasses = (int) resolvedEdges.size();
+
+    while (changed && remainingPasses > 0) {
+        changed = false;
+        --remainingPasses;
+
+        for (auto& edge : resolvedEdges) {
+            const PortDomain domain = resolvedEdgeDomain(graph, edge, resolvedEdges);
+
+            if (edge.domain != domain) {
+                edge.domain = domain;
+                changed = true;
+            }
         }
     }
 

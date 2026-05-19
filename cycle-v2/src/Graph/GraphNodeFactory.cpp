@@ -58,7 +58,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             };
             node.outputs = {
-                    output("out", "Out", PortDomain::ControlSignal)
+                    output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo)
             };
             break;
 

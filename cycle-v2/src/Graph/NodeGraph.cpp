@@ -143,12 +143,10 @@ NodeGraph NodeGraph::createDemoGraph() {
             { 470.f, 80.f, 380.f, 280.f },
             {
                     input("context", "Context", PortDomain::DomainContext),
+                    input("in", "In", PortDomain::ControlSignal, ChannelLayout::LinkedStereo),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
-            {
-                    output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo),
-                    output("mesh", "Mesh", PortDomain::MeshField)
-            }));
+            { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }));
 
     graph.addNode(node(
             "fft",
@@ -173,9 +171,11 @@ NodeGraph NodeGraph::createDemoGraph() {
             "layer operand",
             { 1265.f, 20.f, 285.f, 180.f },
             {
+                    input("context", "Context", PortDomain::DomainContext),
+                    input("in", "In", PortDomain::ControlSignal, ChannelLayout::LinkedStereo),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
-            { output("mesh", "Mesh", PortDomain::MeshField, ChannelLayout::Mono, PortSide::Bottom) }));
+            { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Bottom) }));
 
     graph.addNode(node(
             "addMag",
@@ -185,7 +185,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             { 1318.f, 310.f, 180.f, 150.f },
             {
                     input("signal", "Signal", PortDomain::SpectralMagnitudeSignal),
-                    input("operand", "Mesh", PortDomain::MeshField, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
+                    input("operand", "Mesh", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
             },
             { output("out", "Out", PortDomain::SpectralMagnitudeSignal) }));
 
@@ -195,8 +195,12 @@ NodeGraph NodeGraph::createDemoGraph() {
             "Trilinear Mesh",
             "phase operand",
             { 1265.f, 680.f, 285.f, 180.f },
-            {},
-            { output("mesh", "Mesh", PortDomain::MeshField, ChannelLayout::Mono, PortSide::Top) }));
+            {
+                    input("context", "Context", PortDomain::DomainContext),
+                    input("in", "In", PortDomain::ControlSignal, ChannelLayout::LinkedStereo),
+                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
+            },
+            { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Top) }));
 
     graph.addNode(node(
             "addPhase",
@@ -206,7 +210,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             { 1318.f, 520.f, 180.f, 150.f },
             {
                     input("signal", "Signal", PortDomain::SpectralPhaseSignal),
-                    input("operand", "Mesh", PortDomain::MeshField, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
+                    input("operand", "Mesh", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
             },
             { output("out", "Out", PortDomain::SpectralPhaseSignal) }));
 
@@ -271,9 +275,9 @@ NodeGraph NodeGraph::createDemoGraph() {
             { "scratchEnv", "env", "magMesh", "scratch", PortDomain::EnvelopeSignal, true },
             { "waveMesh", "out", "fft", "time", PortDomain::TimeSignal, false },
             { "fft", "mag", "addMag", "signal", PortDomain::SpectralMagnitudeSignal, false },
-            { "magMesh", "mesh", "addMag", "operand", PortDomain::MeshField, false },
+            { "magMesh", "out", "addMag", "operand", PortDomain::ControlSignal, false },
             { "fft", "phase", "addPhase", "signal", PortDomain::SpectralPhaseSignal, false },
-            { "phaseMesh", "mesh", "addPhase", "operand", PortDomain::MeshField, false },
+            { "phaseMesh", "out", "addPhase", "operand", PortDomain::ControlSignal, false },
             { "addMag", "out", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, false },
             { "addPhase", "out", "ifft", "phase", PortDomain::SpectralPhaseSignal, false },
             { "ifft", "time", "multiply", "audio", PortDomain::TimeSignal, false },

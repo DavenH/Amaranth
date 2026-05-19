@@ -38,6 +38,36 @@ TEST_CASE("Demo graph exposes stable node kinds", "[cycle-v2][graph]") {
     REQUIRE(findKind("out") == NodeKind::Output);
 }
 
+TEST_CASE("Demo graph uses one canonical trilinear mesh port schema", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    std::vector<const Node*> meshes;
+
+    for (const auto& node : graph.getNodes()) {
+        if (node.kind == NodeKind::TrilinearMesh) {
+            meshes.push_back(&node);
+        }
+    }
+
+    REQUIRE(meshes.size() == 3);
+
+    for (const Node* mesh : meshes) {
+        REQUIRE(mesh->inputs.size() == meshes.front()->inputs.size());
+        REQUIRE(mesh->outputs.size() == meshes.front()->outputs.size());
+
+        for (size_t i = 0; i < mesh->inputs.size(); ++i) {
+            REQUIRE(mesh->inputs[i].id == meshes.front()->inputs[i].id);
+            REQUIRE(mesh->inputs[i].domain == meshes.front()->inputs[i].domain);
+            REQUIRE(mesh->inputs[i].purpose == meshes.front()->inputs[i].purpose);
+        }
+
+        for (size_t i = 0; i < mesh->outputs.size(); ++i) {
+            REQUIRE(mesh->outputs[i].id == meshes.front()->outputs[i].id);
+            REQUIRE(mesh->outputs[i].domain == meshes.front()->outputs[i].domain);
+            REQUIRE(mesh->outputs[i].purpose == meshes.front()->outputs[i].purpose);
+        }
+    }
+}
+
 TEST_CASE("Channel layouts have stable short labels", "[cycle-v2][graph]") {
     REQUIRE(labelForChannelLayout(ChannelLayout::Mono).isEmpty());
     REQUIRE(labelForChannelLayout(ChannelLayout::LinkedStereo) == "L/R");
@@ -200,6 +230,31 @@ TEST_CASE("Context-resolved spectral sources can seed additive spectral graphs",
     graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, false });
 
     REQUIRE(GraphValidator().isValid(graph));
+}
+
+TEST_CASE("Uncontexted mesh operands inherit operation signal domains", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode({
+            "mag",
+            NodeKind::GenericProcessor,
+            "Magnitude",
+            {},
+            {},
+            {},
+            {},
+            { { "out", "Out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }
+    });
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
+    graph.addEdge({ "mag", "out", "add", "left", PortDomain::SpectralMagnitudeSignal, false });
+    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, false });
+
+    const GraphValidator validator;
+
+    REQUIRE(validator.isValid(graph));
+    REQUIRE(validator.resolvedDomainForEdge(graph, graph.getEdges()[1]) == PortDomain::SpectralMagnitudeSignal);
 }
 
 TEST_CASE("Spectral voice context marks fixed wave sources invalid", "[cycle-v2][graph]") {
