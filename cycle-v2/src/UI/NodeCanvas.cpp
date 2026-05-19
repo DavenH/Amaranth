@@ -101,9 +101,86 @@ bool isOperationNode(NodeKind kind) {
     return kind == NodeKind::Add || kind == NodeKind::Multiply;
 }
 
-Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds) {
-    return Rectangle<float>(18.f, 18.f)
-            .withCentre({ nodeBounds.getRight() - 18.f, nodeBounds.getY() + 21.f });
+enum class OperationPortLayout {
+    Side,
+    Uptack,
+    Tee
+};
+
+OperationPortLayout operationPortLayoutFor(const Node& node) {
+    if (node.inputs.size() < 2) {
+        return OperationPortLayout::Side;
+    }
+
+    const PortSide first = node.inputs[0].side;
+    const PortSide second = node.inputs[1].side;
+
+    if (first == PortSide::Top && second == PortSide::Bottom) {
+        return OperationPortLayout::Tee;
+    }
+
+    if (first == PortSide::Left && second == PortSide::Top) {
+        return OperationPortLayout::Uptack;
+    }
+
+    return OperationPortLayout::Side;
+}
+
+Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
+    const float scale = portScaleForZoom(zoom);
+    return Rectangle<float>(18.f * scale, 18.f * scale)
+            .withCentre({ nodeBounds.getRight() - 18.f * scale, nodeBounds.getY() + 21.f * scale });
+}
+
+void drawOperationLayoutIcon(Graphics& g, Rectangle<float> button, OperationPortLayout layout, Colour colour) {
+    const auto area = button.reduced(button.getWidth() * 0.24f);
+    const float stroke = jmax(1.f, button.getWidth() * 0.085f);
+    const float dot = jmax(2.f, button.getWidth() * 0.14f);
+
+    auto dotAt = [&](Point<float> p, bool filled) {
+        Rectangle<float> r(p.x - dot * 0.5f, p.y - dot * 0.5f, dot, dot);
+        if (filled) {
+            g.fillEllipse(r);
+        } else {
+            g.drawEllipse(r, stroke);
+        }
+    };
+
+    Point<float> a;
+    Point<float> b;
+    Point<float> out(area.getRight(), area.getCentreY());
+
+    switch (layout) {
+        case OperationPortLayout::Tee:
+            a = { area.getCentreX(), area.getY() };
+            b = { area.getCentreX(), area.getBottom() };
+            break;
+
+        case OperationPortLayout::Uptack:
+            a = { area.getX(), area.getCentreY() };
+            b = { area.getCentreX(), area.getY() };
+            break;
+
+        case OperationPortLayout::Side:
+        default:
+            a = { area.getX(), area.getY() + area.getHeight() * 0.30f };
+            b = { area.getX(), area.getBottom() - area.getHeight() * 0.30f };
+            break;
+    }
+
+    g.setColour(colour.withAlpha(0.78f));
+    Path path;
+    path.startNewSubPath(a);
+    path.lineTo(area.getCentre());
+    path.lineTo(b);
+    path.startNewSubPath(area.getCentre());
+    path.lineTo(out);
+    g.strokePath(path, PathStrokeType(stroke, PathStrokeType::curved, PathStrokeType::rounded));
+
+    g.setColour(colour);
+    dotAt(a, false);
+    dotAt(b, false);
+    dotAt(out, true);
 }
 
 }
@@ -558,10 +635,11 @@ void NodeCanvas::drawNodes(Graphics& g) {
 
 void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     Rectangle<float> bounds = toScreen(node.bounds);
-    const float corner = 8.f;
+    const float uiScale = portScaleForZoom(zoom);
+    const float corner = 8.f * uiScale;
 
     g.setColour(Colours::black.withAlpha(0.32f));
-    g.fillRoundedRectangle(bounds.translated(0.f, 9.f), corner);
+    g.fillRoundedRectangle(bounds.translated(0.f, 9.f * uiScale), corner);
 
     g.setColour(kNodeBackground);
     g.fillRoundedRectangle(bounds, corner);
@@ -584,13 +662,12 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     g.drawText(node.title, header.reduced(13.f * zoom, 4.f * zoom), Justification::centredLeft);
 
     if (isOperationNode(node.kind)) {
-        const auto button = operationLayoutButtonBounds(toScreen(node.bounds));
+        const auto button = operationLayoutButtonBounds(toScreen(node.bounds), zoom);
         g.setColour(Colour(0xff0f141a).withAlpha(0.78f));
         g.fillEllipse(button);
         g.setColour(kMutedText.withAlpha(0.82f));
-        g.drawEllipse(button, 1.f * portScaleForZoom(zoom));
-        g.setFont(FontOptions(11.f * zoom, Font::bold));
-        g.drawText("↻", button, Justification::centred);
+        g.drawEllipse(button, 1.f * uiScale);
+        drawOperationLayoutIcon(g, button, operationPortLayoutFor(node), kMutedText);
     }
 
     auto nodeBounds = toScreen(node.bounds);
@@ -1252,7 +1329,7 @@ bool NodeCanvas::findOperationLayoutButtonAt(Point<float> screenPosition, String
             continue;
         }
 
-        if (operationLayoutButtonBounds(toScreen(node.bounds)).expanded(4.f).contains(screenPosition)) {
+        if (operationLayoutButtonBounds(toScreen(node.bounds), zoom).expanded(4.f * portScaleForZoom(zoom)).contains(screenPosition)) {
             nodeId = node.id;
             return true;
         }
@@ -1603,21 +1680,24 @@ bool NodeCanvas::cycleOperationPortLayout(const String& nodeId) {
 
     pushUndoSnapshot();
 
-    const PortSide first = node->inputs[0].side;
-    const PortSide second = node->inputs[1].side;
+    switch (operationPortLayoutFor(*node)) {
+        case OperationPortLayout::Side:
+            node->inputs[0].side = PortSide::Left;
+            node->inputs[1].side = PortSide::Top;
+            node->outputs[0].side = PortSide::Right;
+            break;
 
-    if (first == PortSide::Left && second == PortSide::Left) {
-        node->inputs[0].side = PortSide::Left;
-        node->inputs[1].side = PortSide::Top;
-        node->outputs[0].side = PortSide::Right;
-    } else if (first == PortSide::Left && second == PortSide::Top) {
-        node->inputs[0].side = PortSide::Top;
-        node->inputs[1].side = PortSide::Bottom;
-        node->outputs[0].side = PortSide::Right;
-    } else {
-        node->inputs[0].side = PortSide::Left;
-        node->inputs[1].side = PortSide::Left;
-        node->outputs[0].side = PortSide::Right;
+        case OperationPortLayout::Uptack:
+            node->inputs[0].side = PortSide::Top;
+            node->inputs[1].side = PortSide::Bottom;
+            node->outputs[0].side = PortSide::Right;
+            break;
+
+        case OperationPortLayout::Tee:
+            node->inputs[0].side = PortSide::Left;
+            node->inputs[1].side = PortSide::Left;
+            node->outputs[0].side = PortSide::Right;
+            break;
     }
 
     selectedNodeId = nodeId;
