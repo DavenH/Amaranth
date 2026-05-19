@@ -29,7 +29,8 @@ TEST_CASE("Demo graph exposes stable node kinds", "[cycle-v2][graph]") {
     };
 
     REQUIRE(findKind("voice") == NodeKind::VoiceContext);
-    REQUIRE(findKind("wave") == NodeKind::TrilinearMesh);
+    REQUIRE(findKind("waveform") == NodeKind::WaveformStart);
+    REQUIRE(findKind("waveMesh") == NodeKind::TrilinearMesh);
     REQUIRE(findKind("fft") == NodeKind::Fft);
     REQUIRE(findKind("addMag") == NodeKind::Add);
     REQUIRE(findKind("addPhase") == NodeKind::Add);
@@ -58,7 +59,7 @@ TEST_CASE("Universal ports accept typed graph operands", "[cycle-v2][graph]") {
 
 TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    graph.addEdge({ "env", "env", "wave", "scratch", PortDomain::EnvelopeSignal, false });
+    graph.addEdge({ "env", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal, false });
 
     auto issues = GraphValidator().validate(graph);
 

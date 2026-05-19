@@ -20,18 +20,25 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
     const NodeGraph source = NodeGraph::createDemoGraph();
     const GraphSerializer serializer;
     const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
-    const auto& wave = restored.getNodes()[1];
+    const auto& waveform = restored.getNodes()[1];
+    const auto& waveMesh = restored.getNodes()[2];
 
-    REQUIRE(wave.id == "wave");
-    REQUIRE(wave.kind == NodeKind::TrilinearMesh);
-    REQUIRE(wave.bounds.getWidth() >= 260.f);
-    REQUIRE(wave.inputs.size() == 3);
-    REQUIRE(wave.inputs[2].id == "scratch");
-    REQUIRE(wave.inputs[2].purpose == PortPurpose::ScratchAttachment);
-    REQUIRE(wave.inputs[2].side == PortSide::Left);
-    REQUIRE(wave.outputs[0].domain == PortDomain::TimeSignal);
-    REQUIRE(wave.outputs[0].channelLayout == ChannelLayout::LinkedStereo);
-    REQUIRE(wave.outputs[0].side == PortSide::Right);
+    REQUIRE(waveform.id == "waveform");
+    REQUIRE(waveform.kind == NodeKind::WaveformStart);
+    REQUIRE(waveform.inputs.size() == 2);
+    REQUIRE(waveform.outputs[0].domain == PortDomain::TimeSignal);
+    REQUIRE(waveform.outputs[0].channelLayout == ChannelLayout::LinkedStereo);
+
+    REQUIRE(waveMesh.id == "waveMesh");
+    REQUIRE(waveMesh.kind == NodeKind::TrilinearMesh);
+    REQUIRE(waveMesh.bounds.getWidth() >= 260.f);
+    REQUIRE(waveMesh.inputs.size() == 2);
+    REQUIRE(waveMesh.inputs[1].id == "scratch");
+    REQUIRE(waveMesh.inputs[1].purpose == PortPurpose::ScratchAttachment);
+    REQUIRE(waveMesh.inputs[1].side == PortSide::Left);
+    REQUIRE(waveMesh.outputs[0].domain == PortDomain::TimeSignal);
+    REQUIRE(waveMesh.outputs[0].channelLayout == ChannelLayout::LinkedStereo);
+    REQUIRE(waveMesh.outputs[0].side == PortSide::Right);
 }
 
 TEST_CASE("Graph serializer preserves attachment edges", "[cycle-v2][graph]") {
@@ -41,7 +48,7 @@ TEST_CASE("Graph serializer preserves attachment edges", "[cycle-v2][graph]") {
 
     bool foundScratchAttachment = false;
     for (const auto& edge : restored.getEdges()) {
-        if (edge.sourceNodeId == "scratchEnv" && edge.destNodeId == "wave" && edge.destPortId == "scratch") {
+        if (edge.sourceNodeId == "scratchEnv" && edge.destNodeId == "waveMesh" && edge.destPortId == "scratch") {
             foundScratchAttachment = edge.attachment;
         }
     }

@@ -32,9 +32,11 @@ TEST_CASE("Runtime traces compiled graph execution", "[cycle-v2][runtime]") {
     REQUIRE(trace.nodes.size() == compileResult.plan.nodeOrder.size());
     REQUIRE(trace.nodes.front().nodeId == compileResult.plan.nodeOrder.front());
     REQUIRE(trace.nodes.back().nodeId == "out");
-    REQUIRE(findTraceNode(trace, "wave").kind == NodeKind::TrilinearMesh);
-    REQUIRE(findTraceNode(trace, "wave").signalInputs.size() == 2);
-    REQUIRE(findTraceNode(trace, "wave").attachments.size() == 1);
+    REQUIRE(findTraceNode(trace, "waveform").kind == NodeKind::WaveformStart);
+    REQUIRE(findTraceNode(trace, "waveform").signalInputs.size() == 2);
+    REQUIRE(findTraceNode(trace, "waveMesh").kind == NodeKind::TrilinearMesh);
+    REQUIRE(findTraceNode(trace, "waveMesh").signalInputs.size() == 1);
+    REQUIRE(findTraceNode(trace, "waveMesh").attachments.size() == 1);
     REQUIRE(findTraceNode(trace, "multiply").signalInputs.size() == 2);
     REQUIRE(findTraceNode(trace, "multiply").attachments.empty());
 }
@@ -45,7 +47,7 @@ TEST_CASE("Runtime keeps scratch attachments separate from signal inputs", "[cyc
     REQUIRE(compileResult.succeeded());
 
     const auto trace = GraphRuntime().process(graph, compileResult.plan);
-    const auto& wave = findTraceNode(trace, "wave");
+    const auto& wave = findTraceNode(trace, "waveMesh");
 
     REQUIRE(wave.attachments.size() == 1);
     REQUIRE(wave.attachments.front().sourceNodeId == "scratchEnv");

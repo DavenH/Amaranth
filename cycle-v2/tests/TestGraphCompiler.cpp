@@ -41,12 +41,13 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
 
     REQUIRE(result.succeeded());
     REQUIRE(result.plan.attachments.size() == 2);
-    REQUIRE(result.plan.signalEdges.size() == 12);
+    REQUIRE(result.plan.signalEdges.size() == 13);
 
     const auto& plan = result.plan;
-    REQUIRE(orderIndex(plan, "voice") < orderIndex(plan, "wave"));
-    REQUIRE(orderIndex(plan, "scratchEnv") < orderIndex(plan, "wave"));
-    REQUIRE(orderIndex(plan, "wave") < orderIndex(plan, "fft"));
+    REQUIRE(orderIndex(plan, "voice") < orderIndex(plan, "waveform"));
+    REQUIRE(orderIndex(plan, "waveform") < orderIndex(plan, "waveMesh"));
+    REQUIRE(orderIndex(plan, "scratchEnv") < orderIndex(plan, "waveMesh"));
+    REQUIRE(orderIndex(plan, "waveMesh") < orderIndex(plan, "fft"));
     REQUIRE(orderIndex(plan, "scratchEnv") < orderIndex(plan, "magMesh"));
     REQUIRE(orderIndex(plan, "fft") < orderIndex(plan, "addMag"));
     REQUIRE(orderIndex(plan, "magMesh") < orderIndex(plan, "addMag"));

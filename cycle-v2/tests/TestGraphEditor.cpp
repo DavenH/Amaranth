@@ -39,12 +39,12 @@ TEST_CASE("Graph editor orients input to output connections", "[cycle-v2][graph]
 
 TEST_CASE("Graph editor marks scratch connections as attachments", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    graph.removeEdgesToInput("wave", "scratch");
+    graph.removeEdgesToInput("waveMesh", "scratch");
 
     const auto result = GraphEditor().connect(
             graph,
             { "scratchEnv", "env", false },
-            { "wave", "scratch", true });
+            { "waveMesh", "scratch", true });
 
     REQUIRE(result.succeeded());
     REQUIRE(graph.getEdges().back().attachment);
