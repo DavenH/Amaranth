@@ -40,8 +40,7 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
     const GraphSerializer serializer;
     const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
     const auto& voice = restored.getNodes()[0];
-    const auto& wave = restored.getNodes()[1];
-    const auto& waveMesh = restored.getNodes()[2];
+    const auto& waveMesh = restored.getNodes()[1];
 
     REQUIRE(voice.id == "voice");
     REQUIRE(voice.kind == NodeKind::VoiceContext);
@@ -49,20 +48,13 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
     REQUIRE(parameterValueForNode(voice, "domain") == "waveform");
     REQUIRE(parameterValueForNode(voice, "voices") == "6");
 
-    REQUIRE(wave.id == "wave");
-    REQUIRE(wave.kind == NodeKind::WaveSource);
-    REQUIRE(wave.inputs[0].domain == PortDomain::DomainContext);
-    REQUIRE(wave.outputs[0].domain == PortDomain::ControlSignal);
-
     REQUIRE(waveMesh.id == "waveMesh");
     REQUIRE(waveMesh.kind == NodeKind::TrilinearMesh);
     REQUIRE(waveMesh.bounds.getWidth() >= 260.f);
-    REQUIRE(waveMesh.inputs.size() == 3);
-    REQUIRE(waveMesh.inputs[1].id == "in");
-    REQUIRE(waveMesh.inputs[1].domain == PortDomain::ControlSignal);
-    REQUIRE(waveMesh.inputs[2].id == "scratch");
-    REQUIRE(waveMesh.inputs[2].purpose == PortPurpose::ScratchAttachment);
-    REQUIRE(waveMesh.inputs[2].side == PortSide::Left);
+    REQUIRE(waveMesh.inputs.size() == 2);
+    REQUIRE(waveMesh.inputs[1].id == "scratch");
+    REQUIRE(waveMesh.inputs[1].purpose == PortPurpose::ScratchAttachment);
+    REQUIRE(waveMesh.inputs[1].side == PortSide::Left);
     REQUIRE(waveMesh.outputs[0].domain == PortDomain::ControlSignal);
     REQUIRE(waveMesh.outputs[0].channelLayout == ChannelLayout::LinkedStereo);
     REQUIRE(waveMesh.outputs[0].side == PortSide::Right);

@@ -79,13 +79,12 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
 
     REQUIRE(result.succeeded());
     REQUIRE(result.plan.attachments.size() == 2);
-    REQUIRE(result.plan.signalEdges.size() == 12);
-    REQUIRE(result.plan.buffers.size() == 11);
+    REQUIRE(result.plan.signalEdges.size() == 11);
+    REQUIRE(result.plan.buffers.size() == 10);
     REQUIRE(result.plan.steps.size() == result.plan.nodeOrder.size());
 
     const auto& plan = result.plan;
-    REQUIRE(orderIndex(plan, "voice") < orderIndex(plan, "wave"));
-    REQUIRE(orderIndex(plan, "wave") < orderIndex(plan, "waveMesh"));
+    REQUIRE(orderIndex(plan, "voice") < orderIndex(plan, "waveMesh"));
     REQUIRE(orderIndex(plan, "scratchEnv") < orderIndex(plan, "waveMesh"));
     REQUIRE(orderIndex(plan, "waveMesh") < orderIndex(plan, "fft"));
     REQUIRE(orderIndex(plan, "scratchEnv") < orderIndex(plan, "magMesh"));
@@ -101,8 +100,6 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
 
     REQUIRE(parameterValueForNode({ "voice", NodeKind::VoiceContext, {}, {}, {}, findStep(plan, "voice").parameters, {}, {} },
             "domain") == "waveform");
-    REQUIRE(findStep(plan, "wave").audioRole == AudioModuleRole::WaveSource);
-    REQUIRE(findSignalEdge(plan, "wave", "waveMesh").domain == PortDomain::TimeSignal);
     REQUIRE(findStep(plan, "waveMesh").audioRole == AudioModuleRole::MeshSource);
     REQUIRE(findStep(plan, "waveMesh").previewRole == PreviewModuleRole::MeshSurface);
     REQUIRE(findStep(plan, "waveMesh").cycle1AdapterBacked);
@@ -187,33 +184,20 @@ TEST_CASE("Compiler resolves source domains from voice context parameters", "[cy
     REQUIRE(findBuffer(result.plan, "mesh", "out").domain == PortDomain::SpectralMagnitudeSignal);
 }
 
-TEST_CASE("Compiler resolves wave and image source domains from voice context parameters", "[cycle-v2][graph]") {
+TEST_CASE("Compiler keeps wave source fixed in the time domain", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
-    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
-    voice.parameters = {
-            { "domain", "Start Domain", "spectralPhase" }
-    };
-
-    graph.addNode(std::move(voice));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 240.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::ImageSource, "image", { 240.f, 220.f }));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 520.f, 0.f }));
-    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "voice", "context", "image", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "wave", "out", "add", "left", PortDomain::ControlSignal, false });
-    graph.addEdge({ "image", "out", "add", "right", PortDomain::ControlSignal, false });
+    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, false });
 
     const auto result = GraphCompiler().compile(graph);
 
     REQUIRE(result.succeeded());
-    REQUIRE(findSignalEdge(result.plan, "wave", "add").domain == PortDomain::SpectralPhaseSignal);
-    REQUIRE(findSignalEdge(result.plan, "image", "add").domain == PortDomain::SpectralPhaseSignal);
-    REQUIRE(findStep(result.plan, "add").inputs[0].domain == PortDomain::SpectralPhaseSignal);
-    REQUIRE(findStep(result.plan, "add").inputs[1].domain == PortDomain::SpectralPhaseSignal);
-    REQUIRE(findBuffer(result.plan, "wave", "out").domain == PortDomain::SpectralPhaseSignal);
-    REQUIRE(findBuffer(result.plan, "image", "out").domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(findSignalEdge(result.plan, "wave", "add").domain == PortDomain::TimeSignal);
+    REQUIRE(findStep(result.plan, "add").inputs[0].domain == PortDomain::TimeSignal);
+    REQUIRE(findBuffer(result.plan, "wave", "out").domain == PortDomain::TimeSignal);
 }
 
 TEST_CASE("Compiler resolves mesh output domains from signal inputs", "[cycle-v2][graph]") {

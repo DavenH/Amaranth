@@ -29,7 +29,6 @@ TEST_CASE("Demo graph exposes stable node kinds", "[cycle-v2][graph]") {
     };
 
     REQUIRE(findKind("voice") == NodeKind::VoiceContext);
-    REQUIRE(findKind("wave") == NodeKind::WaveSource);
     REQUIRE(findKind("waveMesh") == NodeKind::TrilinearMesh);
     REQUIRE(findKind("fft") == NodeKind::Fft);
     REQUIRE(findKind("addMag") == NodeKind::Add);
@@ -170,7 +169,7 @@ TEST_CASE("Context-resolved spectral sources can seed additive spectral graphs",
     REQUIRE(GraphValidator().isValid(graph));
 }
 
-TEST_CASE("Wave and image sources resolve from voice context domains", "[cycle-v2][graph]") {
+TEST_CASE("Spectral voice context marks fixed wave sources invalid", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
@@ -181,14 +180,62 @@ TEST_CASE("Wave and image sources resolve from voice context domains", "[cycle-v
 
     graph.addNode(std::move(voice));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 220.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::ImageSource, "image", { 220.f, 220.f }));
-    graph.addNode(factory.createNode(NodeKind::Add, "add", { 500.f, 0.f }));
     graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "voice", "context", "image", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "wave", "out", "add", "left", PortDomain::ControlSignal, false });
-    graph.addEdge({ "image", "out", "add", "right", PortDomain::ControlSignal, false });
+
+    const auto issues = GraphValidator().validate(graph);
+
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::DomainMismatch;
+            }));
+}
+
+TEST_CASE("Fixed wave source context validity follows voice domain parameter", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = {
+            { "domain", "Start Domain", "waveform" }
+    };
+
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 220.f, 0.f }));
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, false });
 
     REQUIRE(GraphValidator().isValid(graph));
+
+    graph.getNodesForEditing().front().parameters = {
+            { "domain", "Start Domain", "spectral" }
+    };
+
+    REQUIRE_FALSE(GraphValidator().isValid(graph));
+
+    graph.getNodesForEditing().front().parameters = {
+            { "domain", "Start Domain", "waveform" }
+    };
+
+    REQUIRE(GraphValidator().isValid(graph));
+}
+
+TEST_CASE("Domain context cannot connect to ordinary universal signal ports", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    graph.addEdge({ "voice", "context", "mesh", "in", PortDomain::DomainContext, false });
+
+    const auto issues = GraphValidator().validate(graph);
+
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::DomainMismatch;
+            }));
 }
 
 TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {

@@ -32,8 +32,6 @@ bool isContextResolvedSource(const Node& node, const Port& port) {
     }
 
     switch (node.kind) {
-        case NodeKind::WaveSource:
-        case NodeKind::ImageSource:
         case NodeKind::TrilinearMesh:
         case NodeKind::TrilinearWaveSurface:
             return true;
@@ -55,6 +53,13 @@ PortDomain domainFromVoiceContext(const Node& voiceNode) {
     }
 
     return PortDomain::TimeSignal;
+}
+
+bool isFixedWaveContextMismatch(const Node& sourceNode, const Node& destNode, const Port& dest) {
+    return sourceNode.kind == NodeKind::VoiceContext
+        && destNode.kind == NodeKind::WaveSource
+        && dest.id == "context"
+        && domainFromVoiceContext(sourceNode) != PortDomain::TimeSignal;
 }
 
 void addIssue(
@@ -118,6 +123,11 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
             addIssue(issues, GraphValidationCode::ScratchPortRequiresAttachment,
                      "Scratch ports require ProcessingAttachment routing: " + edge.destNodeId + "." + dest->id);
             continue;
+        }
+
+        if (isFixedWaveContextMismatch(*sourceNode, *destNode, *dest)) {
+            addIssue(issues, GraphValidationCode::DomainMismatch,
+                     "Wave source requires waveform Voice Context: " + edge.sourceNodeId + " -> " + edge.destNodeId);
         }
 
         Port resolvedSource = *source;
@@ -291,6 +301,10 @@ void GraphValidator::validateOperationInputs(
 }
 
 bool GraphValidator::domainsCompatible(const Port& source, const Port& dest) const {
+    if (source.domain == PortDomain::DomainContext || dest.domain == PortDomain::DomainContext) {
+        return source.domain == dest.domain;
+    }
+
     if (source.domain == PortDomain::ControlSignal || dest.domain == PortDomain::ControlSignal) {
         return true;
     }

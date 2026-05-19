@@ -170,8 +170,10 @@ Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds,
 }
 
 Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
-    return Rectangle<float>(88.f * zoom, 22.f * zoom)
-            .withCentre({ nodeBounds.getRight() - 58.f * zoom, nodeBounds.getY() + 21.f * zoom });
+    const Rectangle<float> body = nodeBounds.withTrimmedTop(42.f * zoom);
+    const float width = jmin(nodeBounds.getWidth() - 34.f * zoom, 178.f * zoom);
+    return Rectangle<float>(width, 30.f * zoom)
+            .withCentre({ nodeBounds.getCentreX(), body.getY() + 22.f * zoom });
 }
 
 Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
@@ -701,9 +703,14 @@ void NodeCanvas::drawEdges(Graphics& g) {
         auto dest = getPortLocation(*destNode, *destPort).centre;
         Path cable = createCablePath(source, dest, edge.attachment);
         Colour colour = colourForDomain(displayDomainForEdge(edge));
+        const bool invalid = edgeHasValidationIssue(edge);
 
         const bool selected = edgeIndex == selectedEdgeIndex;
         const float cableScale = cableScaleForZoom(zoom);
+
+        if (invalid) {
+            colour = Colour(0xffff5a5f);
+        }
 
         if (edge.attachment) {
             Path dashedCable;
@@ -719,6 +726,15 @@ void NodeCanvas::drawEdges(Graphics& g) {
             g.strokePath(cable, PathStrokeType((selected ? 12.f : 9.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
             g.setColour(colour.withAlpha(0.92f));
             g.strokePath(cable, PathStrokeType((selected ? 4.f : 3.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+
+            if (invalid) {
+                Path dashedCable;
+                PathStrokeType stroke(1.8f * cableScale, PathStrokeType::curved, PathStrokeType::rounded);
+                Array<float> dashes { 5.f * cableScale, 6.f * cableScale };
+                stroke.createDashedStroke(dashedCable, cable, dashes.getRawDataPointer(), dashes.size());
+                g.setColour(Colours::white.withAlpha(0.58f));
+                g.strokePath(dashedCable, PathStrokeType(1.4f * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            }
         }
 
         const float endpointSize = (selected ? 14.f : 11.f) * cableScale;
@@ -814,25 +830,39 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
         drawOperationLayoutIcon(g, button, operationPortLayoutFor(node), kMutedText);
     }
 
-    if (node.kind == NodeKind::VoiceContext) {
-        const auto button = voiceDomainButtonBounds(toScreen(node.bounds), zoom);
-        const bool spectral = voiceDomainForNode(node) == "spectral";
-        const Colour colour = colourForDomain(spectral
-                ? PortDomain::SpectralMagnitudeSignal
-                : PortDomain::TimeSignal);
-
-        g.setColour(colour.withAlpha(0.16f));
-        g.fillRoundedRectangle(button, 6.f * uiScale);
-        g.setColour(colour.withAlpha(0.72f));
-        g.drawRoundedRectangle(button, 6.f * uiScale, 1.f * uiScale);
-        g.setColour(kText);
-        g.setFont(FontOptions(10.f * zoom, Font::bold));
-        g.drawText(voiceDomainButtonLabel(node), button.reduced(6.f * zoom, 1.f * zoom), Justification::centred);
-    }
-
     auto nodeBounds = toScreen(node.bounds);
     auto preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(1.f * zoom);
+
+    if (node.kind == NodeKind::VoiceContext) {
+        preview = preview.withTrimmedTop(38.f * zoom);
+    }
+
     drawPreview(g, node, preview);
+
+    if (node.kind == NodeKind::VoiceContext) {
+        auto pill = voiceDomainButtonBounds(nodeBounds, zoom);
+        const bool spectral = voiceDomainForNode(node) == "spectral";
+        const Rectangle<float> waveformHalf = pill.removeFromLeft(pill.getWidth() * 0.5f);
+        const Rectangle<float> spectralHalf = pill;
+        const Colour waveformColour = colourForDomain(PortDomain::TimeSignal);
+        const Colour spectralColour = colourForDomain(PortDomain::SpectralMagnitudeSignal);
+        const Colour activeColour = spectral ? spectralColour : waveformColour;
+        const Rectangle<float> activeHalf = spectral ? spectralHalf : waveformHalf;
+
+        g.setColour(Colour(0xff0b1116).withAlpha(0.94f));
+        g.fillRoundedRectangle(waveformHalf.getUnion(spectralHalf), 8.f * uiScale);
+        g.setColour(activeColour.withAlpha(0.28f));
+        g.fillRoundedRectangle(activeHalf.reduced(2.f * zoom), 6.f * uiScale);
+        g.setColour(activeColour.withAlpha(0.82f));
+        g.drawRoundedRectangle(waveformHalf.getUnion(spectralHalf), 8.f * uiScale, 1.1f * uiScale);
+        g.setColour(kNodeBorder.withAlpha(0.72f));
+        g.drawVerticalLine((int) waveformHalf.getRight(), waveformHalf.getY() + 4.f * zoom, waveformHalf.getBottom() - 4.f * zoom);
+        g.setFont(FontOptions(10.5f * zoom, Font::bold));
+        g.setColour(spectral ? kMutedText : kText);
+        g.drawText("Waveform", waveformHalf, Justification::centred);
+        g.setColour(spectral ? kText : kMutedText);
+        g.drawText("Spectral", spectralHalf, Justification::centred);
+    }
 
     auto drawPort = [&](const Node& portNode, const Port& port) {
         auto location = getPortLocation(portNode, port);
@@ -1758,6 +1788,20 @@ PortDomain NodeCanvas::displayDomainForEdge(const Edge& edge) const {
     return edge.domain;
 }
 
+bool NodeCanvas::edgeHasValidationIssue(const Edge& edge) const {
+    if (compileResult.succeeded()) {
+        return false;
+    }
+
+    NodeGraph candidate;
+    for (const auto& node : graph.getNodes()) {
+        candidate.addNode(node);
+    }
+
+    candidate.addEdge(edge);
+    return !GraphValidator().isValid(candidate);
+}
+
 int NodeCanvas::executionIndexForNode(const String& nodeId) const {
     if (!compileResult.succeeded()) {
         return -1;
@@ -1824,7 +1868,7 @@ String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
 
     if (edgeIndex >= 0 && edgeIndex < (int) graph.getEdges().size()) {
         const auto& edge = graph.getEdges()[(size_t) edgeIndex];
-        return String(edge.attachment ? "Attachment" : "Signal")
+        return String(edgeHasValidationIssue(edge) ? "Invalid" : (edge.attachment ? "Attachment" : "Signal"))
                 + " edge  /  " + labelForDomain(displayDomainForEdge(edge))
                 + "  /  " + edge.sourceNodeId + "." + edge.sourcePortId
                 + " -> " + edge.destNodeId + "." + edge.destPortId;

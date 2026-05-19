@@ -23,9 +23,9 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
 
         case NodeKind::WaveSource:
             node.title = "Wave";
-            node.subtitle = "signal source";
+            node.subtitle = "time source";
             node.inputs = { input("context", "Context", PortDomain::DomainContext) };
-            node.outputs = { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) };
+            node.outputs = { output("out", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             break;
 
         case NodeKind::ImageSource:

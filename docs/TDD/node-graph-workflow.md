@@ -204,6 +204,10 @@ This keeps source nodes domain-agnostic where possible. A trilinear mesh is a
 mesh operand/source with Yellow, Red, and Blue axes; it is not inherently a
 "wave surface" or "spectral surface", and it should not expose hardcoded
 magnitude or phase outputs. FFT and IFFT nodes are explicit domain transforms.
+Fixed-domain sources remain fixed: a `Wave` source is time-domain only. If it is
+connected to a `VoiceContext` that later switches to spectral mode, the edge
+should enter an invalid/error state and become valid again when the context
+returns to waveform mode.
 
 ### Explicit Assignments
 

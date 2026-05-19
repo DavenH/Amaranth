@@ -140,10 +140,7 @@ PortDomain resolvedControlOutputDomain(
         return sourcePort.domain;
     }
 
-    if ((sourceNode.kind == NodeKind::WaveSource
-            || sourceNode.kind == NodeKind::ImageSource
-            || sourceNode.kind == NodeKind::TrilinearMesh)
-            && sourcePort.id == "out") {
+    if (sourceNode.kind == NodeKind::TrilinearMesh && sourcePort.id == "out") {
         const PortDomain contextDomain = domainFromContextInput(graph, sourceNode);
         if (contextDomain != PortDomain::ControlSignal) {
             return contextDomain;

@@ -90,6 +90,24 @@ TEST_CASE("Graph editor rejects incompatible connections", "[cycle-v2][graph]") 
     REQUIRE(graph.getEdges().size() == edgeCount);
 }
 
+TEST_CASE("Graph editor rejects context outputs on ordinary signal inputs", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 260.f, 0.f }));
+    const auto edgeCount = graph.getEdges().size();
+
+    const auto result = GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "in", true });
+
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.code == GraphEditCode::ValidationRejected);
+    REQUIRE(graph.getEdges().size() == edgeCount);
+}
+
 TEST_CASE("Graph editor removes nodes and incident edges", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 
