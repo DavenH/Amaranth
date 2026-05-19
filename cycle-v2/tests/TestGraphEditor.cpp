@@ -51,6 +51,20 @@ TEST_CASE("Graph editor marks scratch connections as attachments", "[cycle-v2][g
     REQUIRE(graph.getEdges().back().destPortId == "scratch");
 }
 
+TEST_CASE("Graph editor colours universal output edges from typed destinations", "[cycle-v2][graph]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Multiply, "mul", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", { 260.f, 0.f }));
+
+    const auto result = GraphEditor().connect(
+            graph,
+            { "mul", "out", false },
+            { "out", "time", true });
+
+    REQUIRE(result.succeeded());
+    REQUIRE(graph.getEdges().back().domain == PortDomain::TimeSignal);
+}
+
 TEST_CASE("Graph editor rejects incompatible connections", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     const auto edgeCount = graph.getEdges().size();

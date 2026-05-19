@@ -2,6 +2,18 @@
 
 namespace CycleV2 {
 
+namespace {
+
+PortDomain edgeDomainForConnection(const Port& source, const Port& dest) {
+    if (source.domain == PortDomain::ControlSignal && dest.domain != PortDomain::ControlSignal) {
+        return dest.domain;
+    }
+
+    return source.domain;
+}
+
+}
+
 GraphEditResult GraphEditor::addNode(NodeGraph& graph, NodeKind kind, Point<float> position) const {
     const String nodeId = createUniqueNodeId(graph, kind);
     graph.addNode(GraphNodeFactory().createNode(kind, nodeId, position));
@@ -40,7 +52,7 @@ GraphEditResult GraphEditor::connect(
             sourceAddress.portId,
             destAddress.nodeId,
             destAddress.portId,
-            source->domain,
+            edgeDomainForConnection(*source, *dest),
             dest->purpose == PortPurpose::ScratchAttachment
     });
 

@@ -98,12 +98,12 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
 
         case NodeKind::Multiply:
             node.title = "Multiply";
-            node.subtitle = "signal scale";
+            node.subtitle = "operation";
             node.inputs = {
-                    input("audio", "Audio", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
-                    input("factor", "Factor", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
+                    input("left", "A", PortDomain::ControlSignal),
+                    input("right", "B", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
             };
-            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            node.outputs = { output("out", "Out", PortDomain::ControlSignal) };
             break;
 
         case NodeKind::StereoSplit:
