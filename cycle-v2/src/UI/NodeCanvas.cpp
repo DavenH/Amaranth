@@ -873,8 +873,8 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
     float x = legend.getX() + 16.f;
     const float y = legend.getCentreY();
     const Font legendFont(FontOptions(9.f));
-    constexpr float lineWidth = 34.f;
-    constexpr float labelGap = 14.f;
+    constexpr float lineWidth = 25.5f;
+    constexpr float labelGap = 9.f;
     constexpr float itemGap = 26.f;
 
     g.setFont(legendFont);
