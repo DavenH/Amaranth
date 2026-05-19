@@ -32,6 +32,17 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             };
             break;
 
+        case NodeKind::TrilinearMesh:
+            node.title = "Trilinear Mesh";
+            node.subtitle = "mesh operand";
+            node.inputs = {
+                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
+            };
+            node.outputs = {
+                    output("mesh", "Mesh", PortDomain::MeshField)
+            };
+            break;
+
         case NodeKind::Fft:
             node.title = "FFT: 1 Cycle";
             node.subtitle = "time -> mag + phase";
@@ -73,6 +84,16 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.title = "Envelope";
             node.subtitle = "control curve";
             node.outputs = { output("env", "Env", PortDomain::EnvelopeSignal) };
+            break;
+
+        case NodeKind::Add:
+            node.title = "Add";
+            node.subtitle = "combine";
+            node.inputs = {
+                    input("left", "A", PortDomain::ControlSignal),
+                    input("right", "B", PortDomain::ControlSignal)
+            };
+            node.outputs = { output("out", "Out", PortDomain::ControlSignal) };
             break;
 
         case NodeKind::Multiply:

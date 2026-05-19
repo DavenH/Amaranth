@@ -27,6 +27,21 @@ TEST_CASE("Graph node factory creates canonical FFT nodes", "[cycle-v2][graph]")
     REQUIRE(node.outputs[1].domain == PortDomain::SpectralPhaseSignal);
 }
 
+TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][graph]") {
+    const Node mesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    const Node add = GraphNodeFactory().createNode(NodeKind::Add, "add", {});
+
+    REQUIRE(mesh.title == "Trilinear Mesh");
+    REQUIRE(mesh.outputs.size() == 1);
+    REQUIRE(mesh.outputs.front().domain == PortDomain::MeshField);
+    REQUIRE(mesh.inputs.front().purpose == PortPurpose::ScratchAttachment);
+
+    REQUIRE(add.title == "Add");
+    REQUIRE(add.inputs.size() == 2);
+    REQUIRE(add.outputs.size() == 1);
+    REQUIRE(add.outputs.front().domain == PortDomain::ControlSignal);
+}
+
 TEST_CASE("Graph editor adds nodes with unique ids", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 

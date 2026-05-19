@@ -52,12 +52,14 @@ int longestPortLabelLength(const std::vector<Port>& ports) {
 NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
     switch (kind) {
         case NodeKind::TrilinearWaveSurface:         return { 300.f, 150.f };
+        case NodeKind::TrilinearMesh:                return { 260.f, 130.f };
         case NodeKind::VoiceContext:                 return { 230.f, 105.f };
         case NodeKind::Fft:                          return { 190.f, 90.f };
         case NodeKind::SpectralMagnitudeProcessor:   return { 240.f, 95.f };
         case NodeKind::SpectralPhaseProcessor:       return { 240.f, 95.f };
         case NodeKind::Ifft:                         return { 200.f, 95.f };
         case NodeKind::Envelope:                     return { 220.f, 85.f };
+        case NodeKind::Add:                          return { 0.f, 0.f };
         case NodeKind::Multiply:                     return { 0.f, 0.f };
         case NodeKind::Output:                       return { 190.f, 80.f };
         default:                                     return { 190.f, 76.f };
@@ -130,9 +132,9 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "wave",
-            NodeKind::TrilinearWaveSurface,
-            "Trilinear Wave Surface",
-            "pitch-aware generator",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            "time source",
             { 470.f, 80.f, 380.f, 280.f },
             {
                     input("pitch", "Pitch", PortDomain::PitchSignal),
@@ -157,25 +159,48 @@ NodeGraph NodeGraph::createDemoGraph() {
             }));
 
     graph.addNode(node(
-            "mag",
-            NodeKind::SpectralMagnitudeProcessor,
-            "Magnitude Sculpt",
-            "layer 2 scratch target",
-            { 1285.f, 30.f, 285.f, 180.f },
+            "magMesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            "layer operand",
+            { 1270.f, 10.f, 285.f, 180.f },
             {
-                    input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
-            { output("mag", "Mag", PortDomain::SpectralMagnitudeSignal) }));
+            { output("mesh", "Mesh", PortDomain::MeshField) }));
 
     graph.addNode(node(
-            "phase",
-            NodeKind::SpectralPhaseProcessor,
-            "Phase Sculpt",
-            "phase mesh filter",
-            { 1285.f, 345.f, 285.f, 180.f },
-            { input("phase", "Phase", PortDomain::SpectralPhaseSignal) },
-            { output("phase", "Phase", PortDomain::SpectralPhaseSignal) }));
+            "addMag",
+            NodeKind::Add,
+            "Add",
+            "magnitude layer",
+            { 1600.f, 55.f, 180.f, 150.f },
+            {
+                    input("signal", "Signal", PortDomain::SpectralMagnitudeSignal),
+                    input("operand", "Mesh", PortDomain::MeshField)
+            },
+            { output("out", "Out", PortDomain::SpectralMagnitudeSignal) }));
+
+    graph.addNode(node(
+            "phaseMesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            "phase operand",
+            { 1270.f, 365.f, 285.f, 180.f },
+            {},
+            { output("mesh", "Mesh", PortDomain::MeshField) }));
+
+    graph.addNode(node(
+            "addPhase",
+            NodeKind::Add,
+            "Add",
+            "phase layer",
+            { 1600.f, 395.f, 180.f, 150.f },
+            {
+                    input("signal", "Signal", PortDomain::SpectralPhaseSignal),
+                    input("operand", "Mesh", PortDomain::MeshField)
+            },
+            { output("out", "Out", PortDomain::SpectralPhaseSignal) }));
 
     graph.addNode(node(
             "ifft",
@@ -232,11 +257,14 @@ NodeGraph NodeGraph::createDemoGraph() {
             { "voice", "pitch", "wave", "pitch", PortDomain::PitchSignal, false },
             { "voice", "voice", "wave", "voice", PortDomain::VoiceControlSignal, false },
             { "scratchEnv", "env", "wave", "scratch", PortDomain::EnvelopeSignal, true },
+            { "scratchEnv", "env", "magMesh", "scratch", PortDomain::EnvelopeSignal, true },
             { "wave", "time", "fft", "time", PortDomain::TimeSignal, false },
-            { "fft", "mag", "mag", "mag", PortDomain::SpectralMagnitudeSignal, false },
-            { "fft", "phase", "phase", "phase", PortDomain::SpectralPhaseSignal, false },
-            { "mag", "mag", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, false },
-            { "phase", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, false },
+            { "fft", "mag", "addMag", "signal", PortDomain::SpectralMagnitudeSignal, false },
+            { "magMesh", "mesh", "addMag", "operand", PortDomain::MeshField, false },
+            { "fft", "phase", "addPhase", "signal", PortDomain::SpectralPhaseSignal, false },
+            { "phaseMesh", "mesh", "addPhase", "operand", PortDomain::MeshField, false },
+            { "addMag", "out", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, false },
+            { "addPhase", "out", "ifft", "phase", PortDomain::SpectralPhaseSignal, false },
             { "ifft", "time", "multiply", "audio", PortDomain::TimeSignal, false },
             { "env", "env", "multiply", "factor", PortDomain::EnvelopeSignal, false },
             { "multiply", "time", "out", "time", PortDomain::TimeSignal, false }
@@ -289,11 +317,13 @@ String labelForNodeKind(NodeKind kind) {
         case NodeKind::GenericProcessor:             return "Generic Processor";
         case NodeKind::VoiceContext:                 return "Voice Context";
         case NodeKind::TrilinearWaveSurface:         return "Trilinear Wave Surface";
+        case NodeKind::TrilinearMesh:                return "Trilinear Mesh";
         case NodeKind::Fft:                          return "FFT";
         case NodeKind::SpectralMagnitudeProcessor:   return "Spectral Magnitude Processor";
         case NodeKind::SpectralPhaseProcessor:       return "Spectral Phase Processor";
         case NodeKind::Ifft:                         return "IFFT";
         case NodeKind::Envelope:                     return "Envelope";
+        case NodeKind::Add:                          return "Add";
         case NodeKind::Multiply:                     return "Multiply";
         case NodeKind::StereoSplit:                  return "Stereo Split";
         case NodeKind::StereoJoin:                   return "Stereo Join";

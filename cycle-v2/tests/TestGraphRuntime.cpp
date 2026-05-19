@@ -32,7 +32,7 @@ TEST_CASE("Runtime traces compiled graph execution", "[cycle-v2][runtime]") {
     REQUIRE(trace.nodes.size() == compileResult.plan.nodeOrder.size());
     REQUIRE(trace.nodes.front().nodeId == compileResult.plan.nodeOrder.front());
     REQUIRE(trace.nodes.back().nodeId == "out");
-    REQUIRE(findTraceNode(trace, "wave").kind == NodeKind::TrilinearWaveSurface);
+    REQUIRE(findTraceNode(trace, "wave").kind == NodeKind::TrilinearMesh);
     REQUIRE(findTraceNode(trace, "wave").signalInputs.size() == 2);
     REQUIRE(findTraceNode(trace, "wave").attachments.size() == 1);
     REQUIRE(findTraceNode(trace, "multiply").signalInputs.size() == 2);

@@ -16,11 +16,13 @@ String idForNodeKind(NodeKind kind) {
     switch (kind) {
         case NodeKind::VoiceContext:                 return "voiceContext";
         case NodeKind::TrilinearWaveSurface:         return "trilinearWaveSurface";
+        case NodeKind::TrilinearMesh:                return "trilinearMesh";
         case NodeKind::Fft:                          return "fft";
         case NodeKind::SpectralMagnitudeProcessor:   return "spectralMagnitudeProcessor";
         case NodeKind::SpectralPhaseProcessor:       return "spectralPhaseProcessor";
         case NodeKind::Ifft:                         return "ifft";
         case NodeKind::Envelope:                     return "envelope";
+        case NodeKind::Add:                          return "add";
         case NodeKind::Multiply:                     return "multiply";
         case NodeKind::StereoSplit:                  return "stereoSplit";
         case NodeKind::StereoJoin:                   return "stereoJoin";
@@ -36,6 +38,9 @@ NodeKind nodeKindForId(const String& id) {
     if (id == "trilinearWaveSurface") {
         return NodeKind::TrilinearWaveSurface;
     }
+    if (id == "trilinearMesh") {
+        return NodeKind::TrilinearMesh;
+    }
     if (id == "fft") {
         return NodeKind::Fft;
     }
@@ -50,6 +55,9 @@ NodeKind nodeKindForId(const String& id) {
     }
     if (id == "envelope") {
         return NodeKind::Envelope;
+    }
+    if (id == "add") {
+        return NodeKind::Add;
     }
     if (id == "multiply") {
         return NodeKind::Multiply;

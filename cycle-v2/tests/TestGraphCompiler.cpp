@@ -40,17 +40,20 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     const auto result = GraphCompiler().compile(NodeGraph::createDemoGraph());
 
     REQUIRE(result.succeeded());
-    REQUIRE(result.plan.attachments.size() == 1);
-    REQUIRE(result.plan.signalEdges.size() == 10);
+    REQUIRE(result.plan.attachments.size() == 2);
+    REQUIRE(result.plan.signalEdges.size() == 12);
 
     const auto& plan = result.plan;
     REQUIRE(orderIndex(plan, "voice") < orderIndex(plan, "wave"));
     REQUIRE(orderIndex(plan, "scratchEnv") < orderIndex(plan, "wave"));
     REQUIRE(orderIndex(plan, "wave") < orderIndex(plan, "fft"));
-    REQUIRE(orderIndex(plan, "fft") < orderIndex(plan, "mag"));
-    REQUIRE(orderIndex(plan, "fft") < orderIndex(plan, "phase"));
-    REQUIRE(orderIndex(plan, "mag") < orderIndex(plan, "ifft"));
-    REQUIRE(orderIndex(plan, "phase") < orderIndex(plan, "ifft"));
+    REQUIRE(orderIndex(plan, "scratchEnv") < orderIndex(plan, "magMesh"));
+    REQUIRE(orderIndex(plan, "fft") < orderIndex(plan, "addMag"));
+    REQUIRE(orderIndex(plan, "magMesh") < orderIndex(plan, "addMag"));
+    REQUIRE(orderIndex(plan, "fft") < orderIndex(plan, "addPhase"));
+    REQUIRE(orderIndex(plan, "phaseMesh") < orderIndex(plan, "addPhase"));
+    REQUIRE(orderIndex(plan, "addMag") < orderIndex(plan, "ifft"));
+    REQUIRE(orderIndex(plan, "addPhase") < orderIndex(plan, "ifft"));
     REQUIRE(orderIndex(plan, "ifft") < orderIndex(plan, "multiply"));
     REQUIRE(orderIndex(plan, "env") < orderIndex(plan, "multiply"));
     REQUIRE(orderIndex(plan, "multiply") < orderIndex(plan, "out"));

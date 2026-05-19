@@ -111,11 +111,13 @@ String GraphEditor::baseIdForKind(NodeKind kind) const {
     switch (kind) {
         case NodeKind::VoiceContext:                 return "voice";
         case NodeKind::TrilinearWaveSurface:         return "wave";
+        case NodeKind::TrilinearMesh:                return "mesh";
         case NodeKind::Fft:                          return "fft";
         case NodeKind::SpectralMagnitudeProcessor:   return "mag";
         case NodeKind::SpectralPhaseProcessor:       return "phase";
         case NodeKind::Ifft:                         return "ifft";
         case NodeKind::Envelope:                     return "env";
+        case NodeKind::Add:                          return "add";
         case NodeKind::Multiply:                     return "multiply";
         case NodeKind::StereoSplit:                  return "split";
         case NodeKind::StereoJoin:                   return "join";

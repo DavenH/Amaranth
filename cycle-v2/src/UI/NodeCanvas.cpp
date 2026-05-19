@@ -45,7 +45,7 @@ String portDisplayLabel(const Port& port) {
 }
 
 Colour portDisplayColour(const Node& node, const Port& port) {
-    if (node.kind == NodeKind::Multiply) {
+    if (node.kind == NodeKind::Add || node.kind == NodeKind::Multiply) {
         return colourForDomain(PortDomain::ControlSignal);
     }
 
@@ -556,16 +556,12 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
         return;
     }
 
-    if (node.kind == NodeKind::Multiply) {
-        return;
-    }
-
     g.setColour(Colour(0xff0e1318));
     g.fillRoundedRectangle(area, 5.f);
     g.setColour(Colour(0xff26313d));
     g.drawRoundedRectangle(area, 5.f, 1.f);
 
-    if (node.kind == NodeKind::TrilinearWaveSurface) {
+    if (node.kind == NodeKind::TrilinearWaveSurface || node.kind == NodeKind::TrilinearMesh) {
         Path surface;
         for (int i = 0; i < 8; ++i) {
             float x0 = area.getX() + (float) i * area.getWidth() / 8.f;
@@ -627,6 +623,20 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
         g.setColour(Colour(0xff35d6d2).withAlpha(0.42f));
         g.fillRoundedRectangle(leftMeter.removeFromLeft(area.getWidth() * 0.42f), 3.f);
         g.fillRoundedRectangle(rightMeter.removeFromRight(area.getWidth() * 0.42f), 3.f);
+        return;
+    }
+
+    if (node.kind == NodeKind::Add) {
+        g.setColour(kMutedText.withAlpha(0.76f));
+        g.setFont(FontOptions(jmin(36.f, area.getHeight() * 0.58f), Font::bold));
+        g.drawText("+", area, Justification::centred);
+        return;
+    }
+
+    if (node.kind == NodeKind::Multiply) {
+        g.setColour(kMutedText.withAlpha(0.76f));
+        g.setFont(FontOptions(jmin(36.f, area.getHeight() * 0.58f), Font::bold));
+        g.drawText("x", area, Justification::centred);
         return;
     }
 
@@ -937,12 +947,11 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
     };
 
     const PaletteEntry entries[] = {
-            { NodeKind::TrilinearWaveSurface, "Wave" },
+            { NodeKind::TrilinearMesh, "Mesh" },
             { NodeKind::Fft, "FFT" },
-            { NodeKind::SpectralMagnitudeProcessor, "Mag" },
-            { NodeKind::SpectralPhaseProcessor, "Phase" },
             { NodeKind::Ifft, "IFFT" },
             { NodeKind::Envelope, "Env" },
+            { NodeKind::Add, "Add" },
             { NodeKind::Multiply, "Mul" },
             { NodeKind::StereoSplit, "Split" },
             { NodeKind::StereoJoin, "Join" },
@@ -1053,12 +1062,11 @@ bool NodeCanvas::findConnectablePortAt(
 
 bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const {
     const NodeKind entries[] = {
-            NodeKind::TrilinearWaveSurface,
+            NodeKind::TrilinearMesh,
             NodeKind::Fft,
-            NodeKind::SpectralMagnitudeProcessor,
-            NodeKind::SpectralPhaseProcessor,
             NodeKind::Ifft,
             NodeKind::Envelope,
+            NodeKind::Add,
             NodeKind::Multiply,
             NodeKind::StereoSplit,
             NodeKind::StereoJoin,
