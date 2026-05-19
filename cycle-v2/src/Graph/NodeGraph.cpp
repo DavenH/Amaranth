@@ -54,14 +54,16 @@ NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
         case NodeKind::TrilinearWaveSurface:         return { 300.f, 150.f };
         case NodeKind::TrilinearMesh:                return { 260.f, 130.f };
         case NodeKind::VoiceContext:                 return { 230.f, 105.f };
-        case NodeKind::Fft:                          return { 190.f, 90.f };
+        case NodeKind::Fft:                          return { 0.f, 0.f };
         case NodeKind::SpectralMagnitudeProcessor:   return { 240.f, 95.f };
         case NodeKind::SpectralPhaseProcessor:       return { 240.f, 95.f };
-        case NodeKind::Ifft:                         return { 200.f, 95.f };
+        case NodeKind::Ifft:                         return { 0.f, 0.f };
         case NodeKind::Envelope:                     return { 220.f, 85.f };
         case NodeKind::Add:                          return { 0.f, 0.f };
         case NodeKind::Multiply:                     return { 0.f, 0.f };
-        case NodeKind::Output:                       return { 190.f, 80.f };
+        case NodeKind::StereoSplit:                  return { 0.f, 0.f };
+        case NodeKind::StereoJoin:                   return { 0.f, 0.f };
+        case NodeKind::Output:                       return { 0.f, 0.f };
         default:                                     return { 190.f, 76.f };
     }
 }

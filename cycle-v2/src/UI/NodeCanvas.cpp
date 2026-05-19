@@ -561,6 +561,78 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
     g.setColour(Colour(0xff26313d));
     g.drawRoundedRectangle(area, 5.f, 1.f);
 
+    if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
+        const bool inverse = node.kind == NodeKind::Ifft;
+        const Rectangle<float> icon = area.reduced(jmax(8.f, area.getWidth() * 0.22f), area.getHeight() * 0.22f);
+        const Colour time = colourForDomain(PortDomain::TimeSignal);
+        const Colour mag = colourForDomain(PortDomain::SpectralMagnitudeSignal);
+        const Colour phase = colourForDomain(PortDomain::SpectralPhaseSignal);
+
+        if (inverse) {
+            Path wave;
+            for (int i = 0; i < 32; ++i) {
+                const float t = (float) i / 31.f;
+                const Point<float> p(
+                        icon.getX() + t * icon.getWidth(),
+                        icon.getCentreY() + std::sin(t * MathConstants<float>::twoPi) * icon.getHeight() * 0.30f);
+
+                if (i == 0) {
+                    wave.startNewSubPath(p);
+                } else {
+                    wave.lineTo(p);
+                }
+            }
+
+            g.setColour(time.withAlpha(0.90f));
+            g.strokePath(wave, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
+        } else {
+            const float barWidth = icon.getWidth() / 7.f;
+
+            for (int i = 0; i < 6; ++i) {
+                const float height = icon.getHeight() * (0.25f + (float) ((i * 17) % 5) * 0.13f);
+                Rectangle<float> bar(icon.getX() + (float) i * barWidth, icon.getBottom() - height,
+                                     barWidth * 0.52f, height);
+                g.setColour((i % 2 == 0 ? mag : phase).withAlpha(0.78f));
+                g.fillRoundedRectangle(bar, 2.f);
+            }
+        }
+
+        g.setColour(kMutedText.withAlpha(0.72f));
+        g.setFont(FontOptions(jmin(18.f, area.getHeight() * 0.30f), Font::bold));
+        g.drawText(inverse ? "IFFT" : "FFT", area, Justification::centredBottom);
+        return;
+    }
+
+    if (node.kind == NodeKind::StereoSplit || node.kind == NodeKind::StereoJoin) {
+        const bool split = node.kind == NodeKind::StereoSplit;
+        const Colour colour = colourForDomain(PortDomain::TimeSignal);
+        const float y = area.getCentreY();
+        const float left = area.getX() + area.getWidth() * 0.28f;
+        const float right = area.getRight() - area.getWidth() * 0.28f;
+
+        g.setColour(colour.withAlpha(0.85f));
+        g.drawLine(Line<float>({ left, y }, { right, y - area.getHeight() * 0.18f }), 2.f);
+        g.drawLine(Line<float>({ left, y }, { right, y + area.getHeight() * 0.18f }), 2.f);
+        g.setFont(FontOptions(jmin(18.f, area.getHeight() * 0.30f), Font::bold));
+        g.setColour(kMutedText.withAlpha(0.72f));
+        g.drawText(split ? "SPLIT" : "JOIN", area, Justification::centredBottom);
+        return;
+    }
+
+    if (node.kind == NodeKind::Output) {
+        const Colour colour = colourForDomain(PortDomain::TimeSignal);
+        Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.28f, area.getHeight() * 0.18f);
+        const float width = meterArea.getWidth() * 0.32f;
+
+        g.setColour(colour.withAlpha(0.18f));
+        g.fillRoundedRectangle(meterArea.removeFromLeft(width), 2.f);
+        g.fillRoundedRectangle(meterArea.removeFromRight(width), 2.f);
+        g.setColour(kMutedText.withAlpha(0.72f));
+        g.setFont(FontOptions(jmin(18.f, area.getHeight() * 0.30f), Font::bold));
+        g.drawText("OUT", area, Justification::centredBottom);
+        return;
+    }
+
     if (node.kind == NodeKind::TrilinearWaveSurface || node.kind == NodeKind::TrilinearMesh) {
         Path surface;
         for (int i = 0; i < 8; ++i) {
@@ -574,14 +646,6 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
         }
         g.setColour(Colour(0xff35d6d2).withAlpha(0.18f));
         g.fillRect(area.reduced(area.getWidth() * 0.14f, area.getHeight() * 0.24f));
-        return;
-    }
-
-    if (node.kind == NodeKind::Fft) {
-        auto magArea = area.reduced(8.f).removeFromTop((area.getHeight() - 20.f) * 0.5f);
-        auto phaseArea = area.reduced(8.f).withTrimmedTop((area.getHeight() - 20.f) * 0.5f + 8.f);
-        drawSpectrumBars(g, magArea, colourForDomain(PortDomain::SpectralMagnitudeSignal), node.id.hashCode());
-        drawPhaseTrace(g, phaseArea, colourForDomain(PortDomain::SpectralPhaseSignal), node.id.hashCode());
         return;
     }
 
@@ -614,17 +678,6 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
     }
 
     Colour colour = node.outputs.empty() ? Colour(0xff9aa5b2) : colourForDomain(node.outputs.front().domain);
-
-    if (node.kind == NodeKind::Output) {
-        const float left = area.getHeight() * 0.62f;
-        const float right = area.getHeight() * 0.44f;
-        auto leftMeter = area.withHeight(left).withY(area.getBottom() - left);
-        auto rightMeter = area.withHeight(right).withY(area.getBottom() - right);
-        g.setColour(Colour(0xff35d6d2).withAlpha(0.42f));
-        g.fillRoundedRectangle(leftMeter.removeFromLeft(area.getWidth() * 0.42f), 3.f);
-        g.fillRoundedRectangle(rightMeter.removeFromRight(area.getWidth() * 0.42f), 3.f);
-        return;
-    }
 
     if (node.kind == NodeKind::Add) {
         g.setColour(kMutedText.withAlpha(0.76f));
