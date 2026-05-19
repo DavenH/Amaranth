@@ -303,6 +303,12 @@ private:
         }
 
         blockBuffer(*input, context.frameCount).copyTo(outputBuffer(context));
+
+        if (context.outputPorts.empty()) {
+            context.output.domain = input->domain;
+            context.output.channelLayout = input->channelLayout;
+        }
+
         publishSingleOutput(context);
     }
 

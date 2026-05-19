@@ -106,3 +106,18 @@ TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cyc
     REQUIRE(fft.outputs[1].second.domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(result.output.samples == std::vector<float> { 0.f, 1.f / 3.f, 2.f / 3.f, 1.f });
 }
+
+TEST_CASE("Graph audio executor renders the demo graph through resolved mesh operands", "[cycle-v2][runtime]") {
+    const NodeGraph graph = NodeGraph::createDemoGraph();
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 3);
+
+    REQUIRE(findNodeAudio(result, "waveMesh").output.domain == PortDomain::TimeSignal);
+    REQUIRE(findNodeAudio(result, "magMesh").output.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(findNodeAudio(result, "phaseMesh").output.domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(findNodeAudio(result, "fft").outputs.size() == 2);
+    REQUIRE(result.output.domain == PortDomain::TimeSignal);
+    REQUIRE(result.output.samples == std::vector<float> { -2.f, 0.f, 2.f });
+}
