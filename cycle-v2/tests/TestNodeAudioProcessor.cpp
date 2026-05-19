@@ -103,3 +103,34 @@ TEST_CASE("FFT placeholder processor publishes separate magnitude and phase port
     REQUIRE(context.outputs[1].domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(context.outputs[1].samples == std::vector<float> { 0.f, 0.f, 0.f });
 }
+
+TEST_CASE("Mesh source processor generates a deterministic operand when unconnected", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.outputPorts = {
+            { "out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo }
+    };
+    factory.create(AudioModuleRole::MeshSource)->process(context);
+
+    REQUIRE(context.output.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(context.output.samples == std::vector<float> { -1.f, 0.f, 1.f });
+}
+
+TEST_CASE("Mesh source processor passes through ordinary signal inputs", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.inputs = {
+            { std::vector<float> { 0.f, 0.f, 0.f }, PortDomain::DomainContext, ChannelLayout::Mono },
+            { std::vector<float> { 0.25f, 0.5f, 0.75f }, PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
+    };
+    context.outputPorts = {
+            { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
+    };
+    factory.create(AudioModuleRole::MeshSource)->process(context);
+
+    REQUIRE(context.output.samples == std::vector<float> { 0.25f, 0.5f, 0.75f });
+}

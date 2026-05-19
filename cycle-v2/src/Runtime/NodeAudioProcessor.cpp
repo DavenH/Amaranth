@@ -77,6 +77,16 @@ AudioProcessBlock* inputAt(AudioProcessContext& context, size_t index) {
     return &context.inputs[index];
 }
 
+AudioProcessBlock* firstSignalInput(AudioProcessContext& context) {
+    for (auto& input : context.inputs) {
+        if (input.domain != PortDomain::DomainContext && input.samples.size() >= context.frameCount) {
+            return &input;
+        }
+    }
+
+    return nullptr;
+}
+
 float parameterFloat(
         const std::vector<NodeParameter>& parameters,
         const String& id,
@@ -101,6 +111,10 @@ public:
             case AudioModuleRole::WaveSource:
             case AudioModuleRole::ImageSource:
                 processRampSource(context);
+                break;
+
+            case AudioModuleRole::MeshSource:
+                processMeshSource(context);
                 break;
 
             case AudioModuleRole::Envelope:
@@ -132,7 +146,6 @@ public:
                 break;
 
             case AudioModuleRole::Output:
-            case AudioModuleRole::MeshSource:
             case AudioModuleRole::ImpulseResponse:
             case AudioModuleRole::Waveshaper:
             case AudioModuleRole::Reverb:
@@ -162,6 +175,28 @@ private:
         const float level = parameterFloat(context.parameters, "level", 1.f);
 
         outputBuffer(context).ramp(0.f, level / denominator);
+        publishSingleOutput(context);
+    }
+
+    void processMeshSource(AudioProcessContext& context) const {
+        AudioProcessBlock* signalInput = firstSignalInput(context);
+
+        if (signalInput != nullptr) {
+            ensureOutput(context);
+            blockBuffer(*signalInput, context.frameCount).copyTo(outputBuffer(context));
+            publishSingleOutput(context);
+            return;
+        }
+
+        ensureOutput(context);
+
+        if (context.frameCount == 0) {
+            publishSingleOutput(context);
+            return;
+        }
+
+        const float denominator = context.frameCount > 1 ? (float) (context.frameCount - 1) : 1.f;
+        outputBuffer(context).ramp(-1.f, 2.f / denominator);
         publishSingleOutput(context);
     }
 
