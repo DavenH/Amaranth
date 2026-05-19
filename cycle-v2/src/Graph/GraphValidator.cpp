@@ -106,6 +106,8 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
         }
     }
 
+    validateOperationInputs(graph, issues);
+
     return issues;
 }
 
@@ -115,6 +117,53 @@ bool GraphValidator::isValid(const NodeGraph& graph) const {
 
 bool GraphValidator::isVoiceAwareDestination(const Port& port) const {
     return port.domain == PortDomain::PitchSignal || port.domain == PortDomain::VoiceControlSignal;
+}
+
+bool GraphValidator::concreteOperationDomain(PortDomain domain) const {
+    switch (domain) {
+        case PortDomain::TimeSignal:
+        case PortDomain::SpectralMagnitudeSignal:
+        case PortDomain::SpectralPhaseSignal:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+void GraphValidator::validateOperationInputs(
+        const NodeGraph& graph,
+        std::vector<GraphValidationIssue>& issues) const {
+    for (const auto& node : graph.getNodes()) {
+        if (node.kind != NodeKind::Add && node.kind != NodeKind::Multiply) {
+            continue;
+        }
+
+        PortDomain firstConcreteDomain {};
+        bool hasConcreteDomain = false;
+
+        for (const auto& edge : graph.getEdges()) {
+            if (edge.attachment || edge.destNodeId != node.id) {
+                continue;
+            }
+
+            if (!concreteOperationDomain(edge.domain)) {
+                continue;
+            }
+
+            if (!hasConcreteDomain) {
+                firstConcreteDomain = edge.domain;
+                hasConcreteDomain = true;
+                continue;
+            }
+
+            if (edge.domain != firstConcreteDomain) {
+                addIssue(issues, GraphValidationCode::MixedOperationDomains,
+                         "Operation node mixes incompatible domains: " + node.id);
+                break;
+            }
+        }
+    }
 }
 
 bool GraphValidator::domainsCompatible(const Port& source, const Port& dest) const {

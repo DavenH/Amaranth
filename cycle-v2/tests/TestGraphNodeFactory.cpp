@@ -33,8 +33,9 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
 
     REQUIRE(mesh.title == "Trilinear Mesh");
     REQUIRE(mesh.outputs.size() == 1);
-    REQUIRE(mesh.outputs.front().domain == PortDomain::MeshField);
-    REQUIRE(mesh.inputs.front().purpose == PortPurpose::ScratchAttachment);
+    REQUIRE(mesh.inputs[0].domain == PortDomain::DomainContext);
+    REQUIRE(mesh.outputs.front().domain == PortDomain::ControlSignal);
+    REQUIRE(mesh.inputs[1].purpose == PortPurpose::ScratchAttachment);
 
     REQUIRE(add.title == "Add");
     REQUIRE(add.inputs.size() == 2);
@@ -58,9 +59,9 @@ TEST_CASE("Graph node factory creates menu node families", "[cycle-v2][graph]") 
     const Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
     const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
 
-    REQUIRE(waveform.outputs.front().domain == PortDomain::TimeSignal);
-    REQUIRE(spectral.outputs[0].domain == PortDomain::SpectralMagnitudeSignal);
-    REQUIRE(spectral.outputs[1].domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(waveform.outputs.front().domain == PortDomain::DomainContext);
+    REQUIRE(spectral.outputs.size() == 1);
+    REQUIRE(spectral.outputs.front().domain == PortDomain::DomainContext);
     REQUIRE(guide.outputs.front().domain == PortDomain::EnvelopeSignal);
     REQUIRE(ir.inputs.front().domain == PortDomain::TimeSignal);
     REQUIRE(ir.outputs.front().domain == PortDomain::TimeSignal);

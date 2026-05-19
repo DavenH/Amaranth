@@ -16,7 +16,8 @@ enum class GraphValidationCode {
     InvalidAttachmentSource,
     InvalidAttachmentDestination,
     ScratchPortRequiresAttachment,
-    PitchRequiresVoiceAwareDestination
+    PitchRequiresVoiceAwareDestination,
+    MixedOperationDomains
 };
 
 struct GraphValidationIssue {
@@ -31,6 +32,8 @@ public:
 
 private:
     bool isVoiceAwareDestination(const Port& port) const;
+    bool concreteOperationDomain(PortDomain domain) const;
+    void validateOperationInputs(const NodeGraph& graph, std::vector<GraphValidationIssue>& issues) const;
     bool domainsCompatible(const Port& source, const Port& dest) const;
     bool channelLayoutsCompatible(const Port& source, const Port& dest) const;
 };

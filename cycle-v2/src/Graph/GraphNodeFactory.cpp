@@ -20,30 +20,28 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
 
         case NodeKind::WaveformStart:
             node.title = "Waveform Start";
-            node.subtitle = "time domain";
+            node.subtitle = "domain context";
             node.inputs = {
                     input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("voice", "Voice", PortDomain::VoiceControlSignal)
             };
-            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            node.outputs = { output("domain", "Time Domain", PortDomain::DomainContext) };
             break;
 
         case NodeKind::SpectralStart:
             node.title = "Spectral Start";
-            node.subtitle = "mag + phase";
+            node.subtitle = "domain context";
             node.inputs = {
                     input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("voice", "Voice", PortDomain::VoiceControlSignal)
             };
-            node.outputs = {
-                    output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
-                    output("phase", "Phase", PortDomain::SpectralPhaseSignal)
-            };
+            node.outputs = { output("domain", "Spectral Domain", PortDomain::DomainContext) };
             break;
 
         case NodeKind::WaveSource:
             node.title = "Wave";
             node.subtitle = "signal source";
+            node.inputs = { input("domain", "Domain", PortDomain::DomainContext) };
             node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             break;
 
@@ -65,10 +63,11 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.title = "Trilinear Mesh";
             node.subtitle = "mesh operand";
             node.inputs = {
+                    input("domain", "Domain", PortDomain::DomainContext),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             };
             node.outputs = {
-                    output("mesh", "Mesh", PortDomain::MeshField)
+                    output("out", "Out", PortDomain::ControlSignal)
             };
             break;
 

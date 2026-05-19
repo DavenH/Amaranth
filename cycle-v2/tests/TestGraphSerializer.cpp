@@ -26,8 +26,7 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
     REQUIRE(waveform.id == "waveform");
     REQUIRE(waveform.kind == NodeKind::WaveformStart);
     REQUIRE(waveform.inputs.size() == 2);
-    REQUIRE(waveform.outputs[0].domain == PortDomain::TimeSignal);
-    REQUIRE(waveform.outputs[0].channelLayout == ChannelLayout::LinkedStereo);
+    REQUIRE(waveform.outputs[0].domain == PortDomain::DomainContext);
 
     REQUIRE(waveMesh.id == "waveMesh");
     REQUIRE(waveMesh.kind == NodeKind::TrilinearMesh);
@@ -36,7 +35,7 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
     REQUIRE(waveMesh.inputs[1].id == "scratch");
     REQUIRE(waveMesh.inputs[1].purpose == PortPurpose::ScratchAttachment);
     REQUIRE(waveMesh.inputs[1].side == PortSide::Left);
-    REQUIRE(waveMesh.outputs[0].domain == PortDomain::TimeSignal);
+    REQUIRE(waveMesh.outputs[0].domain == PortDomain::ControlSignal);
     REQUIRE(waveMesh.outputs[0].channelLayout == ChannelLayout::LinkedStereo);
     REQUIRE(waveMesh.outputs[0].side == PortSide::Right);
 }

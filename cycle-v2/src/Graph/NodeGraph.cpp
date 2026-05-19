@@ -136,13 +136,13 @@ NodeGraph NodeGraph::createDemoGraph() {
             "waveform",
             NodeKind::WaveformStart,
             "Waveform Start",
-            "time domain",
+            "domain context",
             { 470.f, 80.f, 260.f, 155.f },
             {
                     input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("voice", "Voice", PortDomain::VoiceControlSignal)
             },
-            { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }));
+            { output("domain", "Time Domain", PortDomain::DomainContext) }));
 
     graph.addNode(node(
             "waveMesh",
@@ -151,11 +151,11 @@ NodeGraph NodeGraph::createDemoGraph() {
             "waveform operand",
             { 770.f, 80.f, 380.f, 280.f },
             {
-                    input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
+                    input("domain", "Domain", PortDomain::DomainContext),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
             {
-                    output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
+                    output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo),
                     output("mesh", "Mesh", PortDomain::MeshField)
             }));
 
@@ -269,10 +269,10 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.edges = {
             { "voice", "pitch", "waveform", "pitch", PortDomain::PitchSignal, false },
             { "voice", "voice", "waveform", "voice", PortDomain::VoiceControlSignal, false },
-            { "waveform", "time", "waveMesh", "time", PortDomain::TimeSignal, false },
+            { "waveform", "domain", "waveMesh", "domain", PortDomain::DomainContext, false },
             { "scratchEnv", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal, true },
             { "scratchEnv", "env", "magMesh", "scratch", PortDomain::EnvelopeSignal, true },
-            { "waveMesh", "time", "fft", "time", PortDomain::TimeSignal, false },
+            { "waveMesh", "out", "fft", "time", PortDomain::TimeSignal, false },
             { "fft", "mag", "addMag", "signal", PortDomain::SpectralMagnitudeSignal, false },
             { "magMesh", "mesh", "addMag", "operand", PortDomain::MeshField, false },
             { "fft", "phase", "addPhase", "signal", PortDomain::SpectralPhaseSignal, false },
@@ -289,6 +289,7 @@ NodeGraph NodeGraph::createDemoGraph() {
 
 Colour colourForDomain(PortDomain domain) {
     switch (domain) {
+        case PortDomain::DomainContext:           return Colour(0xffc5cad3);
         case PortDomain::TimeSignal:              return Colour(0xff35d6d2);
         case PortDomain::SpectralMagnitudeSignal: return Colour(0xffffb347);
         case PortDomain::SpectralPhaseSignal:     return Colour(0xffb284ff);
@@ -303,6 +304,7 @@ Colour colourForDomain(PortDomain domain) {
 
 String labelForDomain(PortDomain domain) {
     switch (domain) {
+        case PortDomain::DomainContext:           return "Domain";
         case PortDomain::TimeSignal:              return "Time";
         case PortDomain::SpectralMagnitudeSignal: return "Mag";
         case PortDomain::SpectralPhaseSignal:     return "Phase";

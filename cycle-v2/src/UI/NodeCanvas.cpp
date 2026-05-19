@@ -109,7 +109,6 @@ bool isPreviewableNode(NodeKind kind) {
         case NodeKind::TrilinearMesh:
         case NodeKind::SpectralMagnitudeProcessor:
         case NodeKind::SpectralPhaseProcessor:
-        case NodeKind::Ifft:
         case NodeKind::Envelope:
         case NodeKind::GuideCurve:
         case NodeKind::ImpulseResponse:

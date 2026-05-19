@@ -51,10 +51,44 @@ TEST_CASE("Universal ports accept typed graph operands", "[cycle-v2][graph]") {
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Add, "add", { 320.f, 0.f }));
-    graph.addEdge({ "mesh", "mesh", "add", "left", PortDomain::MeshField, false });
+    graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, false });
 
     REQUIRE(GraphValidator().isValid(graph));
     REQUIRE(labelForDomain(PortDomain::ControlSignal) == "Universal");
+}
+
+TEST_CASE("Operation nodes reject mixed concrete signal domains", "[cycle-v2][graph]") {
+    NodeGraph graph;
+    graph.addNode({
+            "time",
+            NodeKind::GenericProcessor,
+            "Time",
+            {},
+            {},
+            {},
+            { { "out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }
+    });
+    graph.addNode({
+            "mag",
+            NodeKind::GenericProcessor,
+            "Magnitude",
+            {},
+            {},
+            {},
+            { { "out", "Out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }
+    });
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Add, "add", { 320.f, 0.f }));
+    graph.addEdge({ "time", "out", "add", "left", PortDomain::TimeSignal, false });
+    graph.addEdge({ "mag", "out", "add", "right", PortDomain::SpectralMagnitudeSignal, false });
+
+    const auto issues = GraphValidator().validate(graph);
+
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::MixedOperationDomains;
+            }));
 }
 
 TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {

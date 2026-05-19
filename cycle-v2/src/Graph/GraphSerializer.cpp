@@ -109,6 +109,7 @@ NodeKind nodeKindForId(const String& id) {
 
 String idForDomain(PortDomain domain) {
     switch (domain) {
+        case PortDomain::DomainContext:              return "domain";
         case PortDomain::TimeSignal:                 return "time";
         case PortDomain::SpectralMagnitudeSignal:    return "spectralMagnitude";
         case PortDomain::SpectralPhaseSignal:        return "spectralPhase";
@@ -122,6 +123,9 @@ String idForDomain(PortDomain domain) {
 }
 
 PortDomain domainForId(const String& id) {
+    if (id == "domain") {
+        return PortDomain::DomainContext;
+    }
     if (id == "time") {
         return PortDomain::TimeSignal;
     }
