@@ -859,7 +859,7 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
             { PortDomain::ControlSignal, "Universal", false }
     };
 
-    Rectangle<float> legend((float) getWidth() - 704.f, (float) getHeight() - 42.f, 500.f, 24.f);
+    Rectangle<float> legend((float) getWidth() - 748.f, (float) getHeight() - 42.f, 544.f, 24.f);
 
     if (legend.getX() < 110.f) {
         return;
@@ -870,14 +870,22 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
     g.setColour(Colour(0xff354050));
     g.drawRoundedRectangle(legend, 5.f, 1.f);
 
-    float x = legend.getX() + 12.f;
+    float x = legend.getX() + 16.f;
     const float y = legend.getCentreY();
+    const Font legendFont(FontOptions(9.f));
+    constexpr float lineWidth = 34.f;
+    constexpr float labelGap = 14.f;
+    constexpr float itemGap = 26.f;
+
+    g.setFont(legendFont);
 
     for (const auto& entry : entries) {
         const Colour colour = colourForDomain(entry.domain);
+        const float labelWidth = legendFont.getStringWidthFloat(entry.label);
+        const float labelX = x + lineWidth + labelGap;
         Path path;
         path.startNewSubPath(x, y);
-        path.lineTo(x + 34.f, y);
+        path.lineTo(x + lineWidth, y);
 
         if (entry.attachment) {
             Path dashed;
@@ -892,10 +900,9 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
         }
 
         g.setColour(kMutedText);
-        g.setFont(FontOptions(9.f));
-        g.drawText(entry.label, Rectangle<float>(x + 42.f, legend.getY(), 72.f, legend.getHeight()),
+        g.drawText(entry.label, Rectangle<float>(labelX, legend.getY(), labelWidth + 1.f, legend.getHeight()),
                    Justification::centredLeft);
-        x += entry.attachment ? 102.f : 78.f;
+        x = labelX + labelWidth + itemGap;
     }
 }
 
