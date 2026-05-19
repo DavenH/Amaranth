@@ -15,8 +15,13 @@ const Colour kNodeBorder       { 0xff3d4a58 };
 const Colour kText             { 0xffe2e8ef };
 const Colour kMutedText        { 0xff8793a1 };
 constexpr float kCableReferenceZoom = 0.58f;
+constexpr float kCableStrokeScale = 0.70f;
 
 float cableScaleForZoom(float zoom) {
+    return zoom / kCableReferenceZoom * kCableStrokeScale;
+}
+
+float portScaleForZoom(float zoom) {
     return zoom / kCableReferenceZoom;
 }
 
@@ -332,6 +337,12 @@ void NodeCanvas::openGLContextClosing() {
 }
 
 void NodeCanvas::timerCallback() {
+    const auto mouse = getMouseXYRelative().toFloat();
+
+    if (getLocalBounds().toFloat().contains(mouse) && mouse != lastMousePosition) {
+        lastMousePosition = mouse;
+    }
+
     repaint();
 }
 
@@ -519,9 +530,10 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     auto drawPort = [&](const Node& portNode, const Port& port) {
         auto location = getPortLocation(portNode, port);
         Colour colour = portDisplayColour(portNode, port);
+        const float portScale = portScaleForZoom(zoom);
 
         g.setColour(colour.withAlpha(0.22f));
-        g.fillEllipse(location.bounds.expanded(3.f));
+        g.fillEllipse(location.bounds.expanded(3.f * portScale));
 
         if (port.input) {
             g.setColour(colour);
@@ -530,7 +542,7 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
             g.setColour(kCanvasBackground.withAlpha(0.92f));
             g.fillEllipse(location.bounds);
             g.setColour(colour);
-            g.drawEllipse(location.bounds, 2.f);
+            g.drawEllipse(location.bounds, 2.f * portScale);
         }
     };
 
@@ -964,7 +976,7 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
         g.setColour(colour.withAlpha(0.48f));
         g.drawRoundedRectangle(row, 4.f, 1.f);
         g.setColour(kText);
-        g.setFont(FontOptions(10.5f));
+        g.setFont(FontOptions(10.5f, Font::bold));
         g.drawText(entries[i].label, row, Justification::centred);
     }
 }
@@ -983,7 +995,7 @@ Rectangle<float> NodeCanvas::toScreen(Rectangle<float> r) const {
 }
 
 NodeCanvas::PortLocation NodeCanvas::getPortLocation(const Node& node, const Port& port) const {
-    constexpr float size = 11.f;
+    const float size = 11.f * portScaleForZoom(zoom);
     float x = port.input ? node.bounds.getX() : node.bounds.getRight();
     Point<float> centre = toScreen(Point<float>(x, portY(node, port)));
     Rectangle<float> bounds(centre.x - size * 0.5f, centre.y - size * 0.5f, size, size);

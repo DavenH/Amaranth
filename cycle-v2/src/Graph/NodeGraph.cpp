@@ -121,7 +121,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::VoiceContext,
             "Voice Context",
             "6 voices / detune / pan / phase",
-            { 80.f, 95.f, 300.f, 220.f },
+            { 80.f, 90.f, 300.f, 220.f },
             {},
             {
                     output("pitch", "Pitch", PortDomain::PitchSignal),
@@ -133,7 +133,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::TrilinearWaveSurface,
             "Trilinear Wave Surface",
             "pitch-aware generator",
-            { 410.f, 80.f, 380.f, 280.f },
+            { 470.f, 80.f, 380.f, 280.f },
             {
                     input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("voice", "Voice", PortDomain::VoiceControlSignal),
@@ -149,7 +149,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Fft,
             "FFT: 1 Cycle",
             "time -> mag + phase",
-            { 810.f, 105.f, 220.f, 185.f },
+            { 930.f, 105.f, 220.f, 185.f },
             { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
             {
                     output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
@@ -161,7 +161,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::SpectralMagnitudeProcessor,
             "Magnitude Sculpt",
             "layer 2 scratch target",
-            { 1120.f, 45.f, 285.f, 180.f },
+            { 1285.f, 30.f, 285.f, 180.f },
             {
                     input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
@@ -173,7 +173,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::SpectralPhaseProcessor,
             "Phase Sculpt",
             "phase mesh filter",
-            { 1120.f, 275.f, 285.f, 180.f },
+            { 1285.f, 345.f, 285.f, 180.f },
             { input("phase", "Phase", PortDomain::SpectralPhaseSignal) },
             { output("phase", "Phase", PortDomain::SpectralPhaseSignal) }));
 
@@ -182,7 +182,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Ifft,
             "IFFT",
             "cyclic mode",
-            { 1495.f, 135.f, 230.f, 210.f },
+            { 1765.f, 165.f, 230.f, 210.f },
             {
                     input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     input("phase", "Phase", PortDomain::SpectralPhaseSignal)
@@ -194,7 +194,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Envelope,
             "Envelope",
             "volume curve",
-            { 805.f, 440.f, 235.f, 155.f },
+            { 1080.f, 620.f, 235.f, 155.f },
             {},
             { output("env", "Env", PortDomain::EnvelopeSignal) }));
 
@@ -203,7 +203,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Envelope,
             "Envelope",
             "scratch attachment",
-            { 430.f, 405.f, 235.f, 155.f },
+            { 500.f, 505.f, 235.f, 155.f },
             {},
             { output("env", "Env", PortDomain::EnvelopeSignal) }));
 
@@ -212,7 +212,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Multiply,
             "Multiply",
             "global volume",
-            { 1810.f, 190.f, 235.f, 165.f },
+            { 2110.f, 415.f, 235.f, 165.f },
             {
                     input("audio", "Audio", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
                     input("factor", "Factor", PortDomain::EnvelopeSignal)
@@ -224,7 +224,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Output,
             "Output",
             "stereo meters",
-            { 2150.f, 205.f, 210.f, 145.f },
+            { 2490.f, 430.f, 210.f, 145.f },
             { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
             {}));
 
