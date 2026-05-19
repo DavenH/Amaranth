@@ -107,7 +107,6 @@ bool isPreviewableNode(NodeKind kind) {
         case NodeKind::WaveSource:
         case NodeKind::TrilinearWaveSurface:
         case NodeKind::TrilinearMesh:
-        case NodeKind::Fft:
         case NodeKind::SpectralMagnitudeProcessor:
         case NodeKind::SpectralPhaseProcessor:
         case NodeKind::Ifft:
