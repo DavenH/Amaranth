@@ -85,6 +85,7 @@ private:
     bool findConnectablePortAt(Point<float> screenPosition, const PortAddress& source, PortAddress& result) const;
     bool findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const;
     bool findOperationLayoutButtonAt(Point<float> screenPosition, String& nodeId) const;
+    bool findVoiceDomainButtonAt(Point<float> screenPosition, String& nodeId) const;
     int findEdgeAt(Point<float> screenPosition) const;
     const Node* findNode(const String& id) const;
     Node* findMutableNode(const String& id);
@@ -110,6 +111,7 @@ private:
     bool restoreGraphXml(const String& xml, const String& statusMessage);
     bool clearSelection();
     bool cycleOperationPortLayout(const String& nodeId);
+    bool cycleVoiceDomain(const String& nodeId);
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
     Path createCablePath(Point<float> source, Point<float> dest, bool attachment) const;
 

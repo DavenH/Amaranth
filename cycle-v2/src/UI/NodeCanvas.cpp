@@ -28,6 +28,10 @@ float portScaleForZoom(float zoom) {
     return zoom / kCableReferenceZoom;
 }
 
+float absoluteFloat(float value) {
+    return value >= 0.f ? value : -value;
+}
+
 int portIndexOnSide(const Node& node, const Port& port) {
     int index = 0;
 
@@ -156,6 +160,24 @@ Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds,
     const float size = 18.f * zoom;
     return Rectangle<float>(size, size)
             .withCentre({ nodeBounds.getRight() - 18.f * zoom, nodeBounds.getY() + 21.f * zoom });
+}
+
+Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
+    return Rectangle<float>(88.f * zoom, 22.f * zoom)
+            .withCentre({ nodeBounds.getRight() - 58.f * zoom, nodeBounds.getY() + 21.f * zoom });
+}
+
+String voiceDomainForNode(const Node& node) {
+    return parameterValueForNode(node, "domain", "waveform");
+}
+
+String voiceDomainButtonLabel(const Node& node) {
+    const String domain = voiceDomainForNode(node);
+    return domain == "spectral" ? "Spectral" : "Waveform";
+}
+
+String nextVoiceDomain(const Node& node) {
+    return voiceDomainForNode(node) == "spectral" ? "waveform" : "spectral";
 }
 
 void drawOperationLayoutIcon(Graphics& g, Rectangle<float> button, OperationPortLayout layout, Colour colour) {
@@ -287,6 +309,15 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     if (findOperationLayoutButtonAt(event.position, layoutNodeId)) {
         if (cycleOperationPortLayout(layoutNodeId)) {
             editStatusMessage = "Port layout cycled";
+            repaint();
+        }
+
+        return;
+    }
+
+    String voiceNodeId;
+    if (findVoiceDomainButtonAt(event.position, voiceNodeId)) {
+        if (cycleVoiceDomain(voiceNodeId)) {
             repaint();
         }
 
@@ -696,6 +727,22 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
         g.setColour(kMutedText.withAlpha(0.82f));
         g.drawEllipse(button, 1.f * uiScale);
         drawOperationLayoutIcon(g, button, operationPortLayoutFor(node), kMutedText);
+    }
+
+    if (node.kind == NodeKind::VoiceContext) {
+        const auto button = voiceDomainButtonBounds(toScreen(node.bounds), zoom);
+        const bool spectral = voiceDomainForNode(node) == "spectral";
+        const Colour colour = colourForDomain(spectral
+                ? PortDomain::SpectralMagnitudeSignal
+                : PortDomain::TimeSignal);
+
+        g.setColour(colour.withAlpha(0.16f));
+        g.fillRoundedRectangle(button, 6.f * uiScale);
+        g.setColour(colour.withAlpha(0.72f));
+        g.drawRoundedRectangle(button, 6.f * uiScale, 1.f * uiScale);
+        g.setColour(kText);
+        g.setFont(FontOptions(10.f * zoom, Font::bold));
+        g.drawText(voiceDomainButtonLabel(node), button.reduced(6.f * zoom, 1.f * zoom), Justification::centred);
     }
 
     auto nodeBounds = toScreen(node.bounds);
@@ -1470,6 +1517,25 @@ bool NodeCanvas::findOperationLayoutButtonAt(Point<float> screenPosition, String
     return false;
 }
 
+bool NodeCanvas::findVoiceDomainButtonAt(Point<float> screenPosition, String& nodeId) const {
+    const auto& nodes = graph.getNodes();
+
+    for (int i = (int) nodes.size() - 1; i >= 0; --i) {
+        const auto& node = nodes[(size_t) i];
+
+        if (node.kind != NodeKind::VoiceContext) {
+            continue;
+        }
+
+        if (voiceDomainButtonBounds(toScreen(node.bounds), zoom).expanded(4.f * zoom).contains(screenPosition)) {
+            nodeId = node.id;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 int NodeCanvas::findEdgeAt(Point<float> screenPosition) const {
     const auto& edges = graph.getEdges();
 
@@ -1615,6 +1681,16 @@ String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
     String layoutNodeId;
     if (findOperationLayoutButtonAt(screenPosition, layoutNodeId)) {
         return "Cycle operation port layout  /  side, uptack, vertical, T";
+    }
+
+    String voiceNodeId;
+    if (findVoiceDomainButtonAt(screenPosition, voiceNodeId)) {
+        const Node* node = findNode(voiceNodeId);
+
+        if (node != nullptr) {
+            return "Voice start domain  /  " + voiceDomainButtonLabel(*node)
+                    + "  /  click to switch";
+        }
     }
 
     PortAddress portAddress;
@@ -1861,6 +1937,33 @@ bool NodeCanvas::cycleOperationPortLayout(const String& nodeId) {
     return true;
 }
 
+bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
+    const Node* node = findNode(nodeId);
+
+    if (node == nullptr || node->kind != NodeKind::VoiceContext) {
+        return false;
+    }
+
+    const String domain = nextVoiceDomain(*node);
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().setNodeParameter(graph, nodeId, "domain", "Start Domain", domain);
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    if (Node* edited = findMutableNode(nodeId)) {
+        edited->subtitle = domain == "spectral" ? "spectral start" : "waveform start";
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    selectedNodeId = nodeId;
+    selectedEdgeIndex = -1;
+    refreshCompiledState();
+    editStatusMessage = "Voice start domain: " + domain;
+    return true;
+}
+
 bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& second) const {
     if (first.input == second.input) {
         return false;
@@ -1877,8 +1980,8 @@ Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool) c
     const float deltaX = dest.x - source.x;
     const float deltaY = dest.y - source.y;
 
-    if (std::abs(deltaX) < 42.f * zoom) {
-        const float dy = jmax(28.f * zoom, std::abs(deltaY) * 0.48f);
+    if (absoluteFloat(deltaX) < 42.f * zoom) {
+        const float dy = jmax(28.f * zoom, absoluteFloat(deltaY) * 0.48f);
         const float sign = deltaY >= 0.f ? 1.f : -1.f;
         path.cubicTo(
                 { source.x, source.y + dy * sign },
@@ -1887,8 +1990,8 @@ Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool) c
         return path;
     }
 
-    if (std::abs(deltaY) < 32.f * zoom || deltaX > 0.f) {
-        const float dx = jmax(36.f * zoom, std::abs(deltaX) * 0.45f);
+    if (absoluteFloat(deltaY) < 32.f * zoom || deltaX > 0.f) {
+        const float dx = jmax(36.f * zoom, absoluteFloat(deltaX) * 0.45f);
         path.cubicTo(
                 { source.x + dx, source.y },
                 { dest.x - dx, dest.y },
@@ -1896,7 +1999,7 @@ Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool) c
         return path;
     }
 
-    const float dx = jmax(48.f * zoom, std::abs(deltaX) * 0.35f);
+    const float dx = jmax(48.f * zoom, absoluteFloat(deltaX) * 0.35f);
     const float lift = deltaY < 0.f ? -34.f * zoom : 34.f * zoom;
     const Point<float> c1(source.x + dx, source.y + lift);
     const Point<float> c2(dest.x - dx, dest.y - lift);
