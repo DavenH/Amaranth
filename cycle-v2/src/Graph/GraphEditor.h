@@ -34,9 +34,16 @@ public:
     GraphEditResult connect(NodeGraph& graph, const PortAddress& first, const PortAddress& second) const;
     GraphEditResult removeEdgeAt(NodeGraph& graph, size_t index) const;
     GraphEditResult removeNode(NodeGraph& graph, const String& nodeId) const;
+    GraphEditResult setNodeParameter(
+            NodeGraph& graph,
+            const String& nodeId,
+            const String& parameterId,
+            const String& label,
+            const String& value) const;
 
 private:
     const Node* findNode(const NodeGraph& graph, const String& nodeId) const;
+    Node* findMutableNode(NodeGraph& graph, const String& nodeId) const;
     const Port* findPort(const Node& node, const String& portId, bool input) const;
     String createUniqueNodeId(const NodeGraph& graph, NodeKind kind) const;
     String baseIdForKind(NodeKind kind) const;

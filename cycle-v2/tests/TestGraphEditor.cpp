@@ -134,3 +134,44 @@ TEST_CASE("Graph editor reports missing edge removal", "[cycle-v2][graph]") {
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.code == GraphEditCode::MissingEdge);
 }
+
+TEST_CASE("Graph editor updates node parameters", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    GraphEditor editor;
+
+    const auto updateResult = editor.setNodeParameter(
+            graph,
+            "voice",
+            "domain",
+            "Start Domain",
+            "spectral");
+
+    REQUIRE(updateResult.succeeded());
+    REQUIRE(updateResult.nodeId == "voice");
+    REQUIRE(parameterValueForNode(graph.getNodes().front(), "domain") == "spectral");
+
+    const auto addResult = editor.setNodeParameter(
+            graph,
+            "voice",
+            "tempoSync",
+            "Tempo Sync",
+            "true");
+
+    REQUIRE(addResult.succeeded());
+    REQUIRE(parameterValueForNode(graph.getNodes().front(), "tempoSync") == "true");
+    REQUIRE(graph.getNodes().front().parameters.size() == 3);
+}
+
+TEST_CASE("Graph editor reports missing node parameter updates", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+
+    const auto result = GraphEditor().setNodeParameter(
+            graph,
+            "missing",
+            "domain",
+            "Start Domain",
+            "spectral");
+
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.code == GraphEditCode::MissingNode);
+}

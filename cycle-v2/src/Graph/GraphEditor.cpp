@@ -84,8 +84,42 @@ GraphEditResult GraphEditor::removeEdgeAt(NodeGraph& graph, size_t index) const 
     return {};
 }
 
+GraphEditResult GraphEditor::setNodeParameter(
+        NodeGraph& graph,
+        const String& nodeId,
+        const String& parameterId,
+        const String& label,
+        const String& value) const {
+    Node* node = findMutableNode(graph, nodeId);
+
+    if (node == nullptr) {
+        return { GraphEditCode::MissingNode, {}, {} };
+    }
+
+    for (auto& parameter : node->parameters) {
+        if (parameter.id == parameterId) {
+            parameter.label = label;
+            parameter.value = value;
+            return { GraphEditCode::Connected, nodeId, {} };
+        }
+    }
+
+    node->parameters.push_back({ parameterId, label, value });
+    return { GraphEditCode::Connected, nodeId, {} };
+}
+
 const Node* GraphEditor::findNode(const NodeGraph& graph, const String& nodeId) const {
     for (const auto& node : graph.getNodes()) {
+        if (node.id == nodeId) {
+            return &node;
+        }
+    }
+
+    return nullptr;
+}
+
+Node* GraphEditor::findMutableNode(NodeGraph& graph, const String& nodeId) const {
+    for (auto& node : graph.getNodesForEditing()) {
         if (node.id == nodeId) {
             return &node;
         }
