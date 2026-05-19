@@ -91,6 +91,7 @@ private:
     const Node* findNodeAt(Point<float> worldPosition) const;
     const Port* findPort(const Node& node, const String& portId, bool input) const;
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
+    PortDomain displayDomainForEdge(const Edge& edge) const;
     int executionIndexForNode(const String& nodeId) const;
     int attachmentCount() const;
     String hoverTextFor(Point<float> screenPosition) const;

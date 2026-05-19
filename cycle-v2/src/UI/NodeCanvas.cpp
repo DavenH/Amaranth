@@ -580,7 +580,7 @@ void NodeCanvas::drawEdges(Graphics& g) {
         auto source = getPortLocation(*sourceNode, *sourcePort).centre;
         auto dest = getPortLocation(*destNode, *destPort).centre;
         Path cable = createCablePath(source, dest, edge.attachment);
-        Colour colour = colourForDomain(edge.domain);
+        Colour colour = colourForDomain(displayDomainForEdge(edge));
 
         const bool selected = edgeIndex == selectedEdgeIndex;
         const float cableScale = cableScaleForZoom(zoom);
@@ -1560,6 +1560,23 @@ const RuntimeNodeTrace* NodeCanvas::findRuntimeTrace(const String& nodeId) const
     return nullptr;
 }
 
+PortDomain NodeCanvas::displayDomainForEdge(const Edge& edge) const {
+    if (edge.attachment || !compileResult.succeeded()) {
+        return edge.domain;
+    }
+
+    for (const auto& resolved : compileResult.plan.signalEdges) {
+        if (resolved.sourceNodeId == edge.sourceNodeId
+                && resolved.sourcePortId == edge.sourcePortId
+                && resolved.destNodeId == edge.destNodeId
+                && resolved.destPortId == edge.destPortId) {
+            return resolved.domain;
+        }
+    }
+
+    return edge.domain;
+}
+
 int NodeCanvas::executionIndexForNode(const String& nodeId) const {
     if (!compileResult.succeeded()) {
         return -1;
@@ -1617,7 +1634,7 @@ String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
     if (edgeIndex >= 0 && edgeIndex < (int) graph.getEdges().size()) {
         const auto& edge = graph.getEdges()[(size_t) edgeIndex];
         return String(edge.attachment ? "Attachment" : "Signal")
-                + " edge  /  " + labelForDomain(edge.domain)
+                + " edge  /  " + labelForDomain(displayDomainForEdge(edge))
                 + "  /  " + edge.sourceNodeId + "." + edge.sourcePortId
                 + " -> " + edge.destNodeId + "." + edge.destPortId;
     }
