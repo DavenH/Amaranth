@@ -1,9 +1,28 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
 
+#include <algorithm>
+
 using namespace CycleV2;
+
+namespace {
+
+const Edge& findSignalEdge(const GraphExecutionPlan& plan, const String& sourceNodeId, const String& destNodeId) {
+    const auto found = std::find_if(
+            plan.signalEdges.begin(),
+            plan.signalEdges.end(),
+            [&](const Edge& edge) {
+                return edge.sourceNodeId == sourceNodeId && edge.destNodeId == destNodeId;
+            });
+
+    REQUIRE(found != plan.signalEdges.end());
+    return *found;
+}
+
+}
 
 TEST_CASE("Graph serializer round trips demo graph", "[cycle-v2][graph]") {
     const NodeGraph source = NodeGraph::createDemoGraph();
@@ -78,4 +97,25 @@ TEST_CASE("Graph serializer round trips XML", "[cycle-v2][graph]") {
     REQUIRE(restored.getNodes().size() == source.getNodes().size());
     REQUIRE(restored.getEdges().size() == source.getEdges().size());
     REQUIRE(GraphValidator().isValid(restored));
+}
+
+TEST_CASE("Graph serializer migrates legacy start nodes to voice context domains", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 240.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", { 520.f, 0.f }));
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, false });
+
+    const GraphSerializer serializer;
+    const String xml = serializer.toXmlString(graph).replace("kind=\"voiceContext\"", "kind=\"spectralStart\"");
+    const NodeGraph restored = serializer.fromXmlString(xml);
+    const auto compileResult = GraphCompiler().compile(restored);
+
+    REQUIRE(restored.getNodes().front().kind == NodeKind::VoiceContext);
+    REQUIRE(parameterValueForNode(restored.getNodes().front(), "domain") == "spectral");
+    REQUIRE(compileResult.succeeded());
+    REQUIRE(findSignalEdge(compileResult.plan, "mesh", "add").domain == PortDomain::SpectralMagnitudeSignal);
 }

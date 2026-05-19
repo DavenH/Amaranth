@@ -107,6 +107,28 @@ NodeKind nodeKindForId(const String& id) {
     return NodeKind::GenericProcessor;
 }
 
+void setParameter(std::vector<NodeParameter>& parameters, String id, String label, String value) {
+    for (auto& parameter : parameters) {
+        if (parameter.id == id) {
+            parameter.label = std::move(label);
+            parameter.value = std::move(value);
+            return;
+        }
+    }
+
+    parameters.push_back({ std::move(id), std::move(label), std::move(value) });
+}
+
+void normalizeLegacyStartNode(const String& kindId, Node& node) {
+    if (kindId == "spectralStart") {
+        setParameter(node.parameters, "domain", "Start Domain", "spectral");
+        node.subtitle = "spectral start";
+    } else if (kindId == "waveformStart") {
+        setParameter(node.parameters, "domain", "Start Domain", "waveform");
+        node.subtitle = "waveform start";
+    }
+}
+
 String idForDomain(PortDomain domain) {
     switch (domain) {
         case PortDomain::DomainContext:              return "domain";
@@ -303,8 +325,9 @@ NodeGraph GraphSerializer::fromValueTree(const ValueTree& tree) const {
     for (const auto& child : tree) {
         if (child.hasType(nodeType)) {
             Node node;
+            const String kindId = child["kind"].toString();
             node.id = child["id"].toString();
-            node.kind = nodeKindForId(child["kind"].toString());
+            node.kind = nodeKindForId(kindId);
             node.title = child["title"].toString();
             node.subtitle = child["subtitle"].toString();
             node.bounds = {
@@ -324,6 +347,7 @@ NodeGraph GraphSerializer::fromValueTree(const ValueTree& tree) const {
                 }
             }
 
+            normalizeLegacyStartNode(kindId, node);
             graph.addNode(std::move(node));
         } else if (child.hasType(edgeType)) {
             graph.addEdge({
