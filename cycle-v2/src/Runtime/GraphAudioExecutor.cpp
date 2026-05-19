@@ -42,6 +42,7 @@ GraphAudioResult GraphAudioExecutor::process(
         processor->prepare(frameCount);
         processor->process(context);
         outputs.push_back({ step.nodeId, std::move(context.output) });
+        result.nodes.push_back({ step.nodeId, outputs.back().second });
 
         if (isOutputNode(graph, step.nodeId)) {
             result.output = outputs.back().second;

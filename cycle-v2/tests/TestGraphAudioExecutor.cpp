@@ -4,7 +4,25 @@
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
 
+#include <algorithm>
+
 using namespace CycleV2;
+
+namespace {
+
+const NodeAudioResult& findNodeAudio(const GraphAudioResult& result, const String& nodeId) {
+    const auto found = std::find_if(
+            result.nodes.begin(),
+            result.nodes.end(),
+            [&](const NodeAudioResult& node) {
+                return node.nodeId == nodeId;
+            });
+
+    REQUIRE(found != result.nodes.end());
+    return *found;
+}
+
+}
 
 TEST_CASE("Graph audio executor renders source through envelope multiply to output", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
@@ -27,6 +45,8 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
     const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 5);
 
     REQUIRE(result.output.samples == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
+    REQUIRE(findNodeAudio(result, "wave").output.samples == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
+    REQUIRE(findNodeAudio(result, "mul").output.samples == result.output.samples);
 }
 
 TEST_CASE("Graph audio executor passes parameters to node processors", "[cycle-v2][runtime]") {

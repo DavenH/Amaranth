@@ -5,8 +5,14 @@
 
 namespace CycleV2 {
 
+struct NodeAudioResult {
+    String nodeId;
+    AudioProcessBlock output;
+};
+
 struct GraphAudioResult {
     AudioProcessBlock output;
+    std::vector<NodeAudioResult> nodes;
 };
 
 class GraphAudioExecutor {
