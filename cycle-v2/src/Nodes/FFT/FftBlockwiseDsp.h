@@ -15,10 +15,18 @@ public:
 private:
     Buffer<float> blockBuffer(const AudioProcessBlock& block, size_t size) const;
     Buffer<float> writableBlockBuffer(AudioProcessBlock& block, size_t size) const;
+    void applyHalfCycleCarry(AudioProcessBlock& output);
+    void allocateHalfCycleCarry();
     int binCount() const;
 
+    bool hasCarry {};
     size_t preparedFrameCount {};
     Transform transform;
+    ScopedAlloc<float> carryMemory;
+    Buffer<float> carryHalf;
+    Buffer<float> rawHalf;
+    Buffer<float> fadeIn;
+    Buffer<float> fadeOut;
 };
 
 }

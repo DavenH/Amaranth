@@ -366,6 +366,13 @@ Both DSP surfaces share the same cycle transform semantics. They do not use
 Blackman-Harris or other analysis windows; Cycle periods are already periodic
 power-of-two buffers, matching Cycle 1.x.
 
+The audio-side blockwise inverse path applies the Cycle 1.x half-cycle carry
+crossfade for continuity between adjacent generated cycles. The first cycle is
+left raw; subsequent cycles fade their first half in with the sine half-ramp
+and fade the previous carried half out with the complementary ramp. Gridwise UI
+processing does not apply this carry because each displayed cycle column is an
+independent analysis/rendering result.
+
 Domain and operation naming should stay separate. Generic operations are named
 by what they do (`Add`, `Multiply`, `Clamp`, `Mesh`, `Image`, `Wave`) rather
 than by the domain currently flowing through them. The edge domain and compiler
