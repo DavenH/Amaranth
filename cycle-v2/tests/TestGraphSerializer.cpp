@@ -26,6 +26,8 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
     REQUIRE(voice.id == "voice");
     REQUIRE(voice.kind == NodeKind::VoiceContext);
     REQUIRE(voice.outputs[0].domain == PortDomain::DomainContext);
+    REQUIRE(parameterValueForNode(voice, "domain") == "waveform");
+    REQUIRE(parameterValueForNode(voice, "voices") == "6");
 
     REQUIRE(waveMesh.id == "waveMesh");
     REQUIRE(waveMesh.kind == NodeKind::TrilinearMesh);
@@ -37,6 +39,18 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
     REQUIRE(waveMesh.outputs[0].domain == PortDomain::ControlSignal);
     REQUIRE(waveMesh.outputs[0].channelLayout == ChannelLayout::LinkedStereo);
     REQUIRE(waveMesh.outputs[0].side == PortSide::Right);
+}
+
+TEST_CASE("Graph serializer preserves node parameters", "[cycle-v2][graph]") {
+    NodeGraph source = NodeGraph::createDemoGraph();
+    source.getNodesForEditing()[0].parameters.push_back({ "mode", "Mode", "spectral" });
+
+    const GraphSerializer serializer;
+    const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
+    const auto& voice = restored.getNodes()[0];
+
+    REQUIRE(parameterValueForNode(voice, "mode") == "spectral");
+    REQUIRE(parameterValueForNode(voice, "missing", "fallback") == "fallback");
 }
 
 TEST_CASE("Graph serializer preserves attachment edges", "[cycle-v2][graph]") {

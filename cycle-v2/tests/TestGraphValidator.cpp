@@ -114,6 +114,7 @@ TEST_CASE("Pitch cannot feed non voice-aware processors", "[cycle-v2][graph]") {
             {},
             {},
             {},
+            {},
             { { "out", "Pitch", PortDomain::PitchSignal, ChannelLayout::Mono, PortPurpose::Signal, false } }
     });
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Multiply, "multiply", {}));
@@ -141,6 +142,7 @@ TEST_CASE("Audio signal edges require compatible channel layouts", "[cycle-v2][g
             {},
             {},
             {},
+            {},
             {
                     { "time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false }
             }
@@ -149,6 +151,7 @@ TEST_CASE("Audio signal edges require compatible channel layouts", "[cycle-v2][g
             "dest",
             NodeKind::GenericProcessor,
             "Dest",
+            {},
             {},
             {},
             {

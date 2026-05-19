@@ -95,7 +95,8 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 descriptor.audioRole,
                 descriptor.previewRole,
                 descriptor.previewable,
-                descriptor.cycle1AdapterBacked
+                descriptor.cycle1AdapterBacked,
+                node.parameters
         });
     }
 

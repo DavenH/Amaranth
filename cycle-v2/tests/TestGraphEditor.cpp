@@ -74,6 +74,7 @@ TEST_CASE("Graph editor rejects incompatible connections", "[cycle-v2][graph]") 
             {},
             {},
             {},
+            {},
             { { "out", "Pitch", PortDomain::PitchSignal, ChannelLayout::Mono, PortPurpose::Signal, false } }
     });
     const auto edgeCount = graph.getEdges().size();

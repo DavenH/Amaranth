@@ -23,6 +23,7 @@ Node graphNode(String id, std::vector<Port> inputs, std::vector<Port> outputs) {
         id,
         {},
         {},
+        {},
         std::move(inputs),
         std::move(outputs)
     };
@@ -70,6 +71,8 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
         return *found;
     };
 
+    REQUIRE(parameterValueForNode({ "voice", NodeKind::VoiceContext, {}, {}, {}, findStep("voice").parameters, {}, {} },
+            "domain") == "waveform");
     REQUIRE(findStep("waveMesh").audioRole == AudioModuleRole::MeshSource);
     REQUIRE(findStep("waveMesh").previewRole == PreviewModuleRole::MeshSurface);
     REQUIRE(findStep("waveMesh").cycle1AdapterBacked);

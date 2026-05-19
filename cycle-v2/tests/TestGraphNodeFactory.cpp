@@ -61,6 +61,8 @@ TEST_CASE("Graph node factory creates menu node families", "[cycle-v2][graph]") 
     const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
 
     REQUIRE(voice.outputs.front().domain == PortDomain::DomainContext);
+    REQUIRE(parameterValueForNode(voice, "domain") == "waveform");
+    REQUIRE(parameterValueForNode(voice, "voices") == "1");
     REQUIRE(wave.inputs.front().domain == PortDomain::DomainContext);
     REQUIRE(image.inputs.front().domain == PortDomain::DomainContext);
     REQUIRE(guide.outputs.front().domain == PortDomain::EnvelopeSignal);

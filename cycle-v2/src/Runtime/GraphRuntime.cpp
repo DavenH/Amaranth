@@ -38,6 +38,7 @@ RuntimeProcessTrace GraphRuntime::process(
                 step == nullptr ? PreviewModuleRole::None : step->previewRole,
                 step != nullptr && step->previewable,
                 step != nullptr && step->cycle1AdapterBacked,
+                step == nullptr ? std::vector<NodeParameter> {} : step->parameters,
                 collectInputs(plan.signalEdges, node->id),
                 collectInputs(plan.attachments, node->id)
         });

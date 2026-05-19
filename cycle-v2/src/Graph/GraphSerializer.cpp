@@ -11,6 +11,7 @@ Identifier nodeType("node");
 Identifier inputType("input");
 Identifier outputType("output");
 Identifier edgeType("edge");
+Identifier parameterType("parameter");
 
 String idForNodeKind(NodeKind kind) {
     switch (kind) {
@@ -219,6 +220,14 @@ ValueTree portToTree(const Port& port, Identifier type) {
     return tree;
 }
 
+ValueTree parameterToTree(const NodeParameter& parameter) {
+    ValueTree tree(parameterType);
+    tree.setProperty("id", parameter.id, nullptr);
+    tree.setProperty("label", parameter.label, nullptr);
+    tree.setProperty("value", parameter.value, nullptr);
+    return tree;
+}
+
 Port portFromTree(const ValueTree& tree, bool input) {
     const String side = tree.hasProperty("side")
             ? tree["side"].toString()
@@ -232,6 +241,14 @@ Port portFromTree(const ValueTree& tree, bool input) {
             portPurposeForId(tree["purpose"].toString()),
             input,
             portSideForId(side, input)
+    };
+}
+
+NodeParameter parameterFromTree(const ValueTree& tree) {
+    return {
+            tree["id"].toString(),
+            tree["label"].toString(),
+            tree["value"].toString()
     };
 }
 
@@ -257,6 +274,10 @@ ValueTree GraphSerializer::toValueTree(const NodeGraph& graph) const {
 
         for (const auto& port : node.outputs) {
             nodeTree.addChild(portToTree(port, outputType), -1, nullptr);
+        }
+
+        for (const auto& parameter : node.parameters) {
+            nodeTree.addChild(parameterToTree(parameter), -1, nullptr);
         }
 
         root.addChild(nodeTree, -1, nullptr);
@@ -298,6 +319,8 @@ NodeGraph GraphSerializer::fromValueTree(const ValueTree& tree) const {
                     node.inputs.push_back(portFromTree(portTree, true));
                 } else if (portTree.hasType(outputType)) {
                     node.outputs.push_back(portFromTree(portTree, false));
+                } else if (portTree.hasType(parameterType)) {
+                    node.parameters.push_back(parameterFromTree(portTree));
                 }
             }
 

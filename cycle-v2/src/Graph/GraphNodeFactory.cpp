@@ -11,7 +11,11 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
     switch (kind) {
         case NodeKind::VoiceContext:
             node.title = "Voice Context";
-            node.subtitle = "waveform domain";
+            node.subtitle = "waveform start";
+            node.parameters = {
+                    { "domain", "Start Domain", "waveform" },
+                    { "voices", "Voices", "1" }
+            };
             node.outputs = {
                     output("context", "Context", PortDomain::DomainContext)
             };

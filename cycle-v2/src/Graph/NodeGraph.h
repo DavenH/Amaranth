@@ -74,12 +74,19 @@ struct Port {
     PortSide side { PortSide::Left };
 };
 
+struct NodeParameter {
+    String id;
+    String label;
+    String value;
+};
+
 struct Node {
     String id;
     NodeKind kind { NodeKind::GenericProcessor };
     String title;
     String subtitle;
     Rectangle<float> bounds;
+    std::vector<NodeParameter> parameters;
     std::vector<Port> inputs;
     std::vector<Port> outputs;
 };
@@ -122,6 +129,7 @@ Colour colourForDomain(PortDomain domain);
 String labelForDomain(PortDomain domain);
 String labelForChannelLayout(ChannelLayout layout);
 String labelForNodeKind(NodeKind kind);
+String parameterValueForNode(const Node& node, const String& parameterId, const String& fallback = {});
 NodeNaturalSize naturalSizeForNode(const Node& node);
 
 }

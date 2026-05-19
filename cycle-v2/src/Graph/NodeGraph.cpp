@@ -33,6 +33,7 @@ Node node(String id, NodeKind kind, String title, String subtitle, Rectangle<flo
         std::move(title),
         std::move(subtitle),
         bounds,
+        {},
         std::move(inputs),
         std::move(outputs)
     };
@@ -123,12 +124,16 @@ NodeGraph NodeGraph::createDemoGraph() {
             "voice",
             NodeKind::VoiceContext,
             "Voice Context",
-            "waveform domain / 6 voices",
+            "waveform start / 6 voices",
             { 80.f, 90.f, 300.f, 220.f },
             {},
             {
                     output("context", "Context", PortDomain::DomainContext)
             }));
+    graph.getNodesForEditing().back().parameters = {
+            { "domain", "Start Domain", "waveform" },
+            { "voices", "Voices", "6" }
+    };
 
     graph.addNode(node(
             "waveMesh",
@@ -337,6 +342,16 @@ String labelForNodeKind(NodeKind kind) {
         case NodeKind::Output:                       return "Output";
         default:                                     return "Unknown";
     }
+}
+
+String parameterValueForNode(const Node& node, const String& parameterId, const String& fallback) {
+    for (const auto& parameter : node.parameters) {
+        if (parameter.id == parameterId) {
+            return parameter.value;
+        }
+    }
+
+    return fallback;
 }
 
 NodeNaturalSize naturalSizeForNode(const Node& node) {
