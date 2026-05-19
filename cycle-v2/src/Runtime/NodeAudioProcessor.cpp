@@ -77,16 +77,6 @@ AudioProcessBlock* inputAt(AudioProcessContext& context, size_t index) {
     return &context.inputs[index];
 }
 
-AudioProcessBlock* firstSignalInput(AudioProcessContext& context) {
-    for (auto& input : context.inputs) {
-        if (input.domain != PortDomain::DomainContext && input.samples.size() >= context.frameCount) {
-            return &input;
-        }
-    }
-
-    return nullptr;
-}
-
 float parameterFloat(
         const std::vector<NodeParameter>& parameters,
         const String& id,
@@ -179,15 +169,6 @@ private:
     }
 
     void processMeshSource(AudioProcessContext& context) const {
-        AudioProcessBlock* signalInput = firstSignalInput(context);
-
-        if (signalInput != nullptr) {
-            ensureOutput(context);
-            blockBuffer(*signalInput, context.frameCount).copyTo(outputBuffer(context));
-            publishSingleOutput(context);
-            return;
-        }
-
         ensureOutput(context);
 
         if (context.frameCount == 0) {

@@ -209,6 +209,11 @@ connected to a `VoiceContext` that later switches to spectral mode, the edge
 should enter an invalid/error state and become valid again when the context
 returns to waveform mode.
 
+Mesh nodes are source nodes. They do not expose an ordinary signal input and do
+not process a signal through themselves. A mesh can be used as an operand in
+math nodes or as a direct generator in the traversal domain implied by its
+context or consuming edge.
+
 Resolved signal type is a property of traversal context, not of a mesh node's
 persistent schema. A mesh node may cache its currently resolved traversal domain
 for preview or DSP preparation, but that cache is derived state and must be
@@ -279,8 +284,8 @@ Default behavior:
   to left and right,
 - mono sources may feed linked stereo processors by duplication when the
   destination explicitly allows it,
-- spectral and mesh processors inherit the channel layout of their audio input
-  unless they declare otherwise.
+- spectral processors inherit the channel layout of their audio input unless
+  they declare otherwise.
 
 Split-stereo behavior:
 
@@ -324,8 +329,6 @@ Examples:
   envelope or control signal flow.
 - `PitchSignal` to a voice-aware pitch input: valid.
 - `PitchSignal` to a non-voice-aware audio processor: invalid.
-- `MeshField` to a waveform source mesh input: valid.
-- `MeshField` to a spectral magnitude filter mesh input: valid.
 - `Left` plus `Right` to `StereoPair`: valid through `ChannelMerger`.
 
 ### Core Node Families
@@ -336,9 +339,9 @@ The first graph implementation should define node schemas for:
   controls, pitch/control routing, and initial source domain,
 - source nodes backed by 2D mesh, trilinear mesh, image, or simpler waveform
   generators,
-- domain-agnostic mesh source/filter nodes whose edge context determines
-  whether they currently operate on time, spectral magnitude, spectral phase,
-  or another compatible signal domain,
+- domain-agnostic mesh source nodes whose edge context determines whether they
+  currently generate time, spectral magnitude, spectral phase, or another
+  compatible signal domain,
 - FFT and inverse FFT transform nodes,
 - multiply, sum, gain, and clamp utility nodes,
 - envelope source nodes,

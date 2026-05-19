@@ -95,13 +95,13 @@ TEST_CASE("Graph editor rejects context outputs on ordinary signal inputs", "[cy
     NodeGraph graph;
 
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 260.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 260.f, 0.f }));
     const auto edgeCount = graph.getEdges().size();
 
     const auto result = GraphEditor().connect(
             graph,
             { "voice", "context", false },
-            { "mesh", "in", true });
+            { "multiply", "left", true });
 
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.code == GraphEditCode::ValidationRejected);

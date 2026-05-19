@@ -118,7 +118,7 @@ TEST_CASE("Mesh source processor generates a deterministic operand when unconnec
     REQUIRE(context.output.samples == std::vector<float> { -1.f, 0.f, 1.f });
 }
 
-TEST_CASE("Mesh source processor passes through ordinary signal inputs", "[cycle-v2][runtime]") {
+TEST_CASE("Mesh source processor defensively ignores unexpected signal inputs", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 
     AudioProcessContext context;
@@ -132,5 +132,5 @@ TEST_CASE("Mesh source processor passes through ordinary signal inputs", "[cycle
     };
     factory.create(AudioModuleRole::MeshSource)->process(context);
 
-    REQUIRE(context.output.samples == std::vector<float> { 0.25f, 0.5f, 0.75f });
+    REQUIRE(context.output.samples == std::vector<float> { -1.f, 0.f, 1.f });
 }

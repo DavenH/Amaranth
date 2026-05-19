@@ -85,7 +85,7 @@ TEST_CASE("Graph preview executor passes parameters to preview processors", "[cy
     REQUIRE(findPreview(result, "wave").primary == std::vector<float> { 0.f, 0.5f, 0.f });
 }
 
-TEST_CASE("Graph preview executor propagates upstream summaries through non-preview nodes", "[cycle-v2][runtime]") {
+TEST_CASE("Graph preview executor renders preview nodes after non-preview processors", "[cycle-v2][runtime]") {
     NodeGraph graph;
     graph.addNode(previewNode(
             "source",
@@ -93,20 +93,16 @@ TEST_CASE("Graph preview executor propagates upstream summaries through non-prev
             {},
             { { "out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }));
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", { 220.f, 0.f }));
-    graph.addNode(previewNode(
-            "mesh",
-            NodeKind::TrilinearMesh,
-            { { "time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, true } },
-            { { "out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Waveshaper, "waveshaper", { 440.f, 0.f }));
     graph.addEdge({ "source", "out", "reverb", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "reverb", "time", "mesh", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "reverb", "time", "waveshaper", "time", PortDomain::TimeSignal, false });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
     const auto result = GraphPreviewExecutor().render(compileResult.plan, 4);
 
-    REQUIRE(findPreview(result, "mesh").secondary.size() == 4);
-    REQUIRE(findPreview(result, "mesh").secondary[0] == Catch::Approx(0.8f));
-    REQUIRE(findPreview(result, "mesh").secondary[3] == Catch::Approx(0.2f));
+    REQUIRE(findPreview(result, "waveshaper").secondary.size() == 4);
+    REQUIRE(findPreview(result, "waveshaper").secondary[0] == Catch::Approx(0.f));
+    REQUIRE(findPreview(result, "waveshaper").secondary[3] == Catch::Approx(1.f));
 }

@@ -35,11 +35,11 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
 
     REQUIRE(mesh.title == "Trilinear Mesh");
     REQUIRE(mesh.outputs.size() == 1);
+    REQUIRE(mesh.inputs.size() == 2);
     REQUIRE(mesh.inputs[0].domain == PortDomain::DomainContext);
-    REQUIRE(mesh.inputs[1].id == "in");
-    REQUIRE(mesh.inputs[1].domain == PortDomain::ControlSignal);
+    REQUIRE(mesh.inputs[1].id == "scratch");
+    REQUIRE(mesh.inputs[1].purpose == PortPurpose::ScratchAttachment);
     REQUIRE(mesh.outputs.front().domain == PortDomain::ControlSignal);
-    REQUIRE(mesh.inputs[2].purpose == PortPurpose::ScratchAttachment);
 
     REQUIRE(add.title == "Add");
     REQUIRE(add.inputs.size() == 2);

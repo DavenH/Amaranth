@@ -54,7 +54,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.subtitle = "mesh operand";
             node.inputs = {
                     input("context", "Context", PortDomain::DomainContext),
-                    input("in", "In", PortDomain::ControlSignal, ChannelLayout::LinkedStereo),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             };
             node.outputs = {

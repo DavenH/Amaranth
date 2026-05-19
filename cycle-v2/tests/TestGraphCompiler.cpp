@@ -204,21 +204,30 @@ TEST_CASE("Compiler keeps wave source fixed in the time domain", "[cycle-v2][gra
     REQUIRE(findBuffer(result.plan, "wave", "out").domain == PortDomain::TimeSignal);
 }
 
-TEST_CASE("Compiler resolves mesh output domains from signal inputs", "[cycle-v2][graph]") {
+TEST_CASE("Compiler resolves mesh output domains from consuming operation context", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
-    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.addNode({
+            "mag",
+            NodeKind::GenericProcessor,
+            "Magnitude",
+            {},
+            {},
+            {},
+            {},
+            { { "out", "Out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }
+    });
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 260.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 520.f, 0.f }));
-    graph.addEdge({ "wave", "out", "mesh", "in", PortDomain::TimeSignal, false });
-    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, false });
+    graph.addNode(factory.createNode(NodeKind::Add, "add", { 520.f, 0.f }));
+    graph.addEdge({ "mag", "out", "add", "left", PortDomain::SpectralMagnitudeSignal, false });
+    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, false });
 
     const auto result = GraphCompiler().compile(graph);
 
     REQUIRE(result.succeeded());
-    REQUIRE(findSignalEdge(result.plan, "wave", "mesh").domain == PortDomain::TimeSignal);
-    REQUIRE(findSignalEdge(result.plan, "mesh", "fft").domain == PortDomain::TimeSignal);
+    REQUIRE(findSignalEdge(result.plan, "mesh", "add").domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(findBuffer(result.plan, "mesh", "out").domain == PortDomain::SpectralMagnitudeSignal);
 }
 
 TEST_CASE("Compiler rejects processing cycles", "[cycle-v2][graph]") {

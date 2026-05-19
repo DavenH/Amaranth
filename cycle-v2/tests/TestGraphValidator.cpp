@@ -336,8 +336,8 @@ TEST_CASE("Domain context cannot connect to ordinary universal signal ports", "[
     NodeGraph graph;
 
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "in", PortDomain::DomainContext, false });
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 220.f, 0.f }));
+    graph.addEdge({ "voice", "context", "multiply", "left", PortDomain::DomainContext, false });
 
     const auto issues = GraphValidator().validate(graph);
 

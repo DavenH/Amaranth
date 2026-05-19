@@ -143,7 +143,6 @@ NodeGraph NodeGraph::createDemoGraph() {
             { 470.f, 80.f, 380.f, 280.f },
             {
                     input("context", "Context", PortDomain::DomainContext),
-                    input("in", "In", PortDomain::ControlSignal, ChannelLayout::LinkedStereo),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }));
@@ -172,7 +171,6 @@ NodeGraph NodeGraph::createDemoGraph() {
             { 1265.f, 20.f, 285.f, 180.f },
             {
                     input("context", "Context", PortDomain::DomainContext),
-                    input("in", "In", PortDomain::ControlSignal, ChannelLayout::LinkedStereo),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Bottom) }));
@@ -197,7 +195,6 @@ NodeGraph NodeGraph::createDemoGraph() {
             { 1265.f, 680.f, 285.f, 180.f },
             {
                     input("context", "Context", PortDomain::DomainContext),
-                    input("in", "In", PortDomain::ControlSignal, ChannelLayout::LinkedStereo),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Top) }));

@@ -51,12 +51,10 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
     REQUIRE(waveMesh.id == "waveMesh");
     REQUIRE(waveMesh.kind == NodeKind::TrilinearMesh);
     REQUIRE(waveMesh.bounds.getWidth() >= 260.f);
-    REQUIRE(waveMesh.inputs.size() == 3);
-    REQUIRE(waveMesh.inputs[1].id == "in");
-    REQUIRE(waveMesh.inputs[1].domain == PortDomain::ControlSignal);
-    REQUIRE(waveMesh.inputs[2].id == "scratch");
-    REQUIRE(waveMesh.inputs[2].purpose == PortPurpose::ScratchAttachment);
-    REQUIRE(waveMesh.inputs[2].side == PortSide::Left);
+    REQUIRE(waveMesh.inputs.size() == 2);
+    REQUIRE(waveMesh.inputs[1].id == "scratch");
+    REQUIRE(waveMesh.inputs[1].purpose == PortPurpose::ScratchAttachment);
+    REQUIRE(waveMesh.inputs[1].side == PortSide::Left);
     REQUIRE(waveMesh.outputs[0].domain == PortDomain::ControlSignal);
     REQUIRE(waveMesh.outputs[0].channelLayout == ChannelLayout::LinkedStereo);
     REQUIRE(waveMesh.outputs[0].side == PortSide::Right);

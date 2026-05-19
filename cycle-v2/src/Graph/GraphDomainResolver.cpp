@@ -142,8 +142,6 @@ PortDomain GraphDomainResolver::resolvedControlOutputDomain(
         if (contextDomain != PortDomain::ControlSignal) {
             return contextDomain;
         }
-
-        return firstResolvedInputDomain(resolvedEdges, sourceNode.id);
     }
 
     if (sourceNode.kind == NodeKind::Add || sourceNode.kind == NodeKind::Multiply) {
@@ -179,10 +177,6 @@ PortDomain GraphDomainResolver::resolvedEdgeDomain(
 
     if (sourceDomain == PortDomain::ControlSignal && isContextResolvedSource(*sourceNode, *source)) {
         sourceDomain = domainFromContextInput(graph, *sourceNode);
-
-        if (sourceDomain == PortDomain::ControlSignal && sourceNode->kind == NodeKind::TrilinearMesh) {
-            sourceDomain = firstResolvedInputDomain(graph, sourceNode->id, depth + 1);
-        }
     }
 
     if (sourceDomain == PortDomain::ControlSignal
