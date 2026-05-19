@@ -36,7 +36,7 @@ TEST_CASE("Demo graph exposes stable node kinds", "[cycle-v2][graph]") {
 }
 
 TEST_CASE("Channel layouts have stable short labels", "[cycle-v2][graph]") {
-    REQUIRE(labelForChannelLayout(ChannelLayout::Mono) == "M");
+    REQUIRE(labelForChannelLayout(ChannelLayout::Mono).isEmpty());
     REQUIRE(labelForChannelLayout(ChannelLayout::LinkedStereo) == "L/R");
     REQUIRE(labelForChannelLayout(ChannelLayout::Left) == "L");
     REQUIRE(labelForChannelLayout(ChannelLayout::Right) == "R");

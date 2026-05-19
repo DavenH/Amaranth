@@ -71,6 +71,7 @@ private:
     void drawExpandedEditor(Graphics& g, const Node& node);
     void drawMiniMap(Graphics& g);
     void drawGraphStatus(Graphics& g);
+    void drawEdgeLegend(Graphics& g);
     void drawNodePalette(Graphics& g);
 
     Point<float> toScreen(Point<float> p) const;
@@ -79,6 +80,7 @@ private:
     PortLocation getPortLocation(const Node& node, const Port& port) const;
     PortLocation getPortLocation(const PortAddress& address) const;
     bool findPortAt(Point<float> screenPosition, PortAddress& result) const;
+    bool findConnectablePortAt(Point<float> screenPosition, const PortAddress& source, PortAddress& result) const;
     bool findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const;
     int findEdgeAt(Point<float> screenPosition) const;
     const Node* findNode(const String& id) const;
@@ -100,6 +102,7 @@ private:
     void pushUndoSnapshot(String xml);
     bool restoreGraphXml(const String& xml, const String& statusMessage);
     bool clearSelection();
+    bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
     Path createCablePath(Point<float> source, Point<float> dest, bool attachment) const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)

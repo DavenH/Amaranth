@@ -39,7 +39,11 @@ int longestPortLabelLength(const std::vector<Port>& ports) {
     int length = 0;
 
     for (const auto& port : ports) {
-        length = jmax(length, port.label.length() + 1 + labelForChannelLayout(port.channelLayout).length());
+        const String channel = labelForChannelLayout(port.channelLayout);
+        const int labelLength = channel.isEmpty()
+                ? port.label.length()
+                : port.label.length() + 1 + channel.length();
+        length = jmax(length, labelLength);
     }
 
     return length;
@@ -54,7 +58,7 @@ NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
         case NodeKind::SpectralPhaseProcessor:       return { 240.f, 95.f };
         case NodeKind::Ifft:                         return { 200.f, 95.f };
         case NodeKind::Envelope:                     return { 220.f, 85.f };
-        case NodeKind::Multiply:                     return { 220.f, 90.f };
+        case NodeKind::Multiply:                     return { 0.f, 0.f };
         case NodeKind::Output:                       return { 190.f, 80.f };
         default:                                     return { 190.f, 76.f };
     }
@@ -271,7 +275,7 @@ String labelForDomain(PortDomain domain) {
 
 String labelForChannelLayout(ChannelLayout layout) {
     switch (layout) {
-        case ChannelLayout::Mono:         return "M";
+        case ChannelLayout::Mono:         return "";
         case ChannelLayout::LinkedStereo: return "L/R";
         case ChannelLayout::Left:         return "L";
         case ChannelLayout::Right:        return "R";

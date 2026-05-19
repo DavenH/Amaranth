@@ -29,6 +29,19 @@ float portY(const Node& node, const Port& port) {
     return node.bounds.getY() + 56.f + (float) index * 28.f;
 }
 
+String portDisplayLabel(const Port& port) {
+    const String channel = labelForChannelLayout(port.channelLayout);
+    return channel.isEmpty() ? port.label : port.label + " " + channel;
+}
+
+Colour portDisplayColour(const Node& node, const Port& port) {
+    if (node.kind == NodeKind::Multiply) {
+        return colourForDomain(PortDomain::ControlSignal);
+    }
+
+    return colourForDomain(port.domain);
+}
+
 }
 
 NodeCanvas::NodeCanvas() :
@@ -55,6 +68,7 @@ void NodeCanvas::paint(Graphics& g) {
     drawNodes(g);
     drawMiniMap(g);
     drawGraphStatus(g);
+    drawEdgeLegend(g);
     drawNodePalette(g);
 }
 
@@ -78,7 +92,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             selectedNodeId = result.nodeId;
             expandedNodeId = {};
             selectedEdgeIndex = -1;
-            draggingNode = false;
+            if (const Node* node = findNode(result.nodeId)) {
+                dragStartNodeBounds = node->bounds;
+                draggingNode = true;
+                nodeDragUndoPushed = false;
+            }
             connectingCable = false;
             refreshCompiledState();
             editStatusMessage = "Node added";
@@ -162,7 +180,7 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
 
     if (connectingCable) {
         PortAddress hitPort;
-        connectingPoint = findPortAt(event.position, hitPort) && hitPort.input != connectingPort.input
+        connectingPoint = findConnectablePortAt(event.position, connectingPort, hitPort)
                 ? getPortLocation(hitPort).centre
                 : event.position;
     } else if (draggingNode) {
@@ -388,6 +406,18 @@ void NodeCanvas::drawEdges(Graphics& g) {
             g.setColour(colour.withAlpha(0.92f));
             g.strokePath(cable, PathStrokeType(selected ? 4.f : 3.f, PathStrokeType::curved, PathStrokeType::rounded));
         }
+
+        const float endpointSize = selected ? 14.f : 11.f;
+        Rectangle<float> sourceMarker(source.x - endpointSize * 0.5f, source.y - endpointSize * 0.5f,
+                                      endpointSize, endpointSize);
+        Rectangle<float> destMarker(dest.x - endpointSize * 0.5f, dest.y - endpointSize * 0.5f,
+                                    endpointSize, endpointSize);
+
+        g.setColour(kCanvasBackground.withAlpha(0.92f));
+        g.fillEllipse(sourceMarker);
+        g.setColour(colour.withAlpha(0.96f));
+        g.drawEllipse(sourceMarker, selected ? 2.4f : 1.8f);
+        g.fillEllipse(destMarker.reduced(selected ? 1.5f : 2.f));
     }
 }
 
@@ -418,6 +448,14 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
     g.strokePath(cable, PathStrokeType(9.f, PathStrokeType::curved, PathStrokeType::rounded));
     g.setColour(colour.withAlpha(0.88f));
     g.strokePath(cable, PathStrokeType(3.f, PathStrokeType::curved, PathStrokeType::rounded));
+
+    Rectangle<float> startMarker(source.x - 5.5f, source.y - 5.5f, 11.f, 11.f);
+    Rectangle<float> destMarker(dest.x - 5.5f, dest.y - 5.5f, 11.f, 11.f);
+    g.setColour(kCanvasBackground.withAlpha(0.92f));
+    g.fillEllipse(startMarker);
+    g.setColour(colour.withAlpha(0.96f));
+    g.drawEllipse(startMarker, 1.8f);
+    g.fillEllipse(destMarker.reduced(2.f));
 }
 
 void NodeCanvas::drawNodes(Graphics& g) {
@@ -462,18 +500,25 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     g.drawText(node.subtitle, header.reduced(13.f * zoom, 4.f * zoom), Justification::centredRight);
 
     auto nodeBounds = toScreen(node.bounds);
-    const float previewTop = 56.f * zoom;
-    auto preview = nodeBounds.reduced(13.f * zoom).withTrimmedTop(previewTop).withTrimmedBottom(12.f * zoom);
+    auto preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(1.f * zoom);
     drawPreview(g, node, preview);
 
     auto drawPort = [&](const Node& portNode, const Port& port) {
         auto location = getPortLocation(portNode, port);
-        Colour colour = colourForDomain(port.domain);
+        Colour colour = portDisplayColour(portNode, port);
 
         g.setColour(colour.withAlpha(0.22f));
         g.fillEllipse(location.bounds.expanded(3.f));
-        g.setColour(colour);
-        g.fillEllipse(location.bounds);
+
+        if (port.input) {
+            g.setColour(colour);
+            g.fillEllipse(location.bounds);
+        } else {
+            g.setColour(kCanvasBackground.withAlpha(0.92f));
+            g.fillEllipse(location.bounds);
+            g.setColour(colour);
+            g.drawEllipse(location.bounds, 2.f);
+        }
 
         Rectangle<float> labelBounds = location.bounds.withSizeKeepingCentre(92.f * zoom, 18.f * zoom);
         labelBounds.setY(location.bounds.getY() - 3.f * zoom);
@@ -488,7 +533,7 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
         g.setColour(Colour(0xff0e1318).withAlpha(0.56f));
         g.fillRoundedRectangle(labelBounds.expanded(4.f * zoom, 2.f * zoom), 4.f * zoom);
         g.setColour(kText.withAlpha(0.86f));
-        g.drawText(port.label + " " + labelForChannelLayout(port.channelLayout),
+        g.drawText(portDisplayLabel(port),
                    labelBounds,
                    port.input ? Justification::centredLeft
                               : Justification::centredRight);
@@ -505,6 +550,10 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
 
 void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> area) {
     if (area.getWidth() < 20.f || area.getHeight() < 20.f) {
+        return;
+    }
+
+    if (node.kind == NodeKind::Multiply) {
         return;
     }
 
@@ -549,15 +598,6 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
 
     if (node.kind == NodeKind::Envelope) {
         drawEnvelopeCurve(g, area.reduced(8.f));
-        return;
-    }
-
-    if (node.kind == NodeKind::Multiply) {
-        g.setColour(Colour(0xff26313d));
-        g.drawEllipse(area.reduced(area.getWidth() * 0.32f, area.getHeight() * 0.22f), 1.2f);
-        g.setColour(kMutedText.withAlpha(0.74f));
-        g.setFont(FontOptions(jmin(42.f, area.getHeight() * 0.48f)));
-        g.drawText("x", area, Justification::centred);
         return;
     }
 
@@ -717,7 +757,7 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
             g.fillEllipse(row.getX(), row.getCentreY() - 3.f, 6.f, 6.f);
             g.setColour(kText);
             g.setFont(FontOptions(9.5f));
-            g.drawText(port.label + " " + labelForChannelLayout(port.channelLayout),
+            g.drawText(portDisplayLabel(port),
                        row.withTrimmedLeft(12.f), Justification::centredLeft);
         }
     };
@@ -801,6 +841,68 @@ void NodeCanvas::drawGraphStatus(Graphics& g) {
     g.setColour(kMutedText);
     g.setFont(FontOptions(10.f));
     g.drawText(text, status.withTrimmedLeft(23.f).reduced(0.f, 1.f), Justification::centredLeft);
+}
+
+void NodeCanvas::drawEdgeLegend(Graphics& g) {
+    struct LegendEntry {
+        PortDomain domain;
+        const char* label;
+        bool attachment;
+    };
+
+    const LegendEntry entries[] = {
+            { PortDomain::TimeSignal, "Time", false },
+            { PortDomain::SpectralMagnitudeSignal, "Magnitude", false },
+            { PortDomain::SpectralPhaseSignal, "Phase", false },
+            { PortDomain::EnvelopeSignal, "Envelope", false },
+            { PortDomain::EnvelopeSignal, "Attachment", true },
+            { PortDomain::ControlSignal, "Universal", false }
+    };
+
+    Rectangle<float> legend((float) getWidth() - 704.f, (float) getHeight() - 42.f, 500.f, 24.f);
+
+    if (legend.getX() < 110.f) {
+        return;
+    }
+
+    g.setColour(Colour(0xaa0b0e13));
+    g.fillRoundedRectangle(legend, 5.f);
+    g.setColour(Colour(0xff354050));
+    g.drawRoundedRectangle(legend, 5.f, 1.f);
+
+    float x = legend.getX() + 12.f;
+    const float y = legend.getCentreY();
+
+    for (const auto& entry : entries) {
+        const Colour colour = colourForDomain(entry.domain);
+        Path path;
+        path.startNewSubPath(x, y);
+        path.cubicTo({ x + 13.f, y - 5.f }, { x + 25.f, y + 5.f }, { x + 38.f, y });
+
+        if (entry.attachment) {
+            Path dashed;
+            PathStrokeType stroke(2.f, PathStrokeType::curved, PathStrokeType::rounded);
+            Array<float> dashes { 5.f, 4.f };
+            stroke.createDashedStroke(dashed, path, dashes.getRawDataPointer(), dashes.size());
+            g.setColour(colour.withAlpha(0.90f));
+            g.strokePath(dashed, stroke);
+        } else {
+            g.setColour(colour.withAlpha(0.90f));
+            g.strokePath(path, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
+        }
+
+        g.setColour(kCanvasBackground.withAlpha(0.92f));
+        g.fillEllipse(x - 4.f, y - 4.f, 8.f, 8.f);
+        g.setColour(colour.withAlpha(0.95f));
+        g.drawEllipse(x - 4.f, y - 4.f, 8.f, 8.f, 1.2f);
+        g.fillEllipse(x + 34.f, y - 4.f, 8.f, 8.f);
+
+        g.setColour(kMutedText);
+        g.setFont(FontOptions(9.f));
+        g.drawText(entry.label, Rectangle<float>(x + 46.f, legend.getY(), 72.f, legend.getHeight()),
+                   Justification::centredLeft);
+        x += entry.attachment ? 106.f : 82.f;
+    }
 }
 
 void NodeCanvas::drawNodePalette(Graphics& g) {
@@ -903,6 +1005,24 @@ bool NodeCanvas::findPortAt(Point<float> screenPosition, PortAddress& result) co
     }
 
     return false;
+}
+
+bool NodeCanvas::findConnectablePortAt(
+        Point<float> screenPosition,
+        const PortAddress& source,
+        PortAddress& result) const {
+    PortAddress candidate;
+
+    if (!findPortAt(screenPosition, candidate)) {
+        return false;
+    }
+
+    if (!canConnectPorts(source, candidate)) {
+        return false;
+    }
+
+    result = candidate;
+    return true;
 }
 
 bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const {
@@ -1195,6 +1315,15 @@ bool NodeCanvas::clearSelection() {
     selectedEdgeIndex = -1;
     repaint();
     return true;
+}
+
+bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& second) const {
+    if (first.input == second.input) {
+        return false;
+    }
+
+    NodeGraph candidate = graph;
+    return GraphEditor().connect(candidate, first, second).succeeded();
 }
 
 Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool attachment) const {
