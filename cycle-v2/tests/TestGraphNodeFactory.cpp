@@ -54,14 +54,15 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
 }
 
 TEST_CASE("Graph node factory creates menu node families", "[cycle-v2][graph]") {
-    const Node waveform = GraphNodeFactory().createNode(NodeKind::WaveformStart, "waveform", {});
-    const Node spectral = GraphNodeFactory().createNode(NodeKind::SpectralStart, "spectral", {});
+    const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
+    const Node wave = GraphNodeFactory().createNode(NodeKind::WaveSource, "wave", {});
+    const Node image = GraphNodeFactory().createNode(NodeKind::ImageSource, "image", {});
     const Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
     const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
 
-    REQUIRE(waveform.outputs.front().domain == PortDomain::DomainContext);
-    REQUIRE(spectral.outputs.size() == 1);
-    REQUIRE(spectral.outputs.front().domain == PortDomain::DomainContext);
+    REQUIRE(voice.outputs.front().domain == PortDomain::DomainContext);
+    REQUIRE(wave.inputs.front().domain == PortDomain::DomainContext);
+    REQUIRE(image.inputs.front().domain == PortDomain::DomainContext);
     REQUIRE(guide.outputs.front().domain == PortDomain::EnvelopeSignal);
     REQUIRE(ir.inputs.front().domain == PortDomain::TimeSignal);
     REQUIRE(ir.outputs.front().domain == PortDomain::TimeSignal);

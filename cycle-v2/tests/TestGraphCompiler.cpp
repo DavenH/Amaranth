@@ -41,11 +41,10 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
 
     REQUIRE(result.succeeded());
     REQUIRE(result.plan.attachments.size() == 2);
-    REQUIRE(result.plan.signalEdges.size() == 13);
+    REQUIRE(result.plan.signalEdges.size() == 11);
 
     const auto& plan = result.plan;
-    REQUIRE(orderIndex(plan, "voice") < orderIndex(plan, "waveform"));
-    REQUIRE(orderIndex(plan, "waveform") < orderIndex(plan, "waveMesh"));
+    REQUIRE(orderIndex(plan, "voice") < orderIndex(plan, "waveMesh"));
     REQUIRE(orderIndex(plan, "scratchEnv") < orderIndex(plan, "waveMesh"));
     REQUIRE(orderIndex(plan, "waveMesh") < orderIndex(plan, "fft"));
     REQUIRE(orderIndex(plan, "scratchEnv") < orderIndex(plan, "magMesh"));
@@ -62,7 +61,7 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
 
 TEST_CASE("Invalid graphs do not compile", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    graph.addEdge({ "voice", "pitch", "multiply", "audio", PortDomain::PitchSignal, false });
+    graph.addEdge({ "voice", "context", "multiply", "audio", PortDomain::DomainContext, false });
 
     const auto result = GraphCompiler().compile(graph);
 

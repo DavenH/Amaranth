@@ -29,7 +29,6 @@ TEST_CASE("Demo graph exposes stable node kinds", "[cycle-v2][graph]") {
     };
 
     REQUIRE(findKind("voice") == NodeKind::VoiceContext);
-    REQUIRE(findKind("waveform") == NodeKind::WaveformStart);
     REQUIRE(findKind("waveMesh") == NodeKind::TrilinearMesh);
     REQUIRE(findKind("fft") == NodeKind::Fft);
     REQUIRE(findKind("addMag") == NodeKind::Add);
@@ -107,8 +106,18 @@ TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
 }
 
 TEST_CASE("Pitch cannot feed non voice-aware processors", "[cycle-v2][graph]") {
-    NodeGraph graph = NodeGraph::createDemoGraph();
-    graph.addEdge({ "voice", "pitch", "multiply", "audio", PortDomain::PitchSignal, false });
+    NodeGraph graph;
+    graph.addNode({
+            "pitch",
+            NodeKind::GenericProcessor,
+            "Pitch",
+            {},
+            {},
+            {},
+            { { "out", "Pitch", PortDomain::PitchSignal, ChannelLayout::Mono, PortPurpose::Signal, false } }
+    });
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addEdge({ "pitch", "out", "multiply", "left", PortDomain::PitchSignal, false });
 
     auto issues = GraphValidator().validate(graph);
 

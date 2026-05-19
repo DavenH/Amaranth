@@ -105,6 +105,7 @@ bool isOperationNode(NodeKind kind) {
 bool isPreviewableNode(NodeKind kind) {
     switch (kind) {
         case NodeKind::WaveSource:
+        case NodeKind::ImageSource:
         case NodeKind::TrilinearWaveSurface:
         case NodeKind::TrilinearMesh:
         case NodeKind::SpectralMagnitudeProcessor:
@@ -827,6 +828,19 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
         return;
     }
 
+    if (node.kind == NodeKind::ImageSource) {
+        auto imageArea = area.reduced(area.getWidth() * 0.12f, area.getHeight() * 0.16f);
+        g.setColour(colourForDomain(PortDomain::ControlSignal).withAlpha(0.12f));
+        g.fillRect(imageArea);
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.42f));
+        g.fillRect(imageArea.removeFromLeft(imageArea.getWidth() * 0.46f).reduced(1.f));
+        g.setColour(colourForDomain(PortDomain::SpectralMagnitudeSignal).withAlpha(0.36f));
+        g.fillRect(imageArea.removeFromTop(imageArea.getHeight() * 0.48f).reduced(1.f));
+        g.setColour(colourForDomain(PortDomain::SpectralPhaseSignal).withAlpha(0.34f));
+        g.fillRect(imageArea.reduced(1.f));
+        return;
+    }
+
     if (node.kind == NodeKind::WaveSource) {
         Path wave;
         for (int i = 0; i < 42; ++i) {
@@ -1228,10 +1242,11 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
     };
 
     const PaletteSection sections[] = {
-            { "Start",     { { NodeKind::WaveformStart, "Waveform" }, { NodeKind::SpectralStart, "Spectral" } } },
+            { "Context",   { { NodeKind::VoiceContext, "Voice Context" } } },
             { "Transform", { { NodeKind::Fft, "Forward FFT" }, { NodeKind::Ifft, "Inverse FFT" } } },
             { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
-            { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::TrilinearMesh, "Mesh" } } },
+            { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::ImageSource, "Image" },
+                             { NodeKind::TrilinearMesh, "Mesh" } } },
             { "Control",   { { NodeKind::Envelope, "Envelope" }, { NodeKind::GuideCurve, "Guide" } } },
             { "FX",        { { NodeKind::ImpulseResponse, "IR" }, { NodeKind::Waveshaper, "Waveshaper" },
                              { NodeKind::Reverb, "Reverb" }, { NodeKind::Delay, "Delay" } } },
@@ -1392,10 +1407,11 @@ bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) 
     };
 
     const PaletteSection sections[] = {
-            { "Start",     { { NodeKind::WaveformStart, "Waveform" }, { NodeKind::SpectralStart, "Spectral" } } },
+            { "Context",   { { NodeKind::VoiceContext, "Voice Context" } } },
             { "Transform", { { NodeKind::Fft, "Forward FFT" }, { NodeKind::Ifft, "Inverse FFT" } } },
             { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
-            { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::TrilinearMesh, "Mesh" } } },
+            { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::ImageSource, "Image" },
+                             { NodeKind::TrilinearMesh, "Mesh" } } },
             { "Control",   { { NodeKind::Envelope, "Envelope" }, { NodeKind::GuideCurve, "Guide" } } },
             { "FX",        { { NodeKind::ImpulseResponse, "IR" }, { NodeKind::Waveshaper, "Waveshaper" },
                              { NodeKind::Reverb, "Reverb" }, { NodeKind::Delay, "Delay" } } },

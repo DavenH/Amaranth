@@ -15,9 +15,8 @@ Identifier edgeType("edge");
 String idForNodeKind(NodeKind kind) {
     switch (kind) {
         case NodeKind::VoiceContext:                 return "voiceContext";
-        case NodeKind::WaveformStart:                return "waveformStart";
-        case NodeKind::SpectralStart:                return "spectralStart";
         case NodeKind::WaveSource:                   return "waveSource";
+        case NodeKind::ImageSource:                  return "imageSource";
         case NodeKind::TrilinearWaveSurface:         return "trilinearWaveSurface";
         case NodeKind::TrilinearMesh:                return "trilinearMesh";
         case NodeKind::Fft:                          return "fft";
@@ -43,14 +42,14 @@ NodeKind nodeKindForId(const String& id) {
     if (id == "voiceContext") {
         return NodeKind::VoiceContext;
     }
-    if (id == "waveformStart") {
-        return NodeKind::WaveformStart;
-    }
-    if (id == "spectralStart") {
-        return NodeKind::SpectralStart;
+    if (id == "waveformStart" || id == "spectralStart") {
+        return NodeKind::VoiceContext;
     }
     if (id == "waveSource") {
         return NodeKind::WaveSource;
+    }
+    if (id == "imageSource") {
+        return NodeKind::ImageSource;
     }
     if (id == "trilinearWaveSurface") {
         return NodeKind::TrilinearWaveSurface;

@@ -32,8 +32,8 @@ TEST_CASE("Runtime traces compiled graph execution", "[cycle-v2][runtime]") {
     REQUIRE(trace.nodes.size() == compileResult.plan.nodeOrder.size());
     REQUIRE(trace.nodes.front().nodeId == compileResult.plan.nodeOrder.front());
     REQUIRE(trace.nodes.back().nodeId == "out");
-    REQUIRE(findTraceNode(trace, "waveform").kind == NodeKind::WaveformStart);
-    REQUIRE(findTraceNode(trace, "waveform").signalInputs.size() == 2);
+    REQUIRE(findTraceNode(trace, "voice").kind == NodeKind::VoiceContext);
+    REQUIRE(findTraceNode(trace, "voice").signalInputs.empty());
     REQUIRE(findTraceNode(trace, "waveMesh").kind == NodeKind::TrilinearMesh);
     REQUIRE(findTraceNode(trace, "waveMesh").signalInputs.size() == 1);
     REQUIRE(findTraceNode(trace, "waveMesh").attachments.size() == 1);

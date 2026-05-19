@@ -67,11 +67,20 @@ TEST_CASE("Graph editor colours universal output edges from typed destinations",
 
 TEST_CASE("Graph editor rejects incompatible connections", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.addNode({
+            "pitch",
+            NodeKind::GenericProcessor,
+            "Pitch",
+            {},
+            {},
+            {},
+            { { "out", "Pitch", PortDomain::PitchSignal, ChannelLayout::Mono, PortPurpose::Signal, false } }
+    });
     const auto edgeCount = graph.getEdges().size();
 
     const auto result = GraphEditor().connect(
             graph,
-            { "voice", "pitch", false },
+            { "pitch", "out", false },
             { "multiply", "audio", true });
 
     REQUIRE_FALSE(result.succeeded());

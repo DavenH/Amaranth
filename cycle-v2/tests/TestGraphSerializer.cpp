@@ -20,13 +20,12 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
     const NodeGraph source = NodeGraph::createDemoGraph();
     const GraphSerializer serializer;
     const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
-    const auto& waveform = restored.getNodes()[1];
-    const auto& waveMesh = restored.getNodes()[2];
+    const auto& voice = restored.getNodes()[0];
+    const auto& waveMesh = restored.getNodes()[1];
 
-    REQUIRE(waveform.id == "waveform");
-    REQUIRE(waveform.kind == NodeKind::WaveformStart);
-    REQUIRE(waveform.inputs.size() == 2);
-    REQUIRE(waveform.outputs[0].domain == PortDomain::DomainContext);
+    REQUIRE(voice.id == "voice");
+    REQUIRE(voice.kind == NodeKind::VoiceContext);
+    REQUIRE(voice.outputs[0].domain == PortDomain::DomainContext);
 
     REQUIRE(waveMesh.id == "waveMesh");
     REQUIRE(waveMesh.kind == NodeKind::TrilinearMesh);

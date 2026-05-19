@@ -11,38 +11,24 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
     switch (kind) {
         case NodeKind::VoiceContext:
             node.title = "Voice Context";
-            node.subtitle = "pitch / voice";
+            node.subtitle = "waveform domain";
             node.outputs = {
-                    output("pitch", "Pitch", PortDomain::PitchSignal),
-                    output("voice", "Voice", PortDomain::VoiceControlSignal)
+                    output("context", "Context", PortDomain::DomainContext)
             };
-            break;
-
-        case NodeKind::WaveformStart:
-            node.title = "Waveform Start";
-            node.subtitle = "domain context";
-            node.inputs = {
-                    input("pitch", "Pitch", PortDomain::PitchSignal),
-                    input("voice", "Voice", PortDomain::VoiceControlSignal)
-            };
-            node.outputs = { output("domain", "Time Domain", PortDomain::DomainContext) };
-            break;
-
-        case NodeKind::SpectralStart:
-            node.title = "Spectral Start";
-            node.subtitle = "domain context";
-            node.inputs = {
-                    input("pitch", "Pitch", PortDomain::PitchSignal),
-                    input("voice", "Voice", PortDomain::VoiceControlSignal)
-            };
-            node.outputs = { output("domain", "Spectral Domain", PortDomain::DomainContext) };
             break;
 
         case NodeKind::WaveSource:
             node.title = "Wave";
             node.subtitle = "signal source";
-            node.inputs = { input("domain", "Domain", PortDomain::DomainContext) };
-            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            node.inputs = { input("context", "Context", PortDomain::DomainContext) };
+            node.outputs = { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) };
+            break;
+
+        case NodeKind::ImageSource:
+            node.title = "Image";
+            node.subtitle = "raster source";
+            node.inputs = { input("context", "Context", PortDomain::DomainContext) };
+            node.outputs = { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) };
             break;
 
         case NodeKind::TrilinearWaveSurface:
@@ -63,7 +49,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.title = "Trilinear Mesh";
             node.subtitle = "mesh operand";
             node.inputs = {
-                    input("domain", "Domain", PortDomain::DomainContext),
+                    input("context", "Context", PortDomain::DomainContext),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             };
             node.outputs = {
