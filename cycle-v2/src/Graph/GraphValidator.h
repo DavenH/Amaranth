@@ -29,6 +29,8 @@ class GraphValidator {
 public:
     std::vector<GraphValidationIssue> validate(const NodeGraph& graph) const;
     bool isValid(const NodeGraph& graph) const;
+    bool edgeHasValidationIssue(const NodeGraph& graph, const Edge& edge) const;
+    PortDomain resolvedDomainForEdge(const NodeGraph& graph, const Edge& edge) const;
 
 private:
     bool isVoiceAwareDestination(const Port& port) const;

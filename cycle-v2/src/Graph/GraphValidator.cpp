@@ -165,6 +165,52 @@ bool GraphValidator::isValid(const NodeGraph& graph) const {
     return validate(graph).empty();
 }
 
+bool GraphValidator::edgeHasValidationIssue(const NodeGraph& graph, const Edge& edge) const {
+    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
+    const Node* destNode = findNode(graph, edge.destNodeId);
+
+    if (sourceNode == nullptr || destNode == nullptr) {
+        return true;
+    }
+
+    const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
+    const Port* dest = findPort(*destNode, edge.destPortId, true);
+
+    if (source == nullptr || dest == nullptr) {
+        return true;
+    }
+
+    if (edge.attachment) {
+        return source->domain != PortDomain::EnvelopeSignal
+            || dest->purpose != PortPurpose::ScratchAttachment;
+    }
+
+    if (dest->purpose == PortPurpose::ScratchAttachment) {
+        return true;
+    }
+
+    if (isFixedWaveContextMismatch(*sourceNode, *destNode, *dest)) {
+        return true;
+    }
+
+    Port resolvedSource = *source;
+    resolvedSource.domain = resolvedDomainForEdge(graph, edge);
+
+    if (source->domain == PortDomain::ControlSignal
+            && dest->domain != PortDomain::ControlSignal
+            && resolvedSource.domain == dest->domain) {
+        resolvedSource.channelLayout = dest->channelLayout;
+    }
+
+    return !domainsCompatible(resolvedSource, *dest)
+        || !channelLayoutsCompatible(resolvedSource, *dest)
+        || (source->domain == PortDomain::PitchSignal && !isVoiceAwareDestination(*dest));
+}
+
+PortDomain GraphValidator::resolvedDomainForEdge(const NodeGraph& graph, const Edge& edge) const {
+    return resolvedEdgeDomain(graph, edge);
+}
+
 bool GraphValidator::isVoiceAwareDestination(const Port& port) const {
     return port.domain == PortDomain::PitchSignal || port.domain == PortDomain::VoiceControlSignal;
 }

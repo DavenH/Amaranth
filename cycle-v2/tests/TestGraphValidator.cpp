@@ -151,6 +151,39 @@ TEST_CASE("Context-resolved spectral sources cannot feed time-only transforms", 
             }));
 }
 
+TEST_CASE("Resolved edge domains update while graph is invalid", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = {
+            { "domain", "Start Domain", "spectral" }
+    };
+
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 460.f, 0.f }));
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, false });
+
+    const GraphValidator validator;
+    const Edge& contextEdge = graph.getEdges()[0];
+    const Edge& signalEdge = graph.getEdges()[1];
+
+    REQUIRE_FALSE(validator.isValid(graph));
+    REQUIRE_FALSE(validator.edgeHasValidationIssue(graph, contextEdge));
+    REQUIRE(validator.edgeHasValidationIssue(graph, signalEdge));
+    REQUIRE(validator.resolvedDomainForEdge(graph, signalEdge) == PortDomain::SpectralMagnitudeSignal);
+
+    graph.getNodesForEditing().front().parameters = {
+            { "domain", "Start Domain", "waveform" }
+    };
+
+    REQUIRE(validator.isValid(graph));
+    REQUIRE_FALSE(validator.edgeHasValidationIssue(graph, signalEdge));
+    REQUIRE(validator.resolvedDomainForEdge(graph, signalEdge) == PortDomain::TimeSignal);
+}
+
 TEST_CASE("Context-resolved spectral sources can seed additive spectral graphs", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;

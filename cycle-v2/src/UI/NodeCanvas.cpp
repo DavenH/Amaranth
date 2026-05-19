@@ -1772,34 +1772,15 @@ const NodePreviewResult* NodeCanvas::findPreviewResult(const String& nodeId) con
 }
 
 PortDomain NodeCanvas::displayDomainForEdge(const Edge& edge) const {
-    if (edge.attachment || !compileResult.succeeded()) {
+    if (edge.attachment) {
         return edge.domain;
     }
 
-    for (const auto& resolved : compileResult.plan.signalEdges) {
-        if (resolved.sourceNodeId == edge.sourceNodeId
-                && resolved.sourcePortId == edge.sourcePortId
-                && resolved.destNodeId == edge.destNodeId
-                && resolved.destPortId == edge.destPortId) {
-            return resolved.domain;
-        }
-    }
-
-    return edge.domain;
+    return GraphValidator().resolvedDomainForEdge(graph, edge);
 }
 
 bool NodeCanvas::edgeHasValidationIssue(const Edge& edge) const {
-    if (compileResult.succeeded()) {
-        return false;
-    }
-
-    NodeGraph candidate;
-    for (const auto& node : graph.getNodes()) {
-        candidate.addNode(node);
-    }
-
-    candidate.addEdge(edge);
-    return !GraphValidator().isValid(candidate);
+    return GraphValidator().edgeHasValidationIssue(graph, edge);
 }
 
 int NodeCanvas::executionIndexForNode(const String& nodeId) const {
