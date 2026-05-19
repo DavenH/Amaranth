@@ -51,8 +51,8 @@ NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
         case NodeKind::SpectralPhaseProcessor:       return { 240.f, 95.f };
         case NodeKind::Ifft:                         return { 0.f, 0.f };
         case NodeKind::Envelope:                     return { 220.f, 85.f };
-        case NodeKind::Add:                          return { 0.f, 0.f };
-        case NodeKind::Multiply:                     return { 0.f, 0.f };
+        case NodeKind::Add:                          return { 58.f, 44.f };
+        case NodeKind::Multiply:                     return { 58.f, 44.f };
         case NodeKind::StereoSplit:                  return { 0.f, 0.f };
         case NodeKind::StereoJoin:                   return { 0.f, 0.f };
         case NodeKind::Output:                       return { 0.f, 0.f };
@@ -329,6 +329,10 @@ String labelForNodeKind(NodeKind kind) {
 NodeNaturalSize naturalSizeForNode(const Node& node) {
     const int portRows = jmax((int) node.inputs.size(), (int) node.outputs.size());
     const auto preview = minimumPreviewSizeForKind(node.kind);
+
+    if (node.kind == NodeKind::Add || node.kind == NodeKind::Multiply) {
+        return { 150.f, 118.f };
+    }
 
     const float titleWidth = (float) node.title.length() * 8.5f;
     const float subtitleWidth = (float) node.subtitle.length() * 6.0f;

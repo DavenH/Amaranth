@@ -39,13 +39,17 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
     REQUIRE(add.title == "Add");
     REQUIRE(add.inputs.size() == 2);
     REQUIRE(add.outputs.size() == 1);
-    REQUIRE(add.inputs[1].side == PortSide::Top);
+    REQUIRE(add.inputs[1].side == PortSide::Left);
     REQUIRE(add.outputs.front().domain == PortDomain::ControlSignal);
+    REQUIRE(add.bounds.getWidth() == 150.f);
+    REQUIRE(add.bounds.getHeight() == 118.f);
 
     const Node multiply = GraphNodeFactory().createNode(NodeKind::Multiply, "mul", {});
     REQUIRE(multiply.inputs[0].domain == PortDomain::ControlSignal);
-    REQUIRE(multiply.inputs[1].side == PortSide::Top);
+    REQUIRE(multiply.inputs[1].side == PortSide::Left);
     REQUIRE(multiply.outputs.front().domain == PortDomain::ControlSignal);
+    REQUIRE(multiply.bounds.getWidth() == add.bounds.getWidth());
+    REQUIRE(multiply.bounds.getHeight() == add.bounds.getHeight());
 }
 
 TEST_CASE("Graph editor adds nodes with unique ids", "[cycle-v2][graph]") {

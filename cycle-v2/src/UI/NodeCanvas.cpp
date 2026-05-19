@@ -97,6 +97,15 @@ Colour portDisplayColour(const Node& node, const Port& port) {
     return colourForDomain(port.domain);
 }
 
+bool isOperationNode(NodeKind kind) {
+    return kind == NodeKind::Add || kind == NodeKind::Multiply;
+}
+
+Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds) {
+    return Rectangle<float>(18.f, 18.f)
+            .withCentre({ nodeBounds.getRight() - 18.f, nodeBounds.getY() + 21.f });
+}
+
 }
 
 NodeCanvas::NodeCanvas() :
@@ -160,6 +169,16 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             connectingCable = false;
             refreshCompiledState();
             editStatusMessage = "Node added";
+            repaint();
+        }
+
+        return;
+    }
+
+    String layoutNodeId;
+    if (findOperationLayoutButtonAt(event.position, layoutNodeId)) {
+        if (cycleOperationPortLayout(layoutNodeId)) {
+            editStatusMessage = "Port layout cycled";
             repaint();
         }
 
@@ -563,6 +582,16 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     g.setFont(FontOptions(15.f * zoom, Font::bold));
     g.setColour(kText);
     g.drawText(node.title, header.reduced(13.f * zoom, 4.f * zoom), Justification::centredLeft);
+
+    if (isOperationNode(node.kind)) {
+        const auto button = operationLayoutButtonBounds(toScreen(node.bounds));
+        g.setColour(Colour(0xff0f141a).withAlpha(0.78f));
+        g.fillEllipse(button);
+        g.setColour(kMutedText.withAlpha(0.82f));
+        g.drawEllipse(button, 1.f * portScaleForZoom(zoom));
+        g.setFont(FontOptions(11.f * zoom, Font::bold));
+        g.drawText("↻", button, Justification::centred);
+    }
 
     auto nodeBounds = toScreen(node.bounds);
     auto preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(1.f * zoom);
@@ -1213,6 +1242,25 @@ bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) 
     return false;
 }
 
+bool NodeCanvas::findOperationLayoutButtonAt(Point<float> screenPosition, String& nodeId) const {
+    const auto& nodes = graph.getNodes();
+
+    for (int i = (int) nodes.size() - 1; i >= 0; --i) {
+        const auto& node = nodes[(size_t) i];
+
+        if (!isOperationNode(node.kind)) {
+            continue;
+        }
+
+        if (operationLayoutButtonBounds(toScreen(node.bounds)).expanded(4.f).contains(screenPosition)) {
+            nodeId = node.id;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 int NodeCanvas::findEdgeAt(Point<float> screenPosition) const {
     const auto& edges = graph.getEdges();
 
@@ -1336,6 +1384,11 @@ String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
     if (findPaletteKindAt(screenPosition, paletteKind)) {
         Node node = GraphNodeFactory().createNode(paletteKind, {}, {});
         return "Create " + node.title + "  /  " + node.subtitle;
+    }
+
+    String layoutNodeId;
+    if (findOperationLayoutButtonAt(screenPosition, layoutNodeId)) {
+        return "Cycle operation port layout  /  side, uptack, T";
     }
 
     PortAddress portAddress;
@@ -1541,6 +1594,38 @@ bool NodeCanvas::clearSelection() {
     return true;
 }
 
+bool NodeCanvas::cycleOperationPortLayout(const String& nodeId) {
+    Node* node = findMutableNode(nodeId);
+
+    if (node == nullptr || !isOperationNode(node->kind) || node->inputs.size() < 2 || node->outputs.empty()) {
+        return false;
+    }
+
+    pushUndoSnapshot();
+
+    const PortSide first = node->inputs[0].side;
+    const PortSide second = node->inputs[1].side;
+
+    if (first == PortSide::Left && second == PortSide::Left) {
+        node->inputs[0].side = PortSide::Left;
+        node->inputs[1].side = PortSide::Top;
+        node->outputs[0].side = PortSide::Right;
+    } else if (first == PortSide::Left && second == PortSide::Top) {
+        node->inputs[0].side = PortSide::Top;
+        node->inputs[1].side = PortSide::Bottom;
+        node->outputs[0].side = PortSide::Right;
+    } else {
+        node->inputs[0].side = PortSide::Left;
+        node->inputs[1].side = PortSide::Left;
+        node->outputs[0].side = PortSide::Right;
+    }
+
+    selectedNodeId = nodeId;
+    selectedEdgeIndex = -1;
+    refreshCompiledState();
+    return true;
+}
+
 bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& second) const {
     if (first.input == second.input) {
         return false;
@@ -1555,10 +1640,31 @@ Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool) c
     path.startNewSubPath(source);
 
     const float deltaX = dest.x - source.x;
-    const float dx = jmax(36.f * zoom, std::abs(deltaX) * 0.45f);
-    const float lift = -30.f * zoom;
+    const float deltaY = dest.y - source.y;
+
+    if (std::abs(deltaX) < 42.f * zoom) {
+        const float dy = jmax(28.f * zoom, std::abs(deltaY) * 0.48f);
+        const float sign = deltaY >= 0.f ? 1.f : -1.f;
+        path.cubicTo(
+                { source.x, source.y + dy * sign },
+                { dest.x, dest.y - dy * sign },
+                dest);
+        return path;
+    }
+
+    if (std::abs(deltaY) < 32.f * zoom || deltaX > 0.f) {
+        const float dx = jmax(36.f * zoom, std::abs(deltaX) * 0.45f);
+        path.cubicTo(
+                { source.x + dx, source.y },
+                { dest.x - dx, dest.y },
+                dest);
+        return path;
+    }
+
+    const float dx = jmax(48.f * zoom, std::abs(deltaX) * 0.35f);
+    const float lift = deltaY < 0.f ? -34.f * zoom : 34.f * zoom;
     const Point<float> c1(source.x + dx, source.y + lift);
-    const Point<float> c2(dest.x - dx, dest.y + lift);
+    const Point<float> c2(dest.x - dx, dest.y - lift);
     path.cubicTo(c1, c2, dest);
 
     return path;

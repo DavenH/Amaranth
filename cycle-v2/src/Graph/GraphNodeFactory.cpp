@@ -91,7 +91,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.subtitle = "combine";
             node.inputs = {
                     input("left", "A", PortDomain::ControlSignal),
-                    input("right", "B", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
+                    input("right", "B", PortDomain::ControlSignal)
             };
             node.outputs = { output("out", "Out", PortDomain::ControlSignal) };
             break;
@@ -101,7 +101,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.subtitle = "operation";
             node.inputs = {
                     input("left", "A", PortDomain::ControlSignal),
-                    input("right", "B", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
+                    input("right", "B", PortDomain::ControlSignal)
             };
             node.outputs = { output("out", "Out", PortDomain::ControlSignal) };
             break;
