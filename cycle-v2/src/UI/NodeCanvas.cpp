@@ -32,6 +32,14 @@ float absoluteFloat(float value) {
     return value >= 0.f ? value : -value;
 }
 
+float fastSin(float value) {
+    return (float) juce::dsp::FastMathApproximations::sin((double) value);
+}
+
+float fastCos(float value) {
+    return (float) juce::dsp::FastMathApproximations::cos((double) value);
+}
+
 int portIndexOnSide(const Node& node, const Port& port) {
     int index = 0;
 
@@ -178,6 +186,73 @@ String voiceDomainButtonLabel(const Node& node) {
 
 String nextVoiceDomain(const Node& node) {
     return voiceDomainForNode(node) == "spectral" ? "waveform" : "spectral";
+}
+
+Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
+    switch (role) {
+        case PreviewModuleRole::SpectrumMagnitude: return colourForDomain(PortDomain::SpectralMagnitudeSignal);
+        case PreviewModuleRole::SpectrumPhase:     return colourForDomain(PortDomain::SpectralPhaseSignal);
+        case PreviewModuleRole::Envelope:          return colourForDomain(PortDomain::EnvelopeSignal);
+        case PreviewModuleRole::OutputMeters:
+        case PreviewModuleRole::Waveform:
+        case PreviewModuleRole::Waveshaper:        return colourForDomain(PortDomain::TimeSignal);
+        case PreviewModuleRole::MeshSurface:       return colourForDomain(PortDomain::MeshField);
+        default:                                   break;
+    }
+
+    return node.outputs.empty() ? Colour(0xff9aa5b2) : colourForDomain(node.outputs.front().domain);
+}
+
+void drawPreviewTrace(
+        Graphics& g,
+        Rectangle<float> area,
+        const std::vector<float>& values,
+        Colour colour,
+        float zoom) {
+    if (values.empty()) {
+        return;
+    }
+
+    Path trace;
+
+    for (size_t i = 0; i < values.size(); ++i) {
+        const float t = values.size() > 1 ? (float) i / (float) (values.size() - 1) : 0.f;
+        const float y = jlimit(0.f, 1.f, values[i]);
+        const Point<float> point(
+                area.getX() + t * area.getWidth(),
+                area.getBottom() - y * area.getHeight());
+
+        if (i == 0) {
+            trace.startNewSubPath(point);
+        } else {
+            trace.lineTo(point);
+        }
+    }
+
+    g.setColour(colour.withAlpha(0.12f));
+    g.fillRect(area);
+    g.setColour(colour.withAlpha(0.92f));
+    g.strokePath(trace, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+void drawPreviewMeters(
+        Graphics& g,
+        Rectangle<float> area,
+        const NodePreviewResult& preview,
+        Colour colour) {
+    const float left = preview.primary.empty() ? 0.f : jlimit(0.f, 1.f, preview.primary.front());
+    const float right = preview.secondary.empty() ? left : jlimit(0.f, 1.f, preview.secondary.front());
+    Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.28f, area.getHeight() * 0.18f);
+    const float width = meterArea.getWidth() * 0.32f;
+    auto leftMeter = meterArea.removeFromLeft(width);
+    auto rightMeter = meterArea.removeFromRight(width);
+
+    g.setColour(colour.withAlpha(0.16f));
+    g.fillRoundedRectangle(leftMeter, 2.f);
+    g.fillRoundedRectangle(rightMeter, 2.f);
+    g.setColour(colour.withAlpha(0.72f));
+    g.fillRoundedRectangle(leftMeter.withTrimmedTop(leftMeter.getHeight() * (1.f - left)), 2.f);
+    g.fillRoundedRectangle(rightMeter.withTrimmedTop(rightMeter.getHeight() * (1.f - right)), 2.f);
 }
 
 void drawOperationLayoutIcon(Graphics& g, Rectangle<float> button, OperationPortLayout layout, Colour colour) {
@@ -787,6 +862,28 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
     g.setColour(Colour(0xff26313d));
     g.drawRoundedRectangle(area, 5.f, 1.f);
 
+    if (const NodePreviewResult* preview = findPreviewResult(node.id)) {
+        const Colour colour = previewColourForRole(preview->role, node);
+
+        if (preview->role == PreviewModuleRole::OutputMeters) {
+            drawPreviewMeters(g, area, *preview, colour);
+            g.setColour(kMutedText.withAlpha(0.72f));
+            g.setFont(FontOptions(jmin(18.f, area.getHeight() * 0.30f), Font::bold));
+            g.drawText("OUT", area, Justification::centredBottom);
+            return;
+        }
+
+        if (!preview->primary.empty()) {
+            drawPreviewTrace(g, area.reduced(8.f), preview->primary, colour, zoom);
+
+            if (!preview->secondary.empty()) {
+                drawPreviewTrace(g, area.reduced(8.f), preview->secondary, colour.withAlpha(0.58f), zoom);
+            }
+
+            return;
+        }
+    }
+
     if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
         const bool inverse = node.kind == NodeKind::Ifft;
         const Rectangle<float> icon = area.reduced(jmax(8.f, area.getWidth() * 0.22f), area.getHeight() * 0.22f);
@@ -800,7 +897,7 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
                 const float t = (float) i / 31.f;
                 const Point<float> p(
                         icon.getX() + t * icon.getWidth(),
-                        icon.getCentreY() + std::sin(t * MathConstants<float>::twoPi) * icon.getHeight() * 0.30f);
+                        icon.getCentreY() + fastSin(t * MathConstants<float>::twoPi) * icon.getHeight() * 0.30f);
 
                 if (i == 0) {
                     wave.startNewSubPath(p);
@@ -864,8 +961,8 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
         for (int i = 0; i < 8; ++i) {
             float x0 = area.getX() + (float) i * area.getWidth() / 8.f;
             float x1 = area.getX() + (float) (i + 1) * area.getWidth() / 8.f;
-            float y0 = area.getY() + area.getHeight() * (0.28f + 0.08f * std::sin((float) i));
-            float y1 = area.getBottom() - area.getHeight() * (0.20f + 0.07f * std::cos((float) i));
+            float y0 = area.getY() + area.getHeight() * (0.28f + 0.08f * fastSin((float) i));
+            float y1 = area.getBottom() - area.getHeight() * (0.20f + 0.07f * fastCos((float) i));
             Line<float> line({ x0, y1 }, { x1, y0 });
             g.setColour(Colour(0xff35d6d2).withAlpha(0.40f));
             g.drawLine(line, 1.2f);
@@ -894,7 +991,7 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
             const float t = (float) i / 41.f;
             const Point<float> p(
                     area.getX() + t * area.getWidth(),
-                    area.getCentreY() + std::sin(t * MathConstants<float>::twoPi * 1.25f) * area.getHeight() * 0.34f);
+                    area.getCentreY() + fastSin(t * MathConstants<float>::twoPi * 1.25f) * area.getHeight() * 0.34f);
 
             if (i == 0) {
                 wave.startNewSubPath(p);
@@ -957,7 +1054,7 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
     const int steps = 42;
     for (int i = 0; i < steps; ++i) {
         float t = (float) i / (float) (steps - 1);
-        float y = 0.5f + 0.28f * std::sin(t * MathConstants<float>::twoPi * 1.35f + node.id.hashCode() * 0.001f);
+        float y = 0.5f + 0.28f * fastSin(t * MathConstants<float>::twoPi * 1.35f + node.id.hashCode() * 0.001f);
         Point<float> p(area.getX() + t * area.getWidth(), area.getY() + y * area.getHeight());
         if (i == 0) {
             curve.startNewSubPath(p);
@@ -1626,6 +1723,16 @@ const RuntimeNodeTrace* NodeCanvas::findRuntimeTrace(const String& nodeId) const
     return nullptr;
 }
 
+const NodePreviewResult* NodeCanvas::findPreviewResult(const String& nodeId) const {
+    for (const auto& node : previewResult.nodes) {
+        if (node.nodeId == nodeId) {
+            return &node;
+        }
+    }
+
+    return nullptr;
+}
+
 PortDomain NodeCanvas::displayDomainForEdge(const Edge& edge) const {
     if (edge.attachment || !compileResult.succeeded()) {
         return edge.domain;
@@ -1765,9 +1872,11 @@ Point<float> NodeCanvas::paletteCreationWorldPosition(Point<float> paletteClickP
 void NodeCanvas::refreshCompiledState() {
     compileResult = GraphCompiler().compile(graph);
     runtimeTrace = {};
+    previewResult = {};
 
     if (compileResult.succeeded()) {
         runtimeTrace = GraphRuntime().process(graph, compileResult.plan);
+        previewResult = GraphPreviewExecutor().render(compileResult.plan, 48);
     }
 }
 

@@ -5,6 +5,7 @@
 #include "../Graph/GraphEditor.h"
 #include "../Graph/NodeGraph.h"
 #include "../Graph/GraphSerializer.h"
+#include "../Runtime/GraphPreviewExecutor.h"
 #include "../Runtime/GraphRuntime.h"
 
 namespace CycleV2 {
@@ -37,6 +38,7 @@ private:
     NodeGraph graph;
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;
+    GraphPreviewResult previewResult;
     std::vector<String> undoStack;
     std::vector<String> redoStack;
 
@@ -92,6 +94,7 @@ private:
     const Node* findNodeAt(Point<float> worldPosition) const;
     const Port* findPort(const Node& node, const String& portId, bool input) const;
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
+    const NodePreviewResult* findPreviewResult(const String& nodeId) const;
     PortDomain displayDomainForEdge(const Edge& edge) const;
     int executionIndexForNode(const String& nodeId) const;
     int attachmentCount() const;
