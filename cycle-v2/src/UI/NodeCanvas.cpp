@@ -14,6 +14,11 @@ const Colour kNodeHeader       { 0xff202833 };
 const Colour kNodeBorder       { 0xff3d4a58 };
 const Colour kText             { 0xffe2e8ef };
 const Colour kMutedText        { 0xff8793a1 };
+constexpr float kCableReferenceZoom = 0.58f;
+
+float cableScaleForZoom(float zoom) {
+    return zoom / kCableReferenceZoom;
+}
 
 float portY(const Node& node, const Port& port) {
     const auto& ports = port.input ? node.inputs : node.outputs;
@@ -69,9 +74,15 @@ void NodeCanvas::paint(Graphics& g) {
     drawMiniMap(g);
     drawEdgeLegend(g);
     drawNodePalette(g);
+    drawHoverConsole(g);
 }
 
 void NodeCanvas::resized() {
+    repaint();
+}
+
+void NodeCanvas::mouseMove(const MouseEvent& event) {
+    lastMousePosition = event.position;
     repaint();
 }
 
@@ -389,24 +400,25 @@ void NodeCanvas::drawEdges(Graphics& g) {
         Colour colour = colourForDomain(edge.domain);
 
         const bool selected = edgeIndex == selectedEdgeIndex;
+        const float cableScale = cableScaleForZoom(zoom);
 
         if (edge.attachment) {
             Path dashedCable;
-            PathStrokeType stroke(2.0f, PathStrokeType::curved, PathStrokeType::rounded);
-            Array<float> dashes { 8.f, 7.f };
+            PathStrokeType stroke(2.0f * cableScale, PathStrokeType::curved, PathStrokeType::rounded);
+            Array<float> dashes { 8.f * cableScale, 7.f * cableScale };
             stroke.createDashedStroke(dashedCable, cable, dashes.getRawDataPointer(), dashes.size());
             g.setColour(colour.withAlpha(selected ? 0.46f : 0.32f));
-            g.strokePath(dashedCable, PathStrokeType(selected ? 10.f : 7.f, PathStrokeType::curved, PathStrokeType::rounded));
+            g.strokePath(dashedCable, PathStrokeType((selected ? 10.f : 7.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
             g.setColour(colour.withAlpha(0.92f));
-            g.strokePath(dashedCable, PathStrokeType(selected ? 3.f : 2.f, PathStrokeType::curved, PathStrokeType::rounded));
+            g.strokePath(dashedCable, PathStrokeType((selected ? 3.f : 2.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
         } else {
             g.setColour(colour.withAlpha(selected ? 0.28f : 0.18f));
-            g.strokePath(cable, PathStrokeType(selected ? 12.f : 9.f, PathStrokeType::curved, PathStrokeType::rounded));
+            g.strokePath(cable, PathStrokeType((selected ? 12.f : 9.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
             g.setColour(colour.withAlpha(0.92f));
-            g.strokePath(cable, PathStrokeType(selected ? 4.f : 3.f, PathStrokeType::curved, PathStrokeType::rounded));
+            g.strokePath(cable, PathStrokeType((selected ? 4.f : 3.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
         }
 
-        const float endpointSize = selected ? 14.f : 11.f;
+        const float endpointSize = (selected ? 14.f : 11.f) * cableScale;
         Rectangle<float> sourceMarker(source.x - endpointSize * 0.5f, source.y - endpointSize * 0.5f,
                                       endpointSize, endpointSize);
         Rectangle<float> destMarker(dest.x - endpointSize * 0.5f, dest.y - endpointSize * 0.5f,
@@ -415,8 +427,8 @@ void NodeCanvas::drawEdges(Graphics& g) {
         g.setColour(kCanvasBackground.withAlpha(0.92f));
         g.fillEllipse(sourceMarker);
         g.setColour(colour.withAlpha(0.96f));
-        g.drawEllipse(sourceMarker, selected ? 2.4f : 1.8f);
-        g.fillEllipse(destMarker.reduced(selected ? 1.5f : 2.f));
+        g.drawEllipse(sourceMarker, (selected ? 2.4f : 1.8f) * cableScale);
+        g.fillEllipse(destMarker.reduced((selected ? 1.5f : 2.f) * cableScale));
     }
 }
 
@@ -442,19 +454,21 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
     const auto dest = connectingPort.input ? start : connectingPoint;
     const Path cable = createCablePath(source, dest, false);
     const Colour colour = colourForDomain(port->domain);
+    const float cableScale = cableScaleForZoom(zoom);
 
     g.setColour(colour.withAlpha(0.18f));
-    g.strokePath(cable, PathStrokeType(9.f, PathStrokeType::curved, PathStrokeType::rounded));
+    g.strokePath(cable, PathStrokeType(9.f * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
     g.setColour(colour.withAlpha(0.88f));
-    g.strokePath(cable, PathStrokeType(3.f, PathStrokeType::curved, PathStrokeType::rounded));
+    g.strokePath(cable, PathStrokeType(3.f * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
 
-    Rectangle<float> startMarker(source.x - 5.5f, source.y - 5.5f, 11.f, 11.f);
-    Rectangle<float> destMarker(dest.x - 5.5f, dest.y - 5.5f, 11.f, 11.f);
+    const float markerSize = 11.f * cableScale;
+    Rectangle<float> startMarker(source.x - markerSize * 0.5f, source.y - markerSize * 0.5f, markerSize, markerSize);
+    Rectangle<float> destMarker(dest.x - markerSize * 0.5f, dest.y - markerSize * 0.5f, markerSize, markerSize);
     g.setColour(kCanvasBackground.withAlpha(0.92f));
     g.fillEllipse(startMarker);
     g.setColour(colour.withAlpha(0.96f));
-    g.drawEllipse(startMarker, 1.8f);
-    g.fillEllipse(destMarker.reduced(2.f));
+    g.drawEllipse(startMarker, 1.8f * cableScale);
+    g.fillEllipse(destMarker.reduced(2.f * cableScale));
 }
 
 void NodeCanvas::drawNodes(Graphics& g) {
@@ -518,24 +532,6 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
             g.setColour(colour);
             g.drawEllipse(location.bounds, 2.f);
         }
-
-        Rectangle<float> labelBounds = location.bounds.withSizeKeepingCentre(92.f * zoom, 18.f * zoom);
-        labelBounds.setY(location.bounds.getY() - 3.f * zoom);
-
-        if (port.input) {
-            labelBounds.setX(location.bounds.getRight() + 7.f * zoom);
-        } else {
-            labelBounds.setRight(location.bounds.getX() - 7.f * zoom);
-        }
-
-        g.setFont(FontOptions(9.5f * zoom));
-        g.setColour(Colour(0xff0e1318).withAlpha(0.56f));
-        g.fillRoundedRectangle(labelBounds.expanded(4.f * zoom, 2.f * zoom), 4.f * zoom);
-        g.setColour(kText.withAlpha(0.86f));
-        g.drawText(portDisplayLabel(port),
-                   labelBounds,
-                   port.input ? Justification::centredLeft
-                              : Justification::centredRight);
     };
 
     for (const auto& port : node.inputs) {
@@ -905,6 +901,28 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
     }
 }
 
+void NodeCanvas::drawHoverConsole(Graphics& g) {
+    const String text = hoverTextFor(lastMousePosition);
+
+    if (text.isEmpty()) {
+        return;
+    }
+
+    Rectangle<float> console(18.f, (float) getHeight() - 42.f, jmin(560.f, (float) getWidth() - 220.f), 24.f);
+
+    if (console.getWidth() < 180.f) {
+        return;
+    }
+
+    g.setColour(Colour(0xaa0b0e13));
+    g.fillRoundedRectangle(console, 5.f);
+    g.setColour(Colour(0xff354050));
+    g.drawRoundedRectangle(console, 5.f, 1.f);
+    g.setColour(kMutedText);
+    g.setFont(FontOptions(10.f));
+    g.drawText(text, console.reduced(10.f, 1.f), Justification::centredLeft);
+}
+
 void NodeCanvas::drawNodePalette(Graphics& g) {
     struct PaletteEntry {
         NodeKind kind;
@@ -924,28 +942,29 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
             { NodeKind::Output, "Out" }
     };
 
-    Rectangle<float> panel(18.f, 74.f, 74.f, 8.f + (float) std::size(entries) * 28.f);
+    Rectangle<float> panel(18.f, 74.f, 89.f, 10.f + (float) std::size(entries) * 34.f);
     g.setColour(Colour(0xaa0b0e13));
     g.fillRoundedRectangle(panel, 6.f);
     g.setColour(Colour(0xff354050));
     g.drawRoundedRectangle(panel, 6.f, 1.f);
 
     for (int i = 0; i < (int) std::size(entries); ++i) {
-        Rectangle<float> row(panel.getX() + 7.f, panel.getY() + 7.f + (float) i * 28.f, panel.getWidth() - 14.f, 22.f);
-        const Colour colour = colourForDomain(entries[i].kind == NodeKind::Envelope
-                ? PortDomain::EnvelopeSignal
-                : entries[i].kind == NodeKind::SpectralMagnitudeProcessor
-                        ? PortDomain::SpectralMagnitudeSignal
-                        : entries[i].kind == NodeKind::SpectralPhaseProcessor
-                                ? PortDomain::SpectralPhaseSignal
-                                : PortDomain::TimeSignal);
+        Rectangle<float> row(panel.getX() + 8.f, panel.getY() + 8.f + (float) i * 34.f, panel.getWidth() - 16.f, 26.f);
+        Node previewNode = GraphNodeFactory().createNode(entries[i].kind, {}, {});
+        Colour colour = colourForDomain(PortDomain::TimeSignal);
+
+        if (!previewNode.outputs.empty()) {
+            colour = portDisplayColour(previewNode, previewNode.outputs.front());
+        } else if (!previewNode.inputs.empty()) {
+            colour = portDisplayColour(previewNode, previewNode.inputs.front());
+        }
 
         g.setColour(colour.withAlpha(0.12f));
         g.fillRoundedRectangle(row, 4.f);
         g.setColour(colour.withAlpha(0.48f));
         g.drawRoundedRectangle(row, 4.f, 1.f);
         g.setColour(kText);
-        g.setFont(FontOptions(9.5f));
+        g.setFont(FontOptions(10.5f));
         g.drawText(entries[i].label, row, Justification::centred);
     }
 }
@@ -1039,14 +1058,14 @@ bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) 
             NodeKind::Output
     };
 
-    Rectangle<float> panel(18.f, 74.f, 74.f, 8.f + (float) std::size(entries) * 28.f);
+    Rectangle<float> panel(18.f, 74.f, 89.f, 10.f + (float) std::size(entries) * 34.f);
 
     if (!panel.contains(screenPosition)) {
         return false;
     }
 
     for (int i = 0; i < (int) std::size(entries); ++i) {
-        Rectangle<float> row(panel.getX() + 7.f, panel.getY() + 7.f + (float) i * 28.f, panel.getWidth() - 14.f, 22.f);
+        Rectangle<float> row(panel.getX() + 8.f, panel.getY() + 8.f + (float) i * 34.f, panel.getWidth() - 16.f, 26.f);
 
         if (row.contains(screenPosition)) {
             kind = entries[i];
@@ -1172,6 +1191,73 @@ int NodeCanvas::attachmentCount() const {
     }
 
     return count;
+}
+
+String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
+    NodeKind paletteKind;
+
+    if (findPaletteKindAt(screenPosition, paletteKind)) {
+        Node node = GraphNodeFactory().createNode(paletteKind, {}, {});
+        return "Create " + node.title + "  /  " + node.subtitle;
+    }
+
+    PortAddress portAddress;
+
+    if (findPortAt(screenPosition, portAddress)) {
+        return textForPort(portAddress);
+    }
+
+    const Node* node = findNodeAt(toWorld(screenPosition));
+
+    if (node != nullptr) {
+        return textForNode(*node);
+    }
+
+    const int edgeIndex = findEdgeAt(screenPosition);
+
+    if (edgeIndex >= 0 && edgeIndex < (int) graph.getEdges().size()) {
+        const auto& edge = graph.getEdges()[(size_t) edgeIndex];
+        return String(edge.attachment ? "Attachment" : "Signal")
+                + " edge  /  " + labelForDomain(edge.domain)
+                + "  /  " + edge.sourceNodeId + "." + edge.sourcePortId
+                + " -> " + edge.destNodeId + "." + edge.destPortId;
+    }
+
+    return {};
+}
+
+String NodeCanvas::textForPort(const PortAddress& address) const {
+    const Node* node = findNode(address.nodeId);
+
+    if (node == nullptr) {
+        return {};
+    }
+
+    const Port* port = findPort(*node, address.portId, address.input);
+
+    if (port == nullptr) {
+        return {};
+    }
+
+    String text = node->title + "  /  " + (address.input ? "Input" : "Output")
+            + " port " + portDisplayLabel(*port)
+            + "  /  " + labelForDomain(port->domain);
+
+    if (port->purpose == PortPurpose::ScratchAttachment) {
+        text += " scratch attachment";
+    }
+
+    if (port->channelLayout != ChannelLayout::Mono) {
+        text += "  /  " + labelForChannelLayout(port->channelLayout);
+    }
+
+    return text;
+}
+
+String NodeCanvas::textForNode(const Node& node) const {
+    return node.title + "  /  " + node.subtitle
+            + "  /  inputs " + String((int) node.inputs.size())
+            + "  /  outputs " + String((int) node.outputs.size());
 }
 
 Point<float> NodeCanvas::viewportCentreWorld() const {

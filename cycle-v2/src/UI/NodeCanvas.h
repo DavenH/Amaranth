@@ -20,6 +20,7 @@ public:
     void paint(Graphics& g) override;
     void resized() override;
     void mouseDown(const MouseEvent& event) override;
+    void mouseMove(const MouseEvent& event) override;
     void mouseDrag(const MouseEvent& event) override;
     void mouseUp(const MouseEvent& event) override;
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override;
@@ -73,6 +74,7 @@ private:
     void drawGraphStatus(Graphics& g);
     void drawEdgeLegend(Graphics& g);
     void drawNodePalette(Graphics& g);
+    void drawHoverConsole(Graphics& g);
 
     Point<float> toScreen(Point<float> p) const;
     Point<float> toWorld(Point<float> p) const;
@@ -90,6 +92,9 @@ private:
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
     int executionIndexForNode(const String& nodeId) const;
     int attachmentCount() const;
+    String hoverTextFor(Point<float> screenPosition) const;
+    String textForPort(const PortAddress& address) const;
+    String textForNode(const Node& node) const;
     Point<float> viewportCentreWorld() const;
     Point<float> paletteCreationWorldPosition(Point<float> paletteClickPosition) const;
     void refreshCompiledState();
