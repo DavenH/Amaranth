@@ -118,6 +118,10 @@ bool GraphValidator::isVoiceAwareDestination(const Port& port) const {
 }
 
 bool GraphValidator::domainsCompatible(const Port& source, const Port& dest) const {
+    if (source.domain == PortDomain::ControlSignal || dest.domain == PortDomain::ControlSignal) {
+        return true;
+    }
+
     return source.domain == dest.domain;
 }
 

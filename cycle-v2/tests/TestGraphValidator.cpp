@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphValidator.h"
 
 #include <algorithm>
@@ -43,6 +44,16 @@ TEST_CASE("Channel layouts have stable short labels", "[cycle-v2][graph]") {
     REQUIRE(labelForChannelLayout(ChannelLayout::Left) == "L");
     REQUIRE(labelForChannelLayout(ChannelLayout::Right) == "R");
     REQUIRE(labelForChannelLayout(ChannelLayout::StereoPair) == "Pair");
+}
+
+TEST_CASE("Universal ports accept typed graph operands", "[cycle-v2][graph]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Add, "add", { 320.f, 0.f }));
+    graph.addEdge({ "mesh", "mesh", "add", "left", PortDomain::MeshField, false });
+
+    REQUIRE(GraphValidator().isValid(graph));
+    REQUIRE(labelForDomain(PortDomain::ControlSignal) == "Universal");
 }
 
 TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {

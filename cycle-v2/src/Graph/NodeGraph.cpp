@@ -290,7 +290,7 @@ String labelForDomain(PortDomain domain) {
         case PortDomain::EnvelopeSignal:          return "Env";
         case PortDomain::PitchSignal:             return "Pitch";
         case PortDomain::VoiceControlSignal:      return "Voice";
-        case PortDomain::ControlSignal:           return "Control";
+        case PortDomain::ControlSignal:           return "Universal";
         default:                                  return "Unknown";
     }
 }
