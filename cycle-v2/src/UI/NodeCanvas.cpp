@@ -16,6 +16,8 @@ const Colour kText             { 0xffe2e8ef };
 const Colour kMutedText        { 0xff8793a1 };
 constexpr float kCableReferenceZoom = 0.58f;
 constexpr float kCableStrokeScale = 0.70f;
+constexpr float kPaletteWidth = 107.f;
+constexpr float kPaletteRowHeight = 40.f;
 
 float cableScaleForZoom(float zoom) {
     return zoom / kCableReferenceZoom * kCableStrokeScale;
@@ -25,13 +27,56 @@ float portScaleForZoom(float zoom) {
     return zoom / kCableReferenceZoom;
 }
 
-float portY(const Node& node, const Port& port) {
+int portIndexOnSide(const Node& node, const Port& port) {
+    int index = 0;
+
+    auto scan = [&](const std::vector<Port>& ports) {
+        for (const auto& candidate : ports) {
+            if (candidate.side != port.side) {
+                continue;
+            }
+
+            if (candidate.id == port.id && candidate.input == port.input) {
+                return true;
+            }
+
+            ++index;
+        }
+
+        return false;
+    };
+
+    if (scan(node.inputs)) {
+        return index;
+    }
+
+    scan(node.outputs);
+    return index;
+}
+
+int portCountOnSide(const Node& node, PortSide side) {
+    int count = 0;
+
+    auto scan = [&](const std::vector<Port>& ports) {
+        for (const auto& port : ports) {
+            if (port.side == side) {
+                ++count;
+            }
+        }
+    };
+
+    scan(node.inputs);
+    scan(node.outputs);
+    return count;
+}
+
+float sidePortY(const Node& node, const Port& port) {
     const auto& ports = port.input ? node.inputs : node.outputs;
     int index = 0;
 
     for (int i = 0; i < (int) ports.size(); ++i) {
         if (ports[(size_t) i].id == port.id) {
-            index = i;
+            index = portIndexOnSide(node, port);
             break;
         }
     }
@@ -1011,14 +1056,15 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
             { NodeKind::Output, "Out" }
     };
 
-    Rectangle<float> panel(18.f, 74.f, 89.f, 10.f + (float) std::size(entries) * 34.f);
+    Rectangle<float> panel(18.f, 74.f, kPaletteWidth, 10.f + (float) std::size(entries) * kPaletteRowHeight);
     g.setColour(Colour(0xaa0b0e13));
     g.fillRoundedRectangle(panel, 6.f);
     g.setColour(Colour(0xff354050));
     g.drawRoundedRectangle(panel, 6.f, 1.f);
 
     for (int i = 0; i < (int) std::size(entries); ++i) {
-        Rectangle<float> row(panel.getX() + 8.f, panel.getY() + 8.f + (float) i * 34.f, panel.getWidth() - 16.f, 26.f);
+        Rectangle<float> row(panel.getX() + 9.f, panel.getY() + 8.f + (float) i * kPaletteRowHeight,
+                             panel.getWidth() - 18.f, 31.f);
         Node previewNode = GraphNodeFactory().createNode(entries[i].kind, {}, {});
         Colour colour = colourForDomain(PortDomain::TimeSignal);
 
@@ -1033,7 +1079,7 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
         g.setColour(colour.withAlpha(0.48f));
         g.drawRoundedRectangle(row, 4.f, 1.f);
         g.setColour(kText);
-        g.setFont(FontOptions(10.5f, Font::bold));
+        g.setFont(FontOptions(12.f, Font::bold));
         g.drawText(entries[i].label, row, Justification::centred);
     }
 }
@@ -1053,8 +1099,30 @@ Rectangle<float> NodeCanvas::toScreen(Rectangle<float> r) const {
 
 NodeCanvas::PortLocation NodeCanvas::getPortLocation(const Node& node, const Port& port) const {
     const float size = 8.8f * portScaleForZoom(zoom);
-    float x = port.input ? node.bounds.getX() : node.bounds.getRight();
-    Point<float> centre = toScreen(Point<float>(x, portY(node, port)));
+    Point<float> worldCentre;
+
+    switch (port.side) {
+        case PortSide::Top:
+        case PortSide::Bottom: {
+            const int index = portIndexOnSide(node, port);
+            const int count = jmax(1, portCountOnSide(node, port.side));
+            const float x = node.bounds.getX() + node.bounds.getWidth() * ((float) index + 1.f) / ((float) count + 1.f);
+            const float y = port.side == PortSide::Top ? node.bounds.getY() : node.bounds.getBottom();
+            worldCentre = { x, y };
+            break;
+        }
+
+        case PortSide::Right:
+            worldCentre = { node.bounds.getRight(), sidePortY(node, port) };
+            break;
+
+        case PortSide::Left:
+        default:
+            worldCentre = { node.bounds.getX(), sidePortY(node, port) };
+            break;
+    }
+
+    Point<float> centre = toScreen(worldCentre);
     Rectangle<float> bounds(centre.x - size * 0.5f, centre.y - size * 0.5f, size, size);
     return { bounds, centre };
 }
@@ -1126,14 +1194,15 @@ bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) 
             NodeKind::Output
     };
 
-    Rectangle<float> panel(18.f, 74.f, 89.f, 10.f + (float) std::size(entries) * 34.f);
+    Rectangle<float> panel(18.f, 74.f, kPaletteWidth, 10.f + (float) std::size(entries) * kPaletteRowHeight);
 
     if (!panel.contains(screenPosition)) {
         return false;
     }
 
     for (int i = 0; i < (int) std::size(entries); ++i) {
-        Rectangle<float> row(panel.getX() + 8.f, panel.getY() + 8.f + (float) i * 34.f, panel.getWidth() - 16.f, 26.f);
+        Rectangle<float> row(panel.getX() + 9.f, panel.getY() + 8.f + (float) i * kPaletteRowHeight,
+                             panel.getWidth() - 18.f, 31.f);
 
         if (row.contains(screenPosition)) {
             kind = entries[i];

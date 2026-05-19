@@ -49,6 +49,13 @@ enum class PortPurpose {
     ScratchAttachment
 };
 
+enum class PortSide {
+    Left,
+    Right,
+    Top,
+    Bottom
+};
+
 struct Port {
     String id;
     String label;
@@ -56,6 +63,7 @@ struct Port {
     ChannelLayout channelLayout { ChannelLayout::Mono };
     PortPurpose purpose { PortPurpose::Signal };
     bool input {};
+    PortSide side { PortSide::Left };
 };
 
 struct Node {

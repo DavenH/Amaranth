@@ -14,12 +14,14 @@ private:
             String label,
             PortDomain domain,
             ChannelLayout layout = ChannelLayout::Mono,
-            PortPurpose purpose = PortPurpose::Signal) const;
+            PortPurpose purpose = PortPurpose::Signal,
+            PortSide side = PortSide::Left) const;
     Port output(
             String id,
             String label,
             PortDomain domain,
-            ChannelLayout layout = ChannelLayout::Mono) const;
+            ChannelLayout layout = ChannelLayout::Mono,
+            PortSide side = PortSide::Right) const;
 };
 
 }

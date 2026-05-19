@@ -150,6 +150,29 @@ PortPurpose portPurposeForId(const String& id) {
     return id == "scratchAttachment" ? PortPurpose::ScratchAttachment : PortPurpose::Signal;
 }
 
+String idForPortSide(PortSide side) {
+    switch (side) {
+        case PortSide::Right:     return "right";
+        case PortSide::Top:       return "top";
+        case PortSide::Bottom:    return "bottom";
+        default:                  return "left";
+    }
+}
+
+PortSide portSideForId(const String& id, bool input) {
+    if (id == "right") {
+        return PortSide::Right;
+    }
+    if (id == "top") {
+        return PortSide::Top;
+    }
+    if (id == "bottom") {
+        return PortSide::Bottom;
+    }
+
+    return input ? PortSide::Left : PortSide::Right;
+}
+
 ValueTree portToTree(const Port& port, Identifier type) {
     ValueTree tree(type);
     tree.setProperty("id", port.id, nullptr);
@@ -157,17 +180,23 @@ ValueTree portToTree(const Port& port, Identifier type) {
     tree.setProperty("domain", idForDomain(port.domain), nullptr);
     tree.setProperty("channelLayout", idForChannelLayout(port.channelLayout), nullptr);
     tree.setProperty("purpose", idForPortPurpose(port.purpose), nullptr);
+    tree.setProperty("side", idForPortSide(port.side), nullptr);
     return tree;
 }
 
 Port portFromTree(const ValueTree& tree, bool input) {
+    const String side = tree.hasProperty("side")
+            ? tree["side"].toString()
+            : String();
+
     return {
             tree["id"].toString(),
             tree["label"].toString(),
             domainForId(tree["domain"].toString()),
             channelLayoutForId(tree["channelLayout"].toString()),
             portPurposeForId(tree["purpose"].toString()),
-            input
+            input,
+            portSideForId(side, input)
     };
 }
 

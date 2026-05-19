@@ -11,12 +11,18 @@ Port input(
         String label,
         PortDomain domain,
         ChannelLayout layout = ChannelLayout::Mono,
-        PortPurpose purpose = PortPurpose::Signal) {
-    return { std::move(id), std::move(label), domain, layout, purpose, true };
+        PortPurpose purpose = PortPurpose::Signal,
+        PortSide side = PortSide::Left) {
+    return { std::move(id), std::move(label), domain, layout, purpose, true, side };
 }
 
-Port output(String id, String label, PortDomain domain, ChannelLayout layout = ChannelLayout::Mono) {
-    return { std::move(id), std::move(label), domain, layout, PortPurpose::Signal, false };
+Port output(
+        String id,
+        String label,
+        PortDomain domain,
+        ChannelLayout layout = ChannelLayout::Mono,
+        PortSide side = PortSide::Right) {
+    return { std::move(id), std::move(label), domain, layout, PortPurpose::Signal, false, side };
 }
 
 Node node(String id, NodeKind kind, String title, String subtitle, Rectangle<float> bounds,
@@ -33,20 +39,6 @@ Node node(String id, NodeKind kind, String title, String subtitle, Rectangle<flo
     const auto naturalSize = naturalSizeForNode(result);
     result.bounds.setSize(naturalSize.width, naturalSize.height);
     return result;
-}
-
-int longestPortLabelLength(const std::vector<Port>& ports) {
-    int length = 0;
-
-    for (const auto& port : ports) {
-        const String channel = labelForChannelLayout(port.channelLayout);
-        const int labelLength = channel.isEmpty()
-                ? port.label.length()
-                : port.label.length() + 1 + channel.length();
-        length = jmax(length, labelLength);
-    }
-
-    return length;
 }
 
 NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
@@ -153,7 +145,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Fft,
             "FFT: 1 Cycle",
             "time -> mag + phase",
-            { 930.f, 105.f, 220.f, 185.f },
+            { 930.f, 160.f, 220.f, 185.f },
             { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
             {
                     output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
@@ -165,21 +157,21 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::TrilinearMesh,
             "Trilinear Mesh",
             "layer operand",
-            { 1270.f, 10.f, 285.f, 180.f },
+            { 1265.f, 20.f, 285.f, 180.f },
             {
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
-            { output("mesh", "Mesh", PortDomain::MeshField) }));
+            { output("mesh", "Mesh", PortDomain::MeshField, ChannelLayout::Mono, PortSide::Bottom) }));
 
     graph.addNode(node(
             "addMag",
             NodeKind::Add,
             "Add",
             "magnitude layer",
-            { 1600.f, 55.f, 180.f, 150.f },
+            { 1318.f, 310.f, 180.f, 150.f },
             {
                     input("signal", "Signal", PortDomain::SpectralMagnitudeSignal),
-                    input("operand", "Mesh", PortDomain::MeshField)
+                    input("operand", "Mesh", PortDomain::MeshField, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
             },
             { output("out", "Out", PortDomain::SpectralMagnitudeSignal) }));
 
@@ -188,19 +180,19 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::TrilinearMesh,
             "Trilinear Mesh",
             "phase operand",
-            { 1270.f, 365.f, 285.f, 180.f },
+            { 1265.f, 680.f, 285.f, 180.f },
             {},
-            { output("mesh", "Mesh", PortDomain::MeshField) }));
+            { output("mesh", "Mesh", PortDomain::MeshField, ChannelLayout::Mono, PortSide::Top) }));
 
     graph.addNode(node(
             "addPhase",
             NodeKind::Add,
             "Add",
             "phase layer",
-            { 1600.f, 395.f, 180.f, 150.f },
+            { 1318.f, 520.f, 180.f, 150.f },
             {
                     input("signal", "Signal", PortDomain::SpectralPhaseSignal),
-                    input("operand", "Mesh", PortDomain::MeshField)
+                    input("operand", "Mesh", PortDomain::MeshField, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
             },
             { output("out", "Out", PortDomain::SpectralPhaseSignal) }));
 
@@ -209,7 +201,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Ifft,
             "IFFT",
             "cyclic mode",
-            { 1765.f, 165.f, 230.f, 210.f },
+            { 1665.f, 400.f, 230.f, 210.f },
             {
                     input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     input("phase", "Phase", PortDomain::SpectralPhaseSignal)
@@ -221,7 +213,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Envelope,
             "Envelope",
             "volume curve",
-            { 1080.f, 620.f, 235.f, 155.f },
+            { 970.f, 810.f, 235.f, 155.f },
             {},
             { output("env", "Env", PortDomain::EnvelopeSignal) }));
 
@@ -239,10 +231,10 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Multiply,
             "Multiply",
             "global volume",
-            { 2110.f, 415.f, 235.f, 165.f },
+            { 1990.f, 555.f, 235.f, 165.f },
             {
                     input("audio", "Audio", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
-                    input("factor", "Factor", PortDomain::EnvelopeSignal)
+                    input("factor", "Factor", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
             },
             { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }));
 
@@ -251,7 +243,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Output,
             "Output",
             "stereo meters",
-            { 2490.f, 430.f, 210.f, 145.f },
+            { 2350.f, 565.f, 210.f, 145.f },
             { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
             {}));
 
@@ -340,11 +332,9 @@ NodeNaturalSize naturalSizeForNode(const Node& node) {
 
     const float titleWidth = (float) node.title.length() * 8.5f;
     const float subtitleWidth = (float) node.subtitle.length() * 6.0f;
-    const float inputLabelWidth = (float) longestPortLabelLength(node.inputs) * 6.2f;
-    const float outputLabelWidth = (float) longestPortLabelLength(node.outputs) * 6.2f;
 
     const float headerWidth = titleWidth + subtitleWidth + 72.f;
-    const float portWidth = inputLabelWidth + outputLabelWidth + 150.f;
+    const float portWidth = 120.f;
     const float previewWidth = preview.width + 26.f;
     const float width = jmax(headerWidth, portWidth, previewWidth);
 

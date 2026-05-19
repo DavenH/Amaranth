@@ -39,6 +39,7 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
     REQUIRE(add.title == "Add");
     REQUIRE(add.inputs.size() == 2);
     REQUIRE(add.outputs.size() == 1);
+    REQUIRE(add.inputs[1].side == PortSide::Top);
     REQUIRE(add.outputs.front().domain == PortDomain::ControlSignal);
 }
 

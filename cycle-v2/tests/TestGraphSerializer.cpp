@@ -28,8 +28,10 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
     REQUIRE(wave.inputs.size() == 3);
     REQUIRE(wave.inputs[2].id == "scratch");
     REQUIRE(wave.inputs[2].purpose == PortPurpose::ScratchAttachment);
+    REQUIRE(wave.inputs[2].side == PortSide::Left);
     REQUIRE(wave.outputs[0].domain == PortDomain::TimeSignal);
     REQUIRE(wave.outputs[0].channelLayout == ChannelLayout::LinkedStereo);
+    REQUIRE(wave.outputs[0].side == PortSide::Right);
 }
 
 TEST_CASE("Graph serializer preserves attachment edges", "[cycle-v2][graph]") {

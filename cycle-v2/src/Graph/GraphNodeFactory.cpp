@@ -91,7 +91,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.subtitle = "combine";
             node.inputs = {
                     input("left", "A", PortDomain::ControlSignal),
-                    input("right", "B", PortDomain::ControlSignal)
+                    input("right", "B", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
             };
             node.outputs = { output("out", "Out", PortDomain::ControlSignal) };
             break;
@@ -101,7 +101,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.subtitle = "signal scale";
             node.inputs = {
                     input("audio", "Audio", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
-                    input("factor", "Factor", PortDomain::EnvelopeSignal)
+                    input("factor", "Factor", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
             };
             node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             break;
@@ -150,12 +150,18 @@ Port GraphNodeFactory::input(
         String label,
         PortDomain domain,
         ChannelLayout layout,
-        PortPurpose purpose) const {
-    return { std::move(id), std::move(label), domain, layout, purpose, true };
+        PortPurpose purpose,
+        PortSide side) const {
+    return { std::move(id), std::move(label), domain, layout, purpose, true, side };
 }
 
-Port GraphNodeFactory::output(String id, String label, PortDomain domain, ChannelLayout layout) const {
-    return { std::move(id), std::move(label), domain, layout, PortPurpose::Signal, false };
+Port GraphNodeFactory::output(
+        String id,
+        String label,
+        PortDomain domain,
+        ChannelLayout layout,
+        PortSide side) const {
+    return { std::move(id), std::move(label), domain, layout, PortPurpose::Signal, false, side };
 }
 
 }
