@@ -371,6 +371,9 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     editStatusMessage = {};
     dragStartPan = pan;
     lastMousePosition = event.position;
+    draggingNode = false;
+    connectingCable = false;
+    nodeDragUndoPushed = false;
 
     if (expandedNodeId.isNotEmpty()) {
         const auto panel = expandedEditorBounds(getLocalBounds().toFloat());
@@ -515,11 +518,15 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     lastMousePosition = event.position;
 
     if (!connectingCable) {
+        draggingNode = false;
+        nodeDragUndoPushed = false;
         return;
     }
 
     PortAddress destPort;
     connectingCable = false;
+    draggingNode = false;
+    nodeDragUndoPushed = false;
 
     if (findPortAt(event.position, destPort)) {
         const String beforeEdit = GraphSerializer().toXmlString(graph);
@@ -2131,6 +2138,9 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
     pushUndoSnapshot(beforeEdit);
     selectedNodeId = nodeId;
     selectedEdgeIndex = -1;
+    draggingNode = false;
+    connectingCable = false;
+    nodeDragUndoPushed = false;
     refreshCompiledState();
     editStatusMessage = "Voice start domain: " + domain;
     return true;
