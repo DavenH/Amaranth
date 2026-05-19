@@ -10,13 +10,23 @@ namespace CycleV2 {
 
 struct AudioProcessBlock {
     std::vector<float> samples;
+    PortDomain domain { PortDomain::ControlSignal };
+    ChannelLayout channelLayout { ChannelLayout::Mono };
+};
+
+struct AudioOutputPort {
+    String portId;
+    PortDomain domain {};
+    ChannelLayout channelLayout { ChannelLayout::Mono };
 };
 
 struct AudioProcessContext {
     size_t frameCount {};
     std::vector<NodeParameter> parameters;
     std::vector<AudioProcessBlock> inputs;
+    std::vector<AudioOutputPort> outputPorts;
     AudioProcessBlock output;
+    std::vector<AudioProcessBlock> outputs;
 };
 
 class NodeAudioProcessor {

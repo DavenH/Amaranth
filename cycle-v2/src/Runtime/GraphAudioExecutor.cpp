@@ -6,7 +6,7 @@ GraphAudioResult GraphAudioExecutor::process(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan,
         size_t frameCount) const {
-    std::vector<std::pair<String, AudioProcessBlock>> outputs;
+    std::vector<PortOutput> outputs;
     outputs.reserve(plan.steps.size());
 
     NodeAudioProcessorFactory processorFactory;
@@ -22,6 +22,15 @@ GraphAudioResult GraphAudioExecutor::process(
         AudioProcessContext context;
         context.frameCount = frameCount;
         context.parameters = step.parameters;
+        context.outputPorts.reserve(step.outputs.size());
+
+        for (const auto& output : step.outputs) {
+            context.outputPorts.push_back({
+                    output.portId,
+                    output.domain,
+                    output.channelLayout
+            });
+        }
 
         for (const auto& input : step.inputs) {
             if (input.destPortIndex < 0) {
@@ -33,19 +42,39 @@ GraphAudioResult GraphAudioExecutor::process(
                 context.inputs.resize(inputIndex + 1);
             }
 
-            const AudioProcessBlock* sourceOutput = findOutputForNode(outputs, input.sourceNodeId);
+            const AudioProcessBlock* sourceOutput = findOutputForNode(
+                    outputs,
+                    input.sourceNodeId,
+                    input.sourcePortId);
             if (sourceOutput != nullptr) {
                 context.inputs[inputIndex] = *sourceOutput;
+                context.inputs[inputIndex].domain = input.domain;
+                context.inputs[inputIndex].channelLayout = input.channelLayout;
             }
         }
 
         processor->prepare(frameCount);
         processor->process(context);
-        outputs.push_back({ step.nodeId, std::move(context.output) });
-        result.nodes.push_back({ step.nodeId, outputs.back().second });
+
+        std::vector<std::pair<String, AudioProcessBlock>> nodeOutputs;
+        for (size_t i = 0; i < context.outputs.size(); ++i) {
+            const String portId = i < context.outputPorts.size()
+                    ? context.outputPorts[i].portId
+                    : "out";
+
+            outputs.push_back({ step.nodeId, portId, context.outputs[i] });
+            nodeOutputs.push_back({ portId, outputs.back().block });
+        }
+
+        if (nodeOutputs.empty()) {
+            outputs.push_back({ step.nodeId, "out", context.output });
+            nodeOutputs.push_back({ "out", outputs.back().block });
+        }
+
+        result.nodes.push_back({ step.nodeId, nodeOutputs.front().second, std::move(nodeOutputs) });
 
         if (isOutputNode(graph, step.nodeId)) {
-            result.output = outputs.back().second;
+            result.output = result.nodes.back().output;
         }
     }
 
@@ -53,11 +82,12 @@ GraphAudioResult GraphAudioExecutor::process(
 }
 
 const AudioProcessBlock* GraphAudioExecutor::findOutputForNode(
-        const std::vector<std::pair<String, AudioProcessBlock>>& outputs,
-        const String& nodeId) const {
+        const std::vector<PortOutput>& outputs,
+        const String& nodeId,
+        const String& portId) const {
     for (auto it = outputs.rbegin(); it != outputs.rend(); ++it) {
-        if (it->first == nodeId) {
-            return &it->second;
+        if (it->nodeId == nodeId && it->portId == portId) {
+            return &it->block;
         }
     }
 

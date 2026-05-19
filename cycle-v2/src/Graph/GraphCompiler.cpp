@@ -48,6 +48,53 @@ int inputPortIndex(const Node& node, const String& portId) {
     return -1;
 }
 
+PortDomain outputPortDomain(
+        const std::vector<Edge>& resolvedEdges,
+        const Node& node,
+        const Port& port) {
+    for (const auto& edge : resolvedEdges) {
+        if (edge.sourceNodeId == node.id && edge.sourcePortId == port.id) {
+            return edge.domain;
+        }
+    }
+
+    return port.domain;
+}
+
+ChannelLayout outputPortChannelLayout(
+        const NodeGraph& graph,
+        const std::vector<Edge>& resolvedEdges,
+        const GraphDomainResolver& domainResolver,
+        const Node& node,
+        const Port& port) {
+    for (const auto& edge : resolvedEdges) {
+        if (edge.sourceNodeId == node.id && edge.sourcePortId == port.id) {
+            return domainResolver.resolvedChannelLayoutForEdge(graph, edge);
+        }
+    }
+
+    return port.channelLayout;
+}
+
+std::vector<GraphStepOutput> buildStepOutputs(
+        const NodeGraph& graph,
+        const std::vector<Edge>& resolvedEdges,
+        const GraphDomainResolver& domainResolver,
+        const Node& node) {
+    std::vector<GraphStepOutput> outputs;
+    outputs.reserve(node.outputs.size());
+
+    for (const auto& port : node.outputs) {
+        outputs.push_back({
+                port.id,
+                outputPortDomain(resolvedEdges, node, port),
+                outputPortChannelLayout(graph, resolvedEdges, domainResolver, node, port)
+        });
+    }
+
+    return outputs;
+}
+
 int parameterInt(const Node& node, const String& parameterId, int fallback) {
     const String value = parameterValueForNode(node, parameterId);
 
@@ -188,7 +235,8 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 latencyCyclesForNode(node),
                 transformModeForNode(node),
                 node.parameters,
-                std::move(inputs)
+                std::move(inputs),
+                buildStepOutputs(graph, resolvedEdges, domainResolver, node)
         });
     }
 

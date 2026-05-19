@@ -26,6 +26,12 @@ struct GraphStepInput {
     ChannelLayout channelLayout { ChannelLayout::Mono };
 };
 
+struct GraphStepOutput {
+    String portId;
+    PortDomain domain {};
+    ChannelLayout channelLayout { ChannelLayout::Mono };
+};
+
 struct GraphBufferPlan {
     String id;
     String sourceNodeId;
@@ -47,6 +53,7 @@ struct GraphExecutionStep {
     String transformMode;
     std::vector<NodeParameter> parameters;
     std::vector<GraphStepInput> inputs;
+    std::vector<GraphStepOutput> outputs;
 };
 
 struct GraphExecutionPlan {

@@ -79,3 +79,30 @@ TEST_CASE("Graph audio executor returns silence for disconnected output", "[cycl
 
     REQUIRE(result.output.samples == std::vector<float> { 0.f, 0.f, 0.f });
 }
+
+TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cycle-v2][runtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 260.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 520.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 780.f, 0.f }));
+    graph.addEdge({ "wave", "out", "fft", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "fft", "mag", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, false });
+    graph.addEdge({ "fft", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, false });
+    graph.addEdge({ "ifft", "time", "out", "time", PortDomain::TimeSignal, false });
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 4);
+    const auto& fft = findNodeAudio(result, "fft");
+
+    REQUIRE(fft.outputs.size() == 2);
+    REQUIRE(fft.outputs[0].first == "mag");
+    REQUIRE(fft.outputs[0].second.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(fft.outputs[1].first == "phase");
+    REQUIRE(fft.outputs[1].second.domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(result.output.samples == std::vector<float> { 0.f, 1.f / 3.f, 2.f / 3.f, 1.f });
+}

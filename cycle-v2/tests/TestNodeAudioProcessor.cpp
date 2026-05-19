@@ -82,3 +82,24 @@ TEST_CASE("Adapter placeholder audio processors pass through first input", "[cyc
 
     REQUIRE(context.output.samples == std::vector<float> { -0.25f, 0.f, 0.5f });
 }
+
+TEST_CASE("FFT placeholder processor publishes separate magnitude and phase ports", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::Fft);
+    REQUIRE(processor != nullptr);
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.inputs = { block({ 0.f, 0.5f, 1.f }) };
+    context.outputPorts = {
+            { "mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo },
+            { "phase", PortDomain::SpectralPhaseSignal, ChannelLayout::LinkedStereo }
+    };
+    processor->process(context);
+
+    REQUIRE(context.outputs.size() == 2);
+    REQUIRE(context.outputs[0].domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(context.outputs[0].samples == std::vector<float> { 0.f, 0.5f, 1.f });
+    REQUIRE(context.outputs[1].domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(context.outputs[1].samples == std::vector<float> { 0.f, 0.f, 0.f });
+}
