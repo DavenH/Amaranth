@@ -126,7 +126,6 @@ bool isPreviewableNode(NodeKind kind) {
         case NodeKind::GuideCurve:
         case NodeKind::ImpulseResponse:
         case NodeKind::Waveshaper:
-        case NodeKind::Output:
             return true;
 
         default:
@@ -173,6 +172,17 @@ Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds,
 Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
     return Rectangle<float>(88.f * zoom, 22.f * zoom)
             .withCentre({ nodeBounds.getRight() - 58.f * zoom, nodeBounds.getY() + 21.f * zoom });
+}
+
+Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
+    const Rectangle<float> available = componentBounds.reduced(28.f);
+    const float width = jmin(available.getWidth(), jmax(420.f, available.getWidth() * 0.80f));
+    const float height = jmin(available.getHeight(), jmax(300.f, available.getHeight() * 0.80f));
+    return Rectangle<float>(width, height).withCentre(available.getCentre());
+}
+
+Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {
+    return Rectangle<float>(24.f, 24.f).withCentre({ panel.getRight() - 24.f, panel.getY() + 22.f });
 }
 
 String voiceDomainForNode(const Node& node) {
@@ -339,6 +349,10 @@ void NodeCanvas::paint(Graphics& g) {
     drawEdgeLegend(g);
     drawNodePalette(g);
     drawHoverConsole(g);
+
+    if (const Node* node = findNode(expandedNodeId)) {
+        drawExpandedEditor(g, *node);
+    }
 }
 
 void NodeCanvas::resized() {
@@ -355,6 +369,20 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     editStatusMessage = {};
     dragStartPan = pan;
     lastMousePosition = event.position;
+
+    if (expandedNodeId.isNotEmpty()) {
+        const auto panel = expandedEditorBounds(getLocalBounds().toFloat());
+        const auto closeButton = expandedEditorCloseButton(panel);
+
+        if (closeButton.contains(event.position)) {
+            expandedNodeId = {};
+            repaint();
+            return;
+        }
+
+        repaint();
+        return;
+    }
 
     NodeKind paletteKind;
     if (findPaletteKindAt(event.position, paletteKind)) {
@@ -409,20 +437,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         selectedEdgeIndex = -1;
         repaint();
         return;
-    }
-
-    if (expandedNodeId.isNotEmpty()) {
-        const Rectangle<float> available = getLocalBounds().toFloat().reduced(28.f);
-        const float width = jmin(available.getWidth(), jmax(420.f, available.getWidth() * 0.80f));
-        const float height = jmin(available.getHeight(), jmax(300.f, available.getHeight() * 0.80f));
-        const auto panel = Rectangle<float>(width, height).withCentre(available.getCentre());
-        const auto closeButton = Rectangle<float>(24.f, 24.f).withCentre({ panel.getRight() - 24.f, panel.getY() + 22.f });
-
-        if (closeButton.contains(event.position)) {
-            expandedNodeId = {};
-            repaint();
-            return;
-        }
     }
 
     selectedEdgeIndex = findEdgeAt(event.position);
@@ -763,10 +777,6 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
 void NodeCanvas::drawNodes(Graphics& g) {
     for (const auto& node : graph.getNodes()) {
         drawNode(g, node);
-    }
-
-    if (const Node* node = findNode(expandedNodeId)) {
-        drawExpandedEditor(g, *node);
     }
 }
 
@@ -1156,10 +1166,8 @@ void NodeCanvas::drawEnvelopeCurve(Graphics& g, Rectangle<float> area) {
 }
 
 void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
-    const Rectangle<float> available = getLocalBounds().toFloat().reduced(28.f);
-    const float width = jmin(available.getWidth(), jmax(420.f, available.getWidth() * 0.80f));
-    const float height = jmin(available.getHeight(), jmax(300.f, available.getHeight() * 0.80f));
-    Rectangle<float> panel = Rectangle<float>(width, height).withCentre(available.getCentre());
+    Rectangle<float> panel = expandedEditorBounds(getLocalBounds().toFloat());
+    const Rectangle<float> outerPanel = panel;
 
     g.setColour(Colours::black.withAlpha(0.38f));
     g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
@@ -1179,7 +1187,7 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     g.setFont(FontOptions(10.5f));
     g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
 
-    Rectangle<float> closeButton = Rectangle<float>(24.f, 24.f).withCentre({ header.getRight() - 24.f, header.getCentreY() });
+    Rectangle<float> closeButton = expandedEditorCloseButton(outerPanel);
     g.setColour(Colour(0xff0e1318));
     g.fillEllipse(closeButton);
     g.setColour(Colour(0xff354050));

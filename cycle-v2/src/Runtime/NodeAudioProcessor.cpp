@@ -1,8 +1,18 @@
+#include <Array/Buffer.h>
+
 #include "NodeAudioProcessor.h"
 
 namespace CycleV2 {
 
 namespace {
+
+Buffer<float> outputBuffer(AudioProcessContext& context) {
+    return { context.output.samples.data(), (int) context.frameCount };
+}
+
+Buffer<float> blockBuffer(AudioProcessBlock& block, size_t frameCount) {
+    return { block.samples.data(), (int) frameCount };
+}
 
 void ensureOutput(AudioProcessContext& context) {
     context.output.samples.resize(context.frameCount);
@@ -10,13 +20,10 @@ void ensureOutput(AudioProcessContext& context) {
 
 void clearOutput(AudioProcessContext& context) {
     ensureOutput(context);
-
-    for (auto& sample : context.output.samples) {
-        sample = 0.f;
-    }
+    outputBuffer(context).zero();
 }
 
-const AudioProcessBlock* inputAt(const AudioProcessContext& context, size_t index) {
+AudioProcessBlock* inputAt(AudioProcessContext& context, size_t index) {
     if (index >= context.inputs.size()) {
         return nullptr;
     }
@@ -100,56 +107,58 @@ private:
         const float denominator = context.frameCount > 1 ? (float) (context.frameCount - 1) : 1.f;
         const float level = parameterFloat(context.parameters, "level", 1.f);
 
-        for (size_t i = 0; i < context.frameCount; ++i) {
-            context.output.samples[i] = ((float) i / denominator) * level;
-        }
+        outputBuffer(context).ramp(0.f, level / denominator);
     }
 
     void processEnvelope(AudioProcessContext& context) const {
         ensureOutput(context);
         const float level = parameterFloat(context.parameters, "level", 1.f);
 
-        for (auto& sample : context.output.samples) {
-            sample = level;
-        }
+        outputBuffer(context).set(level);
     }
 
     void processAdd(AudioProcessContext& context) const {
         ensureOutput(context);
-        const AudioProcessBlock* left = inputAt(context, 0);
-        const AudioProcessBlock* right = inputAt(context, 1);
+        AudioProcessBlock* left = inputAt(context, 0);
+        AudioProcessBlock* right = inputAt(context, 1);
+        Buffer<float> output = outputBuffer(context);
 
-        for (size_t i = 0; i < context.frameCount; ++i) {
-            const float a = left == nullptr ? 0.f : left->samples[i];
-            const float b = right == nullptr ? 0.f : right->samples[i];
-            context.output.samples[i] = a + b;
+        output.zero();
+
+        if (left != nullptr) {
+            blockBuffer(*left, context.frameCount).copyTo(output);
+        }
+
+        if (right != nullptr) {
+            output.add(blockBuffer(*right, context.frameCount));
         }
     }
 
     void processMultiply(AudioProcessContext& context) const {
         ensureOutput(context);
-        const AudioProcessBlock* left = inputAt(context, 0);
-        const AudioProcessBlock* right = inputAt(context, 1);
+        AudioProcessBlock* left = inputAt(context, 0);
+        AudioProcessBlock* right = inputAt(context, 1);
 
-        for (size_t i = 0; i < context.frameCount; ++i) {
-            const float a = left == nullptr ? 0.f : left->samples[i];
-            const float b = right == nullptr ? 0.f : right->samples[i];
-            context.output.samples[i] = a * b;
+        if (left == nullptr || right == nullptr) {
+            clearOutput(context);
+            return;
         }
+
+        Buffer<float> output = outputBuffer(context);
+        blockBuffer(*left, context.frameCount).copyTo(output);
+        output.mul(blockBuffer(*right, context.frameCount));
     }
 
     void processPassthrough(AudioProcessContext& context) const {
         ensureOutput(context);
-        const AudioProcessBlock* input = inputAt(context, 0);
+        AudioProcessBlock* input = inputAt(context, 0);
 
         if (input == nullptr) {
             clearOutput(context);
             return;
         }
 
-        for (size_t i = 0; i < context.frameCount; ++i) {
-            context.output.samples[i] = input->samples[i];
-        }
+        blockBuffer(*input, context.frameCount).copyTo(outputBuffer(context));
     }
 
     AudioModuleRole processorRole {};

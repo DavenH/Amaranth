@@ -114,7 +114,8 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(findStep(plan, "ifft").latencyCycles == 0);
     REQUIRE(findStep(plan, "ifft").transformMode == "cyclic");
     REQUIRE(findStep(plan, "multiply").audioRole == AudioModuleRole::Multiply);
-    REQUIRE(findStep(plan, "out").previewRole == PreviewModuleRole::OutputMeters);
+    REQUIRE_FALSE(findStep(plan, "out").previewable);
+    REQUIRE(findStep(plan, "out").previewRole == PreviewModuleRole::None);
     REQUIRE(findStep(plan, "multiply").inputs.size() == 2);
     REQUIRE(findStep(plan, "multiply").inputs[0].destPortId == "audio");
     REQUIRE(findStep(plan, "multiply").inputs[0].destPortIndex == 0);

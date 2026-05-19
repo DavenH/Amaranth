@@ -23,6 +23,19 @@ const NodePreviewResult& findPreview(const GraphPreviewResult& result, const Str
     return *found;
 }
 
+Node previewNode(String id, NodeKind kind, std::vector<Port> inputs, std::vector<Port> outputs) {
+    return {
+        id,
+        kind,
+        id,
+        {},
+        {},
+        {},
+        std::move(inputs),
+        std::move(outputs)
+    };
+}
+
 }
 
 TEST_CASE("Graph preview executor renders previewable compiled nodes", "[cycle-v2][runtime]") {
@@ -35,7 +48,12 @@ TEST_CASE("Graph preview executor renders previewable compiled nodes", "[cycle-v
     REQUIRE(findPreview(result, "waveMesh").role == PreviewModuleRole::MeshSurface);
     REQUIRE(findPreview(result, "waveMesh").primary == std::vector<float> { 0.25f, 0.75f, 0.25f, 0.75f });
     REQUIRE(findPreview(result, "env").role == PreviewModuleRole::Envelope);
-    REQUIRE(findPreview(result, "out").role == PreviewModuleRole::OutputMeters);
+    REQUIRE(std::none_of(
+            result.nodes.begin(),
+            result.nodes.end(),
+            [](const NodePreviewResult& preview) {
+                return preview.nodeId == "out";
+            }));
 }
 
 TEST_CASE("Graph preview executor skips non-preview utility nodes", "[cycle-v2][runtime]") {
@@ -68,12 +86,27 @@ TEST_CASE("Graph preview executor passes parameters to preview processors", "[cy
 }
 
 TEST_CASE("Graph preview executor propagates upstream summaries through non-preview nodes", "[cycle-v2][runtime]") {
-    const auto compileResult = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    NodeGraph graph;
+    graph.addNode(previewNode(
+            "source",
+            NodeKind::GenericProcessor,
+            {},
+            { { "out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", { 220.f, 0.f }));
+    graph.addNode(previewNode(
+            "mesh",
+            NodeKind::TrilinearMesh,
+            { { "time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, true } },
+            { { "out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }));
+    graph.addEdge({ "source", "out", "reverb", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "reverb", "time", "mesh", "time", PortDomain::TimeSignal, false });
+
+    const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
     const auto result = GraphPreviewExecutor().render(compileResult.plan, 4);
 
-    REQUIRE(findPreview(result, "out").primary == std::vector<float> { 0.5f, 0.5f, 0.5f, 0.5f });
-    REQUIRE(findPreview(result, "out").secondary.size() == 4);
-    REQUIRE(findPreview(result, "out").secondary[0] == Catch::Approx(0.475f));
+    REQUIRE(findPreview(result, "mesh").secondary.size() == 4);
+    REQUIRE(findPreview(result, "mesh").secondary[0] == Catch::Approx(0.8f));
+    REQUIRE(findPreview(result, "mesh").secondary[3] == Catch::Approx(0.2f));
 }

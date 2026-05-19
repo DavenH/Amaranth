@@ -138,7 +138,7 @@ NodeModuleDescriptor NodeModuleRegistry::descriptorFor(NodeKind kind) const {
             return descriptor(kind, AudioModuleRole::StereoJoin, PreviewModuleRole::None, true, false);
 
         case NodeKind::Output:
-            return descriptor(kind, AudioModuleRole::Output, PreviewModuleRole::OutputMeters, true, true);
+            return descriptor(kind, AudioModuleRole::Output, PreviewModuleRole::None, true, false);
 
         case NodeKind::GenericProcessor:
         default:

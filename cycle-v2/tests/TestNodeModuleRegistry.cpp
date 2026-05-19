@@ -41,6 +41,11 @@ TEST_CASE("Node module registry separates audio and previewless utility nodes", 
     REQUIRE(multiply.audioRole == AudioModuleRole::Multiply);
     REQUIRE(multiply.previewRole == PreviewModuleRole::None);
     REQUIRE_FALSE(multiply.previewable);
+
+    const auto output = registry.descriptorFor(NodeKind::Output);
+    REQUIRE(output.audioRole == AudioModuleRole::Output);
+    REQUIRE(output.previewRole == PreviewModuleRole::None);
+    REQUIRE_FALSE(output.previewable);
 }
 
 TEST_CASE("Node module registry marks Cycle 1 adapter-backed modules", "[cycle-v2][runtime]") {
