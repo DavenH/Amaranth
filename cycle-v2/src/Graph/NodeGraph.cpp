@@ -161,6 +161,10 @@ NodeGraph NodeGraph::createDemoGraph() {
                     output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     output("phase", "Phase", PortDomain::SpectralPhaseSignal)
             }));
+    graph.getNodesForEditing().back().parameters = {
+            { "cycleFrames", "Cycle Frames", "2048" },
+            { "window", "Window", "blackmanHarris" }
+    };
 
     graph.addNode(node(
             "magMesh",
@@ -217,6 +221,10 @@ NodeGraph NodeGraph::createDemoGraph() {
                     input("phase", "Phase", PortDomain::SpectralPhaseSignal)
             },
             { output("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }));
+    graph.getNodesForEditing().back().parameters = {
+            { "cycleFrames", "Cycle Frames", "2048" },
+            { "mode", "Mode", "cyclic" }
+    };
 
     graph.addNode(node(
             "env",

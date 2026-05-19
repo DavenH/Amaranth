@@ -39,6 +39,9 @@ RuntimeProcessTrace GraphRuntime::process(
                 step != nullptr && step->previewable,
                 step != nullptr && step->cycle1AdapterBacked,
                 step == nullptr ? String {} : step->cycle1Reference,
+                step == nullptr ? 2048 : step->cycleFrames,
+                step == nullptr ? 0 : step->latencyCycles,
+                step == nullptr ? String {} : step->transformMode,
                 step == nullptr ? std::vector<NodeParameter> {} : step->parameters,
                 collectInputs(plan.signalEdges, node->id),
                 collectInputs(plan.attachments, node->id)

@@ -48,6 +48,36 @@ int inputPortIndex(const Node& node, const String& portId) {
     return -1;
 }
 
+int parameterInt(const Node& node, const String& parameterId, int fallback) {
+    const String value = parameterValueForNode(node, parameterId);
+
+    if (value.isEmpty()) {
+        return fallback;
+    }
+
+    return value.getIntValue();
+}
+
+String transformModeForNode(const Node& node) {
+    if (node.kind == NodeKind::Fft) {
+        return parameterValueForNode(node, "window", "blackmanHarris");
+    }
+
+    if (node.kind == NodeKind::Ifft) {
+        return parameterValueForNode(node, "mode", "cyclic");
+    }
+
+    return {};
+}
+
+int latencyCyclesForNode(const Node& node) {
+    if (node.kind != NodeKind::Ifft) {
+        return 0;
+    }
+
+    return parameterValueForNode(node, "mode", "cyclic") == "acyclicCarry" ? 1 : 0;
+}
+
 bool isConcreteSignalDomain(PortDomain domain) {
     switch (domain) {
         case PortDomain::TimeSignal:
@@ -281,6 +311,9 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 descriptor.previewable,
                 descriptor.cycle1AdapterBacked,
                 descriptor.cycle1Reference,
+                parameterInt(node, "cycleFrames", 2048),
+                latencyCyclesForNode(node),
+                transformModeForNode(node),
                 node.parameters,
                 std::move(inputs)
         });

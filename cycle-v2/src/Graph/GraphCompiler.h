@@ -40,6 +40,9 @@ struct GraphExecutionStep {
     bool previewable {};
     bool cycle1AdapterBacked {};
     String cycle1Reference;
+    int cycleFrames { 2048 };
+    int latencyCycles {};
+    String transformMode;
     std::vector<NodeParameter> parameters;
     std::vector<GraphStepInput> inputs;
 };

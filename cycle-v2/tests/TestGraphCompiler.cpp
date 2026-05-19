@@ -107,6 +107,12 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
             == "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp");
     REQUIRE(findStep(plan, "fft").audioRole == AudioModuleRole::Fft);
     REQUIRE_FALSE(findStep(plan, "fft").previewable);
+    REQUIRE(findStep(plan, "fft").cycleFrames == 2048);
+    REQUIRE(findStep(plan, "fft").latencyCycles == 0);
+    REQUIRE(findStep(plan, "fft").transformMode == "blackmanHarris");
+    REQUIRE(findStep(plan, "ifft").cycleFrames == 2048);
+    REQUIRE(findStep(plan, "ifft").latencyCycles == 0);
+    REQUIRE(findStep(plan, "ifft").transformMode == "cyclic");
     REQUIRE(findStep(plan, "multiply").audioRole == AudioModuleRole::Multiply);
     REQUIRE(findStep(plan, "out").previewRole == PreviewModuleRole::OutputMeters);
     REQUIRE(findStep(plan, "multiply").inputs.size() == 2);
@@ -117,6 +123,24 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(findStep(plan, "multiply").inputs[1].domain == PortDomain::EnvelopeSignal);
     REQUIRE(findBuffer(plan, "ifft", "time").domain == PortDomain::TimeSignal);
     REQUIRE(findBuffer(plan, "ifft", "time").channelLayout == ChannelLayout::LinkedStereo);
+}
+
+TEST_CASE("Compiler declares IFFT carry-buffer latency", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 0.f, 0.f }));
+    graph.getNodesForEditing().back().parameters = {
+            { "cycleFrames", "Cycle Frames", "4096" },
+            { "mode", "Mode", "acyclicCarry" }
+    };
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(findStep(result.plan, "ifft").cycleFrames == 4096);
+    REQUIRE(findStep(result.plan, "ifft").latencyCycles == 1);
+    REQUIRE(findStep(result.plan, "ifft").transformMode == "acyclicCarry");
 }
 
 TEST_CASE("Invalid graphs do not compile", "[cycle-v2][graph]") {

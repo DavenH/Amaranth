@@ -21,6 +21,9 @@ struct RuntimeNodeTrace {
     bool previewable {};
     bool cycle1AdapterBacked {};
     String cycle1Reference;
+    int cycleFrames { 2048 };
+    int latencyCycles {};
+    String transformMode;
     std::vector<NodeParameter> parameters;
     std::vector<RuntimeInput> signalInputs;
     std::vector<RuntimeInput> attachments;

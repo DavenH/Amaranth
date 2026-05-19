@@ -64,6 +64,10 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::Fft:
             node.title = "FFT: 1 Cycle";
             node.subtitle = "time -> mag + phase";
+            node.parameters = {
+                    { "cycleFrames", "Cycle Frames", "2048" },
+                    { "window", "Window", "blackmanHarris" }
+            };
             node.inputs = { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             node.outputs = {
                     output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
@@ -91,6 +95,10 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::Ifft:
             node.title = "IFFT";
             node.subtitle = "cyclic mode";
+            node.parameters = {
+                    { "cycleFrames", "Cycle Frames", "2048" },
+                    { "mode", "Mode", "cyclic" }
+            };
             node.inputs = {
                     input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     input("phase", "Phase", PortDomain::SpectralPhaseSignal)

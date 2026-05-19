@@ -25,6 +25,8 @@ TEST_CASE("Graph node factory creates canonical FFT nodes", "[cycle-v2][graph]")
     REQUIRE(node.outputs.size() == 2);
     REQUIRE(node.outputs[0].domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(node.outputs[1].domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(parameterValueForNode(node, "cycleFrames") == "2048");
+    REQUIRE(parameterValueForNode(node, "window") == "blackmanHarris");
 }
 
 TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][graph]") {
