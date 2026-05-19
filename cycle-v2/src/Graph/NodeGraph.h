@@ -22,6 +22,9 @@ enum class PortDomain {
 enum class NodeKind {
     GenericProcessor,
     VoiceContext,
+    WaveformStart,
+    SpectralStart,
+    WaveSource,
     TrilinearWaveSurface,
     TrilinearMesh,
     Fft,
@@ -31,6 +34,11 @@ enum class NodeKind {
     Envelope,
     Add,
     Multiply,
+    GuideCurve,
+    ImpulseResponse,
+    Waveshaper,
+    Reverb,
+    Delay,
     StereoSplit,
     StereoJoin,
     Output

@@ -16,8 +16,9 @@ const Colour kText             { 0xffe2e8ef };
 const Colour kMutedText        { 0xff8793a1 };
 constexpr float kCableReferenceZoom = 0.58f;
 constexpr float kCableStrokeScale = 0.70f;
-constexpr float kPaletteWidth = 107.f;
-constexpr float kPaletteRowHeight = 40.f;
+constexpr float kPaletteWidth = 158.f;
+constexpr float kPaletteHeaderHeight = 21.f;
+constexpr float kPaletteRowHeight = 30.f;
 
 float cableScaleForZoom(float zoom) {
     return zoom / kCableReferenceZoom * kCableStrokeScale;
@@ -101,9 +102,31 @@ bool isOperationNode(NodeKind kind) {
     return kind == NodeKind::Add || kind == NodeKind::Multiply;
 }
 
+bool isPreviewableNode(NodeKind kind) {
+    switch (kind) {
+        case NodeKind::WaveSource:
+        case NodeKind::TrilinearWaveSurface:
+        case NodeKind::TrilinearMesh:
+        case NodeKind::Fft:
+        case NodeKind::SpectralMagnitudeProcessor:
+        case NodeKind::SpectralPhaseProcessor:
+        case NodeKind::Ifft:
+        case NodeKind::Envelope:
+        case NodeKind::GuideCurve:
+        case NodeKind::ImpulseResponse:
+        case NodeKind::Waveshaper:
+        case NodeKind::Output:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
 enum class OperationPortLayout {
     Side,
     Uptack,
+    Vertical,
     Tee
 };
 
@@ -115,8 +138,12 @@ OperationPortLayout operationPortLayoutFor(const Node& node) {
     const PortSide first = node.inputs[0].side;
     const PortSide second = node.inputs[1].side;
 
-    if (first == PortSide::Top && second == PortSide::Bottom) {
+    if (first == PortSide::Left && second == PortSide::Bottom) {
         return OperationPortLayout::Tee;
+    }
+
+    if (first == PortSide::Top && second == PortSide::Bottom) {
+        return OperationPortLayout::Vertical;
     }
 
     if (first == PortSide::Left && second == PortSide::Top) {
@@ -151,8 +178,13 @@ void drawOperationLayoutIcon(Graphics& g, Rectangle<float> button, OperationPort
     Point<float> out(area.getRight(), area.getCentreY());
 
     switch (layout) {
-        case OperationPortLayout::Tee:
+        case OperationPortLayout::Vertical:
             a = { area.getCentreX(), area.getY() };
+            b = { area.getCentreX(), area.getBottom() };
+            break;
+
+        case OperationPortLayout::Tee:
+            a = { area.getX(), area.getCentreY() };
             b = { area.getCentreX(), area.getBottom() };
             break;
 
@@ -321,7 +353,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         dragStartNodeBounds = hitNode->bounds;
         nodeDragUndoPushed = false;
 
-        if (event.getNumberOfClicks() >= 2) {
+        if (event.getNumberOfClicks() >= 2 && isPreviewableNode(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
         }
     } else {
@@ -800,6 +832,28 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
         return;
     }
 
+    if (node.kind == NodeKind::WaveSource) {
+        Path wave;
+        for (int i = 0; i < 42; ++i) {
+            const float t = (float) i / 41.f;
+            const Point<float> p(
+                    area.getX() + t * area.getWidth(),
+                    area.getCentreY() + std::sin(t * MathConstants<float>::twoPi * 1.25f) * area.getHeight() * 0.34f);
+
+            if (i == 0) {
+                wave.startNewSubPath(p);
+            } else {
+                wave.lineTo(p);
+            }
+        }
+
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.12f));
+        g.fillRect(area);
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.92f));
+        g.strokePath(wave, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
+        return;
+    }
+
     if (node.kind == NodeKind::SpectralMagnitudeProcessor) {
         drawSpectrumBars(g, area.reduced(8.f), colourForDomain(PortDomain::SpectralMagnitudeSignal), node.id.hashCode());
         return;
@@ -812,6 +866,34 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
 
     if (node.kind == NodeKind::Envelope) {
         drawEnvelopeCurve(g, area.reduced(8.f));
+        return;
+    }
+
+    if (node.kind == NodeKind::GuideCurve) {
+        drawEnvelopeCurve(g, area.reduced(8.f));
+        return;
+    }
+
+    if (node.kind == NodeKind::ImpulseResponse) {
+        drawSpectrumBars(g, area.reduced(8.f), colourForDomain(PortDomain::TimeSignal), node.id.hashCode());
+        return;
+    }
+
+    if (node.kind == NodeKind::Waveshaper) {
+        Path transfer;
+        const auto transferArea = area.reduced(8.f);
+        transfer.startNewSubPath(transferArea.getX(), transferArea.getBottom());
+        transfer.cubicTo(
+                transferArea.getX() + transferArea.getWidth() * 0.35f,
+                transferArea.getBottom(),
+                transferArea.getX() + transferArea.getWidth() * 0.65f,
+                transferArea.getY(),
+                transferArea.getRight(),
+                transferArea.getY());
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.10f));
+        g.fillRect(transferArea);
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.92f));
+        g.strokePath(transfer, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
         return;
     }
 
@@ -1076,29 +1158,24 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
             { PortDomain::ControlSignal, "Universal", false }
     };
 
-    Rectangle<float> legend((float) getWidth() - 748.f, (float) getHeight() - 42.f, 544.f, 24.f);
-
-    if (legend.getX() < 110.f) {
-        return;
-    }
+    Rectangle<float> legend(18.f, (float) getHeight() - 174.f, 160.f, 138.f);
 
     g.setColour(Colour(0xaa0b0e13));
     g.fillRoundedRectangle(legend, 5.f);
     g.setColour(Colour(0xff354050));
     g.drawRoundedRectangle(legend, 5.f, 1.f);
 
-    float x = legend.getX() + 16.f;
-    const float y = legend.getCentreY();
+    float y = legend.getY() + 17.f;
     const Font legendFont(FontOptions(9.f));
-    constexpr float lineWidth = 25.5f;
-    constexpr float labelGap = 9.f;
-    constexpr float itemGap = 26.f;
+    constexpr float lineWidth = 22.f;
+    constexpr float labelGap = 8.f;
+    constexpr float rowHeight = 20.f;
 
     g.setFont(legendFont);
 
     for (const auto& entry : entries) {
         const Colour colour = colourForDomain(entry.domain);
-        const float labelWidth = legendFont.getStringWidthFloat(entry.label);
+        const float x = legend.getX() + 14.f;
         const float labelX = x + lineWidth + labelGap;
         Path path;
         path.startNewSubPath(x, y);
@@ -1117,9 +1194,9 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
         }
 
         g.setColour(kMutedText);
-        g.drawText(entry.label, Rectangle<float>(labelX, legend.getY(), labelWidth + 1.f, legend.getHeight()),
+        g.drawText(entry.label, Rectangle<float>(labelX, y - rowHeight * 0.5f, legend.getRight() - labelX - 10.f, rowHeight),
                    Justification::centredLeft);
-        x = labelX + labelWidth + itemGap;
+        y += rowHeight;
     }
 }
 
@@ -1150,43 +1227,64 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
         const char* label;
     };
 
-    const PaletteEntry entries[] = {
-            { NodeKind::TrilinearMesh, "Mesh" },
-            { NodeKind::Fft, "FFT" },
-            { NodeKind::Ifft, "IFFT" },
-            { NodeKind::Envelope, "Env" },
-            { NodeKind::Add, "Add" },
-            { NodeKind::Multiply, "Mul" },
-            { NodeKind::StereoSplit, "Split" },
-            { NodeKind::StereoJoin, "Join" },
-            { NodeKind::Output, "Out" }
+    struct PaletteSection {
+        const char* title;
+        std::initializer_list<PaletteEntry> entries;
     };
 
-    Rectangle<float> panel(18.f, 74.f, kPaletteWidth, 10.f + (float) std::size(entries) * kPaletteRowHeight);
+    const PaletteSection sections[] = {
+            { "Start",     { { NodeKind::WaveformStart, "Waveform" }, { NodeKind::SpectralStart, "Spectral" } } },
+            { "Transform", { { NodeKind::Fft, "Forward FFT" }, { NodeKind::Ifft, "Inverse FFT" } } },
+            { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
+            { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::TrilinearMesh, "Mesh" } } },
+            { "Control",   { { NodeKind::Envelope, "Envelope" }, { NodeKind::GuideCurve, "Guide" } } },
+            { "FX",        { { NodeKind::ImpulseResponse, "IR" }, { NodeKind::Waveshaper, "Waveshaper" },
+                             { NodeKind::Reverb, "Reverb" }, { NodeKind::Delay, "Delay" } } },
+            { "Channel",   { { NodeKind::StereoSplit, "Split" }, { NodeKind::StereoJoin, "Join" },
+                             { NodeKind::Output, "Output" } } }
+    };
+
+    int rowCount = 0;
+    for (const auto& section : sections) {
+        rowCount += 1 + (int) section.entries.size();
+    }
+
+    Rectangle<float> panel(18.f, 74.f, kPaletteWidth, 10.f
+            + (float) rowCount * kPaletteRowHeight
+            + (float) std::size(sections) * (kPaletteHeaderHeight - kPaletteRowHeight));
     g.setColour(Colour(0xaa0b0e13));
     g.fillRoundedRectangle(panel, 6.f);
     g.setColour(Colour(0xff354050));
     g.drawRoundedRectangle(panel, 6.f, 1.f);
 
-    for (int i = 0; i < (int) std::size(entries); ++i) {
-        Rectangle<float> row(panel.getX() + 9.f, panel.getY() + 8.f + (float) i * kPaletteRowHeight,
-                             panel.getWidth() - 18.f, 31.f);
-        Node previewNode = GraphNodeFactory().createNode(entries[i].kind, {}, {});
-        Colour colour = colourForDomain(PortDomain::TimeSignal);
+    float y = panel.getY() + 8.f;
+    for (const auto& section : sections) {
+        g.setColour(kMutedText.withAlpha(0.82f));
+        g.setFont(FontOptions(9.f, Font::bold));
+        g.drawText(section.title, Rectangle<float>(panel.getX() + 10.f, y, panel.getWidth() - 20.f, kPaletteHeaderHeight),
+                   Justification::centredLeft);
+        y += kPaletteHeaderHeight;
 
-        if (!previewNode.outputs.empty()) {
-            colour = portDisplayColour(previewNode, previewNode.outputs.front());
-        } else if (!previewNode.inputs.empty()) {
-            colour = portDisplayColour(previewNode, previewNode.inputs.front());
+        for (const auto& entry : section.entries) {
+            Rectangle<float> row(panel.getX() + 9.f, y, panel.getWidth() - 18.f, 25.f);
+            Node previewNode = GraphNodeFactory().createNode(entry.kind, {}, {});
+            Colour colour = colourForDomain(PortDomain::TimeSignal);
+
+            if (!previewNode.outputs.empty()) {
+                colour = portDisplayColour(previewNode, previewNode.outputs.front());
+            } else if (!previewNode.inputs.empty()) {
+                colour = portDisplayColour(previewNode, previewNode.inputs.front());
+            }
+
+            g.setColour(colour.withAlpha(0.12f));
+            g.fillRoundedRectangle(row, 4.f);
+            g.setColour(colour.withAlpha(0.48f));
+            g.drawRoundedRectangle(row, 4.f, 1.f);
+            g.setColour(kText);
+            g.setFont(FontOptions(10.5f, Font::bold));
+            g.drawText(entry.label, row.reduced(8.f, 0.f), Justification::centredLeft);
+            y += kPaletteRowHeight;
         }
-
-        g.setColour(colour.withAlpha(0.12f));
-        g.fillRoundedRectangle(row, 4.f);
-        g.setColour(colour.withAlpha(0.48f));
-        g.drawRoundedRectangle(row, 4.f, 1.f);
-        g.setColour(kText);
-        g.setFont(FontOptions(12.f, Font::bold));
-        g.drawText(entries[i].label, row, Justification::centred);
     }
 }
 
@@ -1288,31 +1386,54 @@ bool NodeCanvas::findConnectablePortAt(
 }
 
 bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const {
-    const NodeKind entries[] = {
-            NodeKind::TrilinearMesh,
-            NodeKind::Fft,
-            NodeKind::Ifft,
-            NodeKind::Envelope,
-            NodeKind::Add,
-            NodeKind::Multiply,
-            NodeKind::StereoSplit,
-            NodeKind::StereoJoin,
-            NodeKind::Output
+    struct PaletteEntry {
+        NodeKind kind;
+        const char* label;
     };
 
-    Rectangle<float> panel(18.f, 74.f, kPaletteWidth, 10.f + (float) std::size(entries) * kPaletteRowHeight);
+    struct PaletteSection {
+        const char* title;
+        std::initializer_list<PaletteEntry> entries;
+    };
+
+    const PaletteSection sections[] = {
+            { "Start",     { { NodeKind::WaveformStart, "Waveform" }, { NodeKind::SpectralStart, "Spectral" } } },
+            { "Transform", { { NodeKind::Fft, "Forward FFT" }, { NodeKind::Ifft, "Inverse FFT" } } },
+            { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
+            { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::TrilinearMesh, "Mesh" } } },
+            { "Control",   { { NodeKind::Envelope, "Envelope" }, { NodeKind::GuideCurve, "Guide" } } },
+            { "FX",        { { NodeKind::ImpulseResponse, "IR" }, { NodeKind::Waveshaper, "Waveshaper" },
+                             { NodeKind::Reverb, "Reverb" }, { NodeKind::Delay, "Delay" } } },
+            { "Channel",   { { NodeKind::StereoSplit, "Split" }, { NodeKind::StereoJoin, "Join" },
+                             { NodeKind::Output, "Output" } } }
+    };
+
+    int rowCount = 0;
+    for (const auto& section : sections) {
+        rowCount += 1 + (int) section.entries.size();
+    }
+
+    Rectangle<float> panel(18.f, 74.f, kPaletteWidth, 10.f
+            + (float) rowCount * kPaletteRowHeight
+            + (float) std::size(sections) * (kPaletteHeaderHeight - kPaletteRowHeight));
 
     if (!panel.contains(screenPosition)) {
         return false;
     }
 
-    for (int i = 0; i < (int) std::size(entries); ++i) {
-        Rectangle<float> row(panel.getX() + 9.f, panel.getY() + 8.f + (float) i * kPaletteRowHeight,
-                             panel.getWidth() - 18.f, 31.f);
+    float y = panel.getY() + 8.f;
+    for (const auto& section : sections) {
+        y += kPaletteHeaderHeight;
 
-        if (row.contains(screenPosition)) {
-            kind = entries[i];
-            return true;
+        for (const auto& entry : section.entries) {
+            Rectangle<float> row(panel.getX() + 9.f, y, panel.getWidth() - 18.f, 25.f);
+
+            if (row.contains(screenPosition)) {
+                kind = entry.kind;
+                return true;
+            }
+
+            y += kPaletteRowHeight;
         }
     }
 
@@ -1465,7 +1586,7 @@ String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
 
     String layoutNodeId;
     if (findOperationLayoutButtonAt(screenPosition, layoutNodeId)) {
-        return "Cycle operation port layout  /  side, uptack, T";
+        return "Cycle operation port layout  /  side, uptack, vertical, T";
     }
 
     PortAddress portAddress;
@@ -1689,6 +1810,12 @@ bool NodeCanvas::cycleOperationPortLayout(const String& nodeId) {
 
         case OperationPortLayout::Uptack:
             node->inputs[0].side = PortSide::Top;
+            node->inputs[1].side = PortSide::Bottom;
+            node->outputs[0].side = PortSide::Right;
+            break;
+
+        case OperationPortLayout::Vertical:
+            node->inputs[0].side = PortSide::Left;
             node->inputs[1].side = PortSide::Bottom;
             node->outputs[0].side = PortSide::Right;
             break;

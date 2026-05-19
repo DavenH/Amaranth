@@ -122,6 +122,9 @@ String GraphEditor::createUniqueNodeId(const NodeGraph& graph, NodeKind kind) co
 String GraphEditor::baseIdForKind(NodeKind kind) const {
     switch (kind) {
         case NodeKind::VoiceContext:                 return "voice";
+        case NodeKind::WaveformStart:                return "waveform";
+        case NodeKind::SpectralStart:                return "spectral";
+        case NodeKind::WaveSource:                   return "wave";
         case NodeKind::TrilinearWaveSurface:         return "wave";
         case NodeKind::TrilinearMesh:                return "mesh";
         case NodeKind::Fft:                          return "fft";
@@ -131,6 +134,11 @@ String GraphEditor::baseIdForKind(NodeKind kind) const {
         case NodeKind::Envelope:                     return "env";
         case NodeKind::Add:                          return "add";
         case NodeKind::Multiply:                     return "multiply";
+        case NodeKind::GuideCurve:                   return "guide";
+        case NodeKind::ImpulseResponse:              return "ir";
+        case NodeKind::Waveshaper:                   return "waveshaper";
+        case NodeKind::Reverb:                       return "reverb";
+        case NodeKind::Delay:                        return "delay";
         case NodeKind::StereoSplit:                  return "split";
         case NodeKind::StereoJoin:                   return "join";
         case NodeKind::Output:                       return "out";

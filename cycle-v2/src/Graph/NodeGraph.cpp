@@ -43,6 +43,9 @@ Node node(String id, NodeKind kind, String title, String subtitle, Rectangle<flo
 
 NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
     switch (kind) {
+        case NodeKind::WaveformStart:                return { 0.f, 0.f };
+        case NodeKind::SpectralStart:                return { 0.f, 0.f };
+        case NodeKind::WaveSource:                  return { 220.f, 90.f };
         case NodeKind::TrilinearWaveSurface:         return { 300.f, 150.f };
         case NodeKind::TrilinearMesh:                return { 260.f, 130.f };
         case NodeKind::VoiceContext:                 return { 230.f, 105.f };
@@ -53,6 +56,11 @@ NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
         case NodeKind::Envelope:                     return { 220.f, 85.f };
         case NodeKind::Add:                          return { 58.f, 44.f };
         case NodeKind::Multiply:                     return { 58.f, 44.f };
+        case NodeKind::GuideCurve:                   return { 220.f, 85.f };
+        case NodeKind::ImpulseResponse:              return { 210.f, 72.f };
+        case NodeKind::Waveshaper:                   return { 190.f, 80.f };
+        case NodeKind::Reverb:                       return { 0.f, 0.f };
+        case NodeKind::Delay:                        return { 0.f, 0.f };
         case NodeKind::StereoSplit:                  return { 0.f, 0.f };
         case NodeKind::StereoJoin:                   return { 0.f, 0.f };
         case NodeKind::Output:                       return { 0.f, 0.f };
@@ -310,6 +318,9 @@ String labelForNodeKind(NodeKind kind) {
     switch (kind) {
         case NodeKind::GenericProcessor:             return "Generic Processor";
         case NodeKind::VoiceContext:                 return "Voice Context";
+        case NodeKind::WaveformStart:                return "Waveform Start";
+        case NodeKind::SpectralStart:                return "Spectral Start";
+        case NodeKind::WaveSource:                   return "Wave Source";
         case NodeKind::TrilinearWaveSurface:         return "Trilinear Wave Surface";
         case NodeKind::TrilinearMesh:                return "Trilinear Mesh";
         case NodeKind::Fft:                          return "FFT";
@@ -319,6 +330,11 @@ String labelForNodeKind(NodeKind kind) {
         case NodeKind::Envelope:                     return "Envelope";
         case NodeKind::Add:                          return "Add";
         case NodeKind::Multiply:                     return "Multiply";
+        case NodeKind::GuideCurve:                   return "Guide Curve";
+        case NodeKind::ImpulseResponse:              return "Impulse Response";
+        case NodeKind::Waveshaper:                   return "Waveshaper";
+        case NodeKind::Reverb:                       return "Reverb";
+        case NodeKind::Delay:                        return "Delay";
         case NodeKind::StereoSplit:                  return "Stereo Split";
         case NodeKind::StereoJoin:                   return "Stereo Join";
         case NodeKind::Output:                       return "Output";

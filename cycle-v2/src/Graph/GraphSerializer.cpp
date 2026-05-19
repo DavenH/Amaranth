@@ -15,6 +15,9 @@ Identifier edgeType("edge");
 String idForNodeKind(NodeKind kind) {
     switch (kind) {
         case NodeKind::VoiceContext:                 return "voiceContext";
+        case NodeKind::WaveformStart:                return "waveformStart";
+        case NodeKind::SpectralStart:                return "spectralStart";
+        case NodeKind::WaveSource:                   return "waveSource";
         case NodeKind::TrilinearWaveSurface:         return "trilinearWaveSurface";
         case NodeKind::TrilinearMesh:                return "trilinearMesh";
         case NodeKind::Fft:                          return "fft";
@@ -24,6 +27,11 @@ String idForNodeKind(NodeKind kind) {
         case NodeKind::Envelope:                     return "envelope";
         case NodeKind::Add:                          return "add";
         case NodeKind::Multiply:                     return "multiply";
+        case NodeKind::GuideCurve:                   return "guideCurve";
+        case NodeKind::ImpulseResponse:              return "impulseResponse";
+        case NodeKind::Waveshaper:                   return "waveshaper";
+        case NodeKind::Reverb:                       return "reverb";
+        case NodeKind::Delay:                        return "delay";
         case NodeKind::StereoSplit:                  return "stereoSplit";
         case NodeKind::StereoJoin:                   return "stereoJoin";
         case NodeKind::Output:                       return "output";
@@ -34,6 +42,15 @@ String idForNodeKind(NodeKind kind) {
 NodeKind nodeKindForId(const String& id) {
     if (id == "voiceContext") {
         return NodeKind::VoiceContext;
+    }
+    if (id == "waveformStart") {
+        return NodeKind::WaveformStart;
+    }
+    if (id == "spectralStart") {
+        return NodeKind::SpectralStart;
+    }
+    if (id == "waveSource") {
+        return NodeKind::WaveSource;
     }
     if (id == "trilinearWaveSurface") {
         return NodeKind::TrilinearWaveSurface;
@@ -61,6 +78,21 @@ NodeKind nodeKindForId(const String& id) {
     }
     if (id == "multiply") {
         return NodeKind::Multiply;
+    }
+    if (id == "guideCurve") {
+        return NodeKind::GuideCurve;
+    }
+    if (id == "impulseResponse") {
+        return NodeKind::ImpulseResponse;
+    }
+    if (id == "waveshaper") {
+        return NodeKind::Waveshaper;
+    }
+    if (id == "reverb") {
+        return NodeKind::Reverb;
+    }
+    if (id == "delay") {
+        return NodeKind::Delay;
     }
     if (id == "stereoSplit") {
         return NodeKind::StereoSplit;

@@ -18,6 +18,35 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             };
             break;
 
+        case NodeKind::WaveformStart:
+            node.title = "Waveform Start";
+            node.subtitle = "time domain";
+            node.inputs = {
+                    input("pitch", "Pitch", PortDomain::PitchSignal),
+                    input("voice", "Voice", PortDomain::VoiceControlSignal)
+            };
+            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            break;
+
+        case NodeKind::SpectralStart:
+            node.title = "Spectral Start";
+            node.subtitle = "mag + phase";
+            node.inputs = {
+                    input("pitch", "Pitch", PortDomain::PitchSignal),
+                    input("voice", "Voice", PortDomain::VoiceControlSignal)
+            };
+            node.outputs = {
+                    output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
+                    output("phase", "Phase", PortDomain::SpectralPhaseSignal)
+            };
+            break;
+
+        case NodeKind::WaveSource:
+            node.title = "Wave";
+            node.subtitle = "signal source";
+            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            break;
+
         case NodeKind::TrilinearWaveSurface:
             node.title = "Trilinear Wave Surface";
             node.subtitle = "pitch-aware generator";
@@ -104,6 +133,40 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
                     input("right", "B", PortDomain::ControlSignal)
             };
             node.outputs = { output("out", "Out", PortDomain::ControlSignal) };
+            break;
+
+        case NodeKind::GuideCurve:
+            node.title = "Guide";
+            node.subtitle = "mesh attachment";
+            node.outputs = { output("guide", "Guide", PortDomain::EnvelopeSignal) };
+            break;
+
+        case NodeKind::ImpulseResponse:
+            node.title = "IR";
+            node.subtitle = "convolution";
+            node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            break;
+
+        case NodeKind::Waveshaper:
+            node.title = "Waveshaper";
+            node.subtitle = "transfer curve";
+            node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            break;
+
+        case NodeKind::Reverb:
+            node.title = "Reverb";
+            node.subtitle = "space";
+            node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            break;
+
+        case NodeKind::Delay:
+            node.title = "Delay";
+            node.subtitle = "echo";
+            node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
+            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             break;
 
         case NodeKind::StereoSplit:

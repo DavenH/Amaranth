@@ -52,6 +52,20 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
     REQUIRE(multiply.bounds.getHeight() == add.bounds.getHeight());
 }
 
+TEST_CASE("Graph node factory creates menu node families", "[cycle-v2][graph]") {
+    const Node waveform = GraphNodeFactory().createNode(NodeKind::WaveformStart, "waveform", {});
+    const Node spectral = GraphNodeFactory().createNode(NodeKind::SpectralStart, "spectral", {});
+    const Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+
+    REQUIRE(waveform.outputs.front().domain == PortDomain::TimeSignal);
+    REQUIRE(spectral.outputs[0].domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(spectral.outputs[1].domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(guide.outputs.front().domain == PortDomain::EnvelopeSignal);
+    REQUIRE(ir.inputs.front().domain == PortDomain::TimeSignal);
+    REQUIRE(ir.outputs.front().domain == PortDomain::TimeSignal);
+}
+
 TEST_CASE("Graph editor adds nodes with unique ids", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 
