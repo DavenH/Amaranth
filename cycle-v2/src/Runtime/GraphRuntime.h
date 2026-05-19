@@ -13,6 +13,12 @@ struct RuntimeInput {
     PortDomain domain {};
 };
 
+struct RuntimeOutput {
+    String portId;
+    PortDomain domain {};
+    ChannelLayout channelLayout { ChannelLayout::Mono };
+};
+
 struct RuntimeNodeTrace {
     String nodeId;
     NodeKind kind { NodeKind::GenericProcessor };
@@ -27,6 +33,7 @@ struct RuntimeNodeTrace {
     std::vector<NodeParameter> parameters;
     std::vector<RuntimeInput> signalInputs;
     std::vector<RuntimeInput> attachments;
+    std::vector<RuntimeOutput> signalOutputs;
 };
 
 struct RuntimeProcessTrace {
@@ -42,6 +49,7 @@ private:
     std::vector<RuntimeInput> collectInputs(
             const std::vector<Edge>& edges,
             const String& nodeId) const;
+    std::vector<RuntimeOutput> collectOutputs(const GraphExecutionStep& step) const;
 };
 
 }

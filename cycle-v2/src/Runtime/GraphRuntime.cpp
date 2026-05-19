@@ -44,7 +44,8 @@ RuntimeProcessTrace GraphRuntime::process(
                 step == nullptr ? String {} : step->transformMode,
                 step == nullptr ? std::vector<NodeParameter> {} : step->parameters,
                 collectInputs(plan.signalEdges, node->id),
-                collectInputs(plan.attachments, node->id)
+                collectInputs(plan.attachments, node->id),
+                step == nullptr ? std::vector<RuntimeOutput> {} : collectOutputs(*step)
         });
     }
 
@@ -80,6 +81,21 @@ std::vector<RuntimeInput> GraphRuntime::collectInputs(
     }
 
     return inputs;
+}
+
+std::vector<RuntimeOutput> GraphRuntime::collectOutputs(const GraphExecutionStep& step) const {
+    std::vector<RuntimeOutput> outputs;
+    outputs.reserve(step.outputs.size());
+
+    for (const auto& output : step.outputs) {
+        outputs.push_back({
+                output.portId,
+                output.domain,
+                output.channelLayout
+        });
+    }
+
+    return outputs;
 }
 
 }

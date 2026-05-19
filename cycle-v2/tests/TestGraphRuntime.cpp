@@ -50,6 +50,13 @@ TEST_CASE("Runtime traces compiled graph execution", "[cycle-v2][runtime]") {
     REQUIRE_FALSE(findTraceNode(trace, "multiply").previewable);
     REQUIRE(findTraceNode(trace, "multiply").signalInputs.size() == 2);
     REQUIRE(findTraceNode(trace, "multiply").attachments.empty());
+    REQUIRE(findTraceNode(trace, "fft").signalOutputs.size() == 2);
+    REQUIRE(findTraceNode(trace, "fft").signalOutputs[0].portId == "mag");
+    REQUIRE(findTraceNode(trace, "fft").signalOutputs[0].domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(findTraceNode(trace, "fft").signalOutputs[1].portId == "phase");
+    REQUIRE(findTraceNode(trace, "fft").signalOutputs[1].domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(findTraceNode(trace, "magMesh").signalOutputs.front().domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(findTraceNode(trace, "phaseMesh").signalOutputs.front().domain == PortDomain::SpectralPhaseSignal);
 }
 
 TEST_CASE("Runtime keeps scratch attachments separate from signal inputs", "[cycle-v2][runtime]") {

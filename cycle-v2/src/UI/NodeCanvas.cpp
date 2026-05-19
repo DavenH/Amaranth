@@ -1899,9 +1899,27 @@ String NodeCanvas::textForPort(const PortAddress& address) const {
 }
 
 String NodeCanvas::textForNode(const Node& node) const {
-    return node.title + "  /  " + node.subtitle
+    String text = node.title + "  /  " + node.subtitle
             + "  /  inputs " + String((int) node.inputs.size())
             + "  /  outputs " + String((int) node.outputs.size());
+
+    const RuntimeNodeTrace* trace = findRuntimeTrace(node.id);
+
+    if (trace != nullptr && !trace->signalOutputs.empty()) {
+        text += "  /  emits ";
+
+        for (size_t i = 0; i < trace->signalOutputs.size(); ++i) {
+            if (i > 0) {
+                text += ", ";
+            }
+
+            text += trace->signalOutputs[i].portId
+                    + "="
+                    + labelForDomain(trace->signalOutputs[i].domain);
+        }
+    }
+
+    return text;
 }
 
 Point<float> NodeCanvas::viewportCentreWorld() const {
