@@ -34,6 +34,24 @@ TEST_CASE("Source audio processors produce deterministic buffers", "[cycle-v2][r
     REQUIRE(context.output.samples == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
 }
 
+TEST_CASE("Audio processors read node parameters from process context", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext sourceContext;
+    sourceContext.frameCount = 3;
+    sourceContext.parameters = { { "level", "Level", "0.5" } };
+    factory.create(AudioModuleRole::WaveSource)->process(sourceContext);
+
+    REQUIRE(sourceContext.output.samples == std::vector<float> { 0.f, 0.25f, 0.5f });
+
+    AudioProcessContext envelopeContext;
+    envelopeContext.frameCount = 2;
+    envelopeContext.parameters = { { "level", "Level", "0.25" } };
+    factory.create(AudioModuleRole::Envelope)->process(envelopeContext);
+
+    REQUIRE(envelopeContext.output.samples == std::vector<float> { 0.25f, 0.25f });
+}
+
 TEST_CASE("Utility audio processors add and multiply inputs", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 

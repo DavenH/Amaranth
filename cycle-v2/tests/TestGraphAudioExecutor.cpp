@@ -29,6 +29,23 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
     REQUIRE(result.output.samples == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
 }
 
+TEST_CASE("Graph audio executor passes parameters to node processors", "[cycle-v2][runtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.getNodesForEditing().back().parameters = { { "level", "Level", "0.5" } };
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 260.f, 0.f }));
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 3);
+
+    REQUIRE(result.output.samples == std::vector<float> { 0.f, 0.25f, 0.5f });
+}
+
 TEST_CASE("Graph audio executor returns silence for disconnected output", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;

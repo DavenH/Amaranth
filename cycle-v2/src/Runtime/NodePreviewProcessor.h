@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NodeModuleRegistry.h"
+#include "../Graph/NodeGraph.h"
 
 #include <memory>
 #include <vector>
@@ -9,6 +10,7 @@ namespace CycleV2 {
 
 struct PreviewProcessContext {
     size_t pointCount {};
+    std::vector<NodeParameter> parameters;
     std::vector<float> inputSummary;
     std::vector<float> primary;
     std::vector<float> secondary;

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Runtime/GraphPreviewExecutor.h"
 
 #include <algorithm>
@@ -48,4 +49,19 @@ TEST_CASE("Graph preview executor skips non-preview utility nodes", "[cycle-v2][
             [](const NodePreviewResult& preview) {
                 return preview.nodeId == "fft" || preview.nodeId == "ifft" || preview.nodeId == "multiply";
             }));
+}
+
+TEST_CASE("Graph preview executor passes parameters to preview processors", "[cycle-v2][runtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.getNodesForEditing().back().parameters = { { "amplitude", "Amplitude", "0.5" } };
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    const auto result = GraphPreviewExecutor().render(compileResult.plan, 3);
+
+    REQUIRE(findPreview(result, "wave").primary == std::vector<float> { 0.f, 0.5f, 0.f });
 }

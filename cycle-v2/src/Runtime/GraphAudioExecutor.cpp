@@ -21,6 +21,7 @@ GraphAudioResult GraphAudioExecutor::process(
 
         AudioProcessContext context;
         context.frameCount = frameCount;
+        context.parameters = step.parameters;
 
         for (const auto& edge : plan.signalEdges) {
             if (edge.destNodeId != step.nodeId) {

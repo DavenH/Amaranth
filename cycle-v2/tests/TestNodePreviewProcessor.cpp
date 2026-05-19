@@ -27,6 +27,18 @@ TEST_CASE("Waveform preview processor produces normalized summary points", "[cyc
     REQUIRE(context.secondary == std::vector<float> { 1.f, 0.5f, 0.f, 0.5f, 1.f });
 }
 
+TEST_CASE("Preview processors read node parameters from process context", "[cycle-v2][runtime]") {
+    NodePreviewProcessorFactory factory;
+    PreviewProcessContext context;
+    context.pointCount = 3;
+    context.parameters = { { "amplitude", "Amplitude", "0.5" } };
+
+    factory.create(PreviewModuleRole::Waveform)->render(context);
+
+    REQUIRE(context.primary == std::vector<float> { 0.f, 0.5f, 0.f });
+    REQUIRE(context.secondary == std::vector<float> { 1.f, 0.5f, 1.f });
+}
+
 TEST_CASE("Preview processors cover mesh, image, and output summaries", "[cycle-v2][runtime]") {
     NodePreviewProcessorFactory factory;
 

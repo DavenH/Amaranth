@@ -9,6 +9,19 @@ void ensurePreview(PreviewProcessContext& context) {
     context.secondary.resize(context.pointCount);
 }
 
+float parameterFloat(
+        const std::vector<NodeParameter>& parameters,
+        const String& id,
+        float fallback) {
+    for (const auto& parameter : parameters) {
+        if (parameter.id == id) {
+            return parameter.value.getFloatValue();
+        }
+    }
+
+    return fallback;
+}
+
 class FixedPreviewProcessor final : public NodePreviewProcessor {
 public:
     explicit FixedPreviewProcessor(PreviewModuleRole roleToUse) : previewRole(roleToUse) {}
@@ -75,10 +88,11 @@ private:
         }
 
         const float denominator = context.pointCount > 1 ? (float) (context.pointCount - 1) : 1.f;
+        const float amplitude = parameterFloat(context.parameters, "amplitude", 1.f);
 
         for (size_t i = 0; i < context.pointCount; ++i) {
             const float phase = (float) i / denominator;
-            context.primary[i] = phase <= 0.5f ? phase * 2.f : (1.f - phase) * 2.f;
+            context.primary[i] = (phase <= 0.5f ? phase * 2.f : (1.f - phase) * 2.f) * amplitude;
             context.secondary[i] = 1.f - context.primary[i];
         }
     }

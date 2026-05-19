@@ -28,6 +28,19 @@ const AudioProcessBlock* inputAt(const AudioProcessContext& context, size_t inde
     return &context.inputs[index];
 }
 
+float parameterFloat(
+        const std::vector<NodeParameter>& parameters,
+        const String& id,
+        float fallback) {
+    for (const auto& parameter : parameters) {
+        if (parameter.id == id) {
+            return parameter.value.getFloatValue();
+        }
+    }
+
+    return fallback;
+}
+
 class FixedRoleProcessor final : public NodeAudioProcessor {
 public:
     explicit FixedRoleProcessor(AudioModuleRole roleToUse) : processorRole(roleToUse) {}
@@ -85,17 +98,19 @@ private:
         }
 
         const float denominator = context.frameCount > 1 ? (float) (context.frameCount - 1) : 1.f;
+        const float level = parameterFloat(context.parameters, "level", 1.f);
 
         for (size_t i = 0; i < context.frameCount; ++i) {
-            context.output.samples[i] = (float) i / denominator;
+            context.output.samples[i] = ((float) i / denominator) * level;
         }
     }
 
     void processEnvelope(AudioProcessContext& context) const {
         ensureOutput(context);
+        const float level = parameterFloat(context.parameters, "level", 1.f);
 
         for (auto& sample : context.output.samples) {
-            sample = 1.f;
+            sample = level;
         }
     }
 

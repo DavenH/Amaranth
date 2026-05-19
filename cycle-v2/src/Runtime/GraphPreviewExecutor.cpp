@@ -19,6 +19,7 @@ GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, 
 
         PreviewProcessContext context;
         context.pointCount = pointCount;
+        context.parameters = step.parameters;
         processor->render(context);
 
         result.nodes.push_back({

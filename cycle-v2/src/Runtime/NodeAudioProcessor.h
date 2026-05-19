@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NodeModuleRegistry.h"
+#include "../Graph/NodeGraph.h"
 
 #include <memory>
 #include <vector>
@@ -13,6 +14,7 @@ struct AudioProcessBlock {
 
 struct AudioProcessContext {
     size_t frameCount {};
+    std::vector<NodeParameter> parameters;
     std::vector<AudioProcessBlock> inputs;
     AudioProcessBlock output;
 };
