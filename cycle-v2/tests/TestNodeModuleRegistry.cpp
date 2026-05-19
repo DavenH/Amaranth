@@ -47,11 +47,18 @@ TEST_CASE("Node module registry marks Cycle 1 adapter-backed modules", "[cycle-v
     const NodeModuleRegistry registry;
 
     REQUIRE(registry.descriptorFor(NodeKind::TrilinearMesh).cycle1AdapterBacked);
+    REQUIRE(registry.descriptorFor(NodeKind::TrilinearMesh).cycle1Reference
+            == "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp");
     REQUIRE(registry.descriptorFor(NodeKind::Envelope).cycle1AdapterBacked);
+    REQUIRE(registry.descriptorFor(NodeKind::Envelope).cycle1Reference
+            == "cycle/src/Inter/EnvelopeInter2D.cpp");
     REQUIRE(registry.descriptorFor(NodeKind::ImpulseResponse).cycle1AdapterBacked);
     REQUIRE(registry.descriptorFor(NodeKind::Waveshaper).cycle1AdapterBacked);
     REQUIRE(registry.descriptorFor(NodeKind::Delay).cycle1AdapterBacked);
+    REQUIRE(registry.descriptorFor(NodeKind::Delay).cycle1Reference
+            == "cycle/src/Audio/Effects/Delay.cpp");
     REQUIRE_FALSE(registry.descriptorFor(NodeKind::ImageSource).cycle1AdapterBacked);
+    REQUIRE(registry.descriptorFor(NodeKind::ImageSource).cycle1Reference.isEmpty());
 }
 
 TEST_CASE("Node module role labels are stable", "[cycle-v2][runtime]") {

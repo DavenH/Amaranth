@@ -89,6 +89,8 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(findStep("waveMesh").audioRole == AudioModuleRole::MeshSource);
     REQUIRE(findStep("waveMesh").previewRole == PreviewModuleRole::MeshSurface);
     REQUIRE(findStep("waveMesh").cycle1AdapterBacked);
+    REQUIRE(findStep("waveMesh").cycle1Reference
+            == "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp");
     REQUIRE(findStep("fft").audioRole == AudioModuleRole::Fft);
     REQUIRE_FALSE(findStep("fft").previewable);
     REQUIRE(findStep("multiply").audioRole == AudioModuleRole::Multiply);

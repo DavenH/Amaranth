@@ -225,6 +225,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 descriptor.previewRole,
                 descriptor.previewable,
                 descriptor.cycle1AdapterBacked,
+                descriptor.cycle1Reference,
                 node.parameters
         });
     }

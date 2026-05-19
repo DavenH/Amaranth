@@ -1,70 +1,148 @@
 #include "NodeModuleRegistry.h"
 
+#include <utility>
+
 namespace CycleV2 {
+
+namespace {
+
+NodeModuleDescriptor descriptor(
+        NodeKind kind,
+        AudioModuleRole audioRole,
+        PreviewModuleRole previewRole,
+        bool executable,
+        bool previewable,
+        String cycle1Reference = {}) {
+    return {
+            kind,
+            audioRole,
+            previewRole,
+            executable,
+            previewable,
+            cycle1Reference.isNotEmpty(),
+            std::move(cycle1Reference)
+    };
+}
+
+}
 
 NodeModuleDescriptor NodeModuleRegistry::descriptorFor(NodeKind kind) const {
     switch (kind) {
         case NodeKind::VoiceContext:
-            return { kind, AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext, true, false, false };
+            return descriptor(kind, AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext, true, false);
 
         case NodeKind::WaveSource:
-            return { kind, AudioModuleRole::WaveSource, PreviewModuleRole::Waveform, true, true, false };
+            return descriptor(kind, AudioModuleRole::WaveSource, PreviewModuleRole::Waveform, true, true);
 
         case NodeKind::ImageSource:
-            return { kind, AudioModuleRole::ImageSource, PreviewModuleRole::Image, true, true, false };
+            return descriptor(kind, AudioModuleRole::ImageSource, PreviewModuleRole::Image, true, true);
 
         case NodeKind::TrilinearWaveSurface:
         case NodeKind::TrilinearMesh:
-            return { kind, AudioModuleRole::MeshSource, PreviewModuleRole::MeshSurface, true, true, true };
+            return descriptor(
+                    kind,
+                    AudioModuleRole::MeshSource,
+                    PreviewModuleRole::MeshSurface,
+                    true,
+                    true,
+                    "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp");
 
         case NodeKind::Fft:
-            return { kind, AudioModuleRole::Fft, PreviewModuleRole::None, true, false, false };
+            return descriptor(kind, AudioModuleRole::Fft, PreviewModuleRole::None, true, false);
 
         case NodeKind::SpectralMagnitudeProcessor:
-            return { kind, AudioModuleRole::MeshSource, PreviewModuleRole::SpectrumMagnitude, true, true, true };
+            return descriptor(
+                    kind,
+                    AudioModuleRole::MeshSource,
+                    PreviewModuleRole::SpectrumMagnitude,
+                    true,
+                    true,
+                    "cycle/src/Inter/SpectrumInter3D.cpp");
 
         case NodeKind::SpectralPhaseProcessor:
-            return { kind, AudioModuleRole::MeshSource, PreviewModuleRole::SpectrumPhase, true, true, true };
+            return descriptor(
+                    kind,
+                    AudioModuleRole::MeshSource,
+                    PreviewModuleRole::SpectrumPhase,
+                    true,
+                    true,
+                    "cycle/src/Inter/SpectrumInter3D.cpp");
 
         case NodeKind::Ifft:
-            return { kind, AudioModuleRole::Ifft, PreviewModuleRole::None, true, false, false };
+            return descriptor(kind, AudioModuleRole::Ifft, PreviewModuleRole::None, true, false);
 
         case NodeKind::Envelope:
-            return { kind, AudioModuleRole::Envelope, PreviewModuleRole::Envelope, true, true, true };
+            return descriptor(
+                    kind,
+                    AudioModuleRole::Envelope,
+                    PreviewModuleRole::Envelope,
+                    true,
+                    true,
+                    "cycle/src/Inter/EnvelopeInter2D.cpp");
 
         case NodeKind::Add:
-            return { kind, AudioModuleRole::Add, PreviewModuleRole::None, true, false, false };
+            return descriptor(kind, AudioModuleRole::Add, PreviewModuleRole::None, true, false);
 
         case NodeKind::Multiply:
-            return { kind, AudioModuleRole::Multiply, PreviewModuleRole::None, true, false, false };
+            return descriptor(kind, AudioModuleRole::Multiply, PreviewModuleRole::None, true, false);
 
         case NodeKind::GuideCurve:
-            return { kind, AudioModuleRole::GuideCurve, PreviewModuleRole::Envelope, true, true, true };
+            return descriptor(
+                    kind,
+                    AudioModuleRole::GuideCurve,
+                    PreviewModuleRole::Envelope,
+                    true,
+                    true,
+                    "cycle/src/UI/VertexPanels/GuideCurvePanel.cpp");
 
         case NodeKind::ImpulseResponse:
-            return { kind, AudioModuleRole::ImpulseResponse, PreviewModuleRole::ImpulseResponse, true, true, true };
+            return descriptor(
+                    kind,
+                    AudioModuleRole::ImpulseResponse,
+                    PreviewModuleRole::ImpulseResponse,
+                    true,
+                    true,
+                    "cycle/src/Audio/Effects/IrModeller.cpp");
 
         case NodeKind::Waveshaper:
-            return { kind, AudioModuleRole::Waveshaper, PreviewModuleRole::Waveshaper, true, true, true };
+            return descriptor(
+                    kind,
+                    AudioModuleRole::Waveshaper,
+                    PreviewModuleRole::Waveshaper,
+                    true,
+                    true,
+                    "cycle/src/Audio/Effects/WaveShaper.cpp");
 
         case NodeKind::Reverb:
-            return { kind, AudioModuleRole::Reverb, PreviewModuleRole::None, true, false, true };
+            return descriptor(
+                    kind,
+                    AudioModuleRole::Reverb,
+                    PreviewModuleRole::None,
+                    true,
+                    false,
+                    "cycle/src/Audio/Effects/Reverb.cpp");
 
         case NodeKind::Delay:
-            return { kind, AudioModuleRole::Delay, PreviewModuleRole::None, true, false, true };
+            return descriptor(
+                    kind,
+                    AudioModuleRole::Delay,
+                    PreviewModuleRole::None,
+                    true,
+                    false,
+                    "cycle/src/Audio/Effects/Delay.cpp");
 
         case NodeKind::StereoSplit:
-            return { kind, AudioModuleRole::StereoSplit, PreviewModuleRole::None, true, false, false };
+            return descriptor(kind, AudioModuleRole::StereoSplit, PreviewModuleRole::None, true, false);
 
         case NodeKind::StereoJoin:
-            return { kind, AudioModuleRole::StereoJoin, PreviewModuleRole::None, true, false, false };
+            return descriptor(kind, AudioModuleRole::StereoJoin, PreviewModuleRole::None, true, false);
 
         case NodeKind::Output:
-            return { kind, AudioModuleRole::Output, PreviewModuleRole::OutputMeters, true, true, false };
+            return descriptor(kind, AudioModuleRole::Output, PreviewModuleRole::OutputMeters, true, true);
 
         case NodeKind::GenericProcessor:
         default:
-            return { kind, AudioModuleRole::GenericProcessor, PreviewModuleRole::Generic, true, true, false };
+            return descriptor(kind, AudioModuleRole::GenericProcessor, PreviewModuleRole::Generic, true, true);
     }
 }
 

@@ -20,6 +20,7 @@ struct RuntimeNodeTrace {
     PreviewModuleRole previewRole { PreviewModuleRole::None };
     bool previewable {};
     bool cycle1AdapterBacked {};
+    String cycle1Reference;
     std::vector<NodeParameter> parameters;
     std::vector<RuntimeInput> signalInputs;
     std::vector<RuntimeInput> attachments;

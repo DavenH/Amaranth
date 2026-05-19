@@ -48,6 +48,7 @@ struct NodeModuleDescriptor {
     bool executable {};
     bool previewable {};
     bool cycle1AdapterBacked {};
+    String cycle1Reference;
 };
 
 class NodeModuleRegistry {

@@ -40,6 +40,8 @@ TEST_CASE("Runtime traces compiled graph execution", "[cycle-v2][runtime]") {
     REQUIRE(findTraceNode(trace, "waveMesh").audioRole == AudioModuleRole::MeshSource);
     REQUIRE(findTraceNode(trace, "waveMesh").previewRole == PreviewModuleRole::MeshSurface);
     REQUIRE(findTraceNode(trace, "waveMesh").cycle1AdapterBacked);
+    REQUIRE(findTraceNode(trace, "waveMesh").cycle1Reference
+            == "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp");
     REQUIRE(findTraceNode(trace, "waveMesh").signalInputs.size() == 1);
     REQUIRE(findTraceNode(trace, "waveMesh").attachments.size() == 1);
     REQUIRE_FALSE(findTraceNode(trace, "multiply").previewable);

@@ -23,6 +23,7 @@ struct GraphExecutionStep {
     PreviewModuleRole previewRole { PreviewModuleRole::None };
     bool previewable {};
     bool cycle1AdapterBacked {};
+    String cycle1Reference;
     std::vector<NodeParameter> parameters;
 };
 
