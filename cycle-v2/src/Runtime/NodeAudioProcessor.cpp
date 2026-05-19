@@ -1,6 +1,7 @@
 #include <Array/Buffer.h>
 
 #include "NodeAudioProcessor.h"
+#include "../Nodes/FFT/FftBlockwiseDsp.h"
 
 namespace CycleV2 {
 
@@ -199,9 +200,7 @@ private:
 
         AudioProcessBlock magnitude = makeOutputBlock(context, 0);
         AudioProcessBlock phase = makeOutputBlock(context, 1);
-
-        blockBuffer(*input, context.frameCount).copyTo(outputVector(magnitude, context.frameCount));
-        outputVector(phase, context.frameCount).zero();
+        fftDsp.forward(*input, magnitude, phase);
 
         publishOutputs(context, { std::move(magnitude), std::move(phase) });
     }
@@ -215,7 +214,7 @@ private:
         }
 
         ensureOutput(context);
-        blockBuffer(*magnitude, context.frameCount).copyTo(outputBuffer(context));
+        fftDsp.inverse(*magnitude, inputAt(context, 1), context.output);
         publishSingleOutput(context);
     }
 
@@ -294,6 +293,7 @@ private:
     }
 
     AudioModuleRole processorRole {};
+    mutable FftBlockwiseDsp fftDsp;
 };
 
 }

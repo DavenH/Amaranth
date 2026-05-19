@@ -109,7 +109,7 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE_FALSE(findStep(plan, "fft").previewable);
     REQUIRE(findStep(plan, "fft").cycleFrames == 2048);
     REQUIRE(findStep(plan, "fft").latencyCycles == 0);
-    REQUIRE(findStep(plan, "fft").transformMode == "blackmanHarris");
+    REQUIRE(findStep(plan, "fft").transformMode == "cycle");
     REQUIRE(findStep(plan, "ifft").cycleFrames == 2048);
     REQUIRE(findStep(plan, "ifft").latencyCycles == 0);
     REQUIRE(findStep(plan, "ifft").transformMode == "cyclic");

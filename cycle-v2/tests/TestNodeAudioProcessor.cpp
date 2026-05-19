@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include "../src/Runtime/NodeAudioProcessor.h"
 
@@ -83,14 +84,14 @@ TEST_CASE("Adapter placeholder audio processors pass through first input", "[cyc
     REQUIRE(context.output.samples == std::vector<float> { -0.25f, 0.f, 0.5f });
 }
 
-TEST_CASE("FFT placeholder processor publishes separate magnitude and phase ports", "[cycle-v2][runtime]") {
+TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
     auto processor = factory.create(AudioModuleRole::Fft);
     REQUIRE(processor != nullptr);
 
     AudioProcessContext context;
-    context.frameCount = 3;
-    context.inputs = { block({ 0.f, 0.5f, 1.f }) };
+    context.frameCount = 4;
+    context.inputs = { block({ -0.5f, -0.25f, 0.25f, 0.5f }) };
     context.outputPorts = {
             { "mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo },
             { "phase", PortDomain::SpectralPhaseSignal, ChannelLayout::LinkedStereo }
@@ -99,9 +100,36 @@ TEST_CASE("FFT placeholder processor publishes separate magnitude and phase port
 
     REQUIRE(context.outputs.size() == 2);
     REQUIRE(context.outputs[0].domain == PortDomain::SpectralMagnitudeSignal);
-    REQUIRE(context.outputs[0].samples == std::vector<float> { 0.f, 0.5f, 1.f });
+    REQUIRE(context.outputs[0].samples.size() == 4);
+    REQUIRE(context.outputs[0].samples[0] > 0.f);
     REQUIRE(context.outputs[1].domain == PortDomain::SpectralPhaseSignal);
-    REQUIRE(context.outputs[1].samples == std::vector<float> { 0.f, 0.f, 0.f });
+    REQUIRE(context.outputs[1].samples.size() == 4);
+}
+
+TEST_CASE("FFT and IFFT cycle processors round trip zero-mean cycle buffers", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext fftContext;
+    fftContext.frameCount = 4;
+    fftContext.inputs = { block({ -0.5f, -0.25f, 0.25f, 0.5f }) };
+    fftContext.outputPorts = {
+            { "mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo },
+            { "phase", PortDomain::SpectralPhaseSignal, ChannelLayout::LinkedStereo }
+    };
+    factory.create(AudioModuleRole::Fft)->process(fftContext);
+
+    AudioProcessContext ifftContext;
+    ifftContext.frameCount = 4;
+    ifftContext.inputs = { fftContext.outputs[0], fftContext.outputs[1] };
+    ifftContext.outputPorts = {
+            { "time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
+    };
+    factory.create(AudioModuleRole::Ifft)->process(ifftContext);
+
+    REQUIRE(ifftContext.output.samples[0] == Catch::Approx(-0.5f).margin(1.0e-5f));
+    REQUIRE(ifftContext.output.samples[1] == Catch::Approx(-0.25f).margin(1.0e-5f));
+    REQUIRE(ifftContext.output.samples[2] == Catch::Approx(0.25f).margin(1.0e-5f));
+    REQUIRE(ifftContext.output.samples[3] == Catch::Approx(0.5f).margin(1.0e-5f));
 }
 
 TEST_CASE("Mesh source processor generates a deterministic operand when unconnected", "[cycle-v2][runtime]") {

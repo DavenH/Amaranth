@@ -159,8 +159,7 @@ NodeGraph NodeGraph::createDemoGraph() {
                     output("phase", "Phase", PortDomain::SpectralPhaseSignal)
             }));
     graph.getNodesForEditing().back().parameters = {
-            { "cycleFrames", "Cycle Frames", "2048" },
-            { "window", "Window", "blackmanHarris" }
+            { "cycleFrames", "Cycle Frames", "2048" }
     };
 
     graph.addNode(node(

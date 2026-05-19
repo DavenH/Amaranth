@@ -351,6 +351,21 @@ The first graph implementation should define node schemas for:
   EQ, and delay with pan,
 - output node.
 
+Node implementation code should be grouped by node domain where a node has
+multiple runtime surfaces. For FFT/IFFT, `cycle-v2/src/Nodes/FFT/` owns the
+cycle transform backing:
+
+- `FftBlockwiseDsp`: serial audio/render-block execution for one power-of-two
+  Cycle period at a time,
+- `FftGridwiseDsp`: UI/update-time execution across many independent cycle
+  columns for spectrogram and grid previews,
+- future `FftNode` schema/controller code can live beside those DSP classes
+  once node-specific content ownership moves out of the generic factory.
+
+Both DSP surfaces share the same cycle transform semantics. They do not use
+Blackman-Harris or other analysis windows; Cycle periods are already periodic
+power-of-two buffers, matching Cycle 1.x.
+
 Domain and operation naming should stay separate. Generic operations are named
 by what they do (`Add`, `Multiply`, `Clamp`, `Mesh`, `Image`, `Wave`) rather
 than by the domain currently flowing through them. The edge domain and compiler
@@ -386,7 +401,8 @@ fan-out/fan-in voice lanes.
 
 ### Cycle Frame Model
 
-Cycle graph execution is cycle-oriented.
+Cycle graph execution is cycle-oriented. A cycle buffer is a power-of-two
+period, matching Cycle 1.x oscillator and FFT processing.
 
 FFT nodes always consume one cycle of `TimeSignal` content and produce one
 cycle worth of spectral magnitude and phase content. They should not introduce

@@ -65,8 +65,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.title = "FFT: 1 Cycle";
             node.subtitle = "time -> mag + phase";
             node.parameters = {
-                    { "cycleFrames", "Cycle Frames", "2048" },
-                    { "window", "Window", "blackmanHarris" }
+                    { "cycleFrames", "Cycle Frames", "2048" }
             };
             node.inputs = { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             node.outputs = {
