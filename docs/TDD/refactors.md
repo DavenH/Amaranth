@@ -12,3 +12,25 @@ Suggested extraction points:
 - `NodeCanvasController` for graph edit commands, undo/redo, and snapshot persistence.
 
 Keep the graph mutation rules in `GraphEditor`; the canvas layer should remain a client of that API rather than duplicating graph semantics.
+
+## Cycle 2 Graph Audio Buffer Ownership
+
+`cycle-v2/src/Runtime/AudioProcessBlock` currently owns `std::vector<float>`
+sample storage. This is acceptable scaffolding, but it should not become the
+long-term DSP storage model.
+
+Suggested direction:
+
+- Use `Buffer<float>` and the repo's stereo buffer conventions for node DSP
+  APIs wherever possible.
+- Keep `AudioProcessBlock` as a lightweight graph-runtime view/metadata wrapper
+  for domain, channel layout, and port routing.
+- Introduce a compiled-plan work arena backed by `ScopedAlloc<float>` or a
+  similar preallocated block allocator.
+- Let the graph execution plan precompute buffer sizes, lifetimes, and port
+  mappings.
+- During processing, hand node modules `Buffer<float>` views into that arena
+  instead of allocating per-node/per-port vectors.
+
+This should be addressed before hardening the Cycle 2 runtime for realtime
+audio-thread execution.
