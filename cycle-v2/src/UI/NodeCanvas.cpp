@@ -1783,6 +1783,10 @@ bool NodeCanvas::edgeHasValidationIssue(const Edge& edge) const {
     return GraphValidator().edgeHasValidationIssue(graph, edge);
 }
 
+GraphValidationIssue NodeCanvas::validationIssueForEdge(const Edge& edge) const {
+    return GraphValidator().validationIssueForEdge(graph, edge);
+}
+
 int NodeCanvas::executionIndexForNode(const String& nodeId) const {
     if (!compileResult.succeeded()) {
         return -1;
@@ -1849,7 +1853,15 @@ String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
 
     if (edgeIndex >= 0 && edgeIndex < (int) graph.getEdges().size()) {
         const auto& edge = graph.getEdges()[(size_t) edgeIndex];
-        return String(edgeHasValidationIssue(edge) ? "Invalid" : (edge.attachment ? "Attachment" : "Signal"))
+        const auto issue = validationIssueForEdge(edge);
+
+        if (issue.message.isNotEmpty()) {
+            return "Invalid edge  /  " + issue.message
+                    + "  /  " + edge.sourceNodeId + "." + edge.sourcePortId
+                    + " -> " + edge.destNodeId + "." + edge.destPortId;
+        }
+
+        return String(edge.attachment ? "Attachment" : "Signal")
                 + " edge  /  " + labelForDomain(displayDomainForEdge(edge))
                 + "  /  " + edge.sourceNodeId + "." + edge.sourcePortId
                 + " -> " + edge.destNodeId + "." + edge.destPortId;

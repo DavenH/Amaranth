@@ -26,47 +26,30 @@ const Port* findPort(const Node& node, const String& id, bool input) {
     return nullptr;
 }
 
-bool isContextResolvedSource(const Node& node, const Port& port) {
-    if (port.id != "out") {
-        return false;
-    }
-
-    switch (node.kind) {
-        case NodeKind::TrilinearMesh:
-        case NodeKind::TrilinearWaveSurface:
-            return true;
-
-        default:
-            return false;
-    }
-}
-
-PortDomain domainFromVoiceContext(const Node& voiceNode) {
-    const String domain = parameterValueForNode(voiceNode, "domain", "waveform");
-
-    if (domain == "spectral" || domain == "spectralMagnitude") {
-        return PortDomain::SpectralMagnitudeSignal;
-    }
-
-    if (domain == "spectralPhase") {
-        return PortDomain::SpectralPhaseSignal;
-    }
-
-    return PortDomain::TimeSignal;
-}
-
 bool isFixedWaveContextMismatch(const Node& sourceNode, const Node& destNode, const Port& dest) {
+    GraphDomainResolver resolver;
+
     return sourceNode.kind == NodeKind::VoiceContext
         && destNode.kind == NodeKind::WaveSource
         && dest.id == "context"
-        && domainFromVoiceContext(sourceNode) != PortDomain::TimeSignal;
+        && resolver.domainFromVoiceContext(sourceNode) != PortDomain::TimeSignal;
 }
 
 void addIssue(
         std::vector<GraphValidationIssue>& issues,
         GraphValidationCode code,
-        const String& message) {
-    issues.push_back({ code, message });
+        const String& message,
+        const Edge* edge = nullptr) {
+    GraphValidationIssue issue { code, message };
+
+    if (edge != nullptr) {
+        issue.sourceNodeId = edge->sourceNodeId;
+        issue.sourcePortId = edge->sourcePortId;
+        issue.destNodeId = edge->destNodeId;
+        issue.destPortId = edge->destPortId;
+    }
+
+    issues.push_back(std::move(issue));
 }
 
 }
@@ -80,13 +63,13 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
 
         if (sourceNode == nullptr) {
             addIssue(issues, GraphValidationCode::MissingSourceNode,
-                     "Missing source node: " + edge.sourceNodeId);
+                     "Missing source node: " + edge.sourceNodeId, &edge);
             continue;
         }
 
         if (destNode == nullptr) {
             addIssue(issues, GraphValidationCode::MissingDestinationNode,
-                     "Missing destination node: " + edge.destNodeId);
+                     "Missing destination node: " + edge.destNodeId, &edge);
             continue;
         }
 
@@ -95,25 +78,25 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
 
         if (source == nullptr) {
             addIssue(issues, GraphValidationCode::MissingSourcePort,
-                     "Missing source port: " + edge.sourceNodeId + "." + edge.sourcePortId);
+                     "Missing source port: " + edge.sourceNodeId + "." + edge.sourcePortId, &edge);
             continue;
         }
 
         if (dest == nullptr) {
             addIssue(issues, GraphValidationCode::MissingDestinationPort,
-                     "Missing destination port: " + edge.destNodeId + "." + edge.destPortId);
+                     "Missing destination port: " + edge.destNodeId + "." + edge.destPortId, &edge);
             continue;
         }
 
         if (edge.attachment) {
             if (source->domain != PortDomain::EnvelopeSignal) {
                 addIssue(issues, GraphValidationCode::InvalidAttachmentSource,
-                         "Attachments currently require an envelope source: " + edge.sourceNodeId);
+                         "Attachments currently require an envelope source: " + edge.sourceNodeId, &edge);
             }
 
             if (dest->purpose != PortPurpose::ScratchAttachment) {
                 addIssue(issues, GraphValidationCode::InvalidAttachmentDestination,
-                         "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id);
+                         "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id, &edge);
             }
 
             continue;
@@ -121,17 +104,17 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
 
         if (dest->purpose == PortPurpose::ScratchAttachment) {
             addIssue(issues, GraphValidationCode::ScratchPortRequiresAttachment,
-                     "Scratch ports require ProcessingAttachment routing: " + edge.destNodeId + "." + dest->id);
+                     "Scratch ports require ProcessingAttachment routing: " + edge.destNodeId + "." + dest->id, &edge);
             continue;
         }
 
         if (isFixedWaveContextMismatch(*sourceNode, *destNode, *dest)) {
             addIssue(issues, GraphValidationCode::DomainMismatch,
-                     "Wave source requires waveform Voice Context: " + edge.sourceNodeId + " -> " + edge.destNodeId);
+                     "Wave source requires waveform Voice Context: " + edge.sourceNodeId + " -> " + edge.destNodeId, &edge);
         }
 
         Port resolvedSource = *source;
-        resolvedSource.domain = resolvedEdgeDomain(graph, edge);
+        resolvedSource.domain = domainResolver.resolvedDomainForEdge(graph, edge);
 
         if (source->domain == PortDomain::ControlSignal
                 && dest->domain != PortDomain::ControlSignal
@@ -141,18 +124,21 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
 
         if (!domainsCompatible(resolvedSource, *dest)) {
             addIssue(issues, GraphValidationCode::DomainMismatch,
-                     "Domain mismatch: " + labelForDomain(resolvedSource.domain) + " -> " + labelForDomain(dest->domain));
+                     "Domain mismatch: " + labelForDomain(resolvedSource.domain) + " -> " + labelForDomain(dest->domain),
+                     &edge);
         }
 
         if (!channelLayoutsCompatible(resolvedSource, *dest)) {
             addIssue(issues, GraphValidationCode::ChannelLayoutMismatch,
                      "Channel layout mismatch: " + edge.sourceNodeId + "." + source->id
-                         + " -> " + edge.destNodeId + "." + dest->id);
+                         + " -> " + edge.destNodeId + "." + dest->id,
+                     &edge);
         }
 
         if (source->domain == PortDomain::PitchSignal && !isVoiceAwareDestination(*dest)) {
             addIssue(issues, GraphValidationCode::PitchRequiresVoiceAwareDestination,
-                     "Pitch can only feed voice-aware generators or processors: " + edge.destNodeId + "." + dest->id);
+                     "Pitch can only feed voice-aware generators or processors: " + edge.destNodeId + "." + dest->id,
+                     &edge);
         }
     }
 
@@ -166,31 +152,86 @@ bool GraphValidator::isValid(const NodeGraph& graph) const {
 }
 
 bool GraphValidator::edgeHasValidationIssue(const NodeGraph& graph, const Edge& edge) const {
+    return validationIssueForEdge(graph, edge).message.isNotEmpty();
+}
+
+GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& graph, const Edge& edge) const {
     const Node* sourceNode = findNode(graph, edge.sourceNodeId);
     const Node* destNode = findNode(graph, edge.destNodeId);
 
     if (sourceNode == nullptr || destNode == nullptr) {
-        return true;
+        return {
+                sourceNode == nullptr ? GraphValidationCode::MissingSourceNode : GraphValidationCode::MissingDestinationNode,
+                sourceNode == nullptr ? "Missing source node: " + edge.sourceNodeId : "Missing destination node: " + edge.destNodeId,
+                edge.sourceNodeId,
+                edge.sourcePortId,
+                edge.destNodeId,
+                edge.destPortId
+        };
     }
 
     const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
     const Port* dest = findPort(*destNode, edge.destPortId, true);
 
     if (source == nullptr || dest == nullptr) {
-        return true;
+        return {
+                source == nullptr ? GraphValidationCode::MissingSourcePort : GraphValidationCode::MissingDestinationPort,
+                source == nullptr
+                        ? "Missing source port: " + edge.sourceNodeId + "." + edge.sourcePortId
+                        : "Missing destination port: " + edge.destNodeId + "." + edge.destPortId,
+                edge.sourceNodeId,
+                edge.sourcePortId,
+                edge.destNodeId,
+                edge.destPortId
+        };
     }
 
     if (edge.attachment) {
-        return source->domain != PortDomain::EnvelopeSignal
-            || dest->purpose != PortPurpose::ScratchAttachment;
+        if (source->domain != PortDomain::EnvelopeSignal) {
+            return {
+                    GraphValidationCode::InvalidAttachmentSource,
+                    "Attachments currently require an envelope source: " + edge.sourceNodeId,
+                    edge.sourceNodeId,
+                    edge.sourcePortId,
+                    edge.destNodeId,
+                    edge.destPortId
+            };
+        }
+
+        if (dest->purpose != PortPurpose::ScratchAttachment) {
+            return {
+                    GraphValidationCode::InvalidAttachmentDestination,
+                    "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id,
+                    edge.sourceNodeId,
+                    edge.sourcePortId,
+                    edge.destNodeId,
+                    edge.destPortId
+            };
+        }
+
+        return {};
     }
 
     if (dest->purpose == PortPurpose::ScratchAttachment) {
-        return true;
+        return {
+                GraphValidationCode::ScratchPortRequiresAttachment,
+                "Scratch ports require ProcessingAttachment routing: " + edge.destNodeId + "." + dest->id,
+                edge.sourceNodeId,
+                edge.sourcePortId,
+                edge.destNodeId,
+                edge.destPortId
+        };
     }
 
     if (isFixedWaveContextMismatch(*sourceNode, *destNode, *dest)) {
-        return true;
+        return {
+                GraphValidationCode::DomainMismatch,
+                "Wave source requires waveform Voice Context: " + edge.sourceNodeId + " -> " + edge.destNodeId,
+                edge.sourceNodeId,
+                edge.sourcePortId,
+                edge.destNodeId,
+                edge.destPortId
+        };
     }
 
     Port resolvedSource = *source;
@@ -202,118 +243,49 @@ bool GraphValidator::edgeHasValidationIssue(const NodeGraph& graph, const Edge& 
         resolvedSource.channelLayout = dest->channelLayout;
     }
 
-    return !domainsCompatible(resolvedSource, *dest)
-        || !channelLayoutsCompatible(resolvedSource, *dest)
-        || (source->domain == PortDomain::PitchSignal && !isVoiceAwareDestination(*dest));
+    if (!domainsCompatible(resolvedSource, *dest)) {
+        return {
+                GraphValidationCode::DomainMismatch,
+                "Domain mismatch: " + labelForDomain(resolvedSource.domain) + " -> " + labelForDomain(dest->domain),
+                edge.sourceNodeId,
+                edge.sourcePortId,
+                edge.destNodeId,
+                edge.destPortId
+        };
+    }
+
+    if (!channelLayoutsCompatible(resolvedSource, *dest)) {
+        return {
+                GraphValidationCode::ChannelLayoutMismatch,
+                "Channel layout mismatch: " + edge.sourceNodeId + "." + source->id
+                    + " -> " + edge.destNodeId + "." + dest->id,
+                edge.sourceNodeId,
+                edge.sourcePortId,
+                edge.destNodeId,
+                edge.destPortId
+        };
+    }
+
+    if (source->domain == PortDomain::PitchSignal && !isVoiceAwareDestination(*dest)) {
+        return {
+                GraphValidationCode::PitchRequiresVoiceAwareDestination,
+                "Pitch can only feed voice-aware generators or processors: " + edge.destNodeId + "." + dest->id,
+                edge.sourceNodeId,
+                edge.sourcePortId,
+                edge.destNodeId,
+                edge.destPortId
+        };
+    }
+
+    return {};
 }
 
 PortDomain GraphValidator::resolvedDomainForEdge(const NodeGraph& graph, const Edge& edge) const {
-    return resolvedEdgeDomain(graph, edge);
+    return domainResolver.resolvedDomainForEdge(graph, edge);
 }
 
 bool GraphValidator::isVoiceAwareDestination(const Port& port) const {
     return port.domain == PortDomain::PitchSignal || port.domain == PortDomain::VoiceControlSignal;
-}
-
-bool GraphValidator::concreteOperationDomain(PortDomain domain) const {
-    switch (domain) {
-        case PortDomain::TimeSignal:
-        case PortDomain::SpectralMagnitudeSignal:
-        case PortDomain::SpectralPhaseSignal:
-            return true;
-
-        default:
-            return false;
-    }
-}
-
-PortDomain GraphValidator::domainFromContextInput(const NodeGraph& graph, const Node& node) const {
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.attachment || edge.destNodeId != node.id || edge.destPortId != "context") {
-            continue;
-        }
-
-        const Node* sourceNode = findNode(graph, edge.sourceNodeId);
-        if (sourceNode != nullptr && sourceNode->kind == NodeKind::VoiceContext) {
-            return domainFromVoiceContext(*sourceNode);
-        }
-    }
-
-    return PortDomain::ControlSignal;
-}
-
-PortDomain GraphValidator::firstResolvedInputDomain(
-        const NodeGraph& graph,
-        const String& nodeId,
-        int depth) const {
-    if (depth > (int) graph.getNodes().size()) {
-        return PortDomain::ControlSignal;
-    }
-
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.attachment || edge.destNodeId != nodeId) {
-            continue;
-        }
-
-        const PortDomain domain = resolvedEdgeDomain(graph, edge, depth + 1);
-        if (concreteOperationDomain(domain)) {
-            return domain;
-        }
-    }
-
-    return PortDomain::ControlSignal;
-}
-
-PortDomain GraphValidator::resolvedEdgeDomain(const NodeGraph& graph, const Edge& edge, int depth) const {
-    if (depth > (int) graph.getNodes().size()) {
-        return edge.domain;
-    }
-
-    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
-    const Node* destNode = findNode(graph, edge.destNodeId);
-
-    if (sourceNode == nullptr || destNode == nullptr) {
-        return edge.domain;
-    }
-
-    const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
-    const Port* dest = findPort(*destNode, edge.destPortId, true);
-
-    if (source == nullptr || dest == nullptr) {
-        return edge.domain;
-    }
-
-    PortDomain sourceDomain = source->domain;
-
-    if (sourceDomain == PortDomain::ControlSignal && isContextResolvedSource(*sourceNode, *source)) {
-        sourceDomain = domainFromContextInput(graph, *sourceNode);
-
-        if (sourceDomain == PortDomain::ControlSignal && sourceNode->kind == NodeKind::TrilinearMesh) {
-            sourceDomain = firstResolvedInputDomain(graph, sourceNode->id, depth + 1);
-        }
-    }
-
-    if (sourceDomain == PortDomain::ControlSignal
-            && (sourceNode->kind == NodeKind::Add || sourceNode->kind == NodeKind::Multiply)) {
-        sourceDomain = firstResolvedInputDomain(graph, sourceNode->id, depth + 1);
-    }
-
-    if (sourceDomain != PortDomain::ControlSignal) {
-        return sourceDomain;
-    }
-
-    if (dest->domain != PortDomain::ControlSignal) {
-        return dest->domain;
-    }
-
-    if (destNode->kind == NodeKind::Add || destNode->kind == NodeKind::Multiply) {
-        const PortDomain operationDomain = firstResolvedInputDomain(graph, destNode->id, depth + 1);
-        if (operationDomain != PortDomain::ControlSignal) {
-            return operationDomain;
-        }
-    }
-
-    return edge.domain;
 }
 
 void GraphValidator::validateOperationInputs(
@@ -332,9 +304,9 @@ void GraphValidator::validateOperationInputs(
                 continue;
             }
 
-            const PortDomain domain = resolvedEdgeDomain(graph, edge);
+            const PortDomain domain = domainResolver.resolvedDomainForEdge(graph, edge);
 
-            if (!concreteOperationDomain(domain)) {
+            if (!GraphDomainResolver::isConcreteOperationDomain(domain)) {
                 continue;
             }
 

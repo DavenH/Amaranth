@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GraphDomainResolver.h"
 #include "NodeGraph.h"
 
 #include <vector>
@@ -23,6 +24,10 @@ enum class GraphValidationCode {
 struct GraphValidationIssue {
     GraphValidationCode code {};
     String message;
+    String sourceNodeId;
+    String sourcePortId;
+    String destNodeId;
+    String destPortId;
 };
 
 class GraphValidator {
@@ -30,17 +35,16 @@ public:
     std::vector<GraphValidationIssue> validate(const NodeGraph& graph) const;
     bool isValid(const NodeGraph& graph) const;
     bool edgeHasValidationIssue(const NodeGraph& graph, const Edge& edge) const;
+    GraphValidationIssue validationIssueForEdge(const NodeGraph& graph, const Edge& edge) const;
     PortDomain resolvedDomainForEdge(const NodeGraph& graph, const Edge& edge) const;
 
 private:
     bool isVoiceAwareDestination(const Port& port) const;
-    bool concreteOperationDomain(PortDomain domain) const;
-    PortDomain domainFromContextInput(const NodeGraph& graph, const Node& node) const;
-    PortDomain firstResolvedInputDomain(const NodeGraph& graph, const String& nodeId, int depth) const;
-    PortDomain resolvedEdgeDomain(const NodeGraph& graph, const Edge& edge, int depth = 0) const;
     void validateOperationInputs(const NodeGraph& graph, std::vector<GraphValidationIssue>& issues) const;
     bool domainsCompatible(const Port& source, const Port& dest) const;
     bool channelLayoutsCompatible(const Port& source, const Port& dest) const;
+
+    GraphDomainResolver domainResolver;
 };
 
 }

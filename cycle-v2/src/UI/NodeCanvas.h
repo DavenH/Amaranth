@@ -97,6 +97,7 @@ private:
     const NodePreviewResult* findPreviewResult(const String& nodeId) const;
     PortDomain displayDomainForEdge(const Edge& edge) const;
     bool edgeHasValidationIssue(const Edge& edge) const;
+    GraphValidationIssue validationIssueForEdge(const Edge& edge) const;
     int executionIndexForNode(const String& nodeId) const;
     int attachmentCount() const;
     String hoverTextFor(Point<float> screenPosition) const;

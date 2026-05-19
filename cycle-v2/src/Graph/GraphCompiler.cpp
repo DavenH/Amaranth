@@ -78,144 +78,6 @@ int latencyCyclesForNode(const Node& node) {
     return parameterValueForNode(node, "mode", "cyclic") == "acyclicCarry" ? 1 : 0;
 }
 
-bool isConcreteSignalDomain(PortDomain domain) {
-    switch (domain) {
-        case PortDomain::TimeSignal:
-        case PortDomain::SpectralMagnitudeSignal:
-        case PortDomain::SpectralPhaseSignal:
-        case PortDomain::EnvelopeSignal:
-        case PortDomain::MeshField:
-            return true;
-
-        default:
-            return false;
-    }
-}
-
-PortDomain domainFromVoiceContext(const Node& voiceNode) {
-    const String domain = parameterValueForNode(voiceNode, "domain", "waveform");
-
-    if (domain == "spectral" || domain == "spectralMagnitude") {
-        return PortDomain::SpectralMagnitudeSignal;
-    }
-
-    if (domain == "spectralPhase") {
-        return PortDomain::SpectralPhaseSignal;
-    }
-
-    return PortDomain::TimeSignal;
-}
-
-PortDomain domainFromContextInput(const NodeGraph& graph, const Node& node) {
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.attachment || edge.destNodeId != node.id || edge.destPortId != "context") {
-            continue;
-        }
-
-        const Node* sourceNode = findNode(graph, edge.sourceNodeId);
-        if (sourceNode != nullptr && sourceNode->kind == NodeKind::VoiceContext) {
-            return domainFromVoiceContext(*sourceNode);
-        }
-    }
-
-    return PortDomain::ControlSignal;
-}
-
-PortDomain firstResolvedInputDomain(const std::vector<Edge>& resolvedEdges, const String& nodeId) {
-    for (const auto& edge : resolvedEdges) {
-        if (edge.destNodeId == nodeId && isConcreteSignalDomain(edge.domain)) {
-            return edge.domain;
-        }
-    }
-
-    return PortDomain::ControlSignal;
-}
-
-PortDomain resolvedControlOutputDomain(
-        const NodeGraph& graph,
-        const Node& sourceNode,
-        const Port& sourcePort,
-        const std::vector<Edge>& resolvedEdges) {
-    if (sourcePort.domain != PortDomain::ControlSignal) {
-        return sourcePort.domain;
-    }
-
-    if (sourceNode.kind == NodeKind::TrilinearMesh && sourcePort.id == "out") {
-        const PortDomain contextDomain = domainFromContextInput(graph, sourceNode);
-        if (contextDomain != PortDomain::ControlSignal) {
-            return contextDomain;
-        }
-
-        return firstResolvedInputDomain(resolvedEdges, sourceNode.id);
-    }
-
-    if (sourceNode.kind == NodeKind::Add || sourceNode.kind == NodeKind::Multiply) {
-        return firstResolvedInputDomain(resolvedEdges, sourceNode.id);
-    }
-
-    return PortDomain::ControlSignal;
-}
-
-PortDomain resolvedEdgeDomain(
-        const NodeGraph& graph,
-        const Edge& edge,
-        const std::vector<Edge>& resolvedEdges) {
-    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
-    const Node* destNode = findNode(graph, edge.destNodeId);
-
-    if (sourceNode == nullptr || destNode == nullptr) {
-        return edge.domain;
-    }
-
-    const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
-    const Port* dest = findPort(*destNode, edge.destPortId, true);
-
-    if (source == nullptr || dest == nullptr) {
-        return edge.domain;
-    }
-
-    const PortDomain sourceDomain = resolvedControlOutputDomain(graph, *sourceNode, *source, resolvedEdges);
-
-    if (sourceDomain != PortDomain::ControlSignal) {
-        return sourceDomain;
-    }
-
-    if (dest->domain != PortDomain::ControlSignal) {
-        return dest->domain;
-    }
-
-    if (destNode->kind == NodeKind::Add || destNode->kind == NodeKind::Multiply) {
-        const PortDomain operationDomain = firstResolvedInputDomain(resolvedEdges, destNode->id);
-        if (operationDomain != PortDomain::ControlSignal) {
-            return operationDomain;
-        }
-    }
-
-    return edge.domain;
-}
-
-ChannelLayout resolvedEdgeChannelLayout(const NodeGraph& graph, const Edge& edge) {
-    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
-    const Node* destNode = findNode(graph, edge.destNodeId);
-
-    if (sourceNode == nullptr || destNode == nullptr) {
-        return ChannelLayout::Mono;
-    }
-
-    const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
-    const Port* dest = findPort(*destNode, edge.destPortId, true);
-
-    if (source == nullptr || dest == nullptr) {
-        return ChannelLayout::Mono;
-    }
-
-    if (dest->domain != PortDomain::ControlSignal) {
-        return dest->channelLayout;
-    }
-
-    return source->channelLayout;
-}
-
 std::vector<String> buildNodeOrder(
         const NodeGraph& graph,
         std::vector<GraphCompileIssue>& issues) {
@@ -276,6 +138,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
         const NodeGraph& graph,
         const std::vector<String>& nodeOrder,
         const std::vector<Edge>& resolvedEdges,
+        const GraphDomainResolver& domainResolver,
         const NodeModuleRegistry& moduleRegistry) {
     std::vector<GraphExecutionStep> steps;
     steps.reserve(nodeOrder.size());
@@ -302,7 +165,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                     edge.destPortId,
                     inputPortIndex(node, edge.destPortId),
                     edge.domain,
-                    resolvedEdgeChannelLayout(graph, edge)
+                    domainResolver.resolvedChannelLayoutForEdge(graph, edge)
             });
         }
 
@@ -332,43 +195,6 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
     return steps;
 }
 
-std::vector<Edge> resolveSignalEdges(
-        const NodeGraph& graph,
-        const std::vector<String>& nodeOrder) {
-    std::vector<Edge> resolvedEdges;
-
-    for (const auto& nodeId : nodeOrder) {
-        for (const auto& edge : graph.getEdges()) {
-            if (edge.attachment || edge.sourceNodeId != nodeId) {
-                continue;
-            }
-
-            Edge resolved = edge;
-            resolved.domain = resolvedEdgeDomain(graph, edge, resolvedEdges);
-            resolvedEdges.push_back(std::move(resolved));
-        }
-    }
-
-    bool changed = true;
-    int remainingPasses = (int) resolvedEdges.size();
-
-    while (changed && remainingPasses > 0) {
-        changed = false;
-        --remainingPasses;
-
-        for (auto& edge : resolvedEdges) {
-            const PortDomain domain = resolvedEdgeDomain(graph, edge, resolvedEdges);
-
-            if (edge.domain != domain) {
-                edge.domain = domain;
-                changed = true;
-            }
-        }
-    }
-
-    return resolvedEdges;
-}
-
 bool hasBufferForSource(
         const std::vector<GraphBufferPlan>& buffers,
         const String& sourceNodeId,
@@ -384,7 +210,8 @@ bool hasBufferForSource(
 
 std::vector<GraphBufferPlan> buildBufferPlan(
         const NodeGraph& graph,
-        const std::vector<Edge>& resolvedEdges) {
+        const std::vector<Edge>& resolvedEdges,
+        const GraphDomainResolver& domainResolver) {
     std::vector<GraphBufferPlan> buffers;
 
     for (const auto& edge : resolvedEdges) {
@@ -401,7 +228,7 @@ std::vector<GraphBufferPlan> buildBufferPlan(
                 edge.sourceNodeId,
                 edge.sourcePortId,
                 edge.domain,
-                resolvedEdgeChannelLayout(graph, edge)
+                domainResolver.resolvedChannelLayoutForEdge(graph, edge)
         });
     }
 
@@ -425,8 +252,8 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
     result.plan.nodeOrder = buildNodeOrder(graph, result.compileIssues);
 
     if (result.compileIssues.empty()) {
-        result.plan.signalEdges = resolveSignalEdges(graph, result.plan.nodeOrder);
-        result.plan.buffers = buildBufferPlan(graph, result.plan.signalEdges);
+        result.plan.signalEdges = domainResolver.resolveSignalEdges(graph, result.plan.nodeOrder);
+        result.plan.buffers = buildBufferPlan(graph, result.plan.signalEdges, domainResolver);
 
         for (const auto& edge : graph.getEdges()) {
             if (edge.attachment) {
@@ -434,7 +261,12 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
             }
         }
 
-        result.plan.steps = buildExecutionSteps(graph, result.plan.nodeOrder, result.plan.signalEdges, moduleRegistry);
+        result.plan.steps = buildExecutionSteps(
+                graph,
+                result.plan.nodeOrder,
+                result.plan.signalEdges,
+                domainResolver,
+                moduleRegistry);
     }
 
     if (!result.succeeded()) {

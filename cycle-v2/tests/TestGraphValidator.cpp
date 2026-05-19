@@ -214,6 +214,29 @@ TEST_CASE("Resolved edge domains update while graph is invalid", "[cycle-v2][gra
     REQUIRE(validator.resolvedDomainForEdge(graph, signalEdge) == PortDomain::TimeSignal);
 }
 
+TEST_CASE("Edge validation reports specific grammar diagnostics", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = {
+            { "domain", "Start Domain", "spectral" }
+    };
+
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 220.f, 0.f }));
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, false });
+
+    const auto issue = GraphValidator().validationIssueForEdge(graph, graph.getEdges().front());
+
+    REQUIRE(issue.code == GraphValidationCode::DomainMismatch);
+    REQUIRE(issue.message.contains("Wave source requires waveform Voice Context"));
+    REQUIRE(issue.sourceNodeId == "voice");
+    REQUIRE(issue.sourcePortId == "context");
+    REQUIRE(issue.destNodeId == "wave");
+    REQUIRE(issue.destPortId == "context");
+}
+
 TEST_CASE("Context-resolved spectral sources can seed additive spectral graphs", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;

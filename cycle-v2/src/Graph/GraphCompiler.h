@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GraphDomainResolver.h"
 #include "GraphValidator.h"
 #include "../Runtime/NodeModuleRegistry.h"
 
@@ -69,6 +70,7 @@ public:
     GraphCompileResult compile(const NodeGraph& graph) const;
 
 private:
+    GraphDomainResolver domainResolver;
     GraphValidator validator;
     NodeModuleRegistry moduleRegistry;
 };
