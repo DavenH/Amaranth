@@ -877,7 +877,7 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
         const Colour colour = colourForDomain(entry.domain);
         Path path;
         path.startNewSubPath(x, y);
-        path.cubicTo({ x + 13.f, y - 5.f }, { x + 25.f, y + 5.f }, { x + 38.f, y });
+        path.lineTo(x + 34.f, y);
 
         if (entry.attachment) {
             Path dashed;
@@ -891,17 +891,11 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
             g.strokePath(path, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
         }
 
-        g.setColour(kCanvasBackground.withAlpha(0.92f));
-        g.fillEllipse(x - 4.f, y - 4.f, 8.f, 8.f);
-        g.setColour(colour.withAlpha(0.95f));
-        g.drawEllipse(x - 4.f, y - 4.f, 8.f, 8.f, 1.2f);
-        g.fillEllipse(x + 34.f, y - 4.f, 8.f, 8.f);
-
         g.setColour(kMutedText);
         g.setFont(FontOptions(9.f));
-        g.drawText(entry.label, Rectangle<float>(x + 46.f, legend.getY(), 72.f, legend.getHeight()),
+        g.drawText(entry.label, Rectangle<float>(x + 42.f, legend.getY(), 72.f, legend.getHeight()),
                    Justification::centredLeft);
-        x += entry.attachment ? 106.f : 82.f;
+        x += entry.attachment ? 102.f : 78.f;
     }
 }
 
