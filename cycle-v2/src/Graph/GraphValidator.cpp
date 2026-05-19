@@ -231,6 +231,10 @@ PortDomain GraphValidator::resolvedEdgeDomain(const NodeGraph& graph, const Edge
 
     if (sourceDomain == PortDomain::ControlSignal && isContextResolvedSource(*sourceNode, *source)) {
         sourceDomain = domainFromContextInput(graph, *sourceNode);
+
+        if (sourceDomain == PortDomain::ControlSignal && sourceNode->kind == NodeKind::TrilinearMesh) {
+            sourceDomain = firstResolvedInputDomain(graph, sourceNode->id, depth + 1);
+        }
     }
 
     if (sourceDomain == PortDomain::ControlSignal

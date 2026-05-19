@@ -29,6 +29,7 @@ TEST_CASE("Demo graph exposes stable node kinds", "[cycle-v2][graph]") {
     };
 
     REQUIRE(findKind("voice") == NodeKind::VoiceContext);
+    REQUIRE(findKind("wave") == NodeKind::WaveSource);
     REQUIRE(findKind("waveMesh") == NodeKind::TrilinearMesh);
     REQUIRE(findKind("fft") == NodeKind::Fft);
     REQUIRE(findKind("addMag") == NodeKind::Add);

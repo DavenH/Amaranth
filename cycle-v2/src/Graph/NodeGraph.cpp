@@ -136,13 +136,23 @@ NodeGraph NodeGraph::createDemoGraph() {
     };
 
     graph.addNode(node(
+            "wave",
+            NodeKind::WaveSource,
+            "Wave",
+            "waveform source",
+            { 410.f, 120.f, 240.f, 170.f },
+            { input("context", "Context", PortDomain::DomainContext) },
+            { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }));
+
+    graph.addNode(node(
             "waveMesh",
             NodeKind::TrilinearMesh,
             "Trilinear Mesh",
             "waveform operand",
-            { 470.f, 80.f, 380.f, 280.f },
+            { 720.f, 80.f, 380.f, 280.f },
             {
                     input("context", "Context", PortDomain::DomainContext),
+                    input("in", "In", PortDomain::ControlSignal, ChannelLayout::LinkedStereo),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
             {
@@ -155,7 +165,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Fft,
             "FFT: 1 Cycle",
             "time -> mag + phase",
-            { 930.f, 160.f, 220.f, 185.f },
+            { 1180.f, 160.f, 220.f, 185.f },
             { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
             {
                     output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
@@ -171,7 +181,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::TrilinearMesh,
             "Trilinear Mesh",
             "layer operand",
-            { 1265.f, 20.f, 285.f, 180.f },
+            { 1515.f, 20.f, 285.f, 180.f },
             {
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
             },
@@ -182,7 +192,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Add,
             "Add",
             "magnitude layer",
-            { 1318.f, 310.f, 180.f, 150.f },
+            { 1568.f, 310.f, 180.f, 150.f },
             {
                     input("signal", "Signal", PortDomain::SpectralMagnitudeSignal),
                     input("operand", "Mesh", PortDomain::MeshField, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
@@ -194,7 +204,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::TrilinearMesh,
             "Trilinear Mesh",
             "phase operand",
-            { 1265.f, 680.f, 285.f, 180.f },
+            { 1515.f, 680.f, 285.f, 180.f },
             {},
             { output("mesh", "Mesh", PortDomain::MeshField, ChannelLayout::Mono, PortSide::Top) }));
 
@@ -203,7 +213,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Add,
             "Add",
             "phase layer",
-            { 1318.f, 520.f, 180.f, 150.f },
+            { 1568.f, 520.f, 180.f, 150.f },
             {
                     input("signal", "Signal", PortDomain::SpectralPhaseSignal),
                     input("operand", "Mesh", PortDomain::MeshField, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
@@ -215,7 +225,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Ifft,
             "IFFT",
             "cyclic mode",
-            { 1665.f, 400.f, 230.f, 210.f },
+            { 1915.f, 400.f, 230.f, 210.f },
             {
                     input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     input("phase", "Phase", PortDomain::SpectralPhaseSignal)
@@ -249,7 +259,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Multiply,
             "Multiply",
             "global volume",
-            { 1990.f, 555.f, 235.f, 165.f },
+            { 2240.f, 555.f, 235.f, 165.f },
             {
                     input("audio", "Audio", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
                     input("factor", "Factor", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
@@ -260,15 +270,16 @@ NodeGraph NodeGraph::createDemoGraph() {
             "out",
             NodeKind::Output,
             "Output",
-            "stereo meters",
-            { 2350.f, 565.f, 210.f, 145.f },
+            "sink",
+            { 2600.f, 565.f, 210.f, 145.f },
             { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
             {}));
 
     graph.edges = {
-            { "voice", "context", "waveMesh", "context", PortDomain::DomainContext, false },
+            { "voice", "context", "wave", "context", PortDomain::DomainContext, false },
             { "scratchEnv", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal, true },
             { "scratchEnv", "env", "magMesh", "scratch", PortDomain::EnvelopeSignal, true },
+            { "wave", "out", "waveMesh", "in", PortDomain::ControlSignal, false },
             { "waveMesh", "out", "fft", "time", PortDomain::TimeSignal, false },
             { "fft", "mag", "addMag", "signal", PortDomain::SpectralMagnitudeSignal, false },
             { "magMesh", "mesh", "addMag", "operand", PortDomain::MeshField, false },

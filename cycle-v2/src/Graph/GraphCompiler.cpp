@@ -144,7 +144,12 @@ PortDomain resolvedControlOutputDomain(
             || sourceNode.kind == NodeKind::ImageSource
             || sourceNode.kind == NodeKind::TrilinearMesh)
             && sourcePort.id == "out") {
-        return domainFromContextInput(graph, sourceNode);
+        const PortDomain contextDomain = domainFromContextInput(graph, sourceNode);
+        if (contextDomain != PortDomain::ControlSignal) {
+            return contextDomain;
+        }
+
+        return firstResolvedInputDomain(resolvedEdges, sourceNode.id);
     }
 
     if (sourceNode.kind == NodeKind::Add || sourceNode.kind == NodeKind::Multiply) {
