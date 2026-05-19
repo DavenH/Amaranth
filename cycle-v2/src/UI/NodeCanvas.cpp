@@ -67,7 +67,6 @@ void NodeCanvas::paint(Graphics& g) {
     drawConnectionPreview(g);
     drawNodes(g);
     drawMiniMap(g);
-    drawGraphStatus(g);
     drawEdgeLegend(g);
     drawNodePalette(g);
 }
