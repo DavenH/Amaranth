@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include "../src/Runtime/NodePreviewProcessor.h"
 
@@ -57,6 +58,26 @@ TEST_CASE("Preview processors cover mesh, image, and output summaries", "[cycle-
     factory.create(PreviewModuleRole::OutputMeters)->render(meters);
     REQUIRE(meters.primary == std::vector<float> { 0.65f, 0.65f, 0.65f });
     REQUIRE(meters.secondary == std::vector<float> { 0.62f, 0.62f, 0.62f });
+}
+
+TEST_CASE("Preview processors can reflect upstream summaries", "[cycle-v2][runtime]") {
+    NodePreviewProcessorFactory factory;
+
+    PreviewProcessContext meters;
+    meters.pointCount = 2;
+    meters.inputSummary = { 0.2f, 0.6f };
+    factory.create(PreviewModuleRole::OutputMeters)->render(meters);
+
+    REQUIRE(meters.primary == std::vector<float> { 0.4f, 0.4f });
+    REQUIRE(meters.secondary.size() == 2);
+    REQUIRE(meters.secondary[0] == Catch::Approx(0.38f));
+
+    PreviewProcessContext mesh;
+    mesh.pointCount = 3;
+    mesh.inputSummary = { 0.1f, 0.9f };
+    factory.create(PreviewModuleRole::MeshSurface)->render(mesh);
+
+    REQUIRE(mesh.secondary == std::vector<float> { 0.1f, 0.9f, 0.1f });
 }
 
 TEST_CASE("Waveshaper preview processor produces a transfer curve", "[cycle-v2][runtime]") {

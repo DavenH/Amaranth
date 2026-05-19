@@ -9,6 +9,20 @@ void ensurePreview(PreviewProcessContext& context) {
     context.secondary.resize(context.pointCount);
 }
 
+float averageSummary(const std::vector<float>& summary) {
+    if (summary.empty()) {
+        return 0.f;
+    }
+
+    float total = 0.f;
+
+    for (const float value : summary) {
+        total += value;
+    }
+
+    return total / (float) summary.size();
+}
+
 float parameterFloat(
         const std::vector<NodeParameter>& parameters,
         const String& id,
@@ -111,7 +125,9 @@ private:
 
         for (size_t i = 0; i < context.pointCount; ++i) {
             context.primary[i] = (i % 2) == 0 ? 0.25f : 0.75f;
-            context.secondary[i] = (float) (i % 5) / 4.f;
+            context.secondary[i] = context.inputSummary.empty()
+                    ? (float) (i % 5) / 4.f
+                    : context.inputSummary[i % context.inputSummary.size()];
         }
     }
 
@@ -178,10 +194,13 @@ private:
 
     void renderMeters(PreviewProcessContext& context) const {
         ensurePreview(context);
+        const bool hasInput = !context.inputSummary.empty();
+        const float level = hasInput ? averageSummary(context.inputSummary) : 0.65f;
+        const float secondaryLevel = hasInput ? level * 0.95f : 0.62f;
 
         for (size_t i = 0; i < context.pointCount; ++i) {
-            context.primary[i] = 0.65f;
-            context.secondary[i] = 0.62f;
+            context.primary[i] = level;
+            context.secondary[i] = secondaryLevel;
         }
     }
 

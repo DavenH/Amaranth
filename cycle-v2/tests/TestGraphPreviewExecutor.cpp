@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphNodeFactory.h"
@@ -64,4 +65,15 @@ TEST_CASE("Graph preview executor passes parameters to preview processors", "[cy
     const auto result = GraphPreviewExecutor().render(compileResult.plan, 3);
 
     REQUIRE(findPreview(result, "wave").primary == std::vector<float> { 0.f, 0.5f, 0.f });
+}
+
+TEST_CASE("Graph preview executor propagates upstream summaries through non-preview nodes", "[cycle-v2][runtime]") {
+    const auto compileResult = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    REQUIRE(compileResult.succeeded());
+
+    const auto result = GraphPreviewExecutor().render(compileResult.plan, 4);
+
+    REQUIRE(findPreview(result, "out").primary == std::vector<float> { 0.5f, 0.5f, 0.5f, 0.5f });
+    REQUIRE(findPreview(result, "out").secondary.size() == 4);
+    REQUIRE(findPreview(result, "out").secondary[0] == Catch::Approx(0.475f));
 }
