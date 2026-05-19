@@ -317,7 +317,7 @@ NodeNaturalSize naturalSizeForNode(const Node& node) {
     const float width = jmax(headerWidth, portWidth, previewWidth);
 
     const float headerHeight = 42.f;
-    const float portHeight = 14.f + (float) portRows * 28.f;
+    const float portHeight = 16.f + (float) portRows * 34.f;
     const float previewHeight = preview.height + 26.f;
     const float height = headerHeight + portHeight + previewHeight;
 

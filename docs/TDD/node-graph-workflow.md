@@ -302,7 +302,9 @@ Examples:
 The first graph implementation should define node schemas for:
 
 - waveform source nodes backed by 2D and trilinear mesh rasterizers,
-- spectral magnitude and phase source/filter nodes,
+- domain-agnostic mesh source/filter nodes whose edge context determines
+  whether they currently operate on time, spectral magnitude, spectral phase,
+  or another compatible signal domain,
 - FFT and inverse FFT transform nodes,
 - multiply, sum, gain, and clamp utility nodes,
 - envelope source nodes,
@@ -839,3 +841,25 @@ Acceptance:
   readability, not as a cosmetic detail.
 - Keep spectrogram and cyclogram previews as signature Cycle 2.0
   visualizations, even if the first implementation uses simpler placeholders.
+- Avoid baking signal-domain names into ordinary processing node names. Edge
+  colour and graph topology should describe whether a signal is time-domain,
+  spectral magnitude, spectral phase, control, or attachment data. Nodes like
+  `FFT`, `IFFT`, and domain/source selector nodes may change or establish signal
+  domain, but generic operations should be named by operation (`Add`, `Multiply`,
+  `Clamp`, `Mesh`) rather than by the domain currently flowing through them.
+- Revisit arithmetic node port topology before hardening schemas. `Add` and
+  `Multiply` need visual variants such as side-by-side, T, and uptack layouts so
+  repeated layer pipelines can be strung together without awkward cable routing,
+  and so magnitude/phase sibling pipelines can mirror each other cleanly.
+- Non-preview nodes such as `FFT`, `IFFT`, arithmetic, channel split/join, and
+  output should be compact and identifiable through iconography rather than
+  oversized placeholder preview regions.
+- Consider a first-class domain/source selector node for graphs that start
+  directly in a spectral domain, such as a trilinear mesh used as an initial
+  magnitude spectrum without an upstream FFT. Mesh generators should not imply a
+  permanent signal domain from their name alone.
+- Guide curves should be visible as attachments to mesh nodes, with the target
+  scope described more granularly than node-wide attachment. A later schema
+  needs a way to address mesh sub-targets such as vertex cube and guided
+  dimension (`amp`, `phase`, `sharp`, component curve) without exploding every
+  possible target into permanent visible ports.
