@@ -169,6 +169,27 @@ TEST_CASE("Context-resolved spectral sources can seed additive spectral graphs",
     REQUIRE(GraphValidator().isValid(graph));
 }
 
+TEST_CASE("Wave and image sources resolve from voice context domains", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = {
+            { "domain", "Start Domain", "spectral" }
+    };
+
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 220.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::ImageSource, "image", { 220.f, 220.f }));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", { 500.f, 0.f }));
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "voice", "context", "image", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "wave", "out", "add", "left", PortDomain::ControlSignal, false });
+    graph.addEdge({ "image", "out", "add", "right", PortDomain::ControlSignal, false });
+
+    REQUIRE(GraphValidator().isValid(graph));
+}
+
 TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     graph.addEdge({ "env", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal, false });
