@@ -7,6 +7,7 @@
 #include "../Graph/GraphSerializer.h"
 #include "../Runtime/GraphPreviewExecutor.h"
 #include "../Runtime/GraphRuntime.h"
+#include "NodeCanvasGlRenderer.h"
 
 namespace CycleV2 {
 
@@ -35,6 +36,7 @@ private:
     };
 
     OpenGLContext openGLContext;
+    NodeCanvasGlRenderer glRenderer;
     NodeGraph graph;
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;

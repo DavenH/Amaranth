@@ -9,6 +9,12 @@ file(GLOB_RECURSE APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
 
+list(APPEND APP_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.h"
+)
+list(REMOVE_DUPLICATES APP_SOURCES)
+
 set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraph.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDomainResolver.cpp"

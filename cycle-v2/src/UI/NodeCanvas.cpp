@@ -21,6 +21,7 @@ constexpr float kCableStrokeScale = 0.70f;
 constexpr float kPaletteWidth = 158.f;
 constexpr float kPaletteHeaderHeight = 21.f;
 constexpr float kPaletteRowHeight = 30.f;
+constexpr bool kUseGlCanvasUnderlay = true;
 
 float cableScaleForZoom(float zoom) {
     return zoom / kCableReferenceZoom * kCableStrokeScale;
@@ -721,13 +722,19 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 }
 
 void NodeCanvas::newOpenGLContextCreated() {
+    glRenderer.initialize();
 }
 
 void NodeCanvas::renderOpenGL() {
-    OpenGLHelpers::clear(kCanvasBackground);
+    if (kUseGlCanvasUnderlay) {
+        glRenderer.renderBackground(getWidth(), getHeight(), (float) openGLContext.getRenderingScale(), zoom, pan);
+    } else {
+        OpenGLHelpers::clear(kCanvasBackground);
+    }
 }
 
 void NodeCanvas::openGLContextClosing() {
+    glRenderer.shutdown();
 }
 
 void NodeCanvas::timerCallback() {
@@ -740,6 +747,10 @@ void NodeCanvas::timerCallback() {
 }
 
 void NodeCanvas::drawGrid(Graphics& g) {
+    if (kUseGlCanvasUnderlay) {
+        return;
+    }
+
     g.fillAll(kCanvasBackground);
 
     const float minorStep = 32.f * zoom;
