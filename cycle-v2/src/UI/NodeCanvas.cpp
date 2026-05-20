@@ -735,9 +735,8 @@ void NodeCanvas::timerCallback() {
 
     if (getLocalBounds().toFloat().contains(mouse) && mouse != lastMousePosition) {
         lastMousePosition = mouse;
+        repaint();
     }
-
-    repaint();
 }
 
 void NodeCanvas::drawGrid(Graphics& g) {
@@ -782,6 +781,7 @@ void NodeCanvas::drawGrid(Graphics& g) {
 
 void NodeCanvas::drawEdges(Graphics& g) {
     const auto& edges = graph.getEdges();
+    const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -802,6 +802,11 @@ void NodeCanvas::drawEdges(Graphics& g) {
         auto source = getPortLocation(*sourceNode, *sourcePort).centre;
         auto dest = getPortLocation(*destNode, *destPort).centre;
         Path cable = createCablePath(source, dest, edge.attachment);
+
+        if (!cable.getBounds().intersects(visibleArea)) {
+            continue;
+        }
+
         Colour colour = colourForDomain(displayDomainForEdge(edge));
         const bool invalid = edgeHasValidationIssue(edge);
 
@@ -891,7 +896,13 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
 }
 
 void NodeCanvas::drawNodes(Graphics& g) {
+    const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
+
     for (const auto& node : graph.getNodes()) {
+        if (!toScreen(node.bounds).intersects(visibleArea)) {
+            continue;
+        }
+
         drawNode(g, node);
     }
 }
