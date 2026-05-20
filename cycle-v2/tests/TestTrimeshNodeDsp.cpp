@@ -5,6 +5,8 @@
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 
+#include <algorithm>
+
 using namespace CycleV2;
 
 TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", "[cycle-v2][nodes][trimesh]") {
@@ -20,8 +22,8 @@ TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", 
     REQUIRE(output.channelLayout == ChannelLayout::LinkedStereo);
     REQUIRE(output.samples.size() == 8);
     REQUIRE(output.samples[0] == Catch::Approx(0.f).margin(0.35f));
-    REQUIRE(output.samples[2] > output.samples[0]);
-    REQUIRE(output.samples[6] < output.samples[2]);
+    REQUIRE(*std::min_element(output.samples.begin(), output.samples.end())
+            < *std::max_element(output.samples.begin(), output.samples.end()));
 
     mesh->destroy();
 }

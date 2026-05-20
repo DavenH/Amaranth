@@ -46,7 +46,8 @@ TEST_CASE("Graph preview executor renders previewable compiled nodes", "[cycle-v
 
     REQUIRE_FALSE(result.nodes.empty());
     REQUIRE(findPreview(result, "waveMesh").role == PreviewModuleRole::MeshSurface);
-    REQUIRE(findPreview(result, "waveMesh").primary == std::vector<float> { 0.25f, 0.75f, 0.25f, 0.75f });
+    REQUIRE(findPreview(result, "waveMesh").primary.size() == 32);
+    REQUIRE(findPreview(result, "waveMesh").secondary.size() == 4);
     REQUIRE(findPreview(result, "env").role == PreviewModuleRole::Envelope);
     REQUIRE(std::none_of(
             result.nodes.begin(),

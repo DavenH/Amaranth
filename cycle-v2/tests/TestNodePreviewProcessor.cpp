@@ -46,7 +46,10 @@ TEST_CASE("Preview processors cover mesh, image, and output summaries", "[cycle-
     PreviewProcessContext mesh;
     mesh.pointCount = 4;
     factory.create(PreviewModuleRole::MeshSurface)->render(mesh);
-    REQUIRE(mesh.primary == std::vector<float> { 0.25f, 0.75f, 0.25f, 0.75f });
+    REQUIRE(mesh.primary.size() == 32);
+    REQUIRE(mesh.secondary.size() == 4);
+    REQUIRE(mesh.primary[0] >= 0.f);
+    REQUIRE(mesh.primary[0] <= 1.f);
 
     PreviewProcessContext image;
     image.pointCount = 4;
@@ -77,7 +80,8 @@ TEST_CASE("Preview processors can reflect upstream summaries", "[cycle-v2][runti
     mesh.inputSummary = { 0.1f, 0.9f };
     factory.create(PreviewModuleRole::MeshSurface)->render(mesh);
 
-    REQUIRE(mesh.secondary == std::vector<float> { 0.1f, 0.9f, 0.1f });
+    REQUIRE(mesh.secondary.size() == 3);
+    REQUIRE(mesh.primary.size() == 24);
 }
 
 TEST_CASE("Waveshaper preview processor produces a transfer curve", "[cycle-v2][runtime]") {

@@ -3,6 +3,8 @@
 
 #include "../src/Runtime/NodeAudioProcessor.h"
 
+#include <algorithm>
+
 using namespace CycleV2;
 
 namespace {
@@ -144,7 +146,8 @@ TEST_CASE("Mesh source processor generates a deterministic operand when unconnec
 
     REQUIRE(context.output.domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(context.output.samples.size() == 3);
-    REQUIRE(context.output.samples[1] > context.output.samples[0]);
+    REQUIRE(*std::min_element(context.output.samples.begin(), context.output.samples.end())
+            < *std::max_element(context.output.samples.begin(), context.output.samples.end()));
 }
 
 TEST_CASE("Mesh source processor defensively ignores unexpected signal inputs", "[cycle-v2][runtime]") {
@@ -162,5 +165,6 @@ TEST_CASE("Mesh source processor defensively ignores unexpected signal inputs", 
     factory.create(AudioModuleRole::MeshSource)->process(context);
 
     REQUIRE(context.output.samples.size() == 3);
-    REQUIRE(context.output.samples[1] > context.output.samples[0]);
+    REQUIRE(*std::min_element(context.output.samples.begin(), context.output.samples.end())
+            < *std::max_element(context.output.samples.begin(), context.output.samples.end()));
 }

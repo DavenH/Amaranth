@@ -1,5 +1,16 @@
 #include "NodePreviewProcessor.h"
 
+#include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
+#include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
+#include "../Nodes/Trimesh/TrimeshMeshFactory.h"
+
+#include <Array/Buffer.h>
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/Vertex.h>
+#include <Obj/MorphPosition.h>
+
+#include <algorithm>
+
 namespace CycleV2 {
 
 namespace {
@@ -36,9 +47,59 @@ float parameterFloat(
     return fallback;
 }
 
+String parameterString(
+        const std::vector<NodeParameter>& parameters,
+        const String& id,
+        const String& fallback) {
+    for (const auto& parameter : parameters) {
+        if (parameter.id == id) {
+            return parameter.value;
+        }
+    }
+
+    return fallback;
+}
+
+int primaryAxisFromParameter(const String& axisName) {
+    if (axisName == "red") {
+        return Vertex::Red;
+    }
+
+    if (axisName == "blue") {
+        return Vertex::Blue;
+    }
+
+    return Vertex::Time;
+}
+
+MorphPosition meshMorphFromParameters(const std::vector<NodeParameter>& parameters) {
+    return {
+            parameterFloat(parameters, "yellow", 0.5f),
+            parameterFloat(parameters, "red", 0.5f),
+            parameterFloat(parameters, "blue", 0.5f)
+    };
+}
+
+void normalizeBipolarBlock(AudioProcessBlock& block) {
+    if (block.samples.empty()) {
+        return;
+    }
+
+    Buffer<float>(block.samples.data(), (int) block.samples.size())
+            .mul(0.5f)
+            .add(0.5f)
+            .clip(0.f, 1.f);
+}
+
 class FixedPreviewProcessor final : public NodePreviewProcessor {
 public:
     explicit FixedPreviewProcessor(PreviewModuleRole roleToUse) : previewRole(roleToUse) {}
+
+    ~FixedPreviewProcessor() override {
+        if (defaultMesh != nullptr) {
+            defaultMesh->destroy();
+        }
+    }
 
     PreviewModuleRole role() const override { return previewRole; }
 
@@ -121,13 +182,50 @@ private:
     }
 
     void renderMeshSurface(PreviewProcessContext& context) const {
-        ensurePreview(context);
+        if (context.pointCount == 0) {
+            context.primary.clear();
+            context.secondary.clear();
+            return;
+        }
 
-        for (size_t i = 0; i < context.pointCount; ++i) {
-            context.primary[i] = (i % 2) == 0 ? 0.25f : 0.75f;
-            context.secondary[i] = context.inputSummary.empty()
-                    ? (float) (i % 5) / 4.f
-                    : context.inputSummary[i % context.inputSummary.size()];
+        Mesh& mesh = meshForPreview();
+        const MorphPosition morph = meshMorphFromParameters(context.parameters);
+        const int primaryAxis = primaryAxisFromParameter(
+                parameterString(context.parameters, "primaryAxis", "yellow"));
+        const size_t columnCount = std::max<size_t>(8, context.pointCount / 2);
+
+        TrimeshBlockwiseDsp blockwiseDsp;
+        AudioProcessBlock slice;
+        blockwiseDsp.setMesh(&mesh);
+        blockwiseDsp.setMorphPosition(morph);
+        blockwiseDsp.setPrimaryViewAxis(primaryAxis);
+        blockwiseDsp.renderCycle(
+                context.pointCount,
+                PortDomain::TimeSignal,
+                ChannelLayout::LinkedStereo,
+                slice);
+        normalizeBipolarBlock(slice);
+        context.secondary = std::move(slice.samples);
+
+        TrimeshGridwiseDsp gridwiseDsp;
+        const auto columns = gridwiseDsp.renderColumns(
+                mesh,
+                morph,
+                primaryAxis,
+                columnCount,
+                context.pointCount,
+                PortDomain::TimeSignal,
+                ChannelLayout::LinkedStereo);
+
+        context.primary.clear();
+        context.primary.reserve(columnCount * context.pointCount);
+
+        for (auto column : columns) {
+            normalizeBipolarBlock(column.signal);
+            context.primary.insert(
+                    context.primary.end(),
+                    column.signal.samples.begin(),
+                    column.signal.samples.end());
         }
     }
 
@@ -204,7 +302,16 @@ private:
         }
     }
 
+    Mesh& meshForPreview() const {
+        if (defaultMesh == nullptr) {
+            defaultMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2PreviewMesh");
+        }
+
+        return *defaultMesh;
+    }
+
     PreviewModuleRole previewRole {};
+    mutable std::unique_ptr<Mesh> defaultMesh;
 };
 
 }
