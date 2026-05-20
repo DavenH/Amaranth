@@ -94,8 +94,8 @@ void NodeCanvasGlRenderer::renderCable(
     if (attachment) {
         drawDashedSegments(
                 segments,
-                colour.withAlpha(selected ? 0.46f : 0.32f),
-                (selected ? 10.f : 7.f) * cableScale,
+                colour.withAlpha(selected ? 0.24f : 0.20f),
+                (selected ? 9.f : 7.f) * cableScale,
                 8.f * cableScale,
                 7.f * cableScale);
         drawDashedSegments(
@@ -104,15 +104,29 @@ void NodeCanvasGlRenderer::renderCable(
                 (selected ? 3.f : 2.f) * cableScale,
                 8.f * cableScale,
                 7.f * cableScale);
+        if (selected) {
+            drawDashedSegments(
+                    segments,
+                    Colours::white.withAlpha(0.34f),
+                    1.1f * cableScale,
+                    8.f * cableScale,
+                    7.f * cableScale);
+        }
     } else {
         drawSegments(
                 segments,
-                colour.withAlpha(selected ? 0.28f : 0.18f),
-                (selected ? 12.f : 9.f) * cableScale);
+                colour.withAlpha(selected ? 0.18f : 0.14f),
+                (selected ? 11.f : 9.f) * cableScale);
         drawSegments(
                 segments,
                 colour.withAlpha(0.92f),
                 (selected ? 4.f : 3.f) * cableScale);
+        if (selected) {
+            drawSegments(
+                    segments,
+                    Colours::white.withAlpha(0.30f),
+                    1.1f * cableScale);
+        }
 
         if (invalid) {
             drawDashedSegments(
@@ -283,39 +297,15 @@ void NodeCanvasGlRenderer::drawContinuousStroke(const std::vector<LineSegment>& 
         return;
     }
 
-    const float halfWidth = width * 0.5f;
+    gl::glLineWidth(jmax(1.f, width));
+    gl::glBegin(gl::GL_LINE_STRIP);
 
-    gl::glBegin(gl::GL_TRIANGLE_STRIP);
-
-    for (size_t i = 0; i < points.size(); ++i) {
-        Point<float> direction;
-
-        if (i == 0) {
-            direction = points[1] - points[0];
-        } else if (i + 1 == points.size()) {
-            direction = points[i] - points[i - 1];
-        } else {
-            const Point<float> previous = points[i] - points[i - 1];
-            const Point<float> next = points[i + 1] - points[i];
-            direction = previous + next;
-
-            if (direction.getDistanceFromOrigin() <= 0.001f) {
-                direction = next;
-            }
-        }
-
-        const float length = direction.getDistanceFromOrigin();
-
-        if (length <= 0.001f) {
-            continue;
-        }
-
-        const Point<float> normal(-direction.y / length * halfWidth, direction.x / length * halfWidth);
-        gl::glVertex2f(points[i].x + normal.x, points[i].y + normal.y);
-        gl::glVertex2f(points[i].x - normal.x, points[i].y - normal.y);
+    for (const auto& point : points) {
+        gl::glVertex2f(point.x, point.y);
     }
 
     gl::glEnd();
+    gl::glLineWidth(1.f);
 }
 
 std::vector<NodeCanvasGlRenderer::LineSegment> NodeCanvasGlRenderer::flattenPath(const Path& path) {
