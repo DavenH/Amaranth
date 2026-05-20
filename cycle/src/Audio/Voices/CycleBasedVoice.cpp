@@ -584,7 +584,6 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
 
                     switch (resamplingAlgo) {
                         case Resampling::Sinc:
-#ifdef USE_IPP
                         {
                             group.resamplers[c].setRatio(1. / srcToDestRatio);
                             Buffer<float> output = group.resamplers[c].resample(srcBuffer);
@@ -597,7 +596,6 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
                             destBuffer = group.cycleBuffer[c].write(output);
                             break;
                         }
-#endif
                         case Resampling::Linear: {
                             Buffer<float> interBuffer = tempBuffer.withSize(group.samplesThisCycle);
 
@@ -649,8 +647,6 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
 
         layerAccumBuffer[Left].copyTo(pastCycle[Left]);
         layerAccumBuffer[Right].copyTo(pastCycle[Right]);
-        // ippsCopy_32f(layerAccumBuffer[Left], pastCycle[Left], noteState.nextPow2);
-        // ippsCopy_32f(layerAccumBuffer[Right], pastCycle[Right], noteState.nextPow2);
 
         // if we didn't have a cached first cycle
         //		if(updatePosition == 0)
@@ -658,8 +654,6 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
             for (int j = 0; j < noteState.numUnisonVoices; ++j) {
                 pastCycle[Left].copyTo(groups[j].lastLerpHalf[Left].withSize(noteState.nextPow2 / 2));
                 pastCycle[Right].copyTo(groups[j].lastLerpHalf[Right].withSize(noteState.nextPow2 / 2));
-                // ippsCopy_32f(pastCycle[Left], groups[j].lastLerpHalf[Left], noteState.nextPow2 / 2);
-                // ippsCopy_32f(pastCycle[Right], groups[j].lastLerpHalf[Right], noteState.nextPow2 / 2);
             }
         }
     }
