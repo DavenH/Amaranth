@@ -142,7 +142,12 @@ private:
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
-    Path createCablePath(Point<float> source, Point<float> dest, bool attachment) const;
+    Path createCablePath(
+            Point<float> source,
+            Point<float> dest,
+            PortSide sourceSide,
+            PortSide destSide,
+            bool attachment) const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
 };

@@ -103,6 +103,26 @@ float sidePortY(const Node& node, const Port& port) {
     return node.bounds.getY() + 58.f + (float) index * 34.f;
 }
 
+Point<float> outwardNormalForSide(PortSide side) {
+    switch (side) {
+        case PortSide::Top:       return { 0.f, -1.f };
+        case PortSide::Bottom:    return { 0.f, 1.f };
+        case PortSide::Left:      return { -1.f, 0.f };
+        case PortSide::Right:     return { 1.f, 0.f };
+        default:                  return { 1.f, 0.f };
+    }
+}
+
+Point<float> normalizedOrFallback(Point<float> vector, Point<float> fallback) {
+    const float length = vector.getDistanceFromOrigin();
+
+    if (length <= 0.001f) {
+        return fallback;
+    }
+
+    return { vector.x / length, vector.y / length };
+}
+
 String portDisplayLabel(const Port& port) {
     const String channel = labelForChannelLayout(port.channelLayout);
     return channel.isEmpty() ? port.label : port.label + " " + channel;
@@ -855,7 +875,7 @@ void NodeCanvas::drawGlEdges() {
 
         const Point<float> source = getPortLocation(*sourceNode, *sourcePort).centre;
         const Point<float> dest = getPortLocation(*destNode, *destPort).centre;
-        const Path cable = createCablePath(source, dest, edge.attachment);
+        const Path cable = createCablePath(source, dest, sourcePort->side, destPort->side, edge.attachment);
 
         if (!cable.getBounds().intersects(visibleArea)) {
             continue;
@@ -925,7 +945,7 @@ void NodeCanvas::drawEdges(Graphics& g) {
 
         auto source = getPortLocation(*sourceNode, *sourcePort).centre;
         auto dest = getPortLocation(*destNode, *destPort).centre;
-        Path cable = createCablePath(source, dest, edge.attachment);
+        Path cable = createCablePath(source, dest, sourcePort->side, destPort->side, edge.attachment);
 
         if (!cable.getBounds().intersects(visibleArea)) {
             continue;
@@ -1000,7 +1020,9 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
     const auto start = getPortLocation(connectingPort).centre;
     const auto source = connectingPort.input ? connectingPoint : start;
     const auto dest = connectingPort.input ? start : connectingPoint;
-    const Path cable = createCablePath(source, dest, false);
+    const PortSide sourceSide = connectingPort.input ? PortSide::Right : port->side;
+    const PortSide destSide = connectingPort.input ? port->side : PortSide::Left;
+    const Path cable = createCablePath(source, dest, sourceSide, destSide, false);
     const Colour colour = colourForDomain(port->domain);
     const float cableScale = cableScaleForZoom(zoom);
 
@@ -1165,6 +1187,10 @@ Rectangle<float> previewContentArea(Rectangle<float> area) {
     return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.12f);
 }
 
+Rectangle<float> meshPreviewContentArea(Rectangle<float> area) {
+    return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
+}
+
 void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area) {
     if (area.getWidth() < 20.f || area.getHeight() < 20.f) {
         return;
@@ -1278,7 +1304,7 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
     }
 
     if (node.kind == NodeKind::TrilinearWaveSurface || node.kind == NodeKind::TrilinearMesh) {
-        area = previewContentArea(area);
+        area = meshPreviewContentArea(area);
         Path surface;
         for (int i = 0; i < 8; ++i) {
             float x0 = area.getX() + (float) i * area.getWidth() / 8.f;
@@ -1456,7 +1482,7 @@ void NodeCanvas::drawMeshSurfacePreview(
     g.fillRoundedRectangle(area, 5.f * zoom);
 
     if (cached.image.isValid()) {
-        const Rectangle<float> surface = previewContentArea(area);
+        const Rectangle<float> surface = meshPreviewContentArea(area);
         g.setImageResamplingQuality(Graphics::lowResamplingQuality);
         g.drawImage(cached.image, surface);
     }
@@ -1763,7 +1789,8 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
             { PortDomain::ControlSignal, "Universal", false }
     };
 
-    Rectangle<float> legend((float) getWidth() - 178.f, (float) getHeight() - 174.f, 160.f, 138.f);
+    constexpr float legendWidth = 116.f;
+    Rectangle<float> legend((float) getWidth() - legendWidth - 18.f, (float) getHeight() - 174.f, legendWidth, 138.f);
 
     g.setColour(Colour(0xaa0b0e13));
     g.fillRoundedRectangle(legend, 5.f);
@@ -1772,15 +1799,15 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
 
     float y = legend.getY() + 17.f;
     const Font legendFont(FontOptions(9.f));
-    constexpr float lineWidth = 22.f;
-    constexpr float labelGap = 8.f;
+    constexpr float lineWidth = 17.f;
+    constexpr float labelGap = 7.f;
     constexpr float rowHeight = 20.f;
 
     g.setFont(legendFont);
 
     for (const auto& entry : entries) {
         const Colour colour = colourForDomain(entry.domain);
-        const float x = legend.getX() + 14.f;
+        const float x = legend.getX() + 12.f;
         const float labelX = x + lineWidth + labelGap;
         Path path;
         path.startNewSubPath(x, y);
@@ -1799,7 +1826,7 @@ void NodeCanvas::drawEdgeLegend(Graphics& g) {
         }
 
         g.setColour(kMutedText);
-        g.drawText(entry.label, Rectangle<float>(labelX, y - rowHeight * 0.5f, legend.getRight() - labelX - 10.f, rowHeight),
+        g.drawText(entry.label, Rectangle<float>(labelX, y - rowHeight * 0.5f, legend.getRight() - labelX - 8.f, rowHeight),
                    Justification::centredLeft);
         y += rowHeight;
     }
@@ -1977,7 +2004,7 @@ bool NodeCanvas::findConnectablePortAt(
         Point<float> screenPosition,
         const PortAddress& source,
         PortAddress& result) const {
-    constexpr float snapExpansion = 20.f;
+    constexpr float snapExpansion = 50.f;
     float bestDistance = std::numeric_limits<float>::max();
     bool found {};
 
@@ -2134,6 +2161,8 @@ int NodeCanvas::findEdgeAt(Point<float> screenPosition) const {
                 .createStrokedPath(hitPath, createCablePath(
                         getPortLocation(*sourceNode, *sourcePort).centre,
                         getPortLocation(*destNode, *destPort).centre,
+                        sourcePort->side,
+                        destPort->side,
                         edge.attachment));
 
         if (hitPath.contains(screenPosition)) {
@@ -2589,36 +2618,24 @@ bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& se
     return GraphEditor().connect(candidate, first, second).succeeded();
 }
 
-Path NodeCanvas::createCablePath(Point<float> source, Point<float> dest, bool) const {
+Path NodeCanvas::createCablePath(
+        Point<float> source,
+        Point<float> dest,
+        PortSide sourceSide,
+        PortSide destSide,
+        bool) const {
     Path path;
     path.startNewSubPath(source);
 
-    const float deltaX = dest.x - source.x;
-    const float deltaY = dest.y - source.y;
+    const Point<float> vector = dest - source;
+    const float distance = vector.getDistanceFromOrigin();
+    const float sourceStrength = jlimit(24.f * zoom, 120.f * zoom, distance * 0.34f);
+    const float destStrength = jlimit(18.f * zoom, 74.f * zoom, distance * 0.18f);
+    const Point<float> sourceDirection = normalizedOrFallback(vector, outwardNormalForSide(sourceSide));
+    const Point<float> destNormal = outwardNormalForSide(destSide);
+    const Point<float> c1 = source + sourceDirection * sourceStrength;
+    const Point<float> c2 = dest + destNormal * destStrength;
 
-    if (absoluteFloat(deltaX) < 42.f * zoom) {
-        const float dy = jmax(28.f * zoom, absoluteFloat(deltaY) * 0.48f);
-        const float sign = deltaY >= 0.f ? 1.f : -1.f;
-        path.cubicTo(
-                { source.x, source.y + dy * sign },
-                { dest.x, dest.y - dy * sign },
-                dest);
-        return path;
-    }
-
-    if (absoluteFloat(deltaY) < 32.f * zoom || deltaX > 0.f) {
-        const float dx = jmax(36.f * zoom, absoluteFloat(deltaX) * 0.45f);
-        path.cubicTo(
-                { source.x + dx, source.y },
-                { dest.x - dx, dest.y },
-                dest);
-        return path;
-    }
-
-    const float dx = jmax(48.f * zoom, absoluteFloat(deltaX) * 0.35f);
-    const float lift = deltaY < 0.f ? -34.f * zoom : 34.f * zoom;
-    const Point<float> c1(source.x + dx, source.y + lift);
-    const Point<float> c2(dest.x - dx, dest.y - lift);
     path.cubicTo(c1, c2, dest);
 
     return path;
