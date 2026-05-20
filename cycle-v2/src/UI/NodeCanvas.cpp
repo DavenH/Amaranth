@@ -273,6 +273,26 @@ bool canDrawMeshHeatmap(const NodePreviewResult& preview) {
     return rows >= 2 && preview.primary.size() >= (size_t) rows * 2;
 }
 
+Image createMeshHeatmapImage(const NodePreviewResult& preview) {
+    const int rows = (int) preview.secondary.size();
+
+    if (!canDrawMeshHeatmap(preview)) {
+        return {};
+    }
+
+    const int columns = (int) preview.primary.size() / rows;
+    Image image(Image::ARGB, columns, rows, true);
+
+    for (int column = 0; column < columns; ++column) {
+        for (int row = 0; row < rows; ++row) {
+            const float value = preview.primary[(size_t) column * rows + row];
+            image.setPixelAt(column, row, meshSurfaceColour(value).withAlpha(0.82f));
+        }
+    }
+
+    return image;
+}
+
 void drawMeshHeatmap(
         Graphics& g,
         Rectangle<float> area,
@@ -1093,7 +1113,7 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
         if (preview->role == PreviewModuleRole::MeshSurface
                 && !preview->primary.empty()
                 && !preview->secondary.empty()) {
-            drawMeshSurfacePreview(g, area, *preview, zoom);
+            drawMeshSurfacePreview(g, node, area, *preview);
             return;
         }
 
@@ -1307,6 +1327,50 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
     g.fillPath(curve);
     g.setColour(colour.withAlpha(0.95f));
     g.strokePath(curve, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+NodeCanvas::CachedHeatmap& NodeCanvas::cachedHeatmapFor(const String& nodeId) {
+    for (auto& entry : heatmapCache) {
+        if (entry.first == nodeId) {
+            return entry.second;
+        }
+    }
+
+    heatmapCache.emplace_back(nodeId, CachedHeatmap {});
+    return heatmapCache.back().second;
+}
+
+void NodeCanvas::drawMeshSurfacePreview(
+        Graphics& g,
+        const Node& node,
+        Rectangle<float> area,
+        const NodePreviewResult& preview) {
+    if (!canDrawMeshHeatmap(preview)) {
+        return;
+    }
+
+    const int rows = (int) preview.secondary.size();
+    const int columns = (int) preview.primary.size() / rows;
+    CachedHeatmap& cached = cachedHeatmapFor(node.id);
+
+    if (!cached.image.isValid()
+            || cached.valueCount != preview.primary.size()
+            || cached.rows != rows
+            || cached.columns != columns) {
+        cached.image = createMeshHeatmapImage(preview);
+        cached.valueCount = preview.primary.size();
+        cached.rows = rows;
+        cached.columns = columns;
+    }
+
+    g.setColour(Colour(0xff0a0f13));
+    g.fillRoundedRectangle(area, 5.f * zoom);
+
+    if (cached.image.isValid()) {
+        const Rectangle<float> surface = area.reduced(area.getWidth() * 0.025f, area.getHeight() * 0.06f);
+        g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+        g.drawImage(cached.image, surface);
+    }
 }
 
 void NodeCanvas::drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed) {
@@ -2194,6 +2258,7 @@ Point<float> NodeCanvas::paletteCreationWorldPosition(Point<float> paletteClickP
 }
 
 void NodeCanvas::refreshCompiledState() {
+    heatmapCache.clear();
     compileResult = GraphCompiler().compile(graph);
     runtimeTrace = {};
     previewResult = {};
