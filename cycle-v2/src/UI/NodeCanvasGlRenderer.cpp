@@ -262,23 +262,60 @@ void NodeCanvasGlRenderer::drawCircle(Point<float> centre, float radius, Colour 
     gl::glEnd();
 }
 
-void NodeCanvasGlRenderer::drawThickSegment(Point<float> start, Point<float> end, float width) {
-    const Point<float> vector = end - start;
-    const float length = vector.getDistanceFromOrigin();
-
-    if (length <= 0.f || width <= 0.f) {
+void NodeCanvasGlRenderer::drawContinuousStroke(const std::vector<LineSegment>& segments, float width) {
+    if (segments.empty() || width <= 0.f) {
         return;
     }
 
-    const Point<float> direction(vector.x / length, vector.y / length);
-    const Point<float> normal(-direction.y * width * 0.5f, direction.x * width * 0.5f);
-    start -= direction * width * 0.22f;
-    end += direction * width * 0.22f;
+    std::vector<Point<float>> points;
+    points.reserve(segments.size() + 1);
+    points.push_back(segments.front().start);
 
-    gl::glVertex2f(start.x + normal.x, start.y + normal.y);
-    gl::glVertex2f(end.x + normal.x, end.y + normal.y);
-    gl::glVertex2f(end.x - normal.x, end.y - normal.y);
-    gl::glVertex2f(start.x - normal.x, start.y - normal.y);
+    for (const auto& segment : segments) {
+        if (segment.end != points.back()) {
+            points.push_back(segment.start);
+        }
+
+        points.push_back(segment.end);
+    }
+
+    if (points.size() < 2) {
+        return;
+    }
+
+    const float halfWidth = width * 0.5f;
+
+    gl::glBegin(gl::GL_TRIANGLE_STRIP);
+
+    for (size_t i = 0; i < points.size(); ++i) {
+        Point<float> direction;
+
+        if (i == 0) {
+            direction = points[1] - points[0];
+        } else if (i + 1 == points.size()) {
+            direction = points[i] - points[i - 1];
+        } else {
+            const Point<float> previous = points[i] - points[i - 1];
+            const Point<float> next = points[i + 1] - points[i];
+            direction = previous + next;
+
+            if (direction.getDistanceFromOrigin() <= 0.001f) {
+                direction = next;
+            }
+        }
+
+        const float length = direction.getDistanceFromOrigin();
+
+        if (length <= 0.001f) {
+            continue;
+        }
+
+        const Point<float> normal(-direction.y / length * halfWidth, direction.x / length * halfWidth);
+        gl::glVertex2f(points[i].x + normal.x, points[i].y + normal.y);
+        gl::glVertex2f(points[i].x - normal.x, points[i].y - normal.y);
+    }
+
+    gl::glEnd();
 }
 
 std::vector<NodeCanvasGlRenderer::LineSegment> NodeCanvasGlRenderer::flattenPath(const Path& path) {
@@ -304,13 +341,7 @@ void NodeCanvasGlRenderer::drawSegments(
     }
 
     setColour(colour);
-    gl::glBegin(gl::GL_QUADS);
-
-    for (const auto& segment : segments) {
-        drawThickSegment(segment.start, segment.end, width);
-    }
-
-    gl::glEnd();
+    drawContinuousStroke(segments, width);
 }
 
 void NodeCanvasGlRenderer::drawDashedSegments(
@@ -324,10 +355,16 @@ void NodeCanvasGlRenderer::drawDashedSegments(
     }
 
     const float period = dashLength + jmax(0.f, gapLength);
+    std::vector<LineSegment> currentDash;
     float distance = 0.f;
 
-    setColour(colour);
-    gl::glBegin(gl::GL_QUADS);
+    auto flushDash = [&]() {
+        if (!currentDash.empty()) {
+            setColour(colour);
+            drawContinuousStroke(currentDash, width);
+            currentDash.clear();
+        }
+    };
 
     for (const auto& segment : segments) {
         const Point<float> vector = segment.end - segment.start;
@@ -350,7 +387,9 @@ void NodeCanvasGlRenderer::drawDashedSegments(
                 const float endT = (local + run) / length;
                 const Point<float> start = segment.start + vector * startT;
                 const Point<float> end = segment.start + vector * endT;
-                drawThickSegment(start, end, width);
+                currentDash.push_back({ start, end });
+            } else {
+                flushDash();
             }
 
             local += jmax(0.5f, run);
@@ -359,7 +398,7 @@ void NodeCanvasGlRenderer::drawDashedSegments(
         distance += length;
     }
 
-    gl::glEnd();
+    flushDash();
 }
 
 void NodeCanvasGlRenderer::drawGridLines(

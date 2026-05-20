@@ -44,7 +44,7 @@ private:
     static void drawCircle(juce::Point<float> centre, float radius, juce::Colour colour, bool filled);
     static void fillRoundedRect(juce::Rectangle<float> bounds, float radius);
     static void fillCornerFan(juce::Point<float> centre, float radius, float startAngle, float endAngle);
-    static void drawThickSegment(juce::Point<float> start, juce::Point<float> end, float width);
+    static void drawContinuousStroke(const std::vector<LineSegment>& segments, float width);
     static std::vector<LineSegment> flattenPath(const juce::Path& path);
     static void drawSegments(const std::vector<LineSegment>& segments, juce::Colour colour, float width);
     static void drawDashedSegments(
