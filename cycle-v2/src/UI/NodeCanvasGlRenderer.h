@@ -25,6 +25,12 @@ public:
             bool selected,
             bool attachment,
             bool invalid);
+    void renderNodeShell(
+            juce::Rectangle<float> bounds,
+            float headerHeight,
+            float cornerRadius,
+            juce::Colour bodyColour,
+            juce::Colour headerColour);
 
 private:
     struct LineSegment {
@@ -36,6 +42,8 @@ private:
     static void fillRect(juce::Rectangle<float> bounds);
     static void drawLine(juce::Point<float> start, juce::Point<float> end);
     static void drawCircle(juce::Point<float> centre, float radius, juce::Colour colour, bool filled);
+    static void fillRoundedRect(juce::Rectangle<float> bounds, float radius);
+    static void fillCornerFan(juce::Point<float> centre, float radius, float startAngle, float endAngle);
     static void drawThickSegment(juce::Point<float> start, juce::Point<float> end, float width);
     static std::vector<LineSegment> flattenPath(const juce::Path& path);
     static void drawSegments(const std::vector<LineSegment>& segments, juce::Colour colour, float width);

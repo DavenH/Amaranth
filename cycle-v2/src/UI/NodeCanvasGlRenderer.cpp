@@ -61,6 +61,7 @@ void NodeCanvasGlRenderer::renderBackground(
     const float minorStep = 32.f * zoom;
     const float majorStep = minorStep * 4.f;
 
+    setColour(kBackground);
     fillRect(bounds);
     drawGridLines(bounds, pan, minorStep, kGridMinor);
     drawGridLines(bounds, pan, majorStep, kGridMajor);
@@ -129,6 +130,25 @@ void NodeCanvasGlRenderer::renderCable(
     drawCircle(dest, endpointRadius - 2.f * cableScale, colour.withAlpha(0.96f), true);
 }
 
+void NodeCanvasGlRenderer::renderNodeShell(
+        Rectangle<float> bounds,
+        float headerHeight,
+        float cornerRadius,
+        Colour bodyColour,
+        Colour headerColour) {
+    if (bounds.isEmpty() || headerHeight <= 0.f) {
+        return;
+    }
+
+    setColour(bodyColour);
+    fillRoundedRect(bounds, cornerRadius);
+
+    Rectangle<float> header = bounds.removeFromTop(jmin(headerHeight, bounds.getHeight()));
+    setColour(headerColour);
+    fillRoundedRect(header, cornerRadius);
+    fillRect(header.withTrimmedTop(jmax(0.f, header.getHeight() - cornerRadius)));
+}
+
 void NodeCanvasGlRenderer::setColour(Colour colour) {
     gl::glColor4f(
             colour.getFloatRed(),
@@ -138,12 +158,74 @@ void NodeCanvasGlRenderer::setColour(Colour colour) {
 }
 
 void NodeCanvasGlRenderer::fillRect(Rectangle<float> bounds) {
-    setColour(kBackground);
     gl::glBegin(gl::GL_QUADS);
     gl::glVertex2f(bounds.getX(), bounds.getY());
     gl::glVertex2f(bounds.getRight(), bounds.getY());
     gl::glVertex2f(bounds.getRight(), bounds.getBottom());
     gl::glVertex2f(bounds.getX(), bounds.getBottom());
+    gl::glEnd();
+}
+
+void NodeCanvasGlRenderer::fillRoundedRect(Rectangle<float> bounds, float radius) {
+    if (bounds.isEmpty()) {
+        return;
+    }
+
+    radius = jlimit(0.f, jmin(bounds.getWidth(), bounds.getHeight()) * 0.5f, radius);
+
+    if (radius <= 0.f) {
+        gl::glBegin(gl::GL_QUADS);
+        gl::glVertex2f(bounds.getX(), bounds.getY());
+        gl::glVertex2f(bounds.getRight(), bounds.getY());
+        gl::glVertex2f(bounds.getRight(), bounds.getBottom());
+        gl::glVertex2f(bounds.getX(), bounds.getBottom());
+        gl::glEnd();
+        return;
+    }
+
+    gl::glBegin(gl::GL_QUADS);
+    gl::glVertex2f(bounds.getX() + radius, bounds.getY());
+    gl::glVertex2f(bounds.getRight() - radius, bounds.getY());
+    gl::glVertex2f(bounds.getRight() - radius, bounds.getBottom());
+    gl::glVertex2f(bounds.getX() + radius, bounds.getBottom());
+
+    gl::glVertex2f(bounds.getX(), bounds.getY() + radius);
+    gl::glVertex2f(bounds.getRight(), bounds.getY() + radius);
+    gl::glVertex2f(bounds.getRight(), bounds.getBottom() - radius);
+    gl::glVertex2f(bounds.getX(), bounds.getBottom() - radius);
+    gl::glEnd();
+
+    fillCornerFan({ bounds.getX() + radius, bounds.getY() + radius },
+                  radius,
+                  MathConstants<float>::pi,
+                  MathConstants<float>::pi * 1.5f);
+    fillCornerFan({ bounds.getRight() - radius, bounds.getY() + radius },
+                  radius,
+                  MathConstants<float>::pi * 1.5f,
+                  MathConstants<float>::twoPi);
+    fillCornerFan({ bounds.getRight() - radius, bounds.getBottom() - radius },
+                  radius,
+                  0.f,
+                  MathConstants<float>::halfPi);
+    fillCornerFan({ bounds.getX() + radius, bounds.getBottom() - radius },
+                  radius,
+                  MathConstants<float>::halfPi,
+                  MathConstants<float>::pi);
+}
+
+void NodeCanvasGlRenderer::fillCornerFan(Point<float> centre, float radius, float startAngle, float endAngle) {
+    constexpr int segments = 8;
+
+    gl::glBegin(gl::GL_TRIANGLE_FAN);
+    gl::glVertex2f(centre.x, centre.y);
+
+    for (int i = 0; i <= segments; ++i) {
+        const float phase = startAngle + (endAngle - startAngle) * (float) i / (float) segments;
+        gl::glVertex2f(
+                centre.x + (float) dsp::FastMathApproximations::cos((double) phase) * radius,
+                centre.y + (float) dsp::FastMathApproximations::sin((double) phase) * radius);
+    }
+
     gl::glEnd();
 }
 

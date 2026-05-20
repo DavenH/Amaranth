@@ -23,6 +23,7 @@ constexpr float kPaletteHeaderHeight = 21.f;
 constexpr float kPaletteRowHeight = 30.f;
 constexpr bool kUseGlCanvasUnderlay = true;
 constexpr bool kUseGlCanvasEdges = true;
+constexpr bool kUseGlNodeShells = true;
 
 float cableScaleForZoom(float zoom) {
     return zoom / kCableReferenceZoom * kCableStrokeScale;
@@ -752,6 +753,9 @@ void NodeCanvas::renderOpenGL() {
         if (kUseGlCanvasEdges) {
             drawGlEdges();
         }
+        if (kUseGlNodeShells) {
+            drawGlNodeShells();
+        }
     } else {
         OpenGLHelpers::clear(kCanvasBackground);
     }
@@ -858,6 +862,25 @@ void NodeCanvas::drawGlEdges() {
                 edgeIndex == selectedEdgeIndex,
                 edge.attachment,
                 invalid);
+    }
+}
+
+void NodeCanvas::drawGlNodeShells() {
+    const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
+
+    for (const auto& node : graph.getNodes()) {
+        const Rectangle<float> bounds = toScreen(node.bounds);
+
+        if (!bounds.intersects(visibleArea)) {
+            continue;
+        }
+
+        glRenderer.renderNodeShell(
+                bounds,
+                42.f * zoom,
+                8.f * portScaleForZoom(zoom),
+                kNodeBackground,
+                kNodeHeader);
     }
 }
 
@@ -998,13 +1021,17 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     const float uiScale = portScaleForZoom(zoom);
     const float corner = 8.f * uiScale;
 
-    g.setColour(kNodeBackground);
-    g.fillRoundedRectangle(bounds, corner);
+    if (!kUseGlNodeShells) {
+        g.setColour(kNodeBackground);
+        g.fillRoundedRectangle(bounds, corner);
+    }
 
     auto header = bounds.removeFromTop(42.f * zoom);
-    g.setColour(kNodeHeader);
-    g.fillRoundedRectangle(header, corner);
-    g.fillRect(header.withTrimmedTop(header.getHeight() - corner));
+    if (!kUseGlNodeShells) {
+        g.setColour(kNodeHeader);
+        g.fillRoundedRectangle(header, corner);
+        g.fillRect(header.withTrimmedTop(header.getHeight() - corner));
+    }
 
     g.setColour(kNodeBorder);
     g.drawRoundedRectangle(toScreen(node.bounds), corner, 1.2f);
