@@ -2,6 +2,7 @@
 
 #include <array>
 #include <iterator>
+#include <limits>
 #include <utility>
 
 namespace CycleV2 {
@@ -1976,18 +1977,43 @@ bool NodeCanvas::findConnectablePortAt(
         Point<float> screenPosition,
         const PortAddress& source,
         PortAddress& result) const {
-    PortAddress candidate;
+    constexpr float snapExpansion = 20.f;
+    float bestDistance = std::numeric_limits<float>::max();
+    bool found {};
 
-    if (!findPortAt(screenPosition, candidate)) {
-        return false;
+    auto testPort = [&](const Node& node, const Port& port) {
+        const auto location = getPortLocation(node, port);
+
+        if (!location.bounds.expanded(snapExpansion).contains(screenPosition)) {
+            return;
+        }
+
+        const PortAddress candidate { node.id, port.id, port.input };
+
+        if (!canConnectPorts(source, candidate)) {
+            return;
+        }
+
+        const float distance = screenPosition.getDistanceFrom(location.centre);
+
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            result = candidate;
+            found = true;
+        }
+    };
+
+    for (const auto& node : graph.getNodes()) {
+        for (const auto& port : node.inputs) {
+            testPort(node, port);
+        }
+
+        for (const auto& port : node.outputs) {
+            testPort(node, port);
+        }
     }
 
-    if (!canConnectPorts(source, candidate)) {
-        return false;
-    }
-
-    result = candidate;
-    return true;
+    return found;
 }
 
 bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const {

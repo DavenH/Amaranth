@@ -10,9 +10,9 @@ namespace CycleV2 {
 namespace {
 
 const Colour kBackground  { 0xff101318 };
-const Colour kGridMajor   { 0x185b6370 };
-const Colour kGridMinor   { 0x082f363f };
-const Colour kTopGlow     { 0x28162531 };
+const Colour kGridMajor   { 0x065b6370 };
+const Colour kGridMinor   { 0x022f363f };
+const Colour kTopGlow     { 0x18162531 };
 const Colour kBottomGlow  { 0x00162531 };
 
 float wrappedGridStart(float pan, float step) {
@@ -49,6 +49,11 @@ void NodeCanvasGlRenderer::renderBackground(
 
     const int viewportWidth = roundToInt((float) width * renderingScale);
     const int viewportHeight = roundToInt((float) height * renderingScale);
+
+    gl::glDisable(gl::GL_DEPTH_TEST);
+    gl::glEnable(gl::GL_BLEND);
+    gl::glBlendFunc(gl::GL_SRC_ALPHA, gl::GL_ONE_MINUS_SRC_ALPHA);
+    gl::glDisable(gl::GL_LINE_SMOOTH);
 
     gl::glViewport(0, 0, viewportWidth, viewportHeight);
     gl::glMatrixMode(gl::GL_PROJECTION);
