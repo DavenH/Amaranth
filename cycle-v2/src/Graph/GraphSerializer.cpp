@@ -129,6 +129,23 @@ void normalizeLegacyStartNode(const String& kindId, Node& node) {
     }
 }
 
+void normalizeNodePresentation(Node& node) {
+    if (node.kind == NodeKind::Fft) {
+        node.title = "FFT";
+        node.subtitle = "1 cycle";
+    }
+
+    if (node.kind == NodeKind::VoiceContext
+            || node.kind == NodeKind::Fft
+            || node.kind == NodeKind::Ifft
+            || node.kind == NodeKind::Add
+            || node.kind == NodeKind::Multiply
+            || node.kind == NodeKind::Output) {
+        const auto naturalSize = naturalSizeForNode(node);
+        node.bounds.setSize(naturalSize.width, naturalSize.height);
+    }
+}
+
 String idForDomain(PortDomain domain) {
     switch (domain) {
         case PortDomain::DomainContext:              return "domain";
@@ -348,6 +365,7 @@ NodeGraph GraphSerializer::fromValueTree(const ValueTree& tree) const {
             }
 
             normalizeLegacyStartNode(kindId, node);
+            normalizeNodePresentation(node);
             graph.addNode(std::move(node));
         } else if (child.hasType(edgeType)) {
             graph.addEdge({

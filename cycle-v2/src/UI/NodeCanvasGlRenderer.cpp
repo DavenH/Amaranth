@@ -10,8 +10,8 @@ namespace CycleV2 {
 namespace {
 
 const Colour kBackground  { 0xff101318 };
-const Colour kGridMajor   { 0x245b6370 };
-const Colour kGridMinor   { 0x102f363f };
+const Colour kGridMajor   { 0x185b6370 };
+const Colour kGridMinor   { 0x082f363f };
 const Colour kTopGlow     { 0x28162531 };
 const Colour kBottomGlow  { 0x00162531 };
 

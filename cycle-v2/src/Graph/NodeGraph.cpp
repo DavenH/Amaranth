@@ -48,7 +48,7 @@ NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
         case NodeKind::ImageSource:                 return { 220.f, 90.f };
         case NodeKind::TrilinearWaveSurface:         return { 300.f, 150.f };
         case NodeKind::TrilinearMesh:                return { 260.f, 130.f };
-        case NodeKind::VoiceContext:                 return { 230.f, 105.f };
+        case NodeKind::VoiceContext:                 return { 0.f, 0.f };
         case NodeKind::Fft:                          return { 0.f, 0.f };
         case NodeKind::SpectralMagnitudeProcessor:   return { 240.f, 95.f };
         case NodeKind::SpectralPhaseProcessor:       return { 240.f, 95.f };
@@ -150,8 +150,8 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "fft",
             NodeKind::Fft,
-            "FFT: 1 Cycle",
-            "time -> mag + phase",
+            "FFT",
+            "1 cycle",
             { 930.f, 160.f, 220.f, 185.f },
             { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
             {
@@ -368,6 +368,18 @@ NodeNaturalSize naturalSizeForNode(const Node& node) {
 
     if (node.kind == NodeKind::Add || node.kind == NodeKind::Multiply) {
         return { 150.f, 118.f };
+    }
+
+    if (node.kind == NodeKind::VoiceContext) {
+        return { 250.f, 118.f };
+    }
+
+    if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
+        return { 168.f, 118.f };
+    }
+
+    if (node.kind == NodeKind::Output) {
+        return { 190.f, 160.f };
     }
 
     const float titleWidth = (float) node.title.length() * 8.5f;

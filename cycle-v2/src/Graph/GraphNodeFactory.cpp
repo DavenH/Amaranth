@@ -68,8 +68,8 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             break;
 
         case NodeKind::Fft:
-            node.title = "FFT: 1 Cycle";
-            node.subtitle = "time -> mag + phase";
+            node.title = "FFT";
+            node.subtitle = "1 cycle";
             node.parameters = {
                     { "cycleFrames", "Cycle Frames", "2048" }
             };

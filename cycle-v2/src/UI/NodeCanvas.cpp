@@ -176,9 +176,9 @@ Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds,
 
 Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
     const Rectangle<float> body = nodeBounds.withTrimmedTop(42.f * zoom);
-    const float width = jmin(nodeBounds.getWidth() - 34.f * zoom, 178.f * zoom);
-    return Rectangle<float>(width, 30.f * zoom)
-            .withCentre({ nodeBounds.getCentreX(), body.getY() + 22.f * zoom });
+    const float width = jmin(nodeBounds.getWidth() - 96.f * zoom, 64.f * zoom);
+    return Rectangle<float>(width, 28.f * zoom)
+            .withCentre({ nodeBounds.getCentreX(), body.getCentreY() });
 }
 
 Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
@@ -370,17 +370,31 @@ void drawPreviewMeters(
         Colour colour) {
     const float left = preview.primary.empty() ? 0.f : jlimit(0.f, 1.f, preview.primary.front());
     const float right = preview.secondary.empty() ? left : jlimit(0.f, 1.f, preview.secondary.front());
-    Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.28f, area.getHeight() * 0.18f);
-    const float width = meterArea.getWidth() * 0.32f;
+    Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.24f, area.getHeight() * 0.10f);
+    const float width = meterArea.getWidth() * 0.26f;
     auto leftMeter = meterArea.removeFromLeft(width);
     auto rightMeter = meterArea.removeFromRight(width);
 
-    g.setColour(colour.withAlpha(0.16f));
-    g.fillRoundedRectangle(leftMeter, 2.f);
-    g.fillRoundedRectangle(rightMeter, 2.f);
-    g.setColour(colour.withAlpha(0.72f));
-    g.fillRoundedRectangle(leftMeter.withTrimmedTop(leftMeter.getHeight() * (1.f - left)), 2.f);
-    g.fillRoundedRectangle(rightMeter.withTrimmedTop(rightMeter.getHeight() * (1.f - right)), 2.f);
+    auto drawMeter = [&](Rectangle<float> bounds, float level) {
+        g.setColour(colour.withAlpha(0.14f));
+        g.fillRoundedRectangle(bounds, 2.f);
+
+        Rectangle<float> fill = bounds.withTrimmedTop(bounds.getHeight() * (1.f - level));
+        const float yellowStart = bounds.getY() + bounds.getHeight() * 0.30f;
+
+        if (fill.getBottom() > yellowStart) {
+            g.setColour(colour.withAlpha(0.70f));
+            g.fillRoundedRectangle(fill.withTrimmedTop(jmax(0.f, yellowStart - fill.getY())), 2.f);
+        }
+
+        if (fill.getY() < yellowStart) {
+            g.setColour(Colour(0xfff4d35e).withAlpha(0.78f));
+            g.fillRoundedRectangle(fill.withBottom(jmin(fill.getBottom(), yellowStart)), 2.f);
+        }
+    };
+
+    drawMeter(leftMeter, left);
+    drawMeter(rightMeter, right);
 }
 
 void drawOperationLayoutIcon(Graphics& g, Rectangle<float> button, OperationPortLayout layout, Colour colour) {
@@ -1055,37 +1069,42 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     }
 
     auto nodeBounds = toScreen(node.bounds);
-    auto preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(1.f * zoom);
+    auto preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
 
-    if (node.kind == NodeKind::VoiceContext) {
-        preview = preview.withTrimmedTop(38.f * zoom);
+    if (node.kind != NodeKind::VoiceContext) {
+        drawPreview(g, node, preview);
     }
-
-    drawPreview(g, node, preview);
 
     if (node.kind == NodeKind::VoiceContext) {
         auto pill = voiceDomainButtonBounds(nodeBounds, zoom);
         const bool spectral = voiceDomainForNode(node) == "spectral";
-        const Rectangle<float> waveformHalf = pill.removeFromLeft(pill.getWidth() * 0.5f);
-        const Rectangle<float> spectralHalf = pill;
+        const float labelWidth = 66.f * zoom;
+        const Rectangle<float> waveformLabel(pill.getX() - labelWidth - 9.f * zoom, pill.getY(), labelWidth, pill.getHeight());
+        const Rectangle<float> spectralLabel(pill.getRight() + 9.f * zoom, pill.getY(), labelWidth, pill.getHeight());
         const Colour waveformColour = colourForDomain(PortDomain::TimeSignal);
         const Colour spectralColour = colourForDomain(PortDomain::SpectralMagnitudeSignal);
         const Colour activeColour = spectral ? spectralColour : waveformColour;
-        const Rectangle<float> activeHalf = spectral ? spectralHalf : waveformHalf;
+        const float knobSize = pill.getHeight() - 6.f * zoom;
+        const Rectangle<float> knob(knobSize, knobSize);
+        const Point<float> knobCentre(
+                spectral ? pill.getRight() - pill.getHeight() * 0.5f : pill.getX() + pill.getHeight() * 0.5f,
+                pill.getCentreY());
 
-        g.setColour(Colour(0xff0b1116).withAlpha(0.94f));
-        g.fillRoundedRectangle(waveformHalf.getUnion(spectralHalf), 8.f * uiScale);
-        g.setColour(activeColour.withAlpha(0.28f));
-        g.fillRoundedRectangle(activeHalf.reduced(2.f * zoom), 6.f * uiScale);
+        g.setFont(FontOptions(10.8f * zoom, Font::bold));
+        g.setColour(spectral ? kMutedText.withAlpha(0.70f) : kText);
+        g.drawText("Waveform", waveformLabel, Justification::centredRight);
+        g.setColour(spectral ? kText : kMutedText.withAlpha(0.70f));
+        g.drawText("Spectral", spectralLabel, Justification::centredLeft);
+        g.setColour(Colour(0xff091015).withAlpha(0.96f));
+        g.fillRoundedRectangle(pill, pill.getHeight() * 0.5f);
+        g.setColour(activeColour.withAlpha(0.22f));
+        g.fillRoundedRectangle(pill.reduced(2.f * zoom), pill.getHeight() * 0.5f);
         g.setColour(activeColour.withAlpha(0.82f));
-        g.drawRoundedRectangle(waveformHalf.getUnion(spectralHalf), 8.f * uiScale, 1.1f * uiScale);
-        g.setColour(kNodeBorder.withAlpha(0.72f));
-        g.drawVerticalLine((int) waveformHalf.getRight(), waveformHalf.getY() + 4.f * zoom, waveformHalf.getBottom() - 4.f * zoom);
-        g.setFont(FontOptions(10.5f * zoom, Font::bold));
-        g.setColour(spectral ? kMutedText : kText);
-        g.drawText("Waveform", waveformHalf, Justification::centred);
-        g.setColour(spectral ? kText : kMutedText);
-        g.drawText("Spectral", spectralHalf, Justification::centred);
+        g.drawRoundedRectangle(pill, pill.getHeight() * 0.5f, 1.2f * uiScale);
+        g.setColour(activeColour);
+        g.fillEllipse(knob.withCentre(knobCentre));
+        g.setColour(Colours::white.withAlpha(0.30f));
+        g.drawEllipse(knob.withCentre(knobCentre), 1.f * uiScale);
     }
 
     auto drawPort = [&](const Node& portNode, const Port& port) {
@@ -1141,15 +1160,19 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
     g.drawImage(cached.image, area);
 }
 
+Rectangle<float> previewContentArea(Rectangle<float> area) {
+    return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.12f);
+}
+
 void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area) {
     if (area.getWidth() < 20.f || area.getHeight() < 20.f) {
         return;
     }
 
     g.setColour(Colour(0xff0e1318));
-    g.fillRoundedRectangle(area, 5.f);
+    g.fillRoundedRectangle(area, 6.f * zoom);
     g.setColour(Colour(0xff26313d));
-    g.drawRoundedRectangle(area, 5.f, 1.f);
+    g.drawRoundedRectangle(area, 6.f * zoom, 1.f);
 
     if (const NodePreviewResult* preview = findPreviewResult(node.id)) {
         const Colour colour = previewColourForRole(preview->role, node);
@@ -1157,7 +1180,7 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
         if (preview->role == PreviewModuleRole::OutputMeters) {
             drawPreviewMeters(g, area, *preview, colour);
             g.setColour(kMutedText.withAlpha(0.72f));
-            g.setFont(FontOptions(jmin(18.f, area.getHeight() * 0.30f), Font::bold));
+            g.setFont(FontOptions(jmin(17.f, area.getHeight() * 0.24f), Font::bold));
             g.drawText("OUT", area, Justification::centredBottom);
             return;
         }
@@ -1170,10 +1193,11 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
         }
 
         if (!preview->primary.empty()) {
-            drawPreviewTrace(g, area.reduced(8.f), preview->primary, colour, zoom);
+            const Rectangle<float> content = previewContentArea(area);
+            drawPreviewTrace(g, content, preview->primary, colour, zoom);
 
             if (!preview->secondary.empty()) {
-                drawPreviewTrace(g, area.reduced(8.f), preview->secondary, colour.withAlpha(0.58f), zoom);
+                drawPreviewTrace(g, content, preview->secondary, colour.withAlpha(0.58f), zoom);
             }
 
             return;
@@ -1182,7 +1206,7 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
 
     if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
         const bool inverse = node.kind == NodeKind::Ifft;
-        const Rectangle<float> icon = area.reduced(jmax(8.f, area.getWidth() * 0.22f), area.getHeight() * 0.22f);
+        const Rectangle<float> icon = previewContentArea(area).reduced(8.f, 4.f);
         const Colour time = colourForDomain(PortDomain::TimeSignal);
         const Colour mag = colourForDomain(PortDomain::SpectralMagnitudeSignal);
         const Colour phase = colourForDomain(PortDomain::SpectralPhaseSignal);
@@ -1217,7 +1241,7 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
         }
 
         g.setColour(kMutedText.withAlpha(0.72f));
-        g.setFont(FontOptions(jmin(18.f, area.getHeight() * 0.30f), Font::bold));
+        g.setFont(FontOptions(jmin(15.f, area.getHeight() * 0.24f), Font::bold));
         g.drawText(inverse ? "IFFT" : "FFT", area, Justification::centredBottom);
         return;
     }
@@ -1240,19 +1264,20 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
 
     if (node.kind == NodeKind::Output) {
         const Colour colour = colourForDomain(PortDomain::TimeSignal);
-        Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.28f, area.getHeight() * 0.18f);
+        Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.24f, area.getHeight() * 0.10f);
         const float width = meterArea.getWidth() * 0.32f;
 
         g.setColour(colour.withAlpha(0.18f));
         g.fillRoundedRectangle(meterArea.removeFromLeft(width), 2.f);
         g.fillRoundedRectangle(meterArea.removeFromRight(width), 2.f);
         g.setColour(kMutedText.withAlpha(0.72f));
-        g.setFont(FontOptions(jmin(18.f, area.getHeight() * 0.30f), Font::bold));
+        g.setFont(FontOptions(jmin(17.f, area.getHeight() * 0.24f), Font::bold));
         g.drawText("OUT", area, Justification::centredBottom);
         return;
     }
 
     if (node.kind == NodeKind::TrilinearWaveSurface || node.kind == NodeKind::TrilinearMesh) {
+        area = previewContentArea(area);
         Path surface;
         for (int i = 0; i < 8; ++i) {
             float x0 = area.getX() + (float) i * area.getWidth() / 8.f;
@@ -1363,14 +1388,14 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
 
     if (node.kind == NodeKind::Add) {
         g.setColour(kMutedText.withAlpha(0.76f));
-        g.setFont(FontOptions(jmin(36.f, area.getHeight() * 0.58f), Font::bold));
+        g.setFont(FontOptions(jmin(48.f, area.getHeight() * 0.76f), Font::bold));
         g.drawText("+", area, Justification::centred);
         return;
     }
 
     if (node.kind == NodeKind::Multiply) {
         g.setColour(kMutedText.withAlpha(0.76f));
-        g.setFont(FontOptions(jmin(36.f, area.getHeight() * 0.58f), Font::bold));
+        g.setFont(FontOptions(jmin(48.f, area.getHeight() * 0.76f), Font::bold));
         g.drawText("x", area, Justification::centred);
         return;
     }
@@ -1430,7 +1455,7 @@ void NodeCanvas::drawMeshSurfacePreview(
     g.fillRoundedRectangle(area, 5.f * zoom);
 
     if (cached.image.isValid()) {
-        const Rectangle<float> surface = area.reduced(area.getWidth() * 0.025f, area.getHeight() * 0.06f);
+        const Rectangle<float> surface = previewContentArea(area);
         g.setImageResamplingQuality(Graphics::lowResamplingQuality);
         g.drawImage(cached.image, surface);
     }
