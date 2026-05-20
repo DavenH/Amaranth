@@ -139,7 +139,7 @@ Cycle2Application / PluginEditor
       -> NodeCanvasRenderer
       -> NodeInputRouter
       -> NodeSpriteCache
-      -> NodePreviewRenderer
+      -> NodeWidgetRegistry
     -> ProcessingNodeGraph
     -> GraphCompiler
     -> GraphExecutionPlan
@@ -347,6 +347,7 @@ The first graph implementation should define node schemas for:
 - envelope source nodes,
 - voice and pitch control nodes,
 - channel splitter and merger nodes,
+- spy/monitor nodes for explicit non-mutating signal visualization,
 - existing effects: unison, impulse modeller, waveshaper, convolution reverb,
   EQ, and delay with pan,
 - output node.
@@ -372,6 +373,20 @@ left raw; subsequent cycles fade their first half in with the sine half-ramp
 and fade the previous carried half out with the complementary ramp. Gridwise UI
 processing does not apply this carry because each displayed cycle column is an
 independent analysis/rendering result.
+
+Spy/monitor nodes are the preferred home for rich signal visualization such as
+spectrograms, unwrapped phasigrams, cyclograms, waveform scopes, meters, and
+vectorscopes. FFT and IFFT nodes remain compact transform nodes rather than
+owning expanded preview popups. A spy node compiles as a non-mutating
+pass-through/tap: its output domain and channel layout match its input exactly,
+and its available views are constrained by the signal type flowing through it.
+
+The first implementation should model spies as ordinary graph nodes. Adding a
+spy to a selected edge should be command sugar that replaces `A -> B` with
+`A -> Spy -> B`, preserving edge grammar, undo, selection, serialization,
+minimap participation, and compilation semantics. A true edge-owned attachment
+can be considered later as a presentation layer, but should not complicate the
+initial edge model.
 
 Domain and operation naming should stay separate. Generic operations are named
 by what they do (`Add`, `Multiply`, `Clamp`, `Mesh`, `Image`, `Wave`) rather
@@ -487,15 +502,44 @@ Implementation rules:
 
 ### Node Visuals
 
-Each node owns a preview region. The preview must update when upstream content
-that affects the node changes.
+Previewable nodes own a node UI module. The same module paints both the compact
+in-node view and the expanded editor view, with a paint mode deciding how much
+detail is shown. The compact preview is therefore not a separate data model from
+the expanded editor; it is the same node widget drawing a smaller, simplified
+view over the same node/UI state.
+
+The renderer owns canvas-level concerns such as clipping, transforms, zoom
+scale, node bounds, cable drawing, selection, and popup placement. Node widgets
+own node-specific body/editor drawing and interaction. Preview or editor data
+may live outside the widget, but the widget should receive direct references to
+the node model, UI-side analysis state, and any cached visual-DSP output it
+needs during update and paint. Avoid normalizing every node's visual state into
+a single `NodePreviewResult` or other generic preview DTO.
+
+Example ownership:
+
+```text
+Nodes/FFT/
+  FftNode
+  FftBlockwiseDsp
+  FftGridwiseDsp
+```
+
+`FftBlockwiseDsp` serves serial audio/render-block processing.
+`FftGridwiseDsp` serves UI/update-time analysis across independent cycle
+columns. Spy/monitor widgets can consume gridwise DSP output directly for
+spectrogram or phasigram views; they should not have to translate through a
+universal preview payload first.
+
+Each previewable node's compact view must update when upstream content that
+affects the node changes.
 
 Preview defaults:
 
 - trilinear mesh nodes show a live 3D surface preview,
 - 2D mesh nodes show the active slice or curve graph,
-- spectrum nodes may show spectrogram or cyclogram-style previews where those
-  views communicate the node's behavior better than a simple curve,
+- spy/monitor nodes show spectrogram, phasigram, cyclogram, waveform, meter, or
+  vector views according to the tapped signal type,
 - source nodes show the material they generate or expose; a trilinear mesh
   preview should use Yellow, Red, and Blue axes rather than pitch/morph/phase
   labels,
@@ -517,10 +561,10 @@ they match a defined node parameter. The visual style choices that should carry
 forward are the studio-canvas grid, rich but contained node previews, compact
 header controls, clear domain-colored ports, and cable-ready port affordances.
 
-Node previews should be generated from the same rasterizer or processing
-adapter used by graph execution where feasible. If a cheaper preview path is
-needed, it must be explicitly marked as preview-only and covered by tests that
-keep it semantically aligned.
+Node widgets should be backed by the same rasterizer or processing adapter used
+by graph execution where feasible. If a cheaper UI/update path is needed, it
+must be explicitly marked as preview-only and covered by tests that keep it
+semantically aligned.
 
 ### Expanded Editors
 
@@ -690,12 +734,13 @@ should remain stable.
 - `NodeUpdateGraph`: graph-driven invalidation and preview scheduling.
 - `NodeWorkspace`: top-level workspace component and mode owner.
 - `NodeCanvasOpenGLComponent`: single GL surface for the node editor.
-- `NodeCanvasRenderer`: draws canvas, nodes, edges, widgets, previews, and
-  expanded editors.
+- `NodeCanvasRenderer`: draws canvas, nodes, edges, selection, clipping, popup
+  placement, and delegates node bodies and expanded editors to node widgets.
 - `NodeSpriteCache`: texture-baked JUCE `Graphics` sprites and labels.
-- `NodePreviewRenderer`: creates node preview textures and summary geometry.
-- `NodeEditorAdapter`: wraps existing panel/interactor behavior for expanded
-  node editors.
+- `NodeWidgetRegistry`: resolves each previewable/editable node to a UI module
+  that can paint compact and expanded modes.
+- `NodeWidget`: node-specific UI module for body preview, expanded editor
+  drawing, and node-local interaction.
 
 ## Progressive Milestones
 
@@ -801,8 +846,8 @@ Acceptance:
 - trilinear mesh nodes display a surface preview,
 - 2D mesh nodes display a curve or slice preview,
 - compact non-preview nodes remain visually identifiable through iconography,
-- spectrogram or cyclogram-style preview experiments exist for spectral and
-  cycle-domain nodes,
+- spectrogram, phasigram, and cyclogram-style preview experiments exist on
+  spy/monitor nodes,
 - upstream parameter or mesh edits invalidate downstream previews,
 - reduced-detail previews are used during interaction,
 - full-detail previews restore after interaction settles.
