@@ -22,7 +22,7 @@ constexpr float kPaletteWidth = 158.f;
 constexpr float kPaletteHeaderHeight = 21.f;
 constexpr float kPaletteRowHeight = 30.f;
 constexpr bool kUseGlCanvasUnderlay = true;
-constexpr bool kUseGlCanvasEdges = true;
+constexpr bool kUseGlCanvasEdges = false;
 constexpr bool kUseGlNodeShells = false;
 
 float cableScaleForZoom(float zoom) {
