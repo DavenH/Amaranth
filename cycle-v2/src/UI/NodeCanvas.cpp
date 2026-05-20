@@ -1090,6 +1090,31 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
 }
 
 void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> area) {
+    const int width = roundToInt(area.getWidth());
+    const int height = roundToInt(area.getHeight());
+
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    CachedPreviewSprite& cached = cachedPreviewSpriteFor(node.id);
+
+    if (!cached.image.isValid()
+            || cached.width != width
+            || cached.height != height) {
+        cached.image = Image(Image::ARGB, width, height, true);
+        cached.width = width;
+        cached.height = height;
+
+        Graphics spriteGraphics(cached.image);
+        drawPreviewUncached(spriteGraphics, node, { 0.f, 0.f, (float) width, (float) height });
+    }
+
+    g.setImageResamplingQuality(Graphics::mediumResamplingQuality);
+    g.drawImage(cached.image, area);
+}
+
+void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area) {
     if (area.getWidth() < 20.f || area.getHeight() < 20.f) {
         return;
     }
@@ -1338,6 +1363,17 @@ NodeCanvas::CachedHeatmap& NodeCanvas::cachedHeatmapFor(const String& nodeId) {
 
     heatmapCache.emplace_back(nodeId, CachedHeatmap {});
     return heatmapCache.back().second;
+}
+
+NodeCanvas::CachedPreviewSprite& NodeCanvas::cachedPreviewSpriteFor(const String& nodeId) {
+    for (auto& entry : previewSpriteCache) {
+        if (entry.first == nodeId) {
+            return entry.second;
+        }
+    }
+
+    previewSpriteCache.emplace_back(nodeId, CachedPreviewSprite {});
+    return previewSpriteCache.back().second;
 }
 
 void NodeCanvas::drawMeshSurfacePreview(
@@ -2259,6 +2295,7 @@ Point<float> NodeCanvas::paletteCreationWorldPosition(Point<float> paletteClickP
 
 void NodeCanvas::refreshCompiledState() {
     heatmapCache.clear();
+    previewSpriteCache.clear();
     compileResult = GraphCompiler().compile(graph);
     runtimeTrace = {};
     previewResult = {};

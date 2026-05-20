@@ -42,6 +42,12 @@ private:
         int columns {};
     };
 
+    struct CachedPreviewSprite {
+        Image image;
+        int width {};
+        int height {};
+    };
+
     OpenGLContext openGLContext;
     NodeCanvasGlRenderer glRenderer;
     NodeGraph graph;
@@ -51,6 +57,7 @@ private:
     std::vector<String> undoStack;
     std::vector<String> redoStack;
     std::vector<std::pair<String, CachedHeatmap>> heatmapCache;
+    std::vector<std::pair<String, CachedPreviewSprite>> previewSpriteCache;
 
     float zoom { 0.58f };
     Point<float> pan { 34.f, 38.f };
@@ -79,8 +86,10 @@ private:
     void drawNodes(Graphics& g);
     void drawNode(Graphics& g, const Node& node);
     void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
+    void drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area);
     void drawMeshSurfacePreview(Graphics& g, const Node& node, Rectangle<float> area, const NodePreviewResult& preview);
     CachedHeatmap& cachedHeatmapFor(const String& nodeId);
+    CachedPreviewSprite& cachedPreviewSpriteFor(const String& nodeId);
     void drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed);
     void drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colour, int seed);
     void drawEnvelopeCurve(Graphics& g, Rectangle<float> area);
