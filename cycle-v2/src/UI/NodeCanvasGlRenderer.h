@@ -16,11 +16,35 @@ public:
             float renderingScale,
             float zoom,
             juce::Point<float> pan);
+    void renderCable(
+            const juce::Path& path,
+            juce::Point<float> source,
+            juce::Point<float> dest,
+            juce::Colour colour,
+            float cableScale,
+            bool selected,
+            bool attachment,
+            bool invalid);
 
 private:
+    struct LineSegment {
+        juce::Point<float> start;
+        juce::Point<float> end;
+    };
+
     static void setColour(juce::Colour colour);
     static void fillRect(juce::Rectangle<float> bounds);
     static void drawLine(juce::Point<float> start, juce::Point<float> end);
+    static void drawCircle(juce::Point<float> centre, float radius, juce::Colour colour, bool filled);
+    static void drawThickSegment(juce::Point<float> start, juce::Point<float> end, float width);
+    static std::vector<LineSegment> flattenPath(const juce::Path& path);
+    static void drawSegments(const std::vector<LineSegment>& segments, juce::Colour colour, float width);
+    static void drawDashedSegments(
+            const std::vector<LineSegment>& segments,
+            juce::Colour colour,
+            float width,
+            float dashLength,
+            float gapLength);
     static void drawGridLines(
             juce::Rectangle<float> bounds,
             juce::Point<float> pan,

@@ -65,6 +65,7 @@ private:
     void timerCallback() override;
 
     void drawGrid(Graphics& g);
+    void drawGlEdges();
     void drawEdges(Graphics& g);
     void drawConnectionPreview(Graphics& g);
     void drawNodes(Graphics& g);

@@ -22,6 +22,7 @@ constexpr float kPaletteWidth = 158.f;
 constexpr float kPaletteHeaderHeight = 21.f;
 constexpr float kPaletteRowHeight = 30.f;
 constexpr bool kUseGlCanvasUnderlay = true;
+constexpr bool kUseGlCanvasEdges = true;
 
 float cableScaleForZoom(float zoom) {
     return zoom / kCableReferenceZoom * kCableStrokeScale;
@@ -728,6 +729,9 @@ void NodeCanvas::newOpenGLContextCreated() {
 void NodeCanvas::renderOpenGL() {
     if (kUseGlCanvasUnderlay) {
         glRenderer.renderBackground(getWidth(), getHeight(), (float) openGLContext.getRenderingScale(), zoom, pan);
+        if (kUseGlCanvasEdges) {
+            drawGlEdges();
+        }
     } else {
         OpenGLHelpers::clear(kCanvasBackground);
     }
@@ -790,7 +794,58 @@ void NodeCanvas::drawGrid(Graphics& g) {
     g.fillRect(getLocalBounds());
 }
 
+void NodeCanvas::drawGlEdges() {
+    const auto& edges = graph.getEdges();
+    const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
+
+    for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
+        const auto& edge = edges[(size_t) edgeIndex];
+        const Node* sourceNode = findNode(edge.sourceNodeId);
+        const Node* destNode = findNode(edge.destNodeId);
+
+        if (sourceNode == nullptr || destNode == nullptr) {
+            continue;
+        }
+
+        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
+        const Port* destPort = findPort(*destNode, edge.destPortId, true);
+
+        if (sourcePort == nullptr || destPort == nullptr) {
+            continue;
+        }
+
+        const Point<float> source = getPortLocation(*sourceNode, *sourcePort).centre;
+        const Point<float> dest = getPortLocation(*destNode, *destPort).centre;
+        const Path cable = createCablePath(source, dest, edge.attachment);
+
+        if (!cable.getBounds().intersects(visibleArea)) {
+            continue;
+        }
+
+        Colour colour = colourForDomain(displayDomainForEdge(edge));
+        const bool invalid = edgeHasValidationIssue(edge);
+
+        if (invalid) {
+            colour = Colour(0xffff5a5f);
+        }
+
+        glRenderer.renderCable(
+                cable,
+                source,
+                dest,
+                colour,
+                cableScaleForZoom(zoom),
+                edgeIndex == selectedEdgeIndex,
+                edge.attachment,
+                invalid);
+    }
+}
+
 void NodeCanvas::drawEdges(Graphics& g) {
+    if (kUseGlCanvasEdges) {
+        return;
+    }
+
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
 

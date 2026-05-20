@@ -75,6 +75,60 @@ void NodeCanvasGlRenderer::renderBackground(
     gl::glEnd();
 }
 
+void NodeCanvasGlRenderer::renderCable(
+        const Path& path,
+        Point<float> source,
+        Point<float> dest,
+        Colour colour,
+        float cableScale,
+        bool selected,
+        bool attachment,
+        bool invalid) {
+    const auto segments = flattenPath(path);
+
+    if (segments.empty()) {
+        return;
+    }
+
+    if (attachment) {
+        drawDashedSegments(
+                segments,
+                colour.withAlpha(selected ? 0.46f : 0.32f),
+                (selected ? 10.f : 7.f) * cableScale,
+                8.f * cableScale,
+                7.f * cableScale);
+        drawDashedSegments(
+                segments,
+                colour.withAlpha(0.92f),
+                (selected ? 3.f : 2.f) * cableScale,
+                8.f * cableScale,
+                7.f * cableScale);
+    } else {
+        drawSegments(
+                segments,
+                colour.withAlpha(selected ? 0.28f : 0.18f),
+                (selected ? 12.f : 9.f) * cableScale);
+        drawSegments(
+                segments,
+                colour.withAlpha(0.92f),
+                (selected ? 4.f : 3.f) * cableScale);
+
+        if (invalid) {
+            drawDashedSegments(
+                    segments,
+                    Colours::white.withAlpha(0.58f),
+                    1.4f * cableScale,
+                    5.f * cableScale,
+                    6.f * cableScale);
+        }
+    }
+
+    const float endpointRadius = (selected ? 7.f : 5.5f) * cableScale;
+    drawCircle(source, endpointRadius, kBackground.withAlpha(0.92f), true);
+    drawCircle(source, endpointRadius, colour.withAlpha(0.96f), false);
+    drawCircle(dest, endpointRadius - 2.f * cableScale, colour.withAlpha(0.96f), true);
+}
+
 void NodeCanvasGlRenderer::setColour(Colour colour) {
     gl::glColor4f(
             colour.getFloatRed(),
@@ -97,6 +151,132 @@ void NodeCanvasGlRenderer::drawLine(Point<float> start, Point<float> end) {
     gl::glBegin(gl::GL_LINES);
     gl::glVertex2f(start.x, start.y);
     gl::glVertex2f(end.x, end.y);
+    gl::glEnd();
+}
+
+void NodeCanvasGlRenderer::drawCircle(Point<float> centre, float radius, Colour colour, bool filled) {
+    if (radius <= 0.f) {
+        return;
+    }
+
+    setColour(colour);
+
+    if (filled) {
+        gl::glBegin(gl::GL_TRIANGLE_FAN);
+        gl::glVertex2f(centre.x, centre.y);
+    } else {
+        gl::glLineWidth(jmax(1.f, radius * 0.24f));
+        gl::glBegin(gl::GL_LINE_LOOP);
+    }
+
+    constexpr int segments = 28;
+    for (int i = 0; i <= segments; ++i) {
+        const float phase = MathConstants<float>::twoPi * (float) i / (float) segments;
+        gl::glVertex2f(
+                centre.x + (float) dsp::FastMathApproximations::cos((double) phase) * radius,
+                centre.y + (float) dsp::FastMathApproximations::sin((double) phase) * radius);
+    }
+
+    gl::glEnd();
+}
+
+void NodeCanvasGlRenderer::drawThickSegment(Point<float> start, Point<float> end, float width) {
+    const Point<float> vector = end - start;
+    const float length = vector.getDistanceFromOrigin();
+
+    if (length <= 0.f || width <= 0.f) {
+        return;
+    }
+
+    const Point<float> direction(vector.x / length, vector.y / length);
+    const Point<float> normal(-direction.y * width * 0.5f, direction.x * width * 0.5f);
+    start -= direction * width * 0.22f;
+    end += direction * width * 0.22f;
+
+    gl::glVertex2f(start.x + normal.x, start.y + normal.y);
+    gl::glVertex2f(end.x + normal.x, end.y + normal.y);
+    gl::glVertex2f(end.x - normal.x, end.y - normal.y);
+    gl::glVertex2f(start.x - normal.x, start.y - normal.y);
+}
+
+std::vector<NodeCanvasGlRenderer::LineSegment> NodeCanvasGlRenderer::flattenPath(const Path& path) {
+    std::vector<LineSegment> segments;
+    PathFlatteningIterator iter(path);
+
+    while (iter.next()) {
+        segments.push_back({
+                { iter.x1, iter.y1 },
+                { iter.x2, iter.y2 }
+        });
+    }
+
+    return segments;
+}
+
+void NodeCanvasGlRenderer::drawSegments(
+        const std::vector<LineSegment>& segments,
+        Colour colour,
+        float width) {
+    if (segments.empty()) {
+        return;
+    }
+
+    setColour(colour);
+    gl::glBegin(gl::GL_QUADS);
+
+    for (const auto& segment : segments) {
+        drawThickSegment(segment.start, segment.end, width);
+    }
+
+    gl::glEnd();
+}
+
+void NodeCanvasGlRenderer::drawDashedSegments(
+        const std::vector<LineSegment>& segments,
+        Colour colour,
+        float width,
+        float dashLength,
+        float gapLength) {
+    if (segments.empty() || dashLength <= 0.f) {
+        return;
+    }
+
+    const float period = dashLength + jmax(0.f, gapLength);
+    float distance = 0.f;
+
+    setColour(colour);
+    gl::glBegin(gl::GL_QUADS);
+
+    for (const auto& segment : segments) {
+        const Point<float> vector = segment.end - segment.start;
+        const float length = vector.getDistanceFromOrigin();
+
+        if (length <= 0.f) {
+            continue;
+        }
+
+        float local = 0.f;
+
+        while (local < length) {
+            const float pattern = std::fmod(distance + local, period);
+            const bool drawingDash = pattern < dashLength;
+            const float remainingInPattern = drawingDash ? dashLength - pattern : period - pattern;
+            const float run = jmin(length - local, remainingInPattern);
+
+            if (drawingDash && run > 0.f) {
+                const float startT = local / length;
+                const float endT = (local + run) / length;
+                const Point<float> start = segment.start + vector * startT;
+                const Point<float> end = segment.start + vector * endT;
+                drawThickSegment(start, end, width);
+            }
+
+            local += jmax(0.5f, run);
+        }
+
+        distance += length;
+    }
+
     gl::glEnd();
 }
 
