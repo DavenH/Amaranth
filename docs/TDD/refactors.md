@@ -34,3 +34,21 @@ Suggested direction:
 
 This should be addressed before hardening the Cycle 2 runtime for realtime
 audio-thread execution.
+
+## Cycle 2 Trimesh Rasterizer Compatibility Boundary
+
+`VoiceMeshRasterizer` is still defined under `cycle/` and depends on Cycle 1.x
+application state such as `SingletonAccessor`, `CycleState`, and legacy voice
+chaining ownership. Cycle 2 currently links `AmaranthLib`, so its first trimesh
+node backend should reuse `Rasterization::TrilinearMeshRasterizer` from `lib/`
+as the stable shared core.
+
+Suggested direction:
+
+- Move the reusable voice-chain behavior behind a library-level façade that
+  does not depend on Cycle 1.x app singletons.
+- Keep Cycle 2 node DSP modules under `cycle-v2/src/Nodes/Trimesh/`.
+- Preserve separate blockwise audio and gridwise UI/update surfaces, matching
+  the FFT folder pattern.
+- Let the node model own mesh data and pass explicit mesh/context references to
+  DSP and widget modules instead of reaching through `MeshLibrary`.

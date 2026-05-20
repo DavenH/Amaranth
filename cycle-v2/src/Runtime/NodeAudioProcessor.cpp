@@ -2,6 +2,12 @@
 
 #include "NodeAudioProcessor.h"
 #include "../Nodes/FFT/FftBlockwiseDsp.h"
+#include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
+#include "../Nodes/Trimesh/TrimeshMeshFactory.h"
+
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/Vertex.h>
+#include <Obj/MorphPosition.h>
 
 namespace CycleV2 {
 
@@ -91,9 +97,50 @@ float parameterFloat(
     return fallback;
 }
 
+String parameterString(
+        const std::vector<NodeParameter>& parameters,
+        const String& id,
+        const String& fallback) {
+    for (const auto& parameter : parameters) {
+        if (parameter.id == id) {
+            return parameter.value;
+        }
+    }
+
+    return fallback;
+}
+
+int primaryAxisFromParameter(const String& axisName) {
+    if (axisName == "red") {
+        return Vertex::Red;
+    }
+
+    if (axisName == "blue") {
+        return Vertex::Blue;
+    }
+
+    return Vertex::Time;
+}
+
+MorphPosition meshMorphFromParameters(const std::vector<NodeParameter>& parameters) {
+    return {
+            parameterFloat(parameters, "yellow", 0.5f),
+            parameterFloat(parameters, "red", 0.5f),
+            parameterFloat(parameters, "blue", 0.5f)
+    };
+}
+
 class FixedRoleProcessor final : public NodeAudioProcessor {
 public:
-    explicit FixedRoleProcessor(AudioModuleRole roleToUse) : processorRole(roleToUse) {}
+    explicit FixedRoleProcessor(AudioModuleRole roleToUse) :
+            processorRole(roleToUse)
+        ,   defaultMesh(TrimeshMeshFactory::createDefaultMesh()) {}
+
+    ~FixedRoleProcessor() override {
+        if (defaultMesh != nullptr) {
+            defaultMesh->destroy();
+        }
+    }
 
     AudioModuleRole role() const override { return processorRole; }
 
@@ -177,8 +224,18 @@ private:
             return;
         }
 
-        const float denominator = context.frameCount > 1 ? (float) (context.frameCount - 1) : 1.f;
-        outputBuffer(context).ramp(-1.f, 2.f / denominator);
+        AudioOutputPort outputPort;
+        if (!context.outputPorts.empty()) {
+            outputPort = context.outputPorts.front();
+        } else {
+            outputPort = { "out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo };
+        }
+
+        trimeshDsp.setMesh(defaultMesh.get());
+        trimeshDsp.setMorphPosition(meshMorphFromParameters(context.parameters));
+        trimeshDsp.setPrimaryViewAxis(primaryAxisFromParameter(
+                parameterString(context.parameters, "primaryAxis", "yellow")));
+        trimeshDsp.renderCycle(context.frameCount, outputPort.domain, outputPort.channelLayout, context.output);
         publishSingleOutput(context);
     }
 
@@ -294,6 +351,8 @@ private:
 
     AudioModuleRole processorRole {};
     mutable FftBlockwiseDsp fftDsp;
+    mutable TrimeshBlockwiseDsp trimeshDsp;
+    std::unique_ptr<Mesh> defaultMesh;
 };
 
 }

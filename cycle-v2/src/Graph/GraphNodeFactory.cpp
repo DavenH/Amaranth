@@ -52,6 +52,12 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::TrilinearMesh:
             node.title = "Trilinear Mesh";
             node.subtitle = "mesh operand";
+            node.parameters = {
+                    { "yellow", "Yellow", "0.5" },
+                    { "red", "Red", "0.5" },
+                    { "blue", "Blue", "0.5" },
+                    { "primaryAxis", "Primary Axis", "yellow" }
+            };
             node.inputs = {
                     input("context", "Context", PortDomain::DomainContext),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
