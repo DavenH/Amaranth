@@ -659,7 +659,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     draggingNode = false;
     nodeDragUndoPushed = false;
 
-    if (findPortAt(event.position, destPort)) {
+    if (findConnectablePortAt(event.position, connectingPort, destPort)) {
         const String beforeEdit = GraphSerializer().toXmlString(graph);
         auto result = GraphEditor().connect(graph, connectingPort, destPort);
 
