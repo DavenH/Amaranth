@@ -5,7 +5,10 @@
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshNodeModel.h"
+#include "../src/Nodes/Trimesh/TrimeshPanel3D.h"
 #include "../src/Nodes/Trimesh/TrimeshPanelDataSource.h"
+
+#include <App/SingletonRepo.h>
 
 #include <algorithm>
 
@@ -189,4 +192,29 @@ TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", 
     REQUIRE(columns.back().x == Catch::Approx(1.f));
     REQUIRE(columns.front().get() == columnArray.get());
     REQUIRE(columns.back().get() == columnArray.get() + 64);
+}
+
+TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever", "[cycle-v2][nodes][trimesh]") {
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {},
+            {},
+            {}
+    };
+    SingletonRepo repo;
+    TrimeshNodeModel model;
+    TrimeshPanelDataSource source;
+    TrimeshPanel3D panel(&repo, source);
+
+    model.syncFromNode(node);
+    source.rebuild(model, 12, 4);
+
+    REQUIRE(panel.shouldDrawGrid());
+    REQUIRE(panel.getColumns().size() == 4);
+    REQUIRE(panel.getColumns().front().size() == 12);
+    REQUIRE(&panel.getGridLock() == &source.getGridLock());
 }
