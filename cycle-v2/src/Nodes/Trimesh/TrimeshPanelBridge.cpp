@@ -88,7 +88,20 @@ void TrimeshPanelBridge::updateRasterizer() {
 
     rasterizer.setWrapsEnds(true);
     rasterizer.setMesh(&model.getMeshForPanel());
+    interactor2D.setMesh(&model.getMeshForPanel());
+    interactor3D.setMesh(&model.getMeshForPanel());
     rasterizer.updateWaveform();
+
+    if (Component* component = getPanel3DComponentIfCreated()) {
+        interactor3D.performUpdate(Update);
+        panel3D.bakeTexturesNextRepaint();
+        component->repaint();
+    }
+
+    if (Component* component = getPanel2DComponentIfCreated()) {
+        interactor2D.performUpdate(Update);
+        component->repaint();
+    }
 }
 
 Component* TrimeshPanelBridge::getPanel3DComponent() {

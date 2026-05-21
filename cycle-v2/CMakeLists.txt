@@ -40,6 +40,8 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftGridwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshBlockwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshGridwiseDsp.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshInteractor2D.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshInteractor3D.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshMeshFactory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshNodeModel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshPanelBridge.cpp"
@@ -66,7 +68,7 @@ elseif(APPLE)
     list(APPEND BASE_DEFINITIONS MAC=1)
 endif()
 
-add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${APP_SOURCES})
+add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${APP_SOURCES} ${NODE_SOURCES})
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     ${BASE_DEFINITIONS}

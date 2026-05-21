@@ -2,12 +2,12 @@
 
 #include "TrimeshPanel2D.h"
 #include "TrimeshPanel3D.h"
+#include "TrimeshInteractor2D.h"
+#include "TrimeshInteractor3D.h"
 
 #include <App/SingletonRepo.h>
 #include <App/Settings.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
-#include <Inter/Interactor2D.h>
-#include <Inter/Interactor3D.h>
 #include <Inter/MorphPositioner.h>
 #include <UI/IConsole.h>
 
@@ -72,8 +72,8 @@ private:
     TrimeshNodeModel model;
     TrimeshPanelDataSource dataSource;
     Rasterization::TrilinearMeshRasterizer rasterizer;
-    Interactor2D interactor2D;
-    Interactor3D interactor3D;
+    TrimeshInteractor2D interactor2D;
+    TrimeshInteractor3D interactor3D;
     TrimeshPanel2D panel2D;
     TrimeshPanel3D panel3D;
     uint64_t lastSyncedRevision { UINT64_MAX };
