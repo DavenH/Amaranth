@@ -35,7 +35,7 @@ public:
     Component* getPanel3DComponentIfCreated();
     Component* getPanel2DComponent();
     Component* getPanel2DComponentIfCreated();
-    void activateExpandedPanels();
+    void activateExpandedPanels(bool refresh3DGeometry);
 
 private:
     class NullConsole : public IConsole {

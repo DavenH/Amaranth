@@ -1542,12 +1542,16 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
 
     const Rectangle<int> bounds = TrimeshWidget::expandedGridPanelContentBounds(content).toNearestInt();
     const Rectangle<int> waveBounds = TrimeshWidget::expandedWavePanelContentBounds(content).toNearestInt();
+    const bool needs3DShowRefresh = component->getParentComponent() != this || !component->isVisible();
+    const bool needs2DShowRefresh = waveComponent->getParentComponent() != this || !waveComponent->isVisible();
+    const bool needs3DBoundsRefresh = component->getBounds() != bounds;
+    const bool needs2DBoundsRefresh = waveComponent->getBounds() != waveBounds;
 
     if (component->getParentComponent() != this) {
         addAndMakeVisible(component);
     }
 
-    if (component->getBounds() != bounds) {
+    if (needs3DBoundsRefresh) {
         component->setBounds(bounds);
     }
 
@@ -1561,7 +1565,7 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
         addAndMakeVisible(waveComponent);
     }
 
-    if (waveComponent->getBounds() != waveBounds) {
+    if (needs2DBoundsRefresh) {
         waveComponent->setBounds(waveBounds);
     }
 
@@ -1570,7 +1574,10 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
     }
 
     waveComponent->toFront(false);
-    widget.activateExpandedPanels();
+
+    if (needs3DShowRefresh || needs2DShowRefresh || needs3DBoundsRefresh || needs2DBoundsRefresh) {
+        widget.activateExpandedPanels(needs3DShowRefresh || needs3DBoundsRefresh);
+    }
 }
 
 void NodeCanvas::hideExpandedEditorHosts() {

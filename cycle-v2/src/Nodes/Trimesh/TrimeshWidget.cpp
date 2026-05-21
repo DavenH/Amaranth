@@ -157,8 +157,8 @@ Component* TrimeshWidget::getExpandedPanel2DComponentIfCreated() {
     return bridge.getPanel2DComponentIfCreated();
 }
 
-void TrimeshWidget::activateExpandedPanels() {
-    bridge.activateExpandedPanels();
+void TrimeshWidget::activateExpandedPanels(bool refresh3DGeometry) {
+    bridge.activateExpandedPanels(refresh3DGeometry);
 }
 
 bool TrimeshWidget::findMorphControlAt(

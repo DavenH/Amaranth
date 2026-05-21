@@ -122,11 +122,6 @@ Component* TrimeshPanelBridge::getPanel3DComponent() {
         panelInitialised = true;
     }
 
-    if (auto* component = panel3D.getOpenglPanel()) {
-        component->activateContext();
-        component->repaint();
-    }
-
     return panel3D.getOpenglPanel();
 }
 
@@ -140,11 +135,6 @@ Component* TrimeshPanelBridge::getPanel2DComponent() {
         panel2DInitialised = true;
     }
 
-    if (auto* component = panel2D.getOpenglPanel()) {
-        component->activateContext();
-        component->repaint();
-    }
-
     return panel2D.getOpenglPanel();
 }
 
@@ -152,9 +142,14 @@ Component* TrimeshPanelBridge::getPanel2DComponentIfCreated() {
     return panel2DInitialised ? panel2D.getOpenglPanel() : nullptr;
 }
 
-void TrimeshPanelBridge::activateExpandedPanels() {
+void TrimeshPanelBridge::activateExpandedPanels(bool refresh3DGeometry) {
     if (auto* component = panelInitialised ? panel3D.getOpenglPanel() : nullptr) {
         component->activateContext();
+
+        if (refresh3DGeometry) {
+            interactor3D.updateIntercepts();
+        }
+
         panel3D.bakeTexturesNextRepaint();
         component->repaint();
     }
