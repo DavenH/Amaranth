@@ -64,7 +64,8 @@ private:
         int primaryDimension {};
     };
 
-    void updateRasterizer();
+    void refreshAfterMeshEdit();
+    void updateRasterizer(bool refresh3DGeometry);
 
     SingletonRepo repo;
     NullConsole console;

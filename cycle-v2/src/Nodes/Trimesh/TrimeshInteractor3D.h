@@ -2,6 +2,8 @@
 
 #include <Inter/Interactor3D.h>
 
+#include <functional>
+
 class Mesh;
 
 namespace CycleV2 {
@@ -16,8 +18,12 @@ public:
     void reduceDetail() override {}
     void restoreDetail() override {}
     void doGlobalUIUpdate(bool) override { performUpdate(Update); }
+    void mouseUp(const MouseEvent& event) override;
+
+    void setMeshEditedCallback(std::function<void()> callback);
 
 private:
+    std::function<void()> meshEditedCallback;
     Mesh* mesh {};
 };
 

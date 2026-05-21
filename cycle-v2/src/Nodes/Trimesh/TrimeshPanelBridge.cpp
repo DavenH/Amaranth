@@ -40,6 +40,8 @@ TrimeshPanelBridge::TrimeshPanelBridge() :
     interactor3D.init();
     interactor2D.setRasterizer(&rasterizer);
     interactor3D.setRasterizer(&rasterizer);
+    interactor2D.setMeshEditedCallback([this] { refreshAfterMeshEdit(); });
+    interactor3D.setMeshEditedCallback([this] { refreshAfterMeshEdit(); });
     panel2D.setInteractor(&interactor2D);
     panel3D.setInteractor(&interactor3D);
 }
@@ -67,13 +69,18 @@ void TrimeshPanelBridge::syncFromNode(
     }
 
     dataSource.rebuild(model, rows, columns);
-    updateRasterizer();
+    updateRasterizer(false);
     lastSyncedRevision = model.getRevision();
     lastRows = rows;
     lastColumns = columns;
 }
 
-void TrimeshPanelBridge::updateRasterizer() {
+void TrimeshPanelBridge::refreshAfterMeshEdit() {
+    dataSource.rebuild(model, lastRows, lastColumns);
+    updateRasterizer(true);
+}
+
+void TrimeshPanelBridge::updateRasterizer(bool refresh3DGeometry) {
     auto& request = rasterizer.getRequest();
     request.cyclic = true;
     request.xMinimum = -0.05f;
@@ -81,7 +88,7 @@ void TrimeshPanelBridge::updateRasterizer() {
     request.morph = model.getMorphPosition();
     request.primaryViewDimension = model.getPrimaryViewAxis();
     request.dims = interactor2D.dims;
-    request.scalingMode = Rasterization::PointScalingMode::Bipolar;
+    request.scalingMode = Rasterization::PointScalingMode::Unipolar;
     request.calcDepthDimensions = true;
     request.lowResCurves = false;
     request.batchMode = true;
@@ -93,7 +100,10 @@ void TrimeshPanelBridge::updateRasterizer() {
     rasterizer.updateWaveform();
 
     if (Component* component = getPanel3DComponentIfCreated()) {
-        interactor3D.performUpdate(Update);
+        if (refresh3DGeometry) {
+            interactor3D.updateIntercepts();
+        }
+
         panel3D.bakeTexturesNextRepaint();
         component->repaint();
     }

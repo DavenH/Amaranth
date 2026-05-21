@@ -10,6 +10,8 @@ TrimeshPanel3D::TrimeshPanel3D(SingletonRepo* repo, TrimeshPanelDataSource& sour
     ,   dataSource         (source) {
     Image blue = PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
     gradient.read(blue, true, false);
+    volumeScale = 0.48f;
+    volumeTrans = 0.02f;
     guideCurveApplicable = false;
     speedApplicable = false;
     pendingDeformUpdate = false;
