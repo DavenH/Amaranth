@@ -615,6 +615,11 @@ Trilinear mesh implementation plan:
 - render the morph panel and vertex parameters with Cycle 1.x semantics but
   with more latitude in layout; expected parameters include amplitude, phase,
   sharpness, and component curve controls for selected mesh elements,
+- treat the current Cycle 2 implementation of `selectedVertexIndex` plus
+  `vertex.*` override parameters as a temporary interaction scaffold only; the
+  final design needs serialized mesh-state edits so multiple vertices/cubes can
+  be edited, undone, copied, and loaded without relying on a single selected
+  vertex override,
 - make all mesh edits undoable and route mesh, morph, preview camera, and
   attachment changes through `NodeUpdateGraph` invalidation.
 
