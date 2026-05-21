@@ -35,6 +35,7 @@ public:
     Component* getPanel3DComponentIfCreated();
     Component* getPanel2DComponent();
     Component* getPanel2DComponentIfCreated();
+    void activateExpandedPanels();
 
 private:
     class NullConsole : public IConsole {
@@ -64,8 +65,8 @@ private:
         int primaryDimension {};
     };
 
-    void refreshAfterMeshEdit();
-    void updateRasterizer(bool refresh3DGeometry);
+    void refreshAfterMeshEdit(bool sourceIs3D);
+    void updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry);
 
     SingletonRepo repo;
     NullConsole console;

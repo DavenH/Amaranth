@@ -1570,6 +1570,7 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
     }
 
     waveComponent->toFront(false);
+    widget.activateExpandedPanels();
 }
 
 void NodeCanvas::hideExpandedEditorHosts() {

@@ -56,6 +56,7 @@ public:
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
     std::vector<TrimeshVertexMarker> getVertexMarkers();
     int findNearestVertexIndexForPhaseAmp(float phase, float amp);
+    void markMeshEdited();
 
     const MorphPosition& getMorphPosition() const { return morph; }
     int getPrimaryViewAxis() const { return primaryViewAxis; }

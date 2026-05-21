@@ -18,12 +18,13 @@ public:
     void reduceDetail() override {}
     void restoreDetail() override {}
     void doGlobalUIUpdate(bool) override { performUpdate(Update); }
+    void mouseDrag(const MouseEvent& event) override;
     void mouseUp(const MouseEvent& event) override;
 
-    void setMeshEditedCallback(std::function<void()> callback);
+    void setMeshEditedCallback(std::function<void(bool)> callback);
 
 private:
-    std::function<void()> meshEditedCallback;
+    std::function<void(bool)> meshEditedCallback;
     Mesh* mesh {};
 };
 

@@ -239,6 +239,10 @@ int TrimeshNodeModel::findNearestVertexIndexForPhaseAmp(float phase, float amp) 
     return bestIndex;
 }
 
+void TrimeshNodeModel::markMeshEdited() {
+    ++revision;
+}
+
 Mesh& TrimeshNodeModel::mesh() {
     if (ownedMesh == nullptr) {
         ownedMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2TrimeshNode");

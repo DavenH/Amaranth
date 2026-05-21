@@ -40,8 +40,8 @@ TrimeshPanelBridge::TrimeshPanelBridge() :
     interactor3D.init();
     interactor2D.setRasterizer(&rasterizer);
     interactor3D.setRasterizer(&rasterizer);
-    interactor2D.setMeshEditedCallback([this] { refreshAfterMeshEdit(); });
-    interactor3D.setMeshEditedCallback([this] { refreshAfterMeshEdit(); });
+    interactor2D.setMeshEditedCallback([this](bool sourceIs3D) { refreshAfterMeshEdit(sourceIs3D); });
+    interactor3D.setMeshEditedCallback([this](bool sourceIs3D) { refreshAfterMeshEdit(sourceIs3D); });
     panel2D.setInteractor(&interactor2D);
     panel3D.setInteractor(&interactor3D);
 }
@@ -69,18 +69,19 @@ void TrimeshPanelBridge::syncFromNode(
     }
 
     dataSource.rebuild(model, rows, columns);
-    updateRasterizer(false);
+    updateRasterizer(true, false);
     lastSyncedRevision = model.getRevision();
     lastRows = rows;
     lastColumns = columns;
 }
 
-void TrimeshPanelBridge::refreshAfterMeshEdit() {
+void TrimeshPanelBridge::refreshAfterMeshEdit(bool sourceIs3D) {
+    model.markMeshEdited();
     dataSource.rebuild(model, lastRows, lastColumns);
-    updateRasterizer(true);
+    updateRasterizer(sourceIs3D, !sourceIs3D);
 }
 
-void TrimeshPanelBridge::updateRasterizer(bool refresh3DGeometry) {
+void TrimeshPanelBridge::updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry) {
     auto& request = rasterizer.getRequest();
     request.cyclic = true;
     request.xMinimum = -0.05f;
@@ -108,7 +109,8 @@ void TrimeshPanelBridge::updateRasterizer(bool refresh3DGeometry) {
         component->repaint();
     }
 
-    if (Component* component = getPanel2DComponentIfCreated()) {
+    if (refresh2DPanel && getPanel2DComponentIfCreated() != nullptr) {
+        Component* component = getPanel2DComponentIfCreated();
         interactor2D.performUpdate(Update);
         component->repaint();
     }
@@ -118,6 +120,11 @@ Component* TrimeshPanelBridge::getPanel3DComponent() {
     if (!panelInitialised) {
         panel3D.init();
         panelInitialised = true;
+    }
+
+    if (auto* component = panel3D.getOpenglPanel()) {
+        component->activateContext();
+        component->repaint();
     }
 
     return panel3D.getOpenglPanel();
@@ -133,11 +140,29 @@ Component* TrimeshPanelBridge::getPanel2DComponent() {
         panel2DInitialised = true;
     }
 
+    if (auto* component = panel2D.getOpenglPanel()) {
+        component->activateContext();
+        component->repaint();
+    }
+
     return panel2D.getOpenglPanel();
 }
 
 Component* TrimeshPanelBridge::getPanel2DComponentIfCreated() {
     return panel2DInitialised ? panel2D.getOpenglPanel() : nullptr;
+}
+
+void TrimeshPanelBridge::activateExpandedPanels() {
+    if (auto* component = panelInitialised ? panel3D.getOpenglPanel() : nullptr) {
+        component->activateContext();
+        panel3D.bakeTexturesNextRepaint();
+        component->repaint();
+    }
+
+    if (auto* component = panel2DInitialised ? panel2D.getOpenglPanel() : nullptr) {
+        component->activateContext();
+        component->repaint();
+    }
 }
 
 void TrimeshPanelBridge::NodeMorphPositioner::setPosition(

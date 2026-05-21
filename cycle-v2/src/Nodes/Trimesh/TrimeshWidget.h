@@ -31,6 +31,7 @@ public:
             const Node& node,
             juce::Rectangle<float> content);
     juce::Component* getExpandedPanel2DComponentIfCreated();
+    void activateExpandedPanels();
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
 

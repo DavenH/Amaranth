@@ -157,6 +157,10 @@ Component* TrimeshWidget::getExpandedPanel2DComponentIfCreated() {
     return bridge.getPanel2DComponentIfCreated();
 }
 
+void TrimeshWidget::activateExpandedPanels() {
+    bridge.activateExpandedPanels();
+}
+
 bool TrimeshWidget::findMorphControlAt(
         Rectangle<float> content,
         Point<float> position,

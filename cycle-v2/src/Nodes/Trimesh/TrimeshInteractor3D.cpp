@@ -10,8 +10,16 @@ TrimeshInteractor3D::TrimeshInteractor3D(SingletonRepo* repo, const String& name
         SingletonAccessor(repo, name)
     ,   Interactor3D(repo, name) {}
 
-void TrimeshInteractor3D::setMeshEditedCallback(std::function<void()> callback) {
+void TrimeshInteractor3D::setMeshEditedCallback(std::function<void(bool)> callback) {
     meshEditedCallback = std::move(callback);
+}
+
+void TrimeshInteractor3D::mouseDrag(const MouseEvent& event) {
+    Interactor3D::mouseDrag(event);
+
+    if (flag(DidMeshChange) && meshEditedCallback != nullptr) {
+        meshEditedCallback(true);
+    }
 }
 
 void TrimeshInteractor3D::mouseUp(const MouseEvent& event) {
@@ -46,7 +54,7 @@ void TrimeshInteractor3D::mouseUp(const MouseEvent& event) {
     flag(SimpleRepaint) = false;
 
     if (meshChanged && meshEditedCallback != nullptr) {
-        meshEditedCallback();
+        meshEditedCallback(true);
     }
 }
 
