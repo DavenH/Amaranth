@@ -33,7 +33,12 @@ public:
             setUsingNativeTitleBar(true);
             setResizable(true, true);
             setContentOwned(new CycleV2::NodeWorkspace(), true);
-            centreWithSize(1280, 760);
+
+            if (const auto* display = Desktop::getInstance().getDisplays().getPrimaryDisplay()) {
+                setBounds(display->userArea);
+            } else {
+                centreWithSize(1280, 760);
+            }
         }
 
         void closeButtonPressed() override {

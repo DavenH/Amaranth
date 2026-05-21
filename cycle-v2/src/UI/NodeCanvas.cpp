@@ -188,10 +188,21 @@ OperationPortLayout operationPortLayoutFor(const Node& node) {
     return OperationPortLayout::Side;
 }
 
+OperationPortLayout nextOperationPortLayout(OperationPortLayout layout) {
+    switch (layout) {
+        case OperationPortLayout::Side:     return OperationPortLayout::Uptack;
+        case OperationPortLayout::Uptack:   return OperationPortLayout::Vertical;
+        case OperationPortLayout::Vertical: return OperationPortLayout::Tee;
+        case OperationPortLayout::Tee:      return OperationPortLayout::Side;
+    }
+
+    return OperationPortLayout::Side;
+}
+
 Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
-    const float size = 18.f * zoom;
+    const float size = 27.f * zoom;
     return Rectangle<float>(size, size)
-            .withCentre({ nodeBounds.getRight() - 18.f * zoom, nodeBounds.getY() + 21.f * zoom });
+            .withCentre({ nodeBounds.getRight() - 21.f * zoom, nodeBounds.getY() + 21.f * zoom });
 }
 
 Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
@@ -387,26 +398,36 @@ void drawPreviewMeters(
         Colour colour) {
     const float left = preview.primary.empty() ? 0.f : jlimit(0.f, 1.f, preview.primary.front());
     const float right = preview.secondary.empty() ? left : jlimit(0.f, 1.f, preview.secondary.front());
-    Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.24f, area.getHeight() * 0.10f);
-    const float width = meterArea.getWidth() * 0.26f;
+    Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.20f, area.getHeight() * 0.08f);
+    const float width = meterArea.getWidth() * 0.28f;
     auto leftMeter = meterArea.removeFromLeft(width);
     auto rightMeter = meterArea.removeFromRight(width);
 
     auto drawMeter = [&](Rectangle<float> bounds, float level) {
-        g.setColour(colour.withAlpha(0.14f));
-        g.fillRoundedRectangle(bounds, 2.f);
+        constexpr int segments = 12;
+        const float gap = jmax(1.f, bounds.getHeight() * 0.015f);
+        const float segmentHeight = (bounds.getHeight() - gap * (float) (segments - 1)) / (float) segments;
+        const int litSegments = jlimit(0, segments, roundToInt(level * (float) segments));
 
-        Rectangle<float> fill = bounds.withTrimmedTop(bounds.getHeight() * (1.f - level));
-        const float yellowStart = bounds.getY() + bounds.getHeight() * 0.30f;
+        for (int i = 0; i < segments; ++i) {
+            const int levelIndex = segments - 1 - i;
+            const Rectangle<float> segment(
+                    bounds.getX(),
+                    bounds.getY() + (float) i * (segmentHeight + gap),
+                    bounds.getWidth(),
+                    segmentHeight);
+            const bool lit = levelIndex < litSegments;
+            const float normalized = (float) levelIndex / (float) (segments - 1);
+            Colour segmentColour = colour;
 
-        if (fill.getBottom() > yellowStart) {
-            g.setColour(colour.withAlpha(0.70f));
-            g.fillRoundedRectangle(fill.withTrimmedTop(jmax(0.f, yellowStart - fill.getY())), 2.f);
-        }
+            if (normalized > 0.78f) {
+                segmentColour = Colour(0xffff705f);
+            } else if (normalized > 0.58f) {
+                segmentColour = Colour(0xfff4d35e);
+            }
 
-        if (fill.getY() < yellowStart) {
-            g.setColour(Colour(0xfff4d35e).withAlpha(0.78f));
-            g.fillRoundedRectangle(fill.withBottom(jmin(fill.getBottom(), yellowStart)), 2.f);
+            g.setColour(segmentColour.withAlpha(lit ? 0.82f : 0.14f));
+            g.fillRoundedRectangle(segment, 1.4f);
         }
     };
 
@@ -1090,7 +1111,7 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
         g.fillEllipse(button);
         g.setColour(kMutedText.withAlpha(0.82f));
         g.drawEllipse(button, 1.f * uiScale);
-        drawOperationLayoutIcon(g, button, operationPortLayoutFor(node), kMutedText);
+        drawOperationLayoutIcon(g, button, nextOperationPortLayout(operationPortLayoutFor(node)), kMutedText);
     }
 
     auto nodeBounds = toScreen(node.bounds);
@@ -1103,7 +1124,7 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     if (node.kind == NodeKind::VoiceContext) {
         auto pill = voiceDomainButtonBounds(nodeBounds, zoom);
         const bool spectral = voiceDomainForNode(node) == "spectral";
-        const float labelWidth = 66.f * zoom;
+        const float labelWidth = 82.f * zoom;
         const Rectangle<float> waveformLabel(pill.getX() - labelWidth - 9.f * zoom, pill.getY(), labelWidth, pill.getHeight());
         const Rectangle<float> spectralLabel(pill.getRight() + 9.f * zoom, pill.getY(), labelWidth, pill.getHeight());
         const Colour waveformColour = colourForDomain(PortDomain::TimeSignal);
@@ -1115,7 +1136,7 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
                 spectral ? pill.getRight() - pill.getHeight() * 0.5f : pill.getX() + pill.getHeight() * 0.5f,
                 pill.getCentreY());
 
-        g.setFont(FontOptions(10.8f * zoom, Font::bold));
+        g.setFont(FontOptions(15.1f * zoom, Font::bold));
         g.setColour(spectral ? kMutedText.withAlpha(0.70f) : kText);
         g.drawText("Waveform", waveformLabel, Justification::centredRight);
         g.setColour(spectral ? kText : kMutedText.withAlpha(0.70f));
@@ -1219,14 +1240,27 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
         return;
     }
 
+    if (node.kind == NodeKind::TrilinearMesh) {
+        const NodePreviewResult preview = renderLocalMeshPreview(node, 40);
+        drawMeshSurfacePreview(g, node, area, preview);
+        return;
+    }
+
+    if (node.kind == NodeKind::Envelope) {
+        drawEnvelopeCurve(g, area.reduced(8.f));
+        return;
+    }
+
+    if (node.kind == NodeKind::GuideCurve) {
+        drawEnvelopeCurve(g, area.reduced(8.f));
+        return;
+    }
+
     if (const NodePreviewResult* preview = findPreviewResult(node.id)) {
         const Colour colour = previewColourForRole(preview->role, node);
 
         if (preview->role == PreviewModuleRole::OutputMeters) {
             drawPreviewMeters(g, area, *preview, colour);
-            g.setColour(kMutedText.withAlpha(0.72f));
-            g.setFont(FontOptions(jmin(17.f, area.getHeight() * 0.24f), Font::bold));
-            g.drawText("OUT", area, Justification::centredBottom);
             return;
         }
 
@@ -1285,9 +1319,6 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
             }
         }
 
-        g.setColour(kMutedText.withAlpha(0.72f));
-        g.setFont(FontOptions(jmin(15.f, area.getHeight() * 0.24f), Font::bold));
-        g.drawText(inverse ? "IFFT" : "FFT", area, Justification::centredBottom);
         return;
     }
 
@@ -1309,21 +1340,13 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
 
     if (node.kind == NodeKind::Output) {
         const Colour colour = colourForDomain(PortDomain::TimeSignal);
-        Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.24f, area.getHeight() * 0.10f);
-        const float width = meterArea.getWidth() * 0.32f;
-
-        g.setColour(colour.withAlpha(0.18f));
-        g.fillRoundedRectangle(meterArea.removeFromLeft(width), 2.f);
-        g.fillRoundedRectangle(meterArea.removeFromRight(width), 2.f);
-        g.setColour(kMutedText.withAlpha(0.72f));
-        g.setFont(FontOptions(jmin(17.f, area.getHeight() * 0.24f), Font::bold));
-        g.drawText("OUT", area, Justification::centredBottom);
-        return;
-    }
-
-    if (node.kind == NodeKind::TrilinearMesh) {
-        const NodePreviewResult preview = renderLocalMeshPreview(node, 40);
-        drawMeshSurfacePreview(g, node, area, preview);
+        const NodePreviewResult preview {
+                node.id,
+                PreviewModuleRole::OutputMeters,
+                { 0.64f },
+                { 0.58f }
+        };
+        drawPreviewMeters(g, area, preview, colour);
         return;
     }
 
@@ -1359,16 +1382,6 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
         g.fillRect(area);
         g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.92f));
         g.strokePath(wave, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
-        return;
-    }
-
-    if (node.kind == NodeKind::Envelope) {
-        drawEnvelopeCurve(g, area.reduced(8.f));
-        return;
-    }
-
-    if (node.kind == NodeKind::GuideCurve) {
-        drawEnvelopeCurve(g, area.reduced(8.f));
         return;
     }
 
