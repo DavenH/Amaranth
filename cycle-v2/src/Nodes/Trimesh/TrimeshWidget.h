@@ -23,11 +23,16 @@ public:
             juce::Graphics& g,
             const Node& node,
             juce::Rectangle<float> content);
-    juce::Component* prepareExpandedPanelComponent(
+    juce::Component* prepareExpandedPanel3DComponent(
             const Node& node,
             juce::Rectangle<float> content);
-    juce::Component* getExpandedPanelComponentIfCreated();
+    juce::Component* getExpandedPanel3DComponentIfCreated();
+    juce::Component* prepareExpandedPanel2DComponent(
+            const Node& node,
+            juce::Rectangle<float> content);
+    juce::Component* getExpandedPanel2DComponentIfCreated();
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
+    static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
 
     bool findMorphControlAt(
             juce::Rectangle<float> content,

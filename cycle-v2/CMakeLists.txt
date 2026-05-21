@@ -44,6 +44,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshNodeModel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshPanelBridge.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshPanelDataSource.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshPanel2D.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshPanel3D.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshWidget.cpp"
 )

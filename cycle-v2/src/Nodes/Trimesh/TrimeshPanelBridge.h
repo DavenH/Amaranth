@@ -1,9 +1,11 @@
 #pragma once
 
+#include "TrimeshPanel2D.h"
 #include "TrimeshPanel3D.h"
 
 #include <App/SingletonRepo.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
+#include <Inter/Interactor2D.h>
 #include <Inter/Interactor3D.h>
 #include <Inter/MorphPositioner.h>
 
@@ -22,11 +24,15 @@ public:
             int columns);
 
     TrimeshPanel3D& getPanel3D() { return panel3D; }
+    TrimeshPanel2D& getPanel2D() { return panel2D; }
     TrimeshPanelDataSource& getDataSource() { return dataSource; }
+    Interactor2D& getInteractor2D() { return interactor2D; }
     Interactor3D& getInteractor3D() { return interactor3D; }
     TrimeshNodeModel& getModel() { return model; }
-    Component* getPanelComponent();
-    Component* getPanelComponentIfCreated();
+    Component* getPanel3DComponent();
+    Component* getPanel3DComponentIfCreated();
+    Component* getPanel2DComponent();
+    Component* getPanel2DComponentIfCreated();
 
 private:
     class NodeMorphPositioner : public MorphPositioner {
@@ -53,12 +59,15 @@ private:
     TrimeshNodeModel model;
     TrimeshPanelDataSource dataSource;
     Rasterization::TrilinearMeshRasterizer rasterizer;
+    Interactor2D interactor2D;
     Interactor3D interactor3D;
+    TrimeshPanel2D panel2D;
     TrimeshPanel3D panel3D;
     uint64_t lastSyncedRevision { UINT64_MAX };
     int lastRows {};
     int lastColumns {};
     bool panelInitialised {};
+    bool panel2DInitialised {};
 };
 
 }

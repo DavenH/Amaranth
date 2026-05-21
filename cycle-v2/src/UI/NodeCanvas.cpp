@@ -1513,13 +1513,16 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
     }
 
     Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
-    Component* component = trimeshWidgetFor(node->id).prepareExpandedPanelComponent(*node, content);
+    TrimeshWidget& widget = trimeshWidgetFor(node->id);
+    Component* component = widget.prepareExpandedPanel3DComponent(*node, content);
+    Component* waveComponent = widget.prepareExpandedPanel2DComponent(*node, content);
 
-    if (component == nullptr) {
+    if (component == nullptr || waveComponent == nullptr) {
         return;
     }
 
     const Rectangle<int> bounds = TrimeshWidget::expandedGridPanelContentBounds(content).toNearestInt();
+    const Rectangle<int> waveBounds = TrimeshWidget::expandedWavePanelContentBounds(content).toNearestInt();
 
     if (component->getParentComponent() != this) {
         addAndMakeVisible(component);
@@ -1528,24 +1531,42 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
     component->setBounds(bounds);
     component->setVisible(true);
     component->toFront(false);
+
+    if (waveComponent->getParentComponent() != this) {
+        addAndMakeVisible(waveComponent);
+    }
+
+    waveComponent->setBounds(waveBounds);
+    waveComponent->setVisible(true);
+    waveComponent->toFront(false);
 }
 
 void NodeCanvas::hideExpandedEditorHosts() {
     for (auto& entry : trimeshWidgets) {
-        Component* component = entry.second->getExpandedPanelComponentIfCreated();
+        Component* component = entry.second->getExpandedPanel3DComponentIfCreated();
+        Component* waveComponent = entry.second->getExpandedPanel2DComponentIfCreated();
 
         if (component != nullptr && component->getParentComponent() == this) {
             component->setVisible(false);
+        }
+
+        if (waveComponent != nullptr && waveComponent->getParentComponent() == this) {
+            waveComponent->setVisible(false);
         }
     }
 }
 
 void NodeCanvas::detachExpandedEditorHosts() {
     for (auto& entry : trimeshWidgets) {
-        Component* component = entry.second->getExpandedPanelComponentIfCreated();
+        Component* component = entry.second->getExpandedPanel3DComponentIfCreated();
+        Component* waveComponent = entry.second->getExpandedPanel2DComponentIfCreated();
 
         if (component != nullptr && component->getParentComponent() == this) {
             removeChildComponent(component);
+        }
+
+        if (waveComponent != nullptr && waveComponent->getParentComponent() == this) {
+            removeChildComponent(waveComponent);
         }
     }
 }

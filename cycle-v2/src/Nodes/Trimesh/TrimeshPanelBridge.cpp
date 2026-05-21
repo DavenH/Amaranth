@@ -1,21 +1,30 @@
 #include "TrimeshPanelBridge.h"
 
 #include <Curve/Mesh/Vertex.h>
+#include <UI/Panels/OpenGLPanel.h>
 #include <UI/Panels/OpenGLPanel3D.h>
 
 namespace CycleV2 {
 
 TrimeshPanelBridge::TrimeshPanelBridge() :
-        interactor3D    (&repo, "CycleV2TrimeshInteractor3D")
+        interactor2D    (&repo, "CycleV2TrimeshInteractor2D",
+                         Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Time, Vertex::Red, Vertex::Blue))
+    ,   interactor3D    (&repo, "CycleV2TrimeshInteractor3D")
+    ,   panel2D         (&repo)
     ,   panel3D         (&repo, dataSource) {
     repo.setMorphPositioner(&morphPositioner);
+    interactor2D.setRasterizer(&rasterizer);
     interactor3D.setRasterizer(&rasterizer);
+    panel2D.setInteractor(&interactor2D);
     panel3D.setInteractor(&interactor3D);
 }
 
 TrimeshPanelBridge::~TrimeshPanelBridge() {
+    interactor2D.stopTimer();
     interactor3D.stopTimer();
+    panel2D.setInteractor(nullptr);
     panel3D.setInteractor(nullptr);
+    interactor2D.setRasterizer(nullptr);
     interactor3D.setRasterizer(nullptr);
 }
 
@@ -46,6 +55,7 @@ void TrimeshPanelBridge::updateRasterizer() {
     request.xMaximum = 1.05f;
     request.morph = model.getMorphPosition();
     request.primaryViewDimension = model.getPrimaryViewAxis();
+    request.dims = interactor2D.dims;
     request.scalingMode = Rasterization::PointScalingMode::Bipolar;
     request.calcDepthDimensions = true;
     request.lowResCurves = false;
@@ -56,7 +66,7 @@ void TrimeshPanelBridge::updateRasterizer() {
     rasterizer.updateGeometry();
 }
 
-Component* TrimeshPanelBridge::getPanelComponent() {
+Component* TrimeshPanelBridge::getPanel3DComponent() {
     if (!panelInitialised) {
         panel3D.init();
         panelInitialised = true;
@@ -65,8 +75,21 @@ Component* TrimeshPanelBridge::getPanelComponent() {
     return panel3D.getOpenglPanel();
 }
 
-Component* TrimeshPanelBridge::getPanelComponentIfCreated() {
+Component* TrimeshPanelBridge::getPanel3DComponentIfCreated() {
     return panelInitialised ? panel3D.getOpenglPanel() : nullptr;
+}
+
+Component* TrimeshPanelBridge::getPanel2DComponent() {
+    if (!panel2DInitialised) {
+        panel2D.init();
+        panel2DInitialised = true;
+    }
+
+    return panel2D.getOpenglPanel();
+}
+
+Component* TrimeshPanelBridge::getPanel2DComponentIfCreated() {
+    return panel2DInitialised ? panel2D.getOpenglPanel() : nullptr;
 }
 
 void TrimeshPanelBridge::NodeMorphPositioner::setPosition(

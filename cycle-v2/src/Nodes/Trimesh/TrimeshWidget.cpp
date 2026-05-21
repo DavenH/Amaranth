@@ -72,9 +72,11 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     }
 
     const auto waveshapeContent = waveshapePanel.reduced(14.f, 28.f);
-    drawEditorGrid(g, waveshapeContent);
-    drawTraceFill(g, waveshapeContent.reduced(8.f), renderData.slice);
-    drawTrace(g, waveshapeContent.reduced(8.f), renderData.slice, Colour(0xffe7edff).withAlpha(0.94f));
+    if (bridge.getPanel2D().getComponent() == nullptr) {
+        drawEditorGrid(g, waveshapeContent);
+        drawTraceFill(g, waveshapeContent.reduced(8.f), renderData.slice);
+        drawTrace(g, waveshapeContent.reduced(8.f), renderData.slice, Colour(0xffe7edff).withAlpha(0.94f));
+    }
 
     const auto selectedParameters = model.getSelectedVertexParameters();
     drawVertexMarkers(g, waveshapeContent.reduced(8.f), model.getVertexMarkers());
@@ -133,15 +135,26 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     drawVertexParameters(g, morphArea, selectedParameters);
 }
 
-Component* TrimeshWidget::prepareExpandedPanelComponent(
+Component* TrimeshWidget::prepareExpandedPanel3DComponent(
         const Node& node,
         Rectangle<float> content) {
     bridge.syncFromNode(node, 320, 96);
-    return bridge.getPanelComponent();
+    return bridge.getPanel3DComponent();
 }
 
-Component* TrimeshWidget::getExpandedPanelComponentIfCreated() {
-    return bridge.getPanelComponentIfCreated();
+Component* TrimeshWidget::getExpandedPanel3DComponentIfCreated() {
+    return bridge.getPanel3DComponentIfCreated();
+}
+
+Component* TrimeshWidget::prepareExpandedPanel2DComponent(
+        const Node& node,
+        Rectangle<float> content) {
+    bridge.syncFromNode(node, 320, 96);
+    return bridge.getPanel2DComponent();
+}
+
+Component* TrimeshWidget::getExpandedPanel2DComponentIfCreated() {
+    return bridge.getPanel2DComponentIfCreated();
 }
 
 bool TrimeshWidget::findMorphControlAt(
@@ -655,6 +668,13 @@ Rectangle<float> TrimeshWidget::expandedGridPanelContentBounds(Rectangle<float> 
     auto topRow = content.removeFromTop(content.getHeight() * 0.62f);
     auto gridPanel = topRow.removeFromLeft(topRow.getWidth() * 0.60f);
     return gridPanel.reduced(12.f, 26.f);
+}
+
+Rectangle<float> TrimeshWidget::expandedWavePanelContentBounds(Rectangle<float> content) {
+    const float gap = 14.f;
+    content.removeFromTop(content.getHeight() * 0.62f);
+    content.removeFromTop(gap);
+    return content.reduced(14.f, 28.f);
 }
 
 Image TrimeshWidget::createHeatmapImage(const TrimeshRenderData& renderData) const {
