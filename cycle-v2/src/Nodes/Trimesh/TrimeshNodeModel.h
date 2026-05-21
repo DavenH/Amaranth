@@ -61,6 +61,7 @@ public:
     int getPrimaryViewAxis() const { return primaryViewAxis; }
     int getSelectedVertexIndex() const { return selectedVertexIndex; }
     uint64_t getRevision() const { return revision; }
+    Mesh& getMeshForPanel() { return mesh(); }
 
 private:
     Mesh& mesh();

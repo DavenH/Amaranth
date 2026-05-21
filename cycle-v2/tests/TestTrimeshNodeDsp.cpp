@@ -5,6 +5,7 @@
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshNodeModel.h"
+#include "../src/Nodes/Trimesh/TrimeshPanelBridge.h"
 #include "../src/Nodes/Trimesh/TrimeshPanel3D.h"
 #include "../src/Nodes/Trimesh/TrimeshPanelDataSource.h"
 
@@ -217,4 +218,31 @@ TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever"
     REQUIRE(panel.getColumns().size() == 4);
     REQUIRE(panel.getColumns().front().size() == 12);
     REQUIRE(&panel.getGridLock() == &source.getGridLock());
+}
+
+TEST_CASE("Trimesh panel bridge binds Panel3D interactor and rasterizer", "[cycle-v2][nodes][trimesh]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {
+                    { "yellow", "Yellow", "0.15" },
+                    { "red", "Red", "0.35" },
+                    { "blue", "Blue", "0.65" },
+                    { "primaryAxis", "Primary Axis", "blue" }
+            },
+            {},
+            {}
+    };
+    TrimeshPanelBridge bridge;
+
+    bridge.syncFromNode(node, 10, 3);
+
+    REQUIRE(bridge.getPanel3D().getInteractor().get() == &bridge.getInteractor3D());
+    REQUIRE(bridge.getInteractor3D().hasRasterizer());
+    REQUIRE(bridge.getDataSource().getColumns().size() == 3);
+    REQUIRE(bridge.getDataSource().getColumns().front().size() == 10);
 }
