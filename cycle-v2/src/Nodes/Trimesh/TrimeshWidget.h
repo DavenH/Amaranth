@@ -47,6 +47,11 @@ public:
             const juce::String& parameterId,
             juce::Point<float> position,
             float& value) const;
+    bool findVertexSelectionAt(
+            const Node& node,
+            juce::Rectangle<float> content,
+            juce::Point<float> position,
+            int& vertexIndex);
 
 private:
     struct CachedHeatmap {
@@ -85,6 +90,7 @@ private:
     static juce::Rectangle<float> vertexParameterRowBounds(juce::Rectangle<float> parameterArea, int parameterIndex);
     static juce::Rectangle<float> vertexParameterRailBounds(juce::Rectangle<float> parameterRow);
     static juce::String vertexParameterId(int parameterIndex);
+    static juce::Rectangle<float> waveshapeContentBounds(juce::Rectangle<float> content);
 
     juce::Image createHeatmapImage(const TrimeshRenderData& renderData) const;
 

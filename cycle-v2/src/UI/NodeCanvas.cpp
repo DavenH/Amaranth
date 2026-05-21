@@ -472,6 +472,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
 
+        if (selectTrimeshVertex(event.position)) {
+            repaint();
+            return;
+        }
+
         repaint();
         return;
     }
@@ -2566,6 +2571,12 @@ bool NodeCanvas::updateTrimeshVertexParameterEdit(Point<float> screenPosition) {
     GraphEditor().setNodeParameter(
             graph,
             node->id,
+            "vertexOverrideIndex",
+            "Vertex Override Index",
+            parameterValueForNode(*node, "selectedVertexIndex", "-1"));
+    GraphEditor().setNodeParameter(
+            graph,
+            node->id,
             activeTrimeshVertexParameterId,
             label,
             String(value, 3));
@@ -2579,6 +2590,44 @@ void NodeCanvas::endTrimeshVertexParameterEdit() {
     trimeshVertexParameterUndoPushed = false;
     activeTrimeshVertexNodeId = {};
     activeTrimeshVertexParameterId = {};
+}
+
+bool NodeCanvas::selectTrimeshVertex(Point<float> screenPosition) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return false;
+    }
+
+    int vertexIndex {};
+    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
+
+    if (!trimeshWidgetFor(node->id).findVertexSelectionAt(*node, content, screenPosition, vertexIndex)) {
+        return false;
+    }
+
+    if (parameterValueForNode(*node, "selectedVertexIndex", "-1").getIntValue() == vertexIndex) {
+        return true;
+    }
+
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().setNodeParameter(
+            graph,
+            node->id,
+            "selectedVertexIndex",
+            "Selected Vertex",
+            String(vertexIndex));
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    refreshCompiledState();
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    editStatusMessage = "Selected vertex #" + String(vertexIndex);
+    return true;
 }
 
 bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& second) const {

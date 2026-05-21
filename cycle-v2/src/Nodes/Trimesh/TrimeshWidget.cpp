@@ -76,6 +76,20 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
 
     drawTrace(g, waveshapeContent.reduced(8.f), renderData.slice, Colour(0xffdfe7ff).withAlpha(0.92f));
 
+    const auto selectedParameters = model.getSelectedVertexParameters();
+    if (selectedParameters.size() >= 2) {
+        const float phase = selectedParameters[1].value;
+        const float amp = selectedParameters[0].value;
+        const Point<float> marker(
+                waveshapeContent.getX() + waveshapeContent.getWidth() * jlimit(0.f, 1.f, phase),
+                waveshapeContent.getBottom() - waveshapeContent.getHeight() * jlimit(0.f, 1.f, amp));
+
+        g.setColour(Colour(0xfff3f7ff).withAlpha(0.94f));
+        g.fillEllipse(Rectangle<float>(10.f, 10.f).withCentre(marker));
+        g.setColour(Colour(0xff0a0f13).withAlpha(0.74f));
+        g.drawEllipse(Rectangle<float>(14.f, 14.f).withCentre(marker), 2.f);
+    }
+
     Rectangle<float> morphArea = sidePanel.reduced(14.f, 30.f);
     const std::array<std::pair<String, Colour>, 3> axes {
             std::make_pair(String("Yellow"), Colour(0xffe0c247)),
@@ -126,7 +140,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     }
 
     morphArea.removeFromTop(6.f);
-    drawVertexParameters(g, morphArea, model.getSelectedVertexParameters());
+    drawVertexParameters(g, morphArea, selectedParameters);
 }
 
 bool TrimeshWidget::findMorphControlAt(
@@ -242,6 +256,24 @@ bool TrimeshWidget::vertexParameterValueForParameterAt(
     }
 
     return false;
+}
+
+bool TrimeshWidget::findVertexSelectionAt(
+        const Node& node,
+        Rectangle<float> content,
+        Point<float> position,
+        int& vertexIndex) {
+    syncFromNode(node);
+    const Rectangle<float> waveshape = waveshapeContentBounds(content);
+
+    if (!waveshape.expanded(8.f).contains(position)) {
+        return false;
+    }
+
+    const float phase = jlimit(0.f, 1.f, (position.x - waveshape.getX()) / waveshape.getWidth());
+    const float amp = jlimit(0.f, 1.f, (waveshape.getBottom() - position.y) / waveshape.getHeight());
+    vertexIndex = model.findNearestVertexIndexForPhaseAmp(phase, amp);
+    return vertexIndex >= 0;
 }
 
 Colour TrimeshWidget::meshSurfaceColour(float value) {
@@ -449,6 +481,13 @@ String TrimeshWidget::vertexParameterId(int parameterIndex) {
         case 2:     return "vertex.curve";
         default:    return {};
     }
+}
+
+Rectangle<float> TrimeshWidget::waveshapeContentBounds(Rectangle<float> content) {
+    constexpr float gap = 14.f;
+    content.removeFromTop(content.getHeight() * 0.62f);
+    content.removeFromTop(gap);
+    return content.reduced(14.f, 28.f);
 }
 
 Image TrimeshWidget::createHeatmapImage(const TrimeshRenderData& renderData) const {

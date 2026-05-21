@@ -47,9 +47,11 @@ public:
 
     TrimeshRenderData renderGrid(int rows, int columns);
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
+    int findNearestVertexIndexForPhaseAmp(float phase, float amp);
 
     const MorphPosition& getMorphPosition() const { return morph; }
     int getPrimaryViewAxis() const { return primaryViewAxis; }
+    int getSelectedVertexIndex() const { return selectedVertexIndex; }
     uint64_t getRevision() const { return revision; }
 
 private:
@@ -61,6 +63,7 @@ private:
     std::unique_ptr<Mesh> ownedMesh;
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis {};
+    int selectedVertexIndex { -1 };
     uint64_t revision {};
 };
 

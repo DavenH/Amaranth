@@ -150,6 +150,7 @@ private:
     bool beginTrimeshVertexParameterEdit(Point<float> screenPosition);
     bool updateTrimeshVertexParameterEdit(Point<float> screenPosition);
     void endTrimeshVertexParameterEdit();
+    bool selectTrimeshVertex(Point<float> screenPosition);
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
     Path createCablePath(
             Point<float> source,

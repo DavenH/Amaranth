@@ -82,7 +82,8 @@ TEST_CASE("Trimesh node model applies serialized vertex parameter overrides", "[
             {
                     { "vertex.amp", "Amplitude", "0.20" },
                     { "vertex.phase", "Phase", "0.30" },
-                    { "vertex.curve", "Sharpness", "0.40" }
+                    { "vertex.curve", "Sharpness", "0.40" },
+                    { "vertexOverrideIndex", "Vertex Override Index", "-1" }
             },
             {},
             {}
@@ -96,6 +97,35 @@ TEST_CASE("Trimesh node model applies serialized vertex parameter overrides", "[
     REQUIRE(vertexParameters[0].value == Catch::Approx(0.20f));
     REQUIRE(vertexParameters[1].value == Catch::Approx(0.30f));
     REQUIRE(vertexParameters[2].value == Catch::Approx(0.40f));
+
+    node.parameters.push_back({ "selectedVertexIndex", "Selected Vertex", "2" });
+    model.syncFromNode(node);
+    const auto changedSelectionParameters = model.getSelectedVertexParameters();
+
+    REQUIRE(changedSelectionParameters[0].value != Catch::Approx(0.20f));
+}
+
+TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-v2][nodes][trimesh]") {
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {},
+            {},
+            {}
+    };
+    TrimeshNodeModel model;
+
+    model.syncFromNode(node);
+    const int vertexIndex = model.findNearestVertexIndexForPhaseAmp(0.18f, 0.82f);
+
+    REQUIRE(vertexIndex >= 0);
+
+    node.parameters.push_back({ "selectedVertexIndex", "Selected Vertex", String(vertexIndex) });
+    model.syncFromNode(node);
+    REQUIRE(model.getSelectedVertexIndex() == vertexIndex);
 }
 
 TEST_CASE("Trimesh gridwise DSP renders independent morph columns", "[cycle-v2][nodes][trimesh]") {

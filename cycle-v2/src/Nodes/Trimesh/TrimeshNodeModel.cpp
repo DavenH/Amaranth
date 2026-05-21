@@ -44,6 +44,16 @@ String parameterString(const Node& node, const String& id, const String& fallbac
     return fallback;
 }
 
+int parameterInt(const Node& node, const String& id, int fallback) {
+    for (const auto& parameter : node.parameters) {
+        if (parameter.id == id) {
+            return parameter.value.getIntValue();
+        }
+    }
+
+    return fallback;
+}
+
 int primaryAxisFromParameter(const String& axisName) {
     if (axisName == "red") {
         return Vertex::Red;
@@ -80,6 +90,7 @@ TrimeshNodeModel::TrimeshNodeModel(TrimeshNodeModel&& other) noexcept :
         ownedMesh       (std::move(other.ownedMesh))
     ,   morph           (other.morph)
     ,   primaryViewAxis (other.primaryViewAxis)
+    ,   selectedVertexIndex (other.selectedVertexIndex)
     ,   revision        (other.revision) {}
 
 TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept {
@@ -88,6 +99,7 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
         ownedMesh = std::move(other.ownedMesh);
         morph = other.morph;
         primaryViewAxis = other.primaryViewAxis;
+        selectedVertexIndex = other.selectedVertexIndex;
         revision = other.revision;
     }
 
@@ -102,13 +114,16 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
     };
     const int nextPrimaryAxis = primaryAxisFromParameter(
             parameterString(node, "primaryAxis", "yellow"));
+    const int nextSelectedVertexIndex = parameterInt(node, "selectedVertexIndex", -1);
 
     if (nextMorph.time.getTargetValue() != morph.time.getTargetValue()
             || nextMorph.red.getTargetValue() != morph.red.getTargetValue()
             || nextMorph.blue.getTargetValue() != morph.blue.getTargetValue()
-            || nextPrimaryAxis != primaryViewAxis) {
+            || nextPrimaryAxis != primaryViewAxis
+            || nextSelectedVertexIndex != selectedVertexIndex) {
         morph = nextMorph;
         primaryViewAxis = nextPrimaryAxis;
+        selectedVertexIndex = nextSelectedVertexIndex;
         ++revision;
     }
 
@@ -171,6 +186,34 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameter
     };
 }
 
+int TrimeshNodeModel::findNearestVertexIndexForPhaseAmp(float phase, float amp) {
+    Mesh& activeMesh = mesh();
+    int bestIndex { -1 };
+    float bestDistance {};
+    const float clampedPhase = jlimit(0.f, 1.f, phase);
+    const float clampedAmp = jlimit(0.f, 1.f, amp);
+    const auto& verts = activeMesh.getVerts();
+
+    for (int i = 0; i < (int) verts.size(); ++i) {
+        const Vertex* vertex = verts[(size_t) i];
+
+        if (vertex == nullptr) {
+            continue;
+        }
+
+        const float phaseDiff = vertex->values[Vertex::Phase] - clampedPhase;
+        const float ampDiff = vertex->values[Vertex::Amp] - clampedAmp;
+        const float distance = phaseDiff * phaseDiff + ampDiff * ampDiff;
+
+        if (bestIndex < 0 || distance < bestDistance) {
+            bestIndex = i;
+            bestDistance = distance;
+        }
+    }
+
+    return bestIndex;
+}
+
 Mesh& TrimeshNodeModel::mesh() {
     if (ownedMesh == nullptr) {
         ownedMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2TrimeshNode");
@@ -182,6 +225,11 @@ Mesh& TrimeshNodeModel::mesh() {
 
 Vertex* TrimeshNodeModel::selectedVertex() {
     Mesh& activeMesh = mesh();
+    auto& verts = activeMesh.getVerts();
+
+    if (isPositiveAndBelow(selectedVertexIndex, (int) verts.size())) {
+        return verts[(size_t) selectedVertexIndex];
+    }
 
     for (auto* cube : activeMesh.getCubes()) {
         if (cube == nullptr) {
@@ -207,8 +255,13 @@ bool TrimeshNodeModel::applyVertexParameterOverrides(const Node& node) {
     const bool hasAmp = parameterFloatValue(node, "vertex.amp", amp);
     const bool hasPhase = parameterFloatValue(node, "vertex.phase", phase);
     const bool hasCurve = parameterFloatValue(node, "vertex.curve", curve);
+    const int overrideIndex = parameterInt(node, "vertexOverrideIndex", selectedVertexIndex);
 
     if (!hasAmp && !hasPhase && !hasCurve) {
+        return false;
+    }
+
+    if (overrideIndex != selectedVertexIndex) {
         return false;
     }
 
