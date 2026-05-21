@@ -139,6 +139,7 @@ private:
     bool clearSelection();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
+    bool setTrimeshPrimaryAxis(Point<float> screenPosition);
     bool beginTrimeshMorphEdit(Point<float> screenPosition);
     bool updateTrimeshMorphEdit(Point<float> screenPosition);
     void endTrimeshMorphEdit();

@@ -33,6 +33,10 @@ public:
             const juce::String& parameterId,
             juce::Point<float> position,
             float& value) const;
+    bool findPrimaryAxisAt(
+            juce::Rectangle<float> content,
+            juce::Point<float> position,
+            juce::String& axisValue) const;
 
 private:
     struct CachedHeatmap {
@@ -61,6 +65,8 @@ private:
             juce::Colour colour);
     static juce::Rectangle<float> morphPanelBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> morphArea, int axisIndex);
+    static juce::Rectangle<float> primaryAxisBounds(juce::Rectangle<float> morphArea, int axisIndex);
+    static juce::String primaryAxisValue(int axis);
 
     juce::Image createHeatmapImage(const TrimeshRenderData& renderData) const;
 

@@ -455,6 +455,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
 
+        if (setTrimeshPrimaryAxis(event.position)) {
+            repaint();
+            return;
+        }
+
         if (beginTrimeshMorphEdit(event.position)) {
             repaint();
             return;
@@ -2389,6 +2394,44 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
     nodeDragUndoPushed = false;
     refreshCompiledState();
     editStatusMessage = "Voice start domain: " + domain;
+    return true;
+}
+
+bool NodeCanvas::setTrimeshPrimaryAxis(Point<float> screenPosition) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return false;
+    }
+
+    String axisValue;
+    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
+
+    if (!trimeshWidgetFor(node->id).findPrimaryAxisAt(content, screenPosition, axisValue)) {
+        return false;
+    }
+
+    if (parameterValueForNode(*node, "primaryAxis", "yellow") == axisValue) {
+        return true;
+    }
+
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().setNodeParameter(
+            graph,
+            node->id,
+            "primaryAxis",
+            "Primary Axis",
+            axisValue);
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    refreshCompiledState();
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    editStatusMessage = "Primary view axis: " + axisValue;
     return true;
 }
 

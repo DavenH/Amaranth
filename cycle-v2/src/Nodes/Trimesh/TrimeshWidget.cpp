@@ -1,5 +1,7 @@
 #include "TrimeshWidget.h"
 
+#include <Curve/Mesh/Vertex.h>
+
 #include <array>
 #include <utility>
 
@@ -104,6 +106,26 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     }
 
     morphArea.removeFromTop(8.f);
+    auto axisRow = morphArea.removeFromTop(48.f);
+    g.setColour(kText);
+    g.setFont(FontOptions(11.f, Font::bold));
+    g.drawText("View Axis", axisRow.removeFromTop(16.f), Justification::centredLeft);
+
+    for (int i = 0; i < (int) axes.size(); ++i) {
+        const Rectangle<float> button = primaryAxisBounds(sidePanel.reduced(14.f, 30.f), i);
+        const bool active = model.getPrimaryViewAxis() == (i == 0 ? Vertex::Time : (i == 1 ? Vertex::Red : Vertex::Blue));
+        const Colour axisColour = axes[(size_t) i].second;
+
+        g.setColour(axisColour.withAlpha(active ? 0.30f : 0.08f));
+        g.fillRoundedRectangle(button, 4.f);
+        g.setColour(axisColour.withAlpha(active ? 0.94f : 0.46f));
+        g.drawRoundedRectangle(button, 4.f, active ? 1.4f : 1.f);
+        g.setColour(active ? kText : kMutedText);
+        g.setFont(FontOptions(10.f, Font::bold));
+        g.drawText(axes[(size_t) i].first.substring(0, 1), button, Justification::centred);
+    }
+
+    morphArea.removeFromTop(6.f);
     g.setColour(Colour(0xff0a0f13).withAlpha(0.72f));
     g.fillRoundedRectangle(morphArea, 5.f);
     g.setColour(kMutedText);
@@ -159,6 +181,26 @@ bool TrimeshWidget::morphValueForParameterAt(
 
         const Rectangle<float> rail = morphRailBounds(morphPanelBounds(content), i);
         value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
+        return true;
+    }
+
+    return false;
+}
+
+bool TrimeshWidget::findPrimaryAxisAt(
+        Rectangle<float> content,
+        Point<float> position,
+        String& axisValue) const {
+    const Rectangle<float> morphArea = morphPanelBounds(content);
+
+    for (int i = 0; i < 3; ++i) {
+        const Rectangle<float> button = primaryAxisBounds(morphArea, i);
+
+        if (!button.expanded(4.f).contains(position)) {
+            continue;
+        }
+
+        axisValue = primaryAxisValue(i);
         return true;
     }
 
@@ -277,6 +319,26 @@ Rectangle<float> TrimeshWidget::morphRailBounds(Rectangle<float> morphArea, int 
     auto row = morphArea.translated(0.f, (float) axisIndex * 34.f).withHeight(34.f);
     return row.withTrimmedLeft(68.f).withTrimmedRight(10.f)
             .withSizeKeepingCentre(row.getWidth() - 92.f, 4.f);
+}
+
+Rectangle<float> TrimeshWidget::primaryAxisBounds(Rectangle<float> morphArea, int axisIndex) {
+    const float top = morphArea.getY() + 110.f;
+    const float width = jmax(28.f, (morphArea.getWidth() - 16.f) / 3.f);
+    return {
+            morphArea.getX() + (float) axisIndex * (width + 8.f),
+            top,
+            width,
+            24.f
+    };
+}
+
+String TrimeshWidget::primaryAxisValue(int axis) {
+    switch (axis) {
+        case 1:     return "red";
+        case 2:     return "blue";
+        case 0:
+        default:    return "yellow";
+    }
 }
 
 Image TrimeshWidget::createHeatmapImage(const TrimeshRenderData& renderData) const {
