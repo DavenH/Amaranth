@@ -329,9 +329,6 @@ void drawMeshHeatmap(
     const int columns = (int) preview.primary.size() / rows;
     const Rectangle<float> surface = area.reduced(area.getWidth() * 0.025f, area.getHeight() * 0.06f);
 
-    g.setColour(Colour(0xff0a0f13));
-    g.fillRoundedRectangle(area, 5.f * zoom);
-
     const float cellWidth = surface.getWidth() / (float) columns;
     const float cellHeight = surface.getHeight() / (float) rows;
 
@@ -1222,11 +1219,6 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
         return;
     }
 
-    g.setColour(Colour(0xff0e1318));
-    g.fillRoundedRectangle(area, 6.f * zoom);
-    g.setColour(Colour(0xff26313d));
-    g.drawRoundedRectangle(area, 6.f * zoom, 1.f);
-
     if (const NodePreviewResult* preview = findPreviewResult(node.id)) {
         const Colour colour = previewColourForRole(preview->role, node);
 
@@ -1482,9 +1474,6 @@ void NodeCanvas::drawMeshSurfacePreview(
         cached.rows = rows;
         cached.columns = columns;
     }
-
-    g.setColour(Colour(0xff0a0f13));
-    g.fillRoundedRectangle(area, 5.f * zoom);
 
     if (cached.image.isValid()) {
         const Rectangle<float> surface = meshPreviewContentArea(area);
