@@ -1,5 +1,7 @@
 #include "NodeCanvas.h"
 
+#include "../Runtime/NodePreviewProcessor.h"
+
 #include <array>
 #include <iterator>
 #include <limits>
@@ -1194,6 +1196,27 @@ Rectangle<float> meshPreviewContentArea(Rectangle<float> area) {
     return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
 }
 
+NodePreviewResult renderLocalMeshPreview(const Node& node, size_t pointCount) {
+    NodePreviewProcessorFactory factory;
+    auto processor = factory.create(PreviewModuleRole::MeshSurface);
+
+    if (processor == nullptr) {
+        return {};
+    }
+
+    PreviewProcessContext context;
+    context.pointCount = pointCount;
+    context.parameters = node.parameters;
+    processor->render(context);
+
+    return {
+            node.id,
+            PreviewModuleRole::MeshSurface,
+            std::move(context.primary),
+            std::move(context.secondary)
+    };
+}
+
 void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area) {
     if (area.getWidth() < 20.f || area.getHeight() < 20.f) {
         return;
@@ -1307,19 +1330,8 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
     }
 
     if (node.kind == NodeKind::TrilinearMesh) {
-        area = meshPreviewContentArea(area);
-        Path surface;
-        for (int i = 0; i < 8; ++i) {
-            float x0 = area.getX() + (float) i * area.getWidth() / 8.f;
-            float x1 = area.getX() + (float) (i + 1) * area.getWidth() / 8.f;
-            float y0 = area.getY() + area.getHeight() * (0.28f + 0.08f * fastSin((float) i));
-            float y1 = area.getBottom() - area.getHeight() * (0.20f + 0.07f * fastCos((float) i));
-            Line<float> line({ x0, y1 }, { x1, y0 });
-            g.setColour(Colour(0xff35d6d2).withAlpha(0.40f));
-            g.drawLine(line, 1.2f);
-        }
-        g.setColour(Colour(0xff35d6d2).withAlpha(0.18f));
-        g.fillRect(area.reduced(area.getWidth() * 0.14f, area.getHeight() * 0.24f));
+        const NodePreviewResult preview = renderLocalMeshPreview(node, 40);
+        drawMeshSurfacePreview(g, node, area, preview);
         return;
     }
 
