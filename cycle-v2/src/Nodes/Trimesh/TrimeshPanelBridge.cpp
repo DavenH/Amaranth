@@ -36,6 +36,8 @@ TrimeshPanelBridge::TrimeshPanelBridge() :
     repo.setConsole(&console);
     repo.setMorphPositioner(&morphPositioner);
 
+    interactor2D.init();
+    interactor3D.init();
     interactor2D.setRasterizer(&rasterizer);
     interactor3D.setRasterizer(&rasterizer);
     panel2D.setInteractor(&interactor2D);
