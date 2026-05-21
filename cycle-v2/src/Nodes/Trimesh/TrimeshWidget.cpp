@@ -88,8 +88,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
 
     for (int i = 0; i < (int) axes.size(); ++i) {
         auto row = morphArea.removeFromTop(34.f);
-        const Rectangle<float> rail = row.withTrimmedLeft(68.f).withTrimmedRight(10.f)
-                .withSizeKeepingCentre(row.getWidth() - 92.f, 4.f);
+        const Rectangle<float> rail = morphRailBounds(sidePanel.reduced(14.f, 30.f), i);
 
         g.setColour(kText);
         g.setFont(FontOptions(11.f, Font::bold));
@@ -113,6 +112,57 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
             "Vertex controls: amp, phase, sharpness, and component curve.",
             morphArea.reduced(10.f),
             Justification::topLeft);
+}
+
+bool TrimeshWidget::findMorphControlAt(
+        Rectangle<float> content,
+        Point<float> position,
+        String& parameterId,
+        float& value) const {
+    const Rectangle<float> morphArea = morphPanelBounds(content);
+    const std::array<String, 3> parameterIds {
+            String("yellow"),
+            String("red"),
+            String("blue")
+    };
+
+    for (int i = 0; i < (int) parameterIds.size(); ++i) {
+        const Rectangle<float> rail = morphRailBounds(morphArea, i);
+
+        if (!rail.expanded(8.f, 12.f).contains(position)) {
+            continue;
+        }
+
+        parameterId = parameterIds[(size_t) i];
+        value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
+        return true;
+    }
+
+    return false;
+}
+
+bool TrimeshWidget::morphValueForParameterAt(
+        Rectangle<float> content,
+        const String& parameterId,
+        Point<float> position,
+        float& value) const {
+    const std::array<String, 3> parameterIds {
+            String("yellow"),
+            String("red"),
+            String("blue")
+    };
+
+    for (int i = 0; i < (int) parameterIds.size(); ++i) {
+        if (parameterIds[(size_t) i] != parameterId) {
+            continue;
+        }
+
+        const Rectangle<float> rail = morphRailBounds(morphPanelBounds(content), i);
+        value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
+        return true;
+    }
+
+    return false;
 }
 
 Colour TrimeshWidget::meshSurfaceColour(float value) {
@@ -210,6 +260,23 @@ void TrimeshWidget::drawTrace(
 
     g.setColour(colour);
     g.strokePath(trace, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+Rectangle<float> TrimeshWidget::morphPanelBounds(Rectangle<float> content) {
+    constexpr float gap = 14.f;
+    auto topRow = content.removeFromTop(content.getHeight() * 0.62f);
+    content.removeFromTop(gap);
+
+    ignoreUnused(content);
+    topRow.removeFromLeft(topRow.getWidth() * 0.60f);
+    topRow.removeFromLeft(gap);
+    return topRow.reduced(14.f, 30.f);
+}
+
+Rectangle<float> TrimeshWidget::morphRailBounds(Rectangle<float> morphArea, int axisIndex) {
+    auto row = morphArea.translated(0.f, (float) axisIndex * 34.f).withHeight(34.f);
+    return row.withTrimmedLeft(68.f).withTrimmedRight(10.f)
+            .withSizeKeepingCentre(row.getWidth() - 92.f, 4.f);
 }
 
 Image TrimeshWidget::createHeatmapImage(const TrimeshRenderData& renderData) const {

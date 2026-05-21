@@ -23,6 +23,17 @@ public:
             const Node& node,
             juce::Rectangle<float> content);
 
+    bool findMorphControlAt(
+            juce::Rectangle<float> content,
+            juce::Point<float> position,
+            juce::String& parameterId,
+            float& value) const;
+    bool morphValueForParameterAt(
+            juce::Rectangle<float> content,
+            const juce::String& parameterId,
+            juce::Point<float> position,
+            float& value) const;
+
 private:
     struct CachedHeatmap {
         juce::Image image;
@@ -48,6 +59,8 @@ private:
             juce::Rectangle<float> area,
             const std::vector<float>& values,
             juce::Colour colour);
+    static juce::Rectangle<float> morphPanelBounds(juce::Rectangle<float> content);
+    static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> morphArea, int axisIndex);
 
     juce::Image createHeatmapImage(const TrimeshRenderData& renderData) const;
 

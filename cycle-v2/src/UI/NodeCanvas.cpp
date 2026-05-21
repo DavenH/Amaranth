@@ -221,6 +221,12 @@ Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {
     return Rectangle<float>(24.f, 24.f).withCentre({ panel.getRight() - 24.f, panel.getY() + 22.f });
 }
 
+Rectangle<float> expandedEditorContentBounds(Rectangle<float> componentBounds) {
+    Rectangle<float> panel = expandedEditorBounds(componentBounds);
+    panel.removeFromTop(44.f);
+    return panel.reduced(18.f, 16.f);
+}
+
 String voiceDomainForNode(const Node& node) {
     return parameterValueForNode(node, "domain", "waveform");
 }
@@ -436,6 +442,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     draggingNode = false;
     connectingCable = false;
     nodeDragUndoPushed = false;
+    draggingTrimeshMorph = false;
+    trimeshMorphUndoPushed = false;
 
     if (expandedNodeId.isNotEmpty()) {
         const auto panel = expandedEditorBounds(getLocalBounds().toFloat());
@@ -443,6 +451,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
         if (closeButton.contains(event.position)) {
             expandedNodeId = {};
+            repaint();
+            return;
+        }
+
+        if (beginTrimeshMorphEdit(event.position)) {
             repaint();
             return;
         }
@@ -558,7 +571,9 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
     lastMousePosition = event.position;
 
-    if (connectingCable) {
+    if (draggingTrimeshMorph) {
+        updateTrimeshMorphEdit(event.position);
+    } else if (connectingCable) {
         PortAddress hitPort;
         connectingPoint = findConnectablePortAt(event.position, connectingPort, hitPort)
                 ? getPortLocation(hitPort).centre
@@ -588,6 +603,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     if (!connectingCable) {
         draggingNode = false;
         nodeDragUndoPushed = false;
+        endTrimeshMorphEdit();
         return;
     }
 
@@ -595,6 +611,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     connectingCable = false;
     draggingNode = false;
     nodeDragUndoPushed = false;
+    endTrimeshMorphEdit();
 
     if (findConnectablePortAt(event.position, connectingPort, destPort)) {
         const String beforeEdit = GraphSerializer().toXmlString(graph);
@@ -2373,6 +2390,73 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
     refreshCompiledState();
     editStatusMessage = "Voice start domain: " + domain;
     return true;
+}
+
+bool NodeCanvas::beginTrimeshMorphEdit(Point<float> screenPosition) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return false;
+    }
+
+    String parameterId;
+    float value {};
+    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
+
+    if (!trimeshWidgetFor(node->id).findMorphControlAt(content, screenPosition, parameterId, value)) {
+        return false;
+    }
+
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    activeTrimeshMorphNodeId = node->id;
+    activeTrimeshMorphParameterId = parameterId;
+    draggingTrimeshMorph = true;
+    trimeshMorphUndoPushed = false;
+    return updateTrimeshMorphEdit(screenPosition);
+}
+
+bool NodeCanvas::updateTrimeshMorphEdit(Point<float> screenPosition) {
+    Node* node = findMutableNode(activeTrimeshMorphNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh || activeTrimeshMorphParameterId.isEmpty()) {
+        return false;
+    }
+
+    float value {};
+    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
+
+    if (!trimeshWidgetFor(node->id).morphValueForParameterAt(
+            content,
+            activeTrimeshMorphParameterId,
+            screenPosition,
+            value)) {
+        return false;
+    }
+
+    if (!trimeshMorphUndoPushed) {
+        pushUndoSnapshot();
+        trimeshMorphUndoPushed = true;
+    }
+
+    const String label = activeTrimeshMorphParameterId.substring(0, 1).toUpperCase()
+            + activeTrimeshMorphParameterId.substring(1);
+    GraphEditor().setNodeParameter(
+            graph,
+            node->id,
+            activeTrimeshMorphParameterId,
+            label,
+            String(value, 3));
+    refreshCompiledState();
+    editStatusMessage = "Morph " + label + " = " + String(value, 2);
+    return true;
+}
+
+void NodeCanvas::endTrimeshMorphEdit() {
+    draggingTrimeshMorph = false;
+    trimeshMorphUndoPushed = false;
+    activeTrimeshMorphNodeId = {};
+    activeTrimeshMorphParameterId = {};
 }
 
 bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& second) const {

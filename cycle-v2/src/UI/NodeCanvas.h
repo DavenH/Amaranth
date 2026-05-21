@@ -61,6 +61,8 @@ private:
     Rectangle<float> dragStartNodeBounds;
     String selectedNodeId;
     String expandedNodeId;
+    String activeTrimeshMorphNodeId;
+    String activeTrimeshMorphParameterId;
     String editStatusMessage;
     int selectedEdgeIndex { -1 };
     PortAddress connectingPort;
@@ -69,6 +71,8 @@ private:
     bool draggingNode {};
     bool connectingCable {};
     bool nodeDragUndoPushed {};
+    bool draggingTrimeshMorph {};
+    bool trimeshMorphUndoPushed {};
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -135,6 +139,9 @@ private:
     bool clearSelection();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
+    bool beginTrimeshMorphEdit(Point<float> screenPosition);
+    bool updateTrimeshMorphEdit(Point<float> screenPosition);
+    void endTrimeshMorphEdit();
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
     Path createCablePath(
             Point<float> source,
