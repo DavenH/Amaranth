@@ -32,6 +32,13 @@ struct TrimeshVertexParameter {
     float maximum { 1.f };
 };
 
+struct TrimeshVertexMarker {
+    int index { -1 };
+    float phase {};
+    float amp {};
+    bool selected {};
+};
+
 class TrimeshNodeModel {
 public:
     TrimeshNodeModel();
@@ -47,6 +54,7 @@ public:
 
     TrimeshRenderData renderGrid(int rows, int columns);
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
+    std::vector<TrimeshVertexMarker> getVertexMarkers();
     int findNearestVertexIndexForPhaseAmp(float phase, float amp);
 
     const MorphPosition& getMorphPosition() const { return morph; }

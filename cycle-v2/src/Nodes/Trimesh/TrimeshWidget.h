@@ -78,6 +78,17 @@ private:
             juce::Rectangle<float> area,
             const std::vector<float>& values,
             juce::Colour colour);
+    static void drawEditorGrid(
+            juce::Graphics& g,
+            juce::Rectangle<float> area);
+    static void drawTraceFill(
+            juce::Graphics& g,
+            juce::Rectangle<float> area,
+            const std::vector<float>& values);
+    static void drawVertexMarkers(
+            juce::Graphics& g,
+            juce::Rectangle<float> area,
+            const std::vector<TrimeshVertexMarker>& markers);
     static void drawVertexParameters(
             juce::Graphics& g,
             juce::Rectangle<float> area,

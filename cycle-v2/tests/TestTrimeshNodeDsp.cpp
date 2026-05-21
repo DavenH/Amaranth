@@ -61,7 +61,9 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
     REQUIRE(renderData.canDrawSurface());
 
     const auto vertexParameters = model.getSelectedVertexParameters();
+    const auto vertexMarkers = model.getVertexMarkers();
     REQUIRE(vertexParameters.size() == 3);
+    REQUIRE(vertexMarkers.size() >= vertexParameters.size());
     REQUIRE(vertexParameters[0].id == "vertex.amp");
     REQUIRE(vertexParameters[1].id == "vertex.phase");
     REQUIRE(vertexParameters[2].id == "vertex.curve");
@@ -126,6 +128,9 @@ TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-
     node.parameters.push_back({ "selectedVertexIndex", "Selected Vertex", String(vertexIndex) });
     model.syncFromNode(node);
     REQUIRE(model.getSelectedVertexIndex() == vertexIndex);
+
+    const auto vertexMarkers = model.getVertexMarkers();
+    REQUIRE(vertexMarkers[(size_t) vertexIndex].selected);
 }
 
 TEST_CASE("Trimesh gridwise DSP renders independent morph columns", "[cycle-v2][nodes][trimesh]") {

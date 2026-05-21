@@ -186,6 +186,31 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameter
     };
 }
 
+std::vector<TrimeshVertexMarker> TrimeshNodeModel::getVertexMarkers() {
+    Mesh& activeMesh = mesh();
+    std::vector<TrimeshVertexMarker> markers;
+    const auto& verts = activeMesh.getVerts();
+
+    markers.reserve(verts.size());
+
+    for (int i = 0; i < (int) verts.size(); ++i) {
+        const Vertex* vertex = verts[(size_t) i];
+
+        if (vertex == nullptr) {
+            continue;
+        }
+
+        markers.push_back({
+                i,
+                jlimit(0.f, 1.f, vertex->values[Vertex::Phase]),
+                jlimit(0.f, 1.f, vertex->values[Vertex::Amp]),
+                i == selectedVertexIndex
+        });
+    }
+
+    return markers;
+}
+
 int TrimeshNodeModel::findNearestVertexIndexForPhaseAmp(float phase, float amp) {
     Mesh& activeMesh = mesh();
     int bestIndex { -1 };

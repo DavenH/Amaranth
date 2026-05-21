@@ -50,7 +50,7 @@ void TrimeshWidget::paintCompact(
 
 void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float> content) {
     syncFromNode(node);
-    const TrimeshRenderData renderData = model.renderGrid(96, 48);
+    const TrimeshRenderData renderData = model.renderGrid(320, 96);
 
     const float gap = 14.f;
     auto topRow = content.removeFromTop(content.getHeight() * 0.62f);
@@ -68,27 +68,12 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     drawMeshHeatmap(g, gridPanel.reduced(12.f, 26.f), renderData, true);
 
     const auto waveshapeContent = waveshapePanel.reduced(14.f, 28.f);
-    g.setColour(Colour(0xff1e2a34).withAlpha(0.56f));
-    for (int i = 1; i < 6; ++i) {
-        const float y = waveshapeContent.getY() + waveshapeContent.getHeight() * (float) i / 6.f;
-        g.drawHorizontalLine(roundToInt(y), waveshapeContent.getX(), waveshapeContent.getRight());
-    }
-
-    drawTrace(g, waveshapeContent.reduced(8.f), renderData.slice, Colour(0xffdfe7ff).withAlpha(0.92f));
+    drawEditorGrid(g, waveshapeContent);
+    drawTraceFill(g, waveshapeContent.reduced(8.f), renderData.slice);
+    drawTrace(g, waveshapeContent.reduced(8.f), renderData.slice, Colour(0xffe7edff).withAlpha(0.94f));
 
     const auto selectedParameters = model.getSelectedVertexParameters();
-    if (selectedParameters.size() >= 2) {
-        const float phase = selectedParameters[1].value;
-        const float amp = selectedParameters[0].value;
-        const Point<float> marker(
-                waveshapeContent.getX() + waveshapeContent.getWidth() * jlimit(0.f, 1.f, phase),
-                waveshapeContent.getBottom() - waveshapeContent.getHeight() * jlimit(0.f, 1.f, amp));
-
-        g.setColour(Colour(0xfff3f7ff).withAlpha(0.94f));
-        g.fillEllipse(Rectangle<float>(10.f, 10.f).withCentre(marker));
-        g.setColour(Colour(0xff0a0f13).withAlpha(0.74f));
-        g.drawEllipse(Rectangle<float>(14.f, 14.f).withCentre(marker), 2.f);
-    }
+    drawVertexMarkers(g, waveshapeContent.reduced(8.f), model.getVertexMarkers());
 
     Rectangle<float> morphArea = sidePanel.reduced(14.f, 30.f);
     const std::array<std::pair<String, Colour>, 3> axes {
@@ -296,6 +281,8 @@ Rectangle<float> TrimeshWidget::meshPreviewContentArea(Rectangle<float> area) {
 void TrimeshWidget::drawPanelFrame(Graphics& g, Rectangle<float> area, const String& title) {
     g.setColour(Colour(0xff0e1318));
     g.fillRoundedRectangle(area, 6.f);
+    g.setColour(Colour(0xff151a20).withAlpha(0.78f));
+    g.fillRect(area.withTrimmedTop(22.f));
     g.setColour(Colour(0xff26313d));
     g.drawRoundedRectangle(area, 6.f, 1.f);
     g.setColour(kMutedText);
@@ -331,14 +318,27 @@ void TrimeshWidget::drawMeshHeatmap(
     }
 
     if (drawGrid) {
-        g.setColour(Colour(0xff1e2a34).withAlpha(0.52f));
-        const int horizontalStep = jmax(1, renderData.rows / 5);
+        g.setColour(Colour(0xffeef5ff).withAlpha(0.08f));
+        const int minorHorizontalStep = jmax(1, renderData.rows / 16);
+        for (int row = 0; row <= renderData.rows; row += minorHorizontalStep) {
+            const float y = surface.getY() + (float) row * cellHeight;
+            g.drawHorizontalLine(roundToInt(y), surface.getX(), surface.getRight());
+        }
+
+        const int minorVerticalStep = jmax(1, renderData.columns / 24);
+        for (int column = 0; column <= renderData.columns; column += minorVerticalStep) {
+            const float x = surface.getX() + (float) column * cellWidth;
+            g.drawVerticalLine(roundToInt(x), surface.getY(), surface.getBottom());
+        }
+
+        g.setColour(Colour(0xffeef5ff).withAlpha(0.18f));
+        const int horizontalStep = jmax(1, renderData.rows / 4);
         for (int row = 0; row <= renderData.rows; row += horizontalStep) {
             const float y = surface.getY() + (float) row * cellHeight;
             g.drawHorizontalLine(roundToInt(y), surface.getX(), surface.getRight());
         }
 
-        const int verticalStep = jmax(1, renderData.columns / 6);
+        const int verticalStep = jmax(1, renderData.columns / 8);
         for (int column = 0; column <= renderData.columns; column += verticalStep) {
             const float x = surface.getX() + (float) column * cellWidth;
             g.drawVerticalLine(roundToInt(x), surface.getY(), surface.getBottom());
@@ -371,6 +371,81 @@ void TrimeshWidget::drawTrace(
 
     g.setColour(colour);
     g.strokePath(trace, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+void TrimeshWidget::drawEditorGrid(Graphics& g, Rectangle<float> area) {
+    g.setColour(Colour(0xff05070a).withAlpha(0.52f));
+    g.fillRoundedRectangle(area, 4.f);
+
+    g.setColour(Colour(0xff1b2430).withAlpha(0.70f));
+    for (int i = 1; i < 32; ++i) {
+        const float x = area.getX() + area.getWidth() * (float) i / 32.f;
+        g.drawVerticalLine(roundToInt(x), area.getY(), area.getBottom());
+    }
+
+    for (int i = 1; i < 16; ++i) {
+        const float y = area.getY() + area.getHeight() * (float) i / 16.f;
+        g.drawHorizontalLine(roundToInt(y), area.getX(), area.getRight());
+    }
+
+    g.setColour(Colour(0xff546276).withAlpha(0.34f));
+    for (int i = 1; i < 8; ++i) {
+        const float x = area.getX() + area.getWidth() * (float) i / 8.f;
+        g.drawVerticalLine(roundToInt(x), area.getY(), area.getBottom());
+    }
+
+    for (int i = 1; i < 4; ++i) {
+        const float y = area.getY() + area.getHeight() * (float) i / 4.f;
+        g.drawHorizontalLine(roundToInt(y), area.getX(), area.getRight());
+    }
+}
+
+void TrimeshWidget::drawTraceFill(
+        Graphics& g,
+        Rectangle<float> area,
+        const std::vector<float>& values) {
+    if (values.size() < 2) {
+        return;
+    }
+
+    Path fillPath;
+    const float denominator = (float) (values.size() - 1);
+    const float centreY = area.getCentreY();
+
+    fillPath.startNewSubPath(area.getX(), centreY);
+
+    for (int i = 0; i < (int) values.size(); ++i) {
+        const float x = area.getX() + area.getWidth() * (float) i / denominator;
+        const float y = area.getBottom() - area.getHeight() * jlimit(0.f, 1.f, values[(size_t) i]);
+        fillPath.lineTo(x, y);
+    }
+
+    fillPath.lineTo(area.getRight(), centreY);
+    fillPath.closeSubPath();
+
+    g.setColour(Colour(0xff8ea0c6).withAlpha(0.18f));
+    g.fillPath(fillPath);
+    g.setColour(Colour(0xfff1f4ff).withAlpha(0.16f));
+    g.strokePath(fillPath, PathStrokeType(5.f, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+void TrimeshWidget::drawVertexMarkers(
+        Graphics& g,
+        Rectangle<float> area,
+        const std::vector<TrimeshVertexMarker>& markers) {
+    for (const auto& marker : markers) {
+        const Point<float> centre(
+                area.getX() + area.getWidth() * jlimit(0.f, 1.f, marker.phase),
+                area.getBottom() - area.getHeight() * jlimit(0.f, 1.f, marker.amp));
+        const float radius = marker.selected ? 5.5f : 3.2f;
+
+        g.setColour(marker.selected
+                ? Colour(0xffffd13d).withAlpha(0.92f)
+                : Colour(0xfff3f7ff).withAlpha(0.76f));
+        g.fillEllipse(Rectangle<float>(radius * 2.f, radius * 2.f).withCentre(centre));
+        g.setColour(Colour(0xff05070a).withAlpha(marker.selected ? 0.86f : 0.66f));
+        g.drawEllipse(Rectangle<float>((radius + 2.f) * 2.f, (radius + 2.f) * 2.f).withCentre(centre), 1.4f);
+    }
 }
 
 void TrimeshWidget::drawVertexParameters(
