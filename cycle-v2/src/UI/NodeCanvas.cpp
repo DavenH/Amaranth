@@ -1097,7 +1097,7 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     g.drawRoundedRectangle(toScreen(node.bounds), corner, 1.2f);
 
     if (node.id == selectedNodeId) {
-        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.82f));
+        g.setColour(Colours::white.withAlpha(0.86f));
         g.drawRoundedRectangle(toScreen(node.bounds).expanded(2.f), corner + 2.f, 2.f);
     }
 
