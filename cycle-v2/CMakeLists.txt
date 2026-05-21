@@ -41,6 +41,8 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshBlockwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshGridwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshMeshFactory.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshNodeModel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshWidget.cpp"
 )
 
 set(BASE_DEFINITIONS

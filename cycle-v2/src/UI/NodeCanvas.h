@@ -2,9 +2,12 @@
 
 #include <JuceHeader.h>
 
+#include <memory>
+
 #include "../Graph/GraphEditor.h"
 #include "../Graph/NodeGraph.h"
 #include "../Graph/GraphSerializer.h"
+#include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPreviewExecutor.h"
 #include "../Runtime/GraphRuntime.h"
 #include "NodeCanvasGlRenderer.h"
@@ -35,13 +38,6 @@ private:
         Point<float> centre;
     };
 
-    struct CachedHeatmap {
-        Image image;
-        size_t valueCount {};
-        int rows {};
-        int columns {};
-    };
-
     struct CachedPreviewSprite {
         Image image;
         int width {};
@@ -56,8 +52,8 @@ private:
     GraphPreviewResult previewResult;
     std::vector<String> undoStack;
     std::vector<String> redoStack;
-    std::vector<std::pair<String, CachedHeatmap>> heatmapCache;
     std::vector<std::pair<String, CachedPreviewSprite>> previewSpriteCache;
+    std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
 
     float zoom { 0.58f };
     Point<float> pan { 34.f, 38.f };
@@ -88,14 +84,12 @@ private:
     void drawNode(Graphics& g, const Node& node);
     void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
     void drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area);
-    void drawMeshSurfacePreview(Graphics& g, const Node& node, Rectangle<float> area, const NodePreviewResult& preview);
-    CachedHeatmap& cachedHeatmapFor(const String& nodeId);
     CachedPreviewSprite& cachedPreviewSpriteFor(const String& nodeId);
+    TrimeshWidget& trimeshWidgetFor(const String& nodeId);
     void drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed);
     void drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colour, int seed);
     void drawEnvelopeCurve(Graphics& g, Rectangle<float> area);
     void drawExpandedEditor(Graphics& g, const Node& node);
-    void drawExpandedMeshEditor(Graphics& g, Rectangle<float> content, const NodePreviewResult& preview);
     void drawMiniMap(Graphics& g);
     void drawGraphStatus(Graphics& g);
     void drawEdgeLegend(Graphics& g);

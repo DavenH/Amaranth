@@ -1,7 +1,5 @@
 #include "NodeCanvas.h"
 
-#include "../Runtime/NodePreviewProcessor.h"
-
 #include <array>
 #include <iterator>
 #include <limits>
@@ -285,110 +283,6 @@ void drawPreviewTrace(
 
     g.setColour(colour.withAlpha(0.92f));
     g.strokePath(trace, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
-}
-
-Colour meshSurfaceColour(float value) {
-    const float v = jlimit(0.f, 1.f, value);
-    const Colour low(0xff06090d);
-    const Colour mid(0xff53657a);
-    const Colour high(0xffd7eaff);
-
-    if (v < 0.5f) {
-        return low.interpolatedWith(mid, v * 2.f);
-    }
-
-    return mid.interpolatedWith(high, (v - 0.5f) * 2.f);
-}
-
-bool canDrawMeshHeatmap(const NodePreviewResult& preview) {
-    const int rows = (int) preview.secondary.size();
-    return rows >= 2 && preview.primary.size() >= (size_t) rows * 2;
-}
-
-Image createMeshHeatmapImage(const NodePreviewResult& preview) {
-    const int rows = (int) preview.secondary.size();
-
-    if (!canDrawMeshHeatmap(preview)) {
-        return {};
-    }
-
-    const int columns = (int) preview.primary.size() / rows;
-    Image image(Image::ARGB, columns, rows, true);
-
-    for (int column = 0; column < columns; ++column) {
-        for (int row = 0; row < rows; ++row) {
-            const float value = preview.primary[(size_t) column * rows + row];
-            image.setPixelAt(column, row, meshSurfaceColour(value).withAlpha(0.82f));
-        }
-    }
-
-    return image;
-}
-
-void drawMeshHeatmap(
-        Graphics& g,
-        Rectangle<float> area,
-        const NodePreviewResult& preview,
-        float zoom,
-        bool drawGrid) {
-    const int rows = (int) preview.secondary.size();
-
-    if (!canDrawMeshHeatmap(preview)) {
-        return;
-    }
-
-    const int columns = (int) preview.primary.size() / rows;
-    const Rectangle<float> surface = area.reduced(area.getWidth() * 0.025f, area.getHeight() * 0.06f);
-
-    const float cellWidth = surface.getWidth() / (float) columns;
-    const float cellHeight = surface.getHeight() / (float) rows;
-
-    for (int column = 0; column < columns; ++column) {
-        for (int row = 0; row < rows; ++row) {
-            const float value = preview.primary[(size_t) column * rows + row];
-            const Rectangle<float> cell(
-                    surface.getX() + (float) column * cellWidth,
-                    surface.getY() + (float) row * cellHeight,
-                    cellWidth + 0.75f,
-                    cellHeight + 0.75f);
-
-            g.setColour(meshSurfaceColour(value).withAlpha(0.82f));
-            g.fillRect(cell);
-        }
-    }
-
-    if (drawGrid) {
-        g.setColour(Colour(0xff1e2a34).withAlpha(0.52f));
-        const int horizontalStep = jmax(1, rows / 5);
-        for (int row = 0; row <= rows; row += horizontalStep) {
-            const float y = surface.getY() + (float) row * cellHeight;
-            g.drawHorizontalLine(roundToInt(y), surface.getX(), surface.getRight());
-        }
-
-        const int verticalStep = jmax(1, columns / 6);
-        for (int column = 0; column <= columns; column += verticalStep) {
-            const float x = surface.getX() + (float) column * cellWidth;
-            g.drawVerticalLine(roundToInt(x), surface.getY(), surface.getBottom());
-        }
-    }
-}
-
-void drawMeshSurfacePreview(
-        Graphics& g,
-        Rectangle<float> area,
-        const NodePreviewResult& preview,
-        float zoom) {
-    drawMeshHeatmap(g, area, preview, zoom, false);
-}
-
-void drawPanelFrame(Graphics& g, Rectangle<float> area, const String& title) {
-    g.setColour(Colour(0xff0e1318));
-    g.fillRoundedRectangle(area, 6.f);
-    g.setColour(Colour(0xff26313d));
-    g.drawRoundedRectangle(area, 6.f, 1.f);
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f, Font::bold));
-    g.drawText(title, area.reduced(10.f, 6.f).removeFromTop(15.f), Justification::centredLeft);
 }
 
 void drawPreviewMeters(
@@ -1210,39 +1104,13 @@ Rectangle<float> previewContentArea(Rectangle<float> area) {
     return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.12f);
 }
 
-Rectangle<float> meshPreviewContentArea(Rectangle<float> area) {
-    return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
-}
-
-NodePreviewResult renderLocalMeshPreview(const Node& node, size_t pointCount) {
-    NodePreviewProcessorFactory factory;
-    auto processor = factory.create(PreviewModuleRole::MeshSurface);
-
-    if (processor == nullptr) {
-        return {};
-    }
-
-    PreviewProcessContext context;
-    context.pointCount = pointCount;
-    context.parameters = node.parameters;
-    processor->render(context);
-
-    return {
-            node.id,
-            PreviewModuleRole::MeshSurface,
-            std::move(context.primary),
-            std::move(context.secondary)
-    };
-}
-
 void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area) {
     if (area.getWidth() < 20.f || area.getHeight() < 20.f) {
         return;
     }
 
     if (node.kind == NodeKind::TrilinearMesh) {
-        const NodePreviewResult preview = renderLocalMeshPreview(node, 40);
-        drawMeshSurfacePreview(g, node, area, preview);
+        trimeshWidgetFor(node.id).paintCompact(g, node, area, zoom);
         return;
     }
 
@@ -1261,13 +1129,6 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
 
         if (preview->role == PreviewModuleRole::OutputMeters) {
             drawPreviewMeters(g, area, *preview, colour);
-            return;
-        }
-
-        if (preview->role == PreviewModuleRole::MeshSurface
-                && !preview->primary.empty()
-                && !preview->secondary.empty()) {
-            drawMeshSurfacePreview(g, node, area, *preview);
             return;
         }
 
@@ -1443,15 +1304,15 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
     g.strokePath(curve, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
-NodeCanvas::CachedHeatmap& NodeCanvas::cachedHeatmapFor(const String& nodeId) {
-    for (auto& entry : heatmapCache) {
+TrimeshWidget& NodeCanvas::trimeshWidgetFor(const String& nodeId) {
+    for (auto& entry : trimeshWidgets) {
         if (entry.first == nodeId) {
-            return entry.second;
+            return *entry.second;
         }
     }
 
-    heatmapCache.emplace_back(nodeId, CachedHeatmap {});
-    return heatmapCache.back().second;
+    trimeshWidgets.emplace_back(nodeId, std::make_unique<TrimeshWidget>());
+    return *trimeshWidgets.back().second;
 }
 
 NodeCanvas::CachedPreviewSprite& NodeCanvas::cachedPreviewSpriteFor(const String& nodeId) {
@@ -1463,36 +1324,6 @@ NodeCanvas::CachedPreviewSprite& NodeCanvas::cachedPreviewSpriteFor(const String
 
     previewSpriteCache.emplace_back(nodeId, CachedPreviewSprite {});
     return previewSpriteCache.back().second;
-}
-
-void NodeCanvas::drawMeshSurfacePreview(
-        Graphics& g,
-        const Node& node,
-        Rectangle<float> area,
-        const NodePreviewResult& preview) {
-    if (!canDrawMeshHeatmap(preview)) {
-        return;
-    }
-
-    const int rows = (int) preview.secondary.size();
-    const int columns = (int) preview.primary.size() / rows;
-    CachedHeatmap& cached = cachedHeatmapFor(node.id);
-
-    if (!cached.image.isValid()
-            || cached.valueCount != preview.primary.size()
-            || cached.rows != rows
-            || cached.columns != columns) {
-        cached.image = createMeshHeatmapImage(preview);
-        cached.valueCount = preview.primary.size();
-        cached.rows = rows;
-        cached.columns = columns;
-    }
-
-    if (cached.image.isValid()) {
-        const Rectangle<float> surface = meshPreviewContentArea(area);
-        g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-        g.drawImage(cached.image, surface);
-    }
 }
 
 void NodeCanvas::drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed) {
@@ -1600,11 +1431,9 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
 
     auto content = panel.reduced(18.f, 16.f);
 
-    if (const NodePreviewResult* previewResult = findPreviewResult(node.id)) {
-        if (previewResult->role == PreviewModuleRole::MeshSurface && canDrawMeshHeatmap(*previewResult)) {
-            drawExpandedMeshEditor(g, content, *previewResult);
-            return;
-        }
+    if (node.kind == NodeKind::TrilinearMesh) {
+        trimeshWidgetFor(node.id).paintExpanded(g, node, content);
+        return;
     }
 
     auto preview = content.removeFromTop(jmin(360.f, content.getHeight() * 0.66f));
@@ -1632,75 +1461,6 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
 
     drawPorts(left, node.inputs, "Inputs");
     drawPorts(right, node.outputs, "Outputs");
-}
-
-void NodeCanvas::drawExpandedMeshEditor(
-        Graphics& g,
-        Rectangle<float> content,
-        const NodePreviewResult& preview) {
-    const float gap = 14.f;
-    auto topRow = content.removeFromTop(content.getHeight() * 0.62f);
-    content.removeFromTop(gap);
-
-    auto gridPanel = topRow.removeFromLeft(topRow.getWidth() * 0.60f);
-    topRow.removeFromLeft(gap);
-    auto sidePanel = topRow;
-    auto waveshapePanel = content;
-
-    drawPanelFrame(g, gridPanel, "3D grid heatmap");
-    drawPanelFrame(g, sidePanel, "Morph / vertex");
-    drawPanelFrame(g, waveshapePanel, "2D waveshape");
-
-    auto gridContent = gridPanel.reduced(12.f, 26.f);
-    drawMeshHeatmap(g, gridContent, preview, 1.f, true);
-
-    auto waveshapeContent = waveshapePanel.reduced(14.f, 28.f);
-    g.setColour(Colour(0xff0a0f13));
-    g.fillRoundedRectangle(waveshapeContent, 5.f);
-    g.setColour(Colour(0xff1e2a34).withAlpha(0.56f));
-    for (int i = 1; i < 6; ++i) {
-        const float y = waveshapeContent.getY() + waveshapeContent.getHeight() * (float) i / 6.f;
-        g.drawHorizontalLine(roundToInt(y), waveshapeContent.getX(), waveshapeContent.getRight());
-    }
-    drawPreviewTrace(
-            g,
-            waveshapeContent.reduced(8.f),
-            preview.secondary,
-            Colour(0xffdfe7ff).withAlpha(0.92f),
-            1.f,
-            false);
-
-    Rectangle<float> morphArea = sidePanel.reduced(14.f, 30.f);
-    const Colour yellow(0xffe0c247);
-    const Colour red(0xffd65a5a);
-    const Colour blue(0xff5f91e8);
-    const std::array<std::pair<String, Colour>, 3> axes {
-            std::make_pair(String("Yellow"), yellow),
-            std::make_pair(String("Red"), red),
-            std::make_pair(String("Blue"), blue)
-    };
-
-    for (const auto& axis : axes) {
-        auto row = morphArea.removeFromTop(34.f);
-        const Rectangle<float> rail = row.withTrimmedLeft(68.f).withTrimmedRight(10.f)
-                .withSizeKeepingCentre(row.getWidth() - 92.f, 4.f);
-
-        g.setColour(kText);
-        g.setFont(FontOptions(11.f, Font::bold));
-        g.drawText(axis.first, row.removeFromLeft(62.f), Justification::centredLeft);
-        g.setColour(axis.second.withAlpha(0.26f));
-        g.fillRoundedRectangle(rail, 2.f);
-        g.setColour(axis.second.withAlpha(0.92f));
-        g.fillEllipse(rail.getX() + rail.getWidth() * 0.48f - 5.f, rail.getCentreY() - 5.f, 10.f, 10.f);
-    }
-
-    morphArea.removeFromTop(8.f);
-    g.setColour(Colour(0xff0a0f13));
-    g.fillRoundedRectangle(morphArea, 5.f);
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(10.f));
-    g.drawText("Vertex cube controls will live here: amp, phase, sharp, and component curve.",
-               morphArea.reduced(10.f), Justification::topLeft);
 }
 
 void NodeCanvas::drawMiniMap(Graphics& g) {
@@ -2408,7 +2168,6 @@ Point<float> NodeCanvas::paletteCreationWorldPosition(Point<float> paletteClickP
 }
 
 void NodeCanvas::refreshCompiledState() {
-    heatmapCache.clear();
     previewSpriteCache.clear();
     compileResult = GraphCompiler().compile(graph);
     runtimeTrace = {};
