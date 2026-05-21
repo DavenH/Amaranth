@@ -630,8 +630,16 @@ Trilinear mesh implementation plan:
   traces rather than coarse placeholder polylines,
 - treat Cycle 1.x `Waveform2D`, `Spectrum2D`, `WaveformInter2D`,
   `SpectrumInter2D`, `Waveform3D`, `Spectrum3D`, `WaveformInter3D`,
-  `SpectrumInter3D`, `GraphicRasterizer`, and `VisualDsp` as parity references
-  rather than classes to embed wholesale,
+  `SpectrumInter3D`, and `GraphicRasterizer` as parity references and reusable
+  structure where their dependencies can stay at lib scope,
+- do not make lib `Panel2D`, `Panel3D`, or `Interactor` depend on Cycle-only
+  classes such as `VisualDsp`; Cycle 2 node panels should instead adapt node
+  grid/slice data into the existing lib panel contracts (`Panel3D::DataRetriever`,
+  rasterizer snapshots, and interactor state),
+- use a narrow panel bridge for the trilinear node: the node model/DSP owns the
+  mesh and grid data, an adapter publishes that data to lib panel interfaces,
+  and the OpenGL context/instance ownership remains outside `NodeCanvas` until
+  the shared-panel renderer work settles,
 - build a dedicated trilinear mesh widget/editor module; `NodeCanvas` should
   own canvas-level transforms, routing, clipping, and popup placement, while
   the mesh widget owns compact preview drawing, expanded editor drawing, mesh

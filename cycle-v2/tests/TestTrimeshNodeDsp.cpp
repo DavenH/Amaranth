@@ -5,6 +5,7 @@
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshNodeModel.h"
+#include "../src/Nodes/Trimesh/TrimeshPanelDataSource.h"
 
 #include <algorithm>
 
@@ -154,4 +155,38 @@ TEST_CASE("Trimesh gridwise DSP renders independent morph columns", "[cycle-v2][
     REQUIRE(columns.front().signal.samples != columns.back().signal.samples);
 
     mesh->destroy();
+}
+
+TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", "[cycle-v2][nodes][trimesh]") {
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {
+                    { "yellow", "Yellow", "0.25" },
+                    { "red", "Red", "0.50" },
+                    { "blue", "Blue", "0.75" },
+                    { "primaryAxis", "Primary Axis", "yellow" }
+            },
+            {},
+            {}
+    };
+    TrimeshNodeModel model;
+    TrimeshPanelDataSource source;
+
+    model.syncFromNode(node);
+    source.rebuild(model, 16, 5);
+
+    const auto& columns = source.getColumns();
+    Buffer<float> columnArray = source.getColumnArray();
+
+    REQUIRE(columns.size() == 5);
+    REQUIRE(columnArray.size() == 80);
+    REQUIRE(columns.front().size() == 16);
+    REQUIRE(columns.front().x == Catch::Approx(0.f));
+    REQUIRE(columns.back().x == Catch::Approx(1.f));
+    REQUIRE(columns.front().get() == columnArray.get());
+    REQUIRE(columns.back().get() == columnArray.get() + 64);
 }
