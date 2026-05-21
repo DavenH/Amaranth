@@ -63,7 +63,7 @@ void TrimeshPanelBridge::updateRasterizer() {
 
     rasterizer.setWrapsEnds(true);
     rasterizer.setMesh(&model.getMeshForPanel());
-    rasterizer.updateGeometry();
+    rasterizer.updateWaveform();
 }
 
 Component* TrimeshPanelBridge::getPanel3DComponent() {

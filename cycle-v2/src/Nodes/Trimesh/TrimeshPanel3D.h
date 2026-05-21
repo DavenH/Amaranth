@@ -11,6 +11,7 @@ public:
     TrimeshPanel3D(SingletonRepo* repo, TrimeshPanelDataSource& dataSource);
 
     bool shouldDrawGrid() override { return true; }
+    void panelResized() override;
 
 private:
     TrimeshPanelDataSource& dataSource;

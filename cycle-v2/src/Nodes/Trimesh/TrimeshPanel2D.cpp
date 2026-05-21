@@ -7,4 +7,12 @@ TrimeshPanel2D::TrimeshPanel2D(SingletonRepo* repo) :
     ,   Panel2D            (repo, "CycleV2TrimeshPanel2D", true, true)
 {}
 
+void TrimeshPanel2D::panelResized() {
+    dirtyState.mark(PanelDirtyState::Flag::Layout);
+    dirtyState.mark(PanelDirtyState::Flag::StaticVisual);
+    updateNameTexturePos();
+    updateBackground();
+    doExtraResized();
+}
+
 }
