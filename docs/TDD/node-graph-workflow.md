@@ -566,6 +566,29 @@ by graph execution where feasible. If a cheaper UI/update path is needed, it
 must be explicitly marked as preview-only and covered by tests that keep it
 semantically aligned.
 
+The expanded editor panels should visually match Cycle 1.x panel baselines
+closely enough that the new node workspace feels like a new shell around the
+same high-quality editor language, not a simplified redraw. Reference images
+live under `docs/media/images/cycle-panel-baselines/`:
+
+- `waveform2d-bongo.png` for Waveform2D-style translucent surface bands,
+  dense grid, mesh/vertex overlay, and layered curve history,
+- `spectrum2d-bongo-magnitude.png` and `spectrum2d-bongo-phase.png` for
+  Spectrum2D magnitude/phase density, bar/curve overlays, logarithmic-feeling
+  guides, and guide-curve lines,
+- `waveform3d-bongo.png` and `spectrum3d-bongo-*.png` for the 3D panel camera,
+  depth bands, grid planes, and mesh surface overlays,
+- `waveshaper-fx-bongo.png` for FX curve panels,
+- Cycle 1.x morph panel references for morph rails, cube-position preview, axis
+  selectors, cube-range controls, and link toggles.
+
+Placeholder polylines, low-resolution approximations, and hand-drawn preview
+curves are acceptable only as short-lived scaffolding. The real implementation
+should use the Cycle rasterizer/curve data path (`Curve`, mesh rasterizers,
+gridwise DSP, or faithful adapters around them) so displayed curves, surfaces,
+vertices, rails, guide overlays, and spectra are computed from the same model
+that drives DSP.
+
 ### Expanded Editors
 
 Double-clicking a node expands the relevant editor in the node workspace.
@@ -601,6 +624,10 @@ Trilinear mesh implementation plan:
   Cycle-style power-of-two cycle processing and realtime allocation rules,
 - use gridwise DSP for UI columns, 3D heatmaps, 2D slices, mesh overlays, and
   reduced-detail previews,
+- make gridwise UI rendering reproduce the Cycle 1.x panel aesthetic: heatmap
+  and translucent surface bands, dense but subdued grid lines, vertex/cube
+  overlays, guide-curve overlays, and high-resolution Curve/Rasterizer-derived
+  traces rather than coarse placeholder polylines,
 - treat Cycle 1.x `Waveform2D`, `Spectrum2D`, `WaveformInter2D`,
   `SpectrumInter2D`, `Waveform3D`, `Spectrum3D`, `WaveformInter3D`,
   `SpectrumInter3D`, `GraphicRasterizer`, and `VisualDsp` as parity references
