@@ -35,20 +35,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.outputs = { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) };
             break;
 
-        case NodeKind::TrilinearWaveSurface:
-            node.title = "Trilinear Wave Surface";
-            node.subtitle = "pitch-aware generator";
-            node.inputs = {
-                    input("pitch", "Pitch", PortDomain::PitchSignal),
-                    input("voice", "Voice", PortDomain::VoiceControlSignal),
-                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
-            };
-            node.outputs = {
-                    output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
-                    output("mesh", "Mesh", PortDomain::MeshField)
-            };
-            break;
-
         case NodeKind::TrilinearMesh:
             node.title = "Trilinear Mesh";
             node.subtitle = "mesh operand";
@@ -78,23 +64,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
                     output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     output("phase", "Phase", PortDomain::SpectralPhaseSignal)
             };
-            break;
-
-        case NodeKind::SpectralMagnitudeProcessor:
-            node.title = "Magnitude Sculpt";
-            node.subtitle = "mesh filter";
-            node.inputs = {
-                    input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
-                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
-            };
-            node.outputs = { output("mag", "Mag", PortDomain::SpectralMagnitudeSignal) };
-            break;
-
-        case NodeKind::SpectralPhaseProcessor:
-            node.title = "Phase Sculpt";
-            node.subtitle = "phase mesh filter";
-            node.inputs = { input("phase", "Phase", PortDomain::SpectralPhaseSignal) };
-            node.outputs = { output("phase", "Phase", PortDomain::SpectralPhaseSignal) };
             break;
 
         case NodeKind::Ifft:

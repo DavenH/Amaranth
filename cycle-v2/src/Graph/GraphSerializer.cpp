@@ -18,11 +18,8 @@ String idForNodeKind(NodeKind kind) {
         case NodeKind::VoiceContext:                 return "voiceContext";
         case NodeKind::WaveSource:                   return "waveSource";
         case NodeKind::ImageSource:                  return "imageSource";
-        case NodeKind::TrilinearWaveSurface:         return "trilinearWaveSurface";
         case NodeKind::TrilinearMesh:                return "trilinearMesh";
         case NodeKind::Fft:                          return "fft";
-        case NodeKind::SpectralMagnitudeProcessor:   return "spectralMagnitudeProcessor";
-        case NodeKind::SpectralPhaseProcessor:       return "spectralPhaseProcessor";
         case NodeKind::Ifft:                         return "ifft";
         case NodeKind::Envelope:                     return "envelope";
         case NodeKind::Add:                          return "add";
@@ -43,29 +40,17 @@ NodeKind nodeKindForId(const String& id) {
     if (id == "voiceContext") {
         return NodeKind::VoiceContext;
     }
-    if (id == "waveformStart" || id == "spectralStart") {
-        return NodeKind::VoiceContext;
-    }
     if (id == "waveSource") {
         return NodeKind::WaveSource;
     }
     if (id == "imageSource") {
         return NodeKind::ImageSource;
     }
-    if (id == "trilinearWaveSurface") {
-        return NodeKind::TrilinearWaveSurface;
-    }
     if (id == "trilinearMesh") {
         return NodeKind::TrilinearMesh;
     }
     if (id == "fft") {
         return NodeKind::Fft;
-    }
-    if (id == "spectralMagnitudeProcessor") {
-        return NodeKind::SpectralMagnitudeProcessor;
-    }
-    if (id == "spectralPhaseProcessor") {
-        return NodeKind::SpectralPhaseProcessor;
     }
     if (id == "ifft") {
         return NodeKind::Ifft;
@@ -105,28 +90,6 @@ NodeKind nodeKindForId(const String& id) {
     }
 
     return NodeKind::GenericProcessor;
-}
-
-void setParameter(std::vector<NodeParameter>& parameters, String id, String label, String value) {
-    for (auto& parameter : parameters) {
-        if (parameter.id == id) {
-            parameter.label = std::move(label);
-            parameter.value = std::move(value);
-            return;
-        }
-    }
-
-    parameters.push_back({ std::move(id), std::move(label), std::move(value) });
-}
-
-void normalizeLegacyStartNode(const String& kindId, Node& node) {
-    if (kindId == "spectralStart") {
-        setParameter(node.parameters, "domain", "Start Domain", "spectral");
-        node.subtitle = "spectral start";
-    } else if (kindId == "waveformStart") {
-        setParameter(node.parameters, "domain", "Start Domain", "waveform");
-        node.subtitle = "waveform start";
-    }
 }
 
 void normalizeNodePresentation(Node& node) {
@@ -364,7 +327,6 @@ NodeGraph GraphSerializer::fromValueTree(const ValueTree& tree) const {
                 }
             }
 
-            normalizeLegacyStartNode(kindId, node);
             normalizeNodePresentation(node);
             graph.addNode(std::move(node));
         } else if (child.hasType(edgeType)) {

@@ -144,10 +144,7 @@ bool isPreviewableNode(NodeKind kind) {
     switch (kind) {
         case NodeKind::WaveSource:
         case NodeKind::ImageSource:
-        case NodeKind::TrilinearWaveSurface:
         case NodeKind::TrilinearMesh:
-        case NodeKind::SpectralMagnitudeProcessor:
-        case NodeKind::SpectralPhaseProcessor:
         case NodeKind::Envelope:
         case NodeKind::GuideCurve:
         case NodeKind::ImpulseResponse:
@@ -1309,7 +1306,7 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
         return;
     }
 
-    if (node.kind == NodeKind::TrilinearWaveSurface || node.kind == NodeKind::TrilinearMesh) {
+    if (node.kind == NodeKind::TrilinearMesh) {
         area = meshPreviewContentArea(area);
         Path surface;
         for (int i = 0; i < 8; ++i) {
@@ -1358,16 +1355,6 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
         g.fillRect(area);
         g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.92f));
         g.strokePath(wave, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
-        return;
-    }
-
-    if (node.kind == NodeKind::SpectralMagnitudeProcessor) {
-        drawSpectrumBars(g, area.reduced(8.f), colourForDomain(PortDomain::SpectralMagnitudeSignal), node.id.hashCode());
-        return;
-    }
-
-    if (node.kind == NodeKind::SpectralPhaseProcessor) {
-        drawPhaseTrace(g, area.reduced(8.f), colourForDomain(PortDomain::SpectralPhaseSignal), node.id.hashCode());
         return;
     }
 

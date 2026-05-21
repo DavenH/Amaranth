@@ -71,7 +71,6 @@ bool GraphDomainResolver::isContextResolvedSource(const Node& node, const Port& 
 
     switch (node.kind) {
         case NodeKind::TrilinearMesh:
-        case NodeKind::TrilinearWaveSurface:
             return true;
 
         default:
