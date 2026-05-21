@@ -586,6 +586,38 @@ Trilinear mesh expanded editor:
 - current mesh/layer controls required for that node,
 - live preview of downstream impact through invalidated dependent nodes.
 
+Trilinear mesh implementation plan:
+
+- create a dedicated trilinear mesh node model that owns or references mesh
+  data, Yellow/Red/Blue morph position, primary view axis, selected
+  cube/vertex state, scratch and guide attachment targets, and mesh-specific
+  dirty revisions,
+- keep source-domain resolution derived from graph traversal context; a mesh
+  node may cache its resolved domain for preview or DSP preparation, but the
+  cache is not persistent node schema,
+- keep blockwise realtime DSP and gridwise UI DSP as separate backing modules
+  under the trilinear mesh node folder,
+- use blockwise DSP for serial cycle rendering and audio execution, preserving
+  Cycle-style power-of-two cycle processing and realtime allocation rules,
+- use gridwise DSP for UI columns, 3D heatmaps, 2D slices, mesh overlays, and
+  reduced-detail previews,
+- treat Cycle 1.x `Waveform2D`, `Spectrum2D`, `WaveformInter2D`,
+  `SpectrumInter2D`, `Waveform3D`, `Spectrum3D`, `WaveformInter3D`,
+  `SpectrumInter3D`, `GraphicRasterizer`, and `VisualDsp` as parity references
+  rather than classes to embed wholesale,
+- build a dedicated trilinear mesh widget/editor module; `NodeCanvas` should
+  own canvas-level transforms, routing, clipping, and popup placement, while
+  the mesh widget owns compact preview drawing, expanded editor drawing, mesh
+  hit-testing, and mesh-specific interaction,
+- organize the expanded editor as a 3D grid/heatmap panel beside a morph and
+  vertex-parameter panel, with the 2D waveform or spectrum slice editor taking
+  the full width below,
+- render the morph panel and vertex parameters with Cycle 1.x semantics but
+  with more latitude in layout; expected parameters include amplitude, phase,
+  sharpness, and component curve controls for selected mesh elements,
+- make all mesh edits undoable and route mesh, morph, preview camera, and
+  attachment changes through `NodeUpdateGraph` invalidation.
+
 2D mesh expanded editor:
 
 - curve/slice editor,
@@ -860,6 +892,11 @@ Acceptance:
 
 - trilinear mesh node expands to 3D and 2D editor modes,
 - trilinear morph position widget edits that node's preview/execution state,
+- trilinear mesh editor uses a dedicated node widget/editor rather than
+  `NodeCanvas`-owned preview special cases,
+- 3D heatmap, 2D slice, morph panel, and vertex-parameter panel are visible in
+  the expanded trilinear editor,
+- vertex/cube selection and mesh edits are undoable,
 - 2D mesh nodes expand to a curve/slice editor,
 - effect nodes expose their current controls as GL widgets or sprites,
 - edits propagate through `NodeUpdateGraph`,
