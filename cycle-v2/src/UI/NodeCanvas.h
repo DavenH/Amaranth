@@ -77,6 +77,7 @@ private:
     bool trimeshMorphUndoPushed {};
     bool draggingTrimeshVertexParameter {};
     bool trimeshVertexParameterUndoPushed {};
+    bool canvasOpenGlAttached {};
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -98,8 +99,10 @@ private:
     void drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colour, int seed);
     void drawEnvelopeCurve(Graphics& g, Rectangle<float> area);
     void drawExpandedEditor(Graphics& g, const Node& node);
+    void setCanvasOpenGlAttached(bool shouldAttach);
     void updateExpandedEditorHost(const Node* node);
     void hideExpandedEditorHosts();
+    void hideExpandedEditorHostsExcept(const String& nodeId);
     void detachExpandedEditorHosts();
     void drawMiniMap(Graphics& g);
     void drawGraphStatus(Graphics& g);

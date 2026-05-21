@@ -402,13 +402,14 @@ NodeCanvas::NodeCanvas() :
     openGLContext.setRenderer(this);
     openGLContext.setContinuousRepainting(false);
     openGLContext.attachTo(*this);
+    canvasOpenGlAttached = true;
     startTimerHz(30);
 }
 
 NodeCanvas::~NodeCanvas() {
     stopTimer();
     detachExpandedEditorHosts();
-    openGLContext.detach();
+    setCanvasOpenGlAttached(false);
 }
 
 void NodeCanvas::paint(Graphics& g) {
@@ -1507,10 +1508,26 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     drawPorts(right, node.outputs, "Outputs");
 }
 
-void NodeCanvas::updateExpandedEditorHost(const Node* node) {
-    hideExpandedEditorHosts();
+void NodeCanvas::setCanvasOpenGlAttached(bool shouldAttach) {
+    if (canvasOpenGlAttached == shouldAttach) {
+        return;
+    }
 
-    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+    if (shouldAttach) {
+        openGLContext.attachTo(*this);
+    } else {
+        openGLContext.detach();
+    }
+
+    canvasOpenGlAttached = shouldAttach;
+}
+
+void NodeCanvas::updateExpandedEditorHost(const Node* node) {
+    const bool shouldShowTrimesh = node != nullptr && node->kind == NodeKind::TrilinearMesh;
+    setCanvasOpenGlAttached(!shouldShowTrimesh);
+    hideExpandedEditorHostsExcept(shouldShowTrimesh ? node->id : String());
+
+    if (!shouldShowTrimesh) {
         return;
     }
 
@@ -1530,29 +1547,49 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
         addAndMakeVisible(component);
     }
 
-    component->setBounds(bounds);
-    component->setVisible(true);
+    if (component->getBounds() != bounds) {
+        component->setBounds(bounds);
+    }
+
+    if (!component->isVisible()) {
+        component->setVisible(true);
+    }
+
     component->toFront(false);
 
     if (waveComponent->getParentComponent() != this) {
         addAndMakeVisible(waveComponent);
     }
 
-    waveComponent->setBounds(waveBounds);
-    waveComponent->setVisible(true);
+    if (waveComponent->getBounds() != waveBounds) {
+        waveComponent->setBounds(waveBounds);
+    }
+
+    if (!waveComponent->isVisible()) {
+        waveComponent->setVisible(true);
+    }
+
     waveComponent->toFront(false);
 }
 
 void NodeCanvas::hideExpandedEditorHosts() {
+    hideExpandedEditorHostsExcept({});
+}
+
+void NodeCanvas::hideExpandedEditorHostsExcept(const String& nodeId) {
     for (auto& entry : trimeshWidgets) {
+        if (entry.first == nodeId) {
+            continue;
+        }
+
         Component* component = entry.second->getExpandedPanel3DComponentIfCreated();
         Component* waveComponent = entry.second->getExpandedPanel2DComponentIfCreated();
 
-        if (component != nullptr && component->getParentComponent() == this) {
+        if (component != nullptr && component->getParentComponent() == this && component->isVisible()) {
             component->setVisible(false);
         }
 
-        if (waveComponent != nullptr && waveComponent->getParentComponent() == this) {
+        if (waveComponent != nullptr && waveComponent->getParentComponent() == this && waveComponent->isVisible()) {
             waveComponent->setVisible(false);
         }
     }

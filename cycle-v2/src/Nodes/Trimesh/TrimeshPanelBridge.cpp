@@ -1,18 +1,41 @@
 #include "TrimeshPanelBridge.h"
 
+#include <App/AppConstants.h>
+#include <App/MeshLibrary.h>
 #include <Curve/Mesh/Vertex.h>
+#include <UI/MiscGraphics.h>
 #include <UI/Panels/OpenGLPanel.h>
 #include <UI/Panels/OpenGLPanel3D.h>
 
 namespace CycleV2 {
 
 TrimeshPanelBridge::TrimeshPanelBridge() :
-        interactor2D    (&repo, "CycleV2TrimeshInteractor2D",
+        console         (&repo)
+    ,   interactor2D    (&repo, "CycleV2TrimeshInteractor2D",
                          Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Time, Vertex::Red, Vertex::Blue))
     ,   interactor3D    (&repo, "CycleV2TrimeshInteractor3D")
     ,   panel2D         (&repo)
     ,   panel3D         (&repo, dataSource) {
+    repo.add(new AppConstants(&repo));
+    repo.add(new MiscGraphics(&repo));
+    repo.add(new Settings(&repo));
+    repo.add(new MeshLibrary(&repo));
+
+    auto& constants = repo.get<AppConstants>("AppConstants");
+    constants.setConstant(Constants::FontFace, String("Verdana"));
+
+    repo.get<MiscGraphics>("MiscGraphics").init();
+
+    auto& settings = repo.get<Settings>("Settings");
+    settings.initialiseSettings();
+    settings.createPropertiesFile(
+            File::getSpecialLocation(File::tempDirectory)
+                    .getChildFile("cycle-v2-trimesh-bridge-settings.xml")
+                    .getFullPathName());
+    settings.getGlobalSetting(AppSettings::DrawScales) = false;
+    repo.setConsole(&console);
     repo.setMorphPositioner(&morphPositioner);
+
     interactor2D.setRasterizer(&rasterizer);
     interactor3D.setRasterizer(&rasterizer);
     panel2D.setInteractor(&interactor2D);

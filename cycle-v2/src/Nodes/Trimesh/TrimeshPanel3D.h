@@ -12,6 +12,7 @@ public:
 
     bool shouldDrawGrid() override { return true; }
     void panelResized() override;
+    void postVertsDraw() override {}
 
 private:
     TrimeshPanelDataSource& dataSource;

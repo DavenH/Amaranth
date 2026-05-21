@@ -4,10 +4,12 @@
 #include "TrimeshPanel3D.h"
 
 #include <App/SingletonRepo.h>
+#include <App/Settings.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
 #include <Inter/Interactor2D.h>
 #include <Inter/Interactor3D.h>
 #include <Inter/MorphPositioner.h>
+#include <UI/IConsole.h>
 
 #include <cstdint>
 
@@ -35,6 +37,16 @@ public:
     Component* getPanel2DComponentIfCreated();
 
 private:
+    class NullConsole : public IConsole {
+    public:
+        explicit NullConsole(SingletonRepo* repo) : IConsole(repo, "CycleV2TrimeshNullConsole") {}
+
+        void write(const String&, int) override {}
+        void setKeys(const String&) override {}
+        void setMouseUsage(const MouseUsage&) override {}
+        void reset() override {}
+    };
+
     class NodeMorphPositioner : public MorphPositioner {
     public:
         void setPosition(const MorphPosition& position, int primaryAxis);
@@ -55,6 +67,7 @@ private:
     void updateRasterizer();
 
     SingletonRepo repo;
+    NullConsole console;
     NodeMorphPositioner morphPositioner;
     TrimeshNodeModel model;
     TrimeshPanelDataSource dataSource;
