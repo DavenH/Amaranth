@@ -7,6 +7,8 @@
 #include <Inter/Interactor3D.h>
 #include <Inter/MorphPositioner.h>
 
+#include <cstdint>
+
 namespace CycleV2 {
 
 class TrimeshPanelBridge {
@@ -22,6 +24,7 @@ public:
     TrimeshPanel3D& getPanel3D() { return panel3D; }
     TrimeshPanelDataSource& getDataSource() { return dataSource; }
     Interactor3D& getInteractor3D() { return interactor3D; }
+    TrimeshNodeModel& getModel() { return model; }
 
 private:
     class NodeMorphPositioner : public MorphPositioner {
@@ -50,6 +53,9 @@ private:
     Rasterization::TrilinearMeshRasterizer rasterizer;
     Interactor3D interactor3D;
     TrimeshPanel3D panel3D;
+    uint64_t lastSyncedRevision { UINT64_MAX };
+    int lastRows {};
+    int lastColumns {};
 };
 
 }

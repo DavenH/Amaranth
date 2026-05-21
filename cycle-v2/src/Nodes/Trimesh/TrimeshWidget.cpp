@@ -15,7 +15,7 @@ const Colour kMutedText { 0xff8793a1 };
 }
 
 void TrimeshWidget::syncFromNode(const Node& node) {
-    model.syncFromNode(node);
+    bridge.syncFromNode(node, 40, 20);
 }
 
 void TrimeshWidget::paintCompact(
@@ -23,8 +23,9 @@ void TrimeshWidget::paintCompact(
         const Node& node,
         Rectangle<float> area,
         float) {
-    syncFromNode(node);
-    const TrimeshRenderData renderData = model.renderGrid(40, 20);
+    bridge.syncFromNode(node, 40, 20);
+    const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
+    TrimeshNodeModel& model = bridge.getModel();
 
     if (!renderData.canDrawSurface()) {
         return;
@@ -49,8 +50,9 @@ void TrimeshWidget::paintCompact(
 }
 
 void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float> content) {
-    syncFromNode(node);
-    const TrimeshRenderData renderData = model.renderGrid(320, 96);
+    bridge.syncFromNode(node, 320, 96);
+    const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
+    TrimeshNodeModel& model = bridge.getModel();
 
     const float gap = 14.f;
     auto topRow = content.removeFromTop(content.getHeight() * 0.62f);
@@ -258,7 +260,7 @@ bool TrimeshWidget::findVertexSelectionAt(
 
     const float phase = jlimit(0.f, 1.f, (position.x - waveshape.getX()) / waveshape.getWidth());
     const float amp = jlimit(0.f, 1.f, (waveshape.getBottom() - position.y) / waveshape.getHeight());
-    vertexIndex = model.findNearestVertexIndexForPhaseAmp(phase, amp);
+    vertexIndex = bridge.getModel().findNearestVertexIndexForPhaseAmp(phase, amp);
     return vertexIndex >= 0;
 }
 

@@ -24,8 +24,18 @@ void TrimeshPanelBridge::syncFromNode(
         int columns) {
     model.syncFromNode(node);
     morphPositioner.setPosition(model.getMorphPosition(), model.getPrimaryViewAxis());
+
+    if (lastSyncedRevision == model.getRevision()
+            && lastRows == rows
+            && lastColumns == columns) {
+        return;
+    }
+
     dataSource.rebuild(model, rows, columns);
     updateRasterizer();
+    lastSyncedRevision = model.getRevision();
+    lastRows = rows;
+    lastColumns = columns;
 }
 
 void TrimeshPanelBridge::updateRasterizer() {

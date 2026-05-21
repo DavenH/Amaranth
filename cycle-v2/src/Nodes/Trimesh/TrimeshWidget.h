@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TrimeshNodeModel.h"
+#include "TrimeshPanelBridge.h"
 
 #include <JuceHeader.h>
 
@@ -110,7 +110,7 @@ private:
 
     juce::Image createHeatmapImage(const TrimeshRenderData& renderData) const;
 
-    TrimeshNodeModel model;
+    TrimeshPanelBridge bridge;
     CachedHeatmap compactHeatmap;
 };
 
