@@ -23,6 +23,14 @@ struct TrimeshRenderData {
     }
 };
 
+struct TrimeshVertexParameter {
+    String id;
+    String label;
+    float value {};
+    float minimum {};
+    float maximum { 1.f };
+};
+
 class TrimeshNodeModel {
 public:
     TrimeshNodeModel();
@@ -37,6 +45,7 @@ public:
     void syncFromNode(const Node& node);
 
     TrimeshRenderData renderGrid(int rows, int columns);
+    std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
 
     const MorphPosition& getMorphPosition() const { return morph; }
     int getPrimaryViewAxis() const { return primaryViewAxis; }

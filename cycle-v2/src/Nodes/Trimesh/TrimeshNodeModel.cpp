@@ -7,6 +7,7 @@
 #include <Array/Buffer.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Curve/Mesh/VertCube.h>
 
 namespace CycleV2 {
 
@@ -139,6 +140,37 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns) {
     }
 
     return result;
+}
+
+std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameters() {
+    Mesh& activeMesh = mesh();
+    Vertex* selectedVertex {};
+
+    for (auto* cube : activeMesh.getCubes()) {
+        if (cube == nullptr) {
+            continue;
+        }
+
+        selectedVertex = cube->findClosestVertex(morph);
+
+        if (selectedVertex != nullptr) {
+            break;
+        }
+    }
+
+    if (selectedVertex == nullptr && !activeMesh.getVerts().empty()) {
+        selectedVertex = activeMesh.getVerts().front();
+    }
+
+    if (selectedVertex == nullptr) {
+        return {};
+    }
+
+    return {
+            { "amp", "Amplitude", selectedVertex->values[Vertex::Amp], 0.f, 1.f },
+            { "phase", "Phase", selectedVertex->values[Vertex::Phase], 0.f, 1.f },
+            { "curve", "Sharpness", selectedVertex->values[Vertex::Curve], 0.f, 1.f }
+    };
 }
 
 Mesh& TrimeshNodeModel::mesh() {

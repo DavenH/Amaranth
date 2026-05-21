@@ -59,6 +59,17 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
     REQUIRE(renderData.slice.size() == 12);
     REQUIRE(renderData.surface.size() == 72);
     REQUIRE(renderData.canDrawSurface());
+
+    const auto vertexParameters = model.getSelectedVertexParameters();
+    REQUIRE(vertexParameters.size() == 3);
+    REQUIRE(vertexParameters[0].id == "amp");
+    REQUIRE(vertexParameters[1].id == "phase");
+    REQUIRE(vertexParameters[2].id == "curve");
+
+    for (const auto& parameter : vertexParameters) {
+        REQUIRE(parameter.value >= parameter.minimum);
+        REQUIRE(parameter.value <= parameter.maximum);
+    }
 }
 
 TEST_CASE("Trimesh gridwise DSP renders independent morph columns", "[cycle-v2][nodes][trimesh]") {

@@ -63,6 +63,10 @@ private:
             juce::Rectangle<float> area,
             const std::vector<float>& values,
             juce::Colour colour);
+    static void drawVertexParameters(
+            juce::Graphics& g,
+            juce::Rectangle<float> area,
+            const std::vector<TrimeshVertexParameter>& parameters);
     static juce::Rectangle<float> morphPanelBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> morphArea, int axisIndex);
     static juce::Rectangle<float> primaryAxisBounds(juce::Rectangle<float> morphArea, int axisIndex);

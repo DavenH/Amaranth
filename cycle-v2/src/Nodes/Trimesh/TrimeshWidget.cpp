@@ -126,14 +126,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     }
 
     morphArea.removeFromTop(6.f);
-    g.setColour(Colour(0xff0a0f13).withAlpha(0.72f));
-    g.fillRoundedRectangle(morphArea, 5.f);
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(10.f));
-    g.drawText(
-            "Vertex controls: amp, phase, sharpness, and component curve.",
-            morphArea.reduced(10.f),
-            Justification::topLeft);
+    drawVertexParameters(g, morphArea, model.getSelectedVertexParameters());
 }
 
 bool TrimeshWidget::findMorphControlAt(
@@ -302,6 +295,48 @@ void TrimeshWidget::drawTrace(
 
     g.setColour(colour);
     g.strokePath(trace, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+void TrimeshWidget::drawVertexParameters(
+        Graphics& g,
+        Rectangle<float> area,
+        const std::vector<TrimeshVertexParameter>& parameters) {
+    if (area.getHeight() < 28.f) {
+        return;
+    }
+
+    g.setColour(Colour(0xff0a0f13).withAlpha(0.58f));
+    g.fillRoundedRectangle(area, 5.f);
+    g.setColour(kText);
+    g.setFont(FontOptions(11.f, Font::bold));
+    g.drawText("Selected Vertex", area.reduced(10.f, 8.f).removeFromTop(15.f), Justification::centredLeft);
+
+    auto rows = area.reduced(10.f, 28.f);
+
+    for (const auto& parameter : parameters) {
+        auto row = rows.removeFromTop(28.f);
+        rows.removeFromTop(4.f);
+
+        g.setColour(kMutedText);
+        g.setFont(FontOptions(10.f, Font::bold));
+        g.drawText(parameter.label, row.removeFromLeft(70.f), Justification::centredLeft);
+
+        const float range = parameter.maximum - parameter.minimum;
+        const float normalized = range > 0.f
+                ? jlimit(0.f, 1.f, (parameter.value - parameter.minimum) / range)
+                : 0.f;
+        auto valueBox = row.removeFromRight(44.f);
+        auto rail = row.withTrimmedRight(8.f).withSizeKeepingCentre(row.getWidth() - 8.f, 5.f);
+
+        g.setColour(Colour(0xff273342).withAlpha(0.84f));
+        g.fillRoundedRectangle(rail, 2.5f);
+        g.setColour(Colour(0xffc5d1dc).withAlpha(0.86f));
+        g.fillRoundedRectangle(rail.withWidth(rail.getWidth() * normalized), 2.5f);
+
+        g.setColour(kText.withAlpha(0.88f));
+        g.setFont(FontOptions(9.5f));
+        g.drawText(String(parameter.value, 2), valueBox, Justification::centredRight);
+    }
 }
 
 Rectangle<float> TrimeshWidget::morphPanelBounds(Rectangle<float> content) {
