@@ -86,6 +86,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
             model.getMorphPosition().red.getCurrentValue(),
             model.getMorphPosition().blue.getCurrentValue()
     };
+    drawMorphCubePreview(g, morphArea.removeFromRight(jmin(96.f, morphArea.getWidth() * 0.34f)).removeFromTop(96.f), values);
 
     for (int i = 0; i < (int) axes.size(); ++i) {
         auto row = morphArea.removeFromTop(34.f);
@@ -448,6 +449,76 @@ void TrimeshWidget::drawVertexMarkers(
     }
 }
 
+void TrimeshWidget::drawMorphCubePreview(
+        Graphics& g,
+        Rectangle<float> area,
+        const std::array<float, 3>& values) {
+    if (area.getWidth() < 42.f || area.getHeight() < 42.f) {
+        return;
+    }
+
+    const Point<float> centre = area.getCentre();
+    const float size = jmin(area.getWidth(), area.getHeight()) * 0.34f;
+    const Point<float> top(centre.x, centre.y - size * 0.86f);
+    const Point<float> left(centre.x - size, centre.y - size * 0.28f);
+    const Point<float> right(centre.x + size, centre.y - size * 0.28f);
+    const Point<float> bottom(centre.x, centre.y + size * 0.34f);
+    const Point<float> back(centre.x, centre.y + size * 0.98f);
+
+    Path leftFace;
+    leftFace.startNewSubPath(top);
+    leftFace.lineTo(left);
+    leftFace.lineTo(bottom);
+    leftFace.lineTo(centre);
+    leftFace.closeSubPath();
+
+    Path rightFace;
+    rightFace.startNewSubPath(top);
+    rightFace.lineTo(right);
+    rightFace.lineTo(bottom);
+    rightFace.lineTo(centre);
+    rightFace.closeSubPath();
+
+    Path lowerFace;
+    lowerFace.startNewSubPath(left);
+    lowerFace.lineTo(bottom);
+    lowerFace.lineTo(back);
+    lowerFace.lineTo(centre.x - size * 0.12f, centre.y + size * 0.08f);
+    lowerFace.closeSubPath();
+
+    g.setColour(Colour(0xff7e8794).withAlpha(0.18f));
+    g.fillPath(leftFace);
+    g.setColour(Colour(0xffd8e0ea).withAlpha(0.13f));
+    g.fillPath(rightFace);
+    g.setColour(Colour(0xff42505f).withAlpha(0.18f));
+    g.fillPath(lowerFace);
+    g.setColour(Colour(0xffbac5d0).withAlpha(0.30f));
+    g.strokePath(leftFace, PathStrokeType(1.f));
+    g.strokePath(rightFace, PathStrokeType(1.f));
+    g.strokePath(lowerFace, PathStrokeType(1.f));
+
+    const Point<float> yellowAxis(left.x, back.y);
+    const Point<float> redAxis(right.x, back.y);
+    const Point<float> blueAxis(centre.x, top.y);
+    const Point<float> point(
+            yellowAxis.x + (redAxis.x - yellowAxis.x) * jlimit(0.f, 1.f, values[0]),
+            back.y + (blueAxis.y - back.y) * jlimit(0.f, 1.f, values[2]));
+    const Point<float> lifted = point.translated(
+            (jlimit(0.f, 1.f, values[1]) - 0.5f) * size * 0.72f,
+            -(jlimit(0.f, 1.f, values[1]) - 0.5f) * size * 0.34f);
+
+    g.setColour(Colour(0xffe0c247).withAlpha(0.64f));
+    g.drawLine(yellowAxis.x, yellowAxis.y, redAxis.x, redAxis.y, 1.4f);
+    g.setColour(Colour(0xffd65a5a).withAlpha(0.64f));
+    g.drawLine(left.x, left.y, right.x, right.y, 1.2f);
+    g.setColour(Colour(0xff5f91e8).withAlpha(0.66f));
+    g.drawLine(centre.x, back.y, centre.x, top.y, 1.2f);
+    g.setColour(Colour(0xffffd13d).withAlpha(0.94f));
+    g.fillEllipse(Rectangle<float>(7.f, 7.f).withCentre(lifted));
+    g.setColour(Colour(0xff05070a).withAlpha(0.72f));
+    g.drawEllipse(Rectangle<float>(10.f, 10.f).withCentre(lifted), 1.2f);
+}
+
 void TrimeshWidget::drawVertexParameters(
         Graphics& g,
         Rectangle<float> area,
@@ -503,8 +574,8 @@ Rectangle<float> TrimeshWidget::morphPanelBounds(Rectangle<float> content) {
 
 Rectangle<float> TrimeshWidget::morphRailBounds(Rectangle<float> morphArea, int axisIndex) {
     auto row = morphArea.translated(0.f, (float) axisIndex * 34.f).withHeight(34.f);
-    return row.withTrimmedLeft(68.f).withTrimmedRight(10.f)
-            .withSizeKeepingCentre(row.getWidth() - 92.f, 4.f);
+    return row.withTrimmedLeft(68.f).withTrimmedRight(jmax(16.f, row.getWidth() * 0.38f))
+            .withSizeKeepingCentre(jmax(24.f, row.getWidth() * 0.42f), 4.f);
 }
 
 Rectangle<float> TrimeshWidget::primaryAxisBounds(Rectangle<float> morphArea, int axisIndex) {

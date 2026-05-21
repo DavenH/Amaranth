@@ -4,6 +4,7 @@
 
 #include <JuceHeader.h>
 
+#include <array>
 #include <cstdint>
 
 namespace CycleV2 {
@@ -89,6 +90,10 @@ private:
             juce::Graphics& g,
             juce::Rectangle<float> area,
             const std::vector<TrimeshVertexMarker>& markers);
+    static void drawMorphCubePreview(
+            juce::Graphics& g,
+            juce::Rectangle<float> area,
+            const std::array<float, 3>& values);
     static void drawVertexParameters(
             juce::Graphics& g,
             juce::Rectangle<float> area,
