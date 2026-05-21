@@ -11,7 +11,7 @@ namespace {
 
 const Colour kBackground  { 0xff101318 };
 const Colour kGridMajor   { 0x365b6370 };
-const Colour kGridMinor   { 0x1b2f367f };
+const Colour kGridMinor   { 0x1b2f36ff };
 const Colour kTopGlow     { 0x18162531 };
 const Colour kBottomGlow  { 0x00162531 };
 

@@ -595,6 +595,23 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         return;
     }
 
+    const Node* hitNode = findNodeAt(toWorld(event.position));
+
+    if (hitNode != nullptr) {
+        selectedNodeId = hitNode->id;
+        selectedEdgeIndex = -1;
+        draggingNode = true;
+        dragStartNodeBounds = hitNode->bounds;
+        nodeDragUndoPushed = false;
+
+        if (event.getNumberOfClicks() >= 2 && isPreviewableNode(hitNode->kind)) {
+            expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
+        }
+
+        repaint();
+        return;
+    }
+
     selectedEdgeIndex = findEdgeAt(event.position);
 
     if (selectedEdgeIndex >= 0) {
@@ -619,21 +636,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         return;
     }
 
-    const Node* hitNode = findNodeAt(toWorld(event.position));
-    selectedNodeId = hitNode != nullptr ? hitNode->id : String();
+    selectedNodeId = {};
     selectedEdgeIndex = -1;
-    draggingNode = hitNode != nullptr;
-
-    if (hitNode != nullptr) {
-        dragStartNodeBounds = hitNode->bounds;
-        nodeDragUndoPushed = false;
-
-        if (event.getNumberOfClicks() >= 2 && isPreviewableNode(hitNode->kind)) {
-            expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
-        }
-    } else {
-        expandedNodeId = {};
-    }
+    draggingNode = false;
+    expandedNodeId = {};
 
     repaint();
 }
