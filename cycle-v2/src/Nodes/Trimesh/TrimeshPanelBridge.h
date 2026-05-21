@@ -25,6 +25,8 @@ public:
     TrimeshPanelDataSource& getDataSource() { return dataSource; }
     Interactor3D& getInteractor3D() { return interactor3D; }
     TrimeshNodeModel& getModel() { return model; }
+    Component* getPanelComponent();
+    Component* getPanelComponentIfCreated();
 
 private:
     class NodeMorphPositioner : public MorphPositioner {
@@ -56,6 +58,7 @@ private:
     uint64_t lastSyncedRevision { UINT64_MAX };
     int lastRows {};
     int lastColumns {};
+    bool panelInitialised {};
 };
 
 }

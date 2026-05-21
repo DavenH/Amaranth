@@ -1,6 +1,7 @@
 #include "TrimeshPanelBridge.h"
 
 #include <Curve/Mesh/Vertex.h>
+#include <UI/Panels/OpenGLPanel3D.h>
 
 namespace CycleV2 {
 
@@ -53,6 +54,19 @@ void TrimeshPanelBridge::updateRasterizer() {
     rasterizer.setWrapsEnds(true);
     rasterizer.setMesh(&model.getMeshForPanel());
     rasterizer.updateGeometry();
+}
+
+Component* TrimeshPanelBridge::getPanelComponent() {
+    if (!panelInitialised) {
+        panel3D.init();
+        panelInitialised = true;
+    }
+
+    return panel3D.getOpenglPanel();
+}
+
+Component* TrimeshPanelBridge::getPanelComponentIfCreated() {
+    return panelInitialised ? panel3D.getOpenglPanel() : nullptr;
 }
 
 void TrimeshPanelBridge::NodeMorphPositioner::setPosition(

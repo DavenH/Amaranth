@@ -98,6 +98,9 @@ private:
     void drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colour, int seed);
     void drawEnvelopeCurve(Graphics& g, Rectangle<float> area);
     void drawExpandedEditor(Graphics& g, const Node& node);
+    void updateExpandedEditorHost(const Node* node);
+    void hideExpandedEditorHosts();
+    void detachExpandedEditorHosts();
     void drawMiniMap(Graphics& g);
     void drawGraphStatus(Graphics& g);
     void drawEdgeLegend(Graphics& g);

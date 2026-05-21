@@ -407,10 +407,14 @@ NodeCanvas::NodeCanvas() :
 
 NodeCanvas::~NodeCanvas() {
     stopTimer();
+    detachExpandedEditorHosts();
     openGLContext.detach();
 }
 
 void NodeCanvas::paint(Graphics& g) {
+    const Node* expandedNode = findNode(expandedNodeId);
+    updateExpandedEditorHost(expandedNode);
+
     drawGrid(g);
     drawEdges(g);
     drawConnectionPreview(g);
@@ -420,8 +424,8 @@ void NodeCanvas::paint(Graphics& g) {
     drawNodePalette(g);
     drawHoverConsole(g);
 
-    if (const Node* node = findNode(expandedNodeId)) {
-        drawExpandedEditor(g, *node);
+    if (expandedNode != nullptr) {
+        drawExpandedEditor(g, *expandedNode);
     }
 }
 
@@ -1499,6 +1503,51 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
 
     drawPorts(left, node.inputs, "Inputs");
     drawPorts(right, node.outputs, "Outputs");
+}
+
+void NodeCanvas::updateExpandedEditorHost(const Node* node) {
+    hideExpandedEditorHosts();
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return;
+    }
+
+    Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
+    Component* component = trimeshWidgetFor(node->id).prepareExpandedPanelComponent(*node, content);
+
+    if (component == nullptr) {
+        return;
+    }
+
+    const Rectangle<int> bounds = TrimeshWidget::expandedGridPanelContentBounds(content).toNearestInt();
+
+    if (component->getParentComponent() != this) {
+        addAndMakeVisible(component);
+    }
+
+    component->setBounds(bounds);
+    component->setVisible(true);
+    component->toFront(false);
+}
+
+void NodeCanvas::hideExpandedEditorHosts() {
+    for (auto& entry : trimeshWidgets) {
+        Component* component = entry.second->getExpandedPanelComponentIfCreated();
+
+        if (component != nullptr && component->getParentComponent() == this) {
+            component->setVisible(false);
+        }
+    }
+}
+
+void NodeCanvas::detachExpandedEditorHosts() {
+    for (auto& entry : trimeshWidgets) {
+        Component* component = entry.second->getExpandedPanelComponentIfCreated();
+
+        if (component != nullptr && component->getParentComponent() == this) {
+            removeChildComponent(component);
+        }
+    }
 }
 
 void NodeCanvas::drawMiniMap(Graphics& g) {

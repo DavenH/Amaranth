@@ -23,6 +23,11 @@ public:
             juce::Graphics& g,
             const Node& node,
             juce::Rectangle<float> content);
+    juce::Component* prepareExpandedPanelComponent(
+            const Node& node,
+            juce::Rectangle<float> content);
+    juce::Component* getExpandedPanelComponentIfCreated();
+    static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
 
     bool findMorphControlAt(
             juce::Rectangle<float> content,
@@ -107,7 +112,6 @@ private:
     static juce::Rectangle<float> vertexParameterRailBounds(juce::Rectangle<float> parameterRow);
     static juce::String vertexParameterId(int parameterIndex);
     static juce::Rectangle<float> waveshapeContentBounds(juce::Rectangle<float> content);
-
     juce::Image createHeatmapImage(const TrimeshRenderData& renderData) const;
 
     TrimeshPanelBridge bridge;
