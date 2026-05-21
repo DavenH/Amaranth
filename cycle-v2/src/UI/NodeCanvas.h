@@ -63,6 +63,8 @@ private:
     String expandedNodeId;
     String activeTrimeshMorphNodeId;
     String activeTrimeshMorphParameterId;
+    String activeTrimeshVertexNodeId;
+    String activeTrimeshVertexParameterId;
     String editStatusMessage;
     int selectedEdgeIndex { -1 };
     PortAddress connectingPort;
@@ -73,6 +75,8 @@ private:
     bool nodeDragUndoPushed {};
     bool draggingTrimeshMorph {};
     bool trimeshMorphUndoPushed {};
+    bool draggingTrimeshVertexParameter {};
+    bool trimeshVertexParameterUndoPushed {};
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -143,6 +147,9 @@ private:
     bool beginTrimeshMorphEdit(Point<float> screenPosition);
     bool updateTrimeshMorphEdit(Point<float> screenPosition);
     void endTrimeshMorphEdit();
+    bool beginTrimeshVertexParameterEdit(Point<float> screenPosition);
+    bool updateTrimeshVertexParameterEdit(Point<float> screenPosition);
+    void endTrimeshVertexParameterEdit();
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
     Path createCablePath(
             Point<float> source,

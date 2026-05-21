@@ -23,6 +23,17 @@ float parameterFloat(const Node& node, const String& id, float fallback) {
     return fallback;
 }
 
+bool parameterFloatValue(const Node& node, const String& id, float& value) {
+    for (const auto& parameter : node.parameters) {
+        if (parameter.id == id) {
+            value = parameter.value.getFloatValue();
+            return true;
+        }
+    }
+
+    return false;
+}
+
 String parameterString(const Node& node, const String& id, const String& fallback) {
     for (const auto& parameter : node.parameters) {
         if (parameter.id == id) {
@@ -100,6 +111,10 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
         primaryViewAxis = nextPrimaryAxis;
         ++revision;
     }
+
+    if (applyVertexParameterOverrides(node)) {
+        ++revision;
+    }
 }
 
 TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns) {
@@ -143,33 +158,16 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns) {
 }
 
 std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameters() {
-    Mesh& activeMesh = mesh();
-    Vertex* selectedVertex {};
-
-    for (auto* cube : activeMesh.getCubes()) {
-        if (cube == nullptr) {
-            continue;
-        }
-
-        selectedVertex = cube->findClosestVertex(morph);
-
-        if (selectedVertex != nullptr) {
-            break;
-        }
-    }
-
-    if (selectedVertex == nullptr && !activeMesh.getVerts().empty()) {
-        selectedVertex = activeMesh.getVerts().front();
-    }
+    Vertex* selectedVertex = this->selectedVertex();
 
     if (selectedVertex == nullptr) {
         return {};
     }
 
     return {
-            { "amp", "Amplitude", selectedVertex->values[Vertex::Amp], 0.f, 1.f },
-            { "phase", "Phase", selectedVertex->values[Vertex::Phase], 0.f, 1.f },
-            { "curve", "Sharpness", selectedVertex->values[Vertex::Curve], 0.f, 1.f }
+            { "vertex.amp", "Amplitude", selectedVertex->values[Vertex::Amp], 0.f, 1.f },
+            { "vertex.phase", "Phase", selectedVertex->values[Vertex::Phase], 0.f, 1.f },
+            { "vertex.curve", "Sharpness", selectedVertex->values[Vertex::Curve], 0.f, 1.f }
     };
 }
 
@@ -180,6 +178,71 @@ Mesh& TrimeshNodeModel::mesh() {
     }
 
     return *ownedMesh;
+}
+
+Vertex* TrimeshNodeModel::selectedVertex() {
+    Mesh& activeMesh = mesh();
+
+    for (auto* cube : activeMesh.getCubes()) {
+        if (cube == nullptr) {
+            continue;
+        }
+
+        if (Vertex* vertex = cube->findClosestVertex(morph)) {
+            return vertex;
+        }
+    }
+
+    if (!activeMesh.getVerts().empty()) {
+        return activeMesh.getVerts().front();
+    }
+
+    return nullptr;
+}
+
+bool TrimeshNodeModel::applyVertexParameterOverrides(const Node& node) {
+    float amp {};
+    float phase {};
+    float curve {};
+    const bool hasAmp = parameterFloatValue(node, "vertex.amp", amp);
+    const bool hasPhase = parameterFloatValue(node, "vertex.phase", phase);
+    const bool hasCurve = parameterFloatValue(node, "vertex.curve", curve);
+
+    if (!hasAmp && !hasPhase && !hasCurve) {
+        return false;
+    }
+
+    Vertex* vertex = selectedVertex();
+
+    if (vertex == nullptr) {
+        return false;
+    }
+
+    bool changed {};
+    auto apply = [&](int index, float value) {
+        const float clampedValue = jlimit(0.f, 1.f, value);
+
+        if (vertex->values[index] == clampedValue) {
+            return;
+        }
+
+        vertex->values[index] = clampedValue;
+        changed = true;
+    };
+
+    if (hasAmp) {
+        apply(Vertex::Amp, amp);
+    }
+
+    if (hasPhase) {
+        apply(Vertex::Phase, phase);
+    }
+
+    if (hasCurve) {
+        apply(Vertex::Curve, curve);
+    }
+
+    return changed;
 }
 
 void TrimeshNodeModel::clearMesh() {

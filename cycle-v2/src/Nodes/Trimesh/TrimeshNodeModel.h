@@ -9,6 +9,7 @@
 #include <vector>
 
 class Mesh;
+class Vertex;
 
 namespace CycleV2 {
 
@@ -53,6 +54,8 @@ public:
 
 private:
     Mesh& mesh();
+    Vertex* selectedVertex();
+    bool applyVertexParameterOverrides(const Node& node);
     void clearMesh();
 
     std::unique_ptr<Mesh> ownedMesh;

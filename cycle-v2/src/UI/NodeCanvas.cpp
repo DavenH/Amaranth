@@ -444,6 +444,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     nodeDragUndoPushed = false;
     draggingTrimeshMorph = false;
     trimeshMorphUndoPushed = false;
+    draggingTrimeshVertexParameter = false;
+    trimeshVertexParameterUndoPushed = false;
 
     if (expandedNodeId.isNotEmpty()) {
         const auto panel = expandedEditorBounds(getLocalBounds().toFloat());
@@ -461,6 +463,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
 
         if (beginTrimeshMorphEdit(event.position)) {
+            repaint();
+            return;
+        }
+
+        if (beginTrimeshVertexParameterEdit(event.position)) {
             repaint();
             return;
         }
@@ -578,6 +585,8 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
 
     if (draggingTrimeshMorph) {
         updateTrimeshMorphEdit(event.position);
+    } else if (draggingTrimeshVertexParameter) {
+        updateTrimeshVertexParameterEdit(event.position);
     } else if (connectingCable) {
         PortAddress hitPort;
         connectingPoint = findConnectablePortAt(event.position, connectingPort, hitPort)
@@ -609,6 +618,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
         draggingNode = false;
         nodeDragUndoPushed = false;
         endTrimeshMorphEdit();
+        endTrimeshVertexParameterEdit();
         return;
     }
 
@@ -617,6 +627,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     draggingNode = false;
     nodeDragUndoPushed = false;
     endTrimeshMorphEdit();
+    endTrimeshVertexParameterEdit();
 
     if (findConnectablePortAt(event.position, connectingPort, destPort)) {
         const String beforeEdit = GraphSerializer().toXmlString(graph);
@@ -2500,6 +2511,74 @@ void NodeCanvas::endTrimeshMorphEdit() {
     trimeshMorphUndoPushed = false;
     activeTrimeshMorphNodeId = {};
     activeTrimeshMorphParameterId = {};
+}
+
+bool NodeCanvas::beginTrimeshVertexParameterEdit(Point<float> screenPosition) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return false;
+    }
+
+    String parameterId;
+    float value {};
+    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
+
+    if (!trimeshWidgetFor(node->id).findVertexParameterAt(content, screenPosition, parameterId, value)) {
+        return false;
+    }
+
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    activeTrimeshVertexNodeId = node->id;
+    activeTrimeshVertexParameterId = parameterId;
+    draggingTrimeshVertexParameter = true;
+    trimeshVertexParameterUndoPushed = false;
+    return updateTrimeshVertexParameterEdit(screenPosition);
+}
+
+bool NodeCanvas::updateTrimeshVertexParameterEdit(Point<float> screenPosition) {
+    Node* node = findMutableNode(activeTrimeshVertexNodeId);
+
+    if (node == nullptr
+            || node->kind != NodeKind::TrilinearMesh
+            || activeTrimeshVertexParameterId.isEmpty()) {
+        return false;
+    }
+
+    float value {};
+    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
+
+    if (!trimeshWidgetFor(node->id).vertexParameterValueForParameterAt(
+            content,
+            activeTrimeshVertexParameterId,
+            screenPosition,
+            value)) {
+        return false;
+    }
+
+    if (!trimeshVertexParameterUndoPushed) {
+        pushUndoSnapshot();
+        trimeshVertexParameterUndoPushed = true;
+    }
+
+    const String label = activeTrimeshVertexParameterId.fromFirstOccurrenceOf(".", false, false);
+    GraphEditor().setNodeParameter(
+            graph,
+            node->id,
+            activeTrimeshVertexParameterId,
+            label,
+            String(value, 3));
+    refreshCompiledState();
+    editStatusMessage = "Vertex " + label + " = " + String(value, 2);
+    return true;
+}
+
+void NodeCanvas::endTrimeshVertexParameterEdit() {
+    draggingTrimeshVertexParameter = false;
+    trimeshVertexParameterUndoPushed = false;
+    activeTrimeshVertexNodeId = {};
+    activeTrimeshVertexParameterId = {};
 }
 
 bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& second) const {

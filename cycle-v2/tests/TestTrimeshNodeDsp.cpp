@@ -62,14 +62,40 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
 
     const auto vertexParameters = model.getSelectedVertexParameters();
     REQUIRE(vertexParameters.size() == 3);
-    REQUIRE(vertexParameters[0].id == "amp");
-    REQUIRE(vertexParameters[1].id == "phase");
-    REQUIRE(vertexParameters[2].id == "curve");
+    REQUIRE(vertexParameters[0].id == "vertex.amp");
+    REQUIRE(vertexParameters[1].id == "vertex.phase");
+    REQUIRE(vertexParameters[2].id == "vertex.curve");
 
     for (const auto& parameter : vertexParameters) {
         REQUIRE(parameter.value >= parameter.minimum);
         REQUIRE(parameter.value <= parameter.maximum);
     }
+}
+
+TEST_CASE("Trimesh node model applies serialized vertex parameter overrides", "[cycle-v2][nodes][trimesh]") {
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {
+                    { "vertex.amp", "Amplitude", "0.20" },
+                    { "vertex.phase", "Phase", "0.30" },
+                    { "vertex.curve", "Sharpness", "0.40" }
+            },
+            {},
+            {}
+    };
+    TrimeshNodeModel model;
+
+    model.syncFromNode(node);
+    const auto vertexParameters = model.getSelectedVertexParameters();
+
+    REQUIRE(vertexParameters.size() == 3);
+    REQUIRE(vertexParameters[0].value == Catch::Approx(0.20f));
+    REQUIRE(vertexParameters[1].value == Catch::Approx(0.30f));
+    REQUIRE(vertexParameters[2].value == Catch::Approx(0.40f));
 }
 
 TEST_CASE("Trimesh gridwise DSP renders independent morph columns", "[cycle-v2][nodes][trimesh]") {

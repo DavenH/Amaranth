@@ -200,6 +200,50 @@ bool TrimeshWidget::findPrimaryAxisAt(
     return false;
 }
 
+bool TrimeshWidget::findVertexParameterAt(
+        Rectangle<float> content,
+        Point<float> position,
+        String& parameterId,
+        float& value) const {
+    const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
+
+    for (int i = 0; i < 3; ++i) {
+        const Rectangle<float> row = vertexParameterRowBounds(parameterArea, i);
+
+        if (!row.expanded(5.f, 4.f).contains(position)) {
+            continue;
+        }
+
+        parameterId = vertexParameterId(i);
+        const Rectangle<float> rail = vertexParameterRailBounds(row);
+        value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
+        return true;
+    }
+
+    return false;
+}
+
+bool TrimeshWidget::vertexParameterValueForParameterAt(
+        Rectangle<float> content,
+        const String& parameterId,
+        Point<float> position,
+        float& value) const {
+    const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
+
+    for (int i = 0; i < 3; ++i) {
+        if (vertexParameterId(i) != parameterId) {
+            continue;
+        }
+
+        const Rectangle<float> rail = vertexParameterRailBounds(
+                vertexParameterRowBounds(parameterArea, i));
+        value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
+        return true;
+    }
+
+    return false;
+}
+
 Colour TrimeshWidget::meshSurfaceColour(float value) {
     const float v = jlimit(0.f, 1.f, value);
     const Colour low(0xff06090d);
@@ -311,22 +355,22 @@ void TrimeshWidget::drawVertexParameters(
     g.setFont(FontOptions(11.f, Font::bold));
     g.drawText("Selected Vertex", area.reduced(10.f, 8.f).removeFromTop(15.f), Justification::centredLeft);
 
-    auto rows = area.reduced(10.f, 28.f);
-
-    for (const auto& parameter : parameters) {
-        auto row = rows.removeFromTop(28.f);
-        rows.removeFromTop(4.f);
+    for (int i = 0; i < (int) parameters.size(); ++i) {
+        const auto& parameter = parameters[(size_t) i];
+        const auto row = vertexParameterRowBounds(area, i);
+        auto labelBox = row;
+        auto valueBox = row;
+        const auto rail = vertexParameterRailBounds(row);
 
         g.setColour(kMutedText);
         g.setFont(FontOptions(10.f, Font::bold));
-        g.drawText(parameter.label, row.removeFromLeft(70.f), Justification::centredLeft);
+        g.drawText(parameter.label, labelBox.removeFromLeft(70.f), Justification::centredLeft);
 
         const float range = parameter.maximum - parameter.minimum;
         const float normalized = range > 0.f
                 ? jlimit(0.f, 1.f, (parameter.value - parameter.minimum) / range)
                 : 0.f;
-        auto valueBox = row.removeFromRight(44.f);
-        auto rail = row.withTrimmedRight(8.f).withSizeKeepingCentre(row.getWidth() - 8.f, 5.f);
+        valueBox = valueBox.removeFromRight(44.f);
 
         g.setColour(Colour(0xff273342).withAlpha(0.84f));
         g.fillRoundedRectangle(rail, 2.5f);
@@ -373,6 +417,37 @@ String TrimeshWidget::primaryAxisValue(int axis) {
         case 2:     return "blue";
         case 0:
         default:    return "yellow";
+    }
+}
+
+Rectangle<float> TrimeshWidget::vertexParameterPanelBounds(Rectangle<float> content) {
+    auto area = morphPanelBounds(content);
+    area.removeFromTop(34.f * 3.f);
+    area.removeFromTop(8.f);
+    area.removeFromTop(48.f);
+    area.removeFromTop(6.f);
+    return area;
+}
+
+Rectangle<float> TrimeshWidget::vertexParameterRowBounds(Rectangle<float> parameterArea, int parameterIndex) {
+    auto rows = parameterArea.reduced(10.f, 28.f);
+    rows.translate(0.f, (float) parameterIndex * 32.f);
+    return rows.removeFromTop(28.f);
+}
+
+Rectangle<float> TrimeshWidget::vertexParameterRailBounds(Rectangle<float> parameterRow) {
+    parameterRow.removeFromLeft(70.f);
+    parameterRow.removeFromRight(44.f);
+    return parameterRow.withTrimmedRight(8.f)
+            .withSizeKeepingCentre(jmax(4.f, parameterRow.getWidth() - 8.f), 5.f);
+}
+
+String TrimeshWidget::vertexParameterId(int parameterIndex) {
+    switch (parameterIndex) {
+        case 0:     return "vertex.amp";
+        case 1:     return "vertex.phase";
+        case 2:     return "vertex.curve";
+        default:    return {};
     }
 }
 
