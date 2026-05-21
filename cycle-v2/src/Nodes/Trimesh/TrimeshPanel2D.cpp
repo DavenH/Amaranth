@@ -4,8 +4,11 @@ namespace CycleV2 {
 
 TrimeshPanel2D::TrimeshPanel2D(SingletonRepo* repo) :
         SingletonAccessor  (repo, "CycleV2TrimeshPanel2D")
-    ,   Panel2D            (repo, "CycleV2TrimeshPanel2D", true, true)
-{}
+    ,   Panel2D            (repo, "CycleV2TrimeshPanel2D", true, true) {
+    guideCurveApplicable = false;
+    speedApplicable = false;
+    pendingDeformUpdate = false;
+}
 
 void TrimeshPanel2D::panelResized() {
     dirtyState.mark(PanelDirtyState::Flag::Layout);
