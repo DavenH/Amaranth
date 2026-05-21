@@ -413,7 +413,6 @@ NodeCanvas::~NodeCanvas() {
 
 void NodeCanvas::paint(Graphics& g) {
     const Node* expandedNode = findNode(expandedNodeId);
-    updateExpandedEditorHost(expandedNode);
 
     drawGrid(g);
     drawEdges(g);
@@ -430,6 +429,7 @@ void NodeCanvas::paint(Graphics& g) {
 }
 
 void NodeCanvas::resized() {
+    updateExpandedEditorHost(findNode(expandedNodeId));
     repaint();
 }
 
@@ -760,6 +760,8 @@ void NodeCanvas::openGLContextClosing() {
 }
 
 void NodeCanvas::timerCallback() {
+    updateExpandedEditorHost(findNode(expandedNodeId));
+
     const auto mouse = getMouseXYRelative().toFloat();
 
     if (getLocalBounds().toFloat().contains(mouse) && mouse != lastMousePosition) {
