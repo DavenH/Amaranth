@@ -19,6 +19,7 @@
 #include "../Design/Updating/Updater.h"
 #include "../Obj/CurveLine.h"
 #include "../UI/Panels/Panel.h"
+#include "../UI/Panels/PanelHostContext.h"
 #include "../UI/Panels/Texture.h"
 #include "../UI/Panels/ZoomRect.h"
 #include "../Util/CommonEnums.h"
@@ -154,6 +155,15 @@ void Interactor::clearSelectedAndRepaint() {
     state.currentVertex = nullptr;
 }
 
+void Interactor::updateCurrentMouseFromLocalPosition(Point<int> localPos) {
+    state.currentMouse = Vertex2(panel->invertScaleX(localPos.x), panel->invertScaleY(localPos.y));
+    NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
+}
+
+void Interactor::updateCurrentMouseFromPointerEvent(const PanelPointerEvent& event) {
+    updateCurrentMouseFromLocalPosition(event.localPosition.roundToInt());
+}
+
 void Interactor::mouseMove(const MouseEvent& e) {
     auto localEvent = display != nullptr ? e.getEventRelativeTo(display.get()) : e;
     Point<int> localPos = localEvent.getPosition();
@@ -163,9 +173,7 @@ void Interactor::mouseMove(const MouseEvent& e) {
     flag(DidMeshChange) = false;
 
     state.lastMouse = state.currentMouse;
-    state.currentMouse = Vertex2(panel->invertScaleX(localPos.x), panel->invertScaleY(localPos.y));
-
-    NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
+    updateCurrentMouseFromLocalPosition(localPos);
 
     bool changedVertex = locateClosestElement();
 
@@ -235,9 +243,7 @@ void Interactor::timerCallback() {
     flag(DidMeshChange) = false;
 
     state.lastMouse = state.currentMouse;
-    state.currentMouse = Vertex2(panel->invertScaleX(localPos.x), panel->invertScaleY(localPos.y));
-
-    NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
+    updateCurrentMouseFromLocalPosition(localPos);
 
     bool changedVertex = locateClosestElement();
 
@@ -255,8 +261,7 @@ void Interactor::mouseDown(const MouseEvent& e) {
     state.resetActionState();
     PanelState::ActionState& action = state.actionState;
 
-    state.currentMouse = Vertex2(panel->invertScaleX(e.x), panel->invertScaleY(e.y));
-    NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
+    updateCurrentMouseFromLocalPosition(e.getPosition());
     state.start = state.currentMouse;
 
     bool selectWithRight = getSetting(SelectWithRight) == 1;
@@ -356,9 +361,7 @@ void Interactor::mouseUp(const MouseEvent& e) {
 
 void Interactor::mouseDrag(const MouseEvent& e) {
     state.lastMouse = state.currentMouse;
-    state.currentMouse     = Vertex2(panel->invertScaleX(e.x), panel->invertScaleY(e.y));
-
-    NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
+    updateCurrentMouseFromLocalPosition(e.getPosition());
 
     bool selectWithRight = getSetting(SelectWithRight) == 1;
 

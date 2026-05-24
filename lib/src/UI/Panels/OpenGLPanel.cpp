@@ -63,7 +63,7 @@ void OpenGLPanel::openGLContextClosing() {
 
 void OpenGLPanel::renderOpenGL() {
     noteRender();
-    panel->render();
+    panel->render(panel->createComponentHostContext(context.getRenderingScale()));
     printErrors(repo, "render");
 }
 

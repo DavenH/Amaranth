@@ -4,6 +4,7 @@
 
 #include "JuceHeader.h"
 #include "PanelDirtyState.h"
+#include "PanelHostContext.h"
 
 class Panel;
 
@@ -24,6 +25,7 @@ public:
     void invalidateAll(PanelDirtyState::Flag flag = PanelDirtyState::Flag::Full);
     void invalidatePanel(Panel* panel, PanelDirtyState::Flag flag);
     void registerOrUpdatePanel(Panel* panel, const juce::Rectangle<int>& bounds, bool visible);
+    void registerOrUpdatePanel(Panel* panel, const PanelHostContext& context);
     void removePanel(Panel* panel);
     void syncWithPanels();
 

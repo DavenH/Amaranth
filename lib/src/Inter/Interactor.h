@@ -25,6 +25,7 @@ using std::vector;
 using std::set;
 
 class Panel;
+class PanelPointerEvent;
 class GuideCurveProvider;
 class Mesh;
 struct RasterizerData;
@@ -105,6 +106,8 @@ public:
     void setAxeSize(float size);
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
+    void updateCurrentMouseFromLocalPosition(Point<int> localPos);
+    void updateCurrentMouseFromPointerEvent(const PanelPointerEvent& event);
     void setRasterizer(Rasterization::Rasterizer* rasterizer);
     void snapToGrid(Vertex2& toSnap);
     void translateVerts(vector<VertexFrame>& verts, const Vertex2& diff);

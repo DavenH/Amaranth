@@ -816,7 +816,7 @@ void Panel3D::drawSurface() {
     draw.colSourceSizeY = draw.sizeY;
     draw.downsampSize   = draw.sizeY;
     draw.stride         = isTransparent ? 4 : 3;
-    draw.texHeight      = comp->getHeight() - 2 * vertPadding;
+    draw.texHeight      = getHeight() - 2 * vertPadding;
     draw.reduced        = isSurfaceDetailReduced();
     draw.adjustColumns  = willAdjustSurfaceColumns();
     draw.ramp           = Buffer<float>();
