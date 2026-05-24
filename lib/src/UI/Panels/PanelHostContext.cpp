@@ -8,6 +8,16 @@ void PanelHostCallbacks::requestRepaint(Panel* panel, PanelDirtyState::Flag flag
     }
 }
 
+void PanelHostCallbacks::setMouseCursor(Panel* panel, const juce::MouseCursor& cursor) const {
+    if (cursorCallback != nullptr) {
+        cursorCallback(panel, cursor);
+    }
+}
+
+void PanelHostCallbacks::setCursorCallback(CursorCallback callback) {
+    cursorCallback = std::move(callback);
+}
+
 void PanelHostCallbacks::setRepaintCallback(RepaintCallback callback) {
     repaintCallback = std::move(callback);
 }

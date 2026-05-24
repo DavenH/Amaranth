@@ -12,13 +12,18 @@ class Panel;
 class PanelHostCallbacks {
 public:
     using RepaintCallback = std::function<void(Panel*, PanelDirtyState::Flag)>;
+    using CursorCallback = std::function<void(Panel*, const juce::MouseCursor&)>;
 
     void requestRepaint(Panel* panel, PanelDirtyState::Flag flag) const;
+    void setMouseCursor(Panel* panel, const juce::MouseCursor& cursor) const;
+    void setCursorCallback(CursorCallback callback);
     void setRepaintCallback(RepaintCallback callback);
 
+    bool hasCursorCallback() const { return cursorCallback != nullptr; }
     bool hasRepaintCallback() const { return repaintCallback != nullptr; }
 
 private:
+    CursorCallback cursorCallback;
     RepaintCallback repaintCallback;
 };
 

@@ -27,6 +27,10 @@ void GLPanelRenderer::checkErrors() {
     }
 }
 
+void GLPanelRenderer::clearResources() {
+    resourceCache.clear();
+}
+
 void GLPanelRenderer::endPanelRender() {
     currentContext = nullptr;
 }

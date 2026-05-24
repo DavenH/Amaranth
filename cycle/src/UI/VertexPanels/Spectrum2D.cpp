@@ -325,7 +325,7 @@ void Spectrum2D::drawPartials() {
         closestHarmonic = f2Interactor->getClosestHarmonic();
     }
 
-    if (comp->isMouseOver() && closestHarmonic >= 0 && closestHarmonic < minSize) {
+    if (isMouseOver() && closestHarmonic >= 0 && closestHarmonic < minSize) {
         float top = sy(1.f);
 
         x 	= scaledRamp[closestHarmonic];

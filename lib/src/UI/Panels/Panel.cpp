@@ -144,6 +144,24 @@ void Panel::requestRepaint(PanelDirtyState::Flag flag) {
     }
 }
 
+void Panel::clear() {
+    if (renderHelper != nullptr) {
+        renderHelper->clear();
+    }
+}
+
+void Panel::deactivateContext() {
+    if (renderHelper != nullptr) {
+        renderHelper->deactivate();
+    }
+}
+
+void Panel::activateContext() {
+    if (renderHelper != nullptr) {
+        renderHelper->activate();
+    }
+}
+
 bool Panel::isVisible() const {
     if (hasExplicitHostContext) {
         return hostContext.visible;
@@ -184,6 +202,14 @@ Rectangle<int> Panel::getLocalBounds() const {
     return comp != nullptr ? comp->getLocalBounds() : Rectangle<int>();
 }
 
+bool Panel::isMouseOver() const {
+    if (interactor != nullptr) {
+        return interactor->state.mouseFlags[PanelState::MouseOver];
+    }
+
+    return comp != nullptr && comp->isMouseOver();
+}
+
 void Panel::bindInteractorToComponent() {
     if (interactor == nullptr || comp == nullptr) {
         return;
@@ -210,7 +236,6 @@ void Panel::render() {
     bool sharedCanvasBackground = usesSharedCanvasBackground();
     bool sharedCanvasSurface = usesSharedCanvasSurface();
 
-    clear();
     if (!sharedCanvasBackground && shouldDrawPanelPass("background")) {
         drawBackground();
     }
@@ -816,10 +841,19 @@ void Panel::setHostCallbacks(const PanelHostCallbacks& callbacks) {
     hostCallbacks = callbacks;
 }
 
-void Panel::setCursor() {
-    jassert(comp != nullptr);
+void Panel::setPanelMouseCursor(const MouseCursor& cursor) {
+    if (hostCallbacks.hasCursorCallback()) {
+        hostCallbacks.setMouseCursor(this, cursor);
+        return;
+    }
 
-    CursorHelper::setCursor(repo, comp, interactor);
+    if (comp != nullptr) {
+        comp->setMouseCursor(cursor);
+    }
+}
+
+void Panel::setCursor() {
+    setPanelMouseCursor(CursorHelper::getCursor(repo, interactor));
 }
 
 bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube* cube, int pointDim, bool haveSpeed) {

@@ -93,9 +93,9 @@ public:
     float invScaleXNoDisp(int x) const;
     float invScaleYNoDisp(int y) const;
 
-    void clear()                            { renderHelper->clear();        }
-    void deactivateContext()                { renderHelper->deactivate();   }
-    void activateContext()                  { renderHelper->activate();     }
+    void clear();
+    void deactivateContext();
+    void activateContext();
     void repaint();
     void requestRepaint(PanelDirtyState::Flag flag = PanelDirtyState::Flag::Full);
 
@@ -106,6 +106,7 @@ public:
     int getHeight() const;
     Rectangle<int> getBounds() const;
     Rectangle<int> getLocalBounds() const;
+    bool isMouseOver() const;
 
     Ref<Interactor> getInteractor()         { return interactor;            }
     const String& getName() override        { return panelName;             }
@@ -115,6 +116,7 @@ public:
     void setGraphicsHelper(CommonGfx* gfx);
     void setHostContext(const PanelHostContext& context);
     void setHostCallbacks(const PanelHostCallbacks& callbacks);
+    void setPanelMouseCursor(const MouseCursor& cursor);
     void setPanelRenderer(PanelRenderer* renderer) { panelRenderer = renderer; }
     void setRenderHelper(Renderer* util)    { renderHelper = util;          }
     void setSpeedApplicable(bool is)        { speedApplicable = is;         }
