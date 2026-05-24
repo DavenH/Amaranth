@@ -6,6 +6,11 @@ This document describes the technical design for migrating Cycle's panel renderi
 
 It is intended to implement [ADR 003](../ADR/003-shared-panel-renderer.md).
 
+The Cycle v2 single-context panel-hosting slice is detailed separately in
+[Panel Core Single-Context Hosting TDD](panel-core-single-context-hosting.md),
+which implements [ADR 009](../ADR/009-panel-core-single-context-hosting.md)
+within this broader renderer migration.
+
 ## Problem Statement
 
 Cycle currently creates one OpenGL-backed JUCE component per major panel. Each of these components owns its own `juce::OpenGLContext`.
