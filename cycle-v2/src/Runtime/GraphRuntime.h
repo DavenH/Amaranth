@@ -1,0 +1,55 @@
+#pragma once
+
+#include "../Graph/GraphCompiler.h"
+
+#include <vector>
+
+namespace CycleV2 {
+
+struct RuntimeInput {
+    String sourceNodeId;
+    String sourcePortId;
+    String destPortId;
+    PortDomain domain {};
+};
+
+struct RuntimeOutput {
+    String portId;
+    PortDomain domain {};
+    ChannelLayout channelLayout { ChannelLayout::Mono };
+};
+
+struct RuntimeNodeTrace {
+    String nodeId;
+    NodeKind kind { NodeKind::GenericProcessor };
+    AudioModuleRole audioRole { AudioModuleRole::None };
+    PreviewModuleRole previewRole { PreviewModuleRole::None };
+    bool previewable {};
+    bool cycle1AdapterBacked {};
+    String cycle1Reference;
+    int cycleFrames { 2048 };
+    int latencyCycles {};
+    String transformMode;
+    std::vector<NodeParameter> parameters;
+    std::vector<RuntimeInput> signalInputs;
+    std::vector<RuntimeInput> attachments;
+    std::vector<RuntimeOutput> signalOutputs;
+};
+
+struct RuntimeProcessTrace {
+    std::vector<RuntimeNodeTrace> nodes;
+};
+
+class GraphRuntime {
+public:
+    RuntimeProcessTrace process(const NodeGraph& graph, const GraphExecutionPlan& plan) const;
+
+private:
+    const Node* findNode(const NodeGraph& graph, const String& nodeId) const;
+    std::vector<RuntimeInput> collectInputs(
+            const std::vector<Edge>& edges,
+            const String& nodeId) const;
+    std::vector<RuntimeOutput> collectOutputs(const GraphExecutionStep& step) const;
+};
+
+}

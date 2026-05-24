@@ -1,0 +1,2650 @@
+#include "NodeCanvas.h"
+
+#include <array>
+#include <iterator>
+#include <limits>
+#include <utility>
+
+namespace CycleV2 {
+
+namespace {
+
+const Colour kCanvasBackground { 0xff101318 };
+const Colour kCanvasGridMajor  { 0x2f5b6370 };
+const Colour kCanvasGridMinor  { 0x182f363f };
+const Colour kNodeBackground   { 0xff171d24 };
+const Colour kNodeHeader       { 0xff202833 };
+const Colour kNodeBorder       { 0xff3d4a58 };
+const Colour kText             { 0xffe2e8ef };
+const Colour kMutedText        { 0xff8793a1 };
+constexpr float kCableReferenceZoom = 0.58f;
+constexpr float kCableStrokeScale = 0.70f;
+constexpr float kPaletteWidth = 158.f;
+constexpr float kPaletteHeaderHeight = 21.f;
+constexpr float kPaletteRowHeight = 30.f;
+constexpr bool kUseGlCanvasUnderlay = true;
+constexpr bool kUseGlCanvasEdges = false;
+constexpr bool kUseGlNodeShells = false;
+
+float cableScaleForZoom(float zoom) {
+    return zoom / kCableReferenceZoom * kCableStrokeScale;
+}
+
+float portScaleForZoom(float zoom) {
+    return zoom / kCableReferenceZoom;
+}
+
+float absoluteFloat(float value) {
+    return value >= 0.f ? value : -value;
+}
+
+float fastSin(float value) {
+    return (float) juce::dsp::FastMathApproximations::sin((double) value);
+}
+
+float fastCos(float value) {
+    return (float) juce::dsp::FastMathApproximations::cos((double) value);
+}
+
+int portIndexOnSide(const Node& node, const Port& port) {
+    int index = 0;
+
+    auto scan = [&](const std::vector<Port>& ports) {
+        for (const auto& candidate : ports) {
+            if (candidate.side != port.side) {
+                continue;
+            }
+
+            if (candidate.id == port.id && candidate.input == port.input) {
+                return true;
+            }
+
+            ++index;
+        }
+
+        return false;
+    };
+
+    if (scan(node.inputs)) {
+        return index;
+    }
+
+    scan(node.outputs);
+    return index;
+}
+
+int portCountOnSide(const Node& node, PortSide side) {
+    int count = 0;
+
+    auto scan = [&](const std::vector<Port>& ports) {
+        for (const auto& port : ports) {
+            if (port.side == side) {
+                ++count;
+            }
+        }
+    };
+
+    scan(node.inputs);
+    scan(node.outputs);
+    return count;
+}
+
+float sidePortY(const Node& node, const Port& port) {
+    const auto& ports = port.input ? node.inputs : node.outputs;
+    int index = 0;
+
+    for (int i = 0; i < (int) ports.size(); ++i) {
+        if (ports[(size_t) i].id == port.id) {
+            index = portIndexOnSide(node, port);
+            break;
+        }
+    }
+
+    return node.bounds.getY() + 58.f + (float) index * 34.f;
+}
+
+Point<float> outwardNormalForSide(PortSide side) {
+    switch (side) {
+        case PortSide::Top:       return { 0.f, -1.f };
+        case PortSide::Bottom:    return { 0.f, 1.f };
+        case PortSide::Left:      return { -1.f, 0.f };
+        case PortSide::Right:     return { 1.f, 0.f };
+        default:                  return { 1.f, 0.f };
+    }
+}
+
+Point<float> normalizedOrFallback(Point<float> vector, Point<float> fallback) {
+    const float length = vector.getDistanceFromOrigin();
+
+    if (length <= 0.001f) {
+        return fallback;
+    }
+
+    return { vector.x / length, vector.y / length };
+}
+
+String portDisplayLabel(const Port& port) {
+    const String channel = labelForChannelLayout(port.channelLayout);
+    return channel.isEmpty() ? port.label : port.label + " " + channel;
+}
+
+Colour portDisplayColour(const Node& node, const Port& port) {
+    if (node.kind == NodeKind::Add || node.kind == NodeKind::Multiply) {
+        return colourForDomain(PortDomain::ControlSignal);
+    }
+
+    return colourForDomain(port.domain);
+}
+
+bool isOperationNode(NodeKind kind) {
+    return kind == NodeKind::Add || kind == NodeKind::Multiply;
+}
+
+bool isPreviewableNode(NodeKind kind) {
+    switch (kind) {
+        case NodeKind::WaveSource:
+        case NodeKind::ImageSource:
+        case NodeKind::TrilinearWaveSurface:
+        case NodeKind::TrilinearMesh:
+        case NodeKind::SpectralMagnitudeProcessor:
+        case NodeKind::SpectralPhaseProcessor:
+        case NodeKind::Envelope:
+        case NodeKind::GuideCurve:
+        case NodeKind::ImpulseResponse:
+        case NodeKind::Waveshaper:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+enum class OperationPortLayout {
+    Side,
+    Uptack,
+    Vertical,
+    Tee
+};
+
+OperationPortLayout operationPortLayoutFor(const Node& node) {
+    if (node.inputs.size() < 2) {
+        return OperationPortLayout::Side;
+    }
+
+    const PortSide first = node.inputs[0].side;
+    const PortSide second = node.inputs[1].side;
+
+    if (first == PortSide::Left && second == PortSide::Bottom) {
+        return OperationPortLayout::Tee;
+    }
+
+    if (first == PortSide::Top && second == PortSide::Bottom) {
+        return OperationPortLayout::Vertical;
+    }
+
+    if (first == PortSide::Left && second == PortSide::Top) {
+        return OperationPortLayout::Uptack;
+    }
+
+    return OperationPortLayout::Side;
+}
+
+Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
+    const float size = 18.f * zoom;
+    return Rectangle<float>(size, size)
+            .withCentre({ nodeBounds.getRight() - 18.f * zoom, nodeBounds.getY() + 21.f * zoom });
+}
+
+Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
+    const Rectangle<float> body = nodeBounds.withTrimmedTop(42.f * zoom);
+    const float width = jmin(nodeBounds.getWidth() - 96.f * zoom, 64.f * zoom);
+    return Rectangle<float>(width, 28.f * zoom)
+            .withCentre({ nodeBounds.getCentreX(), body.getCentreY() });
+}
+
+Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
+    const Rectangle<float> available = componentBounds.reduced(28.f);
+    const float width = jmin(available.getWidth(), jmax(420.f, available.getWidth() * 0.80f));
+    const float height = jmin(available.getHeight(), jmax(300.f, available.getHeight() * 0.80f));
+    return Rectangle<float>(width, height).withCentre(available.getCentre());
+}
+
+Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {
+    return Rectangle<float>(24.f, 24.f).withCentre({ panel.getRight() - 24.f, panel.getY() + 22.f });
+}
+
+String voiceDomainForNode(const Node& node) {
+    return parameterValueForNode(node, "domain", "waveform");
+}
+
+String voiceDomainButtonLabel(const Node& node) {
+    const String domain = voiceDomainForNode(node);
+    return domain == "spectral" ? "Spectral" : "Waveform";
+}
+
+String nextVoiceDomain(const Node& node) {
+    return voiceDomainForNode(node) == "spectral" ? "waveform" : "spectral";
+}
+
+Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
+    switch (role) {
+        case PreviewModuleRole::SpectrumMagnitude: return colourForDomain(PortDomain::SpectralMagnitudeSignal);
+        case PreviewModuleRole::SpectrumPhase:     return colourForDomain(PortDomain::SpectralPhaseSignal);
+        case PreviewModuleRole::Envelope:          return colourForDomain(PortDomain::EnvelopeSignal);
+        case PreviewModuleRole::OutputMeters:
+        case PreviewModuleRole::Waveform:
+        case PreviewModuleRole::Waveshaper:        return colourForDomain(PortDomain::TimeSignal);
+        case PreviewModuleRole::MeshSurface:       return colourForDomain(PortDomain::MeshField);
+        default:                                   break;
+    }
+
+    return node.outputs.empty() ? Colour(0xff9aa5b2) : colourForDomain(node.outputs.front().domain);
+}
+
+void drawPreviewTrace(
+        Graphics& g,
+        Rectangle<float> area,
+        const std::vector<float>& values,
+        Colour colour,
+        float zoom,
+        bool fillBackground = true) {
+    if (values.empty()) {
+        return;
+    }
+
+    Path trace;
+
+    for (size_t i = 0; i < values.size(); ++i) {
+        const float t = values.size() > 1 ? (float) i / (float) (values.size() - 1) : 0.f;
+        const float y = jlimit(0.f, 1.f, values[i]);
+        const Point<float> point(
+                area.getX() + t * area.getWidth(),
+                area.getBottom() - y * area.getHeight());
+
+        if (i == 0) {
+            trace.startNewSubPath(point);
+        } else {
+            trace.lineTo(point);
+        }
+    }
+
+    if (fillBackground) {
+        g.setColour(colour.withAlpha(0.12f));
+        g.fillRect(area);
+    }
+
+    g.setColour(colour.withAlpha(0.92f));
+    g.strokePath(trace, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+Colour meshSurfaceColour(float value) {
+    const float v = jlimit(0.f, 1.f, value);
+    const Colour low(0xff06090d);
+    const Colour mid(0xff53657a);
+    const Colour high(0xffd7eaff);
+
+    if (v < 0.5f) {
+        return low.interpolatedWith(mid, v * 2.f);
+    }
+
+    return mid.interpolatedWith(high, (v - 0.5f) * 2.f);
+}
+
+bool canDrawMeshHeatmap(const NodePreviewResult& preview) {
+    const int rows = (int) preview.secondary.size();
+    return rows >= 2 && preview.primary.size() >= (size_t) rows * 2;
+}
+
+Image createMeshHeatmapImage(const NodePreviewResult& preview) {
+    const int rows = (int) preview.secondary.size();
+
+    if (!canDrawMeshHeatmap(preview)) {
+        return {};
+    }
+
+    const int columns = (int) preview.primary.size() / rows;
+    Image image(Image::ARGB, columns, rows, true);
+
+    for (int column = 0; column < columns; ++column) {
+        for (int row = 0; row < rows; ++row) {
+            const float value = preview.primary[(size_t) column * rows + row];
+            image.setPixelAt(column, row, meshSurfaceColour(value).withAlpha(0.82f));
+        }
+    }
+
+    return image;
+}
+
+void drawMeshHeatmap(
+        Graphics& g,
+        Rectangle<float> area,
+        const NodePreviewResult& preview,
+        float zoom,
+        bool drawGrid) {
+    const int rows = (int) preview.secondary.size();
+
+    if (!canDrawMeshHeatmap(preview)) {
+        return;
+    }
+
+    const int columns = (int) preview.primary.size() / rows;
+    const Rectangle<float> surface = area.reduced(area.getWidth() * 0.025f, area.getHeight() * 0.06f);
+
+    g.setColour(Colour(0xff0a0f13));
+    g.fillRoundedRectangle(area, 5.f * zoom);
+
+    const float cellWidth = surface.getWidth() / (float) columns;
+    const float cellHeight = surface.getHeight() / (float) rows;
+
+    for (int column = 0; column < columns; ++column) {
+        for (int row = 0; row < rows; ++row) {
+            const float value = preview.primary[(size_t) column * rows + row];
+            const Rectangle<float> cell(
+                    surface.getX() + (float) column * cellWidth,
+                    surface.getY() + (float) row * cellHeight,
+                    cellWidth + 0.75f,
+                    cellHeight + 0.75f);
+
+            g.setColour(meshSurfaceColour(value).withAlpha(0.82f));
+            g.fillRect(cell);
+        }
+    }
+
+    if (drawGrid) {
+        g.setColour(Colour(0xff1e2a34).withAlpha(0.52f));
+        const int horizontalStep = jmax(1, rows / 5);
+        for (int row = 0; row <= rows; row += horizontalStep) {
+            const float y = surface.getY() + (float) row * cellHeight;
+            g.drawHorizontalLine(roundToInt(y), surface.getX(), surface.getRight());
+        }
+
+        const int verticalStep = jmax(1, columns / 6);
+        for (int column = 0; column <= columns; column += verticalStep) {
+            const float x = surface.getX() + (float) column * cellWidth;
+            g.drawVerticalLine(roundToInt(x), surface.getY(), surface.getBottom());
+        }
+    }
+}
+
+void drawMeshSurfacePreview(
+        Graphics& g,
+        Rectangle<float> area,
+        const NodePreviewResult& preview,
+        float zoom) {
+    drawMeshHeatmap(g, area, preview, zoom, false);
+}
+
+void drawPanelFrame(Graphics& g, Rectangle<float> area, const String& title) {
+    g.setColour(Colour(0xff0e1318));
+    g.fillRoundedRectangle(area, 6.f);
+    g.setColour(Colour(0xff26313d));
+    g.drawRoundedRectangle(area, 6.f, 1.f);
+    g.setColour(kMutedText);
+    g.setFont(FontOptions(10.5f, Font::bold));
+    g.drawText(title, area.reduced(10.f, 6.f).removeFromTop(15.f), Justification::centredLeft);
+}
+
+void drawPreviewMeters(
+        Graphics& g,
+        Rectangle<float> area,
+        const NodePreviewResult& preview,
+        Colour colour) {
+    const float left = preview.primary.empty() ? 0.f : jlimit(0.f, 1.f, preview.primary.front());
+    const float right = preview.secondary.empty() ? left : jlimit(0.f, 1.f, preview.secondary.front());
+    Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.24f, area.getHeight() * 0.10f);
+    const float width = meterArea.getWidth() * 0.26f;
+    auto leftMeter = meterArea.removeFromLeft(width);
+    auto rightMeter = meterArea.removeFromRight(width);
+
+    auto drawMeter = [&](Rectangle<float> bounds, float level) {
+        g.setColour(colour.withAlpha(0.14f));
+        g.fillRoundedRectangle(bounds, 2.f);
+
+        Rectangle<float> fill = bounds.withTrimmedTop(bounds.getHeight() * (1.f - level));
+        const float yellowStart = bounds.getY() + bounds.getHeight() * 0.30f;
+
+        if (fill.getBottom() > yellowStart) {
+            g.setColour(colour.withAlpha(0.70f));
+            g.fillRoundedRectangle(fill.withTrimmedTop(jmax(0.f, yellowStart - fill.getY())), 2.f);
+        }
+
+        if (fill.getY() < yellowStart) {
+            g.setColour(Colour(0xfff4d35e).withAlpha(0.78f));
+            g.fillRoundedRectangle(fill.withBottom(jmin(fill.getBottom(), yellowStart)), 2.f);
+        }
+    };
+
+    drawMeter(leftMeter, left);
+    drawMeter(rightMeter, right);
+}
+
+void drawOperationLayoutIcon(Graphics& g, Rectangle<float> button, OperationPortLayout layout, Colour colour) {
+    const auto area = button.reduced(button.getWidth() * 0.24f);
+    const float stroke = jmax(1.f, button.getWidth() * 0.085f);
+    const float dot = jmax(2.f, button.getWidth() * 0.14f);
+
+    auto dotAt = [&](Point<float> p, bool filled) {
+        Rectangle<float> r(p.x - dot * 0.5f, p.y - dot * 0.5f, dot, dot);
+        if (filled) {
+            g.fillEllipse(r);
+        } else {
+            g.drawEllipse(r, stroke);
+        }
+    };
+
+    Point<float> a;
+    Point<float> b;
+    Point<float> out(area.getRight(), area.getCentreY());
+
+    switch (layout) {
+        case OperationPortLayout::Vertical:
+            a = { area.getCentreX(), area.getY() };
+            b = { area.getCentreX(), area.getBottom() };
+            break;
+
+        case OperationPortLayout::Tee:
+            a = { area.getX(), area.getCentreY() };
+            b = { area.getCentreX(), area.getBottom() };
+            break;
+
+        case OperationPortLayout::Uptack:
+            a = { area.getX(), area.getCentreY() };
+            b = { area.getCentreX(), area.getY() };
+            break;
+
+        case OperationPortLayout::Side:
+        default:
+            a = { area.getX(), area.getY() + area.getHeight() * 0.30f };
+            b = { area.getX(), area.getBottom() - area.getHeight() * 0.30f };
+            break;
+    }
+
+    g.setColour(colour.withAlpha(0.78f));
+    Path path;
+    path.startNewSubPath(a);
+    path.lineTo(area.getCentre());
+    path.lineTo(b);
+    path.startNewSubPath(area.getCentre());
+    path.lineTo(out);
+    g.strokePath(path, PathStrokeType(stroke, PathStrokeType::curved, PathStrokeType::rounded));
+
+    g.setColour(colour);
+    dotAt(a, false);
+    dotAt(b, false);
+    dotAt(out, true);
+}
+
+}
+
+NodeCanvas::NodeCanvas() :
+        graph(NodeGraph::createDemoGraph()) {
+    refreshCompiledState();
+
+    setOpaque(true);
+    setWantsKeyboardFocus(true);
+    openGLContext.setRenderer(this);
+    openGLContext.setContinuousRepainting(false);
+    openGLContext.attachTo(*this);
+    startTimerHz(30);
+}
+
+NodeCanvas::~NodeCanvas() {
+    stopTimer();
+    openGLContext.detach();
+}
+
+void NodeCanvas::paint(Graphics& g) {
+    drawGrid(g);
+    drawEdges(g);
+    drawConnectionPreview(g);
+    drawNodes(g);
+    drawMiniMap(g);
+    drawEdgeLegend(g);
+    drawNodePalette(g);
+    drawHoverConsole(g);
+
+    if (const Node* node = findNode(expandedNodeId)) {
+        drawExpandedEditor(g, *node);
+    }
+}
+
+void NodeCanvas::resized() {
+    repaint();
+}
+
+void NodeCanvas::mouseMove(const MouseEvent& event) {
+    lastMousePosition = event.position;
+    repaint();
+}
+
+void NodeCanvas::mouseDown(const MouseEvent& event) {
+    grabKeyboardFocus();
+    editStatusMessage = {};
+    dragStartPan = pan;
+    lastMousePosition = event.position;
+    draggingNode = false;
+    connectingCable = false;
+    nodeDragUndoPushed = false;
+
+    if (expandedNodeId.isNotEmpty()) {
+        const auto panel = expandedEditorBounds(getLocalBounds().toFloat());
+        const auto closeButton = expandedEditorCloseButton(panel);
+
+        if (closeButton.contains(event.position)) {
+            expandedNodeId = {};
+            repaint();
+            return;
+        }
+
+        repaint();
+        return;
+    }
+
+    NodeKind paletteKind;
+    if (findPaletteKindAt(event.position, paletteKind)) {
+        const String beforeEdit = GraphSerializer().toXmlString(graph);
+        auto result = GraphEditor().addNode(graph, paletteKind, paletteCreationWorldPosition(event.position));
+
+        if (result.succeeded()) {
+            pushUndoSnapshot(beforeEdit);
+            selectedNodeId = result.nodeId;
+            expandedNodeId = {};
+            selectedEdgeIndex = -1;
+            if (const Node* node = findNode(result.nodeId)) {
+                dragStartNodeBounds = node->bounds;
+                draggingNode = true;
+                nodeDragUndoPushed = false;
+            }
+            connectingCable = false;
+            refreshCompiledState();
+            editStatusMessage = "Node added";
+            repaint();
+        }
+
+        return;
+    }
+
+    String layoutNodeId;
+    if (findOperationLayoutButtonAt(event.position, layoutNodeId)) {
+        if (cycleOperationPortLayout(layoutNodeId)) {
+            editStatusMessage = "Port layout cycled";
+            repaint();
+        }
+
+        return;
+    }
+
+    String voiceNodeId;
+    if (findVoiceDomainButtonAt(event.position, voiceNodeId)) {
+        if (cycleVoiceDomain(voiceNodeId)) {
+            repaint();
+        }
+
+        return;
+    }
+
+    PortAddress hitPort;
+    if (findPortAt(event.position, hitPort)) {
+        connectingPort = hitPort;
+        connectingPoint = event.position;
+        connectingCable = true;
+        draggingNode = false;
+        selectedNodeId = hitPort.nodeId;
+        selectedEdgeIndex = -1;
+        repaint();
+        return;
+    }
+
+    const Node* hitNode = findNodeAt(toWorld(event.position));
+
+    if (hitNode != nullptr) {
+        selectedNodeId = hitNode->id;
+        selectedEdgeIndex = -1;
+        draggingNode = true;
+        dragStartNodeBounds = hitNode->bounds;
+        nodeDragUndoPushed = false;
+
+        if (event.getNumberOfClicks() >= 2 && isPreviewableNode(hitNode->kind)) {
+            expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
+        }
+
+        repaint();
+        return;
+    }
+
+    selectedEdgeIndex = findEdgeAt(event.position);
+
+    if (selectedEdgeIndex >= 0) {
+        if (event.mods.isCtrlDown()) {
+            const String beforeEdit = GraphSerializer().toXmlString(graph);
+            auto result = GraphEditor().removeEdgeAt(graph, (size_t) selectedEdgeIndex);
+
+            if (result.succeeded()) {
+                pushUndoSnapshot(beforeEdit);
+                selectedEdgeIndex = -1;
+                refreshCompiledState();
+                editStatusMessage = "Edge cut";
+            }
+
+            repaint();
+            return;
+        }
+
+        selectedNodeId = {};
+        draggingNode = false;
+        repaint();
+        return;
+    }
+
+    selectedNodeId = {};
+    selectedEdgeIndex = -1;
+    draggingNode = false;
+    expandedNodeId = {};
+
+    repaint();
+}
+
+void NodeCanvas::mouseDrag(const MouseEvent& event) {
+    lastMousePosition = event.position;
+
+    if (connectingCable) {
+        PortAddress hitPort;
+        connectingPoint = findConnectablePortAt(event.position, connectingPort, hitPort)
+                ? getPortLocation(hitPort).centre
+                : event.position;
+    } else if (draggingNode) {
+        Node* node = findMutableNode(selectedNodeId);
+
+        if (node != nullptr) {
+            if (!nodeDragUndoPushed) {
+                pushUndoSnapshot();
+                nodeDragUndoPushed = true;
+            }
+
+            const auto offset = event.getOffsetFromDragStart().toFloat() / zoom;
+            node->bounds = dragStartNodeBounds.translated(offset.x, offset.y);
+        }
+    } else {
+        pan = dragStartPan + event.getOffsetFromDragStart().toFloat();
+    }
+
+    repaint();
+}
+
+void NodeCanvas::mouseUp(const MouseEvent& event) {
+    lastMousePosition = event.position;
+
+    if (!connectingCable) {
+        draggingNode = false;
+        nodeDragUndoPushed = false;
+        return;
+    }
+
+    PortAddress destPort;
+    connectingCable = false;
+    draggingNode = false;
+    nodeDragUndoPushed = false;
+
+    if (findConnectablePortAt(event.position, connectingPort, destPort)) {
+        const String beforeEdit = GraphSerializer().toXmlString(graph);
+        auto result = GraphEditor().connect(graph, connectingPort, destPort);
+
+        if (result.succeeded()) {
+            pushUndoSnapshot(beforeEdit);
+            refreshCompiledState();
+            editStatusMessage = "Connected";
+        } else if (result.code == GraphEditCode::ValidationRejected) {
+            editStatusMessage = "Incompatible connection";
+        } else {
+            editStatusMessage = "Connection cancelled";
+        }
+    }
+
+    repaint();
+}
+
+void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
+    ignoreUnused(event);
+    constexpr float panScale = 720.f;
+    pan += Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale);
+    repaint();
+}
+
+void NodeCanvas::mouseMagnify(const MouseEvent& event, float scaleFactor) {
+    const auto mouse = event.position;
+    const auto beforeZoom = toWorld(mouse);
+    zoom = jlimit(0.28f, 1.4f, zoom * scaleFactor);
+    const auto afterZoom = toWorld(mouse);
+    pan += (afterZoom - beforeZoom) * zoom;
+    repaint();
+}
+
+bool NodeCanvas::keyPressed(const KeyPress& key) {
+    const bool commandDown = key.getModifiers().isCommandDown() || key.getModifiers().isCtrlDown();
+    const int keyCode = key.getKeyCode();
+    const juce_wchar keyChar = CharacterFunctions::toLowerCase(key.getTextCharacter());
+
+    if (commandDown && (keyChar == 's' || keyCode == 's' || keyCode == 'S')) {
+        return saveSnapshot();
+    }
+
+    if (commandDown && (keyChar == 'z' || keyCode == 'z' || keyCode == 'Z')) {
+        return key.getModifiers().isShiftDown() ? redo() : undo();
+    }
+
+    if (commandDown && (keyChar == 'y' || keyCode == 'y' || keyCode == 'Y')) {
+        return redo();
+    }
+
+    if (commandDown && (keyChar == 'o' || keyCode == 'o' || keyCode == 'O')) {
+        return loadSnapshot();
+    }
+
+    if (key == KeyPress::escapeKey) {
+        return clearSelection();
+    }
+
+    if (key == KeyPress::deleteKey || key == KeyPress::backspaceKey) {
+        if (selectedEdgeIndex >= 0) {
+            const String beforeEdit = GraphSerializer().toXmlString(graph);
+            auto result = GraphEditor().removeEdgeAt(graph, (size_t) selectedEdgeIndex);
+
+            if (!result.succeeded()) {
+                return false;
+            }
+
+            pushUndoSnapshot(beforeEdit);
+            selectedEdgeIndex = -1;
+            refreshCompiledState();
+            editStatusMessage = "Edge deleted";
+            repaint();
+            return true;
+        }
+
+        if (selectedNodeId.isEmpty()) {
+            return false;
+        }
+
+        const String beforeEdit = GraphSerializer().toXmlString(graph);
+        auto result = GraphEditor().removeNode(graph, selectedNodeId);
+
+        if (!result.succeeded()) {
+            return false;
+        }
+
+        pushUndoSnapshot(beforeEdit);
+        expandedNodeId = {};
+        selectedNodeId = {};
+        refreshCompiledState();
+        editStatusMessage = "Node deleted";
+        repaint();
+        return true;
+    }
+
+    return false;
+}
+
+void NodeCanvas::newOpenGLContextCreated() {
+    glRenderer.initialize();
+}
+
+void NodeCanvas::renderOpenGL() {
+    if (kUseGlCanvasUnderlay) {
+        glRenderer.renderBackground(getWidth(), getHeight(), (float) openGLContext.getRenderingScale(), zoom, pan);
+        if (kUseGlCanvasEdges) {
+            drawGlEdges();
+        }
+        if (kUseGlNodeShells) {
+            drawGlNodeShells();
+        }
+    } else {
+        OpenGLHelpers::clear(kCanvasBackground);
+    }
+}
+
+void NodeCanvas::openGLContextClosing() {
+    glRenderer.shutdown();
+}
+
+void NodeCanvas::timerCallback() {
+    const auto mouse = getMouseXYRelative().toFloat();
+
+    if (getLocalBounds().toFloat().contains(mouse) && mouse != lastMousePosition) {
+        lastMousePosition = mouse;
+        repaint();
+    }
+}
+
+void NodeCanvas::drawGrid(Graphics& g) {
+    if (kUseGlCanvasUnderlay) {
+        return;
+    }
+
+    g.fillAll(kCanvasBackground);
+
+    const float minorStep = 32.f * zoom;
+    const float majorStep = minorStep * 4.f;
+    const auto bounds = getLocalBounds().toFloat();
+
+    auto drawGridLines = [&](float step, Colour colour, float thickness) {
+        g.setColour(colour);
+
+        float startX = std::fmod(pan.x, step);
+        if (startX > 0.f) {
+            startX -= step;
+        }
+
+        for (float x = startX; x < bounds.getRight(); x += step) {
+            g.drawVerticalLine(roundToInt(x), bounds.getY(), bounds.getBottom());
+        }
+
+        float startY = std::fmod(pan.y, step);
+        if (startY > 0.f) {
+            startY -= step;
+        }
+
+        for (float y = startY; y < bounds.getBottom(); y += step) {
+            g.drawHorizontalLine(roundToInt(y), bounds.getX(), bounds.getRight());
+        }
+
+        ignoreUnused(thickness);
+    };
+
+    drawGridLines(minorStep, kCanvasGridMinor, 1.f);
+    drawGridLines(majorStep, kCanvasGridMajor, 1.f);
+
+    ColourGradient glow(Colour(0x40162531), 0.f, 0.f,
+                        Colour(0x00162531), 0.f, (float) getHeight(), false);
+    g.setGradientFill(glow);
+    g.fillRect(getLocalBounds());
+}
+
+void NodeCanvas::drawGlEdges() {
+    const auto& edges = graph.getEdges();
+    const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
+
+    for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
+        const auto& edge = edges[(size_t) edgeIndex];
+        const Node* sourceNode = findNode(edge.sourceNodeId);
+        const Node* destNode = findNode(edge.destNodeId);
+
+        if (sourceNode == nullptr || destNode == nullptr) {
+            continue;
+        }
+
+        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
+        const Port* destPort = findPort(*destNode, edge.destPortId, true);
+
+        if (sourcePort == nullptr || destPort == nullptr) {
+            continue;
+        }
+
+        const Point<float> source = getPortLocation(*sourceNode, *sourcePort).centre;
+        const Point<float> dest = getPortLocation(*destNode, *destPort).centre;
+        const Path cable = createCablePath(source, dest, sourcePort->side, destPort->side, edge.attachment);
+
+        if (!cable.getBounds().intersects(visibleArea)) {
+            continue;
+        }
+
+        Colour colour = colourForDomain(displayDomainForEdge(edge));
+        const bool invalid = edgeHasValidationIssue(edge);
+
+        if (invalid) {
+            colour = Colour(0xffff5a5f);
+        }
+
+        glRenderer.renderCable(
+                cable,
+                source,
+                dest,
+                colour,
+                cableScaleForZoom(zoom),
+                edgeIndex == selectedEdgeIndex,
+                edge.attachment,
+                invalid);
+    }
+}
+
+void NodeCanvas::drawGlNodeShells() {
+    const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
+
+    for (const auto& node : graph.getNodes()) {
+        const Rectangle<float> bounds = toScreen(node.bounds);
+
+        if (!bounds.intersects(visibleArea)) {
+            continue;
+        }
+
+        glRenderer.renderNodeShell(
+                bounds,
+                42.f * zoom,
+                8.f * portScaleForZoom(zoom),
+                kNodeBackground,
+                kNodeHeader);
+    }
+}
+
+void NodeCanvas::drawEdges(Graphics& g) {
+    if (kUseGlCanvasEdges) {
+        return;
+    }
+
+    const auto& edges = graph.getEdges();
+    const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
+
+    for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
+        const auto& edge = edges[(size_t) edgeIndex];
+        const Node* sourceNode = findNode(edge.sourceNodeId);
+        const Node* destNode = findNode(edge.destNodeId);
+
+        if (sourceNode == nullptr || destNode == nullptr) {
+            continue;
+        }
+
+        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
+        const Port* destPort = findPort(*destNode, edge.destPortId, true);
+
+        if (sourcePort == nullptr || destPort == nullptr) {
+            continue;
+        }
+
+        auto source = getPortLocation(*sourceNode, *sourcePort).centre;
+        auto dest = getPortLocation(*destNode, *destPort).centre;
+        Path cable = createCablePath(source, dest, sourcePort->side, destPort->side, edge.attachment);
+
+        if (!cable.getBounds().intersects(visibleArea)) {
+            continue;
+        }
+
+        Colour colour = colourForDomain(displayDomainForEdge(edge));
+        const bool invalid = edgeHasValidationIssue(edge);
+
+        const bool selected = edgeIndex == selectedEdgeIndex;
+        const float cableScale = cableScaleForZoom(zoom);
+
+        if (invalid) {
+            colour = Colour(0xffff5a5f);
+        }
+
+        if (edge.attachment) {
+            Path dashedCable;
+            PathStrokeType stroke(2.0f * cableScale, PathStrokeType::curved, PathStrokeType::rounded);
+            Array<float> dashes { 8.f * cableScale, 7.f * cableScale };
+            stroke.createDashedStroke(dashedCable, cable, dashes.getRawDataPointer(), dashes.size());
+            g.setColour(colour.withAlpha(selected ? 0.46f : 0.32f));
+            g.strokePath(dashedCable, PathStrokeType((selected ? 10.f : 7.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            g.setColour(colour.withAlpha(0.92f));
+            g.strokePath(dashedCable, PathStrokeType((selected ? 3.f : 2.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+        } else {
+            g.setColour(colour.withAlpha(selected ? 0.28f : 0.18f));
+            g.strokePath(cable, PathStrokeType((selected ? 12.f : 9.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            g.setColour(colour.withAlpha(0.92f));
+            g.strokePath(cable, PathStrokeType((selected ? 4.f : 3.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+
+            if (invalid) {
+                Path dashedCable;
+                PathStrokeType stroke(1.8f * cableScale, PathStrokeType::curved, PathStrokeType::rounded);
+                Array<float> dashes { 5.f * cableScale, 6.f * cableScale };
+                stroke.createDashedStroke(dashedCable, cable, dashes.getRawDataPointer(), dashes.size());
+                g.setColour(Colours::white.withAlpha(0.58f));
+                g.strokePath(dashedCable, PathStrokeType(1.4f * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            }
+        }
+
+        const float endpointSize = (selected ? 14.f : 11.f) * cableScale;
+        Rectangle<float> sourceMarker(source.x - endpointSize * 0.5f, source.y - endpointSize * 0.5f,
+                                      endpointSize, endpointSize);
+        Rectangle<float> destMarker(dest.x - endpointSize * 0.5f, dest.y - endpointSize * 0.5f,
+                                    endpointSize, endpointSize);
+
+        g.setColour(kCanvasBackground.withAlpha(0.92f));
+        g.fillEllipse(sourceMarker);
+        g.setColour(colour.withAlpha(0.96f));
+        g.drawEllipse(sourceMarker, (selected ? 2.4f : 1.8f) * cableScale);
+        g.fillEllipse(destMarker.reduced((selected ? 1.5f : 2.f) * cableScale));
+    }
+}
+
+void NodeCanvas::drawConnectionPreview(Graphics& g) {
+    if (!connectingCable) {
+        return;
+    }
+
+    const Node* node = findNode(connectingPort.nodeId);
+
+    if (node == nullptr) {
+        return;
+    }
+
+    const Port* port = findPort(*node, connectingPort.portId, connectingPort.input);
+
+    if (port == nullptr) {
+        return;
+    }
+
+    const auto start = getPortLocation(connectingPort).centre;
+    const auto source = connectingPort.input ? connectingPoint : start;
+    const auto dest = connectingPort.input ? start : connectingPoint;
+    const PortSide sourceSide = connectingPort.input ? PortSide::Right : port->side;
+    const PortSide destSide = connectingPort.input ? port->side : PortSide::Left;
+    const Path cable = createCablePath(source, dest, sourceSide, destSide, false);
+    const Colour colour = colourForDomain(port->domain);
+    const float cableScale = cableScaleForZoom(zoom);
+
+    g.setColour(colour.withAlpha(0.18f));
+    g.strokePath(cable, PathStrokeType(9.f * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+    g.setColour(colour.withAlpha(0.88f));
+    g.strokePath(cable, PathStrokeType(3.f * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+
+    const float markerSize = 11.f * cableScale;
+    Rectangle<float> startMarker(source.x - markerSize * 0.5f, source.y - markerSize * 0.5f, markerSize, markerSize);
+    Rectangle<float> destMarker(dest.x - markerSize * 0.5f, dest.y - markerSize * 0.5f, markerSize, markerSize);
+    g.setColour(kCanvasBackground.withAlpha(0.92f));
+    g.fillEllipse(startMarker);
+    g.setColour(colour.withAlpha(0.96f));
+    g.drawEllipse(startMarker, 1.8f * cableScale);
+    g.fillEllipse(destMarker.reduced(2.f * cableScale));
+}
+
+void NodeCanvas::drawNodes(Graphics& g) {
+    const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
+
+    for (const auto& node : graph.getNodes()) {
+        if (!toScreen(node.bounds).intersects(visibleArea)) {
+            continue;
+        }
+
+        drawNode(g, node);
+    }
+}
+
+void NodeCanvas::drawNode(Graphics& g, const Node& node) {
+    Rectangle<float> bounds = toScreen(node.bounds);
+    const float uiScale = portScaleForZoom(zoom);
+    const float corner = 8.f * uiScale;
+
+    if (!kUseGlNodeShells) {
+        g.setColour(kNodeBackground);
+        g.fillRoundedRectangle(bounds, corner);
+    }
+
+    auto header = bounds.removeFromTop(42.f * zoom);
+    if (!kUseGlNodeShells) {
+        g.setColour(kNodeHeader);
+        g.fillRoundedRectangle(header, corner);
+        g.fillRect(header.withTrimmedTop(header.getHeight() - corner));
+    }
+
+    g.setColour(kNodeBorder);
+    g.drawRoundedRectangle(toScreen(node.bounds), corner, 1.2f);
+
+    if (node.id == selectedNodeId) {
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.82f));
+        g.drawRoundedRectangle(toScreen(node.bounds).expanded(2.f), corner + 2.f, 2.f);
+    }
+
+    g.setFont(FontOptions(15.f * zoom, Font::bold));
+    g.setColour(kText);
+    g.drawText(node.title, header.reduced(13.f * zoom, 4.f * zoom), Justification::centredLeft);
+
+    if (isOperationNode(node.kind)) {
+        const auto button = operationLayoutButtonBounds(toScreen(node.bounds), zoom);
+        g.setColour(Colour(0xff0f141a).withAlpha(0.78f));
+        g.fillEllipse(button);
+        g.setColour(kMutedText.withAlpha(0.82f));
+        g.drawEllipse(button, 1.f * uiScale);
+        drawOperationLayoutIcon(g, button, operationPortLayoutFor(node), kMutedText);
+    }
+
+    auto nodeBounds = toScreen(node.bounds);
+    auto preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
+
+    if (node.kind != NodeKind::VoiceContext) {
+        drawPreview(g, node, preview);
+    }
+
+    if (node.kind == NodeKind::VoiceContext) {
+        auto pill = voiceDomainButtonBounds(nodeBounds, zoom);
+        const bool spectral = voiceDomainForNode(node) == "spectral";
+        const float labelWidth = 66.f * zoom;
+        const Rectangle<float> waveformLabel(pill.getX() - labelWidth - 9.f * zoom, pill.getY(), labelWidth, pill.getHeight());
+        const Rectangle<float> spectralLabel(pill.getRight() + 9.f * zoom, pill.getY(), labelWidth, pill.getHeight());
+        const Colour waveformColour = colourForDomain(PortDomain::TimeSignal);
+        const Colour spectralColour = colourForDomain(PortDomain::SpectralMagnitudeSignal);
+        const Colour activeColour = spectral ? spectralColour : waveformColour;
+        const float knobSize = pill.getHeight() - 6.f * zoom;
+        const Rectangle<float> knob(knobSize, knobSize);
+        const Point<float> knobCentre(
+                spectral ? pill.getRight() - pill.getHeight() * 0.5f : pill.getX() + pill.getHeight() * 0.5f,
+                pill.getCentreY());
+
+        g.setFont(FontOptions(10.8f * zoom, Font::bold));
+        g.setColour(spectral ? kMutedText.withAlpha(0.70f) : kText);
+        g.drawText("Waveform", waveformLabel, Justification::centredRight);
+        g.setColour(spectral ? kText : kMutedText.withAlpha(0.70f));
+        g.drawText("Spectral", spectralLabel, Justification::centredLeft);
+        g.setColour(Colour(0xff091015).withAlpha(0.96f));
+        g.fillRoundedRectangle(pill, pill.getHeight() * 0.5f);
+        g.setColour(activeColour.withAlpha(0.22f));
+        g.fillRoundedRectangle(pill.reduced(2.f * zoom), pill.getHeight() * 0.5f);
+        g.setColour(activeColour.withAlpha(0.82f));
+        g.drawRoundedRectangle(pill, pill.getHeight() * 0.5f, 1.2f * uiScale);
+        g.setColour(activeColour);
+        g.fillEllipse(knob.withCentre(knobCentre));
+        g.setColour(Colours::white.withAlpha(0.30f));
+        g.drawEllipse(knob.withCentre(knobCentre), 1.f * uiScale);
+    }
+
+    auto drawPort = [&](const Node& portNode, const Port& port) {
+        auto location = getPortLocation(portNode, port);
+        Colour colour = portDisplayColour(portNode, port);
+        const float portScale = portScaleForZoom(zoom);
+
+        g.setColour(colour.withAlpha(0.22f));
+        g.fillEllipse(location.bounds.expanded(2.4f * portScale));
+
+        if (port.input) {
+            g.setColour(colour);
+            g.fillEllipse(location.bounds);
+        } else {
+            g.setColour(kCanvasBackground.withAlpha(0.92f));
+            g.fillEllipse(location.bounds);
+            g.setColour(colour);
+            g.drawEllipse(location.bounds, 2.f * portScale);
+        }
+    };
+
+    for (const auto& port : node.inputs) {
+        drawPort(node, port);
+    }
+
+    for (const auto& port : node.outputs) {
+        drawPort(node, port);
+    }
+}
+
+void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> area) {
+    const int width = roundToInt(area.getWidth());
+    const int height = roundToInt(area.getHeight());
+
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    CachedPreviewSprite& cached = cachedPreviewSpriteFor(node.id);
+
+    if (!cached.image.isValid()
+            || cached.width != width
+            || cached.height != height) {
+        cached.image = Image(Image::ARGB, width, height, true);
+        cached.width = width;
+        cached.height = height;
+
+        Graphics spriteGraphics(cached.image);
+        drawPreviewUncached(spriteGraphics, node, { 0.f, 0.f, (float) width, (float) height });
+    }
+
+    g.setImageResamplingQuality(Graphics::mediumResamplingQuality);
+    g.drawImage(cached.image, area);
+}
+
+Rectangle<float> previewContentArea(Rectangle<float> area) {
+    return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.12f);
+}
+
+Rectangle<float> meshPreviewContentArea(Rectangle<float> area) {
+    return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
+}
+
+void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area) {
+    if (area.getWidth() < 20.f || area.getHeight() < 20.f) {
+        return;
+    }
+
+    g.setColour(Colour(0xff0e1318));
+    g.fillRoundedRectangle(area, 6.f * zoom);
+    g.setColour(Colour(0xff26313d));
+    g.drawRoundedRectangle(area, 6.f * zoom, 1.f);
+
+    if (const NodePreviewResult* preview = findPreviewResult(node.id)) {
+        const Colour colour = previewColourForRole(preview->role, node);
+
+        if (preview->role == PreviewModuleRole::OutputMeters) {
+            drawPreviewMeters(g, area, *preview, colour);
+            g.setColour(kMutedText.withAlpha(0.72f));
+            g.setFont(FontOptions(jmin(17.f, area.getHeight() * 0.24f), Font::bold));
+            g.drawText("OUT", area, Justification::centredBottom);
+            return;
+        }
+
+        if (preview->role == PreviewModuleRole::MeshSurface
+                && !preview->primary.empty()
+                && !preview->secondary.empty()) {
+            drawMeshSurfacePreview(g, node, area, *preview);
+            return;
+        }
+
+        if (!preview->primary.empty()) {
+            const Rectangle<float> content = previewContentArea(area);
+            drawPreviewTrace(g, content, preview->primary, colour, zoom);
+
+            if (!preview->secondary.empty()) {
+                drawPreviewTrace(g, content, preview->secondary, colour.withAlpha(0.58f), zoom);
+            }
+
+            return;
+        }
+    }
+
+    if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
+        const bool inverse = node.kind == NodeKind::Ifft;
+        const Rectangle<float> icon = previewContentArea(area).reduced(8.f, 4.f);
+        const Colour time = colourForDomain(PortDomain::TimeSignal);
+        const Colour mag = colourForDomain(PortDomain::SpectralMagnitudeSignal);
+        const Colour phase = colourForDomain(PortDomain::SpectralPhaseSignal);
+
+        if (inverse) {
+            Path wave;
+            for (int i = 0; i < 32; ++i) {
+                const float t = (float) i / 31.f;
+                const Point<float> p(
+                        icon.getX() + t * icon.getWidth(),
+                        icon.getCentreY() + fastSin(t * MathConstants<float>::twoPi) * icon.getHeight() * 0.30f);
+
+                if (i == 0) {
+                    wave.startNewSubPath(p);
+                } else {
+                    wave.lineTo(p);
+                }
+            }
+
+            g.setColour(time.withAlpha(0.90f));
+            g.strokePath(wave, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
+        } else {
+            const float barWidth = icon.getWidth() / 7.f;
+
+            for (int i = 0; i < 6; ++i) {
+                const float height = icon.getHeight() * (0.25f + (float) ((i * 17) % 5) * 0.13f);
+                Rectangle<float> bar(icon.getX() + (float) i * barWidth, icon.getBottom() - height,
+                                     barWidth * 0.52f, height);
+                g.setColour((i % 2 == 0 ? mag : phase).withAlpha(0.78f));
+                g.fillRoundedRectangle(bar, 2.f);
+            }
+        }
+
+        g.setColour(kMutedText.withAlpha(0.72f));
+        g.setFont(FontOptions(jmin(15.f, area.getHeight() * 0.24f), Font::bold));
+        g.drawText(inverse ? "IFFT" : "FFT", area, Justification::centredBottom);
+        return;
+    }
+
+    if (node.kind == NodeKind::StereoSplit || node.kind == NodeKind::StereoJoin) {
+        const bool split = node.kind == NodeKind::StereoSplit;
+        const Colour colour = colourForDomain(PortDomain::TimeSignal);
+        const float y = area.getCentreY();
+        const float left = area.getX() + area.getWidth() * 0.28f;
+        const float right = area.getRight() - area.getWidth() * 0.28f;
+
+        g.setColour(colour.withAlpha(0.85f));
+        g.drawLine(Line<float>({ left, y }, { right, y - area.getHeight() * 0.18f }), 2.f);
+        g.drawLine(Line<float>({ left, y }, { right, y + area.getHeight() * 0.18f }), 2.f);
+        g.setFont(FontOptions(jmin(18.f, area.getHeight() * 0.30f), Font::bold));
+        g.setColour(kMutedText.withAlpha(0.72f));
+        g.drawText(split ? "SPLIT" : "JOIN", area, Justification::centredBottom);
+        return;
+    }
+
+    if (node.kind == NodeKind::Output) {
+        const Colour colour = colourForDomain(PortDomain::TimeSignal);
+        Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.24f, area.getHeight() * 0.10f);
+        const float width = meterArea.getWidth() * 0.32f;
+
+        g.setColour(colour.withAlpha(0.18f));
+        g.fillRoundedRectangle(meterArea.removeFromLeft(width), 2.f);
+        g.fillRoundedRectangle(meterArea.removeFromRight(width), 2.f);
+        g.setColour(kMutedText.withAlpha(0.72f));
+        g.setFont(FontOptions(jmin(17.f, area.getHeight() * 0.24f), Font::bold));
+        g.drawText("OUT", area, Justification::centredBottom);
+        return;
+    }
+
+    if (node.kind == NodeKind::TrilinearWaveSurface || node.kind == NodeKind::TrilinearMesh) {
+        area = meshPreviewContentArea(area);
+        Path surface;
+        for (int i = 0; i < 8; ++i) {
+            float x0 = area.getX() + (float) i * area.getWidth() / 8.f;
+            float x1 = area.getX() + (float) (i + 1) * area.getWidth() / 8.f;
+            float y0 = area.getY() + area.getHeight() * (0.28f + 0.08f * fastSin((float) i));
+            float y1 = area.getBottom() - area.getHeight() * (0.20f + 0.07f * fastCos((float) i));
+            Line<float> line({ x0, y1 }, { x1, y0 });
+            g.setColour(Colour(0xff35d6d2).withAlpha(0.40f));
+            g.drawLine(line, 1.2f);
+        }
+        g.setColour(Colour(0xff35d6d2).withAlpha(0.18f));
+        g.fillRect(area.reduced(area.getWidth() * 0.14f, area.getHeight() * 0.24f));
+        return;
+    }
+
+    if (node.kind == NodeKind::ImageSource) {
+        auto imageArea = area.reduced(area.getWidth() * 0.12f, area.getHeight() * 0.16f);
+        g.setColour(colourForDomain(PortDomain::ControlSignal).withAlpha(0.12f));
+        g.fillRect(imageArea);
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.42f));
+        g.fillRect(imageArea.removeFromLeft(imageArea.getWidth() * 0.46f).reduced(1.f));
+        g.setColour(colourForDomain(PortDomain::SpectralMagnitudeSignal).withAlpha(0.36f));
+        g.fillRect(imageArea.removeFromTop(imageArea.getHeight() * 0.48f).reduced(1.f));
+        g.setColour(colourForDomain(PortDomain::SpectralPhaseSignal).withAlpha(0.34f));
+        g.fillRect(imageArea.reduced(1.f));
+        return;
+    }
+
+    if (node.kind == NodeKind::WaveSource) {
+        Path wave;
+        for (int i = 0; i < 42; ++i) {
+            const float t = (float) i / 41.f;
+            const Point<float> p(
+                    area.getX() + t * area.getWidth(),
+                    area.getCentreY() + fastSin(t * MathConstants<float>::twoPi * 1.25f) * area.getHeight() * 0.34f);
+
+            if (i == 0) {
+                wave.startNewSubPath(p);
+            } else {
+                wave.lineTo(p);
+            }
+        }
+
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.12f));
+        g.fillRect(area);
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.92f));
+        g.strokePath(wave, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
+        return;
+    }
+
+    if (node.kind == NodeKind::SpectralMagnitudeProcessor) {
+        drawSpectrumBars(g, area.reduced(8.f), colourForDomain(PortDomain::SpectralMagnitudeSignal), node.id.hashCode());
+        return;
+    }
+
+    if (node.kind == NodeKind::SpectralPhaseProcessor) {
+        drawPhaseTrace(g, area.reduced(8.f), colourForDomain(PortDomain::SpectralPhaseSignal), node.id.hashCode());
+        return;
+    }
+
+    if (node.kind == NodeKind::Envelope) {
+        drawEnvelopeCurve(g, area.reduced(8.f));
+        return;
+    }
+
+    if (node.kind == NodeKind::GuideCurve) {
+        drawEnvelopeCurve(g, area.reduced(8.f));
+        return;
+    }
+
+    if (node.kind == NodeKind::ImpulseResponse) {
+        drawSpectrumBars(g, area.reduced(8.f), colourForDomain(PortDomain::TimeSignal), node.id.hashCode());
+        return;
+    }
+
+    if (node.kind == NodeKind::Waveshaper) {
+        Path transfer;
+        const auto transferArea = area.reduced(8.f);
+        transfer.startNewSubPath(transferArea.getX(), transferArea.getBottom());
+        transfer.cubicTo(
+                transferArea.getX() + transferArea.getWidth() * 0.35f,
+                transferArea.getBottom(),
+                transferArea.getX() + transferArea.getWidth() * 0.65f,
+                transferArea.getY(),
+                transferArea.getRight(),
+                transferArea.getY());
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.10f));
+        g.fillRect(transferArea);
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.92f));
+        g.strokePath(transfer, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
+        return;
+    }
+
+    Path curve;
+    const int steps = 42;
+    for (int i = 0; i < steps; ++i) {
+        float t = (float) i / (float) (steps - 1);
+        float y = 0.5f + 0.28f * fastSin(t * MathConstants<float>::twoPi * 1.35f + node.id.hashCode() * 0.001f);
+        Point<float> p(area.getX() + t * area.getWidth(), area.getY() + y * area.getHeight());
+        if (i == 0) {
+            curve.startNewSubPath(p);
+        } else {
+            curve.lineTo(p);
+        }
+    }
+
+    Colour colour = node.outputs.empty() ? Colour(0xff9aa5b2) : colourForDomain(node.outputs.front().domain);
+
+    if (node.kind == NodeKind::Add) {
+        g.setColour(kMutedText.withAlpha(0.76f));
+        g.setFont(FontOptions(jmin(48.f, area.getHeight() * 0.76f), Font::bold));
+        g.drawText("+", area, Justification::centred);
+        return;
+    }
+
+    if (node.kind == NodeKind::Multiply) {
+        g.setColour(kMutedText.withAlpha(0.76f));
+        g.setFont(FontOptions(jmin(48.f, area.getHeight() * 0.76f), Font::bold));
+        g.drawText("x", area, Justification::centred);
+        return;
+    }
+
+    g.setColour(colour.withAlpha(0.20f));
+    g.fillPath(curve);
+    g.setColour(colour.withAlpha(0.95f));
+    g.strokePath(curve, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+NodeCanvas::CachedHeatmap& NodeCanvas::cachedHeatmapFor(const String& nodeId) {
+    for (auto& entry : heatmapCache) {
+        if (entry.first == nodeId) {
+            return entry.second;
+        }
+    }
+
+    heatmapCache.emplace_back(nodeId, CachedHeatmap {});
+    return heatmapCache.back().second;
+}
+
+NodeCanvas::CachedPreviewSprite& NodeCanvas::cachedPreviewSpriteFor(const String& nodeId) {
+    for (auto& entry : previewSpriteCache) {
+        if (entry.first == nodeId) {
+            return entry.second;
+        }
+    }
+
+    previewSpriteCache.emplace_back(nodeId, CachedPreviewSprite {});
+    return previewSpriteCache.back().second;
+}
+
+void NodeCanvas::drawMeshSurfacePreview(
+        Graphics& g,
+        const Node& node,
+        Rectangle<float> area,
+        const NodePreviewResult& preview) {
+    if (!canDrawMeshHeatmap(preview)) {
+        return;
+    }
+
+    const int rows = (int) preview.secondary.size();
+    const int columns = (int) preview.primary.size() / rows;
+    CachedHeatmap& cached = cachedHeatmapFor(node.id);
+
+    if (!cached.image.isValid()
+            || cached.valueCount != preview.primary.size()
+            || cached.rows != rows
+            || cached.columns != columns) {
+        cached.image = createMeshHeatmapImage(preview);
+        cached.valueCount = preview.primary.size();
+        cached.rows = rows;
+        cached.columns = columns;
+    }
+
+    g.setColour(Colour(0xff0a0f13));
+    g.fillRoundedRectangle(area, 5.f * zoom);
+
+    if (cached.image.isValid()) {
+        const Rectangle<float> surface = meshPreviewContentArea(area);
+        g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+        g.drawImage(cached.image, surface);
+    }
+}
+
+void NodeCanvas::drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed) {
+    Random random(seed);
+    const int bars = 34;
+    const float barWidth = area.getWidth() / (float) bars;
+
+    g.setColour(colour.withAlpha(0.08f));
+    g.fillRect(area);
+
+    for (int i = 0; i < bars; ++i) {
+        const float t = (float) i / (float) (bars - 1);
+        const float falloff = 1.f - t * 0.72f;
+        const float jitter = 0.35f + random.nextFloat() * 0.55f;
+        const float height = area.getHeight() * jlimit(0.08f, 0.98f, falloff * jitter);
+        Rectangle<float> bar(
+                area.getX() + (float) i * barWidth,
+                area.getBottom() - height,
+                jmax(1.f, barWidth - 1.f),
+                height);
+
+        g.setColour(colour.withAlpha(0.28f));
+        g.fillRect(bar);
+        g.setColour(colour.withAlpha(0.82f));
+        g.drawVerticalLine(roundToInt(bar.getCentreX()), bar.getY(), bar.getBottom());
+    }
+}
+
+void NodeCanvas::drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colour, int seed) {
+    Random random(seed ^ 0x4f3759df);
+    Path trace;
+    const int steps = 48;
+
+    for (int i = 0; i < steps; ++i) {
+        const float t = (float) i / (float) (steps - 1);
+        const float y = 0.5f + (random.nextFloat() - 0.5f) * 0.72f;
+        Point<float> p(area.getX() + t * area.getWidth(), area.getY() + y * area.getHeight());
+
+        if (i == 0) {
+            trace.startNewSubPath(p);
+        } else {
+            trace.lineTo(p);
+        }
+    }
+
+    g.setColour(colour.withAlpha(0.10f));
+    g.fillRect(area);
+    g.setColour(colour.withAlpha(0.38f));
+    g.drawHorizontalLine(roundToInt(area.getCentreY()), area.getX(), area.getRight());
+    g.setColour(colour.withAlpha(0.90f));
+    g.strokePath(trace, PathStrokeType(1.8f, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+void NodeCanvas::drawEnvelopeCurve(Graphics& g, Rectangle<float> area) {
+    Path envelope;
+    envelope.startNewSubPath(area.getX(), area.getBottom());
+    envelope.lineTo(area.getX() + area.getWidth() * 0.16f, area.getY() + area.getHeight() * 0.12f);
+    envelope.lineTo(area.getX() + area.getWidth() * 0.46f, area.getY() + area.getHeight() * 0.12f);
+    envelope.cubicTo(
+            area.getX() + area.getWidth() * 0.58f,
+            area.getY() + area.getHeight() * 0.36f,
+            area.getX() + area.getWidth() * 0.70f,
+            area.getY() + area.getHeight() * 0.82f,
+            area.getRight(),
+            area.getBottom());
+
+    g.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.10f));
+    g.fillRect(area);
+    g.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.92f));
+    g.strokePath(envelope, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
+    Rectangle<float> panel = expandedEditorBounds(getLocalBounds().toFloat());
+    const Rectangle<float> outerPanel = panel;
+
+    g.setColour(Colours::black.withAlpha(0.38f));
+    g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
+    g.setColour(Colour(0xff141a21));
+    g.fillRoundedRectangle(panel, 8.f);
+    g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.72f));
+    g.drawRoundedRectangle(panel, 8.f, 1.5f);
+
+    auto header = panel.removeFromTop(44.f);
+    g.setColour(Colour(0xff202833));
+    g.fillRoundedRectangle(header, 8.f);
+    g.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+    g.setColour(kText);
+    g.setFont(FontOptions(15.f, Font::bold));
+    g.drawText(node.title, header.reduced(13.f, 4.f), Justification::centredLeft);
+    g.setColour(kMutedText);
+    g.setFont(FontOptions(10.5f));
+    g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
+
+    Rectangle<float> closeButton = expandedEditorCloseButton(outerPanel);
+    g.setColour(Colour(0xff0e1318));
+    g.fillEllipse(closeButton);
+    g.setColour(Colour(0xff354050));
+    g.drawEllipse(closeButton, 1.f);
+    g.setColour(kText);
+    g.drawLine(closeButton.getX() + 8.f, closeButton.getY() + 8.f,
+               closeButton.getRight() - 8.f, closeButton.getBottom() - 8.f, 1.4f);
+    g.drawLine(closeButton.getRight() - 8.f, closeButton.getY() + 8.f,
+               closeButton.getX() + 8.f, closeButton.getBottom() - 8.f, 1.4f);
+
+    auto content = panel.reduced(18.f, 16.f);
+
+    if (const NodePreviewResult* previewResult = findPreviewResult(node.id)) {
+        if (previewResult->role == PreviewModuleRole::MeshSurface && canDrawMeshHeatmap(*previewResult)) {
+            drawExpandedMeshEditor(g, content, *previewResult);
+            return;
+        }
+    }
+
+    auto preview = content.removeFromTop(jmin(360.f, content.getHeight() * 0.66f));
+    drawPreview(g, node, preview);
+    content.removeFromTop(14.f);
+
+    auto left = content.removeFromLeft(content.getWidth() * 0.48f);
+    auto right = content.withTrimmedLeft(12.f);
+
+    auto drawPorts = [&](Rectangle<float> area, const std::vector<Port>& ports, const String& title) {
+        g.setColour(kMutedText);
+        g.setFont(FontOptions(9.f, Font::bold));
+        g.drawText(title, area.removeFromTop(16.f), Justification::centredLeft);
+
+        for (const auto& port : ports) {
+            Rectangle<float> row = area.removeFromTop(18.f);
+            g.setColour(colourForDomain(port.domain));
+            g.fillEllipse(row.getX(), row.getCentreY() - 3.f, 6.f, 6.f);
+            g.setColour(kText);
+            g.setFont(FontOptions(9.5f));
+            g.drawText(portDisplayLabel(port),
+                       row.withTrimmedLeft(12.f), Justification::centredLeft);
+        }
+    };
+
+    drawPorts(left, node.inputs, "Inputs");
+    drawPorts(right, node.outputs, "Outputs");
+}
+
+void NodeCanvas::drawExpandedMeshEditor(
+        Graphics& g,
+        Rectangle<float> content,
+        const NodePreviewResult& preview) {
+    const float gap = 14.f;
+    auto topRow = content.removeFromTop(content.getHeight() * 0.62f);
+    content.removeFromTop(gap);
+
+    auto gridPanel = topRow.removeFromLeft(topRow.getWidth() * 0.60f);
+    topRow.removeFromLeft(gap);
+    auto sidePanel = topRow;
+    auto waveshapePanel = content;
+
+    drawPanelFrame(g, gridPanel, "3D grid heatmap");
+    drawPanelFrame(g, sidePanel, "Morph / vertex");
+    drawPanelFrame(g, waveshapePanel, "2D waveshape");
+
+    auto gridContent = gridPanel.reduced(12.f, 26.f);
+    drawMeshHeatmap(g, gridContent, preview, 1.f, true);
+
+    auto waveshapeContent = waveshapePanel.reduced(14.f, 28.f);
+    g.setColour(Colour(0xff0a0f13));
+    g.fillRoundedRectangle(waveshapeContent, 5.f);
+    g.setColour(Colour(0xff1e2a34).withAlpha(0.56f));
+    for (int i = 1; i < 6; ++i) {
+        const float y = waveshapeContent.getY() + waveshapeContent.getHeight() * (float) i / 6.f;
+        g.drawHorizontalLine(roundToInt(y), waveshapeContent.getX(), waveshapeContent.getRight());
+    }
+    drawPreviewTrace(
+            g,
+            waveshapeContent.reduced(8.f),
+            preview.secondary,
+            Colour(0xffdfe7ff).withAlpha(0.92f),
+            1.f,
+            false);
+
+    Rectangle<float> morphArea = sidePanel.reduced(14.f, 30.f);
+    const Colour yellow(0xffe0c247);
+    const Colour red(0xffd65a5a);
+    const Colour blue(0xff5f91e8);
+    const std::array<std::pair<String, Colour>, 3> axes {
+            std::make_pair(String("Yellow"), yellow),
+            std::make_pair(String("Red"), red),
+            std::make_pair(String("Blue"), blue)
+    };
+
+    for (const auto& axis : axes) {
+        auto row = morphArea.removeFromTop(34.f);
+        const Rectangle<float> rail = row.withTrimmedLeft(68.f).withTrimmedRight(10.f)
+                .withSizeKeepingCentre(row.getWidth() - 92.f, 4.f);
+
+        g.setColour(kText);
+        g.setFont(FontOptions(11.f, Font::bold));
+        g.drawText(axis.first, row.removeFromLeft(62.f), Justification::centredLeft);
+        g.setColour(axis.second.withAlpha(0.26f));
+        g.fillRoundedRectangle(rail, 2.f);
+        g.setColour(axis.second.withAlpha(0.92f));
+        g.fillEllipse(rail.getX() + rail.getWidth() * 0.48f - 5.f, rail.getCentreY() - 5.f, 10.f, 10.f);
+    }
+
+    morphArea.removeFromTop(8.f);
+    g.setColour(Colour(0xff0a0f13));
+    g.fillRoundedRectangle(morphArea, 5.f);
+    g.setColour(kMutedText);
+    g.setFont(FontOptions(10.f));
+    g.drawText("Vertex cube controls will live here: amp, phase, sharp, and component curve.",
+               morphArea.reduced(10.f), Justification::topLeft);
+}
+
+void NodeCanvas::drawMiniMap(Graphics& g) {
+    Rectangle<float> map((float) getWidth() - 180.f, 18.f, 154.f, 92.f);
+    g.setColour(Colour(0xaa0b0e13));
+    g.fillRoundedRectangle(map, 7.f);
+    g.setColour(Colour(0xff354050));
+    g.drawRoundedRectangle(map, 7.f, 1.f);
+
+    Rectangle<float> graphBounds;
+    for (const auto& node : graph.getNodes()) {
+        graphBounds = graphBounds.isEmpty() ? node.bounds : graphBounds.getUnion(node.bounds);
+    }
+
+    graphBounds = graphBounds.expanded(120.f);
+    const float scale = jmin(map.getWidth() / graphBounds.getWidth(),
+                             map.getHeight() / graphBounds.getHeight());
+    const Rectangle<float> graphInMap(
+            map.getCentreX() - graphBounds.getWidth() * scale * 0.5f,
+            map.getCentreY() - graphBounds.getHeight() * scale * 0.5f,
+            graphBounds.getWidth() * scale,
+            graphBounds.getHeight() * scale);
+
+    auto project = [&](Rectangle<float> r) {
+        const float x = graphInMap.getX() + (r.getX() - graphBounds.getX()) * scale;
+        const float y = graphInMap.getY() + (r.getY() - graphBounds.getY()) * scale;
+        const float w = r.getWidth() * scale;
+        const float h = r.getHeight() * scale;
+        return Rectangle<float>(x, y, w, h);
+    };
+
+    for (const auto& node : graph.getNodes()) {
+        g.setColour(Colour(0xff778596).withAlpha(0.62f));
+        g.fillRoundedRectangle(project(node.bounds), 2.f);
+    }
+
+    Rectangle<float> viewWorld((-pan.x) / zoom, (-pan.y) / zoom,
+                               (float) getWidth() / zoom, (float) getHeight() / zoom);
+    const Rectangle<float> viewInMap = project(viewWorld).getIntersection(graphInMap);
+    g.setColour(Colour(0xff35d6d2).withAlpha(0.24f));
+    g.fillRoundedRectangle(viewInMap, 3.f);
+    g.setColour(Colour(0xff35d6d2).withAlpha(0.85f));
+    g.drawRoundedRectangle(viewInMap, 3.f, 1.f);
+
+    if (editStatusMessage.isNotEmpty()) {
+        Rectangle<float> status(map.getX(), map.getBottom() + 8.f, map.getWidth(), 24.f);
+        g.setColour(Colour(0xaa0b0e13));
+        g.fillRoundedRectangle(status, 5.f);
+        g.setColour(kMutedText);
+        g.setFont(FontOptions(10.f));
+        g.drawText(editStatusMessage, status.reduced(8.f, 0.f), Justification::centredLeft);
+    }
+}
+
+void NodeCanvas::drawGraphStatus(Graphics& g) {
+    Rectangle<float> status(18.f, (float) getHeight() - 42.f, 420.f, 24.f);
+
+    g.setColour(Colour(0xaa0b0e13));
+    g.fillRoundedRectangle(status, 5.f);
+    g.setColour(Colour(0xff354050));
+    g.drawRoundedRectangle(status, 5.f, 1.f);
+
+    const bool valid = compileResult.succeeded();
+    const String graphState = valid
+            ? "Graph valid"
+            : "Issues " + String((int) compileResult.validationIssues.size()
+                                  + (int) compileResult.compileIssues.size());
+    const String text = graphState
+            + "  /  Nodes " + String((int) graph.getNodes().size())
+            + "  /  Edges " + String((int) graph.getEdges().size())
+            + "  /  Attach " + String(attachmentCount());
+
+    g.setColour(valid ? Colour(0xff74e28a) : Colour(0xffff6b5a));
+    g.fillEllipse(status.getX() + 9.f, status.getCentreY() - 3.f, 6.f, 6.f);
+    g.setColour(kMutedText);
+    g.setFont(FontOptions(10.f));
+    g.drawText(text, status.withTrimmedLeft(23.f).reduced(0.f, 1.f), Justification::centredLeft);
+}
+
+void NodeCanvas::drawEdgeLegend(Graphics& g) {
+    struct LegendEntry {
+        PortDomain domain;
+        const char* label;
+        bool attachment;
+    };
+
+    const LegendEntry entries[] = {
+            { PortDomain::TimeSignal, "Time", false },
+            { PortDomain::SpectralMagnitudeSignal, "Magnitude", false },
+            { PortDomain::SpectralPhaseSignal, "Phase", false },
+            { PortDomain::EnvelopeSignal, "Envelope", false },
+            { PortDomain::EnvelopeSignal, "Attachment", true },
+            { PortDomain::ControlSignal, "Universal", false }
+    };
+
+    constexpr float legendWidth = 116.f;
+    Rectangle<float> legend((float) getWidth() - legendWidth - 18.f, (float) getHeight() - 174.f, legendWidth, 138.f);
+
+    g.setColour(Colour(0xaa0b0e13));
+    g.fillRoundedRectangle(legend, 5.f);
+    g.setColour(Colour(0xff354050));
+    g.drawRoundedRectangle(legend, 5.f, 1.f);
+
+    float y = legend.getY() + 17.f;
+    const Font legendFont(FontOptions(9.f));
+    constexpr float lineWidth = 17.f;
+    constexpr float labelGap = 7.f;
+    constexpr float rowHeight = 20.f;
+
+    g.setFont(legendFont);
+
+    for (const auto& entry : entries) {
+        const Colour colour = colourForDomain(entry.domain);
+        const float x = legend.getX() + 12.f;
+        const float labelX = x + lineWidth + labelGap;
+        Path path;
+        path.startNewSubPath(x, y);
+        path.lineTo(x + lineWidth, y);
+
+        if (entry.attachment) {
+            Path dashed;
+            PathStrokeType stroke(2.f, PathStrokeType::curved, PathStrokeType::rounded);
+            Array<float> dashes { 5.f, 4.f };
+            stroke.createDashedStroke(dashed, path, dashes.getRawDataPointer(), dashes.size());
+            g.setColour(colour.withAlpha(0.90f));
+            g.strokePath(dashed, stroke);
+        } else {
+            g.setColour(colour.withAlpha(0.90f));
+            g.strokePath(path, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
+        }
+
+        g.setColour(kMutedText);
+        g.drawText(entry.label, Rectangle<float>(labelX, y - rowHeight * 0.5f, legend.getRight() - labelX - 8.f, rowHeight),
+                   Justification::centredLeft);
+        y += rowHeight;
+    }
+}
+
+void NodeCanvas::drawHoverConsole(Graphics& g) {
+    const String text = hoverTextFor(lastMousePosition);
+
+    if (text.isEmpty()) {
+        return;
+    }
+
+    Rectangle<float> console(18.f, (float) getHeight() - 42.f, jmin(560.f, (float) getWidth() - 220.f), 24.f);
+
+    if (console.getWidth() < 180.f) {
+        return;
+    }
+
+    auto textBounds = console.reduced(10.f, 1.f);
+    g.setFont(FontOptions(10.f));
+    g.setColour(Colour(0xff0b0e13).withAlpha(0.76f));
+    g.drawText(text, textBounds.translated(0.f, 1.f), Justification::centredLeft);
+    g.setColour(kMutedText);
+    g.drawText(text, textBounds, Justification::centredLeft);
+}
+
+void NodeCanvas::drawNodePalette(Graphics& g) {
+    struct PaletteEntry {
+        NodeKind kind;
+        const char* label;
+    };
+
+    struct PaletteSection {
+        const char* title;
+        std::initializer_list<PaletteEntry> entries;
+    };
+
+    const PaletteSection sections[] = {
+            { "Context",   { { NodeKind::VoiceContext, "Voice Context" } } },
+            { "Transform", { { NodeKind::Fft, "Forward FFT" }, { NodeKind::Ifft, "Inverse FFT" } } },
+            { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
+            { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::ImageSource, "Image" },
+                             { NodeKind::TrilinearMesh, "Mesh" } } },
+            { "Control",   { { NodeKind::Envelope, "Envelope" }, { NodeKind::GuideCurve, "Guide" } } },
+            { "FX",        { { NodeKind::ImpulseResponse, "IR" }, { NodeKind::Waveshaper, "Waveshaper" },
+                             { NodeKind::Reverb, "Reverb" }, { NodeKind::Delay, "Delay" } } },
+            { "Channel",   { { NodeKind::StereoSplit, "Split" }, { NodeKind::StereoJoin, "Join" },
+                             { NodeKind::Output, "Output" } } }
+    };
+
+    int rowCount = 0;
+    for (const auto& section : sections) {
+        rowCount += 1 + (int) section.entries.size();
+    }
+
+    Rectangle<float> panel(18.f, 74.f, kPaletteWidth, 10.f
+            + (float) rowCount * kPaletteRowHeight
+            + (float) std::size(sections) * (kPaletteHeaderHeight - kPaletteRowHeight));
+    g.setColour(Colour(0xaa0b0e13));
+    g.fillRoundedRectangle(panel, 6.f);
+    g.setColour(Colour(0xff354050));
+    g.drawRoundedRectangle(panel, 6.f, 1.f);
+
+    float y = panel.getY() + 8.f;
+    for (const auto& section : sections) {
+        g.setColour(kMutedText.withAlpha(0.82f));
+        g.setFont(FontOptions(9.f, Font::bold));
+        g.drawText(section.title, Rectangle<float>(panel.getX() + 10.f, y, panel.getWidth() - 20.f, kPaletteHeaderHeight),
+                   Justification::centredLeft);
+        y += kPaletteHeaderHeight;
+
+        for (const auto& entry : section.entries) {
+            Rectangle<float> row(panel.getX() + 9.f, y, panel.getWidth() - 18.f, 25.f);
+            Node previewNode = GraphNodeFactory().createNode(entry.kind, {}, {});
+            Colour colour = colourForDomain(PortDomain::TimeSignal);
+
+            if (!previewNode.outputs.empty()) {
+                colour = portDisplayColour(previewNode, previewNode.outputs.front());
+            } else if (!previewNode.inputs.empty()) {
+                colour = portDisplayColour(previewNode, previewNode.inputs.front());
+            }
+
+            g.setColour(colour.withAlpha(0.12f));
+            g.fillRoundedRectangle(row, 4.f);
+            g.setColour(colour.withAlpha(0.48f));
+            g.drawRoundedRectangle(row, 4.f, 1.f);
+            g.setColour(kText);
+            g.setFont(FontOptions(12.6f, Font::bold));
+            g.drawText(entry.label, row.reduced(8.f, 0.f), Justification::centredLeft);
+            y += kPaletteRowHeight;
+        }
+    }
+}
+
+Point<float> NodeCanvas::toScreen(Point<float> p) const {
+    return { pan.x + p.x * zoom, pan.y + p.y * zoom };
+}
+
+Point<float> NodeCanvas::toWorld(Point<float> p) const {
+    return { (p.x - pan.x) / zoom, (p.y - pan.y) / zoom };
+}
+
+Rectangle<float> NodeCanvas::toScreen(Rectangle<float> r) const {
+    return { pan.x + r.getX() * zoom, pan.y + r.getY() * zoom,
+             r.getWidth() * zoom, r.getHeight() * zoom };
+}
+
+NodeCanvas::PortLocation NodeCanvas::getPortLocation(const Node& node, const Port& port) const {
+    const float size = 8.8f * portScaleForZoom(zoom);
+    Point<float> worldCentre;
+
+    switch (port.side) {
+        case PortSide::Top:
+        case PortSide::Bottom: {
+            const int index = portIndexOnSide(node, port);
+            const int count = jmax(1, portCountOnSide(node, port.side));
+            const float x = node.bounds.getX() + node.bounds.getWidth() * ((float) index + 1.f) / ((float) count + 1.f);
+            const float y = port.side == PortSide::Top ? node.bounds.getY() : node.bounds.getBottom();
+            worldCentre = { x, y };
+            break;
+        }
+
+        case PortSide::Right:
+            worldCentre = { node.bounds.getRight(), sidePortY(node, port) };
+            break;
+
+        case PortSide::Left:
+        default:
+            worldCentre = { node.bounds.getX(), sidePortY(node, port) };
+            break;
+    }
+
+    Point<float> centre = toScreen(worldCentre);
+    Rectangle<float> bounds(centre.x - size * 0.5f, centre.y - size * 0.5f, size, size);
+    return { bounds, centre };
+}
+
+NodeCanvas::PortLocation NodeCanvas::getPortLocation(const PortAddress& address) const {
+    const Node* node = findNode(address.nodeId);
+
+    if (node == nullptr) {
+        return {};
+    }
+
+    const Port* port = findPort(*node, address.portId, address.input);
+
+    if (port == nullptr) {
+        return {};
+    }
+
+    return getPortLocation(*node, *port);
+}
+
+bool NodeCanvas::findPortAt(Point<float> screenPosition, PortAddress& result) const {
+    for (const auto& node : graph.getNodes()) {
+        for (const auto& port : node.inputs) {
+            if (getPortLocation(node, port).bounds.expanded(10.f).contains(screenPosition)) {
+                result = { node.id, port.id, true };
+                return true;
+            }
+        }
+
+        for (const auto& port : node.outputs) {
+            if (getPortLocation(node, port).bounds.expanded(10.f).contains(screenPosition)) {
+                result = { node.id, port.id, false };
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool NodeCanvas::findConnectablePortAt(
+        Point<float> screenPosition,
+        const PortAddress& source,
+        PortAddress& result) const {
+    constexpr float snapExpansion = 50.f;
+    float bestDistance = std::numeric_limits<float>::max();
+    bool found {};
+
+    auto testPort = [&](const Node& node, const Port& port) {
+        const auto location = getPortLocation(node, port);
+
+        if (!location.bounds.expanded(snapExpansion).contains(screenPosition)) {
+            return;
+        }
+
+        const PortAddress candidate { node.id, port.id, port.input };
+
+        if (!canConnectPorts(source, candidate)) {
+            return;
+        }
+
+        const float distance = screenPosition.getDistanceFrom(location.centre);
+
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            result = candidate;
+            found = true;
+        }
+    };
+
+    for (const auto& node : graph.getNodes()) {
+        for (const auto& port : node.inputs) {
+            testPort(node, port);
+        }
+
+        for (const auto& port : node.outputs) {
+            testPort(node, port);
+        }
+    }
+
+    return found;
+}
+
+bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const {
+    struct PaletteEntry {
+        NodeKind kind;
+        const char* label;
+    };
+
+    struct PaletteSection {
+        const char* title;
+        std::initializer_list<PaletteEntry> entries;
+    };
+
+    const PaletteSection sections[] = {
+            { "Context",   { { NodeKind::VoiceContext, "Voice Context" } } },
+            { "Transform", { { NodeKind::Fft, "Forward FFT" }, { NodeKind::Ifft, "Inverse FFT" } } },
+            { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
+            { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::ImageSource, "Image" },
+                             { NodeKind::TrilinearMesh, "Mesh" } } },
+            { "Control",   { { NodeKind::Envelope, "Envelope" }, { NodeKind::GuideCurve, "Guide" } } },
+            { "FX",        { { NodeKind::ImpulseResponse, "IR" }, { NodeKind::Waveshaper, "Waveshaper" },
+                             { NodeKind::Reverb, "Reverb" }, { NodeKind::Delay, "Delay" } } },
+            { "Channel",   { { NodeKind::StereoSplit, "Split" }, { NodeKind::StereoJoin, "Join" },
+                             { NodeKind::Output, "Output" } } }
+    };
+
+    int rowCount = 0;
+    for (const auto& section : sections) {
+        rowCount += 1 + (int) section.entries.size();
+    }
+
+    Rectangle<float> panel(18.f, 74.f, kPaletteWidth, 10.f
+            + (float) rowCount * kPaletteRowHeight
+            + (float) std::size(sections) * (kPaletteHeaderHeight - kPaletteRowHeight));
+
+    if (!panel.contains(screenPosition)) {
+        return false;
+    }
+
+    float y = panel.getY() + 8.f;
+    for (const auto& section : sections) {
+        y += kPaletteHeaderHeight;
+
+        for (const auto& entry : section.entries) {
+            Rectangle<float> row(panel.getX() + 9.f, y, panel.getWidth() - 18.f, 25.f);
+
+            if (row.contains(screenPosition)) {
+                kind = entry.kind;
+                return true;
+            }
+
+            y += kPaletteRowHeight;
+        }
+    }
+
+    return false;
+}
+
+bool NodeCanvas::findOperationLayoutButtonAt(Point<float> screenPosition, String& nodeId) const {
+    const auto& nodes = graph.getNodes();
+
+    for (int i = (int) nodes.size() - 1; i >= 0; --i) {
+        const auto& node = nodes[(size_t) i];
+
+        if (!isOperationNode(node.kind)) {
+            continue;
+        }
+
+        if (operationLayoutButtonBounds(toScreen(node.bounds), zoom).expanded(4.f * zoom).contains(screenPosition)) {
+            nodeId = node.id;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool NodeCanvas::findVoiceDomainButtonAt(Point<float> screenPosition, String& nodeId) const {
+    const auto& nodes = graph.getNodes();
+
+    for (int i = (int) nodes.size() - 1; i >= 0; --i) {
+        const auto& node = nodes[(size_t) i];
+
+        if (node.kind != NodeKind::VoiceContext) {
+            continue;
+        }
+
+        if (voiceDomainButtonBounds(toScreen(node.bounds), zoom).expanded(4.f * zoom).contains(screenPosition)) {
+            nodeId = node.id;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+int NodeCanvas::findEdgeAt(Point<float> screenPosition) const {
+    const auto& edges = graph.getEdges();
+
+    for (int edgeIndex = (int) edges.size() - 1; edgeIndex >= 0; --edgeIndex) {
+        const auto& edge = edges[(size_t) edgeIndex];
+        const Node* sourceNode = findNode(edge.sourceNodeId);
+        const Node* destNode = findNode(edge.destNodeId);
+
+        if (sourceNode == nullptr || destNode == nullptr) {
+            continue;
+        }
+
+        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
+        const Port* destPort = findPort(*destNode, edge.destPortId, true);
+
+        if (sourcePort == nullptr || destPort == nullptr) {
+            continue;
+        }
+
+        Path hitPath;
+        PathStrokeType(16.f, PathStrokeType::curved, PathStrokeType::rounded)
+                .createStrokedPath(hitPath, createCablePath(
+                        getPortLocation(*sourceNode, *sourcePort).centre,
+                        getPortLocation(*destNode, *destPort).centre,
+                        sourcePort->side,
+                        destPort->side,
+                        edge.attachment));
+
+        if (hitPath.contains(screenPosition)) {
+            return edgeIndex;
+        }
+    }
+
+    return -1;
+}
+
+const Node* NodeCanvas::findNode(const String& id) const {
+    for (const auto& node : graph.getNodes()) {
+        if (node.id == id) {
+            return &node;
+        }
+    }
+
+    return nullptr;
+}
+
+Node* NodeCanvas::findMutableNode(const String& id) {
+    for (auto& node : graph.getNodesForEditing()) {
+        if (node.id == id) {
+            return &node;
+        }
+    }
+
+    return nullptr;
+}
+
+const Node* NodeCanvas::findNodeAt(Point<float> worldPosition) const {
+    const auto& nodes = graph.getNodes();
+
+    for (int i = (int) nodes.size() - 1; i >= 0; --i) {
+        const auto& node = nodes[(size_t) i];
+
+        if (node.bounds.contains(worldPosition)) {
+            return &node;
+        }
+    }
+
+    return nullptr;
+}
+
+const Port* NodeCanvas::findPort(const Node& node, const String& portId, bool inputPort) const {
+    const auto& ports = inputPort ? node.inputs : node.outputs;
+
+    for (const auto& port : ports) {
+        if (port.id == portId) {
+            return &port;
+        }
+    }
+
+    return nullptr;
+}
+
+const RuntimeNodeTrace* NodeCanvas::findRuntimeTrace(const String& nodeId) const {
+    for (const auto& node : runtimeTrace.nodes) {
+        if (node.nodeId == nodeId) {
+            return &node;
+        }
+    }
+
+    return nullptr;
+}
+
+const NodePreviewResult* NodeCanvas::findPreviewResult(const String& nodeId) const {
+    for (const auto& node : previewResult.nodes) {
+        if (node.nodeId == nodeId) {
+            return &node;
+        }
+    }
+
+    return nullptr;
+}
+
+PortDomain NodeCanvas::displayDomainForEdge(const Edge& edge) const {
+    if (edge.attachment) {
+        return edge.domain;
+    }
+
+    return GraphValidator().resolvedDomainForEdge(graph, edge);
+}
+
+bool NodeCanvas::edgeHasValidationIssue(const Edge& edge) const {
+    return GraphValidator().edgeHasValidationIssue(graph, edge);
+}
+
+GraphValidationIssue NodeCanvas::validationIssueForEdge(const Edge& edge) const {
+    return GraphValidator().validationIssueForEdge(graph, edge);
+}
+
+int NodeCanvas::executionIndexForNode(const String& nodeId) const {
+    if (!compileResult.succeeded()) {
+        return -1;
+    }
+
+    const auto& nodeOrder = compileResult.plan.nodeOrder;
+    for (int i = 0; i < (int) nodeOrder.size(); ++i) {
+        if (nodeOrder[(size_t) i] == nodeId) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+int NodeCanvas::attachmentCount() const {
+    int count = 0;
+
+    for (const auto& edge : graph.getEdges()) {
+        if (edge.attachment) {
+            ++count;
+        }
+    }
+
+    return count;
+}
+
+String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
+    NodeKind paletteKind;
+
+    if (findPaletteKindAt(screenPosition, paletteKind)) {
+        Node node = GraphNodeFactory().createNode(paletteKind, {}, {});
+        return "Create " + node.title + "  /  " + node.subtitle;
+    }
+
+    String layoutNodeId;
+    if (findOperationLayoutButtonAt(screenPosition, layoutNodeId)) {
+        return "Cycle operation port layout  /  side, uptack, vertical, T";
+    }
+
+    String voiceNodeId;
+    if (findVoiceDomainButtonAt(screenPosition, voiceNodeId)) {
+        const Node* node = findNode(voiceNodeId);
+
+        if (node != nullptr) {
+            return "Voice start domain  /  " + voiceDomainButtonLabel(*node)
+                    + "  /  click to switch";
+        }
+    }
+
+    PortAddress portAddress;
+
+    if (findPortAt(screenPosition, portAddress)) {
+        return textForPort(portAddress);
+    }
+
+    const Node* node = findNodeAt(toWorld(screenPosition));
+
+    if (node != nullptr) {
+        return textForNode(*node);
+    }
+
+    const int edgeIndex = findEdgeAt(screenPosition);
+
+    if (edgeIndex >= 0 && edgeIndex < (int) graph.getEdges().size()) {
+        const auto& edge = graph.getEdges()[(size_t) edgeIndex];
+        const auto issue = validationIssueForEdge(edge);
+
+        if (issue.message.isNotEmpty()) {
+            return "Invalid edge  /  " + issue.message
+                    + "  /  " + edge.sourceNodeId + "." + edge.sourcePortId
+                    + " -> " + edge.destNodeId + "." + edge.destPortId;
+        }
+
+        return String(edge.attachment ? "Attachment" : "Signal")
+                + " edge  /  " + labelForDomain(displayDomainForEdge(edge))
+                + "  /  " + edge.sourceNodeId + "." + edge.sourcePortId
+                + " -> " + edge.destNodeId + "." + edge.destPortId;
+    }
+
+    return {};
+}
+
+String NodeCanvas::textForPort(const PortAddress& address) const {
+    const Node* node = findNode(address.nodeId);
+
+    if (node == nullptr) {
+        return {};
+    }
+
+    const Port* port = findPort(*node, address.portId, address.input);
+
+    if (port == nullptr) {
+        return {};
+    }
+
+    String text = node->title + "  /  " + (address.input ? "Input" : "Output")
+            + " port " + portDisplayLabel(*port)
+            + "  /  " + labelForDomain(port->domain);
+
+    if (port->purpose == PortPurpose::ScratchAttachment) {
+        text += " scratch attachment";
+    }
+
+    if (port->channelLayout != ChannelLayout::Mono) {
+        text += "  /  " + labelForChannelLayout(port->channelLayout);
+    }
+
+    return text;
+}
+
+String NodeCanvas::textForNode(const Node& node) const {
+    String text = node.title + "  /  " + node.subtitle
+            + "  /  inputs " + String((int) node.inputs.size())
+            + "  /  outputs " + String((int) node.outputs.size());
+
+    const RuntimeNodeTrace* trace = findRuntimeTrace(node.id);
+
+    if (trace != nullptr && !trace->signalOutputs.empty()) {
+        text += "  /  emits ";
+
+        for (size_t i = 0; i < trace->signalOutputs.size(); ++i) {
+            if (i > 0) {
+                text += ", ";
+            }
+
+            text += trace->signalOutputs[i].portId
+                    + "="
+                    + labelForDomain(trace->signalOutputs[i].domain);
+        }
+    }
+
+    return text;
+}
+
+Point<float> NodeCanvas::viewportCentreWorld() const {
+    return toWorld(getLocalBounds().toFloat().getCentre());
+}
+
+Point<float> NodeCanvas::paletteCreationWorldPosition(Point<float> paletteClickPosition) const {
+    const float paletteRight = 18.f + kPaletteWidth;
+    const float x = jmin((float) getWidth() - 280.f, paletteRight + 32.f);
+    return toWorld({ x, paletteClickPosition.y });
+}
+
+void NodeCanvas::refreshCompiledState() {
+    heatmapCache.clear();
+    previewSpriteCache.clear();
+    compileResult = GraphCompiler().compile(graph);
+    runtimeTrace = {};
+    previewResult = {};
+
+    if (compileResult.succeeded()) {
+        runtimeTrace = GraphRuntime().process(graph, compileResult.plan);
+        previewResult = GraphPreviewExecutor().render(compileResult.plan, 40);
+    }
+}
+
+File NodeCanvas::snapshotFile() const {
+    return File::getSpecialLocation(File::userApplicationDataDirectory)
+            .getChildFile("CycleV2")
+            .getChildFile("graph-snapshot.xml");
+}
+
+bool NodeCanvas::saveSnapshot() {
+    const File file = snapshotFile();
+    file.getParentDirectory().createDirectory();
+
+    if (!file.replaceWithText(GraphSerializer().toXmlString(graph))) {
+        editStatusMessage = "Save failed";
+        repaint();
+        return true;
+    }
+
+    editStatusMessage = "Saved snapshot";
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::loadSnapshot() {
+    const File file = snapshotFile();
+
+    if (!file.existsAsFile()) {
+        editStatusMessage = "No snapshot";
+        repaint();
+        return true;
+    }
+
+    NodeGraph loaded = GraphSerializer().fromXmlString(file.loadFileAsString());
+
+    if (loaded.getNodes().empty()) {
+        editStatusMessage = "Load failed";
+        repaint();
+        return true;
+    }
+
+    pushUndoSnapshot();
+    graph = std::move(loaded);
+    selectedNodeId = {};
+    expandedNodeId = {};
+    selectedEdgeIndex = -1;
+    redoStack.clear();
+    refreshCompiledState();
+    editStatusMessage = "Loaded snapshot";
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::undo() {
+    if (undoStack.empty()) {
+        editStatusMessage = "Nothing to undo";
+        repaint();
+        return true;
+    }
+
+    redoStack.push_back(GraphSerializer().toXmlString(graph));
+    const String xml = undoStack.back();
+    undoStack.pop_back();
+    return restoreGraphXml(xml, "Undo");
+}
+
+bool NodeCanvas::redo() {
+    if (redoStack.empty()) {
+        editStatusMessage = "Nothing to redo";
+        repaint();
+        return true;
+    }
+
+    undoStack.push_back(GraphSerializer().toXmlString(graph));
+    const String xml = redoStack.back();
+    redoStack.pop_back();
+    return restoreGraphXml(xml, "Redo");
+}
+
+void NodeCanvas::pushUndoSnapshot() {
+    pushUndoSnapshot(GraphSerializer().toXmlString(graph));
+}
+
+void NodeCanvas::pushUndoSnapshot(String xml) {
+    if (xml.isEmpty()) {
+        return;
+    }
+
+    undoStack.push_back(std::move(xml));
+    redoStack.clear();
+
+    constexpr size_t maxUndoDepth = 64;
+    if (undoStack.size() > maxUndoDepth) {
+        undoStack.erase(undoStack.begin());
+    }
+}
+
+bool NodeCanvas::restoreGraphXml(const String& xml, const String& statusMessage) {
+    NodeGraph restored = GraphSerializer().fromXmlString(xml);
+
+    if (restored.getNodes().empty()) {
+        editStatusMessage = "Restore failed";
+        repaint();
+        return true;
+    }
+
+    graph = std::move(restored);
+    selectedNodeId = {};
+    expandedNodeId = {};
+    selectedEdgeIndex = -1;
+    refreshCompiledState();
+    editStatusMessage = statusMessage;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::clearSelection() {
+    if (selectedNodeId.isEmpty() && expandedNodeId.isEmpty()) {
+        return false;
+    }
+
+    selectedNodeId = {};
+    expandedNodeId = {};
+    selectedEdgeIndex = -1;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::cycleOperationPortLayout(const String& nodeId) {
+    Node* node = findMutableNode(nodeId);
+
+    if (node == nullptr || !isOperationNode(node->kind) || node->inputs.size() < 2 || node->outputs.empty()) {
+        return false;
+    }
+
+    pushUndoSnapshot();
+
+    switch (operationPortLayoutFor(*node)) {
+        case OperationPortLayout::Side:
+            node->inputs[0].side = PortSide::Left;
+            node->inputs[1].side = PortSide::Top;
+            node->outputs[0].side = PortSide::Right;
+            break;
+
+        case OperationPortLayout::Uptack:
+            node->inputs[0].side = PortSide::Top;
+            node->inputs[1].side = PortSide::Bottom;
+            node->outputs[0].side = PortSide::Right;
+            break;
+
+        case OperationPortLayout::Vertical:
+            node->inputs[0].side = PortSide::Left;
+            node->inputs[1].side = PortSide::Bottom;
+            node->outputs[0].side = PortSide::Right;
+            break;
+
+        case OperationPortLayout::Tee:
+            node->inputs[0].side = PortSide::Left;
+            node->inputs[1].side = PortSide::Left;
+            node->outputs[0].side = PortSide::Right;
+            break;
+    }
+
+    selectedNodeId = nodeId;
+    selectedEdgeIndex = -1;
+    refreshCompiledState();
+    return true;
+}
+
+bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
+    const Node* node = findNode(nodeId);
+
+    if (node == nullptr || node->kind != NodeKind::VoiceContext) {
+        return false;
+    }
+
+    const String domain = nextVoiceDomain(*node);
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().setNodeParameter(graph, nodeId, "domain", "Start Domain", domain);
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    if (Node* edited = findMutableNode(nodeId)) {
+        edited->subtitle = domain == "spectral" ? "spectral start" : "waveform start";
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    selectedNodeId = nodeId;
+    selectedEdgeIndex = -1;
+    draggingNode = false;
+    connectingCable = false;
+    nodeDragUndoPushed = false;
+    refreshCompiledState();
+    editStatusMessage = "Voice start domain: " + domain;
+    return true;
+}
+
+bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& second) const {
+    if (first.input == second.input) {
+        return false;
+    }
+
+    NodeGraph candidate = graph;
+    return GraphEditor().connect(candidate, first, second).succeeded();
+}
+
+Path NodeCanvas::createCablePath(
+        Point<float> source,
+        Point<float> dest,
+        PortSide sourceSide,
+        PortSide destSide,
+        bool) const {
+    Path path;
+    path.startNewSubPath(source);
+
+    const Point<float> vector = dest - source;
+    const float distance = vector.getDistanceFromOrigin();
+    const float sourceStrength = jlimit(24.f * zoom, 120.f * zoom, distance * 0.34f);
+    const float destStrength = jlimit(18.f * zoom, 74.f * zoom, distance * 0.18f);
+    const Point<float> sourceDirection = normalizedOrFallback(vector, outwardNormalForSide(sourceSide));
+    const Point<float> destNormal = outwardNormalForSide(destSide);
+    const Point<float> c1 = source + sourceDirection * sourceStrength;
+    const Point<float> c2 = dest + destNormal * destStrength;
+
+    path.cubicTo(c1, c2, dest);
+
+    return path;
+}
+
+}
