@@ -19,6 +19,7 @@
 #include "../Obj/Ref.h"
 #include "../UI/AsyncUIUpdater.h"
 #include "../UI/IConsole.h"
+#include "../UI/Panels/PanelDirtyState.h"
 #include "JuceHeader.h"
 
 using std::vector;
@@ -99,6 +100,7 @@ public:
     void reduceDetail() override;
     void restoreDetail() override;
     void refresh();
+    void requestPanelRepaint(PanelDirtyState::Flag flag = PanelDirtyState::Flag::Overlay);
     void resetFinalSelection();
     void resetSelection();
     void resetState();

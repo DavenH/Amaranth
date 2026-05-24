@@ -164,6 +164,17 @@ void Interactor::updateCurrentMouseFromPointerEvent(const PanelPointerEvent& eve
     updateCurrentMouseFromLocalPosition(event.localPosition.roundToInt());
 }
 
+void Interactor::requestPanelRepaint(PanelDirtyState::Flag flag) {
+    if (panel != nullptr) {
+        panel->requestRepaint(flag);
+        return;
+    }
+
+    if (display != nullptr) {
+        display->repaint();
+    }
+}
+
 void Interactor::mouseMove(const MouseEvent& e) {
     auto localEvent = display != nullptr ? e.getEventRelativeTo(display.get()) : e;
     Point<int> localPos = localEvent.getPosition();
@@ -187,7 +198,7 @@ void Interactor::mouseMove(const MouseEvent& e) {
             }
 
             itr->locateClosestElement();
-            itr->display->repaint();
+            itr->requestPanelRepaint();
         }
     }
 
@@ -222,7 +233,7 @@ void Interactor::timerCallback() {
     if (!isOver) {
         if (wasPollingMouseOver || mouseFlag(MouseOver)) {
             state.resetMouseFlags();
-            display->repaint();
+            requestPanelRepaint();
         }
 
         wasPollingMouseOver = false;
@@ -422,7 +433,7 @@ void Interactor::mouseEnter(const MouseEvent& e) {
 
 
     focusGained();
-    display->repaint();
+    requestPanelRepaint();
 }
 
 void Interactor::mouseExit(const MouseEvent& e) {
@@ -439,7 +450,7 @@ void Interactor::mouseExit(const MouseEvent& e) {
         + " buttons=" + describeMouseButtons(e)
         + " component=" + (display != nullptr ? display->getName() : String("<none>")));
 
-    display->repaint();
+    requestPanelRepaint();
 }
 
 void Interactor::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
@@ -584,7 +595,7 @@ void Interactor::deselectAll(bool forceDeselect) {
     resetFinalSelection();
     updateSelectionFrames();
 
-    display->repaint();
+    requestPanelRepaint();
 }
 
 void Interactor::eraseSelected() {
@@ -1386,15 +1397,11 @@ void Interactor::selectConnectedVerts(set<Vertex*>& alreadySeen, Vertex* current
 void Interactor::performUpdate(UpdateType updateType) {
     if (updateType == Update) {
         updateDepthVerts();
-        if (display != nullptr) {
-            display->repaint();
-        }
+        requestPanelRepaint();
     }
 
     if (updateType == Repaint) {
-        if (display != nullptr) {
-            display->repaint();
-        }
+        requestPanelRepaint();
     }
 }
 
@@ -1892,7 +1899,7 @@ void Interactor::refresh() {
                 opposite->performUpdate(Update);
         }
     } else if (flag(SimpleRepaint)) {
-        display->repaint();
+        requestPanelRepaint();
         flag(SimpleRepaint) = false;
     }
 }

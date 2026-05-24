@@ -114,7 +114,7 @@ void WaveformInter3D::meshSelectionChanged(Mesh* mesh) {
     updateInterceptsWithMesh(mesh);
 
     getObj(WaveformInter2D).update(Update);
-    display->repaint();
+    requestPanelRepaint();
 }
 
 bool WaveformInter3D::isCurrentMeshActive() {
