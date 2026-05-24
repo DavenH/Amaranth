@@ -1026,7 +1026,9 @@ int Panel::getLinePathPhaseGuideDimension(int pointDim) {
 }
 
 void Panel::componentChanged() {
-    comp->setName(panelName);
+    if (comp != nullptr) {
+        comp->setName(panelName);
+    }
 }
 
 void Panel::createNameImage(const String& displayName, bool isSecondImage, bool brighter) {
