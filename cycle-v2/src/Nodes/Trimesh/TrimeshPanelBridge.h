@@ -12,6 +12,10 @@
 #include <UI/IConsole.h>
 
 #include <cstdint>
+#include <memory>
+
+class GLPanelRenderer;
+class CommonGL;
 
 namespace CycleV2 {
 
@@ -31,11 +35,14 @@ public:
     Interactor2D& getInteractor2D() { return interactor2D; }
     Interactor3D& getInteractor3D() { return interactor3D; }
     TrimeshNodeModel& getModel() { return model; }
-    Component* getPanel3DComponent();
-    Component* getPanel3DComponentIfCreated();
-    Component* getPanel2DComponent();
-    Component* getPanel2DComponentIfCreated();
-    void activateExpandedPanels(bool refresh3DGeometry);
+    Component* getPanel3DHostComponent();
+    Component* getPanel3DHostComponentIfCreated();
+    Component* getPanel2DHostComponent();
+    Component* getPanel2DHostComponentIfCreated();
+    void initialiseSharedGlResources();
+    void releaseSharedGlResources();
+    void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
+    void renderPanel2D(juce::Rectangle<float> bounds, float scaleFactor);
 
 private:
     class NullConsole : public IConsole {
@@ -67,6 +74,9 @@ private:
 
     void refreshAfterMeshEdit(bool sourceIs3D);
     void updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry);
+    void initialisePanel3DHost();
+    void initialisePanel2DHost();
+    void renderPanel(Panel& panel, juce::Rectangle<float> bounds, float scaleFactor);
 
     SingletonRepo repo;
     NullConsole console;
@@ -78,11 +88,18 @@ private:
     TrimeshInteractor3D interactor3D;
     TrimeshPanel2D panel2D;
     TrimeshPanel3D panel3D;
+    std::unique_ptr<Component> panel2DHost;
+    std::unique_ptr<Component> panel3DHost;
+    std::unique_ptr<GLPanelRenderer> panel2DRenderer;
+    std::unique_ptr<GLPanelRenderer> panel3DRenderer;
+    CommonGL* panel2DGfx {};
+    CommonGL* panel3DGfx {};
     uint64_t lastSyncedRevision { UINT64_MAX };
     int lastRows {};
     int lastColumns {};
-    bool panelInitialised {};
-    bool panel2DInitialised {};
+    bool panel3DHostInitialised {};
+    bool panel2DHostInitialised {};
+    bool sharedGlResourcesInitialised {};
 };
 
 }

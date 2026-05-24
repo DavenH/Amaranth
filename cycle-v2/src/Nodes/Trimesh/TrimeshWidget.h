@@ -23,6 +23,10 @@ public:
             juce::Graphics& g,
             const Node& node,
             juce::Rectangle<float> content);
+    void renderExpandedPanelsOpenGL(
+            const Node& node,
+            juce::Rectangle<float> content,
+            float scaleFactor);
     juce::Component* prepareExpandedPanel3DComponent(
             const Node& node,
             juce::Rectangle<float> content);
@@ -31,7 +35,7 @@ public:
             const Node& node,
             juce::Rectangle<float> content);
     juce::Component* getExpandedPanel2DComponentIfCreated();
-    void activateExpandedPanels(bool refresh3DGeometry);
+    void releaseSharedGlResources();
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
 
@@ -79,7 +83,8 @@ private:
     static void drawPanelFrame(
             juce::Graphics& g,
             juce::Rectangle<float> area,
-            const juce::String& title);
+            const juce::String& title,
+            bool fillBody = true);
     static void drawMeshHeatmap(
             juce::Graphics& g,
             juce::Rectangle<float> area,

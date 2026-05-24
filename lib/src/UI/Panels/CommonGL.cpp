@@ -38,8 +38,9 @@ void CommonGL::disableSmoothing() {
 }
 
 void CommonGL::enableSmoothing() {
-    if (parent->smoothLines)
+    if (parent == nullptr || parent->smoothLines) {
         glEnable(GL_LINE_SMOOTH);
+    }
 }
 
 void CommonGL::drawPoint(float size, Vertex2 point, bool scale) {
@@ -135,7 +136,7 @@ void CommonGL::initLineParams() {
     glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
     glLineWidth(1);
 
-    if (parent->smoothLines) {
+    if (parent == nullptr || parent->smoothLines) {
         glEnable(GL_LINE_SMOOTH);
     }
 
@@ -237,7 +238,9 @@ void CommonGL::drawVerticalGradient(float left, float right, Buffer<float> y, co
 }
 
 void CommonGL::checkErrors() {
-    parent->printErrors(panel->getSingletonRepo());
+    if (parent != nullptr) {
+        parent->printErrors(panel->getSingletonRepo());
+    }
 }
 
 void CommonGL::updateTexture(Texture* tex) {

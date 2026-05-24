@@ -11,6 +11,7 @@ public:
     ~Panel2D() override;
 
     void init() override;
+    void initWithExternalComponent(Component* hostComponent);
 
     void contractToRange(bool includeX = false);
     void drawCurvesFrom(BufferXY& buff, Buffer<float> alpha, const Color& colourA, const Color& colourB);

@@ -13,9 +13,12 @@ public:
     bool shouldDrawGrid() override { return true; }
     void panelResized() override;
     void postVertsDraw() override {}
+    bool usesCachedSurface() const override { return !sharedCanvasMode; }
+    void setSharedCanvasMode(bool shouldUseSharedCanvas) { sharedCanvasMode = shouldUseSharedCanvas; }
 
 private:
     TrimeshPanelDataSource& dataSource;
+    bool sharedCanvasMode {};
 };
 
 }

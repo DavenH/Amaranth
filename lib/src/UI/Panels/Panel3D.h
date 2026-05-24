@@ -44,6 +44,7 @@ public:
 
     ~Panel3D() override;
     void init() override;
+    void initWithExternalComponent(Component* hostComponent);
 
     void dragStarted() override;
     void dragEnded() override;

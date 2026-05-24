@@ -63,6 +63,18 @@ void Panel2D::init() {
     openGL->attach();
 }
 
+void Panel2D::initWithExternalComponent(Component* hostComponent) {
+    jassert(hostComponent != nullptr);
+
+    Panel::init();
+    setComponent(hostComponent);
+
+    wrapper = std::make_unique<BoundWrapper>(hostComponent);
+    zoomPanel = std::make_unique<ZoomPanel>(repo, ZoomContext(this, wrapper.get(), true, haveVertZoom));
+    zoomPanel->panelComponentChanged(hostComponent);
+    zoomPanel->addListener(this);
+}
+
 void Panel2D::contractToRange(bool includeX) {
     auto snapshot = interactor->rasterizerSnapshot();
     ScopedLock dataLock(snapshot.lock());

@@ -87,6 +87,7 @@ private:
     void drawGrid(Graphics& g);
     void drawGlEdges();
     void drawGlNodeShells();
+    void drawGlExpandedPanels();
     void drawEdges(Graphics& g);
     void drawConnectionPreview(Graphics& g);
     void drawNodes(Graphics& g);

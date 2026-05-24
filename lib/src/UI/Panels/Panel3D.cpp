@@ -75,6 +75,21 @@ void Panel3D::init() {
     drawLinesAfterFill = true;
 }
 
+void Panel3D::initWithExternalComponent(Component* hostComponent) {
+    jassert(hostComponent != nullptr);
+
+    Panel::init();
+    setComponent(hostComponent);
+    setUseVertices(true);
+
+    wrapper     = std::make_unique<BoundWrapper>(hostComponent);
+    zoomPanel   = std::make_unique<ZoomPanel>(repo, ZoomContext(this, wrapper.get(), haveHorzZoom, true));
+    zoomPanel->panelComponentChanged(hostComponent);
+    zoomPanel->addListener(this);
+
+    drawLinesAfterFill = true;
+}
+
 void Panel3D::bakeTextures() {
     shouldBakeTextures = false;
     dirtyState.clear(PanelDirtyState::Flag::SurfaceCache);
@@ -720,7 +735,12 @@ vector<Color>& Panel3D::getGradientColours() {
 void Panel3D::drawCurvesAndSurfaces() {
     PanelRenderer* panelRenderer = ::getPanelRenderer(this);
     jassert(panelRenderer != nullptr);
-    panelRenderer->drawSurfaceCache();
+
+    if (usesCachedSurface()) {
+        panelRenderer->drawSurfaceCache();
+    } else {
+        drawSurface();
+    }
 }
 
 void Panel3D::paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const {

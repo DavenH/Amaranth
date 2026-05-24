@@ -4,10 +4,34 @@
 #include <App/MeshLibrary.h>
 #include <Curve/Mesh/Vertex.h>
 #include <UI/MiscGraphics.h>
-#include <UI/Panels/OpenGLPanel.h>
-#include <UI/Panels/OpenGLPanel3D.h>
+#include <UI/Panels/CommonGL.h>
+#include <UI/Panels/GLPanelRenderer.h>
+#include <UI/Panels/PanelHostContext.h>
 
 namespace CycleV2 {
+
+namespace {
+
+class PanelHostComponent :
+        public Component {
+public:
+    explicit PanelHostComponent(Panel& targetPanel) :
+            panel(targetPanel) {
+        setPaintingIsUnclipped(true);
+        setOpaque(false);
+    }
+
+    void paint(Graphics&) override {}
+
+    void resized() override {
+        panel.panelResized();
+    }
+
+private:
+    Panel& panel;
+};
+
+}
 
 TrimeshPanelBridge::TrimeshPanelBridge() :
         console         (&repo)
@@ -53,6 +77,7 @@ TrimeshPanelBridge::~TrimeshPanelBridge() {
     panel3D.setInteractor(nullptr);
     interactor2D.setRasterizer(nullptr);
     interactor3D.setRasterizer(nullptr);
+    releaseSharedGlResources();
 }
 
 void TrimeshPanelBridge::syncFromNode(
@@ -100,64 +125,118 @@ void TrimeshPanelBridge::updateRasterizer(bool refresh2DPanel, bool refresh3DGeo
     interactor3D.setMesh(&model.getMeshForPanel());
     rasterizer.updateWaveform();
 
-    if (Component* component = getPanel3DComponentIfCreated()) {
+    if (panel3DHostInitialised) {
         if (refresh3DGeometry) {
             interactor3D.updateIntercepts();
         }
 
         panel3D.bakeTexturesNextRepaint();
-        component->repaint();
+        panel3D.requestRepaint();
     }
 
-    if (refresh2DPanel && getPanel2DComponentIfCreated() != nullptr) {
-        Component* component = getPanel2DComponentIfCreated();
+    if (refresh2DPanel && panel2DHostInitialised) {
         interactor2D.performUpdate(Update);
-        component->repaint();
+        panel2D.requestRepaint();
     }
 }
 
-Component* TrimeshPanelBridge::getPanel3DComponent() {
-    if (!panelInitialised) {
-        panel3D.init();
-        panelInitialised = true;
-    }
-
-    return panel3D.getOpenglPanel();
+Component* TrimeshPanelBridge::getPanel3DHostComponent() {
+    initialisePanel3DHost();
+    return panel3DHost.get();
 }
 
-Component* TrimeshPanelBridge::getPanel3DComponentIfCreated() {
-    return panelInitialised ? panel3D.getOpenglPanel() : nullptr;
+Component* TrimeshPanelBridge::getPanel3DHostComponentIfCreated() {
+    return panel3DHostInitialised ? panel3DHost.get() : nullptr;
 }
 
-Component* TrimeshPanelBridge::getPanel2DComponent() {
-    if (!panel2DInitialised) {
-        panel2D.init();
-        panel2DInitialised = true;
-    }
-
-    return panel2D.getOpenglPanel();
+Component* TrimeshPanelBridge::getPanel2DHostComponent() {
+    initialisePanel2DHost();
+    return panel2DHost.get();
 }
 
-Component* TrimeshPanelBridge::getPanel2DComponentIfCreated() {
-    return panel2DInitialised ? panel2D.getOpenglPanel() : nullptr;
+Component* TrimeshPanelBridge::getPanel2DHostComponentIfCreated() {
+    return panel2DHostInitialised ? panel2DHost.get() : nullptr;
 }
 
-void TrimeshPanelBridge::activateExpandedPanels(bool refresh3DGeometry) {
-    if (auto* component = panelInitialised ? panel3D.getOpenglPanel() : nullptr) {
-        component->activateContext();
-
-        if (refresh3DGeometry) {
-            interactor3D.updateIntercepts();
-        }
-
-        panel3D.bakeTexturesNextRepaint();
-        component->repaint();
+void TrimeshPanelBridge::initialisePanel3DHost() {
+    if (panel3DHostInitialised) {
+        return;
     }
 
-    if (auto* component = panel2DInitialised ? panel2D.getOpenglPanel() : nullptr) {
-        component->activateContext();
-        component->repaint();
+    panel3DHost = std::make_unique<PanelHostComponent>(panel3D);
+    panel3D.setSharedCanvasMode(true);
+    panel3D.initWithExternalComponent(panel3DHost.get());
+    panel3DHostInitialised = true;
+}
+
+void TrimeshPanelBridge::initialisePanel2DHost() {
+    if (panel2DHostInitialised) {
+        return;
     }
+
+    panel2DHost = std::make_unique<PanelHostComponent>(panel2D);
+    panel2D.initWithExternalComponent(panel2DHost.get());
+    panel2DHostInitialised = true;
+}
+
+void TrimeshPanelBridge::initialiseSharedGlResources() {
+    initialisePanel3DHost();
+    initialisePanel2DHost();
+
+    if (sharedGlResourcesInitialised) {
+        return;
+    }
+
+    panel3DGfx = new CommonGL(&panel3D);
+    panel3DRenderer = std::make_unique<GLPanelRenderer>(panel3DGfx);
+    panel3D.setGraphicsHelper(panel3DGfx);
+    panel3D.setPanelRenderer(panel3DRenderer.get());
+    panel3DGfx->initializeTextures();
+
+    panel2DGfx = new CommonGL(&panel2D);
+    panel2DRenderer = std::make_unique<GLPanelRenderer>(panel2DGfx);
+    panel2D.setGraphicsHelper(panel2DGfx);
+    panel2D.setPanelRenderer(panel2DRenderer.get());
+    panel2DGfx->initializeTextures();
+
+    panel3D.bakeTexturesNextRepaint();
+    panel2D.bakeTexturesNextRepaint();
+    sharedGlResourcesInitialised = true;
+}
+
+void TrimeshPanelBridge::releaseSharedGlResources() {
+    panel2D.setPanelRenderer(nullptr);
+    panel3D.setPanelRenderer(nullptr);
+    panel2DRenderer = nullptr;
+    panel3DRenderer = nullptr;
+    panel2D.setGraphicsHelper(nullptr);
+    panel3D.setGraphicsHelper(nullptr);
+    panel2DGfx = nullptr;
+    panel3DGfx = nullptr;
+    sharedGlResourcesInitialised = false;
+}
+
+void TrimeshPanelBridge::renderPanel3D(Rectangle<float> bounds, float scaleFactor) {
+    initialiseSharedGlResources();
+    renderPanel(panel3D, bounds, scaleFactor);
+}
+
+void TrimeshPanelBridge::renderPanel2D(Rectangle<float> bounds, float scaleFactor) {
+    initialiseSharedGlResources();
+    renderPanel(panel2D, bounds, scaleFactor);
+}
+
+void TrimeshPanelBridge::renderPanel(Panel& panel, Rectangle<float> bounds, float scaleFactor) {
+    if (bounds.isEmpty()) {
+        return;
+    }
+
+    PanelHostContext context;
+    context.bounds = bounds;
+    context.clip = bounds;
+    context.scaleFactor = scaleFactor;
+    context.visible = true;
+    panel.render(context);
 }
 
 void TrimeshPanelBridge::NodeMorphPositioner::setPosition(

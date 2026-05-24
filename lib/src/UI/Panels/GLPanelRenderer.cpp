@@ -19,6 +19,9 @@ void GLPanelRenderer::beginPanelRender(const PanelRenderContext& context) {
     if (gfx != nullptr) {
         gfx->initRender();
     }
+
+    glPushMatrix();
+    glTranslatef(context.bounds.getX(), context.bounds.getY(), 0.f);
 }
 
 void GLPanelRenderer::checkErrors() {
@@ -32,6 +35,7 @@ void GLPanelRenderer::clearResources() {
 }
 
 void GLPanelRenderer::endPanelRender() {
+    glPopMatrix();
     currentContext = nullptr;
 }
 

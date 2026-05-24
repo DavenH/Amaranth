@@ -63,16 +63,16 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     auto sidePanel = topRow;
     auto waveshapePanel = content;
 
-    drawPanelFrame(g, gridPanel, "3D grid heatmap");
+    drawPanelFrame(g, gridPanel, "3D grid heatmap", false);
     drawPanelFrame(g, sidePanel, "Morph / vertex");
-    drawPanelFrame(g, waveshapePanel, "2D waveshape");
+    drawPanelFrame(g, waveshapePanel, "2D waveshape", false);
 
-    if (bridge.getPanel3D().getComponent() == nullptr) {
+    if (bridge.getPanel3DHostComponentIfCreated() == nullptr) {
         drawMeshHeatmap(g, gridPanel.reduced(12.f, 26.f), renderData, true);
     }
 
     const auto waveshapeContent = waveshapePanel.reduced(14.f, 28.f);
-    if (bridge.getPanel2D().getComponent() == nullptr) {
+    if (bridge.getPanel2DHostComponentIfCreated() == nullptr) {
         drawEditorGrid(g, waveshapeContent);
         drawTraceFill(g, waveshapeContent.reduced(8.f), renderData.slice);
         drawTrace(g, waveshapeContent.reduced(8.f), renderData.slice, Colour(0xffe7edff).withAlpha(0.94f));
@@ -135,30 +135,39 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     drawVertexParameters(g, morphArea, selectedParameters);
 }
 
+void TrimeshWidget::renderExpandedPanelsOpenGL(
+        const Node& node,
+        Rectangle<float> content,
+        float scaleFactor) {
+    bridge.syncFromNode(node, 320, 96);
+    bridge.renderPanel3D(expandedGridPanelContentBounds(content), scaleFactor);
+    bridge.renderPanel2D(expandedWavePanelContentBounds(content), scaleFactor);
+}
+
 Component* TrimeshWidget::prepareExpandedPanel3DComponent(
         const Node& node,
         Rectangle<float> content) {
     bridge.syncFromNode(node, 320, 96);
-    return bridge.getPanel3DComponent();
+    return bridge.getPanel3DHostComponent();
 }
 
 Component* TrimeshWidget::getExpandedPanel3DComponentIfCreated() {
-    return bridge.getPanel3DComponentIfCreated();
+    return bridge.getPanel3DHostComponentIfCreated();
 }
 
 Component* TrimeshWidget::prepareExpandedPanel2DComponent(
         const Node& node,
         Rectangle<float> content) {
     bridge.syncFromNode(node, 320, 96);
-    return bridge.getPanel2DComponent();
+    return bridge.getPanel2DHostComponent();
 }
 
 Component* TrimeshWidget::getExpandedPanel2DComponentIfCreated() {
-    return bridge.getPanel2DComponentIfCreated();
+    return bridge.getPanel2DHostComponentIfCreated();
 }
 
-void TrimeshWidget::activateExpandedPanels(bool refresh3DGeometry) {
-    bridge.activateExpandedPanels(refresh3DGeometry);
+void TrimeshWidget::releaseSharedGlResources() {
+    bridge.releaseSharedGlResources();
 }
 
 bool TrimeshWidget::findMorphControlAt(
@@ -311,16 +320,30 @@ Rectangle<float> TrimeshWidget::meshPreviewContentArea(Rectangle<float> area) {
     return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
 }
 
-void TrimeshWidget::drawPanelFrame(Graphics& g, Rectangle<float> area, const String& title) {
-    g.setColour(Colour(0xff0e1318));
-    g.fillRoundedRectangle(area, 6.f);
-    g.setColour(Colour(0xff151a20).withAlpha(0.78f));
-    g.fillRect(area.withTrimmedTop(22.f));
+void TrimeshWidget::drawPanelFrame(
+        Graphics& g,
+        Rectangle<float> area,
+        const String& title,
+        bool fillBody) {
+    const Rectangle<float> fullArea = area;
+
+    if (fillBody) {
+        g.setColour(Colour(0xff0e1318));
+        g.fillRoundedRectangle(area, 6.f);
+        g.setColour(Colour(0xff151a20).withAlpha(0.78f));
+        g.fillRect(area.withTrimmedTop(22.f));
+    } else {
+        Rectangle<float> header = area.removeFromTop(22.f);
+        g.setColour(Colour(0xff0e1318));
+        g.fillRoundedRectangle(header, 6.f);
+        g.fillRect(header.withTrimmedTop(jmax(0.f, header.getHeight() - 6.f)));
+    }
+
     g.setColour(Colour(0xff26313d));
-    g.drawRoundedRectangle(area, 6.f, 1.f);
+    g.drawRoundedRectangle(fullArea, 6.f, 1.f);
     g.setColour(kMutedText);
     g.setFont(FontOptions(10.5f, Font::bold));
-    g.drawText(title, area.reduced(10.f, 6.f).removeFromTop(15.f), Justification::centredLeft);
+    g.drawText(title, fullArea.reduced(10.f, 6.f).removeFromTop(15.f), Justification::centredLeft);
 }
 
 void TrimeshWidget::drawMeshHeatmap(

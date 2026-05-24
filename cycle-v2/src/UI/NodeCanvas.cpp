@@ -751,12 +751,17 @@ void NodeCanvas::renderOpenGL() {
         if (kUseGlNodeShells) {
             drawGlNodeShells();
         }
+        drawGlExpandedPanels();
     } else {
         OpenGLHelpers::clear(kCanvasBackground);
     }
 }
 
 void NodeCanvas::openGLContextClosing() {
+    for (auto& entry : trimeshWidgets) {
+        entry.second->releaseSharedGlResources();
+    }
+
     glRenderer.shutdown();
 }
 
@@ -818,6 +823,8 @@ void NodeCanvas::drawGrid(Graphics& g) {
 void NodeCanvas::drawGlEdges() {
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
+    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
+    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -843,6 +850,10 @@ void NodeCanvas::drawGlEdges() {
             continue;
         }
 
+        if (hasExpandedEditor && cable.getBounds().intersects(expandedPanel)) {
+            continue;
+        }
+
         Colour colour = colourForDomain(displayDomainForEdge(edge));
         const bool invalid = edgeHasValidationIssue(edge);
 
@@ -864,11 +875,17 @@ void NodeCanvas::drawGlEdges() {
 
 void NodeCanvas::drawGlNodeShells() {
     const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
+    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
+    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
 
     for (const auto& node : graph.getNodes()) {
         const Rectangle<float> bounds = toScreen(node.bounds);
 
         if (!bounds.intersects(visibleArea)) {
+            continue;
+        }
+
+        if (hasExpandedEditor && bounds.intersects(expandedPanel)) {
             continue;
         }
 
@@ -879,6 +896,41 @@ void NodeCanvas::drawGlNodeShells() {
                 kNodeBackground,
                 kNodeHeader);
     }
+}
+
+void NodeCanvas::drawGlExpandedPanels() {
+    const Node* expandedNode = findNode(expandedNodeId);
+
+    if (expandedNode == nullptr || expandedNode->kind != NodeKind::TrilinearMesh) {
+        return;
+    }
+
+    Rectangle<float> panel = expandedEditorBounds(getLocalBounds().toFloat());
+    glRenderer.renderNodeShell(
+            panel,
+            44.f,
+            8.f,
+            Colour(0xff141a21),
+            Colour(0xff202833));
+
+    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
+    glRenderer.renderNodeShell(
+            TrimeshWidget::expandedGridPanelContentBounds(content),
+            1.f,
+            5.f,
+            Colour(0xff0e1318),
+            Colour(0xff0e1318));
+    glRenderer.renderNodeShell(
+            TrimeshWidget::expandedWavePanelContentBounds(content),
+            1.f,
+            5.f,
+            Colour(0xff0e1318),
+            Colour(0xff0e1318));
+
+    trimeshWidgetFor(expandedNode->id).renderExpandedPanelsOpenGL(
+            *expandedNode,
+            content,
+            (float) openGLContext.getRenderingScale());
 }
 
 void NodeCanvas::drawEdges(Graphics& g) {
@@ -1005,9 +1057,17 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
 
 void NodeCanvas::drawNodes(Graphics& g) {
     const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
+    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
+    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
 
     for (const auto& node : graph.getNodes()) {
-        if (!toScreen(node.bounds).intersects(visibleArea)) {
+        const Rectangle<float> nodeBounds = toScreen(node.bounds);
+
+        if (!nodeBounds.intersects(visibleArea)) {
+            continue;
+        }
+
+        if (hasExpandedEditor && nodeBounds.intersects(expandedPanel)) {
             continue;
         }
 
@@ -1444,18 +1504,42 @@ void NodeCanvas::drawEnvelopeCurve(Graphics& g, Rectangle<float> area) {
 void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     Rectangle<float> panel = expandedEditorBounds(getLocalBounds().toFloat());
     const Rectangle<float> outerPanel = panel;
+    const bool isTrimeshEditor = node.kind == NodeKind::TrilinearMesh;
 
-    g.setColour(Colours::black.withAlpha(0.38f));
-    g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
-    g.setColour(Colour(0xff141a21));
-    g.fillRoundedRectangle(panel, 8.f);
+    if (isTrimeshEditor) {
+        const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
+        const Rectangle<int> gridHole = TrimeshWidget::expandedGridPanelContentBounds(content).toNearestInt();
+        const Rectangle<int> waveHole = TrimeshWidget::expandedWavePanelContentBounds(content).toNearestInt();
+
+        g.saveState();
+        g.excludeClipRegion(gridHole);
+        g.excludeClipRegion(waveHole);
+        g.setColour(Colours::black.withAlpha(0.38f));
+        g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
+        g.setColour(Colour(0xff141a21));
+        g.fillRoundedRectangle(panel, 8.f);
+        g.restoreState();
+    } else {
+        g.setColour(Colours::black.withAlpha(0.38f));
+        g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
+        g.setColour(Colour(0xff141a21));
+        g.fillRoundedRectangle(panel, 8.f);
+    }
+
     g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.72f));
     g.drawRoundedRectangle(panel, 8.f, 1.5f);
 
     auto header = panel.removeFromTop(44.f);
-    g.setColour(Colour(0xff202833));
-    g.fillRoundedRectangle(header, 8.f);
-    g.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+    if (!isTrimeshEditor) {
+        g.setColour(Colour(0xff202833));
+        g.fillRoundedRectangle(header, 8.f);
+        g.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+    } else {
+        g.setColour(Colour(0xff202833));
+        g.fillRoundedRectangle(header, 8.f);
+        g.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+    }
+
     g.setColour(kText);
     g.setFont(FontOptions(15.f, Font::bold));
     g.drawText(node.title, header.reduced(13.f, 4.f), Justification::centredLeft);
@@ -1476,7 +1560,7 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
 
     auto content = panel.reduced(18.f, 16.f);
 
-    if (node.kind == NodeKind::TrilinearMesh) {
+    if (isTrimeshEditor) {
         trimeshWidgetFor(node.id).paintExpanded(g, node, content);
         return;
     }
@@ -1524,7 +1608,6 @@ void NodeCanvas::setCanvasOpenGlAttached(bool shouldAttach) {
 
 void NodeCanvas::updateExpandedEditorHost(const Node* node) {
     const bool shouldShowTrimesh = node != nullptr && node->kind == NodeKind::TrilinearMesh;
-    setCanvasOpenGlAttached(!shouldShowTrimesh);
     hideExpandedEditorHostsExcept(shouldShowTrimesh ? node->id : String());
 
     if (!shouldShowTrimesh) {
@@ -1542,8 +1625,6 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
 
     const Rectangle<int> bounds = TrimeshWidget::expandedGridPanelContentBounds(content).toNearestInt();
     const Rectangle<int> waveBounds = TrimeshWidget::expandedWavePanelContentBounds(content).toNearestInt();
-    const bool needs3DShowRefresh = component->getParentComponent() != this || !component->isVisible();
-    const bool needs2DShowRefresh = waveComponent->getParentComponent() != this || !waveComponent->isVisible();
     const bool needs3DBoundsRefresh = component->getBounds() != bounds;
     const bool needs2DBoundsRefresh = waveComponent->getBounds() != waveBounds;
 
@@ -1575,9 +1656,7 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
 
     waveComponent->toFront(false);
 
-    if (needs3DShowRefresh || needs2DShowRefresh || needs3DBoundsRefresh || needs2DBoundsRefresh) {
-        widget.activateExpandedPanels(needs3DShowRefresh || needs3DBoundsRefresh);
-    }
+    ignoreUnused(needs3DBoundsRefresh, needs2DBoundsRefresh);
 }
 
 void NodeCanvas::hideExpandedEditorHosts() {
