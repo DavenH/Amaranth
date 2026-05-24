@@ -445,13 +445,17 @@ void PitchTracker::swipe() {
     SwipePitchDetector::track(*this);
 }
 
-void PitchTracker::trackPitch() {
+void PitchTracker::trackPitch(bool logDecision) {
     if (algo == AlgoSwipe || sample->size() < 8192) {
         swipe();
-        logPitchDecision(sample, "swipe", confidence);
+        if (logDecision) {
+            logPitchDecision(sample, "swipe", confidence);
+        }
     } else if (algo == AlgoYin) {
         yin();
-        logPitchDecision(sample, "yin", confidence);
+        if (logDecision) {
+            logPitchDecision(sample, "yin", confidence);
+        }
     } else {
         yin();
 
@@ -491,6 +495,8 @@ void PitchTracker::trackPitch() {
             }
         }
 
-        logPitchDecision(sample, decision, confidence, yinAtonicity, swipeAtonicity);
+        if (logDecision) {
+            logPitchDecision(sample, decision, confidence, yinAtonicity, swipeAtonicity);
+        }
     }
 }

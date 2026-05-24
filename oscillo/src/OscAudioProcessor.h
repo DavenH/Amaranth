@@ -19,6 +19,7 @@ public:
     void start();
     void stop();
     void setTargetFrequency(float freq);
+    void setPitchTracker(RealTimePitchTracker* tracker);
     void resetPeriods();
     float getTargetPeriod() const { return targetPeriod; }
     [[nodiscard]] double getCurrentSampleRate() const;
@@ -64,6 +65,7 @@ private:
     std::vector<Buffer<Float32> > periods;
 
     SpinLock bufferLock;
+    SpinLock pitchTrackerLock;
     friend class TestableOscAudioProcessor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OscAudioProcessor)
