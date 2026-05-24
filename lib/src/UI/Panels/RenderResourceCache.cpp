@@ -3,6 +3,33 @@
 #include "CommonGfx.h"
 #include "Texture.h"
 
+void RenderResourceCache::clear() {
+    textureVersions.clear();
+    categoryVersions.fill(0);
+}
+
+void RenderResourceCache::clearDirtyFlagAfterRebuild(
+    PanelDirtyState& dirtyState,
+    InvalidationCategory category
+) const {
+    switch (category) {
+        case InvalidationCategory::StaticVisual:
+            dirtyState.clear(PanelDirtyState::Flag::StaticVisual);
+            break;
+        case InvalidationCategory::SurfaceData:
+            dirtyState.clear(PanelDirtyState::Flag::SurfaceCache);
+            break;
+        case InvalidationCategory::Transform:
+            dirtyState.clear(PanelDirtyState::Flag::Layout);
+            break;
+        case InvalidationCategory::FullRebuild:
+            dirtyState.clear(PanelDirtyState::Flag::Full);
+            break;
+        case InvalidationCategory::Count:
+            break;
+    }
+}
+
 void RenderResourceCache::drawCachedTexture(CommonGfx* gfx, Texture* texture, const juce::Rectangle<float>& bounds) {
     if (gfx == nullptr || texture == nullptr) {
         return;
@@ -26,8 +53,26 @@ uint32_t RenderResourceCache::getVersion(Texture* texture) const {
     return iter == textureVersions.end() ? 0u : iter->second;
 }
 
+uint32_t RenderResourceCache::getInvalidationVersion(InvalidationCategory category) const {
+    return categoryVersions[categoryIndex(category)];
+}
+
+void RenderResourceCache::invalidate(InvalidationCategory category) {
+    if (category == InvalidationCategory::Count) {
+        return;
+    }
+
+    ++categoryVersions[categoryIndex(category)];
+}
+
 bool RenderResourceCache::isTracked(Texture* texture) const {
     return textureVersions.find(texture) != textureVersions.end();
+}
+
+void RenderResourceCache::markTextureUpdated(Texture* texture) {
+    if (texture != nullptr) {
+        touch(texture);
+    }
 }
 
 void RenderResourceCache::updateTexture(CommonGfx* gfx, Texture* texture) {

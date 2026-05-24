@@ -15,6 +15,7 @@ public:
 
     void beginPanelRender(const PanelRenderContext& context) override;
     void checkErrors() override;
+    void clearResources();
     void endPanelRender() override;
     void finishSurfaceGrid() override;
 

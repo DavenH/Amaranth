@@ -66,7 +66,7 @@ void SpectrumInter3D::meshSelectionChanged(Mesh* mesh) {
             : &getObj(PhaseRasterizer);
     rasterizer->setMesh(mesh);
     updateInterceptsWithMesh(mesh);
-    display->repaint();
+    requestPanelRepaint();
     getObj(SpectrumInter2D).update(Update);
 }
 

@@ -94,8 +94,9 @@ void OpenGLPanel3D::clear() {
 
 void OpenGLPanel3D::renderOpenGL() {
     noteRender();
+    clear();
     surfaceCache.setRenderScale(context.getRenderingScale());
-    panel->render();
+    panel->render(panel->createComponentHostContext(context.getRenderingScale()));
     printErrors(repo, "render");
 }
 
@@ -144,6 +145,10 @@ void OpenGLPanel3D::deactivateContext() {
 void OpenGLPanel3D::openGLContextClosing() {
     noteContextClosing();
     info(panel->getName() << " context closing, clearing textures \n");
+
+    if (panelRenderer != nullptr) {
+        panelRenderer->clearResources();
+    }
 
     surfaceCache.clear();
 

@@ -129,6 +129,87 @@ void Panel::setInteractor(Interactor* itr) {
     bindInteractorToComponent();
 }
 
+void Panel::repaint() {
+    requestRepaint();
+}
+
+void Panel::requestRepaint(PanelDirtyState::Flag flag) {
+    if (hostCallbacks.hasRepaintCallback()) {
+        hostCallbacks.requestRepaint(this, flag);
+        return;
+    }
+
+    if (comp != nullptr) {
+        comp->repaint();
+    }
+}
+
+void Panel::clear() {
+    if (renderHelper != nullptr) {
+        renderHelper->clear();
+    }
+}
+
+void Panel::deactivateContext() {
+    if (renderHelper != nullptr) {
+        renderHelper->deactivate();
+    }
+}
+
+void Panel::activateContext() {
+    if (renderHelper != nullptr) {
+        renderHelper->activate();
+    }
+}
+
+bool Panel::isVisible() const {
+    if (hasExplicitHostContext) {
+        return hostContext.visible;
+    }
+
+    return comp != nullptr && comp->isVisible();
+}
+
+int Panel::getWidth() const {
+    if (hasExplicitHostContext) {
+        return roundToInt(hostContext.bounds.getWidth());
+    }
+
+    return comp != nullptr ? comp->getWidth() : 0;
+}
+
+int Panel::getHeight() const {
+    if (hasExplicitHostContext) {
+        return roundToInt(hostContext.bounds.getHeight());
+    }
+
+    return comp != nullptr ? comp->getHeight() : 0;
+}
+
+Rectangle<int> Panel::getBounds() const {
+    if (hasExplicitHostContext) {
+        return hostContext.bounds.getSmallestIntegerContainer();
+    }
+
+    return comp != nullptr ? comp->getBounds() : Rectangle<int>();
+}
+
+Rectangle<int> Panel::getLocalBounds() const {
+    if (hasExplicitHostContext) {
+        return Rectangle<int>(0, 0, getWidth(), getHeight());
+    }
+
+    return comp != nullptr ? comp->getLocalBounds() : Rectangle<int>();
+}
+
+bool Panel::isMouseOver() const {
+    if (interactor != nullptr) {
+        return interactor->state.mouseFlags[PanelState::MouseOver];
+    }
+
+    return comp != nullptr && comp->isMouseOver();
+}
+
 void Panel::bindInteractorToComponent() {
     if (interactor == nullptr || comp == nullptr) {
         return;
@@ -141,7 +222,7 @@ void Panel::render() {
     // should only be held on mesh deletions
     ScopedLock sl(renderLock);
 
-    if (interactor == nullptr || comp == nullptr || !interactor->hasRasterizer()) {
+    if (interactor == nullptr || getWidth() <= 0 || getHeight() <= 0 || !interactor->hasRasterizer()) {
         return;
     }
 
@@ -155,7 +236,6 @@ void Panel::render() {
     bool sharedCanvasBackground = usesSharedCanvasBackground();
     bool sharedCanvasSurface = usesSharedCanvasSurface();
 
-    clear();
     if (!sharedCanvasBackground && shouldDrawPanelPass("background")) {
         drawBackground();
     }
@@ -245,6 +325,12 @@ void Panel::render() {
     dirtyState.clear(PanelDirtyState::Flag::StaticVisual);
     dirtyState.clear(PanelDirtyState::Flag::Overlay);
     dirtyState.clear(PanelDirtyState::Flag::Full);
+    hasExplicitHostContext = false;
+}
+
+void Panel::render(const PanelHostContext& context) {
+    setHostContext(context);
+    render();
 }
 
 void Panel::constrainZoom() {
@@ -259,7 +345,7 @@ void Panel::constrainZoom() {
 }
 
 void Panel::drawBackground(bool fillBackground) {
-    drawBackground(comp->getBounds(), fillBackground);
+    drawBackground(getLocalBounds(), fillBackground);
 }
 
 void Panel::panelResized() {
@@ -286,14 +372,14 @@ void Panel::updateNameTexturePos() {
     int wB = nameImageB.getWidth() > 0 ? nameImageB.getWidth() / textTextureScale : wA;
     int hB = nameImageB.getHeight() > 0 ? nameImageB.getHeight() / textTextureScale : hA;
 
-    Rectangle<int> bounds = comp->getLocalBounds();
+    Rectangle<int> bounds = getLocalBounds();
     nameTexA->rect = (fromBottom ?  bounds.removeFromRight(wA).removeFromBottom(hA) :
                                     bounds.removeFromRight(wA).removeFromTop(hA)).toFloat();
 
     Point<float> offset = nameCornerPos;
     nameTexA->rect.translate(offset.getX(), offset.getY());
 
-    bounds = comp->getLocalBounds();
+    bounds = getLocalBounds();
     nameTexB->rect = (fromBottom ?  bounds.removeFromRight(wB).removeFromBottom(hB) :
                                     bounds.removeFromRight(wB).removeFromTop(hB)).toFloat();
     nameTexB->rect.translate(offset.getX(), offset.getY());
@@ -302,8 +388,8 @@ void Panel::updateNameTexturePos() {
 void Panel::updateBackground(bool onlyVerticalBackground) {
     ScopedLock sl(renderLock);
 
-    int w = comp->getWidth();
-    int h = comp->getHeight();
+    int w = getWidth();
+    int h = getHeight();
 
     int minorLineOrder = 64;
     int majorLineOrder = 8;
@@ -397,20 +483,20 @@ void Panel::applyScale(BufferXY& buff) {
 
 void Panel::applyScaleX(Buffer<Float32> array) {
     float sumX = -zoomPanel->rect.x;
-    float multX = (comp->getWidth() - paddingLeft - paddingRight) / zoomPanel->rect.w;
+    float multX = (getWidth() - paddingLeft - paddingRight) / zoomPanel->rect.w;
 
     array.add(sumX).mul(multX).add(paddingLeft);
 }
 
 void Panel::applyScaleY(Buffer<Float32> array) {
-    float multY = (comp->getHeight() - 2 * vertPadding) / zoomPanel->rect.h;
+    float multY = (getHeight() - 2 * vertPadding) / zoomPanel->rect.h;
     float sumY = 1 - zoomPanel->rect.y;
 
     array.mul(-1).add(sumY).mul(multY).add(vertPadding);
 }
 
 void Panel::applyNoZoomScaleX(Buffer<Float32> array) {
-    float multX = (comp->getWidth() - (paddingLeft + paddingRight));
+    float multX = (getWidth() - (paddingLeft + paddingRight));
 
     array.mul(multX).add(paddingLeft);
 }
@@ -608,8 +694,8 @@ void Panel::drawPencilPath() {
 }
 
 void Panel::drawOutline() {
-    auto right = (float) comp->getWidth();
-    auto low = (float) comp->getHeight();
+    auto right = (float) getWidth();
+    auto low = (float) getHeight();
 
     float y1 = synz(0);
     float y2 = synz(1);
@@ -701,7 +787,7 @@ bool Panel::paintSharedCanvasDebugOverlay(juce::Graphics& g, const juce::Rectang
 }
 
 void Panel::applyNoZoomScaleY(Buffer<float> array) {
-    float multY = (comp->getHeight() - 2.f * (float) vertPadding);
+    float multY = (getHeight() - 2.f * (float) vertPadding);
     float sumY = 1.f;
 
     array.mul(-1.f).add(sumY).mul(multY).add(vertPadding);
@@ -713,24 +799,61 @@ void Panel::bakeTexturesNextRepaint() {
 }
 
 PanelRenderContext Panel::createRenderContext() const {
-    PanelRenderContext context;
+    if (hasExplicitHostContext) {
+        PanelHostContext context = hostContext;
+        context.dirtyMask = dirtyState.mask();
+        context.panelId = panelId;
+        context.usesCachedSurface = usesCachedSurface();
+
+        return context.createRenderContext();
+    }
+
+    return createComponentHostContext().createRenderContext();
+}
+
+PanelHostContext Panel::createComponentHostContext(float scaleFactor) const {
+    PanelHostContext context;
 
     if (comp != nullptr) {
-        context.bounds = comp->getLocalBounds();
-        context.clip = comp->getLocalBounds();
+        context.bounds = comp->getLocalBounds().toFloat();
+        context.clip = context.bounds;
     }
 
     context.dirtyMask = dirtyState.mask();
     context.panelId = panelId;
+    context.scaleFactor = scaleFactor;
     context.usesCachedSurface = usesCachedSurface();
+    context.visible = comp != nullptr && comp->isVisible();
 
     return context;
 }
 
-void Panel::setCursor() {
-    jassert(comp != nullptr);
+void Panel::setHostContext(const PanelHostContext& context) {
+    hostContext = context;
+    hasExplicitHostContext = true;
 
-    CursorHelper::setCursor(repo, comp, interactor);
+    if (context.callbacks.hasRepaintCallback()) {
+        setHostCallbacks(context.callbacks);
+    }
+}
+
+void Panel::setHostCallbacks(const PanelHostCallbacks& callbacks) {
+    hostCallbacks = callbacks;
+}
+
+void Panel::setPanelMouseCursor(const MouseCursor& cursor) {
+    if (hostCallbacks.hasCursorCallback()) {
+        hostCallbacks.setMouseCursor(this, cursor);
+        return;
+    }
+
+    if (comp != nullptr) {
+        comp->setMouseCursor(cursor);
+    }
+}
+
+void Panel::setCursor() {
+    setPanelMouseCursor(CursorHelper::getCursor(repo, interactor));
 }
 
 bool Panel::createLinePath(const Vertex2& first, const Vertex2& second, VertCube* cube, int pointDim, bool haveSpeed) {
@@ -937,7 +1060,9 @@ int Panel::getLinePathPhaseGuideDimension(int pointDim) {
 }
 
 void Panel::componentChanged() {
-    comp->setName(panelName);
+    if (comp != nullptr) {
+        comp->setName(panelName);
+    }
 }
 
 void Panel::createNameImage(const String& displayName, bool isSecondImage, bool brighter) {
@@ -1026,33 +1151,33 @@ void Panel::triggerZoom(bool in) {
 
 float Panel::sx(const float x) const {
     return (x - zoomPanel->rect.x) / (zoomPanel->rect.w) *
-           (comp->getWidth() - (paddingLeft + paddingRight)) + paddingLeft;
+           (getWidth() - (paddingLeft + paddingRight)) + paddingLeft;
 }
 
 float Panel::sxnz(const float x) const {
-    return x * (comp->getWidth() - (paddingLeft + paddingRight)) + paddingLeft;
+    return x * (getWidth() - (paddingLeft + paddingRight)) + paddingLeft;
 }
 
 float Panel::invertScaleX(const int x) const {
-    return (x - paddingLeft) / (float(comp->getWidth() - (paddingLeft + paddingRight))) *
+    return (x - paddingLeft) / (float(getWidth() - (paddingLeft + paddingRight))) *
            zoomPanel->rect.w + zoomPanel->rect.x;
 }
 
-float Panel::invertScaleXNoZoom(const int x) const { return x / (float(comp->getWidth())); }
+float Panel::invertScaleXNoZoom(const int x) const { return x / (float(getWidth())); }
 
 float Panel::sy(const float y) const {
-    return (1 - zoomPanel->rect.y - y) / (zoomPanel->rect.h) * (comp->getHeight() - 2 * vertPadding) + vertPadding;
+    return (1 - zoomPanel->rect.y - y) / (zoomPanel->rect.h) * (getHeight() - 2 * vertPadding) + vertPadding;
 }
 
-float Panel::synz(const float y) const { return (1 - y) * (comp->getHeight() - 2 * vertPadding) + vertPadding; }
+float Panel::synz(const float y) const { return (1 - y) * (getHeight() - 2 * vertPadding) + vertPadding; }
 
 float Panel::invertScaleY(const int y) const {
-    return 1 - zoomPanel->rect.y + zoomPanel->rect.h * (y - vertPadding) / (2 * vertPadding - comp->getHeight());
+    return 1 - zoomPanel->rect.y + zoomPanel->rect.h * (y - vertPadding) / (2 * vertPadding - getHeight());
 }
 
-float Panel::invertScaleYNoZoom(const int y) const { return (comp->getHeight() - y) / float(comp->getHeight()); }
-float Panel::invScaleXNoDisp(const int x) const { return x / (float(comp->getWidth())) * zoomPanel->rect.w; }
-float Panel::invScaleYNoDisp(const int y) const { return (-y) / (float(comp->getHeight())) * zoomPanel->rect.h; }
+float Panel::invertScaleYNoZoom(const int y) const { return (getHeight() - y) / float(getHeight()); }
+float Panel::invScaleXNoDisp(const int x) const { return x / (float(getWidth())) * zoomPanel->rect.w; }
+float Panel::invScaleYNoDisp(const int y) const { return (-y) / (float(getHeight())) * zoomPanel->rect.h; }
 
 void Panel::doZoomExtra(bool commandDown) {
     interactor->doZoomExtra(commandDown);

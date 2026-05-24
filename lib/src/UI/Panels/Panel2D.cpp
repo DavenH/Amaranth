@@ -181,7 +181,7 @@ void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
     positions.push_back(curr);
 
     for (; i < size; ++i) {
-        if (i > 0 && xy.x[i - 1] > comp->getWidth()) {
+        if (i > 0 && xy.x[i - 1] > getWidth()) {
             continue;
         }
 

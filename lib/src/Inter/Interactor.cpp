@@ -19,6 +19,7 @@
 #include "../Design/Updating/Updater.h"
 #include "../Obj/CurveLine.h"
 #include "../UI/Panels/Panel.h"
+#include "../UI/Panels/PanelHostContext.h"
 #include "../UI/Panels/Texture.h"
 #include "../UI/Panels/ZoomRect.h"
 #include "../Util/CommonEnums.h"
@@ -154,6 +155,26 @@ void Interactor::clearSelectedAndRepaint() {
     state.currentVertex = nullptr;
 }
 
+void Interactor::updateCurrentMouseFromLocalPosition(Point<int> localPos) {
+    state.currentMouse = Vertex2(panel->invertScaleX(localPos.x), panel->invertScaleY(localPos.y));
+    NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
+}
+
+void Interactor::updateCurrentMouseFromPointerEvent(const PanelPointerEvent& event) {
+    updateCurrentMouseFromLocalPosition(event.localPosition.roundToInt());
+}
+
+void Interactor::requestPanelRepaint(PanelDirtyState::Flag flag) {
+    if (panel != nullptr) {
+        panel->requestRepaint(flag);
+        return;
+    }
+
+    if (display != nullptr) {
+        display->repaint();
+    }
+}
+
 void Interactor::mouseMove(const MouseEvent& e) {
     auto localEvent = display != nullptr ? e.getEventRelativeTo(display.get()) : e;
     Point<int> localPos = localEvent.getPosition();
@@ -163,9 +184,7 @@ void Interactor::mouseMove(const MouseEvent& e) {
     flag(DidMeshChange) = false;
 
     state.lastMouse = state.currentMouse;
-    state.currentMouse = Vertex2(panel->invertScaleX(localPos.x), panel->invertScaleY(localPos.y));
-
-    NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
+    updateCurrentMouseFromLocalPosition(localPos);
 
     bool changedVertex = locateClosestElement();
 
@@ -179,7 +198,7 @@ void Interactor::mouseMove(const MouseEvent& e) {
             }
 
             itr->locateClosestElement();
-            itr->display->repaint();
+            itr->requestPanelRepaint();
         }
     }
 
@@ -214,7 +233,7 @@ void Interactor::timerCallback() {
     if (!isOver) {
         if (wasPollingMouseOver || mouseFlag(MouseOver)) {
             state.resetMouseFlags();
-            display->repaint();
+            requestPanelRepaint();
         }
 
         wasPollingMouseOver = false;
@@ -235,9 +254,7 @@ void Interactor::timerCallback() {
     flag(DidMeshChange) = false;
 
     state.lastMouse = state.currentMouse;
-    state.currentMouse = Vertex2(panel->invertScaleX(localPos.x), panel->invertScaleY(localPos.y));
-
-    NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
+    updateCurrentMouseFromLocalPosition(localPos);
 
     bool changedVertex = locateClosestElement();
 
@@ -255,8 +272,7 @@ void Interactor::mouseDown(const MouseEvent& e) {
     state.resetActionState();
     PanelState::ActionState& action = state.actionState;
 
-    state.currentMouse = Vertex2(panel->invertScaleX(e.x), panel->invertScaleY(e.y));
-    NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
+    updateCurrentMouseFromLocalPosition(e.getPosition());
     state.start = state.currentMouse;
 
     bool selectWithRight = getSetting(SelectWithRight) == 1;
@@ -356,9 +372,7 @@ void Interactor::mouseUp(const MouseEvent& e) {
 
 void Interactor::mouseDrag(const MouseEvent& e) {
     state.lastMouse = state.currentMouse;
-    state.currentMouse     = Vertex2(panel->invertScaleX(e.x), panel->invertScaleY(e.y));
-
-    NumberUtils::constrain<float>(state.currentMouse.x, vertexLimits[dims.x]);
+    updateCurrentMouseFromLocalPosition(e.getPosition());
 
     bool selectWithRight = getSetting(SelectWithRight) == 1;
 
@@ -419,7 +433,7 @@ void Interactor::mouseEnter(const MouseEvent& e) {
 
 
     focusGained();
-    display->repaint();
+    requestPanelRepaint();
 }
 
 void Interactor::mouseExit(const MouseEvent& e) {
@@ -436,7 +450,7 @@ void Interactor::mouseExit(const MouseEvent& e) {
         + " buttons=" + describeMouseButtons(e)
         + " component=" + (display != nullptr ? display->getName() : String("<none>")));
 
-    display->repaint();
+    requestPanelRepaint();
 }
 
 void Interactor::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) {
@@ -581,7 +595,7 @@ void Interactor::deselectAll(bool forceDeselect) {
     resetFinalSelection();
     updateSelectionFrames();
 
-    display->repaint();
+    requestPanelRepaint();
 }
 
 void Interactor::eraseSelected() {
@@ -1383,15 +1397,11 @@ void Interactor::selectConnectedVerts(set<Vertex*>& alreadySeen, Vertex* current
 void Interactor::performUpdate(UpdateType updateType) {
     if (updateType == Update) {
         updateDepthVerts();
-        if (display != nullptr) {
-            display->repaint();
-        }
+        requestPanelRepaint();
     }
 
     if (updateType == Repaint) {
-        if (display != nullptr) {
-            display->repaint();
-        }
+        requestPanelRepaint();
     }
 }
 
@@ -1889,7 +1899,7 @@ void Interactor::refresh() {
                 opposite->performUpdate(Update);
         }
     } else if (flag(SimpleRepaint)) {
-        display->repaint();
+        requestPanelRepaint();
         flag(SimpleRepaint) = false;
     }
 }

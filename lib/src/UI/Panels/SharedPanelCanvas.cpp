@@ -18,8 +18,30 @@ void SharedPanelCanvas::invalidatePanel(Panel* panel, PanelDirtyState::Flag flag
     repaintDirtyRegions();
 }
 
+PanelHostCallbacks SharedPanelCanvas::createPanelHostCallbacks() {
+    PanelHostCallbacks callbacks;
+    auto safeThis = juce::Component::SafePointer<SharedPanelCanvas>(this);
+
+    callbacks.setRepaintCallback([safeThis](Panel* panel, PanelDirtyState::Flag flag) {
+        if (safeThis != nullptr && panel != nullptr) {
+            safeThis->invalidatePanel(panel, flag);
+        }
+    });
+
+    return callbacks;
+}
+
 void SharedPanelCanvas::registerOrUpdatePanel(Panel* panel, const juce::Rectangle<int>& bounds, bool visible) {
     compositor.registerOrUpdatePanel(panel, bounds, visible);
+    repaintDirtyRegions();
+}
+
+void SharedPanelCanvas::registerOrUpdatePanel(Panel* panel, const PanelHostContext& context) {
+    if (panel != nullptr) {
+        panel->setHostCallbacks(context.callbacks.hasRepaintCallback() ? context.callbacks : createPanelHostCallbacks());
+    }
+
+    compositor.registerOrUpdatePanel(panel, context);
     repaintDirtyRegions();
 }
 
