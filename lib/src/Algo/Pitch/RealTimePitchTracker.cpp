@@ -1,11 +1,14 @@
 #include "RealTimePitchTracker.h"
 
 #include <Array/ScopedAlloc.h>
+#include <Audio/PitchedSample.h>
 
 #include <limits>
 
 #include "CycleDiffPitchScorer.h"
 #include "PitchKernelBuilder.h"
+#include "PitchTracker.h"
+#include "../../Util/NumberUtils.h"
 
 using std::vector;
 
@@ -30,9 +33,14 @@ RealTimePitchTracker::RealTimePitchTracker(const PitchTrackingRequest& request, 
     } else {
         rawBlock.resize(blockSize);
         rawBlock.zero();
-        periodScores.resize(request.numMidiNotes);
-        cycleDiffScratch.resize(blockSize);
-        tauTable.resize(request.numMidiNotes);
+        analysisBlock.resize(blockSize);
+        analysisBlock.zero();
+
+        if (algo == AlgoCycleDiff) {
+            periodScores.resize(request.numMidiNotes);
+            cycleDiffScratch.resize(blockSize);
+            tauTable.resize(request.numMidiNotes);
+        }
     }
 }
 
@@ -44,7 +52,7 @@ void RealTimePitchTracker::setSampleRate(int sr) {
         fftFreqs.ramp(delta, delta).mul((float) sr);
         transform.allocate(blockSize, Transform::NoDivByAny, true);
         createKernels(request.frequencyOfA4);
-    } else {
+    } else if (algorithm == AlgoCycleDiff) {
         precomputePeriods(request.frequencyOfA4, sr);
     }
 }
@@ -73,7 +81,13 @@ void RealTimePitchTracker::write(Buffer<float>& audioBlock) {
 }
 
 int RealTimePitchTracker::update() {
-    return algorithm == AlgoSpectral ? updateSpectral() : updatePeriodic();
+    switch (algorithm) {
+        case AlgoSpectral:  return updateSpectral();
+        case AlgoCycleDiff: return updatePeriodic();
+        case AlgoYin:       return updateSampleTracker(PitchTracker::AlgoYin);
+        case AlgoSwipe:     return updateSampleTracker(PitchTracker::AlgoSwipe);
+        default:            return bestKeyIndex;
+    }
 }
 
 int RealTimePitchTracker::updateSpectral() {
@@ -109,6 +123,64 @@ int RealTimePitchTracker::updateSpectral() {
         const SpinLock::ScopedLockType lock(bufferLock);
         traceListener->onPitchFrame(bestKeyIndex, localBlock, correlations, fftMagnitudes);
     }
+    return bestKeyIndex;
+}
+
+PitchTrackingRequest RealTimePitchTracker::createSampleTrackingRequest() const {
+    PitchTrackingRequest sampleRequest = request;
+
+    const int firstNote = request.firstMidiNote;
+    const int lastNote = request.firstMidiNote + request.numMidiNotes - 1;
+    sampleRequest.minFrequencyHz = jmax(
+        request.minFrequencyHz,
+        (float) (MidiMessage::getMidiNoteInHertz(firstNote, request.frequencyOfA4) * 0.9));
+    sampleRequest.maxFrequencyHz = jmin(
+        request.maxFrequencyHz,
+        (float) (MidiMessage::getMidiNoteInHertz(lastNote, request.frequencyOfA4) * 1.1));
+
+    return sampleRequest;
+}
+
+int RealTimePitchTracker::updateSampleTracker(int pitchTrackerAlgorithm) {
+    {
+        const SpinLock::ScopedLockType lock(bufferLock);
+        if (rawBlock.normL2() < 1.f) {
+            return bestKeyIndex;
+        }
+        rawBlock.copyTo(analysisBlock);
+    }
+
+    PitchedSample sample(analysisBlock);
+    sample.samplerate = sampleRate;
+
+    PitchTracker tracker;
+    tracker.setRequest(createSampleTrackingRequest());
+    tracker.setAlgo(pitchTrackerAlgorithm);
+    tracker.setSample(&sample);
+    tracker.trackPitch(false);
+
+    if (!sample.periods.empty()) {
+        float averagePeriod = 0.f;
+        for (const auto& frame: sample.periods) {
+            averagePeriod += frame.period;
+        }
+        averagePeriod /= (float) sample.periods.size();
+
+        if (averagePeriod > 0.f) {
+            const float frequency = (float) sampleRate / averagePeriod;
+            bestKeyIndex = jlimit(
+                request.firstMidiNote,
+                request.firstMidiNote + request.numMidiNotes - 1,
+                roundToInt(NumberUtils::frequencyToNote(frequency)));
+        }
+    }
+
+    {
+        const SpinLock::ScopedLockType lock(bufferLock);
+        Buffer<float> emptyMags;
+        traceListener->onPitchFrame(bestKeyIndex, analysisBlock, periodScores, emptyMags);
+    }
+
     return bestKeyIndex;
 }
 

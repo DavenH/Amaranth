@@ -1346,11 +1346,11 @@ namespace {
     Point<float> meshPointToLocal(Interactor& interactor, float x, float y) {
         Panel* panel = interactor.panel.get();
 
-        if (panel == nullptr || panel->getComponent() == nullptr) {
+        if (panel == nullptr || panel->getWidth() <= 0 || panel->getHeight() <= 0) {
             return {};
         }
 
-        Rectangle<int> bounds = panel->getComponent()->getLocalBounds();
+        Rectangle<int> bounds = panel->getLocalBounds();
         float localX = jlimit(0.0f, float(jmax(0, bounds.getWidth() - 1)), panel->sx(x));
         float localY = jlimit(0.0f, float(jmax(0, bounds.getHeight() - 1)), panel->sy(y));
 

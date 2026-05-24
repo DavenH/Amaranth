@@ -17,7 +17,9 @@ public:
 
     void invalidateAll(PanelDirtyState::Flag flag = PanelDirtyState::Flag::Full);
     void invalidatePanel(Panel* panel, PanelDirtyState::Flag flag);
+    PanelHostCallbacks createPanelHostCallbacks();
     void registerOrUpdatePanel(Panel* panel, const juce::Rectangle<int>& bounds, bool visible);
+    void registerOrUpdatePanel(Panel* panel, const PanelHostContext& context);
     void removePanel(Panel* panel);
     void setDebugSnapshotOverlayEnabled(bool enabled);
     bool isDebugSnapshotOverlayEnabled() const { return debugSnapshotOverlayEnabled; }

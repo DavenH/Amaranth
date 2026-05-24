@@ -19,12 +19,14 @@
 #include "../Obj/Ref.h"
 #include "../UI/AsyncUIUpdater.h"
 #include "../UI/IConsole.h"
+#include "../UI/Panels/PanelDirtyState.h"
 #include "JuceHeader.h"
 
 using std::vector;
 using std::set;
 
 class Panel;
+class PanelPointerEvent;
 class GuideCurveProvider;
 class Mesh;
 struct RasterizerData;
@@ -98,6 +100,7 @@ public:
     void reduceDetail() override;
     void restoreDetail() override;
     void refresh();
+    void requestPanelRepaint(PanelDirtyState::Flag flag = PanelDirtyState::Flag::Overlay);
     void resetFinalSelection();
     void resetSelection();
     void resetState();
@@ -105,6 +108,8 @@ public:
     void setAxeSize(float size);
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
+    void updateCurrentMouseFromLocalPosition(Point<int> localPos);
+    void updateCurrentMouseFromPointerEvent(const PanelPointerEvent& event);
     void setRasterizer(Rasterization::Rasterizer* rasterizer);
     void snapToGrid(Vertex2& toSnap);
     void translateVerts(vector<VertexFrame>& verts, const Vertex2& diff);

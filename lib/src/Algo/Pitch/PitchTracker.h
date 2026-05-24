@@ -68,7 +68,7 @@ public:
     static float refineFrames(PitchedSample* sample, float averagePeriod);
     void reset();
     void swipe();
-    void trackPitch();
+    void trackPitch(bool logDecision = true);
     void yin();
 
     float getAveragePeriod();

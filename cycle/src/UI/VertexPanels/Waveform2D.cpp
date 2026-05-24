@@ -256,7 +256,7 @@ int Waveform2D::getLayerScratchChannel() {
 
 void Waveform2D::componentChanged() {
     Panel::componentChanged();
-    comp->setMouseCursor(MouseCursor::CrosshairCursor);
+    setPanelMouseCursor(MouseCursor::CrosshairCursor);
 }
 
 void Waveform2D::doZoomExtra(bool commandDown) {

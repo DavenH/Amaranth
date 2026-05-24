@@ -74,6 +74,10 @@ void PanelCompositor::registerOrUpdatePanel(Panel* panel, const juce::Rectangle<
     });
 }
 
+void PanelCompositor::registerOrUpdatePanel(Panel* panel, const PanelHostContext& context) {
+    registerOrUpdatePanel(panel, context.createRenderContext().bounds, context.visible);
+}
+
 void PanelCompositor::removePanel(Panel* panel) {
     if (const Entry* entry = findEntry(panel)) {
         orphanedDirtyBounds.add(entry->bounds);

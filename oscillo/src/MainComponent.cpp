@@ -69,7 +69,7 @@ MainComponent::MainComponent()
         g4.fillAll(kOscilloPanelBackground);
     }
 
-    pitchTracker = std::make_unique<RealTimePitchTracker>(RealTimePitchTracker::AlgoSpectral);
+    pitchTracker = std::make_unique<RealTimePitchTracker>(realtimePitchTrackingAlgorithm);
 
     pitchTracker->setTraceListener(*this);
     processor = std::make_unique<OscAudioProcessor>(pitchTracker.get());
@@ -111,6 +111,29 @@ void MainComponent::setRealtimePitchTrackingEnabled(bool shouldEnable) {
         pitchVoteActive = false;
         pitchVoteFramesRemaining = 0;
     }
+}
+
+RealTimePitchTracker::Algorithm MainComponent::getRealtimePitchTrackingAlgorithm() const {
+    return realtimePitchTrackingAlgorithm;
+}
+
+void MainComponent::setRealtimePitchTrackingAlgorithm(RealTimePitchTracker::Algorithm algorithm) {
+    if (algorithm == realtimePitchTrackingAlgorithm) {
+        return;
+    }
+
+    realtimePitchTrackingAlgorithm = algorithm;
+    auto newTracker = std::make_unique<RealTimePitchTracker>(realtimePitchTrackingAlgorithm);
+    newTracker->setTraceListener(*this);
+
+    if (processor != nullptr) {
+        newTracker->setSampleRate(roundToInt(processor->getCurrentSampleRate()));
+        processor->setPitchTracker(newTracker.get());
+    }
+
+    pitchTracker = std::move(newTracker);
+    pitchVoteActive = false;
+    pitchVoteFramesRemaining = 0;
 }
 
 void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>& area) {
@@ -264,7 +287,10 @@ void MainComponent::updateHistoryImage() {
 
     // Calculate periods per column relative to C4
     const int periodsPerColumn = jmax(1, roundToInt(c4Period / targetPeriod));
-    const int effectiveColumns = std::ceil(periods.size() / periodsPerColumn);
+    const int requestedColumns = jmax(
+        1,
+        roundToInt(std::ceil((double) periods.size() / (double) periodsPerColumn)));
+    const int effectiveColumns = jmin(kHistoryFrames, requestedColumns);
 
     // Shift history image left by effective columns
     auto oldCyclogram = cyclogram.createCopy();
@@ -321,8 +347,8 @@ void MainComponent::updateHistoryImage() {
     // Process each column
     for (int col = 0; col < effectiveColumns; ++col) {
         // Calculate range of periods to combine for this column
-        const int startPeriod = col * periodsPerColumn;
-        const int endPeriod   = std::min((col + 1) * periodsPerColumn, static_cast<int>(periods.size()));
+        const int startPeriod = (int) (((int64) col * (int64) periods.size()) / effectiveColumns);
+        const int endPeriod   = (int) (((int64) (col + 1) * (int64) periods.size()) / effectiveColumns);
 
         // Combine multiple periods if needed
         workBuffer.zero();
@@ -491,7 +517,7 @@ void MainComponent::showTemperamentDialog() {
     dialog->setResizable(false, false);
 
     temperamentControls->setSize(520, 180);
-    dialog->setContentOwned(temperamentControls.get(), false);
+    dialog->setContentNonOwned(temperamentControls.get(), false);
     dialog->centreAroundComponent(this, 520, 180);
     dialog->setVisible(true);
     dialog->toFront(true);

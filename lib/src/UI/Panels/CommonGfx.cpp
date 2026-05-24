@@ -80,7 +80,7 @@ void CommonGfx::drawBackground(const Rectangle<int>& bounds, bool fillBackground
 
         if (!xMinor.empty()) {
             float left = jmax(xMinor.front(), panel->invertScaleX(0));
-            float right = jmin(xMinor.back(), panel->invertScaleX(panel->comp->getWidth()));
+            float right = jmin(xMinor.back(), panel->invertScaleX(panel->getWidth()));
 
             leftMinorIdx = jmax(0, Arithmetic::binarySearch(left, xMinor));
             rightMinorIdx = jmin(xMinor.size() - 1, Arithmetic::binarySearch(right, xMinor));

@@ -58,12 +58,17 @@ void OpenGLPanel::openGLContextClosing() {
     noteContextClosing();
     info(panel->getName() << " context closing, clearing textures\n");
 
+    if (panelRenderer != nullptr) {
+        panelRenderer->clearResources();
+    }
+
     printErrors(repo, "contextClosing");
 }
 
 void OpenGLPanel::renderOpenGL() {
     noteRender();
-    panel->render();
+    clear();
+    panel->render(panel->createComponentHostContext(context.getRenderingScale()));
     printErrors(repo, "render");
 }
 

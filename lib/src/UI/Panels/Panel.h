@@ -4,6 +4,7 @@
 #include <vector>
 #include "PanelRenderer.h"
 #include "PanelDirtyState.h"
+#include "PanelHostContext.h"
 #include "PanelRenderContext.h"
 #include "ZoomPanel.h"
 #include "JuceHeader.h"
@@ -56,11 +57,13 @@ public:
     void drawViewableVerts();
     void highlightSelectedVerts();
     void render();
+    void render(const PanelHostContext& context);
     void setCursor();
     void triggerZoom(bool in);
     void updateNameTexturePos();
     void updateVertexSizes();
     PanelRenderContext createRenderContext() const;
+    PanelHostContext createComponentHostContext(float scaleFactor = 1.f) const;
 
     void applyScale         (BufferXY& buff);
     void applyScaleX        (Buffer<float> array);
@@ -90,17 +93,20 @@ public:
     float invScaleXNoDisp(int x) const;
     float invScaleYNoDisp(int y) const;
 
-    void clear()                            { renderHelper->clear();        }
-    void deactivateContext()                { renderHelper->deactivate();   }
-    void activateContext()                  { renderHelper->activate();     }
-    void repaint()                          { if (comp != nullptr) comp->repaint(); }
+    void clear();
+    void deactivateContext();
+    void activateContext();
+    void repaint();
+    void requestRepaint(PanelDirtyState::Flag flag = PanelDirtyState::Flag::Full);
 
-    bool isVisible() const                  { return comp != nullptr && comp->isVisible(); }
     int getNumCornersOverlapped() const     { return numCornersOverlapped;  }
     int getPanelId() const                  { return panelId;               }
-    int getWidth() const                    { return comp != nullptr ? comp->getWidth() : 0; }
-    int getHeight() const                   { return comp != nullptr ? comp->getHeight() : 0; }
-    Rectangle<int> getBounds()              { return comp != nullptr ? comp->getBounds() : Rectangle<int>(); }
+    bool isVisible() const;
+    int getWidth() const;
+    int getHeight() const;
+    Rectangle<int> getBounds() const;
+    Rectangle<int> getLocalBounds() const;
+    bool isMouseOver() const;
 
     Ref<Interactor> getInteractor()         { return interactor;            }
     const String& getName() override        { return panelName;             }
@@ -108,6 +114,9 @@ public:
     bool isSpeedApplicable() const          { return speedApplicable;       }
 
     void setGraphicsHelper(CommonGfx* gfx);
+    void setHostContext(const PanelHostContext& context);
+    void setHostCallbacks(const PanelHostCallbacks& callbacks);
+    void setPanelMouseCursor(const MouseCursor& cursor);
     void setPanelRenderer(PanelRenderer* renderer) { panelRenderer = renderer; }
     void setRenderHelper(Renderer* util)    { renderHelper = util;          }
     void setSpeedApplicable(bool is)        { speedApplicable = is;         }
@@ -240,6 +249,10 @@ protected:
     Ref<PanelRenderer> panelRenderer;
     Ref<Renderer>   renderHelper;
     std::unique_ptr<CommonGfx> gfx;
+
+    PanelHostContext hostContext;
+    PanelHostCallbacks hostCallbacks;
+    bool hasExplicitHostContext = false;
 
     Buffer<float> vertMajorLines, vertMinorLines, horzMajorLines, horzMinorLines;
     ScopedAlloc<float> xBuffer, yBuffer, cBuffer, stripRamp, spliceBuffer, bgLinesMemory;
