@@ -32,6 +32,11 @@ void OscAudioProcessor::setTargetFrequency(float freq) {
     targetPeriod    = sampleRate / freq;
 }
 
+void OscAudioProcessor::setPitchTracker(RealTimePitchTracker* tracker) {
+    const SpinLock::ScopedLockType lock(pitchTrackerLock);
+    pitchTracker = tracker;
+}
+
 std::vector<Buffer<Float32>> OscAudioProcessor::getAudioPeriods() const {
     const SpinLock::ScopedLockType lock(bufferLock);
 
@@ -43,7 +48,10 @@ void OscAudioProcessor::audioDeviceAboutToStart(AudioIODevice* device) {
     sampleRateHz = device->getCurrentSampleRate();
     auto freq = device->getCurrentSampleRate() / targetPeriod;
     setTargetFrequency(freq);
-    pitchTracker->setSampleRate(device->getCurrentSampleRate());
+    const SpinLock::ScopedLockType lock(pitchTrackerLock);
+    if (pitchTracker != nullptr) {
+        pitchTracker->setSampleRate(device->getCurrentSampleRate());
+    }
 }
 
 // called from UI thread
@@ -70,7 +78,12 @@ void OscAudioProcessor::audioDeviceIOCallbackWithContext(
     Buffer<float> currentSamples = workBuffer.section(0, numSamples);
     input.copyTo(currentSamples);
 
-    pitchTracker->write(currentSamples);
+    {
+        const SpinLock::ScopedLockType lock(pitchTrackerLock);
+        if (pitchTracker != nullptr) {
+            pitchTracker->write(currentSamples);
+        }
+    }
     currentSamples.mul(2.0f).tanh();
 
     detectOnsets(currentSamples);

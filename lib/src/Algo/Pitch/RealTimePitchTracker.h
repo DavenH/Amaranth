@@ -12,7 +12,7 @@ using std::vector;
 
 class RealTimePitchTracker {
 public:
-    enum Algorithm { AlgoSpectral, AlgoCycleDiff };
+    enum Algorithm { AlgoSpectral, AlgoCycleDiff, AlgoYin, AlgoSwipe };
 
     explicit RealTimePitchTracker(Algorithm algo = AlgoSpectral);
     explicit RealTimePitchTracker(const PitchTrackingRequest& request, Algorithm algo = AlgoSpectral);
@@ -22,11 +22,14 @@ public:
     int update();
     void setTraceListener(RealTimePitchTraceListener& listener);
     void useDefaultTraceListener();
+    Algorithm getAlgorithm() const { return algorithm; }
 
 private:
     int updateSpectral();
     int updatePeriodic();
+    int updateSampleTracker(int pitchTrackerAlgorithm);
     void precomputePeriods(double frequencyOfA4, int samplerate);
+    PitchTrackingRequest createSampleTrackingRequest() const;
 
     Algorithm algorithm;
     PitchTrackingRequest request{};
@@ -40,6 +43,7 @@ private:
     ScopedAlloc<float> correlations;
 
     ScopedAlloc<float> rawBlock;
+    ScopedAlloc<float> analysisBlock;
     ScopedAlloc<float> periodScores;
     ScopedAlloc<float> cycleDiffScratch;
     vector<int>        tauTable;

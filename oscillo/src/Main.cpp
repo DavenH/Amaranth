@@ -47,7 +47,11 @@ public:
         enum MenuItemIds {
             kMenuTemperamentSettings = 1,
             kMenuRealtimePitchTracking = 2,
-            kMenuQuit = 3
+            kMenuRealtimePitchSpectral = 3,
+            kMenuRealtimePitchCycleDiff = 4,
+            kMenuRealtimePitchYin = 5,
+            kMenuRealtimePitchSwipe = 6,
+            kMenuQuit = 7
         };
 
         class MainMenuModel : public MenuBarModel {
@@ -65,6 +69,18 @@ public:
                 if (auto* content = dynamic_cast<MainComponent*>(window.getContentComponent())) {
                     menu.addItem(kMenuRealtimePitchTracking, "Real-time Pitch Tracking", true,
                         content->isRealtimePitchTrackingEnabled());
+
+                    PopupMenu pitchMenu;
+                    const auto algorithm = content->getRealtimePitchTrackingAlgorithm();
+                    pitchMenu.addItem(kMenuRealtimePitchSpectral, "Spectral", true,
+                        algorithm == RealTimePitchTracker::AlgoSpectral);
+                    pitchMenu.addItem(kMenuRealtimePitchCycleDiff, "Cycle Diff", true,
+                        algorithm == RealTimePitchTracker::AlgoCycleDiff);
+                    pitchMenu.addItem(kMenuRealtimePitchYin, "Yin", true,
+                        algorithm == RealTimePitchTracker::AlgoYin);
+                    pitchMenu.addItem(kMenuRealtimePitchSwipe, "Swipe", true,
+                        algorithm == RealTimePitchTracker::AlgoSwipe);
+                    menu.addSubMenu("Pitch Tracking Algorithm", pitchMenu, true);
                 }
                 menu.addSeparator();
                 menu.addItem(kMenuQuit, "Quit");
@@ -82,6 +98,21 @@ public:
                 if (menuItemID == kMenuRealtimePitchTracking) {
                     if (auto* content = dynamic_cast<MainComponent*>(window.getContentComponent())) {
                         content->setRealtimePitchTrackingEnabled(!content->isRealtimePitchTrackingEnabled());
+                        menuItemsChanged();
+                    }
+                    return;
+                }
+
+                if (menuItemID >= kMenuRealtimePitchSpectral && menuItemID <= kMenuRealtimePitchSwipe) {
+                    if (auto* content = dynamic_cast<MainComponent*>(window.getContentComponent())) {
+                        const RealTimePitchTracker::Algorithm algorithms[] = {
+                            RealTimePitchTracker::AlgoSpectral,
+                            RealTimePitchTracker::AlgoCycleDiff,
+                            RealTimePitchTracker::AlgoYin,
+                            RealTimePitchTracker::AlgoSwipe
+                        };
+                        content->setRealtimePitchTrackingAlgorithm(
+                            algorithms[menuItemID - kMenuRealtimePitchSpectral]);
                         menuItemsChanged();
                     }
                     return;

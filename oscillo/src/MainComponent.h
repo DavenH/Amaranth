@@ -54,6 +54,8 @@ public:
     void stepRootNote(int delta);
     bool isRealtimePitchTrackingEnabled() const { return realtimePitchTrackingEnabled; }
     void setRealtimePitchTrackingEnabled(bool shouldEnable);
+    RealTimePitchTracker::Algorithm getRealtimePitchTrackingAlgorithm() const;
+    void setRealtimePitchTrackingAlgorithm(RealTimePitchTracker::Algorithm algorithm);
 
     void resized() override;
     void timerCallback() override;
@@ -107,6 +109,7 @@ private:
     MidiKeyboardState keyboardState;
     bool needsPhaseVelocityInit = true;
     bool realtimePitchTrackingEnabled = true;
+    RealTimePitchTracker::Algorithm realtimePitchTrackingAlgorithm = RealTimePitchTracker::AlgoSpectral;
 
     std::unique_ptr<OscAudioProcessor> processor;
     std::unique_ptr<HighlightKeyboard> keyboard;
