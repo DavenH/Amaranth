@@ -940,6 +940,8 @@ void NodeCanvas::drawEdges(Graphics& g) {
 
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
+    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
+    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -960,8 +962,13 @@ void NodeCanvas::drawEdges(Graphics& g) {
         auto source = getPortLocation(*sourceNode, *sourcePort).centre;
         auto dest = getPortLocation(*destNode, *destPort).centre;
         Path cable = createCablePath(source, dest, sourcePort->side, destPort->side, edge.attachment);
+        const Rectangle<float> cableBounds = cable.getBounds();
 
-        if (!cable.getBounds().intersects(visibleArea)) {
+        if (!cableBounds.intersects(visibleArea)) {
+            continue;
+        }
+
+        if (hasExpandedEditor && cableBounds.intersects(expandedPanel)) {
             continue;
         }
 
@@ -1037,6 +1044,11 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
     const PortSide sourceSide = connectingPort.input ? PortSide::Right : port->side;
     const PortSide destSide = connectingPort.input ? port->side : PortSide::Left;
     const Path cable = createCablePath(source, dest, sourceSide, destSide, false);
+
+    if (expandedNodeId.isNotEmpty() && cable.getBounds().intersects(expandedEditorBounds(getLocalBounds().toFloat()))) {
+        return;
+    }
+
     const Colour colour = colourForDomain(port->domain);
     const float cableScale = cableScaleForZoom(zoom);
 
