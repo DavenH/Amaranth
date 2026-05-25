@@ -212,8 +212,8 @@ Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, flo
 
 Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
     const Rectangle<float> available = componentBounds.reduced(28.f);
-    const float width = jmin(available.getWidth(), jmax(420.f, available.getWidth() * 0.80f));
-    const float height = jmin(available.getHeight(), jmax(300.f, available.getHeight() * 0.80f));
+    const float width = jmin(available.getWidth(), jmax(420.f, available.getWidth() * 0.86f));
+    const float height = jmin(available.getHeight(), jmax(300.f, available.getHeight() * 0.84f));
     return Rectangle<float>(width, height).withCentre(available.getCentre());
 }
 
@@ -224,7 +224,7 @@ Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {
 Rectangle<float> expandedEditorContentBounds(Rectangle<float> componentBounds) {
     Rectangle<float> panel = expandedEditorBounds(componentBounds);
     panel.removeFromTop(44.f);
-    return panel.reduced(18.f, 16.f);
+    return panel.reduced(10.f, 10.f);
 }
 
 String voiceDomainForNode(const Node& node) {

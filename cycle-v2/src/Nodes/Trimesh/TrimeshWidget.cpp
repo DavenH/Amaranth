@@ -11,6 +11,14 @@ namespace {
 
 const Colour kText      { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
+constexpr float kExpandedPanelGap      = 8.f;
+constexpr float kExpandedTopRowRatio   = 0.54f;
+constexpr float kExpandedGridRatio     = 0.62f;
+constexpr float kPanelHeaderHeight     = 18.f;
+constexpr float kPanelContentInsetX    = 8.f;
+constexpr float kPanelContentInsetY    = 22.f;
+constexpr float kMorphPanelInsetX      = 10.f;
+constexpr float kMorphPanelInsetY      = 24.f;
 
 }
 
@@ -54,12 +62,11 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
     TrimeshNodeModel& model = bridge.getModel();
 
-    const float gap = 14.f;
-    auto topRow = content.removeFromTop(content.getHeight() * 0.62f);
-    content.removeFromTop(gap);
+    auto topRow = content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
+    content.removeFromTop(kExpandedPanelGap);
 
-    auto gridPanel = topRow.removeFromLeft(topRow.getWidth() * 0.60f);
-    topRow.removeFromLeft(gap);
+    auto gridPanel = topRow.removeFromLeft(topRow.getWidth() * kExpandedGridRatio);
+    topRow.removeFromLeft(kExpandedPanelGap);
     auto sidePanel = topRow;
     auto waveshapePanel = content;
 
@@ -68,10 +75,10 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     drawPanelFrame(g, waveshapePanel, "2D waveshape", false);
 
     if (bridge.getPanel3DHostComponentIfCreated() == nullptr) {
-        drawMeshHeatmap(g, gridPanel.reduced(12.f, 26.f), renderData, true);
+        drawMeshHeatmap(g, gridPanel.reduced(kPanelContentInsetX, kPanelContentInsetY), renderData, true);
     }
 
-    const auto waveshapeContent = waveshapePanel.reduced(14.f, 28.f);
+    const auto waveshapeContent = waveshapePanel.reduced(kPanelContentInsetX, kPanelContentInsetY);
     if (bridge.getPanel2DHostComponentIfCreated() == nullptr) {
         drawEditorGrid(g, waveshapeContent);
         drawTraceFill(g, waveshapeContent.reduced(8.f), renderData.slice);
@@ -81,7 +88,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     const auto selectedParameters = model.getSelectedVertexParameters();
     drawVertexMarkers(g, waveshapeContent.reduced(8.f), model.getVertexMarkers());
 
-    Rectangle<float> morphArea = sidePanel.reduced(14.f, 30.f);
+    Rectangle<float> morphArea = sidePanel.reduced(kMorphPanelInsetX, kMorphPanelInsetY);
     const std::array<std::pair<String, Colour>, 3> axes {
             std::make_pair(String("Yellow"), Colour(0xffe0c247)),
             std::make_pair(String("Red"), Colour(0xffd65a5a)),
@@ -92,11 +99,11 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
             model.getMorphPosition().red.getCurrentValue(),
             model.getMorphPosition().blue.getCurrentValue()
     };
-    drawMorphCubePreview(g, morphArea.removeFromRight(jmin(96.f, morphArea.getWidth() * 0.34f)).removeFromTop(96.f), values);
+    drawMorphCubePreview(g, morphArea.removeFromRight(jmin(104.f, morphArea.getWidth() * 0.36f)).removeFromTop(104.f), values);
 
     for (int i = 0; i < (int) axes.size(); ++i) {
         auto row = morphArea.removeFromTop(34.f);
-        const Rectangle<float> rail = morphRailBounds(sidePanel.reduced(14.f, 30.f), i);
+        const Rectangle<float> rail = morphRailBounds(sidePanel.reduced(kMorphPanelInsetX, kMorphPanelInsetY), i);
 
         g.setColour(kText);
         g.setFont(FontOptions(11.f, Font::bold));
@@ -118,7 +125,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     g.drawText("View Axis", axisRow.removeFromTop(16.f), Justification::centredLeft);
 
     for (int i = 0; i < (int) axes.size(); ++i) {
-        const Rectangle<float> button = primaryAxisBounds(sidePanel.reduced(14.f, 30.f), i);
+        const Rectangle<float> button = primaryAxisBounds(sidePanel.reduced(kMorphPanelInsetX, kMorphPanelInsetY), i);
         const bool active = model.getPrimaryViewAxis() == (i == 0 ? Vertex::Time : (i == 1 ? Vertex::Red : Vertex::Blue));
         const Colour axisColour = axes[(size_t) i].second;
 
@@ -132,6 +139,23 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     }
 
     morphArea.removeFromTop(6.f);
+    auto linkRow = morphArea.removeFromTop(28.f);
+    g.setColour(kMutedText);
+    g.setFont(FontOptions(9.5f, Font::bold));
+    g.drawText("Link", linkRow.removeFromLeft(44.f), Justification::centredLeft);
+
+    for (int i = 0; i < (int) axes.size(); ++i) {
+        const Colour axisColour = axes[(size_t) i].second;
+        const Rectangle<float> swatch(13.f, 13.f);
+        const Point<float> centre(linkRow.getX() + 12.f + (float) i * 24.f, linkRow.getCentreY());
+
+        g.setColour(axisColour.withAlpha(i == 0 ? 0.42f : 0.18f));
+        g.fillRoundedRectangle(swatch.withCentre(centre), 2.f);
+        g.setColour(axisColour.withAlpha(i == 0 ? 0.92f : 0.48f));
+        g.drawRoundedRectangle(swatch.withCentre(centre), 2.f, 1.f);
+    }
+
+    morphArea.removeFromTop(3.f);
     drawVertexParameters(g, morphArea, selectedParameters);
 }
 
@@ -331,9 +355,9 @@ void TrimeshWidget::drawPanelFrame(
         g.setColour(Colour(0xff0e1318));
         g.fillRoundedRectangle(area, 6.f);
         g.setColour(Colour(0xff151a20).withAlpha(0.78f));
-        g.fillRect(area.withTrimmedTop(22.f));
+        g.fillRect(area.withTrimmedTop(kPanelHeaderHeight));
     } else {
-        Rectangle<float> header = area.removeFromTop(22.f);
+        Rectangle<float> header = area.removeFromTop(kPanelHeaderHeight);
         g.setColour(Colour(0xff0e1318));
         g.fillRoundedRectangle(header, 6.f);
         g.fillRect(header.withTrimmedTop(jmax(0.f, header.getHeight() - 6.f)));
@@ -342,8 +366,8 @@ void TrimeshWidget::drawPanelFrame(
     g.setColour(Colour(0xff26313d));
     g.drawRoundedRectangle(fullArea, 6.f, 1.f);
     g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f, Font::bold));
-    g.drawText(title, fullArea.reduced(10.f, 6.f).removeFromTop(15.f), Justification::centredLeft);
+    g.setFont(FontOptions(9.8f, Font::bold));
+    g.drawText(title, fullArea.reduced(9.f, 4.f).removeFromTop(14.f), Justification::centredLeft);
 }
 
 void TrimeshWidget::drawMeshHeatmap(
@@ -514,8 +538,12 @@ void TrimeshWidget::drawMorphCubePreview(
         return;
     }
 
+    area = area.reduced(3.f);
+    g.setColour(Colour(0xff05070a).withAlpha(0.42f));
+    g.fillRoundedRectangle(area, 4.f);
+
     const Point<float> centre = area.getCentre();
-    const float size = jmin(area.getWidth(), area.getHeight()) * 0.34f;
+    const float size = jmin(area.getWidth(), area.getHeight()) * 0.30f;
     const Point<float> top(centre.x, centre.y - size * 0.86f);
     const Point<float> left(centre.x - size, centre.y - size * 0.28f);
     const Point<float> right(centre.x + size, centre.y - size * 0.28f);
@@ -543,13 +571,13 @@ void TrimeshWidget::drawMorphCubePreview(
     lowerFace.lineTo(centre.x - size * 0.12f, centre.y + size * 0.08f);
     lowerFace.closeSubPath();
 
-    g.setColour(Colour(0xff7e8794).withAlpha(0.18f));
+    g.setColour(Colour(0xff7e8794).withAlpha(0.16f));
     g.fillPath(leftFace);
-    g.setColour(Colour(0xffd8e0ea).withAlpha(0.13f));
+    g.setColour(Colour(0xffd8e0ea).withAlpha(0.11f));
     g.fillPath(rightFace);
-    g.setColour(Colour(0xff42505f).withAlpha(0.18f));
+    g.setColour(Colour(0xff42505f).withAlpha(0.15f));
     g.fillPath(lowerFace);
-    g.setColour(Colour(0xffbac5d0).withAlpha(0.30f));
+    g.setColour(Colour(0xffbac5d0).withAlpha(0.26f));
     g.strokePath(leftFace, PathStrokeType(1.f));
     g.strokePath(rightFace, PathStrokeType(1.f));
     g.strokePath(lowerFace, PathStrokeType(1.f));
@@ -564,12 +592,20 @@ void TrimeshWidget::drawMorphCubePreview(
             (jlimit(0.f, 1.f, values[1]) - 0.5f) * size * 0.72f,
             -(jlimit(0.f, 1.f, values[1]) - 0.5f) * size * 0.34f);
 
-    g.setColour(Colour(0xffe0c247).withAlpha(0.64f));
+    g.setColour(Colour(0xffe0c247).withAlpha(0.68f));
     g.drawLine(yellowAxis.x, yellowAxis.y, redAxis.x, redAxis.y, 1.4f);
-    g.setColour(Colour(0xffd65a5a).withAlpha(0.64f));
+    g.setColour(Colour(0xffd65a5a).withAlpha(0.68f));
     g.drawLine(left.x, left.y, right.x, right.y, 1.2f);
-    g.setColour(Colour(0xff5f91e8).withAlpha(0.66f));
+    g.setColour(Colour(0xff5f91e8).withAlpha(0.70f));
     g.drawLine(centre.x, back.y, centre.x, top.y, 1.2f);
+
+    g.setColour(Colour(0xffe0c247).withAlpha(0.38f));
+    g.fillEllipse(Rectangle<float>(4.f, 4.f).withCentre(yellowAxis));
+    g.setColour(Colour(0xffd65a5a).withAlpha(0.38f));
+    g.fillEllipse(Rectangle<float>(4.f, 4.f).withCentre(right));
+    g.setColour(Colour(0xff5f91e8).withAlpha(0.38f));
+    g.fillEllipse(Rectangle<float>(4.f, 4.f).withCentre(top));
+
     g.setColour(Colour(0xffffd13d).withAlpha(0.94f));
     g.fillEllipse(Rectangle<float>(7.f, 7.f).withCentre(lifted));
     g.setColour(Colour(0xff05070a).withAlpha(0.72f));
@@ -584,6 +620,7 @@ void TrimeshWidget::drawVertexParameters(
         return;
     }
 
+    area = area.withHeight(jmin(area.getHeight(), 140.f));
     g.setColour(Colour(0xff0a0f13).withAlpha(0.58f));
     g.fillRoundedRectangle(area, 5.f);
     g.setColour(kText);
@@ -619,14 +656,13 @@ void TrimeshWidget::drawVertexParameters(
 }
 
 Rectangle<float> TrimeshWidget::morphPanelBounds(Rectangle<float> content) {
-    constexpr float gap = 14.f;
-    auto topRow = content.removeFromTop(content.getHeight() * 0.62f);
-    content.removeFromTop(gap);
+    auto topRow = content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
+    content.removeFromTop(kExpandedPanelGap);
 
     ignoreUnused(content);
-    topRow.removeFromLeft(topRow.getWidth() * 0.60f);
-    topRow.removeFromLeft(gap);
-    return topRow.reduced(14.f, 30.f);
+    topRow.removeFromLeft(topRow.getWidth() * kExpandedGridRatio);
+    topRow.removeFromLeft(kExpandedPanelGap);
+    return topRow.reduced(kMorphPanelInsetX, kMorphPanelInsetY);
 }
 
 Rectangle<float> TrimeshWidget::morphRailBounds(Rectangle<float> morphArea, int axisIndex) {
@@ -687,23 +723,21 @@ String TrimeshWidget::vertexParameterId(int parameterIndex) {
 }
 
 Rectangle<float> TrimeshWidget::waveshapeContentBounds(Rectangle<float> content) {
-    constexpr float gap = 14.f;
-    content.removeFromTop(content.getHeight() * 0.62f);
-    content.removeFromTop(gap);
-    return content.reduced(14.f, 28.f);
+    content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
+    content.removeFromTop(kExpandedPanelGap);
+    return content.reduced(kPanelContentInsetX, kPanelContentInsetY);
 }
 
 Rectangle<float> TrimeshWidget::expandedGridPanelContentBounds(Rectangle<float> content) {
-    auto topRow = content.removeFromTop(content.getHeight() * 0.62f);
-    auto gridPanel = topRow.removeFromLeft(topRow.getWidth() * 0.60f);
-    return gridPanel.reduced(12.f, 26.f);
+    auto topRow = content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
+    auto gridPanel = topRow.removeFromLeft(topRow.getWidth() * kExpandedGridRatio);
+    return gridPanel.reduced(kPanelContentInsetX, kPanelContentInsetY);
 }
 
 Rectangle<float> TrimeshWidget::expandedWavePanelContentBounds(Rectangle<float> content) {
-    const float gap = 14.f;
-    content.removeFromTop(content.getHeight() * 0.62f);
-    content.removeFromTop(gap);
-    return content.reduced(14.f, 28.f);
+    content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
+    content.removeFromTop(kExpandedPanelGap);
+    return content.reduced(kPanelContentInsetX, kPanelContentInsetY);
 }
 
 Image TrimeshWidget::createHeatmapImage(const TrimeshRenderData& renderData) const {
