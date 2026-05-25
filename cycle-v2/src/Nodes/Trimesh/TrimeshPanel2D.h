@@ -8,6 +8,8 @@ class TrimeshPanel2D : public Panel2D {
 public:
     explicit TrimeshPanel2D(SingletonRepo* repo);
 
+    void drawInterceptsAndHighlightClosest() override {}
+    void drawViewableVerts() override {}
     void panelResized() override;
 };
 

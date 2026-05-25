@@ -490,16 +490,18 @@ void TrimeshWidget::drawVertexMarkers(
         Rectangle<float> area,
         const std::vector<TrimeshVertexMarker>& markers) {
     for (const auto& marker : markers) {
+        if (!marker.selected) {
+            continue;
+        }
+
         const Point<float> centre(
                 area.getX() + area.getWidth() * jlimit(0.f, 1.f, marker.phase),
                 area.getBottom() - area.getHeight() * jlimit(0.f, 1.f, marker.amp));
-        const float radius = marker.selected ? 5.5f : 3.2f;
+        const float radius = 5.5f;
 
-        g.setColour(marker.selected
-                ? Colour(0xffffd13d).withAlpha(0.92f)
-                : Colour(0xfff3f7ff).withAlpha(0.76f));
+        g.setColour(Colour(0xffd84a4a).withAlpha(0.92f));
         g.fillEllipse(Rectangle<float>(radius * 2.f, radius * 2.f).withCentre(centre));
-        g.setColour(Colour(0xff05070a).withAlpha(marker.selected ? 0.86f : 0.66f));
+        g.setColour(Colour(0xff05070a).withAlpha(0.86f));
         g.drawEllipse(Rectangle<float>((radius + 2.f) * 2.f, (radius + 2.f) * 2.f).withCentre(centre), 1.4f);
     }
 }

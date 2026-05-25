@@ -54,8 +54,8 @@ public:
     void drawPencilPath();
     void drawScaledInterceptPoints(int size);
     void drawSelectionRectangle();
-    void drawViewableVerts();
-    void highlightSelectedVerts();
+    virtual void drawViewableVerts();
+    virtual void highlightSelectedVerts();
     void render();
     void render(const PanelHostContext& context);
     void setCursor();

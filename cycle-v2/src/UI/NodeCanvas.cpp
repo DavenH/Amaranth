@@ -2644,6 +2644,7 @@ bool NodeCanvas::setTrimeshPrimaryAxis(Point<float> screenPosition) {
     selectedNodeId = node->id;
     selectedEdgeIndex = -1;
     editStatusMessage = "Primary view axis: " + axisValue;
+    repaint();
     return true;
 }
 
@@ -2704,6 +2705,7 @@ bool NodeCanvas::updateTrimeshMorphEdit(Point<float> screenPosition) {
             String(value, 3));
     refreshCompiledState();
     editStatusMessage = "Morph " + label + " = " + String(value, 2);
+    repaint();
     return true;
 }
 

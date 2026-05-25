@@ -84,17 +84,30 @@ void TrimeshPanelBridge::syncFromNode(
         const Node& node,
         int rows,
         int columns) {
+    const uint64_t previousRevision = model.getRevision();
+    const int previousPrimaryAxis = model.getPrimaryViewAxis();
+    const MorphPosition previousMorph = model.getMorphPosition();
+
     model.syncFromNode(node);
     morphPositioner.setPosition(model.getMorphPosition(), model.getPrimaryViewAxis());
 
-    if (lastSyncedRevision == model.getRevision()
+    const bool modelChanged = previousRevision != model.getRevision();
+    const bool primaryAxisChanged = previousPrimaryAxis != model.getPrimaryViewAxis();
+    const MorphPosition& nextMorph = model.getMorphPosition();
+    const bool morphChanged =
+            previousMorph.time.getTargetValue() != nextMorph.time.getTargetValue()
+            || previousMorph.red.getTargetValue() != nextMorph.red.getTargetValue()
+            || previousMorph.blue.getTargetValue() != nextMorph.blue.getTargetValue();
+
+    if (!modelChanged
+            && lastSyncedRevision == model.getRevision()
             && lastRows == rows
             && lastColumns == columns) {
         return;
     }
 
     dataSource.rebuild(model, rows, columns);
-    updateRasterizer(true, false);
+    updateRasterizer(true, morphChanged || primaryAxisChanged || lastRows != rows || lastColumns != columns);
     lastSyncedRevision = model.getRevision();
     lastRows = rows;
     lastColumns = columns;
@@ -166,6 +179,7 @@ void TrimeshPanelBridge::initialisePanel3DHost() {
     panel3DHost = std::make_unique<PanelHostComponent>(panel3D);
     panel3D.setSharedCanvasMode(true);
     panel3D.initWithExternalComponent(panel3DHost.get());
+    interactor3D.updateIntercepts();
     panel3DHostInitialised = true;
 }
 
