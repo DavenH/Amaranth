@@ -12,10 +12,12 @@
 #include <UI/IConsole.h>
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 
 class GLPanelRenderer;
 class CommonGL;
+struct Intercept;
 
 namespace CycleV2 {
 
@@ -35,10 +37,15 @@ public:
     Interactor2D& getInteractor2D() { return interactor2D; }
     Interactor3D& getInteractor3D() { return interactor3D; }
     TrimeshNodeModel& getModel() { return model; }
+    const std::vector<Intercept>& getRasterizerIntercepts() const { return rasterizer.getIntercepts(); }
     Component* getPanel3DHostComponent();
     Component* getPanel3DHostComponentIfCreated();
     Component* getPanel2DHostComponent();
     Component* getPanel2DHostComponentIfCreated();
+    void setPanelHostCallbacks(
+            std::function<void()> repaintCallback,
+            std::function<void(const MouseCursor&)> cursorCallback,
+            std::function<void(Point<float>)> hoverCallback);
     void initialiseSharedGlResources();
     void releaseSharedGlResources();
     void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
@@ -76,7 +83,9 @@ private:
     void updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry);
     void initialisePanel3DHost();
     void initialisePanel2DHost();
+    void updatePanelHostPeers();
     void renderPanel(Panel& panel, juce::Rectangle<float> bounds, float scaleFactor);
+    PanelHostCallbacks createPanelHostCallbacks();
 
     SingletonRepo repo;
     NullConsole console;
@@ -94,6 +103,9 @@ private:
     std::unique_ptr<GLPanelRenderer> panel3DRenderer;
     CommonGL* panel2DGfx {};
     CommonGL* panel3DGfx {};
+    std::function<void()> panelHostRepaintCallback;
+    std::function<void(const MouseCursor&)> panelHostCursorCallback;
+    std::function<void(Point<float>)> panelHostHoverCallback;
     uint64_t lastSyncedRevision { UINT64_MAX };
     int lastRows {};
     int lastColumns {};

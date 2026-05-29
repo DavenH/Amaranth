@@ -22,6 +22,9 @@ constexpr float kCableStrokeScale = 0.70f;
 constexpr float kPaletteWidth = 158.f;
 constexpr float kPaletteHeaderHeight = 21.f;
 constexpr float kPaletteRowHeight = 30.f;
+constexpr float kExpandedEditorScale = 0.90f;
+constexpr float kExpandedEditorMinMargin = 18.f;
+constexpr float kExpandedEditorHeaderHeight = 34.f;
 constexpr bool kUseGlCanvasUnderlay = true;
 constexpr bool kUseGlCanvasEdges = false;
 constexpr bool kUseGlNodeShells = false;
@@ -211,20 +214,20 @@ Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, flo
 }
 
 Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
-    const Rectangle<float> available = componentBounds.reduced(28.f);
-    const float width = jmin(available.getWidth(), jmax(420.f, available.getWidth() * 0.86f));
-    const float height = jmin(available.getHeight(), jmax(300.f, available.getHeight() * 0.84f));
+    const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
+    const float width = jmin(available.getWidth(), jmax(420.f, componentBounds.getWidth() * kExpandedEditorScale));
+    const float height = jmin(available.getHeight(), jmax(300.f, componentBounds.getHeight() * kExpandedEditorScale));
     return Rectangle<float>(width, height).withCentre(available.getCentre());
 }
 
 Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {
-    return Rectangle<float>(24.f, 24.f).withCentre({ panel.getRight() - 24.f, panel.getY() + 22.f });
+    return Rectangle<float>(22.f, 22.f).withCentre({ panel.getRight() - 22.f, panel.getY() + kExpandedEditorHeaderHeight * 0.5f });
 }
 
 Rectangle<float> expandedEditorContentBounds(Rectangle<float> componentBounds) {
     Rectangle<float> panel = expandedEditorBounds(componentBounds);
-    panel.removeFromTop(44.f);
-    return panel.reduced(10.f, 10.f);
+    panel.removeFromTop(kExpandedEditorHeaderHeight);
+    return panel.reduced(8.f, 8.f);
 }
 
 String voiceDomainForNode(const Node& node) {
@@ -415,6 +418,11 @@ NodeCanvas::~NodeCanvas() {
 void NodeCanvas::paint(Graphics& g) {
     const Node* expandedNode = findNode(expandedNodeId);
 
+    if (expandedNode != nullptr) {
+        g.saveState();
+        g.excludeClipRegion(expandedEditorBounds(getLocalBounds().toFloat()).toNearestInt().expanded(2));
+    }
+
     drawGrid(g);
     drawEdges(g);
     drawConnectionPreview(g);
@@ -425,7 +433,10 @@ void NodeCanvas::paint(Graphics& g) {
     drawHoverConsole(g);
 
     if (expandedNode != nullptr) {
-        drawExpandedEditor(g, *expandedNode);
+        g.restoreState();
+        if (expandedNode->kind != NodeKind::TrilinearMesh) {
+            drawExpandedEditor(g, *expandedNode);
+        }
     }
 }
 
@@ -436,6 +447,7 @@ void NodeCanvas::resized() {
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
     lastMousePosition = event.position;
+    setMouseCursor(MouseCursor::NormalCursor);
     repaint();
 }
 
@@ -451,10 +463,17 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     trimeshMorphUndoPushed = false;
     draggingTrimeshVertexParameter = false;
     trimeshVertexParameterUndoPushed = false;
+    expandedEditorDragCaptured = false;
 
     if (expandedNodeId.isNotEmpty()) {
         const auto panel = expandedEditorBounds(getLocalBounds().toFloat());
         const auto closeButton = expandedEditorCloseButton(panel);
+        const Node* expandedNode = findNode(expandedNodeId);
+
+        if (expandedNode != nullptr && expandedNode->kind == NodeKind::TrilinearMesh) {
+            repaint();
+            return;
+        }
 
         if (closeButton.contains(event.position)) {
             expandedNodeId = {};
@@ -462,25 +481,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
 
-        if (setTrimeshPrimaryAxis(event.position)) {
-            repaint();
-            return;
-        }
-
-        if (beginTrimeshMorphEdit(event.position)) {
-            repaint();
-            return;
-        }
-
-        if (beginTrimeshVertexParameterEdit(event.position)) {
-            repaint();
-            return;
-        }
-
-        if (selectTrimeshVertex(event.position)) {
-            repaint();
-            return;
-        }
+        expandedEditorDragCaptured = panel.contains(event.position);
 
         repaint();
         return;
@@ -593,10 +594,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
     lastMousePosition = event.position;
 
-    if (draggingTrimeshMorph) {
-        updateTrimeshMorphEdit(event.position);
-    } else if (draggingTrimeshVertexParameter) {
-        updateTrimeshVertexParameterEdit(event.position);
+    if (expandedEditorDragCaptured || expandedNodeId.isNotEmpty()) {
     } else if (connectingCable) {
         PortAddress hitPort;
         connectingPoint = findConnectablePortAt(event.position, connectingPort, hitPort)
@@ -629,6 +627,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
         nodeDragUndoPushed = false;
         endTrimeshMorphEdit();
         endTrimeshVertexParameterEdit();
+        expandedEditorDragCaptured = false;
         return;
     }
 
@@ -638,6 +637,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     nodeDragUndoPushed = false;
     endTrimeshMorphEdit();
     endTrimeshVertexParameterEdit();
+    expandedEditorDragCaptured = false;
 
     if (findConnectablePortAt(event.position, connectingPort, destPort)) {
         const String beforeEdit = GraphSerializer().toXmlString(graph);
@@ -658,7 +658,11 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
-    ignoreUnused(event);
+    if (expandedNodeId.isNotEmpty() && expandedEditorBounds(getLocalBounds().toFloat()).contains(event.position)) {
+        repaint();
+        return;
+    }
+
     constexpr float panScale = 720.f;
     pan += Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale);
     repaint();
@@ -905,32 +909,9 @@ void NodeCanvas::drawGlExpandedPanels() {
         return;
     }
 
-    Rectangle<float> panel = expandedEditorBounds(getLocalBounds().toFloat());
-    glRenderer.renderNodeShell(
-            panel,
-            44.f,
-            8.f,
-            Colour(0xff141a21),
-            Colour(0xff202833));
-
-    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
-    glRenderer.renderNodeShell(
-            TrimeshWidget::expandedGridPanelContentBounds(content),
-            1.f,
-            5.f,
-            Colour(0xff0e1318),
-            Colour(0xff0e1318));
-    glRenderer.renderNodeShell(
-            TrimeshWidget::expandedWavePanelContentBounds(content),
-            1.f,
-            5.f,
-            Colour(0xff0e1318),
-            Colour(0xff0e1318));
-
-    trimeshWidgetFor(expandedNode->id).renderExpandedPanelsOpenGL(
-            *expandedNode,
-            content,
-            (float) openGLContext.getRenderingScale());
+    if (trimeshExpandedEditor != nullptr && trimeshExpandedEditor->isVisible()) {
+        trimeshExpandedEditor->renderOpenGL((float) openGLContext.getRenderingScale());
+    }
 }
 
 void NodeCanvas::drawEdges(Graphics& g) {
@@ -1541,7 +1522,7 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.72f));
     g.drawRoundedRectangle(panel, 8.f, 1.5f);
 
-    auto header = panel.removeFromTop(44.f);
+    auto header = panel.removeFromTop(kExpandedEditorHeaderHeight);
     if (!isTrimeshEditor) {
         g.setColour(Colour(0xff202833));
         g.fillRoundedRectangle(header, 8.f);
@@ -1553,10 +1534,10 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     }
 
     g.setColour(kText);
-    g.setFont(FontOptions(15.f, Font::bold));
+    g.setFont(FontOptions(14.f, Font::bold));
     g.drawText(node.title, header.reduced(13.f, 4.f), Justification::centredLeft);
     g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f));
+    g.setFont(FontOptions(10.f));
     g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
 
     Rectangle<float> closeButton = expandedEditorCloseButton(outerPanel);
@@ -1565,12 +1546,12 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     g.setColour(Colour(0xff354050));
     g.drawEllipse(closeButton, 1.f);
     g.setColour(kText);
-    g.drawLine(closeButton.getX() + 8.f, closeButton.getY() + 8.f,
-               closeButton.getRight() - 8.f, closeButton.getBottom() - 8.f, 1.4f);
-    g.drawLine(closeButton.getRight() - 8.f, closeButton.getY() + 8.f,
-               closeButton.getX() + 8.f, closeButton.getBottom() - 8.f, 1.4f);
+    g.drawLine(closeButton.getX() + 7.f, closeButton.getY() + 7.f,
+               closeButton.getRight() - 7.f, closeButton.getBottom() - 7.f, 1.4f);
+    g.drawLine(closeButton.getRight() - 7.f, closeButton.getY() + 7.f,
+               closeButton.getX() + 7.f, closeButton.getBottom() - 7.f, 1.4f);
 
-    auto content = panel.reduced(18.f, 16.f);
+    auto content = isTrimeshEditor ? panel.reduced(10.f, 8.f) : panel.reduced(18.f, 16.f);
 
     if (isTrimeshEditor) {
         trimeshWidgetFor(node.id).paintExpanded(g, node, content);
@@ -1623,52 +1604,91 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
     hideExpandedEditorHostsExcept(shouldShowTrimesh ? node->id : String());
 
     if (!shouldShowTrimesh) {
+        if (trimeshExpandedEditor != nullptr) {
+            trimeshExpandedEditor->setVisible(false);
+        }
+        trimeshExpandedEditorNodeId = {};
         return;
     }
 
-    Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
     TrimeshWidget& widget = trimeshWidgetFor(node->id);
-    Component* component = widget.prepareExpandedPanel3DComponent(*node, content);
-    Component* waveComponent = widget.prepareExpandedPanel2DComponent(*node, content);
 
-    if (component == nullptr || waveComponent == nullptr) {
-        return;
+    if (trimeshExpandedEditor != nullptr && trimeshExpandedEditorNodeId != node->id) {
+        trimeshExpandedEditor->setVisible(false);
+        removeChildComponent(trimeshExpandedEditor.get());
+        trimeshExpandedEditor.reset();
     }
 
-    const Rectangle<int> bounds = TrimeshWidget::expandedGridPanelContentBounds(content).toNearestInt();
-    const Rectangle<int> waveBounds = TrimeshWidget::expandedWavePanelContentBounds(content).toNearestInt();
-    const bool needs3DBoundsRefresh = component->getBounds() != bounds;
-    const bool needs2DBoundsRefresh = waveComponent->getBounds() != waveBounds;
-
-    if (component->getParentComponent() != this) {
-        addAndMakeVisible(component);
+    if (trimeshExpandedEditor == nullptr) {
+        trimeshExpandedEditor = std::make_unique<TrimeshExpandedEditorComponent>(widget);
+        trimeshExpandedEditorNodeId = node->id;
+        auto safeThis = Component::SafePointer<NodeCanvas>(this);
+        TrimeshExpandedEditorComponent::Callbacks callbacks;
+        callbacks.close = [safeThis] {
+            if (safeThis != nullptr) {
+                safeThis->expandedNodeId = {};
+                safeThis->updateExpandedEditorHost(nullptr);
+                safeThis->repaint();
+            }
+        };
+        callbacks.repaintOpenGL = [safeThis] {
+            if (safeThis != nullptr) {
+                safeThis->openGLContext.triggerRepaint();
+            }
+        };
+        callbacks.setPrimaryAxis = [safeThis](const String& axisValue) {
+            if (safeThis != nullptr) {
+                safeThis->setTrimeshPrimaryAxisValue(axisValue);
+            }
+        };
+        callbacks.beginMorphEdit = [safeThis](const String& parameterId, float value) {
+            if (safeThis != nullptr) {
+                safeThis->beginTrimeshMorphEdit(parameterId, value);
+            }
+        };
+        callbacks.updateMorphEdit = [safeThis](float value) {
+            if (safeThis != nullptr) {
+                safeThis->updateTrimeshMorphEditValue(value);
+            }
+        };
+        callbacks.endMorphEdit = [safeThis] {
+            if (safeThis != nullptr) {
+                safeThis->endTrimeshMorphEdit();
+            }
+        };
+        callbacks.beginVertexParameterEdit = [safeThis](const String& parameterId, float value) {
+            if (safeThis != nullptr) {
+                safeThis->beginTrimeshVertexParameterEdit(parameterId, value);
+            }
+        };
+        callbacks.updateVertexParameterEdit = [safeThis](float value) {
+            if (safeThis != nullptr) {
+                safeThis->updateTrimeshVertexParameterEditValue(value);
+            }
+        };
+        callbacks.endVertexParameterEdit = [safeThis] {
+            if (safeThis != nullptr) {
+                safeThis->endTrimeshVertexParameterEdit();
+            }
+        };
+        callbacks.selectVertex = [safeThis](int vertexIndex) {
+            if (safeThis != nullptr) {
+                safeThis->selectTrimeshVertexIndex(vertexIndex);
+            }
+        };
+        trimeshExpandedEditor->setCallbacks(std::move(callbacks));
+        addAndMakeVisible(trimeshExpandedEditor.get());
     }
 
-    if (needs3DBoundsRefresh) {
-        component->setBounds(bounds);
+    const Rectangle<int> editorBounds = expandedEditorBounds(getLocalBounds().toFloat()).toNearestInt();
+
+    if (trimeshExpandedEditor->getBounds() != editorBounds) {
+        trimeshExpandedEditor->setBounds(editorBounds);
     }
 
-    if (!component->isVisible()) {
-        component->setVisible(true);
-    }
-
-    component->toFront(false);
-
-    if (waveComponent->getParentComponent() != this) {
-        addAndMakeVisible(waveComponent);
-    }
-
-    if (needs2DBoundsRefresh) {
-        waveComponent->setBounds(waveBounds);
-    }
-
-    if (!waveComponent->isVisible()) {
-        waveComponent->setVisible(true);
-    }
-
-    waveComponent->toFront(false);
-
-    ignoreUnused(needs3DBoundsRefresh, needs2DBoundsRefresh);
+    trimeshExpandedEditor->setNode(*node);
+    trimeshExpandedEditor->setVisible(true);
+    trimeshExpandedEditor->toFront(false);
 }
 
 void NodeCanvas::hideExpandedEditorHosts() {
@@ -2621,17 +2641,10 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
     return true;
 }
 
-bool NodeCanvas::setTrimeshPrimaryAxis(Point<float> screenPosition) {
+bool NodeCanvas::setTrimeshPrimaryAxisValue(const String& axisValue) {
     Node* node = findMutableNode(expandedNodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
-        return false;
-    }
-
-    String axisValue;
-    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
-
-    if (!trimeshWidgetFor(node->id).findPrimaryAxisAt(content, screenPosition, axisValue)) {
         return false;
     }
 
@@ -2660,18 +2673,10 @@ bool NodeCanvas::setTrimeshPrimaryAxis(Point<float> screenPosition) {
     return true;
 }
 
-bool NodeCanvas::beginTrimeshMorphEdit(Point<float> screenPosition) {
+bool NodeCanvas::beginTrimeshMorphEdit(const String& parameterId, float value) {
     Node* node = findMutableNode(expandedNodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
-        return false;
-    }
-
-    String parameterId;
-    float value {};
-    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
-
-    if (!trimeshWidgetFor(node->id).findMorphControlAt(content, screenPosition, parameterId, value)) {
         return false;
     }
 
@@ -2681,24 +2686,13 @@ bool NodeCanvas::beginTrimeshMorphEdit(Point<float> screenPosition) {
     activeTrimeshMorphParameterId = parameterId;
     draggingTrimeshMorph = true;
     trimeshMorphUndoPushed = false;
-    return updateTrimeshMorphEdit(screenPosition);
+    return updateTrimeshMorphEditValue(value);
 }
 
-bool NodeCanvas::updateTrimeshMorphEdit(Point<float> screenPosition) {
+bool NodeCanvas::updateTrimeshMorphEditValue(float value) {
     Node* node = findMutableNode(activeTrimeshMorphNodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh || activeTrimeshMorphParameterId.isEmpty()) {
-        return false;
-    }
-
-    float value {};
-    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
-
-    if (!trimeshWidgetFor(node->id).morphValueForParameterAt(
-            content,
-            activeTrimeshMorphParameterId,
-            screenPosition,
-            value)) {
         return false;
     }
 
@@ -2728,18 +2722,10 @@ void NodeCanvas::endTrimeshMorphEdit() {
     activeTrimeshMorphParameterId = {};
 }
 
-bool NodeCanvas::beginTrimeshVertexParameterEdit(Point<float> screenPosition) {
+bool NodeCanvas::beginTrimeshVertexParameterEdit(const String& parameterId, float value) {
     Node* node = findMutableNode(expandedNodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
-        return false;
-    }
-
-    String parameterId;
-    float value {};
-    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
-
-    if (!trimeshWidgetFor(node->id).findVertexParameterAt(content, screenPosition, parameterId, value)) {
         return false;
     }
 
@@ -2749,26 +2735,15 @@ bool NodeCanvas::beginTrimeshVertexParameterEdit(Point<float> screenPosition) {
     activeTrimeshVertexParameterId = parameterId;
     draggingTrimeshVertexParameter = true;
     trimeshVertexParameterUndoPushed = false;
-    return updateTrimeshVertexParameterEdit(screenPosition);
+    return updateTrimeshVertexParameterEditValue(value);
 }
 
-bool NodeCanvas::updateTrimeshVertexParameterEdit(Point<float> screenPosition) {
+bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
     Node* node = findMutableNode(activeTrimeshVertexNodeId);
 
     if (node == nullptr
             || node->kind != NodeKind::TrilinearMesh
             || activeTrimeshVertexParameterId.isEmpty()) {
-        return false;
-    }
-
-    float value {};
-    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
-
-    if (!trimeshWidgetFor(node->id).vertexParameterValueForParameterAt(
-            content,
-            activeTrimeshVertexParameterId,
-            screenPosition,
-            value)) {
         return false;
     }
 
@@ -2802,17 +2777,10 @@ void NodeCanvas::endTrimeshVertexParameterEdit() {
     activeTrimeshVertexParameterId = {};
 }
 
-bool NodeCanvas::selectTrimeshVertex(Point<float> screenPosition) {
+bool NodeCanvas::selectTrimeshVertexIndex(int vertexIndex) {
     Node* node = findMutableNode(expandedNodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
-        return false;
-    }
-
-    int vertexIndex {};
-    const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
-
-    if (!trimeshWidgetFor(node->id).findVertexSelectionAt(*node, content, screenPosition, vertexIndex)) {
         return false;
     }
 

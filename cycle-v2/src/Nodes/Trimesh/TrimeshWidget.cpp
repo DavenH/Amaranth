@@ -15,10 +15,16 @@ constexpr float kExpandedPanelGap      = 8.f;
 constexpr float kExpandedTopRowRatio   = 0.54f;
 constexpr float kExpandedGridRatio     = 0.62f;
 constexpr float kPanelHeaderHeight     = 18.f;
-constexpr float kPanelContentInsetX    = 8.f;
-constexpr float kPanelContentInsetY    = 22.f;
+constexpr float kPanelContentInsetX    = 6.f;
+constexpr float kPanelContentBottomPad = 2.f;
 constexpr float kMorphPanelInsetX      = 10.f;
 constexpr float kMorphPanelInsetY      = 24.f;
+
+Rectangle<float> panelBodyBounds(Rectangle<float> panel) {
+    panel.removeFromTop(kPanelHeaderHeight + 2.f);
+    panel.removeFromBottom(kPanelContentBottomPad);
+    return panel.reduced(kPanelContentInsetX, 0.f);
+}
 
 }
 
@@ -75,10 +81,10 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     drawPanelFrame(g, waveshapePanel, "2D waveshape", false);
 
     if (bridge.getPanel3DHostComponentIfCreated() == nullptr) {
-        drawMeshHeatmap(g, gridPanel.reduced(kPanelContentInsetX, kPanelContentInsetY), renderData, true);
+        drawMeshHeatmap(g, panelBodyBounds(gridPanel), renderData, true);
     }
 
-    const auto waveshapeContent = waveshapePanel.reduced(kPanelContentInsetX, kPanelContentInsetY);
+    const auto waveshapeContent = panelBodyBounds(waveshapePanel);
     if (bridge.getPanel2DHostComponentIfCreated() == nullptr) {
         drawEditorGrid(g, waveshapeContent);
         drawTraceFill(g, waveshapeContent.reduced(8.f), renderData.slice);
@@ -86,7 +92,8 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     }
 
     const auto selectedParameters = model.getSelectedVertexParameters();
-    drawVertexMarkers(g, waveshapeContent.reduced(8.f), model.getVertexMarkers());
+    const Rectangle<float> waveshapeOverlay = waveshapeContent.reduced(8.f);
+    drawVertexMarkers(g, waveshapeOverlay, model.getVertexMarkers());
 
     Rectangle<float> morphArea = sidePanel.reduced(kMorphPanelInsetX, kMorphPanelInsetY);
     const std::array<std::pair<String, Colour>, 3> axes {
@@ -192,6 +199,16 @@ Component* TrimeshWidget::getExpandedPanel2DComponentIfCreated() {
 
 void TrimeshWidget::releaseSharedGlResources() {
     bridge.releaseSharedGlResources();
+}
+
+void TrimeshWidget::setExpandedPanelCallbacks(
+        std::function<void()> repaintCallback,
+        std::function<void(const MouseCursor&)> cursorCallback,
+        std::function<void(Point<float>)> hoverCallback) {
+    bridge.setPanelHostCallbacks(
+            std::move(repaintCallback),
+            std::move(cursorCallback),
+            std::move(hoverCallback));
 }
 
 bool TrimeshWidget::findMorphControlAt(
@@ -325,6 +342,47 @@ bool TrimeshWidget::findVertexSelectionAt(
     const float amp = jlimit(0.f, 1.f, (waveshape.getBottom() - position.y) / waveshape.getHeight());
     vertexIndex = bridge.getModel().findNearestVertexIndexForPhaseAmp(phase, amp);
     return vertexIndex >= 0;
+}
+
+std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(Rectangle<float> content) const {
+    std::vector<TrimeshExpandedHitRegion> regions;
+    const Rectangle<float> morphArea = morphPanelBounds(content);
+    const std::array<String, 3> parameterIds {
+            String("yellow"),
+            String("red"),
+            String("blue")
+    };
+
+    for (int i = 0; i < (int) parameterIds.size(); ++i) {
+        regions.push_back({
+                TrimeshExpandedHitRegionKind::MorphControl,
+                morphRailBounds(morphArea, i).expanded(8.f, 12.f),
+                parameterIds[(size_t) i],
+                {}
+        });
+    }
+
+    for (int i = 0; i < 3; ++i) {
+        regions.push_back({
+                TrimeshExpandedHitRegionKind::PrimaryAxis,
+                primaryAxisBounds(morphArea, i).expanded(4.f),
+                {},
+                primaryAxisValue(i)
+        });
+    }
+
+    const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
+
+    for (int i = 0; i < 3; ++i) {
+        regions.push_back({
+                TrimeshExpandedHitRegionKind::VertexParameter,
+                vertexParameterRowBounds(parameterArea, i).expanded(5.f, 4.f),
+                vertexParameterId(i),
+                {}
+        });
+    }
+
+    return regions;
 }
 
 Colour TrimeshWidget::meshSurfaceColour(float value) {
@@ -521,7 +579,7 @@ void TrimeshWidget::drawVertexMarkers(
         const Point<float> centre(
                 area.getX() + area.getWidth() * jlimit(0.f, 1.f, marker.phase),
                 area.getBottom() - area.getHeight() * jlimit(0.f, 1.f, marker.amp));
-        const float radius = 5.5f;
+        constexpr float radius = 5.5f;
 
         g.setColour(Colour(0xffd84a4a).withAlpha(0.92f));
         g.fillEllipse(Rectangle<float>(radius * 2.f, radius * 2.f).withCentre(centre));
@@ -725,19 +783,19 @@ String TrimeshWidget::vertexParameterId(int parameterIndex) {
 Rectangle<float> TrimeshWidget::waveshapeContentBounds(Rectangle<float> content) {
     content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
     content.removeFromTop(kExpandedPanelGap);
-    return content.reduced(kPanelContentInsetX, kPanelContentInsetY);
+    return panelBodyBounds(content);
 }
 
 Rectangle<float> TrimeshWidget::expandedGridPanelContentBounds(Rectangle<float> content) {
     auto topRow = content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
     auto gridPanel = topRow.removeFromLeft(topRow.getWidth() * kExpandedGridRatio);
-    return gridPanel.reduced(kPanelContentInsetX, kPanelContentInsetY);
+    return panelBodyBounds(gridPanel);
 }
 
 Rectangle<float> TrimeshWidget::expandedWavePanelContentBounds(Rectangle<float> content) {
     content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
     content.removeFromTop(kExpandedPanelGap);
-    return content.reduced(kPanelContentInsetX, kPanelContentInsetY);
+    return panelBodyBounds(content);
 }
 
 Image TrimeshWidget::createHeatmapImage(const TrimeshRenderData& renderData) const {

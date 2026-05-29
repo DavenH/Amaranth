@@ -8,9 +8,28 @@
 #include <UI/Panels/GLPanelRenderer.h>
 #include <UI/Panels/PanelHostContext.h>
 
+#include <cstdlib>
+
 namespace CycleV2 {
 
 namespace {
+
+bool shouldLogPanelHoverEvents() {
+    return std::getenv("CYCLE_V2_TRIMESH_HOVER_LOG") != nullptr;
+}
+
+void logPanelHostEvent(Panel& panel, const char* eventName, const MouseEvent& event) {
+    if (!shouldLogPanelHoverEvents()) {
+        return;
+    }
+
+    DBG("CycleV2TrimeshPanelHost::" + String(eventName)
+        + " panel=" + panel.getName()
+        + " pos=(" + String(event.x) + "," + String(event.y) + ")"
+        + " screen=(" + String(Desktop::getMousePosition().x) + "," + String(Desktop::getMousePosition().y) + ")"
+        + " bounds=" + (event.eventComponent != nullptr ? event.eventComponent->getBounds().toString() : String("<none>"))
+        + " component=" + (event.eventComponent != nullptr ? event.eventComponent->getName() : String("<none>")));
+}
 
 class PanelHostComponent :
         public Component {
@@ -18,17 +37,194 @@ public:
     explicit PanelHostComponent(Panel& targetPanel) :
             panel(targetPanel) {
         setPaintingIsUnclipped(true);
+        setInterceptsMouseClicks(true, true);
         setOpaque(false);
     }
 
+    void setHoverPeer(PanelHostComponent* peer) {
+        hoverPeer = peer;
+    }
+
+    void setOutsideHoverCallback(std::function<void(Point<float>)> callback) {
+        outsideHoverCallback = std::move(callback);
+    }
+
     void paint(Graphics&) override {}
+
+    void mouseEnter(const MouseEvent& event) override {
+        const MouseEvent localEvent = currentMouseEvent(event);
+        logPanelHostEvent(panel, "mouseEnter", localEvent);
+        mouseInside = true;
+
+        if (Interactor* interactor = panel.getInteractor().get()) {
+            interactor->mouseEnter(localEvent);
+        }
+    }
+
+    void mouseMove(const MouseEvent& event) override {
+        const MouseEvent localEvent = currentMouseEvent(event);
+        logPanelHostEvent(panel, "mouseMove", localEvent);
+
+        if (!getLocalBounds().contains(localEvent.getPosition())) {
+            exitIfNeeded(localEvent);
+            if (!forwardMouseMoveToPeer(event)) {
+                panel.setPanelMouseCursor(MouseCursor::NormalCursor);
+            }
+            return;
+        }
+
+        enterIfNeeded(localEvent);
+
+        if (Interactor* interactor = panel.getInteractor().get()) {
+            interactor->mouseMove(localEvent);
+        }
+    }
+
+    void mouseDown(const MouseEvent& event) override {
+        const MouseEvent localEvent = currentMouseEvent(event);
+        logPanelHostEvent(panel, "mouseDown", localEvent);
+        enterIfNeeded(localEvent);
+
+        if (Interactor* interactor = panel.getInteractor().get()) {
+            interactor->mouseDown(localEvent);
+        }
+    }
+
+    void mouseDrag(const MouseEvent& event) override {
+        const MouseEvent localEvent = currentMouseEvent(event);
+        logPanelHostEvent(panel, "mouseDrag", localEvent);
+
+        if (!getLocalBounds().contains(localEvent.getPosition())) {
+            forwardMouseMoveToPeer(event);
+            return;
+        }
+
+        enterIfNeeded(localEvent);
+
+        if (Interactor* interactor = panel.getInteractor().get()) {
+            interactor->mouseDrag(localEvent);
+        }
+    }
+
+    void mouseUp(const MouseEvent& event) override {
+        const MouseEvent localEvent = currentMouseEvent(event);
+        logPanelHostEvent(panel, "mouseUp", localEvent);
+
+        if (Interactor* interactor = panel.getInteractor().get()) {
+            interactor->mouseUp(localEvent);
+        }
+    }
+
+    void mouseExit(const MouseEvent& event) override {
+        const MouseEvent localEvent = currentMouseEvent(event);
+        logPanelHostEvent(panel, "mouseExit", localEvent);
+        exitIfNeeded(localEvent);
+    }
+
+    void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override {
+        const MouseEvent localEvent = currentMouseEvent(event);
+        logPanelHostEvent(panel, "mouseWheelMove", localEvent);
+
+        if (Interactor* interactor = panel.getInteractor().get()) {
+            interactor->mouseWheelMove(localEvent, wheel);
+        }
+    }
 
     void resized() override {
         panel.panelResized();
     }
 
 private:
+    MouseEvent currentMouseEvent(const MouseEvent& event) const {
+        return localMouseEvent(event, getLocalPoint(nullptr, Desktop::getMousePosition()).toFloat());
+    }
+
+    MouseEvent localMouseEvent(const MouseEvent& event, Point<float> localPosition) const {
+        const Point<float> localMouseDown = event.eventComponent != nullptr
+                ? getLocalPoint(event.eventComponent, event.mouseDownPosition).toFloat()
+                : localPosition;
+
+        return MouseEvent(
+                event.source,
+                localPosition,
+                event.mods,
+                event.pressure,
+                event.orientation,
+                event.rotation,
+                event.tiltX,
+                event.tiltY,
+                const_cast<PanelHostComponent*>(this),
+                event.originalComponent,
+                event.eventTime,
+                localMouseDown,
+                event.mouseDownTime,
+                event.getNumberOfClicks(),
+                event.mouseWasDraggedSinceMouseDown());
+    }
+
+    void enterIfNeeded(const MouseEvent& event) {
+        if (mouseInside) {
+            return;
+        }
+
+        mouseInside = true;
+
+        if (Interactor* interactor = panel.getInteractor().get()) {
+            interactor->mouseEnter(event);
+        }
+    }
+
+    void exitIfNeeded(const MouseEvent& event) {
+        if (!mouseInside) {
+            return;
+        }
+
+        mouseInside = false;
+
+        if (Interactor* interactor = panel.getInteractor().get()) {
+            interactor->mouseExit(event);
+        }
+    }
+
+    bool forwardMouseMoveToPeer(const MouseEvent& event) {
+        if (hoverPeer == nullptr) {
+            return false;
+        }
+
+        if (hoverPeer->mouseMoveFromPeer(event)) {
+            setMouseCursor(hoverPeer->getMouseCursor());
+            return true;
+        }
+
+        if (outsideHoverCallback != nullptr) {
+            outsideHoverCallback(Desktop::getMousePosition().toFloat());
+        }
+
+        return false;
+    }
+
+    bool mouseMoveFromPeer(const MouseEvent& event) {
+        const MouseEvent localEvent = currentMouseEvent(event);
+        logPanelHostEvent(panel, "mouseMoveFromPeer", localEvent);
+
+        if (!getLocalBounds().contains(localEvent.getPosition())) {
+            exitIfNeeded(localEvent);
+            return false;
+        }
+
+        enterIfNeeded(localEvent);
+
+        if (Interactor* interactor = panel.getInteractor().get()) {
+            interactor->mouseMove(localEvent);
+        }
+
+        return true;
+    }
+
     Panel& panel;
+    PanelHostComponent* hoverPeer {};
+    std::function<void(Point<float>)> outsideHoverCallback;
+    bool mouseInside {};
 };
 
 }
@@ -62,6 +258,8 @@ TrimeshPanelBridge::TrimeshPanelBridge() :
 
     interactor2D.init();
     interactor3D.init();
+    interactor2D.stopTimer();
+    interactor3D.stopTimer();
     interactor2D.setRasterizer(&rasterizer);
     interactor3D.setRasterizer(&rasterizer);
     interactor2D.setMeshEditedCallback([this](bool sourceIs3D) { refreshAfterMeshEdit(sourceIs3D); });
@@ -100,6 +298,8 @@ void TrimeshPanelBridge::syncFromNode(
             || previousMorph.blue.getTargetValue() != nextMorph.blue.getTargetValue();
 
     if (!modelChanged
+            && !morphChanged
+            && !primaryAxisChanged
             && lastSyncedRevision == model.getRevision()
             && lastRows == rows
             && lastColumns == columns) {
@@ -116,7 +316,7 @@ void TrimeshPanelBridge::syncFromNode(
 void TrimeshPanelBridge::refreshAfterMeshEdit(bool sourceIs3D) {
     model.markMeshEdited();
     dataSource.rebuild(model, lastRows, lastColumns);
-    updateRasterizer(sourceIs3D, !sourceIs3D);
+    updateRasterizer(true, !sourceIs3D);
 }
 
 void TrimeshPanelBridge::updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry) {
@@ -171,6 +371,44 @@ Component* TrimeshPanelBridge::getPanel2DHostComponentIfCreated() {
     return panel2DHostInitialised ? panel2DHost.get() : nullptr;
 }
 
+void TrimeshPanelBridge::setPanelHostCallbacks(
+        std::function<void()> repaintCallback,
+        std::function<void(const MouseCursor&)> cursorCallback,
+        std::function<void(Point<float>)> hoverCallback) {
+    panelHostRepaintCallback = std::move(repaintCallback);
+    panelHostCursorCallback = std::move(cursorCallback);
+    panelHostHoverCallback = std::move(hoverCallback);
+
+    PanelHostCallbacks callbacks = createPanelHostCallbacks();
+    panel3D.setHostCallbacks(callbacks);
+    panel2D.setHostCallbacks(callbacks);
+    updatePanelHostPeers();
+}
+
+PanelHostCallbacks TrimeshPanelBridge::createPanelHostCallbacks() {
+    PanelHostCallbacks callbacks;
+    callbacks.setRepaintCallback([this](Panel*, PanelDirtyState::Flag) {
+        if (panelHostRepaintCallback != nullptr) {
+            panelHostRepaintCallback();
+        }
+    });
+    callbacks.setCursorCallback([this](Panel* panel, const MouseCursor& cursor) {
+        if (panelHostCursorCallback != nullptr) {
+            panelHostCursorCallback(cursor);
+        }
+
+        if (panel == &panel3D && panel3DHost != nullptr) {
+            panel3DHost->setMouseCursor(cursor);
+        }
+
+        if (panel == &panel2D && panel2DHost != nullptr) {
+            panel2DHost->setMouseCursor(cursor);
+        }
+    });
+
+    return callbacks;
+}
+
 void TrimeshPanelBridge::initialisePanel3DHost() {
     if (panel3DHostInitialised) {
         return;
@@ -179,8 +417,11 @@ void TrimeshPanelBridge::initialisePanel3DHost() {
     panel3DHost = std::make_unique<PanelHostComponent>(panel3D);
     panel3D.setSharedCanvasMode(true);
     panel3D.initWithExternalComponent(panel3DHost.get());
+    panel3DHost->removeMouseListener(&interactor3D);
+    interactor3D.stopTimer();
     interactor3D.updateIntercepts();
     panel3DHostInitialised = true;
+    updatePanelHostPeers();
 }
 
 void TrimeshPanelBridge::initialisePanel2DHost() {
@@ -190,7 +431,23 @@ void TrimeshPanelBridge::initialisePanel2DHost() {
 
     panel2DHost = std::make_unique<PanelHostComponent>(panel2D);
     panel2D.initWithExternalComponent(panel2DHost.get());
+    panel2DHost->removeMouseListener(&interactor2D);
+    interactor2D.stopTimer();
     panel2DHostInitialised = true;
+    updatePanelHostPeers();
+}
+
+void TrimeshPanelBridge::updatePanelHostPeers() {
+    if (panel3DHost == nullptr || panel2DHost == nullptr) {
+        return;
+    }
+
+    auto* host3D = static_cast<PanelHostComponent*>(panel3DHost.get());
+    auto* host2D = static_cast<PanelHostComponent*>(panel2DHost.get());
+    host3D->setHoverPeer(host2D);
+    host2D->setHoverPeer(host3D);
+    host3D->setOutsideHoverCallback(panelHostHoverCallback);
+    host2D->setOutsideHoverCallback(panelHostHoverCallback);
 }
 
 void TrimeshPanelBridge::initialiseSharedGlResources() {
@@ -250,6 +507,7 @@ void TrimeshPanelBridge::renderPanel(Panel& panel, Rectangle<float> bounds, floa
     context.clip = bounds;
     context.scaleFactor = scaleFactor;
     context.visible = true;
+    context.callbacks = createPanelHostCallbacks();
     panel.render(context);
 }
 

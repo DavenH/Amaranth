@@ -10,7 +10,6 @@ class TrimeshPanel3D : public Panel3D {
 public:
     TrimeshPanel3D(SingletonRepo* repo, TrimeshPanelDataSource& dataSource);
 
-    void drawInterceptsAndHighlightClosest() override {}
     void drawViewableVerts() override {}
     bool shouldDrawGrid() override { return true; }
     void panelResized() override;

@@ -6,8 +6,23 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
+#include <vector>
 
 namespace CycleV2 {
+
+enum class TrimeshExpandedHitRegionKind {
+    MorphControl,
+    PrimaryAxis,
+    VertexParameter
+};
+
+struct TrimeshExpandedHitRegion {
+    TrimeshExpandedHitRegionKind kind;
+    juce::Rectangle<float> bounds;
+    juce::String parameterId;
+    juce::String axisValue;
+};
 
 class TrimeshWidget {
 public:
@@ -36,6 +51,10 @@ public:
             juce::Rectangle<float> content);
     juce::Component* getExpandedPanel2DComponentIfCreated();
     void releaseSharedGlResources();
+    void setExpandedPanelCallbacks(
+            std::function<void()> repaintCallback,
+            std::function<void(const juce::MouseCursor&)> cursorCallback,
+            std::function<void(juce::Point<float>)> hoverCallback);
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
 
@@ -68,6 +87,7 @@ public:
             juce::Rectangle<float> content,
             juce::Point<float> position,
             int& vertexIndex);
+    std::vector<TrimeshExpandedHitRegion> expandedControlHitRegions(juce::Rectangle<float> content) const;
 
 private:
     struct CachedHeatmap {

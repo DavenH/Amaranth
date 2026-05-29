@@ -7,6 +7,7 @@
 #include "../Graph/GraphEditor.h"
 #include "../Graph/NodeGraph.h"
 #include "../Graph/GraphSerializer.h"
+#include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPreviewExecutor.h"
 #include "../Runtime/GraphRuntime.h"
@@ -54,6 +55,8 @@ private:
     std::vector<String> redoStack;
     std::vector<std::pair<String, CachedPreviewSprite>> previewSpriteCache;
     std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
+    std::unique_ptr<TrimeshExpandedEditorComponent> trimeshExpandedEditor;
+    String trimeshExpandedEditorNodeId;
 
     float zoom { 0.58f };
     Point<float> pan { 34.f, 38.f };
@@ -77,6 +80,7 @@ private:
     bool trimeshMorphUndoPushed {};
     bool draggingTrimeshVertexParameter {};
     bool trimeshVertexParameterUndoPushed {};
+    bool expandedEditorDragCaptured {};
     bool canvasOpenGlAttached {};
 
     void newOpenGLContextCreated() override;
@@ -150,14 +154,14 @@ private:
     bool clearSelection();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
-    bool setTrimeshPrimaryAxis(Point<float> screenPosition);
-    bool beginTrimeshMorphEdit(Point<float> screenPosition);
-    bool updateTrimeshMorphEdit(Point<float> screenPosition);
+    bool setTrimeshPrimaryAxisValue(const String& axisValue);
+    bool beginTrimeshMorphEdit(const String& parameterId, float value);
+    bool updateTrimeshMorphEditValue(float value);
     void endTrimeshMorphEdit();
-    bool beginTrimeshVertexParameterEdit(Point<float> screenPosition);
-    bool updateTrimeshVertexParameterEdit(Point<float> screenPosition);
+    bool beginTrimeshVertexParameterEdit(const String& parameterId, float value);
+    bool updateTrimeshVertexParameterEditValue(float value);
     void endTrimeshVertexParameterEdit();
-    bool selectTrimeshVertex(Point<float> screenPosition);
+    bool selectTrimeshVertexIndex(int vertexIndex);
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
     Path createCablePath(
             Point<float> source,

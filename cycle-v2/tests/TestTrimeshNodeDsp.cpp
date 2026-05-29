@@ -10,6 +10,7 @@
 #include "../src/Nodes/Trimesh/TrimeshPanelDataSource.h"
 
 #include <App/SingletonRepo.h>
+#include <Curve/Mesh/Intercept.h>
 
 #include <algorithm>
 
@@ -245,4 +246,32 @@ TEST_CASE("Trimesh panel bridge binds Panel3D interactor and rasterizer", "[cycl
     REQUIRE(bridge.getInteractor3D().hasRasterizer());
     REQUIRE(bridge.getDataSource().getColumns().size() == 3);
     REQUIRE(bridge.getDataSource().getColumns().front().size() == 10);
+}
+
+TEST_CASE("Trimesh panel bridge exposes rasterizer intercepts for expanded overlays", "[cycle-v2][nodes][trimesh]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {
+                    { "yellow", "Yellow", "0.5" },
+                    { "red", "Red", "0.5" },
+                    { "blue", "Blue", "0.5" },
+                    { "primaryAxis", "Primary Axis", "yellow" }
+            },
+            {},
+            {}
+    };
+    TrimeshPanelBridge bridge;
+
+    bridge.syncFromNode(node, 12, 4);
+
+    const auto& intercepts = bridge.getRasterizerIntercepts();
+    REQUIRE_FALSE(intercepts.empty());
+    REQUIRE(std::any_of(intercepts.begin(), intercepts.end(), [](const Intercept& intercept) {
+        return intercept.cube != nullptr;
+    }));
 }
