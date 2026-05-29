@@ -80,21 +80,22 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     drawPanelFrame(g, sidePanel, "Morph / vertex");
     drawPanelFrame(g, waveshapePanel, "2D waveshape", false);
 
-    if (bridge.getPanel3DHostComponentIfCreated() == nullptr) {
+    const bool hasPanel3DHost = bridge.getPanel3DHostComponentIfCreated() != nullptr;
+    const bool hasPanel2DHost = bridge.getPanel2DHostComponentIfCreated() != nullptr;
+
+    if (!hasPanel3DHost) {
         drawMeshHeatmap(g, panelBodyBounds(gridPanel), renderData, true);
     }
 
     const auto waveshapeContent = panelBodyBounds(waveshapePanel);
-    if (bridge.getPanel2DHostComponentIfCreated() == nullptr) {
+    if (!hasPanel2DHost) {
         drawEditorGrid(g, waveshapeContent);
         drawTraceFill(g, waveshapeContent.reduced(8.f), renderData.slice);
         drawTrace(g, waveshapeContent.reduced(8.f), renderData.slice, Colour(0xffe7edff).withAlpha(0.94f));
+        drawVertexMarkers(g, waveshapeContent.reduced(8.f), model.getVertexMarkers());
     }
 
     const auto selectedParameters = model.getSelectedVertexParameters();
-    const Rectangle<float> waveshapeOverlay = waveshapeContent.reduced(8.f);
-    drawVertexMarkers(g, waveshapeOverlay, model.getVertexMarkers());
-
     Rectangle<float> morphArea = sidePanel.reduced(kMorphPanelInsetX, kMorphPanelInsetY);
     const std::array<std::pair<String, Colour>, 3> axes {
             std::make_pair(String("Yellow"), Colour(0xffe0c247)),
