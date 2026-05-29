@@ -64,6 +64,7 @@ private:
     Node node;
     DragTarget dragTarget { DragTarget::None };
     juce::String activeParameterId;
+    juce::Rectangle<int> lastHitRegionContentBounds;
     std::vector<std::unique_ptr<HitRegionComponent>> hitRegions;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshExpandedEditorComponent)

@@ -294,8 +294,16 @@ void TrimeshExpandedEditorComponent::updatePanelHosts() {
     }
 
     const Rectangle<float> content = contentBounds();
-    Component* panel3D = widget.prepareExpandedPanel3DComponent(node, content);
-    Component* panel2D = widget.prepareExpandedPanel2DComponent(node, content);
+    Component* panel3D = widget.getExpandedPanel3DComponentIfCreated();
+    Component* panel2D = widget.getExpandedPanel2DComponentIfCreated();
+
+    if (panel3D == nullptr) {
+        panel3D = widget.prepareExpandedPanel3DComponent(node, content);
+    }
+
+    if (panel2D == nullptr) {
+        panel2D = widget.prepareExpandedPanel2DComponent(node, content);
+    }
 
     if (panel3D == nullptr || panel2D == nullptr) {
         return;
@@ -308,7 +316,10 @@ void TrimeshExpandedEditorComponent::updatePanelHosts() {
         addAndMakeVisible(panel3D);
     }
 
-    panel3D->setBounds(panel3DBounds);
+    if (panel3D->getBounds() != panel3DBounds) {
+        panel3D->setBounds(panel3DBounds);
+    }
+
     panel3D->setVisible(true);
     panel3D->toFront(false);
 
@@ -316,17 +327,27 @@ void TrimeshExpandedEditorComponent::updatePanelHosts() {
         addAndMakeVisible(panel2D);
     }
 
-    panel2D->setBounds(panel2DBounds);
+    if (panel2D->getBounds() != panel2DBounds) {
+        panel2D->setBounds(panel2DBounds);
+    }
+
     panel2D->setVisible(true);
     panel2D->toFront(false);
 }
 
 void TrimeshExpandedEditorComponent::updateHitRegions() {
+    const Rectangle<int> nextContentBounds = contentBounds().toNearestInt();
+
+    if (nextContentBounds == lastHitRegionContentBounds && !hitRegions.empty()) {
+        return;
+    }
+
     for (auto& region : hitRegions) {
         removeChildComponent(region.get());
     }
 
     hitRegions.clear();
+    lastHitRegionContentBounds = nextContentBounds;
 
     if (node.kind != NodeKind::TrilinearMesh || getWidth() <= 0 || getHeight() <= 0) {
         return;
