@@ -8,28 +8,9 @@
 #include <UI/Panels/GLPanelRenderer.h>
 #include <UI/Panels/PanelHostContext.h>
 
-#include <cstdlib>
-
 namespace CycleV2 {
 
 namespace {
-
-bool shouldLogPanelHoverEvents() {
-    return std::getenv("CYCLE_V2_TRIMESH_HOVER_LOG") != nullptr;
-}
-
-void logPanelHostEvent(Panel& panel, const char* eventName, const MouseEvent& event) {
-    if (!shouldLogPanelHoverEvents()) {
-        return;
-    }
-
-    DBG("CycleV2TrimeshPanelHost::" + String(eventName)
-        + " panel=" + panel.getName()
-        + " pos=(" + String(event.x) + "," + String(event.y) + ")"
-        + " screen=(" + String(Desktop::getMousePosition().x) + "," + String(Desktop::getMousePosition().y) + ")"
-        + " bounds=" + (event.eventComponent != nullptr ? event.eventComponent->getBounds().toString() : String("<none>"))
-        + " component=" + (event.eventComponent != nullptr ? event.eventComponent->getName() : String("<none>")));
-}
 
 class PanelHostComponent :
         public Component {
@@ -53,7 +34,6 @@ public:
 
     void mouseEnter(const MouseEvent& event) override {
         const MouseEvent localEvent = currentMouseEvent(event);
-        logPanelHostEvent(panel, "mouseEnter", localEvent);
         mouseInside = true;
 
         if (Interactor* interactor = panel.getInteractor().get()) {
@@ -63,7 +43,6 @@ public:
 
     void mouseMove(const MouseEvent& event) override {
         const MouseEvent localEvent = currentMouseEvent(event);
-        logPanelHostEvent(panel, "mouseMove", localEvent);
 
         if (!getLocalBounds().contains(localEvent.getPosition())) {
             exitIfNeeded(localEvent);
@@ -82,7 +61,6 @@ public:
 
     void mouseDown(const MouseEvent& event) override {
         const MouseEvent localEvent = currentMouseEvent(event);
-        logPanelHostEvent(panel, "mouseDown", localEvent);
         enterIfNeeded(localEvent);
 
         if (Interactor* interactor = panel.getInteractor().get()) {
@@ -92,7 +70,6 @@ public:
 
     void mouseDrag(const MouseEvent& event) override {
         const MouseEvent localEvent = currentMouseEvent(event);
-        logPanelHostEvent(panel, "mouseDrag", localEvent);
 
         if (!getLocalBounds().contains(localEvent.getPosition())) {
             forwardMouseMoveToPeer(event);
@@ -108,7 +85,6 @@ public:
 
     void mouseUp(const MouseEvent& event) override {
         const MouseEvent localEvent = currentMouseEvent(event);
-        logPanelHostEvent(panel, "mouseUp", localEvent);
 
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseUp(localEvent);
@@ -117,13 +93,11 @@ public:
 
     void mouseExit(const MouseEvent& event) override {
         const MouseEvent localEvent = currentMouseEvent(event);
-        logPanelHostEvent(panel, "mouseExit", localEvent);
         exitIfNeeded(localEvent);
     }
 
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override {
         const MouseEvent localEvent = currentMouseEvent(event);
-        logPanelHostEvent(panel, "mouseWheelMove", localEvent);
 
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseWheelMove(localEvent, wheel);
@@ -205,7 +179,6 @@ private:
 
     bool mouseMoveFromPeer(const MouseEvent& event) {
         const MouseEvent localEvent = currentMouseEvent(event);
-        logPanelHostEvent(panel, "mouseMoveFromPeer", localEvent);
 
         if (!getLocalBounds().contains(localEvent.getPosition())) {
             exitIfNeeded(localEvent);

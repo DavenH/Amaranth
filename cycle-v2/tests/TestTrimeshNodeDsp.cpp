@@ -248,7 +248,22 @@ TEST_CASE("Trimesh panel bridge binds Panel3D interactor and rasterizer", "[cycl
     REQUIRE(bridge.getDataSource().getColumns().front().size() == 10);
 }
 
-TEST_CASE("Trimesh panel bridge exposes rasterizer intercepts for expanded overlays", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves", "[cycle-v2][nodes][trimesh]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+
+    Component* panel3DHost = bridge.getPanel3DHostComponent();
+    Component* panel2DHost = bridge.getPanel2DHostComponent();
+
+    REQUIRE(panel3DHost != nullptr);
+    REQUIRE(panel2DHost != nullptr);
+    REQUIRE(bridge.getPanel3D().getComponent() == panel3DHost);
+    REQUIRE(bridge.getPanel2D().getComponent() == panel2DHost);
+    REQUIRE(bridge.getPanel3D().getOpenglPanel() == nullptr);
+    REQUIRE(bridge.getPanel2D().getOpenglPanel() == nullptr);
+}
+
+TEST_CASE("Trimesh panel bridge publishes rasterizer intercepts from the shared rasterizer", "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
             "mesh",
