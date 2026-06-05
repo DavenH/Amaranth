@@ -4,16 +4,16 @@
 
 namespace CycleV2 {
 
-class TrimeshControlsComponent::HitRegionComponent : public Component {
+class TrimeshControlsComponent::DragRegionComponent : public Component {
 public:
-    HitRegionComponent(
+    DragRegionComponent(
             TrimeshControlsComponent& owner,
             TrimeshExpandedHitRegion region) :
             owner(owner)
         ,   region(std::move(region)) {
         setOpaque(false);
         setInterceptsMouseClicks(true, true);
-        setMouseCursor(cursorForRegion());
+        setMouseCursor(MouseCursor::LeftRightResizeCursor);
     }
 
     void paint(Graphics&) override {}
@@ -31,23 +31,34 @@ public:
     }
 
 private:
-    MouseCursor cursorForRegion() const {
-        switch (region.kind) {
-            case TrimeshExpandedHitRegionKind::MorphControl:
-            case TrimeshExpandedHitRegionKind::VertexParameter:
-                return MouseCursor::LeftRightResizeCursor;
-
-            case TrimeshExpandedHitRegionKind::PrimaryAxis:
-                return MouseCursor::PointingHandCursor;
-        }
-
-        return MouseCursor::NormalCursor;
-    }
-
     Point<float> parentPosition(Point<float> localPosition) const {
         return getBounds().toFloat().getTopLeft() + localPosition;
     }
 
+    TrimeshControlsComponent& owner;
+    TrimeshExpandedHitRegion region;
+};
+
+class TrimeshControlsComponent::PrimaryAxisButton : public Button {
+public:
+    PrimaryAxisButton(
+            TrimeshControlsComponent& owner,
+            TrimeshExpandedHitRegion region) :
+            Button(region.axisValue)
+        ,   owner(owner)
+        ,   region(std::move(region)) {
+        setOpaque(false);
+        setMouseCursor(MouseCursor::PointingHandCursor);
+        setTriggeredOnMouseDown(true);
+    }
+
+    void paintButton(Graphics&, bool, bool) override {}
+
+    void clicked() override {
+        owner.beginControlDrag(region, getBounds().toFloat().getCentre());
+    }
+
+private:
     TrimeshControlsComponent& owner;
     TrimeshExpandedHitRegion region;
 };
@@ -74,6 +85,18 @@ void TrimeshControlsComponent::setContentBounds(Rectangle<float> nextContentBoun
     updateHitRegions();
 }
 
+int TrimeshControlsComponent::getPrimaryAxisButtonCount() const {
+    int count {};
+
+    for (const auto& region : controlRegions) {
+        if (dynamic_cast<PrimaryAxisButton*>(region.get()) != nullptr) {
+            ++count;
+        }
+    }
+
+    return count;
+}
+
 void TrimeshControlsComponent::resized() {
     updateHitRegions();
 }
@@ -81,15 +104,15 @@ void TrimeshControlsComponent::resized() {
 void TrimeshControlsComponent::updateHitRegions() {
     const Rectangle<int> nextContentBounds = contentBounds.toNearestInt();
 
-    if (nextContentBounds == lastHitRegionContentBounds && !hitRegions.empty()) {
+    if (nextContentBounds == lastHitRegionContentBounds && !controlRegions.empty()) {
         return;
     }
 
-    for (auto& region : hitRegions) {
+    for (auto& region : controlRegions) {
         removeChildComponent(region.get());
     }
 
-    hitRegions.clear();
+    controlRegions.clear();
     lastHitRegionContentBounds = nextContentBounds;
 
     if (node.kind != NodeKind::TrilinearMesh || contentBounds.isEmpty()) {
@@ -97,10 +120,17 @@ void TrimeshControlsComponent::updateHitRegions() {
     }
 
     for (const auto& region : widget.expandedControlHitRegions(contentBounds)) {
-        auto component = std::make_unique<HitRegionComponent>(*this, region);
+        std::unique_ptr<Component> component;
+
+        if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis) {
+            component = std::make_unique<PrimaryAxisButton>(*this, region);
+        } else {
+            component = std::make_unique<DragRegionComponent>(*this, region);
+        }
+
         component->setBounds(region.bounds.toNearestInt());
         addAndMakeVisible(component.get());
-        hitRegions.push_back(std::move(component));
+        controlRegions.push_back(std::move(component));
     }
 }
 

@@ -29,12 +29,14 @@ public:
     void setCallbacks(Callbacks nextCallbacks);
     void setNode(const Node& nextNode);
     void setContentBounds(juce::Rectangle<float> nextContentBounds);
-    int getControlRegionCount() const { return (int) hitRegions.size(); }
+    int getControlRegionCount() const { return (int) controlRegions.size(); }
+    int getPrimaryAxisButtonCount() const;
 
     void resized() override;
 
 private:
-    class HitRegionComponent;
+    class DragRegionComponent;
+    class PrimaryAxisButton;
 
     enum class DragTarget {
         None,
@@ -54,7 +56,7 @@ private:
     juce::String activeParameterId;
     juce::Rectangle<float> contentBounds;
     juce::Rectangle<int> lastHitRegionContentBounds;
-    std::vector<std::unique_ptr<HitRegionComponent>> hitRegions;
+    std::vector<std::unique_ptr<juce::Component>> controlRegions;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshControlsComponent)
 };

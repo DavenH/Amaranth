@@ -387,6 +387,7 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     controls.setContentBounds({ 10.f, 42.f, 880.f, 570.f });
 
     REQUIRE(controls.getControlRegionCount() == 9);
+    REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
     REQUIRE(controls.getNumChildComponents() == 9);
 }
 
