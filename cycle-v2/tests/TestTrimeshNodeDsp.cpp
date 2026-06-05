@@ -51,6 +51,7 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE_FALSE(phaseProfile.positiveCurveColour() == phaseProfile.negativeCurveColour());
     REQUIRE(phaseProfile.positiveCurveColour().toColour() == colourForDomain(PortDomain::SpectralPhaseSignal).withAlpha(0.84f));
     REQUIRE_FALSE(phaseProfile.negativeCurveColour() == magProfile.negativeCurveColour());
+    REQUIRE_FALSE(phaseProfile.negativeCurveColour() == magProfile.positiveCurveColour());
 }
 
 TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", "[cycle-v2][nodes][trimesh]") {
