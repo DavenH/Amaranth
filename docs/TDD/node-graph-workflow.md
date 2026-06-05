@@ -712,7 +712,9 @@ Trilinear mesh update graph plan:
 
 - introduce a Cycle 2 update graph slice before expanding feature work further;
   it can start as Trimesh-specific but should use names and invalidation kinds
-  that can generalize,
+  that can generalize. The first slice is in place as `NodeUpdateGraph`, which
+  composes downstream graph invalidation with `TrimeshInvalidation` panel-local
+  dirtiness,
 - model source changes for morph value changes, primary-axis changes,
   2D/3D mesh edits, selected vertex edits, traversal-domain changes,
   connection changes, preview viewport/camera changes, and scratch/guide input
