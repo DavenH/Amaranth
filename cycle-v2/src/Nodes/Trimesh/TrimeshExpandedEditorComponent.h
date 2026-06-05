@@ -1,13 +1,13 @@
 #pragma once
 
 #include "../../Graph/NodeGraph.h"
+#include "TrimeshControlsComponent.h"
 #include "TrimeshWidget.h"
 
 #include <JuceHeader.h>
 
 #include <functional>
 #include <memory>
-#include <vector>
 
 namespace CycleV2 {
 
@@ -43,8 +43,6 @@ public:
     void mouseUp(const juce::MouseEvent& event) override;
 
 private:
-    class HitRegionComponent;
-
     enum class DragTarget {
         None,
         Morph,
@@ -56,19 +54,15 @@ private:
     juce::MouseCursor cursorFor(juce::Point<float> position);
     void updateCursor(juce::Point<float> position);
     void updatePanelHosts();
-    void updateHitRegions();
-    void beginControlDrag(const TrimeshExpandedHitRegion& region, juce::Point<float> position);
-    void dragControl(const TrimeshExpandedHitRegion& region, juce::Point<float> position);
-    void endControlDrag();
+    void updateControlsHost();
 
     TrimeshWidget& widget;
     Callbacks callbacks;
+    TrimeshControlsComponent controls;
     Node node;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     DragTarget dragTarget { DragTarget::None };
     juce::String activeParameterId;
-    juce::Rectangle<int> lastHitRegionContentBounds;
-    std::vector<std::unique_ptr<HitRegionComponent>> hitRegions;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshExpandedEditorComponent)
 };

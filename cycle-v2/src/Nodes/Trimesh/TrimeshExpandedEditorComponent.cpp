@@ -12,64 +12,28 @@ constexpr float kHeaderHeight = 34.f;
 
 }
 
-class TrimeshExpandedEditorComponent::HitRegionComponent : public Component {
-public:
-    HitRegionComponent(
-            TrimeshExpandedEditorComponent& owner,
-            TrimeshExpandedHitRegion region) :
-            owner(owner)
-        ,   region(std::move(region)) {
-        setOpaque(false);
-        setInterceptsMouseClicks(true, true);
-        setMouseCursor(cursorForRegion());
-    }
-
-    void paint(Graphics&) override {}
-
-    void mouseDown(const MouseEvent& event) override {
-        owner.beginControlDrag(region, parentPosition(event.position));
-    }
-
-    void mouseDrag(const MouseEvent& event) override {
-        owner.dragControl(region, parentPosition(event.position));
-    }
-
-    void mouseUp(const MouseEvent&) override {
-        owner.endControlDrag();
-    }
-
-private:
-    MouseCursor cursorForRegion() const {
-        switch (region.kind) {
-            case TrimeshExpandedHitRegionKind::MorphControl:
-            case TrimeshExpandedHitRegionKind::VertexParameter:
-                return MouseCursor::LeftRightResizeCursor;
-
-            case TrimeshExpandedHitRegionKind::PrimaryAxis:
-                return MouseCursor::PointingHandCursor;
-        }
-
-        return MouseCursor::NormalCursor;
-    }
-
-    Point<float> parentPosition(Point<float> localPosition) const {
-        return getBounds().toFloat().getTopLeft() + localPosition;
-    }
-
-    TrimeshExpandedEditorComponent& owner;
-    TrimeshExpandedHitRegion region;
-};
-
 TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& targetWidget) :
-        widget(targetWidget) {
+        widget      (targetWidget)
+    ,   controls    (targetWidget) {
     setOpaque(false);
     setInterceptsMouseClicks(true, true);
+    addAndMakeVisible(controls);
 }
 
 TrimeshExpandedEditorComponent::~TrimeshExpandedEditorComponent() = default;
 
 void TrimeshExpandedEditorComponent::setCallbacks(Callbacks nextCallbacks) {
     callbacks = std::move(nextCallbacks);
+
+    TrimeshControlsComponent::Callbacks controlCallbacks;
+    controlCallbacks.setPrimaryAxis = callbacks.setPrimaryAxis;
+    controlCallbacks.beginMorphEdit = callbacks.beginMorphEdit;
+    controlCallbacks.updateMorphEdit = callbacks.updateMorphEdit;
+    controlCallbacks.endMorphEdit = callbacks.endMorphEdit;
+    controlCallbacks.beginVertexParameterEdit = callbacks.beginVertexParameterEdit;
+    controlCallbacks.updateVertexParameterEdit = callbacks.updateVertexParameterEdit;
+    controlCallbacks.endVertexParameterEdit = callbacks.endVertexParameterEdit;
+    controls.setCallbacks(std::move(controlCallbacks));
 
     auto safeThis = Component::SafePointer<TrimeshExpandedEditorComponent>(this);
     widget.setExpandedPanelCallbacks(
@@ -98,7 +62,7 @@ void TrimeshExpandedEditorComponent::setCallbacks(Callbacks nextCallbacks) {
 void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
     node = nextNode;
     updatePanelHosts();
-    updateHitRegions();
+    updateControlsHost();
     repaint();
 }
 
@@ -171,7 +135,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
 
 void TrimeshExpandedEditorComponent::resized() {
     updatePanelHosts();
-    updateHitRegions();
+    updateControlsHost();
 }
 
 void TrimeshExpandedEditorComponent::mouseMove(const MouseEvent& event) {
@@ -346,106 +310,16 @@ void TrimeshExpandedEditorComponent::updatePanelHosts() {
 
     panel2D->setVisible(true);
     panel2D->toFront(false);
+
+    controls.toFront(false);
 }
 
-void TrimeshExpandedEditorComponent::updateHitRegions() {
-    const Rectangle<int> nextContentBounds = contentBounds().toNearestInt();
-
-    if (nextContentBounds == lastHitRegionContentBounds && !hitRegions.empty()) {
-        return;
-    }
-
-    for (auto& region : hitRegions) {
-        removeChildComponent(region.get());
-    }
-
-    hitRegions.clear();
-    lastHitRegionContentBounds = nextContentBounds;
-
-    if (node.kind != NodeKind::TrilinearMesh || getWidth() <= 0 || getHeight() <= 0) {
-        return;
-    }
-
-    for (const auto& region : widget.expandedControlHitRegions(contentBounds())) {
-        auto component = std::make_unique<HitRegionComponent>(*this, region);
-        component->setBounds(region.bounds.toNearestInt());
-        addAndMakeVisible(component.get());
-        component->toFront(false);
-        hitRegions.push_back(std::move(component));
-    }
-}
-
-void TrimeshExpandedEditorComponent::beginControlDrag(
-        const TrimeshExpandedHitRegion& region,
-        Point<float> position) {
-    const Rectangle<float> content = contentBounds();
-    float value {};
-
-    switch (region.kind) {
-        case TrimeshExpandedHitRegionKind::PrimaryAxis:
-            if (callbacks.setPrimaryAxis != nullptr) {
-                callbacks.setPrimaryAxis(region.axisValue);
-            }
-            break;
-
-        case TrimeshExpandedHitRegionKind::MorphControl:
-            dragTarget = DragTarget::Morph;
-            activeParameterId = region.parameterId;
-
-            if (widget.morphValueForParameterAt(content, activeParameterId, position, value)
-                    && callbacks.beginMorphEdit != nullptr) {
-                callbacks.beginMorphEdit(activeParameterId, value);
-            }
-            break;
-
-        case TrimeshExpandedHitRegionKind::VertexParameter:
-            dragTarget = DragTarget::VertexParameter;
-            activeParameterId = region.parameterId;
-
-            if (widget.vertexParameterValueForParameterAt(content, activeParameterId, position, value)
-                    && callbacks.beginVertexParameterEdit != nullptr) {
-                callbacks.beginVertexParameterEdit(activeParameterId, value);
-            }
-            break;
-    }
-}
-
-void TrimeshExpandedEditorComponent::dragControl(
-        const TrimeshExpandedHitRegion& region,
-        Point<float> position) {
-    ignoreUnused(region);
-    const Rectangle<float> content = contentBounds();
-    float value {};
-
-    switch (dragTarget) {
-        case DragTarget::Morph:
-            if (widget.morphValueForParameterAt(content, activeParameterId, position, value)
-                    && callbacks.updateMorphEdit != nullptr) {
-                callbacks.updateMorphEdit(value);
-            }
-            break;
-
-        case DragTarget::VertexParameter:
-            if (widget.vertexParameterValueForParameterAt(content, activeParameterId, position, value)
-                    && callbacks.updateVertexParameterEdit != nullptr) {
-                callbacks.updateVertexParameterEdit(value);
-            }
-            break;
-
-        case DragTarget::None:
-            break;
-    }
-}
-
-void TrimeshExpandedEditorComponent::endControlDrag() {
-    if (dragTarget == DragTarget::Morph && callbacks.endMorphEdit != nullptr) {
-        callbacks.endMorphEdit();
-    } else if (dragTarget == DragTarget::VertexParameter && callbacks.endVertexParameterEdit != nullptr) {
-        callbacks.endVertexParameterEdit();
-    }
-
-    dragTarget = DragTarget::None;
-    activeParameterId = {};
+void TrimeshExpandedEditorComponent::updateControlsHost() {
+    controls.setBounds(getLocalBounds());
+    controls.setNode(node);
+    controls.setContentBounds(contentBounds());
+    controls.setVisible(node.kind == NodeKind::TrilinearMesh);
+    controls.toFront(false);
 }
 
 }

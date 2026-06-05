@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Nodes/Trimesh/TrimeshBlockwiseDsp.h"
+#include "../src/Nodes/Trimesh/TrimeshControlsComponent.h"
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshNodeModel.h"
@@ -364,6 +365,29 @@ TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves",
     REQUIRE(bridge.getPanel2D().getComponent() == panel2DHost);
     REQUIRE(bridge.getPanel3D().getOpenglPanel() == nullptr);
     REQUIRE(bridge.getPanel2D().getOpenglPanel() == nullptr);
+}
+
+TEST_CASE("Trimesh controls component mounts expanded editor control regions", "[cycle-v2][nodes][trimesh]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {},
+            {},
+            {}
+    };
+    TrimeshWidget widget;
+    TrimeshControlsComponent controls(widget);
+    controls.setBounds(0, 0, 900, 620);
+
+    controls.setNode(node);
+    controls.setContentBounds({ 10.f, 42.f, 880.f, 570.f });
+
+    REQUIRE(controls.getControlRegionCount() == 9);
+    REQUIRE(controls.getNumChildComponents() == 9);
 }
 
 TEST_CASE("Trimesh panel bridge publishes rasterizer intercepts from the shared rasterizer", "[cycle-v2][nodes][trimesh]") {
