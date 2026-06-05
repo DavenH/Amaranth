@@ -1,6 +1,5 @@
 #include "TrimeshWidget.h"
 
-#include <Binary/Gradients.h>
 #include <Curve/Mesh/Vertex.h>
 
 #include <array>
@@ -31,25 +30,6 @@ Rectangle<float> panelBodyBounds(Rectangle<float> panel) {
     return panel.reduced(kPanelContentInsetX, 0.f);
 }
 
-Image& blueGradientImage() {
-    static Image image = PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
-    return image;
-}
-
-Image& burntalumGradientImage() {
-    static Image image = PNGImageFormat::loadFrom(Gradients::burntalum_png, Gradients::burntalum_pngSize);
-    return image;
-}
-
-Colour sampleGradient(Image& gradient, float value) {
-    if (!gradient.isValid() || gradient.getWidth() <= 0) {
-        return Colour(0xff53657a);
-    }
-
-    const int x = jlimit(0, gradient.getWidth() - 1, roundToInt(jlimit(0.f, 1.f, value) * (float) (gradient.getWidth() - 1)));
-    return gradient.getPixelAt(x, 0);
-}
-
 }
 
 void TrimeshWidget::syncFromNode(const Node& node) {
@@ -68,6 +48,7 @@ void TrimeshWidget::paintCompact(
         float,
         PortDomain domain) {
     setDisplayDomain(domain);
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(domain);
     bridge.syncFromNode(node, kPreviewRows, kPreviewColumns);
     const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
     TrimeshNodeModel& model = bridge.getModel();
@@ -82,7 +63,7 @@ void TrimeshWidget::paintCompact(
             || compactHeatmap.columns != renderData.columns
             || compactHeatmap.revision != model.getRevision()
             || compactHeatmap.domain != domain) {
-        compactHeatmap.image = createHeatmapImage(renderData, domain);
+        compactHeatmap.image = createHeatmapImage(renderData, profile);
         compactHeatmap.valueCount = renderData.surface.size();
         compactHeatmap.rows = renderData.rows;
         compactHeatmap.columns = renderData.columns;
@@ -98,6 +79,7 @@ void TrimeshWidget::paintCompact(
 
 void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float> content) {
     setDisplayDomain(displayDomain);
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(displayDomain);
     bridge.syncFromNode(node, kExpandedRows, kExpandedColumns);
     const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
     TrimeshNodeModel& model = bridge.getModel();
@@ -110,22 +92,22 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     auto sidePanel = topRow;
     auto waveshapePanel = content;
 
-    drawPanelFrame(g, gridPanel, "3D grid heatmap", false);
+    drawPanelFrame(g, gridPanel, profile.panel3DTitle(), false);
     drawPanelFrame(g, sidePanel, "Morph / vertex");
-    drawPanelFrame(g, waveshapePanel, "2D waveshape", false);
+    drawPanelFrame(g, waveshapePanel, profile.panel2DTitle(), false);
 
     const bool hasPanel3DHost = bridge.getPanel3DHostComponentIfCreated() != nullptr;
     const bool hasPanel2DHost = bridge.getPanel2DHostComponentIfCreated() != nullptr;
 
     if (!hasPanel3DHost) {
-        drawMeshHeatmap(g, panelBodyBounds(gridPanel), renderData, displayDomain, true);
+        drawMeshHeatmap(g, panelBodyBounds(gridPanel), renderData, profile, true);
     }
 
     const auto waveshapeContent = panelBodyBounds(waveshapePanel);
     if (!hasPanel2DHost) {
-        drawEditorGrid(g, waveshapeContent);
-        drawTraceFill(g, waveshapeContent.reduced(8.f), renderData.slice);
-        drawTrace(g, waveshapeContent.reduced(8.f), renderData.slice, Colour(0xffe7edff).withAlpha(0.94f));
+        drawEditorGrid(g, waveshapeContent, profile);
+        drawTraceFill(g, waveshapeContent.reduced(8.f), renderData.slice, profile);
+        drawTrace(g, waveshapeContent.reduced(8.f), renderData.slice, profile.positiveCurveColour().toColour());
         drawVertexMarkers(g, waveshapeContent.reduced(8.f), model.getVertexMarkers());
     }
 
@@ -424,16 +406,11 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(R
 }
 
 Colour TrimeshWidget::surfaceColourForDomain(float value, PortDomain domain) {
-    const float v = jlimit(0.f, 1.f, value);
-    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
-            || domain == PortDomain::SpectralPhaseSignal;
+    return surfaceColourForProfile(value, TrimeshRenderProfile::fromDomain(domain));
+}
 
-    if (spectral) {
-        const float alpha = jlimit(0.f, 0.92f, (v - 0.02f) / 0.98f * 0.92f);
-        return sampleGradient(burntalumGradientImage(), v).withAlpha(alpha);
-    }
-
-    return sampleGradient(blueGradientImage(), v).withAlpha(0.82f);
+Colour TrimeshWidget::surfaceColourForProfile(float value, const TrimeshRenderProfile& profile) {
+    return profile.surfaceColour(value);
 }
 
 Rectangle<float> TrimeshWidget::meshPreviewContentArea(Rectangle<float> area) {
@@ -470,7 +447,7 @@ void TrimeshWidget::drawMeshHeatmap(
         Graphics& g,
         Rectangle<float> area,
         const TrimeshRenderData& renderData,
-        PortDomain domain,
+        const TrimeshRenderProfile& profile,
         bool drawGrid) {
     if (!renderData.canDrawSurface()) {
         return;
@@ -490,13 +467,14 @@ void TrimeshWidget::drawMeshHeatmap(
                     cellWidth + 0.75f,
                     cellHeight + 0.75f);
 
-            g.setColour(surfaceColourForDomain(value, domain));
+            g.setColour(surfaceColourForProfile(value, profile));
             g.fillRect(cell);
         }
     }
 
     if (drawGrid) {
-        g.setColour(Colour(0xffeef5ff).withAlpha(0.08f));
+        const bool spectral = profile.getSliceBackground() == TrimeshSliceBackground::Spectrum;
+        g.setColour((spectral ? Colour(0xffd7b166) : Colour(0xffeef5ff)).withAlpha(0.08f));
         const int minorHorizontalStep = jmax(1, renderData.rows / 16);
         for (int row = 0; row <= renderData.rows; row += minorHorizontalStep) {
             const float y = surface.getY() + (float) row * cellHeight;
@@ -509,7 +487,7 @@ void TrimeshWidget::drawMeshHeatmap(
             g.drawVerticalLine(roundToInt(x), surface.getY(), surface.getBottom());
         }
 
-        g.setColour(Colour(0xffeef5ff).withAlpha(0.18f));
+        g.setColour((spectral ? Colour(0xffffd68a) : Colour(0xffeef5ff)).withAlpha(0.18f));
         const int horizontalStep = jmax(1, renderData.rows / 4);
         for (int row = 0; row <= renderData.rows; row += horizontalStep) {
             const float y = surface.getY() + (float) row * cellHeight;
@@ -551,11 +529,16 @@ void TrimeshWidget::drawTrace(
     g.strokePath(trace, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
-void TrimeshWidget::drawEditorGrid(Graphics& g, Rectangle<float> area) {
-    g.setColour(Colour(0xff05070a).withAlpha(0.52f));
+void TrimeshWidget::drawEditorGrid(
+        Graphics& g,
+        Rectangle<float> area,
+        const TrimeshRenderProfile& profile) {
+    const bool spectral = profile.getSliceBackground() == TrimeshSliceBackground::Spectrum;
+
+    g.setColour((spectral ? Colour(0xff080608) : Colour(0xff05070a)).withAlpha(0.58f));
     g.fillRoundedRectangle(area, 4.f);
 
-    g.setColour(Colour(0xff1b2430).withAlpha(0.70f));
+    g.setColour((spectral ? Colour(0xff241b18) : Colour(0xff1b2430)).withAlpha(0.70f));
     for (int i = 1; i < 32; ++i) {
         const float x = area.getX() + area.getWidth() * (float) i / 32.f;
         g.drawVerticalLine(roundToInt(x), area.getY(), area.getBottom());
@@ -566,7 +549,7 @@ void TrimeshWidget::drawEditorGrid(Graphics& g, Rectangle<float> area) {
         g.drawHorizontalLine(roundToInt(y), area.getX(), area.getRight());
     }
 
-    g.setColour(Colour(0xff546276).withAlpha(0.34f));
+    g.setColour((spectral ? Colour(0xff806646) : Colour(0xff546276)).withAlpha(0.34f));
     for (int i = 1; i < 8; ++i) {
         const float x = area.getX() + area.getWidth() * (float) i / 8.f;
         g.drawVerticalLine(roundToInt(x), area.getY(), area.getBottom());
@@ -581,16 +564,17 @@ void TrimeshWidget::drawEditorGrid(Graphics& g, Rectangle<float> area) {
 void TrimeshWidget::drawTraceFill(
         Graphics& g,
         Rectangle<float> area,
-        const std::vector<float>& values) {
+        const std::vector<float>& values,
+        const TrimeshRenderProfile& profile) {
     if (values.size() < 2) {
         return;
     }
 
     Path fillPath;
     const float denominator = (float) (values.size() - 1);
-    const float centreY = area.getCentreY();
+    const float baseY = profile.curveIsBipolar() ? area.getCentreY() : area.getBottom();
 
-    fillPath.startNewSubPath(area.getX(), centreY);
+    fillPath.startNewSubPath(area.getX(), baseY);
 
     for (int i = 0; i < (int) values.size(); ++i) {
         const float x = area.getX() + area.getWidth() * (float) i / denominator;
@@ -598,12 +582,12 @@ void TrimeshWidget::drawTraceFill(
         fillPath.lineTo(x, y);
     }
 
-    fillPath.lineTo(area.getRight(), centreY);
+    fillPath.lineTo(area.getRight(), baseY);
     fillPath.closeSubPath();
 
-    g.setColour(Colour(0xff8ea0c6).withAlpha(0.18f));
+    g.setColour(profile.positiveCurveColour().toColour().withAlpha(0.22f));
     g.fillPath(fillPath);
-    g.setColour(Colour(0xfff1f4ff).withAlpha(0.16f));
+    g.setColour(profile.positiveCurveColour().toColour().withAlpha(0.20f));
     g.strokePath(fillPath, PathStrokeType(5.f, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
@@ -838,7 +822,9 @@ Rectangle<float> TrimeshWidget::expandedWavePanelContentBounds(Rectangle<float> 
     return panelBodyBounds(content);
 }
 
-Image TrimeshWidget::createHeatmapImage(const TrimeshRenderData& renderData, PortDomain domain) const {
+Image TrimeshWidget::createHeatmapImage(
+        const TrimeshRenderData& renderData,
+        const TrimeshRenderProfile& profile) const {
     if (!renderData.canDrawSurface()) {
         return {};
     }
@@ -848,7 +834,7 @@ Image TrimeshWidget::createHeatmapImage(const TrimeshRenderData& renderData, Por
     for (int column = 0; column < renderData.columns; ++column) {
         for (int row = 0; row < renderData.rows; ++row) {
             const float value = renderData.surface[(size_t) column * (size_t) renderData.rows + (size_t) row];
-            image.setPixelAt(column, renderData.rows - 1 - row, surfaceColourForDomain(value, domain));
+            image.setPixelAt(column, renderData.rows - 1 - row, surfaceColourForProfile(value, profile));
         }
     }
 

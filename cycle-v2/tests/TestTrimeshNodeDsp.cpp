@@ -8,6 +8,7 @@
 #include "../src/Nodes/Trimesh/TrimeshPanelBridge.h"
 #include "../src/Nodes/Trimesh/TrimeshPanel3D.h"
 #include "../src/Nodes/Trimesh/TrimeshPanelDataSource.h"
+#include "../src/Nodes/Trimesh/TrimeshRenderProfile.h"
 #include "../src/Nodes/Trimesh/TrimeshWidget.h"
 
 #include <App/SingletonRepo.h>
@@ -18,17 +19,36 @@
 using namespace CycleV2;
 
 TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly", "[cycle-v2][nodes][trimesh]") {
-    const Colour timeMid = TrimeshWidget::surfaceColourForDomain(0.55f, PortDomain::TimeSignal);
-    const Colour magMid = TrimeshWidget::surfaceColourForDomain(0.55f, PortDomain::SpectralMagnitudeSignal);
-    const Colour phaseMid = TrimeshWidget::surfaceColourForDomain(0.55f, PortDomain::SpectralPhaseSignal);
-    const Colour magLow = TrimeshWidget::surfaceColourForDomain(0.01f, PortDomain::SpectralMagnitudeSignal);
-    const Colour magHigh = TrimeshWidget::surfaceColourForDomain(0.90f, PortDomain::SpectralMagnitudeSignal);
+    const TrimeshRenderProfile timeProfile =
+            TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal);
+    const TrimeshRenderProfile magProfile =
+            TrimeshRenderProfile::fromDomain(PortDomain::SpectralMagnitudeSignal);
+    const TrimeshRenderProfile phaseProfile =
+            TrimeshRenderProfile::fromDomain(PortDomain::SpectralPhaseSignal);
+    const Colour timeMid = timeProfile.surfaceColour(0.55f);
+    const Colour magMid = magProfile.surfaceColour(0.55f);
+    const Colour phaseMid = phaseProfile.surfaceColour(0.55f);
+    const Colour magLow = magProfile.surfaceColour(0.01f);
+    const Colour magHigh = magProfile.surfaceColour(0.90f);
 
     REQUIRE(timeMid != magMid);
     REQUIRE(magMid == phaseMid);
     REQUIRE(timeMid.getFloatAlpha() == Catch::Approx(0.82f).margin(0.01f));
     REQUIRE(magLow.getFloatAlpha() < 0.02f);
     REQUIRE(magHigh.getFloatAlpha() > 0.80f);
+    REQUIRE_FALSE(timeProfile.surfaceTextureUsesAlpha());
+    REQUIRE(magProfile.surfaceTextureUsesAlpha());
+    REQUIRE(phaseProfile.surfaceTextureUsesAlpha());
+    REQUIRE(timeProfile.getSliceBackground() == TrimeshSliceBackground::Waveform);
+    REQUIRE(magProfile.getSliceBackground() == TrimeshSliceBackground::Spectrum);
+    REQUIRE(phaseProfile.getSliceBackground() == TrimeshSliceBackground::Spectrum);
+    REQUIRE(timeProfile.panel2DTitle() != magProfile.panel2DTitle());
+    REQUIRE(timeProfile.curveIsBipolar());
+    REQUIRE_FALSE(magProfile.curveIsBipolar());
+    REQUIRE(phaseProfile.curveIsBipolar());
+    REQUIRE(timeProfile.positiveCurveColour() == timeProfile.negativeCurveColour());
+    REQUIRE(magProfile.positiveCurveColour() == magProfile.negativeCurveColour());
+    REQUIRE_FALSE(phaseProfile.positiveCurveColour() == phaseProfile.negativeCurveColour());
 }
 
 TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", "[cycle-v2][nodes][trimesh]") {

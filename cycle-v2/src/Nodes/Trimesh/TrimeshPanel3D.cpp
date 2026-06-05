@@ -1,7 +1,5 @@
 #include "TrimeshPanel3D.h"
 
-#include <Binary/Gradients.h>
-
 namespace CycleV2 {
 
 TrimeshPanel3D::TrimeshPanel3D(SingletonRepo* repo, TrimeshPanelDataSource& source) :
@@ -30,19 +28,17 @@ void TrimeshPanel3D::setDisplayDomain(PortDomain domain) {
     }
 
     displayDomain = domain;
+    renderProfile = TrimeshRenderProfile::fromDomain(domain);
     applyGradientForDomain();
     dirtyState.mark(PanelDirtyState::Flag::SurfaceCache);
     dirtyState.mark(PanelDirtyState::Flag::StaticVisual);
 }
 
 void TrimeshPanel3D::applyGradientForDomain() {
-    const bool spectral = displayDomain == PortDomain::SpectralMagnitudeSignal
-            || displayDomain == PortDomain::SpectralPhaseSignal;
-    Image image = spectral
-            ? PNGImageFormat::loadFrom(Gradients::burntalum_png, Gradients::burntalum_pngSize)
-            : PNGImageFormat::loadFrom(Gradients::blue_png, Gradients::blue_pngSize);
+    Image image = renderProfile.gradientImage();
 
-    gradient.read(image, true, false);
+    isTransparent = renderProfile.surfaceTextureUsesAlpha();
+    gradient.read(image, true, isTransparent);
 }
 
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TrimeshPanelBridge.h"
+#include "TrimeshRenderProfile.h"
 
 #include <JuceHeader.h>
 
@@ -60,6 +61,7 @@ public:
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);
+    static juce::Colour surfaceColourForProfile(float value, const TrimeshRenderProfile& profile);
 
     bool findMorphControlAt(
             juce::Rectangle<float> content,
@@ -112,7 +114,7 @@ private:
             juce::Graphics& g,
             juce::Rectangle<float> area,
             const TrimeshRenderData& renderData,
-            PortDomain domain,
+            const TrimeshRenderProfile& profile,
             bool drawGrid);
     static void drawTrace(
             juce::Graphics& g,
@@ -121,11 +123,13 @@ private:
             juce::Colour colour);
     static void drawEditorGrid(
             juce::Graphics& g,
-            juce::Rectangle<float> area);
+            juce::Rectangle<float> area,
+            const TrimeshRenderProfile& profile);
     static void drawTraceFill(
             juce::Graphics& g,
             juce::Rectangle<float> area,
-            const std::vector<float>& values);
+            const std::vector<float>& values,
+            const TrimeshRenderProfile& profile);
     static void drawVertexMarkers(
             juce::Graphics& g,
             juce::Rectangle<float> area,
@@ -147,7 +151,9 @@ private:
     static juce::Rectangle<float> vertexParameterRailBounds(juce::Rectangle<float> parameterRow);
     static juce::String vertexParameterId(int parameterIndex);
     static juce::Rectangle<float> waveshapeContentBounds(juce::Rectangle<float> content);
-    juce::Image createHeatmapImage(const TrimeshRenderData& renderData, PortDomain domain) const;
+    juce::Image createHeatmapImage(
+            const TrimeshRenderData& renderData,
+            const TrimeshRenderProfile& profile) const;
 
     TrimeshPanelBridge bridge;
     CachedHeatmap compactHeatmap;

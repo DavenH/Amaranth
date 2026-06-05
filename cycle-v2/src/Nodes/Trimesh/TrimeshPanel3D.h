@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TrimeshPanelDataSource.h"
+#include "TrimeshRenderProfile.h"
 
 #include <Curve/Mesh/Vertex.h>
 #include <UI/Panels/Panel3D.h>
@@ -26,6 +27,7 @@ private:
 
     TrimeshPanelDataSource& dataSource;
     PortDomain displayDomain { PortDomain::TimeSignal };
+    TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     int primaryViewAxis { Vertex::Time };
     bool sharedCanvasMode {};
 };
