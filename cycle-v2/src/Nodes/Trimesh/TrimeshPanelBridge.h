@@ -4,6 +4,7 @@
 #include "TrimeshPanel3D.h"
 #include "TrimeshInteractor2D.h"
 #include "TrimeshInteractor3D.h"
+#include "TrimeshInvalidation.h"
 
 #include <App/SingletonRepo.h>
 #include <App/Settings.h>
@@ -94,6 +95,7 @@ private:
     NullConsole console;
     NodeMorphPositioner morphPositioner;
     TrimeshNodeModel model;
+    TrimeshInvalidation invalidation;
     TrimeshPanelDataSource dataSource;
     Rasterization::TrilinearMeshRasterizer rasterizer;
     TrimeshInteractor2D interactor2D;

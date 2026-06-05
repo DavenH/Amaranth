@@ -266,15 +266,10 @@ void TrimeshPanelBridge::syncFromNode(
     const bool modelChanged = previousRevision != model.getRevision();
     const bool primaryAxisChanged = previousPrimaryAxis != model.getPrimaryViewAxis();
     const MorphPosition& nextMorph = model.getMorphPosition();
-    const bool timeChanged = previousMorph.time.getTargetValue() != nextMorph.time.getTargetValue();
+    const bool yellowChanged = previousMorph.time.getTargetValue() != nextMorph.time.getTargetValue();
     const bool redChanged = previousMorph.red.getTargetValue() != nextMorph.red.getTargetValue();
     const bool blueChanged = previousMorph.blue.getTargetValue() != nextMorph.blue.getTargetValue();
-    const bool morphChanged = timeChanged || redChanged || blueChanged;
-    const bool primaryMorphChanged =
-            (model.getPrimaryViewAxis() == Vertex::Time && timeChanged)
-            || (model.getPrimaryViewAxis() == Vertex::Red && redChanged)
-            || (model.getPrimaryViewAxis() == Vertex::Blue && blueChanged);
-    const bool nonPrimaryMorphChanged = morphChanged && !primaryMorphChanged;
+    const bool morphChanged = yellowChanged || redChanged || blueChanged;
 
     if (!modelChanged
             && !morphChanged
@@ -285,18 +280,39 @@ void TrimeshPanelBridge::syncFromNode(
         return;
     }
 
+    TrimeshChange change;
+    change.kind = primaryAxisChanged
+            ? TrimeshChangeKind::PrimaryAxis
+            : (morphChanged ? TrimeshChangeKind::Morph : TrimeshChangeKind::Layout);
+    change.yellowChanged = yellowChanged;
+    change.redChanged = redChanged;
+    change.blueChanged = blueChanged;
+    change.primaryViewAxis = model.getPrimaryViewAxis();
+
+    const TrimeshInvalidationResult invalidated = invalidation.invalidate(change);
     dataSource.rebuild(model, rows, columns);
-    updateRasterizer(true, nonPrimaryMorphChanged || primaryAxisChanged || lastRows != rows || lastColumns != columns);
+    updateRasterizer(
+            invalidated.refresh2DPanel,
+            invalidated.refresh3DGeometry || lastRows != rows || lastColumns != columns);
     lastSyncedRevision = model.getRevision();
     lastRows = rows;
     lastColumns = columns;
 }
 
 void TrimeshPanelBridge::refreshAfterMeshEdit(bool sourceIs3D) {
+    const TrimeshInvalidationResult invalidated = invalidation.invalidate({
+            TrimeshChangeKind::MeshEdit,
+            false,
+            false,
+            false,
+            sourceIs3D,
+            model.getPrimaryViewAxis()
+    });
+
     model.markMeshEdited();
     syncPrimaryAxisContext();
     dataSource.rebuild(model, lastRows, lastColumns);
-    updateRasterizer(true, !sourceIs3D);
+    updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
 }
 
 void TrimeshPanelBridge::syncPrimaryAxisContext() {
