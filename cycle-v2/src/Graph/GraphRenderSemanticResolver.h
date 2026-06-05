@@ -36,6 +36,7 @@ private:
     GraphDomainResolver domainResolver;
 
     const Node* findNode(const NodeGraph& graph, const String& id) const;
+    PortDomain contextDomainForNode(const NodeGraph& graph, const Node& node) const;
     NodeRenderSemantic semanticForEdge(
             const NodeGraph& graph,
             const Edge& edge,

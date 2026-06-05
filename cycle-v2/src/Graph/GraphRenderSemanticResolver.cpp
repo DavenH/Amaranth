@@ -12,6 +12,23 @@ const Node* GraphRenderSemanticResolver::findNode(const NodeGraph& graph, const 
     return nullptr;
 }
 
+PortDomain GraphRenderSemanticResolver::contextDomainForNode(
+        const NodeGraph& graph,
+        const Node& node) const {
+    for (const auto& edge : graph.getEdges()) {
+        if (edge.attachment || edge.destNodeId != node.id || edge.destPortId != "context") {
+            continue;
+        }
+
+        const Node* sourceNode = findNode(graph, edge.sourceNodeId);
+        if (sourceNode != nullptr && sourceNode->kind == NodeKind::VoiceContext) {
+            return domainResolver.domainFromVoiceContext(*sourceNode);
+        }
+    }
+
+    return PortDomain::ControlSignal;
+}
+
 NodeRenderSemantic GraphRenderSemanticResolver::semanticForNodeOutput(
         const NodeGraph& graph,
         const String& nodeId,
@@ -43,6 +60,13 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForNodeOutput(
     }
 
     if (const Node* node = findNode(graph, nodeId)) {
+        if (node->kind == NodeKind::TrilinearMesh && portId == "out") {
+            const PortDomain contextDomain = contextDomainForNode(graph, *node);
+            if (contextDomain != PortDomain::ControlSignal) {
+                return defaultSemanticForDomain(contextDomain);
+            }
+        }
+
         for (const auto& port : node->outputs) {
             if (port.id == portId) {
                 return defaultSemanticForDomain(port.domain);

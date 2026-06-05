@@ -81,3 +81,24 @@ TEST_CASE("Render semantics resolve envelope scale from downstream target", "[cy
     REQUIRE(semantic.scalePolicy == RenderScalePolicy::Bipolar);
     REQUIRE(semantic.role == RenderSemanticRole::EnvelopeBipolar);
 }
+
+TEST_CASE("Render semantics use voice context before downstream consumers exist", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    GraphRenderSemanticResolver resolver;
+    NodeGraph graph;
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = {
+            { "domain", "Start Domain", "spectral" }
+    };
+
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
+
+    const NodeRenderSemantic semantic = resolver.semanticForNodeOutput(graph, "mesh", "out");
+
+    REQUIRE(semantic.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(semantic.scalePolicy == RenderScalePolicy::Unipolar);
+    REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeAdditive);
+}
