@@ -212,6 +212,36 @@ TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-
     REQUIRE(vertexMarkers[(size_t) vertexIndex].selected);
 }
 
+TEST_CASE("Trimesh node model resolves a default selected vertex for parameter edits", "[cycle-v2][nodes][trimesh]") {
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {
+                    { "yellow", "Yellow", "0.35" },
+                    { "red", "Red", "0.55" },
+                    { "blue", "Blue", "0.65" }
+            },
+            {},
+            {}
+    };
+    TrimeshNodeModel model;
+
+    model.syncFromNode(node);
+    const int resolvedVertexIndex = model.getResolvedSelectedVertexIndex();
+
+    REQUIRE(resolvedVertexIndex >= 0);
+    REQUIRE(model.getSelectedVertexIndex() == -1);
+
+    node.parameters.push_back({ "selectedVertexIndex", "Selected Vertex", String(resolvedVertexIndex) });
+    model.syncFromNode(node);
+
+    REQUIRE(model.getResolvedSelectedVertexIndex() == resolvedVertexIndex);
+    REQUIRE(model.getSelectedVertexIndex() == resolvedVertexIndex);
+}
+
 TEST_CASE("Trimesh gridwise DSP renders independent morph columns", "[cycle-v2][nodes][trimesh]") {
     auto mesh = TrimeshMeshFactory::createDefaultMesh();
     TrimeshGridwiseDsp dsp;

@@ -266,6 +266,10 @@ int TrimeshNodeModel::findNearestVertexIndexForPhaseAmp(float phase, float amp) 
     return bestIndex;
 }
 
+int TrimeshNodeModel::getResolvedSelectedVertexIndex() {
+    return resolvedSelectedVertexIndex();
+}
+
 void TrimeshNodeModel::markMeshEdited() {
     ++revision;
 }
@@ -279,12 +283,12 @@ Mesh& TrimeshNodeModel::mesh() {
     return *ownedMesh;
 }
 
-Vertex* TrimeshNodeModel::selectedVertex() {
+int TrimeshNodeModel::resolvedSelectedVertexIndex() {
     Mesh& activeMesh = mesh();
     auto& verts = activeMesh.getVerts();
 
     if (isPositiveAndBelow(selectedVertexIndex, (int) verts.size())) {
-        return verts[(size_t) selectedVertexIndex];
+        return selectedVertexIndex;
     }
 
     for (auto* cube : activeMesh.getCubes()) {
@@ -293,12 +297,28 @@ Vertex* TrimeshNodeModel::selectedVertex() {
         }
 
         if (Vertex* vertex = cube->findClosestVertex(morph)) {
-            return vertex;
+            for (int i = 0; i < (int) verts.size(); ++i) {
+                if (verts[(size_t) i] == vertex) {
+                    return i;
+                }
+            }
         }
     }
 
-    if (!activeMesh.getVerts().empty()) {
-        return activeMesh.getVerts().front();
+    if (!verts.empty()) {
+        return 0;
+    }
+
+    return -1;
+}
+
+Vertex* TrimeshNodeModel::selectedVertex() {
+    Mesh& activeMesh = mesh();
+    auto& verts = activeMesh.getVerts();
+    const int vertexIndex = resolvedSelectedVertexIndex();
+
+    if (isPositiveAndBelow(vertexIndex, (int) verts.size())) {
+        return verts[(size_t) vertexIndex];
     }
 
     return nullptr;

@@ -2822,20 +2822,26 @@ bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
     }
 
     const String label = activeTrimeshVertexParameterId.fromFirstOccurrenceOf(".", false, false);
-    const int selectedVertexIndex = parameterValueForNode(*node, "selectedVertexIndex", "-1").getIntValue();
-    const String persistentParameterId = selectedVertexIndex >= 0
-            ? "vertex." + String(selectedVertexIndex) + "." + label
-            : activeTrimeshVertexParameterId;
+    int selectedVertexIndex = parameterValueForNode(*node, "selectedVertexIndex", "-1").getIntValue();
 
     if (selectedVertexIndex < 0) {
-        GraphEditor().setNodeParameter(
-                graph,
-                node->id,
-                "vertexOverrideIndex",
-                "Vertex Override Index",
-                parameterValueForNode(*node, "selectedVertexIndex", "-1"));
+        selectedVertexIndex = trimeshWidgetFor(node->id).resolvedSelectedVertexIndexForNode(*node);
+
+        if (selectedVertexIndex >= 0) {
+            GraphEditor().setNodeParameter(
+                    graph,
+                    node->id,
+                    "selectedVertexIndex",
+                    "Selected Vertex",
+                    String(selectedVertexIndex));
+        }
     }
 
+    if (selectedVertexIndex < 0) {
+        return false;
+    }
+
+    const String persistentParameterId = "vertex." + String(selectedVertexIndex) + "." + label;
     GraphEditor().setNodeParameter(
             graph,
             node->id,
@@ -2843,7 +2849,7 @@ bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
             label,
             String(value, 3));
     refreshCompiledState();
-    editStatusMessage = "Vertex " + label + " = " + String(value, 2);
+    editStatusMessage = "Vertex #" + String(selectedVertexIndex) + " " + label + " = " + String(value, 2);
     return true;
 }
 

@@ -56,6 +56,7 @@ public:
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
     std::vector<TrimeshVertexMarker> getVertexMarkers();
     int findNearestVertexIndexForPhaseAmp(float phase, float amp);
+    int getResolvedSelectedVertexIndex();
     void markMeshEdited();
 
     const MorphPosition& getMorphPosition() const { return morph; }
@@ -66,6 +67,7 @@ public:
 
 private:
     Mesh& mesh();
+    int resolvedSelectedVertexIndex();
     Vertex* selectedVertex();
     bool applyVertexParameterOverrides(const Node& node);
     void clearMesh();

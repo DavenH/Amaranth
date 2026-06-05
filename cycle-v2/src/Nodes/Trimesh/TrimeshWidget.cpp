@@ -235,6 +235,11 @@ void TrimeshWidget::releaseSharedGlResources() {
     bridge.releaseSharedGlResources();
 }
 
+int TrimeshWidget::resolvedSelectedVertexIndexForNode(const Node& node) {
+    bridge.syncFromNode(node, kExpandedRows, kExpandedColumns);
+    return bridge.getModel().getResolvedSelectedVertexIndex();
+}
+
 void TrimeshWidget::setExpandedPanelCallbacks(
         std::function<void()> repaintCallback,
         std::function<void(const MouseCursor&)> cursorCallback,

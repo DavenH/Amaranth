@@ -61,6 +61,7 @@ public:
             juce::Rectangle<float> content);
     juce::Component* getExpandedPanel2DComponentIfCreated();
     void releaseSharedGlResources();
+    int resolvedSelectedVertexIndexForNode(const Node& node);
     void setExpandedPanelCallbacks(
             std::function<void()> repaintCallback,
             std::function<void(const juce::MouseCursor&)> cursorCallback,
