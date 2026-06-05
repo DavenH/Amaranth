@@ -32,6 +32,7 @@ public:
     void setCallbacks(Callbacks nextCallbacks);
     void setNode(const Node& nextNode);
     void setDisplayDomain(PortDomain domain);
+    void setRenderProfile(TrimeshRenderProfile profile);
     void renderOpenGL(float scaleFactor);
 
     void paint(juce::Graphics& g) override;
@@ -63,7 +64,7 @@ private:
     TrimeshWidget& widget;
     Callbacks callbacks;
     Node node;
-    PortDomain displayDomain { PortDomain::TimeSignal };
+    TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     DragTarget dragTarget { DragTarget::None };
     juce::String activeParameterId;
     juce::Rectangle<int> lastHitRegionContentBounds;

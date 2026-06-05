@@ -29,6 +29,7 @@ class TrimeshWidget {
 public:
     void syncFromNode(const Node& node);
     void setDisplayDomain(PortDomain domain);
+    void setRenderProfile(TrimeshRenderProfile profile);
 
     void paintCompact(
             juce::Graphics& g,
@@ -36,6 +37,12 @@ public:
             juce::Rectangle<float> area,
             float zoom,
             PortDomain domain);
+    void paintCompact(
+            juce::Graphics& g,
+            const Node& node,
+            juce::Rectangle<float> area,
+            float zoom,
+            const TrimeshRenderProfile& profile);
 
     void paintExpanded(
             juce::Graphics& g,
@@ -102,6 +109,7 @@ private:
         int columns {};
         uint64_t revision {};
         PortDomain domain { PortDomain::ControlSignal };
+        RenderScalePolicy scalePolicy { RenderScalePolicy::Unipolar };
     };
 
     static juce::Rectangle<float> meshPreviewContentArea(juce::Rectangle<float> area);
@@ -157,7 +165,7 @@ private:
 
     TrimeshPanelBridge bridge;
     CachedHeatmap compactHeatmap;
-    PortDomain displayDomain { PortDomain::TimeSignal };
+    TrimeshRenderProfile displayProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
 };
 
 }

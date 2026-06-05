@@ -470,8 +470,12 @@ void TrimeshPanelBridge::releaseSharedGlResources() {
 }
 
 void TrimeshPanelBridge::setDisplayDomain(PortDomain domain) {
-    panel3D.setDisplayDomain(domain);
-    panel2D.setDisplayDomain(domain);
+    setRenderProfile(TrimeshRenderProfile::fromDomain(domain));
+}
+
+void TrimeshPanelBridge::setRenderProfile(TrimeshRenderProfile profile) {
+    panel3D.setRenderProfile(profile);
+    panel2D.setRenderProfile(profile);
 }
 
 void TrimeshPanelBridge::renderPanel3D(Rectangle<float> bounds, float scaleFactor) {

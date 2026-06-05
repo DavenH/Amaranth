@@ -14,6 +14,7 @@ public:
     void drawViewableVerts() override {}
     void panelResized() override;
     void setDisplayDomain(PortDomain domain);
+    void setRenderProfile(TrimeshRenderProfile profile);
 
 private:
     void applyRenderProfile();

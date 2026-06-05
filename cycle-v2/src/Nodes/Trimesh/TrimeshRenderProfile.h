@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../Graph/GraphRenderSemanticResolver.h"
 #include "../../Graph/NodeGraph.h"
 
 #include <Obj/Color.h>
@@ -16,8 +17,10 @@ enum class TrimeshSliceBackground {
 class TrimeshRenderProfile {
 public:
     static TrimeshRenderProfile fromDomain(PortDomain domain);
+    static TrimeshRenderProfile fromSemantic(NodeRenderSemantic semantic);
 
     PortDomain getDomain() const { return domain; }
+    RenderScalePolicy getScalePolicy() const { return scalePolicy; }
     TrimeshSliceBackground getSliceBackground() const { return sliceBackground; }
     juce::String panel3DTitle() const;
     juce::String panel2DTitle() const;
@@ -32,9 +35,10 @@ public:
     bool surfaceTextureUsesAlpha() const { return spectral; }
 
 private:
-    explicit TrimeshRenderProfile(PortDomain domain);
+    explicit TrimeshRenderProfile(NodeRenderSemantic semantic);
 
     PortDomain domain { PortDomain::TimeSignal };
+    RenderScalePolicy scalePolicy { RenderScalePolicy::Bipolar };
     TrimeshSliceBackground sliceBackground { TrimeshSliceBackground::Waveform };
     bool spectral {};
     bool phase {};

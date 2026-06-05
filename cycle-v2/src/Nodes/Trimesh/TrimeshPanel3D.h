@@ -20,13 +20,13 @@ public:
     bool usesCachedSurface() const override { return !sharedCanvasMode; }
     void setSharedCanvasMode(bool shouldUseSharedCanvas) { sharedCanvasMode = shouldUseSharedCanvas; }
     void setDisplayDomain(PortDomain domain);
+    void setRenderProfile(TrimeshRenderProfile profile);
     void setPrimaryViewAxis(int axis) { primaryViewAxis = axis; }
 
 private:
-    void applyGradientForDomain();
+    void applyGradientForProfile();
 
     TrimeshPanelDataSource& dataSource;
-    PortDomain displayDomain { PortDomain::TimeSignal };
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     int primaryViewAxis { Vertex::Time };
     bool sharedCanvasMode {};

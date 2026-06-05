@@ -39,13 +39,16 @@ void TrimeshPanel2D::panelResized() {
 }
 
 void TrimeshPanel2D::setDisplayDomain(PortDomain domain) {
-    TrimeshRenderProfile nextProfile = TrimeshRenderProfile::fromDomain(domain);
+    setRenderProfile(TrimeshRenderProfile::fromDomain(domain));
+}
 
-    if (nextProfile.getDomain() == renderProfile.getDomain()) {
+void TrimeshPanel2D::setRenderProfile(TrimeshRenderProfile profile) {
+    if (profile.getDomain() == renderProfile.getDomain()
+            && profile.getScalePolicy() == renderProfile.getScalePolicy()) {
         return;
     }
 
-    renderProfile = nextProfile;
+    renderProfile = profile;
     applyRenderProfile();
     backgroundTimeRelevant = false;
     dirtyState.mark(PanelDirtyState::Flag::StaticVisual);

@@ -6,7 +6,7 @@ TrimeshPanel3D::TrimeshPanel3D(SingletonRepo* repo, TrimeshPanelDataSource& sour
         SingletonAccessor  (repo, "CycleV2TrimeshPanel3D")
     ,   Panel3D            (repo, "CycleV2TrimeshPanel3D", &source, 0, false, true)
     ,   dataSource         (source) {
-    applyGradientForDomain();
+    applyGradientForProfile();
     volumeScale = 1.f;
     volumeTrans = 0.f;
     guideCurveApplicable = false;
@@ -23,18 +23,22 @@ void TrimeshPanel3D::panelResized() {
 }
 
 void TrimeshPanel3D::setDisplayDomain(PortDomain domain) {
-    if (displayDomain == domain) {
+    setRenderProfile(TrimeshRenderProfile::fromDomain(domain));
+}
+
+void TrimeshPanel3D::setRenderProfile(TrimeshRenderProfile profile) {
+    if (profile.getDomain() == renderProfile.getDomain()
+            && profile.getScalePolicy() == renderProfile.getScalePolicy()) {
         return;
     }
 
-    displayDomain = domain;
-    renderProfile = TrimeshRenderProfile::fromDomain(domain);
-    applyGradientForDomain();
+    renderProfile = profile;
+    applyGradientForProfile();
     dirtyState.mark(PanelDirtyState::Flag::SurfaceCache);
     dirtyState.mark(PanelDirtyState::Flag::StaticVisual);
 }
 
-void TrimeshPanel3D::applyGradientForDomain() {
+void TrimeshPanel3D::applyGradientForProfile() {
     Image image = renderProfile.gradientImage();
 
     isTransparent = renderProfile.surfaceTextureUsesAlpha();

@@ -1191,6 +1191,7 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
     const int width = roundToInt(area.getWidth());
     const int height = roundToInt(area.getHeight());
     const PortDomain previewDomain = displayDomainForNodeOutput(node, "out");
+    const TrimeshRenderProfile previewProfile = renderProfileForNodeOutput(node, "out");
     const String signature = previewCacheSignature(node, previewDomain);
 
     if (width <= 0 || height <= 0) {
@@ -1198,7 +1199,7 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
     }
 
     if (node.kind == NodeKind::TrilinearMesh) {
-        drawPreviewUncached(g, node, area, previewDomain);
+        trimeshWidgetFor(node.id).paintCompact(g, node, area, zoom, previewProfile);
         return;
     }
 
@@ -1715,7 +1716,7 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
         trimeshExpandedEditor->setBounds(editorBounds);
     }
 
-    trimeshExpandedEditor->setDisplayDomain(displayDomainForNodeOutput(*node, "out"));
+    trimeshExpandedEditor->setRenderProfile(renderProfileForNodeOutput(*node, "out"));
     trimeshExpandedEditor->setNode(*node);
     trimeshExpandedEditor->setVisible(true);
     trimeshExpandedEditor->toFront(false);
@@ -2336,6 +2337,16 @@ PortDomain NodeCanvas::displayDomainForNodeOutput(const Node& node, const String
     }
 
     return node.outputs.empty() ? PortDomain::ControlSignal : node.outputs.front().domain;
+}
+
+TrimeshRenderProfile NodeCanvas::renderProfileForNodeOutput(const Node& node, const String& portId) const {
+    NodeRenderSemantic semantic = GraphRenderSemanticResolver().semanticForNodeOutput(graph, node.id, portId);
+
+    if (semantic.domain == PortDomain::ControlSignal) {
+        semantic.domain = displayDomainForNodeOutput(node, portId);
+    }
+
+    return TrimeshRenderProfile::fromSemantic(semantic);
 }
 
 bool NodeCanvas::edgeHasValidationIssue(const Edge& edge) const {

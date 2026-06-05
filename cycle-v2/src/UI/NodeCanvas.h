@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "../Graph/GraphEditor.h"
+#include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Graph/NodeGraph.h"
 #include "../Graph/GraphSerializer.h"
 #include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
@@ -136,6 +137,7 @@ private:
     const NodePreviewResult* findPreviewResult(const String& nodeId) const;
     PortDomain displayDomainForEdge(const Edge& edge) const;
     PortDomain displayDomainForNodeOutput(const Node& node, const String& portId) const;
+    TrimeshRenderProfile renderProfileForNodeOutput(const Node& node, const String& portId) const;
     bool edgeHasValidationIssue(const Edge& edge) const;
     GraphValidationIssue validationIssueForEdge(const Edge& edge) const;
     int executionIndexForNode(const String& nodeId) const;

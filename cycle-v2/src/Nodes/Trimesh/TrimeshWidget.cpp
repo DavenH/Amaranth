@@ -37,8 +37,12 @@ void TrimeshWidget::syncFromNode(const Node& node) {
 }
 
 void TrimeshWidget::setDisplayDomain(PortDomain domain) {
-    displayDomain = domain;
-    bridge.setDisplayDomain(domain);
+    setRenderProfile(TrimeshRenderProfile::fromDomain(domain));
+}
+
+void TrimeshWidget::setRenderProfile(TrimeshRenderProfile profile) {
+    displayProfile = profile;
+    bridge.setRenderProfile(profile);
 }
 
 void TrimeshWidget::paintCompact(
@@ -47,8 +51,16 @@ void TrimeshWidget::paintCompact(
         Rectangle<float> area,
         float,
         PortDomain domain) {
-    setDisplayDomain(domain);
-    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(domain);
+    paintCompact(g, node, area, 1.f, TrimeshRenderProfile::fromDomain(domain));
+}
+
+void TrimeshWidget::paintCompact(
+        Graphics& g,
+        const Node& node,
+        Rectangle<float> area,
+        float,
+        const TrimeshRenderProfile& profile) {
+    setRenderProfile(profile);
     bridge.syncFromNode(node, kPreviewRows, kPreviewColumns);
     const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
     TrimeshNodeModel& model = bridge.getModel();
@@ -62,13 +74,15 @@ void TrimeshWidget::paintCompact(
             || compactHeatmap.rows != renderData.rows
             || compactHeatmap.columns != renderData.columns
             || compactHeatmap.revision != model.getRevision()
-            || compactHeatmap.domain != domain) {
+            || compactHeatmap.domain != profile.getDomain()
+            || compactHeatmap.scalePolicy != profile.getScalePolicy()) {
         compactHeatmap.image = createHeatmapImage(renderData, profile);
         compactHeatmap.valueCount = renderData.surface.size();
         compactHeatmap.rows = renderData.rows;
         compactHeatmap.columns = renderData.columns;
         compactHeatmap.revision = model.getRevision();
-        compactHeatmap.domain = domain;
+        compactHeatmap.domain = profile.getDomain();
+        compactHeatmap.scalePolicy = profile.getScalePolicy();
     }
 
     if (compactHeatmap.image.isValid()) {
@@ -78,8 +92,8 @@ void TrimeshWidget::paintCompact(
 }
 
 void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float> content) {
-    setDisplayDomain(displayDomain);
-    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(displayDomain);
+    setRenderProfile(displayProfile);
+    const TrimeshRenderProfile profile = displayProfile;
     bridge.syncFromNode(node, kExpandedRows, kExpandedColumns);
     const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
     TrimeshNodeModel& model = bridge.getModel();
@@ -187,7 +201,7 @@ void TrimeshWidget::renderExpandedPanelsOpenGL(
         const Node& node,
         Rectangle<float> content,
         float scaleFactor) {
-    setDisplayDomain(displayDomain);
+    setRenderProfile(displayProfile);
     bridge.syncFromNode(node, kExpandedRows, kExpandedColumns);
     bridge.renderPanel3D(expandedGridPanelContentBounds(content), scaleFactor);
     bridge.renderPanel2D(expandedWavePanelContentBounds(content), scaleFactor);
@@ -196,7 +210,7 @@ void TrimeshWidget::renderExpandedPanelsOpenGL(
 Component* TrimeshWidget::prepareExpandedPanel3DComponent(
         const Node& node,
         Rectangle<float> content) {
-    setDisplayDomain(displayDomain);
+    setRenderProfile(displayProfile);
     bridge.syncFromNode(node, kExpandedRows, kExpandedColumns);
     return bridge.getPanel3DHostComponent();
 }
@@ -208,7 +222,7 @@ Component* TrimeshWidget::getExpandedPanel3DComponentIfCreated() {
 Component* TrimeshWidget::prepareExpandedPanel2DComponent(
         const Node& node,
         Rectangle<float> content) {
-    setDisplayDomain(displayDomain);
+    setRenderProfile(displayProfile);
     bridge.syncFromNode(node, kExpandedRows, kExpandedColumns);
     return bridge.getPanel2DHostComponent();
 }

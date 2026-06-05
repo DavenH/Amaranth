@@ -35,16 +35,27 @@ Colour sampleGradient(Image& gradient, float value) {
 }
 
 TrimeshRenderProfile TrimeshRenderProfile::fromDomain(PortDomain domain) {
-    return TrimeshRenderProfile(domain);
+    RenderScalePolicy scalePolicy = RenderScalePolicy::Unipolar;
+
+    if (domain == PortDomain::TimeSignal || domain == PortDomain::SpectralPhaseSignal) {
+        scalePolicy = RenderScalePolicy::Bipolar;
+    }
+
+    return TrimeshRenderProfile({ domain, scalePolicy, RenderSemanticRole::Generic });
 }
 
-TrimeshRenderProfile::TrimeshRenderProfile(PortDomain selectedDomain) :
-        domain      (selectedDomain)
-    ,   spectral    (selectedDomain == PortDomain::SpectralMagnitudeSignal
-                     || selectedDomain == PortDomain::SpectralPhaseSignal)
-    ,   phase       (selectedDomain == PortDomain::SpectralPhaseSignal) {
+TrimeshRenderProfile TrimeshRenderProfile::fromSemantic(NodeRenderSemantic semantic) {
+    return TrimeshRenderProfile(semantic);
+}
+
+TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
+        domain      (semantic.domain)
+    ,   scalePolicy (semantic.scalePolicy)
+    ,   spectral    (semantic.domain == PortDomain::SpectralMagnitudeSignal
+                     || semantic.domain == PortDomain::SpectralPhaseSignal)
+    ,   phase       (semantic.domain == PortDomain::SpectralPhaseSignal) {
     sliceBackground = spectral ? TrimeshSliceBackground::Spectrum : TrimeshSliceBackground::Waveform;
-    curveBipolar = !spectral || phase;
+    curveBipolar = scalePolicy == RenderScalePolicy::Bipolar;
 }
 
 String TrimeshRenderProfile::panel3DTitle() const {

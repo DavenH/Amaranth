@@ -49,6 +49,7 @@ public:
     void initialiseSharedGlResources();
     void releaseSharedGlResources();
     void setDisplayDomain(PortDomain domain);
+    void setRenderProfile(TrimeshRenderProfile profile);
     void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
     void renderPanel2D(juce::Rectangle<float> bounds, float scaleFactor);
 
