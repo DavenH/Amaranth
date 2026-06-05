@@ -41,6 +41,8 @@ private:
 
     struct CachedPreviewSprite {
         Image image;
+        String signature;
+        PortDomain domain { PortDomain::ControlSignal };
         int width {};
         int height {};
     };
@@ -97,7 +99,7 @@ private:
     void drawNodes(Graphics& g);
     void drawNode(Graphics& g, const Node& node);
     void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
-    void drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area);
+    void drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area, PortDomain previewDomain);
     CachedPreviewSprite& cachedPreviewSpriteFor(const String& nodeId);
     TrimeshWidget& trimeshWidgetFor(const String& nodeId);
     void drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed);
@@ -133,6 +135,7 @@ private:
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
     const NodePreviewResult* findPreviewResult(const String& nodeId) const;
     PortDomain displayDomainForEdge(const Edge& edge) const;
+    PortDomain displayDomainForNodeOutput(const Node& node, const String& portId) const;
     bool edgeHasValidationIssue(const Edge& edge) const;
     GraphValidationIssue validationIssueForEdge(const Edge& edge) const;
     int executionIndexForNode(const String& nodeId) const;

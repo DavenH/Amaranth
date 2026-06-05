@@ -48,6 +48,7 @@ public:
             std::function<void(Point<float>)> hoverCallback);
     void initialiseSharedGlResources();
     void releaseSharedGlResources();
+    void setDisplayDomain(PortDomain domain);
     void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
     void renderPanel2D(juce::Rectangle<float> bounds, float scaleFactor);
 
@@ -80,6 +81,7 @@ private:
     };
 
     void refreshAfterMeshEdit(bool sourceIs3D);
+    void syncPrimaryAxisContext();
     void updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry);
     void initialisePanel3DHost();
     void initialisePanel2DHost();

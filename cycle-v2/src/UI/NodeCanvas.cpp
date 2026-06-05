@@ -258,6 +258,20 @@ Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
     return node.outputs.empty() ? Colour(0xff9aa5b2) : colourForDomain(node.outputs.front().domain);
 }
 
+String previewCacheSignature(const Node& node, PortDomain domain) {
+    String signature = String((int) node.kind) + ":" + String((int) domain);
+
+    for (const auto& parameter : node.parameters) {
+        signature += "|" + parameter.id + "=" + parameter.value;
+    }
+
+    for (const auto& output : node.outputs) {
+        signature += "|out:" + output.id + ":" + String((int) output.domain);
+    }
+
+    return signature;
+}
+
 void drawPreviewTrace(
         Graphics& g,
         Rectangle<float> area,
@@ -1176,8 +1190,15 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
 void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> area) {
     const int width = roundToInt(area.getWidth());
     const int height = roundToInt(area.getHeight());
+    const PortDomain previewDomain = displayDomainForNodeOutput(node, "out");
+    const String signature = previewCacheSignature(node, previewDomain);
 
     if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    if (node.kind == NodeKind::TrilinearMesh) {
+        drawPreviewUncached(g, node, area, previewDomain);
         return;
     }
 
@@ -1185,13 +1206,17 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
 
     if (!cached.image.isValid()
             || cached.width != width
-            || cached.height != height) {
+            || cached.height != height
+            || cached.domain != previewDomain
+            || cached.signature != signature) {
         cached.image = Image(Image::ARGB, width, height, true);
         cached.width = width;
         cached.height = height;
+        cached.domain = previewDomain;
+        cached.signature = signature;
 
         Graphics spriteGraphics(cached.image);
-        drawPreviewUncached(spriteGraphics, node, { 0.f, 0.f, (float) width, (float) height });
+        drawPreviewUncached(spriteGraphics, node, { 0.f, 0.f, (float) width, (float) height }, previewDomain);
     }
 
     g.setImageResamplingQuality(Graphics::mediumResamplingQuality);
@@ -1202,13 +1227,17 @@ Rectangle<float> previewContentArea(Rectangle<float> area) {
     return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.12f);
 }
 
-void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area) {
+void NodeCanvas::drawPreviewUncached(
+        Graphics& g,
+        const Node& node,
+        Rectangle<float> area,
+        PortDomain previewDomain) {
     if (area.getWidth() < 20.f || area.getHeight() < 20.f) {
         return;
     }
 
     if (node.kind == NodeKind::TrilinearMesh) {
-        trimeshWidgetFor(node.id).paintCompact(g, node, area, zoom);
+        trimeshWidgetFor(node.id).paintCompact(g, node, area, zoom, previewDomain);
         return;
     }
 
@@ -1686,6 +1715,7 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
         trimeshExpandedEditor->setBounds(editorBounds);
     }
 
+    trimeshExpandedEditor->setDisplayDomain(displayDomainForNodeOutput(*node, "out"));
     trimeshExpandedEditor->setNode(*node);
     trimeshExpandedEditor->setVisible(true);
     trimeshExpandedEditor->toFront(false);
@@ -2278,6 +2308,34 @@ PortDomain NodeCanvas::displayDomainForEdge(const Edge& edge) const {
     }
 
     return GraphValidator().resolvedDomainForEdge(graph, edge);
+}
+
+PortDomain NodeCanvas::displayDomainForNodeOutput(const Node& node, const String& portId) const {
+    if (compileResult.succeeded()) {
+        for (const auto& step : compileResult.plan.steps) {
+            if (step.nodeId != node.id) {
+                continue;
+            }
+
+            for (const auto& output : step.outputs) {
+                if (output.portId == portId) {
+                    return output.domain;
+                }
+            }
+        }
+    }
+
+    for (const auto& edge : graph.getEdges()) {
+        if (!edge.attachment && edge.sourceNodeId == node.id && edge.sourcePortId == portId) {
+            return displayDomainForEdge(edge);
+        }
+    }
+
+    if (const Port* port = findPort(node, portId, false)) {
+        return port->domain;
+    }
+
+    return node.outputs.empty() ? PortDomain::ControlSignal : node.outputs.front().domain;
 }
 
 bool NodeCanvas::edgeHasValidationIssue(const Edge& edge) const {

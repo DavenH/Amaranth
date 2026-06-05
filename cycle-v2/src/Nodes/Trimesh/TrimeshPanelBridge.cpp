@@ -261,14 +261,20 @@ void TrimeshPanelBridge::syncFromNode(
 
     model.syncFromNode(node);
     morphPositioner.setPosition(model.getMorphPosition(), model.getPrimaryViewAxis());
+    syncPrimaryAxisContext();
 
     const bool modelChanged = previousRevision != model.getRevision();
     const bool primaryAxisChanged = previousPrimaryAxis != model.getPrimaryViewAxis();
     const MorphPosition& nextMorph = model.getMorphPosition();
-    const bool morphChanged =
-            previousMorph.time.getTargetValue() != nextMorph.time.getTargetValue()
-            || previousMorph.red.getTargetValue() != nextMorph.red.getTargetValue()
-            || previousMorph.blue.getTargetValue() != nextMorph.blue.getTargetValue();
+    const bool timeChanged = previousMorph.time.getTargetValue() != nextMorph.time.getTargetValue();
+    const bool redChanged = previousMorph.red.getTargetValue() != nextMorph.red.getTargetValue();
+    const bool blueChanged = previousMorph.blue.getTargetValue() != nextMorph.blue.getTargetValue();
+    const bool morphChanged = timeChanged || redChanged || blueChanged;
+    const bool primaryMorphChanged =
+            (model.getPrimaryViewAxis() == Vertex::Time && timeChanged)
+            || (model.getPrimaryViewAxis() == Vertex::Red && redChanged)
+            || (model.getPrimaryViewAxis() == Vertex::Blue && blueChanged);
+    const bool nonPrimaryMorphChanged = morphChanged && !primaryMorphChanged;
 
     if (!modelChanged
             && !morphChanged
@@ -280,7 +286,7 @@ void TrimeshPanelBridge::syncFromNode(
     }
 
     dataSource.rebuild(model, rows, columns);
-    updateRasterizer(true, morphChanged || primaryAxisChanged || lastRows != rows || lastColumns != columns);
+    updateRasterizer(true, nonPrimaryMorphChanged || primaryAxisChanged || lastRows != rows || lastColumns != columns);
     lastSyncedRevision = model.getRevision();
     lastRows = rows;
     lastColumns = columns;
@@ -288,8 +294,14 @@ void TrimeshPanelBridge::syncFromNode(
 
 void TrimeshPanelBridge::refreshAfterMeshEdit(bool sourceIs3D) {
     model.markMeshEdited();
+    syncPrimaryAxisContext();
     dataSource.rebuild(model, lastRows, lastColumns);
     updateRasterizer(true, !sourceIs3D);
+}
+
+void TrimeshPanelBridge::syncPrimaryAxisContext() {
+    interactor3D.setPrimaryViewAxis(model.getPrimaryViewAxis());
+    panel3D.setPrimaryViewAxis(model.getPrimaryViewAxis());
 }
 
 void TrimeshPanelBridge::updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry) {
@@ -311,11 +323,8 @@ void TrimeshPanelBridge::updateRasterizer(bool refresh2DPanel, bool refresh3DGeo
     interactor3D.setMesh(&model.getMeshForPanel());
     rasterizer.updateWaveform();
 
-    if (panel3DHostInitialised) {
-        if (refresh3DGeometry) {
-            interactor3D.updateIntercepts();
-        }
-
+    if (panel3DHostInitialised && refresh3DGeometry) {
+        interactor3D.updateIntercepts();
         panel3D.bakeTexturesNextRepaint();
         panel3D.requestRepaint();
     }
@@ -458,6 +467,10 @@ void TrimeshPanelBridge::releaseSharedGlResources() {
     panel2DGfx = nullptr;
     panel3DGfx = nullptr;
     sharedGlResourcesInitialised = false;
+}
+
+void TrimeshPanelBridge::setDisplayDomain(PortDomain domain) {
+    panel3D.setDisplayDomain(domain);
 }
 
 void TrimeshPanelBridge::renderPanel3D(Rectangle<float> bounds, float scaleFactor) {

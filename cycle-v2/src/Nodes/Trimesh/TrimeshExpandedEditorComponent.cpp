@@ -102,11 +102,18 @@ void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
     repaint();
 }
 
+void TrimeshExpandedEditorComponent::setDisplayDomain(PortDomain domain) {
+    displayDomain = domain;
+    widget.setDisplayDomain(domain);
+    repaint();
+}
+
 void TrimeshExpandedEditorComponent::renderOpenGL(float scaleFactor) {
     if (node.kind != NodeKind::TrilinearMesh) {
         return;
     }
 
+    widget.setDisplayDomain(displayDomain);
     widget.renderExpandedPanelsOpenGL(
             node,
             contentBounds().translated((float) getX(), (float) getY()),
@@ -154,6 +161,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.drawLine(closeButton.getRight() - 7.f, closeButton.getY() + 7.f,
                closeButton.getX() + 7.f, closeButton.getBottom() - 7.f, 1.4f);
 
+    widget.setDisplayDomain(displayDomain);
     widget.paintExpanded(g, node, content);
 }
 
@@ -294,6 +302,7 @@ void TrimeshExpandedEditorComponent::updatePanelHosts() {
     }
 
     const Rectangle<float> content = contentBounds();
+    widget.setDisplayDomain(displayDomain);
     Component* panel3D = widget.getExpandedPanel3DComponentIfCreated();
     Component* panel2D = widget.getExpandedPanel2DComponentIfCreated();
 

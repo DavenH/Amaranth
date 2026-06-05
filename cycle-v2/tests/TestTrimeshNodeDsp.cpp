@@ -8,6 +8,7 @@
 #include "../src/Nodes/Trimesh/TrimeshPanelBridge.h"
 #include "../src/Nodes/Trimesh/TrimeshPanel3D.h"
 #include "../src/Nodes/Trimesh/TrimeshPanelDataSource.h"
+#include "../src/Nodes/Trimesh/TrimeshWidget.h"
 
 #include <App/SingletonRepo.h>
 #include <Curve/Mesh/Intercept.h>
@@ -15,6 +16,20 @@
 #include <algorithm>
 
 using namespace CycleV2;
+
+TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly", "[cycle-v2][nodes][trimesh]") {
+    const Colour timeMid = TrimeshWidget::surfaceColourForDomain(0.55f, PortDomain::TimeSignal);
+    const Colour magMid = TrimeshWidget::surfaceColourForDomain(0.55f, PortDomain::SpectralMagnitudeSignal);
+    const Colour phaseMid = TrimeshWidget::surfaceColourForDomain(0.55f, PortDomain::SpectralPhaseSignal);
+    const Colour magLow = TrimeshWidget::surfaceColourForDomain(0.01f, PortDomain::SpectralMagnitudeSignal);
+    const Colour magHigh = TrimeshWidget::surfaceColourForDomain(0.90f, PortDomain::SpectralMagnitudeSignal);
+
+    REQUIRE(timeMid != magMid);
+    REQUIRE(magMid == phaseMid);
+    REQUIRE(timeMid.getFloatAlpha() == Catch::Approx(0.82f).margin(0.01f));
+    REQUIRE(magLow.getFloatAlpha() < 0.02f);
+    REQUIRE(magHigh.getFloatAlpha() > 0.80f);
+}
 
 TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", "[cycle-v2][nodes][trimesh]") {
     auto mesh = TrimeshMeshFactory::createDefaultMesh();

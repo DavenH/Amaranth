@@ -120,7 +120,7 @@ void Panel3D::drawInterceptLines() {
 
     bool haveSpeed      = false;
     int scratchChannel  = getLayerScratchChannel();
-    int dim = getSetting(CurrentMorphAxis);
+    int dim = interceptLinePrimaryDimension();
 
     if (scratchChannel != CommonEnums::Null && isScratchApplicable()) {
         int scratchGroupId = getObj(MeshLibrary).getGroupBindings().scratch;
@@ -247,6 +247,10 @@ void Panel3D::drawAxe() {
     jassert(renderer != nullptr);
     renderer->setCurrentColour(1, 1, 1);
     renderer->drawLine(curr.x, curr.y - length, curr.x, curr.y + length, true);
+}
+
+int Panel3D::interceptLinePrimaryDimension() {
+    return getSetting(CurrentMorphAxis);
 }
 
 /*

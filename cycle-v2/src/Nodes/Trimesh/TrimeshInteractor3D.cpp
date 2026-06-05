@@ -37,6 +37,24 @@ void TrimeshInteractor3D::setMeshEditedCallback(std::function<void(bool)> callba
     meshEditedCallback = std::move(callback);
 }
 
+void TrimeshInteractor3D::setPrimaryViewAxis(int axis) {
+    if (dims.x == axis) {
+        return;
+    }
+
+    auto hiddenAxis = std::find(dims.hidden.begin(), dims.hidden.end(), axis);
+
+    if (hiddenAxis == dims.hidden.end()) {
+        return;
+    }
+
+    const int previousAxis = dims.x;
+    dims.x = axis;
+    dims.hidden.erase(hiddenAxis);
+    dims.hidden.push_back(previousAxis);
+    updateRastDims();
+}
+
 bool TrimeshInteractor3D::locateClosestElement() {
     ScopedLock sl(vertexLock);
 

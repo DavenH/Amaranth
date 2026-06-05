@@ -22,6 +22,7 @@ public:
     void mouseDrag(const MouseEvent& event) override;
     void mouseUp(const MouseEvent& event) override;
 
+    void setPrimaryViewAxis(int axis);
     void setMeshEditedCallback(std::function<void(bool)> callback);
 
 private:
