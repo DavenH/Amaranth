@@ -11,7 +11,8 @@ namespace CycleV2 {
 
 enum class TrimeshSliceBackground {
     Waveform,
-    Spectrum
+    SpectrumMagnitude,
+    SpectrumPhase
 };
 
 class TrimeshRenderProfile {

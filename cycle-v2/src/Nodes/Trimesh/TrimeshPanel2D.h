@@ -19,7 +19,8 @@ public:
 private:
     void applyRenderProfile();
     void drawWaveformBackground(bool fillBackground);
-    void drawSpectrumBackground(bool fillBackground);
+    void drawSpectrumMagnitudeBackground(bool fillBackground);
+    void drawSpectrumPhaseBackground(bool fillBackground);
 
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
 };

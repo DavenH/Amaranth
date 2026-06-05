@@ -22,8 +22,13 @@ TrimeshPanel2D::TrimeshPanel2D(SingletonRepo* repo) :
 }
 
 void TrimeshPanel2D::drawBackground(bool fillBackground) {
-    if (renderProfile.getSliceBackground() == TrimeshSliceBackground::Spectrum) {
-        drawSpectrumBackground(fillBackground);
+    if (renderProfile.getSliceBackground() == TrimeshSliceBackground::SpectrumMagnitude) {
+        drawSpectrumMagnitudeBackground(fillBackground);
+        return;
+    }
+
+    if (renderProfile.getSliceBackground() == TrimeshSliceBackground::SpectrumPhase) {
+        drawSpectrumPhaseBackground(fillBackground);
         return;
     }
 
@@ -80,7 +85,7 @@ void TrimeshPanel2D::drawWaveformBackground(bool fillBackground) {
     gfx->fillRect(0, 0.75f, 1.f, 1.f, true);
 }
 
-void TrimeshPanel2D::drawSpectrumBackground(bool fillBackground) {
+void TrimeshPanel2D::drawSpectrumMagnitudeBackground(bool fillBackground) {
     if (gfx == nullptr) {
         return;
     }
@@ -140,6 +145,72 @@ void TrimeshPanel2D::drawSpectrumBackground(bool fillBackground) {
     gfx->setCurrentColour(0.22f, 0.22f, 0.22f, 0.34f);
     gfx->drawLine(0.f, sy(0.f), (float) width, sy(0.f), false);
     gfx->drawLine(0.f, sy(1.f), (float) width, sy(1.f), false);
+}
+
+void TrimeshPanel2D::drawSpectrumPhaseBackground(bool fillBackground) {
+    if (gfx == nullptr) {
+        return;
+    }
+
+    const int width = getWidth();
+    const int height = getHeight();
+
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    if (fillBackground) {
+        gfx->setCurrentColour(0.048f, 0.044f, 0.060f);
+        gfx->fillRect(0, 0, width, height, false);
+    }
+
+    gfx->disableSmoothing();
+    gfx->setCurrentLineWidth(1.f);
+
+    xBuffer.ensureSize(128);
+    Buffer<float> scaledRamp = xBuffer.withSize(128);
+    scaledRamp.ramp(0.f, 1.f / (float) scaledRamp.size());
+    Arithmetic::applyLogMapping(scaledRamp, kSpectrumTension);
+    applyScaleX(scaledRamp);
+
+    const int quarterSize = scaledRamp.size() / 4;
+    yBuffer.ensureSize(quarterSize);
+    cBuffer.ensureSize(quarterSize);
+
+    Buffer<float> rampReduced = yBuffer.withSize(quarterSize);
+    Buffer<float> phaseLines = cBuffer.withSize(quarterSize);
+    BufferXY phaseXY;
+    phaseXY.x = rampReduced;
+    phaseXY.y = phaseLines;
+
+    rampReduced.downsampleFrom(scaledRamp, 4);
+
+    gfx->setCurrentColour(0.075f, 0.068f, 0.095f);
+    for (float x : rampReduced) {
+        gfx->drawLine(x, sy(0.f), x, sy(1.f), false);
+    }
+
+    Buffer<float> phaseShape = xBuffer.withSize(quarterSize);
+    phaseShape.ramp(1.f, 1.f).sqrt().divCRev(0.5f).add(0.5f);
+
+    gfx->setCurrentLineWidth(1.f);
+
+    for (int i = 0; i < 8; ++i) {
+        phaseShape.copyTo(phaseLines);
+        applyScaleY(phaseLines);
+        gfx->setCurrentColour(i == 7 ? 0.145f : 0.105f, 0.095f, i == 7 ? 0.185f : 0.145f);
+        gfx->drawLineStrip(phaseXY, true, false);
+
+        phaseShape.subCRev(1.f).copyTo(phaseLines);
+        applyScaleY(phaseLines);
+        gfx->drawLineStrip(phaseXY, true, false);
+
+        const float scale = (float) (i + 2) / (float) (i + 1);
+        phaseShape.add(-0.5f).mul(scale).add(0.5f);
+    }
+
+    gfx->setCurrentColour(0.70f, 0.52f, 1.f, 0.18f);
+    gfx->drawLine(0.f, sy(0.5f), (float) width, sy(0.5f), false);
 }
 
 }

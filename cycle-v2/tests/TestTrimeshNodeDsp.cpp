@@ -40,8 +40,8 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE(magProfile.surfaceTextureUsesAlpha());
     REQUIRE(phaseProfile.surfaceTextureUsesAlpha());
     REQUIRE(timeProfile.getSliceBackground() == TrimeshSliceBackground::Waveform);
-    REQUIRE(magProfile.getSliceBackground() == TrimeshSliceBackground::Spectrum);
-    REQUIRE(phaseProfile.getSliceBackground() == TrimeshSliceBackground::Spectrum);
+    REQUIRE(magProfile.getSliceBackground() == TrimeshSliceBackground::SpectrumMagnitude);
+    REQUIRE(phaseProfile.getSliceBackground() == TrimeshSliceBackground::SpectrumPhase);
     REQUIRE(timeProfile.panel2DTitle() != magProfile.panel2DTitle());
     REQUIRE(timeProfile.curveIsBipolar());
     REQUIRE_FALSE(magProfile.curveIsBipolar());
@@ -49,6 +49,8 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE(timeProfile.positiveCurveColour() == timeProfile.negativeCurveColour());
     REQUIRE(magProfile.positiveCurveColour() == magProfile.negativeCurveColour());
     REQUIRE_FALSE(phaseProfile.positiveCurveColour() == phaseProfile.negativeCurveColour());
+    REQUIRE(phaseProfile.positiveCurveColour().toColour() == colourForDomain(PortDomain::SpectralPhaseSignal).withAlpha(0.84f));
+    REQUIRE_FALSE(phaseProfile.negativeCurveColour() == magProfile.negativeCurveColour());
 }
 
 TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", "[cycle-v2][nodes][trimesh]") {

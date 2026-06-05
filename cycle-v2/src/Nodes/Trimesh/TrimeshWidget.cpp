@@ -487,7 +487,7 @@ void TrimeshWidget::drawMeshHeatmap(
     }
 
     if (drawGrid) {
-        const bool spectral = profile.getSliceBackground() == TrimeshSliceBackground::Spectrum;
+        const bool spectral = profile.getSliceBackground() != TrimeshSliceBackground::Waveform;
         g.setColour((spectral ? Colour(0xffd7b166) : Colour(0xffeef5ff)).withAlpha(0.08f));
         const int minorHorizontalStep = jmax(1, renderData.rows / 16);
         for (int row = 0; row <= renderData.rows; row += minorHorizontalStep) {
@@ -547,7 +547,7 @@ void TrimeshWidget::drawEditorGrid(
         Graphics& g,
         Rectangle<float> area,
         const TrimeshRenderProfile& profile) {
-    const bool spectral = profile.getSliceBackground() == TrimeshSliceBackground::Spectrum;
+    const bool spectral = profile.getSliceBackground() != TrimeshSliceBackground::Waveform;
 
     g.setColour((spectral ? Colour(0xff080608) : Colour(0xff05070a)).withAlpha(0.58f));
     g.fillRoundedRectangle(area, 4.f);

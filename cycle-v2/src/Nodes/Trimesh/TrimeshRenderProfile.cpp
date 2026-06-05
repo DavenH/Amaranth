@@ -8,6 +8,8 @@ namespace {
 
 const Color kSpectralYellow(0.85f, 0.68f, 0.23f, 0.82f);
 const Color kSpectralBlue(0.44f, 0.605f, 0.88f, 0.82f);
+const Color kPhasePurple(0.70f, 0.52f, 1.0f, 0.84f);
+const Color kPhaseCyan(0.26f, 0.84f, 0.82f, 0.76f);
 const Color kWaveformGrey(0.86f, 0.86f, 0.94f, 0.74f);
 
 Image& blueGradientImage() {
@@ -54,7 +56,14 @@ TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
     ,   spectral    (semantic.domain == PortDomain::SpectralMagnitudeSignal
                      || semantic.domain == PortDomain::SpectralPhaseSignal)
     ,   phase       (semantic.domain == PortDomain::SpectralPhaseSignal) {
-    sliceBackground = spectral ? TrimeshSliceBackground::Spectrum : TrimeshSliceBackground::Waveform;
+    if (phase) {
+        sliceBackground = TrimeshSliceBackground::SpectrumPhase;
+    } else if (spectral) {
+        sliceBackground = TrimeshSliceBackground::SpectrumMagnitude;
+    } else {
+        sliceBackground = TrimeshSliceBackground::Waveform;
+    }
+
     curveBipolar = scalePolicy == RenderScalePolicy::Bipolar;
 }
 
@@ -98,6 +107,10 @@ Colour TrimeshRenderProfile::surfaceColour(float value) const {
 }
 
 Color TrimeshRenderProfile::positiveCurveColour() const {
+    if (phase) {
+        return kPhasePurple;
+    }
+
     if (spectral) {
         return kSpectralYellow;
     }
@@ -106,6 +119,10 @@ Color TrimeshRenderProfile::positiveCurveColour() const {
 }
 
 Color TrimeshRenderProfile::negativeCurveColour() const {
+    if (phase) {
+        return kPhaseCyan;
+    }
+
     if (spectral) {
         return curveBipolar ? kSpectralBlue : kSpectralYellow;
     }
