@@ -151,6 +151,41 @@ TEST_CASE("Trimesh node model applies serialized vertex parameter overrides", "[
     REQUIRE(changedSelectionParameters[0].value != Catch::Approx(0.20f));
 }
 
+TEST_CASE("Trimesh node model applies persistent edits for multiple vertices", "[cycle-v2][nodes][trimesh]") {
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {
+                    { "selectedVertexIndex", "Selected Vertex", "0" },
+                    { "vertex.0.amp", "Amplitude", "0.11" },
+                    { "vertex.0.phase", "Phase", "0.22" },
+                    { "vertex.2.amp", "Amplitude", "0.77" },
+                    { "vertex.2.curve", "Sharpness", "0.88" }
+            },
+            {},
+            {}
+    };
+    TrimeshNodeModel model;
+
+    model.syncFromNode(node);
+    const auto firstVertexParameters = model.getSelectedVertexParameters();
+
+    REQUIRE(firstVertexParameters.size() == 3);
+    REQUIRE(firstVertexParameters[0].value == Catch::Approx(0.11f));
+    REQUIRE(firstVertexParameters[1].value == Catch::Approx(0.22f));
+
+    node.parameters[0].value = "2";
+    model.syncFromNode(node);
+    const auto secondVertexParameters = model.getSelectedVertexParameters();
+
+    REQUIRE(secondVertexParameters.size() == 3);
+    REQUIRE(secondVertexParameters[0].value == Catch::Approx(0.77f));
+    REQUIRE(secondVertexParameters[2].value == Catch::Approx(0.88f));
+}
+
 TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",

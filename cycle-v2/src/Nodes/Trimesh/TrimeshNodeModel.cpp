@@ -34,6 +34,33 @@ bool parameterFloatValue(const Node& node, const String& id, float& value) {
     return false;
 }
 
+bool vertexEditParameter(const NodeParameter& parameter, int& vertexIndex, int& valueIndex) {
+    if (!parameter.id.startsWith("vertex.")) {
+        return false;
+    }
+
+    const String suffix = parameter.id.fromFirstOccurrenceOf("vertex.", false, false);
+    const String indexText = suffix.upToFirstOccurrenceOf(".", false, false);
+    const String field = suffix.fromFirstOccurrenceOf(".", false, false);
+
+    if (indexText.isEmpty() || !indexText.containsOnly("0123456789")) {
+        return false;
+    }
+
+    if (field == "amp") {
+        valueIndex = Vertex::Amp;
+    } else if (field == "phase") {
+        valueIndex = Vertex::Phase;
+    } else if (field == "curve") {
+        valueIndex = Vertex::Curve;
+    } else {
+        return false;
+    }
+
+    vertexIndex = indexText.getIntValue();
+    return true;
+}
+
 String parameterString(const Node& node, const String& id, const String& fallback) {
     for (const auto& parameter : node.parameters) {
         if (parameter.id == id) {
@@ -278,6 +305,35 @@ Vertex* TrimeshNodeModel::selectedVertex() {
 }
 
 bool TrimeshNodeModel::applyVertexParameterOverrides(const Node& node) {
+    Mesh& activeMesh = mesh();
+    auto& verts = activeMesh.getVerts();
+    bool changed {};
+    bool persistentEditsFound {};
+
+    for (const auto& parameter : node.parameters) {
+        int vertexIndex {};
+        int valueIndex {};
+
+        if (!vertexEditParameter(parameter, vertexIndex, valueIndex)
+                || !isPositiveAndBelow(vertexIndex, (int) verts.size())
+                || verts[(size_t) vertexIndex] == nullptr) {
+            continue;
+        }
+
+        persistentEditsFound = true;
+        Vertex* vertex = verts[(size_t) vertexIndex];
+        const float clampedValue = jlimit(0.f, 1.f, parameter.value.getFloatValue());
+
+        if (vertex->values[valueIndex] != clampedValue) {
+            vertex->values[valueIndex] = clampedValue;
+            changed = true;
+        }
+    }
+
+    if (persistentEditsFound) {
+        return changed;
+    }
+
     float amp {};
     float phase {};
     float curve {};
@@ -300,7 +356,6 @@ bool TrimeshNodeModel::applyVertexParameterOverrides(const Node& node) {
         return false;
     }
 
-    bool changed {};
     auto apply = [&](int index, float value) {
         const float clampedValue = jlimit(0.f, 1.f, value);
 

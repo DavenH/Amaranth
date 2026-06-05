@@ -2822,16 +2822,24 @@ bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
     }
 
     const String label = activeTrimeshVertexParameterId.fromFirstOccurrenceOf(".", false, false);
+    const int selectedVertexIndex = parameterValueForNode(*node, "selectedVertexIndex", "-1").getIntValue();
+    const String persistentParameterId = selectedVertexIndex >= 0
+            ? "vertex." + String(selectedVertexIndex) + "." + label
+            : activeTrimeshVertexParameterId;
+
+    if (selectedVertexIndex < 0) {
+        GraphEditor().setNodeParameter(
+                graph,
+                node->id,
+                "vertexOverrideIndex",
+                "Vertex Override Index",
+                parameterValueForNode(*node, "selectedVertexIndex", "-1"));
+    }
+
     GraphEditor().setNodeParameter(
             graph,
             node->id,
-            "vertexOverrideIndex",
-            "Vertex Override Index",
-            parameterValueForNode(*node, "selectedVertexIndex", "-1"));
-    GraphEditor().setNodeParameter(
-            graph,
-            node->id,
-            activeTrimeshVertexParameterId,
+            persistentParameterId,
             label,
             String(value, 3));
     refreshCompiledState();
