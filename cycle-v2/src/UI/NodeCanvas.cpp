@@ -2034,6 +2034,11 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
                 safeThis->setTrimeshPrimaryAxisValue(axisValue);
             }
         };
+        callbacks.toggleLinkAxis = [safeThis](const String& axisValue) {
+            if (safeThis != nullptr) {
+                safeThis->toggleTrimeshLinkAxisValue(axisValue);
+            }
+        };
         callbacks.beginMorphEdit = [safeThis](const String& parameterId, float value) {
             if (safeThis != nullptr) {
                 safeThis->beginTrimeshMorphEdit(parameterId, value);
@@ -3220,6 +3225,37 @@ bool NodeCanvas::setTrimeshPrimaryAxisValue(const String& axisValue) {
     selectedNodeId = node->id;
     selectedEdgeIndex = -1;
     editStatusMessage = "Primary view axis: " + axisValue;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::toggleTrimeshLinkAxisValue(const String& axisValue) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return false;
+    }
+
+    const String parameterId = "link." + axisValue;
+    const String defaultValue = axisValue == "yellow" ? "1" : "0";
+    const bool linked = parameterValueForNode(*node, parameterId, defaultValue).getIntValue() != 0;
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().setNodeParameter(
+            graph,
+            node->id,
+            parameterId,
+            "Link " + axisValue,
+            linked ? "0" : "1");
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    refreshCompiledState();
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    editStatusMessage = "Link " + axisValue + (linked ? " off" : " on");
     repaint();
     return true;
 }

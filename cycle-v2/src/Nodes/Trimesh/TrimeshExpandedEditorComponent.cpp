@@ -27,6 +27,7 @@ void TrimeshExpandedEditorComponent::setCallbacks(Callbacks nextCallbacks) {
 
     TrimeshControlsComponent::Callbacks controlCallbacks;
     controlCallbacks.setPrimaryAxis = callbacks.setPrimaryAxis;
+    controlCallbacks.toggleLinkAxis = callbacks.toggleLinkAxis;
     controlCallbacks.beginMorphEdit = callbacks.beginMorphEdit;
     controlCallbacks.updateMorphEdit = callbacks.updateMorphEdit;
     controlCallbacks.endMorphEdit = callbacks.endMorphEdit;
@@ -163,6 +164,13 @@ void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
         return;
     }
 
+    if (widget.findLinkToggleAt(content, event.position, axisValue)) {
+        if (callbacks.toggleLinkAxis != nullptr) {
+            callbacks.toggleLinkAxis(axisValue);
+        }
+        return;
+    }
+
     if (widget.findMorphControlAt(content, event.position, parameterId, value)) {
         dragTarget = DragTarget::Morph;
         activeParameterId = parameterId;
@@ -248,6 +256,7 @@ MouseCursor TrimeshExpandedEditorComponent::cursorFor(Point<float> position) {
     int vertexIndex {};
 
     if (widget.findPrimaryAxisAt(content, position, axisValue)
+            || widget.findLinkToggleAt(content, position, axisValue)
             || widget.findVertexSelectionAt(node, content, position, vertexIndex)) {
         return MouseCursor::PointingHandCursor;
     }

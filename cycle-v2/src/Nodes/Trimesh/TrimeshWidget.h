@@ -2,6 +2,9 @@
 
 #include "TrimeshPanelBridge.h"
 #include "TrimeshRenderProfile.h"
+#include "TrimeshSidePanelRenderer.h"
+#include "TrimeshSliceRenderer2D.h"
+#include "TrimeshSurfaceRenderer.h"
 
 #include <JuceHeader.h>
 
@@ -15,6 +18,7 @@ namespace CycleV2 {
 enum class TrimeshExpandedHitRegionKind {
     MorphControl,
     PrimaryAxis,
+    LinkToggle,
     VertexParameter
 };
 
@@ -85,6 +89,10 @@ public:
             juce::Rectangle<float> content,
             juce::Point<float> position,
             juce::String& axisValue) const;
+    bool findLinkToggleAt(
+            juce::Rectangle<float> content,
+            juce::Point<float> position,
+            juce::String& axisValue) const;
     bool findVertexParameterAt(
             juce::Rectangle<float> content,
             juce::Point<float> position,
@@ -119,50 +127,16 @@ private:
             juce::Rectangle<float> area,
             const juce::String& title,
             bool fillBody = true);
-    static void drawMeshHeatmap(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const TrimeshRenderData& renderData,
-            const TrimeshRenderProfile& profile,
-            bool drawGrid);
-    static void drawTrace(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const std::vector<float>& values,
-            juce::Colour colour);
-    static void drawEditorGrid(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const TrimeshRenderProfile& profile);
-    static void drawTraceFill(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const std::vector<float>& values,
-            const TrimeshRenderProfile& profile);
-    static void drawVertexMarkers(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const std::vector<TrimeshVertexMarker>& markers);
-    static void drawMorphCubePreview(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const std::array<float, 3>& values);
-    static void drawVertexParameters(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const std::vector<TrimeshVertexParameter>& parameters);
     static juce::Rectangle<float> morphPanelBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> morphArea, int axisIndex);
     static juce::Rectangle<float> primaryAxisBounds(juce::Rectangle<float> morphArea, int axisIndex);
+    static juce::Rectangle<float> linkToggleBounds(juce::Rectangle<float> morphArea, int axisIndex);
     static juce::String primaryAxisValue(int axis);
     static juce::Rectangle<float> vertexParameterPanelBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> vertexParameterRowBounds(juce::Rectangle<float> parameterArea, int parameterIndex);
     static juce::Rectangle<float> vertexParameterRailBounds(juce::Rectangle<float> parameterRow);
     static juce::String vertexParameterId(int parameterIndex);
     static juce::Rectangle<float> waveshapeContentBounds(juce::Rectangle<float> content);
-    juce::Image createHeatmapImage(
-            const TrimeshRenderData& renderData,
-            const TrimeshRenderProfile& profile) const;
 
     TrimeshPanelBridge bridge;
     CachedHeatmap compactHeatmap;

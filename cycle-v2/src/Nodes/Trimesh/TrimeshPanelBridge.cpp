@@ -17,7 +17,7 @@ class PanelHostComponent :
 public:
     explicit PanelHostComponent(Panel& targetPanel) :
             panel(targetPanel) {
-        setPaintingIsUnclipped(true);
+        setPaintingIsUnclipped(false);
         setInterceptsMouseClicks(true, true);
         setOpaque(false);
     }

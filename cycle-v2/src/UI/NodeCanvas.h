@@ -162,6 +162,7 @@ private:
     bool handleVoiceContextEditorClick(Point<float> screenPosition);
     bool setVoiceContextParameter(const String& parameterId, const String& label, const String& value, const String& statusMessage);
     bool setTrimeshPrimaryAxisValue(const String& axisValue);
+    bool toggleTrimeshLinkAxisValue(const String& axisValue);
     bool beginTrimeshMorphEdit(const String& parameterId, float value);
     bool updateTrimeshMorphEditValue(float value);
     void endTrimeshMorphEdit();

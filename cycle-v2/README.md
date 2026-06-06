@@ -12,6 +12,19 @@ cmake --build build/standalone-debug --target CycleV2 --parallel 10
 open build/standalone-debug/cycle-v2/CycleV2.app
 ```
 
+## UI Smoke Checks
+
+The shared `scripts/capture_cycle_ui.sh` helper defaults to the Cycle 1.x app
+at `build/standalone-debug/cycle/Cycle.app`. When checking Cycle 2.0 UI work,
+override the app path and process metadata explicitly:
+
+```bash
+CYCLE_APP_PATH="$PWD/build/standalone-debug/cycle-v2/CycleV2.app" \
+CYCLE_PROCESS_NAME=CycleV2 \
+CYCLE_APP_BUNDLE_ID=com.amaranthaudio.cycle-v2 \
+    scripts/capture_cycle_ui.sh /tmp/cycle-v2-ui.png /tmp/cycle-v2-logs.txt
+```
+
 ## Current Editor Controls
 
 - drag empty canvas: pan
