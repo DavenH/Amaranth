@@ -7,12 +7,31 @@ namespace {
 const Colour kText      { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 
+Point<float> projectCubePoint(
+        Rectangle<float> area,
+        const std::array<float, 3>& values,
+        float size) {
+    const Point<float> centre = area.getCentre();
+    const Point<float> left(centre.x - size, centre.y - size * 0.28f);
+    const Point<float> right(centre.x + size, centre.y - size * 0.28f);
+    const Point<float> back(centre.x, centre.y + size * 0.98f);
+    const Point<float> top(centre.x, centre.y - size * 0.86f);
+    const Point<float> base(
+            left.x + (right.x - left.x) * jlimit(0.f, 1.f, values[0]),
+            back.y + (top.y - back.y) * jlimit(0.f, 1.f, values[2]));
+
+    return base.translated(
+            (jlimit(0.f, 1.f, values[1]) - 0.5f) * size * 0.72f,
+            -(jlimit(0.f, 1.f, values[1]) - 0.5f) * size * 0.34f);
+}
+
 }
 
 void TrimeshSidePanelRenderer::drawMorphCubePreview(
         Graphics& g,
         Rectangle<float> area,
-        const std::array<float, 3>& values) {
+        const std::array<float, 3>& values,
+        int selectedVertexIndex) {
     if (area.getWidth() < 42.f || area.getHeight() < 42.f) {
         return;
     }
@@ -78,12 +97,21 @@ void TrimeshSidePanelRenderer::drawMorphCubePreview(
     g.setColour(Colour(0xff5f91e8).withAlpha(0.70f));
     g.drawLine(centre.x, back.y, centre.x, top.y, 1.2f);
 
-    g.setColour(Colour(0xffe0c247).withAlpha(0.38f));
-    g.fillEllipse(Rectangle<float>(4.f, 4.f).withCentre(yellowAxis));
-    g.setColour(Colour(0xffd65a5a).withAlpha(0.38f));
-    g.fillEllipse(Rectangle<float>(4.f, 4.f).withCentre(right));
-    g.setColour(Colour(0xff5f91e8).withAlpha(0.38f));
-    g.fillEllipse(Rectangle<float>(4.f, 4.f).withCentre(top));
+    for (int i = 0; i < 8; ++i) {
+        const std::array<float, 3> corner {
+                (i & 1) != 0 ? 1.f : 0.f,
+                (i & 2) != 0 ? 1.f : 0.f,
+                (i & 4) != 0 ? 1.f : 0.f
+        };
+        const Point<float> cornerPoint = projectCubePoint(area, corner, size);
+        const bool selected = selectedVertexIndex == i;
+        const float radius = selected ? 4.2f : 2.4f;
+
+        g.setColour(Colour(0xff05070a).withAlpha(selected ? 0.88f : 0.74f));
+        g.fillEllipse(Rectangle<float>((radius + 1.4f) * 2.f, (radius + 1.4f) * 2.f).withCentre(cornerPoint));
+        g.setColour(selected ? Colour(0xffffd13d).withAlpha(0.96f) : Colour(0xffdce6ee).withAlpha(0.66f));
+        g.fillEllipse(Rectangle<float>(radius * 2.f, radius * 2.f).withCentre(cornerPoint));
+    }
 
     g.setColour(Colour(0xffffd13d).withAlpha(0.94f));
     g.fillEllipse(Rectangle<float>(7.f, 7.f).withCentre(lifted));

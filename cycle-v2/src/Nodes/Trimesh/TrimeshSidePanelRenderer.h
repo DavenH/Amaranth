@@ -14,7 +14,8 @@ public:
     static void drawMorphCubePreview(
             juce::Graphics& g,
             juce::Rectangle<float> area,
-            const std::array<float, 3>& values);
+            const std::array<float, 3>& values,
+            int selectedVertexIndex);
     static void drawVertexParameters(
             juce::Graphics& g,
             juce::Rectangle<float> area,

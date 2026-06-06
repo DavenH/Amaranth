@@ -144,7 +144,8 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     TrimeshSidePanelRenderer::drawMorphCubePreview(
             g,
             morphArea.removeFromRight(jmin(104.f, morphArea.getWidth() * 0.36f)).removeFromTop(104.f),
-            values);
+            values,
+            model.getResolvedSelectedVertexIndex());
 
     for (int i = 0; i < (int) axes.size(); ++i) {
         auto row = morphArea.removeFromTop(34.f);
