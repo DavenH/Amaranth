@@ -4,13 +4,18 @@
 
 namespace CycleV2 {
 
-class TrimeshControlsComponent::DragRegionComponent : public Component {
+class TrimeshControlsComponent::ControlSlider : public Slider {
 public:
-    DragRegionComponent(
+    ControlSlider(
             TrimeshControlsComponent& owner,
             TrimeshExpandedHitRegion region) :
-            owner(owner)
+            Slider(region.parameterId)
+        ,   owner(owner)
         ,   region(std::move(region)) {
+        setRange(0.0, 1.0, 0.0);
+        setSliderStyle(Slider::LinearHorizontal);
+        setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+        setScrollWheelEnabled(false);
         setOpaque(false);
         setInterceptsMouseClicks(true, true);
         setMouseCursor(MouseCursor::LeftRightResizeCursor);
@@ -30,44 +35,7 @@ public:
         owner.endControlDrag();
     }
 
-private:
-    Point<float> parentPosition(Point<float> localPosition) const {
-        return getBounds().toFloat().getTopLeft() + localPosition;
-    }
-
-    TrimeshControlsComponent& owner;
-    TrimeshExpandedHitRegion region;
-};
-
-class TrimeshControlsComponent::MorphSlider : public Slider {
-public:
-    MorphSlider(
-            TrimeshControlsComponent& owner,
-            TrimeshExpandedHitRegion region) :
-            Slider(region.parameterId)
-        ,   owner(owner)
-        ,   region(std::move(region)) {
-        setRange(0.0, 1.0, 0.0);
-        setSliderStyle(Slider::LinearHorizontal);
-        setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-        setScrollWheelEnabled(false);
-        setOpaque(false);
-        setMouseCursor(MouseCursor::LeftRightResizeCursor);
-    }
-
-    void paint(Graphics&) override {}
-
-    void mouseDown(const MouseEvent& event) override {
-        owner.beginControlDrag(region, parentPosition(event.position));
-    }
-
-    void mouseDrag(const MouseEvent& event) override {
-        owner.dragControl(region, parentPosition(event.position));
-    }
-
-    void mouseUp(const MouseEvent&) override {
-        owner.endControlDrag();
-    }
+    TrimeshExpandedHitRegionKind getRegionKind() const { return region.kind; }
 
 private:
     Point<float> parentPosition(Point<float> localPosition) const {
@@ -140,7 +108,23 @@ int TrimeshControlsComponent::getMorphSliderCount() const {
     int count {};
 
     for (const auto& region : controlRegions) {
-        if (dynamic_cast<MorphSlider*>(region.get()) != nullptr) {
+        const auto* slider = dynamic_cast<ControlSlider*>(region.get());
+
+        if (slider != nullptr && slider->getRegionKind() == TrimeshExpandedHitRegionKind::MorphControl) {
+            ++count;
+        }
+    }
+
+    return count;
+}
+
+int TrimeshControlsComponent::getVertexParameterSliderCount() const {
+    int count {};
+
+    for (const auto& region : controlRegions) {
+        const auto* slider = dynamic_cast<ControlSlider*>(region.get());
+
+        if (slider != nullptr && slider->getRegionKind() == TrimeshExpandedHitRegionKind::VertexParameter) {
             ++count;
         }
     }
@@ -175,10 +159,8 @@ void TrimeshControlsComponent::updateHitRegions() {
 
         if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis) {
             component = std::make_unique<PrimaryAxisButton>(*this, region);
-        } else if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
-            component = std::make_unique<MorphSlider>(*this, region);
         } else {
-            component = std::make_unique<DragRegionComponent>(*this, region);
+            component = std::make_unique<ControlSlider>(*this, region);
         }
 
         component->setBounds(region.bounds.toNearestInt());

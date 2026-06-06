@@ -32,12 +32,12 @@ public:
     int getControlRegionCount() const { return (int) controlRegions.size(); }
     int getMorphSliderCount() const;
     int getPrimaryAxisButtonCount() const;
+    int getVertexParameterSliderCount() const;
 
     void resized() override;
 
 private:
-    class DragRegionComponent;
-    class MorphSlider;
+    class ControlSlider;
     class PrimaryAxisButton;
 
     enum class DragTarget {

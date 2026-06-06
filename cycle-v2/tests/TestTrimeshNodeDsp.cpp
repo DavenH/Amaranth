@@ -400,6 +400,7 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     REQUIRE(controls.getControlRegionCount() == 9);
     REQUIRE(controls.getMorphSliderCount() == 3);
     REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
+    REQUIRE(controls.getVertexParameterSliderCount() == 3);
     REQUIRE(controls.getNumChildComponents() == 9);
 }
 
