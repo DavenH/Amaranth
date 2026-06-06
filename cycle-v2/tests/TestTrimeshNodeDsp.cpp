@@ -245,7 +245,7 @@ TEST_CASE("Trimesh node model exposes selected cube vertices for the side panel 
     REQUIRE(hasHighBlue);
 }
 
-TEST_CASE("Trimesh node model applies serialized vertex parameter overrides", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh node model applies legacy selected vertex parameter overrides", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
@@ -284,7 +284,7 @@ TEST_CASE("Trimesh node model applies serialized vertex parameter overrides", "[
     REQUIRE(changedSelectionParameters[1].value != Catch::Approx(0.20f));
 }
 
-TEST_CASE("Trimesh node model applies persistent edits for multiple vertices", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh node model applies serialized mesh edits for multiple vertices", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
@@ -293,13 +293,13 @@ TEST_CASE("Trimesh node model applies persistent edits for multiple vertices", "
             {},
             {
                     { "selectedVertexIndex", "Selected Vertex", "0" },
-                    { "vertex.0.time", "time", "0.03" },
-                    { "vertex.0.red", "red", "0.04" },
-                    { "vertex.0.blue", "blue", "0.05" },
-                    { "vertex.0.amp", "Amplitude", "0.11" },
-                    { "vertex.0.phase", "Phase", "0.22" },
-                    { "vertex.2.amp", "Amplitude", "0.77" },
-                    { "vertex.2.curve", "Sharpness", "0.88" }
+                    { "mesh.vertex.0.time", "time", "0.03" },
+                    { "mesh.vertex.0.red", "red", "0.04" },
+                    { "mesh.vertex.0.blue", "blue", "0.05" },
+                    { "mesh.vertex.0.amp", "Amplitude", "0.11" },
+                    { "mesh.vertex.0.phase", "Phase", "0.22" },
+                    { "mesh.vertex.2.amp", "Amplitude", "0.77" },
+                    { "mesh.vertex.2.curve", "Sharpness", "0.88" }
             },
             {},
             {}
@@ -323,6 +323,31 @@ TEST_CASE("Trimesh node model applies persistent edits for multiple vertices", "
     REQUIRE(secondVertexParameters.size() == 6);
     REQUIRE(secondVertexParameters[4].value == Catch::Approx(0.77f));
     REQUIRE(secondVertexParameters[5].value == Catch::Approx(0.88f));
+}
+
+TEST_CASE("Trimesh node model still reads legacy indexed vertex edit parameters", "[cycle-v2][nodes][trimesh]") {
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {
+                    { "selectedVertexIndex", "Selected Vertex", "1" },
+                    { "vertex.1.amp", "Amplitude", "0.31" },
+                    { "vertex.1.phase", "Phase", "0.41" }
+            },
+            {},
+            {}
+    };
+    TrimeshNodeModel model;
+
+    model.syncFromNode(node);
+    const auto vertexParameters = model.getSelectedVertexParameters();
+
+    REQUIRE(vertexParameters.size() == 6);
+    REQUIRE(vertexParameters[3].value == Catch::Approx(0.41f));
+    REQUIRE(vertexParameters[4].value == Catch::Approx(0.31f));
 }
 
 TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-v2][nodes][trimesh]") {

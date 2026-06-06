@@ -682,11 +682,12 @@ Trilinear mesh implementation plan:
 - render the morph panel and vertex parameters with Cycle 1.x semantics but
   with more latitude in layout; expected parameters include amplitude, phase,
   sharpness, and component curve controls for selected mesh elements,
-- treat the current Cycle 2 implementation of `selectedVertexIndex` plus
-  `vertex.*` override parameters as a temporary interaction scaffold only; the
-  final design needs serialized mesh-state edits so multiple vertices/cubes can
-  be edited, undone, copied, and loaded without relying on a single selected
-  vertex override,
+- treat `selectedVertexIndex` as selection state only. Serialized vertex edits
+  now live behind `TrimeshMeshEditState` with canonical
+  `mesh.vertex.<index>.<field>` parameters, while legacy selected-vertex
+  `vertex.*` overrides remain a compatibility scaffold. Remaining mesh-state
+  work should add cube-level edits plus undo/copy/load records without routing
+  edit storage through a single selected vertex override,
 - make all mesh edits undoable and route mesh, morph, preview camera, and
   attachment changes through `NodeUpdateGraph` invalidation.
 

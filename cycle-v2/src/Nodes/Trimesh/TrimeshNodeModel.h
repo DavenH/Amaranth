@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TrimeshMeshEditState.h"
+
 #include "../../Graph/NodeGraph.h"
 
 #include <Obj/MorphPosition.h>
@@ -79,10 +81,12 @@ private:
     Mesh& mesh();
     int resolvedSelectedVertexIndex();
     Vertex* selectedVertex();
-    bool applyVertexParameterOverrides(const Node& node);
+    bool applySerializedMeshEdits(const TrimeshMeshEditState& nextMeshEditState);
+    bool applyLegacySelectedVertexOverride(const Node& node);
     void clearMesh();
 
     std::unique_ptr<Mesh> ownedMesh;
+    TrimeshMeshEditState meshEditState;
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis {};
     int selectedVertexIndex { -1 };

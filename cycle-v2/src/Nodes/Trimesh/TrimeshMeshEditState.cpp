@@ -1,0 +1,110 @@
+#include "TrimeshMeshEditState.h"
+
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/Vertex.h>
+
+namespace CycleV2 {
+
+bool TrimeshVertexEdit::operator==(const TrimeshVertexEdit& other) const {
+    return vertexIndex == other.vertexIndex
+        && valueIndex == other.valueIndex
+        && value == other.value
+        && sourceId == other.sourceId;
+}
+
+TrimeshMeshEditState TrimeshMeshEditState::fromNode(const Node& node) {
+    TrimeshMeshEditState state;
+
+    for (const auto& parameter : node.parameters) {
+        TrimeshVertexEdit edit;
+
+        if (parseVertexEditParameter(parameter, edit)) {
+            state.vertexEdits.push_back(edit);
+        }
+    }
+
+    return state;
+}
+
+bool TrimeshMeshEditState::applyTo(Mesh& mesh) const {
+    auto& verts = mesh.getVerts();
+    bool changed {};
+
+    for (const TrimeshVertexEdit& edit : vertexEdits) {
+        if (!isPositiveAndBelow(edit.vertexIndex, (int) verts.size())
+                || verts[(size_t) edit.vertexIndex] == nullptr) {
+            continue;
+        }
+
+        Vertex* vertex = verts[(size_t) edit.vertexIndex];
+        const float clampedValue = jlimit(0.f, 1.f, edit.value);
+
+        if (vertex->values[edit.valueIndex] == clampedValue) {
+            continue;
+        }
+
+        vertex->values[edit.valueIndex] = clampedValue;
+        changed = true;
+    }
+
+    return changed;
+}
+
+bool TrimeshMeshEditState::operator==(const TrimeshMeshEditState& other) const {
+    return vertexEdits == other.vertexEdits;
+}
+
+bool TrimeshMeshEditState::parseVertexEditParameter(
+        const NodeParameter& parameter,
+        TrimeshVertexEdit& edit) {
+    String suffix;
+
+    if (parameter.id.startsWith("mesh.vertex.")) {
+        suffix = parameter.id.fromFirstOccurrenceOf("mesh.vertex.", false, false);
+    } else if (parameter.id.startsWith("vertex.")) {
+        suffix = parameter.id.fromFirstOccurrenceOf("vertex.", false, false);
+    } else {
+        return false;
+    }
+
+    const String indexText = suffix.upToFirstOccurrenceOf(".", false, false);
+    const String field = suffix.fromFirstOccurrenceOf(".", false, false);
+
+    if (indexText.isEmpty() || !indexText.containsOnly("0123456789")) {
+        return false;
+    }
+
+    int valueIndex {};
+
+    if (!fieldToVertexValueIndex(field, valueIndex)) {
+        return false;
+    }
+
+    edit.vertexIndex = indexText.getIntValue();
+    edit.valueIndex = valueIndex;
+    edit.value = parameter.value.getFloatValue();
+    edit.sourceId = parameter.id;
+    return true;
+}
+
+bool TrimeshMeshEditState::fieldToVertexValueIndex(const String& field, int& valueIndex) {
+    if (field == "amp") {
+        valueIndex = Vertex::Amp;
+    } else if (field == "phase") {
+        valueIndex = Vertex::Phase;
+    } else if (field == "time") {
+        valueIndex = Vertex::Time;
+    } else if (field == "red") {
+        valueIndex = Vertex::Red;
+    } else if (field == "blue") {
+        valueIndex = Vertex::Blue;
+    } else if (field == "curve") {
+        valueIndex = Vertex::Curve;
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
+}
