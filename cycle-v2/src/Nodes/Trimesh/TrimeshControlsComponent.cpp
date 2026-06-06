@@ -65,6 +65,8 @@ public:
         owner.beginControlDrag(region, getBounds().toFloat().getCentre());
     }
 
+    TrimeshExpandedHitRegionKind getRegionKind() const { return region.kind; }
+
 private:
     TrimeshControlsComponent& owner;
     TrimeshExpandedHitRegion region;
@@ -96,7 +98,9 @@ int TrimeshControlsComponent::getPrimaryAxisButtonCount() const {
     int count {};
 
     for (const auto& region : controlRegions) {
-        if (dynamic_cast<PrimaryAxisButton*>(region.get()) != nullptr) {
+        const auto* button = dynamic_cast<PrimaryAxisButton*>(region.get());
+
+        if (button != nullptr && button->getRegionKind() == TrimeshExpandedHitRegionKind::PrimaryAxis) {
             ++count;
         }
     }
@@ -111,6 +115,20 @@ int TrimeshControlsComponent::getMorphSliderCount() const {
         const auto* slider = dynamic_cast<ControlSlider*>(region.get());
 
         if (slider != nullptr && slider->getRegionKind() == TrimeshExpandedHitRegionKind::MorphControl) {
+            ++count;
+        }
+    }
+
+    return count;
+}
+
+int TrimeshControlsComponent::getLinkToggleButtonCount() const {
+    int count {};
+
+    for (const auto& region : controlRegions) {
+        const auto* button = dynamic_cast<PrimaryAxisButton*>(region.get());
+
+        if (button != nullptr && button->getRegionKind() == TrimeshExpandedHitRegionKind::LinkToggle) {
             ++count;
         }
     }
@@ -157,7 +175,8 @@ void TrimeshControlsComponent::updateHitRegions() {
     for (const auto& region : widget.expandedControlHitRegions(contentBounds)) {
         std::unique_ptr<Component> component;
 
-        if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis) {
+        if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis
+                || region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
             component = std::make_unique<PrimaryAxisButton>(*this, region);
         } else {
             component = std::make_unique<ControlSlider>(*this, region);
@@ -178,6 +197,12 @@ void TrimeshControlsComponent::beginControlDrag(
         case TrimeshExpandedHitRegionKind::PrimaryAxis:
             if (callbacks.setPrimaryAxis != nullptr) {
                 callbacks.setPrimaryAxis(region.axisValue);
+            }
+            break;
+
+        case TrimeshExpandedHitRegionKind::LinkToggle:
+            if (callbacks.toggleLinkAxis != nullptr) {
+                callbacks.toggleLinkAxis(region.axisValue);
             }
             break;
 

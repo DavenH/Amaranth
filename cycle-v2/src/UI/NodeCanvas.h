@@ -160,6 +160,7 @@ private:
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
     bool setTrimeshPrimaryAxisValue(const String& axisValue);
+    bool toggleTrimeshLinkAxisValue(const String& axisValue);
     bool beginTrimeshMorphEdit(const String& parameterId, float value);
     bool updateTrimeshMorphEditValue(float value);
     void endTrimeshMorphEdit();

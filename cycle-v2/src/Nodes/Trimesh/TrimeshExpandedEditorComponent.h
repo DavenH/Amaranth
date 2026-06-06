@@ -17,6 +17,7 @@ public:
         std::function<void()> close;
         std::function<void()> repaintOpenGL;
         std::function<void(const juce::String&)> setPrimaryAxis;
+        std::function<void(const juce::String&)> toggleLinkAxis;
         std::function<void(const juce::String&, float)> beginMorphEdit;
         std::function<void(float)> updateMorphEdit;
         std::function<void()> endMorphEdit;

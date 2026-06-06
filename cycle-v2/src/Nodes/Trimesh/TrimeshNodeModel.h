@@ -41,6 +41,13 @@ struct TrimeshVertexMarker {
     bool selected {};
 };
 
+struct TrimeshCubePreviewVertex {
+    float time {};
+    float red {};
+    float blue {};
+    bool selected {};
+};
+
 class TrimeshNodeModel {
 public:
     TrimeshNodeModel();
@@ -57,6 +64,7 @@ public:
     TrimeshRenderData renderGrid(int rows, int columns, PortDomain domain = PortDomain::TimeSignal);
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
     std::vector<TrimeshVertexMarker> getVertexMarkers();
+    std::vector<TrimeshCubePreviewVertex> getSelectedCubePreviewVertices();
     int findNearestVertexIndexForPhaseAmp(float phase, float amp);
     int getResolvedSelectedVertexIndex();
     void markMeshEdited();
