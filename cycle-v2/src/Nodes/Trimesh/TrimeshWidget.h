@@ -2,6 +2,7 @@
 
 #include "TrimeshPanelBridge.h"
 #include "TrimeshRenderProfile.h"
+#include "TrimeshSliceRenderer2D.h"
 #include "TrimeshSurfaceRenderer.h"
 
 #include <JuceHeader.h>
@@ -120,24 +121,6 @@ private:
             juce::Rectangle<float> area,
             const juce::String& title,
             bool fillBody = true);
-    static void drawTrace(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const std::vector<float>& values,
-            juce::Colour colour);
-    static void drawEditorGrid(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const TrimeshRenderProfile& profile);
-    static void drawTraceFill(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const std::vector<float>& values,
-            const TrimeshRenderProfile& profile);
-    static void drawVertexMarkers(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const std::vector<TrimeshVertexMarker>& markers);
     static void drawMorphCubePreview(
             juce::Graphics& g,
             juce::Rectangle<float> area,
