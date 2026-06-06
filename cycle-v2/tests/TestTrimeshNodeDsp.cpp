@@ -10,6 +10,7 @@
 #include "../src/Nodes/Trimesh/TrimeshPanel3D.h"
 #include "../src/Nodes/Trimesh/TrimeshPanelDataSource.h"
 #include "../src/Nodes/Trimesh/TrimeshRenderProfile.h"
+#include "../src/Nodes/Trimesh/TrimeshSurfaceRenderer.h"
 #include "../src/Nodes/Trimesh/TrimeshWidget.h"
 
 #include <App/SingletonRepo.h>
@@ -56,6 +57,38 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE(phaseProfile.positiveCurveColour().toColour() == colourForDomain(PortDomain::SpectralPhaseSignal).withAlpha(0.84f));
     REQUIRE_FALSE(phaseProfile.negativeCurveColour() == magProfile.negativeCurveColour());
     REQUIRE_FALSE(phaseProfile.negativeCurveColour() == magProfile.positiveCurveColour());
+}
+
+TEST_CASE("Trimesh surface renderer creates vertically oriented heatmap images", "[cycle-v2][nodes][trimesh]") {
+    TrimeshRenderData renderData;
+    renderData.rows = 2;
+    renderData.columns = 2;
+    renderData.surface = {
+            0.10f,
+            0.30f,
+            0.60f,
+            0.90f
+    };
+
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal);
+    const Image image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
+    const auto requirePixelNear = [&image, &profile](int x, int y, float value) {
+        const Colour actual = image.getPixelAt(x, y);
+        const Colour expected = TrimeshSurfaceRenderer::colourForProfile(value, profile);
+
+        REQUIRE(actual.getFloatRed() == Catch::Approx(expected.getFloatRed()).margin(0.01f));
+        REQUIRE(actual.getFloatGreen() == Catch::Approx(expected.getFloatGreen()).margin(0.01f));
+        REQUIRE(actual.getFloatBlue() == Catch::Approx(expected.getFloatBlue()).margin(0.01f));
+        REQUIRE(actual.getFloatAlpha() == Catch::Approx(expected.getFloatAlpha()).margin(0.01f));
+    };
+
+    REQUIRE(image.isValid());
+    REQUIRE(image.getWidth() == 2);
+    REQUIRE(image.getHeight() == 2);
+    requirePixelNear(0, 1, 0.10f);
+    requirePixelNear(0, 0, 0.30f);
+    requirePixelNear(1, 1, 0.60f);
+    requirePixelNear(1, 0, 0.90f);
 }
 
 TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", "[cycle-v2][nodes][trimesh]") {

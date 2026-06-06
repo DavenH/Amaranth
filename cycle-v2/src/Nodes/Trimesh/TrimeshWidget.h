@@ -2,6 +2,7 @@
 
 #include "TrimeshPanelBridge.h"
 #include "TrimeshRenderProfile.h"
+#include "TrimeshSurfaceRenderer.h"
 
 #include <JuceHeader.h>
 
@@ -119,12 +120,6 @@ private:
             juce::Rectangle<float> area,
             const juce::String& title,
             bool fillBody = true);
-    static void drawMeshHeatmap(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const TrimeshRenderData& renderData,
-            const TrimeshRenderProfile& profile,
-            bool drawGrid);
     static void drawTrace(
             juce::Graphics& g,
             juce::Rectangle<float> area,
@@ -160,9 +155,6 @@ private:
     static juce::Rectangle<float> vertexParameterRailBounds(juce::Rectangle<float> parameterRow);
     static juce::String vertexParameterId(int parameterIndex);
     static juce::Rectangle<float> waveshapeContentBounds(juce::Rectangle<float> content);
-    juce::Image createHeatmapImage(
-            const TrimeshRenderData& renderData,
-            const TrimeshRenderProfile& profile) const;
 
     TrimeshPanelBridge bridge;
     CachedHeatmap compactHeatmap;
