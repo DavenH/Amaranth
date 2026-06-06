@@ -2,6 +2,7 @@
 
 #include "TrimeshPanelBridge.h"
 #include "TrimeshRenderProfile.h"
+#include "TrimeshSidePanelRenderer.h"
 #include "TrimeshSliceRenderer2D.h"
 #include "TrimeshSurfaceRenderer.h"
 
@@ -121,14 +122,6 @@ private:
             juce::Rectangle<float> area,
             const juce::String& title,
             bool fillBody = true);
-    static void drawMorphCubePreview(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const std::array<float, 3>& values);
-    static void drawVertexParameters(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const std::vector<TrimeshVertexParameter>& parameters);
     static juce::Rectangle<float> morphPanelBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> morphArea, int axisIndex);
     static juce::Rectangle<float> primaryAxisBounds(juce::Rectangle<float> morphArea, int axisIndex);

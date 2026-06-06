@@ -10,6 +10,7 @@
 #include "../src/Nodes/Trimesh/TrimeshPanel3D.h"
 #include "../src/Nodes/Trimesh/TrimeshPanelDataSource.h"
 #include "../src/Nodes/Trimesh/TrimeshRenderProfile.h"
+#include "../src/Nodes/Trimesh/TrimeshSidePanelRenderer.h"
 #include "../src/Nodes/Trimesh/TrimeshSurfaceRenderer.h"
 #include "../src/Nodes/Trimesh/TrimeshWidget.h"
 
@@ -89,6 +90,20 @@ TEST_CASE("Trimesh surface renderer creates vertically oriented heatmap images",
     requirePixelNear(0, 0, 0.30f);
     requirePixelNear(1, 1, 0.60f);
     requirePixelNear(1, 0, 0.90f);
+}
+
+TEST_CASE("Trimesh side panel renderer keeps vertex rails inside parameter rows", "[cycle-v2][nodes][trimesh]") {
+    const Rectangle<float> parameterArea { 20.f, 40.f, 180.f, 140.f };
+
+    for (int i = 0; i < 3; ++i) {
+        const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
+        const Rectangle<float> rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
+
+        REQUIRE(parameterArea.contains(row));
+        REQUIRE(row.contains(rail));
+        REQUIRE(rail.getHeight() == Catch::Approx(5.f));
+        REQUIRE(rail.getWidth() > 0.f);
+    }
 }
 
 TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", "[cycle-v2][nodes][trimesh]") {
