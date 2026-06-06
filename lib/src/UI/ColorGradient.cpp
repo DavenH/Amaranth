@@ -10,6 +10,7 @@ void ColorGradient::read(Image& image, bool softerAlpha, bool isTransparent) {
 
     pixelStride = (isTransparent ? 4 : 3);
 
+    colours.clear();
     pixels.resize(image.getWidth() * pixelStride);
     floatPixels.resize(image.getWidth() * pixelStride);
 

@@ -4,6 +4,10 @@
 
 namespace CycleV2 {
 
+void TrimeshGridwiseDsp::setCyclic(bool shouldWrap) {
+    blockwiseDsp.setCyclic(shouldWrap);
+}
+
 std::vector<TrimeshGridColumn> TrimeshGridwiseDsp::renderColumns(
         Mesh& mesh,
         const MorphPosition& center,

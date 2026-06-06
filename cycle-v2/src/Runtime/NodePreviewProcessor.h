@@ -8,9 +8,16 @@
 
 namespace CycleV2 {
 
+struct PreviewOutputPort {
+    String portId;
+    PortDomain domain {};
+    ChannelLayout channelLayout { ChannelLayout::Mono };
+};
+
 struct PreviewProcessContext {
     size_t pointCount {};
     std::vector<NodeParameter> parameters;
+    std::vector<PreviewOutputPort> outputPorts;
     std::vector<float> inputSummary;
     std::vector<float> primary;
     std::vector<float> secondary;

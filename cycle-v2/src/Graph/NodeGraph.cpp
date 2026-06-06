@@ -46,12 +46,9 @@ NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
     switch (kind) {
         case NodeKind::WaveSource:                  return { 220.f, 90.f };
         case NodeKind::ImageSource:                 return { 220.f, 90.f };
-        case NodeKind::TrilinearWaveSurface:         return { 300.f, 150.f };
         case NodeKind::TrilinearMesh:                return { 260.f, 130.f };
         case NodeKind::VoiceContext:                 return { 0.f, 0.f };
         case NodeKind::Fft:                          return { 0.f, 0.f };
-        case NodeKind::SpectralMagnitudeProcessor:   return { 240.f, 95.f };
-        case NodeKind::SpectralPhaseProcessor:       return { 240.f, 95.f };
         case NodeKind::Ifft:                         return { 0.f, 0.f };
         case NodeKind::Envelope:                     return { 220.f, 85.f };
         case NodeKind::Add:                          return { 58.f, 44.f };
@@ -68,6 +65,16 @@ NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
     }
 }
 
+template<typename Container, typename Predicate>
+void eraseIf(Container& container, Predicate predicate) {
+    container.erase(
+            std::remove_if(
+                    container.begin(),
+                    container.end(),
+                    predicate),
+            container.end());
+}
+
 }
 
 void NodeGraph::addNode(Node nodeToAdd) {
@@ -79,23 +86,13 @@ void NodeGraph::addEdge(Edge edgeToAdd) {
 }
 
 void NodeGraph::removeNode(const String& nodeId) {
-    nodes.erase(
-            std::remove_if(
-                    nodes.begin(),
-                    nodes.end(),
-                    [&](const Node& node) {
-                        return node.id == nodeId;
-                    }),
-            nodes.end());
+    eraseIf(nodes, [&](const Node& node) {
+        return node.id == nodeId;
+    });
 
-    edges.erase(
-            std::remove_if(
-                    edges.begin(),
-                    edges.end(),
-                    [&](const Edge& edge) {
-                        return edge.sourceNodeId == nodeId || edge.destNodeId == nodeId;
-                    }),
-            edges.end());
+    eraseIf(edges, [&](const Edge& edge) {
+        return edge.sourceNodeId == nodeId || edge.destNodeId == nodeId;
+    });
 }
 
 void NodeGraph::removeEdgeAt(size_t index) {
@@ -107,14 +104,9 @@ void NodeGraph::removeEdgeAt(size_t index) {
 }
 
 void NodeGraph::removeEdgesToInput(const String& nodeId, const String& portId) {
-    edges.erase(
-            std::remove_if(
-                    edges.begin(),
-                    edges.end(),
-                    [&](const Edge& edge) {
-                        return edge.destNodeId == nodeId && edge.destPortId == portId;
-                    }),
-            edges.end());
+    eraseIf(edges, [&](const Edge& edge) {
+        return edge.destNodeId == nodeId && edge.destPortId == portId;
+    });
 }
 
 NodeGraph NodeGraph::createDemoGraph() {
@@ -331,11 +323,8 @@ String labelForNodeKind(NodeKind kind) {
         case NodeKind::VoiceContext:                 return "Voice Context";
         case NodeKind::WaveSource:                   return "Wave Source";
         case NodeKind::ImageSource:                  return "Image Source";
-        case NodeKind::TrilinearWaveSurface:         return "Trilinear Wave Surface";
         case NodeKind::TrilinearMesh:                return "Trilinear Mesh";
         case NodeKind::Fft:                          return "FFT";
-        case NodeKind::SpectralMagnitudeProcessor:   return "Spectral Magnitude Processor";
-        case NodeKind::SpectralPhaseProcessor:       return "Spectral Phase Processor";
         case NodeKind::Ifft:                         return "IFFT";
         case NodeKind::Envelope:                     return "Envelope";
         case NodeKind::Add:                          return "Add";

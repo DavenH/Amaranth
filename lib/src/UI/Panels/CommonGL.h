@@ -8,7 +8,7 @@ class OpenGLBase;
 class CommonGL :
         public CommonGfx {
 public:
-    CommonGL(Panel* panel, OpenGLBase* parent);
+    CommonGL(Panel* panel, OpenGLBase* parent = nullptr);
     ~CommonGL() override = default;
 
     void checkErrors() override;

@@ -44,6 +44,7 @@ public:
 
     ~Panel3D() override;
     void init() override;
+    void initWithExternalComponent(Component* hostComponent);
 
     void dragStarted() override;
     void dragEnded() override;
@@ -80,6 +81,7 @@ public:
     virtual bool isSurfaceDetailReduced()           { return false; }
     virtual bool shouldDrawGrid()                   { return true; }
     virtual bool willAdjustSurfaceColumns()         { return false; }
+    virtual int interceptLinePrimaryDimension();
 
     void postVertsDraw() override;
 

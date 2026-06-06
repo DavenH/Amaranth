@@ -2,9 +2,14 @@
 
 #include <JuceHeader.h>
 
+#include <memory>
+
 #include "../Graph/GraphEditor.h"
+#include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Graph/NodeGraph.h"
 #include "../Graph/GraphSerializer.h"
+#include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
+#include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPreviewExecutor.h"
 #include "../Runtime/GraphRuntime.h"
 #include "NodeCanvasGlRenderer.h"
@@ -35,15 +40,10 @@ private:
         Point<float> centre;
     };
 
-    struct CachedHeatmap {
-        Image image;
-        size_t valueCount {};
-        int rows {};
-        int columns {};
-    };
-
     struct CachedPreviewSprite {
         Image image;
+        String signature;
+        PortDomain domain { PortDomain::ControlSignal };
         int width {};
         int height {};
     };
@@ -56,8 +56,10 @@ private:
     GraphPreviewResult previewResult;
     std::vector<String> undoStack;
     std::vector<String> redoStack;
-    std::vector<std::pair<String, CachedHeatmap>> heatmapCache;
     std::vector<std::pair<String, CachedPreviewSprite>> previewSpriteCache;
+    std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
+    std::unique_ptr<TrimeshExpandedEditorComponent> trimeshExpandedEditor;
+    String trimeshExpandedEditorNodeId;
 
     float zoom { 0.58f };
     Point<float> pan { 34.f, 38.f };
@@ -65,6 +67,10 @@ private:
     Rectangle<float> dragStartNodeBounds;
     String selectedNodeId;
     String expandedNodeId;
+    String activeTrimeshMorphNodeId;
+    String activeTrimeshMorphParameterId;
+    String activeTrimeshVertexNodeId;
+    String activeTrimeshVertexParameterId;
     String editStatusMessage;
     int selectedEdgeIndex { -1 };
     PortAddress connectingPort;
@@ -73,6 +79,12 @@ private:
     bool draggingNode {};
     bool connectingCable {};
     bool nodeDragUndoPushed {};
+    bool draggingTrimeshMorph {};
+    bool trimeshMorphUndoPushed {};
+    bool draggingTrimeshVertexParameter {};
+    bool trimeshVertexParameterUndoPushed {};
+    bool expandedEditorDragCaptured {};
+    bool canvasOpenGlAttached {};
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -82,20 +94,24 @@ private:
     void drawGrid(Graphics& g);
     void drawGlEdges();
     void drawGlNodeShells();
+    void drawGlExpandedPanels();
     void drawEdges(Graphics& g);
     void drawConnectionPreview(Graphics& g);
     void drawNodes(Graphics& g);
     void drawNode(Graphics& g, const Node& node);
     void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
-    void drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area);
-    void drawMeshSurfacePreview(Graphics& g, const Node& node, Rectangle<float> area, const NodePreviewResult& preview);
-    CachedHeatmap& cachedHeatmapFor(const String& nodeId);
+    void drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area, PortDomain previewDomain);
     CachedPreviewSprite& cachedPreviewSpriteFor(const String& nodeId);
+    TrimeshWidget& trimeshWidgetFor(const String& nodeId);
     void drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed);
     void drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colour, int seed);
     void drawEnvelopeCurve(Graphics& g, Rectangle<float> area);
     void drawExpandedEditor(Graphics& g, const Node& node);
-    void drawExpandedMeshEditor(Graphics& g, Rectangle<float> content, const NodePreviewResult& preview);
+    void setCanvasOpenGlAttached(bool shouldAttach);
+    void updateExpandedEditorHost(const Node* node);
+    void hideExpandedEditorHosts();
+    void hideExpandedEditorHostsExcept(const String& nodeId);
+    void detachExpandedEditorHosts();
     void drawMiniMap(Graphics& g);
     void drawGraphStatus(Graphics& g);
     void drawEdgeLegend(Graphics& g);
@@ -120,6 +136,8 @@ private:
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
     const NodePreviewResult* findPreviewResult(const String& nodeId) const;
     PortDomain displayDomainForEdge(const Edge& edge) const;
+    PortDomain displayDomainForNodeOutput(const Node& node, const String& portId) const;
+    TrimeshRenderProfile renderProfileForNodeOutput(const Node& node, const String& portId) const;
     bool edgeHasValidationIssue(const Edge& edge) const;
     GraphValidationIssue validationIssueForEdge(const Edge& edge) const;
     int executionIndexForNode(const String& nodeId) const;
@@ -141,6 +159,14 @@ private:
     bool clearSelection();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
+    bool setTrimeshPrimaryAxisValue(const String& axisValue);
+    bool beginTrimeshMorphEdit(const String& parameterId, float value);
+    bool updateTrimeshMorphEditValue(float value);
+    void endTrimeshMorphEdit();
+    bool beginTrimeshVertexParameterEdit(const String& parameterId, float value);
+    bool updateTrimeshVertexParameterEditValue(float value);
+    void endTrimeshVertexParameterEdit();
+    bool selectTrimeshVertexIndex(int vertexIndex);
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
     Path createCablePath(
             Point<float> source,

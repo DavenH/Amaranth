@@ -70,3 +70,11 @@ Suggested direction:
 - Keep node shells and node contents in the same render layer unless the whole
   node widget moves to GL, because split shell/content rendering breaks
   overlap z-order.
+
+## Trilinear Mesh Intercept Ownership
+
+`TrilinearMeshRasterizer` currently keeps its update-geometry intercept output
+in `meshIntercepts` and publishes that into the rasterizer snapshot, while the
+base rasterizer also has `rasterizerData.intercepts`. Refactor this to a single
+authoritative intercept store so UI overlays, interactors, and waveform baking
+cannot accidentally read different intercept sources.

@@ -566,6 +566,29 @@ by graph execution where feasible. If a cheaper UI/update path is needed, it
 must be explicitly marked as preview-only and covered by tests that keep it
 semantically aligned.
 
+The expanded editor panels should visually match Cycle 1.x panel baselines
+closely enough that the new node workspace feels like a new shell around the
+same high-quality editor language, not a simplified redraw. Reference images
+live under `docs/media/images/cycle-panel-baselines/`:
+
+- `waveform2d-bongo.png` for Waveform2D-style translucent surface bands,
+  dense grid, mesh/vertex overlay, and layered curve history,
+- `spectrum2d-bongo-magnitude.png` and `spectrum2d-bongo-phase.png` for
+  Spectrum2D magnitude/phase density, bar/curve overlays, logarithmic-feeling
+  guides, and guide-curve lines,
+- `waveform3d-bongo.png` and `spectrum3d-bongo-*.png` for the 3D panel camera,
+  depth bands, grid planes, and mesh surface overlays,
+- `waveshaper-fx-bongo.png` for FX curve panels,
+- Cycle 1.x morph panel references for morph rails, cube-position preview, axis
+  selectors, cube-range controls, and link toggles.
+
+Placeholder polylines, low-resolution approximations, and hand-drawn preview
+curves are acceptable only as short-lived scaffolding. The real implementation
+should use the Cycle rasterizer/curve data path (`Curve`, mesh rasterizers,
+gridwise DSP, or faithful adapters around them) so displayed curves, surfaces,
+vertices, rails, guide overlays, and spectra are computed from the same model
+that drives DSP.
+
 ### Expanded Editors
 
 Double-clicking a node expands the relevant editor in the node workspace.
@@ -585,6 +608,134 @@ Trilinear mesh expanded editor:
 - trilinear position widget using Yellow, Red, and Blue axes,
 - current mesh/layer controls required for that node,
 - live preview of downstream impact through invalidated dependent nodes.
+
+Trilinear mesh implementation plan:
+
+- create a dedicated trilinear mesh node model that owns or references mesh
+  data, Yellow/Red/Blue morph position, primary view axis, selected
+  cube/vertex state, scratch and guide attachment targets, and mesh-specific
+  dirty revisions,
+- keep source-domain resolution derived from graph traversal context; a mesh
+  node may cache its resolved domain for preview or DSP preparation, but the
+  cache is not persistent node schema,
+- keep `SingletonRepo` available for shared Cycle services, but do not let
+  Cycle 2 node-local mesh state be rediscovered through Cycle 1 globals; morph
+  position, primary axis, selected vertex/cube, traversal domain, scratch
+  target, and preview revisions must be explicit node-local inputs,
+- keep blockwise realtime DSP and gridwise UI DSP as separate backing modules
+  under the trilinear mesh node folder,
+- use blockwise DSP for serial cycle rendering and audio execution, preserving
+  Cycle-style power-of-two cycle processing and realtime allocation rules,
+- use gridwise DSP for UI columns, 3D heatmaps, 2D slices, mesh overlays, and
+  reduced-detail previews,
+- make gridwise UI rendering reproduce the appropriate Cycle 1.x panel
+  aesthetic for the resolved domain: Waveform2D/Waveform3D-style blue time
+  surfaces and backgrounds for time-domain signals, Spectrum2D/Spectrum3D-style
+  spectral backgrounds and overlays for magnitude and phase, burntalum spectral
+  surface colour, low-amplitude transparency for spectral surface views, dense
+  but subdued grid lines, vertex/cube overlays, guide-curve overlays, and
+  high-resolution Curve/Rasterizer-derived traces rather than coarse
+  placeholder polylines,
+- model those domain-specific visual choices as render profiles rather than as
+  ad hoc conditionals in a single trilinear mesh god class; expected profile
+  inputs include traversal domain, scale type, primary view axis, whether the
+  panel is compact or expanded, and whether the view is 2D slice, 3D surface,
+  or read-only input/grid preview,
+- separate raw signal domain from downstream render semantics: time, spectral
+  magnitude, spectral phase, volume envelope, pitch envelope, scratch envelope,
+  additive spectral layer, and multiplicative/subtractive spectral layer can
+  share storage domains while needing different 2D fill scale and colour
+  policies,
+- use Cycle 1.x 2D curve-fill semantics as the parity target: additive spectral
+  magnitude is unipolar yellow from zero to the curve, multiplicative or
+  subtractive spectral magnitude is bipolar yellow/blue, phase is bipolar
+  yellow/blue, time-domain waveforms are bipolar light grey, and envelope nodes
+  resolve unipolar versus bipolar from their downstream connection role,
+- treat Cycle 1.x `Waveform2D`, `Spectrum2D`, `WaveformInter2D`,
+  `SpectrumInter2D`, `Waveform3D`, `Spectrum3D`, `WaveformInter3D`,
+  `SpectrumInter3D`, and `GraphicRasterizer` as parity references and reusable
+  structure where their dependencies can stay at lib scope,
+- do not make lib `Panel2D`, `Panel3D`, or `Interactor` depend on Cycle-only
+  classes such as `VisualDsp`; Cycle 2 node panels should instead adapt node
+  grid/slice data into the existing lib panel contracts (`Panel3D::DataRetriever`,
+  rasterizer snapshots, and interactor state),
+- use a narrow panel bridge only as transitional glue: the node model/DSP owns
+  the mesh and grid data, adapters publish that data to lib panel interfaces,
+  and bridge-level manual repaint/invalidation logic should be drained into
+  `NodeUpdateGraph` as soon as the first stable update nodes exist,
+- build a dedicated trilinear mesh editor module; `NodeCanvas` should own
+  canvas-level transforms, routing, clipping, and popup placement, while the
+  mesh editor owns compact preview drawing and component layout for expanded
+  node-local editors,
+- mount real JUCE child components inside the expanded editor where natural
+  component semantics help: 2D/3D panel hosts, copied/adapted morph cube
+  display, copied/adapted horizontal sliders, primary-axis buttons, vertex
+  parameter rows, and future spectral controls; avoid returning to broad
+  hand-painted hit regions except as short-lived scaffolding,
+- copy or adapt Cycle 1.x leaf widgets such as `CubeDisplay` and `HSlider`
+  when their interaction language is right, but rebind them to explicit Cycle 2
+  node-local state and callbacks rather than to Cycle 1 scratch channels,
+  console strings, settings, or update sources hidden behind global lookup,
+- organize the expanded editor as a 3D grid/heatmap panel beside a morph and
+  vertex-parameter panel, with the 2D waveform or spectrum slice editor taking
+  the full width below,
+- render the morph panel and vertex parameters with Cycle 1.x semantics but
+  with more latitude in layout; expected parameters include amplitude, phase,
+  sharpness, and component curve controls for selected mesh elements,
+- treat the current Cycle 2 implementation of `selectedVertexIndex` plus
+  `vertex.*` override parameters as a temporary interaction scaffold only; the
+  final design needs serialized mesh-state edits so multiple vertices/cubes can
+  be edited, undone, copied, and loaded without relying on a single selected
+  vertex override,
+- make all mesh edits undoable and route mesh, morph, preview camera, and
+  attachment changes through `NodeUpdateGraph` invalidation.
+
+Trilinear mesh editor decomposition:
+
+- `TrimeshNodeModel`: mesh ownership/reference, morph position, primary view
+  axis, selected vertex/cube, serialized mesh edits, and dirty revisions.
+- `TrimeshRenderProfile`: traversal-domain-driven visual policy for gradients,
+  scale type, alpha behaviour, 2D/3D background style, overlays, and compact
+  versus expanded density.
+- `TrimeshSurfaceRenderer`: 3D grid/surface rendering using the profile and
+  gridwise DSP data.
+- `TrimeshSliceRenderer2D`: waveform/spectrum slice drawing, intercept/rail
+  overlays, closest-intercept highlighting, and profile-specific backgrounds.
+- `TrimeshControlsComponent`: real child controls for morph cube, sliders,
+  primary-axis selection, selected vertex parameters, link/polarity/spectral
+  node-profile controls, and future read-only input grid/spy-node views.
+- `TrimeshExpandedEditorComponent`: layout shell and callback owner; it should
+  mount child components, pass node-local callbacks, and avoid owning rendering
+  policy or rasterization invalidation decisions.
+
+Trilinear mesh update graph plan:
+
+- introduce a Cycle 2 update graph slice before expanding feature work further;
+  it can start as Trimesh-specific but should use names and invalidation kinds
+  that can generalize. The first slice is in place as `NodeUpdateGraph`, which
+  composes downstream graph invalidation with `TrimeshInvalidation` panel-local
+  dirtiness,
+- model source changes for morph value changes, primary-axis changes,
+  2D/3D mesh edits, selected vertex edits, traversal-domain changes,
+  connection changes, preview viewport/camera changes, and scratch/guide input
+  changes,
+- add a graph semantic-resolution pass before render-profile evaluation. This
+  can run backward from consumers/sinks to annotate upstream node previews and
+  edge attachments with render role, scale policy, spectral layer mode, and
+  envelope target category without baking those meanings into the raw node
+  domain,
+- model derived revisions for mesh content, 2D slice rasterization,
+  intercepts/rails, 3D grid columns, panel surface texture, compact preview
+  image/texture, selected-control state, and compiled DSP preparation,
+- let the graph decide which consumers invalidate: popup 2D panel, popup 3D
+  panel, compact node preview, downstream node previews, audio-prepared state,
+  and read-only spy/input-grid views,
+- encode the important optimization declaratively: when the changed morph
+  slider is the current primary view axis for the 3D grid, the 3D surface grid
+  does not need to rebuild, but the 2D slice, control state, and dependent
+  previews may still need updates,
+- retire bridge-local special cases once equivalent update graph edges cover
+  them.
 
 2D mesh expanded editor:
 
@@ -860,6 +1011,11 @@ Acceptance:
 
 - trilinear mesh node expands to 3D and 2D editor modes,
 - trilinear morph position widget edits that node's preview/execution state,
+- trilinear mesh editor uses a dedicated node widget/editor rather than
+  `NodeCanvas`-owned preview special cases,
+- 3D heatmap, 2D slice, morph panel, and vertex-parameter panel are visible in
+  the expanded trilinear editor,
+- vertex/cube selection and mesh edits are undoable,
 - 2D mesh nodes expand to a curve/slice editor,
 - effect nodes expose their current controls as GL widgets or sprites,
 - edits propagate through `NodeUpdateGraph`,

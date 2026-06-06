@@ -37,7 +37,6 @@ NodeModuleDescriptor NodeModuleRegistry::descriptorFor(NodeKind kind) const {
         case NodeKind::ImageSource:
             return descriptor(kind, AudioModuleRole::ImageSource, PreviewModuleRole::Image, true, true);
 
-        case NodeKind::TrilinearWaveSurface:
         case NodeKind::TrilinearMesh:
             return descriptor(
                     kind,
@@ -49,24 +48,6 @@ NodeModuleDescriptor NodeModuleRegistry::descriptorFor(NodeKind kind) const {
 
         case NodeKind::Fft:
             return descriptor(kind, AudioModuleRole::Fft, PreviewModuleRole::None, true, false);
-
-        case NodeKind::SpectralMagnitudeProcessor:
-            return descriptor(
-                    kind,
-                    AudioModuleRole::MeshSource,
-                    PreviewModuleRole::SpectrumMagnitude,
-                    true,
-                    true,
-                    "cycle/src/Inter/SpectrumInter3D.cpp");
-
-        case NodeKind::SpectralPhaseProcessor:
-            return descriptor(
-                    kind,
-                    AudioModuleRole::MeshSource,
-                    PreviewModuleRole::SpectrumPhase,
-                    true,
-                    true,
-                    "cycle/src/Inter/SpectrumInter3D.cpp");
 
         case NodeKind::Ifft:
             return descriptor(kind, AudioModuleRole::Ifft, PreviewModuleRole::None, true, false);

@@ -8,8 +8,15 @@ into an implementation plan.
 ADR 009 narrows the shared panel renderer work from
 [ADR 003](../ADR/003-shared-panel-renderer.md): the immediate goal is not a
 full backend rewrite, but a core/host split that lets Cycle 1 keep its current
-JUCE component leaves while Cycle v2 hosts the same panel logic inside the node
-editor's single OpenGL context.
+JUCE/OpenGL panel leaves while Cycle v2 can reuse the same panel logic without
+depending on Cycle 1 component globals or nested OpenGL context lifetime.
+
+Implementation experience in the Trilinear Mesh popup refined the practical
+direction: Cycle v2 should use normal JUCE child components where that gives
+natural focus, hit testing, cursor, and slider semantics. The thing to avoid is
+mounting Cycle 1 `OpenGLPanel` / `OpenGLPanel3D` leaves with their own context
+and hidden update routing. Real Cycle v2 child controls and host components are
+acceptable when their dependencies are explicit and node-local.
 
 ## Problem Statement
 
@@ -24,10 +31,10 @@ Cycle panel classes currently mix several responsibilities:
 
 That works for the Cycle 1 editor because each visible panel is mounted as a
 component with its own `OpenGLPanel` or `OpenGLPanel3D` child. It is fragile for
-Cycle v2 because expanded node panels are currently bridged by embedding those
-OpenGL component leaves inside another OpenGL-backed node canvas. Repeated node
-popup open/close can therefore churn nested contexts and leave 3D panels black,
-stale, or partially initialized.
+Cycle v2 when expanded node panels are bridged by embedding those OpenGL leaves
+inside another OpenGL-backed node canvas. Repeated node popup open/close can
+therefore churn nested contexts and leave 3D panels black, stale, or partially
+initialized.
 
 The reusable behavior is in the panel and interactor logic. The component and
 context leaves are host concerns and must be made replaceable.
@@ -36,13 +43,17 @@ context leaves are host concerns and must be made replaceable.
 
 - Extract a context-free panel core API for 2D and 3D panel behavior.
 - Keep Cycle 1 visual and interaction behavior intact during migration.
-- Let Cycle v2 render expanded node panels through the existing node-editor
-  OpenGL context without child `OpenGLPanel` components.
+- Let Cycle v2 host expanded node panels and controls as normal JUCE children
+  where useful, while keeping OpenGL context ownership and backend resources out
+  of Cycle 1 `OpenGLPanel` leaves.
 - Make panel bounds, input coordinates, repaint, undo, and update routing
   explicit host-provided services.
 - Move GL texture and surface handles into host/context-scoped caches.
 - Preserve the current `CommonGfx` / `PanelRenderer` plateau until a broader
   backend-neutral renderer is ready.
+- Treat `SingletonRepo` as reusable Amaranth infrastructure, but keep Cycle v2
+  mesh node state and invalidation explicit instead of rediscovering it through
+  Cycle 1 globals.
 
 ## Non-Goals
 
@@ -50,7 +61,7 @@ context leaves are host concerns and must be made replaceable.
 - Rewriting mesh editing semantics from scratch for Cycle v2.
 - Removing Cycle 1 `OpenGLPanel` and `OpenGLPanel3D` leaves before Cycle v2 has
   a stable host path.
-- Migrating all JUCE controls into the shared canvas.
+- Forcing all controls into a single hand-painted shared canvas.
 - Changing rendered visuals intentionally.
 
 ## Current Architecture
@@ -117,9 +128,17 @@ hosts:
 - Cycle 1 component host: owns the JUCE component and the transitional
   per-panel OpenGL context, then passes component bounds and mouse events into
   the core.
-- Cycle v2 node-editor host: owns no child GL component, computes panel bounds
-  from node layout, forwards local input, and renders the core through the
-  node canvas renderer.
+- Cycle v2 node-editor host: may be a JUCE child component for natural focus
+  and hit testing, but it does not inherit Cycle 1 `OpenGLPanel` behavior or
+  hide Cycle 1 update routing. It computes panel bounds from node layout,
+  forwards local input, and renders through either a Cycle v2 host renderer or
+  an explicit transitional panel adapter.
+
+Cycle v2 control leaves such as morph-cube views, horizontal sliders,
+primary-axis buttons, and vertex-parameter rows should be copied or adapted
+from Cycle 1 when their visual language is useful. Those copies must bind to
+explicit node-local state and callbacks rather than to Cycle 1 scratch-channel,
+console-message, settings, or fixed-update-source globals.
 
 ### Host Context Types
 
@@ -283,42 +302,85 @@ Exit criteria:
 - Reopening a Cycle 1 panel recreates GL handles from CPU state.
 - Tests cover cache versioning and dirty flag clearing after cache rebuild.
 
-### Phase 5: Add Cycle v2 Node-Editor Panel Hosts
+### Phase 5: Add Cycle v2 Node-Editor Panel Hosts And Controls
 
-Output: expanded node panels render through the node canvas context.
+Output: expanded node panels and controls use natural component semantics while
+still avoiding Cycle 1 OpenGL leaves and hidden global state.
 
 - Add a node-editor host adapter for the 3D trimesh panel core.
 - Add a node-editor host adapter for the 2D waveform/curve panel core.
+- Add copied/adapted Cycle v2 leaves for morph cube display, horizontal morph
+  sliders, primary-axis controls, selected vertex parameters, and domain-profile
+  controls where the Cycle 1 widgets are the right interaction reference.
 - Compute panel bounds from expanded node layout and pass local coordinates into
   the core.
-- Bind the node canvas renderer or `CommonGfx` adapter as the host renderer.
+- Bind the node canvas renderer, Cycle v2 host renderer, or explicit
+  transitional `CommonGfx` adapter as the host renderer.
 - Store panel textures and baked surfaces in the node-canvas resource cache.
 - Route node edits through the node graph model and node undo stack.
+- Route scratch-channel, guide attachment, console/status, and update
+  notifications through Cycle v2 services or callbacks rather than Cycle 1
+  globals.
 - Replace mock/fallback `TrimeshWidget` panel drawing with real panel-core
   rendering once parity is good enough.
 
 Exit criteria:
 
-- Cycle v2 expanded mesh node uses no child `OpenGLPanel` or `OpenGLPanel3D`.
-- Only the node canvas owns an OpenGL context for node-editor panels.
+- Cycle v2 expanded mesh node uses no Cycle 1 `OpenGLPanel` or
+  `OpenGLPanel3D` child leaves.
+- Cycle v2 child components have correct focus, hit testing, cursors, and
+  slider behavior before and after popup open/close.
+- OpenGL context ownership is explicit and does not depend on nested Cycle 1
+  panel leaves.
 - Opening the same expanded node repeatedly shows initialized 2D and 3D panels
   on first paint.
 
-### Phase 6: Retire the Temporary Bridge
+### Phase 6: Introduce Cycle v2 Update-Graph Invalidation
 
-Output: Cycle v2 no longer embeds Cycle 1 OpenGL component leaves.
+Output: bridge-local repaint and rasterizer special cases are replaced by
+declared update dependencies.
 
-- Remove v2 construction or mounting of `OpenGLPanel` / `OpenGLPanel3D` child
-  components.
+- Add update nodes or revision categories for mesh content, morph position,
+  primary view axis, 2D slice rasterization, 3D surface grid, intercept/rail
+  overlays, compact preview, expanded panel textures, selected controls, and
+  prepared DSP state.
+- Encode invalidation edges for 2D edits, 3D edits, morph slider edits,
+  primary-axis edits, traversal-domain changes, connection changes, scratch or
+  guide input changes, and preview viewport changes.
+- Preserve the known optimization declaratively: a morph-slider change along
+  the current primary view axis does not rebuild the 3D surface grid, but it
+  can still update 2D slice state, controls, and downstream previews.
+- Route scratch-channel, console/status, and edit notifications through Cycle 2
+  graph/update services.
+- Remove bridge-specific manual repaint/update branches once equivalent update
+  graph edges exist.
+
+Exit criteria:
+
+- The Trilinear Mesh popup and compact preview stay coherent after 2D edits,
+  3D edits, morph slider changes, primary-axis changes, and traversal-domain
+  changes without bridge-local special cases.
+- Tests cover the invalidation decision for primary-axis slider changes.
+- Cycle 1 standalone still builds and retains existing panel behavior.
+- Remaining bridge code is either host plumbing or marked as explicit fallback.
+
+### Phase 7: Retire The Temporary Bridge
+
+Output: Cycle v2 no longer depends on the temporary Trimesh bridge for core
+rendering or invalidation.
+
+- Remove v2 construction or mounting of Cycle 1 `OpenGLPanel` /
+  `OpenGLPanel3D` leaves if any remain.
 - Keep Cycle 1 component leaves intact.
 - Delete bridge-specific fallback drawing only after real panel-core rendering
-  covers the same workflows.
+  and update-graph invalidation cover the same workflows.
 - Update ADR/TDD notes with any remaining shared-renderer follow-up that belongs
   to ADR 003 rather than ADR 009.
 
 Exit criteria:
 
-- Cycle v2 node editor does not create nested GL contexts for expanded panels.
+- Cycle v2 node editor does not create nested Cycle 1 GL contexts for expanded
+  panels.
 - Cycle 1 standalone still builds and retains existing panel behavior.
 - The old v2 bridge path is removed or disabled behind an explicit fallback.
 
@@ -362,6 +424,11 @@ For Cycle v2 node-editor changes:
 - Verify first-open 3D rails/intercepts, live 2D-to-3D updates, morph slider
   updates, compact preview updates, and repeated popup open/close without
   black/flicker states.
+- Verify copied/adapted component controls have correct focus, hover cursors,
+  drag behavior, and no event leakage to the canvas behind the popup.
+- Verify domain profiles visually distinguish Waveform2D/Waveform3D backgrounds
+  from Spectrum2D/Spectrum3D backgrounds, including spectral surface
+  low-amplitude transparency.
 
 ## Migration Rules
 
@@ -372,6 +439,11 @@ For Cycle v2 node-editor changes:
   transitional friend access already present in the code.
 - Prefer adapting existing `PanelRenderContext`, `PanelRenderer`, and
   `RenderResourceCache` scaffolding over adding parallel abstractions.
+- Prefer real Cycle v2 child components for controls where JUCE focus,
+  hit-testing, and cursor semantics solve problems directly.
+- Do not copy Cycle 1 leaf widgets together with hidden Cycle 1 globals; copy
+  the interaction and drawing language, then bind it to explicit Cycle v2
+  services, node state, and update-graph callbacks.
 - Record incidental UI or audio runtime failures in the appropriate
   `docs/TDD/*-bugs.md` file if they are discovered but not fixed in the same
   change.
@@ -387,4 +459,6 @@ For Cycle v2 node-editor changes:
   resource cache?
 - How much Cycle 1 global update routing must remain as callbacks before the
   node graph model can provide equivalent hooks?
-
+- Should Trimesh render profiles live under the Trimesh node module first, or
+  should they immediately become generic waveform/spectrum panel profiles for
+  reuse by spy nodes and future source nodes?

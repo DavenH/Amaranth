@@ -4,6 +4,7 @@
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Runtime/GraphPreviewExecutor.h"
+#include "../src/Runtime/NodePreviewProcessor.h"
 
 #include <algorithm>
 
@@ -84,6 +85,32 @@ TEST_CASE("Graph preview executor passes parameters to preview processors", "[cy
     const auto result = GraphPreviewExecutor().render(compileResult.plan, 3);
 
     REQUIRE(findPreview(result, "wave").primary == std::vector<float> { 0.f, 0.5f, 0.f });
+}
+
+TEST_CASE("Mesh preview processor uses non-cyclic rendering for spectral outputs", "[cycle-v2][runtime]") {
+    NodePreviewProcessorFactory factory;
+    auto timeProcessor = factory.create(PreviewModuleRole::MeshSurface);
+    auto spectralProcessor = factory.create(PreviewModuleRole::MeshSurface);
+
+    PreviewProcessContext timeContext;
+    timeContext.pointCount = 12;
+    timeContext.outputPorts = {
+            { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
+    };
+
+    PreviewProcessContext spectralContext;
+    spectralContext.pointCount = 12;
+    spectralContext.outputPorts = {
+            { "out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo }
+    };
+
+    timeProcessor->render(timeContext);
+    spectralProcessor->render(spectralContext);
+
+    REQUIRE(timeContext.secondary.size() == spectralContext.secondary.size());
+    REQUIRE_FALSE(timeContext.secondary.empty());
+    REQUIRE(timeContext.secondary != spectralContext.secondary);
+    REQUIRE(timeContext.primary != spectralContext.primary);
 }
 
 TEST_CASE("Graph preview executor renders preview nodes after non-preview processors", "[cycle-v2][runtime]") {

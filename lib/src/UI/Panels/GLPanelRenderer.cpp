@@ -19,6 +19,9 @@ void GLPanelRenderer::beginPanelRender(const PanelRenderContext& context) {
     if (gfx != nullptr) {
         gfx->initRender();
     }
+
+    glPushMatrix();
+    glTranslatef(context.bounds.getX(), context.bounds.getY(), 0.f);
 }
 
 void GLPanelRenderer::checkErrors() {
@@ -32,6 +35,7 @@ void GLPanelRenderer::clearResources() {
 }
 
 void GLPanelRenderer::endPanelRender() {
+    glPopMatrix();
     currentContext = nullptr;
 }
 
@@ -54,6 +58,10 @@ void GLPanelRenderer::drawSurfaceColumn(Buffer<Int8u> colours, Buffer<float> ver
     ignoreUnused(sizeY);
 
     glDisable(GL_TEXTURE_2D);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
     glColorPointer(stride, GL_UNSIGNED_BYTE, 0, colours);
     glVertexPointer(2, GL_FLOAT, 0, vertices);
     glDrawArrays(GL_QUAD_STRIP, 0, (sizeY + 1) * 2);

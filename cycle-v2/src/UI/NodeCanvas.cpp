@@ -22,6 +22,9 @@ constexpr float kCableStrokeScale = 0.70f;
 constexpr float kPaletteWidth = 158.f;
 constexpr float kPaletteHeaderHeight = 21.f;
 constexpr float kPaletteRowHeight = 30.f;
+constexpr float kExpandedEditorScale = 0.90f;
+constexpr float kExpandedEditorMinMargin = 18.f;
+constexpr float kExpandedEditorHeaderHeight = 34.f;
 constexpr bool kUseGlCanvasUnderlay = true;
 constexpr bool kUseGlCanvasEdges = false;
 constexpr bool kUseGlNodeShells = false;
@@ -144,10 +147,7 @@ bool isPreviewableNode(NodeKind kind) {
     switch (kind) {
         case NodeKind::WaveSource:
         case NodeKind::ImageSource:
-        case NodeKind::TrilinearWaveSurface:
         case NodeKind::TrilinearMesh:
-        case NodeKind::SpectralMagnitudeProcessor:
-        case NodeKind::SpectralPhaseProcessor:
         case NodeKind::Envelope:
         case NodeKind::GuideCurve:
         case NodeKind::ImpulseResponse:
@@ -189,10 +189,21 @@ OperationPortLayout operationPortLayoutFor(const Node& node) {
     return OperationPortLayout::Side;
 }
 
+OperationPortLayout nextOperationPortLayout(OperationPortLayout layout) {
+    switch (layout) {
+        case OperationPortLayout::Side:     return OperationPortLayout::Uptack;
+        case OperationPortLayout::Uptack:   return OperationPortLayout::Vertical;
+        case OperationPortLayout::Vertical: return OperationPortLayout::Tee;
+        case OperationPortLayout::Tee:      return OperationPortLayout::Side;
+    }
+
+    return OperationPortLayout::Side;
+}
+
 Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
-    const float size = 18.f * zoom;
+    const float size = 27.f * zoom;
     return Rectangle<float>(size, size)
-            .withCentre({ nodeBounds.getRight() - 18.f * zoom, nodeBounds.getY() + 21.f * zoom });
+            .withCentre({ nodeBounds.getRight() - 21.f * zoom, nodeBounds.getY() + 21.f * zoom });
 }
 
 Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
@@ -203,14 +214,20 @@ Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, flo
 }
 
 Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
-    const Rectangle<float> available = componentBounds.reduced(28.f);
-    const float width = jmin(available.getWidth(), jmax(420.f, available.getWidth() * 0.80f));
-    const float height = jmin(available.getHeight(), jmax(300.f, available.getHeight() * 0.80f));
+    const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
+    const float width = jmin(available.getWidth(), jmax(420.f, componentBounds.getWidth() * kExpandedEditorScale));
+    const float height = jmin(available.getHeight(), jmax(300.f, componentBounds.getHeight() * kExpandedEditorScale));
     return Rectangle<float>(width, height).withCentre(available.getCentre());
 }
 
 Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {
-    return Rectangle<float>(24.f, 24.f).withCentre({ panel.getRight() - 24.f, panel.getY() + 22.f });
+    return Rectangle<float>(22.f, 22.f).withCentre({ panel.getRight() - 22.f, panel.getY() + kExpandedEditorHeaderHeight * 0.5f });
+}
+
+Rectangle<float> expandedEditorContentBounds(Rectangle<float> componentBounds) {
+    Rectangle<float> panel = expandedEditorBounds(componentBounds);
+    panel.removeFromTop(kExpandedEditorHeaderHeight);
+    return panel.reduced(8.f, 8.f);
 }
 
 String voiceDomainForNode(const Node& node) {
@@ -239,6 +256,20 @@ Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
     }
 
     return node.outputs.empty() ? Colour(0xff9aa5b2) : colourForDomain(node.outputs.front().domain);
+}
+
+String previewCacheSignature(const Node& node, PortDomain domain) {
+    String signature = String((int) node.kind) + ":" + String((int) domain);
+
+    for (const auto& parameter : node.parameters) {
+        signature += "|" + parameter.id + "=" + parameter.value;
+    }
+
+    for (const auto& output : node.outputs) {
+        signature += "|out:" + output.id + ":" + String((int) output.domain);
+    }
+
+    return signature;
 }
 
 void drawPreviewTrace(
@@ -277,113 +308,6 @@ void drawPreviewTrace(
     g.strokePath(trace, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
-Colour meshSurfaceColour(float value) {
-    const float v = jlimit(0.f, 1.f, value);
-    const Colour low(0xff06090d);
-    const Colour mid(0xff53657a);
-    const Colour high(0xffd7eaff);
-
-    if (v < 0.5f) {
-        return low.interpolatedWith(mid, v * 2.f);
-    }
-
-    return mid.interpolatedWith(high, (v - 0.5f) * 2.f);
-}
-
-bool canDrawMeshHeatmap(const NodePreviewResult& preview) {
-    const int rows = (int) preview.secondary.size();
-    return rows >= 2 && preview.primary.size() >= (size_t) rows * 2;
-}
-
-Image createMeshHeatmapImage(const NodePreviewResult& preview) {
-    const int rows = (int) preview.secondary.size();
-
-    if (!canDrawMeshHeatmap(preview)) {
-        return {};
-    }
-
-    const int columns = (int) preview.primary.size() / rows;
-    Image image(Image::ARGB, columns, rows, true);
-
-    for (int column = 0; column < columns; ++column) {
-        for (int row = 0; row < rows; ++row) {
-            const float value = preview.primary[(size_t) column * rows + row];
-            image.setPixelAt(column, row, meshSurfaceColour(value).withAlpha(0.82f));
-        }
-    }
-
-    return image;
-}
-
-void drawMeshHeatmap(
-        Graphics& g,
-        Rectangle<float> area,
-        const NodePreviewResult& preview,
-        float zoom,
-        bool drawGrid) {
-    const int rows = (int) preview.secondary.size();
-
-    if (!canDrawMeshHeatmap(preview)) {
-        return;
-    }
-
-    const int columns = (int) preview.primary.size() / rows;
-    const Rectangle<float> surface = area.reduced(area.getWidth() * 0.025f, area.getHeight() * 0.06f);
-
-    g.setColour(Colour(0xff0a0f13));
-    g.fillRoundedRectangle(area, 5.f * zoom);
-
-    const float cellWidth = surface.getWidth() / (float) columns;
-    const float cellHeight = surface.getHeight() / (float) rows;
-
-    for (int column = 0; column < columns; ++column) {
-        for (int row = 0; row < rows; ++row) {
-            const float value = preview.primary[(size_t) column * rows + row];
-            const Rectangle<float> cell(
-                    surface.getX() + (float) column * cellWidth,
-                    surface.getY() + (float) row * cellHeight,
-                    cellWidth + 0.75f,
-                    cellHeight + 0.75f);
-
-            g.setColour(meshSurfaceColour(value).withAlpha(0.82f));
-            g.fillRect(cell);
-        }
-    }
-
-    if (drawGrid) {
-        g.setColour(Colour(0xff1e2a34).withAlpha(0.52f));
-        const int horizontalStep = jmax(1, rows / 5);
-        for (int row = 0; row <= rows; row += horizontalStep) {
-            const float y = surface.getY() + (float) row * cellHeight;
-            g.drawHorizontalLine(roundToInt(y), surface.getX(), surface.getRight());
-        }
-
-        const int verticalStep = jmax(1, columns / 6);
-        for (int column = 0; column <= columns; column += verticalStep) {
-            const float x = surface.getX() + (float) column * cellWidth;
-            g.drawVerticalLine(roundToInt(x), surface.getY(), surface.getBottom());
-        }
-    }
-}
-
-void drawMeshSurfacePreview(
-        Graphics& g,
-        Rectangle<float> area,
-        const NodePreviewResult& preview,
-        float zoom) {
-    drawMeshHeatmap(g, area, preview, zoom, false);
-}
-
-void drawPanelFrame(Graphics& g, Rectangle<float> area, const String& title) {
-    g.setColour(Colour(0xff0e1318));
-    g.fillRoundedRectangle(area, 6.f);
-    g.setColour(Colour(0xff26313d));
-    g.drawRoundedRectangle(area, 6.f, 1.f);
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f, Font::bold));
-    g.drawText(title, area.reduced(10.f, 6.f).removeFromTop(15.f), Justification::centredLeft);
-}
-
 void drawPreviewMeters(
         Graphics& g,
         Rectangle<float> area,
@@ -391,26 +315,36 @@ void drawPreviewMeters(
         Colour colour) {
     const float left = preview.primary.empty() ? 0.f : jlimit(0.f, 1.f, preview.primary.front());
     const float right = preview.secondary.empty() ? left : jlimit(0.f, 1.f, preview.secondary.front());
-    Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.24f, area.getHeight() * 0.10f);
-    const float width = meterArea.getWidth() * 0.26f;
+    Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.20f, area.getHeight() * 0.08f);
+    const float width = meterArea.getWidth() * 0.28f;
     auto leftMeter = meterArea.removeFromLeft(width);
     auto rightMeter = meterArea.removeFromRight(width);
 
     auto drawMeter = [&](Rectangle<float> bounds, float level) {
-        g.setColour(colour.withAlpha(0.14f));
-        g.fillRoundedRectangle(bounds, 2.f);
+        constexpr int segments = 12;
+        const float gap = jmax(1.f, bounds.getHeight() * 0.015f);
+        const float segmentHeight = (bounds.getHeight() - gap * (float) (segments - 1)) / (float) segments;
+        const int litSegments = jlimit(0, segments, roundToInt(level * (float) segments));
 
-        Rectangle<float> fill = bounds.withTrimmedTop(bounds.getHeight() * (1.f - level));
-        const float yellowStart = bounds.getY() + bounds.getHeight() * 0.30f;
+        for (int i = 0; i < segments; ++i) {
+            const int levelIndex = segments - 1 - i;
+            const Rectangle<float> segment(
+                    bounds.getX(),
+                    bounds.getY() + (float) i * (segmentHeight + gap),
+                    bounds.getWidth(),
+                    segmentHeight);
+            const bool lit = levelIndex < litSegments;
+            const float normalized = (float) levelIndex / (float) (segments - 1);
+            Colour segmentColour = colour;
 
-        if (fill.getBottom() > yellowStart) {
-            g.setColour(colour.withAlpha(0.70f));
-            g.fillRoundedRectangle(fill.withTrimmedTop(jmax(0.f, yellowStart - fill.getY())), 2.f);
-        }
+            if (normalized > 0.78f) {
+                segmentColour = Colour(0xffff705f);
+            } else if (normalized > 0.58f) {
+                segmentColour = Colour(0xfff4d35e);
+            }
 
-        if (fill.getY() < yellowStart) {
-            g.setColour(Colour(0xfff4d35e).withAlpha(0.78f));
-            g.fillRoundedRectangle(fill.withBottom(jmin(fill.getBottom(), yellowStart)), 2.f);
+            g.setColour(segmentColour.withAlpha(lit ? 0.82f : 0.14f));
+            g.fillRoundedRectangle(segment, 1.4f);
         }
     };
 
@@ -485,15 +419,24 @@ NodeCanvas::NodeCanvas() :
     openGLContext.setRenderer(this);
     openGLContext.setContinuousRepainting(false);
     openGLContext.attachTo(*this);
+    canvasOpenGlAttached = true;
     startTimerHz(30);
 }
 
 NodeCanvas::~NodeCanvas() {
     stopTimer();
-    openGLContext.detach();
+    detachExpandedEditorHosts();
+    setCanvasOpenGlAttached(false);
 }
 
 void NodeCanvas::paint(Graphics& g) {
+    const Node* expandedNode = findNode(expandedNodeId);
+
+    if (expandedNode != nullptr) {
+        g.saveState();
+        g.excludeClipRegion(expandedEditorBounds(getLocalBounds().toFloat()).toNearestInt().expanded(2));
+    }
+
     drawGrid(g);
     drawEdges(g);
     drawConnectionPreview(g);
@@ -503,17 +446,22 @@ void NodeCanvas::paint(Graphics& g) {
     drawNodePalette(g);
     drawHoverConsole(g);
 
-    if (const Node* node = findNode(expandedNodeId)) {
-        drawExpandedEditor(g, *node);
+    if (expandedNode != nullptr) {
+        g.restoreState();
+        if (expandedNode->kind != NodeKind::TrilinearMesh) {
+            drawExpandedEditor(g, *expandedNode);
+        }
     }
 }
 
 void NodeCanvas::resized() {
+    updateExpandedEditorHost(findNode(expandedNodeId));
     repaint();
 }
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
     lastMousePosition = event.position;
+    setMouseCursor(MouseCursor::NormalCursor);
     repaint();
 }
 
@@ -525,16 +473,29 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     draggingNode = false;
     connectingCable = false;
     nodeDragUndoPushed = false;
+    draggingTrimeshMorph = false;
+    trimeshMorphUndoPushed = false;
+    draggingTrimeshVertexParameter = false;
+    trimeshVertexParameterUndoPushed = false;
+    expandedEditorDragCaptured = false;
 
     if (expandedNodeId.isNotEmpty()) {
         const auto panel = expandedEditorBounds(getLocalBounds().toFloat());
         const auto closeButton = expandedEditorCloseButton(panel);
+        const Node* expandedNode = findNode(expandedNodeId);
+
+        if (expandedNode != nullptr && expandedNode->kind == NodeKind::TrilinearMesh) {
+            repaint();
+            return;
+        }
 
         if (closeButton.contains(event.position)) {
             expandedNodeId = {};
             repaint();
             return;
         }
+
+        expandedEditorDragCaptured = panel.contains(event.position);
 
         repaint();
         return;
@@ -647,7 +608,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
     lastMousePosition = event.position;
 
-    if (connectingCable) {
+    if (expandedEditorDragCaptured || expandedNodeId.isNotEmpty()) {
+    } else if (connectingCable) {
         PortAddress hitPort;
         connectingPoint = findConnectablePortAt(event.position, connectingPort, hitPort)
                 ? getPortLocation(hitPort).centre
@@ -677,6 +639,9 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     if (!connectingCable) {
         draggingNode = false;
         nodeDragUndoPushed = false;
+        endTrimeshMorphEdit();
+        endTrimeshVertexParameterEdit();
+        expandedEditorDragCaptured = false;
         return;
     }
 
@@ -684,6 +649,9 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     connectingCable = false;
     draggingNode = false;
     nodeDragUndoPushed = false;
+    endTrimeshMorphEdit();
+    endTrimeshVertexParameterEdit();
+    expandedEditorDragCaptured = false;
 
     if (findConnectablePortAt(event.position, connectingPort, destPort)) {
         const String beforeEdit = GraphSerializer().toXmlString(graph);
@@ -704,7 +672,11 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
-    ignoreUnused(event);
+    if (expandedNodeId.isNotEmpty() && expandedEditorBounds(getLocalBounds().toFloat()).contains(event.position)) {
+        repaint();
+        return;
+    }
+
     constexpr float panScale = 720.f;
     pan += Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale);
     repaint();
@@ -797,16 +769,23 @@ void NodeCanvas::renderOpenGL() {
         if (kUseGlNodeShells) {
             drawGlNodeShells();
         }
+        drawGlExpandedPanels();
     } else {
         OpenGLHelpers::clear(kCanvasBackground);
     }
 }
 
 void NodeCanvas::openGLContextClosing() {
+    for (auto& entry : trimeshWidgets) {
+        entry.second->releaseSharedGlResources();
+    }
+
     glRenderer.shutdown();
 }
 
 void NodeCanvas::timerCallback() {
+    updateExpandedEditorHost(findNode(expandedNodeId));
+
     const auto mouse = getMouseXYRelative().toFloat();
 
     if (getLocalBounds().toFloat().contains(mouse) && mouse != lastMousePosition) {
@@ -862,6 +841,8 @@ void NodeCanvas::drawGrid(Graphics& g) {
 void NodeCanvas::drawGlEdges() {
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
+    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
+    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -887,6 +868,10 @@ void NodeCanvas::drawGlEdges() {
             continue;
         }
 
+        if (hasExpandedEditor && cable.getBounds().intersects(expandedPanel)) {
+            continue;
+        }
+
         Colour colour = colourForDomain(displayDomainForEdge(edge));
         const bool invalid = edgeHasValidationIssue(edge);
 
@@ -908,11 +893,17 @@ void NodeCanvas::drawGlEdges() {
 
 void NodeCanvas::drawGlNodeShells() {
     const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
+    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
+    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
 
     for (const auto& node : graph.getNodes()) {
         const Rectangle<float> bounds = toScreen(node.bounds);
 
         if (!bounds.intersects(visibleArea)) {
+            continue;
+        }
+
+        if (hasExpandedEditor && bounds.intersects(expandedPanel)) {
             continue;
         }
 
@@ -925,6 +916,18 @@ void NodeCanvas::drawGlNodeShells() {
     }
 }
 
+void NodeCanvas::drawGlExpandedPanels() {
+    const Node* expandedNode = findNode(expandedNodeId);
+
+    if (expandedNode == nullptr || expandedNode->kind != NodeKind::TrilinearMesh) {
+        return;
+    }
+
+    if (trimeshExpandedEditor != nullptr && trimeshExpandedEditor->isVisible()) {
+        trimeshExpandedEditor->renderOpenGL((float) openGLContext.getRenderingScale());
+    }
+}
+
 void NodeCanvas::drawEdges(Graphics& g) {
     if (kUseGlCanvasEdges) {
         return;
@@ -932,6 +935,8 @@ void NodeCanvas::drawEdges(Graphics& g) {
 
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
+    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
+    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -952,8 +957,13 @@ void NodeCanvas::drawEdges(Graphics& g) {
         auto source = getPortLocation(*sourceNode, *sourcePort).centre;
         auto dest = getPortLocation(*destNode, *destPort).centre;
         Path cable = createCablePath(source, dest, sourcePort->side, destPort->side, edge.attachment);
+        const Rectangle<float> cableBounds = cable.getBounds();
 
-        if (!cable.getBounds().intersects(visibleArea)) {
+        if (!cableBounds.intersects(visibleArea)) {
+            continue;
+        }
+
+        if (hasExpandedEditor && cableBounds.intersects(expandedPanel)) {
             continue;
         }
 
@@ -1029,6 +1039,11 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
     const PortSide sourceSide = connectingPort.input ? PortSide::Right : port->side;
     const PortSide destSide = connectingPort.input ? port->side : PortSide::Left;
     const Path cable = createCablePath(source, dest, sourceSide, destSide, false);
+
+    if (expandedNodeId.isNotEmpty() && cable.getBounds().intersects(expandedEditorBounds(getLocalBounds().toFloat()))) {
+        return;
+    }
+
     const Colour colour = colourForDomain(port->domain);
     const float cableScale = cableScaleForZoom(zoom);
 
@@ -1049,9 +1064,17 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
 
 void NodeCanvas::drawNodes(Graphics& g) {
     const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
+    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
+    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
 
     for (const auto& node : graph.getNodes()) {
-        if (!toScreen(node.bounds).intersects(visibleArea)) {
+        const Rectangle<float> nodeBounds = toScreen(node.bounds);
+
+        if (!nodeBounds.intersects(visibleArea)) {
+            continue;
+        }
+
+        if (hasExpandedEditor && nodeBounds.intersects(expandedPanel)) {
             continue;
         }
 
@@ -1080,7 +1103,7 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     g.drawRoundedRectangle(toScreen(node.bounds), corner, 1.2f);
 
     if (node.id == selectedNodeId) {
-        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.82f));
+        g.setColour(Colours::white.withAlpha(0.86f));
         g.drawRoundedRectangle(toScreen(node.bounds).expanded(2.f), corner + 2.f, 2.f);
     }
 
@@ -1094,7 +1117,7 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
         g.fillEllipse(button);
         g.setColour(kMutedText.withAlpha(0.82f));
         g.drawEllipse(button, 1.f * uiScale);
-        drawOperationLayoutIcon(g, button, operationPortLayoutFor(node), kMutedText);
+        drawOperationLayoutIcon(g, button, nextOperationPortLayout(operationPortLayoutFor(node)), kMutedText);
     }
 
     auto nodeBounds = toScreen(node.bounds);
@@ -1107,7 +1130,7 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     if (node.kind == NodeKind::VoiceContext) {
         auto pill = voiceDomainButtonBounds(nodeBounds, zoom);
         const bool spectral = voiceDomainForNode(node) == "spectral";
-        const float labelWidth = 66.f * zoom;
+        const float labelWidth = 82.f * zoom;
         const Rectangle<float> waveformLabel(pill.getX() - labelWidth - 9.f * zoom, pill.getY(), labelWidth, pill.getHeight());
         const Rectangle<float> spectralLabel(pill.getRight() + 9.f * zoom, pill.getY(), labelWidth, pill.getHeight());
         const Colour waveformColour = colourForDomain(PortDomain::TimeSignal);
@@ -1119,7 +1142,7 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
                 spectral ? pill.getRight() - pill.getHeight() * 0.5f : pill.getX() + pill.getHeight() * 0.5f,
                 pill.getCentreY());
 
-        g.setFont(FontOptions(10.8f * zoom, Font::bold));
+        g.setFont(FontOptions(15.1f * zoom, Font::bold));
         g.setColour(spectral ? kMutedText.withAlpha(0.70f) : kText);
         g.drawText("Waveform", waveformLabel, Justification::centredRight);
         g.setColour(spectral ? kText : kMutedText.withAlpha(0.70f));
@@ -1167,8 +1190,16 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
 void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> area) {
     const int width = roundToInt(area.getWidth());
     const int height = roundToInt(area.getHeight());
+    const PortDomain previewDomain = displayDomainForNodeOutput(node, "out");
+    const TrimeshRenderProfile previewProfile = renderProfileForNodeOutput(node, "out");
+    const String signature = previewCacheSignature(node, previewDomain);
 
     if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    if (node.kind == NodeKind::TrilinearMesh) {
+        trimeshWidgetFor(node.id).paintCompact(g, node, area, zoom, previewProfile);
         return;
     }
 
@@ -1176,13 +1207,17 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
 
     if (!cached.image.isValid()
             || cached.width != width
-            || cached.height != height) {
+            || cached.height != height
+            || cached.domain != previewDomain
+            || cached.signature != signature) {
         cached.image = Image(Image::ARGB, width, height, true);
         cached.width = width;
         cached.height = height;
+        cached.domain = previewDomain;
+        cached.signature = signature;
 
         Graphics spriteGraphics(cached.image);
-        drawPreviewUncached(spriteGraphics, node, { 0.f, 0.f, (float) width, (float) height });
+        drawPreviewUncached(spriteGraphics, node, { 0.f, 0.f, (float) width, (float) height }, previewDomain);
     }
 
     g.setImageResamplingQuality(Graphics::mediumResamplingQuality);
@@ -1193,35 +1228,35 @@ Rectangle<float> previewContentArea(Rectangle<float> area) {
     return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.12f);
 }
 
-Rectangle<float> meshPreviewContentArea(Rectangle<float> area) {
-    return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
-}
-
-void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area) {
+void NodeCanvas::drawPreviewUncached(
+        Graphics& g,
+        const Node& node,
+        Rectangle<float> area,
+        PortDomain previewDomain) {
     if (area.getWidth() < 20.f || area.getHeight() < 20.f) {
         return;
     }
 
-    g.setColour(Colour(0xff0e1318));
-    g.fillRoundedRectangle(area, 6.f * zoom);
-    g.setColour(Colour(0xff26313d));
-    g.drawRoundedRectangle(area, 6.f * zoom, 1.f);
+    if (node.kind == NodeKind::TrilinearMesh) {
+        trimeshWidgetFor(node.id).paintCompact(g, node, area, zoom, previewDomain);
+        return;
+    }
+
+    if (node.kind == NodeKind::Envelope) {
+        drawEnvelopeCurve(g, area.reduced(8.f));
+        return;
+    }
+
+    if (node.kind == NodeKind::GuideCurve) {
+        drawEnvelopeCurve(g, area.reduced(8.f));
+        return;
+    }
 
     if (const NodePreviewResult* preview = findPreviewResult(node.id)) {
         const Colour colour = previewColourForRole(preview->role, node);
 
         if (preview->role == PreviewModuleRole::OutputMeters) {
             drawPreviewMeters(g, area, *preview, colour);
-            g.setColour(kMutedText.withAlpha(0.72f));
-            g.setFont(FontOptions(jmin(17.f, area.getHeight() * 0.24f), Font::bold));
-            g.drawText("OUT", area, Justification::centredBottom);
-            return;
-        }
-
-        if (preview->role == PreviewModuleRole::MeshSurface
-                && !preview->primary.empty()
-                && !preview->secondary.empty()) {
-            drawMeshSurfacePreview(g, node, area, *preview);
             return;
         }
 
@@ -1273,9 +1308,6 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
             }
         }
 
-        g.setColour(kMutedText.withAlpha(0.72f));
-        g.setFont(FontOptions(jmin(15.f, area.getHeight() * 0.24f), Font::bold));
-        g.drawText(inverse ? "IFFT" : "FFT", area, Justification::centredBottom);
         return;
     }
 
@@ -1297,32 +1329,13 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
 
     if (node.kind == NodeKind::Output) {
         const Colour colour = colourForDomain(PortDomain::TimeSignal);
-        Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.24f, area.getHeight() * 0.10f);
-        const float width = meterArea.getWidth() * 0.32f;
-
-        g.setColour(colour.withAlpha(0.18f));
-        g.fillRoundedRectangle(meterArea.removeFromLeft(width), 2.f);
-        g.fillRoundedRectangle(meterArea.removeFromRight(width), 2.f);
-        g.setColour(kMutedText.withAlpha(0.72f));
-        g.setFont(FontOptions(jmin(17.f, area.getHeight() * 0.24f), Font::bold));
-        g.drawText("OUT", area, Justification::centredBottom);
-        return;
-    }
-
-    if (node.kind == NodeKind::TrilinearWaveSurface || node.kind == NodeKind::TrilinearMesh) {
-        area = meshPreviewContentArea(area);
-        Path surface;
-        for (int i = 0; i < 8; ++i) {
-            float x0 = area.getX() + (float) i * area.getWidth() / 8.f;
-            float x1 = area.getX() + (float) (i + 1) * area.getWidth() / 8.f;
-            float y0 = area.getY() + area.getHeight() * (0.28f + 0.08f * fastSin((float) i));
-            float y1 = area.getBottom() - area.getHeight() * (0.20f + 0.07f * fastCos((float) i));
-            Line<float> line({ x0, y1 }, { x1, y0 });
-            g.setColour(Colour(0xff35d6d2).withAlpha(0.40f));
-            g.drawLine(line, 1.2f);
-        }
-        g.setColour(Colour(0xff35d6d2).withAlpha(0.18f));
-        g.fillRect(area.reduced(area.getWidth() * 0.14f, area.getHeight() * 0.24f));
+        const NodePreviewResult preview {
+                node.id,
+                PreviewModuleRole::OutputMeters,
+                { 0.64f },
+                { 0.58f }
+        };
+        drawPreviewMeters(g, area, preview, colour);
         return;
     }
 
@@ -1358,26 +1371,6 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
         g.fillRect(area);
         g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.92f));
         g.strokePath(wave, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
-        return;
-    }
-
-    if (node.kind == NodeKind::SpectralMagnitudeProcessor) {
-        drawSpectrumBars(g, area.reduced(8.f), colourForDomain(PortDomain::SpectralMagnitudeSignal), node.id.hashCode());
-        return;
-    }
-
-    if (node.kind == NodeKind::SpectralPhaseProcessor) {
-        drawPhaseTrace(g, area.reduced(8.f), colourForDomain(PortDomain::SpectralPhaseSignal), node.id.hashCode());
-        return;
-    }
-
-    if (node.kind == NodeKind::Envelope) {
-        drawEnvelopeCurve(g, area.reduced(8.f));
-        return;
-    }
-
-    if (node.kind == NodeKind::GuideCurve) {
-        drawEnvelopeCurve(g, area.reduced(8.f));
         return;
     }
 
@@ -1439,15 +1432,15 @@ void NodeCanvas::drawPreviewUncached(Graphics& g, const Node& node, Rectangle<fl
     g.strokePath(curve, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
-NodeCanvas::CachedHeatmap& NodeCanvas::cachedHeatmapFor(const String& nodeId) {
-    for (auto& entry : heatmapCache) {
+TrimeshWidget& NodeCanvas::trimeshWidgetFor(const String& nodeId) {
+    for (auto& entry : trimeshWidgets) {
         if (entry.first == nodeId) {
-            return entry.second;
+            return *entry.second;
         }
     }
 
-    heatmapCache.emplace_back(nodeId, CachedHeatmap {});
-    return heatmapCache.back().second;
+    trimeshWidgets.emplace_back(nodeId, std::make_unique<TrimeshWidget>());
+    return *trimeshWidgets.back().second;
 }
 
 NodeCanvas::CachedPreviewSprite& NodeCanvas::cachedPreviewSpriteFor(const String& nodeId) {
@@ -1459,39 +1452,6 @@ NodeCanvas::CachedPreviewSprite& NodeCanvas::cachedPreviewSpriteFor(const String
 
     previewSpriteCache.emplace_back(nodeId, CachedPreviewSprite {});
     return previewSpriteCache.back().second;
-}
-
-void NodeCanvas::drawMeshSurfacePreview(
-        Graphics& g,
-        const Node& node,
-        Rectangle<float> area,
-        const NodePreviewResult& preview) {
-    if (!canDrawMeshHeatmap(preview)) {
-        return;
-    }
-
-    const int rows = (int) preview.secondary.size();
-    const int columns = (int) preview.primary.size() / rows;
-    CachedHeatmap& cached = cachedHeatmapFor(node.id);
-
-    if (!cached.image.isValid()
-            || cached.valueCount != preview.primary.size()
-            || cached.rows != rows
-            || cached.columns != columns) {
-        cached.image = createMeshHeatmapImage(preview);
-        cached.valueCount = preview.primary.size();
-        cached.rows = rows;
-        cached.columns = columns;
-    }
-
-    g.setColour(Colour(0xff0a0f13));
-    g.fillRoundedRectangle(area, 5.f * zoom);
-
-    if (cached.image.isValid()) {
-        const Rectangle<float> surface = meshPreviewContentArea(area);
-        g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-        g.drawImage(cached.image, surface);
-    }
 }
 
 void NodeCanvas::drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed) {
@@ -1567,23 +1527,47 @@ void NodeCanvas::drawEnvelopeCurve(Graphics& g, Rectangle<float> area) {
 void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     Rectangle<float> panel = expandedEditorBounds(getLocalBounds().toFloat());
     const Rectangle<float> outerPanel = panel;
+    const bool isTrimeshEditor = node.kind == NodeKind::TrilinearMesh;
 
-    g.setColour(Colours::black.withAlpha(0.38f));
-    g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
-    g.setColour(Colour(0xff141a21));
-    g.fillRoundedRectangle(panel, 8.f);
+    if (isTrimeshEditor) {
+        const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
+        const Rectangle<int> gridHole = TrimeshWidget::expandedGridPanelContentBounds(content).toNearestInt();
+        const Rectangle<int> waveHole = TrimeshWidget::expandedWavePanelContentBounds(content).toNearestInt();
+
+        g.saveState();
+        g.excludeClipRegion(gridHole);
+        g.excludeClipRegion(waveHole);
+        g.setColour(Colours::black.withAlpha(0.38f));
+        g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
+        g.setColour(Colour(0xff141a21));
+        g.fillRoundedRectangle(panel, 8.f);
+        g.restoreState();
+    } else {
+        g.setColour(Colours::black.withAlpha(0.38f));
+        g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
+        g.setColour(Colour(0xff141a21));
+        g.fillRoundedRectangle(panel, 8.f);
+    }
+
     g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.72f));
     g.drawRoundedRectangle(panel, 8.f, 1.5f);
 
-    auto header = panel.removeFromTop(44.f);
-    g.setColour(Colour(0xff202833));
-    g.fillRoundedRectangle(header, 8.f);
-    g.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+    auto header = panel.removeFromTop(kExpandedEditorHeaderHeight);
+    if (!isTrimeshEditor) {
+        g.setColour(Colour(0xff202833));
+        g.fillRoundedRectangle(header, 8.f);
+        g.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+    } else {
+        g.setColour(Colour(0xff202833));
+        g.fillRoundedRectangle(header, 8.f);
+        g.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+    }
+
     g.setColour(kText);
-    g.setFont(FontOptions(15.f, Font::bold));
+    g.setFont(FontOptions(14.f, Font::bold));
     g.drawText(node.title, header.reduced(13.f, 4.f), Justification::centredLeft);
     g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f));
+    g.setFont(FontOptions(10.f));
     g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
 
     Rectangle<float> closeButton = expandedEditorCloseButton(outerPanel);
@@ -1592,18 +1576,16 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     g.setColour(Colour(0xff354050));
     g.drawEllipse(closeButton, 1.f);
     g.setColour(kText);
-    g.drawLine(closeButton.getX() + 8.f, closeButton.getY() + 8.f,
-               closeButton.getRight() - 8.f, closeButton.getBottom() - 8.f, 1.4f);
-    g.drawLine(closeButton.getRight() - 8.f, closeButton.getY() + 8.f,
-               closeButton.getX() + 8.f, closeButton.getBottom() - 8.f, 1.4f);
+    g.drawLine(closeButton.getX() + 7.f, closeButton.getY() + 7.f,
+               closeButton.getRight() - 7.f, closeButton.getBottom() - 7.f, 1.4f);
+    g.drawLine(closeButton.getRight() - 7.f, closeButton.getY() + 7.f,
+               closeButton.getX() + 7.f, closeButton.getBottom() - 7.f, 1.4f);
 
-    auto content = panel.reduced(18.f, 16.f);
+    auto content = isTrimeshEditor ? panel.reduced(10.f, 8.f) : panel.reduced(18.f, 16.f);
 
-    if (const NodePreviewResult* previewResult = findPreviewResult(node.id)) {
-        if (previewResult->role == PreviewModuleRole::MeshSurface && canDrawMeshHeatmap(*previewResult)) {
-            drawExpandedMeshEditor(g, content, *previewResult);
-            return;
-        }
+    if (isTrimeshEditor) {
+        trimeshWidgetFor(node.id).paintExpanded(g, node, content);
+        return;
     }
 
     auto preview = content.removeFromTop(jmin(360.f, content.getHeight() * 0.66f));
@@ -1633,73 +1615,149 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     drawPorts(right, node.outputs, "Outputs");
 }
 
-void NodeCanvas::drawExpandedMeshEditor(
-        Graphics& g,
-        Rectangle<float> content,
-        const NodePreviewResult& preview) {
-    const float gap = 14.f;
-    auto topRow = content.removeFromTop(content.getHeight() * 0.62f);
-    content.removeFromTop(gap);
-
-    auto gridPanel = topRow.removeFromLeft(topRow.getWidth() * 0.60f);
-    topRow.removeFromLeft(gap);
-    auto sidePanel = topRow;
-    auto waveshapePanel = content;
-
-    drawPanelFrame(g, gridPanel, "3D grid heatmap");
-    drawPanelFrame(g, sidePanel, "Morph / vertex");
-    drawPanelFrame(g, waveshapePanel, "2D waveshape");
-
-    auto gridContent = gridPanel.reduced(12.f, 26.f);
-    drawMeshHeatmap(g, gridContent, preview, 1.f, true);
-
-    auto waveshapeContent = waveshapePanel.reduced(14.f, 28.f);
-    g.setColour(Colour(0xff0a0f13));
-    g.fillRoundedRectangle(waveshapeContent, 5.f);
-    g.setColour(Colour(0xff1e2a34).withAlpha(0.56f));
-    for (int i = 1; i < 6; ++i) {
-        const float y = waveshapeContent.getY() + waveshapeContent.getHeight() * (float) i / 6.f;
-        g.drawHorizontalLine(roundToInt(y), waveshapeContent.getX(), waveshapeContent.getRight());
-    }
-    drawPreviewTrace(
-            g,
-            waveshapeContent.reduced(8.f),
-            preview.secondary,
-            Colour(0xffdfe7ff).withAlpha(0.92f),
-            1.f,
-            false);
-
-    Rectangle<float> morphArea = sidePanel.reduced(14.f, 30.f);
-    const Colour yellow(0xffe0c247);
-    const Colour red(0xffd65a5a);
-    const Colour blue(0xff5f91e8);
-    const std::array<std::pair<String, Colour>, 3> axes {
-            std::make_pair(String("Yellow"), yellow),
-            std::make_pair(String("Red"), red),
-            std::make_pair(String("Blue"), blue)
-    };
-
-    for (const auto& axis : axes) {
-        auto row = morphArea.removeFromTop(34.f);
-        const Rectangle<float> rail = row.withTrimmedLeft(68.f).withTrimmedRight(10.f)
-                .withSizeKeepingCentre(row.getWidth() - 92.f, 4.f);
-
-        g.setColour(kText);
-        g.setFont(FontOptions(11.f, Font::bold));
-        g.drawText(axis.first, row.removeFromLeft(62.f), Justification::centredLeft);
-        g.setColour(axis.second.withAlpha(0.26f));
-        g.fillRoundedRectangle(rail, 2.f);
-        g.setColour(axis.second.withAlpha(0.92f));
-        g.fillEllipse(rail.getX() + rail.getWidth() * 0.48f - 5.f, rail.getCentreY() - 5.f, 10.f, 10.f);
+void NodeCanvas::setCanvasOpenGlAttached(bool shouldAttach) {
+    if (canvasOpenGlAttached == shouldAttach) {
+        return;
     }
 
-    morphArea.removeFromTop(8.f);
-    g.setColour(Colour(0xff0a0f13));
-    g.fillRoundedRectangle(morphArea, 5.f);
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(10.f));
-    g.drawText("Vertex cube controls will live here: amp, phase, sharp, and component curve.",
-               morphArea.reduced(10.f), Justification::topLeft);
+    if (shouldAttach) {
+        openGLContext.attachTo(*this);
+    } else {
+        openGLContext.detach();
+    }
+
+    canvasOpenGlAttached = shouldAttach;
+}
+
+void NodeCanvas::updateExpandedEditorHost(const Node* node) {
+    const bool shouldShowTrimesh = node != nullptr && node->kind == NodeKind::TrilinearMesh;
+    hideExpandedEditorHostsExcept(shouldShowTrimesh ? node->id : String());
+
+    if (!shouldShowTrimesh) {
+        if (trimeshExpandedEditor != nullptr) {
+            trimeshExpandedEditor->setVisible(false);
+        }
+        trimeshExpandedEditorNodeId = {};
+        return;
+    }
+
+    TrimeshWidget& widget = trimeshWidgetFor(node->id);
+
+    if (trimeshExpandedEditor != nullptr && trimeshExpandedEditorNodeId != node->id) {
+        trimeshExpandedEditor->setVisible(false);
+        removeChildComponent(trimeshExpandedEditor.get());
+        trimeshExpandedEditor.reset();
+    }
+
+    if (trimeshExpandedEditor == nullptr) {
+        trimeshExpandedEditor = std::make_unique<TrimeshExpandedEditorComponent>(widget);
+        trimeshExpandedEditorNodeId = node->id;
+        auto safeThis = Component::SafePointer<NodeCanvas>(this);
+        TrimeshExpandedEditorComponent::Callbacks callbacks;
+        callbacks.close = [safeThis] {
+            if (safeThis != nullptr) {
+                safeThis->expandedNodeId = {};
+                safeThis->updateExpandedEditorHost(nullptr);
+                safeThis->repaint();
+            }
+        };
+        callbacks.repaintOpenGL = [safeThis] {
+            if (safeThis != nullptr) {
+                safeThis->openGLContext.triggerRepaint();
+            }
+        };
+        callbacks.setPrimaryAxis = [safeThis](const String& axisValue) {
+            if (safeThis != nullptr) {
+                safeThis->setTrimeshPrimaryAxisValue(axisValue);
+            }
+        };
+        callbacks.beginMorphEdit = [safeThis](const String& parameterId, float value) {
+            if (safeThis != nullptr) {
+                safeThis->beginTrimeshMorphEdit(parameterId, value);
+            }
+        };
+        callbacks.updateMorphEdit = [safeThis](float value) {
+            if (safeThis != nullptr) {
+                safeThis->updateTrimeshMorphEditValue(value);
+            }
+        };
+        callbacks.endMorphEdit = [safeThis] {
+            if (safeThis != nullptr) {
+                safeThis->endTrimeshMorphEdit();
+            }
+        };
+        callbacks.beginVertexParameterEdit = [safeThis](const String& parameterId, float value) {
+            if (safeThis != nullptr) {
+                safeThis->beginTrimeshVertexParameterEdit(parameterId, value);
+            }
+        };
+        callbacks.updateVertexParameterEdit = [safeThis](float value) {
+            if (safeThis != nullptr) {
+                safeThis->updateTrimeshVertexParameterEditValue(value);
+            }
+        };
+        callbacks.endVertexParameterEdit = [safeThis] {
+            if (safeThis != nullptr) {
+                safeThis->endTrimeshVertexParameterEdit();
+            }
+        };
+        callbacks.selectVertex = [safeThis](int vertexIndex) {
+            if (safeThis != nullptr) {
+                safeThis->selectTrimeshVertexIndex(vertexIndex);
+            }
+        };
+        trimeshExpandedEditor->setCallbacks(std::move(callbacks));
+        addAndMakeVisible(trimeshExpandedEditor.get());
+    }
+
+    const Rectangle<int> editorBounds = expandedEditorBounds(getLocalBounds().toFloat()).toNearestInt();
+
+    if (trimeshExpandedEditor->getBounds() != editorBounds) {
+        trimeshExpandedEditor->setBounds(editorBounds);
+    }
+
+    trimeshExpandedEditor->setRenderProfile(renderProfileForNodeOutput(*node, "out"));
+    trimeshExpandedEditor->setNode(*node);
+    trimeshExpandedEditor->setVisible(true);
+    trimeshExpandedEditor->toFront(false);
+}
+
+void NodeCanvas::hideExpandedEditorHosts() {
+    hideExpandedEditorHostsExcept({});
+}
+
+void NodeCanvas::hideExpandedEditorHostsExcept(const String& nodeId) {
+    for (auto& entry : trimeshWidgets) {
+        if (entry.first == nodeId) {
+            continue;
+        }
+
+        Component* component = entry.second->getExpandedPanel3DComponentIfCreated();
+        Component* waveComponent = entry.second->getExpandedPanel2DComponentIfCreated();
+
+        if (component != nullptr && component->getParentComponent() == this && component->isVisible()) {
+            component->setVisible(false);
+        }
+
+        if (waveComponent != nullptr && waveComponent->getParentComponent() == this && waveComponent->isVisible()) {
+            waveComponent->setVisible(false);
+        }
+    }
+}
+
+void NodeCanvas::detachExpandedEditorHosts() {
+    for (auto& entry : trimeshWidgets) {
+        Component* component = entry.second->getExpandedPanel3DComponentIfCreated();
+        Component* waveComponent = entry.second->getExpandedPanel2DComponentIfCreated();
+
+        if (component != nullptr && component->getParentComponent() == this) {
+            removeChildComponent(component);
+        }
+
+        if (waveComponent != nullptr && waveComponent->getParentComponent() == this) {
+            removeChildComponent(waveComponent);
+        }
+    }
 }
 
 void NodeCanvas::drawMiniMap(Graphics& g) {
@@ -2253,6 +2311,44 @@ PortDomain NodeCanvas::displayDomainForEdge(const Edge& edge) const {
     return GraphValidator().resolvedDomainForEdge(graph, edge);
 }
 
+PortDomain NodeCanvas::displayDomainForNodeOutput(const Node& node, const String& portId) const {
+    if (compileResult.succeeded()) {
+        for (const auto& step : compileResult.plan.steps) {
+            if (step.nodeId != node.id) {
+                continue;
+            }
+
+            for (const auto& output : step.outputs) {
+                if (output.portId == portId) {
+                    return output.domain;
+                }
+            }
+        }
+    }
+
+    for (const auto& edge : graph.getEdges()) {
+        if (!edge.attachment && edge.sourceNodeId == node.id && edge.sourcePortId == portId) {
+            return displayDomainForEdge(edge);
+        }
+    }
+
+    if (const Port* port = findPort(node, portId, false)) {
+        return port->domain;
+    }
+
+    return node.outputs.empty() ? PortDomain::ControlSignal : node.outputs.front().domain;
+}
+
+TrimeshRenderProfile NodeCanvas::renderProfileForNodeOutput(const Node& node, const String& portId) const {
+    NodeRenderSemantic semantic = GraphRenderSemanticResolver().semanticForNodeOutput(graph, node.id, portId);
+
+    if (semantic.domain == PortDomain::ControlSignal) {
+        semantic.domain = displayDomainForNodeOutput(node, portId);
+    }
+
+    return TrimeshRenderProfile::fromSemantic(semantic);
+}
+
 bool NodeCanvas::edgeHasValidationIssue(const Edge& edge) const {
     return GraphValidator().edgeHasValidationIssue(graph, edge);
 }
@@ -2407,7 +2503,6 @@ Point<float> NodeCanvas::paletteCreationWorldPosition(Point<float> paletteClickP
 }
 
 void NodeCanvas::refreshCompiledState() {
-    heatmapCache.clear();
     previewSpriteCache.clear();
     compileResult = GraphCompiler().compile(graph);
     runtimeTrace = {};
@@ -2612,6 +2707,187 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
     nodeDragUndoPushed = false;
     refreshCompiledState();
     editStatusMessage = "Voice start domain: " + domain;
+    return true;
+}
+
+bool NodeCanvas::setTrimeshPrimaryAxisValue(const String& axisValue) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return false;
+    }
+
+    if (parameterValueForNode(*node, "primaryAxis", "yellow") == axisValue) {
+        return true;
+    }
+
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().setNodeParameter(
+            graph,
+            node->id,
+            "primaryAxis",
+            "Primary Axis",
+            axisValue);
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    refreshCompiledState();
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    editStatusMessage = "Primary view axis: " + axisValue;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::beginTrimeshMorphEdit(const String& parameterId, float value) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return false;
+    }
+
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    activeTrimeshMorphNodeId = node->id;
+    activeTrimeshMorphParameterId = parameterId;
+    draggingTrimeshMorph = true;
+    trimeshMorphUndoPushed = false;
+    return updateTrimeshMorphEditValue(value);
+}
+
+bool NodeCanvas::updateTrimeshMorphEditValue(float value) {
+    Node* node = findMutableNode(activeTrimeshMorphNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh || activeTrimeshMorphParameterId.isEmpty()) {
+        return false;
+    }
+
+    if (!trimeshMorphUndoPushed) {
+        pushUndoSnapshot();
+        trimeshMorphUndoPushed = true;
+    }
+
+    const String label = activeTrimeshMorphParameterId.substring(0, 1).toUpperCase()
+            + activeTrimeshMorphParameterId.substring(1);
+    GraphEditor().setNodeParameter(
+            graph,
+            node->id,
+            activeTrimeshMorphParameterId,
+            label,
+            String(value, 3));
+    refreshCompiledState();
+    editStatusMessage = "Morph " + label + " = " + String(value, 2);
+    repaint();
+    return true;
+}
+
+void NodeCanvas::endTrimeshMorphEdit() {
+    draggingTrimeshMorph = false;
+    trimeshMorphUndoPushed = false;
+    activeTrimeshMorphNodeId = {};
+    activeTrimeshMorphParameterId = {};
+}
+
+bool NodeCanvas::beginTrimeshVertexParameterEdit(const String& parameterId, float value) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return false;
+    }
+
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    activeTrimeshVertexNodeId = node->id;
+    activeTrimeshVertexParameterId = parameterId;
+    draggingTrimeshVertexParameter = true;
+    trimeshVertexParameterUndoPushed = false;
+    return updateTrimeshVertexParameterEditValue(value);
+}
+
+bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
+    Node* node = findMutableNode(activeTrimeshVertexNodeId);
+
+    if (node == nullptr
+            || node->kind != NodeKind::TrilinearMesh
+            || activeTrimeshVertexParameterId.isEmpty()) {
+        return false;
+    }
+
+    if (!trimeshVertexParameterUndoPushed) {
+        pushUndoSnapshot();
+        trimeshVertexParameterUndoPushed = true;
+    }
+
+    const String label = activeTrimeshVertexParameterId.fromFirstOccurrenceOf(".", false, false);
+    int selectedVertexIndex = parameterValueForNode(*node, "selectedVertexIndex", "-1").getIntValue();
+
+    if (selectedVertexIndex < 0) {
+        selectedVertexIndex = trimeshWidgetFor(node->id).resolvedSelectedVertexIndexForNode(*node);
+
+        if (selectedVertexIndex >= 0) {
+            GraphEditor().setNodeParameter(
+                    graph,
+                    node->id,
+                    "selectedVertexIndex",
+                    "Selected Vertex",
+                    String(selectedVertexIndex));
+        }
+    }
+
+    if (selectedVertexIndex < 0) {
+        return false;
+    }
+
+    const String persistentParameterId = "vertex." + String(selectedVertexIndex) + "." + label;
+    GraphEditor().setNodeParameter(
+            graph,
+            node->id,
+            persistentParameterId,
+            label,
+            String(value, 3));
+    refreshCompiledState();
+    editStatusMessage = "Vertex #" + String(selectedVertexIndex) + " " + label + " = " + String(value, 2);
+    return true;
+}
+
+void NodeCanvas::endTrimeshVertexParameterEdit() {
+    draggingTrimeshVertexParameter = false;
+    trimeshVertexParameterUndoPushed = false;
+    activeTrimeshVertexNodeId = {};
+    activeTrimeshVertexParameterId = {};
+}
+
+bool NodeCanvas::selectTrimeshVertexIndex(int vertexIndex) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return false;
+    }
+
+    if (parameterValueForNode(*node, "selectedVertexIndex", "-1").getIntValue() == vertexIndex) {
+        return true;
+    }
+
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().setNodeParameter(
+            graph,
+            node->id,
+            "selectedVertexIndex",
+            "Selected Vertex",
+            String(vertexIndex));
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    refreshCompiledState();
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    editStatusMessage = "Selected vertex #" + String(vertexIndex);
     return true;
 }
 

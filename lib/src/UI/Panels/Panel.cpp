@@ -240,7 +240,7 @@ void Panel::render() {
         drawBackground();
     }
 
-    if (shouldBakeTextures && !sharedCanvasSurface && shouldDrawPanelPass("baked-textures")) {
+    if (shouldBakeTextures && usesCachedSurface() && !sharedCanvasSurface && shouldDrawPanelPass("baked-textures")) {
         bakeTextures();
     }
 

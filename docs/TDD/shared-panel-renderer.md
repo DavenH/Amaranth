@@ -236,6 +236,9 @@ To keep migration incremental, the existing classes should map into the new arch
 - `Panel3D`
   - keeps surface generation and bake-trigger logic
   - delegates baked output ownership to renderer-managed cache entries
+  - receives grid data through lib-level contracts such as
+    `Panel3D::DataRetriever`; product-specific orchestrators such as Cycle
+    1.x `VisualDsp` must stay outside the lib panel hierarchy
 
 - `OpenGLPanel` and `OpenGLPanel3D`
   - become temporary adapters or scaffolding

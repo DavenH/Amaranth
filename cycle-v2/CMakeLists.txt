@@ -18,6 +18,7 @@ list(REMOVE_DUPLICATES APP_SOURCES)
 set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraph.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDomainResolver.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphRenderSemanticResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCompiler.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEditor.cpp"
@@ -30,6 +31,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphInvalidation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPreviewExecutor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphRuntime.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeUpdateGraph.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeAudioProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeModuleRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodePreviewProcessor.cpp"
@@ -39,8 +41,20 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftBlockwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftGridwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshBlockwiseDsp.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshControlsComponent.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshExpandedEditorComponent.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshGridwiseDsp.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshInvalidation.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshInteractor2D.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshInteractor3D.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshMeshFactory.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshNodeModel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshPanelBridge.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshPanelDataSource.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshPanel2D.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshPanel3D.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshRenderProfile.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshWidget.cpp"
 )
 
 set(BASE_DEFINITIONS
@@ -60,7 +74,7 @@ elseif(APPLE)
     list(APPEND BASE_DEFINITIONS MAC=1)
 endif()
 
-add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${APP_SOURCES})
+add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${APP_SOURCES} ${NODE_SOURCES})
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     ${BASE_DEFINITIONS}

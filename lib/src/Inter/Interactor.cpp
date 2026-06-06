@@ -675,10 +675,6 @@ void Interactor::eraseSelected() {
 
 void Interactor::associateTo(Panel* panel) {
     if (display != nullptr) {
-        Component* currentDisplay = display.get();
-        DBG(getName() + "::associateTo removeMouseListener"
-            + " component=" + display->getName()
-            + " ptr=" + String::toHexString((int64) currentDisplay));
         display->removeMouseListener(this);
     }
 
@@ -686,11 +682,6 @@ void Interactor::associateTo(Panel* panel) {
     this->display = panel->comp;
 
     if (display != nullptr) {
-        Component* currentDisplay = display.get();
-        DBG(getName() + "::associateTo addMouseListener"
-            + " component=" + display->getName()
-            + " ptr=" + String::toHexString((int64) currentDisplay)
-            + " panel=" + (panel != nullptr ? panel->getName() : String("<none>")));
         display->addMouseListener(this, false);
         startTimerHz(30);
     } else {

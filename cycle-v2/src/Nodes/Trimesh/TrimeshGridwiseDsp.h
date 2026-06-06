@@ -13,6 +13,8 @@ struct TrimeshGridColumn {
 
 class TrimeshGridwiseDsp {
 public:
+    void setCyclic(bool shouldWrap);
+
     std::vector<TrimeshGridColumn> renderColumns(
             Mesh& mesh,
             const MorphPosition& center,
