@@ -47,6 +47,9 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE(timeProfile.curveIsBipolar());
     REQUIRE_FALSE(magProfile.curveIsBipolar());
     REQUIRE(phaseProfile.curveIsBipolar());
+    REQUIRE(timeProfile.curveIsCyclic());
+    REQUIRE_FALSE(magProfile.curveIsCyclic());
+    REQUIRE_FALSE(phaseProfile.curveIsCyclic());
     REQUIRE(timeProfile.positiveCurveColour() == timeProfile.negativeCurveColour());
     REQUIRE(magProfile.positiveCurveColour() == magProfile.negativeCurveColour());
     REQUIRE_FALSE(phaseProfile.positiveCurveColour() == phaseProfile.negativeCurveColour());
@@ -94,6 +97,10 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
 
     model.syncFromNode(node);
     const auto renderData = model.renderGrid(12, 6);
+    const auto spectralRenderData = model.renderGrid(
+            12,
+            6,
+            PortDomain::SpectralMagnitudeSignal);
 
     REQUIRE(model.getPrimaryViewAxis() == Vertex::Red);
     REQUIRE(model.getMorphPosition().time.getCurrentValue() == Catch::Approx(0.25f));
@@ -104,6 +111,10 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
     REQUIRE(renderData.slice.size() == 12);
     REQUIRE(renderData.surface.size() == 72);
     REQUIRE(renderData.canDrawSurface());
+    REQUIRE(renderData.domain == PortDomain::TimeSignal);
+    REQUIRE(renderData.cyclic);
+    REQUIRE(spectralRenderData.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE_FALSE(spectralRenderData.cyclic);
 
     const auto vertexParameters = model.getSelectedVertexParameters();
     const auto vertexMarkers = model.getVertexMarkers();
@@ -417,4 +428,29 @@ TEST_CASE("Trimesh panel bridge publishes rasterizer intercepts from the shared 
     REQUIRE(std::any_of(intercepts.begin(), intercepts.end(), [](const Intercept& intercept) {
         return intercept.cube != nullptr;
     }));
+}
+
+TEST_CASE("Trimesh panel bridge disables cyclic rasterizer wrapping for spectral profiles", "[cycle-v2][nodes][trimesh]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {},
+            {},
+            {}
+    };
+    TrimeshPanelBridge bridge;
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal));
+    bridge.syncFromNode(node, 12, 4);
+    REQUIRE(bridge.getDataSource().getRenderData().cyclic);
+    REQUIRE(bridge.rasterizerWrapsVertices());
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::SpectralMagnitudeSignal));
+    bridge.syncFromNode(node, 12, 4);
+    REQUIRE_FALSE(bridge.getDataSource().getRenderData().cyclic);
+    REQUIRE_FALSE(bridge.rasterizerWrapsVertices());
 }

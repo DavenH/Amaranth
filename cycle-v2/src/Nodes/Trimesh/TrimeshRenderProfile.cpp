@@ -65,6 +65,7 @@ TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
     }
 
     curveBipolar = scalePolicy == RenderScalePolicy::Bipolar;
+    curveCyclic = !spectral;
 }
 
 String TrimeshRenderProfile::panel3DTitle() const {

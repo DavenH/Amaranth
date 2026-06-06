@@ -270,10 +270,12 @@ void TrimeshPanelBridge::syncFromNode(
     const bool redChanged = previousMorph.red.getTargetValue() != nextMorph.red.getTargetValue();
     const bool blueChanged = previousMorph.blue.getTargetValue() != nextMorph.blue.getTargetValue();
     const bool morphChanged = yellowChanged || redChanged || blueChanged;
+    const bool renderDomainChanged = lastRenderDomain != renderProfile.getDomain();
 
     if (!modelChanged
             && !morphChanged
             && !primaryAxisChanged
+            && !renderDomainChanged
             && lastSyncedRevision == model.getRevision()
             && lastRows == rows
             && lastColumns == columns) {
@@ -290,11 +292,12 @@ void TrimeshPanelBridge::syncFromNode(
     change.primaryViewAxis = model.getPrimaryViewAxis();
 
     const TrimeshInvalidationResult invalidated = invalidation.invalidate(change);
-    dataSource.rebuild(model, rows, columns);
+    dataSource.rebuild(model, rows, columns, renderProfile.getDomain());
     updateRasterizer(
             invalidated.refresh2DPanel,
-            invalidated.refresh3DGeometry || lastRows != rows || lastColumns != columns);
+            invalidated.refresh3DGeometry || lastRows != rows || lastColumns != columns || renderDomainChanged);
     lastSyncedRevision = model.getRevision();
+    lastRenderDomain = renderProfile.getDomain();
     lastRows = rows;
     lastColumns = columns;
 }
@@ -311,7 +314,7 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(bool sourceIs3D) {
 
     model.markMeshEdited();
     syncPrimaryAxisContext();
-    dataSource.rebuild(model, lastRows, lastColumns);
+    dataSource.rebuild(model, lastRows, lastColumns, renderProfile.getDomain());
     updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
 }
 
@@ -321,10 +324,11 @@ void TrimeshPanelBridge::syncPrimaryAxisContext() {
 }
 
 void TrimeshPanelBridge::updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry) {
+    const bool cyclic = renderProfile.curveIsCyclic();
     auto& request = rasterizer.getRequest();
-    request.cyclic = true;
-    request.xMinimum = -0.05f;
-    request.xMaximum = 1.05f;
+    request.cyclic = cyclic;
+    request.xMinimum = cyclic ? -0.05f : 0.f;
+    request.xMaximum = cyclic ? 1.05f : 1.f;
     request.morph = model.getMorphPosition();
     request.primaryViewDimension = model.getPrimaryViewAxis();
     request.dims = interactor2D.dims;
@@ -333,7 +337,7 @@ void TrimeshPanelBridge::updateRasterizer(bool refresh2DPanel, bool refresh3DGeo
     request.lowResCurves = false;
     request.batchMode = true;
 
-    rasterizer.setWrapsEnds(true);
+    rasterizer.setWrapsEnds(cyclic);
     rasterizer.setMesh(&model.getMeshForPanel());
     interactor2D.setMesh(&model.getMeshForPanel());
     interactor3D.setMesh(&model.getMeshForPanel());
@@ -490,6 +494,7 @@ void TrimeshPanelBridge::setDisplayDomain(PortDomain domain) {
 }
 
 void TrimeshPanelBridge::setRenderProfile(TrimeshRenderProfile profile) {
+    renderProfile = profile;
     panel3D.setRenderProfile(profile);
     panel2D.setRenderProfile(profile);
 }

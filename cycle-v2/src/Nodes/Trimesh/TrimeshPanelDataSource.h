@@ -13,7 +13,8 @@ public:
     void rebuild(
             TrimeshNodeModel& model,
             int rows,
-            int columns);
+            int columns,
+            PortDomain domain = PortDomain::TimeSignal);
 
     Buffer<float> getColumnArray() override;
     const std::vector<Column>& getColumns() override;

@@ -16,8 +16,10 @@ namespace CycleV2 {
 struct TrimeshRenderData {
     std::vector<float> surface;
     std::vector<float> slice;
+    PortDomain domain { PortDomain::TimeSignal };
     int rows {};
     int columns {};
+    bool cyclic { true };
 
     bool canDrawSurface() const {
         return rows >= 2 && columns >= 2 && surface.size() >= (size_t) rows * (size_t) columns;
@@ -52,7 +54,7 @@ public:
 
     void syncFromNode(const Node& node);
 
-    TrimeshRenderData renderGrid(int rows, int columns);
+    TrimeshRenderData renderGrid(int rows, int columns, PortDomain domain = PortDomain::TimeSignal);
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
     std::vector<TrimeshVertexMarker> getVertexMarkers();
     int findNearestVertexIndexForPhaseAmp(float phase, float amp);

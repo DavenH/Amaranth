@@ -33,6 +33,7 @@ public:
     bool isSpectral() const { return spectral; }
     bool isPhase() const { return phase; }
     bool curveIsBipolar() const { return curveBipolar; }
+    bool curveIsCyclic() const { return curveCyclic; }
     bool surfaceTextureUsesAlpha() const { return spectral; }
 
 private:
@@ -44,6 +45,7 @@ private:
     bool spectral {};
     bool phase {};
     bool curveBipolar { true };
+    bool curveCyclic { true };
 };
 
 }

@@ -5,10 +5,11 @@ namespace CycleV2 {
 void TrimeshPanelDataSource::rebuild(
         TrimeshNodeModel& model,
         int rows,
-        int columns) {
+        int columns,
+        PortDomain domain) {
     const ScopedLock lock(gridLock);
 
-    renderData = model.renderGrid(rows, columns);
+    renderData = model.renderGrid(rows, columns, domain);
     storage = renderData.surface;
     panelColumns.clear();
     panelColumns.reserve((size_t) renderData.columns);

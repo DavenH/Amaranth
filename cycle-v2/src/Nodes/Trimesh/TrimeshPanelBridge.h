@@ -39,6 +39,7 @@ public:
     Interactor3D& getInteractor3D() { return interactor3D; }
     TrimeshNodeModel& getModel() { return model; }
     const std::vector<Intercept>& getRasterizerIntercepts() const { return rasterizer.getIntercepts(); }
+    bool rasterizerWrapsVertices() { return rasterizer.snapshotView().wrapsVertices(); }
     Component* getPanel3DHostComponent();
     Component* getPanel3DHostComponentIfCreated();
     Component* getPanel2DHostComponent();
@@ -102,6 +103,7 @@ private:
     TrimeshInteractor3D interactor3D;
     TrimeshPanel2D panel2D;
     TrimeshPanel3D panel3D;
+    TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     std::unique_ptr<Component> panel2DHost;
     std::unique_ptr<Component> panel3DHost;
     std::unique_ptr<GLPanelRenderer> panel2DRenderer;
@@ -112,6 +114,7 @@ private:
     std::function<void(const MouseCursor&)> panelHostCursorCallback;
     std::function<void(Point<float>)> panelHostHoverCallback;
     uint64_t lastSyncedRevision { UINT64_MAX };
+    PortDomain lastRenderDomain { PortDomain::ControlSignal };
     int lastRows {};
     int lastColumns {};
     bool panel3DHostInitialised {};

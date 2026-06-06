@@ -159,31 +159,36 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
     }
 }
 
-TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns) {
+TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain domain) {
     rows = jmax(2, rows);
     columns = jmax(2, columns);
+    const bool cyclic = domain == PortDomain::TimeSignal;
 
     TrimeshRenderData result;
+    result.domain = domain;
     result.rows = rows;
     result.columns = columns;
+    result.cyclic = cyclic;
 
     TrimeshBlockwiseDsp blockwiseDsp;
     AudioProcessBlock slice;
     blockwiseDsp.setMesh(&mesh());
     blockwiseDsp.setMorphPosition(morph);
     blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
-    blockwiseDsp.renderCycle((size_t) rows, PortDomain::TimeSignal, ChannelLayout::LinkedStereo, slice);
+    blockwiseDsp.setCyclic(cyclic);
+    blockwiseDsp.renderCycle((size_t) rows, domain, ChannelLayout::LinkedStereo, slice);
     normalizeBipolarBlock(slice);
     result.slice = std::move(slice.samples);
 
     TrimeshGridwiseDsp gridwiseDsp;
+    gridwiseDsp.setCyclic(cyclic);
     const auto gridColumns = gridwiseDsp.renderColumns(
             mesh(),
             morph,
             primaryViewAxis,
             (size_t) columns,
             (size_t) rows,
-            PortDomain::TimeSignal,
+            domain,
             ChannelLayout::LinkedStereo);
 
     result.surface.reserve((size_t) rows * (size_t) columns);
