@@ -18,6 +18,7 @@ namespace CycleV2 {
 enum class TrimeshExpandedHitRegionKind {
     MorphControl,
     PrimaryAxis,
+    LinkToggle,
     VertexParameter
 };
 
@@ -88,6 +89,10 @@ public:
             juce::Rectangle<float> content,
             juce::Point<float> position,
             juce::String& axisValue) const;
+    bool findLinkToggleAt(
+            juce::Rectangle<float> content,
+            juce::Point<float> position,
+            juce::String& axisValue) const;
     bool findVertexParameterAt(
             juce::Rectangle<float> content,
             juce::Point<float> position,
@@ -125,6 +130,7 @@ private:
     static juce::Rectangle<float> morphPanelBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> morphArea, int axisIndex);
     static juce::Rectangle<float> primaryAxisBounds(juce::Rectangle<float> morphArea, int axisIndex);
+    static juce::Rectangle<float> linkToggleBounds(juce::Rectangle<float> morphArea, int axisIndex);
     static juce::String primaryAxisValue(int axis);
     static juce::Rectangle<float> vertexParameterPanelBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> vertexParameterRowBounds(juce::Rectangle<float> parameterArea, int parameterIndex);

@@ -101,8 +101,35 @@ TEST_CASE("Trimesh side panel renderer keeps vertex rails inside parameter rows"
 
         REQUIRE(parameterArea.contains(row));
         REQUIRE(row.contains(rail));
-        REQUIRE(rail.getHeight() == Catch::Approx(5.f));
+        REQUIRE(rail.getHeight() == Catch::Approx(8.f));
         REQUIRE(rail.getWidth() > 0.f);
+    }
+}
+
+TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bounds", "[cycle-v2][nodes][trimesh]") {
+    const Rectangle<float> sideArea { 100.f, 50.f, 240.f, 420.f };
+
+    REQUIRE(sideArea.contains(TrimeshSidePanelRenderer::morphCubeBounds(sideArea)));
+
+    for (int i = 0; i < 3; ++i) {
+        const Rectangle<float> primary = TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, i);
+        const Rectangle<float> link = TrimeshSidePanelRenderer::linkToggleBounds(sideArea, i);
+
+        REQUIRE(sideArea.contains(TrimeshSidePanelRenderer::morphRailBounds(sideArea, i)));
+        REQUIRE(sideArea.contains(primary));
+        REQUIRE(sideArea.contains(link));
+        REQUIRE(primary.getWidth() == Catch::Approx(link.getWidth()));
+        REQUIRE(primary.getHeight() == Catch::Approx(link.getHeight()));
+    }
+
+    const Rectangle<float> parameterArea =
+            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea);
+
+    REQUIRE(sideArea.contains(parameterArea));
+
+    for (int i = 0; i < 3; ++i) {
+        const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
+        REQUIRE(parameterArea.contains(row));
     }
 }
 
@@ -166,16 +193,56 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
 
     const auto vertexParameters = model.getSelectedVertexParameters();
     const auto vertexMarkers = model.getVertexMarkers();
-    REQUIRE(vertexParameters.size() == 3);
+    REQUIRE(vertexParameters.size() == 6);
     REQUIRE(vertexMarkers.size() >= vertexParameters.size());
-    REQUIRE(vertexParameters[0].id == "vertex.amp");
-    REQUIRE(vertexParameters[1].id == "vertex.phase");
-    REQUIRE(vertexParameters[2].id == "vertex.curve");
+    REQUIRE(vertexParameters[0].id == "vertex.time");
+    REQUIRE(vertexParameters[1].id == "vertex.red");
+    REQUIRE(vertexParameters[2].id == "vertex.blue");
+    REQUIRE(vertexParameters[3].id == "vertex.phase");
+    REQUIRE(vertexParameters[4].id == "vertex.amp");
+    REQUIRE(vertexParameters[5].id == "vertex.curve");
 
     for (const auto& parameter : vertexParameters) {
         REQUIRE(parameter.value >= parameter.minimum);
         REQUIRE(parameter.value <= parameter.maximum);
     }
+}
+
+TEST_CASE("Trimesh node model exposes selected cube vertices for the side panel preview", "[cycle-v2][nodes][trimesh]") {
+    Node node = NodeGraph::createDemoGraph().getNodes().front();
+    TrimeshNodeModel model;
+
+    model.syncFromNode(node);
+
+    const auto previewVertices = model.getSelectedCubePreviewVertices();
+
+    REQUIRE(previewVertices.size() == 8);
+
+    bool hasSelectedVertex {};
+    bool hasLowTime {};
+    bool hasHighTime {};
+    bool hasLowRed {};
+    bool hasHighRed {};
+    bool hasLowBlue {};
+    bool hasHighBlue {};
+
+    for (const auto& vertex : previewVertices) {
+        hasSelectedVertex = hasSelectedVertex || vertex.selected;
+        hasLowTime = hasLowTime || vertex.time == Catch::Approx(0.f);
+        hasHighTime = hasHighTime || vertex.time == Catch::Approx(1.f);
+        hasLowRed = hasLowRed || vertex.red == Catch::Approx(0.f);
+        hasHighRed = hasHighRed || vertex.red == Catch::Approx(1.f);
+        hasLowBlue = hasLowBlue || vertex.blue == Catch::Approx(0.f);
+        hasHighBlue = hasHighBlue || vertex.blue == Catch::Approx(1.f);
+    }
+
+    REQUIRE(hasSelectedVertex);
+    REQUIRE(hasLowTime);
+    REQUIRE(hasHighTime);
+    REQUIRE(hasLowRed);
+    REQUIRE(hasHighRed);
+    REQUIRE(hasLowBlue);
+    REQUIRE(hasHighBlue);
 }
 
 TEST_CASE("Trimesh node model applies serialized vertex parameter overrides", "[cycle-v2][nodes][trimesh]") {
@@ -186,9 +253,12 @@ TEST_CASE("Trimesh node model applies serialized vertex parameter overrides", "[
             {},
             {},
             {
-                    { "vertex.amp", "Amplitude", "0.20" },
-                    { "vertex.phase", "Phase", "0.30" },
-                    { "vertex.curve", "Sharpness", "0.40" },
+                    { "vertex.time", "time", "0.10" },
+                    { "vertex.red", "red", "0.20" },
+                    { "vertex.blue", "blue", "0.30" },
+                    { "vertex.phase", "phase", "0.40" },
+                    { "vertex.amp", "amp", "0.50" },
+                    { "vertex.curve", "curve", "0.60" },
                     { "vertexOverrideIndex", "Vertex Override Index", "-1" }
             },
             {},
@@ -199,16 +269,19 @@ TEST_CASE("Trimesh node model applies serialized vertex parameter overrides", "[
     model.syncFromNode(node);
     const auto vertexParameters = model.getSelectedVertexParameters();
 
-    REQUIRE(vertexParameters.size() == 3);
-    REQUIRE(vertexParameters[0].value == Catch::Approx(0.20f));
-    REQUIRE(vertexParameters[1].value == Catch::Approx(0.30f));
-    REQUIRE(vertexParameters[2].value == Catch::Approx(0.40f));
+    REQUIRE(vertexParameters.size() == 6);
+    REQUIRE(vertexParameters[0].value == Catch::Approx(0.10f));
+    REQUIRE(vertexParameters[1].value == Catch::Approx(0.20f));
+    REQUIRE(vertexParameters[2].value == Catch::Approx(0.30f));
+    REQUIRE(vertexParameters[3].value == Catch::Approx(0.40f));
+    REQUIRE(vertexParameters[4].value == Catch::Approx(0.50f));
+    REQUIRE(vertexParameters[5].value == Catch::Approx(0.60f));
 
     node.parameters.push_back({ "selectedVertexIndex", "Selected Vertex", "2" });
     model.syncFromNode(node);
     const auto changedSelectionParameters = model.getSelectedVertexParameters();
 
-    REQUIRE(changedSelectionParameters[0].value != Catch::Approx(0.20f));
+    REQUIRE(changedSelectionParameters[1].value != Catch::Approx(0.20f));
 }
 
 TEST_CASE("Trimesh node model applies persistent edits for multiple vertices", "[cycle-v2][nodes][trimesh]") {
@@ -220,6 +293,9 @@ TEST_CASE("Trimesh node model applies persistent edits for multiple vertices", "
             {},
             {
                     { "selectedVertexIndex", "Selected Vertex", "0" },
+                    { "vertex.0.time", "time", "0.03" },
+                    { "vertex.0.red", "red", "0.04" },
+                    { "vertex.0.blue", "blue", "0.05" },
                     { "vertex.0.amp", "Amplitude", "0.11" },
                     { "vertex.0.phase", "Phase", "0.22" },
                     { "vertex.2.amp", "Amplitude", "0.77" },
@@ -233,17 +309,20 @@ TEST_CASE("Trimesh node model applies persistent edits for multiple vertices", "
     model.syncFromNode(node);
     const auto firstVertexParameters = model.getSelectedVertexParameters();
 
-    REQUIRE(firstVertexParameters.size() == 3);
-    REQUIRE(firstVertexParameters[0].value == Catch::Approx(0.11f));
-    REQUIRE(firstVertexParameters[1].value == Catch::Approx(0.22f));
+    REQUIRE(firstVertexParameters.size() == 6);
+    REQUIRE(firstVertexParameters[0].value == Catch::Approx(0.03f));
+    REQUIRE(firstVertexParameters[1].value == Catch::Approx(0.04f));
+    REQUIRE(firstVertexParameters[2].value == Catch::Approx(0.05f));
+    REQUIRE(firstVertexParameters[3].value == Catch::Approx(0.22f));
+    REQUIRE(firstVertexParameters[4].value == Catch::Approx(0.11f));
 
     node.parameters[0].value = "2";
     model.syncFromNode(node);
     const auto secondVertexParameters = model.getSelectedVertexParameters();
 
-    REQUIRE(secondVertexParameters.size() == 3);
-    REQUIRE(secondVertexParameters[0].value == Catch::Approx(0.77f));
-    REQUIRE(secondVertexParameters[2].value == Catch::Approx(0.88f));
+    REQUIRE(secondVertexParameters.size() == 6);
+    REQUIRE(secondVertexParameters[4].value == Catch::Approx(0.77f));
+    REQUIRE(secondVertexParameters[5].value == Catch::Approx(0.88f));
 }
 
 TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-v2][nodes][trimesh]") {
@@ -445,11 +524,12 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     controls.setNode(node);
     controls.setContentBounds({ 10.f, 42.f, 880.f, 570.f });
 
-    REQUIRE(controls.getControlRegionCount() == 9);
+    REQUIRE(controls.getControlRegionCount() == 15);
     REQUIRE(controls.getMorphSliderCount() == 3);
     REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
-    REQUIRE(controls.getVertexParameterSliderCount() == 3);
-    REQUIRE(controls.getNumChildComponents() == 9);
+    REQUIRE(controls.getLinkToggleButtonCount() == 3);
+    REQUIRE(controls.getVertexParameterSliderCount() == 6);
+    REQUIRE(controls.getNumChildComponents() == 15);
 }
 
 TEST_CASE("Trimesh panel bridge publishes rasterizer intercepts from the shared rasterizer", "[cycle-v2][nodes][trimesh]") {

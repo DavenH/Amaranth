@@ -3,17 +3,15 @@
 #include <Curve/Mesh/Vertex.h>
 
 #include <array>
-#include <utility>
 
 namespace CycleV2 {
 
 namespace {
 
-const Colour kText      { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 constexpr float kExpandedPanelGap      = 8.f;
 constexpr float kExpandedTopRowRatio   = 0.54f;
-constexpr float kExpandedGridRatio     = 0.62f;
+constexpr float kExpandedGridRatio     = 0.58f;
 constexpr float kPanelHeaderHeight     = 18.f;
 constexpr float kPanelContentInsetX    = 6.f;
 constexpr float kPanelContentBottomPad = 2.f;
@@ -23,11 +21,22 @@ constexpr int kPreviewRows             = 320;
 constexpr int kPreviewColumns          = 96;
 constexpr int kExpandedRows            = 320;
 constexpr int kExpandedColumns         = 96;
+constexpr int kVertexParameterCount    = 6;
 
 Rectangle<float> panelBodyBounds(Rectangle<float> panel) {
     panel.removeFromTop(kPanelHeaderHeight + 2.f);
     panel.removeFromBottom(kPanelContentBottomPad);
     return panel.reduced(kPanelContentInsetX, 0.f);
+}
+
+bool nodeBoolParameter(const Node& node, const String& id, bool fallback) {
+    for (const auto& parameter : node.parameters) {
+        if (parameter.id == id) {
+            return parameter.value.getIntValue() != 0;
+        }
+    }
+
+    return fallback;
 }
 
 }
@@ -114,11 +123,18 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     const bool hasPanel2DHost = bridge.getPanel2DHostComponentIfCreated() != nullptr;
 
     if (!hasPanel3DHost) {
-        TrimeshSurfaceRenderer::drawHeatmap(g, panelBodyBounds(gridPanel), renderData, profile, true);
+        const auto gridContent = panelBodyBounds(gridPanel);
+        Graphics::ScopedSaveState gridClip(g);
+
+        g.reduceClipRegion(gridContent.toNearestInt());
+        TrimeshSurfaceRenderer::drawHeatmap(g, gridContent, renderData, profile, true);
     }
 
     const auto waveshapeContent = panelBodyBounds(waveshapePanel);
     if (!hasPanel2DHost) {
+        Graphics::ScopedSaveState waveshapeClip(g);
+
+        g.reduceClipRegion(waveshapeContent.toNearestInt());
         TrimeshSliceRenderer2D::drawGrid(g, waveshapeContent, profile);
         TrimeshSliceRenderer2D::drawTraceFill(g, waveshapeContent.reduced(8.f), renderData.slice, profile);
         TrimeshSliceRenderer2D::drawTrace(
@@ -130,79 +146,40 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     }
 
     const auto selectedParameters = model.getSelectedVertexParameters();
-    Rectangle<float> morphArea = sidePanel.reduced(kMorphPanelInsetX, kMorphPanelInsetY);
-    const std::array<std::pair<String, Colour>, 3> axes {
-            std::make_pair(String("Yellow"), Colour(0xffe0c247)),
-            std::make_pair(String("Red"), Colour(0xffd65a5a)),
-            std::make_pair(String("Blue"), Colour(0xff5f91e8))
+    const int primaryAxis = model.getPrimaryViewAxis();
+    const std::array<TrimeshSidePanelRenderer::AxisState, 3> axes {
+            TrimeshSidePanelRenderer::AxisState {
+                    "Yellow",
+                    "Y",
+                    Colour(0xffe0c247),
+                    model.getMorphPosition().time.getCurrentValue(),
+                    primaryAxis == Vertex::Time,
+                    nodeBoolParameter(node, "link.yellow", true)
+            },
+            TrimeshSidePanelRenderer::AxisState {
+                    "Red",
+                    "R",
+                    Colour(0xffd65a5a),
+                    model.getMorphPosition().red.getCurrentValue(),
+                    primaryAxis == Vertex::Red,
+                    nodeBoolParameter(node, "link.red", false)
+            },
+            TrimeshSidePanelRenderer::AxisState {
+                    "Blue",
+                    "B",
+                    Colour(0xff5f91e8),
+                    model.getMorphPosition().blue.getCurrentValue(),
+                    primaryAxis == Vertex::Blue,
+                    nodeBoolParameter(node, "link.blue", false)
+            }
     };
-    const std::array<float, 3> values {
-            model.getMorphPosition().time.getCurrentValue(),
-            model.getMorphPosition().red.getCurrentValue(),
-            model.getMorphPosition().blue.getCurrentValue()
-    };
-    TrimeshSidePanelRenderer::drawMorphCubePreview(
+
+    TrimeshSidePanelRenderer::drawSidePanel(
             g,
-            morphArea.removeFromRight(jmin(104.f, morphArea.getWidth() * 0.36f)).removeFromTop(104.f),
-            values,
-            model.getResolvedSelectedVertexIndex());
-
-    for (int i = 0; i < (int) axes.size(); ++i) {
-        auto row = morphArea.removeFromTop(34.f);
-        const Rectangle<float> rail = morphRailBounds(sidePanel.reduced(kMorphPanelInsetX, kMorphPanelInsetY), i);
-
-        g.setColour(kText);
-        g.setFont(FontOptions(11.f, Font::bold));
-        g.drawText(axes[(size_t) i].first, row.removeFromLeft(62.f), Justification::centredLeft);
-        g.setColour(axes[(size_t) i].second.withAlpha(0.26f));
-        g.fillRoundedRectangle(rail, 2.f);
-        g.setColour(axes[(size_t) i].second.withAlpha(0.92f));
-        g.fillEllipse(
-                rail.getX() + rail.getWidth() * jlimit(0.f, 1.f, values[(size_t) i]) - 5.f,
-                rail.getCentreY() - 5.f,
-                10.f,
-                10.f);
-    }
-
-    morphArea.removeFromTop(8.f);
-    auto axisRow = morphArea.removeFromTop(48.f);
-    g.setColour(kText);
-    g.setFont(FontOptions(11.f, Font::bold));
-    g.drawText("View Axis", axisRow.removeFromTop(16.f), Justification::centredLeft);
-
-    for (int i = 0; i < (int) axes.size(); ++i) {
-        const Rectangle<float> button = primaryAxisBounds(sidePanel.reduced(kMorphPanelInsetX, kMorphPanelInsetY), i);
-        const bool active = model.getPrimaryViewAxis() == (i == 0 ? Vertex::Time : (i == 1 ? Vertex::Red : Vertex::Blue));
-        const Colour axisColour = axes[(size_t) i].second;
-
-        g.setColour(axisColour.withAlpha(active ? 0.30f : 0.08f));
-        g.fillRoundedRectangle(button, 4.f);
-        g.setColour(axisColour.withAlpha(active ? 0.94f : 0.46f));
-        g.drawRoundedRectangle(button, 4.f, active ? 1.4f : 1.f);
-        g.setColour(active ? kText : kMutedText);
-        g.setFont(FontOptions(10.f, Font::bold));
-        g.drawText(axes[(size_t) i].first.substring(0, 1), button, Justification::centred);
-    }
-
-    morphArea.removeFromTop(6.f);
-    auto linkRow = morphArea.removeFromTop(28.f);
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(9.5f, Font::bold));
-    g.drawText("Link", linkRow.removeFromLeft(44.f), Justification::centredLeft);
-
-    for (int i = 0; i < (int) axes.size(); ++i) {
-        const Colour axisColour = axes[(size_t) i].second;
-        const Rectangle<float> swatch(13.f, 13.f);
-        const Point<float> centre(linkRow.getX() + 12.f + (float) i * 24.f, linkRow.getCentreY());
-
-        g.setColour(axisColour.withAlpha(i == 0 ? 0.42f : 0.18f));
-        g.fillRoundedRectangle(swatch.withCentre(centre), 2.f);
-        g.setColour(axisColour.withAlpha(i == 0 ? 0.92f : 0.48f));
-        g.drawRoundedRectangle(swatch.withCentre(centre), 2.f, 1.f);
-    }
-
-    morphArea.removeFromTop(3.f);
-    TrimeshSidePanelRenderer::drawVertexParameters(g, morphArea, selectedParameters);
+            sidePanel.reduced(kMorphPanelInsetX, kMorphPanelInsetY),
+            axes,
+            model.getSelectedCubePreviewVertices(),
+            selectedParameters);
 }
 
 void TrimeshWidget::renderExpandedPanelsOpenGL(
@@ -329,6 +306,26 @@ bool TrimeshWidget::findPrimaryAxisAt(
     return false;
 }
 
+bool TrimeshWidget::findLinkToggleAt(
+        Rectangle<float> content,
+        Point<float> position,
+        String& axisValue) const {
+    const Rectangle<float> morphArea = morphPanelBounds(content);
+
+    for (int i = 0; i < 3; ++i) {
+        const Rectangle<float> button = linkToggleBounds(morphArea, i);
+
+        if (!button.expanded(4.f).contains(position)) {
+            continue;
+        }
+
+        axisValue = primaryAxisValue(i);
+        return true;
+    }
+
+    return false;
+}
+
 bool TrimeshWidget::findVertexParameterAt(
         Rectangle<float> content,
         Point<float> position,
@@ -336,15 +333,15 @@ bool TrimeshWidget::findVertexParameterAt(
         float& value) const {
     const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
 
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < kVertexParameterCount; ++i) {
         const Rectangle<float> row = vertexParameterRowBounds(parameterArea, i);
+        const Rectangle<float> rail = vertexParameterRailBounds(row);
 
-        if (!row.expanded(5.f, 4.f).contains(position)) {
+        if (!rail.expanded(5.f, 8.f).contains(position)) {
             continue;
         }
 
         parameterId = vertexParameterId(i);
-        const Rectangle<float> rail = vertexParameterRailBounds(row);
         value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
         return true;
     }
@@ -359,7 +356,7 @@ bool TrimeshWidget::vertexParameterValueForParameterAt(
         float& value) const {
     const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
 
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < kVertexParameterCount; ++i) {
         if (vertexParameterId(i) != parameterId) {
             continue;
         }
@@ -418,12 +415,23 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(R
         });
     }
 
-    const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
-
     for (int i = 0; i < 3; ++i) {
         regions.push_back({
+                TrimeshExpandedHitRegionKind::LinkToggle,
+                linkToggleBounds(morphArea, i).expanded(4.f),
+                {},
+                primaryAxisValue(i)
+        });
+    }
+
+    const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
+
+    for (int i = 0; i < kVertexParameterCount; ++i) {
+        const Rectangle<float> row = vertexParameterRowBounds(parameterArea, i);
+
+        regions.push_back({
                 TrimeshExpandedHitRegionKind::VertexParameter,
-                vertexParameterRowBounds(parameterArea, i).expanded(5.f, 4.f),
+                vertexParameterRailBounds(row).expanded(5.f, 8.f),
                 vertexParameterId(i),
                 {}
         });
@@ -481,20 +489,15 @@ Rectangle<float> TrimeshWidget::morphPanelBounds(Rectangle<float> content) {
 }
 
 Rectangle<float> TrimeshWidget::morphRailBounds(Rectangle<float> morphArea, int axisIndex) {
-    auto row = morphArea.translated(0.f, (float) axisIndex * 34.f).withHeight(34.f);
-    return row.withTrimmedLeft(68.f).withTrimmedRight(jmax(16.f, row.getWidth() * 0.38f))
-            .withSizeKeepingCentre(jmax(24.f, row.getWidth() * 0.42f), 4.f);
+    return TrimeshSidePanelRenderer::morphRailBounds(morphArea, axisIndex);
 }
 
 Rectangle<float> TrimeshWidget::primaryAxisBounds(Rectangle<float> morphArea, int axisIndex) {
-    const float top = morphArea.getY() + 110.f;
-    const float width = jmax(28.f, (morphArea.getWidth() - 16.f) / 3.f);
-    return {
-            morphArea.getX() + (float) axisIndex * (width + 8.f),
-            top,
-            width,
-            24.f
-    };
+    return TrimeshSidePanelRenderer::primaryAxisBounds(morphArea, axisIndex);
+}
+
+Rectangle<float> TrimeshWidget::linkToggleBounds(Rectangle<float> morphArea, int axisIndex) {
+    return TrimeshSidePanelRenderer::linkToggleBounds(morphArea, axisIndex);
 }
 
 String TrimeshWidget::primaryAxisValue(int axis) {
@@ -507,12 +510,7 @@ String TrimeshWidget::primaryAxisValue(int axis) {
 }
 
 Rectangle<float> TrimeshWidget::vertexParameterPanelBounds(Rectangle<float> content) {
-    auto area = morphPanelBounds(content);
-    area.removeFromTop(34.f * 3.f);
-    area.removeFromTop(8.f);
-    area.removeFromTop(48.f);
-    area.removeFromTop(6.f);
-    return area;
+    return TrimeshSidePanelRenderer::vertexParameterPanelBounds(morphPanelBounds(content));
 }
 
 Rectangle<float> TrimeshWidget::vertexParameterRowBounds(Rectangle<float> parameterArea, int parameterIndex) {
@@ -525,9 +523,12 @@ Rectangle<float> TrimeshWidget::vertexParameterRailBounds(Rectangle<float> param
 
 String TrimeshWidget::vertexParameterId(int parameterIndex) {
     switch (parameterIndex) {
-        case 0:     return "vertex.amp";
-        case 1:     return "vertex.phase";
-        case 2:     return "vertex.curve";
+        case 0:     return "vertex.time";
+        case 1:     return "vertex.red";
+        case 2:     return "vertex.blue";
+        case 3:     return "vertex.phase";
+        case 4:     return "vertex.amp";
+        case 5:     return "vertex.curve";
         default:    return {};
     }
 }

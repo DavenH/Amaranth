@@ -15,6 +15,7 @@ class TrimeshControlsComponent : public juce::Component {
 public:
     struct Callbacks {
         std::function<void(const juce::String&)> setPrimaryAxis;
+        std::function<void(const juce::String&)> toggleLinkAxis;
         std::function<void(const juce::String&, float)> beginMorphEdit;
         std::function<void(float)> updateMorphEdit;
         std::function<void()> endMorphEdit;
@@ -32,6 +33,7 @@ public:
     int getControlRegionCount() const { return (int) controlRegions.size(); }
     int getMorphSliderCount() const;
     int getPrimaryAxisButtonCount() const;
+    int getLinkToggleButtonCount() const;
     int getVertexParameterSliderCount() const;
 
     void resized() override;

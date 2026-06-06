@@ -51,6 +51,12 @@ bool vertexEditParameter(const NodeParameter& parameter, int& vertexIndex, int& 
         valueIndex = Vertex::Amp;
     } else if (field == "phase") {
         valueIndex = Vertex::Phase;
+    } else if (field == "time") {
+        valueIndex = Vertex::Time;
+    } else if (field == "red") {
+        valueIndex = Vertex::Red;
+    } else if (field == "blue") {
+        valueIndex = Vertex::Blue;
     } else if (field == "curve") {
         valueIndex = Vertex::Curve;
     } else {
@@ -212,9 +218,12 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameter
     }
 
     return {
-            { "vertex.amp", "Amplitude", selectedVertex->values[Vertex::Amp], 0.f, 1.f },
-            { "vertex.phase", "Phase", selectedVertex->values[Vertex::Phase], 0.f, 1.f },
-            { "vertex.curve", "Sharpness", selectedVertex->values[Vertex::Curve], 0.f, 1.f }
+            { "vertex.time", "time", selectedVertex->values[Vertex::Time], 0.f, 1.f },
+            { "vertex.red", "red", selectedVertex->values[Vertex::Red], 0.f, 1.f },
+            { "vertex.blue", "blue", selectedVertex->values[Vertex::Blue], 0.f, 1.f },
+            { "vertex.phase", "phase", selectedVertex->values[Vertex::Phase], 0.f, 1.f },
+            { "vertex.amp", "amp", selectedVertex->values[Vertex::Amp], 0.f, 1.f },
+            { "vertex.curve", "curve", selectedVertex->values[Vertex::Curve], 0.f, 1.f }
     };
 }
 
@@ -241,6 +250,48 @@ std::vector<TrimeshVertexMarker> TrimeshNodeModel::getVertexMarkers() {
     }
 
     return markers;
+}
+
+std::vector<TrimeshCubePreviewVertex> TrimeshNodeModel::getSelectedCubePreviewVertices() {
+    Mesh& activeMesh = mesh();
+    Vertex* selected = selectedVertex();
+    VertCube* previewCube = selected != nullptr && selected->owners.size() > 0
+            ? selected->owners.getFirst()
+            : nullptr;
+
+    if (previewCube == nullptr) {
+        for (auto* cube : activeMesh.getCubes()) {
+            if (cube != nullptr && cube->findClosestVertex(morph) != nullptr) {
+                previewCube = cube;
+                break;
+            }
+        }
+    }
+
+    if (previewCube == nullptr) {
+        return {};
+    }
+
+    std::vector<TrimeshCubePreviewVertex> vertices;
+    vertices.reserve(VertCube::numVerts);
+
+    for (int i = 0; i < (int) VertCube::numVerts; ++i) {
+        Vertex* vertex = previewCube->getVertex(i);
+
+        if (vertex == nullptr) {
+            vertices.push_back({});
+            continue;
+        }
+
+        vertices.push_back({
+                jlimit(0.f, 1.f, vertex->values[Vertex::Time]),
+                jlimit(0.f, 1.f, vertex->values[Vertex::Red]),
+                jlimit(0.f, 1.f, vertex->values[Vertex::Blue]),
+                vertex == selected
+        });
+    }
+
+    return vertices;
 }
 
 int TrimeshNodeModel::findNearestVertexIndexForPhaseAmp(float phase, float amp) {
@@ -359,15 +410,21 @@ bool TrimeshNodeModel::applyVertexParameterOverrides(const Node& node) {
         return changed;
     }
 
-    float amp {};
+    float time {};
+    float red {};
+    float blue {};
     float phase {};
+    float amp {};
     float curve {};
-    const bool hasAmp = parameterFloatValue(node, "vertex.amp", amp);
+    const bool hasTime = parameterFloatValue(node, "vertex.time", time);
+    const bool hasRed = parameterFloatValue(node, "vertex.red", red);
+    const bool hasBlue = parameterFloatValue(node, "vertex.blue", blue);
     const bool hasPhase = parameterFloatValue(node, "vertex.phase", phase);
+    const bool hasAmp = parameterFloatValue(node, "vertex.amp", amp);
     const bool hasCurve = parameterFloatValue(node, "vertex.curve", curve);
     const int overrideIndex = parameterInt(node, "vertexOverrideIndex", selectedVertexIndex);
 
-    if (!hasAmp && !hasPhase && !hasCurve) {
+    if (!hasTime && !hasRed && !hasBlue && !hasPhase && !hasAmp && !hasCurve) {
         return false;
     }
 
@@ -391,6 +448,18 @@ bool TrimeshNodeModel::applyVertexParameterOverrides(const Node& node) {
         vertex->values[index] = clampedValue;
         changed = true;
     };
+
+    if (hasTime) {
+        apply(Vertex::Time, time);
+    }
+
+    if (hasRed) {
+        apply(Vertex::Red, red);
+    }
+
+    if (hasBlue) {
+        apply(Vertex::Blue, blue);
+    }
 
     if (hasAmp) {
         apply(Vertex::Amp, amp);
