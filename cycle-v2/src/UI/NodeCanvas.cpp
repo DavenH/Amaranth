@@ -352,6 +352,159 @@ void drawPreviewMeters(
     drawMeter(rightMeter, right);
 }
 
+Rectangle<float> fitAspect(Rectangle<float> area, float aspectRatio) {
+    if (area.getWidth() <= 0.f || area.getHeight() <= 0.f || aspectRatio <= 0.f) {
+        return area;
+    }
+
+    if (area.getWidth() / area.getHeight() > aspectRatio) {
+        return area.withSizeKeepingCentre(area.getHeight() * aspectRatio, area.getHeight());
+    }
+
+    return area.withSizeKeepingCentre(area.getWidth(), area.getWidth() / aspectRatio);
+}
+
+float previewStrokeScale(Rectangle<float> icon) {
+    return jmax(0.72f, jmin(icon.getWidth() / 150.f, icon.getHeight() / 82.f));
+}
+
+Rectangle<float> fftPreviewIconArea(Rectangle<float> area) {
+    Rectangle<float> icon = area.reduced(area.getWidth() * 0.04f, area.getHeight() * 0.09f);
+
+    if (icon.getWidth() / icon.getHeight() < 1.65f) {
+        return fitAspect(icon, 1.65f);
+    }
+
+    return icon;
+}
+
+void drawFftSquareCycle(Graphics& g, Rectangle<float> area, float strokeScale) {
+    Path path;
+    const float left = area.getX() + area.getWidth() * 0.10f;
+    const float mid = area.getCentreX();
+    const float right = area.getRight() - area.getWidth() * 0.10f;
+    const float top = area.getY() + area.getHeight() * 0.20f;
+    const float bottom = area.getY() + area.getHeight() * 0.80f;
+
+    path.startNewSubPath(left, bottom);
+    path.lineTo(left, top);
+    path.lineTo(mid, top);
+    path.lineTo(mid, bottom);
+    path.lineTo(right, bottom);
+    path.lineTo(right, top);
+
+    g.setColour(Colour(0xff58d4e8));
+    g.strokePath(path, PathStrokeType(2.55f * strokeScale, PathStrokeType::mitered, PathStrokeType::rounded));
+}
+
+void drawFftHarmonicStack(Graphics& g, Rectangle<float> area, float strokeScale) {
+    const struct {
+        int harmonic;
+        float minimumWidth;
+        Colour colour;
+    } partials[] = {
+            { 7, 116.f, Colour(0xff9b6dff) },
+            { 5, 0.f, Colour(0xff6f8cff) },
+            { 3, 0.f, Colour(0xff49bde2) },
+            { 1, 0.f, Colour(0xff58d4e8) }
+    };
+
+    Rectangle<float> waveArea = area.reduced(area.getWidth() * 0.08f, area.getHeight() * 0.10f);
+    constexpr float sineControl = 0.3642f;
+
+    for (const auto& partial : partials) {
+        if (area.getWidth() < partial.minimumWidth) {
+            continue;
+        }
+
+        const int halfCycles = partial.harmonic * 2;
+        const float halfWidth = waveArea.getWidth() / (float) halfCycles;
+        const float amplitude = waveArea.getHeight() * 0.44f / (float) partial.harmonic;
+        Path path;
+
+        path.startNewSubPath(waveArea.getX(), waveArea.getCentreY());
+
+        for (int i = 0; i < halfCycles; ++i) {
+            const float x0 = waveArea.getX() + (float) i * halfWidth;
+            const float x1 = x0 + halfWidth;
+            const float controlY = waveArea.getCentreY() + (i % 2 == 0 ? -amplitude : amplitude);
+
+            path.cubicTo(
+                    x0 + halfWidth * sineControl, controlY,
+                    x1 - halfWidth * sineControl, controlY,
+                    x1, waveArea.getCentreY());
+        }
+
+        g.setColour(partial.colour.withAlpha(0.90f));
+        g.strokePath(path, PathStrokeType(1.45f * strokeScale, PathStrokeType::curved, PathStrokeType::rounded));
+    }
+}
+
+void drawFftChevron(Graphics& g, Rectangle<float> icon, float strokeScale) {
+    Path path;
+    const Point<float> top(icon.getX() + icon.getWidth() * 0.476f, icon.getY() + icon.getHeight() * 0.39f);
+    const Point<float> middle(icon.getX() + icon.getWidth() * 0.512f, icon.getY() + icon.getHeight() * 0.50f);
+    const Point<float> bottom(icon.getX() + icon.getWidth() * 0.476f, icon.getY() + icon.getHeight() * 0.61f);
+
+    path.startNewSubPath(top);
+    path.lineTo(middle);
+    path.lineTo(bottom);
+
+    g.setColour(Colour(0xff596a78));
+    g.strokePath(path, PathStrokeType(2.f * strokeScale, PathStrokeType::mitered, PathStrokeType::rounded));
+}
+
+void drawFftTransformPreview(Graphics& g, Rectangle<float> area, bool inverse) {
+    const Rectangle<float> icon = fftPreviewIconArea(area);
+    const float strokeScale = previewStrokeScale(icon);
+    const Rectangle<float> left(
+            icon.getX() + icon.getWidth() * 0.045f,
+            icon.getY() + icon.getHeight() * 0.14f,
+            icon.getWidth() * 0.405f,
+            icon.getHeight() * 0.72f);
+    const Rectangle<float> right(
+            icon.getX() + icon.getWidth() * 0.55f,
+            icon.getY() + icon.getHeight() * 0.14f,
+            icon.getWidth() * 0.405f,
+            icon.getHeight() * 0.72f);
+
+    if (inverse) {
+        drawFftHarmonicStack(g, left, strokeScale);
+        drawFftChevron(g, icon, strokeScale);
+        drawFftSquareCycle(g, right, strokeScale);
+    } else {
+        drawFftSquareCycle(g, left, strokeScale);
+        drawFftChevron(g, icon, strokeScale);
+        drawFftHarmonicStack(g, right, strokeScale);
+    }
+}
+
+void drawMathOperationPreview(Graphics& g, Rectangle<float> area, bool multiply, float zoom) {
+    const Colour colour = colourForDomain(PortDomain::ControlSignal);
+    const Rectangle<float> icon = fitAspect(area.reduced(area.getWidth() * 0.20f, area.getHeight() * 0.12f), 1.f);
+    const Point<float> centre = icon.getCentre();
+    const float radius = jmin(icon.getWidth(), icon.getHeight()) * 0.32f;
+    const float stroke = jmax(2.3f * zoom, radius * 0.18f);
+
+    Path mark;
+    if (multiply) {
+        mark.startNewSubPath(centre.x - radius, centre.y - radius);
+        mark.lineTo(centre.x + radius, centre.y + radius);
+        mark.startNewSubPath(centre.x + radius, centre.y - radius);
+        mark.lineTo(centre.x - radius, centre.y + radius);
+    } else {
+        mark.startNewSubPath(centre.x - radius, centre.y);
+        mark.lineTo(centre.x + radius, centre.y);
+        mark.startNewSubPath(centre.x, centre.y - radius);
+        mark.lineTo(centre.x, centre.y + radius);
+    }
+
+    g.setColour(Colour(0xff071015).withAlpha(0.46f));
+    g.strokePath(mark, PathStrokeType(stroke + 2.f * zoom, PathStrokeType::mitered, PathStrokeType::rounded));
+    g.setColour(colour.withAlpha(0.94f));
+    g.strokePath(mark, PathStrokeType(stroke, PathStrokeType::mitered, PathStrokeType::rounded));
+}
+
 void drawOperationLayoutIcon(Graphics& g, Rectangle<float> button, OperationPortLayout layout, Colour colour) {
     const auto area = button.reduced(button.getWidth() * 0.24f);
     const float stroke = jmax(1.f, button.getWidth() * 0.085f);
@@ -1124,6 +1277,10 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     auto preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
 
     if (node.kind != NodeKind::VoiceContext) {
+        if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
+            preview = nodeBounds.withTrimmedTop(40.f * zoom).reduced(3.f * zoom, 5.f * zoom);
+        }
+
         drawPreview(g, node, preview);
     }
 
@@ -1273,41 +1430,7 @@ void NodeCanvas::drawPreviewUncached(
     }
 
     if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
-        const bool inverse = node.kind == NodeKind::Ifft;
-        const Rectangle<float> icon = previewContentArea(area).reduced(8.f, 4.f);
-        const Colour time = colourForDomain(PortDomain::TimeSignal);
-        const Colour mag = colourForDomain(PortDomain::SpectralMagnitudeSignal);
-        const Colour phase = colourForDomain(PortDomain::SpectralPhaseSignal);
-
-        if (inverse) {
-            Path wave;
-            for (int i = 0; i < 32; ++i) {
-                const float t = (float) i / 31.f;
-                const Point<float> p(
-                        icon.getX() + t * icon.getWidth(),
-                        icon.getCentreY() + fastSin(t * MathConstants<float>::twoPi) * icon.getHeight() * 0.30f);
-
-                if (i == 0) {
-                    wave.startNewSubPath(p);
-                } else {
-                    wave.lineTo(p);
-                }
-            }
-
-            g.setColour(time.withAlpha(0.90f));
-            g.strokePath(wave, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
-        } else {
-            const float barWidth = icon.getWidth() / 7.f;
-
-            for (int i = 0; i < 6; ++i) {
-                const float height = icon.getHeight() * (0.25f + (float) ((i * 17) % 5) * 0.13f);
-                Rectangle<float> bar(icon.getX() + (float) i * barWidth, icon.getBottom() - height,
-                                     barWidth * 0.52f, height);
-                g.setColour((i % 2 == 0 ? mag : phase).withAlpha(0.78f));
-                g.fillRoundedRectangle(bar, 2.f);
-            }
-        }
-
+        drawFftTransformPreview(g, area, node.kind == NodeKind::Ifft);
         return;
     }
 
@@ -1336,6 +1459,11 @@ void NodeCanvas::drawPreviewUncached(
                 { 0.58f }
         };
         drawPreviewMeters(g, area, preview, colour);
+        return;
+    }
+
+    if (node.kind == NodeKind::Add || node.kind == NodeKind::Multiply) {
+        drawMathOperationPreview(g, area, node.kind == NodeKind::Multiply, zoom);
         return;
     }
 
@@ -1411,20 +1539,6 @@ void NodeCanvas::drawPreviewUncached(
     }
 
     Colour colour = node.outputs.empty() ? Colour(0xff9aa5b2) : colourForDomain(node.outputs.front().domain);
-
-    if (node.kind == NodeKind::Add) {
-        g.setColour(kMutedText.withAlpha(0.76f));
-        g.setFont(FontOptions(jmin(48.f, area.getHeight() * 0.76f), Font::bold));
-        g.drawText("+", area, Justification::centred);
-        return;
-    }
-
-    if (node.kind == NodeKind::Multiply) {
-        g.setColour(kMutedText.withAlpha(0.76f));
-        g.setFont(FontOptions(jmin(48.f, area.getHeight() * 0.76f), Font::bold));
-        g.drawText("x", area, Justification::centred);
-        return;
-    }
 
     g.setColour(colour.withAlpha(0.20f));
     g.fillPath(curve);
@@ -1930,7 +2044,7 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
 
     const PaletteSection sections[] = {
             { "Context",   { { NodeKind::VoiceContext, "Voice Context" } } },
-            { "Transform", { { NodeKind::Fft, "Forward FFT" }, { NodeKind::Ifft, "Inverse FFT" } } },
+            { "Transform", { { NodeKind::Fft, "Time → Freq" }, { NodeKind::Ifft, "Freq → Time" } } },
             { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
             { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::ImageSource, "Image" },
                              { NodeKind::TrilinearMesh, "Mesh" } } },
@@ -1979,7 +2093,7 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
             g.drawRoundedRectangle(row, 4.f, 1.f);
             g.setColour(kText);
             g.setFont(FontOptions(12.6f, Font::bold));
-            g.drawText(entry.label, row.reduced(8.f, 0.f), Justification::centredLeft);
+            g.drawText(String::fromUTF8(entry.label), row.reduced(8.f, 0.f), Justification::centredLeft);
             y += kPaletteRowHeight;
         }
     }
@@ -2120,7 +2234,7 @@ bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) 
 
     const PaletteSection sections[] = {
             { "Context",   { { NodeKind::VoiceContext, "Voice Context" } } },
-            { "Transform", { { NodeKind::Fft, "Forward FFT" }, { NodeKind::Ifft, "Inverse FFT" } } },
+            { "Transform", { { NodeKind::Fft, "Time → Freq" }, { NodeKind::Ifft, "Freq → Time" } } },
             { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
             { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::ImageSource, "Image" },
                              { NodeKind::TrilinearMesh, "Mesh" } } },

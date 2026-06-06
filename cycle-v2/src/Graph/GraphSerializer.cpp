@@ -94,8 +94,13 @@ NodeKind nodeKindForId(const String& id) {
 
 void normalizeNodePresentation(Node& node) {
     if (node.kind == NodeKind::Fft) {
-        node.title = "FFT";
+        node.title = String::fromUTF8("Time → Freq");
         node.subtitle = "1 cycle";
+    }
+
+    if (node.kind == NodeKind::Ifft) {
+        node.title = String::fromUTF8("Freq → Time");
+        node.subtitle = "cyclic mode";
     }
 
     if (node.kind == NodeKind::VoiceContext

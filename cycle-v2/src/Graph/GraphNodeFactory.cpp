@@ -54,7 +54,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             break;
 
         case NodeKind::Fft:
-            node.title = "FFT";
+            node.title = String::fromUTF8("Time → Freq");
             node.subtitle = "1 cycle";
             node.parameters = {
                     { "cycleFrames", "Cycle Frames", "2048" }
@@ -67,7 +67,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             break;
 
         case NodeKind::Ifft:
-            node.title = "IFFT";
+            node.title = String::fromUTF8("Freq → Time");
             node.subtitle = "cyclic mode";
             node.parameters = {
                     { "cycleFrames", "Cycle Frames", "2048" },

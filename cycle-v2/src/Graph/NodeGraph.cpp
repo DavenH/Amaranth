@@ -142,9 +142,9 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "fft",
             NodeKind::Fft,
-            "FFT",
+            String::fromUTF8("Time → Freq"),
             "1 cycle",
-            { 930.f, 160.f, 220.f, 185.f },
+            { 930.f, 160.f, 278.f, 178.f },
             { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
             {
                     output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
@@ -205,9 +205,9 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "ifft",
             NodeKind::Ifft,
-            "IFFT",
+            String::fromUTF8("Freq → Time"),
             "cyclic mode",
-            { 1665.f, 400.f, 230.f, 210.f },
+            { 1665.f, 400.f, 278.f, 178.f },
             {
                     input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     input("phase", "Phase", PortDomain::SpectralPhaseSignal)
@@ -324,8 +324,8 @@ String labelForNodeKind(NodeKind kind) {
         case NodeKind::WaveSource:                   return "Wave Source";
         case NodeKind::ImageSource:                  return "Image Source";
         case NodeKind::TrilinearMesh:                return "Trilinear Mesh";
-        case NodeKind::Fft:                          return "FFT";
-        case NodeKind::Ifft:                         return "IFFT";
+        case NodeKind::Fft:                          return String::fromUTF8("Time → Freq");
+        case NodeKind::Ifft:                         return String::fromUTF8("Freq → Time");
         case NodeKind::Envelope:                     return "Envelope";
         case NodeKind::Add:                          return "Add";
         case NodeKind::Multiply:                     return "Multiply";
@@ -364,7 +364,7 @@ NodeNaturalSize naturalSizeForNode(const Node& node) {
     }
 
     if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
-        return { 168.f, 118.f };
+        return { 278.f, 178.f };
     }
 
     if (node.kind == NodeKind::Output) {
