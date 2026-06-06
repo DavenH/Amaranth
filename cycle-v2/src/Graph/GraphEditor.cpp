@@ -66,6 +66,75 @@ GraphEditResult GraphEditor::connect(
     return {};
 }
 
+GraphEditResult GraphEditor::attachGuideCurveToTrimeshVertexParameter(
+        NodeGraph& graph,
+        const String& guideNodeId,
+        const String& meshNodeId,
+        int vertexIndex,
+        const String& parameterField) const {
+    const Node* guideNode = findNode(graph, guideNodeId);
+    const Node* meshNode = findNode(graph, meshNodeId);
+
+    if (guideNode == nullptr || meshNode == nullptr) {
+        return { GraphEditCode::MissingNode, {}, {} };
+    }
+
+    const Port* guideOutput = findPort(*guideNode, "guide", false);
+
+    if (guideOutput == nullptr) {
+        return { GraphEditCode::MissingPort, {}, {} };
+    }
+
+    const String targetPortId = guideVertexTargetPortId(vertexIndex, parameterField);
+    NodeGraph candidate = graph;
+    candidate.removeEdgesToInput(meshNodeId, targetPortId);
+    candidate.addEdge({
+            guideNodeId,
+            "guide",
+            meshNodeId,
+            targetPortId,
+            PortDomain::EnvelopeSignal,
+            true
+    });
+
+    auto issues = GraphValidator().validate(candidate);
+
+    if (!issues.empty()) {
+        return { GraphEditCode::ValidationRejected, {}, std::move(issues) };
+    }
+
+    graph = std::move(candidate);
+    return { GraphEditCode::Connected, guideNodeId, {} };
+}
+
+GraphEditResult GraphEditor::createAndAttachGuideCurveToTrimeshVertexParameter(
+        NodeGraph& graph,
+        const String& meshNodeId,
+        int vertexIndex,
+        const String& parameterField,
+        Point<float> guidePosition) const {
+    NodeGraph candidate = graph;
+    GraphEditResult addResult = addNode(candidate, NodeKind::GuideCurve, guidePosition);
+
+    if (!addResult.succeeded()) {
+        return addResult;
+    }
+
+    GraphEditResult attachResult = attachGuideCurveToTrimeshVertexParameter(
+            candidate,
+            addResult.nodeId,
+            meshNodeId,
+            vertexIndex,
+            parameterField);
+
+    if (!attachResult.succeeded()) {
+        return attachResult;
+    }
+
+    graph = std::move(candidate);
+    return { GraphEditCode::Connected, addResult.nodeId, {} };
+}
+
 GraphEditResult GraphEditor::removeNode(NodeGraph& graph, const String& nodeId) const {
     if (findNode(graph, nodeId) == nullptr) {
         return { GraphEditCode::MissingNode, {}, {} };
@@ -138,6 +207,10 @@ const Port* GraphEditor::findPort(const Node& node, const String& portId, bool i
     }
 
     return nullptr;
+}
+
+String GraphEditor::guideVertexTargetPortId(int vertexIndex, const String& parameterField) const {
+    return "guide.vertex." + String(vertexIndex) + "." + parameterField;
 }
 
 String GraphEditor::createUniqueNodeId(const NodeGraph& graph, NodeKind kind) const {

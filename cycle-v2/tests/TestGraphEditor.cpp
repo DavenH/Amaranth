@@ -51,6 +51,59 @@ TEST_CASE("Graph editor marks scratch connections as attachments", "[cycle-v2][g
     REQUIRE(graph.getEdges().back().destPortId == "scratch");
 }
 
+TEST_CASE("Graph editor creates targeted Trimesh guide attachments", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+
+    const auto result = GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
+            graph,
+            "waveMesh",
+            2,
+            "amp",
+            { 100.f, 100.f });
+
+    REQUIRE(result.succeeded());
+    REQUIRE(result.nodeId == "guide");
+    REQUIRE(GraphValidator().isValid(graph));
+
+    const auto& edge = graph.getEdges().back();
+    REQUIRE(edge.attachment);
+    REQUIRE(edge.sourceNodeId == "guide");
+    REQUIRE(edge.sourcePortId == "guide");
+    REQUIRE(edge.destNodeId == "waveMesh");
+    REQUIRE(edge.destPortId == "guide.vertex.2.amp");
+}
+
+TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 100.f, 100.f }).succeeded());
+
+    const auto waveResult = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+            graph,
+            "guide",
+            "waveMesh",
+            1,
+            "phase");
+    const auto magResult = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+            graph,
+            "guide",
+            "magMesh",
+            3,
+            "amp");
+
+    REQUIRE(waveResult.succeeded());
+    REQUIRE(magResult.succeeded());
+    REQUIRE(GraphValidator().isValid(graph));
+
+    int guideAttachments {};
+    for (const auto& edge : graph.getEdges()) {
+        if (edge.attachment && edge.sourceNodeId == "guide") {
+            ++guideAttachments;
+        }
+    }
+
+    REQUIRE(guideAttachments == 2);
+}
+
 TEST_CASE("Graph editor colours universal output edges from typed destinations", "[cycle-v2][graph]") {
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Multiply, "mul", {}));

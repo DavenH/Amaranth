@@ -1151,7 +1151,9 @@ Acceptance:
   envelope semantics. ADSR-style controls may appear only as a later preset or
   convenience editing mode over the same point-curve model.
 - Guide curves should be visible as attachments to mesh nodes, with the target
-  scope described more granularly than node-wide attachment. A later schema
-  needs a way to address mesh sub-targets such as vertex cube and guided
-  dimension (`amp`, `phase`, `sharp`, component curve) without exploding every
-  possible target into permanent visible ports.
+  scope described more granularly than node-wide attachment. The first Cycle 2
+  slice uses shared `GuideCurve` nodes plus targeted attachment edges whose
+  destination id is `guide.vertex.<index>.<field>`, so one guide curve can be
+  reused by waveform and spectral mesh nodes. A later schema can promote that
+  destination id into a dedicated attachment sub-target field if broader
+  routing needs it.

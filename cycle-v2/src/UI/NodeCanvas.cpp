@@ -1706,6 +1706,11 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
                 safeThis->endTrimeshVertexParameterEdit();
             }
         };
+        callbacks.showVertexGuideAttachmentMenu = [safeThis](const String& parameterField) {
+            if (safeThis != nullptr) {
+                safeThis->showTrimeshGuideAttachmentMenu(parameterField);
+            }
+        };
         callbacks.selectVertex = [safeThis](int vertexIndex) {
             if (safeThis != nullptr) {
                 safeThis->selectTrimeshVertexIndex(vertexIndex);
@@ -2894,6 +2899,87 @@ void NodeCanvas::endTrimeshVertexParameterEdit() {
     trimeshVertexParameterUndoPushed = false;
     activeTrimeshVertexNodeId = {};
     activeTrimeshVertexParameterId = {};
+}
+
+bool NodeCanvas::showTrimeshGuideAttachmentMenu(const String& parameterField) {
+    if (trimeshExpandedEditorNodeId.isEmpty()) {
+        return false;
+    }
+
+    TrimeshWidget& widget = trimeshWidgetFor(trimeshExpandedEditorNodeId);
+    Node* meshNode = findMutableNode(trimeshExpandedEditorNodeId);
+
+    if (meshNode == nullptr || meshNode->kind != NodeKind::TrilinearMesh) {
+        return false;
+    }
+
+    const int vertexIndex = widget.resolvedSelectedVertexIndexForNode(*meshNode);
+    const auto items = TrimeshGuideAttachmentMenu::itemsFor(
+            graph,
+            meshNode->id,
+            vertexIndex,
+            parameterField);
+
+    PopupMenu menu;
+
+    for (const auto& item : items) {
+        menu.addItem(
+                item.menuId,
+                item.label,
+                true,
+                item.attached);
+    }
+
+    auto safeThis = Component::SafePointer<NodeCanvas>(this);
+    const String meshNodeId = meshNode->id;
+    menu.showMenuAsync(
+            PopupMenu::Options().withTargetScreenArea(Rectangle<int>(Desktop::getMousePosition(), { 1, 1 })),
+            [safeThis, meshNodeId, vertexIndex, parameterField, items](int selectedMenuId) {
+                if (safeThis == nullptr || selectedMenuId == 0) {
+                    return;
+                }
+
+                const String beforeEdit = GraphSerializer().toXmlString(safeThis->graph);
+                GraphEditResult result { GraphEditCode::ValidationRejected, {}, {} };
+
+                if (selectedMenuId == TrimeshGuideAttachmentMenu::newGuideMenuId) {
+                    result = GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
+                            safeThis->graph,
+                            meshNodeId,
+                            vertexIndex,
+                            parameterField,
+                            safeThis->viewportCentreWorld());
+                } else {
+                    for (const auto& item : items) {
+                        if (item.menuId != selectedMenuId) {
+                            continue;
+                        }
+
+                        result = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+                                safeThis->graph,
+                                item.guideNodeId,
+                                meshNodeId,
+                                vertexIndex,
+                                parameterField);
+                        break;
+                    }
+                }
+
+                if (!result.succeeded()) {
+                    safeThis->editStatusMessage = "Guide attachment failed";
+                    safeThis->repaint();
+                    return;
+                }
+
+                safeThis->pushUndoSnapshot(beforeEdit);
+                safeThis->selectedNodeId = result.nodeId.isEmpty() ? meshNodeId : result.nodeId;
+                safeThis->selectedEdgeIndex = -1;
+                safeThis->refreshCompiledState();
+                safeThis->editStatusMessage = "Guide " + parameterField + " attached";
+                safeThis->repaint();
+            });
+
+    return true;
 }
 
 bool NodeCanvas::selectTrimeshVertexIndex(int vertexIndex) {

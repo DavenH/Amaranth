@@ -19,7 +19,8 @@ enum class TrimeshExpandedHitRegionKind {
     MorphControl,
     PrimaryAxis,
     LinkToggle,
-    VertexParameter
+    VertexParameter,
+    VertexGuideAttachment
 };
 
 struct TrimeshExpandedHitRegion {
@@ -98,6 +99,10 @@ public:
             juce::Point<float> position,
             juce::String& parameterId,
             float& value) const;
+    bool findVertexGuideAttachmentAt(
+            juce::Rectangle<float> content,
+            juce::Point<float> position,
+            juce::String& parameterId) const;
     bool vertexParameterValueForParameterAt(
             juce::Rectangle<float> content,
             const juce::String& parameterId,

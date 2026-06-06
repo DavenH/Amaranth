@@ -150,6 +150,20 @@ int TrimeshControlsComponent::getVertexParameterSliderCount() const {
     return count;
 }
 
+int TrimeshControlsComponent::getVertexGuideAttachmentButtonCount() const {
+    int count {};
+
+    for (const auto& region : controlRegions) {
+        const auto* button = dynamic_cast<PrimaryAxisButton*>(region.get());
+
+        if (button != nullptr && button->getRegionKind() == TrimeshExpandedHitRegionKind::VertexGuideAttachment) {
+            ++count;
+        }
+    }
+
+    return count;
+}
+
 void TrimeshControlsComponent::resized() {
     updateHitRegions();
 }
@@ -176,7 +190,8 @@ void TrimeshControlsComponent::updateHitRegions() {
         std::unique_ptr<Component> component;
 
         if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis
-                || region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
+                || region.kind == TrimeshExpandedHitRegionKind::LinkToggle
+                || region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment) {
             component = std::make_unique<PrimaryAxisButton>(*this, region);
         } else {
             component = std::make_unique<ControlSlider>(*this, region);
@@ -223,6 +238,12 @@ void TrimeshControlsComponent::beginControlDrag(
             if (widget.vertexParameterValueForParameterAt(contentBounds, activeParameterId, position, value)
                     && callbacks.beginVertexParameterEdit != nullptr) {
                 callbacks.beginVertexParameterEdit(activeParameterId, value);
+            }
+            break;
+
+        case TrimeshExpandedHitRegionKind::VertexGuideAttachment:
+            if (callbacks.showVertexGuideAttachmentMenu != nullptr) {
+                callbacks.showVertexGuideAttachmentMenu(region.parameterId);
             }
             break;
     }

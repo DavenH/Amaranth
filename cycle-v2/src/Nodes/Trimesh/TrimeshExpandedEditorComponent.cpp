@@ -34,6 +34,11 @@ void TrimeshExpandedEditorComponent::setCallbacks(Callbacks nextCallbacks) {
     controlCallbacks.beginVertexParameterEdit = callbacks.beginVertexParameterEdit;
     controlCallbacks.updateVertexParameterEdit = callbacks.updateVertexParameterEdit;
     controlCallbacks.endVertexParameterEdit = callbacks.endVertexParameterEdit;
+    controlCallbacks.showVertexGuideAttachmentMenu = [this](const String& parameterId) {
+        if (callbacks.showVertexGuideAttachmentMenu != nullptr) {
+            callbacks.showVertexGuideAttachmentMenu(vertexGuideParameterField(parameterId));
+        }
+    };
     controls.setCallbacks(std::move(controlCallbacks));
 
     auto safeThis = Component::SafePointer<TrimeshExpandedEditorComponent>(this);
@@ -191,6 +196,13 @@ void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
         return;
     }
 
+    if (widget.findVertexGuideAttachmentAt(content, event.position, parameterId)) {
+        if (callbacks.showVertexGuideAttachmentMenu != nullptr) {
+            callbacks.showVertexGuideAttachmentMenu(vertexGuideParameterField(parameterId));
+        }
+        return;
+    }
+
     if (widget.findVertexSelectionAt(node, content, event.position, vertexIndex)) {
         if (callbacks.selectVertex != nullptr) {
             callbacks.selectVertex(vertexIndex);
@@ -244,6 +256,10 @@ Rectangle<float> TrimeshExpandedEditorComponent::contentBounds() const {
     return panel.reduced(10.f, 8.f);
 }
 
+String TrimeshExpandedEditorComponent::vertexGuideParameterField(const String& parameterId) const {
+    return parameterId.fromLastOccurrenceOf(".", false, false);
+}
+
 MouseCursor TrimeshExpandedEditorComponent::cursorFor(Point<float> position) {
     if (closeButtonBounds().contains(position)) {
         return MouseCursor::PointingHandCursor;
@@ -257,6 +273,7 @@ MouseCursor TrimeshExpandedEditorComponent::cursorFor(Point<float> position) {
 
     if (widget.findPrimaryAxisAt(content, position, axisValue)
             || widget.findLinkToggleAt(content, position, axisValue)
+            || widget.findVertexGuideAttachmentAt(content, position, parameterId)
             || widget.findVertexSelectionAt(node, content, position, vertexIndex)) {
         return MouseCursor::PointingHandCursor;
     }

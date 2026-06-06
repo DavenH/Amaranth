@@ -9,6 +9,7 @@
 #include "../Graph/NodeGraph.h"
 #include "../Graph/GraphSerializer.h"
 #include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
+#include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPreviewExecutor.h"
 #include "../Runtime/GraphRuntime.h"
@@ -167,6 +168,7 @@ private:
     bool beginTrimeshVertexParameterEdit(const String& parameterId, float value);
     bool updateTrimeshVertexParameterEditValue(float value);
     void endTrimeshVertexParameterEdit();
+    bool showTrimeshGuideAttachmentMenu(const String& parameterField);
     bool selectTrimeshVertexIndex(int vertexIndex);
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
     Path createCablePath(

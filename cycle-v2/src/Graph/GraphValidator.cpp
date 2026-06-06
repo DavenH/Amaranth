@@ -26,6 +26,25 @@ const Port* findPort(const Node& node, const String& id, bool input) {
     return nullptr;
 }
 
+bool isTrimeshGuideTarget(const Node& node, const String& portId) {
+    if (node.kind != NodeKind::TrilinearMesh || !portId.startsWith("guide.vertex.")) {
+        return false;
+    }
+
+    const String suffix = portId.fromFirstOccurrenceOf("guide.vertex.", false, false);
+    const String vertexIndex = suffix.upToFirstOccurrenceOf(".", false, false);
+    const String field = suffix.fromFirstOccurrenceOf(".", false, false);
+
+    return !vertexIndex.isEmpty()
+        && vertexIndex.containsOnly("0123456789")
+        && (field == "time"
+            || field == "red"
+            || field == "blue"
+            || field == "phase"
+            || field == "amp"
+            || field == "curve");
+}
+
 bool isFixedWaveContextMismatch(const Node& sourceNode, const Node& destNode, const Port& dest) {
     GraphDomainResolver resolver;
 
@@ -75,6 +94,9 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
 
         const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
         const Port* dest = findPort(*destNode, edge.destPortId, true);
+        const bool trimeshGuideTarget = edge.attachment
+                && dest == nullptr
+                && isTrimeshGuideTarget(*destNode, edge.destPortId);
 
         if (source == nullptr) {
             addIssue(issues, GraphValidationCode::MissingSourcePort,
@@ -82,7 +104,7 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
             continue;
         }
 
-        if (dest == nullptr) {
+        if (dest == nullptr && !trimeshGuideTarget) {
             addIssue(issues, GraphValidationCode::MissingDestinationPort,
                      "Missing destination port: " + edge.destNodeId + "." + edge.destPortId, &edge);
             continue;
@@ -94,7 +116,12 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
                          "Attachments currently require an envelope source: " + edge.sourceNodeId, &edge);
             }
 
-            if (dest->purpose != PortPurpose::ScratchAttachment) {
+            if (trimeshGuideTarget && sourceNode->kind != NodeKind::GuideCurve) {
+                addIssue(issues, GraphValidationCode::InvalidAttachmentSource,
+                         "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId, &edge);
+            }
+
+            if (!trimeshGuideTarget && dest->purpose != PortPurpose::ScratchAttachment) {
                 addIssue(issues, GraphValidationCode::InvalidAttachmentDestination,
                          "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id, &edge);
             }
@@ -172,8 +199,37 @@ GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& gra
 
     const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
     const Port* dest = findPort(*destNode, edge.destPortId, true);
+    const bool trimeshGuideTarget = edge.attachment
+            && dest == nullptr
+            && isTrimeshGuideTarget(*destNode, edge.destPortId);
 
     if (source == nullptr || dest == nullptr) {
+        if (source != nullptr && trimeshGuideTarget) {
+            if (source->domain != PortDomain::EnvelopeSignal) {
+                return {
+                        GraphValidationCode::InvalidAttachmentSource,
+                        "Attachments currently require an envelope source: " + edge.sourceNodeId,
+                        edge.sourceNodeId,
+                        edge.sourcePortId,
+                        edge.destNodeId,
+                        edge.destPortId
+                };
+            }
+
+            if (sourceNode->kind != NodeKind::GuideCurve) {
+                return {
+                        GraphValidationCode::InvalidAttachmentSource,
+                        "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId,
+                        edge.sourceNodeId,
+                        edge.sourcePortId,
+                        edge.destNodeId,
+                        edge.destPortId
+                };
+            }
+
+            return {};
+        }
+
         return {
                 source == nullptr ? GraphValidationCode::MissingSourcePort : GraphValidationCode::MissingDestinationPort,
                 source == nullptr
@@ -198,7 +254,7 @@ GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& gra
             };
         }
 
-        if (dest->purpose != PortPurpose::ScratchAttachment) {
+        if (!trimeshGuideTarget && dest->purpose != PortPurpose::ScratchAttachment) {
             return {
                     GraphValidationCode::InvalidAttachmentDestination,
                     "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id,

@@ -1,9 +1,11 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "../src/Graph/GraphEditor.h"
 #include "../src/Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshControlsComponent.h"
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
+#include "../src/Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshNodeModel.h"
 #include "../src/Nodes/Trimesh/TrimeshPanelBridge.h"
@@ -350,6 +352,34 @@ TEST_CASE("Trimesh node model still reads legacy indexed vertex edit parameters"
     REQUIRE(vertexParameters[4].value == Catch::Approx(0.31f));
 }
 
+TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes", "[cycle-v2][nodes][trimesh]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 10.f, 10.f }).succeeded());
+    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 20.f, 20.f }).succeeded());
+    REQUIRE(GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+            graph,
+            "guide2",
+            "waveMesh",
+            2,
+            "amp").succeeded());
+
+    const auto items = TrimeshGuideAttachmentMenu::itemsFor(
+            graph,
+            "waveMesh",
+            2,
+            "amp");
+
+    REQUIRE(items.size() == 3);
+    REQUIRE(items[0].label == "new...");
+    REQUIRE(items[0].createNew);
+    REQUIRE(items[1].label == "1");
+    REQUIRE(items[1].guideNodeId == "guide");
+    REQUIRE_FALSE(items[1].attached);
+    REQUIRE(items[2].label == "2");
+    REQUIRE(items[2].guideNodeId == "guide2");
+    REQUIRE(items[2].attached);
+}
+
 TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
@@ -549,12 +579,13 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     controls.setNode(node);
     controls.setContentBounds({ 10.f, 42.f, 880.f, 570.f });
 
-    REQUIRE(controls.getControlRegionCount() == 15);
+    REQUIRE(controls.getControlRegionCount() == 21);
     REQUIRE(controls.getMorphSliderCount() == 3);
     REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
     REQUIRE(controls.getLinkToggleButtonCount() == 3);
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
-    REQUIRE(controls.getNumChildComponents() == 15);
+    REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 6);
+    REQUIRE(controls.getNumChildComponents() == 21);
 }
 
 TEST_CASE("Trimesh panel bridge publishes rasterizer intercepts from the shared rasterizer", "[cycle-v2][nodes][trimesh]") {

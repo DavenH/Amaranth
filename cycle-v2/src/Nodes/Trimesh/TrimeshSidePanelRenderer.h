@@ -45,6 +45,7 @@ public:
             juce::Rectangle<float> parameterArea,
             int parameterIndex);
     static juce::Rectangle<float> vertexParameterRailBounds(juce::Rectangle<float> parameterRow);
+    static juce::Rectangle<float> vertexParameterGuideBounds(juce::Rectangle<float> parameterRow);
 };
 
 }

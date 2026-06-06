@@ -22,6 +22,7 @@ public:
         std::function<void(const juce::String&, float)> beginVertexParameterEdit;
         std::function<void(float)> updateVertexParameterEdit;
         std::function<void()> endVertexParameterEdit;
+        std::function<void(const juce::String&)> showVertexGuideAttachmentMenu;
     };
 
     explicit TrimeshControlsComponent(TrimeshWidget& widget);
@@ -35,6 +36,7 @@ public:
     int getPrimaryAxisButtonCount() const;
     int getLinkToggleButtonCount() const;
     int getVertexParameterSliderCount() const;
+    int getVertexGuideAttachmentButtonCount() const;
 
     void resized() override;
 

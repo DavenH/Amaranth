@@ -615,4 +615,8 @@ Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRailBounds(Rectangle<f
             .withSizeKeepingCentre(jmax(4.f, parameterRow.getWidth() - 8.f), 8.f);
 }
 
+Rectangle<float> TrimeshSidePanelRenderer::vertexParameterGuideBounds(Rectangle<float> parameterRow) {
+    return vertexGuideBounds(parameterRow);
+}
+
 }

@@ -24,6 +24,7 @@ public:
         std::function<void(const juce::String&, float)> beginVertexParameterEdit;
         std::function<void(float)> updateVertexParameterEdit;
         std::function<void()> endVertexParameterEdit;
+        std::function<void(const juce::String&)> showVertexGuideAttachmentMenu;
         std::function<void(int)> selectVertex;
     };
 
@@ -52,6 +53,7 @@ private:
 
     juce::Rectangle<float> closeButtonBounds() const;
     juce::Rectangle<float> contentBounds() const;
+    juce::String vertexGuideParameterField(const juce::String& parameterId) const;
     juce::MouseCursor cursorFor(juce::Point<float> position);
     void updateCursor(juce::Point<float> position);
     void updatePanelHosts();

@@ -349,6 +349,27 @@ bool TrimeshWidget::findVertexParameterAt(
     return false;
 }
 
+bool TrimeshWidget::findVertexGuideAttachmentAt(
+        Rectangle<float> content,
+        Point<float> position,
+        String& parameterId) const {
+    const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
+
+    for (int i = 0; i < kVertexParameterCount; ++i) {
+        const Rectangle<float> row = vertexParameterRowBounds(parameterArea, i);
+        const Rectangle<float> guide = TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
+
+        if (!guide.expanded(4.f).contains(position)) {
+            continue;
+        }
+
+        parameterId = vertexParameterId(i);
+        return true;
+    }
+
+    return false;
+}
+
 bool TrimeshWidget::vertexParameterValueForParameterAt(
         Rectangle<float> content,
         const String& parameterId,
@@ -432,6 +453,12 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(R
         regions.push_back({
                 TrimeshExpandedHitRegionKind::VertexParameter,
                 vertexParameterRailBounds(row).expanded(5.f, 8.f),
+                vertexParameterId(i),
+                {}
+        });
+        regions.push_back({
+                TrimeshExpandedHitRegionKind::VertexGuideAttachment,
+                TrimeshSidePanelRenderer::vertexParameterGuideBounds(row).expanded(4.f),
                 vertexParameterId(i),
                 {}
         });
