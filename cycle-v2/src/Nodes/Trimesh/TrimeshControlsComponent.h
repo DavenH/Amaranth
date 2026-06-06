@@ -30,12 +30,14 @@ public:
     void setNode(const Node& nextNode);
     void setContentBounds(juce::Rectangle<float> nextContentBounds);
     int getControlRegionCount() const { return (int) controlRegions.size(); }
+    int getMorphSliderCount() const;
     int getPrimaryAxisButtonCount() const;
 
     void resized() override;
 
 private:
     class DragRegionComponent;
+    class MorphSlider;
     class PrimaryAxisButton;
 
     enum class DragTarget {

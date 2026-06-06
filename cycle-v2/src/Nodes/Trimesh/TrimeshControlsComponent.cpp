@@ -39,6 +39,45 @@ private:
     TrimeshExpandedHitRegion region;
 };
 
+class TrimeshControlsComponent::MorphSlider : public Slider {
+public:
+    MorphSlider(
+            TrimeshControlsComponent& owner,
+            TrimeshExpandedHitRegion region) :
+            Slider(region.parameterId)
+        ,   owner(owner)
+        ,   region(std::move(region)) {
+        setRange(0.0, 1.0, 0.0);
+        setSliderStyle(Slider::LinearHorizontal);
+        setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+        setScrollWheelEnabled(false);
+        setOpaque(false);
+        setMouseCursor(MouseCursor::LeftRightResizeCursor);
+    }
+
+    void paint(Graphics&) override {}
+
+    void mouseDown(const MouseEvent& event) override {
+        owner.beginControlDrag(region, parentPosition(event.position));
+    }
+
+    void mouseDrag(const MouseEvent& event) override {
+        owner.dragControl(region, parentPosition(event.position));
+    }
+
+    void mouseUp(const MouseEvent&) override {
+        owner.endControlDrag();
+    }
+
+private:
+    Point<float> parentPosition(Point<float> localPosition) const {
+        return getBounds().toFloat().getTopLeft() + localPosition;
+    }
+
+    TrimeshControlsComponent& owner;
+    TrimeshExpandedHitRegion region;
+};
+
 class TrimeshControlsComponent::PrimaryAxisButton : public Button {
 public:
     PrimaryAxisButton(
@@ -97,6 +136,18 @@ int TrimeshControlsComponent::getPrimaryAxisButtonCount() const {
     return count;
 }
 
+int TrimeshControlsComponent::getMorphSliderCount() const {
+    int count {};
+
+    for (const auto& region : controlRegions) {
+        if (dynamic_cast<MorphSlider*>(region.get()) != nullptr) {
+            ++count;
+        }
+    }
+
+    return count;
+}
+
 void TrimeshControlsComponent::resized() {
     updateHitRegions();
 }
@@ -124,6 +175,8 @@ void TrimeshControlsComponent::updateHitRegions() {
 
         if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis) {
             component = std::make_unique<PrimaryAxisButton>(*this, region);
+        } else if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
+            component = std::make_unique<MorphSlider>(*this, region);
         } else {
             component = std::make_unique<DragRegionComponent>(*this, region);
         }
