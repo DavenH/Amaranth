@@ -235,6 +235,7 @@ private:
         trimeshDsp.setMorphPosition(meshMorphFromParameters(context.parameters));
         trimeshDsp.setPrimaryViewAxis(primaryAxisFromParameter(
                 parameterString(context.parameters, "primaryAxis", "yellow")));
+        trimeshDsp.setCyclic(outputPort.domain == PortDomain::TimeSignal);
         trimeshDsp.renderCycle(context.frameCount, outputPort.domain, outputPort.channelLayout, context.output);
         publishSingleOutput(context);
     }

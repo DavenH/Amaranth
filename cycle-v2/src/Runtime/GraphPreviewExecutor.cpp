@@ -62,6 +62,16 @@ GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, 
         PreviewProcessContext context;
         context.pointCount = pointCount;
         context.parameters = step.parameters;
+        context.outputPorts.reserve(step.outputs.size());
+
+        for (const auto& output : step.outputs) {
+            context.outputPorts.push_back({
+                    output.portId,
+                    output.domain,
+                    output.channelLayout
+            });
+        }
+
         context.inputSummary = std::move(inputSummary);
         processor->render(context);
 

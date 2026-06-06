@@ -80,6 +80,14 @@ MorphPosition meshMorphFromParameters(const std::vector<NodeParameter>& paramete
     };
 }
 
+PortDomain primaryOutputDomain(const std::vector<PreviewOutputPort>& outputPorts) {
+    if (outputPorts.empty()) {
+        return PortDomain::TimeSignal;
+    }
+
+    return outputPorts.front().domain;
+}
+
 void normalizeBipolarBlock(AudioProcessBlock& block) {
     if (block.samples.empty()) {
         return;
@@ -192,6 +200,8 @@ private:
         const MorphPosition morph = meshMorphFromParameters(context.parameters);
         const int primaryAxis = primaryAxisFromParameter(
                 parameterString(context.parameters, "primaryAxis", "yellow"));
+        const PortDomain outputDomain = primaryOutputDomain(context.outputPorts);
+        const bool cyclic = outputDomain == PortDomain::TimeSignal;
         const size_t columnCount = std::max<size_t>(8, context.pointCount / 2);
 
         TrimeshBlockwiseDsp blockwiseDsp;
@@ -199,22 +209,24 @@ private:
         blockwiseDsp.setMesh(&mesh);
         blockwiseDsp.setMorphPosition(morph);
         blockwiseDsp.setPrimaryViewAxis(primaryAxis);
+        blockwiseDsp.setCyclic(cyclic);
         blockwiseDsp.renderCycle(
                 context.pointCount,
-                PortDomain::TimeSignal,
+                outputDomain,
                 ChannelLayout::LinkedStereo,
                 slice);
         normalizeBipolarBlock(slice);
         context.secondary = std::move(slice.samples);
 
         TrimeshGridwiseDsp gridwiseDsp;
+        gridwiseDsp.setCyclic(cyclic);
         const auto columns = gridwiseDsp.renderColumns(
                 mesh,
                 morph,
                 primaryAxis,
                 columnCount,
                 context.pointCount,
-                PortDomain::TimeSignal,
+                outputDomain,
                 ChannelLayout::LinkedStereo);
 
         context.primary.clear();

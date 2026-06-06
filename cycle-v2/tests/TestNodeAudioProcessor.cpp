@@ -150,6 +150,31 @@ TEST_CASE("Mesh source processor generates a deterministic operand when unconnec
             < *std::max_element(context.output.samples.begin(), context.output.samples.end()));
 }
 
+TEST_CASE("Mesh source processor uses non-cyclic rendering for spectral outputs", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+    auto timeProcessor = factory.create(AudioModuleRole::MeshSource);
+    auto spectralProcessor = factory.create(AudioModuleRole::MeshSource);
+
+    AudioProcessContext timeContext;
+    timeContext.frameCount = 12;
+    timeContext.outputPorts = {
+            { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
+    };
+
+    AudioProcessContext spectralContext;
+    spectralContext.frameCount = 12;
+    spectralContext.outputPorts = {
+            { "out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo }
+    };
+
+    timeProcessor->process(timeContext);
+    spectralProcessor->process(spectralContext);
+
+    REQUIRE(timeContext.output.domain == PortDomain::TimeSignal);
+    REQUIRE(spectralContext.output.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(timeContext.output.samples != spectralContext.output.samples);
+}
+
 TEST_CASE("Mesh source processor defensively ignores unexpected signal inputs", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 
