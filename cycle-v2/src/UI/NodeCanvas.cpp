@@ -25,6 +25,9 @@ constexpr float kPaletteRowHeight = 30.f;
 constexpr float kExpandedEditorScale = 0.90f;
 constexpr float kExpandedEditorMinMargin = 18.f;
 constexpr float kExpandedEditorHeaderHeight = 34.f;
+constexpr float kVoiceEditorLabelWidth = 78.f;
+constexpr float kVoiceEditorRowHeight = 23.f;
+constexpr float kVoiceEditorRowGap = 3.f;
 constexpr bool kUseGlCanvasUnderlay = true;
 constexpr bool kUseGlCanvasEdges = false;
 constexpr bool kUseGlNodeShells = false;
@@ -148,6 +151,7 @@ bool isPreviewableNode(NodeKind kind) {
         case NodeKind::WaveSource:
         case NodeKind::ImageSource:
         case NodeKind::TrilinearMesh:
+        case NodeKind::VoiceContext:
         case NodeKind::Envelope:
         case NodeKind::GuideCurve:
         case NodeKind::ImpulseResponse:
@@ -210,7 +214,7 @@ Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, flo
     const Rectangle<float> body = nodeBounds.withTrimmedTop(42.f * zoom);
     const float width = jmin(nodeBounds.getWidth() - 96.f * zoom, 64.f * zoom);
     return Rectangle<float>(width, 28.f * zoom)
-            .withCentre({ nodeBounds.getCentreX(), body.getCentreY() });
+            .withCentre({ nodeBounds.getCentreX(), body.getY() + 28.f * zoom });
 }
 
 Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
@@ -218,6 +222,17 @@ Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
     const float width = jmin(available.getWidth(), jmax(420.f, componentBounds.getWidth() * kExpandedEditorScale));
     const float height = jmin(available.getHeight(), jmax(300.f, componentBounds.getHeight() * kExpandedEditorScale));
     return Rectangle<float>(width, height).withCentre(available.getCentre());
+}
+
+Rectangle<float> expandedEditorBoundsForNode(Rectangle<float> componentBounds, const Node* node) {
+    if (node != nullptr && node->kind == NodeKind::VoiceContext) {
+        const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
+        const float width = jmin(available.getWidth(), 334.f);
+        const float height = jmin(available.getHeight(), 208.f);
+        return Rectangle<float>(width, height).withCentre(available.getCentre());
+    }
+
+    return expandedEditorBounds(componentBounds);
 }
 
 Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {
@@ -228,6 +243,11 @@ Rectangle<float> expandedEditorContentBounds(Rectangle<float> componentBounds) {
     Rectangle<float> panel = expandedEditorBounds(componentBounds);
     panel.removeFromTop(kExpandedEditorHeaderHeight);
     return panel.reduced(8.f, 8.f);
+}
+
+Rectangle<float> voiceContextEditorColumnBounds(Rectangle<float> panel) {
+    panel.removeFromTop(30.f);
+    return panel.reduced(26.f, 18.f);
 }
 
 String voiceDomainForNode(const Node& node) {
@@ -241,6 +261,202 @@ String voiceDomainButtonLabel(const Node& node) {
 
 String nextVoiceDomain(const Node& node) {
     return voiceDomainForNode(node) == "spectral" ? "waveform" : "spectral";
+}
+
+bool expandedEditorBlocksCanvas(const Node* node) {
+    return node != nullptr && node->kind != NodeKind::VoiceContext;
+}
+
+void drawVoiceContextOctaveSlider(Graphics& g, Rectangle<float> area, const Node& node, float zoom) {
+    const Colour colour = colourForDomain(PortDomain::PitchSignal);
+    const float centreY = area.getCentreY();
+    const float left = area.getX() + 2.f * zoom;
+    const float right = area.getRight() - 2.f * zoom;
+    const float tickHeight = jmax(5.f * zoom, area.getHeight() * 0.20f);
+    const float tickStroke = jmax(1.f, 1.15f * zoom);
+    const float thumbSize = jmax(11.f * zoom, area.getHeight() * 0.44f);
+    const int octave = jlimit(-2, 2, parameterValueForNode(node, "octave", "0").getIntValue());
+    const float thumbX = jmap((float) (octave + 2), 0.f, 4.f, left, right);
+
+    g.setColour(kMutedText.withAlpha(0.28f));
+    g.drawLine(Line<float>({ left, centreY }, { right, centreY }), jmax(1.f, 1.4f * zoom));
+    g.setColour(colour.withAlpha(0.70f));
+    g.drawLine(Line<float>({ left, centreY }, { thumbX, centreY }), jmax(1.f, 2.f * zoom));
+
+    for (int i = -2; i <= 2; ++i) {
+        const float x = jmap((float) (i + 2), 0.f, 4.f, left, right);
+        const bool active = i == octave;
+
+        g.setColour(active ? colour.withAlpha(0.92f) : kMutedText.withAlpha(0.55f));
+        g.drawLine(Line<float>({ x, centreY - tickHeight * 0.5f }, { x, centreY + tickHeight * 0.5f }), tickStroke);
+    }
+
+    g.setColour(Colour(0xff071015).withAlpha(0.72f));
+    g.fillEllipse(Rectangle<float>(thumbSize + 4.f * zoom, thumbSize + 4.f * zoom).withCentre({ thumbX, centreY }));
+    g.setColour(colour.withAlpha(0.98f));
+    g.fillEllipse(Rectangle<float>(thumbSize, thumbSize).withCentre({ thumbX, centreY }));
+    g.setColour(Colours::white.withAlpha(0.22f));
+    g.drawEllipse(Rectangle<float>(thumbSize, thumbSize).withCentre({ thumbX, centreY }), jmax(1.f, 1.f * zoom));
+}
+
+void drawVoiceContextSourceSelector(Graphics& g, Rectangle<float> area, const Node& node) {
+    Rectangle<float> labelArea = area.removeFromLeft(kVoiceEditorLabelWidth);
+    Rectangle<float> control = area.reduced(0.f, 2.f);
+    const bool spectral = voiceDomainForNode(node) == "spectral";
+    const Colour waveformColour = colourForDomain(PortDomain::TimeSignal);
+    const Colour spectralColour = colourForDomain(PortDomain::SpectralMagnitudeSignal);
+    const Colour activeColour = spectral ? spectralColour : waveformColour;
+
+    g.setFont(FontOptions(10.8f, Font::bold));
+    g.setColour(kMutedText.withAlpha(0.76f));
+    g.drawText("Source", labelArea, Justification::centredLeft);
+
+    Rectangle<float> waveformLabel = control.removeFromLeft(62.f);
+    control.removeFromLeft(8.f);
+    Rectangle<float> switchArea = control.removeFromLeft(42.f).reduced(1.f, 2.f);
+    control.removeFromLeft(8.f);
+    Rectangle<float> spectralLabel = control.removeFromLeft(56.f);
+    const float knobSize = switchArea.getHeight() - 4.f;
+    const Point<float> knobCentre(
+            spectral ? switchArea.getRight() - switchArea.getHeight() * 0.5f : switchArea.getX() + switchArea.getHeight() * 0.5f,
+            switchArea.getCentreY());
+
+    g.setColour(spectral ? kMutedText.withAlpha(0.62f) : kText.withAlpha(0.92f));
+    g.drawText("Waveform", waveformLabel, Justification::centredRight);
+    g.setColour(spectral ? kText.withAlpha(0.92f) : kMutedText.withAlpha(0.62f));
+    g.drawText("Spectral", spectralLabel, Justification::centredLeft);
+    g.setColour(Colour(0xff0e1318));
+    g.fillRoundedRectangle(switchArea, switchArea.getHeight() * 0.5f);
+    g.setColour(activeColour.withAlpha(0.62f));
+    g.drawRoundedRectangle(switchArea, switchArea.getHeight() * 0.5f, 1.1f);
+    g.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre(knobCentre));
+}
+
+void drawVoiceContextSlider(
+        Graphics& g,
+        Rectangle<float> area,
+        const String& label,
+        float normalized,
+        Colour colour) {
+    const float trackY = area.getCentreY();
+    const float labelWidth = kVoiceEditorLabelWidth;
+    Rectangle<float> labelArea = area.removeFromLeft(labelWidth);
+    Rectangle<float> valueArea = area.reduced(2.f, 0.f);
+    const float left = valueArea.getX();
+    const float right = valueArea.getRight();
+    const float knobX = jmap(jlimit(0.f, 1.f, normalized), 0.f, 1.f, left, right);
+    const float knobSize = jmax(8.f, area.getHeight() * 0.35f);
+
+    g.setFont(FontOptions(11.f, Font::bold));
+    g.setColour(kMutedText.withAlpha(0.76f));
+    g.drawText(label, labelArea, Justification::centredLeft);
+    g.setColour(kMutedText.withAlpha(0.30f));
+    g.drawLine(Line<float>({ left, trackY }, { right, trackY }), 1.4f);
+    g.setColour(colour.withAlpha(0.76f));
+    g.drawLine(Line<float>({ left, trackY }, { knobX, trackY }), 2.2f);
+    g.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre({ knobX, trackY }));
+}
+
+void drawVoiceContextCheckbox(Graphics& g, Rectangle<float> area, const String& label, bool checked) {
+    Rectangle<float> labelArea = area.removeFromLeft(kVoiceEditorLabelWidth);
+    const float box = 15.f;
+    const Rectangle<float> checkBox(box, box);
+    const Rectangle<float> placed = checkBox.withCentre({ area.getX() + box * 0.5f, area.getCentreY() });
+    const Colour colour = colourForDomain(PortDomain::PitchSignal);
+
+    g.setColour(checked ? colour.withAlpha(0.18f) : Colour(0xff0e1318));
+    g.fillRoundedRectangle(placed, 3.f);
+    g.setColour(checked ? colour.withAlpha(0.86f) : kMutedText.withAlpha(0.70f));
+    g.drawRoundedRectangle(placed, 3.f, 1.3f);
+
+    if (checked) {
+        Path tick;
+        tick.startNewSubPath(placed.getX() + 4.f, placed.getCentreY());
+        tick.lineTo(placed.getCentreX() - 1.f, placed.getBottom() - 4.f);
+        tick.lineTo(placed.getRight() - 3.5f, placed.getY() + 4.f);
+        g.strokePath(tick, PathStrokeType(1.8f, PathStrokeType::curved, PathStrokeType::rounded));
+    }
+
+    g.setFont(FontOptions(11.f, Font::bold));
+    g.setColour(kMutedText.withAlpha(0.76f));
+    g.drawText(label, labelArea, Justification::centredLeft);
+}
+
+void drawVoiceContextStopSlider(
+        Graphics& g,
+        Rectangle<float> area,
+        const String& label,
+        const std::vector<String>& values,
+        const String& value,
+        Colour colour) {
+    Rectangle<float> labelArea = area.removeFromLeft(kVoiceEditorLabelWidth);
+    Rectangle<float> control = area.reduced(2.f, 0.f);
+    const float trackY = control.getCentreY() - 2.f;
+    const float left = control.getX();
+    const float right = control.getRight();
+    int activeIndex {};
+
+    for (int i = 0; i < (int) values.size(); ++i) {
+        if (values[(size_t) i] == value) {
+            activeIndex = i;
+            break;
+        }
+    }
+
+    const float activeX = values.size() <= 1
+            ? left
+            : jmap((float) activeIndex, 0.f, (float) values.size() - 1.f, left, right);
+
+    g.setFont(FontOptions(11.f, Font::bold));
+    g.setColour(kMutedText.withAlpha(0.76f));
+    g.drawText(label, labelArea, Justification::centredLeft);
+    g.setColour(kMutedText.withAlpha(0.28f));
+    g.drawLine(Line<float>({ left, trackY }, { right, trackY }), 1.4f);
+    g.setColour(colour.withAlpha(0.70f));
+    g.drawLine(Line<float>({ left, trackY }, { activeX, trackY }), 2.f);
+
+    for (int i = 0; i < (int) values.size(); ++i) {
+        const float x = values.size() <= 1
+                ? left
+                : jmap((float) i, 0.f, (float) values.size() - 1.f, left, right);
+        const bool active = i == activeIndex;
+
+        g.setColour(active ? colour.withAlpha(0.92f) : kMutedText.withAlpha(0.52f));
+        g.fillEllipse(Rectangle<float>(active ? 9.f : 5.f, active ? 9.f : 5.f).withCentre({ x, trackY }));
+        g.setFont(FontOptions(8.5f, Font::bold));
+        g.setColour(active ? kText.withAlpha(0.90f) : kMutedText.withAlpha(0.66f));
+        g.drawText(values[(size_t) i], Rectangle<float>(x - 14.f, trackY + 5.f, 28.f, 12.f), Justification::centred);
+    }
+}
+
+void drawVoiceContextEditor(Graphics& g, Rectangle<float> content, const Node& node) {
+    const Colour colour = colourForDomain(PortDomain::PitchSignal);
+    Rectangle<float> column = content;
+    const float pitch = parameterValueForNode(node, "pitch", "0").getFloatValue();
+    const bool portamento = parameterValueForNode(node, "portamento", "0") == "1"
+            || parameterValueForNode(node, "portamento", "false") == "true";
+
+    drawVoiceContextSourceSelector(g, column.removeFromTop(kVoiceEditorRowHeight), node);
+    column.removeFromTop(kVoiceEditorRowGap);
+
+    Rectangle<float> octaveRow = column.removeFromTop(kVoiceEditorRowHeight);
+    g.setFont(FontOptions(11.f, Font::bold));
+    g.setColour(kMutedText.withAlpha(0.76f));
+    g.drawText("Octave", octaveRow.removeFromLeft(kVoiceEditorLabelWidth), Justification::centredLeft);
+    drawVoiceContextOctaveSlider(g, octaveRow.reduced(2.f, 0.f), node, 1.f);
+    column.removeFromTop(kVoiceEditorRowGap);
+
+    drawVoiceContextSlider(g, column.removeFromTop(kVoiceEditorRowHeight), "Pitch", (pitch + 12.f) / 24.f, colour);
+    column.removeFromTop(kVoiceEditorRowGap);
+    drawVoiceContextCheckbox(g, column.removeFromTop(kVoiceEditorRowHeight), "Portamento", portamento);
+    column.removeFromTop(kVoiceEditorRowGap);
+    drawVoiceContextStopSlider(
+            g,
+            column.removeFromTop(kVoiceEditorRowHeight),
+            "Oversampling",
+            { "1x", "2x", "4x" },
+            parameterValueForNode(node, "oversampling", "1x"),
+            colour);
 }
 
 Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
@@ -585,9 +801,9 @@ NodeCanvas::~NodeCanvas() {
 void NodeCanvas::paint(Graphics& g) {
     const Node* expandedNode = findNode(expandedNodeId);
 
-    if (expandedNode != nullptr) {
+    if (expandedEditorBlocksCanvas(expandedNode)) {
         g.saveState();
-        g.excludeClipRegion(expandedEditorBounds(getLocalBounds().toFloat()).toNearestInt().expanded(2));
+        g.excludeClipRegion(expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode).toNearestInt().expanded(2));
     }
 
     drawGrid(g);
@@ -599,8 +815,11 @@ void NodeCanvas::paint(Graphics& g) {
     drawNodePalette(g);
     drawHoverConsole(g);
 
-    if (expandedNode != nullptr) {
+    if (expandedEditorBlocksCanvas(expandedNode)) {
         g.restoreState();
+    }
+
+    if (expandedNode != nullptr) {
         if (expandedNode->kind != NodeKind::TrilinearMesh) {
             drawExpandedEditor(g, *expandedNode);
         }
@@ -633,9 +852,12 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     expandedEditorDragCaptured = false;
 
     if (expandedNodeId.isNotEmpty()) {
-        const auto panel = expandedEditorBounds(getLocalBounds().toFloat());
-        const auto closeButton = expandedEditorCloseButton(panel);
         const Node* expandedNode = findNode(expandedNodeId);
+        const auto panel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
+        auto closeButton = expandedEditorCloseButton(panel);
+        if (expandedNode != nullptr && expandedNode->kind == NodeKind::VoiceContext) {
+            closeButton = Rectangle<float>(18.f, 18.f).withCentre({ panel.getRight() - 18.f, panel.getY() + 15.f });
+        }
 
         if (expandedNode != nullptr && expandedNode->kind == NodeKind::TrilinearMesh) {
             repaint();
@@ -645,6 +867,13 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (closeButton.contains(event.position)) {
             expandedNodeId = {};
             repaint();
+            return;
+        }
+
+        if (expandedNode != nullptr
+                && expandedNode->kind == NodeKind::VoiceContext
+                && panel.contains(event.position)
+                && handleVoiceContextEditorClick(event.position)) {
             return;
         }
 
@@ -825,7 +1054,8 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
-    if (expandedNodeId.isNotEmpty() && expandedEditorBounds(getLocalBounds().toFloat()).contains(event.position)) {
+    const Node* expandedNode = findNode(expandedNodeId);
+    if (expandedNode != nullptr && expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode).contains(event.position)) {
         repaint();
         return;
     }
@@ -994,8 +1224,9 @@ void NodeCanvas::drawGrid(Graphics& g) {
 void NodeCanvas::drawGlEdges() {
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
-    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
-    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
+    const Node* expandedNode = findNode(expandedNodeId);
+    const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
+    const Rectangle<float> expandedPanel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -1046,8 +1277,9 @@ void NodeCanvas::drawGlEdges() {
 
 void NodeCanvas::drawGlNodeShells() {
     const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
-    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
-    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
+    const Node* expandedNode = findNode(expandedNodeId);
+    const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
+    const Rectangle<float> expandedPanel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
 
     for (const auto& node : graph.getNodes()) {
         const Rectangle<float> bounds = toScreen(node.bounds);
@@ -1088,8 +1320,9 @@ void NodeCanvas::drawEdges(Graphics& g) {
 
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
-    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
-    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
+    const Node* expandedNode = findNode(expandedNodeId);
+    const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
+    const Rectangle<float> expandedPanel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -1193,7 +1426,9 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
     const PortSide destSide = connectingPort.input ? port->side : PortSide::Left;
     const Path cable = createCablePath(source, dest, sourceSide, destSide, false);
 
-    if (expandedNodeId.isNotEmpty() && cable.getBounds().intersects(expandedEditorBounds(getLocalBounds().toFloat()))) {
+    const Node* expandedNode = findNode(expandedNodeId);
+    if (expandedEditorBlocksCanvas(expandedNode)
+            && cable.getBounds().intersects(expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode))) {
         return;
     }
 
@@ -1217,8 +1452,9 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
 
 void NodeCanvas::drawNodes(Graphics& g) {
     const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
-    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
-    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
+    const Node* expandedNode = findNode(expandedNodeId);
+    const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
+    const Rectangle<float> expandedPanel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
 
     for (const auto& node : graph.getNodes()) {
         const Rectangle<float> nodeBounds = toScreen(node.bounds);
@@ -1639,9 +1875,10 @@ void NodeCanvas::drawEnvelopeCurve(Graphics& g, Rectangle<float> area) {
 }
 
 void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
-    Rectangle<float> panel = expandedEditorBounds(getLocalBounds().toFloat());
+    Rectangle<float> panel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), &node);
     const Rectangle<float> outerPanel = panel;
     const bool isTrimeshEditor = node.kind == NodeKind::TrilinearMesh;
+    const bool isVoiceEditor = node.kind == NodeKind::VoiceContext;
 
     if (isTrimeshEditor) {
         const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
@@ -1663,10 +1900,10 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
         g.fillRoundedRectangle(panel, 8.f);
     }
 
-    g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.72f));
-    g.drawRoundedRectangle(panel, 8.f, 1.5f);
+    g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(isVoiceEditor ? 0.32f : 0.72f));
+    g.drawRoundedRectangle(panel, 8.f, isVoiceEditor ? 1.1f : 1.5f);
 
-    auto header = panel.removeFromTop(kExpandedEditorHeaderHeight);
+    auto header = panel.removeFromTop(isVoiceEditor ? 30.f : kExpandedEditorHeaderHeight);
     if (!isTrimeshEditor) {
         g.setColour(Colour(0xff202833));
         g.fillRoundedRectangle(header, 8.f);
@@ -1678,27 +1915,39 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     }
 
     g.setColour(kText);
-    g.setFont(FontOptions(14.f, Font::bold));
+    g.setFont(FontOptions(isVoiceEditor ? 13.2f : 14.f, Font::bold));
     g.drawText(node.title, header.reduced(13.f, 4.f), Justification::centredLeft);
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(10.f));
-    g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
+
+    if (!isVoiceEditor) {
+        g.setColour(kMutedText);
+        g.setFont(FontOptions(10.f));
+        g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
+    }
 
     Rectangle<float> closeButton = expandedEditorCloseButton(outerPanel);
+    if (isVoiceEditor) {
+        closeButton = Rectangle<float>(18.f, 18.f).withCentre({ outerPanel.getRight() - 18.f, header.getCentreY() });
+    }
     g.setColour(Colour(0xff0e1318));
     g.fillEllipse(closeButton);
-    g.setColour(Colour(0xff354050));
-    g.drawEllipse(closeButton, 1.f);
-    g.setColour(kText);
-    g.drawLine(closeButton.getX() + 7.f, closeButton.getY() + 7.f,
-               closeButton.getRight() - 7.f, closeButton.getBottom() - 7.f, 1.4f);
-    g.drawLine(closeButton.getRight() - 7.f, closeButton.getY() + 7.f,
-               closeButton.getX() + 7.f, closeButton.getBottom() - 7.f, 1.4f);
+    g.setColour(Colour(0xff354050).withAlpha(isVoiceEditor ? 0.62f : 1.f));
+    g.drawEllipse(closeButton, isVoiceEditor ? 0.8f : 1.f);
+    g.setColour(kText.withAlpha(isVoiceEditor ? 0.82f : 1.f));
+    const float crossInset = isVoiceEditor ? 5.5f : 7.f;
+    g.drawLine(closeButton.getX() + crossInset, closeButton.getY() + crossInset,
+               closeButton.getRight() - crossInset, closeButton.getBottom() - crossInset, isVoiceEditor ? 1.2f : 1.4f);
+    g.drawLine(closeButton.getRight() - crossInset, closeButton.getY() + crossInset,
+               closeButton.getX() + crossInset, closeButton.getBottom() - crossInset, isVoiceEditor ? 1.2f : 1.4f);
 
     auto content = isTrimeshEditor ? panel.reduced(10.f, 8.f) : panel.reduced(18.f, 16.f);
 
     if (isTrimeshEditor) {
         trimeshWidgetFor(node.id).paintExpanded(g, node, content);
+        return;
+    }
+
+    if (node.kind == NodeKind::VoiceContext) {
+        drawVoiceContextEditor(g, voiceContextEditorColumnBounds(outerPanel), node);
         return;
     }
 
@@ -2822,6 +3071,125 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
     refreshCompiledState();
     editStatusMessage = "Voice start domain: " + domain;
     return true;
+}
+
+bool NodeCanvas::setVoiceContextParameter(
+        const String& parameterId,
+        const String& label,
+        const String& value,
+        const String& statusMessage) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::VoiceContext) {
+        return false;
+    }
+
+    if (parameterValueForNode(*node, parameterId) == value) {
+        return true;
+    }
+
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().setNodeParameter(graph, node->id, parameterId, label, value);
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    if (parameterId == "domain") {
+        if (Node* edited = findMutableNode(node->id)) {
+            edited->subtitle = value == "spectral" ? "spectral start" : "waveform start";
+        }
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    draggingNode = false;
+    connectingCable = false;
+    nodeDragUndoPushed = false;
+    refreshCompiledState();
+    editStatusMessage = statusMessage;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::handleVoiceContextEditorClick(Point<float> screenPosition) {
+    const Node* node = findNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::VoiceContext) {
+        return false;
+    }
+
+    Rectangle<float> column = voiceContextEditorColumnBounds(expandedEditorBoundsForNode(getLocalBounds().toFloat(), node));
+
+    auto nextRow = [&]() {
+        Rectangle<float> row = column.removeFromTop(kVoiceEditorRowHeight);
+        column.removeFromTop(kVoiceEditorRowGap);
+        return row;
+    };
+
+    Rectangle<float> sourceRow = nextRow();
+    Rectangle<float> sourceControl = sourceRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(0.f, 2.f);
+    const Rectangle<float> waveformLabel = sourceControl.removeFromLeft(62.f);
+    sourceControl.removeFromLeft(8.f);
+    const Rectangle<float> switchArea = sourceControl.removeFromLeft(42.f);
+    sourceControl.removeFromLeft(8.f);
+    const Rectangle<float> spectralLabel = sourceControl.removeFromLeft(56.f);
+
+    if (waveformLabel.expanded(4.f, 2.f).contains(screenPosition)
+            || switchArea.expanded(4.f, 2.f).contains(screenPosition)) {
+        if (switchArea.expanded(4.f, 2.f).contains(screenPosition)) {
+            return setVoiceContextParameter("domain", "Start Domain", nextVoiceDomain(*node),
+                                            "Voice start domain: " + nextVoiceDomain(*node));
+        }
+
+        return setVoiceContextParameter("domain", "Start Domain", "waveform", "Voice start domain: waveform");
+    }
+
+    if (spectralLabel.expanded(4.f, 2.f).contains(screenPosition)) {
+        return setVoiceContextParameter("domain", "Start Domain", "spectral", "Voice start domain: spectral");
+    }
+
+    Rectangle<float> octaveRow = nextRow();
+    Rectangle<float> octaveControl = octaveRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(2.f, 0.f);
+    if (octaveControl.expanded(8.f, 4.f).contains(screenPosition)) {
+        const float left = octaveControl.getX() + 2.f;
+        const float right = octaveControl.getRight() - 2.f;
+        const float normalized = jlimit(0.f, 1.f, (screenPosition.x - left) / jmax(1.f, right - left));
+        const int octave = jlimit(-2, 2, roundToInt(normalized * 4.f) - 2);
+        return setVoiceContextParameter("octave", "Octave", String(octave), "Octave: " + String(octave));
+    }
+
+    Rectangle<float> pitchRow = nextRow();
+    Rectangle<float> pitchControl = pitchRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(2.f, 0.f);
+    if (pitchControl.expanded(8.f, 4.f).contains(screenPosition)) {
+        const float normalized = jlimit(0.f, 1.f,
+                                        (screenPosition.x - pitchControl.getX()) / jmax(1.f, pitchControl.getWidth()));
+        const int pitch = roundToInt(jmap(normalized, -12.f, 12.f));
+        return setVoiceContextParameter("pitch", "Pitch", String(pitch), "Pitch: " + String(pitch));
+    }
+
+    Rectangle<float> portamentoRow = nextRow();
+    Rectangle<float> portamentoControl = portamentoRow.withTrimmedLeft(kVoiceEditorLabelWidth);
+    if (portamentoControl.expanded(6.f, 4.f).contains(screenPosition)) {
+        const bool enabled = parameterValueForNode(*node, "portamento", "0") == "1"
+                || parameterValueForNode(*node, "portamento", "false") == "true";
+        return setVoiceContextParameter("portamento", "Portamento", enabled ? "0" : "1",
+                                        enabled ? "Portamento off" : "Portamento on");
+    }
+
+    Rectangle<float> oversamplingRow = nextRow();
+    Rectangle<float> oversamplingControl = oversamplingRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(2.f, 0.f);
+    if (oversamplingControl.expanded(8.f, 6.f).contains(screenPosition)) {
+        const float normalized = jlimit(0.f, 1.f,
+                                        (screenPosition.x - oversamplingControl.getX())
+                                                / jmax(1.f, oversamplingControl.getWidth()));
+        const int stop = jlimit(0, 2, roundToInt(normalized * 2.f));
+        const String next = stop == 0 ? "1x" : (stop == 1 ? "2x" : "4x");
+        return setVoiceContextParameter("oversampling", "Oversampling", next, "Oversampling: " + next);
+    }
+
+    return false;
 }
 
 bool NodeCanvas::setTrimeshPrimaryAxisValue(const String& axisValue) {

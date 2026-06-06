@@ -14,7 +14,11 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.subtitle = "waveform start";
             node.parameters = {
                     { "domain", "Start Domain", "waveform" },
-                    { "voices", "Voices", "1" }
+                    { "voices", "Voices", "1" },
+                    { "octave", "Octave", "0" },
+                    { "pitch", "Pitch", "0" },
+                    { "portamento", "Portamento", "0" },
+                    { "oversampling", "Oversampling", "1x" }
             };
             node.outputs = {
                     output("context", "Context", PortDomain::DomainContext)

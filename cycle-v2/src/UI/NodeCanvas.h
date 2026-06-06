@@ -159,6 +159,8 @@ private:
     bool clearSelection();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
+    bool handleVoiceContextEditorClick(Point<float> screenPosition);
+    bool setVoiceContextParameter(const String& parameterId, const String& label, const String& value, const String& statusMessage);
     bool setTrimeshPrimaryAxisValue(const String& axisValue);
     bool beginTrimeshMorphEdit(const String& parameterId, float value);
     bool updateTrimeshMorphEditValue(float value);

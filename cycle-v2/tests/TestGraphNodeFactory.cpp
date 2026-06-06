@@ -19,6 +19,7 @@ TEST_CASE("Graph node factory creates canonical envelope nodes", "[cycle-v2][gra
 TEST_CASE("Graph node factory creates canonical FFT nodes", "[cycle-v2][graph]") {
     const Node node = GraphNodeFactory().createNode(NodeKind::Fft, "fft", { 0.f, 0.f });
 
+    REQUIRE(node.title == String::fromUTF8("Time → Freq"));
     REQUIRE(node.inputs.size() == 1);
     REQUIRE(node.inputs.front().domain == PortDomain::TimeSignal);
     REQUIRE(node.inputs.front().channelLayout == ChannelLayout::LinkedStereo);
@@ -27,6 +28,9 @@ TEST_CASE("Graph node factory creates canonical FFT nodes", "[cycle-v2][graph]")
     REQUIRE(node.outputs[1].domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(parameterValueForNode(node, "cycleFrames") == "2048");
     REQUIRE(parameterValueForNode(node, "window").isEmpty());
+
+    const Node inverse = GraphNodeFactory().createNode(NodeKind::Ifft, "ifft", { 0.f, 0.f });
+    REQUIRE(inverse.title == String::fromUTF8("Freq → Time"));
 }
 
 TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][graph]") {
@@ -67,6 +71,10 @@ TEST_CASE("Graph node factory creates menu node families", "[cycle-v2][graph]") 
     REQUIRE(voice.outputs.front().domain == PortDomain::DomainContext);
     REQUIRE(parameterValueForNode(voice, "domain") == "waveform");
     REQUIRE(parameterValueForNode(voice, "voices") == "1");
+    REQUIRE(parameterValueForNode(voice, "octave") == "0");
+    REQUIRE(parameterValueForNode(voice, "pitch") == "0");
+    REQUIRE(parameterValueForNode(voice, "portamento") == "0");
+    REQUIRE(parameterValueForNode(voice, "oversampling") == "1x");
     REQUIRE(wave.inputs.front().domain == PortDomain::DomainContext);
     REQUIRE(wave.outputs.front().domain == PortDomain::TimeSignal);
     REQUIRE(image.inputs.front().domain == PortDomain::DomainContext);
@@ -105,7 +113,10 @@ TEST_CASE("Graph node factory creates stereo split and join nodes", "[cycle-v2][
 TEST_CASE("Graph node factory sizes nodes from their content", "[cycle-v2][graph]") {
     const Node mesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     const Node env = GraphNodeFactory().createNode(NodeKind::Envelope, "env", {});
+    const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
 
+    REQUIRE(voice.bounds.getWidth() >= 300.f);
+    REQUIRE(voice.bounds.getHeight() >= 128.f);
     REQUIRE(mesh.bounds.getWidth() >= 280.f);
     REQUIRE(mesh.bounds.getHeight() >= 250.f);
     REQUIRE(env.bounds.getWidth() >= 240.f);

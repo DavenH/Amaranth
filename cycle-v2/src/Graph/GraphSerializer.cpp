@@ -93,6 +93,25 @@ NodeKind nodeKindForId(const String& id) {
 }
 
 void normalizeNodePresentation(Node& node) {
+    auto ensureParameter = [&](const String& id, const String& label, const String& value) {
+        for (const auto& parameter : node.parameters) {
+            if (parameter.id == id) {
+                return;
+            }
+        }
+
+        node.parameters.push_back({ id, label, value });
+    };
+
+    if (node.kind == NodeKind::VoiceContext) {
+        ensureParameter("domain", "Start Domain", "waveform");
+        ensureParameter("voices", "Voices", "1");
+        ensureParameter("octave", "Octave", "0");
+        ensureParameter("pitch", "Pitch", "0");
+        ensureParameter("portamento", "Portamento", "0");
+        ensureParameter("oversampling", "Oversampling", "1x");
+    }
+
     if (node.kind == NodeKind::Fft) {
         node.title = String::fromUTF8("Time → Freq");
         node.subtitle = "1 cycle";

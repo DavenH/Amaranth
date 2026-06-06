@@ -124,7 +124,11 @@ NodeGraph NodeGraph::createDemoGraph() {
             }));
     graph.getNodesForEditing().back().parameters = {
             { "domain", "Start Domain", "waveform" },
-            { "voices", "Voices", "6" }
+            { "voices", "Voices", "6" },
+            { "octave", "Octave", "0" },
+            { "pitch", "Pitch", "0" },
+            { "portamento", "Portamento", "0" },
+            { "oversampling", "Oversampling", "1x" }
     };
 
     graph.addNode(node(
@@ -360,7 +364,7 @@ NodeNaturalSize naturalSizeForNode(const Node& node) {
     }
 
     if (node.kind == NodeKind::VoiceContext) {
-        return { 250.f, 118.f };
+        return { 300.f, 128.f };
     }
 
     if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {

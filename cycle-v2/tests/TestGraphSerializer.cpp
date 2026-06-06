@@ -29,6 +29,10 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
     REQUIRE(voice.outputs[0].domain == PortDomain::DomainContext);
     REQUIRE(parameterValueForNode(voice, "domain") == "waveform");
     REQUIRE(parameterValueForNode(voice, "voices") == "6");
+    REQUIRE(parameterValueForNode(voice, "octave") == "0");
+    REQUIRE(parameterValueForNode(voice, "pitch") == "0");
+    REQUIRE(parameterValueForNode(voice, "portamento") == "0");
+    REQUIRE(parameterValueForNode(voice, "oversampling") == "1x");
 
     REQUIRE(waveMesh.id == "waveMesh");
     REQUIRE(waveMesh.kind == NodeKind::TrilinearMesh);
@@ -53,6 +57,8 @@ TEST_CASE("Graph serializer preserves node parameters", "[cycle-v2][graph]") {
     const auto& waveMesh = restored.getNodes()[1];
 
     REQUIRE(parameterValueForNode(voice, "mode") == "spectral");
+    REQUIRE(parameterValueForNode(voice, "octave") == "0");
+    REQUIRE(parameterValueForNode(voice, "oversampling") == "1x");
     REQUIRE(parameterValueForNode(voice, "missing", "fallback") == "fallback");
     REQUIRE(parameterValueForNode(waveMesh, "vertex.2.curve") == "0.75");
 }
