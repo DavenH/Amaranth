@@ -78,6 +78,7 @@ void TrimeshWidget::paintCompact(
     bridge.syncFromNode(node, kPreviewRows, kPreviewColumns);
     const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
     TrimeshNodeModel& model = bridge.getModel();
+    const uint64_t compactRevision = model.getDerivedRevisions().compactPreview;
 
     if (!renderData.canDrawSurface()) {
         return;
@@ -87,14 +88,14 @@ void TrimeshWidget::paintCompact(
             || compactHeatmap.valueCount != renderData.surface.size()
             || compactHeatmap.rows != renderData.rows
             || compactHeatmap.columns != renderData.columns
-            || compactHeatmap.revision != model.getRevision()
+            || compactHeatmap.revision != compactRevision
             || compactHeatmap.domain != profile.getDomain()
             || compactHeatmap.scalePolicy != profile.getScalePolicy()) {
         compactHeatmap.image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
         compactHeatmap.valueCount = renderData.surface.size();
         compactHeatmap.rows = renderData.rows;
         compactHeatmap.columns = renderData.columns;
-        compactHeatmap.revision = model.getRevision();
+        compactHeatmap.revision = compactRevision;
         compactHeatmap.domain = profile.getDomain();
         compactHeatmap.scalePolicy = profile.getScalePolicy();
     }

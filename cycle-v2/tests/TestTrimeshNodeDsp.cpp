@@ -287,6 +287,62 @@ TEST_CASE("Trimesh node model applies legacy selected vertex parameter overrides
     REQUIRE(changedSelectionParameters[1].value != Catch::Approx(0.20f));
 }
 
+TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][nodes][trimesh]") {
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {},
+            {},
+            {}
+    };
+    TrimeshNodeModel model;
+
+    model.syncFromNode(node);
+    const TrimeshDerivedRevisions initial = model.getDerivedRevisions();
+
+    node.parameters.push_back({ "selectedVertexIndex", "Selected Vertex", "2" });
+    model.syncFromNode(node);
+    const TrimeshDerivedRevisions selected = model.getDerivedRevisions();
+
+    REQUIRE(selected.aggregate > initial.aggregate);
+    REQUIRE(selected.selectedControl > initial.selectedControl);
+    REQUIRE(selected.meshContent == initial.meshContent);
+    REQUIRE(selected.sliceRasterization == initial.sliceRasterization);
+    REQUIRE(selected.interceptsRails == initial.interceptsRails);
+    REQUIRE(selected.columns3D == initial.columns3D);
+    REQUIRE(selected.compactPreview == initial.compactPreview);
+    REQUIRE(selected.dspPrep == initial.dspPrep);
+
+    node.parameters.push_back({ "yellow", "Yellow", "0.72" });
+    model.syncFromNode(node);
+    const TrimeshDerivedRevisions morphed = model.getDerivedRevisions();
+
+    REQUIRE(morphed.aggregate > selected.aggregate);
+    REQUIRE(morphed.meshContent == selected.meshContent);
+    REQUIRE(morphed.selectedControl == selected.selectedControl);
+    REQUIRE(morphed.sliceRasterization > selected.sliceRasterization);
+    REQUIRE(morphed.interceptsRails > selected.interceptsRails);
+    REQUIRE(morphed.columns3D > selected.columns3D);
+    REQUIRE(morphed.compactPreview > selected.compactPreview);
+    REQUIRE(morphed.dspPrep > selected.dspPrep);
+
+    node.parameters.push_back({ "mesh.vertex.2.amp", "Amplitude", "0.17" });
+    model.syncFromNode(node);
+    const TrimeshDerivedRevisions edited = model.getDerivedRevisions();
+
+    REQUIRE(edited.aggregate > morphed.aggregate);
+    REQUIRE(edited.meshContent > morphed.meshContent);
+    REQUIRE(edited.selectedControl > morphed.selectedControl);
+    REQUIRE(edited.sliceRasterization > morphed.sliceRasterization);
+    REQUIRE(edited.interceptsRails > morphed.interceptsRails);
+    REQUIRE(edited.columns3D > morphed.columns3D);
+    REQUIRE(edited.compactPreview > morphed.compactPreview);
+    REQUIRE(edited.dspPrep > morphed.dspPrep);
+}
+
 TEST_CASE("Trimesh node model applies serialized mesh edits for multiple vertices", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",

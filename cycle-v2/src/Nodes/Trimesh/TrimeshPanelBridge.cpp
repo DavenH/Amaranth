@@ -4,6 +4,18 @@
 
 namespace CycleV2 {
 
+namespace {
+
+uint64_t panelRevisionFor(const TrimeshNodeModel& model) {
+    const TrimeshDerivedRevisions& revisions = model.getDerivedRevisions();
+    return jmax(
+            revisions.sliceRasterization,
+            revisions.interceptsRails,
+            revisions.columns3D);
+}
+
+}
+
 TrimeshPanelBridge::TrimeshPanelBridge() :
         interactor2D    (&environment.getRepo(), "CycleV2TrimeshInteractor2D",
                          Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Time, Vertex::Red, Vertex::Blue))
@@ -38,7 +50,7 @@ void TrimeshPanelBridge::syncFromNode(
         const Node& node,
         int rows,
         int columns) {
-    const uint64_t previousRevision = model.getRevision();
+    const uint64_t previousPanelRevision = panelRevisionFor(model);
     const int previousPrimaryAxis = model.getPrimaryViewAxis();
     const MorphPosition previousMorph = model.getMorphPosition();
 
@@ -46,7 +58,8 @@ void TrimeshPanelBridge::syncFromNode(
     environment.setMorphPosition(model.getMorphPosition(), model.getPrimaryViewAxis());
     syncPrimaryAxisContext();
 
-    const bool modelChanged = previousRevision != model.getRevision();
+    const uint64_t nextPanelRevision = panelRevisionFor(model);
+    const bool panelDataChanged = previousPanelRevision != nextPanelRevision;
     const bool primaryAxisChanged = previousPrimaryAxis != model.getPrimaryViewAxis();
     const MorphPosition& nextMorph = model.getMorphPosition();
     const bool yellowChanged = previousMorph.time.getTargetValue() != nextMorph.time.getTargetValue();
@@ -56,11 +69,11 @@ void TrimeshPanelBridge::syncFromNode(
     const bool renderDomainChanged = lastRenderDomain != renderProfile.getDomain();
     const bool gridShapeChanged = lastRows != rows || lastColumns != columns;
 
-    if (!modelChanged
+    if (!panelDataChanged
             && !morphChanged
             && !primaryAxisChanged
             && !renderDomainChanged
-            && lastSyncedRevision == model.getRevision()
+            && lastSyncedRevision == nextPanelRevision
             && lastRows == rows
             && lastColumns == columns) {
         return;
@@ -80,7 +93,7 @@ void TrimeshPanelBridge::syncFromNode(
     const TrimeshInvalidationResult invalidated = invalidation.invalidate(change);
     dataSource.rebuild(model, rows, columns, renderProfile.getDomain());
     updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
-    lastSyncedRevision = model.getRevision();
+    lastSyncedRevision = nextPanelRevision;
     lastRenderDomain = renderProfile.getDomain();
     lastRows = rows;
     lastColumns = columns;
@@ -100,6 +113,7 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(bool sourceIs3D) {
     syncPrimaryAxisContext();
     dataSource.rebuild(model, lastRows, lastColumns, renderProfile.getDomain());
     updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
+    lastSyncedRevision = panelRevisionFor(model);
 }
 
 void TrimeshPanelBridge::syncPrimaryAxisContext() {

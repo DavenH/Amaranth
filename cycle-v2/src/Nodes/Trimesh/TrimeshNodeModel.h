@@ -50,6 +50,17 @@ struct TrimeshCubePreviewVertex {
     bool selected {};
 };
 
+struct TrimeshDerivedRevisions {
+    uint64_t meshContent {};
+    uint64_t sliceRasterization {};
+    uint64_t interceptsRails {};
+    uint64_t columns3D {};
+    uint64_t compactPreview {};
+    uint64_t selectedControl {};
+    uint64_t dspPrep {};
+    uint64_t aggregate {};
+};
+
 class TrimeshNodeModel {
 public:
     TrimeshNodeModel();
@@ -75,6 +86,7 @@ public:
     int getPrimaryViewAxis() const { return primaryViewAxis; }
     int getSelectedVertexIndex() const { return selectedVertexIndex; }
     uint64_t getRevision() const { return revision; }
+    const TrimeshDerivedRevisions& getDerivedRevisions() const { return revisions; }
     Mesh& getMeshForPanel() { return mesh(); }
 
 private:
@@ -83,6 +95,10 @@ private:
     Vertex* selectedVertex();
     bool applySerializedMeshEdits(const TrimeshMeshEditState& nextMeshEditState);
     bool applyLegacySelectedVertexOverride(const Node& node);
+    void bumpMeshContentRevision();
+    void bumpMorphRevision();
+    void bumpPrimaryAxisRevision();
+    void bumpSelectedControlRevision();
     void clearMesh();
 
     std::unique_ptr<Mesh> ownedMesh;
@@ -91,6 +107,7 @@ private:
     int primaryViewAxis {};
     int selectedVertexIndex { -1 };
     uint64_t revision {};
+    TrimeshDerivedRevisions revisions;
 };
 
 }

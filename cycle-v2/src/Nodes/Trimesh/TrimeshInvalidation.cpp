@@ -13,6 +13,9 @@ TrimeshInvalidationResult withPanelContextRefresh(
         result.refresh2DPanel = true;
         result.refresh3DGeometry = true;
         result.dirtyCompactPreview = true;
+        result.dirtySliceRasterization = true;
+        result.dirtyInterceptsRails = true;
+        result.dirtyColumns3D = true;
     }
 
     if (change.renderDomainChanged) {
@@ -37,6 +40,10 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
             result.refresh2DPanel = true;
             result.refresh3DGeometry = anyMorphChanged(change) && !primaryMorphChanged(change);
             result.dirtyCompactPreview = true;
+            result.dirtySliceRasterization = true;
+            result.dirtyInterceptsRails = true;
+            result.dirtyColumns3D = result.refresh3DGeometry;
+            result.dirtyDspPrep = true;
             return withPanelContextRefresh(result, change);
 
         case TrimeshChangeKind::PrimaryAxis:
@@ -45,6 +52,10 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
             result.refresh2DPanel = true;
             result.refresh3DGeometry = true;
             result.dirtyCompactPreview = true;
+            result.dirtySliceRasterization = true;
+            result.dirtyInterceptsRails = true;
+            result.dirtyColumns3D = true;
+            result.dirtyDspPrep = true;
             return withPanelContextRefresh(result, change);
 
         case TrimeshChangeKind::MeshEdit:
@@ -54,6 +65,16 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
             result.refresh2DPanel = true;
             result.refresh3DGeometry = !change.sourceIs3D;
             result.dirtyCompactPreview = true;
+            result.dirtyMeshContent = true;
+            result.dirtySliceRasterization = true;
+            result.dirtyInterceptsRails = true;
+            result.dirtyColumns3D = result.refresh3DGeometry;
+            result.dirtySelectedControl = true;
+            result.dirtyDspPrep = true;
+            return withPanelContextRefresh(result, change);
+
+        case TrimeshChangeKind::SelectedControl:
+            result.dirtySelectedControl = true;
             return withPanelContextRefresh(result, change);
 
         case TrimeshChangeKind::RenderProfile:
@@ -67,6 +88,9 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
             result.refresh2DPanel = true;
             result.refresh3DGeometry = true;
             result.dirtyCompactPreview = true;
+            result.dirtySliceRasterization = true;
+            result.dirtyInterceptsRails = true;
+            result.dirtyColumns3D = true;
             return withPanelContextRefresh(result, change);
     }
 

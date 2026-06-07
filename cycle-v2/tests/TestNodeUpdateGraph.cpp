@@ -91,6 +91,30 @@ TEST_CASE("Node update graph flags Trimesh render profile changes as preview-onl
     REQUIRE(result.trimesh.dirtyRenderProfile);
 }
 
+TEST_CASE("Node update graph keeps Trimesh selected-control changes local", "[cycle-v2][runtime]") {
+    const auto compileResult = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    REQUIRE(compileResult.succeeded());
+
+    const auto result = NodeUpdateGraph().invalidateTrimeshChange(
+            compileResult.plan,
+            "waveMesh",
+            {
+                    TrimeshChangeKind::SelectedControl,
+                    false,
+                    false,
+                    false,
+                    false,
+                    Vertex::Time
+            });
+
+    REQUIRE_FALSE(result.requiresRecompile());
+    REQUIRE_FALSE(result.dirtiesAudio());
+    REQUIRE_FALSE(result.dirtiesPreview());
+    REQUIRE_FALSE(result.trimesh.rebuildNodeData);
+    REQUIRE_FALSE(result.trimesh.updateRasterizer);
+    REQUIRE(result.trimesh.dirtySelectedControl);
+}
+
 TEST_CASE("Node update graph composes Trimesh panel context refresh decisions", "[cycle-v2][runtime]") {
     const auto compileResult = GraphCompiler().compile(NodeGraph::createDemoGraph());
     REQUIRE(compileResult.succeeded());

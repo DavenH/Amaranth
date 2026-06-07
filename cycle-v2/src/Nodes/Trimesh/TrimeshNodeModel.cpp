@@ -92,7 +92,8 @@ TrimeshNodeModel::TrimeshNodeModel(TrimeshNodeModel&& other) noexcept :
     ,   morph           (other.morph)
     ,   primaryViewAxis (other.primaryViewAxis)
     ,   selectedVertexIndex (other.selectedVertexIndex)
-    ,   revision        (other.revision) {}
+    ,   revision        (other.revision)
+    ,   revisions       (other.revisions) {}
 
 TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept {
     if (this != &other) {
@@ -103,6 +104,7 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
         primaryViewAxis = other.primaryViewAxis;
         selectedVertexIndex = other.selectedVertexIndex;
         revision = other.revision;
+        revisions = other.revisions;
     }
 
     return *this;
@@ -121,21 +123,27 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
 
     if (nextMorph.time.getTargetValue() != morph.time.getTargetValue()
             || nextMorph.red.getTargetValue() != morph.red.getTargetValue()
-            || nextMorph.blue.getTargetValue() != morph.blue.getTargetValue()
-            || nextPrimaryAxis != primaryViewAxis
-            || nextSelectedVertexIndex != selectedVertexIndex) {
+            || nextMorph.blue.getTargetValue() != morph.blue.getTargetValue()) {
         morph = nextMorph;
+        bumpMorphRevision();
+    }
+
+    if (nextPrimaryAxis != primaryViewAxis) {
         primaryViewAxis = nextPrimaryAxis;
+        bumpPrimaryAxisRevision();
+    }
+
+    if (nextSelectedVertexIndex != selectedVertexIndex) {
         selectedVertexIndex = nextSelectedVertexIndex;
-        ++revision;
+        bumpSelectedControlRevision();
     }
 
     if (applySerializedMeshEdits(nextMeshEditState)) {
-        ++revision;
+        bumpMeshContentRevision();
     }
 
     if (nextMeshEditState.empty() && applyLegacySelectedVertexOverride(node)) {
-        ++revision;
+        bumpMeshContentRevision();
     }
 }
 
@@ -301,16 +309,54 @@ int TrimeshNodeModel::getResolvedSelectedVertexIndex() {
 }
 
 void TrimeshNodeModel::markMeshEdited() {
-    ++revision;
+    bumpMeshContentRevision();
 }
 
 Mesh& TrimeshNodeModel::mesh() {
     if (ownedMesh == nullptr) {
         ownedMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2TrimeshNode");
-        ++revision;
+        bumpMeshContentRevision();
     }
 
     return *ownedMesh;
+}
+
+void TrimeshNodeModel::bumpMeshContentRevision() {
+    ++revision;
+    ++revisions.meshContent;
+    ++revisions.sliceRasterization;
+    ++revisions.interceptsRails;
+    ++revisions.columns3D;
+    ++revisions.compactPreview;
+    ++revisions.selectedControl;
+    ++revisions.dspPrep;
+    revisions.aggregate = revision;
+}
+
+void TrimeshNodeModel::bumpMorphRevision() {
+    ++revision;
+    ++revisions.sliceRasterization;
+    ++revisions.interceptsRails;
+    ++revisions.columns3D;
+    ++revisions.compactPreview;
+    ++revisions.dspPrep;
+    revisions.aggregate = revision;
+}
+
+void TrimeshNodeModel::bumpPrimaryAxisRevision() {
+    ++revision;
+    ++revisions.sliceRasterization;
+    ++revisions.interceptsRails;
+    ++revisions.columns3D;
+    ++revisions.compactPreview;
+    ++revisions.dspPrep;
+    revisions.aggregate = revision;
+}
+
+void TrimeshNodeModel::bumpSelectedControlRevision() {
+    ++revision;
+    ++revisions.selectedControl;
+    revisions.aggregate = revision;
 }
 
 int TrimeshNodeModel::resolvedSelectedVertexIndex() {
