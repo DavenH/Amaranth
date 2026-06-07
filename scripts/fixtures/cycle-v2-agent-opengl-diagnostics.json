@@ -1,0 +1,17 @@
+{
+  "commands": [
+    {
+      "command": "openMeshPopup",
+      "nodeId": "waveMesh"
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "waveMesh"
+    }
+  ],
+  "quit": true
+}

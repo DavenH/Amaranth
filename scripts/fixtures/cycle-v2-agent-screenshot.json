@@ -1,0 +1,26 @@
+{
+  "commands": [
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-agent-canvas.png"
+    },
+    {
+      "command": "assertState",
+      "path": "canvasBounds.width",
+      "op": "greaterThan",
+      "value": 100
+    },
+    {
+      "command": "assertState",
+      "path": "canvasBounds.height",
+      "op": "greaterThan",
+      "value": 100
+    }
+  ],
+  "quit": true
+}

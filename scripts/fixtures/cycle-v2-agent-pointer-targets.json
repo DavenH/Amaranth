@@ -1,0 +1,20 @@
+{
+  "commands": [
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "waveMesh"
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "waveMesh"
+    }
+  ],
+  "quit": true
+}

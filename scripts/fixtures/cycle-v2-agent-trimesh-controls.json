@@ -1,0 +1,58 @@
+{
+  "commands": [
+    {
+      "command": "openMeshPopup",
+      "nodeId": "waveMesh"
+    },
+    {
+      "command": "setPrimaryAxis",
+      "nodeId": "waveMesh",
+      "axis": "red"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "primaryAxis",
+      "equals": "red"
+    },
+    {
+      "command": "toggleLink",
+      "nodeId": "waveMesh",
+      "axis": "red"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "link.red",
+      "equals": "1"
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "selectedVertexIndex",
+      "equals": "0"
+    },
+    {
+      "command": "setVertexParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "vertex.amp",
+      "value": 0.75
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "mesh.vertex.0.amp",
+      "equals": "0.750"
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "waveMesh"
+    }
+  ],
+  "quit": true
+}

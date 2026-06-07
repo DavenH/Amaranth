@@ -1,0 +1,33 @@
+{
+  "commands": [
+    {
+      "command": "listMenuItems"
+    },
+    {
+      "command": "listPaletteItems"
+    },
+    {
+      "command": "invokePaletteItem",
+      "id": "add",
+      "x": 460,
+      "y": 260
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "op": "greaterThanOrEqual",
+      "value": 13
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "file.saveGraph",
+      "path": "/private/tmp/cycle-v2-agent-smokes/menu-palette.graph.xml"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "file.openGraph",
+      "path": "/private/tmp/cycle-v2-agent-smokes/menu-palette.graph.xml"
+    }
+  ],
+  "quit": true
+}
