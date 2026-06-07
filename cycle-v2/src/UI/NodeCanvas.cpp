@@ -159,6 +159,16 @@ void addSnapCandidate(std::vector<SnapCandidate>& candidates, float target) {
     candidates.push_back({ target, 1 });
 }
 
+bool containsString(const std::vector<String>& values, const String& value) {
+    for (const auto& candidate : values) {
+        if (candidate == value) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void addNodeSnapCandidates(
         std::vector<SnapCandidate>& xCandidates,
         std::vector<SnapCandidate>& yCandidates,
@@ -1149,6 +1159,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     draggingNode = false;
     connectingCable = false;
     nodeDragUndoPushed = false;
+    nodeDragMoved = false;
+    spliceTargetEdgeIndex = -1;
     activeSnapHasX = false;
     activeSnapHasY = false;
     draggingTrimeshMorph = false;
@@ -1202,7 +1214,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     NodeKind paletteKind;
     if (findPaletteKindAt(event.position, paletteKind)) {
         const String beforeEdit = GraphSerializer().toXmlString(graph);
-        auto result = GraphEditor().addNode(graph, paletteKind, paletteCreationWorldPosition(event.position));
+        auto result = GraphEditor().addNode(graph, paletteKind, paletteCreationWorldPosition(paletteKind, event.position));
 
         if (result.succeeded()) {
             pushUndoSnapshot(beforeEdit);
@@ -1211,6 +1223,15 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             selectedEdgeIndex = -1;
             if (const Node* node = findNode(result.nodeId)) {
                 dragStartNodeBounds = node->bounds;
+
+                if (isOperationNode(node->kind) && !node->inputs.empty()) {
+                    const Point<float> mouseWorld = toWorld(event.position);
+                    const Point<float> inputCentre = portWorldCentreForBounds(*node, node->inputs.front(), node->bounds);
+                    dragStartNodeBounds = dragStartNodeBounds.translated(
+                            mouseWorld.x - inputCentre.x,
+                            mouseWorld.y - inputCentre.y);
+                }
+
                 draggingNode = true;
                 nodeDragUndoPushed = false;
             }
@@ -1331,8 +1352,13 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
                 nodeDragUndoPushed = true;
             }
 
-            const auto offset = event.getOffsetFromDragStart().toFloat() / zoom;
+            const auto dragOffset = event.getOffsetFromDragStart().toFloat();
+            nodeDragMoved = dragOffset.getDistanceFromOrigin() > 3.f;
+            const auto offset = dragOffset / zoom;
             node->bounds = snappedNodeBounds(*node, dragStartNodeBounds.translated(offset.x, offset.y));
+            spliceTargetEdgeIndex = nodeDragMoved
+                    ? findSpliceTargetEdgeAt(event.position, selectedNodeId)
+                    : -1;
         }
     } else {
         activeSnapHasX = false;
@@ -1347,13 +1373,30 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     lastMousePosition = event.position;
 
     if (!connectingCable) {
+        if (draggingNode && nodeDragMoved && spliceSelectedNodeIntoEdgeAt(event.position)) {
+            draggingNode = false;
+            nodeDragUndoPushed = false;
+            nodeDragMoved = false;
+            spliceTargetEdgeIndex = -1;
+            activeSnapHasX = false;
+            activeSnapHasY = false;
+            endTrimeshMorphEdit();
+            endTrimeshVertexParameterEdit();
+            expandedEditorDragCaptured = false;
+            repaint();
+            return;
+        }
+
         draggingNode = false;
         nodeDragUndoPushed = false;
+        nodeDragMoved = false;
+        spliceTargetEdgeIndex = -1;
         activeSnapHasX = false;
         activeSnapHasY = false;
         endTrimeshMorphEdit();
         endTrimeshVertexParameterEdit();
         expandedEditorDragCaptured = false;
+        repaint();
         return;
     }
 
@@ -1361,6 +1404,8 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     connectingCable = false;
     draggingNode = false;
     nodeDragUndoPushed = false;
+    nodeDragMoved = false;
+    spliceTargetEdgeIndex = -1;
     activeSnapHasX = false;
     activeSnapHasY = false;
     endTrimeshMorphEdit();
@@ -1594,7 +1639,7 @@ void NodeCanvas::drawGlEdges() {
                 dest,
                 colour,
                 cableScaleForZoom(zoom),
-                edgeIndex == selectedEdgeIndex,
+                edgeIndex == selectedEdgeIndex || edgeIndex == spliceTargetEdgeIndex,
                 edge.attachment,
                 invalid);
     }
@@ -1682,6 +1727,7 @@ void NodeCanvas::drawEdges(Graphics& g) {
         const bool invalid = edgeHasValidationIssue(edge);
 
         const bool selected = edgeIndex == selectedEdgeIndex;
+        const bool spliceTarget = edgeIndex == spliceTargetEdgeIndex;
         const float cableScale = cableScaleForZoom(zoom);
 
         if (invalid) {
@@ -1693,15 +1739,31 @@ void NodeCanvas::drawEdges(Graphics& g) {
             PathStrokeType stroke(2.0f * cableScale, PathStrokeType::curved, PathStrokeType::rounded);
             Array<float> dashes { 8.f * cableScale, 7.f * cableScale };
             stroke.createDashedStroke(dashedCable, cable, dashes.getRawDataPointer(), dashes.size());
-            g.setColour(colour.withAlpha(selected ? 0.46f : 0.32f));
-            g.strokePath(dashedCable, PathStrokeType((selected ? 10.f : 7.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            g.setColour(colour.withAlpha(spliceTarget ? 0.62f : (selected ? 0.46f : 0.32f)));
+            g.strokePath(
+                    dashedCable,
+                    PathStrokeType((spliceTarget ? 13.f : (selected ? 10.f : 7.f)) * cableScale,
+                                   PathStrokeType::curved,
+                                   PathStrokeType::rounded));
             g.setColour(colour.withAlpha(0.92f));
-            g.strokePath(dashedCable, PathStrokeType((selected ? 3.f : 2.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            g.strokePath(
+                    dashedCable,
+                    PathStrokeType((spliceTarget ? 4.5f : (selected ? 3.f : 2.f)) * cableScale,
+                                   PathStrokeType::curved,
+                                   PathStrokeType::rounded));
         } else {
-            g.setColour(colour.withAlpha(selected ? 0.28f : 0.18f));
-            g.strokePath(cable, PathStrokeType((selected ? 12.f : 9.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            g.setColour(colour.withAlpha(spliceTarget ? 0.42f : (selected ? 0.28f : 0.18f)));
+            g.strokePath(
+                    cable,
+                    PathStrokeType((spliceTarget ? 15.f : (selected ? 12.f : 9.f)) * cableScale,
+                                   PathStrokeType::curved,
+                                   PathStrokeType::rounded));
             g.setColour(colour.withAlpha(0.92f));
-            g.strokePath(cable, PathStrokeType((selected ? 4.f : 3.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            g.strokePath(
+                    cable,
+                    PathStrokeType((spliceTarget ? 5.2f : (selected ? 4.f : 3.f)) * cableScale,
+                                   PathStrokeType::curved,
+                                   PathStrokeType::rounded));
 
             if (invalid) {
                 Path dashedCable;
@@ -1713,7 +1775,34 @@ void NodeCanvas::drawEdges(Graphics& g) {
             }
         }
 
-        const float endpointSize = (selected ? 14.f : 11.f) * cableScale;
+        if (spliceTarget) {
+            const Point<float> midpoint = cable.getPointAlongPath(cable.getLength() * 0.5f);
+            const float markerSize = 17.f * cableScale;
+            Rectangle<float> insertMarker(
+                    midpoint.x - markerSize * 0.5f,
+                    midpoint.y - markerSize * 0.5f,
+                    markerSize,
+                    markerSize);
+
+            g.setColour(kCanvasBackground.withAlpha(0.92f));
+            g.fillEllipse(insertMarker);
+            g.setColour(colour.withAlpha(0.98f));
+            g.drawEllipse(insertMarker, 2.2f * cableScale);
+            g.drawLine(
+                    insertMarker.getX() + markerSize * 0.30f,
+                    midpoint.y,
+                    insertMarker.getRight() - markerSize * 0.30f,
+                    midpoint.y,
+                    1.9f * cableScale);
+            g.drawLine(
+                    midpoint.x,
+                    insertMarker.getY() + markerSize * 0.30f,
+                    midpoint.x,
+                    insertMarker.getBottom() - markerSize * 0.30f,
+                    1.9f * cableScale);
+        }
+
+        const float endpointSize = (spliceTarget ? 15.f : (selected ? 14.f : 11.f)) * cableScale;
         Rectangle<float> sourceMarker(source.x - endpointSize * 0.5f, source.y - endpointSize * 0.5f,
                                       endpointSize, endpointSize);
         Rectangle<float> destMarker(dest.x - endpointSize * 0.5f, dest.y - endpointSize * 0.5f,
@@ -1722,8 +1811,8 @@ void NodeCanvas::drawEdges(Graphics& g) {
         g.setColour(kCanvasBackground.withAlpha(0.92f));
         g.fillEllipse(sourceMarker);
         g.setColour(colour.withAlpha(0.96f));
-        g.drawEllipse(sourceMarker, (selected ? 2.4f : 1.8f) * cableScale);
-        g.fillEllipse(destMarker.reduced((selected ? 1.5f : 2.f) * cableScale));
+        g.drawEllipse(sourceMarker, (spliceTarget ? 2.8f : (selected ? 2.4f : 1.8f)) * cableScale);
+        g.fillEllipse(destMarker.reduced((spliceTarget ? 1.2f : (selected ? 1.5f : 2.f)) * cableScale));
     }
 }
 
@@ -3024,6 +3113,47 @@ int NodeCanvas::findEdgeAt(Point<float> screenPosition) const {
     return -1;
 }
 
+int NodeCanvas::findSpliceTargetEdgeAt(Point<float> screenPosition, const String& nodeId) const {
+    const auto& edges = graph.getEdges();
+
+    for (int edgeIndex = (int) edges.size() - 1; edgeIndex >= 0; --edgeIndex) {
+        const auto& edge = edges[(size_t) edgeIndex];
+
+        if (edge.sourceNodeId == nodeId || edge.destNodeId == nodeId) {
+            continue;
+        }
+
+        const Node* sourceNode = findNode(edge.sourceNodeId);
+        const Node* destNode = findNode(edge.destNodeId);
+
+        if (sourceNode == nullptr || destNode == nullptr) {
+            continue;
+        }
+
+        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
+        const Port* destPort = findPort(*destNode, edge.destPortId, true);
+
+        if (sourcePort == nullptr || destPort == nullptr) {
+            continue;
+        }
+
+        Path hitPath;
+        PathStrokeType(22.f, PathStrokeType::curved, PathStrokeType::rounded)
+                .createStrokedPath(hitPath, createCablePath(
+                        getPortLocation(*sourceNode, *sourcePort).centre,
+                        getPortLocation(*destNode, *destPort).centre,
+                        sourcePort->side,
+                        destPort->side,
+                        edge.attachment));
+
+        if (hitPath.contains(screenPosition)) {
+            return edgeIndex;
+        }
+    }
+
+    return -1;
+}
+
 const Node* NodeCanvas::findNode(const String& id) const {
     for (const auto& node : graph.getNodes()) {
         if (node.id == id) {
@@ -3288,10 +3418,20 @@ Point<float> NodeCanvas::viewportCentreWorld() const {
     return toWorld(getLocalBounds().toFloat().getCentre());
 }
 
-Point<float> NodeCanvas::paletteCreationWorldPosition(Point<float> paletteClickPosition) const {
+Point<float> NodeCanvas::paletteCreationWorldPosition(NodeKind kind, Point<float> paletteClickPosition) const {
     const float paletteRight = 18.f + kPaletteWidth;
     const float x = jmin((float) getWidth() - 280.f, paletteRight + 32.f);
-    return toWorld({ x, paletteClickPosition.y });
+    Point<float> position = toWorld({ x, paletteClickPosition.y });
+
+    if (isOperationNode(kind)) {
+        const Node node = GraphNodeFactory().createNode(kind, {}, position);
+
+        if (!node.inputs.empty()) {
+            position.y -= portWorldCentreForBounds(node, node.inputs.front(), node.bounds).y - node.bounds.getY();
+        }
+    }
+
+    return position;
 }
 
 void NodeCanvas::refreshCompiledState() {
@@ -3352,6 +3492,7 @@ bool NodeCanvas::loadGraphFromFile(const File& file) {
     selectedNodeId = {};
     expandedNodeId = {};
     selectedEdgeIndex = -1;
+    spliceTargetEdgeIndex = -1;
     redoStack.clear();
     refreshCompiledState();
     editStatusMessage = "Opened " + file.getFileName();
@@ -3396,6 +3537,7 @@ bool NodeCanvas::loadSnapshot() {
     selectedNodeId = {};
     expandedNodeId = {};
     selectedEdgeIndex = -1;
+    spliceTargetEdgeIndex = -1;
     redoStack.clear();
     refreshCompiledState();
     editStatusMessage = "Loaded snapshot";
@@ -3460,10 +3602,89 @@ bool NodeCanvas::restoreGraphXml(const String& xml, const String& statusMessage)
     selectedNodeId = {};
     expandedNodeId = {};
     selectedEdgeIndex = -1;
+    spliceTargetEdgeIndex = -1;
     refreshCompiledState();
     editStatusMessage = statusMessage;
     repaint();
     return true;
+}
+
+bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
+    Node* node = findMutableNode(selectedNodeId);
+
+    if (node == nullptr) {
+        return false;
+    }
+
+    const int edgeIndex = findSpliceTargetEdgeAt(screenPosition, selectedNodeId);
+
+    if (edgeIndex < 0 || edgeIndex >= (int) graph.getEdges().size()) {
+        return false;
+    }
+
+    const Edge originalEdge = graph.getEdges()[(size_t) edgeIndex];
+
+    if (!nodeDragUndoPushed) {
+        pushUndoSnapshot();
+        nodeDragUndoPushed = true;
+    }
+
+    auto result = GraphEditor().spliceNodeIntoEdge(graph, (size_t) edgeIndex, selectedNodeId);
+
+    if (result.succeeded()) {
+        selectedNodeId = result.nodeId;
+        selectedEdgeIndex = -1;
+        expandedNodeId = {};
+        shoveNodesForwardAfterSplice(result.nodeId, originalEdge.destNodeId);
+        refreshCompiledState();
+        editStatusMessage = "Inserted node into cable";
+        return true;
+    }
+
+    if (result.code == GraphEditCode::ValidationRejected) {
+        editStatusMessage = "Cable insert incompatible";
+    }
+
+    return false;
+}
+
+void NodeCanvas::shoveNodesForwardAfterSplice(const String& insertedNodeId, const String& downstreamNodeId) {
+    const Node* insertedNode = findNode(insertedNodeId);
+    const Node* downstreamNode = findNode(downstreamNodeId);
+
+    if (insertedNode == nullptr || downstreamNode == nullptr) {
+        return;
+    }
+
+    const float desiredDownstreamLeft = insertedNode->bounds.getRight() + 56.f;
+    const float xOffset = desiredDownstreamLeft - downstreamNode->bounds.getX();
+
+    if (xOffset <= 0.f) {
+        return;
+    }
+
+    std::vector<String> downstreamNodeIds;
+    downstreamNodeIds.push_back(downstreamNodeId);
+
+    for (size_t scanIndex = 0; scanIndex < downstreamNodeIds.size(); ++scanIndex) {
+        const String currentNodeId = downstreamNodeIds[scanIndex];
+
+        for (const auto& edge : graph.getEdges()) {
+            if (edge.sourceNodeId != currentNodeId
+                    || edge.destNodeId == insertedNodeId
+                    || containsString(downstreamNodeIds, edge.destNodeId)) {
+                continue;
+            }
+
+            downstreamNodeIds.push_back(edge.destNodeId);
+        }
+    }
+
+    for (auto& node : graph.getNodesForEditing()) {
+        if (containsString(downstreamNodeIds, node.id)) {
+            node.bounds = node.bounds.translated(xOffset, 0.f);
+        }
+    }
 }
 
 bool NodeCanvas::clearSelection() {

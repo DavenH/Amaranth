@@ -76,6 +76,7 @@ private:
     String activeTrimeshVertexParameterId;
     String editStatusMessage;
     int selectedEdgeIndex { -1 };
+    int spliceTargetEdgeIndex { -1 };
     PortAddress connectingPort;
     Point<float> connectingPoint;
     Point<float> lastMousePosition;
@@ -84,6 +85,7 @@ private:
     bool draggingNode {};
     bool connectingCable {};
     bool nodeDragUndoPushed {};
+    bool nodeDragMoved {};
     bool activeSnapHasX {};
     bool activeSnapHasY {};
     bool draggingTrimeshMorph {};
@@ -139,6 +141,7 @@ private:
     bool findMeshOutputSideButtonAt(Point<float> screenPosition, String& nodeId) const;
     bool findVoiceDomainButtonAt(Point<float> screenPosition, String& nodeId) const;
     int findEdgeAt(Point<float> screenPosition) const;
+    int findSpliceTargetEdgeAt(Point<float> screenPosition, const String& nodeId) const;
     const Node* findNode(const String& id) const;
     Node* findMutableNode(const String& id);
     const Node* findNodeAt(Point<float> worldPosition) const;
@@ -156,7 +159,7 @@ private:
     String textForPort(const PortAddress& address) const;
     String textForNode(const Node& node) const;
     Point<float> viewportCentreWorld() const;
-    Point<float> paletteCreationWorldPosition(Point<float> paletteClickPosition) const;
+    Point<float> paletteCreationWorldPosition(NodeKind kind, Point<float> paletteClickPosition) const;
     void refreshCompiledState();
     File snapshotFile() const;
     bool saveSnapshot();
@@ -166,6 +169,8 @@ private:
     void pushUndoSnapshot();
     void pushUndoSnapshot(String xml);
     bool restoreGraphXml(const String& xml, const String& statusMessage);
+    bool spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition);
+    void shoveNodesForwardAfterSplice(const String& insertedNodeId, const String& downstreamNodeId);
     bool clearSelection();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleMeshOutputSide(const String& nodeId);
