@@ -150,6 +150,24 @@ TEST_CASE("Compiler declares IFFT carry-buffer latency", "[cycle-v2][graph]") {
     REQUIRE(findStep(result.plan, "ifft").transformMode == "acyclicCarry");
 }
 
+TEST_CASE("Compiler preserves FFT fixed-window mode", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 0.f, 0.f }));
+    graph.getNodesForEditing().back().parameters = {
+            { "cycleFrames", "Cycle Frames", "4096" },
+            { "mode", "Mode", "fixedWindow" }
+    };
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(findStep(result.plan, "fft").cycleFrames == 4096);
+    REQUIRE(findStep(result.plan, "fft").latencyCycles == 0);
+    REQUIRE(findStep(result.plan, "fft").transformMode == "fixedWindow");
+}
+
 TEST_CASE("Invalid graphs do not compile", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     graph.addEdge({ "voice", "context", "multiply", "audio", PortDomain::DomainContext, false });

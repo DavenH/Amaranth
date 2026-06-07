@@ -32,6 +32,7 @@ class GraphEditor {
 public:
     GraphEditResult addNode(NodeGraph& graph, NodeKind kind, Point<float> position) const;
     GraphEditResult connect(NodeGraph& graph, const PortAddress& first, const PortAddress& second) const;
+    GraphEditResult spliceNodeIntoEdge(NodeGraph& graph, size_t edgeIndex, const String& nodeId) const;
     GraphEditResult removeEdgeAt(NodeGraph& graph, size_t index) const;
     GraphEditResult removeNode(NodeGraph& graph, const String& nodeId) const;
     GraphEditResult setNodeParameter(

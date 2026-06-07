@@ -25,9 +25,20 @@ constexpr float kPaletteRowHeight = 30.f;
 constexpr float kExpandedEditorScale = 0.90f;
 constexpr float kExpandedEditorMinMargin = 18.f;
 constexpr float kExpandedEditorHeaderHeight = 34.f;
+constexpr float kVoiceEditorLabelWidth = 78.f;
+constexpr float kVoiceEditorRowHeight = 23.f;
+constexpr float kVoiceEditorRowGap = 3.f;
+constexpr float kNodeSnapBaseDistance = 9.f;
+constexpr float kNodeSnapExtraPerMatch = 2.5f;
+constexpr float kNodeSnapMaxDistance = 20.f;
 constexpr bool kUseGlCanvasUnderlay = true;
 constexpr bool kUseGlCanvasEdges = false;
 constexpr bool kUseGlNodeShells = false;
+
+struct SnapCandidate {
+    float target {};
+    int matches { 1 };
+};
 
 float cableScaleForZoom(float zoom) {
     return zoom / kCableReferenceZoom * kCableStrokeScale;
@@ -39,6 +50,10 @@ float portScaleForZoom(float zoom) {
 
 float absoluteFloat(float value) {
     return value >= 0.f ? value : -value;
+}
+
+float snapDistanceForMatches(int matches) {
+    return jmin(kNodeSnapMaxDistance, kNodeSnapBaseDistance + (float) jmax(0, matches - 1) * kNodeSnapExtraPerMatch);
 }
 
 float fastSin(float value) {
@@ -106,6 +121,121 @@ float sidePortY(const Node& node, const Port& port) {
     return node.bounds.getY() + 58.f + (float) index * 34.f;
 }
 
+float sidePortYForBounds(const Node& node, const Port& port, Rectangle<float> bounds) {
+    return bounds.getY() + sidePortY(node, port) - node.bounds.getY();
+}
+
+Point<float> portWorldCentreForBounds(const Node& node, const Port& port, Rectangle<float> bounds) {
+    switch (port.side) {
+        case PortSide::Top:
+        case PortSide::Bottom: {
+            const int index = portIndexOnSide(node, port);
+            const int count = jmax(1, portCountOnSide(node, port.side));
+            const float x = bounds.getX() + bounds.getWidth() * ((float) index + 1.f) / ((float) count + 1.f);
+            const float y = port.side == PortSide::Top ? bounds.getY() : bounds.getBottom();
+            return { x, y };
+        }
+
+        case PortSide::Right:
+            return { bounds.getRight(), sidePortYForBounds(node, port, bounds) };
+
+        case PortSide::Left:
+        default:
+            return { bounds.getX(), sidePortYForBounds(node, port, bounds) };
+    }
+}
+
+void addSnapCandidate(std::vector<SnapCandidate>& candidates, float target) {
+    constexpr float mergeDistance = 0.5f;
+
+    for (auto& candidate : candidates) {
+        if (absoluteFloat(candidate.target - target) <= mergeDistance) {
+            candidate.target = (candidate.target * (float) candidate.matches + target) / (float) (candidate.matches + 1);
+            ++candidate.matches;
+            return;
+        }
+    }
+
+    candidates.push_back({ target, 1 });
+}
+
+bool containsString(const std::vector<String>& values, const String& value) {
+    for (const auto& candidate : values) {
+        if (candidate == value) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void addNodeSnapCandidates(
+        std::vector<SnapCandidate>& xCandidates,
+        std::vector<SnapCandidate>& yCandidates,
+        const Node& node) {
+    for (const auto& port : node.inputs) {
+        const Point<float> centre = portWorldCentreForBounds(node, port, node.bounds);
+        addSnapCandidate(xCandidates, centre.x);
+        addSnapCandidate(yCandidates, centre.y);
+    }
+
+    for (const auto& port : node.outputs) {
+        const Point<float> centre = portWorldCentreForBounds(node, port, node.bounds);
+        addSnapCandidate(xCandidates, centre.x);
+        addSnapCandidate(yCandidates, centre.y);
+    }
+}
+
+void addDraggedNodeAnchors(
+        std::vector<float>& xAnchors,
+        std::vector<float>& yAnchors,
+        const Node& node,
+        Rectangle<float> bounds) {
+    for (const auto& port : node.inputs) {
+        const Point<float> centre = portWorldCentreForBounds(node, port, bounds);
+        xAnchors.push_back(centre.x);
+        yAnchors.push_back(centre.y);
+    }
+
+    for (const auto& port : node.outputs) {
+        const Point<float> centre = portWorldCentreForBounds(node, port, bounds);
+        xAnchors.push_back(centre.x);
+        yAnchors.push_back(centre.y);
+    }
+}
+
+bool bestSnapDelta(
+        const std::vector<float>& anchors,
+        const std::vector<SnapCandidate>& candidates,
+        float& delta,
+        float& guide) {
+    float bestDistance = std::numeric_limits<float>::max();
+    int bestMatches = 0;
+
+    for (float anchor : anchors) {
+        for (const auto& candidate : candidates) {
+            const float distance = candidate.target - anchor;
+            const float magnitude = absoluteFloat(distance);
+            const float threshold = snapDistanceForMatches(candidate.matches);
+
+            if (magnitude <= threshold
+                    && (magnitude < bestDistance
+                        || (magnitude == bestDistance && candidate.matches > bestMatches))) {
+                bestDistance = magnitude;
+                bestMatches = candidate.matches;
+                delta = distance;
+                guide = candidate.target;
+            }
+        }
+    }
+
+    return bestMatches > 0;
+}
+
+Rectangle<float> visibleCableBounds(const Path& cable, float zoom) {
+    return cable.getBounds().expanded(jmax(8.f, 14.f * cableScaleForZoom(zoom)));
+}
+
 Point<float> outwardNormalForSide(PortSide side) {
     switch (side) {
         case PortSide::Top:       return { 0.f, -1.f };
@@ -143,11 +273,18 @@ bool isOperationNode(NodeKind kind) {
     return kind == NodeKind::Add || kind == NodeKind::Multiply;
 }
 
+bool hasOutputSideButton(NodeKind kind) {
+    return kind == NodeKind::TrilinearMesh;
+}
+
 bool isPreviewableNode(NodeKind kind) {
     switch (kind) {
         case NodeKind::WaveSource:
         case NodeKind::ImageSource:
         case NodeKind::TrilinearMesh:
+        case NodeKind::VoiceContext:
+        case NodeKind::Fft:
+        case NodeKind::Ifft:
         case NodeKind::Envelope:
         case NodeKind::GuideCurve:
         case NodeKind::ImpulseResponse:
@@ -206,11 +343,24 @@ Rectangle<float> operationLayoutButtonBounds(const Rectangle<float>& nodeBounds,
             .withCentre({ nodeBounds.getRight() - 21.f * zoom, nodeBounds.getY() + 21.f * zoom });
 }
 
+PortSide nextMeshOutputSide(const Node& node) {
+    const PortSide side = node.outputs.empty() ? PortSide::Right : node.outputs.front().side;
+
+    switch (side) {
+        case PortSide::Right:     return PortSide::Bottom;
+        case PortSide::Bottom:    return PortSide::Top;
+        case PortSide::Top:       return PortSide::Right;
+        case PortSide::Left:      return PortSide::Right;
+    }
+
+    return PortSide::Right;
+}
+
 Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
     const Rectangle<float> body = nodeBounds.withTrimmedTop(42.f * zoom);
     const float width = jmin(nodeBounds.getWidth() - 96.f * zoom, 64.f * zoom);
     return Rectangle<float>(width, 28.f * zoom)
-            .withCentre({ nodeBounds.getCentreX(), body.getCentreY() });
+            .withCentre({ nodeBounds.getCentreX(), body.getY() + 28.f * zoom });
 }
 
 Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
@@ -218,6 +368,24 @@ Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
     const float width = jmin(available.getWidth(), jmax(420.f, componentBounds.getWidth() * kExpandedEditorScale));
     const float height = jmin(available.getHeight(), jmax(300.f, componentBounds.getHeight() * kExpandedEditorScale));
     return Rectangle<float>(width, height).withCentre(available.getCentre());
+}
+
+Rectangle<float> expandedEditorBoundsForNode(Rectangle<float> componentBounds, const Node* node) {
+    if (node != nullptr && node->kind == NodeKind::VoiceContext) {
+        const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
+        const float width = jmin(available.getWidth(), 334.f);
+        const float height = jmin(available.getHeight(), 208.f);
+        return Rectangle<float>(width, height).withCentre(available.getCentre());
+    }
+
+    if (node != nullptr && (node->kind == NodeKind::Fft || node->kind == NodeKind::Ifft)) {
+        const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
+        const float width = jmin(available.getWidth(), 360.f);
+        const float height = jmin(available.getHeight(), 144.f);
+        return Rectangle<float>(width, height).withCentre(available.getCentre());
+    }
+
+    return expandedEditorBounds(componentBounds);
 }
 
 Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {
@@ -228,6 +396,16 @@ Rectangle<float> expandedEditorContentBounds(Rectangle<float> componentBounds) {
     Rectangle<float> panel = expandedEditorBounds(componentBounds);
     panel.removeFromTop(kExpandedEditorHeaderHeight);
     return panel.reduced(8.f, 8.f);
+}
+
+Rectangle<float> voiceContextEditorColumnBounds(Rectangle<float> panel) {
+    panel.removeFromTop(30.f);
+    return panel.reduced(26.f, 18.f);
+}
+
+Rectangle<float> transformEditorColumnBounds(Rectangle<float> panel) {
+    panel.removeFromTop(30.f);
+    return panel.reduced(24.f, 18.f);
 }
 
 String voiceDomainForNode(const Node& node) {
@@ -241,6 +419,309 @@ String voiceDomainButtonLabel(const Node& node) {
 
 String nextVoiceDomain(const Node& node) {
     return voiceDomainForNode(node) == "spectral" ? "waveform" : "spectral";
+}
+
+bool expandedEditorBlocksCanvas(const Node* node) {
+    return node != nullptr
+            && node->kind != NodeKind::VoiceContext
+            && node->kind != NodeKind::Fft
+            && node->kind != NodeKind::Ifft;
+}
+
+void drawVoiceContextOctaveSlider(Graphics& g, Rectangle<float> area, const Node& node, float zoom) {
+    const Colour colour = colourForDomain(PortDomain::PitchSignal);
+    const float centreY = area.getCentreY();
+    const float left = area.getX() + 2.f * zoom;
+    const float right = area.getRight() - 2.f * zoom;
+    const float tickHeight = jmax(5.f * zoom, area.getHeight() * 0.20f);
+    const float tickStroke = jmax(1.f, 1.15f * zoom);
+    const float thumbSize = jmax(11.f * zoom, area.getHeight() * 0.44f);
+    const int octave = jlimit(-2, 2, parameterValueForNode(node, "octave", "0").getIntValue());
+    const float thumbX = jmap((float) (octave + 2), 0.f, 4.f, left, right);
+
+    g.setColour(kMutedText.withAlpha(0.28f));
+    g.drawLine(Line<float>({ left, centreY }, { right, centreY }), jmax(1.f, 1.4f * zoom));
+    g.setColour(colour.withAlpha(0.70f));
+    g.drawLine(Line<float>({ left, centreY }, { thumbX, centreY }), jmax(1.f, 2.f * zoom));
+
+    for (int i = -2; i <= 2; ++i) {
+        const float x = jmap((float) (i + 2), 0.f, 4.f, left, right);
+        const bool active = i == octave;
+
+        g.setColour(active ? colour.withAlpha(0.92f) : kMutedText.withAlpha(0.55f));
+        g.drawLine(Line<float>({ x, centreY - tickHeight * 0.5f }, { x, centreY + tickHeight * 0.5f }), tickStroke);
+    }
+
+    g.setColour(Colour(0xff071015).withAlpha(0.72f));
+    g.fillEllipse(Rectangle<float>(thumbSize + 4.f * zoom, thumbSize + 4.f * zoom).withCentre({ thumbX, centreY }));
+    g.setColour(colour.withAlpha(0.98f));
+    g.fillEllipse(Rectangle<float>(thumbSize, thumbSize).withCentre({ thumbX, centreY }));
+    g.setColour(Colours::white.withAlpha(0.22f));
+    g.drawEllipse(Rectangle<float>(thumbSize, thumbSize).withCentre({ thumbX, centreY }), jmax(1.f, 1.f * zoom));
+}
+
+void drawVoiceContextSourceSelector(Graphics& g, Rectangle<float> area, const Node& node) {
+    Rectangle<float> labelArea = area.removeFromLeft(kVoiceEditorLabelWidth);
+    Rectangle<float> control = area.reduced(0.f, 2.f);
+    const bool spectral = voiceDomainForNode(node) == "spectral";
+    const Colour waveformColour = colourForDomain(PortDomain::TimeSignal);
+    const Colour spectralColour = colourForDomain(PortDomain::SpectralMagnitudeSignal);
+    const Colour activeColour = spectral ? spectralColour : waveformColour;
+
+    g.setFont(FontOptions(10.8f, Font::bold));
+    g.setColour(kMutedText.withAlpha(0.76f));
+    g.drawText("Source", labelArea, Justification::centredLeft);
+
+    Rectangle<float> waveformLabel = control.removeFromLeft(62.f);
+    control.removeFromLeft(8.f);
+    Rectangle<float> switchArea = control.removeFromLeft(42.f).reduced(1.f, 2.f);
+    control.removeFromLeft(8.f);
+    Rectangle<float> spectralLabel = control.removeFromLeft(56.f);
+    const float knobSize = switchArea.getHeight() - 4.f;
+    const Point<float> knobCentre(
+            spectral ? switchArea.getRight() - switchArea.getHeight() * 0.5f : switchArea.getX() + switchArea.getHeight() * 0.5f,
+            switchArea.getCentreY());
+
+    g.setColour(spectral ? kMutedText.withAlpha(0.62f) : kText.withAlpha(0.92f));
+    g.drawText("Waveform", waveformLabel, Justification::centredRight);
+    g.setColour(spectral ? kText.withAlpha(0.92f) : kMutedText.withAlpha(0.62f));
+    g.drawText("Spectral", spectralLabel, Justification::centredLeft);
+    g.setColour(Colour(0xff0e1318));
+    g.fillRoundedRectangle(switchArea, switchArea.getHeight() * 0.5f);
+    g.setColour(activeColour.withAlpha(0.62f));
+    g.drawRoundedRectangle(switchArea, switchArea.getHeight() * 0.5f, 1.1f);
+    g.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre(knobCentre));
+}
+
+void drawVoiceContextSlider(
+        Graphics& g,
+        Rectangle<float> area,
+        const String& label,
+        float normalized,
+        Colour colour) {
+    const float trackY = area.getCentreY();
+    const float labelWidth = kVoiceEditorLabelWidth;
+    Rectangle<float> labelArea = area.removeFromLeft(labelWidth);
+    Rectangle<float> valueArea = area.reduced(2.f, 0.f);
+    const float left = valueArea.getX();
+    const float right = valueArea.getRight();
+    const float knobX = jmap(jlimit(0.f, 1.f, normalized), 0.f, 1.f, left, right);
+    const float knobSize = jmax(8.f, area.getHeight() * 0.35f);
+
+    g.setFont(FontOptions(11.f, Font::bold));
+    g.setColour(kMutedText.withAlpha(0.76f));
+    g.drawText(label, labelArea, Justification::centredLeft);
+    g.setColour(kMutedText.withAlpha(0.30f));
+    g.drawLine(Line<float>({ left, trackY }, { right, trackY }), 1.4f);
+    g.setColour(colour.withAlpha(0.76f));
+    g.drawLine(Line<float>({ left, trackY }, { knobX, trackY }), 2.2f);
+    g.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre({ knobX, trackY }));
+}
+
+void drawVoiceContextCheckbox(Graphics& g, Rectangle<float> area, const String& label, bool checked) {
+    Rectangle<float> labelArea = area.removeFromLeft(kVoiceEditorLabelWidth);
+    const float box = 15.f;
+    const Rectangle<float> checkBox(box, box);
+    const Rectangle<float> placed = checkBox.withCentre({ area.getX() + box * 0.5f, area.getCentreY() });
+    const Colour colour = colourForDomain(PortDomain::PitchSignal);
+
+    g.setColour(checked ? colour.withAlpha(0.18f) : Colour(0xff0e1318));
+    g.fillRoundedRectangle(placed, 3.f);
+    g.setColour(checked ? colour.withAlpha(0.86f) : kMutedText.withAlpha(0.70f));
+    g.drawRoundedRectangle(placed, 3.f, 1.3f);
+
+    if (checked) {
+        Path tick;
+        tick.startNewSubPath(placed.getX() + 4.f, placed.getCentreY());
+        tick.lineTo(placed.getCentreX() - 1.f, placed.getBottom() - 4.f);
+        tick.lineTo(placed.getRight() - 3.5f, placed.getY() + 4.f);
+        g.strokePath(tick, PathStrokeType(1.8f, PathStrokeType::curved, PathStrokeType::rounded));
+    }
+
+    g.setFont(FontOptions(11.f, Font::bold));
+    g.setColour(kMutedText.withAlpha(0.76f));
+    g.drawText(label, labelArea, Justification::centredLeft);
+}
+
+void drawVoiceContextStopSlider(
+        Graphics& g,
+        Rectangle<float> area,
+        const String& label,
+        const std::vector<String>& values,
+        const String& value,
+        Colour colour) {
+    Rectangle<float> labelArea = area.removeFromLeft(kVoiceEditorLabelWidth);
+    Rectangle<float> control = area.reduced(2.f, 0.f);
+    const float trackY = control.getCentreY() - 2.f;
+    const float left = control.getX();
+    const float right = control.getRight();
+    int activeIndex {};
+
+    for (int i = 0; i < (int) values.size(); ++i) {
+        if (values[(size_t) i] == value) {
+            activeIndex = i;
+            break;
+        }
+    }
+
+    const float activeX = values.size() <= 1
+            ? left
+            : jmap((float) activeIndex, 0.f, (float) values.size() - 1.f, left, right);
+
+    g.setFont(FontOptions(11.f, Font::bold));
+    g.setColour(kMutedText.withAlpha(0.76f));
+    g.drawText(label, labelArea, Justification::centredLeft);
+    g.setColour(kMutedText.withAlpha(0.28f));
+    g.drawLine(Line<float>({ left, trackY }, { right, trackY }), 1.4f);
+    g.setColour(colour.withAlpha(0.70f));
+    g.drawLine(Line<float>({ left, trackY }, { activeX, trackY }), 2.f);
+
+    for (int i = 0; i < (int) values.size(); ++i) {
+        const float x = values.size() <= 1
+                ? left
+                : jmap((float) i, 0.f, (float) values.size() - 1.f, left, right);
+        const bool active = i == activeIndex;
+
+        g.setColour(active ? colour.withAlpha(0.92f) : kMutedText.withAlpha(0.52f));
+        g.fillEllipse(Rectangle<float>(active ? 9.f : 5.f, active ? 9.f : 5.f).withCentre({ x, trackY }));
+        g.setFont(FontOptions(8.5f, Font::bold));
+        g.setColour(active ? kText.withAlpha(0.90f) : kMutedText.withAlpha(0.66f));
+        g.drawText(values[(size_t) i], Rectangle<float>(x - 14.f, trackY + 5.f, 28.f, 12.f), Justification::centred);
+    }
+}
+
+void drawVoiceContextEditor(Graphics& g, Rectangle<float> content, const Node& node) {
+    const Colour colour = colourForDomain(PortDomain::PitchSignal);
+    Rectangle<float> column = content;
+    const float pitch = parameterValueForNode(node, "pitch", "0").getFloatValue();
+    const bool portamento = parameterValueForNode(node, "portamento", "0") == "1"
+            || parameterValueForNode(node, "portamento", "false") == "true";
+
+    drawVoiceContextSourceSelector(g, column.removeFromTop(kVoiceEditorRowHeight), node);
+    column.removeFromTop(kVoiceEditorRowGap);
+
+    Rectangle<float> octaveRow = column.removeFromTop(kVoiceEditorRowHeight);
+    g.setFont(FontOptions(11.f, Font::bold));
+    g.setColour(kMutedText.withAlpha(0.76f));
+    g.drawText("Octave", octaveRow.removeFromLeft(kVoiceEditorLabelWidth), Justification::centredLeft);
+    drawVoiceContextOctaveSlider(g, octaveRow.reduced(2.f, 0.f), node, 1.f);
+    column.removeFromTop(kVoiceEditorRowGap);
+
+    drawVoiceContextSlider(g, column.removeFromTop(kVoiceEditorRowHeight), "Pitch", (pitch + 12.f) / 24.f, colour);
+    column.removeFromTop(kVoiceEditorRowGap);
+    drawVoiceContextCheckbox(g, column.removeFromTop(kVoiceEditorRowHeight), "Portamento", portamento);
+    column.removeFromTop(kVoiceEditorRowGap);
+    drawVoiceContextStopSlider(
+            g,
+            column.removeFromTop(kVoiceEditorRowHeight),
+            "Oversampling",
+            { "1x", "2x", "4x" },
+            parameterValueForNode(node, "oversampling", "1x"),
+            colour);
+}
+
+String transformModeForNode(const Node& node) {
+    if (node.kind == NodeKind::Fft) {
+        return parameterValueForNode(node, "mode", "cycle");
+    }
+
+    if (node.kind == NodeKind::Ifft) {
+        return parameterValueForNode(node, "mode", "cyclic");
+    }
+
+    return {};
+}
+
+String transformSubtitleForMode(const Node& node, const String& mode) {
+    if (node.kind == NodeKind::Fft) {
+        return mode == "fixedWindow" ? "fixed window" : "cycle chunks";
+    }
+
+    if (node.kind == NodeKind::Ifft) {
+        return mode == "acyclicCarry" ? "carry overlap" : "cyclic overlap";
+    }
+
+    return {};
+}
+
+String transformModeStatus(const Node& node, const String& mode) {
+    if (node.kind == NodeKind::Fft) {
+        return mode == "fixedWindow" ? "Time to freq: fixed time-window" : "Time to freq: chunked by cycle";
+    }
+
+    if (node.kind == NodeKind::Ifft) {
+        return mode == "acyclicCarry" ? "Freq to time: acyclic carry-buffer overlap" : "Freq to time: cyclic overlap";
+    }
+
+    return {};
+}
+
+void drawTransformModeChoice(
+        Graphics& g,
+        Rectangle<float> area,
+        const String& label,
+        const String& leftText,
+        const String& rightText,
+        bool rightActive,
+        Colour colour) {
+    Rectangle<float> labelArea = area.removeFromLeft(kVoiceEditorLabelWidth);
+    Rectangle<float> control = area.reduced(2.f, 0.f);
+    const float corner = 6.f;
+    const Rectangle<float> left = control.removeFromLeft((control.getWidth() - 5.f) * 0.5f);
+    control.removeFromLeft(5.f);
+    const Rectangle<float> right = control;
+    const Rectangle<float> active = rightActive ? right : left;
+
+    g.setFont(FontOptions(11.f, Font::bold));
+    g.setColour(kMutedText.withAlpha(0.76f));
+    g.drawText(label, labelArea, Justification::centredLeft);
+    g.setColour(Colour(0xff0e1318));
+    g.fillRoundedRectangle(left, corner);
+    g.fillRoundedRectangle(right, corner);
+    g.setColour(kMutedText.withAlpha(0.32f));
+    g.drawRoundedRectangle(left, corner, 1.f);
+    g.drawRoundedRectangle(right, corner, 1.f);
+    g.setColour(colour.withAlpha(0.18f));
+    g.fillRoundedRectangle(active, corner);
+    g.setColour(colour.withAlpha(0.82f));
+    g.drawRoundedRectangle(active, corner, 1.2f);
+
+    g.setFont(FontOptions(10.6f, Font::bold));
+    g.setColour(rightActive ? kMutedText.withAlpha(0.62f) : kText.withAlpha(0.92f));
+    g.drawText(leftText, left.reduced(5.f, 0.f), Justification::centred);
+    g.setColour(rightActive ? kText.withAlpha(0.92f) : kMutedText.withAlpha(0.62f));
+    g.drawText(rightText, right.reduced(5.f, 0.f), Justification::centred);
+}
+
+void drawTransformEditor(Graphics& g, Rectangle<float> content, const Node& node) {
+    Rectangle<float> column = content;
+    const String mode = transformModeForNode(node);
+    const Colour colour = colourForDomain(node.kind == NodeKind::Fft
+            ? PortDomain::SpectralMagnitudeSignal
+            : PortDomain::TimeSignal);
+
+    if (node.kind == NodeKind::Fft) {
+        drawTransformModeChoice(
+                g,
+                column.removeFromTop(26.f),
+                "Window",
+                "Cycle chunks",
+                "Fixed time",
+                mode == "fixedWindow",
+                colour);
+        return;
+    }
+
+    if (node.kind == NodeKind::Ifft) {
+        drawTransformModeChoice(
+                g,
+                column.removeFromTop(26.f),
+                "Overlap",
+                "Cyclic",
+                "Acyclic carry",
+                mode == "acyclicCarry",
+                colour);
+    }
 }
 
 Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
@@ -352,6 +833,159 @@ void drawPreviewMeters(
     drawMeter(rightMeter, right);
 }
 
+Rectangle<float> fitAspect(Rectangle<float> area, float aspectRatio) {
+    if (area.getWidth() <= 0.f || area.getHeight() <= 0.f || aspectRatio <= 0.f) {
+        return area;
+    }
+
+    if (area.getWidth() / area.getHeight() > aspectRatio) {
+        return area.withSizeKeepingCentre(area.getHeight() * aspectRatio, area.getHeight());
+    }
+
+    return area.withSizeKeepingCentre(area.getWidth(), area.getWidth() / aspectRatio);
+}
+
+float previewStrokeScale(Rectangle<float> icon) {
+    return jmax(0.72f, jmin(icon.getWidth() / 150.f, icon.getHeight() / 82.f));
+}
+
+Rectangle<float> fftPreviewIconArea(Rectangle<float> area) {
+    Rectangle<float> icon = area.reduced(area.getWidth() * 0.04f, area.getHeight() * 0.09f);
+
+    if (icon.getWidth() / icon.getHeight() < 1.65f) {
+        return fitAspect(icon, 1.65f);
+    }
+
+    return icon;
+}
+
+void drawFftSquareCycle(Graphics& g, Rectangle<float> area, float strokeScale) {
+    Path path;
+    const float left = area.getX() + area.getWidth() * 0.10f;
+    const float mid = area.getCentreX();
+    const float right = area.getRight() - area.getWidth() * 0.10f;
+    const float top = area.getY() + area.getHeight() * 0.20f;
+    const float bottom = area.getY() + area.getHeight() * 0.80f;
+
+    path.startNewSubPath(left, bottom);
+    path.lineTo(left, top);
+    path.lineTo(mid, top);
+    path.lineTo(mid, bottom);
+    path.lineTo(right, bottom);
+    path.lineTo(right, top);
+
+    g.setColour(Colour(0xff58d4e8));
+    g.strokePath(path, PathStrokeType(2.55f * strokeScale, PathStrokeType::mitered, PathStrokeType::rounded));
+}
+
+void drawFftHarmonicStack(Graphics& g, Rectangle<float> area, float strokeScale) {
+    const struct {
+        int harmonic;
+        float minimumWidth;
+        Colour colour;
+    } partials[] = {
+            { 7, 116.f, Colour(0xff9b6dff) },
+            { 5, 0.f, Colour(0xff6f8cff) },
+            { 3, 0.f, Colour(0xff49bde2) },
+            { 1, 0.f, Colour(0xff58d4e8) }
+    };
+
+    Rectangle<float> waveArea = area.reduced(area.getWidth() * 0.08f, area.getHeight() * 0.10f);
+    constexpr float sineControl = 0.3642f;
+
+    for (const auto& partial : partials) {
+        if (area.getWidth() < partial.minimumWidth) {
+            continue;
+        }
+
+        const int halfCycles = partial.harmonic * 2;
+        const float halfWidth = waveArea.getWidth() / (float) halfCycles;
+        const float amplitude = waveArea.getHeight() * 0.44f / (float) partial.harmonic;
+        Path path;
+
+        path.startNewSubPath(waveArea.getX(), waveArea.getCentreY());
+
+        for (int i = 0; i < halfCycles; ++i) {
+            const float x0 = waveArea.getX() + (float) i * halfWidth;
+            const float x1 = x0 + halfWidth;
+            const float controlY = waveArea.getCentreY() + (i % 2 == 0 ? -amplitude : amplitude);
+
+            path.cubicTo(
+                    x0 + halfWidth * sineControl, controlY,
+                    x1 - halfWidth * sineControl, controlY,
+                    x1, waveArea.getCentreY());
+        }
+
+        g.setColour(partial.colour.withAlpha(0.90f));
+        g.strokePath(path, PathStrokeType(1.45f * strokeScale, PathStrokeType::curved, PathStrokeType::rounded));
+    }
+}
+
+void drawFftChevron(Graphics& g, Rectangle<float> icon, float strokeScale) {
+    Path path;
+    const Point<float> top(icon.getX() + icon.getWidth() * 0.476f, icon.getY() + icon.getHeight() * 0.39f);
+    const Point<float> middle(icon.getX() + icon.getWidth() * 0.512f, icon.getY() + icon.getHeight() * 0.50f);
+    const Point<float> bottom(icon.getX() + icon.getWidth() * 0.476f, icon.getY() + icon.getHeight() * 0.61f);
+
+    path.startNewSubPath(top);
+    path.lineTo(middle);
+    path.lineTo(bottom);
+
+    g.setColour(Colour(0xff596a78));
+    g.strokePath(path, PathStrokeType(2.f * strokeScale, PathStrokeType::mitered, PathStrokeType::rounded));
+}
+
+void drawFftTransformPreview(Graphics& g, Rectangle<float> area, bool inverse) {
+    const Rectangle<float> icon = fftPreviewIconArea(area);
+    const float strokeScale = previewStrokeScale(icon);
+    const Rectangle<float> left(
+            icon.getX() + icon.getWidth() * 0.045f,
+            icon.getY() + icon.getHeight() * 0.14f,
+            icon.getWidth() * 0.405f,
+            icon.getHeight() * 0.72f);
+    const Rectangle<float> right(
+            icon.getX() + icon.getWidth() * 0.55f,
+            icon.getY() + icon.getHeight() * 0.14f,
+            icon.getWidth() * 0.405f,
+            icon.getHeight() * 0.72f);
+
+    if (inverse) {
+        drawFftHarmonicStack(g, left, strokeScale);
+        drawFftChevron(g, icon, strokeScale);
+        drawFftSquareCycle(g, right, strokeScale);
+    } else {
+        drawFftSquareCycle(g, left, strokeScale);
+        drawFftChevron(g, icon, strokeScale);
+        drawFftHarmonicStack(g, right, strokeScale);
+    }
+}
+
+void drawMathOperationPreview(Graphics& g, Rectangle<float> area, bool multiply, float zoom) {
+    const Colour colour = colourForDomain(PortDomain::ControlSignal);
+    const Rectangle<float> icon = fitAspect(area.reduced(area.getWidth() * 0.20f, area.getHeight() * 0.12f), 1.f);
+    const Point<float> centre = icon.getCentre();
+    const float radius = jmin(icon.getWidth(), icon.getHeight()) * 0.32f;
+    const float stroke = jmax(2.3f * zoom, radius * 0.18f);
+
+    Path mark;
+    if (multiply) {
+        mark.startNewSubPath(centre.x - radius, centre.y - radius);
+        mark.lineTo(centre.x + radius, centre.y + radius);
+        mark.startNewSubPath(centre.x + radius, centre.y - radius);
+        mark.lineTo(centre.x - radius, centre.y + radius);
+    } else {
+        mark.startNewSubPath(centre.x - radius, centre.y);
+        mark.lineTo(centre.x + radius, centre.y);
+        mark.startNewSubPath(centre.x, centre.y - radius);
+        mark.lineTo(centre.x, centre.y + radius);
+    }
+
+    g.setColour(Colour(0xff071015).withAlpha(0.46f));
+    g.strokePath(mark, PathStrokeType(stroke + 2.f * zoom, PathStrokeType::mitered, PathStrokeType::rounded));
+    g.setColour(colour.withAlpha(0.94f));
+    g.strokePath(mark, PathStrokeType(stroke, PathStrokeType::mitered, PathStrokeType::rounded));
+}
+
 void drawOperationLayoutIcon(Graphics& g, Rectangle<float> button, OperationPortLayout layout, Colour colour) {
     const auto area = button.reduced(button.getWidth() * 0.24f);
     const float stroke = jmax(1.f, button.getWidth() * 0.085f);
@@ -408,10 +1042,58 @@ void drawOperationLayoutIcon(Graphics& g, Rectangle<float> button, OperationPort
     dotAt(out, true);
 }
 
+void drawOutputSideIcon(Graphics& g, Rectangle<float> button, PortSide side, Colour colour) {
+    const Rectangle<float> area = button.reduced(button.getWidth() * 0.24f);
+    const float stroke = jmax(1.f, button.getWidth() * 0.085f);
+    const float dot = jmax(2.f, button.getWidth() * 0.14f);
+    const Point<float> centre = area.getCentre();
+    Point<float> out;
+
+    switch (side) {
+        case PortSide::Top:
+            out = { centre.x, area.getY() };
+            break;
+
+        case PortSide::Bottom:
+            out = { centre.x, area.getBottom() };
+            break;
+
+        case PortSide::Right:
+        case PortSide::Left:
+        default:
+            out = { area.getRight(), centre.y };
+            break;
+    }
+
+    g.setColour(colour.withAlpha(0.78f));
+    g.drawEllipse(Rectangle<float>(dot, dot).withCentre(centre), stroke);
+    g.drawLine(Line<float>(centre, out), stroke);
+    g.setColour(colour);
+    g.fillEllipse(Rectangle<float>(dot, dot).withCentre(out));
+}
+
+NodeGraph createStartupGraph() {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File defaultGraph = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("resources")
+            .getChildFile("default.cyclegraph");
+
+    if (defaultGraph.existsAsFile()) {
+        NodeGraph graph = GraphSerializer().fromXmlString(defaultGraph.loadFileAsString());
+
+        if (!graph.getNodes().empty()) {
+            return graph;
+        }
+    }
+  #endif
+
+    return NodeGraph::createDemoGraph();
+}
+
 }
 
 NodeCanvas::NodeCanvas() :
-        graph(NodeGraph::createDemoGraph()) {
+        graph(createStartupGraph()) {
     refreshCompiledState();
 
     setOpaque(true);
@@ -432,12 +1114,13 @@ NodeCanvas::~NodeCanvas() {
 void NodeCanvas::paint(Graphics& g) {
     const Node* expandedNode = findNode(expandedNodeId);
 
-    if (expandedNode != nullptr) {
+    if (expandedEditorBlocksCanvas(expandedNode)) {
         g.saveState();
-        g.excludeClipRegion(expandedEditorBounds(getLocalBounds().toFloat()).toNearestInt().expanded(2));
+        g.excludeClipRegion(expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode).toNearestInt().expanded(2));
     }
 
     drawGrid(g);
+    drawSnapGuides(g);
     drawEdges(g);
     drawConnectionPreview(g);
     drawNodes(g);
@@ -446,8 +1129,11 @@ void NodeCanvas::paint(Graphics& g) {
     drawNodePalette(g);
     drawHoverConsole(g);
 
-    if (expandedNode != nullptr) {
+    if (expandedEditorBlocksCanvas(expandedNode)) {
         g.restoreState();
+    }
+
+    if (expandedNode != nullptr) {
         if (expandedNode->kind != NodeKind::TrilinearMesh) {
             drawExpandedEditor(g, *expandedNode);
         }
@@ -473,6 +1159,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     draggingNode = false;
     connectingCable = false;
     nodeDragUndoPushed = false;
+    nodeDragMoved = false;
+    spliceTargetEdgeIndex = -1;
+    activeSnapHasX = false;
+    activeSnapHasY = false;
     draggingTrimeshMorph = false;
     trimeshMorphUndoPushed = false;
     draggingTrimeshVertexParameter = false;
@@ -480,9 +1170,15 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     expandedEditorDragCaptured = false;
 
     if (expandedNodeId.isNotEmpty()) {
-        const auto panel = expandedEditorBounds(getLocalBounds().toFloat());
-        const auto closeButton = expandedEditorCloseButton(panel);
         const Node* expandedNode = findNode(expandedNodeId);
+        const auto panel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
+        auto closeButton = expandedEditorCloseButton(panel);
+        if (expandedNode != nullptr
+                && (expandedNode->kind == NodeKind::VoiceContext
+                    || expandedNode->kind == NodeKind::Fft
+                    || expandedNode->kind == NodeKind::Ifft)) {
+            closeButton = Rectangle<float>(18.f, 18.f).withCentre({ panel.getRight() - 18.f, panel.getY() + 15.f });
+        }
 
         if (expandedNode != nullptr && expandedNode->kind == NodeKind::TrilinearMesh) {
             repaint();
@@ -495,6 +1191,20 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
 
+        if (expandedNode != nullptr
+                && expandedNode->kind == NodeKind::VoiceContext
+                && panel.contains(event.position)
+                && handleVoiceContextEditorClick(event.position)) {
+            return;
+        }
+
+        if (expandedNode != nullptr
+                && (expandedNode->kind == NodeKind::Fft || expandedNode->kind == NodeKind::Ifft)
+                && panel.contains(event.position)
+                && handleTransformEditorClick(event.position)) {
+            return;
+        }
+
         expandedEditorDragCaptured = panel.contains(event.position);
 
         repaint();
@@ -504,7 +1214,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     NodeKind paletteKind;
     if (findPaletteKindAt(event.position, paletteKind)) {
         const String beforeEdit = GraphSerializer().toXmlString(graph);
-        auto result = GraphEditor().addNode(graph, paletteKind, paletteCreationWorldPosition(event.position));
+        auto result = GraphEditor().addNode(graph, paletteKind, paletteCreationWorldPosition(paletteKind, event.position));
 
         if (result.succeeded()) {
             pushUndoSnapshot(beforeEdit);
@@ -513,6 +1223,15 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             selectedEdgeIndex = -1;
             if (const Node* node = findNode(result.nodeId)) {
                 dragStartNodeBounds = node->bounds;
+
+                if (isOperationNode(node->kind) && !node->inputs.empty()) {
+                    const Point<float> mouseWorld = toWorld(event.position);
+                    const Point<float> inputCentre = portWorldCentreForBounds(*node, node->inputs.front(), node->bounds);
+                    dragStartNodeBounds = dragStartNodeBounds.translated(
+                            mouseWorld.x - inputCentre.x,
+                            mouseWorld.y - inputCentre.y);
+                }
+
                 draggingNode = true;
                 nodeDragUndoPushed = false;
             }
@@ -529,6 +1248,16 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     if (findOperationLayoutButtonAt(event.position, layoutNodeId)) {
         if (cycleOperationPortLayout(layoutNodeId)) {
             editStatusMessage = "Port layout cycled";
+            repaint();
+        }
+
+        return;
+    }
+
+    String outputSideNodeId;
+    if (findMeshOutputSideButtonAt(event.position, outputSideNodeId)) {
+        if (cycleMeshOutputSide(outputSideNodeId)) {
+            editStatusMessage = "Output side cycled";
             repaint();
         }
 
@@ -623,10 +1352,17 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
                 nodeDragUndoPushed = true;
             }
 
-            const auto offset = event.getOffsetFromDragStart().toFloat() / zoom;
-            node->bounds = dragStartNodeBounds.translated(offset.x, offset.y);
+            const auto dragOffset = event.getOffsetFromDragStart().toFloat();
+            nodeDragMoved = dragOffset.getDistanceFromOrigin() > 3.f;
+            const auto offset = dragOffset / zoom;
+            node->bounds = snappedNodeBounds(*node, dragStartNodeBounds.translated(offset.x, offset.y));
+            spliceTargetEdgeIndex = nodeDragMoved
+                    ? findSpliceTargetEdgeAt(event.position, selectedNodeId)
+                    : -1;
         }
     } else {
+        activeSnapHasX = false;
+        activeSnapHasY = false;
         pan = dragStartPan + event.getOffsetFromDragStart().toFloat();
     }
 
@@ -637,11 +1373,30 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     lastMousePosition = event.position;
 
     if (!connectingCable) {
+        if (draggingNode && nodeDragMoved && spliceSelectedNodeIntoEdgeAt(event.position)) {
+            draggingNode = false;
+            nodeDragUndoPushed = false;
+            nodeDragMoved = false;
+            spliceTargetEdgeIndex = -1;
+            activeSnapHasX = false;
+            activeSnapHasY = false;
+            endTrimeshMorphEdit();
+            endTrimeshVertexParameterEdit();
+            expandedEditorDragCaptured = false;
+            repaint();
+            return;
+        }
+
         draggingNode = false;
         nodeDragUndoPushed = false;
+        nodeDragMoved = false;
+        spliceTargetEdgeIndex = -1;
+        activeSnapHasX = false;
+        activeSnapHasY = false;
         endTrimeshMorphEdit();
         endTrimeshVertexParameterEdit();
         expandedEditorDragCaptured = false;
+        repaint();
         return;
     }
 
@@ -649,6 +1404,10 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     connectingCable = false;
     draggingNode = false;
     nodeDragUndoPushed = false;
+    nodeDragMoved = false;
+    spliceTargetEdgeIndex = -1;
+    activeSnapHasX = false;
+    activeSnapHasY = false;
     endTrimeshMorphEdit();
     endTrimeshVertexParameterEdit();
     expandedEditorDragCaptured = false;
@@ -672,7 +1431,8 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
-    if (expandedNodeId.isNotEmpty() && expandedEditorBounds(getLocalBounds().toFloat()).contains(event.position)) {
+    const Node* expandedNode = findNode(expandedNodeId);
+    if (expandedNode != nullptr && expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode).contains(event.position)) {
         repaint();
         return;
     }
@@ -696,20 +1456,12 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
     const int keyCode = key.getKeyCode();
     const juce_wchar keyChar = CharacterFunctions::toLowerCase(key.getTextCharacter());
 
-    if (commandDown && (keyChar == 's' || keyCode == 's' || keyCode == 'S')) {
-        return saveSnapshot();
-    }
-
     if (commandDown && (keyChar == 'z' || keyCode == 'z' || keyCode == 'Z')) {
         return key.getModifiers().isShiftDown() ? redo() : undo();
     }
 
     if (commandDown && (keyChar == 'y' || keyCode == 'y' || keyCode == 'Y')) {
         return redo();
-    }
-
-    if (commandDown && (keyChar == 'o' || keyCode == 'o' || keyCode == 'O')) {
-        return loadSnapshot();
     }
 
     if (key == KeyPress::escapeKey) {
@@ -841,8 +1593,9 @@ void NodeCanvas::drawGrid(Graphics& g) {
 void NodeCanvas::drawGlEdges() {
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
-    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
-    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
+    const Node* expandedNode = findNode(expandedNodeId);
+    const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
+    const Rectangle<float> expandedPanel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -863,12 +1616,13 @@ void NodeCanvas::drawGlEdges() {
         const Point<float> source = getPortLocation(*sourceNode, *sourcePort).centre;
         const Point<float> dest = getPortLocation(*destNode, *destPort).centre;
         const Path cable = createCablePath(source, dest, sourcePort->side, destPort->side, edge.attachment);
+        const Rectangle<float> cableBounds = visibleCableBounds(cable, zoom);
 
-        if (!cable.getBounds().intersects(visibleArea)) {
+        if (!cableBounds.intersects(visibleArea)) {
             continue;
         }
 
-        if (hasExpandedEditor && cable.getBounds().intersects(expandedPanel)) {
+        if (hasExpandedEditor && cableBounds.intersects(expandedPanel)) {
             continue;
         }
 
@@ -885,7 +1639,7 @@ void NodeCanvas::drawGlEdges() {
                 dest,
                 colour,
                 cableScaleForZoom(zoom),
-                edgeIndex == selectedEdgeIndex,
+                edgeIndex == selectedEdgeIndex || edgeIndex == spliceTargetEdgeIndex,
                 edge.attachment,
                 invalid);
     }
@@ -893,8 +1647,9 @@ void NodeCanvas::drawGlEdges() {
 
 void NodeCanvas::drawGlNodeShells() {
     const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
-    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
-    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
+    const Node* expandedNode = findNode(expandedNodeId);
+    const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
+    const Rectangle<float> expandedPanel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
 
     for (const auto& node : graph.getNodes()) {
         const Rectangle<float> bounds = toScreen(node.bounds);
@@ -935,8 +1690,9 @@ void NodeCanvas::drawEdges(Graphics& g) {
 
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
-    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
-    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
+    const Node* expandedNode = findNode(expandedNodeId);
+    const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
+    const Rectangle<float> expandedPanel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -957,7 +1713,7 @@ void NodeCanvas::drawEdges(Graphics& g) {
         auto source = getPortLocation(*sourceNode, *sourcePort).centre;
         auto dest = getPortLocation(*destNode, *destPort).centre;
         Path cable = createCablePath(source, dest, sourcePort->side, destPort->side, edge.attachment);
-        const Rectangle<float> cableBounds = cable.getBounds();
+        const Rectangle<float> cableBounds = visibleCableBounds(cable, zoom);
 
         if (!cableBounds.intersects(visibleArea)) {
             continue;
@@ -971,6 +1727,7 @@ void NodeCanvas::drawEdges(Graphics& g) {
         const bool invalid = edgeHasValidationIssue(edge);
 
         const bool selected = edgeIndex == selectedEdgeIndex;
+        const bool spliceTarget = edgeIndex == spliceTargetEdgeIndex;
         const float cableScale = cableScaleForZoom(zoom);
 
         if (invalid) {
@@ -982,15 +1739,31 @@ void NodeCanvas::drawEdges(Graphics& g) {
             PathStrokeType stroke(2.0f * cableScale, PathStrokeType::curved, PathStrokeType::rounded);
             Array<float> dashes { 8.f * cableScale, 7.f * cableScale };
             stroke.createDashedStroke(dashedCable, cable, dashes.getRawDataPointer(), dashes.size());
-            g.setColour(colour.withAlpha(selected ? 0.46f : 0.32f));
-            g.strokePath(dashedCable, PathStrokeType((selected ? 10.f : 7.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            g.setColour(colour.withAlpha(spliceTarget ? 0.62f : (selected ? 0.46f : 0.32f)));
+            g.strokePath(
+                    dashedCable,
+                    PathStrokeType((spliceTarget ? 13.f : (selected ? 10.f : 7.f)) * cableScale,
+                                   PathStrokeType::curved,
+                                   PathStrokeType::rounded));
             g.setColour(colour.withAlpha(0.92f));
-            g.strokePath(dashedCable, PathStrokeType((selected ? 3.f : 2.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            g.strokePath(
+                    dashedCable,
+                    PathStrokeType((spliceTarget ? 4.5f : (selected ? 3.f : 2.f)) * cableScale,
+                                   PathStrokeType::curved,
+                                   PathStrokeType::rounded));
         } else {
-            g.setColour(colour.withAlpha(selected ? 0.28f : 0.18f));
-            g.strokePath(cable, PathStrokeType((selected ? 12.f : 9.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            g.setColour(colour.withAlpha(spliceTarget ? 0.42f : (selected ? 0.28f : 0.18f)));
+            g.strokePath(
+                    cable,
+                    PathStrokeType((spliceTarget ? 15.f : (selected ? 12.f : 9.f)) * cableScale,
+                                   PathStrokeType::curved,
+                                   PathStrokeType::rounded));
             g.setColour(colour.withAlpha(0.92f));
-            g.strokePath(cable, PathStrokeType((selected ? 4.f : 3.f) * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
+            g.strokePath(
+                    cable,
+                    PathStrokeType((spliceTarget ? 5.2f : (selected ? 4.f : 3.f)) * cableScale,
+                                   PathStrokeType::curved,
+                                   PathStrokeType::rounded));
 
             if (invalid) {
                 Path dashedCable;
@@ -1002,7 +1775,34 @@ void NodeCanvas::drawEdges(Graphics& g) {
             }
         }
 
-        const float endpointSize = (selected ? 14.f : 11.f) * cableScale;
+        if (spliceTarget) {
+            const Point<float> midpoint = cable.getPointAlongPath(cable.getLength() * 0.5f);
+            const float markerSize = 17.f * cableScale;
+            Rectangle<float> insertMarker(
+                    midpoint.x - markerSize * 0.5f,
+                    midpoint.y - markerSize * 0.5f,
+                    markerSize,
+                    markerSize);
+
+            g.setColour(kCanvasBackground.withAlpha(0.92f));
+            g.fillEllipse(insertMarker);
+            g.setColour(colour.withAlpha(0.98f));
+            g.drawEllipse(insertMarker, 2.2f * cableScale);
+            g.drawLine(
+                    insertMarker.getX() + markerSize * 0.30f,
+                    midpoint.y,
+                    insertMarker.getRight() - markerSize * 0.30f,
+                    midpoint.y,
+                    1.9f * cableScale);
+            g.drawLine(
+                    midpoint.x,
+                    insertMarker.getY() + markerSize * 0.30f,
+                    midpoint.x,
+                    insertMarker.getBottom() - markerSize * 0.30f,
+                    1.9f * cableScale);
+        }
+
+        const float endpointSize = (spliceTarget ? 15.f : (selected ? 14.f : 11.f)) * cableScale;
         Rectangle<float> sourceMarker(source.x - endpointSize * 0.5f, source.y - endpointSize * 0.5f,
                                       endpointSize, endpointSize);
         Rectangle<float> destMarker(dest.x - endpointSize * 0.5f, dest.y - endpointSize * 0.5f,
@@ -1011,8 +1811,8 @@ void NodeCanvas::drawEdges(Graphics& g) {
         g.setColour(kCanvasBackground.withAlpha(0.92f));
         g.fillEllipse(sourceMarker);
         g.setColour(colour.withAlpha(0.96f));
-        g.drawEllipse(sourceMarker, (selected ? 2.4f : 1.8f) * cableScale);
-        g.fillEllipse(destMarker.reduced((selected ? 1.5f : 2.f) * cableScale));
+        g.drawEllipse(sourceMarker, (spliceTarget ? 2.8f : (selected ? 2.4f : 1.8f)) * cableScale);
+        g.fillEllipse(destMarker.reduced((spliceTarget ? 1.2f : (selected ? 1.5f : 2.f)) * cableScale));
     }
 }
 
@@ -1040,7 +1840,9 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
     const PortSide destSide = connectingPort.input ? port->side : PortSide::Left;
     const Path cable = createCablePath(source, dest, sourceSide, destSide, false);
 
-    if (expandedNodeId.isNotEmpty() && cable.getBounds().intersects(expandedEditorBounds(getLocalBounds().toFloat()))) {
+    const Node* expandedNode = findNode(expandedNodeId);
+    if (expandedEditorBlocksCanvas(expandedNode)
+            && visibleCableBounds(cable, zoom).intersects(expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode))) {
         return;
     }
 
@@ -1064,8 +1866,9 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
 
 void NodeCanvas::drawNodes(Graphics& g) {
     const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
-    const bool hasExpandedEditor = expandedNodeId.isNotEmpty();
-    const Rectangle<float> expandedPanel = expandedEditorBounds(getLocalBounds().toFloat());
+    const Node* expandedNode = findNode(expandedNodeId);
+    const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
+    const Rectangle<float> expandedPanel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
 
     for (const auto& node : graph.getNodes()) {
         const Rectangle<float> nodeBounds = toScreen(node.bounds);
@@ -1079,6 +1882,27 @@ void NodeCanvas::drawNodes(Graphics& g) {
         }
 
         drawNode(g, node);
+    }
+}
+
+void NodeCanvas::drawSnapGuides(Graphics& g) {
+    if (!draggingNode || (!activeSnapHasX && !activeSnapHasY)) {
+        return;
+    }
+
+    const Rectangle<float> area = getLocalBounds().toFloat();
+    const float stroke = 0.75f;
+
+    if (activeSnapHasX) {
+        const float x = toScreen(Point<float>(activeSnapWorldX, 0.f)).x;
+        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.18f));
+        g.drawLine(Line<float>({ x, area.getY() }, { x, area.getBottom() }), stroke);
+    }
+
+    if (activeSnapHasY) {
+        const float y = toScreen(Point<float>(0.f, activeSnapWorldY)).y;
+        g.setColour(colourForDomain(PortDomain::PitchSignal).withAlpha(0.16f));
+        g.drawLine(Line<float>({ area.getX(), y }, { area.getRight(), y }), stroke);
     }
 }
 
@@ -1120,10 +1944,23 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
         drawOperationLayoutIcon(g, button, nextOperationPortLayout(operationPortLayoutFor(node)), kMutedText);
     }
 
+    if (hasOutputSideButton(node.kind)) {
+        const auto button = operationLayoutButtonBounds(toScreen(node.bounds), zoom);
+        g.setColour(Colour(0xff0f141a).withAlpha(0.78f));
+        g.fillEllipse(button);
+        g.setColour(kMutedText.withAlpha(0.82f));
+        g.drawEllipse(button, 1.f * uiScale);
+        drawOutputSideIcon(g, button, nextMeshOutputSide(node), kMutedText);
+    }
+
     auto nodeBounds = toScreen(node.bounds);
     auto preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
 
     if (node.kind != NodeKind::VoiceContext) {
+        if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
+            preview = nodeBounds.withTrimmedTop(40.f * zoom).reduced(3.f * zoom, 5.f * zoom);
+        }
+
         drawPreview(g, node, preview);
     }
 
@@ -1273,41 +2110,7 @@ void NodeCanvas::drawPreviewUncached(
     }
 
     if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
-        const bool inverse = node.kind == NodeKind::Ifft;
-        const Rectangle<float> icon = previewContentArea(area).reduced(8.f, 4.f);
-        const Colour time = colourForDomain(PortDomain::TimeSignal);
-        const Colour mag = colourForDomain(PortDomain::SpectralMagnitudeSignal);
-        const Colour phase = colourForDomain(PortDomain::SpectralPhaseSignal);
-
-        if (inverse) {
-            Path wave;
-            for (int i = 0; i < 32; ++i) {
-                const float t = (float) i / 31.f;
-                const Point<float> p(
-                        icon.getX() + t * icon.getWidth(),
-                        icon.getCentreY() + fastSin(t * MathConstants<float>::twoPi) * icon.getHeight() * 0.30f);
-
-                if (i == 0) {
-                    wave.startNewSubPath(p);
-                } else {
-                    wave.lineTo(p);
-                }
-            }
-
-            g.setColour(time.withAlpha(0.90f));
-            g.strokePath(wave, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
-        } else {
-            const float barWidth = icon.getWidth() / 7.f;
-
-            for (int i = 0; i < 6; ++i) {
-                const float height = icon.getHeight() * (0.25f + (float) ((i * 17) % 5) * 0.13f);
-                Rectangle<float> bar(icon.getX() + (float) i * barWidth, icon.getBottom() - height,
-                                     barWidth * 0.52f, height);
-                g.setColour((i % 2 == 0 ? mag : phase).withAlpha(0.78f));
-                g.fillRoundedRectangle(bar, 2.f);
-            }
-        }
-
+        drawFftTransformPreview(g, area, node.kind == NodeKind::Ifft);
         return;
     }
 
@@ -1336,6 +2139,11 @@ void NodeCanvas::drawPreviewUncached(
                 { 0.58f }
         };
         drawPreviewMeters(g, area, preview, colour);
+        return;
+    }
+
+    if (node.kind == NodeKind::Add || node.kind == NodeKind::Multiply) {
+        drawMathOperationPreview(g, area, node.kind == NodeKind::Multiply, zoom);
         return;
     }
 
@@ -1411,20 +2219,6 @@ void NodeCanvas::drawPreviewUncached(
     }
 
     Colour colour = node.outputs.empty() ? Colour(0xff9aa5b2) : colourForDomain(node.outputs.front().domain);
-
-    if (node.kind == NodeKind::Add) {
-        g.setColour(kMutedText.withAlpha(0.76f));
-        g.setFont(FontOptions(jmin(48.f, area.getHeight() * 0.76f), Font::bold));
-        g.drawText("+", area, Justification::centred);
-        return;
-    }
-
-    if (node.kind == NodeKind::Multiply) {
-        g.setColour(kMutedText.withAlpha(0.76f));
-        g.setFont(FontOptions(jmin(48.f, area.getHeight() * 0.76f), Font::bold));
-        g.drawText("x", area, Justification::centred);
-        return;
-    }
 
     g.setColour(colour.withAlpha(0.20f));
     g.fillPath(curve);
@@ -1525,9 +2319,12 @@ void NodeCanvas::drawEnvelopeCurve(Graphics& g, Rectangle<float> area) {
 }
 
 void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
-    Rectangle<float> panel = expandedEditorBounds(getLocalBounds().toFloat());
+    Rectangle<float> panel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), &node);
     const Rectangle<float> outerPanel = panel;
     const bool isTrimeshEditor = node.kind == NodeKind::TrilinearMesh;
+    const bool isVoiceEditor = node.kind == NodeKind::VoiceContext;
+    const bool isTransformEditor = node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft;
+    const bool isCompactEditor = isVoiceEditor || isTransformEditor;
 
     if (isTrimeshEditor) {
         const Rectangle<float> content = expandedEditorContentBounds(getLocalBounds().toFloat());
@@ -1549,10 +2346,10 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
         g.fillRoundedRectangle(panel, 8.f);
     }
 
-    g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.72f));
-    g.drawRoundedRectangle(panel, 8.f, 1.5f);
+    g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(isCompactEditor ? 0.32f : 0.72f));
+    g.drawRoundedRectangle(panel, 8.f, isCompactEditor ? 1.1f : 1.5f);
 
-    auto header = panel.removeFromTop(kExpandedEditorHeaderHeight);
+    auto header = panel.removeFromTop(isCompactEditor ? 30.f : kExpandedEditorHeaderHeight);
     if (!isTrimeshEditor) {
         g.setColour(Colour(0xff202833));
         g.fillRoundedRectangle(header, 8.f);
@@ -1564,27 +2361,44 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     }
 
     g.setColour(kText);
-    g.setFont(FontOptions(14.f, Font::bold));
+    g.setFont(FontOptions(isCompactEditor ? 13.2f : 14.f, Font::bold));
     g.drawText(node.title, header.reduced(13.f, 4.f), Justification::centredLeft);
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(10.f));
-    g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
+
+    if (!isCompactEditor) {
+        g.setColour(kMutedText);
+        g.setFont(FontOptions(10.f));
+        g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
+    }
 
     Rectangle<float> closeButton = expandedEditorCloseButton(outerPanel);
+    if (isCompactEditor) {
+        closeButton = Rectangle<float>(18.f, 18.f).withCentre({ outerPanel.getRight() - 18.f, header.getCentreY() });
+    }
     g.setColour(Colour(0xff0e1318));
     g.fillEllipse(closeButton);
-    g.setColour(Colour(0xff354050));
-    g.drawEllipse(closeButton, 1.f);
-    g.setColour(kText);
-    g.drawLine(closeButton.getX() + 7.f, closeButton.getY() + 7.f,
-               closeButton.getRight() - 7.f, closeButton.getBottom() - 7.f, 1.4f);
-    g.drawLine(closeButton.getRight() - 7.f, closeButton.getY() + 7.f,
-               closeButton.getX() + 7.f, closeButton.getBottom() - 7.f, 1.4f);
+    g.setColour(Colour(0xff354050).withAlpha(isCompactEditor ? 0.62f : 1.f));
+    g.drawEllipse(closeButton, isCompactEditor ? 0.8f : 1.f);
+    g.setColour(kText.withAlpha(isCompactEditor ? 0.82f : 1.f));
+    const float crossInset = isCompactEditor ? 5.5f : 7.f;
+    g.drawLine(closeButton.getX() + crossInset, closeButton.getY() + crossInset,
+               closeButton.getRight() - crossInset, closeButton.getBottom() - crossInset, isCompactEditor ? 1.2f : 1.4f);
+    g.drawLine(closeButton.getRight() - crossInset, closeButton.getY() + crossInset,
+               closeButton.getX() + crossInset, closeButton.getBottom() - crossInset, isCompactEditor ? 1.2f : 1.4f);
 
     auto content = isTrimeshEditor ? panel.reduced(10.f, 8.f) : panel.reduced(18.f, 16.f);
 
     if (isTrimeshEditor) {
         trimeshWidgetFor(node.id).paintExpanded(g, node, content);
+        return;
+    }
+
+    if (node.kind == NodeKind::VoiceContext) {
+        drawVoiceContextEditor(g, voiceContextEditorColumnBounds(outerPanel), node);
+        return;
+    }
+
+    if (isTransformEditor) {
+        drawTransformEditor(g, transformEditorColumnBounds(outerPanel), node);
         return;
     }
 
@@ -1935,7 +2749,7 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
 
     const PaletteSection sections[] = {
             { "Context",   { { NodeKind::VoiceContext, "Voice Context" } } },
-            { "Transform", { { NodeKind::Fft, "Forward FFT" }, { NodeKind::Ifft, "Inverse FFT" } } },
+            { "Transform", { { NodeKind::Fft, "Time → Freq" }, { NodeKind::Ifft, "Freq → Time" } } },
             { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
             { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::ImageSource, "Image" },
                              { NodeKind::TrilinearMesh, "Mesh" } } },
@@ -1984,7 +2798,7 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
             g.drawRoundedRectangle(row, 4.f, 1.f);
             g.setColour(kText);
             g.setFont(FontOptions(12.6f, Font::bold));
-            g.drawText(entry.label, row.reduced(8.f, 0.f), Justification::centredLeft);
+            g.drawText(String::fromUTF8(entry.label), row.reduced(8.f, 0.f), Justification::centredLeft);
             y += kPaletteRowHeight;
         }
     }
@@ -2001,6 +2815,44 @@ Point<float> NodeCanvas::toWorld(Point<float> p) const {
 Rectangle<float> NodeCanvas::toScreen(Rectangle<float> r) const {
     return { pan.x + r.getX() * zoom, pan.y + r.getY() * zoom,
              r.getWidth() * zoom, r.getHeight() * zoom };
+}
+
+Rectangle<float> NodeCanvas::snappedNodeBounds(const Node& node, Rectangle<float> proposed) {
+    std::vector<SnapCandidate> xCandidates;
+    std::vector<SnapCandidate> yCandidates;
+    std::vector<float> xAnchors;
+    std::vector<float> yAnchors;
+
+    activeSnapHasX = false;
+    activeSnapHasY = false;
+
+    for (const auto& candidateNode : graph.getNodes()) {
+        if (candidateNode.id == node.id) {
+            continue;
+        }
+
+        addNodeSnapCandidates(xCandidates, yCandidates, candidateNode);
+    }
+
+    addDraggedNodeAnchors(xAnchors, yAnchors, node, proposed);
+
+    float deltaX {};
+    float deltaY {};
+    if (bestSnapDelta(xAnchors, xCandidates, deltaX, activeSnapWorldX)) {
+        proposed = proposed.translated(deltaX, 0.f);
+        activeSnapHasX = true;
+    }
+
+    xAnchors.clear();
+    yAnchors.clear();
+    addDraggedNodeAnchors(xAnchors, yAnchors, node, proposed);
+
+    if (bestSnapDelta(yAnchors, yCandidates, deltaY, activeSnapWorldY)) {
+        proposed = proposed.translated(0.f, deltaY);
+        activeSnapHasY = true;
+    }
+
+    return proposed;
 }
 
 NodeCanvas::PortLocation NodeCanvas::getPortLocation(const Node& node, const Port& port) const {
@@ -2125,7 +2977,7 @@ bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) 
 
     const PaletteSection sections[] = {
             { "Context",   { { NodeKind::VoiceContext, "Voice Context" } } },
-            { "Transform", { { NodeKind::Fft, "Forward FFT" }, { NodeKind::Ifft, "Inverse FFT" } } },
+            { "Transform", { { NodeKind::Fft, "Time → Freq" }, { NodeKind::Ifft, "Freq → Time" } } },
             { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
             { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::ImageSource, "Image" },
                              { NodeKind::TrilinearMesh, "Mesh" } } },
@@ -2187,6 +3039,25 @@ bool NodeCanvas::findOperationLayoutButtonAt(Point<float> screenPosition, String
     return false;
 }
 
+bool NodeCanvas::findMeshOutputSideButtonAt(Point<float> screenPosition, String& nodeId) const {
+    const auto& nodes = graph.getNodes();
+
+    for (int i = (int) nodes.size() - 1; i >= 0; --i) {
+        const auto& node = nodes[(size_t) i];
+
+        if (!hasOutputSideButton(node.kind)) {
+            continue;
+        }
+
+        if (operationLayoutButtonBounds(toScreen(node.bounds), zoom).expanded(4.f * zoom).contains(screenPosition)) {
+            nodeId = node.id;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool NodeCanvas::findVoiceDomainButtonAt(Point<float> screenPosition, String& nodeId) const {
     const auto& nodes = graph.getNodes();
 
@@ -2227,6 +3098,47 @@ int NodeCanvas::findEdgeAt(Point<float> screenPosition) const {
 
         Path hitPath;
         PathStrokeType(16.f, PathStrokeType::curved, PathStrokeType::rounded)
+                .createStrokedPath(hitPath, createCablePath(
+                        getPortLocation(*sourceNode, *sourcePort).centre,
+                        getPortLocation(*destNode, *destPort).centre,
+                        sourcePort->side,
+                        destPort->side,
+                        edge.attachment));
+
+        if (hitPath.contains(screenPosition)) {
+            return edgeIndex;
+        }
+    }
+
+    return -1;
+}
+
+int NodeCanvas::findSpliceTargetEdgeAt(Point<float> screenPosition, const String& nodeId) const {
+    const auto& edges = graph.getEdges();
+
+    for (int edgeIndex = (int) edges.size() - 1; edgeIndex >= 0; --edgeIndex) {
+        const auto& edge = edges[(size_t) edgeIndex];
+
+        if (edge.sourceNodeId == nodeId || edge.destNodeId == nodeId) {
+            continue;
+        }
+
+        const Node* sourceNode = findNode(edge.sourceNodeId);
+        const Node* destNode = findNode(edge.destNodeId);
+
+        if (sourceNode == nullptr || destNode == nullptr) {
+            continue;
+        }
+
+        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
+        const Port* destPort = findPort(*destNode, edge.destPortId, true);
+
+        if (sourcePort == nullptr || destPort == nullptr) {
+            continue;
+        }
+
+        Path hitPath;
+        PathStrokeType(22.f, PathStrokeType::curved, PathStrokeType::rounded)
                 .createStrokedPath(hitPath, createCablePath(
                         getPortLocation(*sourceNode, *sourcePort).centre,
                         getPortLocation(*destNode, *destPort).centre,
@@ -2402,6 +3314,11 @@ String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
         return "Cycle operation port layout  /  side, uptack, vertical, T";
     }
 
+    String outputSideNodeId;
+    if (findMeshOutputSideButtonAt(screenPosition, outputSideNodeId)) {
+        return "Cycle output side  /  east, south, north";
+    }
+
     String voiceNodeId;
     if (findVoiceDomainButtonAt(screenPosition, voiceNodeId)) {
         const Node* node = findNode(voiceNodeId);
@@ -2501,10 +3418,20 @@ Point<float> NodeCanvas::viewportCentreWorld() const {
     return toWorld(getLocalBounds().toFloat().getCentre());
 }
 
-Point<float> NodeCanvas::paletteCreationWorldPosition(Point<float> paletteClickPosition) const {
+Point<float> NodeCanvas::paletteCreationWorldPosition(NodeKind kind, Point<float> paletteClickPosition) const {
     const float paletteRight = 18.f + kPaletteWidth;
     const float x = jmin((float) getWidth() - 280.f, paletteRight + 32.f);
-    return toWorld({ x, paletteClickPosition.y });
+    Point<float> position = toWorld({ x, paletteClickPosition.y });
+
+    if (isOperationNode(kind)) {
+        const Node node = GraphNodeFactory().createNode(kind, {}, position);
+
+        if (!node.inputs.empty()) {
+            position.y -= portWorldCentreForBounds(node, node.inputs.front(), node.bounds).y - node.bounds.getY();
+        }
+    }
+
+    return position;
 }
 
 void NodeCanvas::refreshCompiledState() {
@@ -2523,6 +3450,54 @@ File NodeCanvas::snapshotFile() const {
     return File::getSpecialLocation(File::userApplicationDataDirectory)
             .getChildFile("CycleV2")
             .getChildFile("graph-snapshot.xml");
+}
+
+bool NodeCanvas::saveGraphToFile(const File& file) {
+    if (file == File()) {
+        editStatusMessage = "Save failed";
+        repaint();
+        return false;
+    }
+
+    file.getParentDirectory().createDirectory();
+
+    if (!file.replaceWithText(GraphSerializer().toXmlString(graph))) {
+        editStatusMessage = "Save failed";
+        repaint();
+        return false;
+    }
+
+    editStatusMessage = "Saved " + file.getFileName();
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::loadGraphFromFile(const File& file) {
+    if (!file.existsAsFile()) {
+        editStatusMessage = "Open failed";
+        repaint();
+        return false;
+    }
+
+    NodeGraph loaded = GraphSerializer().fromXmlString(file.loadFileAsString());
+
+    if (loaded.getNodes().empty()) {
+        editStatusMessage = "Open failed";
+        repaint();
+        return false;
+    }
+
+    pushUndoSnapshot();
+    graph = std::move(loaded);
+    selectedNodeId = {};
+    expandedNodeId = {};
+    selectedEdgeIndex = -1;
+    spliceTargetEdgeIndex = -1;
+    redoStack.clear();
+    refreshCompiledState();
+    editStatusMessage = "Opened " + file.getFileName();
+    repaint();
+    return true;
 }
 
 bool NodeCanvas::saveSnapshot() {
@@ -2562,6 +3537,7 @@ bool NodeCanvas::loadSnapshot() {
     selectedNodeId = {};
     expandedNodeId = {};
     selectedEdgeIndex = -1;
+    spliceTargetEdgeIndex = -1;
     redoStack.clear();
     refreshCompiledState();
     editStatusMessage = "Loaded snapshot";
@@ -2626,10 +3602,89 @@ bool NodeCanvas::restoreGraphXml(const String& xml, const String& statusMessage)
     selectedNodeId = {};
     expandedNodeId = {};
     selectedEdgeIndex = -1;
+    spliceTargetEdgeIndex = -1;
     refreshCompiledState();
     editStatusMessage = statusMessage;
     repaint();
     return true;
+}
+
+bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
+    Node* node = findMutableNode(selectedNodeId);
+
+    if (node == nullptr) {
+        return false;
+    }
+
+    const int edgeIndex = findSpliceTargetEdgeAt(screenPosition, selectedNodeId);
+
+    if (edgeIndex < 0 || edgeIndex >= (int) graph.getEdges().size()) {
+        return false;
+    }
+
+    const Edge originalEdge = graph.getEdges()[(size_t) edgeIndex];
+
+    if (!nodeDragUndoPushed) {
+        pushUndoSnapshot();
+        nodeDragUndoPushed = true;
+    }
+
+    auto result = GraphEditor().spliceNodeIntoEdge(graph, (size_t) edgeIndex, selectedNodeId);
+
+    if (result.succeeded()) {
+        selectedNodeId = result.nodeId;
+        selectedEdgeIndex = -1;
+        expandedNodeId = {};
+        shoveNodesForwardAfterSplice(result.nodeId, originalEdge.destNodeId);
+        refreshCompiledState();
+        editStatusMessage = "Inserted node into cable";
+        return true;
+    }
+
+    if (result.code == GraphEditCode::ValidationRejected) {
+        editStatusMessage = "Cable insert incompatible";
+    }
+
+    return false;
+}
+
+void NodeCanvas::shoveNodesForwardAfterSplice(const String& insertedNodeId, const String& downstreamNodeId) {
+    const Node* insertedNode = findNode(insertedNodeId);
+    const Node* downstreamNode = findNode(downstreamNodeId);
+
+    if (insertedNode == nullptr || downstreamNode == nullptr) {
+        return;
+    }
+
+    const float desiredDownstreamLeft = insertedNode->bounds.getRight() + 56.f;
+    const float xOffset = desiredDownstreamLeft - downstreamNode->bounds.getX();
+
+    if (xOffset <= 0.f) {
+        return;
+    }
+
+    std::vector<String> downstreamNodeIds;
+    downstreamNodeIds.push_back(downstreamNodeId);
+
+    for (size_t scanIndex = 0; scanIndex < downstreamNodeIds.size(); ++scanIndex) {
+        const String currentNodeId = downstreamNodeIds[scanIndex];
+
+        for (const auto& edge : graph.getEdges()) {
+            if (edge.sourceNodeId != currentNodeId
+                    || edge.destNodeId == insertedNodeId
+                    || containsString(downstreamNodeIds, edge.destNodeId)) {
+                continue;
+            }
+
+            downstreamNodeIds.push_back(edge.destNodeId);
+        }
+    }
+
+    for (auto& node : graph.getNodesForEditing()) {
+        if (containsString(downstreamNodeIds, node.id)) {
+            node.bounds = node.bounds.translated(xOffset, 0.f);
+        }
+    }
 }
 
 bool NodeCanvas::clearSelection() {
@@ -2685,6 +3740,21 @@ bool NodeCanvas::cycleOperationPortLayout(const String& nodeId) {
     return true;
 }
 
+bool NodeCanvas::cycleMeshOutputSide(const String& nodeId) {
+    Node* node = findMutableNode(nodeId);
+
+    if (node == nullptr || !hasOutputSideButton(node->kind) || node->outputs.empty()) {
+        return false;
+    }
+
+    pushUndoSnapshot();
+    node->outputs[0].side = nextMeshOutputSide(*node);
+    selectedNodeId = nodeId;
+    selectedEdgeIndex = -1;
+    refreshCompiledState();
+    return true;
+}
+
 bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
     const Node* node = findNode(nodeId);
 
@@ -2713,6 +3783,192 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
     refreshCompiledState();
     editStatusMessage = "Voice start domain: " + domain;
     return true;
+}
+
+bool NodeCanvas::setVoiceContextParameter(
+        const String& parameterId,
+        const String& label,
+        const String& value,
+        const String& statusMessage) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::VoiceContext) {
+        return false;
+    }
+
+    if (parameterValueForNode(*node, parameterId) == value) {
+        return true;
+    }
+
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().setNodeParameter(graph, node->id, parameterId, label, value);
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    if (parameterId == "domain") {
+        if (Node* edited = findMutableNode(node->id)) {
+            edited->subtitle = value == "spectral" ? "spectral start" : "waveform start";
+        }
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    draggingNode = false;
+    connectingCable = false;
+    nodeDragUndoPushed = false;
+    refreshCompiledState();
+    editStatusMessage = statusMessage;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::handleVoiceContextEditorClick(Point<float> screenPosition) {
+    const Node* node = findNode(expandedNodeId);
+
+    if (node == nullptr || node->kind != NodeKind::VoiceContext) {
+        return false;
+    }
+
+    Rectangle<float> column = voiceContextEditorColumnBounds(expandedEditorBoundsForNode(getLocalBounds().toFloat(), node));
+
+    auto nextRow = [&]() {
+        Rectangle<float> row = column.removeFromTop(kVoiceEditorRowHeight);
+        column.removeFromTop(kVoiceEditorRowGap);
+        return row;
+    };
+
+    Rectangle<float> sourceRow = nextRow();
+    Rectangle<float> sourceControl = sourceRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(0.f, 2.f);
+    const Rectangle<float> waveformLabel = sourceControl.removeFromLeft(62.f);
+    sourceControl.removeFromLeft(8.f);
+    const Rectangle<float> switchArea = sourceControl.removeFromLeft(42.f);
+    sourceControl.removeFromLeft(8.f);
+    const Rectangle<float> spectralLabel = sourceControl.removeFromLeft(56.f);
+
+    if (waveformLabel.expanded(4.f, 2.f).contains(screenPosition)
+            || switchArea.expanded(4.f, 2.f).contains(screenPosition)) {
+        if (switchArea.expanded(4.f, 2.f).contains(screenPosition)) {
+            return setVoiceContextParameter("domain", "Start Domain", nextVoiceDomain(*node),
+                                            "Voice start domain: " + nextVoiceDomain(*node));
+        }
+
+        return setVoiceContextParameter("domain", "Start Domain", "waveform", "Voice start domain: waveform");
+    }
+
+    if (spectralLabel.expanded(4.f, 2.f).contains(screenPosition)) {
+        return setVoiceContextParameter("domain", "Start Domain", "spectral", "Voice start domain: spectral");
+    }
+
+    Rectangle<float> octaveRow = nextRow();
+    Rectangle<float> octaveControl = octaveRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(2.f, 0.f);
+    if (octaveControl.expanded(8.f, 4.f).contains(screenPosition)) {
+        const float left = octaveControl.getX() + 2.f;
+        const float right = octaveControl.getRight() - 2.f;
+        const float normalized = jlimit(0.f, 1.f, (screenPosition.x - left) / jmax(1.f, right - left));
+        const int octave = jlimit(-2, 2, roundToInt(normalized * 4.f) - 2);
+        return setVoiceContextParameter("octave", "Octave", String(octave), "Octave: " + String(octave));
+    }
+
+    Rectangle<float> pitchRow = nextRow();
+    Rectangle<float> pitchControl = pitchRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(2.f, 0.f);
+    if (pitchControl.expanded(8.f, 4.f).contains(screenPosition)) {
+        const float normalized = jlimit(0.f, 1.f,
+                                        (screenPosition.x - pitchControl.getX()) / jmax(1.f, pitchControl.getWidth()));
+        const int pitch = roundToInt(jmap(normalized, -12.f, 12.f));
+        return setVoiceContextParameter("pitch", "Pitch", String(pitch), "Pitch: " + String(pitch));
+    }
+
+    Rectangle<float> portamentoRow = nextRow();
+    Rectangle<float> portamentoControl = portamentoRow.withTrimmedLeft(kVoiceEditorLabelWidth);
+    if (portamentoControl.expanded(6.f, 4.f).contains(screenPosition)) {
+        const bool enabled = parameterValueForNode(*node, "portamento", "0") == "1"
+                || parameterValueForNode(*node, "portamento", "false") == "true";
+        return setVoiceContextParameter("portamento", "Portamento", enabled ? "0" : "1",
+                                        enabled ? "Portamento off" : "Portamento on");
+    }
+
+    Rectangle<float> oversamplingRow = nextRow();
+    Rectangle<float> oversamplingControl = oversamplingRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(2.f, 0.f);
+    if (oversamplingControl.expanded(8.f, 6.f).contains(screenPosition)) {
+        const float normalized = jlimit(0.f, 1.f,
+                                        (screenPosition.x - oversamplingControl.getX())
+                                                / jmax(1.f, oversamplingControl.getWidth()));
+        const int stop = jlimit(0, 2, roundToInt(normalized * 2.f));
+        const String next = stop == 0 ? "1x" : (stop == 1 ? "2x" : "4x");
+        return setVoiceContextParameter("oversampling", "Oversampling", next, "Oversampling: " + next);
+    }
+
+    return false;
+}
+
+bool NodeCanvas::setTransformParameter(
+        const String& parameterId,
+        const String& label,
+        const String& value,
+        const String& statusMessage) {
+    Node* node = findMutableNode(expandedNodeId);
+
+    if (node == nullptr || (node->kind != NodeKind::Fft && node->kind != NodeKind::Ifft)) {
+        return false;
+    }
+
+    if (parameterValueForNode(*node, parameterId) == value) {
+        return true;
+    }
+
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().setNodeParameter(graph, node->id, parameterId, label, value);
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    if (parameterId == "mode") {
+        if (Node* edited = findMutableNode(node->id)) {
+            edited->subtitle = transformSubtitleForMode(*edited, value);
+        }
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    draggingNode = false;
+    connectingCable = false;
+    nodeDragUndoPushed = false;
+    refreshCompiledState();
+    editStatusMessage = statusMessage;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::handleTransformEditorClick(Point<float> screenPosition) {
+    const Node* node = findNode(expandedNodeId);
+
+    if (node == nullptr || (node->kind != NodeKind::Fft && node->kind != NodeKind::Ifft)) {
+        return false;
+    }
+
+    Rectangle<float> column = transformEditorColumnBounds(expandedEditorBoundsForNode(getLocalBounds().toFloat(), node));
+    Rectangle<float> modeRow = column.removeFromTop(26.f);
+    Rectangle<float> control = modeRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(2.f, 0.f);
+    Rectangle<float> left = control.removeFromLeft((control.getWidth() - 5.f) * 0.5f);
+    control.removeFromLeft(5.f);
+    Rectangle<float> right = control;
+
+    if (left.expanded(4.f, 4.f).contains(screenPosition)) {
+        const String mode = node->kind == NodeKind::Fft ? "cycle" : "cyclic";
+        return setTransformParameter("mode", "Mode", mode, transformModeStatus(*node, mode));
+    }
+
+    if (right.expanded(4.f, 4.f).contains(screenPosition)) {
+        const String mode = node->kind == NodeKind::Fft ? "fixedWindow" : "acyclicCarry";
+        return setTransformParameter("mode", "Mode", mode, transformModeStatus(*node, mode));
+    }
+
+    return false;
 }
 
 bool NodeCanvas::setTrimeshPrimaryAxisValue(const String& axisValue) {
@@ -2947,6 +4203,12 @@ Path NodeCanvas::createCablePath(
 
     const Point<float> vector = dest - source;
     const float distance = vector.getDistanceFromOrigin();
+
+    if (absoluteFloat(vector.x) <= 0.5f || absoluteFloat(vector.y) <= 0.5f) {
+        path.lineTo(dest);
+        return path;
+    }
+
     const float sourceStrength = jlimit(24.f * zoom, 120.f * zoom, distance * 0.34f);
     const float destStrength = jlimit(18.f * zoom, 74.f * zoom, distance * 0.18f);
     const Point<float> sourceDirection = normalizedOrFallback(vector, outwardNormalForSide(sourceSide));

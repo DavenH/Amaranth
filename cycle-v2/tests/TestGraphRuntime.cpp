@@ -34,7 +34,7 @@ TEST_CASE("Runtime traces compiled graph execution", "[cycle-v2][runtime]") {
     REQUIRE(trace.nodes.back().nodeId == "out");
     REQUIRE(findTraceNode(trace, "voice").kind == NodeKind::VoiceContext);
     REQUIRE(findTraceNode(trace, "voice").audioRole == AudioModuleRole::VoiceContext);
-    REQUIRE(findTraceNode(trace, "voice").parameters.size() == 2);
+    REQUIRE(findTraceNode(trace, "voice").parameters.size() == 6);
     REQUIRE(findTraceNode(trace, "voice").signalInputs.empty());
     REQUIRE(findTraceNode(trace, "fft").cycleFrames == 2048);
     REQUIRE(findTraceNode(trace, "fft").latencyCycles == 0);
