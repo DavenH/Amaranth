@@ -3383,6 +3383,11 @@ int NodeCanvas::findSpliceTargetEdgeAt(Point<float> screenPosition, const String
                         edge.attachment));
 
         if (hitPath.contains(screenPosition)) {
+            NodeGraph candidate = graph;
+            if (!GraphEditor().spliceNodeIntoEdge(candidate, (size_t) edgeIndex, nodeId).succeeded()) {
+                continue;
+            }
+
             return edgeIndex;
         }
     }

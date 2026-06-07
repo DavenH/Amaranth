@@ -310,6 +310,12 @@ void GraphValidator::validateOperationInputs(
                 continue;
             }
 
+            if (node.kind == NodeKind::Multiply && domain == PortDomain::SpectralPhaseSignal) {
+                addIssue(issues, GraphValidationCode::DomainMismatch,
+                         "Multiply cannot process spectral phase: " + node.id);
+                break;
+            }
+
             if (!hasConcreteDomain) {
                 firstConcreteDomain = domain;
                 hasConcreteDomain = true;

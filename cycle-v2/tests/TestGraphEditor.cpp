@@ -103,6 +103,24 @@ TEST_CASE("Graph editor rejects incompatible edge splices", "[cycle-v2][graph]")
     REQUIRE(graph.getEdges()[0].destNodeId == "out");
 }
 
+TEST_CASE("Graph editor rejects multiply splices on phase edges", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 260.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 520.f, 0.f }));
+    graph.addEdge({ "fft", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, false });
+
+    const auto result = GraphEditor().spliceNodeIntoEdge(graph, 0, "multiply");
+
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.code == GraphEditCode::ValidationRejected);
+    REQUIRE(graph.getEdges().size() == 1);
+    REQUIRE(graph.getEdges()[0].sourceNodeId == "fft");
+    REQUIRE(graph.getEdges()[0].destNodeId == "ifft");
+}
+
 TEST_CASE("Graph editor rejects incompatible connections", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     graph.addNode({
