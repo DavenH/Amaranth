@@ -12,6 +12,7 @@
 #include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPreviewExecutor.h"
 #include "../Runtime/GraphRuntime.h"
@@ -84,6 +85,7 @@ private:
     String activeTrimeshVertexNodeId;
     String activeTrimeshVertexParameterId;
     String editStatusMessage;
+    int activeTrimeshVertexIndex { -1 };
     int selectedEdgeIndex { -1 };
     int spliceTargetEdgeIndex { -1 };
     PortAddress connectingPort;

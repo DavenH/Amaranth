@@ -7,6 +7,7 @@
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
 #include "../src/Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshEditState.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshNodeModel.h"
 #include "../src/Nodes/Trimesh/TrimeshPanelBridge.h"
@@ -407,6 +408,34 @@ TEST_CASE("Trimesh node model still reads legacy indexed vertex edit parameters"
     REQUIRE(vertexParameters.size() == 6);
     REQUIRE(vertexParameters[3].value == Catch::Approx(0.41f));
     REQUIRE(vertexParameters[4].value == Catch::Approx(0.31f));
+}
+
+TEST_CASE("Trimesh mesh edit state formats canonical vertex edit parameters", "[cycle-v2][nodes][trimesh]") {
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            "Trilinear Mesh",
+            {},
+            {},
+            {
+                    { "mesh.vertex.4.amp", "Amplitude", "0.61" },
+                    { "vertex.3.phase", "Phase", "0.42" },
+                    { "vertex.phase", "Legacy Selected Phase", "0.99" },
+                    { "mesh.vertex.x.amp", "Invalid", "0.2" }
+            },
+            {},
+            {}
+    };
+
+    const TrimeshMeshEditState state = TrimeshMeshEditState::fromNode(node);
+    const auto& edits = state.getVertexEdits();
+
+    REQUIRE(TrimeshMeshEditState::canonicalVertexParameterId(4, "amp") == "mesh.vertex.4.amp");
+    REQUIRE(edits.size() == 2);
+    REQUIRE(edits[0].sourceId == "mesh.vertex.4.amp");
+    REQUIRE(edits[0].vertexIndex == 4);
+    REQUIRE(edits[1].sourceId == "vertex.3.phase");
+    REQUIRE(edits[1].vertexIndex == 3);
 }
 
 TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes", "[cycle-v2][nodes][trimesh]") {

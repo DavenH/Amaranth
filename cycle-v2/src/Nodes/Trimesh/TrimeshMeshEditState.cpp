@@ -26,6 +26,10 @@ TrimeshMeshEditState TrimeshMeshEditState::fromNode(const Node& node) {
     return state;
 }
 
+String TrimeshMeshEditState::canonicalVertexParameterId(int vertexIndex, const String& field) {
+    return "mesh.vertex." + String(vertexIndex) + "." + field;
+}
+
 bool TrimeshMeshEditState::applyTo(Mesh& mesh) const {
     auto& verts = mesh.getVerts();
     bool changed {};

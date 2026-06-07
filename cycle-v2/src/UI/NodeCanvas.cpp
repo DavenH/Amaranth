@@ -1167,6 +1167,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     trimeshMorphUndoPushed = false;
     draggingTrimeshVertexParameter = false;
     trimeshVertexParameterUndoPushed = false;
+    activeTrimeshVertexIndex = -1;
     expandedEditorDragCaptured = false;
 
     if (expandedNodeId.isNotEmpty()) {
@@ -4158,12 +4159,36 @@ bool NodeCanvas::beginTrimeshVertexParameterEdit(const String& parameterId, floa
         return false;
     }
 
+    int vertexIndex = parameterValueForNode(*node, "selectedVertexIndex", "-1").getIntValue();
+
+    if (vertexIndex < 0) {
+        vertexIndex = trimeshWidgetFor(node->id).resolvedSelectedVertexIndexForNode(*node);
+
+        if (vertexIndex >= 0) {
+            if (!trimeshVertexParameterUndoPushed) {
+                pushUndoSnapshot();
+                trimeshVertexParameterUndoPushed = true;
+            }
+
+            GraphEditor().setNodeParameter(
+                    graph,
+                    node->id,
+                    "selectedVertexIndex",
+                    "Selected Vertex",
+                    String(vertexIndex));
+        }
+    }
+
+    if (vertexIndex < 0) {
+        return false;
+    }
+
     selectedNodeId = node->id;
     selectedEdgeIndex = -1;
     activeTrimeshVertexNodeId = node->id;
     activeTrimeshVertexParameterId = parameterId;
+    activeTrimeshVertexIndex = vertexIndex;
     draggingTrimeshVertexParameter = true;
-    trimeshVertexParameterUndoPushed = false;
     return updateTrimeshVertexParameterEditValue(value);
 }
 
@@ -4182,26 +4207,13 @@ bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
     }
 
     const String label = activeTrimeshVertexParameterId.fromFirstOccurrenceOf(".", false, false);
-    int selectedVertexIndex = parameterValueForNode(*node, "selectedVertexIndex", "-1").getIntValue();
-
-    if (selectedVertexIndex < 0) {
-        selectedVertexIndex = trimeshWidgetFor(node->id).resolvedSelectedVertexIndexForNode(*node);
-
-        if (selectedVertexIndex >= 0) {
-            GraphEditor().setNodeParameter(
-                    graph,
-                    node->id,
-                    "selectedVertexIndex",
-                    "Selected Vertex",
-                    String(selectedVertexIndex));
-        }
-    }
-
-    if (selectedVertexIndex < 0) {
+    if (activeTrimeshVertexIndex < 0) {
         return false;
     }
 
-    const String persistentParameterId = "vertex." + String(selectedVertexIndex) + "." + label;
+    const String persistentParameterId = TrimeshMeshEditState::canonicalVertexParameterId(
+            activeTrimeshVertexIndex,
+            label);
     GraphEditor().setNodeParameter(
             graph,
             node->id,
@@ -4209,7 +4221,7 @@ bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
             label,
             String(value, 3));
     refreshCompiledState();
-    editStatusMessage = "Vertex #" + String(selectedVertexIndex) + " " + label + " = " + String(value, 2);
+    editStatusMessage = "Vertex #" + String(activeTrimeshVertexIndex) + " " + label + " = " + String(value, 2);
     return true;
 }
 
@@ -4218,6 +4230,7 @@ void NodeCanvas::endTrimeshVertexParameterEdit() {
     trimeshVertexParameterUndoPushed = false;
     activeTrimeshVertexNodeId = {};
     activeTrimeshVertexParameterId = {};
+    activeTrimeshVertexIndex = -1;
 }
 
 bool NodeCanvas::showTrimeshGuideAttachmentMenu(
