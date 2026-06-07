@@ -28,6 +28,8 @@ const DynamicObject* objectFor(const var& value) {
     return value.getDynamicObject();
 }
 
+bool compareValues(const var& actual, const String& op, const var& expected);
+
 String stringProperty(const var& value, const Identifier& property, const String& fallback = {}) {
     if (const auto* object = objectFor(value)) {
         const var found = object->getProperty(property);
@@ -94,6 +96,106 @@ var rectangleToVar(Rectangle<int> bounds) {
     object->setProperty("width", bounds.getWidth());
     object->setProperty("height", bounds.getHeight());
     return result;
+}
+
+Rectangle<float> rectangleFromVar(const var& value) {
+    const auto* object = objectFor(value);
+
+    if (object == nullptr) {
+        return {};
+    }
+
+    return {
+            (float) (double) object->getProperty("x"),
+            (float) (double) object->getProperty("y"),
+            (float) (double) object->getProperty("width"),
+            (float) (double) object->getProperty("height")
+    };
+}
+
+bool pointerTargetBounds(const var& targetsValue, const String& targetId, Rectangle<float>& bounds) {
+    const auto* object = objectFor(targetsValue);
+
+    if (object == nullptr) {
+        return false;
+    }
+
+    const var targetArrayValue = object->getProperty("targets");
+    const Array<var>* targets = targetArrayValue.getArray();
+
+    if (targets == nullptr) {
+        return false;
+    }
+
+    for (const auto& target : *targets) {
+        const auto* targetObject = objectFor(target);
+
+        if (targetObject == nullptr || targetObject->getProperty("id").toString() != targetId) {
+            continue;
+        }
+
+        bounds = rectangleFromVar(targetObject->getProperty("bounds"));
+        return !bounds.isEmpty();
+    }
+
+    return false;
+}
+
+var menuItemToVar(const String& id, const String& menu, const String& label, bool requiresPath) {
+    var item = makeObject();
+    auto* object = objectFor(item);
+    object->setProperty("id", id);
+    object->setProperty("menu", menu);
+    object->setProperty("label", label);
+    object->setProperty("requiresPath", requiresPath);
+    return item;
+}
+
+var paletteItemToVar(const String& id, const String& section, const String& label) {
+    var item = makeObject();
+    auto* object = objectFor(item);
+    object->setProperty("id", id);
+    object->setProperty("section", section);
+    object->setProperty("label", label);
+    return item;
+}
+
+bool checkMetricThreshold(
+        const var& command,
+        const var& metrics,
+        const String& commandProperty,
+        const String& metricProperty,
+        const String& op,
+        String& message) {
+    const auto* commandObject = objectFor(command);
+    const auto* metricsObject = objectFor(metrics);
+
+    if (commandObject == nullptr || metricsObject == nullptr) {
+        return true;
+    }
+
+    const var expected = commandObject->getProperty(Identifier(commandProperty));
+
+    if (expected.isVoid()) {
+        return true;
+    }
+
+    const var actual = metricsObject->getProperty(Identifier(metricProperty));
+
+    if (compareValues(actual, op, expected)) {
+        return true;
+    }
+
+    message = "Audio assertion failed: " + metricProperty + " " + actual.toString()
+            + " was not " + op + " " + expected.toString();
+    return false;
+}
+
+bool checkAudioThresholds(const var& command, const var& metrics, String& message) {
+    return checkMetricThreshold(command, metrics, "peakGreaterThan", "peak", "greaterThan", message)
+            && checkMetricThreshold(command, metrics, "peakLessThan", "peak", "lessThan", message)
+            && checkMetricThreshold(command, metrics, "rmsGreaterThan", "rms", "greaterThan", message)
+            && checkMetricThreshold(command, metrics, "rmsLessThan", "rms", "lessThan", message);
 }
 
 bool getPathValue(const var& root, const String& path, var& result) {
@@ -584,6 +686,21 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     if (command == "saveGraph") {
         return saveGraph(commandValue);
     }
+    if (command == "listMenuItems" || command == "listMenus") {
+        return listMenuItems();
+    }
+    if (command == "invokeMenuItem") {
+        return invokeMenuItem(commandValue);
+    }
+    if (command == "listPaletteItems") {
+        return listPaletteItems();
+    }
+    if (command == "invokePaletteItem") {
+        return invokePaletteItem(commandValue);
+    }
+    if (command == "captureAudio") {
+        return captureAudio(commandValue);
+    }
     if (command == "openNodeEditor" || command == "openMeshPopup") {
         return openNodeEditor(commandValue);
     }
@@ -774,6 +891,130 @@ var CycleV2Automation::saveGraph(const var& commandValue) {
     var data = makeObject();
     objectFor(data)->setProperty("path", path.getFullPathName());
     return okResult("saveGraph", data);
+}
+
+var CycleV2Automation::listMenuItems() const {
+    Array<var> items;
+    items.add(menuItemToVar("file.openGraph", "File", "Open Graph...", true));
+    items.add(menuItemToVar("file.saveGraph", "File", "Save Graph", true));
+    items.add(menuItemToVar("file.saveGraphAs", "File", "Save Graph As...", true));
+
+    var data = makeObject();
+    objectFor(data)->setProperty("items", items);
+    return okResult("listMenuItems", data);
+}
+
+var CycleV2Automation::invokeMenuItem(const var& commandValue) {
+    const String id = stringProperty(commandValue, "id", stringProperty(commandValue, "itemId"));
+
+    if (id == "file.openGraph") {
+        return openGraph(commandValue);
+    }
+    if (id == "file.saveGraph" || id == "file.saveGraphAs") {
+        return saveGraph(commandValue);
+    }
+
+    return failedResult("invokeMenuItem", "Unknown menu item: " + id);
+}
+
+var CycleV2Automation::listPaletteItems() const {
+    Array<var> items;
+    items.add(paletteItemToVar("voiceContext", "Context", "Voice Context"));
+    items.add(paletteItemToVar("fft", "Transform", "Time -> Freq"));
+    items.add(paletteItemToVar("ifft", "Transform", "Freq -> Time"));
+    items.add(paletteItemToVar("add", "Math", "Add"));
+    items.add(paletteItemToVar("multiply", "Math", "Multiply"));
+    items.add(paletteItemToVar("waveSource", "Source", "Wave"));
+    items.add(paletteItemToVar("imageSource", "Source", "Image"));
+    items.add(paletteItemToVar("trilinearMesh", "Source", "Mesh"));
+    items.add(paletteItemToVar("envelope", "Control", "Envelope"));
+    items.add(paletteItemToVar("guideCurve", "Control", "Guide"));
+    items.add(paletteItemToVar("impulseResponse", "FX", "IR"));
+    items.add(paletteItemToVar("waveshaper", "FX", "Waveshaper"));
+    items.add(paletteItemToVar("reverb", "FX", "Reverb"));
+    items.add(paletteItemToVar("delay", "FX", "Delay"));
+    items.add(paletteItemToVar("stereoSplit", "Channel", "Split"));
+    items.add(paletteItemToVar("stereoJoin", "Channel", "Join"));
+    items.add(paletteItemToVar("output", "Channel", "Output"));
+
+    var data = makeObject();
+    objectFor(data)->setProperty("items", items);
+    return okResult("listPaletteItems", data);
+}
+
+var CycleV2Automation::invokePaletteItem(const var& commandValue) {
+    const String id = stringProperty(commandValue, "id", stringProperty(commandValue, "itemId", stringProperty(commandValue, "kind")));
+
+    if (id.isEmpty()) {
+        return failedResult("invokePaletteItem", "Missing palette item id");
+    }
+
+    var addCommand = makeObject();
+    auto* object = objectFor(addCommand);
+    object->setProperty("command", "addNode");
+    object->setProperty("kind", id);
+    object->setProperty("x", floatProperty(commandValue, "x", 0.f));
+    object->setProperty("y", floatProperty(commandValue, "y", 0.f));
+    return addNode(addCommand);
+}
+
+var CycleV2Automation::captureAudio(const var& commandValue) {
+    const int frameCount = jlimit(1, 262144, intProperty(commandValue, "frames", intProperty(commandValue, "samples", 4096)));
+    const File path(stringProperty(commandValue, "path"));
+    var data = workspace.captureAudioForAutomation((size_t) frameCount);
+    const auto* dataObject = objectFor(data);
+
+    if (dataObject == nullptr || !(bool) dataObject->getProperty("compileSucceeded")) {
+        return failedResult("captureAudio", "Cannot capture audio from an uncompiled graph");
+    }
+
+    const var metrics = dataObject->getProperty("metrics");
+    String message;
+
+    if (!checkAudioThresholds(commandValue, metrics, message)) {
+        var result = failedResult("captureAudio", message);
+        objectFor(result)->setProperty("data", data);
+        return result;
+    }
+
+    if (path != File()) {
+        const var samplesValue = dataObject->getProperty("samples");
+        const Array<var>* samples = samplesValue.getArray();
+
+        if (samples == nullptr) {
+            return failedResult("captureAudio", "Audio capture did not include samples");
+        }
+
+        AudioSampleBuffer buffer(1, samples->size());
+        for (int i = 0; i < samples->size(); ++i) {
+            buffer.setSample(0, i, (float) (double) samples->getReference(i));
+        }
+
+        path.getParentDirectory().createDirectory();
+        std::unique_ptr<FileOutputStream> stream(path.createOutputStream());
+
+        if (stream == nullptr || !stream->openedOk()) {
+            return failedResult("captureAudio", "Could not open audio capture path: " + path.getFullPathName());
+        }
+
+        WavAudioFormat wavFormat;
+        std::unique_ptr<AudioFormatWriter> writer(
+                wavFormat.createWriterFor(stream.get(), 44100.0, 1, 24, {}, 0));
+
+        if (writer == nullptr) {
+            return failedResult("captureAudio", "Could not create WAV writer: " + path.getFullPathName());
+        }
+
+        stream.release();
+
+        if (!writer->writeFromAudioSampleBuffer(buffer, 0, buffer.getNumSamples())) {
+            return failedResult("captureAudio", "Could not write WAV capture: " + path.getFullPathName());
+        }
+
+        objectFor(data)->setProperty("path", path.getFullPathName());
+    }
+
+    return okResult("captureAudio", data);
 }
 
 var CycleV2Automation::openNodeEditor(const var& commandValue) {
@@ -996,7 +1237,14 @@ var CycleV2Automation::setVertexParameter(const var& commandValue) {
 }
 
 var CycleV2Automation::pointer(const var& commandValue) {
-    const String area = stringProperty(commandValue, "area", "canvas");
+    String area = stringProperty(commandValue, "area", "canvas");
+    const String targetId = stringProperty(commandValue, "targetId");
+    const String downTargetId = stringProperty(commandValue, "downTargetId");
+
+    if (targetId.isNotEmpty() || downTargetId.isNotEmpty()) {
+        area = "canvas";
+    }
+
     Component* component = componentForArea(area);
 
     if (component == nullptr) {
@@ -1010,23 +1258,102 @@ var CycleV2Automation::pointer(const var& commandValue) {
     }
 
     const String eventType = stringProperty(commandValue, "event", stringProperty(commandValue, "pointerEvent", "click"));
-    const Point<float> position = getPointerPosition(commandValue, *component, "x", "y");
-    const Point<float> downPosition = getPointerPosition(commandValue, *component, "downX", "downY");
+    auto resolveTargetPosition = [&](const String& id, bool down, bool& resolved) -> Point<float> {
+        resolved = true;
+
+        if (id.isEmpty()) {
+            return getPointerPosition(commandValue, *component, down ? "downX" : "x", down ? "downY" : "y");
+        }
+
+        Rectangle<float> targetBounds;
+        const var targets = workspace.inspectPointerTargetsForAutomation();
+
+        if (!pointerTargetBounds(targets, id, targetBounds)) {
+            resolved = false;
+            return getPointerPosition(commandValue, *component, down ? "downX" : "x", down ? "downY" : "y");
+        }
+
+        const float normalizedX = floatProperty(commandValue, down ? "downTargetX" : "targetX", 0.5f);
+        const float normalizedY = floatProperty(commandValue, down ? "downTargetY" : "targetY", 0.5f);
+        return {
+                targetBounds.getX() + targetBounds.getWidth() * normalizedX,
+                targetBounds.getY() + targetBounds.getHeight() * normalizedY
+        };
+    };
+    bool targetResolved {};
+    bool downTargetResolved {};
+    Point<float> position = resolveTargetPosition(targetId, false, targetResolved);
+    Point<float> downPosition = resolveTargetPosition(downTargetId, true, downTargetResolved);
+
+    if (!targetResolved) {
+        return failedResult("pointer", "Pointer target id could not be resolved: " + targetId);
+    }
+    if (!downTargetResolved) {
+        return failedResult("pointer", "Pointer down target id could not be resolved: " + downTargetId);
+    }
+
+    if (targetId.startsWith("expanded:") && eventType == "click") {
+        const String suffix = targetId.fromFirstOccurrenceOf("expanded:", false, false);
+        const String nodeId = suffix.upToFirstOccurrenceOf(".", false, false);
+        const String target = suffix.fromFirstOccurrenceOf(".", false, false);
+        const String targetKind = target.upToFirstOccurrenceOf(".", false, false);
+        const String targetValue = target.fromFirstOccurrenceOf(".", false, false);
+
+        var semanticCommand = makeObject();
+        auto* semanticObject = objectFor(semanticCommand);
+        semanticObject->setProperty("nodeId", nodeId);
+
+        if (targetKind == "trimeshPrimaryAxis") {
+            semanticObject->setProperty("axis", targetValue);
+            var result = setPrimaryAxis(semanticCommand);
+            objectFor(result)->setProperty("pointerTargetId", targetId);
+            return result;
+        }
+        if (targetKind == "trimeshLinkToggle") {
+            semanticObject->setProperty("axis", targetValue);
+            var result = toggleLink(semanticCommand);
+            objectFor(result)->setProperty("pointerTargetId", targetId);
+            return result;
+        }
+        if (targetKind == "trimeshMorphRail") {
+            semanticObject->setProperty("axis", targetValue);
+            semanticObject->setProperty("value", floatProperty(commandValue, "targetX", 0.5f));
+            var result = setMorphSlider(semanticCommand);
+            objectFor(result)->setProperty("pointerTargetId", targetId);
+            return result;
+        }
+        if (targetKind == "trimeshVertexParameter") {
+            semanticObject->setProperty("parameterId", targetValue);
+            semanticObject->setProperty("value", floatProperty(commandValue, "targetX", 0.5f));
+            var result = setVertexParameter(semanticCommand);
+            objectFor(result)->setProperty("pointerTargetId", targetId);
+            return result;
+        }
+    }
+
+    Component* eventComponent = component;
+    if (targetId.isNotEmpty()) {
+        if (Component* hitComponent = component->getComponentAt(position.roundToInt())) {
+            eventComponent = hitComponent;
+            position = eventComponent->getLocalPoint(component, position);
+            downPosition = eventComponent->getLocalPoint(component, downPosition);
+        }
+    }
 
     if (eventType == "click") {
-        component->mouseDown(makePointerEvent(*component, position, position, commandValue, true, false, 1));
-        component->mouseUp(makePointerEvent(*component, position, position, commandValue, false, false, 1));
+        eventComponent->mouseDown(makePointerEvent(*eventComponent, position, position, commandValue, true, false, 1));
+        eventComponent->mouseUp(makePointerEvent(*eventComponent, position, position, commandValue, false, false, 1));
     } else if (eventType == "doubleClick") {
-        component->mouseDown(makePointerEvent(*component, position, position, commandValue, true, false, 2));
-        component->mouseUp(makePointerEvent(*component, position, position, commandValue, false, false, 2));
+        eventComponent->mouseDown(makePointerEvent(*eventComponent, position, position, commandValue, true, false, 2));
+        eventComponent->mouseUp(makePointerEvent(*eventComponent, position, position, commandValue, false, false, 2));
     } else if (eventType == "down") {
-        component->mouseDown(makePointerEvent(*component, position, position, commandValue, true, false, 1));
+        eventComponent->mouseDown(makePointerEvent(*eventComponent, position, position, commandValue, true, false, 1));
     } else if (eventType == "up") {
-        component->mouseUp(makePointerEvent(*component, position, downPosition, commandValue, false, false, 1));
+        eventComponent->mouseUp(makePointerEvent(*eventComponent, position, downPosition, commandValue, false, false, 1));
     } else if (eventType == "drag") {
-        component->mouseDrag(makePointerEvent(*component, position, downPosition, commandValue, true, true, 1));
+        eventComponent->mouseDrag(makePointerEvent(*eventComponent, position, downPosition, commandValue, true, true, 1));
     } else if (eventType == "move") {
-        component->mouseMove(makePointerEvent(*component, position, position, commandValue, false, false, 0));
+        eventComponent->mouseMove(makePointerEvent(*eventComponent, position, position, commandValue, false, false, 0));
     } else if (eventType == "wheel") {
         MouseWheelDetails wheel {
                 floatProperty(commandValue, "deltaX"),
@@ -1036,7 +1363,7 @@ var CycleV2Automation::pointer(const var& commandValue) {
                 boolProperty(commandValue, "inertial")
         };
 
-        component->mouseWheelMove(makePointerEvent(*component, position, position, commandValue, false, false, 0), wheel);
+        eventComponent->mouseWheelMove(makePointerEvent(*eventComponent, position, position, commandValue, false, false, 0), wheel);
     } else {
         return failedResult("pointer", "Unknown pointer event: " + eventType);
     }
@@ -1045,6 +1372,8 @@ var CycleV2Automation::pointer(const var& commandValue) {
     auto* object = objectFor(data);
     object->setProperty("event", eventType);
     object->setProperty("area", area);
+    object->setProperty("targetId", targetId);
+    object->setProperty("targetComponent", eventComponent == component ? "area" : eventComponent->getName());
     object->setProperty("x", position.x);
     object->setProperty("y", position.y);
     object->setProperty("localBounds", rectangleToVar(component->getLocalBounds()));

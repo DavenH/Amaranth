@@ -101,6 +101,10 @@ var NodeWorkspace::inspectOpenGLDiagnosticsForAutomation() const {
     return canvas.inspectOpenGLDiagnosticsForAutomation();
 }
 
+var NodeWorkspace::captureAudioForAutomation(size_t frameCount) const {
+    return canvas.captureAudioForAutomation(frameCount);
+}
+
 void NodeWorkspace::resized() {
     canvas.setBounds(getLocalBounds());
 }

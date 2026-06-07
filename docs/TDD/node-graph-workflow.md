@@ -923,11 +923,12 @@ Current automation status:
 - Implemented commands: `snapshotState`, `inspectTargets`,
   `inspectPointerTargets`, `inspectOpenGLDiagnostics`,
   `listAssertionPaths`, `assertState`, `exportGraph`, `openGraph`,
-  `saveGraph`, `openNodeEditor`, `openMeshPopup`, `addNode`, `moveNode`,
-  `connectPorts`, `deleteNode`, `deleteEdge`, `setNodeParameter`,
-  `inspectNodeControls`, `setMorphSlider`, `setPrimaryAxis`, `toggleLink`,
-  `selectVertex`, `setVertexParameter`, `pointer`, `assertNodeParameter`,
-  `screenshot`, `waitForIdle`, and `quit`.
+  `saveGraph`, `listMenuItems`, `invokeMenuItem`, `listPaletteItems`,
+  `invokePaletteItem`, `captureAudio`, `openNodeEditor`, `openMeshPopup`,
+  `addNode`, `moveNode`, `connectPorts`, `deleteNode`, `deleteEdge`,
+  `setNodeParameter`, `inspectNodeControls`, `setMorphSlider`,
+  `setPrimaryAxis`, `toggleLink`, `selectVertex`, `setVertexParameter`,
+  `pointer`, `assertNodeParameter`, `screenshot`, `waitForIdle`, and `quit`.
 - `scripts/fixtures/cycle-v2-agent-graph-editing.json` adds, moves,
   parameterizes, connects, and deletes a graph node with state assertions.
 - `scripts/fixtures/cycle-v2-agent-mesh-controls.json` opens the default
@@ -941,9 +942,15 @@ Current automation status:
 - `scripts/fixtures/cycle-v2-agent-pointer-targets.json` verifies pointer
   target discovery before and after a Trimesh editor opens, including
   canvas-local expanded editor subregion bounds.
+- `scripts/fixtures/cycle-v2-agent-pointer-target-replay.json` verifies direct
+  pointer replay against discovered target ids.
 - `scripts/fixtures/cycle-v2-agent-opengl-diagnostics.json` verifies the
   expanded Trimesh editor can report GL host creation, visibility, and bounds
   for the 3D and 2D child panels.
+- `scripts/fixtures/cycle-v2-agent-menu-palette.json` verifies menu and palette
+  item listing/invocation against automation-safe graph actions.
+- `scripts/fixtures/cycle-v2-agent-audio-capture.json` verifies offline graph
+  audio capture, WAV writing, and peak/RMS thresholds.
 - `scripts/fixtures/cycle-v2-agent-mesh-controls-os-screenshot.json` leaves the
   same expanded editor open for runner-side `screencapture -R`; use
   `CYCLE_V2_AGENT_SMOKE_OS_SCREENSHOT=1 scripts/run_cycle_v2_agent_smokes.sh`
@@ -951,9 +958,8 @@ Current automation status:
   snapshots do not include the OpenGL child panel contents. The runner asserts
   luma mean/stddev for the 3D and 2D panel regions with
   `scripts/assert_png_stats.py`.
-- Pending: audio capture, popup menu item selection beyond current Trimesh
-  controls, pointer replay against discovered sub-targets, and visual metric
-  assertions over diagnostics-discovered GL panel regions.
+- Pending: richer popup coverage as Cycle 2.0 gains contextual popups and more
+  detailed audio assertions once realtime/plugin execution is wired in.
 
 ### Milestone 2: Graph Model And Validation
 

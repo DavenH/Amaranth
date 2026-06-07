@@ -14,8 +14,11 @@ fixtures=(
     mesh-controls=scripts/fixtures/cycle-v2-agent-mesh-controls.json
     trimesh-controls=scripts/fixtures/cycle-v2-agent-trimesh-controls.json
     pointer=scripts/fixtures/cycle-v2-agent-pointer.json
+    pointer-target-replay=scripts/fixtures/cycle-v2-agent-pointer-target-replay.json
     pointer-targets=scripts/fixtures/cycle-v2-agent-pointer-targets.json
     opengl-diagnostics=scripts/fixtures/cycle-v2-agent-opengl-diagnostics.json
+    menu-palette=scripts/fixtures/cycle-v2-agent-menu-palette.json
+    audio-capture=scripts/fixtures/cycle-v2-agent-audio-capture.json
 )
 
 if [[ "$RUN_OS_SCREENSHOT" == "1" ]]; then
@@ -42,7 +45,22 @@ for fixture in "${fixtures[@]}"; do
 
     echo "cycle-v2 smoke: $name"
 
-    if [[ "$name" == "mesh-controls-os-screenshot" ]]; then
+    if [[ "$name" == "opengl-diagnostics" && "$RUN_OS_SCREENSHOT" == "1" ]]; then
+        fixture_path="scripts/fixtures/cycle-v2-agent-opengl-diagnostics-os-screenshot.json"
+
+        if ! CYCLE_PREFLIGHT_SCREEN_CAPTURE=1 \
+                CYCLE_OS_SCREENSHOT_AREA=canvas \
+                CYCLE_OS_SCREENSHOT_PATH="$ARTIFACT_DIR/opengl-diagnostics-os.png" \
+                "$SCRIPT_DIR/run_cycle_v2_agent.sh" "$REPO_ROOT/$fixture_path" "$report" "$log"; then
+            suite_status=1
+        elif ! "$SCRIPT_DIR/assert_cycle_v2_gl_regions.py" \
+                "$ARTIFACT_DIR/opengl-diagnostics-os.png" \
+                "$report" \
+                --min-mean 0.02 \
+                --min-stddev 0.015; then
+            suite_status=1
+        fi
+    elif [[ "$name" == "mesh-controls-os-screenshot" ]]; then
         if ! CYCLE_PREFLIGHT_SCREEN_CAPTURE=1 \
                 CYCLE_OS_SCREENSHOT_AREA=canvas \
                 CYCLE_OS_SCREENSHOT_PATH="$ARTIFACT_DIR/mesh-controls-os.png" \

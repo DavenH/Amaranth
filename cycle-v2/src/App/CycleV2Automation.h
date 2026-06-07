@@ -41,6 +41,11 @@ private:
     var exportGraph(const var& commandValue) const;
     var openGraph(const var& commandValue);
     var saveGraph(const var& commandValue);
+    var listMenuItems() const;
+    var invokeMenuItem(const var& commandValue);
+    var listPaletteItems() const;
+    var invokePaletteItem(const var& commandValue);
+    var captureAudio(const var& commandValue);
     var openNodeEditor(const var& commandValue);
     var addNode(const var& commandValue);
     var inspectPointerTargets() const;

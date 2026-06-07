@@ -66,9 +66,10 @@ captures fail automatically.
 
 The first command surface supports `snapshotState`, `inspectTargets`,
 `inspectPointerTargets`, `inspectOpenGLDiagnostics`, `listAssertionPaths`,
-`assertState`, `exportGraph`, `openGraph`, `saveGraph`, `openNodeEditor`,
-`openMeshPopup`, `addNode`, `moveNode`, `connectPorts`, `deleteNode`,
-`deleteEdge`, `setNodeParameter`, `inspectNodeControls`,
+`assertState`, `exportGraph`, `openGraph`, `saveGraph`, `listMenuItems`,
+`invokeMenuItem`, `listPaletteItems`, `invokePaletteItem`, `captureAudio`,
+`openNodeEditor`, `openMeshPopup`, `addNode`, `moveNode`, `connectPorts`,
+`deleteNode`, `deleteEdge`, `setNodeParameter`, `inspectNodeControls`,
 `setMorphSlider`, `setPrimaryAxis`, `toggleLink`, `selectVertex`,
 `setVertexParameter`, `pointer`, `assertNodeParameter`, `screenshot`,
 `waitForIdle`, and `quit`. Reports are JSON files with per-command results plus
@@ -77,9 +78,11 @@ editor, setting yellow/red/blue morph sliders, primary-axis selection, link
 toggles, vertex selection, and vertex parameter sliders by node id. Pointer
 replay currently targets registered top-level areas such as `canvas`;
 `inspectPointerTargets` returns canvas-local node, port, edge, and expanded
-Trimesh control bounds for discovered pointer work. `inspectOpenGLDiagnostics`
-reports the canvas GL underlay plus expanded Trimesh 3D/2D panel host creation,
-visibility, and bounds.
+Trimesh control bounds for discovered pointer work, and `pointer` can use a
+returned `targetId` directly. `inspectOpenGLDiagnostics` reports the canvas GL
+underlay plus expanded Trimesh 3D/2D panel host creation, visibility, and
+bounds; with OS screenshots enabled, the smoke runner asserts luma stats for
+the diagnostics-discovered GL panel regions.
 
 ## Current Editor Controls
 

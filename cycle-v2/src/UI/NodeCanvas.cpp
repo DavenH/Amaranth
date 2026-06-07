@@ -1,6 +1,9 @@
 #include "NodeCanvas.h"
 
+#include "../Runtime/GraphAudioExecutor.h"
+
 #include <array>
+#include <cmath>
 #include <cstring>
 #include <iterator>
 #include <limits>
@@ -276,6 +279,30 @@ var componentDiagnosticsToVar(const String& id, const Component* component) {
     object->setProperty("width", component->getWidth());
     object->setProperty("height", component->getHeight());
     object->setProperty("nonEmpty", !component->getLocalBounds().isEmpty());
+    return object;
+}
+
+var audioMetricsToVar(const AudioProcessBlock& block, double sampleRate) {
+    auto* object = new DynamicObject();
+    const auto& samples = block.samples;
+    double sumSquares = 0.0;
+    float peak = 0.f;
+
+    for (float sample : samples) {
+        const float magnitude = sample >= 0.f ? sample : -sample;
+        peak = jmax(peak, magnitude);
+        sumSquares += (double) sample * (double) sample;
+    }
+
+    const double sampleCount = (double) jmax(1, (int) samples.size());
+    object->setProperty("sampleRate", sampleRate);
+    object->setProperty("channels", 1);
+    object->setProperty("samples", (int) samples.size());
+    object->setProperty("durationMs", sampleRate > 0.0 ? 1000.0 * (double) samples.size() / sampleRate : 0.0);
+    object->setProperty("peak", peak);
+    object->setProperty("rms", std::sqrt(sumSquares / sampleCount));
+    object->setProperty("domain", labelForDomain(block.domain));
+    object->setProperty("channelLayout", labelForChannelLayout(block.channelLayout));
     return object;
 }
 
@@ -4430,6 +4457,7 @@ var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
     root->setProperty("schema", "cycle-v2-opengl-diagnostics.v1");
     root->setProperty("canvasOpenGlAttached", canvasOpenGlAttached);
     root->setProperty("canvasBounds", rectangleToVar(getLocalBounds().toFloat()));
+    root->setProperty("canvasScreenBounds", rectangleToVar(getScreenBounds().toFloat()));
     root->setProperty("expandedNodeId", expandedNodeId);
     root->setProperty("trimeshExpandedEditorCreated", trimeshExpandedEditor != nullptr);
 
@@ -4468,6 +4496,50 @@ var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
 
     root->setProperty("panels", panels);
     root->setProperty("panelCount", panels.size());
+    return root;
+}
+
+var NodeCanvas::captureAudioForAutomation(size_t frameCount) const {
+    auto* root = new DynamicObject();
+    root->setProperty("schema", "cycle-v2-audio-capture.v1");
+    root->setProperty("compileSucceeded", compileResult.succeeded());
+    root->setProperty("requestedFrames", (int) frameCount);
+
+    if (!compileResult.succeeded()) {
+        Array<var> issues;
+
+        for (const auto& issue : compileResult.validationIssues) {
+            auto* object = new DynamicObject();
+            object->setProperty("message", issue.message);
+            object->setProperty("sourceNodeId", issue.sourceNodeId);
+            object->setProperty("destNodeId", issue.destNodeId);
+            issues.add(object);
+        }
+
+        root->setProperty("validationIssues", issues);
+        return root;
+    }
+
+    const GraphAudioResult result = GraphAudioExecutor().process(graph, compileResult.plan, frameCount);
+    root->setProperty("metrics", audioMetricsToVar(result.output, 44100.0));
+
+    Array<var> samples;
+    for (float sample : result.output.samples) {
+        samples.add(sample);
+    }
+    root->setProperty("samples", samples);
+
+    Array<var> nodes;
+    for (const auto& node : result.nodes) {
+        auto* object = new DynamicObject();
+        object->setProperty("nodeId", node.nodeId);
+        object->setProperty("metrics", audioMetricsToVar(node.output, 44100.0));
+        object->setProperty("outputCount", (int) node.outputs.size());
+        nodes.add(object);
+    }
+
+    root->setProperty("nodeCount", nodes.size());
+    root->setProperty("nodes", nodes);
     return root;
 }
 

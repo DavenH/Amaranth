@@ -41,6 +41,7 @@ public:
     var inspectNodeControlsForAutomation(const String& nodeId) const;
     var inspectPointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
+    var captureAudioForAutomation(size_t frameCount) const;
 
     void resized() override;
 
