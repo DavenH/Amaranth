@@ -155,6 +155,44 @@ TEST_CASE("Graph editor colours universal output edges from typed destinations",
     REQUIRE(graph.getEdges().back().domain == PortDomain::TimeSignal);
 }
 
+TEST_CASE("Graph editor splices a node into an edge", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 260.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 520.f, 0.f }));
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+
+    const auto result = GraphEditor().spliceNodeIntoEdge(graph, 0, "shape");
+
+    REQUIRE(result.succeeded());
+    REQUIRE(graph.getEdges().size() == 2);
+    REQUIRE(graph.getEdges()[0].sourceNodeId == "wave");
+    REQUIRE(graph.getEdges()[0].destNodeId == "shape");
+    REQUIRE(graph.getEdges()[1].sourceNodeId == "shape");
+    REQUIRE(graph.getEdges()[1].destNodeId == "out");
+    REQUIRE(GraphValidator().isValid(graph));
+}
+
+TEST_CASE("Graph editor rejects incompatible edge splices", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 260.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 520.f, 0.f }));
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+
+    const auto result = GraphEditor().spliceNodeIntoEdge(graph, 0, "fft");
+
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.code == GraphEditCode::ValidationRejected);
+    REQUIRE(graph.getEdges().size() == 1);
+    REQUIRE(graph.getEdges()[0].sourceNodeId == "wave");
+    REQUIRE(graph.getEdges()[0].destNodeId == "out");
+}
+
 TEST_CASE("Graph editor rejects incompatible connections", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     graph.addNode({
@@ -246,6 +284,7 @@ TEST_CASE("Graph editor reports missing edge removal", "[cycle-v2][graph]") {
 TEST_CASE("Graph editor updates node parameters", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     GraphEditor editor;
+    const size_t initialParameterCount = graph.getNodes().front().parameters.size();
 
     const auto updateResult = editor.setNodeParameter(
             graph,
@@ -267,7 +306,7 @@ TEST_CASE("Graph editor updates node parameters", "[cycle-v2][graph]") {
 
     REQUIRE(addResult.succeeded());
     REQUIRE(parameterValueForNode(graph.getNodes().front(), "tempoSync") == "true");
-    REQUIRE(graph.getNodes().front().parameters.size() == 3);
+    REQUIRE(graph.getNodes().front().parameters.size() == initialParameterCount + 1);
 }
 
 TEST_CASE("Graph editor reports missing node parameter updates", "[cycle-v2][graph]") {

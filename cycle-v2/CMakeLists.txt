@@ -87,6 +87,7 @@ add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${APP_SOURCES} ${NODE_SOURCES})
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     ${BASE_DEFINITIONS}
+    CYCLE_V2_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
     JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/incl/JucePluginDefines.h"
 )
 
@@ -119,6 +120,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
         target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
             BUILD_TESTING=1
+            CYCLE_V2_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
             JUCE_APP_CONFIG_HEADER="${CMAKE_CURRENT_SOURCE_DIR}/src/incl/JucePluginDefines.h"
         )
 

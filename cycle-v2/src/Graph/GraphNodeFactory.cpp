@@ -14,7 +14,11 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.subtitle = "waveform start";
             node.parameters = {
                     { "domain", "Start Domain", "waveform" },
-                    { "voices", "Voices", "1" }
+                    { "voices", "Voices", "1" },
+                    { "octave", "Octave", "0" },
+                    { "pitch", "Pitch", "0" },
+                    { "portamento", "Portamento", "0" },
+                    { "oversampling", "Oversampling", "1x" }
             };
             node.outputs = {
                     output("context", "Context", PortDomain::DomainContext)
@@ -54,10 +58,11 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             break;
 
         case NodeKind::Fft:
-            node.title = "FFT";
-            node.subtitle = "1 cycle";
+            node.title = String::fromUTF8("Time → Freq");
+            node.subtitle = "cycle chunks";
             node.parameters = {
-                    { "cycleFrames", "Cycle Frames", "2048" }
+                    { "cycleFrames", "Cycle Frames", "2048" },
+                    { "mode", "Mode", "cycle" }
             };
             node.inputs = { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             node.outputs = {
@@ -67,8 +72,8 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             break;
 
         case NodeKind::Ifft:
-            node.title = "IFFT";
-            node.subtitle = "cyclic mode";
+            node.title = String::fromUTF8("Freq → Time");
+            node.subtitle = "cyclic overlap";
             node.parameters = {
                     { "cycleFrames", "Cycle Frames", "2048" },
                     { "mode", "Mode", "cyclic" }

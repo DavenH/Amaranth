@@ -137,6 +137,59 @@ GraphEditResult GraphEditor::createAndAttachGuideCurveToTrimeshVertexParameter(
     return { GraphEditCode::Connected, addResult.nodeId, {} };
 }
 
+GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeIndex, const String& nodeId) const {
+    if (edgeIndex >= graph.getEdges().size()) {
+        return { GraphEditCode::MissingEdge, {}, {} };
+    }
+
+    const Edge edge = graph.getEdges()[edgeIndex];
+
+    if (edge.sourceNodeId == nodeId || edge.destNodeId == nodeId) {
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+
+    const Node* spliceNode = findNode(graph, nodeId);
+
+    if (spliceNode == nullptr) {
+        return { GraphEditCode::MissingNode, {}, {} };
+    }
+
+    const PortAddress source { edge.sourceNodeId, edge.sourcePortId, false };
+    const PortAddress dest { edge.destNodeId, edge.destPortId, true };
+
+    for (const auto& input : spliceNode->inputs) {
+        if (!input.input) {
+            continue;
+        }
+
+        for (const auto& output : spliceNode->outputs) {
+            if (output.input) {
+                continue;
+            }
+
+            NodeGraph candidate = graph;
+            candidate.removeEdgeAt(edgeIndex);
+
+            GraphEditResult inResult = connect(candidate, source, { nodeId, input.id, true });
+
+            if (!inResult.succeeded()) {
+                continue;
+            }
+
+            GraphEditResult outResult = connect(candidate, { nodeId, output.id, false }, dest);
+
+            if (!outResult.succeeded()) {
+                continue;
+            }
+
+            graph = std::move(candidate);
+            return { GraphEditCode::Connected, nodeId, {} };
+        }
+    }
+
+    return { GraphEditCode::ValidationRejected, {}, {} };
+}
+
 GraphEditResult GraphEditor::removeNode(NodeGraph& graph, const String& nodeId) const {
     if (findNode(graph, nodeId) == nullptr) {
         return { GraphEditCode::MissingNode, {}, {} };

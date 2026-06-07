@@ -107,7 +107,7 @@ int parameterInt(const Node& node, const String& parameterId, int fallback) {
 
 String transformModeForNode(const Node& node) {
     if (node.kind == NodeKind::Fft) {
-        return "cycle";
+        return parameterValueForNode(node, "mode", "cycle");
     }
 
     if (node.kind == NodeKind::Ifft) {
