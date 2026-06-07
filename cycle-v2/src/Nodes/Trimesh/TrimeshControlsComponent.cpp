@@ -24,7 +24,7 @@ public:
     void paint(Graphics&) override {}
 
     void mouseDown(const MouseEvent& event) override {
-        owner.beginControlDrag(region, parentPosition(event.position));
+        owner.beginControlDrag(region, parentPosition(event.position), getScreenBounds());
     }
 
     void mouseDrag(const MouseEvent& event) override {
@@ -62,7 +62,7 @@ public:
     void paintButton(Graphics&, bool, bool) override {}
 
     void clicked() override {
-        owner.beginControlDrag(region, getBounds().toFloat().getCentre());
+        owner.beginControlDrag(region, getBounds().toFloat().getCentre(), getScreenBounds());
     }
 
     TrimeshExpandedHitRegionKind getRegionKind() const { return region.kind; }
@@ -205,7 +205,8 @@ void TrimeshControlsComponent::updateHitRegions() {
 
 void TrimeshControlsComponent::beginControlDrag(
         const TrimeshExpandedHitRegion& region,
-        Point<float> position) {
+        Point<float> position,
+        Rectangle<int> screenArea) {
     float value {};
 
     switch (region.kind) {
@@ -243,7 +244,7 @@ void TrimeshControlsComponent::beginControlDrag(
 
         case TrimeshExpandedHitRegionKind::VertexGuideAttachment:
             if (callbacks.showVertexGuideAttachmentMenu != nullptr) {
-                callbacks.showVertexGuideAttachmentMenu(region.parameterId);
+                callbacks.showVertexGuideAttachmentMenu(region.parameterId, screenArea);
             }
             break;
     }

@@ -846,23 +846,19 @@ void NodeCanvas::drawGlEdges() {
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
-        const Node* sourceNode = findNode(edge.sourceNodeId);
-        const Node* destNode = findNode(edge.destNodeId);
+        CableEndpoint sourceEndpoint;
+        CableEndpoint destEndpoint;
 
-        if (sourceNode == nullptr || destNode == nullptr) {
+        if (!resolveCableEndpoints(edge, sourceEndpoint, destEndpoint)) {
             continue;
         }
 
-        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
-        const Port* destPort = findPort(*destNode, edge.destPortId, true);
-
-        if (sourcePort == nullptr || destPort == nullptr) {
-            continue;
-        }
-
-        const Point<float> source = getPortLocation(*sourceNode, *sourcePort).centre;
-        const Point<float> dest = getPortLocation(*destNode, *destPort).centre;
-        const Path cable = createCablePath(source, dest, sourcePort->side, destPort->side, edge.attachment);
+        const Path cable = createCablePath(
+                sourceEndpoint.centre,
+                destEndpoint.centre,
+                sourceEndpoint.side,
+                destEndpoint.side,
+                edge.attachment);
 
         if (!cable.getBounds().intersects(visibleArea)) {
             continue;
@@ -881,13 +877,14 @@ void NodeCanvas::drawGlEdges() {
 
         glRenderer.renderCable(
                 cable,
-                source,
-                dest,
+                sourceEndpoint.centre,
+                destEndpoint.centre,
                 colour,
                 cableScaleForZoom(zoom),
                 edgeIndex == selectedEdgeIndex,
                 edge.attachment,
-                invalid);
+                invalid,
+                destEndpoint.portLike);
     }
 }
 
@@ -940,23 +937,16 @@ void NodeCanvas::drawEdges(Graphics& g) {
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
-        const Node* sourceNode = findNode(edge.sourceNodeId);
-        const Node* destNode = findNode(edge.destNodeId);
+        CableEndpoint sourceEndpoint;
+        CableEndpoint destEndpoint;
 
-        if (sourceNode == nullptr || destNode == nullptr) {
+        if (!resolveCableEndpoints(edge, sourceEndpoint, destEndpoint)) {
             continue;
         }
 
-        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
-        const Port* destPort = findPort(*destNode, edge.destPortId, true);
-
-        if (sourcePort == nullptr || destPort == nullptr) {
-            continue;
-        }
-
-        auto source = getPortLocation(*sourceNode, *sourcePort).centre;
-        auto dest = getPortLocation(*destNode, *destPort).centre;
-        Path cable = createCablePath(source, dest, sourcePort->side, destPort->side, edge.attachment);
+        auto source = sourceEndpoint.centre;
+        auto dest = destEndpoint.centre;
+        Path cable = createCablePath(source, dest, sourceEndpoint.side, destEndpoint.side, edge.attachment);
         const Rectangle<float> cableBounds = cable.getBounds();
 
         if (!cableBounds.intersects(visibleArea)) {
@@ -1012,7 +1002,23 @@ void NodeCanvas::drawEdges(Graphics& g) {
         g.fillEllipse(sourceMarker);
         g.setColour(colour.withAlpha(0.96f));
         g.drawEllipse(sourceMarker, (selected ? 2.4f : 1.8f) * cableScale);
-        g.fillEllipse(destMarker.reduced((selected ? 1.5f : 2.f) * cableScale));
+
+        if (destEndpoint.portLike) {
+            g.fillEllipse(destMarker.reduced((selected ? 1.5f : 2.f) * cableScale));
+        } else {
+            Path badge;
+            const float radius = (selected ? 7.f : 5.8f) * cableScale;
+            badge.startNewSubPath(dest.x, dest.y - radius);
+            badge.lineTo(dest.x + radius, dest.y);
+            badge.lineTo(dest.x, dest.y + radius);
+            badge.lineTo(dest.x - radius, dest.y);
+            badge.closeSubPath();
+
+            g.setColour(kCanvasBackground.withAlpha(0.92f));
+            g.fillPath(badge);
+            g.setColour(colour.withAlpha(selected ? 0.98f : 0.78f));
+            g.strokePath(badge, PathStrokeType((selected ? 2.2f : 1.6f) * cableScale));
+        }
     }
 }
 
@@ -1706,9 +1712,11 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
                 safeThis->endTrimeshVertexParameterEdit();
             }
         };
-        callbacks.showVertexGuideAttachmentMenu = [safeThis](const String& parameterField) {
+        callbacks.showVertexGuideAttachmentMenu = [safeThis](
+                const String& parameterField,
+                Rectangle<int> targetScreenArea) {
             if (safeThis != nullptr) {
-                safeThis->showTrimeshGuideAttachmentMenu(parameterField);
+                safeThis->showTrimeshGuideAttachmentMenu(parameterField, targetScreenArea);
             }
         };
         callbacks.selectVertex = [safeThis](int vertexIndex) {
@@ -1727,6 +1735,7 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
     }
 
     trimeshExpandedEditor->setRenderProfile(renderProfileForNodeOutput(*node, "out"));
+    trimeshExpandedEditor->setGuideAttachmentLabels(trimeshGuideAttachmentLabelsForNode(*node));
     trimeshExpandedEditor->setNode(*node);
     trimeshExpandedEditor->setVisible(true);
     trimeshExpandedEditor->toFront(false);
@@ -2054,6 +2063,85 @@ NodeCanvas::PortLocation NodeCanvas::getPortLocation(const PortAddress& address)
     return getPortLocation(*node, *port);
 }
 
+bool NodeCanvas::resolveCableEndpoints(
+        const Edge& edge,
+        CableEndpoint& sourceEndpoint,
+        CableEndpoint& destEndpoint) const {
+    const Node* sourceNode = findNode(edge.sourceNodeId);
+    const Node* destNode = findNode(edge.destNodeId);
+
+    if (sourceNode == nullptr || destNode == nullptr) {
+        return false;
+    }
+
+    const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
+    const Port* destPort = findPort(*destNode, edge.destPortId, true);
+
+    if (sourcePort == nullptr) {
+        return false;
+    }
+
+    const PortLocation sourceLocation = getPortLocation(*sourceNode, *sourcePort);
+    sourceEndpoint = { sourceLocation.centre, sourcePort->side, true };
+
+    if (destPort != nullptr) {
+        const PortLocation destLocation = getPortLocation(*destNode, *destPort);
+        destEndpoint = { destLocation.centre, destPort->side, true };
+        return true;
+    }
+
+    if (edge.attachment && isDynamicTrimeshGuideTarget(*destNode, edge.destPortId)) {
+        destEndpoint = dynamicTrimeshGuideEndpoint(*destNode, edge.destPortId);
+        return true;
+    }
+
+    return false;
+}
+
+bool NodeCanvas::isDynamicTrimeshGuideTarget(const Node& node, const String& portId) const {
+    if (node.kind != NodeKind::TrilinearMesh || !portId.startsWith("guide.vertex.")) {
+        return false;
+    }
+
+    const String suffix = portId.fromFirstOccurrenceOf("guide.vertex.", false, false);
+    const String vertexIndex = suffix.upToFirstOccurrenceOf(".", false, false);
+    const String field = suffix.fromFirstOccurrenceOf(".", false, false);
+
+    return !vertexIndex.isEmpty()
+        && vertexIndex.containsOnly("0123456789")
+        && (field == "time"
+            || field == "red"
+            || field == "blue"
+            || field == "phase"
+            || field == "amp"
+            || field == "curve");
+}
+
+NodeCanvas::CableEndpoint NodeCanvas::dynamicTrimeshGuideEndpoint(
+        const Node& node,
+        const String& portId) const {
+    const Rectangle<float> bounds = toScreen(node.bounds);
+    const String field = portId.fromLastOccurrenceOf(".", false, false);
+    const std::array<String, 6> fields { "time", "red", "blue", "phase", "amp", "curve" };
+    int fieldIndex = 0;
+
+    for (int i = 0; i < (int) fields.size(); ++i) {
+        if (fields[(size_t) i] == field) {
+            fieldIndex = i;
+            break;
+        }
+    }
+
+    return {
+            {
+                    bounds.getX() + bounds.getWidth() * ((float) fieldIndex + 1.f) / ((float) fields.size() + 1.f),
+                    bounds.getY()
+            },
+            PortSide::Top,
+            false
+    };
+}
+
 bool NodeCanvas::findPortAt(Point<float> screenPosition, PortAddress& result) const {
     for (const auto& node : graph.getNodes()) {
         for (const auto& port : node.inputs) {
@@ -2216,27 +2304,20 @@ int NodeCanvas::findEdgeAt(Point<float> screenPosition) const {
 
     for (int edgeIndex = (int) edges.size() - 1; edgeIndex >= 0; --edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
-        const Node* sourceNode = findNode(edge.sourceNodeId);
-        const Node* destNode = findNode(edge.destNodeId);
+        CableEndpoint sourceEndpoint;
+        CableEndpoint destEndpoint;
 
-        if (sourceNode == nullptr || destNode == nullptr) {
-            continue;
-        }
-
-        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
-        const Port* destPort = findPort(*destNode, edge.destPortId, true);
-
-        if (sourcePort == nullptr || destPort == nullptr) {
+        if (!resolveCableEndpoints(edge, sourceEndpoint, destEndpoint)) {
             continue;
         }
 
         Path hitPath;
         PathStrokeType(16.f, PathStrokeType::curved, PathStrokeType::rounded)
                 .createStrokedPath(hitPath, createCablePath(
-                        getPortLocation(*sourceNode, *sourcePort).centre,
-                        getPortLocation(*destNode, *destPort).centre,
-                        sourcePort->side,
-                        destPort->side,
+                        sourceEndpoint.centre,
+                        destEndpoint.centre,
+                        sourceEndpoint.side,
+                        destEndpoint.side,
                         edge.attachment));
 
         if (hitPath.contains(screenPosition)) {
@@ -2901,7 +2982,9 @@ void NodeCanvas::endTrimeshVertexParameterEdit() {
     activeTrimeshVertexParameterId = {};
 }
 
-bool NodeCanvas::showTrimeshGuideAttachmentMenu(const String& parameterField) {
+bool NodeCanvas::showTrimeshGuideAttachmentMenu(
+        const String& parameterField,
+        Rectangle<int> targetScreenArea) {
     if (trimeshExpandedEditorNodeId.isEmpty()) {
         return false;
     }
@@ -2933,7 +3016,7 @@ bool NodeCanvas::showTrimeshGuideAttachmentMenu(const String& parameterField) {
     auto safeThis = Component::SafePointer<NodeCanvas>(this);
     const String meshNodeId = meshNode->id;
     menu.showMenuAsync(
-            PopupMenu::Options().withTargetScreenArea(Rectangle<int>(Desktop::getMousePosition(), { 1, 1 })),
+            PopupMenu::Options().withTargetScreenArea(targetScreenArea),
             [safeThis, meshNodeId, vertexIndex, parameterField, items](int selectedMenuId) {
                 if (safeThis == nullptr || selectedMenuId == 0) {
                     return;
@@ -2975,11 +3058,43 @@ bool NodeCanvas::showTrimeshGuideAttachmentMenu(const String& parameterField) {
                 safeThis->selectedNodeId = result.nodeId.isEmpty() ? meshNodeId : result.nodeId;
                 safeThis->selectedEdgeIndex = -1;
                 safeThis->refreshCompiledState();
+                safeThis->updateExpandedEditorHost(safeThis->findNode(safeThis->expandedNodeId));
                 safeThis->editStatusMessage = "Guide " + parameterField + " attached";
                 safeThis->repaint();
             });
 
     return true;
+}
+
+std::array<String, 6> NodeCanvas::trimeshGuideAttachmentLabelsForNode(const Node& meshNode) {
+    std::array<String, 6> labels;
+
+    if (meshNode.kind != NodeKind::TrilinearMesh) {
+        return labels;
+    }
+
+    TrimeshWidget& widget = trimeshWidgetFor(meshNode.id);
+    const int vertexIndex = widget.resolvedSelectedVertexIndexForNode(meshNode);
+    const std::array<String, 6> fields { "time", "red", "blue", "phase", "amp", "curve" };
+
+    for (int i = 0; i < (int) fields.size(); ++i) {
+        const auto items = TrimeshGuideAttachmentMenu::itemsFor(
+                graph,
+                meshNode.id,
+                vertexIndex,
+                fields[(size_t) i]);
+
+        for (const auto& item : items) {
+            if (!item.attached) {
+                continue;
+            }
+
+            labels[(size_t) i] = item.label;
+            break;
+        }
+    }
+
+    return labels;
 }
 
 bool NodeCanvas::selectTrimeshVertexIndex(int vertexIndex) {

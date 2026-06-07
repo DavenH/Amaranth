@@ -35,6 +35,7 @@ public:
     void syncFromNode(const Node& node);
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
+    void setGuideAttachmentLabels(std::array<juce::String, 6> labels);
 
     void paintCompact(
             juce::Graphics& g,
@@ -146,6 +147,7 @@ private:
     TrimeshPanelBridge bridge;
     CachedHeatmap compactHeatmap;
     TrimeshRenderProfile displayProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
+    std::array<juce::String, 6> guideAttachmentLabels;
 };
 
 }

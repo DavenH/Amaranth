@@ -315,7 +315,8 @@ void TrimeshSidePanelRenderer::drawSidePanel(
         Rectangle<float> area,
         const std::array<AxisState, 3>& axes,
         const std::vector<TrimeshCubePreviewVertex>& cubeVertices,
-        const std::vector<TrimeshVertexParameter>& parameters) {
+        const std::vector<TrimeshVertexParameter>& parameters,
+        const std::array<String, 6>& guideAttachmentLabels) {
     auto morphControls = morphControlsBounds(area);
 
     drawMorphCubePreview(g, morphCubeBounds(area), axes, cubeVertices);
@@ -332,7 +333,7 @@ void TrimeshSidePanelRenderer::drawSidePanel(
 
     drawPrimaryAxisButtons(g, area, axes);
     drawLinkRow(g, area, axes);
-    drawVertexParameters(g, vertexParameterPanelBounds(area), parameters);
+    drawVertexParameters(g, vertexParameterPanelBounds(area), parameters, guideAttachmentLabels);
 }
 
 void TrimeshSidePanelRenderer::drawMorphCubePreview(
@@ -496,7 +497,8 @@ void TrimeshSidePanelRenderer::drawMorphCubePreview(
 void TrimeshSidePanelRenderer::drawVertexParameters(
         Graphics& g,
         Rectangle<float> area,
-        const std::vector<TrimeshVertexParameter>& parameters) {
+        const std::vector<TrimeshVertexParameter>& parameters,
+        const std::array<String, 6>& guideAttachmentLabels) {
     if (area.getHeight() < 28.f) {
         return;
     }
@@ -515,6 +517,9 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         const auto labelBox = vertexLabelBounds(row);
         const auto guideBox = vertexGuideBounds(row);
         const auto rail = vertexParameterRailBounds(row);
+        const String guideLabel = i < (int) guideAttachmentLabels.size()
+                ? guideAttachmentLabels[(size_t) i]
+                : String();
 
         drawSliderRowBody(g, row);
 
@@ -532,23 +537,34 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         g.setColour(Colour(0xffb7bec7).withAlpha(0.84f));
         g.fillRect(rail.withWidth(rail.getWidth() * normalized));
 
-        g.setColour(Colour(0xff15191e));
+        g.setColour(guideLabel.isEmpty()
+                ? Colour(0xff15191e)
+                : Colour(0xff202833));
         g.fillRect(guideBox);
-        g.setColour(Colour(0xff59606a).withAlpha(0.45f));
+        g.setColour(guideLabel.isEmpty()
+                ? Colour(0xff59606a).withAlpha(0.45f)
+                : Colour(0xff70a7ff).withAlpha(0.72f));
         g.drawRect(guideBox, 1.f);
-        g.setColour(kMutedText.withAlpha(0.82f));
-        Path guideCurve;
-        guideCurve.startNewSubPath(guideBox.getX() + 6.f, guideBox.getCentreY() + 4.f);
-        guideCurve.cubicTo(
-                guideBox.getX() + 13.f,
-                guideBox.getY() + 3.f,
-                guideBox.getRight() - 17.f,
-                guideBox.getBottom() - 3.f,
-                guideBox.getRight() - 10.f,
-                guideBox.getCentreY() - 3.f);
-        g.strokePath(guideCurve, PathStrokeType(1.2f));
-        g.fillEllipse(Rectangle<float>(3.f, 3.f).withCentre({ guideBox.getX() + 7.f, guideBox.getCentreY() + 4.f }));
-        g.fillEllipse(Rectangle<float>(3.f, 3.f).withCentre({ guideBox.getRight() - 11.f, guideBox.getCentreY() - 3.f }));
+
+        if (guideLabel.isNotEmpty()) {
+            g.setColour(Colour(0xff70a7ff).withAlpha(0.90f));
+            g.setFont(FontOptions(10.5f, Font::bold));
+            g.drawText(guideLabel, guideBox.reduced(3.f, 0.f), Justification::centred);
+        } else {
+            g.setColour(kMutedText.withAlpha(0.82f));
+            Path guideCurve;
+            guideCurve.startNewSubPath(guideBox.getX() + 6.f, guideBox.getCentreY() + 4.f);
+            guideCurve.cubicTo(
+                    guideBox.getX() + 13.f,
+                    guideBox.getY() + 3.f,
+                    guideBox.getRight() - 17.f,
+                    guideBox.getBottom() - 3.f,
+                    guideBox.getRight() - 10.f,
+                    guideBox.getCentreY() - 3.f);
+            g.strokePath(guideCurve, PathStrokeType(1.2f));
+            g.fillEllipse(Rectangle<float>(3.f, 3.f).withCentre({ guideBox.getX() + 7.f, guideBox.getCentreY() + 4.f }));
+            g.fillEllipse(Rectangle<float>(3.f, 3.f).withCentre({ guideBox.getRight() - 11.f, guideBox.getCentreY() - 3.f }));
+        }
 
         Path chevron;
         chevron.startNewSubPath(guideBox.getRight() - 8.f, guideBox.getCentreY() - 2.f);

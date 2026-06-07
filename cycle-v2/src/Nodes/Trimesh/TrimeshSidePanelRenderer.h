@@ -25,7 +25,8 @@ public:
             juce::Rectangle<float> area,
             const std::array<AxisState, 3>& axes,
             const std::vector<TrimeshCubePreviewVertex>& cubeVertices,
-            const std::vector<TrimeshVertexParameter>& parameters);
+            const std::vector<TrimeshVertexParameter>& parameters,
+            const std::array<juce::String, 6>& guideAttachmentLabels);
     static void drawMorphCubePreview(
             juce::Graphics& g,
             juce::Rectangle<float> area,
@@ -34,7 +35,8 @@ public:
     static void drawVertexParameters(
             juce::Graphics& g,
             juce::Rectangle<float> area,
-            const std::vector<TrimeshVertexParameter>& parameters);
+            const std::vector<TrimeshVertexParameter>& parameters,
+            const std::array<juce::String, 6>& guideAttachmentLabels);
 
     static juce::Rectangle<float> morphCubeBounds(juce::Rectangle<float> sideArea);
     static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> sideArea, int axisIndex);

@@ -3,6 +3,7 @@
 #include <Curve/Mesh/Vertex.h>
 
 #include <array>
+#include <utility>
 
 namespace CycleV2 {
 
@@ -52,6 +53,10 @@ void TrimeshWidget::setDisplayDomain(PortDomain domain) {
 void TrimeshWidget::setRenderProfile(TrimeshRenderProfile profile) {
     displayProfile = profile;
     bridge.setRenderProfile(profile);
+}
+
+void TrimeshWidget::setGuideAttachmentLabels(std::array<String, 6> labels) {
+    guideAttachmentLabels = std::move(labels);
 }
 
 void TrimeshWidget::paintCompact(
@@ -179,7 +184,8 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
             sidePanel.reduced(kMorphPanelInsetX, kMorphPanelInsetY),
             axes,
             model.getSelectedCubePreviewVertices(),
-            selectedParameters);
+            selectedParameters,
+            guideAttachmentLabels);
 }
 
 void TrimeshWidget::renderExpandedPanelsOpenGL(

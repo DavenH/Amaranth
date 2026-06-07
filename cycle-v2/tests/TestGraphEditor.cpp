@@ -104,6 +104,43 @@ TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[
     REQUIRE(guideAttachments == 2);
 }
 
+TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 100.f, 100.f }).succeeded());
+    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 180.f, 100.f }).succeeded());
+    REQUIRE(GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+            graph,
+            "guide",
+            "waveMesh",
+            2,
+            "amp").succeeded());
+
+    const auto result = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+            graph,
+            "guide2",
+            "waveMesh",
+            2,
+            "amp");
+
+    REQUIRE(result.succeeded());
+    REQUIRE(GraphValidator().isValid(graph));
+
+    int targetAttachments {};
+    String attachedGuideId;
+
+    for (const auto& edge : graph.getEdges()) {
+        if (edge.attachment
+                && edge.destNodeId == "waveMesh"
+                && edge.destPortId == "guide.vertex.2.amp") {
+            ++targetAttachments;
+            attachedGuideId = edge.sourceNodeId;
+        }
+    }
+
+    REQUIRE(targetAttachments == 1);
+    REQUIRE(attachedGuideId == "guide2");
+}
+
 TEST_CASE("Graph editor colours universal output edges from typed destinations", "[cycle-v2][graph]") {
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Multiply, "mul", {}));

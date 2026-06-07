@@ -34,9 +34,11 @@ void TrimeshExpandedEditorComponent::setCallbacks(Callbacks nextCallbacks) {
     controlCallbacks.beginVertexParameterEdit = callbacks.beginVertexParameterEdit;
     controlCallbacks.updateVertexParameterEdit = callbacks.updateVertexParameterEdit;
     controlCallbacks.endVertexParameterEdit = callbacks.endVertexParameterEdit;
-    controlCallbacks.showVertexGuideAttachmentMenu = [this](const String& parameterId) {
+    controlCallbacks.showVertexGuideAttachmentMenu = [this](
+            const String& parameterId,
+            Rectangle<int> screenArea) {
         if (callbacks.showVertexGuideAttachmentMenu != nullptr) {
-            callbacks.showVertexGuideAttachmentMenu(vertexGuideParameterField(parameterId));
+            callbacks.showVertexGuideAttachmentMenu(vertexGuideParameterField(parameterId), screenArea);
         }
     };
     controls.setCallbacks(std::move(controlCallbacks));
@@ -69,6 +71,11 @@ void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
     node = nextNode;
     updatePanelHosts();
     updateControlsHost();
+    repaint();
+}
+
+void TrimeshExpandedEditorComponent::setGuideAttachmentLabels(std::array<String, 6> labels) {
+    widget.setGuideAttachmentLabels(std::move(labels));
     repaint();
 }
 
@@ -198,7 +205,9 @@ void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
 
     if (widget.findVertexGuideAttachmentAt(content, event.position, parameterId)) {
         if (callbacks.showVertexGuideAttachmentMenu != nullptr) {
-            callbacks.showVertexGuideAttachmentMenu(vertexGuideParameterField(parameterId));
+            callbacks.showVertexGuideAttachmentMenu(
+                    vertexGuideParameterField(parameterId),
+                    Rectangle<int>(localPointToGlobal(event.position.roundToInt()), { 1, 1 }));
         }
         return;
     }
