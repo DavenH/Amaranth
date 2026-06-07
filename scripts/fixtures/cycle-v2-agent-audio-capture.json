@@ -1,0 +1,12 @@
+{
+  "commands": [
+    {
+      "command": "captureAudio",
+      "frames": 256,
+      "path": "/private/tmp/cycle-v2-agent-smokes/audio-capture.wav",
+      "peakGreaterThan": 0.01,
+      "rmsGreaterThan": 0.001
+    }
+  ],
+  "quit": true
+}

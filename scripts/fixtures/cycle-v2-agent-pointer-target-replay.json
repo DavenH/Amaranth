@@ -1,0 +1,36 @@
+{
+  "commands": [
+    {
+      "command": "pointer",
+      "targetId": "node:waveMesh",
+      "event": "doubleClick"
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 250
+    },
+    {
+      "command": "pointer",
+      "targetId": "expanded:waveMesh.trimeshPrimaryAxis.red",
+      "event": "click"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "primaryAxis",
+      "equals": "red"
+    },
+    {
+      "command": "pointer",
+      "targetId": "expanded:waveMesh.trimeshLinkToggle.blue",
+      "event": "click"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "link.blue",
+      "equals": "1"
+    }
+  ],
+  "quit": true
+}

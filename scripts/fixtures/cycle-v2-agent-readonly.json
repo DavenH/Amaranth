@@ -1,0 +1,34 @@
+{
+  "commands": [
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "inspectTargets"
+    },
+    {
+      "command": "listAssertionPaths"
+    },
+    {
+      "command": "assertState",
+      "path": "schema",
+      "equals": "cycle-v2-automation-state.v1"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "exportGraph",
+      "path": "/private/tmp/cycle-v2-agent-default.cyclegraph"
+    }
+  ],
+  "quit": true
+}

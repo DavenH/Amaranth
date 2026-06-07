@@ -25,6 +25,65 @@ CYCLE_APP_BUNDLE_ID=com.amaranthaudio.cycle-v2 \
     scripts/capture_cycle_ui.sh /tmp/cycle-v2-ui.png /tmp/cycle-v2-logs.txt
 ```
 
+Cycle 2.0 also has an in-app agent automation runner for deterministic smoke
+checks:
+
+```bash
+cmake --build build/standalone-debug --target CycleV2 --parallel 10
+scripts/run_cycle_v2_agent.sh \
+    scripts/fixtures/cycle-v2-agent-readonly.json \
+    /tmp/cycle-v2-agent-readonly-report.json \
+    /tmp/cycle-v2-agent-readonly-log.txt
+```
+
+Run the current Cycle 2.0 smoke set with:
+
+```bash
+scripts/run_cycle_v2_agent_smokes.sh
+```
+
+For long-running exploratory sessions, launch Cycle 2.0 with a Unix-domain
+automation socket and send individual commands through the shared session
+client:
+
+```bash
+scripts/run_cycle_v2_agent_session.sh /tmp/cycle-v2-agent.sock /tmp/cycle-v2-agent-session.log
+scripts/cycle_agent_session.py /tmp/cycle-v2-agent.sock -c '{"command":"snapshotState"}'
+scripts/cycle_agent_session.py /tmp/cycle-v2-agent.sock -c '{"command":"quit"}'
+```
+
+OpenGL-backed Trimesh panels need runner-side OS capture rather than app-side
+component snapshots. Enable that visual artifact with:
+
+```bash
+CYCLE_V2_AGENT_SMOKE_OS_SCREENSHOT=1 scripts/run_cycle_v2_agent_smokes.sh
+```
+
+This writes `mesh-controls-os.png` under the smoke artifact directory after
+preflighting Screen Recording permission. The smoke then runs
+`scripts/assert_png_stats.py` against the 3D and 2D panel regions so black GL
+captures fail automatically.
+
+The first command surface supports `snapshotState`, `inspectTargets`,
+`inspectPointerTargets`, `inspectOpenGLDiagnostics`, `listAssertionPaths`,
+`assertState`, `exportGraph`, `openGraph`, `saveGraph`, `listMenuItems`,
+`invokeMenuItem`, `listPaletteItems`, `invokePaletteItem`, `captureAudio`,
+`openNodeEditor`, `openMeshPopup`, `addNode`, `moveNode`, `connectPorts`,
+`deleteNode`, `deleteEdge`, `setNodeParameter`, `inspectNodeControls`,
+`setMorphSlider`, `setPrimaryAxis`, `toggleLink`, `selectVertex`,
+`setVertexParameter`, `pointer`, `assertNodeParameter`, `screenshot`,
+`waitForIdle`, and `quit`. Reports are JSON files with per-command results plus
+a final snapshot. Mesh controls currently cover opening a Trimesh expanded
+editor, setting yellow/red/blue morph sliders, primary-axis selection, link
+toggles, vertex selection, and vertex parameter sliders by node id. Pointer
+replay currently targets registered top-level areas such as `canvas`;
+`inspectPointerTargets` returns canvas-local node, port, edge, and expanded
+Trimesh control bounds for discovered pointer work, and `pointer` can use a
+returned `targetId` directly. `inspectOpenGLDiagnostics` reports the canvas GL
+underlay plus expanded Trimesh 3D/2D panel host creation, visibility, and
+bounds; with OS screenshots enabled, the smoke runner asserts luma stats for
+the diagnostics-discovered GL panel regions.
+
 ## Current Editor Controls
 
 - drag empty canvas: pan

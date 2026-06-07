@@ -1,0 +1,24 @@
+{
+  "commands": [
+    {
+      "command": "saveGraph",
+      "path": "/private/tmp/cycle-v2-agent-roundtrip.cyclegraph"
+    },
+    {
+      "command": "openGraph",
+      "path": "/private/tmp/cycle-v2-agent-roundtrip.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    }
+  ],
+  "quit": true
+}

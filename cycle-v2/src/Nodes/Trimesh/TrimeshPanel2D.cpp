@@ -22,12 +22,14 @@ TrimeshPanel2D::TrimeshPanel2D(SingletonRepo* repo) :
 }
 
 void TrimeshPanel2D::drawBackground(bool fillBackground) {
-    if (renderProfile.getSliceBackground() == TrimeshSliceBackground::SpectrumMagnitude) {
+    const auto& sliceStyle = renderProfile.getSliceStyle();
+
+    if (sliceStyle.background == TrimeshSliceBackground::SpectrumMagnitude) {
         drawSpectrumMagnitudeBackground(fillBackground);
         return;
     }
 
-    if (renderProfile.getSliceBackground() == TrimeshSliceBackground::SpectrumPhase) {
+    if (sliceStyle.background == TrimeshSliceBackground::SpectrumPhase) {
         drawSpectrumPhaseBackground(fillBackground);
         return;
     }
@@ -67,8 +69,10 @@ void TrimeshPanel2D::setRenderProfile(TrimeshRenderProfile profile) {
 }
 
 void TrimeshPanel2D::applyRenderProfile() {
-    setCurveBipolar(renderProfile.curveIsBipolar());
-    setColors(renderProfile.negativeCurveColour(), renderProfile.positiveCurveColour());
+    const auto& curveStyle = renderProfile.getCurveStyle();
+
+    setCurveBipolar(curveStyle.bipolar);
+    setColors(curveStyle.negativeColour, curveStyle.positiveColour);
 }
 
 void TrimeshPanel2D::drawWaveformBackground(bool fillBackground) {
