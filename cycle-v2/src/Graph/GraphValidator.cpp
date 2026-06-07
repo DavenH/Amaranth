@@ -1,5 +1,7 @@
 #include "GraphValidator.h"
 
+#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -27,22 +29,11 @@ const Port* findPort(const Node& node, const String& id, bool input) {
 }
 
 bool isTrimeshGuideTarget(const Node& node, const String& portId) {
-    if (node.kind != NodeKind::TrilinearMesh || !portId.startsWith("guide.vertex.")) {
+    if (node.kind != NodeKind::TrilinearMesh) {
         return false;
     }
 
-    const String suffix = portId.fromFirstOccurrenceOf("guide.vertex.", false, false);
-    const String vertexIndex = suffix.upToFirstOccurrenceOf(".", false, false);
-    const String field = suffix.fromFirstOccurrenceOf(".", false, false);
-
-    return !vertexIndex.isEmpty()
-        && vertexIndex.containsOnly("0123456789")
-        && (field == "time"
-            || field == "red"
-            || field == "blue"
-            || field == "phase"
-            || field == "amp"
-            || field == "curve");
+    return TrimeshGuideAttachmentTarget::parse(portId).isValid();
 }
 
 bool isFixedWaveContextMismatch(const Node& sourceNode, const Node& destNode, const Port& dest) {

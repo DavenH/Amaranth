@@ -2099,42 +2099,24 @@ bool NodeCanvas::resolveCableEndpoints(
 }
 
 bool NodeCanvas::isDynamicTrimeshGuideTarget(const Node& node, const String& portId) const {
-    if (node.kind != NodeKind::TrilinearMesh || !portId.startsWith("guide.vertex.")) {
+    if (node.kind != NodeKind::TrilinearMesh) {
         return false;
     }
 
-    const String suffix = portId.fromFirstOccurrenceOf("guide.vertex.", false, false);
-    const String vertexIndex = suffix.upToFirstOccurrenceOf(".", false, false);
-    const String field = suffix.fromFirstOccurrenceOf(".", false, false);
-
-    return !vertexIndex.isEmpty()
-        && vertexIndex.containsOnly("0123456789")
-        && (field == "time"
-            || field == "red"
-            || field == "blue"
-            || field == "phase"
-            || field == "amp"
-            || field == "curve");
+    return TrimeshGuideAttachmentTarget::parse(portId).isValid();
 }
 
 NodeCanvas::CableEndpoint NodeCanvas::dynamicTrimeshGuideEndpoint(
         const Node& node,
         const String& portId) const {
     const Rectangle<float> bounds = toScreen(node.bounds);
-    const String field = portId.fromLastOccurrenceOf(".", false, false);
-    const std::array<String, 6> fields { "time", "red", "blue", "phase", "amp", "curve" };
-    int fieldIndex = 0;
-
-    for (int i = 0; i < (int) fields.size(); ++i) {
-        if (fields[(size_t) i] == field) {
-            fieldIndex = i;
-            break;
-        }
-    }
+    const TrimeshGuideAttachmentTarget target = TrimeshGuideAttachmentTarget::parse(portId);
+    const int fieldIndex = jmax(0, target.fieldIndex());
+    const int fieldCount = TrimeshGuideAttachmentTarget::fieldCount;
 
     return {
             {
-                    bounds.getX() + bounds.getWidth() * ((float) fieldIndex + 1.f) / ((float) fields.size() + 1.f),
+                    bounds.getX() + bounds.getWidth() * ((float) fieldIndex + 1.f) / ((float) fieldCount + 1.f),
                     bounds.getY()
             },
             PortSide::Top,
@@ -3075,7 +3057,7 @@ std::array<String, 6> NodeCanvas::trimeshGuideAttachmentLabelsForNode(const Node
 
     TrimeshWidget& widget = trimeshWidgetFor(meshNode.id);
     const int vertexIndex = widget.resolvedSelectedVertexIndexForNode(meshNode);
-    const std::array<String, 6> fields { "time", "red", "blue", "phase", "amp", "curve" };
+    const auto& fields = TrimeshGuideAttachmentTarget::fields();
 
     for (int i = 0; i < (int) fields.size(); ++i) {
         const auto items = TrimeshGuideAttachmentMenu::itemsFor(

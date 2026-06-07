@@ -11,6 +11,7 @@
 #include "../Graph/GraphSerializer.h"
 #include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
+#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPreviewExecutor.h"
 #include "../Runtime/GraphRuntime.h"

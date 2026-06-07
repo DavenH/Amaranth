@@ -1,5 +1,7 @@
 #include "GraphEditor.h"
 
+#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -210,7 +212,7 @@ const Port* GraphEditor::findPort(const Node& node, const String& portId, bool i
 }
 
 String GraphEditor::guideVertexTargetPortId(int vertexIndex, const String& parameterField) const {
-    return "guide.vertex." + String(vertexIndex) + "." + parameterField;
+    return TrimeshGuideAttachmentTarget::portIdFor(vertexIndex, parameterField);
 }
 
 String GraphEditor::createUniqueNodeId(const NodeGraph& graph, NodeKind kind) const {

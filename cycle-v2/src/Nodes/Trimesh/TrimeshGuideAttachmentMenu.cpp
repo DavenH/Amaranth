@@ -1,4 +1,5 @@
 #include "TrimeshGuideAttachmentMenu.h"
+#include "TrimeshGuideAttachmentTarget.h"
 
 namespace CycleV2 {
 
@@ -52,7 +53,7 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
 String TrimeshGuideAttachmentMenu::targetPortId(
         int vertexIndex,
         const String& parameterField) {
-    return "guide.vertex." + String(vertexIndex) + "." + parameterField;
+    return TrimeshGuideAttachmentTarget::portIdFor(vertexIndex, parameterField);
 }
 
 }

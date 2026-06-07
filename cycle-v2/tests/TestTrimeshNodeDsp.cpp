@@ -6,6 +6,7 @@
 #include "../src/Nodes/Trimesh/TrimeshControlsComponent.h"
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
+#include "../src/Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshNodeModel.h"
 #include "../src/Nodes/Trimesh/TrimeshPanelBridge.h"
@@ -378,6 +379,20 @@ TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes
     REQUIRE(items[2].label == "2");
     REQUIRE(items[2].guideNodeId == "guide2");
     REQUIRE(items[2].attached);
+}
+
+TEST_CASE("Trimesh guide attachment target parses and formats vertex fields", "[cycle-v2][nodes][trimesh]") {
+    const auto target = TrimeshGuideAttachmentTarget::parse("guide.vertex.12.amp");
+
+    REQUIRE(target.isValid());
+    REQUIRE(target.vertexIndex == 12);
+    REQUIRE(target.field == "amp");
+    REQUIRE(target.fieldIndex() == 4);
+    REQUIRE(TrimeshGuideAttachmentTarget::fields()[(size_t) target.fieldIndex()] == "amp");
+    REQUIRE(TrimeshGuideAttachmentTarget::portIdFor(12, "amp") == "guide.vertex.12.amp");
+    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.vertex.x.amp").isValid());
+    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.vertex.12.unknown").isValid());
+    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("scratch").isValid());
 }
 
 TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-v2][nodes][trimesh]") {
