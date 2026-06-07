@@ -62,6 +62,13 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE(magSliceStyle.isSpectral());
     REQUIRE(phaseSliceStyle.isSpectral());
     REQUIRE(timeSliceStyle.panel2DTitle != magSliceStyle.panel2DTitle);
+    REQUIRE(timeSliceStyle.fillColour != magSliceStyle.fillColour);
+    REQUIRE(timeSliceStyle.minorGridColour != magSliceStyle.minorGridColour);
+    REQUIRE(timeSliceStyle.majorGridColour != magSliceStyle.majorGridColour);
+    REQUIRE(magSliceStyle.fillColour == phaseSliceStyle.fillColour);
+    REQUIRE(timeSurfaceStyle.minorGridColour != magSurfaceStyle.minorGridColour);
+    REQUIRE(timeSurfaceStyle.majorGridColour != magSurfaceStyle.majorGridColour);
+    REQUIRE(magSurfaceStyle.minorGridColour == phaseSurfaceStyle.minorGridColour);
     REQUIRE(timeCurveStyle.bipolar);
     REQUIRE_FALSE(magCurveStyle.bipolar);
     REQUIRE(phaseCurveStyle.bipolar);

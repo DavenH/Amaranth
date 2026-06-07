@@ -17,6 +17,8 @@ enum class TrimeshSliceBackground {
 
 struct TrimeshSurfaceStyle {
     PortDomain domain { PortDomain::TimeSignal };
+    juce::Colour minorGridColour;
+    juce::Colour majorGridColour;
     bool textureUsesAlpha {};
 
     juce::Image gradientImage() const;
@@ -32,6 +34,9 @@ struct TrimeshCurveStyle {
 
 struct TrimeshSliceStyle {
     TrimeshSliceBackground background { TrimeshSliceBackground::Waveform };
+    juce::Colour fillColour;
+    juce::Colour minorGridColour;
+    juce::Colour majorGridColour;
     juce::String panel3DTitle;
     juce::String panel2DTitle;
 

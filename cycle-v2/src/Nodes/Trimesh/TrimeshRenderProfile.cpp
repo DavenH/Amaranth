@@ -105,17 +105,29 @@ TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
 
     if (phase) {
         sliceStyle.background = TrimeshSliceBackground::SpectrumPhase;
+        sliceStyle.fillColour = Colour(0xff080608).withAlpha(0.58f);
+        sliceStyle.minorGridColour = Colour(0xff241b18).withAlpha(0.70f);
+        sliceStyle.majorGridColour = Colour(0xff806646).withAlpha(0.34f);
         sliceStyle.panel3DTitle = "3D phase surface";
         sliceStyle.panel2DTitle = "2D phase slice";
     } else if (spectral) {
         sliceStyle.background = TrimeshSliceBackground::SpectrumMagnitude;
+        sliceStyle.fillColour = Colour(0xff080608).withAlpha(0.58f);
+        sliceStyle.minorGridColour = Colour(0xff241b18).withAlpha(0.70f);
+        sliceStyle.majorGridColour = Colour(0xff806646).withAlpha(0.34f);
         sliceStyle.panel3DTitle = "3D magnitude surface";
         sliceStyle.panel2DTitle = "2D magnitude slice";
     } else {
         sliceStyle.background = TrimeshSliceBackground::Waveform;
+        sliceStyle.fillColour = Colour(0xff05070a).withAlpha(0.58f);
+        sliceStyle.minorGridColour = Colour(0xff1b2430).withAlpha(0.70f);
+        sliceStyle.majorGridColour = Colour(0xff546276).withAlpha(0.34f);
         sliceStyle.panel3DTitle = "3D grid heatmap";
         sliceStyle.panel2DTitle = "2D waveshape";
     }
+
+    surfaceStyle.minorGridColour = (spectral ? Colour(0xffd7b166) : Colour(0xffeef5ff)).withAlpha(0.08f);
+    surfaceStyle.majorGridColour = (spectral ? Colour(0xffffd68a) : Colour(0xffeef5ff)).withAlpha(0.18f);
 
     curveStyle.bipolar = scalePolicy == RenderScalePolicy::Bipolar;
     curveStyle.cyclic = !spectral;

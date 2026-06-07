@@ -33,12 +33,12 @@ void TrimeshSliceRenderer2D::drawGrid(
         Graphics& g,
         Rectangle<float> area,
         const TrimeshRenderProfile& profile) {
-    const bool spectral = profile.getSliceStyle().isSpectral();
+    const auto& sliceStyle = profile.getSliceStyle();
 
-    g.setColour((spectral ? Colour(0xff080608) : Colour(0xff05070a)).withAlpha(0.58f));
+    g.setColour(sliceStyle.fillColour);
     g.fillRoundedRectangle(area, 4.f);
 
-    g.setColour((spectral ? Colour(0xff241b18) : Colour(0xff1b2430)).withAlpha(0.70f));
+    g.setColour(sliceStyle.minorGridColour);
     for (int i = 1; i < 32; ++i) {
         const float x = area.getX() + area.getWidth() * (float) i / 32.f;
         g.drawVerticalLine(roundToInt(x), area.getY(), area.getBottom());
@@ -49,7 +49,7 @@ void TrimeshSliceRenderer2D::drawGrid(
         g.drawHorizontalLine(roundToInt(y), area.getX(), area.getRight());
     }
 
-    g.setColour((spectral ? Colour(0xff806646) : Colour(0xff546276)).withAlpha(0.34f));
+    g.setColour(sliceStyle.majorGridColour);
     for (int i = 1; i < 8; ++i) {
         const float x = area.getX() + area.getWidth() * (float) i / 8.f;
         g.drawVerticalLine(roundToInt(x), area.getY(), area.getBottom());
