@@ -376,6 +376,13 @@ TEST_CASE("Trimesh node model applies serialized mesh edits for multiple vertice
     REQUIRE(firstVertexParameters[3].value == Catch::Approx(0.22f));
     REQUIRE(firstVertexParameters[4].value == Catch::Approx(0.11f));
 
+    const auto explicitSecondVertexParameters = model.getVertexParametersForIndex(2);
+    REQUIRE(explicitSecondVertexParameters.size() == 6);
+    REQUIRE(explicitSecondVertexParameters[4].value == Catch::Approx(0.77f));
+    REQUIRE(explicitSecondVertexParameters[5].value == Catch::Approx(0.88f));
+    REQUIRE(model.getVertexParametersForIndex(-1).empty());
+    REQUIRE(model.getVertexParametersForIndex(999).empty());
+
     node.parameters[0].value = "2";
     model.syncFromNode(node);
     const auto secondVertexParameters = model.getSelectedVertexParameters();

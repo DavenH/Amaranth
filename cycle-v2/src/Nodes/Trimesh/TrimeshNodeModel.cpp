@@ -192,8 +192,8 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain
     return result;
 }
 
-std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameters() {
-    Vertex* selectedVertex = this->selectedVertex();
+std::vector<TrimeshVertexParameter> TrimeshNodeModel::getVertexParametersForIndex(int vertexIndex) {
+    Vertex* selectedVertex = vertexAtIndex(vertexIndex);
 
     if (selectedVertex == nullptr) {
         return {};
@@ -207,6 +207,10 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameter
             { "vertex.amp", "amp", selectedVertex->values[Vertex::Amp], 0.f, 1.f },
             { "vertex.curve", "curve", selectedVertex->values[Vertex::Curve], 0.f, 1.f }
     };
+}
+
+std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameters() {
+    return getVertexParametersForIndex(resolvedSelectedVertexIndex());
 }
 
 std::vector<TrimeshVertexMarker> TrimeshNodeModel::getVertexMarkers() {
@@ -389,9 +393,12 @@ int TrimeshNodeModel::resolvedSelectedVertexIndex() {
 }
 
 Vertex* TrimeshNodeModel::selectedVertex() {
+    return vertexAtIndex(resolvedSelectedVertexIndex());
+}
+
+Vertex* TrimeshNodeModel::vertexAtIndex(int vertexIndex) {
     Mesh& activeMesh = mesh();
     auto& verts = activeMesh.getVerts();
-    const int vertexIndex = resolvedSelectedVertexIndex();
 
     if (isPositiveAndBelow(vertexIndex, (int) verts.size())) {
         return verts[(size_t) vertexIndex];

@@ -75,6 +75,7 @@ public:
     void syncFromNode(const Node& node);
 
     TrimeshRenderData renderGrid(int rows, int columns, PortDomain domain = PortDomain::TimeSignal);
+    std::vector<TrimeshVertexParameter> getVertexParametersForIndex(int vertexIndex);
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
     std::vector<TrimeshVertexMarker> getVertexMarkers();
     std::vector<TrimeshCubePreviewVertex> getSelectedCubePreviewVertices();
@@ -92,6 +93,7 @@ public:
 private:
     Mesh& mesh();
     int resolvedSelectedVertexIndex();
+    Vertex* vertexAtIndex(int vertexIndex);
     Vertex* selectedVertex();
     bool applySerializedMeshEdits(const TrimeshMeshEditState& nextMeshEditState);
     bool applyLegacySelectedVertexOverride(const Node& node);
