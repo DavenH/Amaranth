@@ -39,6 +39,7 @@ public:
     bool setVertexParameterForAutomation(const String& nodeId, const String& parameterId, float value);
     bool getNodeParameterForAutomation(const String& nodeId, const String& parameterId, String& value) const;
     var inspectNodeControlsForAutomation(const String& nodeId) const;
+    var inspectPointerTargetsForAutomation() const;
 
     void resized() override;
 

@@ -921,12 +921,13 @@ Current automation status:
 - `scripts/run_cycle_v2_agent_smokes.sh` runs the first one-shot smoke fixtures
   for read-only state, graph save/open round-trip, and canvas screenshot.
 - Implemented commands: `snapshotState`, `inspectTargets`,
-  `listAssertionPaths`, `assertState`, `exportGraph`, `openGraph`,
-  `saveGraph`, `openNodeEditor`, `openMeshPopup`, `addNode`, `moveNode`,
-  `connectPorts`, `deleteNode`, `deleteEdge`, `setNodeParameter`,
-  `inspectNodeControls`, `setMorphSlider`, `setPrimaryAxis`, `toggleLink`,
-  `selectVertex`, `setVertexParameter`, `pointer`, `assertNodeParameter`,
-  `screenshot`, `waitForIdle`, and `quit`.
+  `inspectPointerTargets`, `listAssertionPaths`, `assertState`,
+  `exportGraph`, `openGraph`, `saveGraph`, `openNodeEditor`,
+  `openMeshPopup`, `addNode`, `moveNode`, `connectPorts`, `deleteNode`,
+  `deleteEdge`, `setNodeParameter`, `inspectNodeControls`,
+  `setMorphSlider`, `setPrimaryAxis`, `toggleLink`, `selectVertex`,
+  `setVertexParameter`, `pointer`, `assertNodeParameter`, `screenshot`,
+  `waitForIdle`, and `quit`.
 - `scripts/fixtures/cycle-v2-agent-graph-editing.json` adds, moves,
   parameterizes, connects, and deletes a graph node with state assertions.
 - `scripts/fixtures/cycle-v2-agent-mesh-controls.json` opens the default
@@ -937,6 +938,9 @@ Current automation status:
 - `scripts/fixtures/cycle-v2-agent-pointer.json` covers top-level canvas
   pointer replay by double-clicking `waveMesh` to open its editor and sending a
   wheel event while it remains expanded.
+- `scripts/fixtures/cycle-v2-agent-pointer-targets.json` verifies pointer
+  target discovery before and after a Trimesh editor opens, including
+  canvas-local expanded editor subregion bounds.
 - `scripts/fixtures/cycle-v2-agent-mesh-controls-os-screenshot.json` leaves the
   same expanded editor open for runner-side `screencapture -R`; use
   `CYCLE_V2_AGENT_SMOKE_OS_SCREENSHOT=1 scripts/run_cycle_v2_agent_smokes.sh`
@@ -945,8 +949,8 @@ Current automation status:
   luma mean/stddev for the 3D and 2D panel regions with
   `scripts/assert_png_stats.py`.
 - Pending: audio capture, popup menu item selection beyond current Trimesh
-  controls, deeper pointer target discovery, and richer preview/OpenGL
-  diagnostics.
+  controls, pointer replay against discovered sub-targets, and richer
+  preview/OpenGL diagnostics.
 
 ### Milestone 2: Graph Model And Validation
 

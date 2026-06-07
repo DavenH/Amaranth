@@ -219,6 +219,56 @@ var rectangleToVar(Rectangle<float> bounds) {
     return object;
 }
 
+var pointToVar(Point<float> point) {
+    auto* object = new DynamicObject();
+    object->setProperty("x", point.x);
+    object->setProperty("y", point.y);
+    return object;
+}
+
+var pointerTargetToVar(
+        const String& id,
+        const String& kind,
+        Rectangle<float> bounds,
+        const String& nodeId = {},
+        const String& portId = {},
+        bool input = false,
+        const String& parameterId = {},
+        const String& axis = {}) {
+    auto* object = new DynamicObject();
+    object->setProperty("id", id);
+    object->setProperty("kind", kind);
+    object->setProperty("bounds", rectangleToVar(bounds));
+    object->setProperty("centre", pointToVar(bounds.getCentre()));
+
+    if (nodeId.isNotEmpty()) {
+        object->setProperty("nodeId", nodeId);
+    }
+    if (portId.isNotEmpty()) {
+        object->setProperty("portId", portId);
+        object->setProperty("input", input);
+    }
+    if (parameterId.isNotEmpty()) {
+        object->setProperty("parameterId", parameterId);
+    }
+    if (axis.isNotEmpty()) {
+        object->setProperty("axis", axis);
+    }
+
+    return object;
+}
+
+String trimeshHitRegionKind(TrimeshExpandedHitRegionKind kind) {
+    switch (kind) {
+        case TrimeshExpandedHitRegionKind::MorphControl:    return "trimeshMorphRail";
+        case TrimeshExpandedHitRegionKind::PrimaryAxis:     return "trimeshPrimaryAxis";
+        case TrimeshExpandedHitRegionKind::LinkToggle:      return "trimeshLinkToggle";
+        case TrimeshExpandedHitRegionKind::VertexParameter: return "trimeshVertexParameter";
+    }
+
+    return "trimeshControl";
+}
+
 var portToVar(const Port& port) {
     auto* object = new DynamicObject();
     object->setProperty("id", port.id);
@@ -4227,6 +4277,130 @@ var NodeCanvas::inspectNodeControlsForAutomation(const String& nodeId) const {
         root->setProperty("linkToggles", linkToggles);
     }
 
+    return root;
+}
+
+var NodeCanvas::inspectPointerTargetsForAutomation() const {
+    auto* root = new DynamicObject();
+    Array<var> targets;
+
+    targets.add(pointerTargetToVar(
+            "canvas",
+            "canvas",
+            getLocalBounds().toFloat()));
+
+    for (const auto& node : graph.getNodes()) {
+        const Rectangle<float> nodeBounds = toScreen(node.bounds);
+        targets.add(pointerTargetToVar(
+                "node:" + node.id,
+                "node",
+                nodeBounds,
+                node.id));
+
+        auto addPortTargets = [&](const std::vector<Port>& ports) {
+            for (const auto& port : ports) {
+                const PortLocation location = getPortLocation(node, port);
+                targets.add(pointerTargetToVar(
+                        String(port.input ? "input:" : "output:") + node.id + "." + port.id,
+                        port.input ? "inputPort" : "outputPort",
+                        location.bounds.expanded(5.f),
+                        node.id,
+                        port.id,
+                        port.input));
+            }
+        };
+
+        addPortTargets(node.inputs);
+        addPortTargets(node.outputs);
+    }
+
+    const auto& edges = graph.getEdges();
+    for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
+        const auto& edge = edges[(size_t) edgeIndex];
+        const Node* sourceNode = findNode(edge.sourceNodeId);
+        const Node* destNode = findNode(edge.destNodeId);
+
+        if (sourceNode == nullptr || destNode == nullptr) {
+            continue;
+        }
+
+        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
+        const Port* destPort = findPort(*destNode, edge.destPortId, true);
+
+        if (sourcePort == nullptr || destPort == nullptr) {
+            continue;
+        }
+
+        const Path cable = createCablePath(
+                getPortLocation(*sourceNode, *sourcePort).centre,
+                getPortLocation(*destNode, *destPort).centre,
+                sourcePort->side,
+                destPort->side,
+                edge.attachment);
+
+        auto* target = new DynamicObject();
+        target->setProperty("id", "edge:" + String(edgeIndex));
+        target->setProperty("kind", edge.attachment ? "attachmentEdge" : "edge");
+        target->setProperty("edgeIndex", edgeIndex);
+        target->setProperty("bounds", rectangleToVar(visibleCableBounds(cable, zoom)));
+        target->setProperty("sourceNodeId", edge.sourceNodeId);
+        target->setProperty("sourcePortId", edge.sourcePortId);
+        target->setProperty("destNodeId", edge.destNodeId);
+        target->setProperty("destPortId", edge.destPortId);
+        targets.add(target);
+    }
+
+    const Node* expandedNode = findNode(expandedNodeId);
+    if (expandedNode != nullptr) {
+        Rectangle<float> panel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
+        targets.add(pointerTargetToVar(
+                "expanded:" + expandedNode->id,
+                "expandedEditor",
+                panel,
+                expandedNode->id));
+        targets.add(pointerTargetToVar(
+                "expanded:" + expandedNode->id + ".close",
+                "expandedCloseButton",
+                expandedEditorCloseButton(panel),
+                expandedNode->id));
+
+        if (expandedNode->kind == NodeKind::TrilinearMesh) {
+            Rectangle<float> content = panel;
+            content.removeFromTop(kExpandedEditorHeaderHeight);
+            content = content.reduced(10.f, 8.f);
+
+            targets.add(pointerTargetToVar(
+                    "expanded:" + expandedNode->id + ".panel3D",
+                    "trimeshPanel3D",
+                    TrimeshWidget::expandedGridPanelContentBounds(content),
+                    expandedNode->id));
+            targets.add(pointerTargetToVar(
+                    "expanded:" + expandedNode->id + ".panel2D",
+                    "trimeshPanel2D",
+                    TrimeshWidget::expandedWavePanelContentBounds(content),
+                    expandedNode->id));
+
+            const auto& widget = const_cast<NodeCanvas*>(this)->trimeshWidgetFor(expandedNode->id);
+            for (const auto& region : widget.expandedControlHitRegions(content)) {
+                const String kind = trimeshHitRegionKind(region.kind);
+                const String suffix = region.parameterId.isNotEmpty() ? region.parameterId : region.axisValue;
+                targets.add(pointerTargetToVar(
+                        "expanded:" + expandedNode->id + "." + kind + "." + suffix,
+                        kind,
+                        region.bounds,
+                        expandedNode->id,
+                        {},
+                        false,
+                        region.parameterId,
+                        region.axisValue));
+            }
+        }
+    }
+
+    root->setProperty("schema", "cycle-v2-pointer-targets.v1");
+    root->setProperty("coordinateSpace", "canvasLocal");
+    root->setProperty("targetCount", targets.size());
+    root->setProperty("targets", targets);
     return root;
 }
 

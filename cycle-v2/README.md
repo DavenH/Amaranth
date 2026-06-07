@@ -65,16 +65,19 @@ preflighting Screen Recording permission. The smoke then runs
 captures fail automatically.
 
 The first command surface supports `snapshotState`, `inspectTargets`,
-`listAssertionPaths`, `assertState`, `exportGraph`, `openGraph`, `saveGraph`,
-`openNodeEditor`, `openMeshPopup`, `addNode`, `moveNode`, `connectPorts`,
-`deleteNode`, `deleteEdge`, `setNodeParameter`, `inspectNodeControls`,
+`inspectPointerTargets`, `listAssertionPaths`, `assertState`, `exportGraph`,
+`openGraph`, `saveGraph`, `openNodeEditor`, `openMeshPopup`, `addNode`,
+`moveNode`, `connectPorts`, `deleteNode`, `deleteEdge`, `setNodeParameter`,
+`inspectNodeControls`,
 `setMorphSlider`, `setPrimaryAxis`, `toggleLink`, `selectVertex`,
 `setVertexParameter`, `pointer`, `assertNodeParameter`, `screenshot`,
 `waitForIdle`, and `quit`. Reports are JSON files with per-command results plus
 a final snapshot. Mesh controls currently cover opening a Trimesh expanded
 editor, setting yellow/red/blue morph sliders, primary-axis selection, link
 toggles, vertex selection, and vertex parameter sliders by node id. Pointer
-replay currently targets registered top-level areas such as `canvas`.
+replay currently targets registered top-level areas such as `canvas`;
+`inspectPointerTargets` returns canvas-local node, port, edge, and expanded
+Trimesh control bounds for discovered pointer work.
 
 ## Current Editor Controls
 

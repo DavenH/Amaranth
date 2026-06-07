@@ -43,6 +43,7 @@ private:
     var saveGraph(const var& commandValue);
     var openNodeEditor(const var& commandValue);
     var addNode(const var& commandValue);
+    var inspectPointerTargets() const;
     var moveNode(const var& commandValue);
     var connectPorts(const var& commandValue);
     var deleteNode(const var& commandValue);

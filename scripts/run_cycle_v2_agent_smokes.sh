@@ -14,6 +14,7 @@ fixtures=(
     mesh-controls=scripts/fixtures/cycle-v2-agent-mesh-controls.json
     trimesh-controls=scripts/fixtures/cycle-v2-agent-trimesh-controls.json
     pointer=scripts/fixtures/cycle-v2-agent-pointer.json
+    pointer-targets=scripts/fixtures/cycle-v2-agent-pointer-targets.json
 )
 
 if [[ "$RUN_OS_SCREENSHOT" == "1" ]]; then

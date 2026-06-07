@@ -93,6 +93,10 @@ var NodeWorkspace::inspectNodeControlsForAutomation(const String& nodeId) const 
     return canvas.inspectNodeControlsForAutomation(nodeId);
 }
 
+var NodeWorkspace::inspectPointerTargetsForAutomation() const {
+    return canvas.inspectPointerTargetsForAutomation();
+}
+
 void NodeWorkspace::resized() {
     canvas.setBounds(getLocalBounds());
 }
