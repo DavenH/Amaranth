@@ -19,7 +19,8 @@ enum class TrimeshExpandedHitRegionKind {
     MorphControl,
     PrimaryAxis,
     LinkToggle,
-    VertexParameter
+    VertexParameter,
+    VertexGuideAttachment
 };
 
 struct TrimeshExpandedHitRegion {
@@ -34,6 +35,7 @@ public:
     void syncFromNode(const Node& node);
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
+    void setGuideAttachmentLabels(std::array<juce::String, 6> labels);
 
     void paintCompact(
             juce::Graphics& g,
@@ -98,6 +100,10 @@ public:
             juce::Point<float> position,
             juce::String& parameterId,
             float& value) const;
+    bool findVertexGuideAttachmentAt(
+            juce::Rectangle<float> content,
+            juce::Point<float> position,
+            juce::String& parameterId) const;
     bool vertexParameterValueForParameterAt(
             juce::Rectangle<float> content,
             const juce::String& parameterId,
@@ -141,6 +147,7 @@ private:
     TrimeshPanelBridge bridge;
     CachedHeatmap compactHeatmap;
     TrimeshRenderProfile displayProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
+    std::array<juce::String, 6> guideAttachmentLabels;
 };
 
 }

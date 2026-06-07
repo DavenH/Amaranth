@@ -10,6 +10,7 @@ enum class TrimeshChangeKind {
     PrimaryAxis,
     MeshEdit,
     VertexEdit,
+    SelectedControl,
     RenderProfile,
     Layout
 };
@@ -21,6 +22,8 @@ struct TrimeshChange {
     bool blueChanged {};
     bool sourceIs3D {};
     int primaryViewAxis { Vertex::Time };
+    bool gridShapeChanged {};
+    bool renderDomainChanged {};
 };
 
 struct TrimeshInvalidationResult {
@@ -30,6 +33,12 @@ struct TrimeshInvalidationResult {
     bool refresh3DGeometry {};
     bool dirtyCompactPreview {};
     bool dirtyRenderProfile {};
+    bool dirtyMeshContent {};
+    bool dirtySliceRasterization {};
+    bool dirtyInterceptsRails {};
+    bool dirtyColumns3D {};
+    bool dirtySelectedControl {};
+    bool dirtyDspPrep {};
 };
 
 class TrimeshInvalidation {

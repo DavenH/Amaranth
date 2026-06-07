@@ -6,6 +6,7 @@
 
 #include <JuceHeader.h>
 
+#include <array>
 #include <functional>
 #include <memory>
 
@@ -24,6 +25,7 @@ public:
         std::function<void(const juce::String&, float)> beginVertexParameterEdit;
         std::function<void(float)> updateVertexParameterEdit;
         std::function<void()> endVertexParameterEdit;
+        std::function<void(const juce::String&, juce::Rectangle<int>)> showVertexGuideAttachmentMenu;
         std::function<void(int)> selectVertex;
     };
 
@@ -32,6 +34,7 @@ public:
 
     void setCallbacks(Callbacks nextCallbacks);
     void setNode(const Node& nextNode);
+    void setGuideAttachmentLabels(std::array<juce::String, 6> labels);
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
     void renderOpenGL(float scaleFactor);
@@ -52,6 +55,7 @@ private:
 
     juce::Rectangle<float> closeButtonBounds() const;
     juce::Rectangle<float> contentBounds() const;
+    juce::String vertexGuideParameterField(const juce::String& parameterId) const;
     juce::MouseCursor cursorFor(juce::Point<float> position);
     void updateCursor(juce::Point<float> position);
     void updatePanelHosts();

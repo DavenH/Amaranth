@@ -32,6 +32,18 @@ class GraphEditor {
 public:
     GraphEditResult addNode(NodeGraph& graph, NodeKind kind, Point<float> position) const;
     GraphEditResult connect(NodeGraph& graph, const PortAddress& first, const PortAddress& second) const;
+    GraphEditResult attachGuideCurveToTrimeshVertexParameter(
+            NodeGraph& graph,
+            const String& guideNodeId,
+            const String& meshNodeId,
+            int vertexIndex,
+            const String& parameterField) const;
+    GraphEditResult createAndAttachGuideCurveToTrimeshVertexParameter(
+            NodeGraph& graph,
+            const String& meshNodeId,
+            int vertexIndex,
+            const String& parameterField,
+            Point<float> guidePosition) const;
     GraphEditResult spliceNodeIntoEdge(NodeGraph& graph, size_t edgeIndex, const String& nodeId) const;
     GraphEditResult removeEdgeAt(NodeGraph& graph, size_t index) const;
     GraphEditResult removeNode(NodeGraph& graph, const String& nodeId) const;
@@ -46,6 +58,7 @@ private:
     const Node* findNode(const NodeGraph& graph, const String& nodeId) const;
     Node* findMutableNode(NodeGraph& graph, const String& nodeId) const;
     const Port* findPort(const Node& node, const String& portId, bool input) const;
+    String guideVertexTargetPortId(int vertexIndex, const String& parameterField) const;
     String createUniqueNodeId(const NodeGraph& graph, NodeKind kind) const;
     String baseIdForKind(NodeKind kind) const;
 };

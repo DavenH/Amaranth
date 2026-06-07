@@ -24,7 +24,8 @@ public:
             float cableScale,
             bool selected,
             bool attachment,
-            bool invalid);
+            bool invalid,
+            bool drawDestEndpoint);
     void renderNodeShell(
             juce::Rectangle<float> bounds,
             float headerHeight,

@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "../src/Graph/GraphEditor.h"
 #include "../src/Runtime/GraphRuntime.h"
 
 #include <algorithm>
@@ -76,5 +77,35 @@ TEST_CASE("Runtime keeps scratch attachments separate from signal inputs", "[cyc
             wave.signalInputs.end(),
             [](const RuntimeInput& input) {
                 return input.destPortId == "scratch";
+            }));
+}
+
+TEST_CASE("Runtime exposes targeted guide attachments separately from signal inputs", "[cycle-v2][runtime]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    REQUIRE(GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
+            graph,
+            "waveMesh",
+            4,
+            "curve",
+            { 100.f, 100.f }).succeeded());
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    const auto trace = GraphRuntime().process(graph, compileResult.plan);
+    const auto& wave = findTraceNode(trace, "waveMesh");
+
+    REQUIRE(std::any_of(
+            wave.attachments.begin(),
+            wave.attachments.end(),
+            [](const RuntimeInput& input) {
+                return input.sourceNodeId == "guide"
+                    && input.destPortId == "guide.vertex.4.curve";
+            }));
+    REQUIRE(std::none_of(
+            wave.signalInputs.begin(),
+            wave.signalInputs.end(),
+            [](const RuntimeInput& input) {
+                return input.destPortId.startsWith("guide.vertex.");
             }));
 }

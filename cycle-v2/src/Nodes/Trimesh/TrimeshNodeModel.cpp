@@ -34,39 +34,6 @@ bool parameterFloatValue(const Node& node, const String& id, float& value) {
     return false;
 }
 
-bool vertexEditParameter(const NodeParameter& parameter, int& vertexIndex, int& valueIndex) {
-    if (!parameter.id.startsWith("vertex.")) {
-        return false;
-    }
-
-    const String suffix = parameter.id.fromFirstOccurrenceOf("vertex.", false, false);
-    const String indexText = suffix.upToFirstOccurrenceOf(".", false, false);
-    const String field = suffix.fromFirstOccurrenceOf(".", false, false);
-
-    if (indexText.isEmpty() || !indexText.containsOnly("0123456789")) {
-        return false;
-    }
-
-    if (field == "amp") {
-        valueIndex = Vertex::Amp;
-    } else if (field == "phase") {
-        valueIndex = Vertex::Phase;
-    } else if (field == "time") {
-        valueIndex = Vertex::Time;
-    } else if (field == "red") {
-        valueIndex = Vertex::Red;
-    } else if (field == "blue") {
-        valueIndex = Vertex::Blue;
-    } else if (field == "curve") {
-        valueIndex = Vertex::Curve;
-    } else {
-        return false;
-    }
-
-    vertexIndex = indexText.getIntValue();
-    return true;
-}
-
 String parameterString(const Node& node, const String& id, const String& fallback) {
     for (const auto& parameter : node.parameters) {
         if (parameter.id == id) {
@@ -121,19 +88,23 @@ TrimeshNodeModel::~TrimeshNodeModel() {
 
 TrimeshNodeModel::TrimeshNodeModel(TrimeshNodeModel&& other) noexcept :
         ownedMesh       (std::move(other.ownedMesh))
+    ,   meshEditState   (std::move(other.meshEditState))
     ,   morph           (other.morph)
     ,   primaryViewAxis (other.primaryViewAxis)
     ,   selectedVertexIndex (other.selectedVertexIndex)
-    ,   revision        (other.revision) {}
+    ,   revision        (other.revision)
+    ,   revisions       (other.revisions) {}
 
 TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept {
     if (this != &other) {
         clearMesh();
         ownedMesh = std::move(other.ownedMesh);
+        meshEditState = std::move(other.meshEditState);
         morph = other.morph;
         primaryViewAxis = other.primaryViewAxis;
         selectedVertexIndex = other.selectedVertexIndex;
         revision = other.revision;
+        revisions = other.revisions;
     }
 
     return *this;
@@ -148,20 +119,31 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
     const int nextPrimaryAxis = primaryAxisFromParameter(
             parameterString(node, "primaryAxis", "yellow"));
     const int nextSelectedVertexIndex = parameterInt(node, "selectedVertexIndex", -1);
+    const TrimeshMeshEditState nextMeshEditState = TrimeshMeshEditState::fromNode(node);
 
     if (nextMorph.time.getTargetValue() != morph.time.getTargetValue()
             || nextMorph.red.getTargetValue() != morph.red.getTargetValue()
-            || nextMorph.blue.getTargetValue() != morph.blue.getTargetValue()
-            || nextPrimaryAxis != primaryViewAxis
-            || nextSelectedVertexIndex != selectedVertexIndex) {
+            || nextMorph.blue.getTargetValue() != morph.blue.getTargetValue()) {
         morph = nextMorph;
-        primaryViewAxis = nextPrimaryAxis;
-        selectedVertexIndex = nextSelectedVertexIndex;
-        ++revision;
+        bumpMorphRevision();
     }
 
-    if (applyVertexParameterOverrides(node)) {
-        ++revision;
+    if (nextPrimaryAxis != primaryViewAxis) {
+        primaryViewAxis = nextPrimaryAxis;
+        bumpPrimaryAxisRevision();
+    }
+
+    if (nextSelectedVertexIndex != selectedVertexIndex) {
+        selectedVertexIndex = nextSelectedVertexIndex;
+        bumpSelectedControlRevision();
+    }
+
+    if (applySerializedMeshEdits(nextMeshEditState)) {
+        bumpMeshContentRevision();
+    }
+
+    if (nextMeshEditState.empty() && applyLegacySelectedVertexOverride(node)) {
+        bumpMeshContentRevision();
     }
 }
 
@@ -210,8 +192,8 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain
     return result;
 }
 
-std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameters() {
-    Vertex* selectedVertex = this->selectedVertex();
+std::vector<TrimeshVertexParameter> TrimeshNodeModel::getVertexParametersForIndex(int vertexIndex) {
+    Vertex* selectedVertex = vertexAtIndex(vertexIndex);
 
     if (selectedVertex == nullptr) {
         return {};
@@ -225,6 +207,10 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameter
             { "vertex.amp", "amp", selectedVertex->values[Vertex::Amp], 0.f, 1.f },
             { "vertex.curve", "curve", selectedVertex->values[Vertex::Curve], 0.f, 1.f }
     };
+}
+
+std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameters() {
+    return getVertexParametersForIndex(resolvedSelectedVertexIndex());
 }
 
 std::vector<TrimeshVertexMarker> TrimeshNodeModel::getVertexMarkers() {
@@ -327,16 +313,54 @@ int TrimeshNodeModel::getResolvedSelectedVertexIndex() {
 }
 
 void TrimeshNodeModel::markMeshEdited() {
-    ++revision;
+    bumpMeshContentRevision();
 }
 
 Mesh& TrimeshNodeModel::mesh() {
     if (ownedMesh == nullptr) {
         ownedMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2TrimeshNode");
-        ++revision;
+        bumpMeshContentRevision();
     }
 
     return *ownedMesh;
+}
+
+void TrimeshNodeModel::bumpMeshContentRevision() {
+    ++revision;
+    ++revisions.meshContent;
+    ++revisions.sliceRasterization;
+    ++revisions.interceptsRails;
+    ++revisions.columns3D;
+    ++revisions.compactPreview;
+    ++revisions.selectedControl;
+    ++revisions.dspPrep;
+    revisions.aggregate = revision;
+}
+
+void TrimeshNodeModel::bumpMorphRevision() {
+    ++revision;
+    ++revisions.sliceRasterization;
+    ++revisions.interceptsRails;
+    ++revisions.columns3D;
+    ++revisions.compactPreview;
+    ++revisions.dspPrep;
+    revisions.aggregate = revision;
+}
+
+void TrimeshNodeModel::bumpPrimaryAxisRevision() {
+    ++revision;
+    ++revisions.sliceRasterization;
+    ++revisions.interceptsRails;
+    ++revisions.columns3D;
+    ++revisions.compactPreview;
+    ++revisions.dspPrep;
+    revisions.aggregate = revision;
+}
+
+void TrimeshNodeModel::bumpSelectedControlRevision() {
+    ++revision;
+    ++revisions.selectedControl;
+    revisions.aggregate = revision;
 }
 
 int TrimeshNodeModel::resolvedSelectedVertexIndex() {
@@ -369,9 +393,12 @@ int TrimeshNodeModel::resolvedSelectedVertexIndex() {
 }
 
 Vertex* TrimeshNodeModel::selectedVertex() {
+    return vertexAtIndex(resolvedSelectedVertexIndex());
+}
+
+Vertex* TrimeshNodeModel::vertexAtIndex(int vertexIndex) {
     Mesh& activeMesh = mesh();
     auto& verts = activeMesh.getVerts();
-    const int vertexIndex = resolvedSelectedVertexIndex();
 
     if (isPositiveAndBelow(vertexIndex, (int) verts.size())) {
         return verts[(size_t) vertexIndex];
@@ -380,36 +407,14 @@ Vertex* TrimeshNodeModel::selectedVertex() {
     return nullptr;
 }
 
-bool TrimeshNodeModel::applyVertexParameterOverrides(const Node& node) {
-    Mesh& activeMesh = mesh();
-    auto& verts = activeMesh.getVerts();
+bool TrimeshNodeModel::applySerializedMeshEdits(const TrimeshMeshEditState& nextMeshEditState) {
+    const bool changed = nextMeshEditState.applyTo(mesh());
+    meshEditState = nextMeshEditState;
+    return changed;
+}
+
+bool TrimeshNodeModel::applyLegacySelectedVertexOverride(const Node& node) {
     bool changed {};
-    bool persistentEditsFound {};
-
-    for (const auto& parameter : node.parameters) {
-        int vertexIndex {};
-        int valueIndex {};
-
-        if (!vertexEditParameter(parameter, vertexIndex, valueIndex)
-                || !isPositiveAndBelow(vertexIndex, (int) verts.size())
-                || verts[(size_t) vertexIndex] == nullptr) {
-            continue;
-        }
-
-        persistentEditsFound = true;
-        Vertex* vertex = verts[(size_t) vertexIndex];
-        const float clampedValue = jlimit(0.f, 1.f, parameter.value.getFloatValue());
-
-        if (vertex->values[valueIndex] != clampedValue) {
-            vertex->values[valueIndex] = clampedValue;
-            changed = true;
-        }
-    }
-
-    if (persistentEditsFound) {
-        return changed;
-    }
-
     float time {};
     float red {};
     float blue {};

@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 
+#include <array>
 #include <memory>
 
 #include "../Graph/GraphEditor.h"
@@ -9,6 +10,9 @@
 #include "../Graph/NodeGraph.h"
 #include "../Graph/GraphSerializer.h"
 #include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
+#include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
+#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPreviewExecutor.h"
 #include "../Runtime/GraphRuntime.h"
@@ -43,6 +47,12 @@ private:
         Point<float> centre;
     };
 
+    struct CableEndpoint {
+        Point<float> centre;
+        PortSide side { PortSide::Left };
+        bool portLike { true };
+    };
+
     struct CachedPreviewSprite {
         Image image;
         String signature;
@@ -75,6 +85,7 @@ private:
     String activeTrimeshVertexNodeId;
     String activeTrimeshVertexParameterId;
     String editStatusMessage;
+    int activeTrimeshVertexIndex { -1 };
     int selectedEdgeIndex { -1 };
     int spliceTargetEdgeIndex { -1 };
     int activePaletteSectionIndex { -1 };
@@ -135,6 +146,12 @@ private:
     Rectangle<float> snappedNodeBounds(const Node& node, Rectangle<float> proposed);
     PortLocation getPortLocation(const Node& node, const Port& port) const;
     PortLocation getPortLocation(const PortAddress& address) const;
+    bool resolveCableEndpoints(
+            const Edge& edge,
+            CableEndpoint& sourceEndpoint,
+            CableEndpoint& destEndpoint) const;
+    bool isDynamicTrimeshGuideTarget(const Node& node, const String& portId) const;
+    CableEndpoint dynamicTrimeshGuideEndpoint(const Node& node, const String& portId) const;
     bool findPortAt(Point<float> screenPosition, PortAddress& result) const;
     bool findConnectablePortAt(Point<float> screenPosition, const PortAddress& source, PortAddress& result) const;
     bool findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const;
@@ -188,6 +205,8 @@ private:
     bool beginTrimeshVertexParameterEdit(const String& parameterId, float value);
     bool updateTrimeshVertexParameterEditValue(float value);
     void endTrimeshVertexParameterEdit();
+    bool showTrimeshGuideAttachmentMenu(const String& parameterField, Rectangle<int> targetScreenArea);
+    std::array<String, 6> trimeshGuideAttachmentLabelsForNode(const Node& meshNode);
     bool selectTrimeshVertexIndex(int vertexIndex);
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
     void updatePaletteHover(Point<float> screenPosition);

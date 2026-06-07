@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TrimeshMeshEditState.h"
+
 #include "../../Graph/NodeGraph.h"
 
 #include <Obj/MorphPosition.h>
@@ -48,6 +50,17 @@ struct TrimeshCubePreviewVertex {
     bool selected {};
 };
 
+struct TrimeshDerivedRevisions {
+    uint64_t meshContent {};
+    uint64_t sliceRasterization {};
+    uint64_t interceptsRails {};
+    uint64_t columns3D {};
+    uint64_t compactPreview {};
+    uint64_t selectedControl {};
+    uint64_t dspPrep {};
+    uint64_t aggregate {};
+};
+
 class TrimeshNodeModel {
 public:
     TrimeshNodeModel();
@@ -62,6 +75,7 @@ public:
     void syncFromNode(const Node& node);
 
     TrimeshRenderData renderGrid(int rows, int columns, PortDomain domain = PortDomain::TimeSignal);
+    std::vector<TrimeshVertexParameter> getVertexParametersForIndex(int vertexIndex);
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
     std::vector<TrimeshVertexMarker> getVertexMarkers();
     std::vector<TrimeshCubePreviewVertex> getSelectedCubePreviewVertices();
@@ -73,20 +87,29 @@ public:
     int getPrimaryViewAxis() const { return primaryViewAxis; }
     int getSelectedVertexIndex() const { return selectedVertexIndex; }
     uint64_t getRevision() const { return revision; }
+    const TrimeshDerivedRevisions& getDerivedRevisions() const { return revisions; }
     Mesh& getMeshForPanel() { return mesh(); }
 
 private:
     Mesh& mesh();
     int resolvedSelectedVertexIndex();
+    Vertex* vertexAtIndex(int vertexIndex);
     Vertex* selectedVertex();
-    bool applyVertexParameterOverrides(const Node& node);
+    bool applySerializedMeshEdits(const TrimeshMeshEditState& nextMeshEditState);
+    bool applyLegacySelectedVertexOverride(const Node& node);
+    void bumpMeshContentRevision();
+    void bumpMorphRevision();
+    void bumpPrimaryAxisRevision();
+    void bumpSelectedControlRevision();
     void clearMesh();
 
     std::unique_ptr<Mesh> ownedMesh;
+    TrimeshMeshEditState meshEditState;
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis {};
     int selectedVertexIndex { -1 };
     uint64_t revision {};
+    TrimeshDerivedRevisions revisions;
 };
 
 }

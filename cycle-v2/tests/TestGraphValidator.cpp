@@ -393,6 +393,21 @@ TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
             }));
 }
 
+TEST_CASE("Trimesh guide targets require guide curve attachment sources", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.addEdge({ "env", "env", "waveMesh", "guide.vertex.0.amp", PortDomain::EnvelopeSignal, true });
+
+    auto issues = GraphValidator().validate(graph);
+
+    REQUIRE_FALSE(issues.empty());
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::InvalidAttachmentSource;
+            }));
+}
+
 TEST_CASE("Pitch cannot feed non voice-aware processors", "[cycle-v2][graph]") {
     NodeGraph graph;
     graph.addNode({

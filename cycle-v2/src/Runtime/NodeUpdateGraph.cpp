@@ -7,8 +7,13 @@ NodeUpdateResult NodeUpdateGraph::invalidateTrimeshChange(
         const String& nodeId,
         const TrimeshChange& change) const {
     NodeUpdateResult result;
-    result.graph = graphInvalidation.invalidateFrom(plan, nodeId, graphChangeKindFor(change));
     result.trimesh = trimeshInvalidation.invalidate(change);
+
+    if (change.kind == TrimeshChangeKind::SelectedControl) {
+        return result;
+    }
+
+    result.graph = graphInvalidation.invalidateFrom(plan, nodeId, graphChangeKindFor(change));
     return result;
 }
 
@@ -17,6 +22,7 @@ GraphChangeKind NodeUpdateGraph::graphChangeKindFor(const TrimeshChange& change)
         case TrimeshChangeKind::None:
         case TrimeshChangeKind::Morph:
         case TrimeshChangeKind::PrimaryAxis:
+        case TrimeshChangeKind::SelectedControl:
         case TrimeshChangeKind::RenderProfile:
         case TrimeshChangeKind::Layout:
             return GraphChangeKind::NodeParameters;

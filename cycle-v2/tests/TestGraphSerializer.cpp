@@ -49,7 +49,7 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
 TEST_CASE("Graph serializer preserves node parameters", "[cycle-v2][graph]") {
     NodeGraph source = NodeGraph::createDemoGraph();
     source.getNodesForEditing()[0].parameters.push_back({ "mode", "Mode", "spectral" });
-    source.getNodesForEditing()[1].parameters.push_back({ "vertex.2.curve", "Sharpness", "0.75" });
+    source.getNodesForEditing()[1].parameters.push_back({ "mesh.vertex.2.curve", "Sharpness", "0.75" });
 
     const GraphSerializer serializer;
     const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
@@ -60,7 +60,7 @@ TEST_CASE("Graph serializer preserves node parameters", "[cycle-v2][graph]") {
     REQUIRE(parameterValueForNode(voice, "octave") == "0");
     REQUIRE(parameterValueForNode(voice, "oversampling") == "1x");
     REQUIRE(parameterValueForNode(voice, "missing", "fallback") == "fallback");
-    REQUIRE(parameterValueForNode(waveMesh, "vertex.2.curve") == "0.75");
+    REQUIRE(parameterValueForNode(waveMesh, "mesh.vertex.2.curve") == "0.75");
 }
 
 TEST_CASE("Graph serializer preserves attachment edges", "[cycle-v2][graph]") {

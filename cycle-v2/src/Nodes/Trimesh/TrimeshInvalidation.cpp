@@ -2,12 +2,37 @@
 
 namespace CycleV2 {
 
+namespace {
+
+TrimeshInvalidationResult withPanelContextRefresh(
+        TrimeshInvalidationResult result,
+        const TrimeshChange& change) {
+    if (change.gridShapeChanged || change.renderDomainChanged) {
+        result.rebuildNodeData = true;
+        result.updateRasterizer = true;
+        result.refresh2DPanel = true;
+        result.refresh3DGeometry = true;
+        result.dirtyCompactPreview = true;
+        result.dirtySliceRasterization = true;
+        result.dirtyInterceptsRails = true;
+        result.dirtyColumns3D = true;
+    }
+
+    if (change.renderDomainChanged) {
+        result.dirtyRenderProfile = true;
+    }
+
+    return result;
+}
+
+}
+
 TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& change) const {
     TrimeshInvalidationResult result;
 
     switch (change.kind) {
         case TrimeshChangeKind::None:
-            return result;
+            return withPanelContextRefresh(result, change);
 
         case TrimeshChangeKind::Morph:
             result.rebuildNodeData = true;
@@ -15,7 +40,11 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
             result.refresh2DPanel = true;
             result.refresh3DGeometry = anyMorphChanged(change) && !primaryMorphChanged(change);
             result.dirtyCompactPreview = true;
-            return result;
+            result.dirtySliceRasterization = true;
+            result.dirtyInterceptsRails = true;
+            result.dirtyColumns3D = result.refresh3DGeometry;
+            result.dirtyDspPrep = true;
+            return withPanelContextRefresh(result, change);
 
         case TrimeshChangeKind::PrimaryAxis:
             result.rebuildNodeData = true;
@@ -23,7 +52,11 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
             result.refresh2DPanel = true;
             result.refresh3DGeometry = true;
             result.dirtyCompactPreview = true;
-            return result;
+            result.dirtySliceRasterization = true;
+            result.dirtyInterceptsRails = true;
+            result.dirtyColumns3D = true;
+            result.dirtyDspPrep = true;
+            return withPanelContextRefresh(result, change);
 
         case TrimeshChangeKind::MeshEdit:
         case TrimeshChangeKind::VertexEdit:
@@ -32,12 +65,22 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
             result.refresh2DPanel = true;
             result.refresh3DGeometry = !change.sourceIs3D;
             result.dirtyCompactPreview = true;
-            return result;
+            result.dirtyMeshContent = true;
+            result.dirtySliceRasterization = true;
+            result.dirtyInterceptsRails = true;
+            result.dirtyColumns3D = result.refresh3DGeometry;
+            result.dirtySelectedControl = true;
+            result.dirtyDspPrep = true;
+            return withPanelContextRefresh(result, change);
+
+        case TrimeshChangeKind::SelectedControl:
+            result.dirtySelectedControl = true;
+            return withPanelContextRefresh(result, change);
 
         case TrimeshChangeKind::RenderProfile:
             result.dirtyRenderProfile = true;
             result.dirtyCompactPreview = true;
-            return result;
+            return withPanelContextRefresh(result, change);
 
         case TrimeshChangeKind::Layout:
             result.rebuildNodeData = true;
@@ -45,10 +88,13 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
             result.refresh2DPanel = true;
             result.refresh3DGeometry = true;
             result.dirtyCompactPreview = true;
-            return result;
+            result.dirtySliceRasterization = true;
+            result.dirtyInterceptsRails = true;
+            result.dirtyColumns3D = true;
+            return withPanelContextRefresh(result, change);
     }
 
-    return result;
+    return withPanelContextRefresh(result, change);
 }
 
 bool TrimeshInvalidation::primaryMorphChanged(const TrimeshChange& change) const {

@@ -3,6 +3,7 @@
 #include <Curve/Mesh/Vertex.h>
 
 #include <array>
+#include <utility>
 
 namespace CycleV2 {
 
@@ -54,6 +55,10 @@ void TrimeshWidget::setRenderProfile(TrimeshRenderProfile profile) {
     bridge.setRenderProfile(profile);
 }
 
+void TrimeshWidget::setGuideAttachmentLabels(std::array<String, 6> labels) {
+    guideAttachmentLabels = std::move(labels);
+}
+
 void TrimeshWidget::paintCompact(
         Graphics& g,
         const Node& node,
@@ -73,6 +78,7 @@ void TrimeshWidget::paintCompact(
     bridge.syncFromNode(node, kPreviewRows, kPreviewColumns);
     const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
     TrimeshNodeModel& model = bridge.getModel();
+    const uint64_t compactRevision = model.getDerivedRevisions().compactPreview;
 
     if (!renderData.canDrawSurface()) {
         return;
@@ -82,14 +88,14 @@ void TrimeshWidget::paintCompact(
             || compactHeatmap.valueCount != renderData.surface.size()
             || compactHeatmap.rows != renderData.rows
             || compactHeatmap.columns != renderData.columns
-            || compactHeatmap.revision != model.getRevision()
+            || compactHeatmap.revision != compactRevision
             || compactHeatmap.domain != profile.getDomain()
             || compactHeatmap.scalePolicy != profile.getScalePolicy()) {
         compactHeatmap.image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
         compactHeatmap.valueCount = renderData.surface.size();
         compactHeatmap.rows = renderData.rows;
         compactHeatmap.columns = renderData.columns;
-        compactHeatmap.revision = model.getRevision();
+        compactHeatmap.revision = compactRevision;
         compactHeatmap.domain = profile.getDomain();
         compactHeatmap.scalePolicy = profile.getScalePolicy();
     }
@@ -179,7 +185,8 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
             sidePanel.reduced(kMorphPanelInsetX, kMorphPanelInsetY),
             axes,
             model.getSelectedCubePreviewVertices(),
-            selectedParameters);
+            selectedParameters,
+            guideAttachmentLabels);
 }
 
 void TrimeshWidget::renderExpandedPanelsOpenGL(
@@ -349,6 +356,27 @@ bool TrimeshWidget::findVertexParameterAt(
     return false;
 }
 
+bool TrimeshWidget::findVertexGuideAttachmentAt(
+        Rectangle<float> content,
+        Point<float> position,
+        String& parameterId) const {
+    const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
+
+    for (int i = 0; i < kVertexParameterCount; ++i) {
+        const Rectangle<float> row = vertexParameterRowBounds(parameterArea, i);
+        const Rectangle<float> guide = TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
+
+        if (!guide.expanded(4.f).contains(position)) {
+            continue;
+        }
+
+        parameterId = vertexParameterId(i);
+        return true;
+    }
+
+    return false;
+}
+
 bool TrimeshWidget::vertexParameterValueForParameterAt(
         Rectangle<float> content,
         const String& parameterId,
@@ -432,6 +460,12 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(R
         regions.push_back({
                 TrimeshExpandedHitRegionKind::VertexParameter,
                 vertexParameterRailBounds(row).expanded(5.f, 8.f),
+                vertexParameterId(i),
+                {}
+        });
+        regions.push_back({
+                TrimeshExpandedHitRegionKind::VertexGuideAttachment,
+                TrimeshSidePanelRenderer::vertexParameterGuideBounds(row).expanded(4.f),
                 vertexParameterId(i),
                 {}
         });

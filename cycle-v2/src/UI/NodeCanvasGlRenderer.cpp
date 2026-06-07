@@ -89,7 +89,8 @@ void NodeCanvasGlRenderer::renderCable(
         float cableScale,
         bool selected,
         bool attachment,
-        bool invalid) {
+        bool invalid,
+        bool drawDestEndpoint) {
     const auto segments = flattenPath(path);
 
     if (segments.empty()) {
@@ -146,7 +147,10 @@ void NodeCanvasGlRenderer::renderCable(
     const float endpointRadius = (selected ? 7.f : 5.5f) * cableScale;
     drawCircle(source, endpointRadius, kBackground.withAlpha(0.92f), true);
     drawCircle(source, endpointRadius, colour.withAlpha(0.96f), false);
-    drawCircle(dest, endpointRadius - 2.f * cableScale, colour.withAlpha(0.96f), true);
+
+    if (drawDestEndpoint) {
+        drawCircle(dest, endpointRadius - 2.f * cableScale, colour.withAlpha(0.96f), true);
+    }
 }
 
 void NodeCanvasGlRenderer::renderNodeShell(
