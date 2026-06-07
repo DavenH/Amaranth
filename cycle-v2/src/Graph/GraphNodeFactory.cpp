@@ -59,9 +59,10 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
 
         case NodeKind::Fft:
             node.title = String::fromUTF8("Time → Freq");
-            node.subtitle = "1 cycle";
+            node.subtitle = "cycle chunks";
             node.parameters = {
-                    { "cycleFrames", "Cycle Frames", "2048" }
+                    { "cycleFrames", "Cycle Frames", "2048" },
+                    { "mode", "Mode", "cycle" }
             };
             node.inputs = { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             node.outputs = {
@@ -72,7 +73,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
 
         case NodeKind::Ifft:
             node.title = String::fromUTF8("Freq → Time");
-            node.subtitle = "cyclic mode";
+            node.subtitle = "cyclic overlap";
             node.parameters = {
                     { "cycleFrames", "Cycle Frames", "2048" },
                     { "mode", "Mode", "cyclic" }

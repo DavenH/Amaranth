@@ -24,6 +24,9 @@ public:
     NodeCanvas();
     ~NodeCanvas() override;
 
+    bool saveGraphToFile(const File& file);
+    bool loadGraphFromFile(const File& file);
+
     void paint(Graphics& g) override;
     void resized() override;
     void mouseDown(const MouseEvent& event) override;
@@ -76,9 +79,13 @@ private:
     PortAddress connectingPort;
     Point<float> connectingPoint;
     Point<float> lastMousePosition;
+    float activeSnapWorldX {};
+    float activeSnapWorldY {};
     bool draggingNode {};
     bool connectingCable {};
     bool nodeDragUndoPushed {};
+    bool activeSnapHasX {};
+    bool activeSnapHasY {};
     bool draggingTrimeshMorph {};
     bool trimeshMorphUndoPushed {};
     bool draggingTrimeshVertexParameter {};
@@ -98,6 +105,7 @@ private:
     void drawEdges(Graphics& g);
     void drawConnectionPreview(Graphics& g);
     void drawNodes(Graphics& g);
+    void drawSnapGuides(Graphics& g);
     void drawNode(Graphics& g, const Node& node);
     void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
     void drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area, PortDomain previewDomain);
@@ -121,12 +129,14 @@ private:
     Point<float> toScreen(Point<float> p) const;
     Point<float> toWorld(Point<float> p) const;
     Rectangle<float> toScreen(Rectangle<float> r) const;
+    Rectangle<float> snappedNodeBounds(const Node& node, Rectangle<float> proposed);
     PortLocation getPortLocation(const Node& node, const Port& port) const;
     PortLocation getPortLocation(const PortAddress& address) const;
     bool findPortAt(Point<float> screenPosition, PortAddress& result) const;
     bool findConnectablePortAt(Point<float> screenPosition, const PortAddress& source, PortAddress& result) const;
     bool findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const;
     bool findOperationLayoutButtonAt(Point<float> screenPosition, String& nodeId) const;
+    bool findMeshOutputSideButtonAt(Point<float> screenPosition, String& nodeId) const;
     bool findVoiceDomainButtonAt(Point<float> screenPosition, String& nodeId) const;
     int findEdgeAt(Point<float> screenPosition) const;
     const Node* findNode(const String& id) const;
@@ -158,9 +168,12 @@ private:
     bool restoreGraphXml(const String& xml, const String& statusMessage);
     bool clearSelection();
     bool cycleOperationPortLayout(const String& nodeId);
+    bool cycleMeshOutputSide(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
     bool handleVoiceContextEditorClick(Point<float> screenPosition);
+    bool handleTransformEditorClick(Point<float> screenPosition);
     bool setVoiceContextParameter(const String& parameterId, const String& label, const String& value, const String& statusMessage);
+    bool setTransformParameter(const String& parameterId, const String& label, const String& value, const String& statusMessage);
     bool setTrimeshPrimaryAxisValue(const String& axisValue);
     bool toggleTrimeshLinkAxisValue(const String& axisValue);
     bool beginTrimeshMorphEdit(const String& parameterId, float value);

@@ -10,6 +10,9 @@ class NodeWorkspace : public Component {
 public:
     NodeWorkspace();
 
+    bool saveGraphToFile(const File& file);
+    bool loadGraphFromFile(const File& file);
+
     void resized() override;
 
 private:

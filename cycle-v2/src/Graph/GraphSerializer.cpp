@@ -113,13 +113,19 @@ void normalizeNodePresentation(Node& node) {
     }
 
     if (node.kind == NodeKind::Fft) {
+        ensureParameter("cycleFrames", "Cycle Frames", "2048");
+        ensureParameter("mode", "Mode", "cycle");
         node.title = String::fromUTF8("Time → Freq");
-        node.subtitle = "1 cycle";
+        node.subtitle = parameterValueForNode(node, "mode", "cycle") == "fixedWindow" ? "fixed window" : "cycle chunks";
     }
 
     if (node.kind == NodeKind::Ifft) {
+        ensureParameter("cycleFrames", "Cycle Frames", "2048");
+        ensureParameter("mode", "Mode", "cyclic");
         node.title = String::fromUTF8("Freq → Time");
-        node.subtitle = "cyclic mode";
+        node.subtitle = parameterValueForNode(node, "mode", "cyclic") == "acyclicCarry"
+                ? "carry overlap"
+                : "cyclic overlap";
     }
 
     if (node.kind == NodeKind::VoiceContext

@@ -27,10 +27,12 @@ TEST_CASE("Graph node factory creates canonical FFT nodes", "[cycle-v2][graph]")
     REQUIRE(node.outputs[0].domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(node.outputs[1].domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(parameterValueForNode(node, "cycleFrames") == "2048");
+    REQUIRE(parameterValueForNode(node, "mode") == "cycle");
     REQUIRE(parameterValueForNode(node, "window").isEmpty());
 
     const Node inverse = GraphNodeFactory().createNode(NodeKind::Ifft, "ifft", { 0.f, 0.f });
     REQUIRE(inverse.title == String::fromUTF8("Freq → Time"));
+    REQUIRE(parameterValueForNode(inverse, "mode") == "cyclic");
 }
 
 TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][graph]") {
