@@ -19,7 +19,7 @@ void TrimeshPanelRasterizer::update(
         TrimeshPanelHosts& panelHosts,
         bool refresh2DPanel,
         bool refresh3DGeometry) {
-    const bool cyclic = renderProfile.curveIsCyclic();
+    const bool cyclic = renderProfile.getCurveStyle().cyclic;
     auto& request = rasterizer.getRequest();
     request.cyclic = cyclic;
     request.xMinimum = cyclic ? -0.05f : 0.f;

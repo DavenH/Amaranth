@@ -33,7 +33,7 @@ void TrimeshSliceRenderer2D::drawGrid(
         Graphics& g,
         Rectangle<float> area,
         const TrimeshRenderProfile& profile) {
-    const bool spectral = profile.getSliceBackground() != TrimeshSliceBackground::Waveform;
+    const bool spectral = profile.getSliceStyle().isSpectral();
 
     g.setColour((spectral ? Colour(0xff080608) : Colour(0xff05070a)).withAlpha(0.58f));
     g.fillRoundedRectangle(area, 4.f);
@@ -72,7 +72,8 @@ void TrimeshSliceRenderer2D::drawTraceFill(
 
     Path fillPath;
     const float denominator = (float) (values.size() - 1);
-    const float baseY = profile.curveIsBipolar() ? area.getCentreY() : area.getBottom();
+    const auto& curveStyle = profile.getCurveStyle();
+    const float baseY = curveStyle.bipolar ? area.getCentreY() : area.getBottom();
 
     fillPath.startNewSubPath(area.getX(), baseY);
 
@@ -85,9 +86,9 @@ void TrimeshSliceRenderer2D::drawTraceFill(
     fillPath.lineTo(area.getRight(), baseY);
     fillPath.closeSubPath();
 
-    g.setColour(profile.positiveCurveColour().toColour().withAlpha(0.22f));
+    g.setColour(curveStyle.positiveColour.toColour().withAlpha(0.22f));
     g.fillPath(fillPath);
-    g.setColour(profile.positiveCurveColour().toColour().withAlpha(0.20f));
+    g.setColour(curveStyle.positiveColour.toColour().withAlpha(0.20f));
     g.strokePath(fillPath, PathStrokeType(5.f, PathStrokeType::curved, PathStrokeType::rounded));
 }
 

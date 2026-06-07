@@ -3,7 +3,7 @@
 namespace CycleV2 {
 
 Colour TrimeshSurfaceRenderer::colourForProfile(float value, const TrimeshRenderProfile& profile) {
-    return profile.surfaceColour(value);
+    return profile.getSurfaceStyle().colourForValue(value);
 }
 
 Image TrimeshSurfaceRenderer::createHeatmapImage(
@@ -58,7 +58,7 @@ void TrimeshSurfaceRenderer::drawHeatmap(
         return;
     }
 
-    const bool spectral = profile.getSliceBackground() != TrimeshSliceBackground::Waveform;
+    const bool spectral = profile.getSliceStyle().isSpectral();
     g.setColour((spectral ? Colour(0xffd7b166) : Colour(0xffeef5ff)).withAlpha(0.08f));
     const int minorHorizontalStep = jmax(1, renderData.rows / 16);
     for (int row = 0; row <= renderData.rows; row += minorHorizontalStep) {

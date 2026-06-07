@@ -121,9 +121,11 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     auto sidePanel = topRow;
     auto waveshapePanel = content;
 
-    drawPanelFrame(g, gridPanel, profile.panel3DTitle(), false);
+    const auto& sliceStyle = profile.getSliceStyle();
+
+    drawPanelFrame(g, gridPanel, sliceStyle.panel3DTitle, false);
     drawPanelFrame(g, sidePanel, "Morph / vertex");
-    drawPanelFrame(g, waveshapePanel, profile.panel2DTitle(), false);
+    drawPanelFrame(g, waveshapePanel, sliceStyle.panel2DTitle, false);
 
     const bool hasPanel3DHost = bridge.getPanel3DHostComponentIfCreated() != nullptr;
     const bool hasPanel2DHost = bridge.getPanel2DHostComponentIfCreated() != nullptr;
@@ -147,7 +149,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
                 g,
                 waveshapeContent.reduced(8.f),
                 renderData.slice,
-                profile.positiveCurveColour().toColour());
+                profile.getCurveStyle().positiveColour.toColour());
         TrimeshSliceRenderer2D::drawVertexMarkers(g, waveshapeContent.reduced(8.f), model.getVertexMarkers());
     }
 

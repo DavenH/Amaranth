@@ -34,6 +34,30 @@ Colour sampleGradient(Image& gradient, float value) {
     return gradient.getPixelAt(x, 0);
 }
 
+Color positiveCurveColourFor(bool spectral, bool phase) {
+    if (phase) {
+        return kPhasePurple;
+    }
+
+    if (spectral) {
+        return kSpectralYellow;
+    }
+
+    return kWaveformGrey;
+}
+
+Color negativeCurveColourFor(bool spectral, bool phase, bool bipolar) {
+    if (phase) {
+        return kPhaseOrange;
+    }
+
+    if (spectral) {
+        return bipolar ? kSpectralBlue : kSpectralYellow;
+    }
+
+    return kWaveformGrey;
+}
+
 }
 
 TrimeshRenderProfile TrimeshRenderProfile::fromDomain(PortDomain domain) {
@@ -50,54 +74,16 @@ TrimeshRenderProfile TrimeshRenderProfile::fromSemantic(NodeRenderSemantic seman
     return TrimeshRenderProfile(semantic);
 }
 
-TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
-        domain      (semantic.domain)
-    ,   scalePolicy (semantic.scalePolicy)
-    ,   spectral    (semantic.domain == PortDomain::SpectralMagnitudeSignal
-                     || semantic.domain == PortDomain::SpectralPhaseSignal)
-    ,   phase       (semantic.domain == PortDomain::SpectralPhaseSignal) {
-    if (phase) {
-        sliceBackground = TrimeshSliceBackground::SpectrumPhase;
-    } else if (spectral) {
-        sliceBackground = TrimeshSliceBackground::SpectrumMagnitude;
-    } else {
-        sliceBackground = TrimeshSliceBackground::Waveform;
-    }
-
-    curveBipolar = scalePolicy == RenderScalePolicy::Bipolar;
-    curveCyclic = !spectral;
-}
-
-String TrimeshRenderProfile::panel3DTitle() const {
-    if (phase) {
-        return "3D phase surface";
-    }
-
-    if (spectral) {
-        return "3D magnitude surface";
-    }
-
-    return "3D grid heatmap";
-}
-
-String TrimeshRenderProfile::panel2DTitle() const {
-    if (phase) {
-        return "2D phase slice";
-    }
-
-    if (spectral) {
-        return "2D magnitude slice";
-    }
-
-    return "2D waveshape";
-}
-
-Image TrimeshRenderProfile::gradientImage() const {
+Image TrimeshSurfaceStyle::gradientImage() const {
+    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal;
     return spectral ? burntalumGradientImage() : blueGradientImage();
 }
 
-Colour TrimeshRenderProfile::surfaceColour(float value) const {
+Colour TrimeshSurfaceStyle::colourForValue(float value) const {
     const float v = jlimit(0.f, 1.f, value);
+    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal;
 
     if (spectral) {
         const float alpha = jlimit(0.f, 0.92f, (v - 0.02f) / 0.98f * 0.92f);
@@ -107,28 +93,34 @@ Colour TrimeshRenderProfile::surfaceColour(float value) const {
     return sampleGradient(blueGradientImage(), v).withAlpha(0.82f);
 }
 
-Color TrimeshRenderProfile::positiveCurveColour() const {
+TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
+        domain      (semantic.domain)
+    ,   scalePolicy (semantic.scalePolicy) {
+    const bool spectral = semantic.domain == PortDomain::SpectralMagnitudeSignal
+            || semantic.domain == PortDomain::SpectralPhaseSignal;
+    const bool phase = semantic.domain == PortDomain::SpectralPhaseSignal;
+
+    surfaceStyle.domain = domain;
+    surfaceStyle.textureUsesAlpha = spectral;
+
     if (phase) {
-        return kPhasePurple;
+        sliceStyle.background = TrimeshSliceBackground::SpectrumPhase;
+        sliceStyle.panel3DTitle = "3D phase surface";
+        sliceStyle.panel2DTitle = "2D phase slice";
+    } else if (spectral) {
+        sliceStyle.background = TrimeshSliceBackground::SpectrumMagnitude;
+        sliceStyle.panel3DTitle = "3D magnitude surface";
+        sliceStyle.panel2DTitle = "2D magnitude slice";
+    } else {
+        sliceStyle.background = TrimeshSliceBackground::Waveform;
+        sliceStyle.panel3DTitle = "3D grid heatmap";
+        sliceStyle.panel2DTitle = "2D waveshape";
     }
 
-    if (spectral) {
-        return kSpectralYellow;
-    }
-
-    return kWaveformGrey;
-}
-
-Color TrimeshRenderProfile::negativeCurveColour() const {
-    if (phase) {
-        return kPhaseOrange;
-    }
-
-    if (spectral) {
-        return curveBipolar ? kSpectralBlue : kSpectralYellow;
-    }
-
-    return kWaveformGrey;
+    curveStyle.bipolar = scalePolicy == RenderScalePolicy::Bipolar;
+    curveStyle.cyclic = !spectral;
+    curveStyle.positiveColour = positiveCurveColourFor(spectral, phase);
+    curveStyle.negativeColour = negativeCurveColourFor(spectral, phase, curveStyle.bipolar);
 }
 
 }

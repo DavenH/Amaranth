@@ -15,6 +15,29 @@ enum class TrimeshSliceBackground {
     SpectrumPhase
 };
 
+struct TrimeshSurfaceStyle {
+    PortDomain domain { PortDomain::TimeSignal };
+    bool textureUsesAlpha {};
+
+    juce::Image gradientImage() const;
+    juce::Colour colourForValue(float value) const;
+};
+
+struct TrimeshCurveStyle {
+    Color positiveColour;
+    Color negativeColour;
+    bool bipolar { true };
+    bool cyclic { true };
+};
+
+struct TrimeshSliceStyle {
+    TrimeshSliceBackground background { TrimeshSliceBackground::Waveform };
+    juce::String panel3DTitle;
+    juce::String panel2DTitle;
+
+    bool isSpectral() const { return background != TrimeshSliceBackground::Waveform; }
+};
+
 class TrimeshRenderProfile {
 public:
     static TrimeshRenderProfile fromDomain(PortDomain domain);
@@ -22,30 +45,18 @@ public:
 
     PortDomain getDomain() const { return domain; }
     RenderScalePolicy getScalePolicy() const { return scalePolicy; }
-    TrimeshSliceBackground getSliceBackground() const { return sliceBackground; }
-    juce::String panel3DTitle() const;
-    juce::String panel2DTitle() const;
-    juce::Image gradientImage() const;
-    juce::Colour surfaceColour(float value) const;
-    Color positiveCurveColour() const;
-    Color negativeCurveColour() const;
-
-    bool isSpectral() const { return spectral; }
-    bool isPhase() const { return phase; }
-    bool curveIsBipolar() const { return curveBipolar; }
-    bool curveIsCyclic() const { return curveCyclic; }
-    bool surfaceTextureUsesAlpha() const { return spectral; }
+    const TrimeshSurfaceStyle& getSurfaceStyle() const { return surfaceStyle; }
+    const TrimeshCurveStyle& getCurveStyle() const { return curveStyle; }
+    const TrimeshSliceStyle& getSliceStyle() const { return sliceStyle; }
 
 private:
     explicit TrimeshRenderProfile(NodeRenderSemantic semantic);
 
     PortDomain domain { PortDomain::TimeSignal };
     RenderScalePolicy scalePolicy { RenderScalePolicy::Bipolar };
-    TrimeshSliceBackground sliceBackground { TrimeshSliceBackground::Waveform };
-    bool spectral {};
-    bool phase {};
-    bool curveBipolar { true };
-    bool curveCyclic { true };
+    TrimeshSurfaceStyle surfaceStyle;
+    TrimeshCurveStyle curveStyle;
+    TrimeshSliceStyle sliceStyle;
 };
 
 }
