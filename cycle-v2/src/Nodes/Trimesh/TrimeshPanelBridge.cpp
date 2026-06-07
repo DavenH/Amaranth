@@ -54,6 +54,7 @@ void TrimeshPanelBridge::syncFromNode(
     const bool blueChanged = previousMorph.blue.getTargetValue() != nextMorph.blue.getTargetValue();
     const bool morphChanged = yellowChanged || redChanged || blueChanged;
     const bool renderDomainChanged = lastRenderDomain != renderProfile.getDomain();
+    const bool gridShapeChanged = lastRows != rows || lastColumns != columns;
 
     if (!modelChanged
             && !morphChanged
@@ -73,12 +74,12 @@ void TrimeshPanelBridge::syncFromNode(
     change.redChanged = redChanged;
     change.blueChanged = blueChanged;
     change.primaryViewAxis = model.getPrimaryViewAxis();
+    change.gridShapeChanged = gridShapeChanged;
+    change.renderDomainChanged = renderDomainChanged;
 
     const TrimeshInvalidationResult invalidated = invalidation.invalidate(change);
     dataSource.rebuild(model, rows, columns, renderProfile.getDomain());
-    updateRasterizer(
-            invalidated.refresh2DPanel,
-            invalidated.refresh3DGeometry || lastRows != rows || lastColumns != columns || renderDomainChanged);
+    updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
     lastSyncedRevision = model.getRevision();
     lastRenderDomain = renderProfile.getDomain();
     lastRows = rows;

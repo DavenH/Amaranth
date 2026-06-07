@@ -99,3 +99,25 @@ TEST_CASE("Trimesh invalidation marks render profile changes without raster rebu
     REQUIRE(result.dirtyCompactPreview);
     REQUIRE(result.dirtyRenderProfile);
 }
+
+TEST_CASE("Trimesh invalidation promotes panel context changes to raster refresh", "[cycle-v2][nodes][trimesh]") {
+    const TrimeshInvalidation invalidation;
+
+    const TrimeshInvalidationResult result = invalidation.invalidate({
+            TrimeshChangeKind::Morph,
+            true,
+            false,
+            false,
+            false,
+            Vertex::Time,
+            true,
+            true
+    });
+
+    REQUIRE(result.rebuildNodeData);
+    REQUIRE(result.updateRasterizer);
+    REQUIRE(result.refresh2DPanel);
+    REQUIRE(result.refresh3DGeometry);
+    REQUIRE(result.dirtyCompactPreview);
+    REQUIRE(result.dirtyRenderProfile);
+}

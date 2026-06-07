@@ -90,3 +90,31 @@ TEST_CASE("Node update graph flags Trimesh render profile changes as preview-onl
     REQUIRE_FALSE(result.trimesh.refresh3DGeometry);
     REQUIRE(result.trimesh.dirtyRenderProfile);
 }
+
+TEST_CASE("Node update graph composes Trimesh panel context refresh decisions", "[cycle-v2][runtime]") {
+    const auto compileResult = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    REQUIRE(compileResult.succeeded());
+
+    const auto result = NodeUpdateGraph().invalidateTrimeshChange(
+            compileResult.plan,
+            "waveMesh",
+            {
+                    TrimeshChangeKind::Morph,
+                    true,
+                    false,
+                    false,
+                    false,
+                    Vertex::Time,
+                    true,
+                    true
+            });
+
+    REQUIRE_FALSE(result.requiresRecompile());
+    REQUIRE(result.dirtiesPreview());
+    REQUIRE(result.trimesh.rebuildNodeData);
+    REQUIRE(result.trimesh.updateRasterizer);
+    REQUIRE(result.trimesh.refresh2DPanel);
+    REQUIRE(result.trimesh.refresh3DGeometry);
+    REQUIRE(result.trimesh.dirtyCompactPreview);
+    REQUIRE(result.trimesh.dirtyRenderProfile);
+}

@@ -21,6 +21,8 @@ struct TrimeshChange {
     bool blueChanged {};
     bool sourceIs3D {};
     int primaryViewAxis { Vertex::Time };
+    bool gridShapeChanged {};
+    bool renderDomainChanged {};
 };
 
 struct TrimeshInvalidationResult {
