@@ -42,6 +42,16 @@ Run the current Cycle 2.0 smoke set with:
 scripts/run_cycle_v2_agent_smokes.sh
 ```
 
+For long-running exploratory sessions, launch Cycle 2.0 with a Unix-domain
+automation socket and send individual commands through the shared session
+client:
+
+```bash
+scripts/run_cycle_v2_agent_session.sh /tmp/cycle-v2-agent.sock /tmp/cycle-v2-agent-session.log
+scripts/cycle_agent_session.py /tmp/cycle-v2-agent.sock -c '{"command":"snapshotState"}'
+scripts/cycle_agent_session.py /tmp/cycle-v2-agent.sock -c '{"command":"quit"}'
+```
+
 OpenGL-backed Trimesh panels need runner-side OS capture rather than app-side
 component snapshots. Enable that visual artifact with:
 

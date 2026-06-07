@@ -912,9 +912,12 @@ Acceptance:
 Current automation status:
 
 - `CycleV2Automation` is available through standalone CLI args
-  `--agent-script` and `--agent-report`.
+  `--agent-script`, `--agent-report`, and `--agent-session`.
 - `scripts/run_cycle_v2_agent.sh` reuses the Cycle 1.x LaunchServices-aware
   runner with Cycle 2.0 app/process metadata.
+- `scripts/run_cycle_v2_agent_session.sh` launches Cycle 2.0 with the shared
+  session socket runner, and `scripts/cycle_agent_session.py` can send the same
+  command objects used by one-shot fixtures.
 - `scripts/run_cycle_v2_agent_smokes.sh` runs the first one-shot smoke fixtures
   for read-only state, graph save/open round-trip, and canvas screenshot.
 - Implemented commands: `snapshotState`, `inspectTargets`,
@@ -941,8 +944,8 @@ Current automation status:
   snapshots do not include the OpenGL child panel contents. The runner asserts
   luma mean/stddev for the 3D and 2D panel regions with
   `scripts/assert_png_stats.py`.
-- Pending: session IPC, audio capture, popup menu item selection beyond current
-  Trimesh controls, deeper pointer target discovery, and richer preview/OpenGL
+- Pending: audio capture, popup menu item selection beyond current Trimesh
+  controls, deeper pointer target discovery, and richer preview/OpenGL
   diagnostics.
 
 ### Milestone 2: Graph Model And Validation

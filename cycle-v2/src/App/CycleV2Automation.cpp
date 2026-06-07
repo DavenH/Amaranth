@@ -2,7 +2,15 @@
 
 #include "../UI/NodeWorkspace.h"
 
+#include <cerrno>
 #include <cmath>
+#include <cstring>
+
+#if JUCE_MAC || JUCE_LINUX
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#endif
 
 namespace CycleV2 {
 
@@ -285,6 +293,151 @@ MouseEvent makePointerEvent(
 
 }
 
+class CycleV2Automation::SessionServer :
+        public Thread {
+public:
+    SessionServer(CycleV2Automation& owner, String socketPath) :
+            Thread("CycleV2AutomationSession")
+        ,   owner(owner)
+        ,   socketPath(std::move(socketPath)) {
+    }
+
+    ~SessionServer() override {
+        signalThreadShouldExit();
+        closeServerSocket();
+        stopThread(1000);
+      #if JUCE_MAC || JUCE_LINUX
+        ::unlink(socketPath.toRawUTF8());
+      #else
+        File(socketPath).deleteFile();
+      #endif
+    }
+
+    bool start(String& message) {
+      #if JUCE_MAC || JUCE_LINUX
+        ::unlink(socketPath.toRawUTF8());
+
+        serverFd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+
+        if (serverFd < 0) {
+            message = "Could not create Cycle V2 session socket: " + String(std::strerror(errno));
+            return false;
+        }
+
+        sockaddr_un address{};
+        address.sun_family = AF_UNIX;
+        const auto path = socketPath.toRawUTF8();
+        std::strncpy(address.sun_path, path, sizeof(address.sun_path) - 1);
+
+        if (::bind(serverFd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0) {
+            message = "Could not bind Cycle V2 session socket: " + String(std::strerror(errno));
+            closeServerSocket();
+            return false;
+        }
+
+        if (::listen(serverFd, 8) != 0) {
+            message = "Could not listen on Cycle V2 session socket: " + String(std::strerror(errno));
+            closeServerSocket();
+            return false;
+        }
+
+        startThread();
+        message = "Cycle V2 automation session listening: " + socketPath;
+        return true;
+      #else
+        ignoreUnused(message);
+        return false;
+      #endif
+    }
+
+    void run() override {
+      #if JUCE_MAC || JUCE_LINUX
+        while (!threadShouldExit()) {
+            int clientFd = ::accept(serverFd, nullptr, nullptr);
+
+            if (clientFd < 0) {
+                if (!threadShouldExit()) {
+                    Thread::sleep(25);
+                }
+
+                continue;
+            }
+
+            handleClient(clientFd);
+            ::close(clientFd);
+        }
+      #endif
+    }
+
+private:
+    void closeServerSocket() {
+      #if JUCE_MAC || JUCE_LINUX
+        if (serverFd >= 0) {
+            ::shutdown(serverFd, SHUT_RDWR);
+            ::close(serverFd);
+            serverFd = -1;
+        }
+      #endif
+    }
+
+    static var errorResponse(const String& message) {
+        var response = makeObject();
+        auto* object = objectFor(response);
+        object->setProperty("ok", false);
+        object->setProperty("message", message);
+        return response;
+    }
+
+    void handleClient(int clientFd) {
+      #if JUCE_MAC || JUCE_LINUX
+        String requestText;
+        char buffer[1024];
+
+        while (!threadShouldExit()) {
+            const ssize_t count = ::read(clientFd, buffer, sizeof(buffer));
+
+            if (count <= 0) {
+                break;
+            }
+
+            requestText += String::fromUTF8(buffer, int(count));
+
+            if (requestText.containsChar('\n')) {
+                requestText = requestText.upToFirstOccurrenceOf("\n", false, false);
+                break;
+            }
+        }
+
+        const var request = JSON::parse(requestText);
+        auto completed = std::make_shared<WaitableEvent>();
+        auto response = std::make_shared<var>();
+
+        const bool dispatched = MessageManager::callAsync([this, request, response, completed] {
+            *response = owner.handleSessionRequest(request);
+            completed->signal();
+        });
+
+        if (dispatched) {
+            if (!completed->wait(30000)) {
+                *response = errorResponse("Timed out waiting for Cycle V2 message thread");
+            }
+        } else {
+            *response = errorResponse("Could not dispatch Cycle V2 session request to message thread");
+        }
+
+        const String responseText = JSON::toString(*response, true) + "\n";
+        const CharPointer_UTF8 utf8 = responseText.toUTF8();
+        ::write(clientFd, utf8.getAddress(), std::strlen(utf8.getAddress()));
+      #else
+        ignoreUnused(clientFd);
+      #endif
+    }
+
+    CycleV2Automation& owner;
+    String socketPath;
+    int serverFd { -1 };
+};
+
 CycleV2Automation::Options CycleV2Automation::parseCommandLine(const String& commandLine) {
     Options options;
     const StringArray tokens = StringArray::fromTokens(commandLine, true);
@@ -293,9 +446,19 @@ CycleV2Automation::Options CycleV2Automation::parseCommandLine(const String& com
         const String token = tokens[i];
 
         if (token == "--agent-script" && i + 1 < tokens.size()) {
-            options.scriptFile = File(tokens[++i]);
+            options.scriptFile = File(tokens[++i].unquoted());
+        } else if (token.startsWith("--agent-script=")) {
+            options.scriptFile = File(token.fromFirstOccurrenceOf("=", false, false).unquoted());
         } else if (token == "--agent-report" && i + 1 < tokens.size()) {
-            options.reportFile = File(tokens[++i]);
+            options.reportFile = File(tokens[++i].unquoted());
+        } else if (token.startsWith("--agent-report=")) {
+            options.reportFile = File(token.fromFirstOccurrenceOf("=", false, false).unquoted());
+        } else if (token == "--agent-session" && i + 1 < tokens.size()) {
+            options.hasSession = true;
+            options.sessionPath = tokens[++i].unquoted();
+        } else if (token.startsWith("--agent-session=")) {
+            options.hasSession = true;
+            options.sessionPath = token.fromFirstOccurrenceOf("=", false, false).unquoted();
         }
     }
 
@@ -303,7 +466,7 @@ CycleV2Automation::Options CycleV2Automation::parseCommandLine(const String& com
 }
 
 bool CycleV2Automation::hasAutomation(const Options& options) {
-    return options.scriptFile != File() || options.reportFile != File();
+    return options.scriptFile != File() || options.reportFile != File() || options.hasSession;
 }
 
 CycleV2Automation::CycleV2Automation(NodeWorkspace& workspace, Component& window, Options options) :
@@ -312,9 +475,21 @@ CycleV2Automation::CycleV2Automation(NodeWorkspace& workspace, Component& window
     ,   options      (std::move(options)) {
 }
 
+CycleV2Automation::~CycleV2Automation() {
+    sessionServer = nullptr;
+}
+
 void CycleV2Automation::runScriptAsync() {
     MessageManager::callAsync([safeThis = Component::SafePointer<Component>(&window), this]() {
         if (safeThis == nullptr) {
+            return;
+        }
+
+        if (options.hasSession) {
+            startSessionServer();
+        }
+
+        if (options.scriptFile == File()) {
             return;
         }
 
@@ -361,6 +536,28 @@ void CycleV2Automation::runScriptAsync() {
             JUCEApplicationBase::quit();
         }
     });
+}
+
+void CycleV2Automation::startSessionServer() {
+    if (sessionServer != nullptr || !options.hasSession) {
+        return;
+    }
+
+    if (options.sessionPath.isEmpty()) {
+        DBG("Cycle V2 automation session path is empty");
+        return;
+    }
+
+    String message;
+    sessionServer = std::make_unique<SessionServer>(*this, options.sessionPath);
+
+    if (!sessionServer->start(message)) {
+        DBG(message);
+        sessionServer = nullptr;
+        return;
+    }
+
+    DBG(message);
 }
 
 var CycleV2Automation::runCommand(const var& commandValue) {
@@ -443,6 +640,49 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     }
 
     return failedResult(command.isEmpty() ? "unknown" : command, "Unknown Cycle V2 automation command");
+}
+
+var CycleV2Automation::handleSessionRequest(const var& request) {
+    var response = makeObject();
+    auto* responseObject = objectFor(response);
+    responseObject->setProperty("ok", false);
+
+    if (request.isVoid()) {
+        responseObject->setProperty("message", "Invalid JSON request");
+        return response;
+    }
+
+    if (const auto* requestObject = objectFor(request)) {
+        const var id = requestObject->getProperty("id");
+
+        if (!id.isVoid()) {
+            responseObject->setProperty("id", id);
+        }
+
+        var command = requestObject->getProperty("command");
+
+        if (command.isVoid()) {
+            command = request;
+        }
+
+        const var result = runCommand(command);
+        const bool ok = boolProperty(result, "ok");
+        responseObject->setProperty("ok", ok);
+        responseObject->setProperty("result", result);
+
+        if (stringProperty(command, "command") == "quit") {
+            MessageManager::callAsync([] {
+                JUCEApplicationBase::quit();
+            });
+        }
+
+        return response;
+    }
+
+    const var result = runCommand(request);
+    responseObject->setProperty("ok", boolProperty(result, "ok"));
+    responseObject->setProperty("result", result);
+    return response;
 }
 
 var CycleV2Automation::snapshotState() const {

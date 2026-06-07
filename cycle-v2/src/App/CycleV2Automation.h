@@ -10,15 +10,20 @@ class NodeWorkspace;
 
 class CycleV2Automation {
 public:
+    class SessionServer;
+
     struct Options {
         File scriptFile;
         File reportFile;
+        String sessionPath;
+        bool hasSession { false };
     };
 
     static Options parseCommandLine(const String& commandLine);
     static bool hasAutomation(const Options& options);
 
     CycleV2Automation(NodeWorkspace& workspace, Component& window, Options options);
+    ~CycleV2Automation();
 
     void runScriptAsync();
 
@@ -26,8 +31,11 @@ private:
     NodeWorkspace& workspace;
     Component& window;
     Options options;
+    std::unique_ptr<SessionServer> sessionServer;
 
     var runCommand(const var& commandValue);
+    var handleSessionRequest(const var& request);
+    void startSessionServer();
     var snapshotState() const;
     var inspectTargets(const var& commandValue) const;
     var exportGraph(const var& commandValue) const;
