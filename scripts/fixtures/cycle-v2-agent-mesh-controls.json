@@ -1,0 +1,25 @@
+{
+  "commands": [
+    {
+      "command": "openMeshPopup",
+      "nodeId": "waveMesh"
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "waveMesh"
+    },
+    {
+      "command": "setMorphSlider",
+      "nodeId": "waveMesh",
+      "axis": "yellow",
+      "value": 0.25
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "equals": "0.250"
+    }
+  ],
+  "quit": true
+}

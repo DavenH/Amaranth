@@ -909,6 +909,42 @@ Acceptance:
 - no legacy panel component is required for the initial editor window,
 - smoke automation can launch Cycle 2.0 and capture the blank node workspace.
 
+Current automation status:
+
+- `CycleV2Automation` is available through standalone CLI args
+  `--agent-script` and `--agent-report`.
+- `scripts/run_cycle_v2_agent.sh` reuses the Cycle 1.x LaunchServices-aware
+  runner with Cycle 2.0 app/process metadata.
+- `scripts/run_cycle_v2_agent_smokes.sh` runs the first one-shot smoke fixtures
+  for read-only state, graph save/open round-trip, and canvas screenshot.
+- Implemented commands: `snapshotState`, `inspectTargets`,
+  `listAssertionPaths`, `assertState`, `exportGraph`, `openGraph`,
+  `saveGraph`, `openNodeEditor`, `openMeshPopup`, `addNode`, `moveNode`,
+  `connectPorts`, `deleteNode`, `deleteEdge`, `setNodeParameter`,
+  `inspectNodeControls`, `setMorphSlider`, `setPrimaryAxis`, `toggleLink`,
+  `selectVertex`, `setVertexParameter`, `pointer`, `assertNodeParameter`,
+  `screenshot`, `waitForIdle`, and `quit`.
+- `scripts/fixtures/cycle-v2-agent-graph-editing.json` adds, moves,
+  parameterizes, connects, and deletes a graph node with state assertions.
+- `scripts/fixtures/cycle-v2-agent-mesh-controls.json` opens the default
+  `waveMesh` Trimesh editor, inspects controls, moves the yellow morph slider,
+  and asserts the graph parameter.
+- `scripts/fixtures/cycle-v2-agent-trimesh-controls.json` covers primary-axis
+  selection, link toggles, vertex selection, and vertex parameter edits.
+- `scripts/fixtures/cycle-v2-agent-pointer.json` covers top-level canvas
+  pointer replay by double-clicking `waveMesh` to open its editor and sending a
+  wheel event while it remains expanded.
+- `scripts/fixtures/cycle-v2-agent-mesh-controls-os-screenshot.json` leaves the
+  same expanded editor open for runner-side `screencapture -R`; use
+  `CYCLE_V2_AGENT_SMOKE_OS_SCREENSHOT=1 scripts/run_cycle_v2_agent_smokes.sh`
+  when GL panel pixels are part of the visual proof. App-side component
+  snapshots do not include the OpenGL child panel contents. The runner asserts
+  luma mean/stddev for the 3D and 2D panel regions with
+  `scripts/assert_png_stats.py`.
+- Pending: session IPC, audio capture, popup menu item selection beyond current
+  Trimesh controls, deeper pointer target discovery, and richer preview/OpenGL
+  diagnostics.
+
 ### Milestone 2: Graph Model And Validation
 
 Goal: represent a typed graph independent from UI and audio execution.

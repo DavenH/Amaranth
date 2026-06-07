@@ -210,6 +210,89 @@ Point<float> portWorldCentreForBounds(const Node& node, const Port& port, Rectan
     }
 }
 
+var rectangleToVar(Rectangle<float> bounds) {
+    auto* object = new DynamicObject();
+    object->setProperty("x", bounds.getX());
+    object->setProperty("y", bounds.getY());
+    object->setProperty("width", bounds.getWidth());
+    object->setProperty("height", bounds.getHeight());
+    return object;
+}
+
+var portToVar(const Port& port) {
+    auto* object = new DynamicObject();
+    object->setProperty("id", port.id);
+    object->setProperty("label", port.label);
+    object->setProperty("domain", labelForDomain(port.domain));
+    object->setProperty("channelLayout", labelForChannelLayout(port.channelLayout));
+    object->setProperty("purpose", port.purpose == PortPurpose::ScratchAttachment ? "scratchAttachment" : "signal");
+    object->setProperty("input", port.input);
+    return object;
+}
+
+var parameterToVar(const NodeParameter& parameter) {
+    auto* object = new DynamicObject();
+    object->setProperty("id", parameter.id);
+    object->setProperty("label", parameter.label);
+    object->setProperty("value", parameter.value);
+    return object;
+}
+
+var edgeToVar(const Edge& edge) {
+    auto* object = new DynamicObject();
+    object->setProperty("sourceNodeId", edge.sourceNodeId);
+    object->setProperty("sourcePortId", edge.sourcePortId);
+    object->setProperty("destNodeId", edge.destNodeId);
+    object->setProperty("destPortId", edge.destPortId);
+    object->setProperty("domain", labelForDomain(edge.domain));
+    object->setProperty("attachment", edge.attachment);
+    return object;
+}
+
+bool nodeKindForAutomationId(const String& id, NodeKind& kind) {
+    if (id == "genericProcessor" || id == "processor") {
+        kind = NodeKind::GenericProcessor;
+    } else if (id == "voiceContext" || id == "voice") {
+        kind = NodeKind::VoiceContext;
+    } else if (id == "waveSource" || id == "wave") {
+        kind = NodeKind::WaveSource;
+    } else if (id == "imageSource" || id == "image") {
+        kind = NodeKind::ImageSource;
+    } else if (id == "trilinearMesh" || id == "mesh") {
+        kind = NodeKind::TrilinearMesh;
+    } else if (id == "fft") {
+        kind = NodeKind::Fft;
+    } else if (id == "ifft") {
+        kind = NodeKind::Ifft;
+    } else if (id == "envelope" || id == "env") {
+        kind = NodeKind::Envelope;
+    } else if (id == "add") {
+        kind = NodeKind::Add;
+    } else if (id == "multiply") {
+        kind = NodeKind::Multiply;
+    } else if (id == "guideCurve" || id == "guide") {
+        kind = NodeKind::GuideCurve;
+    } else if (id == "impulseResponse" || id == "ir") {
+        kind = NodeKind::ImpulseResponse;
+    } else if (id == "waveshaper") {
+        kind = NodeKind::Waveshaper;
+    } else if (id == "reverb") {
+        kind = NodeKind::Reverb;
+    } else if (id == "delay") {
+        kind = NodeKind::Delay;
+    } else if (id == "stereoSplit" || id == "split") {
+        kind = NodeKind::StereoSplit;
+    } else if (id == "stereoJoin" || id == "join") {
+        kind = NodeKind::StereoJoin;
+    } else if (id == "output" || id == "out") {
+        kind = NodeKind::Output;
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
 void addSnapCandidate(std::vector<SnapCandidate>& candidates, float target) {
     constexpr float mergeDistance = 0.5f;
 
@@ -3765,6 +3848,386 @@ void NodeCanvas::refreshCompiledState() {
         runtimeTrace = GraphRuntime().process(graph, compileResult.plan);
         previewResult = GraphPreviewExecutor().render(compileResult.plan, 40);
     }
+}
+
+var NodeCanvas::exportAutomationState() const {
+    auto* root = new DynamicObject();
+    root->setProperty("schema", "cycle-v2-automation-state.v1");
+    root->setProperty("width", getWidth());
+    root->setProperty("height", getHeight());
+    root->setProperty("zoom", zoom);
+    root->setProperty("panX", pan.x);
+    root->setProperty("panY", pan.y);
+    root->setProperty("selectedNodeId", selectedNodeId);
+    root->setProperty("expandedNodeId", expandedNodeId);
+    root->setProperty("selectedEdgeIndex", selectedEdgeIndex);
+    root->setProperty("editStatusMessage", editStatusMessage);
+    root->setProperty("nodeCount", (int) graph.getNodes().size());
+    root->setProperty("edgeCount", (int) graph.getEdges().size());
+    root->setProperty("compileSucceeded", compileResult.succeeded());
+    root->setProperty("validationIssueCount", (int) compileResult.validationIssues.size());
+    root->setProperty("compileIssueCount", (int) compileResult.compileIssues.size());
+    root->setProperty("runtimeTraceNodeCount", (int) runtimeTrace.nodes.size());
+    root->setProperty("previewNodeCount", (int) previewResult.nodes.size());
+
+    Array<var> nodes;
+    for (const auto& node : graph.getNodes()) {
+        auto* nodeObject = new DynamicObject();
+        nodeObject->setProperty("id", node.id);
+        nodeObject->setProperty("kind", labelForNodeKind(node.kind));
+        nodeObject->setProperty("title", node.title);
+        nodeObject->setProperty("subtitle", node.subtitle);
+        nodeObject->setProperty("bounds", rectangleToVar(node.bounds));
+
+        Array<var> inputs;
+        for (const auto& port : node.inputs) {
+            inputs.add(portToVar(port));
+        }
+
+        Array<var> outputs;
+        for (const auto& port : node.outputs) {
+            outputs.add(portToVar(port));
+        }
+
+        Array<var> parameters;
+        for (const auto& parameter : node.parameters) {
+            parameters.add(parameterToVar(parameter));
+        }
+
+        nodeObject->setProperty("inputs", inputs);
+        nodeObject->setProperty("outputs", outputs);
+        nodeObject->setProperty("parameters", parameters);
+        nodes.add(nodeObject);
+    }
+
+    Array<var> edges;
+    for (const auto& edge : graph.getEdges()) {
+        edges.add(edgeToVar(edge));
+    }
+
+    Array<var> validationIssues;
+    for (const auto& issue : compileResult.validationIssues) {
+        auto* issueObject = new DynamicObject();
+        issueObject->setProperty("message", issue.message);
+        issueObject->setProperty("sourceNodeId", issue.sourceNodeId);
+        issueObject->setProperty("sourcePortId", issue.sourcePortId);
+        issueObject->setProperty("destNodeId", issue.destNodeId);
+        issueObject->setProperty("destPortId", issue.destPortId);
+        validationIssues.add(issueObject);
+    }
+
+    Array<var> compileIssues;
+    for (const auto& issue : compileResult.compileIssues) {
+        auto* issueObject = new DynamicObject();
+        issueObject->setProperty("message", issue.message);
+        compileIssues.add(issueObject);
+    }
+
+    Array<var> nodeOrder;
+    for (const auto& nodeId : compileResult.plan.nodeOrder) {
+        nodeOrder.add(nodeId);
+    }
+
+    root->setProperty("nodes", nodes);
+    root->setProperty("edges", edges);
+    root->setProperty("validationIssues", validationIssues);
+    root->setProperty("compileIssues", compileIssues);
+    root->setProperty("nodeOrder", nodeOrder);
+    return root;
+}
+
+String NodeCanvas::exportGraphXml() const {
+    return GraphSerializer().toXmlString(graph);
+}
+
+bool NodeCanvas::openNodeEditorForAutomation(const String& nodeId) {
+    const Node* node = findNode(nodeId);
+
+    if (node == nullptr || !isPreviewableNode(node->kind)) {
+        return false;
+    }
+
+    selectedNodeId = node->id;
+    selectedEdgeIndex = -1;
+    expandedNodeId = node->id;
+    updateExpandedEditorHost(node);
+    editStatusMessage = "Opened editor: " + node->id;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::addNodeForAutomation(const String& kindId, Point<float> position, String& nodeId) {
+    NodeKind kind {};
+
+    if (!nodeKindForAutomationId(kindId, kind)) {
+        return false;
+    }
+
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().addNode(graph, kind, position);
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    refreshCompiledState();
+    selectedNodeId = result.nodeId;
+    selectedEdgeIndex = -1;
+    expandedNodeId = {};
+    nodeId = result.nodeId;
+    editStatusMessage = "Node added: " + nodeId;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::moveNodeForAutomation(const String& nodeId, Point<float> position) {
+    Node* node = findMutableNode(nodeId);
+
+    if (node == nullptr) {
+        return false;
+    }
+
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    node->bounds.setPosition(position);
+    pushUndoSnapshot(beforeEdit);
+    selectedNodeId = nodeId;
+    selectedEdgeIndex = -1;
+    editStatusMessage = "Node moved: " + nodeId;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::connectPortsForAutomation(
+        const String& sourceNodeId,
+        const String& sourcePortId,
+        const String& destNodeId,
+        const String& destPortId) {
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().connect(
+            graph,
+            { sourceNodeId, sourcePortId, false },
+            { destNodeId, destPortId, true });
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    refreshCompiledState();
+    selectedNodeId = destNodeId;
+    selectedEdgeIndex = -1;
+    editStatusMessage = "Connected " + sourceNodeId + "." + sourcePortId
+            + " -> " + destNodeId + "." + destPortId;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::deleteNodeForAutomation(const String& nodeId) {
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().removeNode(graph, nodeId);
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    refreshCompiledState();
+    selectedNodeId = {};
+    selectedEdgeIndex = -1;
+    expandedNodeId = expandedNodeId == nodeId ? String() : expandedNodeId;
+    editStatusMessage = "Node deleted: " + nodeId;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::deleteEdgeForAutomation(int edgeIndex) {
+    if (edgeIndex < 0) {
+        return false;
+    }
+
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().removeEdgeAt(graph, (size_t) edgeIndex);
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    refreshCompiledState();
+    selectedEdgeIndex = -1;
+    editStatusMessage = "Edge deleted: " + String(edgeIndex);
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::setNodeParameterForAutomation(
+        const String& nodeId,
+        const String& parameterId,
+        const String& label,
+        const String& value) {
+    if (findNode(nodeId) == nullptr || parameterId.isEmpty()) {
+        return false;
+    }
+
+    const String beforeEdit = GraphSerializer().toXmlString(graph);
+    auto result = GraphEditor().setNodeParameter(
+            graph,
+            nodeId,
+            parameterId,
+            label.isEmpty() ? parameterId : label,
+            value);
+
+    if (!result.succeeded()) {
+        return false;
+    }
+
+    pushUndoSnapshot(beforeEdit);
+    refreshCompiledState();
+    selectedNodeId = nodeId;
+    selectedEdgeIndex = -1;
+    editStatusMessage = "Parameter set: " + nodeId + "." + parameterId;
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::setMorphSliderForAutomation(const String& nodeId, const String& axis, float value) {
+    const Node* node = findNode(nodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return false;
+    }
+
+    if (axis != "yellow" && axis != "red" && axis != "blue") {
+        return false;
+    }
+
+    if (expandedNodeId != nodeId && !openNodeEditorForAutomation(nodeId)) {
+        return false;
+    }
+
+    if (!beginTrimeshMorphEdit(axis, jlimit(0.f, 1.f, value))) {
+        return false;
+    }
+
+    endTrimeshMorphEdit();
+    return true;
+}
+
+bool NodeCanvas::setPrimaryAxisForAutomation(const String& nodeId, const String& axis) {
+    if (expandedNodeId != nodeId && !openNodeEditorForAutomation(nodeId)) {
+        return false;
+    }
+
+    return setTrimeshPrimaryAxisValue(axis);
+}
+
+bool NodeCanvas::toggleLinkForAutomation(const String& nodeId, const String& axis) {
+    if (expandedNodeId != nodeId && !openNodeEditorForAutomation(nodeId)) {
+        return false;
+    }
+
+    return toggleTrimeshLinkAxisValue(axis);
+}
+
+bool NodeCanvas::selectVertexForAutomation(const String& nodeId, int vertexIndex) {
+    if (expandedNodeId != nodeId && !openNodeEditorForAutomation(nodeId)) {
+        return false;
+    }
+
+    return selectTrimeshVertexIndex(vertexIndex);
+}
+
+bool NodeCanvas::setVertexParameterForAutomation(
+        const String& nodeId,
+        const String& parameterId,
+        float value) {
+    if (expandedNodeId != nodeId && !openNodeEditorForAutomation(nodeId)) {
+        return false;
+    }
+
+    if (!beginTrimeshVertexParameterEdit(parameterId, jlimit(0.f, 1.f, value))) {
+        return false;
+    }
+
+    endTrimeshVertexParameterEdit();
+    repaint();
+    return true;
+}
+
+bool NodeCanvas::getNodeParameterForAutomation(
+        const String& nodeId,
+        const String& parameterId,
+        String& value) const {
+    const Node* node = findNode(nodeId);
+
+    if (node == nullptr) {
+        return false;
+    }
+
+    for (const auto& parameter : node->parameters) {
+        if (parameter.id == parameterId) {
+            value = parameter.value;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+var NodeCanvas::inspectNodeControlsForAutomation(const String& nodeId) const {
+    auto* root = new DynamicObject();
+    const Node* node = findNode(nodeId);
+    root->setProperty("nodeId", nodeId);
+    root->setProperty("resolved", node != nullptr);
+
+    if (node == nullptr) {
+        return root;
+    }
+
+    root->setProperty("kind", labelForNodeKind(node->kind));
+    root->setProperty("expanded", expandedNodeId == nodeId);
+
+    Array<var> parameters;
+    for (const auto& parameter : node->parameters) {
+        parameters.add(parameterToVar(parameter));
+    }
+    root->setProperty("parameters", parameters);
+
+    if (node->kind == NodeKind::TrilinearMesh) {
+        Array<var> morphSliders;
+
+        for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
+            auto* slider = new DynamicObject();
+            slider->setProperty("id", axis);
+            slider->setProperty("value", parameterValueForNode(*node, axis, "0.5").getDoubleValue());
+            slider->setProperty("minimum", 0.0);
+            slider->setProperty("maximum", 1.0);
+            morphSliders.add(slider);
+        }
+
+        Array<var> primaryAxisButtons;
+        Array<var> linkToggles;
+
+        for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
+            auto* primary = new DynamicObject();
+            primary->setProperty("id", axis);
+            primary->setProperty("selected", parameterValueForNode(*node, "primaryAxis", "yellow") == axis);
+            primaryAxisButtons.add(primary);
+
+            auto* link = new DynamicObject();
+            const String defaultValue = axis == "yellow" ? "1" : "0";
+            link->setProperty("id", axis);
+            link->setProperty("selected", parameterValueForNode(*node, "link." + axis, defaultValue).getIntValue() != 0);
+            linkToggles.add(link);
+        }
+
+        root->setProperty("morphSliders", morphSliders);
+        root->setProperty("primaryAxisButtons", primaryAxisButtons);
+        root->setProperty("linkToggles", linkToggles);
+    }
+
+    return root;
 }
 
 File NodeCanvas::snapshotFile() const {

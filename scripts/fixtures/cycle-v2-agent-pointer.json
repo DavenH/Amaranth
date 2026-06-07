@@ -1,0 +1,31 @@
+{
+  "commands": [
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "doubleClick",
+      "x": 494,
+      "y": 363
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "waveMesh"
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 800,
+      "y": 500,
+      "deltaX": 0.02,
+      "deltaY": -0.02
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "waveMesh"
+    }
+  ],
+  "quit": true
+}

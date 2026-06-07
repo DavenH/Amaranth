@@ -15,6 +15,7 @@ FOCUS_SECONDS="${CYCLE_FOCUS_SECONDS:-2}"
 QUIT_WAIT_SECONDS="${CYCLE_QUIT_WAIT_SECONDS:-3}"
 REUSE_EXISTING="${CYCLE_REUSE_EXISTING:-0}"
 FILTER_LOGS="${CYCLE_FILTER_LOGS:-1}"
+LOG_FILTER_PATTERN="${CYCLE_LOG_FILTER_PATTERN:-JUCE v|AppClass::|MainAppWindow|PlaybackPanel::|CycleAutomation|FileManager::|Directories::|Document::open|Update:|Error|error|Warning|warning|fail|Fail|assert|Assert|exception|Exception|crash|Crash|quit unexpectedly|DiagnosticReports|ips}"
 ALLOW_FAILURES="${CYCLE_AGENT_ALLOW_FAILURES:-0}"
 PREFLIGHT_PERMISSIONS="${CYCLE_PREFLIGHT_PERMISSIONS:-1}"
 PREFLIGHT_SCREEN_CAPTURE="${CYCLE_PREFLIGHT_SCREEN_CAPTURE:-0}"
@@ -272,9 +273,9 @@ copy_recent_crash_report() {
 
 finalize_logs() {
     if [[ "$FILTER_LOGS" == "1" ]]; then
-        awk '
+        awk -v pattern="$LOG_FILTER_PATTERN" '
             function keep(line) {
-                return line ~ /(JUCE v|AppClass::|MainAppWindow|PlaybackPanel::|CycleAutomation|FileManager::|Directories::|Document::open|Update:|Error|error|Warning|warning|fail|Fail|assert|Assert|exception|Exception|crash|Crash|quit unexpectedly|DiagnosticReports|ips)/
+                return line ~ pattern
             }
 
             /^Error Domain=/ {

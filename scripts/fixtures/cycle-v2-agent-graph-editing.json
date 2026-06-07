@@ -1,0 +1,57 @@
+{
+  "commands": [
+    {
+      "command": "addNode",
+      "kind": "envelope",
+      "x": 420,
+      "y": 220
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "op": "greaterThanOrEqual",
+      "value": 13
+    },
+    {
+      "command": "moveNode",
+      "nodeId": "env2",
+      "x": 480,
+      "y": 260
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "env2",
+      "parameterId": "level",
+      "label": "Level",
+      "value": "0.750"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "env2",
+      "parameterId": "level",
+      "equals": "0.750"
+    },
+    {
+      "command": "connectPorts",
+      "sourceNodeId": "env2",
+      "sourcePortId": "env",
+      "destNodeId": "waveMesh",
+      "destPortId": "scratch"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "deleteNode",
+      "nodeId": "env2"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 12
+    }
+  ],
+  "quit": true
+}

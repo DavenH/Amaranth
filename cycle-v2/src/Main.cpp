@@ -1,7 +1,9 @@
 #include <JuceHeader.h>
 
 #include <memory>
+#include <utility>
 
+#include "App/CycleV2Automation.h"
 #include "UI/NodeWorkspace.h"
 #include "incl/JucePluginDefines.h"
 
@@ -15,11 +17,16 @@ public:
     const String getApplicationVersion() override { return JucePlugin_VersionString; }
     bool moreThanOneInstanceAllowed() override { return true; }
 
-    void initialise(const String&) override {
+    void initialise(const String& commandLine) override {
         Process::makeForegroundProcess();
+        automationOptions = CycleV2::CycleV2Automation::parseCommandLine(commandLine);
         mainWindow = std::make_unique<MainWindow>(getApplicationName());
         mainWindow->setVisible(true);
         mainWindow->toFront(true);
+
+        if (CycleV2::CycleV2Automation::hasAutomation(automationOptions)) {
+            mainWindow->runAutomation(automationOptions);
+        }
     }
 
     void shutdown() override {
@@ -73,6 +80,15 @@ public:
 
         void closeButtonPressed() override {
             JUCEApplicationBase::quit();
+        }
+
+        void runAutomation(CycleV2::CycleV2Automation::Options options) {
+            if (workspace == nullptr) {
+                return;
+            }
+
+            automation = std::make_unique<CycleV2::CycleV2Automation>(*workspace, *this, std::move(options));
+            automation->runScriptAsync();
         }
 
         StringArray getMenuBarNames() override {
@@ -220,6 +236,7 @@ public:
 
         ApplicationCommandManager commandManager;
         CycleV2::NodeWorkspace* workspace {};
+        std::unique_ptr<CycleV2::CycleV2Automation> automation;
         std::unique_ptr<FileChooser> fileChooser;
         File currentGraphFile;
 
@@ -227,6 +244,7 @@ public:
     };
 
 private:
+    CycleV2::CycleV2Automation::Options automationOptions;
     std::unique_ptr<MainWindow> mainWindow;
 };
 
