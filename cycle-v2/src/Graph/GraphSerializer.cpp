@@ -131,6 +131,9 @@ void normalizeNodePresentation(Node& node) {
     if (node.kind == NodeKind::VoiceContext
             || node.kind == NodeKind::Fft
             || node.kind == NodeKind::Ifft
+            || node.kind == NodeKind::GuideCurve
+            || node.kind == NodeKind::ImpulseResponse
+            || node.kind == NodeKind::Waveshaper
             || node.kind == NodeKind::Add
             || node.kind == NodeKind::Multiply
             || node.kind == NodeKind::Output) {

@@ -9,6 +9,8 @@
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Graph/NodeGraph.h"
 #include "../Graph/GraphSerializer.h"
+#include "../Nodes/Effect2D/Effect2DExpandedEditorComponent.h"
+#include "../Nodes/Effect2D/Effect2DWidget.h"
 #include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
@@ -71,8 +73,11 @@ private:
     std::vector<String> redoStack;
     std::vector<std::pair<String, CachedPreviewSprite>> previewSpriteCache;
     std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
+    std::vector<std::pair<String, std::unique_ptr<Effect2DWidget>>> effect2DWidgets;
     std::unique_ptr<TrimeshExpandedEditorComponent> trimeshExpandedEditor;
+    std::unique_ptr<Effect2DExpandedEditorComponent> effect2DExpandedEditor;
     String trimeshExpandedEditorNodeId;
+    String effect2DExpandedEditorNodeId;
 
     float zoom { 0.58f };
     Point<float> pan { 34.f, 38.f };
@@ -125,6 +130,7 @@ private:
     void drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area, PortDomain previewDomain);
     CachedPreviewSprite& cachedPreviewSpriteFor(const String& nodeId);
     TrimeshWidget& trimeshWidgetFor(const String& nodeId);
+    Effect2DWidget& effect2DWidgetFor(const Node& node);
     void drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed);
     void drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colour, int seed);
     void drawEnvelopeCurve(Graphics& g, Rectangle<float> area);

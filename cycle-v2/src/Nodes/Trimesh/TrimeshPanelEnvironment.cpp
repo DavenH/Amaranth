@@ -1,9 +1,11 @@
 #include "TrimeshPanelEnvironment.h"
 
 #include <App/AppConstants.h>
+#include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Design/Updating/Updater.h>
 #include <UI/MiscGraphics.h>
 
 namespace CycleV2 {
@@ -14,6 +16,8 @@ TrimeshPanelEnvironment::TrimeshPanelEnvironment() :
     repo.add(new MiscGraphics(&repo));
     repo.add(new Settings(&repo));
     repo.add(new MeshLibrary(&repo));
+    repo.add(new EditWatcher(&repo));
+    repo.add(new Updater(&repo));
 
     auto& constants = repo.get<AppConstants>("AppConstants");
     constants.setConstant(Constants::FontFace, String("Verdana"));

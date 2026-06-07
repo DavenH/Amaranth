@@ -38,6 +38,9 @@ set(RUNTIME_SOURCES
 )
 
 set(NODE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DExpandedEditorComponent.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DPanelBridge.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DWidget.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftBlockwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftGridwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshBlockwiseDsp.cpp"

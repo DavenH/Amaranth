@@ -654,6 +654,16 @@ Rectangle<float> expandedEditorBoundsForNode(Rectangle<float> componentBounds, c
         return Rectangle<float>(width, height).withCentre(available.getCentre());
     }
 
+    if (node != nullptr
+            && (node->kind == NodeKind::GuideCurve
+                || node->kind == NodeKind::ImpulseResponse
+                || node->kind == NodeKind::Waveshaper)) {
+        const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
+        const float width = jmin(available.getWidth(), 520.f);
+        const float height = jmin(available.getHeight(), 342.f);
+        return Rectangle<float>(width, height).withCentre(available.getCentre());
+    }
+
     return expandedEditorBounds(componentBounds);
 }
 
@@ -695,6 +705,13 @@ bool expandedEditorBlocksCanvas(const Node* node) {
             && node->kind != NodeKind::VoiceContext
             && node->kind != NodeKind::Fft
             && node->kind != NodeKind::Ifft;
+}
+
+bool hasHostedExpandedEditor(const Node& node) {
+    return node.kind == NodeKind::TrilinearMesh
+        || node.kind == NodeKind::GuideCurve
+        || node.kind == NodeKind::ImpulseResponse
+        || node.kind == NodeKind::Waveshaper;
 }
 
 void drawVoiceContextOctaveSlider(Graphics& g, Rectangle<float> area, const Node& node, float zoom) {
@@ -1403,7 +1420,7 @@ void NodeCanvas::paint(Graphics& g) {
     }
 
     if (expandedNode != nullptr) {
-        if (expandedNode->kind != NodeKind::TrilinearMesh) {
+        if (!hasHostedExpandedEditor(*expandedNode)) {
             drawExpandedEditor(g, *expandedNode);
         }
     }
@@ -1805,6 +1822,10 @@ void NodeCanvas::openGLContextClosing() {
         entry.second->releaseSharedGlResources();
     }
 
+    for (auto& entry : effect2DWidgets) {
+        entry.second->releaseSharedGlResources();
+    }
+
     glRenderer.shutdown();
 }
 
@@ -1950,12 +1971,23 @@ void NodeCanvas::drawGlNodeShells() {
 void NodeCanvas::drawGlExpandedPanels() {
     const Node* expandedNode = findNode(expandedNodeId);
 
-    if (expandedNode == nullptr || expandedNode->kind != NodeKind::TrilinearMesh) {
+    if (expandedNode == nullptr) {
         return;
     }
 
-    if (trimeshExpandedEditor != nullptr && trimeshExpandedEditor->isVisible()) {
+    if (expandedNode->kind == NodeKind::TrilinearMesh
+            && trimeshExpandedEditor != nullptr
+            && trimeshExpandedEditor->isVisible()) {
         trimeshExpandedEditor->renderOpenGL((float) openGLContext.getRenderingScale());
+        return;
+    }
+
+    if ((expandedNode->kind == NodeKind::GuideCurve
+            || expandedNode->kind == NodeKind::ImpulseResponse
+            || expandedNode->kind == NodeKind::Waveshaper)
+            && effect2DExpandedEditor != nullptr
+            && effect2DExpandedEditor->isVisible()) {
+        effect2DExpandedEditor->renderOpenGL((float) openGLContext.getRenderingScale());
     }
 }
 
@@ -2350,6 +2382,59 @@ Rectangle<float> previewContentArea(Rectangle<float> area) {
     return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.12f);
 }
 
+void drawEffect2DPreview(Graphics& g, Rectangle<float> area, NodeKind kind, float zoom) {
+    const Colour line = Colour(0xffe2e8ef);
+    const Colour dim = Colour(0xff8b95a3);
+    const Rectangle<float> graph = area.reduced(8.f, 7.f);
+
+    g.setColour(Colour(0xff0d1117).withAlpha(0.34f));
+    g.fillRect(graph);
+
+    if (kind == NodeKind::Waveshaper) {
+        const Rectangle<float> inner = graph.reduced(graph.getWidth() * 0.125f, graph.getHeight() * 0.125f);
+        g.setColour(dim.withAlpha(0.44f));
+        g.drawRect(inner, jmax(1.f, zoom));
+
+        Path curve;
+        curve.startNewSubPath(inner.getX(), inner.getBottom());
+        curve.cubicTo(
+                inner.getX() + inner.getWidth() * 0.42f,
+                inner.getBottom() - inner.getHeight() * 0.05f,
+                inner.getX() + inner.getWidth() * 0.70f,
+                inner.getY() + inner.getHeight() * 0.26f,
+                inner.getRight(),
+                inner.getY());
+        g.setColour(line.withAlpha(0.88f));
+        g.strokePath(curve, PathStrokeType(jmax(1.4f, 2.f * zoom), PathStrokeType::curved, PathStrokeType::rounded));
+        return;
+    }
+
+    if (kind == NodeKind::GuideCurve) {
+        const Rectangle<float> inner = graph.withTrimmedLeft(graph.getWidth() * 0.05f)
+                .withTrimmedRight(graph.getWidth() * 0.05f);
+        g.setColour(dim.withAlpha(0.44f));
+        g.drawRect(inner, jmax(1.f, zoom));
+        g.setColour(line.withAlpha(0.88f));
+        g.drawLine(inner.getX(), inner.getCentreY(), inner.getRight(), inner.getCentreY(), jmax(1.4f, 2.f * zoom));
+        return;
+    }
+
+    if (kind == NodeKind::ImpulseResponse) {
+        const Rectangle<float> inner = graph.withTrimmedLeft(graph.getWidth() * 0.0625f);
+        g.setColour(dim.withAlpha(0.44f));
+        g.drawRect(inner, jmax(1.f, zoom));
+
+        Path response;
+        response.startNewSubPath(inner.getX(), inner.getCentreY());
+        response.lineTo(inner.getX() + inner.getWidth() * 0.03f, inner.getY() + inner.getHeight() * 0.08f);
+        response.lineTo(inner.getX() + inner.getWidth() * 0.07f, inner.getBottom() - inner.getHeight() * 0.14f);
+        response.lineTo(inner.getX() + inner.getWidth() * 0.14f, inner.getY() + inner.getHeight() * 0.38f);
+        response.lineTo(inner.getRight(), inner.getCentreY());
+        g.setColour(line.withAlpha(0.88f));
+        g.strokePath(response, PathStrokeType(jmax(1.4f, 2.f * zoom), PathStrokeType::curved, PathStrokeType::rounded));
+    }
+}
+
 void NodeCanvas::drawPreviewUncached(
         Graphics& g,
         const Node& node,
@@ -2369,8 +2454,10 @@ void NodeCanvas::drawPreviewUncached(
         return;
     }
 
-    if (node.kind == NodeKind::GuideCurve) {
-        drawEnvelopeCurve(g, area.reduced(8.f));
+    if (node.kind == NodeKind::GuideCurve
+            || node.kind == NodeKind::ImpulseResponse
+            || node.kind == NodeKind::Waveshaper) {
+        drawEffect2DPreview(g, area, node.kind, zoom);
         return;
     }
 
@@ -2467,29 +2554,6 @@ void NodeCanvas::drawPreviewUncached(
         return;
     }
 
-    if (node.kind == NodeKind::ImpulseResponse) {
-        drawSpectrumBars(g, area.reduced(8.f), colourForDomain(PortDomain::TimeSignal), node.id.hashCode());
-        return;
-    }
-
-    if (node.kind == NodeKind::Waveshaper) {
-        Path transfer;
-        const auto transferArea = area.reduced(8.f);
-        transfer.startNewSubPath(transferArea.getX(), transferArea.getBottom());
-        transfer.cubicTo(
-                transferArea.getX() + transferArea.getWidth() * 0.35f,
-                transferArea.getBottom(),
-                transferArea.getX() + transferArea.getWidth() * 0.65f,
-                transferArea.getY(),
-                transferArea.getRight(),
-                transferArea.getY());
-        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.10f));
-        g.fillRect(transferArea);
-        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.92f));
-        g.strokePath(transfer, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
-        return;
-    }
-
     Path curve;
     const int steps = 42;
     for (int i = 0; i < steps; ++i) {
@@ -2520,6 +2584,17 @@ TrimeshWidget& NodeCanvas::trimeshWidgetFor(const String& nodeId) {
 
     trimeshWidgets.emplace_back(nodeId, std::make_unique<TrimeshWidget>());
     return *trimeshWidgets.back().second;
+}
+
+Effect2DWidget& NodeCanvas::effect2DWidgetFor(const Node& node) {
+    for (auto& entry : effect2DWidgets) {
+        if (entry.first == node.id) {
+            return *entry.second;
+        }
+    }
+
+    effect2DWidgets.emplace_back(node.id, std::make_unique<Effect2DWidget>(node.kind));
+    return *effect2DWidgets.back().second;
 }
 
 NodeCanvas::CachedPreviewSprite& NodeCanvas::cachedPreviewSpriteFor(const String& nodeId) {
@@ -2730,13 +2805,72 @@ void NodeCanvas::setCanvasOpenGlAttached(bool shouldAttach) {
 
 void NodeCanvas::updateExpandedEditorHost(const Node* node) {
     const bool shouldShowTrimesh = node != nullptr && node->kind == NodeKind::TrilinearMesh;
-    hideExpandedEditorHostsExcept(shouldShowTrimesh ? node->id : String());
+    const bool shouldShowEffect2D = node != nullptr
+            && (node->kind == NodeKind::GuideCurve
+                || node->kind == NodeKind::ImpulseResponse
+                || node->kind == NodeKind::Waveshaper);
+    const String hostedNodeId = shouldShowTrimesh || shouldShowEffect2D ? node->id : String();
+    hideExpandedEditorHostsExcept(hostedNodeId);
 
-    if (!shouldShowTrimesh) {
+    if (!shouldShowTrimesh && trimeshExpandedEditor != nullptr) {
+        trimeshExpandedEditor->setVisible(false);
+        trimeshExpandedEditorNodeId = {};
+    }
+
+    if (!shouldShowEffect2D && effect2DExpandedEditor != nullptr) {
+        effect2DExpandedEditor->setVisible(false);
+        effect2DExpandedEditorNodeId = {};
+    }
+
+    if (shouldShowEffect2D) {
         if (trimeshExpandedEditor != nullptr) {
             trimeshExpandedEditor->setVisible(false);
         }
         trimeshExpandedEditorNodeId = {};
+
+        Effect2DWidget& widget = effect2DWidgetFor(*node);
+
+        if (effect2DExpandedEditor != nullptr && effect2DExpandedEditorNodeId != node->id) {
+            effect2DExpandedEditor->setVisible(false);
+            removeChildComponent(effect2DExpandedEditor.get());
+            effect2DExpandedEditor.reset();
+        }
+
+        if (effect2DExpandedEditor == nullptr) {
+            effect2DExpandedEditor = std::make_unique<Effect2DExpandedEditorComponent>(widget);
+            effect2DExpandedEditorNodeId = node->id;
+            auto safeThis = Component::SafePointer<NodeCanvas>(this);
+            Effect2DExpandedEditorComponent::Callbacks callbacks;
+            callbacks.close = [safeThis] {
+                if (safeThis != nullptr) {
+                    safeThis->expandedNodeId = {};
+                    safeThis->updateExpandedEditorHost(nullptr);
+                    safeThis->repaint();
+                }
+            };
+            callbacks.repaintOpenGL = [safeThis] {
+                if (safeThis != nullptr) {
+                    safeThis->openGLContext.triggerRepaint();
+                }
+            };
+            effect2DExpandedEditor->setCallbacks(std::move(callbacks));
+            addAndMakeVisible(effect2DExpandedEditor.get());
+        }
+
+        const Rectangle<int> editorBounds = expandedEditorBoundsForNode(getLocalBounds().toFloat(), node).toNearestInt();
+
+        if (effect2DExpandedEditor->getBounds() != editorBounds) {
+            effect2DExpandedEditor->setBounds(editorBounds);
+        }
+
+        effect2DExpandedEditor->setNode(*node);
+        effect2DExpandedEditor->setVisible(true);
+        effect2DExpandedEditor->toFront(false);
+        openGLContext.triggerRepaint();
+        return;
+    }
+
+    if (!shouldShowTrimesh) {
         return;
     }
 
@@ -2855,6 +2989,18 @@ void NodeCanvas::hideExpandedEditorHostsExcept(const String& nodeId) {
             waveComponent->setVisible(false);
         }
     }
+
+    for (auto& entry : effect2DWidgets) {
+        if (entry.first == nodeId) {
+            continue;
+        }
+
+        Component* component = entry.second->getExpandedPanelComponentIfCreated();
+
+        if (component != nullptr && component->isVisible()) {
+            component->setVisible(false);
+        }
+    }
 }
 
 void NodeCanvas::detachExpandedEditorHosts() {
@@ -2869,6 +3015,10 @@ void NodeCanvas::detachExpandedEditorHosts() {
         if (waveComponent != nullptr && waveComponent->getParentComponent() == this) {
             removeChildComponent(waveComponent);
         }
+    }
+
+    if (effect2DExpandedEditor != nullptr && effect2DExpandedEditor->getParentComponent() == this) {
+        removeChildComponent(effect2DExpandedEditor.get());
     }
 }
 
