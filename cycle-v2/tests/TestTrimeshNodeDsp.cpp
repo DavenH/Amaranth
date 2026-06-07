@@ -75,6 +75,10 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE(timeCurveStyle.cyclic);
     REQUIRE_FALSE(magCurveStyle.cyclic);
     REQUIRE_FALSE(phaseCurveStyle.cyclic);
+    REQUIRE(timeCurveStyle.xMinimum == Catch::Approx(-0.05f));
+    REQUIRE(timeCurveStyle.xMaximum == Catch::Approx(1.05f));
+    REQUIRE(magCurveStyle.xMinimum == Catch::Approx(0.f));
+    REQUIRE(magCurveStyle.xMaximum == Catch::Approx(1.f));
     REQUIRE(timeCurveStyle.positiveColour == timeCurveStyle.negativeColour);
     REQUIRE(magCurveStyle.positiveColour == magCurveStyle.negativeColour);
     REQUIRE_FALSE(phaseCurveStyle.positiveColour == phaseCurveStyle.negativeColour);

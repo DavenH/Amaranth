@@ -131,6 +131,8 @@ TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :
 
     curveStyle.bipolar = scalePolicy == RenderScalePolicy::Bipolar;
     curveStyle.cyclic = !spectral;
+    curveStyle.xMinimum = curveStyle.cyclic ? -0.05f : 0.f;
+    curveStyle.xMaximum = curveStyle.cyclic ? 1.05f : 1.f;
     curveStyle.positiveColour = positiveCurveColourFor(spectral, phase);
     curveStyle.negativeColour = negativeCurveColourFor(spectral, phase, curveStyle.bipolar);
 }

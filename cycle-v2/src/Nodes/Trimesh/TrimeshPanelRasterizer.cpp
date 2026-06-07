@@ -19,11 +19,12 @@ void TrimeshPanelRasterizer::update(
         TrimeshPanelHosts& panelHosts,
         bool refresh2DPanel,
         bool refresh3DGeometry) {
-    const bool cyclic = renderProfile.getCurveStyle().cyclic;
+    const auto& curveStyle = renderProfile.getCurveStyle();
+    const bool cyclic = curveStyle.cyclic;
     auto& request = rasterizer.getRequest();
     request.cyclic = cyclic;
-    request.xMinimum = cyclic ? -0.05f : 0.f;
-    request.xMaximum = cyclic ? 1.05f : 1.f;
+    request.xMinimum = curveStyle.xMinimum;
+    request.xMaximum = curveStyle.xMaximum;
     request.morph = model.getMorphPosition();
     request.primaryViewDimension = model.getPrimaryViewAxis();
     request.dims = interactor2D.dims;

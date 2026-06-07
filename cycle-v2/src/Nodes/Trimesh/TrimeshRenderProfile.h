@@ -28,6 +28,8 @@ struct TrimeshSurfaceStyle {
 struct TrimeshCurveStyle {
     Color positiveColour;
     Color negativeColour;
+    float xMinimum {};
+    float xMaximum { 1.f };
     bool bipolar { true };
     bool cyclic { true };
 };
