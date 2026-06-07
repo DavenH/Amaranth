@@ -46,7 +46,7 @@
     {
       "command": "assertNodeParameter",
       "nodeId": "waveMesh",
-      "parameterId": "vertex.0.amp",
+      "parameterId": "mesh.vertex.0.amp",
       "equals": "0.750"
     },
     {

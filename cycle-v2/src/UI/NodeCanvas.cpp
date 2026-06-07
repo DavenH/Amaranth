@@ -308,10 +308,16 @@ var audioMetricsToVar(const AudioProcessBlock& block, double sampleRate) {
 
 String trimeshHitRegionKind(TrimeshExpandedHitRegionKind kind) {
     switch (kind) {
-        case TrimeshExpandedHitRegionKind::MorphControl:    return "trimeshMorphRail";
-        case TrimeshExpandedHitRegionKind::PrimaryAxis:     return "trimeshPrimaryAxis";
-        case TrimeshExpandedHitRegionKind::LinkToggle:      return "trimeshLinkToggle";
-        case TrimeshExpandedHitRegionKind::VertexParameter: return "trimeshVertexParameter";
+        case TrimeshExpandedHitRegionKind::MorphControl:
+            return "trimeshMorphRail";
+        case TrimeshExpandedHitRegionKind::PrimaryAxis:
+            return "trimeshPrimaryAxis";
+        case TrimeshExpandedHitRegionKind::LinkToggle:
+            return "trimeshLinkToggle";
+        case TrimeshExpandedHitRegionKind::VertexParameter:
+            return "trimeshVertexParameter";
+        case TrimeshExpandedHitRegionKind::VertexGuideAttachment:
+            return "trimeshVertexGuideAttachment";
     }
 
     return "trimeshControl";
