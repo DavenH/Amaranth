@@ -55,6 +55,7 @@ public:
     bool getNodeParameterForAutomation(const String& nodeId, const String& parameterId, String& value) const;
     var inspectNodeControlsForAutomation(const String& nodeId) const;
     var inspectPointerTargetsForAutomation() const;
+    var inspectOpenGLDiagnosticsForAutomation() const;
 
     void paint(Graphics& g) override;
     void resized() override;

@@ -258,6 +258,27 @@ var pointerTargetToVar(
     return object;
 }
 
+var componentDiagnosticsToVar(const String& id, const Component* component) {
+    auto* object = new DynamicObject();
+    object->setProperty("id", id);
+    object->setProperty("created", component != nullptr);
+
+    if (component == nullptr) {
+        return object;
+    }
+
+    object->setProperty("visible", component->isVisible());
+    object->setProperty("showing", component->isShowing());
+    object->setProperty("enabled", component->isEnabled());
+    object->setProperty("bounds", rectangleToVar(component->getBounds().toFloat()));
+    object->setProperty("screenBounds", rectangleToVar(component->getScreenBounds().toFloat()));
+    object->setProperty("hasParent", component->getParentComponent() != nullptr);
+    object->setProperty("width", component->getWidth());
+    object->setProperty("height", component->getHeight());
+    object->setProperty("nonEmpty", !component->getLocalBounds().isEmpty());
+    return object;
+}
+
 String trimeshHitRegionKind(TrimeshExpandedHitRegionKind kind) {
     switch (kind) {
         case TrimeshExpandedHitRegionKind::MorphControl:    return "trimeshMorphRail";
@@ -4401,6 +4422,52 @@ var NodeCanvas::inspectPointerTargetsForAutomation() const {
     root->setProperty("coordinateSpace", "canvasLocal");
     root->setProperty("targetCount", targets.size());
     root->setProperty("targets", targets);
+    return root;
+}
+
+var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
+    auto* root = new DynamicObject();
+    root->setProperty("schema", "cycle-v2-opengl-diagnostics.v1");
+    root->setProperty("canvasOpenGlAttached", canvasOpenGlAttached);
+    root->setProperty("canvasBounds", rectangleToVar(getLocalBounds().toFloat()));
+    root->setProperty("expandedNodeId", expandedNodeId);
+    root->setProperty("trimeshExpandedEditorCreated", trimeshExpandedEditor != nullptr);
+
+    if (trimeshExpandedEditor != nullptr) {
+        root->setProperty("trimeshExpandedEditor", componentDiagnosticsToVar(
+                "trimeshExpandedEditor",
+                trimeshExpandedEditor.get()));
+    }
+
+    const Node* expandedNode = findNode(expandedNodeId);
+    if (expandedNode != nullptr) {
+        root->setProperty("expandedNodeKind", labelForNodeKind(expandedNode->kind));
+        root->setProperty("expandedEditorBounds", rectangleToVar(
+                expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode)));
+    }
+
+    Array<var> panels;
+    if (expandedNode != nullptr && expandedNode->kind == NodeKind::TrilinearMesh) {
+        TrimeshWidget* widget = nullptr;
+
+        for (const auto& entry : trimeshWidgets) {
+            if (entry.first == expandedNode->id) {
+                widget = entry.second.get();
+                break;
+            }
+        }
+
+        if (widget != nullptr) {
+            panels.add(componentDiagnosticsToVar("trimeshPanel3D", widget->getExpandedPanel3DComponentIfCreated()));
+            panels.add(componentDiagnosticsToVar("trimeshPanel2D", widget->getExpandedPanel2DComponentIfCreated()));
+        } else {
+            panels.add(componentDiagnosticsToVar("trimeshPanel3D", nullptr));
+            panels.add(componentDiagnosticsToVar("trimeshPanel2D", nullptr));
+        }
+    }
+
+    root->setProperty("panels", panels);
+    root->setProperty("panelCount", panels.size());
     return root;
 }
 

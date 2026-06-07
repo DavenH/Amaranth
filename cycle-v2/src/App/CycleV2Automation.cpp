@@ -572,6 +572,9 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     if (command == "inspectPointerTargets") {
         return inspectPointerTargets();
     }
+    if (command == "inspectOpenGLDiagnostics") {
+        return inspectOpenGLDiagnostics();
+    }
     if (command == "exportGraph") {
         return exportGraph(commandValue);
     }
@@ -791,6 +794,10 @@ var CycleV2Automation::openNodeEditor(const var& commandValue) {
 
 var CycleV2Automation::inspectPointerTargets() const {
     return okResult("inspectPointerTargets", workspace.inspectPointerTargetsForAutomation());
+}
+
+var CycleV2Automation::inspectOpenGLDiagnostics() const {
+    return okResult("inspectOpenGLDiagnostics", workspace.inspectOpenGLDiagnosticsForAutomation());
 }
 
 var CycleV2Automation::addNode(const var& commandValue) {

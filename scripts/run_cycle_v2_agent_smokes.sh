@@ -15,6 +15,7 @@ fixtures=(
     trimesh-controls=scripts/fixtures/cycle-v2-agent-trimesh-controls.json
     pointer=scripts/fixtures/cycle-v2-agent-pointer.json
     pointer-targets=scripts/fixtures/cycle-v2-agent-pointer-targets.json
+    opengl-diagnostics=scripts/fixtures/cycle-v2-agent-opengl-diagnostics.json
 )
 
 if [[ "$RUN_OS_SCREENSHOT" == "1" ]]; then

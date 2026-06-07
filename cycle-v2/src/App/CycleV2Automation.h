@@ -44,6 +44,7 @@ private:
     var openNodeEditor(const var& commandValue);
     var addNode(const var& commandValue);
     var inspectPointerTargets() const;
+    var inspectOpenGLDiagnostics() const;
     var moveNode(const var& commandValue);
     var connectPorts(const var& commandValue);
     var deleteNode(const var& commandValue);

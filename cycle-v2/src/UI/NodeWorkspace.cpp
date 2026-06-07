@@ -97,6 +97,10 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
     return canvas.inspectPointerTargetsForAutomation();
 }
 
+var NodeWorkspace::inspectOpenGLDiagnosticsForAutomation() const {
+    return canvas.inspectOpenGLDiagnosticsForAutomation();
+}
+
 void NodeWorkspace::resized() {
     canvas.setBounds(getLocalBounds());
 }
