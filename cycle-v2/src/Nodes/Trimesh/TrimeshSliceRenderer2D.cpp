@@ -33,12 +33,12 @@ void TrimeshSliceRenderer2D::drawGrid(
         Graphics& g,
         Rectangle<float> area,
         const TrimeshRenderProfile& profile) {
-    const bool spectral = profile.getSliceBackground() != TrimeshSliceBackground::Waveform;
+    const auto& sliceStyle = profile.getSliceStyle();
 
-    g.setColour((spectral ? Colour(0xff080608) : Colour(0xff05070a)).withAlpha(0.58f));
+    g.setColour(sliceStyle.fillColour);
     g.fillRoundedRectangle(area, 4.f);
 
-    g.setColour((spectral ? Colour(0xff241b18) : Colour(0xff1b2430)).withAlpha(0.70f));
+    g.setColour(sliceStyle.minorGridColour);
     for (int i = 1; i < 32; ++i) {
         const float x = area.getX() + area.getWidth() * (float) i / 32.f;
         g.drawVerticalLine(roundToInt(x), area.getY(), area.getBottom());
@@ -49,7 +49,7 @@ void TrimeshSliceRenderer2D::drawGrid(
         g.drawHorizontalLine(roundToInt(y), area.getX(), area.getRight());
     }
 
-    g.setColour((spectral ? Colour(0xff806646) : Colour(0xff546276)).withAlpha(0.34f));
+    g.setColour(sliceStyle.majorGridColour);
     for (int i = 1; i < 8; ++i) {
         const float x = area.getX() + area.getWidth() * (float) i / 8.f;
         g.drawVerticalLine(roundToInt(x), area.getY(), area.getBottom());
@@ -72,7 +72,8 @@ void TrimeshSliceRenderer2D::drawTraceFill(
 
     Path fillPath;
     const float denominator = (float) (values.size() - 1);
-    const float baseY = profile.curveIsBipolar() ? area.getCentreY() : area.getBottom();
+    const auto& curveStyle = profile.getCurveStyle();
+    const float baseY = curveStyle.bipolar ? area.getCentreY() : area.getBottom();
 
     fillPath.startNewSubPath(area.getX(), baseY);
 
@@ -85,9 +86,9 @@ void TrimeshSliceRenderer2D::drawTraceFill(
     fillPath.lineTo(area.getRight(), baseY);
     fillPath.closeSubPath();
 
-    g.setColour(profile.positiveCurveColour().toColour().withAlpha(0.22f));
+    g.setColour(curveStyle.positiveColour.toColour().withAlpha(0.22f));
     g.fillPath(fillPath);
-    g.setColour(profile.positiveCurveColour().toColour().withAlpha(0.20f));
+    g.setColour(curveStyle.positiveColour.toColour().withAlpha(0.20f));
     g.strokePath(fillPath, PathStrokeType(5.f, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
