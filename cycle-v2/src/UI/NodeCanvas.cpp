@@ -1,6 +1,7 @@
 #include "NodeCanvas.h"
 
 #include <array>
+#include <cstring>
 #include <iterator>
 #include <limits>
 #include <utility>
@@ -19,9 +20,12 @@ const Colour kText             { 0xffe2e8ef };
 const Colour kMutedText        { 0xff8793a1 };
 constexpr float kCableReferenceZoom = 0.58f;
 constexpr float kCableStrokeScale = 0.70f;
-constexpr float kPaletteWidth = 158.f;
-constexpr float kPaletteHeaderHeight = 21.f;
-constexpr float kPaletteRowHeight = 30.f;
+constexpr float kPaletteWidth = 72.f;
+constexpr float kPaletteX = 18.f;
+constexpr float kPaletteY = 74.f;
+constexpr float kPaletteRowHeight = 78.f;
+constexpr float kPalettePulloutWidth = 144.f;
+constexpr float kPalettePulloutRowHeight = 52.f;
 constexpr float kExpandedEditorScale = 0.90f;
 constexpr float kExpandedEditorMinMargin = 18.f;
 constexpr float kExpandedEditorHeaderHeight = 34.f;
@@ -38,6 +42,67 @@ constexpr bool kUseGlNodeShells = false;
 struct SnapCandidate {
     float target {};
     int matches { 1 };
+};
+
+struct PaletteEntry {
+    NodeKind kind;
+    const char* label;
+};
+
+struct PaletteSection {
+    const char* title;
+    const char* shortLabel;
+    PortDomain domain {};
+    const PaletteEntry* entries {};
+    int entryCount {};
+};
+
+const PaletteEntry kContextEntries[] = {
+        { NodeKind::VoiceContext, "Voice Context" }
+};
+
+const PaletteEntry kTransformEntries[] = {
+        { NodeKind::Fft, "Time → Freq" },
+        { NodeKind::Ifft, "Freq → Time" }
+};
+
+const PaletteEntry kMathEntries[] = {
+        { NodeKind::Add, "Add" },
+        { NodeKind::Multiply, "Multiply" }
+};
+
+const PaletteEntry kSourceEntries[] = {
+        { NodeKind::TrilinearMesh, "Mesh" },
+        { NodeKind::ImageSource, "Image" },
+        { NodeKind::WaveSource, "Wave" }
+};
+
+const PaletteEntry kControlEntries[] = {
+        { NodeKind::Envelope, "Envelope" },
+        { NodeKind::GuideCurve, "Guide" }
+};
+
+const PaletteEntry kFxEntries[] = {
+        { NodeKind::ImpulseResponse, "IR" },
+        { NodeKind::Waveshaper, "Waveshaper" },
+        { NodeKind::Reverb, "Reverb" },
+        { NodeKind::Delay, "Delay" }
+};
+
+const PaletteEntry kChannelEntries[] = {
+        { NodeKind::StereoSplit, "Split" },
+        { NodeKind::StereoJoin, "Join" },
+        { NodeKind::Output, "Output" }
+};
+
+const PaletteSection kPaletteSections[] = {
+        { "Context",   "Context",   PortDomain::VoiceControlSignal, kContextEntries,   (int) std::size(kContextEntries) },
+        { "Transform", "Transform", PortDomain::SpectralMagnitudeSignal, kTransformEntries, (int) std::size(kTransformEntries) },
+        { "Math",      "Math",      PortDomain::ControlSignal, kMathEntries,      (int) std::size(kMathEntries) },
+        { "Source",    "Source",    PortDomain::TimeSignal, kSourceEntries,    (int) std::size(kSourceEntries) },
+        { "Control",   "Control",   PortDomain::EnvelopeSignal, kControlEntries,   (int) std::size(kControlEntries) },
+        { "FX",        "FX",        PortDomain::SpectralPhaseSignal, kFxEntries,        (int) std::size(kFxEntries) },
+        { "Channel",   "Channel",   PortDomain::TimeSignal, kChannelEntries,   (int) std::size(kChannelEntries) }
 };
 
 float cableScaleForZoom(float zoom) {
@@ -167,6 +232,210 @@ bool containsString(const std::vector<String>& values, const String& value) {
     }
 
     return false;
+}
+
+Rectangle<float> paletteRailBounds() {
+    return {
+            kPaletteX,
+            kPaletteY,
+            kPaletteWidth,
+            12.f + (float) std::size(kPaletteSections) * kPaletteRowHeight
+    };
+}
+
+Rectangle<float> paletteGroupBounds(int sectionIndex) {
+    return {
+            kPaletteX + 7.f,
+            kPaletteY + 7.f + (float) sectionIndex * kPaletteRowHeight,
+            kPaletteWidth - 14.f,
+            kPaletteRowHeight - 9.f
+    };
+}
+
+Rectangle<float> palettePulloutBounds(int sectionIndex) {
+    const auto group = paletteGroupBounds(sectionIndex);
+    const auto& section = kPaletteSections[(size_t) sectionIndex];
+    const float height = (float) section.entryCount * kPalettePulloutRowHeight;
+    return {
+            paletteRailBounds().getRight() + 10.f,
+            group.getY(),
+            kPalettePulloutWidth,
+            height
+    };
+}
+
+Rectangle<float> palettePulloutEntryBounds(int sectionIndex, int entryIndex) {
+    const auto panel = palettePulloutBounds(sectionIndex);
+    return {
+            panel.getX(),
+            panel.getY() + (float) entryIndex * kPalettePulloutRowHeight,
+            panel.getWidth(),
+            kPalettePulloutRowHeight - 7.f
+    };
+}
+
+Rectangle<float> paletteHoverBounds(int sectionIndex) {
+    const auto group = paletteGroupBounds(sectionIndex);
+    const auto pullout = palettePulloutBounds(sectionIndex);
+    const float top = jmin(group.getY(), pullout.getY()) - 22.f;
+    const float bottom = jmax(group.getBottom(), pullout.getBottom()) + 22.f;
+
+    return {
+            group.getX() - 6.f,
+            top,
+            pullout.getRight() - group.getX() + 12.f,
+            bottom - top
+    };
+}
+
+int paletteGroupIndexAt(Point<float> screenPosition) {
+    for (int i = 0; i < (int) std::size(kPaletteSections); ++i) {
+        if (paletteGroupBounds(i).expanded(3.f).contains(screenPosition)) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+void drawPaletteGroupIcon(Graphics& g, const char* title, Rectangle<float> area, bool active) {
+    const float stroke = active ? 2.1f : 1.65f;
+    const Colour fg = Colour(0xffd2d9e2).withAlpha(active ? 0.96f : 0.76f);
+    const Colour dim = kMutedText.withAlpha(active ? 0.68f : 0.44f);
+    area = area.reduced(4.f);
+
+    g.setColour(fg);
+
+    if (std::strcmp(title, "Context") == 0) {
+        const float y = area.getCentreY();
+        const float x0 = area.getX() + area.getWidth() * 0.18f;
+        const float x1 = area.getRight() - area.getWidth() * 0.18f;
+        g.drawLine(x0, y, x1, y, stroke);
+
+        for (int i = 0; i < 4; ++i) {
+            const float t = (float) i / 3.f;
+            const float x = x0 + (x1 - x0) * t;
+            Rectangle<float> dot(x - 2.2f, y - 2.2f, 4.4f, 4.4f);
+            g.fillEllipse(dot);
+        }
+
+        g.setColour(dim);
+        g.drawEllipse(area.withSizeKeepingCentre(23.f, 23.f), 1.1f);
+        return;
+    }
+
+    if (std::strcmp(title, "Transform") == 0) {
+        Path square;
+        const Rectangle<float> left(
+                area.getX(),
+                area.getY() + area.getHeight() * 0.22f,
+                area.getWidth() * 0.34f,
+                area.getHeight() * 0.56f);
+        const Rectangle<float> right(
+                area.getX() + area.getWidth() * 0.40f,
+                area.getY() + area.getHeight() * 0.14f,
+                area.getWidth() * 0.60f,
+                area.getHeight() * 0.72f);
+        square.startNewSubPath(left.getX(), left.getBottom());
+        square.lineTo(left.getX(), left.getY());
+        square.lineTo(left.getCentreX(), left.getY());
+        square.lineTo(left.getCentreX(), left.getBottom());
+        square.lineTo(left.getRight(), left.getBottom());
+        g.strokePath(square, PathStrokeType(stroke, PathStrokeType::mitered, PathStrokeType::rounded));
+
+        Path wave;
+        for (int i = 0; i < 32; ++i) {
+            const float t = (float) i / 31.f;
+            const Point<float> p(
+                    right.getX() + t * right.getWidth(),
+                    right.getCentreY() + fastSin(t * MathConstants<float>::twoPi * 1.35f) * right.getHeight() * 0.30f);
+            if (i == 0) {
+                wave.startNewSubPath(p);
+            } else {
+                wave.lineTo(p);
+            }
+        }
+
+        g.setColour(dim);
+        g.drawLine(left.getRight() + 3.f, left.getCentreY(), right.getX() - 3.f, right.getCentreY(), 1.1f);
+        g.setColour(fg);
+        g.strokePath(wave, PathStrokeType(stroke, PathStrokeType::curved, PathStrokeType::rounded));
+        return;
+    }
+
+    if (std::strcmp(title, "Math") == 0) {
+        const Point<float> left(area.getX() + area.getWidth() * 0.34f, area.getCentreY());
+        const Point<float> right(area.getX() + area.getWidth() * 0.68f, area.getCentreY());
+        const float r = 6.f;
+        g.drawLine(left.x - r, left.y, left.x + r, left.y, stroke);
+        g.drawLine(left.x, left.y - r, left.x, left.y + r, stroke);
+        g.drawLine(right.x - r, right.y - r, right.x + r, right.y + r, stroke);
+        g.drawLine(right.x + r, right.y - r, right.x - r, right.y + r, stroke);
+        return;
+    }
+
+    if (std::strcmp(title, "Source") == 0) {
+        Path wave;
+        Rectangle<float> waveArea = area.withTrimmedBottom(area.getHeight() * 0.45f);
+        for (int i = 0; i < 20; ++i) {
+            const float t = (float) i / 19.f;
+            const Point<float> p(
+                    waveArea.getX() + t * waveArea.getWidth(),
+                    waveArea.getCentreY() + fastSin(t * MathConstants<float>::twoPi * 1.2f) * waveArea.getHeight() * 0.28f);
+            if (i == 0) {
+                wave.startNewSubPath(p);
+            } else {
+                wave.lineTo(p);
+            }
+        }
+
+        g.strokePath(wave, PathStrokeType(stroke, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour(dim);
+        Rectangle<float> image(area.getX() + 5.f, area.getCentreY() + 3.f, 10.f, 8.f);
+        Rectangle<float> mesh(area.getRight() - 17.f, area.getCentreY() + 2.f, 12.f, 10.f);
+        g.drawRect(image, 1.f);
+        g.drawRoundedRectangle(mesh, 2.f, 1.f);
+        return;
+    }
+
+    if (std::strcmp(title, "Control") == 0) {
+        Rectangle<float> graph = area.reduced(3.f, 6.f);
+        Path env;
+        env.startNewSubPath(graph.getX(), graph.getBottom());
+        env.lineTo(graph.getX() + graph.getWidth() * 0.22f, graph.getY());
+        env.lineTo(graph.getX() + graph.getWidth() * 0.58f, graph.getY());
+        env.lineTo(graph.getRight(), graph.getBottom());
+        g.strokePath(env, PathStrokeType(stroke, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour(dim);
+        g.drawLine(graph.getX(), graph.getBottom(), graph.getRight(), graph.getBottom(), 1.f);
+        return;
+    }
+
+    if (std::strcmp(title, "FX") == 0) {
+        Rectangle<float> arcArea = area.reduced(3.f);
+        for (int i = 0; i < 3; ++i) {
+            const float inset = (float) i * 5.f;
+            g.setColour(fg.withAlpha(active ? 0.88f - (float) i * 0.18f : 0.62f - (float) i * 0.13f));
+            g.drawEllipse(arcArea.reduced(inset), jmax(0.8f, stroke - (float) i * 0.25f));
+        }
+
+        g.setColour(dim);
+        g.drawLine(area.getX() + 5.f, area.getCentreY(), area.getRight() - 5.f, area.getCentreY(), 1.f);
+        return;
+    }
+
+    if (std::strcmp(title, "Channel") == 0) {
+        const float left = area.getX() + 5.f;
+        const float centre = area.getCentreX();
+        const float right = area.getRight() - 5.f;
+        const float y = area.getCentreY();
+        g.drawLine(left, y, centre, y, stroke);
+        g.drawLine(centre, y, right, y - 7.f, stroke);
+        g.drawLine(centre, y, right, y + 7.f, stroke);
+        g.setColour(dim);
+        g.drawLine(left, y - 8.f, centre, y - 8.f, 1.f);
+        g.drawLine(left, y + 8.f, centre, y + 8.f, 1.f);
+    }
 }
 
 void addNodeSnapCandidates(
@@ -1147,12 +1416,14 @@ void NodeCanvas::resized() {
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
     lastMousePosition = event.position;
+    updatePaletteHover(event.position);
     setMouseCursor(MouseCursor::NormalCursor);
     repaint();
 }
 
 void NodeCanvas::mouseDown(const MouseEvent& event) {
     grabKeyboardFocus();
+    updatePaletteHover(event.position);
     editStatusMessage = {};
     dragStartPan = pan;
     lastMousePosition = event.position;
@@ -1238,6 +1509,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             connectingCable = false;
             refreshCompiledState();
             editStatusMessage = "Node added";
+            activePaletteSectionIndex = -1;
             repaint();
         }
 
@@ -1539,8 +1811,14 @@ void NodeCanvas::timerCallback() {
     updateExpandedEditorHost(findNode(expandedNodeId));
 
     const auto mouse = getMouseXYRelative().toFloat();
+    const int previousPaletteSectionIndex = activePaletteSectionIndex;
 
-    if (getLocalBounds().toFloat().contains(mouse) && mouse != lastMousePosition) {
+    if (getLocalBounds().toFloat().contains(mouse)) {
+        updatePaletteHover(mouse);
+    }
+
+    if (getLocalBounds().toFloat().contains(mouse)
+            && (mouse != lastMousePosition || previousPaletteSectionIndex != activePaletteSectionIndex)) {
         lastMousePosition = mouse;
         repaint();
     }
@@ -2737,70 +3015,59 @@ void NodeCanvas::drawHoverConsole(Graphics& g) {
 }
 
 void NodeCanvas::drawNodePalette(Graphics& g) {
-    struct PaletteEntry {
-        NodeKind kind;
-        const char* label;
+    const int activeSectionIndex = activePaletteSectionIndex;
+
+    auto drawEntryIcon = [&](NodeKind kind, Rectangle<float> area) {
+        Node previewNode = GraphNodeFactory().createNode(kind, {}, {});
+        const PortDomain domain = previewNode.outputs.empty()
+                ? (previewNode.inputs.empty() ? PortDomain::ControlSignal : previewNode.inputs.front().domain)
+                : previewNode.outputs.front().domain;
+        drawPreviewUncached(g, previewNode, area, domain);
     };
 
-    struct PaletteSection {
-        const char* title;
-        std::initializer_list<PaletteEntry> entries;
-    };
+    for (int sectionIndex = 0; sectionIndex < (int) std::size(kPaletteSections); ++sectionIndex) {
+        const auto& section = kPaletteSections[(size_t) sectionIndex];
+        const bool active = sectionIndex == activeSectionIndex;
+        const Rectangle<float> button = paletteGroupBounds(sectionIndex);
 
-    const PaletteSection sections[] = {
-            { "Context",   { { NodeKind::VoiceContext, "Voice Context" } } },
-            { "Transform", { { NodeKind::Fft, "Time → Freq" }, { NodeKind::Ifft, "Freq → Time" } } },
-            { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
-            { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::ImageSource, "Image" },
-                             { NodeKind::TrilinearMesh, "Mesh" } } },
-            { "Control",   { { NodeKind::Envelope, "Envelope" }, { NodeKind::GuideCurve, "Guide" } } },
-            { "FX",        { { NodeKind::ImpulseResponse, "IR" }, { NodeKind::Waveshaper, "Waveshaper" },
-                             { NodeKind::Reverb, "Reverb" }, { NodeKind::Delay, "Delay" } } },
-            { "Channel",   { { NodeKind::StereoSplit, "Split" }, { NodeKind::StereoJoin, "Join" },
-                             { NodeKind::Output, "Output" } } }
-    };
+        g.setColour(Colour(active ? 0xff1d2631 : 0xff151b24).withAlpha(active ? 0.94f : 0.82f));
+        g.fillRoundedRectangle(button, 7.f);
+        g.setColour(Colour(active ? 0xff8290a2 : 0xff435061).withAlpha(active ? 0.86f : 0.72f));
+        g.drawRoundedRectangle(button, 7.f, active ? 1.6f : 1.f);
 
-    int rowCount = 0;
-    for (const auto& section : sections) {
-        rowCount += 1 + (int) section.entries.size();
+        Rectangle<float> content = button;
+        const Rectangle<float> label = content.removeFromBottom(18.f);
+        drawPaletteGroupIcon(g, section.title, content.reduced(8.f, 4.f), active);
+        g.setFont(FontOptions(9.4f, Font::bold));
+        g.setColour(kText.withAlpha(active ? 0.92f : 0.70f));
+        g.drawText(String(section.shortLabel), label.reduced(3.f, 0.f), Justification::centred);
     }
 
-    Rectangle<float> panel(18.f, 74.f, kPaletteWidth, 10.f
-            + (float) rowCount * kPaletteRowHeight
-            + (float) std::size(sections) * (kPaletteHeaderHeight - kPaletteRowHeight));
-    g.setColour(Colour(0xaa0b0e13));
-    g.fillRoundedRectangle(panel, 6.f);
-    g.setColour(Colour(0xff354050));
-    g.drawRoundedRectangle(panel, 6.f, 1.f);
+    if (activeSectionIndex < 0) {
+        return;
+    }
 
-    float y = panel.getY() + 8.f;
-    for (const auto& section : sections) {
-        g.setColour(kMutedText.withAlpha(0.82f));
-        g.setFont(FontOptions(9.f, Font::bold));
-        g.drawText(section.title, Rectangle<float>(panel.getX() + 10.f, y, panel.getWidth() - 20.f, kPaletteHeaderHeight),
-                   Justification::centredLeft);
-        y += kPaletteHeaderHeight;
+    const auto& activeSection = kPaletteSections[(size_t) activeSectionIndex];
+    const Colour sectionColour = Colour(0xff8290a2);
 
-        for (const auto& entry : section.entries) {
-            Rectangle<float> row(panel.getX() + 9.f, y, panel.getWidth() - 18.f, 25.f);
-            Node previewNode = GraphNodeFactory().createNode(entry.kind, {}, {});
-            Colour colour = colourForDomain(PortDomain::TimeSignal);
+    for (int entryIndex = 0; entryIndex < activeSection.entryCount; ++entryIndex) {
+        const auto& entry = activeSection.entries[entryIndex];
+        const Rectangle<float> row = palettePulloutEntryBounds(activeSectionIndex, entryIndex);
+        const bool hover = row.contains(lastMousePosition);
+        g.setColour(Colour(hover ? 0xff202935 : 0xff161d26).withAlpha(hover ? 0.94f : 0.82f));
+        g.fillRoundedRectangle(row, 6.f);
+        g.setColour(sectionColour.withAlpha(hover ? 0.76f : 0.42f));
+        g.drawRoundedRectangle(row, 6.f, hover ? 1.4f : 1.f);
 
-            if (!previewNode.outputs.empty()) {
-                colour = portDisplayColour(previewNode, previewNode.outputs.front());
-            } else if (!previewNode.inputs.empty()) {
-                colour = portDisplayColour(previewNode, previewNode.inputs.front());
-            }
+        const Rectangle<float> icon(row.getX() + 7.f, row.getY() + 8.f, 39.f, row.getHeight() - 16.f);
+        drawEntryIcon(entry.kind, icon);
 
-            g.setColour(colour.withAlpha(0.12f));
-            g.fillRoundedRectangle(row, 4.f);
-            g.setColour(colour.withAlpha(0.48f));
-            g.drawRoundedRectangle(row, 4.f, 1.f);
-            g.setColour(kText);
-            g.setFont(FontOptions(12.6f, Font::bold));
-            g.drawText(String::fromUTF8(entry.label), row.reduced(8.f, 0.f), Justification::centredLeft);
-            y += kPaletteRowHeight;
-        }
+        g.setColour(kText.withAlpha(hover ? 0.96f : 0.82f));
+        g.setFont(FontOptions(11.2f, Font::bold));
+        g.drawText(
+                String::fromUTF8(entry.label),
+                row.withTrimmedLeft(53.f).reduced(0.f, 2.f),
+                Justification::centredLeft);
     }
 }
 
@@ -2965,55 +3232,24 @@ bool NodeCanvas::findConnectablePortAt(
 }
 
 bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const {
-    struct PaletteEntry {
-        NodeKind kind;
-        const char* label;
-    };
+    int sectionIndex = paletteGroupIndexAt(screenPosition);
 
-    struct PaletteSection {
-        const char* title;
-        std::initializer_list<PaletteEntry> entries;
-    };
-
-    const PaletteSection sections[] = {
-            { "Context",   { { NodeKind::VoiceContext, "Voice Context" } } },
-            { "Transform", { { NodeKind::Fft, "Time → Freq" }, { NodeKind::Ifft, "Freq → Time" } } },
-            { "Math",      { { NodeKind::Add, "Add" }, { NodeKind::Multiply, "Multiply" } } },
-            { "Source",    { { NodeKind::WaveSource, "Wave" }, { NodeKind::ImageSource, "Image" },
-                             { NodeKind::TrilinearMesh, "Mesh" } } },
-            { "Control",   { { NodeKind::Envelope, "Envelope" }, { NodeKind::GuideCurve, "Guide" } } },
-            { "FX",        { { NodeKind::ImpulseResponse, "IR" }, { NodeKind::Waveshaper, "Waveshaper" },
-                             { NodeKind::Reverb, "Reverb" }, { NodeKind::Delay, "Delay" } } },
-            { "Channel",   { { NodeKind::StereoSplit, "Split" }, { NodeKind::StereoJoin, "Join" },
-                             { NodeKind::Output, "Output" } } }
-    };
-
-    int rowCount = 0;
-    for (const auto& section : sections) {
-        rowCount += 1 + (int) section.entries.size();
+    if (sectionIndex < 0
+            && activePaletteSectionIndex >= 0
+            && paletteHoverBounds(activePaletteSectionIndex).contains(screenPosition)) {
+        sectionIndex = activePaletteSectionIndex;
     }
 
-    Rectangle<float> panel(18.f, 74.f, kPaletteWidth, 10.f
-            + (float) rowCount * kPaletteRowHeight
-            + (float) std::size(sections) * (kPaletteHeaderHeight - kPaletteRowHeight));
-
-    if (!panel.contains(screenPosition)) {
+    if (sectionIndex < 0) {
         return false;
     }
 
-    float y = panel.getY() + 8.f;
-    for (const auto& section : sections) {
-        y += kPaletteHeaderHeight;
+    const auto& section = kPaletteSections[(size_t) sectionIndex];
 
-        for (const auto& entry : section.entries) {
-            Rectangle<float> row(panel.getX() + 9.f, y, panel.getWidth() - 18.f, 25.f);
-
-            if (row.contains(screenPosition)) {
-                kind = entry.kind;
-                return true;
-            }
-
-            y += kPaletteRowHeight;
+    for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
+        if (palettePulloutEntryBounds(sectionIndex, entryIndex).contains(screenPosition)) {
+            kind = section.entries[entryIndex].kind;
+            return true;
         }
     }
 
@@ -3147,6 +3383,11 @@ int NodeCanvas::findSpliceTargetEdgeAt(Point<float> screenPosition, const String
                         edge.attachment));
 
         if (hitPath.contains(screenPosition)) {
+            NodeGraph candidate = graph;
+            if (!GraphEditor().spliceNodeIntoEdge(candidate, (size_t) edgeIndex, nodeId).succeeded()) {
+                continue;
+            }
+
             return edgeIndex;
         }
     }
@@ -3307,6 +3548,17 @@ String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
     if (findPaletteKindAt(screenPosition, paletteKind)) {
         Node node = GraphNodeFactory().createNode(paletteKind, {}, {});
         return "Create " + node.title + "  /  " + node.subtitle;
+    }
+
+    int paletteSectionIndex = paletteGroupIndexAt(screenPosition);
+    if (paletteSectionIndex < 0
+            && activePaletteSectionIndex >= 0
+            && paletteHoverBounds(activePaletteSectionIndex).contains(screenPosition)) {
+        paletteSectionIndex = activePaletteSectionIndex;
+    }
+
+    if (paletteSectionIndex >= 0) {
+        return "Node group  /  " + String(kPaletteSections[(size_t) paletteSectionIndex].title);
     }
 
     String layoutNodeId;
@@ -4190,6 +4442,30 @@ bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& se
 
     NodeGraph candidate = graph;
     return GraphEditor().connect(candidate, first, second).succeeded();
+}
+
+void NodeCanvas::updatePaletteHover(Point<float> screenPosition) {
+    if (activePaletteSectionIndex >= 0
+            && paletteHoverBounds(activePaletteSectionIndex).contains(screenPosition)) {
+        const int groupIndex = paletteGroupIndexAt(screenPosition);
+
+        if (groupIndex >= 0
+                && groupIndex != activePaletteSectionIndex
+                && paletteGroupBounds(groupIndex).contains(screenPosition)) {
+            activePaletteSectionIndex = groupIndex;
+        }
+
+        return;
+    }
+
+    const int groupIndex = paletteGroupIndexAt(screenPosition);
+
+    if (groupIndex >= 0) {
+        activePaletteSectionIndex = groupIndex;
+        return;
+    }
+
+    activePaletteSectionIndex = -1;
 }
 
 Path NodeCanvas::createCablePath(

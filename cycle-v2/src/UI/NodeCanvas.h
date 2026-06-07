@@ -77,6 +77,7 @@ private:
     String editStatusMessage;
     int selectedEdgeIndex { -1 };
     int spliceTargetEdgeIndex { -1 };
+    int activePaletteSectionIndex { -1 };
     PortAddress connectingPort;
     Point<float> connectingPoint;
     Point<float> lastMousePosition;
@@ -189,6 +190,7 @@ private:
     void endTrimeshVertexParameterEdit();
     bool selectTrimeshVertexIndex(int vertexIndex);
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
+    void updatePaletteHover(Point<float> screenPosition);
     Path createCablePath(
             Point<float> source,
             Point<float> dest,

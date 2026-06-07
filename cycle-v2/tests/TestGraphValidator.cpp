@@ -120,6 +120,35 @@ TEST_CASE("Operation nodes reject mixed concrete signal domains", "[cycle-v2][gr
             }));
 }
 
+TEST_CASE("Multiply rejects spectral phase operations", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 320.f, 0.f }));
+    graph.addEdge({ "fft", "phase", "multiply", "left", PortDomain::SpectralPhaseSignal, false });
+
+    const auto issues = GraphValidator().validate(graph);
+
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::DomainMismatch;
+            }));
+}
+
+TEST_CASE("Add accepts spectral phase operations", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", { 320.f, 0.f }));
+    graph.addEdge({ "fft", "phase", "add", "left", PortDomain::SpectralPhaseSignal, false });
+
+    REQUIRE(GraphValidator().isValid(graph));
+}
+
 TEST_CASE("Operation nodes reject mixed resolved source domains", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
