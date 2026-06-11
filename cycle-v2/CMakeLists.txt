@@ -10,6 +10,8 @@ file(GLOB_RECURSE APP_SOURCES
 )
 
 list(APPEND APP_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.h"
 )

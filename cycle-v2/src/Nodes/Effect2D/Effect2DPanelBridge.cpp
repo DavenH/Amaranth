@@ -1,9 +1,17 @@
 #include "Effect2DPanelBridge.h"
 
+#include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Obj/MorphPosition.h>
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/GLPanelRenderer.h>
 #include <UI/Panels/PanelHostContext.h>
+
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
+using namespace gl;
 
 namespace CycleV2 {
 
@@ -14,22 +22,64 @@ constexpr float kWaveshaperPadding = 0.125f;
 constexpr float kIrPadding = 0.0625f;
 
 bool isEffect2DNode(NodeKind kind) {
-    return kind == NodeKind::GuideCurve
+    return kind == NodeKind::Envelope
+        || kind == NodeKind::GuideCurve
         || kind == NodeKind::ImpulseResponse
         || kind == NodeKind::Waveshaper;
 }
+
+class ScopedGLScissor {
+public:
+    ScopedGLScissor(Rectangle<float> bounds, float scaleFactor) {
+        glGetBooleanv(GL_SCISSOR_TEST, &wasEnabled);
+        glGetIntegerv(GL_SCISSOR_BOX, previousBox);
+
+        GLint viewport[4] {};
+        glGetIntegerv(GL_VIEWPORT, viewport);
+
+        const int x = jmax(0, roundToInt(bounds.getX() * scaleFactor));
+        const int y = jmax(0, viewport[3] - roundToInt(bounds.getBottom() * scaleFactor));
+        const int width = jmax(1, roundToInt(bounds.getWidth() * scaleFactor));
+        const int height = jmax(1, roundToInt(bounds.getHeight() * scaleFactor));
+
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(x, y, width, height);
+    }
+
+    ~ScopedGLScissor() {
+        if (wasEnabled != 0) {
+            glEnable(GL_SCISSOR_TEST);
+        } else {
+            glDisable(GL_SCISSOR_TEST);
+        }
+
+        glScissor(previousBox[0], previousBox[1], previousBox[2], previousBox[3]);
+    }
+
+private:
+    GLboolean wasEnabled {};
+    GLint previousBox[4] {};
+};
 
 }
 
 class Effect2DPanelBridge::EffectPanel :
         public Panel2D
     ,   public Interactor2D {
+friend class Effect2DPanelBridge;
+
 public:
-    EffectPanel(SingletonRepo* repo, const String& name, Mesh& meshToEdit) :
+    EffectPanel(
+            SingletonRepo* repo,
+            const String& name,
+            TrimeshPanelEnvironment& panelEnvironment,
+            EnvelopeMesh& meshToEdit) :
             Panel2D         (repo, name, true, true)
         ,   Interactor2D    (repo, name, Dimensions(Vertex::Phase, Vertex::Amp))
         ,   SingletonAccessor(repo, name)
-        ,   rasterizer      (repo, name + "Rasterizer")
+        ,   fxRasterizer    (repo, name + "FXRasterizer")
+        ,   envRasterizer   (repo, nullptr, name + "EnvRasterizer")
+        ,   environment     (panelEnvironment)
         ,   mesh            (meshToEdit) {
         vertPadding = 0;
         paddingLeft = 0;
@@ -43,9 +93,11 @@ public:
         colorA = Color(0.92f, 0.93f, 0.96f, 0.92f);
         colorB = Color(0.92f, 0.93f, 0.96f, 0.92f);
 
-        rasterizer.setDims(dims);
-        rasterizer.setMesh(&mesh);
-        Interactor2D::setRasterizer(&rasterizer);
+        fxRasterizer.setDims(dims);
+        fxRasterizer.setMesh(&mesh);
+        envRasterizer.setDims(dims);
+        envRasterizer.setMesh(&mesh);
+        Interactor2D::setRasterizer(&fxRasterizer);
         interactor = this;
         suspendUndo = true;
 
@@ -67,11 +119,18 @@ public:
 
     void setNodeKind(NodeKind nodeKind) {
         kind = nodeKind;
-        curveIsBipolar = kind != NodeKind::Waveshaper;
+        ignoresTime = kind == NodeKind::Envelope;
+        curveIsBipolar = kind != NodeKind::Waveshaper && kind != NodeKind::Envelope;
         bgPaddingLeft = paddingForKind();
-        bgPaddingRight = kind == NodeKind::ImpulseResponse ? 0.f : paddingForKind();
+        bgPaddingRight = (kind == NodeKind::ImpulseResponse || kind == NodeKind::Envelope) ? 0.f : paddingForKind();
         bgPaddingTop = kind == NodeKind::Waveshaper ? paddingForKind() : 0.f;
         bgPaddingBttm = kind == NodeKind::Waveshaper ? paddingForKind() : 0.f;
+        Rasterization::Rasterizer* rasterizer = kind == NodeKind::Envelope
+                ? static_cast<Rasterization::Rasterizer*>(&envRasterizer)
+                : static_cast<Rasterization::Rasterizer*>(&fxRasterizer);
+        Interactor2D::setRasterizer(rasterizer);
+        vertexProps.isEnvelope = kind == NodeKind::Envelope;
+        vertexProps.sliderApplicable[Vertex::Time] = kind != NodeKind::Envelope;
     }
 
     void init() override {
@@ -82,18 +141,55 @@ public:
     void initWithHost(Component* hostComponent) {
         Panel2D::initWithExternalComponent(hostComponent);
         Interactor2D::init();
-        applyLegacyZoomBounds();
+        updateZoomBounds(true);
     }
 
-    bool isEffectEnabled() const { return true; }
+    bool isEffectEnabled() const { return enabled; }
     bool isMeshEnabled() override { return isEffectEnabled(); }
     Mesh* getMesh() override { return &mesh; }
+
+    void setControlValues(bool isEnabled, float firstValue, float secondValue, float thirdValue, int menuId) {
+        enabled = isEnabled;
+        controlA = firstValue;
+        controlB = secondValue;
+        controlC = thirdValue;
+        selectedMenuId = menuId;
+
+        if (kind == NodeKind::Envelope) {
+            MorphPosition position;
+            position.time = 0.f;
+            position.red = controlA;
+            position.blue = controlB;
+            position.timeDepth = 0.001f;
+            position.redDepth = 0.001f;
+            position.blueDepth = 0.001f;
+            environment.setMorphPosition(position, Vertex::Red);
+            envRasterizer.setMorphPosition(position);
+        }
+    }
 
     bool doCreateVertex() override {
         return addNewCube(0.f, state.currentMouse.x, state.currentMouse.y, 0.f);
     }
 
+    void mouseDoubleClick(const MouseEvent& event) override {
+        updateCurrentMouseFromLocalPosition(event.getPosition());
+        doCreateVertex();
+    }
+
     bool addNewCube(float startTime, float x, float y, float curve) override {
+        if (kind == NodeKind::Envelope) {
+            const bool added = Interactor::addNewCube(startTime, x, y, curve);
+
+            if (added) {
+                refreshRasterizer();
+                state.flags[PanelState::DidMeshChange] = true;
+                Panel2D::repaint();
+            }
+
+            return added;
+        }
+
         ignoreUnused(startTime);
 
         auto* vertex = new Vertex(x, y);
@@ -117,9 +213,90 @@ public:
         return true;
     }
 
+    Array<Vertex*> envelopeVerticesToMove(VertCube* cube, Vertex* startVertex) {
+        if (kind != NodeKind::Envelope || cube == nullptr || startVertex == nullptr) {
+            return Interactor::getVerticesToMove(cube, startVertex);
+        }
+
+        Array<Vertex*> moving;
+        moving.add(startVertex);
+
+        if (Vertex* timePair = cube->getOtherVertexAlong(Vertex::Time, startVertex)) {
+            moving.addIfNotAlreadyThere(timePair);
+        }
+
+        return moving;
+    }
+
+    void doReshapeCurve(const MouseEvent& event) override {
+        if (kind != NodeKind::Envelope) {
+            Interactor2D::doReshapeCurve(event);
+            return;
+        }
+
+        auto snapshot = rasterizerSnapshot();
+
+        if (snapshot.curves().empty()) {
+            return;
+        }
+
+        flag(LoweredRes) = true;
+        const vector<Curve>& curves = snapshot.curves();
+
+        {
+            ScopedLock sl(vertexLock);
+            vector<Vertex*>& selected = getSelected();
+            selected.clear();
+
+            if (state.currentVertex != nullptr) {
+                selected.push_back(state.currentVertex);
+                updateSelectionFrames();
+            }
+        }
+
+        resetFinalSelection();
+
+        Array<Vertex*> movingVerts = envelopeVerticesToMove(state.currentCube, state.currentVertex);
+        const float diffY = (state.currentMouse.y - state.lastMouse.y) / std::sqrt(panel->getZoomPanel()->rect.h);
+        const float diff = diffY / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
+        const int pole = curves[getStateValue(CurrentCurve)].tp.ypole;
+
+        for (auto* vertex : movingVerts) {
+            float& weight = vertex->values[Vertex::Curve];
+            weight += diff * pole;
+            NumberUtils::constrain(weight, 0.f, 1.f);
+        }
+
+        listeners.call(&InteractorListener::selectionChanged, getMesh(), state.selectedFrame);
+        flag(DidMeshChange) |= diff != 0.f;
+    }
+
+    void setMovingVertsFromSelected() override {
+        if (kind != NodeKind::Envelope) {
+            Interactor::setMovingVertsFromSelected();
+            return;
+        }
+
+        state.selectedFrame.clear();
+        vector<Vertex*>& selected = getSelected();
+
+        for (auto* vertex : selected) {
+            VertCube* cube = state.currentCube != nullptr && vertex == state.currentVertex
+                    ? state.currentCube
+                    : closestEnvelopeCubeFor(vertex);
+            addToArray(envelopeVerticesToMove(cube, vertex), state.selectedFrame);
+        }
+    }
+
     void refreshRasterizer() {
-        rasterizer.updateGeometry();
-        rasterizer.updateWaveform();
+        if (kind == NodeKind::Envelope) {
+            envRasterizer.updateWaveform(&mesh, 0.f);
+        } else {
+            fxRasterizer.updateGeometry();
+            fxRasterizer.updateWaveform();
+        }
+
+        updateZoomBounds(false);
     }
 
     void performUpdate(UpdateType updateType) override {
@@ -131,7 +308,9 @@ public:
     }
 
     void preDraw() override {
-        if (kind == NodeKind::GuideCurve) {
+        if (kind == NodeKind::Envelope) {
+            drawEnvelopeBackground();
+        } else if (kind == NodeKind::GuideCurve) {
             drawGuideBackground();
         } else if (kind == NodeKind::ImpulseResponse) {
             drawIrBackground();
@@ -139,7 +318,9 @@ public:
     }
 
     void postCurveDraw() override {
-        if (kind == NodeKind::Waveshaper) {
+        if (kind == NodeKind::Envelope) {
+            drawEnvelopeBounds();
+        } else if (kind == NodeKind::Waveshaper) {
             drawWaveshaperBounds();
         } else if (kind == NodeKind::GuideCurve) {
             drawGuideBounds();
@@ -150,8 +331,127 @@ public:
 
     void drawInterceptLines() override {}
 
+    var automationState() const {
+        auto* root = new DynamicObject();
+
+        if (zoomPanel != nullptr) {
+            auto* zoom = new DynamicObject();
+            zoom->setProperty("x", zoomPanel->rect.x);
+            zoom->setProperty("y", zoomPanel->rect.y);
+            zoom->setProperty("w", zoomPanel->rect.w);
+            zoom->setProperty("h", zoomPanel->rect.h);
+            zoom->setProperty("xMinimum", zoomPanel->rect.xMinimum);
+            zoom->setProperty("xMaximum", zoomPanel->rect.xMaximum);
+            zoom->setProperty("yMinimum", zoomPanel->rect.yMinimum);
+            zoom->setProperty("yMaximum", zoomPanel->rect.yMaximum);
+            root->setProperty("zoom", var(zoom));
+        }
+
+        if (state.currentVertex != nullptr) {
+            auto* vertex = new DynamicObject();
+            vertex->setProperty("x", state.currentVertex->values[Vertex::Phase]);
+            vertex->setProperty("y", state.currentVertex->values[Vertex::Amp]);
+            vertex->setProperty("time", state.currentVertex->values[Vertex::Time]);
+            vertex->setProperty("red", state.currentVertex->values[Vertex::Red]);
+            vertex->setProperty("blue", state.currentVertex->values[Vertex::Blue]);
+            vertex->setProperty("curve", state.currentVertex->values[Vertex::Curve]);
+            root->setProperty("currentVertex", var(vertex));
+        }
+
+        root->setProperty("movingVertexCount", (int) state.selectedFrame.size());
+        root->setProperty("hasCurrentCube", state.currentCube != nullptr);
+        return var(root);
+    }
+
+    std::vector<TrimeshVertexParameter> selectedVertexParameters() const {
+        const Vertex* vertex = state.currentVertex != nullptr
+                ? state.currentVertex
+                : firstEditableVertex();
+
+        if (vertex == nullptr) {
+            return {};
+        }
+
+        if (kind == NodeKind::Envelope) {
+            return {
+                    { "vertex.red", "red", vertex->values[Vertex::Red], 0.f, 1.f },
+                    { "vertex.blue", "blue", vertex->values[Vertex::Blue], 0.f, 1.f },
+                    { "vertex.phase", "phase", vertex->values[Vertex::Phase], 0.f, 1.5f },
+                    { "vertex.amp", "amp", vertex->values[Vertex::Amp], 0.f, 1.f },
+                    { "vertex.curve", "curve", vertex->values[Vertex::Curve], 0.f, 1.f }
+            };
+        }
+
+        return {
+                { "vertex.phase", "phase", vertex->values[Vertex::Phase], 0.f, 1.f },
+                { "vertex.amp", "amp", vertex->values[Vertex::Amp], 0.f, 1.f },
+                { "vertex.curve", "curve", vertex->values[Vertex::Curve], 0.f, 1.f }
+        };
+    }
+
+    void drawCurvesAndSurfaces() override {
+        if (kind == NodeKind::Envelope) {
+            drawEnvelopeCurveAndSections();
+            return;
+        }
+
+        if (kind == NodeKind::Waveshaper) {
+            drawVertexSegments();
+        }
+
+        Panel2D::drawCurvesAndSurfaces();
+
+        if (kind == NodeKind::GuideCurve) {
+            drawGuideCurveOverlay();
+        }
+    }
+
 private:
+    Vertex* firstEditableVertex() const {
+        const auto& vertices = mesh.getVerts();
+        return vertices.empty() ? nullptr : vertices.front();
+    }
+
+    VertCube* closestEnvelopeCubeFor(Vertex* vertex) {
+        if (vertex == nullptr || vertex->owners.size() == 0) {
+            return nullptr;
+        }
+
+        MorphPosition position;
+        position.time = 0.f;
+        position.red = controlA;
+        position.blue = controlB;
+
+        float minDistance = std::numeric_limits<float>::max();
+        VertCube* closest = nullptr;
+
+        for (auto* owner : vertex->owners) {
+            if (owner == nullptr) {
+                continue;
+            }
+
+            owner->getFinalIntercept(reduceData, position);
+
+            if (reduceData.pointOverlaps) {
+                return owner;
+            }
+
+            const float distance = position.distanceTo(owner->getCentroid(true));
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                closest = owner;
+            }
+        }
+
+        return closest;
+    }
+
     float paddingForKind() const {
+        if (kind == NodeKind::Envelope) {
+            return 0.f;
+        }
+
         if (kind == NodeKind::GuideCurve) {
             return kGuidePadding;
         }
@@ -163,16 +463,69 @@ private:
         return kIrPadding;
     }
 
-    void applyLegacyZoomBounds() {
+    void updateZoomBounds(bool resetView) {
         if (zoomPanel == nullptr) {
             return;
         }
 
         const float padding = paddingForKind();
-        zoomPanel->rect.x = 0.5f * padding;
-        zoomPanel->rect.w = kind == NodeKind::ImpulseResponse ? 1.f - padding : 1.f - padding;
-        zoomPanel->rect.y = kind == NodeKind::Waveshaper ? 0.5f * padding : 0.f;
-        zoomPanel->rect.h = kind == NodeKind::Waveshaper ? 1.f - padding : 1.f;
+        const float xMinimum = 0.5f * padding;
+        const float xMaximum = 1.f - 0.5f * padding;
+        const float yMinimum = kind == NodeKind::Waveshaper ? 0.5f * padding : 0.f;
+        const float yMaximum = kind == NodeKind::Waveshaper ? 1.f - 0.5f * padding : 1.f;
+
+        zoomPanel->rect.xMinimum = xMinimum;
+        zoomPanel->rect.xMaximum = xMaximum;
+        zoomPanel->rect.yMinimum = yMinimum;
+        zoomPanel->rect.yMaximum = yMaximum;
+
+        if (resetView) {
+            zoomPanel->rect.x = xMinimum;
+            zoomPanel->rect.w = xMaximum - xMinimum;
+            zoomPanel->rect.y = yMinimum;
+            zoomPanel->rect.h = yMaximum - yMinimum;
+        }
+
+        if (kind == NodeKind::Envelope) {
+            float maxX = 1.f;
+            MorphPosition position;
+
+            for (VertCube* cube : mesh.getCubes()) {
+                if (cube != nullptr) {
+                    maxX = jmax(maxX, mesh.getPositionOfCubeAt(cube, position));
+                }
+            }
+
+            zoomPanel->rect.xMinimum = 0.f;
+            zoomPanel->rect.xMaximum = maxX;
+
+            if (resetView) {
+                zoomPanel->rect.x = 0.f;
+                zoomPanel->rect.w = maxX;
+            }
+        }
+
+        panel->constrainZoom();
+    }
+
+    void drawEnvelopeBackground() {
+        const int right = getWidth();
+        const int bottom = 0;
+        const int top = getHeight();
+        const int releaseStart = sx(envelopeReleaseStart());
+
+        gfx->setCurrentColour(0.5f, 0.71f, 1.0f, 0.13f);
+        gfx->fillRect(0, top, releaseStart, bottom, false);
+        gfx->setCurrentColour(0.6f, 0.45f, 0.25f, 0.16f);
+        gfx->fillRect(releaseStart, top, right, bottom, false);
+    }
+
+    void drawEnvelopeBounds() {
+        gfx->disableSmoothing();
+        gfx->setCurrentLineWidth(1.f);
+        gfx->setCurrentColour(0.82f, 0.84f, 0.88f, 0.38f);
+        gfx->drawRect(0, getHeight(), getWidth(), 0, false);
+        gfx->enableSmoothing();
     }
 
     void drawGuideBackground() {
@@ -193,6 +546,24 @@ private:
         gfx->drawLine(innerLeft, top, innerLeft, bottom, false);
         gfx->drawLine(innerRight, top, innerRight, bottom, false);
         gfx->enableSmoothing();
+
+        const float rectLeft = padding;
+        const float rectRight = 1.f - padding;
+        const float rectSize = 1.f - 2.f * padding;
+
+        gfx->setCurrentColour(0.7f, 0.55f, 0.18f, 0.17f);
+        gfx->fillRect(rectLeft, 0.5f + 0.5f * controlA, rectRight, 0.5f - 0.5f * controlA, true);
+
+        gfx->setCurrentColour(0.7f, 0.08f, 0.5f, 0.17f);
+        gfx->fillRect(rectLeft, 0.5f + 0.5f * controlB, rectRight, 0.5f - 0.5f * controlB, true);
+
+        gfx->setCurrentColour(0.3f, 0.6f, 0.9f, 0.17f);
+        gfx->fillRect(
+                0.5f - 0.5f * rectSize * controlC,
+                0.f,
+                0.5f + 0.5f * rectSize * controlC,
+                1.f,
+                true);
     }
 
     void drawIrBackground() {
@@ -244,6 +615,59 @@ private:
         gfx->enableSmoothing();
     }
 
+    void drawGuideCurveOverlay() {
+        std::vector<Vertex*> vertices = mesh.getVerts();
+
+        if (vertices.size() < 2) {
+            return;
+        }
+
+        std::sort(vertices.begin(), vertices.end(), [](const Vertex* lhs, const Vertex* rhs) {
+            return lhs->values[Vertex::Phase] < rhs->values[Vertex::Phase];
+        });
+
+        gfx->enableSmoothing();
+        gfx->setCurrentLineWidth(1.5f);
+        gfx->setCurrentColour(0.86f, 0.88f, 0.92f, 0.92f);
+
+        for (int i = 1; i < (int) vertices.size(); ++i) {
+            gfx->drawLine(
+                    sx(vertices[(size_t) i - 1]->values[Vertex::Phase]),
+                    sy(vertices[(size_t) i - 1]->values[Vertex::Amp]),
+                    sx(vertices[(size_t) i]->values[Vertex::Phase]),
+                    sy(vertices[(size_t) i]->values[Vertex::Amp]),
+                    true);
+        }
+
+    }
+
+    void drawVertexSegments() {
+        std::vector<Vertex*> vertices = mesh.getVerts();
+
+        if (vertices.size() < 2) {
+            return;
+        }
+
+        std::sort(vertices.begin(), vertices.end(), [](const Vertex* lhs, const Vertex* rhs) {
+            return lhs->values[Vertex::Phase] < rhs->values[Vertex::Phase];
+        });
+
+        gfx->enableSmoothing();
+        gfx->setCurrentLineWidth(1.f);
+        gfx->setCurrentColour(0.82f, 0.84f, 0.88f, 0.28f);
+
+        for (int i = 1; i < (int) vertices.size(); ++i) {
+            gfx->drawLine(
+                    sx(vertices[(size_t) i - 1]->values[Vertex::Phase]),
+                    sy(vertices[(size_t) i - 1]->values[Vertex::Amp]),
+                    sx(vertices[(size_t) i]->values[Vertex::Phase]),
+                    sy(vertices[(size_t) i]->values[Vertex::Amp]),
+                    false);
+        }
+
+        gfx->setCurrentLineWidth(1.f);
+    }
+
     void drawIrBounds() {
         const int innerLeft = sx(kIrPadding);
 
@@ -254,22 +678,171 @@ private:
         gfx->enableSmoothing();
     }
 
-    FXRasterizer rasterizer;
-    Mesh& mesh;
+    float envelopeReleaseStart() const {
+        int loopIndex = -1;
+        int sustainIndex = -1;
+        envRasterizer.getIndices(loopIndex, sustainIndex);
+
+        if (sustainIndex >= 0 && sustainIndex < (int) mesh.getCubes().size()) {
+            return mesh.getPositionOfCubeAt(mesh.getCubes()[(size_t) sustainIndex], MorphPosition());
+        }
+
+        return 0.76f;
+    }
+
+    bool drawEnvelopeCurveAndSections() {
+        auto snapshot = envRasterizer.snapshotView();
+        ScopedLock dataLock(snapshot.lock());
+
+        const vector<Intercept>& icpts = snapshot.intercepts();
+        Buffer<float> waveX = snapshot.waveX();
+        Buffer<float> waveY = snapshot.waveY();
+        const float stopPosition = sx(icpts.empty() ? 1.f : icpts.back().x);
+
+        if (waveX.empty() || waveY.empty() || icpts.empty()) { return false; }
+
+        const int istart = jmax(0, snapshot.zeroIndex() - 4);
+        const int size = waveX.size() - istart;
+
+        if (size <= 1) { return false; }
+
+        prepareBuffers(size, size);
+        xy.copyFrom(waveX.offset(istart), waveY.offset(istart));
+
+        Buffer<float> alpha = cBuffer.withSize(size);
+        VecOps::mul(xy.y, 0.25f, alpha);
+        alpha.abs().subCRev(0.5f).mul(0.75f);
+        applyScale(xy);
+
+        Color sectionColours[] = {
+                Color(0.5f, 0.71f, 1.0f, 0.75f),
+                Color(0.6f, 0.45f, 0.25f, 0.75f),
+                Color(0.5f, 0.2f, 0.25f, 0.75f)
+        };
+
+        const float loopStart = envelopeLoopStart();
+        const float sustain = envelopeReleaseStart();
+        const float changePoints[] = { sx(loopStart), sx(sustain) };
+        const float baseY = sy(0.f);
+        const float baseAlpha = 0.15f;
+
+        vector<ColorPos> positions;
+        positions.reserve((size_t) size + 8);
+
+        int colourIndex = loopStart < 0.f ? 1 : 0;
+        ColorPos curr;
+
+        if (loopStart < 0.f) {
+            sectionColours[1] = sectionColours[0];
+        }
+
+        gfx->setCurrentLineWidth(interactor->mouseFlag(WithinReshapeThresh) ? 2.f : 1.f);
+
+        int i = 0;
+
+        while (i < size - 1 && xy.x[i + 1] < 0.f) {
+            ++i;
+        }
+
+        int changePointIndex = 0;
+
+        while (changePointIndex < numElementsInArray(changePoints)
+                && xy.x[i] > changePoints[changePointIndex]) {
+            ++changePointIndex;
+        }
+
+        colourIndex = jlimit(0, (int) numElementsInArray(sectionColours) - 1, changePointIndex);
+        curr.update(xy.x[i] - 5.f, xy.y[i], sectionColours[(size_t) colourIndex].withAlpha(alpha.front()));
+        positions.push_back(curr);
+
+        for (; i < size; ++i) {
+            const bool isLast = i == size - 1;
+            curr.update(xy.x[i], xy.y[i], sectionColours[(size_t) colourIndex].withAlpha(alpha[i]));
+            positions.push_back(curr);
+
+            for (int j = 0; !isLast && j < numElementsInArray(changePoints); ++j) {
+                const float changePoint = changePoints[j];
+                const float low = jmin(xy.x[i], xy.x[i + 1]);
+                const float high = jmax(xy.x[i], xy.x[i + 1]);
+
+                if (changePoint >= low && changePoint <= high) {
+                    const float xDelta = xy.x[i + 1] - xy.x[i];
+                    const float factor = xDelta == 0.f ? 0.f : (changePoint - xy.x[i]) / xDelta;
+                    const float y = xy.y[i] + (xy.y[i + 1] - xy.y[i]) * factor;
+
+                    if (j < 1) {
+                        curr.update(changePoint, y, sectionColours[(size_t) colourIndex].withAlpha(alpha[i]));
+                        positions.push_back(curr);
+                    }
+
+                    colourIndex = j + 1;
+                    curr.update(changePoint + 0.0001f,
+                            y,
+                            sectionColours[(size_t) colourIndex].withAlpha(alpha[i]));
+                    positions.push_back(curr);
+                }
+            }
+
+            const float stopLow = jmin(xy.x[i], xy.x[jmin(i + 1, size - 1)]);
+            const float stopHigh = jmax(xy.x[i], xy.x[jmin(i + 1, size - 1)]);
+
+            if (!isLast && stopPosition >= stopLow && stopPosition <= stopHigh) {
+                const float xDelta = xy.x[i + 1] - xy.x[i];
+                const float factor = xDelta == 0.f ? 0.f : (stopPosition - xy.x[i]) / xDelta;
+                const float y = xy.y[i] + (xy.y[i + 1] - xy.y[i]) * factor;
+
+                curr.update(stopPosition, y, sectionColours[(size_t) colourIndex].withAlpha(alpha[i]));
+                positions.push_back(curr);
+                break;
+            }
+        }
+
+        if (!positions.empty()) {
+            gfx->fillAndOutlineColoured(positions, baseY, baseAlpha, true, true);
+        }
+
+        gfx->setCurrentLineWidth(1.f);
+        return true;
+    }
+
+    float envelopeLoopStart() const {
+        int loopIndex = -1;
+        int sustainIndex = -1;
+        envRasterizer.getIndices(loopIndex, sustainIndex);
+
+        if (loopIndex >= 0 && loopIndex < (int) mesh.getCubes().size()) {
+            return mesh.getPositionOfCubeAt(mesh.getCubes()[(size_t) loopIndex], MorphPosition());
+        }
+
+        return -1.f;
+    }
+
+    FXRasterizer fxRasterizer;
+    EnvRasterizer envRasterizer;
+    TrimeshPanelEnvironment& environment;
+    EnvelopeMesh& mesh;
     NodeKind kind { NodeKind::Waveshaper };
+    bool enabled { true };
+    float controlA { 0.5f };
+    float controlB { 0.5f };
+    float controlC { 0.5f };
+    int selectedMenuId {};
 };
 
 class Effect2DPanelBridge::PanelHostComponent :
         public Component {
 public:
-    explicit PanelHostComponent(Panel& targetPanel) :
-            panel(targetPanel) {
+    PanelHostComponent(Effect2DPanelBridge& owningBridge, Panel& targetPanel) :
+            owner(owningBridge)
+        ,   panel(targetPanel) {
         setPaintingIsUnclipped(false);
         setInterceptsMouseClicks(true, true);
         setOpaque(false);
     }
 
-    void paint(Graphics&) override {}
+    void paint(Graphics& g) override {
+        owner.paintExpandedSnapshot(g, getLocalBounds().toFloat());
+    }
 
     void mouseEnter(const MouseEvent& event) override {
         const MouseEvent localEvent = currentMouseEvent(event);
@@ -301,6 +874,19 @@ public:
 
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseDown(localEvent);
+        }
+    }
+
+    void mouseDoubleClick(const MouseEvent& event) override {
+        if (!event.mods.isLeftButtonDown()) {
+            return;
+        }
+
+        const MouseEvent localEvent = currentMouseEvent(event);
+        enterIfNeeded(localEvent);
+
+        if (Interactor* interactor = panel.getInteractor().get()) {
+            interactor->mouseDoubleClick(localEvent);
         }
     }
 
@@ -348,11 +934,16 @@ public:
 
 private:
     MouseEvent currentMouseEvent(const MouseEvent& event) const {
-        return localMouseEvent(event, getLocalPoint(nullptr, Desktop::getMousePosition()).toFloat());
+        const Point<float> localPosition = event.eventComponent == this
+                ? event.position
+                : getLocalPoint(event.eventComponent, event.position).toFloat();
+        return localMouseEvent(event, localPosition);
     }
 
     MouseEvent localMouseEvent(const MouseEvent& event, Point<float> localPosition) const {
-        const Point<float> localMouseDown = event.eventComponent != nullptr
+        const Point<float> localMouseDown = event.eventComponent == this
+                ? event.mouseDownPosition
+                : event.eventComponent != nullptr
                 ? getLocalPoint(event.eventComponent, event.mouseDownPosition).toFloat()
                 : localPosition;
 
@@ -398,6 +989,7 @@ private:
         }
     }
 
+    Effect2DPanelBridge& owner;
     Panel& panel;
     bool mouseInside {};
     bool activeLeftButton {};
@@ -407,13 +999,21 @@ Effect2DPanelBridge::Effect2DPanelBridge(NodeKind nodeKind) :
         kind    (nodeKind)
     ,   mesh    ("CycleV2Effect2D") {
     jassert(isEffect2DNode(kind));
-    panel = std::make_unique<EffectPanel>(&environment.getRepo(), "CycleV2Effect2DPanel", mesh);
+    panel = std::make_unique<EffectPanel>(
+            &environment.getRepo(),
+            "CycleV2Effect2DPanel",
+            environment,
+            mesh);
     panel->setNodeKind(kind);
-    initialiseMesh();
+
+    if (kind != NodeKind::Envelope) {
+        initialiseMesh();
+    }
 }
 
 Effect2DPanelBridge::~Effect2DPanelBridge() {
     releaseSharedGlResources();
+    mesh.destroy();
 }
 
 void Effect2DPanelBridge::syncFromNode(const Node& node) {
@@ -446,12 +1046,30 @@ void Effect2DPanelBridge::setPanelHostCallbacks(
     panel->setHostCallbacks(createPanelHostCallbacks());
 }
 
-void Effect2DPanelBridge::renderPanel(Rectangle<float> bounds, float scaleFactor) {
+void Effect2DPanelBridge::setControlValues(
+        bool enabled,
+        float firstValue,
+        float secondValue,
+        float thirdValue,
+        int menuId) {
+    effectEnabled = enabled;
+    firstControlValue = firstValue;
+    secondControlValue = secondValue;
+    thirdControlValue = thirdValue;
+    menuControlId = menuId;
+    applyPanelSettings();
+}
+
+void Effect2DPanelBridge::renderPanel(
+        Rectangle<float> bounds,
+        Rectangle<float> clipBounds,
+        float scaleFactor) {
     if (bounds.isEmpty()) {
         return;
     }
 
     initialiseSharedGlResources();
+    applyPanelSettings();
 
     PanelHostContext context;
     context.bounds = bounds;
@@ -459,7 +1077,155 @@ void Effect2DPanelBridge::renderPanel(Rectangle<float> bounds, float scaleFactor
     context.scaleFactor = scaleFactor;
     context.visible = true;
     context.callbacks = createPanelHostCallbacks();
-    panel->render(context);
+    panel->setHostContext(context);
+    panel->panelResized();
+    panel->refreshRasterizer();
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    ignoreUnused(clipBounds);
+
+    ScopedGLScissor scissor(bounds, scaleFactor);
+    panel->render();
+
+    Image nextImage;
+    bool hasVisibleContent {};
+    captureRenderedPanelImage(bounds, scaleFactor, nextImage, hasVisibleContent);
+
+    {
+        const ScopedLock sl(expandedImageLock);
+        expandedImage = nextImage;
+        expandedImageHasVisibleContent = hasVisibleContent;
+    }
+
+    if (panelHost != nullptr) {
+        auto safeHost = Component::SafePointer<Component>(panelHost.get());
+        auto repaintCallback = panelHostRepaintCallback;
+        MessageManager::callAsync([safeHost, repaintCallback] {
+            if (safeHost != nullptr) {
+                safeHost->repaint();
+            }
+
+            if (repaintCallback != nullptr) {
+                repaintCallback();
+            }
+        });
+    }
+}
+
+void Effect2DPanelBridge::renderPreviewSnapshot(Rectangle<float> bounds, float scaleFactor) {
+    if (bounds.isEmpty()) {
+        return;
+    }
+
+    initialiseSharedGlResources();
+    applyPanelSettings();
+
+    const ZoomRect interactiveZoom = panel->getZoomPanel()->rect;
+
+    PanelHostContext context;
+    context.bounds = bounds;
+    context.clip = bounds;
+    context.scaleFactor = scaleFactor;
+    context.visible = true;
+    context.callbacks = createPanelHostCallbacks();
+    panel->setHostContext(context);
+    panel->panelResized();
+    panel->updateZoomBounds(true);
+    panel->refreshRasterizer();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    ScopedGLScissor scissor(bounds, scaleFactor);
+    panel->render();
+    panel->getZoomPanel()->rect = interactiveZoom;
+
+    Image nextImage;
+    bool hasVisibleContent {};
+    captureRenderedPanelImage(bounds, scaleFactor, nextImage, hasVisibleContent);
+
+    {
+        const ScopedLock sl(previewImageLock);
+        previewImage = nextImage;
+        previewImageHasVisibleContent = hasVisibleContent;
+    }
+}
+
+void Effect2DPanelBridge::captureRenderedPanelImage(
+        Rectangle<float> bounds,
+        float scaleFactor,
+        Image& destination,
+        bool& hasVisibleContent) const {
+    const int width = jmax(1, roundToInt(bounds.getWidth() * scaleFactor));
+    const int height = jmax(1, roundToInt(bounds.getHeight() * scaleFactor));
+    const int sourceX = roundToInt(bounds.getX() * scaleFactor);
+    GLint viewport[4] {};
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    const int sourceY = jmax(0, viewport[3] - roundToInt(bounds.getBottom() * scaleFactor));
+
+    HeapBlock<uint8> pixels(width * height * 4);
+    glFlush();
+    glReadBuffer(GL_BACK);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(sourceX, sourceY, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
+
+    Image nextImage(Image::RGB, width, height, true);
+    Image::BitmapData bitmap(nextImage, Image::BitmapData::writeOnly);
+    bool nextHasVisibleContent = false;
+
+    for (int y = 0; y < height; ++y) {
+        const uint8* srcRow = pixels.get() + (height - 1 - y) * width * 4;
+
+        for (int x = 0; x < width; ++x) {
+            const uint8* src = srcRow + x * 4;
+            bitmap.setPixelColour(x, y, Colour::fromRGB(src[0], src[1], src[2]));
+
+            if ((src[0] + src[1] + src[2]) > 160) {
+                nextHasVisibleContent = true;
+            }
+        }
+    }
+
+    destination = nextImage;
+    hasVisibleContent = nextHasVisibleContent;
+}
+
+bool Effect2DPanelBridge::paintExpandedSnapshot(Graphics& g, Rectangle<float> bounds) const {
+    const ScopedLock sl(expandedImageLock);
+
+    if (!expandedImage.isValid() || !expandedImageHasVisibleContent) {
+        return false;
+    }
+
+    g.saveState();
+    g.reduceClipRegion(bounds.toNearestInt());
+    g.setImageResamplingQuality(Graphics::mediumResamplingQuality);
+    g.drawImage(
+            expandedImage,
+            bounds.getX(),
+            bounds.getY(),
+            bounds.getWidth(),
+            bounds.getHeight(),
+            0,
+            0,
+            expandedImage.getWidth(),
+            expandedImage.getHeight(),
+            false);
+    g.restoreState();
+    return true;
+}
+
+bool Effect2DPanelBridge::paintPreviewSnapshot(Graphics& g, Rectangle<float> bounds) const {
+    const ScopedLock sl(previewImageLock);
+
+    if (!previewImage.isValid() || !previewImageHasVisibleContent) {
+        return false;
+    }
+
+    g.saveState();
+    g.reduceClipRegion(bounds.toNearestInt());
+    g.drawImage(previewImage, bounds);
+    g.restoreState();
+    return true;
 }
 
 void Effect2DPanelBridge::initialiseSharedGlResources() {
@@ -486,16 +1252,92 @@ void Effect2DPanelBridge::releaseSharedGlResources() {
     sharedGlResourcesInitialised = false;
 }
 
+void Effect2DPanelBridge::applyPanelSettings() {
+    if (panel != nullptr) {
+        panel->setControlValues(
+                effectEnabled,
+                firstControlValue,
+                secondControlValue,
+                thirdControlValue,
+                menuControlId);
+    }
+}
+
+int Effect2DPanelBridge::vertexCountForAutomation() const {
+    return mesh.getNumVerts();
+}
+
+var Effect2DPanelBridge::automationState() const {
+    return panel != nullptr ? panel->automationState() : var();
+}
+
+std::vector<Effect2DPanelBridge::PreviewVertex> Effect2DPanelBridge::previewVertices() {
+    std::vector<PreviewVertex> result;
+
+    if (kind == NodeKind::Envelope) {
+        result.reserve((size_t) mesh.getNumCubes());
+        MorphPosition position;
+
+        for (VertCube* cube : mesh.getCubes()) {
+            if (cube == nullptr) {
+                continue;
+            }
+
+            VertCube::ReductionData reduction;
+            cube->getFinalIntercept(reduction, position);
+
+            if (!reduction.pointOverlaps) {
+                continue;
+            }
+
+            result.push_back({
+                    reduction.v.values[Vertex::Phase],
+                    reduction.v.values[Vertex::Amp],
+                    reduction.v.values[Vertex::Curve]
+            });
+        }
+
+        std::sort(result.begin(), result.end(), [](const PreviewVertex& lhs, const PreviewVertex& rhs) {
+            return lhs.x < rhs.x;
+        });
+        return result;
+    }
+
+    result.reserve((size_t) mesh.getNumVerts());
+
+    for (const auto* vertex : mesh.getVerts()) {
+        if (vertex == nullptr) {
+            continue;
+        }
+
+        result.push_back({
+                vertex->values[Vertex::Phase],
+                vertex->values[Vertex::Amp],
+                vertex->values[Vertex::Curve]
+        });
+    }
+
+    std::sort(result.begin(), result.end(), [](const PreviewVertex& lhs, const PreviewVertex& rhs) {
+        return lhs.x < rhs.x;
+    });
+    return result;
+}
+
+std::vector<TrimeshVertexParameter> Effect2DPanelBridge::selectedVertexParameters() const {
+    return panel != nullptr ? panel->selectedVertexParameters() : std::vector<TrimeshVertexParameter>();
+}
+
 void Effect2DPanelBridge::initialisePanelHost() {
     if (panelHostInitialised) {
         return;
     }
 
-    panelHost = std::make_unique<PanelHostComponent>(*panel);
+    panelHost = std::make_unique<PanelHostComponent>(*this, *panel);
     panel->initWithHost(panelHost.get());
     panelHost->removeMouseListener(panel.get());
     panel->stopTimer();
     panelHostInitialised = true;
+    initialiseMesh();
 }
 
 void Effect2DPanelBridge::initialiseMesh() {
@@ -505,6 +1347,8 @@ void Effect2DPanelBridge::initialiseMesh() {
 
     if (kind == NodeKind::GuideCurve) {
         addVertex(kGuidePadding, 0.5f, 1.f);
+        addVertex(0.34f, 0.64f, 0.4f);
+        addVertex(0.62f, 0.36f, 0.4f);
         addVertex(1.f - kGuidePadding, 0.5f, 1.f);
     } else if (kind == NodeKind::ImpulseResponse) {
         addVertex(kIrPadding * 0.5f, 0.5f);
@@ -522,12 +1366,50 @@ void Effect2DPanelBridge::initialiseMesh() {
         addVertex(kWaveshaperPadding, kWaveshaperPadding, 1.f);
         addVertex(1.f - kWaveshaperPadding, 1.f - kWaveshaperPadding, 1.f);
         addVertex(1.f - kWaveshaperPadding * 0.5f, 1.f - kWaveshaperPadding * 0.5f, 1.f);
+    } else if (kind == NodeKind::Envelope) {
+        addVertex(0.f, 0.f, 1.f);
+        addVertex(0.05f, 1.f, 0.5f);
+        addVertex(0.7f, 0.8f, 0.3f);
+        addVertex(0.999f, 0.8f, 1.f);
+        mesh.setSustainToLast();
+        addVertex(1.075f, 0.6f, -1.f);
+        addVertex(1.15f, 0.f, -1.f);
+        addVertex(1.25f, 0.f, -1.f);
     }
 
     panel->refreshRasterizer();
+
+    if (kind == NodeKind::Envelope) {
+        panel->updateZoomBounds(true);
+    }
 }
 
 void Effect2DPanelBridge::addVertex(float x, float y, float curve) {
+    if (kind == NodeKind::Envelope) {
+        auto* cube = new VertCube(&mesh);
+        MorphPosition position;
+        position.time = 0.f;
+        position.timeDepth = 0.001f;
+        position.red = 0.f;
+        position.redDepth = 0.001f;
+        position.blue = 0.f;
+        position.blueDepth = 0.001f;
+        cube->initVerts(position);
+
+        for (int i = 0; i < (int) VertCube::numVerts; ++i) {
+            Vertex* vertex = cube->getVertex(i);
+            vertex->values[Vertex::Phase] = x;
+            vertex->values[Vertex::Amp] = y;
+
+            if (curve >= 0.f) {
+                vertex->values[Vertex::Curve] = curve;
+            }
+        }
+
+        mesh.addCube(cube);
+        return;
+    }
+
     auto* vertex = new Vertex(x, y);
     vertex->values[Vertex::Curve] = curve;
 

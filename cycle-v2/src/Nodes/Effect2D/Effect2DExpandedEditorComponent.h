@@ -22,11 +22,15 @@ public:
     void setCallbacks(Callbacks nextCallbacks);
     void setNode(const Node& nextNode);
     void renderOpenGL(float scaleFactor);
+    Rectangle<float> panelBoundsForAutomation() const;
+    var automationState() const;
 
     void paint(Graphics& g) override;
     void resized() override;
     void mouseMove(const MouseEvent& event) override;
     void mouseDown(const MouseEvent& event) override;
+    void mouseDrag(const MouseEvent& event) override;
+    void mouseUp(const MouseEvent& event) override;
 
 private:
     struct ControlSet {
@@ -48,19 +52,21 @@ private:
     Rectangle<float> contentBounds() const;
     Rectangle<float> panelBounds() const;
     Rectangle<int> controlBounds() const;
-    String subtitleForNode() const;
     void configureControls();
     void styleSlider(Slider& slider, Label& label, const String& text);
     void styleButton(Button& button, const String& text);
     void styleMenu(const StringArray& items, const String& selected, const String& labelText);
     void updatePanelHost();
     void updateControlLayout();
+    bool updateEnvelopeMorphFromPoint(juce::Point<float> position);
+    void pushControlValues();
 
     Effect2DWidget& widget;
     Callbacks callbacks;
     Node node;
     ControlSet controls;
     NodeKind configuredKind { NodeKind::GenericProcessor };
+    bool draggingEnvelopeMorphPlane {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Effect2DExpandedEditorComponent)
 };

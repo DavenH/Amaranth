@@ -20,8 +20,20 @@ public:
     void setExpandedPanelCallbacks(
             std::function<void()> repaintCallback,
             std::function<void(const MouseCursor&)> cursorCallback);
-    void renderExpandedPanelOpenGL(const Node& node, Rectangle<float> bounds, float scaleFactor);
+    void setControlValues(bool enabled, float firstValue, float secondValue, float thirdValue, int menuId);
+    void renderExpandedPanelOpenGL(
+            const Node& node,
+            Rectangle<float> bounds,
+            Rectangle<float> clipBounds,
+            float scaleFactor);
+    void renderPreviewSnapshotOpenGL(const Node& node, Rectangle<float> bounds, float scaleFactor);
+    bool paintExpandedSnapshot(Graphics& g, Rectangle<float> bounds) const;
+    bool paintPreviewSnapshot(Graphics& g, Rectangle<float> bounds) const;
     void releaseSharedGlResources();
+    int vertexCountForAutomation() const;
+    var automationState() const;
+    std::vector<Effect2DPanelBridge::PreviewVertex> previewVertices();
+    std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
 
 private:
     NodeKind kind;

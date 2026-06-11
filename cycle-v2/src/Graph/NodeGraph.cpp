@@ -50,12 +50,12 @@ NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
         case NodeKind::VoiceContext:                 return { 0.f, 0.f };
         case NodeKind::Fft:                          return { 0.f, 0.f };
         case NodeKind::Ifft:                         return { 0.f, 0.f };
-        case NodeKind::Envelope:                     return { 220.f, 85.f };
+        case NodeKind::Envelope:                     return { 220.f, 92.f };
         case NodeKind::Add:                          return { 58.f, 44.f };
         case NodeKind::Multiply:                     return { 58.f, 44.f };
         case NodeKind::GuideCurve:                   return { 220.f, 100.f };
         case NodeKind::ImpulseResponse:              return { 230.f, 92.f };
-        case NodeKind::Waveshaper:                   return { 210.f, 100.f };
+        case NodeKind::Waveshaper:                   return { 154.f, 128.f };
         case NodeKind::Reverb:                       return { 0.f, 0.f };
         case NodeKind::Delay:                        return { 0.f, 0.f };
         case NodeKind::StereoSplit:                  return { 0.f, 0.f };

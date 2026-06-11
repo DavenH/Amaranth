@@ -21,6 +21,7 @@ TrimeshPanelEnvironment::TrimeshPanelEnvironment() :
 
     auto& constants = repo.get<AppConstants>("AppConstants");
     constants.setConstant(Constants::FontFace, String("Verdana"));
+    constants.setConstant(Constants::MinLineLength, 0.001);
 
     repo.get<MiscGraphics>("MiscGraphics").init();
 
