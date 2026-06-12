@@ -37,6 +37,8 @@ public:
             std::function<void()> repaintCallback,
             std::function<void(const MouseCursor&)> cursorCallback);
     void setControlValues(bool enabled, float firstValue, float secondValue, float thirdValue, int menuId);
+    void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
+    void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
     void renderPanel(Rectangle<float> bounds, Rectangle<float> clipBounds, float scaleFactor);
     void renderPreviewSnapshot(Rectangle<float> bounds, float scaleFactor);
     bool paintExpandedSnapshot(Graphics& g, Rectangle<float> bounds) const;
@@ -47,6 +49,9 @@ public:
     var automationState() const;
     std::vector<PreviewVertex> previewVertices();
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
+    bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
+    bool selectedEnvelopeMarkerState(bool loopMarker) const;
+    void toggleSelectedEnvelopeMarker(bool loopMarker);
 
 private:
     class EffectPanel;
@@ -86,6 +91,9 @@ private:
     float secondControlValue { 0.5f };
     float thirdControlValue { 0.5f };
     int menuControlId {};
+    bool envelopeLogarithmicValue {};
+    bool envelopeRedLinked { true };
+    bool envelopeBlueLinked { true };
 };
 
 }

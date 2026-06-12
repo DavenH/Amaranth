@@ -6,6 +6,7 @@
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/GLPanelRenderer.h>
 #include <UI/Panels/PanelHostContext.h>
+#include <Util/Arithmetic.h>
 
 #include <algorithm>
 #include <cmath>
@@ -131,6 +132,9 @@ public:
         Interactor2D::setRasterizer(rasterizer);
         vertexProps.isEnvelope = kind == NodeKind::Envelope;
         vertexProps.sliderApplicable[Vertex::Time] = kind != NodeKind::Envelope;
+        vertexLimits[Vertex::Phase] = kind == NodeKind::Envelope
+                ? Range<float>(0.f, 2.f)
+                : Range<float>(0.f, 1.f);
     }
 
     void init() override {
@@ -142,11 +146,23 @@ public:
         Panel2D::initWithExternalComponent(hostComponent);
         Interactor2D::init();
         updateZoomBounds(true);
+        updateEnvelopeBackgroundGrid();
     }
 
     bool isEffectEnabled() const { return enabled; }
     bool isMeshEnabled() override { return isEffectEnabled(); }
     Mesh* getMesh() override { return &mesh; }
+
+    void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) {
+        envelopeLogarithmic = shouldUseLogarithmicScale;
+        updateEnvelopeBackgroundGrid();
+        Panel2D::repaint();
+    }
+
+    void setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
+        envelopeRedLinked = redLinked;
+        envelopeBlueLinked = blueLinked;
+    }
 
     void setControlValues(bool isEnabled, float firstValue, float secondValue, float thirdValue, int menuId) {
         enabled = isEnabled;
@@ -179,15 +195,8 @@ public:
 
     bool addNewCube(float startTime, float x, float y, float curve) override {
         if (kind == NodeKind::Envelope) {
-            const bool added = Interactor::addNewCube(startTime, x, y, curve);
-
-            if (added) {
-                refreshRasterizer();
-                state.flags[PanelState::DidMeshChange] = true;
-                Panel2D::repaint();
-            }
-
-            return added;
+            ignoreUnused(startTime);
+            return addEnvelopeCubeAt(x, y, curve);
         }
 
         ignoreUnused(startTime);
@@ -213,6 +222,29 @@ public:
         return true;
     }
 
+    void transferLineProperties(VertCube const* from, VertCube* to1, VertCube* to2) override {
+        Interactor::transferLineProperties(from, to1, to2);
+
+        if (kind != NodeKind::Envelope || from == nullptr) {
+            return;
+        }
+
+        auto transferMarker = [from, to1, to2](std::set<VertCube*>& markers) {
+            auto* source = const_cast<VertCube*>(from);
+
+            if (markers.find(source) == markers.end()) {
+                return;
+            }
+
+            markers.erase(source);
+            markers.insert(to1);
+            markers.insert(to2);
+        };
+
+        transferMarker(mesh.loopCubes);
+        transferMarker(mesh.sustainCubes);
+    }
+
     Array<Vertex*> envelopeVerticesToMove(VertCube* cube, Vertex* startVertex) {
         if (kind != NodeKind::Envelope || cube == nullptr || startVertex == nullptr) {
             return Interactor::getVerticesToMove(cube, startVertex);
@@ -220,9 +252,16 @@ public:
 
         Array<Vertex*> moving;
         moving.add(startVertex);
-
         if (Vertex* timePair = cube->getOtherVertexAlong(Vertex::Time, startVertex)) {
             moving.addIfNotAlreadyThere(timePair);
+        }
+
+        if (envelopeRedLinked && envelopeBlueLinked) {
+            moving = cube->toArray();
+        } else if (envelopeRedLinked) {
+            moving = cube->getFace(Vertex::Blue, startVertex).toArray();
+        } else if (envelopeBlueLinked) {
+            moving = cube->getFace(Vertex::Red, startVertex).toArray();
         }
 
         return moving;
@@ -291,6 +330,7 @@ public:
     void refreshRasterizer() {
         if (kind == NodeKind::Envelope) {
             envRasterizer.updateWaveform(&mesh, 0.f);
+            validateEnvelopeMarkers();
         } else {
             fxRasterizer.updateGeometry();
             fxRasterizer.updateWaveform();
@@ -389,27 +429,199 @@ public:
         };
     }
 
+    bool setSelectedVertexParameter(const String& parameterId, float normalizedValue) {
+        Vertex* vertex = state.currentVertex != nullptr
+                ? state.currentVertex
+                : firstEditableVertex();
+
+        if (vertex == nullptr) {
+            return false;
+        }
+
+        const float value = parameterValueFromNormalized(parameterId, normalizedValue);
+        const int dimension = vertexDimensionForParameter(parameterId);
+
+        if (dimension < 0) {
+            return false;
+        }
+
+        Array<Vertex*> vertices;
+
+        if (kind == NodeKind::Envelope
+                && (dimension == Vertex::Phase || dimension == Vertex::Amp || dimension == Vertex::Curve)) {
+            VertCube* cube = selectedEnvelopeCube();
+            if (cube == nullptr) {
+                cube = closestEnvelopeCubeFor(vertex);
+            }
+
+            vertices = envelopeVerticesToMove(cube, vertex);
+            if (vertices.isEmpty() && cube != nullptr) {
+                for (int i = 0; i < (int) VertCube::numVerts; ++i) {
+                    vertices.addIfNotAlreadyThere(cube->getVertex(i));
+                }
+            }
+        } else {
+            vertices.add(vertex);
+        }
+
+        for (Vertex* movingVertex : vertices) {
+            if (movingVertex != nullptr) {
+                movingVertex->values[dimension] = value;
+            }
+        }
+
+        state.currentVertex = vertex;
+        refreshRasterizer();
+        state.flags[PanelState::DidMeshChange] = true;
+        listeners.call(&InteractorListener::selectionChanged, getMesh(), state.selectedFrame);
+        Panel2D::repaint();
+        return true;
+    }
+
+    VertCube* selectedEnvelopeCube() const {
+        if (kind != NodeKind::Envelope) {
+            return nullptr;
+        }
+
+        if (state.currentVertex == nullptr) {
+            return state.currentCube;
+        }
+
+        auto snapshot = const_cast<EnvRasterizer&>(envRasterizer).snapshotView();
+        ScopedLock dataLock(snapshot.lock());
+        VertCube* cube = nullptr;
+
+        for (const auto& intercept : snapshot.intercepts()) {
+            if (intercept.cube == nullptr) {
+                continue;
+            }
+
+            for (int i = 0; i < state.currentVertex->getNumOwners(); ++i) {
+                if (intercept.cube == state.currentVertex->owners[i]) {
+                    cube = intercept.cube;
+                }
+            }
+        }
+
+        return cube != nullptr ? cube : state.currentCube;
+    }
+
+    bool selectedEnvelopeMarkerState(bool loopMarker) const {
+        VertCube* cube = selectedEnvelopeCube();
+
+        if (cube == nullptr) {
+            return false;
+        }
+
+        const auto& markers = loopMarker ? mesh.loopCubes : mesh.sustainCubes;
+        return markers.find(cube) != markers.end();
+    }
+
+    void toggleSelectedEnvelopeMarker(bool loopMarker) {
+        VertCube* cube = selectedEnvelopeCube();
+
+        if (cube == nullptr) {
+            return;
+        }
+
+        auto& markers = loopMarker ? mesh.loopCubes : mesh.sustainCubes;
+        const bool wasSet = markers.find(cube) != markers.end();
+
+        markers.clear();
+
+        if (!wasSet) {
+            markers.insert(cube);
+        }
+
+        envRasterizer.evaluateLoopSustainIndices();
+        synchronizeEnvelopeLoopSeam();
+        refreshRasterizer();
+        state.flags[PanelState::DidMeshChange] = true;
+        Panel2D::repaint();
+    }
+
     void drawCurvesAndSurfaces() override {
         if (kind == NodeKind::Envelope) {
             drawEnvelopeCurveAndSections();
             return;
         }
 
-        if (kind == NodeKind::Waveshaper) {
+        if (kind == NodeKind::Waveshaper
+                || kind == NodeKind::GuideCurve
+                || kind == NodeKind::ImpulseResponse) {
             drawVertexSegments();
         }
 
         Panel2D::drawCurvesAndSurfaces();
-
-        if (kind == NodeKind::GuideCurve) {
-            drawGuideCurveOverlay();
-        }
     }
 
 private:
+    bool addEnvelopeCubeAt(float x, float y, float curve) {
+        ScopedLock lock(vertexLock);
+
+        MorphPosition position;
+        position.time = 0.f;
+        position.timeDepth = 0.001f;
+        position.red = 0.f;
+        position.redDepth = 1.f;
+        position.blue = 0.f;
+        position.blueDepth = 1.f;
+
+        auto* cube = new VertCube(&mesh);
+        cube->initVerts(position);
+
+        for (int i = 0; i < (int) VertCube::numVerts; ++i) {
+            Vertex* vertex = cube->getVertex(i);
+            vertex->values[Vertex::Phase] = x;
+            vertex->values[Vertex::Amp] = y;
+
+            if (curve >= 0.f) {
+                vertex->values[Vertex::Curve] = curve;
+            }
+        }
+
+        mesh.addCube(cube);
+        state.currentCube = cube;
+        state.currentVertex = cube->getVertex(0);
+
+        vector<Vertex*>& selected = getSelected();
+        selected.clear();
+        selected.push_back(state.currentVertex);
+        resetFinalSelection();
+        updateSelectionFrames();
+
+        refreshRasterizer();
+        state.flags[PanelState::DidMeshChange] = true;
+        Panel2D::repaint();
+        return true;
+    }
+
     Vertex* firstEditableVertex() const {
         const auto& vertices = mesh.getVerts();
         return vertices.empty() ? nullptr : vertices.front();
+    }
+
+    static int vertexDimensionForParameter(const String& parameterId) {
+        const String field = parameterId.fromLastOccurrenceOf(".", false, false);
+
+        if (field == "time") { return Vertex::Time; }
+        if (field == "red") { return Vertex::Red; }
+        if (field == "blue") { return Vertex::Blue; }
+        if (field == "phase") { return Vertex::Phase; }
+        if (field == "amp") { return Vertex::Amp; }
+        if (field == "curve") { return Vertex::Curve; }
+
+        return -1;
+    }
+
+    float parameterValueFromNormalized(const String& parameterId, float normalizedValue) const {
+        const float normalized = jlimit(0.f, 1.f, normalizedValue);
+
+        if (kind == NodeKind::Envelope && parameterId.endsWithIgnoreCase(".phase")) {
+            return normalized * 1.5f;
+        }
+
+        return normalized;
     }
 
     VertCube* closestEnvelopeCubeFor(Vertex* vertex) {
@@ -487,7 +699,7 @@ private:
         }
 
         if (kind == NodeKind::Envelope) {
-            float maxX = 1.f;
+            float maxX = kind == NodeKind::Envelope ? 1.5f : 1.f;
             MorphPosition position;
 
             for (VertCube* cube : mesh.getCubes()) {
@@ -506,6 +718,77 @@ private:
         }
 
         panel->constrainZoom();
+        updateEnvelopeBackgroundGrid();
+    }
+
+    void updateEnvelopeBackgroundGrid() {
+        if (kind != NodeKind::Envelope) {
+            return;
+        }
+
+        if (zoomPanel == nullptr) {
+            return;
+        }
+
+        if (envelopeLogarithmic) {
+            Panel::updateBackground(false);
+            horzMinorLines.resize(16);
+
+            float level = 1.f;
+            for (int i = 0; i < 16; ++i) {
+                level *= 0.5f;
+                horzMinorLines[i] = Arithmetic::logMapping(30.f, level);
+            }
+            horzMajorLines.resize(0);
+            triggerPendingScaleUpdate();
+        } else {
+            Panel::updateBackground(false);
+        }
+    }
+
+    void validateEnvelopeMarkers() {
+        std::set<VertCube*> meshCubes;
+        for (VertCube* cube : mesh.getCubes()) {
+            if (cube != nullptr) {
+                meshCubes.insert(cube);
+            }
+        }
+
+        auto removeMissingCubes = [&meshCubes](std::set<VertCube*>& markers) {
+            for (auto iter = markers.begin(); iter != markers.end();) {
+                if (meshCubes.find(*iter) == meshCubes.end()) {
+                    iter = markers.erase(iter);
+                } else {
+                    ++iter;
+                }
+            }
+        };
+
+        removeMissingCubes(mesh.loopCubes);
+        removeMissingCubes(mesh.sustainCubes);
+
+        envRasterizer.evaluateLoopSustainIndices();
+
+        int loopIdx = -1;
+        int sustIdx = -1;
+        envRasterizer.getIndices(loopIdx, sustIdx);
+
+        if (sustIdx >= 0) {
+            auto snapshot = envRasterizer.snapshotView();
+            ScopedLock dataLock(snapshot.lock());
+            const auto& intercepts = snapshot.intercepts();
+
+            for (int i = 0; i < (int) intercepts.size(); ++i) {
+                VertCube* cube = intercepts[(size_t) i].cube;
+                if (cube != nullptr
+                        && mesh.loopCubes.find(cube) != mesh.loopCubes.end()
+                        && i > sustIdx - EnvRasterizer::loopMinSizeIcpts) {
+                    mesh.loopCubes.erase(cube);
+                }
+            }
+        }
+
+        envRasterizer.evaluateLoopSustainIndices();
     }
 
     void drawEnvelopeBackground() {
@@ -521,10 +804,18 @@ private:
     }
 
     void drawEnvelopeBounds() {
+        const int left = 1;
+        const int right = getWidth() - 1;
+        const int bottom = 1;
+        const int top = getHeight() - 1;
+
         gfx->disableSmoothing();
         gfx->setCurrentLineWidth(1.f);
         gfx->setCurrentColour(0.82f, 0.84f, 0.88f, 0.38f);
-        gfx->drawRect(0, getHeight(), getWidth(), 0, false);
+        gfx->drawLine(left, top, right, top, false);
+        gfx->drawLine(left, bottom, right, bottom, false);
+        gfx->drawLine(left, top, left, bottom, false);
+        gfx->drawLine(right, top, right, bottom, false);
         gfx->enableSmoothing();
     }
 
@@ -611,34 +902,11 @@ private:
         gfx->disableSmoothing();
         gfx->setCurrentLineWidth(1.f);
         gfx->setCurrentColour(0.82f, 0.84f, 0.88f, 0.42f);
-        gfx->drawRect(innerLeft, getHeight(), innerRight, 0, false);
+        gfx->drawLine(innerLeft, getHeight() - 1, innerRight, getHeight() - 1, false);
+        gfx->drawLine(innerLeft, 1, innerRight, 1, false);
+        gfx->drawLine(innerLeft, getHeight() - 1, innerLeft, 1, false);
+        gfx->drawLine(innerRight, getHeight() - 1, innerRight, 1, false);
         gfx->enableSmoothing();
-    }
-
-    void drawGuideCurveOverlay() {
-        std::vector<Vertex*> vertices = mesh.getVerts();
-
-        if (vertices.size() < 2) {
-            return;
-        }
-
-        std::sort(vertices.begin(), vertices.end(), [](const Vertex* lhs, const Vertex* rhs) {
-            return lhs->values[Vertex::Phase] < rhs->values[Vertex::Phase];
-        });
-
-        gfx->enableSmoothing();
-        gfx->setCurrentLineWidth(1.5f);
-        gfx->setCurrentColour(0.86f, 0.88f, 0.92f, 0.92f);
-
-        for (int i = 1; i < (int) vertices.size(); ++i) {
-            gfx->drawLine(
-                    sx(vertices[(size_t) i - 1]->values[Vertex::Phase]),
-                    sy(vertices[(size_t) i - 1]->values[Vertex::Amp]),
-                    sx(vertices[(size_t) i]->values[Vertex::Phase]),
-                    sy(vertices[(size_t) i]->values[Vertex::Amp]),
-                    true);
-        }
-
     }
 
     void drawVertexSegments() {
@@ -654,7 +922,8 @@ private:
 
         gfx->enableSmoothing();
         gfx->setCurrentLineWidth(1.f);
-        gfx->setCurrentColour(0.82f, 0.84f, 0.88f, 0.28f);
+        const float alpha = kind == NodeKind::Waveshaper ? 0.16f : 0.24f;
+        gfx->setCurrentColour(0.82f, 0.84f, 0.88f, alpha);
 
         for (int i = 1; i < (int) vertices.size(); ++i) {
             gfx->drawLine(
@@ -670,11 +939,17 @@ private:
 
     void drawIrBounds() {
         const int innerLeft = sx(kIrPadding);
+        const int right = getWidth() - 1;
+        const int bottom = 1;
+        const int top = getHeight() - 1;
 
         gfx->disableSmoothing();
         gfx->setCurrentLineWidth(1.f);
         gfx->setCurrentColour(0.82f, 0.84f, 0.88f, 0.42f);
-        gfx->drawRect(innerLeft, getHeight(), getWidth(), 0, false);
+        gfx->drawLine(innerLeft, top, right, top, false);
+        gfx->drawLine(innerLeft, bottom, right, bottom, false);
+        gfx->drawLine(innerLeft, top, innerLeft, bottom, false);
+        gfx->drawLine(right, top, right, bottom, false);
         gfx->enableSmoothing();
     }
 
@@ -682,9 +957,12 @@ private:
         int loopIndex = -1;
         int sustainIndex = -1;
         envRasterizer.getIndices(loopIndex, sustainIndex);
+        auto snapshot = const_cast<EnvRasterizer&>(envRasterizer).snapshotView();
+        ScopedLock dataLock(snapshot.lock());
+        const auto& intercepts = snapshot.intercepts();
 
-        if (sustainIndex >= 0 && sustainIndex < (int) mesh.getCubes().size()) {
-            return mesh.getPositionOfCubeAt(mesh.getCubes()[(size_t) sustainIndex], MorphPosition());
+        if (sustainIndex >= 0 && sustainIndex < (int) intercepts.size() && intercepts[(size_t) sustainIndex].cube != nullptr) {
+            return intercepts[(size_t) sustainIndex].x;
         }
 
         return 0.76f;
@@ -809,12 +1087,58 @@ private:
         int loopIndex = -1;
         int sustainIndex = -1;
         envRasterizer.getIndices(loopIndex, sustainIndex);
+        auto snapshot = const_cast<EnvRasterizer&>(envRasterizer).snapshotView();
+        ScopedLock dataLock(snapshot.lock());
+        const auto& intercepts = snapshot.intercepts();
 
-        if (loopIndex >= 0 && loopIndex < (int) mesh.getCubes().size()) {
-            return mesh.getPositionOfCubeAt(mesh.getCubes()[(size_t) loopIndex], MorphPosition());
+        if (loopIndex >= 0 && loopIndex < (int) intercepts.size() && intercepts[(size_t) loopIndex].cube != nullptr) {
+            return intercepts[(size_t) loopIndex].x;
         }
 
         return -1.f;
+    }
+
+    bool synchronizeEnvelopeLoopSeam() {
+        int loopIdx = -1;
+        int sustIdx = -1;
+        envRasterizer.getIndices(loopIdx, sustIdx);
+
+        auto snapshot = envRasterizer.snapshotView();
+        ScopedLock dataLock(snapshot.lock());
+        const auto& intercepts = snapshot.intercepts();
+
+        VertCube* loopCube = loopIdx >= 0 && loopIdx < (int) intercepts.size()
+                ? intercepts[(size_t) loopIdx].cube
+                : nullptr;
+        VertCube* sustainCube = sustIdx >= 0 && sustIdx < (int) intercepts.size()
+                ? intercepts[(size_t) sustIdx].cube
+                : nullptr;
+
+        if (loopCube != nullptr && sustainCube != nullptr) {
+            for (int i = 0; i < (int) VertCube::numVerts; ++i) {
+                sustainCube->getVertex(i)->values[Vertex::Amp] = loopCube->getVertex(i)->values[Vertex::Amp];
+
+                if (sustainCube->getCompGuideCurve() < 0) {
+                    sustainCube->getVertex(i)->setMaxSharpness();
+                }
+
+                if (loopCube->getCompGuideCurve() < 0) {
+                    loopCube->getVertex(i)->setMaxSharpness();
+                }
+            }
+
+            return true;
+        }
+
+        if (sustainCube != nullptr && sustainCube->guideCurveAt(Vertex::Time) < 0) {
+            for (int i = 0; i < (int) VertCube::numVerts; ++i) {
+                sustainCube->getVertex(i)->setMaxSharpness();
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     FXRasterizer fxRasterizer;
@@ -827,6 +1151,9 @@ private:
     float controlB { 0.5f };
     float controlC { 0.5f };
     int selectedMenuId {};
+    bool envelopeLogarithmic {};
+    bool envelopeRedLinked { true };
+    bool envelopeBlueLinked { true };
 };
 
 class Effect2DPanelBridge::PanelHostComponent :
@@ -1060,6 +1387,23 @@ void Effect2DPanelBridge::setControlValues(
     applyPanelSettings();
 }
 
+void Effect2DPanelBridge::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) {
+    envelopeLogarithmicValue = shouldUseLogarithmicScale;
+
+    if (panel != nullptr) {
+        panel->setEnvelopeLogarithmic(shouldUseLogarithmicScale);
+    }
+}
+
+void Effect2DPanelBridge::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
+    envelopeRedLinked = redLinked;
+    envelopeBlueLinked = blueLinked;
+
+    if (panel != nullptr) {
+        panel->setEnvelopeAxisLinks(redLinked, blueLinked);
+    }
+}
+
 void Effect2DPanelBridge::renderPanel(
         Rectangle<float> bounds,
         Rectangle<float> clipBounds,
@@ -1260,6 +1604,8 @@ void Effect2DPanelBridge::applyPanelSettings() {
                 secondControlValue,
                 thirdControlValue,
                 menuControlId);
+        panel->setEnvelopeLogarithmic(envelopeLogarithmicValue);
+        panel->setEnvelopeAxisLinks(envelopeRedLinked, envelopeBlueLinked);
     }
 }
 
@@ -1327,6 +1673,22 @@ std::vector<TrimeshVertexParameter> Effect2DPanelBridge::selectedVertexParameter
     return panel != nullptr ? panel->selectedVertexParameters() : std::vector<TrimeshVertexParameter>();
 }
 
+bool Effect2DPanelBridge::setSelectedVertexParameter(const String& parameterId, float normalizedValue) {
+    return panel != nullptr && panel->setSelectedVertexParameter(parameterId, normalizedValue);
+}
+
+bool Effect2DPanelBridge::selectedEnvelopeMarkerState(bool loopMarker) const {
+    return panel != nullptr && panel->selectedEnvelopeMarkerState(loopMarker);
+}
+
+void Effect2DPanelBridge::toggleSelectedEnvelopeMarker(bool loopMarker) {
+    if (panel == nullptr) {
+        return;
+    }
+
+    panel->toggleSelectedEnvelopeMarker(loopMarker);
+}
+
 void Effect2DPanelBridge::initialisePanelHost() {
     if (panelHostInitialised) {
         return;
@@ -1391,9 +1753,9 @@ void Effect2DPanelBridge::addVertex(float x, float y, float curve) {
         position.time = 0.f;
         position.timeDepth = 0.001f;
         position.red = 0.f;
-        position.redDepth = 0.001f;
+        position.redDepth = 1.f;
         position.blue = 0.f;
-        position.blueDepth = 0.001f;
+        position.blueDepth = 1.f;
         cube->initVerts(position);
 
         for (int i = 0; i < (int) VertCube::numVerts; ++i) {

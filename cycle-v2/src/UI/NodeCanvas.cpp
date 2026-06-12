@@ -863,14 +863,14 @@ Rectangle<float> expandedEditorBoundsForNode(Rectangle<float> componentBounds, c
             width = 840.f;
             height = 620.f;
         } else if (node->kind == NodeKind::ImpulseResponse) {
-            width = 840.f;
+            width = 1050.f;
             height = 470.f;
         } else if (node->kind == NodeKind::GuideCurve) {
             width = 700.f;
             height = 380.f;
         } else if (node->kind == NodeKind::Waveshaper) {
-            width = 680.f;
-            height = 460.f;
+            width = 540.f;
+            height = 360.f;
         }
 
         width = jmin(available.getWidth(), width);
@@ -3017,9 +3017,6 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
         g.fillRoundedRectangle(panel, 8.f);
     }
 
-    g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(isCompactEditor ? 0.32f : 0.72f));
-    g.drawRoundedRectangle(panel, 8.f, isCompactEditor ? 1.1f : 1.5f);
-
     auto header = panel.removeFromTop(isCompactEditor ? 30.f : kExpandedEditorHeaderHeight);
     if (!isTrimeshEditor) {
         g.setColour(Colour(0xff202833));
@@ -3055,6 +3052,9 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
                closeButton.getRight() - crossInset, closeButton.getBottom() - crossInset, isCompactEditor ? 1.2f : 1.4f);
     g.drawLine(closeButton.getRight() - crossInset, closeButton.getY() + crossInset,
                closeButton.getX() + crossInset, closeButton.getBottom() - crossInset, isCompactEditor ? 1.2f : 1.4f);
+
+    g.setColour(Colour(0xffa7b0bd).withAlpha(isCompactEditor ? 0.36f : 0.62f));
+    g.drawRoundedRectangle(outerPanel.reduced(0.75f), 8.f, isCompactEditor ? 1.1f : 1.3f);
 
     auto content = isTrimeshEditor ? panel.reduced(10.f, 8.f) : panel.reduced(18.f, 16.f);
 
@@ -3164,6 +3164,33 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
                 if (safeThis != nullptr) {
                     safeThis->openGLContext.triggerRepaint();
                 }
+            };
+            callbacks.setNodeParameter = [safeThis](const String& parameterId, const String& label, const String& value) {
+                if (safeThis == nullptr || safeThis->expandedNodeId.isEmpty()) {
+                    return;
+                }
+
+                Node* node = safeThis->findMutableNode(safeThis->expandedNodeId);
+                if (node == nullptr || parameterValueForNode(*node, parameterId) == value) {
+                    return;
+                }
+
+                const String beforeEdit = GraphSerializer().toXmlString(safeThis->graph);
+                auto result = GraphEditor().setNodeParameter(
+                        safeThis->graph,
+                        node->id,
+                        parameterId,
+                        label,
+                        value);
+
+                if (!result.succeeded()) {
+                    return;
+                }
+
+                safeThis->pushUndoSnapshot(beforeEdit);
+                safeThis->refreshCompiledState();
+                safeThis->openGLContext.triggerRepaint();
+                safeThis->repaint();
             };
             effect2DExpandedEditor->setCallbacks(std::move(callbacks));
             addAndMakeVisible(effect2DExpandedEditor.get());

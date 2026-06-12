@@ -128,6 +128,10 @@ void normalizeNodePresentation(Node& node) {
                 : "cyclic overlap";
     }
 
+    if (node.kind == NodeKind::Envelope) {
+        ensureParameter("logarithmic", "Logarithmic", "0");
+    }
+
     if (node.kind == NodeKind::VoiceContext
             || node.kind == NodeKind::Fft
             || node.kind == NodeKind::Ifft

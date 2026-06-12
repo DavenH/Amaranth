@@ -21,6 +21,8 @@ public:
             std::function<void()> repaintCallback,
             std::function<void(const MouseCursor&)> cursorCallback);
     void setControlValues(bool enabled, float firstValue, float secondValue, float thirdValue, int menuId);
+    void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
+    void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
     void renderExpandedPanelOpenGL(
             const Node& node,
             Rectangle<float> bounds,
@@ -34,6 +36,9 @@ public:
     var automationState() const;
     std::vector<Effect2DPanelBridge::PreviewVertex> previewVertices();
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
+    bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
+    bool selectedEnvelopeMarkerState(bool loopMarker) const;
+    void toggleSelectedEnvelopeMarker(bool loopMarker);
 
 private:
     NodeKind kind;

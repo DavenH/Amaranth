@@ -41,6 +41,14 @@ void Effect2DWidget::setControlValues(
     bridge.setControlValues(enabled, firstValue, secondValue, thirdValue, menuId);
 }
 
+void Effect2DWidget::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) {
+    bridge.setEnvelopeLogarithmic(shouldUseLogarithmicScale);
+}
+
+void Effect2DWidget::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
+    bridge.setEnvelopeAxisLinks(redLinked, blueLinked);
+}
+
 void Effect2DWidget::renderExpandedPanelOpenGL(
         const Node& node,
         Rectangle<float> bounds,
@@ -92,6 +100,18 @@ std::vector<Effect2DPanelBridge::PreviewVertex> Effect2DWidget::previewVertices(
 
 std::vector<TrimeshVertexParameter> Effect2DWidget::selectedVertexParameters() const {
     return bridge.selectedVertexParameters();
+}
+
+bool Effect2DWidget::setSelectedVertexParameter(const String& parameterId, float normalizedValue) {
+    return bridge.setSelectedVertexParameter(parameterId, normalizedValue);
+}
+
+bool Effect2DWidget::selectedEnvelopeMarkerState(bool loopMarker) const {
+    return bridge.selectedEnvelopeMarkerState(loopMarker);
+}
+
+void Effect2DWidget::toggleSelectedEnvelopeMarker(bool loopMarker) {
+    bridge.toggleSelectedEnvelopeMarker(loopMarker);
 }
 
 }

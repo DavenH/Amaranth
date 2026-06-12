@@ -11,11 +11,10 @@ namespace {
 const Colour kText      { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 constexpr float kHeaderHeight = 34.f;
-constexpr int kGuideControlWidth = 126;
-constexpr int kIrControlWidth = 144;
-constexpr int kWaveshaperControlWidth = 150;
-constexpr float kEnvelopeTopControlsHeight = 214.f;
-constexpr float kEnvelopeAxisButtonSize = 20.f;
+constexpr int kGuideControlWidth = 196;
+constexpr int kIrControlWidth = 212;
+constexpr int kWaveshaperControlWidth = 224;
+constexpr float kEnvelopeTopControlsHeight = 246.f;
 constexpr float kEnvelopeRowButtonGap = 6.f;
 constexpr float kEnvelopeMorphSquareWidth = 178.f;
 constexpr float kEnvelopeMorphGap = 22.f;
@@ -23,6 +22,59 @@ constexpr float kEnvelopeMorphRailWidth = 328.f;
 constexpr float kEnvelopeVertexGap = 18.f;
 constexpr float kEnvelopeSectionHeaderHeight = 18.f;
 constexpr float kEnvelopeSectionHeaderTopInset = 5.f;
+constexpr float kEnvelopeAxisButtonSize = 20.f;
+constexpr float kEnvelopeMorphRowHeight = 32.f;
+constexpr float kEnvelopeMorphRowStep = 35.f;
+
+struct RightRailLayoutProfile {
+    int width {};
+    int controlGroupHeight {};
+    int enabledHeight {};
+    int enabledGap {};
+    int sliderItemHeight {};
+    int sliderHeight {};
+    int sliderGap {};
+    int menuTopGap {};
+    int menuAreaHeight {};
+    int menuLabelHeight {};
+    int menuHeight {};
+    int menuHorizontalInset {};
+    int menuVerticalInset {};
+    float panelInsetX {};
+    float panelInsetY {};
+    float maxSquarePanelSize {};
+    bool squarePanel {};
+};
+
+RightRailLayoutProfile rightRailProfile(NodeKind kind) {
+    if (kind == NodeKind::Waveshaper) {
+        return {
+                kWaveshaperControlWidth,
+                164,
+                26,
+                14,
+                30,
+                24,
+                10,
+                10,
+                30,
+                0,
+                30,
+                4,
+                2,
+                18.f,
+                14.f,
+                300.f,
+                true
+        };
+    }
+
+    if (kind == NodeKind::ImpulseResponse) {
+        return { kIrControlWidth, 0, 30, 10, 62, 42, 7 };
+    }
+
+    return { kGuideControlWidth, 0, 30, 10, 62, 42, 7 };
+}
 
 bool usesRightControlRail(NodeKind kind) {
     return kind == NodeKind::GuideCurve
@@ -31,18 +83,14 @@ bool usesRightControlRail(NodeKind kind) {
 }
 
 int rightControlRailWidth(NodeKind kind) {
-    if (kind == NodeKind::ImpulseResponse) {
-        return kIrControlWidth;
-    }
-
-    if (kind == NodeKind::Waveshaper) {
-        return kWaveshaperControlWidth;
-    }
-
-    return kGuideControlWidth;
+    return rightRailProfile(kind).width;
 }
 
 Colour envelopeAxisColour(const String& label) {
+    if (label == "Time") {
+        return Colour(0xffd7bf5f);
+    }
+
     if (label == "Red") {
         return Colour(0xffd65a5a);
     }
@@ -52,6 +100,24 @@ Colour envelopeAxisColour(const String& label) {
     }
 
     return Colour(0xffd8d5ca);
+}
+
+String envelopeViewAxisLabel(int axisIndex) {
+    switch (axisIndex) {
+        case 0:     return "Time";
+        case 1:     return "Red";
+        case 2:     return "Blue";
+        default:    return {};
+    }
+}
+
+bool boolParameterValue(const Node& node, const String& parameterId, bool fallback) {
+    const String value = parameterValueForNode(node, parameterId, fallback ? "1" : "0").toLowerCase();
+    return value == "1" || value == "true" || value == "yes" || value == "on";
+}
+
+Colour envelopeViewAxisColour(int axisIndex) {
+    return envelopeAxisColour(envelopeViewAxisLabel(axisIndex));
 }
 
 var rectangleToVar(Rectangle<float> bounds) {
@@ -169,6 +235,84 @@ MorphRailLookAndFeel& morphRailLookAndFeel() {
     return lookAndFeel;
 }
 
+class EffectRailSliderLookAndFeel :
+        public LookAndFeel_V4 {
+public:
+    void drawLinearSlider(
+            Graphics& g,
+            int x,
+            int y,
+            int width,
+            int height,
+            float sliderPos,
+            float minSliderPos,
+            float maxSliderPos,
+            const Slider::SliderStyle style,
+            Slider& slider) override {
+        ignoreUnused(minSliderPos, maxSliderPos, style, slider);
+
+        auto row = Rectangle<float>((float) x, (float) y, (float) width, (float) height);
+        auto rail = row.withSizeKeepingCentre(row.getWidth(), 7.f);
+        const float knobX = jlimit(rail.getX(), rail.getRight(), sliderPos);
+
+        g.setColour(Colour(0xff384351));
+        g.fillRoundedRectangle(rail, 3.5f);
+        g.setColour(Colour(0xffdce3ec).withAlpha(0.78f));
+        g.fillRoundedRectangle(rail.withRight(knobX), 3.5f);
+        g.setColour(Colour(0xff0d1116));
+        g.fillEllipse(Rectangle<float>(16.f, 16.f).withCentre({ knobX, rail.getCentreY() }));
+        g.setColour(Colour(0xffdce3ec));
+        g.drawEllipse(Rectangle<float>(16.f, 16.f).withCentre({ knobX, rail.getCentreY() }), 1.5f);
+    }
+};
+
+EffectRailSliderLookAndFeel& effectRailSliderLookAndFeel() {
+    static EffectRailSliderLookAndFeel lookAndFeel;
+    return lookAndFeel;
+}
+
+class PowerToggleLookAndFeel :
+        public LookAndFeel_V4 {
+public:
+    void drawToggleButton(
+            Graphics& g,
+            ToggleButton& button,
+            bool shouldDrawButtonAsHighlighted,
+            bool shouldDrawButtonAsDown) override {
+        ignoreUnused(shouldDrawButtonAsDown);
+
+        const auto bounds = button.getLocalBounds().toFloat().reduced(2.f);
+        const Point<float> centre = bounds.getCentre();
+        const float radius = jmin(bounds.getWidth(), bounds.getHeight()) * 0.34f;
+        const Colour colour = button.getToggleState() ? Colour(0xffdce3ec) : Colour(0xff697584);
+        const float alpha = shouldDrawButtonAsHighlighted ? 1.f : 0.82f;
+
+        g.setColour(Colour(0xff0d1116));
+        g.fillEllipse(bounds);
+        g.setColour(Colour(0xff435061));
+        g.drawEllipse(bounds, 1.f);
+
+        Path arc;
+        arc.addCentredArc(
+                centre.x,
+                centre.y,
+                radius,
+                radius,
+                0.f,
+                MathConstants<float>::pi * 0.28f,
+                MathConstants<float>::pi * 1.72f,
+                true);
+        g.setColour(colour.withAlpha(alpha));
+        g.strokePath(arc, PathStrokeType(2.1f, PathStrokeType::curved, PathStrokeType::rounded));
+        g.drawLine(centre.x, centre.y - radius * 1.15f, centre.x, centre.y - radius * 0.2f, 2.1f);
+    }
+};
+
+PowerToggleLookAndFeel& powerToggleLookAndFeel() {
+    static PowerToggleLookAndFeel lookAndFeel;
+    return lookAndFeel;
+}
+
 Rectangle<float> envelopeMorphSquareBounds(Rectangle<float> controls) {
     controls.reduce(12.f, 8.f);
     return controls.removeFromLeft(kEnvelopeMorphSquareWidth);
@@ -191,8 +335,8 @@ Rectangle<float> envelopeMorphRowBounds(Rectangle<float> controls, int axisIndex
     Rectangle<float> column = envelopeMorphRailColumnBounds(controls);
     column.removeFromTop(kEnvelopeSectionHeaderTopInset + kEnvelopeSectionHeaderHeight);
     column.removeFromTop(18.f);
-    column.translate(0.f, (float) axisIndex * 43.f);
-    return column.removeFromTop(35.f);
+    column.translate(0.f, (float) axisIndex * kEnvelopeMorphRowStep);
+    return column.removeFromTop(kEnvelopeMorphRowHeight);
 }
 
 Rectangle<float> envelopeMorphRailBounds(Rectangle<float> controls, int axisIndex) {
@@ -200,6 +344,17 @@ Rectangle<float> envelopeMorphRailBounds(Rectangle<float> controls, int axisInde
     row.removeFromLeft(42.f);
     row.removeFromRight(kEnvelopeAxisButtonSize * 2.f + kEnvelopeRowButtonGap * 3.f);
     return row;
+}
+
+Rectangle<float> envelopeMarkerGroupBounds(Rectangle<float> controls) {
+    Rectangle<float> column = envelopeMorphRailColumnBounds(controls);
+    column.removeFromTop(
+            kEnvelopeSectionHeaderTopInset
+                    + kEnvelopeSectionHeaderHeight
+                    + 18.f
+                    + 3.f * kEnvelopeMorphRowStep
+                    + 14.f);
+    return column.removeFromTop(64.f);
 }
 
 Rectangle<float> envelopePrimaryAxisBounds(Rectangle<float> controls, int axisIndex) {
@@ -220,6 +375,12 @@ Rectangle<float> envelopeLinkToggleBounds(Rectangle<float> controls, int axisInd
             kEnvelopeAxisButtonSize,
             kEnvelopeAxisButtonSize
     };
+}
+
+Rectangle<float> envelopeMorphHeaderBounds(Rectangle<float> controls) {
+    Rectangle<float> column = envelopeMorphRailColumnBounds(controls);
+    column.removeFromTop(kEnvelopeSectionHeaderTopInset);
+    return column.removeFromTop(kEnvelopeSectionHeaderHeight);
 }
 
 Rectangle<float> envelopeVertexParameterBounds(Rectangle<float> controls) {
@@ -249,11 +410,21 @@ void drawEnvelopeMorphSquare(Graphics& g, Rectangle<float> bounds, float red, fl
     const Colour blueColour(0xff5f91e8);
 
     g.setGradientFill(ColourGradient(
-            redColour.withAlpha(0.38f),
-            square.getRight(),
-            square.getY(),
-            blueColour.withAlpha(0.38f),
+            blueColour.withAlpha(0.40f),
             square.getX(),
+            square.getCentreY(),
+            blueColour.withAlpha(0.02f),
+            square.getRight(),
+            square.getCentreY(),
+            false));
+    g.fillRect(square);
+
+    g.setGradientFill(ColourGradient(
+            redColour.withAlpha(0.02f),
+            square.getCentreX(),
+            square.getY(),
+            redColour.withAlpha(0.40f),
+            square.getCentreX(),
             square.getBottom(),
             false));
     g.fillRect(square);
@@ -290,12 +461,11 @@ void drawEnvelopeMorphSquare(Graphics& g, Rectangle<float> bounds, float red, fl
     g.drawEllipse(Rectangle<float>(8.f, 8.f).withCentre(cursor), 1.2f);
 }
 
-void drawEnvelopeMorphButtonRow(Graphics& g, Rectangle<float> controls) {
-    const Colour colours[2] {
-            Colour(0xffd65a5a),
-            Colour(0xff5f91e8)
-    };
-
+void drawEnvelopeAxisAndLinkButtons(
+        Graphics& g,
+        Rectangle<float> controls,
+        int selectedAxis,
+        const bool* linkedAxes) {
     const Rectangle<float> axisHeader = envelopePrimaryAxisBounds(controls, 0);
     const Rectangle<float> linkHeader = envelopeLinkToggleBounds(controls, 0);
     const float headerY = envelopeMorphRowBounds(controls, 0).getY() - 13.f;
@@ -305,28 +475,48 @@ void drawEnvelopeMorphButtonRow(Graphics& g, Rectangle<float> controls) {
     g.drawText("axis", axisHeader.withY(headerY).withHeight(10.f), Justification::centred);
     g.drawText("link", linkHeader.withY(headerY).withHeight(10.f), Justification::centred);
 
-    for (int i = 0; i < 2; ++i) {
-        const bool primary = i == 0;
-        const bool linked = false;
-        const Colour colour = colours[i];
+    for (int i = 0; i < 3; ++i) {
+        const bool selected = i == selectedAxis;
+        const bool linkInteractive = i != 0;
+        const bool linked = linkedAxes != nullptr && linkedAxes[i];
+        const Colour colour = envelopeViewAxisColour(i);
         const Rectangle<float> axis = envelopePrimaryAxisBounds(controls, i);
         const Rectangle<float> link = envelopeLinkToggleBounds(controls, i);
 
-        g.setColour(colour.withAlpha(primary ? 0.42f : 0.055f));
+        g.setColour(colour.withAlpha(selected ? 0.42f : 0.055f));
         g.fillRoundedRectangle(axis, 4.f);
-        g.setColour(colour.withAlpha(primary ? 1.f : 0.32f));
-        g.drawRoundedRectangle(axis, 4.f, primary ? 1.8f : 1.f);
+        g.setColour(colour.withAlpha(selected ? 1.f : 0.32f));
+        g.drawRoundedRectangle(axis, 4.f, selected ? 1.8f : 1.f);
 
-        if (primary) {
+        if (selected) {
             g.setColour(colour.withAlpha(0.95f));
             g.fillRoundedRectangle(axis.reduced(6.f, 6.f), 2.f);
         }
 
-        g.setColour(colour.withAlpha(linked ? 0.38f : 0.055f));
+        g.setColour(colour.withAlpha(!linkInteractive ? 0.035f : linked ? 0.38f : 0.055f));
         g.fillRoundedRectangle(link, 4.f);
-        g.setColour(colour.withAlpha(linked ? 0.96f : 0.32f));
+        g.setColour(colour.withAlpha(!linkInteractive ? 0.18f : linked ? 0.96f : 0.32f));
         g.drawRoundedRectangle(link, 4.f, linked ? 1.8f : 1.f);
+
+        if (linked) {
+            g.setColour(colour.withAlpha(linkInteractive ? 0.95f : 0.30f));
+            Path chain;
+            const float cy = link.getCentreY();
+            chain.addRoundedRectangle(link.getX() + 4.f, cy - 3.f, 6.f, 6.f, 2.5f);
+            chain.addRoundedRectangle(link.getRight() - 10.f, cy - 3.f, 6.f, 6.f, 2.5f);
+            g.strokePath(chain, PathStrokeType(1.2f));
+            g.drawLine(link.getX() + 9.f, cy, link.getRight() - 9.f, cy, 1.2f);
+        }
     }
+}
+
+void drawEnvelopeMarkerHeader(Graphics& g, Rectangle<float> controls) {
+    Rectangle<float> group = envelopeMarkerGroupBounds(controls);
+    auto header = group.removeFromTop(14.f);
+
+    g.setColour(kMutedText);
+    g.setFont(FontOptions(10.5f, Font::bold));
+    g.drawText("markers / options", header, Justification::centred);
 }
 
 }
@@ -377,6 +567,7 @@ void Effect2DExpandedEditorComponent::setNode(const Node& nextNode) {
     if (configuredKind != node.kind) {
         configureControls();
     }
+    syncEnvelopeStateFromNode();
     updatePanelHost();
     updateControlLayout();
     repaint();
@@ -409,9 +600,6 @@ void Effect2DExpandedEditorComponent::paint(Graphics& g) {
     g.fillRoundedRectangle(panel, 8.f);
     g.restoreState();
 
-    g.setColour(Colour(0xff17d0c5).withAlpha(0.72f));
-    g.drawRoundedRectangle(panel, 8.f, 1.5f);
-
     auto header = panel.removeFromTop(kHeaderHeight);
     g.setColour(Colour(0xff202833));
     g.fillRoundedRectangle(header, 8.f);
@@ -428,7 +616,8 @@ void Effect2DExpandedEditorComponent::paint(Graphics& g) {
                 envelopeMorphSquareBounds(controlsArea),
                 (float) controls.firstSlider.getValue(),
                 (float) controls.secondSlider.getValue());
-        drawEnvelopeMorphButtonRow(g, controlsArea);
+        drawEnvelopeAxisAndLinkButtons(g, controlsArea, envelopeViewAxis, envelopeAxisLinked);
+        drawEnvelopeMarkerHeader(g, controlsArea);
 
         std::array<String, 6> guideLabels {};
         TrimeshSidePanelRenderer::drawVertexParameters(
@@ -448,6 +637,10 @@ void Effect2DExpandedEditorComponent::paint(Graphics& g) {
                closeButton.getRight() - 7.f, closeButton.getBottom() - 7.f, 1.4f);
     g.drawLine(closeButton.getRight() - 7.f, closeButton.getY() + 7.f,
                closeButton.getX() + 7.f, closeButton.getBottom() - 7.f, 1.4f);
+
+    panel = getLocalBounds().toFloat();
+    g.setColour(Colour(0xffa7b0bd).withAlpha(0.62f));
+    g.drawRoundedRectangle(panel.reduced(0.75f), 8.f, 1.3f);
 }
 
 void Effect2DExpandedEditorComponent::resized() {
@@ -456,9 +649,27 @@ void Effect2DExpandedEditorComponent::resized() {
 }
 
 void Effect2DExpandedEditorComponent::mouseMove(const MouseEvent& event) {
+    const Rectangle<float> controlsArea = controlBounds().toFloat();
+    bool overEnvelopeViewAxis = false;
+    for (int i = 0; i < 3; ++i) {
+        overEnvelopeViewAxis = overEnvelopeViewAxis
+                || envelopePrimaryAxisBounds(controlsArea, i).contains(event.position)
+                || (i != 0 && envelopeLinkToggleBounds(controlsArea, i).contains(event.position));
+    }
+
+    String parameterId;
+    float value {};
+    Rectangle<int> guideBounds;
+    const bool overVertexParameter = findVertexParameterAt(event.position, parameterId, value)
+            || findVertexGuideAt(event.position, parameterId, guideBounds);
+
     setMouseCursor((node.kind == NodeKind::Envelope
-                    && envelopeMorphPlaneBounds(controlBounds().toFloat()).contains(event.position))
+                    && envelopeMorphPlaneBounds(controlsArea).contains(event.position))
             ? MouseCursor::CrosshairCursor
+            : overVertexParameter
+            ? MouseCursor::PointingHandCursor
+            : (node.kind == NodeKind::Envelope && overEnvelopeViewAxis)
+            ? MouseCursor::PointingHandCursor
             : closeButtonBounds().contains(event.position)
             ? MouseCursor::PointingHandCursor
             : MouseCursor::NormalCursor);
@@ -466,9 +677,22 @@ void Effect2DExpandedEditorComponent::mouseMove(const MouseEvent& event) {
 
 void Effect2DExpandedEditorComponent::mouseDown(const MouseEvent& event) {
     draggingEnvelopeMorphPlane = false;
+    draggingVertexParameter = false;
 
     if (closeButtonBounds().contains(event.position) && callbacks.close != nullptr) {
         callbacks.close();
+        return;
+    }
+
+    if (showVertexParameterGuideMenu(event.position)) {
+        return;
+    }
+
+    if (beginVertexParameterEdit(event.position)) {
+        return;
+    }
+
+    if (node.kind == NodeKind::Envelope && updateEnvelopeViewAxisFromPoint(event.position)) {
         return;
     }
 
@@ -480,11 +704,17 @@ void Effect2DExpandedEditorComponent::mouseDown(const MouseEvent& event) {
 void Effect2DExpandedEditorComponent::mouseUp(const MouseEvent& event) {
     ignoreUnused(event);
     draggingEnvelopeMorphPlane = false;
+    draggingVertexParameter = false;
+    activeVertexParameterId = {};
 }
 
 void Effect2DExpandedEditorComponent::mouseDrag(const MouseEvent& event) {
     if (draggingEnvelopeMorphPlane && node.kind == NodeKind::Envelope) {
         updateEnvelopeMorphFromPoint(event.position);
+    }
+
+    if (draggingVertexParameter) {
+        updateVertexParameterEdit(event.position);
     }
 }
 
@@ -508,11 +738,16 @@ Rectangle<float> Effect2DExpandedEditorComponent::panelBounds() const {
     }
 
     if (usesRightControlRail(node.kind)) {
-        bounds.removeFromRight((float) rightControlRailWidth(node.kind));
+        const RightRailLayoutProfile profile = rightRailProfile(node.kind);
+        bounds.removeFromRight((float) profile.width);
 
-        if (node.kind == NodeKind::Waveshaper) {
+        if (profile.squarePanel) {
+            bounds.reduce(profile.panelInsetX, profile.panelInsetY);
             const float size = jmin(bounds.getWidth(), bounds.getHeight());
-            return Rectangle<float>(size, size).withCentre(bounds.getCentre());
+            const float squareSize = jmin(size, profile.maxSquarePanelSize);
+            return Rectangle<float>(squareSize, squareSize)
+                    .withX(bounds.getX())
+                    .withCentre({ bounds.getX() + squareSize * 0.5f, bounds.getCentreY() });
         }
 
         return bounds;
@@ -534,6 +769,8 @@ var Effect2DExpandedEditorComponent::automationState() const {
     root->setProperty("firstSlider", controls.firstSlider.getValue());
     root->setProperty("secondSlider", controls.secondSlider.getValue());
     root->setProperty("thirdSlider", controls.thirdSlider.getValue());
+    root->setProperty("envelopeViewAxis", envelopeViewAxis);
+    root->setProperty("envelopeLogarithmic", envelopeLogarithmic);
     root->setProperty("menuText", controls.menu.getText());
     root->setProperty("menuSelectedId", controls.menu.getSelectedId());
     root->setProperty("panelState", widget.automationState());
@@ -548,7 +785,15 @@ Rectangle<int> Effect2DExpandedEditorComponent::controlBounds() const {
     }
 
     if (usesRightControlRail(node.kind)) {
-        return bounds.removeFromRight((float) rightControlRailWidth(node.kind)).toNearestInt();
+        const RightRailLayoutProfile profile = rightRailProfile(node.kind);
+
+        if (profile.squarePanel) {
+            Rectangle<float> rail = bounds.removeFromRight((float) profile.width);
+            const Rectangle<float> panel = panelBounds();
+            return rail.withY(panel.getY()).withHeight(panel.getHeight()).toNearestInt();
+        }
+
+        return bounds.removeFromRight((float) profile.width).toNearestInt();
     }
 
     bounds.removeFromTop(panelBounds().getBottom() - bounds.getY() + 12.f);
@@ -558,6 +803,7 @@ Rectangle<int> Effect2DExpandedEditorComponent::controlBounds() const {
 void Effect2DExpandedEditorComponent::configureControls() {
     configuredKind = node.kind;
     controls.enabled.setButtonText("Enable");
+    controls.enabled.setLookAndFeel(nullptr);
     controls.enabled.setToggleState(true, dontSendNotification);
     controls.enabled.setVisible(true);
     controls.enabled.onClick = [this] {
@@ -568,6 +814,15 @@ void Effect2DExpandedEditorComponent::configureControls() {
     controls.secondSlider.onValueChange = [this] { pushControlValues(); };
     controls.thirdSlider.onValueChange = [this] { pushControlValues(); };
     controls.menu.onChange = [this] { pushControlValues(); };
+    controls.firstButton.onClick = nullptr;
+    controls.secondButton.onClick = nullptr;
+    controls.thirdButton.onClick = nullptr;
+    controls.firstButton.setClickingTogglesState(false);
+    controls.secondButton.setClickingTogglesState(false);
+    controls.thirdButton.setClickingTogglesState(false);
+    controls.firstButton.setToggleState(false, dontSendNotification);
+    controls.secondButton.setToggleState(false, dontSendNotification);
+    controls.thirdButton.setToggleState(false, dontSendNotification);
 
     controls.firstSlider.setVisible(false);
     controls.secondSlider.setVisible(false);
@@ -582,22 +837,71 @@ void Effect2DExpandedEditorComponent::configureControls() {
     controls.thirdButton.setVisible(false);
 
     if (node.kind == NodeKind::Envelope) {
+        envelopeViewAxis = 0;
+        envelopeAxisLinked[0] = true;
+        envelopeAxisLinked[1] = true;
+        envelopeAxisLinked[2] = true;
+        envelopeLogarithmic = boolParameterValue(node, "logarithmic", false);
         controls.enabled.setVisible(false);
         styleSlider(controls.firstSlider, controls.firstLabel, "Red");
         styleSlider(controls.secondSlider, controls.secondLabel, "Blue");
         controls.thirdSlider.setVisible(false);
         controls.thirdLabel.setVisible(false);
         styleMenu({}, {}, {});
-        controls.menuLabel.setText("morph Position", dontSendNotification);
+        controls.menuLabel.setText("morph position", dontSendNotification);
         controls.menuLabel.setColour(Label::textColourId, kMutedText);
+        controls.menuLabel.setFont(FontOptions(10.5f, Font::bold));
         controls.menuLabel.setJustificationType(Justification::centred);
         controls.menuLabel.setVisible(true);
+        styleButton(controls.firstButton, "Loop");
+        styleButton(controls.secondButton, "Sustain");
+        controls.firstButton.onClick = [this] {
+            widget.toggleSelectedEnvelopeMarker(true);
+            updateEnvelopeMarkerButtons();
+
+            if (callbacks.repaintOpenGL != nullptr) {
+                callbacks.repaintOpenGL();
+            }
+        };
+        controls.secondButton.onClick = [this] {
+            widget.toggleSelectedEnvelopeMarker(false);
+            updateEnvelopeMarkerButtons();
+
+            if (callbacks.repaintOpenGL != nullptr) {
+                callbacks.repaintOpenGL();
+            }
+        };
+        styleButton(controls.thirdButton, "Log");
+        controls.thirdButton.setClickingTogglesState(true);
+        controls.thirdButton.setToggleState(envelopeLogarithmic, dontSendNotification);
+        controls.thirdButton.onClick = [this] {
+            envelopeLogarithmic = controls.thirdButton.getToggleState();
+            if (callbacks.setNodeParameter != nullptr) {
+                callbacks.setNodeParameter("logarithmic", "Logarithmic", envelopeLogarithmic ? "1" : "0");
+            }
+            widget.setEnvelopeLogarithmic(envelopeLogarithmic);
+
+            if (callbacks.repaintOpenGL != nullptr) {
+                callbacks.repaintOpenGL();
+            }
+        };
+        widget.setEnvelopeLogarithmic(envelopeLogarithmic);
+        syncEnvelopeAxisLinksToWidget();
+        updateEnvelopeMarkerButtons();
     } else if (node.kind == NodeKind::Waveshaper) {
+        controls.enabled.setButtonText({});
+        controls.enabled.setLookAndFeel(&powerToggleLookAndFeel());
         styleSlider(controls.firstSlider, controls.firstLabel, "Pre");
         styleSlider(controls.secondSlider, controls.secondLabel, "Post");
         controls.thirdSlider.setVisible(false);
-        controls.thirdLabel.setVisible(false);
+        controls.thirdLabel.setText("Enable", dontSendNotification);
+        controls.thirdLabel.setColour(Label::textColourId, kMutedText);
+        controls.thirdLabel.setJustificationType(Justification::centredRight);
+        controls.thirdLabel.setFont(FontOptions(12.f, Font::bold));
+        controls.thirdLabel.setVisible(true);
         styleMenu({ "1", "2", "4", "8" }, "1", "AA factor");
+        controls.menuLabel.setJustificationType(Justification::centredRight);
+        controls.menuLabel.setFont(FontOptions(12.f, Font::bold));
         controls.firstButton.setVisible(false);
         controls.secondButton.setVisible(false);
         controls.thirdButton.setVisible(false);
@@ -632,6 +936,12 @@ void Effect2DExpandedEditorComponent::styleSlider(Slider& slider, Label& label, 
         slider.setSliderStyle(Slider::LinearHorizontal);
         slider.setLookAndFeel(&morphRailLookAndFeel());
         slider.setColour(Slider::thumbColourId, envelopeAxisColour(text));
+    } else if (usesRightControlRail(node.kind)) {
+        slider.setSliderStyle(Slider::LinearHorizontal);
+        slider.setLookAndFeel(&effectRailSliderLookAndFeel());
+        slider.setColour(Slider::thumbColourId, Colour(0xffdce3ec));
+        label.setJustificationType(Justification::centredRight);
+        label.setFont(FontOptions(12.f, Font::bold));
     } else {
         slider.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
         slider.setLookAndFeel(&legacyKnobLookAndFeel());
@@ -653,6 +963,7 @@ void Effect2DExpandedEditorComponent::styleButton(Button& button, const String& 
     button.setColour(TextButton::buttonColourId, Colour(0xff161d25));
     button.setColour(TextButton::buttonOnColourId, Colour(0xff252f3b));
     button.setColour(TextButton::textColourOffId, kText);
+    button.setColour(TextButton::textColourOnId, kText);
     button.setVisible(true);
 }
 
@@ -663,6 +974,7 @@ void Effect2DExpandedEditorComponent::styleMenu(
     controls.menu.clear(dontSendNotification);
     controls.menuLabel.setText(labelText, dontSendNotification);
     controls.menuLabel.setColour(Label::textColourId, kMutedText);
+    controls.menuLabel.setFont(FontOptions(13.f));
     controls.menuLabel.setJustificationType(Justification::centred);
 
     for (int i = 0; i < items.size(); ++i) {
@@ -674,6 +986,39 @@ void Effect2DExpandedEditorComponent::styleMenu(
 
     controls.menu.setVisible(!items.isEmpty());
     controls.menuLabel.setVisible(!items.isEmpty());
+}
+
+void Effect2DExpandedEditorComponent::updateEnvelopeMarkerButtons() {
+    if (node.kind != NodeKind::Envelope) {
+        return;
+    }
+
+    controls.firstButton.setToggleState(widget.selectedEnvelopeMarkerState(true), dontSendNotification);
+    controls.secondButton.setToggleState(widget.selectedEnvelopeMarkerState(false), dontSendNotification);
+    controls.thirdButton.setToggleState(envelopeLogarithmic, dontSendNotification);
+}
+
+void Effect2DExpandedEditorComponent::syncEnvelopeStateFromNode() {
+    if (node.kind != NodeKind::Envelope) {
+        return;
+    }
+
+    const bool nextLogarithmic = boolParameterValue(node, "logarithmic", false);
+    if (envelopeLogarithmic == nextLogarithmic) {
+        return;
+    }
+
+    envelopeLogarithmic = nextLogarithmic;
+    controls.thirdButton.setToggleState(envelopeLogarithmic, dontSendNotification);
+    widget.setEnvelopeLogarithmic(envelopeLogarithmic);
+}
+
+void Effect2DExpandedEditorComponent::syncEnvelopeAxisLinksToWidget() {
+    if (node.kind != NodeKind::Envelope) {
+        return;
+    }
+
+    widget.setEnvelopeAxisLinks(envelopeAxisLinked[1], envelopeAxisLinked[2]);
 }
 
 void Effect2DExpandedEditorComponent::updatePanelHost() {
@@ -761,39 +1106,101 @@ void Effect2DExpandedEditorComponent::updateControlLayout() {
             return;
         }
 
-        controls.enabled.setBounds(bounds.removeFromTop(32));
-        bounds.removeFromTop(10);
+        const RightRailLayoutProfile profile = rightRailProfile(node.kind);
 
-        auto placeGuideSlider = [&](Slider& slider, Label& label) {
-            Rectangle<int> item = bounds.removeFromTop(62);
-            slider.setBounds(item.removeFromTop(42));
-            label.setBounds(item);
-            bounds.removeFromTop(7);
+        if (profile.controlGroupHeight > 0) {
+            bounds = bounds.withSizeKeepingCentre(
+                    bounds.getWidth(),
+                    jmin(bounds.getHeight(), profile.controlGroupHeight));
+        }
+
+        if (node.kind == NodeKind::Waveshaper) {
+            const int labelWidth = 78;
+            const int widgetWidth = 116;
+            const int columnGap = 12;
+            const int rowHeight = 34;
+            const int rowGap = 13;
+            const int gridWidth = labelWidth + columnGap + widgetWidth;
+
+            bounds = bounds.withSizeKeepingCentre(
+                    jmin(bounds.getWidth(), gridWidth),
+                    jmin(bounds.getHeight(), 4 * rowHeight + 3 * rowGap));
+
+            auto placeControlRow = [&](Label& label, Component& component, int componentHeight) {
+                Rectangle<int> row = bounds.removeFromTop(rowHeight);
+                label.setBounds(row.removeFromLeft(labelWidth));
+                row.removeFromLeft(columnGap);
+                component.setBounds(row.removeFromLeft(widgetWidth).withSizeKeepingCentre(
+                        widgetWidth,
+                        componentHeight));
+                bounds.removeFromTop(rowGap);
+            };
+
+            Rectangle<int> enableRow = bounds.removeFromTop(rowHeight);
+            controls.thirdLabel.setBounds(enableRow.removeFromLeft(labelWidth));
+            enableRow.removeFromLeft(columnGap);
+            controls.enabled.setBounds(Rectangle<int>(34, 34).withCentre(
+                    enableRow.removeFromLeft(widgetWidth).getCentre()));
+            bounds.removeFromTop(rowGap);
+
+            placeControlRow(controls.firstLabel, controls.firstSlider, 26);
+            placeControlRow(controls.secondLabel, controls.secondSlider, 26);
+            controls.thirdSlider.setBounds({});
+
+            Rectangle<int> menuRow = bounds.removeFromTop(rowHeight);
+            controls.menuLabel.setBounds(menuRow.removeFromLeft(labelWidth));
+            menuRow.removeFromLeft(columnGap);
+            controls.menu.setBounds(menuRow.removeFromLeft(76).withSizeKeepingCentre(76, 32));
+            controls.firstButton.setBounds({});
+            controls.secondButton.setBounds({});
+            controls.thirdButton.setBounds({});
+            return;
+        }
+
+        const int labelWidth = node.kind == NodeKind::ImpulseResponse ? 78 : 82;
+        const int columnGap = 12;
+        const int rowHeight = 32;
+        const int rowGap = 12;
+
+        auto placeRailSlider = [&](Slider& slider, Label& label) {
+            Rectangle<int> row = bounds.removeFromTop(rowHeight);
+            label.setBounds(row.removeFromLeft(labelWidth));
+            row.removeFromLeft(columnGap);
+            slider.setBounds(row.withTrimmedRight(4).withSizeKeepingCentre(row.getWidth() - 4, 26));
+            bounds.removeFromTop(rowGap);
         };
 
-        placeGuideSlider(controls.firstSlider, controls.firstLabel);
-        placeGuideSlider(controls.secondSlider, controls.secondLabel);
+        controls.enabled.setBounds(bounds.removeFromTop(30).withTrimmedLeft(labelWidth + columnGap));
+        bounds.removeFromTop(rowGap);
+
+        placeRailSlider(controls.firstSlider, controls.firstLabel);
+        placeRailSlider(controls.secondSlider, controls.secondLabel);
 
         if (controls.thirdSlider.isVisible()) {
-            placeGuideSlider(controls.thirdSlider, controls.thirdLabel);
+            placeRailSlider(controls.thirdSlider, controls.thirdLabel);
         } else {
             controls.thirdSlider.setBounds({});
             controls.thirdLabel.setBounds({});
         }
 
         if (node.kind == NodeKind::ImpulseResponse) {
-            auto placeRailButton = [&](Button& button) {
-                button.setBounds(bounds.removeFromTop(34).reduced(3, 3));
-                bounds.removeFromTop(4);
+            auto placeRailButton = [&](Button& button, int width) {
+                Rectangle<int> row = bounds.removeFromTop(32);
+                row.removeFromLeft(labelWidth + columnGap);
+                button.setBounds(row.removeFromLeft(width).reduced(0, 2));
+                bounds.removeFromTop(7);
             };
-            placeRailButton(controls.firstButton);
-            placeRailButton(controls.secondButton);
-            placeRailButton(controls.thirdButton);
+            placeRailButton(controls.firstButton, 76);
+            placeRailButton(controls.secondButton, 76);
+            placeRailButton(controls.thirdButton, 76);
         } else if (node.kind == NodeKind::Waveshaper) {
             if (controls.menu.isVisible()) {
-                Rectangle<int> menuArea = bounds.removeFromTop(66);
-                controls.menu.setBounds(menuArea.removeFromTop(42).reduced(3, 3));
-                controls.menuLabel.setBounds(menuArea);
+                bounds.removeFromTop(profile.menuTopGap);
+                Rectangle<int> menuArea = bounds.removeFromTop(profile.menuAreaHeight);
+                controls.menuLabel.setBounds(menuArea.removeFromTop(profile.menuLabelHeight));
+                controls.menu.setBounds(menuArea.removeFromTop(profile.menuHeight).reduced(
+                        profile.menuHorizontalInset,
+                        profile.menuVerticalInset));
             } else {
                 controls.menu.setBounds({});
                 controls.menuLabel.setBounds({});
@@ -804,8 +1211,10 @@ void Effect2DExpandedEditorComponent::updateControlLayout() {
             controls.thirdButton.setBounds({});
         } else {
             Rectangle<int> buttons = bounds.removeFromTop(36);
-            controls.firstButton.setBounds(buttons.removeFromLeft(44).reduced(4, 3));
-            controls.secondButton.setBounds(buttons.removeFromLeft(44).reduced(4, 3));
+            buttons.removeFromLeft(labelWidth + columnGap);
+            controls.firstButton.setBounds(buttons.removeFromLeft(44).reduced(2, 3));
+            buttons.removeFromLeft(8);
+            controls.secondButton.setBounds(buttons.removeFromLeft(44).reduced(2, 3));
             controls.thirdButton.setBounds({});
         }
 
@@ -821,25 +1230,39 @@ void Effect2DExpandedEditorComponent::updateControlLayout() {
         controls.thirdSlider.setBounds({});
         controls.thirdLabel.setBounds({});
         controls.menu.setBounds({});
-        controls.firstButton.setBounds({});
-        controls.secondButton.setBounds({});
         controls.thirdButton.setBounds({});
 
-        Rectangle<int> column = envelopeMorphRailColumnBounds(bounds.toFloat()).toNearestInt();
-        column.removeFromTop((int) kEnvelopeSectionHeaderTopInset);
-        controls.menuLabel.setBounds(column.removeFromTop((int) kEnvelopeSectionHeaderHeight));
-        column.removeFromTop(18);
+        controls.menuLabel.setBounds(envelopeMorphHeaderBounds(bounds.toFloat()).toNearestInt());
+        controls.thirdLabel.setText("Time", dontSendNotification);
+        controls.thirdLabel.setColour(Label::textColourId, kMutedText);
+        controls.thirdLabel.setJustificationType(Justification::centredRight);
+        controls.thirdLabel.setFont(FontOptions(13.f));
+        controls.thirdLabel.setVisible(true);
+        controls.thirdLabel.setBounds(envelopeMorphRowBounds(bounds.toFloat(), 0)
+                .withWidth(42.f)
+                .toNearestInt());
 
-        auto placeMorphSlider = [&](Slider& slider, Label& label) {
-            Rectangle<int> row = column.removeFromTop(35);
+        auto placeMorphSlider = [&](Slider& slider, Label& label, int axisIndex) {
+            Rectangle<int> row = envelopeMorphRowBounds(bounds.toFloat(), axisIndex).toNearestInt();
             label.setBounds(row.removeFromLeft(42));
             row.removeFromRight((int) (kEnvelopeAxisButtonSize * 2.f + kEnvelopeRowButtonGap * 3.f));
             slider.setBounds(row);
-            column.removeFromTop(8);
         };
 
-        placeMorphSlider(controls.firstSlider, controls.firstLabel);
-        placeMorphSlider(controls.secondSlider, controls.secondLabel);
+        placeMorphSlider(controls.firstSlider, controls.firstLabel, 1);
+        placeMorphSlider(controls.secondSlider, controls.secondLabel, 2);
+
+        Rectangle<int> markerGroup = envelopeMarkerGroupBounds(bounds.toFloat()).toNearestInt();
+        markerGroup.removeFromTop(22);
+        Rectangle<int> markerRow = markerGroup.removeFromTop(30);
+        const int buttonWidth = jmin(74, (markerRow.getWidth() - 18) / 3);
+        const int totalWidth = buttonWidth * 3 + 18;
+        markerRow = markerRow.withSizeKeepingCentre(totalWidth, markerRow.getHeight());
+        controls.firstButton.setBounds(markerRow.removeFromLeft(buttonWidth).reduced(2, 2));
+        markerRow.removeFromLeft(9);
+        controls.secondButton.setBounds(markerRow.removeFromLeft(buttonWidth).reduced(2, 2));
+        markerRow.removeFromLeft(9);
+        controls.thirdButton.setBounds(markerRow.removeFromLeft(buttonWidth).reduced(2, 2));
         return;
     }
 
@@ -923,6 +1346,168 @@ bool Effect2DExpandedEditorComponent::updateEnvelopeMorphFromPoint(Point<float> 
     controls.secondSlider.setValue(blue, sendNotificationSync);
     repaint();
     return true;
+}
+
+bool Effect2DExpandedEditorComponent::updateEnvelopeViewAxisFromPoint(Point<float> position) {
+    const Rectangle<float> controlsArea = controlBounds().toFloat();
+
+    for (int i = 0; i < 3; ++i) {
+        if (envelopePrimaryAxisBounds(controlsArea, i).contains(position)) {
+            if (envelopeViewAxis != i) {
+                envelopeViewAxis = i;
+                repaint();
+
+                if (callbacks.repaintOpenGL != nullptr) {
+                    callbacks.repaintOpenGL();
+                }
+            }
+            return true;
+        }
+
+        if (i != 0 && envelopeLinkToggleBounds(controlsArea, i).contains(position)) {
+            envelopeAxisLinked[i] = !envelopeAxisLinked[i];
+            syncEnvelopeAxisLinksToWidget();
+            repaint();
+
+            if (callbacks.repaintOpenGL != nullptr) {
+                callbacks.repaintOpenGL();
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool Effect2DExpandedEditorComponent::beginVertexParameterEdit(Point<float> position) {
+    String parameterId;
+    float value {};
+
+    if (!findVertexParameterAt(position, parameterId, value)) {
+        return false;
+    }
+
+    activeVertexParameterId = parameterId;
+    draggingVertexParameter = true;
+    return widget.setSelectedVertexParameter(parameterId, value);
+}
+
+bool Effect2DExpandedEditorComponent::updateVertexParameterEdit(Point<float> position) {
+    if (activeVertexParameterId.isEmpty()) {
+        return false;
+    }
+
+    float value {};
+
+    if (!findVertexParameterValueAt(activeVertexParameterId, position, value)) {
+        return false;
+    }
+
+    const bool updated = widget.setSelectedVertexParameter(activeVertexParameterId, value);
+
+    if (updated) {
+        repaint();
+
+        if (callbacks.repaintOpenGL != nullptr) {
+            callbacks.repaintOpenGL();
+        }
+    }
+
+    return updated;
+}
+
+bool Effect2DExpandedEditorComponent::showVertexParameterGuideMenu(Point<float> position) {
+    String parameterId;
+    Rectangle<int> targetBounds;
+
+    if (!findVertexGuideAt(position, parameterId, targetBounds)) {
+        return false;
+    }
+
+    PopupMenu menu;
+    menu.addItem(1, "Guide attachments are available on mesh nodes", false, false);
+    menu.showMenuAsync(PopupMenu::Options().withTargetScreenArea(targetBounds));
+    return true;
+}
+
+bool Effect2DExpandedEditorComponent::findVertexParameterAt(
+        Point<float> position,
+        String& parameterId,
+        float& value) const {
+    if (node.kind != NodeKind::Envelope) {
+        return false;
+    }
+
+    const Rectangle<float> parameterArea = envelopeVertexParameterBounds(controlBounds().toFloat());
+    const auto parameters = widget.selectedVertexParameters();
+
+    for (int i = 0; i < (int) parameters.size(); ++i) {
+        const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
+        const Rectangle<float> rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
+
+        if (!rail.expanded(5.f, 8.f).contains(position)) {
+            continue;
+        }
+
+        const auto& parameter = parameters[(size_t) i];
+        parameterId = parameter.id;
+        value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
+        return true;
+    }
+
+    return false;
+}
+
+bool Effect2DExpandedEditorComponent::findVertexParameterValueAt(
+        const String& parameterId,
+        Point<float> position,
+        float& value) const {
+    if (node.kind != NodeKind::Envelope) {
+        return false;
+    }
+
+    const Rectangle<float> parameterArea = envelopeVertexParameterBounds(controlBounds().toFloat());
+    const auto parameters = widget.selectedVertexParameters();
+
+    for (int i = 0; i < (int) parameters.size(); ++i) {
+        if (parameters[(size_t) i].id != parameterId) {
+            continue;
+        }
+
+        const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
+        const Rectangle<float> rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
+        value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
+        return true;
+    }
+
+    return false;
+}
+
+bool Effect2DExpandedEditorComponent::findVertexGuideAt(
+        Point<float> position,
+        String& parameterId,
+        Rectangle<int>& targetBounds) const {
+    if (node.kind != NodeKind::Envelope) {
+        return false;
+    }
+
+    const Rectangle<float> parameterArea = envelopeVertexParameterBounds(controlBounds().toFloat());
+    const auto parameters = widget.selectedVertexParameters();
+
+    for (int i = 0; i < (int) parameters.size(); ++i) {
+        const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
+        const Rectangle<float> guide = TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
+
+        if (!guide.expanded(4.f).contains(position)) {
+            continue;
+        }
+
+        parameterId = parameters[(size_t) i].id;
+        targetBounds = localAreaToGlobal(guide.toNearestInt());
+        return true;
+    }
+
+    return false;
 }
 
 void Effect2DExpandedEditorComponent::pushControlValues() {
