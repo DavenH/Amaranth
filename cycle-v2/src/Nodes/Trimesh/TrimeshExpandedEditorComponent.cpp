@@ -116,9 +116,6 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.fillRoundedRectangle(panel, 8.f);
     g.restoreState();
 
-    g.setColour(Colour(0xff17d0c5).withAlpha(0.72f));
-    g.drawRoundedRectangle(panel, 8.f, 1.5f);
-
     auto header = panel.removeFromTop(kHeaderHeight);
     g.setColour(Colour(0xff202833));
     g.fillRoundedRectangle(header, 8.f);
@@ -144,6 +141,10 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
 
     widget.setRenderProfile(renderProfile);
     widget.paintExpanded(g, node, content);
+
+    panel = getLocalBounds().toFloat();
+    g.setColour(Colour(0xffa7b0bd).withAlpha(0.62f));
+    g.drawRoundedRectangle(panel.reduced(0.75f), 8.f, 1.3f);
 }
 
 void TrimeshExpandedEditorComponent::resized() {

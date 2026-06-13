@@ -59,6 +59,11 @@
     <output id="out" label="Out" domain="control" channelLayout="linkedStereo"
             purpose="signal" side="top"/>
   </node>
+  <node id="guide" kind="guideCurve" title="Guide" subtitle="mesh attachment"
+        x="918.0" y="820.0" w="220.0" h="100.0">
+    <output id="guide" label="Guide" domain="envelope" channelLayout="mono"
+            purpose="signal" side="right"/>
+  </node>
   <node id="addPhase" kind="add" title="Add" subtitle="phase layer" x="1361.965576171875"
         y="579.862060546875" w="150.0" h="118.0">
     <input id="signal" label="Signal" domain="spectralPhase" channelLayout="mono"
@@ -79,6 +84,20 @@
     <parameter id="cycleFrames" label="Cycle Frames" value="2048"/>
     <parameter id="mode" label="Mode" value="cyclic"/>
   </node>
+  <node id="waveshaper" kind="waveshaper" title="Waveshaper" subtitle="transfer curve"
+        x="1930.0" y="420.0" w="210.0" h="100.0">
+    <input id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
+           purpose="signal" side="left"/>
+    <output id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
+            purpose="signal" side="right"/>
+  </node>
+  <node id="ir" kind="impulseResponse" title="IR" subtitle="convolution"
+        x="2200.0" y="420.0" w="230.0" h="92.0">
+    <input id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
+           purpose="signal" side="left"/>
+    <output id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
+            purpose="signal" side="right"/>
+  </node>
   <node id="env" kind="envelope" title="Envelope" subtitle="volume curve"
         x="1632.0" y="159.9999389648438" w="246.0" h="203.0">
     <output id="env" label="Env" domain="envelope" channelLayout="mono" purpose="signal"
@@ -90,7 +109,7 @@
             side="right"/>
   </node>
   <node id="multiply" kind="multiply" title="Multiply" subtitle="global volume"
-        x="1991.379272460938" y="420.0" w="150.0" h="118.0">
+        x="2500.0" y="420.0" w="150.0" h="118.0">
     <input id="audio" label="Audio" domain="time" channelLayout="linkedStereo"
            purpose="signal" side="left"/>
     <input id="factor" label="Factor" domain="envelope" channelLayout="mono"
@@ -98,7 +117,7 @@
     <output id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
             purpose="signal" side="right"/>
   </node>
-  <node id="out" kind="output" title="Output" subtitle="sink" x="2222.413818359375"
+  <node id="out" kind="output" title="Output" subtitle="sink" x="2730.0"
         y="420.0" w="190.0" h="160.0">
     <input id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
            purpose="signal" side="left"/>
@@ -108,6 +127,8 @@
   <edge sourceNodeId="scratchEnv" sourcePortId="env" destNodeId="waveMesh"
         destPortId="scratch" domain="envelope" attachment="1"/>
   <edge sourceNodeId="scratchEnv" sourcePortId="env" destNodeId="magMesh"
+        destPortId="scratch" domain="envelope" attachment="1"/>
+  <edge sourceNodeId="guide" sourcePortId="guide" destNodeId="phaseMesh"
         destPortId="scratch" domain="envelope" attachment="1"/>
   <edge sourceNodeId="waveMesh" sourcePortId="out" destNodeId="fft" destPortId="time"
         domain="time" attachment="0"/>
@@ -123,7 +144,11 @@
         domain="spectralMagnitude" attachment="0"/>
   <edge sourceNodeId="addPhase" sourcePortId="out" destNodeId="ifft"
         destPortId="phase" domain="spectralPhase" attachment="0"/>
-  <edge sourceNodeId="ifft" sourcePortId="time" destNodeId="multiply"
+  <edge sourceNodeId="ifft" sourcePortId="time" destNodeId="waveshaper"
+        destPortId="time" domain="time" attachment="0"/>
+  <edge sourceNodeId="waveshaper" sourcePortId="time" destNodeId="ir"
+        destPortId="time" domain="time" attachment="0"/>
+  <edge sourceNodeId="ir" sourcePortId="time" destNodeId="multiply"
         destPortId="audio" domain="time" attachment="0"/>
   <edge sourceNodeId="env" sourcePortId="env" destNodeId="multiply" destPortId="factor"
         domain="envelope" attachment="0"/>

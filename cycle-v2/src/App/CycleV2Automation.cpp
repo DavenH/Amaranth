@@ -1344,7 +1344,9 @@ var CycleV2Automation::pointer(const var& commandValue) {
         eventComponent->mouseDown(makePointerEvent(*eventComponent, position, position, commandValue, true, false, 1));
         eventComponent->mouseUp(makePointerEvent(*eventComponent, position, position, commandValue, false, false, 1));
     } else if (eventType == "doubleClick") {
-        eventComponent->mouseDown(makePointerEvent(*eventComponent, position, position, commandValue, true, false, 2));
+        const MouseEvent doubleClick = makePointerEvent(*eventComponent, position, position, commandValue, true, false, 2);
+        eventComponent->mouseDown(doubleClick);
+        eventComponent->mouseDoubleClick(doubleClick);
         eventComponent->mouseUp(makePointerEvent(*eventComponent, position, position, commandValue, false, false, 2));
     } else if (eventType == "down") {
         eventComponent->mouseDown(makePointerEvent(*eventComponent, position, position, commandValue, true, false, 1));

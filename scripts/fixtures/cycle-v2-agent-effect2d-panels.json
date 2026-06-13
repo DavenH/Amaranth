@@ -1,0 +1,101 @@
+{
+  "commands": [
+    {
+      "command": "openNodeEditor",
+      "nodeId": "env",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "env"
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "waveshaper"
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "expanded:waveshaper.panel2D",
+      "targetX": 0.42,
+      "targetY": 0.38,
+      "waitForIdle": true,
+      "idleDelayMs": 120
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "waveshaper"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "button": "right",
+      "targetId": "expanded:waveshaper.panel2D",
+      "targetX": 0.55,
+      "targetY": 0.45,
+      "waitForIdle": true,
+      "idleDelayMs": 120
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "waveshaper"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "ir",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "ir"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "button": "right",
+      "targetId": "expanded:ir.panel2D",
+      "targetX": 0.2,
+      "targetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 120
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "ir"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "guide",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "guide"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/tmp/cycle-v2-effect2d-panels.png"
+    }
+  ],
+  "quit": true
+}

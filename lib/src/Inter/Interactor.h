@@ -124,7 +124,7 @@ public:
         const vector<VertCube*>& beforeLines,
         const vector<Vertex*>& beforeVerts);
 
-    Array<Vertex*>      getVerticesToMove(VertCube* cube, Vertex* startVertex);
+    virtual Array<Vertex*> getVerticesToMove(VertCube* cube, Vertex* startVertex);
     VertCube*           getClosestLine(Vertex* vert);
     vector<Vertex*>&    getSelected();
     Vertex*             findClosestVertex(const Vertex2& posXY);
