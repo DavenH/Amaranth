@@ -120,6 +120,11 @@ public:
 
     void setNodeKind(NodeKind nodeKind) {
         kind = nodeKind;
+        dims = kind == NodeKind::Envelope
+                ? Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Red, Vertex::Blue)
+                : Dimensions(Vertex::Phase, Vertex::Amp);
+        fxRasterizer.setDims(dims);
+        envRasterizer.setDims(dims);
         ignoresTime = kind == NodeKind::Envelope;
         curveIsBipolar = kind != NodeKind::Waveshaper && kind != NodeKind::Envelope;
         bgPaddingLeft = paddingForKind();
@@ -162,6 +167,11 @@ public:
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
         envelopeRedLinked = redLinked;
         envelopeBlueLinked = blueLinked;
+
+        if (kind == NodeKind::Envelope && positioner != nullptr) {
+            updateSelectionFrames();
+            Panel2D::repaint();
+        }
     }
 
     void setControlValues(bool isEnabled, float firstValue, float secondValue, float thirdValue, int menuId) {
@@ -172,15 +182,7 @@ public:
         selectedMenuId = menuId;
 
         if (kind == NodeKind::Envelope) {
-            MorphPosition position;
-            position.time = 0.f;
-            position.red = controlA;
-            position.blue = controlB;
-            position.timeDepth = 0.001f;
-            position.redDepth = 0.001f;
-            position.blueDepth = 0.001f;
-            environment.setMorphPosition(position, Vertex::Red);
-            envRasterizer.setMorphPosition(position);
+            applyEnvelopeMorphPosition(false);
         }
     }
 
@@ -191,6 +193,25 @@ public:
     void mouseDoubleClick(const MouseEvent& event) override {
         updateCurrentMouseFromLocalPosition(event.getPosition());
         doCreateVertex();
+    }
+
+    void setExtraElements(float x) override {
+        if (kind != NodeKind::Envelope) {
+            Interactor2D::setExtraElements(x);
+            return;
+        }
+
+        ScopedLock lock(vertexLock);
+
+        if (state.currentCube != nullptr) {
+            state.currentVertex = findLinesClosestVertex(
+                    state.currentCube,
+                    state.currentMouse,
+                    envelopeMorphPosition());
+            jassert(state.currentVertex == nullptr
+                    || state.currentVertex->owners.contains(state.currentCube));
+            updateSelectionFrames();
+        }
     }
 
     bool addNewCube(float startTime, float x, float y, float curve) override {
@@ -245,7 +266,7 @@ public:
         transferMarker(mesh.sustainCubes);
     }
 
-    Array<Vertex*> envelopeVerticesToMove(VertCube* cube, Vertex* startVertex) {
+    Array<Vertex*> getVerticesToMove(VertCube* cube, Vertex* startVertex) override {
         if (kind != NodeKind::Envelope || cube == nullptr || startVertex == nullptr) {
             return Interactor::getVerticesToMove(cube, startVertex);
         }
@@ -295,7 +316,7 @@ public:
 
         resetFinalSelection();
 
-        Array<Vertex*> movingVerts = envelopeVerticesToMove(state.currentCube, state.currentVertex);
+        Array<Vertex*> movingVerts = getVerticesToMove(state.currentCube, state.currentVertex);
         const float diffY = (state.currentMouse.y - state.lastMouse.y) / std::sqrt(panel->getZoomPanel()->rect.h);
         const float diff = diffY / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
         const int pole = curves[getStateValue(CurrentCurve)].tp.ypole;
@@ -308,6 +329,20 @@ public:
 
         listeners.call(&InteractorListener::selectionChanged, getMesh(), state.selectedFrame);
         flag(DidMeshChange) |= diff != 0.f;
+    }
+
+    void doExtraMouseDrag(const MouseEvent& event) override {
+        Interactor2D::doExtraMouseDrag(event);
+
+        if (kind == NodeKind::Envelope
+                && (actionIs(PanelState::DraggingVertex)
+                        || actionIs(PanelState::ReshapingCurve)
+                        || actionIs(PanelState::DraggingCorner))
+                && synchronizeEnvelopeLoopSeamForCurrentEdit()) {
+            envRasterizer.updateWaveform(&mesh, 0.f);
+            state.flags[PanelState::DidMeshChange] = true;
+            Panel2D::repaint();
+        }
     }
 
     void setMovingVertsFromSelected() override {
@@ -323,14 +358,19 @@ public:
             VertCube* cube = state.currentCube != nullptr && vertex == state.currentVertex
                     ? state.currentCube
                     : closestEnvelopeCubeFor(vertex);
-            addToArray(envelopeVerticesToMove(cube, vertex), state.selectedFrame);
+            addToArray(getVerticesToMove(cube, vertex), state.selectedFrame);
         }
     }
 
     void refreshRasterizer() {
         if (kind == NodeKind::Envelope) {
+            envRasterizer.setMorphPosition(envelopeMorphPosition());
             envRasterizer.updateWaveform(&mesh, 0.f);
             validateEnvelopeMarkers();
+            if (synchronizeEnvelopeLoopSeamForCurrentEdit()) {
+                envRasterizer.updateWaveform(&mesh, 0.f);
+                validateEnvelopeMarkers();
+            }
         } else {
             fxRasterizer.updateGeometry();
             fxRasterizer.updateWaveform();
@@ -400,6 +440,40 @@ public:
 
         root->setProperty("movingVertexCount", (int) state.selectedFrame.size());
         root->setProperty("hasCurrentCube", state.currentCube != nullptr);
+
+        if (kind == NodeKind::Envelope) {
+            auto snapshot = const_cast<EnvRasterizer&>(envRasterizer).snapshotView();
+            ScopedLock dataLock(snapshot.lock());
+            const auto& intercepts = snapshot.intercepts();
+            auto* morph = new DynamicObject();
+            morph->setProperty("red", controlA);
+            morph->setProperty("blue", controlB);
+            root->setProperty("morph", var(morph));
+            root->setProperty("colorPointCount", (int) snapshot.colorPoints().size());
+            root->setProperty("redLinked", envelopeRedLinked);
+            root->setProperty("blueLinked", envelopeBlueLinked);
+
+            if (!intercepts.empty()) {
+                Array<var> interceptValues;
+                auto interceptToVar = [](const Intercept& intercept) {
+                    auto* object = new DynamicObject();
+                    object->setProperty("x", intercept.x);
+                    object->setProperty("y", intercept.y);
+                    object->setProperty("curve", intercept.shp);
+                    return var(object);
+                };
+
+                for (const auto& intercept : intercepts) {
+                    interceptValues.add(interceptToVar(intercept));
+                }
+
+                root->setProperty("intercepts", interceptValues);
+                root->setProperty("firstIntercept", interceptToVar(intercepts.front()));
+                root->setProperty("midIntercept", interceptToVar(intercepts[intercepts.size() / 2]));
+                root->setProperty("lastIntercept", interceptToVar(intercepts.back()));
+            }
+        }
+
         return var(root);
     }
 
@@ -454,7 +528,7 @@ public:
                 cube = closestEnvelopeCubeFor(vertex);
             }
 
-            vertices = envelopeVerticesToMove(cube, vertex);
+            vertices = getVerticesToMove(cube, vertex);
             if (vertices.isEmpty() && cube != nullptr) {
                 for (int i = 0; i < (int) VertCube::numVerts; ++i) {
                     vertices.addIfNotAlreadyThere(cube->getVertex(i));
@@ -534,7 +608,7 @@ public:
         }
 
         envRasterizer.evaluateLoopSustainIndices();
-        synchronizeEnvelopeLoopSeam();
+        synchronizeEnvelopeLoopSeamFrom(cube->getVertex(0), loopMarker);
         refreshRasterizer();
         state.flags[PanelState::DidMeshChange] = true;
         Panel2D::repaint();
@@ -543,6 +617,7 @@ public:
     void drawCurvesAndSurfaces() override {
         if (kind == NodeKind::Envelope) {
             drawEnvelopeCurveAndSections();
+            drawDepthLinesAndVerts();
             return;
         }
 
@@ -556,15 +631,41 @@ public:
     }
 
 private:
+    MorphPosition envelopeMorphPosition() const {
+        MorphPosition position;
+        position.time.setValueDirect(0.f);
+        position.red.setValueDirect(controlA);
+        position.blue.setValueDirect(controlB);
+        position.timeDepth = 0.001f;
+        position.redDepth = 1.f;
+        position.blueDepth = 1.f;
+        return position;
+    }
+
+    void applyEnvelopeMorphPosition(bool repaintPanel) {
+        if (kind != NodeKind::Envelope) {
+            return;
+        }
+
+        const MorphPosition position = envelopeMorphPosition();
+        environment.setMorphPosition(position, Vertex::Red);
+        envRasterizer.setMorphPosition(position);
+        envRasterizer.updateWaveform(&mesh, 0.f);
+
+        if (repaintPanel) {
+            Panel2D::repaint();
+        }
+    }
+
     bool addEnvelopeCubeAt(float x, float y, float curve) {
         ScopedLock lock(vertexLock);
 
         MorphPosition position;
-        position.time = 0.f;
+        position.time.setValueDirect(0.f);
         position.timeDepth = 0.001f;
-        position.red = 0.f;
+        position.red.setValueDirect(0.f);
         position.redDepth = 1.f;
-        position.blue = 0.f;
+        position.blue.setValueDirect(0.f);
         position.blueDepth = 1.f;
 
         auto* cube = new VertCube(&mesh);
@@ -630,9 +731,9 @@ private:
         }
 
         MorphPosition position;
-        position.time = 0.f;
-        position.red = controlA;
-        position.blue = controlB;
+        position.time.setValueDirect(0.f);
+        position.red.setValueDirect(controlA);
+        position.blue.setValueDirect(controlB);
 
         float minDistance = std::numeric_limits<float>::max();
         VertCube* closest = nullptr;
@@ -1098,7 +1199,9 @@ private:
         return -1.f;
     }
 
-    bool synchronizeEnvelopeLoopSeam() {
+    bool synchronizeEnvelopeLoopSeamFrom(Vertex* sourceVertex, bool sourceIsLoopVertex) {
+        ignoreUnused(sourceVertex);
+
         int loopIdx = -1;
         int sustIdx = -1;
         envRasterizer.getIndices(loopIdx, sustIdx);
@@ -1115,19 +1218,27 @@ private:
                 : nullptr;
 
         if (loopCube != nullptr && sustainCube != nullptr) {
-            for (int i = 0; i < (int) VertCube::numVerts; ++i) {
-                sustainCube->getVertex(i)->values[Vertex::Amp] = loopCube->getVertex(i)->values[Vertex::Amp];
+            VertCube* toMove = sourceIsLoopVertex ? sustainCube : loopCube;
+            VertCube* toCopyFrom = sourceIsLoopVertex ? loopCube : sustainCube;
+            bool changed = false;
 
-                if (sustainCube->getCompGuideCurve() < 0) {
-                    sustainCube->getVertex(i)->setMaxSharpness();
+            for (int i = 0; i < (int) VertCube::numVerts; ++i) {
+                Vertex* target = toMove->getVertex(i);
+                Vertex* source = toCopyFrom->getVertex(i);
+                const float nextAmp = source->values[Vertex::Amp];
+                changed = changed || target->values[Vertex::Amp] != nextAmp;
+                target->values[Vertex::Amp] = nextAmp;
+
+                if (toMove->getCompGuideCurve() < 0) {
+                    target->setMaxSharpness();
                 }
 
-                if (loopCube->getCompGuideCurve() < 0) {
-                    loopCube->getVertex(i)->setMaxSharpness();
+                if (toCopyFrom->getCompGuideCurve() < 0) {
+                    source->setMaxSharpness();
                 }
             }
 
-            return true;
+            return changed;
         }
 
         if (sustainCube != nullptr && sustainCube->guideCurveAt(Vertex::Time) < 0) {
@@ -1139,6 +1250,54 @@ private:
         }
 
         return false;
+    }
+
+    bool synchronizeEnvelopeLoopSeamForCurrentEdit() {
+        if (kind != NodeKind::Envelope) {
+            return false;
+        }
+
+        const auto isMarked = [](const std::set<VertCube*>& markers, VertCube* cube) {
+            return cube != nullptr && markers.find(cube) != markers.end();
+        };
+
+        bool movingLoopLine = false;
+        bool movingSustainLine = false;
+        Vertex* sourceVertex = state.currentVertex;
+
+        vector<Vertex*>& selected = getSelected();
+        for (Vertex* vertex : selected) {
+            if (vertex == nullptr) {
+                continue;
+            }
+
+            for (int i = 0; i < vertex->getNumOwners(); ++i) {
+                VertCube* owner = vertex->owners[i];
+                if (isMarked(mesh.loopCubes, owner)) {
+                    movingLoopLine = true;
+                    sourceVertex = vertex;
+                }
+                if (isMarked(mesh.sustainCubes, owner)) {
+                    movingSustainLine = true;
+                    sourceVertex = vertex;
+                }
+            }
+        }
+
+        if (selected.empty()) {
+            movingLoopLine = isMarked(mesh.loopCubes, state.currentCube);
+            movingSustainLine = isMarked(mesh.sustainCubes, state.currentCube);
+        }
+
+        if (movingLoopLine && movingSustainLine) {
+            return false;
+        }
+
+        if (!movingLoopLine && !movingSustainLine) {
+            return false;
+        }
+
+        return synchronizeEnvelopeLoopSeamFrom(sourceVertex, movingLoopLine);
     }
 
     FXRasterizer fxRasterizer;
@@ -1623,6 +1782,12 @@ std::vector<Effect2DPanelBridge::PreviewVertex> Effect2DPanelBridge::previewVert
     if (kind == NodeKind::Envelope) {
         result.reserve((size_t) mesh.getNumCubes());
         MorphPosition position;
+        position.time.setValueDirect(0.f);
+        position.red.setValueDirect(firstControlValue);
+        position.blue.setValueDirect(secondControlValue);
+        position.timeDepth = 0.001f;
+        position.redDepth = 1.f;
+        position.blueDepth = 1.f;
 
         for (VertCube* cube : mesh.getCubes()) {
             if (cube == nullptr) {
@@ -1732,6 +1897,7 @@ void Effect2DPanelBridge::initialiseMesh() {
         addVertex(0.f, 0.f, 1.f);
         addVertex(0.05f, 1.f, 0.5f);
         addVertex(0.7f, 0.8f, 0.3f);
+        setEnvelopeDefaultMorphVariant(2, 0.42f, 0.94f);
         addVertex(0.999f, 0.8f, 1.f);
         mesh.setSustainToLast();
         addVertex(1.075f, 0.6f, -1.f);
@@ -1746,15 +1912,43 @@ void Effect2DPanelBridge::initialiseMesh() {
     }
 }
 
+void Effect2DPanelBridge::setEnvelopeDefaultMorphVariant(int cubeIndex, float redHighAmp, float blueHighAmp) {
+    if (kind != NodeKind::Envelope || !isPositiveAndBelow(cubeIndex, mesh.getCubes().size())) {
+        return;
+    }
+
+    VertCube* cube = mesh.getCubes()[(size_t) cubeIndex];
+
+    if (cube == nullptr) {
+        return;
+    }
+
+    for (int i = 0; i < (int) VertCube::numVerts; ++i) {
+        Vertex* vertex = cube->getVertex(i);
+
+        if (vertex == nullptr) {
+            continue;
+        }
+
+        if (vertex->values[Vertex::Red] > 0.5f) {
+            vertex->values[Vertex::Amp] = redHighAmp;
+        }
+
+        if (vertex->values[Vertex::Blue] > 0.5f) {
+            vertex->values[Vertex::Amp] = blueHighAmp;
+        }
+    }
+}
+
 void Effect2DPanelBridge::addVertex(float x, float y, float curve) {
     if (kind == NodeKind::Envelope) {
         auto* cube = new VertCube(&mesh);
         MorphPosition position;
-        position.time = 0.f;
+        position.time.setValueDirect(0.f);
         position.timeDepth = 0.001f;
-        position.red = 0.f;
+        position.red.setValueDirect(0.f);
         position.redDepth = 1.f;
-        position.blue = 0.f;
+        position.blue.setValueDirect(0.f);
         position.blueDepth = 1.f;
         cube->initVerts(position);
 

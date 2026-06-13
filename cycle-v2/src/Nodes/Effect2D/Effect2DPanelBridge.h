@@ -60,6 +60,7 @@ private:
     void initialisePanelHost();
     void initialiseMesh();
     void addVertex(float x, float y, float curve = 0.f);
+    void setEnvelopeDefaultMorphVariant(int cubeIndex, float redHighAmp, float blueHighAmp);
     PanelHostCallbacks createPanelHostCallbacks();
     void applyPanelSettings();
     void captureRenderedPanelImage(

@@ -270,11 +270,11 @@ void Panel::render() {
         postCurveDraw();
     }
 
-    if (drawVerts) {
-        if (shouldDrawPanelPass("depth-lines")) {
-            drawDepthLinesAndVerts();
-        }
+    if ((drawVerts || alwaysDrawDepthLines) && shouldDrawPanelPass("depth-lines")) {
+        drawDepthLinesAndVerts();
+    }
 
+    if (drawVerts) {
         if (shouldDrawPanelPass("intercept-points")) {
             drawInterceptsAndHighlightClosest();
         }

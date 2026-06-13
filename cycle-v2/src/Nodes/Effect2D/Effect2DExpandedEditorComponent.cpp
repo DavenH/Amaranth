@@ -313,6 +313,109 @@ PowerToggleLookAndFeel& powerToggleLookAndFeel() {
     return lookAndFeel;
 }
 
+Image legacyEnvelopeIconSheet() {
+    static Image sheet = [] {
+      #if defined(CYCLE_V2_SOURCE_DIR)
+        const File iconFile = File(String(CYCLE_V2_SOURCE_DIR))
+                .getChildFile("resources")
+                .getChildFile("icons.png");
+
+        if (iconFile.existsAsFile()) {
+            return ImageFileFormat::loadFrom(iconFile);
+        }
+      #endif
+
+        return Image {};
+    }();
+
+    return sheet;
+}
+
+bool legacyEnvelopeMarkerCell(const String& label, int& column, int& row) {
+    if (label == "Loop") {
+        column = 4;
+        row    = 3;
+        return true;
+    }
+
+    if (label == "Sustain") {
+        column = 5;
+        row    = 3;
+        return true;
+    }
+
+    return false;
+}
+
+class LegacyEnvelopeMarkerButtonLookAndFeel :
+        public LookAndFeel_V4 {
+public:
+    void drawButtonBackground(
+            Graphics& g,
+            Button& button,
+            const Colour& backgroundColour,
+            bool shouldDrawButtonAsHighlighted,
+            bool shouldDrawButtonAsDown) override {
+        ignoreUnused(backgroundColour);
+
+        auto bounds = button.getLocalBounds().toFloat().reduced(1.5f);
+        const bool active = button.getToggleState();
+        const Colour outline = active ? Colour(0xffdce3ec) : Colour(0xff7d8998);
+        const Colour fill = active ? Colour(0xff26313d) : Colour(0xff111821);
+
+        g.setColour(fill.withAlpha(shouldDrawButtonAsDown ? 0.98f : 0.82f));
+        g.fillRoundedRectangle(bounds, 6.f);
+        g.setColour(outline.withAlpha(shouldDrawButtonAsHighlighted ? 0.96f : 0.72f));
+        g.drawRoundedRectangle(bounds, 6.f, active ? 1.7f : 1.25f);
+    }
+
+    void drawButtonText(
+            Graphics& g,
+            TextButton& button,
+            bool shouldDrawButtonAsHighlighted,
+            bool shouldDrawButtonAsDown) override {
+        int column {};
+        int row {};
+        if (!legacyEnvelopeMarkerCell(button.getButtonText(), column, row)) {
+            LookAndFeel_V4::drawButtonText(g, button, shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
+            return;
+        }
+
+        const Image sheet = legacyEnvelopeIconSheet();
+        if (sheet.isNull()) {
+            LookAndFeel_V4::drawButtonText(g, button, shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
+            return;
+        }
+
+        constexpr int cellSize = 24;
+        const Rectangle<int> source(column * cellSize, row * cellSize, cellSize, cellSize);
+        const float iconSize = jmin(21.f, (float) jmin(button.getWidth(), button.getHeight()) - 7.f);
+        Rectangle<float> target(iconSize, iconSize);
+        target.setCentre(button.getLocalBounds().toFloat().getCentre());
+
+        const float alpha = button.getToggleState()
+                ? 1.f
+                : (shouldDrawButtonAsHighlighted || shouldDrawButtonAsDown ? 0.9f : 0.68f);
+        g.setOpacity(alpha);
+        g.drawImage(
+                sheet,
+                target.getX(),
+                target.getY(),
+                target.getWidth(),
+                target.getHeight(),
+                source.getX(),
+                source.getY(),
+                source.getWidth(),
+                source.getHeight());
+        g.setOpacity(1.f);
+    }
+};
+
+LegacyEnvelopeMarkerButtonLookAndFeel& legacyEnvelopeMarkerButtonLookAndFeel() {
+    static LegacyEnvelopeMarkerButtonLookAndFeel lookAndFeel;
+    return lookAndFeel;
+}
+
 Rectangle<float> envelopeMorphSquareBounds(Rectangle<float> controls) {
     controls.reduce(12.f, 8.f);
     return controls.removeFromLeft(kEnvelopeMorphSquareWidth);
@@ -355,6 +458,31 @@ Rectangle<float> envelopeMarkerGroupBounds(Rectangle<float> controls) {
                     + 3.f * kEnvelopeMorphRowStep
                     + 14.f);
     return column.removeFromTop(64.f);
+}
+
+struct EnvelopeMarkerButtonLayout {
+    Rectangle<int> loop;
+    Rectangle<int> sustain;
+    Rectangle<int> log;
+};
+
+EnvelopeMarkerButtonLayout envelopeMarkerButtonLayout(Rectangle<float> controls) {
+    Rectangle<int> markerGroup = envelopeMarkerGroupBounds(controls).toNearestInt();
+    markerGroup.removeFromTop(22);
+    Rectangle<int> markerRow = markerGroup.removeFromTop(30);
+
+    const int iconButtonWidth = jmin(32, markerRow.getHeight());
+    const int logButtonWidth = 54;
+    const int totalWidth = iconButtonWidth * 2 + logButtonWidth + 18;
+    markerRow = markerRow.withSizeKeepingCentre(totalWidth, markerRow.getHeight());
+
+    EnvelopeMarkerButtonLayout layout;
+    layout.loop = markerRow.removeFromLeft(iconButtonWidth).reduced(2, 2);
+    markerRow.removeFromLeft(9);
+    layout.sustain = markerRow.removeFromLeft(iconButtonWidth).reduced(2, 2);
+    markerRow.removeFromLeft(9);
+    layout.log = markerRow.removeFromLeft(logButtonWidth).reduced(2, 2);
+    return layout;
 }
 
 Rectangle<float> envelopePrimaryAxisBounds(Rectangle<float> controls, int axisIndex) {
@@ -511,12 +639,15 @@ void drawEnvelopeAxisAndLinkButtons(
 }
 
 void drawEnvelopeMarkerHeader(Graphics& g, Rectangle<float> controls) {
-    Rectangle<float> group = envelopeMarkerGroupBounds(controls);
-    auto header = group.removeFromTop(14.f);
+    const auto layout = envelopeMarkerButtonLayout(controls);
+    auto labelBounds = [](Rectangle<int> buttonBounds) {
+        return buttonBounds.toFloat().withY((float) buttonBounds.getY() - 12.f).withHeight(10.f);
+    };
 
     g.setColour(kMutedText);
     g.setFont(FontOptions(10.5f, Font::bold));
-    g.drawText("markers / options", header, Justification::centred);
+    g.drawText("loop", labelBounds(layout.loop), Justification::centred);
+    g.drawText("sustain", labelBounds(layout.sustain).expanded(10.f, 0.f), Justification::centred);
 }
 
 }
@@ -817,6 +948,9 @@ void Effect2DExpandedEditorComponent::configureControls() {
     controls.firstButton.onClick = nullptr;
     controls.secondButton.onClick = nullptr;
     controls.thirdButton.onClick = nullptr;
+    controls.firstButton.setLookAndFeel(nullptr);
+    controls.secondButton.setLookAndFeel(nullptr);
+    controls.thirdButton.setLookAndFeel(nullptr);
     controls.firstButton.setClickingTogglesState(false);
     controls.secondButton.setClickingTogglesState(false);
     controls.thirdButton.setClickingTogglesState(false);
@@ -855,6 +989,10 @@ void Effect2DExpandedEditorComponent::configureControls() {
         controls.menuLabel.setVisible(true);
         styleButton(controls.firstButton, "Loop");
         styleButton(controls.secondButton, "Sustain");
+        controls.firstButton.setTooltip("Toggle selected vertex as loop start");
+        controls.secondButton.setTooltip("Toggle selected vertex as sustain");
+        controls.firstButton.setLookAndFeel(&legacyEnvelopeMarkerButtonLookAndFeel());
+        controls.secondButton.setLookAndFeel(&legacyEnvelopeMarkerButtonLookAndFeel());
         controls.firstButton.onClick = [this] {
             widget.toggleSelectedEnvelopeMarker(true);
             updateEnvelopeMarkerButtons();
@@ -936,6 +1074,8 @@ void Effect2DExpandedEditorComponent::styleSlider(Slider& slider, Label& label, 
         slider.setSliderStyle(Slider::LinearHorizontal);
         slider.setLookAndFeel(&morphRailLookAndFeel());
         slider.setColour(Slider::thumbColourId, envelopeAxisColour(text));
+        label.setFont(FontOptions(13.f));
+        label.setJustificationType(Justification::centredRight);
     } else if (usesRightControlRail(node.kind)) {
         slider.setSliderStyle(Slider::LinearHorizontal);
         slider.setLookAndFeel(&effectRailSliderLookAndFeel());
@@ -1252,17 +1392,10 @@ void Effect2DExpandedEditorComponent::updateControlLayout() {
         placeMorphSlider(controls.firstSlider, controls.firstLabel, 1);
         placeMorphSlider(controls.secondSlider, controls.secondLabel, 2);
 
-        Rectangle<int> markerGroup = envelopeMarkerGroupBounds(bounds.toFloat()).toNearestInt();
-        markerGroup.removeFromTop(22);
-        Rectangle<int> markerRow = markerGroup.removeFromTop(30);
-        const int buttonWidth = jmin(74, (markerRow.getWidth() - 18) / 3);
-        const int totalWidth = buttonWidth * 3 + 18;
-        markerRow = markerRow.withSizeKeepingCentre(totalWidth, markerRow.getHeight());
-        controls.firstButton.setBounds(markerRow.removeFromLeft(buttonWidth).reduced(2, 2));
-        markerRow.removeFromLeft(9);
-        controls.secondButton.setBounds(markerRow.removeFromLeft(buttonWidth).reduced(2, 2));
-        markerRow.removeFromLeft(9);
-        controls.thirdButton.setBounds(markerRow.removeFromLeft(buttonWidth).reduced(2, 2));
+        const auto markerButtons = envelopeMarkerButtonLayout(bounds.toFloat());
+        controls.firstButton.setBounds(markerButtons.loop);
+        controls.secondButton.setBounds(markerButtons.sustain);
+        controls.thirdButton.setBounds(markerButtons.log);
         return;
     }
 
