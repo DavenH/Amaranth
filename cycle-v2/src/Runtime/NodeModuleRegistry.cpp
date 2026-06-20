@@ -112,6 +112,9 @@ NodeModuleDescriptor NodeModuleRegistry::descriptorFor(NodeKind kind) const {
                     false,
                     "cycle/src/Audio/Effects/Delay.cpp");
 
+        case NodeKind::Spy:
+            return descriptor(kind, AudioModuleRole::Spy, PreviewModuleRole::SignalSpy, true, true);
+
         case NodeKind::StereoSplit:
             return descriptor(kind, AudioModuleRole::StereoSplit, PreviewModuleRole::None, true, false);
 
@@ -144,6 +147,7 @@ String labelForAudioModuleRole(AudioModuleRole role) {
         case AudioModuleRole::Waveshaper:        return "Waveshaper";
         case AudioModuleRole::Reverb:            return "Reverb";
         case AudioModuleRole::Delay:             return "Delay";
+        case AudioModuleRole::Spy:               return "Spy";
         case AudioModuleRole::StereoSplit:       return "Stereo Split";
         case AudioModuleRole::StereoJoin:        return "Stereo Join";
         case AudioModuleRole::Output:            return "Output";
@@ -164,6 +168,7 @@ String labelForPreviewModuleRole(PreviewModuleRole role) {
         case PreviewModuleRole::Envelope:          return "Envelope";
         case PreviewModuleRole::ImpulseResponse:   return "Impulse Response";
         case PreviewModuleRole::Waveshaper:        return "Waveshaper";
+        case PreviewModuleRole::SignalSpy:         return "Signal Spy";
         case PreviewModuleRole::OutputMeters:      return "Output Meters";
         case PreviewModuleRole::Generic:           return "Generic";
         default:                                   return "Unknown";

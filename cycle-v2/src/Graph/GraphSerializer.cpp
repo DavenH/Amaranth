@@ -29,6 +29,7 @@ String idForNodeKind(NodeKind kind) {
         case NodeKind::Waveshaper:                   return "waveshaper";
         case NodeKind::Reverb:                       return "reverb";
         case NodeKind::Delay:                        return "delay";
+        case NodeKind::Spy:                          return "spy";
         case NodeKind::StereoSplit:                  return "stereoSplit";
         case NodeKind::StereoJoin:                   return "stereoJoin";
         case NodeKind::Output:                       return "output";
@@ -78,6 +79,9 @@ NodeKind nodeKindForId(const String& id) {
     }
     if (id == "delay") {
         return NodeKind::Delay;
+    }
+    if (id == "spy") {
+        return NodeKind::Spy;
     }
     if (id == "stereoSplit") {
         return NodeKind::StereoSplit;
@@ -140,6 +144,7 @@ void normalizeNodePresentation(Node& node) {
             || node.kind == NodeKind::Waveshaper
             || node.kind == NodeKind::Add
             || node.kind == NodeKind::Multiply
+            || node.kind == NodeKind::Spy
             || node.kind == NodeKind::Output) {
         const auto naturalSize = naturalSizeForNode(node);
         node.bounds.setSize(naturalSize.width, naturalSize.height);

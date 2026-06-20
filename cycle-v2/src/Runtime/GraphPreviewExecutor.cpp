@@ -4,25 +4,25 @@ namespace CycleV2 {
 
 namespace {
 
-const std::vector<float>* findSummary(
+const NodePreviewResult* findSummary(
         const std::vector<NodePreviewResult>& summaries,
         const String& nodeId) {
     for (const auto& summary : summaries) {
         if (summary.nodeId == nodeId) {
-            return &summary.primary;
+            return &summary;
         }
     }
 
     return nullptr;
 }
 
-std::vector<float> inputSummaryForStep(
+NodePreviewResult inputSummaryForStep(
         const GraphExecutionStep& step,
         const std::vector<NodePreviewResult>& summaries) {
     for (const auto& input : step.inputs) {
-        const std::vector<float>* summary = findSummary(summaries, input.sourceNodeId);
+        const NodePreviewResult* summary = findSummary(summaries, input.sourceNodeId);
 
-        if (summary != nullptr && !summary->empty()) {
+        if (summary != nullptr && (!summary->primary.empty() || !summary->secondary.empty())) {
             return *summary;
         }
     }
@@ -38,15 +38,20 @@ GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, 
     NodePreviewProcessorFactory factory;
 
     for (const auto& step : plan.steps) {
-        auto inputSummary = inputSummaryForStep(step, summaries);
+        auto inputPreview = inputSummaryForStep(step, summaries);
 
         if (!step.previewable) {
-            if (!inputSummary.empty()) {
+            if (!inputPreview.primary.empty() || !inputPreview.secondary.empty()) {
+                inputPreview.nodeId = step.nodeId;
+                inputPreview.role = PreviewModuleRole::None;
                 summaries.push_back({
-                        step.nodeId,
-                        PreviewModuleRole::None,
-                        std::move(inputSummary),
-                        {}
+                        inputPreview.nodeId,
+                        inputPreview.role,
+                        std::move(inputPreview.primary),
+                        std::move(inputPreview.secondary),
+                        inputPreview.gridColumns,
+                        inputPreview.gridRows,
+                        inputPreview.domain
                 });
             }
 
@@ -72,14 +77,21 @@ GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, 
             });
         }
 
-        context.inputSummary = std::move(inputSummary);
+        context.inputSummary = inputPreview.primary;
+        context.inputGrid = std::move(inputPreview.primary);
+        context.inputGridColumns = inputPreview.gridColumns;
+        context.inputGridRows = inputPreview.gridRows;
+        context.domain = inputPreview.domain;
         processor->render(context);
 
         NodePreviewResult preview {
                 step.nodeId,
                 step.previewRole,
                 std::move(context.primary),
-                std::move(context.secondary)
+                std::move(context.secondary),
+                context.gridColumns,
+                context.gridRows,
+                context.domain
         };
 
         summaries.push_back(preview);

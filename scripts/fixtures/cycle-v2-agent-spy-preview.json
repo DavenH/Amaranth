@@ -1,0 +1,28 @@
+{
+  "commands": [
+    {
+      "command": "addNode",
+      "kind": "spy",
+      "x": 560,
+      "y": 270
+    },
+    {
+      "command": "connectPorts",
+      "sourceNodeId": "waveMesh",
+      "sourcePortId": "out",
+      "destNodeId": "spy",
+      "destPortId": "in"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-agent-spy-preview.png"
+    }
+  ],
+  "quit": true
+}

@@ -297,6 +297,7 @@ String GraphEditor::baseIdForKind(NodeKind kind) const {
         case NodeKind::Waveshaper:                   return "waveshaper";
         case NodeKind::Reverb:                       return "reverb";
         case NodeKind::Delay:                        return "delay";
+        case NodeKind::Spy:                          return "spy";
         case NodeKind::StereoSplit:                  return "split";
         case NodeKind::StereoJoin:                   return "join";
         case NodeKind::Output:                       return "out";

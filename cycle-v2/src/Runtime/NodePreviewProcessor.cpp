@@ -149,6 +149,10 @@ public:
                 renderMeters(context);
                 break;
 
+            case PreviewModuleRole::SignalSpy:
+                renderSignalSpy(context);
+                break;
+
             case PreviewModuleRole::VoiceContext:
             case PreviewModuleRole::Generic:
                 renderDescending(context, 0.8f, 0.2f);
@@ -203,6 +207,7 @@ private:
         const PortDomain outputDomain = primaryOutputDomain(context.outputPorts);
         const bool cyclic = outputDomain == PortDomain::TimeSignal;
         const size_t columnCount = std::max<size_t>(8, context.pointCount / 2);
+        context.domain = outputDomain;
 
         TrimeshBlockwiseDsp blockwiseDsp;
         AudioProcessBlock slice;
@@ -231,6 +236,8 @@ private:
 
         context.primary.clear();
         context.primary.reserve(columnCount * context.pointCount);
+        context.gridColumns = columnCount;
+        context.gridRows = context.pointCount;
 
         for (auto column : columns) {
             normalizeBipolarBlock(column.signal);
@@ -312,6 +319,21 @@ private:
             context.primary[i] = level;
             context.secondary[i] = secondaryLevel;
         }
+    }
+
+    void renderSignalSpy(PreviewProcessContext& context) const {
+        if (context.inputGrid.empty()) {
+            context.primary.clear();
+            context.secondary.clear();
+            context.gridColumns = 0;
+            context.gridRows = 0;
+            return;
+        }
+
+        context.primary = context.inputGrid;
+        context.secondary.clear();
+        context.gridColumns = context.inputGridColumns;
+        context.gridRows = context.inputGridRows;
     }
 
     Mesh& meshForPreview() const {

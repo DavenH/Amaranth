@@ -148,6 +148,13 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             break;
 
+        case NodeKind::Spy:
+            node.title = "Spy";
+            node.subtitle = "signal monitor";
+            node.inputs = { input("in", "In", PortDomain::ControlSignal) };
+            node.outputs = { output("out", "Out", PortDomain::ControlSignal) };
+            break;
+
         case NodeKind::StereoSplit:
             node.title = "Stereo Split";
             node.subtitle = "L/R breakout";

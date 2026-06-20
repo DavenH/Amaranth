@@ -49,6 +49,9 @@ TEST_CASE("Graph preview executor renders previewable compiled nodes", "[cycle-v
     REQUIRE(findPreview(result, "waveMesh").role == PreviewModuleRole::MeshSurface);
     REQUIRE(findPreview(result, "waveMesh").primary.size() == 32);
     REQUIRE(findPreview(result, "waveMesh").secondary.size() == 4);
+    REQUIRE(findPreview(result, "waveMesh").gridColumns == 8);
+    REQUIRE(findPreview(result, "waveMesh").gridRows == 4);
+    REQUIRE(findPreview(result, "waveMesh").domain == PortDomain::TimeSignal);
     REQUIRE(findPreview(result, "env").role == PreviewModuleRole::Envelope);
     REQUIRE(std::none_of(
             result.nodes.begin(),
@@ -70,6 +73,35 @@ TEST_CASE("Graph preview executor skips non-preview utility nodes", "[cycle-v2][
             [](const NodePreviewResult& preview) {
                 return preview.nodeId == "fft" || preview.nodeId == "ifft" || preview.nodeId == "multiply";
             }));
+}
+
+TEST_CASE("Graph preview executor gives spy nodes upstream traversal grids", "[cycle-v2][runtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 240.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Spy, "spy", { 520.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 760.f, 0.f }));
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "mesh", "out", "spy", "in", PortDomain::ControlSignal, false });
+    graph.addEdge({ "spy", "out", "fft", "time", PortDomain::ControlSignal, false });
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    const auto result = GraphPreviewExecutor().render(compileResult.plan, 6);
+    const auto& mesh = findPreview(result, "mesh");
+    const auto& spy = findPreview(result, "spy");
+
+    REQUIRE(mesh.role == PreviewModuleRole::MeshSurface);
+    REQUIRE(spy.role == PreviewModuleRole::SignalSpy);
+    REQUIRE(mesh.gridColumns == spy.gridColumns);
+    REQUIRE(mesh.gridRows == spy.gridRows);
+    REQUIRE(spy.gridColumns > 1);
+    REQUIRE(spy.gridRows == 6);
+    REQUIRE(spy.domain == mesh.domain);
+    REQUIRE(spy.primary == mesh.primary);
 }
 
 TEST_CASE("Graph preview executor passes parameters to preview processors", "[cycle-v2][runtime]") {

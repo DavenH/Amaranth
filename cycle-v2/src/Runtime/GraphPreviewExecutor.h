@@ -10,6 +10,9 @@ struct NodePreviewResult {
     PreviewModuleRole role { PreviewModuleRole::None };
     std::vector<float> primary;
     std::vector<float> secondary;
+    size_t gridColumns {};
+    size_t gridRows {};
+    PortDomain domain { PortDomain::TimeSignal };
 };
 
 struct GraphPreviewResult {

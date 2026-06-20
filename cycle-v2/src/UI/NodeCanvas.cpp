@@ -12,6 +12,7 @@
 namespace CycleV2 {
 
 Rectangle<float> nodePreviewBounds(Rectangle<float> nodeBounds, NodeKind kind, float zoom);
+Rectangle<float> previewContentArea(Rectangle<float> area);
 
 namespace {
 
@@ -95,6 +96,7 @@ const PaletteEntry kFxEntries[] = {
 };
 
 const PaletteEntry kChannelEntries[] = {
+        { NodeKind::Spy, "Spy" },
         { NodeKind::StereoSplit, "Split" },
         { NodeKind::StereoJoin, "Join" },
         { NodeKind::Output, "Output" }
@@ -386,6 +388,8 @@ bool nodeKindForAutomationId(const String& id, NodeKind& kind) {
         kind = NodeKind::Reverb;
     } else if (id == "delay") {
         kind = NodeKind::Delay;
+    } else if (id == "spy") {
+        kind = NodeKind::Spy;
     } else if (id == "stereoSplit" || id == "split") {
         kind = NodeKind::StereoSplit;
     } else if (id == "stereoJoin" || id == "join") {
@@ -754,6 +758,7 @@ bool isPreviewableNode(NodeKind kind) {
         case NodeKind::GuideCurve:
         case NodeKind::ImpulseResponse:
         case NodeKind::Waveshaper:
+        case NodeKind::Spy:
             return true;
 
         default:
@@ -1240,6 +1245,7 @@ Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
         case PreviewModuleRole::OutputMeters:
         case PreviewModuleRole::Waveform:
         case PreviewModuleRole::Waveshaper:        return colourForDomain(PortDomain::TimeSignal);
+        case PreviewModuleRole::SignalSpy:         return Colour(0xffd2d9e2);
         case PreviewModuleRole::MeshSurface:       return colourForDomain(PortDomain::MeshField);
         default:                                   break;
     }
@@ -1339,6 +1345,33 @@ void drawPreviewMeters(
 
     drawMeter(leftMeter, left);
     drawMeter(rightMeter, right);
+}
+
+bool drawPreviewHeatmapSurface(
+        Graphics& g,
+        Rectangle<float> area,
+        const NodePreviewResult& preview) {
+    TrimeshRenderData renderData;
+    renderData.surface = preview.primary;
+    renderData.domain = preview.domain;
+    renderData.columns = (int) preview.gridColumns;
+    renderData.rows = (int) preview.gridRows;
+    renderData.cyclic = preview.domain == PortDomain::TimeSignal;
+
+    if (!renderData.canDrawSurface()) {
+        return false;
+    }
+
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(preview.domain);
+    const Image image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
+    if (!image.isValid()) {
+        return false;
+    }
+
+    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+    const Rectangle<float> content = area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
+    g.drawImage(image, content);
+    return true;
 }
 
 Rectangle<float> fitAspect(Rectangle<float> area, float aspectRatio) {
@@ -2780,6 +2813,11 @@ void NodeCanvas::drawPreviewUncached(
             return;
         }
 
+        if (preview->role == PreviewModuleRole::SignalSpy) {
+            drawPreviewHeatmapSurface(g, area, *preview);
+            return;
+        }
+
         if (!preview->primary.empty()) {
             const Rectangle<float> content = previewContentArea(area);
             drawPreviewTrace(g, content, preview->primary, colour, zoom);
@@ -2822,6 +2860,10 @@ void NodeCanvas::drawPreviewUncached(
                 { 0.58f }
         };
         drawPreviewMeters(g, area, preview, colour);
+        return;
+    }
+
+    if (node.kind == NodeKind::Spy) {
         return;
     }
 

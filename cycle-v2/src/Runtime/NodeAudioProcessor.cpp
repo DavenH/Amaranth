@@ -188,6 +188,7 @@ public:
             case AudioModuleRole::Waveshaper:
             case AudioModuleRole::Reverb:
             case AudioModuleRole::Delay:
+            case AudioModuleRole::Spy:
             case AudioModuleRole::GenericProcessor:
                 processPassthrough(context);
                 break;
