@@ -6,6 +6,7 @@
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
@@ -491,10 +492,7 @@ private:
             output.channelLayout = input->channelLayout;
         }
 
-        const float preGain = parameterFloat(context.parameters, "pre", 1.f);
-        const float postGain = parameterFloat(context.parameters, "post", 1.f);
-        applyWaveshaperBlock(output, *input, preGain, postGain, context.frameCount);
-        applyWaveshaperTraversalGrid(output, *input, preGain, postGain);
+        waveshaperDsp.process(output, *input, context.parameters, context.frameCount);
         publishSingleOutput(context, std::move(output));
     }
 
@@ -632,42 +630,6 @@ private:
         }
     }
 
-    void applyWaveshaperBlock(
-            SignalPayload& output,
-            const SignalPayload& input,
-            float preGain,
-            float postGain,
-            size_t frameCount) const {
-        output.block.samples.resize(frameCount);
-
-        for (size_t row = 0; row < frameCount; ++row) {
-            output.block.samples[row] = waveshapedValue(payloadValueAt(input, row), preGain, postGain);
-        }
-    }
-
-    void applyWaveshaperTraversalGrid(
-            SignalPayload& output,
-            const SignalPayload& input,
-            float preGain,
-            float postGain) const {
-        if (!input.traversalGrid.isValid()) {
-            output.traversalGrid = {};
-            return;
-        }
-
-        configureTraversalGrid(output.traversalGrid, input.traversalGrid.columns, input.traversalGrid.rows);
-
-        const size_t count = std::min(output.traversalGrid.values.size(), input.traversalGrid.values.size());
-        for (size_t i = 0; i < count; ++i) {
-            output.traversalGrid.values[i] = waveshapedValue(input.traversalGrid.values[i], preGain, postGain);
-        }
-    }
-
-    float waveshapedValue(float value, float preGain, float postGain) const {
-        const float driven = jlimit(-1.f, 1.f, value * preGain);
-        return jlimit(-1.f, 1.f, driven * postGain);
-    }
-
     void applyBinaryBlock(
             SignalPayload& output,
             const SignalPayload* left,
@@ -739,6 +701,7 @@ private:
     mutable FftBlockwiseDsp fftDsp;
     mutable FftGridwiseDsp fftGridwiseDsp;
     mutable TrimeshBlockwiseDsp trimeshDsp;
+    mutable WaveshaperSignalProcessor waveshaperDsp;
     std::unique_ptr<Mesh> defaultMesh;
 };
 

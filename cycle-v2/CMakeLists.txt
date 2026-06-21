@@ -70,6 +70,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshSliceRenderer2D.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshSurfaceRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshWidget.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Waveshaper/WaveshaperSignalProcessor.cpp"
 )
 
 set(BASE_DEFINITIONS

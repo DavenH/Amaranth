@@ -177,9 +177,42 @@ TEST_CASE("Waveshaper processor applies the same transform to block and traversa
     };
     factory.create(AudioModuleRole::Waveshaper)->process(context);
 
-    REQUIRE(output(context).block.samples == std::vector<float> { -0.5f, 0.f, 0.5f });
-    REQUIRE(output(context).traversalGrid.values
-            == std::vector<float> { -0.5f, 0.f, 0.5f, 0.5f, -0.5f, 0.25f });
+    REQUIRE(output(context).traversalGrid.isValid());
+    REQUIRE(output(context).traversalGrid.columns == 2);
+    REQUIRE(output(context).traversalGrid.rows == 3);
+    REQUIRE(output(context).block.samples.size() == 3);
+    REQUIRE(output(context).traversalGrid.values.size() == 6);
+    REQUIRE(output(context).block.samples[0] == Catch::Approx(output(context).traversalGrid.values[0]));
+    REQUIRE(output(context).block.samples[1] == Catch::Approx(output(context).traversalGrid.values[1]));
+    REQUIRE(output(context).block.samples[2] == Catch::Approx(output(context).traversalGrid.values[2]));
+    REQUIRE(output(context).block.samples[0] < 0.f);
+    REQUIRE(output(context).block.samples[1] == Catch::Approx(0.f).margin(0.0001f));
+    REQUIRE(output(context).block.samples[2] > 0.f);
+}
+
+TEST_CASE("Waveshaper processor uses persisted FX rasterizer vertices", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext defaultContext;
+    defaultContext.frameCount = 3;
+    defaultContext.inputs = {
+            gridPayload({ -0.5f, 0.f, 0.5f }, 1, 3)
+    };
+    factory.create(AudioModuleRole::Waveshaper)->process(defaultContext);
+
+    AudioProcessContext shapedContext;
+    shapedContext.frameCount = 3;
+    shapedContext.inputs = {
+            gridPayload({ -0.5f, 0.f, 0.5f }, 1, 3)
+    };
+    shapedContext.parameters = {
+            { "effect.vertices", "Effect Vertices", "0.062500,0.875000,1.000000;0.937500,0.875000,1.000000" }
+    };
+    factory.create(AudioModuleRole::Waveshaper)->process(shapedContext);
+
+    REQUIRE(output(shapedContext).traversalGrid.isValid());
+    REQUIRE(output(shapedContext).block.samples[2] != Catch::Approx(output(defaultContext).block.samples[2]));
+    REQUIRE(output(shapedContext).traversalGrid.values[1] == Catch::Approx(output(shapedContext).block.samples[1]));
 }
 
 TEST_CASE("Disabled waveshaper passes block and traversal grid through unchanged", "[cycle-v2][runtime]") {
