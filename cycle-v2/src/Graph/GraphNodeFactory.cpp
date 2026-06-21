@@ -117,12 +117,24 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::GuideCurve:
             node.title = "Guide";
             node.subtitle = "mesh attachment";
+            node.parameters = {
+                    { "enabled", "Enabled", "1" },
+                    { "noise", "Noise", "0.5" },
+                    { "dcOffset", "DC Offset", "0.5" },
+                    { "phase", "Phase", "0.5" }
+            };
             node.outputs = { output("guide", "Guide", PortDomain::EnvelopeSignal) };
             break;
 
         case NodeKind::ImpulseResponse:
             node.title = "IR";
             node.subtitle = "convolution";
+            node.parameters = {
+                    { "enabled", "Enabled", "1" },
+                    { "size", "Size", "0.5" },
+                    { "post", "Post", "0.5" },
+                    { "highPass", "HighPass", "0.5" }
+            };
             node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             break;
@@ -130,6 +142,12 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::Waveshaper:
             node.title = "Waveshaper";
             node.subtitle = "transfer curve";
+            node.parameters = {
+                    { "enabled", "Enabled", "1" },
+                    { "pre", "Pre", "1" },
+                    { "post", "Post", "1" },
+                    { "aaFactor", "AA Factor", "1" }
+            };
             node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             break;

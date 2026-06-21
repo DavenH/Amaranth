@@ -292,10 +292,12 @@ Implemented:
 - Passthrough/bypassed processors preserve traversal grids.
 - Waveshaper applies the same persisted scalar transform to block samples and
   traversal-grid values, and preserves both when disabled.
+- Guide, IR, and waveshaper expanded editor controls persist their scalar
+  control values into graph-owned node parameters.
 
 Still open:
 
-- Persist the editable waveshaper/IR/guide panel mesh state into node
+- Persist the editable waveshaper/IR/guide panel mesh vertices into node
   parameters or another graph-owned model that the runtime processor can read.
 - Replace IR modeller pass-through with real blockwise convolution processing
   and column-wise traversal processing.

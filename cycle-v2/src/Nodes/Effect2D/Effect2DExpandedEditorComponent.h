@@ -60,6 +60,7 @@ private:
     void updateEnvelopeMarkerButtons();
     void syncEnvelopeStateFromNode();
     void syncEnvelopeAxisLinksToWidget();
+    void syncControlValuesFromNode();
     void updatePanelHost();
     void updateControlLayout();
     bool updateEnvelopeMorphFromPoint(juce::Point<float> position);
@@ -86,6 +87,7 @@ private:
     bool draggingEnvelopeMorphPlane {};
     bool draggingVertexParameter {};
     String activeVertexParameterId;
+    bool syncingControls {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Effect2DExpandedEditorComponent)
 };
