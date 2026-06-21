@@ -20,12 +20,12 @@ public:
             size_t frameCount,
             PortDomain domain,
             ChannelLayout channelLayout,
-            AudioProcessBlock& output);
+            SignalPayload& output);
 
 private:
     void prepareRequest();
-    void sampleOutput(AudioProcessBlock& output);
-    Buffer<float> outputBuffer(AudioProcessBlock& output) const;
+    void sampleOutput(SignalPayload& output);
+    Buffer<float> outputBuffer(SignalPayload& output) const;
 
     bool cyclic { true };
     int primaryViewAxis { Vertex::Time };

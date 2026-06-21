@@ -35,8 +35,8 @@ void TrimeshBlockwiseDsp::renderCycle(
         size_t frameCount,
         PortDomain domain,
         ChannelLayout channelLayout,
-        AudioProcessBlock& output) {
-    output.samples.resize(frameCount);
+        SignalPayload& output) {
+    output.block.samples.resize(frameCount);
     output.domain = domain;
     output.channelLayout = channelLayout;
 
@@ -71,7 +71,7 @@ void TrimeshBlockwiseDsp::prepareRequest() {
     rasterizer.setWrapsEnds(cyclic);
 }
 
-void TrimeshBlockwiseDsp::sampleOutput(AudioProcessBlock& output) {
+void TrimeshBlockwiseDsp::sampleOutput(SignalPayload& output) {
     auto sampler = rasterizer.sampler();
 
     if (!sampler.isSampleable()) {
@@ -79,7 +79,7 @@ void TrimeshBlockwiseDsp::sampleOutput(AudioProcessBlock& output) {
     }
 
     Buffer<float> dest = outputBuffer(output);
-    const float delta = output.samples.size() > 0 ? 1.f / (float) output.samples.size() : 0.f;
+    const float delta = output.block.samples.size() > 0 ? 1.f / (float) output.block.samples.size() : 0.f;
     int currentIndex = rasterizer.snapshotView().zeroIndex();
 
     for (int i = 0; i < dest.size(); ++i) {
@@ -91,8 +91,8 @@ void TrimeshBlockwiseDsp::sampleOutput(AudioProcessBlock& output) {
     }
 }
 
-Buffer<float> TrimeshBlockwiseDsp::outputBuffer(AudioProcessBlock& output) const {
-    return { output.samples.data(), (int) output.samples.size() };
+Buffer<float> TrimeshBlockwiseDsp::outputBuffer(SignalPayload& output) const {
+    return { output.block.samples.data(), (int) output.block.samples.size() };
 }
 
 }

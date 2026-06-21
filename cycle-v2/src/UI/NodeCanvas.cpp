@@ -284,9 +284,9 @@ var componentDiagnosticsToVar(const String& id, const Component* component) {
     return object;
 }
 
-var audioMetricsToVar(const AudioProcessBlock& block, double sampleRate) {
+var audioMetricsToVar(const SignalPayload& payload, double sampleRate) {
     auto* object = new DynamicObject();
-    const auto& samples = block.samples;
+    const auto& samples = payload.block.samples;
     double sumSquares = 0.0;
     float peak = 0.f;
 
@@ -303,8 +303,8 @@ var audioMetricsToVar(const AudioProcessBlock& block, double sampleRate) {
     object->setProperty("durationMs", sampleRate > 0.0 ? 1000.0 * (double) samples.size() / sampleRate : 0.0);
     object->setProperty("peak", peak);
     object->setProperty("rms", std::sqrt(sumSquares / sampleCount));
-    object->setProperty("domain", labelForDomain(block.domain));
-    object->setProperty("channelLayout", labelForChannelLayout(block.channelLayout));
+    object->setProperty("domain", labelForDomain(payload.domain));
+    object->setProperty("channelLayout", labelForChannelLayout(payload.channelLayout));
     return object;
 }
 
@@ -4854,7 +4854,7 @@ var NodeCanvas::captureAudioForAutomation(size_t frameCount) const {
     root->setProperty("metrics", audioMetricsToVar(result.output, 44100.0));
 
     Array<var> samples;
-    for (float sample : result.output.samples) {
+    for (float sample : result.output.block.samples) {
         samples.add(sample);
     }
     root->setProperty("samples", samples);

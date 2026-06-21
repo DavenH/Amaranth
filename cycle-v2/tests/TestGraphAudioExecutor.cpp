@@ -23,6 +23,10 @@ const NodeAudioResult& findNodeAudio(const GraphAudioResult& result, const Strin
     return *found;
 }
 
+const std::vector<float>& samples(const SignalPayload& payload) {
+    return payload.block.samples;
+}
+
 }
 
 TEST_CASE("Graph audio executor renders source through envelope multiply to output", "[cycle-v2][runtime]") {
@@ -45,9 +49,14 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
 
     const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 5);
 
-    REQUIRE(result.output.samples == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
-    REQUIRE(findNodeAudio(result, "wave").output.samples == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
-    REQUIRE(findNodeAudio(result, "mul").output.samples == result.output.samples);
+    REQUIRE(samples(result.output) == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
+    REQUIRE(result.output.traversalGrid.isValid());
+    REQUIRE(result.output.traversalGrid.rows == 5);
+    REQUIRE(samples(findNodeAudio(result, "wave").output) == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
+    REQUIRE(findNodeAudio(result, "wave").output.traversalGrid.isValid());
+    REQUIRE(samples(findNodeAudio(result, "mul").output) == samples(result.output));
+    REQUIRE(findNodeAudio(result, "mul").output.traversalGrid.values
+            == findNodeAudio(result, "wave").output.traversalGrid.values);
 }
 
 TEST_CASE("Graph audio executor passes parameters to node processors", "[cycle-v2][runtime]") {
@@ -64,7 +73,7 @@ TEST_CASE("Graph audio executor passes parameters to node processors", "[cycle-v
 
     const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 3);
 
-    REQUIRE(result.output.samples == std::vector<float> { 0.f, 0.25f, 0.5f });
+    REQUIRE(samples(result.output) == std::vector<float> { 0.f, 0.25f, 0.5f });
 }
 
 TEST_CASE("Graph audio executor returns silence for disconnected output", "[cycle-v2][runtime]") {
@@ -78,7 +87,7 @@ TEST_CASE("Graph audio executor returns silence for disconnected output", "[cycl
 
     const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 3);
 
-    REQUIRE(result.output.samples == std::vector<float> { 0.f, 0.f, 0.f });
+    REQUIRE(samples(result.output) == std::vector<float> { 0.f, 0.f, 0.f });
 }
 
 TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cycle-v2][runtime]") {
@@ -103,12 +112,14 @@ TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cyc
     REQUIRE(fft.outputs.size() == 2);
     REQUIRE(fft.outputs[0].first == "mag");
     REQUIRE(fft.outputs[0].second.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(fft.outputs[0].second.traversalGrid.isValid());
     REQUIRE(fft.outputs[1].first == "phase");
     REQUIRE(fft.outputs[1].second.domain == PortDomain::SpectralPhaseSignal);
-    REQUIRE(result.output.samples[0] == Catch::Approx(-0.5f).margin(1.0e-5f));
-    REQUIRE(result.output.samples[1] == Catch::Approx(-1.f / 6.f).margin(1.0e-5f));
-    REQUIRE(result.output.samples[2] == Catch::Approx(1.f / 6.f).margin(1.0e-5f));
-    REQUIRE(result.output.samples[3] == Catch::Approx(0.5f).margin(1.0e-5f));
+    REQUIRE(fft.outputs[1].second.traversalGrid.isValid());
+    REQUIRE(samples(result.output)[0] == Catch::Approx(-0.5f).margin(1.0e-5f));
+    REQUIRE(samples(result.output)[1] == Catch::Approx(-1.f / 6.f).margin(1.0e-5f));
+    REQUIRE(samples(result.output)[2] == Catch::Approx(1.f / 6.f).margin(1.0e-5f));
+    REQUIRE(samples(result.output)[3] == Catch::Approx(0.5f).margin(1.0e-5f));
 }
 
 TEST_CASE("Graph audio executor renders the demo graph through resolved mesh operands", "[cycle-v2][runtime]") {
@@ -123,6 +134,7 @@ TEST_CASE("Graph audio executor renders the demo graph through resolved mesh ope
     REQUIRE(findNodeAudio(result, "phaseMesh").output.domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(findNodeAudio(result, "fft").outputs.size() == 2);
     REQUIRE(result.output.domain == PortDomain::TimeSignal);
-    REQUIRE(result.output.samples.size() == 4);
-    REQUIRE(result.output.samples != std::vector<float> { 0.f, 0.f, 0.f, 0.f });
+    REQUIRE(samples(result.output).size() == 4);
+    REQUIRE(result.output.traversalGrid.isValid());
+    REQUIRE(samples(result.output) != std::vector<float> { 0.f, 0.f, 0.f, 0.f });
 }

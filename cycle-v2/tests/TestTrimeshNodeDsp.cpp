@@ -164,17 +164,17 @@ TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", 
     auto mesh = TrimeshMeshFactory::createDefaultMesh();
     TrimeshBlockwiseDsp dsp;
 
-    AudioProcessBlock output;
+    SignalPayload output;
     dsp.setMesh(mesh.get());
     dsp.setMorphPosition(MorphPosition(0.5f, 0.5f, 0.5f));
     dsp.renderCycle(8, PortDomain::TimeSignal, ChannelLayout::LinkedStereo, output);
 
     REQUIRE(output.domain == PortDomain::TimeSignal);
     REQUIRE(output.channelLayout == ChannelLayout::LinkedStereo);
-    REQUIRE(output.samples.size() == 8);
-    REQUIRE(output.samples[0] == Catch::Approx(0.f).margin(0.35f));
-    REQUIRE(*std::min_element(output.samples.begin(), output.samples.end())
-            < *std::max_element(output.samples.begin(), output.samples.end()));
+    REQUIRE(output.block.samples.size() == 8);
+    REQUIRE(output.block.samples[0] == Catch::Approx(0.f).margin(0.35f));
+    REQUIRE(*std::min_element(output.block.samples.begin(), output.block.samples.end())
+            < *std::max_element(output.block.samples.begin(), output.block.samples.end()));
 
     mesh->destroy();
 }
@@ -581,10 +581,10 @@ TEST_CASE("Trimesh gridwise DSP renders independent morph columns", "[cycle-v2][
 
     REQUIRE(columns.size() == 4);
     REQUIRE(columns.front().signal.domain == PortDomain::SpectralMagnitudeSignal);
-    REQUIRE(columns.front().signal.samples.size() == 8);
+    REQUIRE(columns.front().signal.block.samples.size() == 8);
     REQUIRE(columns.front().morph.time.getCurrentValue() == Catch::Approx(0.f));
     REQUIRE(columns.back().morph.time.getCurrentValue() == Catch::Approx(1.f));
-    REQUIRE(columns.front().signal.samples != columns.back().signal.samples);
+    REQUIRE(columns.front().signal.block.samples != columns.back().signal.block.samples);
 
     mesh->destroy();
 }

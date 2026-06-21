@@ -5,8 +5,8 @@
 namespace CycleV2 {
 
 struct FftGridColumn {
-    AudioProcessBlock magnitude;
-    AudioProcessBlock phase;
+    SignalPayload magnitude;
+    SignalPayload phase;
 };
 
 class FftGridwiseDsp {

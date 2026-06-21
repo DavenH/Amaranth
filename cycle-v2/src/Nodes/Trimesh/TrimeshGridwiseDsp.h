@@ -7,7 +7,7 @@ class Mesh;
 namespace CycleV2 {
 
 struct TrimeshGridColumn {
-    AudioProcessBlock signal;
+    SignalPayload signal;
     MorphPosition morph;
 };
 
