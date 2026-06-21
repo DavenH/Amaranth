@@ -20,6 +20,7 @@ public:
     void setExpandedPanelCallbacks(
             std::function<void()> repaintCallback,
             std::function<void(const MouseCursor&)> cursorCallback);
+    void setMeshEditedCallback(std::function<void()> callback);
     void setControlValues(bool enabled, float firstValue, float secondValue, float thirdValue, int menuId);
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
@@ -35,6 +36,7 @@ public:
     int vertexCountForAutomation() const;
     var automationState() const;
     std::vector<Effect2DPanelBridge::PreviewVertex> previewVertices();
+    String serializedMeshState();
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
     bool selectedEnvelopeMarkerState(bool loopMarker) const;

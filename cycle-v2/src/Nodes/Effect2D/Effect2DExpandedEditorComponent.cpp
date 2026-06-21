@@ -1,5 +1,6 @@
 #include "Effect2DExpandedEditorComponent.h"
 
+#include "Effect2DMeshState.h"
 #include "../Trimesh/TrimeshSidePanelRenderer.h"
 
 #include <utility>
@@ -699,6 +700,12 @@ void Effect2DExpandedEditorComponent::setCallbacks(Callbacks nextCallbacks) {
                     safeThis->setMouseCursor(cursor);
                 }
             });
+
+    widget.setMeshEditedCallback([safeThis] {
+        if (safeThis != nullptr) {
+            safeThis->persistEffectMeshState();
+        }
+    });
 }
 
 void Effect2DExpandedEditorComponent::setNode(const Node& nextNode) {
@@ -1717,6 +1724,23 @@ void Effect2DExpandedEditorComponent::pushControlValues() {
             callbacks.setNodeParameter("blue", "Blue", String(controls.secondSlider.getValue()));
         }
     }
+
+    if (callbacks.repaintOpenGL != nullptr) {
+        callbacks.repaintOpenGL();
+    }
+}
+
+void Effect2DExpandedEditorComponent::persistEffectMeshState() {
+    if (callbacks.setNodeParameter == nullptr
+            || node.kind == NodeKind::Envelope
+            || syncingControls) {
+        return;
+    }
+
+    callbacks.setNodeParameter(
+            Effect2DMeshState::parameterId(),
+            "Effect Vertices",
+            widget.serializedMeshState());
 
     if (callbacks.repaintOpenGL != nullptr) {
         callbacks.repaintOpenGL();

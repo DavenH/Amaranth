@@ -32,6 +32,10 @@ void Effect2DWidget::setExpandedPanelCallbacks(
     bridge.setPanelHostCallbacks(std::move(repaintCallback), std::move(cursorCallback));
 }
 
+void Effect2DWidget::setMeshEditedCallback(std::function<void()> callback) {
+    bridge.setMeshEditedCallback(std::move(callback));
+}
+
 void Effect2DWidget::setControlValues(
         bool enabled,
         float firstValue,
@@ -96,6 +100,10 @@ var Effect2DWidget::automationState() const {
 
 std::vector<Effect2DPanelBridge::PreviewVertex> Effect2DWidget::previewVertices() {
     return bridge.previewVertices();
+}
+
+String Effect2DWidget::serializedMeshState() {
+    return bridge.serializedMeshState();
 }
 
 std::vector<TrimeshVertexParameter> Effect2DWidget::selectedVertexParameters() const {

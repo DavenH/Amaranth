@@ -75,6 +75,7 @@ private:
             float& value) const;
     bool findVertexGuideAt(juce::Point<float> position, String& parameterId, Rectangle<int>& targetBounds) const;
     void pushControlValues();
+    void persistEffectMeshState();
 
     Effect2DWidget& widget;
     Callbacks callbacks;

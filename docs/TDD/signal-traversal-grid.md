@@ -257,9 +257,10 @@ Waveshaper:
 - applies the same transfer curve to every value in the traversal grid
 - disabled/bypassed waveshaper passes both blockwise and gridwise data through
 - current cycle-v2 runtime applies persisted `enabled`, `pre`, and `post`
-  parameters to block and traversal data; edited effect-panel mesh persistence
-  is still required before the processor can use the exact user-edited transfer
-  curve
+  parameters to block and traversal data
+- editable `effect.vertices` persistence exists, but runtime waveshaper DSP
+  must use the Cycle 1 waveshaper/FXRasterizer transfer table semantics rather
+  than a local approximation
 
 IR modeller / convolution:
 
@@ -294,11 +295,14 @@ Implemented:
   traversal-grid values, and preserves both when disabled.
 - Guide, IR, and waveshaper expanded editor controls persist their scalar
   control values into graph-owned node parameters.
+- Guide, IR, and waveshaper 2D panel vertices persist into graph-owned
+  `effect.vertices` node parameters.
 
 Still open:
 
-- Persist the editable waveshaper/IR/guide panel mesh vertices into node
-  parameters or another graph-owned model that the runtime processor can read.
+- Move waveshaper runtime processing into a node-specific DSP adapter that
+  reuses the Cycle 1 `Waveshaper::processBuffer` / `FXRasterizer` transfer
+  table semantics for both block samples and traversal-grid values.
 - Replace IR modeller pass-through with real blockwise convolution processing
   and column-wise traversal processing.
 - Define and implement delay/reverb traversal semantics instead of treating
