@@ -19,6 +19,11 @@ struct GraphAudioResult {
 class GraphAudioExecutor {
 public:
     GraphAudioResult process(const NodeGraph& graph, const GraphExecutionPlan& plan, size_t frameCount) const;
+    GraphAudioResult process(
+            const NodeGraph& graph,
+            const GraphExecutionPlan& plan,
+            size_t frameCount,
+            AudioProcessTiming timing) const;
 
 private:
     struct PortOutput {

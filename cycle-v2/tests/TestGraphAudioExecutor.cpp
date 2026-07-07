@@ -59,6 +59,45 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
             == findNodeAudio(result, "wave").output.traversalGrid.values);
 }
 
+TEST_CASE("Graph audio node payloads expose transformed grids for spy taps", "[cycle-v2][runtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", { 260.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 520.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 780.f, 0.f }));
+
+    auto mesh = factory.createNode(NodeKind::TrilinearMesh, "operand", { 260.f, 200.f });
+    mesh.parameters = {
+            { "yellow", "Yellow", "0.75" },
+            { "red", "Red", "0.5" },
+            { "blue", "Blue", "0.5" },
+            { "primaryAxis", "Primary Axis", "yellow" }
+    };
+    graph.addNode(mesh);
+
+    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, false });
+    graph.addEdge({ "operand", "out", "add", "right", PortDomain::ControlSignal, false });
+    graph.addEdge({ "add", "out", "shape", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "shape", "time", "out", "time", PortDomain::TimeSignal, false });
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 8);
+    const auto& wave = findNodeAudio(result, "wave").output;
+    const auto& add = findNodeAudio(result, "add").output;
+    const auto& shape = findNodeAudio(result, "shape").output;
+
+    REQUIRE(wave.traversalGrid.isValid());
+    REQUIRE(add.traversalGrid.isValid());
+    REQUIRE(shape.traversalGrid.isValid());
+    REQUIRE(add.traversalGrid.values != wave.traversalGrid.values);
+    REQUIRE(shape.traversalGrid.values != add.traversalGrid.values);
+    REQUIRE(result.output.traversalGrid.values == shape.traversalGrid.values);
+}
+
 TEST_CASE("Graph audio executor passes parameters to node processors", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;

@@ -6,6 +6,14 @@ GraphAudioResult GraphAudioExecutor::process(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan,
         size_t frameCount) const {
+    return process(graph, plan, frameCount, {});
+}
+
+GraphAudioResult GraphAudioExecutor::process(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        size_t frameCount,
+        AudioProcessTiming timing) const {
     std::vector<PortOutput> outputs;
     outputs.reserve(plan.steps.size());
 
@@ -21,6 +29,7 @@ GraphAudioResult GraphAudioExecutor::process(
 
         AudioProcessContext context;
         context.frameCount = frameCount;
+        context.timing = timing;
         context.parameters = step.parameters;
         context.outputPorts.reserve(step.outputs.size());
 

@@ -261,23 +261,27 @@ Waveshaper:
 - editable `effect.vertices` persistence feeds a node-specific waveshaper DSP
   adapter that reuses the shared FXRasterizer transfer-table semantics for
   block and traversal-grid values
-- oversampling/latency behavior from the mature audio effect path still needs
-  a Cycle 2 adapter contract before realtime hardening
+- traversal-grid and UI preview processing deliberately use the transfer table
+  directly without oversampling. This matches the Cycle 1 graphics policy:
+  independent visualization columns are not continuous audio and should not
+  inherit oversampler delay-line artifacts.
+- realtime audio oversampling/latency remains an audio-thread adapter concern,
+  not part of the traversal-grid payload contract.
 
 IR modeller / convolution:
 
 - applies the impulse/convolution process to blockwise time samples
 - applies the same process across traversal columns
-- if convolution state/carry is needed, the policy must be explicit per column
-  rather than shared accidentally across unrelated traversal columns
+- convolution state/carry resets before the full traversal render and then
+  carries naturally across columns so the grid shows impulse tails over time
 - disabled/bypassed IR passes both blockwise and gridwise data through
 
 Delay/Reverb:
 
-- should eventually define gridwise behavior matching their time-domain effect
-  semantics
-- until implemented, they should be considered incomplete for Spy correctness
-  rather than pretending the upstream grid is still accurate after processing
+- transform blockwise samples and traversal columns through node-owned effect
+  processors
+- reset effect state before the full traversal render, then process columns in
+  order so delay history, feedback, and reverb tails remain visible over time
 
 ## Current Implementation Status
 
@@ -286,7 +290,8 @@ Implemented:
 - `SignalBlock`, `SignalTraversalGrid`, and `SignalPayload` separate sample,
   grid, and signal metadata ownership.
 - `AudioProcessContext` publishes outputs only as `SignalPayload` values.
-- Wave/image placeholder sources publish repeated traversal grids.
+- Wave/image sources publish deterministic source-shaped traversal grids rather
+  than repeated copies of the block vector.
 - Trilinear mesh source publishes traversal columns from `TrimeshGridwiseDsp`.
 - FFT transforms time traversal grids into magnitude/phase traversal grids.
 - IFFT transforms magnitude/phase traversal grids back into time traversal grids.
@@ -302,19 +307,29 @@ Implemented:
 - Waveshaper runtime processing delegates to a node-specific DSP adapter that
   builds its transfer table through `FXRasterizer` and applies the same
   transfer to block samples and traversal-grid values.
+- Unary signal processing has explicit block/grid lifecycle hooks so stateful
+  processors can reset traversal state without leaking from the visible block.
+- IR runtime processing delegates to a node-specific DSP adapter that builds an
+  impulse through `FXRasterizer` and applies convolution with
+  `ConvReverb::basicConvolve` to block samples and traversal-grid columns.
+- Delay runtime processing applies a Cycle 1-derived spin-delay adapter to block
+  samples and traversal-grid columns.
+- Reverb runtime processing applies a Cycle 1-derived kernel-generation adapter
+  and `ConvReverb::basicConvolve` to block samples and traversal-grid columns.
+- Binary matrix-with-matrix traversal processing requires matching grid
+  dimensions; mismatches explicitly produce no traversal grid instead of
+  silently choosing one shape.
+- Shared runtime traversal helpers live in runtime helper/processor modules
+  rather than in `NodeAudioProcessor.cpp`.
 
-Still open:
+Future hardening:
 
-- Define and implement the Cycle 2 waveshaper oversampling/latency contract
-  without duplicating the mature audio effect logic.
-- Replace IR modeller pass-through with real blockwise convolution processing
-  and column-wise traversal processing.
-- Define and implement delay/reverb traversal semantics instead of treating
-  them as transparent processors.
-- Move the runtime traversal helpers out of `NodeAudioProcessor.cpp` into a
-  reusable processing abstraction once more concrete processors consume them.
-- Add dimension mismatch policy/tests for matrix-with-matrix operations instead
-  of relying on first-grid dimensions.
+- Expand sample-rate and tempo metadata usage beyond delay into every realtime
+  processor that needs host timing.
+- Generalize Cycle 1 effect contracts so Cycle 2 adapters can reuse the exact
+  runtime effect implementations without UI/singleton dependencies.
+- Move vector-backed runtime payload storage into a preallocated graph work
+  arena before realtime audio-thread hardening.
 
 ## Spy Relationship
 

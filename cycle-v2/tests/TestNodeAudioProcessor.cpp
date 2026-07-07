@@ -4,6 +4,7 @@
 #include "../src/Runtime/NodeAudioProcessor.h"
 
 #include <algorithm>
+#include <cmath>
 
 using namespace CycleV2;
 
@@ -20,6 +21,18 @@ SignalPayload payload(std::initializer_list<float> samples) {
 SignalPayload gridPayload(std::initializer_list<float> samples, size_t columns, size_t rows) {
     SignalPayload result = payload(samples);
     result.traversalGrid.values = std::vector<float>(samples);
+    result.traversalGrid.columns = columns;
+    result.traversalGrid.rows = rows;
+    return result;
+}
+
+SignalPayload gridPayload(const std::vector<float>& samples, size_t columns, size_t rows) {
+    REQUIRE(samples.size() >= rows);
+    SignalPayload result;
+    result.block.samples.assign(samples.begin(), samples.begin() + (std::ptrdiff_t) rows);
+    result.domain = PortDomain::TimeSignal;
+    result.channelLayout = ChannelLayout::LinkedStereo;
+    result.traversalGrid.values = samples;
     result.traversalGrid.columns = columns;
     result.traversalGrid.rows = rows;
     return result;
@@ -55,6 +68,27 @@ TEST_CASE("Source audio processors produce deterministic buffers", "[cycle-v2][r
     REQUIRE(output(context).traversalGrid.isValid());
     REQUIRE(output(context).traversalGrid.rows == 5);
     REQUIRE(output(context).traversalGrid.values.size() == output(context).traversalGrid.columns * 5);
+    REQUIRE(output(context).traversalGrid.values[0] == Catch::Approx(0.f));
+    REQUIRE(output(context).traversalGrid.values[5] > output(context).traversalGrid.values[0]);
+    REQUIRE(output(context).traversalGrid.values[5] != Catch::Approx(output(context).traversalGrid.values[0]));
+}
+
+TEST_CASE("Image source publishes a two-dimensional traversal grid", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::ImageSource);
+    REQUIRE(processor != nullptr);
+
+    AudioProcessContext context;
+    context.frameCount = 4;
+    processor->process(context);
+
+    REQUIRE(output(context).block.samples == std::vector<float> { 0.f, 1.f / 3.f, 2.f / 3.f, 1.f });
+    REQUIRE(output(context).traversalGrid.isValid());
+    REQUIRE(output(context).traversalGrid.rows == 4);
+    REQUIRE(output(context).traversalGrid.columns == 8);
+    REQUIRE(output(context).traversalGrid.values[0] == Catch::Approx(0.f));
+    REQUIRE(output(context).traversalGrid.values[3] == Catch::Approx(0.35f));
+    REQUIRE(output(context).traversalGrid.values[4] == Catch::Approx(0.65f / 7.f));
 }
 
 TEST_CASE("Audio processors read node parameters from process context", "[cycle-v2][runtime]") {
@@ -149,9 +183,24 @@ TEST_CASE("Utility audio processors apply scalar operands across vectors and tra
             == std::vector<float> { 11.f, 12.f, 13.f, 14.f, 15.f, 16.f });
 }
 
-TEST_CASE("Adapter placeholder audio processors pass through first input", "[cycle-v2][runtime]") {
+TEST_CASE("Utility audio processors reject mismatched matrix dimensions explicitly", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
-    auto processor = factory.create(AudioModuleRole::ImpulseResponse);
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.inputs = {
+            gridPayload({ 1.f, 2.f, 3.f, 4.f, 5.f, 6.f }, 2, 3),
+            gridPayload({ 10.f, 20.f, 30.f }, 1, 3)
+    };
+    factory.create(AudioModuleRole::Add)->process(context);
+
+    REQUIRE(output(context).block.samples == std::vector<float> { 11.f, 22.f, 33.f });
+    REQUIRE_FALSE(output(context).traversalGrid.isValid());
+}
+
+TEST_CASE("Transparent audio processors pass through first input", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::Output);
     REQUIRE(processor != nullptr);
 
     AudioProcessContext context;
@@ -161,6 +210,30 @@ TEST_CASE("Adapter placeholder audio processors pass through first input", "[cyc
 
     REQUIRE(output(context).block.samples == std::vector<float> { -0.25f, 0.f, 0.5f });
     REQUIRE_FALSE(output(context).traversalGrid.isValid());
+}
+
+TEST_CASE("Passthrough audio processors expand scalar input safely", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext context;
+    context.frameCount = 4;
+    context.inputs = { payload({ 0.25f }) };
+    factory.create(AudioModuleRole::Output)->process(context);
+
+    REQUIRE(output(context).block.samples == std::vector<float> { 0.25f, 0.25f, 0.25f, 0.25f });
+}
+
+TEST_CASE("Stereo split expands scalar input safely", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.inputs = { payload({ -0.5f }) };
+    factory.create(AudioModuleRole::StereoSplit)->process(context);
+
+    REQUIRE(context.outputs.size() == 2);
+    REQUIRE(context.outputs[0].block.samples == std::vector<float> { -0.5f, -0.5f, -0.5f });
+    REQUIRE(context.outputs[1].block.samples == std::vector<float> { -0.5f, -0.5f, -0.5f });
 }
 
 TEST_CASE("Waveshaper processor applies the same transform to block and traversal grid", "[cycle-v2][runtime]") {
@@ -233,6 +306,134 @@ TEST_CASE("Disabled waveshaper passes block and traversal grid through unchanged
     REQUIRE(output(context).block.samples == std::vector<float> { -0.5f, 0.f, 0.5f });
     REQUIRE(output(context).traversalGrid.values
             == std::vector<float> { -0.5f, 0.f, 0.5f, 0.75f, -0.75f, 0.25f });
+}
+
+TEST_CASE("IR processor transforms block and traversal grid through convolution", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext context;
+    context.frameCount = 4;
+    context.inputs = {
+            gridPayload({ 1.f, 0.f, 0.f, 0.f, 0.5f, 0.f, 0.f, 0.f }, 2, 4)
+    };
+    context.parameters = {
+            { "size", "Size", "0" },
+            { "post", "Post", "0.5" },
+            { "highPass", "HighPass", "0" }
+    };
+    factory.create(AudioModuleRole::ImpulseResponse)->process(context);
+
+    REQUIRE(output(context).traversalGrid.isValid());
+    REQUIRE(output(context).traversalGrid.columns == 2);
+    REQUIRE(output(context).traversalGrid.rows == 4);
+    REQUIRE(output(context).block.samples != std::vector<float> { 1.f, 0.f, 0.f, 0.f });
+    REQUIRE(output(context).traversalGrid.values != context.inputs.front().traversalGrid.values);
+}
+
+TEST_CASE("Delay processor transforms block and traversal grid with matching delay state", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext context;
+    context.frameCount = 8;
+    context.timing.sampleRate = 128.0;
+    context.inputs = {
+            gridPayload(
+                    {
+                            1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f,
+                            10.f, 20.f, 30.f, 40.f, 50.f, 60.f, 70.f, 80.f
+                    },
+                    2,
+                    8)
+    };
+    context.parameters = {
+            { "time", "Time", "0" },
+            { "feedback", "Feedback", "1" },
+            { "wet", "Wet", "1" }
+    };
+    factory.create(AudioModuleRole::Delay)->process(context);
+
+    REQUIRE(output(context).block.samples[0] == Catch::Approx(1.f));
+    REQUIRE(output(context).block.samples[5] > context.inputs.front().block.samples[5]);
+    REQUIRE(output(context).traversalGrid.values[0] == Catch::Approx(output(context).block.samples[0]));
+    REQUIRE(output(context).traversalGrid.values[5] == Catch::Approx(output(context).block.samples[5]));
+    REQUIRE(output(context).traversalGrid.values[8] > context.inputs.front().traversalGrid.values[8]);
+}
+
+TEST_CASE("Delay traversal rendering does not overwrite block state", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+    auto withGridProcessor = factory.create(AudioModuleRole::Delay);
+    auto blockOnlyProcessor = factory.create(AudioModuleRole::Delay);
+
+    const std::vector<NodeParameter> parameters = {
+            { "time", "Time", "0" },
+            { "feedback", "Feedback", "1" },
+            { "wet", "Wet", "1" }
+    };
+
+    AudioProcessContext withGridFirst;
+    withGridFirst.frameCount = 8;
+    withGridFirst.timing.sampleRate = 128.0;
+    withGridFirst.parameters = parameters;
+    withGridFirst.inputs = {
+            gridPayload(
+                    {
+                            1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f,
+                            100.f, 200.f, 300.f, 400.f, 500.f, 600.f, 700.f, 800.f
+                    },
+                    2,
+                    8)
+    };
+    withGridProcessor->process(withGridFirst);
+
+    AudioProcessContext blockOnlyFirst;
+    blockOnlyFirst.frameCount = 8;
+    blockOnlyFirst.timing.sampleRate = 128.0;
+    blockOnlyFirst.parameters = parameters;
+    blockOnlyFirst.inputs = {
+            payload({ 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f })
+    };
+    blockOnlyProcessor->process(blockOnlyFirst);
+
+    AudioProcessContext withGridSecond;
+    withGridSecond.frameCount = 8;
+    withGridSecond.timing.sampleRate = 128.0;
+    withGridSecond.parameters = parameters;
+    withGridSecond.inputs = { payload({ 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f }) };
+    withGridProcessor->process(withGridSecond);
+
+    AudioProcessContext blockOnlySecond = withGridSecond;
+    blockOnlyProcessor->process(blockOnlySecond);
+
+    REQUIRE(output(withGridSecond).block.samples == output(blockOnlySecond).block.samples);
+    REQUIRE(output(withGridSecond).block.samples[0] > 0.f);
+}
+
+TEST_CASE("Reverb processor transforms block and carries traversal tails across columns", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext context;
+    context.frameCount = 256;
+    std::vector<float> values(512, 0.f);
+    values.front() = 1.f;
+    context.inputs = {
+            gridPayload(values, 2, 256)
+    };
+    context.parameters = {
+            { "size", "Size", "0" },
+            { "damp", "Damp", "0.2" },
+            { "highPass", "HighPass", "0" },
+            { "width", "Width", "0.5" },
+            { "wet", "Wet", "1" }
+    };
+    factory.create(AudioModuleRole::Reverb)->process(context);
+
+    REQUIRE(output(context).traversalGrid.isValid());
+    REQUIRE(output(context).block.samples != context.inputs.front().block.samples);
+    REQUIRE(output(context).traversalGrid.values != context.inputs.front().traversalGrid.values);
+    REQUIRE(std::any_of(
+            output(context).traversalGrid.values.begin() + 256,
+            output(context).traversalGrid.values.end(),
+            [](float value) { return std::abs(value) > 0.000001f; }));
 }
 
 TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[cycle-v2][runtime]") {

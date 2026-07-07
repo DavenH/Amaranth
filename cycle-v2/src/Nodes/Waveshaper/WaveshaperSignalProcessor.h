@@ -10,13 +10,15 @@
 namespace CycleV2 {
 
 class WaveshaperSignalProcessor :
-        public UnarySignalProcessor<WaveshaperSignalProcessor> {
+        public IUnarySignalOperation {
 public:
     WaveshaperSignalProcessor();
     ~WaveshaperSignalProcessor();
 
-    void prepareProcess(const std::vector<NodeParameter>& parameters);
-    void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position);
+    void prepareProcess(
+            const std::vector<NodeParameter>& parameters,
+            const AudioProcessTiming& timing) override;
+    void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) override;
 
 private:
     void syncTransferTable(const std::vector<NodeParameter>& parameters);

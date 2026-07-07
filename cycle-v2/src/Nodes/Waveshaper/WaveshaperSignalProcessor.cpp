@@ -2,6 +2,7 @@
 
 #include "../Effect2D/Effect2DMeshState.h"
 
+#include <Curve/Curve.h>
 #include <Curve/Mesh/Vertex.h>
 
 namespace CycleV2 {
@@ -9,6 +10,12 @@ namespace CycleV2 {
 namespace {
 
 constexpr float kWaveshaperPadding = 0.125f;
+
+void ensureCurveTable() {
+    if (Curve::table == nullptr) {
+        Curve::calcTable();
+    }
+}
 
 String parameterValue(
         const std::vector<NodeParameter>& parameters,
@@ -21,13 +28,6 @@ String parameterValue(
     }
 
     return fallback;
-}
-
-float parameterFloat(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        float fallback) {
-    return parameterValue(parameters, id, String(fallback)).getFloatValue();
 }
 
 std::vector<Effect2DVertexState> defaultVertices() {
@@ -50,7 +50,9 @@ WaveshaperSignalProcessor::~WaveshaperSignalProcessor() {
     mesh.destroy();
 }
 
-void WaveshaperSignalProcessor::prepareProcess(const std::vector<NodeParameter>& parameters) {
+void WaveshaperSignalProcessor::prepareProcess(
+        const std::vector<NodeParameter>& parameters,
+        const AudioProcessTiming&) {
     syncTransferTable(parameters);
     preGain = parameterFloat(parameters, "pre", 1.f);
     postGain = parameterFloat(parameters, "post", 1.f);
@@ -69,6 +71,7 @@ void WaveshaperSignalProcessor::syncTransferTable(const std::vector<NodeParamete
 
     rebuildMesh(serializedVertices);
     lastVertexState = serializedVertices;
+    ensureCurveTable();
     rasterizer.updateGeometry();
     rasterizer.updateWaveform();
     transfer.rasterizeFrom(rasterizer.sampler(), kWaveshaperPadding);

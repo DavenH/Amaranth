@@ -1,11 +1,8 @@
 #pragma once
 
-#include "AudioProcessTypes.h"
+#include "AudioProcessContextUtils.h"
 
 #include <Array/Buffer.h>
-#include <Array/VecOps.h>
-
-#include <algorithm>
 
 namespace CycleV2 {
 
@@ -13,58 +10,48 @@ struct SignalProcessPosition {
     size_t column {};
 };
 
-template<class Processor>
+class IUnarySignalOperation {
+public:
+    virtual ~IUnarySignalOperation() = default;
+
+    virtual void prepareProcess(
+            const std::vector<NodeParameter>& parameters,
+            const AudioProcessTiming& timing) = 0;
+    virtual void beginBlock(size_t frameCount) {}
+    virtual void beginTraversalGrid(size_t columns, size_t rows) {}
+    virtual void beginTraversalColumn(size_t column, size_t rows) {}
+    virtual void endTraversalGrid() {}
+    virtual void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) = 0;
+};
+
 class UnarySignalProcessor {
 public:
     void process(
+            IUnarySignalOperation& operation,
             SignalPayload& output,
             const SignalPayload& input,
             const std::vector<NodeParameter>& parameters,
+            const AudioProcessTiming& timing,
             size_t frameCount) {
-        auto& processor = static_cast<Processor&>(*this);
-        processor.prepareProcess(parameters);
+        operation.prepareProcess(parameters, timing);
 
         output.domain = input.domain;
         output.channelLayout = input.channelLayout;
 
-        copyInputBlock(output, input, frameCount);
-        processor.processBuffer(
+        copyPayloadBlockExpandingScalars(output, input, frameCount);
+        operation.beginBlock(output.block.samples.size());
+        operation.processBuffer(
                 { output.block.samples.data(), (int) output.block.samples.size() },
                 {});
 
-        processTraversalGrid(output, input, processor);
-    }
-
-protected:
-    static void copyInputBlock(SignalPayload& output, const SignalPayload& input, size_t frameCount) {
-        output.block.samples.resize(frameCount);
-
-        Buffer<float> outputBuffer(output.block.samples.data(), (int) output.block.samples.size());
-        if (input.block.samples.empty()) {
-            outputBuffer.zero();
-            return;
-        }
-
-        if (input.block.samples.size() == 1) {
-            outputBuffer.set(input.block.samples.front());
-            return;
-        }
-
-        const size_t copyCount = std::min(input.block.samples.size(), output.block.samples.size());
-        VecOps::copy(input.block.samples.data(), output.block.samples.data(), (int) copyCount);
-
-        if (copyCount < output.block.samples.size()) {
-            outputBuffer
-                    .sectionAtMost((int) copyCount, (int) (output.block.samples.size() - copyCount))
-                    .zero();
-        }
+        processTraversalGrid(operation, output, input);
     }
 
 private:
     static void processTraversalGrid(
+            IUnarySignalOperation& operation,
             SignalPayload& output,
-            const SignalPayload& input,
-            Processor& processor) {
+            const SignalPayload& input) {
         if (!input.traversalGrid.isValid()) {
             output.traversalGrid = {};
             return;
@@ -74,15 +61,18 @@ private:
         output.traversalGrid.rows = input.traversalGrid.rows;
         output.traversalGrid.values = input.traversalGrid.values;
 
+        operation.beginTraversalGrid(output.traversalGrid.columns, output.traversalGrid.rows);
         for (size_t column = 0; column < output.traversalGrid.columns; ++column) {
             const size_t offset = column * output.traversalGrid.rows;
-            processor.processBuffer(
+            operation.beginTraversalColumn(column, output.traversalGrid.rows);
+            operation.processBuffer(
                     {
                             output.traversalGrid.values.data() + offset,
                             (int) output.traversalGrid.rows
                     },
                     { column });
         }
+        operation.endTraversalGrid();
     }
 };
 

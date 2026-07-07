@@ -155,6 +155,13 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::Reverb:
             node.title = "Reverb";
             node.subtitle = "space";
+            node.parameters = {
+                    { "enabled", "Enabled", "1" },
+                    { "size", "Size", "0.35" },
+                    { "damp", "Damp", "0.25" },
+                    { "width", "Width", "0.75" },
+                    { "wet", "Wet", "0.35" }
+            };
             node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             break;
@@ -162,6 +169,12 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
         case NodeKind::Delay:
             node.title = "Delay";
             node.subtitle = "echo";
+            node.parameters = {
+                    { "enabled", "Enabled", "1" },
+                    { "time", "Time", "0.25" },
+                    { "feedback", "Feedback", "0.25" },
+                    { "wet", "Wet", "0.5" }
+            };
             node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
             break;

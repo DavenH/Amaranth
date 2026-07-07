@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Runtime/NodeAudioProcessor.h"
+#include "../../Runtime/AudioProcessTypes.h"
 
 #include <Algo/FFT.h>
 

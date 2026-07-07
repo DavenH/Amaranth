@@ -35,8 +35,15 @@ struct AudioOutputPort {
     ChannelLayout channelLayout { ChannelLayout::Mono };
 };
 
+struct AudioProcessTiming {
+    double sampleRate { 44100.0 };
+    double bpm { 120.0 };
+    int beatsPerMeasure { 4 };
+};
+
 struct AudioProcessContext {
     size_t frameCount {};
+    AudioProcessTiming timing;
     std::vector<NodeParameter> parameters;
     std::vector<SignalPayload> inputs;
     std::vector<AudioOutputPort> outputPorts;
