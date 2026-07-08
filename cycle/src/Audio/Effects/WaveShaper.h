@@ -3,6 +3,7 @@
 #include <Algo/Oversampler.h>
 #include <Array/ScopedAlloc.h>
 #include <Audio/SmoothedParameter.h>
+#include <Audio/WaveshaperTransfer.h>
 #include <Curve/Rasterization/Rasterizer/Rasterizer.h>
 #include <Obj/Ref.h>
 #include <Util/NumberUtils.h>
@@ -16,7 +17,7 @@ class Waveshaper :
 {
 public:
     enum { Preamp, Postamp, numWaveshaperParams };
-    enum { tableResolution = 2048 };
+    enum { tableResolution = WaveshaperTransfer::tableResolution };
     static const int maxOversampleFactor = 8;
 
     explicit Waveshaper(SingletonRepo* repo);
@@ -27,7 +28,7 @@ public:
     bool isEnabled() const override;
     int getLatencySamples();
     void rasterizeTable();
-    void clearTable() { table.zero(); }
+    void clearTable() { transfer.clearTable(); }
     void processBuffer(AudioSampleBuffer& audioBuffer) override;
     void processVertexBuffer(Buffer<Float32> outputBuffer);
     void updateSmoothedParameters(int deltaSamples);
@@ -41,10 +42,7 @@ public:
     int getOversampleFactor() const					{ return oversamplers[graphicOvspIndex]->getOversampleFactor(); }
 
     void linInterpTable(float& value) {
-        float fval = value * (tableResolution - 1);
-        int index = (int) fval;
-        float remainder = fval - index;
-        value = (1.f - remainder) * table[index] + remainder * table[(index + 1) & (tableResolution - 1)];
+        value = transfer.lookup(value);
     }
 
     static double calcPostamp(double value)	{ return NumberUtils::fromDecibels(45 * (2 * value - 1)); 	}
@@ -59,9 +57,9 @@ private:
 
     Buffer<float> workBuffer;
     ScopedAlloc<Float32> rampBuffer;
-    ScopedAlloc<Float32> table;
     ScopedAlloc<Float32> graphicOversampleBuf;
     ScopedAlloc<Float32> oversampleBuffers;
+    WaveshaperTransfer transfer;
 
     OwnedArray<Oversampler> oversamplers;
     CriticalSection graphicLock;

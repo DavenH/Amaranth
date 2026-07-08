@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Graph/NodeGraph.h"
+#include "Effect2DMeshState.h"
 #include "../Trimesh/TrimeshPanelEnvironment.h"
 #include "../Trimesh/TrimeshNodeModel.h"
 
@@ -36,6 +37,7 @@ public:
     void setPanelHostCallbacks(
             std::function<void()> repaintCallback,
             std::function<void(const MouseCursor&)> cursorCallback);
+    void setMeshEditedCallback(std::function<void()> callback);
     void setControlValues(bool enabled, float firstValue, float secondValue, float thirdValue, int menuId);
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
@@ -48,6 +50,7 @@ public:
     int vertexCountForAutomation() const;
     var automationState() const;
     std::vector<PreviewVertex> previewVertices();
+    String serializedMeshState();
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
     bool selectedEnvelopeMarkerState(bool loopMarker) const;
@@ -60,6 +63,9 @@ private:
     void initialisePanelHost();
     void initialiseMesh();
     void addVertex(float x, float y, float curve = 0.f);
+    void clearMesh();
+    bool applyMeshState(const std::vector<Effect2DVertexState>& vertices);
+    void notifyMeshEdited();
     void setEnvelopeDefaultMorphVariant(int cubeIndex, float redHighAmp, float blueHighAmp);
     PanelHostCallbacks createPanelHostCallbacks();
     void applyPanelSettings();
@@ -78,7 +84,9 @@ private:
     CommonGL* panelGfx {};
     std::function<void()> panelHostRepaintCallback;
     std::function<void(const MouseCursor&)> panelHostCursorCallback;
+    std::function<void()> meshEditedCallback;
     juce::String lastSyncedNodeId;
+    juce::String lastSyncedMeshState;
     mutable juce::CriticalSection previewImageLock;
     juce::Image previewImage;
     mutable juce::CriticalSection expandedImageLock;

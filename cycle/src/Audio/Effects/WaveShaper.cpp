@@ -2,8 +2,6 @@
 
 #include "WaveShaper.h"
 
-#include <Array/VecOps.h>
-
 #include "../../Audio/SynthAudioSource.h"
 #include "../../UI/Effects/WaveshaperUI.h"
 #include "../../UI/VisualDsp.h"
@@ -12,8 +10,7 @@
 Waveshaper::Waveshaper(SingletonRepo* repo) : Effect(repo, "Waveshaper")
                                               , preamp(1.f)
                                               , postamp(1.f)
-                                              , pendingOversampleFactor(1)
-                                              , table(tableResolution) {
+                                              , pendingOversampleFactor(1) {
 }
 
 void Waveshaper::init() {
@@ -43,18 +40,7 @@ void Waveshaper::rasterizeTable() {
 
     ScopedLock sl1(getObj(SynthAudioSource).getLock());
 
-    int halfRes = tableResolution / 2;
-    float padding = getRealConstant(WaveshaperPadding);
-    double delta = (1 - 2 * padding) / double(tableResolution / 2 - 1);
-    double phase = padding + 0.5 * delta;
-
-    Buffer<float> halfTable(table + halfRes, halfRes);
-    waveformProvider->sampler().samplePerfectly(delta, halfTable, phase);
-
-    halfTable.add(-padding).mul(1.f / (1.f - 2.f * padding));
-
-    VecOps::flip(halfTable, table.withSize(halfRes));
-    table.withSize(halfRes).mul(-1.f);
+    transfer.rasterizeFrom(waveformProvider->sampler(), getRealConstant(WaveshaperPadding));
 }
 
 void Waveshaper::processBuffer(AudioSampleBuffer& audioBuffer) {
@@ -73,9 +59,7 @@ void Waveshaper::processBuffer(AudioSampleBuffer& audioBuffer) {
         buffer.add(0.5f);
         buffer.clip(0.f, 1.f);
 
-        for (float& j : buffer) {
-            linInterpTable(j);
-        }
+        transfer.applyLookup(buffer);
 
         oversamplers[i]->stopOversamplingBlock();
         postamp.maybeApplyRamp(rampBuffer.withSize(buffer.size()), buffer);
@@ -94,9 +78,7 @@ void Waveshaper::processVertexBuffer(Buffer<Float32> outputBuffer) {
     outputBuffer.mul((float) preamp.getTargetValue()).add(0.5f);
     outputBuffer.clip(0.f, 1.f);
 
-    for (int i = 0; i < oversampSize; ++i) {
-        linInterpTable(outputBuffer[i]);
-    }
+    transfer.applyLookup(outputBuffer.withSize(oversampSize));
 
     if (doOversample) {
         oversamplers[graphicOvspIndex]->stopOversamplingBlock();

@@ -9,7 +9,7 @@ using namespace CycleV2;
 namespace {
 
 AudioProcessBlock block(std::initializer_list<float> samples) {
-    return { std::vector<float>(samples), PortDomain::TimeSignal, ChannelLayout::LinkedStereo };
+    return { std::vector<float>(samples) };
 }
 
 }
@@ -25,9 +25,9 @@ TEST_CASE("FFT gridwise DSP renders independent cycle columns", "[cycle-v2][node
     REQUIRE(columns.size() == 2);
     REQUIRE(columns[0].magnitude.domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(columns[0].phase.domain == PortDomain::SpectralPhaseSignal);
-    REQUIRE(columns[0].magnitude.samples.size() == 4);
-    REQUIRE(columns[1].magnitude.samples.size() == 4);
-    REQUIRE(columns[0].magnitude.samples[0] == columns[1].magnitude.samples[0]);
+    REQUIRE(columns[0].magnitude.block.samples.size() == 4);
+    REQUIRE(columns[1].magnitude.block.samples.size() == 4);
+    REQUIRE(columns[0].magnitude.block.samples[0] == columns[1].magnitude.block.samples[0]);
 }
 
 TEST_CASE("FFT blockwise inverse applies half-cycle carry after first cycle", "[cycle-v2][nodes][fft]") {
@@ -40,7 +40,6 @@ TEST_CASE("FFT blockwise inverse applies half-cycle carry after first cycle", "[
 
     AudioProcessBlock firstOut;
     firstOut.samples.resize(4);
-    firstOut.domain = PortDomain::TimeSignal;
     dsp.inverse(firstMag, &firstPhase, firstOut);
 
     AudioProcessBlock second = block({ 0.5f, 0.25f, -0.25f, -0.5f });
@@ -50,7 +49,6 @@ TEST_CASE("FFT blockwise inverse applies half-cycle carry after first cycle", "[
 
     AudioProcessBlock secondOut;
     secondOut.samples.resize(4);
-    secondOut.domain = PortDomain::TimeSignal;
     dsp.inverse(secondMag, &secondPhase, secondOut);
 
     REQUIRE(firstOut.samples[0] == Catch::Approx(-0.5f).margin(1.0e-5f));
