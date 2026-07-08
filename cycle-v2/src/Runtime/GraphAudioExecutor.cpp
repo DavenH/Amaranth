@@ -1,13 +1,57 @@
 #include "GraphAudioExecutor.h"
 
+#include <algorithm>
+
 namespace CycleV2 {
+
+namespace {
+
+size_t maxInputCount(const GraphExecutionPlan& plan) {
+    size_t maxInputs = 0;
+
+    for (const auto& step : plan.steps) {
+        for (const auto& input : step.inputs) {
+            if (input.destPortIndex >= 0) {
+                maxInputs = std::max(maxInputs, (size_t) input.destPortIndex + 1);
+            }
+        }
+    }
+
+    return maxInputs;
+}
+
+size_t maxOutputCount(const GraphExecutionPlan& plan) {
+    size_t maxOutputs = 1;
+
+    for (const auto& step : plan.steps) {
+        maxOutputs = std::max(maxOutputs, step.outputs.size());
+    }
+
+    return maxOutputs;
+}
+
+}
 
 GraphAudioResult GraphAudioExecutor::process(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan,
         size_t frameCount) const {
+    return process(graph, plan, frameCount, {});
+}
+
+GraphAudioResult GraphAudioExecutor::process(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        size_t frameCount,
+        AudioProcessTiming timing) const {
     std::vector<PortOutput> outputs;
     outputs.reserve(plan.steps.size());
+
+    workArena.prepare(
+            frameCount,
+            maxInputCount(plan),
+            maxOutputCount(plan),
+            frameCount * std::max(frameCount, (size_t) 8));
 
     NodeAudioProcessorFactory processorFactory;
     GraphAudioResult result;
@@ -21,8 +65,12 @@ GraphAudioResult GraphAudioExecutor::process(
 
         AudioProcessContext context;
         context.frameCount = frameCount;
+        context.timing = timing;
+        context.workArena = &workArena;
         context.parameters = step.parameters;
+        context.inputs.reserve(workArena.inputCapacity);
         context.outputPorts.reserve(step.outputs.size());
+        context.outputs.reserve(workArena.outputCapacity);
 
         for (const auto& output : step.outputs) {
             context.outputPorts.push_back({
@@ -42,7 +90,7 @@ GraphAudioResult GraphAudioExecutor::process(
                 context.inputs.resize(inputIndex + 1);
             }
 
-            const AudioProcessBlock* sourceOutput = findOutputForNode(
+            const SignalPayload* sourceOutput = findOutputForNode(
                     outputs,
                     input.sourceNodeId,
                     input.sourcePortId);
@@ -56,19 +104,26 @@ GraphAudioResult GraphAudioExecutor::process(
         processor->prepare(frameCount);
         processor->process(context);
 
-        std::vector<std::pair<String, AudioProcessBlock>> nodeOutputs;
+        std::vector<std::pair<String, SignalPayload>> nodeOutputs;
         for (size_t i = 0; i < context.outputs.size(); ++i) {
             const String portId = i < context.outputPorts.size()
                     ? context.outputPorts[i].portId
                     : "out";
 
             outputs.push_back({ step.nodeId, portId, context.outputs[i] });
-            nodeOutputs.push_back({ portId, outputs.back().block });
+            nodeOutputs.push_back({ portId, outputs.back().payload });
         }
 
         if (nodeOutputs.empty()) {
-            outputs.push_back({ step.nodeId, "out", context.output });
-            nodeOutputs.push_back({ "out", outputs.back().block });
+            SignalPayload silent;
+            silent.block.samples.resize(frameCount);
+            if (!context.outputPorts.empty()) {
+                silent.domain = context.outputPorts.front().domain;
+                silent.channelLayout = context.outputPorts.front().channelLayout;
+            }
+
+            outputs.push_back({ step.nodeId, "out", std::move(silent) });
+            nodeOutputs.push_back({ "out", outputs.back().payload });
         }
 
         result.nodes.push_back({ step.nodeId, nodeOutputs.front().second, std::move(nodeOutputs) });
@@ -81,13 +136,13 @@ GraphAudioResult GraphAudioExecutor::process(
     return result;
 }
 
-const AudioProcessBlock* GraphAudioExecutor::findOutputForNode(
+const SignalPayload* GraphAudioExecutor::findOutputForNode(
         const std::vector<PortOutput>& outputs,
         const String& nodeId,
         const String& portId) const {
     for (auto it = outputs.rbegin(); it != outputs.rend(); ++it) {
         if (it->nodeId == nodeId && it->portId == portId) {
-            return &it->block;
+            return &it->payload;
         }
     }
 

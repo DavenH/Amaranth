@@ -88,12 +88,12 @@ PortDomain primaryOutputDomain(const std::vector<PreviewOutputPort>& outputPorts
     return outputPorts.front().domain;
 }
 
-void normalizeBipolarBlock(AudioProcessBlock& block) {
-    if (block.samples.empty()) {
+void normalizeBipolarBlock(SignalPayload& payload) {
+    if (payload.block.samples.empty()) {
         return;
     }
 
-    Buffer<float>(block.samples.data(), (int) block.samples.size())
+    Buffer<float>(payload.block.samples.data(), (int) payload.block.samples.size())
             .mul(0.5f)
             .add(0.5f)
             .clip(0.f, 1.f);
@@ -210,7 +210,7 @@ private:
         context.domain = outputDomain;
 
         TrimeshBlockwiseDsp blockwiseDsp;
-        AudioProcessBlock slice;
+        SignalPayload slice;
         blockwiseDsp.setMesh(&mesh);
         blockwiseDsp.setMorphPosition(morph);
         blockwiseDsp.setPrimaryViewAxis(primaryAxis);
@@ -221,7 +221,7 @@ private:
                 ChannelLayout::LinkedStereo,
                 slice);
         normalizeBipolarBlock(slice);
-        context.secondary = std::move(slice.samples);
+        context.secondary = std::move(slice.block.samples);
 
         TrimeshGridwiseDsp gridwiseDsp;
         gridwiseDsp.setCyclic(cyclic);
@@ -243,8 +243,8 @@ private:
             normalizeBipolarBlock(column.signal);
             context.primary.insert(
                     context.primary.end(),
-                    column.signal.samples.begin(),
-                    column.signal.samples.end());
+                    column.signal.block.samples.begin(),
+                    column.signal.block.samples.end());
         }
     }
 

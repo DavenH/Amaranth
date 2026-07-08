@@ -36,6 +36,20 @@
 - Only if `Buffer`/`VecOps` cannot express an operation should we introduce scalar fallback logic.
 - Before finalizing a change touching DSP or visualization paths, run a self-check on modified files for scalar `std::<math>` usage in hot loops and fix violations.
 
+## Architectural Boundaries & Existing Implementations
+- Before implementing nontrivial DSP, rasterization, mesh interaction, graph traversal, serialization, or UI behavior, search for an existing implementation in the repository.
+- Treat existing mature implementations as authoritative when porting or extending equivalent behavior. Prefer adapter/facade code around existing behavior over reimplementation.
+- Do not duplicate complex domain logic locally just to satisfy a narrow test, preview, or temporary workflow. If reuse is blocked, document the blocker and stop at the appropriate abstraction boundary.
+- Keep abstraction levels separated. High-level orchestration code should coordinate routing, lifecycle, and ownership; it should not contain domain algorithms.
+- Domain-specific behavior belongs behind domain-specific interfaces or modules, with blockwise/realtime, gridwise/analysis, UI/model, and adapter layers separated where appropriate.
+- If an implementation would require approximating existing behavior, record the missing adapter/refactor in the relevant TDD or refactor document instead of shipping the approximation.
+- Tests must preserve product intent and architectural intent. Do not write or update tests to bless simplified behavior when the requirement is parity with an existing mature implementation.
+- Prefer fewer, higher-signal tests that guard the intended contract over narrow tests that lock in scaffolding, fake data, or implementation accidents.
+- When a test creates pressure to add low-quality production code, change the design or test boundary rather than weakening the architecture.
+
+## Reuse Before Reimplementation
+- If you are about to write interpolation, rasterization, curve evaluation, oversampling, convolution, envelope/loop semantics, mesh traversal, or DSP transfer logic, stop and locate the existing implementation first. Reuse it or create a narrow adapter. Do not reimplement it in place.
+
 ## Refactors
 
 If confusing code patterns, reuse possibilities, or better abstractions are detected, check `docs/TDD/refactors.md` if a suggestion to fix it is already present. If not record refactor wishes there.

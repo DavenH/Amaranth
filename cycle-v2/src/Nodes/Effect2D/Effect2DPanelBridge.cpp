@@ -154,6 +154,14 @@ public:
         updateEnvelopeBackgroundGrid();
     }
 
+    void clearInteractionState() {
+        state.currentVertex = nullptr;
+        state.currentCube = nullptr;
+        state.selectedFrame.clear();
+        getSelected().clear();
+        resetFinalSelection();
+    }
+
     bool isEffectEnabled() const { return enabled; }
     bool isMeshEnabled() override { return isEffectEnabled(); }
     Mesh* getMesh() override { return &mesh; }
@@ -1374,6 +1382,8 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseDoubleClick(localEvent);
         }
+
+        owner.notifyMeshEdited();
     }
 
     void mouseDrag(const MouseEvent& event) override {
@@ -1399,6 +1409,10 @@ public:
 
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseUp(localEvent);
+        }
+
+        if (event.mouseWasDraggedSinceMouseDown()) {
+            owner.notifyMeshEdited();
         }
     }
 
@@ -1507,7 +1521,19 @@ void Effect2DPanelBridge::syncFromNode(const Node& node) {
         return;
     }
 
-    if (lastSyncedNodeId == node.id) {
+    const String nextMeshState = parameterValueForNode(node, Effect2DMeshState::parameterId(), {});
+    const bool nodeChanged = lastSyncedNodeId != node.id;
+    const bool meshChanged = lastSyncedMeshState != nextMeshState;
+
+    if (kind != NodeKind::Envelope && (nodeChanged || meshChanged)) {
+        if (nextMeshState.isNotEmpty()) {
+            applyMeshState(Effect2DMeshState::parse(nextMeshState));
+        } else if (nodeChanged && mesh.getNumVerts() == 0) {
+            initialiseMesh();
+        }
+
+        lastSyncedMeshState = nextMeshState;
+    } else if (!nodeChanged) {
         return;
     }
 
@@ -1530,6 +1556,10 @@ void Effect2DPanelBridge::setPanelHostCallbacks(
     panelHostRepaintCallback = std::move(repaintCallback);
     panelHostCursorCallback = std::move(cursorCallback);
     panel->setHostCallbacks(createPanelHostCallbacks());
+}
+
+void Effect2DPanelBridge::setMeshEditedCallback(std::function<void()> callback) {
+    meshEditedCallback = std::move(callback);
 }
 
 void Effect2DPanelBridge::setControlValues(
@@ -1834,12 +1864,40 @@ std::vector<Effect2DPanelBridge::PreviewVertex> Effect2DPanelBridge::previewVert
     return result;
 }
 
+String Effect2DPanelBridge::serializedMeshState() {
+    if (kind == NodeKind::Envelope) {
+        return {};
+    }
+
+    std::vector<Effect2DVertexState> vertices;
+    vertices.reserve((size_t) mesh.getNumVerts());
+
+    for (const auto* vertex : mesh.getVerts()) {
+        if (vertex == nullptr) {
+            continue;
+        }
+
+        vertices.push_back({
+                vertex->values[Vertex::Phase],
+                vertex->values[Vertex::Amp],
+                vertex->values[Vertex::Curve]
+        });
+    }
+
+    return Effect2DMeshState::serialize(vertices);
+}
+
 std::vector<TrimeshVertexParameter> Effect2DPanelBridge::selectedVertexParameters() const {
     return panel != nullptr ? panel->selectedVertexParameters() : std::vector<TrimeshVertexParameter>();
 }
 
 bool Effect2DPanelBridge::setSelectedVertexParameter(const String& parameterId, float normalizedValue) {
-    return panel != nullptr && panel->setSelectedVertexParameter(parameterId, normalizedValue);
+    if (panel == nullptr || !panel->setSelectedVertexParameter(parameterId, normalizedValue)) {
+        return false;
+    }
+
+    notifyMeshEdited();
+    return true;
 }
 
 bool Effect2DPanelBridge::selectedEnvelopeMarkerState(bool loopMarker) const {
@@ -1912,6 +1970,33 @@ void Effect2DPanelBridge::initialiseMesh() {
     }
 }
 
+void Effect2DPanelBridge::clearMesh() {
+    if (panel != nullptr) {
+        panel->clearInteractionState();
+    }
+
+    mesh.destroy();
+}
+
+bool Effect2DPanelBridge::applyMeshState(const std::vector<Effect2DVertexState>& vertices) {
+    if (kind == NodeKind::Envelope || vertices.empty()) {
+        return false;
+    }
+
+    clearMesh();
+
+    for (const auto& vertex : vertices) {
+        addVertex(vertex.x, vertex.y, vertex.curve);
+    }
+
+    if (panel != nullptr) {
+        panel->refreshRasterizer();
+        panel->updateZoomBounds(true);
+    }
+
+    return true;
+}
+
 void Effect2DPanelBridge::setEnvelopeDefaultMorphVariant(int cubeIndex, float redHighAmp, float blueHighAmp) {
     if (kind != NodeKind::Envelope || !isPositiveAndBelow(cubeIndex, mesh.getCubes().size())) {
         return;
@@ -1974,6 +2059,20 @@ void Effect2DPanelBridge::addVertex(float x, float y, float curve) {
     }
 
     mesh.addVertex(vertex);
+}
+
+void Effect2DPanelBridge::notifyMeshEdited() {
+    if (kind == NodeKind::Envelope || meshEditedCallback == nullptr) {
+        return;
+    }
+
+    const String nextState = serializedMeshState();
+    if (nextState == lastSyncedMeshState) {
+        return;
+    }
+
+    lastSyncedMeshState = nextState;
+    meshEditedCallback();
 }
 
 PanelHostCallbacks Effect2DPanelBridge::createPanelHostCallbacks() {

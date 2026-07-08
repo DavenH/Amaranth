@@ -1,5 +1,6 @@
 #include "Effect2DExpandedEditorComponent.h"
 
+#include "Effect2DMeshState.h"
 #include "../Trimesh/TrimeshSidePanelRenderer.h"
 
 #include <utility>
@@ -114,6 +115,14 @@ String envelopeViewAxisLabel(int axisIndex) {
 bool boolParameterValue(const Node& node, const String& parameterId, bool fallback) {
     const String value = parameterValueForNode(node, parameterId, fallback ? "1" : "0").toLowerCase();
     return value == "1" || value == "true" || value == "yes" || value == "on";
+}
+
+float floatParameterValue(const Node& node, const String& parameterId, float fallback) {
+    return parameterValueForNode(node, parameterId, String(fallback)).getFloatValue();
+}
+
+int intParameterValue(const Node& node, const String& parameterId, int fallback) {
+    return parameterValueForNode(node, parameterId, String(fallback)).getIntValue();
 }
 
 Colour envelopeViewAxisColour(int axisIndex) {
@@ -691,6 +700,12 @@ void Effect2DExpandedEditorComponent::setCallbacks(Callbacks nextCallbacks) {
                     safeThis->setMouseCursor(cursor);
                 }
             });
+
+    widget.setMeshEditedCallback([safeThis] {
+        if (safeThis != nullptr) {
+            safeThis->persistEffectMeshState();
+        }
+    });
 }
 
 void Effect2DExpandedEditorComponent::setNode(const Node& nextNode) {
@@ -699,6 +714,7 @@ void Effect2DExpandedEditorComponent::setNode(const Node& nextNode) {
         configureControls();
     }
     syncEnvelopeStateFromNode();
+    syncControlValuesFromNode();
     updatePanelHost();
     updateControlLayout();
     repaint();
@@ -1061,7 +1077,7 @@ void Effect2DExpandedEditorComponent::configureControls() {
         controls.thirdButton.setVisible(false);
     }
 
-    pushControlValues();
+    syncControlValuesFromNode();
 }
 
 void Effect2DExpandedEditorComponent::styleSlider(Slider& slider, Label& label, const String& text) {
@@ -1159,6 +1175,41 @@ void Effect2DExpandedEditorComponent::syncEnvelopeAxisLinksToWidget() {
     }
 
     widget.setEnvelopeAxisLinks(envelopeAxisLinked[1], envelopeAxisLinked[2]);
+}
+
+void Effect2DExpandedEditorComponent::syncControlValuesFromNode() {
+    const ScopedValueSetter<bool> guard(syncingControls, true);
+
+    controls.enabled.setToggleState(boolParameterValue(node, "enabled", true), dontSendNotification);
+
+    if (node.kind == NodeKind::Waveshaper) {
+        controls.firstSlider.setValue(floatParameterValue(node, "pre", 1.f), dontSendNotification);
+        controls.secondSlider.setValue(floatParameterValue(node, "post", 1.f), dontSendNotification);
+        controls.thirdSlider.setValue(0.5, dontSendNotification);
+        controls.menu.setSelectedId(intParameterValue(node, "aaFactor", 1), dontSendNotification);
+    } else if (node.kind == NodeKind::ImpulseResponse) {
+        controls.firstSlider.setValue(floatParameterValue(node, "size", 0.5f), dontSendNotification);
+        controls.secondSlider.setValue(floatParameterValue(node, "post", 0.5f), dontSendNotification);
+        controls.thirdSlider.setValue(floatParameterValue(node, "highPass", 0.5f), dontSendNotification);
+        controls.menu.setSelectedId(0, dontSendNotification);
+    } else if (node.kind == NodeKind::GuideCurve) {
+        controls.firstSlider.setValue(floatParameterValue(node, "noise", 0.5f), dontSendNotification);
+        controls.secondSlider.setValue(floatParameterValue(node, "dcOffset", 0.5f), dontSendNotification);
+        controls.thirdSlider.setValue(floatParameterValue(node, "phase", 0.5f), dontSendNotification);
+        controls.menu.setSelectedId(0, dontSendNotification);
+    } else if (node.kind == NodeKind::Envelope) {
+        controls.firstSlider.setValue(floatParameterValue(node, "red", 0.5f), dontSendNotification);
+        controls.secondSlider.setValue(floatParameterValue(node, "blue", 0.5f), dontSendNotification);
+        controls.thirdSlider.setValue(0.5, dontSendNotification);
+        controls.menu.setSelectedId(0, dontSendNotification);
+    }
+
+    widget.setControlValues(
+            controls.enabled.getToggleState(),
+            (float) controls.firstSlider.getValue(),
+            (float) controls.secondSlider.getValue(),
+            (float) controls.thirdSlider.getValue(),
+            controls.menu.getSelectedId());
 }
 
 void Effect2DExpandedEditorComponent::updatePanelHost() {
@@ -1650,6 +1701,46 @@ void Effect2DExpandedEditorComponent::pushControlValues() {
             (float) controls.secondSlider.getValue(),
             (float) controls.thirdSlider.getValue(),
             controls.menu.getSelectedId());
+
+    if (!syncingControls && callbacks.setNodeParameter != nullptr) {
+        if (usesRightControlRail(node.kind)) {
+            callbacks.setNodeParameter("enabled", "Enabled", controls.enabled.getToggleState() ? "1" : "0");
+        }
+
+        if (node.kind == NodeKind::Waveshaper) {
+            callbacks.setNodeParameter("pre", "Pre", String(controls.firstSlider.getValue()));
+            callbacks.setNodeParameter("post", "Post", String(controls.secondSlider.getValue()));
+            callbacks.setNodeParameter("aaFactor", "AA Factor", String(controls.menu.getSelectedId()));
+        } else if (node.kind == NodeKind::ImpulseResponse) {
+            callbacks.setNodeParameter("size", "Size", String(controls.firstSlider.getValue()));
+            callbacks.setNodeParameter("post", "Post", String(controls.secondSlider.getValue()));
+            callbacks.setNodeParameter("highPass", "HighPass", String(controls.thirdSlider.getValue()));
+        } else if (node.kind == NodeKind::GuideCurve) {
+            callbacks.setNodeParameter("noise", "Noise", String(controls.firstSlider.getValue()));
+            callbacks.setNodeParameter("dcOffset", "DC Offset", String(controls.secondSlider.getValue()));
+            callbacks.setNodeParameter("phase", "Phase", String(controls.thirdSlider.getValue()));
+        } else if (node.kind == NodeKind::Envelope) {
+            callbacks.setNodeParameter("red", "Red", String(controls.firstSlider.getValue()));
+            callbacks.setNodeParameter("blue", "Blue", String(controls.secondSlider.getValue()));
+        }
+    }
+
+    if (callbacks.repaintOpenGL != nullptr) {
+        callbacks.repaintOpenGL();
+    }
+}
+
+void Effect2DExpandedEditorComponent::persistEffectMeshState() {
+    if (callbacks.setNodeParameter == nullptr
+            || node.kind == NodeKind::Envelope
+            || syncingControls) {
+        return;
+    }
+
+    callbacks.setNodeParameter(
+            Effect2DMeshState::parameterId(),
+            "Effect Vertices",
+            widget.serializedMeshState());
 
     if (callbacks.repaintOpenGL != nullptr) {
         callbacks.repaintOpenGL();

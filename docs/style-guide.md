@@ -216,6 +216,19 @@ Mirror this order in constructor initializer lists.
 
 - Where possible, encapsulate complexity at the "edges" (specialization classes or instances), rather than exposing this complexity in the interface
 - Try to keep methods and functions under 30 lines
+- Look for repeatable contracts before adding another node-specific or feature-specific class. If several implementations need the same lifecycle and data movement shape, model that shape explicitly and leave only the domain operation in the specialization.
+  - Example: signal processors that all expose a method like:
+
+    ```cpp
+    void process(
+            SignalPayload& output,
+            const SignalPayload& input,
+            const std::vector<NodeParameter>& parameters,
+            size_t frameCount);
+    ```
+
+    should not each hand-roll block copying, scalar expansion, traversal-grid handling, bypass, state reset, or flush behavior. Prefer a shared base, template, or adapter contract that owns the common payload and traversal mechanics. A waveshaper, filter, envelope-applier, or convolution node should then provide the narrow operation, such as "process this `Buffer<float>` at this traversal position", while the shared contract applies it consistently to blockwise and gridwise data.
+  - Avoid names that describe only one phase of a broader object. A class named `FooBlockwiseDsp` is suspect if it also owns traversal-grid processing, parameter synchronization, or reusable process lifecycle. Prefer naming the role or contract, such as `FooSignalProcessor`, and pull the repeated mechanics upward when another node needs the same shape.
 - Evaluate the rough 'complexity cost' when determining whether to apply DRY (don't repeat yourself) or WET (write everything twice)
   - Score metric:
     - Code Terminals (keyword, literal, operator, method invocation etc): 1 point each
@@ -223,7 +236,7 @@ Mirror this order in constructor initializer lists.
     - Scopes (methods, functions, classes):
       - Sum of terminals in scope divided by (number of uses: unique invocations/subclasses, PLUS one)
   - This should promote DRY principle where duplicating high-complexity code, while also promoting WET in some cases where the duped code is low-complexity
-- Favour composition rather than inheritance (to be fair this repo has significant tech debt from overuse of inheritance)
+- Favour composition rather than inheritance by default, but use inheritance, CRTP, or a small template contract when the shared lifecycle is real and repeated. The deciding question is whether the base owns stable mechanics while the specialization supplies narrow behavior, not whether inheritance is categorically good or bad.
 
 
 ## Optimization

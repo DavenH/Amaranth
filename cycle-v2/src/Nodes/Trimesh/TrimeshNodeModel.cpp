@@ -66,12 +66,12 @@ int primaryAxisFromParameter(const String& axisName) {
     return Vertex::Time;
 }
 
-void normalizeBipolarBlock(AudioProcessBlock& block) {
-    if (block.samples.empty()) {
+void normalizeBipolarBlock(SignalPayload& payload) {
+    if (payload.block.samples.empty()) {
         return;
     }
 
-    Buffer<float>(block.samples.data(), (int) block.samples.size())
+    Buffer<float>(payload.block.samples.data(), (int) payload.block.samples.size())
             .mul(0.5f)
             .add(0.5f)
             .clip(0.f, 1.f);
@@ -159,14 +159,14 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain
     result.cyclic = cyclic;
 
     TrimeshBlockwiseDsp blockwiseDsp;
-    AudioProcessBlock slice;
+    SignalPayload slice;
     blockwiseDsp.setMesh(&mesh());
     blockwiseDsp.setMorphPosition(morph);
     blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
     blockwiseDsp.setCyclic(cyclic);
     blockwiseDsp.renderCycle((size_t) rows, domain, ChannelLayout::LinkedStereo, slice);
     normalizeBipolarBlock(slice);
-    result.slice = std::move(slice.samples);
+    result.slice = std::move(slice.block.samples);
 
     TrimeshGridwiseDsp gridwiseDsp;
     gridwiseDsp.setCyclic(cyclic);
@@ -185,8 +185,8 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain
         normalizeBipolarBlock(column.signal);
         result.surface.insert(
                 result.surface.end(),
-                column.signal.samples.begin(),
-                column.signal.samples.end());
+                column.signal.block.samples.begin(),
+                column.signal.block.samples.end());
     }
 
     return result;

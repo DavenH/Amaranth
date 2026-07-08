@@ -35,6 +35,44 @@ Suggested direction:
 This should be addressed before hardening the Cycle 2 runtime for realtime
 audio-thread execution.
 
+## Cycle 2 Runtime Node Processor Boundaries
+
+`cycle-v2/src/Runtime/NodeAudioProcessor.cpp` currently contains too many
+node-specific implementations inside one `FixedRoleProcessor` class. That was
+useful scaffolding while the graph payload model was moving, but it violates
+the intended node ownership boundaries and makes it too easy to reimplement
+Cycle 1 DSP semantics incorrectly in the executor.
+
+Suggested direction:
+
+- Move domain-specific DSP into node folders, following the FFT and Trimesh
+  split (`BlockwiseDsp`, `GridwiseDsp`, and small role adapters).
+- Keep `NodeAudioProcessor` as a dispatch/factory interface and payload
+  adapter, not as the place where Waveshaper, IR, Delay, Reverb, or Trimesh
+  algorithms live.
+- Port or wrap Cycle 1 implementations such as
+  `Waveshaper::processBuffer(AudioSampleBuffer&)` and
+  `IrModeller::processBuffer(AudioSampleBuffer&)` behind Cycle 2 node-specific
+  adapters instead of approximating their DSP locally.
+- Share exact rasterizer/table semantics with UI previews when a node depends
+  on editable `Panel2D` curves.
+
+## Cycle 2 Effect2D Mesh Ownership
+
+`Effect2DPanelBridge` currently uses `EnvelopeMesh` as the backing store for
+all effect-style panels. That is semantically wrong for waveshaper, guide, and
+IR panels, which only need a flat `Mesh` of vertices. The current arrangement
+exists because the shared bridge also serves Envelope, which requires cubes,
+loop/sustain markers, and `EnvRasterizer`.
+
+Suggested direction:
+
+- Split Envelope-specific bridge/model code from flat FX panel code.
+- Back Waveshaper, Guide, and IR panels with `Mesh`, not `EnvelopeMesh`.
+- Keep Envelope loop/sustain and morph state in an envelope-only model.
+- Let shared UI host code depend on a narrow panel interface rather than a
+  concrete mesh type.
+
 ## Cycle 2 Trimesh Rasterizer Compatibility Boundary
 
 `VoiceMeshRasterizer` is still defined under `cycle/` and depends on Cycle 1.x
