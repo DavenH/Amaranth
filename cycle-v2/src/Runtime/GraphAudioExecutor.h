@@ -37,6 +37,8 @@ private:
             const String& nodeId,
             const String& portId) const;
     bool isOutputNode(const NodeGraph& graph, const String& nodeId) const;
+
+    mutable AudioProcessWorkArena workArena;
 };
 
 }

@@ -7,7 +7,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) const {
     const float level = parameterFloat(context.parameters, "level", 1.f);
 
     payloadBuffer(output, context.frameCount).set(level);
-    publishVectorAsTraversalGrid(output, defaultTraversalColumns);
+    publishVectorAsTraversalGrid(output, defaultTraversalColumns, context.workArena);
     publishSingleOutput(context, std::move(output));
 }
 

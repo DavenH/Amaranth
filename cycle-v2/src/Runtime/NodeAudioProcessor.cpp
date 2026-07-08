@@ -21,14 +21,27 @@ namespace {
 
 constexpr size_t kDefaultTraversalColumns = 8;
 
-void publishGridColumns(SignalPayload& payload, const std::vector<TrimeshGridColumn>& columns) {
+void publishGridColumns(
+        SignalPayload& payload,
+        const std::vector<TrimeshGridColumn>& columns,
+        const AudioProcessWorkArena* arena) {
     if (columns.empty() || columns.front().signal.block.samples.empty()) {
         payload.traversalGrid = {};
         return;
     }
 
     const size_t rows = columns.front().signal.block.samples.size();
-    configureTraversalGrid(payload.traversalGrid, columns.size(), rows);
+    configureTraversalGrid(
+            payload.traversalGrid,
+            columns.size(),
+            rows,
+            makeTraversalGridMetadata(
+                    payload.domain,
+                    columns.size(),
+                    rows,
+                    TraversalGridAxis::Morph,
+                    defaultTraversalRowAxisForDomain(payload.domain)),
+            arena);
 
     for (size_t column = 0; column < columns.size(); ++column) {
         const auto& samples = columns[column].signal.block.samples;
@@ -182,7 +195,7 @@ private:
         const float level = parameterFloat(context.parameters, "level", 1.f);
 
         payloadBuffer(output, context.frameCount).ramp(0.f, level / denominator);
-        publishWrappedRampTraversalGrid(output, kDefaultTraversalColumns, level);
+        publishWrappedRampTraversalGrid(output, kDefaultTraversalColumns, level, context.workArena);
         publishSingleOutput(context, std::move(output));
     }
 
@@ -198,7 +211,11 @@ private:
         const float level = parameterFloat(context.parameters, "level", 1.f);
 
         payloadBuffer(output, context.frameCount).ramp(0.f, level / denominator);
-        publishImageTraversalGrid(output, std::max(kDefaultTraversalColumns, context.frameCount), level);
+        publishImageTraversalGrid(
+                output,
+                std::max(kDefaultTraversalColumns, context.frameCount),
+                level,
+                context.workArena);
         publishSingleOutput(context, std::move(output));
     }
 
@@ -234,7 +251,8 @@ private:
                         std::max(kDefaultTraversalColumns, context.frameCount / 2),
                         context.frameCount,
                         outputPort.domain,
-                        outputPort.channelLayout));
+                        outputPort.channelLayout),
+                context.workArena);
         publishSingleOutput(context, std::move(output));
     }
 
@@ -253,7 +271,7 @@ private:
         copyTraversalGrid(left, input->traversalGrid);
         copyTraversalGrid(right, input->traversalGrid);
 
-        publishOutputs(context, { std::move(left), std::move(right) });
+        publishOutputs(context, std::move(left), std::move(right));
     }
 
     void processStereoJoin(AudioProcessContext& context) const {
@@ -265,7 +283,7 @@ private:
         SignalPayload* left = inputAt(context, 0);
         SignalPayload* right = inputAt(context, 1);
 
-        binaryDsp.process(output, left, right, BinarySignalOperation::Add, context.frameCount);
+        binaryDsp.process(output, left, right, BinarySignalOperation::Add, context.frameCount, context.workArena);
         publishSingleOutput(context, std::move(output));
     }
 
@@ -279,7 +297,7 @@ private:
             return;
         }
 
-        binaryDsp.process(output, left, right, BinarySignalOperation::Multiply, context.frameCount);
+        binaryDsp.process(output, left, right, BinarySignalOperation::Multiply, context.frameCount, context.workArena);
         publishSingleOutput(context, std::move(output));
     }
 
@@ -321,7 +339,14 @@ private:
             output.channelLayout = input->channelLayout;
         }
 
-        unaryDsp.process(operation, output, *input, context.parameters, context.timing, context.frameCount);
+        unaryDsp.process(
+                operation,
+                output,
+                *input,
+                context.parameters,
+                context.timing,
+                context.frameCount,
+                context.workArena);
         publishSingleOutput(context, std::move(output));
     }
 
@@ -347,14 +372,25 @@ private:
     static void publishWrappedRampTraversalGrid(
             SignalPayload& payload,
             size_t columns,
-            float level) {
+            float level,
+            const AudioProcessWorkArena* arena) {
         if (payload.block.samples.empty()) {
             payload.traversalGrid = {};
             return;
         }
 
         const size_t rows = payload.block.samples.size();
-        configureTraversalGrid(payload.traversalGrid, columns, rows);
+        configureTraversalGrid(
+                payload.traversalGrid,
+                columns,
+                rows,
+                makeTraversalGridMetadata(
+                        payload.domain,
+                        columns,
+                        rows,
+                        TraversalGridAxis::Phase,
+                        TraversalGridAxis::Time),
+                arena);
         const float rowDenominator = rows > 1 ? (float) (rows - 1) : 1.f;
         const float columnDenominator = columns > 0 ? (float) columns : 1.f;
 
@@ -373,14 +409,25 @@ private:
     static void publishImageTraversalGrid(
             SignalPayload& payload,
             size_t columns,
-            float level) {
+            float level,
+            const AudioProcessWorkArena* arena) {
         if (payload.block.samples.empty()) {
             payload.traversalGrid = {};
             return;
         }
 
         const size_t rows = payload.block.samples.size();
-        configureTraversalGrid(payload.traversalGrid, columns, rows);
+        configureTraversalGrid(
+                payload.traversalGrid,
+                columns,
+                rows,
+                makeTraversalGridMetadata(
+                        payload.domain,
+                        columns,
+                        rows,
+                        TraversalGridAxis::ImageX,
+                        TraversalGridAxis::ImageY),
+                arena);
         const float rowDenominator = rows > 1 ? (float) (rows - 1) : 1.f;
         const float columnDenominator = columns > 1 ? (float) (columns - 1) : 1.f;
 

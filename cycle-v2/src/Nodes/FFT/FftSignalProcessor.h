@@ -1,7 +1,6 @@
 #pragma once
 
 #include "FftBlockwiseDsp.h"
-#include "FftGridwiseDsp.h"
 #include "../../Runtime/AudioProcessContextUtils.h"
 
 namespace CycleV2 {
@@ -15,18 +14,25 @@ private:
     void publishForwardTraversalGrids(
             const SignalPayload& input,
             SignalPayload& magnitude,
-            SignalPayload& phase);
-    void publishForwardGridResult(
-            const std::vector<FftGridColumn>& columns,
-            SignalPayload& output,
-            bool magnitude) const;
+            SignalPayload& phase,
+            const AudioProcessWorkArena* arena);
+    TraversalGridMetadata frequencyMetadataFor(
+            const SignalTraversalGrid& inputGrid,
+            const SignalPayload& output,
+            size_t rows) const;
+    void copyGridColumnToBlock(const SignalTraversalGrid& grid, size_t column, AudioProcessBlock& block) const;
+    void copyBlockToGridColumn(const AudioProcessBlock& block, SignalTraversalGrid& grid, size_t column) const;
     void publishInverseTraversalGrid(
             const SignalPayload& magnitude,
             const SignalPayload* phase,
-            SignalPayload& output);
+            SignalPayload& output,
+            const AudioProcessWorkArena* arena);
 
     FftBlockwiseDsp blockwiseDsp;
-    FftGridwiseDsp gridwiseDsp;
+    AudioProcessBlock scratchTimeColumn;
+    AudioProcessBlock scratchMagnitudeColumn;
+    AudioProcessBlock scratchPhaseColumn;
+    AudioProcessBlock scratchOutputColumn;
 };
 
 }

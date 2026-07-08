@@ -1,6 +1,36 @@
 #include "GraphAudioExecutor.h"
 
+#include <algorithm>
+
 namespace CycleV2 {
+
+namespace {
+
+size_t maxInputCount(const GraphExecutionPlan& plan) {
+    size_t maxInputs = 0;
+
+    for (const auto& step : plan.steps) {
+        for (const auto& input : step.inputs) {
+            if (input.destPortIndex >= 0) {
+                maxInputs = std::max(maxInputs, (size_t) input.destPortIndex + 1);
+            }
+        }
+    }
+
+    return maxInputs;
+}
+
+size_t maxOutputCount(const GraphExecutionPlan& plan) {
+    size_t maxOutputs = 1;
+
+    for (const auto& step : plan.steps) {
+        maxOutputs = std::max(maxOutputs, step.outputs.size());
+    }
+
+    return maxOutputs;
+}
+
+}
 
 GraphAudioResult GraphAudioExecutor::process(
         const NodeGraph& graph,
@@ -17,6 +47,12 @@ GraphAudioResult GraphAudioExecutor::process(
     std::vector<PortOutput> outputs;
     outputs.reserve(plan.steps.size());
 
+    workArena.prepare(
+            frameCount,
+            maxInputCount(plan),
+            maxOutputCount(plan),
+            frameCount * std::max(frameCount, (size_t) 8));
+
     NodeAudioProcessorFactory processorFactory;
     GraphAudioResult result;
 
@@ -30,8 +66,11 @@ GraphAudioResult GraphAudioExecutor::process(
         AudioProcessContext context;
         context.frameCount = frameCount;
         context.timing = timing;
+        context.workArena = &workArena;
         context.parameters = step.parameters;
+        context.inputs.reserve(workArena.inputCapacity);
         context.outputPorts.reserve(step.outputs.size());
+        context.outputs.reserve(workArena.outputCapacity);
 
         for (const auto& output : step.outputs) {
             context.outputPorts.push_back({

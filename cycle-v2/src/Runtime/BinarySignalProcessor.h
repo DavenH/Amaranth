@@ -20,10 +20,11 @@ public:
             const SignalPayload* left,
             const SignalPayload* right,
             BinarySignalOperation operation,
-            size_t frameCount) {
+            size_t frameCount,
+            const AudioProcessWorkArena* arena = nullptr) {
         configureOutputMetadata(output, left, right);
         processBlock(output, left, right, operation, frameCount);
-        processTraversalGrid(output, left, right, operation);
+        processTraversalGrid(output, left, right, operation, arena);
     }
 
 private:
@@ -45,8 +46,9 @@ private:
             SignalPayload& output,
             const SignalPayload* left,
             const SignalPayload* right,
-            BinarySignalOperation operation) {
-        const SignalTraversalGrid* grid = firstValidGrid(left, right);
+            BinarySignalOperation operation,
+            const AudioProcessWorkArena* arena) {
+        const SignalTraversalGrid* grid = outputGridFor(output.domain, left, right);
         if (grid == nullptr) {
             output.traversalGrid = {};
             return;
@@ -57,9 +59,12 @@ private:
             return;
         }
 
-        output.traversalGrid.columns = grid->columns;
-        output.traversalGrid.rows = grid->rows;
-        output.traversalGrid.values.assign(grid->columns * grid->rows, 0.f);
+        configureTraversalGrid(
+                output.traversalGrid,
+                grid->columns,
+                grid->rows,
+                outputMetadataFor(output.domain, *grid),
+                arena);
 
         rightOperand.resize(grid->rows);
         for (size_t column = 0; column < grid->columns; ++column) {
@@ -131,9 +136,15 @@ private:
         return { grid.values.data() + column * grid.rows, (int) grid.rows };
     }
 
-    static const SignalTraversalGrid* firstValidGrid(
+    static const SignalTraversalGrid* outputGridFor(
+            PortDomain outputDomain,
             const SignalPayload* left,
             const SignalPayload* right) {
+        const SignalPayload* concrete = concreteGridPayloadFor(outputDomain, left, right);
+        if (concrete != nullptr) {
+            return &concrete->traversalGrid;
+        }
+
         if (left != nullptr && left->traversalGrid.isValid()) {
             return &left->traversalGrid;
         }
@@ -143,6 +154,36 @@ private:
         }
 
         return nullptr;
+    }
+
+    static const SignalPayload* concreteGridPayloadFor(
+            PortDomain outputDomain,
+            const SignalPayload* left,
+            const SignalPayload* right) {
+        if (left != nullptr && left->domain == outputDomain && left->traversalGrid.isValid()) {
+            return left;
+        }
+
+        if (right != nullptr && right->domain == outputDomain && right->traversalGrid.isValid()) {
+            return right;
+        }
+
+        if (left != nullptr && isConcreteSignalDomain(left->domain) && left->traversalGrid.isValid()) {
+            return left;
+        }
+
+        if (right != nullptr && isConcreteSignalDomain(right->domain) && right->traversalGrid.isValid()) {
+            return right;
+        }
+
+        return nullptr;
+    }
+
+    static TraversalGridMetadata outputMetadataFor(PortDomain outputDomain, const SignalTraversalGrid& grid) {
+        auto metadata = grid.metadata;
+        metadata.valueDomain = outputDomain;
+        metadata.arity = traversalGridArity(grid.columns, grid.rows);
+        return metadata;
     }
 
     static bool bothInputsHaveMismatchedGrids(
@@ -155,7 +196,10 @@ private:
         }
 
         return left->traversalGrid.columns != right->traversalGrid.columns
-                || left->traversalGrid.rows != right->traversalGrid.rows;
+                || left->traversalGrid.rows != right->traversalGrid.rows
+                || !traversalGridMetadataCompatible(
+                        left->traversalGrid.metadata,
+                        right->traversalGrid.metadata);
     }
 
     static PortDomain concreteDomainFor(const SignalPayload* left, const SignalPayload* right, PortDomain fallback) {
@@ -168,6 +212,13 @@ private:
         }
 
         return fallback;
+    }
+
+    static bool isConcreteSignalDomain(PortDomain domain) {
+        return domain != PortDomain::ControlSignal
+                && domain != PortDomain::EnvelopeSignal
+                && domain != PortDomain::DomainContext
+                && domain != PortDomain::VoiceControlSignal;
     }
 
     static ChannelLayout layoutFor(const SignalPayload* left, const SignalPayload* right, ChannelLayout fallback) {

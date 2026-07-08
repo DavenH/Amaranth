@@ -32,7 +32,8 @@ public:
             const SignalPayload& input,
             const std::vector<NodeParameter>& parameters,
             const AudioProcessTiming& timing,
-            size_t frameCount) {
+            size_t frameCount,
+            const AudioProcessWorkArena* arena = nullptr) {
         operation.prepareProcess(parameters, timing);
 
         output.domain = input.domain;
@@ -44,22 +45,31 @@ public:
                 { output.block.samples.data(), (int) output.block.samples.size() },
                 {});
 
-        processTraversalGrid(operation, output, input);
+        processTraversalGrid(operation, output, input, arena);
     }
 
 private:
     static void processTraversalGrid(
             IUnarySignalOperation& operation,
             SignalPayload& output,
-            const SignalPayload& input) {
+            const SignalPayload& input,
+            const AudioProcessWorkArena* arena) {
         if (!input.traversalGrid.isValid()) {
             output.traversalGrid = {};
             return;
         }
 
-        output.traversalGrid.columns = input.traversalGrid.columns;
-        output.traversalGrid.rows = input.traversalGrid.rows;
-        output.traversalGrid.values = input.traversalGrid.values;
+        auto metadata = input.traversalGrid.metadata;
+        metadata.valueDomain = output.domain;
+        configureTraversalGrid(
+                output.traversalGrid,
+                input.traversalGrid.columns,
+                input.traversalGrid.rows,
+                metadata,
+                arena);
+        output.traversalGrid.values.assign(
+                input.traversalGrid.values.begin(),
+                input.traversalGrid.values.end());
 
         operation.beginTraversalGrid(output.traversalGrid.columns, output.traversalGrid.rows);
         for (size_t column = 0; column < output.traversalGrid.columns; ++column) {

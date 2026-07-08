@@ -15,9 +15,9 @@ void FftSignalProcessor::processForward(AudioProcessContext& context) {
     auto magnitude = makeOutputPayload(context, 0);
     auto phase = makeOutputPayload(context, 1);
     blockwiseDsp.forward(input->block, magnitude.block, phase.block);
-    publishForwardTraversalGrids(*input, magnitude, phase);
+    publishForwardTraversalGrids(*input, magnitude, phase, context.workArena);
 
-    publishOutputs(context, { std::move(magnitude), std::move(phase) });
+    publishOutputs(context, std::move(magnitude), std::move(phase));
 }
 
 void FftSignalProcessor::processInverse(AudioProcessContext& context) {
@@ -31,97 +31,124 @@ void FftSignalProcessor::processInverse(AudioProcessContext& context) {
     auto output = makeOutputPayload(context, 0);
     SignalPayload* phase = inputAt(context, 1);
     blockwiseDsp.inverse(magnitude->block, phase != nullptr ? &phase->block : nullptr, output.block);
-    publishInverseTraversalGrid(*magnitude, phase, output);
+    publishInverseTraversalGrid(*magnitude, phase, output, context.workArena);
     publishSingleOutput(context, std::move(output));
 }
 
 void FftSignalProcessor::publishForwardTraversalGrids(
         const SignalPayload& input,
         SignalPayload& magnitude,
-        SignalPayload& phase) {
+        SignalPayload& phase,
+        const AudioProcessWorkArena* arena) {
     if (!input.traversalGrid.isValid()) {
         return;
     }
 
-    std::vector<AudioProcessBlock> timeColumns;
-    timeColumns.reserve(input.traversalGrid.columns);
+    const auto& inputGrid = input.traversalGrid;
+    copyGridColumnToBlock(input.traversalGrid, 0, scratchTimeColumn);
+    blockwiseDsp.forward(scratchTimeColumn, scratchMagnitudeColumn, scratchPhaseColumn);
 
-    for (size_t column = 0; column < input.traversalGrid.columns; ++column) {
-        AudioProcessBlock timeColumn;
-        timeColumn.samples.assign(
-                input.traversalGrid.values.begin() + (ptrdiff_t) (column * input.traversalGrid.rows),
-                input.traversalGrid.values.begin() + (ptrdiff_t) ((column + 1) * input.traversalGrid.rows));
-        timeColumns.push_back(std::move(timeColumn));
+    if (scratchMagnitudeColumn.samples.empty() || scratchPhaseColumn.samples.empty()) {
+        return;
     }
 
-    const auto columns = gridwiseDsp.forwardColumns(timeColumns);
-    publishForwardGridResult(columns, magnitude, true);
-    publishForwardGridResult(columns, phase, false);
+    configureTraversalGrid(
+            magnitude.traversalGrid,
+            inputGrid.columns,
+            scratchMagnitudeColumn.samples.size(),
+            frequencyMetadataFor(inputGrid, magnitude, scratchMagnitudeColumn.samples.size()),
+            arena);
+    configureTraversalGrid(
+            phase.traversalGrid,
+            inputGrid.columns,
+            scratchPhaseColumn.samples.size(),
+            frequencyMetadataFor(inputGrid, phase, scratchPhaseColumn.samples.size()),
+            arena);
+    copyBlockToGridColumn(scratchMagnitudeColumn, magnitude.traversalGrid, 0);
+    copyBlockToGridColumn(scratchPhaseColumn, phase.traversalGrid, 0);
+
+    for (size_t column = 1; column < inputGrid.columns; ++column) {
+        copyGridColumnToBlock(inputGrid, column, scratchTimeColumn);
+        blockwiseDsp.forward(scratchTimeColumn, scratchMagnitudeColumn, scratchPhaseColumn);
+        copyBlockToGridColumn(scratchMagnitudeColumn, magnitude.traversalGrid, column);
+        copyBlockToGridColumn(scratchPhaseColumn, phase.traversalGrid, column);
+    }
 }
 
-void FftSignalProcessor::publishForwardGridResult(
-        const std::vector<FftGridColumn>& columns,
-        SignalPayload& output,
-        bool magnitude) const {
-    if (columns.empty()) {
-        return;
-    }
+TraversalGridMetadata FftSignalProcessor::frequencyMetadataFor(
+        const SignalTraversalGrid& inputGrid,
+        const SignalPayload& output,
+        size_t rows) const {
+    auto metadata = makeTraversalGridMetadata(
+            output.domain,
+            inputGrid.columns,
+            rows,
+            inputGrid.metadata.columnAxis,
+            TraversalGridAxis::Frequency);
+    metadata.columnResolution = inputGrid.metadata.columnResolution;
+    return metadata;
+}
 
-    const auto& first = magnitude ? columns.front().magnitude : columns.front().phase;
-    if (first.block.samples.empty()) {
-        return;
-    }
+void FftSignalProcessor::copyGridColumnToBlock(
+        const SignalTraversalGrid& grid,
+        size_t column,
+        AudioProcessBlock& block) const {
+    block.samples.resize(grid.rows);
+    std::copy(
+            grid.values.begin() + (ptrdiff_t) (column * grid.rows),
+            grid.values.begin() + (ptrdiff_t) ((column + 1) * grid.rows),
+            block.samples.begin());
+}
 
-    configureTraversalGrid(output.traversalGrid, columns.size(), first.block.samples.size());
-
-    for (size_t column = 0; column < columns.size(); ++column) {
-        const auto& payload = magnitude ? columns[column].magnitude : columns[column].phase;
-        const auto& samples = payload.block.samples;
-        const size_t count = std::min(output.traversalGrid.rows, samples.size());
-        std::copy(
-                samples.begin(),
-                samples.begin() + (ptrdiff_t) count,
-                output.traversalGrid.values.begin() + (ptrdiff_t) (column * output.traversalGrid.rows));
-    }
+void FftSignalProcessor::copyBlockToGridColumn(
+        const AudioProcessBlock& block,
+        SignalTraversalGrid& grid,
+        size_t column) const {
+    const size_t count = std::min(grid.rows, block.samples.size());
+    std::copy(
+            block.samples.begin(),
+            block.samples.begin() + (ptrdiff_t) count,
+            grid.values.begin() + (ptrdiff_t) (column * grid.rows));
 }
 
 void FftSignalProcessor::publishInverseTraversalGrid(
         const SignalPayload& magnitude,
         const SignalPayload* phase,
-        SignalPayload& output) {
+        SignalPayload& output,
+        const AudioProcessWorkArena* arena) {
     if (!magnitude.traversalGrid.isValid()) {
         return;
     }
 
+    auto metadata = makeTraversalGridMetadata(
+            output.domain,
+            magnitude.traversalGrid.columns,
+            output.block.samples.size(),
+            magnitude.traversalGrid.metadata.columnAxis,
+            TraversalGridAxis::Time);
+    metadata.columnResolution = magnitude.traversalGrid.metadata.columnResolution;
     configureTraversalGrid(
             output.traversalGrid,
             magnitude.traversalGrid.columns,
-            output.block.samples.size());
+            output.block.samples.size(),
+            metadata,
+            arena);
 
     for (size_t column = 0; column < magnitude.traversalGrid.columns; ++column) {
-        AudioProcessBlock magnitudeColumn;
-        AudioProcessBlock phaseColumn;
-        AudioProcessBlock outputColumn;
-        magnitudeColumn.samples.assign(
-                magnitude.traversalGrid.values.begin() + (ptrdiff_t) (column * magnitude.traversalGrid.rows),
-                magnitude.traversalGrid.values.begin() + (ptrdiff_t) ((column + 1) * magnitude.traversalGrid.rows));
-        outputColumn.samples.resize(output.block.samples.size());
+        copyGridColumnToBlock(magnitude.traversalGrid, column, scratchMagnitudeColumn);
+        scratchOutputColumn.samples.resize(output.block.samples.size());
 
         const AudioProcessBlock* phaseColumnPtr = nullptr;
         if (phase != nullptr && phase->traversalGrid.isValid()
-                && phase->traversalGrid.columns == magnitude.traversalGrid.columns) {
-            phaseColumn.samples.assign(
-                    phase->traversalGrid.values.begin() + (ptrdiff_t) (column * phase->traversalGrid.rows),
-                    phase->traversalGrid.values.begin() + (ptrdiff_t) ((column + 1) * phase->traversalGrid.rows));
-            phaseColumnPtr = &phaseColumn;
+                && phase->traversalGrid.columns == magnitude.traversalGrid.columns
+                && phase->traversalGrid.rows == magnitude.traversalGrid.rows
+                && phase->traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency) {
+            copyGridColumnToBlock(phase->traversalGrid, column, scratchPhaseColumn);
+            phaseColumnPtr = &scratchPhaseColumn;
         }
 
-        blockwiseDsp.inverse(magnitudeColumn, phaseColumnPtr, outputColumn);
-        const size_t count = std::min(output.traversalGrid.rows, outputColumn.samples.size());
-        std::copy(
-                outputColumn.samples.begin(),
-                outputColumn.samples.begin() + (ptrdiff_t) count,
-                output.traversalGrid.values.begin() + (ptrdiff_t) (column * output.traversalGrid.rows));
+        blockwiseDsp.inverse(scratchMagnitudeColumn, phaseColumnPtr, scratchOutputColumn);
+        copyBlockToGridColumn(scratchOutputColumn, output.traversalGrid, column);
     }
 }
 

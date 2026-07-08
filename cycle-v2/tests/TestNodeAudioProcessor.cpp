@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include "../src/Runtime/AudioProcessContextUtils.h"
 #include "../src/Runtime/NodeAudioProcessor.h"
 
 #include <algorithm>
@@ -23,6 +24,12 @@ SignalPayload gridPayload(std::initializer_list<float> samples, size_t columns, 
     result.traversalGrid.values = std::vector<float>(samples);
     result.traversalGrid.columns = columns;
     result.traversalGrid.rows = rows;
+    result.traversalGrid.metadata = makeTraversalGridMetadata(
+            result.domain,
+            columns,
+            rows,
+            TraversalGridAxis::Repeated,
+            TraversalGridAxis::Time);
     return result;
 }
 
@@ -35,6 +42,12 @@ SignalPayload gridPayload(const std::vector<float>& samples, size_t columns, siz
     result.traversalGrid.values = samples;
     result.traversalGrid.columns = columns;
     result.traversalGrid.rows = rows;
+    result.traversalGrid.metadata = makeTraversalGridMetadata(
+            result.domain,
+            columns,
+            rows,
+            TraversalGridAxis::Repeated,
+            TraversalGridAxis::Time);
     return result;
 }
 
@@ -62,12 +75,19 @@ TEST_CASE("Source audio processors produce deterministic buffers", "[cycle-v2][r
 
     AudioProcessContext context;
     context.frameCount = 5;
+    context.outputPorts = {
+            { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
+    };
     processor->process(context);
 
     REQUIRE(output(context).block.samples == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
     REQUIRE(output(context).traversalGrid.isValid());
     REQUIRE(output(context).traversalGrid.rows == 5);
     REQUIRE(output(context).traversalGrid.values.size() == output(context).traversalGrid.columns * 5);
+    REQUIRE(output(context).traversalGrid.metadata.arity == TraversalGridArity::Matrix);
+    REQUIRE(output(context).traversalGrid.metadata.valueDomain == PortDomain::TimeSignal);
+    REQUIRE(output(context).traversalGrid.metadata.columnAxis == TraversalGridAxis::Phase);
+    REQUIRE(output(context).traversalGrid.metadata.rowAxis == TraversalGridAxis::Time);
     REQUIRE(output(context).traversalGrid.values[0] == Catch::Approx(0.f));
     REQUIRE(output(context).traversalGrid.values[5] > output(context).traversalGrid.values[0]);
     REQUIRE(output(context).traversalGrid.values[5] != Catch::Approx(output(context).traversalGrid.values[0]));
@@ -86,6 +106,9 @@ TEST_CASE("Image source publishes a two-dimensional traversal grid", "[cycle-v2]
     REQUIRE(output(context).traversalGrid.isValid());
     REQUIRE(output(context).traversalGrid.rows == 4);
     REQUIRE(output(context).traversalGrid.columns == 8);
+    REQUIRE(output(context).traversalGrid.metadata.arity == TraversalGridArity::Matrix);
+    REQUIRE(output(context).traversalGrid.metadata.columnAxis == TraversalGridAxis::ImageX);
+    REQUIRE(output(context).traversalGrid.metadata.rowAxis == TraversalGridAxis::ImageY);
     REQUIRE(output(context).traversalGrid.values[0] == Catch::Approx(0.f));
     REQUIRE(output(context).traversalGrid.values[3] == Catch::Approx(0.35f));
     REQUIRE(output(context).traversalGrid.values[4] == Catch::Approx(0.65f / 7.f));
@@ -196,6 +219,63 @@ TEST_CASE("Utility audio processors reject mismatched matrix dimensions explicit
 
     REQUIRE(output(context).block.samples == std::vector<float> { 11.f, 22.f, 33.f });
     REQUIRE_FALSE(output(context).traversalGrid.isValid());
+}
+
+TEST_CASE("Utility audio processors preserve output traversal metadata across elementwise grids", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    auto left = gridPayload({ 1.f, 2.f, 3.f, 4.f, 5.f, 6.f }, 2, 3);
+    auto right = gridPayload({ 10.f, 20.f, 30.f, 40.f, 50.f, 60.f }, 2, 3);
+    right.domain = PortDomain::ControlSignal;
+    right.traversalGrid.metadata.valueDomain = PortDomain::ControlSignal;
+    right.traversalGrid.metadata.rowAxis = TraversalGridAxis::Frequency;
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.inputs = { left, right };
+    factory.create(AudioModuleRole::Add)->process(context);
+
+    REQUIRE(output(context).block.samples == std::vector<float> { 11.f, 22.f, 33.f });
+    REQUIRE(output(context).traversalGrid.isValid());
+    REQUIRE(output(context).traversalGrid.values
+            == std::vector<float> { 11.f, 22.f, 33.f, 44.f, 55.f, 66.f });
+    REQUIRE(output(context).traversalGrid.metadata.rowAxis == TraversalGridAxis::Time);
+}
+
+TEST_CASE("Utility audio processors reject mismatched concrete traversal axes", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    auto left = gridPayload({ 1.f, 2.f, 3.f, 4.f, 5.f, 6.f }, 2, 3);
+    auto right = gridPayload({ 10.f, 20.f, 30.f, 40.f, 50.f, 60.f }, 2, 3);
+    right.traversalGrid.metadata.rowAxis = TraversalGridAxis::Frequency;
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.inputs = { left, right };
+    factory.create(AudioModuleRole::Add)->process(context);
+
+    REQUIRE(output(context).block.samples == std::vector<float> { 11.f, 22.f, 33.f });
+    REQUIRE_FALSE(output(context).traversalGrid.isValid());
+}
+
+TEST_CASE("Audio process work arena reserves block and traversal-grid storage", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::WaveSource);
+    REQUIRE(processor != nullptr);
+
+    AudioProcessWorkArena arena;
+    arena.prepare(8, 1, 1, 64);
+
+    AudioProcessContext context;
+    context.frameCount = 8;
+    context.workArena = &arena;
+    context.outputPorts = {
+            { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
+    };
+    processor->process(context);
+
+    REQUIRE(output(context).block.samples.capacity() >= 8);
+    REQUIRE(output(context).traversalGrid.values.capacity() >= 64);
 }
 
 TEST_CASE("Transparent audio processors pass through first input", "[cycle-v2][runtime]") {
@@ -455,9 +535,13 @@ TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[
     REQUIRE(context.outputs[0].block.samples.size() == 4);
     REQUIRE(context.outputs[0].block.samples[0] > 0.f);
     REQUIRE(context.outputs[0].traversalGrid.isValid());
+    REQUIRE(context.outputs[0].traversalGrid.metadata.valueDomain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(context.outputs[0].traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
     REQUIRE(context.outputs[1].domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(context.outputs[1].block.samples.size() == 4);
     REQUIRE(context.outputs[1].traversalGrid.isValid());
+    REQUIRE(context.outputs[1].traversalGrid.metadata.valueDomain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(context.outputs[1].traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
 }
 
 TEST_CASE("FFT and IFFT cycle processors round trip zero-mean cycle buffers", "[cycle-v2][runtime]") {
@@ -465,7 +549,7 @@ TEST_CASE("FFT and IFFT cycle processors round trip zero-mean cycle buffers", "[
 
     AudioProcessContext fftContext;
     fftContext.frameCount = 4;
-    fftContext.inputs = { payload({ -0.5f, -0.25f, 0.25f, 0.5f }) };
+    fftContext.inputs = { gridPayload({ -0.5f, -0.25f, 0.25f, 0.5f }, 1, 4) };
     fftContext.outputPorts = {
             { "mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo },
             { "phase", PortDomain::SpectralPhaseSignal, ChannelLayout::LinkedStereo }
@@ -480,6 +564,8 @@ TEST_CASE("FFT and IFFT cycle processors round trip zero-mean cycle buffers", "[
     };
     factory.create(AudioModuleRole::Ifft)->process(ifftContext);
 
+    REQUIRE(output(ifftContext).traversalGrid.metadata.valueDomain == PortDomain::TimeSignal);
+    REQUIRE(output(ifftContext).traversalGrid.metadata.rowAxis == TraversalGridAxis::Time);
     REQUIRE(output(ifftContext).block.samples[0] == Catch::Approx(-0.5f).margin(1.0e-5f));
     REQUIRE(output(ifftContext).block.samples[1] == Catch::Approx(-0.25f).margin(1.0e-5f));
     REQUIRE(output(ifftContext).block.samples[2] == Catch::Approx(0.25f).margin(1.0e-5f));
