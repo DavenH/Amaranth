@@ -2,6 +2,7 @@
 
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
+#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
 
 #include <Array/Buffer.h>
@@ -149,6 +150,10 @@ public:
                 renderMeters(context);
                 break;
 
+            case PreviewModuleRole::SignalSpy:
+                renderSignalSpy(context);
+                break;
+
             case PreviewModuleRole::VoiceContext:
             case PreviewModuleRole::Generic:
                 renderDescending(context, 0.8f, 0.2f);
@@ -196,13 +201,14 @@ private:
             return;
         }
 
-        Mesh& mesh = meshForPreview();
+        Mesh& mesh = meshForPreview(context.parameters);
         const MorphPosition morph = meshMorphFromParameters(context.parameters);
         const int primaryAxis = primaryAxisFromParameter(
                 parameterString(context.parameters, "primaryAxis", "yellow"));
         const PortDomain outputDomain = primaryOutputDomain(context.outputPorts);
         const bool cyclic = outputDomain == PortDomain::TimeSignal;
         const size_t columnCount = std::max<size_t>(8, context.pointCount / 2);
+        context.domain = outputDomain;
 
         TrimeshBlockwiseDsp blockwiseDsp;
         SignalPayload slice;
@@ -231,6 +237,8 @@ private:
 
         context.primary.clear();
         context.primary.reserve(columnCount * context.pointCount);
+        context.gridColumns = columnCount;
+        context.gridRows = context.pointCount;
 
         for (auto column : columns) {
             normalizeBipolarBlock(column.signal);
@@ -314,9 +322,33 @@ private:
         }
     }
 
-    Mesh& meshForPreview() const {
+    void renderSignalSpy(PreviewProcessContext& context) const {
+        if (context.inputGrid.empty()) {
+            context.primary.clear();
+            context.secondary.clear();
+            context.gridColumns = 0;
+            context.gridRows = 0;
+            return;
+        }
+
+        context.primary = context.inputGrid;
+        context.secondary.clear();
+        context.gridColumns = context.inputGridColumns;
+        context.gridRows = context.inputGridRows;
+    }
+
+    Mesh& meshForPreview(const std::vector<NodeParameter>& parameters) const {
         if (defaultMesh == nullptr) {
             defaultMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2PreviewMesh");
+        }
+
+        const TrimeshMeshEditState nextMeshEditState = TrimeshMeshEditState::fromParameters(parameters);
+
+        if (nextMeshEditState != meshEditState) {
+            defaultMesh->destroy();
+            defaultMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2PreviewMesh");
+            nextMeshEditState.applyTo(*defaultMesh);
+            meshEditState = nextMeshEditState;
         }
 
         return *defaultMesh;
@@ -324,6 +356,7 @@ private:
 
     PreviewModuleRole previewRole {};
     mutable std::unique_ptr<Mesh> defaultMesh;
+    mutable TrimeshMeshEditState meshEditState;
 };
 
 }

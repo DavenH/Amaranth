@@ -42,6 +42,7 @@ public:
             std::function<void()> repaintCallback,
             std::function<void(const MouseCursor&)> cursorCallback,
             std::function<void(Point<float>)> hoverCallback);
+    void setMeshEditedCallback(std::function<void()> callback);
     void initialiseSharedGlResources();
     void releaseSharedGlResources();
     void setDisplayDomain(PortDomain domain);
@@ -65,6 +66,7 @@ private:
     TrimeshPanel3D panel3D;
     TrimeshPanelHosts panelHosts;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
+    std::function<void()> meshEditedCallback;
     uint64_t lastSyncedRevision { UINT64_MAX };
     PortDomain lastRenderDomain { PortDomain::ControlSignal };
     int lastRows {};

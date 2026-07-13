@@ -21,6 +21,7 @@ SignalPayload payload(std::initializer_list<float> samples) {
 
 SignalPayload gridPayload(std::initializer_list<float> samples, size_t columns, size_t rows) {
     SignalPayload result = payload(samples);
+    result.block.samples.assign(samples.begin(), samples.begin() + (std::ptrdiff_t) rows);
     result.traversalGrid.values = std::vector<float>(samples);
     result.traversalGrid.columns = columns;
     result.traversalGrid.rows = rows;
@@ -34,7 +35,7 @@ SignalPayload gridPayload(std::initializer_list<float> samples, size_t columns, 
 }
 
 SignalPayload gridPayload(const std::vector<float>& samples, size_t columns, size_t rows) {
-    REQUIRE(samples.size() >= rows);
+    REQUIRE(samples.size() >= columns * rows);
     SignalPayload result;
     result.block.samples.assign(samples.begin(), samples.begin() + (std::ptrdiff_t) rows);
     result.domain = PortDomain::TimeSignal;
@@ -125,11 +126,15 @@ TEST_CASE("Audio processors read node parameters from process context", "[cycle-
     REQUIRE(output(sourceContext).block.samples == std::vector<float> { 0.f, 0.25f, 0.5f });
 
     AudioProcessContext envelopeContext;
-    envelopeContext.frameCount = 2;
+    envelopeContext.frameCount = 6;
     envelopeContext.parameters = { { "level", "Level", "0.25" } };
     factory.create(AudioModuleRole::Envelope)->process(envelopeContext);
 
-    REQUIRE(output(envelopeContext).block.samples == std::vector<float> { 0.25f, 0.25f });
+    REQUIRE(output(envelopeContext).block.samples.front() == Catch::Approx(0.f).margin(1.0e-5f));
+    REQUIRE(*std::max_element(
+            output(envelopeContext).block.samples.begin(),
+            output(envelopeContext).block.samples.end()) > 0.2f);
+    REQUIRE(output(envelopeContext).block.samples.back() == Catch::Approx(0.f).margin(1.0e-5f));
 }
 
 TEST_CASE("Utility audio processors add and multiply inputs", "[cycle-v2][runtime]") {
@@ -206,7 +211,7 @@ TEST_CASE("Utility audio processors apply scalar operands across vectors and tra
             == std::vector<float> { 11.f, 12.f, 13.f, 14.f, 15.f, 16.f });
 }
 
-TEST_CASE("Utility audio processors reject mismatched matrix dimensions explicitly", "[cycle-v2][runtime]") {
+TEST_CASE("Utility audio processors broadcast single-column traversal vectors across matrices", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 
     AudioProcessContext context;
@@ -218,7 +223,9 @@ TEST_CASE("Utility audio processors reject mismatched matrix dimensions explicit
     factory.create(AudioModuleRole::Add)->process(context);
 
     REQUIRE(output(context).block.samples == std::vector<float> { 11.f, 22.f, 33.f });
-    REQUIRE_FALSE(output(context).traversalGrid.isValid());
+    REQUIRE(output(context).traversalGrid.isValid());
+    REQUIRE(output(context).traversalGrid.values
+            == std::vector<float> { 11.f, 22.f, 33.f, 14.f, 25.f, 36.f });
 }
 
 TEST_CASE("Utility audio processors preserve output traversal metadata across elementwise grids", "[cycle-v2][runtime]") {
@@ -242,6 +249,32 @@ TEST_CASE("Utility audio processors preserve output traversal metadata across el
     REQUIRE(output(context).traversalGrid.metadata.rowAxis == TraversalGridAxis::Time);
 }
 
+TEST_CASE("Utility audio processors clamp spectral magnitude outputs at zero", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    auto magnitude = gridPayload({ 0.1f, 0.2f, 0.3f, 0.4f }, 2, 2);
+    magnitude.domain = PortDomain::SpectralMagnitudeSignal;
+    magnitude.traversalGrid.metadata.valueDomain = PortDomain::SpectralMagnitudeSignal;
+    magnitude.traversalGrid.metadata.rowAxis = TraversalGridAxis::Frequency;
+
+    auto operand = gridPayload({ -0.5f, 0.1f, 0.2f, -1.f }, 2, 2);
+    operand.domain = PortDomain::ControlSignal;
+    operand.traversalGrid.metadata.valueDomain = PortDomain::ControlSignal;
+    operand.traversalGrid.metadata.rowAxis = TraversalGridAxis::Frequency;
+
+    AudioProcessContext context;
+    context.frameCount = 2;
+    context.outputPorts = {
+            { "out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::Mono }
+    };
+    context.inputs = { magnitude, operand };
+    factory.create(AudioModuleRole::Add)->process(context);
+
+    REQUIRE(output(context).domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(output(context).traversalGrid.values == std::vector<float> { 0.f, 0.3f, 0.5f, 0.f });
+    REQUIRE(output(context).block.samples == std::vector<float> { 0.f, 0.3f });
+}
+
 TEST_CASE("Utility audio processors reject mismatched concrete traversal axes", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 
@@ -256,6 +289,32 @@ TEST_CASE("Utility audio processors reject mismatched concrete traversal axes", 
 
     REQUIRE(output(context).block.samples == std::vector<float> { 11.f, 22.f, 33.f });
     REQUIRE_FALSE(output(context).traversalGrid.isValid());
+}
+
+TEST_CASE("Multiply applies envelope grids along time rows for every traversal column", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    auto time = gridPayload({ 10.f, 20.f, 30.f, 100.f, 200.f, 300.f }, 2, 3);
+    time.domain = PortDomain::TimeSignal;
+    time.traversalGrid.metadata.valueDomain = PortDomain::TimeSignal;
+    time.traversalGrid.metadata.columnAxis = TraversalGridAxis::Morph;
+    time.traversalGrid.metadata.rowAxis = TraversalGridAxis::Time;
+
+    auto envelope = gridPayload({ 0.1f, 0.2f, 0.3f, 0.9f, 0.8f, 0.7f }, 2, 3);
+    envelope.domain = PortDomain::EnvelopeSignal;
+    envelope.traversalGrid.metadata.valueDomain = PortDomain::EnvelopeSignal;
+    envelope.traversalGrid.metadata.columnAxis = TraversalGridAxis::Repeated;
+    envelope.traversalGrid.metadata.rowAxis = TraversalGridAxis::Time;
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.inputs = { time, envelope };
+    factory.create(AudioModuleRole::Multiply)->process(context);
+
+    REQUIRE(output(context).domain == PortDomain::TimeSignal);
+    REQUIRE(output(context).traversalGrid.metadata.rowAxis == TraversalGridAxis::Time);
+    REQUIRE(output(context).traversalGrid.values
+            == std::vector<float> { 1.f, 4.f, 9.f, 10.f, 40.f, 90.f });
 }
 
 TEST_CASE("Audio process work arena reserves block and traversal-grid storage", "[cycle-v2][runtime]") {
@@ -516,6 +575,21 @@ TEST_CASE("Reverb processor transforms block and carries traversal tails across 
             [](float value) { return std::abs(value) > 0.000001f; }));
 }
 
+TEST_CASE("Spy audio processor passes through first input", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::Spy);
+    REQUIRE(processor != nullptr);
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.inputs = { payload({ 0.1f, 0.4f, 0.9f }) };
+    processor->process(context);
+
+    REQUIRE(output(context).block.samples == std::vector<float> { 0.1f, 0.4f, 0.9f });
+    REQUIRE(output(context).domain == PortDomain::TimeSignal);
+    REQUIRE(output(context).channelLayout == ChannelLayout::LinkedStereo);
+}
+
 TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
     auto processor = factory.create(AudioModuleRole::Fft);
@@ -532,13 +606,18 @@ TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[
 
     REQUIRE(context.outputs.size() == 2);
     REQUIRE(context.outputs[0].domain == PortDomain::SpectralMagnitudeSignal);
-    REQUIRE(context.outputs[0].block.samples.size() == 4);
-    REQUIRE(context.outputs[0].block.samples[0] > 0.f);
+    REQUIRE(context.outputs[0].block.samples.size() == 3);
+    REQUIRE(std::any_of(
+            context.outputs[0].block.samples.begin(),
+            context.outputs[0].block.samples.end(),
+            [](float value) {
+                return value > 0.f;
+            }));
     REQUIRE(context.outputs[0].traversalGrid.isValid());
     REQUIRE(context.outputs[0].traversalGrid.metadata.valueDomain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(context.outputs[0].traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
     REQUIRE(context.outputs[1].domain == PortDomain::SpectralPhaseSignal);
-    REQUIRE(context.outputs[1].block.samples.size() == 4);
+    REQUIRE(context.outputs[1].block.samples.size() == 3);
     REQUIRE(context.outputs[1].traversalGrid.isValid());
     REQUIRE(context.outputs[1].traversalGrid.metadata.valueDomain == PortDomain::SpectralPhaseSignal);
     REQUIRE(context.outputs[1].traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
@@ -576,18 +655,44 @@ TEST_CASE("Mesh source processor generates a deterministic operand when unconnec
     NodeAudioProcessorFactory factory;
 
     AudioProcessContext context;
-    context.frameCount = 3;
+    context.frameCount = 4;
     context.outputPorts = {
             { "out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo }
     };
     factory.create(AudioModuleRole::MeshSource)->process(context);
 
     REQUIRE(output(context).domain == PortDomain::SpectralMagnitudeSignal);
-    REQUIRE(output(context).block.samples.size() == 3);
+    REQUIRE(output(context).block.samples.size() == 4);
     REQUIRE(output(context).traversalGrid.isValid());
+    REQUIRE(output(context).traversalGrid.columns == 8);
     REQUIRE(output(context).traversalGrid.rows == 3);
     REQUIRE(*std::min_element(output(context).block.samples.begin(), output(context).block.samples.end())
             < *std::max_element(output(context).block.samples.begin(), output(context).block.samples.end()));
+}
+
+TEST_CASE("Mesh source processor applies serialized vertex edits to runtime grids", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext baseline;
+    baseline.frameCount = 16;
+    baseline.outputPorts = {
+            { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
+    };
+    factory.create(AudioModuleRole::MeshSource)->process(baseline);
+
+    AudioProcessContext edited;
+    edited.frameCount = 16;
+    edited.outputPorts = baseline.outputPorts;
+    edited.parameters = {
+            { "mesh.vertex.0.amp", "Amplitude", "0.05" },
+            { "mesh.vertex.1.amp", "Amplitude", "0.95" },
+            { "mesh.vertex.2.phase", "Phase", "0.44" }
+    };
+    factory.create(AudioModuleRole::MeshSource)->process(edited);
+
+    REQUIRE(output(edited).traversalGrid.isValid());
+    REQUIRE(output(edited).block.samples != output(baseline).block.samples);
+    REQUIRE(output(edited).traversalGrid.values != output(baseline).traversalGrid.values);
 }
 
 TEST_CASE("Mesh source processor uses non-cyclic rendering for spectral outputs", "[cycle-v2][runtime]") {

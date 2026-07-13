@@ -89,6 +89,7 @@ public:
     uint64_t getRevision() const { return revision; }
     const TrimeshDerivedRevisions& getDerivedRevisions() const { return revisions; }
     Mesh& getMeshForPanel() { return mesh(); }
+    TrimeshMeshEditState currentMeshEditState();
 
 private:
     Mesh& mesh();

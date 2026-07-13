@@ -24,6 +24,11 @@ private:
     Buffer<Complex32> storage;
 };
 
+struct RealFftPackedEndpoints {
+    float dc {};
+    float nyquist {};
+};
+
 class RealFftSpectrum {
 public:
     RealFftSpectrum() : packedSize(0) {}
@@ -41,6 +46,7 @@ public:
 
     float getDC() const { return realPart(storage[0]); }
     float getNyquist() const { return imagPart(storage[0]); }
+    RealFftPackedEndpoints getEndpoints() const { return { getDC(), getNyquist() }; }
     Complex32 getBin(int index) const { return storage[index]; }
     Buffer<Complex32> getStorage() const { return storage; }
 
@@ -91,6 +97,29 @@ private:
 
     Buffer<Complex32> storage;
     int packedSize;
+};
+
+class RealFftFullPolarSpectrum {
+public:
+    static int binCountForBufferSize(int bufferSize) { return bufferSize / 2 + 1; }
+
+    static void copyFromPacked(
+            RealFftPackedEndpoints endpoints,
+            Buffer<float> ordinaryMagnitudes,
+            Buffer<float> ordinaryPhases,
+            Buffer<float> magnitudeDest,
+            Buffer<float> phaseDest);
+
+    static RealFftPackedEndpoints copyToPacked(
+            Buffer<float> magnitudeSource,
+            Buffer<float> phaseSource,
+            Buffer<float> ordinaryMagnitudes,
+            Buffer<float> ordinaryPhases);
+
+private:
+    static float magnitudeForSignedEndpoint(float value);
+    static float phaseForSignedEndpoint(float value);
+    static float signedEndpoint(float magnitude, float phase);
 };
 
 class Transform {
@@ -171,6 +200,10 @@ public:
      */
     Buffer<float> getPhases() { return phases; }
 
+    int getFullRealBinCount() const;
+    void copyFullPolarSpectrumTo(Buffer<float> magnitudeDest, Buffer<float> phaseDest);
+    void setFullPolarSpectrum(Buffer<float> magnitudeSource, Buffer<float> phaseSource);
+
     Transform& operator<<(const Buffer<float>& buffer) {
         forward(buffer);
         return *this;
@@ -182,6 +215,8 @@ public:
     }
 
 private:
+    void setPackedEndpoints(float dc, float nyquist);
+
     bool convertToCart, removeOffset;
     ScaleType scaleType;
     int order;

@@ -19,8 +19,14 @@ struct PreviewProcessContext {
     std::vector<NodeParameter> parameters;
     std::vector<PreviewOutputPort> outputPorts;
     std::vector<float> inputSummary;
+    std::vector<float> inputGrid;
+    size_t inputGridColumns {};
+    size_t inputGridRows {};
     std::vector<float> primary;
     std::vector<float> secondary;
+    size_t gridColumns {};
+    size_t gridRows {};
+    PortDomain domain { PortDomain::TimeSignal };
 };
 
 class NodePreviewProcessor {

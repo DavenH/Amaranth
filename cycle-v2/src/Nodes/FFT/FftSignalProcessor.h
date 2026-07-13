@@ -26,9 +26,11 @@ private:
             const SignalPayload& magnitude,
             const SignalPayload* phase,
             SignalPayload& output,
+            bool useHalfCycleCarry,
             const AudioProcessWorkArena* arena);
 
     FftBlockwiseDsp blockwiseDsp;
+    FftBlockwiseDsp traversalDsp;
     AudioProcessBlock scratchTimeColumn;
     AudioProcessBlock scratchMagnitudeColumn;
     AudioProcessBlock scratchPhaseColumn;

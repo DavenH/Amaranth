@@ -72,6 +72,8 @@ public:
             std::function<void()> repaintCallback,
             std::function<void(const juce::MouseCursor&)> cursorCallback,
             std::function<void(juce::Point<float>)> hoverCallback);
+    void setMeshEditedCallback(std::function<void()> callback);
+    TrimeshMeshEditState currentMeshEditState();
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);

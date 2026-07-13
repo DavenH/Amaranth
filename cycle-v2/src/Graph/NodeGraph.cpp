@@ -58,6 +58,7 @@ NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
         case NodeKind::Waveshaper:                   return { 154.f, 174.f };
         case NodeKind::Reverb:                       return { 0.f, 0.f };
         case NodeKind::Delay:                        return { 0.f, 0.f };
+        case NodeKind::Spy:                          return { 170.f, 76.f };
         case NodeKind::StereoSplit:                  return { 0.f, 0.f };
         case NodeKind::StereoJoin:                   return { 0.f, 0.f };
         case NodeKind::Output:                       return { 0.f, 0.f };
@@ -339,6 +340,7 @@ String labelForNodeKind(NodeKind kind) {
         case NodeKind::Waveshaper:                   return "Waveshaper";
         case NodeKind::Reverb:                       return "Reverb";
         case NodeKind::Delay:                        return "Delay";
+        case NodeKind::Spy:                          return "Spy";
         case NodeKind::StereoSplit:                  return "Stereo Split";
         case NodeKind::StereoJoin:                   return "Stereo Join";
         case NodeKind::Output:                       return "Output";

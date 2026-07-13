@@ -139,6 +139,12 @@ future programmatic preset generation, but it can skip important code.
 For ordinary JUCE panels, use app-side `screenshot` with a registered area or
 target. This auto-crops to the resolved component bounds.
 
+For node-canvas visual validation, prefer the runner-side OS crop path over
+app-side component rendering. The canvas may contain cached images or
+composited layers that do not match the app-side snapshot, so compare against
+the OS screenshot when validating node previews, spy previews, cable routing,
+or expanded node overlays.
+
 For OpenGL-backed panels, app-side component snapshots may be blank. Use the
 runner-side OS crop path:
 

@@ -137,6 +137,42 @@ GraphEditResult GraphEditor::createAndAttachGuideCurveToTrimeshVertexParameter(
     return { GraphEditCode::Connected, addResult.nodeId, {} };
 }
 
+GraphEditResult GraphEditor::attachSpyToEdge(NodeGraph& graph, size_t edgeIndex, const String& spyNodeId) const {
+    if (edgeIndex >= graph.getEdges().size()) {
+        return { GraphEditCode::MissingEdge, {}, {} };
+    }
+
+    const Edge edge = graph.getEdges()[edgeIndex];
+    const Node* spyNode = findNode(graph, spyNodeId);
+
+    if (spyNode == nullptr) {
+        return { GraphEditCode::MissingNode, {}, {} };
+    }
+
+    if (spyNode->kind != NodeKind::Spy) {
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+
+    const Port* spyInput = findPort(*spyNode, "in", true);
+
+    if (spyInput == nullptr) {
+        return { GraphEditCode::MissingPort, {}, {} };
+    }
+
+    NodeGraph candidate = graph;
+    GraphEditResult result = connect(
+            candidate,
+            { edge.sourceNodeId, edge.sourcePortId, false },
+            { spyNodeId, spyInput->id, true });
+
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    graph = std::move(candidate);
+    return { GraphEditCode::Connected, spyNodeId, {} };
+}
+
 GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeIndex, const String& nodeId) const {
     if (edgeIndex >= graph.getEdges().size()) {
         return { GraphEditCode::MissingEdge, {}, {} };
@@ -152,6 +188,10 @@ GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeInd
 
     if (spliceNode == nullptr) {
         return { GraphEditCode::MissingNode, {}, {} };
+    }
+
+    if (spliceNode->kind == NodeKind::Spy) {
+        return { GraphEditCode::ValidationRejected, {}, {} };
     }
 
     const PortAddress source { edge.sourceNodeId, edge.sourcePortId, false };
@@ -297,6 +337,7 @@ String GraphEditor::baseIdForKind(NodeKind kind) const {
         case NodeKind::Waveshaper:                   return "waveshaper";
         case NodeKind::Reverb:                       return "reverb";
         case NodeKind::Delay:                        return "delay";
+        case NodeKind::Spy:                          return "spy";
         case NodeKind::StereoSplit:                  return "split";
         case NodeKind::StereoJoin:                   return "join";
         case NodeKind::Output:                       return "out";

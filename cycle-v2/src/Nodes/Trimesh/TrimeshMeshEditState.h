@@ -22,7 +22,10 @@ struct TrimeshVertexEdit {
 class TrimeshMeshEditState {
 public:
     static TrimeshMeshEditState fromNode(const Node& node);
+    static TrimeshMeshEditState fromParameters(const std::vector<NodeParameter>& parameters);
+    static TrimeshMeshEditState fromMesh(Mesh& mesh);
     static String canonicalVertexParameterId(int vertexIndex, const String& field);
+    static String fieldForVertexValueIndex(int valueIndex);
 
     bool applyTo(Mesh& mesh) const;
     bool empty() const { return vertexEdits.empty(); }

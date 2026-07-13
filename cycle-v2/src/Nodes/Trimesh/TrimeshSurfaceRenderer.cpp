@@ -8,17 +8,24 @@ Colour TrimeshSurfaceRenderer::colourForProfile(float value, const TrimeshRender
 
 Image TrimeshSurfaceRenderer::createHeatmapImage(
         const TrimeshRenderData& renderData,
-        const TrimeshRenderProfile& profile) {
+        const TrimeshRenderProfile& profile,
+        bool opaque) {
     if (!renderData.canDrawSurface()) {
         return {};
     }
 
-    Image image(Image::ARGB, renderData.columns, renderData.rows, true);
+    Image image(opaque ? Image::RGB : Image::ARGB, renderData.columns, renderData.rows, true);
 
     for (int column = 0; column < renderData.columns; ++column) {
         for (int row = 0; row < renderData.rows; ++row) {
             const float value = renderData.surface[(size_t) column * (size_t) renderData.rows + (size_t) row];
-            image.setPixelAt(column, renderData.rows - 1 - row, colourForProfile(value, profile));
+            Colour colour = colourForProfile(value, profile);
+
+            if (opaque) {
+                colour = colour.withAlpha(1.f);
+            }
+
+            image.setPixelAt(column, renderData.rows - 1 - row, colour);
         }
     }
 

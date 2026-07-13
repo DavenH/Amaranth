@@ -78,6 +78,10 @@ bool GraphDomainResolver::isContextResolvedSource(const Node& node, const Port& 
     }
 }
 
+bool isInputResolvedPassthrough(const Node& node) {
+    return node.kind == NodeKind::Spy;
+}
+
 PortDomain GraphDomainResolver::domainFromContextInput(const NodeGraph& graph, const Node& node) const {
     for (const auto& edge : graph.getEdges()) {
         if (edge.attachment || edge.destNodeId != node.id || edge.destPortId != "context") {
@@ -108,6 +112,28 @@ PortDomain GraphDomainResolver::firstResolvedInputDomain(
 
         const PortDomain domain = resolvedEdgeDomain(graph, edge, depth + 1);
         if (isConcreteOperationDomain(domain)) {
+            return domain;
+        }
+    }
+
+    return PortDomain::ControlSignal;
+}
+
+PortDomain GraphDomainResolver::firstResolvedSignalInputDomain(
+        const NodeGraph& graph,
+        const String& nodeId,
+        int depth) const {
+    if (depth > (int) graph.getNodes().size()) {
+        return PortDomain::ControlSignal;
+    }
+
+    for (const auto& edge : graph.getEdges()) {
+        if (edge.attachment || edge.destNodeId != nodeId) {
+            continue;
+        }
+
+        const PortDomain domain = resolvedEdgeDomain(graph, edge, depth + 1);
+        if (GraphDomainResolver::isConcreteSignalDomain(domain)) {
             return domain;
         }
     }
@@ -147,6 +173,10 @@ PortDomain GraphDomainResolver::resolvedControlOutputDomain(
         return firstResolvedInputDomain(resolvedEdges, sourceNode.id);
     }
 
+    if (isInputResolvedPassthrough(sourceNode)) {
+        return firstResolvedInputDomain(resolvedEdges, sourceNode.id);
+    }
+
     return PortDomain::ControlSignal;
 }
 
@@ -183,6 +213,10 @@ PortDomain GraphDomainResolver::resolvedEdgeDomain(
         sourceDomain = firstResolvedInputDomain(graph, sourceNode->id, depth + 1);
     }
 
+    if (sourceDomain == PortDomain::ControlSignal && isInputResolvedPassthrough(*sourceNode)) {
+        sourceDomain = firstResolvedSignalInputDomain(graph, sourceNode->id, depth + 1);
+    }
+
     if (sourceDomain != PortDomain::ControlSignal) {
         return sourceDomain;
     }
@@ -195,6 +229,13 @@ PortDomain GraphDomainResolver::resolvedEdgeDomain(
         const PortDomain operationDomain = firstResolvedInputDomain(graph, destNode->id, depth + 1);
         if (operationDomain != PortDomain::ControlSignal) {
             return operationDomain;
+        }
+    }
+
+    if (isInputResolvedPassthrough(*destNode)) {
+        const PortDomain passthroughDomain = firstResolvedSignalInputDomain(graph, destNode->id, depth + 1);
+        if (passthroughDomain != PortDomain::ControlSignal) {
+            return passthroughDomain;
         }
     }
 
@@ -240,6 +281,13 @@ PortDomain GraphDomainResolver::resolvedDomainForEdge(
         }
     }
 
+    if (isInputResolvedPassthrough(*destNode)) {
+        const PortDomain passthroughDomain = firstResolvedInputDomain(resolvedEdges, destNode->id);
+        if (passthroughDomain != PortDomain::ControlSignal) {
+            return passthroughDomain;
+        }
+    }
+
     return edge.domain;
 }
 
@@ -258,6 +306,16 @@ ChannelLayout GraphDomainResolver::resolvedChannelLayoutForEdge(
 
     if (source == nullptr || dest == nullptr) {
         return ChannelLayout::Mono;
+    }
+
+    if (isInputResolvedPassthrough(*sourceNode) && source->domain == PortDomain::ControlSignal) {
+        for (const auto& inputEdge : graph.getEdges()) {
+            if (inputEdge.attachment || inputEdge.destNodeId != sourceNode->id) {
+                continue;
+            }
+
+            return resolvedChannelLayoutForEdge(graph, inputEdge);
+        }
     }
 
     if (dest->domain != PortDomain::ControlSignal) {
