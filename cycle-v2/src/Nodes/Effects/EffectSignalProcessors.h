@@ -18,10 +18,14 @@ public:
     void prepareProcess(
             const std::vector<NodeParameter>& parameters,
             const AudioProcessTiming& timing) override;
+    void beginBlock(size_t frameCount) override;
+    void beginTraversalGrid(size_t columns, size_t rows) override;
+    void endTraversalGrid() override;
     void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) override;
 
 private:
     void syncImpulse(const std::vector<NodeParameter>& parameters);
+    void prepareConvolver(BlockConvolver& convolver, size_t blockSize, size_t& preparedSize);
     void rebuildMesh(const String& serializedVertices);
     void addVertex(float x, float y, float curve);
 
@@ -30,9 +34,17 @@ private:
     String lastVertexState;
     std::vector<float> impulse;
     std::vector<float> convolutionOutput;
+    BlockConvolver blockConvolver;
+    BlockConvolver traversalConvolver;
+    BlockConvolver* activeConvolver { &blockConvolver };
     float postGain { 1.f };
     float highPass { 0.f };
     size_t impulseLength { 1 };
+    size_t impulseRevision {};
+    size_t blockImpulseRevision {};
+    size_t traversalImpulseRevision {};
+    size_t preparedBlockSize {};
+    size_t preparedTraversalSize {};
 };
 
 class DelaySignalProcessor :

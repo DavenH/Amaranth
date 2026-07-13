@@ -288,8 +288,11 @@ Tests:
 
 Current status:
 
-- Cycle 2 uses `FXRasterizer` plus `ConvReverb::basicConvolve`.
-- Adapter-local impulse handling and block-local convolution remain.
+- Cycle 2 uses `FXRasterizer` plus the shared streaming `BlockConvolver`, with
+  separate block and traversal state.
+- Adapter-local impulse rasterization and high-pass handling remain; Cycle 1
+  applies prefiltering to the impulse in the frequency domain, so do not treat
+  Cycle 2's output-domain high-pass approximation as parity.
 
 Target:
 

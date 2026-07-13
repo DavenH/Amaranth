@@ -74,16 +74,32 @@ void IrSignalProcessor::prepareProcess(
     syncImpulse(parametersToUse);
 }
 
+void IrSignalProcessor::beginBlock(size_t frameCount) {
+    activeConvolver = &blockConvolver;
+    prepareConvolver(blockConvolver, frameCount, preparedBlockSize);
+    blockImpulseRevision = impulseRevision;
+}
+
+void IrSignalProcessor::beginTraversalGrid(size_t, size_t rows) {
+    activeConvolver = &traversalConvolver;
+    preparedTraversalSize = 0;
+    prepareConvolver(traversalConvolver, rows, preparedTraversalSize);
+    traversalImpulseRevision = impulseRevision;
+}
+
+void IrSignalProcessor::endTraversalGrid() {
+    activeConvolver = &blockConvolver;
+}
+
 void IrSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
-    if (buffer.empty() || impulse.empty()) {
+    if (buffer.empty() || impulse.empty() || activeConvolver == nullptr) {
         return;
     }
 
-    convolutionOutput.resize(buffer.size() + impulse.size() - 1);
-    ConvReverb::basicConvolve(
+    convolutionOutput.resize((size_t) buffer.size());
+    activeConvolver->process(
             buffer,
-            { impulse.data(), (int) impulse.size() },
-            { convolutionOutput.data(), (int) convolutionOutput.size() });
+            { convolutionOutput.data(), buffer.size() });
 
     VecOps::copy(convolutionOutput.data(), buffer.get(), buffer.size());
 
@@ -121,6 +137,27 @@ void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parameters
         impulseBuffer.zero();
         impulseBuffer.front() = 1.f;
     }
+    ++impulseRevision;
+}
+
+void IrSignalProcessor::prepareConvolver(
+        BlockConvolver& convolver,
+        size_t blockSize,
+        size_t& preparedSize) {
+    const bool isBlockConvolver = &convolver == &blockConvolver;
+    const size_t preparedRevision = isBlockConvolver
+            ? blockImpulseRevision
+            : traversalImpulseRevision;
+    if (blockSize == 0
+            || (preparedSize == blockSize && preparedRevision == impulseRevision)) {
+        return;
+    }
+
+    convolver.init(
+            NumberUtils::nextPower2((unsigned) blockSize),
+            { impulse.data(), (int) impulse.size() });
+    preparedSize = blockSize;
+    convolutionOutput.resize(blockSize);
 }
 
 void IrSignalProcessor::rebuildMesh(const String& serializedVertices) {
