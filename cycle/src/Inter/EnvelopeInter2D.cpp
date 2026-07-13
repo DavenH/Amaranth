@@ -901,7 +901,7 @@ void EnvelopeInter2D::waveOverlayChanged() {
         if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch)
             switchedEnvelope(LayerGroups::GroupPitch, true);
         else {
-            getObj(EnvPitchRast).setMesh(getObj(MeshLibrary).getCurrentEnvMesh(LayerGroups::GroupPitch));
+            getObj(EnvPitchRast).get().setMesh(getObj(MeshLibrary).getCurrentEnvMesh(LayerGroups::GroupPitch));
         }
     }
 
@@ -921,9 +921,9 @@ void EnvelopeInter2D::updatePhaseLimit(float limit) {
 
 EnvRasterizer* EnvelopeInter2D::getEnvRasterizer() {
     switch (getSetting(CurrentEnvGroup)) {
-        case LayerGroups::GroupVolume:    return &getObj(EnvVolumeRast);
-        case LayerGroups::GroupPitch:     return &getObj(EnvPitchRast);
-        case LayerGroups::GroupScratch:   return &getObj(EnvScratchRast);
+        case LayerGroups::GroupVolume:    return &getObj(EnvVolumeRast).get();
+        case LayerGroups::GroupPitch:     return &getObj(EnvPitchRast).get();
+        case LayerGroups::GroupScratch:   return &getObj(EnvScratchRast).get();
         default:
             break;
     }
@@ -1187,9 +1187,9 @@ void EnvelopeInter2D::triggerButton(int id) {
 
 EnvRasterizer* EnvelopeInter2D::getRast(int envEnum) {
     switch (envEnum) {
-        case LayerGroups::GroupVolume:    return &getObj(EnvVolumeRast);
-        case LayerGroups::GroupPitch:     return &getObj(EnvPitchRast);
-        case LayerGroups::GroupScratch:   return &getObj(EnvScratchRast);
+        case LayerGroups::GroupVolume:    return &getObj(EnvVolumeRast).get();
+        case LayerGroups::GroupPitch:     return &getObj(EnvPitchRast).get();
+        case LayerGroups::GroupScratch:   return &getObj(EnvScratchRast).get();
         default:
             break;
     }

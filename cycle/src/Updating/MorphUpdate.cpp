@@ -38,9 +38,9 @@ void MorphUpdate::performUpdate(UpdateType updateType) {
             m.resetTime();
 
             getObj(Multisample).performUpdate(updateType);
-            getObj(EnvPitchRast).setMorphPosition(m);
-            getObj(EnvVolumeRast).setMorphPosition(m);
-            getObj(EnvScratchRast).setMorphPosition(m);
+            getObj(EnvPitchRast).get().setMorphPosition(m);
+            getObj(EnvVolumeRast).get().setMorphPosition(m);
+            getObj(EnvScratchRast).get().setMorphPosition(m);
             getObj(E3Rasterizer).setMorphPosition(m);
 
             // TODO make this another node -- it gets called several times per refresh

@@ -79,7 +79,7 @@ public:
         ,   Interactor2D    (repo, name, Dimensions(Vertex::Phase, Vertex::Amp))
         ,   SingletonAccessor(repo, name)
         ,   fxRasterizer    (repo, name + "FXRasterizer")
-        ,   envRasterizer   (repo, nullptr, name + "EnvRasterizer")
+        ,   envRasterizer   (nullptr, name + "EnvRasterizer")
         ,   environment     (panelEnvironment)
         ,   mesh            (meshToEdit) {
         vertPadding = 0;

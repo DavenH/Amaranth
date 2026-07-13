@@ -251,13 +251,13 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
     EnvType type;
 
     if (envEnum == LayerGroups::GroupVolume) {
-        logRasterizerState("consume-volume-before", getObj(EnvVolumeRast));
+        logRasterizerState("consume-volume-before", getObj(EnvVolumeRast).get());
         volumeEnv.resize(numColumns);
         rasterizeEnv(
             volumeEnv,
             zoomProgress,
             LayerGroups::GroupVolume,
-            getObj(EnvVolumeRast)
+            getObj(EnvVolumeRast).get()
         );
         MeshLibrary::EnvProps* volumeProps = meshLib->getCurrentEnvProps(LayerGroups::GroupVolume);
 
@@ -265,7 +265,7 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
             Arithmetic::applyInvLogMapping(volumeEnv, 30);
         }
     } else if (envEnum == LayerGroups::GroupPitch) {
-        rast = &getObj(EnvPitchRast);
+        rast = &getObj(EnvPitchRast).get();
         logRasterizerState("prepare-pitch-before-inline", *rast);
 
         if (rast->getCurrentMesh() == nullptr) {
@@ -283,7 +283,7 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
         rast->update(Update);
         logRasterizerState("prepare-pitch-after-inline", *rast);
     } else if (envEnum == LayerGroups::GroupScratch) {
-        rast = &getObj(EnvScratchRast);
+        rast = &getObj(EnvScratchRast).get();
         type = ScratchType;
         logRasterizerState("prepare-scratch-before-inline", *rast);
 
@@ -1216,7 +1216,7 @@ void VisualDsp::processThroughEnvelopes(int numColumns) {
             float volumeScale = areBeforeFX ? getObj(OscControlPanel).getVolumeScale() : 1;
             int start = 0;
 
-            auto& volRast = getObj(EnvVolumeRast);
+            auto& volRast = getObj(EnvVolumeRast).get();
 
             auto sampler = volRast.sampler();
             if (sampler.isSampleable() && getSetting(CurrentMorphAxis) == Vertex::Time) {
@@ -1254,7 +1254,7 @@ void VisualDsp::processThroughEnvelopes(int numColumns) {
 void VisualDsp::processFrequency(vector<Column>& columns, bool processUnison) {
     Cycle::Rasterization::UnisonPhaseColumnRenderer::Context context;
     context.meshLibrary = meshLib;
-    context.pitchRasterizer = &getObj(EnvPitchRast);
+    context.pitchRasterizer = &getObj(EnvPitchRast).get();
     context.unison = unison;
     context.columns = &columns;
     context.numFftOrders = numFFTOrders;

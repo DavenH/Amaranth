@@ -341,6 +341,9 @@ Tests:
 Current status:
 
 - Envelope UI/rasterizer semantics have been partially bridged.
+- `EnvRasterizer` is a plain AmaranthLib object with no `SingletonRepo`
+  ownership dependency. Cycle 1 preserves its named global services through
+  Cycle-owned composition adapters in `EnvRasterizerServices.h`.
 - Runtime envelope processing remains simplified.
 - Cycle 2's node schema currently exposes only `logarithmic`; it has no
   envelope snapshot, loop/sustain markers, note-on/note-off lifecycle input, or
@@ -459,6 +462,7 @@ Complete one module end-to-end before starting the next:
 - [ ] Characterize, extract, migrate, and test IR Modeller.
 - [ ] Characterize, extract, migrate, and test Waveshaper.
 - [ ] Characterize, extract, migrate, and test Envelope.
+- [x] Remove `EnvRasterizer`'s application/singleton ownership dependency.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.
 - [x] Audit Guide Curve signal behavior and extract only if duplicated.
 - [ ] Add Cycle 2 Guide Curve snapshot/provider adapter before runtime sampling.

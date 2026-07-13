@@ -3,8 +3,9 @@
 #include <App/SingletonAccessor.h>
 #include "JuceHeader.h"
 
+#include "EnvRasterizerServices.h"
+
 class SingletonRepo;
-class EnvRasterizer;
 class FXRasterizer;
 class Panel;
 
@@ -46,7 +47,4 @@ private:
     static Atomic<int> numInstances;
 };
 
-typedef EnvRasterizer EnvVolumeRast;
-typedef EnvRasterizer EnvPitchRast;
-typedef EnvRasterizer EnvScratchRast;
 typedef FXRasterizer  EnvWavePitchRast;

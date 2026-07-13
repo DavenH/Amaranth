@@ -12,7 +12,6 @@
 #include <Curve/Rasterization/Sampling/GuideCurveSampler.h>
 #include <Curve/Rasterization/Sampling/WaveformSampler.h>
 
-#include <App/SingletonRepo.h>
 #include <Util/Arithmetic.h>
 #include <Util/CommonEnums.h>
 
@@ -42,9 +41,8 @@ namespace {
     }
 }
 
-EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurveProvider, const String& name) :
-        SingletonAccessor(repo, name)
-    ,    sampleReleaseNextCall(false)
+EnvRasterizer::EnvRasterizer(GuideCurveProvider* guideCurveProvider, const String& nameToUse) :
+         sampleReleaseNextCall(false)
     ,    oneSamplePerCycle(false)
     ,    loopIndex       (-1)
     ,    sustainIndex    (-1)
@@ -60,7 +58,8 @@ EnvRasterizer::EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurve
     ,    reduction()
     ,    paddingSize(2)
     ,    unsampleable(true)
-    ,    needsResorting(false) {
+    ,    needsResorting(false)
+    ,    name(nameToUse) {
     setWrapsEnds(false);
     setLimits(0.f, 10.f);
     rasterizerData.paddingSize = paddingSize;
@@ -87,6 +86,7 @@ EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
     this->guideCurveProvider    = copy.guideCurveProvider;
     this->request               = copy.request;
     this->paddingSize           = copy.paddingSize;
+    this->name                  = copy.name;
     this->rasterizerData.paddingSize = copy.rasterizerData.paddingSize;
     this->rasterizerData.wrapsVertices = copy.rasterizerData.wrapsVertices;
     this->unsampleable          = true;
@@ -99,8 +99,7 @@ EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
     return *this;
 }
 
-EnvRasterizer::EnvRasterizer(const EnvRasterizer& copy) :
-        SingletonAccessor(copy) {
+EnvRasterizer::EnvRasterizer(const EnvRasterizer& copy) {
     operator=(copy);
 }
 
@@ -187,7 +186,7 @@ Rasterization::EnvelopePaddingContext EnvRasterizer::createPaddingContext() cons
 void EnvRasterizer::setNoteOn() {
     state = NormalState;
 
-    dbg("\tnote on for " << getName());
+    dbg("\tnote on for " << name);
 
     sampleReleaseNextCall = false;
 
@@ -404,7 +403,7 @@ int EnvRasterizer::vectorizedRenderToBuffer(
     auto waveform = result.waveform;
     EnvParams& group = params[paramIndex];
 
-    dbg("\n\n" << getName() << "(" << paramIndex << ")");
+    dbg("\n\n" << name << "(" << paramIndex << ")");
 
     double advancement = numSamples * deltaX;
     Rasterization::EnvelopePlaybackContext context;
@@ -571,7 +570,7 @@ bool EnvRasterizer::simulateRender(
 
     if (intercepts.empty() || (state != Releasing && ! isPositiveAndBelow(sustainIndex, (int) intercepts.size()))) {
         DBG(String::formatted("EnvRasterizer[%s] simulateRender invalid state mesh=%p icpts=%d sustain=%d state=%d",
-                              getName().toRawUTF8(),
+                              name.toRawUTF8(),
                               envMesh,
                               (int) intercepts.size(),
                               sustainIndex,
