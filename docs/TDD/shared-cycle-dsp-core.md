@@ -261,10 +261,9 @@ Current status:
 - Cycle 2 has a Cycle 1-derived kernel-generation implementation.
 - It uses shared convolution primitives but not a shared extracted
   `ReverbEffect` core.
-- Cycle 1 streaming state is implemented by `ConvReverb`, which lives in
-  `AmaranthLib` but still inherits `SingletonAccessor`. Remove that ownership
-  dependency before using it behind the shared Reverb core; do not duplicate
-  its two-stage streaming algorithm in a new class.
+- Cycle 1 streaming state is implemented by the UI-free `ConvReverb` in
+  `AmaranthLib`. Reuse its two-stage streaming algorithm behind the shared
+  Reverb core; do not duplicate it in a new class.
 - Cycle 2 currently performs allocating full convolution plus adapter-local
   carry management. Treat that path as scaffolding to replace, not the shared
   streaming contract.
@@ -434,7 +433,7 @@ Complete one module end-to-end before starting the next:
 - [x] Extract Delay core and migrate Cycle 1.
 - [x] Migrate Cycle 2 Delay and remove its local algorithm.
 - [ ] Complete Delay golden-vector, channel, adapter, traversal-time, and realtime-safety tests.
-- [ ] Remove `ConvReverb`'s unused application/singleton ownership dependency.
+- [x] Remove `ConvReverb`'s unused application/singleton ownership dependency.
 - [ ] Characterize, extract, migrate, and test Reverb.
 - [ ] Characterize, extract, migrate, and test IR Modeller.
 - [ ] Characterize, extract, migrate, and test Waveshaper.

@@ -1,10 +1,8 @@
 #include <App/MemoryPool.h>
-#include <App/Transforms.h>
 #include <catch2/catch_test_macros.hpp>
 #include "JuceHeader.h"
 using namespace juce;
 #include "../src/Algo/ConvReverb.h"
-#include "../src/App/SingletonRepo.h"
 #include "../src/Array/ScopedAlloc.h"
 
 class TestConvReverb {
@@ -48,11 +46,7 @@ public:
 };
 
 TEST_CASE("ConvReverb Basic Operation", "[ConvReverb]") {
-    SingletonRepo repo;
-    repo.add(new MemoryPool(&repo));
-    repo.add(new Transforms(&repo));
-
-    ConvReverb reverb(&repo);
+    ConvReverb reverb;
 
     SECTION("Initialization with valid parameters") {
         const int headSize = 64;
@@ -77,11 +71,7 @@ TEST_CASE("ConvReverb Basic Operation", "[ConvReverb]") {
 }
 
 TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
-    SingletonRepo repo;
-    repo.add(new MemoryPool(&repo));
-    repo.add(new Transforms(&repo));
-
-    ConvReverb reverb(&repo);
+    ConvReverb reverb;
 
     SECTION("Single-stage convolution accuracy") {
         const int inputSize = 44100;
@@ -209,11 +199,7 @@ TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
 }
 
 TEST_CASE("ConvReverb Edge Cases", "[ConvReverb]") {
-    SingletonRepo repo;
-    repo.add(new MemoryPool(&repo));
-    repo.add(new Transforms(&repo));
-
-    ConvReverb reverb(&repo);
+    ConvReverb reverb;
 
     SECTION("Empty input handling") {
         const int bufferSize = 512;

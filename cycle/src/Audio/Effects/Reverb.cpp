@@ -9,8 +9,6 @@
 
 ReverbEffect::ReverbEffect(SingletonRepo* repo) :
         Effect			(repo, "ReverbEffect")
-    ,	leftConv		(repo)
-    ,	rightConv		(repo)
     ,	phaseNoise		(0.1f)
     ,	magnNoise		(0.1f)
     ,	outBuffer		(2)
