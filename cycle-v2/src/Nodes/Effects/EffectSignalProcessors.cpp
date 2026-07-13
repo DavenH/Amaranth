@@ -149,117 +149,43 @@ void IrSignalProcessor::addVertex(float x, float y, float curve) {
 void DelaySignalProcessor::prepareProcess(
         const std::vector<NodeParameter>& parametersToUse,
         const AudioProcessTiming& timing) {
-    sampleRate = (float) std::max(1.0, timing.sampleRate);
     bpm = std::max(1.0, timing.bpm);
     beatsPerMeasure = std::max(1, timing.beatsPerMeasure);
-    delayTimeSeconds = cycle1DelayTimeSeconds(parameterFloat(parametersToUse, "time", 0.5f));
-    feedback = jlimit(0.f, 0.98f, parameterFloat(parametersToUse, "feedback", 0.5f));
-    spinAmount = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "spin", 1.f));
-    wetLevel = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "wet", 0.9f));
-    spinIters = cycle1SpinIters(parameterFloat(parametersToUse, "spinIters", 0.f));
-    configureDelayLines();
+
+    CycleDsp::DelayConfiguration configuration;
+    configuration.sampleRate = std::max(1.0, timing.sampleRate);
+    configuration.delaySeconds = CycleDsp::delayTimeSeconds(
+            parameterFloat(parametersToUse, "time", 0.5f),
+            bpm,
+            beatsPerMeasure);
+    configuration.feedback = jlimit(
+            0.f,
+            0.98f,
+            parameterFloat(parametersToUse, "feedback", 0.5f));
+    configuration.spin = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "spin", 1.f));
+    configuration.wet = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "wet", 0.9f));
+    configuration.spinIterations = CycleDsp::delaySpinIterations(
+            parameterFloat(parametersToUse, "spinIters", 0.f));
+
+    blockDelay.configure(configuration);
+    traversalDelay.configure(configuration);
 }
 
 void DelaySignalProcessor::beginBlock(size_t) {
-    activeState = &blockState;
+    activeDelay = &blockDelay;
 }
 
 void DelaySignalProcessor::beginTraversalGrid(size_t, size_t rows) {
     (void) rows;
-    activeState = &gridState;
-    resetDelayState(gridState);
+    activeDelay = &traversalDelay;
+    traversalDelay.reset();
 }
 
 void DelaySignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
-    if (buffer.empty()
-            || activeState == nullptr
-            || activeState->inputBuffer.empty()
-            || activeState->spinParams.empty()) {
+    if (activeDelay == nullptr) {
         return;
     }
-
-    auto& state = *activeState;
-    const size_t inputMask = state.inputBuffer.size() - 1;
-    const size_t spinMask = state.spinParams.front().buffer.size() - 1;
-    const float pownFeedback = std::pow(feedback, (int) state.spinParams.size()) + 1e-17f;
-
-    for (int i = 0; i < buffer.size(); ++i) {
-        const float input = buffer[i];
-        float wetSum = 0.f;
-        const size_t readPos = state.readPosition & spinMask;
-
-        state.inputBuffer[state.readPosition & inputMask] = input;
-
-        for (auto& params : state.spinParams) {
-            const size_t bufferReadPos = (state.readPosition - params.inputDelaySamples) & inputMask;
-            const size_t selfReadPos = (state.readPosition - params.spinDelaySamples) & spinMask;
-            const float spinDelayedSelf = pownFeedback * params.buffer[selfReadPos] + 1e-17f;
-            params.buffer[readPos] = state.inputBuffer[bufferReadPos] + spinDelayedSelf;
-            wetSum += params.pan * params.startingLevel * params.buffer[readPos];
-        }
-
-        buffer[i] = input + wetLevel * wetSum + 1e-19f;
-        state.readPosition++;
-    }
-}
-
-void DelaySignalProcessor::configureDelayLines() {
-    const String signature = String(delayTimeSeconds)
-            + ":" + String(feedback)
-            + ":" + String(spinAmount)
-            + ":" + String(sampleRate)
-            + ":" + String(spinIters);
-
-    if (signature == delaySignature) {
-        return;
-    }
-
-    delaySignature = signature;
-    configureDelayState(blockState);
-    configureDelayState(gridState);
-}
-
-void DelaySignalProcessor::configureDelayState(DelayState& state) {
-    const int singleSize = std::max(1, (int) (spinIters * delayTimeSeconds * sampleRate));
-    const size_t bufferSize = std::max<size_t>(2, (size_t) NumberUtils::nextPower2((unsigned) singleSize));
-
-    state.inputBuffer.assign(bufferSize, 0.f);
-    state.spinParams.resize((size_t) spinIters);
-    state.readPosition = 0;
-
-    for (int spinIdx = 0; spinIdx < spinIters; ++spinIdx) {
-        auto& params = state.spinParams[(size_t) spinIdx];
-        const float pan = 0.5f + 0.49999f
-                * spinAmount
-                * std::sin(spinIdx / (float) spinIters * MathConstants<float>::twoPi);
-        params.pan = std::min(1.f, 2.f * (1.f - pan));
-        params.startingLevel = std::pow(feedback, spinIdx + 1);
-        params.inputDelaySamples = (size_t) std::max<int>(
-                1,
-                (int) ((spinIdx + 1) * delayTimeSeconds * sampleRate));
-        params.spinDelaySamples = (size_t) std::max<int>(
-                1,
-                (int) (spinIters * delayTimeSeconds * sampleRate));
-        params.buffer.assign(bufferSize, 0.f);
-    }
-}
-
-void DelaySignalProcessor::resetDelayState(DelayState& state) {
-    std::fill(state.inputBuffer.begin(), state.inputBuffer.end(), 0.f);
-    for (auto& params : state.spinParams) {
-        std::fill(params.buffer.begin(), params.buffer.end(), 0.f);
-    }
-    state.readPosition = 0;
-}
-
-double DelaySignalProcessor::cycle1DelayTimeSeconds(float value) const {
-    const double unitValue = std::max(0.15f, value);
-    const double secondsPerBeat = 60.0 / bpm;
-    return beatsPerMeasure * unitValue * unitValue * secondsPerBeat;
-}
-
-int DelaySignalProcessor::cycle1SpinIters(float value) const {
-    return std::max(1, (int) (12.f * value * value));
+    activeDelay->process(buffer);
 }
 
 void ReverbSignalProcessor::prepareProcess(

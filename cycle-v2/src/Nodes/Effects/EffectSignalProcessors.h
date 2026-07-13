@@ -2,6 +2,7 @@
 
 #include "../../Runtime/UnarySignalProcessor.h"
 
+#include <Audio/CycleDsp/CycleDelay.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
 
@@ -44,38 +45,11 @@ public:
     void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) override;
 
 private:
-    struct SpinParams {
-        float pan {};
-        float startingLevel {};
-        size_t inputDelaySamples {};
-        size_t spinDelaySamples {};
-        std::vector<float> buffer;
-    };
-
-    struct DelayState {
-        std::vector<float> inputBuffer;
-        std::vector<SpinParams> spinParams;
-        size_t readPosition {};
-    };
-
-    void configureDelayLines();
-    void configureDelayState(DelayState& state);
-    void resetDelayState(DelayState& state);
-    double cycle1DelayTimeSeconds(float value) const;
-    int cycle1SpinIters(float value) const;
-
-    DelayState blockState;
-    DelayState gridState;
-    DelayState* activeState { &blockState };
-    String delaySignature;
-    double delayTimeSeconds { 0.5 };
-    float feedback { 0.5f };
-    float spinAmount { 1.f };
-    float wetLevel { 0.9f };
-    float sampleRate { 44100.f };
+    CycleDsp::CycleDelay blockDelay;
+    CycleDsp::CycleDelay traversalDelay;
+    CycleDsp::CycleDelay* activeDelay { &blockDelay };
     double bpm { 120.0 };
     int beatsPerMeasure { 4 };
-    int spinIters { 1 };
 };
 
 class ReverbSignalProcessor :
