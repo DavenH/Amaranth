@@ -56,10 +56,42 @@ void WaveshaperSignalProcessor::prepareProcess(
     syncTransferTable(parameters);
     preGain = parameterFloat(parameters, "pre", 1.f);
     postGain = parameterFloat(parameters, "post", 1.f);
+    const int requestedFactor = (int) parameterFloat(parameters, "aaFactor", 1.f);
+    oversampleFactor = requestedFactor >= 8 ? 8
+            : requestedFactor >= 4 ? 4
+            : requestedFactor >= 2 ? 2
+            : 1;
+    oversampler.setOversampleFactor(oversampleFactor);
+}
+
+void WaveshaperSignalProcessor::beginBlock(size_t frameCount) {
+    useOversampling = oversampleFactor > 1;
+    if (!useOversampling) {
+        return;
+    }
+
+    oversampleMemory.resize(frameCount * (size_t) oversampleFactor);
+    oversampler.setMemoryBuffer({ oversampleMemory.data(), (int) oversampleMemory.size() });
+}
+
+void WaveshaperSignalProcessor::beginTraversalGrid(size_t, size_t) {
+    useOversampling = false;
+}
+
+void WaveshaperSignalProcessor::endTraversalGrid() {
+    useOversampling = oversampleFactor > 1;
 }
 
 void WaveshaperSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
+    if (useOversampling) {
+        oversampler.startOversamplingBlock(buffer);
+    }
+
     transfer.process(buffer, preGain, postGain);
+
+    if (useOversampling) {
+        oversampler.stopOversamplingBlock();
+    }
 }
 
 void WaveshaperSignalProcessor::syncTransferTable(const std::vector<NodeParameter>& parameters) {

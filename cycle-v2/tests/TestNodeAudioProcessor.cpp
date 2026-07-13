@@ -376,6 +376,36 @@ TEST_CASE("Waveshaper processor uses persisted FX rasterizer vertices", "[cycle-
     REQUIRE(output(shapedContext).traversalGrid.values[1] == Catch::Approx(output(shapedContext).block.samples[1]));
 }
 
+TEST_CASE("Waveshaper oversamples audio while keeping traversal columns independent", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+    AudioProcessContext context;
+    context.frameCount = 64;
+    std::vector<float> signal(64);
+    for (size_t i = 0; i < signal.size(); ++i) {
+        signal[i] = i % 2 == 0 ? -0.9f : 0.9f;
+    }
+    context.inputs = { gridPayload(signal, 1, signal.size()) };
+    context.parameters = {
+            { "pre", "Pre", "2" },
+            { "post", "Post", "1" },
+            { "aaFactor", "AA Factor", "4" },
+            {
+                    "effect.vertices",
+                    "Effect Vertices",
+                    "0.062500,0.950000,1.000000;0.937500,0.050000,1.000000"
+            }
+    };
+
+    factory.create(AudioModuleRole::Waveshaper)->process(context);
+
+    REQUIRE(output(context).traversalGrid.isValid());
+    REQUIRE(output(context).block.samples != output(context).traversalGrid.values);
+    REQUIRE(std::all_of(
+            output(context).block.samples.begin(),
+            output(context).block.samples.end(),
+            [](float value) { return std::isfinite(value); }));
+}
+
 TEST_CASE("Disabled waveshaper passes block and traversal grid through unchanged", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 

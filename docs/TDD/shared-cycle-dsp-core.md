@@ -312,9 +312,11 @@ Tests:
 
 Current status:
 
-- Cycle 2 shares rasterizer/table semantics for traversal and preview.
-- Realtime oversampling and latency behavior are not shared with Cycle 1
-  `Waveshaper::processBuffer`.
+- Cycle 1 and Cycle 2 share rasterizer/table semantics and the same `Oversampler`
+  implementation for realtime audio.
+- Cycle 2 traversal and Cycle 1 graphic processing intentionally bypass
+  oversampling because columns are independent visualization slices; this is a
+  documented qualitative preview rather than an audio-equivalent render.
 - `Oversampler` can be constructed without application ownership and accepts
   explicit bounded scratch memory. The legacy Cycle 1 constructor remains as
   an adapter that obtains its existing pool from `SingletonRepo`.
