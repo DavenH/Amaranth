@@ -201,52 +201,39 @@ void ReverbSignalProcessor::prepareProcess(
     syncKernel();
 }
 
-void ReverbSignalProcessor::beginBlock(size_t) {
-    activeCarry = &blockCarry;
+void ReverbSignalProcessor::beginBlock(size_t frameCount) {
+    activeConvolver = &blockConvolver;
+    prepareConvolver(blockConvolver, frameCount, preparedBlockSize);
+    blockKernelRevision = kernelRevision;
 }
 
-void ReverbSignalProcessor::beginTraversalGrid(size_t, size_t) {
-    activeCarry = &gridCarry;
-    resetCarry();
+void ReverbSignalProcessor::beginTraversalGrid(size_t, size_t rows) {
+    activeConvolver = &traversalConvolver;
+    preparedTraversalSize = 0;
+    prepareConvolver(traversalConvolver, rows, preparedTraversalSize);
+    traversalKernelRevision = kernelRevision;
 }
 
 void ReverbSignalProcessor::endTraversalGrid() {
-    activeCarry = &blockCarry;
+    activeConvolver = &blockConvolver;
 }
 
 void ReverbSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
-    if (buffer.empty() || kernel.empty() || activeCarry == nullptr) {
+    if (buffer.empty() || kernel.empty() || activeConvolver == nullptr) {
         return;
     }
 
-    std::vector<float> dry((size_t) buffer.size());
-    VecOps::copy(buffer.get(), dry.data(), buffer.size());
-
-    convolutionOutput.assign((size_t) buffer.size() + kernel.size() - 1, 0.f);
-    ConvReverb::basicConvolve(
+    dryBuffer.resize((size_t) buffer.size());
+    convolutionOutput.resize((size_t) buffer.size());
+    VecOps::copy(buffer.get(), dryBuffer.data(), buffer.size());
+    activeConvolver->process(
             buffer,
-            { kernel.data(), (int) kernel.size() },
-            { convolutionOutput.data(), (int) convolutionOutput.size() });
-
-    auto& carry = *activeCarry;
-    const size_t carryCount = std::min(carry.size(), (size_t) buffer.size());
-    if (carryCount > 0) {
-        Buffer<float> carryBuffer(carry.data(), (int) carryCount);
-        Buffer<float> outputHead(convolutionOutput.data(), (int) carryCount);
-        outputHead.add(carryBuffer);
-    }
+            { convolutionOutput.data(), buffer.size() });
 
     const float dryScale = 1.f - 0.25f * wetLevel;
-    Buffer<float> dryBuffer(dry.data(), buffer.size());
     buffer.mul(0.f);
-    buffer.addProduct(dryBuffer, dryScale);
+    buffer.addProduct({ dryBuffer.data(), buffer.size() }, dryScale);
     buffer.addProduct({ convolutionOutput.data(), buffer.size() }, wetLevel);
-
-    const size_t tailSize = convolutionOutput.size() - (size_t) buffer.size();
-    carry.resize(tailSize);
-    if (tailSize > 0) {
-        VecOps::copy(convolutionOutput.data() + buffer.size(), carry.data(), (int) tailSize);
-    }
 }
 
 void ReverbSignalProcessor::syncKernel() {
@@ -261,8 +248,7 @@ void ReverbSignalProcessor::syncKernel() {
 
     kernelSignature = signature;
     kernel.assign(kernelLength, 0.f);
-    blockCarry.clear();
-    gridCarry.clear();
+    ++kernelRevision;
 
     CycleDsp::ReverbKernelConfiguration configuration;
     configuration.roomSize = roomSize;
@@ -273,10 +259,27 @@ void ReverbSignalProcessor::syncKernel() {
             { kernel.data(), (int) kernel.size() });
 }
 
-void ReverbSignalProcessor::resetCarry() {
-    if (activeCarry != nullptr) {
-        activeCarry->clear();
+void ReverbSignalProcessor::prepareConvolver(
+        ConvReverb& convolver,
+        size_t blockSize,
+        size_t& preparedSize) {
+    const bool isBlockConvolver = &convolver == &blockConvolver;
+    const size_t preparedRevision = isBlockConvolver
+            ? blockKernelRevision
+            : traversalKernelRevision;
+    if (blockSize == 0
+            || (preparedSize == blockSize && preparedRevision == kernelRevision)) {
+        return;
     }
+
+    const int headSize = NumberUtils::nextPower2((unsigned) blockSize);
+    convolver.init(
+            headSize,
+            16 * headSize,
+            { kernel.data(), (int) kernel.size() });
+    preparedSize = blockSize;
+    dryBuffer.resize(blockSize);
+    convolutionOutput.resize(blockSize);
 }
 
 }

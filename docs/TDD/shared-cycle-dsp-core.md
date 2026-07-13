@@ -260,14 +260,12 @@ Current status:
 
 - Cycle 1 and Cycle 2 use shared deterministic stereo-capable kernel generation
   from `CycleDsp::buildReverbKernel`.
-- Cycle 2 uses shared convolution primitives but not yet the shared streaming
-  `ConvReverb` state.
+- Cycle 1 and Cycle 2 use the shared streaming `ConvReverb` state. Cycle 2 owns
+  separate block and traversal instances so preview rendering cannot mutate
+  audio history.
 - Cycle 1 streaming state is implemented by the UI-free `ConvReverb` in
   `AmaranthLib`. Reuse its two-stage streaming algorithm behind the shared
   Reverb core; do not duplicate it in a new class.
-- Cycle 2 currently performs allocating full convolution plus adapter-local
-  carry management. Treat that path as scaffolding to replace, not the shared
-  streaming contract.
 
 Target:
 

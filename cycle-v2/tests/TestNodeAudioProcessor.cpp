@@ -19,6 +19,14 @@ SignalPayload payload(std::initializer_list<float> samples) {
     return result;
 }
 
+SignalPayload payload(const std::vector<float>& samples) {
+    SignalPayload result;
+    result.block.samples = samples;
+    result.domain = PortDomain::TimeSignal;
+    result.channelLayout = ChannelLayout::LinkedStereo;
+    return result;
+}
+
 SignalPayload gridPayload(std::initializer_list<float> samples, size_t columns, size_t rows) {
     SignalPayload result = payload(samples);
     result.traversalGrid.values = std::vector<float>(samples);
@@ -514,6 +522,47 @@ TEST_CASE("Reverb processor transforms block and carries traversal tails across 
             output(context).traversalGrid.values.begin() + 256,
             output(context).traversalGrid.values.end(),
             [](float value) { return std::abs(value) > 0.000001f; }));
+}
+
+TEST_CASE("Reverb traversal rendering does not overwrite block state", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+    auto withGridProcessor = factory.create(AudioModuleRole::Reverb);
+    auto blockOnlyProcessor = factory.create(AudioModuleRole::Reverb);
+    const std::vector<NodeParameter> parameters = {
+            { "size", "Size", "0" },
+            { "damp", "Damp", "0.2" },
+            { "highPass", "HighPass", "0" },
+            { "width", "Width", "0.5" },
+            { "wet", "Wet", "1" }
+    };
+
+    AudioProcessContext withGridFirst;
+    withGridFirst.frameCount = 256;
+    withGridFirst.parameters = parameters;
+    std::vector<float> gridValues(512, 0.f);
+    gridValues.front() = 1.f;
+    gridValues[256] = 100.f;
+    withGridFirst.inputs = { gridPayload(gridValues, 2, 256) };
+    withGridProcessor->process(withGridFirst);
+
+    AudioProcessContext blockOnlyFirst;
+    blockOnlyFirst.frameCount = 256;
+    blockOnlyFirst.parameters = parameters;
+    std::vector<float> impulse(256, 0.f);
+    impulse.front() = 1.f;
+    blockOnlyFirst.inputs = { payload(impulse) };
+    blockOnlyProcessor->process(blockOnlyFirst);
+
+    AudioProcessContext withGridSecond;
+    withGridSecond.frameCount = 256;
+    withGridSecond.parameters = parameters;
+    withGridSecond.inputs = { payload(std::vector<float>(256, 0.f)) };
+    withGridProcessor->process(withGridSecond);
+
+    AudioProcessContext blockOnlySecond = withGridSecond;
+    blockOnlyProcessor->process(blockOnlySecond);
+
+    REQUIRE(output(withGridSecond).block.samples == output(blockOnlySecond).block.samples);
 }
 
 TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[cycle-v2][runtime]") {

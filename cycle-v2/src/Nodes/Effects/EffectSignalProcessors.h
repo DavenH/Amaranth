@@ -2,6 +2,7 @@
 
 #include "../../Runtime/UnarySignalProcessor.h"
 
+#include <Algo/ConvReverb.h>
 #include <Audio/CycleDsp/CycleDelay.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
@@ -65,19 +66,25 @@ public:
 
 private:
     void syncKernel();
-    void resetCarry();
+    void prepareConvolver(ConvReverb& convolver, size_t blockSize, size_t& preparedSize);
 
     std::vector<float> kernel;
     std::vector<float> convolutionOutput;
-    std::vector<float> blockCarry;
-    std::vector<float> gridCarry;
-    std::vector<float>* activeCarry { &blockCarry };
+    std::vector<float> dryBuffer;
+    ConvReverb blockConvolver;
+    ConvReverb traversalConvolver;
+    ConvReverb* activeConvolver { &blockConvolver };
     float roomSize { 0.2f };
     float rolloffFactor { 0.14f };
     float width { 1.f };
     float highPass { 0.05f };
     float wetLevel { 0.1f };
     size_t kernelLength {};
+    size_t kernelRevision {};
+    size_t blockKernelRevision {};
+    size_t traversalKernelRevision {};
+    size_t preparedBlockSize {};
+    size_t preparedTraversalSize {};
     String kernelSignature;
 };
 
