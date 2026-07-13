@@ -123,12 +123,16 @@ public:
     void prepareExecution(const AudioExecutionSpec& spec) override {
         if (processorRole == AudioModuleRole::Waveshaper) {
             waveshaperDsp.prepareExecution(spec);
+        } else if (processorRole == AudioModuleRole::ImpulseResponse) {
+            irDsp.prepareExecution(spec);
         }
     }
 
     void adoptConfiguration(const PublishedNodeConfiguration& configuration) override {
         if (processorRole == AudioModuleRole::Waveshaper) {
             waveshaperDsp.adoptConfiguration(configuration);
+        } else if (processorRole == AudioModuleRole::ImpulseResponse) {
+            irDsp.adoptConfiguration(configuration);
         }
     }
 

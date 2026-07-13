@@ -1,6 +1,7 @@
 #include "NodeDspConfiguration.h"
 
 #include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
+#include "../Nodes/Effects/EffectSignalProcessors.h"
 
 namespace CycleV2 {
 
@@ -25,6 +26,9 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
     switch (role) {
         case AudioModuleRole::Waveshaper:
             return WaveshaperSignalProcessor::buildConfiguration(parameters);
+
+        case AudioModuleRole::ImpulseResponse:
+            return IrSignalProcessor::buildConfiguration(parameters);
 
         default:
             return {};
