@@ -125,6 +125,8 @@ public:
             waveshaperDsp.prepareExecution(spec);
         } else if (processorRole == AudioModuleRole::ImpulseResponse) {
             irDsp.prepareExecution(spec);
+        } else if (processorRole == AudioModuleRole::Reverb) {
+            reverbDsp.prepareExecution(spec);
         }
     }
 
@@ -133,6 +135,8 @@ public:
             waveshaperDsp.adoptConfiguration(configuration);
         } else if (processorRole == AudioModuleRole::ImpulseResponse) {
             irDsp.adoptConfiguration(configuration);
+        } else if (processorRole == AudioModuleRole::Reverb) {
+            reverbDsp.adoptConfiguration(configuration);
         }
     }
 

@@ -30,6 +30,9 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         case AudioModuleRole::ImpulseResponse:
             return IrSignalProcessor::buildConfiguration(parameters);
 
+        case AudioModuleRole::Reverb:
+            return ReverbSignalProcessor::buildConfiguration(parameters);
+
         default:
             return {};
     }

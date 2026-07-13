@@ -103,6 +103,9 @@ public:
     static std::shared_ptr<const ReverbConfiguration> buildConfiguration(
             const std::vector<NodeParameter>& parameters);
 
+    void prepareExecution(const AudioExecutionSpec& spec);
+    void adoptConfiguration(const PublishedNodeConfiguration& published);
+
     void prepareProcess(
             const std::vector<NodeParameter>& parameters,
             const AudioProcessTiming& timing) override;
@@ -133,6 +136,8 @@ private:
     size_t preparedBlockSize {};
     size_t preparedTraversalSize {};
     String kernelSignature;
+    uint64_t adoptedRevision {};
+    std::shared_ptr<const ReverbConfiguration> configuration;
 };
 
 }

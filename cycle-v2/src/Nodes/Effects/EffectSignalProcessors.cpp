@@ -343,6 +343,10 @@ void DelaySignalProcessor::processBuffer(Buffer<float> buffer, const SignalProce
 void ReverbSignalProcessor::prepareProcess(
         const std::vector<NodeParameter>& parametersToUse,
         const AudioProcessTiming&) {
+    if (configuration != nullptr) {
+        return;
+    }
+
     roomSize = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "size", 0.35f));
     rolloffFactor = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "damp", 0.2f)) * 0.7f;
     width = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "width", 0.75f));
@@ -352,16 +356,71 @@ void ReverbSignalProcessor::prepareProcess(
     syncKernel();
 }
 
+std::shared_ptr<const ReverbConfiguration> ReverbSignalProcessor::buildConfiguration(
+        const std::vector<NodeParameter>& parameters) {
+    auto result = std::make_shared<ReverbConfiguration>();
+    const float roomSize = jlimit(0.f, 1.f, parameterFloat(parameters, "size", 0.35f));
+    const float damping = jlimit(0.f, 1.f, parameterFloat(parameters, "damp", 0.2f)) * 0.7f;
+    const float highPass = jlimit(0.f, 1.f, parameterFloat(parameters, "highPass", 0.05f));
+    const size_t kernelLength = (size_t) NumberUtils::nextPower2(
+            (unsigned) std::pow(2.f, 12.f + 6.f * roomSize));
+
+    result->kernel.assign(kernelLength, 0.f);
+    result->width = jlimit(0.f, 1.f, parameterFloat(parameters, "width", 0.75f));
+    result->wetLevel = 0.25f * jlimit(0.f, 1.f, parameterFloat(parameters, "wet", 0.5f));
+
+    CycleDsp::ReverbKernelConfiguration kernelConfiguration;
+    kernelConfiguration.roomSize = roomSize;
+    kernelConfiguration.damping = damping;
+    kernelConfiguration.highPass = highPass;
+    CycleDsp::buildReverbKernel(
+            kernelConfiguration,
+            { result->kernel.data(), (int) result->kernel.size() });
+    return result;
+}
+
+void ReverbSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
+    if (configuration == nullptr || spec.maximumFrameCount == 0) {
+        return;
+    }
+
+    prepareConvolver(blockConvolver, spec.maximumFrameCount, preparedBlockSize);
+    blockKernelRevision = kernelRevision;
+    prepareConvolver(traversalConvolver, spec.maximumFrameCount, preparedTraversalSize);
+    traversalKernelRevision = kernelRevision;
+    dryBuffer.resize(spec.maximumFrameCount);
+    convolutionOutput.resize(spec.maximumFrameCount);
+}
+
+void ReverbSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& published) {
+    if (published.revision == adoptedRevision || published.value == nullptr
+            || published.value->role() != AudioModuleRole::Reverb) {
+        return;
+    }
+
+    configuration = std::static_pointer_cast<const ReverbConfiguration>(published.value);
+    width = configuration->width;
+    wetLevel = configuration->wetLevel;
+    kernelRevision = (size_t) published.revision;
+    preparedBlockSize = 0;
+    preparedTraversalSize = 0;
+    adoptedRevision = published.revision;
+}
+
 void ReverbSignalProcessor::beginBlock(size_t frameCount) {
     activeConvolver = &blockConvolver;
-    prepareConvolver(blockConvolver, frameCount, preparedBlockSize);
+    if (configuration == nullptr) {
+        prepareConvolver(blockConvolver, frameCount, preparedBlockSize);
+    }
     blockKernelRevision = kernelRevision;
 }
 
 void ReverbSignalProcessor::beginTraversalGrid(size_t, size_t rows) {
     activeConvolver = &traversalConvolver;
-    preparedTraversalSize = 0;
-    prepareConvolver(traversalConvolver, rows, preparedTraversalSize);
+    if (configuration == nullptr || preparedTraversalSize != rows) {
+        preparedTraversalSize = 0;
+        prepareConvolver(traversalConvolver, rows, preparedTraversalSize);
+    }
     traversalKernelRevision = kernelRevision;
 }
 
@@ -370,7 +429,8 @@ void ReverbSignalProcessor::endTraversalGrid() {
 }
 
 void ReverbSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
-    if (buffer.empty() || kernel.empty() || activeConvolver == nullptr) {
+    const bool hasKernel = configuration != nullptr ? !configuration->kernel.empty() : !kernel.empty();
+    if (buffer.empty() || !hasKernel || activeConvolver == nullptr) {
         return;
     }
 
@@ -427,7 +487,11 @@ void ReverbSignalProcessor::prepareConvolver(
     convolver.init(
             headSize,
             16 * headSize,
-            { kernel.data(), (int) kernel.size() });
+            configuration != nullptr
+                    ? Buffer<float>(
+                            const_cast<float*>(configuration->kernel.data()),
+                            (int) configuration->kernel.size())
+                    : Buffer<float>(kernel.data(), (int) kernel.size()));
     preparedSize = blockSize;
     dryBuffer.resize(blockSize);
     convolutionOutput.resize(blockSize);
