@@ -307,7 +307,8 @@ Current status:
   still run below `UnarySignalProcessor::process`. Cycle 2 needs a graph-wide
   immutable configuration publication phase before IR, Reverb, Waveshaper, and
   Envelope can meet the realtime contract; moving IR alone would create a
-  second lifecycle rather than solve the shared boundary.
+  second lifecycle rather than solve the shared boundary. See
+  `cycle-v2-dsp-configuration-publication.md`.
 
 Target:
 
