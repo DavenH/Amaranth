@@ -76,7 +76,6 @@ MainComponent::MainComponent()
 
     phaseVelocity.zero();
     prevPhases.zero();
-    phaseDiff.zero();
     avgMagnitudes.zero();
 
     startTimer(50);
@@ -107,6 +106,7 @@ void MainComponent::paint(Graphics& g) {
 
 void MainComponent::setRealtimePitchTrackingEnabled(bool shouldEnable) {
     realtimePitchTrackingEnabled = shouldEnable;
+    processor->setPitchTracker(realtimePitchTrackingEnabled ? pitchTracker.get() : nullptr);
     if (!realtimePitchTrackingEnabled) {
         pitchVoteActive = false;
         pitchVoteFramesRemaining = 0;
@@ -140,6 +140,9 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
     const int numHarmonics = phaseVelocity.size();
     if (numHarmonics == 0) return;
 
+    Graphics::ScopedSaveState state(g);
+    g.reduceClipRegion(area);
+
     // Draw background
     g.setColour(kOscilloPanelBackground);
     g.fillRect(area);
@@ -156,6 +159,11 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
     // Quarter divisions
     g.drawVerticalLine(area.getX() + area.getWidth() / 4, area.getY(), area.getBottom());
     g.drawVerticalLine(area.getX() + area.getWidth() * 3 / 4, area.getY(), area.getBottom());
+
+    g.setColour(kOscilloLabel);
+    g.setFont(13.0f);
+    g.drawText("Harmonic drift", area.reduced(8).removeFromTop(18),
+        Justification::centredLeft);
 
     // Calculate bar height
     const float barHeight = (float)area.getHeight() / numHarmonics;
@@ -214,55 +222,19 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
 
 }
 
-void MainComponent::drawHarmonicPhaseVelocityPlot(Graphics& g, const Rectangle<int>& area) {
-    g.setColour(kOscilloPanelBackground);
-    g.fillRect(area);
+void MainComponent::drawHarmonicPhaseVelocityPlot(
+        Graphics& g, const Rectangle<int>& area, int harmonicIndex) {
+    PhaseVelocityHistoryRenderer::draw(g, area, harmonicIndex,
+        "H" + String(harmonicIndex + 1) + " phase velocity", noteHistories,
+        noteSequenceCounter, viridis, kOscilloPanelBackground, kOscilloGrid,
+        kOscilloLabel, kPlotMaxVelocity);
 
-    g.setColour(kOscilloGrid.withAlpha(0.75f));
-    g.drawHorizontalLine(area.getCentreY(), (float) area.getX(), (float) area.getRight());
-    g.drawHorizontalLine(area.getY() + area.getHeight() / 4, (float) area.getX(), (float) area.getRight());
-    g.drawHorizontalLine(area.getY() + area.getHeight() * 3 / 4, (float) area.getX(), (float) area.getRight());
+}
 
-    static const Colour colours[] = {
-        Colours::yellow,
-        Colours::cyan,
-        Colours::orange,
-        Colours::limegreen,
-        Colours::magenta,
-        Colours::lightskyblue,
-        Colours::salmon,
-        Colours::white
-    };
-
-    const float xStep = 6 * (float) area.getWidth() / jmax(1, kNoteHistoryFrames - 1);
-    const float halfHeight = area.getHeight() / 2.0f;
-    const float centerY = (float) area.getCentreY();
-
-    for (const auto& history : noteHistories) {
-        if (history.length < 2) {
-            continue;
-        }
-
-        const float age = (float) (noteSequenceCounter - history.sequence);
-        const float alpha = jlimit(0.25f, 1.0f, 1.0f - (age / (float) kNoteHistoryCount));
-        const int colorIndex = history.sequence % kNoteHistoryCount;
-
-        Path path;
-        for (int i = 0; i < history.length; ++i) {
-            float value = jlimit(-1.0f, 1.0f, history.values[(size_t) i] / kPlotMaxVelocity);
-            float x = (float) area.getX() + xStep * (float) i;
-            float y = centerY - value * halfHeight;
-            if (i == 0) {
-                path.startNewSubPath(x, y);
-            } else {
-                path.lineTo(x, y);
-            }
-        }
-
-        g.setColour(colours[colorIndex].withAlpha(alpha));
-        g.strokePath(path, PathStrokeType(2.0f));
-    }
-
+void MainComponent::drawWeightedPhaseVelocityPlot(Graphics& g, const Rectangle<int>& area) {
+    PhaseVelocityHistoryRenderer::draw(g, area, -1,
+        "Weighted phase velocity", noteHistories, noteSequenceCounter, inferno,
+        kOscilloPanelBackground, kOscilloGrid, kOscilloLabel, kPlotMaxVelocity);
 }
 
 void MainComponent::resized() {
@@ -387,27 +359,37 @@ void MainComponent::updateHistoryImage() {
             kNumPhasePartials
         );
 
-        if (needsPhaseVelocityInit) {
-            // First tick after reset: just store current phase, skip velocity calculation
-            // (prevPhases was zeroed, so any difference would be meaningless)
-            phases.copyTo(prevPhases);
-            needsPhaseVelocityInit = false;
-        } else {
-            // Calculate phase difference from previous measurement
-            VecOps::sub(phases, prevPhases, phaseDiff);
-
-            // Wrap phase difference to [-0.5, 0.5]
-            for (float &diff : phaseDiff) {
-                while (diff > 0.5f) diff -= 1.0f;
-                while (diff < -0.5f) diff += 1.0f;
+        for (int harmonic = 0; harmonic < kNumPhasePartials; ++harmonic) {
+            if (magnitudes[harmonic] < kPhaseTrackingMinMagnitude) {
+                hasPreviousPhase[(size_t) harmonic] = false;
+                continue;
             }
 
-            // Apply exponential smoothing
-            phaseVelocity *= (1.f - kPhaseSmoothing);
-            phaseVelocity += phaseDiff.mul(2 * kPhaseSmoothing);
-            phaseVelocity.clip(-0.5f, 0.5f);
+            const float phase = phases[harmonic];
+            if (!hasPreviousPhase[(size_t) harmonic]) {
+                prevPhases[harmonic] = phase;
+                hasPreviousPhase[(size_t) harmonic] = true;
+                continue;
+            }
 
-            phases.copyTo(prevPhases);
+            float diff = phase - prevPhases[harmonic];
+            while (diff > 0.5f) {
+                diff -= 1.0f;
+            }
+            while (diff < -0.5f) {
+                diff += 1.0f;
+            }
+
+            const float measuredVelocity = jlimit(-0.5f, 0.5f, 2.0f * diff);
+            if (!hasPhaseVelocitySeed[(size_t) harmonic]) {
+                phaseVelocity[harmonic] = kPhaseSmoothing * measuredVelocity;
+                hasPhaseVelocitySeed[(size_t) harmonic] = true;
+            } else {
+                phaseVelocity[harmonic] =
+                    (1.0f - kPhaseSmoothing) * phaseVelocity[harmonic]
+                    + kPhaseSmoothing * measuredVelocity;
+            }
+            prevPhases[harmonic] = phase;
         }
 
         // Map to colors
@@ -440,43 +422,44 @@ void MainComponent::drawHistoryImage(Graphics& g) {
 
     Rectangle<int> local = plotBounds;
 
-    const int rightWidth = local.getWidth() / 2;
+    const int rightWidth = roundToInt(0.35f * local.getWidth());
     Rectangle<int> right = local.removeFromRight(rightWidth);
+    const int rowHeight = local.getHeight() / 2;
+    const int columnWidth = local.getWidth() / 3;
 
-    const int sideWidth = local.getWidth() / 2;
-    Rectangle<int> leftColumn = local.removeFromLeft(sideWidth);
-    Rectangle<int> middleColumn = local;
+    std::array<Rectangle<int>, 6> analysisAreas;
+    for (int row = 0; row < 2; ++row) {
+        for (int column = 0; column < 3; ++column) {
+            const int index = row * 3 + column;
+            const int x = local.getX() + column * columnWidth;
+            const int y = local.getY() + row * rowHeight;
+            const int width = column == 2 ? local.getRight() - x : columnWidth;
+            const int height = row == 1 ? local.getBottom() - y : rowHeight;
+            analysisAreas[(size_t) index] = Rectangle<int>(x, y, width, height).reduced(6);
+        }
+    }
 
-    Rectangle<int> phasigramArea = leftColumn.removeFromTop(leftColumn.getHeight() / 2).reduced(6);
-    Rectangle<int> pitchDebugArea = leftColumn.reduced(6);
-
-    Rectangle<int> phaseVelArea = middleColumn.removeFromTop(middleColumn.getHeight() / 2).reduced(6);
-    Rectangle<int> harmonicPlotArea = middleColumn.reduced(6);
-
-    // Draw phasigram
-    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-    g.drawImage(phasigram, phasigramArea.toFloat());
+    auto drawPanelImage = [&](const Image& image, const Rectangle<int>& area) {
+        Graphics::ScopedSaveState state(g);
+        g.reduceClipRegion(area);
+        g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+        g.drawImage(image, area.toFloat());
+    };
 
     {
         Graphics::ScopedSaveState state(g);
-        drawPhaseVelocityBarChart(g, phaseVelArea);
+        drawWeightedPhaseVelocityPlot(g, analysisAreas[0]);
     }
 
-    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-    g.drawImage(pitchDebug, pitchDebugArea.toFloat());
-
-    {
+    for (int harmonic = 0; harmonic < 5; ++harmonic) {
         Graphics::ScopedSaveState state(g);
-        drawHarmonicPhaseVelocityPlot(g, harmonicPlotArea);
+        drawHarmonicPhaseVelocityPlot(g, analysisAreas[(size_t) harmonic + 1], harmonic);
     }
-
-    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-    g.setOpacity(1.0f);
 
     Rectangle<int> cyclogramArea = right.removeFromTop(right.getHeight() / 2).reduced(6);
     Rectangle<int> spectrogramArea = right.reduced(6);
-    g.drawImage(cyclogram, cyclogramArea.toFloat());
-    g.drawImage(spectrogram, spectrogramArea.toFloat());
+    drawPanelImage(cyclogram, cyclogramArea);
+    drawPanelImage(spectrogram, spectrogramArea);
 }
 
 // --------- DSP stuff --------- //
@@ -536,18 +519,21 @@ void MainComponent::showTemperamentDialog() {
 void MainComponent::handleOnsetEvents() {
     std::vector<OscAudioProcessor::OnsetEvent> onsets;
     processor->popOnsetEvents(onsets);
-    if (onsets.empty() || !realtimePitchTrackingEnabled) {
+    if (onsets.empty()) {
         return;
     }
 
     for (const auto& onset : onsets) {
         (void) onset;
-        pitchVoteCounts.fill(0);
-        pitchVoteActive = true;
-        pitchVoteFramesRemaining = kPitchVoteWindowFrames;
-        pitchVoteBestMidi = lastClickedMidiNote;
-        pitchVoteBestCount = 0;
         pushNoteHistory(lastClickedMidiNote);
+
+        if (realtimePitchTrackingEnabled) {
+            pitchVoteCounts.fill(0);
+            pitchVoteActive = true;
+            pitchVoteFramesRemaining = kPitchVoteWindowFrames;
+            pitchVoteBestMidi = lastClickedMidiNote;
+            pitchVoteBestCount = 0;
+        }
     }
 }
 
@@ -563,16 +549,25 @@ void MainComponent::pushNoteHistory(int midiNoteNumber) {
     history.length = 0;
     history.sequence = ++noteSequenceCounter;
     history.active = true;
-    history.values.fill(0.0f);
+    for (auto& values : history.values) {
+        values.fill(0.0f);
+    }
+    for (auto& magnitudes : history.magnitudes) {
+        magnitudes.fill(0.0f);
+    }
+    history.weightedValues.fill(0.0f);
+    history.weightedMagnitudes.fill(0.0f);
 
     // Reset phase tracking to avoid carrying over previous note's state
     phaseVelocity.zero();
     prevPhases.zero();
-    needsPhaseVelocityInit = true;
+    hasPreviousPhase.fill(false);
+    hasPhaseVelocitySeed.fill(false);
 }
 
 void MainComponent::appendCurrentPhaseVelocity() {
-    if (currentNoteHistory < 0 || phaseVelocity.size() == 0) {
+    if (currentNoteHistory < 0 || phaseVelocity.size() < 2
+        || !hasPhaseVelocitySeed[0] || !hasPhaseVelocitySeed[1]) {
         return;
     }
 
@@ -581,7 +576,12 @@ void MainComponent::appendCurrentPhaseVelocity() {
         return;
     }
 
-    history.values[(size_t) history.writeIndex] = phaseVelocity[0];
+    for (int harmonic = 0; harmonic < kNumPhasePartials; ++harmonic) {
+        history.values[(size_t) harmonic][(size_t) history.writeIndex] = phaseVelocity[harmonic];
+        history.magnitudes[(size_t) harmonic][(size_t) history.writeIndex] = avgMagnitudes[harmonic];
+    }
+    history.weightedValues[(size_t) history.writeIndex] = trueDrift;
+    history.weightedMagnitudes[(size_t) history.writeIndex] = trueDriftMagnitude;
     history.writeIndex++;
     history.length = history.writeIndex;
 }
@@ -637,13 +637,21 @@ void MainComponent::clearNoteHistories() {
         history.length = 0;
         history.writeIndex = 0;
         history.sequence = 0;
-        history.values.fill(0.0f);
+        for (auto& values : history.values) {
+            values.fill(0.0f);
+        }
+        for (auto& magnitudes : history.magnitudes) {
+            magnitudes.fill(0.0f);
+        }
+        history.weightedValues.fill(0.0f);
+        history.weightedMagnitudes.fill(0.0f);
     }
 
     // Reset phase tracking state
     phaseVelocity.zero();
     prevPhases.zero();
-    needsPhaseVelocityInit = true;
+    hasPreviousPhase.fill(false);
+    hasPhaseVelocitySeed.fill(false);
 }
 
 
@@ -668,6 +676,7 @@ void MainComponent::calculateTrueDrift() {
     // Early return if we don't have enough data
     if (phaseVelocity.size() < 2 || avgMagnitudes.size() < 2) {
         trueDrift = 0.0f;
+        trueDriftMagnitude = 0.0f;
         return;
     }
 
@@ -705,16 +714,18 @@ void MainComponent::calculateTrueDrift() {
     // Calculate final weighted average if we have valid data
     if (totalWeight > 0.0f && harmonicsUsed > 0) {
         trueDrift = weightedSum / totalWeight;
+        trueDriftMagnitude = totalWeight / (float) harmonicsUsed;
     } else {
         trueDrift = 0.0f;
+        trueDriftMagnitude = 0.0f;
     }
 }
 
 void MainComponent::timerCallback() {
+    handleOnsetEvents();
     updatePitchTrackingState();
     updateHistoryImage();
     calculateTrueDrift();
-    handleOnsetEvents();
     appendCurrentPhaseVelocity();
     appendPitchDebugImage();
     repaint();

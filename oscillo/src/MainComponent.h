@@ -7,6 +7,7 @@
 #include <Algo/FFT.h>
 
 #include "GradientColorMap.h"
+#include "PhaseVelocityHistoryRenderer.h"
 #include "RealTimePitchTracker.h"
 #include "TempermentControls.h"
 
@@ -49,7 +50,8 @@ public:
 
     void paint(Graphics&) override;
     void drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>& area);
-    void drawHarmonicPhaseVelocityPlot(Graphics& g, const Rectangle<int>& area);
+    void drawHarmonicPhaseVelocityPlot(Graphics& g, const Rectangle<int>& area, int harmonicIndex);
+    void drawWeightedPhaseVelocityPlot(Graphics& g, const Rectangle<int>& area);
     void showTemperamentDialog();
     void stepRootNote(int delta);
     bool isRealtimePitchTrackingEnabled() const { return realtimePitchTrackingEnabled; }
@@ -84,7 +86,7 @@ private:
     static constexpr int kImageHeight = 512;
     static constexpr int kNumPhasePartials = 8;
     static constexpr int kHistoryFrames = 512;
-    static constexpr int kNoteHistoryCount = 8;
+    static constexpr int kNoteHistoryCount = PhaseVelocityHistory::kNumTracks;
     static constexpr int kNoteHistoryFrames = 512;
     static constexpr int kNoteHistoryAdvancePerTick = 4;
     static constexpr int kSpectrogramHeight = 64;
@@ -92,22 +94,17 @@ private:
     static constexpr int kNumColours = 64;
     static constexpr int kPhaseVelocityWidth = 20;
     static constexpr float kPhaseSmoothing = 0.04f; // Exponential smoothing factor (0 to 1)
+    static constexpr float kPhaseTrackingMinMagnitude = 0.05f;
     static constexpr float kBarChartMaxVelocity = 0.1f; // Maximum velocity for scaling bars
     static constexpr float kPlotMaxVelocity = 0.05f;
     static constexpr int kPitchVoteWindowFrames = 5;
     static constexpr int kPitchVoteQuorum = 3;
 
-    struct NoteHistory {
-        int midiNote = 60;
-        int writeIndex = 0;
-        int length = 0;
-        int sequence = 0;
-        bool active = false;
-        std::array<float, kNoteHistoryFrames> values{};
-    };
+    using NoteHistory = PhaseVelocityHistory;
 
     MidiKeyboardState keyboardState;
-    bool needsPhaseVelocityInit = true;
+    std::array<bool, kNumPhasePartials> hasPreviousPhase{};
+    std::array<bool, kNumPhasePartials> hasPhaseVelocitySeed{};
     bool realtimePitchTrackingEnabled = true;
     RealTimePitchTracker::Algorithm realtimePitchTrackingAlgorithm = RealTimePitchTracker::AlgoSpectral;
 
@@ -119,6 +116,7 @@ private:
 
     int lastClickedMidiNote = 60;
     float trueDrift = 0.0f;
+    float trueDriftMagnitude = 0.0f;
     float keyboardKeyWidth = 12.0f;
 
     Image phaseVelocityBar;
@@ -128,7 +126,6 @@ private:
     ScopedAlloc<Float32> resampleBuffer{kImageHeight};
     ScopedAlloc<Float32> workBuffer;
     ScopedAlloc<Float32> prevPhases{kNumPhasePartials};
-    ScopedAlloc<Float32> phaseDiff{kNumPhasePartials};
     ScopedAlloc<Float32> phaseVelocity{kNumPhasePartials};
     ScopedAlloc<Float32> avgMagnitudes{kNumPhasePartials};
     Transform transform;
